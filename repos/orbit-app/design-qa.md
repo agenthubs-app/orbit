@@ -1,3 +1,58 @@
+# 2026-09-12 当前现代化验收范围
+
+整体交付与 Simulator 验收：**未通过／未完成**。下文历史批次的 `passed` 只适用于各自明确记录的环境、页面和版本；不得用 RNW 测试代替当前 iOS 原生验收。用户已明确要求最后必须经过 Simulator 验证。见[当前原生运行状态](docs/designs/2026-09-12-ink-signal/2026-09-12-native-status.md)。
+
+final result: blocked
+
+当前选定 26 张设计状态的本地实施、RNW 对照及独立复审已完成。合并全量回归 2190/2190、0 失败／跳过／取消、exit 0，typecheck exit 0；不能因此关闭原生门槛。
+
+Simulator 已实际运行并检查主要页面、正常字号导航、登录键盘、深色首页及会话键盘。仍失败：大字号热切换文字裁切、待办长标题裁切（独立原生断言 RED）；名片／运营非空状态仍未验。诊断调用后出现 Hermes 调试器路径崩溃，重开后当前登录态不可用，已停止该调试方式。截图、运行范围、未验证项和继续条件见上方原生报告。自动化计数不包含单独失败的原生标题检查。
+
+## 名片导入本地批次
+
+本批 RNW result: passed
+
+精确源图 `3a-名片导入.png` 与 legacy／ingest／single 最新正常实现按 390×844、2× 成组比较；320pt 1.6×/2×、820pt 深色及中部／底部、图片与全部错误状态已检查。五项表面、P2 修复和功能差异见[名片详细报告](docs/designs/2026-09-12-ink-signal/2026-09-12-card-review-qa.md)。
+
+- 保留真实图片、字段、风险、候选与写入区别；不伪造确认数、工作区或合并行为。
+- 修复大字号字段裁切、标题孤字、cover 图片裁切风险及复核／新采集错误归属。审查修复后 80/80、独立复审 APPROVE；最终全量已包含这些用例。
+- 新版已进入实际 Simulator 检查。原生 OCR、真实写入、跨端回读和整包字号验收不由本地 QA 替代。
+
+## 活动运营／无权限本地批次
+
+final result: passed (RNW only)
+
+精确源图 `3a-活动运营台.png`、`3a-无权限-运营台.png` 与实现按 390×844、2× 成组比较；320pt 1.6×/2×、820pt 深色及全部错误／进度状态已检查。五项表面、修复与功能差异见[详细报告](docs/designs/2026-09-12-ink-signal/2026-09-12-event-operations-qa.md)。
+
+- 四项真实运营指标、开放导航和匹配／桌次内容；仅实际 403 显示权限页，保留返回详情与重新检查权限。
+- 确认弹窗、发布／重试及失败反馈保留；修复零进度、放大字号标题和通用提示误用成功绿。不虚构审核／通知／权限申请接口。
+- 最终合并 32/32，`/tmp/orbit-ink-signal-event-operations-all6.log`，7.451286917 秒，exit 0；typecheck6 exit 0、diff check clean；独立复审 APPROVE，复跑 32/32。
+- 未完成 iOS 运行或真实跨端写入验收；Simulator 必过项仍开放。
+
+## 收件箱本地批次
+
+final result: passed (RNW only)
+
+精确源图 `3a-收件箱.png` 与最新正常列表按 390×844、2× 成组比较；320pt 1.6×/2×、820pt 深色的列表、提醒、编辑器、详情顶部和底部均检查。五项表面与功能差异见[详细报告](docs/designs/2026-09-12-ink-signal/2026-09-12-inbox-qa.md)。
+
+- 48pt 固定页头、真实消息／提醒标签、14pt 行内边距、8pt 未读标记与对齐留白；保留搜索、完整时间、信号确认、消息草稿／隐私和提醒本地忽略。
+- 加载或读取失败不再伪装为空；修复大字号裁切、首页按钮读屏名称和大字号搜索提示。无虚构全部已读／分类通知 API。
+- 最终合并 52/52，`/tmp/orbit-ink-signal-inbox-all4.log`，8.578884875 秒，exit 0；typecheck4 exit 0、diff check clean；两项 P2 测试先行修正后，独立复审 APPROVE。
+- 尚未验证本批 iOS 运行、原生键盘／VoiceOver 或真实跨端业务写入；Simulator 必过项保持开放。
+
+## 设置／账号本地批次
+
+final result: passed (RNW only)
+
+精确源图 `3a-设置.png`、`3a-账号与工作区.png` 与实现 `/tmp/orbit-ink-signal-settings-account-{settings,account}.png` 按 390×844、2× 成组比较；全部正常、guest、失败和 320pt 1.6×/2×、820pt 深色 top/bottom 状态已检查。五项表面、所有 RED/GREEN 和功能差异见[详细报告](docs/designs/2026-09-12-ink-signal/2026-09-12-settings-account-qa.md)。
+
+- 15pt 分组、50pt 开放行、56pt 真实姓名首字头像、36pt 当前工作区图标；保留实际方案／时区／目标、权限、服务器及退出流程，不添加虚构成员、邀请、导出或语言设置。
+- 修复大字号邮箱越界、标题孤字、未知通知状态以及审查发现的“读取中仍可操作”；通知双重解绑和失败重试、真实路由、guest 边界、退出失败原逻辑保留。
+- 最终合并 75/75，`/tmp/orbit-ink-signal-settings-account-all5.log`，14.643727084 秒，exit 0；typecheck5 exit 0、diff check clean；独立复审 APPROVE，无 Critical/Important/Minor。
+- 无原生、真实 HTTP／安全存储或跨端写入验收结论。Simulator 必过项仍开放。
+
+---
+
 # Orbit AI Drawer Option 1 Design QA
 
 ## Comparison Target
@@ -551,3 +606,90 @@ final result: incomplete — 领域修补循环已闭合；whole-app 实时 Dyna
 final result: incomplete — 全量自动化验证通过；原生实时 Dynamic Type 尚未修复。未提交、推送、发布或执行真实业务写入。
 
 23:12 最终限定复审：28/28 圆角缺口已解决，修补差异未发现新 Critical/Important/Minor 问题；循环 10 的修补/复验闭合。原生实时字号仍 NOT ADDRESSED / OPEN，五项低优先级事项保留。完成的 UI 修补与未完成的整体验收分开记录，不执行第二次扩大修补或未经授权的原生框架更改。
+
+---
+
+# 2026-09-12 — Ink & Signal IORBIT 本地批次
+
+本节不改写上面的历史原生结论，也不表示整包现代化任务完成。详细报告见 [IORBIT 视觉与功能验收](docs/designs/2026-09-12-ink-signal/2026-09-12-ai-qa.md)。
+
+- Source visual truth：`docs/designs/2026-09-12-ink-signal/design_handoff_orbit_ink_signal/screenshots/2a-IORBIT首页.png`、`1c-IORBIT会话.png`、`3a-失败态-IORBIT.png`。
+- Implementation screenshots：`/tmp/orbit-ink-signal-ai-home-390.png`、`/tmp/orbit-ink-signal-ai-conversation-reference-390.png`、`/tmp/orbit-ink-signal-ai-failure-390.png`。源／实现均 780×1688、390×844 CSS、2×。源的设备外框与系统状态栏不作为 App 内容复制，实际使用 48/24pt 测试安全区。
+- State：相同主问题／三段回答；历史及真实活动接口形状的边界夹具；实际 HTTP 503 失败。源中的虚构引用计数、错误代码、自动写入承诺和无协议支持的 @ 不复制。
+- Full-view comparison：每张源图和对应最新实现均在同一次图像输入内成组比较；正文、三步编号和引用行完整可见。Focused comparison：2× 全图中逐区核对品牌、字号、分隔、64×52 图片、输入框和错误恢复；细节可直接读清，无需另裁。
+- Five surfaces：系统 15/24 正文、16/24 用户文字、22pt 蓝色编号；16pt inset／开放列表／无气泡；白墨蓝 tokens、深色独立保留；源品牌栅格与真实活动图片；保留实际业务原文、历史、执行依据和任务建议。
+- P1/P2 修复历史：首页旧品牌／过宽段距／两行默认输入已修复；会话旧气泡／高顶栏／编号错位／回答前引用面板已修复；失败后残留 pending 已修复；活动大卡片与首屏裁切已改成紧凑图片行并重截图。详细 RED/GREEN 与比较历史见完整报告。
+- Primary interactions：首页提示填入、历史搜索／删除确认、返回／快捷入口；会话提交、双击、重试／编辑、保存失败、焦点恢复、任务确认、刷新、真实记录导航。所有 actual-route pageerror 断言为空。320px 大字号、820px 和深色截图已查看；无剩余可操作 P0/P1/P2。
+- Evidence：AI 定向及兼容 241/241；最后规范化 ID 修正后的会话／兼容复验 67/67（重叠，不相加）；typecheck13、diff check、最终独立复审通过。
+- P3：中文系统回退笔画、标准库图标细节；44pt 命中区和保留的额外业务字段与源图较小控件略有差异。
+- Unverified：原生键盘／VoiceOver／热字号、真实 Web↔App 持久化、剩余页面与最终全量回归；无真实业务写入、提交或部署。
+
+final result: passed
+
+---
+
+# 2026-09-12 — Ink & Signal 日程本地批次
+
+本节不改写历史原生未验结论，也不表示全包已完成。完整报告见 [日程视觉与功能验收](docs/designs/2026-09-12-ink-signal/2026-09-12-schedule-qa.md)。
+
+- Source visual truth：`2a-日程-日.png`、`2a-日程-周.png`、`2a-日程-月.png`，位于选定设计包 screenshots 目录。
+- Implementation screenshots：`/tmp/orbit-ink-signal-schedule-{day,week,month}.png`；390×844、2×、2026-09-11 对应视图，每张都与精确源图再次成组打开比较。实际测试事项保留自己的类型、名称与时长，日期模式相同，不假称业务记录完全相同。
+- Full/focused comparison：全图逐区检查日期字形、模式／星期选中、蓝色实时时间条、月选择圆、2pt 分类线和可点击议程。44pt 热区造成的顶部高度差已记录，未缩小操作区域迎合截图。
+- Five surfaces：34/40 日日期、24/30 周／月日期、14/20 议程标题；16pt inset、56pt 小时网格；白墨蓝与原有四类／日本假日色；实际 Ionicons；真实日期、ISO 周、计数和接口失败文案。
+- P1/P2 fixes：原有蓝色星期块和周日起点已调整；初版日期另行与动态时刻缺失已修复；双倍字号的孤立“月”与星期断行已修复；独立审查提出的二月四行与计划冲突已修复为 35 格。均有失败后通过的测试，无剩余重要发现。
+- Primary interactions：日期三模式切换、今日复位、前后导航、活动预览、保留整周／四类记录、部分来源失败；原有 no-write 和双倍字号议程／小时位置断言保留。
+- Evidence：最终合并 78/78（含新增 12 项），`/tmp/orbit-ink-signal-schedule-all2.log` exit 0；typecheck6 exit 0；diff check clean；最终独立复审 APPROVE。320px 的 1.6／2.0 字号和 820px 深色截图已检查。
+- P3/deliberate differences：标准库图标、系统字体回退、44pt 控件高度；保留分类图例、节假日含义与既有开始时间字段，不拼造结束时间或新建日程能力。未支持的“＋”留空。
+- Unverified：原生 VoiceOver／字号热切换、真实 HTTP 鉴权／跨端联验、剩余页面和最终全量测试；没有数据库写入或发布。
+
+final result: passed
+
+---
+
+# 2026-09-12 — Ink & Signal 待办列表与详情本地批次
+
+本节只关闭本批本地验收，不改写历史原生缺口、不代表全包完成。完整报告见 [待办视觉与功能验收](docs/designs/2026-09-12-ink-signal/2026-09-12-tasks-qa.md)。
+
+- Source visual truth：选定设计包 screenshots 下 `2a-待办.png`、`2a-待办详情.png`；对应 HTML 第 298–331 行。
+- Implementation：`/tmp/orbit-ink-signal-tasks-list.png`、`/tmp/orbit-ink-signal-tasks-detail.png`；源／实现均 390×844 CSS、2×、780×1688，源设备边框／系统栏不复制。三条今天／两条之后／一条完成及同类开放详情；实际测试记录不冒充源稿人物。
+- Comparison：两张源图与最新实现成组打开；2× 输入可读清标题、细线和控制，无需再裁图。320px 1.6／2× 字号、820px 深色的 list / detail-top / detail 截图均已查看，长文本可完整滚动读取。
+- Five surfaces：系统字；15/22 列表、24/32 详情、15/24 正文；16pt inset、下划线 tabs、开放分组、固定双动作；白／墨黑／蓝与现有深色；真实 Ionicons、实际字段内容和关联 ID，无虚构头像。
+- P1/P2 history：修复旧单行裁切、双倍字号拆字、复选框与行导航触控重叠、宽屏底部比正文过宽；均有 RED→GREEN 与改后截图。无剩余可操作 P0/P1/P2。
+- Interactions：全状态真实计数、逾期／无日期保留、完成预览按行恢复、添加跳真实表单、详情 ID 编码；双击锁／异常恢复；原有编辑版本草稿、重试身份、提醒授权、历史和删除测试均保留。
+- Evidence：新增 13 项，合并定向 88/88、22.403 秒，`/tmp/orbit-ink-signal-tasks-all3.log` exit 0；typecheck4、diff check 与最终独立复审 APPROVE。
+- Deliberate differences：44pt 独立点击宽度使列表正文比参考右移 10pt；详情保留分类／提醒两行；未知联系人姓名仅显示真实关联跳转；plus 复用 `/today`。这些差异依用户“功能为主”的要求保留。
+- Unverified：原生键盘、VoiceOver、热字号、真实 HTTP／跨端写入和最终全量回归；未操作业务数据库、提交或发布。
+
+final result: passed
+
+---
+
+# 2026-09-12 — Ink & Signal 联系跟进本地批次
+
+只关闭本地跟进页，不改写历史原生缺口或声明全包完成。详见 [联系跟进验收](docs/designs/2026-09-12-ink-signal/2026-09-12-followups-qa.md)。
+
+- Source：选定 ZIP 的 `2a-联系跟进.png`；implementation `/tmp/orbit-ink-signal-followups-open.png`。同为 390×844 CSS、2×、780×1688，四名测试联系人／三条今天／一条之后成组对照，不复制系统栏或生产示例数据。
+- Full/focused：源与改后截图同次查看；2× 输入能清晰核对头像、14pt tabs、15pt 名称、22pt 数量、12pt 元数据、20pt checkbox。无需额外裁片。正常／完成／失败和 320px 1.6×、2×、820px 深色的列表、tools、drafting 截图全部已检查。
+- Five surfaces：系统字体与可换行层级；16pt inset、52pt 嵌套和独立 ≥44pt 点击区；白墨蓝及既有身份渐变；真实照片优先并在加载失败时使用真实首字；实际数据／候选／草稿语义分离。
+- P2 history：头像错误 token／告警色、照片失败无回退、完成态显示旧截止日期均已 RED→GREEN 并复核改后截图，无剩余 P0/P1/P2。
+- Interactions：真实 ID 跳转、完成/恢复与同步防重复、失败解锁、Tokyo 分组、非关系分类入口、未知联系人可继续处理；现有生成候选／提醒、轻量文案、消息草稿与审核原负载保留，不自动发送。
+- Evidence：最终定向 73/73（新增13项），22.414 秒，`/tmp/orbit-ink-signal-followups-all3.log` exit 0；typecheck4 exit 0、diff check clean；独立只读复审 APPROVE，无 Critical/Important/Minor。
+- Deliberate/P3：44pt 热区使任务文字右移；真实 ID 选择头像色而非源图人物；已完成数、其他待办和工具延续产品功能；星期、系统字体与标准库图标细节保留。
+- Unverified：原生键盘／VoiceOver／热字号、真实 HTTP／跨端持久化、其余页面和最终全量回归。无业务数据库写入、提交或发布。
+
+final result: passed
+
+---
+
+# 2026-09-12 — Ink & Signal 登录本地批次
+
+只关闭本地登录／注册／恢复页面，不代表全包或原生验收。详见 [登录验收](docs/designs/2026-09-12-ink-signal/2026-09-12-auth-qa.md)。
+
+- Source：`2a-登录.png`；implementation `/tmp/orbit-ink-signal-auth-login.png`，390×844 CSS、2×，同状态成组对照。系统外框不复制，凭据仅测试夹具。
+- Five surfaces：26pt Orbit. 可编辑字标、34/40 标题、16/22 字段；24pt inset、开放下划线、50pt 动作、底部注册；白墨蓝与既有深色；真实 Google/eye/close 库图标；真实回执／错误与原帮助文字。
+- Comparison：正常、失败、恢复、320px 1.6×/2×、820px 深色三模式及滚动底部均检查。辅助色、孤立断字和浏览器自动焦点框均 RED→GREEN。未用禁用缩放解决；没有剩余可操作 P0/P1/P2。
+- Interactions：安全关闭、next、凭据失败保留、Google 可用/取消/busy、恢复请求均验证；生产认证／恢复 callback 未改。
+- Evidence：70/70，`/tmp/orbit-ink-signal-auth-all3.log`；typecheck3 exit 0；补充动作宽度回归 12/12；独立复审 APPROVE，无 Critical/Important/Minor。CTA 疑问经原图和实际边界核验撤销，无盲目样式改动。
+- Unverified：真实 OAuth／安全存储／键盘／VoiceOver／原生与跨端写入、剩余页面及最终全量回归。未操作数据库、提交或发布。
+
+final result: passed

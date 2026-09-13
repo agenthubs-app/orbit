@@ -1,15 +1,20 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
-import { useState, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Image,
+  Platform,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  View
+  View,
+  useWindowDimensions
 } from "react-native";
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
+import { z } from "zod";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import type { OrbitApiClient } from "../../api/client";
@@ -23,6 +28,7 @@ import {
   relationshipValueRecomputePath
 } from "../../api/endpoints";
 import { ContactPage } from "./ContactPage";
+import { validateApiResourceState } from "../../api/validated-resource-state";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { radius, spacing, textStyles, type OrbitColors } from "../../design/tokens";
@@ -34,12 +40,9 @@ import {
 } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
-  buildContactDetailMetadataRequest,
   contactDetailHeroToView,
   contactDetailToSummary,
   type ContactAvatarTone,
-  type ContactDetailMetadataDraft,
-  type ContactDetailStatusActionView,
   type ContactDetailSummary
 } from "../../view-models/contacts";
 import {
@@ -47,6 +50,18 @@ import {
   relationshipValueStateIsEmpty,
   relationshipValueToView
 } from "../../view-models/relationship-value";
+import { buildContactDetailEditRequest, confirmContactDetailEdit, contactDetailEditorFrom, contactDetailReadSchema as detailReadSchema, type ContactDetailEditor, type ContactDetailEditDraft } from "../../view-models/contact-detail-editor";
+
+const detailFont = Platform.select({ web: '-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif', ios: "System", default: "sans-serif" });
+const recomputeReadSchema = z.discriminatedUnion("state", [
+  z.object({ state: z.literal("empty"), assessment: z.null(), summary: z.string(), nextAction: z.string() }).passthrough(),
+  z.object({ state: z.literal("success"), summary: z.string(), nextAction: z.string(), assessment: z.object({
+    id: z.string().min(1), connectionId: z.string().min(1), contactId: z.string().min(1), contactDisplayName: z.string(), relationshipValueType: z.string(),
+    priorityScore: z.object({ value: z.number().finite(), band: z.enum(["critical", "high", "medium", "low"]), factors: z.array(z.object({ label: z.string(), points: z.number().finite() }).passthrough()) }).passthrough(),
+    rationale: z.object({ summary: z.string(), evidence: z.array(z.object({ label: z.string(), contribution: z.string() }).passthrough()) }).passthrough(),
+    suggestedNextAction: z.object({ label: z.string(), dueWindow: z.string(), confidence: z.string() }).passthrough()
+  }).passthrough() }).passthrough()
+]);
 
 function firstParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
@@ -65,20 +80,22 @@ function assetUrl(baseUrl: string, path: string): string {
   return `${baseUrl.replace(/\/+$/u, "")}${normalizedPath}`;
 }
 
-export function ContactDetailScreen() {
+export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: string; isScopeCurrent?: () => boolean } = {}) {
   const { colors, styles } = useStyles();
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const contactId = firstParam(id);
   const actorId = useOrbitAuthSession().user?.id ?? null;
-  const client = useOrbitApiClient();
-  const state = useApiResource<unknown>(
+  const client = useOrbitApiClient(scopeKey === undefined ? {} : { scopeKey });
+  const rawState = useApiResource<unknown>(
     contactDetailPath(contactId),
     () => false,
-    { scopeKey: actorId }
+    { scopeKey: scopeKey ?? actorId }
   );
+  const state = validateApiResourceState(rawState, detailReadSchema.refine(value => value.contact.id === contactId));
   const connectionsState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.connections,
-    () => false
+    () => false,
+    { scopeKey: scopeKey ?? actorId }
   );
   const connectionId =
     relationshipConnectionIdForContact(
@@ -90,30 +107,58 @@ export function ContactDetailScreen() {
     ) ?? contactId;
   const relationshipValueState = useApiResource<unknown>(
     relationshipValueAnalysisPath(connectionId),
-    relationshipValueStateIsEmpty
+    relationshipValueStateIsEmpty,
+    { scopeKey: JSON.stringify([scopeKey ?? actorId, connectionId]) }
   );
-  const [metadataDraft, setMetadataDraft] = useState<ContactDetailMetadataDraft>({
-    channel: "手动记录",
-    occurredAt: "",
-    summary: "",
-    tagsText: ""
-  });
-  const [metadataPending, setMetadataPending] = useState(false);
-  const [industryPending, setIndustryPending] = useState(false);
-  const [statusPending, setStatusPending] = useState(false);
-  const [relationshipValuePending, setRelationshipValuePending] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const bodyTop = useRef(0);
+  const scope = useMemo(() => ({ actorId, client, contactId, scopeKey }), [actorId, client, contactId, scopeKey]);
+  const latestScope = useRef(scope);
+  latestScope.current = scope;
+  const valueScope = useMemo(() => ({ scope, connectionId }), [scope, connectionId]);
+  const latestValueScope = useRef(valueScope);
+  latestValueScope.current = valueScope;
+  const lastValidDetail = useRef<{ scope: typeof scope; data: unknown } | null>(null);
+  if (state.kind === "success" || state.kind === "empty") lastValidDetail.current = { scope, data: state.data };
+  // A malformed refresh must remain visible as an error without discarding a
+  // note already being edited. Never reuse this data across identity scopes.
+  const detailData = state.kind === "success" || state.kind === "empty" ? state.data
+    : (rawState.kind === "success" || rawState.kind === "empty") && lastValidDetail.current?.scope === scope ? lastValidDetail.current.data : null;
+  const mounted = useRef(true);
+  const editController = useRef<AbortController | null>(null);
+  const valueController = useRef<AbortController | null>(null);
+  const [editing, setEditing] = useState<{ original: ContactDetailEditor; draft: ContactDetailEditDraft; tagInput: string; scope: typeof scope } | null>(null);
+  const currentEdit = editing?.scope === scope ? editing : null;
+  const [editPending, setEditPending] = useState(false);
+  const [pendingValueScope, setPendingValueScope] = useState<typeof valueScope | null>(null);
+  const relationshipValuePending = pendingValueScope === valueScope;
   const [relationshipValueOverride, setRelationshipValueOverride] =
-    useState<unknown | null>(null);
+    useState<{ scope: typeof valueScope; data: unknown } | null>(null);
+  const [valueFeedback, setValueFeedback] = useState<{ scope: typeof valueScope; message: string; error: boolean } | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const refreshing =
     state.refreshing ||
     connectionsState.refreshing ||
     relationshipValueState.refreshing ||
-    relationshipValuePending ||
-    industryPending;
+    relationshipValuePending;
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; editController.current?.abort(); valueController.current?.abort(); };
+  }, [scope]);
+
+  function isCurrent() { return mounted.current && latestScope.current === scope && isScopeCurrent?.() !== false; }
+
+  useEffect(() => () => {
+    valueController.current?.abort();
+    valueController.current = null;
+  }, [valueScope]);
+
+  function isValueCurrent() { return isCurrent() && latestValueScope.current === valueScope; }
 
   function refreshAll() {
+    if (!isCurrent()) return;
     setRelationshipValueOverride(null);
     state.refresh();
     connectionsState.refresh();
@@ -121,121 +166,86 @@ export function ContactDetailScreen() {
   }
 
   async function recomputeRelationshipValue() {
-    setRelationshipValuePending(true);
+    if (!isValueCurrent() || valueController.current) return;
+    const controller = new AbortController();
+    valueController.current = controller;
+    setPendingValueScope(valueScope);
+    setValueFeedback(null);
     setFeedback(null);
     setActionError(null);
 
     try {
       const result = await client.post<unknown>(relationshipValueRecomputePath(), {
-        body: { connectionId }
+        body: { connectionId }, signal: controller.signal
       });
-
-      if (result.success) {
-        setRelationshipValueOverride(result.data);
-        setFeedback("已重新计算。未创建任务，也没有发送消息。");
+      if (!isValueCurrent() || controller.signal.aborted) return;
+      const parsed = result.success && result.status >= 200 && result.status < 300 ? recomputeReadSchema.safeParse(result.data) : null;
+      if (parsed?.success && (parsed.data.state === "empty" || (parsed.data.assessment.contactId === contactId && parsed.data.assessment.connectionId === connectionId))) {
+        setRelationshipValueOverride({ scope: valueScope, data: parsed.data });
+        setValueFeedback({ scope: valueScope, error: false, message: parsed.data.state === "empty" ? "当前证据不足，暂时无法判断关系价值。" : "已重新计算。未创建任务，也没有发送消息。" });
       } else {
-        setActionError("关系价值暂时算不了。先刷新来源证据再试。");
+        setValueFeedback({ scope: valueScope, error: true, message: "关系价值暂时算不了。先刷新来源证据再试。" });
       }
     } catch {
-      setActionError("关系价值暂时算不了。先刷新来源证据再试。");
+      if (isValueCurrent() && !controller.signal.aborted) setValueFeedback({ scope: valueScope, error: true, message: "关系价值暂时算不了。先刷新来源证据再试。" });
     } finally {
-      setRelationshipValuePending(false);
+      if (isValueCurrent() && !controller.signal.aborted) setPendingValueScope(null);
+      if (valueController.current === controller) valueController.current = null;
     }
   }
 
-  async function updateStatus(action: ContactDetailStatusActionView) {
-    setStatusPending(true);
+  function openEditor() {
+    if (!isCurrent() || (state.kind !== "success" && state.kind !== "empty")) return;
+    const original = contactDetailEditorFrom(state.data, contactId);
     setFeedback(null);
-    setActionError(null);
-
-    try {
-      const result = await client.patch<unknown>(contactDetailPath(contactId), {
-        body: { status: action.nextStatus }
-      });
-
-      if (result.success) {
-        setFeedback(action.successMessage);
-        refreshAll();
-      } else {
-        setActionError("当前状态暂时改不了。请刷新后再试一次。");
-      }
-    } catch {
-      setActionError("当前状态暂时改不了。请刷新后再试一次。");
-    } finally {
-      setStatusPending(false);
-    }
+    if (!original) { setActionError("编辑选项暂时读取不了，请刷新后再试。"); return; }
+    setEditing({ original, draft: original.draft, tagInput: "", scope });
+    setActionError(null); scrollRef.current?.scrollTo({ y: 0, animated: false });
   }
 
-  async function updatePrimaryIndustry(primaryIndustryId: IndustryIdCode) {
-    setIndustryPending(true);
-    setFeedback(null);
-    setActionError(null);
-
-    try {
-      const result = await client.patch<unknown>(contactDetailPath(contactId), {
-        body: { primaryIndustryId }
-      });
-
-      if (result.success) {
-        setFeedback("主要行业已更新。");
-        refreshAll();
-      } else {
-        setActionError("主要行业暂时保存不了。请刷新后再试一次。");
-      }
-    } catch {
-      setActionError("主要行业暂时保存不了。请刷新后再试一次。");
-    } finally {
-      setIndustryPending(false);
-    }
+  function cancelEditor() {
+    if (!isCurrent() || editController.current) return;
+    setEditing(null); setActionError(null); scrollRef.current?.scrollTo({ y: 0, animated: false });
   }
 
-  function onChangeMetadataDraft(patch: Partial<ContactDetailMetadataDraft>) {
-    setMetadataDraft((current) => ({
-      ...current,
-      ...patch
-    }));
-  }
-
-  async function saveMetadata() {
-    const request = buildContactDetailMetadataRequest(metadataDraft);
-
-    if (!request.success) {
-      setActionError(request.error);
-      setFeedback(null);
-      return;
-    }
-
-    setMetadataPending(true);
-    setFeedback(null);
-    setActionError(null);
-
+  async function saveEditor() {
+    if (!isCurrent() || !currentEdit || editController.current) return;
+    const request = buildContactDetailEditRequest(currentEdit.original, {
+      ...currentEdit.draft,
+      tags: currentEdit.tagInput.trim() ? [...currentEdit.draft.tags, currentEdit.tagInput.trim()] : currentEdit.draft.tags
+    });
+    if (!request.success) { setActionError(request.error); return; }
+    if (Object.keys(request.body).length === 0) { cancelEditor(); return; }
+    const controller = new AbortController(); editController.current = controller;
+    setEditPending(true); setActionError(null); setFeedback(null);
     try {
-      const result = await client.patch<unknown>(contactDetailPath(contactId), {
-        body: request.request.body
-      });
-
-      if (result.success) {
-        setFeedback(request.successMessage);
-        setMetadataDraft({
-          channel: "手动记录",
-          occurredAt: "",
-          summary: "",
-          tagsText: ""
-        });
-        refreshAll();
+      const result = await client.patch<unknown>(contactDetailPath(contactId), { body: request.body, signal: controller.signal });
+      if (!isCurrent() || controller.signal.aborted) return;
+      if (result.success && result.status >= 200 && result.status < 300 && confirmContactDetailEdit(result.data, contactId, request.body)) {
+        setEditing(null); setFeedback("资料已保存。"); refreshAll(); scrollRef.current?.scrollTo({ y: 0, animated: false });
       } else {
-        setActionError("标签或互动暂时保存不了。请刷新后再试一次。");
+        setActionError("尚未确认保存成功，修改已保留，请重试。");
       }
     } catch {
-      setActionError("标签或互动暂时保存不了。请刷新后再试一次。");
+      if (isCurrent() && !controller.signal.aborted) setActionError("尚未确认保存成功，修改已保留，请重试。");
     } finally {
-      setMetadataPending(false);
+      if (isCurrent() && !controller.signal.aborted) setEditPending(false);
+      if (editController.current === controller) editController.current = null;
     }
   }
 
   return (
     <ContactPage
       detail
+      backLabel="人脉"
+      backHref="/contacts"
+      scrollRef={scrollRef}
+      isCurrent={isCurrent}
+      onBodyLayout={event => { bodyTop.current = event.nativeEvent.layout.y; }}
+      toolbarLeft={currentEdit ? <Pressable accessibilityRole="button" accessibilityLabel="取消编辑" disabled={editPending} onPress={cancelEditor} style={styles.cancelHeaderButton}><Text style={styles.cancelHeaderText}>取消</Text></Pressable> : undefined}
+      toolbarRight={currentEdit
+        ? <Pressable accessibilityRole="button" accessibilityLabel="保存人脉" disabled={editPending} onPress={saveEditor} style={[styles.editHeaderButton, editPending && styles.disabled]}><Text style={styles.editHeaderText}>{editPending ? "保存中" : "保存"}</Text></Pressable>
+        : state.kind === "success" || state.kind === "empty" ? <Pressable accessibilityRole="button" accessibilityLabel="编辑资料" onPress={openEditor} style={styles.editHeaderButton}><Text style={styles.editHeaderText}>编辑资料</Text></Pressable> : null}
       refreshControl={
         <RefreshControl
           onRefresh={refreshAll}
@@ -243,7 +253,7 @@ export function ContactDetailScreen() {
           tintColor={colors.accent}
         />
       }
-      title="联系人详情"
+      title={currentEdit ? "编辑人脉" : "人脉详情"}
     >
       {state.kind === "loading" ? <LoadingState /> : null}
       {state.kind === "offline" ? (
@@ -252,29 +262,28 @@ export function ContactDetailScreen() {
       {state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
+      {state.kind === "offline" || state.kind === "failure" ? <Pressable accessibilityRole="button" accessibilityLabel="重新读取人脉详情" onPress={refreshAll} style={styles.statusButton}><Text style={styles.statusButtonText}>重新读取</Text></Pressable> : null}
       {feedback ? <Text style={styles.feedbackText}>{feedback}</Text> : null}
       {actionError ? <Text style={styles.errorText}>{actionError}</Text> : null}
-      {state.kind === "success" || state.kind === "empty" ? (
+      {valueFeedback?.scope === valueScope ? <Text style={valueFeedback.error ? styles.errorText : styles.feedbackText}>{valueFeedback.message}</Text> : null}
+      {currentEdit ? <UpdateContactPanel original={currentEdit.original} draft={currentEdit.draft} tagInput={currentEdit.tagInput} onChangeTagInput={tagInput => { if (!isCurrent() || editController.current) return; setEditing(value => value?.scope === scope ? { ...value, tagInput } : value); }} pending={editPending} onChange={patch => { if (!isCurrent() || editController.current) return; setEditing(value => value?.scope === scope ? { ...value, draft: { ...value.draft, ...patch } } : value); setActionError(null); }} /> : null}
+      <View style={currentEdit ? styles.hidden : undefined}>
+      {detailData !== null ? (
         <ContactDetailCard
           actorId={actorId}
           client={client}
           contactId={contactId}
-          data={state.data}
+          data={detailData}
+          isScopeCurrent={isCurrent}
+          onScrollTo={y => scrollRef.current?.scrollTo({ y: bodyTop.current + y, animated: true })}
           onNotesRefresh={state.refresh}
-          industryPending={industryPending}
-          metadataDraft={metadataDraft}
-          metadataPending={metadataPending}
-          onChangeMetadataDraft={onChangeMetadataDraft}
-          onSaveMetadata={saveMetadata}
           onRecompute={recomputeRelationshipValue}
-          onSelectIndustry={updatePrimaryIndustry}
-          onStatusAction={updateStatus}
-          relationshipValueOverride={relationshipValueOverride}
+          relationshipValueOverride={relationshipValueOverride?.scope === valueScope ? relationshipValueOverride.data : null}
           relationshipValuePending={relationshipValuePending}
           relationshipValueState={relationshipValueState}
-          statusPending={statusPending}
         />
       ) : null}
+      </View>
     </ContactPage>
   );
 }
@@ -284,37 +293,25 @@ function ContactDetailCard({
   client,
   contactId,
   data,
+  isScopeCurrent,
+  onScrollTo,
   onNotesRefresh,
-  industryPending,
-  metadataDraft,
-  metadataPending,
-  onChangeMetadataDraft,
-  onSaveMetadata,
   onRecompute,
-  onSelectIndustry,
-  onStatusAction,
   relationshipValueOverride,
   relationshipValuePending,
-  relationshipValueState,
-  statusPending
+  relationshipValueState
 }: {
   actorId: string | null;
   client: OrbitApiClient;
   contactId: string;
   data: unknown;
+  isScopeCurrent: () => boolean;
+  onScrollTo: (y: number) => void;
   onNotesRefresh: () => void;
-  industryPending: boolean;
-  metadataDraft: ContactDetailMetadataDraft;
-  metadataPending: boolean;
-  onChangeMetadataDraft: (patch: Partial<ContactDetailMetadataDraft>) => void;
-  onSaveMetadata: () => void;
   onRecompute: () => void;
-  onSelectIndustry: (industryId: IndustryIdCode) => void;
-  onStatusAction: (action: ContactDetailStatusActionView) => void;
   relationshipValueOverride: unknown | null;
   relationshipValuePending: boolean;
   relationshipValueState: ApiResourceState<unknown>;
-  statusPending: boolean;
 }) {
   const { colors } = useOrbitTheme();
   const router = useRouter();
@@ -323,7 +320,8 @@ function ContactDetailCard({
   const hero = contactDetailHeroToView(contact);
   const toneStyle = avatarToneStyles(colors)[hero.avatar.tone];
   const [detailsExpanded, setDetailsExpanded] = useState(false);
-  const [editingExpanded, setEditingExpanded] = useState(false);
+  const [notesRequest, setNotesRequest] = useState(0);
+  const notesTop = useRef(0);
   const inboxHref =
     `/inbox?contactId=${encodeURIComponent(contact.id)}&participantName=${encodeURIComponent(
       contact.name
@@ -333,15 +331,19 @@ function ContactDetailCard({
     <>
       <ContactIdentityHeader
         baseUrl={baseUrl}
-        hero={hero}
+        hero={{ ...hero, detailLine: [contact.role, contact.organization].filter(Boolean).join(" · ") }}
+        location={contact.location}
+        sourceLabel={contact.sourceLabel}
         toneStyle={toneStyle}
       />
       <NextStepCard
         action={contact.nextAction}
-        onPress={() => router.push(inboxHref)}
+        onPress={() => { if (isScopeCurrent()) router.push(inboxHref); }}
+        onSchedule={() => { if (isScopeCurrent()) router.push("/schedule"); }}
+        onNotes={() => { if (isScopeCurrent()) { setNotesRequest(value => value + 1); onScrollTo(notesTop.current); } }}
       />
-      <ContactOverview contact={contact} />
-      <ContactNotesSection actorId={actorId} client={client} colors={colors} contactId={contactId} data={data} onRefresh={onNotesRefresh} />
+      <ContactOverview contact={contact} email={detailReadSchema.safeParse(data).data?.contact.primaryEmail} />
+      <View onLayout={event => { notesTop.current = event.nativeEvent.layout.y; }}><ContactNotesSection actorId={actorId} client={client} colors={colors} contactId={contactId} data={data} onRefresh={onNotesRefresh} openRequest={notesRequest} preview isScopeCurrent={isScopeCurrent} /></View>
       <DisclosureSection
         detail="公开介绍、关系价值和来源记录"
         expanded={detailsExpanded}
@@ -356,24 +358,6 @@ function ContactDetailCard({
           relationshipValueState={relationshipValueState}
         />
       </DisclosureSection>
-      <DisclosureSection
-        detail="状态、标签和互动"
-        expanded={editingExpanded}
-        onPress={() => setEditingExpanded((current) => !current)}
-        title="更新联系人"
-      >
-        <UpdateContactPanel
-          contact={contact}
-          industryPending={industryPending}
-          metadataDraft={metadataDraft}
-          metadataPending={metadataPending}
-          onChangeMetadataDraft={onChangeMetadataDraft}
-          onSaveMetadata={onSaveMetadata}
-          onSelectIndustry={onSelectIndustry}
-          onStatusAction={onStatusAction}
-          statusPending={statusPending}
-        />
-      </DisclosureSection>
     </>
   );
 }
@@ -381,17 +365,23 @@ function ContactDetailCard({
 function ContactIdentityHeader({
   baseUrl,
   hero,
+  location,
+  sourceLabel,
   toneStyle
 }: {
   baseUrl: string;
   hero: ReturnType<typeof contactDetailHeroToView>;
+  location: string;
+  sourceLabel: string;
   toneStyle: { backgroundColor: string; color: string };
 }) {
   const { styles } = useStyles();
+  const gradientId = useId().replace(/:/gu, "");
   return (
     <View style={styles.contactHero}>
       <View style={styles.contactHeroHeader}>
         <View
+          testID="contact-detail-avatar"
           style={[
             styles.heroAvatar,
             { backgroundColor: toneStyle.backgroundColor }
@@ -404,19 +394,21 @@ function ContactIdentityHeader({
               style={styles.heroAvatarImage}
             />
           ) : (
-            <Text style={[styles.heroAvatarText, { color: toneStyle.color }]}>
+            <><Svg accessible={false} width="100%" height="100%" viewBox="0 0 72 72" style={StyleSheet.absoluteFill}><Defs><LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1"><Stop offset="0" stopColor="#7FB3FF" /><Stop offset="1" stopColor="#3B82F6" /></LinearGradient></Defs><Rect width="72" height="72" fill={`url(#${gradientId})`} /></Svg><Text style={styles.heroAvatarText}>
               {hero.avatar.initial}
-            </Text>
+            </Text></>
           )}
         </View>
         <View style={styles.contactHeroTitleBlock}>
-          <Text numberOfLines={2} style={styles.contactHeroName}>
+          <Text style={styles.contactHeroName}>
             {hero.name}
           </Text>
-          <Text numberOfLines={2} style={styles.contactHeroDetail}>
+          <Text style={styles.contactHeroDetail}>
             {hero.detailLine}
           </Text>
+          {location ? <Text style={styles.heroLocation}>{location}</Text> : null}
           <View style={styles.heroMetaRow}>
+            {sourceLabel ? <Text style={styles.sourcePill}>{sourceLabel}</Text> : null}
             <Text style={styles.statusPill}>{hero.status}</Text>
           </View>
         </View>
@@ -427,22 +419,19 @@ function ContactIdentityHeader({
 
 function NextStepCard({
   action,
-  onPress
+  onPress,
+  onSchedule,
+  onNotes
 }: {
   action: string;
   onPress: () => void;
+  onSchedule: () => void;
+  onNotes: () => void;
 }) {
-  const { colors, styles } = useStyles();
+  const { styles } = useStyles();
+  const { width, fontScale } = useWindowDimensions();
   return (
-    <View style={styles.nextStepCard}>
-      <View style={styles.nextStepHeader}>
-        <View style={styles.nextStepCopy}>
-          <Text style={styles.nextStepEyebrow}>下一步</Text>
-          <Text numberOfLines={3} style={styles.nextStepText}>
-            {action}
-          </Text>
-        </View>
-      </View>
+    <View accessibilityHint={action} style={[styles.nextStepCard, (fontScale >= 1.4 || width < 360) && styles.actionStack]}>
       <Pressable
         accessibilityRole="button"
         onPress={onPress}
@@ -451,32 +440,30 @@ function NextStepCard({
           pressed ? styles.pressed : null
         ]}
       >
-        <Ionicons color={colors.onAccent} name="mail-outline" size={23} />
         <Text style={styles.primaryActionButtonText}>起草消息</Text>
       </Pressable>
+      <Pressable accessibilityRole="button" onPress={onSchedule} style={styles.secondaryActionButton}><Text style={styles.secondaryActionText}>查看日程</Text></Pressable>
+      <Pressable accessibilityRole="button" onPress={onNotes} style={styles.secondaryActionButton}><Text style={styles.secondaryActionText}>写备注</Text></Pressable>
     </View>
   );
 }
 
-function ContactOverview({ contact }: { contact: ContactDetailSummary }) {
+function ContactOverview({ contact, email }: { contact: ContactDetailSummary; email?: string | undefined }) {
   const { styles } = useStyles();
   const exchange = relationshipExchangeFor(contact);
 
   return (
     <View style={styles.overviewSurface}>
-      <DetailSection title="关系摘要">
-        <Text numberOfLines={3} style={styles.bodyText}>
-          {relationshipSummaryFor(contact)}
-        </Text>
+      <DetailSection title="基本资料">
+        <View>{[["身份", contact.role], ["公司", contact.organization], ["行业", contact.primaryIndustryLabel], ["邮箱", email]].map(([label, value]) => <View key={label} style={styles.basicRow}><Text style={styles.basicLabel}>{label}</Text><Text selectable style={styles.basicValue}>{value || "未填写"}</Text></View>)}</View>
       </DetailSection>
-      <SectionDivider />
-      <DetailSection title="合作切入点">
+      <DetailSection title="简介与合作信息">
+        <Text style={styles.bodyText}>{contact.publicBio || contact.relationship || "暂未记录介绍。"}</Text>
         <View style={styles.exchangeRows}>
-          <ExchangeValueRow label="对方在找" values={exchange.seeking} />
-          <ExchangeValueRow label="对方能提供" values={exchange.offering} />
+          <ExchangeValueRow label="可提供" values={exchange.offering} />
+          <ExchangeValueRow label="正在寻找" values={exchange.seeking} />
         </View>
       </DetailSection>
-      <LatestActivityPreview contact={contact} />
     </View>
   );
 }
@@ -489,15 +476,12 @@ function ExchangeValueRow({
   values: string[];
 }) {
   const { styles } = useStyles();
-  const visibleValues = values.slice(0, 2);
-  const remaining = values.length - visibleValues.length;
 
   return (
     <View style={styles.exchangeRow}>
       <Text style={styles.exchangeLabel}>{label}</Text>
-      <Text numberOfLines={2} style={styles.exchangeValue}>
-        {visibleValues.length > 0 ? visibleValues.join(" · ") : "暂未记录"}
-        {remaining > 0 ? `  +${remaining}` : ""}
+      <Text style={styles.exchangeValue}>
+        {values.length > 0 ? values.join(" · ") : "暂未记录"}
       </Text>
     </View>
   );
@@ -510,7 +494,7 @@ function LatestActivityPreview({
 }) {
   const { colors, styles } = useStyles();
   const hasInteraction = contact.lastInteractionAt !== "暂无记录";
-  const latest = hasInteraction ? contact.noteSummaries[0] : undefined;
+  const latest = hasInteraction ? contact.lastInteractionSummary || contact.noteSummaries[0] : undefined;
   const meta = compactInteractionDate(contact.lastInteractionAt);
 
   return (
@@ -592,19 +576,12 @@ function FullDetailsPanel({
       tag !== contact.publicBio &&
       tag !== contact.relationship
   );
-  const profileBio =
-    contact.publicBio.trim() === contact.relationship.trim()
-      ? ""
-      : contact.publicBio;
-
   return (
     <>
-      <DetailSection detail="对外可见的信息" title="公开介绍">
-        <Text style={profileBio ? styles.bodyText : styles.emptyText}>
-          {profileBio || "公开介绍与关系摘要一致。"}
-        </Text>
-        {publicTags.length > 0 ? <TagList items={publicTags} /> : null}
-      </DetailSection>
+      <DetailSection title="关系背景"><Text style={styles.bodyText}>{contact.relationship}</Text><Text style={styles.bodyText}>{relationshipSummaryFor(contact)}</Text></DetailSection>
+      <DetailSection title="下一步"><Text style={styles.bodyText}>{contact.nextAction}</Text></DetailSection>
+      <LatestActivityPreview contact={contact} />
+      {publicTags.length > 0 ? <DetailSection detail="对外可见的信息" title="公开话题"><TagList items={publicTags} /></DetailSection> : null}
       <SectionDivider />
       <DetailSection title="关系价值">
         <RelationshipValueCard
@@ -631,150 +608,60 @@ function FullDetailsPanel({
 }
 
 function UpdateContactPanel({
-  contact,
-  industryPending,
-  metadataDraft,
-  metadataPending,
-  onChangeMetadataDraft,
-  onSaveMetadata,
-  onSelectIndustry,
-  onStatusAction,
-  statusPending
+  original,
+  draft,
+  tagInput,
+  onChangeTagInput,
+  pending,
+  onChange
 }: {
-  contact: ContactDetailSummary;
-  industryPending: boolean;
-  metadataDraft: ContactDetailMetadataDraft;
-  metadataPending: boolean;
-  onChangeMetadataDraft: (patch: Partial<ContactDetailMetadataDraft>) => void;
-  onSaveMetadata: () => void;
-  onSelectIndustry: (industryId: IndustryIdCode) => void;
-  onStatusAction: (action: ContactDetailStatusActionView) => void;
-  statusPending: boolean;
+  original: ContactDetailEditor;
+  draft: ContactDetailEditDraft;
+  tagInput: string;
+  onChangeTagInput: (value: string) => void;
+  pending: boolean;
+  onChange: (patch: Partial<ContactDetailEditDraft>) => void;
 }) {
   const { colors, styles } = useStyles();
-  const statusCardDetail = "关系阶段和处理动作";
+  const { baseUrl } = useOrbitApiBaseUrl();
+  const { width, fontScale } = useWindowDimensions();
+  const gradientId = useId().replace(/:/gu, "");
+  const contact = original.contact;
+  const avatar = contactDetailHeroToView(contactDetailToSummary({ contact })).avatar;
+  const statusLabels = { active: "推进中", needs_follow_up: "待联系", nurture: "长期维护", archived: "暂不推进" };
+  const channels = [{ id: "manual_note", label: "手动记录" }, { id: "event_note", label: "活动记录" }, { id: "email_signal", label: "邮件" }, { id: "calendar_signal", label: "日程" }, { id: "referral", label: "引荐" }];
 
   return (
-    <>
-      <DetailSection detail={statusCardDetail} title="当前状态">
-        <Text style={styles.bodyText}>{contact.status}</Text>
-        <View style={styles.managementActionRow}>
-          {contact.statusAction ? (
-            <Pressable
-              accessibilityRole="button"
-              disabled={statusPending}
-              onPress={() => onStatusAction(contact.statusAction!)}
-              style={({ pressed }) => [
-                styles.statusButton,
-                statusPending ? styles.disabled : null,
-                pressed ? styles.pressed : null
-              ]}
-            >
-              <Ionicons
-                color={colors.accent}
-                name="swap-horizontal-outline"
-                size={16}
-              />
-              <Text style={styles.statusButtonText}>
-                {statusPending
-                  ? contact.statusAction.pendingLabel
-                  : contact.statusAction.label}
-              </Text>
-            </Pressable>
-          ) : null}
-          {contact.archiveAction ? (
-            <Pressable
-              accessibilityRole="button"
-              disabled={statusPending}
-              onPress={() => onStatusAction(contact.archiveAction!)}
-              style={({ pressed }) => [
-                styles.archiveButton,
-                statusPending ? styles.disabled : null,
-                pressed ? styles.pressed : null
-              ]}
-            >
-              <Ionicons color={colors.rose} name="archive-outline" size={16} />
-              <Text style={styles.archiveButtonText}>
-                {statusPending
-                  ? contact.archiveAction.pendingLabel
-                  : contact.archiveAction.label}
-              </Text>
-            </Pressable>
-          ) : null}
+    <View testID="contact-editor">
+      <View style={styles.editIdentity}>
+        <View testID="contact-edit-avatar" style={[styles.heroAvatar, styles.editAvatar]}>
+          {avatar.imageUrl ? <Image accessibilityLabel={`${contact.displayName} 的头像`} source={{ uri: assetUrl(baseUrl, avatar.imageUrl) }} style={styles.heroAvatarImage} />
+            : <><Svg accessible={false} width="100%" height="100%" viewBox="0 0 76 76" style={StyleSheet.absoluteFill}><Defs><LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1"><Stop offset="0" stopColor="#7FB3FF" /><Stop offset="1" stopColor="#3B82F6" /></LinearGradient></Defs><Rect width="76" height="76" fill={`url(#${gradientId})`} /></Svg><Text style={styles.heroAvatarText}>{avatar.initial}</Text></>}
         </View>
-      </DetailSection>
-      <SectionDivider />
-      <DetailSection detail="固定分类，用于人脉结构分析" title="主要行业">
-        <IndustryPicker
-          pending={industryPending}
-          selectedId={contact.primaryIndustryId}
-          selectedLabel={contact.primaryIndustryLabel}
-          onSelect={onSelectIndustry}
-        />
-      </DetailSection>
-      <SectionDivider />
-      <DetailSection detail="标签和最近互动一起保存" title="编辑标签和互动">
-        {contact.detailTags.length > 0 ? <TagList items={contact.detailTags} /> : null}
-        <View style={styles.metadataStack}>
-          <Text style={styles.inputLabel}>自定义标签</Text>
-          <TextInput
-            onChangeText={(value) => onChangeMetadataDraft({ tagsText: value })}
-            placeholder="AI, 关西渠道, 待联系"
-            placeholderTextColor={colors.text4}
-            style={styles.metadataInput}
-            value={metadataDraft.tagsText}
-          />
-          <View style={styles.metadataRow}>
-            <View style={styles.metadataColumn}>
-              <Text style={styles.inputLabel}>时间</Text>
-              <TextInput
-                onChangeText={(value) => onChangeMetadataDraft({ occurredAt: value })}
-                placeholder="今天下午或 2026-07-24 09:30"
-                placeholderTextColor={colors.text4}
-                style={styles.metadataInput}
-                value={metadataDraft.occurredAt}
-              />
-            </View>
-            <View style={styles.metadataColumn}>
-              <Text style={styles.inputLabel}>渠道</Text>
-              <TextInput
-                onChangeText={(value) => onChangeMetadataDraft({ channel: value })}
-                placeholder="微信、邮件、活动现场"
-                placeholderTextColor={colors.text4}
-                style={styles.metadataInput}
-                value={metadataDraft.channel}
-              />
-            </View>
-          </View>
-          <Text style={styles.inputLabel}>摘要</Text>
-          <TextInput
-            multiline
-            onChangeText={(value) => onChangeMetadataDraft({ summary: value })}
-            placeholder="刚确认了什么，下一步卡在哪里"
-            placeholderTextColor={colors.text4}
-            style={styles.noteInput}
-            textAlignVertical="top"
-            value={metadataDraft.summary}
-          />
+        <Text style={styles.editReadOnlyHint}>头像与身份资料当前仅可查看</Text>
+      </View>
+      <View style={styles.editForm}>
+        <EditReadOnlyField label="姓名" value={contact.displayName} prominent />
+        <View style={[styles.editColumns, (width < 360 || fontScale >= 1.4) && styles.actionStack]}><EditReadOnlyField label="公司" value={contact.organization} column={width >= 360 && fontScale < 1.4} /><EditReadOnlyField label="职位" value={contact.role} column={width >= 360 && fontScale < 1.4} /></View>
+        <View><Text style={styles.editLabel}>行业</Text><IndustryPicker pending={pending} selectedId={draft.primaryIndustryId ?? undefined} selectedLabel={INDUSTRY_CATALOG.find(item => item.id === draft.primaryIndustryId)?.labels.zh} onSelect={primaryIndustryId => onChange({ primaryIndustryId })} /></View>
+        <EditReadOnlyField label="邮箱" value={contact.primaryEmail ?? ""} />
+        <View><Text style={styles.editLabel}>跟进状态</Text><View style={styles.editChips}>{original.statusOptions.map(status => <Pressable key={status} accessibilityRole="button" accessibilityLabel={`跟进状态：${statusLabels[status]}`} accessibilityState={{ selected: draft.status === status }} aria-selected={draft.status === status} disabled={pending} onPress={() => onChange({ status })} style={[styles.editChip, draft.status === status && styles.editChipSelected]}><Text style={[styles.editChipText, draft.status === status && styles.editChipSelectedText]}>{statusLabels[status]}</Text></Pressable>)}</View></View>
+        <View><Text style={styles.editLabel}>标签</Text><View style={styles.editChips}>{draft.tags.map(tag => <Pressable key={tag} accessibilityRole="button" accessibilityLabel={`移除标签：${tag}`} disabled={pending} onPress={() => onChange({ tags: draft.tags.filter(value => value !== tag) })} style={[styles.editChip, styles.editChipSelected]}><Text style={[styles.editChipText, styles.editChipSelectedText]}>{tag}</Text><Ionicons color={colors.onAccent} name="close" size={14} /></Pressable>)}</View>
+          <View style={styles.editTagEntry}><TextInput accessibilityLabel="添加标签" editable={!pending} value={tagInput} onChangeText={onChangeTagInput} placeholder="输入新标签" placeholderTextColor={colors.text3} style={[styles.editInput, styles.editTagInput]} /><Pressable accessibilityRole="button" accessibilityLabel="添加此标签" disabled={pending || !tagInput.trim()} onPress={() => { if (pending || !tagInput.trim()) return; onChange({ tags: [...new Set([...draft.tags, tagInput.trim()])] }); onChangeTagInput(""); }} style={[styles.editChip, styles.editTagAdd]}><Ionicons color={colors.text3} name="add" size={16} /><Text style={styles.editChipText}>添加</Text></Pressable></View>
         </View>
-        <Pressable
-          accessibilityRole="button"
-          disabled={metadataPending}
-          onPress={onSaveMetadata}
-          style={({ pressed }) => [
-            styles.statusButton,
-            metadataPending ? styles.disabled : null,
-            pressed ? styles.pressed : null
-          ]}
-        >
-          <Ionicons color={colors.accent} name="pricetags-outline" size={16} />
-          <Text style={styles.statusButtonText}>
-            {metadataPending ? "保存中" : "保存标签和互动"}
-          </Text>
-        </Pressable>
-      </DetailSection>
-    </>
+        <View style={styles.editInteraction}><Text style={styles.sectionTitle}>互动记录</Text><Text style={styles.editReadOnlyHint}>只修改这里的内容时，才更新最近互动。</Text>
+          <Text style={styles.editLabel}>时间</Text><TextInput accessibilityLabel="互动时间" editable={!pending} value={draft.lastInteraction.occurredAt} onChangeText={occurredAt => onChange({ lastInteraction: { ...draft.lastInteraction, occurredAt } })} placeholder="今天下午或 2026-07-24 09:30" placeholderTextColor={colors.text3} style={styles.editInput} />
+          <Text style={styles.editLabel}>渠道</Text><View style={styles.editChips}>{channels.map(channel => <Pressable key={channel.id} accessibilityRole="button" accessibilityLabel={`互动渠道：${channel.label}`} accessibilityState={{ selected: draft.lastInteraction.channel === channel.id }} aria-selected={draft.lastInteraction.channel === channel.id} disabled={pending} onPress={() => onChange({ lastInteraction: { ...draft.lastInteraction, channel: channel.id } })} style={[styles.editChip, draft.lastInteraction.channel === channel.id && styles.editChipSelected]}><Text style={[styles.editChipText, draft.lastInteraction.channel === channel.id && styles.editChipSelectedText]}>{channel.label}</Text></Pressable>)}</View>
+          <Text style={styles.editLabel}>摘要</Text><TextInput accessibilityLabel="互动摘要" editable={!pending} multiline value={draft.lastInteraction.summary} onChangeText={summary => onChange({ lastInteraction: { ...draft.lastInteraction, summary } })} placeholder="刚确认了什么，下一步卡在哪里" placeholderTextColor={colors.text3} style={[styles.editInput, styles.editSummary]} textAlignVertical="top" />
+        </View>
+      </View>
+    </View>
   );
+}
+
+function EditReadOnlyField({ label, value, prominent = false, column = false }: { label: string; value: string; prominent?: boolean; column?: boolean }) {
+  const { styles } = useStyles();
+  return <View style={[styles.editField, column && styles.editColumn]}><Text style={styles.editLabel}>{label}</Text><View style={[styles.editReadOnlyValue, prominent && styles.editNameLine]}><Text selectable style={[styles.editValueText, prominent && styles.editNameText]}>{value || "未填写"}</Text></View></View>;
 }
 
 function IndustryPicker({
@@ -783,7 +670,7 @@ function IndustryPicker({
   selectedId,
   selectedLabel
 }: {
-  onSelect: (industryId: IndustryIdCode) => void;
+  onSelect: (industryId: IndustryIdCode | null) => void;
   pending: boolean;
   selectedId: IndustryIdCode | undefined;
   selectedLabel: string | undefined;
@@ -800,25 +687,25 @@ function IndustryPicker({
         disabled={pending}
         onPress={() => setExpanded((current) => !current)}
         style={({ pressed }) => [
-          styles.industryPickerButton,
+          styles.editIndustryButton,
           pending ? styles.disabled : null,
           pressed ? styles.pressed : null
         ]}
       >
         <View style={styles.industryPickerCopy}>
-          <Text style={styles.industryPickerLabel}>当前分类</Text>
-          <Text style={styles.industryPickerValue}>
-            {pending ? "保存中" : selectedLabel || "选择一个主要行业"}
+          <Text style={styles.editValueText}>
+            {selectedLabel || "未填写"}
           </Text>
         </View>
         <Ionicons
-          color={colors.text3}
-          name={expanded ? "chevron-up" : "chevron-down"}
-          size={18}
+          color="#C4C9D4"
+          name={expanded ? "caret-up" : "caret-down"}
+          size={12}
         />
       </Pressable>
       {expanded ? (
         <View style={styles.industryOptions}>
+          <Pressable accessibilityRole="button" accessibilityLabel="清空主要行业" disabled={pending} onPress={() => { onSelect(null); setExpanded(false); }} style={styles.industryOption}><Text style={styles.industryOptionText}>未填写</Text></Pressable>
           {INDUSTRY_CATALOG.map((industry) => {
             const selected = industry.id === selectedId;
 
@@ -1081,8 +968,46 @@ function RelationshipRecomputeButton({
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
+  hidden: { display: "none" },
+  cancelHeaderButton: { minHeight: 44, minWidth: 82, justifyContent: "center", alignItems: "flex-start" },
+  cancelHeaderText: { color: colors.text3, fontFamily: detailFont, fontSize: 15, lineHeight: 22, fontWeight: "600" },
+  editIdentity: { alignItems: "center", gap: 8, paddingTop: 4 },
+  editAvatar: { width: 76, height: 76 },
+  editReadOnlyHint: { color: colors.text3, fontFamily: detailFont, fontSize: 13, lineHeight: 20 },
+  editForm: { gap: 18, paddingTop: 16 },
+  editField: { flexGrow: 1, flexShrink: 1, flexBasis: "auto", minWidth: 0 },
+  editColumn: { flexBasis: 0 },
+  editColumns: { flexDirection: "row", gap: 16 },
+  editLabel: { color: colors.text3, fontFamily: detailFont, fontSize: 12, lineHeight: 18, fontWeight: "700", letterSpacing: 0.48 },
+  editReadOnlyValue: { minHeight: 44, justifyContent: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
+  editValueText: { color: colors.ink, fontFamily: detailFont, fontSize: 15, lineHeight: 22 },
+  editNameLine: { borderBottomColor: colors.ink, borderBottomWidth: 1.5 },
+  editNameText: { fontSize: 16, fontWeight: "600" },
+  editIndustryButton: { minHeight: 44, paddingVertical: 10, borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: "row", alignItems: "center", gap: 12 },
+  editChips: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
+  editChip: { minHeight: 44, minWidth: 44, maxWidth: "100%", paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 4 },
+  editChipSelected: { backgroundColor: colors.ink, borderColor: colors.ink },
+  editChipText: { color: colors.ink, fontFamily: detailFont, fontSize: 13, lineHeight: 20, flexShrink: 1 },
+  editChipSelectedText: { color: colors.onAccent, fontWeight: "600" },
+  editTagEntry: { flexDirection: "row", gap: 8, marginTop: 10 },
+  editTagAdd: { borderStyle: "dashed" },
+  editTagInput: { flex: 1, minWidth: 0 },
+  editInput: { color: colors.ink, fontFamily: detailFont, fontSize: 15, lineHeight: 22, minHeight: 44, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
+  editSummary: { minHeight: 92 },
+  editInteraction: { gap: 8, paddingTop: 18, borderTopWidth: 1, borderTopColor: colors.border2 },
+  editHeaderButton: { minHeight: 44, minWidth: 64, justifyContent: "center", alignItems: "flex-end" },
+  editHeaderText: { color: colors.accent, fontFamily: detailFont, fontSize: 15, lineHeight: 22, fontWeight: "600" },
+  heroLocation: { color: colors.text3, fontFamily: detailFont, fontSize: 12, lineHeight: 18, marginTop: 2 },
+  sourcePill: { color: colors.accent, fontSize: 11, lineHeight: 16, fontWeight: "700", borderColor: colors.accent, borderWidth: 1, borderRadius: 6, paddingVertical: 3, paddingHorizontal: 8 },
+  basicRow: { flexDirection: "row", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border2 },
+  basicLabel: { width: 72, color: colors.text3, fontFamily: detailFont, fontSize: 14, lineHeight: 20 },
+  basicValue: { flex: 1, minWidth: 0, color: colors.ink, fontFamily: detailFont, fontSize: 14, lineHeight: 20, fontWeight: "500" },
+  actionStack: { flexDirection: "column" },
+  secondaryActionButton: { minHeight: 44, paddingHorizontal: 8, paddingVertical: 10, flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0, borderRadius: 10, borderWidth: 1, borderColor: colors.ink, justifyContent: "center", alignItems: "center" },
+  secondaryActionText: { color: colors.ink, fontFamily: detailFont, fontSize: 13, lineHeight: 20, fontWeight: "600", textAlign: "center" },
   bodyText: {
     color: colors.text,
+    fontFamily: detailFont,
     fontSize: 14,
     lineHeight: 23
   },
@@ -1099,21 +1024,23 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     ...createControlStyles(colors).secondaryButtonText,
     color: colors.rose
   },
-  contactHero: { marginBottom: 28 },
+  contactHero: { marginBottom: 16 },
   contactHeroDetail: {
     color: colors.text3,
-    fontSize: 14,
-    lineHeight: 22
+    fontFamily: detailFont,
+    fontSize: 13,
+    lineHeight: 19
   },
   contactHeroHeader: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 20
+    gap: 16
   },
   contactHeroName: {
     color: colors.ink,
+    fontFamily: detailFont,
     fontSize: 24,
-    fontWeight: "700",
+    fontWeight: "900",
     lineHeight: 32
   },
   contactHeroRelationship: {
@@ -1122,7 +1049,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   contactHeroTitleBlock: {
     flex: 1,
-    gap: spacing.xs,
+    gap: 2,
     minWidth: 0
   },
   disabled: { opacity: 0.54 },
@@ -1138,24 +1065,28 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   heroAvatar: {
     alignItems: "center",
     borderRadius: radius.pill,
-    height: 76,
+    height: 72,
     justifyContent: "center",
     overflow: "hidden",
-    width: 76
+    width: 72,
+    flexShrink: 0
   },
   heroAvatarImage: {
     height: "100%",
     width: "100%"
   },
   heroAvatarText: {
-    fontSize: 34,
-    fontWeight: "700",
-    lineHeight: 42
+    color: "#FFFFFF",
+    fontFamily: detailFont,
+    fontSize: 26,
+    fontWeight: "800",
+    lineHeight: 34
   },
   heroMetaRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing.sm
+    gap: 6,
+    marginTop: 6
   },
   inputLabel: {
     ...textStyles.caption,
@@ -1333,16 +1264,17 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingVertical: 5
   },
   statusPill: {
-    ...textStyles.caption,
-    backgroundColor: colors.liveSoft,
-    borderColor: colors.border,
-    borderRadius: radius.pill,
+    fontSize: 11,
+    lineHeight: 16,
+    backgroundColor: colors.ink,
+    borderColor: colors.ink,
+    borderRadius: 6,
     borderWidth: 1,
-    color: colors.live,
-    fontWeight: "600",
+    color: colors.surface,
+    fontWeight: "700",
     overflow: "hidden",
-    paddingHorizontal: 10,
-    paddingVertical: 5
+    paddingHorizontal: 8,
+    paddingVertical: 3
   },
   tagText: {
     ...textStyles.caption,
@@ -1373,7 +1305,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     flex: 1,
     minWidth: 0
   },
-  detailSection: { gap: 14 },
+  detailSection: { gap: 4 },
   disclosureContent: {
     borderTopColor: colors.border,
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -1413,20 +1345,21 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   exchangeLabel: {
     color: colors.text3,
     fontSize: 13,
-    fontWeight: "600",
+    fontFamily: detailFont,
     lineHeight: 22,
-    width: 88
+    width: 64
   },
   exchangeRow: {
     alignItems: "flex-start",
     flexDirection: "row",
-    gap: spacing.md
+    gap: 8
   },
-  exchangeRows: { gap: spacing.md },
+  exchangeRows: { gap: 4 },
   exchangeValue: {
     color: colors.text,
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
+    fontFamily: detailFont,
     lineHeight: 22,
     minWidth: 0
   },
@@ -1436,8 +1369,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm
   },
   nextStepCard: {
-    gap: 14,
-    marginBottom: 28
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 20
   },
   nextStepCopy: {
     flex: 1,
@@ -1463,17 +1397,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     maxWidth: 242
   },
   overviewSurface: {
-    borderTopColor: colors.border,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    gap: 24,
-    paddingVertical: 24
+    gap: 16,
+    paddingBottom: 16
   },
   primaryActionButton: {
-    ...createControlStyles(colors).primaryButton,
-    flexDirection: "row",
-    gap: spacing.sm
+    minHeight: 44, paddingHorizontal: 8, paddingVertical: 10, flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0,
+    borderRadius: 10, backgroundColor: colors.accent, justifyContent: "center", alignItems: "center"
   },
-  primaryActionButtonText: { ...createControlStyles(colors).primaryButtonText },
+  primaryActionButtonText: { fontFamily: detailFont, fontSize: 13, lineHeight: 20, fontWeight: "700", color: colors.onAccent, textAlign: "center" },
   relationshipValueContent: { gap: spacing.md },
   sectionBody: { gap: spacing.sm },
   sectionDetail: {
@@ -1488,6 +1419,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   sectionHeader: { gap: spacing.xs },
   sectionTitle: {
     ...textStyles.section,
+    fontFamily: detailFont,
     color: colors.ink
   }
 }));

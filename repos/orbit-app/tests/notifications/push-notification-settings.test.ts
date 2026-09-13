@@ -13,6 +13,6 @@ test("push settings expose an explicit enable/disable action and revoke on opt-o
   assert.match(source, /disablePushNotifications/u);
   assert.match(source, /revokeRegisteredPushDevice/u);
   assert.match(source, /pushOptIn === true\s*\?\s*disablePushNotifications/u);
-  assert.match(source, /disabled=\{pushOptInBusy\}/u);
+  assert.match(source, /disabled=\{pushOptInBusy \|\| pushOptIn === null\}/u);
   assert.match(source, /setPushNotificationsOptIn\(false\)/u);
 });

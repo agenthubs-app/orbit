@@ -1,0 +1,732 @@
+{
+  "date": "2026-09-11",
+  "kind": "compressed-upload-assets",
+  "format": "JPEG",
+  "encoding": "macOS sips JPEG quality 80",
+  "resized": false,
+  "imageCount": 72,
+  "imageBytes": 13664599,
+  "originalArchivePreserved": true,
+  "assets": [
+    {
+      "id": "P01",
+      "file": "screens/01-home-approved.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 255266,
+      "sha256": "58bdaf675ecf66bfabfb4ccf22a3b3577bd0192dbaf762c4194ce30b9b49bca0",
+      "originalFile": "screens/01-home-approved.png",
+      "originalSha256": "827fb285595816a6e68373eb5daff40c396b99236510feea29b2ca1168f74ead"
+    },
+    {
+      "id": "P02",
+      "file": "screens/02-login.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 152260,
+      "sha256": "64748cc62003eecad9f1a52224d16b3b157a7f7cb3b89dcb420ce33ff4e57ce6",
+      "originalFile": "screens/02-login.png",
+      "originalSha256": "e931a23cc2b98983fe27b5b53277fb0f2239637cd40ef18c5fe6d7dc82635ad4"
+    },
+    {
+      "id": "P03",
+      "file": "screens/03-signup.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 150882,
+      "sha256": "b27227be79e702a41fc8dfc2e9dc22ddea42ecb0142b98b83bb8fad5c0214ce0",
+      "originalFile": "screens/03-signup.png",
+      "originalSha256": "eeadfc4fcde31f5da40d93b01d9765473231e5ec010e845b071022bbc7cdcd2c"
+    },
+    {
+      "id": "P04",
+      "file": "screens/04-forgot-password.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 126540,
+      "sha256": "5174d53dc05b0452c315441c99434dd371ccc3946264d6b82a57d587c36b2f48",
+      "originalFile": "screens/04-forgot-password.png",
+      "originalSha256": "9b768cf20b27c2d100f4cda32d2244136e8e7123650436bb4aac9d14a3ebf702"
+    },
+    {
+      "id": "P05",
+      "file": "screens/05-reset-password.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 147469,
+      "sha256": "9fbf8cac50586c675468f5536067a7fa7dab585664766fbc953616e14a737218",
+      "originalFile": "screens/05-reset-password.png",
+      "originalSha256": "57953abaa6ea620118dd7003b245c41bf7e4a1eafe6258965cc28150368eb4b8"
+    },
+    {
+      "id": "P06",
+      "file": "screens/06-profile-completion.jpg",
+      "width": 853,
+      "height": 1843,
+      "bytes": 201141,
+      "sha256": "b8bd4bc229956ad2def94aad70a82e48c76f6a24ac6a3d580b33613f24958668",
+      "originalFile": "screens/06-profile-completion.png",
+      "originalSha256": "0f48a388c173dd8e44bed99aa6808800c9ee275d6708e19b9e717ead3d2b1410"
+    },
+    {
+      "id": "P07",
+      "file": "screens/07-contacts.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 195032,
+      "sha256": "98db2fa62fa555d635a00529188b932519740ba025a3644dc398895aef90a4ab",
+      "originalFile": "screens/07-contacts.png",
+      "originalSha256": "182e06f21a1fef0109ce86ad58b89b194620c0f6948b9ff6b3d4c99b51d8310b"
+    },
+    {
+      "id": "P08",
+      "file": "screens/08-contact-detail.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 217878,
+      "sha256": "aa55a329f7e72628e76d1600cb7c2b552a45c637cdfd17c521ba4fa7fa062eb4",
+      "originalFile": "screens/08-contact-detail.png",
+      "originalSha256": "4c1b08c7e77f419cb2a5d9cb4d9e68c2d4655b04bbd247dd9aa33887f13133bd"
+    },
+    {
+      "id": "P09",
+      "file": "screens/09-contact-edit.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 190201,
+      "sha256": "a7cc583fb66e216436a1c03e69307bbe46297aed609cf991fc372023facf055d",
+      "originalFile": "screens/09-contact-edit.png",
+      "originalSha256": "2ca14318b9de578887e19ad44b8b4313019c74d388f031ffc1e2de53d3de82cb"
+    },
+    {
+      "id": "P10",
+      "file": "screens/10-add-contact.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 189087,
+      "sha256": "27e53774783ba4e2c5092cc6918fc4aa4ab12f50849cc7b8284d0237bd40f4e6",
+      "originalFile": "screens/10-add-contact.png",
+      "originalSha256": "dff875668f41607d8b3ff761bb94dcb2f6ed52d018d994cd96b0838d3b52d95e"
+    },
+    {
+      "id": "P11",
+      "file": "screens/11-card-import-start.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 187116,
+      "sha256": "d46a00d006681cef73b8e132e80d6be3ce1efb816caea2914bd7064affcee01e",
+      "originalFile": "screens/11-card-import-start.png",
+      "originalSha256": "2058487e49dc6941dc93853eb652f605664d09e8dc5d198c2607ed57bc76f4dc"
+    },
+    {
+      "id": "P12",
+      "file": "screens/12-card-review.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 216448,
+      "sha256": "a514f05faa2814c9c71c7503d05de11acc9ac7c737dffbb96e90975bfe462b96",
+      "originalFile": "screens/12-card-review.png",
+      "originalSha256": "d9e30df6a8742af1dc808421805c666c956685d69a2c53ceda1ac1bc4dcf6b6b"
+    },
+    {
+      "id": "P13",
+      "file": "screens/13-card-batch-legacy.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 195572,
+      "sha256": "f8f7baa69ae30a8645e6b380aa1b6437ea41401256d7ab033952fb16d16ae874",
+      "originalFile": "screens/13-card-batch-legacy.png",
+      "originalSha256": "1cc12a5178ed81b96e0511dabcbe4d5032a0924ec157205e00db0dd850f2609c"
+    },
+    {
+      "id": "P14",
+      "file": "screens/14-contact-import-progress.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 214916,
+      "sha256": "bad018f799737283b9b9b9605039a7335efffb7bc821703d698ede73ebb15b60",
+      "originalFile": "screens/14-contact-import-progress.png",
+      "originalSha256": "561e89bb5673756c105d322ba6baea29aa42e26589ee1e2c0766ee501f705c8a"
+    },
+    {
+      "id": "P15",
+      "file": "screens/15-contact-analysis.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 175881,
+      "sha256": "385b070b547c4c6724bcfb9a787a77c380f1a0cfb678e91fa4889ab2629ae9f4",
+      "originalFile": "screens/15-contact-analysis.png",
+      "originalSha256": "97785531858a9cfee4951a51854e10ecc32e79efb73b9bf30e0fb18cec5c0644"
+    },
+    {
+      "id": "P16",
+      "file": "screens/16-contact-structure-detail.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 181648,
+      "sha256": "5bd7f904b729a58483b96b63d8f1dcd3dc4acb35e96ef041faecf09dde1992cb",
+      "originalFile": "screens/16-contact-structure-detail.png",
+      "originalSha256": "9f9f56fc3ad5a0249d4ace488936d1f3f83711129cdad10e21aa8ba919a28e05"
+    },
+    {
+      "id": "P17",
+      "file": "screens/17-introduction-preparation.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 192196,
+      "sha256": "56bdc537b3bee1f393677931b49d149ea5df75ffd7287012ef702db5defa11c0",
+      "originalFile": "screens/17-introduction-preparation.png",
+      "originalSha256": "dede6212afdfd914a662df9a5a588f9301f01b0fc0c5a9b80b37ccd48b975b22"
+    },
+    {
+      "id": "P18",
+      "file": "screens/18-relationship-progress.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 172151,
+      "sha256": "bcaf5e1e72bbd3de6a1a833cefd0efcc0f721dce66463731058ca84a8a225c15",
+      "originalFile": "screens/18-relationship-progress.png",
+      "originalSha256": "e67a15b122885e093e914f3613fac3b8ed99802af1f2308d6f48705a43396216"
+    },
+    {
+      "id": "P19",
+      "file": "screens/19-events.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 262644,
+      "sha256": "27376007e55aa70710a57703f58802753d8630dfb5120c17b112d6559d15f491",
+      "originalFile": "screens/19-events.png",
+      "originalSha256": "79fc247d0324f7baeca141fdea3cd7a4f068d41fa4205e56a95fbce524a0c227"
+    },
+    {
+      "id": "P20",
+      "file": "screens/20-event-detail.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 283248,
+      "sha256": "a22aa229be86bc071507a6242132fd997125dffe3468634f2b0abc06637e692d",
+      "originalFile": "screens/20-event-detail.png",
+      "originalSha256": "ed40815c6be4674b8f8ec7375b82be42a44f735a153560c594d4f6533bbb4070"
+    },
+    {
+      "id": "P21",
+      "file": "screens/21-event-registration.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 217083,
+      "sha256": "8cee4ba9597c2a05b11d587825d76f1cdc0fdfc2b74338de30f0061a52140db8",
+      "originalFile": "screens/21-event-registration.png",
+      "originalSha256": "eb3ce834913ac83c14f7a1ebe9b3754250a7f0e8568250d4a0e5fbc37dc5c4a5"
+    },
+    {
+      "id": "P22",
+      "file": "screens/22-registration-result.jpg",
+      "width": 853,
+      "height": 1843,
+      "bytes": 188566,
+      "sha256": "d4998e3c624dab0c5f33d74321713ab97794f084a6beb2655e0f75e4a58cd7f1",
+      "originalFile": "screens/22-registration-result.png",
+      "originalSha256": "1f65814f95f962c10139d84133cf39cf12f2880b098318e85fcc31ac825cbce6"
+    },
+    {
+      "id": "P23",
+      "file": "screens/23-event-attendees.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 214570,
+      "sha256": "f1306bf593fceb64e2ffbcb16337810ec92d9b1b04b9d6ad44e008b43d408b2d",
+      "originalFile": "screens/23-event-attendees.png",
+      "originalSha256": "22439b67921da442732fb6f91974583366d213ae168648e25cf4f097ffda946f"
+    },
+    {
+      "id": "P24",
+      "file": "screens/24-event-center.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 204413,
+      "sha256": "bf8a838c261e5a854533440a0878acad54937007ba4103afc26ef4019b3d1f12",
+      "originalFile": "screens/24-event-center.png",
+      "originalSha256": "6cfb53fc00c74a254e67032712d8f9eb15ad3dca148866661a90b4976e14d64c"
+    },
+    {
+      "id": "P25",
+      "file": "screens/25-organizer-public.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 247271,
+      "sha256": "8ec4f1f4c267d41e797856d4e7676d9417282985c46439c812af3bdd154a8798",
+      "originalFile": "screens/25-organizer-public.png",
+      "originalSha256": "e7c0d68751c44f355faf2e01d15e43476140091abff0cb8edf249d86725d9976"
+    },
+    {
+      "id": "P26",
+      "file": "screens/26-tasks.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 150534,
+      "sha256": "fca03b6ebef4e0e4648c1677a83f711574fa2ab6ad963a94cb412187b181fcf7",
+      "originalFile": "screens/26-tasks.png",
+      "originalSha256": "462b11da5adc8c11ba833457ab5b84edec4270f8b871c9e19a1d15798ece8385"
+    },
+    {
+      "id": "P27",
+      "file": "screens/27-task-detail.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 170546,
+      "sha256": "b15ae4bd1f40c0bba83e39607e63b614b1fd391987d3a6447188370edb75b948",
+      "originalFile": "screens/27-task-detail.png",
+      "originalSha256": "fdcaaeb6f74bdaced0cbdace90c9c4ba685d0ac365941c6745f8a60e50bd0ecc"
+    },
+    {
+      "id": "P28",
+      "file": "screens/28-calendar-day.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 151159,
+      "sha256": "88184ea2f175fcabd292500400f94591e354eac1cc2ed86e6ec54d88c844ff80",
+      "originalFile": "screens/28-calendar-day.png",
+      "originalSha256": "494c3113c6224b8a5f20d4e009a151d260b61d66676ad80aacc080a90d52f423"
+    },
+    {
+      "id": "P29",
+      "file": "screens/29-calendar-week.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 163797,
+      "sha256": "f85ad4421eb54e5025ed452c420c9f384830c3a9a072212fb21ba70a6818855b",
+      "originalFile": "screens/29-calendar-week.png",
+      "originalSha256": "e388db4b515566ed8cc0159d36b9d5450454674e42bc031e22c9d8ea124aa029"
+    },
+    {
+      "id": "P30",
+      "file": "screens/30-calendar-month.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 162903,
+      "sha256": "940c84e970d1ada795a5b0d759dbf6e8dd2904f3d45f186639ffdd75839547c4",
+      "originalFile": "screens/30-calendar-month.png",
+      "originalSha256": "dd8bfeb63b1b7316a35a70c279771d630ef4868a70c71890fa0f10e1601cf63c"
+    },
+    {
+      "id": "P31",
+      "file": "screens/31-schedule-edit.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 168339,
+      "sha256": "68b91ac456cbf50ef11a6b6f95bb791cd815dee6ee388f3b307f7fe55e78e373",
+      "originalFile": "screens/31-schedule-edit.png",
+      "originalSha256": "7599c44db3f2f38d001587fd8a9e6949ba1dbd01553ca62fa5427f8e36bfa6be"
+    },
+    {
+      "id": "P32",
+      "file": "screens/32-schedule-event-preview.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 251041,
+      "sha256": "c921bd4cf38d56d3ec158627124d5cd7b05593a5e80491e03d9cee954f6489fb",
+      "originalFile": "screens/32-schedule-event-preview.png",
+      "originalSha256": "0873d85d5491fa29cd9e1ebad431ecc6e240e1107a52eae76d34f933d65b6db3"
+    },
+    {
+      "id": "P33",
+      "file": "screens/33-today.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 142089,
+      "sha256": "bb75949d2fc96a483153334dcbd67a965e9921ae47a471c8ec7e1651dcb668c2",
+      "originalFile": "screens/33-today.png",
+      "originalSha256": "3224fce0384f05637a7ad674b373ca4bea9c827aba801a55b1144044a5411a43"
+    },
+    {
+      "id": "P34",
+      "file": "screens/34-followups.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 169020,
+      "sha256": "f7bc7bd3f8b9774b9ac802ac054520dd8756b000a5a9ae395e672c33fea11769",
+      "originalFile": "screens/34-followups.png",
+      "originalSha256": "4a74d614e1a7e7d527ca127ee655286407c4176ae07c000e79424f6a6e93a0ba"
+    },
+    {
+      "id": "P35",
+      "file": "screens/35-inbox.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 179360,
+      "sha256": "eba6c4445b2ca03be545f7491ad768c457bcace1b5971ea1a9136d59e34c147a",
+      "originalFile": "screens/35-inbox.png",
+      "originalSha256": "92048600f03c7233759c1d3ed1e1cf4788126274bffe7d73aa038bf68cbc1486"
+    },
+    {
+      "id": "P36",
+      "file": "screens/36-inbox-thread.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 186278,
+      "sha256": "43b54ad205e72b3bbe995ae426ac6ccf943fb5d4f1fb18d9f560d9642f7fc84d",
+      "originalFile": "screens/36-inbox-thread.png",
+      "originalSha256": "f02218f60f60195173a82e421dd26d25b6cdef391a15661b0f53376ea0e45c5e"
+    },
+    {
+      "id": "P37",
+      "file": "screens/37-chat-list.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 138286,
+      "sha256": "e1a9ecb3c62928fb00c22171ceba0ce524944064e419a857435b58a2cbcd9338",
+      "originalFile": "screens/37-chat-list.png",
+      "originalSha256": "32d468ec052a498389aad6ea6e9fadd09826281b4e6d5dad5e8f1bb0cd694f10"
+    },
+    {
+      "id": "P38",
+      "file": "screens/38-chat-detail.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 120083,
+      "sha256": "8dda4eb684553fa79738a416ca6b8484c0bbc714732844b9413c2f2fb1313070",
+      "originalFile": "screens/38-chat-detail.png",
+      "originalSha256": "e89bf09a6321cf453721c90066886adc5505aae648a71ede5b27299da0edbffa"
+    },
+    {
+      "id": "P39",
+      "file": "screens/39-iorbit-home.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 190433,
+      "sha256": "8326719cc1a59465ce8cff4916462dc69dd6c09579dc51ddce6decfcdd9ce553",
+      "originalFile": "screens/39-iorbit-home.png",
+      "originalSha256": "c9d6c44a4577a8d99b352020f0f4d4c7f85a03af7a42c1332e7f6e5aedec9d45"
+    },
+    {
+      "id": "P40",
+      "file": "screens/40-iorbit-conversation.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 271218,
+      "sha256": "4a83563e9642c4d96e5d74a67eda7f8bd38fe6e11fca9c2456ace79e088ff0a6",
+      "originalFile": "screens/40-iorbit-conversation.png",
+      "originalSha256": "9f754e52014ff9d466da1f02f977574cbe8f2eaba5420a6be0d6b6ed63a078ea"
+    },
+    {
+      "id": "P41",
+      "file": "screens/41-iorbit-mention-picker.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 181730,
+      "sha256": "f587c8e058be33b32970708b729a587dc79b66309ae3ec537b0b01e90a78b481",
+      "originalFile": "screens/41-iorbit-mention-picker.png",
+      "originalSha256": "4134c8bf3fd7cf85d71d137442aada2207136401166a8878012f4baa889f21bd"
+    },
+    {
+      "id": "P42",
+      "file": "screens/42-profile.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 191389,
+      "sha256": "0f01a93c7614f1253136f40925620dc70f2ddf305b60f24792255381d34ba30d",
+      "originalFile": "screens/42-profile.png",
+      "originalSha256": "1240e384ea11030539349e7fee198e13c2d2090b413bcf033495f7f1dbece57f"
+    },
+    {
+      "id": "P43",
+      "file": "screens/43-profile-edit.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 182471,
+      "sha256": "6895f5327858448a70d74921611a435aba04933659ce5ba08d2d69ebc30e55ad",
+      "originalFile": "screens/43-profile-edit.png",
+      "originalSha256": "50661c5117761d0d2ba8fbea2e1e99c27c74d958824a5a681955b5239320b28d"
+    },
+    {
+      "id": "P44",
+      "file": "screens/44-account.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 152204,
+      "sha256": "b67eccb8c7adb13945cee05ecdc5c160fea149f50bafb8765fc76360b98331e5",
+      "originalFile": "screens/44-account.png",
+      "originalSha256": "8c7d98e12a4394632ccef26a4325ee474e8a2a8b975da1dee30ad8016842d47d"
+    },
+    {
+      "id": "P45",
+      "file": "screens/45-permissions.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 147610,
+      "sha256": "bcf818db320aee0d7d2ff0bd5612a005a91094fe56e10ce37aab67301d29dcea",
+      "originalFile": "screens/45-permissions.png",
+      "originalSha256": "bd1df97b9791af8e1b7cbddbdc1a62cec752c0dbf79270e6e290c2fa4e06f8ee"
+    },
+    {
+      "id": "P46",
+      "file": "screens/46-settings.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 168968,
+      "sha256": "51e80bd53f946d747c370f23254cb2b6e7bec53a0e0ec6ca36d7d3c802413913",
+      "originalFile": "screens/46-settings.png",
+      "originalSha256": "c589cc531ff87052f5f110be93aff735745cf1eefa00abbfc0406f520bef1f0e"
+    },
+    {
+      "id": "P47",
+      "file": "screens/47-server-settings.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 140987,
+      "sha256": "07b9a1a3bf97c803b8b9e5eec2c918dbaefc6c5bd1702b735a4fcba7acbf72c7",
+      "originalFile": "screens/47-server-settings.png",
+      "originalSha256": "013c6a26f2a54b3dcba0be8aab61633513dd7ccc1a6b654ba5654cece2629a16"
+    },
+    {
+      "id": "P48",
+      "file": "screens/48-notes-list.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 161064,
+      "sha256": "a223b95d79a9c20bcf604280de6e72c7dd83c505e7af06335c5d98352b3def05",
+      "originalFile": "screens/48-notes-list.png",
+      "originalSha256": "a504012e310dd82ca621c5cc1ff4e0faba4a3d18bb43af8e498e3c6a7c75eb26"
+    },
+    {
+      "id": "P49",
+      "file": "screens/49-note-detail.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 191631,
+      "sha256": "3f43f38ceec7032bef8563a595259f4394e335e904bcd06b95352f76755d7c84",
+      "originalFile": "screens/49-note-detail.png",
+      "originalSha256": "087aedd0f8f5d6e51f903762d9aab25a932df039646d627623656459c01fea1f"
+    },
+    {
+      "id": "P50",
+      "file": "screens/50-note-edit.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 191715,
+      "sha256": "e4864d57bd4b9f4812279f7573829d53c90de76047ca829afb0edd8b022e739e",
+      "originalFile": "screens/50-note-edit.png",
+      "originalSha256": "154e788896b2e96d012235ec91d7cc46aa333570bf45c811ce3e987097871336"
+    },
+    {
+      "id": "P51",
+      "file": "screens/51-note-contact-picker.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 177886,
+      "sha256": "04294e2249bbc474ac1ad62ac120d2eb6e3d53b8d892d82fd6cecfe9df9d1392",
+      "originalFile": "screens/51-note-contact-picker.png",
+      "originalSha256": "ba4967a8ae0af8ff8ade8e762ca6316aa6a24af91aeff3ff98770ba1b20e1ed4"
+    },
+    {
+      "id": "P52",
+      "file": "screens/52-event-operations.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 209912,
+      "sha256": "b8ab4f866e923c8bc9ce0991a779975cc522f9d5dcdfc176258788a6b5c54102",
+      "originalFile": "screens/52-event-operations.png",
+      "originalSha256": "048f5917a2cae580dbc8a173663794964a462124af5276cb5cceccd06eee0e71"
+    },
+    {
+      "id": "P53",
+      "file": "screens/53-admission-review.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 230336,
+      "sha256": "a080f3dc03003d5901137262dbc38f7b072f047e375ae0a258f9699b15040a13",
+      "originalFile": "screens/53-admission-review.png",
+      "originalSha256": "9f4597db4ae76732346e889ef89554c129d6ea8101988b53b18a1ec4027bbddd"
+    },
+    {
+      "id": "P54",
+      "file": "screens/54-event-checkin.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 195971,
+      "sha256": "24478be809948d7c51a92cc8b8f5726984d43b09eb00f9e6caf461ab38e4fab1",
+      "originalFile": "screens/54-event-checkin.png",
+      "originalSha256": "f41464314b0fcbd3af167aa41f3ca32e4f8a32cbecad869fa01247189c61ce3c"
+    },
+    {
+      "id": "P55",
+      "file": "screens/55-event-roles.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 206093,
+      "sha256": "a6ac522473f1580fa3ae1f770d78423637d1bce6198f098de90dc8777d5f0f8e",
+      "originalFile": "screens/55-event-roles.png",
+      "originalSha256": "6447e7e5278d5af316c1a78e801e6d4addd113ea1bf5da32504c847011c9261e"
+    },
+    {
+      "id": "P56",
+      "file": "screens/56-registration-experience.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 192588,
+      "sha256": "647d2744744731f417b931731a5c05170741f5dad2e252a7348c4e2518213633",
+      "originalFile": "screens/56-registration-experience.png",
+      "originalSha256": "27de4ebf46e117b398ac44742dc00c912e6ef908c453d154032b2634358b56e3"
+    },
+    {
+      "id": "P57",
+      "file": "screens/57-event-analytics.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 194493,
+      "sha256": "6ac2704162560b86a8b7108002d0ddb4c5819962893cba8c91679925a304ccdb",
+      "originalFile": "screens/57-event-analytics.png",
+      "originalSha256": "ddcebca4fee4a0304a68a22afc02753eee7b0deaac509c6cc426dcfe447833c1"
+    },
+    {
+      "id": "P58",
+      "file": "screens/58-party.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 232305,
+      "sha256": "513357c9d526eeedae88ac74ce9c1bd1d38e4d3188c269947306570d9dbd03a9",
+      "originalFile": "screens/58-party.png",
+      "originalSha256": "b53ad6c31002beb3cf1571bbe5d4341a43e85a44cae6d6fea7e13ad2cfccbc2d"
+    },
+    {
+      "id": "P59",
+      "file": "screens/59-party-checkin.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 176977,
+      "sha256": "b02f9830d4af36c116639d4469c97dc516d866b2d7061b744d60a57f9b0ffb93",
+      "originalFile": "screens/59-party-checkin.png",
+      "originalSha256": "79729b65735033983a1e362d3f0f5f7c86b4d8b601f32ddb48c2d81db74a6d30"
+    },
+    {
+      "id": "P60",
+      "file": "screens/60-party-graph.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 216880,
+      "sha256": "08f8de6984202e2a0fc2316d73027e8137bf6400b98327bc42c7560d315ac2be",
+      "originalFile": "screens/60-party-graph.png",
+      "originalSha256": "4939259013d80ef6eb5aa577eae395bcba24df5be2adab05e35aa6827c67dccd"
+    },
+    {
+      "id": "P61",
+      "file": "screens/61-admin-dashboard.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 202458,
+      "sha256": "09714c2f69f03320077a8794adbaf59a462c8c8d47f4cd47d52000c3624b0491",
+      "originalFile": "screens/61-admin-dashboard.png",
+      "originalSha256": "e5586e7a0233bc4a3d12038b705ab2565945e9fb8a7e9b3e545666b1be550b0f"
+    },
+    {
+      "id": "P62",
+      "file": "screens/62-admin-access.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 177649,
+      "sha256": "32195dd5193c1a00b8ec12458cf38b9329bd9ea62a79978d584608836cee5791",
+      "originalFile": "screens/62-admin-access.png",
+      "originalSha256": "20a3f7bfa1be32c725090d2bf96625030002bdfa210347ecd8765b95de80f207"
+    },
+    {
+      "id": "P63",
+      "file": "screens/63-admin-events.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 210287,
+      "sha256": "596f82dfd10ae5f1fcb6f776284f25dad3579b189f130719f0bf924399f04f67",
+      "originalFile": "screens/63-admin-events.png",
+      "originalSha256": "c1e818bba3167424f6ffa89ad3ce08124b9a51dc5bb588bc5b40ad532af8abd0"
+    },
+    {
+      "id": "P64",
+      "file": "screens/64-admin-login.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 132216,
+      "sha256": "ec95945b8c9afee73bc381f17439a57466846a650ef8e8af7009db8e0d5dbdbd",
+      "originalFile": "screens/64-admin-login.png",
+      "originalSha256": "ed284cf85b695a39a271e78e54169e9dc9e310cd0888e3e8fcf380a21fb6571a"
+    },
+    {
+      "id": "P65",
+      "file": "screens/65-platform.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 240132,
+      "sha256": "657116bd0c95da92d484d37a503609336e943b138d6d9041081aa9d23efd658c",
+      "originalFile": "screens/65-platform.png",
+      "originalSha256": "789439ad23f86feac63ce31a82f6593009b51cbc94e2846b3f44f51c93099e07"
+    },
+    {
+      "id": "P66",
+      "file": "screens/66-event-invitation.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 240229,
+      "sha256": "09d3d2409daf104d81e75ad7a76ac74322077dcc69e6cfcc45b0c9b8750e6057",
+      "originalFile": "screens/66-event-invitation.png",
+      "originalSha256": "ffbd5048e28327cfac3fbda621d5745ea846f71665ea61213fa9af95d72d7459"
+    },
+    {
+      "id": "P67",
+      "file": "screens/67-agent-actions.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 168979,
+      "sha256": "861b3263a89cb0e9a656529967c45e4db5b2daaf491b3f16b1a89831ceddb07a",
+      "originalFile": "screens/67-agent-actions.png",
+      "originalSha256": "177f7847d321b8fe7e11f7c30b154759f45f1eb20c3096c5c37aa9e75a36d937"
+    },
+    {
+      "id": "P68",
+      "file": "screens/68-all-actions.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 172892,
+      "sha256": "f9259d3a744c985867b456d3954b723b451980db64dafd66d3304192482ddfae",
+      "originalFile": "screens/68-all-actions.png",
+      "originalSha256": "f63942560f0af9a6875c366211928477da829d6174920daa30333670ba621366"
+    },
+    {
+      "id": "P69",
+      "file": "screens/69-dashboard.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 223686,
+      "sha256": "61473942e82aa58f4acc0dbe0319f19e8f8ea31fdd8247e20e681bf43dda9b59",
+      "originalFile": "screens/69-dashboard.png",
+      "originalSha256": "e8005998cbcabb7ec29fffc66d6c00adb05d4b2c3cf40b05327be375e97945ef"
+    },
+    {
+      "id": "P70",
+      "file": "screens/70-recommended-events.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 291276,
+      "sha256": "9094493f6383ba6883ef9e7da6fd37d1485e091a7c526ca144f12c6f6c15fa7e",
+      "originalFile": "screens/70-recommended-events.png",
+      "originalSha256": "c3afb47f40bf18ffac94e5e2c8956091ecfdbf003dd74ae3757bc96dfaed4a41"
+    },
+    {
+      "id": "P71",
+      "file": "screens/71-contacts-search-list.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 141609,
+      "sha256": "6b4c5d649b475e14ae8b41750f330bbf6da8058ab06d2ed9385da7c2fa901937",
+      "originalFile": "screens/71-contacts-search-list.png",
+      "originalSha256": "10328d517d1b1300071266c3e616336535d513e6db30811011dfee0a1f13a7f8"
+    },
+    {
+      "id": "P72",
+      "file": "screens/72-invitation-empty.jpg",
+      "width": 853,
+      "height": 1844,
+      "bytes": 125411,
+      "sha256": "3bb443679adcdf2a06fbfa2f95165ff9323c7c5c147787c42e4024ecbf0efe95",
+      "originalFile": "screens/72-invitation-empty.png",
+      "originalSha256": "56bf6e3cf39e74de79ec003d179f215d9065bff3d3f0c4f76503e9e3ebedf4d3"
+    }
+  ]
+}

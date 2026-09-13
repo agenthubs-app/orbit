@@ -1,17 +1,21 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Image,
   ImageBackground,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  View
+  View,
+  useWindowDimensions
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { z } from "zod";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import {
   eventValueRecommendationAcceptPath,
@@ -19,11 +23,12 @@ import {
   ORBIT_API_ENDPOINTS
 } from "../../api/endpoints";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
-import { AppScreen } from "../../components/AppScreen";
+import { validateApiResourceState } from "../../api/validated-resource-state";
+import { OrbitTabBar } from "../../components/OrbitTabBar";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, typography, textStyles } from "../../design/tokens";
+import { layout, radius, spacing, typography, textStyles } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import {
@@ -32,7 +37,6 @@ import {
 } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
-  eventDiscoveryFilterCounts,
   eventsToSummaries,
   eventValueRecommendationAcceptanceToView,
   eventValueRecommendationsToView,
@@ -51,6 +55,44 @@ const eventDiscoveryStatusFilters: EventDiscoveryStatusFilter[] = [
 ];
 
 const eventPageSize = 8;
+const eventFont = Platform.select({ web: '-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif', ios: "System", default: "sans-serif" });
+// Validate this public consumer without modifying the generated shared contract.
+const publicEventsSchema = z.object({
+  events: z.array(z.object({
+    id: z.string().trim().min(1), title: z.string().trim().min(1),
+    startsAt: z.string().datetime({ offset: true }), endsAt: z.string().datetime({ offset: true }),
+    status: z.enum(["draft", "confirmed", "imported", "pending_import", "cancelled"]),
+    venue: z.string().optional(), location: z.string().optional(), locationLabel: z.string().optional(),
+    description: z.string().optional(), organizer: z.string().optional(), host: z.string().optional(),
+    theme: z.string().optional(), industry: z.string().optional(),
+    coverPath: z.string().optional(), coverUrl: z.string().optional(), imageUrl: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+    participantCount: z.number().int().nonnegative().optional(),
+    stats: z.object({ count: z.number().int().nonnegative().optional() }).passthrough().optional(),
+    sourceMetadata: z.object({ label: z.string().optional(), coverPath: z.string().optional(), coverUrl: z.string().optional() }).passthrough().optional()
+  }).passthrough().refine(event => Date.parse(event.startsAt) < Date.parse(event.endsAt)))
+}).passthrough().refine(value => new Set(value.events.map(event => event.id)).size === value.events.length);
+
+const eventRecommendationSchema = z.object({
+  eventId: z.string().trim().min(1), title: z.string().trim().min(1),
+  startsAt: z.string().datetime({ offset: true }), location: z.string(), venue: z.string(),
+  valueScore: z.number().min(0).max(100), scoreBand: z.enum(["high", "medium", "low"]),
+  signals: z.array(z.object({ label: z.string(), detail: z.string(), weight: z.number() }).passthrough()),
+  recommendedAction: z.string()
+}).passthrough();
+const eventRecommendationsSchema = z.object({
+  state: z.enum(["success", "empty", "pending"]),
+  profile: z.object({ calendarFit: z.enum(["open", "tight", "conflict"]), goal: z.string(), industryPreference: z.string(), location: z.string() }).passthrough(),
+  recommendations: z.array(eventRecommendationSchema), summary: z.string(), nextAction: z.string()
+}).passthrough().refine(value =>
+  (value.state === "success" ? value.recommendations.length > 0 : value.recommendations.length === 0) &&
+  new Set(value.recommendations.map(event => event.eventId)).size === value.recommendations.length
+);
+const eventRecommendationAcceptanceSchema = z.object({
+  state: z.literal("accepted"), acceptedEvent: eventRecommendationSchema,
+  action: z.object({ calendarProviderRequested: z.literal(false), notificationDelivered: z.literal(false), databaseWriteExecuted: z.literal(false), externalNetworkRequested: z.literal(false), productionAuditLogWriteExecuted: z.literal(false) }).passthrough(),
+  summary: z.string(), nextAction: z.string()
+}).passthrough();
 
 const eventDiscoveryStatusLabels: Record<EventDiscoveryStatusFilter, string> = {
   active: "进行中",
@@ -147,6 +189,8 @@ function CompactEventRow({
   const { colors, styles } = useStyles();
   const subtitle = publicEventSubtitle(event.subtitle);
   const status = publicEventStatus(event.status);
+  const { width, fontScale } = useWindowDimensions();
+  const expandedText = width < 360 || fontScale >= 1.4;
 
   return (
     <Pressable
@@ -164,25 +208,20 @@ function CompactEventRow({
         style={styles.eventRowImageFrame}
       />
       <View style={styles.eventRowContent}>
-        <Text style={styles.eventRowDate}>
-          {event.startsAt}
-        </Text>
         <Text style={styles.eventRowTitle}>
           {event.title}
         </Text>
+        <Text style={styles.eventRowDate}>
+          {event.startsAt}
+        </Text>
         <View style={styles.eventRowMeta}>
-          <Ionicons color={colors.text3} name="location-outline" size={14} />
           <Text style={styles.eventRowLocation}>
             {[event.location, subtitle].filter(Boolean).join(" · ") || "地点待定"}
           </Text>
         </View>
-        <View style={styles.eventRowFooter}>
-          <Text style={styles.eventRowStatus}>
-            {status}
-          </Text>
-          <Ionicons color={colors.text4} name="chevron-forward" size={16} />
-        </View>
+        {expandedText ? <Text style={styles.eventRowStatus}>{status}</Text> : null}
       </View>
+      {!expandedText ? <View style={styles.eventRowFooter}><Text style={styles.eventRowStatus}>{status}</Text><Ionicons color={colors.text4} name="chevron-forward" size={14} /></View> : null}
     </Pressable>
   );
 }
@@ -201,6 +240,8 @@ function EventFilterChip({
   const { styles } = useStyles();
   return (
     <Pressable
+      accessibilityLabel={label}
+      accessibilityHint={typeof count === "number" ? `${count} 场活动` : undefined}
       accessibilityState={{ selected }}
       aria-selected={selected}
       accessibilityRole="button"
@@ -225,20 +266,18 @@ function EventFilterChip({
 
 function EventFilterRail({
   activeValue,
+  allLabel = "全部",
   label,
   onChange,
   values
 }: {
   activeValue: string;
+  allLabel?: string;
   label: string;
   onChange: (value: string) => void;
   values: string[];
 }) {
   const { styles } = useStyles();
-  if (values.length === 0) {
-    return null;
-  }
-
   return (
     <View style={styles.filterRailGroup}>
       <Text style={styles.filterRailLabel}>{label}</Text>
@@ -248,7 +287,7 @@ function EventFilterRail({
         showsHorizontalScrollIndicator={false}
       >
         <EventFilterChip
-          label="全部"
+          label={allLabel}
           onPress={() => onChange("")}
           selected={!activeValue}
         />
@@ -276,7 +315,9 @@ function EventDiscoveryControls({
   query,
   statusFilter,
   topicFilter,
-  topics
+  topics,
+  tab,
+  onTabChange
 }: {
   counts: Record<EventDiscoveryStatusFilter, number>;
   locations: string[];
@@ -289,11 +330,12 @@ function EventDiscoveryControls({
   statusFilter: EventDiscoveryStatusFilter;
   topicFilter: string;
   topics: string[];
+  tab: "all" | "recommended";
+  onTabChange: (tab: "all" | "recommended") => void;
 }) {
   const { colors, styles } = useStyles();
-  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [filterMenu, setFilterMenu] = useState<"time" | "location" | "topic" | null>(null);
   const hasQuery = query.trim().length > 0;
-  const selectedFilterCount = Number(Boolean(locationFilter)) + Number(Boolean(topicFilter));
 
   return (
     <View style={styles.discoveryControls}>
@@ -319,55 +361,30 @@ function EventDiscoveryControls({
             <Ionicons color={colors.text3} name="close-circle" size={19} />
           </Pressable>
         ) : null}
-        <Pressable
-          accessibilityLabel="筛选活动"
-          accessibilityRole="button"
-          accessibilityState={{ expanded: filtersExpanded }}
-          onPress={() => setFiltersExpanded((current) => !current)}
-          style={[
-            styles.discoveryFilterButton,
-            selectedFilterCount > 0 ? styles.discoveryFilterButtonActive : null
-          ]}
-        >
-          <Ionicons
-            color={selectedFilterCount > 0 ? colors.onAccent : colors.text2}
-            name="options-outline"
-            size={17}
-          />
-          {selectedFilterCount > 0 ? (
-            <Text style={styles.discoveryFilterCount}>{selectedFilterCount}</Text>
-          ) : null}
-        </Pressable>
       </View>
-      <ScrollView
-        contentContainerStyle={styles.statusRailContent}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-      >
-        {eventDiscoveryStatusFilters.map((filter) => (
-          <EventFilterChip
-            count={counts[filter]}
-            key={filter}
-            label={eventDiscoveryStatusLabels[filter]}
-            onPress={() => onStatusChange(filter)}
-            selected={statusFilter === filter}
-          />
-        ))}
-      </ScrollView>
-      {filtersExpanded ? (
+      <View accessibilityRole="tablist" accessibilityLabel="活动列表" style={styles.catalogueTabs}>
+        {([{ id: "recommended", label: "推荐" }, { id: "all", label: "全部" }] as const).map(item => <Pressable key={item.id} accessibilityRole="tab" accessibilityLabel={item.label} accessibilityState={{ selected: tab === item.id }} aria-selected={tab === item.id} onPress={() => onTabChange(item.id)} style={styles.catalogueTab}><View style={[styles.catalogueTabLabel, tab === item.id && styles.catalogueTabSelected]}><Text style={[styles.catalogueTabText, tab === item.id && styles.catalogueTabTextSelected]}>{item.label}</Text></View></Pressable>)}
+      </View>
+      <View style={styles.filterButtons}>
+        {([{ id: "time", label: "筛选活动时间", value: statusFilter === "upcoming" ? "即将开始" : statusFilter === "all" ? "全部时间" : eventDiscoveryStatusLabels[statusFilter] }, { id: "location", label: "筛选活动地点", value: locationFilter || "全部地点" }, { id: "topic", label: "筛选活动主题", value: topicFilter || "全部主题" }] as const).map(item => <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={item.label} accessibilityState={{ expanded: filterMenu === item.id }} aria-expanded={filterMenu === item.id} onPress={() => setFilterMenu(current => current === item.id ? null : item.id)} style={styles.filterButton}><Text style={styles.filterButtonText}>{item.value}</Text><Ionicons color={colors.text2} name="caret-down" size={10} /></Pressable>)}
+      </View>
+      {filterMenu ? (
         <View style={styles.expandedFilters}>
-          <EventFilterRail
+          {filterMenu === "time" ? <View style={styles.discoveryChipRow}>{eventDiscoveryStatusFilters.map(filter => <EventFilterChip key={filter} count={counts[filter]} label={filter === "all" ? "全部时间" : filter === "upcoming" ? "即将开始" : eventDiscoveryStatusLabels[filter]} onPress={() => { onStatusChange(filter); setFilterMenu(null); }} selected={statusFilter === filter} />)}</View> : null}
+          {filterMenu === "location" ? <EventFilterRail
             activeValue={locationFilter}
+            allLabel="全部地点"
             label="地点"
-            onChange={onLocationChange}
+            onChange={value => { onLocationChange(value); setFilterMenu(null); }}
             values={locations}
-          />
-          <EventFilterRail
+          /> : null}
+          {filterMenu === "topic" ? <EventFilterRail
             activeValue={topicFilter}
+            allLabel="全部主题"
             label="主题"
-            onChange={onTopicChange}
+            onChange={value => { onTopicChange(value); setFilterMenu(null); }}
             values={topics}
-          />
+          /> : null}
         </View>
       ) : null}
     </View>
@@ -453,22 +470,27 @@ function EventCenterEntry({ onPress }: { onPress: () => void }) {
         pressed ? styles.eventCardPressed : null
       ]}
     >
-      <Ionicons color={colors.accent} name="options-outline" size={17} />
       <Text style={styles.eventCenterEntryTitle}>我负责的活动</Text>
-      <Ionicons color={colors.text3} name="chevron-forward" size={16} />
+      <Ionicons color={colors.accent} name="chevron-forward" size={13} />
     </Pressable>
   );
 }
 
-export function EventsScreen() {
+export function EventsScreen({ scopeKey, isScopeCurrent }: { scopeKey?: string; isScopeCurrent?: () => boolean } = {}) {
   const { colors, styles } = useStyles();
   const router = useRouter();
   const { baseUrl } = useOrbitApiBaseUrl();
   const { signedIn } = useOrbitAuthSession();
-  const state = useApiResource<unknown>(
+  const rawState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.publicEvents,
-    (data) => eventsToSummaries(data).length === 0
+    (data) => eventsToSummaries(data).length === 0,
+    { scopeKey: scopeKey ?? "public-events" }
   );
+  const state = validateApiResourceState(rawState, publicEventsSchema);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  function isCurrent() { return mounted.current && isScopeCurrent?.() !== false; }
+  const [tab, setTab] = useState<"all" | "recommended">("all");
   const [recommendationRefreshKey, setRecommendationRefreshKey] = useState(0);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] =
@@ -477,46 +499,55 @@ export function EventsScreen() {
   const [locationFilter, setLocationFilter] = useState("");
   const [visibleEventCount, setVisibleEventCount] = useState(eventPageSize);
   const refreshing = state.refreshing;
-  const events = state.kind === "success" ? eventsToSummaries(state.data) : [];
+  const events = state.kind === "success" || state.kind === "empty" ? eventsToSummaries(state.data) : [];
+  const currentTime = Date.now();
+  // Public records use "imported" for both future and live events. Keep their
+  // source status for display and derive only the discovery time filter here.
+  const phaseById = new Map((state.kind === "success" || state.kind === "empty" ? state.data.events : []).map(event => [event.id,
+    event.status === "cancelled" || Date.parse(event.endsAt) <= currentTime ? "ended"
+      : Date.parse(event.startsAt) <= currentTime ? "active" : "upcoming"
+  ] as const));
   const discoveryEvents = events.map((event) => ({
     ...event,
     topics: discoveryTopicsForEvent(event)
   }));
   const filteredEvents = filterEventSummaries(discoveryEvents, {
     query,
-    status: statusFilter,
+    status: "all",
     topic: topicFilter
-  }).filter((event) => !locationFilter || event.location === locationFilter);
+  }).filter((event) => (statusFilter === "all" || phaseById.get(event.id) === statusFilter) && (!locationFilter || event.location === locationFilter));
   const visibleEvents = filteredEvents.slice(0, visibleEventCount);
   const allFilteredEventsVisible = visibleEventCount >= filteredEvents.length;
   const discoveryTopics = [
     ...new Set(discoveryEvents.flatMap((event) => event.topics))
   ].slice(0, 8);
   const discoveryLocations = eventDiscoveryLocations(discoveryEvents);
-  const discoveryCounts = eventDiscoveryFilterCounts(discoveryEvents);
-  const resultLabel = `${filteredEvents.length} 场活动`;
+  const discoveryCounts = {
+    all: events.length,
+    active: events.filter(event => phaseById.get(event.id) === "active").length,
+    ended: events.filter(event => phaseById.get(event.id) === "ended").length,
+    upcoming: events.filter(event => phaseById.get(event.id) === "upcoming").length
+  };
   const sectionTitle = query.trim()
     ? "搜索结果"
     : statusFilter === "upcoming"
-      ? "即将开始"
+      ? "近期活动"
       : statusFilter === "active"
         ? "正在进行"
         : statusFilter === "ended"
           ? "历史活动"
           : "全部活动";
   const showRecommendations =
-    signedIn &&
-    !query.trim() &&
-    statusFilter === "upcoming" &&
-    !topicFilter &&
-    !locationFilter;
+    signedIn && tab === "recommended" && (state.kind === "success" || state.kind === "empty");
 
   function refreshAll() {
+    if (!isCurrent()) return;
     state.refresh();
     setRecommendationRefreshKey((current) => current + 1);
   }
 
   function openEvent(id: string) {
+    if (!isCurrent()) return;
     router.push({
       params: { id },
       pathname: "/events/[id]"
@@ -524,32 +555,37 @@ export function EventsScreen() {
   }
 
   function openEventRegistration(id: string) {
+    if (!isCurrent()) return;
     router.push(`/events/${encodeURIComponent(id)}/register` as Href);
   }
 
   function changeQuery(nextQuery: string) {
+    if (!isCurrent()) return;
     setQuery(nextQuery);
     setVisibleEventCount(eventPageSize);
   }
 
   function changeStatusFilter(nextStatus: EventDiscoveryStatusFilter) {
+    if (!isCurrent()) return;
     setStatusFilter(nextStatus);
     setVisibleEventCount(eventPageSize);
   }
 
   function changeTopicFilter(nextTopic: string) {
+    if (!isCurrent()) return;
     setTopicFilter(nextTopic);
     setVisibleEventCount(eventPageSize);
   }
 
   function changeLocationFilter(nextLocation: string) {
+    if (!isCurrent()) return;
     setLocationFilter(nextLocation);
     setVisibleEventCount(eventPageSize);
   }
 
   return (
-    <AppScreen
-      eyebrow="发现活动"
+    <SafeAreaView edges={["top"]} style={styles.safeArea}>
+    <ScrollView contentContainerStyle={styles.pageContent} automaticallyAdjustKeyboardInsets contentInsetAdjustmentBehavior="automatic" keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled"
       refreshControl={
         <RefreshControl
           onRefresh={refreshAll}
@@ -557,8 +593,8 @@ export function EventsScreen() {
           tintColor={colors.accent}
         />
       }
-      title="活动"
     >
+      <View style={styles.pageHeader}><Text accessibilityRole="header" style={styles.pageTitle}>活动</Text>{signedIn ? <EventCenterEntry onPress={() => { if (isCurrent()) router.push("/events/center" as Href); }} /> : null}</View>
       {state.kind === "loading" ? <LoadingState /> : null}
       {state.kind === "offline" ? (
         <ErrorState message={state.error.message} title="服务器连不上" />
@@ -566,10 +602,11 @@ export function EventsScreen() {
       {state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
+      {state.kind === "failure" || state.kind === "offline" ? <Pressable accessibilityRole="button" accessibilityLabel="重新读取活动" onPress={refreshAll} style={styles.secondaryButton}><Text style={styles.secondaryButtonText}>重新读取</Text></Pressable> : null}
       {state.kind === "empty" ? (
         <EmptyState message="报名、导入或推荐的活动会出现在这里。" title="暂无活动" />
       ) : null}
-      {events.length > 0 ? (
+      {state.kind === "success" || state.kind === "empty" ? (
         <EventDiscoveryControls
           counts={discoveryCounts}
           locationFilter={locationFilter}
@@ -582,25 +619,24 @@ export function EventsScreen() {
           statusFilter={statusFilter}
           topicFilter={topicFilter}
           topics={discoveryTopics}
+          tab={tab}
+          onTabChange={value => { if (isCurrent()) setTab(value); }}
         />
       ) : null}
       {showRecommendations ? (
         <AuthenticatedEventValueRecommendations
           baseUrl={baseUrl}
           events={filteredEvents}
-          key={recommendationRefreshKey}
+          key={JSON.stringify([recommendationRefreshKey, query, statusFilter, topicFilter, locationFilter])}
           onOpenEvent={openEvent}
           onRegisterEvent={openEventRegistration}
+          scopeKey={scopeKey ?? "event-recommendations"}
+          isScopeCurrent={isCurrent}
         />
       ) : null}
-      {events.length > 0 ? (
-        <SectionHeader detail={resultLabel} title={sectionTitle} />
-      ) : null}
-      {signedIn && events.length > 0 ? (
-        <EventCenterEntry
-          onPress={() => router.push("/events/center" as Href)}
-        />
-      ) : null}
+      {tab === "recommended" && !signedIn ? <View style={styles.recommendationNotice}><Text style={styles.recommendationBody}>登录后，按你的目标查看活动推荐。</Text><Pressable accessibilityRole="button" accessibilityLabel="登录后查看推荐" onPress={() => { if (isCurrent()) router.push("/account?next=%2Fevents" as Href); }} style={styles.secondaryButton}><Text style={styles.secondaryButtonText}>登录后查看推荐</Text></Pressable></View> : null}
+      {tab === "all" ? <>
+      {events.length > 0 ? <View style={styles.resultsHeader}><Text accessibilityRole="header" style={styles.sectionTitle}>{sectionTitle}</Text><Text testID="events-result-count" accessibilityLabel={`${filteredEvents.length} 场活动`} style={styles.resultCount}>{filteredEvents.length}</Text></View> : null}
       <CompactEventList
         baseUrl={baseUrl}
         events={visibleEvents}
@@ -613,7 +649,7 @@ export function EventsScreen() {
           }
           accessibilityRole="button"
           onPress={() =>
-            setVisibleEventCount((current) =>
+            isCurrent() && setVisibleEventCount((current) =>
               allFilteredEventsVisible
                 ? eventPageSize
                 : Math.min(current + eventPageSize, filteredEvents.length)
@@ -640,7 +676,10 @@ export function EventsScreen() {
           title="没有匹配的活动"
         />
       ) : null}
-    </AppScreen>
+      </> : null}
+    </ScrollView>
+    <OrbitTabBar active="events" />
+    </SafeAreaView>
   );
 }
 
@@ -648,18 +687,35 @@ function AuthenticatedEventValueRecommendations({
   baseUrl,
   events,
   onOpenEvent,
-  onRegisterEvent
+  onRegisterEvent,
+  scopeKey,
+  isScopeCurrent
 }: {
   baseUrl: string;
   events: EventSummary[];
   onOpenEvent: (id: string) => void;
   onRegisterEvent: (id: string) => void;
+  scopeKey: string;
+  isScopeCurrent: () => boolean;
 }) {
-  const client = useOrbitApiClient();
-  const recommendationsState = useApiResource<unknown>(
+  const client = useOrbitApiClient({ scopeKey });
+  const [readAttempt, setReadAttempt] = useState(0);
+  const rawState = useApiResource<unknown>(
     eventValueRecommendationsPath({ limit: 3 }),
-    (data) => eventValueRecommendationsToView(data).recommendations.length === 0
+    (data) => eventValueRecommendationsToView(data).recommendations.length === 0,
+    { scopeKey: JSON.stringify([scopeKey, readAttempt]) }
   );
+  const recommendationsState = validateApiResourceState(rawState, eventRecommendationsSchema);
+  const mounted = useRef(true);
+  const activeScope = useRef(isScopeCurrent);
+  activeScope.current = isScopeCurrent;
+  const acceptController = useRef<AbortController | null>(null);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; acceptController.current?.abort(); acceptController.current = null; };
+  }, []);
+  function isCurrent() { return mounted.current && activeScope.current(); }
+  function retryRecommendations() { if (isCurrent()) setReadAttempt(value => value + 1); }
   const [acceptedRecommendation, setAcceptedRecommendation] =
     useState<EventValueRecommendationAcceptanceView | null>(null);
   const [acceptError, setAcceptError] = useState<string | null>(null);
@@ -670,28 +726,33 @@ function AuthenticatedEventValueRecommendations({
   async function acceptEventRecommendation(
     recommendation: EventValueRecommendationCardView
   ) {
+    if (!isCurrent() || acceptController.current || !events.some(event => event.id === recommendation.id)) return;
+    const controller = new AbortController();
+    acceptController.current = controller;
     setPendingAcceptEventId(recommendation.id);
     setAcceptedRecommendation(null);
     setAcceptError(null);
 
-    const result = await client.post<unknown>(
-      eventValueRecommendationAcceptPath(recommendation.id)
-    );
-
-    if (result.success) {
-      setAcceptedRecommendation(
-        eventValueRecommendationAcceptanceToView(result.data)
+    try {
+      const result = await client.post<unknown>(
+        eventValueRecommendationAcceptPath(recommendation.id),
+        { signal: controller.signal }
       );
-      recommendationsState.refresh();
-    } else {
-      setAcceptError(result.error.message);
+      if (!isCurrent() || controller.signal.aborted) return;
+      const parsed = result.success && result.status >= 200 && result.status < 300
+        ? eventRecommendationAcceptanceSchema.safeParse(result.data) : null;
+      if (parsed?.success && parsed.data.acceptedEvent.eventId === recommendation.id) {
+        setAcceptedRecommendation(eventValueRecommendationAcceptanceToView(parsed.data));
+        retryRecommendations();
+      } else {
+        setAcceptError(result.success ? "未能确认推荐选择，请重试。" : result.error.message);
+      }
+    } catch {
+      if (isCurrent() && !controller.signal.aborted) setAcceptError("未能确认推荐选择，请重试。");
+    } finally {
+      if (acceptController.current === controller) acceptController.current = null;
+      if (isCurrent() && !controller.signal.aborted) setPendingAcceptEventId(null);
     }
-
-    setPendingAcceptEventId(null);
-  }
-
-  if (recommendationsState.kind === "loading") {
-    return null;
   }
 
   return (
@@ -701,8 +762,9 @@ function AuthenticatedEventValueRecommendations({
       baseUrl={baseUrl}
       events={events}
       onAcceptEvent={acceptEventRecommendation}
-      onOpenEvent={onOpenEvent}
-      onRegisterEvent={onRegisterEvent}
+      onOpenEvent={id => { if (isCurrent()) onOpenEvent(id); }}
+      onRegisterEvent={id => { if (isCurrent()) onRegisterEvent(id); }}
+      onRetry={retryRecommendations}
       pendingAcceptEventId={pendingAcceptEventId}
       state={recommendationsState}
     />
@@ -717,6 +779,7 @@ function EventValueRecommendationsModule({
   onAcceptEvent,
   onOpenEvent,
   onRegisterEvent,
+  onRetry,
   pendingAcceptEventId,
   state
 }: {
@@ -727,35 +790,32 @@ function EventValueRecommendationsModule({
   onAcceptEvent: (recommendation: EventValueRecommendationCardView) => void;
   onOpenEvent: (id: string) => void;
   onRegisterEvent: (id: string) => void;
+  onRetry: () => void;
   pendingAcceptEventId: string | null;
-  state: ApiResourceState<unknown>;
+  state: ApiResourceState<z.infer<typeof eventRecommendationsSchema>>;
 }) {
   const { styles } = useStyles();
-  if (state.kind === "failure" || state.kind === "offline") {
-    return (
-      <View style={styles.recommendationNotice}>
-        <Text style={styles.recommendationNoticeTitle}>暂时取不到推荐</Text>
-        <Text style={styles.recommendationBody}>活动列表还能正常看，稍后再刷新推荐。</Text>
-      </View>
-    );
-  }
-
-  if (state.kind === "loading") {
-    return null;
-  }
-
-  const view = eventValueRecommendationsToView(state.data);
+  const data = state.kind === "success" || state.kind === "empty" ? state.data : null;
+  const view = data ? eventValueRecommendationsToView(data) : null;
   const eventById = eventSummaryById(events);
-  const currentRecommendations = view.recommendations.filter((recommendation) =>
+  const currentRecommendations = view?.recommendations.filter((recommendation) =>
     eventById.has(recommendation.id)
-  );
-
-  if (currentRecommendations.length === 0) {
-    return null;
-  }
+  ) ?? [];
+  const noticeTitle = state.kind === "loading" ? "正在读取推荐"
+    : state.kind === "failure" || state.kind === "offline" ? "暂时取不到推荐"
+    : data?.state === "pending" ? "推荐还在准备中"
+    : data?.state === "empty" ? "暂无活动推荐"
+    : currentRecommendations.length === 0 ? "当前筛选下没有推荐活动" : null;
 
   return (
     <View style={styles.recommendationSection}>
+      {noticeTitle ? <View style={styles.recommendationNotice}>
+        <Text accessibilityRole="header" style={styles.recommendationNoticeTitle}>{noticeTitle}</Text>
+        {state.kind === "failure" || state.kind === "offline" ? <Text style={styles.recommendationBody}>{state.error.message}</Text> : null}
+        {data?.state === "success" && currentRecommendations.length === 0 ? <Text style={styles.recommendationBody}>换个筛选条件，或切到全部查看公开活动。</Text> : null}
+        {state.kind !== "loading" ? <Pressable accessibilityRole="button" accessibilityLabel="重新读取推荐" onPress={onRetry} style={styles.secondaryButton}><Text style={styles.secondaryButtonText}>重新读取推荐</Text></Pressable> : null}
+      </View> : null}
+      {currentRecommendations.length > 0 ? <>
       <SectionHeader
         detail="根据你的目标和时间安排"
         title="为你推荐"
@@ -768,6 +828,7 @@ function EventValueRecommendationsModule({
         pendingAcceptEventId={pendingAcceptEventId}
         recommendations={currentRecommendations}
       />
+      </> : null}
       {acceptError ? <Text style={styles.recommendationError}>{acceptError}</Text> : null}
       {acceptedRecommendation ? (
         <EventValueRecommendationAcceptedCard
@@ -966,6 +1027,21 @@ function EventValueRecommendationAcceptedCard({
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: colors.surface },
+  pageContent: { alignSelf: "center", width: "100%", maxWidth: layout.contentMax, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 140 },
+  pageHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 14 },
+  pageTitle: { color: colors.ink, fontFamily: eventFont, fontSize: 30, fontWeight: "900", letterSpacing: -0.6, lineHeight: 38, flexShrink: 1 },
+  catalogueTabs: { flexDirection: "row", gap: 6, borderBottomWidth: 1, borderBottomColor: colors.border, marginTop: 12 },
+  catalogueTab: { minHeight: 44, minWidth: 44, alignItems: "flex-start", justifyContent: "flex-end", marginBottom: -1 },
+  catalogueTabLabel: { paddingVertical: 10, borderBottomWidth: 2, borderBottomColor: "transparent" },
+  catalogueTabSelected: { borderBottomColor: colors.ink },
+  catalogueTabText: { color: colors.text3, fontFamily: eventFont, fontSize: 14, lineHeight: 20 },
+  catalogueTabTextSelected: { color: colors.ink, fontWeight: "800" },
+  filterButtons: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
+  filterButton: { minHeight: 44, minWidth: 44, maxWidth: "100%", flexShrink: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: colors.border, borderRadius: 8 },
+  filterButtonText: { color: colors.ink, fontFamily: eventFont, fontSize: 12, lineHeight: 17, flexShrink: 1 },
+  resultsHeader: { marginTop: 18, marginBottom: 4, flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8 },
+  resultCount: { color: colors.accent, fontFamily: eventFont, fontSize: 12, lineHeight: 17, fontWeight: "700" },
   acceptedCard: {
     backgroundColor: colors.liveSoft,
     borderColor: colors.border,
@@ -978,7 +1054,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     opacity: 0.54
   },
   discoveryControls: {
-    gap: spacing.md
+    gap: 0
   },
   discoveryChip: {
     ...createControlStyles(colors).chip
@@ -1050,25 +1126,25 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   discoverySearchInput: {
     color: colors.text,
     flex: 1,
-    fontSize: typography.body,
+    fontFamily: eventFont,
+    fontSize: 14,
     minWidth: 0,
     paddingVertical: 0
   },
   discoverySearchRow: {
     alignItems: "center",
     backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.input,
-    borderWidth: 1,
+    borderRadius: 10,
     flexDirection: "row",
-    gap: spacing.sm,
+    gap: 8,
     minHeight: 44,
-    paddingHorizontal: spacing.md
+    paddingHorizontal: 12
   },
   expandedFilters: {
     borderTopColor: colors.border,
     borderTopWidth: 1,
     gap: spacing.md,
+    marginTop: 12,
     paddingTop: spacing.md
   },
   filterRailContent: {
@@ -1121,11 +1197,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   eventCenterEntry: {
     alignItems: "center",
     flexDirection: "row",
-    gap: spacing.md,
+    gap: 2,
+    flexShrink: 1,
     minHeight: 44,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: 0,
     backgroundColor: "transparent",
-    paddingVertical: spacing.md
+    paddingVertical: 4
   },
   eventCenterEntryCopy: {
     flex: 1,
@@ -1146,10 +1223,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     width: 40
   },
   eventCenterEntryTitle: {
-    color: colors.ink,
-    flex: 1,
-    fontSize: typography.body,
-    fontWeight: "800",
+    color: colors.accent,
+    flexShrink: 1,
+    fontFamily: eventFont,
+    fontSize: 13,
+    fontWeight: "700",
     lineHeight: 20
   },
   eventImageList: {
@@ -1291,44 +1369,48 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   eventList: {
     backgroundColor: "transparent",
-    paddingVertical: spacing.md
+    paddingVertical: 0
   },
   eventRow: {
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.border2,
     borderBottomWidth: 1,
     flexDirection: "row",
-    gap: spacing.md,
-    minHeight: 108,
+    gap: 14,
+    minHeight: 99,
     backgroundColor: "transparent",
-    paddingVertical: spacing.md
+    paddingVertical: 14
   },
   eventRowContent: {
     flex: 1,
-    gap: spacing.xxs,
-    justifyContent: "center",
+    gap: 3,
     minWidth: 0
   },
   eventRowDate: {
-    color: colors.accent,
-    ...textStyles.small
+    color: colors.ink,
+    fontFamily: eventFont,
+    fontSize: 12,
+    lineHeight: 17
   },
   eventRowFooter: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.sm,
+    alignItems: "flex-end",
+    flexShrink: 0,
+    gap: 3,
     justifyContent: "space-between"
   },
   eventRowImageFrame: {
     backgroundColor: colors.surface3,
-    width: 88,
-    height: 76,
-    borderRadius: radius.card
+    width: 92,
+    height: 70,
+    flexShrink: 0,
+    borderRadius: 8
   },
   eventRowLocation: {
     color: colors.text3,
     flex: 1,
     minWidth: 0,
-    ...textStyles.small
+    fontFamily: eventFont,
+    fontSize: 12,
+    lineHeight: 17
   },
   eventRowMeta: {
     alignItems: "center",
@@ -1337,13 +1419,19 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 0
   },
   eventRowStatus: {
-    color: colors.text2,
-    flex: 1,
-    ...textStyles.small
+    color: colors.accent,
+    fontFamily: eventFont,
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "700"
   },
   eventRowTitle: {
     color: colors.ink,
-    ...textStyles.listTitle
+    fontFamily: eventFont,
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: "800",
+    letterSpacing: -0.15
   },
   recommendationAction: {
     color: colors.text,
@@ -1540,7 +1628,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   sectionTitle: {
     color: colors.ink,
-    ...textStyles.section
+    fontFamily: eventFont,
+    fontSize: 15,
+    lineHeight: 21,
+    fontWeight: "800"
   },
   statusBadge: {
     alignSelf: "flex-start",

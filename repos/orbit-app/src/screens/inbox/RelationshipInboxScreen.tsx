@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -268,6 +269,13 @@ export function RelationshipInboxScreen() {
           notificationsData={
             notificationsState.kind === "success" ? notificationsState.data : null
           }
+          notificationsError={
+            notificationsState.kind === "failure" || notificationsState.kind === "offline"
+              ? relationshipInboxErrorText(notificationsState.error.message, "提醒暂时不可用。")
+              : ""
+          }
+          notificationsLoading={notificationsState.kind === "loading"}
+          onRefreshNotifications={notificationsState.refresh}
           onOpenConversation={openConversation}
           onSetCreatedThread={setCreatedThread}
           onRefreshSignals={signalsState.refresh}
@@ -367,44 +375,50 @@ function InboxLayout({ children, title, refreshControl, onCompose, onBack, hideB
 }>) {
   const { colors, styles } = useStyles();
   const router = useRouter();
+  const { fontScale } = useWindowDimensions();
+  const canGoBack = router.canGoBack();
   return (
     <SafeAreaView edges={["top"]} style={styles.inboxSafeArea}>
+      <View style={styles.mailToolbar}>
+        <View style={styles.toolbarSide}>
+          {!hideBack ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={onBack || canGoBack ? "返回" : "首页"}
+              onPress={onBack ?? (() => canGoBack
+                ? router.back()
+                : router.replace("/home" as Href))}
+              style={({ pressed }) => [styles.toolbarButton, pressed && styles.pressed]}
+            >
+              <Ionicons color={colors.accent} name="chevron-back" size={18} />
+              <Text style={styles.toolbarText}>{onBack || canGoBack ? "返回" : "首页"}</Text>
+            </Pressable>
+          ) : null}
+        </View>
+        <Text accessibilityRole="header" style={styles.mailTitle}>
+          {fontScale > 1.3 && title === "草稿预览" ? "草稿\n预览" : title}
+        </Text>
+        <View style={[styles.toolbarSide, styles.toolbarEnd]}>
+          {onCompose ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="写消息"
+              onPress={onCompose}
+              style={({ pressed }) => [styles.toolbarButton, pressed && styles.pressed]}
+            >
+              <Text style={styles.toolbarComposeText}>写消息</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </View>
       <ScrollView
         automaticallyAdjustKeyboardInsets
         contentContainerStyle={styles.inboxCanvas}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
         refreshControl={refreshControl}
+        style={styles.inboxScroll}
       >
-        {!hideBack ? (
-          <View style={styles.mailToolbar}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="返回"
-              onPress={onBack ?? (() => router.canGoBack()
-                ? router.back()
-                : router.replace("/ai" as Href))}
-              style={({ pressed }) => [styles.toolbarButton, pressed && styles.pressed]}
-            >
-              <Ionicons color={colors.accent} name="chevron-back" size={23} />
-              <Text style={styles.toolbarText}>返回</Text>
-            </Pressable>
-            {onCompose ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="写消息"
-                onPress={onCompose}
-                style={({ pressed }) => [styles.toolbarButton, pressed && styles.pressed]}
-              >
-                <Ionicons color={colors.accent} name="create-outline" size={23} />
-                <Text style={styles.toolbarText}>写消息</Text>
-              </Pressable>
-            ) : null}
-          </View>
-        ) : null}
-        <Text accessibilityRole="header" style={styles.mailTitle}>
-          {title}
-        </Text>
         {children}
       </ScrollView>
     </SafeAreaView>
@@ -496,8 +510,11 @@ function InboxContent({
   createdThread,
   data,
   notificationsData,
+  notificationsError,
+  notificationsLoading,
   onOpenConversation,
   onSetCreatedThread,
+  onRefreshNotifications,
   onRefreshSignals,
   seed,
   signalsData,
@@ -511,8 +528,11 @@ function InboxContent({
   createdThread: RelationshipCreatedThreadView | null;
   data: unknown;
   notificationsData: unknown;
+  notificationsError: string;
+  notificationsLoading: boolean;
   onOpenConversation: (conversationId: string) => void;
   onSetCreatedThread: (thread: RelationshipCreatedThreadView | null) => void;
+  onRefreshNotifications: () => void;
   onRefreshSignals: () => void;
   seed: { contactId: string; organization: string; participantName: string };
   signalsData: unknown;
@@ -521,6 +541,7 @@ function InboxContent({
   setComposing: (value: boolean) => void;
 }) {
   const { colors, styles } = useStyles();
+  const { fontScale } = useWindowDimensions();
   const view = relationshipInboxToView(data);
   const alertsView = relationshipAlertsToView(notificationsData);
   const signalsView = relationshipSignalsToView(signalsData);
@@ -595,13 +616,18 @@ function InboxContent({
 
   return (
     <View style={styles.mailContent}>
+      <InboxSegmentedControl
+        activeSection={activeSection}
+        alertCount={visibleAlerts.length + signalCount}
+        onChange={setActiveSection}
+      />
       {activeSection === "threads" ? (
         <View style={styles.searchBox}>
           <Ionicons color={colors.text3} name="search-outline" size={20} />
           <TextInput
             accessibilityLabel="搜索姓名、主题或内容"
             onChangeText={setQuery}
-            placeholder="搜索姓名、主题或内容"
+            placeholder={fontScale > 1.3 ? "搜索消息" : "搜索姓名、主题或内容"}
             placeholderTextColor={colors.text3}
             returnKeyType="search"
             style={styles.searchInput}
@@ -609,11 +635,6 @@ function InboxContent({
           />
         </View>
       ) : null}
-      <InboxSegmentedControl
-        activeSection={activeSection}
-        alertCount={visibleAlerts.length + signalCount}
-        onChange={setActiveSection}
-      />
 
       {activeSection === "alerts" ? (
         <>
@@ -626,7 +647,14 @@ function InboxContent({
               view={signalsView}
             />
           ) : null}
-          <AlertsCard
+          {notificationsLoading ? (
+            <Text style={styles.resourceStatus}>正在读取提醒。</Text>
+          ) : notificationsError ? (
+            <View style={styles.remindersPane}>
+              <Text accessibilityRole="alert" style={styles.errorText}>{notificationsError}</Text>
+              <ActionButton icon="refresh-outline" label="重试读取提醒" onPress={onRefreshNotifications} variant="secondary" />
+            </View>
+          ) : <AlertsCard
             onDismissAlert={(id) =>
               setDismissedAlertIds((current) => {
                 const next = new Set(current);
@@ -635,7 +663,7 @@ function InboxContent({
               })
             }
             view={visibleAlertsView}
-          />
+          />}
         </>
       ) : null}
 
@@ -664,6 +692,7 @@ function RelationshipSignalsCard({
   view: RelationshipSignalsView;
 }) {
   const { colors, styles } = useStyles();
+  const { fontScale } = useWindowDimensions();
   const [pendingSignalId, setPendingSignalId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmation, setConfirmation] =
@@ -705,7 +734,7 @@ function RelationshipSignalsCard({
   }
 
   return (
-    <DataCard detail={view.summary} title="关系线索">
+    <DataCard detail={loading || error ? "" : view.summary} title="关系线索">
       {loading ? <Text style={styles.threadPreview}>正在读取关系线索。</Text> : null}
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
       {actionError ? <Text style={styles.errorText}>{actionError}</Text> : null}
@@ -723,19 +752,19 @@ function RelationshipSignalsCard({
         <View style={styles.listStack}>
           {view.signals.map((signal) => (
             <View key={signal.id} style={styles.alertRow}>
-              <View style={styles.threadRowTop}>
-                <Text numberOfLines={1} style={styles.threadName}>
+              <View style={[styles.alertRowTop, fontScale > 1.3 && styles.alertRowTopLarge]}>
+                <Text style={styles.alertTitle}>
                   {signal.title}
                 </Text>
-                <Text style={styles.threadTime}>{signal.occurredAt}</Text>
+                <Text style={[styles.alertTime, fontScale > 1.3 && styles.alertTimeLarge]}>{signal.occurredAt}</Text>
               </View>
-              <Text numberOfLines={1} style={styles.threadSubject}>
+              <Text style={styles.alertDetail}>
                 {signal.metaLine}
               </Text>
-              <Text numberOfLines={2} style={styles.threadPreview}>
+              <Text style={styles.threadPreview}>
                 {signal.context}
               </Text>
-              <Text numberOfLines={2} style={styles.threadPreview}>
+              <Text style={styles.threadPreview}>
                 {signal.evidenceExcerpt}
               </Text>
               <View style={styles.tagsRow}>
@@ -757,13 +786,13 @@ function RelationshipSignalsCard({
             </View>
           ))}
         </View>
-      ) : (
+      ) : !loading && !error ? (
         <View style={styles.emptyInboxSection}>
           <Ionicons color={colors.text3} name="trail-sign-outline" size={22} />
           <Text style={styles.emptyInboxTitle}>暂无关系线索</Text>
           <Text style={styles.threadPreview}>{view.emptyText}</Text>
         </View>
-      )}
+      ) : null}
       <Text style={styles.safetyText}>{view.safetyText}</Text>
     </DataCard>
   );
@@ -865,6 +894,7 @@ function AlertsCard({
   view: RelationshipAlertsView;
 }) {
   const { colors, styles } = useStyles();
+  const { fontScale } = useWindowDimensions();
   return (
     <View style={styles.remindersPane}>
       <Text style={styles.threadPreview}>忽略仅对本次查看生效。</Text>
@@ -872,14 +902,14 @@ function AlertsCard({
         <View style={styles.listStack}>
           {view.alerts.map((alert) => (
             <View key={alert.id} style={styles.alertRow}>
-              <View style={styles.threadRowTop}>
-                <Text numberOfLines={1} style={styles.threadName}>
+              <View style={[styles.alertRowTop, fontScale > 1.3 && styles.alertRowTopLarge]}>
+                <Text style={styles.alertTitle}>
                   {alert.title}
                 </Text>
-                <Text style={styles.threadTime}>{alert.dueLabel}</Text>
+                <Text style={[styles.alertTime, fontScale > 1.3 && styles.alertTimeLarge]}>{alert.dueLabel}</Text>
               </View>
               {alert.detail ? (
-                <Text numberOfLines={2} style={styles.threadPreview}>
+                <Text style={styles.alertDetail}>
                   {alert.detail}
                 </Text>
               ) : null}
@@ -925,6 +955,7 @@ function ConversationList({
   query: string;
 }) {
   const { colors, styles } = useStyles();
+  const { fontScale } = useWindowDimensions();
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const visibleConversations = normalizedQuery
     ? conversations.filter((conversation) =>
@@ -954,21 +985,20 @@ function ConversationList({
                 pressed ? styles.pressed : null
               ]}
             >
-              <View style={styles.threadRowTop}>
+              <View style={styles.unreadGutter}>
                 {conversation.unreadCount > 0 ? (
                   <Ionicons color={colors.accent} name="ellipse" size={8} />
                 ) : null}
-                <Text numberOfLines={1} style={styles.threadName}>
-                  {conversation.name}
-                </Text>
-                <Text style={styles.threadTime}>{conversation.lastAt}</Text>
               </View>
-              <Text numberOfLines={1} style={styles.threadSubject}>
-                {conversation.subject}
-              </Text>
-              <Text numberOfLines={2} style={styles.threadPreview}>
-                {conversation.preview}
-              </Text>
+              <View style={[styles.listRowBody, fontScale > 1.3 && styles.listRowBodyLarge]}>
+                <View style={[styles.listCopy, fontScale > 1.3 && styles.listCopyLarge]}>
+                  <Text style={[styles.listHeadline, conversation.unreadCount > 0 && styles.listHeadlineUnread]}>
+                    <Text>{conversation.name}</Text>{" · "}<Text>{conversation.subject}</Text>
+                  </Text>
+                  <Text style={styles.listPreview}>{conversation.preview}</Text>
+                </View>
+                <Text style={[styles.listDate, fontScale > 1.3 && styles.listDateLarge]}>{conversation.lastAt}</Text>
+              </View>
             </Pressable>
           ))
         ) : (
@@ -1541,34 +1571,48 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingBottom: layout.contentBottom,
     paddingHorizontal: layout.pageInset
   },
+  inboxScroll: { flex: 1 },
   mailToolbar: {
     alignItems: "center",
+    alignSelf: "center",
     flexDirection: "row",
-    justifyContent: "space-between",
-    minHeight: 52,
-    marginHorizontal: -6
+    minHeight: 48,
+    maxWidth: layout.contentMax,
+    paddingHorizontal: 16,
+    paddingVertical: 2,
+    width: "100%"
   },
+  toolbarSide: { width: "28%", alignItems: "flex-start" },
+  toolbarEnd: { alignItems: "flex-end" },
   toolbarButton: {
     alignItems: "center",
     flexDirection: "row",
     gap: 4,
     minHeight: 44,
-    paddingHorizontal: 4
+    minWidth: 44,
+    maxWidth: "100%",
+    justifyContent: "center"
   },
   toolbarText: {
     color: colors.accent,
-    fontSize: 17
+    fontSize: 14,
+    lineHeight: 20,
+    flexShrink: 1
   },
+  toolbarComposeText: { color: colors.accent, fontSize: 13, fontWeight: "700", lineHeight: 20, flexShrink: 1 },
   mailTitle: {
-    ...textStyles.pageTitle,
     color: colors.ink,
-    marginBottom: 12,
-    marginTop: 10
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "800",
+    lineHeight: 22,
+    textAlign: "center"
   },
   mailContent: { gap: 0 },
   mailList: { gap: 0 },
   readingPane: { gap: 20 },
   remindersPane: { gap: 12, paddingTop: 16 },
+  resourceStatus: { color: colors.text3, fontSize: 14, lineHeight: 21, paddingTop: 16 },
   readingSubject: { ...textStyles.title, color: colors.ink },
   mailMessage: {
     borderBottomColor: colors.border,
@@ -1597,11 +1641,17 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.text2
   },
   alertRow: {
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: spacing.xs,
-    paddingVertical: spacing.md
+    borderBottomColor: colors.border2,
+    borderBottomWidth: 1,
+    gap: 3,
+    paddingVertical: 14
   },
+  alertRowTop: { alignItems: "flex-start", flexDirection: "row", gap: 12 },
+  alertRowTopLarge: { flexDirection: "column", gap: 3 },
+  alertTitle: { color: colors.ink, flex: 1, minWidth: 0, fontSize: 15, fontWeight: "700", lineHeight: 21 },
+  alertDetail: { color: colors.text3, fontSize: 12, lineHeight: 18 },
+  alertTime: { color: colors.text3, fontSize: 12, lineHeight: 18, maxWidth: 116 },
+  alertTimeLarge: { maxWidth: "100%" },
   alertDismissButton: {
     alignItems: "center",
     backgroundColor: colors.surface,
@@ -1754,12 +1804,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm,
     minHeight: 44,
     paddingHorizontal: spacing.md,
-    borderRadius: radius.input
+    borderRadius: radius.input,
+    marginTop: 12
   },
   searchInput: {
     color: colors.text,
     flex: 1,
-    fontSize: 16,
+    fontSize: 14,
+    lineHeight: 20,
     minWidth: 0,
     minHeight: 44,
     paddingVertical: 0
@@ -1769,32 +1821,36 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     borderBottomColor: "transparent",
     borderBottomWidth: 2,
     flexDirection: "row",
-    gap: 6,
+    gap: 4,
     justifyContent: "center",
     minHeight: 44,
-    paddingHorizontal: 12
+    minWidth: 44
   },
   segmentButtonActive: {
-    borderBottomColor: colors.accent
+    borderBottomColor: colors.ink
   },
   segmentButtonText: {
     color: colors.text3,
-    fontSize: 16,
-    fontWeight: "500"
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "400"
   },
   segmentButtonTextActive: {
-    color: colors.accent
+    color: colors.ink,
+    fontWeight: "800"
   },
   segmentCount: {
-    color: colors.text3,
-    fontSize: 14
+    color: colors.accent,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "800"
   },
   segmentedControl: {
     borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 1,
     flexDirection: "row",
     marginTop: 8,
-    gap: spacing.lg
+    gap: 22
   },
   singleInput: {
     backgroundColor: colors.surface,
@@ -1844,12 +1900,24 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 21
   },
   threadRow: {
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: 8,
-    minHeight: 126,
-    paddingVertical: 22
+    alignItems: "flex-start",
+    borderBottomColor: colors.border2,
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    gap: 12,
+    minHeight: 44,
+    paddingVertical: 14
   },
+  unreadGutter: { width: 8, paddingTop: 7 },
+  listRowBody: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "flex-start", gap: 12 },
+  listRowBodyLarge: { flexDirection: "column", gap: 3 },
+  listCopy: { flex: 1, minWidth: 0, gap: 3 },
+  listCopyLarge: { flex: 0, width: "100%" },
+  listHeadline: { color: colors.ink, fontSize: 15, fontWeight: "400", lineHeight: 21 },
+  listHeadlineUnread: { fontWeight: "700" },
+  listPreview: { color: colors.text3, fontSize: 12, lineHeight: 18 },
+  listDate: { color: colors.text3, fontSize: 12, lineHeight: 18, maxWidth: 90 },
+  listDateLarge: { maxWidth: "100%" },
   threadRowTop: {
     alignItems: "center",
     flexDirection: "row",

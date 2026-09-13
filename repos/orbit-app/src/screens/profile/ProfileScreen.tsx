@@ -2,22 +2,28 @@ import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { type Href, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  View
+  View,
+  useWindowDimensions
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import type { MobileAuthUser } from "../../api/mobile-auth";
 import {
   ORBIT_API_ENDPOINTS,
   profileUpdateSuggestionAcceptPath
 } from "../../api/endpoints";
-import { AppScreen } from "../../components/AppScreen";
+import { profileContactsCount, profileDetailSchema, profileExtractionReceiptSchema, profileSaveReceiptSchema, profileSuggestionReceiptSchema, profileSuggestionsSchema, profileTodayTasksCount, profileUpcomingScheduleCount,
+  type AcceptedProfileSuggestion, type ProfileDetail, type ProfileExtraction, type ProfileSaveRequest, type ProfileSuggestions } from "../../api/profile-detail-contract";
+import { validateApiResourceState } from "../../api/validated-resource-state";
+import { OrbitTabBar } from "../../components/OrbitTabBar";
 import { DataCard } from "../../components/DataCard";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
@@ -32,8 +38,6 @@ import {
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { profileSummaryForMobileUser } from "../../view-models/mobile-profile";
 import {
-  applyProfileAcceptedPatchToDraft,
-  applyProfileDocumentExtractionToDraft,
   buildProfileDocumentExtractionRequest,
   buildProfileUpdateRequest,
   profileAcceptedPatchToView,
@@ -51,11 +55,98 @@ import {
   type ProfileSummary
 } from "../../view-models/profile";
 
-export function ProfileScreen() {
+type ProfileDraft = ProfileManualEditDraft & { targetRelationshipTypesText: string; preferredFollowUpWindow: string; preferredIntroChannelsText: string };
+type SaveProfile = (draft: ProfileDraft, isDraftCurrent: () => boolean) => Promise<boolean>;
+type DraftChanged = (field: keyof ProfileDraft, quiet?: boolean) => void;
+const suggestionDraftFields = { headline: "headline", homeMarket: "timezone", relationshipGoal: "relationshipGoal", targetRelationshipTypes: "targetRelationshipTypesText", preferredFollowUpWindow: "preferredFollowUpWindow", preferredIntroChannels: "preferredIntroChannelsText" } as const;
+const suggestionFieldLabels = { headline: "标题", homeMarket: "主要市场", relationshipGoal: "关系目标", targetRelationshipTypes: "目标关系类型", preferredFollowUpWindow: "联系时间", preferredIntroChannels: "介绍渠道" } as const;
+
+function profileBusinessText(value: string): string {
+  const text = value.trim();
+  // Exact service-authored explanations, never a keyword filter on user data.
+  const copy: Record<string, string> = {
+    "The strongest generated relationship graph edges cluster around operators, founders, and community introduction paths.": "近期关系记录主要涉及运营者、创始人和社群引荐。",
+    "Recent chat notes repeatedly frame Orbit's value around concrete follow-up decisions.": "最近的交流多次提到希望明确下一步联系安排。",
+    "Recent interaction memory includes follow-up requests, so the operator should review a shorter follow-up window.": "近期交流中有继续联系的请求，可以考虑更早联系。",
+    "High confidence because the mock resume fixture includes a name, role, market, and relationship goal.": "识别到了姓名、职位、市场和关系目标，请逐项核对。",
+    "Medium confidence because the mock business card fixture has clear identity fields but lighter relationship context.": "身份信息较清楚，关系背景仍需补充。",
+    "No profile draft was produced because the mock resume fixture is empty.": "未提供可提取的原文，暂时没有资料草稿。",
+    "The mock business card is queued for manual review before an onboarding draft is available.": "这张名片正在等待复核，资料草稿尚未就绪。",
+    "Image extraction is not available in this profile form because no document bytes were uploaded.": "此处尚未读取图片内容，请粘贴原文。",
+    "Chat signal": "聊天记录", "Activity signal": "活动记录", "Contact signal": "人脉记录",
+    "Paste source text before extracting profile fields.": "请先粘贴需要提取的原文。",
+    "No explicit supported fields were found; unlabeled prose is not guessed into profile data.": "没有识别到明确的资料字段，请给原文补充字段名称。",
+    "Use the contact import hub for business-card scanning.": "需要扫描名片时，请使用人脉导入入口。",
+    "Paste structured profile text with explicit field labels.": "请粘贴带有姓名、公司等字段名称的原文。",
+    "Add labels such as 姓名、公司、职位、市场、关系目标、联系方式 and try again.": "请补上姓名、公司、职位、市场、关系目标或联系方式等字段名称，再试一次。",
+    "Review every extracted field in the form before saving the profile.": "请在编辑表单中逐项核对后保存资料。",
+    "Review the extracted profile draft before using it to personalize relationship follow-up.": "请先核对提取草稿，再决定是否用于后续联系。",
+    "Confirm the card owner and add context from the event before creating follow-up tasks.": "先确认名片归属并补充交流背景，再安排后续联系。",
+    "Add a resume document or paste profile text before extracting onboarding fields.": "请粘贴简历原文后再提取资料。",
+    "Keep the card in review until the operator confirms which lines should become profile fields.": "请继续复核名片，确认哪些内容需要放入资料。",
+    "Review each suggestion before applying any change to the profile.": "逐条核对来源，再决定是否放入编辑表单。",
+    "Apply this patch only after the operator confirms the profile save.": "这些改动尚未保存，请检查编辑表单后另行保存。"
+  };
+  if (Object.prototype.hasOwnProperty.call(copy, text)) return copy[text]!;
+  const count = /^(\d+) explicit profile fields were extracted with (?:high|medium|low) confidence\.$/u.exec(text);
+  return count ? `识别到 ${count[1]} 项资料，请逐项核对。` : text;
+}
+
+function profileDraftFromDetail(data: ProfileDetail): ProfileDraft {
+  return { ...profileSummaryToEditDraft(profileToSummary(data)), targetRelationshipTypesText: data.profile?.targetRelationshipTypes.join("\n") ?? "",
+    preferredFollowUpWindow: data.profile?.preferredFollowUpWindow ?? "", preferredIntroChannelsText: data.profile?.preferredIntroChannels.join("\n") ?? "" };
+}
+
+function profileDraftToRequest(draft: ProfileDraft, data: ProfileDetail): ProfileSaveRequest | null {
+  const request = buildProfileUpdateRequest(draft);
+  if (!request) return null;
+  const result: ProfileSaveRequest = { ...request,
+    targetRelationshipTypes: draft.targetRelationshipTypesText.split(/\n|,|，|、/u).map(value => value.trim()).filter(Boolean),
+    preferredFollowUpWindow: draft.preferredFollowUpWindow.trim(),
+    preferredIntroChannels: draft.preferredIntroChannelsText.split(/\n|,|，|、/u).map(value => value.trim()).filter(Boolean) };
+  // Sparse public fields that were never present or filled in remain absent.
+  for (const field of ["bio", "industry", "offering", "seeking", "topics"] as const) {
+    if (data.profile?.[field] === undefined && !result[field]?.length) delete result[field];
+  }
+  return result;
+}
+
+function useProfileOperation(scopeKey: string, isScopeCurrent: () => boolean) {
+  const scope = useMemo(() => ({ scopeKey }), [scopeKey]);
+  const latest = useRef(scope); latest.current = scope;
+  const parent = useRef(isScopeCurrent); parent.current = isScopeCurrent;
+  const mounted = useRef(true);
+  const request = useRef<AbortController | null>(null);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; request.current?.abort(); request.current = null; };
+  }, [scope]);
+  const isCurrent = () => mounted.current && latest.current === scope && parent.current();
+  return {
+    isCurrent,
+    start() { if (!isCurrent() || request.current) return null; const controller = new AbortController(); request.current = controller; return controller; },
+    owns(controller: AbortController) { return isCurrent() && request.current === controller && !controller.signal.aborted; },
+    finish(controller: AbortController) { if (request.current === controller) request.current = null; }
+  };
+}
+
+export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => true }: { scopeKey?: string; isScopeCurrent?: () => boolean } = {}) {
   const { colors, styles } = useStyles();
   const router = useRouter();
   const auth = useOrbitAuthSession();
-  const client = useOrbitApiClient();
+  const mounted = useRef(true);
+  const parentScope = useRef(isScopeCurrent);
+  parentScope.current = isScopeCurrent;
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const readScope = JSON.stringify([scopeKey, refreshKey]);
+  const scope = useMemo(() => ({ readScope }), [readScope]);
+  const latestScope = useRef(scope); latestScope.current = scope;
+  const current = () => mounted.current && parentScope.current() && latestScope.current === scope;
+  const saveOperation = useProfileOperation(readScope, current);
+  const suggestionOperation = useProfileOperation(readScope, current);
+  const extractionOperation = useProfileOperation(readScope, current);
+  const client = useOrbitApiClient({ scopeKey: readScope });
   const [acceptingSuggestionId, setAcceptingSuggestionId] = useState<
     string | null
   >(null);
@@ -65,7 +156,7 @@ export function ProfileScreen() {
   const [suggestionActionMessage, setSuggestionActionMessage] = useState<
     string | null
   >(null);
-  const [acceptedProfilePatch, setAcceptedProfilePatch] = useState<unknown>(null);
+  const [acceptedProfilePatch, setAcceptedProfilePatch] = useState<AcceptedProfileSuggestion | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileActionError, setProfileActionError] = useState<string | null>(
     null
@@ -79,43 +170,71 @@ export function ProfileScreen() {
     string | null
   >(null);
   const [profileExtractionResult, setProfileExtractionResult] =
-    useState<unknown>(null);
+    useState<ProfileExtraction | null>(null);
+  const latestExtraction = useRef(profileExtractionResult); latestExtraction.current = profileExtractionResult;
+  const fieldRevisions = useRef<Partial<Record<keyof ProfileDraft, number>>>({});
   const [appliedProfileExtraction, setAppliedProfileExtraction] =
-    useState<unknown>(null);
-  const state = useApiResource<unknown>(ORBIT_API_ENDPOINTS.profile, () => false);
-  const suggestionsState = useApiResource<unknown>(
+    useState<ProfileExtraction | null>(null);
+  const state = validateApiResourceState(useApiResource<unknown>(ORBIT_API_ENDPOINTS.profile, () => false, { scopeKey: readScope }), profileDetailSchema);
+  const [suggestionAttempt, setSuggestionAttempt] = useState(0);
+  const suggestionsResource = validateApiResourceState(useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.profileUpdateSuggestions,
-    (data) => profileUpdateSuggestionsToView(data).suggestions.length === 0
-  );
+    () => false,
+    { scopeKey: JSON.stringify([readScope, suggestionAttempt]) }
+  ), profileSuggestionsSchema);
+  const suggestionsState = { ...suggestionsResource, refresh: () => { if (current()) setSuggestionAttempt(value => value + 1); } };
+  const loadedData = state.kind === "success" || state.kind === "empty" ? state.data : null;
+  const [savedData, setSavedData] = useState<{ scope: string; data: ProfileDetail } | null>(null);
+  const lastData = useRef<ProfileDetail | null>(null);
+  const freshData = savedData?.scope === readScope ? savedData.data : loadedData;
+  if (freshData) lastData.current = freshData;
+  const data = freshData ?? lastData.current;
+  const canEdit = loadedData !== null && loadedData.state !== "pending" && (loadedData.state === "empty" || loadedData.editor.canSave);
+  const editable = useRef(canEdit); editable.current = canEdit;
+  const canAct = () => current() && editable.current;
+
+  useEffect(() => {
+    setAcceptingSuggestionId(null); setSavingProfile(false); setExtractingProfileDocumentKind(null);
+    setSuggestionActionError(null); setSuggestionActionMessage(null); setAcceptedProfilePatch(null);
+    setProfileActionError(null); setProfileActionMessage(null); setProfileExtractionError(null);
+    setProfileExtractionResult(null); setAppliedProfileExtraction(null);
+  }, [readScope]);
 
   async function onAcceptSuggestion(id: string) {
+    if (!canAct() || (suggestionsState.kind !== "success" && suggestionsState.kind !== "empty") || suggestionsState.data.state !== "success") return;
+    const suggestion = suggestionsState.data.suggestions.find(item => item.id === id && item.status === "pending");
+    if (!suggestion) return;
+    const field = suggestionDraftFields[suggestion.targetProfileField];
+    const revision = fieldRevisions.current[field] ?? 0;
+    const controller = suggestionOperation.start();
+    if (!controller) return;
     setAcceptingSuggestionId(id);
     setSuggestionActionError(null);
     setSuggestionActionMessage(null);
 
     try {
       const result = await client.post<unknown>(
-        profileUpdateSuggestionAcceptPath(id)
+        profileUpdateSuggestionAcceptPath(id), { signal: controller.signal }
       );
-
-      if (!result.success) {
-        setSuggestionActionError(
-          result.error.message || "这条建议暂时确认不了，请刷新后再试。"
-        );
+      if (!suggestionOperation.owns(controller)) return;
+      const receipt = result.success && result.status >= 200 && result.status < 300 ? profileSuggestionReceiptSchema(suggestion).safeParse(result.data) : null;
+      if (!receipt?.success) {
+        setSuggestionActionError("这条建议尚未确认，请重试。");
         return;
       }
 
-      setAcceptedProfilePatch(result.data);
-      setSuggestionActionMessage("建议已放进编辑表单。检查后保存资料。");
+      if ((fieldRevisions.current[field] ?? 0) === revision) {
+        setAcceptedProfilePatch(receipt.data);
+        setSuggestionActionMessage("建议已放进编辑表单。检查后保存资料。");
+      } else {
+        setSuggestionActionMessage(`${suggestionFieldLabels[suggestion.targetProfileField]}已有新的编辑，建议未覆盖这项改动。`);
+      }
       suggestionsState.refresh();
-    } catch (error) {
-      setSuggestionActionError(
-        error instanceof Error
-          ? error.message
-          : "这条建议暂时确认不了，请刷新后再试。"
-      );
+    } catch {
+      if (suggestionOperation.owns(controller)) setSuggestionActionError("这条建议尚未确认，请重试。");
     } finally {
-      setAcceptingSuggestionId(null);
+      if (suggestionOperation.owns(controller)) setAcceptingSuggestionId(null);
+      suggestionOperation.finish(controller);
     }
   }
 
@@ -123,45 +242,45 @@ export function ProfileScreen() {
     kind: ProfileDocumentExtractionKind,
     input: ProfileDocumentExtractionInput
   ) {
+    if (!canAct()) return;
     const request = buildProfileDocumentExtractionRequest(kind, input);
 
     if (!request) {
-      setProfileExtractionError("先粘贴一段内容，或选择一张名片/简历图片。");
+      setProfileExtractionError("先粘贴需要提取的原文。");
       setProfileExtractionResult(null);
       return;
     }
+    const controller = extractionOperation.start();
+    if (!controller) return;
 
     setExtractingProfileDocumentKind(kind);
     setAppliedProfileExtraction(null);
     setProfileExtractionError(null);
+    latestExtraction.current = null;
     setProfileExtractionResult(null);
 
     try {
       const result = await client.post<unknown>(request.endpoint, {
-        body: request.body
+        body: request.body, signal: controller.signal
       });
-
-      if (!result.success) {
-        setProfileExtractionError(
-          result.error.message || "这段资料暂时提取不了，请换一段再试。"
-        );
+      if (!extractionOperation.owns(controller)) return;
+      const receipt = result.success && result.status >= 200 && result.status < 300 ? profileExtractionReceiptSchema(kind).safeParse(result.data) : null;
+      if (!receipt?.success) {
+        setProfileExtractionError("提取结果尚未确认，请重试。");
         return;
       }
 
-      setProfileExtractionResult(result.data);
-    } catch (error) {
-      setProfileExtractionError(
-        error instanceof Error
-          ? error.message
-          : "这段资料暂时提取不了，请换一段再试。"
-      );
+      setProfileExtractionResult(receipt.data);
+    } catch {
+      if (extractionOperation.owns(controller)) setProfileExtractionError("提取结果尚未确认，请重试。");
     } finally {
-      setExtractingProfileDocumentKind(null);
+      if (extractionOperation.owns(controller)) setExtractingProfileDocumentKind(null);
+      extractionOperation.finish(controller);
     }
   }
 
   function onApplyProfileExtraction() {
-    if (!profileExtractionResult) {
+    if (!canAct() || latestExtraction.current !== profileExtractionResult || profileExtractionResult?.state !== "success" || !profileExtractionResult.draft) {
       return;
     }
 
@@ -170,14 +289,17 @@ export function ProfileScreen() {
     setProfileActionMessage("提取结果已放进编辑表单。检查后保存资料。");
   }
 
-  async function onSaveProfile(draft: ProfileManualEditDraft) {
-    const request = buildProfileUpdateRequest(draft);
+  async function onSaveProfile(draft: ProfileDraft, isDraftCurrent: () => boolean): Promise<boolean> {
+    if (!canAct() || !data) return false;
+    const request = profileDraftToRequest(draft, data);
 
     if (!request) {
       setProfileActionError("先写名字。");
       setProfileActionMessage(null);
-      return;
+      return false;
     }
+    const controller = saveOperation.start();
+    if (!controller) return false;
 
     setSavingProfile(true);
     setProfileActionError(null);
@@ -185,37 +307,36 @@ export function ProfileScreen() {
 
     try {
       const result = await client.put<unknown>(ORBIT_API_ENDPOINTS.profile, {
-        body: request
+        body: request, signal: controller.signal
       });
-
-      if (!result.success) {
-        setProfileActionError(
-          result.error.message || "资料暂时保存不了，请刷新后再试。"
-        );
-        return;
+      if (!saveOperation.owns(controller)) return false;
+      const receipt = result.success && result.status >= 200 && result.status < 300 ? profileSaveReceiptSchema(data.profile?.id ?? null, request).safeParse(result.data) : null;
+      if (!receipt?.success) {
+        setProfileActionError("资料尚未确认保存，请重试。");
+        return false;
       }
 
-      setProfileActionMessage("资料已保存。");
+      setSavedData({ scope: readScope, data: receipt.data });
+      if (isDraftCurrent()) setProfileActionMessage("资料已保存。");
       setAcceptedProfilePatch(null);
       setAppliedProfileExtraction(null);
-      state.refresh();
-    } catch (error) {
-      setProfileActionError(
-        error instanceof Error
-          ? error.message
-          : "资料暂时保存不了，请刷新后再试。"
-      );
+      return true;
+    } catch {
+      if (saveOperation.owns(controller)) setProfileActionError("资料尚未确认保存，请重试。");
+      return false;
     } finally {
-      setSavingProfile(false);
+      if (saveOperation.owns(controller)) setSavingProfile(false);
+      saveOperation.finish(controller);
     }
   }
 
   return (
-    <AppScreen
-      eyebrow="通用档案"
-      refreshControl={
+    <SafeAreaView edges={["top"]} style={styles.page}>
+      <ScrollView contentContainerStyle={styles.pageContent} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
+        refreshControl={
         <RefreshControl
           onRefresh={() => {
+            if (!current()) return;
             setSuggestionActionError(null);
             setSuggestionActionMessage(null);
             setAcceptedProfilePatch(null);
@@ -224,15 +345,19 @@ export function ProfileScreen() {
             setProfileActionMessage(null);
             setProfileExtractionError(null);
             setProfileExtractionResult(null);
-            state.refresh();
-            suggestionsState.refresh();
+            setRefreshKey(value => value + 1);
           }}
           refreshing={state.refreshing || suggestionsState.refreshing}
           tintColor={colors.accent}
         />
-      }
-      title="个人资料"
-    >
+        }
+      >
+      <View style={styles.pageHeader}>
+        <Text accessibilityRole="header" style={styles.pageTitle}>我的</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel="设置" onPress={() => { if (current()) router.push("/settings" as Href); }} style={({ pressed }) => [styles.settingsButton, pressed && styles.pressed]}>
+          <Ionicons name="sunny-outline" size={20} color={colors.ink} />
+        </Pressable>
+      </View>
       {!auth.ready ? <LoadingState /> : null}
       {auth.ready && !auth.signedIn ? (
         <DataCard
@@ -258,27 +383,37 @@ export function ProfileScreen() {
           </Pressable>
         </DataCard>
       ) : null}
-      {auth.signedIn && state.kind === "loading" ? <LoadingState /> : null}
-      {auth.signedIn && state.kind === "offline" ? (
-        <ErrorState message={state.error.message} title="服务器连不上" />
+      {auth.signedIn && state.kind === "loading" ? <Text accessibilityLiveRegion="polite" style={styles.pageNotice}>正在读取个人资料</Text> : null}
+      {auth.signedIn && loadedData?.state === "pending" ? <Text accessibilityLiveRegion="polite" style={styles.pageNotice}>个人资料正在等待复核，暂时不能保存。</Text> : null}
+      {auth.signedIn && (state.kind === "offline" || state.kind === "failure") ? (
+        <View style={styles.pageNotice}>
+          <Text accessibilityRole="alert" style={styles.profileActionError}>个人资料未能读取</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel="重试个人资料" onPress={() => { if (current()) setRefreshKey(value => value + 1); }} style={styles.profileExtractionButton}>
+            <Text style={styles.profileExtractionButtonText}>重试个人资料</Text>
+          </Pressable>
+        </View>
       ) : null}
-      {auth.signedIn && state.kind === "failure" ? (
-        <ErrorState message={state.error.message} />
-      ) : null}
-      {auth.signedIn &&
-      (state.kind === "success" || state.kind === "empty") ? (
+      {auth.signedIn && data ? (
         <ProfileCard
+          scopeKey={readScope}
+          isScopeCurrent={current}
+          canEdit={canEdit}
+          onDraftChanged={(field, quiet) => {
+            if (!current()) return;
+            fieldRevisions.current[field] = (fieldRevisions.current[field] ?? 0) + 1;
+            if (!quiet) { setProfileActionError(null); setProfileActionMessage(null); }
+          }}
           acceptingSuggestionId={acceptingSuggestionId}
           actionError={suggestionActionError}
           actionMessage={suggestionActionMessage}
           acceptedProfilePatch={acceptedProfilePatch}
           appliedProfileExtraction={appliedProfileExtraction}
           authUser={auth.user}
-          data={state.data}
+          data={data}
           onAcceptSuggestion={onAcceptSuggestion}
           onApplyExtraction={onApplyProfileExtraction}
           onExtractProfileDocument={onExtractProfileDocument}
-          onOpenAccount={() => router.push("/account" as Href)}
+          onOpenAccount={() => { if (current()) router.push("/account" as Href); }}
           onSaveProfile={onSaveProfile}
           profileExtractionError={profileExtractionError}
           profileExtractionResult={profileExtractionResult}
@@ -289,11 +424,17 @@ export function ProfileScreen() {
           suggestionsState={suggestionsState}
         />
       ) : null}
-    </AppScreen>
+      </ScrollView>
+      <OrbitTabBar active="profile" />
+    </SafeAreaView>
   );
 }
 
 function ProfileCard({
+  scopeKey,
+  isScopeCurrent,
+  canEdit,
+  onDraftChanged,
   acceptingSuggestionId,
   actionError,
   actionMessage,
@@ -314,13 +455,17 @@ function ProfileCard({
   savingProfile,
   suggestionsState
 }: {
+  scopeKey: string;
+  isScopeCurrent: () => boolean;
+  canEdit: boolean;
+  onDraftChanged: DraftChanged;
   acceptingSuggestionId: string | null;
   actionError: string | null;
   actionMessage: string | null;
-  acceptedProfilePatch: unknown;
-  appliedProfileExtraction: unknown;
+  acceptedProfilePatch: AcceptedProfileSuggestion | null;
+  appliedProfileExtraction: ProfileExtraction | null;
   authUser: MobileAuthUser | null;
-  data: unknown;
+  data: ProfileDetail;
   onAcceptSuggestion: (id: string) => void;
   onApplyExtraction: () => void;
   onExtractProfileDocument: (
@@ -328,16 +473,18 @@ function ProfileCard({
     input: ProfileDocumentExtractionInput
   ) => void;
   onOpenAccount: () => void;
-  onSaveProfile: (draft: ProfileManualEditDraft) => void;
+  onSaveProfile: SaveProfile;
   profileDocumentExtractionKind: ProfileDocumentExtractionKind | null;
   profileExtractionError: string | null;
-  profileExtractionResult: unknown;
+  profileExtractionResult: ProfileExtraction | null;
   profileActionError: string | null;
   profileActionMessage: string | null;
   savingProfile: boolean;
-  suggestionsState: ApiResourceState<unknown>;
+  suggestionsState: ApiResourceState<ProfileSuggestions>;
 }) {
   const { styles } = useStyles();
+  const [editing, setEditing] = useState(false);
+  const [editorMounted, setEditorMounted] = useState(false);
   const storedProfile = profileToSummary(data);
   const displayProfile = profileSummaryForMobileUser(
     storedProfile,
@@ -346,61 +493,89 @@ function ProfileCard({
 
   return (
     <>
-      <OrbitBusinessCard profile={displayProfile} />
-      {displayProfile.bio ? (
-        <DataCard detail="别人会先看到这段介绍" title="一句话简介">
-          <Text style={styles.bodyText}>{displayProfile.bio}</Text>
-        </DataCard>
-      ) : null}
+      {!editing ? <>
+        <OrbitBusinessCard profile={displayProfile} onEdit={() => { if (isScopeCurrent()) { setEditorMounted(true); setEditing(true); } }} />
+        <ProfileStatistics scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} />
+        {!storedProfile.displayName ? <Text style={styles.pageNotice}>尚未填写个人资料</Text> : null}
+        <View style={styles.basicSection}>
+          <Text accessibilityRole="header" style={styles.sectionTitle}>基本资料</Text>
+          <View style={styles.basicRows}>
+            {[["行业", displayProfile.industry], ["公司", displayProfile.organization], ["职位", displayProfile.role], ["简介", displayProfile.bio]].map(([label, value], index) => (
+              <View key={label} style={[styles.basicRow, index === 3 && styles.bioRow]}>
+                <Text style={styles.basicLabel}>{label}</Text>
+                <Text style={[styles.basicValue, index === 3 && styles.bioValue]}>{value || "未填写"}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+        <View style={styles.previewTags}>
+          <Text accessibilityRole="header" style={styles.sectionTitle}>我能提供 · 我想寻找 · 想聊的话题</Text>
+          <View style={styles.previewTagGroups}>
+            {[["我能提供", displayProfile.offering], ["我想寻找", displayProfile.seeking], ["想聊的话题", displayProfile.topics]].map(([label, values], index) => (
+              <View key={label as string} accessibilityLabel={label as string} style={styles.previewTagGroup}>
+                {(values as string[]).map((item, itemIndex) => <Text key={itemIndex} style={[styles.previewTag, index === 0 && styles.offeringTag]}>{item}</Text>)}
+              </View>
+            ))}
+          </View>
+        </View>
+        <Pressable accessibilityRole="button" accessibilityLabel="账号与工作区" onPress={onOpenAccount} style={({ pressed }) => [styles.accountRow, pressed && styles.pressed]}>
+          <Text style={styles.accountTitle}>账号与工作区</Text>
+          <Ionicons name="chevron-forward" size={16} color={styles.basicLabel.color} />
+        </Pressable>
+        {displayProfile.relationshipGoal ? <View style={styles.extraSection}><Text style={styles.sectionTitle}>关系目标</Text><Text style={styles.bodyText}>{displayProfile.relationshipGoal}</Text></View> : null}
+      </> : <Pressable accessibilityRole="button" accessibilityLabel="返回资料预览" onPress={() => { if (isScopeCurrent()) setEditing(false); }} style={styles.previewBack}>
+        <Text style={styles.profileExtractionButtonText}>返回资料预览</Text>
+      </Pressable>}
+      {editorMounted ? <View style={[styles.editorSections, !editing && styles.hidden]}>
       <ProfileManualEditCard
         actionError={profileActionError}
         actionMessage={profileActionMessage}
         acceptedPatch={acceptedProfilePatch}
         appliedProfileExtraction={appliedProfileExtraction}
         onSave={onSaveProfile}
-        profile={storedProfile}
+        data={data}
+        isScopeCurrent={isScopeCurrent}
+        canEdit={canEdit}
+        onDraftChanged={onDraftChanged}
         saving={savingProfile}
       />
       <ProfileDocumentExtractionCard
+        scopeKey={scopeKey}
+        isScopeCurrent={isScopeCurrent}
+        canEdit={canEdit}
         actionError={profileExtractionError}
         extractingKind={profileDocumentExtractionKind}
         onApplyExtraction={onApplyExtraction}
         onExtract={onExtractProfileDocument}
         result={profileExtractionResult}
       />
-      <DataCard
-        detail="登录状态、工作区、身份"
-        onPress={onOpenAccount}
-        title="账号与工作区"
-      >
-        <Text style={styles.bodyText}>
-          确认别人看到的是你本人，以及这个工作区要优先连接哪些资源。
-        </Text>
-      </DataCard>
       <ProfileUpdateSuggestionsCard
+        canEdit={canEdit}
+        isScopeCurrent={isScopeCurrent}
         acceptingSuggestionId={acceptingSuggestionId}
         actionError={actionError}
         actionMessage={actionMessage}
         onAcceptSuggestion={onAcceptSuggestion}
         state={suggestionsState}
       />
-      <ProfileTagSection items={displayProfile.offering} title="我能提供" />
-      <ProfileTagSection items={displayProfile.seeking} title="我想寻求" />
-      <ProfileTagSection items={displayProfile.topics} title="想聊的话题" />
-      {displayProfile.relationshipGoal ? (
-        <DataCard detail={displayProfile.relationshipGoal} title="关系目标" />
-      ) : null}
+      </View> : null}
     </>
   );
 }
 
 function ProfileDocumentExtractionCard({
+  scopeKey,
+  isScopeCurrent,
+  canEdit,
   actionError,
   extractingKind,
   onApplyExtraction,
   onExtract,
   result
 }: {
+  scopeKey: string;
+  isScopeCurrent: () => boolean;
+  canEdit: boolean;
   actionError: string | null;
   extractingKind: ProfileDocumentExtractionKind | null;
   onApplyExtraction: () => void;
@@ -408,13 +583,29 @@ function ProfileDocumentExtractionCard({
     kind: ProfileDocumentExtractionKind,
     input: ProfileDocumentExtractionInput
   ) => void;
-  result: unknown;
+  result: ProfileExtraction | null;
 }) {
   const { styles } = useStyles();
   const [sourceText, setSourceText] = useState("");
   const [pickerError, setPickerError] = useState<string | null>(null);
-  const view = result ? profileDocumentExtractionToView(result) : null;
-  const actionDisabled = extractingKind !== null;
+  const [pickerPending, setPickerPending] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<{ kind: ProfileDocumentExtractionKind; fileName: string; mimeType: string } | null>(null);
+  const editable = useRef(canEdit); editable.current = canEdit;
+  const source = useRef(sourceText); source.current = sourceText;
+  const picker = useProfileOperation(scopeKey, isScopeCurrent);
+  const baseView = result ? profileDocumentExtractionToView(result) : null;
+  const fieldLabels: Record<string, string> = { displayName: "姓名", headline: "标题", homeMarket: "主要市场", relationshipGoal: "关系目标", targetRelationshipTypes: "目标关系", preferredFollowUpWindow: "联系时间", preferredIntroChannels: "介绍渠道", organization: "公司", role: "角色", email: "邮箱", phone: "电话", website: "网站" };
+  const view = baseView && result ? { ...baseView, summary: profileBusinessText(result.confidenceSummary), nextAction: profileBusinessText(result.nextAction),
+    stateLabel: result.state === "pending" ? "处理中" : baseView.stateLabel,
+    draft: baseView.draft && result.draft ? { ...baseView.draft,
+      displayName: result.draft.displayName || "未识别姓名", metaLine: [result.draft.role, result.draft.organization].filter(Boolean).join(" · "),
+      relationshipGoal: result.draft.relationshipGoal,
+      suggestedFields: Object.entries(result.draft.suggestedProfileFields).map(([field, value]) => ({ label: fieldLabels[field] ?? "资料字段", value: Array.isArray(value) ? value.join("、") : value ?? "" })).filter(field => field.value),
+      evidence: result.draft.evidence.map(item => ({ label: Object.prototype.hasOwnProperty.call(fieldLabels, item.field) ? fieldLabels[item.field]! : "资料字段", excerpt: item.excerpt }))
+    } : null } : null;
+  const actionDisabled = !canEdit || extractingKind !== null || pickerPending;
+  const actionsBusy = useRef(actionDisabled); actionsBusy.current = actionDisabled;
+  useEffect(() => { setPickerPending(false); setPickerError(null); }, [scopeKey]);
   const resumeDocumentTypes = [
     "application/pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -422,10 +613,9 @@ function ProfileDocumentExtractionCard({
   ];
 
   async function pickProfileDocumentImage(kind: ProfileDocumentExtractionKind) {
-    if (actionDisabled) {
-      return;
-    }
-
+    if (actionsBusy.current || !editable.current) return;
+    const controller = picker.start(); if (!controller) return;
+    setPickerPending(true);
     setPickerError(null);
 
     try {
@@ -434,7 +624,7 @@ function ProfileDocumentExtractionCard({
         mediaTypes: ["images"],
         quality: 0.86
       });
-
+      if (!picker.owns(controller)) return;
       if (result.canceled) {
         return;
       }
@@ -446,25 +636,21 @@ function ProfileDocumentExtractionCard({
         return;
       }
 
-      onExtract(kind, {
-        fileName:
-          asset.fileName ||
-          (kind === "business-card" ? "business-card.jpg" : "resume.jpg"),
-        mimeType: asset.mimeType || "image/jpeg",
-        text: sourceText
-      });
-    } catch (error) {
-      setPickerError(
-        error instanceof Error ? error.message : "这张图片暂时读取不了。"
-      );
+      const file = { kind, fileName: asset.fileName || (kind === "business-card" ? "business-card.jpg" : "resume.jpg"), mimeType: asset.mimeType || "image/jpeg" };
+      setSelectedFile(file);
+      if (source.current.trim() && editable.current) onExtract(kind, { fileName: file.fileName, mimeType: file.mimeType, text: source.current });
+    } catch {
+      if (picker.owns(controller)) setPickerError("这张图片暂时读取不了，请重试。");
+    } finally {
+      if (picker.owns(controller)) setPickerPending(false);
+      picker.finish(controller);
     }
   }
 
   async function pickProfileDocumentFile() {
-    if (actionDisabled) {
-      return;
-    }
-
+    if (actionsBusy.current || !editable.current) return;
+    const controller = picker.start(); if (!controller) return;
+    setPickerPending(true);
     setPickerError(null);
 
     try {
@@ -473,7 +659,7 @@ function ProfileDocumentExtractionCard({
         multiple: false,
         type: resumeDocumentTypes
       });
-
+      if (!picker.owns(controller)) return;
       if (result.canceled) {
         return;
       }
@@ -485,25 +671,26 @@ function ProfileDocumentExtractionCard({
         return;
       }
 
-      onExtract("resume", {
-        fileName: asset.name || "resume.pdf",
-        mimeType: asset.mimeType || "application/pdf",
-        text: sourceText
-      });
-    } catch (error) {
-      setPickerError(
-        error instanceof Error ? error.message : "这份文件暂时读取不了。"
-      );
+      const file = { kind: "resume" as const, fileName: asset.name || "resume.pdf", mimeType: asset.mimeType || "application/pdf" };
+      setSelectedFile(file);
+      if (source.current.trim() && editable.current) onExtract("resume", { fileName: file.fileName, mimeType: file.mimeType, text: source.current });
+    } catch {
+      if (picker.owns(controller)) setPickerError("这份文件暂时读取不了，请重试。");
+    } finally {
+      if (picker.owns(controller)) setPickerPending(false);
+      picker.finish(controller);
     }
   }
 
   return (
     <DataCard detail="提取结果只用于复核，不会直接修改个人资料" title="补全资料" variant="inset">
       <View style={styles.profileExtractionStack}>
+        <Text style={styles.evidenceText}>此处提取粘贴的文本，不读取图片或 PDF 的内容。</Text>
+        {selectedFile ? <Text style={styles.bodyText}>{sourceText.trim() ? `已选择 ${selectedFile.fileName}。提取时仅使用下方原文。` : `已选择 ${selectedFile.fileName}。此处只能提取粘贴的文本，请补充原文。`}</Text> : null}
         <ProfileTextInput
           label="名片文本或简历摘要"
           multiline
-          onChangeText={setSourceText}
+          onChangeText={value => { if (picker.isCurrent()) setSourceText(value); }}
           placeholder="姓名、公司、角色、联系方式、关系目标"
           value={sourceText}
         />
@@ -515,13 +702,13 @@ function ProfileDocumentExtractionCard({
             disabled={actionDisabled}
             icon="id-card-outline"
             label={extractingKind === "business-card" ? "提取中" : "提取名片"}
-            onPress={() => onExtract("business-card", { text: sourceText })}
+            onPress={() => { if (picker.isCurrent() && !actionsBusy.current) onExtract("business-card", { text: sourceText, ...(selectedFile?.kind === "business-card" ? { fileName: selectedFile.fileName, mimeType: selectedFile.mimeType } : {}) }); }}
           />
           <ProfileExtractionButton
             disabled={actionDisabled}
             icon="document-text-outline"
             label={extractingKind === "resume" ? "提取中" : "提取简历"}
-            onPress={() => onExtract("resume", { text: sourceText })}
+            onPress={() => { if (picker.isCurrent() && !actionsBusy.current) onExtract("resume", { text: sourceText, ...(selectedFile?.kind === "resume" ? { fileName: selectedFile.fileName, mimeType: selectedFile.mimeType } : {}) }); }}
           />
           <ProfileExtractionButton
             disabled={actionDisabled}
@@ -548,6 +735,7 @@ function ProfileDocumentExtractionCard({
         {view ? (
           <ProfileDocumentExtractionResult
             onApply={onApplyExtraction}
+            canApply={canEdit && result?.state === "success"}
             view={view}
           />
         ) : null}
@@ -588,9 +776,11 @@ function ProfileExtractionButton({
 
 function ProfileDocumentExtractionResult({
   onApply,
+  canApply,
   view
 }: {
   onApply: () => void;
+  canApply: boolean;
   view: ProfileDocumentExtractionView;
 }) {
   const { colors, styles } = useStyles();
@@ -652,7 +842,7 @@ function ProfileDocumentExtractionResult({
         </View>
       ) : null}
       <Text style={styles.evidenceText}>{view.nextAction}</Text>
-      {view.draft ? (
+      {view.draft && canApply ? (
         <Pressable
           accessibilityLabel="应用到编辑表单"
           accessibilityRole="button"
@@ -678,64 +868,102 @@ function ProfileManualEditCard({
   acceptedPatch,
   appliedProfileExtraction,
   onSave,
-  profile,
+  data,
+  isScopeCurrent,
+  canEdit,
+  onDraftChanged,
   saving
 }: {
   actionError: string | null;
   actionMessage: string | null;
-  acceptedPatch: unknown;
-  appliedProfileExtraction: unknown;
-  onSave: (draft: ProfileManualEditDraft) => void;
-  profile: ProfileSummary;
+  acceptedPatch: AcceptedProfileSuggestion | null;
+  appliedProfileExtraction: ProfileExtraction | null;
+  onSave: SaveProfile;
+  data: ProfileDetail;
+  isScopeCurrent: () => boolean;
+  canEdit: boolean;
+  onDraftChanged: DraftChanged;
   saving: boolean;
 }) {
   const { colors, styles } = useStyles();
-  const profileFingerprint = [
-    profile.bio,
-    profile.displayName,
-    profile.headline,
-    profile.industry,
-    profile.offering.join("\n"),
-    profile.organization,
-    profile.relationshipGoal,
-    profile.role,
-    profile.seeking.join("\n"),
-    profile.timezone,
-    profile.topics.join("\n")
-  ].join("\u001f");
-  const [draft, setDraft] = useState<ProfileManualEditDraft>(() =>
-    profileSummaryToEditDraft(profile)
-  );
+  const profileFingerprint = JSON.stringify(data.profile);
+  const [draft, setDraft] = useState<ProfileDraft>(() => profileDraftFromDetail(data));
+  const dirtyDraft = useRef(false);
+  const draftRevision = useRef(0);
+  const latestDraft = useRef(draft); latestDraft.current = draft;
+  const editable = useRef(canEdit); editable.current = canEdit;
   const acceptedPatchView = acceptedPatch
-    ? profileAcceptedPatchToView(acceptedPatch)
+    ? { ...profileAcceptedPatchToView(acceptedPatch), nextAction: profileBusinessText(acceptedPatch.nextAction),
+      fields: profileAcceptedPatchToView(acceptedPatch).fields.map((field, index) => {
+        const value = acceptedPatch.profilePatch[acceptedPatch.appliedFields[index]!];
+        return { ...field, value: Array.isArray(value) ? value.join("、") : value ?? "" };
+      }) }
     : null;
 
   useEffect(() => {
-    setDraft(profileSummaryToEditDraft(profile));
+    if (!dirtyDraft.current) setDraft(profileDraftFromDetail(data));
   }, [profileFingerprint]);
 
   useEffect(() => {
     if (acceptedPatch) {
-      setDraft((current) =>
-        applyProfileAcceptedPatchToDraft(current, acceptedPatch)
-      );
+      dirtyDraft.current = true; draftRevision.current++;
+      const patch = acceptedPatch.profilePatch;
+      for (const field of acceptedPatch.appliedFields) onDraftChanged(suggestionDraftFields[field], true);
+      setDraft(current => ({ ...current,
+        ...(patch.headline !== undefined && { headline: patch.headline }),
+        ...(patch.homeMarket !== undefined && { timezone: patch.homeMarket }),
+        ...(patch.relationshipGoal !== undefined && { relationshipGoal: patch.relationshipGoal }),
+        ...(patch.targetRelationshipTypes !== undefined && { targetRelationshipTypesText: patch.targetRelationshipTypes.join("\n") }),
+        ...(patch.preferredFollowUpWindow !== undefined && { preferredFollowUpWindow: patch.preferredFollowUpWindow }),
+        ...(patch.preferredIntroChannels !== undefined && { preferredIntroChannelsText: patch.preferredIntroChannels.join("\n") })
+      }));
     }
   }, [acceptedPatch]);
 
   useEffect(() => {
-    if (appliedProfileExtraction) {
-      setDraft((current) =>
-        applyProfileDocumentExtractionToDraft(current, appliedProfileExtraction)
-      );
+    const extracted = appliedProfileExtraction?.state === "success" ? appliedProfileExtraction.draft : null;
+    if (extracted) {
+      dirtyDraft.current = true; draftRevision.current++;
+      const fields = extracted.suggestedProfileFields;
+      for (const field of ["displayName", "organization", "role"] as const) if (extracted[field]) onDraftChanged(field, true);
+      for (const field of Object.keys(suggestionDraftFields) as Array<keyof typeof suggestionDraftFields>) {
+        const value = fields[field] ?? extracted[field];
+        if (value?.length) onDraftChanged(suggestionDraftFields[field], true);
+      }
+      setDraft(current => ({ ...current,
+        ...(extracted.displayName && { displayName: extracted.displayName }),
+        ...(extracted.organization && { organization: extracted.organization }),
+        ...(extracted.role && { role: extracted.role }),
+        ...((fields.headline || extracted.headline) && { headline: fields.headline || extracted.headline }),
+        ...((fields.homeMarket || extracted.homeMarket) && { timezone: fields.homeMarket || extracted.homeMarket }),
+        ...((fields.relationshipGoal || extracted.relationshipGoal) && { relationshipGoal: fields.relationshipGoal || extracted.relationshipGoal }),
+        ...((fields.targetRelationshipTypes ?? extracted.targetRelationshipTypes).length > 0 && { targetRelationshipTypesText: (fields.targetRelationshipTypes ?? extracted.targetRelationshipTypes).join("\n") }),
+        ...((fields.preferredFollowUpWindow || extracted.preferredFollowUpWindow) && { preferredFollowUpWindow: fields.preferredFollowUpWindow || extracted.preferredFollowUpWindow }),
+        ...((fields.preferredIntroChannels ?? extracted.preferredIntroChannels).length > 0 && { preferredIntroChannelsText: (fields.preferredIntroChannels ?? extracted.preferredIntroChannels).join("\n") })
+      }));
     }
   }, [appliedProfileExtraction]);
 
-  function updateDraft(field: keyof ProfileManualEditDraft, value: string) {
+  function updateDraft(field: keyof ProfileDraft, value: string) {
+    if (!isScopeCurrent()) return;
+    dirtyDraft.current = true; draftRevision.current++;
+    onDraftChanged(field);
     setDraft((current) => ({
       ...current,
       [field]: value
     }));
   }
+
+  async function saveDraft() {
+    if (!isScopeCurrent() || !editable.current || !dirtyDraft.current) return;
+    const revision = draftRevision.current;
+    const isDraftCurrent = () => isScopeCurrent() && draftRevision.current === revision;
+    if (await onSave(latestDraft.current, isDraftCurrent) && isDraftCurrent()) {
+      dirtyDraft.current = false;
+      setDraft(current => ({ ...current }));
+    }
+  }
+  const saveDisabled = saving || !canEdit || !dirtyDraft.current;
 
   return (
     <DataCard detail="保存后同步到 web 个人资料" title="编辑对外资料" variant="inset">
@@ -779,6 +1007,9 @@ function ProfileManualEditCard({
           onChangeText={(value) => updateDraft("relationshipGoal", value)}
           value={draft.relationshipGoal}
         />
+        <ProfileTextInput label="目标关系类型" multiline onChangeText={value => updateDraft("targetRelationshipTypesText", value)} value={draft.targetRelationshipTypesText} placeholder="一行一种关系" />
+        <ProfileTextInput label="联系时间" onChangeText={value => updateDraft("preferredFollowUpWindow", value)} value={draft.preferredFollowUpWindow} />
+        <ProfileTextInput label="介绍渠道" multiline onChangeText={value => updateDraft("preferredIntroChannelsText", value)} value={draft.preferredIntroChannelsText} placeholder="一行一种渠道" />
         {actionMessage ? (
           <Text style={styles.profileActionMessage}>{actionMessage}</Text>
         ) : null}
@@ -788,11 +1019,11 @@ function ProfileManualEditCard({
         <Pressable
           accessibilityLabel="保存资料"
           accessibilityRole="button"
-          disabled={saving}
-          onPress={() => onSave(draft)}
+          disabled={saveDisabled}
+          onPress={() => { void saveDraft(); }}
           style={({ pressed }) => [
             styles.profileSaveButton,
-            saving ? styles.profileSaveButtonDisabled : null,
+            saveDisabled ? styles.profileSaveButtonDisabled : null,
             pressed ? styles.pressed : null
           ]}
         >
@@ -896,72 +1127,98 @@ function BusinessCardTagRow({
   );
 }
 
-function OrbitBusinessCard({ profile }: { profile: ProfileSummary }) {
-  const { styles } = useStyles();
+function OrbitBusinessCard({ profile, onEdit }: { profile: ProfileSummary; onEdit: () => void }) {
+  const { colors, styles } = useStyles();
   const card = profileBusinessCard(profile);
+  const { width, fontScale } = useWindowDimensions();
+  const narrow = width < 360 || fontScale > 1.2;
 
   return (
-    <View style={styles.businessCard}>
-      <View style={styles.businessCardHeader}>
-        <View style={styles.businessCardAvatar}>
-          <Text style={styles.businessCardInitial}>{card.initial}</Text>
+    <View style={[styles.profileIdentity, narrow && styles.profileIdentityNarrow]}>
+      <View style={styles.profileIdentityMain}>
+        <View testID="profile-avatar" style={styles.profileAvatar}>
+          <Text style={styles.profileInitial}>{card.initial}</Text>
         </View>
-        <Text style={styles.businessCardMark}>ORBIT</Text>
-      </View>
-      <View style={styles.businessCardIdentity}>
-        <Text
-          style={styles.businessCardName}
-        >
-          {card.name}
-        </Text>
-        {card.headline ? (
-          <Text
-            style={styles.businessCardHeadline}
-          >
-            {card.headline}
-          </Text>
-        ) : null}
-        {card.metaLine ? (
-          <Text
-            style={styles.businessCardMeta}
-          >
-            {card.metaLine}
-          </Text>
-        ) : null}
-      </View>
-      {card.offering.values.length > 0 || card.seeking.values.length > 0 ? (
-        <View style={styles.businessCardTagStack}>
-          <BusinessCardTagRow group={card.offering} label="提供" />
-          <BusinessCardTagRow group={card.seeking} label="寻找" />
+        <View style={styles.profileIdentityText}>
+          <Text style={styles.profileName}>{card.name}</Text>
+          {profile.role || profile.organization ? <Text style={styles.profileMeta}>{[profile.role, profile.organization].filter(Boolean).join(" · ")}</Text> : card.headline ? <Text style={styles.profileMeta}>{card.headline}</Text> : null}
+          {profile.timezone ? <Text style={styles.profileLocation}>{profile.timezone}</Text> : null}
         </View>
-      ) : null}
+      </View>
+      <Pressable accessibilityRole="button" accessibilityLabel="编辑资料" onPress={onEdit} style={({ pressed }) => [styles.profileEditLink, pressed && styles.pressed]}>
+        <Text style={styles.profileEditText}>编辑资料</Text><Ionicons name="chevron-forward" size={14} color={colors.accent} />
+      </Pressable>
     </View>
   );
 }
 
+function ProfileStatistics({ scopeKey, isScopeCurrent }: { scopeKey: string; isScopeCurrent: () => boolean }) {
+  const { styles } = useStyles();
+  const { width, fontScale } = useWindowDimensions();
+  const narrow = width < 360 || fontScale > 1.2;
+  return <View style={[styles.statistics, narrow && styles.statisticsNarrow]}>
+    <ProfileStatistic label="人脉" path={ORBIT_API_ENDPOINTS.contacts} href="/contacts" count={profileContactsCount} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} first narrow={narrow} />
+    <ProfileStatistic label="今日待办" path={ORBIT_API_ENDPOINTS.tasks + "?status=open"} href="/tasks" count={profileTodayTasksCount} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} narrow={narrow} />
+    <ProfileStatistic label="近期日程" path={ORBIT_API_ENDPOINTS.scheduleItems} href="/schedule" count={profileUpcomingScheduleCount} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} narrow={narrow} />
+  </View>;
+}
+
+function ProfileStatistic({ label, path, href, count, scopeKey, isScopeCurrent, first = false, narrow }: {
+  label: string; path: string; href: Href; count: (data: unknown) => number | null; scopeKey: string; isScopeCurrent: () => boolean; first?: boolean; narrow: boolean;
+}) {
+  const { styles } = useStyles();
+  const router = useRouter();
+  const [attempt, setAttempt] = useState(0);
+  const state = useApiResource<unknown>(path, () => false, { scopeKey: JSON.stringify([scopeKey, path, attempt]) });
+  const value = state.kind === "success" || state.kind === "empty" ? count(state.data) : null;
+  const cellStyles = [styles.statistic, narrow && styles.statisticNarrow, !first && !narrow && styles.statisticNext, !first && narrow && styles.statisticNextNarrow];
+  if (value !== null) return <Pressable accessibilityRole="button" accessibilityLabel={label + " " + value} onPress={() => { if (isScopeCurrent()) router.push(href); }} style={({ pressed }) => [...cellStyles, pressed && styles.pressed]}>
+    <Text style={styles.statisticValue}>{value}</Text><Text style={styles.statisticLabel}>{label}</Text>
+  </Pressable>;
+  return <View style={cellStyles}>
+    <Text accessibilityRole={state.kind === "loading" ? "text" : "alert"} accessibilityLiveRegion="polite" style={styles.statisticState}>{state.kind === "loading" ? "读取中" : "未读到"}</Text>
+    <Text style={styles.statisticLabel}>{label}</Text>
+    {state.kind !== "loading" ? <Pressable accessibilityRole="button" accessibilityLabel={"重试" + label} onPress={() => { if (isScopeCurrent()) setAttempt(value => value + 1); }} style={styles.statisticRetry}><Text style={styles.profileEditText}>重试</Text></Pressable> : null}
+  </View>;
+}
+
 function ProfileUpdateSuggestionsCard({
+  canEdit,
+  isScopeCurrent,
   acceptingSuggestionId,
   actionError,
   actionMessage,
   onAcceptSuggestion,
   state
 }: {
+  canEdit: boolean;
+  isScopeCurrent: () => boolean;
   acceptingSuggestionId: string | null;
   actionError: string | null;
   actionMessage: string | null;
   onAcceptSuggestion: (id: string) => void;
-  state: ApiResourceState<unknown>;
+  state: ApiResourceState<ProfileSuggestions>;
 }) {
   const { colors, styles } = useStyles();
-  if (state.kind !== "success" && state.kind !== "empty") {
-    return null;
+  const data = state.kind === "success" || state.kind === "empty" ? state.data : null;
+  const notice = state.kind === "loading" ? "正在读取资料建议" : !data ? "资料建议未能读取"
+    : data.state === "pending" ? "资料建议正在准备" : data.state === "empty" || data.suggestions.length === 0 ? "暂无资料建议" : null;
+  if (notice) {
+    return <DataCard title="资料更新建议">
+      <Text accessibilityRole={!data && state.kind !== "loading" ? "alert" : "text"} style={styles.bodyText}>{notice}</Text>
+      {actionError ? <Text accessibilityRole="alert" style={styles.suggestionActionError}>{actionError}</Text> : null}
+      {actionMessage ? <Text style={styles.suggestionActionMessage}>{actionMessage}</Text> : null}
+      {state.kind !== "loading" ? <ProfileExtractionButton disabled={!isScopeCurrent()} icon="refresh-outline" label="重试资料建议" onPress={() => { if (isScopeCurrent()) state.refresh(); }} /> : null}
+    </DataCard>;
   }
-
-  const view = profileUpdateSuggestionsToView(state.data);
-
-  if (view.suggestions.length === 0) {
-    return null;
-  }
+  if (!data) return null;
+  const baseView = profileUpdateSuggestionsToView(data);
+  const view = { ...baseView, nextAction: profileBusinessText(data.nextAction), suggestions: baseView.suggestions.map((view, index) => {
+    const item = data.suggestions[index]!;
+    return { ...view, canAccept: canEdit && view.canAccept, currentValue: Array.isArray(item.currentValue) ? item.currentValue.join("、") : item.currentValue,
+      suggestedValue: Array.isArray(item.suggestedValue) ? item.suggestedValue.join("、") : item.suggestedValue,
+      sourceLabel: profileBusinessText(item.sourceLabel), rationale: profileBusinessText(item.rationale), evidenceExcerpt: item.evidence.map(evidence => profileBusinessText(evidence.excerpt)).join("\n") };
+  }) };
 
   return (
     <DataCard detail={`${view.stateLabel} · ${view.nextAction}`} title="资料更新建议">
@@ -1058,6 +1315,52 @@ function ProfileTagSection({
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
+  page: { flex: 1, backgroundColor: colors.surface },
+  pageContent: { alignSelf: "center", width: "100%", maxWidth: 820, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 140 },
+  pageHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, minHeight: 44 },
+  pageTitle: { color: colors.ink, fontSize: 30, lineHeight: 38, fontWeight: "900", letterSpacing: -0.6, flexShrink: 1 },
+  settingsButton: { width: 44, height: 44, borderRadius: 10, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
+  profileIdentity: { marginTop: 20, flexDirection: "row", alignItems: "center", gap: 8 },
+  profileIdentityNarrow: { flexDirection: "column", alignItems: "stretch" },
+  profileIdentityMain: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 16 },
+  profileIdentityText: { flex: 1, minWidth: 0 },
+  profileAvatar: { width: 72, height: 72, borderRadius: 36, flexShrink: 0, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
+  profileInitial: { color: colors.onAccent, fontSize: 26, lineHeight: 32, fontWeight: "800" },
+  profileName: { color: colors.ink, fontSize: 24, lineHeight: 31, fontWeight: "900", letterSpacing: -0.48 },
+  profileMeta: { color: colors.text3, fontSize: 13, lineHeight: 19, marginTop: 2 },
+  profileLocation: { color: colors.text4, fontSize: 12, lineHeight: 18, marginTop: 2 },
+  profileEditLink: { minHeight: 44, minWidth: 44, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", flexShrink: 0 },
+  profileEditText: { color: colors.accent, fontSize: 13, lineHeight: 19, fontWeight: "700", flexShrink: 1 },
+  statistics: { marginTop: 20, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border, flexDirection: "row" },
+  statisticsNarrow: { flexDirection: "column" },
+  statistic: { width: "33.333333%", minWidth: 0, minHeight: 76, paddingVertical: 14, paddingHorizontal: 0, justifyContent: "center" },
+  statisticNarrow: { width: "100%" },
+  statisticNext: { borderLeftWidth: 1, borderLeftColor: colors.border, paddingHorizontal: 16 },
+  statisticNextNarrow: { borderTopWidth: 1, borderTopColor: colors.border },
+  statisticValue: { color: colors.ink, fontSize: 26, lineHeight: 26, fontWeight: "800", letterSpacing: -0.78 },
+  statisticLabel: { color: colors.text3, fontSize: 11, lineHeight: 16, marginTop: 6 },
+  statisticState: { color: colors.text3, fontSize: 12, lineHeight: 18 },
+  statisticRetry: { minHeight: 44, minWidth: 44, alignItems: "flex-start", justifyContent: "center" },
+  basicSection: { marginTop: 20 },
+  sectionTitle: { color: colors.ink, fontSize: 15, lineHeight: 21, fontWeight: "800" },
+  basicRows: { marginTop: 4 },
+  basicRow: { flexDirection: "row", paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: colors.border2 },
+  basicLabel: { color: colors.text4, fontSize: 14, lineHeight: 20, width: 72, flexShrink: 0 },
+  basicValue: { color: colors.ink, fontSize: 14, lineHeight: 20, fontWeight: "500", flex: 1, minWidth: 0 },
+  bioRow: { borderBottomWidth: 0 },
+  bioValue: { lineHeight: 22, fontWeight: "400" },
+  previewTags: { marginTop: 14 },
+  previewTagGroups: { marginTop: 10, flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  previewTagGroup: { flexDirection: "row", flexWrap: "wrap", gap: 8, maxWidth: "100%", minWidth: 0 },
+  previewTag: { color: colors.ink, fontSize: 12, lineHeight: 18, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12, maxWidth: "100%", overflow: "hidden" },
+  offeringTag: { backgroundColor: colors.ink, borderColor: colors.ink, color: colors.onAccent, fontWeight: "600" },
+  accountRow: { marginTop: 20, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border, paddingVertical: 14, minHeight: 49, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  accountTitle: { color: colors.ink, fontSize: 14, lineHeight: 20, fontWeight: "600", flexShrink: 1 },
+  extraSection: { marginTop: 20, gap: 8 },
+  pageNotice: { marginTop: 20, color: colors.text3, fontSize: 14, lineHeight: 22, gap: 12 },
+  editorSections: { marginTop: 20, gap: 20 },
+  previewBack: { marginTop: 16, minHeight: 44, justifyContent: "center", alignSelf: "flex-start" },
+  hidden: { display: "none" },
   bodyText: {
     ...textStyles.body,
     color: colors.text,

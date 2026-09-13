@@ -1,6 +1,6 @@
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, RefreshControl } from "react-native";
+import { Alert, RefreshControl, useWindowDimensions } from "react-native";
 
 import { eventOperationsAdminPath, eventOperationsGenerationActionPath, eventOperationsGenerationsPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
@@ -16,6 +16,7 @@ function firstParam(value: string | string[] | undefined): string {
 
 export function EventOperationsScreen() {
   const { colors } = useOrbitTheme();
+  const { fontScale } = useWindowDimensions();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const eventId = firstParam(params.id);
   const router = useRouter();
@@ -25,7 +26,9 @@ export function EventOperationsScreen() {
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const contentState: EventOperationsContentState =
-    state.kind === "failure" &&
+    state.kind === "failure" && state.status === 403
+      ? { kind: "forbidden", message: state.error.message }
+      : state.kind === "failure" &&
     state.error.context?.eventOperationsCode === "EVENT_OPERATIONS_NOT_CONFIGURED"
       ? { kind: "unconfigured" }
       : state.kind === "failure" || state.kind === "offline"
@@ -83,8 +86,8 @@ export function EventOperationsScreen() {
   }
 
   return (
-    <AppScreen eyebrow="活动运营" refreshControl={<RefreshControl onRefresh={state.refresh} refreshing={state.refreshing} tintColor={colors.accent} />} title="运营控制台">
-      <EventOperationsContent busy={busy} notice={notice} onGenerationAction={confirmGenerationAction} onOpenAnalytics={() => router.push(`/events/${encodeURIComponent(eventId)}/analytics` as Href)} onOpenCheckIn={() => router.push(`/events/${encodeURIComponent(eventId)}/operations/check-in` as Href)} onOpenExperience={() => router.push(`/events/${encodeURIComponent(eventId)}/operations/experience` as Href)} onOpenRoles={() => router.push(`/events/${encodeURIComponent(eventId)}/operations/roles` as Href)} onStartGeneration={confirmStart} state={contentState} view={view} />
+    <AppScreen refreshControl={<RefreshControl onRefresh={state.refresh} refreshing={state.refreshing} tintColor={colors.accent} />} title={fontScale > 1.3 ? "活动\n运营" : "活动运营"}>
+      <EventOperationsContent busy={busy} notice={notice} onGenerationAction={confirmGenerationAction} onOpenAnalytics={() => router.push(`/events/${encodeURIComponent(eventId)}/analytics` as Href)} onOpenCheckIn={() => router.push(`/events/${encodeURIComponent(eventId)}/operations/check-in` as Href)} onOpenEvent={() => router.push(`/events/${encodeURIComponent(eventId)}` as Href)} onOpenExperience={() => router.push(`/events/${encodeURIComponent(eventId)}/operations/experience` as Href)} onOpenRoles={() => router.push(`/events/${encodeURIComponent(eventId)}/operations/roles` as Href)} onRefresh={state.refresh} onStartGeneration={confirmStart} state={contentState} view={view} />
     </AppScreen>
   );
 }

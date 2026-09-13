@@ -1,40 +1,41 @@
 export const colors = {
-  accent: "#006DB8",
-  accentHover: "#0060A3",
-  accentPress: "#00528F",
-  accentRing: "rgba(0,109,184,0.32)",
-  accentSoft: "#E3F2FC",
-  accentSofter: "#EDF8FF",
+  accent: "#0A5CFF",
+  accentHover: "#084FDE",
+  accentPress: "#0642BC",
+  accentRing: "rgba(10,92,255,0.32)",
+  accentSoft: "#EEF3FF",
+  accentSofter: "#F5F8FF",
   amber: "#876020",
   amberSoft: "#F5EEDF",
-  bg: "#F7F6F3",
-  bgSoft: "#F7F6F3",
-  bgSunken: "#F0EFEC",
-  border: "#E5E4E0",
-  border2: "#DADBD9",
+  bg: "#FFFFFF",
+  bgSoft: "#F5F7FA",
+  bgSunken: "#EEF0F4",
+  border: "#E6E8EE",
+  border2: "#EEF0F4",
   borderStrong: "#B9BDC4",
-  canvas: "#F7F6F3",
+  canvas: "#FFFFFF",
   caution: "#876020",
-  hairline: "rgba(32,36,44,0.08)",
-  ink: "#20242C",
+  hairline: "#EEF0F4",
+  ink: "#0B1220",
   live: "#437563",
   liveSoft: "#E9F1EC",
-  muted: "#626874",
+  muted: "#6B7280",
   onAccent: "#FFFFFF",
   onImage: "#FFFFFF",
-  imageBadgeText: "#20242C",
-  rose: "#A14B5C",
+  imageBadgeText: "#0B1220",
+  rose: "#B42318",
   roseSoft: "#F7E9EC",
   sky: "#476B92",
   skySoft: "#E9EFF5",
-  surface: "#FFFEFC",
-  surface2: "#F3F3F2",
-  surface3: "#EAECEF",
-  text: "#20242C",
-  text2: "#626874",
-  text3: "#666C76",
-  text4: "#8D919A",
-  tint: "#EDF8FF"
+  surface: "#FFFFFF",
+  surface2: "#F5F7FA",
+  surface3: "#EEF0F4",
+  text: "#0B1220",
+  text2: "#3C4658",
+  // Necessary small copy uses the source's readable ink-2; ink-3 is decorative.
+  text3: "#6B7280",
+  text4: "#8B93A5",
+  tint: "#EEF3FF"
 } as const;
 
 export type OrbitColors = { readonly [Key in keyof typeof colors]: string };
@@ -81,8 +82,8 @@ export const darkColors: OrbitColors = {
 
 export const radius = {
   card: 12,
-  control: 8,
-  input: 10,
+  control: 12,
+  input: 12,
   lg: 18,
   md: 14,
   pill: 999,
@@ -105,14 +106,14 @@ export const spacing = {
 export const typography = {
   body: 15,
   caption: 12,
-  display: 28,
-  section: 18,
+  display: 30,
+  section: 15,
   small: 13,
   title: 22
 } as const;
 
 export const layout = {
-  pageInset: 22,
+  pageInset: 16,
   contentMax: 540,
   toolbar: 44,
   control: 44,
@@ -121,10 +122,10 @@ export const layout = {
 } as const;
 
 export const textStyles = {
-  pageTitle: { fontSize: typography.display, lineHeight: 36, fontWeight: "700" },
+  pageTitle: { fontSize: typography.display, lineHeight: 38, fontWeight: "900" },
   title: { fontSize: typography.title, lineHeight: 30, fontWeight: "600" },
-  section: { fontSize: typography.section, lineHeight: 26, fontWeight: "600" },
-  listTitle: { fontSize: 17, lineHeight: 24, fontWeight: "600" },
+  section: { fontSize: typography.section, lineHeight: 22, fontWeight: "800" },
+  listTitle: { fontSize: 15, lineHeight: 22, fontWeight: "700" },
   body: { fontSize: typography.body, lineHeight: 23 },
   small: { fontSize: typography.small, lineHeight: 20 },
   caption: { fontSize: typography.caption, lineHeight: 18 }
@@ -136,13 +137,13 @@ export const shadows = {
     boxShadow: "none"
   },
   subtle: {
-    elevation: 1,
-    boxShadow: "0 1px 3px rgba(18,18,28,0.05)"
+    elevation: 0,
+    boxShadow: "none"
   },
   webCard: {
     boxShadow: "none"
   },
   webSubtle: {
-    boxShadow: "0 1px 2px rgba(18,18,28,0.05)"
+    boxShadow: "none"
   }
 } as const;

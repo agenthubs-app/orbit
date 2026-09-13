@@ -22,7 +22,7 @@ test("current batch private entry and encoded detail preserve auth return contex
   }
   const next = mobileAuthReturnHref(path, { id: "batch:/ 空", tab: "upload" });
   assert.equal(next, path + "?tab=upload"); assert.equal(normalizedNext(next), next);
-  for (const suffix of ["%ZZ", "%2E", "%2E%2E", "a/extra"]) assert.equal(resolveInitialRouteHref("/contacts/new/batch2/" + suffix), "/ai");
+  for (const suffix of ["%ZZ", "%2E", "%2E%2E", "a/extra"]) assert.equal(resolveInitialRouteHref("/contacts/new/batch2/" + suffix), "/home");
 });
 
 test("legacy batch private login return preserves context and omits the path id", () => {
@@ -236,6 +236,7 @@ test("every root-level private entry uses the shared render gate", () => {
     "contacts/new/batch/[id].tsx",
     "contacts/new/batch2/[id].tsx",
     "contacts/new/batch2/index.tsx",
+    "contacts/new/import/[id].tsx",
     "contacts/pipeline.tsx",
     "dashboard.tsx",
     "events/[id]/attendees.tsx",

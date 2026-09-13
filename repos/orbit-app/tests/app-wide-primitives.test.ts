@@ -76,7 +76,7 @@ function Fixture() {
   </AppScreen>;
 }
 createRoot(document.getElementById("root")).render(<Fixture />);`, resolveDir: process.cwd(), loader: "tsx" },
-    bundle: true, write: false, format: "iife", jsx: "automatic",
+    bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
     define: { "process.env.NODE_ENV": '"test"', __DEV__: "false" },
     plugins: [{ name: "primitives-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
@@ -138,8 +138,8 @@ test("shared header grows for long titles and retains unframed 44pt back and dir
   assert.equal(await page.getByText("Orbit", { exact: true }).count(), 0);
   const direct = await openScreen(t, "direct&compact&context");
   await direct.getByText("活动运营", { exact: true }).waitFor();
-  await direct.getByRole("button", { name: "回到 Orbit AI", exact: true }).click();
-  assert.deepEqual(await direct.evaluate(() => (window as any).fixture.navigation), ["/ai"]);
+  await direct.getByRole("button", { name: "返回我的", exact: true }).click();
+  assert.deepEqual(await direct.evaluate(() => (window as any).fixture.navigation), ["/profile"]);
   await fits(direct.getByText(title, { exact: true }));
 });
 
@@ -166,7 +166,7 @@ for (const appearance of ["light", "dark"] as const) {
     const metric = page.getByText("近期仍待确认的活动报名人数", { exact: true });
     await fits(metric);
     assert.equal(await metric.locator("..").evaluate(node => getComputedStyle(node).borderWidth), "0px", "secondary statistics must not create another bordered card");
-    assert.equal(await page.getByText("128 人", { exact: true }).evaluate(node => getComputedStyle(node).color), appearance === "light" ? "rgb(32, 36, 44)" : "rgb(240, 240, 236)");
+    assert.equal(await page.getByText("128 人", { exact: true }).evaluate(node => getComputedStyle(node).color), appearance === "light" ? "rgb(11, 18, 32)" : "rgb(240, 240, 236)");
     await fits(page.getByText("接下来要处理的事项", { exact: true }));
     await page.getByRole("progressbar", { name: "正在加载" }).waitFor();
     if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-app-wide-primitives-${appearance}.png`, fullPage: true });
@@ -219,7 +219,7 @@ test("real settings consumer retains all destinations on an open page with bound
   for (const [label, href] of [["打开账号", "/account"], ["打开权限中心", "/account/permissions"], ["打开服务器", "/settings/api"]]) {
     const button = page.getByRole("button", { name: new RegExp(label!) });
     await button.click();
-    assert.ok((await button.boundingBox())!.width <= 496);
+    assert.ok((await button.boundingBox())!.width <= 508);
   }
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/account", "/account/permissions", "/settings/api"]);
 });

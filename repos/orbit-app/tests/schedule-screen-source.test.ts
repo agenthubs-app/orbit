@@ -52,11 +52,11 @@ test("schedule screen offers working day, week, and month view controls", () => 
 test("schedule calendar marks Japanese holidays and weekends without replacing event colors", () => {
   assert.match(
     screenSource,
-    /const weekdayLabels = \["周日", "周一", "周二", "周三", "周四", "周五", "周六"\]/u
+    /const weekdayLabels = \["周一", "周二", "周三", "周四", "周五", "周六", "周日"\]/u
   );
-  assert.match(screenSource, /const sundayOffset = -firstDate\.getUTCDay\(\)/u);
-  assert.match(screenSource, /index === 6 \? styles\.saturdayText/u);
-  assert.match(screenSource, /index === 0 \? styles\.holidayText/u);
+  assert.match(screenSource, /const mondayOffset = -\(\(firstDate\.getUTCDay\(\) \+ 6\) % 7\)/u);
+  assert.match(screenSource, /index === 5 \? styles\.saturdayText/u);
+  assert.match(screenSource, /index === 6 \? styles\.holidayText/u);
   assert.match(screenSource, /japanCalendarDateInfo/u);
   assert.match(screenSource, /day\.isSaturday/u);
   assert.match(screenSource, /day\.isSunday \|\| day\.isHoliday/u);

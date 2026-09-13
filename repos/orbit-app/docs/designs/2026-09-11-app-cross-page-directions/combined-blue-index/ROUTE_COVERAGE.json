@@ -1,0 +1,522 @@
+{
+  "date": "2026-09-11",
+  "baseline": "8b38b4eb8618505ca4f59f20dc323159e1ad784b",
+  "routeCount": 63,
+  "unmapped": [],
+  "routes": [
+    {
+      "file": "app/(app)/ai.tsx",
+      "route": "/ai",
+      "pages": [
+        "P39"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/(app)/contacts.tsx",
+      "route": "/contacts",
+      "pages": [
+        "P07"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/(app)/events.tsx",
+      "route": "/events",
+      "pages": [
+        "P19"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/(app)/inbox.tsx",
+      "route": "/inbox",
+      "pages": [
+        "P35"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/(app)/profile.tsx",
+      "route": "/profile",
+      "pages": [
+        "P06",
+        "P42",
+        "P43"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/(app)/schedule.tsx",
+      "route": "/schedule",
+      "pages": [
+        "P28",
+        "P29",
+        "P30",
+        "P31"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/[...legacy].tsx",
+      "route": "/[...legacy]",
+      "pages": [
+        "redirect-target"
+      ],
+      "kind": "alias-or-redirect"
+    },
+    {
+      "file": "app/account/forgot-password.tsx",
+      "route": "/account/forgot-password",
+      "pages": [
+        "P04"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/account/login.tsx",
+      "route": "/account/login",
+      "pages": [
+        "P02"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/account/mobile-google.tsx",
+      "route": "/account/mobile-google",
+      "pages": [
+        "P02"
+      ],
+      "kind": "alias-or-redirect"
+    },
+    {
+      "file": "app/account/permissions.tsx",
+      "route": "/account/permissions",
+      "pages": [
+        "P45"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/account/reset-password.tsx",
+      "route": "/account/reset-password",
+      "pages": [
+        "P05"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/account/signup.tsx",
+      "route": "/account/signup",
+      "pages": [
+        "P03"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/account.tsx",
+      "route": "/account",
+      "pages": [
+        "P44"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/admin/access.tsx",
+      "route": "/admin/access",
+      "pages": [
+        "P62"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/admin/events.tsx",
+      "route": "/admin/events",
+      "pages": [
+        "P63"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/admin.tsx",
+      "route": "/admin",
+      "pages": [
+        "P61"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/agent.tsx",
+      "route": "/agent",
+      "pages": [
+        "P67"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/ai/[id].tsx",
+      "route": "/ai/[id]",
+      "pages": [
+        "P40",
+        "P41"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/chat/[id].tsx",
+      "route": "/chat/[id]",
+      "pages": [
+        "P38"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/chat.tsx",
+      "route": "/chat",
+      "pages": [
+        "P37"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/contacts/[id].tsx",
+      "route": "/contacts/[id]",
+      "pages": [
+        "P08",
+        "P09"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/contacts/all-actions.tsx",
+      "route": "/contacts/all-actions",
+      "pages": [
+        "P68"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/contacts/analysis/[dimension]/[bucketId].tsx",
+      "route": "/contacts/analysis/[dimension]/[bucketId]",
+      "pages": [
+        "P16"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/contacts/dashboard.tsx",
+      "route": "/contacts/dashboard",
+      "pages": [
+        "P15"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/contacts/graph.tsx",
+      "route": "/contacts/graph",
+      "pages": [
+        "P15"
+      ],
+      "kind": "alias-or-redirect"
+    },
+    {
+      "file": "app/contacts/intros.tsx",
+      "route": "/contacts/intros",
+      "pages": [
+        "P17"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/contacts/list.tsx",
+      "route": "/contacts/list",
+      "pages": [
+        "P71"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/contacts/new/batch/[id].tsx",
+      "route": "/contacts/new/batch/[id]",
+      "pages": [
+        "P13"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/contacts/new/batch2/[id].tsx",
+      "route": "/contacts/new/batch2/[id]",
+      "pages": [
+        "P12"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/contacts/new/batch2/index.tsx",
+      "route": "/contacts/new/batch2",
+      "pages": [
+        "P11"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/contacts/new.tsx",
+      "route": "/contacts/new",
+      "pages": [
+        "P10"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/contacts/pipeline.tsx",
+      "route": "/contacts/pipeline",
+      "pages": [
+        "P18"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/dashboard.tsx",
+      "route": "/dashboard",
+      "pages": [
+        "P69"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/events/[id]/analytics.tsx",
+      "route": "/events/[id]/analytics",
+      "pages": [
+        "P57"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/events/[id]/attendees.tsx",
+      "route": "/events/[id]/attendees",
+      "pages": [
+        "P23"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/events/[id]/operations/admission.tsx",
+      "route": "/events/[id]/operations/admission",
+      "pages": [
+        "P53"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/events/[id]/operations/check-in.tsx",
+      "route": "/events/[id]/operations/check-in",
+      "pages": [
+        "P54"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/events/[id]/operations/experience.tsx",
+      "route": "/events/[id]/operations/experience",
+      "pages": [
+        "P56"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/events/[id]/operations/roles.tsx",
+      "route": "/events/[id]/operations/roles",
+      "pages": [
+        "P55"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/events/[id]/operations.tsx",
+      "route": "/events/[id]/operations",
+      "pages": [
+        "P52"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/events/[id]/register.tsx",
+      "route": "/events/[id]/register",
+      "pages": [
+        "P21",
+        "P22"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/events/[id].tsx",
+      "route": "/events/[id]",
+      "pages": [
+        "P20"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/events/center.tsx",
+      "route": "/events/center",
+      "pages": [
+        "P24"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/followups.tsx",
+      "route": "/followups",
+      "pages": [
+        "P34"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/home/events.tsx",
+      "route": "/home/events",
+      "pages": [
+        "P70"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/home.tsx",
+      "route": "/home",
+      "pages": [
+        "P01"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/inbox/[id].tsx",
+      "route": "/inbox/[id]",
+      "pages": [
+        "P36"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/index.tsx",
+      "route": "/",
+      "pages": [
+        "P01",
+        "P02"
+      ],
+      "kind": "alias-or-redirect"
+    },
+    {
+      "file": "app/login-admin.tsx",
+      "route": "/login-admin",
+      "pages": [
+        "P64"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/o/[slug].tsx",
+      "route": "/o/[slug]",
+      "pages": [
+        "P25"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/party/checkin.tsx",
+      "route": "/party/checkin",
+      "pages": [
+        "P59"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/party/graph.tsx",
+      "route": "/party/graph",
+      "pages": [
+        "P60"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/party.tsx",
+      "route": "/party",
+      "pages": [
+        "P58"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/platform.tsx",
+      "route": "/platform",
+      "pages": [
+        "P65"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/register/[code].tsx",
+      "route": "/register/[code]",
+      "pages": [
+        "P66"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/register.tsx",
+      "route": "/register",
+      "pages": [
+        "P72"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/schedule/events/[id].tsx",
+      "route": "/schedule/events/[id]",
+      "pages": [
+        "P32"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/settings/api.tsx",
+      "route": "/settings/api",
+      "pages": [
+        "P47"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/settings.tsx",
+      "route": "/settings",
+      "pages": [
+        "P46"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/tasks/[id].tsx",
+      "route": "/tasks/[id]",
+      "pages": [
+        "P27"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/tasks.tsx",
+      "route": "/tasks",
+      "pages": [
+        "P26"
+      ],
+      "kind": "page-or-state"
+    },
+    {
+      "file": "app/today.tsx",
+      "route": "/today",
+      "pages": [
+        "P33"
+      ],
+      "kind": "page-or-state"
+    }
+  ]
+}
+

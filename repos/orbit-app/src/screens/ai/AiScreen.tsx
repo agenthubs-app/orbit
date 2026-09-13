@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Image,
   Keyboard,
   Modal,
   PanResponder,
@@ -26,8 +27,9 @@ import {
 } from "../../api/endpoints";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
-import { ErrorState } from "../../components/ErrorState";
-import { LoadingState } from "../../components/LoadingState";
+import { aiConversationListSchema, aiHistoryRows, aiSessionDeleteReceiptSchema, aiSessionListSchema } from "../../api/ai-history-contract";
+import { validateApiResourceState } from "../../api/validated-resource-state";
+import { iorbitBrandMark } from "../../design/iorbit-brand";
 import { layout, textStyles, radius, spacing, typography, type OrbitColors } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
@@ -37,10 +39,8 @@ import {
 } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useRelationshipInboxBadgeCount } from "../../hooks/useRelationshipInboxBadgeCount";
-import { agentHistorySessionsToSummaries } from "../../view-models/agent-history";
 import { mobileUserDisplayName } from "../../view-models/mobile-profile";
 import {
-  conversationsToSummaries,
   orbitAiHomeChatWindow,
   type ChatMessageView,
   type OrbitAiHomeChatWindow
@@ -174,26 +174,44 @@ function useStableKeyboardBottomInset(): number {
     : 0;
 }
 
-export function AiScreen() {
+export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?: string; isScopeCurrent?: () => boolean } = {}) {
   const { colors, styles } = useStyles();
   const router = useRouter();
   const auth = useOrbitAuthSession();
   const { baseUrl } = useOrbitApiBaseUrl();
   const params = useLocalSearchParams<{ drawer?: string | string[] }>();
   const keyboardBottomInset = useStableKeyboardBottomInset();
-  const client = useOrbitApiClient();
-  const inboxBadge = useRelationshipInboxBadgeCount();
-  const state = useApiResource<unknown>(
+  const [refreshIndex, setRefreshIndex] = useState(0);
+  const [historyAttempt, setHistoryAttempt] = useState(0);
+  const [conversationAttempt, setConversationAttempt] = useState(0);
+  const readScope = JSON.stringify([scopeKey, refreshIndex]);
+  const ownership = useMemo(() => ({}), [readScope]);
+  const latest = useRef(ownership);
+  latest.current = ownership;
+  const mounted = useRef(true);
+  const deleteOperation = useRef<AbortController | null>(null);
+  const navigationLock = useRef(false);
+  const owns = () => mounted.current && latest.current === ownership && isScopeCurrent();
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; deleteOperation.current?.abort(); deleteOperation.current = null; };
+  }, [ownership]);
+  const client = useOrbitApiClient({ scopeKey: readScope });
+  const inboxBadge = useRelationshipInboxBadgeCount(readScope);
+  const state = validateApiResourceState(useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.conversations,
-    (data) => conversationsToSummaries(data).length === 0
-  );
-  const historyState = useApiResource<unknown>(
+    () => false,
+    { scopeKey: JSON.stringify([readScope, conversationAttempt]) }
+  ), aiConversationListSchema);
+  const historyState = validateApiResourceState(useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.aiConversationSessions,
-    (data) => agentHistorySessionsToSummaries(data).length === 0
-  );
+    () => false,
+    { scopeKey: JSON.stringify([readScope, historyAttempt]) }
+  ), aiSessionListSchema);
   const todayState = useApiResource<unknown>(
     todayPath("Asia/Tokyo"),
-    (data) => todayHomeSummary(data).items.length === 0
+    (data) => todayHomeSummary(data).items.length === 0,
+    { scopeKey: readScope }
   );
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -205,37 +223,25 @@ export function AiScreen() {
     null
   );
   const [deletingHistoryId, setDeletingHistoryId] = useState<string | null>(null);
-  const homeChat = orbitAiHomeChatWindow(
+  const [confirmDelete, setConfirmDelete] = useState<AiDrawerHistoryItem | null>(null);
+  const [deletedIds, setDeletedIds] = useState<string[]>([]);
+  const projectedHomeChat = orbitAiHomeChatWindow(
     startedNewChat || state.kind !== "success" ? null : state.data
   );
-  const sessionHistoryItems: AiDrawerHistoryItem[] =
-    historyState.kind === "success"
-      ? agentHistorySessionsToSummaries(historyState.data).map((item) => ({
-          id: item.id,
-          pinned: item.pinned,
-          preview: item.preview,
-          source: "session",
-          title: item.title,
-          when: item.when
-        }))
-      : [];
-  const conversationHistoryItems: AiDrawerHistoryItem[] =
-    state.kind === "success"
-      ? conversationsToSummaries(state.data)
-          .slice(0, 12)
-          .map((item) => ({
-            id: item.id,
-            pinned: false,
-            preview: item.preview,
-            source: "conversation",
-            title: item.title,
-            when: "最近"
-          }))
-      : [];
-  const historyItems = [
-    ...sessionHistoryItems,
-    ...conversationHistoryItems
-  ];
+  // Preserve the existing bootstrap/window selection, but render the validated
+  // business text verbatim rather than the shared legacy keyword replacement.
+  const homeChat = { ...projectedHomeChat, messages: projectedHomeChat.messages.map(message => ({ ...message,
+    content: state.kind === "success" ? state.data.messages.find(item => item.messageId === message.id)?.content ?? state.data.assistantMessage : message.content
+  })) };
+  const historyItems = aiHistoryRows(state.kind === "success" || state.kind === "empty" ? state.data : null,
+    historyState.kind === "success" || historyState.kind === "empty" ? historyState.data : null)
+    .filter(item => item.source !== "session" || !deletedIds.includes(item.id));
+  const historyNotices: { message: string; retryLabel?: string; onRetry?: () => void }[] = [];
+  if (state.kind === "loading" || historyState.kind === "loading") historyNotices.push({ message: "正在读取最近会话" });
+  if (state.kind === "failure" || state.kind === "offline") historyNotices.push({ message: "会话记录未能读取", retryLabel: "重试会话记录", onRetry: () => { if (owns()) setConversationAttempt(value => value + 1); } });
+  if (historyState.kind === "failure" || historyState.kind === "offline") historyNotices.push({ message: "历史记录未能读取", retryLabel: "重试历史记录", onRetry: () => { if (owns()) setHistoryAttempt(value => value + 1); } });
+  if ((state.kind === "success" || state.kind === "empty") && state.data.state === "pending") historyNotices.push({ message: "会话记录正在准备" });
+  if ((historyState.kind === "success" || historyState.kind === "empty") && !historyState.data.storage.configured) historyNotices.push({ message: "历史记录暂不可用，仍可开始新会话。" });
   const todayPayload =
     todayState.kind === "success" || todayState.kind === "empty"
       ? todayState.data
@@ -249,7 +255,7 @@ export function AiScreen() {
     refreshing: todayState.refreshing
   });
   if (nextQuestionSnapshot !== questionSnapshot) setQuestionSnapshot(nextQuestionSnapshot);
-  const suggestedPrompts = nextQuestionSnapshot.questions ?? todayHomeQuestions(null);
+  const suggestedPrompts = [...(nextQuestionSnapshot.questions ?? todayHomeQuestions(null)), { kind: "discussion", label: "回看与某位人脉的讨论" }];
   const todayError =
     todayState.kind === "offline" || todayState.kind === "failure"
       ? todayState.error.message
@@ -279,16 +285,22 @@ export function AiScreen() {
   }, [params.drawer]);
 
   function refresh() {
-    state.refresh();
-    historyState.refresh();
-    todayState.refresh();
+    if (!owns()) return;
+    deleteOperation.current?.abort();
+    deleteOperation.current = null;
+    setConfirmDelete(null);
+    setDeletingHistoryId(null);
+    setHistoryDeleteError(null);
+    setRefreshIndex(value => value + 1);
   }
 
   function openTodayAction(item: TodayHomeActionView) {
+    if (!owns()) return;
     router.push(item.href as Href);
   }
 
   function sendMessage() {
+    if (!owns() || navigationLock.current) return;
     const message = draftMessage.trim();
 
     if (!message) {
@@ -297,6 +309,7 @@ export function AiScreen() {
     }
 
     setSendError(null);
+    navigationLock.current = true;
     setDraftMessage("");
     router.push({
       params: { id: "new", initialMessage: message },
@@ -305,6 +318,8 @@ export function AiScreen() {
   }
 
   function startNewChat() {
+    if (!owns()) return;
+    navigationLock.current = false;
     setComposerMenuOpen(false);
     setHistoryOpen(false);
     setDrawerOpen(false);
@@ -314,12 +329,14 @@ export function AiScreen() {
   }
 
   function openCapability(href: Href) {
+    if (!owns()) return;
     setDrawerOpen(false);
     setComposerMenuOpen(false);
     router.push(href);
   }
 
   function openHistoryItem(item: AiDrawerHistoryItem) {
+    if (!owns()) return;
     setHistoryOpen(false);
     setDrawerOpen(false);
 
@@ -335,23 +352,26 @@ export function AiScreen() {
   }
 
   async function deleteHistoryItem(item: AiDrawerHistoryItem) {
-    if (item.source !== "session") {
-      return;
-    }
+    if (!owns() || deleteOperation.current || item.source !== "session" || confirmDelete?.id !== item.id
+      || !historyItems.some(row => row.source === "session" && row.id === item.id)) return;
+    const operation = new AbortController();
+    deleteOperation.current = operation;
 
     setDeletingHistoryId(item.id);
     setHistoryDeleteError(null);
 
     const result = await client.delete<unknown>(
-      aiConversationSessionPath(item.id)
+      aiConversationSessionPath(item.id), { signal: operation.signal }
     );
-
-    if (result.success) {
-      historyState.refresh();
+    if (!owns() || operation.signal.aborted || deleteOperation.current !== operation) return;
+    if (result.success && result.status >= 200 && result.status < 300 && aiSessionDeleteReceiptSchema.safeParse(result.data).success) {
+      setDeletedIds(ids => [...ids, item.id]);
+      setConfirmDelete(null);
+      setHistoryAttempt(value => value + 1);
     } else {
-      setHistoryDeleteError(result.error.message);
+      setHistoryDeleteError("尚未确认删除，请重试。");
     }
-
+    deleteOperation.current = null;
     setDeletingHistoryId(null);
   }
 
@@ -359,7 +379,7 @@ export function AiScreen() {
     <SafeAreaView edges={["bottom", "top"]} style={styles.safeArea}>
       <View {...drawerPanResponder.panHandlers} style={styles.chatRoot}>
         <ChatTopBar
-          onOpenDrawer={() => setDrawerOpen(true)}
+          onHome={() => openCapability("/home" as Href)}
           onOpenHistory={() => setHistoryOpen(true)}
         />
         <View
@@ -379,49 +399,55 @@ export function AiScreen() {
               todayState.refreshing
             }
           >
+            <Text accessibilityRole="header" style={styles.heroTitle}>{"今天想\n整理什么？"}</Text>
+            <Text style={styles.heroSubtitle}>从人脉、日程或待办开始，整理接下来要做的事。</Text>
+            <View style={styles.suggestionList}>
+              <Text style={styles.suggestionHeading}>可以从这里开始</Text>
+              {suggestedPrompts.map(prompt => (
+                <Pressable accessibilityLabel={`填入问题：${prompt.label}`} accessibilityHint="填入输入框后，你仍可修改或确认发送" accessibilityRole="button" key={prompt.kind}
+                  onPress={() => { if (owns()) { navigationLock.current = false; setDraftMessage(prompt.label); } }}
+                  style={({ pressed }) => [styles.suggestionRow, pressed ? styles.pressed : null]}>
+                  <Ionicons color={colors.ink} name={prompt.kind === "discovery" || prompt.kind === "preparation" ? "calendar-outline" : prompt.kind === "discussion" || prompt.kind === "followup" ? "people-outline" : "checkbox-outline"} size={20} />
+                  <Text style={styles.suggestionText}>{prompt.label}</Text>
+                  <Ionicons color={colors.accent} name="arrow-forward" size={20} />
+                </Pressable>
+              ))}
+            </View>
+            <View style={styles.recentSection}>
+              <View style={styles.recentHeader}>
+                <Text style={styles.sectionLabel}>最近会话</Text>
+                <Pressable accessibilityLabel="全部会话" accessibilityRole="button" onPress={() => setHistoryOpen(true)} style={styles.allHistoryButton}>
+                  <Text style={styles.allHistoryText}>全部</Text><Ionicons name="chevron-forward" color={colors.accent} size={14} />
+                </Pressable>
+              </View>
+              {historyItems.slice(0, 3).map(item => (
+                <Pressable accessibilityLabel={`继续会话：${item.title}`} accessibilityRole="button" key={`${item.source}:${item.id}`} onPress={() => openHistoryItem(item)} style={({ pressed }) => [styles.recentRow, pressed ? styles.pressed : null]}>
+                  <View style={styles.recentCopy}><Text numberOfLines={2} style={styles.recentTitle}>{item.title}</Text><Text numberOfLines={1} style={styles.recentPreview}>{item.preview}</Text></View>
+                  <Text style={styles.recentWhen}>{item.when}</Text><Ionicons name="chevron-forward" color={colors.text4} size={14} />
+                </Pressable>
+              ))}
+              {state.kind === "loading" || historyState.kind === "loading" ? <Text accessibilityLiveRegion="polite" style={styles.recentState}>正在读取最近会话</Text> : null}
+              {(state.kind === "success" || state.kind === "empty") && state.data.state === "pending" ? <Text accessibilityLiveRegion="polite" style={styles.recentState}>会话记录正在准备</Text> : null}
+              {state.kind === "failure" || state.kind === "offline" ? <View style={styles.recentFailure}><Text style={styles.errorText}>会话记录未能读取</Text><Pressable accessibilityLabel="重试会话记录" accessibilityRole="button" onPress={() => { if (owns()) setConversationAttempt(value => value + 1); }} style={styles.retryButton}><Text style={styles.allHistoryText}>重试</Text></Pressable></View> : null}
+              {historyState.kind === "failure" || historyState.kind === "offline" ? <View style={styles.recentFailure}><Text style={styles.errorText}>历史记录未能读取</Text><Pressable accessibilityLabel="重试历史记录" accessibilityRole="button" onPress={() => { if (owns()) setHistoryAttempt(value => value + 1); }} style={styles.retryButton}><Text style={styles.allHistoryText}>重试</Text></Pressable></View> : null}
+              {(historyState.kind === "success" || historyState.kind === "empty") && !historyState.data.storage.configured ? <Text style={styles.recentState}>历史记录暂不可用，仍可开始新会话。</Text> : null}
+              {historyItems.length === 0 && (state.kind === "success" || state.kind === "empty") && state.data.state !== "pending" && (historyState.kind === "success" || historyState.kind === "empty") && historyState.data.storage.configured ? <Text style={styles.recentState}>还没有会话</Text> : null}
+            </View>
             <OrbitNextActions
               error={todayError}
               loading={todayState.kind === "loading"}
               onOpen={openTodayAction}
-              onOpenSuggestions={() => router.push("/today" as Href)}
+              onOpenSuggestions={() => openCapability("/today" as Href)}
               onRefresh={todayState.refresh}
               summary={todaySummary}
             />
-            {homeChat.isEmpty ? (
-              <View style={styles.suggestionList}>
-                <Text style={styles.suggestionHeading}>试着问我</Text>
-                {suggestedPrompts.map((prompt) => (
-                  <Pressable
-                    accessibilityLabel={`填入问题：${prompt.label}`}
-                    accessibilityHint="填入输入框后，你仍可修改或确认发送"
-                    accessibilityRole="button"
-                    key={prompt.kind}
-                    onPress={() => setDraftMessage(prompt.label)}
-                    style={({ pressed }) => [
-                      styles.suggestionRow,
-                      pressed ? styles.pressed : null
-                    ]}
-                  >
-                    <Text style={styles.suggestionText}>{prompt.label}</Text>
-                    <Ionicons color={colors.text3} name="arrow-up" size={20} style={{ transform: [{ rotate: "-45deg" }] }} />
-                  </Pressable>
-                ))}
-              </View>
-            ) : null}
-            {state.kind === "loading" ? <LoadingState /> : null}
-            {state.kind === "offline" ? (
-              <ErrorState message={state.error.message} title="服务器连不上" />
-            ) : null}
-            {state.kind === "failure" ? (
-              <ErrorState message={state.error.message} />
-            ) : null}
           </ChatTranscript>
           {sendError ? (
             <Text style={styles.composerError}>{sendError}</Text>
           ) : null}
           <ChatComposer
             draftMessage={draftMessage}
-            onDraftMessageChange={setDraftMessage}
+            onDraftMessageChange={value => { if (owns()) { navigationLock.current = false; setDraftMessage(value); } }}
             onOpenMenu={() => setComposerMenuOpen(true)}
             onSend={sendMessage}
           />
@@ -431,6 +457,7 @@ export function AiScreen() {
         accountName={mobileUserDisplayName(auth.user, "小雨")}
         inboxBadge={inboxBadge}
         historyItems={historyItems}
+        historyNotices={historyNotices}
         todayBadge={todaySummary.openTaskCount}
         onClose={() => setDrawerOpen(false)}
         onNewChat={startNewChat}
@@ -443,14 +470,23 @@ export function AiScreen() {
         historyDeleteError={historyDeleteError}
         historyItems={historyItems}
         historyStateKind={historyState.kind}
+        conversationStateKind={state.kind}
+        conversationPending={(state.kind === "success" || state.kind === "empty") && state.data.state === "pending"}
+        historyUnavailable={(historyState.kind === "success" || historyState.kind === "empty") && !historyState.data.storage.configured}
+        onRetryConversation={() => { if (owns()) setConversationAttempt(value => value + 1); }}
+        onRetryHistory={() => { if (owns()) setHistoryAttempt(value => value + 1); }}
+        confirmDelete={confirmDelete}
+        onCancelDelete={() => { if (!deleteOperation.current) setConfirmDelete(null); }}
+        onConfirmDelete={() => { if (confirmDelete) void deleteHistoryItem(confirmDelete); }}
         onClose={() => setHistoryOpen(false)}
-        onDeleteHistoryItem={deleteHistoryItem}
+        onDeleteHistoryItem={item => { if (owns() && !deleteOperation.current) { setHistoryDeleteError(null); setConfirmDelete(item); } }}
         onOpenHistoryItem={openHistoryItem}
         visible={historyOpen}
       />
       <ComposerMenuSheet
         onClose={() => setComposerMenuOpen(false)}
         onNewChat={startNewChat}
+        onOpenDrawer={() => { setComposerMenuOpen(false); setDrawerOpen(true); }}
         onScanCard={() => openCapability("/contacts/new" as Href)}
         visible={composerMenuOpen}
       />
@@ -459,27 +495,27 @@ export function AiScreen() {
 }
 
 function ChatTopBar({
-  onOpenDrawer,
+  onHome,
   onOpenHistory
 }: {
-  onOpenDrawer: () => void;
+  onHome: () => void;
   onOpenHistory: () => void;
 }) {
   const { colors, styles } = useStyles();
   return (
     <View style={styles.topBar}>
       <Pressable
-        accessibilityLabel="打开侧栏"
+        accessibilityLabel="首页"
         accessibilityRole="button"
-        onPress={onOpenDrawer}
+        onPress={onHome}
         style={({ pressed }) => [
-          styles.topBarButton,
+          styles.homeButton,
           pressed ? styles.pressed : null
         ]}
       >
-        <Ionicons color={colors.ink} name="menu-outline" size={21} />
+        <Ionicons color={colors.accent} name="chevron-back" size={19} /><Text style={styles.homeButtonText}>首页</Text>
       </Pressable>
-      <Text style={styles.topBarTitle}>Orbit AI</Text>
+      <View style={styles.brand}><Image accessible={false} testID="iorbit-brand-mark" source={iorbitBrandMark} style={{ width: 18, height: 18 }} /><Text style={styles.topBarTitle}>IORBIT</Text></View>
       <Pressable
         accessibilityLabel="对话历史"
         accessibilityRole="button"
@@ -489,7 +525,7 @@ function ChatTopBar({
           pressed ? styles.pressed : null
         ]}
       >
-        <Ionicons color={colors.ink} name="chatbubble-outline" size={19} />
+        <Ionicons color={colors.ink} name="time-outline" size={22} />
       </Pressable>
     </View>
   );
@@ -593,10 +629,25 @@ function ChatComposer({
   onSend: () => void;
 }) {
   const { colors, styles } = useStyles();
+  const { fontScale } = useWindowDimensions();
+  const minimumInputHeight = Math.max(44, Math.ceil(22 * fontScale + 12));
+  const [inputHeight, setInputHeight] = useState(minimumInputHeight);
   const canSend = draftMessage.trim().length > 0;
 
   return (
     <View style={styles.composerBar}>
+      <TextInput
+        accessibilityLabel="消息"
+        multiline
+        numberOfLines={1}
+        onChangeText={value => { if (!value) setInputHeight(minimumInputHeight); onDraftMessageChange(value); }}
+        onContentSizeChange={event => setInputHeight(Math.min(120, Math.max(minimumInputHeight, event.nativeEvent.contentSize.height)))}
+        placeholder="询问 IORBIT"
+        placeholderTextColor={colors.text4}
+        style={[styles.composerInput, { height: Math.max(minimumInputHeight, inputHeight) }]}
+        value={draftMessage}
+      />
+      <View style={styles.composerActions}>
       <Pressable
         accessibilityLabel="更多操作"
         accessibilityRole="button"
@@ -608,14 +659,6 @@ function ChatComposer({
       >
         <Ionicons color={colors.ink} name="add" size={22} />
       </Pressable>
-      <TextInput
-        multiline
-        onChangeText={onDraftMessageChange}
-        placeholder="询问 Orbit AI"
-        placeholderTextColor={colors.text4}
-        style={styles.composerInput}
-        value={draftMessage}
-      />
       <Pressable
         accessibilityLabel="发送"
         accessibilityRole="button"
@@ -629,10 +672,11 @@ function ChatComposer({
       >
         <Ionicons
           color={canSend ? colors.onAccent : colors.text4}
-          name="arrow-up"
+          name="paper-plane-outline"
           size={19}
         />
       </Pressable>
+      </View>
     </View>
   );
 }
@@ -640,11 +684,13 @@ function ChatComposer({
 function ComposerMenuSheet({
   onClose,
   onNewChat,
+  onOpenDrawer,
   onScanCard,
   visible
 }: {
   onClose: () => void;
   onNewChat: () => void;
+  onOpenDrawer: () => void;
   onScanCard: () => void;
   visible: boolean;
 }) {
@@ -689,6 +735,10 @@ function ComposerMenuSheet({
             </View>
             <Text style={styles.sheetRowText}>新对话</Text>
           </Pressable>
+          <Pressable accessibilityRole="button" onPress={onOpenDrawer} style={({ pressed }) => [styles.sheetRow, pressed ? styles.pressed : null]}>
+            <View style={styles.sheetRowIcon}><Ionicons color={colors.ink} name="menu-outline" size={19} /></View>
+            <Text style={styles.sheetRowText}>常用入口</Text>
+          </Pressable>
         </View>
       </View>
     </Modal>
@@ -698,6 +748,7 @@ function ComposerMenuSheet({
 function OrbitAiDrawer({
   accountName,
   historyItems,
+  historyNotices,
   inboxBadge,
   todayBadge,
   onClose,
@@ -708,6 +759,7 @@ function OrbitAiDrawer({
 }: {
   accountName: string;
   historyItems: AiDrawerHistoryItem[];
+  historyNotices: { message: string; retryLabel?: string; onRetry?: () => void }[];
   inboxBadge: number | undefined;
   todayBadge: number;
   onClose: () => void;
@@ -799,6 +851,10 @@ function OrbitAiDrawer({
               ))}
             </View>
             <Text style={styles.drawerSectionTitle}>最近对话</Text>
+            {historyNotices.map(notice => <View key={notice.message} style={styles.recentFailure}>
+              <Text accessibilityLiveRegion="polite" style={notice.onRetry ? styles.errorText : styles.drawerEmptyText}>{notice.message}</Text>
+              {notice.onRetry ? <Pressable accessibilityLabel={notice.retryLabel} accessibilityRole="button" onPress={notice.onRetry} style={styles.retryButton}><Text style={styles.allHistoryText}>重试</Text></Pressable> : null}
+            </View>)}
             <View style={styles.drawerRecentList}>
               {filteredHistoryItems.slice(0, 8).map((item) => (
                 <Pressable
@@ -814,7 +870,7 @@ function OrbitAiDrawer({
                   </View>
                 </Pressable>
               ))}
-              {filteredHistoryItems.length === 0 ? (
+              {filteredHistoryItems.length === 0 && historyNotices.length === 0 ? (
                 <Text style={styles.drawerEmptyText}>还没有匹配的对话。</Text>
               ) : null}
             </View>
@@ -909,20 +965,36 @@ function CapabilityRow({
 }
 
 function OrbitAiHistoryPanel({
+  conversationStateKind,
+  conversationPending,
+  historyUnavailable,
+  onRetryConversation,
+  onRetryHistory,
+  confirmDelete,
   deletingHistoryId,
   historyDeleteError,
   historyItems,
   historyStateKind,
   onClose,
+  onCancelDelete,
+  onConfirmDelete,
   onDeleteHistoryItem,
   onOpenHistoryItem,
   visible
 }: {
+  conversationStateKind: ApiResourceState<unknown>["kind"];
+  conversationPending: boolean;
+  historyUnavailable: boolean;
+  onRetryConversation: () => void;
+  onRetryHistory: () => void;
+  confirmDelete: AiDrawerHistoryItem | null;
   deletingHistoryId: string | null;
   historyDeleteError: string | null;
   historyItems: AiDrawerHistoryItem[];
   historyStateKind: ApiResourceState<unknown>["kind"];
   onClose: () => void;
+  onCancelDelete: () => void;
+  onConfirmDelete: () => void;
   onDeleteHistoryItem: (item: AiDrawerHistoryItem) => void;
   onOpenHistoryItem: (item: AiDrawerHistoryItem) => void;
   visible: boolean;
@@ -938,6 +1010,9 @@ function OrbitAiHistoryPanel({
           .includes(normalizedHistoryQuery)
       )
     : historyItems;
+  const conversationFailed = conversationStateKind === "failure" || conversationStateKind === "offline";
+  const historyFailed = historyStateKind === "failure" || historyStateKind === "offline";
+  const loading = conversationStateKind === "loading" || historyStateKind === "loading";
 
   useEffect(() => {
     if (!visible) {
@@ -973,9 +1048,22 @@ function OrbitAiHistoryPanel({
               <Ionicons color={colors.text2} name="close" size={20} />
             </Pressable>
           </View>
+          {loading ? <Text accessibilityLiveRegion="polite" style={styles.recentState}>正在读取历史记录。</Text> : null}
+          {conversationPending ? <Text accessibilityLiveRegion="polite" style={styles.recentState}>会话记录正在准备</Text> : null}
+          {historyUnavailable ? <Text style={styles.recentState}>历史记录暂不可用，仍可开始新会话。</Text> : null}
+          {conversationFailed ? <View style={styles.recentFailure}><Text style={styles.errorText}>会话记录未能读取</Text><Pressable accessibilityLabel="重试会话记录" accessibilityRole="button" onPress={onRetryConversation} style={styles.retryButton}><Text style={styles.allHistoryText}>重试</Text></Pressable></View> : null}
+          {historyFailed ? <View style={styles.recentFailure}><Text style={styles.errorText}>历史记录未能读取</Text><Pressable accessibilityLabel="重试历史记录" accessibilityRole="button" onPress={onRetryHistory} style={styles.retryButton}><Text style={styles.allHistoryText}>重试</Text></Pressable></View> : null}
           {historyDeleteError ? (
             <Text style={styles.errorText}>{historyDeleteError}</Text>
           ) : null}
+          {confirmDelete ? <View style={styles.deleteConfirmation}>
+            <Text style={styles.recentTitle}>删除「{confirmDelete.title}」？</Text>
+            <Text style={styles.recentPreview}>这条历史记录删除后无法恢复。</Text>
+            <View style={styles.deleteActions}>
+              <Pressable accessibilityRole="button" accessibilityLabel="取消删除" disabled={Boolean(deletingHistoryId)} onPress={onCancelDelete} style={styles.retryButton}><Text style={styles.allHistoryText}>取消删除</Text></Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="确认删除" disabled={Boolean(deletingHistoryId)} onPress={onConfirmDelete} style={[styles.confirmButton, deletingHistoryId ? styles.disabled : null]}><Text style={styles.confirmButtonText}>{deletingHistoryId ? "删除中" : "确认删除"}</Text></Pressable>
+            </View>
+          </View> : null}
           <View style={styles.drawerSearchBox}>
             <Ionicons color={colors.text3} name="search-outline" size={15} />
             <TextInput
@@ -989,7 +1077,8 @@ function OrbitAiHistoryPanel({
           <DrawerHistoryList
             deletingHistoryId={deletingHistoryId}
             historyItems={filteredHistoryItems}
-            historyStateKind={historyStateKind}
+            hasQuery={normalizedHistoryQuery.length > 0}
+            canShowEmpty={!conversationFailed && !historyFailed && !loading && !conversationPending && !historyUnavailable}
             onDeleteHistoryItem={onDeleteHistoryItem}
             onOpenHistoryItem={onOpenHistoryItem}
           />
@@ -1002,13 +1091,15 @@ function OrbitAiHistoryPanel({
 function DrawerHistoryList({
   deletingHistoryId,
   historyItems,
-  historyStateKind,
+  canShowEmpty,
+  hasQuery,
   onDeleteHistoryItem,
   onOpenHistoryItem
 }: {
   deletingHistoryId: string | null;
   historyItems: AiDrawerHistoryItem[];
-  historyStateKind: ApiResourceState<unknown>["kind"];
+  canShowEmpty: boolean;
+  hasQuery: boolean;
   onDeleteHistoryItem: (item: AiDrawerHistoryItem) => void;
   onOpenHistoryItem: (item: AiDrawerHistoryItem) => void;
 }) {
@@ -1033,18 +1124,12 @@ function DrawerHistoryList({
     );
   }
 
-  if (historyStateKind === "loading") {
-    return <Text style={styles.drawerEmptyText}>正在读取历史记录。</Text>;
-  }
-
-  if (historyStateKind === "offline" || historyStateKind === "failure") {
-    return <Text style={styles.errorText}>历史记录暂时不可用。</Text>;
-  }
+  if (!canShowEmpty) return null;
 
   return (
     <View style={styles.drawerEmptyBox}>
-      <Text style={styles.drawerEmptyTitle}>还没有历史记录</Text>
-      <Text style={styles.drawerEmptyText}>从一个问题开始，后续会出现在这里。</Text>
+      <Text style={styles.drawerEmptyTitle}>{hasQuery ? "还没有匹配的对话。" : "还没有历史记录"}</Text>
+      <Text style={styles.drawerEmptyText}>{hasQuery ? "换个关键词试试。" : "从一个问题开始，后续会出现在这里。"}</Text>
     </View>
   );
 }
@@ -1116,6 +1201,28 @@ function DrawerHistoryRow({
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
+  heroTitle: { color: colors.ink, fontSize: 30, fontWeight: "900", lineHeight: 36, letterSpacing: -0.6 },
+  heroSubtitle: { color: colors.text3, fontSize: 13, lineHeight: 20, marginTop: 6 },
+  sectionLabel: { color: colors.text3, fontSize: 12, fontWeight: "700", lineHeight: 18, letterSpacing: 0.48 },
+  recentSection: { marginTop: 0, marginBottom: 10 },
+  recentHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", borderBottomColor: colors.border, borderBottomWidth: 1, minHeight: 44 },
+  allHistoryButton: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", minWidth: 44, minHeight: 44, gap: 2 },
+  allHistoryText: { color: colors.accent, fontSize: 12, fontWeight: "700", lineHeight: 18 },
+  recentRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, minHeight: 64, borderBottomColor: colors.hairline, borderBottomWidth: 1 },
+  recentCopy: { flex: 1, minWidth: 0, gap: 2 },
+  recentTitle: { color: colors.ink, fontSize: 15, fontWeight: "700", lineHeight: 21 },
+  recentPreview: { color: colors.text3, fontSize: 12, lineHeight: 18 },
+  recentWhen: { color: colors.text3, fontSize: 12, lineHeight: 18, maxWidth: "25%" },
+  recentState: { color: colors.text3, fontSize: 13, lineHeight: 20, paddingVertical: 16 },
+  recentFailure: { gap: 8, alignItems: "flex-start", paddingVertical: 12 },
+  retryButton: { justifyContent: "center", alignItems: "center", minHeight: 44, minWidth: 44, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.border },
+  deleteConfirmation: { gap: 8, padding: 12, borderWidth: 1, borderColor: colors.border, borderRadius: 12 },
+  deleteActions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  confirmButton: { justifyContent: "center", alignItems: "center", minHeight: 44, paddingHorizontal: 12, borderRadius: 10, backgroundColor: colors.ink },
+  confirmButtonText: { color: colors.surface, fontSize: 13, fontWeight: "700", lineHeight: 20 },
+  brand: { flexDirection: "row", gap: 6, alignItems: "center", flexShrink: 1 },
+  homeButton: { minWidth: 58, minHeight: 44, flexDirection: "row", alignItems: "center", marginLeft: -5 },
+  homeButtonText: { color: colors.accent, fontWeight: "600", fontSize: 15, lineHeight: 22 },
   capabilityBadge: {
     alignItems: "center",
     backgroundColor: colors.rose,
@@ -1179,19 +1286,19 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     alignSelf: "center"
   },
   composerBar: {
-    alignItems: "flex-end",
-    backgroundColor: colors.surface2,
-    borderColor: colors.border2,
-    borderRadius: radius.input,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-    minHeight: 52,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
+    backgroundColor: colors.surface,
+    borderColor: colors.ink,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    gap: 4,
+    marginBottom: 0,
+    marginTop: 10,
+    paddingHorizontal: 12,
+    paddingTop: 6,
+    paddingBottom: 6,
     marginHorizontal: layout.pageInset
   },
+  composerActions: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   composerError: {
     color: colors.rose,
     fontSize: typography.caption,
@@ -1200,11 +1307,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   composerInput: {
     color: colors.text,
-    flex: 1,
-    fontSize: 17,
+    fontSize: 15,
     lineHeight: 22,
     maxHeight: 120,
-    paddingTop: 6,
+    paddingHorizontal: 4,
     paddingVertical: 6,
     minHeight: layout.control
   },
@@ -1212,12 +1318,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     alignItems: "center",
     height: 44,
     justifyContent: "center",
-    width: 44
+    width: 44,
+    borderRadius: 8,
+    backgroundColor: colors.surface2
   },
   composerSendButton: {
     alignItems: "center",
     backgroundColor: colors.accent,
-    borderRadius: radius.pill,
+    borderRadius: 10,
     height: 44,
     justifyContent: "center",
     width: 44
@@ -1577,38 +1685,40 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     backgroundColor: "rgba(22,22,26,0.12)"
   },
   suggestionList: {
-    marginTop: 28,
-    paddingBottom: spacing.md,
+    marginTop: 22
   },
   suggestionHeading: {
     color: colors.text3,
-    fontSize: typography.small,
-    lineHeight: 20,
-    paddingBottom: spacing.sm,
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.48,
+    lineHeight: 18,
+    paddingBottom: 6,
     borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth
+    borderBottomWidth: 1
   },
   suggestionRow: {
     alignItems: "center",
     flexDirection: "row",
-    gap: spacing.md,
-    minHeight: 60,
-    paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.md,
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth
+    gap: 12,
+    minHeight: 50,
+    paddingVertical: 14,
+    borderBottomColor: colors.hairline,
+    borderBottomWidth: 1
   },
   suggestionText: {
     color: colors.text,
     flex: 1,
-    fontSize: 16,
-    lineHeight: 24
+    fontSize: 15,
+    fontWeight: "600",
+    lineHeight: 21
   },
   topBar: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: spacing.sm,
+    minHeight: 48,
+    gap: 8,
     paddingHorizontal: layout.pageInset
   },
   topBarButton: {
@@ -1620,14 +1730,18 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     backgroundColor: "transparent"
   },
   topBarTitle: {
-    ...textStyles.section,
+    fontSize: 15,
+    fontWeight: "900",
+    letterSpacing: 0.6,
+    lineHeight: 22,
     color: colors.ink
   },
   transcript: {
     flex: 1
   },
   transcriptContent: {
-    paddingTop: spacing.lg,
+    paddingTop: 20,
+    paddingBottom: 16,
     paddingHorizontal: layout.pageInset
   }
 }));

@@ -34,7 +34,7 @@ export const useApiResource = path => {
   if (state.kind !== "success") return { kind: state.kind, error: { message: "连接暂时失败" }, refreshing: false, refresh() {} };
   const query = new URL(path, "http://fixture").searchParams.get("query") || "";
   const data = path.includes("suggestions") ? { suggestions: [] }
-    : path.includes("contact%3A0") ? { contact: { ...contacts[0], notes: [] } }
+    : path.includes("contact%3A0") ? { state: "success", editableStatusOptions: ["active", "needs_follow_up", "nurture", "archived"], editableTagOptions: [], contact: { ...contacts[0], notes: [], tags: [], source: { type: "manual", label: "手动记录" }, evidence: [], lastInteraction: { channel: "manual_note", occurredAt: "", summary: "" }, publicProfile: { ...contacts[0].publicProfile, topics: [], conversationPrompts: [] } } }
     : path.includes("connections") ? { connections: [] }
     : path.includes("relationship-value") ? {} : { contacts: contacts.filter(contact => (contact.displayName + contact.organization).includes(query)), availableFilters: { sources: [{ value: "manual", count: 7 }], tags: [], values: [] } };
   return { kind: "success", data, refreshing: false, refresh() {} };
@@ -54,7 +54,7 @@ export const Ionicons = ({ size }) => <span aria-hidden="true" style={{ display:
 test.before(async () => {
   const result = await build({
     stdin: { contents: `import React from "react"; import { createRoot } from "react-dom/client"; import { ContactsScreen } from "./src/screens/contacts/ContactsScreen"; import { ContactDetailScreen } from "./src/screens/contacts/ContactDetailScreen"; createRoot(document.getElementById("root")).render(location.search.includes("detail") ? <ContactDetailScreen /> : <ContactsScreen mode="list" />);`, resolveDir: process.cwd(), loader: "tsx" },
-    bundle: true, write: false, format: "iife", jsx: "automatic",
+    bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
     define: { "process.env.NODE_ENV": '"test"', __DEV__: "false" },
     plugins: [{ name: "contacts-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
@@ -143,11 +143,11 @@ test("compact list retains every contact and all four operable filters", async t
   assert.equal(await page.getByRole("button", { name: "行动筛选，已选 1 项", exact: true }).count(), 1);
 });
 
-test("detail offers a full-width draft action that navigates with the real contact without sending", async t => {
+test("detail offers a touch-sized draft action that navigates with the real contact without sending", async t => {
   const page = await openScreen(t, true);
   const draft = page.getByRole("button", { name: "起草消息", exact: true });
   const box = (await draft.boundingBox())!;
-  assert.ok(box.width >= 350 && box.height >= 48, "primary draft action must use the content width");
+  assert.ok(box.width >= 44 && box.height >= 44 && box.x >= 0 && box.x + box.width <= 402, "draft action must fit beside the other actions and retain its touch target");
   await draft.click();
   const navigation = await page.evaluate(() => (window as any).fixture.navigation);
   const route = new URL(navigation[0], "http://fixture");
@@ -159,20 +159,23 @@ test("detail offers a full-width draft action that navigates with the real conta
 
 test("detail disclosures keep read and editing content available without writes on expansion", async t => {
   const page = await openScreen(t, true);
-  assert.equal(await page.getByText("可核对的公开介绍", { exact: true }).count(), 0);
+  assert.equal(await page.getByText("可核对的公开介绍", { exact: true }).count(), 1, "basic/cooperation data is visible in the approved detail layout");
   const details = page.getByRole("button", { name: /完整资料/ });
   await details.click();
-  await page.getByText("可核对的公开介绍", { exact: true }).waitFor();
+  await page.getByText("关系价值", { exact: true }).waitFor();
+  await page.getByText("来源记录", { exact: true }).waitFor();
   await details.click();
-  assert.equal(await page.getByText("可核对的公开介绍", { exact: true }).count(), 0);
-  const editing = page.getByRole("button", { name: /更新联系人/ });
+  assert.equal(await page.getByText("关系价值", { exact: true }).count(), 0);
+  assert.equal(await page.getByText("可核对的公开介绍", { exact: true }).count(), 1);
+  const editing = page.getByRole("button", { name: "编辑资料", exact: true });
   await editing.click();
-  await page.getByText("当前状态", { exact: true }).waitFor();
-  for (const placeholder of ["AI, 关西渠道, 待联系", "今天下午或 2026-07-24 09:30", "微信、邮件、活动现场", "刚确认了什么，下一步卡在哪里"]) {
+  await page.getByText("跟进状态", { exact: true }).waitFor();
+  for (const placeholder of ["输入新标签", "今天下午或 2026-07-24 09:30", "刚确认了什么，下一步卡在哪里"]) {
     await page.getByPlaceholder(placeholder, { exact: true }).waitFor();
   }
-  await editing.click();
-  assert.equal(await page.getByText("当前状态", { exact: true }).count(), 0);
+  await page.getByRole("button", { name: "互动渠道：邮件", exact: true }).waitFor();
+  await page.getByRole("button", { name: "取消编辑", exact: true }).click();
+  assert.equal(await page.getByText("跟进状态", { exact: true }).count(), 0);
   const notes = page.getByRole("button", { name: "联系人备注", exact: true });
   const note = page.getByRole("textbox", { name: "添加联系人备注", exact: true });
   assert.equal(await note.count(), 0);
@@ -199,7 +202,7 @@ for (const detail of [false, true]) {
   test(`${detail ? "detail" : "list"} opened directly retains a labeled contact return during errors`, async t => {
     const page = await openScreen(t, detail);
     await page.evaluate(() => (window as any).fixture.update({ canGoBack: false, kind: "offline" }));
-    await page.getByRole("button", { name: "返回联系人", exact: true }).click();
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), [detail ? "/contacts/list" : "/contacts"]);
+    await page.getByRole("button", { name: detail ? "返回人脉" : "返回联系人", exact: true }).click();
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/contacts"]);
   });
 }

@@ -3,6 +3,7 @@ import Module from "node:module";
 import test from "node:test";
 import React from "react";
 import { renderToHtml } from "./helpers/render";
+import { aiConversationPayload, emptyAiConversationPayload, emptyAiSessionListPayload } from "./helpers/ai-fixtures";
 
 let today: unknown = {};
 let todayKind = "success";
@@ -22,7 +23,7 @@ loader._load = (name, ...args) => {
   if (name.endsWith("/hooks/useApiResource")) return {
     useApiResource: (path: string) => ({
       kind: path.startsWith("/api/today") ? todayKind : "success",
-      data: path.startsWith("/api/today") ? today : conversation,
+      data: path.startsWith("/api/today") ? today : path.includes("/sessions") ? emptyAiSessionListPayload : conversation,
       error: { message: "连接暂不可用" }, refreshing: false, refresh() {}
     })
   };
@@ -31,34 +32,35 @@ loader._load = (name, ...args) => {
 const { AiScreen } = require("../src/screens/ai/AiScreen");
 loader._load = originalLoad;
 
-test.beforeEach(() => { today = {}; todayKind = "success"; conversation = {}; });
+test.beforeEach(() => { today = {}; todayKind = "success"; conversation = emptyAiConversationPayload; });
 
-test("empty home offers exactly two distinct editable questions before the composer", () => {
+test("home offers three distinct editable questions before the composer", () => {
   const html = renderToHtml(<AiScreen />);
-  assert.equal((html.match(/aria-label="填入问题：/gu) ?? []).length, 2);
+  assert.equal((html.match(/aria-label="填入问题：/gu) ?? []).length, 3);
   assert.match(html, /今天先处理哪些事？/u);
   assert.match(html, /最近有哪些活动适合我？/u);
-  assert.ok(html.indexOf("试着问我") < html.indexOf('placeholder="询问 Orbit AI"'));
+  assert.ok(html.indexOf("可以从这里开始") < html.indexOf('placeholder="询问 IORBIT"'));
   assert.match(html, /aria-disabled="true"[^>]*aria-label="发送"|aria-label="发送"[^>]*aria-disabled="true"/u);
 });
 
 test("home replaces only the known bootstrap welcome, without rendering its timestamp", () => {
   conversation = {
+    ...aiConversationPayload,
     activeConversationId: "live-orbit-agent-conversation",
     assistantMessage: "Orbit Agent is ready for a natural-language request.",
-    conversations: [{ conversationId: "live-orbit-agent-conversation", title: "Orbit Agent live conversation" }],
-    messages: [{ messageId: "orbit-agent-live-ready", role: "assistant", content: "Orbit Agent is ready for a natural-language request.", createdAt: "2026-06-27T00:00:00Z" }]
+    conversations: [{ ...aiConversationPayload.conversations[0], conversationId: "live-orbit-agent-conversation", title: "Orbit Agent live conversation" }],
+    messages: [{ ...aiConversationPayload.messages[1], messageId: "orbit-agent-live-ready", conversationId: "live-orbit-agent-conversation", role: "assistant", content: "Orbit Agent is ready for a natural-language request.", createdAt: "2026-06-27T00:00:00Z" }]
   };
   const html = renderToHtml(<AiScreen />);
-  assert.match(html, /试着问我/u);
+  assert.match(html, /可以从这里开始/u);
   assert.doesNotMatch(html, /有什么需要我做的吗|09:00/u);
 });
 
 test("home preserves genuine assistant messages instead of treating them as invitations", () => {
-  conversation = { conversations: [{ conversationId: "real", title: "讨论" }], messages: [{ messageId: "real-reply", role: "assistant", content: "有什么需要我做的吗？", createdAt: "2026-09-07T01:00:00Z" }] };
+  conversation = { ...aiConversationPayload, activeConversationId: "real", conversations: [{ ...aiConversationPayload.conversations[0], conversationId: "real", title: "讨论" }], messages: [{ ...aiConversationPayload.messages[1], messageId: "real-reply", conversationId: "real", role: "assistant", content: "有什么需要我做的吗？", createdAt: "2026-09-07T01:00:00Z" }] };
   const html = renderToHtml(<AiScreen />);
   assert.match(html, /有什么需要我做的吗？/u);
-  assert.doesNotMatch(html, /填入问题：/u);
+  assert.equal((html.match(/aria-label="填入问题：/gu) ?? []).length, 3);
 });
 
 const task = (category: string, extra = {}) => ({ id: "task", title: "已有事项", category, status: "open", priority: "normal", ...extra });
@@ -88,7 +90,7 @@ for (const kind of ["empty", "loading", "failure", "offline"]) {
     todayKind = kind;
     today = null;
     const html = renderToHtml(<AiScreen />);
-    assert.equal((html.match(/aria-label="填入问题：/gu) ?? []).length, 2);
+    assert.equal((html.match(/aria-label="填入问题：/gu) ?? []).length, 3);
     assert.match(html, /今天先处理哪些事？/u);
     assert.doesNotMatch(html, /哪些人值得先跟进？|接下来的会面或活动/u);
   });

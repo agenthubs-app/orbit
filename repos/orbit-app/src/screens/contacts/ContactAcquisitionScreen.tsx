@@ -14,7 +14,8 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  View
+  View,
+  useWindowDimensions
 } from "react-native";
 import {
   ORBIT_API_ENDPOINTS,
@@ -141,16 +142,22 @@ function keepBusinessCardWriteCandidate(
 export function ContactAcquisitionScreen() {
   const { colors, styles } = useStyles();
   const router = useRouter();
-  const { eventId: eventIdParam } = useLocalSearchParams<{
+  const { eventId: eventIdParam, mode: modeParam } = useLocalSearchParams<{
     eventId?: string | string[];
+    mode?: string | string[];
   }>();
   const eventId = firstParam(eventIdParam);
   const client = useOrbitApiClient();
   const [form, setForm] = useState<ContactAcquisitionFormState>(emptyForm);
-  const [mode, setMode] = useState<ContactAcquisitionMode>("businessCard");
+  const [mode, setMode] = useState<ContactAcquisitionMode>(() => {
+    const requested = firstParam(modeParam);
+    return requested === "manual" || requested === "qr" ? requested : "businessCard";
+  });
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [result, setResult] = useState<ContactAcquisitionSummary | null>(null);
+  const [resultImage, setResultImage] = useState<{ draftId: string; uri: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [businessCardWriteResult, setBusinessCardWriteResult] =
     useState<ContactBusinessCardWriteView | null>(null);
@@ -380,12 +387,12 @@ export function ContactAcquisitionScreen() {
     const request = buildContactDraftReviewRequest(result.draftId, reviewFields);
 
     if (!request.success) {
-      setError(request.error);
+      setReviewError(request.error);
       return;
     }
 
     setReviewing(true);
-    setError(null);
+    setReviewError(null);
 
     try {
       const response = await client.patch<unknown>(request.request.endpoint, {
@@ -399,10 +406,10 @@ export function ContactAcquisitionScreen() {
         );
         refreshReviewSurfaces();
       } else {
-        setError(response.error.message);
+        setReviewError(response.error.message);
       }
     } catch (reviewError) {
-      setError(
+      setReviewError(
         reviewError instanceof Error
           ? reviewError.message
           : "名片字段暂时保存不了。"
@@ -433,7 +440,9 @@ export function ContactAcquisitionScreen() {
 
       if (response.success) {
         const summary = acquisitionResultToSummary(response.data);
+        setReviewError(null);
         setResult(summary);
+        setResultImage(mode === "businessCard" && form.imageUri ? { draftId: summary.draftId, uri: form.imageUri } : null);
         setReviewFields(summary.reviewFields?.length ? contactDraftReviewFormFromSummary(summary) : null);
         setAcknowledgedIssueCodes([]);
         setAllFieldsReviewed(false);
@@ -512,18 +521,18 @@ export function ContactAcquisitionScreen() {
 
   async function writeBusinessCardContact(summary: ContactAcquisitionSummary) {
     if (!canWriteBusinessCard || summary.draftId !== result?.draftId || writingContact || reviewing || submitting) {
-      setError("请先确认识别风险，并核对全部字段。");
+      setReviewError("请先确认识别风险，并核对全部字段。");
       return;
     }
     const request = buildBusinessCardContactWriteRequest(summary, reviewFields);
 
     if (!request.success) {
-      setError(request.error);
+      setReviewError(request.error);
       return;
     }
 
     setWritingContact(true);
-    setError(null);
+    setReviewError(null);
     setBusinessCardWriteResult(null);
 
     try {
@@ -550,10 +559,10 @@ export function ContactAcquisitionScreen() {
         setContactsRefreshToken(Date.now().toString());
         refreshReviewSurfaces();
       } else {
-        setError(response.error.message);
+        setReviewError(response.error.message);
       }
     } catch (writeError) {
-      setError(
+      setReviewError(
         writeError instanceof Error
           ? writeError.message
           : "这张名片暂时写入不了。"
@@ -838,9 +847,34 @@ export function ContactAcquisitionScreen() {
     }));
   }
 
+  const resultCard = result ? (
+    <AcquisitionResultCard
+      acknowledgedIssueCodes={acknowledgedIssueCodes}
+      allFieldsReviewed={allFieldsReviewed}
+      canWriteContact={canWriteBusinessCard && !reviewing && !submitting}
+      contactWriteResult={businessCardWriteResult}
+      confirming={confirming}
+      error={reviewError}
+      onConfirm={confirmDraft}
+      onDismiss={dismissDraft}
+      onOpenContact={onOpenContact}
+      onOpenContacts={onOpenContacts}
+      onReviewFieldChange={updateReviewField}
+      onIssueAcknowledged={(code) => setAcknowledgedIssueCodes(current => current.includes(code) ? current.filter(item => item !== code) : [...current, code])}
+      onFieldsReviewed={() => setAllFieldsReviewed(current => !current)}
+      onSaveReview={saveReviewFields}
+      onWriteContact={writeBusinessCardContact}
+      reviewFields={reviewFields}
+      reviewing={reviewing}
+      result={result}
+      image={resultImage?.draftId === result.draftId ? resultImage : null}
+      writingContact={writingContact}
+    />
+  ) : null;
+
   return (
     <AppScreen
-      eyebrow="来源采集"
+      {...(mode === "businessCard" ? {} : { eyebrow: "来源采集" })}
       refreshControl={
         <RefreshControl
           onRefresh={refreshReviewSurfaces}
@@ -852,8 +886,9 @@ export function ContactAcquisitionScreen() {
           tintColor={colors.accent}
         />
       }
-      title="添加人脉"
+      title={mode === "businessCard" ? "名片导入" : "添加人脉"}
     >
+      {mode === "businessCard" ? resultCard : null}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="批量导入名片"
@@ -923,7 +958,7 @@ export function ContactAcquisitionScreen() {
             updateField={updateField}
           />
         ) : null}
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {error ? <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text> : null}
         <Pressable
           accessibilityRole="button"
           disabled={submitting}
@@ -982,28 +1017,7 @@ export function ContactAcquisitionScreen() {
       {recommendedConfirmResult ? (
         <RecommendedContactConfirmCard view={recommendedConfirmResult} />
       ) : null}
-      {result ? (
-        <AcquisitionResultCard
-          acknowledgedIssueCodes={acknowledgedIssueCodes}
-          allFieldsReviewed={allFieldsReviewed}
-          canWriteContact={canWriteBusinessCard && !reviewing && !submitting}
-          contactWriteResult={businessCardWriteResult}
-          confirming={confirming}
-          onConfirm={confirmDraft}
-          onDismiss={dismissDraft}
-          onOpenContact={onOpenContact}
-          onOpenContacts={onOpenContacts}
-          onReviewFieldChange={updateReviewField}
-          onIssueAcknowledged={(code) => setAcknowledgedIssueCodes(current => current.includes(code) ? current.filter(item => item !== code) : [...current, code])}
-          onFieldsReviewed={() => setAllFieldsReviewed(current => !current)}
-          onSaveReview={saveReviewFields}
-          onWriteContact={writeBusinessCardContact}
-          reviewFields={reviewFields}
-          reviewing={reviewing}
-          result={result}
-          writingContact={writingContact}
-        />
-      ) : null}
+      {mode !== "businessCard" ? resultCard : null}
       {mergeReview ? (
         <ContactMergeReviewCard
           applyingSuggestionId={applyingMergeSuggestionId}
@@ -1220,7 +1234,7 @@ function BusinessCardFields({
         {form.imageUri ? (
           <Image
             accessibilityLabel="已选择的名片图片"
-            resizeMode="cover"
+            resizeMode="contain"
             source={{ uri: form.imageUri }}
             style={styles.cardImagePreview}
           />
@@ -1406,6 +1420,8 @@ function AcquisitionResultCard({
   canWriteContact,
   contactWriteResult,
   confirming,
+  error,
+  image,
   onConfirm,
   onDismiss,
   onOpenContact,
@@ -1425,6 +1441,8 @@ function AcquisitionResultCard({
   canWriteContact: boolean;
   contactWriteResult: ContactBusinessCardWriteView | null;
   confirming: boolean;
+  error: string | null;
+  image: { draftId: string; uri: string } | null;
   onConfirm: (draftId: string) => void;
   onDismiss: (draftId: string) => void;
   onOpenContact: (contactId: string) => void;
@@ -1440,27 +1458,26 @@ function AcquisitionResultCard({
   writingContact: boolean;
 }) {
   const { colors, styles } = useStyles();
-  return (
-    <DataCard
-      detail={[result.stateLabel, result.writeState].filter(Boolean).join(" · ")}
-      title={result.title}
-    >
+  const { styles: cardStyles } = useCardReviewStyles();
+  const [failedImage, setFailedImage] = useState<typeof image>(null);
+  const review = result.reviewFields?.length && reviewFields ? (
+    <BusinessCardReviewFields
+      fields={result.reviewFields}
+      form={reviewFields}
+      onChange={onReviewFieldChange}
+      onSave={onSaveReview}
+      reviewing={reviewing}
+      saveLabel={result.reviewLabel ?? "保存复核字段"}
+    />
+  ) : null;
+  const content = (
+    <>
       {result.detail ? <Text style={styles.bodyText}>{result.detail}</Text> : null}
       {result.sourceLabel ? (
         <Text style={styles.sourceText}>{result.sourceLabel}</Text>
       ) : null}
       <Text style={styles.bodyText}>{result.confirmationText}</Text>
       <Text style={styles.bodyText}>{result.nextAction}</Text>
-      {result.reviewFields?.length && reviewFields ? (
-        <BusinessCardReviewFields
-          fields={result.reviewFields}
-          form={reviewFields}
-          onChange={onReviewFieldChange}
-          onSave={onSaveReview}
-          reviewing={reviewing}
-          saveLabel={result.reviewLabel ?? "保存复核字段"}
-        />
-      ) : null}
       {result.evidenceExcerpts.length > 0 ? (
         <View style={styles.evidenceStack}>
           {result.evidenceExcerpts.map((excerpt) => (
@@ -1477,7 +1494,7 @@ function AcquisitionResultCard({
         />
       ) : null}
       {result.contactWrite ? (
-        <View style={styles.reviewPanel}>
+        <View style={cardStyles.risks}>
           {(result.reviewIssues ?? []).map((issue, index) => (
             <Pressable
               accessibilityLabel={issue.message}
@@ -1485,10 +1502,10 @@ function AcquisitionResultCard({
               accessibilityState={{ checked: acknowledgedIssueCodes.includes(issue.code) }}
               key={`${issue.code}:${index}`}
               onPress={() => onIssueAcknowledged(issue.code)}
-              style={styles.secondaryButton}
+              style={[styles.secondaryButton, cardStyles.risk]}
             >
               <Ionicons color={colors.accent} name={acknowledgedIssueCodes.includes(issue.code) ? "checkbox-outline" : "square-outline"} size={18} />
-              <Text style={styles.bodyText}>{issue.message}</Text>
+              <Text style={[styles.bodyText, cardStyles.riskText]}>{issue.message}</Text>
             </Pressable>
           ))}
           <Pressable
@@ -1496,10 +1513,10 @@ function AcquisitionResultCard({
             accessibilityRole="checkbox"
             accessibilityState={{ checked: allFieldsReviewed }}
             onPress={onFieldsReviewed}
-            style={styles.secondaryButton}
+            style={[styles.secondaryButton, cardStyles.risk]}
           >
             <Ionicons color={colors.accent} name={allFieldsReviewed ? "checkbox-outline" : "square-outline"} size={18} />
-            <Text style={styles.bodyText}>我已核对所有字段，并决定将其收录进人脉。</Text>
+            <Text style={[styles.bodyText, cardStyles.riskText]}>我已核对所有字段，并决定将其收录进人脉。</Text>
           </Pressable>
         </View>
       ) : null}
@@ -1510,6 +1527,7 @@ function AcquisitionResultCard({
           onPress={() => onWriteContact(result)}
           style={({ pressed }) => [
             styles.primaryButton,
+            cardStyles.primary,
             writingContact || !canWriteContact ? styles.disabled : null,
             pressed ? styles.pressed : null
           ]}
@@ -1527,6 +1545,7 @@ function AcquisitionResultCard({
           onPress={() => onConfirm(result.draftId)}
           style={({ pressed }) => [
             styles.primaryButton,
+            cardStyles.primary,
             confirming ? styles.disabled : null,
             pressed ? styles.pressed : null
           ]}
@@ -1566,8 +1585,21 @@ function AcquisitionResultCard({
         <Ionicons color={colors.accent} name="people-outline" size={18} />
         <Text style={styles.secondaryButtonText}>回到人脉</Text>
       </Pressable>
-    </DataCard>
+    </>
   );
+  return review ? <View style={cardStyles.result}>
+    <View style={cardStyles.imageFrame}>
+      {image && failedImage !== image ? <Image accessibilityRole="image" accessibilityLabel="待复核的名片图片" source={{ uri: image.uri }} resizeMode="contain" style={cardStyles.image} onError={() => setFailedImage(image)} />
+        : <Text accessibilityLiveRegion="polite" style={styles.helperText}>{image ? "名片图片无法显示，请重新选择图片。" : "暂无名片图片"}</Text>}
+    </View>
+    {review}
+    {error ? <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text> : null}
+    <View style={cardStyles.summary}>
+      <Text style={cardStyles.heading}>{result.title}</Text>
+      <Text style={styles.helperText}>{[result.stateLabel, result.writeState].filter(Boolean).join(" · ")}</Text>
+    </View>
+    {content}
+  </View> : <DataCard detail={[result.stateLabel, result.writeState].filter(Boolean).join(" · ")} title={result.title}>{content}</DataCard>;
 }
 
 function ContactBusinessCardWriteResultCard({
@@ -1621,29 +1653,39 @@ function BusinessCardReviewFields({
   saveLabel: string;
 }) {
   const { colors, styles } = useStyles();
+  const { styles: cardStyles } = useCardReviewStyles();
+  const large = useWindowDimensions().fontScale > 1.3;
+  const [fieldHeights, setFieldHeights] = useState<Partial<Record<ContactDraftReviewFieldName, number>>>({});
   return (
-    <View style={styles.reviewPanel}>
-      <View style={styles.reviewHeader}>
-        <Text style={styles.reviewTitle}>名片字段复核</Text>
-        <Text style={styles.helperText}>保存后仍然只是候选，不会写入联系人。</Text>
-      </View>
+    <View style={cardStyles.review}>
+      <Text accessibilityRole="header" style={cardStyles.heading}>识别结果</Text>
+      <View style={cardStyles.fields}>
       {fields.map((field) => (
-        <View key={field.field} style={styles.reviewFieldBlock}>
-          <View style={styles.reviewFieldHeader}>
-            <Text style={styles.inputLabel}>{field.label}</Text>
-            <Text style={styles.reviewMetaText}>
-              {field.confidenceLabel} · {field.stateLabel}
-            </Text>
-          </View>
+        <View key={field.field} style={[cardStyles.field, large && cardStyles.fieldStack]}>
+          <Text style={[cardStyles.label, large && cardStyles.labelLarge]}>{field.label}</Text>
+          <View style={cardStyles.fieldValue}>
           <TextInput
+            accessibilityLabel={field.label}
             onChangeText={(value) => onChange(field.field, value)}
             placeholder={field.value || field.label}
             placeholderTextColor={colors.text4}
-            style={styles.input}
+            multiline={large}
+            numberOfLines={1}
+            submitBehavior="blurAndSubmit"
+            scrollEnabled={false}
+            onContentSizeChange={({ nativeEvent }) => {
+              const height = Math.max(44, Math.ceil(nativeEvent.contentSize.height));
+              setFieldHeights(current => current[field.field] === height ? current : { ...current, [field.field]: height });
+            }}
+            style={[cardStyles.input, large && { height: fieldHeights[field.field] ?? 44 }]}
             value={form[field.field]}
           />
+            <Text style={cardStyles.meta}>{field.confidenceLabel} · {field.stateLabel}</Text>
+          </View>
         </View>
       ))}
+      </View>
+      <Text style={styles.helperText}>保存后仍然只是候选，不会写入联系人。</Text>
       <Pressable
         accessibilityRole="button"
         disabled={reviewing}
@@ -1662,6 +1704,27 @@ function BusinessCardReviewFields({
     </View>
   );
 }
+
+const useCardReviewStyles = createThemedStyles(colors => StyleSheet.create({
+  result: { gap: 12, borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 16 },
+  imageFrame: { height: 104, width: "100%", borderWidth: 1, borderColor: colors.border, borderRadius: 12, overflow: "hidden", backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
+  image: { width: "100%", height: "100%" },
+  review: { gap: 12, marginTop: 4 },
+  heading: { color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: "800" },
+  fields: { borderTopWidth: 1, borderTopColor: colors.border },
+  field: { flexDirection: "row", alignItems: "center", paddingVertical: 2, borderBottomWidth: 1, borderBottomColor: colors.border2 },
+  fieldStack: { flexDirection: "column", alignItems: "stretch", gap: 4 },
+  label: { width: 72, color: colors.text4, fontSize: 14, lineHeight: 20 },
+  labelLarge: { width: "100%", paddingTop: 10 },
+  fieldValue: { flexGrow: 1, flexShrink: 1, minWidth: 0 },
+  input: { minHeight: 44, width: "100%", minWidth: 0, borderWidth: 0, color: colors.ink, backgroundColor: colors.surface, paddingVertical: 12, paddingHorizontal: 0, fontSize: 14, lineHeight: 20, fontWeight: "600" },
+  meta: { fontSize: 11, lineHeight: 16, color: colors.text3, paddingBottom: 8 },
+  summary: { gap: 4, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 14 },
+  risks: { gap: 8 },
+  risk: { alignSelf: "stretch", width: "100%", borderWidth: 0, borderRadius: 10, backgroundColor: colors.surface2, paddingVertical: 12, paddingHorizontal: 14 },
+  riskText: { flexShrink: 1, fontSize: 13, lineHeight: 20 },
+  primary: { minHeight: 50, borderRadius: 12 },
+}));
 
 function ContactExternalCandidatesCard({
   importingSource,

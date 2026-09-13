@@ -3,17 +3,18 @@ import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import type { PasswordResetResponse } from "../../api/contract/password-reset";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
-import { AppScreen } from "../../components/AppScreen";
-import { DataCard } from "../../components/DataCard";
 import { layout, radius, spacing, textStyles, typography } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
@@ -42,6 +43,7 @@ function fieldValue(
 
 export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
   const { colors, styles } = useStyles();
+  const { fontScale } = useWindowDimensions();
   const params = useLocalSearchParams<{
     created?: string | string[];
     email?: string | string[];
@@ -204,12 +206,32 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
   }
 
   return (
-    <AppScreen
-      eyebrow="账号"
-      title={view.title}
-    >
-      <OrbitAuthLogo />
-      <DataCard title={view.primaryLabel} variant="inset">
+    <SafeAreaView edges={["top", "bottom"]} style={styles.screen}>
+      <View style={styles.header}>
+        <Pressable
+          accessibilityLabel="关闭"
+          accessibilityRole="button"
+          onPress={() => router.canGoBack() ? router.back() : router.replace("/account")}
+          style={({ pressed }) => [styles.closeButton, pressed ? styles.pressed : null]}
+        >
+          <Ionicons color={colors.accent} name="chevron-back" size={18} />
+          <Text style={styles.closeText}>关闭</Text>
+        </Pressable>
+      </View>
+      <ScrollView
+        automaticallyAdjustKeyboardInsets
+        contentContainerStyle={styles.scrollContent}
+        keyboardDismissMode="interactive"
+        keyboardShouldPersistTaps="handled"
+        style={styles.scroll}
+      >
+        <View style={styles.hero}>
+          <OrbitAuthLogo />
+          <Text accessibilityRole="header" style={styles.title}>{mode === "signup" ? "创建账号" : view.title}</Text>
+          <Text style={styles.description}>
+            {mode === "login" ? "登录你的账号，继续高效连接。" : view.description}
+          </Text>
+        </View>
         {view.restrictionMessage ? (
           <View style={styles.form}>
             <Text style={styles.errorText}>{view.restrictionMessage}</Text>
@@ -231,6 +253,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
           </View>
         ) : (
           <View style={styles.form}>
+          <View style={styles.fields}>
           {view.fields.map((field) => (
             <AuthField
               field={field}
@@ -239,64 +262,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
               value={fieldValue(field, values)}
             />
           ))}
-          {created ? (
-            <Text style={styles.noticeText}>账号已创建。请用刚才的邮箱继续登录。</Text>
-          ) : null}
-          {notice ? <Text style={styles.noticeText}>{notice}</Text> : null}
-          {error ? <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text> : null}
-          <Pressable
-            accessibilityLabel={view.primaryLabel}
-            accessibilityRole="button"
-            disabled={submitting || !auth.ready || (mode === "forgot" && !ready)}
-            onPress={submit}
-            style={({ pressed }) => [
-              styles.primaryButton,
-              pressed ? styles.pressed : null,
-              submitting || !auth.ready ? styles.disabledButton : null
-            ]}
-          >
-            <Text style={styles.primaryButtonText}>
-              {submitting ? view.busyLabel : view.primaryLabel}
-            </Text>
-            <Ionicons color={colors.onAccent} name="arrow-forward" size={17} />
-          </Pressable>
-          {view.oauthActions.length > 0 ? (
-            <View style={styles.oauthStack}>
-              <View style={styles.dividerRow}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>或</Text>
-                <View style={styles.dividerLine} />
-              </View>
-              {view.oauthActions.map((action) => (
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={submitting || !auth.ready}
-                  key={action.id}
-                  onPress={startGoogleSignIn}
-                  style={({ pressed }) => [
-                    styles.oauthButton,
-                    pressed ? styles.pressed : null,
-                    submitting || !auth.ready ? styles.disabledButton : null
-                  ]}
-                >
-                  <Ionicons color={colors.ink} name="logo-google" size={17} />
-                  <Text style={styles.oauthButtonText}>{action.label}</Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
-          <Pressable
-            accessibilityRole="button"
-            disabled={submitting}
-            onPress={() => navigateTo(`${view.switchHref}?next=${encodeURIComponent(next)}`)}
-            style={({ pressed }) => [
-              styles.secondaryButton,
-              pressed ? styles.pressed : null,
-              submitting ? styles.disabledButton : null
-            ]}
-          >
-            <Text style={styles.secondaryButtonText}>{view.switchLabel}</Text>
-          </Pressable>
+          </View>
           {view.helperLinks.length > 0 ? (
             <View style={styles.helperLinkRow}>
               {view.helperLinks.map((helperLink) => (
@@ -320,24 +286,85 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
               ))}
             </View>
           ) : null}
+          <View style={[styles.actions, view.helperLinks.length > 0 ? styles.actionsAfterHelper : null]}>
+          {created ? (
+            <Text style={styles.noticeText}>账号已创建。请用刚才的邮箱继续登录。</Text>
+          ) : null}
+          {notice ? <Text style={styles.noticeText}>{notice}</Text> : null}
+          {error ? <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text> : null}
+          <Pressable
+            accessibilityLabel={view.primaryLabel}
+            accessibilityRole="button"
+            disabled={submitting || !auth.ready || (mode === "forgot" && !ready)}
+            onPress={submit}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              pressed ? styles.pressed : null,
+              submitting || !auth.ready ? styles.disabledButton : null
+            ]}
+          >
+            <Text style={styles.primaryButtonText}>
+              {submitting ? view.busyLabel : view.primaryLabel}
+            </Text>
+          </Pressable>
+          {view.oauthActions.length > 0 ? (
+            <View style={styles.oauthStack}>
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>或</Text>
+                <View style={styles.dividerLine} />
+              </View>
+              {view.oauthActions.map((action) => (
+                <Pressable
+                  accessibilityLabel={action.label}
+                  accessibilityRole="button"
+                  disabled={submitting || !auth.ready}
+                  key={action.id}
+                  onPress={startGoogleSignIn}
+                  style={({ pressed }) => [
+                    styles.oauthButton,
+                    pressed ? styles.pressed : null,
+                    submitting || !auth.ready ? styles.disabledButton : null
+                  ]}
+                >
+                  <Ionicons color={colors.ink} name="logo-google" size={18} />
+                  <Text style={styles.oauthButtonText}>{fontScale > 1.3 ? "Google 登录" : action.label}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+          </View>
           </View>
         )}
-      </DataCard>
-    </AppScreen>
+        {!view.restrictionMessage ? (
+          <View style={styles.footer}>
+          <Pressable
+            accessibilityLabel={view.switchLabel}
+            accessibilityRole="button"
+            disabled={submitting}
+            onPress={() => navigateTo(`${view.switchHref}?next=${encodeURIComponent(next)}`)}
+            style={({ pressed }) => [
+              styles.switchButton,
+              pressed ? styles.pressed : null,
+              submitting ? styles.disabledButton : null
+            ]}
+          >
+            <Text style={styles.switchText}>
+              {mode === "login" ? "还没有账号？ " : mode === "signup" ? "已有账号？ " : ""}
+              <Text style={styles.switchAction}>{mode === "login" ? "注册" : mode === "signup" ? "登录" : view.switchLabel}</Text>
+            </Text>
+          </Pressable>
+          </View>
+        ) : null}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 function OrbitAuthLogo() {
   const { styles } = useStyles();
   return (
-    <View style={styles.brandHeader}>
-      <View accessibilityLabel="Orbit" style={styles.brandMark}>
-        <View style={styles.brandRingPrimary} />
-        <View style={styles.brandRingSecondary} />
-        <View style={styles.brandCore} />
-      </View>
-      <Text style={styles.brandName}>Orbit</Text>
-    </View>
+    <Text accessibilityLabel="Orbit" style={styles.brandName}>Orbit<Text style={styles.brandDot}>.</Text></Text>
   );
 }
 
@@ -352,6 +379,7 @@ function AuthField({
 }) {
   const { colors, styles } = useStyles();
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [focused, setFocused] = useState(false);
 
   return (
     <View style={styles.fieldWrap}>
@@ -359,12 +387,14 @@ function AuthField({
         <Text style={styles.fieldLabel}>{field.label}</Text>
         {field.helper ? <Text style={styles.fieldHelper}>{field.helper}</Text> : null}
       </View>
-      <View style={styles.inputShell}>
+      <View style={[styles.inputShell, focused ? styles.inputFocused : null]}>
         <TextInput
           accessibilityLabel={field.label}
           autoCapitalize="none"
           keyboardType={field.name === "email" ? "email-address" : "default"}
           onChangeText={onChange}
+          onBlur={() => setFocused(false)}
+          onFocus={() => setFocused(true)}
           placeholder={field.placeholder}
           placeholderTextColor={colors.text4}
           secureTextEntry={field.secure && !passwordVisible}
@@ -395,63 +425,35 @@ function AuthField({
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  brandCore: {
-    backgroundColor: colors.onAccent,
-    borderRadius: radius.pill,
-    height: 12,
-    width: 12
-  },
-  brandHeader: {
-    alignItems: "center",
-    gap: spacing.sm,
-    paddingBottom: spacing.xs,
-    paddingTop: spacing.sm
-  },
-  brandMark: {
-    alignItems: "center",
-    backgroundColor: colors.ink,
-    borderRadius: 20,
-    height: 64,
-    justifyContent: "center",
-    overflow: "hidden",
-    width: 64
-  },
+  screen: { flex: 1, backgroundColor: colors.surface },
+  header: { width: "100%", maxWidth: layout.contentMax, alignSelf: "center", minHeight: 48, paddingHorizontal: 16, justifyContent: "center", alignItems: "flex-start" },
+  closeButton: { minHeight: 44, minWidth: 44, flexDirection: "row", alignItems: "center", paddingVertical: 8 },
+  closeText: { color: colors.accent, fontSize: 15, lineHeight: 20, fontWeight: "600", flexShrink: 1 },
+  scroll: { flex: 1 },
+  scrollContent: { flexGrow: 1, width: "100%", maxWidth: layout.contentMax, alignSelf: "center", paddingHorizontal: 24 },
+  hero: { paddingTop: 40 },
   brandName: {
     color: colors.ink,
     fontSize: 26,
-    fontWeight: "800",
-    lineHeight: 31
+    fontWeight: "900",
+    lineHeight: 31,
+    letterSpacing: -0.52
   },
-  brandRingPrimary: {
-    borderColor: colors.onAccent,
-    borderRadius: radius.pill,
-    borderWidth: 1.5,
-    height: 23,
-    position: "absolute",
-    transform: [{ rotate: "-24deg" }],
-    width: 47
-  },
-  brandRingSecondary: {
-    borderColor: colors.accent,
-    borderRadius: radius.pill,
-    borderWidth: 1.5,
-    height: 25,
-    position: "absolute",
-    transform: [{ rotate: "28deg" }],
-    width: 50
-  },
+  brandDot: { color: colors.accent },
+  title: { color: colors.ink, fontSize: 34, lineHeight: 40, fontWeight: "900", letterSpacing: -1.02, marginTop: 28 },
+  description: { color: colors.muted, fontSize: 14, lineHeight: 20, marginTop: 8 },
   disabledButton: {
     opacity: 0.72
   },
   dividerLine: {
     backgroundColor: colors.border,
     flex: 1,
-    height: StyleSheet.hairlineWidth
+    height: 1
   },
   dividerRow: {
     alignItems: "center",
     flexDirection: "row",
-    gap: spacing.md
+    gap: 12
   },
   dividerText: {
     color: colors.text3,
@@ -474,55 +476,62 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     flexShrink: 1
   },
   fieldLabel: {
-    ...textStyles.small,
-    color: colors.text,
-    fontWeight: "600"
+    color: colors.text3,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: "700",
+    letterSpacing: 0.48
   },
   fieldWrap: {
-    gap: spacing.sm
+    gap: 6
   },
   form: {
-    gap: spacing.md
+    marginTop: 36
   },
+  fields: { gap: 22 },
+  actions: { gap: 12, marginTop: 28 },
+  actionsAfterHelper: { marginTop: 14 },
   helperLink: {
     alignItems: "center",
     borderRadius: radius.control,
     justifyContent: "center",
     minHeight: layout.control,
     maxWidth: "100%",
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: 6,
     paddingVertical: spacing.xs
   },
   helperLinkRow: {
-    alignItems: "center",
+    alignItems: "flex-end",
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "center"
+    justifyContent: "flex-end"
   },
   helperLinkText: {
-    color: colors.text2,
-    fontSize: typography.small,
+    color: colors.accent,
+    fontSize: 13,
     fontWeight: "700",
     lineHeight: 18
   },
   input: {
-    ...textStyles.body,
+    fontSize: 16,
+    lineHeight: 22,
     color: colors.ink,
     flex: 1,
     minWidth: 0,
-    minHeight: 48,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
+    minHeight: 44.5,
+    outlineStyle: "solid",
+    outlineWidth: 0,
+    paddingHorizontal: 0,
+    paddingVertical: 10
   },
   inputShell: {
     alignItems: "center",
-    backgroundColor: colors.surface2,
-    borderColor: colors.border2,
-    borderRadius: radius.input,
-    borderWidth: 1,
-    flexDirection: "row",
-    overflow: "hidden"
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1.5,
+    minHeight: 46,
+    flexDirection: "row"
   },
+  inputFocused: { borderBottomColor: colors.ink },
   labelRow: {
     alignItems: "center",
     flexDirection: "row",
@@ -543,20 +552,23 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   oauthButton: {
     ...createControlStyles(colors).secondaryButton,
     backgroundColor: colors.surface,
+    minHeight: 50,
     flexDirection: "row",
-    gap: spacing.sm
+    gap: 10
   },
   oauthButtonText: {
-    ...createControlStyles(colors).secondaryButtonText
+    ...createControlStyles(colors).secondaryButtonText,
+    fontWeight: "600"
   },
   oauthStack: {
-    gap: spacing.sm
+    gap: 20,
+    marginTop: 8
   },
   passwordToggle: {
     alignItems: "center",
     alignSelf: "stretch",
     justifyContent: "center",
-    minWidth: 48
+    minWidth: 44
   },
   pressed: {
     opacity: 0.84,
@@ -570,10 +582,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   primaryButtonText: {
     ...createControlStyles(colors).primaryButtonText
   },
-  secondaryButton: {
-    ...createControlStyles(colors).secondaryButton
-  },
-  secondaryButtonText: {
-    ...createControlStyles(colors).secondaryButtonText
-  }
+  footer: { marginTop: "auto", paddingTop: 36, paddingBottom: 4 },
+  switchButton: { minHeight: 44, alignItems: "center", justifyContent: "center", paddingVertical: 8 },
+  switchText: { color: colors.muted, fontSize: 14, lineHeight: 20, textAlign: "center" },
+  switchAction: { color: colors.accent, fontWeight: "700" }
 }));

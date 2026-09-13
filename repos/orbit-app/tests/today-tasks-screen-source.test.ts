@@ -33,13 +33,13 @@ test("Today mutations use canonical task and suggestion endpoints", () => {
   assert.match(todaySource, /todayState\.refresh\(\)/u);
 });
 
-test("all tasks keeps open and completed history as a visible segmented control", () => {
+test("all tasks keeps open and completed history as visible tabs", () => {
   assert.match(tasksSource, /type TaskListMode = "open" \| "completed"/u);
-  assert.match(tasksSource, /label: "待办"/u);
+  assert.match(tasksSource, /label: "未完成"/u);
   assert.match(tasksSource, /label: "已完成"/u);
   assert.match(tasksSource, /accessibilityRole="tablist"/u);
-  assert.match(tasksSource, /tasksPath\(mode\)/u);
-  assert.match(tasksSource, /action: mode === "open" \? "complete" : "reopen"/u);
+  assert.match(tasksSource, /tasksPath\(\)/u);
+  assert.match(tasksSource, /item.status === "completed" \? "reopen" : "complete"/u);
 });
 
 test("native Today route points to the task and schedule workspace", () => {

@@ -130,7 +130,7 @@ test("contact rows keep only identity and match score visible", () => {
   assert.ok(cardStart > -1);
   assert.ok(cardEnd > cardStart);
   assert.match(cardSource, /accessibilityLabel=\{contactAccessibilityLabel\}/u);
-  assert.match(cardSource, /numberOfLines=\{1\} style=\{styles\.contactDetail\}/u);
+  assert.match(cardSource, /numberOfLines=\{primary \? undefined : 1\} style=\{\[styles\.contactDetail, primary && styles\.mainContactDetail\]\}/u);
   assert.match(cardSource, /contact\.valueScore/u);
   assert.match(cardSource, /name="chevron-forward"/u);
   assert.doesNotMatch(cardSource, /contact\.relationship/u);
@@ -279,7 +279,7 @@ test("contacts overview does not initialize the deep contact list data sources",
   assert.ok(contactsScreenStart > listScreenStart);
   assert.match(
     contactsScreenSource,
-    /mode === "overview" \? <ContactsOverviewScreen \/> : <ContactsListScreen \/>/u
+    /mode === "overview" \? <ContactsOverviewScreen \/> : <ContactsListScreen primary=\{mode === "main"\} scopeKey=\{scopeKey\} isScopeCurrent=\{isScopeCurrent\} \/>/u
   );
   assert.doesNotMatch(overviewScreenSource, /useApiResource/u);
   assert.doesNotMatch(overviewScreenSource, /contactsListPath/u);

@@ -17,14 +17,15 @@ const title = "东京跨境科技与零售伙伴交流会：共同确认未来�
 const fixture = `
 import React, { useSyncExternalStore } from "react";
 import { View } from "react-native";
+import { readinessPayload, peoplePayload, reviewPayload } from "./tests/helpers/event-detail-fixtures";
 const listeners = new Set(); let revision = 0;
 export const state = window.fixture = { requests: [], navigation: [], kind: "success", busy: false, update(patch) { Object.assign(state, patch); revision++; listeners.forEach(f => f()); } };
 export const useFixture = () => { useSyncExternalStore(f => { listeners.add(f); return () => listeners.delete(f); }, () => revision); return state; };
-const event = { id: "event:style", title: ${JSON.stringify(title)}, startsAt: "2026-12-19T09:00:00Z", status: "scheduled", venue: "东京国际交流中心三层合作伙伴会议室", coverPath: "/orbit-covers/meeting.jpg", description: "围绕零售合作的现场交流。", organizer: "东京伙伴社区", feeLabel: "免费", stats: { youRsvped: false, attendeeCount: 24 } };
+const event = { id: "event:style", title: ${JSON.stringify(title)}, startsAt: "2026-12-19T09:00:00Z", endsAt: "2026-12-19T12:00:00Z", status: "imported", venue: "东京国际交流中心三层合作伙伴会议室", coverPath: "/orbit-covers/meeting.jpg", description: "围绕零售合作的现场交流。", organizer: "东京伙伴社区", feeLabel: "免费", stats: { youRsvped: false, attendeeCount: 24 } };
 const registration = { registration: null, questionSet: { questions: [{ id: "target_attendees", intent: "target_attendees", optional: true, options: ["日本本地 SaaS 买方", "跨境渠道合作伙伴"], participantProfileField: "targetAttendees", prompt: "这场活动里，你最想认识哪类人？" }] } };
 const recommendationMode = new URLSearchParams(location.search).get("recommendations") === "true";
 const events = recommendationMode ? [event, { ...event, id: "event:second", title: "第二场东京伙伴交流会" }] : [event];
-const recommendations = { state: "success", profile: { calendarFit: "open", goal: "拓展合作", industryPreference: "technology", location: "Tokyo" }, nextAction: "先看活动再确认安排", recommendations: events.map(e => ({ eventId: e.id, title: e.title, startsAt: e.startsAt, valueScore: 94, scoreBand: "high", venue: e.venue, location: "Tokyo", recommendedAction: "先看活动再确认安排", signals: [{ label: "目标一致", detail: "可以找到日本合作伙伴", weight: 1 }] })) };
+const recommendations = { state: "success", profile: { calendarFit: "open", goal: "拓展合作", industryPreference: "technology", location: "Tokyo" }, summary: "根据合作目标推荐活动", nextAction: "先看活动再确认安排", recommendations: events.map(e => ({ eventId: e.id, title: e.title, startsAt: e.startsAt, valueScore: 94, scoreBand: "high", venue: e.venue, location: "Tokyo", recommendedAction: "先看活动再确认安排", signals: [{ label: "目标一致", detail: "可以找到日本合作伙伴", weight: 1 }] })) };
 const homeHub = new URLSearchParams(location.search).get("screen") === "homeHub";
 const finalInsets = new URLSearchParams(location.search).get("insets") === "true";
 const profile = { profile: { displayName: "林悦", relationshipGoal: "认识日本零售伙伴", ...(homeHub ? { bio: "负责日本零售市场的合作伙伴拓展。", headline: "跨境合作负责人", role: "日本市场合作伙伴拓展负责人", industry: "跨境零售与企业软件合作", timezone: "Asia/Tokyo", organization: "东京伙伴社区", offering: ["日本渠道资源"], seeking: ["零售采购伙伴"], topics: ["企业软件合作"] } : {}) } };
@@ -33,10 +34,15 @@ const attendees = { event: { ...event, name: event.title }, attendees: [{ attend
 const rolePayload = { event: { eventId: "event:style", title: event.title }, members: [{ assignedAt: null, assignedByActorId: null, eventId: "event:style", reason: null, revision: 0, role: "owner", state: "active", subjectActorId: "actor:owner" }, { assignedAt: "2026-08-19T09:00:00Z", assignedByActorId: "actor:owner", eventId: "event:style", reason: "负责现场签到", revision: 2, role: "check_in", state: "active", subjectActorId: "actor:staff" }] };
 const center = [{ endsAt: "2026-08-21T21:00:00+09:00", eventId: "event:style", lifecycleState: "published", migrationPending: false, owner: true, revision: 3, role: "owner", startsAt: "2026-08-21T18:00:00+09:00", title: event.title, venue: event.venue }];
 const insetMatches = { matches: [{ matchId: "match:style", participantNames: ["佐藤 葵", "林悦"], successNotice: { title: "可以一起讨论零售合作", message: "双方均希望认识对方。" } }] };
+// Retain the complete HTTP contracts while using this screen's event/attendee IDs.
+const insetsPayload = payload => JSON.parse(JSON.stringify(payload).replaceAll("event:1", "event:style").replaceAll("attendee:li", "participant:sato"));
+const insetReadiness = insetsPayload(readinessPayload);
+const insetPeople = insetsPayload(peoplePayload);
+const insetReview = insetsPayload(reviewPayload);
 function insetData(path) {
-  if (path.endsWith("/readiness")) return { goal: { intent: "认识东京采购负责人" }, preparationState: { readinessScore: 75 }, suggestedGoals: [{ goalId: "goal:style", intent: "确认采购合作需求", label: "先了解采购需求", rationale: "已有零售渠道背景" }], readinessChecklist: [] };
-  if (path.includes("/recommendations/event/")) return { recommendations: [{ recommendationId: "recommendation:style", attendee: { attendeeId: "participant:sato", displayName: "佐藤 葵", organization: "东京零售协会", role: "合作负责人" }, rank: 1, score: 90, reasons: ["共同关注零售合作"], openingLine: { text: "贵团队今年有哪些采购计划？" }, recommendedAction: "先当面认识" }] };
-  if (path.endsWith("/post-event")) return { state: "success", contacts: [{ contactDraftId: "draft:style", displayName: "佐藤 葵", summary: { headline: "现场讨论零售合作", whyNow: "已约好继续交流" }, followUpSuggestion: { messageDraft: "很高兴现场讨论采购合作。", urgency: "this_week" } }] };
+  if (path.endsWith("/readiness")) return { ...insetReadiness, goal: { ...insetReadiness.goal, intent: "认识东京采购负责人" }, suggestedGoals: [{ ...insetReadiness.suggestedGoals[0], intent: "确认采购合作需求", label: "先了解采购需求", rationale: "已有零售渠道背景" }], readinessChecklist: [] };
+  if (path.includes("/recommendations/event/")) return { ...insetPeople, recommendations: [{ ...insetPeople.recommendations[0], attendee: { ...insetPeople.recommendations[0].attendee, displayName: "佐藤 葵", organization: "东京零售协会", role: "合作负责人" }, score: 90, reasons: ["共同关注零售合作"], openingLine: { ...insetPeople.recommendations[0].openingLine, text: "贵团队今年有哪些采购计划？" }, recommendedAction: "先当面认识" }] };
+  if (path.endsWith("/post-event")) return { ...insetReview, contacts: [{ ...insetReview.contacts[0], displayName: "佐藤 葵", summary: { ...insetReview.contacts[0].summary, headline: "现场讨论零售合作", whyNow: "已约好继续交流" }, followUpSuggestion: { ...insetReview.contacts[0].followUpSuggestion, messageDraft: "很高兴现场讨论采购合作。" } }] };
   if (path.includes("matches")) return insetMatches;
   if (path.includes("attendees")) return attendees;
 }
@@ -184,8 +190,9 @@ for (const scheme of ["light", "dark"] as const) {
     assert.equal(await event.locator("..").evaluate(el => getComputedStyle(el).borderTopWidth), "0px", "list has no enclosing card");
     assert.ok(await event.locator('img[src*="meeting.jpg"]').count() > 0);
     await unclipped(page.getByText(/东京国际交流中心三层/));
-    await page.getByRole("button", { name: "筛选活动", exact: true }).click();
+    await page.getByRole("button", { name: "筛选活动主题", exact: true }).click();
     const topic = page.getByRole("button", { name: "跨境商务", exact: true }); await fits(topic); await topic.click();
+    await page.getByRole("button", { name: "筛选活动主题", exact: true }).click();
     assert.equal(await topic.getAttribute("aria-selected"), "true");
     await capture(page, `list-${scheme}`); await event.click();
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), [{ pathname: "/events/[id]", params: { id: "event:style" } }]);
@@ -196,7 +203,7 @@ for (const scheme of ["light", "dark"] as const) {
     const register = page.getByRole("button", { name: "报名参加", exact: true }); await fits(register, 50);
     assert.equal(await register.locator("..").evaluate(el => getComputedStyle(el).borderTopWidth), "0px", "registration summary is open");
     assert.ok(await page.locator('img[src*="meeting.jpg"]').count() > 0);
-    await register.click(); await page.getByRole("button", { name: /^参会者/ }).click(); await page.getByRole("button", { name: /^现场/ }).click();
+    await register.click(); await page.getByRole("button", { name: "查看参会者", exact: true }).click(); await page.getByRole("button", { name: "打开活动现场", exact: true }).click();
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/events/event%3Astyle/register", "/events/event%3Astyle/attendees", "/party?eventId=event%3Astyle"]);
     await capture(page, `detail-${scheme}`);
   });
@@ -212,7 +219,10 @@ test("registration options have full touch targets and failed submission preserv
 
 test("operations uses open sections and a 50pt publication action with unchanged generation identity", async t => {
   const page = await open(t, "operations"); const publish = page.getByRole("button", { name: /发布/ }); await fits(publish, 50);
-  assert.equal(await page.getByText("AI 匹配与发布", { exact: true }).locator("..").locator("..").locator("..").evaluate(el => getComputedStyle(el).borderTopWidth), "0px");
+  assert.deepEqual(await page.getByText("AI 匹配与发布", { exact: true }).locator("..").locator("..").locator("..").evaluate(el => {
+    const style = getComputedStyle(el);
+    return [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth, style.borderRadius, style.backgroundColor];
+  }), ["1px", "0px", "0px", "0px", "0px", "rgba(0, 0, 0, 0)"], "open section has only a top separator, not an enclosing card");
   for (const label of ["签到台", "活动分析", "角色"]) { const action = page.getByRole("button", { name: label, exact: true }); await fits(action); await action.click(); }
   await page.evaluate(() => (window as any).fixture.update({ busy: true })); assert.equal(await page.getByRole("button", { name: "正在处理", exact: true }).isDisabled(), true);
   await page.evaluate(() => (window as any).fixture.update({ busy: false })); await publish.click();
@@ -248,11 +258,12 @@ test("event actions and identity reflow under doubled browser text at 320pt", as
 
 test("signed-in event recommendations preserve real covers and horizontally reveal bounded actions", async t => {
   const page = await open(t, "events&recommendations=true", "dark");
+  await page.getByRole("tab", { name: "推荐", exact: true }).click();
   await page.getByText("为你推荐", { exact: true }).waitFor();
   const first = page.getByRole("button", { name: "记下推荐", exact: true }).first();
   const card = first.locator("..").locator("..").locator("..");
   const box = (await card.boundingBox())!;
-  assert.ok(box.width <= 276 && box.x >= 0 && box.x + box.width <= 320);
+  assert.ok(box.width <= 288 && box.x >= 0 && box.x + box.width <= 320);
   await fits(first, 50); await unclipped(card.getByText(title, { exact: true }));
   assert.ok(await card.locator('img[src*="meeting.jpg"]').count() > 0);
   const rail = card.locator("..").locator("..");
@@ -293,7 +304,7 @@ for (const scheme of ["light", "dark"] as const) {
       const box = (await value.boundingBox())!; assert.ok(box.x >= 0 && box.x + box.width <= 320, `${text} fits the phone`);
     }
     for (const [label, value, detail] of [["活动", "1", "需要准备与复盘"], ["人脉", "2", "可触达关系"], ["推进中", "1", "今天优先处理"]]) {
-      const cell = page.getByText(label!, { exact: true }).locator("..");
+      const cell = page.getByText(detail!, { exact: true }).locator("..");
       assert.equal(await cell.getByText(value!, { exact: true }).count(), 1);
       await unclipped(cell.getByText(value!, { exact: true })); await unclipped(cell.getByText(label!, { exact: true })); await unclipped(cell.getByText(detail!, { exact: true }));
       const box = (await cell.boundingBox())!; assert.ok(box.x >= 0 && box.x + box.width <= 320);
@@ -348,7 +359,7 @@ test("party variants and attendee content preserve real identity, routes and rea
 
 test("event center gives the phase action its own row and keeps all secondary destinations readable", async t => {
   const page = await open(t, "center"); const primary = page.getByRole("button", { name: `查看活动分析：${title}`, exact: true }); await fits(primary, 50);
-  assert.equal((await primary.boundingBox())!.width, 276, "phase action occupies its own row at 320pt");
+  assert.equal((await primary.boundingBox())!.width, 288, "phase action occupies its own row at 320pt");
   const destinations = [[`查看活动分析：${title}`, "/events/event%3Astyle/analytics"], [`管理活动角色：${title}`, "/events/event%3Astyle/operations/roles"], [`打开活动运营台：${title}`, "/events/event%3Astyle/operations"], [`查看活动：${title}`, "/events/event%3Astyle"]] as const;
   for (const [name, path] of destinations) { const action = page.getByRole("button", { name, exact: true }); await fits(action); await action.click(); assert.equal(await page.evaluate(() => (window as any).fixture.navigation.at(-1)), path); }
   await page.evaluate(() => document.querySelectorAll("[dir='auto']").forEach(node => { const el = node as HTMLElement, s = getComputedStyle(el); el.style.fontSize = `${parseFloat(s.fontSize) * 2}px`; el.style.lineHeight = `${parseFloat(s.lineHeight) * 2}px`; }));
@@ -390,7 +401,7 @@ test("analytics keeps real fractions readable and exposes view switching only wh
   const page = await open(t, "analytics"); const personal = page.getByRole("button", { name: "我的报告", exact: true }); await fits(personal); await personal.click();
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["attendee_report"]);
   for (const heading of ["活动证据", "可解释比率", "联系证据", "约谈进展"]) {
-    const text = page.getByText(heading, { exact: true }); assert.deepEqual(await text.evaluate(el => { const s = getComputedStyle(el); return [s.fontSize, s.lineHeight, s.fontWeight]; }), ["18px", "26px", "600"]);
+    const text = page.getByText(heading, { exact: true }); assert.deepEqual(await text.evaluate(el => { const s = getComputedStyle(el); return [s.fontSize, s.lineHeight, s.fontWeight]; }), ["15px", "22px", "800"]);
   }
   const report = page.getByText("可解释比率", { exact: true }).locator("..");
   assert.match(await report.innerText(), /2.*4/s);

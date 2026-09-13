@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Pressable,
   RefreshControl,
@@ -14,7 +14,6 @@ import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { layout, textStyles, radius, spacing, typography, type OrbitColors } from "../../design/tokens";
-import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import {
@@ -29,8 +28,8 @@ import {
 
 type ScheduleViewMode = "day" | "week" | "month";
 
-const hourHeight = 64;
-const weekdayLabels = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+const hourHeight = 56;
+const weekdayLabels = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
 
 function usable<TData>(
   state: ReturnType<typeof useApiResource<TData>>
@@ -99,13 +98,16 @@ function itemTone(item: ScheduleTimelineItem, colors: OrbitColors) {
 }
 
 function monthGridDateKeys(selectedDateKey: string): string[] {
-  const [year, month] = selectedDateKey.split("-").map(Number);
+  const year = Number(selectedDateKey.slice(0, 4));
+  const month = Number(selectedDateKey.slice(5, 7));
   const firstDateKey = `${year}-${String(month).padStart(2, "0")}-01`;
   const firstDate = new Date(`${firstDateKey}T12:00:00+09:00`);
-  const sundayOffset = -firstDate.getUTCDay();
-  const gridStart = shiftScheduleDateKey(firstDateKey, sundayOffset);
+  const mondayOffset = -((firstDate.getUTCDay() + 6) % 7);
+  const gridStart = shiftScheduleDateKey(firstDateKey, mondayOffset);
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const cellCount = Math.max(35, Math.ceil((daysInMonth - mondayOffset) / 7) * 7);
 
-  return Array.from({ length: 42 }, (_, index) =>
+  return Array.from({ length: cellCount }, (_, index) =>
     shiftScheduleDateKey(gridStart, index)
   );
 }
@@ -123,7 +125,11 @@ export function ScheduleScreen() {
   );
   const [selectedDateKey, setSelectedDateKey] = useState<string>();
   const [viewMode, setViewMode] = useState<ScheduleViewMode>("day");
-  const now = useMemo(() => new Date(), []);
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
 
   function refresh() {
     tasksState.refresh();
@@ -140,6 +146,7 @@ export function ScheduleScreen() {
           ? scheduleItemsState.data
           : { scheduleItems: [] },
         ...(selectedDateKey ? { selectedDateKey } : {}),
+        weekStartsOn: 1,
         tasks: usable(tasksState) ? tasksState.data : { tasks: [] }
       })
     : null;
@@ -205,11 +212,7 @@ function ScheduleWorkspace({
   return (
     <View style={styles.workspace}>
       <View style={styles.commandRow}>
-        <View style={styles.legendRow}>
-          <ScheduleLegend color={colors.accent} label="人脉待办" />
-          <ScheduleLegend color={colors.sky} label="会面" />
-          <ScheduleLegend color={colors.amber} label="活动" />
-        </View>
+        <ScheduleViewSwitcher onChange={onViewModeChange} value={viewMode} />
         <Pressable
           accessibilityLabel="回到今天"
           accessibilityRole="button"
@@ -219,14 +222,11 @@ function ScheduleWorkspace({
           <Text style={styles.todayButtonText}>今天</Text>
         </Pressable>
       </View>
-      <ScheduleViewSwitcher onChange={onViewModeChange} value={viewMode} />
+      <ScheduleDateHeading onSelectDate={onSelectDate} view={view} viewMode={viewMode} />
       {viewMode === "month" ? (
         <ScheduleMonthGrid onSelectDate={onSelectDate} view={view} />
       ) : (
         <ScheduleWeekStrip
-          onMoveWeek={(days) =>
-            onSelectDate(shiftScheduleDateKey(view.selectedDateKey, days))
-          }
           onSelectDate={onSelectDate}
           view={view}
         />
@@ -241,6 +241,12 @@ function ScheduleWorkspace({
           title={view.selectedDayLabel}
         />
       ) : null}
+      <View style={styles.legendRow}>
+        <ScheduleLegend color={colors.accent} label="人脉待办" />
+        <ScheduleLegend color={colors.sky} label="会面" />
+        <ScheduleLegend color={colors.amber} label="活动" />
+        <ScheduleLegend color={colors.live} label="个人日程" />
+      </View>
     </View>
   );
 }
@@ -277,6 +283,7 @@ function ScheduleViewSwitcher({
           <Pressable
             accessibilityRole="tab"
             accessibilityState={{ selected }}
+            aria-selected={selected}
             key={option.value}
             onPress={() => onChange(option.value)}
             style={({ pressed }) => [
@@ -300,41 +307,59 @@ function ScheduleViewSwitcher({
   );
 }
 
+function ScheduleDateHeading({ onSelectDate, view, viewMode }: {
+  onSelectDate: (dateKey: string) => void;
+  view: ScheduleCalendarView;
+  viewMode: ScheduleViewMode;
+}) {
+  const { colors, styles } = useStyles();
+  const { fontScale } = useWindowDimensions();
+  const compactDate = (dateKey: string) => dateKey.split("-").slice(1).map(Number).join(".");
+  const title = viewMode === "day" ? compactDate(view.selectedDateKey)
+    : viewMode === "week" ? `${compactDate(view.days[0]!.dateKey)} – ${compactDate(view.days[6]!.dateKey)}`
+    : `${view.selectedDateKey.slice(0, 4)} · ${Number(view.selectedDateKey.slice(5, 7))}月`;
+  const selectedDay = view.days.find(day => day.isSelected)!;
+  // A Monday-first week's Thursday determines its ISO week-year.
+  const thursday = new Date(`${view.days[3]!.dateKey}T00:00:00Z`);
+  const weekYear = thursday.getUTCFullYear();
+  const weekNumber = Math.ceil(((thursday.getTime() - Date.UTC(weekYear, 0, 1)) / 86_400_000 + 1) / 7);
+  const move = (direction: number) => onSelectDate(viewMode === "month"
+    ? shiftScheduleMonthDateKey(view.selectedDateKey, direction)
+    : shiftScheduleDateKey(view.selectedDateKey, direction * (viewMode === "week" ? 7 : 1)));
+  return (
+    <View style={[styles.weekHeader, fontScale > 1.3 && styles.weekHeaderLarge]}>
+      <View style={[styles.weekHeadingCopy, fontScale > 1.3 && styles.weekHeadingCopyLarge]}>
+        <Text accessibilityRole="header" style={[styles.dateTitle, viewMode === "day" && styles.dayDateTitle]}>{title}</Text>
+        {viewMode !== "month" ? <Text style={styles.dateSubtitle}>{viewMode === "day"
+          ? `${selectedDay.weekdayLabel} · ${selectedDay.items.length} 项`
+          : `${weekYear} · 第 ${weekNumber} 周`}</Text> : null}
+        {viewMode === "day" && view.selectedHolidayName ? <Text style={styles.holidayBadgeText}>{view.selectedHolidayName}</Text> : null}
+      </View>
+      <View style={styles.dateArrows}>
+        <Pressable accessibilityLabel={viewMode === "day" ? "上一天" : viewMode === "week" ? "上一周" : "上个月"} accessibilityRole="button"
+          onPress={() => move(-1)} style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
+          <Ionicons color={colors.ink} name="chevron-back" size={18} />
+        </Pressable>
+        <Pressable accessibilityLabel={viewMode === "day" ? "下一天" : viewMode === "week" ? "下一周" : "下个月"} accessibilityRole="button"
+          onPress={() => move(1)} style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
+          <Ionicons color={colors.ink} name="chevron-forward" size={18} />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 function ScheduleWeekStrip({
-  onMoveWeek,
   onSelectDate,
   view
 }: {
-  onMoveWeek: (days: number) => void;
   onSelectDate: (dateKey: string) => void;
   view: ScheduleCalendarView;
 }) {
-  const { colors, styles } = useStyles();
+  const { styles } = useStyles();
   return (
     <View style={styles.calendarPanel}>
-      <View style={styles.weekHeader}>
-        <Pressable
-          accessibilityLabel="上一周"
-          accessibilityRole="button"
-          onPress={() => onMoveWeek(-7)}
-          style={({ pressed }) => [styles.iconButton, pressed ? styles.pressed : null]}
-        >
-          <Ionicons color={colors.text2} name="chevron-back" size={18} />
-        </Pressable>
-        <View style={styles.weekHeadingCopy}>
-          <Text style={styles.monthLabel}>{view.monthLabel}</Text>
-          <Text style={styles.weekLabel}>{view.weekLabel}</Text>
-        </View>
-        <Pressable
-          accessibilityLabel="下一周"
-          accessibilityRole="button"
-          onPress={() => onMoveWeek(7)}
-          style={({ pressed }) => [styles.iconButton, pressed ? styles.pressed : null]}
-        >
-          <Ionicons color={colors.text2} name="chevron-forward" size={18} />
-        </Pressable>
-      </View>
-      <View style={styles.dayStrip}>
+      <View testID="schedule-week-strip" style={styles.dayStrip}>
         {view.days.map((day) => (
           <ScheduleDayButton day={day} key={day.dateKey} onPress={onSelectDate} />
         ))}
@@ -351,6 +376,7 @@ function ScheduleDayButton({
   onPress: (dateKey: string) => void;
 }) {
   const { colors, styles } = useStyles();
+  const { fontScale } = useWindowDimensions();
   const accessibilityHoliday = day.holidayName ? `，${day.holidayName}` : "";
 
   return (
@@ -358,6 +384,7 @@ function ScheduleDayButton({
       accessibilityLabel={`${day.weekdayLabel}${day.dayNumber}日${accessibilityHoliday}，${day.items.length}项安排`}
       accessibilityRole="button"
       accessibilityState={{ selected: day.isSelected }}
+      aria-selected={day.isSelected}
       onPress={() => onPress(day.dateKey)}
       style={({ pressed }) => [
         styles.dayButton,
@@ -373,7 +400,7 @@ function ScheduleDayButton({
           day.isSelected ? styles.dayTextSelected : null
         ]}
       >
-        {day.weekdayLabel.replace("周", "")}
+        {fontScale > 1.3 ? day.weekdayLabel.replace("周", "") : day.weekdayLabel}
       </Text>
       <Text
         style={[
@@ -393,9 +420,7 @@ function ScheduleDayButton({
             style={[
               styles.dayDot,
               {
-                backgroundColor: day.isSelected
-                  ? colors.onAccent
-                  : itemTone(item, colors).color
+                backgroundColor: itemTone(item, colors).color
               }
             ]}
           />
@@ -407,23 +432,9 @@ function ScheduleDayButton({
 
 function ScheduleDayView({ now, view }: { now: Date; view: ScheduleCalendarView }) {
   const { styles } = useStyles();
-  const selectedHolidayName = view.selectedHolidayName;
 
   return (
     <View style={styles.dayView}>
-      <View style={styles.sectionHeadingRow}>
-        <View style={styles.selectedDateHeading}>
-          <Text style={styles.sectionTitle}>{view.selectedDayLabel}</Text>
-          {selectedHolidayName ? (
-            <View style={styles.holidayBadge}>
-              <Text style={styles.holidayBadgeText}>{selectedHolidayName}</Text>
-            </View>
-          ) : null}
-        </View>
-        <Text style={styles.sectionCount}>
-          {view.allDayItems.length + view.timedItems.length} 项
-        </Text>
-      </View>
       {view.allDayItems.length > 0 ? (
         <View style={styles.allDayRow}>
           <Text style={styles.allDayLabel}>全天</Text>
@@ -454,7 +465,7 @@ function ScheduleTimeGrid({
 }) {
   const { colors, styles } = useStyles();
   const { fontScale } = useWindowDimensions();
-  const hourGutter = Math.max(46, Math.ceil(36 * fontScale + spacing.sm));
+  const hourGutter = Math.max(42, Math.ceil(36 * fontScale + spacing.xs));
   const itemMinutes = items
     .map((item) => minuteOfDay(item.timeLabel))
     .filter((value): value is number => value !== null);
@@ -464,15 +475,17 @@ function ScheduleTimeGrid({
     return startsAt === null
       ? latest
       : Math.max(latest, startsAt + item.durationMinutes);
-  }, 18 * 60);
-  const startHour = Math.max(0, Math.min(8, Math.floor(earliestMinute / 60)));
-  const endHour = Math.min(24, Math.max(21, Math.ceil(latestMinute / 60)));
+  }, 17 * 60);
+  const startHour = Math.max(0, Math.min(9, Math.floor(earliestMinute / 60)));
+  const endHour = Math.min(24, Math.max(17, Math.ceil(latestMinute / 60)));
   const hours = Array.from(
     { length: endHour - startHour + 1 },
     (_, index) => startHour + index
   );
   const gridHeight = (endHour - startHour) * hourHeight;
-  const currentTop = ((currentTokyoMinute(now) - startHour * 60) / 60) * hourHeight;
+  const currentMinute = currentTokyoMinute(now);
+  const currentTop = ((currentMinute - startHour * 60) / 60) * hourHeight;
+  const nextMinute = isToday ? Math.min(...itemMinutes.filter(minute => minute >= currentMinute)) : Infinity;
 
   return (
     <View style={[styles.timeGrid, { height: gridHeight + 1 }]}>
@@ -486,7 +499,8 @@ function ScheduleTimeGrid({
         </View>
       ))}
       {isToday && currentTop >= 0 && currentTop <= gridHeight ? (
-        <View style={[styles.currentTimeRow, { left: hourGutter + 3, top: currentTop }]}>
+        <View testID="schedule-current-time" style={[styles.currentTimeRow, { top: currentTop }]}>
+          <Text style={[styles.currentTimeLabel, { width: hourGutter }]}>{String(Math.floor(currentMinute / 60)).padStart(2, "0")}:{String(currentMinute % 60).padStart(2, "0")}</Text>
           <View style={styles.currentTimeDot} />
           <View style={styles.currentTimeLine} />
         </View>
@@ -497,12 +511,13 @@ function ScheduleTimeGrid({
           return null;
         }
         const top = ((startsAt - startHour * 60) / 60) * hourHeight;
-        const height = Math.max(42, (item.durationMinutes / 60) * hourHeight - 4);
+        const height = Math.max(44, (item.durationMinutes / 60) * hourHeight - 4);
         return (
           <ScheduleTimeBlock
             height={height}
             hourGutter={hourGutter}
             item={item}
+            nextUp={startsAt === nextMinute}
             key={`${item.kind}-${item.id}`}
             top={top}
           />
@@ -522,11 +537,13 @@ function ScheduleTimeBlock({
   height,
   hourGutter,
   item,
+  nextUp,
   top
 }: {
   height: number;
   hourGutter: number;
   item: ScheduleTimelineItem;
+  nextUp: boolean;
   top: number;
 }) {
   const { colors, styles } = useStyles();
@@ -543,7 +560,7 @@ function ScheduleTimeBlock({
       style={({ pressed }) => [
         styles.timeBlock,
         {
-          backgroundColor: tone.backgroundColor,
+          backgroundColor: nextUp ? colors.ink : colors.surface2,
           borderLeftColor: tone.borderColor,
           height,
           left: hourGutter + spacing.sm,
@@ -553,16 +570,15 @@ function ScheduleTimeBlock({
       ]}
     >
       <View style={styles.timeBlockHeader}>
-        <Ionicons color={tone.color} name={tone.icon} size={14} />
-        <Text numberOfLines={1} style={[styles.timeBlockTime, { color: tone.color }]}>
-          {item.timeLabel}
-        </Text>
-        <Text numberOfLines={1} style={styles.timeBlockTitle}>
+        <Text numberOfLines={1} style={[styles.timeBlockTitle, nextUp && styles.timeBlockTitleNext]}>
           {item.title}
+        </Text>
+        <Text numberOfLines={1} style={[styles.timeBlockTime, nextUp && styles.timeBlockMetaNext]}>
+          {item.timeLabel}
         </Text>
       </View>
       {!compact && item.subtitle ? (
-        <Text numberOfLines={1} style={styles.timeBlockMeta}>
+        <Text numberOfLines={1} style={[styles.timeBlockMeta, nextUp && styles.timeBlockMetaNext]}>
           {item.subtitle}
         </Text>
       ) : null}
@@ -572,37 +588,29 @@ function ScheduleTimeBlock({
 
 function ScheduleWeekAgenda({ view }: { view: ScheduleCalendarView }) {
   const { styles } = useStyles();
+  const orderedDays = [...view.days.filter(day => day.dateKey >= view.selectedDateKey),
+    ...view.days.filter(day => day.dateKey < view.selectedDateKey)];
   return (
-    <View style={styles.agendaSection}>
-      <View style={styles.sectionHeadingRow}>
-        <Text style={styles.sectionTitle}>本周安排</Text>
-        <Text style={styles.sectionCount}>
-          {view.days.reduce((sum, day) => sum + day.items.length, 0)} 项
-        </Text>
-      </View>
+    <View testID="schedule-week-agenda" style={styles.agendaSection}>
       <View style={styles.weekAgendaList}>
-        {view.days.map((day) => (
+        {orderedDays.map((day) => (
           <View key={day.dateKey} style={styles.weekAgendaDay}>
+            {day.dateKey < view.selectedDateKey && day === view.days[0] ? <Text style={styles.earlierDaysLabel}>本周较早日期</Text> : null}
             <View style={styles.weekAgendaDate}>
               <Text
+                accessibilityRole="header"
                 style={[
-                  styles.weekAgendaWeekday,
+                  styles.sectionTitle,
                   day.isSaturday ? styles.saturdayText : null,
-                  day.isSunday || day.isHoliday ? styles.holidayText : null
+                  day.isSunday || day.isHoliday ? styles.holidayText : null,
+                  day.isToday ? styles.todayDateText : null
                 ]}
               >
-                {day.weekdayLabel}
+                {day.isToday ? "今天 · " : ""}{Number(day.dateKey.slice(5, 7))}月{day.dayNumber}日 {day.weekdayLabel}
               </Text>
-              <Text
-                style={[
-                  styles.weekAgendaNumber,
-                  day.isSaturday ? styles.saturdayText : null,
-                  day.isSunday || day.isHoliday ? styles.holidayText : null
-                ]}
-              >
-                {day.dayNumber}
-              </Text>
+              <Text style={styles.sectionCount}>{day.items.length} 项</Text>
             </View>
+            {day.holidayName ? <Text style={styles.holidayBadgeText}>{day.holidayName}</Text> : null}
             <View style={styles.weekAgendaItems}>
               {day.items.length > 0 ? (
                 day.items.map((item) => (
@@ -632,45 +640,23 @@ function ScheduleMonthGrid({
 
   return (
     <View style={styles.calendarPanel}>
-      <View style={styles.monthGridHeader}>
-        <Pressable
-          accessibilityLabel="上个月"
-          accessibilityRole="button"
-          onPress={() =>
-            onSelectDate(shiftScheduleMonthDateKey(view.selectedDateKey, -1))
-          }
-          style={({ pressed }) => [styles.iconButton, pressed ? styles.pressed : null]}
-        >
-          <Ionicons color={colors.text2} name="chevron-back" size={18} />
-        </Pressable>
-        <Text style={styles.monthGridTitle}>{view.monthLabel}</Text>
-        <Pressable
-          accessibilityLabel="下个月"
-          accessibilityRole="button"
-          onPress={() =>
-            onSelectDate(shiftScheduleMonthDateKey(view.selectedDateKey, 1))
-          }
-          style={({ pressed }) => [styles.iconButton, pressed ? styles.pressed : null]}
-        >
-          <Ionicons color={colors.text2} name="chevron-forward" size={18} />
-        </Pressable>
-      </View>
       <View style={styles.monthWeekdays}>
         {weekdayLabels.map((label, index) => (
           <Text
             key={label}
             style={[
               styles.monthWeekday,
-              index === 6 ? styles.saturdayText : null,
-              index === 0 ? styles.holidayText : null
+              index === 5 ? styles.saturdayText : null,
+              index === 6 ? styles.holidayText : null
             ]}
           >
             {label.replace("周", "")}
           </Text>
         ))}
       </View>
-      <View style={styles.monthDays}>
+      <View testID="schedule-month-days" style={styles.monthDays}>
         {dateKeys.map((dateKey) => {
+          if (!dateKey.startsWith(selectedMonth)) return <View key={dateKey} style={styles.monthDay} />;
           const selected = dateKey === view.selectedDateKey;
           const dateItems = view.items.filter((item) => item.dateKey === dateKey);
           const calendarDateInfo = japanCalendarDateInfo(dateKey);
@@ -679,11 +665,11 @@ function ScheduleMonthGrid({
               accessibilityLabel={`${Number(dateKey.slice(-2))}日${calendarDateInfo.holidayName ? `，${calendarDateInfo.holidayName}` : ""}，${dateItems.length}项安排`}
               accessibilityRole="button"
               accessibilityState={{ selected }}
+              aria-selected={selected}
               key={dateKey}
               onPress={() => onSelectDate(dateKey)}
               style={({ pressed }) => [
                 styles.monthDay,
-                selected ? styles.monthDaySelected : null,
                 pressed ? styles.pressed : null
               ]}
             >
@@ -694,8 +680,7 @@ function ScheduleMonthGrid({
                   calendarDateInfo.isSunday || calendarDateInfo.isHoliday
                     ? styles.holidayText
                     : null,
-                  !dateKey.startsWith(selectedMonth) ? styles.monthDayMuted : null,
-                  selected ? styles.dayTextSelected : null
+                  selected ? styles.monthDaySelected : null
                 ]}
               >
                 {Number(dateKey.slice(-2))}
@@ -707,9 +692,7 @@ function ScheduleMonthGrid({
                     style={[
                       styles.monthDayDot,
                       {
-                        backgroundColor: selected
-                          ? colors.onAccent
-                          : itemTone(item, colors).color
+                        backgroundColor: itemTone(item, colors).color
                       }
                     ]}
                   />
@@ -736,10 +719,10 @@ function ScheduleCompactAgenda({
 }) {
   const { styles } = useStyles();
   return (
-    <View style={styles.agendaSection}>
+    <View style={[styles.agendaSection, styles.monthAgenda]}>
       <View style={styles.sectionHeadingRow}>
         <View style={styles.selectedDateHeading}>
-          <Text style={styles.sectionTitle}>{title}</Text>
+          <Text accessibilityRole="header" style={styles.sectionTitle}>{title}</Text>
           {badgeLabel ? (
             <View style={styles.holidayBadge}>
               <Text style={styles.holidayBadgeText}>{badgeLabel}</Text>
@@ -775,12 +758,10 @@ function ScheduleAgendaRow({ item }: { item: ScheduleTimelineItem }) {
       onPress={() => router.push(item.href as Href)}
       style={({ pressed }) => [styles.agendaRow, largeText ? styles.agendaRowLarge : null, pressed ? styles.pressed : null]}
     >
-      <Text style={[styles.agendaTime, largeText ? styles.agendaTimeLarge : null, { color: tone.color }]}>
+      <Text style={[styles.agendaTime, largeText ? styles.agendaTimeLarge : null]}>
         {item.timeLabel || "全天"}
       </Text>
-      <View style={[styles.agendaIcon, { backgroundColor: tone.backgroundColor }]}>
-        <Ionicons color={tone.color} name={tone.icon} size={16} />
-      </View>
+      <View style={[styles.agendaMarker, { backgroundColor: tone.color }]} />
       <View style={[styles.agendaCopy, largeText ? styles.agendaCopyLarge : null]}>
         <Text numberOfLines={largeText ? undefined : 1} style={styles.agendaTitle}>
           {item.title}
@@ -797,22 +778,16 @@ function ScheduleAgendaRow({ item }: { item: ScheduleTimelineItem }) {
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   agendaCopy: { flex: 1, minWidth: 0 },
   agendaCopyLarge: { flexBasis: "100%" },
-  agendaIcon: {
-    alignItems: "center",
-    borderRadius: radius.pill,
-    height: 34,
-    justifyContent: "center",
-    width: 34
-  },
+  agendaMarker: { width: 2, height: 30, borderRadius: 1 },
   agendaMeta: { ...textStyles.caption, color: colors.text3 },
   agendaRow: {
     alignItems: "center",
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.hairline,
     borderBottomWidth: 1,
     flexDirection: "row",
-    gap: spacing.sm,
-    minHeight: 58,
-    paddingVertical: spacing.sm
+    gap: 14,
+    minHeight: 62,
+    paddingVertical: 12
   },
   agendaSection: {
     borderColor: colors.border,
@@ -820,11 +795,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingHorizontal: 0
   },
   agendaRowLarge: { flexWrap: "wrap" },
-  agendaTime: { fontSize: typography.small, fontWeight: "800", width: 43 },
+  agendaTime: { color: colors.ink, fontSize: 14, fontWeight: "800", width: 46 },
   agendaTimeLarge: { flexShrink: 0, width: "auto" },
   agendaTitle: {
-    ...textStyles.listTitle,
-    color: colors.ink
+    color: colors.ink, fontSize: 14, lineHeight: 20, fontWeight: "700"
   },
   allDayItems: { flex: 1 },
   allDayLabel: {
@@ -850,8 +824,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     minHeight: 44,
-    flexWrap: "wrap",
-    gap: spacing.sm
+    gap: 10
   },
   compactAgendaEmpty: {
     color: colors.text3,
@@ -870,34 +843,37 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   currentTimeRow: {
     alignItems: "center",
     flexDirection: "row",
-    left: 49,
+    left: 0,
     position: "absolute",
     right: 0,
     zIndex: 3
   },
+  currentTimeLabel: { color: colors.accent, backgroundColor: colors.surface, fontSize: 11, fontWeight: "800", marginTop: -8, marginBottom: -8 },
   dayButton: {
     alignItems: "center",
-    borderRadius: radius.md,
+    borderBottomColor: "transparent",
+    borderBottomWidth: 2,
     flex: 1,
     justifyContent: "center",
     minWidth: 0,
-    paddingVertical: spacing.xs,
-    minHeight: 70
+    paddingVertical: 6,
+    gap: 4,
+    minHeight: 56
   },
-  dayButtonSelected: { backgroundColor: colors.accent },
+  dayButtonSelected: { borderBottomColor: colors.accent },
   dayDot: { borderRadius: radius.pill, height: 4, width: 4 },
   dayDots: { flexDirection: "row", gap: 2, height: 5, justifyContent: "center" },
   dayNumber: {
     color: colors.ink,
-    fontSize: typography.body,
-    fontWeight: "800",
+    fontSize: 15,
+    fontWeight: "700",
     lineHeight: 22
   },
-  dayStrip: { flexDirection: "row", gap: 3 },
-  dayTextSelected: { color: colors.onAccent },
+  dayStrip: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: colors.border },
+  dayTextSelected: { color: colors.accent },
   dayView: {
     borderColor: colors.border,
-    paddingTop: spacing.md,
+    paddingTop: 2,
     backgroundColor: colors.surface,
     paddingHorizontal: 0
   },
@@ -947,33 +923,21 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   legendDot: { borderRadius: radius.pill, height: 6, width: 6 },
   legendItem: { alignItems: "center", flexDirection: "row", gap: spacing.xs },
-  legendRow: { flexDirection: "row", flexWrap: "wrap", flexShrink: 1, gap: spacing.sm },
-  legendText: { color: colors.text3, fontSize: typography.caption, fontWeight: "700" },
+  legendRow: { flexDirection: "row", flexWrap: "wrap", flexShrink: 1, gap: 12, paddingTop: 8 },
+  legendText: { color: colors.text3, fontSize: 11, fontWeight: "600" },
   monthDay: {
     alignItems: "center",
-    borderRadius: radius.control,
     flexBasis: "14.285%",
     justifyContent: "center",
     minHeight: layout.control,
     paddingVertical: spacing.xs
   },
-  monthDayDot: { borderRadius: radius.pill, height: 3, width: 3 },
+  monthDayDot: { borderRadius: radius.pill, height: 4, width: 4 },
   monthDayDots: { flexDirection: "row", gap: 2, height: 4 },
-  monthDayMuted: { color: colors.text4 },
-  monthDaySelected: { backgroundColor: colors.accent },
-  monthDayText: { color: colors.ink, fontSize: typography.small, fontWeight: "700" },
-  monthDays: { flexDirection: "row", flexWrap: "wrap" },
-  monthGridHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: spacing.sm
-  },
-  monthGridTitle: { ...textStyles.section, color: colors.ink },
-  monthLabel: {
-    ...textStyles.section,
-    color: colors.ink
-  },
+  monthDaySelected: { backgroundColor: colors.accent, borderRadius: 16, color: colors.onAccent },
+  monthDayText: { color: colors.ink, fontSize: 15, fontWeight: "600", minWidth: 32, minHeight: 32, textAlign: "center", lineHeight: 22, paddingVertical: 5 },
+  monthDays: { flexDirection: "row", flexWrap: "wrap", rowGap: 4 },
+  monthAgenda: { borderTopColor: colors.border, borderTopWidth: 1, paddingTop: 14 },
   monthWeekday: {
     color: colors.text3,
     flex: 1,
@@ -991,17 +955,18 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.sm,
     flexWrap: "wrap"
   },
-  sectionCount: { color: colors.text3, fontSize: typography.caption, fontWeight: "700" },
+  sectionCount: { color: colors.accent, fontSize: 12, fontWeight: "700", flexShrink: 0 },
   sectionHeadingRow: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: spacing.md
+    marginBottom: 0,
+    gap: 8
   },
   sectionTitle: { ...textStyles.section, color: colors.ink, flexShrink: 1 },
   timeBlock: {
-    borderLeftWidth: 3,
-    borderRadius: radius.control,
+    borderLeftWidth: 2,
+    borderRadius: 7,
     gap: 3,
     justifyContent: "center",
     left: 54,
@@ -1015,9 +980,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.text3,
     fontSize: 11,
     lineHeight: 15,
-    marginLeft: 18
+    marginLeft: 0
   },
-  timeBlockTime: { fontSize: 11, fontWeight: "800" },
+  timeBlockTime: { color: colors.text3, fontSize: 12, fontWeight: "500" },
+  timeBlockTitleNext: { color: colors.canvas },
+  timeBlockMetaNext: { color: colors.canvas, opacity: 0.8 },
   timeBlockTitle: {
     color: colors.ink,
     flex: 1,
@@ -1025,47 +992,43 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     fontWeight: "800"
   },
   timeGrid: { position: "relative" },
-  todayButton: {
-    ...createControlStyles(colors).chip,
-    borderColor: colors.border2,
-    borderWidth: 1
-  },
-  todayButtonText: { color: colors.accent, fontSize: typography.small, fontWeight: "800" },
+  todayButton: { minHeight: 44, minWidth: 44, justifyContent: "center", alignItems: "center" },
+  todayButtonText: { color: colors.accent, fontSize: 13, fontWeight: "700" },
   todayDateText: { color: colors.accent },
   viewSwitchButton: {
-    ...createControlStyles(colors).chip,
-    flex: 1
+    minHeight: 44, justifyContent: "center", alignItems: "center",
+    borderRadius: 7, paddingHorizontal: 4, paddingVertical: 6, flex: 1
   },
-  viewSwitchButtonSelected: { backgroundColor: colors.surface },
-  viewSwitchText: { color: colors.text3, fontSize: typography.small, fontWeight: "700" },
-  viewSwitchTextSelected: { color: colors.accent, fontWeight: "800" },
+  viewSwitchButtonSelected: { backgroundColor: colors.ink },
+  viewSwitchText: { color: colors.text3, fontSize: 13, fontWeight: "700" },
+  viewSwitchTextSelected: { color: colors.canvas },
   viewSwitcher: {
     borderColor: colors.border,
+    borderWidth: 1,
     flexDirection: "row",
     padding: 3,
-    backgroundColor: colors.surface2,
-    borderRadius: radius.control
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: 10
   },
-  weekAgendaDate: { alignItems: "center", paddingTop: spacing.sm, width: 42 },
-  weekAgendaDay: {
-    borderBottomColor: colors.border,
-    borderBottomWidth: 1,
-    flexDirection: "row",
-    gap: spacing.md,
-    minHeight: 62
-  },
-  weekAgendaEmpty: { color: colors.text4, fontSize: typography.small, paddingVertical: spacing.lg },
-  weekAgendaItems: { flex: 1 },
-  weekAgendaList: { marginBottom: -1 },
-  weekAgendaNumber: { color: colors.ink, fontSize: typography.body, fontWeight: "800" },
-  weekAgendaWeekday: { color: colors.text3, fontSize: 10, fontWeight: "700" },
+  weekAgendaDate: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", gap: 8 },
+  weekAgendaDay: { gap: 4 },
+  weekAgendaEmpty: { color: colors.text3, fontSize: 12, paddingVertical: 12 },
+  weekAgendaItems: {},
+  weekAgendaList: { gap: 18 },
+  earlierDaysLabel: { color: colors.text3, fontSize: 12, paddingBottom: 8 },
   weekHeader: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: spacing.sm
+    gap: 8
   },
-  weekHeadingCopy: { alignItems: "center", gap: spacing.xxs, flex: 1, minWidth: 0 },
-  weekLabel: { color: colors.text3, fontSize: typography.caption, fontWeight: "700" },
-  workspace: { gap: spacing.md }
+  weekHeadingCopy: { flexDirection: "row", alignItems: "baseline", flexWrap: "wrap", columnGap: 10, rowGap: 4, flex: 1, minWidth: 0 },
+  weekHeaderLarge: { flexWrap: "wrap" },
+  weekHeadingCopyLarge: { flexDirection: "column", alignItems: "flex-start", flexBasis: "100%", flexShrink: 0 },
+  dateArrows: { flexDirection: "row", flexShrink: 0, marginLeft: "auto" },
+  dateTitle: { color: colors.ink, fontSize: 24, lineHeight: 30, fontWeight: "900", letterSpacing: -0.6 },
+  dayDateTitle: { fontSize: 34, lineHeight: 40, letterSpacing: -1 },
+  dateSubtitle: { color: colors.text3, fontSize: 13, lineHeight: 19 },
+  workspace: { gap: 14 }
 }));

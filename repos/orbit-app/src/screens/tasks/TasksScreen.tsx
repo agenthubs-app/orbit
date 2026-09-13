@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 
 import { taskPath, tasksPath } from "../../api/endpoints";
@@ -8,12 +8,11 @@ import { AppScreen } from "../../components/AppScreen";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { layout, textStyles, radius, spacing, typography } from "../../design/tokens";
-import { createControlStyles } from "../../design/controls";
+import { layout } from "../../design/tokens";
 import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
-import { tasksToListView } from "../../view-models/today-tasks";
+import { tasksToListView, type TaskListRowView } from "../../view-models/today-tasks";
 
 type TaskListMode = "open" | "completed";
 
@@ -34,27 +33,43 @@ export function TasksScreen() {
   const [mode, setMode] = useState<TaskListMode>(() => requestedMode(params.view));
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
-  const path = useMemo(() => tasksPath(mode), [mode]);
-  const state = useApiResource<unknown>(path, () => false);
-  const view =
-    state.kind === "success" || state.kind === "empty"
-      ? tasksToListView(state.data, mode)
-      : null;
+  const busy = useRef(false);
+  const state = useApiResource<unknown>(tasksPath(), () => false);
+  const ready = state.kind === "success" || state.kind === "empty";
+  const now = new Date();
+  const open = ready ? tasksToListView(state.data, "open", now).items : null;
+  const completed = ready ? tasksToListView(state.data, "completed", now).items : null;
+  const today = tokyoDateKey(now);
+  const groups = open && completed ? [
+    ...(mode === "open" ? [
+      { label: "已逾期", items: open.filter(item => taskDateKey(item) && taskDateKey(item)! < today), tone: "danger" },
+      { label: "今天", items: open.filter(item => taskDateKey(item) === today), tone: "today" },
+      { label: "之后", items: open.filter(item => taskDateKey(item) && taskDateKey(item)! > today), tone: "muted" },
+      { label: "未安排", items: open.filter(item => !taskDateKey(item)), tone: "muted" },
+    ] : []),
+    { label: "已完成", items: completed, tone: "completed" },
+  ].filter(group => group.items.length > 0) : [];
 
   useEffect(() => setMode(requestedMode(params.view)), [params.view]);
 
-  async function toggleTask(taskId: string) {
-    setUpdatingId(taskId);
+  async function toggleTask(item: TaskListRowView) {
+    if (busy.current) return;
+    busy.current = true;
+    setUpdatingId(item.id);
     setMutationError(null);
-    const result = await client.patch<unknown>(taskPath(taskId), {
-      body: {
-        action: mode === "open" ? "complete" : "reopen",
-        idempotencyKey: mutationKey(`${mode}:${taskId}`),
-      },
-    });
-    if (result.success) state.refresh();
-    else setMutationError(result.error.message);
-    setUpdatingId(null);
+    try {
+      const action = item.status === "completed" ? "reopen" : "complete";
+      const result = await client.patch<unknown>(taskPath(item.id), {
+        body: { action, idempotencyKey: mutationKey(`${action}:${item.id}`) },
+      });
+      if (result.success) state.refresh();
+      else setMutationError(result.error.message);
+    } catch {
+      setMutationError("操作未完成，请重试。");
+    } finally {
+      busy.current = false;
+      setUpdatingId(null);
+    }
   }
 
   return (
@@ -66,52 +81,59 @@ export function TasksScreen() {
           tintColor={colors.accent}
         />
       }
-      title="待办事项"
+      headerActions={<Pressable accessibilityLabel="添加待办（前往今天）" accessibilityRole="button" onPress={() => router.push("/today" as Href)} style={styles.addButton}>
+        <Ionicons color={colors.accent} name="add" size={26} />
+      </Pressable>}
+      title="待办"
     >
-      <TaskModeSwitcher mode={mode} onChange={setMode} />
+      <TaskModeSwitcher mode={mode} onChange={setMode} openCount={open?.length} completedCount={completed?.length} />
       {state.kind === "loading" ? <LoadingState /> : null}
       {state.kind === "failure" || state.kind === "offline" ? (
         <ErrorState message={state.error.message} title="待办暂时打不开" />
       ) : null}
-      {view && view.items.length === 0 ? (
+      {ready && (mode === "open" ? open?.length === 0 : completed?.length === 0) ? (
         <EmptyState
           message={mode === "open" ? "新待办会出现在这里。" : "完成待办后，这里会留下记录。"}
           title={mode === "open" ? "暂无待办" : "暂无完成记录"}
         />
       ) : null}
-      {view && view.items.length > 0 ? (
-        <View style={styles.list}>
-          {view.items.map((item, index) => (
+      <View style={styles.groups}>
+      {groups.map(group => (
+        <View key={group.label} style={styles.list}>
+          <View accessibilityRole="header" accessibilityLabel={`${group.label} ${group.items.length}`} style={styles.groupHeading}>
+            <Text style={[styles.groupTitle, group.tone === "completed" && styles.muted]}>{group.label}</Text>
+            <Text style={[styles.groupCount, group.tone === "today" && styles.todayCount, group.tone === "danger" && styles.danger]}>{group.items.length}</Text>
+          </View>
+          {group.items.map(item => (
             <View
               key={item.id}
-              style={[styles.row, index > 0 ? styles.rowDivider : null]}
+              style={styles.row}
             >
               <Pressable
-                accessibilityLabel={mode === "open" ? `完成：${item.title}` : `恢复：${item.title}`}
+                accessibilityLabel={item.status === "completed" ? `恢复：${item.title}` : `完成：${item.title}`}
                 accessibilityRole="checkbox"
-                accessibilityState={{ checked: mode === "completed" }}
-                disabled={updatingId === item.id}
-                onPress={() => toggleTask(item.id)}
+                aria-checked={item.status === "completed"}
+                accessibilityState={{ checked: item.status === "completed", disabled: updatingId !== null, busy: updatingId === item.id }}
+                disabled={updatingId !== null}
+                onPress={() => void toggleTask(item)}
                 style={styles.checkButton}
               >
-                <Ionicons
-                  color={mode === "completed" ? colors.live : colors.borderStrong}
-                  name={mode === "completed" ? "checkmark-circle" : "ellipse-outline"}
-                  size={23}
-                />
+                <View style={[styles.checkbox, item.status === "completed" && styles.checkboxCompleted]}>
+                  {item.status === "completed" ? <Ionicons color={colors.onAccent} name="checkmark" size={16} /> : null}
+                </View>
               </Pressable>
               <Pressable
+                accessibilityLabel={`${item.title}，${item.categoryLabel}，${item.dateLabel}`}
                 accessibilityRole="button"
-                onPress={() => router.push(`/tasks/${item.id}` as Href)}
+                onPress={() => router.push(`/tasks/${encodeURIComponent(item.id)}` as Href)}
                 style={({ pressed }) => [styles.rowBody, pressed ? styles.pressed : null]}
               >
                 <Text
-                  numberOfLines={1}
-                  style={[styles.rowTitle, mode === "completed" ? styles.completedTitle : null]}
+                  style={[styles.rowTitle, item.status === "completed" ? styles.completedTitle : null]}
                 >
                   {item.title}
                 </Text>
-                <Text numberOfLines={1} style={styles.rowDetail}>
+                <Text style={styles.rowDetail}>
                   {item.categoryLabel} · {item.dateLabel}
                 </Text>
               </Pressable>
@@ -119,8 +141,9 @@ export function TasksScreen() {
             </View>
           ))}
         </View>
-      ) : null}
-      {mutationError ? <Text style={styles.errorText}>{mutationError}</Text> : null}
+      ))}
+      </View>
+      {mutationError ? <Text accessibilityRole="alert" style={styles.errorText}>{mutationError}</Text> : null}
     </AppScreen>
   );
 }
@@ -128,22 +151,29 @@ export function TasksScreen() {
 function TaskModeSwitcher({
   mode,
   onChange,
+  openCount,
+  completedCount,
 }: {
   mode: TaskListMode;
   onChange: (mode: TaskListMode) => void;
+  openCount: number | undefined;
+  completedCount: number | undefined;
 }) {
   const { styles } = useStyles();
   const options: Array<{ label: string; value: TaskListMode }> = [
-    { label: "待办", value: "open" },
+    { label: "未完成", value: "open" },
     { label: "已完成", value: "completed" },
   ];
   return (
     <View accessibilityRole="tablist" style={styles.tabs}>
       {options.map((option) => {
         const selected = mode === option.value;
+        const count = option.value === "open" ? openCount : completedCount;
         return (
           <Pressable
             accessibilityRole="tab"
+            aria-selected={selected}
+            accessibilityLabel={`${option.label}${count === undefined ? "" : ` ${count}`}`}
             accessibilityState={{ selected }}
             key={option.value}
             onPress={() => onChange(option.value)}
@@ -152,6 +182,7 @@ function TaskModeSwitcher({
             <Text style={[styles.tabText, selected ? styles.tabTextSelected : null]}>
               {option.label}
             </Text>
+            {count !== undefined ? <Text style={[styles.tabText, selected && styles.tabCountSelected]}>{count}</Text> : null}
           </Pressable>
         );
       })}
@@ -159,20 +190,39 @@ function TaskModeSwitcher({
   );
 }
 
+function tokyoDateKey(date: Date): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+}
+
+function taskDateKey(item: TaskListRowView): string | undefined {
+  if (item.dueAt && Number.isFinite(Date.parse(item.dueAt))) return tokyoDateKey(new Date(item.dueAt));
+  return item.plannedDate;
+}
+
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  checkButton: { alignItems: "center", justifyContent: "center", minWidth: layout.control, minHeight: layout.control },
+  addButton: { alignItems: "center", justifyContent: "center", minWidth: layout.control, minHeight: layout.control },
+  checkButton: { alignItems: "flex-start", justifyContent: "center", width: layout.control, minHeight: layout.control },
+  checkbox: { alignItems: "center", justifyContent: "center", borderColor: colors.ink, borderWidth: 1.5, borderRadius: 6, width: 22, height: 22 },
+  checkboxCompleted: { backgroundColor: colors.accent, borderColor: colors.accent },
   completedTitle: { color: colors.text3, textDecorationLine: "line-through" },
-  errorText: { color: colors.rose, fontSize: typography.small },
-  list: { borderColor: colors.border, backgroundColor: colors.surface, paddingHorizontal: 0 },
+  danger: { color: colors.rose },
+  errorText: { color: colors.rose, fontSize: 13 },
+  groupCount: { color: colors.text3, fontSize: 22, lineHeight: 28, fontWeight: "800", letterSpacing: -0.44 },
+  groupHeading: { alignItems: "baseline", flexDirection: "row", gap: 10, paddingBottom: 4 },
+  groupTitle: { color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: "800" },
+  groups: { gap: 22 },
+  list: { backgroundColor: colors.surface },
+  muted: { color: colors.text3 },
   pressed: { opacity: 0.65 },
-  row: { alignItems: "center", flexDirection: "row", minHeight: 60, paddingRight: spacing.md },
-  rowBody: { flex: 1, gap: spacing.xs, justifyContent: "center", minHeight: 58, minWidth: 0 },
-  rowDetail: { ...textStyles.caption, color: colors.text3 },
-  rowDivider: { borderTopColor: colors.border, borderTopWidth: 1 },
-  rowTitle: { ...textStyles.listTitle, color: colors.text },
-  tab: { ...createControlStyles(colors).chip, flex: 1 },
-  tabSelected: { backgroundColor: colors.surface },
-  tabs: { flexDirection: "row", padding: 3, backgroundColor: colors.surface2, borderRadius: radius.control },
-  tabText: { color: colors.text3, fontSize: typography.small, fontWeight: "600" },
-  tabTextSelected: { color: colors.ink },
+  row: { alignItems: "center", flexDirection: "row", minHeight: 66, paddingVertical: 9, borderBottomColor: colors.border2, borderBottomWidth: 1 },
+  rowBody: { flex: 1, gap: 2, justifyContent: "center", minHeight: 46, minWidth: 0, paddingRight: 8 },
+  rowDetail: { color: colors.text3, fontSize: 12, lineHeight: 18 },
+  rowTitle: { color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: "600" },
+  tab: { flexDirection: "row", alignItems: "center", gap: 4, minHeight: 44, paddingVertical: 10, borderBottomWidth: 2, borderBottomColor: "transparent", marginBottom: -1, flexShrink: 1 },
+  tabSelected: { borderBottomColor: colors.ink },
+  tabs: { flexDirection: "row", gap: 22, borderBottomColor: colors.border, borderBottomWidth: 1 },
+  tabText: { color: colors.text3, fontSize: 14, lineHeight: 20, flexShrink: 1 },
+  tabTextSelected: { color: colors.ink, fontWeight: "800" },
+  tabCountSelected: { color: colors.accent, fontWeight: "800" },
+  todayCount: { color: colors.accent },
 }));

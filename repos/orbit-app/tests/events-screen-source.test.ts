@@ -69,7 +69,8 @@ test("events screen uses compact composable discovery controls", () => {
   assert.match(screenSource, /TextInput/u);
   assert.match(screenSource, /ScrollView/u);
   assert.match(screenSource, /filterEventSummaries/u);
-  assert.match(screenSource, /eventDiscoveryFilterCounts/u);
+  // Temporal counts (including imported live events) run through the actual
+  // route in ink-signal-events.test.ts; no legacy status-helper name contract.
   assert.match(screenSource, /discoveryTopicsForEvent/u);
   assert.match(screenSource, /eventDiscoveryLocations/u);
   assert.match(screenSource, /inferredEventTopic/u);

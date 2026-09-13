@@ -24,6 +24,25 @@ const openTask = {
   updatedAt: "2026-08-28T02:00:00.000Z",
 };
 
+test("Tokyo labels retain dates and times when native Intl cannot segment weekday combinations", t => {
+  const original = Intl.DateTimeFormat.prototype.formatToParts;
+  // Captured on iOS 26.4 / Hermes: weekday joins day; hour/minute become literals.
+  t.mock.method(Intl.DateTimeFormat.prototype, "formatToParts", function (this: Intl.DateTimeFormat, value?: Date | number) {
+    const options = this.resolvedOptions();
+    if (options.locale === "zh-CN" && options.weekday && options.day) return [
+      { type: "month", value: "8" }, { type: "literal", value: "/" },
+      { type: "day", value: "29周六" }, { type: "literal", value: " " },
+      { type: "literal", value: "11" }, { type: "literal", value: ":" }, { type: "literal", value: "30" },
+    ] as Intl.DateTimeFormatPart[];
+    return original.call(this, value);
+  });
+  const task = { ...openTask, dueAt: "2026-08-29T02:30:00.000Z" };
+  assert.equal(tasksToListView({ tasks: [task] }, "open").items[0]?.dateLabel, "8月29日 11:30");
+  const today = todayToView({ date: "2026-08-29", tasks: [task] }, new Date("2026-08-29T01:00:00.000Z"));
+  assert.equal(today.dateLabel, "8月29日 周六");
+  assert.equal(today.tasks[0]?.dueLabel, "11:30");
+});
+
 test("todayToView keeps tasks, suggestions, and schedule compact and distinct", () => {
   const view = todayToView(
     {

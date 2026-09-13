@@ -1,0 +1,368 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import test from "node:test";
+import { build } from "esbuild";
+import { chromium, type Browser, type Page } from "playwright";
+import { aiConversationPayload, aiReadPayloads, aiSession, aiSessionListPayload, emptyAiConversationPayload, emptyAiSessionListPayload } from "./helpers/ai-fixtures";
+import { aiSessionReceiptMatches } from "../src/api/ai-history-contract";
+
+const require = createRequire(import.meta.url);
+const iconFont = readFileSync("node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf").toString("base64");
+let browser: Browser;
+let script: string;
+// Actual private route, hooks, HTTP client, screen and native-web controls.
+// Auth/device capabilities, network transport and local snapshot I/O are external boundaries.
+const fixture = `
+import React, { useSyncExternalStore } from "react";
+import { View } from "react-native-web";
+import glyphs from "@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/Ionicons.json";
+import { onSessionExpired } from "./src/api/session-expiry";
+let revision = 0; const listeners = new Set();
+const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
+const NativeDate = Date;
+window.Date = class extends NativeDate { constructor(...args) { super(...(args.length ? args : ["2026-09-12T03:00:00Z"])); } static now() { return NativeDate.parse("2026-09-12T03:00:00Z"); } };
+const state = window.fixture = { requests: [], pending: [], navigation: [], presses: {}, expiries: 0, actor: "actor-1", cookieHeader: "", baseUrl: "https://orbit.example", ready: true, baseReady: true, signedIn: true, focused: true, mounted: true, width: 390, fontScale: 1, params: { id: "conversation:1" }, ...window.initialFixture,
+  update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
+  reply(index, status = 200, payload) { const r = state.requests[index]; r.replied = true; state.pending[index]?.(new Response(JSON.stringify(status === 200 || payload !== undefined ? { success: true, data: payload === undefined ? state.payloads[r.path] : payload } : { success: false, error: { code: "UNAVAILABLE", message: "暂时无法读取，请重试。" } }), { status, headers: { "Content-Type": "application/json" } })); }
+};
+onSessionExpired(() => state.expiries++);
+window.fetch = async (input, init) => { const index = state.requests.length; const url = new URL(String(input)); state.requests.push({ path: url.pathname, url: String(input), method: init.method, body: init.body ? JSON.parse(init.body) : null, signal: init.signal });
+  const pending = new Promise(resolve => state.pending[index] = resolve);
+  if (!(state.holdReads && init.method === "GET") && !(state.holdWrites && init.method !== "GET")) queueMicrotask(() => state.reply(index, init.method !== "GET" ? 503 : (state.failPaths?.includes(url.pathname) ? 503 : 200))); return pending;
+};
+export const useFixture = () => { observe(); return state; };
+export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, user: state.signedIn ? { id: state.actor, name: "程川", email: "person@example.test" } : null, cookieHeader: state.cookieHeader }; };
+export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
+export const useIsFocused = () => { observe(); return state.focused; };
+export const useGlobalSearchParams = () => { observe(); return state.params; };
+export const useLocalSearchParams = () => { observe(); return state.params; };
+export const usePathname = () => "/ai/" + state.params.id;
+export const useRouter = () => ({ canGoBack: () => false, back() { state.navigation.push("back"); }, replace(href) { state.navigation.push(href); }, push(href) { state.navigation.push(href); }, setParams(patch) { state.update({ params: { ...state.params, ...patch } }); } });
+export const Redirect = ({ href }) => <div role="status">{href}</div>;
+export const Stack = () => null;
+export const useSafeAreaInsets = () => ({ top: 48, bottom: 24, left: 0, right: 0 });
+export const SafeAreaView = ({ edges, style, ...props }) => <View {...props} style={[style, edges?.includes?.("top") && { paddingTop: 48 }, edges?.includes?.("bottom") && { paddingBottom: 24 }]} />;
+export const Ionicons = ({ name, size, color }) => <span aria-hidden="true" style={{ display: "inline-block", flexShrink: 0, width: size, height: size, fontFamily: "OrbitTestIonicons", fontSize: size, lineHeight: 1, color }}>{String.fromCodePoint(glyphs[name])}</span>;
+export const readSnapshot = async () => null; export const writeSnapshot = async () => {};
+`;
+test.before(async () => {
+  const result = await build({
+    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/ai/[id]"; import { useFixture } from "fixture"; function App() { const s = useFixture(); return s.mounted ? <Route /> : null; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() },
+    bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
+    define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
+    plugins: [{ name: "ai-http-boundaries", setup(plugin) {
+      plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "ai" }));
+      plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "ai" }));
+      plugin.onLoad({ filter: /.*/, namespace: "ai" }, args => ({ contents: args.path === "native" ? `
+import React from "react"; import { Pressable as RealPressable, Text as RealText, TextInput as RealTextInput, RefreshControl as RealRefreshControl, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web";
+import { useFixture } from "fixture"; export * from "react-native-web";
+export const useWindowDimensions = () => { const s = useFixture(); return { ...realDimensions(), width: s.width, fontScale: s.fontScale }; };
+export const Pressable = props => { const text = React.Children.toArray(props.children).find(child => React.isValidElement(child) && typeof child.props.children === "string"); const label = props.accessibilityLabel || text?.props.children; if (label) window.fixture.presses[label] = props.onPress; return <RealPressable {...props} />; };
+export const RefreshControl = props => { window.fixture.refresh = props.onRefresh; return <RealRefreshControl {...props} />; };
+const scaled = (props, scale) => { const style = StyleSheet.flatten(props.style) || {}; return !style.fontSize || props.allowFontScaling === false ? props.style : [props.style, { fontSize: style.fontSize * scale, ...(style.lineHeight ? { lineHeight: style.lineHeight * scale } : {}) }]; };
+export const Text = props => { const s = useFixture(); return <RealText {...props} style={scaled(props, s.fontScale)} />; };
+export const TextInput = props => { const s = useFixture(); return <RealTextInput {...props} style={scaled(props, s.fontScale)} />; };
+` : fixture, loader: "jsx", resolveDir: process.cwd() }));
+      plugin.onResolve({ filter: /^react-native-web$/ }, () => ({ path: require.resolve("react-native-web") }));
+    } }]
+  });
+  script = result.outputFiles[0]!.text; browser = await chromium.launch({ headless: true });
+});
+test.after(async () => { await browser?.close(); });
+async function settle(p: Page) { await p.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))); }
+async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<string, unknown> = {}) {
+  const p = await browser.newPage({ viewport: { width: Number(patch.width ?? 390), height: 844 }, deviceScaleFactor: 2, colorScheme: patch.dark ? "dark" : "light" });
+  p.setDefaultTimeout(1800); const errors: string[] = []; p.on("pageerror", error => errors.push(error.message));
+  t.after(async () => { await p.close(); assert.deepEqual(errors, []); });
+  const cover = readFileSync("../orbits/public/orbit-covers/meeting.jpg");
+  await p.route("**/*", r => r.request().url().endsWith("/orbit-covers/meeting.jpg") ? r.fulfill({ contentType: "image/jpeg", body: cover }) : r.abort());
+  await p.setContent('<style>@font-face{font-family:OrbitTestIonicons;src:url(data:font/ttf;base64,' + iconFont + ')}html,body,#root{margin:0;height:100%}#root{display:flex;flex-direction:column}</style><div id="root"></div>');
+  await p.evaluate(patch => { (window as any).initialFixture = patch; }, { holdWrites: true, payloads: conversationReadPayloads, ...patch }); await p.addScriptTag({ content: script }); await settle(p); await p.evaluate(() => document.fonts.ready); return p;
+}
+async function press(p: Page, name: string) { await p.getByRole("button", { name, exact: true }).click(); await settle(p); }
+async function update(p: Page, patch: object) { await p.evaluate(patch => (window as any).fixture.update(patch), patch); await settle(p); }
+async function writes(p: Page) { return p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method !== "GET").map((r: any) => ({ method: r.method, path: r.path, body: r.body }))); }
+async function navigation(p: Page) { return p.evaluate(() => (window as any).fixture.navigation); }
+async function twice(p: Page, label: string) { await p.evaluate(label => { const fn = (window as any).fixture.presses[label]; fn(); fn(); }, label); await settle(p); }
+
+const conversationReadPayloads = {
+  ...aiReadPayloads,
+  "/api/ai/conversations/conversation%3A1": aiConversationPayload,
+  "/api/ai/conversations/sessions/session%3A1": { session: aiSession, storage: aiSessionListPayload.storage },
+  "/api/events": { events: [] }, "/api/contacts": { contacts: [] }, "/api/tasks": { tasks: [] }, "/api/profile": {}
+};
+
+function replyPayload(question = "再想一个方案", answer = "可以先讨论时间安排。") {
+  return { ...aiConversationPayload, assistantMessage: answer,
+    messages: [{ ...aiConversationPayload.messages[0], messageId: "new-user", content: question }, { ...aiConversationPayload.messages[1], messageId: "new-assistant", content: answer }]
+  };
+}
+async function replyLastWrite(p: Page, data: unknown, status = 200) {
+  await p.evaluate(({ data, status }) => { const s = (window as any).fixture; s.reply(s.requests.findLastIndex((r: any) => r.method !== "GET"), status, data); }, { data, status }); await settle(p);
+}
+
+test("AI conversation uses the source hierarchy with flat messages and retained shortcuts", async t => {
+  const p = await open(t);
+  assert.equal(await p.getByText("你", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("IORBIT", { exact: true }).count(), 2);
+  const user = p.getByLabel("我的消息", { exact: true });
+  assert.equal(await user.evaluate(el => getComputedStyle(el).backgroundColor), "rgba(0, 0, 0, 0)");
+  await press(p, "更多对话选项"); await press(p, "活动"); assert.deepEqual(await navigation(p), ["/events"]);
+  assert.deepEqual(await writes(p), []);
+});
+test("AI conversation preserves actual multilingual title and markdown business text", async t => {
+  const payload = { ...aiConversationPayload, conversations: [{ ...aiConversationPayload.conversations[0], title: "Live provider 合作 / 日本語" }],
+    messages: [{ ...aiConversationPayload.messages[0], content: "讨论 live provider 合作" }, { ...aiConversationPayload.messages[1], content: "Live provider 合作\n\n1. **确认范围**\n\n保留日本語と English 的原文。" }] };
+  const p = await open(t, { payloads: { ...conversationReadPayloads, "/api/ai/conversations/conversation%3A1": payload } });
+  assert.equal(await p.getByText("Live provider 合作 / 日本語", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("Live provider 合作", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("确认范围", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("保留日本語と English 的原文。", { exact: true }).count(), 1);
+});
+test("AI continuation submits only once on a synchronous double press", async t => {
+  const p = await open(t); const input = p.getByRole("textbox"); await input.fill("再想一个方案"); await twice(p, "发送消息");
+  assert.deepEqual(await writes(p), [{ method: "POST", path: "/api/ai/conversations/conversation%3A1", body: { locale: "zh", message: "再想一个方案" } }]);
+});
+test("AI valid reply cannot clear a newer draft", async t => {
+  const p = await open(t); const input = p.getByRole("textbox"); await input.fill("再想一个方案"); await press(p, "发送消息");
+  await input.fill("下一条尚未发送"); await replyLastWrite(p, replyPayload());
+  assert.equal(await input.inputValue(), "下一条尚未发送"); assert.equal(await p.getByText("可以先讨论时间安排。", { exact: true }).count(), 1);
+});
+for (const bad of [{}, { ...replyPayload(), state: "pending" }, { ...replyPayload(), activeConversationId: null }, { ...replyPayload(), messages: [] }]) test("AI malformed send result is visible failure and retains the question " + JSON.stringify(bad), async t => {
+  const p = await open(t); await p.getByRole("textbox").fill("再想一个方案"); await press(p, "发送消息"); await replyLastWrite(p, bad);
+  assert.equal(await p.getByText("这次回答没有生成", { exact: true }).count(), 1);
+  assert.equal(await p.getByRole("textbox").inputValue(), "再想一个方案"); assert.equal((await writes(p)).length, 1);
+});
+test("AI failed send retries the submitted request and never consumes a newer draft", async t => {
+  const p = await open(t); const input = p.getByRole("textbox"); await input.fill("再想一个方案"); await press(p, "发送消息"); await replyLastWrite(p, undefined, 503);
+  assert.equal(await p.getByText("这次回答没有生成", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("UNAVAILABLE", { exact: true }).count(), 1);
+  await input.fill("另一条草稿"); await twice(p, "重新生成");
+  assert.deepEqual((await writes(p)).map((r: any) => r.body.message), ["再想一个方案", "再想一个方案"]);
+  await replyLastWrite(p, replyPayload()); assert.equal(await input.inputValue(), "另一条草稿");
+});
+test("AI failed initial question can be edited without automatically resubmitting", async t => {
+  const p = await open(t, { params: { id: "new", initialMessage: "帮我准备交流会" } });
+  assert.equal((await writes(p)).length, 1); await replyLastWrite(p, undefined, 503); await press(p, "编辑问题");
+  assert.equal(await p.getByRole("textbox").inputValue(), "帮我准备交流会"); assert.equal((await writes(p)).length, 1);
+});
+test("AI stored session preserves raw multiline history and its custom title", async t => {
+  const session = { ...aiSession, customTitle: "Live provider 日本語", messages: [{ role: "user", text: "最初の相談\nEnglish context" }, { role: "assistant", text: "第一段\n\n1. **保留结构**\n\n第二段" }] };
+  const p = await open(t, { params: { id: session.id, source: "session" }, payloads: { ...conversationReadPayloads, "/api/ai/conversations/sessions/session%3A1": { session, storage: aiSessionListPayload.storage } } });
+  assert.equal(await p.getByText("Live provider 日本語", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("第一段", { exact: true }).count(), 1); assert.equal(await p.getByText("保留结构", { exact: true }).count(), 1);
+  await p.getByRole("textbox").fill("继续讨论"); await press(p, "发送消息");
+  assert.deepEqual((await writes(p))[0], { method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "继续讨论", history: [{ role: "user", content: "最初の相談\nEnglish context" }, { role: "assistant", content: "第一段\n\n1. **保留结构**\n\n第二段" }] } });
+});
+test("AI initial generation awaits a persisted matching session receipt before canonical navigation", async t => {
+  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await replyLastWrite(p, replyPayload());
+  const pending = await writes(p); assert.equal(pending.length, 2); assert.equal(pending[1].path, "/api/ai/conversations/sessions"); assert.deepEqual(await navigation(p), []);
+  const session = pending[1].body.session; await replyLastWrite(p, { session, storage: aiSessionListPayload.storage });
+  assert.deepEqual(await navigation(p), [{ pathname: "/ai/[id]", params: { id: session.id, source: "session" } }]);
+});
+for (const kind of ["unpersisted", "wrong-id", "missing-message", "http-failure"]) test("AI save failure retries only the same snapshot without generating again " + kind, async t => {
+  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await replyLastWrite(p, replyPayload());
+  const submitted = (await writes(p))[1]; const session = submitted.body.session;
+  const receipt = { session: kind === "wrong-id" ? { ...session, id: "another" } : kind === "missing-message" ? { ...session, messages: session.messages.slice(0, 1) } : session,
+    storage: { ...aiSessionListPayload.storage, persisted: kind !== "unpersisted" } };
+  await replyLastWrite(p, receipt, kind === "http-failure" ? 503 : 200);
+  assert.deepEqual(await navigation(p), []); assert.equal(await p.getByRole("button", { name: "重试保存", exact: true }).count(), 1);
+  await twice(p, "重试保存"); const retried = await writes(p); assert.equal(retried.length, 3); assert.deepEqual(retried[2], submitted);
+  await replyLastWrite(p, { session, storage: aiSessionListPayload.storage }); assert.equal((await navigation(p)).length, 1);
+});
+test("AI generated reply keeps a newer draft when its session is saved", async t => {
+  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await p.getByRole("textbox").fill("还没发送的下一条"); await replyLastWrite(p, replyPayload());
+  const session = (await writes(p))[1].body.session; await replyLastWrite(p, { session, storage: aiSessionListPayload.storage });
+  assert.equal(await p.getByRole("textbox").inputValue(), "还没发送的下一条"); assert.deepEqual(await navigation(p), []);
+});
+for (const patch of [{ actor: "actor-2" }, { baseUrl: "https://other.example" }, { cookieHeader: "session=changed" }, { focused: false }, { signedIn: false }, { mounted: false }, { params: { id: "new-route" } }]) test("AI stale send cannot publish, save or navigate after scope replacement " + JSON.stringify(patch), async t => {
+  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } });
+  const writeIndex = await p.evaluate(() => (window as any).fixture.requests.findIndex((r: any) => r.method === "POST"));
+  await update(p, patch); await p.evaluate(({ writeIndex, payload }) => (window as any).fixture.reply(writeIndex, 200, payload), { writeIndex, payload: replyPayload() }); await settle(p);
+  assert.equal(await p.evaluate(index => (window as any).fixture.requests[index].signal?.aborted ?? false, writeIndex), true);
+  assert.equal((await writes(p)).filter((r: any) => r.path === "/api/ai/conversations").length, 1, "an inherited initial prompt must not replay under a new account or focus scope");
+  assert.equal((await writes(p)).filter((r: any) => r.path === "/api/ai/conversations/sessions").length, 0); assert.deepEqual(await navigation(p), []);
+});
+test("AI refresh cannot erase a failed draft or submit its initial prompt twice", async t => {
+  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await replyLastWrite(p, undefined, 503);
+  await p.getByRole("textbox").fill("编辑后的草稿"); await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
+  assert.equal(await p.getByRole("textbox").inputValue(), "编辑后的草稿"); assert.equal((await writes(p)).length, 1);
+});
+
+const suggestion = { id: "suggestion:1", accountId: "actor-1", ownerUserId: "actor-1", title: "准备交流会", reason: "需要确认场地", category: "event", status: "pending", evidenceIds: [], confidence: 0.9, deduplicationKey: "suggestion:1", createdAt: "2026-09-12T00:00:00Z", updatedAt: "2026-09-12T00:00:00Z" };
+const acceptedTask = { id: "task:1", accountId: "actor-1", ownerUserId: "actor-1", title: "准备交流会", status: "open", category: "event", priority: "normal", source: "ai_confirmed", suggestionId: "suggestion:1", createdAt: "2026-09-12T00:00:00Z", updatedAt: "2026-09-12T00:00:00Z" };
+const suggestedPayload = { ...aiConversationPayload, taskInteraction: { state: "suggested", title: suggestion.title, category: "event", suggestionId: suggestion.id, reason: suggestion.reason } };
+const acceptedReceipt = { suggestion: { ...suggestion, status: "accepted", acceptedTaskId: acceptedTask.id }, task: acceptedTask };
+test("AI task suggestion confirmation locks before the first response", async t => {
+  const p = await open(t, { payloads: { ...conversationReadPayloads, "/api/ai/conversations/conversation%3A1": suggestedPayload } });
+  assert.deepEqual(await writes(p), []); await twice(p, "加入待办"); assert.equal((await writes(p)).length, 1);
+  assert.equal((await writes(p))[0].path, "/api/task-suggestions/suggestion%3A1/accept"); await replyLastWrite(p, acceptedReceipt);
+  assert.equal(await p.getByText("已加入待办", { exact: true }).count(), 1); await press(p, "打开待办详情：准备交流会"); assert.deepEqual(await navigation(p), ["/tasks/task%3A1"]);
+});
+for (const bad of [{}, { ...acceptedReceipt, suggestion: { ...acceptedReceipt.suggestion, id: "another" } }, { ...acceptedReceipt, task: { ...acceptedTask, id: "mismatch" } }, { ...acceptedReceipt, suggestion: { ...suggestion, status: "pending" } }]) test("AI task suggestion cannot claim acceptance from an invalid receipt " + JSON.stringify(bad), async t => {
+  const p = await open(t, { payloads: { ...conversationReadPayloads, "/api/ai/conversations/conversation%3A1": suggestedPayload } }); await press(p, "加入待办"); await replyLastWrite(p, bad);
+  assert.equal(await p.getByText("已加入待办", { exact: true }).count(), 0); assert.equal(await p.getByRole("button", { name: "加入待办", exact: true }).count(), 1);
+  assert.equal(await p.getByText("尚未确认操作结果，请重试。", { exact: true }).count(), 1);
+});
+test("AI dismiss requires the selected suggestion's dismissed receipt", async t => {
+  const p = await open(t, { payloads: { ...conversationReadPayloads, "/api/ai/conversations/conversation%3A1": suggestedPayload } }); await press(p, "暂不需要"); await replyLastWrite(p, { suggestion });
+  assert.equal(await p.getByText("已暂不处理", { exact: true }).count(), 0); await press(p, "暂不需要"); await replyLastWrite(p, { suggestion: { ...suggestion, status: "dismissed" } });
+  assert.equal(await p.getByText("已暂不处理", { exact: true }).count(), 1);
+  assert.equal((await writes(p))[0].body.idempotencyKey, (await writes(p))[1].body.idempotencyKey);
+});
+test("AI session continuation keeps old messages and an intentional repeated question in the save", async t => {
+  const session = { ...aiSession, customTitle: "原始自定义标题", pinned: true, panel: { kind: "people", title: "旧面板" }, messages: [{ role: "user", text: "再想一个方案" }, { role: "assistant", text: "第一轮回复\n\n原文段落", items: [{ id: "old-evidence" }], kind: "people", panelTitle: "原始面板" }] };
+  const p = await open(t, { params: { id: session.id, source: "session" }, payloads: { ...conversationReadPayloads, "/api/ai/conversations/sessions/session%3A1": { session, storage: aiSessionListPayload.storage } } });
+  await p.getByRole("textbox").fill("再想一个方案"); await press(p, "发送消息"); await replyLastWrite(p, replyPayload());
+  const save = (await writes(p))[1]; assert.equal(save.path, "/api/ai/conversations/sessions");
+  assert.deepEqual(save.body.session.messages.map((m: any) => [m.role, m.text]), [["user", "再想一个方案"], ["assistant", "第一轮回复\n\n原文段落"], ["user", "再想一个方案"], ["assistant", "可以先讨论时间安排。"]]);
+  assert.equal(save.body.session.customTitle, session.customTitle); assert.equal(save.body.session.pinned, true); assert.deepEqual(save.body.session.panel, session.panel);
+  assert.deepEqual(save.body.session.messages[1].items, [{ id: "old-evidence" }]);
+  await replyLastWrite(p, { session: save.body.session, storage: { ...aiSessionListPayload.storage, persisted: false } });
+  assert.equal(await p.getByRole("button", { name: "重试保存", exact: true }).count(), 1); await press(p, "重试保存"); assert.deepEqual((await writes(p))[2], save);
+});
+for (const session of [{ ...aiSession, id: "other-session" }, { ...aiSession, messages: [] }, {}]) test("AI invalid or mismatched session cannot become a successful empty conversation " + JSON.stringify(session), async t => {
+  const p = await open(t, { params: { id: "session:1", source: "session" }, payloads: { ...conversationReadPayloads, "/api/ai/conversations/sessions/session%3A1": { session, storage: aiSessionListPayload.storage } } });
+  assert.equal(await p.getByText("会话未能读取", { exact: true }).count(), 1); assert.equal(await p.getByText("没有消息", { exact: true }).count(), 0);
+  assert.deepEqual(await writes(p), []);
+});
+
+const sourceQuestion = "帮我整理明天交流会的准备事项。";
+const sourceAnswer = "好的，以下是为你整理的准备事项，帮助你更高效地参与明天的交流会。\n\n1. **先准备一个具体问题**\n\n选一个正在推进的项目，说清楚目前卡在哪里。把背景控制在几句话内，给对方留下追问空间。\n\n2. **带上可分享的材料**\n\n准备一页项目介绍和一个能快速演示的原型。不必一次讲完全部功能，先确认对方最关心的部分。\n\n3. **会后记下约定**\n\n交流结束后整理讨论内容与下一步，再决定是否创建待办或日程。不要把尚未确认的想法写成已约定事项。";
+const sourceReadPayloads = { ...conversationReadPayloads, "/api/ai/conversations/conversation%3A1": replyPayload(sourceQuestion, sourceAnswer) };
+test("AI real event reference uses a compact source-sized thumbnail and retains navigation", async t => {
+  const payloads = { ...sourceReadPayloads, "/api/events": { events: [{ id: "event:1", title: "周末产品交流会", startsAt: "2026-09-12T14:00:00+09:00", endsAt: "2026-09-12T16:00:00+09:00", city: "东京", venue: "涩谷", status: "published", participantCount: 12, coverPath: "/orbit-covers/meeting.jpg" }] } };
+  const p = await open(t, { payloads }); const row = p.getByRole("button").filter({ has: p.getByText("周末产品交流会", { exact: true }) });
+  if (process.env.ORBIT_CAPTURE_AI) await p.screenshot({ path: "/tmp/orbit-ink-signal-ai-conversation-reference-390.png" });
+  assert.equal(await row.evaluate(el => getComputedStyle(el).borderTopWidth), "0px");
+  const img = await p.getByTestId('ai-event-image-event:1').evaluate(el => ({ width: el.clientWidth, height: el.clientHeight }));
+  assert.deepEqual(img, { width: 64, height: 52 });
+  const rowBox = await row.boundingBox(); assert.ok(rowBox && rowBox.y < 620 && rowBox.y + rowBox.height < 714);
+  await row.click(); assert.deepEqual(await navigation(p), ["/events/event%3A1"]);
+});
+test("AI conversation fits the supplied compact header with its centered brand", async t => {
+  const p = await open(t, { payloads: sourceReadPayloads });
+  if (process.env.ORBIT_CAPTURE_AI) await p.screenshot({ path: "/tmp/orbit-ink-signal-ai-conversation-390.png" });
+  const header = await p.getByLabel("对话导航", { exact: true }).boundingBox(); assert.equal(header?.height, 52);
+  const brand = p.getByTestId("iorbit-brand-mark"); assert.equal(await brand.count(), 1); assert.equal((await brand.boundingBox())?.width, 18);
+  const title = await p.getByText("交流会准备", { exact: true }).boundingBox(); assert.ok(title && Math.abs(title.x + title.width / 2 - 195) < 1);
+});
+test("AI conversation displays readable numbered steps with aligned supporting paragraphs", async t => {
+  const p = await open(t, { payloads: sourceReadPayloads }); const number = p.getByText("1", { exact: true });
+  assert.equal(await number.count(), 1); assert.equal(await number.evaluate(el => getComputedStyle(el).fontSize), "22px");
+  const title = await p.getByText("先准备一个具体问题", { exact: true }).boundingBox();
+  const detail = await p.getByText("选一个正在推进的项目，说清楚目前卡在哪里。把背景控制在几句话内，给对方留下追问空间。", { exact: true }).boundingBox();
+  assert.ok(title && detail && Math.abs(title.x - detail.x) < 1);
+});
+test("AI conversation keeps related panels after the answer instead of interrupting it", async t => {
+  const p = await open(t, { payloads: sourceReadPayloads });
+  const lastParagraph = await p.getByText("交流结束后整理讨论内容与下一步，再决定是否创建待办或日程。不要把尚未确认的想法写成已约定事项。", { exact: true }).boundingBox();
+  const related = await p.getByText("相关活动", { exact: true }).boundingBox();
+  assert.ok(lastParagraph && related && related.y >= lastParagraph.y + lastParagraph.height);
+});
+test("AI conversation composer stays compact then grows without covering the send control", async t => {
+  const p = await open(t); const input = p.getByRole("textbox", { name: "消息", exact: true }); assert.equal((await input.boundingBox())?.height, 44);
+  await input.fill("第一行\n第二行\n第三行\n第四行\n第五行\n第六行"); const box = await input.boundingBox(), send = await p.getByRole("button", { name: "发送消息", exact: true }).boundingBox();
+  assert.ok(box && box.height > 44 && box.height <= 120 && send && send.y >= box.y + box.height && send.height >= 44);
+});
+test("AI failure identifies the assistant and keeps the question editable", async t => {
+  const p = await open(t, { params: { id: "new", initialMessage: sourceQuestion } }); await replyLastWrite(p, undefined, 503);
+  if (process.env.ORBIT_CAPTURE_AI) await p.screenshot({ path: "/tmp/orbit-ink-signal-ai-failure-390.png" });
+  assert.equal(await p.getByText("IORBIT", { exact: true }).count(), 2); await press(p, "编辑问题"); assert.equal(await p.getByRole("textbox").inputValue(), sourceQuestion);
+});
+test("AI failed generation stops showing a pending answer and puts recovery beside the question", async t => {
+  const p = await open(t, { params: { id: "new", initialMessage: sourceQuestion } }); await replyLastWrite(p, undefined, 503);
+  assert.equal(await p.getByText("正在整理相关上下文。", { exact: true }).count(), 0);
+  assert.equal(await p.getByText("正在处理", { exact: true }).count(), 0);
+  const failure = await p.getByText("这次回答没有生成", { exact: true }).boundingBox(); assert.ok(failure && failure.y < 270);
+});
+test("AI suggestion acceptance recognizes the backend completed task status", async t => {
+  const p = await open(t, { payloads: { ...conversationReadPayloads, "/api/ai/conversations/conversation%3A1": suggestedPayload } }); await press(p, "加入待办");
+  await replyLastWrite(p, { ...acceptedReceipt, task: { ...acceptedTask, status: "completed", completedAt: "2026-09-12T00:00:00Z", completedBy: "actor-1", completionSource: "user" } });
+  assert.equal(await p.getByText("已加入待办", { exact: true }).count(), 1);
+});
+for (const variant of [{ width: 320, fontScale: 1.6, suffix: "320" }, { width: 820, fontScale: 1, suffix: "820" }, { width: 390, fontScale: 1, dark: true, suffix: "dark" }]) test("AI conversation remains readable with reachable controls " + variant.suffix, async t => {
+  const p = await open(t, { ...variant, payloads: sourceReadPayloads }); const input = p.getByRole("textbox", { name: "消息", exact: true });
+  await input.fill("第一行草稿\n第二行草稿\n第三行草稿\n第四行草稿\n第五行草稿\n第六行草稿");
+  for (const label of ["返回 Orbit AI", "更多对话选项", "打开快捷入口", "发送消息"]) {
+    const box = await p.getByRole("button", { name: label, exact: true }).boundingBox(); assert.ok(box && box.width >= 44 && box.height >= 44 && box.x >= 0 && box.x + box.width <= variant.width && box.y + box.height <= 820);
+  }
+  await p.getByTestId("conversation-history").evaluate(el => { el.scrollTop = el.scrollHeight; }); await settle(p);
+  if (process.env.ORBIT_CAPTURE_AI) await p.screenshot({ path: "/tmp/orbit-ink-signal-ai-conversation-" + variant.suffix + ".png" });
+  await press(p, "打开快捷入口"); await press(p, "打开快捷入口"); assert.equal(await input.inputValue(), "第一行草稿\n第二行草稿\n第三行草稿\n第四行草稿\n第五行草稿\n第六行草稿"); assert.deepEqual(await writes(p), []);
+});
+test("AI saved initial reply and newer draft survive a focus round trip", async t => {
+  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await p.getByRole("textbox").fill("尚未发送的新草稿"); await replyLastWrite(p, replyPayload());
+  const session = (await writes(p))[1].body.session; await replyLastWrite(p, { session, storage: aiSessionListPayload.storage });
+  await update(p, { focused: false }); await update(p, { focused: true });
+  assert.equal(await p.getByText("可以先讨论时间安排。", { exact: true }).count(), 1); assert.equal(await p.getByRole("textbox").inputValue(), "尚未发送的新草稿"); assert.equal((await writes(p)).length, 2);
+});
+test("AI consumed initial question cannot automatically replay on a full route remount", async t => {
+  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await replyLastWrite(p, undefined, 503);
+  await update(p, { mounted: false }); await update(p, { mounted: true }); assert.equal((await writes(p)).length, 1);
+});
+test("AI successful session persistence accepts protocol-normalized reply text", async t => {
+  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await replyLastWrite(p, replyPayload("再想一个方案", "  完整回复保留段落。\n\n第二段。\n"));
+  const session = (await writes(p))[1].body.session;
+  await replyLastWrite(p, { session: { ...session, messages: session.messages.map((message: any) => ({ ...message, text: message.text.trim().slice(0, 12000) })) }, storage: aiSessionListPayload.storage });
+  assert.equal((await navigation(p)).length, 1); assert.equal(await p.getByRole("button", { name: "重试保存", exact: true }).count(), 0);
+});
+test("AI canonical navigation adopts the saved receipt ID after server normalization", async t => {
+  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } });
+  await replyLastWrite(p, { ...replyPayload(), aiRuns: [{ runId: "run-" + "r".repeat(180) }] });
+  const expected = (await writes(p))[1].body.session; const saved = { ...expected, id: expected.id.slice(0, 160) };
+  assert.ok(expected.id.length > 160);
+  await replyLastWrite(p, { session: saved, storage: aiSessionListPayload.storage });
+  assert.deepEqual(await navigation(p), [{ pathname: "/ai/[id]", params: { id: saved.id, source: "session" } }]);
+});
+test("AI session receipt follows title, message and history protocol limits without accepting altered text", () => {
+  const expected = { ...aiSession, title: "标题".repeat(65), customTitle: "名称".repeat(65), messages: Array.from({ length: 102 }, (_, i) => ({ role: i % 2 ? "assistant" as const : "user" as const, text: `第${i}条 ` + "文".repeat(12000) })) };
+  const normalized = { ...expected, title: expected.title.slice(0, 120), customTitle: expected.customTitle.slice(0, 120), messages: expected.messages.slice(-100).map(item => ({ ...item, text: item.text.trim().slice(0, 12000) })) };
+  assert.equal(aiSessionReceiptMatches({ session: normalized, storage: aiSessionListPayload.storage }, expected), true);
+  assert.equal(aiSessionReceiptMatches({ session: { ...normalized, messages: normalized.messages.map((item, index) => index === 99 ? { ...item, text: "错误回复" } : item) }, storage: aiSessionListPayload.storage }, expected), false);
+});
+test("AI truncated session persistence is visibly limited and does not silently navigate", async t => {
+  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await replyLastWrite(p, replyPayload("再想一个方案", "很长的回答。".repeat(2100)));
+  const expected = (await writes(p))[1].body.session;
+  await replyLastWrite(p, { session: { ...expected, messages: expected.messages.map((m: any) => ({ ...m, text: m.text.slice(0, 12000) })) }, storage: aiSessionListPayload.storage });
+  assert.equal(await p.getByText("会话已保存，但超出上限的内容已截断。服务最多保留最近 100 条消息，每条 12,000 字、标题 120 字。", { exact: true }).count(), 1);
+  const notice = await p.getByText(/会话已保存，但超出上限的内容已截断/).boundingBox(); assert.ok(notice && notice.y >= 100 && notice.y + notice.height < 714);
+  assert.deepEqual(await navigation(p), []); assert.equal(await p.getByRole("button", { name: "重试保存", exact: true }).count(), 0);
+  await update(p, { focused: false }); await update(p, { focused: true });
+  assert.equal(await p.getByText(/会话已保存，但超出上限的内容已截断/).count(), 1);
+});
+test("AI interrupted session save resumes only saving and retains its draft after refocus", async t => {
+  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await p.getByRole("textbox").fill("稍后再问"); await replyLastWrite(p, replyPayload());
+  const save = (await writes(p))[1]; await update(p, { focused: false }); await update(p, { focused: true }); await press(p, "重试保存");
+  assert.deepEqual((await writes(p))[2], save); await replyLastWrite(p, { session: save.body.session, storage: aiSessionListPayload.storage });
+  assert.equal(await p.getByRole("textbox").inputValue(), "稍后再问"); assert.deepEqual(await navigation(p), []);
+});
+test("AI saved suggestion remains actionable after a focus round trip", async t => {
+  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await replyLastWrite(p, { ...replyPayload(), taskInteraction: suggestedPayload.taskInteraction });
+  const session = (await writes(p))[1].body.session; await replyLastWrite(p, { session, storage: aiSessionListPayload.storage });
+  await update(p, { focused: false }); await update(p, { focused: true }); await press(p, "加入待办"); await replyLastWrite(p, acceptedReceipt);
+  assert.equal((await writes(p)).length, 3); assert.equal((await navigation(p))[0].params.id, session.id);
+});
+test("AI saved reply and draft never transfer to another actor", async t => {
+  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await p.getByRole("textbox").fill("账户一的草稿"); await replyLastWrite(p, replyPayload());
+  const session = (await writes(p))[1].body.session; await replyLastWrite(p, { session, storage: aiSessionListPayload.storage }); await update(p, { actor: "actor-2" });
+  assert.equal(await p.getByRole("textbox").inputValue(), ""); assert.equal(await p.getByText("可以先讨论时间安排。", { exact: true }).count(), 0); assert.equal((await writes(p)).length, 2);
+});
+test("AI interrupted initial request restores explicit recovery without an automatic replay", async t => {
+  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await update(p, { focused: false }); await update(p, { focused: true });
+  assert.equal(await p.getByRole("button", { name: "重新生成", exact: true }).count(), 1); assert.equal(await p.getByText("正在处理", { exact: true }).count(), 0); assert.equal((await writes(p)).length, 1);
+});
+test("AI refresh during generation leaves the owned write running", async t => {
+  const p = await open(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.find((r: any) => r.method === "POST").signal.aborted), false);
+  await replyLastWrite(p, replyPayload()); assert.equal((await writes(p)).length, 2);
+});
+test("AI refresh keeps the existing transcript until a fresh conversation replaces the local reply", async t => {
+  const p = await open(t); await p.getByRole("textbox").fill("再想一个方案"); await press(p, "发送消息"); await replyLastWrite(p, replyPayload());
+  await p.getByRole("textbox").fill("刷新时保留草稿"); await update(p, { holdReads: true }); await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
+  assert.equal(await p.getByText("可以先讨论时间安排。", { exact: true }).count(), 1);
+  await p.evaluate(payload => { const s = (window as any).fixture; s.reply(s.requests.findLastIndex((r: any) => r.method === "GET" && r.path === "/api/ai/conversations/conversation%3A1"), 200, payload); }, replyPayload("再想一个方案", "来自另一端的新回复。")); await settle(p);
+  assert.equal(await p.getByText("来自另一端的新回复。", { exact: true }).count(), 1); assert.equal(await p.getByRole("textbox").inputValue(), "刷新时保留草稿");
+});

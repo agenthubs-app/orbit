@@ -22,15 +22,8 @@ test("account screen links to the native permissions center", () => {
   assert.match(accountScreenSource, /权限中心/u);
 });
 
-test("account screen links to the server settings screen for local testing", () => {
-  const settingsIndex = accountScreenSource.indexOf('title="服务器设置"');
-  const authEntryIndex = accountScreenSource.indexOf('title="账号入口"');
-
-  assert.match(accountScreenSource, /\/settings\/api/u);
-  assert.match(accountScreenSource, /服务器设置/u);
-  assert.ok(settingsIndex > -1);
-  assert.ok(authEntryIndex > settingsIndex);
-});
+// Server-settings availability, order before login and its actual destination
+// are exercised on the rendered guest screen in ink-signal-settings-account.
 
 test("account permissions route renders a native staged permission center", () => {
   assert.equal(existsSync(screenPath), true);

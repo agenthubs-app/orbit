@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, AppState, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, AppState, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { BatchImageError, loadSelectedBatchImage } from "../../api/batch-images";
@@ -39,6 +39,7 @@ function BatchButton({ label, icon, disabled = false, selected = false, iconOnly
 }
 
 export function BusinessCardBatchScreen() {
+  const large = useWindowDimensions().fontScale > 1.3;
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const batchId = (Array.isArray(params.id) ? params.id[0] : params.id) ?? "";
   const auth = useOrbitAuthSession();
@@ -245,29 +246,16 @@ export function BusinessCardBatchScreen() {
   const imageValue: BusinessCardReviewImage = imageKey ? image?.key === imageKey ? image.value : { status: "loading" } : { status: "none" };
   const disabled = !active || !ready || Boolean(state.busy) || expired();
   function formIsCurrent() { return isCurrent() && current.current.selectedId === selected?.id && current.current.detail === detail && current.current.drafts[selected?.id ?? ""] === draft; }
-  return <AppScreen eyebrow="人脉" title="批量名片复核">
-    <View style={styles.row}>
+  return <AppScreen title={large ? "名片\n导入" : "名片导入"}>
+    {!detail ? <View style={styles.row}>
       <BatchButton label="刷新批次" icon="refresh-outline" iconOnly disabled={!ready || !active || state.loading || Boolean(state.busy)} onPress={() => void load()} />
       <BatchButton label="返回人脉" icon="people-outline" onPress={() => router.push("/contacts" as Href)} />
-    </View>
+    </View> : null}
     {!ready ? <Text style={styles.caption}>{batchId ? "正在确认账号与服务状态..." : "缺少批次编号。"}</Text> : null}
     {state.loading ? <Text accessibilityLiveRegion="polite" style={styles.caption}>正在读取批次...</Text> : null}
     {state.error ? <Text accessibilityRole="alert" style={styles.error}>{state.error}</Text> : null}
     {state.notice ? <Text accessibilityLiveRegion="polite" style={styles.caption}>{state.notice}</Text> : null}
     {detail ? <>
-      <Text style={styles.heading}>{detail.batch.status === "cancelled" ? "已取消" : detail.batch.status === "completed" ? "已完成" : detail.batch.status === "processing" ? "正在处理名片" : "待复核批次"}</Text>
-      <Text style={styles.caption}>共 {detail.items.length} 张 · 已处理 {detail.items.filter(item => !["pending", "processing"].includes(item.status)).length} 张 · 已收录 {detail.items.filter(item => item.status === "confirmed").length} 张 · 失败 {detail.items.filter(item => item.status === "failed").length} 张 · 已跳过 {detail.items.filter(item => item.status === "skipped").length} 张</Text>
-      {detail.batch.status === "processing" && now - Date.parse(detail.batch.updatedAt) >= 60000 ? <Text style={styles.caption}>处理时间较长。请稍后刷新；识别失败的名片可单独重试。</Text> : null}
-      <View style={styles.list}>
-        {detail.items.map(item => <View key={item.id} style={styles.item}>
-          <Text style={styles.caption}>{item.seq}. {item.sourceFileName}{item.sourcePage ? ` / 第 ${item.sourcePage} 页` : ""} · {statusLabels[item.status]}</Text>
-          {item.status === "confirmed" && item.confirmedContactId ? <BatchButton label={`查看联系人 ${item.seq}`} icon="person-outline" onPress={() => { if (isCurrent()) router.push(`/contacts/${encodeURIComponent(item.confirmedContactId!)}` as Href); }} /> : null}
-          {!["confirmed", "skipped"].includes(item.status) && !terminal(detail) ? <BatchButton label={`选择名片 ${item.seq}`} icon="document-outline" selected={item.id === state.selectedId} disabled={disabled || Boolean(state.busy)} onPress={() => {
-            if (!isCurrent() || current.current.busy || current.current.detail !== detail || current.current.selectedId === item.id) return;
-            update({ selectedId: item.id, duplicate: null }); imageTransport.current?.abort();
-          }} /> : null}
-        </View>)}
-      </View>
       {selected && !terminal(detail) ? <>
         <BusinessCardBatchReviewForm fields={draft?.fields ?? null} image={imageValue} reviewIssues={selected.reviewIssues} statusLabel={statusLabels[selected.status]} disabled={disabled} canConfirm={canAct("confirm")} canSkip={canAct("skip")} canRetry={canAct("retry")} duplicateContactId={state.duplicate?.contactId ?? null}
           onImageError={() => {
@@ -288,6 +276,23 @@ export function BusinessCardBatchScreen() {
           {imageValue.status === "unavailable" ? <BatchButton label="重载图片" icon="image-outline" disabled={disabled} onPress={() => { if (isCurrent()) setImageAttempt(value => value + 1); }} /> : null}
         </View>
       </> : null}
+    <View style={styles.row}>
+      <BatchButton label="刷新批次" icon="refresh-outline" iconOnly disabled={!ready || !active || state.loading || Boolean(state.busy)} onPress={() => void load()} />
+      <BatchButton label="返回人脉" icon="people-outline" onPress={() => router.push("/contacts" as Href)} />
+    </View>
+      <Text style={styles.heading}>{detail.batch.status === "cancelled" ? "已取消" : detail.batch.status === "completed" ? "已完成" : detail.batch.status === "processing" ? "正在处理名片" : "待复核批次"}</Text>
+      <Text style={styles.caption}>共 {detail.items.length} 张 · 已处理 {detail.items.filter(item => !["pending", "processing"].includes(item.status)).length} 张 · 已收录 {detail.items.filter(item => item.status === "confirmed").length} 张 · 失败 {detail.items.filter(item => item.status === "failed").length} 张 · 已跳过 {detail.items.filter(item => item.status === "skipped").length} 张</Text>
+      {detail.batch.status === "processing" && now - Date.parse(detail.batch.updatedAt) >= 60000 ? <Text style={styles.caption}>处理时间较长。请稍后刷新；识别失败的名片可单独重试。</Text> : null}
+      <View style={styles.list}>
+        {detail.items.map(item => <View key={item.id} style={styles.item}>
+          <Text style={styles.caption}>{item.seq}. {item.sourceFileName}{item.sourcePage ? ` / 第 ${item.sourcePage} 页` : ""} · {statusLabels[item.status]}</Text>
+          {item.status === "confirmed" && item.confirmedContactId ? <BatchButton label={`查看联系人 ${item.seq}`} icon="person-outline" onPress={() => { if (isCurrent()) router.push(`/contacts/${encodeURIComponent(item.confirmedContactId!)}` as Href); }} /> : null}
+          {!["confirmed", "skipped"].includes(item.status) && !terminal(detail) ? <BatchButton label={`选择名片 ${item.seq}`} icon="document-outline" selected={item.id === state.selectedId} disabled={disabled || Boolean(state.busy)} onPress={() => {
+            if (!isCurrent() || current.current.busy || current.current.detail !== detail || current.current.selectedId === item.id) return;
+            update({ selectedId: item.id, duplicate: null }); imageTransport.current?.abort();
+          }} /> : null}
+        </View>)}
+      </View>
       {!terminal(detail) ? <BatchButton label="完成批次" icon="checkmark-done-outline" disabled={!canAct("finish")} onPress={() => confirmCommand("finish")} /> : null}
     </> : null}
   </AppScreen>;

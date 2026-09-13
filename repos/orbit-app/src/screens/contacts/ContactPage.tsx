@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
-import type { PropsWithChildren, ReactElement } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View, type RefreshControlProps } from "react-native";
+import type { PropsWithChildren, ReactElement, ReactNode, Ref } from "react";
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View, type LayoutChangeEvent, type RefreshControlProps } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { layout, textStyles } from "../../design/tokens";
 import { createThemedStyles } from "../../design/theme";
@@ -10,10 +10,24 @@ import { createThemedStyles } from "../../design/theme";
 export function ContactPage({
   children,
   detail = false,
+  backLabel = "联系人",
+  backHref,
+  toolbarLeft,
+  toolbarRight,
+  isCurrent,
+  scrollRef,
+  onBodyLayout,
   refreshControl,
   title
 }: PropsWithChildren<{
   detail?: boolean;
+  backLabel?: string;
+  backHref?: string;
+  toolbarLeft?: ReactNode;
+  toolbarRight?: ReactNode;
+  isCurrent?: () => boolean;
+  scrollRef?: Ref<ScrollView>;
+  onBodyLayout?: (event: LayoutChangeEvent) => void;
   refreshControl?: ReactElement<RefreshControlProps>;
   title: string;
 }>) {
@@ -22,29 +36,30 @@ export function ContactPage({
   return (
     <SafeAreaView edges={["top"]} style={styles.safeArea}>
       <ScrollView
+        ref={scrollRef}
         automaticallyAdjustKeyboardInsets
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, detail && styles.detailContent]}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
         refreshControl={refreshControl}
       >
-        <View style={styles.toolbar}>
-          <Pressable
-            accessibilityLabel="返回联系人"
+        <View style={[styles.toolbar, detail && styles.detailToolbar]}>
+          {toolbarLeft ?? <Pressable
+            accessibilityLabel={`返回${backLabel}`}
             accessibilityRole="button"
-            onPress={() => router.canGoBack()
+            onPress={() => isCurrent?.() === false ? undefined : router.canGoBack()
               ? router.back()
-              : router.replace((detail ? "/contacts/list" : "/contacts") as Href)}
+              : router.replace((backHref ?? (detail ? "/contacts/list" : "/contacts")) as Href)}
             style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
           >
             <Ionicons color={colors.accent} name="chevron-back" size={23} />
-            <Text style={styles.backText}>联系人</Text>
-          </Pressable>
+            <Text style={styles.backText}>{backLabel}</Text>
+          </Pressable>}
           {detail ? <Text accessibilityRole="header" style={styles.detailTitle}>{title}</Text> : null}
-          {detail ? <View style={styles.toolbarBalance} /> : null}
+          {detail ? <View style={styles.toolbarBalance}>{toolbarRight}</View> : null}
         </View>
         {!detail ? <Text accessibilityRole="header" style={styles.largeTitle}>{title}</Text> : null}
-        <View style={detail ? styles.detailBody : styles.listBody}>{children}</View>
+        <View onLayout={onBodyLayout} style={detail ? styles.detailBody : styles.listBody}>{children}</View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -63,6 +78,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingTop: 12,
     width: "100%"
   },
+  detailContent: { paddingTop: 0 },
+  detailToolbar: { minHeight: 48 },
   toolbar: {
     alignItems: "center",
     flexDirection: "row",
@@ -80,12 +97,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     fontSize: 16,
     lineHeight: 22
   },
-  toolbarBalance: { width: 82 },
+  toolbarBalance: { width: 82, alignItems: "flex-end" },
   detailTitle: {
     color: colors.ink,
     flex: 1,
-    fontSize: 16,
-    fontWeight: "600",
+    fontFamily: Platform.select({ web: '-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif', ios: "System", default: "sans-serif" }),
+    fontSize: 15,
+    fontWeight: "800",
     lineHeight: 22,
     textAlign: "center"
   },
@@ -98,7 +116,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   listBody: { gap: 0 },
   detailBody: {
     gap: 0,
-    paddingTop: 32
+    paddingTop: 12
   },
   pressed: { opacity: 0.72 }
 }));

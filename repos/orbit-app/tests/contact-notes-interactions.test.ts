@@ -22,13 +22,13 @@ const rerender = () => useSyncExternalStore(listener => { listeners.add(listener
 const note = { noteId: "note:1", body: ${JSON.stringify(literal)}, createdAt: "2026-09-08T01:00:00.000Z", privacy: "private", authorLabel: "我" };
 const state = window.fixture = {
   requests: [], refreshes: [], reads: [], actorId: "actor:one", contactId: "contact:notes", kind: "success", clientKey: 0,
-  data: { contact: { id: "contact:notes", displayName: "林先生", notes: [note,
+  data: { state: "success", contact: { id: "contact:notes", displayName: "林先生", role: "", organization: "", location: "", relationshipContext: "", nextAction: "", status: "active", tags: [], source: { type: "manual", label: "手动记录" }, publicProfile: { bio: "", offering: [], seeking: [], topics: [], conversationPrompts: [] }, evidence: [], lastInteraction: { channel: "manual_note", occurredAt: "", summary: "" }, notes: [note,
     { ...note, noteId: "note:2", body: "第二条备注", createdAt: "2026-09-08T02:00:00.000Z" },
     { ...note, noteId: "note:3", body: "第三条备注", createdAt: "2026-09-08T03:00:00.000Z" },
     { ...note, noteId: "note:shared", body: "双方确认的纪要", privacy: "relationship_shared" }] } },
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(listener => listener()); },
   reply(data, status = 200) { state.resolve(new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json" } })); },
-  saved(body) { return { success: true, data: { contact: { ...state.data.contact, notes: [...state.data.contact.notes, { ...note, noteId: "note:saved", body, createdAt: "2026-09-08T04:00:00.000Z" }] } } }; }
+  saved(body) { return { success: true, data: { state: "success", contact: { ...state.data.contact, notes: [...state.data.contact.notes, { ...note, noteId: "note:saved", body, createdAt: "2026-09-08T04:00:00.000Z" }] } } }; }
 };
 const transport = async (path, init) => {
   state.requests.push({ method: init.method, path: new URL(path).pathname, body: JSON.parse(init.body) });
@@ -53,10 +53,11 @@ export const Ionicons = ({ size }) => <span aria-hidden="true" style={{ display:
 test.before(async () => {
   const result = await build({
     stdin: { contents: `import React from "react"; import { createRoot } from "react-dom/client"; import { ContactDetailScreen } from "./src/screens/contacts/ContactDetailScreen"; import { ContactNotesSection } from "./src/screens/contacts/ContactNotesSection"; window.notesComponent = ContactNotesSection; createRoot(document.getElementById("root")).render(<ContactDetailScreen />);`, resolveDir: process.cwd(), loader: "tsx" },
-    bundle: true, write: false, format: "iife", jsx: "automatic",
+    bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
     define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "notes-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
+      plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
       plugin.onResolve({ filter: /^(expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|ApiBaseUrlProvider|AuthSessionProvider)$/ }, () => ({ path: "fixture", namespace: "notes-test" }));
       plugin.onLoad({ filter: /.*/, namespace: "notes-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
     } }],
@@ -181,9 +182,9 @@ test("old contact or account responses cannot clear another draft or refresh ano
     await page.evaluate(kind => {
       const state = (window as any).fixture;
       state.oldResult = state.saved("旧联系人未确认备注");
-      if (kind === "contact") state.update({ contactId: "contact:other", data: { contact: { id: "contact:other", displayName: "另一位联系人", notes: [] } } });
-      if (kind === "account") state.update({ clientKey: 1, data: { contact: { id: state.contactId, displayName: "新账号联系人", notes: [] } } });
-      if (kind === "same-client-account") state.update({ actorId: "actor:two", data: { contact: { id: state.contactId, displayName: "新账号联系人", notes: [] } } });
+      if (kind === "contact") state.update({ contactId: "contact:other", data: { ...state.data, contact: { ...state.data.contact, id: "contact:other", displayName: "另一位联系人", notes: [] } } });
+      if (kind === "account") state.update({ clientKey: 1, data: { ...state.data, contact: { ...state.data.contact, id: state.contactId, displayName: "新账号联系人", notes: [] } } });
+      if (kind === "same-client-account") state.update({ actorId: "actor:two", data: { ...state.data, contact: { ...state.data.contact, id: state.contactId, displayName: "新账号联系人", notes: [] } } });
       if (kind === "unmount") state.update({ kind: "offline" });
     }, switchKind);
     if (switchKind !== "unmount") {

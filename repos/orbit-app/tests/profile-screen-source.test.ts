@@ -27,7 +27,8 @@ test("profile screen can confirm profile update suggestions through the API", ()
   assert.match(screenSource, /onAcceptSuggestion/u);
   assert.match(screenSource, /确认建议/u);
   assert.match(screenSource, /profileAcceptedPatchToView/u);
-  assert.match(screenSource, /applyProfileAcceptedPatchToDraft/u);
+  // Real patch application and supported fields are exercised through the
+  // HTTP route in ink-signal-profile.test.ts, not tied to the former VM helper.
   assert.match(screenSource, /acceptedProfilePatch/u);
   assert.match(screenSource, /ProfileAcceptedPatchNotice/u);
   assert.match(screenSource, /view\.title/u);
@@ -69,7 +70,7 @@ test("profile screen prioritizes the signed-in public profile editor", () => {
   assert.match(screenSource, /<OrbitBusinessCard profile=\{displayProfile\}/u);
   assert.match(
     screenSource,
-    /<ProfileManualEditCard[\s\S]*?profile=\{storedProfile\}/u
+    /<ProfileManualEditCard[\s\S]*?data=\{data\}/u
   );
 
   const cardStart = screenSource.indexOf("function ProfileCard");
@@ -127,7 +128,8 @@ test("profile screen can apply extracted fields to the manual editor before savi
     screenSource.indexOf("function ProfileExtractionButton")
   );
 
-  assert.match(screenSource, /applyProfileDocumentExtractionToDraft/u);
+  // The real route test checks explicit apply, all supported draft fields,
+  // and the absence of an implicit PUT before the separate save action.
   assert.match(screenSource, /appliedProfileExtraction/u);
   assert.match(screenSource, /onApplyExtraction/u);
   assert.match(screenSource, /应用到编辑表单/u);

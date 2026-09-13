@@ -75,7 +75,7 @@ export const Ionicons = ({ size }) => <span aria-hidden="true" style={{ display:
 test.before(async () => {
   const result = await build({
     stdin: { contents: `import React from "react"; import { createRoot } from "react-dom/client"; import { useFixture } from "fixture"; ${hasScreen ? 'import { EventExperienceScreen } from "./src/screens/events/EventExperienceScreen";' : 'const EventExperienceScreen = () => null;'} ${hasRoute ? 'import Route from "./app/events/[id]/operations/experience";' : 'const Route = () => null;'} import { EventOperationsScreen } from "./src/screens/events/EventOperationsScreen"; function App() { const s = useFixture(); return !s.mounted ? null : s.mode === "route" ? <Route /> : s.mode === "operations" ? <EventOperationsScreen /> : <EventExperienceScreen />; } createRoot(document.getElementById("root")).render(window.initialFixture?.strict ? <React.StrictMode><App /></React.StrictMode> : <App />);`, resolveDir: process.cwd(), loader: "tsx" },
-    bundle: true, write: false, format: "iife", jsx: "automatic", define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
+    bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "experience-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "experience" }));
       plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider)$/ }, () => ({ path: "fixture", namespace: "experience" }));

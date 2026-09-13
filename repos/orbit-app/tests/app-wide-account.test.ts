@@ -17,13 +17,14 @@ const eventTitle = "东京与亚太地区零售伙伴长期合作交流活动";
 const boundaries = `
 import React, { useSyncExternalStore } from "react";
 import { View } from "react-native";
+import { acceptedProfileSuggestionPayload, profilePayload, profileSuggestion, readyProfileSuggestionsPayload } from "./tests/helpers/profile-detail-fixtures";
 const listeners = new Set(); let revision = 0;
 const state = window.fixture = { requests: [], navigation: [], signedIn: !location.search.includes("guest"), ready: true, kind: "success", pending: false, update(patch) { Object.assign(state, patch); revision++; listeners.forEach(f => f()); } };
 const rerender = () => useSyncExternalStore(f => { listeners.add(f); return () => listeners.delete(f); }, () => revision);
 const failure = { success: false, message: "暂时无法完成，请重试", error: { message: "暂时无法完成，请重试" } };
 const record = action => async payload => {
   state.requests.push({ action, payload });
-  if (action === "POST" && state.patchSuccess && payload?.path === "/api/profile/update-suggestions/suggestion%3A1/accept") return { success: true, data: { profilePatch: { headline: "关注长期零售伙伴合作的市场负责人" }, appliedFields: ["headline"] } };
+  if (action === "POST" && state.patchSuccess && payload?.path === "/api/profile/update-suggestions/suggestion%3A1/accept") return { success: true, status: 200, data: { ...acceptedProfileSuggestionPayload, acceptedSuggestion: { ...suggestions.suggestions[0], status: "accepted" }, profilePatch: { headline: "关注长期零售伙伴合作的市场负责人" }, appliedFields: ["headline"] } };
   if (action === "POST" && state.calendarSuccess && payload?.path === "/api/permissions/calendar/request") return { success: true, data: { state: "pending", permission: { actionLabel: "Review calendar request", authorizationStage: "staged-review", capability: "calendar", label: "Calendar", requiredFor: "Event readiness, meeting context, and follow-up timing.", status: "pending" }, request: { capability: "calendar", evidenceIds: ["evidence:calendar-request-review"], id: "permission-request:calendar:event-readiness", intent: "connect-event-calendar", replacesProviderFlow: true, reviewLabel: "Calendar event readiness review", status: "pending" } } };
   if (state.pending) return new Promise(resolve => { state.resolve = () => resolve(failure); });
   return failure;
@@ -32,10 +33,10 @@ export const useOrbitAuthSession = () => { rerender(); return { ready: state.rea
 export const useRouter = () => ({ canGoBack: () => false, back() {}, push(path) { state.navigation.push(path); }, replace(path) { state.navigation.push(path); } });
 export const usePathname = () => "/account";
 export const useLocalSearchParams = () => ({ next: "/profile", created: new URLSearchParams(location.search).get("created") || undefined });
-const profile = { profile: { displayName: ${JSON.stringify(person)}, headline: "连接长期零售合作伙伴，探索跨境业务机会", organization: "日本与亚太地区合作团队", role: "市场负责人", bio: "希望认识关注日本市场的长期合作伙伴。", offering: ["日本零售渠道与本地落地资源"], seeking: ["跨境技术与商务伙伴"], topics: ["零售合作"], relationshipGoal: "建立长期互信的伙伴关系", timezone: "Asia/Tokyo" } };
+const profile = { ...profilePayload, profile: { ...profilePayload.profile, displayName: ${JSON.stringify(person)}, headline: "连接长期零售合作伙伴，探索跨境业务机会", organization: "日本与亚太地区合作团队", role: "市场负责人", bio: "希望认识关注日本市场的长期合作伙伴。", offering: ["日本零售渠道与本地落地资源"], seeking: ["跨境技术与商务伙伴"], topics: ["零售合作"], relationshipGoal: "建立长期互信的伙伴关系", timezone: "Asia/Tokyo" } };
 const events = { events: [{ id: "event:1", title: ${JSON.stringify(eventTitle)}, startsAt: "2027-09-10T10:00:00+09:00", endsAt: "2027-09-10T12:00:00+09:00", status: "scheduled", venue: "东京合作交流中心二层会议区", relationshipValue: "寻找可信的长期合作方" }] };
 const permissions = { state: "success", permissions: [{ capability: "calendar", label: "Calendar", status: "pending", authorizationStage: "staged-review", requiredFor: "活动准备与后续安排", rationale: "等待用户复核", evidence: [], actionLabel: "Review calendar request" }, { capability: "contacts", label: "Contacts", status: "authorized", authorizationStage: "ready", requiredFor: "关系搜索", rationale: "已可读取", evidence: [], actionLabel: "Use contact context" }] };
-const suggestions = { state: "success", suggestions: [{ id: "suggestion:1", confidence: "high", currentValue: "市场负责人", suggestedValue: "关注长期零售伙伴合作的市场负责人", sourceKind: "chat", sourceLabel: "会话记录", status: "pending", targetProfileField: "headline", rationale: "建议来自最近的交流记录，需本人确认。", evidence: [{ evidenceId: "evidence:1", excerpt: "希望认识日本市场的合作伙伴。", sourceKind: "chat", sourceLabel: "会话记录" }] }, { id: "suggestion:2", confidence: "high", currentValue: "Tokyo", suggestedValue: "Tokyo and Singapore", sourceKind: "activity", status: "accepted", targetProfileField: "homeMarket" }] };
+const suggestions = { ...readyProfileSuggestionsPayload, suggestions: [{ ...profileSuggestion, id: "suggestion:1", confidence: "high", currentValue: "市场负责人", suggestedValue: "关注长期零售伙伴合作的市场负责人", sourceKind: "chat", sourceLabel: "会话记录", status: "pending", targetProfileField: "headline", rationale: "建议来自最近的交流记录，需本人确认。", evidence: [{ ...profileSuggestion.evidence[0], evidenceId: "evidence:1", excerpt: "希望认识日本市场的合作伙伴。", sourceKind: "chat", sourceLabel: "会话记录" }] }, { ...profileSuggestion, id: "suggestion:2", confidence: "high", currentValue: "Tokyo", suggestedValue: "Tokyo and Singapore", sourceKind: "activity", status: "accepted", targetProfileField: "homeMarket" }] };
 export const useApiResource = path => { rerender(); return { kind: state.kind, error: { message: "连接暂时失败" }, refreshing: false, refresh() {}, data: path.includes("suggestions") ? suggestions : path.includes("permissions") ? permissions : path.includes("profile") ? profile : path.includes("events") ? events : path.includes("aggregate") ? { relationshipAssetTotals: { contacts: 66 } } : { user: { displayName: ${JSON.stringify(person)}, email: "lin@example.com" }, workspace: { name: "亚太合作工作区", role: "owner" } } }; };
 const client = { post: async (path, options) => record("POST")({ path, body: options?.body }), put: async (path, options) => record("PUT")({ path, body: options?.body }) };
 export const useOrbitApiClient = () => client;
@@ -67,7 +68,7 @@ const params = new URLSearchParams(location.search);
 const screens = { settings: SettingsScreen, api: ApiSettingsScreen, account: AccountScreen, auth: AccountAuthScreen, permissions: AccountPermissionsScreen, profile: ProfileScreen, admin: AdminScreen, adminLogin: AdminLoginScreen, platform: PlatformScreen };
 const Screen = screens[params.get("screen")];
 createRoot(document.getElementById("root")).render(<Screen mode={params.get("mode") || "login"} surface={params.get("surface") || "dashboard"} />);`, resolveDir: process.cwd(), loader: "tsx" },
-    bundle: true, write: false, format: "iife", jsx: "automatic",
+    bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
     define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "account-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
@@ -128,6 +129,7 @@ for (const scheme of ["light", "dark"] as const) {
   });
   test(`${scheme}: final inset accepted profile feedback preserves the pending edit`, async t => {
     const page = await open(t, "profile", scheme);
+    await page.getByRole("button", { name: "编辑资料", exact: true }).click();
     await page.evaluate(() => (window as any).fixture.update({ patchSuccess: true }));
     await page.getByRole("button", { name: /^确认.*建议$/ }).click();
     const notice = page.getByText("待保存改动", { exact: true }).locator("..").locator("..");
@@ -165,9 +167,16 @@ for (const theme of ["light", "dark"] as const) {
   test(`${theme}: profile identity is open and complete; editing stays local`, async t => {
     const page = await open(t, "profile", theme);
     const name = page.getByText(person, { exact: true }).first(); await name.waitFor();
-    const identity = name.locator("..").locator("..");
-    assert.equal(await identity.evaluate(el => getComputedStyle(el).backgroundColor), theme === "light" ? "rgb(255, 254, 252)" : "rgb(34, 38, 46)");
+    const identityBackground = await name.evaluate(el => {
+      for (let parent = el.parentElement; parent; parent = parent.parentElement) {
+        const color = getComputedStyle(parent).backgroundColor;
+        if (color !== "rgba(0, 0, 0, 0)") return color;
+      }
+      return "transparent";
+    });
+    assert.equal(identityBackground, theme === "light" ? "rgb(255, 255, 255)" : "rgb(34, 38, 46)");
     assert.equal(await name.evaluate(el => el.scrollWidth <= el.clientWidth + 1 && el.scrollHeight <= el.clientHeight + 1), true, "long identity remains readable");
+    await page.getByRole("button", { name: "编辑资料", exact: true }).click();
     const input = page.getByRole("textbox", { name: "名字", exact: true }); await fits(input); await input.fill("保留未保存名字");
     const form = page.getByText("编辑对外资料", { exact: true }).locator("..").locator("..");
     assert.equal(await form.evaluate(el => getComputedStyle(el).borderRadius), "12px");
@@ -200,8 +209,9 @@ for (const theme of ["light", "dark"] as const) {
       assert.equal(await page.getByRole("button", { name: "使用 Google 登录", exact: true }).isDisabled(), true);
       assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
       await page.evaluate(() => (window as any).fixture.update({ ready: true }));
-      const form = email.locator("..").locator("..").locator("..").locator("..").locator("..");
-      assert.equal(await form.evaluate(el => getComputedStyle(el).borderRadius), "12px", "credentials retain one inset form boundary");
+      const field = email.locator("..");
+      assert.equal(await field.evaluate(el => getComputedStyle(el).borderTopWidth), "0px", "credentials use the approved open form");
+      assert.ok(Number.parseFloat(await field.evaluate(el => getComputedStyle(el).borderBottomWidth)) >= 1, "each credential retains its visible underline");
       await page.evaluate(() => (window as any).fixture.update({ pending: true }));
       await submit.click(); assert.equal(await submit.isDisabled(), true);
       assert.equal(await submit.innerText(), mode === "login" ? "登录中..." : "创建中...");

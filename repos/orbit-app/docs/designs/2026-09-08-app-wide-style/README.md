@@ -80,9 +80,9 @@ Tasks 1–5 的领域实现、修补及独立复审已经闭合，58 个真实 `
 
 - `screen`：表中精确列出的 canonical consumer 已在 Tasks 2–5 直接改造；`app/**.tsx` 入口仍是未改的薄 wrapper，并继续继承该 consumer 原先使用的 Task 1 `AppScreen`、`DataCard`、state/control primitives。
 - `alias`：只有 `/contacts/graph`；未改薄 wrapper 复用已直接改造的 `ContactsDashboardScreen`，没有把未路由的 `ContactsGraphScreen` 算成 live route。
-- `redirect`：精确为 `/`、`/home`、`/account/mobile-google`、`/[...legacy]`；四个 entry/resolver 行为均未改，只做原生目标观察和既有跳转契约验证。
+- `redirect`：本轮原始记录为 `/`、`/home`、`/account/mobile-google`、`/[...legacy]`。2026-09-12 Ink & Signal 批次已把 `/home` 改为真实首页，并修改默认启动/兜底目标；其余三个仍为跳转入口。
 
-因此 54 个 screen/alias 入口是“直接改造 canonical consumer + 未改薄 wrapper + 既有共享组件继承”，4 个 redirect 是“未改跳转 wrapper”。原生栏只记录当时实际观察到的状态，受数据或角色限制时不会改写成成功态；渲染栏指向真实 screen/content 与交互测试或跳转契约，不以源码文件存在替代视觉证明。
+本轮历史记录是 54 个 screen/alias、4 个 redirect；2026-09-12 首页替换后现为 55 个 screen/alias、3 个 redirect。原生栏保留当时实际观察到的状态，不把旧 AI 跳转截图当作新版首页验收。渲染栏指向真实 screen/content 与交互测试或跳转契约，不以源码文件存在替代视觉证明。
 
 <!-- route-coverage:start -->
 | 路由 | Canonical consumer | 状态 | Controller 查看过的原生实际状态 | 真实渲染/交互或跳转契约 |
@@ -142,7 +142,7 @@ Tasks 1–5 的领域实现、修补及独立复审已经闭合，58 个真实 `
 | `/home/events` | `HomeScreen (events)` | screen | `.tmp/app-wide-style/after/task3/native-route-observations.json`: success，单一页面标题 | `tests/app-wide-events.test.ts`: 活动模式大字与目的地；真实 hub 模式另受控渲染 |
 | `/dashboard` | `DashboardScreen` | screen | `.tmp/app-wide-style/after/task2/native-route-observations.json`: success，legacy dashboard | `tests/app-wide-contacts.test.ts`: legacy dashboard 动作与请求边界 |
 | `/` | `IndexRoute → resolveInitialRouteHref` | redirect | `.tmp/app-wide-style/after/redirects/final-native-route-observations.json`: 实际到达 AI | `tests/initial-route.test.ts`: 默认目标及 resolver 契约 |
-| `/home` | `HomeRoute → /ai` | redirect | `.tmp/app-wide-style/after/redirects/final-native-route-observations.json`: 实际到达 AI | `tests/home-route-source.test.ts`: 固定 AI redirect；`tests/initial-route.test.ts`: canonical 目标 |
+| `/home` | `HomeDashboardScreen` | screen | `.tmp/app-wide-style/after/redirects/final-native-route-observations.json`: 历史 AI 跳转观察，不覆盖 2026-09-12 新首页 | `tests/home-dashboard-interactions.test.ts`: 真实首页、任务完成及身份边界；`tests/home-route-source.test.ts`: 私有首页登录回跳；`tests/initial-route.test.ts`: 启动目标 |
 | `/account/mobile-google` | `MobileGoogleRoute → /account/login` | redirect | `.tmp/app-wide-style/after/redirects/final-native-route-observations.json`: 到达深色冷启动大字登录表单，未发起 OAuth | `tests/account-auth-screen-source.test.ts`: login fallback；`tests/initial-route.test.ts`: canonical 目标 |
 | `/[...legacy]` | `LegacyDeepLinkRoute → resolveInitialRouteHref` | redirect | `.tmp/app-wide-style/after/redirects/final-native-route-observations.json`: unsupported URL 实际到达 AI | `tests/initial-route.test.ts`: legacy/query/hash canonicalization 与 unsupported fallback |
 <!-- route-coverage:end -->

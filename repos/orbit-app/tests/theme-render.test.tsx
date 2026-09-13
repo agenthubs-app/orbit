@@ -121,13 +121,13 @@ test("an unavailable system appearance has a usable light fallback", (t) => {
   assert.equal(renderToHtml(card), fallback);
 });
 
-test("light recovery actions use readable Ocean blue without changing the dark action", (t) => {
+test("recovery actions use readable ink in both appearances", (t) => {
   let scheme: "light" | "dark" = "light";
   t.mock.method(Appearance, "getColorScheme", () => scheme);
   const screen = <AppErrorScreen error={new Error("连接中断")} onRetry={() => undefined} />;
   for (const [appearance, expected] of [
-    ["light", [0, 109, 184]],
-    ["dark", [162, 175, 211]]
+    ["light", [11, 18, 32]],
+    ["dark", [240, 240, 236]]
   ] as const) {
     scheme = appearance;
     const nodes = styledNodes(renderToHtml(screen));

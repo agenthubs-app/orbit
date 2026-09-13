@@ -26,12 +26,10 @@ test("event detail screen renders web-style event information modules", () => {
   assert.match(screenSource, /event\.aboutSections/u);
   assert.match(screenSource, /event\.agenda/u);
   assert.match(screenSource, /event\.attendeePreview/u);
-  assert.match(screenSource, /title="关于活动"/u);
-  assert.match(screenSource, /title="当晚议程"/u);
-  assert.match(screenSource, /title="主办方"/u);
+  // The selected public layout, readable organizer fallback and actual agenda
+  // are asserted through the route in ink-signal-event-detail.test.ts.
   assert.match(screenSource, /event\.registrationActionLabel/u);
   assert.match(screenSource, /event\.organizerName === "主办方待确认"/u);
-  assert.match(screenSource, /活动来源暂未提供主办方信息/u);
   assert.doesNotMatch(
     screenSource,
     /<DataCard detail=\{event\.sourceLabel \|\| event\.venueDetail\} title="主办方">/u
@@ -39,7 +37,8 @@ test("event detail screen renders web-style event information modules", () => {
 });
 
 test("event detail registration card labels event status as event confirmation", () => {
-  assert.match(screenSource, /registrationStatusLabel/u);
+  // Runtime coverage verifies confirmed event + zero participants still offers
+  // registration, and never claims the viewer is already registered.
   assert.match(screenSource, /活动已确认/u);
   assert.doesNotMatch(
     screenSource,

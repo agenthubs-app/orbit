@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
@@ -14,14 +14,14 @@ export type EventOperationsContentState =
   | { kind: "success" }
   | { kind: "empty" }
   | { kind: "unconfigured" }
+  | { kind: "forbidden"; message: string }
   | { kind: "offline"; message: string }
   | { kind: "failure"; message: string };
 
-function Shortcut({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void }) {
-  const { colors, styles } = useStyles();
+function Shortcut({ label, onPress }: { label: string; onPress: () => void }) {
+  const { styles } = useStyles();
   return (
     <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.shortcut, pressed ? styles.pressed : null]}>
-      <Ionicons color={colors.accent} name={icon} size={18} />
       <Text style={styles.shortcutLabel}>{label}</Text>
     </Pressable>
   );
@@ -29,16 +29,17 @@ function Shortcut({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyphM
 
 function GenerationRow({ busy, generation, onAction }: { busy: boolean; generation: EventOperationsGenerationView; onAction: () => void }) {
   const { styles } = useStyles();
+  const { fontScale } = useWindowDimensions();
   return (
     <View style={styles.generationRow}>
-      <View style={styles.rowHeading}>
+      <View style={[styles.rowHeading, fontScale > 1.3 && styles.stackedRow]}>
         <View style={styles.flexCopy}>
           <Text style={styles.rowTitle}>{generation.title}</Text>
           <Text style={styles.rowDetail}>{generation.snapshotLabel}</Text>
         </View>
         <Text style={[styles.status, generation.status === "failed" ? styles.statusDanger : generation.status === "published" ? styles.statusLive : null]}>{generation.statusLabel}</Text>
       </View>
-      <View style={styles.progressTrack}><View style={[styles.progressValue, { width: `${Math.max(3, generation.progress)}%` }]} /></View>
+      <View accessibilityLabel={`${generation.title}进度`} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: generation.progress, text: generation.progressLabel }} aria-valuemin={0} aria-valuemax={100} aria-valuenow={generation.progress} aria-valuetext={generation.progressLabel} style={styles.progressTrack}><View style={[styles.progressValue, { width: `${generation.progress}%` }]} /></View>
       <Text style={styles.rowDetail}>{generation.progressLabel}</Text>
       {generation.errorLabel ? <Text style={styles.errorText}>{generation.errorLabel}</Text> : null}
       {generation.action ? (
@@ -50,19 +51,35 @@ function GenerationRow({ busy, generation, onAction }: { busy: boolean; generati
   );
 }
 
-export function EventOperationsContent({ busy, notice, onGenerationAction, onOpenAnalytics, onOpenCheckIn, onOpenExperience, onOpenRoles, onStartGeneration, state, view }: {
+export function EventOperationsContent({ busy, notice, onGenerationAction, onOpenAnalytics, onOpenCheckIn, onOpenEvent, onOpenExperience, onOpenRoles, onRefresh, onStartGeneration, state, view }: {
   busy: string | null;
   notice?: string | null;
   onGenerationAction: (generation: EventOperationsGenerationView) => void;
   onOpenAnalytics: () => void;
   onOpenCheckIn: () => void;
+  onOpenEvent?: () => void;
   onOpenExperience: () => void;
   onOpenRoles: () => void;
+  onRefresh?: () => void;
   onStartGeneration: () => void;
   state: EventOperationsContentState;
   view: EventOperationsView;
 }) {
   const { colors, styles } = useStyles();
+  const { width, fontScale } = useWindowDimensions();
+  const largeText = fontScale > 1.3;
+  if (state.kind === "forbidden") return (
+    <View style={[styles.permission, largeText && styles.permissionLarge]}>
+      <View style={styles.permissionIcon}><Ionicons color={colors.ink} name="lock-closed-outline" size={26} /></View>
+      <Text accessibilityLabel="需要运营权限" accessibilityRole="header" style={styles.permissionTitle}>{fontScale > 1.8 ? "需要\n运营权限" : "需要运营权限"}</Text>
+      <Text accessibilityRole="alert" style={styles.permissionDetail}>{state.message}</Text>
+      <Text style={styles.permissionDetail}>请联系活动主办方确认权限，或返回活动详情。</Text>
+      <View style={styles.permissionActions}>
+        {onOpenEvent ? <Pressable accessibilityRole="button" onPress={onOpenEvent} style={({ pressed }) => [styles.permissionPrimary, pressed && styles.pressed]}><Text style={styles.primaryButtonText}>返回活动详情</Text></Pressable> : null}
+        {onRefresh ? <Pressable accessibilityRole="button" onPress={onRefresh} style={({ pressed }) => [styles.permissionSecondary, pressed && styles.pressed]}><Text style={styles.secondaryButtonText}>重新检查权限</Text></Pressable> : null}
+      </View>
+    </View>
+  );
   if (state.kind === "loading") return <DataCard title="正在读取运营状态"><Text style={styles.rowDetail}>正在同步指标、时间门禁与生成任务。</Text></DataCard>;
   if (state.kind === "offline" || state.kind === "failure") return <ErrorState message={state.message} />;
   if (state.kind === "unconfigured") return <EmptyState message="请先在 Web 运营台确认活动档期并设置时间门禁；保存后移动端会同步生成、发布与分桌状态。" title="尚未配置运营规则" />;
@@ -71,18 +88,18 @@ export function EventOperationsContent({ busy, notice, onGenerationAction, onOpe
   return (
     <View style={styles.content}>
       {notice ? <Text accessibilityRole="alert" style={styles.notice}>{notice}</Text> : null}
-      <View style={styles.shortcuts}>
-        <Shortcut icon="checkmark-circle-outline" label="签到台" onPress={onOpenCheckIn} />
-        <Shortcut icon="stats-chart-outline" label="活动分析" onPress={onOpenAnalytics} />
-        <Shortcut icon="people-outline" label="角色" onPress={onOpenRoles} />
-        <Shortcut icon="options-outline" label="报名体验" onPress={onOpenExperience} />
+      <View style={styles.section}>
+        <Text accessibilityRole="header" style={styles.overviewTitle}>运营概览</Text>
+        <View style={styles.metrics}>
+          {view.metrics.map((metric, index) => <View key={metric.label} style={[styles.metric, index === 0 && styles.metricFirst, index === view.metrics.length - 1 && styles.metricLast, largeText && (width < 360 ? styles.metricSingle : styles.metricDouble)]}><Text style={styles.metricValue}>{metric.value}</Text><Text style={styles.metricLabel}>{metric.label}</Text></View>)}
+        </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>运营概览</Text>
-        <View style={styles.metrics}>
-          {view.metrics.map((metric) => <View key={metric.label} style={styles.metric}><Text style={styles.metricValue}>{metric.value}</Text><Text style={styles.metricLabel}>{metric.label}</Text></View>)}
-        </View>
+      <View style={styles.shortcuts}>
+        <Shortcut label="签到台" onPress={onOpenCheckIn} />
+        <Shortcut label="活动分析" onPress={onOpenAnalytics} />
+        <Shortcut label="角色" onPress={onOpenRoles} />
+        <Shortcut label="报名体验" onPress={onOpenExperience} />
       </View>
 
       <View style={styles.cardSection}>
@@ -103,7 +120,7 @@ export function EventOperationsContent({ busy, notice, onGenerationAction, onOpe
       <View style={styles.cardSection}>
         <Text style={styles.sectionTitle}>时间门禁</Text>
         <Text style={styles.sectionDetail}>{view.configurationSummary}</Text>
-        <View style={styles.gates}>{view.gates.map((gate) => <View key={gate.key} style={styles.gate}><View style={styles.flexCopy}><Text style={styles.rowTitle}>{gate.label}</Text><Text style={styles.rowDetail}>{gate.atLabel}</Text></View><Text style={[styles.gateState, gate.tone === "active" ? styles.gateStateActive : null]}>{gate.stateLabel}</Text></View>)}</View>
+        <View style={styles.gates}>{view.gates.map((gate) => <View key={gate.key} style={[styles.gate, largeText && styles.stackedRow]}><View style={styles.flexCopy}><Text style={styles.rowTitle}>{gate.label}</Text><Text style={styles.rowDetail}>{gate.atLabel}</Text></View><Text style={[styles.gateState, gate.tone === "active" ? styles.gateStateActive : null]}>{gate.stateLabel}</Text></View>)}</View>
       </View>
     </View>
   );
@@ -113,13 +130,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   cardSection: {
     gap: spacing.md,
     backgroundColor: "transparent",
-    paddingVertical: spacing.md
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: colors.border2
   },
-  content: { gap: spacing.lg },
+  content: { gap: 16 },
   disabled: { opacity: 0.45 },
   emptyText: { color: colors.text3, fontSize: typography.small, lineHeight: 20 },
   errorText: { color: colors.rose, fontSize: typography.caption, lineHeight: 17 },
-  flexCopy: { flex: 1, gap: spacing.xs, minWidth: 0 },
+  flexCopy: { flexShrink: 1, flexGrow: 1, gap: spacing.xs, minWidth: 0 },
   gate: { alignItems: "center", borderTopColor: colors.border, borderTopWidth: 1, flexDirection: "row", gap: spacing.md, minHeight: 58, paddingVertical: spacing.sm },
   gates: { gap: spacing.xs },
   gateState: { backgroundColor: colors.surface3, borderRadius: radius.pill, color: colors.text3, fontSize: 10, fontWeight: "800", overflow: "hidden", paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
@@ -127,24 +146,42 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   generationRow: { borderTopColor: colors.border, borderTopWidth: 1, gap: spacing.sm, paddingTop: spacing.md },
   iconButton: { alignItems: "center", backgroundColor: colors.accent, borderRadius: radius.control, height: 44, justifyContent: "center", width: 44 },
   metric: {
-    gap: spacing.xs,
-    minHeight: 72,
+    gap: 6,
     backgroundColor: "transparent",
-    paddingVertical: spacing.md,
-    flexBasis: "45%",
-    flexGrow: 1,
-    minWidth: 110
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    width: "25%",
+    borderRightWidth: 1,
+    borderRightColor: colors.border,
+    minWidth: 0
   },
+  metricFirst: { paddingLeft: 0 },
+  metricLast: { borderRightWidth: 0 },
+  metricDouble: { width: "50%", paddingLeft: 12 },
+  metricSingle: { width: "100%", borderRightWidth: 0, paddingLeft: 0 },
   metricLabel: {
     color: colors.text3,
-    ...textStyles.small
+    fontSize: 11,
+    lineHeight: 16
   },
-  metrics: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  metrics: { flexDirection: "row", flexWrap: "wrap", borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
   metricValue: {
     color: colors.ink,
-    ...textStyles.title
+    fontSize: 24,
+    lineHeight: 28,
+    fontWeight: "800",
+    letterSpacing: -0.72
   },
-  notice: { backgroundColor: colors.liveSoft, borderRadius: radius.control, color: colors.live, fontSize: typography.small, lineHeight: 20, padding: spacing.md },
+  overviewTitle: { color: colors.ink, fontSize: 20, lineHeight: 28, fontWeight: "900", letterSpacing: -0.4 },
+  permission: { alignItems: "center", marginHorizontal: 24, paddingTop: 118, paddingBottom: 24 },
+  permissionLarge: { paddingTop: 40 },
+  permissionIcon: { alignItems: "center", justifyContent: "center", width: 64, height: 64, borderRadius: 32, borderWidth: 1.5, borderColor: colors.ink },
+  permissionTitle: { color: colors.ink, fontSize: 22, lineHeight: 30, fontWeight: "900", letterSpacing: -0.44, textAlign: "center", marginTop: 20, marginBottom: 8 },
+  permissionDetail: { color: colors.text3, fontSize: 14, lineHeight: 22, textAlign: "center" },
+  permissionActions: { width: "100%", gap: 8, marginTop: 28 },
+  permissionPrimary: { ...createControlStyles(colors).primaryButton, minHeight: 50, width: "100%" },
+  permissionSecondary: { ...createControlStyles(colors).secondaryButton, minHeight: 46, width: "100%" },
+  notice: { backgroundColor: colors.surface2, borderRadius: radius.control, color: colors.text2, fontSize: typography.small, lineHeight: 20, padding: spacing.md },
   pressed: { opacity: 0.68 },
   primaryButton: {
     ...createControlStyles(colors).primaryButton,
@@ -164,6 +201,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     ...textStyles.small
   },
   rowHeading: { alignItems: "flex-start", flexDirection: "row", gap: spacing.md },
+  stackedRow: { flexDirection: "column", alignItems: "flex-start" },
   rowTitle: {
     color: colors.ink,
     ...textStyles.listTitle
@@ -185,18 +223,23 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     ...textStyles.section
   },
   shortcut: {
-    ...createControlStyles(colors).secondaryButton,
-    flex: 1,
-    minWidth: 100,
-    gap: spacing.sm
+    justifyContent: "center",
+    minHeight: 44,
+    paddingVertical: 10,
+    maxWidth: "100%"
   },
   shortcutLabel: {
-    ...createControlStyles(colors).secondaryButtonText
+    color: colors.accent,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "600"
   },
   shortcuts: {
     flexDirection: "row",
-    gap: spacing.sm,
-    flexWrap: "wrap"
+    columnGap: 22,
+    flexWrap: "wrap",
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border
   },
   status: { backgroundColor: colors.surface3, borderRadius: radius.pill, color: colors.text2, fontSize: 10, fontWeight: "800", overflow: "hidden", paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
   statusDanger: { backgroundColor: colors.roseSoft, color: colors.rose },

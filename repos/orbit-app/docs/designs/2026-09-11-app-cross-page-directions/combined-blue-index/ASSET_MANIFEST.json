@@ -1,0 +1,730 @@
+{
+  "date": "2026-09-11",
+  "kind": "static-ui-design-handoff",
+  "notRuntimeScreenshots": true,
+  "count": 72,
+  "totalBytes": 78230797,
+  "assets": [
+    {
+      "id": "P01",
+      "file": "screens/01-home-approved.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1174374,
+      "sha256": "827fb285595816a6e68373eb5daff40c396b99236510feea29b2ca1168f74ead",
+      "source": "/Users/xzhao/Projects/orbit/repos/orbit-app/docs/designs/2026-09-11-home-directions-v3/02-split-day.png",
+      "status": "approved-home-copy"
+    },
+    {
+      "id": "P02",
+      "file": "screens/02-login.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 890420,
+      "sha256": "e931a23cc2b98983fe27b5b53277fb0f2239637cd40ef18c5fe6d7dc82635ad4",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-c087a573-de73-4aff-9560-a9cb9910b1a3.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P03",
+      "file": "screens/03-signup.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1083096,
+      "sha256": "eeadfc4fcde31f5da40d93b01d9765473231e5ec010e845b071022bbc7cdcd2c",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-def43c3e-3bda-4f79-808c-5e45765ea422.png",
+      "status": "generated-reference-corrected"
+    },
+    {
+      "id": "P04",
+      "file": "screens/04-forgot-password.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1140488,
+      "sha256": "9b768cf20b27c2d100f4cda32d2244136e8e7123650436bb4aac9d14a3ebf702",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-1b35aa9e-3b61-43a9-b05d-fe1d2bcbcef0.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P05",
+      "file": "screens/05-reset-password.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1150959,
+      "sha256": "57953abaa6ea620118dd7003b245c41bf7e4a1eafe6258965cc28150368eb4b8",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-c9602016-1f97-404b-aa80-0990fcc61154.png",
+      "status": "generated-reference-corrected"
+    },
+    {
+      "id": "P06",
+      "file": "screens/06-profile-completion.png",
+      "width": 853,
+      "height": 1843,
+      "bytes": 1074867,
+      "sha256": "0f48a388c173dd8e44bed99aa6808800c9ee275d6708e19b9e717ead3d2b1410",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-3b6f63c6-b439-4632-a258-d76c9572d5ee.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P07",
+      "file": "screens/07-contacts.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1227999,
+      "sha256": "182e06f21a1fef0109ce86ad58b89b194620c0f6948b9ff6b3d4c99b51d8310b",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-88b8adaf-22d7-4a8e-b9ce-4a10f1e2bbc4.png",
+      "status": "generated-reference-corrected"
+    },
+    {
+      "id": "P08",
+      "file": "screens/08-contact-detail.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1113077,
+      "sha256": "4c1b08c7e77f419cb2a5d9cb4d9e68c2d4655b04bbd247dd9aa33887f13133bd",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-1bf41f2b-0a89-41b4-b173-e906129ae2db.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P09",
+      "file": "screens/09-contact-edit.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1020676,
+      "sha256": "2ca14318b9de578887e19ad44b8b4313019c74d388f031ffc1e2de53d3de82cb",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-ea9e35b4-624d-4683-966d-dccb95febfc5.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P10",
+      "file": "screens/10-add-contact.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 992053,
+      "sha256": "dff875668f41607d8b3ff761bb94dcb2f6ed52d018d994cd96b0838d3b52d95e",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-01faeef6-da6d-4a67-93a4-4b2d23a727f3.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P11",
+      "file": "screens/11-card-import-start.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1083883,
+      "sha256": "2058487e49dc6941dc93853eb652f605664d09e8dc5d198c2607ed57bc76f4dc",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-4f40934d-b810-4e1f-80c0-15dd018c145a.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P12",
+      "file": "screens/12-card-review.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1158658,
+      "sha256": "d9e30df6a8742af1dc808421805c666c956685d69a2c53ceda1ac1bc4dcf6b6b",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-74bdb061-ac8d-4691-a47b-45e63e38dad7.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P13",
+      "file": "screens/13-card-batch-legacy.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1282532,
+      "sha256": "1cc12a5178ed81b96e0511dabcbe4d5032a0924ec157205e00db0dd850f2609c",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-3fe899d9-81d8-4f0b-93bf-b33df6395cdd.png",
+      "status": "generated-reference-corrected"
+    },
+    {
+      "id": "P14",
+      "file": "screens/14-contact-import-progress.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1150175,
+      "sha256": "561e89bb5673756c105d322ba6baea29aa42e26589ee1e2c0766ee501f705c8a",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-0582cd0d-92be-430e-bf83-574a620e42a2.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P15",
+      "file": "screens/15-contact-analysis.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 984191,
+      "sha256": "97785531858a9cfee4951a51854e10ecc32e79efb73b9bf30e0fb18cec5c0644",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-c58b74b4-0707-4873-bab5-4429683c85a8.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P16",
+      "file": "screens/16-contact-structure-detail.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1065269,
+      "sha256": "9f9f56fc3ad5a0249d4ace488936d1f3f83711129cdad10e21aa8ba919a28e05",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-b0f2813e-2755-4927-9703-8a7d32ced9c8.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P17",
+      "file": "screens/17-introduction-preparation.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1056233,
+      "sha256": "dede6212afdfd914a662df9a5a588f9301f01b0fc0c5a9b80b37ccd48b975b22",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-268f7629-53ac-47f1-b6a5-9fb456ce0b1e.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P18",
+      "file": "screens/18-relationship-progress.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1105997,
+      "sha256": "e67a15b122885e093e914f3613fac3b8ed99802af1f2308d6f48705a43396216",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-7776501e-2b3d-485c-8768-15558fe3baa7.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P19",
+      "file": "screens/19-events.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1344730,
+      "sha256": "79fc247d0324f7baeca141fdea3cd7a4f068d41fa4205e56a95fbce524a0c227",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-1f589fde-26f9-48ac-b3fb-ac766c1e73c3.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P20",
+      "file": "screens/20-event-detail.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1339947,
+      "sha256": "ed40815c6be4674b8f8ec7375b82be42a44f735a153560c594d4f6533bbb4070",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-0be83498-fbaf-48eb-b76d-4500b9600d3a.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P21",
+      "file": "screens/21-event-registration.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1098722,
+      "sha256": "eb3ce834913ac83c14f7a1ebe9b3754250a7f0e8568250d4a0e5fbc37dc5c4a5",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-38056050-c6aa-442a-b73b-f4b3960c2550.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P22",
+      "file": "screens/22-registration-result.png",
+      "width": 853,
+      "height": 1843,
+      "bytes": 1043291,
+      "sha256": "1f65814f95f962c10139d84133cf39cf12f2880b098318e85fcc31ac825cbce6",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-6468cb72-9de2-45ad-9bea-7ca2b4e4b86d.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P23",
+      "file": "screens/23-event-attendees.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1243036,
+      "sha256": "22439b67921da442732fb6f91974583366d213ae168648e25cf4f097ffda946f",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-f3bb0bf9-366d-4a0a-9f23-ee83f1c56bfa.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P24",
+      "file": "screens/24-event-center.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1101306,
+      "sha256": "6cfb53fc00c74a254e67032712d8f9eb15ad3dca148866661a90b4976e14d64c",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-a03ef50f-356d-4e9b-928b-d4bba875662b.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P25",
+      "file": "screens/25-organizer-public.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1244461,
+      "sha256": "e7c0d68751c44f355faf2e01d15e43476140091abff0cb8edf249d86725d9976",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-535e5341-7248-4edd-b390-f8ba5bb1baf4.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P26",
+      "file": "screens/26-tasks.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 926302,
+      "sha256": "462b11da5adc8c11ba833457ab5b84edec4270f8b871c9e19a1d15798ece8385",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-34408fd5-ed83-4cfc-bb93-44a0799a7b1c.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P27",
+      "file": "screens/27-task-detail.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 902434,
+      "sha256": "fdcaaeb6f74bdaced0cbdace90c9c4ba685d0ac365941c6745f8a60e50bd0ecc",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-417cd7b8-330f-46d1-8f3c-bbff0405600c.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P28",
+      "file": "screens/28-calendar-day.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 931475,
+      "sha256": "494c3113c6224b8a5f20d4e009a151d260b61d66676ad80aacc080a90d52f423",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-51d307e4-188a-4e20-8ec0-83fb0bcb4841.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P29",
+      "file": "screens/29-calendar-week.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 973780,
+      "sha256": "e388db4b515566ed8cc0159d36b9d5450454674e42bc031e22c9d8ea124aa029",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-8049b6f7-3289-4724-92f6-0eb4724a49a5.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P30",
+      "file": "screens/30-calendar-month.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 974330,
+      "sha256": "dd8bfeb63b1b7316a35a70c279771d630ef4868a70c71890fa0f10e1601cf63c",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-0db6e1ce-4408-4042-94fd-81d10feab67b.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P31",
+      "file": "screens/31-schedule-edit.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 942391,
+      "sha256": "7599c44db3f2f38d001587fd8a9e6949ba1dbd01553ca62fa5427f8e36bfa6be",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-2a1a4578-78e9-4a84-979f-9d16fa498cfc.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P32",
+      "file": "screens/32-schedule-event-preview.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1280389,
+      "sha256": "0873d85d5491fa29cd9e1ebad431ecc6e240e1107a52eae76d34f933d65b6db3",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-dc6d8cac-b9f1-4f72-8e35-60ea15740524.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P33",
+      "file": "screens/33-today.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 692342,
+      "sha256": "3224fce0384f05637a7ad674b373ca4bea9c827aba801a55b1144044a5411a43",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-a6d569f7-9778-4502-b5a7-641646158948.png",
+      "status": "generated-reference-corrected"
+    },
+    {
+      "id": "P34",
+      "file": "screens/34-followups.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1043295,
+      "sha256": "4a74d614e1a7e7d527ca127ee655286407c4176ae07c000e79424f6a6e93a0ba",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-a2b3af37-c2bd-4a4d-9d4c-c4e2f2d57463.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P35",
+      "file": "screens/35-inbox.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1287014,
+      "sha256": "92048600f03c7233759c1d3ed1e1cf4788126274bffe7d73aa038bf68cbc1486",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-1e1d0d40-860a-45a8-a768-04b20af589d7.png",
+      "status": "generated-reference-corrected"
+    },
+    {
+      "id": "P36",
+      "file": "screens/36-inbox-thread.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 910992,
+      "sha256": "f02218f60f60195173a82e421dd26d25b6cdef391a15661b0f53376ea0e45c5e",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-39b2cf1a-fb19-41c2-9754-99ce9ad58f1a.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P37",
+      "file": "screens/37-chat-list.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1114680,
+      "sha256": "32d468ec052a498389aad6ea6e9fadd09826281b4e6d5dad5e8f1bb0cd694f10",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-44659acc-923f-4a36-99f2-35681db15d78.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P38",
+      "file": "screens/38-chat-detail.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1124694,
+      "sha256": "e89bf09a6321cf453721c90066886adc5505aae648a71ede5b27299da0edbffa",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-50bda203-37f4-4876-83b2-90376ae5d11a.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P39",
+      "file": "screens/39-iorbit-home.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1025634,
+      "sha256": "c9d6c44a4577a8d99b352020f0f4d4c7f85a03af7a42c1332e7f6e5aedec9d45",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-2b29ccc8-e109-412e-8f60-7f5771ad9e36.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P40",
+      "file": "screens/40-iorbit-conversation.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1213837,
+      "sha256": "9f754e52014ff9d466da1f02f977574cbe8f2eaba5420a6be0d6b6ed63a078ea",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-75a1039b-5e96-4bb3-9417-5d8ed7307bc9.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P41",
+      "file": "screens/41-iorbit-mention-picker.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1037004,
+      "sha256": "4134c8bf3fd7cf85d71d137442aada2207136401166a8878012f4baa889f21bd",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-31b12aff-9eb9-44f5-9738-34eda0f18f9e.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P42",
+      "file": "screens/42-profile.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1041831,
+      "sha256": "1240e384ea11030539349e7fee198e13c2d2090b413bcf033495f7f1dbece57f",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-1e8e030d-54b5-4ef9-9598-980b5fc9683e.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P43",
+      "file": "screens/43-profile-edit.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1002750,
+      "sha256": "50661c5117761d0d2ba8fbea2e1e99c27c74d958824a5a681955b5239320b28d",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-f89b941c-f20f-4392-a05b-7e838b1ff70b.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P44",
+      "file": "screens/44-account.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 905493,
+      "sha256": "8c7d98e12a4394632ccef26a4325ee474e8a2a8b975da1dee30ad8016842d47d",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-87e2c5aa-8bac-4aa0-86ca-a06af0514a93.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P45",
+      "file": "screens/45-permissions.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 913520,
+      "sha256": "bd1df97b9791af8e1b7cbddbdc1a62cec752c0dbf79270e6e290c2fa4e06f8ee",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-80140abc-c620-42e3-86ec-9ac28d695dc4.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P46",
+      "file": "screens/46-settings.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 988677,
+      "sha256": "c589cc531ff87052f5f110be93aff735745cf1eefa00abbfc0406f520bef1f0e",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-1fd0ce14-687f-4aca-933c-e3b4a4b44936.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P47",
+      "file": "screens/47-server-settings.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1058355,
+      "sha256": "013c6a26f2a54b3dcba0be8aab61633513dd7ccc1a6b654ba5654cece2629a16",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-13b6ebbe-9560-4552-b55f-a6f770150c3a.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P48",
+      "file": "screens/48-notes-list.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1005835,
+      "sha256": "a504012e310dd82ca621c5cc1ff4e0faba4a3d18bb43af8e498e3c6a7c75eb26",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-60e00b08-ce1a-4b4b-8736-cc1011cb4e80.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P49",
+      "file": "screens/49-note-detail.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1297642,
+      "sha256": "087aedd0f8f5d6e51f903762d9aab25a932df039646d627623656459c01fea1f",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-3a5b923b-9b4c-4fc2-803f-578eac5508df.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P50",
+      "file": "screens/50-note-edit.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1004947,
+      "sha256": "154e788896b2e96d012235ec91d7cc46aa333570bf45c811ce3e987097871336",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-ca845dd2-b163-4001-9d09-cc567bc2f99d.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P51",
+      "file": "screens/51-note-contact-picker.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1032058,
+      "sha256": "ba4967a8ae0af8ff8ade8e762ca6316aa6a24af91aeff3ff98770ba1b20e1ed4",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-a5f5916b-eafe-4908-afe2-730b441600ab.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P52",
+      "file": "screens/52-event-operations.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1206965,
+      "sha256": "048f5917a2cae580dbc8a173663794964a462124af5276cb5cceccd06eee0e71",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-c6b6ceb0-cce6-4102-bc31-351796d64d78.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P53",
+      "file": "screens/53-admission-review.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1149871,
+      "sha256": "9f4597db4ae76732346e889ef89554c129d6ea8101988b53b18a1ec4027bbddd",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-dd7bf9d7-d62e-4bf6-b961-7e22cd62e148.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P54",
+      "file": "screens/54-event-checkin.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1078051,
+      "sha256": "f41464314b0fcbd3af167aa41f3ca32e4f8a32cbecad869fa01247189c61ce3c",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-ab5e8898-15f3-4ed0-bfca-e33e8ee16a65.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P55",
+      "file": "screens/55-event-roles.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1110065,
+      "sha256": "6447e7e5278d5af316c1a78e801e6d4addd113ea1bf5da32504c847011c9261e",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-35d3a3ff-e464-4da6-be8b-cd9611bf4714.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P56",
+      "file": "screens/56-registration-experience.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 997733,
+      "sha256": "27de4ebf46e117b398ac44742dc00c912e6ef908c453d154032b2634358b56e3",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-08aa8345-b0d0-47d2-b104-cb5287a7418f.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P57",
+      "file": "screens/57-event-analytics.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1057148,
+      "sha256": "ddcebca4fee4a0304a68a22afc02753eee7b0deaac509c6cc426dcfe447833c1",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-c37b13b0-e40b-4d8d-ba51-d688d8b9c6db.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P58",
+      "file": "screens/58-party.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1182057,
+      "sha256": "b53ad6c31002beb3cf1571bbe5d4341a43e85a44cae6d6fea7e13ad2cfccbc2d",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-afc1301f-3705-4f26-92bb-b0522c4047f4.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P59",
+      "file": "screens/59-party-checkin.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1186650,
+      "sha256": "79729b65735033983a1e362d3f0f5f7c86b4d8b601f32ddb48c2d81db74a6d30",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-8bbbfbde-dd95-4cdd-88f8-ae6b0f4ea272.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P60",
+      "file": "screens/60-party-graph.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1205946,
+      "sha256": "4939259013d80ef6eb5aa577eae395bcba24df5be2adab05e35aa6827c67dccd",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-75277083-868c-4a32-b1f9-67f8fe04c033.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P61",
+      "file": "screens/61-admin-dashboard.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1112819,
+      "sha256": "e5586e7a0233bc4a3d12038b705ab2565945e9fb8a7e9b3e545666b1be550b0f",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-78dfdda8-5031-41f3-bcb1-ed28a9b85467.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P62",
+      "file": "screens/62-admin-access.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1053767,
+      "sha256": "20a3f7bfa1be32c725090d2bf96625030002bdfa210347ecd8765b95de80f207",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-834b6b72-4998-47f3-84b1-446ea067d23d.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P63",
+      "file": "screens/63-admin-events.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1364254,
+      "sha256": "c1e818bba3167424f6ffa89ad3ce08124b9a51dc5bb588bc5b40ad532af8abd0",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-65d22b53-6bb6-46b0-88e6-f1ef5fdbdc5b.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P64",
+      "file": "screens/64-admin-login.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 887095,
+      "sha256": "ed284cf85b695a39a271e78e54169e9dc9e310cd0888e3e8fcf380a21fb6571a",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-9e2eccf6-ec11-4bdc-8c00-cbc79c053d69.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P65",
+      "file": "screens/65-platform.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1213696,
+      "sha256": "789439ad23f86feac63ce31a82f6593009b51cbc94e2846b3f44f51c93099e07",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-65197bdc-5833-4399-8479-f2469d2846d4.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P66",
+      "file": "screens/66-event-invitation.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1262895,
+      "sha256": "ffbd5048e28327cfac3fbda621d5745ea846f71665ea61213fa9af95d72d7459",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-3463d89e-c6c1-44d9-aeac-56f312c537e3.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P67",
+      "file": "screens/67-agent-actions.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1009550,
+      "sha256": "177f7847d321b8fe7e11f7c30b154759f45f1eb20c3096c5c37aa9e75a36d937",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-5673ad6e-9931-4703-8751-e99f7db0d3f6.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P68",
+      "file": "screens/68-all-actions.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1014245,
+      "sha256": "f63942560f0af9a6875c366211928477da829d6174920daa30333670ba621366",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-1e97c8e9-ee43-4b60-b1f5-3e3b9125c773.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P69",
+      "file": "screens/69-dashboard.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1155268,
+      "sha256": "e8005998cbcabb7ec29fffc66d6c00adb05d4b2c3cf40b05327be375e97945ef",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-1c4c3ab9-4ef3-4326-aa76-ac630a6cb839.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P70",
+      "file": "screens/70-recommended-events.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 1381379,
+      "sha256": "c3afb47f40bf18ffac94e5e2c8956091ecfdbf003dd74ae3757bc96dfaed4a41",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-3038cb8c-b6fd-4a49-9eb2-522cda412d6d.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P71",
+      "file": "screens/71-contacts-search-list.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 943914,
+      "sha256": "10328d517d1b1300071266c3e616336535d513e6db30811011dfee0a1f13a7f8",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-8f0c0a8b-8d83-4b8c-90e2-a78851e4b092.png",
+      "status": "generated-reference"
+    },
+    {
+      "id": "P72",
+      "file": "screens/72-invitation-empty.png",
+      "width": 853,
+      "height": 1844,
+      "bytes": 855288,
+      "sha256": "56bf6e3cf39e74de79ec003d179f215d9065bff3d3f0c4f76503e9e3ebedf4d3",
+      "source": "/Users/xzhao/.codex/generated_images/01a04b35-aee7-7f82-bcb1-a8f5cbcd8ef4/exec-4b4157fd-a754-4590-a8eb-dbd95a2f3fa3.png",
+      "status": "generated-reference"
+    }
+  ]
+}
+

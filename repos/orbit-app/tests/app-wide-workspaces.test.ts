@@ -12,17 +12,21 @@ let browser: Browser, server: Server, url: string;
 const fixture = `
 import React, { useSyncExternalStore } from "react";
 import { View } from "react-native";
+import { aiConversationPayload, emptyAiConversationPayload, aiSessionListPayload } from "./tests/helpers/ai-fixtures";
 let revision = 0; const listeners = new Set();
 const rerender = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
 const state = window.fixture = { kind: "success", empty: false, requests: [], navigation: [], refreshes: [], update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
 const screen = new URLSearchParams(location.search).get("screen");
 const finalInsets = new URLSearchParams(location.search).get("insets") === "true";
+const aiThread = { ...aiConversationPayload, activeConversationId: "thread-one", conversations: [{ ...aiConversationPayload.conversations[0], conversationId: "thread-one" }] };
 const task = { id: "task-one", taskId: "task-one", title: "确认合作时间", notes: "带上合作资料", category: "relationship", status: "open", priority: "normal", plannedDate: "2026-09-08", dueAt: "2026-09-08T10:00:00+09:00", createdAt: "2026-09-07T01:00:00Z", updatedAt: "2026-09-07T01:00:00Z", contactName: "林悦", organization: "Orbit", source: "manual" };
 const conversation = { conversationId: "thread-one", participantContactId: "person-one", participantName: "林悦", organization: "Orbit", title: "合作讨论", status: "needs_followup", unreadCount: 1, lastMessagePreview: "周四讨论合作资料", lastMessageAt: "2026-09-07T01:00:00Z" };
 const event = { id: "event-one", eventId: "event-one", title: "合作交流会", startsAt: "2026-09-08T14:00:00+09:00", endsAt: "2026-09-08T15:00:00+09:00", date: "2026-09-08", location: "东京", venue: "东京", status: "published" };
 const entry = { entryId: "action-one", runId: "run-one", workflowKey: "post_event_followup_v1", contactName: "林悦", organization: "Orbit", title: "建立会后待办", preview: "确认合作资料", whyNow: "延续活动讨论", status: "awaiting_confirmation", riskLevel: "write", undoable: true, createdAt: "2026-09-07T01:00:00Z", updatedAt: "2026-09-07T01:00:00Z", evidenceIds: [], evidenceChips: [], sourceRefs: [], operations: [{ operationId: "operation-one", operationType: "create_followup_task", title: "创建会后待办", effectSummary: "创建任务，不会自动发送消息。", status: "pending", selectedByDefault: true, autoSendCapable: false, idempotencyKey: "operation-one:v1" }] };
 function dataFor(path) {
-  if (finalInsets && path.startsWith("/api/ai/conversations")) return { activeConversationId: "thread-one", messages: [{ messageId: "question", role: "user", content: "整理联系人、活动、跟进、日程和个人档案。", createdAt: "2026-09-07T01:00:00Z" }, { messageId: "reply", role: "assistant", content: "可以先核对合作背景。", createdAt: "2026-09-07T01:00:01Z" }], proposedToolIntents: [{ intentId: "intent:style", label: "核对合作信息", reason: "先确认事实再行动", requiresUserConfirmation: true }], taskInteraction: { state: "suggested", title: "待确认的采购讨论", category: "relationship", reason: "先检查安排", suggestionId: "suggestion:style", taskId: "" }, aiRuns: [{ runId: "ai-run-style" }] };
+  if (screen === "ai" && path.includes("/sessions")) return { ...aiSessionListPayload, sessions: state.empty ? [] : [{ ...aiSessionListPayload.sessions[0], id: "session-one", title: "合作计划", customTitle: "讨论合作时间", pinned: true }] };
+  if (screen === "ai" && path.startsWith("/api/ai/conversations")) return emptyAiConversationPayload;
+  if (finalInsets && path.startsWith("/api/ai/conversations")) return { ...aiThread, messages: [{ ...aiConversationPayload.messages[0], conversationId: "thread-one", messageId: "question", role: "user", content: "整理联系人、活动、跟进、日程和个人档案。", createdAt: "2026-09-07T01:00:00Z" }, { ...aiConversationPayload.messages[1], conversationId: "thread-one", messageId: "reply", role: "assistant", content: "可以先核对合作背景。", createdAt: "2026-09-07T01:00:01Z" }], proposedToolIntents: [{ intentId: "intent:style", toolFamily: "contacts", label: "核对合作信息", reason: "先确认事实再行动", requiresUserConfirmation: true }], taskInteraction: { state: "suggested", title: "待确认的采购讨论", category: "relationship", reason: "先检查安排", suggestionId: "suggestion:style", taskId: "" }, aiRuns: [{ runId: "ai-run-style" }] };
   if (finalInsets && path === "/api/contacts") return { contacts: [{ id: "person-one", displayName: "林悦", organization: "Orbit", role: "采购负责人", status: "active" }] };
   if (finalInsets && path === "/api/events") return { events: [event] };
   if (finalInsets && path === "/api/profile") return { profile: { displayName: "资料里的林悦", headline: "连接采购合作", organization: "Orbit", offering: ["本地渠道"], seeking: ["采购伙伴"] } };
@@ -31,7 +35,7 @@ function dataFor(path) {
   if (path === "/api/agent/ledger") return { entries: state.empty ? [] : [entry], state: "success", nextAction: "确认或稍后处理", summary: "1 条待确认" };
   if (path === "/api/agent/actions") return { actions: state.empty ? [] : [{ actionId: "action-one", actionType: "post_event_followup", contactName: "林悦", title: "确认合作资料", recommendedAction: "确认时间", confirmationRequired: true, externalSideEffectExecuted: false, priority: "high" }] };
   if (path.includes("sessions")) return { sessions: state.empty ? [] : [{ id: "session-one", title: "合作计划", messages: [{ role: "user", content: "讨论合作时间", createdAt: "2026-09-07T01:00:00Z" }], updatedAt: "2026-09-07T01:00:00Z", createdAt: "2026-09-07T01:00:00Z", pinned: true }] };
-  if (path.startsWith("/api/ai/conversations")) return screen === "conversation" ? { activeConversationId: "thread-one", messages: [{ messageId: "reply", role: "assistant", content: "可以先确认周四的合作时间。", createdAt: "2026-09-07T01:00:00Z" }], proposedToolIntents: [] } : {};
+  if (path.startsWith("/api/ai/conversations")) return screen === "conversation" ? { ...aiThread, messages: [{ ...aiConversationPayload.messages[1], conversationId: "thread-one", messageId: "reply", role: "assistant", content: "可以先确认周四的合作时间。", createdAt: "2026-09-07T01:00:00Z" }], proposedToolIntents: [] } : {};
   if (path.includes("relationship-inbox")) return { inbox: { conversations: [{ ...conversation, contactId: "person-one", subject: "合作讨论", preview: "周四讨论合作资料", lastCorrespondenceAt: "2026-09-07T01:00:00Z", nextActionLabel: "", sourceContextLabels: [] }] }, currentUser: { displayName: "我" }, selectedThread: null, sideEffects: {} };
   if (path.includes("extractions")) return {};
   if (path.startsWith("/api/chat/conversations/")) return { conversation, messages: [{ messageId: "message-one", body: "周四讨论合作资料", senderRole: "contact", senderName: "林悦", createdAt: "2026-09-07T01:00:00Z" }], sendMessageState: { canSendInMock: true, confirmationRequiredBeforeLiveSend: true, status: "ready" } };
@@ -49,7 +53,7 @@ export const useApiResource = path => { rerender(); return { kind: state.kind, d
 const client = Object.fromEntries(["get", "post", "patch", "delete", "put"].map(method => [method, async (path, options) => {
   state.requests.push({ method, path, body: options?.body });
   if (finalInsets) {
-    if (method === "get" && path === "/api/ai/runs/ai-run-style") return { success: true, data: { run: { runId: "ai-run-style", promptTemplateId: "style-review", evidenceIds: ["evidence:style"], output: { text: "可以先核对采购合作资料。" } }, summary: "已核对会话来源", nextAction: "检查依据后继续" } };
+    if (method === "get" && path === "/api/ai/runs/ai-run-style") return { success: true, status: 200, meta: { featureMode: null, privacy: null, runtimeBoundary: null }, data: { run: { runId: "ai-run-style", promptTemplateId: "style-review", evidenceIds: ["evidence:style"], output: { text: "可以先核对采购合作资料。" } }, summary: "已核对会话来源", nextAction: "检查依据后继续" } };
     if (method === "post" && path === "/api/chat/conversations/thread-one/messages") return { success: true, data: { conversationId: "thread-one", oneToOneContext: { participantName: "林悦", contactId: "person-one", organization: "Orbit" }, messages: [{ messageId: "draft:style", body: options.body.body, senderRole: "orbit_user", createdAt: "2026-09-08T03:00:00Z" }], sendMessageState: { canSendInMock: true, confirmationRequiredBeforeLiveSend: true, status: "ready" } } };
     if (method === "get" && path === "/api/chat/privacy?conversationId=thread-one") return { success: true, data: { conversationId: "thread-one", participantName: "林悦", organization: "Orbit", analysisOptIn: { enabled: true, status: "opted_in" }, analysisDeletion: { status: "available" }, sensitiveShareConfirmation: { confirmationRequired: true, status: "required" }, privateNotes: [], state: "success" } };
     if (method === "post" && path === "/api/chat/assist/rewrite") return { success: true, data: { assists: [{ assistId: "assist:style", label: "润色建议", rationale: "先核对时间", source: { label: "合作讨论" }, suggestedText: "周四可以一起核对合作资料。" }], state: "success" } };
@@ -100,7 +104,7 @@ async function noWrites(page: Page) { assert.deepEqual(await page.evaluate(() =>
 for (const scheme of ["light", "dark"] as const) {
   test(`${scheme}: final inset AI artifacts preserve all embedded panels, audit request and navigation`, async t => {
     const page = await open(t, "conversation&insets=true", scheme);
-    const reply = page.getByRole("textbox", { name: "继续聊聊", exact: true }); await reply.fill("仍需核对的草稿");
+    const reply = page.getByRole("textbox", { name: "消息", exact: true }); await reply.fill("仍需核对的草稿");
     const contact = page.getByText("林悦", { exact: true }).locator("xpath=ancestor::*[@role='button'][1]");
     const event = page.getByText("合作交流会", { exact: true }).locator("xpath=ancestor::*[@role='button'][1]");
     const profile = page.getByText("资料里的林悦", { exact: true }).locator("xpath=ancestor::*[@role='button'][1]");
@@ -165,9 +169,11 @@ for (const scheme of ["light", "dark"] as const) {
 
 for (const scheme of ["light", "dark"] as const) {
   test(`${scheme}: AI drawer, history and composer menu keep a draft and fit the phone`, async t => {
-    const page = await open(t, "ai", scheme); const draft = page.getByPlaceholder("询问 Orbit AI"); await draft.fill("先核对合作资料");
+    const page = await open(t, "ai", scheme); const draft = page.getByRole("textbox", { name: "消息", exact: true }); await draft.fill("先核对合作资料");
     await fits(draft);
-    await page.getByRole("button", { name: "打开侧栏", exact: true }).click();
+    await page.getByRole("button", { name: "更多操作", exact: true }).click();
+    await page.getByRole("button", { name: "常用入口", exact: true }).click();
+    await page.getByRole("button", { name: "扫名片", exact: true }).waitFor({ state: "hidden" });
     await fits(page.getByRole("button", { name: "新对话", exact: true }), 50);
     await fits(page.getByPlaceholder("搜索对话"));
     await page.getByRole("button", { name: "关闭侧栏", exact: true }).click();
@@ -186,7 +192,7 @@ for (const scheme of ["light", "dark"] as const) {
   });
   test(`${scheme}: task mode switching and detail expansion never complete or delete a task`, async t => {
     const page = await open(t, "tasks", scheme);
-    for (const name of ["已完成", "待办"]) { const tab = page.getByRole("tab", { name, exact: true }); await fits(tab); await tab.click(); }
+    for (const name of ["已完成 1", "未完成 1"]) { const tab = page.getByRole("tab", { name, exact: true }); await fits(tab); await tab.click(); }
     await page.getByRole("button", { name: /确认合作时间/ }).click(); await noWrites(page);
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/tasks/task-one"]);
     const detail = await open(t, "task", scheme);
@@ -200,9 +206,9 @@ for (const scheme of ["light", "dark"] as const) {
     const page = await open(t, "schedule", scheme); await fits(page.getByRole("button", { name: "回到今天", exact: true }));
     for (const name of ["周", "月", "日"]) {
       const tab = page.getByRole("tab", { name, exact: true }); await fits(tab); await tab.click();
-      await (name === "周" ? page.getByText("本周安排", { exact: true }) : name === "月" ? page.getByRole("button", { name: "上个月", exact: true }) : page.getByText("09:00", { exact: true })).waitFor();
+      await (name === "周" ? page.getByRole("heading", { name: "9.7 – 9.13", exact: true }) : name === "月" ? page.getByRole("button", { name: "上个月", exact: true }) : page.getByText("09:00", { exact: true })).waitFor();
       await page.getByText("合作交流会", { exact: true }).first().waitFor();
-      assert.equal(await tab.evaluate(el => getComputedStyle(el).backgroundColor), scheme === "light" ? "rgb(255, 254, 252)" : "rgb(34, 38, 46)");
+      assert.equal(await tab.evaluate(el => getComputedStyle(el).backgroundColor), scheme === "light" ? "rgb(11, 18, 32)" : "rgb(240, 240, 236)");
     }
     await page.getByRole("button", { name: /周三9日/ }).click();
     await page.getByRole("tab", { name: "月", exact: true }).click();
@@ -210,7 +216,7 @@ for (const scheme of ["light", "dark"] as const) {
     assert.equal(await page.getByText("合作交流会", { exact: true }).count(), 0);
     await page.getByRole("tab", { name: "周", exact: true }).click();
     await page.getByRole("tab", { name: "日", exact: true }).click();
-    await page.getByText("9月9日 周三", { exact: true }).waitFor();
+    await page.getByRole("heading", { name: "9.9", exact: true }).waitFor();
     await page.getByRole("button", { name: /周二8日/ }).click();
     await page.getByRole("button", { name: /合作交流会/ }).click();
     const navigation = await page.evaluate(() => (window as any).fixture.navigation); assert.equal(navigation.length, 1); assert.match(navigation[0], /event-one/); await noWrites(page);
@@ -218,16 +224,16 @@ for (const scheme of ["light", "dark"] as const) {
 }
 
 test("reading canvas keeps its draft when opening shortcuts and uses the shared page inset", async t => {
-  const page = await open(t, "conversation"); const reply = page.getByRole("textbox", { name: "继续聊聊", exact: true }); await reply.fill("先核对资料");
+  const page = await open(t, "conversation"); const reply = page.getByRole("textbox", { name: "消息", exact: true }); await reply.fill("先核对资料");
   const content = page.getByTestId("conversation-history").locator("div").first();
-  assert.equal(await content.evaluate(el => getComputedStyle(el).paddingLeft), "22px");
+  assert.equal(await content.evaluate(el => getComputedStyle(el).paddingLeft), "16px");
   await page.getByRole("button", { name: "打开快捷入口", exact: true }).click();
   await page.getByRole("button", { name: "打开快捷入口", exact: true }).click();
   assert.equal(await reply.inputValue(), "先核对资料"); await noWrites(page);
 });
 test("chat list and detail retain navigation, messages and a failed draft without sending", async t => {
   const page = await open(t, "chat", "dark"); const row = page.getByRole("button", { name: /林悦/ }); await fits(row); await row.click(); await noWrites(page);
-  assert.equal(await page.getByText("林悦", { exact: true }).evaluate(el => getComputedStyle(el).fontSize), "17px");
+  assert.equal(await page.getByText("林悦", { exact: true }).evaluate(el => getComputedStyle(el).fontSize), "15px");
   const detail = await open(t, "thread"); const draft = detail.getByPlaceholder("写一版给对方的回复"); await draft.fill("周四可以");
   await fits(detail.getByRole("button", { name: "保存草稿", exact: true }), 50);
   await detail.getByRole("button", { name: "保存草稿", exact: true }).click(); await detail.getByText("操作暂时失败", { exact: true }).waitFor();
@@ -237,7 +243,7 @@ test("chat list and detail retain navigation, messages and a failed draft withou
 test("AI next actions uses open sections and clear section hierarchy", async t => {
   const page = await open(t, "ai"); const heading = page.getByText("下一步", { exact: true });
   await heading.waitFor();
-  assert.deepEqual(await heading.evaluate(el => { const s = getComputedStyle(el); return [s.fontSize, s.lineHeight, s.fontWeight]; }), ["18px", "26px", "600"]);
+  assert.deepEqual(await heading.evaluate(el => { const s = getComputedStyle(el); return [s.fontSize, s.lineHeight, s.fontWeight]; }), ["15px", "22px", "800"]);
   assert.equal(await heading.locator("..").locator("..").locator("..").evaluate(el => getComputedStyle(el).borderTopWidth), "0px");
 });
 for (const [screen, label] of [["actions", "确认建议"], ["today", "加入待办：确认参会伙伴"], ["followups", "生成候选"], ["ledger", "确认执行"]]) {
@@ -260,7 +266,7 @@ test("agent workspace headers do not repeat brand names above their page titles"
   }
 });
 test("workspace actions grow with doubled text while keeping labels inside the phone", async t => {
-  for (const [screen, label] of [["actions", "确认建议"], ["ledger", "确认执行"], ["followups", "生成候选"], ["tasks", "已完成"], ["task", "标记完成"], ["schedule", "回到今天"]]) {
+  for (const [screen, label] of [["actions", "确认建议"], ["ledger", "确认执行"], ["followups", "生成候选"], ["tasks", "已完成 1"], ["task", "标记完成"], ["schedule", "回到今天"]]) {
     const page = await open(t, screen!, "dark"); const action = page.getByRole(screen === "tasks" ? "tab" : "button", { name: label!, exact: true }).first(); await action.waitFor();
     await page.evaluate(() => document.querySelectorAll("[dir='auto'],input,textarea").forEach(node => { const el = node as HTMLElement, s = getComputedStyle(el); el.style.fontSize = `${parseFloat(s.fontSize) * 2}px`; const line = parseFloat(s.lineHeight); el.style.lineHeight = `${(Number.isFinite(line) ? line : parseFloat(s.fontSize) * 1.5) * 2}px`; }));
     await fits(action); const bounds = (await action.boundingBox())!;
@@ -277,10 +283,10 @@ for (const screen of ["tasks", "task", "chat", "thread", "schedule", "today", "f
 test("AI resource fallback keeps its return action on the same page inset", async t => {
   const page = await open(t, "conversation"); await page.evaluate(() => (window as any).fixture.update({ kind: "offline" }));
   const back = page.getByRole("button", { name: "返回 Orbit AI", exact: true }); await fits(back);
-  assert.equal((await back.boundingBox())!.x, 22);
+  assert.equal((await back.boundingBox())!.x, 16);
 });
 test("task metadata stays complete at large text without cutting off the scheduled date", async t => {
-  const page = await open(t, "task"); const metadata = page.getByText("安排", { exact: true }).locator("..").locator("..");
+  const page = await open(t, "task"); const metadata = page.getByText("截止", { exact: true }).locator("..").locator("..");
   await metadata.waitFor();
   await metadata.locator("[dir='auto']").evaluateAll(elements => elements.forEach(node => { const el = node as HTMLElement; el.style.fontSize = "30px"; el.style.lineHeight = "46px"; }));
   const clipped = await metadata.locator("[dir='auto']").evaluateAll(elements => elements.filter(el => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1).map(el => el.textContent));
@@ -311,10 +317,10 @@ test("calendar agendas retain complete time and event text at doubled native fon
     if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-workspaces-calendar-agenda-${mode}-large.png`, fullPage: true });
   }
 });
-test("primary workspace action labels use the shared semibold role", async t => {
+test("primary workspace action labels use the shared bold role", async t => {
   for (const [screen, label] of [["actions", "确认建议"], ["ledger", "确认执行"], ["followups", "生成候选"], ["task", "标记完成"], ["thread", "保存草稿"]]) {
     const page = await open(t, screen!); const action = page.getByRole("button", { name: label!, exact: true }).first(); await action.waitFor();
-    assert.equal(await action.locator("[dir='auto']").first().evaluate(el => getComputedStyle(el).fontWeight), "600", `${screen} primary label weight`);
+    assert.equal(await action.locator("[dir='auto']").first().evaluate(el => getComputedStyle(el).fontWeight), "700", `${screen} primary label weight`);
   }
 });
 for (const [screen, title] of [["tasks", "暂无待办"], ["chat", "暂无关系对话"], ["thread", "暂无消息"], ["ledger", "操作账本还是空的"]]) {

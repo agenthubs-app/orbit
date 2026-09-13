@@ -65,7 +65,7 @@ const routeByKey: Record<string, InitialRoutePath> = {
   dashboard: "/dashboard",
   events: "/events",
   followups: "/followups",
-  home: "/ai",
+  home: "/home",
   "home/events": "/home/events",
   inbox: "/inbox",
   "login-admin": "/login-admin",
@@ -163,6 +163,10 @@ function hasContactsListQuery(searchParams: URLSearchParams): boolean {
 }
 
 function detailRouteHref(routeKey: string): InitialRoutePath | null {
+  if (/^contacts\/new\/import\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/u.test(routeKey)) {
+    return ("/" + routeKey) as InitialRoutePath;
+  }
+
   const batchMatch = /^contacts\/new\/(batch2?)\/((?:[A-Za-z0-9_.!~*'()-]|%[0-9A-Fa-f]{2})+)$/u.exec(routeKey);
   if (batchMatch) {
     try {
@@ -278,5 +282,5 @@ export function resolveSupportedInitialRouteHref(
 export function resolveInitialRouteHref(
   configuredRoute = process.env.EXPO_PUBLIC_ORBIT_INITIAL_ROUTE,
 ): InitialRouteHref {
-  return resolveSupportedInitialRouteHref(configuredRoute) ?? "/ai";
+  return resolveSupportedInitialRouteHref(configuredRoute) ?? "/home";
 }

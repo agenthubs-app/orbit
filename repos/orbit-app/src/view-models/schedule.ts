@@ -703,15 +703,15 @@ function weekdayLabelFor(dateKey: string): string {
   return dateParts(`${dateKey}T12:00:00+09:00`)?.dayLabel.split(" ")[1] ?? "";
 }
 
-function startOfWeek(dateKey: string): string {
+function startOfWeek(dateKey: string, weekStartsOn: 0 | 1 = 0): string {
   const date = dateForKey(dateKey);
 
   if (!date) {
     return dateKey;
   }
 
-  const sundayOffset = -date.getUTCDay();
-  return shiftScheduleDateKey(dateKey, sundayOffset);
+  const offset = -((date.getUTCDay() - weekStartsOn + 7) % 7);
+  return shiftScheduleDateKey(dateKey, offset);
 }
 
 function shortDateLabel(dateKey: string): string {
@@ -724,19 +724,21 @@ export function scheduleToCalendarView({
   now = new Date(),
   scheduleItems = { scheduleItems: [] },
   selectedDateKey,
-  tasks
+  tasks,
+  weekStartsOn = 0
 }: {
   events: unknown;
   now?: Date;
   scheduleItems?: unknown;
   selectedDateKey?: string;
   tasks: unknown;
+  weekStartsOn?: 0 | 1;
 }): ScheduleCalendarView {
   const todayDateKey = tokyoDatePrefix(now);
   const selected = dateForKey(selectedDateKey ?? "")
     ? (selectedDateKey as string)
     : todayDateKey;
-  const weekStart = startOfWeek(selected);
+  const weekStart = startOfWeek(selected, weekStartsOn);
   const timeline = scheduleToTimelineView({ events, now, tasks });
   const items = [
     ...followupTimelineItems(tasks, now, Number.MAX_SAFE_INTEGER),

@@ -1,0 +1,655 @@
+{
+  "version": "2026-09-11",
+  "kind": "design-handoff-plan",
+  "warning": "planned page list; generation and verification status tracked separately",
+  "pages": [
+    {
+      "id": "P01",
+      "file": "01-home-approved.png",
+      "title": "首页",
+      "route": "/home",
+      "status": "已确认首页",
+      "shell": "root",
+      "purpose": "首页默认入口与四个快捷动作、今天日程／待办、联系跟进、近期活动"
+    },
+    {
+      "id": "P02",
+      "file": "02-login.png",
+      "title": "登录",
+      "route": "/account/login",
+      "status": "现有",
+      "shell": "auth",
+      "purpose": "邮箱密码登录、条件显示的 Google 登录、找回密码与注册"
+    },
+    {
+      "id": "P03",
+      "file": "03-signup.png",
+      "title": "创建账号",
+      "route": "/account/signup",
+      "status": "现有",
+      "shell": "auth",
+      "purpose": "邮箱与设置密码；创建后进入登录／资料完成流程"
+    },
+    {
+      "id": "P04",
+      "file": "04-forgot-password.png",
+      "title": "找回密码",
+      "route": "/account/forgot-password",
+      "status": "现有",
+      "shell": "auth",
+      "purpose": "填写邮箱并申请重置链接，不泄露账号是否存在"
+    },
+    {
+      "id": "P05",
+      "file": "05-reset-password.png",
+      "title": "重置密码",
+      "route": "/account/reset-password",
+      "status": "现有",
+      "shell": "auth",
+      "purpose": "有效令牌下设置并确认新密码，失效时重新申请"
+    },
+    {
+      "id": "P06",
+      "file": "06-profile-completion.png",
+      "title": "补全基本资料",
+      "route": "/profile（补全状态，非新增已存在路由）",
+      "status": "设计建议 · B1/D2",
+      "shell": "form",
+      "purpose": "姓名与行业优先；可选公司、职位、简介及扩展标签"
+    },
+    {
+      "id": "P07",
+      "file": "07-contacts.png",
+      "title": "人脉列表",
+      "route": "/contacts",
+      "status": "现有 · 根页新布局",
+      "shell": "root",
+      "purpose": "搜索、筛选、扫描、添加、分析入口与紧凑列表"
+    },
+    {
+      "id": "P08",
+      "file": "08-contact-detail.png",
+      "title": "人脉详情",
+      "route": "/contacts/[id]",
+      "status": "现有＋D7后期目标",
+      "shell": "detail",
+      "purpose": "身份与资料、资料备注、合作信息、关联笔记只读回看"
+    },
+    {
+      "id": "P09",
+      "file": "09-contact-edit.png",
+      "title": "编辑人脉资料",
+      "route": "/contacts/[id]（编辑状态，路由形态待确认）",
+      "status": "设计建议 · B4/B8",
+      "shell": "form",
+      "purpose": "只改授权资料与资料备注，不录入互动纪要"
+    },
+    {
+      "id": "P10",
+      "file": "10-add-contact.png",
+      "title": "添加人脉",
+      "route": "/contacts/new",
+      "status": "现有＋资料备注分工目标",
+      "shell": "form",
+      "purpose": "保留多种来源；生成待确认资料后由用户确认"
+    },
+    {
+      "id": "P11",
+      "file": "11-card-import-start.png",
+      "title": "批量导入名片",
+      "route": "/contacts/new/batch2",
+      "status": "现有",
+      "shell": "form",
+      "purpose": "选择文件、创建批次、查看最近批次"
+    },
+    {
+      "id": "P12",
+      "file": "12-card-review.png",
+      "title": "名片复核",
+      "route": "/contacts/new/batch2/[id]",
+      "status": "现有＋B5双面目标",
+      "shell": "form",
+      "purpose": "名片批次的字段复核；两面同卡目标需契约支持"
+    },
+    {
+      "id": "P13",
+      "file": "13-card-batch-legacy.png",
+      "title": "批量名片复核",
+      "route": "/contacts/new/batch/[id]",
+      "status": "现有 · 兼容链路",
+      "shell": "detail",
+      "purpose": "旧批次复核和确认记录，不替换为另一协议"
+    },
+    {
+      "id": "P14",
+      "file": "14-contact-import-progress.png",
+      "title": "导入进度",
+      "route": "/contacts/new/import/[id]（当前缺失）",
+      "status": "待实现 · B5",
+      "shell": "detail",
+      "purpose": "按导入ID恢复真实进度，接入服务端已有持久进度"
+    },
+    {
+      "id": "P15",
+      "file": "15-contact-analysis.png",
+      "title": "人脉分析",
+      "route": "/contacts/dashboard",
+      "status": "现有＋D3设计建议",
+      "shell": "detail",
+      "purpose": "确定性结构、长期目标、已有报告与按需AI入口"
+    },
+    {
+      "id": "P16",
+      "file": "16-contact-structure-detail.png",
+      "title": "人脉结构明细",
+      "route": "/contacts/analysis/[dimension]/[bucketId]",
+      "status": "现有",
+      "shell": "detail",
+      "purpose": "按行业或来源等维度钻取联系人"
+    },
+    {
+      "id": "P17",
+      "file": "17-introduction-preparation.png",
+      "title": "引荐准备",
+      "route": "/contacts/intros",
+      "status": "现有 · 受外发边界约束",
+      "shell": "detail",
+      "purpose": "候选来源、准备私人邀请草稿、查看已有准备记录"
+    },
+    {
+      "id": "P18",
+      "file": "18-relationship-progress.png",
+      "title": "关系进展",
+      "route": "/contacts/pipeline",
+      "status": "现有 · D4入口处理待确认",
+      "shell": "detail",
+      "purpose": "待处理／按阶段；生命周期和归档保留"
+    },
+    {
+      "id": "P19",
+      "file": "19-events.png",
+      "title": "活动发现",
+      "route": "/events",
+      "status": "现有＋发现入口设计建议",
+      "shell": "root",
+      "purpose": "推荐与全部公开活动并存，搜索筛选及个人状态"
+    },
+    {
+      "id": "P20",
+      "file": "20-event-detail.png",
+      "title": "活动详情",
+      "route": "/events/[id]",
+      "status": "现有",
+      "shell": "detail",
+      "purpose": "公开介绍、时间地点、流程、主办方及权威报名资格"
+    },
+    {
+      "id": "P21",
+      "file": "21-event-registration.png",
+      "title": "活动报名",
+      "route": "/events/[id]/register",
+      "status": "现有 · B2完善",
+      "shell": "form",
+      "purpose": "按活动题集填写，辅助问答可选，提交失败保留答案"
+    },
+    {
+      "id": "P22",
+      "file": "22-registration-result.png",
+      "title": "报名结果",
+      "route": "/events/[id]/register（结果状态）",
+      "status": "现有结果语义＋设计状态",
+      "shell": "detail",
+      "purpose": "已报名、待审核、失败、取消等结果需真实区分"
+    },
+    {
+      "id": "P23",
+      "file": "23-event-attendees.png",
+      "title": "参会者",
+      "route": "/events/[id]/attendees",
+      "status": "现有 · 权限敏感",
+      "shell": "detail",
+      "purpose": "只显示本活动允许查看的参会者资料"
+    },
+    {
+      "id": "P24",
+      "file": "24-event-center.png",
+      "title": "活动中心",
+      "route": "/events/center",
+      "status": "现有",
+      "shell": "detail",
+      "purpose": "个人参与活动和有权管理的活动，不默认人人主办"
+    },
+    {
+      "id": "P25",
+      "file": "25-organizer-public.png",
+      "title": "主办方主页",
+      "route": "/o/[slug]",
+      "status": "现有 · 兼容解析需保留",
+      "shell": "detail",
+      "purpose": "公开主办方资料与活动；当前解析不等于通用新slug API"
+    },
+    {
+      "id": "P26",
+      "file": "26-tasks.png",
+      "title": "待办列表",
+      "route": "/tasks",
+      "status": "现有",
+      "shell": "detail",
+      "purpose": "未完成／已完成、个人或人脉事项、真实完成回读"
+    },
+    {
+      "id": "P27",
+      "file": "27-task-detail.png",
+      "title": "待办详情",
+      "route": "/tasks/[id]",
+      "status": "现有＋APP-11编辑目标",
+      "shell": "form",
+      "purpose": "标题、期限、状态、相关人脉可选、历史和编辑"
+    },
+    {
+      "id": "P28",
+      "file": "28-calendar-day.png",
+      "title": "日历（日）",
+      "route": "/schedule（日视图）",
+      "status": "现有",
+      "shell": "detail",
+      "purpose": "正确时间轴、日程起止、选中日期与新增入口"
+    },
+    {
+      "id": "P29",
+      "file": "29-calendar-week.png",
+      "title": "日历（周）",
+      "route": "/schedule（周视图）",
+      "status": "现有",
+      "shell": "detail",
+      "purpose": "周日期与日程分布，重叠与全天需独立处理"
+    },
+    {
+      "id": "P30",
+      "file": "30-calendar-month.png",
+      "title": "日历（月）",
+      "route": "/schedule（月视图）",
+      "status": "现有",
+      "shell": "detail",
+      "purpose": "月格、选中日期和当日日程列表"
+    },
+    {
+      "id": "P31",
+      "file": "31-schedule-edit.png",
+      "title": "编辑日程",
+      "route": "/schedule（编辑状态，路由形态待确认）",
+      "status": "设计建议 · APP-11/B6",
+      "shell": "form",
+      "purpose": "标题、起止时间、地点、人脉可选、提醒与保存"
+    },
+    {
+      "id": "P32",
+      "file": "32-schedule-event-preview.png",
+      "title": "日程中的活动预览",
+      "route": "/schedule/events/[id]",
+      "status": "现有",
+      "shell": "detail",
+      "purpose": "公开活动预览不冒充私人已安排日程"
+    },
+    {
+      "id": "P33",
+      "file": "33-today.png",
+      "title": "今日事项",
+      "route": "/today",
+      "status": "现有",
+      "shell": "detail",
+      "purpose": "当前Today消费的任务工作台，不与Web三来源集合等同"
+    },
+    {
+      "id": "P34",
+      "file": "34-followups.png",
+      "title": "联系跟进",
+      "route": "/followups",
+      "status": "现有",
+      "shell": "detail",
+      "purpose": "按到期时间整理跟进，进入同一联系人／事项"
+    },
+    {
+      "id": "P35",
+      "file": "35-inbox.png",
+      "title": "收件箱",
+      "route": "/inbox",
+      "status": "现有＋APP-13统一入口目标",
+      "shell": "detail",
+      "purpose": "消息／提醒／活动通知保留类型、未读与权限"
+    },
+    {
+      "id": "P36",
+      "file": "36-inbox-thread.png",
+      "title": "收件箱详情／邮件草稿",
+      "route": "/inbox/[id]",
+      "status": "现有 · 区分草稿与消息",
+      "shell": "form",
+      "purpose": "私人草稿明确未发送，查看来往内容与编辑／复制"
+    },
+    {
+      "id": "P37",
+      "file": "37-chat-list.png",
+      "title": "站内聊天列表",
+      "route": "/chat",
+      "status": "现有 · B4资格",
+      "shell": "detail",
+      "purpose": "只展示真实账号会话，不从联系人名称伪造"
+    },
+    {
+      "id": "P38",
+      "file": "38-chat-detail.png",
+      "title": "站内聊天",
+      "route": "/chat/[id]",
+      "status": "现有 · B4资格",
+      "shell": "detail",
+      "purpose": "发送者、时间、发送中／失败／已发送与权限撤销"
+    },
+    {
+      "id": "P39",
+      "file": "39-iorbit-home.png",
+      "title": "IORBIT 新会话与历史",
+      "route": "/ai",
+      "status": "现有＋APP-01全屏入口目标",
+      "shell": "ai",
+      "purpose": "问题草稿、历史入口、上下文预填不自动发送"
+    },
+    {
+      "id": "P40",
+      "file": "40-iorbit-conversation.png",
+      "title": "IORBIT 会话",
+      "route": "/ai/[id]",
+      "status": "现有＋B3稳定性目标",
+      "shell": "ai",
+      "purpose": "连续阅读、引用、继续提问和独立保存失败状态"
+    },
+    {
+      "id": "P41",
+      "file": "41-iorbit-mention-picker.png",
+      "title": "IORBIT 选择人脉",
+      "route": "/ai/[id]（引用选择状态）",
+      "status": "设计建议 · APP-05/B3",
+      "shell": "ai",
+      "purpose": "搜索并选择稳定联系人ID，区分同名者"
+    },
+    {
+      "id": "P42",
+      "file": "42-profile.png",
+      "title": "我的资料",
+      "route": "/profile",
+      "status": "现有 · 根页新布局",
+      "shell": "root",
+      "purpose": "身份、资料、简介、可选标签及账号／设置入口"
+    },
+    {
+      "id": "P43",
+      "file": "43-profile-edit.png",
+      "title": "编辑我的资料",
+      "route": "/profile（编辑状态）",
+      "status": "现有＋D2设计建议",
+      "shell": "form",
+      "purpose": "资料编辑、可选匹配资料、保存失败与提取复核"
+    },
+    {
+      "id": "P44",
+      "file": "44-account.png",
+      "title": "账号与工作区",
+      "route": "/account",
+      "status": "现有",
+      "shell": "detail",
+      "purpose": "登录主体、工作区和会话状态，登出不串号"
+    },
+    {
+      "id": "P45",
+      "file": "45-permissions.png",
+      "title": "权限中心",
+      "route": "/account/permissions",
+      "status": "现有",
+      "shell": "detail",
+      "purpose": "服务权限与设备权限区分，不伪造授权"
+    },
+    {
+      "id": "P46",
+      "file": "46-settings.png",
+      "title": "设置",
+      "route": "/settings",
+      "status": "现有＋D6偏好设计建议",
+      "shell": "detail",
+      "purpose": "通知选择、账号／权限／服务器入口，语言范围待审"
+    },
+    {
+      "id": "P47",
+      "file": "47-server-settings.png",
+      "title": "服务器设置",
+      "route": "/settings/api",
+      "status": "现有 · 低频配置",
+      "shell": "form",
+      "purpose": "连接地址与状态，不展示真实密钥或跨服务复用身份"
+    },
+    {
+      "id": "P48",
+      "file": "48-notes-list.png",
+      "title": "笔记列表",
+      "route": "建议 /notes（当前不存在）",
+      "status": "后期 · D7/APP-16/B8",
+      "shell": "detail",
+      "purpose": "以内容为起点检索与新建，显示相关人脉"
+    },
+    {
+      "id": "P49",
+      "file": "49-note-detail.png",
+      "title": "笔记原文",
+      "route": "建议 /notes/[id]（当前不存在）",
+      "status": "后期 · D7/APP-16/B8",
+      "shell": "detail",
+      "purpose": "完整原文、相关人脉、编辑；建议转事项仍待D5"
+    },
+    {
+      "id": "P50",
+      "file": "50-note-edit.png",
+      "title": "编辑笔记",
+      "route": "建议 /notes/[id]/edit（当前不存在）",
+      "status": "后期 · D7/APP-16/B8",
+      "shell": "form",
+      "purpose": "一份正文，多人关联，不向被关联者自动分享"
+    },
+    {
+      "id": "P51",
+      "file": "51-note-contact-picker.png",
+      "title": "笔记选择相关人脉",
+      "route": "笔记编辑中的选择状态（当前不存在）",
+      "status": "后期 · D7/APP-16/B8",
+      "shell": "form",
+      "purpose": "多选稳定ID，同名可区分，取消关联不删笔记"
+    },
+    {
+      "id": "P52",
+      "file": "52-event-operations.png",
+      "title": "活动运营台",
+      "route": "/events/[id]/operations",
+      "status": "现有 · 角色敏感",
+      "shell": "admin",
+      "purpose": "运营摘要、任务状态、签到／角色／体验／分析入口"
+    },
+    {
+      "id": "P53",
+      "file": "53-admission-review.png",
+      "title": "报名审核",
+      "route": "/events/[id]/operations/admission",
+      "status": "现有 · 角色敏感",
+      "shell": "admin",
+      "purpose": "待审核／已处理、申请详情、明确批准或拒绝"
+    },
+    {
+      "id": "P54",
+      "file": "54-event-checkin.png",
+      "title": "签到台",
+      "route": "/events/[id]/operations/check-in",
+      "status": "现有 · 角色敏感",
+      "shell": "admin",
+      "purpose": "名单搜索、未签到／已签到、真实签到结果"
+    },
+    {
+      "id": "P55",
+      "file": "55-event-roles.png",
+      "title": "活动角色",
+      "route": "/events/[id]/operations/roles",
+      "status": "现有 · 角色敏感",
+      "shell": "admin",
+      "purpose": "负责人和委派，授权／撤销有对象及权限边界"
+    },
+    {
+      "id": "P56",
+      "file": "56-registration-experience.png",
+      "title": "报名体验",
+      "route": "/events/[id]/operations/experience",
+      "status": "现有 · 角色敏感",
+      "shell": "admin",
+      "purpose": "题集草稿、标准／自选问题、预览、发布与冻结"
+    },
+    {
+      "id": "P57",
+      "file": "57-event-analytics.png",
+      "title": "活动分析",
+      "route": "/events/[id]/analytics",
+      "status": "现有 · 角色敏感",
+      "shell": "admin",
+      "purpose": "组织者汇总／我的报告，数据范围和时间明确"
+    },
+    {
+      "id": "P58",
+      "file": "58-party.png",
+      "title": "现场模式",
+      "route": "/party",
+      "status": "现有 · 需eventId或code",
+      "shell": "detail",
+      "purpose": "活动现场信息、可见匹配与参会者入口"
+    },
+    {
+      "id": "P59",
+      "file": "59-party-checkin.png",
+      "title": "我的签到状态",
+      "route": "/party/checkin",
+      "status": "现有 · 需eventId或code",
+      "shell": "detail",
+      "purpose": "真实签到资格／状态，不生成假签到码"
+    },
+    {
+      "id": "P60",
+      "file": "60-party-graph.png",
+      "title": "现场关系图",
+      "route": "/party/graph",
+      "status": "现有 · 需eventId或code",
+      "shell": "detail",
+      "purpose": "授权可见的关系分组与连接图，不推断私人关系"
+    },
+    {
+      "id": "P61",
+      "file": "61-admin-dashboard.png",
+      "title": "主办方后台概览",
+      "route": "/admin",
+      "status": "现有 · 核对与跳转",
+      "shell": "admin",
+      "purpose": "组织信息、近期活动与成员概览，不新增后台写操作"
+    },
+    {
+      "id": "P62",
+      "file": "62-admin-access.png",
+      "title": "访问管理",
+      "route": "/admin/access",
+      "status": "现有 · 核对与跳转",
+      "shell": "admin",
+      "purpose": "成员与访问范围；不是活动角色编辑的复制品"
+    },
+    {
+      "id": "P63",
+      "file": "63-admin-events.png",
+      "title": "后台活动管理",
+      "route": "/admin/events",
+      "status": "现有 · 核对与跳转",
+      "shell": "admin",
+      "purpose": "活动组合与对应正式管理入口"
+    },
+    {
+      "id": "P64",
+      "file": "64-admin-login.png",
+      "title": "管理入口登录",
+      "route": "/login-admin",
+      "status": "现有 · 不等于授权",
+      "shell": "auth",
+      "purpose": "使用真实账号登录后确认可管理范围"
+    },
+    {
+      "id": "P65",
+      "file": "65-platform.png",
+      "title": "平台总览",
+      "route": "/platform",
+      "status": "现有 · 只读边界",
+      "shell": "admin",
+      "purpose": "公开活动来源核对，不添加平台审核写操作"
+    },
+    {
+      "id": "P66",
+      "file": "66-event-invitation.png",
+      "title": "活动邀请入口",
+      "route": "/register/[code]",
+      "status": "现有 · public",
+      "shell": "detail",
+      "purpose": "有效活动码对应公开活动和报名入口"
+    },
+    {
+      "id": "P67",
+      "file": "67-agent-actions.png",
+      "title": "建议动作",
+      "route": "/agent",
+      "status": "现有 · 非AI主会话页",
+      "shell": "detail",
+      "purpose": "查看现有建议与基础设置，不作为第二个对话首页"
+    },
+    {
+      "id": "P68",
+      "file": "68-all-actions.png",
+      "title": "全部行动",
+      "route": "/contacts/all-actions",
+      "status": "现有",
+      "shell": "detail",
+      "purpose": "账本动作、状态、来源与确认／忽略边界"
+    },
+    {
+      "id": "P69",
+      "file": "69-dashboard.png",
+      "title": "工作区总览",
+      "route": "/dashboard",
+      "status": "现有 · 兼容工作台",
+      "shell": "detail",
+      "purpose": "保留既有总览能力，不替代已选新首页"
+    },
+    {
+      "id": "P70",
+      "file": "70-recommended-events.png",
+      "title": "推荐活动",
+      "route": "/home/events",
+      "status": "现有 · 兼容入口",
+      "shell": "detail",
+      "purpose": "保留个人推荐的可访问入口与无推荐时发现路径"
+    },
+    {
+      "id": "P71",
+      "file": "71-contacts-search-list.png",
+      "title": "人脉搜索结果",
+      "route": "/contacts/list",
+      "status": "现有 · 二级列表",
+      "shell": "detail",
+      "purpose": "保留query/source/status/tag/value等筛选与来源返回"
+    },
+    {
+      "id": "P72",
+      "file": "72-invitation-empty.png",
+      "title": "未指定活动的邀请入口",
+      "route": "/register",
+      "status": "现有 · 空态",
+      "shell": "detail",
+      "purpose": "说明尚未选择活动，转去公开活动；不伪造邀请码"
+    }
+  ]
+}

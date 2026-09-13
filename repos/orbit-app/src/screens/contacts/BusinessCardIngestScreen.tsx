@@ -1,7 +1,7 @@
 import * as ImagePicker from "expo-image-picker";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Alert, Text, View } from "react-native";
+import { Alert, Text, View, useWindowDimensions } from "react-native";
 import { loadSelectedBatchImage, prepareBatchImage, prepareBatchImages, readPreparedBatchImage, type PreparedBatchImage } from "../../api/batch-images";
 import type { IngestBatchDetailContract, IngestItemContract } from "../../api/contract/business-card-batch";
 import { ingestBatchActionResponseSchema, ingestFinalizeResponseSchema, ingestItemActionResponseSchema } from "../../api/schema/business-card-batch";
@@ -36,6 +36,7 @@ export function BusinessCardIngestScreen() {
   return <IngestContent key={session.scope.key} session={session} />;
 }
 function IngestContent({ session }: { session: IngestSession }) {
+  const large = useWindowDimensions().fontScale > 1.3;
   const { scope, active, isCurrent, capture } = session;
   const { styles } = useIngestStyles();
   const router = useRouter();
@@ -350,13 +351,24 @@ function IngestContent({ session }: { session: IngestSession }) {
   const renderedImageAttempt = imageAttempt.current;
   const local = detail && !state.reviewInvalidated ? pendingFiles(fileScope, detail) : new Map();
   const labels: Record<IngestItemContract["status"], string> = { awaiting_upload: "等待上传", uploaded: "已上传", excluded: "已排除", queued: "等待识别", processing: "正在识别", extracted: "待复核", terminal_failed: "识别失败", confirmed: "已收录", skipped: "已跳过" };
-  return <AppScreen title="名片批次">
-    <View style={styles.row}><Text style={styles.heading}>{detail ? batchStatusLabel(ingestExpired(detail) ? "expired" : detail.batch.status) : "批次"}</Text><IngestButton label="刷新批次" icon="refresh-outline" disabled={!active || state.busy || state.loading} onPress={() => { update({ error: null }); void load(); }} /></View>
+  return <AppScreen title={large ? "名片\n导入" : "名片导入"}>
     {state.loading ? <Text style={styles.text}>正在读取批次...</Text> : null}
     {state.busy ? <Text style={styles.text}>正在处理...</Text> : null}
     {state.error ? <Text accessibilityRole="alert" style={styles.error}>{state.error}</Text> : null}
     {state.notice ? <Text style={styles.text}>{state.notice}</Text> : null}
     {state.unmatched.map((name, index) => <Text accessibilityRole="alert" key={index} style={styles.error}>未匹配名片：{name}</Text>)}
+    {selected && detail ? <View>
+      {selected.status === "terminal_failed" ? <Text style={styles.error}>{selected.errorCode === "IMAGE_INVALID" || selected.errorCode === "LEASE_EXHAUSTED" ? "识别失败，不再自动重试。可手动重试、替换图片或填写名片。" : "识别失败。可手动重试或填写名片。"}</Text> : null}
+      <BusinessCardBatchReviewForm fields={draft?.fields ?? null} image={active && imageOwner.current === imageKey ? image : { status: "none" }} reviewIssues={selected.reviewIssues} statusLabel={selected.status === "terminal_failed" ? "手动填写名片" : "复核名片"}
+        disabled={!active || state.busy} canConfirm={enabled && Boolean(draft?.fields.displayName.trim())} canSkip={enabled && canReviewIngest(detail, selected, "skip")} canRetry={enabled && canReviewIngest(detail, selected, "retry")} duplicateContactId={state.duplicate?.contactId ?? null}
+        onChange={fields => { if (!isCurrent() || current.current.busy || current.current.selectedId !== selected.id) return; const drafts = new Map(current.current.drafts); drafts.set(selected.id, { fields, dirty: true }); update({ drafts, duplicate: null }); }}
+        onImageError={() => { if (isCurrent() && current.current.selectedId === selected.id && imageAttempt.current === renderedImageAttempt && renderedImageAttempt) setImage({ status: "unavailable", message: "图片暂时无法显示。" }); }}
+        onConfirm={() => askReview(selected, selected.status === "terminal_failed" ? "manual-entry" : "confirm")} onSkip={() => askReview(selected, "skip")} onRetry={() => askReview(selected, "retry")} onOverride={() => askReview(selected, selected.status === "terminal_failed" ? "manual-entry" : "confirm", true)}
+        onOpenDuplicate={() => { if (isCurrent() && current.current.duplicate === state.duplicate && state.duplicate) router.push(("/contacts/" + encodeURIComponent(state.duplicate.contactId)) as Href); }} />
+      <IngestButton label="重新载入字段" icon="refresh-outline" disabled={!enabled} onPress={() => reloadFields(selected)} />
+      {image.status === "unavailable" ? <IngestButton label="重新读取图片" icon="image-outline" disabled={!active} onPress={() => { if (isCurrent() && !current.current.reviewInvalidated && current.current.detail === detail) { imageAttempt.current = null; setImageRetry(n => n + 1); } }} /> : null}
+    </View> : null}
+    <View style={styles.row}><Text style={styles.heading}>{detail ? batchStatusLabel(ingestExpired(detail) ? "expired" : detail.batch.status) : "批次"}</Text><IngestButton label="刷新批次" icon="refresh-outline" disabled={!active || state.busy || state.loading} onPress={() => { update({ error: null }); void load(); }} /></View>
     {collecting ? <View style={styles.row}>
       <IngestButton label="重新选择名片" icon="images-outline" disabled={!enabled} onPress={() => void reselect()} />
       <IngestButton label="上传待传名片" icon="cloud-upload-outline" disabled={!enabled || !local.size} onPress={() => void upload()} />
@@ -372,16 +384,5 @@ function IngestContent({ session }: { session: IngestSession }) {
       {detail && canReviewIngest(detail, item, "replace") ? <IngestButton label={"替换名片 " + item.seq} icon="image-outline" disabled={!enabled} onPress={() => askReview(item, "replace")} /> : null}
       {item.status === "confirmed" && item.confirmedContactId ? <IngestButton label={"打开联系人 " + item.seq} icon="person-outline" disabled={!active} onPress={() => { if (isCurrent()) router.push(("/contacts/" + encodeURIComponent(item.confirmedContactId!)) as Href); }} /> : null}
     </View>)}
-    {selected && detail ? <View>
-      {selected.status === "terminal_failed" ? <Text style={styles.error}>{selected.errorCode === "IMAGE_INVALID" || selected.errorCode === "LEASE_EXHAUSTED" ? "识别失败，不再自动重试。可手动重试、替换图片或填写名片。" : "识别失败。可手动重试或填写名片。"}</Text> : null}
-      <BusinessCardBatchReviewForm fields={draft?.fields ?? null} image={active && imageOwner.current === imageKey ? image : { status: "none" }} reviewIssues={selected.reviewIssues} statusLabel={selected.status === "terminal_failed" ? "手动填写名片" : "复核名片"}
-        disabled={!active || state.busy} canConfirm={enabled && Boolean(draft?.fields.displayName.trim())} canSkip={enabled && canReviewIngest(detail, selected, "skip")} canRetry={enabled && canReviewIngest(detail, selected, "retry")} duplicateContactId={state.duplicate?.contactId ?? null}
-        onChange={fields => { if (!isCurrent() || current.current.busy || current.current.selectedId !== selected.id) return; const drafts = new Map(current.current.drafts); drafts.set(selected.id, { fields, dirty: true }); update({ drafts, duplicate: null }); }}
-        onImageError={() => { if (isCurrent() && current.current.selectedId === selected.id && imageAttempt.current === renderedImageAttempt && renderedImageAttempt) setImage({ status: "unavailable", message: "图片暂时无法显示。" }); }}
-        onConfirm={() => askReview(selected, selected.status === "terminal_failed" ? "manual-entry" : "confirm")} onSkip={() => askReview(selected, "skip")} onRetry={() => askReview(selected, "retry")} onOverride={() => askReview(selected, selected.status === "terminal_failed" ? "manual-entry" : "confirm", true)}
-        onOpenDuplicate={() => { if (isCurrent() && current.current.duplicate === state.duplicate && state.duplicate) router.push(("/contacts/" + encodeURIComponent(state.duplicate.contactId)) as Href); }} />
-      <IngestButton label="重新载入字段" icon="refresh-outline" disabled={!enabled} onPress={() => reloadFields(selected)} />
-      {image.status === "unavailable" ? <IngestButton label="重新读取图片" icon="image-outline" disabled={!active} onPress={() => { if (isCurrent() && !current.current.reviewInvalidated && current.current.detail === detail) { imageAttempt.current = null; setImageRetry(n => n + 1); } }} /> : null}
-    </View> : null}
   </AppScreen>;
 }

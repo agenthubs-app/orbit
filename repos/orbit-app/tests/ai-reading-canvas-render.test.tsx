@@ -4,14 +4,17 @@ import test from "node:test";
 import React from "react";
 import { Appearance } from "react-native";
 import { renderToHtml } from "./helpers/render";
+import { aiConversationPayload } from "./helpers/ai-fixtures";
 
 let conversation: Record<string, unknown> = {};
 const resetConversation = () => {
   conversation = {
+    ...aiConversationPayload,
     activeConversationId: "reading-test",
+    conversations: [{ ...aiConversationPayload.conversations[0], conversationId: "reading-test" }],
     messages: [
-      { messageId: "prompt", role: "user", content: "聊聊合作\n也想认识工程师", createdAt: "2026-09-06T00:00:00Z" },
-      { messageId: "reply", role: "assistant", content: "可以先说说正在做的产品。", createdAt: "2026-09-06T00:00:01Z" }
+      { ...aiConversationPayload.messages[0], conversationId: "reading-test", messageId: "prompt", role: "user", content: "聊聊合作\n也想认识工程师", createdAt: "2026-09-06T00:00:00Z" },
+      { ...aiConversationPayload.messages[1], conversationId: "reading-test", messageId: "reply", role: "assistant", content: "可以先说说正在做的产品。", createdAt: "2026-09-06T00:00:01Z" }
     ],
     proposedToolIntents: [], taskInteraction: null
   };
@@ -44,7 +47,7 @@ test("reading canvas keeps a single compact navigation and the real conversation
   assert.match(html, /聊聊合作/u);
   assert.match(html, /可以先说说正在做的产品/u);
   assert.match(html, /aria-label="对话导航"/u);
-  assert.equal((html.match(/>Orbit AI</gu) ?? []).length, 1);
+  assert.equal((html.match(/>IORBIT</gu) ?? []).length, 2);
   assert.doesNotMatch(html, />对话<|2026-09-06|>我</u);
 });
 
@@ -53,7 +56,7 @@ test("empty composer cannot send and stays separate from the scrolling history",
   const history = html.indexOf('data-testid="conversation-history"');
   const composer = html.indexOf('data-testid="conversation-composer"');
   assert.ok(history >= 0 && composer > history);
-  assert.match(html, /aria-label="继续聊聊"/u);
+  assert.match(html, /aria-label="消息"/u);
   assert.match(html, /aria-label="发送消息"[^>]*aria-disabled="true"|aria-disabled="true"[^>]*aria-label="发送消息"/u);
   assert.doesNotMatch(html, /通用入口/u, "shortcuts should not occupy the initial reading canvas");
 });
@@ -73,7 +76,7 @@ test("user messages have a distinct readable surface without shrinking reply tex
 
 test("assistant record references render actionable detail entries", () => {
   conversation.messages = [
-    { messageId: "reply", role: "assistant", content: "查看 [交流会](https://orbit.test/app/events/event-one) 与 orbit://contacts/person-one", createdAt: "" }
+    { ...aiConversationPayload.messages[1], conversationId: "reading-test", messageId: "reply", role: "assistant", content: "查看 [交流会](https://orbit.test/app/events/event-one) 与 orbit://contacts/person-one" }
   ];
   const html = renderToHtml(<AiConversationScreen />);
   assert.match(html, /aria-label="打开活动详情：event-one"/u);
@@ -81,7 +84,7 @@ test("assistant record references render actionable detail entries", () => {
 });
 
 test("same-kind record links are visibly distinct and unsupported links explain the boundary", () => {
-  conversation.messages = [{ messageId: "reply", role: "assistant", content: "[一](https://orbit.test/app/events/one) [二](https://orbit.test/app/events/two) [其他](https://elsewhere.test/app/events/three)", createdAt: "" }];
+  conversation.messages = [{ ...aiConversationPayload.messages[1], conversationId: "reading-test", messageId: "reply", role: "assistant", content: "[一](https://orbit.test/app/events/one) [二](https://orbit.test/app/events/two) [其他](https://elsewhere.test/app/events/three)" }];
   const html = renderToHtml(<AiConversationScreen />);
   const visible = html.replace(/<[^>]*>/gu, " ");
   assert.match(visible, /活动详情 · one/u);

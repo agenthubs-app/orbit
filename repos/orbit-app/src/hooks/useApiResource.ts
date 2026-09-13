@@ -34,7 +34,13 @@ export function useApiResource<TData>(
   // Opt-in account isolation: do not coalesce this account's GET with an old
   // browser session's request when both sessions have an empty cookieHeader.
   const fetchImpl = useMemo<FetchLike>(
-    () => scopeKey === undefined ? fetch : (input, init) => fetch(input, init),
+    () => scopeKey === undefined ? fetch : async (input, init) => {
+      const response = await fetch(input, init);
+      // Account-scoped consumers must suppress stale session-expiry events,
+      // not merely ignore the resulting component state after parsing.
+      if (init?.signal?.aborted) throw new Error("Inactive scoped resource");
+      return response;
+    },
     [scopeKey]
   );
   const client = useMemo(
@@ -62,6 +68,7 @@ export function useApiResource<TData>(
 
   useEffect(() => {
     let active = true;
+    const controller = scopeKey === undefined ? null : new AbortController();
     const scopeChanged = previousScope.current !== scopeKey;
     previousScope.current = scopeKey;
     const isRefresh = refreshIndex > 0 && !scopeChanged;
@@ -71,6 +78,7 @@ export function useApiResource<TData>(
       setState({ kind: "loading" });
       return () => {
         active = false;
+        controller?.abort();
       };
     }
 
@@ -99,7 +107,10 @@ export function useApiResource<TData>(
       }
 
       try {
-        const result = await client.get<TData>(path);
+        const received = await client.get<TData>(path, controller ? { signal: controller.signal } : undefined);
+        const result = controller && received.success && (received.status < 200 || received.status >= 300)
+          ? { ...received, success: false as const, error: { code: "ORBIT_APP_UNEXPECTED_STATUS", message: "请求暂时无法完成，请稍后重试。" } }
+          : received;
 
         if (!active) {
           return;
@@ -144,6 +155,7 @@ export function useApiResource<TData>(
 
     return () => {
       active = false;
+      controller?.abort();
     };
   }, [actorId, auth.ready, baseUrl, client, path, refreshIndex, scopeKey]);
 

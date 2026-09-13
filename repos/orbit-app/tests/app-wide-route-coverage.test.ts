@@ -150,7 +150,7 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   { route: "/home/events", consumer: "HomeScreen (events)", kind: "screen" },
   { route: "/dashboard", consumer: "DashboardScreen", kind: "screen" },
   { route: "/", consumer: "IndexRoute → resolveInitialRouteHref", kind: "redirect" },
-  { route: "/home", consumer: "HomeRoute → /ai", kind: "redirect" },
+  { route: "/home", consumer: "HomeDashboardScreen", kind: "screen" },
   {
     route: "/account/mobile-google",
     consumer: "MobileGoogleRoute → /account/login",
@@ -170,6 +170,7 @@ const integratedFeatureRoutes = [
   "/contacts/new/batch/[id]",
   "/contacts/new/batch2",
   "/contacts/new/batch2/[id]",
+  "/contacts/new/import/[id]",
   "/events/[id]/operations/experience"
 ] as const;
 
@@ -250,7 +251,7 @@ function readDocumentedRouteRows(readme: string): DocumentedRoute[] {
     }));
 }
 
-test("the 58-route visual snapshot plus five integrated feature routes matches every real app entry", () => {
+test("the 58-route visual snapshot plus subsequent feature routes matches every real app entry", () => {
   assert.equal(expectedRoutes.length, 58);
   assert.deepEqual(
     coverageDelta(

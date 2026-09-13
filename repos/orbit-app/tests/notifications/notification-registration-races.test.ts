@@ -28,6 +28,13 @@ function deferred<T>() {
 
 type Frame = { slots: any[]; cursor: number; effects: Array<() => void> };
 
+function notificationAction(tree: any): any {
+  if (!tree) return undefined;
+  if (Array.isArray(tree)) return tree.map(notificationAction).find(Boolean);
+  if (tree.type === "Pressable" && tree.props.accessibilityRole === "button" && /关键提醒|正在准备/.test(tree.props.accessibilityLabel ?? "")) return tree;
+  return notificationAction(tree.props?.children);
+}
+
 // Execute production registration/revocation and the two UI consumers together.
 // Only platform/storage/network boundaries and React's hook host are replaced.
 function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToken?: boolean; rejectPost?: boolean; failedDelete?: string; failPostOnce?: string; throwPostFailure?: boolean; failLogout?: boolean } = {}) {
@@ -227,7 +234,7 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
   const Coordinator = load("src/components/OrbitNotificationsCoordinator.tsx").OrbitNotificationsCoordinator;
   const Settings = load("src/screens/settings/SettingsScreen.tsx").SettingsScreen;
   const settingsIdle = () => waitFor(
-    () => render("settings", Settings).props.children[0].props.children[1].props.disabled === false,
+    () => notificationAction(render("settings", Settings))?.props.disabled === false,
     "settings notification action did not finish",
   );
   return {
@@ -243,7 +250,9 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
       render("settings", Settings);
       await settle();
       const tree = render("settings", Settings);
-      tree.props.children[0].props.children[1].props.onPress();
+      const action = notificationAction(tree);
+      assert.ok(action, "settings must expose the actual reminder action");
+      action.props.onPress();
       await settingsIdle();
     },
     logout: () => auth.signOut(),
@@ -441,7 +450,9 @@ test("failed opt-out remains locally disabled but exposes an error and retry act
     const tree = app.settingsTree();
     assert.match(JSON.stringify(tree), /解绑.*未|未.*解绑/);
     const before = app.calls.filter((call) => call.startsWith("DELETE:")).length;
-    tree.props.children[0].props.children[1].props.onPress();
+    const action = notificationAction(tree);
+    assert.ok(action, "failed opt-out must retain a retry action");
+    action.props.onPress();
     await app.settingsIdle();
     assert.equal(app.calls.filter((call) => call.startsWith("DELETE:")).length, before + 2);
     assert.equal(app.storage.has("orbit.pushNotificationsEnabled"), false);

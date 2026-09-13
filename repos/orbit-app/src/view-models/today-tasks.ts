@@ -34,6 +34,8 @@ export interface TodayTaskRowView {
 
 export interface TaskListRowView extends TodayTaskRowView {
   dateLabel: string;
+  plannedDate?: string;
+  dueAt?: string;
   notes?: string;
   status: "open" | "completed" | "cancelled";
   updatedAt: string;
@@ -49,6 +51,10 @@ export interface TaskDetailView {
   categoryLabel: string;
   plannedDate?: string;
   dueAt?: string;
+  createdAt?: string;
+  sourceLabel?: string;
+  relatedContactId?: string;
+  relatedEventId?: string;
   priority: TaskItemContract["priority"];
   updatedAt: string;
 }
@@ -171,7 +177,6 @@ function tokyoParts(value: string) {
     minute: "2-digit",
     month: "numeric",
     timeZone: "Asia/Tokyo",
-    weekday: "short",
   }).formatToParts(new Date(value));
   const part = (type: Intl.DateTimeFormatPartTypes) =>
     parts.find((item) => item.type === type)?.value ?? "";
@@ -180,7 +185,8 @@ function tokyoParts(value: string) {
     hour: part("hour"),
     minute: part("minute"),
     month: part("month"),
-    weekday: part("weekday").replace("周", "周"),
+    // Native Intl can fold weekday into day and lose time-part types when combined.
+    weekday: new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Tokyo", weekday: "short" }).format(new Date(value)),
   };
 }
 
@@ -376,6 +382,8 @@ export function tasksToListView(
     .map((item) => ({
       ...taskRow(item, now),
       ...(item.notes ? { notes: item.notes } : {}),
+      ...(item.plannedDate ? { plannedDate: item.plannedDate } : {}),
+      ...(item.dueAt ? { dueAt: item.dueAt } : {}),
       status: item.status,
       dateLabel: item.completedAt
         ? dateTimeLabel(item.completedAt)
@@ -393,6 +401,9 @@ export function taskDetailToView(payload: unknown): TaskDetailView | null {
   const root = isRecord(payload) ? payload : {};
   const task = taskFrom(root.task);
   if (!task) return null;
+  const sourceLabels: Record<TaskItemContract["source"], string> = {
+    manual: "手动创建", ai_confirmed: "IORBIT 确认", contact: "人脉", event: "活动", inbox: "收件箱",
+  };
   return {
     id: task.id,
     title: task.title,
@@ -408,6 +419,10 @@ export function taskDetailToView(payload: unknown): TaskDetailView | null {
     categoryLabel: categoryLabels[task.category],
     ...(task.plannedDate ? { plannedDate: task.plannedDate } : {}),
     ...(task.dueAt ? { dueAt: task.dueAt } : {}),
+    ...(text(task.createdAt) && Number.isFinite(Date.parse(task.createdAt)) ? { createdAt: task.createdAt } : {}),
+    ...(Object.hasOwn(sourceLabels, task.source) ? { sourceLabel: sourceLabels[task.source] } : {}),
+    ...(text(task.relatedContactId) ? { relatedContactId: task.relatedContactId } : {}),
+    ...(text(task.relatedEventId) ? { relatedEventId: task.relatedEventId } : {}),
     priority: task.priority,
     updatedAt: task.updatedAt,
   };

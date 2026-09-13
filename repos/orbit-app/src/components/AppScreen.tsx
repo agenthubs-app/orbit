@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, usePathname, type Href } from "expo-router";
-import type { PropsWithChildren, ReactElement } from "react";
+import type { PropsWithChildren, ReactElement, ReactNode } from "react";
 import {
   Pressable,
   ScrollView,
@@ -12,70 +12,74 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { layout, spacing, textStyles } from "../design/tokens";
 import { createThemedStyles } from "../design/theme";
+import { mainTabForPath, parentForPath } from "../view-models/app-navigation";
+import { OrbitTabBar } from "./OrbitTabBar";
 
 interface AppScreenProps extends PropsWithChildren {
   eyebrow?: string;
+  header?: ReactNode;
+  headerActions?: ReactNode;
   headerVariant?: "large" | "compact";
   refreshControl?: ReactElement<RefreshControlProps>;
   showBack?: boolean;
   title: string;
+  titleAccessory?: ReactNode;
 }
 
 export function AppScreen({
   children,
   eyebrow,
+  header,
+  headerActions,
   headerVariant = "large",
   refreshControl,
   showBack,
-  title
+  title,
+  titleAccessory
 }: AppScreenProps) {
   const { colors, styles } = useStyles();
   const router = useRouter();
   const pathname = usePathname();
   const canGoBack = router.canGoBack();
-  // Orbit AI is the only home, so a screen opened without history still needs a
-  // way back to it now that the bottom tab bar is gone.
-  const navVisible = showBack ?? (canGoBack || pathname !== "/ai");
+  const mainTab = mainTabForPath(pathname);
+  const parent = parentForPath(pathname);
+  const navVisible = showBack ?? (!mainTab && pathname !== "/ai");
 
   return (
     <SafeAreaView edges={["top"]} style={styles.safeArea}>
+      {navVisible ? (
+        <View style={styles.navigation}>
+          <Pressable accessibilityLabel={canGoBack ? "返回" : "返回" + parent.label} accessibilityRole="button"
+            onPress={() => canGoBack ? router.back() : router.replace(parent.href as Href)}
+            style={({ pressed }) => [styles.backButton, pressed && styles.backButtonPressed]}>
+            <Ionicons color={colors.accent} name="chevron-back" size={20} />
+            <Text style={styles.backLabel}>{canGoBack ? "返回" : parent.label}</Text>
+          </Pressable>
+          <Text accessibilityRole="header" style={styles.navigationTitle}>{title}</Text>
+          <View style={styles.navigationActions}>{headerActions}</View>
+        </View>
+      ) : null}
       <ScrollView
         automaticallyAdjustKeyboardInsets
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, mainTab && styles.tabContent]}
         contentInsetAdjustmentBehavior="automatic"
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
         refreshControl={refreshControl}
       >
-        <View style={styles.header}>
-          {navVisible ? (
-            <Pressable
-              accessibilityLabel={canGoBack ? "返回" : "回到 Orbit AI"}
-              accessibilityRole="button"
-              onPress={() =>
-                canGoBack ? router.back() : router.replace("/ai" as Href)
-              }
-              style={({ pressed }) => [
-                styles.backButton,
-                pressed ? styles.backButtonPressed : null
-              ]}
-            >
-              <Ionicons
-                color={colors.ink}
-                name={canGoBack ? "chevron-back" : "sparkles-outline"}
-                size={20}
-              />
-            </Pressable>
-          ) : null}
+        {header ?? (!navVisible ? <View style={styles.header}>
           {eyebrow && eyebrow.trim().toLowerCase() !== "orbit" ? (
             <Text style={styles.eyebrow}>{eyebrow}</Text>
           ) : null}
-          <Text accessibilityRole="header" style={[styles.title, headerVariant === "compact" ? styles.compactTitle : null]}>
-            {title}
-          </Text>
-        </View>
+          <View style={styles.titleRow}>
+            <Text accessibilityRole="header" style={[styles.title, headerVariant === "compact" ? styles.compactTitle : null]}>{title}</Text>
+            {titleAccessory}
+            {headerActions ? <View style={styles.headerActions}>{headerActions}</View> : null}
+          </View>
+        </View> : eyebrow && eyebrow.trim().toLowerCase() !== "orbit" ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null)}
         <View style={styles.body}>{children}</View>
       </ScrollView>
+      {mainTab ? <OrbitTabBar active={mainTab} /> : null}
     </SafeAreaView>
   );
 }
@@ -83,12 +87,16 @@ export function AppScreen({
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   backButton: {
     alignItems: "center",
-    alignSelf: "flex-start",
+    flexDirection: "row",
+    flexShrink: 1,
     minHeight: layout.toolbar,
     justifyContent: "center",
-    marginBottom: spacing.xs,
     minWidth: layout.toolbar
   },
+  backLabel: { color: colors.accent, fontSize: 14, lineHeight: 20, flexShrink: 1 },
+  navigation: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 48, paddingHorizontal: 16, paddingVertical: 2, borderBottomWidth: 1, borderBottomColor: colors.border },
+  navigationTitle: { flex: 1, color: colors.ink, fontSize: 16, lineHeight: 22, fontWeight: "800", textAlign: "center" },
+  navigationActions: { minWidth: 44, maxWidth: "30%", flexShrink: 1 },
   backButtonPressed: {
     opacity: 0.72
   },
@@ -104,6 +112,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingTop: spacing.md,
     width: "100%"
   },
+  tabContent: { paddingBottom: 140 },
   eyebrow: {
     ...textStyles.caption,
     color: colors.text3,
@@ -113,13 +122,16 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.xs,
     paddingTop: spacing.xs
   },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  headerActions: { marginLeft: "auto", flexDirection: "row", flexShrink: 0 },
   safeArea: {
     backgroundColor: colors.surface,
     flex: 1
   },
   title: {
     ...textStyles.pageTitle,
-    color: colors.ink
+    color: colors.ink,
+    flexShrink: 1
   },
   compactTitle: {
     ...textStyles.title

@@ -3,7 +3,6 @@ import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { Fragment, useEffect, useRef, useState } from "react";
 import {
   Image,
-  ImageBackground,
   Keyboard,
   KeyboardAvoidingView,
   Linking,
@@ -14,7 +13,8 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  View
+  View,
+  useWindowDimensions
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
@@ -31,13 +31,10 @@ import { LoadingState } from "../../components/LoadingState";
 import { layout, textStyles, radius, spacing, typography } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
+import { iorbitBrandMark } from "../../design/iorbit-brand";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
-import {
-  agentSessionCreateRequestFromThread,
-  agentChatSessionPayloadToThreadView,
-  agentSessionUpdateRequestFromThread
-} from "../../view-models/agent-history";
+import { aiConversationListSchema, aiSessionReadSchema, aiSessionReceiptMatches, aiReplyPayload, aiTaskReceipt, type AiConversationPayload, type AiSession } from "../../api/ai-history-contract";
 import {
   aiRunDetailToView,
   buildAiRunDetailRequest,
@@ -47,12 +44,10 @@ import {
   conversationQuickRoutes,
   conversationRecordLinks,
   conversationTaskDetailHref,
-  conversationAcceptedTaskId,
   markdownBlocksFor,
   pendingConversationThreadView,
   prioritizeConversationContacts,
   prioritizeConversationEvents,
-  shouldSubmitInitialPrompt,
   type ChatMessageView,
   type AiRunDetailView,
   type ConversationAiRunReferenceView,
@@ -107,13 +102,50 @@ function assetUrl(baseUrl: string, path: string): string {
   return `${baseUrl.replace(/\/+$/u, "")}${normalizedPath}`;
 }
 
-export function AiConversationScreen() {
+type SendRequest = { path: string; message: string; history?: { content: string; role: "user" | "assistant" }[] | undefined; revision: number };
+type PendingSessionSave = { session: AiSession; revision: number; canonicalize: boolean; waitForTask: boolean };
+type ConversationJournalState = {
+  draftMessage: string; latestData: AiConversationPayload | null; resolvedConversationId: string | null;
+  savedSessionId: string | null; sessionSnapshot: AiSession | null; pendingSave: PendingSessionSave | null;
+  saveError: string | null; saveNotice: string | null; sendError: string | null; sendCode: string | null; failedRequest: SendRequest | null;
+  actionError: string | null; acceptedTaskId: string | null; taskInteractionResolution: "accepted" | "dismissed" | null;
+};
+export type AiConversationJournal = Partial<ConversationJournalState> & { draftRevision?: number; interruptedRequest?: SendRequest };
+
+function useJournalState<K extends keyof ConversationJournalState>(journal: AiConversationJournal, key: K, initial: ConversationJournalState[K]) {
+  const [value, setValue] = useState<ConversationJournalState[K]>(() => key in journal ? journal[key] as ConversationJournalState[K] : initial);
+  function update(next: ConversationJournalState[K]) {
+    Object.assign(journal, { [key]: next });
+    setValue(next);
+  }
+  return [value, update] as const;
+}
+
+function rawConversationThread(payload: AiConversationPayload): ConversationThreadView {
+  return {
+    ...conversationPayloadToThreadView(payload),
+    title: payload.conversations.find(item => item.conversationId === payload.activeConversationId)?.title || "IORBIT 会话",
+    assistantMessage: payload.assistantMessage,
+    messages: payload.messages.map(item => ({ id: item.messageId, role: item.role, content: item.content, createdAt: item.createdAt }))
+  };
+}
+
+function rawSessionThread(session: AiSession): ConversationThreadView {
+  return {
+    activeConversationId: session.id, title: session.customTitle?.trim() || session.title,
+    assistantMessage: session.messages.findLast(item => item.role === "assistant")?.text ?? "",
+    messages: session.messages.map((item, index) => ({ id: `${session.id}:message:${index}`, role: item.role, content: item.text, createdAt: typeof item.createdAt === "string" ? item.createdAt : session.updatedAt })),
+    nextAction: "", proposedToolIntents: []
+  };
+}
+
+export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, claimInitialPrompt, journal: providedJournal }: {
+  scopeKey?: string; isScopeCurrent?: () => boolean; claimInitialPrompt?: () => boolean; journal?: AiConversationJournal;
+} = {}) {
   const { colors, styles } = useStyles();
   const insets = useSafeAreaInsets();
   const { id, initialMessage, source } = useLocalSearchParams<{
-    id?: string | string[];
-    initialMessage?: string | string[];
-    source?: string | string[];
+    id?: string | string[]; initialMessage?: string | string[]; source?: string | string[];
   }>();
   const conversationId = firstParam(id);
   const initialPrompt = optionalParam(initialMessage).trim();
@@ -121,302 +153,234 @@ export function AiConversationScreen() {
   const isDraftConversation = conversationId === "new" && !!initialPrompt;
   const router = useRouter();
   const { baseUrl } = useOrbitApiBaseUrl();
-  const client = useOrbitApiClient();
-  const path = isDraftConversation
-    ? ORBIT_API_ENDPOINTS.conversations
-    : isStoredAgentSession
-      ? aiConversationSessionPath(conversationId)
-      : aiConversationPath(conversationId);
-  const state = useApiResource<unknown>(
-    path,
-    (data) => conversationPayloadToThreadView(data).messages.length === 0
-  );
-  const eventsState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.events,
-    (data) => eventsToSummaries(data).length === 0
-  );
-  const contactsState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.contacts,
-    (data) => contactsToSummaries(data).length === 0
-  );
-  const tasksState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.tasks,
-    (data) => followupsToView({ notificationsPayload: {}, tasksPayload: data })
-      .tasks.length === 0
-  );
-  const profileState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.profile,
-    () => false
-  );
-  const [draftMessage, setDraftMessage] = useState("");
-  const [latestData, setLatestData] = useState<unknown | null>(null);
-  const [resolvedConversationId, setResolvedConversationId] = useState<
-    string | null
-  >(null);
-  const [savedSessionId, setSavedSessionId] = useState<string | null>(null);
-  const [sendError, setSendError] = useState<string | null>(null);
+  const client = useOrbitApiClient(scopeKey === undefined ? {} : { scopeKey });
+  const localJournal = useRef<AiConversationJournal>({});
+  const journal = providedJournal ?? localJournal.current;
+  const readOptions = scopeKey === undefined ? {} : { scopeKey };
+  const path = isDraftConversation ? ORBIT_API_ENDPOINTS.conversations
+    : isStoredAgentSession ? aiConversationSessionPath(conversationId) : aiConversationPath(conversationId);
+  const state = useApiResource<unknown>(path, () => false, readOptions);
+  const eventsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.events, data => eventsToSummaries(data).length === 0, readOptions);
+  const contactsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.contacts, data => contactsToSummaries(data).length === 0, readOptions);
+  const tasksState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.tasks, data => followupsToView({ notificationsPayload: {}, tasksPayload: data }).tasks.length === 0, readOptions);
+  const profileState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.profile, () => false, readOptions);
+  const [draftMessage, setDraftMessage] = useJournalState(journal, "draftMessage", "");
+  const draftValue = useRef(draftMessage);
+  const draftRevision = useRef(journal.draftRevision ?? 0);
+  const [latestData, setLatestData] = useJournalState(journal, "latestData", null);
+  const [resolvedConversationId, setResolvedConversationId] = useJournalState(journal, "resolvedConversationId", null);
+  const [savedSessionId, setSavedSessionId] = useJournalState(journal, "savedSessionId", null);
+  const [sessionSnapshot, setSessionSnapshot] = useJournalState(journal, "sessionSnapshot", null);
+  const [pendingSave, setPendingSave] = useJournalState(journal, "pendingSave", null);
+  const pendingSaveRef = useRef(pendingSave);
+  const [saveError, setSaveError] = useJournalState(journal, "saveError", null);
+  const [saveNotice, setSaveNotice] = useJournalState(journal, "saveNotice", null);
+  const [sendError, setSendError] = useJournalState(journal, "sendError", null);
+  const [sendCode, setSendCode] = useJournalState(journal, "sendCode", null);
+  const [failedRequest, setFailedRequest] = useJournalState(journal, "failedRequest", null);
+  const [actionError, setActionError] = useJournalState(journal, "actionError", null);
   const [aiRunError, setAiRunError] = useState<string | null>(null);
-  const [aiRunDetailView, setAiRunDetailView] =
-    useState<AiRunDetailView | null>(null);
+  const [aiRunDetailView, setAiRunDetailView] = useState<AiRunDetailView | null>(null);
   const [pendingAiRunId, setPendingAiRunId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [taskInteractionBusy, setTaskInteractionBusy] = useState(false);
-  const [acceptedTaskId, setAcceptedTaskId] = useState<string | null>(null);
-  const [taskInteractionResolution, setTaskInteractionResolution] = useState<
-    "accepted" | "dismissed" | null
-  >(null);
+  const [acceptedTaskId, setAcceptedTaskId] = useJournalState(journal, "acceptedTaskId", null);
+  const [taskInteractionResolution, setTaskInteractionResolution] = useJournalState(journal, "taskInteractionResolution", null);
   const submittedInitialPrompt = useRef<string | null>(null);
+  const mounted = useRef(true);
+  const requests = useRef(new Set<AbortController>());
+  const sendOperation = useRef<AbortController | null>(null);
+  const saveOperation = useRef<AbortController | null>(null);
+  const taskOperation = useRef<AbortController | null>(null);
+  const runOperation = useRef<AbortController | null>(null);
+  const refreshOverlay = useRef<unknown>(undefined);
+  const owns = () => mounted.current && isScopeCurrent();
+  const ownsRequest = (controller: AbortController) => owns() && !controller.signal.aborted;
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      if (journal.interruptedRequest) {
+        journal.failedRequest = journal.interruptedRequest;
+        journal.sendError = "上次请求已中断，结果尚未确认。你可以重试或编辑问题。";
+      }
+      if (journal.pendingSave) journal.saveError = "回复尚未确认保存，请重试保存。";
+      requests.current.forEach(controller => controller.abort()); requests.current.clear();
+    };
+  }, [client, scopeKey]);
+  useEffect(() => {
+    if (refreshOverlay.current !== undefined && (state.kind === "success" || state.kind === "empty")
+      && state.data !== refreshOverlay.current && !state.refreshing) {
+      refreshOverlay.current = undefined;
+      setLatestData(null); setSessionSnapshot(null);
+    }
+  }, [state]);
+
+  const loadedData = !isDraftConversation && (state.kind === "success" || state.kind === "empty") ? state.data : null;
+  const sessionRead = loadedData && isStoredAgentSession ? aiSessionReadSchema.safeParse(loadedData) : null;
+  const loadedSession = sessionRead?.success && sessionRead.data.storage.configured && sessionRead.data.session?.id === conversationId ? sessionRead.data.session : null;
+  const conversationRead = loadedData && !isStoredAgentSession ? aiConversationListSchema.safeParse(loadedData) : null;
+  const readInvalid = loadedData !== null && (isStoredAgentSession ? !loadedSession : !conversationRead?.success);
+  const previousSession = sessionSnapshot ?? loadedSession;
+  const generatedThread = latestData ? rawConversationThread(latestData) : null;
+  const initialThread = isDraftConversation ? pendingConversationThreadView(initialPrompt) : null;
+  const thread = generatedThread
+    ? previousSession ? { ...generatedThread, title: rawSessionThread(previousSession).title, messages: rawSessionThread(previousSession).messages } : generatedThread
+    : loadedSession ? rawSessionThread(loadedSession)
+    : conversationRead?.success ? rawConversationThread(conversationRead.data)
+    : initialThread && failedRequest ? { ...initialThread, title: "未生成回答", messages: initialThread.messages.filter(item => item.role === "user") } : initialThread;
+  const runReferences = thread ? conversationAiRunReferencesFor(latestData ?? loadedData ?? thread) : [];
+  const inlinePanels = thread && (!isDraftConversation || latestData) ? conversationInlinePanelsForThread(thread) : [];
+
+  function changeDraft(value: string) {
+    if (!owns()) return;
+    draftValue.current = value;
+    draftRevision.current++;
+    journal.draftRevision = draftRevision.current;
+    setDraftMessage(value);
+  }
 
   function refresh() {
-    setLatestData(null);
-    setAiRunError(null);
-    setAiRunDetailView(null);
-    state.refresh();
+    if (!owns()) return;
+    // Refresh reads only. It never consumes a draft or replays an initial write.
+    if (!isDraftConversation && !sendOperation.current && !saveOperation.current && !taskOperation.current && !pendingSaveRef.current
+      && (state.kind === "success" || state.kind === "empty")) refreshOverlay.current = state.data;
+    state.refresh(); eventsState.refresh(); contactsState.refresh(); tasksState.refresh(); profileState.refresh();
   }
 
   function conversationHistoryForRequest() {
-    return thread
-      ? thread.messages
-          .map((item) => ({
-            content: item.content,
-            role: item.role
-          }))
-          .filter(
-            (item): item is { content: string; role: "assistant" | "user" } =>
-              Boolean(item.content.trim()) &&
-              (item.role === "assistant" || item.role === "user")
-          )
-          .slice(-8)
-      : undefined;
+    return thread?.messages.filter((item): item is ChatMessageView & { role: "user" | "assistant" } =>
+      (item.role === "user" || item.role === "assistant") && Boolean(item.content.trim()))
+      .map(item => ({ content: item.content, role: item.role })).slice(-8);
   }
 
-  async function persistAndCanonicalizeDraftConversation(
-    data: unknown,
-    thread: ConversationThreadView
-  ): Promise<boolean> {
-    const activeConversationId = thread.activeConversationId;
-    if (!isDraftConversation || !activeConversationId) {
-      return false;
+  async function persistAndCanonicalizeDraftConversation(pending: PendingSessionSave) {
+    if (!owns() || saveOperation.current) return;
+    const controller = new AbortController();
+    saveOperation.current = controller; requests.current.add(controller);
+    setSaving(true); setSaveError(null);
+    const result = await client.post<unknown>(ORBIT_API_ENDPOINTS.aiConversationSessions, { body: { session: pending.session }, signal: controller.signal });
+    if (!ownsRequest(controller)) return;
+    if (result.success && result.status >= 200 && result.status < 300 && aiSessionReceiptMatches(result.data, pending.session)) {
+      const saved = aiSessionReadSchema.parse(result.data).session!;
+      const limited = pending.session.messages.length > saved.messages.length
+        || pending.session.messages.some(message => message.text.trim().length > 12000)
+        || pending.session.title.trim().length > 120 || (pending.session.customTitle?.trim().length ?? 0) > 120;
+      setSavedSessionId(saved.id);
+      setSessionSnapshot(saved);
+      if (limited) setSaveNotice("会话已保存，但超出上限的内容已截断。服务最多保留最近 100 条消息，每条 12,000 字、标题 120 字。");
+      pendingSaveRef.current = null; setPendingSave(null);
+      if (pending.canonicalize && !pending.waitForTask && !limited && !saveNotice && draftRevision.current === pending.revision && !draftValue.current.trim()) {
+        router.replace({ params: { id: saved.id, source: "session" }, pathname: "/ai/[id]" });
+      }
+    } else {
+      setSaveError(result.success ? "回复已生成，但尚未确认保存。请重试保存。" : `回复已生成，但保存失败：${result.error.message}`);
     }
+    requests.current.delete(controller); saveOperation.current = null; setSaving(false);
+  }
 
-    const runId = conversationAiRunReferencesFor(data)[0]?.id ?? "";
-    const identity = (
-      runId || `${activeConversationId}-${Date.now()}`
-    ).replace(/[^A-Za-z0-9_-]/gu, "-");
-    const sessionId = `agent-session-mobile-${identity}`;
-    const sessionRequest = agentSessionCreateRequestFromThread({
-      createdAt: new Date().toISOString(),
-      sessionId,
-      thread
+  async function submitRequest(request: SendRequest) {
+    if (!owns() || sendOperation.current || saveOperation.current || taskOperation.current || pendingSaveRef.current) return;
+    const controller = new AbortController();
+    sendOperation.current = controller; requests.current.add(controller);
+    refreshOverlay.current = undefined;
+    journal.interruptedRequest = request;
+    setSending(true); setSendError(null); setSendCode(null); setFailedRequest(null);
+    setAiRunError(null); setAiRunDetailView(null); setActionError(null);
+    const result = await client.post<unknown>(request.path, {
+      body: { locale: "zh", message: request.message, ...(request.history ? { history: request.history } : {}) }, signal: controller.signal
     });
-
-    if (!sessionRequest) {
-      setSendError("这次回复缺少可保存的对话内容，请留在当前页面重试。");
-      return true;
+    if (!ownsRequest(controller)) return;
+    delete journal.interruptedRequest;
+    const payload = result.success && result.status >= 200 && result.status < 300 ? aiReplyPayload(result.data, request.message) : null;
+    if (payload) {
+      setTaskInteractionResolution(null); setAcceptedTaskId(null);
+      setLatestData(payload); setResolvedConversationId(payload.activeConversationId);
+      if (draftRevision.current === request.revision) { draftValue.current = ""; setDraftMessage(""); }
+      const nextThread = rawConversationThread(payload);
+      if (isDraftConversation || isStoredAgentSession || previousSession) {
+        const turnStart = payload.messages.findLastIndex(item => item.role === "user");
+        const messages = payload.messages.slice(turnStart).filter((item): item is typeof item & { role: "user" | "assistant" } => item.role === "user" || item.role === "assistant")
+          .map(item => ({ role: item.role, text: item.content }));
+        const runId = conversationAiRunReferencesFor(payload)[0]?.id;
+        const identity = (runId || `${payload.activeConversationId}-${Date.now()}`).replace(/[^A-Za-z0-9_-]/gu, "-");
+        const now = new Date().toISOString();
+        const session: AiSession = previousSession
+          ? { ...previousSession, messages: [...previousSession.messages, ...messages], updatedAt: now }
+          : { id: `agent-session-mobile-${identity}`, title: request.message.slice(0, 120), createdAt: now, updatedAt: now, pinned: false, messages };
+        const pending = { session, revision: request.revision, canonicalize: isDraftConversation, waitForTask: nextThread.taskInteraction?.state === "suggested" };
+        setSessionSnapshot(session); pendingSaveRef.current = pending; setPendingSave(pending);
+        await persistAndCanonicalizeDraftConversation(pending);
+      }
+    } else {
+      setFailedRequest(request);
+      setSendError(result.success ? "服务返回的回答不完整，请重试或编辑问题。" : result.error.message);
+      setSendCode(result.success ? null : result.error.code);
     }
-
-    const saved = await client.post<unknown>(
-      ORBIT_API_ENDPOINTS.aiConversationSessions,
-      { body: sessionRequest }
-    );
-
-    if (!saved.success) {
-      setSendError(`回复已生成，但保存失败：${saved.error.message}`);
-      return true;
-    }
-
-    setSavedSessionId(sessionId);
-    if (thread.taskInteraction?.state === "suggested") {
-      return true;
-    }
-
-    router.replace({
-      params: { id: sessionId, source: "session" },
-      pathname: "/ai/[id]"
-    });
-    return true;
+    if (!ownsRequest(controller)) return;
+    requests.current.delete(controller); sendOperation.current = null; setSending(false);
   }
 
   async function sendMessage() {
-    const message = draftMessage.trim();
-
-    if (!message) {
-      setSendError("先输入你想继续问的问题。");
-      return;
-    }
-
-    setSending(true);
-    setSendError(null);
-    setAiRunError(null);
-    setAiRunDetailView(null);
-
-    const sendPath = resolvedConversationId
-      ? aiConversationPath(resolvedConversationId)
-      : isDraftConversation || isStoredAgentSession
-        ? ORBIT_API_ENDPOINTS.conversations
-        : path;
-    const result = await client.post<unknown>(sendPath, {
-      body: {
-        history: isStoredAgentSession ? conversationHistoryForRequest() : undefined,
-        locale: "zh",
-        message
-      }
-    });
-
-    if (result.success) {
-      const nextThread = conversationPayloadToThreadView(result.data);
-      setTaskInteractionResolution(null);
-      setAcceptedTaskId(null);
-      setLatestData(result.data);
-      setResolvedConversationId(nextThread.activeConversationId);
-      setDraftMessage("");
-      if (isStoredAgentSession && previousSessionData) {
-        const sessionUpdate = agentSessionUpdateRequestFromThread({
-          previousSession: previousSessionData,
-          thread: nextThread
-        });
-
-        if (sessionUpdate) {
-          void client.post<unknown>(ORBIT_API_ENDPOINTS.aiConversationSessions, {
-            body: sessionUpdate
-          });
-        }
-      }
-      if (!(await persistAndCanonicalizeDraftConversation(result.data, nextThread))) {
-        state.refresh();
-      }
-    } else {
-      setSendError(result.error.message);
-    }
-
-    setSending(false);
+    if (!owns()) return;
+    const message = draftValue.current.trim();
+    if (!message) return;
+    const sendPath = resolvedConversationId ? aiConversationPath(resolvedConversationId)
+      : isDraftConversation || isStoredAgentSession ? ORBIT_API_ENDPOINTS.conversations : path;
+    await submitRequest({ path: sendPath, message, revision: draftRevision.current, history: isStoredAgentSession && !resolvedConversationId ? conversationHistoryForRequest() : undefined });
   }
 
   useEffect(() => {
-    if (
-      !shouldSubmitInitialPrompt({
-        initialPrompt,
-        isDraftConversation,
-        submittedPrompt: submittedInitialPrompt.current
-      })
-    ) {
+    if (!owns() || !isDraftConversation || submittedInitialPrompt.current === initialPrompt) return;
+    if (claimInitialPrompt && !claimInitialPrompt()) {
+      if (!latestData && !failedRequest) {
+        setFailedRequest({ path: ORBIT_API_ENDPOINTS.conversations, message: initialPrompt, revision: draftRevision.current });
+        setSendError("这条问题已提交过，结果尚未确认。你可以重试或编辑问题。");
+      }
       return;
     }
-
     submittedInitialPrompt.current = initialPrompt;
-    setLatestData(null);
-    setResolvedConversationId(null);
-    setSending(true);
-    setSendError(null);
-    setAiRunError(null);
-    setAiRunDetailView(null);
-
-    void client
-      .post<unknown>(ORBIT_API_ENDPOINTS.conversations, {
-        body: {
-          locale: "zh",
-          message: initialPrompt
-        }
-      })
-      .then(async (result) => {
-        if (result.success) {
-          const nextThread = conversationPayloadToThreadView(result.data);
-          setTaskInteractionResolution(null);
-          setAcceptedTaskId(null);
-          setLatestData(result.data);
-          setResolvedConversationId(nextThread.activeConversationId);
-          await persistAndCanonicalizeDraftConversation(result.data, nextThread);
-        } else {
-          setSendError(result.error.message);
-        }
-      })
-      .catch((error: unknown) => {
-        setSendError(
-          error instanceof Error ? error.message : "这条消息暂时发不出去。"
-        );
-      })
-      .finally(() => setSending(false));
+    void submitRequest({ path: ORBIT_API_ENDPOINTS.conversations, message: initialPrompt, revision: draftRevision.current });
   }, [client, initialPrompt, isDraftConversation]);
 
   async function inspectAiRun(reference: ConversationAiRunReferenceView) {
+    if (!owns()) return;
     const request = buildAiRunDetailRequest(reference.id);
-
-    if (!request.success) {
-      setAiRunError(request.error);
-      return;
-    }
-
-    setPendingAiRunId(reference.id);
-    setAiRunError(null);
-
-    const result = await client.get<unknown>(request.request.path);
-
-    if (result.success) {
-      setAiRunDetailView(aiRunDetailToView(result.data));
-    } else {
-      setAiRunError(result.error.message);
-    }
-
-    setPendingAiRunId(null);
+    if (!request.success) { setAiRunError(request.error); return; }
+    runOperation.current?.abort();
+    const controller = new AbortController(); runOperation.current = controller; requests.current.add(controller);
+    setPendingAiRunId(reference.id); setAiRunError(null);
+    const result = await client.get<unknown>(request.request.path, { signal: controller.signal });
+    if (!ownsRequest(controller)) return;
+    if (result.success && result.status >= 200 && result.status < 300) setAiRunDetailView(aiRunDetailToView(result.data));
+    else setAiRunError(result.success ? "执行记录未能读取，请重试。" : result.error.message);
+    requests.current.delete(controller); runOperation.current = null; setPendingAiRunId(null);
   }
 
   async function resolveTaskSuggestion(action: "accept" | "dismiss") {
     const suggestionId = thread?.taskInteraction?.suggestionId;
-    if (!suggestionId || taskInteractionBusy) return;
-
-    setTaskInteractionBusy(true);
-    setSendError(null);
-    const endpoint =
-      action === "accept"
-        ? taskSuggestionAcceptPath(suggestionId)
-        : taskSuggestionDismissPath(suggestionId);
+    if (!owns() || !suggestionId || taskOperation.current || sendOperation.current || saveOperation.current || pendingSaveRef.current) return;
+    const controller = new AbortController(); taskOperation.current = controller; requests.current.add(controller);
+    setTaskInteractionBusy(true); setActionError(null);
+    const endpoint = action === "accept" ? taskSuggestionAcceptPath(suggestionId) : taskSuggestionDismissPath(suggestionId);
     const result = await client.post<unknown>(endpoint, {
-      body: {
-        idempotencyKey: `ios:agent-task-${action}:${suggestionId}:${Date.now()}`
-      }
+      body: { idempotencyKey: `ios:agent-task-${action}:${suggestionId}` }, signal: controller.signal
     });
-
-    if (result.success) {
-      setAcceptedTaskId(action === "accept" ? conversationAcceptedTaskId(result.data) : null);
-      setTaskInteractionResolution(
-        action === "accept" ? "accepted" : "dismissed"
-      );
+    if (!ownsRequest(controller)) return;
+    const receipt = result.success && result.status >= 200 && result.status < 300 ? aiTaskReceipt(result.data, suggestionId, action) : null;
+    if (receipt) {
+      setAcceptedTaskId(receipt.taskId);
+      setTaskInteractionResolution(action === "accept" ? "accepted" : "dismissed");
       if (action === "accept") tasksState.refresh();
-      if (savedSessionId) {
-        router.replace({
-          params: { id: savedSessionId, source: "session" },
-          pathname: "/ai/[id]"
-        });
-      }
-    } else {
-      setSendError(result.error.message);
-    }
-    setTaskInteractionBusy(false);
+      if (savedSessionId && !saveNotice && !draftValue.current.trim()) router.replace({ params: { id: savedSessionId, source: "session" }, pathname: "/ai/[id]" });
+    } else setActionError(result.success ? "尚未确认操作结果，请重试。" : result.error.message);
+    requests.current.delete(controller); taskOperation.current = null; setTaskInteractionBusy(false);
   }
 
-  const loadedData =
-    !isDraftConversation && (state.kind === "success" || state.kind === "empty")
-      ? state.data
-      : null;
-  const previousSessionData = isStoredAgentSession ? loadedData : null;
-  const pendingThread = isDraftConversation
-    ? pendingConversationThreadView(initialPrompt)
-    : null;
-  const currentLatestData =
-    isDraftConversation && submittedInitialPrompt.current !== initialPrompt
-      ? null
-      : latestData;
-  const thread = currentLatestData
-    ? conversationPayloadToThreadView(currentLatestData)
-    : loadedData
-      ? isStoredAgentSession
-        ? agentChatSessionPayloadToThreadView(loadedData)
-        : conversationPayloadToThreadView(loadedData)
-      : pendingThread;
-  const runReferences = thread
-    ? conversationAiRunReferencesFor(currentLatestData ?? loadedData ?? thread)
-    : [];
-  const inlinePanels = thread ? conversationInlinePanelsForThread(thread) : [];
+  function openHref(href: string) {
+    if (owns()) router.push(href as Href);
+  }
   const eventCards =
     eventsState.kind === "success" ? eventsToSummaries(eventsState.data) : [];
   const contactCards = contactsState.kind === "success"
@@ -436,7 +400,7 @@ export function AiConversationScreen() {
   return (
     <SafeAreaView edges={["top", "bottom"]} style={styles.readingSafeArea}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={insets.top} style={[styles.readingRoot, !thread ? styles.readingFallback : null]}>
-      {!thread ? <Pressable accessibilityLabel="返回 Orbit AI" accessibilityRole="button" onPress={() => router.back()} style={styles.backButton}>
+      {!thread ? <Pressable accessibilityLabel="返回 Orbit AI" accessibilityRole="button" onPress={() => { if (owns()) router.back(); }} style={styles.backButton}>
         <Ionicons color={colors.ink} name="arrow-back-outline" size={24} />
       </Pressable> : null}
       {!isDraftConversation && state.kind === "loading" ? <LoadingState /> : null}
@@ -446,6 +410,8 @@ export function AiConversationScreen() {
       {!isDraftConversation && state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
+      {readInvalid ? <ErrorState title="会话未能读取" message="服务返回的会话不完整或与当前记录不符，请重试。" /> : null}
+      {!thread && state.kind !== "loading" ? <Pressable accessibilityRole="button" onPress={refresh} style={styles.failureSecondary}><Text style={styles.failureSecondaryText}>重试读取</Text></Pressable> : null}
       {state.kind === "empty" && !thread ? (
         <EmptyState message="这条对话还没有消息。" title="没有消息" />
       ) : null}
@@ -462,16 +428,16 @@ export function AiConversationScreen() {
           inlinePanels={inlinePanels}
           aiRunDetailView={aiRunDetailView}
           aiRunError={aiRunError}
-          onBack={() => router.push("/ai" as Href)}
-          onChangeDraft={setDraftMessage}
+          onBack={() => openHref("/ai")}
+          onChangeDraft={changeDraft}
           onInspectAiRun={inspectAiRun}
           onOpenContact={(contactId) =>
-            router.push(`/contacts/${encodeURIComponent(contactId)}` as Href)
+            openHref(`/contacts/${encodeURIComponent(contactId)}`)
           }
           onOpenEvent={(eventId) =>
-            router.push(`/events/${encodeURIComponent(eventId)}` as Href)
+            openHref(`/events/${encodeURIComponent(eventId)}`)
           }
-          onOpenHref={(href) => router.push(href as Href)}
+          onOpenHref={openHref}
           onResolveTaskSuggestion={resolveTaskSuggestion}
           profile={profile}
           profileStateKind={profileState.kind}
@@ -483,6 +449,15 @@ export function AiConversationScreen() {
           scheduleStateKind={tasksState.kind}
           onSend={sendMessage}
           sendError={sendError}
+          sendCode={sendCode}
+          actionError={actionError}
+          saveError={saveError}
+          saveNotice={saveNotice}
+          saving={saving}
+          writingBlocked={!!pendingSave || saving || taskInteractionBusy}
+          onRetrySend={() => { if (failedRequest) void submitRequest(failedRequest); }}
+          onEditQuestion={() => { if (failedRequest && owns()) { changeDraft(failedRequest.message); setSendError(null); setSendCode(null); } }}
+          onRetrySave={() => { if (pendingSave) void persistAndCanonicalizeDraftConversation(pendingSave); }}
           sending={sending}
           taskInteractionBusy={taskInteractionBusy}
           taskInteractionResolution={taskInteractionResolution}
@@ -523,6 +498,15 @@ function ConversationThread({
   scheduleStateKind,
   onSend,
   sendError,
+  sendCode,
+  actionError,
+  saveError,
+  saveNotice,
+  saving,
+  writingBlocked,
+  onRetrySend,
+  onEditQuestion,
+  onRetrySave,
   sending,
   taskInteractionBusy,
   taskInteractionResolution,
@@ -556,6 +540,15 @@ function ConversationThread({
   scheduleStateKind: ResourceKind;
   onSend: () => void;
   sendError: string | null;
+  sendCode: string | null;
+  actionError: string | null;
+  saveError: string | null;
+  saveNotice: string | null;
+  saving: boolean;
+  writingBlocked: boolean;
+  onRetrySend: () => void;
+  onEditQuestion: () => void;
+  onRetrySave: () => void;
   sending: boolean;
   taskInteractionBusy: boolean;
   taskInteractionResolution: "accepted" | "dismissed" | null;
@@ -563,10 +556,13 @@ function ConversationThread({
 }) {
   const { colors, styles } = useStyles();
   const [routesOpen, setRoutesOpen] = useState(false);
+  const { fontScale } = useWindowDimensions();
+  const minimumInputHeight = Math.max(44, Math.ceil(22 * fontScale + 12));
+  const [inputHeight, setInputHeight] = useState(44);
   const historyScroll = useRef<ScrollView>(null);
   const followNewMessages = useRef(false);
   const inlinePanelAnchorIndex = thread.messages.reduce(
-    (lastIndex, message, index) => (message.role === "user" ? index : lastIndex),
+    (lastIndex, message, index) => (message.role === "assistant" ? index : lastIndex),
     -1
   );
 
@@ -574,10 +570,10 @@ function ConversationThread({
     <View style={styles.threadSurface}>
       <View accessibilityLabel="对话导航" style={styles.threadHeader}>
         <Pressable accessibilityLabel="返回 Orbit AI" accessibilityRole="button" onPress={() => { Keyboard.dismiss(); onBack(); }} style={styles.backButton}>
-          <Ionicons color={colors.ink} name="arrow-back-outline" size={24} />
+          <Ionicons color={colors.ink} name="chevron-back" size={22} />
         </Pressable>
         <View style={styles.threadTitleBlock}>
-          <Text style={styles.threadEyebrow}>Orbit AI</Text>
+          <View style={styles.threadBrand}><Image accessible={false} source={iorbitBrandMark} testID="iorbit-brand-mark" style={styles.brandMark} /><Text style={styles.threadEyebrow}>IORBIT</Text></View>
           <Text numberOfLines={1} style={styles.threadTitle}>
             {thread.title}
           </Text>
@@ -673,37 +669,56 @@ function ConversationThread({
           runReferences={runReferences}
         />
       ) : null}
-      {sending ? <Text accessibilityLiveRegion="polite" style={styles.threadNextAction}>正在回复…</Text> : null}
+      {sendError ? <View accessibilityLiveRegion="polite" style={styles.failureStack}>
+        <Text style={[styles.messageLabel, styles.assistantLabel]}>IORBIT</Text>
+        <View style={styles.failureCard}>
+        <View style={styles.failureHeading}><Ionicons color={colors.rose} name="alert-circle-outline" size={28} /><Text style={styles.failureTitle}>这次回答没有生成</Text></View>
+        <Text style={styles.failureBody}>{sendError}</Text>
+        <View style={styles.failureActions}>
+          <Pressable accessibilityRole="button" onPress={onRetrySend} disabled={sending || writingBlocked} style={styles.failurePrimary}><Text style={styles.failurePrimaryText}>重新生成</Text></Pressable>
+          <Pressable accessibilityRole="button" onPress={onEditQuestion} disabled={sending} style={styles.failureSecondary}><Text style={styles.failureSecondaryText}>编辑问题</Text></Pressable>
+        </View>
+        </View>
+        {sendCode ? <Text selectable style={styles.failureCode}>{sendCode}</Text> : null}
+      </View> : null}
+      {actionError ? <Text accessibilityLiveRegion="polite" style={styles.errorText}>{actionError}</Text> : null}
+      {saveError ? <View accessibilityLiveRegion="polite" style={styles.failureCard}>
+        <Text style={styles.failureTitle}>回复尚未保存</Text><Text style={styles.failureBody}>{saveError}</Text>
+        <Pressable accessibilityRole="button" onPress={onRetrySave} disabled={saving} style={styles.failurePrimary}><Text style={styles.failurePrimaryText}>重试保存</Text></Pressable>
+      </View> : null}
+      {sending || saving ? <Text accessibilityLiveRegion="polite" style={styles.threadNextAction}>{saving ? "正在保存会话…" : "正在回复…"}</Text> : null}
       </ScrollView>
+      {saveNotice ? <Text accessibilityLiveRegion="polite" style={[styles.errorText, { marginHorizontal: layout.pageInset }]}>{saveNotice}</Text> : null}
       <View testID="conversation-composer" style={styles.composerPanel}>
         <TextInput
-          accessibilityLabel="继续聊聊"
+          accessibilityLabel="消息"
           multiline
-          onChangeText={onChangeDraft}
-          placeholder="继续聊聊…"
+          numberOfLines={1}
+          onChangeText={(value) => { if (!value) setInputHeight(minimumInputHeight); onChangeDraft(value); }}
+          onContentSizeChange={(event) => setInputHeight(Math.min(120, Math.max(minimumInputHeight, event.nativeEvent.contentSize.height)))}
+          placeholder="继续追问，或换个角度问…"
           placeholderTextColor={colors.text4}
-          style={styles.input}
+          style={[styles.input, { height: Math.max(minimumInputHeight, inputHeight) }]}
           textAlignVertical="top"
           value={draftMessage}
         />
-        {sendError ? <Text style={styles.errorText}>{sendError}</Text> : null}
         <View style={styles.composerActions}>
-        <Pressable accessibilityLabel="打开快捷入口" accessibilityRole="button" onPress={() => { Keyboard.dismiss(); setRoutesOpen(!routesOpen); }} style={styles.backButton}>
-          <Ionicons color={colors.text3} name="add-circle-outline" size={27} />
+        <Pressable accessibilityLabel="打开快捷入口" accessibilityRole="button" onPress={() => { Keyboard.dismiss(); setRoutesOpen(!routesOpen); }} style={styles.composerPlusButton}>
+          <Ionicons color={colors.ink} name="add" size={22} />
         </Pressable>
         <Pressable
           accessibilityLabel="发送消息"
           accessibilityRole="button"
-          accessibilityState={{ disabled: sending || !draftMessage.trim(), busy: sending }}
-          disabled={sending || !draftMessage.trim()}
+          accessibilityState={{ disabled: sending || writingBlocked || !draftMessage.trim(), busy: sending || saving }}
+          disabled={sending || writingBlocked || !draftMessage.trim()}
           onPress={() => { followNewMessages.current = true; onSend(); }}
           style={({ pressed }) => [
             styles.sendButton,
-            sending || !draftMessage.trim() ? styles.disabled : null,
+            sending || writingBlocked || !draftMessage.trim() ? styles.disabled : null,
             pressed ? styles.pressed : null
           ]}
         >
-          <Ionicons color={colors.onAccent} name={sending ? "ellipsis-horizontal" : "send-outline"} size={20} />
+          <Ionicons color={colors.onAccent} name={sending ? "ellipsis-horizontal" : "paper-plane-outline"} size={20} />
         </Pressable>
         </View>
       </View>
@@ -996,13 +1011,11 @@ function EventInlinePanel({
 }) {
   const { colors, styles } = useStyles();
   const prioritizedEvents = prioritizeConversationEvents(thread, eventCards);
-
-  return (
-    <View style={styles.inlinePanel}>
-      <View style={styles.inlinePanelHeader}>
+  const header = (
+      <View style={[styles.inlinePanelHeader, eventCards.length ? styles.eventPanelHeader : null]}>
         <View style={styles.inlinePanelTitleBlock}>
           <Text style={styles.panelTitle}>{panel.title}</Text>
-          <Text style={styles.inlinePanelDetail}>{panel.detail}</Text>
+          {!eventCards.length ? <Text style={styles.inlinePanelDetail}>{panel.detail}</Text> : null}
         </View>
         <Pressable
           accessibilityRole="button"
@@ -1016,6 +1029,11 @@ function EventInlinePanel({
           <Ionicons color={colors.accent} name="chevron-forward" size={15} />
         </Pressable>
       </View>
+  );
+
+  return (
+    <View style={styles.inlinePanel}>
+      {!eventCards.length ? header : null}
       {eventsStateKind === "loading" ? (
         <Text style={styles.inlinePanelDetail}>正在读取活动。</Text>
       ) : null}
@@ -1037,59 +1055,24 @@ function EventInlinePanel({
                 pressed ? styles.pressed : null
               ]}
             >
-              <View style={styles.eventSuggestionMediaColumn}>
-                <ImageBackground
-                  imageStyle={styles.eventSuggestionThumbImage}
+                <Image
+                  testID={`ai-event-image-${event.id}`}
                   source={{ uri: assetUrl(baseUrl, event.coverPath) }}
                   style={styles.eventSuggestionThumbFrame}
-                >
-                  <View style={styles.eventSuggestionThumbOverlay} />
-                </ImageBackground>
-                <Text style={styles.eventStatusBadge}>{event.status}</Text>
-              </View>
+                />
               <View style={styles.eventSuggestionText}>
                 <Text numberOfLines={2} style={styles.eventSuggestionTitle}>
                   {event.title}
                 </Text>
-                <View style={styles.eventSuggestionMeta}>
-                  <View style={styles.eventSuggestionMetaLine}>
-                    <Ionicons color={colors.text3} name="time-outline" size={13} />
-                    <Text numberOfLines={1} style={styles.eventSuggestionDetail}>
-                      {event.startsAt}
-                    </Text>
-                  </View>
-                  {event.location ? (
-                    <View style={styles.eventSuggestionMetaLine}>
-                      <Ionicons
-                        color={colors.text3}
-                        name="location-outline"
-                        size={13}
-                      />
-                      <Text numberOfLines={1} style={styles.eventSuggestionDetail}>
-                        {event.location}
-                      </Text>
-                    </View>
-                  ) : null}
-                  <View style={styles.eventSuggestionMetaLine}>
-                    <Ionicons color={colors.text3} name="people-outline" size={13} />
-                    <Text numberOfLines={1} style={styles.eventSuggestionDetail}>
-                      {event.participantCountLabel}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.eventSuggestionFooter}>
-                  <Text numberOfLines={1} style={styles.eventSuggestionDetail}>
-                    打开活动背景
-                  </Text>
-                  <Text numberOfLines={1} style={styles.eventSuggestionAction}>
-                    {event.actionLabel}
-                  </Text>
-                </View>
+                <Text style={styles.eventSuggestionDetail}>{event.startsAt}{event.location ? ` · ${event.location}` : ""}</Text>
+                <Text style={styles.eventSuggestionDetail}>{event.status} · {event.participantCountLabel}</Text>
               </View>
+              <Text style={styles.eventSuggestionAction}>{event.actionLabel}</Text>
             </Pressable>
           ))}
         </View>
       ) : null}
+      {eventCards.length ? header : null}
     </View>
   );
 }
@@ -1494,6 +1477,7 @@ function MessageBubble({ baseUrl, message, onOpenHref }: { baseUrl: string; mess
 
   return (
     <View accessibilityLabel={isUser ? "我的消息" : "Orbit AI 回复"} style={[styles.messageBubble, isUser ? styles.userBubble : null]}>
+      <Text style={[styles.messageLabel, !isUser ? styles.assistantLabel : null]}>{isUser ? "你" : "IORBIT"}</Text>
       {isUser ? <Text selectable style={[styles.messageText, styles.messageTextUser]}>{message.content}</Text> : <MarkdownContent content={message.content} isUser={false} />}
       {links.map((link) => (
         <Pressable
@@ -1533,25 +1517,38 @@ function MarkdownContent({
     return null;
   }
 
+  const groups: { number?: string; blocks: MarkdownBlockView[] }[] = [];
+  for (const block of blocks) {
+    const number = !block.quote && block.kind === "listItem" ? /^(\d+)[.)]$/u.exec(block.marker ?? "")?.[1] : undefined;
+    const previous = groups.at(-1);
+    if (number) groups.push({ number, blocks: [{ ...block, kind: "paragraph" }] });
+    else if (previous?.number && block.kind === "paragraph" && !block.quote) previous.blocks.push(block);
+    else groups.push({ blocks: [block] });
+  }
+
   return (
     <View style={styles.markdownStack}>
-      {blocks.map((block, index) => (
-        <MarkdownBlock block={block} isUser={isUser} key={`${block.kind}-${index}`} />
-      ))}
+      {groups.map((group, index) => group.number ? <View key={index} style={styles.numberedRow}>
+        <Text style={styles.numberedMarker}>{group.number}</Text>
+        <View style={styles.numberedCopy}>{group.blocks.map((block, blockIndex) => <MarkdownBlock block={block} isUser={isUser} detail={blockIndex > 0} key={blockIndex} />)}</View>
+      </View> : <MarkdownBlock block={group.blocks[0]!} isUser={isUser} key={index} />)}
     </View>
   );
 }
 
 function MarkdownBlock({
   block,
-  isUser
+  isUser,
+  detail = false
 }: {
   block: MarkdownBlockView;
   isUser: boolean;
+  detail?: boolean;
 }) {
   const { styles } = useStyles();
   const textStyle = [
     styles.messageText,
+    detail ? styles.numberedDetail : null,
     block.quote ? styles.markdownQuoteText : null,
     isUser ? styles.messageTextUser : null
   ];
@@ -1625,7 +1622,25 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   readingRoot: { flex: 1, maxWidth: layout.contentMax, width: "100%", alignSelf: "center" },
   readingFallback: { paddingHorizontal: layout.pageInset, paddingTop: spacing.md, gap: spacing.lg },
   readingHistory: { flex: 1 },
-  readingContent: { gap: spacing.lg, paddingTop: 22, paddingBottom: 24, paddingHorizontal: layout.pageInset },
+  readingContent: { gap: 16, paddingTop: 16, paddingBottom: 24, paddingHorizontal: layout.pageInset },
+  threadBrand: { flexDirection: "row", alignItems: "center", gap: 6 },
+  brandMark: { width: 18, height: 18 },
+  composerPlusButton: { width: 44, height: 44, borderRadius: 8, backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center" },
+  numberedRow: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
+  numberedMarker: { color: colors.accent, fontSize: 22, fontWeight: "800", lineHeight: 24, minWidth: 22 },
+  numberedCopy: { flex: 1, minWidth: 0, gap: 4 },
+  numberedDetail: { color: colors.text2, fontSize: 14, lineHeight: 23 },
+  failureCard: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16, gap: 12 },
+  failureStack: { gap: 12 },
+  failureHeading: { flexDirection: "row", alignItems: "center", gap: 8 },
+  failureTitle: { color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: "800", flexShrink: 1 },
+  failureBody: { color: colors.text2, fontSize: 14, lineHeight: 22 },
+  failureCode: { color: colors.text3, fontSize: 12, lineHeight: 18 },
+  failureActions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  failurePrimary: { minHeight: 44, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
+  failurePrimaryText: { color: colors.surface, fontSize: 14, lineHeight: 22, fontWeight: "700" },
+  failureSecondary: { minHeight: 44, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: colors.ink, alignItems: "center", justifyContent: "center" },
+  failureSecondaryText: { color: colors.ink, fontSize: 14, lineHeight: 22, fontWeight: "600" },
   routesPanel: { padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border },
   composerActions: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   recordLink: { flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 48, borderTopWidth: 1, borderTopColor: colors.border, paddingVertical: spacing.sm },
@@ -1735,14 +1750,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   composerPanel: {
     backgroundColor: colors.surface,
-    borderColor: colors.border2,
-    borderWidth: 1,
+    borderColor: colors.ink,
+    borderWidth: 1.5,
     gap: 4,
-    marginBottom: 6,
+    marginBottom: 0,
+    marginTop: 10,
     paddingHorizontal: 12,
-    paddingTop: 10,
+    paddingTop: 6,
     paddingBottom: 6,
-    borderRadius: radius.input,
+    borderRadius: 16,
     marginHorizontal: layout.pageInset
   },
   contactAvatar: {
@@ -1799,13 +1815,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   input: {
     backgroundColor: colors.surface,
     color: colors.text,
-    fontSize: typography.body,
-    lineHeight: 25,
-    minHeight: 48,
+    fontSize: 15,
+    lineHeight: 22,
+    minHeight: 44,
     maxHeight: 120,
-    paddingHorizontal: 7,
-    paddingTop: 2,
-    paddingBottom: 2
+    paddingHorizontal: 4,
+    paddingTop: 6,
+    paddingBottom: 6
   },
   eventCardStack: {
     gap: spacing.sm
@@ -1826,18 +1842,18 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     textAlign: "center"
   },
   eventSuggestionCard: {
-    alignItems: "flex-start",
+    alignItems: "center",
     backgroundColor: colors.surface,
     borderColor: colors.border2,
     borderRadius: radius.card,
-    borderWidth: 1,
+    borderWidth: 0,
     flexDirection: "row",
     gap: spacing.md,
-    padding: spacing.sm
+    paddingVertical: 12
   },
+  eventPanelHeader: { alignItems: "center" },
   eventSuggestionDetail: {
     color: colors.text3,
-    flex: 1,
     fontSize: typography.caption,
     lineHeight: 16,
     minWidth: 0
@@ -1880,7 +1896,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   eventSuggestionThumbFrame: {
     backgroundColor: colors.surface3,
     borderRadius: radius.sm,
-    height: 64,
+    height: 52,
     overflow: "hidden",
     width: 64
   },
@@ -1893,7 +1909,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   eventSuggestionTitle: {
     color: colors.ink,
-    fontSize: typography.small,
+    fontSize: 15,
     fontWeight: "800",
     lineHeight: 18
   },
@@ -2110,7 +2126,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     overflow: "hidden"
   },
   markdownStack: {
-    gap: spacing.sm
+    gap: 14
   },
   markdownQuoteBlock: {
     borderLeftColor: colors.border,
@@ -2131,22 +2147,27 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   messageLabel: {
     color: colors.text3,
     fontSize: typography.caption,
-    fontWeight: "700"
+    fontWeight: "600",
+    lineHeight: 18
   },
+  assistantLabel: { color: colors.accent },
   messageStack: {
-    gap: spacing.lg
+    gap: 14
   },
   messagePanel: {
     gap: spacing.sm
   },
   messageText: {
     color: colors.text,
-    fontSize: typography.body,
-    lineHeight: 27
+    fontSize: 15,
+    lineHeight: 24,
+    fontWeight: "400"
   },
   messageTextUser: {
-    color: colors.accentPress,
-    fontWeight: "600"
+    color: colors.ink,
+    fontSize: 16,
+    fontWeight: "700",
+    lineHeight: 24
   },
   messageTime: {
     color: colors.text4,
@@ -2234,7 +2255,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   sendButton: {
     alignItems: "center",
     backgroundColor: colors.accent,
-    borderRadius: radius.pill,
+    borderRadius: 10,
     height: 44,
     width: 44,
     justifyContent: "center",
@@ -2245,8 +2266,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     fontWeight: "700"
   },
   threadEyebrow: {
-    ...textStyles.section,
-    color: colors.accent
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: "900",
+    lineHeight: 20,
+    letterSpacing: 0.6
   },
   threadHeader: {
     alignItems: "center",
@@ -2254,9 +2278,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     borderBottomWidth: 1,
     flexDirection: "row",
     gap: spacing.xs,
-    minHeight: 68,
-    paddingHorizontal: 8,
-    paddingBottom: 8
+    minHeight: 52,
+    paddingHorizontal: 16,
+    paddingVertical: 3.5
   },
   threadNextAction: {
     color: colors.text3,
@@ -2268,25 +2292,20 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     flex: 1
   },
   threadTitle: {
-    color: colors.ink,
-    fontSize: 14,
+    color: colors.text3,
+    fontSize: 11,
     fontWeight: "400",
-    lineHeight: 22
+    lineHeight: 16
   },
   threadTitleBlock: {
     flex: 1,
-    gap: spacing.xs,
+    gap: 1,
+    alignItems: "center",
     minWidth: 0
   },
   userBubble: {
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.accentSoft,
-    borderWidth: 1,
-    borderLeftColor: colors.accent,
-    borderLeftWidth: 3,
-    borderTopRightRadius: 8,
-    borderBottomRightRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    paddingBottom: 16
   }
 }));

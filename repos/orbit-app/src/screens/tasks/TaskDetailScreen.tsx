@@ -2,7 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Crypto from "expo-crypto";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ORBIT_API_ENDPOINTS, reminderPath, remindersPath, taskActivitiesPath, taskPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
@@ -41,6 +42,13 @@ function dateLabel(value?: string): string {
 
 export function TaskDetailScreen() {
   const { colors, styles } = useStyles();
+  const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
+  const largeText = fontScale > 1.3;
+  const metadataLabelStyle = [styles.metadataLabel, largeText && styles.metadataLabelLarge];
+  const titleInputRef = useRef<TextInput>(null);
+  const [titleHeight, setTitleHeight] = useState(0);
+  const [notesHeight, setNotesHeight] = useState(0);
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const taskId = first(params.id);
   const router = useRouter();
@@ -214,24 +222,41 @@ export function TaskDetailScreen() {
   }
 
   return (
+    <View style={styles.screen}>
     <AppScreen
       refreshControl={<RefreshControl onRefresh={refresh} refreshing={detailState.refreshing || activitiesState.refreshing || remindersState.refreshing} tintColor={colors.accent} />}
-      title="待办"
+      headerActions={detail ? <Pressable accessibilityLabel="编辑待办" accessibilityRole="button" disabled={saving} onPress={() => titleInputRef.current?.focus()} style={styles.iconButton}>
+        {largeText ? <Ionicons color={colors.accent} name="create-outline" size={22} /> : <Text style={styles.editLink}>编辑</Text>}
+      </Pressable> : null}
+      title="待办详情"
     >
       {detailState.kind === "loading" ? <LoadingState /> : null}
       {detailState.kind === "failure" || detailState.kind === "offline" ? <ErrorState message={detailState.error.message} title="待办暂时打不开" /> : null}
       {detail ? (
         <>
-          <View style={styles.topBar}>
-            <Text style={styles.statusText}>{detail.statusLabel}</Text>
-            <Pressable accessibilityLabel="更多待办操作" accessibilityRole="button" onPress={() => setMoreOpen(true)} style={({ pressed }) => [styles.iconButton, pressed ? styles.pressed : null]}>
-              <Ionicons color={colors.text2} name="ellipsis-horizontal" size={21} />
+          <View style={styles.hero}>
+            <Pressable
+              accessibilityLabel={detail.status === "completed" ? `恢复：${detail.title}` : `完成：${detail.title}`}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: detail.status === "completed", disabled: saving || detail.status === "cancelled" }}
+              aria-checked={detail.status === "completed"}
+              disabled={saving || detail.status === "cancelled"}
+              onPress={changeStatus}
+              style={styles.heroCheckButton}
+            >
+              <View style={[styles.checkbox, detail.status === "completed" && styles.checkboxCompleted]}>
+                {detail.status === "completed" ? <Ionicons color={colors.onAccent} name="checkmark" size={18} /> : null}
+              </View>
             </Pressable>
-          </View>
-
-          <View style={styles.editorGroup}>
-            <TextInput accessibilityLabel="待办标题" editable={!saving} multiline onBlur={save} onChangeText={setTitle} style={styles.titleInput} value={title} />
-            <TextInput accessibilityLabel="备注" editable={!saving} multiline onBlur={save} onChangeText={setNotes} placeholder="写一点备注" placeholderTextColor={colors.text4} style={styles.notesInput} value={notes} />
+            <View style={styles.heroBody}>
+              <TextInput ref={titleInputRef} accessibilityLabel="待办标题" editable={!saving} multiline scrollEnabled={false} onBlur={save} onChangeText={setTitle}
+                onContentSizeChange={event => setTitleHeight(event.nativeEvent.contentSize.height)}
+                style={[styles.titleInput, { height: Math.max(32 * fontScale, titleHeight) }]} value={title} />
+              <View style={styles.badges}>
+                <Text style={styles.statusText}>{detail.status === "open" ? "未完成" : detail.statusLabel}</Text>
+                {detail.dueAt || detail.plannedDate ? <Text style={styles.dateBadge}>{taskDateLabel(detail.dueAt ?? detail.plannedDate)}</Text> : null}
+              </View>
+            </View>
           </View>
 
           {staleDraft ? <View>
@@ -246,32 +271,48 @@ export function TaskDetailScreen() {
 
           <View style={styles.metadataGroup}>
             <View style={styles.metadataRow}>
-              <Ionicons color={colors.accent} name="calendar-outline" size={19} />
-              <Text style={styles.metadataLabel}>安排</Text>
-              <Text style={styles.metadataValue}>{dateLabel(detail.dueAt ?? detail.plannedDate)}</Text>
+              <Text style={metadataLabelStyle}>{detail.dueAt ? "截止" : "安排"}</Text>
+              <Text style={styles.metadataValue}>{taskDateLabel(detail.dueAt ?? detail.plannedDate)}</Text>
             </View>
-            <Pressable accessibilityRole="button" onPress={() => setMoreOpen(true)} style={({ pressed }) => [styles.metadataRow, pressed ? styles.pressed : null]}>
-              <Ionicons color={colors.amber} name="notifications-outline" size={19} />
-              <Text style={styles.metadataLabel}>提醒</Text>
+            {detail.relatedContactId ? <Pressable accessibilityLabel="查看关联人脉" accessibilityRole="button" onPress={() => router.push(`/contacts/${encodeURIComponent(detail.relatedContactId!)}` as Href)} style={styles.metadataRow}>
+              <Text style={metadataLabelStyle}>相关人脉</Text>
+              <Text style={[styles.metadataValue, styles.linkValue]}>查看关联人脉</Text>
+              <Ionicons color={colors.text4} name="chevron-forward" size={17} />
+            </Pressable> : null}
+            {detail.relatedEventId ? <Pressable accessibilityLabel="查看关联活动" accessibilityRole="button" onPress={() => router.push(`/events/${encodeURIComponent(detail.relatedEventId!)}` as Href)} style={styles.metadataRow}>
+              <Text style={metadataLabelStyle}>相关活动</Text>
+              <Text style={[styles.metadataValue, styles.linkValue]}>查看关联活动</Text>
+              <Ionicons color={colors.text4} name="chevron-forward" size={17} />
+            </Pressable> : null}
+            {detail.sourceLabel ? <View style={styles.metadataRow}>
+              <Text style={metadataLabelStyle}>来源</Text>
+              <Text style={styles.metadataValue}>{detail.sourceLabel}</Text>
+            </View> : null}
+            {detail.createdAt ? <View style={styles.metadataRow}>
+              <Text style={metadataLabelStyle}>创建于</Text>
+              <Text style={styles.metadataValue}>{createdDateLabel(detail.createdAt)}</Text>
+            </View> : null}
+            <View style={styles.metadataRow}>
+              <Text style={metadataLabelStyle}>分类</Text>
+              <Text style={styles.metadataValue}>{detail.categoryLabel}</Text>
+            </View>
+            <Pressable accessibilityLabel="更多待办操作" accessibilityRole="button" onPress={() => setMoreOpen(true)} style={({ pressed }) => [styles.metadataRow, pressed ? styles.pressed : null]}>
+              <Text style={metadataLabelStyle}>提醒</Text>
               <Text style={styles.metadataValue}>{reminders[0]?.label ?? "未设置"}</Text>
               <Ionicons color={colors.text4} name="chevron-forward" size={17} />
             </Pressable>
-            <View style={[styles.metadataRow, styles.metadataRowLast]}>
-              <Ionicons color={colors.sky} name="link-outline" size={19} />
-              <Text style={styles.metadataLabel}>关联</Text>
-              <Text style={styles.metadataValue}>{detail.categoryLabel}</Text>
-            </View>
+          </View>
+
+          <View style={styles.contentSection}>
+            <Text accessibilityRole="header" style={styles.contentHeading}>内容</Text>
+            <TextInput accessibilityLabel="备注" editable={!saving} multiline scrollEnabled={false} onBlur={save} onChangeText={setNotes}
+              onContentSizeChange={event => setNotesHeight(event.nativeEvent.contentSize.height)}
+              placeholder="写一点备注" placeholderTextColor={colors.text4}
+              style={[styles.notesInput, { height: Math.max(72, notesHeight, 24 * fontScale) }]} value={notes} />
           </View>
 
           {mutationError && !moreOpen ? <Text accessibilityRole="alert" style={styles.errorText}>{mutationError}</Text> : null}
           {reminderMessage ? <Text style={styles.successText}>{reminderMessage}</Text> : null}
-
-          {detail.status !== "cancelled" ? (
-            <Pressable accessibilityRole="button" disabled={saving} onPress={changeStatus} style={({ pressed }) => [styles.completeButton, detail.status === "completed" ? styles.reopenButton : null, pressed ? styles.pressed : null]}>
-              <Ionicons color={detail.status === "completed" ? colors.accent : colors.onAccent} name={detail.status === "completed" ? "refresh" : "checkmark"} size={20} />
-              <Text style={detail.status === "completed" ? styles.reopenButtonText : styles.completeButtonText}>{detail.status === "completed" ? "恢复待办" : "标记完成"}</Text>
-            </Pressable>
-          ) : null}
 
           <Modal animationType="slide" onRequestClose={() => setMoreOpen(false)} transparent visible={moreOpen}>
             <View style={styles.modalRoot}>
@@ -321,31 +362,75 @@ export function TaskDetailScreen() {
         </>
       ) : null}
     </AppScreen>
+    {detail ? <View testID="task-detail-actions" style={[styles.actionDock, { paddingBottom: Math.max(24, insets.bottom) }]}>
+      <View style={styles.actionContent}>
+        {detail.status !== "cancelled" ? <Pressable accessibilityRole="button" disabled={saving} onPress={changeStatus} style={({ pressed }) => [styles.completeButton, detail.status === "completed" ? styles.reopenButton : null, pressed ? styles.pressed : null]}>
+          <Text style={detail.status === "completed" ? styles.reopenButtonText : styles.completeButtonText}>{detail.status === "completed" ? "恢复待办" : "标记完成"}</Text>
+        </Pressable> : null}
+        <Pressable accessibilityLabel="编辑待办" accessibilityRole="button" disabled={saving} onPress={() => titleInputRef.current?.focus()} style={({ pressed }) => [styles.editButton, pressed && styles.pressed]}>
+          <Text style={styles.editButtonText}>编辑待办</Text>
+        </Pressable>
+      </View>
+    </View> : null}
+    </View>
   );
 }
 
+function taskDateLabel(value?: string): string {
+  if (!value) return "未安排日期";
+  const now = new Date();
+  const date = new Date(value.length === 10 ? `${value}T12:00:00+09:00` : value);
+  if (!Number.isFinite(date.getTime())) return "日期不可用";
+  const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" });
+  if (day.format(date) === day.format(now)) {
+    return value.length === 10 ? "今天" : `今天 ${new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(date)}`;
+  }
+  return dateLabel(value);
+}
+
+function createdDateLabel(value: string): string {
+  const parts = new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(value));
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(item => item.type === type)?.value ?? "";
+  return `${part("month")}月${part("day")}日 ${part("hour")}:${part("minute")}`;
+}
+
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  completeButton: { ...createControlStyles(colors).primaryButton, flexDirection: "row", gap: spacing.sm },
-  completeButtonText: { ...createControlStyles(colors).primaryButtonText, color: colors.onAccent },
+  actionContent: { alignSelf: "center", gap: 8, maxWidth: layout.contentMax - 2 * layout.pageInset, width: "100%" },
+  actionDock: { backgroundColor: colors.surface, borderTopColor: colors.border, borderTopWidth: 1, paddingTop: 12, paddingHorizontal: 16 },
+  badges: { alignItems: "flex-start", flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
+  checkbox: { alignItems: "center", justifyContent: "center", width: 26, height: 26, borderWidth: 1.5, borderColor: colors.ink, borderRadius: 7 },
+  checkboxCompleted: { backgroundColor: colors.accent, borderColor: colors.accent },
+  completeButton: { ...createControlStyles(colors).primaryButton, minHeight: 50 },
+  completeButtonText: { ...createControlStyles(colors).primaryButtonText, fontSize: 15, lineHeight: 22 },
+  contentHeading: { color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: "800" },
+  contentSection: { gap: 6 },
+  dateBadge: { color: colors.surface, backgroundColor: colors.ink, borderRadius: 6, paddingVertical: 4, paddingHorizontal: 9, fontSize: 11, lineHeight: 16, fontWeight: "700" },
   deleteButton: { alignItems: "center", flexDirection: "row", gap: spacing.sm, justifyContent: "center", minHeight: 50, marginTop: spacing.lg },
   deleteText: { color: colors.rose, fontSize: typography.body, fontWeight: "700" },
-  editorGroup: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, overflow: "hidden", borderRadius: radius.input },
+  editButton: { ...createControlStyles(colors).secondaryButton, minHeight: 46 },
+  editButtonText: { ...createControlStyles(colors).secondaryButtonText, fontSize: 14, lineHeight: 20 },
+  editLink: { color: colors.accent, fontSize: 14, lineHeight: 20, fontWeight: "600" },
   errorText: { color: colors.rose, fontSize: typography.small },
   iconButton: { alignItems: "center", justifyContent: "center", minHeight: layout.control, width: layout.control, borderRadius: radius.control },
-  metadataGroup: { borderColor: colors.border, backgroundColor: colors.surface, paddingHorizontal: 0 },
-  metadataLabel: { ...textStyles.body, color: colors.text2, fontWeight: "600", minWidth: 54, flexShrink: 0 },
-  metadataRow: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, minHeight: 54, paddingVertical: spacing.sm },
-  metadataRowLast: { borderBottomWidth: 0 },
-  metadataValue: { ...textStyles.small, color: colors.text3, flex: 1, minWidth: 140, textAlign: "right" },
+  hero: { alignItems: "flex-start", flexDirection: "row", gap: 0, paddingTop: 4 },
+  heroBody: { flex: 1, minWidth: 0 },
+  heroCheckButton: { width: 44, minHeight: 44, justifyContent: "flex-start", paddingTop: 4 },
+  linkValue: { color: colors.accent },
+  metadataGroup: { borderTopColor: colors.border, borderTopWidth: 1, backgroundColor: colors.surface },
+  metadataLabel: { color: colors.text3, fontSize: 14, lineHeight: 20, width: 72, flexShrink: 0 },
+  metadataLabelLarge: { width: "100%", marginBottom: 6 },
+  metadataRow: { alignItems: "center", borderBottomColor: colors.border2, borderBottomWidth: 1, flexDirection: "row", flexWrap: "wrap", gap: 0, minHeight: 48, paddingVertical: 13 },
+  metadataValue: { color: colors.ink, fontSize: 14, lineHeight: 20, fontWeight: "600", flex: 1, minWidth: 120 },
   modalRoot: { flex: 1, justifyContent: "flex-end" },
   modalScrim: { backgroundColor: "rgba(16, 24, 40, 0.28)", ...StyleSheet.absoluteFill },
-  notesInput: { ...textStyles.body, borderTopColor: colors.border, borderTopWidth: 1, color: colors.text2, minHeight: 120, padding: spacing.md, textAlignVertical: "top" },
+  notesInput: { color: colors.text2, fontSize: 15, lineHeight: 24, padding: 0, textAlignVertical: "top" },
   pressed: { opacity: 0.68 },
   reminderOption: { ...createControlStyles(colors).chip, flex: 1 },
   reminderOptions: { flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" },
   reminderOptionText: { ...textStyles.caption, color: colors.accent, textAlign: "center", flexShrink: 1 },
   reopenButton: { backgroundColor: colors.surface, borderColor: colors.accent, borderWidth: 1 },
   reopenButtonText: { ...createControlStyles(colors).secondaryButtonText, color: colors.accent },
+  screen: { flex: 1, backgroundColor: colors.surface },
   sheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, maxHeight: "78%", overflow: "hidden" },
   sheetBody: { gap: spacing.sm, padding: spacing.lg, paddingTop: spacing.sm },
   sheetHeader: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: "row", justifyContent: "space-between", minHeight: 58, paddingHorizontal: spacing.lg },
@@ -355,8 +440,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   sheetRowText: { color: colors.text, flex: 1, fontSize: typography.small, fontWeight: "600" },
   sheetSection: { color: colors.text3, fontSize: typography.caption, fontWeight: "800", marginTop: spacing.md },
   sheetTitle: { ...textStyles.section, color: colors.ink },
-  statusText: { color: colors.text3, fontSize: typography.caption, fontWeight: "700" },
+  statusText: { color: colors.text3, fontSize: 11, lineHeight: 16, borderColor: colors.border, borderWidth: 1, borderRadius: 6, paddingHorizontal: 9, paddingVertical: 3 },
   successText: { color: colors.accent, fontSize: typography.small },
-  titleInput: { ...textStyles.title, color: colors.ink, minHeight: 76, padding: spacing.md },
-  topBar: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", minHeight: 40 },
+  titleInput: { color: colors.ink, fontSize: 24, lineHeight: 32, fontWeight: "900", letterSpacing: -0.48, padding: 0, textAlignVertical: "top" },
 }));

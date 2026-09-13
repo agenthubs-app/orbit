@@ -63,7 +63,7 @@ export const Ionicons = ({ size }) => <span aria-hidden="true" style={{ display:
 test.before(async () => {
   const result = await build({
     stdin: { contents: `import React from "react"; import { createRoot } from "react-dom/client"; import { useFixture } from "fixture"; import { AccountAuthScreen } from "./src/screens/profile/AccountAuthScreen"; ${hasReset ? 'import { PasswordResetScreen } from "./src/screens/profile/PasswordResetScreen";' : 'const PasswordResetScreen = () => null;'} function App() { const s = useFixture(); return s.mounted ? (s.mode === "reset" ? <PasswordResetScreen /> : <AccountAuthScreen mode={s.mode} />) : null; } createRoot(document.getElementById("root")).render(<App />);`, resolveDir: process.cwd(), loader: "tsx" },
-    bundle: true, write: false, format: "iife", jsx: "automatic",
+    bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
     define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "recovery-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "recovery" }));

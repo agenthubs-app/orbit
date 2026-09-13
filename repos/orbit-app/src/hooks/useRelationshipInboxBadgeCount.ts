@@ -6,14 +6,16 @@ import {
   relationshipInboxToView
 } from "../view-models/relationship-inbox";
 
-export function useRelationshipInboxBadgeCount(): number | undefined {
+export function useRelationshipInboxBadgeCount(scopeKey?: string): number | undefined {
   const inboxState = useApiResource<unknown>(
     relationshipInboxPath(),
-    () => false
+    () => false,
+    scopeKey === undefined ? {} : { scopeKey }
   );
   const notificationsState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.notifications,
-    () => false
+    () => false,
+    scopeKey === undefined ? {} : { scopeKey }
   );
 
   if (

@@ -197,6 +197,7 @@ export interface ContactDetailSummary extends ContactSummary {
   detailTags: string[];
   evidenceExcerpts: string[];
   lastInteractionAt: string;
+  lastInteractionSummary?: string;
   location: string;
   noteSummaries: string[];
   publicBio: string;
@@ -1494,18 +1495,17 @@ export function contactDetailToSummary(data: unknown): ContactDetailSummary {
     evidenceExcerpts: evidenceExcerpts(contact),
     id: stringField(contact, "id", "contact"),
     ...(imageUrl ? { imageUrl } : {}),
-    lastInteractionAt: stringField(
-      contact,
-      "lastInteractionAt",
-      "暂无记录"
-    ),
+    lastInteractionAt: isRecord(contact.lastInteraction)
+      ? stringField(contact.lastInteraction, "occurredAt", "暂无记录")
+      : stringField(contact, "lastInteractionAt", "暂无记录"),
+    ...(isRecord(contact.lastInteraction)
+      ? { lastInteractionSummary: stringField(contact.lastInteraction, "summary") }
+      : {}),
     location: locationLabel(stringField(contact, "location")),
     name,
     nextAction: nextActionText(contact, name),
     noteSummaries: noteSummaries(contact),
-    organization: organizationLabel(
-      stringField(contact, "organization", "Independent")
-    ),
+    organization: organizationLabel(stringField(contact, "organization")),
     publicBio: publicProfileBio(contact),
     publicOffering: publicProfileList(contact, "offering"),
     publicPrompts: publicProfileList(contact, "conversationPrompts"),

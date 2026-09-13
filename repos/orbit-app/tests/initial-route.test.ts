@@ -7,31 +7,32 @@ describe("resolveInitialRouteHref", () => {
   it("supports only the exact legacy batch detail with encoded identifiers", () => {
     const path = "/contacts/new/batch/batch%3A%2F%20%E7%A9%BA";
     assert.equal(resolveInitialRouteHref(`/app${path}?tab=review#card`), `${path}?tab=review#card`);
-    for (const id of ["%ZZ", "%2E", "%2E%2E", "", "a/extra"]) assert.equal(resolveInitialRouteHref(`/contacts/new/batch/${id}`), "/ai");
+    for (const id of ["%ZZ", "%2E", "%2E%2E", "", "a/extra"]) assert.equal(resolveInitialRouteHref(`/contacts/new/batch/${id}`), "/home");
     assert.equal(resolveInitialRouteHref("/contacts/new/batch2/id"), "/contacts/new/batch2/id");
   });
   it("opens only the experience operation route, including encoded event identifiers", () => {
     assert.equal(resolveInitialRouteHref("/app/events/event%3A%2F%20%E7%A9%BA/operations/experience?tab=preview#questions"), "/events/event%3A%2F%20%E7%A9%BA/operations/experience?tab=preview#questions");
-    assert.equal(resolveInitialRouteHref("/events/e/operations/experience/extra"), "/ai");
-    assert.equal(resolveInitialRouteHref("/events/e/operations/unknown"), "/ai");
-    assert.equal(resolveInitialRouteHref("/events/%ZZ/operations/experience"), "/ai");
+    assert.equal(resolveInitialRouteHref("/events/e/operations/experience/extra"), "/home");
+    assert.equal(resolveInitialRouteHref("/events/e/operations/unknown"), "/home");
+    assert.equal(resolveInitialRouteHref("/events/%ZZ/operations/experience"), "/home");
     assert.equal(resolveInitialRouteHref("/events/event.demo!~/operations/experience"), "/events/event.demo!~/operations/experience");
-    assert.equal(resolveInitialRouteHref("/events/%2E%2E/operations/experience"), "/ai");
+    assert.equal(resolveInitialRouteHref("/events/%2E%2E/operations/experience"), "/home");
   });
   it("supports the public reset entry and preserves its fragment", () => {
     assert.equal(resolveInitialRouteHref("account/reset-password"), "/account/reset-password");
     assert.ok(resolveInitialRouteHref("/app/account/reset-password#token=redacted") === "/account/reset-password#token=redacted");
   });
-  it("defaults to the AI tab", () => {
-    assert.equal(resolveInitialRouteHref(undefined), "/ai");
+  it("defaults to the home dashboard", () => {
+    assert.equal(resolveInitialRouteHref(undefined), "/home");
   });
 
   it("accepts supported app tabs", () => {
+    assert.equal(resolveInitialRouteHref("ai"), "/ai");
     assert.equal(resolveInitialRouteHref("events"), "/events");
     assert.equal(resolveInitialRouteHref("/contacts"), "/contacts");
     assert.equal(resolveInitialRouteHref("dashboard"), "/dashboard");
     assert.equal(resolveInitialRouteHref("followups"), "/followups");
-    assert.equal(resolveInitialRouteHref("home"), "/ai");
+    assert.equal(resolveInitialRouteHref("home"), "/home");
     assert.equal(resolveInitialRouteHref("home/events"), "/home/events");
     assert.equal(resolveInitialRouteHref("inbox"), "/inbox");
     assert.equal(resolveInitialRouteHref("login-admin"), "/login-admin");
@@ -192,8 +193,8 @@ describe("resolveInitialRouteHref", () => {
     );
   });
 
-  it("falls back to the AI tab for unsupported values", () => {
-    assert.equal(resolveInitialRouteHref("unknown-route"), "/ai");
-    assert.equal(resolveInitialRouteHref("contacts/../../settings"), "/ai");
+  it("falls back to the home dashboard for unsupported values", () => {
+    assert.equal(resolveInitialRouteHref("unknown-route"), "/home");
+    assert.equal(resolveInitialRouteHref("contacts/../../settings"), "/home");
   });
 });

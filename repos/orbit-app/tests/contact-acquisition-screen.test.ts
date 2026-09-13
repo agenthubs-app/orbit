@@ -10,7 +10,7 @@ test("actual acquisition batch action opens the private collection without sendi
   const require = createRequire(import.meta.url);
   const result = await build({
     stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import { ContactAcquisitionScreen } from "./src/screens/contacts/ContactAcquisitionScreen"; createRoot(document.getElementById("root")).render(<ContactAcquisitionScreen />);', loader: "tsx", resolveDir: process.cwd() },
-    bundle: true, write: false, format: "iife", jsx: "automatic",
+    bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
     define: { "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "acquisition-native-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
@@ -38,10 +38,8 @@ const screenSource = readFileSync(
 );
 
 test("contact acquisition opens on business card capture", () => {
-  assert.match(
-    screenSource,
-    /useState<ContactAcquisitionMode>\("businessCard"\)/u
-  );
+  // Actual default, manual, QR and invalid-parameter initial states are rendered
+  // by ink-signal-contacts.test.ts; this assertion only retains native wiring.
   assert.match(
     screenSource,
     /const modes:[\s\S]*mode: "businessCard"[\s\S]*mode: "qr"[\s\S]*mode: "manual"/u

@@ -12,39 +12,39 @@ const screenSource = readFileSync(
 test("AI conversation screen can open web Orbit AI history sessions", () => {
   assert.match(screenSource, /source/u);
   assert.match(screenSource, /aiConversationSessionPath/u);
-  assert.match(screenSource, /agentChatSessionPayloadToThreadView/u);
+  assert.match(screenSource, /rawSessionThread/u);
   assert.match(screenSource, /isStoredAgentSession/u);
 });
 
 test("AI conversation screen persists iOS continuations back to web history sessions", () => {
-  assert.match(screenSource, /agentSessionUpdateRequestFromThread/u);
+  assert.match(screenSource, /messages: \[\.\.\.previousSession\.messages, \.\.\.messages\]/u);
   assert.match(screenSource, /ORBIT_API_ENDPOINTS\.aiConversationSessions/u);
-  assert.match(screenSource, /previousSessionData/u);
+  assert.match(screenSource, /previousSession/u);
 });
 
 test("AI conversation persists a consumed initial message before canonical navigation", () => {
   assert.match(screenSource, /function persistAndCanonicalizeDraftConversation/u);
-  assert.match(screenSource, /agentSessionCreateRequestFromThread/u);
+  assert.match(screenSource, /pendingSaveRef/u);
   assert.match(screenSource, /ORBIT_API_ENDPOINTS\.aiConversationSessions/u);
-  assert.match(screenSource, /if \(!saved\.success\)/u);
+  assert.match(screenSource, /aiSessionReceiptMatches\(result\.data, pending\.session\)/u);
   assert.match(
     screenSource,
-    /params: \{ id: sessionId, source: "session" \}/u
+    /params: \{ id: saved\.id, source: "session" \}/u
   );
   assert.match(
     screenSource,
-    /await persistAndCanonicalizeDraftConversation\(result\.data, nextThread\)/u
+    /await persistAndCanonicalizeDraftConversation\(pending\)/u
   );
 });
 
 test("AI conversation keeps a pending task suggestion visible before canonical navigation", () => {
   assert.match(
     screenSource,
-    /if \(thread\.taskInteraction\?\.state === "suggested"\) \{\s*return true;\s*\}/u
+    /waitForTask: nextThread\.taskInteraction\?\.state === "suggested"/u
   );
   assert.match(
     screenSource,
-    /if \(savedSessionId\) \{\s*router\.replace/u
+    /if \(savedSessionId && !saveNotice && !draftValue\.current\.trim\(\)\) router\.replace/u
   );
 });
 
@@ -68,14 +68,13 @@ test("AI conversation event panel renders related events as compact content modu
   assert.match(screenSource, /function EventInlinePanel/u);
   assert.match(screenSource, /prioritizeConversationEvents/u);
   assert.match(screenSource, /prioritizedEvents/u);
-  assert.match(screenSource, /styles\.eventSuggestionMediaColumn/u);
   assert.match(screenSource, /styles\.eventSuggestionThumbFrame/u);
-  assert.match(screenSource, /styles\.eventSuggestionMeta/u);
+  assert.match(screenSource, /styles\.eventSuggestionDetail/u);
   assert.match(screenSource, /event\.participantCountLabel/u);
   assert.match(screenSource, /event\.actionLabel/u);
   assert.match(
     screenSource,
-    /eventSuggestionThumbFrame:\s*\{[^}]*height:\s*64[^}]*width:\s*64/su
+    /eventSuggestionThumbFrame:\s*\{[^}]*height:\s*52[^}]*width:\s*64/su
   );
   assert.doesNotMatch(screenSource, /styles\.eventImageFrame/u);
   assert.doesNotMatch(screenSource, /eventImageFrame:\s*\{/u);

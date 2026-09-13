@@ -118,6 +118,13 @@ function harness(input: { optedIn?: boolean; signedIn?: boolean; lastResponse?: 
 
 const settle = () => new Promise<void>(resolve => setImmediate(resolve));
 
+function notificationAction(tree: any): any {
+  if (!tree) return undefined;
+  if (Array.isArray(tree)) return tree.map(notificationAction).find(Boolean);
+  if (tree.type === "Pressable" && tree.props.accessibilityRole === "button" && /关键提醒|正在准备/.test(tree.props.accessibilityLabel ?? "")) return tree;
+  return notificationAction(tree.props?.children);
+}
+
 test("merged roots share one native handler and response listener while local reminders keep syncing", { timeout: 5000 }, async () => {
   const app = harness();
   app.mount();
@@ -196,7 +203,9 @@ test("turning off critical reminders revokes both device registrations", { timeo
   app.settings();
   await settle();
   const tree = app.settings();
-  tree.props.children[0].props.children[1].props.onPress();
+  const action = notificationAction(tree);
+  assert.ok(action, "settings must expose the actual reminder action");
+  action.props.onPress();
   await settle();
   assert.ok(app.calls.includes("opt-in:false"));
   assert.ok(app.calls.includes("revoke-durable-device"));

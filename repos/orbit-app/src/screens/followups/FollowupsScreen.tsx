@@ -1,15 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import {
   ORBIT_API_ENDPOINTS,
   chatAssistFollowupDraftPath,
-  messageDraftPath
+  messageDraftPath,
+  taskPath
 } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
-import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { MetricPill } from "../../components/MetricPill";
@@ -18,6 +18,8 @@ import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { followupsPageToView, type SavedFollowupRow } from "../../view-models/followups-page";
+import { SavedFollowupsList } from "./SavedFollowupsList";
 import {
   buildMessageDraftReviewRequest,
   buildChatFollowupDraftRequestFromTask,
@@ -67,6 +69,9 @@ export function FollowupsScreen() {
   const [draftError, setDraftError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [generatingReminders, setGeneratingReminders] = useState(false);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [taskError, setTaskError] = useState<string | null>(null);
+  const taskBusy = useRef(false);
   const tasksState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.tasks,
     (data) => followupsToView({
@@ -78,10 +83,32 @@ export function FollowupsScreen() {
     ORBIT_API_ENDPOINTS.notifications,
     () => false
   );
+  const contactsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.contacts, () => false);
 
   function refresh() {
     tasksState.refresh();
     notificationsState.refresh();
+    contactsState.refresh();
+  }
+
+  async function toggleSavedTask(row: SavedFollowupRow) {
+    if (taskBusy.current) return;
+    taskBusy.current = true;
+    setUpdatingId(row.id);
+    setTaskError(null);
+    try {
+      const action = row.status === "completed" ? "reopen" : "complete";
+      const result = await client.patch<unknown>(taskPath(row.id), {
+        body: { action, idempotencyKey: `ios:${action}:${row.id}:${Date.now()}` },
+      });
+      if (result.success) tasksState.refresh();
+      else setTaskError(result.error.message);
+    } catch {
+      setTaskError("操作未完成，请重试。");
+    } finally {
+      taskBusy.current = false;
+      setUpdatingId(null);
+    }
   }
 
   async function generateFollowupTasks() {
@@ -172,34 +199,40 @@ export function FollowupsScreen() {
     setReviewingDraftId(null);
   }
 
-  const view = usable(tasksState)
+  const pageView = usable(tasksState)
+    ? followupsPageToView(tasksState.data, usable(contactsState) ? contactsState.data : {})
+    : null;
+  const view = pageView
     ? followupsToView({
         notificationsPayload: usable(notificationsState)
           ? notificationsState.data
           : {},
-        tasksPayload: tasksState.data
+        tasksPayload: pageView.candidatesPayload
       })
     : null;
   const loading = tasksState.kind === "loading";
 
   return (
     <AppScreen
-      eyebrow="关系工作"
       refreshControl={
         <RefreshControl
           onRefresh={refresh}
-          refreshing={tasksState.refreshing || notificationsState.refreshing}
+          refreshing={tasksState.refreshing || notificationsState.refreshing || contactsState.refreshing}
           tintColor={colors.accent}
         />
       }
-      title="待办"
+      title="联系跟进"
     >
+      <SavedFollowupsList view={pageView} updatingId={updatingId} onToggle={toggleSavedTask} error={taskError} />
       {loading ? <LoadingState /> : null}
       {tasksState.kind === "offline" ? (
         <ErrorState message={tasksState.error.message} title="服务器连不上" />
       ) : null}
       {tasksState.kind === "failure" ? (
         <ErrorState message={tasksState.error.message} />
+      ) : null}
+      {pageView && (contactsState.kind === "failure" || contactsState.kind === "offline") ? (
+        <ErrorState title="人脉信息暂不可用" message="跟进事项仍可处理，稍后下拉刷新人脉信息。" />
       ) : null}
       {view ? (
         <FollowupsWorkspace
@@ -221,6 +254,7 @@ export function FollowupsScreen() {
           onMarkMessageDraftReady={markMessageDraftReady}
           reminderGenerationError={reminderGenerationError}
           reviewingDraftId={reviewingDraftId}
+          savedDraftTask={pageView?.open.find(row => row.draftTask)?.draftTask ?? null}
           view={view}
         />
       ) : null}
@@ -256,6 +290,7 @@ function FollowupsWorkspace({
   onMarkMessageDraftReady,
   reminderGenerationError,
   reviewingDraftId,
+  savedDraftTask,
   view
 }: {
   chatDraftError: string | null;
@@ -276,20 +311,22 @@ function FollowupsWorkspace({
   onMarkMessageDraftReady: (draft: MessageDraftView) => void;
   reminderGenerationError: string | null;
   reviewingDraftId: string | null;
+  savedDraftTask: FollowupTaskView | null;
   view: FollowupsView;
 }) {
   const { colors, styles } = useStyles();
   const router = useRouter();
+  const priorityTask = savedDraftTask ?? view.priorityTask;
 
   return (
     <>
-      <DataCard detail={view.summary} title={view.title}>
-        <Text style={styles.bodyText}>{view.nextAction}</Text>
+      <DataCard detail={`${view.tasks.length} 条建议 · ${view.reminders.length} 条提醒`} title="跟进工具">
+        <Text style={styles.bodyText}>{savedDraftTask ? "准备联系文案，或复核新的跟进建议。" : view.nextAction}</Text>
         <View style={styles.metricsRow}>
           {view.metrics.map((metric) => (
             <MetricPill
               key={metric.label}
-              label={metric.label}
+              label={metric.label === "待办" ? "候选" : metric.label}
               value={metric.value}
             />
           ))}
@@ -354,22 +391,17 @@ function FollowupsWorkspace({
         />
       ) : null}
       {draftError ? <Text style={styles.errorText}>{draftError}</Text> : null}
-      {view.priorityTask ? (
+      {priorityTask ? (
         <PriorityTaskCard
-          chatDrafting={chatDraftingTaskId === view.priorityTask.id}
-          drafting={draftingTaskId === view.priorityTask.id}
+          chatDrafting={chatDraftingTaskId === priorityTask.id}
+          drafting={draftingTaskId === priorityTask.id}
           onCreateChatFollowupDraft={onCreateChatFollowupDraft}
           onCreateMessageDraft={onCreateMessageDraft}
-          task={view.priorityTask}
+          task={priorityTask}
         />
-      ) : (
-        <EmptyState
-          message="先从联系人、活动或对话里记录一个明确的下一步。"
-          title="暂无待办"
-        />
-      )}
+      ) : null}
       {view.tasks.length > 0 ? (
-        <DataCard detail={`${view.tasks.length} 项待确认`} title="全部待办">
+        <DataCard detail={`${view.tasks.length} 项待确认，尚未写入待办`} title="待复核建议">
           <View style={styles.stack}>
             {view.tasks.map((task) => (
               <TaskRow key={task.id} task={task} />

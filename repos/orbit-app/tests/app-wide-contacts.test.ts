@@ -102,9 +102,16 @@ async function openScreen(t: { after: (fn: () => Promise<void>) => void }, scree
 
 async function touchFits(locator: Locator, minHeight = 44) {
   const box = (await locator.boundingBox())!;
-  assert.ok(box && box.height >= minHeight, `expected ${minHeight}pt touch target, got ${box?.height}`);
+  // The sliding modal's compositor can return 43.99993896484375 for a 44pt box.
+  assert.ok(box && box.height + 0.001 >= minHeight, `expected ${minHeight}pt touch target, got ${box?.height}`);
   assert.ok(box.x >= 0 && box.x + box.width <= 320, "control must fit a 320pt phone");
 }
+
+test("touch measurement accepts compositor precision but rejects undersized controls", async () => {
+  const measured = (height: number) => ({ boundingBox: async () => ({ x: 0, y: 0, width: 44, height }) }) as Locator;
+  await touchFits(measured(43.99993896484375));
+  await assert.rejects(touchFits(measured(43.99)), /touch target/);
+});
 
 for (const scheme of ["light", "dark"] as const) {
   test(`${scheme}: overview keeps all four destinations in compact open navigation rows`, async t => {
@@ -117,7 +124,7 @@ for (const scheme of ["light", "dark"] as const) {
       const box = (await action.boundingBox())!;
       assert.ok(box.y >= previousBottom, "library, analysis, progress and acquisition retain their visible order");
       previousBottom = box.y + box.height;
-      assert.equal(box.width, 276, "all four entries must use the same full-width open row");
+      assert.equal(box.width, 288, "all four entries must use the same full-width open row");
       assert.ok(box.height <= 112, "overview navigation must not become large tiles");
       assert.equal(await action.evaluate(el => getComputedStyle(el).borderTopWidth), "0px", "rows do not need an outer card border");
       await action.click();
@@ -153,11 +160,11 @@ for (const scheme of ["light", "dark"] as const) {
   });
 }
 
-test("analysis uses open 18/26 sections and keeps structure, opportunity and goal drafts operable at 320pt", async t => {
+test("analysis uses open 15/22 sections and keeps structure, opportunity and goal drafts operable at 320pt", async t => {
   const page = await openScreen(t, "analysis");
   const title = page.getByText("结构摘要", { exact: true });
   await title.waitFor();
-  assert.deepEqual(await title.evaluate(el => { const s = getComputedStyle(el); return [s.fontSize, s.lineHeight, s.fontWeight]; }), ["18px", "26px", "600"]);
+  assert.deepEqual(await title.evaluate(el => { const s = getComputedStyle(el); return [s.fontSize, s.lineHeight, s.fontWeight]; }), ["15px", "22px", "800"]);
   if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: "/tmp/orbit-app-wide-contacts-analysis.png", fullPage: true });
   const section = title.locator("..").locator("..").locator("..");
   assert.equal(await section.evaluate(el => getComputedStyle(el).borderTopWidth), "0px");
@@ -195,7 +202,7 @@ test("structure detail renders real success content and opens its contact at 320
   await page.getByText("科技合作伙伴", { exact: true }).waitFor();
   for (const name of ["关系质量", "常见标签", "相关联系人"]) {
     const heading = page.getByText(name, { exact: true });
-    assert.deepEqual(await heading.evaluate(el => { const s = getComputedStyle(el); return [s.fontSize, s.lineHeight, s.fontWeight]; }), ["18px", "26px", "600"]);
+    assert.deepEqual(await heading.evaluate(el => { const s = getComputedStyle(el); return [s.fontSize, s.lineHeight, s.fontWeight]; }), ["15px", "22px", "800"]);
     assert.equal(await heading.locator("..").evaluate(el => getComputedStyle(el).borderTopWidth), "0px");
   }
   const contact = page.getByRole("button", { name: "查看林悦", exact: true });
@@ -268,7 +275,7 @@ test("analysis opened in dark appearance keeps its real modal readable and bound
   const action = page.getByRole("button", { name: "开始联系", exact: true });
   await action.click({ trial: true });
   await touchFits(action, 50);
-  assert.equal(await action.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(162, 175, 211)");
+  assert.equal(await action.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(240, 240, 236)");
   const labelColor = await action.locator("[dir='auto']").first().evaluate(el => getComputedStyle(el).color);
   assert.equal(labelColor, "rgb(23, 28, 42)");
   if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: "/tmp/orbit-app-wide-contacts-analysis-brief-dark.png", fullPage: true, animations: "disabled" });
@@ -313,11 +320,11 @@ for (const scheme of ["light", "dark"] as const) {
     assert.deepEqual(await form.evaluate(el => {
       const s = getComputedStyle(el);
       return [s.backgroundColor, s.borderRadius, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft];
-    }), [scheme === "light" ? "rgb(243, 243, 242)" : "rgb(39, 44, 53)", "12px", "12px", "12px", "12px", "12px"]);
+    }), [scheme === "light" ? "rgb(245, 247, 250)" : "rgb(39, 44, 53)", "12px", "12px", "12px", "12px", "12px"]);
     await touchFits(title); await touchFits(excerpt);
     const submit = page.getByRole("button", { name: "添加证据", exact: true });
     await touchFits(submit, 50);
-    assert.equal(await submit.evaluate(el => getComputedStyle(el).backgroundColor), scheme === "light" ? "rgb(0, 109, 184)" : "rgb(162, 175, 211)");
+    assert.equal(await submit.evaluate(el => getComputedStyle(el).backgroundColor), scheme === "light" ? "rgb(11, 18, 32)" : "rgb(240, 240, 236)");
     assert.equal(await submit.locator("[dir='auto']").evaluate(el => getComputedStyle(el).color), scheme === "light" ? "rgb(255, 255, 255)" : "rgb(23, 28, 42)");
     const formBox = (await form.boundingBox())!;
     const submitBox = (await submit.boundingBox())!;

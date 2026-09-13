@@ -104,7 +104,7 @@ test("取数先出快照，网络回来再覆盖", () => {
   const snapshotIndex = hookSource.indexOf(
     "readSnapshot<TData>(baseUrl, actorId, path)"
   );
-  const networkIndex = hookSource.indexOf("await client.get<TData>(path)");
+  const networkIndex = hookSource.indexOf("await client.get<TData>(path,");
 
   assert.notEqual(snapshotIndex, -1);
   assert.notEqual(networkIndex, -1);

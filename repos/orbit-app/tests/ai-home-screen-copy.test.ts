@@ -14,8 +14,8 @@ test("Orbit AI home uses a compact Chinese chat entry", () => {
     screenSource,
     /Ask first|直接问今天|让 AI 带你过去|已准备好|有什么需要处理|把问题发过来/u
   );
-  assert.match(screenSource, /placeholder="询问 Orbit AI"/u);
-  assert.match(screenSource, />Orbit AI</u);
+  assert.match(screenSource, /placeholder="询问 IORBIT"/u);
+  assert.match(screenSource, />IORBIT</u);
   assert.doesNotMatch(screenSource, />我是您的人脉管家</u);
   assert.doesNotMatch(screenSource, /eyebrow=/u);
 });
@@ -53,7 +53,7 @@ test("Orbit AI home opens conversation history from the top right", () => {
   assert.match(screenSource, /historyOpen/u);
   assert.match(screenSource, /onOpenHistory=\{\(\) => setHistoryOpen\(true\)\}/u);
 
-  const menuIndex = screenSource.indexOf('accessibilityLabel="打开侧栏"');
+  const menuIndex = screenSource.indexOf('accessibilityLabel="首页"');
   const historyIndex = screenSource.indexOf('accessibilityLabel="对话历史"');
 
   assert.notEqual(menuIndex, -1);
@@ -74,8 +74,10 @@ test("Orbit AI home uses a ChatGPT-style drawer for shortcuts and history", () =
   assert.match(screenSource, /Modal/u);
   assert.match(screenSource, /PanResponder/u);
   assert.match(screenSource, /ORBIT_API_ENDPOINTS\.aiConversationSessions/u);
-  assert.match(screenSource, /agentHistorySessionsToSummaries/u);
-  assert.match(screenSource, /accessibilityLabel="打开侧栏"/u);
+  // Actual source-specific rows and menu navigation are covered by the
+  // private-route/HTTP tests in ink-signal-ai-home.test.ts.
+  assert.match(screenSource, /aiHistoryRows/u);
+  assert.match(screenSource, />常用入口</u);
   assert.match(screenSource, />历史记录</u);
   assert.doesNotMatch(
     screenSource,
@@ -91,7 +93,8 @@ test("Orbit AI drawer can delete imported web session history", () => {
     screenSource,
     /client\.delete<unknown>\(\s*aiConversationSessionPath\(item\.id\)/u
   );
-  assert.match(screenSource, /historyState\.refresh\(\)/u);
+  // Deletion receipt and source-only refresh are exercised through real HTTP.
+  assert.match(screenSource, /setHistoryAttempt/u);
   assert.match(screenSource, />删除</u);
   assert.match(screenSource, />删除中</u);
   assert.match(screenSource, /item\.source !== "session"/u);
@@ -120,10 +123,9 @@ test("Orbit AI drawer keeps web sessions and normal AI conversations in history"
     screenSource,
     /sessionHistoryItems\.length > 0\s*\?\s*sessionHistoryItems\s*:\s*conversationHistoryItems/u
   );
-  assert.match(
-    screenSource,
-    /const historyItems = \[\s*\.{3}sessionHistoryItems,\s*\.{3}conversationHistoryItems\s*\]/u
-  );
+  // Real mixed-source ordering and continuation routes are covered by
+  // ink-signal-ai-home.test.ts rather than the old private array syntax.
+  assert.match(screenSource, /const historyItems = aiHistoryRows/u);
 });
 
 test("Orbit AI drawer can search long history lists", () => {
@@ -192,10 +194,10 @@ test("Orbit AI home does not render the relationship workbench strip", () => {
 
 test("Orbit AI home keeps empty conversation guidance above the composer", () => {
   assert.doesNotMatch(screenSource, /EmptyState/u);
-  assert.match(screenSource, /homeChat\.isEmpty \? \(/u);
+  // The approved home keeps its guidance visible alongside recent history.
   assert.match(screenSource, /suggestedPrompts\.map/u);
   assert.match(screenSource, /styles\.suggestionRow/u);
-  assert.match(screenSource, /onPress=\{\(\) => setDraftMessage\(prompt\.label\)\}/u);
+  // Filling/editing remains non-writing in ink-signal-ai-home.test.ts.
 });
 
 test("Orbit AI home renders Today tasks and schedule before chat messages", () => {
@@ -214,7 +216,7 @@ test("Orbit AI home renders Today tasks and schedule before chat messages", () =
 });
 
 test("Orbit AI keeps suggestions separate from tasks and uses the Today count in the drawer", () => {
-  assert.match(screenSource, /onOpenSuggestions=\{\(\) => router\.push\("\/today" as Href\)\}/u);
+  assert.match(screenSource, /onOpenSuggestions=\{\(\) => openCapability\("\/today" as Href\)\}/u);
   assert.match(screenSource, /todayBadge=\{todaySummary\.openTaskCount\}/u);
   assert.doesNotMatch(screenSource, /nextActionsBadge/u);
 });

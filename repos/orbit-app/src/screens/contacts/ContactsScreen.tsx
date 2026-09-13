@@ -4,27 +4,35 @@ import {
   type ComponentProps,
   type ReactNode,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState
 } from "react";
 import {
   Image,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  View
+  View,
+  useWindowDimensions
 } from "react-native";
+import Svg, { Circle, Defs, LinearGradient, Path, Stop } from "react-native-svg";
+import { z } from "zod";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { contactsListPath, ORBIT_API_ENDPOINTS } from "../../api/endpoints";
+import { mobileContactsDashboardSectionSchemas } from "../../api/schema/mobile-contacts-dashboard";
+import { validateApiResourceState } from "../../api/validated-resource-state";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
+import { OrbitNavigationIcon } from "../../components/OrbitNavigationIcon";
 import { layout, radius, spacing, textStyles, type OrbitColors } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
@@ -63,7 +71,7 @@ import {
   type RelationshipSearchSuggestionsView
 } from "../../view-models/relationship-search";
 
-type ContactsScreenMode = "list" | "overview";
+type ContactsScreenMode = "list" | "overview" | "main";
 type ContactFilterMenuId = "action" | "industry" | "more" | "progress";
 type IoniconName = ComponentProps<typeof Ionicons>["name"];
 type NetworkPriorityRoute = "/contacts/dashboard";
@@ -101,6 +109,34 @@ const relationshipIndustryOptions: RelationshipFilterOption[] = [
 ];
 
 const recentRelationshipSearchLimit = 4;
+const mainContactFont = Platform.select({ web: '-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif', ios: "System", default: "sans-serif" });
+const mainContactsSchema = mobileContactsDashboardSectionSchemas.contacts.refine(value =>
+  (value.state === "pending" || (value.state === "empty") === (value.contacts.length === 0)) &&
+  new Set(value.contacts.map(contact => contact.id)).size === value.contacts.length
+);
+const mainContactsSearchSchema = mainContactsSchema.refine(value => value.state !== "pending");
+// App-only validation of fields consumed by the relationship search view. The
+// service owns its full contract; preserve additional fields without inventing results.
+const mainRelationshipSearchSchema = z.object({
+  state: z.enum(["success", "empty"]),
+  query: z.string(),
+  appliedFilters: z.object({
+    businessIntent: z.string().nullable(),
+    industries: z.array(z.string()), sources: z.array(z.string()),
+    valueTypes: z.array(z.string()), followUpStatuses: z.array(z.string())
+  }).passthrough(),
+  results: z.array(z.object({
+    id: z.string().trim().min(1), contactId: z.string().trim().min(1), displayName: z.string().trim().min(1),
+    organization: z.string(), role: z.string(), industry: z.string(), location: z.string(),
+    relationshipContext: z.string(), recommendedAction: z.string(),
+    evidence: z.array(z.object({ excerpt: z.string() }).passthrough()),
+    value: z.object({ valueTypes: z.array(z.string()) }).passthrough(),
+    matchScore: z.object({ value: z.number().finite(), band: z.enum(["high", "medium", "low"]) }).passthrough()
+  }).passthrough())
+}).passthrough().refine(value =>
+  (value.state === "empty") === (value.results.length === 0) &&
+  new Set(value.results.map(result => result.id)).size === value.results.length
+);
 
 function relationshipFilterLabel(
   options: RelationshipFilterOption[],
@@ -338,7 +374,11 @@ function ContactFilterToolbar({
   relationshipProgressOptions,
   selectedActionState,
   selectedRelationshipIndustries,
-  selectedRelationshipProgress
+  selectedRelationshipProgress,
+  primary = false,
+  onReset,
+  onAnalysis,
+  hasFilters = false
 }: {
   actionStateOptions: ContactStatusFilterOption[];
   advancedFilterSections: ContactSearchFilterSectionView[];
@@ -355,9 +395,15 @@ function ContactFilterToolbar({
   selectedActionState: ContactActionStateFilter | null;
   selectedRelationshipIndustries: string[];
   selectedRelationshipProgress: ContactRelationshipProgressFilter | null;
+  primary?: boolean;
+  onReset?: () => void;
+  onAnalysis?: () => void;
+  hasFilters?: boolean;
 }) {
   const { colors, styles } = useStyles();
   const [activeMenu, setActiveMenu] = useState<ContactFilterMenuId | null>(null);
+  const { width, fontScale } = useWindowDimensions();
+  const filterScale = Math.max(1, fontScale);
   const advancedCount = advancedFilterSections.reduce(
     (total, section) =>
       total + section.options.filter((option) => option.selected).length,
@@ -378,9 +424,12 @@ function ContactFilterToolbar({
     { count: advancedCount, id: "more", label: "更多" }
   ];
 
-  return (
-    <View style={styles.filterToolbar}>
-      <View style={styles.filterToolbarRow}>
+  const toolbarRow = <View style={[styles.filterToolbarRow, primary && styles.mainFilterRow, primary && { minWidth: (Math.min(width, layout.contentMax) - 2 * layout.pageInset) * filterScale }]}>
+        {primary ? <Pressable accessibilityRole="button" accessibilityLabel="全部人脉" accessibilityState={{ selected: !hasFilters }} aria-selected={!hasFilters}
+          onPress={() => { setActiveMenu(null); onReset?.(); }} style={[styles.mainAll, { width: 44 * filterScale }]}>
+          <Text style={[styles.mainFilterText, !hasFilters && styles.mainActiveText]}>全部</Text>
+          {!hasFilters ? <View accessible={false} style={[styles.mainAllUnderline, { width: 26 * filterScale }]} /> : null}
+        </Pressable> : null}
         {menuItems.map((item) => {
           const active = activeMenu === item.id;
           const selected = item.count > 0;
@@ -392,13 +441,15 @@ function ContactFilterToolbar({
               }`}
               accessibilityRole="button"
               accessibilityState={{ expanded: activeMenu === item.id }}
+              aria-expanded={activeMenu === item.id}
               key={item.id}
               onPress={() =>
                 setActiveMenu((current) => (current === item.id ? null : item.id))
               }
               style={({ pressed }) => [
                 styles.filterToolbarButton,
-                active ? styles.filterToolbarButtonActive : null,
+                primary ? styles.mainFilterButton : null,
+                active ? primary ? styles.mainSelected : styles.filterToolbarButtonActive : null,
                 pressed ? styles.filterToolbarButtonPressed : null
               ]}
             >
@@ -406,6 +457,7 @@ function ContactFilterToolbar({
                 numberOfLines={1}
                 style={[
                   styles.filterToolbarButtonText,
+                  primary ? styles.mainFilterText : null,
                   active || selected ? styles.filterToolbarButtonTextActive : null
                 ]}
               >
@@ -417,14 +469,20 @@ function ContactFilterToolbar({
               <Ionicons
                 color={active || selected ? colors.accent : colors.text4}
                 name={active ? "chevron-up" : "chevron-down"}
-                size={13}
+                size={primary ? 9 : 13}
               />
-              {item.id !== "more" ? <View style={styles.filterToolbarDivider} /> : null}
+              {!primary && item.id !== "more" ? <View style={styles.filterToolbarDivider} /> : null}
             </Pressable>
           );
         })}
-      </View>
+        {primary ? <Pressable accessibilityRole="button" accessibilityLabel="人脉分析" onPress={onAnalysis} style={[styles.mainAnalysis, { minWidth: 60 * filterScale }]}>
+          <Text style={styles.mainLink}>人脉分析</Text>
+        </Pressable> : null}
+      </View>;
 
+  return (
+    <View style={styles.filterToolbar}>
+      {primary ? <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mainFilterScroll}>{toolbarRow}</ScrollView> : toolbarRow}
       {activeMenu ? (
         <View style={styles.filterToolbarPanel}>
           {activeMenu === "industry" ? (
@@ -573,18 +631,22 @@ function ContactCard({
   baseUrl,
   contact,
   isLast,
-  onPress
+  onPress,
+  primary = false
 }: {
   baseUrl: string;
   contact: ContactSummary;
   isLast: boolean;
   onPress: () => void;
+  primary?: boolean;
 }) {
   const { colors, styles } = useStyles();
   const avatar = contactAvatarFor(contact);
+  const avatarId = useId().replace(/:/gu, "");
+  const tones = { sky: ["#7FB3FF", "#3B82F6"], emerald: ["#5EEAD4", "#0EA5E9"], amber: ["#FCD34D", "#F59E0B"], violet: ["#A78BFA", "#6366F1"], rose: ["#FDA4AF", "#F472B6"] } as const;
   const toneStyle = avatarToneStyles(colors)[avatar.tone];
   const detail = contactDetail(contact);
-  const identityDetail = [contact.organization, contact.role]
+  const identityDetail = (primary ? [contact.role, contact.organization] : [contact.organization, contact.role])
     .filter(Boolean)
     .join(" · ");
   const contactAccessibilityLabel = `${contact.name}，${detail}，打开联系人详情`;
@@ -596,15 +658,17 @@ function ContactCard({
       onPress={onPress}
       style={({ pressed }) => [
         styles.contactCard,
-        isLast ? styles.contactCardLast : null,
+        isLast && !primary ? styles.contactCardLast : null,
+        primary ? styles.mainContactRow : null,
         pressed ? styles.contactCardPressed : null
       ]}
     >
-      <View style={styles.contactHeader}>
+      <View style={[styles.contactHeader, primary && styles.mainContactHeader]}>
         <View
           style={[
             styles.avatar,
-            { backgroundColor: toneStyle.backgroundColor }
+            { backgroundColor: toneStyle.backgroundColor },
+            primary && styles.mainAvatar
           ]}
         >
           {contact.imageUrl ? (
@@ -614,25 +678,30 @@ function ContactCard({
               style={styles.avatarImage}
             />
           ) : (
-            <Text style={[styles.avatarText, { color: toneStyle.color }]}>
-              {avatar.initial}
-            </Text>
+            <>
+              {primary ? <Svg accessible={false} style={StyleSheet.absoluteFill} width={40} height={40} viewBox="0 0 40 40">
+                <Defs><LinearGradient id={avatarId} x1="0%" y1="0%" x2="100%" y2="100%">
+                  <Stop offset="0%" stopColor={tones[avatar.tone][0]} /><Stop offset="100%" stopColor={tones[avatar.tone][1]} />
+                </LinearGradient></Defs><Circle cx={20} cy={20} r={20} fill={"url(#" + avatarId + ")"} />
+              </Svg> : null}
+              <Text style={[styles.avatarText, { color: toneStyle.color }, primary && styles.mainAvatarText]}>{avatar.initial}</Text>
+            </>
           )}
         </View>
         <View style={styles.contactTitleBlock}>
-          <Text numberOfLines={1} style={styles.contactName}>
+          <Text numberOfLines={primary ? undefined : 1} style={[styles.contactName, primary && styles.mainContactName]}>
             {contact.name}
           </Text>
           {identityDetail ? (
-            <Text numberOfLines={1} style={styles.contactDetail}>
+            <Text numberOfLines={primary ? undefined : 1} style={[styles.contactDetail, primary && styles.mainContactDetail]}>
               {identityDetail}
             </Text>
           ) : null}
         </View>
-        {contact.valueScore === null ? null : (
+        {primary || contact.valueScore === null ? null : (
           <Text style={styles.contactMatchScore}>{contact.valueScore}</Text>
         )}
-        <Ionicons color={colors.text4} name="chevron-forward" size={16} />
+        <Ionicons color={primary ? "#C4C9D4" : colors.text4} name="chevron-forward" size={primary ? 12 : 16} />
       </View>
     </Pressable>
   );
@@ -1199,7 +1268,10 @@ function ContactsListContent({
   selectedActionState,
   selectedRelationshipIndustries,
   selectedRelationshipProgress,
-  state
+  state,
+  primary = false,
+  onResetFilters,
+  onNavigate
 }: {
   actionStateOptions: ContactStatusFilterOption[];
   advancedFilterSections: ContactSearchFilterSectionView[];
@@ -1238,16 +1310,24 @@ function ContactsListContent({
   selectedRelationshipIndustries: string[];
   selectedRelationshipProgress: ContactRelationshipProgressFilter | null;
   state: ReturnType<typeof useApiResource<unknown>>;
+  primary?: boolean;
+  onResetFilters?: () => void;
+  onNavigate?: (href: string) => void;
 }) {
   const { colors, styles } = useStyles();
+  const router = useRouter();
+  const navigate = onNavigate ?? ((href: string) => router.push(href as Href));
+  const [searchOptionsOpen, setSearchOptionsOpen] = useState(false);
   const loadedWithoutContacts =
     (state.kind === "empty" || state.kind === "success") &&
     contacts.length === 0;
+  const directoryEmpty = primary && loadedWithoutContacts && !query.trim() && !hasListFilters;
+  const showSearchOptions = !primary || searchOptionsOpen;
 
   return (
     <>
-      <View style={styles.searchPanel}>
-        <View style={styles.searchRow}>
+      <View style={[styles.searchPanel, primary && styles.mainSearchPanel]}>
+        <View style={[styles.searchRow, primary && styles.mainSearchRow]}>
           <Ionicons color={colors.text3} name="search-outline" size={18} />
           <TextInput
             accessibilityLabel="搜索姓名、公司、资源"
@@ -1258,7 +1338,7 @@ function ContactsListContent({
             placeholder="搜索姓名、公司、资源"
             placeholderTextColor={colors.text4}
             returnKeyType="search"
-            style={styles.searchInput}
+            style={[styles.searchInput, primary && styles.mainSearchInput]}
             value={query}
           />
           {query.trim() ? (
@@ -1271,11 +1351,15 @@ function ContactsListContent({
               <Ionicons color={colors.text3} name="close-circle" size={19} />
             </Pressable>
           ) : null}
+          {primary ? <Pressable accessibilityRole="button" accessibilityLabel="搜索选项" accessibilityState={{ expanded: searchOptionsOpen }} aria-expanded={searchOptionsOpen}
+            onPress={() => setSearchOptionsOpen(open => !open)} style={styles.mainSearchOptionsButton}>
+            <Ionicons name="options-outline" size={18} color={colors.text3} />
+          </Pressable> : null}
         </View>
-        <View style={styles.searchActionRow}>
+        {showSearchOptions ? <View style={styles.searchActionRow}>
           <Pressable
             accessibilityRole="button"
-            disabled={searching}
+            disabled={searching || (primary && relationshipSearching)}
             onPress={onRunDeepSearch}
             style={({ pressed }) => [
               styles.deepSearchButton,
@@ -1294,7 +1378,7 @@ function ContactsListContent({
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            disabled={relationshipSearching}
+            disabled={relationshipSearching || (primary && searching)}
             onPress={onRunRelationshipSearch}
             style={({ pressed }) => [
               styles.relationshipSearchButton,
@@ -1313,12 +1397,20 @@ function ContactsListContent({
           {relationshipSearchError ? (
             <Text style={styles.searchErrorText}>{relationshipSearchError}</Text>
           ) : null}
-        </View>
-        <RecentRelationshipSearchesRow
+        </View> : null}
+        {primary && showSearchOptions ? <View style={styles.mainTools}>
+          <Pressable accessibilityRole="button" accessibilityLabel="关系进展" onPress={() => navigate("/contacts/pipeline")} style={styles.mainTool}>
+            <Text style={styles.mainLink}>关系进展</Text><Ionicons name="chevron-forward" size={12} color={colors.accent} />
+          </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="联系人库" onPress={() => navigate("/contacts/list")} style={styles.mainTool}>
+            <Text style={styles.mainLink}>联系人库</Text><Ionicons name="chevron-forward" size={12} color={colors.accent} />
+          </Pressable>
+        </View> : null}
+        {showSearchOptions ? <RecentRelationshipSearchesRow
           onSelectRecentRelationshipSearch={onSelectRecentRelationshipSearch}
           searches={recentRelationshipSearches}
-        />
-        <ContactFilterToolbar
+        /> : null}
+        {!directoryEmpty ? <ContactFilterToolbar
           actionStateOptions={actionStateOptions}
           advancedFilterSections={advancedFilterSections}
           onActionStateChange={onActionStateChange}
@@ -1329,7 +1421,11 @@ function ContactsListContent({
           selectedActionState={selectedActionState}
           selectedRelationshipIndustries={selectedRelationshipIndustries}
           selectedRelationshipProgress={selectedRelationshipProgress}
-        />
+          primary={primary}
+          hasFilters={hasListFilters || selectedRelationshipIndustries.length > 0}
+          {...(onResetFilters ? { onReset: onResetFilters } : {})}
+          onAnalysis={() => navigate("/contacts/dashboard")}
+        /> : null}
       </View>
       {searchResult ? (
         <ContactSearchResultCard
@@ -1352,7 +1448,22 @@ function ContactsListContent({
       {state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
-      {loadedWithoutContacts ? (
+      {primary && (state.kind === "offline" || state.kind === "failure") ? <Pressable accessibilityRole="button" accessibilityLabel="重新读取人脉" onPress={state.refresh} style={styles.mainRetry}>
+        <Text style={styles.mainLink}>重新读取</Text>
+      </Pressable> : null}
+      {directoryEmpty ? <View style={styles.mainEmpty}>
+        <View style={styles.mainEmptyIcon}><OrbitNavigationIcon name="contacts" size={28} color={colors.ink} /></View>
+        <Text accessibilityRole="header" style={styles.mainEmptyTitle}>还没有人脉</Text>
+        <Text style={styles.mainEmptyCopy}>扫一张名片，或手动添加第一位联系人。IORBIT 会从这里开始了解你的工作。</Text>
+        <View style={styles.mainEmptyActions}>
+          <Pressable accessibilityRole="button" accessibilityLabel="扫名片" onPress={() => navigate("/contacts/new")} style={styles.mainEmptyScan}>
+            <Text style={styles.mainEmptyScanText}>扫名片</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="手动添加" onPress={() => navigate("/contacts/new?mode=manual")} style={styles.mainEmptyManual}>
+            <Text style={styles.mainEmptyManualText}>手动添加</Text>
+          </Pressable>
+        </View>
+      </View> : loadedWithoutContacts ? (
         <EmptyState
           message={emptyMessage(query, hasListFilters)}
           title={
@@ -1363,7 +1474,7 @@ function ContactsListContent({
         />
       ) : null}
       {contacts.length > 0 ? (
-        <View style={styles.contactList}>
+        <View style={[styles.contactList, primary && styles.mainList]}>
           {contacts.map((contact, index) => (
             <ContactCard
               baseUrl={baseUrl}
@@ -1371,6 +1482,7 @@ function ContactsListContent({
               isLast={index === contacts.length - 1}
               key={contact.id}
               onPress={() => onOpenContact(contact.id)}
+              primary={primary}
             />
           ))}
         </View>
@@ -1393,8 +1505,9 @@ function ContactsOverviewScreen() {
   );
 }
 
-function ContactsListScreen() {
+function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { primary?: boolean; scopeKey?: string | undefined; isScopeCurrent?: (() => boolean) | undefined } = {}) {
   const { colors } = useOrbitTheme();
+  const { styles } = useStyles();
   const router = useRouter();
   const { baseUrl } = useOrbitApiBaseUrl();
   const {
@@ -1414,7 +1527,31 @@ function ContactsListScreen() {
     tag?: string | string[];
     value?: string | string[];
   }>();
-  const client = useOrbitApiClient();
+  const client = useOrbitApiClient(scopeKey === undefined ? {} : { scopeKey });
+  const searchScope = useRef({ alive: true, controller: null as AbortController | null });
+  const isCurrent = () => !primary || (searchScope.current.alive && isScopeCurrent?.() !== false);
+  useEffect(() => {
+    const scope = searchScope.current;
+    scope.alive = true;
+    return () => { scope.alive = false; scope.controller?.abort(); scope.controller = null; };
+  }, [scopeKey]);
+  function searchTicket() {
+    if (!isCurrent() || (primary && searchScope.current.controller)) return null;
+    const controller = primary ? new AbortController() : null;
+    if (primary) searchScope.current.controller = controller;
+    return {
+      signal: controller?.signal,
+      valid: () => isCurrent() && (!controller || (!controller.signal.aborted && searchScope.current.controller === controller)),
+      release: () => { if (searchScope.current.controller === controller) searchScope.current.controller = null; }
+    };
+  }
+  function cancelSearch() {
+    if (!primary) return;
+    searchScope.current.controller?.abort(); searchScope.current.controller = null;
+    setSearching(false); setRelationshipSearching(false);
+    setSearchResult(null); setRelationshipSearchResult(null);
+  }
+  function navigate(href: string) { if (isCurrent()) router.push(href as Href); }
   const contactRefreshToken = Array.isArray(refreshToken)
     ? refreshToken[0]
     : refreshToken;
@@ -1481,13 +1618,18 @@ function ContactsListScreen() {
       selectedValueFilters
     ]
   );
-  const state = useApiResource<unknown>(
+  const rawState = useApiResource<unknown>(
     contactsPath,
-    (data) => contactsToSummaries(data).length === 0
+    (data) => contactsToSummaries(data).length === 0,
+    scopeKey === undefined ? {} : { scopeKey }
   );
+  const validatedState = primary ? validateApiResourceState(rawState, mainContactsSchema) : rawState;
+  const pendingCollection = primary && hasContactData(validatedState) && (validatedState.data as { state: string }).state === "pending";
+  const state = pendingCollection ? { kind: "loading" as const, refreshing: validatedState.refreshing, refresh: validatedState.refresh } : validatedState;
   const relationshipSuggestionsState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.relationshipSearchSuggestions,
-    (data) => relationshipSearchSuggestionsToView(data).suggestions.length === 0
+    (data) => relationshipSearchSuggestionsToView(data).suggestions.length === 0,
+    scopeKey === undefined ? {} : { scopeKey }
   );
   const contactData = hasContactData(state) ? state.data : null;
   const relationshipSuggestions =
@@ -1516,11 +1658,13 @@ function ContactsListScreen() {
     relationshipProgress: selectedRelationshipProgress
   });
   const contacts = contactData ? contactsToSummaries(filteredContactData) : [];
-  const openContact = (id: string) =>
+  const openContact = (id: string) => {
+    if (!isCurrent()) return;
     router.push({
       params: { id },
       pathname: "/contacts/[id]"
     });
+  };
 
   useEffect(() => {
     if (!contactRefreshToken) {
@@ -1542,6 +1686,7 @@ function ContactsListScreen() {
   ]);
 
   function toggleAdvancedFilter(kind: ContactSearchFilterKind, value: string) {
+    cancelSearch();
     if (kind === "source") {
       setSelectedSourceFilters((current) =>
         toggleContactSearchFilter(current, value)
@@ -1562,6 +1707,7 @@ function ContactsListScreen() {
   }
 
   function toggleRelationshipIndustryFilter(value: string) {
+    cancelSearch();
     setSelectedRelationshipIndustries((current) =>
       toggleContactSearchFilter(current, value)
     );
@@ -1571,6 +1717,8 @@ function ContactsListScreen() {
   function onSelectRelationshipSuggestion(
     suggestion: RelationshipSearchSuggestionView
   ) {
+    if (!isCurrent()) return;
+    cancelSearch();
     setQuery(suggestion.query);
     setSelectedRelationshipIndustries(
       suggestion.request.body.industryFilters ?? []
@@ -1584,6 +1732,8 @@ function ContactsListScreen() {
   }
 
   function onSelectRecentRelationshipSearch(search: RecentRelationshipSearch) {
+    if (!isCurrent()) return;
+    cancelSearch();
     setQuery(search.body.query ?? "");
     setSelectedRelationshipIndustries(search.body.industryFilters ?? []);
     setSearchError(null);
@@ -1626,6 +1776,7 @@ function ContactsListScreen() {
     input?: RelationshipSearchRequestBody,
     options: RunRelationshipSearchOptions = {}
   ) {
+    if (!isCurrent()) return;
     const request = buildRelationshipSearchRequest(
       input ?? {
         followUpStatusFilters: relationshipFollowUpStatusFilters(),
@@ -1642,16 +1793,20 @@ function ContactsListScreen() {
       return;
     }
 
+    const ticket = searchTicket();
+    if (!ticket) return;
     setRelationshipSearching(true);
     setRelationshipSearchError(null);
     setSearchResult(null);
 
     try {
       const result = await client.post<unknown>(ORBIT_API_ENDPOINTS.relationshipSearch, {
-        body: request.request.body
+        body: request.request.body,
+        ...(ticket.signal ? { signal: ticket.signal } : {})
       });
+      if (!ticket.valid()) return;
 
-      if (result.success) {
+      if (result.success && (!primary || (result.status >= 200 && result.status < 300 && mainRelationshipSearchSchema.safeParse(result.data).success))) {
         setRelationshipSearchResult(relationshipSearchToView(result.data));
         if (options.rememberRecent) {
           rememberRelationshipSearch(request.request.body);
@@ -1659,14 +1814,16 @@ function ContactsListScreen() {
         return;
       }
 
-      setRelationshipSearchError(result.error.message);
+      setRelationshipSearchError(result.success ? "未能确认搜索结果，请重试。" : result.error.message);
       setRelationshipSearchResult(null);
     } finally {
-      setRelationshipSearching(false);
+      if (ticket.valid()) setRelationshipSearching(false);
+      ticket.release();
     }
   }
 
   async function runDeepSearch() {
+    if (!isCurrent()) return;
     const request = buildContactsSearchRequest({
       query,
       sourceFilters: selectedSourceFilters,
@@ -1681,16 +1838,20 @@ function ContactsListScreen() {
       return;
     }
 
+    const ticket = searchTicket();
+    if (!ticket) return;
     setSearching(true);
     setSearchError(null);
     setRelationshipSearchResult(null);
 
     try {
       const result = await client.post<unknown>(ORBIT_API_ENDPOINTS.contactsSearch, {
-        body: request.request.body
+        body: request.request.body,
+        ...(ticket.signal ? { signal: ticket.signal } : {})
       });
+      if (!ticket.valid()) return;
 
-      if (result.success) {
+      if (result.success && (!primary || (result.status >= 200 && result.status < 300 && mainContactsSearchSchema.safeParse(result.data).success))) {
         setSearchResult(
           contactsSearchToView(
             filterContactListPayloadByDimensions(result.data, {
@@ -1702,35 +1863,31 @@ function ContactsListScreen() {
         return;
       }
 
-      setSearchError(result.error.message);
+      setSearchError(result.success ? "未能确认搜索结果，请重试。" : result.error.message);
       setSearchResult(null);
     } finally {
-      setSearching(false);
+      if (ticket.valid()) setSearching(false);
+      ticket.release();
     }
   }
 
-  return (
-    <ContactPage
-      refreshControl={
-        <RefreshControl
+  const refreshControl = <RefreshControl
           onRefresh={() => {
             state.refresh();
             relationshipSuggestionsState.refresh();
           }}
           refreshing={state.refreshing || relationshipSuggestionsState.refreshing}
           tintColor={colors.accent}
-        />
-      }
-      title="联系人列表"
-    >
-      <ContactsListContent
+        />;
+  const content = <ContactsListContent
         actionStateOptions={dimensionFilterOptions.actionState}
         advancedFilterSections={advancedFilterSections}
         baseUrl={baseUrl}
         contacts={contacts}
         hasListFilters={hasListFilters}
-        onActionStateChange={setSelectedActionState}
+        onActionStateChange={(value) => { cancelSearch(); setSelectedActionState(value); }}
         onClearQuery={() => {
+          cancelSearch();
           setQuery("");
           setSearchError(null);
           setRelationshipSearchError(null);
@@ -1738,6 +1895,7 @@ function ContactsListScreen() {
         }}
         onOpenContact={openContact}
         onQueryChange={(text) => {
+          cancelSearch();
           setQuery(text);
           setRelationshipSearchError(null);
         }}
@@ -1751,7 +1909,7 @@ function ContactsListScreen() {
         }}
         onSelectRecentRelationshipSearch={onSelectRecentRelationshipSearch}
         onSelectRelationshipSuggestion={onSelectRelationshipSuggestion}
-        onRelationshipProgressChange={setSelectedRelationshipProgress}
+        onRelationshipProgressChange={(value) => { cancelSearch(); setSelectedRelationshipProgress(value); }}
         onToggleAdvancedFilter={toggleAdvancedFilter}
         onToggleRelationshipIndustry={toggleRelationshipIndustryFilter}
         query={query}
@@ -1768,20 +1926,92 @@ function ContactsListScreen() {
         selectedRelationshipIndustries={selectedRelationshipIndustries}
         selectedRelationshipProgress={selectedRelationshipProgress}
         state={state}
-      />
-    </ContactPage>
-  );
+        primary={primary}
+        onResetFilters={() => {
+          cancelSearch();
+          setSelectedRelationshipProgress(null); setSelectedActionState(null);
+          setSelectedSourceFilters([]); setSelectedTagFilters([]); setSelectedValueFilters([]); setSelectedRelationshipIndustries([]);
+          setSearchResult(null); setRelationshipSearchResult(null); setSearchError(null); setRelationshipSearchError(null);
+        }}
+        onNavigate={navigate}
+      />;
+  if (!primary) return <ContactPage refreshControl={refreshControl} title="联系人列表">{content}</ContactPage>;
+  const directoryEmpty = hasContactData(state) && contacts.length === 0 && !query.trim() && !hasListFilters;
+  return <AppScreen title="人脉" refreshControl={refreshControl} header={<View style={styles.mainHeader}>
+    <View style={styles.mainHeading}>
+      <Text accessibilityRole="header" style={styles.mainTitle}>人脉</Text>
+      {hasContactData(state) ? <Text testID="contacts-main-count" accessibilityLabel={contacts.length + " 位人脉"} style={[styles.mainCount, directoryEmpty && styles.mainCountEmpty]}>{contacts.length}</Text> : null}
+    </View>
+    {!directoryEmpty ? <View style={styles.mainHeaderActions}>
+      <Pressable accessibilityRole="button" accessibilityLabel="扫名片" onPress={() => navigate("/contacts/new")} style={styles.mainHeaderButton}>
+        <View pointerEvents="none" style={styles.mainScanSurface} />
+        <Svg accessible={false} width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.ink} strokeWidth={1.8} strokeLinecap="round">
+          <Path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M3 12h18" />
+        </Svg>
+      </Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="手动添加" onPress={() => navigate("/contacts/new?mode=manual")} style={styles.mainHeaderButton}>
+        <View pointerEvents="none" style={styles.mainAddSurface} /><Ionicons name="add" size={18} color={colors.onAccent} />
+      </Pressable>
+    </View> : null}
+  </View>}><View style={styles.mainBody}>{content}</View></AppScreen>;
 }
 
 export function ContactsScreen({
-  mode = "overview"
+  mode = "overview",
+  scopeKey,
+  isScopeCurrent
 }: {
   mode?: ContactsScreenMode;
+  scopeKey?: string;
+  isScopeCurrent?: () => boolean;
 } = {}) {
-  return mode === "overview" ? <ContactsOverviewScreen /> : <ContactsListScreen />;
+  return mode === "overview" ? <ContactsOverviewScreen /> : <ContactsListScreen primary={mode === "main"} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} />;
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
+  mainHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginTop: -4, minHeight: 44 },
+  mainHeading: { flexDirection: "row", alignItems: "baseline", flexWrap: "wrap", gap: 10 },
+  mainTitle: { fontFamily: mainContactFont, fontSize: 30, lineHeight: 38, fontWeight: "900", letterSpacing: -0.6, color: colors.ink },
+  mainCount: { fontFamily: mainContactFont, fontSize: 30, lineHeight: 38, fontWeight: "800", letterSpacing: -0.9, color: colors.accent },
+  mainCountEmpty: { color: colors.text3 },
+  mainHeaderActions: { flexDirection: "row", gap: 4 },
+  mainHeaderButton: { width: 44, minHeight: 44, alignItems: "center", justifyContent: "center" },
+  mainScanSurface: { position: "absolute", zIndex: -1, top: 2, bottom: 2, left: 2, right: 2, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  mainAddSurface: { position: "absolute", zIndex: -1, top: 2, bottom: 2, left: 2, right: 2, borderRadius: 10, backgroundColor: colors.ink },
+  mainBody: { gap: 0 },
+  mainSearchPanel: { gap: 12, paddingBottom: 0 },
+  mainSearchRow: { borderRadius: 10, paddingHorizontal: 12, gap: 8, minHeight: 44 },
+  mainSearchInput: { fontFamily: mainContactFont, fontSize: 14, lineHeight: 20, padding: 0, color: colors.ink },
+  mainSearchOptionsButton: { width: 44, minHeight: 44, marginRight: -12, alignItems: "center", justifyContent: "center" },
+  mainFilterRow: { borderBottomWidth: 1, borderBottomColor: colors.border },
+  mainFilterScroll: { flexGrow: 0 },
+  mainAll: { width: 44, minHeight: 44, justifyContent: "center", borderBottomWidth: 2, borderBottomColor: "transparent", marginBottom: -1 },
+  mainAllUnderline: { position: "absolute", bottom: -2, left: 0, height: 2, backgroundColor: colors.ink },
+  mainSelected: { borderBottomColor: colors.ink },
+  mainActiveText: { color: colors.ink, fontWeight: "700" },
+  mainFilterButton: { minHeight: 44, gap: 3, borderRadius: 0, paddingHorizontal: 0, borderBottomWidth: 2, borderBottomColor: "transparent", marginBottom: -1 },
+  mainFilterText: { fontFamily: mainContactFont, fontSize: 13, lineHeight: 18, fontWeight: "400", color: colors.text3 },
+  mainAnalysis: { minWidth: 60, minHeight: 44, justifyContent: "center", alignItems: "flex-end", paddingLeft: 8 },
+  mainLink: { fontFamily: mainContactFont, fontSize: 13, lineHeight: 20, fontWeight: "700", color: colors.accent },
+  mainTools: { flexDirection: "row", flexWrap: "wrap", gap: 16 },
+  mainTool: { minHeight: 44, minWidth: 44, flexDirection: "row", alignItems: "center", gap: 4 },
+  mainList: { borderTopWidth: 0 },
+  mainContactRow: { minHeight: 65, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border2 },
+  mainContactHeader: { gap: 12 },
+  mainAvatar: { width: 40, height: 40, borderRadius: 20, flexShrink: 0 },
+  mainAvatarText: { fontFamily: mainContactFont, fontSize: 15, lineHeight: 20, fontWeight: "700", color: "#FFFFFF" },
+  mainContactName: { fontFamily: mainContactFont, fontSize: 15, lineHeight: 20, fontWeight: "700", letterSpacing: -0.15 },
+  mainContactDetail: { fontFamily: mainContactFont, fontSize: 12, lineHeight: 17, color: colors.text3 },
+  mainRetry: { alignSelf: "flex-start", minHeight: 44, justifyContent: "center", paddingHorizontal: 8 },
+  mainEmpty: { marginTop: 90, paddingHorizontal: 24, alignItems: "center" },
+  mainEmptyIcon: { width: 64, height: 64, borderRadius: 32, borderWidth: 1.5, borderColor: colors.ink, alignItems: "center", justifyContent: "center" },
+  mainEmptyTitle: { marginTop: 20, fontFamily: mainContactFont, fontSize: 22, lineHeight: 30, fontWeight: "900", letterSpacing: -0.44, color: colors.ink, textAlign: "center" },
+  mainEmptyCopy: { marginTop: 8, fontFamily: mainContactFont, fontSize: 14, lineHeight: 22, color: colors.text3, textAlign: "center" },
+  mainEmptyActions: { marginTop: 28, gap: 8, width: "100%" },
+  mainEmptyScan: { ...createControlStyles(colors).primaryButton },
+  mainEmptyScanText: { ...createControlStyles(colors).primaryButtonText, fontFamily: mainContactFont },
+  mainEmptyManual: { ...createControlStyles(colors).secondaryButton },
+  mainEmptyManualText: { ...createControlStyles(colors).secondaryButtonText, fontFamily: mainContactFont },
   avatar: {
     alignItems: "center",
     borderRadius: radius.pill,
