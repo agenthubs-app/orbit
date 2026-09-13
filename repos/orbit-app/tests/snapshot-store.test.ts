@@ -112,10 +112,10 @@ test("取数先出快照，网络回来再覆盖", () => {
 });
 
 test("未登录时不读取或写入私有快照", () => {
-  assert.match(hookSource, /if \(!isRefresh && actorId\) \{/u);
+  assert.match(hookSource, /if \(!isRefresh && actorId && cachePolicy !== "network-only"\) \{/u);
   assert.match(
     hookSource,
-    /if \(actorId\) \{\s*void writeSnapshot\(baseUrl, actorId, path, result\);/u
+    /if \(actorId && cachePolicy !== "network-only"\) \{\s*void writeSnapshot\(baseUrl, actorId, path, result\);/u
   );
 });
 
@@ -127,7 +127,7 @@ test("网络失败但有快照时继续显示快照，不退回错误屏", () =>
 });
 
 test("下拉刷新失败且没有快照时保留当前内容", () => {
-  assert.match(hookSource, /if \(!isRefresh\) \{\s*setState\(resultToRouteState\(result, isEmptyRef\.current\)\);/u);
+  assert.match(hookSource, /if \(!isRefresh \|\| cachePolicy === "network-only"\) \{\s*setState\(resultToRouteState\(result, isEmptyRef\.current\)\);/u);
 });
 
 test("登出与会话过期都清空本地快照", () => {

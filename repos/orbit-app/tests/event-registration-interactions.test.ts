@@ -8,8 +8,8 @@ const require = createRequire(import.meta.url);
 let browser: Browser;
 let script: string;
 
-// Real route, screen, hooks, HTTP client, view-models and web snapshot adapter.
-// Only device/UI integration, auth/server providers and external fetch are replaced.
+// Real route, screen, hooks, HTTP client and view-models. Only device/UI
+// integration, auth/server providers, native snapshots and external fetch are replaced.
 const fixture = `
 import React, { useSyncExternalStore } from "react";
 import { View } from "react-native-web";
@@ -19,7 +19,7 @@ const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () 
 const state = window.fixture = {
   actor: "actor-1", eventId: "event:1", baseUrl: "https://orbit.example", cookieHeader: "", ready: true, baseReady: true, signedIn: true, mounted: true,
   requests: [], pending: [], presses: {}, alerts: [], navigation: [], expiries: 0, holdReads: false,
-  eventStatus: 200, registrationStatus: 200,
+  eventStatus: 200, registrationStatus: 200, cachedRegistration: false, snapshotReads: [], snapshotWrites: [],
   version: 1, hash: "a".repeat(64), prompt: "Who would you like to meet?", savedAnswer: "Saved answer", registered: true,
   ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
@@ -55,6 +55,8 @@ export const usePathname = () => "/events/" + encodeURIComponent(state.eventId) 
 export const useRouter = () => ({ canGoBack: () => false, back() {}, push(href) { state.navigation.push(href); }, replace(href) { state.navigation.push(href); } });
 export const Redirect = () => <div role="status">Sign in</div>;
 export const Stack = () => null;
+export const readSnapshot = async (baseUrl, actorId, path) => { state.snapshotReads.push(path); return state.cachedRegistration && path.includes("/registration?") ? { result: { success: true, status: 200, data: state.data(path.split("?")[0]), meta: { featureMode: null, privacy: null, runtimeBoundary: null } }, syncedAt: "2026-09-12T00:00:00Z" } : null; };
+export const writeSnapshot = async (baseUrl, actorId, path) => { state.snapshotWrites.push(path); };
 export const Ionicons = () => <span aria-hidden="true" />;
 export const SafeAreaView = ({ edges, ...props }) => <View {...props} />;
 `;
@@ -65,7 +67,7 @@ test.before(async () => {
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "registration-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "registration" }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider)$/ }, () => ({ path: "fixture", namespace: "registration" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "registration" }));
       plugin.onLoad({ filter: /.*/, namespace: "registration" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, RefreshControl as RealRefreshControl } from "react-native-web"; export * from "react-native-web";
 export const Pressable = props => { const text = React.Children.toArray(props.children).find(child => React.isValidElement(child) && typeof child.props.children === "string"); const label = props.accessibilityLabel || text?.props.children; if (label) window.fixture.presses[label] = props.onPress; return <RealPressable {...props} />; };
@@ -99,9 +101,9 @@ async function reply(p: Page, status = 200, patch?: object) { await p.evaluate((
 
 test("registration reads canonical public event context without a legacy private detail request", async t => {
   const p = await open(t);
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.map((r: any) => ({ method: r.method, path: r.path, query: r.query }))), [
-    { method: "GET", path: "/api/events/public/event%3A1", query: "" },
-    { method: "GET", path: "/api/events/event%3A1/registration", query: "?language=zh" }
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.map((r: any) => ({ method: r.method, path: r.path, query: r.query })).sort((a: any, b: any) => a.path.localeCompare(b.path))), [
+    { method: "GET", path: "/api/events/event%3A1/registration", query: "?language=zh" },
+    { method: "GET", path: "/api/events/public/event%3A1", query: "" }
   ]);
   assert.equal(await p.getByText("Networking meeting", { exact: true }).count(), 1);
   assert.deepEqual(await writes(p), []);
@@ -111,7 +113,7 @@ for (const failure of [{ eventStatus: 503 }, { registrationStatus: 500 }]) test(
   const p = await open(t, failure, false);
   await p.getByText("页面暂时无法加载", { exact: true }).waitFor();
   assert.equal(await p.getByPlaceholder("写一句具体的补充。").count(), 0);
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.map((r: any) => r.path)), ["/api/events/public/event%3A1", "/api/events/event%3A1/registration"]);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.map((r: any) => r.path).sort()), ["/api/events/event%3A1/registration", "/api/events/public/event%3A1"]);
   assert.deepEqual(await writes(p), []);
 });
 
@@ -122,6 +124,53 @@ test("registration refresh preserves a dirty answer but still adopts clean serve
   await fill(p, "Local answer"); await update(p, { savedAnswer: "Another remote answer" }); await refresh(p);
   assert.equal(await p.getByPlaceholder("写一句具体的补充。").inputValue(), "Local answer");
   assert.deepEqual(await writes(p), []);
+});
+
+test("registration ignores an old native snapshot on a failed read and only opens after retry", async t => {
+  const p = await open(t, { cachedRegistration: true, registrationStatus: 500 }, false);
+  await p.getByText("页面暂时无法加载", { exact: true }).waitFor();
+  assert.equal(await p.getByPlaceholder("写一句具体的补充。").count(), 0);
+  assert.deepEqual(await writes(p), []);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.snapshotReads), ["/api/events/public/event%3A1"]);
+  await update(p, { registrationStatus: 200, savedAnswer: "Fresh server answer" });
+  await press(p, "重新读取报名资料");
+  assert.equal(await p.getByPlaceholder("写一句具体的补充。").inputValue(), "Fresh server answer");
+  assert.equal(await p.getByRole("button", { name: "更新报名资料", exact: true }).isEnabled(), true);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), 4);
+  for (const start of [0, 2]) assert.deepEqual(await p.evaluate(start => (window as any).fixture.requests.slice(start, start + 2).map((r: any) => r.path).sort(), start), [
+    "/api/events/event%3A1/registration", "/api/events/public/event%3A1"
+  ]);
+  assert.equal(await p.evaluate(() => (window as any).fixture.snapshotWrites.some((path: string) => path.includes("/registration"))), false);
+});
+
+test("failed registration refresh retains drafts but disables every write until retry confirms the questions", async t => {
+  const p = await open(t); await fill(p, "Unsaved local answer");
+  await press(p, "下一题");
+  await reply(p, 200, { done: false, question: { field: "desiredOutcome", prompt: "What outcome?", acknowledgment: "", options: [] } });
+  await fill(p, "Unsaved auxiliary answer", 1);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldWrites = ["更新报名资料", "取消报名", "下一题", "生成活动画像"].map(name => s.presses[name]); });
+  await update(p, { registrationStatus: 500 }); await refresh(p);
+  await p.getByText("页面暂时无法加载", { exact: true }).waitFor();
+  assert.equal(await p.getByPlaceholder("写一句具体的补充。").nth(0).inputValue(), "Unsaved local answer");
+  assert.equal(await p.getByPlaceholder("写一句具体的补充。").nth(1).inputValue(), "Unsaved auxiliary answer");
+  for (const name of ["更新报名资料", "取消报名", "下一题", "生成活动画像"]) assert.equal(await p.getByRole("button", { name, exact: true }).isDisabled(), true, name);
+  await p.evaluate(() => (window as any).fixture.oldWrites.forEach((fn: () => void) => fn())); await settle(p);
+  assert.equal((await writes(p)).length, 1);
+  await update(p, { registrationStatus: 200, savedAnswer: "Remote change" }); await press(p, "重新读取报名资料");
+  assert.equal(await p.getByText("页面暂时无法加载", { exact: true }).count(), 0);
+  assert.equal(await p.getByPlaceholder("写一句具体的补充。").nth(0).inputValue(), "Unsaved local answer");
+  assert.equal(await p.getByPlaceholder("写一句具体的补充。").nth(1).inputValue(), "Unsaved auxiliary answer");
+  await press(p, "更新报名资料");
+  assert.deepEqual((await writes(p)).at(-1)?.body, { answers: { targetAttendees: "Unsaved local answer" }, questionSetHash: "a".repeat(64), questionSetVersion: 1 });
+});
+
+test("registration disables stale write callbacks immediately when a refresh starts", async t => {
+  const p = await open(t); await fill(p, "Draft before refresh");
+  await update(p, { holdReads: true });
+  await p.evaluate(() => { const s = (window as any).fixture; const submit = s.presses["更新报名资料"]; s.refresh(); submit(); }); await settle(p);
+  assert.deepEqual(await writes(p), []);
+  assert.equal(await p.getByRole("button", { name: "更新报名资料", exact: true }).isDisabled(), true);
+  assert.equal(await p.getByPlaceholder("写一句具体的补充。").inputValue(), "Draft before refresh");
 });
 
 test("registration refresh preserves the auxiliary question, answer, transcript and generated persona", async t => {

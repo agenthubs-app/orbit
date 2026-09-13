@@ -26,7 +26,7 @@ function unexpectedErrorState<TData>(_error: unknown): RouteState<TData> {
 export function useApiResource<TData>(
   path: string,
   isEmpty: (data: TData) => boolean,
-  { scopeKey }: { scopeKey?: string | null } = {}
+  { scopeKey, cachePolicy = "default" }: { scopeKey?: string | null; cachePolicy?: "default" | "network-only" } = {}
 ): ApiResourceState<TData> {
   const { baseUrl } = useOrbitApiBaseUrl();
   const auth = useOrbitAuthSession();
@@ -59,8 +59,11 @@ export function useApiResource<TData>(
   const state: RouteState<TData> = scopeKey === undefined || snapshot.scopeKey === scopeKey ? snapshot.state : { kind: "loading" };
   const previousScope = useRef(scopeKey);
   const refresh = useCallback(() => {
+    if (cachePolicy === "network-only") {
+      setSnapshot({ scopeKey, state: { kind: "loading" } });
+    }
     setRefreshIndex((value) => value + 1);
-  }, []);
+  }, [cachePolicy, scopeKey]);
 
   useEffect(() => {
     isEmptyRef.current = isEmpty;
@@ -88,12 +91,11 @@ export function useApiResource<TData>(
       setState({ kind: "loading" });
     }
 
-    // 先出上次同步的内容，再让网络覆盖它。断网时快照就是最终结果——
-    // 内容页不显示离线提示，看起来和联网时一样。
+    // 内容页默认先展示快照；需要确认当前状态的消费者可选择只走网络。
     async function load(): Promise<void> {
       let cached: RouteState<TData> | null = null;
 
-      if (!isRefresh && actorId) {
+      if (!isRefresh && actorId && cachePolicy !== "network-only") {
         const snapshot = await readSnapshot<TData>(baseUrl, actorId, path);
 
         if (!active) {
@@ -118,7 +120,7 @@ export function useApiResource<TData>(
 
         if (result.success) {
           setState(resultToRouteState(result, isEmptyRef.current));
-          if (actorId) {
+          if (actorId && cachePolicy !== "network-only") {
             void writeSnapshot(baseUrl, actorId, path, result);
           }
           return;
@@ -130,10 +132,10 @@ export function useApiResource<TData>(
           return;
         }
 
-        if (!isRefresh) {
+        if (!isRefresh || cachePolicy === "network-only") {
           setState(resultToRouteState(result, isEmptyRef.current));
         }
-        // 下拉刷新失败且没有快照时保留当前内容，不把用户已经在看的东西换成错误屏。
+        // 默认内容页刷新失败仍保留内容；network-only 必须暴露本次读取失败。
       } catch (error: unknown) {
         if (!active) {
           return;
@@ -141,7 +143,7 @@ export function useApiResource<TData>(
 
         if (cached) {
           setState(cached);
-        } else if (!isRefresh) {
+        } else if (!isRefresh || cachePolicy === "network-only") {
           setState(unexpectedErrorState(error));
         }
       } finally {
@@ -157,7 +159,7 @@ export function useApiResource<TData>(
       active = false;
       controller?.abort();
     };
-  }, [actorId, auth.ready, baseUrl, client, path, refreshIndex, scopeKey]);
+  }, [actorId, auth.ready, baseUrl, cachePolicy, client, path, refreshIndex, scopeKey]);
 
   return {
     ...state,

@@ -66,3 +66,15 @@
 基线 32/32（10.923 秒）。有效红测 5 失败／1 通过，均捕获初次或保存／取消回读走旧路径；错误页用例先误找服务端英文原文，修正为实际错误区后重新取得路径红测，不改生产文案。两行生产修复后 35/35（10.454 秒）、类型 exit 0；全量 2307/2307、0 失败／取消／跳过、177.053 秒、exit 0。完整回归包含六项同步检查。日志 `/tmp/orbit-r04-public-detail-red-valid-20260913.log`、`/tmp/orbit-r04-public-detail-green-20260913.log`、`/tmp/orbit-r04-public-detail-types-20260913.log`、`/tmp/orbit-r04-public-detail-full-20260913.log`。
 
 原生公开 GET 200、旧私有 GET 不再出现；问卷仍 500，页面却显示已有问卷，故不算新鲜读取成功。后续单独补过期数据／提交边界，完整 R-04 仍开放；证据见连通性记录 12.3。
+
+### 后续独立修复：联网读取与旧草稿分离
+
+公开详情修复已提交 `fdbc78928`。此次沿用既有 R-04 的错误可见与草稿保护要求，为 `useApiResource` 增加可选 `cachePolicy: "network-only"`，仅报名问卷启用。默认内容页缓存策略不变；不删除旧快照，不新增验证 GET。报名读取及刷新必须得到本次网络结果；等待和失败期间保留本页草稿，但停用报名、取消和辅助生成，提供手动重新读取入口。刷新同帧撤销旧写回调资格，读取新版本仍沿用原显式确认逻辑。
+
+- [x] 根索引刷新 262.0 秒、exit 0；绝对仓库路径检查共享钩子 upstream 为 CRITICAL，47 个直接依赖、8 组上层入口，编辑前告知风险。Screen／Form／refresh 为 LOW；内嵌测试函数未收录，记 UNKNOWN。`load` 的 C++ `getCacheSize` 边实为同名 atomic load，核对源码后排除跨语言假关联。
+- [x] 原定向基线 38/38、11.419 秒。新增真实 hook／路由测试首轮 34 项中 7 失败、27 通过，15.947 秒，捕获旧缓存假成功、刷新保留成功态及同帧旧回调 POST。
+- [x] 最小实现后定向 46 项中 42 通过、4 失败，全部为旧测试假定并行 GET 顺序。按每轮路径、参数和准确次数断言，不改网络实现或放宽错误保护；复跑 **46/46、11.900 秒、exit 0**，类型 exit 0。涵盖 JSON 500、非 JSON 500、断网、初始旧快照、手动恢复、草稿保留及默认缓存兼容。
+- [x] 15:09 同一 Simulator 原生复验：公开 GET 200，问卷 GET 500 无 Content-Type，页面明确显示错误及 370×49 重读入口，没有 TextArea、报名提交或辅助入口；未重试、清缓存或进行业务写入。费用仍 5 次、12780 microUSD。本项只证明失败呈现，原生有效问卷和业务闭环继续未验。
+- [x] 全量 **2315/2315、0 失败／取消／跳过、182.977 秒、exit 0**，包含契约／Schema／字典同步检查。提交前检测仍为 CRITICAL，但改动仅限共享可选策略、报名页和对应测试／记录；完整 R-04 不关闭。
+
+日志：`/tmp/orbit-r04-registration-freshness-baseline-20260913.log`、`/tmp/orbit-r04-registration-freshness-red-20260913.log`、`/tmp/orbit-r04-registration-freshness-green-20260913.log`、`/tmp/orbit-r04-registration-freshness-green-final-20260913.log`、`/tmp/orbit-r04-registration-freshness-types-20260913.log`、`/tmp/orbit-r04-registration-freshness-full-20260913.log`。自审维持单代理，没有独立审查声明；改动检测为 CRITICAL，已逐条阅读返回的 20 条资源读取流程。

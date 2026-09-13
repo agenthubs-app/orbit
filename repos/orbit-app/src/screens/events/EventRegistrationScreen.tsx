@@ -60,7 +60,7 @@ function answersFromView(view: EventRegistrationView | null): Record<string, str
 }
 
 export function EventRegistrationScreen() {
-  const { colors } = useOrbitTheme();
+  const { colors, styles } = useStyles();
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const eventId = firstParam(id);
   const router = useRouter();
@@ -81,7 +81,7 @@ export function EventRegistrationScreen() {
   const registrationState = useApiResource<unknown>(
     `${eventRegistrationPath(eventId)}?language=zh`,
     () => false,
-    { scopeKey }
+    { scopeKey, cachePolicy: "network-only" }
   );
   const loadedRegistrationView =
     registrationState.kind === "success" || registrationState.kind === "empty"
@@ -202,6 +202,7 @@ export function EventRegistrationScreen() {
 
   function refresh() {
     if (!isScopeCurrent() || request.current) return;
+    latestView.current = null;
     eventState.refresh();
     registrationState.refresh();
   }
@@ -412,6 +413,14 @@ export function EventRegistrationScreen() {
       {registrationState.kind === "failure" ? (
         <ErrorState message={registrationState.error.message} />
       ) : null}
+      {eventState.kind === "failure" || eventState.kind === "offline" ||
+        registrationState.kind === "failure" || registrationState.kind === "offline" ? (
+        <Pressable accessibilityRole="button" onPress={refresh}
+          disabled={eventState.refreshing || registrationState.refreshing}
+          style={styles.secondaryButton}>
+          <Text style={styles.secondaryButtonText}>重新读取报名资料</Text>
+        </Pressable>
+      ) : null}
       {ready && event && registrationView ? (
         <RegistrationForm
           adaptiveAnswer={adaptiveAnswer}
@@ -439,6 +448,7 @@ export function EventRegistrationScreen() {
           pendingAction={pendingAction}
           persona={persona}
           registration={registrationView}
+          readConfirmed={loadedRegistrationView !== null}
           questionsChanged={questionsChanged}
           submitError={submitError}
         />
@@ -468,6 +478,7 @@ function RegistrationForm({
   pendingAction,
   persona,
   registration,
+  readConfirmed,
   questionsChanged,
   submitError
 }: {
@@ -491,13 +502,14 @@ function RegistrationForm({
   pendingAction: "cancel" | "register" | null;
   persona: EventRegistrationPersonaView | null;
   registration: EventRegistrationView;
+  readConfirmed: boolean;
   questionsChanged: boolean;
   submitError: string | null;
 }) {
   const { colors, styles } = useStyles();
   return (
     <>
-      <DataCard detail={registration.statusDetail} title={eventTitle}>
+      <DataCard detail={readConfirmed ? registration.statusDetail : "显示上次读取的报名资料，当前答案和辅助问答已保留。"} title={eventTitle}>
         <View style={styles.statusRow}>
           <Text style={styles.statusPill}>{registration.statusLabel}</Text>
           {eventMeta ? <Text style={styles.eventMetaText}>{eventMeta}</Text> : null}
@@ -517,7 +529,7 @@ function RegistrationForm({
       <DataCard variant="inset" detail="标记为必答的问题需要回答，其余问题可以跳过" title="参与资料">
         {questionsChanged ? <>
           <Text style={styles.errorText}>报名问题已更新，当前答案和辅助问答已保留。</Text>
-          <Pressable accessibilityRole="button" disabled={pendingAction !== null || adaptivePending !== null}
+          <Pressable accessibilityRole="button" disabled={pendingAction !== null || adaptivePending !== null || !readConfirmed}
             onPress={onLoadNewQuestions} style={styles.secondaryButton}>
             <Text style={styles.secondaryButtonText}>载入新问题</Text>
           </Pressable>
@@ -541,11 +553,11 @@ function RegistrationForm({
         {feedback ? <Text style={styles.feedbackText}>{feedback}</Text> : null}
         <Pressable
           accessibilityRole="button"
-          disabled={pendingAction !== null || adaptivePending !== null || questionsChanged}
+          disabled={pendingAction !== null || adaptivePending !== null || questionsChanged || !readConfirmed}
           onPress={onSubmit}
           style={({ pressed }) => [
             styles.primaryButton,
-            pendingAction ? styles.disabled : null,
+            pendingAction || !readConfirmed ? styles.disabled : null,
             pressed ? styles.pressed : null
           ]}
         >
@@ -557,11 +569,11 @@ function RegistrationForm({
         {registration.canCancel ? (
           <Pressable
             accessibilityRole="button"
-            disabled={pendingAction !== null || adaptivePending !== null}
+            disabled={pendingAction !== null || adaptivePending !== null || !readConfirmed}
             onPress={onCancel}
             style={({ pressed }) => [
               styles.cancelButton,
-              pendingAction ? styles.disabled : null,
+              pendingAction || !readConfirmed ? styles.disabled : null,
               pressed ? styles.pressed : null
             ]}
           >
@@ -574,7 +586,7 @@ function RegistrationForm({
       </DataCard>
       <AdaptiveRegistrationCard
         answer={adaptiveAnswer}
-        disabled={pendingAction !== null || questionsChanged}
+        disabled={pendingAction !== null || questionsChanged || !readConfirmed}
         error={adaptiveError}
         onAnswerChange={onAdaptiveAnswerChange}
         onGeneratePersona={onGenerateAdaptivePersona}
