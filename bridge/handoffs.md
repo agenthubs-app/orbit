@@ -22,6 +22,19 @@
 | BR-010 | P1 | 身份邀请、绑定与共享聊天 | verified | 已完成；0012 可消费 | 隔离双 actor 与 PostgreSQL 证明资格、幂等投递、撤销和双方回读 |
 | BR-011 | P1 | 消息前台刷新、已读、角标与推送 | blocked | 运行环境负责人 | 提供 Expo project、push server key、双用户原生账号及实体推送环境后补真实验收 |
 | BR-012 | P1 | 双面名片按卡复核并一次创建联系人 | blocked | Bridge／共同环境负责人 | 实体 iPhone 在共同 API/OCR 环境完成双面创建，Web/App 重开同一联系人和字段来源 |
+| BR-013 | P1 | 统一待办与人脉筛选跨端一致 | verified | 已完成；0011/0013/0015/0018 可消费 | 同一任务在 App 全部／人脉视图、旧链接及 Web 完成／恢复回读一致 |
+
+## BR-013 — 统一待办与人脉筛选
+
+- 创建/更新日期：2026-09-15。
+- 总状态：`verified`；web_status：`source_ready`；app_status：`consumer_ready`；verification_status：`verified`。
+- Web/API：复用 BR-009 的 canonical task、版本与幂等动作；本轮未新增 Web 筛选 UI 或 API 字段。
+- App：`/tasks` 提供全部／人脉与未完成／已完成正交视图；旧 `/followups` 保持私有并归一化到 `/tasks?scope=relationship`。Pipeline、AI、消息、日历分别按语义进入筛选页或真实任务详情。
+- 工具与历史：联系人／事项必须显式选择后才启用 IORBIT 起草；URL 不携带正文，用户发送前零生成。候选、提醒和 canonical task 分开计数，既有会话历史仍可回读。
+- 版本：主线功能 `ef5d0b02d`；[Sprint 0022 报告](../repos/orbit-app/docs/sprints/0022-unified-tasks/REPORT.md)。
+- 验证：主线相关集65/65、任务集83/83、导航消费者208/208、App typecheck通过；隔离 PostgreSQL 与 iOS Simulator 中同一任务完成／恢复完成 App→Web→App 回读，联系人 payload 未变。
+- 风险记录：实施前 `initial-route` 链为 HIGH，已覆盖登录回跳、旧链接和导航消费者；主线 GitNexus 索引陈旧返回0，不作为低风险证据。原全量44项旧夹具失败及后续65项复验分别保留。
+- 下游稳定地址：全部待办 `/tasks`，人脉待办 `/tasks?scope=relationship`，完成维度 `view=completed`，详情 `/tasks/<encoded-id>`。候选不得伪造 task ID；完成人脉待办不得自动推进联系人 lifecycle。
 
 ## BR-012 — 双面名片卡片级确认
 

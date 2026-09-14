@@ -69,7 +69,7 @@ build/harness-logs/
 | [0019](0019-note-suggestions/GOAL.md) | 确认笔记建议后只建一次事项，逐项验收全部原需求 | R-13、R-14 | 0018；D5／B6／B8建议协议 | blocked |
 | [0020](0020-secondary-industries-self-profile/GOAL.md) | 二级行业在资料、联系人和检索中复用，AI 能读取本人资料，现有测试数据补齐 | 2026-09-14 新增；关联 R-03／R-06 | run-01 已结束；部分代码未提交，HTTP/provider/trace/生成源范围缺项与 H 验证未通过；见 REPORT | blocked |
 | [0021](0021-ai-session-organization/GOAL.md) | 保存 AI 会话入口与首条内容，按项目式分组整理，并能置顶、改名、删除和跨端回读 | 2026-09-14 新增；关联 R-00／R-02／R-06 | 功能 HEAD `3de117902`；起源、组织事务和两端 UI 已实现，真实同账号双端与当前 iOS 交互仍缺证据，见 REPORT | blocked |
-| [0022](0022-unified-tasks/GOAL.md) | 同一待办入口切换全部／人脉，兼容旧跟进链接并保留草稿、建议和提醒入口 | 2026-09-14 新增；关联 R-08／R-09／R-06 | 产品方向与执行指令已确认；书面规格审阅，0006 模板与 0010 动作交付 | planned |
+| [0022](0022-unified-tasks/GOAL.md) | 同一待办入口切换全部／人脉，兼容旧跟进链接并保留草稿、建议和提醒入口 | 2026-09-14 新增；关联 R-08／R-09／R-06 | run-01 已完成；功能 `ef5d0b02d`，见 REPORT | completed |
 | [0023](0023-industry-consumer-continuation/GOAL.md) | 接通联系人行业、搜索 HTTP 与本人资料工具，承接 0020 全部未完成验收 | SC-0020-01～05；明确获准接续 | 现有部分实现与 8 文件补充方案已批准；真实数据／设备按对象处理 | running |
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
@@ -113,6 +113,13 @@ build/harness-logs/
 - C 线独占事项、日程、首页的0010白名单；共享登记表与Git提交仍由协调者处理。原 Planner SHA256 `5f169b6879af07d7f21515e1d02f7f9ab14a9bcd0b207d950c47080be0c66c16`。
 - 结束：2026-09-15；结果 completed；主线功能提交 `d005c2b79`，见[执行报告](0010-task-schedule-editing/REPORT.md)与[批准范围补充](0010-task-schedule-editing/APPROVED_SCOPE_ADDENDUM.md)。个人事项、日期／截止／地点清空、个人日程 CRUD、版本冲突、幂等和提醒保持原计划均完成。
 - 冻结补丁61文件 SHA256 `e94ec5eb4c079b7d0583a966d898cd5778b6ef91c4dbf8653d083abc66c4eea6`。主线整合后两端typecheck exit0、App组合154/154、Web组合26/26及任务日期17/17；真实 PostgreSQL 与原生双向同记录证据保存在被忽略的 run-01 目录。旧全量失败／skip和未计量provider费用按报告保留，不改写为通过或0。
+
+### 0022 / run-01
+
+- owner：C 线任务；run_count：1；结束：2026-09-15；结果 completed。Planner SHA256 `d58db78992f48873a32ed040554a997241c2ee02e6573f30fc80a85ec283d9a7`；主线功能提交 `ef5d0b02d`，见[执行报告](0022-unified-tasks/REPORT.md)与[必要测试范围补充](0022-unified-tasks/APPROVED_SCOPE_ADDENDUM.md)。
+- 通用待办、人脉待办及未完成／已完成四个视图共用 canonical task 集合；旧 `/followups` 私有入口归一化到人脉筛选，Pipeline、AI、消息和日历跳转到稳定任务地址。候选／提醒不伪装成已保存待办，起草只预填 IORBIT，用户显式发送前不生成。
+- 主线复验 65/65、83/83、208/208，App typecheck exit0；隔离 PostgreSQL 与 iOS Simulator 完成同一任务 App完成→Web回读→Web恢复→App回读。原 App 全量 2645 中44项因旧测试夹具编译失败的历史结果保留，夹具修复后的65项完整相关集通过，不改写为全量通过。
+- 实施前 `initial-route` 影响为 HIGH，主线陈旧 GitNexus staged detect 错误返回0；按HIGH覆盖导航消费者并人工核对24路径。22份冻结文件逐字一致，另两测试分别保留A0003登录补全和E线真实消息变化。
 
 ### 0007 / run-01
 
