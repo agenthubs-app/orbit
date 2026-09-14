@@ -51,7 +51,7 @@ build/harness-logs/
 | [0001](0001-event-discovery/GOAL.md) | 用全部地点和话题找到活动，筛选后仍能翻页和打开详情 | R-09 | 无；接续当前四文件 | completed |
 | [0002](0002-readiness-handoff/GOAL.md) | 查清已完成能力、后续缺项和每项开工条件 | R-01、R-00～R-12 依赖 | 无；只读文档工作 | completed |
 | [0003](0003-profile-completion/GOAL.md) | 注册、补全资料后回到原页面，完整用户不再被拦截 | R-03 | B1整体批准已生效；本地实现启动，真实账号／Google验收按对象另核 | running |
-| [0004](0004-registration/GOAL.md) | 报名、取消和重报后，答案、人数及各页状态一致 | R-04 | 0002、0003；B2；历史题库表不可见已定位，当前库／schema／迁移核查待授权 | blocked |
+| [0004](0004-registration/GOAL.md) | 报名、取消和重报后，答案、人数及各页状态一致 | R-04 | 0002、0003；B2；本地题库迁移已恢复并复验幂等，跨端范围已批准 | running |
 | [0005](0005-ai-session-reliability/GOAL.md) | AI 重试不重复生成，Web/App 续聊不丢历史 | R-00、R-02 | B3 跨端提案待审；已隔离复现旧快照覆盖，真实恢复／503 证据仍缺 | blocked |
 | [0006](0006-contact-mentions/GOAL.md) | @ 选准联系人，带入 AI 的问题由用户确认发送 | R-06 | 0005；B3 引用／D3 | blocked |
 | [0007](0007-two-sided-cards/GOAL.md) | 正反面名片复核后只创建一个联系人 | R-07 | 0002；B5／OCR 环境 | blocked |
@@ -93,6 +93,12 @@ build/harness-logs/
 - 新增 [0021 Planner](0021-ai-session-organization/PLANNER.md)及[参考与交互规格](0021-ai-session-organization/REFERENCE_AND_BEHAVIOR.md)，记录会话入口元信息、项目式分组、置顶／改名／删除和跨端持久化。用户已澄清只参考 ChatGPT App 的功能与组织形式，公开截图由代理寻找，不做像素复刻。当前只编制，planned、run_count = 0、未产生 REPORT；原 0001～0020 的状态不变。
 
 ## 运行记录
+
+### 0004 / run-01
+
+- owner：当前主代理 `/root`；run_count：1；开始：2026-09-15 00:55 JST，原地 `chat-agent`，无第二实现者。基线 HEAD `b2afc634d`，原 Planner SHA256 `1e4d139e552c9090eb7fda71b6438a22753a04a4b1e69f3d0b690f0ed8ea9519`。
+- 历史题库 500 已定位为 `event_ops_experience_heads` 不可见；当前本地 `orbit_events/public` 已执行 `event-experience-v1-versioned-heads` 迁移并幂等复验，日志在被忽略证据目录。用户的连续执行与必要环境授权已记录为[跨端实施范围补充](0004-registration/APPROVED_SCOPE_ADDENDUM.md)。
+- A 线独占报名资格、报名／取消／重报与 App 报名页文件；共享 Git 提交仍由协调者执行。开发阶段使用定向测试，产品代码收口后执行一次 H 级集成验证。
 
 ### 0009 / run-01
 
