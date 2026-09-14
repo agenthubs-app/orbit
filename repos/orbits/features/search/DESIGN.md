@@ -85,6 +85,10 @@ Live provider 不得返回没有 evidence ids 和 source references 的结果；
 
 API 包括 relationship search 和 suggestions。产品上 Search 可嵌入 Contacts 筛选、Orbit AI 意图解析和 Dashboard drill-down。它不需要单独成为主导航页面，除非后续产品需要完整搜索中心。
 
+`/api/search/relationships` 的 GET、POST JSON 和 POST 表单均接收 `primaryIndustryIds`／`secondaryIndustryIds`。每层内按 OR 匹配，两层同时提供时按 AND 匹配；二级按稳定 ID 精确筛选。旧 `industryFilters` 的五领域语义与未提供新字段时的响应保持兼容。POST 显式提供新过滤字段时覆盖 URL 中的同名条件，空列表可清除该条件。
+
+live 请求先经当前会话解析持久化账户归属，再绑定 actor-scoped 联系人存储；过滤条件不能切换账户。路由测试执行实际解码、账户归属解析、服务和内存记录过滤，分别检查同父不同子、空列表、非法 ID、旧领域、换号与未认证响应。
+
 如果未来需要 `/app/search` 搜索中心，它也应该是 Relationship Search 的 consumer，而不是让 Search 拥有联系人、活动或跟进业务动作。
 
 ## 测试要求

@@ -107,6 +107,10 @@ function readQueryInput(searchParams: URLSearchParams): RelationshipNaturalSearc
       "followUpStatuses",
     ),
     industryFilters: readSearchParamsList(searchParams, "industry", "industries"),
+    primaryIndustryIds: searchParams.has("primaryIndustryId") || searchParams.has("primaryIndustryIds")
+      ? readSearchParamsList(searchParams, "primaryIndustryId", "primaryIndustryIds") : undefined,
+    secondaryIndustryIds: searchParams.has("secondaryIndustryId") || searchParams.has("secondaryIndustryIds")
+      ? readSearchParamsList(searchParams, "secondaryIndustryId", "secondaryIndustryIds") : undefined,
     query: searchParams.get("query"),
     scenario: searchParams.get("scenario"),
     sourceFilters: readSearchParamsList(searchParams, "source", "sources"),
@@ -157,6 +161,10 @@ async function readRelationshipSearchInput(
         followUpStatuses,
       ),
       industryFilters: mergeList(queryInput.industryFilters ?? [], industries),
+      primaryIndustryIds: formData.has("primaryIndustryIds")
+        ? readFormList(formData, "primaryIndustryIds") : queryInput.primaryIndustryIds,
+      secondaryIndustryIds: formData.has("secondaryIndustryIds")
+        ? readFormList(formData, "secondaryIndustryIds") : queryInput.secondaryIndustryIds,
       query: readFormText(formData, "query") ?? queryInput.query,
       scenario: readFormText(formData, "scenario") ?? queryInput.scenario,
       sourceFilters: mergeList(queryInput.sourceFilters ?? [], sources),
@@ -208,6 +216,10 @@ async function readRelationshipSearchInput(
             parsedBody.industry,
         ),
       ),
+      primaryIndustryIds: Object.hasOwn(parsedBody, "primaryIndustryIds")
+        ? readJsonList(parsedBody.primaryIndustryIds) : queryInput.primaryIndustryIds,
+      secondaryIndustryIds: Object.hasOwn(parsedBody, "secondaryIndustryIds")
+        ? readJsonList(parsedBody.secondaryIndustryIds) : queryInput.secondaryIndustryIds,
       query:
         typeof parsedBody.query === "string" ? parsedBody.query : queryInput.query,
       scenario:
@@ -277,3 +289,5 @@ export async function POST(request: Request): Promise<Response> {
 
   return responseForResult(result, mode);
 }
+
+export const GET = POST;
