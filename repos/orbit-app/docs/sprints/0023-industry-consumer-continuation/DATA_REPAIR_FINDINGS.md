@@ -1,6 +1,16 @@
 # 测试数据补齐：已核实入口与剩余边界
 
-2026-09-14 只读核查；这是原 SC-05 的接续准备，不是补齐成功报告，也不授权数据库操作。完整对象范围仍以 [0020 DATA_SCOPE](../0020-secondary-industries-self-profile/DATA_SCOPE.md)为准。
+2026-09-14 源码核查与本地夹具进度；这是原 SC-05 的接续记录，不是全部数据补齐成功报告，也不授权数据库操作。完整对象范围仍以 [0020 DATA_SCOPE](../0020-secondary-industries-self-profile/DATA_SCOPE.md)为准。
+
+## 已实现的固定夹具与可执行清单
+
+`464e7f816` 补齐 Web 资料、联系人列表／详情、自然搜索四组固定夹具；`10c2ecd7b` 新增 `tests/support/industry-fixture-inventory.ts`，执行真实夹具构造器和本地资料服务，不以文本命中数冒充覆盖。
+
+随后 `fd91387b0` 补齐旧全局 `legacyDefaultMockFixtures` 的本人公开资料、networkPeople、联系人及完整参会者公开资料。清单现有 8 名人物、28 个正常投影，登记源文件／构造器／稳定记录和人物 ID／账号与分类依据。空本人资料和刻意缺少公开资料的稀疏参会者保留为两个具体反例。旧全局账号关联由 profile 与 connection 回读核对；无账号的 capability 夹具不伪造所属账号。
+
+默认全局运行时仍来自 generatedRelationshipFixtures，不能将旧全局夹具的完成状态套给生成数据。清单内待盘点来源仍包含生成器／产物、seed、其他两端内联夹具及既有测试库；本清单当前只是增量覆盖。Web 71 个、App 25 个测试文件的关键词扫描是下一步阅读线索，不是完整对象清单或人数。
+
+当前数据版本 H 检查：App 2582 pass／0 fail／0 skip；Web 2952 pass／47 fail／168 skip，两端类型检查 exit0。Web 失败集合与前次相比没有新增项，只移除了已修复的 Agent 报告模块错误；47 项既有审计／未配置数据库失败仍不算通过。没有运行 seed、连接真实数据库或发起付费模型请求。
 
 ## 源数据与关联
 
@@ -38,7 +48,7 @@
 
 ## 尚未具备的执行条件
 
-- 原计划中的 `tests/support/industry-fixture-inventory.ts` 和 `scripts/backfill-test-secondary-industries.ts` 尚不存在，不能引用为已实现工具。
+- `tests/support/industry-fixture-inventory.ts` 已有上述增量实现，完整正常对象盘点仍未完成；`scripts/backfill-test-secondary-industries.ts` 尚不存在，不能引用为已实现补齐工具。
 - 生成源、精确输出文件、人物分类依据及条件更新方案需要独立范围审阅；不是对已批准联系人／搜索／资料接线重复审批。
 - 真实环境、schema、workspace、actor、记录 ID、预期版本和写入对象未确认；本次没有连接数据库盘点、迁移或补齐。
 - 真实模型验收另受累计 USD 5 上限约束；先前已结算 USD 0.012780，旧 0020 意外增量尚未核算。现有浏览器只有空白标签，没有可复用的账单登录会话。没有新增付费请求，未将增量记作零。
