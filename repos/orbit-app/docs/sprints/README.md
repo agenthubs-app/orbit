@@ -104,6 +104,7 @@ build/harness-logs/
 - App 资料正常夹具补齐：`805188a56` 名片／编辑／保存，`2d1add128` 首页及建议／抽取转换；五个修改文件加既有行业交互测试共51/51、App typecheck exit0。空资料、缺姓名和旧版无ID反例保留，尚未并入 Web 的增量投影清单；没有因此声明 App 全部测试数据已补齐。
 - 最近 H 全量（`fd91387b0` 同一源码版本）：App 2582 pass／0 fail／0 skip；Web 2952 pass／47 fail／168 skip，两端 typecheck exit0。Web 47项失败与上次逐项对比没有新增，原48项中的 Agent 报告模块错误已消失；不是把旧计数直接改写。日志在 build/harness-logs/sprint-0023-fixture-{web,app}-full.log。真实模型、跨端、原生和既有测试库验收仍未完成，环境隔离历史与未核算费用保留。
 - 更新 H 全量（`1adb805c7`）：推荐候选在同步／异步及普通／排序路径保留行业 ID、null 和省略语义；12个新增路径用例先见8个预期RED，修复后相关两文件29/29。App全量2583 pass／0 fail／0 skip；Web2964 pass／47 fail／168 skip，失败名称集合与上一版无变化；两端typecheck exit0。日志为 build/harness-logs/sprint-0023-recommendation-{web,app}-full.log。继续本地夹具盘点，不以阶段提交结束整体工作。
+- 后续L数据检查：`d34712307` 补内联资料／联系人／推荐输入并登记4个实际推荐投影，清单现8人32正常投影；5个RED后四文件43/43。`e5db81a32` 将AI输出／统计桶／活动偏好与活动领域三个来源列入明确非个人行业分类，登记RED后四文件20/20；两次Web typecheck均exit0。两个反例保留，其他10个来源族仍未完成；不把这两次局部检查称为新的全量。
 
 ### 0020 / run-01
 
