@@ -294,3 +294,65 @@ test("Orbit Agent chat session APIs reject unauthenticated access before storage
     assert.equal(providerCalls, 0);
   });
 });
+
+test("Orbit Agent chat session GET returns the actor-scoped reliable request result", async () => {
+  const [{ createOrbitAgentChatSessionHandlers }, { createMemoryOrbitAgentChatRequestStore }, sessionModule] =
+    await Promise.all([
+      importProjectModule<typeof import("../../app/api/ai/conversations/sessions/[id]/handler")>(
+        "app/api/ai/conversations/sessions/[id]/handler.ts",
+      ),
+      importProjectModule<typeof import("../../features/orbit-ai/reliable-send-service")>(
+        "features/orbit-ai/reliable-send-service.ts",
+      ),
+      importProjectModule<typeof import("../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider")>(
+        "features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider.ts",
+      ),
+    ]);
+  const actorId = "account:request-result-owner";
+  const requestStore = createMemoryOrbitAgentChatRequestStore();
+  const provider = sessionModule.createStorageOrbitAgentChatSessionProvider({
+    actorId,
+    store: (await importProjectModule<typeof import("../../shared/storage/live-record-store")>(
+      "shared/storage/live-record-store.ts",
+    )).createMemoryLiveRecordStore<Record<string, unknown>>(),
+    workspaceId: "workspace:request-result",
+  });
+  await provider.upsertSession({
+    createdAt: "2026-09-14T01:00:00.000Z",
+    id: "session:request-result",
+    messageRevision: 2,
+    messages: [
+      { id: "message:user", role: "user", text: "问题" },
+      { id: "message:assistant", role: "assistant", text: "答案" },
+    ],
+    title: "问题",
+    updatedAt: "2026-09-14T01:01:00.000Z",
+  });
+  await requestStore.reserve(
+    "request:result",
+    "fingerprint:result",
+    "session:request-result",
+  );
+  await requestStore.complete("request:result", "fingerprint:result", {
+    answer: "答案",
+  });
+  const handlers = createOrbitAgentChatSessionHandlers({
+    providerForActor: () => provider,
+    requestStoreForActor: () => requestStore,
+    resolveActor: async () => ({ id: actorId }),
+  });
+
+  const response = await handlers.GET(
+    new Request(
+      "https://orbit.local/api/ai/conversations/sessions/session%3Arequest-result?requestId=request%3Aresult",
+    ),
+    { params: Promise.resolve({ id: "session:request-result" }) },
+  );
+  const envelope = await response.json();
+
+  assert.equal(response.status, 200, JSON.stringify(envelope));
+  assert.equal(envelope.data.reliableSend.protocolVersion, 2);
+  assert.equal(envelope.data.reliableSend.state, "completed");
+  assert.equal(envelope.data.reliableSend.requestId, "request:result");
+  assert.deepEqual(envelope.data.reliableSend.result, { answer: "答案" });
+});

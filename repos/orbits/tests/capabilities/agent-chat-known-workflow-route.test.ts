@@ -108,6 +108,69 @@ test("conversation POST calls planner sendMessage exactly once for ordinary requ
   assert.equal(sendCalls, 1);
 });
 
+test("protocol v2 conversation POST replays one persisted result for the same request id", async () => {
+  const delegate = createMockOrbitAgentConversationService();
+  let sendCalls = 0;
+  mock.method(orbitAgentConversationServiceFactory, "create", () => ({
+    mode: "mock" as const,
+    service: {
+      ...delegate,
+      sendMessage(input) {
+        sendCalls += 1;
+        return delegate.sendMessage(input);
+      },
+    },
+    success: true as const,
+  }));
+  const route = await import("../../app/api/ai/conversations/route");
+  const requestBody = {
+    clientMessageId: "message:route-v2:client",
+    expectedMessageRevision: 0,
+    locale: "zh",
+    message: "普通可靠会话",
+    protocolVersion: 2,
+    references: [],
+    requestId: "request:route-v2",
+    sessionId: "session:route-v2",
+  };
+
+  const send = () =>
+    route.POST(
+      new Request("https://orbit.local/api/ai/conversations", {
+        body: JSON.stringify(requestBody),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      }),
+    );
+  const first = await send();
+  const firstEnvelope = await first.json();
+  const replay = await send();
+  const replayEnvelope = await replay.json();
+
+  assert.equal(first.status, 200);
+  assert.equal(replay.status, 200);
+  assert.equal(firstEnvelope.success, true);
+  assert.equal(firstEnvelope.data.reliableSend.state, "completed");
+  assert.equal(firstEnvelope.data.reliableSend.replayed, false);
+  assert.equal(replayEnvelope.data.reliableSend.state, "completed");
+  assert.equal(replayEnvelope.data.reliableSend.replayed, true);
+  assert.equal(replayEnvelope.data.reliableSend.requestId, requestBody.requestId);
+  assert.deepEqual(replayEnvelope.data.messages, firstEnvelope.data.messages);
+  assert.equal(sendCalls, 1);
+
+  const conflict = await route.POST(
+    new Request("https://orbit.local/api/ai/conversations", {
+      body: JSON.stringify({ ...requestBody, message: "同 ID 换内容" }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    }),
+  );
+  const conflictEnvelope = await conflict.json();
+  assert.equal(conflict.status, 409);
+  assert.equal(conflictEnvelope.error.code, "CONFLICT");
+  assert.equal(sendCalls, 1);
+});
+
 test("ordinary conversation responses use a fresh progress run and never inherit older actions", async () => {
   resetOrbitAgentRuntimeServicesForTests();
   const runtime = createOrbitAgentRuntimeService("mock");

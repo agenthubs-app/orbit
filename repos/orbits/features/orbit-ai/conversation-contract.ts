@@ -10,6 +10,7 @@ import type {
   OrbitAiProposedToolIntentContract,
   OrbitAiTaskInteractionContract,
 } from "../../shared/contract/orbit-ai";
+import type { ReliableAiSendReceiptContract } from "../../shared/contract/ai-sessions";
 import type { AgentNaturalLanguageActionRequest } from "../agent/natural-language-actions/contract";
 
 // Conversation contract 是 Chat Agent 的对外数据协议。
@@ -196,6 +197,7 @@ export interface OrbitAgentConversationPayload {
   diagnostics?: OrbitAgentConversationDiagnostics;
   runId?: string;
   actionIds?: readonly string[];
+  reliableSend?: ReliableAiSendReceiptContract | undefined;
 }
 
 export interface OrbitAgentConversationSuccess {

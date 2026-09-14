@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
+import { randomUUID } from "expo-crypto";
 import { Fragment, useEffect, useRef, useState } from "react";
 import {
   Image,
@@ -34,7 +35,7 @@ import { createThemedStyles } from "../../design/theme";
 import { iorbitBrandMark } from "../../design/iorbit-brand";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
-import { aiConversationListSchema, aiSessionReadSchema, aiSessionReceiptMatches, aiReplyPayload, aiTaskReceipt, type AiConversationPayload, type AiSession } from "../../api/ai-history-contract";
+import { aiConversationListSchema, aiSessionReadSchema, aiSessionReceiptMatches, aiReplyPayload, aiReliableSendReceipt, aiReliableSendRecovery, aiTaskReceipt, type AiConversationPayload, type AiSession } from "../../api/ai-history-contract";
 import {
   aiRunDetailToView,
   buildAiRunDetailRequest,
@@ -102,7 +103,13 @@ function assetUrl(baseUrl: string, path: string): string {
   return `${baseUrl.replace(/\/+$/u, "")}${normalizedPath}`;
 }
 
-type SendRequest = { path: string; message: string; history?: { content: string; role: "user" | "assistant" }[] | undefined; revision: number };
+type ReliableSendAttempt = {
+  clientMessageId: string;
+  expectedMessageRevision: number;
+  requestId: string;
+  sessionId: string;
+};
+type SendRequest = { path: string; message: string; history?: { content: string; role: "user" | "assistant" }[] | undefined; reliable?: ReliableSendAttempt; revision: number };
 type PendingSessionSave = { session: AiSession; revision: number; canonicalize: boolean; waitForTask: boolean };
 type ConversationJournalState = {
   draftMessage: string; latestData: AiConversationPayload | null; resolvedConversationId: string | null;
@@ -134,7 +141,7 @@ function rawSessionThread(session: AiSession): ConversationThreadView {
   return {
     activeConversationId: session.id, title: session.customTitle?.trim() || session.title,
     assistantMessage: session.messages.findLast(item => item.role === "assistant")?.text ?? "",
-    messages: session.messages.map((item, index) => ({ id: `${session.id}:message:${index}`, role: item.role, content: item.text, createdAt: typeof item.createdAt === "string" ? item.createdAt : session.updatedAt })),
+    messages: session.messages.map((item, index) => ({ id: item.id ?? `${session.id}:message:${index}`, role: item.role, content: item.text, createdAt: typeof item.createdAt === "string" ? item.createdAt : session.updatedAt })),
     nextAction: "", proposedToolIntents: []
   };
 }
@@ -257,6 +264,20 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       .map(item => ({ content: item.content, role: item.role })).slice(-8);
   }
 
+  function requestForSend(input: Omit<SendRequest, "reliable">): SendRequest {
+    if (!(isDraftConversation || isStoredAgentSession || previousSession)) return input;
+    const sessionId = previousSession?.id ?? `agent-session-mobile-${randomUUID()}`;
+    return {
+      ...input,
+      reliable: {
+        clientMessageId: randomUUID(),
+        expectedMessageRevision: previousSession?.messageRevision ?? previousSession?.messages.length ?? 0,
+        requestId: randomUUID(),
+        sessionId,
+      },
+    };
+  }
+
   async function persistAndCanonicalizeDraftConversation(pending: PendingSessionSave) {
     if (!owns() || saveOperation.current) return;
     const controller = new AbortController();
@@ -291,17 +312,46 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     setSending(true); setSendError(null); setSendCode(null); setFailedRequest(null);
     setAiRunError(null); setAiRunDetailView(null); setActionError(null);
     const result = await client.post<unknown>(request.path, {
-      body: { locale: "zh", message: request.message, ...(request.history ? { history: request.history } : {}) }, signal: controller.signal
+      body: {
+        locale: "zh",
+        message: request.message,
+        ...(request.history ? { history: request.history } : {}),
+        ...(request.reliable ? {
+          ...request.reliable,
+          protocolVersion: 2,
+          references: []
+        } : {})
+      }, signal: controller.signal
     });
     if (!ownsRequest(controller)) return;
     delete journal.interruptedRequest;
+    const receipt = result.success && result.status >= 200 && result.status < 300 ? aiReliableSendReceipt(result.data) : null;
     const payload = result.success && result.status >= 200 && result.status < 300 ? aiReplyPayload(result.data, request.message) : null;
     if (payload) {
       setTaskInteractionResolution(null); setAcceptedTaskId(null);
       setLatestData(payload); setResolvedConversationId(payload.activeConversationId);
       if (draftRevision.current === request.revision) { draftValue.current = ""; setDraftMessage(""); }
       const nextThread = rawConversationThread(payload);
-      if (isDraftConversation || isStoredAgentSession || previousSession) {
+      if (request.reliable && receipt?.state === "completed") {
+        const turnStart = payload.messages.findLastIndex(item => item.role === "user");
+        const messages = payload.messages.slice(turnStart).filter((item): item is typeof item & { role: "user" | "assistant" } => item.role === "user" || item.role === "assistant")
+          .map((item, index) => ({
+            createdAt: item.createdAt,
+            id: index === 0 ? request.reliable!.clientMessageId : item.messageId,
+            role: item.role,
+            text: item.content
+          }));
+        const now = new Date().toISOString();
+        const session: AiSession = previousSession
+          ? { ...previousSession, messageRevision: receipt?.messageRevision, messages: [...previousSession.messages, ...messages], updatedAt: now }
+          : { id: request.reliable.sessionId, title: request.message.slice(0, 120), createdAt: messages[0]?.createdAt ?? now, updatedAt: now, pinned: false, messageRevision: receipt?.messageRevision, messages };
+        setSavedSessionId(session.id);
+        setSessionSnapshot(session);
+        pendingSaveRef.current = null; setPendingSave(null);
+        if (isDraftConversation && !nextThread.taskInteraction?.state && draftRevision.current === request.revision && !draftValue.current.trim()) {
+          router.replace({ params: { id: session.id, source: "session" }, pathname: "/ai/[id]" });
+        }
+      } else if (isDraftConversation || isStoredAgentSession || previousSession) {
         const turnStart = payload.messages.findLastIndex(item => item.role === "user");
         const messages = payload.messages.slice(turnStart).filter((item): item is typeof item & { role: "user" | "assistant" } => item.role === "user" || item.role === "assistant")
           .map(item => ({ role: item.role, text: item.content }));
@@ -317,8 +367,9 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       }
     } else {
       setFailedRequest(request);
-      setSendError(result.success ? "服务返回的回答不完整，请重试或编辑问题。" : result.error.message);
-      setSendCode(result.success ? null : result.error.code);
+      const unknown = Boolean(request.reliable) && (!result.success || receipt?.state === "pending" || receipt?.state === "outcome_unknown");
+      setSendError(unknown ? "请求结果尚未确认。请先检查结果，系统不会重复生成。" : result.success ? "服务返回的回答不完整，请重试或编辑问题。" : result.error.message);
+      setSendCode(unknown ? receipt?.state ?? "OUTCOME_UNKNOWN" : result.success ? null : result.error.code);
     }
     if (!ownsRequest(controller)) return;
     requests.current.delete(controller); sendOperation.current = null; setSending(false);
@@ -332,7 +383,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     const history = previousSession ? conversationHistoryForRequest() : undefined;
     const sendPath = usesSessionHistory ? ORBIT_API_ENDPOINTS.conversations
       : resolvedConversationId ? aiConversationPath(resolvedConversationId) : path;
-    await submitRequest({ path: sendPath, message, revision: draftRevision.current, history: history?.length ? history : undefined });
+    await submitRequest(requestForSend({ path: sendPath, message, revision: draftRevision.current, history: history?.length ? history : undefined }));
   }
 
   useEffect(() => {
@@ -345,8 +396,29 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       }
       return;
     }
-    void submitRequest({ path: ORBIT_API_ENDPOINTS.conversations, message: initialPrompt, revision: draftRevision.current });
+    void submitRequest(requestForSend({ path: ORBIT_API_ENDPOINTS.conversations, message: initialPrompt, revision: draftRevision.current }));
   }, [client, initialPrompt, isDraftConversation]);
+
+  async function recoverRequest(request: SendRequest) {
+    if (!request.reliable || !owns() || sendOperation.current) {
+      if (!request.reliable) await submitRequest(request);
+      return;
+    }
+    const controller = new AbortController(); sendOperation.current = controller; requests.current.add(controller);
+    setSending(true); setSendError(null); setSendCode(null);
+    const recoveryPath = `${aiConversationSessionPath(request.reliable.sessionId)}?${new URLSearchParams({ requestId: request.reliable.requestId }).toString()}`;
+    const result = await client.get<unknown>(recoveryPath, { signal: controller.signal });
+    if (!ownsRequest(controller)) return;
+    const recovery = result.success && result.status >= 200 && result.status < 300 ? aiReliableSendRecovery(result.data) : null;
+    requests.current.delete(controller); sendOperation.current = null; setSending(false);
+    if (recovery?.receipt.state === "completed" || recovery?.receipt.state === "failed_before_execution") {
+      await submitRequest(request);
+      return;
+    }
+    setFailedRequest(request);
+    setSendError(recovery ? "请求仍在处理中或结果未知。稍后再次检查；系统不会重复生成。" : result.success ? "暂时无法确认请求结果，请稍后再检查。" : result.error.message);
+    setSendCode(recovery?.receipt.state ?? (result.success ? "OUTCOME_UNKNOWN" : result.error.code));
+  }
 
   async function inspectAiRun(reference: ConversationAiRunReferenceView) {
     if (!owns()) return;
@@ -459,7 +531,8 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
           saveNotice={saveNotice}
           saving={saving}
           writingBlocked={!!pendingSave || saving || taskInteractionBusy}
-          onRetrySend={() => { if (failedRequest) void submitRequest(failedRequest); }}
+          retrySendLabel={failedRequest?.reliable && ["OUTCOME_UNKNOWN", "pending", "outcome_unknown"].includes(sendCode ?? "") ? "检查结果" : "重新生成"}
+          onRetrySend={() => { if (failedRequest) void recoverRequest(failedRequest); }}
           onEditQuestion={() => { if (failedRequest && owns()) { changeDraft(failedRequest.message); setSendError(null); setSendCode(null); } }}
           onRetrySave={() => { if (pendingSave) void persistAndCanonicalizeDraftConversation(pendingSave); }}
           sending={sending}
@@ -509,6 +582,7 @@ function ConversationThread({
   saving,
   writingBlocked,
   onRetrySend,
+  retrySendLabel,
   onEditQuestion,
   onRetrySave,
   sending,
@@ -551,6 +625,7 @@ function ConversationThread({
   saving: boolean;
   writingBlocked: boolean;
   onRetrySend: () => void;
+  retrySendLabel: string;
   onEditQuestion: () => void;
   onRetrySave: () => void;
   sending: boolean;
@@ -679,7 +754,7 @@ function ConversationThread({
         <View style={styles.failureHeading}><Ionicons color={colors.rose} name="alert-circle-outline" size={28} /><Text style={styles.failureTitle}>这次回答没有生成</Text></View>
         <Text style={styles.failureBody}>{sendError}</Text>
         <View style={styles.failureActions}>
-          <Pressable accessibilityRole="button" onPress={onRetrySend} disabled={sending || writingBlocked} style={styles.failurePrimary}><Text style={styles.failurePrimaryText}>重新生成</Text></Pressable>
+          <Pressable accessibilityRole="button" onPress={onRetrySend} disabled={sending || writingBlocked} style={styles.failurePrimary}><Text style={styles.failurePrimaryText}>{retrySendLabel}</Text></Pressable>
           <Pressable accessibilityRole="button" onPress={onEditQuestion} disabled={sending} style={styles.failureSecondary}><Text style={styles.failureSecondaryText}>编辑问题</Text></Pressable>
         </View>
         </View>

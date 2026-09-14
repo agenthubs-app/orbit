@@ -2461,6 +2461,7 @@ export function OrbitRealAgent({
   const storedSessionsRef = useRef<AgentStoredChatSession[]>(storedSessions);
   const activeSessionIdRef = useRef<string | null>(activeSessionId);
   const historyHydratedRef = useRef(false);
+  const skipRestoredSessionPersistenceRef = useRef(false);
 
   languageRef.current = language;
   messagesRef.current = messages;
@@ -2485,6 +2486,7 @@ export function OrbitRealAgent({
   }, [preserveHref]);
 
   const restoreSession = useCallback((session: AgentStoredChatSession) => {
+    skipRestoredSessionPersistenceRef.current = true;
     setHistOpen(false);
     setMessages(session.messages);
     setPanel(session.panel ?? panelFromMessages(session.messages));
@@ -2506,6 +2508,11 @@ export function OrbitRealAgent({
     nextPanel: AgentPanel | null,
   ) => {
     if (!historyHydratedRef.current || nextMessages.length === 0) {
+      return;
+    }
+
+    if (skipRestoredSessionPersistenceRef.current) {
+      skipRestoredSessionPersistenceRef.current = false;
       return;
     }
 

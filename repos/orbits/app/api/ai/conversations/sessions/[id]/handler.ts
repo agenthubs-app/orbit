@@ -14,6 +14,8 @@ import {
   getHttpStatusForAppErrorCode,
 } from "../../../../../../shared/errors/app-error";
 import type { OrbitAgentChatSessionProvider } from "../../../../../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
+import type { OrbitAgentChatRequestStore } from "../../../../../../features/orbit-ai/reliable-send-service";
+import { createOrbitAgentChatRequestStore } from "../../../../../../features/orbit-ai/storage/orbit-agent-chat-request-store";
 import { createOrbitAgentChatSessionProvider } from "../../../../../../features/orbit-ai/storage/orbit-agent-chat-session-provider-factory";
 import {
   authenticatedApiActorRequiredResponse,
@@ -32,6 +34,10 @@ export interface OrbitAgentChatSessionHandlerDependencies {
     mode: FeatureMode,
     actorId: string,
   ) => OrbitAgentChatSessionProvider | null;
+  requestStoreForActor?: (
+    mode: FeatureMode,
+    actorId: string,
+  ) => OrbitAgentChatRequestStore | null;
   resolveActor?: ResolveAuthenticatedApiActor;
 }
 
@@ -62,6 +68,8 @@ export function createOrbitAgentChatSessionHandlers(
     dependencies.resolveActor ?? resolveAuthenticatedApiActor;
   const providerForActor =
     dependencies.providerForActor ?? createOrbitAgentChatSessionProvider;
+  const requestStoreForActor =
+    dependencies.requestStoreForActor ?? createOrbitAgentChatRequestStore;
 
   async function providerForRequest(mode: FeatureMode) {
     const actor = await resolveActor();
@@ -114,7 +122,7 @@ export function createOrbitAgentChatSessionHandlers(
     },
 
     async GET(
-      _request: Request,
+      request: Request,
       context: OrbitAgentChatSessionRouteContext,
     ): Promise<Response> {
       const mode = resolveFeatureMode();
@@ -148,8 +156,25 @@ export function createOrbitAgentChatSessionHandlers(
           );
         }
 
+        const requestId = new URL(request.url).searchParams.get("requestId")?.trim();
+        const requestRecord = requestId
+          ? await requestStoreForActor(mode, resolved.actor.id)?.get(requestId)
+          : null;
+        const reliableSend =
+          requestId && requestRecord?.sessionId === id
+            ? {
+                protocolVersion: 2,
+                replayed: true,
+                requestId,
+                result: requestRecord.result,
+                sessionId: id,
+                state: requestRecord.state,
+              }
+            : undefined;
+
         return NextResponse.json(
           success({
+            ...(reliableSend ? { reliableSend } : {}),
             session,
             storage: {
               configured: true,

@@ -1,5 +1,11 @@
 import { z } from "zod";
 import type { OrbitAiConversationSummaryContract, OrbitAiMessageContract } from "./contract/orbit-ai";
+import { reliableAiSendReceiptSchema } from "./schema/ai-sessions";
+import type { ReliableAiSendReceiptContract } from "./contract/ai-sessions";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 // Local HTTP consumer validation. This does not expand the shared-copy channel.
 const identifier = z.string().trim().min(1);
@@ -23,8 +29,9 @@ export const aiConversationListSchema = z.object({
 
 export const aiSessionSchema = z.object({
   id: identifier, title: z.string().trim().min(1), customTitle: z.string().optional(), createdAt: timestamp, updatedAt: timestamp,
+  messageRevision: z.number().int().nonnegative().optional(),
   pinned: z.boolean().optional(), panel: z.record(z.string(), z.unknown()).nullable().optional(),
-  messages: z.array(z.object({ role: z.enum(["user", "assistant"]), text: z.string().trim().min(1) }).passthrough()).min(1)
+  messages: z.array(z.object({ id: identifier.optional(), createdAt: timestamp.optional(), role: z.enum(["user", "assistant"]), text: z.string().trim().min(1) }).passthrough()).min(1)
 }).passthrough();
 const storage = z.object({ configured: z.boolean(), persisted: z.boolean(), source: z.string().optional() });
 export const aiSessionListSchema = z.object({ sessions: z.array(aiSessionSchema), storage }).refine(data =>
@@ -58,6 +65,21 @@ export function aiReplyPayload(data: unknown, question: string): AiConversationP
   if (userIndex < 0 || payload.messages[userIndex]?.content.trim() !== question
     || !payload.messages.slice(userIndex + 1).some(item => item.role === "assistant" && item.content.trim())) return null;
   return payload;
+}
+
+export function aiReliableSendReceipt(data: unknown): ReliableAiSendReceiptContract | null {
+  if (!isRecord(data)) return null;
+  const parsed = reliableAiSendReceiptSchema.safeParse(data.reliableSend);
+  return parsed.success ? parsed.data : null;
+}
+
+export function aiReliableSendRecovery(data: unknown): {
+  receipt: ReliableAiSendReceiptContract;
+  result: unknown;
+} | null {
+  if (!isRecord(data)) return null;
+  const receipt = aiReliableSendReceipt(data);
+  return receipt ? { receipt, result: data.reliableSend && isRecord(data.reliableSend) ? data.reliableSend.result : undefined } : null;
 }
 
 export function aiTaskReceipt(data: unknown, suggestionId: string, action: "accept" | "dismiss"): { taskId: string | null } | null {

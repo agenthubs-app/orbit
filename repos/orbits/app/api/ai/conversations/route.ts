@@ -5,7 +5,12 @@ import {
   success,
 } from "../../../../shared/api/envelope";
 import { resolveFeatureMode } from "../../../../shared/config/feature-mode";
-import { getHttpStatusForAppErrorCode } from "../../../../shared/errors/app-error";
+import {
+  AppError,
+  getHttpStatusForAppErrorCode,
+} from "../../../../shared/errors/app-error";
+import { reliableAiSendInputSchema } from "../../../../shared/api-schema/ai-sessions";
+import type { ReliableAiSendReceiptContract } from "../../../../shared/contract/ai-sessions";
 import {
   orbitAgentConversationFailureContext,
   orbitAgentConversationFailureToAppError,
@@ -39,6 +44,15 @@ import {
   agentRequestUnauthorizedResponse,
   resolveAgentRequestContext,
 } from "../../_shared/agent-request-context";
+import {
+  ReliableSendError,
+  createReliableOrbitAgentSendService,
+} from "../../../../features/orbit-ai/reliable-send-service";
+import { createOrbitAgentChatRequestStore } from "../../../../features/orbit-ai/storage/orbit-agent-chat-request-store";
+import {
+  OrbitAgentChatSessionWriteError,
+} from "../../../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
+import { createOrbitAgentChatSessionProvider } from "../../../../features/orbit-ai/storage/orbit-agent-chat-session-provider-factory";
 
 // 这个 route 是 OrbitRealAgent 前端聊天框调用的服务端入口。
 // 业务逻辑不写在 route 里：route 只负责读请求、调用 conversation service、
@@ -157,12 +171,10 @@ function readListInput(request: Request): OrbitAgentConversationInput {
   };
 }
 
-async function readSendInput(
-  request: Request,
-): Promise<OrbitAgentSendMessageInput> {
-  const body = await readJsonBody(request);
-  const searchParams = new URL(request.url).searchParams;
-
+function readSendInput(
+  body: JsonRecord,
+  searchParams: URLSearchParams,
+): OrbitAgentSendMessageInput {
   return {
     conversationId: readString(body.conversationId),
     history: readHistory(body.history),
@@ -170,6 +182,64 @@ async function readSendInput(
     message: readString(body.message) ?? readString(body.prompt),
     scenario: searchParams.get("scenario") ?? readString(body.scenario),
   };
+}
+
+function reliableReceipt(
+  input: ReturnType<typeof reliableAiSendInputSchema.parse>,
+  state: ReliableAiSendReceiptContract["state"],
+  replayed: boolean,
+  messageRevision?: number,
+): ReliableAiSendReceiptContract {
+  return {
+    ...(messageRevision === undefined ? {} : { messageRevision }),
+    protocolVersion: 2,
+    replayed,
+    requestId: input.requestId,
+    sessionId: input.sessionId,
+    state,
+  };
+}
+
+function resultWithReliableReceipt(
+  result: OrbitAgentConversationResult,
+  receipt: ReliableAiSendReceiptContract,
+): OrbitAgentConversationResult {
+  return result.success
+    ? { ...result, data: { ...result.data, reliableSend: receipt } }
+    : result;
+}
+
+function reliableSendErrorResponse(
+  mode: ReturnType<typeof resolveFeatureMode>,
+  error: unknown,
+): Response {
+  if (error instanceof ReliableSendError) {
+    const message =
+      error.code === "REQUEST_ID_REUSED"
+        ? "This request ID was already used with different content."
+        : "The conversation changed on another client. Refresh before sending again.";
+    return NextResponse.json(failure(new AppError("CONFLICT", message)), {
+      headers: runtimeBoundaryHeaders(mode),
+      status: 409,
+    });
+  }
+  if (error instanceof OrbitAgentChatSessionWriteError) {
+    const status = error.code === "SESSION_DELETED" ? 410 : 409;
+    return NextResponse.json(
+      failure(new AppError("CONFLICT", error.message, { cause: error })),
+      { headers: runtimeBoundaryHeaders(mode), status },
+    );
+  }
+  return NextResponse.json(
+    failure(
+      new AppError(
+        "SERVICE_UNAVAILABLE",
+        "Reliable conversation storage is unavailable.",
+        { cause: error },
+      ),
+    ),
+    { headers: runtimeBoundaryHeaders(mode), status: 503 },
+  );
 }
 
 function responseForResult(
@@ -490,7 +560,21 @@ export async function POST(request: Request): Promise<Response> {
   const agentContext = await resolveAgentRequestContext(mode);
   if (!agentContext) return agentRequestUnauthorizedResponse();
   const readBodyStartedAt = timing.now();
-  const input = await readSendInput(request);
+  const body = await readJsonBody(request);
+  const input = readSendInput(body, new URL(request.url).searchParams);
+  const reliableInput =
+    body.protocolVersion === 2 ? reliableAiSendInputSchema.safeParse(body) : null;
+  if (reliableInput && !reliableInput.success) {
+    return NextResponse.json(
+      failure(
+        new AppError(
+          "VALIDATION_ERROR",
+          "A valid reliable conversation request is required.",
+        ),
+      ),
+      { headers: runtimeBoundaryHeaders(mode), status: 400 },
+    );
+  }
   const memoryService = agentContext.actorId
     ? createAgentMemoryService({
         actorId: agentContext.actorId,
@@ -523,9 +607,8 @@ export async function POST(request: Request): Promise<Response> {
   const service = agentContext.actorId
     ? createOrbitAgentConversationServiceForActor(agentContext.actorId)
     : createOrbitAgentConversationService();
-  let result: OrbitAgentConversationResult;
-
-  if (mode === "mock" && isChatKnownWorkflowInput(trustedInput)) {
+  async function executeConversation(): Promise<OrbitAgentConversationResult> {
+    if (mode === "mock" && isChatKnownWorkflowInput(trustedInput)) {
     // 已知工作流必须在 bounded planner/provider 之前命中。listConversations
     // 只读取会话基态，用来保留 activeConversationId；它不会生成模型回复。
     const conversationResult = await service.listConversations({
@@ -538,16 +621,15 @@ export async function POST(request: Request): Promise<Response> {
       conversationInput: trustedInput,
       conversationResult,
     });
-    result =
-      workflowResponse.outcome === "clarification"
+      return workflowResponse.outcome === "clarification"
         ? workflowResponse.result
         : await withRuntimeLinks(workflowResponse.result, agentContext.runtime);
-  } else {
+    }
     // 未命中已知工作流的普通请求保持原 bounded planner 路径，并且只调用一次。
     // 普通 planner 的本轮 action links 由 proposal 持久化结果明确返回。
     // 这里不能按 conversationId 回查“最近一次”历史 run，否则本轮无动作或
     // 权限拒绝时会错误挂上前一轮卡片。
-    result = await persistNaturalLanguageActionProposals(
+    return persistNaturalLanguageActionProposals(
       await applyTaskInteraction(
         await service.sendMessage(trustedInput),
         trustedInput,
@@ -564,8 +646,78 @@ export async function POST(request: Request): Promise<Response> {
       executionPreferences?.externalCalendarWritesEnabled ?? false,
     );
   }
+
+  let result: OrbitAgentConversationResult;
+  if (reliableInput?.success) {
+    const actorId = agentContext.actorId ?? "mock:anonymous";
+    const requestStore = createOrbitAgentChatRequestStore(mode, actorId);
+    const sessionProvider = createOrbitAgentChatSessionProvider(mode, actorId);
+    if (!requestStore || !sessionProvider) {
+      return reliableSendErrorResponse(
+        mode,
+        new Error("Reliable conversation storage is not configured"),
+      );
+    }
+    try {
+      const reliable = await createReliableOrbitAgentSendService({
+        now: () => new Date().toISOString(),
+        requestStore,
+        sessionProvider,
+      }).send<OrbitAgentConversationResult>({
+        execute: async () => {
+          const executed = await persistConversationRunTrace(
+            await executeConversation(),
+            agentContext.runtime,
+          );
+          if (executed.success === false) return { result: executed };
+          const assistant = [...executed.data.messages]
+            .reverse()
+            .find((message) => message.role === "assistant" && message.content.trim());
+          return {
+            assistantMessage: assistant
+              ? { id: assistant.messageId, text: assistant.content }
+              : executed.data.assistantMessage.trim()
+                ? {
+                    id: `assistant:${reliableInput.data.requestId}`,
+                    text: executed.data.assistantMessage,
+                  }
+                : undefined,
+            result: executed,
+          };
+        },
+        input: reliableInput.data,
+      });
+      if (reliable.state !== "completed") {
+        const receipt = reliableReceipt(
+          reliableInput.data,
+          reliable.state,
+          reliable.replayed,
+        );
+        return NextResponse.json(success({ reliableSend: receipt }), {
+          headers: runtimeBoundaryHeaders(mode),
+          status: 202,
+        });
+      }
+      const session = await sessionProvider.getSession(reliableInput.data.sessionId);
+      result = resultWithReliableReceipt(
+        reliable.result,
+        reliableReceipt(
+          reliableInput.data,
+          "completed",
+          reliable.replayed,
+          session?.messageRevision,
+        ),
+      );
+    } catch (error) {
+      return reliableSendErrorResponse(mode, error);
+    }
+  } else {
+    result = await persistConversationRunTrace(
+      await executeConversation(),
+      agentContext.runtime,
+    );
+  }
   timing.finish("orbit-service", serviceStartedAt);
-  result = await persistConversationRunTrace(result, agentContext.runtime);
 
   return responseForResult(result, mode, timing);
 }

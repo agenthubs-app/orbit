@@ -94,6 +94,26 @@ async function writes(p: Page) { return p.evaluate(() => (window as any).fixture
 async function navigation(p: Page) { return p.evaluate(() => (window as any).fixture.navigation); }
 async function twice(p: Page, label: string) { await p.evaluate(label => { const fn = (window as any).fixture.presses[label]; fn(); fn(); }, label); await settle(p); }
 
+function reliableRequestBase(request: any) {
+  assert.equal(request.body.protocolVersion, 2);
+  assert.equal(request.body.references.length, 0);
+  assert.equal(typeof request.body.sessionId, "string");
+  assert.equal(typeof request.body.clientMessageId, "string");
+  assert.equal(typeof request.body.requestId, "string");
+  assert.notEqual(request.body.clientMessageId, request.body.requestId);
+  assert.equal(Number.isSafeInteger(request.body.expectedMessageRevision), true);
+  const {
+    clientMessageId: _clientMessageId,
+    expectedMessageRevision: _expectedMessageRevision,
+    protocolVersion: _protocolVersion,
+    references: _references,
+    requestId: _requestId,
+    sessionId: _sessionId,
+    ...body
+  } = request.body;
+  return { ...request, body };
+}
+
 const conversationReadPayloads = {
   ...aiReadPayloads,
   "/api/ai/conversations/conversation%3A1": aiConversationPayload,
@@ -117,7 +137,7 @@ test("AI home click issues a scoped one-use intent and continues without another
   const target = (await navigation(p))[0];
   assert.equal((await navigation(p)).length, 1);
   assert.equal(target.params.sendIntent, "test-send-1");
-  assert.deepEqual(await writes(p), [{ method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "首页明确发送的问题" } }]);
+  assert.deepEqual((await writes(p)).map(reliableRequestBase), [{ method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "首页明确发送的问题" } }]);
   await update(p, { mounted: false }); await update(p, { mounted: true, params: target.params });
   assert.equal((await writes(p)).length, 1, "reopening even the original unconsumed URL cannot replay the click");
 });
@@ -163,7 +183,7 @@ for (const extra of [{}, { source: "business" }, { source: "send", sendIntent: "
   assert.equal(await p.getByRole("textbox").inputValue(), "我修改后的问题");
   assert.deepEqual(await writes(p), []);
   await twice(p, "发送消息");
-  assert.deepEqual(await writes(p), [{ method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "我修改后的问题" } }]);
+  assert.deepEqual((await writes(p)).map(reliableRequestBase), [{ method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "我修改后的问题" } }]);
 });
 for (const initialMessage of [undefined, "   "]) test("AI empty new conversation accepts its first explicit question " + JSON.stringify(initialMessage), async t => {
   const p = await open(t, { params: { id: "new", initialMessage } });
@@ -171,11 +191,46 @@ for (const initialMessage of [undefined, "   "]) test("AI empty new conversation
   assert.equal(await p.getByRole("textbox").count(), 1);
   assert.equal(await p.evaluate(() => (window as any).fixture.requests.some((r: any) => r.path === "/api/ai/conversations/new")), false);
   await p.getByRole("textbox").fill("再想一个方案"); await twice(p, "发送消息");
-  assert.deepEqual(await writes(p), [{ method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "再想一个方案" } }]);
+  assert.deepEqual((await writes(p)).map(reliableRequestBase), [{ method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "再想一个方案" } }]);
   await replyLastWrite(p, replyPayload());
   const session = (await writes(p))[1].body.session;
   await replyLastWrite(p, { session, storage: aiSessionListPayload.storage });
   assert.deepEqual(await navigation(p), [{ pathname: "/ai/[id]", params: { id: session.id, source: "session" } }]);
+});
+test("AI reliable send creates stable ids before dispatch and queries an unknown result before retrying", async t => {
+  const p = await open(t, { params: { id: "new" } });
+  await p.getByRole("textbox").fill("需要可靠恢复的问题");
+  await press(p, "发送消息");
+  const firstWrite = (await writes(p))[0];
+
+  assert.equal(firstWrite.path, "/api/ai/conversations");
+  assert.equal(firstWrite.body.protocolVersion, 2);
+  assert.equal(firstWrite.body.expectedMessageRevision, 0);
+  assert.equal(firstWrite.body.message, "需要可靠恢复的问题");
+  assert.deepEqual(firstWrite.body.references, []);
+  assert.match(firstWrite.body.sessionId, /^agent-session-mobile-/);
+  assert.ok(firstWrite.body.clientMessageId);
+  assert.ok(firstWrite.body.requestId);
+  assert.notEqual(firstWrite.body.clientMessageId, firstWrite.body.requestId);
+
+  await replyLastWrite(p, undefined, 503);
+  await press(p, "检查结果");
+  const requests = await p.evaluate(() =>
+    (window as any).fixture.requests.map((request: any) => ({
+      method: request.method,
+      url: request.url,
+    })),
+  );
+  const recovery = requests.at(-1)!;
+
+  assert.equal(recovery.method, "GET");
+  assert.match(
+    recovery.url,
+    new RegExp(
+      `/api/ai/conversations/sessions/${encodeURIComponent(firstWrite.body.sessionId)}\\?requestId=${encodeURIComponent(firstWrite.body.requestId)}`,
+    ),
+  );
+  assert.equal((await writes(p)).length, 1, "unknown result recovery must not dispatch a second model request");
 });
 for (const patch of [{ actor: "actor-2" }, { baseUrl: "https://other.example" }]) test("AI prefilled question does not transfer to another identity " + JSON.stringify(patch), async t => {
   const p = await open(t, { params: { id: "new", initialMessage: "原账号的活动背景" } });
@@ -237,7 +292,7 @@ test("AI stored session preserves raw multiline history and its custom title", a
   assert.equal(await p.getByText("Live provider 日本語", { exact: true }).count(), 1);
   assert.equal(await p.getByText("第一段", { exact: true }).count(), 1); assert.equal(await p.getByText("保留结构", { exact: true }).count(), 1);
   await p.getByRole("textbox").fill("继续讨论"); await press(p, "发送消息");
-  assert.deepEqual((await writes(p))[0], { method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "继续讨论", history: [{ role: "user", content: "最初の相談\nEnglish context" }, { role: "assistant", content: "第一段\n\n1. **保留结构**\n\n第二段" }] } });
+  assert.deepEqual(reliableRequestBase((await writes(p))[0]), { method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "继续讨论", history: [{ role: "user", content: "最初の相談\nEnglish context" }, { role: "assistant", content: "第一段\n\n1. **保留结构**\n\n第二段" }] } });
 });
 test("AI initial generation awaits a persisted matching session receipt before canonical navigation", async t => {
   const p = await openAndSend(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await replyLastWrite(p, replyPayload());
@@ -315,7 +370,7 @@ test("AI saved session sends its complete recent history on every continuation",
   const firstSave = (await writes(p))[1];
   await replyLastWrite(p, { session: firstSave.body.session, storage: aiSessionListPayload.storage });
   await input.fill("接着讨论下一步"); await twice(p, "发送消息");
-  assert.deepEqual((await writes(p))[2], { method: "POST", path: "/api/ai/conversations", body: {
+  assert.deepEqual(reliableRequestBase((await writes(p))[2]), { method: "POST", path: "/api/ai/conversations", body: {
     locale: "zh", message: "接着讨论下一步", history: [
       { role: "user", content: "讨论产品试点" }, { role: "assistant", content: "梳理了试点范围、时间节点和资源需求。" },
       { role: "user", content: "再想一个方案" }, { role: "assistant", content: "可以先讨论时间安排。" }
@@ -336,7 +391,7 @@ test("AI saved session sends its complete recent history on every continuation",
   assert.equal((await writes(p)).length, 4); assert.deepEqual(await navigation(p), []);
 });
 
-test("AI draft continuation keeps confirmed history and freezes it for a failed retry", async t => {
+test("AI draft continuation keeps confirmed history and queries a failed send without blind retry", async t => {
   const p = await openAndSend(t, { params: { id: "new", initialMessage: "再想一个方案" } });
   const input = p.getByRole("textbox"); await input.fill("接着讨论下一步");
   await replyLastWrite(p, replyPayload());
@@ -346,15 +401,16 @@ test("AI draft continuation keeps confirmed history and freezes it for a failed 
   await press(p, "发送消息");
   const continuation = { method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "接着讨论下一步",
     history: [{ role: "user", content: "再想一个方案" }, { role: "assistant", content: "可以先讨论时间安排。" }] } };
-  assert.deepEqual((await writes(p))[2], continuation);
+  assert.deepEqual(reliableRequestBase((await writes(p))[2]), continuation);
   await replyLastWrite(p, undefined, 503);
-  await input.fill("第三条问题尚未发送"); await twice(p, "重新生成");
-  assert.deepEqual((await writes(p))[3], continuation);
-  await replyLastWrite(p, replyPayload("接着讨论下一步", "下一步核对参与人员。"));
-  const nextSave = (await writes(p))[4];
-  assert.equal(nextSave.body.session.id, firstSave.body.session.id);
-  assert.equal(nextSave.body.session.messages.length, 4);
-  await replyLastWrite(p, { session: nextSave.body.session, storage: aiSessionListPayload.storage });
+  await input.fill("第三条问题尚未发送"); await press(p, "检查结果");
+  assert.equal((await writes(p)).length, 3, "outcome-unknown recovery must not issue another POST");
+  const lastRequest = await p.evaluate(() => {
+    const request = (window as any).fixture.requests.at(-1);
+    return { method: request.method, url: request.url };
+  });
+  assert.equal(lastRequest.method, "GET");
+  assert.match(lastRequest.url, /\/api\/ai\/conversations\/sessions\/.+\?requestId=/);
   assert.equal(await input.inputValue(), "第三条问题尚未发送"); assert.deepEqual(await navigation(p), []);
 });
 
@@ -362,7 +418,7 @@ test("AI edited first failure never becomes confirmed history for a new question
   const p = await openAndSend(t, { params: { id: "new", initialMessage: "尚未成功的问题" } });
   await replyLastWrite(p, undefined, 503); await press(p, "编辑问题");
   await p.getByRole("textbox").fill("修改后重新提问"); await press(p, "发送消息");
-  assert.deepEqual((await writes(p))[1], { method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "修改后重新提问" } });
+  assert.deepEqual(reliableRequestBase((await writes(p))[1]), { method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "修改后重新提问" } });
 });
 
 for (const session of [{ ...aiSession, id: "other-session" }, { ...aiSession, messages: [] }, {}]) test("AI invalid or mismatched session cannot become a successful empty conversation " + JSON.stringify(session), async t => {

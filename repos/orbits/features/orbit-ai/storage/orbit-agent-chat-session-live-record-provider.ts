@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
 import {
   resolveLiveDatabaseConnectionConfig,
@@ -17,14 +19,28 @@ export type OrbitAgentChatSessionMessageRole = "assistant" | "user";
 
 export interface OrbitAgentChatSessionMessage
   extends Record<string, unknown> {
+  id?: string;
   role: OrbitAgentChatSessionMessageRole;
   text: string;
+}
+
+export class OrbitAgentChatSessionWriteError extends Error {
+  constructor(
+    readonly code: "SESSION_DELETED" | "SESSION_SNAPSHOT_STALE",
+  ) {
+    super(
+      code === "SESSION_DELETED"
+        ? "Deleted session cannot be restored by a late save"
+        : "Stale session snapshot cannot replace newer history",
+    );
+  }
 }
 
 export interface OrbitAgentChatSessionSnapshot {
   createdAt: string;
   customTitle?: string;
   id: string;
+  messageRevision?: number;
   messages: readonly OrbitAgentChatSessionMessage[];
   panel?: Record<string, unknown> | null;
   pinned?: boolean;
@@ -61,7 +77,6 @@ export interface ConfiguredStorageOrbitAgentChatSessionProviderOptions {
   sourceLabel?: string;
 }
 
-const MAX_SESSION_MESSAGES = 100;
 const MAX_MESSAGE_TEXT_LENGTH = 12000;
 const MAX_SESSION_TITLE_LENGTH = 120;
 const DEFAULT_SESSION_LIST_LIMIT = 12;
@@ -154,6 +169,12 @@ export function normalizeOrbitAgentChatSessionSnapshot(
         return normalized ? [normalized] : [];
       })
     : [];
+  const messageRevision =
+    typeof value.messageRevision === "number" &&
+    Number.isSafeInteger(value.messageRevision) &&
+    value.messageRevision >= messages.length
+      ? value.messageRevision
+      : messages.length;
 
   if (!id || !title || !updatedAt || messages.length === 0) {
     return null;
@@ -163,7 +184,8 @@ export function normalizeOrbitAgentChatSessionSnapshot(
     createdAt: createdAt || updatedAt,
     customTitle: customTitle || undefined,
     id,
-    messages: messages.slice(-MAX_SESSION_MESSAGES),
+    messageRevision,
+    messages,
     panel: isRecord(value.panel) ? cloneJson(value.panel) : null,
     pinned: value.pinned === true,
     title,
@@ -171,8 +193,16 @@ export function normalizeOrbitAgentChatSessionSnapshot(
   };
 }
 
-function messageRecordId(sessionId: string, index: number): string {
-  return `${safeIdPart(sessionId)}:${String(index).padStart(4, "0")}`;
+function messageRecordId(
+  sessionId: string,
+  message: OrbitAgentChatSessionMessage,
+  index: number,
+): string {
+  const identity = message.id?.trim() || `legacy-index:${index}`;
+  const digest = createHash("sha256")
+    .update(JSON.stringify([sessionId, identity]))
+    .digest("hex");
+  return `${safeIdPart(sessionId)}:${digest}`;
 }
 
 function sourceIdFor(kind: "message" | "session", id: string): string {
@@ -231,6 +261,7 @@ function sessionRecord(input: {
       id: session.id,
       lastMessagePreview: lastMessagePreview(session.messages),
       messageCount: session.messages.length,
+      messageRevision: session.messageRevision ?? session.messages.length,
       panel: session.panel ?? null,
       pinned: session.pinned === true,
       title: session.title,
@@ -258,7 +289,7 @@ function messageRecord(input: {
   sourceLabel: string;
   workspaceId: string;
 }): LiveRecord<Record<string, unknown>> {
-  const recordId = messageRecordId(input.session.id, input.index);
+  const recordId = messageRecordId(input.session.id, input.message, input.index);
 
   return {
     collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.messages,
@@ -348,6 +379,7 @@ async function sessionFromRecord(
     createdAt,
     customTitle,
     id,
+    messageRevision: payload.messageRevision,
     messages,
     panel: isRecord(payload.panel) ? payload.panel : null,
     pinned: payload.pinned === true,
@@ -466,9 +498,20 @@ export function createStorageOrbitAgentChatSessionProvider({
         recordId: session.id,
         workspaceId: actorWorkspaceId,
       });
+      if (existingSession?.lifecycleState === "deleted") {
+        throw new OrbitAgentChatSessionWriteError("SESSION_DELETED");
+      }
+      const existingSnapshot = existingSession
+        ? await sessionFromRecord(store, actorWorkspaceId, existingSession)
+        : null;
+      if (
+        existingSnapshot &&
+        (session.updatedAt < existingSnapshot.updatedAt ||
+          session.messages.length < existingSnapshot.messages.length)
+      ) {
+        throw new OrbitAgentChatSessionWriteError("SESSION_SNAPSHOT_STALE");
+      }
       const createdAt = existingSession?.createdAt ?? session.createdAt;
-      const nextMessageRecordIds = new Set<string>();
-
       await store.upsertRecord(
         sessionRecord({
           createdAt,
@@ -480,9 +523,6 @@ export function createStorageOrbitAgentChatSessionProvider({
 
       await Promise.all(
         session.messages.map((message, index) => {
-          const recordId = messageRecordId(session.id, index);
-          nextMessageRecordIds.add(recordId);
-
           return store.upsertRecord(
             messageRecord({
               createdAt,
@@ -494,32 +534,6 @@ export function createStorageOrbitAgentChatSessionProvider({
             }),
           );
         }),
-      );
-
-      const existingMessages = await store.listRecords({
-        collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.messages,
-        includeDeleted: true,
-        targetId: session.id,
-        targetType: "conversation",
-        workspaceId: actorWorkspaceId,
-      });
-
-      await Promise.all(
-        existingMessages
-          .filter(
-            (message) =>
-              message.lifecycleState !== "deleted" &&
-              !nextMessageRecordIds.has(message.recordId),
-          )
-          .map((message) =>
-            store.deleteRecord({
-              collectionName:
-                ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.messages,
-              deletedAt: session.updatedAt,
-              recordId: message.recordId,
-              workspaceId: actorWorkspaceId,
-            }),
-          ),
       );
 
       const restoredRecord = await store.getRecord({

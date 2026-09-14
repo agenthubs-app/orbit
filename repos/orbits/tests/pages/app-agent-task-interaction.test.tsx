@@ -167,13 +167,14 @@ async function mountPage(
     taskInteraction: suggestion,
     artifacts: [],
   },
+  restoredSession?: Record<string, unknown>,
 ) {
   const previous = Object.getOwnPropertyDescriptor(globalThis, "window");
   const previousDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
   Object.defineProperty(globalThis, "document", { configurable: true, value: { addEventListener() {}, removeEventListener() {} } });
   const storage = { getItem: () => null, setItem() {}, removeItem() {} };
   Object.defineProperty(globalThis, "window", { configurable: true, value: {
-    location: { search: "?q=准备会面", origin: "https://orbit.test" }, history: { pushState() {} },
+    location: { search: restoredSession ? `?session=${encodeURIComponent(String(restoredSession.id))}` : "?q=准备会面", origin: "https://orbit.test" }, history: { pushState() {} },
     localStorage: storage, sessionStorage: storage, addEventListener() {}, removeEventListener() {},
     setInterval, clearInterval, setTimeout, clearTimeout,
   } });
@@ -199,7 +200,7 @@ async function mountPage(
       if (deferSaves) return new Promise<Response>((resolve) => pendingSaves.push(() => resolve(commit())));
       return commit();
     }
-    if (path.startsWith("/api/ai/conversations/sessions")) return Response.json({ success: true, data: { sessions: [] } });
+    if (path.startsWith("/api/ai/conversations/sessions")) return Response.json({ success: true, data: { sessions: restoredSession ? [restoredSession] : [] } });
     if (path === "/api/ai/conversations") return Response.json({ success: true, data: reply });
     if (path.startsWith("/api/task-suggestions/")) {
       requests.push({ path, body });
@@ -210,6 +211,22 @@ async function mountPage(
   await act(async () => { root = create(<OrbitRealAgent viewModel={createOrbitAgentStarterViewModel()} />); });
   return { root: root!, persisted, requests, pendingSaves, respond: (response: Response) => respond(response) };
 }
+
+test("opening a restored Web session performs no automatic POST", async (t) => {
+  const session = {
+    createdAt: "2026-09-14T00:00:00.000Z",
+    id: "session:restored",
+    messages: [
+      { id: "message:1", role: "user", text: "已经保存的问题" },
+      { id: "message:2", role: "assistant", text: "已经保存的回答", items: [], kind: "people", panelTitle: "" },
+    ],
+    title: "恢复会话",
+    updatedAt: "2026-09-14T00:01:00.000Z",
+  };
+  const { persisted } = await mountPage(t, false, undefined, session);
+
+  assert.equal(persisted.length, 0);
+});
 
 const emptyEvidenceMessage = /No verifiable result|本次没有从你已授权/u;
 const arbitraryAssistantMessage = "服务端任意回复，不可作为推荐依据。";
