@@ -37,6 +37,7 @@ import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { aiConversationListSchema, aiSessionReadSchema, aiSessionReceiptMatches, aiReplyPayload, aiReliableSendReceipt, aiReliableSendRecovery, aiTaskReceipt, type AiConversationPayload, type AiSession } from "../../api/ai-history-contract";
 import type { AiSessionOriginInputContract } from "../../api/contract/ai-sessions";
+import { updateAiSessionOrganization } from "../../api/ai-session-management";
 import {
   aiRunDetailToView,
   buildAiRunDetailRequest,
@@ -353,9 +354,27 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
             text: item.content
           }));
         const now = new Date().toISOString();
-        const session: AiSession = previousSession
+        let session: AiSession = previousSession
           ? { ...previousSession, messageRevision: receipt?.messageRevision, messages: [...previousSession.messages, ...messages], updatedAt: now }
           : { id: request.reliable.sessionId, title: request.message.slice(0, 120), createdAt: messages[0]?.createdAt ?? now, updatedAt: now, pinned: false, messageRevision: receipt?.messageRevision, messages };
+        if (!previousSession && sessionOrigin?.initialGroupId) {
+          const grouped = await updateAiSessionOrganization(client, session.id, {
+            expectedRevision: 0,
+            mutationId: randomUUID(),
+            patch: { groupId: sessionOrigin.initialGroupId },
+          }, controller.signal);
+          if (!ownsRequest(controller)) return;
+          if (grouped.ok && grouped.value.organization) {
+            session = {
+              ...session,
+              customTitle: grouped.value.organization.customTitle ?? undefined,
+              organization: grouped.value.organization,
+              pinned: grouped.value.organization.pinned,
+            };
+          } else {
+            setSaveNotice("回复已保存，但会话暂未加入所选分组。请在历史记录中重试移动。");
+          }
+        }
         setSavedSessionId(session.id);
         setSessionSnapshot(session);
         pendingSaveRef.current = null; setPendingSave(null);

@@ -5,6 +5,7 @@ import type {
   AiSessionOriginInputContract,
   AiSessionGroupCreateContract,
   AiSessionGroupDeleteContract,
+  AiSessionGroupContract,
   AiSessionGroupMutationContract,
   AiSessionOrganizationContract,
   AiSessionOrganizationMutationContract,
@@ -80,6 +81,14 @@ export const aiSessionOrganizationSchema: z.ZodType<AiSessionOrganizationContrac
     pinned: z.boolean(),
     revision: z.number().int().nonnegative(),
   }) as unknown as z.ZodType<AiSessionOrganizationContract>;
+
+export const aiSessionGroupSchema: z.ZodType<AiSessionGroupContract> = z.object({
+  createdAt: z.string().datetime(),
+  id: identifier,
+  name: z.string().trim().min(1).max(80),
+  revision: z.number().int().positive(),
+  updatedAt: z.string().datetime(),
+});
 
 export const aiSessionOrganizationMutationSchema: z.ZodType<AiSessionOrganizationMutationContract> =
   z.object({

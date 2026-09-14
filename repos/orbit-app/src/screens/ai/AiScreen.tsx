@@ -28,8 +28,9 @@ import {
 } from "../../api/endpoints";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
-import { aiConversationListSchema, aiHistoryRows, aiSessionDeleteReceiptSchema, aiSessionListSchema } from "../../api/ai-history-contract";
-import type { AiSessionEntryPointId } from "../../api/contract/ai-sessions";
+import { aiConversationListSchema, aiHistoryRows, aiSessionDeleteReceiptSchema, aiSessionGroupListSchema, aiSessionListSchema, type AiSession } from "../../api/ai-history-contract";
+import type { AiSessionEntryPointId, AiSessionGroupContract } from "../../api/contract/ai-sessions";
+import { createAiSessionGroup, deleteAiSessionGroup, renameAiSessionGroup, updateAiSessionOrganization } from "../../api/ai-session-management";
 import { aiSessionOriginInputSchema } from "../../api/schema/ai-sessions";
 import { validateApiResourceState } from "../../api/validated-resource-state";
 import { iorbitBrandMark } from "../../design/iorbit-brand";
@@ -56,6 +57,7 @@ import {
 } from "../../view-models/today-tasks";
 import { OrbitNextActions } from "./OrbitNextActions";
 import { homeQuestionSnapshot, type HomeQuestionSnapshot } from "../../view-models/home-question-snapshot";
+import { AiSessionOrganizationPanel } from "./AiSessionOrganization";
 
 type CapabilityTone = "accent" | "amber" | "live" | "sky";
 
@@ -97,7 +99,9 @@ const toneStyles = (colors: OrbitColors): Record<CapabilityTone, { icon: string;
 });
 
 type AiDrawerHistoryItem = {
+  groupId: string | null;
   id: string;
+  organizationRevision: number;
   pinned: boolean;
   preview: string;
   source: "conversation" | "session";
@@ -187,18 +191,23 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   const keyboardBottomInset = useStableKeyboardBottomInset();
   const [refreshIndex, setRefreshIndex] = useState(0);
   const [historyAttempt, setHistoryAttempt] = useState(0);
+  const [groupsAttempt, setGroupsAttempt] = useState(0);
   const [conversationAttempt, setConversationAttempt] = useState(0);
+  const [additionalHistorySessions, setAdditionalHistorySessions] = useState<AiSession[]>([]);
+  const [historyPaginationBusy, setHistoryPaginationBusy] = useState(false);
+  const [historyPaginationError, setHistoryPaginationError] = useState<string | null>(null);
   const readScope = JSON.stringify([scopeKey, refreshIndex]);
   const ownership = useMemo(() => ({}), [readScope]);
   const latest = useRef(ownership);
   latest.current = ownership;
   const mounted = useRef(true);
   const deleteOperation = useRef<AbortController | null>(null);
+  const organizationOperation = useRef<AbortController | null>(null);
   const navigationLock = useRef(false);
   const owns = () => mounted.current && latest.current === ownership && isScopeCurrent();
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; deleteOperation.current?.abort(); deleteOperation.current = null; };
+    return () => { mounted.current = false; deleteOperation.current?.abort(); deleteOperation.current = null; organizationOperation.current?.abort(); organizationOperation.current = null; };
   }, [ownership]);
   const client = useOrbitApiClient({ scopeKey: readScope });
   const inboxBadge = useRelationshipInboxBadgeCount(readScope);
@@ -208,10 +217,15 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     { scopeKey: JSON.stringify([readScope, conversationAttempt]) }
   ), aiConversationListSchema);
   const historyState = validateApiResourceState(useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.aiConversationSessions,
+    `${ORBIT_API_ENDPOINTS.aiConversationSessions}?v=2&limit=50`,
     () => false,
     { scopeKey: JSON.stringify([readScope, historyAttempt]) }
   ), aiSessionListSchema);
+  const groupsState = validateApiResourceState(useApiResource<unknown>(
+    ORBIT_API_ENDPOINTS.aiConversationGroups,
+    () => false,
+    { scopeKey: JSON.stringify([readScope, groupsAttempt]) }
+  ), aiSessionGroupListSchema);
   const todayState = useApiResource<unknown>(
     todayPath("Asia/Tokyo"),
     (data) => todayHomeSummary(data).items.length === 0,
@@ -219,6 +233,12 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   );
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [organizationOpen, setOrganizationOpen] = useState(false);
+  const [organizationItem, setOrganizationItem] = useState<AiDrawerHistoryItem | null>(null);
+  const [organizationBusy, setOrganizationBusy] = useState(false);
+  const [organizationError, setOrganizationError] = useState<string | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [initialGroupId, setInitialGroupId] = useState<string | null>(null);
   const [composerMenuOpen, setComposerMenuOpen] = useState(false);
   const [startedNewChat, setStartedNewChat] = useState(false);
   const [draftMessage, setDraftMessage] = useState("");
@@ -239,6 +259,62 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   const [deletingHistoryId, setDeletingHistoryId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<AiDrawerHistoryItem | null>(null);
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
+  const firstHistoryPage = historyState.kind === "success" || historyState.kind === "empty"
+    ? historyState.data
+    : null;
+  const firstHistoryPageIdentity = firstHistoryPage
+    ? JSON.stringify([readScope, historyAttempt, firstHistoryPage.nextCursor, firstHistoryPage.sessions.map(session => session.id)])
+    : JSON.stringify([readScope, historyAttempt, historyState.kind]);
+  useEffect(() => {
+    setAdditionalHistorySessions([]);
+    setHistoryPaginationError(null);
+    if (!firstHistoryPage?.nextCursor) {
+      setHistoryPaginationBusy(false);
+      return;
+    }
+    let active = true;
+    const controller = new AbortController();
+    const loadRemainingHistory = async () => {
+      setHistoryPaginationBusy(true);
+      const sessions: AiSession[] = [];
+      const seenCursors = new Set<string>();
+      let cursor: string | null = firstHistoryPage.nextCursor ?? null;
+      for (let page = 0; active && cursor && page < 199; page += 1) {
+        if (seenCursors.has(cursor)) {
+          setHistoryPaginationError("历史记录分页无效，请刷新后重试。");
+          break;
+        }
+        seenCursors.add(cursor);
+        const result = await client.get<unknown>(
+          `${ORBIT_API_ENDPOINTS.aiConversationSessions}?v=2&limit=50&cursor=${encodeURIComponent(cursor)}`,
+          { signal: controller.signal },
+        );
+        if (!active || controller.signal.aborted) return;
+        const parsed = result.success ? aiSessionListSchema.safeParse(result.data) : null;
+        if (!result.success || !parsed?.success) {
+          setHistoryPaginationError("部分历史记录未能读取，请刷新后重试。");
+          break;
+        }
+        sessions.push(...parsed.data.sessions);
+        cursor = parsed.data.nextCursor ?? null;
+      }
+      if (active) {
+        setAdditionalHistorySessions(sessions);
+        setHistoryPaginationBusy(false);
+      }
+    };
+    void loadRemainingHistory();
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [client, firstHistoryPageIdentity]);
+  const completeHistoryData = firstHistoryPage ? {
+    ...firstHistoryPage,
+    sessions: [...new Map(
+      [...firstHistoryPage.sessions, ...additionalHistorySessions].map(session => [session.id, session]),
+    ).values()],
+  } : null;
   const projectedHomeChat = orbitAiHomeChatWindow(
     startedNewChat || state.kind !== "success" ? null : state.data
   );
@@ -248,10 +324,15 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     content: state.kind === "success" ? state.data.messages.find(item => item.messageId === message.id)?.content ?? state.data.assistantMessage : message.content
   })) };
   const historyItems = aiHistoryRows(state.kind === "success" || state.kind === "empty" ? state.data : null,
-    historyState.kind === "success" || historyState.kind === "empty" ? historyState.data : null)
+    completeHistoryData)
     .filter(item => item.source !== "session" || !deletedIds.includes(item.id));
+  const groups = groupsState.kind === "success" || groupsState.kind === "empty"
+    ? groupsState.data.groups
+    : [];
   const historyNotices: { message: string; retryLabel?: string; onRetry?: () => void }[] = [];
   if (state.kind === "loading" || historyState.kind === "loading") historyNotices.push({ message: "正在读取最近会话" });
+  if (historyPaginationBusy) historyNotices.push({ message: "正在读取全部历史记录" });
+  if (historyPaginationError) historyNotices.push({ message: historyPaginationError, retryLabel: "重新读取", onRetry: () => { if (owns()) setHistoryAttempt(value => value + 1); } });
   if (state.kind === "failure" || state.kind === "offline") historyNotices.push({ message: "会话记录未能读取", retryLabel: "重试会话记录", onRetry: () => { if (owns()) setConversationAttempt(value => value + 1); } });
   if (historyState.kind === "failure" || historyState.kind === "offline") historyNotices.push({ message: "历史记录未能读取", retryLabel: "重试历史记录", onRetry: () => { if (owns()) setHistoryAttempt(value => value + 1); } });
   if ((state.kind === "success" || state.kind === "empty") && state.data.state === "pending") historyNotices.push({ message: "会话记录正在准备" });
@@ -337,7 +418,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
       origin: {
         entryClient: "app",
         entryPointId,
-        initialGroupId: null,
+        initialGroupId,
         kind: "manual",
         template: null,
       },
@@ -350,16 +431,89 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     });
   }
 
-  function startNewChat() {
+  function startNewChat(groupId: string | null = null) {
     if (!owns()) return;
     navigationLock.current = false;
     setComposerMenuOpen(false);
     setHistoryOpen(false);
     setDrawerOpen(false);
     setStartedNewChat(true);
+    setInitialGroupId(groupId);
     setEntryPointId("ai.new_chat");
     setDraftMessage("");
     setSendError(null);
+  }
+
+  function openOrganization(item: AiDrawerHistoryItem | null) {
+    if (!owns()) return;
+    setOrganizationItem(item);
+    setOrganizationError(null);
+    setOrganizationOpen(true);
+  }
+
+  async function mutateOrganization(
+    item: AiDrawerHistoryItem,
+    patch: { customTitle?: string | null; groupId?: string | null; pinned?: boolean },
+  ) {
+    if (!owns() || organizationOperation.current || item.source !== "session") return;
+    const operation = new AbortController();
+    organizationOperation.current = operation;
+    setOrganizationBusy(true);
+    setOrganizationError(null);
+    const result = await updateAiSessionOrganization(client, item.id, {
+      expectedRevision: item.organizationRevision,
+      mutationId: randomUUID(),
+      patch,
+    }, operation.signal);
+    if (!owns() || operation.signal.aborted || organizationOperation.current !== operation) return;
+    if (result.ok) {
+      const organization = result.value.organization;
+      if (organization) {
+        setOrganizationItem(current => current?.id === item.id ? {
+          ...current,
+          groupId: organization.groupId,
+          organizationRevision: organization.revision,
+          pinned: organization.pinned,
+          title: organization.customTitle ?? current.title,
+        } : current);
+      }
+      setHistoryAttempt(value => value + 1);
+    } else {
+      setOrganizationError(result.error);
+    }
+    organizationOperation.current = null;
+    setOrganizationBusy(false);
+  }
+
+  async function createGroup(name: string) {
+    if (!owns() || organizationOperation.current) return;
+    const operation = new AbortController(); organizationOperation.current = operation; setOrganizationBusy(true); setOrganizationError(null);
+    const id = `group:${randomUUID()}`;
+    const result = await createAiSessionGroup(client, { id, mutationId: randomUUID(), name }, operation.signal);
+    if (!owns() || operation.signal.aborted || organizationOperation.current !== operation) return;
+    if (result.ok) setGroupsAttempt(value => value + 1); else setOrganizationError(result.error);
+    organizationOperation.current = null; setOrganizationBusy(false);
+  }
+
+  async function renameGroup(group: AiSessionGroupContract, name: string) {
+    if (!owns() || organizationOperation.current) return;
+    const operation = new AbortController(); organizationOperation.current = operation; setOrganizationBusy(true); setOrganizationError(null);
+    const result = await renameAiSessionGroup(client, group.id, { expectedRevision: group.revision, mutationId: randomUUID(), name }, operation.signal);
+    if (!owns() || operation.signal.aborted || organizationOperation.current !== operation) return;
+    if (result.ok) setGroupsAttempt(value => value + 1); else setOrganizationError(result.error);
+    organizationOperation.current = null; setOrganizationBusy(false);
+  }
+
+  async function deleteGroup(group: AiSessionGroupContract) {
+    if (!owns() || organizationOperation.current) return;
+    const operation = new AbortController(); organizationOperation.current = operation; setOrganizationBusy(true); setOrganizationError(null);
+    const result = await deleteAiSessionGroup(client, group.id, { expectedRevision: group.revision, mutationId: randomUUID() }, operation.signal);
+    if (!owns() || operation.signal.aborted || organizationOperation.current !== operation) return;
+    if (result.ok) {
+      if (selectedGroupId === group.id) setSelectedGroupId(null);
+      setGroupsAttempt(value => value + 1); setHistoryAttempt(value => value + 1);
+    } else setOrganizationError(result.error);
+    organizationOperation.current = null; setOrganizationBusy(false);
   }
 
   function openCapability(href: Href) {
@@ -502,7 +656,10 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
       <OrbitAiHistoryPanel
         deletingHistoryId={deletingHistoryId}
         historyDeleteError={historyDeleteError}
-        historyItems={historyItems}
+        historyPaginationError={historyPaginationError}
+        historyPaging={historyPaginationBusy}
+        historyItems={selectedGroupId ? historyItems.filter(item => item.groupId === selectedGroupId) : historyItems}
+        groupFilterName={groups.find(group => group.id === selectedGroupId)?.name ?? null}
         historyStateKind={historyState.kind}
         conversationStateKind={state.kind}
         conversationPending={(state.kind === "success" || state.kind === "empty") && state.data.state === "pending"}
@@ -514,8 +671,28 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
         onConfirmDelete={() => { if (confirmDelete) void deleteHistoryItem(confirmDelete); }}
         onClose={() => setHistoryOpen(false)}
         onDeleteHistoryItem={item => { if (owns() && !deleteOperation.current) { setHistoryDeleteError(null); setConfirmDelete(item); } }}
+        onManageGroups={() => openOrganization(null)}
+        onManageHistoryItem={item => openOrganization(item)}
         onOpenHistoryItem={openHistoryItem}
+        onClearGroupFilter={() => setSelectedGroupId(null)}
         visible={historyOpen}
+      />
+      <AiSessionOrganizationPanel
+        busy={organizationBusy}
+        error={organizationError}
+        groups={groups}
+        item={organizationItem}
+        onClose={() => { if (!organizationBusy) setOrganizationOpen(false); }}
+        onCreateGroup={name => { void createGroup(name); }}
+        onDeleteGroup={group => { void deleteGroup(group); }}
+        onDeleteSession={item => { setOrganizationOpen(false); const historyItem = historyItems.find(row => row.id === item.id); if (historyItem) { setConfirmDelete(historyItem); } }}
+        onMoveSession={(item, groupId) => { void mutateOrganization(item as AiDrawerHistoryItem, { groupId }); }}
+        onOpenGroup={group => { setSelectedGroupId(group.id); setOrganizationOpen(false); setHistoryOpen(true); }}
+        onRenameGroup={(group, name) => { void renameGroup(group, name); }}
+        onRenameSession={(item, title) => { void mutateOrganization(item as AiDrawerHistoryItem, { customTitle: title.trim() }); }}
+        onStartGroupChat={group => { setOrganizationOpen(false); startNewChat(group.id); }}
+        onTogglePin={item => { void mutateOrganization(item as AiDrawerHistoryItem, { pinned: !item.pinned }); }}
+        visible={organizationOpen}
       />
       <ComposerMenuSheet
         onClose={() => setComposerMenuOpen(false)}
@@ -1007,13 +1184,19 @@ function OrbitAiHistoryPanel({
   confirmDelete,
   deletingHistoryId,
   historyDeleteError,
+  historyPaginationError,
+  historyPaging,
   historyItems,
+  groupFilterName,
   historyStateKind,
   onClose,
   onCancelDelete,
   onConfirmDelete,
   onDeleteHistoryItem,
+  onManageGroups,
+  onManageHistoryItem,
   onOpenHistoryItem,
+  onClearGroupFilter,
   visible
 }: {
   conversationStateKind: ApiResourceState<unknown>["kind"];
@@ -1024,13 +1207,19 @@ function OrbitAiHistoryPanel({
   confirmDelete: AiDrawerHistoryItem | null;
   deletingHistoryId: string | null;
   historyDeleteError: string | null;
+  historyPaginationError: string | null;
+  historyPaging: boolean;
   historyItems: AiDrawerHistoryItem[];
+  groupFilterName: string | null;
   historyStateKind: ApiResourceState<unknown>["kind"];
   onClose: () => void;
   onCancelDelete: () => void;
   onConfirmDelete: () => void;
   onDeleteHistoryItem: (item: AiDrawerHistoryItem) => void;
+  onManageGroups: () => void;
+  onManageHistoryItem: (item: AiDrawerHistoryItem) => void;
   onOpenHistoryItem: (item: AiDrawerHistoryItem) => void;
+  onClearGroupFilter: () => void;
   visible: boolean;
 }) {
   const { colors, styles } = useStyles();
@@ -1046,7 +1235,7 @@ function OrbitAiHistoryPanel({
     : historyItems;
   const conversationFailed = conversationStateKind === "failure" || conversationStateKind === "offline";
   const historyFailed = historyStateKind === "failure" || historyStateKind === "offline";
-  const loading = conversationStateKind === "loading" || historyStateKind === "loading";
+  const loading = conversationStateKind === "loading" || historyStateKind === "loading" || historyPaging;
 
   useEffect(() => {
     if (!visible) {
@@ -1069,7 +1258,9 @@ function OrbitAiHistoryPanel({
         />
         <View style={styles.historyPanel}>
           <View style={styles.drawerHeader}>
-            <Text style={styles.drawerTitle}>历史记录</Text>
+            <Text style={styles.drawerTitle}>{groupFilterName ? `历史记录 · ${groupFilterName}` : "历史记录"}</Text>
+            <View style={styles.drawerHeaderActions}>
+            <Pressable accessibilityLabel="管理分组" accessibilityRole="button" onPress={onManageGroups} style={styles.drawerIconButton}><Ionicons color={colors.text2} name="folder-open-outline" size={19} /></Pressable>
             <Pressable
               accessibilityLabel="关闭历史"
               accessibilityRole="button"
@@ -1081,7 +1272,9 @@ function OrbitAiHistoryPanel({
             >
               <Ionicons color={colors.text2} name="close" size={20} />
             </Pressable>
+            </View>
           </View>
+          {groupFilterName ? <Pressable accessibilityLabel="显示全部历史" accessibilityRole="button" onPress={onClearGroupFilter} style={styles.retryButton}><Text style={styles.allHistoryText}>显示全部</Text></Pressable> : null}
           {loading ? <Text accessibilityLiveRegion="polite" style={styles.recentState}>正在读取历史记录。</Text> : null}
           {conversationPending ? <Text accessibilityLiveRegion="polite" style={styles.recentState}>会话记录正在准备</Text> : null}
           {historyUnavailable ? <Text style={styles.recentState}>历史记录暂不可用，仍可开始新会话。</Text> : null}
@@ -1090,6 +1283,7 @@ function OrbitAiHistoryPanel({
           {historyDeleteError ? (
             <Text style={styles.errorText}>{historyDeleteError}</Text>
           ) : null}
+          {historyPaginationError ? <Text style={styles.errorText}>{historyPaginationError}</Text> : null}
           {confirmDelete ? <View style={styles.deleteConfirmation}>
             <Text style={styles.recentTitle}>删除「{confirmDelete.title}」？</Text>
             <Text style={styles.recentPreview}>这条历史记录删除后无法恢复。</Text>
@@ -1114,6 +1308,7 @@ function OrbitAiHistoryPanel({
             hasQuery={normalizedHistoryQuery.length > 0}
             canShowEmpty={!conversationFailed && !historyFailed && !loading && !conversationPending && !historyUnavailable}
             onDeleteHistoryItem={onDeleteHistoryItem}
+            onManageHistoryItem={onManageHistoryItem}
             onOpenHistoryItem={onOpenHistoryItem}
           />
         </View>
@@ -1128,6 +1323,7 @@ function DrawerHistoryList({
   canShowEmpty,
   hasQuery,
   onDeleteHistoryItem,
+  onManageHistoryItem,
   onOpenHistoryItem
 }: {
   deletingHistoryId: string | null;
@@ -1135,6 +1331,7 @@ function DrawerHistoryList({
   canShowEmpty: boolean;
   hasQuery: boolean;
   onDeleteHistoryItem: (item: AiDrawerHistoryItem) => void;
+  onManageHistoryItem: (item: AiDrawerHistoryItem) => void;
   onOpenHistoryItem: (item: AiDrawerHistoryItem) => void;
 }) {
   const { styles } = useStyles();
@@ -1151,6 +1348,7 @@ function DrawerHistoryList({
             key={`${item.source}:${item.id}`}
             deleting={deletingHistoryId === item.id}
             onDelete={() => onDeleteHistoryItem(item)}
+            onManage={() => onManageHistoryItem(item)}
             onPress={() => onOpenHistoryItem(item)}
           />
         ))}
@@ -1172,11 +1370,13 @@ function DrawerHistoryRow({
   deleting,
   item,
   onDelete,
+  onManage,
   onPress
 }: {
   deleting: boolean;
   item: AiDrawerHistoryItem;
   onDelete: () => void;
+  onManage: () => void;
   onPress: () => void;
 }) {
   const { colors, styles } = useStyles();
@@ -1187,6 +1387,7 @@ function DrawerHistoryRow({
       <Pressable
         accessibilityLabel={`打开历史记录：${item.title}`}
         accessibilityRole="button"
+        onLongPress={canDelete ? onManage : undefined}
         onPress={onPress}
         style={({ pressed }) => [
           styles.drawerHistoryOpenButton,
@@ -1210,6 +1411,11 @@ function DrawerHistoryRow({
           </Text>
         </View>
       </Pressable>
+      {canDelete ? (
+        <Pressable accessibilityLabel="整理会话" accessibilityRole="button" disabled={deleting} onPress={onManage} style={({ pressed }) => [styles.historyDeleteButton, pressed ? styles.pressed : null]}>
+          <Ionicons color={colors.text3} name="ellipsis-horizontal" size={15} />
+        </Pressable>
+      ) : null}
       {canDelete ? (
         <Pressable
           accessibilityLabel="删除历史记录"

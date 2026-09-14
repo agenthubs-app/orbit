@@ -35,7 +35,7 @@ const NativeDate = Date;
 window.Date = class extends NativeDate { constructor(...args) { super(...(args.length ? args : ["2026-09-12T03:00:00Z"])); } static now() { return NativeDate.parse("2026-09-12T03:00:00Z"); } };
 const state = window.fixture = { requests: [], pending: [], navigation: [], presses: {}, expiries: 0, actor: "actor-1", name: "程川", cookieHeader: "", baseUrl: "https://orbit.example", ready: true, baseReady: true, signedIn: true, focused: true, appState: "active", mounted: true, width: 390, fontScale: 1, ...window.initialFixture,
   update(patch) { Object.assign(state, patch); if (patch.appState) nativeListeners.forEach(fn => fn(patch.appState)); revision++; listeners.forEach(fn => fn()); },
-  reply(index, status = 200, payload) { const r = state.requests[index]; r.replied = true; state.pending[index]?.(new Response(JSON.stringify(status === 200 || payload !== undefined ? { success: true, data: payload === undefined ? state.payloads[r.path] : payload } : { success: false, error: { code: "UNAVAILABLE", message: "暂时无法读取，请重试。" } }), { status, headers: { "Content-Type": "application/json" } })); }
+  reply(index, status = 200, payload) { const r = state.requests[index]; const cursor = new URL(r.url).searchParams.get("cursor") ?? "first"; const paged = r.path === "/api/ai/conversations/sessions" ? state.pagePayloads?.[cursor] : undefined; r.replied = true; state.pending[index]?.(new Response(JSON.stringify(status === 200 || payload !== undefined ? { success: true, data: payload === undefined ? paged ?? state.payloads[r.path] : payload } : { success: false, error: { code: "UNAVAILABLE", message: "暂时无法读取，请重试。" } }), { status, headers: { "Content-Type": "application/json" } })); }
 };
 onSessionExpired(() => state.expiries++);
 window.fetch = async (input, init) => { const index = state.requests.length; const url = new URL(String(input)); state.requests.push({ path: url.pathname, url: String(input), method: init.method, body: init.body ? JSON.parse(init.body) : null, signal: init.signal });
@@ -108,6 +108,17 @@ test("AI home presents editable prompts and real recent conversations before its
   assert.ok(recent && next && next.y >= recent.y + recent.height);
   assert.equal(await p.getByRole("tab").count(), 0); assert.deepEqual(await writes(p), []);
   if (process.env.APP_STYLE_SCREENSHOTS) { await p.getByRole("textbox", { name: "消息", exact: true }).fill("帮我整理明天交流会的准备事项"); await p.screenshot({ path: "/tmp/orbit-ink-signal-ai-home-390.png" }); }
+});
+test("AI full history follows server cursors and exposes later pages", async t => {
+  const later = { ...aiSession, id: "session:later", title: "第 51 条会话", customTitle: "第 51 条会话", organization: { ...aiSession.organization, customTitle: "第 51 条会话", groupId: null }, updatedAt: "2026-09-08T01:00:00Z" };
+  const p = await open(t, { pagePayloads: {
+    first: { ...aiSessionListPayload, sessions: [aiSession], nextCursor: "page-two" },
+    "page-two": { ...aiSessionListPayload, sessions: [later], nextCursor: null },
+  } });
+  await p.waitForFunction(() => (window as any).fixture.requests.some((request: any) => new URL(request.url).searchParams.get("cursor") === "page-two"));
+  await settle(p);
+  await press(p, "全部会话");
+  assert.equal(await p.getByRole("button", { name: "继续会话：第 51 条会话", exact: true }).count(), 1);
 });
 test("AI home uses the supplied brand asset", async t => {
   const p = await open(t); const mark = p.getByTestId("iorbit-brand-mark"); assert.equal(await mark.count(), 1);
@@ -226,7 +237,7 @@ test("AI opening and closing history preserves draft and history search is real"
 });
 test("AI history preserves multilingual titles containing ordinary implementation-like words", async t => {
   const title = "Live music provider · 東京で会いましょう？";
-  const p = await open(t, { payloads: { ...aiReadPayloads, "/api/ai/conversations/sessions": { ...aiSessionListPayload, sessions: [{ ...aiSession, customTitle: title }] } } });
+  const p = await open(t, { payloads: { ...aiReadPayloads, "/api/ai/conversations/sessions": { ...aiSessionListPayload, sessions: [{ ...aiSession, customTitle: title, organization: { ...aiSession.organization, customTitle: title } }] } } });
   assert.equal(await p.getByRole("button", { name: "继续会话：" + title, exact: true }).count(), 1);
 });
 test("AI home retains actual assistant business text below recent history", async t => {
@@ -316,6 +327,40 @@ test("AI history deletion requires confirmation and ignores repeated clicks", as
   assert.deepEqual(await writes(p), []); await press(p, "取消删除"); assert.deepEqual(await writes(p), []);
   await p.getByRole("button", { name: "删除历史记录", exact: true }).first().click(); await settle(p); await twice(p, "确认删除");
   assert.deepEqual(await writes(p), [{ method: "DELETE", path: "/api/ai/conversations/sessions/session%3A1", body: null }]);
+});
+test("AI history organization menu persists pin and move through revisioned PATCH without model calls", async t => {
+  const p = await open(t, { holdWrites: true });
+  await press(p, "全部会话");
+  await p.getByRole("button", { name: "整理会话", exact: true }).first().click();
+  await settle(p);
+  assert.equal(await p.getByRole("heading", { name: "整理会话", exact: true }).count(), 1);
+  assert.equal(await p.getByRole("button", { name: "移动到分组：工作", exact: true }).count(), 1);
+  await press(p, "置顶会话");
+  assert.deepEqual(await writes(p), [{
+    method: "PATCH",
+    path: "/api/ai/conversations/sessions/session%3A1",
+    body: { expectedRevision: 2, mutationId: "test-send-intent", patch: { pinned: true } }
+  }]);
+  assert.equal((await writes(p)).some((item: { path: string }) => item.path === "/api/ai/conversations"), false);
+});
+test("AI group manager creates, opens, and starts a grouped chat without sending automatically", async t => {
+  const p = await open(t, { holdWrites: true });
+  await press(p, "全部会话");
+  await press(p, "管理分组");
+  await p.getByRole("textbox", { name: "新分组名称", exact: true }).fill("客户 A");
+  await press(p, "创建分组");
+  assert.deepEqual(await writes(p), [{
+    method: "POST",
+    path: "/api/ai/conversations/groups",
+    body: { id: "group:test-send-intent", mutationId: "test-send-intent", name: "客户 A" }
+  }]);
+
+  const p2 = await open(t);
+  await press(p2, "全部会话"); await press(p2, "管理分组"); await press(p2, "打开分组：工作");
+  assert.equal(await p2.getByText("历史记录 · 工作", { exact: true }).count(), 1);
+  await press(p2, "管理分组"); await press(p2, "在分组中新建：工作");
+  assert.equal(await p2.getByRole("textbox", { name: "消息", exact: true }).inputValue(), "");
+  assert.deepEqual(await writes(p2), []);
 });
 for (const [payload, status] of [[{}, 200], [{ deleted: false, storage: { configured: true, persisted: true } }, 200], [{ deleted: true, storage: { configured: false, persisted: false } }, 200], [{ deleted: true, storage: { configured: true, persisted: true } }, 503]] as const) test("AI history deletion rejects an unconfirmed receipt " + JSON.stringify([payload, status]), async t => {
   const p = await open(t, { holdWrites: true }); await press(p, "全部会话"); await p.getByRole("button", { name: "删除历史记录", exact: true }).first().click(); await settle(p); await press(p, "确认删除");

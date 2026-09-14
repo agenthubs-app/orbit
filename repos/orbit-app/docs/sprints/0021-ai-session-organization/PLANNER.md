@@ -162,10 +162,10 @@ type SessionGroup = {
 
 ### Task 3 — App 操作与 Web 消费（SC-01／02／03）
 
-- [ ] 新增 App `tests/ai-session-organization-interactions.test.ts`；扩展 `tests/agent-history-view-model.test.ts`、`tests/ink-signal-ai-conversation.test.ts`。通过渲染／HTTP fixture 点击实际菜单，不能只断言源码中出现按钮名。
-- [ ] 观察失败后实现附件规定的侧栏／分组／菜单／会话信息；长按与可访问更多入口同功能。确认和持久化失败分支一起实现。
-- [ ] 新增 Web `tests/pages/app-agent-session-organization.test.tsx`；扩展 `tests/pages/app-agent-chat-history.test.ts`、`app-agent-session-mutations.test.ts`，再接 Web 组织控件、解析／保存和刷新，保留已有改名／置顶能力。
-- [ ] 检验组内新建、移动后源组消失、全局置顶标组、旧会话、当前会话删除及旧快照到达；验证后提交。
+- [x] 新增 App `tests/ai-session-organization-interactions.test.ts`；扩展 `tests/agent-history-view-model.test.ts`、`tests/ink-signal-ai-conversation.test.ts`。通过渲染／HTTP fixture 点击实际菜单，不能只断言源码中出现按钮名。
+- [x] 观察失败后实现附件规定的侧栏／分组／菜单／会话信息；长按与可访问更多入口同功能。确认和持久化失败分支一起实现。
+- [x] 新增 Web `tests/pages/app-agent-session-organization.test.tsx`；扩展 `tests/pages/app-agent-chat-history.test.ts`、`app-agent-session-mutations.test.ts`，再接 Web 组织控件、解析／保存和刷新，保留已有改名／置顶能力。
+- [x] 检验组内新建、移动后源组消失、全局置顶标组、旧会话、当前会话删除及旧快照到达；验证后提交。
 
 ### Task 4 — 跨端和同版本收口（全部 SC）
 

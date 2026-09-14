@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { OrbitAiConversationSummaryContract, OrbitAiMessageContract } from "./contract/orbit-ai";
-import { aiSessionOriginSchema, reliableAiSendReceiptSchema } from "./schema/ai-sessions";
+import { aiSessionOrganizationSchema, aiSessionOriginSchema, reliableAiSendReceiptSchema } from "./schema/ai-sessions";
 import type { ReliableAiSendReceiptContract } from "./contract/ai-sessions";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -31,14 +31,25 @@ export const aiSessionSchema = z.object({
   id: identifier, title: z.string().trim().min(1), customTitle: z.string().optional(), createdAt: timestamp, updatedAt: timestamp,
   messageRevision: z.number().int().nonnegative().optional(),
   origin: aiSessionOriginSchema.optional(),
+  organization: aiSessionOrganizationSchema.optional(),
   pinned: z.boolean().optional(), panel: z.record(z.string(), z.unknown()).nullable().optional(),
   messages: z.array(z.object({ id: identifier.optional(), createdAt: timestamp.optional(), role: z.enum(["user", "assistant"]), text: z.string().trim().min(1) }).passthrough()).min(1)
 }).passthrough();
 const storage = z.object({ configured: z.boolean(), persisted: z.boolean(), source: z.string().optional() });
-export const aiSessionListSchema = z.object({ sessions: z.array(aiSessionSchema), storage }).refine(data =>
+export const aiSessionListSchema = z.object({
+  sessions: z.array(aiSessionSchema),
+  items: z.array(aiSessionSchema).optional(),
+  nextCursor: z.string().nullable().optional(),
+  storage,
+}).refine(data =>
   new Set(data.sessions.map(item => item.id)).size === data.sessions.length
   && (data.storage.configured || (data.sessions.length === 0 && !data.storage.persisted)));
 export const aiSessionDeleteReceiptSchema = z.object({ deleted: z.literal(true), storage: storage.extend({ configured: z.literal(true), persisted: z.literal(true) }) });
+export const aiSessionGroupSchema = z.object({ id: identifier, name: z.string().trim().min(1), revision: z.number().int().positive(), createdAt: timestamp, updatedAt: timestamp });
+export const aiSessionGroupListSchema = z.object({ groups: z.array(aiSessionGroupSchema) });
+export const aiSessionOrganizationReceiptSchema = z.object({ session: aiSessionSchema, storage: storage.extend({ configured: z.literal(true), persisted: z.literal(true) }) });
+export const aiSessionGroupReceiptSchema = z.object({ group: aiSessionGroupSchema });
+export const aiSessionGroupDeleteReceiptSchema = z.object({ deleted: z.literal(true), id: identifier, ungroupedCount: z.number().int().nonnegative() });
 
 export type AiSession = z.infer<typeof aiSessionSchema>;
 export type AiConversationPayload = z.infer<typeof aiConversationListSchema>;
@@ -94,7 +105,7 @@ export function aiTaskReceipt(data: unknown, suggestionId: string, action: "acce
     && parsed.data.task.id === parsed.data.suggestion.acceptedTaskId ? { taskId: parsed.data.task.id } : null;
 }
 
-export type AiHistoryRow = { id: string; title: string; preview: string; when: string; updatedAt: string; pinned: boolean; source: "session" | "conversation" };
+export type AiHistoryRow = { groupId: string | null; id: string; organizationRevision: number; title: string; preview: string; when: string; updatedAt: string; pinned: boolean; source: "session" | "conversation" };
 export function aiHistoryRows(conversations: z.infer<typeof aiConversationListSchema> | null, sessions: z.infer<typeof aiSessionListSchema> | null, now = new Date()): AiHistoryRow[] {
   const dayFormat = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" });
   const today = dayFormat.format(now), yesterday = dayFormat.format(new Date(now.getTime() - 86400000));
@@ -102,11 +113,12 @@ export function aiHistoryRows(conversations: z.infer<typeof aiConversationListSc
     ...(conversations?.conversations ?? []).filter(item => !(item.conversationId === "live-orbit-agent-conversation"
       && conversations?.messages.length === 1 && conversations.messages[0]?.messageId === "orbit-agent-live-ready"
       && conversations.messages[0]?.content === "Orbit Agent is ready for a natural-language request.")).map(item => ({
-      id: item.conversationId, title: item.title.trim() || "未命名会话", preview: item.lastMessagePreview, updatedAt: item.updatedAt, pinned: false, source: "conversation" as const
+      groupId: null, id: item.conversationId, organizationRevision: 0, title: item.title.trim() || "未命名会话", preview: item.lastMessagePreview, updatedAt: item.updatedAt, pinned: false, source: "conversation" as const
     })),
     ...(sessions?.sessions ?? []).filter(item => item.messages.some(message => message.role === "user")).map(item => ({
-      id: item.id, title: item.customTitle?.trim() || item.title.trim() || item.messages.find(message => message.role === "user")!.text,
-      preview: item.messages.at(-1)?.text ?? "", updatedAt: item.updatedAt, pinned: item.pinned ?? false, source: "session" as const
+      groupId: item.organization?.groupId ?? null, id: item.id, organizationRevision: item.organization?.revision ?? 0,
+      title: item.organization?.customTitle?.trim() || item.customTitle?.trim() || item.title.trim() || item.messages.find(message => message.role === "user")!.text,
+      preview: item.messages.at(-1)?.text ?? "", updatedAt: item.updatedAt, pinned: item.organization?.pinned ?? item.pinned ?? false, source: "session" as const
     }))
   ];
   return rows.sort((a, b) => Number(b.pinned) - Number(a.pinned) || Date.parse(b.updatedAt) - Date.parse(a.updatedAt)).map(item => {

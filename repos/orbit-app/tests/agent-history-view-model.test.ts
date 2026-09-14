@@ -41,6 +41,7 @@ test("agentHistorySessionsToSummaries maps web Orbit Agent sessions into mobile 
           }
         ],
         pinned: true,
+        organization: { customTitle: "关西活动准备", groupId: "group:kansai", pinned: true, revision: 3 },
         title: "Pinned session",
         updatedAt: "2026-07-23T10:30:00.000Z"
       }
@@ -49,7 +50,9 @@ test("agentHistorySessionsToSummaries maps web Orbit Agent sessions into mobile 
 
   assert.deepEqual(rows, [
     {
+      groupId: "group:kansai",
       id: "agent-session-pinned",
+      organizationRevision: 3,
       pinned: true,
       preview: "帮我找下一场活动",
       routeParams: {
@@ -61,7 +64,9 @@ test("agentHistorySessionsToSummaries maps web Orbit Agent sessions into mobile 
       when: "07月23日"
     },
     {
+      groupId: null,
       id: "agent-session-older",
+      organizationRevision: 0,
       pinned: false,
       preview: "我想参加大阪的商务活动，有什么推荐？",
       routeParams: {

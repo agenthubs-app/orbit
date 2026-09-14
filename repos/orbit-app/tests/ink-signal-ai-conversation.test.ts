@@ -201,6 +201,46 @@ for (const initialMessage of [undefined, "   "]) test("AI empty new conversation
   await replyLastWrite(p, { session, storage: aiSessionListPayload.storage });
   assert.deepEqual(await navigation(p), [{ pathname: "/ai/[id]", params: { id: session.id, source: "session" } }]);
 });
+test("AI first reliable reply joins the group selected before the chat started", async t => {
+  const p = await open(t, { params: { id: "new", entryPointId: "ai.new_chat", initialGroupId: "group:work" } });
+  await p.getByRole("textbox").fill("分组里的新问题");
+  await press(p, "发送消息");
+  const first = (await writes(p))[0];
+  assert.equal(first.body.origin.initialGroupId, "group:work");
+  await replyLastWrite(p, {
+    ...replyPayload("分组里的新问题", "已经整理完成。"),
+    reliableSend: {
+      messageRevision: 2,
+      protocolVersion: 2,
+      replayed: false,
+      requestId: first.body.requestId,
+      sessionId: first.body.sessionId,
+      state: "completed",
+    },
+  });
+  const patchRequest = (await writes(p))[1];
+  assert.deepEqual({ method: patchRequest.method, path: patchRequest.path, patch: patchRequest.body.patch, expectedRevision: patchRequest.body.expectedRevision }, {
+    method: "PATCH",
+    path: `/api/ai/conversations/sessions/${encodeURIComponent(first.body.sessionId)}`,
+    patch: { groupId: "group:work" },
+    expectedRevision: 0,
+  });
+  const now = "2026-09-12T03:00:00.000Z";
+  await replyLastWrite(p, {
+    session: {
+      id: first.body.sessionId,
+      title: "分组里的新问题",
+      createdAt: now,
+      updatedAt: now,
+      messages: [{ id: first.body.clientMessageId, role: "user", text: "分组里的新问题" }, { id: "new-assistant", role: "assistant", text: "已经整理完成。" }],
+      organization: { customTitle: null, groupId: "group:work", pinned: false, revision: 1 },
+      pinned: false,
+    },
+    storage: aiSessionListPayload.storage,
+  });
+  assert.equal((await writes(p)).length, 2);
+  assert.deepEqual(await navigation(p), [{ pathname: "/ai/[id]", params: { id: first.body.sessionId, source: "session" } }]);
+});
 test("AI reliable send creates stable ids before dispatch and queries an unknown result before retrying", async t => {
   const p = await open(t, { params: { id: "new" } });
   await p.getByRole("textbox").fill("需要可靠恢复的问题");

@@ -188,11 +188,21 @@ async function mountPage(
   });
   const persisted: Array<{ messages: Array<{ role: string; taskInteraction?: Record<string, unknown> }> }> = [];
   const requests: Array<{ path: string; body: unknown }> = [];
+  const organizationMutations: Array<Record<string, unknown>> = [];
   const conversationRequests: Array<Record<string, unknown>> = [];
   let respond!: (response: Response) => void;
   t.mock.method(globalThis, "fetch", async (input: string, init?: RequestInit) => {
     const path = String(input);
     const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+    if (path === "/api/ai/conversations/groups") {
+      return Response.json({ success: true, data: { groups: [{
+        createdAt: "2026-09-08T00:00:00.000Z",
+        id: "group:work",
+        name: "工作",
+        revision: 1,
+        updatedAt: "2026-09-08T00:00:00.000Z",
+      }] } });
+    }
     if (path === "/api/ai/conversations/sessions" && init?.method === "POST") {
       const commit = () => {
         persisted.push(body.session);
@@ -200,6 +210,16 @@ async function mountPage(
       };
       if (deferSaves) return new Promise<Response>((resolve) => pendingSaves.push(() => resolve(commit())));
       return commit();
+    }
+    if (path.startsWith("/api/ai/conversations/sessions/") && init?.method === "PATCH") {
+      organizationMutations.push(body);
+      const patch = body.patch as Record<string, unknown>;
+      return Response.json({ success: true, data: { session: {
+        ...(restoredSession ?? { createdAt: "2026-09-08T00:00:00Z", id: "session:test", messages: [{ role: "user", text: "准备会面" }], title: "会面准备", updatedAt: "2026-09-08T00:00:00Z" }),
+        customTitle: patch.customTitle,
+        organization: { customTitle: patch.customTitle ?? null, groupId: patch.groupId ?? null, pinned: patch.pinned === true, revision: 1 },
+        pinned: patch.pinned === true,
+      }, storage: { configured: true, persisted: true } } });
     }
     if (path.startsWith("/api/ai/conversations/sessions")) return Response.json({ success: true, data: { sessions: restoredSession ? [restoredSession] : [] } });
     if (path === "/api/ai/conversations") {
@@ -223,7 +243,7 @@ async function mountPage(
     return Response.json({ success: true, data: {} });
   });
   await act(async () => { root = create(<OrbitRealAgent viewModel={createOrbitAgentStarterViewModel()} />); });
-  return { root: root!, persisted, requests, conversationRequests, pendingSaves, respond: (response: Response) => respond(response) };
+  return { root: root!, persisted, requests, organizationMutations, conversationRequests, pendingSaves, respond: (response: Response) => respond(response) };
 }
 
 async function waitForPendingSessionSave(pendingSaves: Array<() => void>) {
@@ -257,6 +277,19 @@ test("Web first send uses the reliable protocol and records a controlled origin"
     kind: "manual",
     template: null,
   });
+});
+
+test("Web chat started from a group records the origin and persists group membership after the first reply", async (t) => {
+  const { root, organizationMutations, conversationRequests } = await mountPage(t);
+  act(() => root.root.findAllByType("button").find((button) => button.children.includes("分组"))!.props.onClick());
+  act(() => root.root.findAllByType("button").find((button) => button.children.includes("新建"))!.props.onClick());
+  await act(async () => {
+    await root.root.findAllByProps({ className: "chip" })[0]!.props.onClick();
+  });
+
+  assert.equal((conversationRequests.at(-1)?.origin as { initialGroupId?: string } | undefined)?.initialGroupId, "group:work");
+  assert.deepEqual(organizationMutations.at(-1)?.patch, { groupId: "group:work" });
+  assert.equal(organizationMutations.at(-1)?.expectedRevision, 0);
 });
 
 test("opening a restored Web session performs no automatic POST", async (t) => {
@@ -385,7 +418,7 @@ test("delayed history writes cannot overwrite a newer accepted-task snapshot", a
 });
 
 test("renaming while a task is accepted preserves both the name and task in saved and reopened history", async (t) => {
-  const { root, pendingSaves, persisted, respond } = await mountPage(t, true);
+  const { root, pendingSaves, persisted, organizationMutations, respond } = await mountPage(t, true);
   await waitForPendingSessionSave(pendingSaves);
   act(() => root.root.findAllByProps({ "aria-label": "更多操作" })[0].props.onClick());
   const rename = root.root.findAll((node) => node.type === "button" && node.props["data-orbit-agent-history-rename"])[0];
@@ -398,7 +431,7 @@ test("renaming while a task is accepted preserves both the name and task in save
   await act(async () => { respond(Response.json({ success: true, data: { task } })); await request; });
   await drainPendingSessionSaves(pendingSaves);
   assert.equal(persisted.at(-1)?.messages.at(-1)?.taskInteraction?.state, "created");
-  assert.equal((persisted.at(-1) as any).customTitle, "会面资料");
+  assert.equal((organizationMutations.at(-1) as any).patch.customTitle, "会面资料");
   await act(async () => root.root.findAllByProps({ className: "btn btn-quiet orbit-agent-history-entry" })[0].props.onClick());
   assert.equal(root.root.findAllByProps({ href: "/app/tasks/task%3Aone%2Ftwo" }).length, 2);
 });
