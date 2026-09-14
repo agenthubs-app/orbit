@@ -18,6 +18,7 @@ import type {
 } from "./storage/profile-live-record-provider";
 import { parseOrbitLanguage } from "../../shared/i18n/orbit-language";
 import { mergeIndustrySelection, validateIndustrySelection } from "../../shared/domain/industries";
+import { calculateProfileOnboarding, isValidProfileBirthDate } from "./onboarding";
 
 export interface LiveProfileServiceOptions {
   now?: () => string;
@@ -170,6 +171,7 @@ function manualProfileFor(input: {
   return {
     id: input.profile.id,
     displayName: input.profile.displayName,
+    ...(input.profile.birthDate !== undefined ? { birthDate: input.profile.birthDate } : {}),
     headline: input.profile.headline ?? "",
     organization,
     role,
@@ -199,6 +201,7 @@ function emptyPayload(input: {
   return {
     state: "empty",
     profile: null,
+    onboarding: calculateProfileOnboarding(null, input.collectedAt.slice(0, 10)),
     completeness: scoreCompleteness(null),
     editor: {
       canSave: false,
@@ -235,6 +238,7 @@ function payloadFor(input: {
     state: input.state ?? "success",
     profile,
     completeness,
+    onboarding: calculateProfileOnboarding(profile, input.collectedAt.slice(0, 10)),
     editor: {
       canSave: input.state !== "pending",
       lastSavedAt: profile.updatedAt,
@@ -302,6 +306,9 @@ function mergeProfile(input: {
     id: profileId,
     accountId,
     displayName,
+    ...(input.update.birthDate !== undefined
+      ? { birthDate: input.update.birthDate }
+      : input.base?.birthDate !== undefined ? { birthDate: input.base.birthDate } : {}),
     role,
     timezone: input.base?.timezone ?? "Asia/Tokyo",
     headline: normalizeText(
@@ -450,6 +457,10 @@ export function createLiveProfileService({
           collectedAt,
           provider,
         });
+      }
+
+      if (input.birthDate !== undefined && input.birthDate !== null && !isValidProfileBirthDate(input.birthDate, collectedAt.slice(0, 10))) {
+        return failure("PROFILE_BIRTH_DATE_INVALID", { collectedAt, provider });
       }
 
       const loaded = await loadProfile({ actorId, collectedAt });

@@ -19,3 +19,5 @@
 - 测试：Web `tests/capabilities/{profile-onboarding-policy,profile-private-birth-date,profile-update-conflicts}.test.ts`、App `tests/profile-completion-interactions.test.tsx`，加直接消费者既有测试；必要类型接线按RULES第0节逐项登记。
 
 同一主代理为唯一Generator，原地chat-agent；不改OAuth provider／密钥／注册配置，不执行迁移或未知业务库写入。0023本地行业契约已交付；其余数据清单／真实模型验收与本任务独立，暂不并行写入相同文件。0003完成判定及写入基础正是本次实现内容，不要求其在启动前已实现。
+
+生日新增字段的直接消费补充：Web `features/mobile/contacts-dashboard-service.ts` 与既有 `tests/services/mobile-contacts-dashboard-service.test.ts`，只从总览投影移除私密生日，保留本人源数据。资料provider拒绝userId/accountId互相冲突的记录；无userId的旧记录仍按匹配accountId兼容。两处先有失败用例，属于SC-02隐私验收。对应LIVE_IMPLEMENTATION说明及既有profile契约测试随新错误码／协议更新；不扩业务能力。

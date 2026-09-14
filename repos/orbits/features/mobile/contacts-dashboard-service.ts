@@ -73,6 +73,14 @@ function optionalSection(
     result.data,
   );
 
+  if (parsed.success && section === "profile") {
+    const data = parsed.data as NonNullable<MobileContactsDashboardPayload["profile"]>;
+    if (data.profile) {
+      const { birthDate: _privateBirthDate, ...profile } = data.profile;
+      return { data: { ...data, profile }, unavailable: false };
+    }
+  }
+
   return parsed.success
     ? { data: parsed.data, unavailable: false }
     : { data: null, unavailable: true };

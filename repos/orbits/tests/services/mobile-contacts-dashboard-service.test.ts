@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createMockProfileService } from "../../features/profile/mock-service";
 
 import {
   createMobileContactsDashboardService,
@@ -23,6 +24,20 @@ const requiredAggregate = {
   summary: "当前人脉概览",
   nextAction: "查看优先事项",
 };
+
+test("dashboard omits private birth dates while preserving the profile source for its owner", async () => {
+  const profile = await createMockProfileService().updateProfile({ displayName: "本人", birthDate: "2000-02-29" });
+  assert.equal(profile.success, true);
+  if (!profile.success) throw new Error("Profile fixture save failed");
+  assert.equal(profile.data.profile?.birthDate, "2000-02-29");
+  const service = createMobileContactsDashboardService(dependencies({ loadProfile: async () => profile }));
+  const result = await service.getDashboard({ actorId: "actor-birth" });
+  assert.equal(result.success, true);
+  if (!result.success) throw new Error("Dashboard failed");
+  assert.equal(result.data.profile?.profile?.displayName, "本人");
+  assert.equal(Object.hasOwn(result.data.profile?.profile ?? {}, "birthDate"), false);
+  assert.equal(profile.data.profile?.birthDate, "2000-02-29", "projection must not mutate the owner's source");
+});
 
 function dependencies(
   overrides: Partial<MobileContactsDashboardDependencies> = {},

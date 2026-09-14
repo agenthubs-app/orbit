@@ -20,6 +20,7 @@ import {
 } from "./fixtures";
 import type { ProfileService } from "./service";
 import { mergeIndustrySelection, validateIndustrySelection } from "../../shared/domain/industries";
+import { calculateProfileOnboarding, isValidProfileBirthDate } from "./onboarding";
 
 // Profile mock service 负责 operator 手动资料和 completeness 评分。
 // 它模拟本地编辑器保存结果，但不写真实用户资料库或触发外部画像服务。
@@ -46,7 +47,7 @@ function clonePayload(payload: ProfilePayload): ProfilePayload {
 function success(payload: ProfilePayload): ProfileSuccess {
   return {
     success: true,
-    data: clonePayload(payload),
+    data: clonePayload({ ...payload, onboarding: calculateProfileOnboarding(payload.profile) }),
   };
 }
 
@@ -170,6 +171,9 @@ export function createMockProfileService(): ProfileService {
     },
 
     updateProfile(input): ProfileResult {
+      if (input.birthDate !== undefined && input.birthDate !== null && !isValidProfileBirthDate(input.birthDate)) {
+        return failure("PROFILE_BIRTH_DATE_INVALID");
+      }
       if (!(input.displayName?.trim() ?? mockManualProfile.displayName)) {
         return failure("PROFILE_VALIDATION_FAILED");
       }

@@ -10,6 +10,7 @@ import type {
   ProfileCompletenessFieldCode,
   ProfileCompletenessStatusCode,
   ProfileEditorStateContract,
+  ProfileOnboardingContract,
   ProfileViewStateCode,
   SeniorityLevelCode,
 } from "../../shared/contract/profile";
@@ -22,6 +23,7 @@ export const PROFILE_ERROR_CODES = [
   "PROFILE_VALIDATION_FAILED",
   "PROFILE_UPDATE_PENDING",
   "PROFILE_LIVE_STORE_UNCONFIGURED",
+  "PROFILE_BIRTH_DATE_INVALID",
 ] as const;
 
 export type ProfileErrorCode = (typeof PROFILE_ERROR_CODES)[number];
@@ -47,6 +49,12 @@ export interface ProfileErrorDefinition {
 }
 
 export const PROFILE_ERROR_DEFINITIONS = {
+  PROFILE_BIRTH_DATE_INVALID: {
+    code: "PROFILE_BIRTH_DATE_INVALID",
+    appCode: "VALIDATION_ERROR",
+    message: "Enter a valid birth date in YYYY-MM-DD format, no later than today.",
+    recovery: "Check the year, month and day, then save again.",
+  },
   PROFILE_ACTOR_REQUIRED: {
     code: "PROFILE_ACTOR_REQUIRED",
     appCode: "UNAUTHORIZED",
@@ -97,6 +105,7 @@ export interface ProfileProvenance {
 // UpdateInput 只包含可编辑字段；缺失字段表示保持不变。
 export interface ManualProfileUpdateInput extends IndustrySelectionContract {
   displayName?: string;
+  birthDate?: string | null;
   headline?: string;
   organization?: string;
   role?: string;
@@ -121,6 +130,8 @@ export interface ManualProfileUpdateInput extends IndustrySelectionContract {
 export interface ProfilePayload {
   state: ProfileViewStateCode;
   profile: ManualProfileContract | null;
+  // Older payloads can omit this field; current services always calculate it.
+  onboarding?: ProfileOnboardingContract;
   completeness: ProfileCompletenessContract;
   editor: ProfileEditorStateContract;
   provenance: ProfileProvenance;

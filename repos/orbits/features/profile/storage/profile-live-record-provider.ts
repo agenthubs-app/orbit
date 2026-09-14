@@ -12,6 +12,7 @@ import type {
 } from "../../../shared/storage/live-record-store";
 
 export interface LiveProfileRecord extends UserProfileDTO {
+  birthDate?: string | null;
   headline?: string;
   homeMarket?: string;
   organization?: string;
@@ -126,6 +127,7 @@ function profileFromRecord(
     id: payload.id,
     accountId: payload.accountId,
     displayName: payload.displayName,
+    birthDate: payload.birthDate === null ? null : optionalString(payload.birthDate),
     role: optionalString(payload.role),
     timezone: optionalString(payload.timezone),
     headline: optionalString(payload.headline),
@@ -225,8 +227,8 @@ export function createStorageProfileProvider({
       ]);
       const actorProfiles = profileRecords.filter(
         (record) =>
-          record.userId === actorId ||
-          record.payload.accountId === actorId,
+          record.payload.accountId === actorId &&
+          (record.userId == null || record.userId === actorId),
       );
       const actorAccounts = accountRecords.filter(
         (record) =>
@@ -252,8 +254,8 @@ export function createStorageProfileProvider({
       const existing = await existingProfileRecord(profile.id);
       if (
         existing &&
-        existing.userId !== actorId &&
-        existing.payload.accountId !== actorId
+        (existing.payload.accountId !== actorId ||
+          (existing.userId != null && existing.userId !== actorId))
       ) {
         throw new Error("Profile record belongs to a different actor.");
       }

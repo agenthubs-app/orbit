@@ -7,6 +7,12 @@ remains deterministic for local tests and fixture-driven debug views.
 
 2026-09-08：mock 与 live 都允许增量资料更新。未传 `displayName` 时保留原姓名，显式空姓名仍返回校验错误；仅发送 `relationshipGoal` 可以更新或明确清空目标，未发送的字段保留。mock 仍按 fixture 返回确定性结果，不新增真实存储写入。
 
+2026-09-14：服务端新增独立 `onboarding`（policyVersion 1），按姓名、合法两级行业和生日计算complete／incomplete，旧六项completeness仍只表示资料丰富度。旧响应契约可省略onboarding，但当前mock/live服务的读取与保存都会重新计算，客户端提供的完成状态不生效。
+
+`birthDate` 是本人私密的YYYY-MM-DD日历日期；拒绝无效日期、非法闰日和未来日期，返回 `PROFILE_BIRTH_DATE_INVALID`，不回显输入值。省略保留旧值，显式null清空并恢复缺项状态；存储只放profile顶层私密扩展，不进入publicProfile、searchText、AI本人资料或人脉总览。provider拒绝userId与accountId冲突的记录，无userId的旧记录仍按accountId匹配读取。新增测试覆盖三种时区下日期不变及另一账号隔离。
+
+该基础改动尚不包含版本条件写、补全页面返回路径或真实Google回跳验收；后续实现不能以本地评分测试代替这些验收。
+
 ## Live Service And Provider Files
 
 - Keep `features/profile/service.ts` as the stable service interface consumed by

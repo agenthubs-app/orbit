@@ -20,6 +20,18 @@ export type ProfileCompletenessStatusCode =
   | "action-needed"
   | "ready";
 
+export type ProfileOnboardingFieldCode =
+  | "displayName"
+  | "primaryIndustryId"
+  | "secondaryIndustryId"
+  | "birthDate";
+
+export interface ProfileOnboardingContract {
+  policyVersion: 1;
+  status: "incomplete" | "complete";
+  missingFields: readonly ProfileOnboardingFieldCode[];
+}
+
 // 完整度评分会检查的字段集合，也是编辑器标记「有改动」的字段集合。
 export type ProfileCompletenessFieldCode =
   | "displayName"
@@ -41,6 +53,8 @@ export interface ContactHandlesContract {
 // 用户可直接编辑的核心资料。名片档案扩展字段全部可选，容忍稀疏数据。
 export interface ManualProfileContract extends IndustrySelectionContract {
   id: string;
+  // 私密日历日期，仅本人资料编辑使用；不属于公开资料或 AI 资料投影。
+  birthDate?: string | null;
   displayName: string;
   headline: string;
   organization: string;

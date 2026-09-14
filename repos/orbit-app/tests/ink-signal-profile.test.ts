@@ -207,7 +207,11 @@ test("profile statistics show real zero and keep a failed counter distinct with 
   assert.equal(await p.getByText("未读到", { exact: true }).count(), 1);
   if (process.env.APP_STYLE_SCREENSHOTS) await p.screenshot({ path: "/tmp/orbit-ink-signal-profile-statistic-failure.png" });
   const before = await p.evaluate(() => (window as any).fixture.requests.length);
-  await update(p, { failPaths: [] }); await press(p, "重试今日待办");
+  await update(p, { failPaths: [], holdReads: true }); await press(p, "重试今日待办");
+  await p.waitForFunction(before => (window as any).fixture.requests.length > before, before);
+  assert.equal(await p.getByRole("button", { name: "今日待办 0", exact: true }).count(), 0, "a pending retry must not fabricate zero");
+  await p.evaluate(before => (window as any).fixture.reply(before), before);
+  await p.getByRole("button", { name: "今日待办 0", exact: true }).waitFor();
   assert.equal(await p.getByRole("button", { name: "今日待办 0", exact: true }).count(), 1);
   assert.deepEqual(await p.evaluate(before => (window as any).fixture.requests.slice(before).map((r: any) => [r.method, r.path]), before), [["GET", "/api/tasks"]]);
   assert.deepEqual(await writes(p), []);
