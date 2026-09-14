@@ -148,6 +148,7 @@ export interface ConversationInlinePanelView {
     | "/contacts/list"
     | "/events"
     | "/followups"
+    | "/tasks"
     | "/profile"
     | "/schedule";
   actionLabel: string;
@@ -163,6 +164,7 @@ export interface ConversationQuickRouteView {
     | "/contacts/list"
     | "/events"
     | "/followups"
+    | "/tasks"
     | "/profile"
     | "/schedule";
   title: string;
@@ -878,7 +880,7 @@ export function conversationInlinePanelsForThread(
     )
   ) {
     panels.push({
-      actionHref: "/followups",
+      actionHref: "/tasks",
       actionLabel: "查看全部待办",
       detail: "根据你的问题，先把今天的待办放在对话里。",
       kind: "followups",
@@ -958,8 +960,8 @@ export function conversationQuickRoutes(): ConversationQuickRouteView[] {
       title: "人脉"
     },
     {
-      detail: "处理今天该联系的人",
-      href: "/followups",
+      detail: "查看和处理全部待办",
+      href: "/tasks",
       title: "待办"
     },
     {

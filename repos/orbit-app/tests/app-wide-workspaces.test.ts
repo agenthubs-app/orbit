@@ -75,7 +75,7 @@ const client = Object.fromEntries(["get", "post", "patch", "delete", "put"].map(
   return { success: false, error: { message: "操作暂时失败" } };
 }]));
 export const useOrbitApiClient = () => { rerender(); return React.useMemo(() => ({ ...client }), [revision]); };
-export const useLocalSearchParams = () => ({ id: screen === "task" ? "task-one" : "thread-one" });
+export const useLocalSearchParams = () => ({ id: screen === "task" ? "task-one" : "thread-one", ...(screen === "followups" ? { scope: "relationship" } : {}) });
 export const useIsFocused = () => true;
 export const usePathname = () => "/" + screen;
 export const useRouter = () => ({ canGoBack: () => true, back() { state.navigation.push("back"); }, push(path) { state.navigation.push(path); }, replace(path) { state.navigation.push(path); } });
@@ -91,7 +91,9 @@ export const requestNotificationPermission = async () => "denied";
 `;
 
 test.before(async () => {
-  const screens = { ai: "ai/AiScreen", conversation: "ai/AiConversationScreen", actions: "ai/AgentActionsScreen", chat: "chat/RelationshipChatScreen", thread: "chat/RelationshipChatDetailScreen", inbox: "inbox/RelationshipInboxScreen", inboxThread: "inbox/RelationshipInboxScreen", today: "today/TodayScreen", tasks: "tasks/TasksScreen", task: "tasks/TaskDetailScreen", schedule: "schedule/ScheduleScreen", preview: "schedule/ScheduleEventPreviewScreen", followups: "followups/FollowupsScreen", ledger: "agent/AgentLedgerScreen" };
+  // Legacy redirect behavior is covered by ink-signal-followups. This fixture
+  // exercises the retained tools in the unified relationship workspace.
+  const screens = { ai: "ai/AiScreen", conversation: "ai/AiConversationScreen", actions: "ai/AgentActionsScreen", chat: "chat/RelationshipChatScreen", thread: "chat/RelationshipChatDetailScreen", inbox: "inbox/RelationshipInboxScreen", inboxThread: "inbox/RelationshipInboxScreen", today: "today/TodayScreen", tasks: "tasks/TasksScreen", task: "tasks/TaskDetailScreen", schedule: "schedule/ScheduleScreen", preview: "schedule/ScheduleEventPreviewScreen", followups: "tasks/TasksScreen", ledger: "agent/AgentLedgerScreen" };
   const imports = Object.entries(screens).map(([key, path]) => `import { ${key === "ledger" ? "AllActionsAgentLedgerScreen" : key === "inboxThread" ? "RelationshipInboxThreadScreen" : path.split("/")[1]} as ${key} } from "./src/screens/${path}";`).join("\n");
   const result = await build({ stdin: { contents: `${imports}\nimport React from "react"; import { createRoot } from "react-dom/client"; const screens = { ${Object.keys(screens).join(",")} }; const Screen = screens[new URLSearchParams(location.search).get("screen")]; createRoot(document.getElementById("root")).render(<Screen />);`, loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { "process.env.NODE_ENV": '"test"', __DEV__: "false" }, plugins: [{ name: "workspace-boundaries", setup(plugin) {
     plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "workspace-native" }));
@@ -260,7 +262,7 @@ test("AI next actions uses open sections and clear section hierarchy", async t =
 });
 for (const [screen, label] of [["actions", "确认建议"], ["today", "加入待办：确认参会伙伴"], ["followups", "生成候选"], ["ledger", "确认执行"]]) {
   test(`${screen}: successful workspace exposes a reachable primary action without implicit writes`, async t => {
-    const page = await open(t, screen!, "dark"); await fits(page.getByRole("button", { name: label!, exact: true }).first(), screen === "today" ? 44 : 50); await noWrites(page);
+    const page = await open(t, screen!, "dark"); await fits(page.getByRole("button", { name: label!, exact: true }).first(), screen === "today" || screen === "followups" ? 44 : 50); await noWrites(page);
   });
 }
 test("inbox mail composer has a full-size primary preview while cancellation stays local", async t => {
@@ -329,10 +331,10 @@ test("calendar agendas retain complete time and event text at doubled native fon
     if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-workspaces-calendar-agenda-${mode}-large.png`, fullPage: true });
   }
 });
-test("primary workspace action labels use the shared bold role", async t => {
+test("workspace actions and template navigation use their shared control text roles", async t => {
   for (const [screen, label] of [["actions", "确认建议"], ["ledger", "确认执行"], ["followups", "生成候选"], ["task", "标记完成"], ["thread", "发送消息"]]) {
     const page = await open(t, screen!); const action = page.getByRole("button", { name: label!, exact: true }).first(); await action.waitFor();
-    assert.equal(await action.locator("[dir='auto']").first().evaluate(el => getComputedStyle(el).fontWeight), "700", `${screen} primary label weight`);
+    assert.equal(await action.locator("[dir='auto']").first().evaluate(el => getComputedStyle(el).fontWeight), screen === "followups" ? "600" : "700", `${screen} shared control label weight`);
   }
 });
 for (const [screen, title] of [["tasks", "暂无待办"], ["chat", "暂无关系对话"], ["thread", "暂无消息"], ["ledger", "操作账本还是空的"]]) {

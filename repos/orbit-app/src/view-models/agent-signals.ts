@@ -58,7 +58,7 @@ function nativeTargetRoute(
   if (targetType === "contact") {
     return `/contacts/${encodeURIComponent(targetId)}`;
   }
-  return "/followups";
+  return `/tasks/${encodeURIComponent(targetId)}`;
 }
 
 function signalActions(

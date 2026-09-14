@@ -29,7 +29,7 @@ const state = window.fixture = { width: 390, fontScale: 1, screen: "list", navig
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
 export const useFixture = () => { useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision); return state; };
 export const useApiResource = path => { useFixture(); if (!state.reads.includes(path)) state.reads.push(path); return { kind: state.kinds?.[path] || "success", data: path === "/api/schedule-items" ? { scheduleItems: [] } : path === "/api/tasks" ? { tasks: state.tasks } : path.startsWith("/api/tasks?") ? { tasks: state.tasks.filter(t => t.status === new URLSearchParams(path.split("?")[1]).get("status")) } : path.endsWith("/activities") ? { activities: [] } : path.startsWith("/api/reminders") ? { reminders: [] } : { task: state.task }, error: { message: "暂时无法读取，请重试。" }, refreshing: false, refresh() { state.refreshes.push(path); } }; };
-async function request(method, path, options) { state.requests.push({ method, path, ...options }); if (state.hold) await new Promise(resolve => state.release = resolve); if (state.thrown) throw Error("transport"); if (state.failure) return { success: false, error: { message: "保存失败，请重试。" } }; return { success: true, data: { task: { ...state.task, ...options.body.patch, updatedAt: "2026-09-11T05:30:00Z" } } }; }
+async function request(method, path, options) { state.requests.push({ method, path, ...options }); if (state.hold) await new Promise(resolve => state.release = resolve); if (state.thrown) throw Error("transport"); if (state.failure) return { success: false, error: { message: "保存失败，请重试。" } }; const record = state.tasks.find(task => path === "/api/tasks/" + encodeURIComponent(task.id)) ?? state.task; return { success: true, status: 200, data: { task: { ...record, ...options.body.patch, status: options.body.action === "complete" ? "completed" : options.body.action === "reopen" ? "open" : record.status, updatedAt: "2026-09-11T05:30:00Z" } } }; }
 const client = { patch: (p, o) => request("PATCH", p, o), post: (p, o) => request("POST", p, o), delete: (p, o) => request("DELETE", p, o) };
 export const useOrbitApiClient = () => client;
 export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, user: { id: "test" }, cookieHeader: "" });
@@ -76,13 +76,14 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
 async function requests(page: Page) { return page.evaluate(() => (window as any).fixture.requests); }
 async function shot(page: Page, name: string) { if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-ink-signal-tasks-${name}.png`, fullPage: true }); }
 
-test("task list has truthful counts and due-date groups with completed history visible", async t => {
+test("task list has truthful counts and due-date groups without completed history in the open view", async t => {
   const page = await open(t);
   const pending = page.getByRole("tab", { name: "未完成 5", exact: true }); await pending.waitFor();
   assert.equal(await pending.getAttribute("aria-selected"), "true");
   assert.equal(await pending.evaluate(el => getComputedStyle(el).borderBottomColor), "rgb(11, 18, 32)");
-  for (const label of ["今天 3", "之后 2", "已完成 1"]) await page.getByRole("heading", { name: label, exact: true }).waitFor();
-  assert.equal(await page.getByRole("checkbox").count(), 6);
+  for (const label of ["今天 3", "之后 2"]) await page.getByRole("heading", { name: label, exact: true }).waitFor();
+  assert.equal(await page.getByRole("checkbox").count(), 5);
+  assert.equal(await page.getByRole("heading", { name: "已完成 1", exact: true }).count(), 0);
   assert.equal(await page.getByText("已取消的事项", { exact: true }).count(), 0);
   for (const checkbox of await page.getByRole("checkbox").all()) assert.ok((await checkbox.boundingBox())!.height >= 44);
   await shot(page, "list");
@@ -92,8 +93,9 @@ test("task list has truthful counts and due-date groups with completed history v
   assert.deepEqual(await requests(page), []);
 });
 
-test("completed preview restores its own row even while open tab is selected", async t => {
+test("completed view restores its own selected record", async t => {
   const page = await open(t);
+  await page.getByRole("tab", { name: "已完成 1", exact: true }).click();
   await page.getByRole("checkbox", { name: "恢复：发送上次活动总结", exact: true }).click();
   const writes = await requests(page); assert.equal(writes.length, 1); assert.equal(writes[0].body.action, "reopen");
   assert.equal(writes[0].path, "/api/tasks/done%3A1"); assert.ok(writes[0].body.idempotencyKey);

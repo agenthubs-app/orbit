@@ -174,8 +174,8 @@ test("scheduleToTimelineView combines followups and upcoming events into a Chine
     })),
     [
       {
-        actionLabel: "处理待办",
-        href: "/followups",
+        actionLabel: "查看建议",
+        href: "/tasks?scope=relationship",
         kind: "followup",
         statusLabel: "待确认",
         timeLabel: "10:00",

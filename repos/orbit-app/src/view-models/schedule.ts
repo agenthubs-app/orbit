@@ -374,7 +374,7 @@ function followupTimelineItems(
         Number.MAX_SAFE_INTEGER;
 
       return {
-        actionLabel: "处理待办",
+        actionLabel: stringField(task, "id") ? "处理待办" : "查看建议",
         dateKey: calendarOnly?.dateKey ?? normalizedDate?.dateKey ?? "",
         dayLabel: calendarOnly?.dayLabel ?? normalizedDate?.dayLabel ?? item.dayLabel,
         detail: [item.recommendedAction, stringField(task, "location")].filter(Boolean).join(" · "),
@@ -382,7 +382,7 @@ function followupTimelineItems(
         durationMinutes: 30,
         href: stringField(task, "id")
           ? `/tasks/${encodeURIComponent(stringField(task, "id"))}`
-          : "/followups",
+          : "/tasks?scope=relationship",
         id: item.id,
         kind: "followup" as const,
         monthLabel: calendarOnly?.monthLabel ?? normalizedDate?.monthLabel ?? item.monthLabel,

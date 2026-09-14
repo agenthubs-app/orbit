@@ -1,6 +1,7 @@
 import { contactsToSummaries, type ContactSummary } from "./contacts";
 import { type FollowupTaskView } from "./followups";
 import { taskDetailToView, tasksToListView, type TaskListRowView } from "./today-tasks";
+import { isRelationshipTask } from "./task-list-scope";
 
 export interface SavedFollowupRow extends TaskListRowView {
   contact: ContactSummary | null;
@@ -32,7 +33,7 @@ export function followupsPageToView(
   const completed = tasksToListView(tasksPayload, "completed", now).items;
   const isFollowup = (row: TaskListRowView) => {
     const detail = details.get(row.id);
-    return detail?.category === "relationship" || Boolean(detail?.relatedContactId);
+    return detail !== undefined && isRelationshipTask(detail);
   };
   function rowView(row: TaskListRowView): SavedFollowupRow {
     const detail = details.get(row.id)!;

@@ -1,3 +1,5 @@
+import { taskListHref } from "./task-list-scope";
+
 const PRIVATE_ROUTE_PREFIXES = [
   "/admin",
   "/agent",
@@ -13,7 +15,8 @@ const PRIVATE_ROUTE_PREFIXES = [
   "/profile",
   "/schedule",
   "/settings",
-  "/today"
+  "/today",
+  "/tasks"
 ] as const;
 
 const PUBLIC_ROUTE_EXCEPTIONS = new Set(["/admin/access"]);
@@ -51,6 +54,9 @@ function matchesPrefix(pathname: string, prefix: string): boolean {
 function pathParamKeysForMobileRoute(pathname: string): ReadonlySet<string> {
   const segments = appRelativePath(pathname).split("/").filter(Boolean);
   const [root, detail, leaf] = segments;
+
+  if ((root === "tasks" && detail !== undefined && detail !== "personal" && segments.length === 2) ||
+    (root === "schedule" && detail === "personal" && leaf !== undefined && leaf !== "new" && segments.length === 3)) return ID_PATH_PARAM_KEYS;
 
   if (root === "contacts" && detail === "new" && (leaf === "batch" || leaf === "batch2" || leaf === "import") && segments.length === 4) {
     return ID_PATH_PARAM_KEYS;
@@ -128,6 +134,8 @@ export function mobileAuthReturnHref(
 ): string {
   const route = appRelativePath(pathname);
   const pathParamKeys = pathParamKeysForMobileRoute(route);
+  if (route === "/tasks") return taskListHref(params);
+  if (route === "/followups") return taskListHref({ scope: "relationship", view: params.view });
   const search = new URLSearchParams();
 
   for (const key of Object.keys(params).sort()) {

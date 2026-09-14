@@ -13,7 +13,7 @@ test("relationship progress defaults to a compact task-first view", () => {
   assert.match(source, /label="待处理"/);
   assert.match(source, /label="按阶段"/);
   assert.match(source, /view\.actionItems\.slice\(0, 3\)/);
-  assert.match(source, /router\.push\("\/followups" as Href\)/);
+  assert.match(source, /router\.push\("\/tasks\?scope=relationship" as Href\)/);
 });
 
 test("relationship progress keeps stage changes available without filling every row", () => {

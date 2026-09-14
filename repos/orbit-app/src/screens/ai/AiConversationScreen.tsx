@@ -1587,7 +1587,7 @@ function QuickRouteDock({
     if (href === "/contacts" || href === "/contacts/list") {
       return "people-outline";
     }
-    if (href === "/followups") return "checkmark-done-outline";
+    if (href === "/tasks" || href === "/followups") return "checkmark-done-outline";
     if (href === "/schedule") return "time-outline";
     return "person-circle-outline";
   };
