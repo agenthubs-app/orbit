@@ -8,6 +8,7 @@ import { transformSync } from "esbuild";
 
 import * as notificationModel from "../../src/notifications/notification-model";
 import * as pushPolicy from "../../src/notifications/push-policy";
+import { zh } from "../../src/i18n/zh";
 
 const root = new URL("../..", import.meta.url).pathname;
 const require = createRequire(import.meta.url);
@@ -94,6 +95,20 @@ function harness(input: { optedIn?: boolean; signedIn?: boolean; lastResponse?: 
       if (id.endsWith("/native-notifications")) return native;
       if (id.endsWith("/push-device-session")) return pushSession;
       if (id.endsWith("/push-registration-queue")) return load("src/notifications/push-registration-queue.ts");
+      if (id.endsWith("/OrbitLocaleContext")) return {
+        useOrbitLocale: () => ({
+          choice: "system",
+          deviceLanguage: "zh",
+          error: null,
+          language: "zh",
+          preference: { mode: "system", language: null, updatedAt: null },
+          retryLanguageSave: async () => undefined,
+          setLanguage: async () => undefined,
+          source: "device",
+          syncState: "idle",
+          t: (key: keyof typeof zh) => zh[key],
+        }),
+      };
       if (id.endsWith("/endpoints")) return { ORBIT_API_ENDPOINTS: { pushTokens: "/api/devices/push-tokens" } };
       if (id.endsWith("/AppScreen")) return { AppScreen: "AppScreen" };
       if (id.endsWith("/DataCard")) return { DataCard: "DataCard" };

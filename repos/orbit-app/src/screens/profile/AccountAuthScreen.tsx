@@ -25,7 +25,7 @@ import {
   type AccountAuthFieldView,
   type AccountAuthMode
 } from "../../view-models/account-auth";
-import { useOrbitLocale } from "../../i18n/OrbitLocaleProvider";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { OrbitTranslator } from "../../i18n/messages";
 
 function firstParam(value: string | string[] | undefined, fallback = ""): string {

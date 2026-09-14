@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createTranslator, type OrbitTranslator } from "../src/i18n/messages";
 
 type PermissionsModule = {
   buildCalendarPermissionRequest?: (input?: {
     intent?: string | null;
   }) => { intent: string };
-  calendarPermissionRequestToView?: (data: unknown) => unknown;
-  permissionStatesToView?: (data: unknown) => unknown;
+  calendarPermissionRequestToView?: (data: unknown, t?: OrbitTranslator) => unknown;
+  permissionStatesToView?: (data: unknown, t?: OrbitTranslator) => unknown;
 };
 
 async function loadPermissionsModule(): Promise<PermissionsModule | null> {
@@ -189,4 +190,34 @@ test("calendar permission helpers keep the request inside staged review", async 
     statusLabel: "待复核",
     title: "日历权限待复核"
   });
+});
+
+test("permission cards localize known product chrome while preserving opaque evidence ids", async () => {
+  const permissionsModule = await loadPermissionsModule();
+  const en = createTranslator("en");
+  const ja = createTranslator("ja");
+  const payload = {
+    permissions: [{
+      authorizationStage: "staged-review",
+      capability: "calendar",
+      evidence: [{ excerpt: "Event readiness can stage calendar access without leaving the mock boundary.", sourceLabel: "Calendar staging review" }],
+      requiredFor: "Event readiness, meeting context, and follow-up timing.",
+      status: "pending",
+    }],
+  };
+
+  const english = permissionsModule?.permissionStatesToView?.(payload, en) as any;
+  const japanese = permissionsModule?.permissionStatesToView?.(payload, ja) as any;
+  assert.equal(english.title, "Permissions");
+  assert.equal(english.permissions[0].reason, "Calendar access is waiting for your confirmation.");
+  assert.equal(japanese.permissions[0].title, "カレンダー");
+  assert.equal(japanese.permissions[0].statusLabel, "確認待ち");
+
+  const receipt = permissionsModule?.calendarPermissionRequestToView?.({
+    permission: { capability: "calendar", requiredFor: "Event readiness, meeting context, and follow-up timing." },
+    request: { evidenceIds: ["evidence:opaque-1"], id: "permission-request:opaque", status: "pending" },
+  }, en) as any;
+  assert.equal(receipt.title, "Calendar permission awaiting review");
+  assert.deepEqual(receipt.evidenceIds, ["evidence:opaque-1"]);
+  assert.equal(receipt.requestId, "permission-request:opaque");
 });

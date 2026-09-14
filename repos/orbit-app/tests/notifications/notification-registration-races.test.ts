@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path";
 import test from "node:test";
 import { runInNewContext } from "node:vm";
 import { transformSync } from "esbuild";
+import { zh } from "../../src/i18n/zh";
 
 const root = new URL("../..", import.meta.url).pathname;
 const require = createRequire(import.meta.url);
@@ -225,6 +226,20 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
         return input.failLogout ? { success: false, error: { message: "logout unavailable" } } : { success: true };
       } };
       if (id.endsWith("/snapshot-store")) return { clearSnapshots: async () => { calls.push("clear-snapshots"); } };
+      if (id.endsWith("/OrbitLocaleContext")) return {
+        useOrbitLocale: () => ({
+          choice: "system",
+          deviceLanguage: "zh",
+          error: null,
+          language: "zh",
+          preference: { mode: "system", language: null, updatedAt: null },
+          retryLanguageSave: async () => undefined,
+          setLanguage: async () => undefined,
+          source: "device",
+          syncState: "idle",
+          t: (key: keyof typeof zh) => zh[key],
+        }),
+      };
       if (id.endsWith("/AppScreen")) return { AppScreen: "AppScreen" };
       if (id.endsWith("/DataCard")) return { DataCard: "DataCard" };
       if (id.startsWith(".")) {

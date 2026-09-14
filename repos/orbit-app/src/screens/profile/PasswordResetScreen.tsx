@@ -9,6 +9,7 @@ import { AppScreen } from "../../components/AppScreen";
 import { createThemedStyles } from "../../design/theme";
 import { radius, spacing, typography } from "../../design/tokens";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { passwordResetTokenFromFragment, passwordResetTokenFromLink, passwordResetValidation } from "../../view-models/password-reset";
 
 export function PasswordResetScreen() {
@@ -16,6 +17,7 @@ export function PasswordResetScreen() {
   const client = useOrbitApiClient();
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
+  const locale = useOrbitLocale();
   const router = useRouter();
   const params = useLocalSearchParams<{ "#"?: string | string[] }>();
   const fragment = typeof params["#"] === "string" ? params["#"] : undefined;
@@ -54,7 +56,7 @@ export function PasswordResetScreen() {
     setPassword("");
     setConfirmation("");
     setNotice(null);
-    setError(captured ? null : "链接无效，请重新申请。");
+    setError(captured ? null : locale.t("reset.invalidLink"));
     router.setParams({ "#": undefined });
   }, [fragment, ready, router]);
 
@@ -77,7 +79,7 @@ export function PasswordResetScreen() {
   function captureLink() {
     if (!ready || pendingRef.current) return;
     const captured = passwordResetTokenFromLink(link, client.baseUrl);
-    if (!captured) { setError("链接无效，请使用当前服务器的重置链接。"); return; }
+    if (!captured) { setError(locale.t("reset.invalidServerLink")); return; }
     setToken(captured);
     setLink("");
     setPassword("");
@@ -89,7 +91,7 @@ export function PasswordResetScreen() {
 
   async function submit() {
     if (!ready || !token || pendingRef.current) return;
-    const validation = passwordResetValidation(password, confirmation);
+    const validation = passwordResetValidation(password, confirmation, locale.t);
     if (validation) { setError(validation); return; }
     const requestScope = scope;
     const submittedId = ++requestId.current;
@@ -112,7 +114,7 @@ export function PasswordResetScreen() {
         return;
       }
       if (typeof result.data?.message !== "string" || !result.data.message.trim() || result.status >= 400) {
-        setError("尚未确认重置成功，请重试。");
+        setError(locale.t("reset.unconfirmed"));
         return;
       }
       setToken(null);
@@ -122,36 +124,36 @@ export function PasswordResetScreen() {
       setNotice(result.data.message);
       router.setParams({ "#": undefined });
     } catch {
-      if (isCurrent()) setError("暂时无法连接服务，请稍后重试。");
+      if (isCurrent()) setError(locale.t("reset.networkFailure"));
     } finally {
       if (isCurrent()) { pendingRef.current = false; setPending(false); }
     }
   }
 
   return (
-    <AppScreen eyebrow="账号" title="重置密码">
+    <AppScreen eyebrow={locale.t("reset.eyebrow")} title={locale.t("reset.title")}>
       <View style={styles.form}>
         {token ? <>
-          <Text style={styles.label}>新密码</Text>
-          <TextInput accessibilityLabel="新密码" autoCapitalize="none" autoCorrect={false} secureTextEntry textContentType="newPassword" editable={!pending} value={password} onChangeText={setPassword} style={styles.input} />
-          <Text style={styles.label}>确认新密码</Text>
-          <TextInput accessibilityLabel="确认新密码" autoCapitalize="none" autoCorrect={false} secureTextEntry textContentType="newPassword" editable={!pending} value={confirmation} onChangeText={setConfirmation} style={styles.input} />
+          <Text style={styles.label}>{locale.t("reset.newPassword")}</Text>
+          <TextInput accessibilityLabel={locale.t("reset.newPassword")} autoCapitalize="none" autoCorrect={false} secureTextEntry textContentType="newPassword" editable={!pending} value={password} onChangeText={setPassword} style={styles.input} />
+          <Text style={styles.label}>{locale.t("reset.confirmPassword")}</Text>
+          <TextInput accessibilityLabel={locale.t("reset.confirmPassword")} autoCapitalize="none" autoCorrect={false} secureTextEntry textContentType="newPassword" editable={!pending} value={confirmation} onChangeText={setConfirmation} style={styles.input} />
         </> : !notice ? <>
-          <Text style={styles.label}>重置链接</Text>
-          <TextInput accessibilityLabel="重置链接" autoCapitalize="none" autoCorrect={false} secureTextEntry editable={ready} value={link} onChangeText={setLink} style={styles.input} />
+          <Text style={styles.label}>{locale.t("reset.link")}</Text>
+          <TextInput accessibilityLabel={locale.t("reset.link")} autoCapitalize="none" autoCorrect={false} secureTextEntry editable={ready} value={link} onChangeText={setLink} style={styles.input} />
         </> : null}
         {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
         {notice ? <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text> : (
-          <Pressable accessibilityRole="button" accessibilityLabel={token ? "重置密码" : "使用重置链接"} disabled={!ready || pending} onPress={token ? submit : captureLink} style={({ pressed }) => [styles.primary, (!ready || pending) && styles.disabled, pressed && styles.pressed]}>
-            <Text style={styles.primaryText}>{pending ? "重置中..." : token ? "重置密码" : "使用重置链接"}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={token ? locale.t("reset.submit") : locale.t("reset.useLink")} disabled={!ready || pending} onPress={token ? submit : captureLink} style={({ pressed }) => [styles.primary, (!ready || pending) && styles.disabled, pressed && styles.pressed]}>
+            <Text style={styles.primaryText}>{pending ? locale.t("reset.pending") : token ? locale.t("reset.submit") : locale.t("reset.useLink")}</Text>
             <Ionicons name="arrow-forward" color={colors.onAccent} size={18} />
           </Pressable>
         )}
         <Pressable accessibilityRole="link" onPress={() => router.push("/account/forgot-password")} style={styles.link}>
-          <Text style={styles.linkText}>重新申请重置链接</Text>
+          <Text style={styles.linkText}>{locale.t("reset.reapply")}</Text>
         </Pressable>
         <Pressable accessibilityRole="link" onPress={() => router.replace("/account/login")} style={styles.link}>
-          <Text style={styles.linkText}>返回登录</Text>
+          <Text style={styles.linkText}>{locale.t("reset.backLogin")}</Text>
         </Pressable>
       </View>
     </AppScreen>

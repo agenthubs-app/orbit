@@ -14,7 +14,7 @@ import {
   revokeRegisteredPushDevice,
   setPushNotificationsOptIn
 } from "../../notifications/push-device-session";
-import { useOrbitLocale, type OrbitLanguageChoice } from "../../i18n/OrbitLocaleProvider";
+import { useOrbitLocale, type OrbitLanguageChoice } from "../../i18n/OrbitLocaleContext";
 import type { MessageKey } from "../../i18n/messages";
 
 const settingsDestinations = [

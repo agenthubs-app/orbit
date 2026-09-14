@@ -1,3 +1,5 @@
+import { createTranslator, type OrbitTranslator } from "../i18n/messages";
+
 export function passwordResetTokenFromFragment(fragment: string | undefined): string | null {
   if (!fragment) return null;
   const params = new URLSearchParams(fragment.startsWith("#") ? fragment.slice(1) : fragment);
@@ -25,9 +27,13 @@ export function passwordResetTokenFromLink(link: string, baseUrl: string): strin
   }
 }
 
-export function passwordResetValidation(password: string, confirmation: string): string | null {
-  if (password.length < 8) return "新密码至少 8 位。";
-  if (new TextEncoder().encode(password).byteLength > 72) return "新密码不能超过 72 个 UTF-8 字节。";
-  if (password !== confirmation) return "两次输入的密码不一致。";
+export function passwordResetValidation(
+  password: string,
+  confirmation: string,
+  t: OrbitTranslator = createTranslator("zh"),
+): string | null {
+  if (password.length < 8) return t("reset.tooShort");
+  if (new TextEncoder().encode(password).byteLength > 72) return t("reset.tooLong");
+  if (password !== confirmation) return t("reset.mismatch");
   return null;
 }

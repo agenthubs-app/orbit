@@ -145,6 +145,49 @@ test("a late old-account GET cannot publish after an account switch", async t =>
   assert.equal((await locale(page)).language, "en");
 });
 
+test("device B reads device A's saved account preference from the server", async t => {
+  const deviceA = await open(t);
+  await deviceA.evaluate(() => (window as any).fixture.release(0, {
+    success: true,
+    status: 200,
+    data: { mode: "system", language: null, updatedAt: null },
+  }));
+  await deviceA.waitForFunction(() => (window as any).fixture.locale?.syncState === "idle");
+  await deviceA.getByRole("button", { name: "ja" }).click();
+  await deviceA.waitForFunction(() => (window as any).fixture.requests.length === 2);
+  const saved = await deviceA.evaluate(() => {
+    const body = (window as any).fixture.requests[1].options.body;
+    const preference = {
+      mode: "manual",
+      language: "ja",
+      mutationId: body.mutationId,
+      updatedAt: "2026-09-15T05:05:00.000Z",
+    };
+    (window as any).fixture.release(1, { success: true, status: 200, data: preference });
+    return preference;
+  });
+  await deviceA.waitForFunction(() => (window as any).fixture.locale?.source === "account");
+
+  const serverPreference = {
+    mode: saved.mode,
+    language: saved.language,
+    updatedAt: saved.updatedAt,
+  };
+  const deviceB = await open(t);
+  await deviceB.evaluate(preference => {
+    (window as any).fixture.locales = [{ languageCode: "en", languageTag: "en-US" }];
+    (window as any).fixture.release(0, { success: true, status: 200, data: preference });
+  }, serverPreference);
+  await deviceB.waitForFunction(() => (window as any).fixture.locale?.source === "account");
+  assert.deepEqual(await locale(deviceB), {
+    language: "ja",
+    source: "account",
+    syncState: "idle",
+    error: null,
+    preference: serverPreference,
+  });
+});
+
 test("an unknown save result keeps the selection and retries the exact mutation", async t => {
   const page = await open(t);
   await page.evaluate(() => (window as any).fixture.release(0, {

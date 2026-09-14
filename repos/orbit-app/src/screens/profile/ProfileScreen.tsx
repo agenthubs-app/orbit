@@ -31,8 +31,8 @@ import { SectionHeader } from "../../components/SectionHeader";
 import { radius, spacing, textStyles, typography } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
-import { useOrbitLocale } from "../../i18n/OrbitLocaleProvider";
-import type { MessageKey } from "../../i18n/messages";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import type { MessageKey, OrbitTranslator } from "../../i18n/messages";
 import {
   type ApiResourceState,
   useApiResource
@@ -65,8 +65,9 @@ const suggestionDraftFields = { headline: "headline", homeMarket: "timezone", re
 const suggestionFieldLabelKeys = { headline: "profile.headline", homeMarket: "profile.primaryIndustry", relationshipGoal: "profile.relationshipGoal", targetRelationshipTypes: "profile.targetRelationshipTypes", preferredFollowUpWindow: "profile.followUpWindow", preferredIntroChannels: "profile.introChannels" } as const satisfies Record<keyof typeof suggestionDraftFields, MessageKey>;
 const missingFieldKeys = { displayName: "profile.name", primaryIndustryId: "profile.primaryIndustry", secondaryIndustryId: "profile.secondaryIndustry", birthDate: "profile.birthDate" } as const satisfies Record<string, MessageKey>;
 
-function profileBusinessText(value: string): string {
+function profileBusinessText(value: string, language: string): string {
   const text = value.trim();
+  if (language !== "zh") return text;
   // Exact service-authored explanations, never a keyword filter on user data.
   const copy: Record<string, string> = {
     "The strongest generated relationship graph edges cluster around operators, founders, and community introduction paths.": "近期关系记录主要涉及运营者、创始人和社群引荐。",
@@ -94,6 +95,56 @@ function profileBusinessText(value: string): string {
   if (Object.prototype.hasOwnProperty.call(copy, text)) return copy[text]!;
   const count = /^(\d+) explicit profile fields were extracted with (?:high|medium|low) confidence\.$/u.exec(text);
   return count ? `识别到 ${count[1]} 项资料，请逐项核对。` : text;
+}
+
+function profileFieldLabel(field: string, t: OrbitTranslator): string {
+  const keys: Record<string, MessageKey> = {
+    displayName: "profile.name",
+    email: "profile.email",
+    headline: "profile.headline",
+    homeMarket: "profile.primaryIndustry",
+    organization: "profile.organization",
+    phone: "profile.phone",
+    preferredFollowUpWindow: "profile.followUpWindow",
+    preferredIntroChannels: "profile.introChannels",
+    relationshipGoal: "profile.relationshipGoal",
+    role: "profile.role",
+    targetRelationshipTypes: "profile.targetRelationshipTypes",
+    website: "profile.website",
+  };
+  return t(keys[field] ?? "profile.fieldDefault");
+}
+
+function profileConfidenceLabel(confidence: string, t: OrbitTranslator): string {
+  if (confidence === "high") return t("profile.confidenceHigh");
+  if (confidence === "low") return t("profile.confidenceLow");
+  if (confidence === "medium") return t("profile.confidenceMedium");
+  return t("profile.confidencePending");
+}
+
+function profileExtractionStateLabel(state: string, hasDraft: boolean, t: OrbitTranslator): string {
+  if (state === "pending") return t("profile.extractionStatePending");
+  if (!hasDraft || state === "empty") return t("profile.extractionStateEmpty");
+  return t("profile.extractionStateReview");
+}
+
+function profileSuggestionStateLabel(state: string, count: number, t: OrbitTranslator): string {
+  if (count === 0 || state === "empty") return t("profile.suggestionStateEmpty");
+  if (state === "pending") return t("profile.suggestionStatePending");
+  return t("profile.suggestionStateReview");
+}
+
+function profileSuggestionStatusLabel(status: string, t: OrbitTranslator): string {
+  if (status === "accepted") return t("profile.suggestionStatusAccepted");
+  if (status === "dismissed") return t("profile.suggestionStatusDismissed");
+  return t("profile.suggestionStatusPending");
+}
+
+function profileSignalSourceLabel(source: string, t: OrbitTranslator): string {
+  if (source === "chat") return t("profile.signalSourceChat");
+  if (source === "activity") return t("profile.signalSourceActivity");
+  if (source === "contact") return t("profile.signalSourceContact");
+  return t("profile.signalSourceDefault");
 }
 
 function profileDraftFromDetail(data: ProfileDetail): ProfileDraft {
@@ -620,6 +671,7 @@ function ProfileDocumentExtractionCard({
   result: ProfileExtraction | null;
 }) {
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
   const [sourceText, setSourceText] = useState("");
   const [pickerError, setPickerError] = useState<string | null>(null);
   const [pickerPending, setPickerPending] = useState(false);
@@ -628,14 +680,18 @@ function ProfileDocumentExtractionCard({
   const source = useRef(sourceText); source.current = sourceText;
   const picker = useProfileOperation(scopeKey, isScopeCurrent);
   const baseView = result ? profileDocumentExtractionToView(result) : null;
-  const fieldLabels: Record<string, string> = { displayName: "姓名", headline: "标题", homeMarket: "主要市场", relationshipGoal: "关系目标", targetRelationshipTypes: "目标关系", preferredFollowUpWindow: "联系时间", preferredIntroChannels: "介绍渠道", organization: "公司", role: "角色", email: "邮箱", phone: "电话", website: "网站" };
-  const view = baseView && result ? { ...baseView, summary: profileBusinessText(result.confidenceSummary), nextAction: profileBusinessText(result.nextAction),
-    stateLabel: result.state === "pending" ? "处理中" : baseView.stateLabel,
+  const kindLabel = result?.kind === "business-card" ? locale.t("profile.kindCard") : locale.t("profile.kindResume");
+  const view = baseView && result ? { ...baseView,
+    confidenceLabel: profileConfidenceLabel(result.draft?.confidence ?? "", locale.t),
+    nextAction: profileBusinessText(result.nextAction, locale.language) || (result.state === "empty" ? locale.t("profile.extractionNextEmpty") : result.state === "pending" ? locale.t("profile.extractionNextPending") : result.kind === "business-card" ? locale.t("profile.extractionNextCard") : locale.t("profile.extractionNextResume")),
+    stateLabel: profileExtractionStateLabel(result.state, !!result.draft, locale.t),
+    summary: profileBusinessText(result.confidenceSummary, locale.language) || (!result.draft ? locale.t("profile.extractionSummaryNone") : result.kind === "business-card" && result.draft.confidence === "medium" ? locale.t("profile.extractionSummaryCardMedium") : result.kind === "business-card" ? locale.t("profile.extractionSummaryCard") : result.draft.confidence === "high" ? locale.t("profile.extractionSummaryResumeHigh") : locale.t("profile.extractionSummaryPartial")),
+    title: locale.t("profile.extractionResultNamed", { name: kindLabel }),
     draft: baseView.draft && result.draft ? { ...baseView.draft,
-      displayName: result.draft.displayName || "未识别姓名", metaLine: [result.draft.role, result.draft.organization].filter(Boolean).join(" · "),
+      displayName: result.draft.displayName || locale.t("profile.unrecognizedName"), kindLabel, metaLine: [result.draft.role, result.draft.organization].filter(Boolean).join(" · "),
       relationshipGoal: result.draft.relationshipGoal,
-      suggestedFields: Object.entries(result.draft.suggestedProfileFields).map(([field, value]) => ({ label: fieldLabels[field] ?? "资料字段", value: Array.isArray(value) ? value.join("、") : value ?? "" })).filter(field => field.value),
-      evidence: result.draft.evidence.map(item => ({ label: Object.prototype.hasOwnProperty.call(fieldLabels, item.field) ? fieldLabels[item.field]! : "资料字段", excerpt: item.excerpt }))
+      suggestedFields: Object.entries(result.draft.suggestedProfileFields).map(([field, value]) => ({ label: profileFieldLabel(field, locale.t), value: Array.isArray(value) ? value.join("、") : value ?? "" })).filter(field => field.value),
+      evidence: result.draft.evidence.map(item => ({ label: profileFieldLabel(item.field, locale.t), excerpt: item.excerpt }))
     } : null } : null;
   const actionDisabled = !canEdit || extractingKind !== null || pickerPending;
   const actionsBusy = useRef(actionDisabled); actionsBusy.current = actionDisabled;
@@ -666,7 +722,7 @@ function ProfileDocumentExtractionCard({
       const asset = result.assets[0];
 
       if (!asset) {
-        setPickerError("没有选到可读取的图片。");
+        setPickerError(locale.t("profile.imageMissing"));
         return;
       }
 
@@ -674,7 +730,7 @@ function ProfileDocumentExtractionCard({
       setSelectedFile(file);
       if (source.current.trim() && editable.current) onExtract(kind, { fileName: file.fileName, mimeType: file.mimeType, text: source.current });
     } catch {
-      if (picker.owns(controller)) setPickerError("这张图片暂时读取不了，请重试。");
+      if (picker.owns(controller)) setPickerError(locale.t("profile.imageReadFailure"));
     } finally {
       if (picker.owns(controller)) setPickerPending(false);
       picker.finish(controller);
@@ -701,7 +757,7 @@ function ProfileDocumentExtractionCard({
       const asset = result.assets[0];
 
       if (!asset) {
-        setPickerError("没有选到可读取的文件。");
+        setPickerError(locale.t("profile.fileMissing"));
         return;
       }
 
@@ -709,7 +765,7 @@ function ProfileDocumentExtractionCard({
       setSelectedFile(file);
       if (source.current.trim() && editable.current) onExtract("resume", { fileName: file.fileName, mimeType: file.mimeType, text: source.current });
     } catch {
-      if (picker.owns(controller)) setPickerError("这份文件暂时读取不了，请重试。");
+      if (picker.owns(controller)) setPickerError(locale.t("profile.fileReadFailure"));
     } finally {
       if (picker.owns(controller)) setPickerPending(false);
       picker.finish(controller);
@@ -717,15 +773,15 @@ function ProfileDocumentExtractionCard({
   }
 
   return (
-    <DataCard detail="提取结果只用于复核，不会直接修改个人资料" title="补全资料" variant="inset">
+    <DataCard detail={locale.t("profile.extractionDetail")} title={locale.t("profile.extractionTitle")} variant="inset">
       <View style={styles.profileExtractionStack}>
-        <Text style={styles.evidenceText}>此处提取粘贴的文本，不读取图片或 PDF 的内容。</Text>
-        {selectedFile ? <Text style={styles.bodyText}>{sourceText.trim() ? `已选择 ${selectedFile.fileName}。提取时仅使用下方原文。` : `已选择 ${selectedFile.fileName}。此处只能提取粘贴的文本，请补充原文。`}</Text> : null}
+        <Text style={styles.evidenceText}>{locale.t("profile.extractionGuidance")}</Text>
+        {selectedFile ? <Text style={styles.bodyText}>{locale.t(sourceText.trim() ? "profile.selectedWithText" : "profile.selectedNeedsText", { name: selectedFile.fileName })}</Text> : null}
         <ProfileTextInput
-          label="名片文本或简历摘要"
+          label={locale.t("profile.extractionInput")}
           multiline
           onChangeText={value => { if (picker.isCurrent()) setSourceText(value); }}
-          placeholder="姓名、公司、角色、联系方式、关系目标"
+          placeholder={locale.t("profile.extractionPlaceholder")}
           value={sourceText}
         />
         {actionError ? (
@@ -735,31 +791,31 @@ function ProfileDocumentExtractionCard({
           <ProfileExtractionButton
             disabled={actionDisabled}
             icon="id-card-outline"
-            label={extractingKind === "business-card" ? "提取中" : "提取名片"}
+            label={extractingKind === "business-card" ? locale.t("profile.extracting") : locale.t("profile.extractCard")}
             onPress={() => { if (picker.isCurrent() && !actionsBusy.current) onExtract("business-card", { text: sourceText, ...(selectedFile?.kind === "business-card" ? { fileName: selectedFile.fileName, mimeType: selectedFile.mimeType } : {}) }); }}
           />
           <ProfileExtractionButton
             disabled={actionDisabled}
             icon="document-text-outline"
-            label={extractingKind === "resume" ? "提取中" : "提取简历"}
+            label={extractingKind === "resume" ? locale.t("profile.extracting") : locale.t("profile.extractResume")}
             onPress={() => { if (picker.isCurrent() && !actionsBusy.current) onExtract("resume", { text: sourceText, ...(selectedFile?.kind === "resume" ? { fileName: selectedFile.fileName, mimeType: selectedFile.mimeType } : {}) }); }}
           />
           <ProfileExtractionButton
             disabled={actionDisabled}
             icon="image-outline"
-            label="选择名片图片"
+            label={locale.t("profile.chooseCardImage")}
             onPress={() => pickProfileDocumentImage("business-card")}
           />
           <ProfileExtractionButton
             disabled={actionDisabled}
             icon="images-outline"
-            label="选择简历图片"
+            label={locale.t("profile.chooseResumeImage")}
             onPress={() => pickProfileDocumentImage("resume")}
           />
           <ProfileExtractionButton
             disabled={actionDisabled}
             icon="document-attach-outline"
-            label="选择简历文件"
+            label={locale.t("profile.chooseResumeFile")}
             onPress={pickProfileDocumentFile}
           />
         </View>
@@ -818,6 +874,7 @@ function ProfileDocumentExtractionResult({
   view: ProfileDocumentExtractionView;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   return (
     <View style={styles.profileExtractionResult}>
       <View style={styles.profileExtractionResultHeader}>
@@ -878,7 +935,7 @@ function ProfileDocumentExtractionResult({
       <Text style={styles.evidenceText}>{view.nextAction}</Text>
       {view.draft && canApply ? (
         <Pressable
-          accessibilityLabel="应用到编辑表单"
+          accessibilityLabel={locale.t("profile.applyExtraction")}
           accessibilityRole="button"
           onPress={onApply}
           style={({ pressed }) => [
@@ -888,7 +945,7 @@ function ProfileDocumentExtractionResult({
         >
           <Ionicons color={colors.accent} name="create-outline" size={16} />
           <Text style={styles.profileExtractionApplyButtonText}>
-            应用到编辑表单
+            {locale.t("profile.applyExtraction")}
           </Text>
         </Pressable>
       ) : null}
@@ -928,11 +985,15 @@ function ProfileManualEditCard({
   const draftRevision = useRef(0);
   const latestDraft = useRef(draft); latestDraft.current = draft;
   const editable = useRef(canEdit); editable.current = canEdit;
-  const acceptedPatchView = acceptedPatch
-    ? { ...profileAcceptedPatchToView(acceptedPatch), nextAction: profileBusinessText(acceptedPatch.nextAction),
-      fields: profileAcceptedPatchToView(acceptedPatch).fields.map((field, index) => {
+  const acceptedPatchBaseView = acceptedPatch ? profileAcceptedPatchToView(acceptedPatch) : null;
+  const acceptedPatchView = acceptedPatch && acceptedPatchBaseView
+    ? { ...acceptedPatchBaseView,
+      nextAction: profileBusinessText(acceptedPatch.nextAction, locale.language) || locale.t("profile.reviewBeforeSave"),
+      summary: locale.t("profile.saveRequired"),
+      title: locale.t("profile.pendingChanges"),
+      fields: acceptedPatchBaseView.fields.map((field, index) => {
         const value = acceptedPatch.profilePatch[acceptedPatch.appliedFields[index]!];
-        return { ...field, value: Array.isArray(value) ? value.join("、") : value ?? "" };
+        return { ...field, label: profileFieldLabel(acceptedPatch.appliedFields[index] ?? "", locale.t), value: Array.isArray(value) ? value.join("、") : value ?? "" };
       }) }
     : null;
 
@@ -1304,28 +1365,37 @@ function ProfileUpdateSuggestionsCard({
   state: ApiResourceState<ProfileSuggestions>;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const data = state.kind === "success" || state.kind === "empty" ? state.data : null;
-  const notice = state.kind === "loading" ? "正在读取资料建议" : !data ? "资料建议未能读取"
-    : data.state === "pending" ? "资料建议正在准备" : data.state === "empty" || data.suggestions.length === 0 ? "暂无资料建议" : null;
+  const notice = state.kind === "loading" ? locale.t("profile.suggestionsReading") : !data ? locale.t("profile.suggestionsUnavailable")
+    : data.state === "pending" ? locale.t("profile.suggestionsPending") : data.state === "empty" || data.suggestions.length === 0 ? locale.t("profile.suggestionsEmpty") : null;
   if (notice) {
-    return <DataCard title="资料更新建议">
+    return <DataCard title={locale.t("profile.suggestionsTitle")}>
       <Text accessibilityRole={!data && state.kind !== "loading" ? "alert" : "text"} style={styles.bodyText}>{notice}</Text>
       {actionError ? <Text accessibilityRole="alert" style={styles.suggestionActionError}>{actionError}</Text> : null}
       {actionMessage ? <Text style={styles.suggestionActionMessage}>{actionMessage}</Text> : null}
-      {state.kind !== "loading" ? <ProfileExtractionButton disabled={!isScopeCurrent()} icon="refresh-outline" label="重试资料建议" onPress={() => { if (isScopeCurrent()) state.refresh(); }} /> : null}
+      {state.kind !== "loading" ? <ProfileExtractionButton disabled={!isScopeCurrent()} icon="refresh-outline" label={locale.t("profile.retrySuggestions")} onPress={() => { if (isScopeCurrent()) state.refresh(); }} /> : null}
     </DataCard>;
   }
   if (!data) return null;
   const baseView = profileUpdateSuggestionsToView(data);
-  const view = { ...baseView, nextAction: profileBusinessText(data.nextAction), suggestions: baseView.suggestions.map((view, index) => {
+  const view = { ...baseView,
+    nextAction: profileBusinessText(data.nextAction, locale.language),
+    stateLabel: profileSuggestionStateLabel(data.state, data.suggestions.length, locale.t),
+    suggestions: baseView.suggestions.map((view, index) => {
     const item = data.suggestions[index]!;
     return { ...view, canAccept: canEdit && view.canAccept, currentValue: Array.isArray(item.currentValue) ? item.currentValue.join("、") : item.currentValue,
       suggestedValue: Array.isArray(item.suggestedValue) ? item.suggestedValue.join("、") : item.suggestedValue,
-      sourceLabel: profileBusinessText(item.sourceLabel), rationale: profileBusinessText(item.rationale), evidenceExcerpt: item.evidence.map(evidence => profileBusinessText(evidence.excerpt)).join("\n") };
+      confidenceLabel: profileConfidenceLabel(item.confidence, locale.t),
+      fieldLabel: profileFieldLabel(item.targetProfileField, locale.t),
+      sourceLabel: profileBusinessText(item.sourceLabel, locale.language) || profileSignalSourceLabel(item.sourceKind, locale.t),
+      statusLabel: profileSuggestionStatusLabel(item.status, locale.t),
+      rationale: profileBusinessText(item.rationale, locale.language),
+      evidenceExcerpt: item.evidence.map(evidence => profileBusinessText(evidence.excerpt, locale.language)).join("\n") };
   }) };
 
   return (
-    <DataCard detail={`${view.stateLabel} · ${view.nextAction}`} title="资料更新建议">
+    <DataCard detail={`${view.stateLabel} · ${view.nextAction}`} title={locale.t("profile.suggestionsTitle")}>
       <View style={styles.suggestionsStack}>
         {actionMessage ? (
           <Text style={styles.suggestionActionMessage}>{actionMessage}</Text>
@@ -1349,11 +1419,11 @@ function ProfileUpdateSuggestionsCard({
               </View>
               <Text style={styles.suggestionField}>{suggestion.fieldLabel}</Text>
               <View style={styles.suggestionDiff}>
-                <Text style={styles.suggestionLabel}>当前</Text>
+                <Text style={styles.suggestionLabel}>{locale.t("profile.currentValue")}</Text>
                 <Text style={styles.suggestionValue}>
                   {suggestion.currentValue}
                 </Text>
-                <Text style={styles.suggestionLabel}>建议</Text>
+                <Text style={styles.suggestionLabel}>{locale.t("profile.suggestedValue")}</Text>
                 <Text style={styles.suggestionValueStrong}>
                   {suggestion.suggestedValue}
                 </Text>
@@ -1364,7 +1434,7 @@ function ProfileUpdateSuggestionsCard({
               </Text>
               {suggestion.canAccept ? (
                 <Pressable
-                  accessibilityLabel={`确认${suggestion.fieldLabel}建议`}
+                  accessibilityLabel={locale.t("profile.confirmNamedSuggestion", { field: suggestion.fieldLabel })}
                   accessibilityRole="button"
                   disabled={actionDisabled}
                   onPress={() => onAcceptSuggestion(suggestion.id)}
@@ -1380,7 +1450,7 @@ function ProfileUpdateSuggestionsCard({
                     size={16}
                   />
                   <Text style={styles.suggestionActionButtonText}>
-                    {isAccepting ? "确认中" : "确认建议"}
+                    {isAccepting ? locale.t("profile.confirming") : locale.t("profile.confirmSuggestion")}
                   </Text>
                 </Pressable>
               ) : null}
@@ -1400,13 +1470,14 @@ function ProfileTagSection({
   title: string;
 }) {
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
   if (items.length === 0) {
     return null;
   }
 
   return (
     <View>
-      <SectionHeader detail={`${items.length} 项`} title={title} />
+      <SectionHeader detail={locale.t("profile.itemsCount", { count: items.length })} title={title} />
       <View style={styles.tagsWrap}>
         {items.map((item) => (
           <Text key={item} style={styles.tagText}>

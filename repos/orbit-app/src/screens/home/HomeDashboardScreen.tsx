@@ -13,7 +13,7 @@ import { createThemedStyles } from "../../design/theme";
 import { useRelationshipInboxBadgeCount } from "../../hooks/useRelationshipInboxBadgeCount";
 import { useHomeDashboardClient } from "../../hooks/useHomeDashboardClient";
 import { homeDateView, homeRecommendedEventsToView, homeScheduleToView, homeTasksToView } from "../../view-models/home-dashboard";
-import { useOrbitLocale } from "../../i18n/OrbitLocaleProvider";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { MessageKey } from "../../i18n/messages";
 
 type Section = "schedule" | "tasks" | "events";

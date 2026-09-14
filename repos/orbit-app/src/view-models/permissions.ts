@@ -1,3 +1,5 @@
+import { createTranslator, type OrbitTranslator } from "../i18n/messages";
+
 type UnknownRecord = Record<string, unknown>;
 
 export type PermissionCardTone = "blocked" | "denied" | "pending" | "ready" | "todo";
@@ -58,58 +60,58 @@ function envelopeData(data: unknown): unknown {
   return data.success === true && "data" in data ? data.data : data;
 }
 
-function capabilityTitle(value: string): string {
+function capabilityTitle(value: string, t: OrbitTranslator): string {
   switch (value) {
     case "business-card-scan":
-      return "名片扫描";
+      return t("permissions.capabilityBusinessCard");
     case "calendar":
-      return "日历";
+      return t("permissions.capabilityCalendar");
     case "camera":
-      return "相机";
+      return t("permissions.capabilityCamera");
     case "chat-analysis":
-      return "聊天分析";
+      return t("permissions.capabilityChat");
     case "contacts":
-      return "联系人";
+      return t("permissions.capabilityContacts");
     case "email":
-      return "邮件";
+      return t("permissions.capabilityEmail");
     case "event-data":
-      return "活动数据";
+      return t("permissions.capabilityEvent");
     case "notifications":
-      return "通知";
+      return t("permissions.capabilityNotifications");
     default:
-      return value || "权限";
+      return value ? t.literal(value) : t("permissions.capabilityDefault");
   }
 }
 
-function statusLabel(value: string): string {
+function statusLabel(value: string, t: OrbitTranslator): string {
   switch (value) {
     case "authorized":
-      return "已可用";
+      return t("permissions.statusAuthorized");
     case "available_after_camera":
-      return "等相机权限";
+      return t("permissions.statusAfterCamera");
     case "denied":
-      return "已拒绝";
+      return t("permissions.statusDenied");
     case "not_requested":
-      return "待确认";
+      return t("permissions.statusNotRequested");
     case "pending":
-      return "待复核";
+      return t("permissions.statusPending");
     default:
-      return "待确认";
+      return t("permissions.statusNotRequested");
   }
 }
 
-function stageLabel(value: string): string {
+function stageLabel(value: string, t: OrbitTranslator): string {
   switch (value) {
     case "blocked-by-dependency":
-      return "等前置权限";
+      return t("permissions.stageBlocked");
     case "not-started":
-      return "未开始";
+      return t("permissions.stageNotStarted");
     case "ready":
-      return "已准备";
+      return t("permissions.stageReady");
     case "staged-review":
-      return "待复核";
+      return t("permissions.stageReview");
     default:
-      return "未开始";
+      return t("permissions.stageNotStarted");
   }
 }
 
@@ -133,164 +135,164 @@ function permissionTone(status: string, stage: string): PermissionCardTone {
   return "todo";
 }
 
-function actionLabel(capability: string, status: string): string {
+function actionLabel(capability: string, status: string, t: OrbitTranslator): string {
   if (capability === "calendar" && status === "pending") {
-    return "复核日历请求";
+    return t("permissions.actionReviewCalendar");
   }
 
   switch (capability) {
     case "business-card-scan":
-      return "先处理相机权限";
+      return t("permissions.actionCameraFirst");
     case "calendar":
-      return "申请日历复核";
+      return t("permissions.requestCalendar");
     case "camera":
-      return "复核相机权限";
+      return t("permissions.actionReviewCamera");
     case "chat-analysis":
-      return "复核聊天分析";
+      return t("permissions.actionReviewChat");
     case "contacts":
-      return "使用联系人资料";
+      return t("permissions.actionUseContacts");
     case "email":
-      return "复核邮件上下文";
+      return t("permissions.actionReviewEmail");
     case "event-data":
-      return "使用活动数据";
+      return t("permissions.actionUseEvent");
     case "notifications":
-      return "使用提醒队列";
+      return t("permissions.actionUseNotifications");
     default:
-      return "查看权限";
+      return t("permissions.actionView");
   }
 }
 
-function requiredForText(capability: string, value: string): string {
+function requiredForText(capability: string, value: string, t: OrbitTranslator): string {
   switch (capability) {
     case "business-card-scan":
-      return "名片 OCR 复核。";
+      return t("permissions.requiredBusinessCard");
     case "calendar":
-      return "活动准备、会议背景和联系时间判断。";
+      return t("permissions.requiredCalendar");
     case "camera":
-      return "名片拍摄。";
+      return t("permissions.requiredCamera");
     case "chat-analysis":
-      return "聊天总结和写作辅助。";
+      return t("permissions.requiredChat");
     case "contacts":
-      return "导入联系人、合并复核和关系搜索。";
+      return t("permissions.requiredContacts");
     case "email":
-      return "邮件线索和联系背景。";
+      return t("permissions.requiredEmail");
     case "event-data":
-      return "活动参会者、目标和会前准备。";
+      return t("permissions.requiredEvent");
     case "notifications":
-      return "联系提醒和待办提示。";
+      return t("permissions.requiredNotifications");
     default:
-      return value.trim() || "关系工作。";
+      return value.trim() ? t.literal(value.trim()) : t("permissions.requiredDefault");
   }
 }
 
-function reasonText(capability: string, status: string): string {
+function reasonText(capability: string, status: string, t: OrbitTranslator): string {
   if (capability === "business-card-scan") {
-    return "名片扫描要等相机权限确认后才能继续。";
+    return t("permissions.reasonBusinessCard");
   }
 
   if (status === "authorized") {
     switch (capability) {
       case "contacts":
-        return "联系人资料已经可以用于关系工作。";
+        return t("permissions.reasonAuthorizedContacts");
       case "calendar":
-        return "日历上下文已经可以用于活动准备。";
+        return t("permissions.reasonAuthorizedCalendar");
       case "event-data":
-        return "活动数据已经可以用于会前准备。";
+        return t("permissions.reasonAuthorizedEvent");
       case "notifications":
-        return "提醒会先留在应用内，不会直接发出。";
+        return t("permissions.reasonAuthorizedNotifications");
       default:
-        return "这项能力已经可以使用。";
+        return t("permissions.reasonAuthorized");
     }
   }
 
   if (status === "pending") {
     return capability === "calendar"
-      ? "日历访问正在等你确认。"
-      : "这项权限正在等你复核。";
+      ? t("permissions.reasonPendingCalendar")
+      : t("permissions.reasonPending");
   }
 
   if (status === "denied") {
-    return "这项权限已被拒绝，需要重新确认后再继续。";
+    return t("permissions.reasonDenied");
   }
 
-  return "这项能力还没开始确认。";
+  return t("permissions.reasonNotStarted");
 }
 
-function evidenceLabel(value: string): string {
+function evidenceLabel(value: string, t: OrbitTranslator): string {
   switch (value) {
     case "Calendar staging review":
-      return "日历复核";
+      return t("permissions.evidenceCalendar");
     case "Camera access deferred":
-      return "相机权限";
+      return t("permissions.evidenceCamera");
     case "Chat analysis deferred":
-      return "聊天分析";
+      return t("permissions.evidenceChat");
     case "Email context deferred":
-      return "邮件上下文";
+      return t("permissions.evidenceEmail");
     case "Event data import rehearsal":
-      return "活动数据";
+      return t("permissions.evidenceEvent");
     case "Manual contacts setup":
-      return "手动联系人设置";
+      return t("permissions.evidenceContacts");
     case "Notification sandbox":
-      return "提醒队列";
+      return t("permissions.evidenceNotifications");
     default:
-      return value || "来源";
+      return value ? t.literal(value) : t("permissions.evidenceDefault");
   }
 }
 
-function evidenceExcerpt(capability: string, value: string): string {
+function evidenceExcerpt(capability: string, value: string, t: OrbitTranslator): string {
   switch (capability) {
     case "business-card-scan":
     case "camera":
-      return "名片拍摄需要先确认相机访问。";
+      return t("permissions.excerptCamera");
     case "calendar":
-      return "活动准备可以先复核日历访问意图。";
+      return t("permissions.excerptCalendar");
     case "chat-analysis":
-      return "聊天总结需要先确认分析权限。";
+      return t("permissions.excerptChat");
     case "contacts":
-      return "已导入的关系资料可以用于联系人列表。";
+      return t("permissions.excerptContacts");
     case "email":
-      return "邮件上下文需要先确认后再使用。";
+      return t("permissions.excerptEmail");
     case "event-data":
-      return "活动参会者数据带有来源记录。";
+      return t("permissions.excerptEvent");
     case "notifications":
-      return "联系提醒先留在应用内。";
+      return t("permissions.excerptNotifications");
     default:
-      return value.trim();
+      return t.literal(value.trim());
   }
 }
 
-function evidenceView(permission: UnknownRecord, capability: string): string[] {
+function evidenceView(permission: UnknownRecord, capability: string, t: OrbitTranslator): string[] {
   return listField(permission, "evidence")
     .filter(isRecord)
     .map((record) => {
-      const label = evidenceLabel(stringField(record, "sourceLabel"));
-      const excerpt = evidenceExcerpt(capability, stringField(record, "excerpt"));
-      return `${label}：${excerpt}`;
+      const label = evidenceLabel(stringField(record, "sourceLabel"), t);
+      const excerpt = evidenceExcerpt(capability, stringField(record, "excerpt"), t);
+      return t("permissions.evidencePair", { label, excerpt });
     })
     .filter(Boolean);
 }
 
-function permissionCard(permission: UnknownRecord): PermissionCardView {
+function permissionCard(permission: UnknownRecord, t: OrbitTranslator): PermissionCardView {
   const capability = stringField(permission, "capability");
   const status = stringField(permission, "status", "not_requested");
   const stage = stringField(permission, "authorizationStage", "not-started");
 
   return {
-    actionLabel: actionLabel(capability, status),
-    evidence: evidenceView(permission, capability),
+    actionLabel: actionLabel(capability, status, t),
+    evidence: evidenceView(permission, capability, t),
     id: capability || stringField(permission, "label", "permission"),
-    reason: reasonText(capability, status),
-    requiredFor: requiredForText(capability, stringField(permission, "requiredFor")),
-    stageLabel: stageLabel(stage),
-    statusLabel: statusLabel(status),
-    title: capabilityTitle(capability),
+    reason: reasonText(capability, status, t),
+    requiredFor: requiredForText(capability, stringField(permission, "requiredFor"), t),
+    stageLabel: stageLabel(stage, t),
+    statusLabel: statusLabel(status, t),
+    title: capabilityTitle(capability, t),
     tone: permissionTone(status, stage)
   };
 }
 
-function summaryFor(cards: readonly PermissionCardView[]): string {
+function summaryFor(cards: readonly PermissionCardView[], t: OrbitTranslator): string {
   if (cards.length === 0) {
-    return "0 项权限需要处理";
+    return t("permissions.summaryNone");
   }
 
   const ready = cards.filter((card) => card.tone === "ready").length;
@@ -299,52 +301,55 @@ function summaryFor(cards: readonly PermissionCardView[]): string {
   const denied = cards.filter((card) => card.tone === "denied").length;
   const todo = cards.filter((card) => card.tone === "todo").length;
   const parts = [
-    ready ? `${ready} 项可用` : "",
-    pending ? `${pending} 项待复核` : "",
-    todo ? `${todo} 项待确认` : "",
-    blocked ? `${blocked} 项等前置权限` : "",
-    denied ? `${denied} 项已拒绝` : ""
+    ready ? t("permissions.summaryReady", { count: ready }) : "",
+    pending ? t("permissions.summaryPending", { count: pending }) : "",
+    todo ? t("permissions.summaryTodo", { count: todo }) : "",
+    blocked ? t("permissions.summaryBlocked", { count: blocked }) : "",
+    denied ? t("permissions.summaryDenied", { count: denied }) : ""
   ].filter(Boolean);
 
   return parts.join(" · ");
 }
 
-function nextActionFor(cards: readonly PermissionCardView[]): string {
+function nextActionFor(cards: readonly PermissionCardView[], t: OrbitTranslator): string {
   if (cards.length === 0) {
-    return "先从活动准备、待办或名片录入里选择一项继续处理。";
+    return t("permissions.nextNone");
   }
 
   if (cards.some((card) => card.tone === "pending")) {
-    return "先确认权限，再继续活动准备或处理待办。";
+    return t("permissions.nextPending");
   }
 
   if (cards.some((card) => card.tone === "blocked")) {
-    return "先处理被前置权限挡住的能力。";
+    return t("permissions.nextBlocked");
   }
 
   if (cards.some((card) => card.tone === "todo")) {
-    return "先确认要开启的权限，再继续当前任务。";
+    return t("permissions.nextTodo");
   }
 
-  return "权限已经就绪，可以继续当前任务。";
+  return t("permissions.nextReady");
 }
 
-export function permissionStatesToView(data: unknown): PermissionStatesView {
+export function permissionStatesToView(
+  data: unknown,
+  t: OrbitTranslator = createTranslator("zh"),
+): PermissionStatesView {
   const payload = envelopeData(data);
   const record = isRecord(payload) ? payload : {};
   const cards = listField(record, "permissions")
     .filter(isRecord)
-    .map(permissionCard);
+    .map((permission) => permissionCard(permission, t));
 
   return {
     canRequestCalendar:
       !cards.some((card) => card.id === "calendar") ||
       cards.some((card) => card.id === "calendar" && card.tone !== "ready"),
-    emptyText: cards.length === 0 ? "还没有需要处理的权限。" : "",
-    nextAction: nextActionFor(cards),
+    emptyText: cards.length === 0 ? t("permissions.empty") : "",
+    nextAction: nextActionFor(cards, t),
     permissions: cards,
-    summary: summaryFor(cards),
-    title: "权限中心"
+    summary: summaryFor(cards, t),
+    title: t("permissions.title")
   };
 }
 
@@ -365,7 +370,8 @@ function evidenceIdsFromRequest(request: UnknownRecord): string[] {
 }
 
 export function calendarPermissionRequestToView(
-  data: unknown
+  data: unknown,
+  t: OrbitTranslator = createTranslator("zh"),
 ): CalendarPermissionRequestView {
   const payload = envelopeData(data);
   const record = isRecord(payload) ? payload : {};
@@ -374,11 +380,11 @@ export function calendarPermissionRequestToView(
   const capability = stringField(permission, "capability", "calendar");
 
   return {
-    detail: requiredForText(capability, stringField(permission, "requiredFor")),
+    detail: requiredForText(capability, stringField(permission, "requiredFor"), t),
     evidenceIds: evidenceIdsFromRequest(request),
-    nextAction: "留在 Orbit 里复核，不会打开系统日历或外部账号授权。",
+    nextAction: t("permissions.calendarReviewNext"),
     requestId: stringField(request, "id", "permission-request:calendar"),
-    statusLabel: statusLabel(stringField(request, "status", "pending")),
-    title: "日历权限待复核"
+    statusLabel: statusLabel(stringField(request, "status", "pending"), t),
+    title: t("permissions.calendarReviewTitle")
   };
 }

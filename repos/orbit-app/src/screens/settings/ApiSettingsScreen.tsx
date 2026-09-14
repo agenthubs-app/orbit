@@ -15,7 +15,7 @@ import { DataCard } from "../../components/DataCard";
 import { spacing, textStyles } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
-import { useOrbitLocale } from "../../i18n/OrbitLocaleProvider";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { healthPayloadToSummary } from "../../view-models/health";
 
 export function ApiSettingsScreen() {

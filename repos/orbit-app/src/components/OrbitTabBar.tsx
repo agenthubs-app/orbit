@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { createThemedStyles } from "../design/theme";
 import type { MainTab } from "../view-models/app-navigation";
 import { OrbitNavigationIcon } from "./OrbitNavigationIcon";
-import { useOrbitLocale } from "../i18n/OrbitLocaleProvider";
+import { useOrbitLocale } from "../i18n/OrbitLocaleContext";
 import type { MessageKey } from "../i18n/messages";
 
 const tabs = [

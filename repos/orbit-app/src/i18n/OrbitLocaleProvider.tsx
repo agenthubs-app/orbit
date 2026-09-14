@@ -1,8 +1,6 @@
 import { getLocales } from "expo-localization";
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -26,25 +24,21 @@ import { useOrbitApiClient } from "../hooks/useOrbitApiClient";
 import {
   languageFromDeviceLocales,
   resolveEffectiveLanguage,
-  type OrbitLanguageSource,
 } from "./locale-core";
-import { createTranslator, type OrbitTranslator } from "./messages";
+import {
+  OrbitLocaleContext,
+  type OrbitLanguageChoice,
+  type OrbitLocaleContextValue,
+  type OrbitLocaleSyncState,
+} from "./OrbitLocaleContext";
+import { createTranslator } from "./messages";
 
-export type OrbitLanguageChoice = OrbitLanguage | "system";
-export type OrbitLocaleSyncState = "conflict" | "error" | "idle" | "loading" | "saving";
-
-export interface OrbitLocaleContextValue {
-  choice: OrbitLanguageChoice;
-  deviceLanguage: OrbitLanguage;
-  error: string | null;
-  language: OrbitLanguage;
-  preference: OrbitLanguagePreferenceContract;
-  retryLanguageSave(): Promise<void>;
-  setLanguage(choice: OrbitLanguageChoice): Promise<void>;
-  source: OrbitLanguageSource;
-  syncState: OrbitLocaleSyncState;
-  t: OrbitTranslator;
-}
+export {
+  useOrbitLocale,
+  type OrbitLanguageChoice,
+  type OrbitLocaleContextValue,
+  type OrbitLocaleSyncState,
+} from "./OrbitLocaleContext";
 
 const systemPreference: OrbitLanguagePreferenceContract = {
   mode: "system",
@@ -65,22 +59,6 @@ function readDeviceLanguage(previous: OrbitLanguage = "zh"): {
     };
   }
 }
-
-const fallbackLanguage = "zh" as const;
-const fallbackContext: OrbitLocaleContextValue = {
-  choice: "system",
-  deviceLanguage: fallbackLanguage,
-  error: null,
-  language: fallbackLanguage,
-  preference: systemPreference,
-  retryLanguageSave: async () => undefined,
-  setLanguage: async () => undefined,
-  source: "device",
-  syncState: "idle",
-  t: createTranslator(fallbackLanguage),
-};
-
-const OrbitLocaleContext = createContext<OrbitLocaleContextValue | null>(null);
 
 function choiceMatchesPreference(
   choice: OrbitLanguageChoice,
@@ -350,8 +328,4 @@ export function OrbitLocaleProvider({ children }: { children: ReactNode }) {
   ]);
 
   return <OrbitLocaleContext.Provider value={value}>{children}</OrbitLocaleContext.Provider>;
-}
-
-export function useOrbitLocale(): OrbitLocaleContextValue {
-  return useContext(OrbitLocaleContext) ?? fallbackContext;
 }

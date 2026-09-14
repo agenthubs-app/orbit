@@ -24,3 +24,29 @@ test("profile identity and user-authored fields remain literal across languages"
     assert.equal(t.literal(goal), goal);
   }
 });
+
+test("password reset and permissions chrome is available in all three languages", () => {
+  const zh = createTranslator("zh");
+  const ja = createTranslator("ja");
+  const en = createTranslator("en");
+
+  assert.equal(zh("reset.title"), "重置密码");
+  assert.equal(ja("reset.confirmPassword"), "新しいパスワードを確認");
+  assert.equal(en("reset.useLink"), "Use reset link");
+  assert.equal(zh("permissions.title"), "权限中心");
+  assert.equal(ja("permissions.requestCalendar"), "カレンダーの確認を申請");
+  assert.equal(en("permissions.signedOutTitle"), "Sign in to view permissions");
+});
+
+test("profile extraction and suggestion operations have localized controls and states", () => {
+  const zh = createTranslator("zh");
+  const ja = createTranslator("ja");
+  const en = createTranslator("en");
+
+  assert.equal(zh("profile.extractionTitle"), "补全资料");
+  assert.equal(ja("profile.chooseResumeFile"), "履歴書ファイルを選択");
+  assert.equal(en("profile.applyExtraction"), "Apply to edit form");
+  assert.equal(ja("profile.suggestionsTitle"), "プロフィール更新の提案");
+  assert.equal(en("profile.confirmSuggestion"), "Confirm suggestion");
+  assert.equal(en("profile.currentValue"), "Current");
+});

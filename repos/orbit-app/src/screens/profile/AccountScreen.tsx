@@ -16,7 +16,7 @@ import {
   accountSessionToView,
   type AccountSessionView
 } from "../../view-models/account-session";
-import { useOrbitLocale } from "../../i18n/OrbitLocaleProvider";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 
 export function AccountScreen() {
   const { colors } = useOrbitTheme();
@@ -28,8 +28,9 @@ export function AccountScreen() {
     (data) =>
       accountSessionToView(data, {
         authenticated: auth.signedIn,
-        authUser: auth.user
-      }).statusLabel !== "已登录"
+        authUser: auth.user,
+        t: locale.t
+      }).statusLabel !== locale.t("account.signedIn")
   );
 
   return (
@@ -41,7 +42,7 @@ export function AccountScreen() {
           tintColor={colors.accent}
         />
       }
-      title={fontScale > 1.3 ? locale.t("account.title").replace("与", "与\n") : locale.t("account.title")}
+      title={fontScale > 1.3 && locale.language === "zh" ? locale.t("account.title").replace("与", "与\n") : locale.t("account.title")}
     >
       {!auth.ready ? <LoadingState accessibilityLabel={locale.t("common.loadingLabel")} /> : null}
       {auth.ready && !auth.signedIn ? (

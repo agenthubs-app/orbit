@@ -17,6 +17,7 @@ import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import {
   buildCalendarPermissionRequest,
   calendarPermissionRequestToView,
@@ -62,13 +63,14 @@ export function AccountPermissionsScreen() {
   const router = useRouter();
   const auth = useOrbitAuthSession();
   const client = useOrbitApiClient();
+  const locale = useOrbitLocale();
   const [requestingCalendar, setRequestingCalendar] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [requestView, setRequestView] =
     useState<CalendarPermissionRequestView | null>(null);
   const state = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.permissions,
-    (data) => permissionStatesToView(data).permissions.length === 0
+    (data) => permissionStatesToView(data, locale.t).permissions.length === 0
   );
 
   function refresh() {
@@ -87,18 +89,18 @@ export function AccountPermissionsScreen() {
 
       if (!result.success) {
         setRequestError(
-          result.error.message || "日历权限暂时不能复核，请稍后再试。"
+          result.error.message || locale.t("permissions.requestFailure")
         );
         return;
       }
 
-      setRequestView(calendarPermissionRequestToView(result.data));
+      setRequestView(calendarPermissionRequestToView(result.data, locale.t));
       state.refresh();
     } catch (error) {
       setRequestError(
         error instanceof Error
           ? error.message
-          : "日历权限暂时不能复核，请稍后再试。"
+          : locale.t("permissions.requestFailure")
       );
     } finally {
       setRequestingCalendar(false);
@@ -107,12 +109,12 @@ export function AccountPermissionsScreen() {
 
   const view =
     state.kind === "success" || state.kind === "empty"
-      ? permissionStatesToView(state.data)
+      ? permissionStatesToView(state.data, locale.t)
       : null;
 
   return (
     <AppScreen
-      eyebrow="账号"
+      eyebrow={locale.t("permissions.eyebrow")}
       refreshControl={
         <RefreshControl
           onRefresh={refresh}
@@ -120,19 +122,19 @@ export function AccountPermissionsScreen() {
           tintColor={colors.accent}
         />
       }
-      title="权限中心"
+      title={locale.t("permissions.title")}
     >
-      {!auth.ready ? <LoadingState /> : null}
+      {!auth.ready ? <LoadingState accessibilityLabel={locale.t("common.loadingLabel")} /> : null}
       {auth.ready && !auth.signedIn ? (
         <DataCard
-          detail="当前设备没有已验证身份，Orbit 不会展示任何账号的权限记录。"
-          title="登录后查看权限中心"
+          detail={locale.t("permissions.signedOutDetail")}
+          title={locale.t("permissions.signedOutTitle")}
         >
           <Text style={styles.bodyText}>
-            登录后可以查看并复核当前账号的日历、通知、相机和联系人能力。
+            {locale.t("permissions.signedOutBody")}
           </Text>
           <Pressable
-            accessibilityLabel="登录查看权限中心"
+            accessibilityLabel={locale.t("permissions.login")}
             accessibilityRole="button"
             onPress={() =>
               router.push(
@@ -145,16 +147,16 @@ export function AccountPermissionsScreen() {
             ]}
           >
             <Ionicons color={colors.onAccent} name="log-in-outline" size={16} />
-            <Text style={styles.primaryButtonText}>登录查看权限中心</Text>
+            <Text style={styles.primaryButtonText}>{locale.t("permissions.login")}</Text>
           </Pressable>
         </DataCard>
       ) : null}
-      {auth.signedIn && state.kind === "loading" ? <LoadingState /> : null}
+      {auth.signedIn && state.kind === "loading" ? <LoadingState accessibilityLabel={locale.t("common.loadingLabel")} /> : null}
       {auth.signedIn && state.kind === "offline" ? (
-        <ErrorState message={state.error.message} title="服务器连不上" />
+        <ErrorState message={state.error.message} title={locale.t("permissions.serverOffline")} />
       ) : null}
       {auth.signedIn && state.kind === "failure" ? (
-        <ErrorState message={state.error.message} title="权限状态不可用" />
+        <ErrorState message={state.error.message} title={locale.t("permissions.unavailable")} />
       ) : null}
       {auth.signedIn && view ? (
         <PermissionWorkspace
@@ -183,13 +185,14 @@ function PermissionWorkspace({
   view: PermissionStatesView;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   return (
     <>
       <DataCard detail={view.summary} title={view.title}>
         <Text style={styles.bodyText}>{view.nextAction}</Text>
         {view.canRequestCalendar ? (
           <Pressable
-            accessibilityLabel="申请日历复核"
+            accessibilityLabel={locale.t("permissions.requestCalendar")}
             accessibilityRole="button"
             disabled={requestingCalendar}
             onPress={onRequestCalendar}
@@ -205,7 +208,7 @@ function PermissionWorkspace({
               size={16}
             />
             <Text style={styles.primaryButtonText}>
-              {requestingCalendar ? "提交中" : "申请日历复核"}
+              {requestingCalendar ? locale.t("permissions.submitting") : locale.t("permissions.requestCalendar")}
             </Text>
           </Pressable>
         ) : null}

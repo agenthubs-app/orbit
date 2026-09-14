@@ -39,7 +39,9 @@ test("account permissions route renders a native staged permission center", () =
   assert.match(screenSource, /calendarPermissionRequestPath/u);
   assert.match(screenSource, /permissionStatesToView/u);
   assert.match(screenSource, /calendarPermissionRequestToView/u);
-  assert.match(screenSource, /title="权限中心"/u);
+  assert.match(screenSource, /locale\.t\("permissions\.title"\)/u);
+  assert.equal(zh["permissions.title"], "权限中心");
   assert.match(screenSource, /\.post<unknown>\(/u);
-  assert.match(screenSource, /申请日历复核/u);
+  assert.match(screenSource, /permissions\.requestCalendar/u);
+  assert.equal(zh["permissions.requestCalendar"], "申请日历复核");
 });
