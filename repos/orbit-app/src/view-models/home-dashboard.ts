@@ -96,6 +96,48 @@ export interface HomeScheduleRow {
   href: string;
 }
 
+export interface HomeRecommendedEventRow {
+  id: string;
+  title: string;
+  dateLabel: string;
+  locationLabel: string;
+  imagePath?: string;
+}
+
+function eventDateLabel(value: string, timeZone: string): string {
+  const date = new Date(value);
+  const parts = new Intl.DateTimeFormat("zh-CN", {
+    day: "numeric", hour: "2-digit", hourCycle: "h23", minute: "2-digit", month: "numeric", timeZone, weekday: "short",
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(item => item.type === type)?.value ?? "";
+  return part("month") + "月" + part("day") + "日 " + part("weekday") + " " + part("hour") + ":" + part("minute");
+}
+
+export function homeRecommendedEventsToView(payload: unknown, timeZone = "Asia/Tokyo"): HomeRecommendedEventRow[] | null {
+  if (!record(payload) || !["success", "empty", "pending"].includes(String(payload.state)) || !Array.isArray(payload.recommendations) ||
+    (payload.state === "success") !== (payload.recommendations.length > 0)) return null;
+  const rows: HomeRecommendedEventRow[] = [];
+  const ids = new Set<string>();
+  for (const item of payload.recommendations) {
+    if (!record(item) || !nonempty(item.eventId) || ids.has(item.eventId) || !nonempty(item.title) || !validTimestamp(item.startsAt) ||
+      typeof item.location !== "string" || typeof item.venue !== "string" || typeof item.valueScore !== "number" || !Number.isFinite(item.valueScore) ||
+      item.valueScore < 0 || item.valueScore > 100 || !["high", "medium", "low"].includes(String(item.scoreBand)) ||
+      !Array.isArray(item.signals) || !item.signals.every(signal => record(signal) && typeof signal.label === "string" && typeof signal.detail === "string" && typeof signal.weight === "number" && Number.isFinite(signal.weight)) ||
+      typeof item.recommendedAction !== "string" ||
+      [item.coverPath, item.coverUrl, item.imageUrl].some(value => value !== undefined && typeof value !== "string")) return null;
+    ids.add(item.eventId);
+    const imagePath = [item.coverPath, item.coverUrl, item.imageUrl].find(nonempty);
+    rows.push({
+      id: item.eventId,
+      title: item.title.trim(),
+      dateLabel: eventDateLabel(item.startsAt, timeZone),
+      locationLabel: [...new Set([item.location.trim(), item.venue.trim()].filter(Boolean))].join(" · ") || "地点待定",
+      ...(imagePath ? { imagePath } : {}),
+    });
+  }
+  return rows;
+}
+
 export function homeScheduleToView(payload: unknown, selectedDateKey: string, now: Date, timeZone = "Asia/Tokyo"): HomeScheduleRow[] | null {
   if (!validDate(selectedDateKey) || !record(payload) || !Array.isArray(payload.scheduleItems)) return null;
   const startOfDay = localDayStart(selectedDateKey, timeZone);
