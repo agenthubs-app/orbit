@@ -98,7 +98,8 @@ build/harness-logs/
 - 用户明确“全部同意”当前 8 个新增文件及接续 Sprint，并要求快速持续执行；必要付费调用已批准。复用这些批准，不反复请求同一事项。未具体界定的未来破坏性操作、真实数据库写入及部署不推定授权。
 - 基线 HEAD `d531c42d4`，产品 WIP `5355f0c6a`；tracked 工作树干净，用户未跟踪设计文件与 prototype 保留。原 0020 run-01 保持历史 blocked，不覆盖原失败。
 - 契约：[PLANNER revision 1](0023-industry-consumer-continuation/PLANNER.md)，继承原五项 SC 和接续方案的精确范围。当前执行联系人 RED→GREEN，后续顺序为搜索／资料投影、AI 与 trace、数据和真实验证。
-- Planner SHA256：`5ab6f8a60493c73fd52200981dc99b44dcb9492bc2d338b96d2002a1c787b68d`。联系人接线已提交 `9daf52dad`；两端定向回归和类型通过，全量失败及测试环境隔离问题保留在 checkpoint，不据此结束 Sprint。搜索接线继续执行；资料页额外中间投影文件已定位，等待精确补充范围确认。
+- Planner SHA256：`5ab6f8a60493c73fd52200981dc99b44dcb9492bc2d338b96d2002a1c787b68d`。联系人接线已提交 `9daf52dad`，搜索 HTTP 已提交 `36f7255d8`，资料页投影已提交 `db972c3f8`。三个额外传递／兼容文件的批准见[范围补充](0023-industry-consumer-continuation/APPROVED_SCOPE_ADDENDUM.md)，不再等待重复批准。
+- AI 本人资料工具与完整 trace 仍为未提交实现。最新 App 全量 2582 pass／0 fail／0 skip；Web 全量 2946 pass／48 fail／168 skip，其中新增 Agent 开发报告缺少能力说明导致模块加载失败，另 47 项为审计或未配置数据库失败。最新工具／trace／artifact 四个完整测试文件 11/11；定向通过不能替代全量、真实模型、跨端、原生和既有测试库验收。具体环境隔离问题与未核算费用继续保留，不据此结束 Sprint。
 
 ### 0020 / run-01
 
