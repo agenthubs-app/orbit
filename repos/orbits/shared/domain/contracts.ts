@@ -84,6 +84,8 @@ export type PersonRelationshipConnectionMethod =
 
 export interface NetworkPersonDTO {
   id: OrbitId;
+  primaryIndustryId?: IndustryIdCode;
+  secondaryIndustryId?: SecondaryIndustryIdCode;
   personKind: NetworkPersonKind;
   platformUserId?: OrbitId;
   displayName: string;

@@ -185,6 +185,8 @@ export const legacyDefaultMockFixtures: MockRuntimeFixtures = {
         selfIntroduction:
           "I help founders operationalize post-event follow-up. Happy to trade go-to-market notes.",
         industry: "SaaS",
+        primaryIndustryId: "technology_internet",
+        secondaryIndustryId: "technology_internet.enterprise_software",
         seniorityLevel: "founder",
         offering: ["relationship-ops product lessons", "Tokyo founder intros"],
         seeking: ["design partners", "seed-stage operators"],
@@ -327,6 +329,8 @@ export const legacyDefaultMockFixtures: MockRuntimeFixtures = {
   networkPeople: [
     {
       id: personMinaId,
+      primaryIndustryId: "professional_services",
+      secondaryIndustryId: "professional_services.human_resources",
       personKind: "platform_user",
       platformUserId: "user_mina_tanaka",
       displayName: "Mina Tanaka",
@@ -345,6 +349,8 @@ export const legacyDefaultMockFixtures: MockRuntimeFixtures = {
     },
     {
       id: personNiaId,
+      primaryIndustryId: "community_nonprofit",
+      secondaryIndustryId: "community_nonprofit.community_operations",
       personKind: "external_contact",
       displayName: "Nia Patel",
       organization: "Civic Operators Guild",
@@ -400,6 +406,8 @@ export const legacyDefaultMockFixtures: MockRuntimeFixtures = {
       publicProfile: {
         bio: "Marketplace founder with hiring and Japan go-to-market context.",
         industry: "Marketplace",
+        primaryIndustryId: "professional_services",
+        secondaryIndustryId: "professional_services.human_resources",
         seniorityLevel: "founder",
         offering: ["marketplace product lessons", "founder hiring experiments"],
         seeking: ["operator intros for hiring marketplaces", "Japan GTM context"],
@@ -480,6 +488,8 @@ export const legacyDefaultMockFixtures: MockRuntimeFixtures = {
   contacts: [
     {
       id: contactMinaId,
+      primaryIndustryId: "professional_services",
+      secondaryIndustryId: "professional_services.human_resources",
       personId: personMinaId,
       displayName: "Mina Tanaka",
       organization: "Northstar Labs",
@@ -497,6 +507,8 @@ export const legacyDefaultMockFixtures: MockRuntimeFixtures = {
     },
     {
       id: contactNiaId,
+      primaryIndustryId: "community_nonprofit",
+      secondaryIndustryId: "community_nonprofit.community_operations",
       personId: personNiaId,
       displayName: "Nia Patel",
       organization: "Civic Operators Guild",
