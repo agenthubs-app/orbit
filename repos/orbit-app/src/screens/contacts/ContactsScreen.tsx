@@ -25,6 +25,7 @@ import Svg, { Circle, Defs, LinearGradient, Path, Stop } from "react-native-svg"
 import { z } from "zod";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { contactsListPath, ORBIT_API_ENDPOINTS } from "../../api/endpoints";
+import { INDUSTRY_CATALOG, SECONDARY_INDUSTRY_CATALOG } from "../../api/domain/industries";
 import { mobileContactsDashboardSectionSchemas } from "../../api/schema/mobile-contacts-dashboard";
 import { validateApiResourceState } from "../../api/validated-resource-state";
 import { AppScreen } from "../../components/AppScreen";
@@ -150,6 +151,8 @@ function relationshipSearchBodyId(body: RelationshipSearchRequestBody): string {
     body.query?.trim().toLowerCase() ?? "",
     body.businessIntent ?? "",
     ...(body.industryFilters ?? []),
+    ...(body.primaryIndustryIds ?? []).map((id) => `primary:${id}`),
+    ...(body.secondaryIndustryIds ?? []).map((id) => `secondary:${id}`),
     ...(body.sourceFilters ?? []),
     ...(body.valueTypeFilters ?? []),
     ...(body.followUpStatusFilters ?? [])
@@ -177,6 +180,14 @@ function relationshipSearchBodyCopy(
     copy.industryFilters = [...body.industryFilters];
   }
 
+  if (body.primaryIndustryIds?.length) {
+    copy.primaryIndustryIds = [...body.primaryIndustryIds];
+  }
+
+  if (body.secondaryIndustryIds?.length) {
+    copy.secondaryIndustryIds = [...body.secondaryIndustryIds];
+  }
+
   if (body.sourceFilters?.length) {
     copy.sourceFilters = [...body.sourceFilters];
   }
@@ -202,7 +213,13 @@ function relationshipSearchRecentLabel(
     .slice(0, 2)
     .join("、");
 
-  return [queryLabel, intentLabel, industryLabel].filter(Boolean).join(" · ");
+  const structuredIndustryLabel = body.secondaryIndustryIds?.length
+    ? SECONDARY_INDUSTRY_CATALOG.filter((entry) => body.secondaryIndustryIds?.includes(entry.id))
+        .map((entry) => entry.labels.zh).join("、")
+    : INDUSTRY_CATALOG.filter((entry) => body.primaryIndustryIds?.includes(entry.id))
+        .map((entry) => entry.labels.zh).join("、");
+
+  return [queryLabel, intentLabel, structuredIndustryLabel, industryLabel].filter(Boolean).join(" · ");
 }
 
 function relationshipSearchRecentDetail(
@@ -371,9 +388,13 @@ function ContactFilterToolbar({
   onRelationshipProgressChange,
   onToggleAdvancedFilter,
   onToggleRelationshipIndustry,
+  onSelectPrimaryIndustry,
+  onSelectSecondaryIndustry,
   relationshipProgressOptions,
   selectedActionState,
   selectedRelationshipIndustries,
+  selectedPrimaryIndustryIds,
+  selectedSecondaryIndustryIds,
   selectedRelationshipProgress,
   primary = false,
   onReset,
@@ -391,9 +412,13 @@ function ContactFilterToolbar({
     value: string
   ) => void;
   onToggleRelationshipIndustry: (value: string) => void;
+  onSelectPrimaryIndustry: (value: string) => void;
+  onSelectSecondaryIndustry: (value: string) => void;
   relationshipProgressOptions: ContactStatusFilterOption[];
   selectedActionState: ContactActionStateFilter | null;
   selectedRelationshipIndustries: string[];
+  selectedPrimaryIndustryIds: string[];
+  selectedSecondaryIndustryIds: string[];
   selectedRelationshipProgress: ContactRelationshipProgressFilter | null;
   primary?: boolean;
   onReset?: () => void;
@@ -414,7 +439,7 @@ function ContactFilterToolbar({
     id: ContactFilterMenuId;
     label: string;
   }> = [
-    { count: selectedRelationshipIndustries.length, id: "industry", label: "行业" },
+    { count: selectedRelationshipIndustries.length + selectedPrimaryIndustryIds.length + selectedSecondaryIndustryIds.length, id: "industry", label: "行业" },
     {
       count: selectedRelationshipProgress ? 1 : 0,
       id: "progress",
@@ -486,6 +511,29 @@ function ContactFilterToolbar({
       {activeMenu ? (
         <View style={styles.filterToolbarPanel}>
           {activeMenu === "industry" ? (
+            <>
+            <Text style={styles.filterToolbarPanelTitle}>用于关系搜索</Text>
+            {[
+              { label: "一级行业", options: INDUSTRY_CATALOG, selected: selectedPrimaryIndustryIds, onSelect: onSelectPrimaryIndustry },
+              { label: "二级行业", options: SECONDARY_INDUSTRY_CATALOG.filter((entry) => selectedPrimaryIndustryIds.includes(entry.parentId)), selected: selectedSecondaryIndustryIds, onSelect: onSelectSecondaryIndustry }
+            ].map((group) => (
+              <View key={group.label} style={styles.filterToolbarMoreSection}>
+                <Text style={styles.filterToolbarPanelTitle}>{group.label}</Text>
+                {group.options.length ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterList}>
+                  {group.options.map((option) => {
+                    const selected = group.selected.includes(option.id);
+                    return <Pressable key={option.id} accessibilityRole="button"
+                      accessibilityLabel={`${group.label}：${option.labels.zh}`}
+                      accessibilityState={{ selected }} aria-selected={selected}
+                      onPress={() => group.onSelect(option.id)}
+                      style={({ pressed }) => [styles.filterChip, selected && styles.filterChipSelected, pressed && styles.filterChipPressed]}>
+                      <Text style={[styles.filterChipText, selected && styles.filterChipTextSelected]}>{option.labels.zh}</Text>
+                    </Pressable>;
+                  })}
+                </ScrollView> : <Text style={styles.filterToolbarPanelTitle}>先选择一级行业</Text>}
+              </View>
+            ))}
+            <Text style={styles.filterToolbarPanelTitle}>关系领域</Text>
             <ScrollView
               contentContainerStyle={styles.filterList}
               horizontal
@@ -521,6 +569,7 @@ function ContactFilterToolbar({
                 );
               })}
             </ScrollView>
+            </>
           ) : null}
 
           {activeMenu === "progress" ? (
@@ -1255,6 +1304,8 @@ function ContactsListContent({
   onRelationshipProgressChange,
   onToggleAdvancedFilter,
   onToggleRelationshipIndustry,
+  onSelectPrimaryIndustry,
+  onSelectSecondaryIndustry,
   query,
   recentRelationshipSearches,
   relationshipSearchError,
@@ -1267,6 +1318,8 @@ function ContactsListContent({
   searching,
   selectedActionState,
   selectedRelationshipIndustries,
+  selectedPrimaryIndustryIds,
+  selectedSecondaryIndustryIds,
   selectedRelationshipProgress,
   state,
   primary = false,
@@ -1296,6 +1349,8 @@ function ContactsListContent({
     value: string
   ) => void;
   onToggleRelationshipIndustry: (value: string) => void;
+  onSelectPrimaryIndustry: (value: string) => void;
+  onSelectSecondaryIndustry: (value: string) => void;
   query: string;
   recentRelationshipSearches: RecentRelationshipSearch[];
   relationshipSearchError: string | null;
@@ -1308,6 +1363,8 @@ function ContactsListContent({
   searching: boolean;
   selectedActionState: ContactActionStateFilter | null;
   selectedRelationshipIndustries: string[];
+  selectedPrimaryIndustryIds: string[];
+  selectedSecondaryIndustryIds: string[];
   selectedRelationshipProgress: ContactRelationshipProgressFilter | null;
   state: ReturnType<typeof useApiResource<unknown>>;
   primary?: boolean;
@@ -1417,12 +1474,16 @@ function ContactsListContent({
           onRelationshipProgressChange={onRelationshipProgressChange}
           onToggleAdvancedFilter={onToggleAdvancedFilter}
           onToggleRelationshipIndustry={onToggleRelationshipIndustry}
+          onSelectPrimaryIndustry={onSelectPrimaryIndustry}
+          onSelectSecondaryIndustry={onSelectSecondaryIndustry}
           relationshipProgressOptions={relationshipProgressOptions}
           selectedActionState={selectedActionState}
           selectedRelationshipIndustries={selectedRelationshipIndustries}
+          selectedPrimaryIndustryIds={selectedPrimaryIndustryIds}
+          selectedSecondaryIndustryIds={selectedSecondaryIndustryIds}
           selectedRelationshipProgress={selectedRelationshipProgress}
           primary={primary}
-          hasFilters={hasListFilters || selectedRelationshipIndustries.length > 0}
+          hasFilters={hasListFilters || selectedRelationshipIndustries.length > 0 || selectedPrimaryIndustryIds.length > 0 || selectedSecondaryIndustryIds.length > 0}
           {...(onResetFilters ? { onReset: onResetFilters } : {})}
           onAnalysis={() => navigate("/contacts/dashboard")}
         /> : null}
@@ -1583,6 +1644,8 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
   );
   const [selectedRelationshipIndustries, setSelectedRelationshipIndustries] =
     useState<string[]>([]);
+  const [selectedPrimaryIndustryIds, setSelectedPrimaryIndustryIds] = useState<string[]>([]);
+  const [selectedSecondaryIndustryIds, setSelectedSecondaryIndustryIds] = useState<string[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [searchResult, setSearchResult] = useState<ContactsSearchView | null>(
     null
@@ -1723,6 +1786,8 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
     setSelectedRelationshipIndustries(
       suggestion.request.body.industryFilters ?? []
     );
+    setSelectedPrimaryIndustryIds(suggestion.request.body.primaryIndustryIds ?? []);
+    setSelectedSecondaryIndustryIds(suggestion.request.body.secondaryIndustryIds ?? []);
     setSearchError(null);
     setRelationshipSearchError(null);
     setSearchResult(null);
@@ -1736,6 +1801,8 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
     cancelSearch();
     setQuery(search.body.query ?? "");
     setSelectedRelationshipIndustries(search.body.industryFilters ?? []);
+    setSelectedPrimaryIndustryIds(search.body.primaryIndustryIds ?? []);
+    setSelectedSecondaryIndustryIds(search.body.secondaryIndustryIds ?? []);
     setSearchError(null);
     setRelationshipSearchError(null);
     setSearchResult(null);
@@ -1781,6 +1848,8 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
       input ?? {
         followUpStatusFilters: relationshipFollowUpStatusFilters(),
         industryFilters: selectedRelationshipIndustries,
+        primaryIndustryIds: selectedPrimaryIndustryIds,
+        secondaryIndustryIds: selectedSecondaryIndustryIds,
         query,
         sourceFilters: selectedSourceFilters,
         valueTypeFilters: selectedValueFilters
@@ -1912,6 +1981,17 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
         onRelationshipProgressChange={(value) => { cancelSearch(); setSelectedRelationshipProgress(value); }}
         onToggleAdvancedFilter={toggleAdvancedFilter}
         onToggleRelationshipIndustry={toggleRelationshipIndustryFilter}
+        onSelectPrimaryIndustry={(value) => {
+          cancelSearch();
+          setSelectedPrimaryIndustryIds((current) => current.includes(value) ? [] : [value]);
+          setSelectedSecondaryIndustryIds([]);
+          setRelationshipSearchError(null);
+        }}
+        onSelectSecondaryIndustry={(value) => {
+          cancelSearch();
+          setSelectedSecondaryIndustryIds((current) => current.includes(value) ? [] : [value]);
+          setRelationshipSearchError(null);
+        }}
         query={query}
         recentRelationshipSearches={recentRelationshipSearches}
         relationshipSearchError={relationshipSearchError}
@@ -1924,6 +2004,8 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
         searching={searching}
         selectedActionState={selectedActionState}
         selectedRelationshipIndustries={selectedRelationshipIndustries}
+        selectedPrimaryIndustryIds={selectedPrimaryIndustryIds}
+        selectedSecondaryIndustryIds={selectedSecondaryIndustryIds}
         selectedRelationshipProgress={selectedRelationshipProgress}
         state={state}
         primary={primary}
@@ -1931,6 +2013,7 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
           cancelSearch();
           setSelectedRelationshipProgress(null); setSelectedActionState(null);
           setSelectedSourceFilters([]); setSelectedTagFilters([]); setSelectedValueFilters([]); setSelectedRelationshipIndustries([]);
+          setSelectedPrimaryIndustryIds([]); setSelectedSecondaryIndustryIds([]);
           setSearchResult(null); setRelationshipSearchResult(null); setSearchError(null); setRelationshipSearchError(null);
         }}
         onNavigate={navigate}

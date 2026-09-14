@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import {
+  buildRelationshipSearchRequest,
+  relationshipSearchToView
+} from "../src/view-models/relationship-search";
 
 type RelationshipSearchModule = {
   buildRelationshipSearchRequest?: (input: unknown) => unknown;
@@ -228,6 +232,86 @@ test("buildRelationshipSearchRequest prepares the web relationship search reques
   });
 });
 
+for (const filters of [
+  { primaryIndustryIds: ["technology_internet"] },
+  { secondaryIndustryIds: ["technology_internet.ai_data"] },
+  {
+    primaryIndustryIds: ["technology_internet"],
+    secondaryIndustryIds: [
+      "technology_internet.ai_data",
+      "technology_internet.enterprise_software"
+    ]
+  }
+]) {
+  test(`industry-only search preserves ${Object.keys(filters).join(" and ")}`, () => {
+    assert.deepEqual(buildRelationshipSearchRequest(filters), {
+      success: true,
+      request: { endpoint: "/api/search/relationships", body: filters }
+    });
+  });
+}
+
+test("structured industry filters coexist with query and legacy domains and can be cleared", () => {
+  assert.deepEqual(buildRelationshipSearchRequest({
+    query: " AI 合作 ",
+    industryFilters: ["climate"],
+    primaryIndustryIds: [" technology_internet "],
+    secondaryIndustryIds: [" technology_internet.ai_data "]
+  }), {
+    success: true,
+    request: {
+      endpoint: "/api/search/relationships",
+      body: {
+        query: "AI 合作",
+        industryFilters: ["climate"],
+        primaryIndustryIds: ["technology_internet"],
+        secondaryIndustryIds: ["technology_internet.ai_data"]
+      }
+    }
+  });
+  assert.deepEqual(buildRelationshipSearchRequest({
+    query: "AI 合作", primaryIndustryIds: [], secondaryIndustryIds: []
+  }), {
+    success: true,
+    request: { endpoint: "/api/search/relationships", body: { query: "AI 合作" } }
+  });
+  assert.deepEqual(buildRelationshipSearchRequest({
+    primaryIndustryIds: [], secondaryIndustryIds: []
+  }), { error: "先输入想找的人、资源或机会。", success: false });
+});
+
+test("applied industry filters display canonical labels alongside legacy domains", () => {
+  const view = relationshipSearchToView({
+    results: [],
+    appliedFilters: {
+      primaryIndustryIds: ["technology_internet"],
+      secondaryIndustryIds: ["technology_internet.ai_data", "technology_internet.enterprise_software"],
+      industries: ["climate"]
+    }
+  });
+  assert.equal(view.filtersLabel,
+    "一级行业：科技与互联网 · 二级行业：人工智能与数据、企业软件与 SaaS · 行业：气候");
+});
+
+test("search cards preserve legacy omission and explicit clearing without displaying an invalid child", () => {
+  const view = relationshipSearchToView({ results: [
+    { id: "legacy", industry: "climate" },
+    { id: "cleared", industry: "climate", primaryIndustryId: null, secondaryIndustryId: null },
+    { id: "primary-only", primaryIndustryId: "technology_internet" },
+    { id: "wrong-parent", primaryIndustryId: "technology_internet",
+      secondaryIndustryId: "manufacturing_supply_chain.industrial_equipment" }
+  ] });
+  assert.equal(view.results[0]?.detail, "气候");
+  assert.equal(Object.hasOwn(view.results[0]!, "primaryIndustryId"), false);
+  assert.equal(Object.hasOwn(view.results[0]!, "secondaryIndustryId"), false);
+  assert.equal(Reflect.get(view.results[1]!, "primaryIndustryId"), null);
+  assert.equal(Reflect.get(view.results[1]!, "secondaryIndustryId"), null);
+  assert.equal(view.results[1]?.detail, "气候");
+  assert.equal(view.results[2]?.detail, "科技与互联网 · 二级未填写");
+  assert.equal(view.results[3]?.detail, "科技与互联网 · 二级未填写");
+  assert.equal(Object.hasOwn(view.results[3]!, "secondaryIndustryId"), false);
+});
+
 test("relationshipSearchToView maps web natural search results into Chinese cards", async () => {
   const searchModule = await loadRelationshipSearchModule();
   assert.equal(typeof searchModule?.relationshipSearchToView, "function");
@@ -301,7 +385,9 @@ test("relationshipSearchToView maps web natural search results into Chinese card
     results: [
       {
         contactId: "contact:kenji-watanabe",
-        detail: "Aster Grid · 创始人 · 气候 · 东京",
+        detail: "Aster Grid · 创始人 · 工业设备 · 东京",
+        primaryIndustryId: "manufacturing_supply_chain",
+        secondaryIndustryId: "manufacturing_supply_chain.industrial_equipment",
         evidence: "饭局记录：Kenji 本周想找气候试点运营方的暖介绍。",
         id: "relationship-search-result:kenji-watanabe",
         imageUrl: "/orbit-demo-assets/avatars/contact-001.svg",

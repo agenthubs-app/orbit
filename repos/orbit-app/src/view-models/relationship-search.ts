@@ -1,4 +1,12 @@
 import { ORBIT_API_ENDPOINTS } from "../api/endpoints";
+import type { IndustrySelectionContract, SecondaryIndustryIdCode } from "../api/contract/industries";
+import {
+  industryLabel as primaryIndustryLabel,
+  isIndustryIdCode,
+  SECONDARY_INDUSTRY_CATALOG,
+  secondaryIndustryLabel,
+  validateIndustrySelection
+} from "../api/domain/industries";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -6,7 +14,9 @@ export interface RelationshipSearchRequestBody {
   businessIntent?: string;
   followUpStatusFilters?: string[];
   industryFilters?: string[];
+  primaryIndustryIds?: string[];
   query?: string;
+  secondaryIndustryIds?: string[];
   sourceFilters?: string[];
   valueTypeFilters?: string[];
 }
@@ -43,7 +53,7 @@ export interface RelationshipSearchSuggestionsView {
   title: string;
 }
 
-export interface RelationshipSearchResultView {
+export interface RelationshipSearchResultView extends IndustrySelectionContract {
   contactId: string;
   detail: string;
   evidence: string;
@@ -332,6 +342,14 @@ function appliedFiltersLabel(record: UnknownRecord): string {
   const businessIntent = stringField(record, "businessIntent");
   const parts = [
     businessIntent ? `意图：${businessIntentLabel(businessIntent)}` : "",
+    stringListField(record, "primaryIndustryIds").length
+      ? `一级行业：${stringListField(record, "primaryIndustryIds")
+          .map((id) => isIndustryIdCode(id) ? primaryIndustryLabel(id, "zh") : id).join("、")}`
+      : "",
+    stringListField(record, "secondaryIndustryIds").length
+      ? `二级行业：${stringListField(record, "secondaryIndustryIds")
+          .map((id) => SECONDARY_INDUSTRY_CATALOG.find((entry) => entry.id === id)?.labels.zh ?? id).join("、")}`
+      : "",
     stringListField(record, "industries").length
       ? `行业：${stringListField(record, "industries").map(industryLabel).join("、")}`
       : "",
@@ -447,6 +465,8 @@ export function buildRelationshipSearchRequest(
   const query = stringField(record, "query");
   const followUpStatusFilters = trimRequestList(record.followUpStatusFilters);
   const industryFilters = trimRequestList(record.industryFilters);
+  const primaryIndustryIds = trimRequestList(record.primaryIndustryIds);
+  const secondaryIndustryIds = trimRequestList(record.secondaryIndustryIds);
   const sourceFilters = trimRequestList(record.sourceFilters);
   const valueTypeFilters = trimRequestList(record.valueTypeFilters);
 
@@ -464,6 +484,14 @@ export function buildRelationshipSearchRequest(
 
   if (industryFilters.length) {
     body.industryFilters = industryFilters;
+  }
+
+  if (primaryIndustryIds.length) {
+    body.primaryIndustryIds = primaryIndustryIds;
+  }
+
+  if (secondaryIndustryIds.length) {
+    body.secondaryIndustryIds = secondaryIndustryIds;
   }
 
   if (sourceFilters.length) {
@@ -499,15 +527,29 @@ function relationshipSearchResultView(
   const evidence = listField(result, "evidence").find(isRecord) ?? {};
   const name = stringField(result, "displayName", `关系结果 ${index + 1}`);
   const score = numberField(matchScore, "value");
+  const selection: IndustrySelectionContract = {
+    ...(result.primaryIndustryId === null || isIndustryIdCode(result.primaryIndustryId)
+      ? { primaryIndustryId: result.primaryIndustryId } : {}),
+    ...(result.secondaryIndustryId === null
+      ? { secondaryIndustryId: null }
+      : typeof result.secondaryIndustryId === "string" && validateIndustrySelection(result).valid
+        ? { secondaryIndustryId: result.secondaryIndustryId as SecondaryIndustryIdCode } : {})
+  };
+  const industry = selection.secondaryIndustryId
+    ? secondaryIndustryLabel(selection.secondaryIndustryId, "zh")
+    : selection.primaryIndustryId
+      ? `${primaryIndustryLabel(selection.primaryIndustryId, "zh")} · 二级未填写`
+      : industryLabel(stringField(result, "industry"));
   const detail = [
     stringField(result, "organization"),
     roleLabel(stringField(result, "role")),
-    industryLabel(stringField(result, "industry")),
+    industry,
     locationLabel(stringField(result, "location"))
   ].filter(Boolean);
 
   return {
     contactId: stringField(result, "contactId", stringField(result, "id")),
+    ...selection,
     detail: detail.join(" · "),
     evidence: evidenceText(stringField(evidence, "excerpt")),
     id: stringField(result, "id", `relationship-search-result-${index + 1}`),

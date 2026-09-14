@@ -46,7 +46,9 @@ App 的 `tests/profile-view-model.test.ts` 与 `tests/profile-manual-edit-view-m
 
 下一步分类清单需为每个正常人物列出稳定 ID、确认的父子 ID、来源依据和关联投影；没有唯一依据的对象明确计入“缺依据”，不能算补齐成功。要补齐全部正常对象，须先审阅这部分映射。14 个一级和 79 个二级的覆盖仍由完整测试范围承担，不虚构这 132 人已覆盖全部目录。
 
-## 新核实的接续范围（待审，不是新增授权）
+## 新核实的接续范围（2026-09-14 已获准，实施中）
+
+用户再次明确“全部获准”；按更新后的 RULES.md 第 0 节，以下 App 搜索模型／界面与 Web 纯 seed 模块纳入本轮既定行业验收范围，不再等待逐文件批准。保持原五项 SC、数据映射依据和真实环境边界；批准不代表下列实现或验收已经完成。
 
 ### App 自然搜索
 
@@ -59,7 +61,7 @@ App 的 `tests/profile-view-model.test.ts` 与 `tests/profile-manual-edit-view-m
 
 ### 联系人 seed 的纯数据边界
 
-拟将纯定义与纯构造器提取到新增 Web `shared/mock/account-contact-fixtures.ts`，此精确新文件尚未获准。原 `scripts/seed-account-contact-fixtures.ts` 保留CLI、认证与既有行为，只改为消费纯构造结果；覆盖清单只调用无环境读取、无存储访问的构造器。构造器返回既有 contact／connection／evidence 数据及固定源序位，保留正文、日期和关联，只新增已确认的行业投影。当前ID使用账号SHA256前10位加固定序位01～12，不能重排或重新分配ID。
+拟将纯定义与纯构造器提取到新增 Web `shared/mock/account-contact-fixtures.ts`，此精确新文件已随上述整体批准纳入范围。原 `scripts/seed-account-contact-fixtures.ts` 保留CLI、认证与既有行为，只改为消费纯构造结果；覆盖清单只调用无环境读取、无存储访问的构造器。构造器返回既有 contact／connection／evidence 数据及固定源序位，保留正文、日期和关联，只新增已确认的行业投影。当前ID使用账号SHA256前10位加固定序位01～12，不能重排或重新分配ID。
 
 该CLI还会软删除命中的旧fixture，并改写一条已知介绍草稿；即使提取后也不能为行业验收直接执行它。实际补齐仍用独立版本条件写方案。
 

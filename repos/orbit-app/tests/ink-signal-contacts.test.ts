@@ -160,6 +160,87 @@ test("main filters retain their own meanings and All clears actual filtering", a
   assert.deepEqual(await writes(p), []);
 });
 
+test("industry-only relationship search sends parent and distinct children without requiring query text", async t => {
+  const p = await open(t, { holdSearch: true });
+  await press(p, "搜索选项"); await press(p, "行业筛选");
+  await press(p, "一级行业：科技与互联网");
+  for (const [child, expected] of [
+    [null, { primaryIndustryIds: ["technology_internet"] }],
+    ["人工智能与数据", { primaryIndustryIds: ["technology_internet"], secondaryIndustryIds: ["technology_internet.ai_data"] }],
+    ["企业软件与 SaaS", { primaryIndustryIds: ["technology_internet"], secondaryIndustryIds: ["technology_internet.enterprise_software"] }]
+  ] as const) {
+    if (child) await press(p, "二级行业：" + child);
+    await press(p, "关系搜索");
+    assert.deepEqual((await writes(p)).at(-1), { path: "/api/search/relationships", method: "POST", body: expected });
+    await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.findLastIndex((r: any) => r.method === "POST")); });
+    await settle(p);
+  }
+  assert.equal((await writes(p)).length, 3);
+});
+
+test("changing the parent clears its child and All removes structured and legacy relationship filters", async t => {
+  const p = await open(t, { holdSearch: true });
+  await press(p, "搜索选项"); await press(p, "行业筛选");
+  await press(p, "企业 SaaS");
+  await press(p, "一级行业：科技与互联网"); await press(p, "二级行业：人工智能与数据");
+  await press(p, "一级行业：制造与供应链");
+  assert.equal(await p.getByRole("button", { name: "二级行业：人工智能与数据", exact: true }).count(), 0);
+  await press(p, "关系搜索");
+  assert.deepEqual((await writes(p)).at(-1)?.body, { industryFilters: ["enterprise_saas"], primaryIndustryIds: ["manufacturing_supply_chain"] });
+  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.findLastIndex((r: any) => r.method === "POST")); });
+  await settle(p); await press(p, "全部人脉");
+  assert.equal(await p.getByRole("button", { name: "全部人脉", exact: true }).getAttribute("aria-selected"), "true");
+  await p.getByRole("textbox", { name: "搜索姓名、公司、资源" }).fill("合作"); await settle(p);
+  await press(p, "关系搜索");
+  assert.deepEqual((await writes(p)).at(-1)?.body, { query: "合作" });
+});
+
+test("recent relationship searches keep different child filters and restore the original request", async t => {
+  const p = await open(t, { holdSearch: true });
+  await press(p, "搜索选项"); await press(p, "行业筛选");
+  await press(p, "一级行业：科技与互联网");
+  for (const label of ["人工智能与数据", "企业软件与 SaaS"]) {
+    await press(p, "二级行业：" + label); await press(p, "关系搜索");
+    await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.findLastIndex((r: any) => r.method === "POST")); });
+    await settle(p);
+  }
+  assert.equal(await p.getByRole("button", { name: "关系搜索 · 人工智能与数据", exact: true }).count(), 1);
+  assert.equal(await p.getByRole("button", { name: "关系搜索 · 企业软件与 SaaS", exact: true }).count(), 1);
+  await press(p, "关系搜索 · 人工智能与数据");
+  assert.deepEqual((await writes(p)).at(-1)?.body, {
+    primaryIndustryIds: ["technology_internet"], secondaryIndustryIds: ["technology_internet.ai_data"]
+  });
+  assert.equal(await p.getByRole("button", { name: "二级行业：人工智能与数据", exact: true }).getAttribute("aria-selected"), "true");
+});
+
+test("failed industry searches retain the selection for retry and account changes revoke the old criteria", async t => {
+  const p = await open(t, { holdSearch: true });
+  await press(p, "搜索选项"); await press(p, "行业筛选");
+  await press(p, "一级行业：科技与互联网"); await press(p, "二级行业：人工智能与数据");
+  await press(p, "关系搜索");
+  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.findLastIndex((r: any) => r.method === "POST"), 503); });
+  await settle(p);
+  assert.match(await p.locator("body").innerText(), /暂时无法搜索，请重试/);
+  assert.equal(await p.getByRole("button", { name: "二级行业：人工智能与数据", exact: true }).getAttribute("aria-selected"), "true");
+  await p.evaluate(() => { (window as any).oldRelationshipSearch = (window as any).fixture.presses["关系搜索"]; });
+  await press(p, "关系搜索");
+  const pending = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => r.method === "POST"));
+  assert.deepEqual((await writes(p)).at(-1)?.body, {
+    primaryIndustryIds: ["technology_internet"], secondaryIndustryIds: ["technology_internet.ai_data"]
+  });
+  await update(p, { actor: "two" });
+  await p.evaluate(() => (window as any).oldRelationshipSearch()); await settle(p);
+  assert.equal((await writes(p)).length, 2);
+  assert.equal(await p.evaluate(index => (window as any).fixture.requests[index].signal?.aborted, pending), true);
+  await p.evaluate(index => (window as any).fixture.reply(index, 401), pending); await settle(p);
+  assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0);
+  assert.equal(await p.getByRole("button", { name: "行业筛选", exact: true }).count(), 1);
+  assert.equal(await p.getByText("最近搜索", { exact: true }).count(), 0);
+  await p.getByRole("textbox", { name: "搜索姓名、公司、资源" }).fill("新账号合作"); await settle(p);
+  await press(p, "搜索选项"); await press(p, "关系搜索");
+  assert.deepEqual((await writes(p)).at(-1)?.body, { query: "新账号合作" });
+});
+
 test("real empty contacts use the two working source actions, not a fabricated directory", async t => {
   const p = await open(t, { empty: true });
   assert.equal(await p.getByTestId("contacts-main-count").innerText(), "0");
