@@ -19,6 +19,7 @@ import {
   mockProfileProvenance,
 } from "./fixtures";
 import type { ProfileService } from "./service";
+import { mergeIndustrySelection, validateIndustrySelection } from "../../shared/domain/industries";
 
 // Profile mock service 负责 operator 手动资料和 completeness 评分。
 // 它模拟本地编辑器保存结果，但不写真实用户资料库或触发外部画像服务。
@@ -124,6 +125,7 @@ function buildUpdatedProfile(input: ManualProfileUpdateInput): ManualProfile {
   return {
     ...mockManualProfile,
     ...input,
+    ...mergeIndustrySelection(mockManualProfile, input),
     displayName: input.displayName?.trim() ?? mockManualProfile.displayName,
     headline: input.headline?.trim() ?? mockManualProfile.headline,
     organization: input.organization?.trim() ?? mockManualProfile.organization,
@@ -173,6 +175,9 @@ export function createMockProfileService(): ProfileService {
       }
 
       const profile = buildUpdatedProfile(input);
+      if (!validateIndustrySelection(profile).valid) {
+        return failure("PROFILE_VALIDATION_FAILED");
+      }
       const completeness = scoreCompleteness(profile);
 
       return success({

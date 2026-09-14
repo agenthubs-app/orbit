@@ -167,7 +167,8 @@ test("profile editor uses API extraction and save readback instead of timed succ
 test("profile editor exposes free-text industry and custom tag entry", () => {
   const profileSource = source("app/(app)/app/profile/orbit-real-profile.tsx");
 
-  assert.doesNotMatch(profileSource, /<select/);
+  assert.match(profileSource, /<FieldInput label=\{t\(\{ en: "Industry", zh: "行业" \}\)\}/);
+  assert.match(profileSource, /listSecondaryIndustries/);
   assert.match(profileSource, /Enter a specific item/);
   assert.match(profileSource, /添加\$\{label\}项目/);
   assert.match(profileSource, /const allOptions = Array\.from\(new Set/);

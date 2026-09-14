@@ -23,6 +23,7 @@ import {
   type RelationshipNaturalSearchValueType,
 } from "../contract";
 import { buildRelationshipNaturalSearchPayload } from "../fixtures";
+import { isIndustryIdCode, SECONDARY_INDUSTRY_CATALOG } from "../../../shared/domain/industries";
 import type {
   RelationshipSearchBackend,
   RelationshipSearchStore,
@@ -129,6 +130,12 @@ function unsupportedFilterFailure(
   store: RelationshipSearchStore,
   input: RelationshipNaturalSearchInput,
 ): RelationshipNaturalSearchFailure | null {
+  if (
+    (input.primaryIndustryIds != null && (!Array.isArray(input.primaryIndustryIds) || !input.primaryIndustryIds.every(isIndustryIdCode))) ||
+    (input.secondaryIndustryIds != null && (!Array.isArray(input.secondaryIndustryIds) || !input.secondaryIndustryIds.every((id) => SECONDARY_INDUSTRY_CATALOG.some((item) => item.id === id))))
+  ) {
+    return failure(store, "RELATIONSHIP_NATURAL_SEARCH_FILTER_NOT_SUPPORTED");
+  }
   if (
     input.businessIntent &&
     !supportedBusinessIntents.has(
@@ -290,6 +297,8 @@ function matchesRelationshipSearchInput(
         input.businessIntent as RelationshipNaturalSearchBusinessIntent,
       )) &&
     matchesAny([item.industry], input.industryFilters) &&
+    matchesAny(item.primaryIndustryId ? [item.primaryIndustryId] : [], input.primaryIndustryIds) &&
+    matchesAny(item.secondaryIndustryId ? [item.secondaryIndustryId] : [], input.secondaryIndustryIds) &&
     matchesAny([item.source.type], input.sourceFilters) &&
     matchesAny(item.value.valueTypes, input.valueTypeFilters) &&
     matchesAny([item.followUpStatus], input.followUpStatusFilters)
@@ -301,6 +310,8 @@ function hasSearchInput(input: RelationshipNaturalSearchInput): boolean {
     Boolean(input.query?.trim()) ||
     Boolean(input.businessIntent) ||
     Boolean(input.industryFilters?.length) ||
+    Boolean(input.primaryIndustryIds?.length) ||
+    Boolean(input.secondaryIndustryIds?.length) ||
     Boolean(input.sourceFilters?.length) ||
     Boolean(input.valueTypeFilters?.length) ||
     Boolean(input.followUpStatusFilters?.length)

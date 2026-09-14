@@ -289,6 +289,7 @@ function toContactListItems(graph: LocalRemoteContactGraph): ContactListItem[] {
       evidence: evidenceForContact(contact, source, graph.evidence),
       tags: contact.customTags ?? [],
       primaryIndustryId: contact.primaryIndustryId,
+      secondaryIndustryId: contact.secondaryIndustryId,
       value: {
         score: valueScore(valueTypes),
         valueTypes,

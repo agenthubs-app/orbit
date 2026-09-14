@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { ContactStatusFilterCode } from "../api/contract/contacts";
-import type { IndustryIdCode } from "../api/contract/industries";
-import { isIndustryIdCode } from "../api/domain/industries";
+import type { IndustryIdCode, SecondaryIndustryIdCode } from "../api/contract/industries";
+import { isIndustryIdCode, validateIndustrySelection } from "../api/domain/industries";
 
 // App-side validation of fields consumed from the existing detail HTTP response.
 // The detail DTO has not entered the sanctioned shared-contract copy channel.
@@ -13,6 +13,7 @@ export const contactDetailReadSchema = z.object({
     role: z.string(), organization: z.string(), location: z.string(),
     primaryEmail: z.string().optional(),
     primaryIndustryId: z.string().nullable().optional(), primaryIndustryLabel: z.string().optional(),
+    secondaryIndustryId: z.string().nullable().optional(), secondaryIndustryLabel: z.string().optional(),
     relationshipContext: z.string(), nextAction: z.string(),
     source: z.object({ type: z.string(), label: z.string() }).passthrough(),
     status: z.enum(["active", "needs_follow_up", "nurture", "archived"]),
@@ -21,12 +22,13 @@ export const contactDetailReadSchema = z.object({
     evidence: z.array(z.object({ excerpt: z.string() }).passthrough()),
     notes: z.array(z.object({ noteId: z.string(), body: z.string(), createdAt: z.string(), authorLabel: z.string(), privacy: z.enum(["private", "relationship_shared"]).optional() }).passthrough()),
     lastInteraction: z.object({ channel: z.string(), occurredAt: z.string(), summary: z.string() }).passthrough()
-  }).passthrough()
+  }).passthrough().refine(contact => validateIndustrySelection(contact).valid)
 }).passthrough();
 
 export interface ContactDetailEditDraft {
   status: ContactStatusFilterCode;
   primaryIndustryId: IndustryIdCode | null;
+  secondaryIndustryId?: SecondaryIndustryIdCode | null;
   tags: string[];
   lastInteraction: { channel: string; occurredAt: string; summary: string };
 }
@@ -49,12 +51,14 @@ export function contactDetailEditorFrom(data: unknown, contactId: string): Conta
   if (contact.primaryIndustryId != null && !isIndustryIdCode(contact.primaryIndustryId)) return null;
   return { contact, statusOptions: [...new Set(editableStatusOptions)], draft: {
     status: contact.status, primaryIndustryId: contact.primaryIndustryId ?? null,
+    ...(contact.secondaryIndustryId === undefined ? {} : { secondaryIndustryId: contact.secondaryIndustryId as SecondaryIndustryIdCode | null }),
     tags: [...contact.tags], lastInteraction: { channel: contact.lastInteraction.channel, occurredAt: contact.lastInteraction.occurredAt, summary: contact.lastInteraction.summary }
   } };
 }
 
 export function buildContactDetailEditRequest(original: ContactDetailEditor, draft: ContactDetailEditDraft): { success: true; body: ContactDetailEditBody } | { success: false; error: string } {
   const body: ContactDetailEditBody = {};
+  if (!validateIndustrySelection(draft).valid) return { success: false, error: "二级行业与主要行业不匹配，请重新选择。" };
   if (draft.status !== original.draft.status) {
     if (!original.statusOptions.includes(draft.status)) return { success: false, error: "请选择当前可用的跟进状态。" };
     body.status = draft.status;
@@ -62,6 +66,9 @@ export function buildContactDetailEditRequest(original: ContactDetailEditor, dra
   if (draft.primaryIndustryId !== original.draft.primaryIndustryId) {
     if (draft.primaryIndustryId !== null && !isIndustryIdCode(draft.primaryIndustryId)) return { success: false, error: "请选择列表中的行业。" };
     body.primaryIndustryId = draft.primaryIndustryId;
+  }
+  if (draft.secondaryIndustryId !== original.draft.secondaryIndustryId) {
+    body.secondaryIndustryId = draft.secondaryIndustryId ?? null;
   }
   const seenTags = new Set<string>();
   const tags = draft.tags.map(tag => tag.trim()).filter(tag => {
@@ -84,6 +91,7 @@ export function confirmContactDetailEdit(data: unknown, contactId: string, body:
   const { contact } = parsed.data;
   if (body.status !== undefined && contact.status !== body.status) return false;
   if (body.primaryIndustryId !== undefined && (contact.primaryIndustryId ?? null) !== body.primaryIndustryId) return false;
+  if (body.secondaryIndustryId !== undefined && (contact.secondaryIndustryId ?? null) !== body.secondaryIndustryId) return false;
   if (body.tags && JSON.stringify([...contact.tags].sort()) !== JSON.stringify([...body.tags].sort())) return false;
   if (body.lastInteraction && (contact.lastInteraction.channel !== body.lastInteraction.channel || contact.lastInteraction.occurredAt !== body.lastInteraction.occurredAt || contact.lastInteraction.summary !== body.lastInteraction.summary)) return false;
   return true;

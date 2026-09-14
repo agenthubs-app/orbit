@@ -329,6 +329,8 @@ function normalizeFilters(
   input: RelationshipNaturalSearchInput = {},
 ): RelationshipNaturalSearchAppliedFilters {
   return {
+    ...(input.primaryIndustryIds == null ? {} : { primaryIndustryIds: input.primaryIndustryIds }),
+    ...(input.secondaryIndustryIds == null ? {} : { secondaryIndustryIds: input.secondaryIndustryIds }),
     businessIntent:
       typeof input.businessIntent === "string" &&
       RELATIONSHIP_NATURAL_SEARCH_BUSINESS_INTENTS.includes(

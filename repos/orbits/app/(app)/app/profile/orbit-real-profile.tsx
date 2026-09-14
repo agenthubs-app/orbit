@@ -1,8 +1,10 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, ReactNode, useMemo, useState } from "react";
+import { FormEvent, KeyboardEvent, ReactNode, useEffect, useMemo, useState } from "react";
 
 import type { ProfileDocumentExtractionPayload } from "../../../../features/profile/extraction-contract";
+import type { IndustrySelectionContract, IndustryIdCode, SecondaryIndustryIdCode } from "../../../../shared/contract/industries";
+import { INDUSTRY_CATALOG, industryLabel, listSecondaryIndustries, secondaryIndustryLabel, validateIndustrySelection } from "../../../../shared/domain/industries";
 import type {
   ManualProfileUpdateInput,
   ProfilePayload,
@@ -18,6 +20,7 @@ type Translate = (copy: { en: string; zh: string }) => string;
 type TagField = "offering" | "seeking" | "topics";
 type Method = "text" | "manual";
 type NoticeKind = "error" | "info" | "success";
+type EditableProfile = OrbitProfileView & IndustrySelectionContract;
 
 interface ApiEnvelope<TData> {
   success?: boolean;
@@ -34,8 +37,10 @@ const PROFILE_FIELD_TOTAL = 10;
 const CARD_BG = "linear-gradient(158deg, #22312d 0%, #17211f 52%, #131b19 100%)";
 const CARD_GLOW = "radial-gradient(420px 260px at 88% -10%, rgba(94, 234, 212, 0.16), transparent 68%)";
 
-function profileUpdateInput(profile: OrbitProfileView): ManualProfileUpdateInput {
+function profileUpdateInput(profile: EditableProfile): ManualProfileUpdateInput {
   return {
+    ...(profile.primaryIndustryId === undefined ? {} : { primaryIndustryId: profile.primaryIndustryId }),
+    ...(profile.secondaryIndustryId === undefined ? {} : { secondaryIndustryId: profile.secondaryIndustryId }),
     bio: profile.bio,
     displayName: profile.fullName,
     handles: {
@@ -81,6 +86,8 @@ export function profileReadbackMatches(
       saved.preferredFollowUpWindow ===
         normalize(expected.preferredFollowUpWindow) &&
       normalize(saved.industry) === normalize(expected.industry) &&
+      (expected.primaryIndustryId === undefined || (saved.primaryIndustryId ?? null) === expected.primaryIndustryId) &&
+      (expected.secondaryIndustryId === undefined || (saved.secondaryIndustryId ?? null) === expected.secondaryIndustryId) &&
       normalize(saved.bio) === normalize(expected.bio) &&
       saved.seniorityLevel === expected.seniorityLevel &&
       normalize(saved.handles?.email) === normalize(expected.handles?.email) &&
@@ -103,9 +110,9 @@ export function profileReadbackMatches(
 }
 
 function applyExtractionDraft(
-  profile: OrbitProfileView,
+  profile: EditableProfile,
   payload: ProfileDocumentExtractionPayload,
-): OrbitProfileView {
+): EditableProfile {
   const draft = payload.draft;
   if (!draft) return profile;
 
@@ -160,13 +167,19 @@ function BusinessCardPreview({
 }: {
   missing: string[];
   missingSeparator: string;
-  profile: OrbitProfileView;
+  profile: EditableProfile;
   t: Translate;
 }) {
+  const { language } = useOrbitLanguage();
   const done = PROFILE_FIELD_TOTAL - missing.length;
   const pct = Math.round((done / PROFILE_FIELD_TOTAL) * 100);
   const complete = missing.length === 0;
-  const meta = [profile.company, profile.title, profile.industry]
+  const selectedIndustry = profile.secondaryIndustryId
+    ? secondaryIndustryLabel(profile.secondaryIndustryId, language)
+    : profile.primaryIndustryId
+      ? `${industryLabel(profile.primaryIndustryId, language)} · ${t({ en: "Secondary industry not set", zh: "二级未填写" })}`
+      : profile.industry;
+  const meta = [profile.company, profile.title, selectedIndustry]
     .map((value) => value.trim())
     .filter(Boolean)
     .join(" · ");
@@ -485,10 +498,12 @@ function ChipGroup({
 
 function EditSections({
   extractProps,
+  industryDisabled,
   profile,
   t,
   toggleTag,
   update,
+  updateIndustry,
   viewModel,
 }: {
   extractProps: {
@@ -500,12 +515,15 @@ function EditSections({
     setMethod: (value: Method) => void;
     t: Translate;
   };
-  profile: OrbitProfileView;
+  industryDisabled: boolean;
+  profile: EditableProfile;
   t: Translate;
   toggleTag: (field: TagField, tag: string) => void;
   update: <K extends keyof OrbitProfileView>(field: K, value: OrbitProfileView[K]) => void;
+  updateIndustry: (selection: IndustrySelectionContract) => void;
   viewModel: OrbitProfileViewModel;
 }) {
+  const { language } = useOrbitLanguage();
   const grid: React.CSSProperties = { display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))" };
 
   return (
@@ -519,6 +537,18 @@ function EditSections({
           <FieldInput label={t({ en: "Company", zh: "公司" })} onValue={(value) => update("company", value)} value={profile.company} />
           <FieldInput label={t({ en: "Title", zh: "职位" })} onValue={(value) => update("title", value)} value={profile.title} />
           <FieldInput label={t({ en: "Industry", zh: "行业" })} onValue={(value) => update("industry", value)} value={profile.industry} />
+          <label>{t({ en: "Primary industry", zh: "一级行业" })}
+            <select className="field" aria-label={t({ en: "Primary industry", zh: "一级行业" })} disabled={industryDisabled} value={profile.primaryIndustryId ?? ""} onChange={event => updateIndustry({ primaryIndustryId: (event.target.value || null) as IndustryIdCode | null, secondaryIndustryId: null })}>
+              <option value="">{t({ en: "Not selected", zh: "未选择" })}</option>
+              {INDUSTRY_CATALOG.map(item => <option key={item.id} value={item.id}>{industryLabel(item.id, language)}</option>)}
+            </select>
+          </label>
+          <label>{t({ en: "Secondary industry", zh: "二级行业" })}
+            <select className="field" aria-label={t({ en: "Secondary industry", zh: "二级行业" })} disabled={industryDisabled || !profile.primaryIndustryId} value={profile.secondaryIndustryId ?? ""} onChange={event => updateIndustry({ primaryIndustryId: profile.primaryIndustryId, secondaryIndustryId: (event.target.value || null) as SecondaryIndustryIdCode | null })}>
+              <option value="">{t({ en: "Not selected", zh: "未选择" })}</option>
+              {(profile.primaryIndustryId ? listSecondaryIndustries(profile.primaryIndustryId) : []).map(item => <option key={item.id} value={item.id}>{secondaryIndustryLabel(item.id, language)}</option>)}
+            </select>
+          </label>
         </div>
       </Section>
       <Section desc={t({ en: "Fill in WeChat or LINE (at least one) so matches can reach you.", zh: "微信或 LINE 至少填一个，匹配后对方才能联系到你。" })} title={t({ en: "Contact", zh: "联系方式" })}>
@@ -572,13 +602,38 @@ const PROFILE_LAYOUT_CSS = `
 
 export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewModel }) {
   const { t } = useOrbitLanguage();
-  const [profile, setProfile] = useState<OrbitProfileView>(() => ({ ...viewModel.profile, offering: [...viewModel.profile.offering], seeking: [...viewModel.profile.seeking], topics: [...viewModel.profile.topics] }));
+  const [profile, setProfile] = useState<EditableProfile>(() => ({ ...viewModel.profile, offering: [...viewModel.profile.offering], seeking: [...viewModel.profile.seeking], topics: [...viewModel.profile.topics] }));
+  const [industryEdited, setIndustryEdited] = useState(false);
+  const [industryReady, setIndustryReady] = useState(false);
   const [method, setMethod] = useState<Method>("manual");
   const [extractText, setExtractText] = useState("");
   const [extracting, setExtracting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [messageKind, setMessageKind] = useState<NoticeKind>("info");
+  useEffect(() => {
+    let active = true;
+    // The server page's legacy projection has no structured industry fields.
+    // Read the authenticated profile endpoint before allowing a new selection.
+    void (async () => {
+      try {
+        const response = await fetch("/api/profile", { cache: "no-store", headers: { accept: "application/json" } });
+        const envelope = await response.json() as ApiEnvelope<ProfilePayload>;
+        if (!response.ok || envelope.success !== true || !envelope.data || !validateIndustrySelection(envelope.data.profile ?? {}).valid) {
+          throw new Error("Profile industry read failed");
+        }
+        if (!active) return;
+        const selection = envelope.data.profile;
+        setProfile(current => ({ ...current, primaryIndustryId: selection?.primaryIndustryId, secondaryIndustryId: selection?.secondaryIndustryId }));
+        setIndustryReady(true);
+      } catch {
+        if (!active) return;
+        setMessageKind("error");
+        setMessage(t({ en: "Could not load your industry. Reload the page before saving.", zh: "行业信息读取失败，请刷新页面后再保存。" }));
+      }
+    })();
+    return () => { active = false; };
+  }, []);
   const letter = profileInitial(profile);
   const subText = t({ en: "Fill it once, auto-reused when registering for every event.", zh: "填一次，报名各场活动自动复用。" });
 
@@ -602,6 +657,12 @@ export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewMod
 
   function update<K extends keyof OrbitProfileView>(field: K, value: OrbitProfileView[K]) {
     setProfile((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateIndustry(selection: IndustrySelectionContract) {
+    if (saving || !industryReady) return;
+    setIndustryEdited(true);
+    setProfile(current => ({ ...current, ...selection }));
   }
 
   function toggleTag(field: TagField, tag: string) {
@@ -687,9 +748,14 @@ export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewMod
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (saving) return;
+    if (saving || !industryReady) return;
 
     const updateInput = profileUpdateInput(profile);
+    if (!validateIndustrySelection(profile).valid || (industryEdited && profile.primaryIndustryId && !profile.secondaryIndustryId)) {
+      setMessageKind("error");
+      setMessage(t({ en: "Choose a secondary industry for the selected primary industry.", zh: "请为所选一级行业选择二级行业。" }));
+      return;
+    }
     if (!updateInput.displayName?.trim()) {
       setMessageKind("error");
       setMessage(
@@ -760,7 +826,7 @@ export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewMod
   }
 
   const extractProps = { extractText, extracting, method, onTextExtract, setExtractText, setMethod, t };
-  const editProps = { extractProps, profile, t, toggleTag, update, viewModel };
+  const editProps = { extractProps, industryDisabled: saving || !industryReady, profile, t, toggleTag, update, updateIndustry, viewModel };
   const alert = message ? (
     <div role={messageKind === "error" ? "alert" : "status"} style={{ background: messageKind === "error" ? "var(--danger-soft, #fff1f2)" : messageKind === "success" ? "var(--live-soft)" : "var(--surface-2)", borderRadius: "var(--r-sm)", color: messageKind === "error" ? "var(--danger, #C2410C)" : messageKind === "success" ? "var(--live-text)" : "var(--text-2)", fontSize: 13, marginBottom: 14, padding: "10px 14px" }}>{message}</div>
   ) : null;
@@ -791,14 +857,14 @@ export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewMod
           </div>
           <div style={{ backdropFilter: "blur(14px)", background: "var(--glass-bar)", borderTop: "1px solid var(--border)", bottom: 0, display: "flex", gap: 12, justifyContent: "flex-end", padding: "14px 40px", position: "sticky", zIndex: ORBIT_Z.sticky }}>
             <button className="btn btn-ghost" onClick={() => orbitNavigate("/home")} type="button">{t({ en: "Cancel", zh: "取消" })}</button>
-            <button className="btn btn-primary" disabled={saving} type="submit"><Icon color="var(--on-dark)" name="check" size={16} />{saving ? t({ en: "Saving…", zh: "保存中…" }) : t({ en: "Save profile", zh: "保存档案" })}</button>
+            <button className="btn btn-primary" disabled={saving || !industryReady} type="submit"><Icon color="var(--on-dark)" name="check" size={16} />{saving ? t({ en: "Saving…", zh: "保存中…" }) : t({ en: "Save profile", zh: "保存档案" })}</button>
           </div>
         </form>
       </div>
       <div className="orbit-mobile-only" style={{ background: "var(--bg)", display: "flex", flexDirection: "column", minHeight: "100dvh", position: "relative" }}>
         <StatusBar />
         <form onSubmit={onSubmit} style={{ display: "flex", flex: 1, flexDirection: "column", minHeight: 0 }}>
-          <MobileBar onBack={() => orbitNavigate("/home")} right={<button className="btn btn-primary btn-sm" disabled={saving} type="submit">{saving ? t({ en: "Saving…", zh: "保存中…" }) : t({ en: "Save", zh: "保存" })}</button>} title={t({ en: "Universal profile", zh: "通用档案" })} />
+          <MobileBar onBack={() => orbitNavigate("/home")} right={<button className="btn btn-primary btn-sm" disabled={saving || !industryReady} type="submit">{saving ? t({ en: "Saving…", zh: "保存中…" }) : t({ en: "Save", zh: "保存" })}</button>} title={t({ en: "Universal profile", zh: "通用档案" })} />
           <div className="scroll" data-appscroll style={{ flex: 1, overflowY: "auto", padding: "14px 16px 100px" }}>
             <p style={{ color: "var(--text-3)", fontSize: 13, margin: "0 0 12px" }}>{subText}</p>
             {alert}

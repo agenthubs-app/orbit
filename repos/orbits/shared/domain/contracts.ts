@@ -17,7 +17,7 @@ import type {
   SourceReferenceDTO,
   SourceType,
 } from "./source-types";
-import type { IndustryIdCode } from "../contract/industries";
+import type { IndustryIdCode, IndustrySelectionContract, SecondaryIndustryIdCode } from "../contract/industries";
 
 // shared/domain/contracts 放核心 DTO，表示 Orbit 领域对象的最小稳定形状。
 // feature mock payload 可以更丰富，但跨模块共享时应能落回这些 DTO 概念。
@@ -62,7 +62,7 @@ export interface ContactHandlesDTO {
 // 由 features/contacts 的 ContactDetailPublicProfile 提升为跨模块复用。
 // offering/seeking/topics 是档案级自我价值标签，
 // 与活动级 EventParticipantIntentDTO.canOffer/lookingFor 区分。
-export interface PublicProfileDTO {
+export interface PublicProfileDTO extends IndustrySelectionContract {
   bio?: string;
   selfIntroduction?: string;
   industry?: string;
@@ -150,6 +150,7 @@ export interface ContactDTO {
   publicProfile?: PublicProfileDTO;
   networkCategory?: NetworkCategory;
   primaryIndustryId?: IndustryIdCode;
+  secondaryIndustryId?: SecondaryIndustryIdCode;
   customTags?: readonly string[];
   nextAction?: NextActionDTO;
   source: SourceReferenceDTO;

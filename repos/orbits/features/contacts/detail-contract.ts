@@ -4,7 +4,7 @@ import type { FeatureMode } from "../../shared/config/feature-mode";
 import type { SourceReferenceDTO, SourceType } from "../../shared/domain/source-types";
 import type { AppErrorCode } from "../../shared/errors/app-error";
 import type { OrbitLanguage } from "../../shared/contract/language";
-import type { IndustryIdCode } from "../../shared/contract/industries";
+import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../shared/contract/industries";
 import { AppError } from "../../shared/errors/app-error";
 import type { ContactStatusFilter, ContactTagFilter } from "./contract";
 
@@ -241,6 +241,8 @@ export interface ContactDetail {
   location: string;
   primaryIndustryId?: IndustryIdCode;
   primaryIndustryLabel?: string;
+  secondaryIndustryId?: SecondaryIndustryIdCode;
+  secondaryIndustryLabel?: string;
   primaryEmail?: string;
   primaryPhone?: string;
   wechatId?: string;
@@ -327,6 +329,7 @@ export interface ContactDetailLastInteractionInput {
 // mock service 生成预览；live service 必须在返回 success 前完成持久化回读。
 export interface ContactDetailUpdateInput extends ContactDetailLookupInput {
   primaryIndustryId?: IndustryIdCode | string | null;
+  secondaryIndustryId?: SecondaryIndustryIdCode | string | null;
   tags?: readonly (ContactDetailTagOption | string)[] | null;
   addTags?: readonly (ContactDetailTagOption | string)[] | null;
   removeTags?: readonly (ContactDetailTagOption | string)[] | null;

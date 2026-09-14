@@ -1,6 +1,7 @@
 import type { AppErrorCode } from "../../shared/errors/app-error";
 import type { ContactHandlesDTO } from "../../shared/domain/contracts";
 import type { OrbitLanguage } from "../../shared/contract/language";
+import type { IndustrySelectionContract } from "../../shared/contract/industries";
 import type { SeniorityLevel } from "../../shared/domain/source-types";
 import type { ContractMatches } from "../../shared/contract-check";
 import type {
@@ -94,7 +95,7 @@ export interface ProfileProvenance {
 // ManualProfile 是用户可直接编辑的核心资料。
 
 // UpdateInput 只包含可编辑字段；缺失字段表示保持不变。
-export interface ManualProfileUpdateInput {
+export interface ManualProfileUpdateInput extends IndustrySelectionContract {
   displayName?: string;
   headline?: string;
   organization?: string;

@@ -7,9 +7,13 @@ import type {
 } from "../../shared/domain/contracts";
 import type { SourceType } from "../../shared/domain/source-types";
 import type { OrbitLanguage } from "../../shared/contract/language";
+import type { IndustrySelectionContract } from "../../shared/contract/industries";
 import {
   industryLabel,
   isIndustryIdCode,
+  mergeIndustrySelection,
+  secondaryIndustryLabel,
+  validateIndustrySelection,
 } from "../../shared/domain/industries";
 import { resolveOrbitLanguage } from "../../shared/i18n/orbit-language";
 import {
@@ -560,6 +564,10 @@ function detailFor(input: {
     location:
       input.contact.location ?? contactDetailCopy(input.language).unknownLocation,
     primaryIndustryId: input.contact.primaryIndustryId,
+    secondaryIndustryId: input.contact.secondaryIndustryId,
+    secondaryIndustryLabel: input.contact.secondaryIndustryId
+      ? secondaryIndustryLabel(input.contact.secondaryIndustryId, input.language)
+      : undefined,
     primaryIndustryLabel: input.contact.primaryIndustryId
       ? industryLabel(input.contact.primaryIndustryId, input.language)
       : undefined,
@@ -1172,7 +1180,16 @@ export function createLiveContactDetailTagStatusService({
         input.status !== undefined ||
         input.note !== undefined ||
         input.lastInteraction !== undefined;
+      // Secondary writes need the actor-scoped provider and HTTP contract update.
+      // Until that boundary is available, fail before writing any detail state.
+      if (input.secondaryIndustryId !== undefined) {
+        return failure("CONTACT_DETAIL_INDUSTRY_NOT_SUPPORTED", { collectedAt, provider });
+      }
       const writesPrimaryIndustry = input.primaryIndustryId !== undefined;
+      const selection = mergeIndustrySelection(loaded.data.contact ?? {}, input as IndustrySelectionContract);
+      if (writesPrimaryIndustry && !validateIndustrySelection(selection).valid) {
+        return failure("CONTACT_DETAIL_INDUSTRY_NOT_SUPPORTED", { collectedAt, provider });
+      }
 
       if (
         (writesDetailState && !provider?.upsertContactDetailState) ||
@@ -1209,11 +1226,7 @@ export function createLiveContactDetailTagStatusService({
           await provider.updateContactPrimaryIndustry?.(
             input.contactId.trim(),
             actorId,
-            input.primaryIndustryId === null
-              ? null
-              : isIndustryIdCode(input.primaryIndustryId)
-                ? input.primaryIndustryId
-                : null,
+            selection.primaryIndustryId ?? null,
           );
         }
         if (writesDetailState) {

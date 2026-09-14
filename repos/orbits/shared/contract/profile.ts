@@ -3,6 +3,7 @@
 // 常量与校验留在 features/profile/contract.ts，那边有类型断言保证一致。
 
 import type { OrbitLanguage } from "./language";
+import type { IndustrySelectionContract } from "./industries";
 
 export type SeniorityLevelCode =
   | "individual_contributor"
@@ -38,7 +39,7 @@ export interface ContactHandlesContract {
 }
 
 // 用户可直接编辑的核心资料。名片档案扩展字段全部可选，容忍稀疏数据。
-export interface ManualProfileContract {
+export interface ManualProfileContract extends IndustrySelectionContract {
   id: string;
   displayName: string;
   headline: string;

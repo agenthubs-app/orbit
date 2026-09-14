@@ -2,6 +2,7 @@ import { z } from "zod";
 import { homeDateView, homeFollowupsToView, homeScheduleToView, homeTasksToView } from "../view-models/home-dashboard";
 import type { ScheduleItemContract } from "./contract/tasks";
 import type { ManualProfileContract } from "./contract/profile";
+import { validateIndustrySelection } from "./domain/industries";
 
 // This page validates its existing HTTP responses locally. These schemas are
 // not shared generated contracts and do not add server capabilities.
@@ -13,8 +14,9 @@ export const profileDetailSchema = z.object({
     id: z.string().trim().min(1), displayName: z.string(), headline: z.string(), organization: z.string(), role: z.string(),
     homeMarket: z.string(), relationshipGoal: z.string(), targetRelationshipTypes: z.array(z.string()),
     preferredFollowUpWindow: z.string(), preferredLanguage: z.enum(["zh", "en", "ja"]), preferredIntroChannels: z.array(z.string()),
+    primaryIndustryId: z.string().nullable().optional(), secondaryIndustryId: z.string().nullable().optional(),
     industry: z.string().optional(), bio: z.string().optional(), offering: z.array(z.string()).optional(), seeking: z.array(z.string()).optional(), topics: z.array(z.string()).optional(), updatedAt: timestamp
-  }).passthrough().nullable(),
+  }).passthrough().refine(profile => validateIndustrySelection(profile).valid).nullable(),
   completeness: z.object({ score: z.number().int().min(0).max(100), status: z.enum(["not-started", "action-needed", "ready"]), completedFields: z.array(fields), missingFields: z.array(fields), nextBestField: fields.nullable() }),
   editor: z.object({ canSave: z.boolean(), lastSavedAt: timestamp.nullable(), dirtyFields: z.array(fields), validationMessages: z.array(z.string()) }),
   nextAction: z.string()

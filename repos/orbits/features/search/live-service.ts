@@ -287,6 +287,8 @@ function resultItemFor(input: {
   return {
     id: `relationship-search-result:${input.connection.id}`,
     contactId: input.connection.contactId,
+    primaryIndustryId: input.contact?.primaryIndustryId,
+    secondaryIndustryId: input.contact?.secondaryIndustryId,
     displayName: input.contact?.displayName ?? input.connection.contactId,
     role: input.contact?.role ?? "",
     organization: input.contact?.organization ?? "",
@@ -399,6 +401,8 @@ function normalizeFilters(
   input: RelationshipNaturalSearchInput = {},
 ): RelationshipNaturalSearchAppliedFilters {
   return {
+    ...(input.primaryIndustryIds == null ? {} : { primaryIndustryIds: input.primaryIndustryIds }),
+    ...(input.secondaryIndustryIds == null ? {} : { secondaryIndustryIds: input.secondaryIndustryIds }),
     businessIntent:
       typeof input.businessIntent === "string"
         ? (input.businessIntent as RelationshipNaturalSearchBusinessIntent)

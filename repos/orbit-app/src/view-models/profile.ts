@@ -1,7 +1,9 @@
 import { ORBIT_API_ENDPOINTS } from "../api/endpoints";
 import type { ManualProfileContract } from "../api/contract/profile";
+import type { IndustrySelectionContract, SecondaryIndustryIdCode } from "../api/contract/industries";
+import { industryLabel, isIndustryIdCode, secondaryIndustryLabel, validateIndustrySelection } from "../api/domain/industries";
 
-export interface ProfileSummary {
+export interface ProfileSummary extends IndustrySelectionContract {
   bio: string;
   displayName: string;
   headline: string;
@@ -15,7 +17,7 @@ export interface ProfileSummary {
   topics: string[];
 }
 
-export interface ProfileManualEditDraft {
+export interface ProfileManualEditDraft extends IndustrySelectionContract {
   bio: string;
   displayName: string;
   headline: string;
@@ -29,7 +31,7 @@ export interface ProfileManualEditDraft {
   topicsText: string;
 }
 
-export interface ProfileUpdateRequest {
+export interface ProfileUpdateRequest extends IndustrySelectionContract {
   bio: string;
   displayName: string;
   headline: string;
@@ -460,6 +462,9 @@ export function profileToSummary(data: unknown): ProfileSummary {
     displayName: profileField(profile, "displayName"),
     headline: profileField(profile, "headline"),
     industry: profileField(profile, "industry"),
+    ...(isIndustryIdCode(profile.primaryIndustryId) ? { primaryIndustryId: profile.primaryIndustryId } : {}),
+    ...(typeof profile.secondaryIndustryId === "string" && validateIndustrySelection(profile).valid
+      ? { secondaryIndustryId: profile.secondaryIndustryId as SecondaryIndustryIdCode } : {}),
     offering: stringListField(profile, "offering"),
     organization: profileField(profile, "organization"),
     relationshipGoal: stringField(profile, "relationshipGoal"),
@@ -689,6 +694,8 @@ export function profileSummaryToEditDraft(
     displayName: profile.displayName,
     headline: profile.headline,
     industry: profile.industry,
+    ...(profile.primaryIndustryId === undefined ? {} : { primaryIndustryId: profile.primaryIndustryId }),
+    ...(profile.secondaryIndustryId === undefined ? {} : { secondaryIndustryId: profile.secondaryIndustryId }),
     offeringText: profile.offering.join("\n"),
     organization: profile.organization,
     relationshipGoal: profile.relationshipGoal,
@@ -708,7 +715,7 @@ export function buildProfileUpdateRequest(
 
   const displayName = cleanProfileText(stringField(draft, "displayName"));
 
-  if (!displayName) {
+  if (!displayName || !validateIndustrySelection(draft).valid) {
     return null;
   }
 
@@ -718,6 +725,8 @@ export function buildProfileUpdateRequest(
     headline: cleanProfileText(stringField(draft, "headline")),
     homeMarket: cleanProfileText(stringField(draft, "timezone")),
     industry: cleanProfileText(stringField(draft, "industry")),
+    ...(draft.primaryIndustryId === undefined ? {} : { primaryIndustryId: draft.primaryIndustryId as IndustrySelectionContract["primaryIndustryId"] & (string | null) }),
+    ...(draft.secondaryIndustryId === undefined ? {} : { secondaryIndustryId: draft.secondaryIndustryId as SecondaryIndustryIdCode | null }),
     offering: splitProfileList(stringField(draft, "offeringText")),
     organization: cleanProfileText(stringField(draft, "organization")),
     relationshipGoal: cleanProfileText(stringField(draft, "relationshipGoal")),
@@ -744,7 +753,9 @@ export function profileBusinessCard(
   return {
     headline: profile.headline.trim(),
     initial: profile.displayName.trim().slice(0, 1).toUpperCase() || "O",
-    metaLine: [profile.organization, profile.role, profile.industry]
+    metaLine: [profile.organization, profile.role, profile.secondaryIndustryId
+      ? secondaryIndustryLabel(profile.secondaryIndustryId, "zh")
+      : profile.primaryIndustryId ? `${industryLabel(profile.primaryIndustryId, "zh")} · 二级未填写` : profile.industry]
       .map((value) => value.trim())
       .filter(Boolean)
       .join(" · "),

@@ -7,7 +7,7 @@ import type {
   SourceReferenceContract,
   SourceTypeCode
 } from "./source";
-import type { IndustryIdCode } from "./industries";
+import type { IndustryIdCode, SecondaryIndustryIdCode } from "./industries";
 
 export type ContactTagFilterCode = string;
 
@@ -73,6 +73,8 @@ export interface ContactListItemContract {
   status: ContactStatusFilterCode;
   primaryIndustryId?: IndustryIdCode;
   primaryIndustryLabel?: string;
+  secondaryIndustryId?: SecondaryIndustryIdCode;
+  secondaryIndustryLabel?: string;
   databaseQueryExecuted: boolean;
   searchIndexReadExecuted: boolean;
   externalNetworkRequested: false;

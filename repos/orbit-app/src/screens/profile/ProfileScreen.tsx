@@ -35,6 +35,8 @@ import {
   useApiResource
 } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import type { IndustrySelectionContract } from "../../api/contract/industries";
+import { INDUSTRY_CATALOG, industryLabel, listSecondaryIndustries, secondaryIndustryLabel, validateIndustrySelection } from "../../api/domain/industries";
 import {
   buildProfileDocumentExtractionRequest,
   buildProfileUpdateRequest,
@@ -492,7 +494,7 @@ function ProfileCard({
         <View style={styles.basicSection}>
           <Text accessibilityRole="header" style={styles.sectionTitle}>基本资料</Text>
           <View style={styles.basicRows}>
-            {[["行业", displayProfile.industry], ["公司", displayProfile.organization], ["职位", displayProfile.role], ["简介", displayProfile.bio]].map(([label, value], index) => (
+            {[["行业", displayProfile.secondaryIndustryId ? secondaryIndustryLabel(displayProfile.secondaryIndustryId, "zh") : displayProfile.primaryIndustryId ? `${industryLabel(displayProfile.primaryIndustryId, "zh")} · 二级未填写` : displayProfile.industry], ["公司", displayProfile.organization], ["职位", displayProfile.role], ["简介", displayProfile.bio]].map(([label, value], index) => (
               <View key={label} style={[styles.basicRow, index === 3 && styles.bioRow]}>
                 <Text style={styles.basicLabel}>{label}</Text>
                 <Text style={[styles.basicValue, index === 3 && styles.bioValue]}>{value || "未填写"}</Text>
@@ -955,7 +957,17 @@ function ProfileManualEditCard({
       setDraft(current => ({ ...current }));
     }
   }
-  const saveDisabled = saving || !canEdit || !dirtyDraft.current;
+  const industryChanged = draft.primaryIndustryId !== data.profile?.primaryIndustryId || draft.secondaryIndustryId !== data.profile?.secondaryIndustryId;
+  const industryIncomplete = industryChanged && Boolean(draft.primaryIndustryId) && !draft.secondaryIndustryId;
+  const saveDisabled = saving || !canEdit || !dirtyDraft.current || industryIncomplete || !validateIndustrySelection(draft).valid;
+
+  function updateIndustry(selection: IndustrySelectionContract) {
+    if (!isScopeCurrent() || !editable.current || saving) return;
+    dirtyDraft.current = true; draftRevision.current++;
+    onDraftChanged("primaryIndustryId");
+    onDraftChanged("secondaryIndustryId");
+    setDraft(current => ({ ...current, ...selection }));
+  }
 
   return (
     <DataCard detail="保存后同步到 web 个人资料" title="编辑对外资料" variant="inset">
@@ -973,6 +985,9 @@ function ProfileManualEditCard({
           onChangeText={(value) => updateDraft("headline", value)}
           value={draft.headline}
         />
+        <ProfileIndustryPicker label="主要行业" selected={draft.primaryIndustryId ?? null} options={INDUSTRY_CATALOG.map(item => ({ id: item.id, label: item.labels.zh }))} disabled={saving || !canEdit} onSelect={primaryIndustryId => updateIndustry({ primaryIndustryId, secondaryIndustryId: null })} />
+        <ProfileIndustryPicker label="二级行业" selected={draft.secondaryIndustryId ?? null} options={draft.primaryIndustryId ? listSecondaryIndustries(draft.primaryIndustryId).map(item => ({ id: item.id, label: item.labels.zh })) : []} disabled={saving || !canEdit || !draft.primaryIndustryId} onSelect={secondaryIndustryId => updateIndustry({ secondaryIndustryId })} />
+        {industryIncomplete ? <Text style={styles.evidenceText}>请选择二级行业。</Text> : null}
         <ProfileTextInput
           label="简介"
           multiline
@@ -1031,6 +1046,27 @@ function ProfileManualEditCard({
       </View>
     </DataCard>
   );
+}
+
+function ProfileIndustryPicker<TId extends string>({ label, selected, options, disabled, onSelect }: {
+  label: string;
+  selected: TId | null;
+  options: readonly { id: TId; label: string }[];
+  disabled: boolean;
+  onSelect: (id: TId | null) => void;
+}) {
+  const { styles } = useStyles();
+  const [expanded, setExpanded] = useState(false);
+  return <View>
+    <Text style={styles.evidenceText}>{label}</Text>
+    <Pressable accessibilityRole="button" accessibilityLabel={`选择${label}`} accessibilityState={{ expanded, disabled }} disabled={disabled} onPress={() => setExpanded(value => !value)} style={styles.profileExtractionButton}>
+      <Text style={styles.bodyText}>{options.find(item => item.id === selected)?.label ?? "未填写"}</Text>
+    </Pressable>
+    {expanded && !disabled ? <View style={styles.profileExtractionStack}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`清空${label}`} onPress={() => { onSelect(null); setExpanded(false); }} style={styles.profileExtractionButton}><Text style={styles.bodyText}>未填写</Text></Pressable>
+      {options.map(item => <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`${label}：${item.label}`} accessibilityState={{ selected: item.id === selected }} onPress={() => { onSelect(item.id); setExpanded(false); }} style={styles.profileExtractionButton}><Text style={styles.bodyText}>{item.label}</Text></Pressable>)}
+    </View> : null}
+  </View>;
 }
 
 function ProfileAcceptedPatchNotice({

@@ -3,8 +3,8 @@ import type {
   ContactDTO,
   RelationshipEvidenceDTO,
 } from "../../../shared/domain/contracts";
-import type { IndustryIdCode } from "../../../shared/contract/industries";
-import { isIndustryIdCode } from "../../../shared/domain/industries";
+import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../shared/contract/industries";
+import { isIndustryIdCode, mergeIndustrySelection, validateIndustrySelection } from "../../../shared/domain/industries";
 import {
   isNetworkCategory,
   isRelationshipStage,
@@ -233,6 +233,9 @@ function contactFromRecord(
       : undefined,
     primaryIndustryId: isIndustryIdCode(payload.primaryIndustryId)
       ? payload.primaryIndustryId
+      : undefined,
+    secondaryIndustryId: typeof payload.secondaryIndustryId === "string" && validateIndustrySelection(payload).valid
+      ? payload.secondaryIndustryId as SecondaryIndustryIdCode
       : undefined,
     nextAction: isRecord(payload.nextAction) && nonEmptyString(payload.nextAction.text)
       ? {
@@ -631,10 +634,21 @@ export function createStorageContactGraphProvider({
         throw new Error("Contact industry update is outside the actor boundary.");
       }
       const nextPayload = { ...contactRecord.payload };
+      const selection = mergeIndustrySelection(contactFromRecord(contactRecord) ?? {}, {
+        primaryIndustryId,
+      });
+      if (!validateIndustrySelection(selection).valid) {
+        throw new Error("Contact industry selection is invalid.");
+      }
       if (primaryIndustryId) {
         nextPayload.primaryIndustryId = primaryIndustryId;
       } else {
         delete nextPayload.primaryIndustryId;
+      }
+      if (selection.secondaryIndustryId) {
+        nextPayload.secondaryIndustryId = selection.secondaryIndustryId;
+      } else {
+        delete nextPayload.secondaryIndustryId;
       }
       const updatedAt = new Date().toISOString();
       nextPayload.updatedAt = updatedAt;

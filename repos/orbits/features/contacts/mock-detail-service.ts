@@ -41,7 +41,11 @@ import {
 import {
   industryLabel,
   isIndustryIdCode,
+  mergeIndustrySelection,
+  secondaryIndustryLabel,
+  validateIndustrySelection,
 } from "../../shared/domain/industries";
+import type { IndustrySelectionContract } from "../../shared/contract/industries";
 
 const supportedScenarios = new Set<ContactDetailTagStatusScenario>([
   "success",
@@ -295,8 +299,13 @@ function buildUpdatePayload(
   const note = buildNote(input.note);
   const notes = note ? [...mockContactDetail.notes, note] : mockContactDetail.notes;
   const lastInteraction = buildLastInteraction(input.lastInteraction);
+  const selection = mergeIndustrySelection(mockContactDetail, input as IndustrySelectionContract);
   const updatedContact: ContactDetail = {
     ...mockContactDetail,
+    secondaryIndustryId: selection.secondaryIndustryId ?? undefined,
+    secondaryIndustryLabel: selection.secondaryIndustryId
+      ? secondaryIndustryLabel(selection.secondaryIndustryId, mockContactDetail.contentLanguage)
+      : undefined,
     primaryIndustryId:
       input.primaryIndustryId === null
         ? undefined
@@ -347,6 +356,9 @@ export function createMockContactDetailTagStatusService(): ContactDetailTagStatu
     },
 
     updateContactDetail(input): ContactDetailTagStatusResult {
+      if (!validateIndustrySelection(mergeIndustrySelection(mockContactDetail, input as IndustrySelectionContract)).valid) {
+        return failure("CONTACT_DETAIL_INDUSTRY_NOT_SUPPORTED");
+      }
       const resolvedScenario = updateScenarioResult(
         normalizeScenario(input.scenario),
       );

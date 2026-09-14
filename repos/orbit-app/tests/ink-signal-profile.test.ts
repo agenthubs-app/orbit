@@ -118,6 +118,25 @@ test("profile overview follows the approved hierarchy with real statistics and n
   if (process.env.APP_STYLE_SCREENSHOTS) await p.screenshot({ path: "/tmp/orbit-ink-signal-profile-390-" + (process.env.PROFILE_QA_PASS ?? "round1") + ".png" });
 });
 
+test("profile industry pickers send a parent-child pair and preserve the draft on failed receipt", async t => {
+  const p = await edit(t);
+  await press(p, "选择主要行业");
+  await press(p, "主要行业：科技与互联网");
+  await press(p, "选择二级行业");
+  await press(p, "二级行业：人工智能与数据");
+  await press(p, "保存资料");
+  const request = (await writes(p)).at(-1)!;
+  assert.equal(request.body.primaryIndustryId, "technology_internet");
+  assert.equal(request.body.secondaryIndustryId, "technology_internet.ai_data");
+  await replyWrite(p, {}, 503);
+  assert.equal(await p.getByText("人工智能与数据", { exact: true }).count(), 1);
+  await press(p, "选择主要行业");
+  await press(p, "主要行业：金融与投资");
+  assert.equal(await p.getByRole("button", { name: "保存资料", exact: true }).isDisabled(), true);
+  await press(p, "选择二级行业");
+  assert.equal(await p.getByRole("button", { name: "二级行业：人工智能与数据", exact: true }).count(), 0);
+});
+
 for (const actor of ["user_mry5y200_58jpi8", "actor-1"]) {
   for (const fields of [
     { displayName: "林悦", industry: "音乐", organization: "蓝桥工作室", role: "制作人", bio: "寻找一起做音乐的伙伴。", offering: ["录音制作"], seeking: ["演出伙伴"], topics: ["独立音乐"], relationshipGoal: "认识独立创作者" },

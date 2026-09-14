@@ -17,6 +17,7 @@ import type {
   LiveProfileRecord,
 } from "./storage/profile-live-record-provider";
 import { parseOrbitLanguage } from "../../shared/i18n/orbit-language";
+import { mergeIndustrySelection, validateIndustrySelection } from "../../shared/domain/industries";
 
 export interface LiveProfileServiceOptions {
   now?: () => string;
@@ -174,6 +175,8 @@ function manualProfileFor(input: {
     role,
     handles: input.profile.handles,
     industry: publicProfile?.industry,
+    primaryIndustryId: publicProfile?.primaryIndustryId,
+    secondaryIndustryId: publicProfile?.secondaryIndustryId,
     seniorityLevel: publicProfile?.seniorityLevel,
     bio: publicProfile?.bio,
     offering: publicProfile?.offering,
@@ -330,6 +333,7 @@ function mergeProfile(input: {
     preferredLanguage:
       input.update.preferredLanguage ?? baseManual?.preferredLanguage ?? "zh",
     publicProfile: {
+      ...mergeIndustrySelection(baseManual ?? {}, input.update),
       bio: normalizeText(input.update.bio, baseManual?.bio ?? ""),
       industry: normalizeText(input.update.industry, baseManual?.industry ?? ""),
       offering: normalizeStringList(
@@ -482,6 +486,13 @@ export function createLiveProfileService({
         update: input,
         updatedAt: collectedAt,
       });
+      if (!validateIndustrySelection(mergedProfile.publicProfile ?? {}).valid) {
+        return failure("PROFILE_VALIDATION_FAILED", {
+          collectedAt,
+          evidenceIds: ["evidence:profile-industry-validation-failure"],
+          provider,
+        });
+      }
       const savedProfile = await provider.upsertProfile(mergedProfile, actorId);
 
       return success(

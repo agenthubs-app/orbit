@@ -1,4 +1,5 @@
 import type { AppErrorCode } from "../../shared/errors/app-error";
+import type { IndustrySelectionContract } from "../../shared/contract/industries";
 
 // Relationship Natural Search contract 描述关系图的自然语言搜索读模型。
 // mock/live 的具体来源标记和执行策略由各自实现提供。
@@ -164,6 +165,8 @@ export interface RelationshipNaturalSearchAvailableFilters {
 
 // AppliedFilters 是一次查询真正生效的过滤器集合。
 export interface RelationshipNaturalSearchAppliedFilters {
+  primaryIndustryIds?: readonly string[];
+  secondaryIndustryIds?: readonly string[];
   businessIntent: RelationshipNaturalSearchBusinessIntent | null;
   industries: readonly RelationshipNaturalSearchIndustry[];
   sources: readonly RelationshipNaturalSearchSourceType[];
@@ -203,7 +206,7 @@ export interface RelationshipNaturalSearchMatchScore {
 }
 
 // ResultItem 是自然语言搜索的一条关系结果。
-export interface RelationshipNaturalSearchResultItem {
+export interface RelationshipNaturalSearchResultItem extends IndustrySelectionContract {
   id: string;
   contactId: string;
   displayName: string;
@@ -260,6 +263,8 @@ export interface RelationshipNaturalSearchInput {
   query?: string | null;
   businessIntent?: RelationshipNaturalSearchBusinessIntent | string | null;
   industryFilters?: readonly string[] | null;
+  primaryIndustryIds?: readonly string[] | null;
+  secondaryIndustryIds?: readonly string[] | null;
   sourceFilters?: readonly string[] | null;
   valueTypeFilters?: readonly string[] | null;
   followUpStatusFilters?: readonly string[] | null;
