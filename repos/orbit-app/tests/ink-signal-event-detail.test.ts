@@ -178,6 +178,25 @@ test("signed-in detail uses server eligibility for closed and pending registrati
   assert.deepEqual(await pending.evaluate(() => (window as any).fixture.navigation), ["/events/event%3A1/register"]);
 });
 
+test("open admission can enter the registration interview from event detail", async t => {
+  const p = await open(t, {
+    signedIn: true,
+    registration: {
+      eligibility: {
+        allowedActions: ["apply"], applicationVersion: null,
+        evaluatedAt: "2038-01-19T03:14:07.000Z", policyVersion: 1,
+        reason: "open", registrationVersion: null,
+        state: "open"
+      },
+      questionSet: { questions: [] }, registration: null
+    }
+  });
+  const apply = p.getByRole("button", { name: "报名参加", exact: true });
+  assert.equal(await apply.isDisabled(), false);
+  await apply.click();
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/events/event%3A1/register"]);
+});
+
 test("canonical service placeholders become readable labels without replacing real business copy", async t => {
   const p = await open(t, { eventPatch: { description: "", relationshipContext: "Published event context.",
     sourceMetadata: { label: "event-core-postgres" }, evidence: [{ excerpt: "Canonical event event:1." }],
@@ -581,9 +600,9 @@ for (const action of ["确认目标", "换一句", "确认这些候选"]) for (c
 for (const patch of [{ actor: "actor-2" }, { cookieHeader: "fixture-2" }, { baseUrl: "https://second.example" }, { id: "event:2" }, { focused: false }, { signedIn: false }, { mounted: false }, { refresh: true }]) test("obsolete private reads cannot expire the new scope " + JSON.stringify(patch), async t => {
   const p = await open(t, { signedIn: true, holdReads: true });
   await p.evaluate(() => (window as any).fixture.reply(0)); await settle(p);
-  assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), 4);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), 5);
   if ("refresh" in patch) { await p.evaluate(() => (window as any).fixture.refresh()); await settle(p); } else await update(p, patch);
-  for (const index of [1, 2, 3]) {
+  for (const index of [1, 2, 3, 4]) {
     assert.equal(await p.evaluate(index => (window as any).fixture.requests[index].signal?.aborted, index), true);
     await p.evaluate(index => (window as any).fixture.reply(index, 401), index); await settle(p);
   }

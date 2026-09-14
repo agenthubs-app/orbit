@@ -351,7 +351,9 @@ export function EventRegistrationScreen() {
     const action = registrationView.allowedActions?.find((value) =>
       value === "apply" || value === "register" || value === "reactivate" || value === "update"
     ) ?? "register";
-    const admissionResponses = eventAdmissionApplicationResponses(adaptiveTurns);
+    const admissionResponses = eventAdmissionApplicationResponses(
+      action === "apply" ? adaptiveBody().turns : adaptiveTurns
+    );
     if (action === "apply" && admissionResponses.length < 2) {
       setSubmitError("请先在活动画像中完成两道必答问题，再提交申请。");
       return;

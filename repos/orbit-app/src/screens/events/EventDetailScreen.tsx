@@ -495,7 +495,7 @@ function EventRegistrationModule({
       registration === null ||
       registration.allowedActions === undefined ||
       registration.allowedActions.some((action) =>
-        action === "register" || action === "reactivate" || action === "update"
+        action === "apply" || action === "register" || action === "reactivate" || action === "update"
       ) ||
       state === "pending_review" ||
       state === "registered" ||

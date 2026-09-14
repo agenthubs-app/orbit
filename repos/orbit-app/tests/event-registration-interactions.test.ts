@@ -286,9 +286,6 @@ test("open admission collects two server-signed answers and submits the scoped a
     }
   });
   await fill(p, "产品工程经验", 1);
-  await press(p, "下一题");
-  await reply(p, 200, { done: true, signedQuestion: null });
-
   await press(p, "提交审核申请");
   assert.deepEqual((await writes(p)).at(-1), {
     body: {

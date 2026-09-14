@@ -205,6 +205,19 @@ function stableJson(value: unknown): unknown {
   );
 }
 
+function stableApplicationProfile(
+  profile: EventAdmissionProfileSnapshot,
+): unknown {
+  const interviewResponses = profile.interviewResponses?.map((response) => {
+    const { answeredAt: _verifiedAt, ...content } = response;
+    return content;
+  });
+  return stableJson({
+    ...profile,
+    ...(interviewResponses ? { interviewResponses } : {}),
+  });
+}
+
 function admissionMode(value: unknown): EventAdmissionMode {
   if (EVENT_ADMISSION_MODES.includes(value as EventAdmissionMode)) {
     return value as EventAdmissionMode;
@@ -1059,8 +1072,8 @@ export function createPostgresEventAdmissionRepository(input: {
         if (existingResult.rows[0]) {
           const existing = applicationFromRow(existingResult.rows[0]);
           if (
-            JSON.stringify(stableJson(existing.profilePayload)) ===
-            JSON.stringify(stableJson(profilePayload))
+            JSON.stringify(stableApplicationProfile(existing.profilePayload)) ===
+            JSON.stringify(stableApplicationProfile(profilePayload))
           ) return existing;
           throw new EventAdmissionError(
             "INVALID_TRANSITION",
