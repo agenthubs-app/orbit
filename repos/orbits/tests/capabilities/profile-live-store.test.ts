@@ -24,7 +24,7 @@ test("live profile service reads and upserts generated profile records", async (
     workspaceId,
   });
   const service = createLiveProfileService({
-    now: () => "2026-07-02T04:05:00.000Z",
+    now: () => "2026-09-14T12:00:00.000Z",
     provider,
   });
 
@@ -70,8 +70,8 @@ test("live profile service reads and upserts generated profile records", async (
   assert.equal(updated.success, true);
   assert.equal(updated.data.profile?.headline, "基于来源证据运营高质量人脉跟进");
   assert.equal(updated.data.profile?.preferredLanguage, "ja");
-  assert.equal(updated.data.profile?.updatedAt, "2026-07-02T04:05:00.000Z");
-  assert.equal(updated.data.editor.lastSavedAt, "2026-07-02T04:05:00.000Z");
+  assert.equal(updated.data.profile?.updatedAt, "2026-09-14T12:00:00.000Z");
+  assert.equal(updated.data.editor.lastSavedAt, "2026-09-14T12:00:00.000Z");
   assert.equal(updated.data.completeness.status, "ready");
 
   const stored = store.getRecord({

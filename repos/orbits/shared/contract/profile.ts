@@ -32,6 +32,12 @@ export interface ProfileOnboardingContract {
   missingFields: readonly ProfileOnboardingFieldCode[];
 }
 
+// New clients send both fields; omitting both preserves the legacy update API.
+export interface ProfileSaveConcurrencyContract {
+  expectedUpdatedAt?: string | null;
+  mutationId?: string;
+}
+
 // 完整度评分会检查的字段集合，也是编辑器标记「有改动」的字段集合。
 export type ProfileCompletenessFieldCode =
   | "displayName"

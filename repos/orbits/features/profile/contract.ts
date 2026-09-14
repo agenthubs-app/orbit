@@ -11,6 +11,7 @@ import type {
   ProfileCompletenessStatusCode,
   ProfileEditorStateContract,
   ProfileOnboardingContract,
+  ProfileSaveConcurrencyContract,
   ProfileViewStateCode,
   SeniorityLevelCode,
 } from "../../shared/contract/profile";
@@ -24,6 +25,10 @@ export const PROFILE_ERROR_CODES = [
   "PROFILE_UPDATE_PENDING",
   "PROFILE_LIVE_STORE_UNCONFIGURED",
   "PROFILE_BIRTH_DATE_INVALID",
+  "PROFILE_MUTATION_INVALID",
+  "PROFILE_VERSION_CONFLICT",
+  "PROFILE_MUTATION_ID_REUSED",
+  "PROFILE_SAVE_UNAVAILABLE",
 ] as const;
 
 export type ProfileErrorCode = (typeof PROFILE_ERROR_CODES)[number];
@@ -49,6 +54,30 @@ export interface ProfileErrorDefinition {
 }
 
 export const PROFILE_ERROR_DEFINITIONS = {
+  PROFILE_MUTATION_INVALID: {
+    code: "PROFILE_MUTATION_INVALID",
+    appCode: "VALIDATION_ERROR",
+    message: "The save request is missing a valid version or request ID.",
+    recovery: "Keep your draft and reload the latest profile before saving again.",
+  },
+  PROFILE_VERSION_CONFLICT: {
+    code: "PROFILE_VERSION_CONFLICT",
+    appCode: "CONFLICT",
+    message: "Your profile changed after you opened it. This draft was not saved.",
+    recovery: "Keep your draft and review the latest profile before saving again.",
+  },
+  PROFILE_MUTATION_ID_REUSED: {
+    code: "PROFILE_MUTATION_ID_REUSED",
+    appCode: "CONFLICT",
+    message: "This request ID was already used for a different edit.",
+    recovery: "Keep your draft and submit the changed edit with a new request ID.",
+  },
+  PROFILE_SAVE_UNAVAILABLE: {
+    code: "PROFILE_SAVE_UNAVAILABLE",
+    appCode: "SERVICE_UNAVAILABLE",
+    message: "The profile save could not be confirmed.",
+    recovery: "Keep your draft and retry the same request.",
+  },
   PROFILE_BIRTH_DATE_INVALID: {
     code: "PROFILE_BIRTH_DATE_INVALID",
     appCode: "VALIDATION_ERROR",
@@ -103,7 +132,7 @@ export interface ProfileProvenance {
 // ManualProfile 是用户可直接编辑的核心资料。
 
 // UpdateInput 只包含可编辑字段；缺失字段表示保持不变。
-export interface ManualProfileUpdateInput extends IndustrySelectionContract {
+export interface ManualProfileUpdateInput extends IndustrySelectionContract, ProfileSaveConcurrencyContract {
   displayName?: string;
   birthDate?: string | null;
   headline?: string;
@@ -132,6 +161,7 @@ export interface ProfilePayload {
   profile: ManualProfileContract | null;
   // Older payloads can omit this field; current services always calculate it.
   onboarding?: ProfileOnboardingContract;
+  mutationId?: string;
   completeness: ProfileCompletenessContract;
   editor: ProfileEditorStateContract;
   provenance: ProfileProvenance;

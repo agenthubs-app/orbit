@@ -19,6 +19,7 @@ import type {
 import { parseOrbitLanguage } from "../../shared/i18n/orbit-language";
 import { mergeIndustrySelection, validateIndustrySelection } from "../../shared/domain/industries";
 import { calculateProfileOnboarding, isValidProfileBirthDate } from "./onboarding";
+import { ProfileMutationError, validateProfileMutation } from "./storage/profile-mutations";
 
 export interface LiveProfileServiceOptions {
   now?: () => string;
@@ -459,28 +460,12 @@ export function createLiveProfileService({
         });
       }
 
+      if (!validateProfileMutation(input)) {
+        return failure("PROFILE_MUTATION_INVALID", { collectedAt, provider });
+      }
+
       if (input.birthDate !== undefined && input.birthDate !== null && !isValidProfileBirthDate(input.birthDate, collectedAt.slice(0, 10))) {
         return failure("PROFILE_BIRTH_DATE_INVALID", { collectedAt, provider });
-      }
-
-      const loaded = await loadProfile({ actorId, collectedAt });
-
-      if (loaded.success === false) {
-        return loaded;
-      }
-
-      const displayName =
-        input.displayName?.trim() ?? loaded.profile?.displayName.trim() ?? "";
-      const languageIsValid =
-        input.preferredLanguage === undefined ||
-        parseOrbitLanguage(input.preferredLanguage) !== null;
-
-      if (!displayName || !languageIsValid) {
-        return failure("PROFILE_VALIDATION_FAILED", {
-          collectedAt,
-          evidenceIds: ["evidence:profile-live-validation-failure"],
-          provider,
-        });
       }
 
       if (!provider) {
@@ -490,30 +475,46 @@ export function createLiveProfileService({
         });
       }
 
-      const mergedProfile = mergeProfile({
-        actorId,
-        base: loaded.profile,
-        graph: loaded.graph,
-        update: input,
-        updatedAt: collectedAt,
-      });
-      if (!validateIndustrySelection(mergedProfile.publicProfile ?? {}).valid) {
-        return failure("PROFILE_VALIDATION_FAILED", {
-          collectedAt,
-          evidenceIds: ["evidence:profile-industry-validation-failure"],
-          provider,
-        });
+      // A generic async get/upsert adapter cannot promise a conditional write.
+      if (input.expectedUpdatedAt !== undefined && !provider.withProfileMutation) {
+        return failure("PROFILE_SAVE_UNAVAILABLE", { collectedAt, provider });
       }
-      const savedProfile = await provider.upsertProfile(mergedProfile, actorId);
 
-      return success(
-        payloadFor({
-          collectedAt,
-          graph: loaded.graph,
-          profile: savedProfile,
-          provider,
-        }),
-      );
+      const save = async (writeProvider: LiveProfileProvider): Promise<ProfileResult> => {
+        const graph = await writeProvider.readProfileGraph(actorId);
+        const profile = currentProfile(graph, actorId);
+        if (input.expectedUpdatedAt !== undefined && input.expectedUpdatedAt !== (profile?.updatedAt ?? null)) {
+          return failure("PROFILE_VERSION_CONFLICT", { collectedAt, provider });
+        }
+        const displayName = input.displayName?.trim() ?? profile?.displayName.trim() ?? "";
+        const languageIsValid = input.preferredLanguage === undefined || parseOrbitLanguage(input.preferredLanguage) !== null;
+        if (!displayName || !languageIsValid) {
+          return failure("PROFILE_VALIDATION_FAILED", {
+            collectedAt, evidenceIds: ["evidence:profile-live-validation-failure"], provider,
+          });
+        }
+        const updatedAt = profile && Date.parse(collectedAt) <= Date.parse(profile.updatedAt)
+          ? new Date(Date.parse(profile.updatedAt) + 1).toISOString() : collectedAt;
+        const mergedProfile = mergeProfile({ actorId, base: profile, graph, update: input, updatedAt });
+        if (!validateIndustrySelection(mergedProfile.publicProfile ?? {}).valid) {
+          return failure("PROFILE_VALIDATION_FAILED", {
+            collectedAt, evidenceIds: ["evidence:profile-industry-validation-failure"], provider,
+          });
+        }
+        const savedProfile = await writeProvider.upsertProfile(mergedProfile, actorId);
+        return success(payloadFor({ collectedAt, graph, profile: savedProfile, provider }));
+      };
+
+      try {
+        return provider.withProfileMutation
+          ? await provider.withProfileMutation(input, actorId, save)
+          : await save(provider);
+      } catch (error) {
+        if (error instanceof ProfileMutationError) {
+          return failure(error.code, { collectedAt, provider });
+        }
+        throw error;
+      }
     },
   };
 }

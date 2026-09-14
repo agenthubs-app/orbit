@@ -171,6 +171,10 @@ export function createMockProfileService(): ProfileService {
     },
 
     updateProfile(input): ProfileResult {
+      // Fixtures do not persist revisions or receipts across requests.
+      if (input.expectedUpdatedAt !== undefined || input.mutationId !== undefined) {
+        return failure("PROFILE_SAVE_UNAVAILABLE");
+      }
       if (input.birthDate !== undefined && input.birthDate !== null && !isValidProfileBirthDate(input.birthDate)) {
         return failure("PROFILE_BIRTH_DATE_INVALID");
       }

@@ -1,7 +1,10 @@
 import type { AccountDTO, PublicProfileDTO, UserProfileDTO } from "../../../shared/domain/contracts";
 import type { OrbitLanguage } from "../../../shared/contract/language";
 import { parseOrbitLanguage } from "../../../shared/i18n/orbit-language";
-import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
+import { createPostgresLiveRecordStore } from "../../../shared/storage/postgres-live-record-store";
+import { createConfiguredTransactionalPostgresRuntime, type TransactionalPostgresClient } from "../../../shared/storage/transactional-postgres";
+import type { ManualProfileUpdateInput, ProfileResult } from "../contract";
+import { runProfileMutation } from "./profile-mutations";
 import {
   resolveLiveDatabaseConnectionConfig,
   type LiveDatabaseEnv,
@@ -35,6 +38,11 @@ export type LiveProfileProviderResult<TResult> = TResult | Promise<TResult>;
 export interface LiveProfileProvider {
   source: string;
   sourceLabel: string;
+  withProfileMutation?: (
+    input: ManualProfileUpdateInput,
+    actorId: string,
+    operation: (provider: LiveProfileProvider) => Promise<ProfileResult>,
+  ) => Promise<ProfileResult>;
   readProfileGraph: (
     actorId: string,
   ) => LiveProfileProviderResult<LiveProfileGraph>;
@@ -300,6 +308,25 @@ export function createStorageProfileProvider({
   };
 }
 
+export function createTransactionalStorageProfileProvider({
+  client, workspaceId, source, sourceLabel = "Profile shared live storage",
+}: {
+  client: TransactionalPostgresClient;
+  workspaceId: string;
+  source?: string;
+  sourceLabel?: string;
+}): LiveProfileProvider {
+  const options = { workspaceId, source, sourceLabel };
+  return {
+    ...createStorageProfileProvider({ ...options, store: createPostgresLiveRecordStore({ client }) }),
+    withProfileMutation(input, actorId, operation) {
+      return runProfileMutation({ client, workspaceId, actorId, input,
+        operation: store => operation(createStorageProfileProvider({ ...options, store })),
+      });
+    },
+  };
+}
+
 export function createConfiguredStorageProfileProvider({
   env,
   sourceLabel = "Profile Postgres live storage",
@@ -318,19 +345,19 @@ export function createConfiguredStorageProfileProvider({
     return cachedDefaultProvider.provider;
   }
 
-  const configuredStore = createConfiguredPostgresLiveRecordStore({
+  const runtime = createConfiguredTransactionalPostgresRuntime({
     env,
   });
 
-  if (!configuredStore) {
+  if (!runtime) {
     return null;
   }
 
-  const provider = createStorageProfileProvider({
+  const provider = createTransactionalStorageProfileProvider({
     source: `postgres-live-record-store:profiles:${config.workspaceId}`,
     sourceLabel,
-    store: configuredStore.store,
-    workspaceId: configuredStore.workspaceId,
+    client: runtime.client,
+    workspaceId: runtime.workspaceId,
   });
 
   if (canUseDefaultCache) {

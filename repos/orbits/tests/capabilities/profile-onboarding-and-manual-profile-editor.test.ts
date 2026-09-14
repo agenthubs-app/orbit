@@ -49,6 +49,10 @@ test("profile contract exposes onboarding, update, completeness, and controlled 
     "PROFILE_UPDATE_PENDING",
     "PROFILE_LIVE_STORE_UNCONFIGURED",
     "PROFILE_BIRTH_DATE_INVALID",
+    "PROFILE_MUTATION_INVALID",
+    "PROFILE_VERSION_CONFLICT",
+    "PROFILE_MUTATION_ID_REUSED",
+    "PROFILE_SAVE_UNAVAILABLE",
   ]);
   assert.equal(
     PROFILE_ERROR_DEFINITIONS.PROFILE_VALIDATION_FAILED.appCode,
@@ -114,6 +118,16 @@ test("mock profile service is deterministic and never calls external providers",
     assert.doesNotMatch(source, /calendar|email|notification|provider call/i);
     assert.doesNotMatch(source, /openai|anthropic|ai provider/i);
   }
+});
+
+test("fixture-only profile saves do not falsely acknowledge optimistic concurrency", () => {
+  const service = createMockProfileService();
+  const result = syncResult(service.updateProfile({
+    displayName: "Fixture edit", expectedUpdatedAt: null, mutationId: "new-client-save",
+  }));
+  assert.equal(result.success, false);
+  if (!result.success) assert.equal(result.error.code, "PROFILE_SAVE_UNAVAILABLE");
+  assert.equal(syncResult(service.updateProfile({ displayName: "Legacy fixture edit" })).success, true);
 });
 
 test("profile API routes return stable envelopes for GET and PUT probes", async () => {

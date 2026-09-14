@@ -21,3 +21,7 @@
 同一主代理为唯一Generator，原地chat-agent；不改OAuth provider／密钥／注册配置，不执行迁移或未知业务库写入。0023本地行业契约已交付；其余数据清单／真实模型验收与本任务独立，暂不并行写入相同文件。0003完成判定及写入基础正是本次实现内容，不要求其在启动前已实现。
 
 生日新增字段的直接消费补充：Web `features/mobile/contacts-dashboard-service.ts` 与既有 `tests/services/mobile-contacts-dashboard-service.test.ts`，只从总览投影移除私密生日，保留本人源数据。资料provider拒绝userId/accountId互相冲突的记录；无userId的旧记录仍按匹配accountId兼容。两处先有失败用例，属于SC-02隐私验收。对应LIVE_IMPLEMENTATION说明及既有profile契约测试随新错误码／协议更新；不扩业务能力。
+
+事务保存的直接测试接线包含既有 `tests/capabilities/profile-live-store.test.ts`：保存时钟移到生成夹具资料版本之后，保留精确回执断言，不再要求版本倒退。新增冲突测试只消费显式 `ORBIT_PROFILE_TEST_SOCKET_DIR` 指定的本轮临时集群，不读取业务库环境变量；真实跨端账号／Google验收仍独立。固定mock不保存版本或回执，遇到新协议明确返回不可确认，原无版本的演示行为保持不变。
+
+全量定位的直接消费者 `tests/pages/app-home-live-route-services.test.ts` 纳入必要测试接线：资料模块已使用共享事务runtime，原强制非事务工厂的源码断言不再适用；联系人与资料信号断言保留。资料保存、第二provider回读及旧版本拒绝由临时PostgreSQL的真实配置入口测试覆盖，对应SC-03，不改变首页业务或降低并发验收。
