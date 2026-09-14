@@ -65,7 +65,7 @@ build/harness-logs/
 | [0015](0015-locale-assistant-workflows/GOAL.md) | 用中日英操作 AI、事项和消息，保留内容与日期 | R-12 | 功能 `d7180e134`；原生返回修复 `16d545b06`；SC-01～04 全部通过，见 REPORT | completed |
 | [0016](0016-native-navigation/GOAL.md) | 用实际设备验收导航、字号、键盘和辅助功能 | R-09、R-12 | 0014、0015；原生审批／设备 | blocked |
 | [0017](0017-cross-client-acceptance/GOAL.md) | 用真实主流程及五类记录双向回读证明两端一致 | R-01、R-14及主链路余项 | 0003～0016；共同环境／授权 | blocked |
-| [0018](0018-notes-core/GOAL.md) | 一份私密笔记关联多人，保留旧内容并安全切换入口 | R-13 | 0017；B8／D7／迁移设计 | blocked |
+| [0018](0018-notes-core/GOAL.md) | 一份私密笔记关联多人，保留旧内容并安全切换入口 | R-13 | 功能提交 `8e81e588e`；本地实现与 App 全量通过，真实跨端／原生验收缺失，见 REPORT | blocked |
 | [0019](0019-note-suggestions/GOAL.md) | 确认笔记建议后只建一次事项，逐项验收全部原需求 | R-13、R-14 | 0018；D5／B6／B8建议协议 | blocked |
 | [0020](0020-secondary-industries-self-profile/GOAL.md) | 二级行业在资料、联系人和检索中复用，AI 能读取本人资料，现有测试数据补齐 | 2026-09-14 新增；关联 R-03／R-06 | run-01 已结束；部分代码未提交，HTTP/provider/trace/生成源范围缺项与 H 验证未通过；见 REPORT | blocked |
 | [0021](0021-ai-session-organization/GOAL.md) | 保存 AI 会话入口与首条内容，按项目式分组整理，并能置顶、改名、删除和跨端回读 | 2026-09-14 新增；关联 R-00／R-02／R-06 | 功能 HEAD `9bc7039a5`；同账号 Web↔App、当前 iOS 长按／更多／分组／确认／真实冲突反馈均已验证，见 REPORT | completed |
@@ -186,7 +186,14 @@ build/harness-logs/
 - owner：B 线当前主代理 `/root`；run_count：1；开始：2026-09-15 00:19 JST。承接 0005 功能 HEAD `30c1e210c` 和同一 B 线授权，串行持有 AI 会话／契约／provider 文件。
 - 实施前先把 B3 实际字段与 0021 organization revision 对照写入 Planner，并读取 Bridge 状态与交接，避免覆盖 E 线联系人详情／聊天／收件箱范围。
 - 功能提交 `c645d357a`、`cabf07b27`、`9f4396d1c`、`3de117902`、`9bc7039a5`；Web 定向 39/39、App 定向 95/95、原生弹窗修复文件 73/73、两端 typecheck 及临时隔离 PostgreSQL 通过。当前 iOS Simulator 已完成长按／更多／分组／确认和真实 409 反馈；同一全新合成账号完成 App→Web→App 分组改名与删除回读，结果 completed，详见 [REPORT](0021-ai-session-organization/REPORT.md)。
+### 0018 / run-01
 
+- owner：当前主代理 `/root`；run_count：1；开始：2026-09-15 06:55 JST。原地 `chat-agent`，单一 Generator，无其他写入者或 Evaluator。
+- 用户明确要求开始实现 0018 与 0019；复用 `RULES.md` 第 0、6 节的整体批准。0017 未完成的真实共同环境验收不阻止本地跨端实现，但 SC-0018-05 没有真实回读证据前不得将本 Sprint 标为 completed。
+- 基线 HEAD `40338854659b1408ea9903b19a043d56a214352f`；根 `AGENTS.md`、`CLAUDE.md` 的既有用户改动不属于本 Sprint，保持不写不暂存。
+- Planner revision 3 SHA256：`750df5d4ceb63b6691de6b61667eda96152da779833ead97e1b171c02057b79b`。完成目标所需的 Web/API、共享契约、App 路由与测试追加范围见[跨端实施补充](0018-notes-core/APPROVED_SCOPE_ADDENDUM.md)。
+- 当前代码没有独立 `/api/notes`、App notes 路由或笔记版本／多人关联契约；实现使用现有 `orbit_records` 通用信封，不创建数据库迁移、不访问真实账号或记录。
+- run-01 于 2026-09-15 07:45 JST 结束为 blocked。功能提交 `8e81e588e`；Web notes 定向 13/13、类型检查通过，App 全量 2583/2583 通过。Web 全量 3004 pass／52 fail／183 skip，新增 notes 测试通过，既有环境／审计失败及相对旧文档基线扩大的 5 个审计子项已在 [REPORT](0018-notes-core/REPORT.md) 逐项记录。SC-0018-05 因缺真实共同环境、同账号与原生设备证据未关闭。
 ### 0003 / run-01
 
 - 结束：2026-09-15 03:03 JST；结果 blocked；最后功能 HEAD `b2afc634d`、当前集成主线 `e93ba57cf`，见[执行报告](0003-profile-completion/REPORT.md)。SC-01～04 已通过，只剩 SC-05 的真实 Google 最终回跳和同一账号 Web/App 双向回读。

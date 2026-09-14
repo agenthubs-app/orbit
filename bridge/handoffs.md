@@ -26,6 +26,7 @@
 | BR-014 | P1 | 首页与可信人脉分析 | blocked | provider 环境负责人 | 仅剩真实 provider 显式生成后，在 Web/App 重开同一持久报告 |
 | BR-015 | P1 | 账号语言偏好与三语基础 | verified | 已完成；0014/0015 可消费 | 独立账号偏好、三语 Provider、设备 A 保存→设备 B 服务端回读及失败／冲突证据齐全 |
 | BR-016 | P1 | 人脉、名片与活动三语消费 | consumer_ready | 0015；0016/0017 验收 | App 三语主链路本地回归通过；实体设备与共同远程环境由系统级 Sprint 验收 |
+| [BR-017](2026-09-15-notes-core.md) | P1 | 独立私有笔记核心 | consumer_ready | Bridge 验证 | 同环境完成 Web/App 双向读写、刷新、版本冲突与原生设备验证 |
 
 ## BR-016 — 人脉、名片与活动三语消费
 
@@ -90,7 +91,6 @@
 - 本地证据：App 全量 2603/2603；两端 typecheck exit 0；隔离 PostgreSQL 名片 API／repository 28/28；Web 全量中的 D 线相关断言无新增失败。详见 `repos/orbit-app/docs/sprints/0007-two-sided-cards/REPORT.md`。
 - 未检查：真实迁移、真实 OCR、实体相机拒权／重拍、真实联系人写入、Web→App／App→Web 同记录回读、部署版本和实际新增费用。
 - 关闭条件：实体 iPhone 在线，并在同一已配置环境用授权双面样本完成拍摄→OCR→来源复核→一次创建；记录 App/API 版本、脱敏 card/contact ID、两端重开、图片过期及累计费用。
-
 ## BR-001 — Today
 
 - web_status：已实现三来源组合；证据 `repos/orbits/app/(app)/app/today/today-page-content.tsx` 与 `compose-app-today-from-agent-ledger/today-merged-view-model.ts`。
