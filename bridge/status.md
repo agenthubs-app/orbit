@@ -6,6 +6,12 @@
 
 最后核实：2026-09-07，基于本地 HEAD `862cb54b4` 加当时的未提交 App 改动。精确采集时间与路径清单见 [快照](snapshots/2026-09-07-baseline.json)。
 
+## 2026-09-15 D 线增量
+
+- Web/API 由 D 线原提交 `0a1ca09a4`、主线集成 `011b575bb` 提供双面名片 manifest、卡片级原子确认、来源持久化和旧单面兼容；App 同步完成显式正反面采集、两面复核与确认消费者。
+- 本地结果：App 2603/2603、两端 typecheck、隔离 PostgreSQL 名片 API／repository 28/28。Web 全量保留 47 个既有失败；4 个宿主 provider key 导致的新增失败在完整清空 key 后 63/63 通过。
+- 真实验证仍 blocked：实体 iPhone 离线，没有共同 API/OCR 环境、授权样本和联系人对象。详情及关闭条件见 [BR-012](handoffs.md#br-012--双面名片卡片级确认)与 [Sprint 0007 报告](../repos/orbit-app/docs/sprints/0007-two-sided-cards/REPORT.md)。
+
 ## Web / API
 
 - 路径：`repos/orbits`；package 声明 Next.js 16.2.9、React 18.3.1，生产环境要求 Node 22。

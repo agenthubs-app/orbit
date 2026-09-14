@@ -54,7 +54,7 @@ build/harness-logs/
 | [0004](0004-registration/GOAL.md) | 报名、取消和重报后，答案、人数及各页状态一致 | R-04 | run-01 已完成；功能 `319f6f7bb`，见 REPORT | completed |
 | [0005](0005-ai-session-reliability/GOAL.md) | AI 重试不重复生成，Web/App 续聊不丢历史 | R-00、R-02 | B3 跨端提案待审；已隔离复现旧快照覆盖，真实恢复／503 证据仍缺 | blocked |
 | [0006](0006-contact-mentions/GOAL.md) | @ 选准联系人，带入 AI 的问题由用户确认发送 | R-06 | 0005；B3 引用／D3 | blocked |
-| [0007](0007-two-sided-cards/GOAL.md) | 正反面名片复核后只创建一个联系人 | R-07 | 0002；B5／OCR 环境 | blocked |
+| [0007](0007-two-sided-cards/GOAL.md) | 正反面名片复核后只创建一个联系人 | R-07 | run-01 已结束；本地双面契约与一次确认已提交，实体 iPhone／真实 OCR／同记录跨端验收缺环境；见 REPORT | blocked |
 | [0008](0008-identity-chat/GOAL.md) | 验证邀请和身份绑定后，双方能真实收发消息 | R-05 | run-01 已完成；原功能 `6d8173b78`、主线集成 `64629369d`，见 REPORT | completed |
 | [0009](0009-timezone/GOAL.md) | 同一事项在首页、待办、日历和活动中不落错日 | R-09 | run-01 已完成；功能 `a4bbfd9f6`，见 REPORT | completed |
 | [0010](0010-task-schedule-editing/GOAL.md) | 个人事项能创建、编辑和清空字段，各页与提醒一致 | R-08 | run-01 已完成；功能 `d005c2b79`，见 REPORT | completed |
@@ -113,6 +113,16 @@ build/harness-logs/
 - C 线独占事项、日程、首页的0010白名单；共享登记表与Git提交仍由协调者处理。原 Planner SHA256 `5f169b6879af07d7f21515e1d02f7f9ab14a9bcd0b207d950c47080be0c66c16`。
 - 结束：2026-09-15；结果 completed；主线功能提交 `d005c2b79`，见[执行报告](0010-task-schedule-editing/REPORT.md)与[批准范围补充](0010-task-schedule-editing/APPROVED_SCOPE_ADDENDUM.md)。个人事项、日期／截止／地点清空、个人日程 CRUD、版本冲突、幂等和提醒保持原计划均完成。
 - 冻结补丁61文件 SHA256 `e94ec5eb4c079b7d0583a966d898cd5778b6ef91c4dbf8653d083abc66c4eea6`。主线整合后两端typecheck exit0、App组合154/154、Web组合26/26及任务日期17/17；真实 PostgreSQL 与原生双向同记录证据保存在被忽略的 run-01 目录。旧全量失败／skip和未计量provider费用按报告保留，不改写为通过或0。
+
+### 0007 / run-01
+
+- owner：当前主代理 `/root`；run_count：1；2026-09-14 启动，2026-09-15 01:05 JST 结束本地实现与验证。
+- 基线 `fca77373f123c03e29a0584cba46bade5f5eb907`；Planner revision 1／SHA256 `05b1e519f405a25ef4da034abd1115cf5f4c501c5552448efa9e56bc013ede46`。
+- 双面 manifest、来源复核、稳定确认意图、整卡原子一次创建和旧单面兼容由 D 线原提交 `0a1ca09a4`、主线集成 `011b575bb` 交付；[执行报告](0007-two-sided-cards/REPORT.md)。
+- 最终 App 全量 2603/2603，两端 typecheck 通过，PostgreSQL 名片 API／repository 28/28。Web 全量 2990 pass／51 fail／187 skip；其中 47 个失败与既有基线逐名相同，4 个新增 provider 环境失败在清空全部 key 后 63/63 通过，不称 Web 全量通过。
+- 结果 blocked：实体 iPhone `shinhaha (26.2)` 离线，没有共同 API/OCR 环境、真实非空批次和授权联系人对象，SC-01～05 的实体／真实跨端证据未闭合。没有真实迁移、部署、push 或 merge。
+- 费用：原记录 USD 0.012780／5.00；全量至少 4 个用例进入 provider 请求路径，日志无用量，且首次中断轮是否到达该区段未知，本轮增量待核算。
+- checkpoint：`build/harness-state/evidence/sprint-0007/run-01/checkpoint.md`（App cwd，被忽略）；没有 D 线活进程。20 分钟线程心跳保持启用，外部条件恢复后从报告的关闭条件继续。
 
 ### 0003 / run-01
 

@@ -21,6 +21,24 @@
 | BR-009 | P1 | 事项与个人日程编辑跨端一致 | verified | 已完成；0022 可消费 | 同一合成 actor/记录完成 Web↔App 创建、编辑、清空、冲突与提醒回读 |
 | BR-010 | P1 | 身份邀请、绑定与共享聊天 | verified | 已完成；0012 可消费 | 隔离双 actor 与 PostgreSQL 证明资格、幂等投递、撤销和双方回读 |
 | BR-011 | P1 | 消息前台刷新、已读、角标与推送 | blocked | 运行环境负责人 | 提供 Expo project、push server key、双用户原生账号及实体推送环境后补真实验收 |
+| BR-012 | P1 | 双面名片按卡复核并一次创建联系人 | blocked | Bridge／共同环境负责人 | 实体 iPhone 在共同 API/OCR 环境完成双面创建，Web/App 重开同一联系人和字段来源 |
+
+## BR-012 — 双面名片卡片级确认
+
+- 创建/更新日期：2026-09-15。
+- 总状态：`blocked`；web_status：`source_ready`；app_status：`consumer_ready`；verification_status：本地通过、真实跨端 blocked。
+- 发起角色：Bridge；下一责任方：共同环境／实体设备验收负责人，尚无可用对象。
+- 授权来源：用户明确启动 D 线并授予持续实现权限；真实环境迁移、具体联系人和样本仍以实际对象记录验收。
+- 用户可见变化：App 可为一张名片选择正面和可选反面，复核两面图片及字段来源，冲突需明确处理；一次确认只返回一个联系人。
+- Web/API：`POST /api/contact-drafts/business-card/batches/v2` manifest 新增 `cardId`、`side`；现有 item confirm 路径以整卡确认，接收 `confirmationIntentId`、`expectedCardItems`、`fieldSources`。
+- App：`BusinessCardIngestStartScreen` 负责显式配对；`BusinessCardIngestScreen` 和 `BusinessCardBatchReviewForm` 负责双面切换、来源选择、重拍失效和卡片级动作。
+- 版本：D 线原功能 `0a1ca09a4`、主线集成 `011b575bb`；共享契约与 App 副本已同步。
+- 数据与幂等：每卡恰有一个 front、至多一个 back；确认事务锁定 actor/batch/card，校验两面版本和摘要，同一意图重放返回同一联系人。证据 ID 保留两面 item；联系人 draft identity 包含 batch，避免不同批次的 client `cardId` 碰撞。
+- 旧 App：缺少 `cardId`／`side` 的 manifest 每图独立成为单面卡，并保留旧 manifest fingerprint；只允许这类真实 legacy 单面请求省略新确认元数据。
+- 刷新／失败：重拍或重 OCR 改变 side 版本后旧来源选择失效，手工字段保留；失败的反面可独立重试；确认、跳过和清理均按整卡收口。
+- 本地证据：App 全量 2603/2603；两端 typecheck exit 0；隔离 PostgreSQL 名片 API／repository 28/28；Web 全量中的 D 线相关断言无新增失败。详见 `repos/orbit-app/docs/sprints/0007-two-sided-cards/REPORT.md`。
+- 未检查：真实迁移、真实 OCR、实体相机拒权／重拍、真实联系人写入、Web→App／App→Web 同记录回读、部署版本和实际新增费用。
+- 关闭条件：实体 iPhone 在线，并在同一已配置环境用授权双面样本完成拍摄→OCR→来源复核→一次创建；记录 App/API 版本、脱敏 card/contact ID、两端重开、图片过期及累计费用。
 
 ## BR-001 — Today
 
