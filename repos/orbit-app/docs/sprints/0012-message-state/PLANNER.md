@@ -6,6 +6,17 @@
 **进入条件:** 0008 真实会话可用；提供消息已读／未读、前台更新方式／时效、目标及权限失效契约；提醒状态共享字段发布；授权两用户、非空消息、有效投递对象与实体推送设备齐全。
 **契约前置:** 消息状态写入和前台刷新／订阅的真实路径、序列／幂等及允许延迟须补入 Planner 并审阅。API 配置负责人须解决已记录投递详情 GET 缺设备密钥的问题，本 Sprint 不生成密钥。
 
+## 已批准消息状态契约（2026-09-15）
+
+用户已明确要求连续完成 E 线并授予本线实现、验证和恢复执行所需权限；0008 已发布真实会话和已读接口。本 run 冻结以下实现契约：
+
+- 消息列表只读取 `GET /api/relationship-communication/conversations`，详情只读取 `GET /api/relationship-communication/conversations/:id`。App 必须完整校验共享 DTO；重复／空会话 ID、非参与账号、撤销绑定、404／403 或结构不明的结果均不能进入正文或导航。旧 `/api/chat/relationship-inbox` 保留草稿预览语义，不再作为真实未读计数或消息正文来源。
+- 前台更新允许延迟为 **15 秒**。只有当前路由聚焦、App 为 active、认证 actor 与 API base URL 均就绪时才轮询；每次新读取先取消同资源的旧请求，并用当前 scope 与请求序号拒绝迟到结果。刷新保留当前已显示正文和未发送草稿，不通过重挂载取得更新；后台、失焦、登出、换号、换服务器和路由切换立即取消定时器及请求。
+- 打开有效会话且权威详情仍有未读消息时，以最后一条已投递消息的 `messageId` 调用 `POST .../:id/read`。同一 actor／scope／conversation／message 同时最多一个写入；只有 `conversationId`、`lastReadMessageId` 完全匹配且 `readAt` 为有效服务端时间的回执才生效。成功后触发消息列表与角标重新读取；失败或旧 scope 回执不清零、不导航、不覆盖草稿，并允许后续重试。
+- 收件箱角标为已校验真实会话的 `unreadCount` 总和，加上服务端提醒中未 read／ignored 的数量，上限 99。角标与列表使用同一 15 秒前台刷新规则，并订阅本进程内的消息／提醒状态失效事件以即时重读；失效事件不携带账号、正文或凭证，也不能让旧 scope 结果生效。
+- 提醒继续使用 `POST /api/notifications/:id/state`，只有匹配 `notificationId`、state 与有效 `updatedAt` 的回执才读／忽略；目标继续由 allowlist 解析并由真实详情路由判定已删除、无权限或过期。设备注册沿用现有“App 显式 opt-in + OS permission + 当前 actor/server/token”会话、串行队列、token 变化去重与登出／换号撤销，不新增第二套注册器。
+- 实体推送仍依赖现有 Expo project 与服务端 `ORBIT_PUSH_TOKEN_KEY`。本 Sprint 不生成、保存或猜测密钥；代码和离线竞态回归独立完成，实体投递只在配置存在时执行并在 REPORT 单列结果。
+
 ## 范围与文件
 
 - 读取：[原计划 R-11](../../superpowers/plans/2026-09-13-app-remaining-functionality-and-connectivity.md#r-11消息提醒和未读一致性)、[Relationship Inbox 缺口](../../api-gaps.md#relationship-inbox)、0008 REPORT；历史前后台恢复只承接有效证据。
