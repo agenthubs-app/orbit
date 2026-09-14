@@ -10,6 +10,8 @@ import {
 import {
   buildEventRegistrationAdaptiveBody,
   buildEventRegistrationAnswers,
+  eventAdmissionApplicationMatches,
+  eventAdmissionApplicationResponses,
   eventRegistrationAdaptiveStepToView,
   eventAdmissionWithdrawalMatches,
   eventRegistrationAuthorityKey,
@@ -26,6 +28,7 @@ test("registration eligibility maps every server state without using the device 
     ["event_ended", [], "活动已结束", false, "活动已结束"],
     ["event_cancelled", [], "活动已取消", false, "活动已取消"],
     ["full", [], "名额已满", false, "名额已满"],
+    ["open", ["apply"], "尚未申请", false, "提交审核申请"],
     ["pending_review", ["withdraw"], "待审核", true, "等待审核"],
     ["waitlisted", ["withdraw"], "候补中", true, "当前候补"],
     ["registered", ["cancel"], "已报名", true, "报名资料不可修改"],
@@ -120,6 +123,43 @@ test("registration mutation receipts and admission withdrawals must match the cu
   assert.equal(eventRegistrationReceiptMatches(receipt, "event:1", "actor:1", "rsvped", "reactivate"), false);
   assert.equal(eventAdmissionWithdrawalMatches({ actorId: "actor:1", eventId: "event:1", status: "withdrawn", applicationVersion: 3 }, "event:1", "actor:1", 2), true);
   assert.equal(eventAdmissionWithdrawalMatches({ actorId: "actor:1", eventId: "event:1", status: "withdrawn", applicationVersion: 2 }, "event:1", "actor:1", 2), false);
+});
+
+test("admission application receipts and signed responses stay actor/event scoped", () => {
+  const turns = [
+    {
+      answer: "  日本产业伙伴  ",
+      field: "targetAttendees",
+      prompt: "想认识谁？",
+      questionToken: "signed-target"
+    },
+    {
+      answer: "产品工程经验",
+      field: "valueOffered",
+      prompt: "能提供什么？",
+      questionToken: "signed-value"
+    },
+    {
+      answer: "unsigned",
+      field: "desiredOutcome",
+      prompt: "结果？"
+    }
+  ];
+  assert.deepEqual(eventAdmissionApplicationResponses(turns), [
+    { answer: "日本产业伙伴", questionToken: "signed-target" },
+    { answer: "产品工程经验", questionToken: "signed-value" }
+  ]);
+  const receipt = {
+    actorId: "actor:1",
+    applicationVersion: 1,
+    eventId: "event:1",
+    status: "pending_review"
+  };
+  assert.equal(eventAdmissionApplicationMatches(receipt, "event:1", "actor:1"), true);
+  assert.equal(eventAdmissionApplicationMatches({ ...receipt, actorId: "other" }, "event:1", "actor:1"), false);
+  assert.equal(eventAdmissionApplicationMatches({ ...receipt, eventId: "other" }, "event:1", "actor:1"), false);
+  assert.equal(eventAdmissionApplicationMatches({ ...receipt, applicationVersion: 0 }, "event:1", "actor:1"), false);
+  assert.equal(eventAdmissionApplicationMatches({ ...receipt, status: "withdrawn" }, "event:1", "actor:1"), false);
 });
 
 test("event registration endpoint helpers URL-encode ids", () => {
@@ -372,16 +412,19 @@ test("eventRegistrationAdaptiveStepToView maps the web interview step", () => {
   assert.deepEqual(
     eventRegistrationAdaptiveStepToView({
       done: false,
-      question: {
-        acknowledgment: "明白，你更关心日本企业买方。",
-        field: "desiredOutcome",
-        options: ["约到会后电话", "找到试点客户"],
-        prompt: "这场活动结束时，你希望拿到什么具体结果？",
-        provenance: {
-          fallbackReason: null,
-          generationMethod: "orbit-agent-model-adaptive",
-          model: "gemini",
-          provider: "google"
+      signedQuestion: {
+        questionToken: "signed-question-token",
+        question: {
+          acknowledgment: "明白，你更关心日本企业买方。",
+          field: "desiredOutcome",
+          options: ["约到会后电话", "找到试点客户"],
+          prompt: "这场活动结束时，你希望拿到什么具体结果？",
+          provenance: {
+            fallbackReason: null,
+            generationMethod: "orbit-agent-model-adaptive",
+            model: "gemini",
+            provider: "google"
+          }
         }
       }
     }),
@@ -391,7 +434,8 @@ test("eventRegistrationAdaptiveStepToView maps the web interview step", () => {
         acknowledgment: "明白，你更关心日本企业买方。",
         field: "desiredOutcome",
         options: ["约到会后电话", "找到试点客户"],
-        prompt: "这场活动结束时，你希望拿到什么具体结果？"
+        prompt: "这场活动结束时，你希望拿到什么具体结果？",
+        questionToken: "signed-question-token"
       },
       statusText: "继续补充画像"
     }

@@ -95,7 +95,7 @@ function admissionEligibility(
 
   // Admission submission uses its existing signed-response endpoint. The
   // legacy registration route never receives permission to write here.
-  return snapshot(input, "open");
+  return snapshot(input, "open", ["apply"]);
 }
 
 export function resolveEventRegistrationEligibility(

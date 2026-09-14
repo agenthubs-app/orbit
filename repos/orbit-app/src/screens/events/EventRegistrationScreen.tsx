@@ -33,6 +33,8 @@ import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
   buildEventRegistrationAdaptiveBody,
   buildEventRegistrationAnswers,
+  eventAdmissionApplicationMatches,
+  eventAdmissionApplicationResponses,
   eventAdmissionWithdrawalMatches,
   eventRegistrationAdaptiveStepToView,
   eventRegistrationAuthorityKey,
@@ -183,7 +185,7 @@ export function EventRegistrationScreen() {
   }
 
   function beginRegistrationAction(
-    action: "cancel" | "reactivate" | "register" | "update" | "withdraw"
+    action: "apply" | "cancel" | "reactivate" | "register" | "update" | "withdraw"
   ) {
     const current = formView.current;
     const latest = latestView.current;
@@ -251,14 +253,19 @@ export function EventRegistrationScreen() {
             {
               answer: adaptiveAnswer,
               field: adaptiveQuestion.field,
-              prompt: adaptiveQuestion.prompt
+              prompt: adaptiveQuestion.prompt,
+              ...(adaptiveQuestion.questionToken
+                ? { questionToken: adaptiveQuestion.questionToken }
+                : {})
             }
           ]
         : adaptiveTurns;
 
     return {
       body: buildEventRegistrationAdaptiveBody(
-        registrationView?.questions ?? [],
+        registrationView?.allowedActions?.includes("apply")
+          ? []
+          : registrationView?.questions ?? [],
         answers,
         nextTurns
       ),
@@ -342,8 +349,13 @@ export function EventRegistrationScreen() {
       return;
     }
     const action = registrationView.allowedActions?.find((value) =>
-      value === "register" || value === "reactivate" || value === "update"
+      value === "apply" || value === "register" || value === "reactivate" || value === "update"
     ) ?? "register";
+    const admissionResponses = eventAdmissionApplicationResponses(adaptiveTurns);
+    if (action === "apply" && admissionResponses.length < 2) {
+      setSubmitError("请先在活动画像中完成两道必答问题，再提交申请。");
+      return;
+    }
     const controller = beginRegistrationAction(action);
     if (!controller) return;
     const revision = editRevision.current;
@@ -352,27 +364,55 @@ export function EventRegistrationScreen() {
     setSubmitError(null);
     setFeedback(null);
 
-    const result = await client.post<unknown>(eventRegistrationPath(eventId), {
-      signal: controller.signal,
-      body: {
-        answers: buildEventRegistrationAnswers(registrationView.questions, answers),
-        intent: action,
-        ...(registrationView.questionSetHash &&
-        registrationView.questionSetVersion !== null
-          ? {
-              questionSetHash: registrationView.questionSetHash,
-              questionSetVersion: registrationView.questionSetVersion
-            }
-          : {})
-      }
-    });
+    const result = action === "apply"
+      ? await client.post<unknown>(eventAdmissionApplicationPath(eventId), {
+          signal: controller.signal,
+          body: { responses: admissionResponses }
+        })
+      : await client.post<unknown>(eventRegistrationPath(eventId), {
+          signal: controller.signal,
+          body: {
+            answers: buildEventRegistrationAnswers(registrationView.questions, answers),
+            intent: action,
+            ...(registrationView.questionSetHash &&
+            registrationView.questionSetVersion !== null
+              ? {
+                  questionSetHash: registrationView.questionSetHash,
+                  questionSetVersion: registrationView.questionSetVersion
+                }
+              : {})
+          }
+        });
 
     if (!isScopeCurrent() || request.current !== controller) return;
 
-    if (result.success && result.status >= 200 && result.status < 300 &&
-      eventRegistrationReceiptMatches(result.data, eventId, actorId, "rsvped", action)) {
+    const receiptMatches = action === "apply"
+      ? eventAdmissionApplicationMatches(
+          result.success ? result.data : null,
+          eventId,
+          actorId
+        )
+      : eventRegistrationReceiptMatches(
+          result.success ? result.data : null,
+          eventId,
+          actorId,
+          "rsvped",
+          action
+        );
+    if (result.success && result.status >= 200 && result.status < 300 && receiptMatches) {
       if (editRevision.current === revision) dirty.current = false;
-      setFeedback("报名资料已保存。");
+      const applicationStatus = result.success && typeof result.data === "object" && result.data
+        ? (result.data as { status?: unknown }).status
+        : null;
+      setFeedback(
+        action !== "apply"
+          ? "报名资料已保存。"
+          : applicationStatus === "admitted"
+            ? "报名已确认。"
+            : applicationStatus === "waitlisted"
+              ? "申请已进入候补。"
+              : "申请已提交，等待审核。"
+      );
       eventState.refresh();
       registrationState.refresh();
     } else {

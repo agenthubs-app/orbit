@@ -255,6 +255,65 @@ test("pending admission uses the versioned withdrawal endpoint and verifies the 
   assert.equal(await p.getByText("已撤回申请。", { exact: true }).count(), 1);
 });
 
+test("open admission collects two server-signed answers and submits the scoped application", async t => {
+  const p = await open(t, {
+    allowedActions: ["apply"],
+    applicationVersion: null,
+    eligibilityState: "open",
+    registered: false
+  });
+  assert.equal(await p.getByRole("button", { name: "提交审核申请", exact: true }).isEnabled(), true);
+
+  await press(p, "下一题");
+  assert.deepEqual((await writes(p)).at(-1)?.body, { language: "zh", transcript: [] });
+  await reply(p, 200, {
+    done: false,
+    signedQuestion: {
+      question: { acknowledgment: "", field: "targetAttendees", options: [], prompt: "你想认识谁？" },
+      questionToken: "signed-target"
+    }
+  });
+  await fill(p, "日本产业伙伴", 1);
+  await press(p, "下一题");
+  assert.deepEqual((await writes(p)).at(-1)?.body.transcript, [
+    { answer: "日本产业伙伴", field: "targetAttendees", prompt: "你想认识谁？" }
+  ]);
+  await reply(p, 200, {
+    done: false,
+    signedQuestion: {
+      question: { acknowledgment: "收到", field: "valueOffered", options: [], prompt: "你能提供什么？" },
+      questionToken: "signed-value"
+    }
+  });
+  await fill(p, "产品工程经验", 1);
+  await press(p, "下一题");
+  await reply(p, 200, { done: true, signedQuestion: null });
+
+  await press(p, "提交审核申请");
+  assert.deepEqual((await writes(p)).at(-1), {
+    body: {
+      responses: [
+        { answer: "日本产业伙伴", questionToken: "signed-target" },
+        { answer: "产品工程经验", questionToken: "signed-value" }
+      ]
+    },
+    method: "POST",
+    path: "/api/events/event%3A1/admission/application"
+  });
+  await update(p, {
+    allowedActions: ["withdraw"],
+    applicationVersion: 1,
+    eligibilityState: "pending_review"
+  });
+  await reply(p, 200, {
+    actorId: "actor-1",
+    applicationVersion: 1,
+    eventId: "event:1",
+    status: "pending_review"
+  });
+  assert.equal(await p.getByText("申请已提交，等待审核。", { exact: true }).count(), 1);
+});
+
 for (const kind of ["error", "empty", "wrong-event", "wrong-actor", "wrong-status", "http-error"]) test(`registration ${kind} receipt cannot claim persistence or discard input`, async t => {
   const p = await open(t); await fill(p, "Keep answer"); await press(p, "更新报名资料");
   if (kind === "error") await reply(p, 409);

@@ -26,6 +26,7 @@ export interface EventRegistrationView {
 }
 
 export const EVENT_REGISTRATION_ACTION_VIEWS = [
+  "apply",
   "register",
   "update",
   "cancel",
@@ -121,6 +122,7 @@ export interface EventRegistrationInterviewTurn {
   answer: string;
   field: string;
   prompt: string;
+  questionToken?: string;
 }
 
 export interface EventRegistrationAdaptiveBody {
@@ -133,6 +135,35 @@ export interface EventRegistrationAdaptiveQuestionView {
   field: string;
   options: string[];
   prompt: string;
+  questionToken?: string;
+}
+
+export function eventAdmissionApplicationResponses(
+  turns: readonly EventRegistrationInterviewTurn[]
+): Array<{ answer: string; questionToken: string }> {
+  return turns.flatMap((turn) => {
+    const answer = turn.answer.trim();
+    const questionToken = turn.questionToken?.trim() ?? "";
+    return answer && questionToken ? [{ answer, questionToken }] : [];
+  });
+}
+
+export function eventAdmissionApplicationMatches(
+  data: unknown,
+  eventId: string,
+  actorId: string
+): boolean {
+  if (!isRecord(data)) return false;
+  return Boolean(
+    data.actorId === actorId &&
+    data.eventId === eventId &&
+    typeof data.applicationVersion === "number" &&
+    Number.isSafeInteger(data.applicationVersion) &&
+    data.applicationVersion > 0 &&
+    ["admitted", "pending_review", "waitlisted"].includes(
+      stringField(data, "status")
+    )
+  );
 }
 
 export interface EventRegistrationAdaptiveStepView {
@@ -338,6 +369,7 @@ function eligibilityCopy(input: {
     };
   }
   if (input.state === "registration_cancelled") return { cancelLabel: "", confirmLabel: "重新报名", detail: "报名已取消；开放期间可以重新报名。", label: "已取消" };
+  if (input.actions.includes("apply")) return { cancelLabel: "", confirmLabel: "提交审核申请", detail: "先完成两道服务端签名问答，再提交活动申请。", label: "尚未申请" };
   return { cancelLabel: "", confirmLabel: "确认报名", detail: "确认后只保存这场活动的参与资料。", label: "尚未报名" };
 }
 
@@ -391,7 +423,7 @@ export function eventRegistrationToView(data: unknown): EventRegistrationView {
           allowedActions: eligibility.allowedActions,
           applicationVersion: eligibility.applicationVersion,
           canSubmit: eligibility.allowedActions.some((action) =>
-            ["register", "reactivate", "update"].includes(action)
+            ["apply", "register", "reactivate", "update"].includes(action)
           ),
           cancelLabel: copy!.cancelLabel,
           eligibilityEvaluatedAt: eligibility.evaluatedAt,
@@ -460,7 +492,17 @@ export function eventRegistrationAdaptiveStepToView(
   const payload = envelopeData(data);
   const record = isRecord(payload) ? payload : {};
   const done = record.done === true;
-  const question = isRecord(record.question) ? record.question : null;
+  const signedQuestion = isRecord(record.signedQuestion)
+    ? record.signedQuestion
+    : null;
+  const question = signedQuestion && isRecord(signedQuestion.question)
+    ? signedQuestion.question
+    : isRecord(record.question)
+      ? record.question
+      : null;
+  const questionToken = signedQuestion
+    ? stringField(signedQuestion, "questionToken")
+    : "";
 
   return {
     done,
@@ -469,7 +511,8 @@ export function eventRegistrationAdaptiveStepToView(
           acknowledgment: userFacingText(stringField(question, "acknowledgment")),
           field: stringField(question, "field"),
           options: userFacingList(question.options, 4),
-          prompt: userFacingText(stringField(question, "prompt"))
+          prompt: userFacingText(stringField(question, "prompt")),
+          ...(questionToken ? { questionToken } : {})
         }
       : null,
     statusText: done ? "画像信息够了" : "继续补充画像"

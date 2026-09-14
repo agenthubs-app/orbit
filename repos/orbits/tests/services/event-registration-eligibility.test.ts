@@ -148,6 +148,12 @@ test("admission eligibility covers not-open, full, pending, waitlisted, and admi
     },
     {
       activeRegistrationCount: 0,
+      application: null,
+      at: evaluatedAt,
+      expected: ["open", ["apply"]],
+    },
+    {
+      activeRegistrationCount: 0,
       application: application("pending_review"),
       at: evaluatedAt,
       expected: ["pending_review", ["withdraw"]],

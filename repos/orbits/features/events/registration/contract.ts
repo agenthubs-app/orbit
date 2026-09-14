@@ -96,6 +96,7 @@ export interface EventRegistration {
 }
 
 export const EVENT_REGISTRATION_ACTIONS = [
+  "apply",
   "register",
   "update",
   "cancel",
