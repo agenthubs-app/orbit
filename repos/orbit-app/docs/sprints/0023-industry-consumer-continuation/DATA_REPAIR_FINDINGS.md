@@ -52,6 +52,10 @@ App 的 `tests/profile-view-model.test.ts` 与 `tests/profile-manual-edit-view-m
 
 ### App 自然搜索
 
+已实现并提交 `e181bbdc3`：仅一级、仅二级、父子组合及旧领域混合请求均保留条件；结果保留规范 ID／null／省略语义并显示规范标签。现有人脉筛选区支持父子单选、切父清子、清空、区分同父不同子的历史与回放；失败保留条件，换号取消旧请求和回调。模型7个预期RED后完整12/12，实际界面4个预期RED后4/4；同版本App全量2593 pass／0 fail／0 skip，两端typecheck exit0。日志为 `build/harness-logs/sprint-0023-app-search-{model-red,model-green,ui-red,ui-green,full}.log`。这是本地HTTP边界交互证据，不代替同记录跨端或原生验收；历史I几何失败保留。
+
+以下保留修复前的复现与范围依据：
+
 无网络调用实际复现：`buildRelationshipSearchRequest` 只收到两级行业数组时返回输入为空；同时传 query 时只留下 query。`relationshipSearchToView` 的结果不含两个行业 ID。请求构造器影响 LOW／1个直接调用者 `ContactsScreen.runRelationshipSearch`，共7个受影响符号、0条已识别流程；结果 mapper 图谱为LOW／0直接，源码另确认 `relationshipSearchToView` 的 `.map` 消费。
 
 - 需增加生产文件白名单：App `src/view-models/relationship-search.ts`。只接现有两级数组请求、可选结果ID和规范标签；沿用同层OR／两层AND及旧五领域兼容，不另建目录。
