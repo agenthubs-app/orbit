@@ -390,6 +390,7 @@ export const ja = {
   "home.scanCard": "名刺をスキャン",
   "home.viewSchedule": "予定を見る",
   "home.newTask": "タスクを作成",
+  "home.newNote": "メモを書く",
   "home.completeUnconfirmed": "タスクの完了を確認できませんでした。再読み込みしてからお試しください。",
   "home.readingNamed": "{name}を読み込み中",
   "home.retryNamed": "{name}を再試行",

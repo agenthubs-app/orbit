@@ -117,6 +117,12 @@ export type {
 } from "./tasks";
 
 export type {
+  NoteContract,
+  NoteDetailContract,
+  NotesCollectionContract
+} from "./notes";
+
+export type {
   DevicePushTokenContract,
   NotificationPermission,
   ReminderChannel,

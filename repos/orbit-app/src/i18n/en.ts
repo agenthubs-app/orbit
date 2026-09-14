@@ -390,6 +390,7 @@ export const en = {
   "home.scanCard": "Scan card",
   "home.viewSchedule": "View schedule",
   "home.newTask": "New task",
+  "home.newNote": "New note",
   "home.completeUnconfirmed": "The task completion was not confirmed. Read it again and retry.",
   "home.readingNamed": "Reading {name}",
   "home.retryNamed": "Retry {name}",

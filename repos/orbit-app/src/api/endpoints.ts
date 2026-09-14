@@ -55,6 +55,7 @@ export const ORBIT_API_ENDPOINTS = {
   eventCenter: "/api/events/center",
   eventValueRecommendations: "/api/recommendations/events",
   messageDrafts: "/api/message-drafts",
+  notes: "/api/notes",
   mobileContactsDashboard: "/api/mobile/contacts-dashboard",
   devicePushToken: "/api/devices/push-token",
   notificationPreferences: "/api/notification-preferences",
@@ -117,6 +118,20 @@ export function tasksPath(status?: "open" | "completed" | "cancelled"): string {
 
 export function taskPath(id: string): string {
   return detailPath(ORBIT_API_ENDPOINTS.tasks, id);
+}
+
+export function notesPath(contactId?: string): string {
+  return contactId?.trim()
+    ? `${ORBIT_API_ENDPOINTS.notes}?${new URLSearchParams({ contactId: contactId.trim() }).toString()}`
+    : ORBIT_API_ENDPOINTS.notes;
+}
+
+export function notePath(id: string): string {
+  return detailPath(ORBIT_API_ENDPOINTS.notes, id);
+}
+
+export function noteContactPath(noteId: string, contactId: string): string {
+  return `${notePath(noteId)}/contacts/${encodeURIComponent(contactId)}`;
 }
 
 export function taskActivitiesPath(id: string): string {

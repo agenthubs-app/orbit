@@ -112,19 +112,20 @@ test("detail primary actions keep the real contact and do not send messages or c
   assert.equal(navigation[0].pathname, "/ai/[id]"); assert.equal(navigation[0].params.id, "new"); assert.match(navigation[0].params.prefillIntent, /^ai-prefill-/);
   assert.doesNotMatch(JSON.stringify(navigation[0]), /contact:\/1|林悦|云间工作室/);
   assert.equal(navigation[1], "/schedule"); assert.deepEqual(await writes(p), []);
-  await press(p, "写备注"); const field = p.getByRole("textbox", { name: "添加联系人备注", exact: true });
-  await field.fill("本次只记给自己看。"); await press(p, "保存备注");
-  assert.match(await p.locator("body").innerText(), /尚未确认保存成功/); assert.equal(await field.inputValue(), "本次只记给自己看。");
-  assert.deepEqual(await writes(p), [{ method: "PATCH", path: "/api/contacts/contact%3A%2F1", body: { note: { authorLabel: "我", body: "本次只记给自己看。" } } }]);
+  await press(p, "写备注");
+  await press(p, "查看关联笔记"); await press(p, "为此人新建笔记");
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation.slice(2)), ["/notes?contactId=contact%3A%2F1", "/notes/new?contactId=contact%3A%2F1"]);
+  assert.deepEqual(await writes(p), []);
 });
 
-test("detail previews existing private notes and opens the complete editable section without writing", async t => {
+test("detail previews existing private notes and opens the complete read-only section without writing", async t => {
   const p = await open(t);
   assert.equal(await p.getByText("9月10日 · 合作方向讨论\n确认产品试点范围。", { exact: true }).count(), 1);
   assert.equal(await p.getByRole("textbox", { name: "添加联系人备注" }).count(), 0);
-  await press(p, "联系人备注");
+  await press(p, "历史联系人备注");
   assert.equal(await p.getByText("9月10日 · 合作方向讨论\n确认产品试点范围。", { exact: true }).count(), 1);
-  assert.equal(await p.getByRole("textbox", { name: "添加联系人备注" }).count(), 1);
+  assert.equal(await p.getByRole("textbox", { name: "添加联系人备注" }).count(), 0);
+  assert.match(await p.locator("body").innerText(), /历史内容不会迁移或删除/);
   assert.deepEqual(await writes(p), []);
 });
 
@@ -266,19 +267,6 @@ test("editor retains pending drafts across refresh and rejects every unconfirmed
   }
 });
 
-test("opening and cancelling the editor or refreshing preserves a private-note draft", async t => {
-  const p = await open(t); await press(p, "写备注"); const field = p.getByRole("textbox", { name: "添加联系人备注", exact: true }); await field.fill("本轮没有提交的私有备注");
-  await press(p, "编辑资料"); await press(p, "取消编辑"); assert.equal(await field.inputValue(), "本轮没有提交的私有备注");
-  await p.evaluate(() => (window as any).fixture.refresh()); await settle(p); assert.equal(await field.inputValue(), "本轮没有提交的私有备注"); assert.deepEqual(await writes(p), []);
-});
-
-test("malformed refresh cannot discard a private-note draft from the last valid detail", async t => {
-  const p = await open(t); await press(p, "写备注"); const field = p.getByRole("textbox", { name: "添加联系人备注", exact: true }); await field.fill("刷新异常也不能丢的私有草稿");
-  await update(p, { invalid: true }); await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
-  assert.equal(await field.inputValue(), "刷新异常也不能丢的私有草稿"); assert.equal(await p.getByRole("button", { name: "重新读取人脉详情", exact: true }).count(), 1);
-  assert.deepEqual(await writes(p), []);
-});
-
 test("save includes a typed new tag even when Add was not pressed and retains it on failure", async t => {
   const p = await open(t); await press(p, "编辑资料"); const field = p.getByRole("textbox", { name: "添加标签", exact: true }); await field.fill("尚未点添加的新标签"); await press(p, "保存人脉");
   assert.deepEqual(await writes(p), [{ method: "PATCH", path: "/api/contacts/contact%3A%2F1", body: { tags: ["设计合作", "用户研究", "尚未点添加的新标签"] } }]);
@@ -286,11 +274,10 @@ test("save includes a typed new tag even when Add was not pressed and retains it
 });
 
 for (const patch of [{ actor: "actor-2" }, { cookieHeader: "fixture-cookie-2" }, { baseUrl: "https://second.example" }, { contactId: "contact:/2" }, { focused: false }, { mounted: false }]) {
-  for (const action of ["editor", "notes"]) test(action + " cancels pending writes and rejects stale callbacks/401 after scope change " + JSON.stringify(patch), async t => {
+  test("editor cancels pending writes and rejects stale callbacks/401 after scope change " + JSON.stringify(patch), async t => {
     const p = await open(t, { holdWrites: true });
-    if (action === "editor") { await press(p, "编辑资料"); await press(p, "跟进状态：长期维护"); }
-    else { await press(p, "写备注"); await p.getByRole("textbox", { name: "添加联系人备注", exact: true }).fill("旧账号备注"); }
-    const name = action === "editor" ? "保存人脉" : "保存备注";
+    await press(p, "编辑资料"); await press(p, "跟进状态：长期维护");
+    const name = "保存人脉";
     await p.evaluate(name => { const s = (window as any).fixture; s.oldSave = s.presses[name]; s.oldSave(); }, name); await settle(p);
     assert.equal((await writes(p)).length, 1); await update(p, patch);
     await p.evaluate(() => { const s = (window as any).fixture; s.oldSave(); const i = s.requests.findIndex((r: any) => r.method === "PATCH"); s.reply(i, 401); }); await settle(p);
@@ -300,12 +287,6 @@ for (const patch of [{ actor: "actor-2" }, { cookieHeader: "fixture-cookie-2" },
     assert.equal(await p.getByText("资料已保存。", { exact: true }).count(), 0);
   });
 }
-
-for (const failure of ["pending", "non2xx-success"]) test("notes retain drafts for " + failure + " even with matching returned note", async t => {
-  const p = await open(t, { holdWrites: true }); await press(p, "写备注"); const field = p.getByRole("textbox", { name: "添加联系人备注", exact: true }); await field.fill("不能假报已保存"); await press(p, "保存备注");
-  await p.evaluate(failure => { const s = (window as any).fixture; const i = s.requests.findIndex((r: any) => r.method === "PATCH"); const data = s.data(s.requests[i].path); data.contact.notes.push({ ...s.contact.notes[0], noteId: "saved", body: "不能假报已保存" }); if (failure === "pending") data.state = "pending"; s.reply(i, failure === "pending" ? 200 : 503, data); }, failure); await settle(p);
-  assert.equal(await field.inputValue(), "不能假报已保存"); assert.match(await p.locator("body").innerText(), /尚未确认保存成功/);
-});
 
 test("retained navigation callbacks cannot leave an inactive detail route", async t => {
   const p = await open(t); await p.evaluate(() => { const s = (window as any).fixture; s.oldActions = [s.presses["起草消息"], s.presses["查看日程"], s.presses["返回人脉"]]; });

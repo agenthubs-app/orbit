@@ -390,6 +390,7 @@ export const zh = {
   "home.scanCard": "扫名片",
   "home.viewSchedule": "查看日程",
   "home.newTask": "新建待办",
+  "home.newNote": "记笔记",
   "home.completeUnconfirmed": "未能确认待办已完成，请重新读取后再试。",
   "home.readingNamed": "正在读取{name}",
   "home.retryNamed": "重试{name}",

@@ -393,6 +393,7 @@ export const messageKeys = [
   "home.scanCard",
   "home.viewSchedule",
   "home.newTask",
+  "home.newNote",
   "home.completeUnconfirmed",
   "home.readingNamed",
   "home.retryNamed",
