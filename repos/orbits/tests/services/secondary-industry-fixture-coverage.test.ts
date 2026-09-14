@@ -7,6 +7,7 @@ import { mockContactDetail, mockUpdatedContactDetail } from "../../features/cont
 import { mockRelationshipNaturalSearchResults, mockPilotOperatorSearchFixture, mockFintechReferralSearchFixture } from "../../features/search/fixtures";
 import { validateIndustrySelection } from "../../shared/domain/industries";
 import type { IndustrySelectionContract } from "../../shared/contract/industries";
+import { industryFixturePeople, readIndustryFixtureProjections } from "../support/industry-fixture-inventory";
 
 // This is the first covered source family, not a claim that generated data,
 // inline test fixtures, or persisted test databases have all been repaired.
@@ -53,4 +54,31 @@ test("list, detail, and search fixtures keep one industry per person and preserv
   assert.equal(mockFintechReferralSearchFixture.results[0].industry, "fintech");
   assert.equal(mockPilotOperatorSearchFixture.results[0].industry, "climate");
   assert.equal(mockContactDetail.publicProfile.industry, "climate infrastructure");
+});
+
+test("executable inventory enumerates real constructor outputs and links detail aliases to the same person", async () => {
+  const projections = await readIndustryFixtureProjections();
+  assert.equal(projections.length, 22);
+  assert.deepEqual([...new Set(projections.map(row => row.personId))].sort(), [
+    "contact:hana-sato", "contact:kenji-watanabe", "contact:mina-tan", "contact:omar-rahman", "profile_ari_lane",
+  ]);
+  assert.equal(new Set(projections.map(row => `${row.source}:${row.constructor}:${row.recordId}`)).size, 22);
+  const detail = projections.filter(row => row.recordId === "demo-contact-1");
+  assert.equal(detail.length, 2);
+  assert.ok(detail.every(row => row.personId === "contact:kenji-watanabe"));
+  const byPerson = new Map<string, IndustrySelectionContract>();
+  for (const row of projections) {
+    assert.ok(Object.hasOwn(industryFixturePeople, row.personId), `Unregistered person ${row.personId}`);
+    const expected = industryFixturePeople[row.personId as keyof typeof industryFixturePeople];
+    assert.deepEqual(row.selection, { primaryIndustryId: expected.primaryIndustryId, secondaryIndustryId: expected.secondaryIndustryId });
+    assert.ok(expected.basis);
+    assert.ok(row.accountBasis, `Missing ownership evidence for ${row.recordId}`);
+    assert.equal(row.accountId, null); // These capability fixtures are not an authenticated account dataset.
+    assert.ok(row.selection.primaryIndustryId);
+    assert.ok(row.selection.secondaryIndustryId);
+    assert.equal(validateIndustrySelection(row.selection).valid, true);
+    const previous = byPerson.get(row.personId);
+    if (previous) assert.deepEqual(row.selection, previous, row.personId);
+    byPerson.set(row.personId, row.selection);
+  }
 });
