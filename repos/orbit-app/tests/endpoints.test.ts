@@ -61,6 +61,8 @@ import {
   profileBusinessCardExtractionPath,
   profileResumeExtractionPath,
   profileUpdateSuggestionAcceptPath,
+  relationshipCommunicationInvitationAcceptPath,
+  relationshipCommunicationInvitationPath,
   relationshipValueAnalysisPath,
   relationshipValueRecomputePath,
   relationshipSignalConfirmPath,
@@ -672,6 +674,17 @@ test("Orbit API endpoints expose relationship chat conversation routes", () => {
   assert.equal(
     chatConversationExtractionsPath("conversation 001"),
     "/api/chat/conversations/conversation%20001/extractions"
+  );
+});
+
+test("Orbit API endpoints expose relationship invitation preview and explicit acceptance", () => {
+  assert.equal(
+    relationshipCommunicationInvitationPath("invite token/1"),
+    "/api/relationship-communication/invitations/invite%20token%2F1"
+  );
+  assert.equal(
+    relationshipCommunicationInvitationAcceptPath("invite token/1"),
+    "/api/relationship-communication/invitations/invite%20token%2F1/accept"
   );
 });
 

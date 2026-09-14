@@ -9,31 +9,28 @@ const screenSource = readFileSync(
   "utf8"
 );
 
-test("relationship chat detail loads extraction signals and can request a summary", () => {
+test("relationship chat detail keeps extraction signals and removes summary generation", () => {
   assert.match(screenSource, /chatConversationExtractionsPath/u);
-  assert.match(screenSource, /chatConversationSummaryPath/u);
   assert.match(screenSource, /relationshipChatExtractionToView/u);
-  assert.match(screenSource, /relationshipChatSummaryToView/u);
   assert.match(
     screenSource,
-    /useApiResource<unknown>\(\s*chatConversationExtractionsPath\(conversationId \|\| "missing"\)/u
+    /useApiResource<unknown>\(\s*chatConversationExtractionsPath\(conversationId\)/u
   );
-  // Request shape, explicit generation and response rendering are exercised
-  // by relationship-chat-draft-interactions.test.ts, not source formatting.
-  assert.match(screenSource, /label="生成摘要"/u);
+  assert.doesNotMatch(screenSource, /chatConversationSummaryPath/u);
+  assert.doesNotMatch(screenSource, /relationshipChatSummaryToView/u);
+  assert.doesNotMatch(screenSource, /生成摘要/u);
   assert.match(screenSource, /title="提取结果"/u);
 });
 
-test("relationship chat detail can save a review-only reply draft", () => {
+test("relationship chat detail sends only through a verified delivery receipt", () => {
   assert.match(screenSource, /TextInput/u);
-  assert.match(screenSource, /buildRelationshipChatMessageRequest/u);
-  assert.match(screenSource, /relationshipChatMessageSendToView/u);
+  assert.match(screenSource, /buildRelationshipMessageDeliveryRequest/u);
+  assert.match(screenSource, /relationshipDeliveryReceiptMatches/u);
+  assert.match(screenSource, /relationshipCommunicationConversationPath/u);
   assert.match(screenSource, /draftBody/u);
-  assert.match(screenSource, /sendMessageDraft/u);
-  // Saving, receipt validation and the no-external-send boundary now have
-  // real route/HTTP interaction coverage in the companion suite.
-  assert.match(screenSource, /title="回复草稿"/u);
-  assert.match(screenSource, /保存草稿/u);
-  assert.match(screenSource, /本地草稿/u);
-  assert.doesNotMatch(screenSource, /发送成功|已发送/u);
+  assert.match(screenSource, /sendVerifiedMessage/u);
+  assert.match(screenSource, /title="发送消息"/u);
+  assert.match(screenSource, /发送消息/u);
+  assert.match(screenSource, /已送达/u);
+  assert.doesNotMatch(screenSource, /保存草稿/u);
 });

@@ -7,6 +7,16 @@
 **进入条件:** 0002 的环境就绪；B4 发布已验证绑定、候选／冲突、资格及撤销、有效邀请链接、双用户认证投递和回执契约；两名测试用户与邀请／绑定／站内发信对象获准。
 **契约前置:** B4 的方法／路径、身份字段、资格时效、幂等与发送失败语义须补入本 Planner 并审阅；现有预览 API 不能被本计划改名为投递协议。
 
+## B4 已批准技术契约（2026-09-14）
+
+用户已明确启动 E 线并授予完成本线所需权限；本节冻结本次 run-01 使用的 B4 契约。现有 `/api/contact-invitations` 和 `/api/chat/conversations` 保留草稿／预览语义，真实身份与投递使用独立 `/api/relationship-communication/**` 路径。
+
+- `GET /api/relationship-communication/eligibility?contactId=...` 返回服务端状态 `unregistered | pending | conflict | confirmed | revoked | expired | forbidden`、允许动作、`qualificationVersion`、`expiresAt`、绑定账号的公开显示名及可用 `conversationId`。客户端输入的姓名、照片或账号 ID 不参与资格判定。
+- `POST /api/relationship-communication/invitations` 仅由联系人所有者创建七天有效邀请。服务端生成不可预测 token，只在响应链接中返回明文，持久层保存 token 哈希；创建不发送邮件、短信或站内消息。`POST /api/relationship-communication/invitations/:token/accept` 要求已登录、非邀请方、会话邮箱与邀请邮箱匹配并显式 `confirmed: true`；幂等接受生成唯一绑定及会话。`DELETE` 撤销邀请或绑定并推进资格版本。
+- `GET /api/relationship-communication/conversations` 与 `GET /api/relationship-communication/conversations/:id` 仅向参与账号返回共享会话／消息。`POST .../:id/messages` 必须携带 `Idempotency-Key` 和当前 `qualificationVersion`，发送时重新校验未撤销绑定；消息 ID 由会话、发送者和 requestId 稳定派生。服务端完成持久化并回读匹配账号、会话、消息后才返回 `delivered` 回执，失败不产生成功回执。
+- `POST /api/relationship-communication/conversations/:id/read` 由 0012 使用，按当前账号保存最后已读消息和服务端时间；本 Sprint 只发布接口形状，不在 0008 声明已读／推送验收完成。
+- 存储继续使用现有 `orbit_records`，新增独立 collection，不做数据库迁移。邀请、绑定、会话、消息和已读记录均带 workspace 及参与账号边界；消息是一条双方共享记录，避免双写分叉。共享响应类型放入 `shared/contract/relationship-communication.ts` 并通过既有 `sync:contract` 同步到 App。
+
 **2026-09-14 产品决定：** 用户明确取消 App 聊天详情的“生成摘要”功能，不转接摘要模板；见 [0006 入口清单](../0006-contact-mentions/PLANNER.md#已确认的入口决定2026-09-14)第 4 项。启动前须把取消该功能的实现范围与行为验证补入本 Planner 并审阅；不得恢复该功能，也不把本决定扩大为删除历史摘要或移除其他端仍在使用的 API。此次仅记录已批准要求，原运行状态、SC 和验证结果不变。
 
 ## 范围与文件
@@ -15,7 +25,9 @@
 - 读取：`src/api/endpoints.ts`、`src/api/AuthSessionProvider.tsx`、`src/screens/inbox/RelationshipInboxScreen.tsx`，确定现有身份及草稿入口；不改通用认证生命周期。
 - 修改白名单：`src/screens/contacts/ContactDetailScreen.tsx`、`src/screens/contacts/ContactIntrosScreen.tsx`、`src/screens/chat/RelationshipChatScreen.tsx`、`src/screens/chat/RelationshipChatDetailScreen.tsx`、`src/view-models/relationship-chat.ts`。
 - 条件性新建：`src/api/contact-communication.ts`、`src/view-models/contact-communication.ts`，仅承载审阅后 B4 的消费与显示；不得在此实现绑定或授权业务规则。
-- 测试白名单：下列现有测试；拟新增 `tests/contact-communication-eligibility.test.tsx`、`tests/relationship-chat-delivery-interactions.test.tsx`，当前尚不存在。
+- 已批准必要 Web/API 范围：`repos/orbits/shared/contract/relationship-communication.ts`、`repos/orbits/features/relationship-communication/**`、`repos/orbits/app/api/relationship-communication/**` 及对应 `repos/orbits/tests/**`；仅实现本节契约，不改变旧邀请／草稿 API。
+- 已批准必要 App 接线：`src/api/endpoints.ts` 与由同步命令生成的 `src/api/contract/relationship-communication.ts`；新增路径只服务本 Sprint 的资格、邀请、真实会话和投递。
+- 测试白名单：下列现有测试；新增 `tests/contact-communication-eligibility.test.tsx`、`tests/relationship-chat-delivery-interactions.test.ts`、`tests/relationship-invitation-screen-source.test.ts` 及 Web/API 对应 route、service、page、live-store 测试。
 - 文档产出仅本 Sprint `REPORT.md`；原始证据在 `build/harness-state/evidence/sprint-0008/run-01/`，先确认被忽略。
 - 排除：联系人自动匹配、外部邮件／短信投递、陌生人发信、收件箱消息已读与推送（0012）、修改后端或手改生成副本。
 
@@ -43,11 +55,11 @@
 - 以下命令 cwd 均为 `/Users/xzhao/Projects/orbit/repos/orbit-app`，本轮仅声明、不执行。
 
 ```sh
-node --test --import tsx --import ./tests/helpers/register-render-hooks.mjs tests/relationship-chat-view-model.test.ts tests/relationship-chat-draft-interactions.test.ts tests/relationship-chat-screen-source.test.ts tests/relationship-chat-detail-screen-source.test.ts
+node --test --import tsx --import ./tests/helpers/register-render-hooks.mjs tests/relationship-chat-view-model.test.ts tests/relationship-chat-delivery-interactions.test.ts tests/relationship-chat-screen-source.test.ts tests/relationship-chat-detail-screen-source.test.ts
 node --test --import tsx --import ./tests/helpers/register-render-hooks.mjs tests/ink-signal-contact-detail.test.ts tests/contact-intros-screen-source.test.ts tests/relationship-inbox-interactions.test.ts tests/relationship-inbox-lifecycle.test.ts
 ```
 
-- 新文件创建后：`node --test --import tsx --import ./tests/helpers/register-render-hooks.mjs tests/contact-communication-eligibility.test.tsx tests/relationship-chat-delivery-interactions.test.tsx`，分别承担 SC-01～02、SC-03～04。
+- 新文件创建后：`node --test --import tsx --import ./tests/helpers/register-render-hooks.mjs tests/contact-communication-eligibility.test.tsx tests/relationship-chat-delivery-interactions.test.ts tests/relationship-invitation-screen-source.test.ts`，分别承担 SC-01～04 及原生邀请路由边界。
 - H 最终集：`npm run typecheck`、`npm test`、`git diff --check`；B4 已批准共享副本改变才加 `node --test --import tsx --import ./tests/helpers/register-render-hooks.mjs tests/contract-sync.test.ts tests/api-schema-sync.test.ts tests/domain-sync.test.ts`。 同版本全量已包含这些同步用例时直接引用结果，不再单独重跑。
 - 现有 `/api/chat/conversations` 及 `/:id/messages` 是草稿边界；`canSendInMock`／`mock_recorded_locally` 不证明真实收件人或投递。新路径须由 B4 供给，不能猜测。
 - 原生／跨端：SC-02 分享面板可只预览；实际分享、接受邀请、注册／绑定、收发及撤销只用已批准双方；非空正文／重开不可用空列表替代。

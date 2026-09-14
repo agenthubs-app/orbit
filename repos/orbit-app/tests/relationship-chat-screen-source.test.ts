@@ -29,3 +29,12 @@ test("relationship chat screen opens with an Orbit AI relationship entry", () =>
   assert.match(screenSource, /styles\.agentEntry/u);
   assert.match(screenSource, /styles\.agentPrompt/u);
 });
+
+test("relationship chat screen reads the verified shared conversation list for the signed-in account", () => {
+  assert.match(screenSource, /relationshipCommunicationConversationsPath/u);
+  assert.match(screenSource, /relationshipCommunicationListToView/u);
+  assert.match(screenSource, /useOrbitAuthSession/u);
+  assert.match(screenSource, /auth\.user\?\.id/u);
+  assert.doesNotMatch(screenSource, /ORBIT_API_ENDPOINTS\.chatConversations/u);
+  assert.match(screenSource, /Orbit 站内消息/u);
+});

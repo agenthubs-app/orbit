@@ -9,20 +9,17 @@ const screenSource = readFileSync(
   "utf8"
 );
 
-test("contact intros can prepare and confirm staged Orbit invitations", () => {
+test("contact intros creates an explicit shareable server invitation", () => {
   assert.match(screenSource, /useOrbitApiClient/u);
-  assert.match(screenSource, /ORBIT_API_ENDPOINTS\.contactInvitations/u);
-  assert.match(screenSource, /buildContactInvitationPrepareRequest/u);
-  assert.match(screenSource, /buildContactInvitationConfirmRequest/u);
-  assert.match(screenSource, /contactInvitationToView/u);
+  assert.match(screenSource, /buildRelationshipInvitationRequest/u);
+  assert.match(screenSource, /relationshipCommunicationInvitationsPath/u);
   assert.match(screenSource, /client\.post<unknown>/u);
-  assert.match(screenSource, /client\.patch<unknown>/u);
+  assert.match(screenSource, /Share\.share/u);
   assert.match(screenSource, /TextInput/u);
-  assert.match(screenSource, /"生成邀请草稿"/u);
-  assert.match(screenSource, /"确认邀请"/u);
+  assert.match(screenSource, /"创建邀请链接"/u);
+  assert.match(screenSource, /"系统分享"/u);
   assert.match(screenSource, /InvitationDraftCard/u);
-  assert.match(screenSource, /invitationSubject/u);
-  assert.match(screenSource, /invitationBody/u);
+  assert.match(screenSource, /invitationUrl/u);
   assert.doesNotMatch(screenSource, /邀请已发送|邮件已发送|messageSent=true/u);
 });
 
@@ -31,11 +28,9 @@ test("contact intros keeps prepared invitations visible as local intro records",
   assert.match(screenSource, /setPreparedInvitations/u);
   assert.match(screenSource, /PreparedInvitationRecordsCard/u);
   assert.match(screenSource, /"本次引荐记录"/u);
-  assert.match(screenSource, /draftCount/u);
-  assert.match(screenSource, /readyCount/u);
-  assert.match(screenSource, /草稿/u);
-  assert.match(screenSource, /待投递/u);
+  assert.match(screenSource, /pendingCount/u);
+  assert.match(screenSource, /等待接受/u);
   assert.match(screenSource, /没有外发/u);
-  assert.match(screenSource, /确认后再进入发送前复核/u);
+  assert.match(screenSource, /打开链接后由对方确认/u);
   assert.doesNotMatch(screenSource, /后端列表 API|补齐后再同步历史记录/u);
 });

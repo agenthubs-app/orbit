@@ -4,12 +4,15 @@ import { useState } from "react";
 import {
   Pressable,
   RefreshControl,
+  Share,
   StyleSheet,
   Text,
   TextInput,
   View
 } from "react-native";
-import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
+import type { RelationshipInvitationDTO } from "../../api/contract/relationship-communication";
+import { buildRelationshipInvitationRequest } from "../../api/contact-communication";
+import { ORBIT_API_ENDPOINTS, relationshipCommunicationInvitationsPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
@@ -21,18 +24,14 @@ import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
-  buildContactInvitationConfirmRequest,
-  buildContactInvitationPrepareRequest,
-  contactInvitationToView,
   contactsPipelineToView,
-  type ContactInvitationView,
   type ContactIntroCandidateView,
   type ContactPipelineMetricView
 } from "../../view-models/contact-pipeline";
 
 interface PreparedInvitationRecord {
   candidate: ContactIntroCandidateView;
-  invitation: ContactInvitationView;
+  invitation: RelationshipInvitationDTO;
 }
 
 export function ContactIntrosScreen() {
@@ -123,15 +122,13 @@ function IntrosContent({
   const [activeCandidate, setActiveCandidate] =
     useState<ContactIntroCandidateView | null>(null);
   const [recipientEmail, setRecipientEmail] = useState("");
-  const [invitation, setInvitation] = useState<ContactInvitationView | null>(null);
-  const [invitationSubject, setInvitationSubject] = useState("");
-  const [invitationBody, setInvitationBody] = useState("");
+  const [invitation, setInvitation] = useState<RelationshipInvitationDTO | null>(null);
   const [invitationError, setInvitationError] = useState("");
   const [preparedInvitations, setPreparedInvitations] = useState<
     PreparedInvitationRecord[]
   >([]);
   const [invitationStatus, setInvitationStatus] = useState<
-    "idle" | "preparing" | "confirming"
+    "idle" | "preparing" | "sharing"
   >("idle");
   const totalMetric = view.metrics.find((metric) => metric.label === "联系人") ?? {
     label: "联系人",
@@ -146,8 +143,6 @@ function IntrosContent({
     setActiveCandidate(candidate);
     setRecipientEmail("");
     setInvitation(null);
-    setInvitationSubject("");
-    setInvitationBody("");
     setInvitationError("");
     setInvitationStatus("idle");
   }
@@ -158,7 +153,7 @@ function IntrosContent({
       return;
     }
 
-    const request = buildContactInvitationPrepareRequest({
+    const request = buildRelationshipInvitationRequest({
       contactId: activeCandidate.contactId,
       recipientEmail,
       recipientName: activeCandidate.name
@@ -169,7 +164,7 @@ function IntrosContent({
       return;
     }
 
-    if (request.request.endpoint !== ORBIT_API_ENDPOINTS.contactInvitations) {
+    if (request.request.endpoint !== relationshipCommunicationInvitationsPath()) {
       setInvitationError("邀请接口暂时不可用。");
       return;
     }
@@ -188,10 +183,16 @@ function IntrosContent({
       return;
     }
 
-    const nextInvitation = contactInvitationToView(result.data);
+    const nextInvitation = result.data as RelationshipInvitationDTO;
+    if (
+      nextInvitation.status !== "pending" ||
+      !nextInvitation.invitationUrl?.trim() ||
+      nextInvitation.externalSendRequested !== false
+    ) {
+      setInvitationError("尚未确认有效邀请链接，请重试。");
+      return;
+    }
     setInvitation(nextInvitation);
-    setInvitationSubject(nextInvitation.subject);
-    setInvitationBody(nextInvitation.body);
     setPreparedInvitations((current) =>
       upsertPreparedInvitation(current, {
         candidate: activeCandidate,
@@ -200,52 +201,23 @@ function IntrosContent({
     );
   }
 
-  async function confirmInvitation() {
+  async function shareInvitation() {
     if (!invitation) {
-      setInvitationError("先生成邀请草稿。");
+      setInvitationError("先创建邀请链接。");
       return;
     }
-
-    if (!activeCandidate) {
-      setInvitationError("先选择一位联系人。");
-      return;
-    }
-
-    const request = buildContactInvitationConfirmRequest({
-      body: invitationBody,
-      invitationId: invitation.id,
-      subject: invitationSubject
-    });
-
-    if (!request.success) {
-      setInvitationError(request.error);
-      return;
-    }
-
     setInvitationError("");
-    setInvitationStatus("confirming");
-
-    const result = await client.patch<unknown>(request.request.endpoint, {
-      body: request.request.body
-    });
-
-    setInvitationStatus("idle");
-
-    if (!result.success) {
-      setInvitationError(result.error.message);
-      return;
+    setInvitationStatus("sharing");
+    try {
+      await Share.share({
+        message: `请打开这个 Orbit 邀请链接并登录确认：${invitation.invitationUrl}`,
+        title: "Orbit 邀请"
+      });
+    } catch {
+      setInvitationError("系统分享暂时不可用，链接仍保留在页面上。");
+    } finally {
+      setInvitationStatus("idle");
     }
-
-    const confirmed = contactInvitationToView(result.data);
-    setInvitation(confirmed);
-    setInvitationSubject(confirmed.subject);
-    setInvitationBody(confirmed.body);
-    setPreparedInvitations((current) =>
-      upsertPreparedInvitation(current, {
-        candidate: activeCandidate,
-        invitation: confirmed
-      })
-    );
   }
 
   return (
@@ -262,7 +234,7 @@ function IntrosContent({
         <View style={styles.callout}>
           <Ionicons color={colors.live} name="git-compare-outline" size={18} />
           <Text style={styles.calloutText}>
-            这里先找适合牵线的人。邀请可以先做成草稿，确认后也不会直接发送。
+            这里先找适合牵线的人。创建邀请链接不会自动联系对方。
           </Text>
         </View>
       </DataCard>
@@ -294,18 +266,14 @@ function IntrosContent({
       )}
       {activeCandidate ? (
         <InvitationDraftCard
-          body={invitationBody}
           candidate={activeCandidate}
           email={recipientEmail}
           error={invitationError}
           invitation={invitation}
-          onBodyChange={setInvitationBody}
-          onConfirm={() => void confirmInvitation()}
           onEmailChange={setRecipientEmail}
           onPrepare={() => void prepareInvitation()}
-          onSubjectChange={setInvitationSubject}
+          onShare={() => void shareInvitation()}
           status={invitationStatus}
-          subject={invitationSubject}
         />
       ) : null}
     </>
@@ -317,7 +285,7 @@ function upsertPreparedInvitation(
   nextRecord: PreparedInvitationRecord
 ): PreparedInvitationRecord[] {
   const withoutExisting = current.filter(
-    (record) => record.invitation.id !== nextRecord.invitation.id
+    (record) => record.invitation.invitationId !== nextRecord.invitation.invitationId
   );
 
   return [nextRecord, ...withoutExisting].slice(0, 5);
@@ -343,36 +311,34 @@ function PreparedInvitationRecordsCard({
   records: PreparedInvitationRecord[];
 }) {
   const { styles } = useStyles();
-  const draftCount = records.filter((record) => record.invitation.canConfirm)
-    .length;
-  const readyCount = records.length - draftCount;
+  const pendingCount = records.filter((record) => record.invitation.status === "pending").length;
 
   return (
     <DataCard
-      detail={`草稿 ${draftCount} · 待投递 ${readyCount}`}
+      detail={`等待接受 ${pendingCount}`}
       title="本次引荐记录"
     >
       <View style={styles.listStack}>
         {records.map((record) => (
-          <View key={record.invitation.id} style={styles.recordRow}>
+          <View key={record.invitation.invitationId} style={styles.recordRow}>
             <View style={styles.rowTop}>
               <View style={styles.rowTitle}>
                 <Text numberOfLines={1} style={styles.itemTitle}>
                   {record.candidate.name}
                 </Text>
                 <Text numberOfLines={1} style={styles.metaText}>
-                  {record.invitation.recipientLine}
+                  {record.invitation.recipientEmail}
                 </Text>
               </View>
-              <Text style={styles.stageTag}>{record.invitation.statusLabel}</Text>
+              <Text style={styles.stageTag}>等待接受</Text>
             </View>
             <Text numberOfLines={2} style={styles.bodyText}>
-              {record.invitation.subject}
+              {record.invitation.invitationUrl}
             </Text>
             <View style={styles.tagRow}>
               <Text style={styles.sourceTag}>没有外发</Text>
               <Text style={styles.stageTag}>
-                确认后再进入发送前复核
+                打开链接后由对方确认
               </Text>
             </View>
           </View>
@@ -422,40 +388,32 @@ function IntroCandidateRow({
 }
 
 function InvitationDraftCard({
-  body,
   candidate,
   email,
   error,
   invitation,
-  onBodyChange,
-  onConfirm,
   onEmailChange,
   onPrepare,
-  onSubjectChange,
+  onShare,
   status,
-  subject
 }: {
-  body: string;
   candidate: ContactIntroCandidateView;
   email: string;
   error: string;
-  invitation: ContactInvitationView | null;
-  onBodyChange: (value: string) => void;
-  onConfirm: () => void;
+  invitation: RelationshipInvitationDTO | null;
   onEmailChange: (value: string) => void;
   onPrepare: () => void;
-  onSubjectChange: (value: string) => void;
-  status: "idle" | "preparing" | "confirming";
-  subject: string;
+  onShare: () => void;
+  status: "idle" | "preparing" | "sharing";
 }) {
   const { colors, styles } = useStyles();
   const preparing = status === "preparing";
-  const confirming = status === "confirming";
+  const sharing = status === "sharing";
 
   return (
     <DataCard
-      detail={invitation?.recipientLine ?? candidate.detail}
-      title={invitation?.title ?? "邀请草稿"}
+      detail={invitation?.recipientEmail ?? candidate.detail}
+      title={invitation ? "邀请链接" : "创建邀请"}
       variant="inset"
     >
       <View style={styles.invitationHeader}>
@@ -467,7 +425,7 @@ function InvitationDraftCard({
           <Text style={styles.metaText}>{candidate.reason}</Text>
         </View>
         {invitation ? (
-          <Text style={styles.stageTag}>{invitation.statusLabel}</Text>
+          <Text style={styles.stageTag}>等待接受</Text>
         ) : null}
       </View>
       <LabeledInput
@@ -479,41 +437,27 @@ function InvitationDraftCard({
       />
       {invitation ? (
         <>
-          <LabeledInput
-            label="邮件主题"
-            onChangeText={onSubjectChange}
-            placeholder="邀请主题"
-            value={subject}
-          />
-          <LabeledInput
-            label="邀请正文"
-            multiline
-            onChangeText={onBodyChange}
-            placeholder="写清楚为什么邀请对方加入 Orbit"
-            value={body}
-          />
-          <Text style={styles.bodyText}>{invitation.nextAction}</Text>
-          <Text style={styles.boundaryText}>{invitation.safetyText}</Text>
-          <Text style={styles.boundaryText}>{invitation.boundaryText}</Text>
+          <Text selectable style={styles.bodyText}>{invitation.invitationUrl}</Text>
+          <Text style={styles.boundaryText}>打开链接不会自动发送消息；对方登录并确认后才会建立聊天资格。</Text>
         </>
       ) : (
         <Text style={styles.bodyText}>
-          先填邮箱，Orbit 会生成一版可编辑邀请。确认后也只是待投递，不会发送邮件。
+          先填邮箱再创建服务端邀请。创建链接不会自动发送邮件、短信或站内消息。
         </Text>
       )}
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
       <View style={styles.rowActions}>
         <ActionButton
-          disabled={preparing || confirming}
-          label={preparing ? "生成中" : "生成邀请草稿"}
+          disabled={preparing || sharing}
+          label={preparing ? "创建中" : "创建邀请链接"}
           onPress={onPrepare}
           variant={invitation ? "ghost" : "primary"}
         />
-        {invitation?.canConfirm ? (
+        {invitation ? (
           <ActionButton
-            disabled={preparing || confirming}
-            label={confirming ? "确认中" : "确认邀请"}
-            onPress={onConfirm}
+            disabled={preparing || sharing}
+            label={sharing ? "打开中" : "系统分享"}
+            onPress={onShare}
           />
         ) : null}
       </View>
