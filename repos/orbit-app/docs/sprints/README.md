@@ -49,7 +49,7 @@ build/harness-logs/
 | [0001](0001-event-discovery/GOAL.md) | 用全部地点和话题找到活动，筛选后仍能翻页和打开详情 | R-09 | 无；接续当前四文件 | completed |
 | [0002](0002-readiness-handoff/GOAL.md) | 查清已完成能力、后续缺项和每项开工条件 | R-01、R-00～R-12 依赖 | 无；只读文档工作 | completed |
 | [0003](0003-profile-completion/GOAL.md) | 注册、补全资料后回到原页面，完整用户不再被拦截 | R-03 | 产品规则已确认；B1 跨端技术提案／旧账号策略待审，授权账号／Google 环境 | blocked |
-| [0004](0004-registration/GOAL.md) | 报名、取消和重报后，答案、人数及各页状态一致 | R-04 | 0002、0003；B2／问卷服务 | blocked |
+| [0004](0004-registration/GOAL.md) | 报名、取消和重报后，答案、人数及各页状态一致 | R-04 | 0002、0003；B2；历史题库表不可见已定位，当前库／schema／迁移核查待授权 | blocked |
 | [0005](0005-ai-session-reliability/GOAL.md) | AI 重试不重复生成，Web/App 续聊不丢历史 | R-00、R-02 | B3 跨端提案待审；已隔离复现旧快照覆盖，真实恢复／503 证据仍缺 | blocked |
 | [0006](0006-contact-mentions/GOAL.md) | @ 选准联系人，带入 AI 的问题由用户确认发送 | R-06 | 0005；B3 引用／D3 | blocked |
 | [0007](0007-two-sided-cards/GOAL.md) | 正反面名片复核后只创建一个联系人 | R-07 | 0002；B5／OCR 环境 | blocked |
@@ -138,6 +138,8 @@ build/harness-logs/
 用户随后说明将离线一小时，要求独立推进、不再提问、优先无需用户决定的工作。执行安全技术准备和依赖核查；没有就绪 Sprint 时如实记录，不擅自批准契约或消耗 run。
 
 用户再次要求执行后，按新增停止规则继续推进：[0020 源码／数据入口核查](0020-secondary-industries-self-profile/READINESS_AUDIT.md)、[0003/B1 技术补充](0003-profile-completion/TECHNICAL_PREPARATION.md)、[0005/B3 协议与隔离复现](0005-ai-session-reliability/B3_PROTOCOL_PREPARATION.md)已落盘。当前产品基线为 `df824de70`；新增 Web 字典 3 项、App 同步／账户 20 项、Web 会话 7 项基线均通过，旧快照覆盖在全新 memory store 复现；不代表新功能通过、真实数据损失或已启动 run。继续动作见 EXECUTION_ORDER，不因这些文档完成而结束整体实施。
+
+同轮后续：`fab788d62` 保存 B2/B6 证据，`18a8627b9` 保存 B4/B5 技术准备。B6 既有 15 项测试通过，但新内存复现并发同版本编辑接受两次、仅保留一次修改；B2 从留存服务日志取得与原 500 相邻的题库表不可见异常（42P01），尚未连接当前数据库核对／修复。另已核对 B7 分析时间、账号语言来源及 B8 旧备注边界，见 [当前动作与缺项](EXECUTION_ORDER.md#进入代码阶段的实际缺项)。这些是准备与诊断成果，0003～0022 仍未启动 Generator，也没有功能 REPORT。
 
 ## 2026-09-13 暂停点（历史基线）
 
