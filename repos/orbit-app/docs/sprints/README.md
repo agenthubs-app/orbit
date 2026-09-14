@@ -52,7 +52,7 @@ build/harness-logs/
 | [0002](0002-readiness-handoff/GOAL.md) | 查清已完成能力、后续缺项和每项开工条件 | R-01、R-00～R-12 依赖 | 无；只读文档工作 | completed |
 | [0003](0003-profile-completion/GOAL.md) | 注册、补全资料后回到原页面，完整用户不再被拦截 | R-03 | B1整体批准已生效；本地实现启动，真实账号／Google验收按对象另核 | running |
 | [0004](0004-registration/GOAL.md) | 报名、取消和重报后，答案、人数及各页状态一致 | R-04 | run-01 已完成；功能 `319f6f7bb`，见 REPORT | completed |
-| [0005](0005-ai-session-reliability/GOAL.md) | AI 重试不重复生成，Web/App 续聊不丢历史 | R-00、R-02 | B3 跨端提案待审；已隔离复现旧快照覆盖，真实恢复／503 证据仍缺 | blocked |
+| [0005](0005-ai-session-reliability/GOAL.md) | AI 重试不重复生成，Web/App 续聊不丢历史 | R-00、R-02 | 原产品提交 `30c1e210c`、主线集成 `efbfc23ae`；本地／隔离 PostgreSQL 验证完成，真实同账号双端设备往返和 R-00 首次 503 根因仍缺证据，见 REPORT | blocked |
 | [0006](0006-contact-mentions/GOAL.md) | @ 选准联系人，带入 AI 的问题由用户确认发送 | R-06 | 0005；B3 引用／D3 | blocked |
 | [0007](0007-two-sided-cards/GOAL.md) | 正反面名片复核后只创建一个联系人 | R-07 | run-01 已结束；本地双面契约与一次确认已提交，实体 iPhone／真实 OCR／同记录跨端验收缺环境；见 REPORT | blocked |
 | [0008](0008-identity-chat/GOAL.md) | 验证邀请和身份绑定后，双方能真实收发消息 | R-05 | run-01 已完成；原功能 `6d8173b78`、主线集成 `64629369d`，见 REPORT | completed |
@@ -68,7 +68,7 @@ build/harness-logs/
 | [0018](0018-notes-core/GOAL.md) | 一份私密笔记关联多人，保留旧内容并安全切换入口 | R-13 | 0017；B8／D7／迁移设计 | blocked |
 | [0019](0019-note-suggestions/GOAL.md) | 确认笔记建议后只建一次事项，逐项验收全部原需求 | R-13、R-14 | 0018；D5／B6／B8建议协议 | blocked |
 | [0020](0020-secondary-industries-self-profile/GOAL.md) | 二级行业在资料、联系人和检索中复用，AI 能读取本人资料，现有测试数据补齐 | 2026-09-14 新增；关联 R-03／R-06 | run-01 已结束；部分代码未提交，HTTP/provider/trace/生成源范围缺项与 H 验证未通过；见 REPORT | blocked |
-| [0021](0021-ai-session-organization/GOAL.md) | 保存 AI 会话入口与首条内容，按项目式分组整理，并能置顶、改名、删除和跨端回读 | 2026-09-14 新增；关联 R-00／R-02／R-06 | 执行指令已收到；仍需 B3 稳定协议／Web 恢复边界及跨端计划审阅 | planned |
+| [0021](0021-ai-session-organization/GOAL.md) | 保存 AI 会话入口与首条内容，按项目式分组整理，并能置顶、改名、删除和跨端回读 | 2026-09-14 新增；关联 R-00／R-02／R-06 | 执行指令已收到；B3 稳定协议与 Web 恢复边界已由 `30c1e210c` 提供，run-01 开始 | running |
 | [0022](0022-unified-tasks/GOAL.md) | 同一待办入口切换全部／人脉，兼容旧跟进链接并保留草稿、建议和提醒入口 | 2026-09-14 新增；关联 R-08／R-09／R-06 | 产品方向与执行指令已确认；书面规格审阅，0006 模板与 0010 动作交付 | planned |
 | [0023](0023-industry-consumer-continuation/GOAL.md) | 接通联系人行业、搜索 HTTP 与本人资料工具，承接 0020 全部未完成验收 | SC-0020-01～05；明确获准接续 | 现有部分实现与 8 文件补充方案已批准；真实数据／设备按对象处理 | running |
 
@@ -123,6 +123,19 @@ build/harness-logs/
 - 结果 blocked：实体 iPhone `shinhaha (26.2)` 离线，没有共同 API/OCR 环境、真实非空批次和授权联系人对象，SC-01～05 的实体／真实跨端证据未闭合。没有真实迁移、部署、push 或 merge。
 - 费用：原记录 USD 0.012780／5.00；全量至少 4 个用例进入 provider 请求路径，日志无用量，且首次中断轮是否到达该区段未知，本轮增量待核算。
 - checkpoint：`build/harness-state/evidence/sprint-0007/run-01/checkpoint.md`（App cwd，被忽略）；没有 D 线活进程。20 分钟线程心跳保持启用，外部条件恢复后从报告的关闭条件继续。
+
+### 0005 / run-01
+
+- owner：B 线当前主代理 `/root`；run_count：1；开始：2026-09-14 JST。独立 worktree `/Volumes/ORICO/Dev/MacMovedData/dot-codex/worktrees/8475/orbit`，不接管 A 线 profile/auth 改动，不启动第二实现者。
+- 基线 HEAD `fca77373f123c03e29a0584cba46bade5f5eb907`，启动时 tracked 工作树干净；原 Planner revision 1 SHA256 `4b7910b723924b457a36769ecbce8d565f371f5e38191125eabab80a4cffe089`。
+- 用户明确启动 B 线并授予完成 0005→0021→0006 所需权限；按 RULES 第0节复用批准，B3 跨端必要文件见[范围补充](0005-ai-session-reliability/APPROVED_SCOPE_ADDENDUM.md)。真实数据库、设备、账号和付费调用仍按实际证据与累计预算登记。
+- 当前从存储并发／旧快照保护的 RED 开始；GitNexus 索引落后当前 HEAD 5 个提交，依用户此前要求不运行会改根 AGENTS 的索引刷新命令，使用现有影响结果并逐文件源码补查。
+- 原产品实现提交 `30c1e210c`，主线集成 `efbfc23ae`；Web 定向 42/42、App 定向 83/83、两端 typecheck、隔离 PostgreSQL 1/1。真实双端设备与 R-00 503 根因仍 blocked，详见 [REPORT](0005-ai-session-reliability/REPORT.md)。
+
+### 0021 / run-01
+
+- owner：B 线当前主代理 `/root`；run_count：1；开始：2026-09-15 00:19 JST。承接 0005 功能 HEAD `30c1e210c` 和同一 B 线授权，串行持有 AI 会话／契约／provider 文件。
+- 实施前先把 B3 实际字段与 0021 organization revision 对照写入 Planner，并读取 Bridge 状态与交接，避免覆盖 E 线联系人详情／聊天／收件箱范围。
 
 ### 0003 / run-01
 
