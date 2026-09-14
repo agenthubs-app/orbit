@@ -12,9 +12,9 @@
 | --- | --- | --- | --- | --- | --- |
 | BR-001 | P1 | Today 同名但数据与动作集合不同 | identified | Bridge 梳理，Web/App 接口负责人协作 | 逐项映射账本/安排/任务；实现或有依据接受差异；双向验证 |
 | BR-002 | P1 | Agent 高级设置移动缺口 | identified | Bridge + App，Web 提供 HTTP 边界 | memory/feedback/automations/preferences 覆盖方案及逐操作验收 |
-| BR-003 | P1 | 会话历史操作与持久化确认 | identified | Bridge + App，Web sessions 负责人协作 | 改名/置顶范围明确；跨端续聊、失败恢复不丢历史的实测证据 |
-| BR-004 | P1 | 未共享响应 DTO / Schema 覆盖 | identified | Web 契约负责人 + App | 按消费者列清单，逐模块迁移与同步；已有 whitelist 不扩张 |
-| BR-005 | P1 | 缺少当前版本双向状态验收 | identified | Bridge | 账号/联系人/任务/报名/运营/会话的双向读写与刷新证据 |
+| BR-003 | P1 | 会话历史操作与持久化确认 | consumer_ready | Bridge 验收 | 真实同账号两端完成组织、续聊、删除和失败恢复往返 |
+| BR-004 | P1 | 未共享响应 DTO / Schema 覆盖 | identified | Web 契约负责人 + App | AI sessions 已共享；其余消费者按模块继续迁移与同步 |
+| BR-005 | P1 | 缺少当前版本双向状态验收 | specified | Bridge | 账号/联系人/任务/报名/运营/会话的双向读写与刷新证据 |
 | BR-006 | P1 | Web 发布门槛与 App 公网依赖 | blocked | Web 发布负责人 | 记录解除 1C 的证据及部署版本，完成同环境 iOS 访问验证 |
 | BR-007 | P2 | 文档描述落后于代码 | identified | Bridge + 各端文档负责人 | README/契约迁移表与实际已发布能力一致；保留历史记录 |
 | BR-008 | P2 | App 未提交界面工作交接 | identified | App 负责人 | 提供最终文件/版本/验收范围，刷新 bridge 基线 |
@@ -57,24 +57,24 @@
 
 ## BR-003 — AI 会话
 
-- web_status：`agent/orbit-real-agent.tsx` 有 renameHistorySession/togglePinnedHistorySession/deleteHistorySession。
-- app_status：`AiScreen.tsx` 可读历史、显示 pinned、删除 session，未发现改名/置顶写入口；`AiConversationScreen.tsx` 对部分 session 更新使用不等待结果的 POST。
-- verification_status：历史映射/续聊 wiring 测试包含在本轮 752 项中，但未跨端断网/重开验证。
-- 下一步：确认改名/置顶是否要移动对齐；验证 Web 创建 → App 续聊 → Web 重开以及反方向。故意使保存失败，检查是否可恢复和是否向用户正确表达保存状态；未复现前不要把风险记为确定 bug。
+- web_status：功能 HEAD `3de117902`。Web 能分页读取全部会话，改名、置顶、移动、确认删除，并创建／改名／删除分组；写入走 revisioned PATCH，focus 时刷新。
+- app_status：同一 HEAD 的 App 支持同一组操作，长按和“整理会话”共用操作面板；组内新会话在首次可靠发送成功后以 organization revision 0 落组。
+- verification_status：Web 0021 定向 39/39、App 定向 95/95，两端 typecheck 通过；冲突、失败保稿、删除 tombstone 和分页已有本地证据。未完成真实同账号双端断网／重开往返和当前 iOS 构建交互。
+- 下一步：按 0021 REPORT 的固定次序使用测试记录完成 App→Web→App 写读；两端各删一个测试会话并核对 410／不可恢复。完成前保持 `consumer_ready`。
 
 ## BR-004 — 契约覆盖
 
-- web_status：12 个共享类型文件 + 1 个运行时 Schema + 2 个允许同步的字典。
-- app_status：副本一致；`src/api/agent-ledger-contract.ts` 明确注明 Ledger 类型未升入 shared，活动运营等页面仍有 unknown 解码。
-- verification_status：副本、目录边界与 dashboard 定向检查通过；全接口字段覆盖未验收。
-- 下一步：按现有 HTTP 消费者先列 DTO 差异，优先账本/运营/审核/角色等写操作。字段修订要附旧 App 兼容策略、请求版本条件和缺失字段行为，不直接批量复制 feature 目录。
+- web_status：AI sessions 新增 `shared/contract/ai-sessions.ts` 和 `shared/api-schema/ai-sessions.ts`；发送 protocol v2，起源 schemaVersion 1，消息 revision 与 organization revision 分离。其余模块沿用既有迁移状态。
+- app_status：AI sessions 副本通过 `npm run sync:contract` 生成并由运行时 schema 解码；App mutation 客户端只发送窄 patch。Ledger 与活动运营等既有未共享 DTO 不因本次自动关闭。
+- verification_status：两端类型检查、同步副本、origin／organization handler 和客户端定向测试通过；GitNexus 索引陈旧，提交范围另按真实 diff 审查。全接口字段覆盖仍未验收。
+- 下一步：0006 使用已登记的四个 contact 模板入口和稳定引用，不复制契约；必须补当前 actor 联系人读取授权。其他 DTO 继续按消费者逐模块迁移。
 
 ## BR-005 — 双向读写与刷新
 
-- web_status：服务端页面直接服务调用与 HTTP 并存。
-- app_status：HTTP + 本地 GET 快照；显式 refresh，长任务另有轮询。
-- verification_status：本轮未进行同账号 E2E；不能套用 2026-08-31 图表视觉截图。
-- 下一步：按 [数据交接验收](contracts.md) 用相同环境验证。普通用户与活动管理角色分别使用正确夹具；记录允许的刷新方式和异步等待边界。
+- web_status：会话组织写入由 actor-scoped API／事务存储完成；页面 focus 刷新，未新增 WebSocket。
+- app_status：会话列表／分组经 HTTP 和 actor／服务器范围读取；进入页面、focus 或显式操作后刷新，失败不把本地状态冒充持久化成功。
+- verification_status：双 actor、旧客户端、CAS、回滚、61 条删组与 tombstone 已在内存和一次隔离 PostgreSQL 中验证；没有同版本真实账号 E2E，状态为 `specified`。
+- 下一步：按 [数据交接验收](contracts.md) 使用同一环境和测试会话完成双向操作；记录 Web focus、App 重开／focus 的刷新时间与最终 revision。其他业务模块仍逐项验收。
 
 ## BR-006 — 发布
 

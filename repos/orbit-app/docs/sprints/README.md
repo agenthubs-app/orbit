@@ -68,7 +68,7 @@ build/harness-logs/
 | [0018](0018-notes-core/GOAL.md) | 一份私密笔记关联多人，保留旧内容并安全切换入口 | R-13 | 0017；B8／D7／迁移设计 | blocked |
 | [0019](0019-note-suggestions/GOAL.md) | 确认笔记建议后只建一次事项，逐项验收全部原需求 | R-13、R-14 | 0018；D5／B6／B8建议协议 | blocked |
 | [0020](0020-secondary-industries-self-profile/GOAL.md) | 二级行业在资料、联系人和检索中复用，AI 能读取本人资料，现有测试数据补齐 | 2026-09-14 新增；关联 R-03／R-06 | run-01 已结束；部分代码未提交，HTTP/provider/trace/生成源范围缺项与 H 验证未通过；见 REPORT | blocked |
-| [0021](0021-ai-session-organization/GOAL.md) | 保存 AI 会话入口与首条内容，按项目式分组整理，并能置顶、改名、删除和跨端回读 | 2026-09-14 新增；关联 R-00／R-02／R-06 | 执行指令已收到；B3 稳定协议与 Web 恢复边界已由 `30c1e210c` 提供，run-01 开始 | running |
+| [0021](0021-ai-session-organization/GOAL.md) | 保存 AI 会话入口与首条内容，按项目式分组整理，并能置顶、改名、删除和跨端回读 | 2026-09-14 新增；关联 R-00／R-02／R-06 | 功能 HEAD `3de117902`；起源、组织事务和两端 UI 已实现，真实同账号双端与当前 iOS 交互仍缺证据，见 REPORT | blocked |
 | [0022](0022-unified-tasks/GOAL.md) | 同一待办入口切换全部／人脉，兼容旧跟进链接并保留草稿、建议和提醒入口 | 2026-09-14 新增；关联 R-08／R-09／R-06 | 产品方向与执行指令已确认；书面规格审阅，0006 模板与 0010 动作交付 | planned |
 | [0023](0023-industry-consumer-continuation/GOAL.md) | 接通联系人行业、搜索 HTTP 与本人资料工具，承接 0020 全部未完成验收 | SC-0020-01～05；明确获准接续 | 现有部分实现与 8 文件补充方案已批准；真实数据／设备按对象处理 | running |
 
@@ -136,6 +136,7 @@ build/harness-logs/
 
 - owner：B 线当前主代理 `/root`；run_count：1；开始：2026-09-15 00:19 JST。承接 0005 功能 HEAD `30c1e210c` 和同一 B 线授权，串行持有 AI 会话／契约／provider 文件。
 - 实施前先把 B3 实际字段与 0021 organization revision 对照写入 Planner，并读取 Bridge 状态与交接，避免覆盖 E 线联系人详情／聊天／收件箱范围。
+- 功能提交 `c645d357a`、`cabf07b27`、`9f4396d1c`、`3de117902`；Web 定向 39/39、App 定向 95/95、两端 typecheck 及临时隔离 PostgreSQL 通过。真实同账号 Web↔App 与当前 iOS 构建交互仍 blocked，详见 [REPORT](0021-ai-session-organization/REPORT.md)。
 
 ### 0003 / run-01
 
