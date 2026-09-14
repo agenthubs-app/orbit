@@ -8,6 +8,9 @@ import { legacyDefaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMockStateStore } from "../../shared/mock/state-store";
 import { createContactsRecommendationSearchTool } from "../../features/contacts/contact-recommendation-search";
 import { createMockRelationshipNaturalSearchService } from "../../features/search/mock-service";
+import { mockAiProviderRuns } from "../../shared/ai/mock-fixtures";
+import { mockNetworkDistributionAnalyticsFixture } from "../../features/dashboard/distribution-fixtures";
+import { mockEventValueRecommendationProfile, mockEventValueRecommendations } from "../../features/recommendations/event-value-fixtures";
 
 // Incremental inventory: pending families below remain in SC-05's denominator.
 // Do not import seed CLIs here: some load credentials or write during import.
@@ -74,9 +77,6 @@ export const industryFixtureExceptions = [
 
 export const pendingIndustryFixtureSources = [
   { source: "shared/mock/generated-relationship-fixtures.ts", reason: "Generated runtime projections require the separately reviewed source/output mapping; do not edit the generated output by hand." },
-  { source: "shared/ai/mock-fixtures.ts", reason: "Two inspected runs hold message/context text, not person industry fields; finish consumer classification before excluding the family." },
-  { source: "features/dashboard/distribution-fixtures.ts", reason: "Inspected values are aggregate industry buckets, not individual people; retain aggregate/consumer classification work." },
-  { source: "features/recommendations/event-value-fixtures.ts", reason: "Profile industryPreference describes the desired event domain, not the person's industry; inspect remaining projections separately." },
   { source: "scripts/seed-account-contact-fixtures.ts", reason: "Seed CLI: inspect pure builders without import or execution." },
   { source: "scripts/seed-account-agent-pressure-fixtures.ts", reason: "Seed CLI: inspect pure builders without import or execution." },
   { source: "scripts/seed-event-operations-e2e.ts", reason: "Seed CLI: inspect pure builders without import or execution." },
@@ -87,6 +87,37 @@ export const pendingIndustryFixtureSources = [
   { source: "repos/mockdata seed/generated/exports and root generator", reason: "132 users, 132 contacts, 500 participant source rows plus related projections; not unique-person totals. Exact mapping/output scope awaits separate review." },
   { source: "Persisted isolated test records", reason: "Environment, workspace, actor, record IDs, expected versions and write approval are not established." },
 ] as const;
+
+// These families remain explicitly registered, outside the normal-person count.
+// Their full source and consumer paths were inspected; no person industry is inferred.
+export function readNonPersonIndustryFixtureSources() {
+  return [
+    {
+      source: "shared/ai/mock-fixtures.ts",
+      constructor: "mockAiProviderRuns",
+      classification: "no_person_industry",
+      reason: "AI provider run() constructs message drafts and relationship summaries. mock-provider.payloadForRun preserves that output role; recipient names are references, not industry-bearing profiles.",
+      records: mockAiProviderRuns.map(run => ({ id: run.runId, role: run.output.kind })),
+    },
+    {
+      source: "features/dashboard/distribution-fixtures.ts",
+      constructor: "mockNetworkDistributionAnalyticsFixture.industryDistribution",
+      classification: "no_person_industry",
+      reason: "mock-distribution-service clones aggregate buckets and gap recommendations, with counts and example references rather than individual person profiles. Do not assign one person's industry to a bucket.",
+      records: mockNetworkDistributionAnalyticsFixture.industryDistribution.map(bucket => ({ id: bucket.bucketId, role: "aggregate_bucket" })),
+    },
+    {
+      source: "features/recommendations/event-value-fixtures.ts",
+      constructor: "mockEventValueRecommendationProfile + mockEventValueRecommendations",
+      classification: "no_person_industry",
+      reason: "The profile holds an event search preference. mock-event-value-service.scoreForInput compares that preference to the recommended event's domain; neither field states the user's own industry.",
+      records: [
+        { id: mockEventValueRecommendationProfile.profileId, role: "event_search_preference" },
+        ...mockEventValueRecommendations.map(event => ({ id: event.eventId, role: "event_domain" })),
+      ],
+    },
+  ];
+}
 
 export type IndustryFixtureProjection = {
   source: string;

@@ -10,6 +10,45 @@ import type { IndustrySelectionContract } from "../../shared/contract/industries
 import { industryFixturePeople, readIndustryFixtureProjections } from "../support/industry-fixture-inventory";
 import { legacyDefaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMockStateStore } from "../../shared/mock/state-store";
+import * as fixtureInventory from "../support/industry-fixture-inventory";
+
+test("inventory classifies event domains, search preferences, aggregate buckets and message runs without inventing person industries", () => {
+  const read = Reflect.get(fixtureInventory, "readNonPersonIndustryFixtureSources") as undefined | (() => {
+    source: string;
+    classification: string;
+    reason: string;
+    records: { id: string; role: string }[];
+  }[]);
+  const sources = read?.() ?? [];
+  assert.deepEqual(sources.map(source => ({ source: source.source, records: source.records })), [
+    {
+      source: "shared/ai/mock-fixtures.ts",
+      records: [
+        { id: "demo-ai-run-1", role: "message_draft" },
+        { id: "demo-ai-run-2", role: "relationship_context_summary" },
+      ],
+    },
+    {
+      source: "features/dashboard/distribution-fixtures.ts",
+      records: [
+        { id: "industry:climate-infrastructure", role: "aggregate_bucket" },
+        { id: "industry:industrial-operations", role: "aggregate_bucket" },
+        { id: "industry:venture-capital", role: "aggregate_bucket" },
+        { id: "industry:developer-platforms", role: "aggregate_bucket" },
+      ],
+    },
+    {
+      source: "features/recommendations/event-value-fixtures.ts",
+      records: [
+        { id: "profile:demo-founder", role: "event_search_preference" },
+        { id: "demo-event-1", role: "event_domain" },
+        { id: "demo-event-2", role: "event_domain" },
+        { id: "demo-event-3", role: "event_domain" },
+      ],
+    },
+  ]);
+  assert.ok(sources.every(source => source.classification === "no_person_industry" && source.reason.length > 0));
+});
 
 // This is the first covered source family, not a claim that generated data,
 // inline test fixtures, or persisted test databases have all been repaired.
