@@ -333,8 +333,8 @@ test("real Home hub validates and trims AI input, routes prompts and destination
   await page.getByText("别人会看到的资料", { exact: true }).click();
   await page.getByRole("button", { name: "全部", exact: true }).click(); await page.getByText(title, { exact: true }).click();
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), [
-    { params: { id: "new", initialMessage: "帮我安排日本合作伙伴会面" }, pathname: "/ai/[id]" },
-    { params: { id: "new", initialMessage: "帮我准备最近一场活动" }, pathname: "/ai/[id]" },
+    { params: { entryPointId: "ai.home", id: "new", initialMessage: "帮我安排日本合作伙伴会面" }, pathname: "/ai/[id]" },
+    { params: { entryPointId: "home.event_preparation", id: "new", initialMessage: "帮我准备最近一场活动" }, pathname: "/ai/[id]" },
     "/profile", "/contacts", "/schedule", "/profile", "/home/events", "/events/event%3Astyle"
   ]);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);

@@ -78,7 +78,7 @@ test("Orbit AI home uses a ChatGPT-style drawer for shortcuts and history", () =
   // private-route/HTTP tests in ink-signal-ai-home.test.ts.
   assert.match(screenSource, /aiHistoryRows/u);
   assert.match(screenSource, />常用入口</u);
-  assert.match(screenSource, />历史记录</u);
+  assert.match(screenSource, /"历史记录"/u);
   assert.doesNotMatch(
     screenSource,
     /<CapabilityGrid onOpen=\{\(href\) => router\.push\(href\)\} \/>/u
