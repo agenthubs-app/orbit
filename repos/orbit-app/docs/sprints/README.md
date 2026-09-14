@@ -71,6 +71,7 @@ build/harness-logs/
 | [0021](0021-ai-session-organization/GOAL.md) | 保存 AI 会话入口与首条内容，按项目式分组整理，并能置顶、改名、删除和跨端回读 | 2026-09-14 新增；关联 R-00／R-02／R-06 | 功能 HEAD `3de117902`；起源、组织事务和两端 UI 已实现，真实同账号双端与当前 iOS 交互仍缺证据，见 REPORT | blocked |
 | [0022](0022-unified-tasks/GOAL.md) | 同一待办入口切换全部／人脉，兼容旧跟进链接并保留草稿、建议和提醒入口 | 2026-09-14 新增；关联 R-08／R-09／R-06 | run-01 已完成；功能 `ef5d0b02d`，见 REPORT | completed |
 | [0023](0023-industry-consumer-continuation/GOAL.md) | 接通联系人行业、搜索 HTTP 与本人资料工具，承接 0020 全部未完成验收 | SC-0020-01～05；明确获准接续 | 现有部分实现与 8 文件补充方案已批准；真实数据／设备按对象处理 | running |
+| [0024](0024-contact-needs-ranking/GOAL.md) | 在人脉主页保存需求，并在独立页面按可核对依据稳定排序 | 用户批准 `concept-v2.png`；关联 0011／0023 | run-01 执行中；先实现独立 Web 评分服务，App 字典等待 0015 释放 | running |
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
 
@@ -93,6 +94,12 @@ build/harness-logs/
 - 新增 [0021 Planner](0021-ai-session-organization/PLANNER.md)及[参考与交互规格](0021-ai-session-organization/REFERENCE_AND_BEHAVIOR.md)，记录会话入口元信息、项目式分组、置顶／改名／删除和跨端持久化。用户已澄清只参考 ChatGPT App 的功能与组织形式，公开截图由代理寻找，不做像素复刻。当前只编制，planned、run_count = 0、未产生 REPORT；原 0001～0020 的状态不变。
 
 ## 运行记录
+
+### 0024 / run-01
+
+- owner：C 线任务 `01a0a041-c352-7022-98de-1783b8b1adb8`；run_count：1；开始 2026-09-15 07:42 JST。用户已批准 v2 图与实施；Planner revision 1／SHA256 `2caf94fa29c71a474a8d95ccf72944e317ce5550a0493ea4524a2eb8cf5c9cea`。
+- 实际主线产品基线 `c5c091fba`，设计导入／登记前 HEAD `32f5d16af`；C worktree 的旧副本已存 pre-start 备份，不做 reset 或整树覆盖。Planner 早期记录的 `42edbdc15` 不再作为实现基线。
+- 先释放全新 Web contract／schema／feature／route／测试范围，和 0015 无共享文件；App 字典仍由 0015 独占。精确锁、交接和后续 App 解锁条件见[范围补充](0024-contact-needs-ranking/APPROVED_SCOPE_ADDENDUM.md)。
 
 ### 0015 / run-01
 
