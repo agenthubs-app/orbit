@@ -7,6 +7,54 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const projectRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const methodEnvName = "ORBIT_CONTACT_RECOMMENDATION_METHOD";
 
+for (const asyncSearch of [false, true]) {
+  for (const ranked of [false, true]) {
+    for (const selectionState of ["canonical", "empty", "legacy"] as const) {
+      test(`recommendation preserves ${selectionState} industry selection through ${asyncSearch ? "async" : "sync"} ${ranked ? "ranked" : "ordinary"} search`, async () => {
+        const { createContactsRecommendationSearchTool } = await import("../../features/contacts/contact-recommendation-search");
+        const { createMockRelationshipNaturalSearchService } = await import("../../features/search/mock-service");
+        const { mockFintechReferralSearchFixture } = await import("../../features/search/fixtures");
+        const source = { ...mockFintechReferralSearchFixture.results[0]! };
+        if (selectionState === "empty") {
+          source.primaryIndustryId = null;
+          source.secondaryIndustryId = null;
+        } else if (selectionState === "legacy") {
+          delete source.primaryIndustryId;
+          delete source.secondaryIndustryId;
+        }
+        const searchResult = {
+          success: true as const,
+          data: { ...mockFintechReferralSearchFixture, results: [source] },
+        };
+        const tool = createContactsRecommendationSearchTool({
+          relationshipSearchService: {
+            ...createMockRelationshipNaturalSearchService(),
+            queryRelationships: () => asyncSearch ? Promise.resolve(searchResult) : searchResult,
+          },
+        });
+
+        const result = await tool.recommend({
+          query: "fintech investor referral",
+          ...(ranked ? { toolArguments: { searchTerms: "fintech", domains: ["fintech"] } } : {}),
+        });
+
+        assert.equal(result.state, "success");
+        assert.equal(result.candidates.length, 1);
+        const candidate = result.candidates[0]!;
+        assert.equal(candidate.contactId, "contact:omar-rahman");
+        assert.ok(candidate.evidenceIds.includes("evidence:relationship-search-omar"));
+        if (selectionState === "legacy") {
+          assert.equal(Object.hasOwn(candidate, "primaryIndustryId"), false);
+          assert.equal(Object.hasOwn(candidate, "secondaryIndustryId"), false);
+        } else {
+          assert.equal(Reflect.get(candidate, "primaryIndustryId"), selectionState === "empty" ? null : "finance_investment");
+          assert.equal(Reflect.get(candidate, "secondaryIndustryId"), selectionState === "empty" ? null : "finance_investment.venture_capital");
+        }
+      });
+    }
+  }
+}
+
 async function importProjectModule<TModule>(
   pathFromRoot: string,
 ): Promise<TModule> {

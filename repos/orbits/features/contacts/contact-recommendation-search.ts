@@ -1,3 +1,4 @@
+import type { IndustrySelectionContract } from "../../shared/contract/industries";
 import type {
   RelationshipNaturalSearchResult,
   RelationshipNaturalSearchBusinessIntent,
@@ -26,7 +27,7 @@ export interface ContactRecommendationCriteria {
   valueTypes: readonly RelationshipNaturalSearchValueType[];
 }
 
-export interface ContactRecommendationCandidate {
+export interface ContactRecommendationCandidate extends IndustrySelectionContract {
   contactId: string;
   databaseQueryExecuted: boolean;
   displayName: string;
@@ -587,6 +588,12 @@ function candidateFor(
     matchReasons: [item.matchScore.rationale, item.value.rationale],
     matchScore: item.matchScore.value,
     organization: item.organization,
+    ...(item.primaryIndustryId !== undefined
+      ? { primaryIndustryId: item.primaryIndustryId }
+      : {}),
+    ...(item.secondaryIndustryId !== undefined
+      ? { secondaryIndustryId: item.secondaryIndustryId }
+      : {}),
     recommendedAction: item.recommendedAction,
     relationshipPath: item.relationshipContext,
     role: item.role,

@@ -56,6 +56,8 @@ Feature-owned tool or service
 
 Service factory 提供 relationship natural search service。
 
+结果中的 `primaryIndustryId`／`secondaryIndustryId` 来自人物资料，不由旧搜索领域词反推。Contacts 推荐适配器在普通／排序及同步／异步路径均保留这两个字段：省略保持省略，显式 null 保持清空；推荐排序、证据要求和旧领域过滤不因投影改变。
+
 ## Mock 行为
 
 Mock search 使用本地 fixture 和确定性匹配规则：query 被拆成小写 token，所有 token 都必须在候选搜索文本中命中；结构化 filters 使用枚举精确匹配。它不访问真实搜索索引、向量数据库、CRM 或外部网络。查询为空、无结果、pending 和 failure 都必须返回明确状态。
