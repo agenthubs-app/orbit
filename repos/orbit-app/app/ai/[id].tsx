@@ -6,19 +6,21 @@ import { AiConversationScreen, type AiConversationJournal } from "../../src/scre
 import { withOrbitPrivateRoute } from "../../src/components/OrbitRouteAccessBoundary";
 import { aiSendIntentOrigin, consumeAiSendIntent } from "../../src/data/ai-send-intent";
 import { aiSessionOriginInputSchema } from "../../src/api/schema/ai-sessions";
+import { consumeAiTemplatePrefill } from "../../src/data/ai-template-prefill";
 
 const ProtectedConversation = withOrbitPrivateRoute<NonNullable<Parameters<typeof AiConversationScreen>[0]>>(AiConversationScreen);
 
 export default function AiConversationRoute() {
-  const params = useLocalSearchParams<{ id?: string; source?: string; initialMessage?: string | string[]; initialMessageConsumed?: string; sendIntent?: string | string[]; entryPointId?: string | string[]; initialGroupId?: string | string[] }>();
+  const params = useLocalSearchParams<{ id?: string; source?: string; initialMessage?: string | string[]; initialMessageConsumed?: string; sendIntent?: string | string[]; prefillIntent?: string | string[]; entryPointId?: string | string[]; initialGroupId?: string | string[] }>();
   const initialMessage = (Array.isArray(params.initialMessage) ? params.initialMessage[0] : params.initialMessage)?.trim() ?? "";
   const sendIntent = Array.isArray(params.sendIntent) ? params.sendIntent[0] : params.sendIntent;
+  const prefillIntent = Array.isArray(params.prefillIntent) ? params.prefillIntent[0] : params.prefillIntent;
   const router = useRouter();
   const focused = useIsFocused();
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
   const enabled = focused && auth.ready && auth.signedIn && server.ready && Boolean(auth.user?.id);
-  const intentKey = JSON.stringify([params.id, params.source, params.initialMessage, params.sendIntent, params.entryPointId, params.initialGroupId]);
+  const intentKey = JSON.stringify([params.id, params.source, params.initialMessage, params.sendIntent, params.prefillIntent, params.entryPointId, params.initialGroupId]);
   // The navigation intent outlives an auth/focus remount. It must not replay an
   // inherited automatic write in a different identity scope.
   const intent = useMemo(() => {
@@ -38,6 +40,9 @@ export default function AiConversationRoute() {
   });
   const sessionOrigin = intent.registeredOrigin ?? (parsedOrigin.success ? parsedOrigin.data : undefined);
   const identity = JSON.stringify([auth.user?.id, server.baseUrl]);
+  const prefill = useMemo(() => enabled && prefillIntent && auth.user?.id
+    ? consumeAiTemplatePrefill({ id: prefillIntent, actorId: auth.user.id, baseUrl: server.baseUrl })
+    : null, [enabled, prefillIntent, auth.user?.id, server.baseUrl]);
   if (enabled && intent.owner === null) intent.owner = identity;
   const allowInitialPrompt = intent.owner === identity;
   useEffect(() => {
@@ -59,5 +64,6 @@ export default function AiConversationRoute() {
   const latest = useRef(scope);
   latest.current = scope;
   const isScopeCurrent = useCallback(() => latest.current === scope && scope.enabled, [scope]);
-  return enabled ? <ProtectedConversation key={scope.key} scopeKey={scope.key} isScopeCurrent={isScopeCurrent} claimInitialPrompt={claimInitialPrompt} allowInitialPrompt={allowInitialPrompt} journal={journal} {...(sessionOrigin ? { sessionOrigin } : {})} /> : null;
+  const effectiveOrigin = prefill?.origin ?? sessionOrigin;
+  return enabled ? <ProtectedConversation key={scope.key} scopeKey={scope.key} isScopeCurrent={isScopeCurrent} claimInitialPrompt={claimInitialPrompt} allowInitialPrompt={allowInitialPrompt} journal={journal} {...(prefill?.message ? { initialDraft: prefill.message } : {})} {...(prefill?.references ? { initialReferences: prefill.references } : {})} {...(effectiveOrigin ? { sessionOrigin: effectiveOrigin } : {})} /> : null;
 }

@@ -62,10 +62,11 @@ test("reliable send freezes the actual first send origin before model execution"
     schemaVersion: 1,
   });
   assert.deepEqual(
-    session?.messages.map(({ id, role, text }) => ({ id, role, text })),
+    session?.messages.map(({ id, references, role, text }) => ({ id, references, role, text })),
     [
       {
         id: reliableInput.clientMessageId,
+        references: reliableInput.references,
         role: "user",
         text: reliableInput.message,
       },
@@ -94,6 +95,7 @@ test("session origin survives old-client saves and rejects later replacement", a
     messages: [
       {
         id: reliableInput.clientMessageId,
+        references: reliableInput.references,
         role: "user" as const,
         text: reliableInput.message,
       },
@@ -104,21 +106,25 @@ test("session origin survives old-client saves and rejects later replacement", a
   };
 
   await provider.upsertSession(initial);
+  const oldClientMessage = { ...initial.messages[0] };
+  delete oldClientMessage.references;
   await provider.upsertSession({
     ...initial,
     messageRevision: 2,
     messages: [
-      ...initial.messages,
+      oldClientMessage,
       { id: "message:answer", role: "assistant", text: "第一步确认目标" },
     ],
     origin: undefined,
     updatedAt: "2026-09-15T00:31:00.000Z",
   });
-  assert.deepEqual((await provider.getSession(initial.id))?.origin, origin);
+  const restoredAfterOldClientSave = await provider.getSession(initial.id);
+  assert.deepEqual(restoredAfterOldClientSave?.origin, origin);
+  assert.deepEqual(restoredAfterOldClientSave?.messages[0]?.references, reliableInput.references);
 
   const longHistory = Array.from({ length: 101 }, (_, index) =>
     index === 0
-      ? initial.messages[0]
+      ? oldClientMessage
       : {
           id: `message:origin:${index + 1}`,
           role: index % 2 === 0 ? "user" as const : "assistant" as const,
@@ -132,7 +138,18 @@ test("session origin survives old-client saves and rejects later replacement", a
     origin: undefined,
     updatedAt: "2026-09-15T00:31:30.000Z",
   });
-  assert.deepEqual((await provider.getSession(initial.id))?.origin, origin);
+  const restoredAfterLongOldClientSave = await provider.getSession(initial.id);
+  assert.deepEqual(restoredAfterLongOldClientSave?.origin, origin);
+  assert.deepEqual(restoredAfterLongOldClientSave?.messages[0]?.references, reliableInput.references);
+
+  await assert.rejects(
+    provider.upsertSession({
+      ...initial,
+      messages: [{ ...initial.messages[0], references: [{ id: "event:replacement", type: "event" }] }],
+      updatedAt: "2026-09-15T00:31:45.000Z",
+    }),
+    /references are immutable/i,
+  );
 
   await assert.rejects(
     provider.upsertSession({

@@ -106,8 +106,9 @@ test("detail route presents real identity and basic/cooperation data in the appr
 
 test("detail primary actions keep the real contact and do not send messages or create schedules", async t => {
   const p = await open(t); await press(p, "起草消息"); await press(p, "查看日程");
-  const navigation = await p.evaluate(() => (window as any).fixture.navigation); const href = new URL(navigation[0], "https://test.invalid");
-  assert.equal(href.pathname, "/inbox"); assert.equal(href.searchParams.get("contactId"), "contact:/1"); assert.equal(href.searchParams.get("participantName"), "林悦");
+  const navigation = await p.evaluate(() => (window as any).fixture.navigation);
+  assert.equal(navigation[0].pathname, "/ai/[id]"); assert.equal(navigation[0].params.id, "new"); assert.match(navigation[0].params.prefillIntent, /^ai-prefill-/);
+  assert.doesNotMatch(JSON.stringify(navigation[0]), /contact:\/1|林悦|云间工作室/);
   assert.equal(navigation[1], "/schedule"); assert.deepEqual(await writes(p), []);
   await press(p, "写备注"); const field = p.getByRole("textbox", { name: "添加联系人备注", exact: true });
   await field.fill("本次只记给自己看。"); await press(p, "保存备注");

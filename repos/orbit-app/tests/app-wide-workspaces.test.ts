@@ -157,7 +157,7 @@ for (const scheme of ["light", "dark"] as const) {
     assert.equal(await empty.evaluate(el => getComputedStyle(el).borderRadius), "12px", "emptyInboxSection");
     await noWrites(page);
   });
-  test(`${scheme}: final inset inbox privacy, rewrite and local preview preserve the reply`, async t => {
+  test(`${scheme}: final inset inbox privacy, IORBIT handoff and local preview preserve the reply`, async t => {
     const page = await open(t, "inboxThread&insets=true", scheme);
     const reply = page.getByRole("textbox", { name: "回复正文", exact: true }); await reply.fill("周四可以");
     await page.getByRole("button", { name: "隐私设置", exact: true }).click();
@@ -165,16 +165,17 @@ for (const scheme of ["light", "dark"] as const) {
     await page.getByText("允许关系分析", { exact: true }).waitFor();
     const radii = [await privacy.evaluate(el => getComputedStyle(el).borderRadius)];
     await page.getByRole("button", { name: "润色草稿", exact: true }).click();
-    const rewrite = page.getByText("润色建议", { exact: true }).locator(".."); await rewrite.waitFor();
-    radii.push(await rewrite.evaluate(el => getComputedStyle(el).borderRadius));
-    assert.equal(await reply.inputValue(), "周四可以一起核对合作资料。");
+    const navigation = await page.evaluate(() => (window as any).fixture.navigation);
+    assert.equal(navigation[0].pathname, "/ai/[id]"); assert.match(navigation[0].params.prefillIntent, /^ai-prefill-/);
+    assert.doesNotMatch(JSON.stringify(navigation[0]), /周四可以|person-one|林悦/);
+    assert.equal(await reply.inputValue(), "周四可以");
     await page.getByRole("button", { name: "预览回复", exact: true }).click();
     const staged = page.getByText("回复预览", { exact: true }).locator(".."); await staged.waitFor();
     radii.push(await staged.evaluate(el => getComputedStyle(el).borderRadius));
     await page.getByRole("button", { name: "继续编辑", exact: true }).click();
-    assert.equal(await reply.inputValue(), "周四可以一起核对合作资料。");
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "get", path: "/api/chat/privacy?conversationId=thread-one", body: undefined }, { method: "post", path: "/api/chat/assist/rewrite", body: { conversationId: "thread-one", organization: "", participantName: "林悦", sourceText: "周四可以" } }]);
-    assert.deepEqual(radii, ["12px", "12px", "12px"], "privacyBox, rewriteBox, stagedBox");
+    assert.equal(await reply.inputValue(), "周四可以");
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "get", path: "/api/chat/privacy?conversationId=thread-one", body: undefined }]);
+    assert.deepEqual(radii, ["12px", "12px"], "privacyBox, stagedBox");
   });
 }
 

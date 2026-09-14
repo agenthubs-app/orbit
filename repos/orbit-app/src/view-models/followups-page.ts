@@ -45,7 +45,7 @@ export function followupsPageToView(
     return {
       ...row, contact, contactId: detail.relatedContactId, dateKey, timeLabel,
       draftTask: contact ? {
-        id: row.id, contactName: contact.name, organization: contact.organization,
+        id: row.id, contactId: detail.relatedContactId ?? "", contactName: contact.name, organization: contact.organization,
         title: row.title, recommendedAction: row.title, rationale: row.notes ?? "",
         dueLabel: timeLabel, priorityLabel: row.priority === "high" ? "优先" : "待跟进",
         sourceLabel: detail.sourceLabel ?? "已保存待办", evidenceLabel: "已保存待办", triggerLabel: "人脉待办",

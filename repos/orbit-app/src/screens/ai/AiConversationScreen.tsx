@@ -36,8 +36,9 @@ import { iorbitBrandMark } from "../../design/iorbit-brand";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { aiConversationListSchema, aiSessionReadSchema, aiSessionReceiptMatches, aiReplyPayload, aiReliableSendReceipt, aiReliableSendRecovery, aiTaskReceipt, type AiConversationPayload, type AiSession } from "../../api/ai-history-contract";
-import type { AiSessionOriginInputContract } from "../../api/contract/ai-sessions";
+import type { AiSessionOriginInputContract, AiSessionReferenceContract } from "../../api/contract/ai-sessions";
 import { updateAiSessionOrganization } from "../../api/ai-session-management";
+import { ContactMentionPicker, type MentionContact } from "./ContactMentionPicker";
 import {
   aiRunDetailToView,
   buildAiRunDetailRequest,
@@ -109,6 +110,7 @@ type ReliableSendAttempt = {
   clientMessageId: string;
   expectedMessageRevision: number;
   origin?: AiSessionOriginInputContract;
+  references: readonly AiSessionReferenceContract[];
   requestId: string;
   sessionId: string;
 };
@@ -119,6 +121,7 @@ type ConversationJournalState = {
   savedSessionId: string | null; sessionSnapshot: AiSession | null; pendingSave: PendingSessionSave | null;
   saveError: string | null; saveNotice: string | null; sendError: string | null; sendCode: string | null; failedRequest: SendRequest | null;
   actionError: string | null; acceptedTaskId: string | null; taskInteractionResolution: "accepted" | "dismissed" | null;
+  selectedReferences: AiSessionReferenceContract[];
 };
 export type AiConversationJournal = Partial<ConversationJournalState> & { draftRevision?: number; interruptedRequest?: SendRequest };
 
@@ -149,8 +152,8 @@ function rawSessionThread(session: AiSession): ConversationThreadView {
   };
 }
 
-export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, claimInitialPrompt, allowInitialPrompt = true, journal: providedJournal, sessionOrigin }: {
-  scopeKey?: string; isScopeCurrent?: () => boolean; claimInitialPrompt?: () => boolean; allowInitialPrompt?: boolean; journal?: AiConversationJournal; sessionOrigin?: AiSessionOriginInputContract;
+export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, claimInitialPrompt, allowInitialPrompt = true, initialDraft, initialReferences = [], journal: providedJournal, sessionOrigin }: {
+  scopeKey?: string; isScopeCurrent?: () => boolean; claimInitialPrompt?: () => boolean; allowInitialPrompt?: boolean; initialDraft?: string; initialReferences?: readonly AiSessionReferenceContract[]; journal?: AiConversationJournal; sessionOrigin?: AiSessionOriginInputContract;
 } = {}) {
   const { colors, styles } = useStyles();
   const insets = useSafeAreaInsets();
@@ -174,7 +177,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const contactsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.contacts, data => contactsToSummaries(data).length === 0, readOptions);
   const tasksState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.tasks, data => followupsToView({ notificationsPayload: {}, tasksPayload: data }).tasks.length === 0, readOptions);
   const profileState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.profile, () => false, readOptions);
-  const [draftMessage, setDraftMessage] = useJournalState(journal, "draftMessage", isDraftConversation && optionalParam(initialMessageConsumed) !== "1" ? initialPrompt : "");
+  const [draftMessage, setDraftMessage] = useJournalState(journal, "draftMessage", isDraftConversation && optionalParam(initialMessageConsumed) !== "1" ? initialDraft ?? initialPrompt : "");
   const draftValue = useRef(draftMessage);
   const draftRevision = useRef(journal.draftRevision ?? 0);
   const [latestData, setLatestData] = useJournalState(journal, "latestData", null);
@@ -189,6 +192,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const [sendCode, setSendCode] = useJournalState(journal, "sendCode", null);
   const [failedRequest, setFailedRequest] = useJournalState(journal, "failedRequest", null);
   const [actionError, setActionError] = useJournalState(journal, "actionError", null);
+  const [selectedReferences, setSelectedReferences] = useJournalState(journal, "selectedReferences", initialReferences.map(reference => ({ ...reference })));
   const [aiRunError, setAiRunError] = useState<string | null>(null);
   const [aiRunDetailView, setAiRunDetailView] = useState<AiRunDetailView | null>(null);
   const [pendingAiRunId, setPendingAiRunId] = useState<string | null>(null);
@@ -285,6 +289,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
           }
         } : {}),
         requestId: randomUUID(),
+        references: selectedReferences,
         sessionId,
       },
     };
@@ -331,7 +336,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
         ...(request.reliable ? {
           ...request.reliable,
           protocolVersion: 2,
-          references: []
+          references: request.reliable.references
         } : {})
       }, signal: controller.signal
     });
@@ -384,7 +389,13 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       } else if (isDraftConversation || isStoredAgentSession || previousSession) {
         const turnStart = payload.messages.findLastIndex(item => item.role === "user");
         const messages = payload.messages.slice(turnStart).filter((item): item is typeof item & { role: "user" | "assistant" } => item.role === "user" || item.role === "assistant")
-          .map(item => ({ role: item.role, text: item.content }));
+          .map(item => ({
+            ...(item.role === "user" && request.reliable?.references.length
+              ? { references: request.reliable.references.map(reference => ({ ...reference })) }
+              : {}),
+            role: item.role,
+            text: item.content,
+          }));
         const runId = conversationAiRunReferencesFor(payload)[0]?.id;
         const identity = (runId || `${payload.activeConversationId}-${Date.now()}`).replace(/[^A-Za-z0-9_-]/gu, "-");
         const now = new Date().toISOString();
@@ -414,6 +425,17 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     const sendPath = usesSessionHistory ? ORBIT_API_ENDPOINTS.conversations
       : resolvedConversationId ? aiConversationPath(resolvedConversationId) : path;
     await submitRequest(requestForSend({ path: sendPath, message, revision: draftRevision.current, history: history?.length ? history : undefined }));
+  }
+
+  function addMention(contact: MentionContact) {
+    if (!owns() || selectedReferences.some(reference => reference.type === "contact" && reference.id === contact.id)) return;
+    setSelectedReferences([...selectedReferences, { id: contact.id, type: "contact" }]);
+    if (!draftValue.current.includes(`@${contact.name}`)) changeDraft(`${draftValue.current}${draftValue.current && !/\s$/u.test(draftValue.current) ? " " : ""}@${contact.name} `);
+  }
+
+  function removeReference(reference: AiSessionReferenceContract) {
+    if (!owns()) return;
+    setSelectedReferences(selectedReferences.filter(item => item.type !== reference.type || item.id !== reference.id));
   }
 
   useEffect(() => {
@@ -527,6 +549,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
           contactCards={contactCards}
           contactsStateKind={contactsState.kind}
           draftMessage={draftMessage}
+          selectedReferences={selectedReferences}
           eventCards={eventCards}
           eventsStateKind={eventsState.kind}
           followupTasks={followupTasks}
@@ -536,6 +559,8 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
           aiRunError={aiRunError}
           onBack={() => openHref("/ai")}
           onChangeDraft={changeDraft}
+          onAddMention={addMention}
+          onRemoveReference={removeReference}
           onInspectAiRun={inspectAiRun}
           onOpenContact={(contactId) =>
             openHref(`/contacts/${encodeURIComponent(contactId)}`)
@@ -583,6 +608,7 @@ function ConversationThread({
   contactCards,
   contactsStateKind,
   draftMessage,
+  selectedReferences,
   eventCards,
   eventsStateKind,
   followupTasks,
@@ -590,6 +616,8 @@ function ConversationThread({
   inlinePanels,
   onBack,
   onChangeDraft,
+  onAddMention,
+  onRemoveReference,
   onInspectAiRun,
   onOpenContact,
   onOpenEvent,
@@ -626,6 +654,7 @@ function ConversationThread({
   contactCards: ContactSummary[];
   contactsStateKind: ResourceKind;
   draftMessage: string;
+  selectedReferences: readonly AiSessionReferenceContract[];
   eventCards: EventSummary[];
   eventsStateKind: ResourceKind;
   followupTasks: FollowupTaskView[];
@@ -633,6 +662,8 @@ function ConversationThread({
   inlinePanels: ConversationInlinePanelView[];
   onBack: () => void;
   onChangeDraft: (value: string) => void;
+  onAddMention: (contact: MentionContact) => void;
+  onRemoveReference: (reference: AiSessionReferenceContract) => void;
   onInspectAiRun: (reference: ConversationAiRunReferenceView) => void;
   onOpenContact: (contactId: string) => void;
   onOpenEvent: (eventId: string) => void;
@@ -665,6 +696,7 @@ function ConversationThread({
 }) {
   const { colors, styles } = useStyles();
   const [routesOpen, setRoutesOpen] = useState(false);
+  const [mentionsOpen, setMentionsOpen] = useState(false);
   const { fontScale } = useWindowDimensions();
   const minimumInputHeight = Math.max(44, Math.ceil(22 * fontScale + 12));
   const [inputHeight, setInputHeight] = useState(44);
@@ -799,6 +831,14 @@ function ConversationThread({
       </ScrollView>
       {saveNotice ? <Text accessibilityLiveRegion="polite" style={[styles.errorText, { marginHorizontal: layout.pageInset }]}>{saveNotice}</Text> : null}
       <View testID="conversation-composer" style={styles.composerPanel}>
+        {selectedReferences.length > 0 ? <View style={styles.referenceRow}>{selectedReferences.map(reference => {
+          const contact = contactCards.find(item => item.id === reference.id);
+          return <Pressable accessibilityLabel={`移除联系人：${contact?.name ?? reference.id}`} accessibilityRole="button" key={`${reference.type}:${reference.id}`} onPress={() => onRemoveReference(reference)} style={styles.referenceChip}><Text style={styles.referenceChipText}>@{contact?.name ?? reference.id} ×</Text></Pressable>;
+        })}</View> : null}
+        {mentionsOpen ? contactsStateKind === "success" || contactsStateKind === "empty"
+          ? <ContactMentionPicker contacts={contactCards} onSelect={(contact) => { onAddMention(contact); setMentionsOpen(false); }} selectedIds={selectedReferences.filter(reference => reference.type === "contact").map(reference => reference.id)} />
+          : <Text style={styles.errorText}>{contactsStateKind === "loading" ? "正在读取联系人…" : "联系人暂时不可用，问题仍可不关联联系人发送。"}</Text>
+        : null}
         <TextInput
           accessibilityLabel="消息"
           multiline
@@ -812,6 +852,9 @@ function ConversationThread({
           value={draftMessage}
         />
         <View style={styles.composerActions}>
+        <Pressable accessibilityLabel="提及联系人" accessibilityRole="button" onPress={() => setMentionsOpen(value => !value)} style={styles.composerPlusButton}>
+          <Text style={styles.mentionButtonText}>@</Text>
+        </Pressable>
         <Pressable accessibilityLabel="打开快捷入口" accessibilityRole="button" onPress={() => { Keyboard.dismiss(); setRoutesOpen(!routesOpen); }} style={styles.composerPlusButton}>
           <Ionicons color={colors.ink} name="add" size={22} />
         </Pressable>
@@ -1752,6 +1795,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   failureSecondaryText: { color: colors.ink, fontSize: 14, lineHeight: 22, fontWeight: "600" },
   routesPanel: { padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border },
   composerActions: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  mentionButtonText: { color: colors.ink, fontSize: 20, fontWeight: "800" },
+  referenceRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs, paddingTop: spacing.xs },
+  referenceChip: { backgroundColor: colors.surface2, borderRadius: radius.pill, minHeight: 36, justifyContent: "center", paddingHorizontal: spacing.sm },
+  referenceChipText: { color: colors.ink, fontSize: 12, fontWeight: "700" },
   recordLink: { flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 48, borderTopWidth: 1, borderTopColor: colors.border, paddingVertical: spacing.sm },
   recordLinkText: { flex: 1, color: colors.accent, fontSize: typography.small, fontWeight: "600", lineHeight: 20 },
   linkBoundary: { color: colors.muted, fontSize: typography.small, lineHeight: 20 },

@@ -322,6 +322,7 @@ export function createReliableOrbitAgentSendService(dependencies: {
               {
                 createdAt: userCreatedAt,
                 id: request.input.clientMessageId,
+                references: request.input.references,
                 role: "user",
                 text: request.input.message,
               },

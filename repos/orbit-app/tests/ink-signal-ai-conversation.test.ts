@@ -18,6 +18,7 @@ import React, { useSyncExternalStore } from "react";
 import { View } from "react-native-web";
 import glyphs from "@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/Ionicons.json";
 import { onSessionExpired } from "./src/api/session-expiry";
+import { registerAiTemplatePrefill } from "./src/data/ai-template-prefill";
 let revision = 0; const listeners = new Set();
 const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
 const NativeDate = Date;
@@ -26,6 +27,7 @@ const state = window.fixture = { requests: [], pending: [], navigation: [], pres
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
   reply(index, status = 200, payload) { const r = state.requests[index]; r.replied = true; state.pending[index]?.(new Response(JSON.stringify(status === 200 || payload !== undefined ? { success: true, data: payload === undefined ? state.payloads[r.path] : payload } : { success: false, error: { code: "UNAVAILABLE", message: "暂时无法读取，请重试。" } }), { status, headers: { "Content-Type": "application/json" } })); }
 };
+if (window.initialFixture.prefill) state.params = { id: "new", prefillIntent: registerAiTemplatePrefill({ actorId: state.actor, baseUrl: state.baseUrl, ...window.initialFixture.prefill }) };
 onSessionExpired(() => state.expiries++);
 window.fetch = async (input, init) => { const index = state.requests.length; const url = new URL(String(input)); state.requests.push({ path: url.pathname, url: String(input), method: init.method, body: init.body ? JSON.parse(init.body) : null, signal: init.signal });
   const pending = new Promise(resolve => state.pending[index] = resolve);
@@ -188,6 +190,57 @@ for (const extra of [{}, { source: "business" }, { source: "send", sendIntent: "
   assert.deepEqual(await writes(p), []);
   await twice(p, "发送消息");
   assert.deepEqual((await writes(p)).map(reliableRequestBase), [{ method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "我修改后的问题" } }]);
+});
+
+test("business template prefill is one-use and sends its stable contact reference with origin", async t => {
+  const contact = { id: "contact:lin:design", displayName: "林悦", organization: "云间设计", role: "设计师", status: "active" };
+  const message = "请为 @林悦 起草一封联系邮件，只生成草稿，不要发送。";
+  const p = await open(t, {
+    prefill: { entryPointId: "contact.message_draft", message, references: [{ id: contact.id, type: "contact" }], template: { id: "contact.message_draft", version: 1 } },
+    payloads: { ...conversationReadPayloads, "/api/contacts": { contacts: [contact] } },
+  });
+  assert.deepEqual(await writes(p), []);
+  assert.equal(await p.getByRole("textbox", { name: "消息", exact: true }).inputValue(), message);
+  await p.getByRole("button", { name: "移除联系人：林悦", exact: true }).waitFor();
+  await press(p, "发送消息");
+  const write = (await writes(p))[0];
+  assert.deepEqual(write.body.references, [{ id: "contact:lin:design", type: "contact" }]);
+  assert.equal(write.body.origin.entryPointId, "contact.message_draft");
+  assert.deepEqual(write.body.origin.template, { id: "contact.message_draft", version: 1 });
+  await replyLastWrite(p, replyPayload(message));
+  const sessionWrite = (await writes(p))[1];
+  assert.deepEqual(sessionWrite.body.session.messages.find((item: any) => item.role === "user").references, [{ id: "contact:lin:design", type: "contact" }]);
+  await replyLastWrite(p, { session: sessionWrite.body.session, storage: aiSessionListPayload.storage });
+  await update(p, { mounted: false }); await update(p, { mounted: true });
+  assert.equal((await writes(p)).length, 2);
+});
+
+test("mention picker disambiguates same-name contacts and sends the selected stable id", async t => {
+  const contacts = [
+    { id: "contact:lin:design", displayName: "林悦", organization: "云间设计", role: "设计师", status: "active" },
+    { id: "contact:lin:commerce", displayName: "林悦", organization: "云间商贸", role: "采购", status: "active" },
+  ];
+  const p = await open(t, { params: { id: "new" }, payloads: { ...conversationReadPayloads, "/api/contacts": { contacts } } });
+  await press(p, "提及联系人");
+  await p.getByRole("textbox", { name: "搜索要提及的联系人", exact: true }).fill("商贸");
+  await press(p, "选择联系人：林悦，云间商贸，采购");
+  assert.match(await p.getByRole("textbox", { name: "消息", exact: true }).inputValue(), /@林悦/u);
+  await press(p, "发送消息");
+  assert.deepEqual((await writes(p))[0].body.references, [{ id: "contact:lin:commerce", type: "contact" }]);
+});
+
+test("mention picker explains empty and unavailable contact sources without blocking ordinary questions", async t => {
+  const empty = await open(t, { params: { id: "new" } });
+  await press(empty, "提及联系人");
+  await empty.getByText("没有匹配的联系人。", { exact: true }).waitFor();
+  assert.deepEqual(await writes(empty), []);
+
+  const unavailable = await open(t, { params: { id: "new" }, failPaths: ["/api/contacts"] });
+  await press(unavailable, "提及联系人");
+  await unavailable.getByText("联系人暂时不可用，问题仍可不关联联系人发送。", { exact: true }).waitFor();
+  await unavailable.getByRole("textbox", { name: "消息", exact: true }).fill("不关联联系人也可以继续");
+  await press(unavailable, "发送消息");
+  assert.deepEqual((await writes(unavailable))[0].body.references, []);
 });
 for (const initialMessage of [undefined, "   "]) test("AI empty new conversation accepts its first explicit question " + JSON.stringify(initialMessage), async t => {
   const p = await open(t, { params: { id: "new", initialMessage } });

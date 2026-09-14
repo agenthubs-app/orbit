@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   MESSAGE_STATE_FOREGROUND_REFRESH_MS,
   emitMessageStateInvalidation,
+  relationshipConversationContactId,
   relationshipConversationListToInbox,
   relationshipConversationToThread,
   relationshipReadReceiptMatches,
@@ -82,6 +83,8 @@ test("thread mapping preserves authoritative ids and marks only the remote deliv
   assert.ok(detail);
   assert.equal(detail.conversationId, "conversation:one");
   assert.equal(detail.participantName, "曾伟");
+  assert.equal(relationshipConversationContactId(raw, "actor:one"), "contact:one");
+  assert.equal(relationshipConversationContactId(raw, "actor:three"), "");
   assert.deepEqual(detail.messages.map(message => ({ id: message.id, fromMe: message.fromMe, body: message.body })), [
     { id: "message:one", fromMe: false, body: "周四见面，带上资料。" },
   ]);

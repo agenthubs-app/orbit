@@ -171,6 +171,55 @@ test("protocol v2 conversation POST replays one persisted result for the same re
   assert.equal(sendCalls, 1);
 });
 
+test("protocol v2 conversation POST authorizes contact references before planner execution", async () => {
+  const delegate = createMockOrbitAgentConversationService();
+  let sendCalls = 0;
+  mock.method(orbitAgentConversationServiceFactory, "create", () => ({
+    mode: "mock" as const,
+    service: {
+      ...delegate,
+      sendMessage(input) {
+        sendCalls += 1;
+        return delegate.sendMessage(input);
+      },
+    },
+    success: true as const,
+  }));
+  const route = await import("../../app/api/ai/conversations/route");
+  const body = {
+    clientMessageId: "message:route-reference:client",
+    expectedMessageRevision: 0,
+    locale: "zh",
+    message: "为联系人准备一封可编辑草稿",
+    protocolVersion: 2,
+    references: [{ id: "demo-contact-1", type: "contact" }],
+    requestId: "request:route-reference",
+    sessionId: "session:route-reference",
+  };
+  const send = (requestBody: unknown) => route.POST(new Request("https://orbit.local/api/ai/conversations", {
+    body: JSON.stringify(requestBody),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  }));
+
+  const allowed = await send(body);
+  assert.equal(allowed.status, 200);
+  assert.equal(sendCalls, 1);
+
+  const rejected = await send({
+    ...body,
+    clientMessageId: "message:route-reference-denied:client",
+    references: [{ id: "contact:not-accessible", type: "contact" }],
+    requestId: "request:route-reference-denied",
+    sessionId: "session:route-reference-denied",
+  });
+  const rejectedEnvelope = await rejected.json();
+  assert.equal(rejected.status, 403);
+  assert.equal(rejectedEnvelope.error.code, "FORBIDDEN");
+  assert.doesNotMatch(rejectedEnvelope.error.message, /contact:not-accessible/u);
+  assert.equal(sendCalls, 1);
+});
+
 test("ordinary conversation responses use a fresh progress run and never inherit older actions", async () => {
   resetOrbitAgentRuntimeServicesForTests();
   const runtime = createOrbitAgentRuntimeService("mock");

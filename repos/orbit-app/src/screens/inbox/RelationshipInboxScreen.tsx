@@ -30,6 +30,7 @@ import {
 import {
   MESSAGE_STATE_FOREGROUND_REFRESH_MS,
   emitMessageStateInvalidation,
+  relationshipConversationContactId,
   relationshipConversationListToInbox,
   relationshipConversationToThread,
   relationshipReadReceiptMatches,
@@ -50,25 +51,23 @@ import { inboxNotificationActions, inboxNotificationReceiptMatches, inboxNotific
 import {
   buildRelationshipSignalConfirmRequest,
   buildRelationshipPrivacyToggleRequest,
-  buildRelationshipRewriteRequest,
   buildRelationshipThreadDraftRequest,
   createdRelationshipThreadToView,
   relationshipConversationIdForContact,
   relationshipAlertsToView,
   relationshipInboxErrorText,
   relationshipPrivacyControlsToView,
-  relationshipRewriteToDraft,
   relationshipSignalConfirmToView,
   relationshipSignalsToView,
   type RelationshipAlertsView,
   type RelationshipCreatedThreadView,
   type RelationshipConversationView,
   type RelationshipPrivacyControlsView,
-  type RelationshipRewriteDraftView,
   type RelationshipSignalConfirmView,
   type RelationshipSignalsView,
   type RelationshipThreadDetailView
 } from "../../view-models/relationship-inbox";
+import { inboxPolishTemplate, registerAiTemplatePrefill } from "../../data/ai-template-prefill";
 
 type InboxSection = "alerts" | "threads";
 type ClientGet = (endpoint: string, options?: { signal?: AbortSignal }) => Promise<ApiResult<unknown>>;
@@ -507,7 +506,11 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
   const stateData = state.kind === "success" || state.kind === "empty" ? state.data : null;
   const detail = stateData ? relationshipConversationToThread(stateData, actorId) : null;
   const retainedDetail = useRef<RelationshipThreadDetailView | null>(null);
-  if (detail) retainedDetail.current = detail;
+  const retainedContactId = useRef("");
+  if (detail) {
+    retainedDetail.current = detail;
+    retainedContactId.current = relationshipConversationContactId(stateData, actorId);
+  }
   const contentReady = Boolean(detail);
   const currentContent = useRef(contentReady);
   currentContent.current = contentReady;
@@ -573,6 +576,7 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
         <ThreadDetail
           clientGet={clientGet}
           clientPost={clientPost}
+          contactId={retainedContactId.current}
           isCurrent={isContentCurrent}
           detail={retainedDetail.current}
         />
@@ -1350,12 +1354,14 @@ function ConversationList({
 function ThreadDetail({
   clientGet,
   clientPost,
+  contactId,
   isCurrent,
   detail,
   previewOnly = false
 }: {
   clientGet: ClientGet;
   clientPost: ClientPost;
+  contactId?: string;
   isCurrent: () => boolean;
   detail: RelationshipThreadDetailView;
   previewOnly?: boolean;
@@ -1402,7 +1408,7 @@ function ThreadDetail({
         <Text style={styles.safetyText}>仅在本页预览，尚未保存或发送。</Text>
       ) : (
         <>
-          <ReplyComposer clientPost={clientPost} isCurrent={isCurrent} detail={detail} />
+          <ReplyComposer contactId={contactId ?? ""} isCurrent={isCurrent} detail={detail} />
           <Pressable accessibilityRole="button" accessibilityLabel="隐私设置" accessibilityState={{ expanded: showPrivacy }} onPress={() => setShowPrivacy(value => !value)} style={styles.privacyDisclosure}>
             <Text style={styles.threadPreview}>{showPrivacy ? "收起隐私设置" : "隐私设置"}</Text>
           </Pressable>
@@ -1560,83 +1566,43 @@ function PrivacyControlsPanel({
 }
 
 function ReplyComposer({
-  clientPost,
+  contactId,
   isCurrent,
   detail
 }: {
-  clientPost: ClientPost;
+  contactId: string;
   isCurrent: () => boolean;
   detail: RelationshipThreadDetailView;
 }) {
   const { colors, styles } = useStyles();
+  const auth = useOrbitAuthSession();
+  const server = useOrbitApiBaseUrl();
+  const router = useRouter();
   const [body, setBody] = useState(detail.draftReply);
   const draftEdited = useRef(false);
-  const [rewriteDraftView, setRewriteDraftView] =
-    useState<RelationshipRewriteDraftView | null>(null);
   const [rewriteError, setRewriteError] = useState<string | null>(null);
-  const [rewriting, setRewriting] = useState(false);
   const [staged, setStaged] = useState("");
-  useEffect(() => { setRewriting(false); setRewriteError(null); }, [isCurrent]);
+  useEffect(() => { setRewriteError(null); }, [isCurrent]);
 
   useEffect(() => {
     if (draftEdited.current) return;
     setBody(detail.draftReply);
-    setRewriteDraftView(null);
     setRewriteError(null);
     setStaged("");
   }, [detail.conversationId, detail.draftReply]);
 
-  async function rewriteDraft() {
+  function rewriteDraft() {
     if (!isCurrent()) return;
-    const request = buildRelationshipRewriteRequest({
-      conversationId: detail.conversationId,
-      organization: "",
-      participantName: detail.participantName,
-      sourceText: body
-    });
-
-    if (!request.success) {
-      setRewriteError(request.error);
-      return;
-    }
-
-    setRewriting(true);
-    setRewriteError(null);
-
+    const actorId = auth.user?.id;
+    if (!body.trim()) { setRewriteError("请先写下要润色的草稿。"); return; }
+    if (!contactId) { setRewriteError("这段对话缺少可验证的人脉，请先补全关联人脉。"); return; }
+    if (!actorId || !server.baseUrl) { setRewriteError("请先登录后再打开 IORBIT。"); return; }
     try {
-      const result = await clientPost(
-        ORBIT_API_ENDPOINTS.chatAssistRewrite,
-        request.request.body
-      );
-      if (!isCurrent()) return;
-
-      if (!result.success) {
-        setRewriteError(
-          relationshipInboxErrorText(
-            result.error?.message,
-            "这段草稿暂时润色不了。"
-          )
-        );
-        return;
-      }
-
-      const rewrite = relationshipRewriteToDraft(result.data);
-
-      if (!rewrite) {
-        setRewriteError("暂时没有可用的润色版本。");
-        return;
-      }
-
-      setBody(rewrite.body);
-      draftEdited.current = true;
-      setRewriteDraftView(rewrite);
-    } catch (requestError) {
-      if (!isCurrent()) return;
-      setRewriteError(
-        relationshipInboxErrorText(requestError, "这段草稿暂时润色不了。")
-      );
-    } finally {
-      if (isCurrent()) setRewriting(false);
+      const prefillIntent = registerAiTemplatePrefill({ actorId, baseUrl: server.baseUrl, ...inboxPolishTemplate({ contactId, contactName: detail.participantName, draft: body.trim() }) });
+      setRewriteError(null);
+      router.push({ pathname: "/ai/[id]", params: { id: "new", prefillIntent } } as Href);
+    } catch {
+      setRewriteError("这段草稿暂时无法带入 IORBIT，请重试。");
     }
   }
 
@@ -1665,26 +1631,17 @@ function ReplyComposer({
         onChangeText={(value) => {
           draftEdited.current = true;
           setBody(value);
-          setRewriteDraftView(null);
         }}
         placeholder="先写一版要说的话。"
         placeholderTextColor={colors.text4}
         style={styles.input}
         value={body}
       />
-      {rewriteDraftView ? (
-        <View style={styles.rewriteBox}>
-          <Text style={styles.stagedTitle}>{rewriteDraftView.label}</Text>
-          <Text style={styles.threadPreview}>{rewriteDraftView.rationale}</Text>
-          <Text style={styles.sourceTag}>{rewriteDraftView.sourceLabel}</Text>
-          <Text style={styles.safetyText}>{rewriteDraftView.safetyText}</Text>
-        </View>
-      ) : null}
       {rewriteError ? <Text style={styles.errorText}>{rewriteError}</Text> : null}
       <Text style={styles.safetyText}>{detail.safetyText}</Text>
       <View style={styles.buttonRow}>
         <ActionButton
-          disabled={!body.trim() || rewriting}
+          disabled={!body.trim()}
           icon="sparkles-outline"
           label="润色草稿"
           onPress={rewriteDraft}

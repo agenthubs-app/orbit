@@ -73,6 +73,25 @@ export type {
 } from "./orbit-ai";
 
 export type {
+  AiSessionEntryPointId,
+  AiSessionGroupContract,
+  AiSessionGroupCreateContract,
+  AiSessionGroupDeleteContract,
+  AiSessionGroupMutationContract,
+  AiSessionOrganizationContract,
+  AiSessionOrganizationMutationContract,
+  AiSessionOriginContract,
+  AiSessionOriginInputContract,
+  AiSessionReferenceContract,
+  AiSessionReferenceType,
+  LegacyAiSessionOriginContract,
+  ReliableAiSendInputContract,
+  ReliableAiSendReceiptContract,
+  ReliableAiSendState,
+  StoredAiSessionOriginContract
+} from "./ai-sessions";
+
+export type {
   ContactEvidenceContract,
   ContactFilterOptionContract,
   ContactListItemContract,

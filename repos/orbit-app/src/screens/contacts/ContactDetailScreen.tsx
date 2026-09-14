@@ -40,6 +40,7 @@ import {
   type ApiResourceState
 } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { contactMessageTemplate, registerAiTemplatePrefill } from "../../data/ai-template-prefill";
 import {
   contactDetailHeroToView,
   contactDetailToSummary,
@@ -326,18 +327,23 @@ function ContactDetailCard({
   relationshipValueState: ApiResourceState<unknown>;
 }) {
   const { colors } = useOrbitTheme();
+  const { styles } = useStyles();
   const router = useRouter();
   const { baseUrl } = useOrbitApiBaseUrl();
   const contact = contactDetailToSummary(data);
   const hero = contactDetailHeroToView(contact);
   const toneStyle = avatarToneStyles(colors)[hero.avatar.tone];
   const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [prefillError, setPrefillError] = useState<string | null>(null);
   const [notesRequest, setNotesRequest] = useState(0);
   const notesTop = useRef(0);
-  const inboxHref =
-    `/inbox?contactId=${encodeURIComponent(contact.id)}&participantName=${encodeURIComponent(
-      contact.name
-    )}&organization=${encodeURIComponent(contact.organization)}` as Href;
+  function openMessageDraft() {
+    if (!isScopeCurrent()) return;
+    if (!actorId || !baseUrl) { setPrefillError("请先登录后再打开 IORBIT。"); return; }
+    const prefillIntent = registerAiTemplatePrefill({ actorId, baseUrl, ...contactMessageTemplate(contact) });
+    setPrefillError(null);
+    router.push({ pathname: "/ai/[id]", params: { id: "new", prefillIntent } } as Href);
+  }
 
   return (
     <>
@@ -351,10 +357,11 @@ function ContactDetailCard({
       <ContactCommunicationStatus contactId={contactId} state={eligibilityState} />
       <NextStepCard
         action={contact.nextAction}
-        onPress={() => { if (isScopeCurrent()) router.push(inboxHref); }}
+        onPress={openMessageDraft}
         onSchedule={() => { if (isScopeCurrent()) router.push("/schedule"); }}
         onNotes={() => { if (isScopeCurrent()) { setNotesRequest(value => value + 1); onScrollTo(notesTop.current); } }}
       />
+      {prefillError ? <Text style={styles.errorText}>{prefillError}</Text> : null}
       <ContactOverview contact={contact} email={detailReadSchema.safeParse(data).data?.contact.primaryEmail} />
       <View onLayout={event => { notesTop.current = event.nativeEvent.layout.y; }}><ContactNotesSection actorId={actorId} client={client} colors={colors} contactId={contactId} data={data} onRefresh={onNotesRefresh} openRequest={notesRequest} preview isScopeCurrent={isScopeCurrent} /></View>
       <DisclosureSection

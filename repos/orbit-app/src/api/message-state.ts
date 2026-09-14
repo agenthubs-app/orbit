@@ -158,6 +158,10 @@ export function relationshipConversationToThread(value: unknown, actorId: string
   };
 }
 
+export function relationshipConversationContactId(value: unknown, actorId: string): string {
+  return conversation(value, actorId)?.contactId ?? "";
+}
+
 export function relationshipReadTarget(value: unknown, actorId: string): ReadTarget | null {
   const decoded = conversation(value, actorId);
   if (!decoded || decoded.unreadCount === 0) return null;

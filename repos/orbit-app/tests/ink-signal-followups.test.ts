@@ -40,6 +40,7 @@ async function request(method, path, options) { state.requests.push({ method, pa
 const client = { patch: (p, o) => request("PATCH", p, o), post: (p, o) => request("POST", p, o) };
 export const useOrbitApiClient = () => client;
 export const useOrbitApiBaseUrl = () => ({ baseUrl: "https://orbit.test", ready: true });
+export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, user: { id: "reader" }, cookieHeader: "" });
 export const useRouter = () => ({ canGoBack: () => false, push(href) { state.navigation.push(href); }, replace(href) { state.navigation.push(href); }, back() { state.navigation.push("back"); } });
 export const usePathname = () => "/followups";
 export const useRelationshipInboxBadgeCount = () => 0;
@@ -52,7 +53,7 @@ test.before(async () => {
   const result = await build({ stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import { FollowupsScreen } from "./src/screens/followups/FollowupsScreen"; createRoot(document.getElementById("root")).render(<FollowupsScreen />);', loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { "process.env.NODE_ENV": '"test"', __DEV__: "false" }, plugins: [{ name: "followup-boundaries", setup(plugin) {
     plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "ink-followups" }));
     plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-    plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|useRelationshipInboxBadgeCount|ApiBaseUrlProvider)$/ }, () => ({ path: "fixture", namespace: "ink-followups" }));
+    plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|useRelationshipInboxBadgeCount|ApiBaseUrlProvider|AuthSessionProvider)$/ }, () => ({ path: "fixture", namespace: "ink-followups" }));
     plugin.onLoad({ filter: /.*/, namespace: "ink-followups" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Text as RealText, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web"; import { useFixture } from "fixture"; export * from "react-native-web";
 export const useWindowDimensions = () => { const s = useFixture(); return { ...realDimensions(), width: s.width, fontScale: s.fontScale }; };
@@ -137,25 +138,27 @@ for (const failure of [{ failure: true }, { thrown: true }]) test(`failed comple
   await checkbox.click(); assert.equal((await requests(page)).length, 2);
 });
 
-test("candidate generation, writing assist, saved draft and review retain explicit boundaries", async t => {
+test("candidate generation and writing actions open opaque IORBIT prefills without direct writes", async t => {
   const page = await open(t, { tasks: [candidate] });
   await page.getByText("待复核建议", { exact: true }).waitFor();
   assert.equal(await page.getByRole("checkbox").count(), 0);
-  for (const label of ["生成候选", "生成提醒候选", "AI 起草", "起草联系消息", "标记可确认"]) await page.getByRole("button", { name: label, exact: true }).click();
-  const writes = await requests(page);
-  assert.deepEqual(writes.map((r: any) => [r.method, r.path]), [["POST", "/api/tasks/generate"], ["POST", "/api/notifications/reminders/generate"], ["POST", "/api/chat/assist/followup-draft"], ["POST", "/api/message-drafts"], ["PATCH", "/api/message-drafts/draft%3A1"]]);
-  assert.deepEqual(writes[0].body, { limit: 5 });
-  assert.deepEqual(writes[1].body, { dueWithinDays: 14, includeGroupedLowPriority: true, limit: 5 });
-  assert.deepEqual(writes[2].body, { contextNote: "确认是否方便继续讨论", organization: "候选公司", participantName: "候选联系人", sourceText: "活动中提到合作" });
-  assert.deepEqual(writes[3].body, { channel: "email", contextNote: "确认是否方便继续讨论", draftKind: "follow_up", organization: "候选公司", recipientName: "候选联系人" });
-  assert.deepEqual(writes[4].body, { reviewerLabel: "Orbit iOS", status: "ready_for_confirmation" });
-  await page.getByText("这里只保存草稿，不会自动发送。", { exact: true }).waitFor();
+  for (const label of ["生成候选", "生成提醒候选", "AI 起草", "起草联系消息"]) await page.getByRole("button", { name: label, exact: true }).click();
+  assert.deepEqual(await requests(page), []);
+  const navigation = await page.evaluate(() => (window as any).fixture.navigation);
+  assert.equal(navigation.length, 4);
+  for (const href of navigation) {
+    assert.equal(href.pathname, "/ai/[id]"); assert.equal(href.params.id, "new"); assert.match(href.params.prefillIntent, /^ai-prefill-/);
+    assert.doesNotMatch(JSON.stringify(href), /候选联系人|候选公司|candidate-contact/);
+  }
 });
 
 test("saved task drafting uses its real recipient, task title and notes", async t => {
   const page = await open(t);
   await page.getByRole("button", { name: "AI 起草", exact: true }).click();
-  assert.deepEqual((await requests(page))[0].body, { contextNote: "发送项目介绍", organization: "云间工作室", participantName: "林悦", sourceText: "先确认合作方向" });
+  assert.deepEqual(await requests(page), []);
+  const navigation = await page.evaluate(() => (window as any).fixture.navigation);
+  assert.equal(navigation[0].pathname, "/ai/[id]"); assert.match(navigation[0].params.prefillIntent, /^ai-prefill-/);
+  assert.doesNotMatch(JSON.stringify(navigation[0]), /林悦|云间工作室|先确认合作方向|contact:1/);
 });
 
 test("missing contact metadata never blocks saved tasks or fabricates a name", async t => {

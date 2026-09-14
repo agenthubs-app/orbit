@@ -77,7 +77,7 @@ test("/app/agent source preserves recent conversation context for the next turn"
   );
   assert.match(agentSource, /const history = historySource/);
   assert.match(agentSource, /\.slice\(-8\)/);
-  assert.match(agentSource, /JSON\.stringify\(\{ history, locale, message: query \}\)/);
+  assert.match(agentSource, /JSON\.stringify\(\{ history, \.\.\.reliableRequest \}\)/);
   assert.match(agentSource, /\[本轮推荐明细\]/);
 });
 

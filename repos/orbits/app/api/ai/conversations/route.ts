@@ -53,6 +53,11 @@ import {
   OrbitAgentChatSessionWriteError,
 } from "../../../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
 import { createOrbitAgentChatSessionProvider } from "../../../../features/orbit-ai/storage/orbit-agent-chat-session-provider-factory";
+import { createContactDetailTagStatusService } from "../../../../features/contacts/service-factory";
+import {
+  AiSessionReferenceAuthorizationError,
+  authorizeAiSessionContactReferences,
+} from "../../../../features/orbit-ai/ai-session-reference-authorization";
 
 // 这个 route 是 OrbitRealAgent 前端聊天框调用的服务端入口。
 // 业务逻辑不写在 route 里：route 只负责读请求、调用 conversation service、
@@ -213,6 +218,17 @@ function reliableSendErrorResponse(
   mode: ReturnType<typeof resolveFeatureMode>,
   error: unknown,
 ): Response {
+  if (error instanceof AiSessionReferenceAuthorizationError) {
+    return NextResponse.json(
+      failure(new AppError(
+        error.code === "REFERENCE_NOT_ACCESSIBLE" ? "FORBIDDEN" : "SERVICE_UNAVAILABLE",
+        error.code === "REFERENCE_NOT_ACCESSIBLE"
+          ? "The selected contact is unavailable or cannot be accessed. Remove it and try again."
+          : "Contact access could not be verified. Keep the draft and try again later.",
+      )),
+      { headers: runtimeBoundaryHeaders(mode), status: error.code === "REFERENCE_NOT_ACCESSIBLE" ? 403 : 503 },
+    );
+  }
   if (error instanceof ReliableSendError) {
     const message =
       error.code === "REQUEST_ID_REUSED"
@@ -659,6 +675,11 @@ export async function POST(request: Request): Promise<Response> {
       );
     }
     try {
+      await authorizeAiSessionContactReferences({
+        actorId,
+        references: reliableInput.data.references,
+        service: createContactDetailTagStatusService(),
+      });
       const reliable = await createReliableOrbitAgentSendService({
         now: () => new Date().toISOString(),
         requestStore,

@@ -22,6 +22,11 @@ import { createOrbitAgentChatSessionProvider } from "../../../../../features/orb
 import { createOrbitAgentChatOrganizationStore } from "../../../../../features/orbit-ai/storage/orbit-agent-chat-group-provider";
 import type { OrbitAgentChatOrganizationStore } from "../../../../../features/orbit-ai/storage/orbit-agent-chat-session-transactions";
 import {
+  AiSessionReferenceAuthorizationError,
+  authorizeAiSessionContactReferences,
+} from "../../../../../features/orbit-ai/ai-session-reference-authorization";
+import { createContactDetailTagStatusService } from "../../../../../features/contacts/service-factory";
+import {
   authenticatedApiActorRequiredResponse,
   resolveAuthenticatedApiActor,
   type ResolveAuthenticatedApiActor,
@@ -249,6 +254,14 @@ export function createOrbitAgentChatSessionsHandlers(
       }
 
       try {
+        const references = session.messages.flatMap((message) => message.references ?? []);
+        if (references.some((reference) => reference.type === "contact")) {
+          await authorizeAiSessionContactReferences({
+            actorId: actor.id,
+            references,
+            service: createContactDetailTagStatusService(),
+          });
+        }
         const savedSession = await provider.upsertSession(session);
 
         return NextResponse.json(
@@ -266,6 +279,16 @@ export function createOrbitAgentChatSessionsHandlers(
           },
         );
       } catch (error) {
+        if (error instanceof AiSessionReferenceAuthorizationError) {
+          return responseForError(
+            mode,
+            new AppError(
+              error.code === "REFERENCE_NOT_ACCESSIBLE" ? "FORBIDDEN" : "SERVICE_UNAVAILABLE",
+              error.message,
+            ),
+            error.code === "REFERENCE_NOT_ACCESSIBLE" ? 403 : 503,
+          );
+        }
         if (error instanceof OrbitAgentChatSessionWriteError) {
           return responseForError(
             mode,

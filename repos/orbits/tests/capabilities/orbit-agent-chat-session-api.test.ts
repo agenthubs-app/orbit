@@ -225,6 +225,42 @@ test("Orbit Agent chat session API restores mock sessions across requests", asyn
   });
 });
 
+test("Orbit Agent chat session API authorizes contact references before canonical persistence", async () => {
+  await withSessionApiEnv("mock", async () => {
+    const module = await importProjectModule<typeof import("../../app/api/ai/conversations/sessions/handler")>("app/api/ai/conversations/sessions/handler.ts");
+    const route = module.createOrbitAgentChatSessionsHandlers({
+      resolveActor: async () => ({ id: "account:session-reference-owner" }),
+    });
+    const session = {
+      createdAt: "2026-09-15T02:00:00.000Z",
+      id: `agent-session-reference-${Date.now()}`,
+      messages: [{ id: "message:reference", references: [{ id: "demo-contact-1", type: "contact" }], role: "user", text: "起草联系消息" }],
+      title: "起草联系消息",
+      updatedAt: "2026-09-15T02:00:00.000Z",
+    };
+    const save = (value: unknown) => route.POST(new Request("https://orbit.local/api/ai/conversations/sessions", {
+      body: JSON.stringify({ session: value }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    }));
+
+    const allowed = await save(session);
+    const allowedEnvelope = await allowed.json();
+    assert.equal(allowed.status, 200);
+    assert.deepEqual(allowedEnvelope.data.session.messages[0].references, [{ id: "demo-contact-1", type: "contact" }]);
+
+    const denied = await save({
+      ...session,
+      id: `${session.id}-denied`,
+      messages: [{ ...session.messages[0], id: "message:reference-denied", references: [{ id: "contact:not-accessible", type: "contact" }] }],
+    });
+    const deniedEnvelope = await denied.json();
+    assert.equal(denied.status, 403);
+    assert.equal(deniedEnvelope.error.code, "FORBIDDEN");
+    assert.doesNotMatch(deniedEnvelope.error.message, /contact:not-accessible/u);
+  });
+});
+
 test("Orbit Agent chat session APIs reject unauthenticated access before storage", async () => {
   await withSessionApiEnv("live", async () => {
     let providerCalls = 0;

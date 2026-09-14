@@ -42,13 +42,13 @@ test("notification delivery card binds themed styles locally", () => {
   assert.match(screenSource.slice(start, end), /const \{ styles \} = useStyles\(\)/u);
 });
 
-test("relationship inbox can rewrite reply drafts through the web assist boundary", () => {
-  assert.match(screenSource, /ORBIT_API_ENDPOINTS\.chatAssistRewrite/u);
-  assert.match(screenSource, /buildRelationshipRewriteRequest/u);
-  assert.match(screenSource, /relationshipRewriteToDraft/u);
+test("relationship inbox hands reply drafts to an opaque stable-contact IORBIT prefill", () => {
+  assert.match(screenSource, /relationshipConversationContactId/u);
+  assert.match(screenSource, /registerAiTemplatePrefill/u);
+  assert.match(screenSource, /inboxPolishTemplate\(\{ contactId, contactName: detail\.participantName, draft: body\.trim\(\) \}\)/u);
+  assert.match(screenSource, /pathname: "\/ai\/\[id\]", params: \{ id: "new", prefillIntent \}/u);
   assert.match(screenSource, /label="润色草稿"/u);
-  assert.match(screenSource, /setBody\(rewrite\.body\)/u);
-  assert.doesNotMatch(screenSource, /send-message/u);
+  assert.doesNotMatch(screenSource, /ORBIT_API_ENDPOINTS\.chatAssistRewrite|buildRelationshipRewriteRequest|relationshipRewriteToDraft/u);
 });
 
 test("relationship inbox shows chat privacy controls from the web boundary", () => {
@@ -97,12 +97,6 @@ test("relationship inbox actions sanitize user-facing error text", () => {
       fallback: "这条线索暂时确认不了。",
       name: "RelationshipSignalsCard",
       setter: "setActionError"
-    },
-    {
-      end: "function NewThreadComposer",
-      fallback: "这段草稿暂时润色不了。",
-      name: "ReplyComposer",
-      setter: "setRewriteError"
     },
     {
       end: "function LabeledInput",

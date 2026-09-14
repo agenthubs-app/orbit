@@ -539,6 +539,21 @@ function selectedConversationItem(
   );
 }
 
+export function relationshipInboxSelectedContactId(data: unknown): string {
+  if (!isRecord(data)) return "";
+  const selectedThread = selectedThreadFromPayload(data);
+  if (!selectedThread) return "";
+  const directContactId = stringField(selectedThread, "contactId");
+  if (directContactId) return directContactId;
+  const selectedId = stringField(selectedThread, "conversationId");
+  if (!selectedId) return "";
+  const inbox = nestedRecord(data, "inbox");
+  const selectedConversation = listField(inbox, "conversations")
+    .filter(isRecord)
+    .find((conversation) => stringField(conversation, "conversationId") === selectedId);
+  return selectedConversation ? stringField(selectedConversation, "contactId") : "";
+}
+
 function deduplicateMessages(
   messages: UnknownRecord[]
 ): UnknownRecord[] {

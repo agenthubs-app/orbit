@@ -150,10 +150,10 @@ test("detail offers a touch-sized draft action that navigates with the real cont
   assert.ok(box.width >= 44 && box.height >= 44 && box.x >= 0 && box.x + box.width <= 402, "draft action must fit beside the other actions and retain its touch target");
   await draft.click();
   const navigation = await page.evaluate(() => (window as any).fixture.navigation);
-  const route = new URL(navigation[0], "http://fixture");
-  assert.equal(route.pathname, "/inbox");
-  assert.equal(route.searchParams.get("contactId"), "contact:0");
-  assert.equal(route.searchParams.get("participantName"), "吴可欣");
+  assert.equal(navigation[0].pathname, "/ai/[id]");
+  assert.equal(navigation[0].params.id, "new");
+  assert.match(navigation[0].params.prefillIntent, /^ai-prefill-/);
+  assert.doesNotMatch(JSON.stringify(navigation[0]), /contact:0|吴可欣|南山餐饮/);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
 });
 

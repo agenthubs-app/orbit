@@ -5,6 +5,7 @@ export interface FollowupMetricView {
 }
 
 export interface FollowupTaskView {
+  contactId: string;
   contactName: string;
   dueLabel: string;
   evidenceLabel: string;
@@ -339,6 +340,7 @@ function evidenceLabel(record: UnknownRecord): string {
 
 function taskView(record: UnknownRecord): FollowupTaskView {
   return {
+    contactId: taskField(record, "contactId", stringField(record, "relatedContactId")),
     contactName: contactName(record),
     dueLabel: dueLabel(record),
     evidenceLabel: evidenceLabel(record),

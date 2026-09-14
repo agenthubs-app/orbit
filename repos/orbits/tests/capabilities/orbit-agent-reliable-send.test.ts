@@ -48,6 +48,7 @@ test("reliable send persists the user message before execution and replays one c
       {
         createdAt: "2026-09-14T01:00:00.000Z",
         id: input.clientMessageId,
+        references: [],
         role: "user",
         text: input.message,
       },

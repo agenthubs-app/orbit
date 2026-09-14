@@ -2,10 +2,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
+import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import {
   ORBIT_API_ENDPOINTS,
-  chatAssistFollowupDraftPath,
-  messageDraftPath,
   taskPath
 } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
@@ -18,26 +18,14 @@ import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { contactFollowupTemplate, followupCandidateTemplate, registerAiTemplatePrefill } from "../../data/ai-template-prefill";
 import { followupsPageToView, type SavedFollowupRow } from "../../view-models/followups-page";
 import { SavedFollowupsList } from "./SavedFollowupsList";
 import {
-  buildMessageDraftReviewRequest,
-  buildChatFollowupDraftRequestFromTask,
-  buildMessageDraftRequestFromTask,
-  buildReminderGenerationRequest,
-  chatFollowupDraftsToView,
-  generatedFollowupRemindersToView,
-  generatedFollowupTasksToView,
   followupsToView,
-  messageDraftsToView,
-  type ChatFollowupDraftsView,
-  type GeneratedFollowupRemindersView,
-  type GeneratedFollowupTasksView,
   type FollowupReminderView,
   type FollowupTaskView,
-  type FollowupsView,
-  type MessageDraftView,
-  type MessageDraftsView
+  type FollowupsView
 } from "../../view-models/followups";
 
 function usable<TData>(
@@ -49,26 +37,14 @@ function usable<TData>(
 export function FollowupsScreen() {
   const { colors } = useOrbitTheme();
   const client = useOrbitApiClient();
-  const [generatedView, setGeneratedView] =
-    useState<GeneratedFollowupTasksView | null>(null);
-  const [generatedRemindersView, setGeneratedRemindersView] =
-    useState<GeneratedFollowupRemindersView | null>(null);
-  const [chatDraftsView, setChatDraftsView] =
-    useState<ChatFollowupDraftsView | null>(null);
-  const [messageDraftsView, setMessageDraftsView] =
-    useState<MessageDraftsView | null>(null);
-  const [chatDraftingTaskId, setChatDraftingTaskId] = useState<string | null>(
-    null
-  );
-  const [draftingTaskId, setDraftingTaskId] = useState<string | null>(null);
-  const [reviewingDraftId, setReviewingDraftId] = useState<string | null>(null);
+  const auth = useOrbitAuthSession();
+  const server = useOrbitApiBaseUrl();
+  const router = useRouter();
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [reminderGenerationError, setReminderGenerationError] =
     useState<string | null>(null);
   const [chatDraftError, setChatDraftError] = useState<string | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
-  const [generating, setGenerating] = useState(false);
-  const [generatingReminders, setGeneratingReminders] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [taskError, setTaskError] = useState<string | null>(null);
   const taskBusy = useRef(false);
@@ -111,92 +87,34 @@ export function FollowupsScreen() {
     }
   }
 
-  async function generateFollowupTasks() {
-    setGenerating(true);
+  function openAiTemplate(template: ReturnType<typeof followupCandidateTemplate> | ReturnType<typeof contactFollowupTemplate>): boolean {
+    const actorId = auth.user?.id;
+    if (!actorId || !server.baseUrl) return false;
+    const prefillIntent = registerAiTemplatePrefill({ actorId, baseUrl: server.baseUrl, ...template });
+    router.push({ pathname: "/ai/[id]", params: { id: "new", prefillIntent } } as Href);
+    return true;
+  }
+
+  function generateFollowupTasks() {
     setGenerationError(null);
-
-    const result = await client.post<unknown>(ORBIT_API_ENDPOINTS.taskGeneration, {
-      body: { limit: 5 }
-    });
-
-    if (result.success) {
-      setGeneratedView(generatedFollowupTasksToView(result.data));
-    } else {
-      setGenerationError(result.error.message);
-    }
-
-    setGenerating(false);
+    if (!openAiTemplate(followupCandidateTemplate("task"))) setGenerationError("请先登录后再打开 IORBIT。");
   }
 
-  async function generateFollowupReminders() {
-    setGeneratingReminders(true);
+  function generateFollowupReminders() {
     setReminderGenerationError(null);
-
-    const result = await client.post<unknown>(
-      ORBIT_API_ENDPOINTS.reminderGeneration,
-      {
-        body: buildReminderGenerationRequest()
-      }
-    );
-
-    if (result.success) {
-      setGeneratedRemindersView(generatedFollowupRemindersToView(result.data));
-    } else {
-      setReminderGenerationError(result.error.message);
-    }
-
-    setGeneratingReminders(false);
+    if (!openAiTemplate(followupCandidateTemplate("reminder"))) setReminderGenerationError("请先登录后再打开 IORBIT。");
   }
 
-  async function createMessageDraft(task: FollowupTaskView) {
-    setDraftingTaskId(task.id);
+  function createMessageDraft(task: FollowupTaskView) {
     setDraftError(null);
-
-    const result = await client.post<unknown>(ORBIT_API_ENDPOINTS.messageDrafts, {
-      body: buildMessageDraftRequestFromTask(task)
-    });
-
-    if (result.success) {
-      setMessageDraftsView(messageDraftsToView(result.data));
-    } else {
-      setDraftError(result.error.message);
-    }
-
-    setDraftingTaskId(null);
+    if (!task.contactId) { setDraftError("这项跟进缺少可验证的人脉，请先补全关联人脉。"); return; }
+    if (!openAiTemplate(contactFollowupTemplate({ channel: "email", ...task }))) setDraftError("请先登录后再打开 IORBIT。");
   }
 
-  async function createChatFollowupDraft(task: FollowupTaskView) {
-    setChatDraftingTaskId(task.id);
+  function createChatFollowupDraft(task: FollowupTaskView) {
     setChatDraftError(null);
-
-    const result = await client.post<unknown>(chatAssistFollowupDraftPath(), {
-      body: buildChatFollowupDraftRequestFromTask(task)
-    });
-
-    if (result.success) {
-      setChatDraftsView(chatFollowupDraftsToView(result.data));
-    } else {
-      setChatDraftError(result.error.message);
-    }
-
-    setChatDraftingTaskId(null);
-  }
-
-  async function markMessageDraftReady(draft: MessageDraftView) {
-    setReviewingDraftId(draft.id);
-    setDraftError(null);
-
-    const result = await client.patch<unknown>(messageDraftPath(draft.id), {
-      body: buildMessageDraftReviewRequest(draft)
-    });
-
-    if (result.success) {
-      setMessageDraftsView(messageDraftsToView(result.data));
-    } else {
-      setDraftError(result.error.message);
-    }
-
-    setReviewingDraftId(null);
+    if (!task.contactId) { setChatDraftError("这项跟进缺少可验证的人脉，请先补全关联人脉。"); return; }
+    if (!openAiTemplate(contactFollowupTemplate({ channel: "chat", ...task }))) setChatDraftError("请先登录后再打开 IORBIT。");
   }
 
   const pageView = usable(tasksState)
@@ -237,23 +155,13 @@ export function FollowupsScreen() {
       {view ? (
         <FollowupsWorkspace
           chatDraftError={chatDraftError}
-          chatDraftingTaskId={chatDraftingTaskId}
-          chatDraftsView={chatDraftsView}
-          draftingTaskId={draftingTaskId}
           draftError={draftError}
-          generatedRemindersView={generatedRemindersView}
-          generatedView={generatedView}
-          generating={generating}
-          generatingReminders={generatingReminders}
           generationError={generationError}
-          messageDraftsView={messageDraftsView}
           onCreateChatFollowupDraft={createChatFollowupDraft}
           onCreateMessageDraft={createMessageDraft}
           onGenerate={generateFollowupTasks}
           onGenerateReminders={generateFollowupReminders}
-          onMarkMessageDraftReady={markMessageDraftReady}
           reminderGenerationError={reminderGenerationError}
-          reviewingDraftId={reviewingDraftId}
           savedDraftTask={pageView?.open.find(row => row.draftTask)?.draftTask ?? null}
           view={view}
         />
@@ -273,44 +181,24 @@ export function FollowupsScreen() {
 
 function FollowupsWorkspace({
   chatDraftError,
-  chatDraftingTaskId,
-  chatDraftsView,
-  draftingTaskId,
   draftError,
-  generatedRemindersView,
-  generatedView,
-  generating,
-  generatingReminders,
   generationError,
-  messageDraftsView,
   onCreateChatFollowupDraft,
   onCreateMessageDraft,
   onGenerate,
   onGenerateReminders,
-  onMarkMessageDraftReady,
   reminderGenerationError,
-  reviewingDraftId,
   savedDraftTask,
   view
 }: {
   chatDraftError: string | null;
-  chatDraftingTaskId: string | null;
-  chatDraftsView: ChatFollowupDraftsView | null;
-  draftingTaskId: string | null;
   draftError: string | null;
-  generatedRemindersView: GeneratedFollowupRemindersView | null;
-  generatedView: GeneratedFollowupTasksView | null;
-  generating: boolean;
-  generatingReminders: boolean;
   generationError: string | null;
-  messageDraftsView: MessageDraftsView | null;
   onCreateChatFollowupDraft: (task: FollowupTaskView) => void;
   onCreateMessageDraft: (task: FollowupTaskView) => void;
   onGenerate: () => void;
   onGenerateReminders: () => void;
-  onMarkMessageDraftReady: (draft: MessageDraftView) => void;
   reminderGenerationError: string | null;
-  reviewingDraftId: string | null;
   savedDraftTask: FollowupTaskView | null;
   view: FollowupsView;
 }) {
@@ -337,17 +225,15 @@ function FollowupsWorkspace({
         <Text style={styles.bodyText}>生成后先复核，不会自动发消息。</Text>
         <Pressable
           accessibilityRole="button"
-          disabled={generating}
           onPress={onGenerate}
           style={({ pressed }) => [
             styles.primaryButton,
-            generating ? styles.disabled : null,
             pressed ? styles.pressed : null
           ]}
         >
           <Ionicons color={colors.onAccent} name="sparkles-outline" size={17} />
           <Text style={styles.primaryButtonText}>
-            {generating ? "生成中" : "生成候选"}
+            生成候选
           </Text>
         </Pressable>
         {generationError ? (
@@ -358,43 +244,27 @@ function FollowupsWorkspace({
         <Text style={styles.bodyText}>生成后先复核，不会发推送、邮件或短信。</Text>
         <Pressable
           accessibilityRole="button"
-          disabled={generatingReminders}
           onPress={onGenerateReminders}
           style={({ pressed }) => [
             styles.secondaryButton,
-            generatingReminders ? styles.disabled : null,
             pressed ? styles.pressed : null
           ]}
         >
           <Ionicons color={colors.accent} name="notifications-outline" size={17} />
           <Text style={styles.secondaryButtonText}>
-            {generatingReminders ? "生成中" : "生成提醒候选"}
+            生成提醒候选
           </Text>
         </Pressable>
         {reminderGenerationError ? (
           <Text style={styles.errorText}>{reminderGenerationError}</Text>
         ) : null}
       </DataCard>
-      {generatedView ? <GeneratedFollowupsCard view={generatedView} /> : null}
-      {generatedRemindersView ? (
-        <GeneratedRemindersCard view={generatedRemindersView} />
-      ) : null}
-      {chatDraftsView ? <ChatFollowupDraftsCard view={chatDraftsView} /> : null}
       {chatDraftError ? (
         <Text style={styles.errorText}>{chatDraftError}</Text>
-      ) : null}
-      {messageDraftsView ? (
-        <MessageDraftsCard
-          onMarkReady={onMarkMessageDraftReady}
-          reviewingDraftId={reviewingDraftId}
-          view={messageDraftsView}
-        />
       ) : null}
       {draftError ? <Text style={styles.errorText}>{draftError}</Text> : null}
       {priorityTask ? (
         <PriorityTaskCard
-          chatDrafting={chatDraftingTaskId === priorityTask.id}
-          drafting={draftingTaskId === priorityTask.id}
           onCreateChatFollowupDraft={onCreateChatFollowupDraft}
           onCreateMessageDraft={onCreateMessageDraft}
           task={priorityTask}
@@ -432,134 +302,11 @@ function FollowupsWorkspace({
   );
 }
 
-function MessageDraftsCard({
-  onMarkReady,
-  reviewingDraftId,
-  view
-}: {
-  onMarkReady: (draft: MessageDraftView) => void;
-  reviewingDraftId: string | null;
-  view: MessageDraftsView;
-}) {
-  const { colors, styles } = useStyles();
-  return (
-    <DataCard detail={view.summary} title={view.title}>
-      <Text style={styles.bodyText}>{view.nextAction}</Text>
-      <View style={styles.stack}>
-        {view.drafts.map((draft) => (
-          <View key={draft.id} style={styles.draftBlock}>
-            <View style={styles.rowHeader}>
-              <Text style={styles.rowTitle}>{draft.subject}</Text>
-              <Text style={styles.rowMeta}>{draft.reviewLabel}</Text>
-            </View>
-            <Text style={styles.mutedText}>{draft.recipientLine}</Text>
-            <Text style={styles.bodyText}>{draft.body}</Text>
-            <Text style={styles.sourceText}>
-              {[draft.channelLabel, draft.windowLabel, draft.sourceLabel]
-                .filter(Boolean)
-                .join(" · ")}
-            </Text>
-            <Text style={styles.safetyText}>{draft.safetyText}</Text>
-            <Pressable
-              accessibilityRole="button"
-              disabled={reviewingDraftId === draft.id}
-              onPress={() => onMarkReady(draft)}
-              style={({ pressed }) => [
-                styles.primaryButton,
-                reviewingDraftId === draft.id ? styles.disabled : null,
-                pressed ? styles.pressed : null
-              ]}
-            >
-              <Ionicons
-                color={colors.onAccent}
-                name="checkmark-circle-outline"
-                size={17}
-              />
-              <Text style={styles.primaryButtonText}>
-                {reviewingDraftId === draft.id ? "确认中" : "标记可确认"}
-              </Text>
-            </Pressable>
-          </View>
-        ))}
-      </View>
-    </DataCard>
-  );
-}
-
-function ChatFollowupDraftsCard({
-  view
-}: {
-  view: ChatFollowupDraftsView;
-}) {
-  const { styles } = useStyles();
-  return (
-    <DataCard detail={view.summary} title={view.title}>
-      <Text style={styles.bodyText}>{view.nextAction}</Text>
-      <View style={styles.stack}>
-        {view.drafts.map((draft) => (
-          <View key={draft.id} style={styles.draftBlock}>
-            <View style={styles.rowHeader}>
-              <Text style={styles.rowTitle}>{draft.title}</Text>
-              <Text style={styles.rowMeta}>{draft.sourceLabel}</Text>
-            </View>
-            <Text style={styles.mutedText}>{draft.recipientLine}</Text>
-            <Text style={styles.bodyText}>{draft.body}</Text>
-            <Text style={styles.sourceText}>{draft.reason}</Text>
-            <Text style={styles.safetyText}>{draft.safetyText}</Text>
-          </View>
-        ))}
-      </View>
-    </DataCard>
-  );
-}
-
-function GeneratedFollowupsCard({ view }: { view: GeneratedFollowupTasksView }) {
-  const { styles } = useStyles();
-  return (
-    <DataCard detail={view.summary} title={view.title}>
-      <Text style={styles.bodyText}>{view.nextAction}</Text>
-      {view.tasks.length > 0 ? (
-        <View style={styles.stack}>
-          {view.tasks.map((task) => (
-            <TaskRow key={task.id} task={task} />
-          ))}
-        </View>
-      ) : null}
-      <Text style={styles.safetyText}>{view.safetyText}</Text>
-    </DataCard>
-  );
-}
-
-function GeneratedRemindersCard({
-  view
-}: {
-  view: GeneratedFollowupRemindersView;
-}) {
-  const { styles } = useStyles();
-  return (
-    <DataCard detail={view.summary} title={view.title}>
-      <Text style={styles.bodyText}>{view.nextAction}</Text>
-      {view.reminders.length > 0 ? (
-        <View style={styles.stack}>
-          {view.reminders.map((reminder) => (
-            <ReminderRow key={reminder.id} reminder={reminder} />
-          ))}
-        </View>
-      ) : null}
-      <Text style={styles.safetyText}>{view.safetyText}</Text>
-    </DataCard>
-  );
-}
-
 function PriorityTaskCard({
-  chatDrafting,
-  drafting,
   onCreateChatFollowupDraft,
   onCreateMessageDraft,
   task
 }: {
-  chatDrafting: boolean;
-  drafting: boolean;
   onCreateChatFollowupDraft: (task: FollowupTaskView) => void;
   onCreateMessageDraft: (task: FollowupTaskView) => void;
   task: FollowupTaskView;
@@ -578,32 +325,28 @@ function PriorityTaskCard({
       <Text style={styles.sourceText}>{task.sourceLabel}</Text>
       <Pressable
         accessibilityRole="button"
-        disabled={chatDrafting}
         onPress={() => onCreateChatFollowupDraft(task)}
         style={({ pressed }) => [
           styles.secondaryButton,
-          chatDrafting ? styles.disabled : null,
           pressed ? styles.pressed : null
         ]}
       >
         <Ionicons color={colors.accent} name="sparkles-outline" size={17} />
         <Text style={styles.secondaryButtonText}>
-          {chatDrafting ? "起草中" : "AI 起草"}
+          AI 起草
         </Text>
       </Pressable>
       <Pressable
         accessibilityRole="button"
-        disabled={drafting}
         onPress={() => onCreateMessageDraft(task)}
         style={({ pressed }) => [
           styles.primaryButton,
-          drafting ? styles.disabled : null,
           pressed ? styles.pressed : null
         ]}
       >
         <Ionicons color={colors.onAccent} name="mail-outline" size={17} />
         <Text style={styles.primaryButtonText}>
-          {drafting ? "起草中" : "起草联系消息"}
+          起草联系消息
         </Text>
       </Pressable>
     </DataCard>

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { aiSessionOriginSchema } from "../../../shared/api-schema/ai-sessions";
-import type { StoredAiSessionOriginContract } from "../../../shared/contract/ai-sessions";
+import type { AiSessionReferenceContract, StoredAiSessionOriginContract } from "../../../shared/contract/ai-sessions";
 import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
 import {
   resolveLiveDatabaseConnectionConfig,
@@ -22,6 +22,7 @@ export type OrbitAgentChatSessionMessageRole = "assistant" | "user";
 export interface OrbitAgentChatSessionMessage
   extends Record<string, unknown> {
   id?: string;
+  references?: readonly AiSessionReferenceContract[];
   role: OrbitAgentChatSessionMessageRole;
   text: string;
 }
@@ -30,12 +31,15 @@ export class OrbitAgentChatSessionWriteError extends Error {
   constructor(
     readonly code:
       | "SESSION_DELETED"
+      | "SESSION_MESSAGE_REFERENCES_IMMUTABLE"
       | "SESSION_ORIGIN_IMMUTABLE"
       | "SESSION_SNAPSHOT_STALE",
   ) {
     super(
       code === "SESSION_DELETED"
         ? "Deleted session cannot be restored by a late save"
+        : code === "SESSION_MESSAGE_REFERENCES_IMMUTABLE"
+          ? "Saved message references are immutable"
         : code === "SESSION_ORIGIN_IMMUTABLE"
           ? "Session origin is immutable after the first saved message"
         : "Stale session snapshot cannot replace newer history",
@@ -153,8 +157,16 @@ function normalizeMessage(
     return null;
   }
 
+  const references: AiSessionReferenceContract[] = Array.isArray(value.references)
+    ? value.references.flatMap((reference) => isRecord(reference)
+      && (reference.type === "contact" || reference.type === "event" || reference.type === "note")
+      && nonEmptyString(reference.id)
+        ? [{ id: reference.id.trim().slice(0, 160), type: reference.type as AiSessionReferenceContract["type"] }]
+        : []).slice(0, 20)
+    : [];
   return {
     ...cloneJson(value),
+    ...(references.length ? { references } : {}),
     role: value.role,
     text,
   };
@@ -551,6 +563,22 @@ export function createStorageOrbitAgentChatSessionProvider({
       }
       if (existingSnapshot?.origin) {
         session = { ...session, origin: existingSnapshot.origin };
+      }
+      if (existingSnapshot) {
+        const existingMessagesById = new Map(existingSnapshot.messages
+          .flatMap((message) => message.id ? [[message.id, message] as const] : []));
+        session = {
+          ...session,
+          messages: session.messages.map((message) => {
+            const existingMessage = message.id ? existingMessagesById.get(message.id) : undefined;
+            if (!existingMessage?.references?.length) return message;
+            if (message.references?.length
+              && JSON.stringify(message.references) !== JSON.stringify(existingMessage.references)) {
+              throw new OrbitAgentChatSessionWriteError("SESSION_MESSAGE_REFERENCES_IMMUTABLE");
+            }
+            return { ...message, references: existingMessage.references.map(reference => ({ ...reference })) };
+          }),
+        };
       }
       if (
         existingSnapshot &&
