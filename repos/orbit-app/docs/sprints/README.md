@@ -62,7 +62,7 @@ build/harness-logs/
 | [0012](0012-message-state/GOAL.md) | 前台新消息及时出现，已读角标与跳转目标正确 | R-11 | 功能提交 `218fb3d4b`；自动化与 iOS 打包通过，真实双用户原生／实体推送环境缺失，见 REPORT | blocked |
 | [0013](0013-locale-foundation/GOAL.md) | 用中日英操作账号、首页和设置，切语言不丢输入 | R-12 | run-01 completed；功能 `cc3930449`、`1bd99f737`、`9d5c13622`，见 REPORT | completed |
 | [0014](0014-locale-relationships-events/GOAL.md) | 用中日英处理人脉、名片和活动，保留原文与答案 | R-12 | run-01 completed；功能 `9761b343d`，见 REPORT | completed |
-| [0015](0015-locale-assistant-workflows/GOAL.md) | 用中日英操作 AI、事项和消息，保留内容与日期 | R-12 | 0013、0006、0010、0012 | blocked |
+| [0015](0015-locale-assistant-workflows/GOAL.md) | 用中日英操作 AI、事项和消息，保留内容与日期 | R-12 | run-01 执行中；共享 App 字典由本 Sprint 串行独占，精确页面锁见补充 | running |
 | [0016](0016-native-navigation/GOAL.md) | 用实际设备验收导航、字号、键盘和辅助功能 | R-09、R-12 | 0014、0015；原生审批／设备 | blocked |
 | [0017](0017-cross-client-acceptance/GOAL.md) | 用真实主流程及五类记录双向回读证明两端一致 | R-01、R-14及主链路余项 | 0003～0016；共同环境／授权 | blocked |
 | [0018](0018-notes-core/GOAL.md) | 一份私密笔记关联多人，保留旧内容并安全切换入口 | R-13 | 0017；B8／D7／迁移设计 | blocked |
@@ -93,6 +93,12 @@ build/harness-logs/
 - 新增 [0021 Planner](0021-ai-session-organization/PLANNER.md)及[参考与交互规格](0021-ai-session-organization/REFERENCE_AND_BEHAVIOR.md)，记录会话入口元信息、项目式分组、置顶／改名／删除和跨端持久化。用户已澄清只参考 ChatGPT App 的功能与组织形式，公开截图由代理寻找，不做像素复刻。当前只编制，planned、run_count = 0、未产生 REPORT；原 0001～0020 的状态不变。
 
 ## 运行记录
+
+### 0015 / run-01
+
+- owner：当前主代理 `/root`；run_count：1；开始 2026-09-15 07:39 JST，原地 `chat-agent`，单一 Generator。基线 HEAD `c5c091fba`；Planner revision 1／SHA256 `50280129380cfa0a181bdbdb4a38d1a74dfae38c7ddb815b027151982810f858`。
+- 0013／0014 已 completed 并释放共享字典锁；0006、0010、0012 的本地实现可消费，三者尚欠的真实双端／实体推送证据不阻塞本轮零付费 UI 本地化，仍由原报告与 0016／0017 承接。
+- 页面锁收窄为 AI 6、事项／Today 4、日程 4、收件箱 1 个真实文件；必要 direct consumer、literal 边界与验证档升级条件见[范围补充](0015-locale-assistant-workflows/APPROVED_SCOPE_ADDENDUM.md)。
 
 ### 0014 / run-01
 
