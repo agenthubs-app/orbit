@@ -15,3 +15,7 @@
 实现采用逐次认证读取。完整资料仅与当前 runtime 对象关联，不进入 artifact JSON；完整 trace 对本人资料回合只保存技术元数据。已有真实跨端、原生、真实模型与数据补齐验收仍分别记录，不能以本地测试替代。
 
 这不是执行完成报告，也不授权未知数据库写入、迁移、部署或提高费用上限。
+
+## Agent 报告兼容补充
+
+用户在收到三个精确文件及其最小修复用途后回复“同意”。新增范围仅为 `features/agent/evaluation/functional-test-report.ts` 的本人资料能力说明、`app/dev/agent-test-report/page.tsx` 的注册能力计数，以及 `tests/pages/agent-functional-test-report.test.tsx` 的对应回归断言。保留原有实测记录、受限项及安全检查，不把新能力登记当作真实模型验收通过。

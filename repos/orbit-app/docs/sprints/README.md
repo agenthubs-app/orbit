@@ -99,7 +99,8 @@ build/harness-logs/
 - 基线 HEAD `d531c42d4`，产品 WIP `5355f0c6a`；tracked 工作树干净，用户未跟踪设计文件与 prototype 保留。原 0020 run-01 保持历史 blocked，不覆盖原失败。
 - 契约：[PLANNER revision 1](0023-industry-consumer-continuation/PLANNER.md)，继承原五项 SC 和接续方案的精确范围。当前执行联系人 RED→GREEN，后续顺序为搜索／资料投影、AI 与 trace、数据和真实验证。
 - Planner SHA256：`5ab6f8a60493c73fd52200981dc99b44dcb9492bc2d338b96d2002a1c787b68d`。联系人接线已提交 `9daf52dad`，搜索 HTTP 已提交 `36f7255d8`，资料页投影已提交 `db972c3f8`。三个额外传递／兼容文件的批准见[范围补充](0023-industry-consumer-continuation/APPROVED_SCOPE_ADDENDUM.md)，不再等待重复批准。
-- AI 本人资料工具与完整 trace 仍为未提交实现。最新 App 全量 2582 pass／0 fail／0 skip；Web 全量 2946 pass／48 fail／168 skip，其中新增 Agent 开发报告缺少能力说明导致模块加载失败，另 47 项为审计或未配置数据库失败。最新工具／trace／artifact 四个完整测试文件 11/11；定向通过不能替代全量、真实模型、跨端、原生和既有测试库验收。具体环境隔离问题与未核算费用继续保留，不据此结束 Sprint。
+- AI 本人资料工具、完整 trace 和 Agent 报告兼容已提交 `2c079ee93`。用户明确批准三个报告文件的最小兼容修复后，缺失说明的 RED 已消除；五个完整相关文件 13/13，Web typecheck exit0。报告只登记新能力和动态数量，保留原实测、受限项和安全断言。
+- 最近全量仍记录实际结果：App 2582 pass／0 fail／0 skip；Web 2946 pass／48 fail／168 skip，其中新增报告模块错误已在上述定向回归修复，另 47 项为审计或未配置数据库失败。没有把全量计数改写成新一轮结果；按两个本地修复轮次规则，此次仅重跑失败文件及受影响最小集。真实模型、跨端、原生和既有测试库验收仍未完成，环境隔离历史与未核算费用保留。
 
 ### 0020 / run-01
 
