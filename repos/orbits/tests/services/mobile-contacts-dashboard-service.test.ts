@@ -162,3 +162,59 @@ test("mobile contacts dashboard degrades a malformed optional section", async ()
   assert.equal(result.data.distributions, null);
   assert.equal(result.data.unavailableSections.includes("distributions"), true);
 });
+
+test("mobile contacts dashboard keeps analysis failure optional and never retries it during one GET", async () => {
+  let analysisReads = 0;
+  const service = createMobileContactsDashboardService(
+    dependencies({
+      loadAnalysis: async (_actorId, source) => {
+        analysisReads += 1;
+        assert.equal(source.aggregate.relationshipAssetTotals.contacts, 78);
+        return { success: false, error: "storage unavailable" };
+      },
+    }),
+  );
+
+  const result = await service.getDashboard({ actorId: "account:xiaoyu" });
+
+  assert.equal(result.success, true);
+  if (!result.success) return;
+  assert.equal(result.data.analysis, null);
+  assert.equal(result.data.unavailableSections.includes("analysis"), true);
+  assert.equal(analysisReads, 1);
+});
+
+test("mobile contacts dashboard keeps source version stable across GET response assembly times", async () => {
+  const versions: string[] = [];
+  let tick = 0;
+  const service = createMobileContactsDashboardService(
+    dependencies({
+      loadAnalysis: async (_actorId, source) => {
+        const { createContactsAnalysisSourceDataVersion } = await import(
+          "../../features/mobile/contacts-analysis-report-provider"
+        );
+        const sourceDataVersion = createContactsAnalysisSourceDataVersion(source);
+        versions.push(sourceDataVersion);
+        return {
+          success: true,
+          data: {
+            current: { analysisVersion: "contacts.analysis@1", sourceDataVersion },
+            report: null,
+            stale: false,
+          },
+        };
+      },
+      now: () => `2026-09-15T0${tick++}:00:00.000Z`,
+    }),
+  );
+
+  const first = await service.getDashboard({ actorId: "account:xiaoyu" });
+  const second = await service.getDashboard({ actorId: "account:xiaoyu" });
+
+  assert.equal(first.success, true);
+  assert.equal(second.success, true);
+  if (!first.success || !second.success) return;
+  assert.notEqual(first.data.generatedAt, second.data.generatedAt);
+  assert.equal(first.data.analysis?.current.sourceDataVersion, second.data.analysis?.current.sourceDataVersion);
+  assert.deepEqual(versions, [versions[0], versions[0]]);
+});

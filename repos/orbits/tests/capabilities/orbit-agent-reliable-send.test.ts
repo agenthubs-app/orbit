@@ -103,6 +103,37 @@ test("reliable send rejects reuse of a request id with different input", async (
   );
 });
 
+test("reliable send fingerprint includes the trusted request origin", async () => {
+  const harness = createHarness();
+  const service = createReliableOrbitAgentSendService(harness);
+  const analysisInput = {
+    ...input,
+    origin: {
+      entryClient: "app" as const,
+      entryPointId: "contacts.analysis" as const,
+      initialGroupId: null,
+      kind: "structured" as const,
+      sourceDataVersion: "a".repeat(64),
+      template: { id: "contacts.analysis", version: 1 },
+    },
+  };
+  const execute = async () => ({ result: { accepted: true } });
+
+  await service.send({ execute, input: analysisInput });
+
+  await assert.rejects(
+    service.send({
+      execute,
+      input: {
+        ...analysisInput,
+        origin: { ...analysisInput.origin, sourceDataVersion: "b".repeat(64) },
+      },
+    }),
+    (error: unknown) =>
+      error instanceof ReliableSendError && error.code === "REQUEST_ID_REUSED",
+  );
+});
+
 test("reliable send preserves outcome_unknown and never executes a blind retry", async () => {
   const harness = createHarness();
   const service = createReliableOrbitAgentSendService(harness);

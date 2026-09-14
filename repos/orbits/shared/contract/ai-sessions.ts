@@ -11,6 +11,7 @@ export type AiSessionEntryPointId =
   | "chat.ai_assistant"
   | "contact.followup_draft"
   | "contact.message_draft"
+  | "contacts.analysis"
   | "followup.task_candidate"
   | "home.contact_priority"
   | "home.event_preparation"
@@ -23,6 +24,7 @@ export interface AiSessionOriginInputContract {
   entryPointId: AiSessionEntryPointId;
   initialGroupId: string | null;
   kind: "manual" | "structured";
+  sourceDataVersion?: string | undefined;
   template: { id: string; version: number } | null;
 }
 
@@ -32,6 +34,11 @@ export interface AiSessionOriginContract extends AiSessionOriginInputContract {
   recordedAt: string;
   references: readonly AiSessionReferenceContract[];
   schemaVersion: 1;
+  verification?: {
+    analysisVersion: "contacts.analysis@1";
+    kind: "contacts_analysis_execution";
+    sourceDataVersion: string;
+  } | undefined;
 }
 
 export interface LegacyAiSessionOriginContract {

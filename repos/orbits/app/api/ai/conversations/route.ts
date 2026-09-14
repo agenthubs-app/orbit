@@ -54,6 +54,8 @@ import {
 } from "../../../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
 import { createOrbitAgentChatSessionProvider } from "../../../../features/orbit-ai/storage/orbit-agent-chat-session-provider-factory";
 import { createContactDetailTagStatusService } from "../../../../features/contacts/service-factory";
+import { createConfiguredMobileContactsDashboardService } from "../../../../features/mobile/contacts-dashboard-service";
+import { verifyContactsAnalysisSourceVersion } from "../../../../features/mobile/contacts-analysis-report-provider";
 import {
   AiSessionReferenceAuthorizationError,
   authorizeAiSessionContactReferences,
@@ -218,6 +220,12 @@ function reliableSendErrorResponse(
   mode: ReturnType<typeof resolveFeatureMode>,
   error: unknown,
 ): Response {
+  if (error instanceof AppError) {
+    return NextResponse.json(failure(error), {
+      headers: runtimeBoundaryHeaders(mode),
+      status: getHttpStatusForAppErrorCode(error.code),
+    });
+  }
   if (error instanceof AiSessionReferenceAuthorizationError) {
     return NextResponse.json(
       failure(new AppError(
@@ -623,8 +631,8 @@ export async function POST(request: Request): Promise<Response> {
   const service = agentContext.actorId
     ? createOrbitAgentConversationServiceForActor(agentContext.actorId)
     : createOrbitAgentConversationService();
-  async function executeConversation(): Promise<OrbitAgentConversationResult> {
-    if (mode === "mock" && isChatKnownWorkflowInput(trustedInput)) {
+  async function executeConversation(conversationInput = trustedInput): Promise<OrbitAgentConversationResult> {
+    if (mode === "mock" && isChatKnownWorkflowInput(conversationInput)) {
     // 已知工作流必须在 bounded planner/provider 之前命中。listConversations
     // 只读取会话基态，用来保留 activeConversationId；它不会生成模型回复。
     const conversationResult = await service.listConversations({
@@ -634,7 +642,7 @@ export async function POST(request: Request): Promise<Response> {
       processOutboxAfterStart: mode === "mock",
       runtime: agentContext.runtime,
     }).handle({
-      conversationInput: trustedInput,
+      conversationInput,
       conversationResult,
     });
       return workflowResponse.outcome === "clarification"
@@ -647,11 +655,11 @@ export async function POST(request: Request): Promise<Response> {
     // 权限拒绝时会错误挂上前一轮卡片。
     return persistNaturalLanguageActionProposals(
       await applyTaskInteraction(
-        await service.sendMessage(trustedInput),
-        trustedInput,
+        await service.sendMessage(conversationInput),
+        conversationInput,
         agentContext.actorId,
       ),
-      trustedInput,
+      conversationInput,
       agentContext.runtime,
       agentContext.actorId
         ? createConfiguredOrbitIntegrationService({
@@ -685,9 +693,44 @@ export async function POST(request: Request): Promise<Response> {
         requestStore,
         sessionProvider,
       }).send<OrbitAgentConversationResult>({
-        execute: async () => {
+        prepareExecution: async () => {
+          const origin = reliableInput.data.origin;
+          if (origin?.entryPointId !== "contacts.analysis") return {};
+          const dashboard = await createConfiguredMobileContactsDashboardService(mode).getDashboard({ actorId });
+          if (!dashboard.success) {
+            throw new AppError("SERVICE_UNAVAILABLE", "The current contacts analysis source could not be verified.");
+          }
+          const trustedOriginVerification = verifyContactsAnalysisSourceVersion({
+            claimed: origin.sourceDataVersion ?? "",
+            source: {
+              aggregate: dashboard.data.aggregate,
+              contacts: dashboard.data.contacts,
+              distributions: dashboard.data.distributions,
+              gaps: dashboard.data.gaps,
+              opportunities: dashboard.data.opportunities,
+              profile: dashboard.data.profile,
+              summary: dashboard.data.summary,
+            },
+          });
+          if (!trustedOriginVerification) {
+            throw new AppError("CONFLICT", "The contacts analysis source changed. Refresh the analysis before sending.");
+          }
+          return { trustedOriginVerification };
+        },
+        execute: async (prepared) => {
+          const executionInput = prepared?.trustedOriginVerification
+            ? {
+                ...trustedInput,
+                message: [
+                  "Execute the registered contacts.analysis@1 task using the current actor-scoped relationship data.",
+                  "Return a relationship analysis report; do not switch to an unrelated task.",
+                  `Verified source version: ${prepared.trustedOriginVerification.sourceDataVersion}`,
+                  `User's editable focus: ${input.message ?? ""}`,
+                ].join("\n"),
+              }
+            : trustedInput;
           const executed = await persistConversationRunTrace(
-            await executeConversation(),
+            await executeConversation(executionInput),
             agentContext.runtime,
           );
           if (executed.success === false) return { result: executed };

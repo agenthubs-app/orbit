@@ -9,6 +9,9 @@ import {
   createOrbitAgentRuntimeService,
   resetOrbitAgentRuntimeServicesForTests,
 } from "../../features/agent/runtime/service-factory";
+import { createConfiguredMobileContactsDashboardService } from "../../features/mobile/contacts-dashboard-service";
+import { createContactsAnalysisSourceDataVersion } from "../../features/mobile/contacts-analysis-report-provider";
+import { createOrbitAgentChatSessionProvider } from "../../features/orbit-ai/storage/orbit-agent-chat-session-provider-factory";
 
 afterEach(() => {
   mock.restoreAll();
@@ -169,6 +172,77 @@ test("protocol v2 conversation POST replays one persisted result for the same re
   assert.equal(conflict.status, 409);
   assert.equal(conflictEnvelope.error.code, "CONFLICT");
   assert.equal(sendCalls, 1);
+});
+
+test("contacts analysis send verifies current actor data and records only a server-trusted execution", async () => {
+  const delegate = createMockOrbitAgentConversationService();
+  const sentMessages: string[] = [];
+  mock.method(orbitAgentConversationServiceFactory, "create", () => ({
+    mode: "mock" as const,
+    service: {
+      ...delegate,
+      sendMessage(input) {
+        sentMessages.push(input.message ?? "");
+        return delegate.sendMessage(input);
+      },
+    },
+    success: true as const,
+  }));
+  const dashboard = await createConfiguredMobileContactsDashboardService("mock").getDashboard({ actorId: "mock:anonymous" });
+  assert.equal(dashboard.success, true);
+  if (!dashboard.success) return;
+  const sourceDataVersion = createContactsAnalysisSourceDataVersion({
+    aggregate: dashboard.data.aggregate,
+    contacts: dashboard.data.contacts,
+    distributions: dashboard.data.distributions,
+    gaps: dashboard.data.gaps,
+    opportunities: dashboard.data.opportunities,
+    profile: dashboard.data.profile,
+    summary: dashboard.data.summary,
+  });
+  const route = await import("../../app/api/ai/conversations/route");
+  const body = {
+    clientMessageId: "message:analysis-route:client",
+    expectedMessageRevision: 0,
+    locale: "zh",
+    message: "请重点分析需要恢复联系的人",
+    origin: {
+      entryClient: "web",
+      entryPointId: "contacts.analysis",
+      initialGroupId: null,
+      kind: "structured",
+      sourceDataVersion,
+      template: { id: "contacts.analysis", version: 1 },
+    },
+    protocolVersion: 2,
+    references: [],
+    requestId: "request:analysis-route",
+    sessionId: "session:analysis-route",
+  };
+  const post = (value: unknown) => route.POST(new Request("https://orbit.local/api/ai/conversations", {
+    body: JSON.stringify(value), headers: { "content-type": "application/json" }, method: "POST",
+  }));
+
+  const stale = await post({ ...body, origin: { ...body.origin, sourceDataVersion: "f".repeat(64) } });
+  assert.equal(stale.status, 409);
+  assert.equal(sentMessages.length, 0);
+
+  const acceptedBody = {
+    ...body,
+    clientMessageId: "message:analysis-route:accepted",
+    requestId: "request:analysis-route:accepted",
+    sessionId: "session:analysis-route:accepted",
+  };
+  const accepted = await post(acceptedBody);
+  assert.equal(accepted.status, 200);
+  assert.match(sentMessages[0] ?? "", /^Execute the registered contacts\.analysis@1 task/u);
+  assert.match(sentMessages[0] ?? "", /请重点分析需要恢复联系的人/u);
+  const stored = await createOrbitAgentChatSessionProvider("mock", "mock:anonymous")?.getSession(acceptedBody.sessionId);
+  assert.deepEqual(stored?.origin?.verification, {
+    analysisVersion: "contacts.analysis@1",
+    kind: "contacts_analysis_execution",
+    sourceDataVersion,
+  });
 });
 
 test("protocol v2 conversation POST authorizes contact references before planner execution", async () => {

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import type { AiSessionOriginInputContract } from "../../shared/contract/ai-sessions";
+import type { AiSessionOriginContract, AiSessionOriginInputContract } from "../../shared/contract/ai-sessions";
 import type { OrbitAgentChatSessionProvider } from "./storage/orbit-agent-chat-session-live-record-provider";
 
 export interface ReliableSendInput {
@@ -16,9 +16,15 @@ export interface ReliableSendInput {
 }
 
 export type ReliableSendState = "completed" | "failed_before_execution" | "outcome_unknown" | "pending";
+type TrustedOriginVerification = NonNullable<AiSessionOriginContract["verification"]>;
+type ReliableAssistantMessage = {
+  id: string;
+  originVerification?: TrustedOriginVerification | undefined;
+  text: string;
+};
 
 export interface ReliableSendRequestRecord<TResult> {
-  assistantMessage?: { id: string; text: string };
+  assistantMessage?: ReliableAssistantMessage;
   fingerprint: string;
   requestId: string;
   result?: TResult;
@@ -34,7 +40,7 @@ export interface OrbitAgentChatRequestStore {
     requestId: string,
     fingerprint: string,
     recovery?: {
-      assistantMessage: { id: string; text: string };
+      assistantMessage: ReliableAssistantMessage;
       result: TResult;
     },
   ): Promise<void>;
@@ -64,6 +70,16 @@ function canonicalFingerprint(input: ReliableSendInput): string {
         expectedMessageRevision: input.expectedMessageRevision,
         locale: input.locale,
         message: input.message,
+        origin: input.origin
+          ? {
+              entryClient: input.origin.entryClient,
+              entryPointId: input.origin.entryPointId,
+              initialGroupId: input.origin.initialGroupId,
+              kind: input.origin.kind,
+              sourceDataVersion: input.origin.sourceDataVersion ?? null,
+              template: input.origin.template,
+            }
+          : null,
         protocolVersion: input.protocolVersion,
         references: [...input.references]
           .map((reference) => ({ id: reference.id, type: reference.type }))
@@ -111,7 +127,7 @@ export function createMemoryOrbitAgentChatRequestStore(): OrbitAgentChatRequestS
       requestId: string,
       fingerprint: string,
       recovery?: {
-        assistantMessage: { id: string; text: string };
+        assistantMessage: ReliableAssistantMessage;
         result: TResult;
       },
     ) {
@@ -182,13 +198,23 @@ export function createReliableOrbitAgentSendService(dependencies: {
   requestStore: OrbitAgentChatRequestStore;
   sessionProvider: OrbitAgentChatSessionProvider;
 }) {
+  const persistSession = (
+    session: Parameters<OrbitAgentChatSessionProvider["upsertSession"]>[0],
+    verification?: TrustedOriginVerification,
+  ) => verification
+    ? dependencies.sessionProvider.upsertVerifiedAnalysisSession(session, verification)
+    : dependencies.sessionProvider.upsertSession(session);
+
   return {
     async send<TResult>(request: {
-      execute: () => Promise<{
+      execute: (prepared?: { trustedOriginVerification?: TrustedOriginVerification | undefined }) => Promise<{
         assistantMessage?: { id: string; text: string };
         result: TResult;
       }>;
       input: ReliableSendInput;
+      prepareExecution?: () => Promise<{
+        trustedOriginVerification?: TrustedOriginVerification | undefined;
+      }>;
     }): Promise<
       | { replayed: boolean; result: TResult; state: "completed" }
       | { replayed: boolean; state: Exclude<ReliableSendState, "completed"> }
@@ -228,24 +254,25 @@ export function createReliableOrbitAgentSendService(dependencies: {
               message.role === "assistant" &&
               message.text === existing.assistantMessage.text,
           );
-          if (!savedAssistant) {
+          const savedVerification =
+            !existing.assistantMessage.originVerification ||
+            (session.origin?.entryClient !== "unknown" &&
+              session.origin?.verification?.kind === "contacts_analysis_execution" &&
+              session.origin.verification.sourceDataVersion === existing.assistantMessage.originVerification.sourceDataVersion);
+          if (!savedAssistant || !savedVerification) {
             const assistantCreatedAt = dependencies.now();
             try {
-              await dependencies.sessionProvider.upsertSession({
+              await persistSession({
                 ...session,
-                messageRevision:
-                  (session.messageRevision ?? session.messages.length) + 1,
-                messages: [
+                messageRevision: savedAssistant
+                  ? Math.max(session.messageRevision ?? 0, session.messages.length)
+                  : (session.messageRevision ?? session.messages.length) + 1,
+                messages: savedAssistant ? session.messages : [
                   ...session.messages,
-                  {
-                    createdAt: assistantCreatedAt,
-                    id: existing.assistantMessage.id,
-                    role: "assistant",
-                    text: existing.assistantMessage.text,
-                  },
+                  { createdAt: assistantCreatedAt, id: existing.assistantMessage.id, role: "assistant", text: existing.assistantMessage.text },
                 ],
                 updatedAt: assistantCreatedAt,
-              });
+              }, existing.assistantMessage.originVerification);
             } catch {
               return { replayed: true, state: "outcome_unknown" };
             }
@@ -262,6 +289,17 @@ export function createReliableOrbitAgentSendService(dependencies: {
           };
         }
         return { replayed: true, state: existing.state };
+      }
+
+      let prepared: { trustedOriginVerification?: TrustedOriginVerification | undefined } | undefined;
+      try {
+        prepared = await request.prepareExecution?.();
+      } catch (error) {
+        await dependencies.requestStore.markFailedBeforeExecution(
+          request.input.requestId,
+          fingerprint,
+        );
+        throw error;
       }
 
       let current: Awaited<
@@ -285,6 +323,20 @@ export function createReliableOrbitAgentSendService(dependencies: {
         lastMessage?.id === request.input.clientMessageId &&
         lastMessage.role === "user" &&
         lastMessage.text === request.input.message;
+      const verifiedAnalysisStartsAtFirstTurn = !prepared?.trustedOriginVerification || (
+        request.input.expectedMessageRevision === 0 &&
+        (
+          current === null ||
+          (current.messages.length === 1 && userMessageAlreadyPersisted)
+        )
+      );
+      if (!verifiedAnalysisStartsAtFirstTurn) {
+        await dependencies.requestStore.markFailedBeforeExecution(
+          request.input.requestId,
+          fingerprint,
+        );
+        throw new ReliableSendError("SESSION_REVISION_CONFLICT");
+      }
       if (
         currentRevision !== request.input.expectedMessageRevision &&
         !userMessageAlreadyPersisted
@@ -355,7 +407,7 @@ export function createReliableOrbitAgentSendService(dependencies: {
 
       let executed: Awaited<ReturnType<typeof request.execute>>;
       try {
-        executed = await request.execute();
+        executed = await request.execute(prepared);
       } catch {
         await dependencies.requestStore.markOutcomeUnknown(
           request.input.requestId,
@@ -382,14 +434,17 @@ export function createReliableOrbitAgentSendService(dependencies: {
           request.input.requestId,
           fingerprint,
           {
-            assistantMessage: executed.assistantMessage,
+            assistantMessage: {
+              ...executed.assistantMessage,
+              originVerification: prepared?.trustedOriginVerification,
+            },
             result: executed.result,
           },
         );
         return { replayed: false, state: "outcome_unknown" };
       }
       try {
-        await dependencies.sessionProvider.upsertSession({
+        await persistSession({
           ...withUser,
           messageRevision: (withUser.messageRevision ?? request.input.expectedMessageRevision + 1) + 1,
           messages: [
@@ -402,7 +457,7 @@ export function createReliableOrbitAgentSendService(dependencies: {
             },
           ],
           updatedAt: assistantCreatedAt,
-        });
+        }, prepared?.trustedOriginVerification);
         await dependencies.requestStore.complete(
           request.input.requestId,
           fingerprint,
@@ -413,7 +468,10 @@ export function createReliableOrbitAgentSendService(dependencies: {
           request.input.requestId,
           fingerprint,
           {
-            assistantMessage: executed.assistantMessage,
+            assistantMessage: {
+              ...executed.assistantMessage,
+              originVerification: prepared?.trustedOriginVerification,
+            },
             result: executed.result,
           },
         );

@@ -15,6 +15,11 @@ import {
   createOpportunityReminderAnalyticsService,
 } from "../dashboard/service-factory";
 import { createProfileService } from "../profile/service-factory";
+import { createOrbitAgentChatSessionProvider } from "../orbit-ai/storage/orbit-agent-chat-session-provider-factory";
+import {
+  createContactsAnalysisReportProvider,
+  type ContactsAnalysisSource,
+} from "./contacts-analysis-report-provider";
 
 export type MobileContactsDashboardSectionResult =
   | { success: true; data: unknown }
@@ -27,6 +32,10 @@ type MobileContactsDashboardSectionLoader = (
   | Promise<MobileContactsDashboardSectionResult>;
 
 export interface MobileContactsDashboardDependencies {
+  loadAnalysis?: (
+    actorId: string,
+    source: ContactsAnalysisSource,
+  ) => MobileContactsDashboardSectionResult | Promise<MobileContactsDashboardSectionResult>;
   loadAggregate: MobileContactsDashboardSectionLoader;
   loadSummary: MobileContactsDashboardSectionLoader;
   loadOpportunities: MobileContactsDashboardSectionLoader;
@@ -142,12 +151,34 @@ export function createMobileContactsDashboardService(
         profile: optionalSection("profile", profileResult),
         contacts: optionalSection("contacts", contactsResult),
       };
-      const unavailableSections = MOBILE_CONTACTS_DASHBOARD_OPTIONAL_SECTIONS.filter(
-        (section) => optionalResults[section].unavailable,
+      const analysisSource = {
+        aggregate: aggregate.data,
+        summary: optionalResults.summary.data,
+        opportunities: optionalResults.opportunities.data,
+        gaps: optionalResults.gaps.data,
+        distributions: optionalResults.distributions.data,
+        profile: optionalResults.profile.data,
+        contacts: optionalResults.contacts.data,
+      } as ContactsAnalysisSource;
+      let analysis: ReturnType<typeof optionalSection> | undefined;
+      if (dependencies.loadAnalysis) {
+        let analysisResult: MobileContactsDashboardSectionResult;
+        try {
+          analysisResult = await dependencies.loadAnalysis(actorId, analysisSource);
+        } catch (error) {
+          analysisResult = { success: false, error };
+        }
+        analysis = optionalSection("analysis", analysisResult);
+      }
+      const unavailableSections = MOBILE_CONTACTS_DASHBOARD_OPTIONAL_SECTIONS.filter((section) =>
+        section === "analysis"
+          ? analysis?.unavailable === true
+          : optionalResults[section].unavailable,
       );
       const payload = mobileContactsDashboardPayloadSchema.safeParse({
         schemaVersion: 1,
         generatedAt: now(),
+        ...(analysis ? { analysis: analysis.data } : {}),
         aggregate: aggregate.data,
         summary: optionalResults.summary.data,
         opportunities: optionalResults.opportunities.data,
@@ -193,6 +224,10 @@ export function createConfiguredMobileContactsDashboardService(
   }
 
   return createMobileContactsDashboardService({
+    loadAnalysis: (actorId, source) =>
+      createContactsAnalysisReportProvider({
+        sessionProvider: createOrbitAgentChatSessionProvider(mode, actorId),
+      }).getAnalysis({ source }),
     loadAggregate: (actorId) =>
       dashboard.getDashboardAggregate({ actorId, activityLimit: 4 }),
     loadSummary: (actorId) => dashboard.getDashboardSummary({ actorId }),

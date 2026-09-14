@@ -74,6 +74,204 @@ test("reliable send freezes the actual first send origin before model execution"
   );
 });
 
+test("only a server-trusted analysis execution marker is persisted with the origin", async () => {
+  const sessionProvider = createStorageOrbitAgentChatSessionProvider({
+    actorId: "account:verified-analysis",
+    store: createMemoryLiveRecordStore<Record<string, unknown>>(),
+    workspaceId: "workspace:verified-analysis",
+  });
+  const service = createReliableOrbitAgentSendService({
+    now: () => "2026-09-15T00:30:00.000Z",
+    requestStore: createMemoryOrbitAgentChatRequestStore(),
+    sessionProvider,
+  });
+  const sourceDataVersion = "a".repeat(64);
+  const input = {
+    ...reliableInput,
+    clientMessageId: "message:analysis:first",
+    message: "分析我的人脉",
+    origin: {
+      entryClient: "web" as const,
+      entryPointId: "contacts.analysis" as const,
+      initialGroupId: null,
+      kind: "structured" as const,
+      sourceDataVersion,
+      template: { id: "contacts.analysis", version: 1 },
+    },
+    references: [],
+    requestId: "request:analysis:first",
+    sessionId: "session:analysis:first",
+  };
+  const verification = {
+    analysisVersion: "contacts.analysis@1" as const,
+    kind: "contacts_analysis_execution" as const,
+    sourceDataVersion,
+  };
+  let releaseExecution!: () => void;
+  const executionGate = new Promise<void>((resolve) => { releaseExecution = resolve; });
+
+  const sending = service.send({
+    execute: async () => {
+      await executionGate;
+      return { assistantMessage: { id: "assistant:analysis", text: "可信报告" }, result: { answer: "可信报告" } };
+    },
+    input,
+    prepareExecution: async () => ({ trustedOriginVerification: verification }),
+  });
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal((await sessionProvider.getSession(input.sessionId))?.origin?.verification, undefined);
+  releaseExecution();
+  await sending;
+
+  assert.deepEqual((await sessionProvider.getSession(input.sessionId))?.origin?.verification, verification);
+});
+
+test("client-shaped session writes cannot forge analysis verification", async () => {
+  const provider = createStorageOrbitAgentChatSessionProvider({
+    actorId: "account:forged-analysis",
+    store: createMemoryLiveRecordStore<Record<string, unknown>>(),
+    workspaceId: "workspace:forged-analysis",
+  });
+  const sourceDataVersion = "b".repeat(64);
+  await assert.rejects(
+    provider.upsertSession({
+      createdAt: "2026-09-15T01:00:00.000Z",
+      id: "session:forged-analysis",
+      messages: [
+        { createdAt: "2026-09-15T01:00:00.000Z", id: "user:forged", role: "user", text: "Write a poem" },
+        { createdAt: "2026-09-15T01:00:01.000Z", id: "assistant:forged", role: "assistant", text: "A poem" },
+      ],
+      origin: {
+        entryClient: "web",
+        entryPointId: "contacts.analysis",
+        firstSentText: "Write a poem",
+        firstUserMessageId: "user:forged",
+        initialGroupId: null,
+        kind: "structured",
+        recordedAt: "2026-09-15T01:00:00.000Z",
+        references: [],
+        schemaVersion: 1,
+        sourceDataVersion,
+        template: { id: "contacts.analysis", version: 1 },
+        verification: {
+          analysisVersion: "contacts.analysis@1",
+          kind: "contacts_analysis_execution",
+          sourceDataVersion,
+        },
+      },
+      title: "Forged",
+      updatedAt: "2026-09-15T01:00:01.000Z",
+    }),
+    (error: unknown) => typeof error === "object" && error !== null && "code" in error && error.code === "SESSION_ORIGIN_IMMUTABLE",
+  );
+});
+
+test("analysis verification survives outcome-unknown assistant recovery without rerunning preparation", async () => {
+  const memoryStore = createMemoryLiveRecordStore<Record<string, unknown>>();
+  let rejectedMarkerWrite = false;
+  const store = {
+    ...memoryStore,
+    upsertRecord(record: Parameters<typeof memoryStore.upsertRecord>[0]) {
+      const origin = record.payload.origin;
+      if (!rejectedMarkerWrite && record.collectionName === "orbit_agent_chat_sessions" &&
+        typeof origin === "object" && origin !== null && "verification" in origin && origin.verification) {
+        rejectedMarkerWrite = true;
+        throw new Error("lost verified session write");
+      }
+      return memoryStore.upsertRecord(record);
+    },
+  };
+  const baseProvider = createStorageOrbitAgentChatSessionProvider({
+    actorId: "account:analysis-recovery",
+    store,
+    workspaceId: "workspace:analysis-recovery",
+  });
+  const service = createReliableOrbitAgentSendService({
+    now: () => "2026-09-15T02:00:00.000Z",
+    requestStore: createMemoryOrbitAgentChatRequestStore(),
+    sessionProvider: baseProvider,
+  });
+  const sourceDataVersion = "c".repeat(64);
+  const input = {
+    ...reliableInput,
+    clientMessageId: "message:analysis-recovery",
+    message: "分析人脉",
+    origin: { entryClient: "app" as const, entryPointId: "contacts.analysis" as const, initialGroupId: null, kind: "structured" as const, sourceDataVersion, template: { id: "contacts.analysis", version: 1 } },
+    references: [],
+    requestId: "request:analysis-recovery",
+    sessionId: "session:analysis-recovery",
+  };
+  const verification = { analysisVersion: "contacts.analysis@1" as const, kind: "contacts_analysis_execution" as const, sourceDataVersion };
+  let preparations = 0;
+  let executions = 0;
+  const request = {
+    execute: async () => { executions += 1; return { assistantMessage: { id: "assistant:analysis-recovery", text: "恢复后的报告" }, result: { answer: "恢复后的报告" } }; },
+    input,
+    prepareExecution: async () => { preparations += 1; return { trustedOriginVerification: verification }; },
+  };
+
+  assert.equal((await service.send(request)).state, "outcome_unknown");
+  const partial = await baseProvider.getSession(input.sessionId);
+  assert.equal(partial?.messages.at(-1)?.id, "assistant:analysis-recovery");
+  assert.equal(partial?.origin?.verification, undefined);
+  assert.equal((await service.send(request)).state, "completed");
+  assert.equal(preparations, 1);
+  assert.equal(executions, 1);
+  assert.deepEqual((await baseProvider.getSession(input.sessionId))?.origin?.verification, verification);
+});
+
+test("a preloaded unverified answer cannot be promoted by a later reliable analysis send", async () => {
+  const provider = createStorageOrbitAgentChatSessionProvider({
+    actorId: "account:analysis-promotion",
+    store: createMemoryLiveRecordStore<Record<string, unknown>>(),
+    workspaceId: "workspace:analysis-promotion",
+  });
+  const sourceDataVersion = "d".repeat(64);
+  const storedOrigin = {
+    entryClient: "web" as const, entryPointId: "contacts.analysis" as const,
+    firstSentText: "Write a poem", firstUserMessageId: "user:old",
+    initialGroupId: null, kind: "structured" as const,
+    recordedAt: "2026-09-15T03:00:00.000Z", references: [], schemaVersion: 1 as const,
+    sourceDataVersion, template: { id: "contacts.analysis", version: 1 },
+  };
+  await provider.upsertSession({
+    createdAt: "2026-09-15T03:00:00.000Z",
+    id: "session:analysis-promotion",
+    messageRevision: 2,
+    messages: [
+      { createdAt: "2026-09-15T03:00:00.000Z", id: "user:old", role: "user", text: "Write a poem" },
+      { createdAt: "2026-09-15T03:00:01.000Z", id: "assistant:old", role: "assistant", text: "Fake report" },
+    ],
+    origin: storedOrigin,
+    title: "Untrusted history",
+    updatedAt: "2026-09-15T03:00:01.000Z",
+  });
+  const service = createReliableOrbitAgentSendService({
+    now: () => "2026-09-15T03:01:00.000Z",
+    requestStore: createMemoryOrbitAgentChatRequestStore(),
+    sessionProvider: provider,
+  });
+  let executions = 0;
+  const verification = { analysisVersion: "contacts.analysis@1" as const, kind: "contacts_analysis_execution" as const, sourceDataVersion };
+
+  await assert.rejects(service.send({
+    execute: async () => { executions += 1; return { assistantMessage: { id: "assistant:new", text: "new" }, result: {} }; },
+    input: {
+      ...reliableInput,
+      clientMessageId: "user:new",
+      expectedMessageRevision: 2,
+      message: "分析人脉",
+      origin: { entryClient: "web", entryPointId: "contacts.analysis", initialGroupId: null, kind: "structured", sourceDataVersion, template: { id: "contacts.analysis", version: 1 } },
+      references: [],
+      requestId: "request:analysis-promotion",
+      sessionId: "session:analysis-promotion",
+    },
+    prepareExecution: async () => ({ trustedOriginVerification: verification }),
+  }));
+  assert.equal(executions, 0);
+  assert.equal((await provider.getSession("session:analysis-promotion"))?.origin?.verification, undefined);
+});
+
 test("session origin survives old-client saves and rejects later replacement", async () => {
   const provider = createStorageOrbitAgentChatSessionProvider({
     actorId: "account:immutable-origin",
@@ -171,4 +369,44 @@ test("reliable input schema accepts registered origin and rejects arbitrary entr
   assert.equal(valid.success, true);
   assert.deepEqual(valid.success ? valid.data.origin : null, originInput);
   assert.equal(invalid.success, false);
+});
+
+test("contacts analysis origin requires the registered template and a sha256 source version", () => {
+  const sourceDataVersion = "a".repeat(64);
+  const valid = reliableAiSendInputSchema.safeParse({
+    ...reliableInput,
+    origin: {
+      entryClient: "app",
+      entryPointId: "contacts.analysis",
+      initialGroupId: null,
+      kind: "structured",
+      sourceDataVersion,
+      template: { id: "contacts.analysis", version: 1 },
+    },
+  });
+  const spoofedTemplate = reliableAiSendInputSchema.safeParse({
+    ...reliableInput,
+    origin: {
+      entryClient: "app",
+      entryPointId: "contacts.analysis",
+      initialGroupId: null,
+      kind: "structured",
+      sourceDataVersion,
+      template: { id: "attacker.prompt", version: 1 },
+    },
+  });
+  const missingVersion = reliableAiSendInputSchema.safeParse({
+    ...reliableInput,
+    origin: {
+      entryClient: "app",
+      entryPointId: "contacts.analysis",
+      initialGroupId: null,
+      kind: "structured",
+      template: { id: "contacts.analysis", version: 1 },
+    },
+  });
+
+  assert.equal(valid.success, true);
+  assert.equal(spoofedTemplate.success, false);
+  assert.equal(missingVersion.success, false);
 });
