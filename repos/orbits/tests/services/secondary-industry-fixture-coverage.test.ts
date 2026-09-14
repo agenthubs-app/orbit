@@ -60,11 +60,14 @@ test("list, detail, and search fixtures keep one industry per person and preserv
 
 test("executable inventory enumerates real constructor outputs and links detail aliases to the same person", async () => {
   const projections = await readIndustryFixtureProjections();
-  assert.equal(projections.length, 28);
+  assert.equal(projections.length, 32);
   assert.deepEqual([...new Set(projections.map(row => row.personId))].sort(), [
     "contact:hana-sato", "contact:kenji-watanabe", "contact:mina-tan", "contact:omar-rahman", "person_mina_tanaka", "person_nia_patel", "profile_ari_kato", "profile_ari_lane",
   ]);
-  assert.equal(new Set(projections.map(row => `${row.source}:${row.constructor}:${row.recordId}`)).size, 28);
+  assert.equal(new Set(projections.map(row => `${row.source}:${row.constructor}:${row.recordId}`)).size, 32);
+  assert.deepEqual(projections.filter(row => row.constructor === "createContactsRecommendationSearchTool.recommend.candidates").map(row => row.personId).sort(), [
+    "contact:hana-sato", "contact:kenji-watanabe", "contact:mina-tan", "contact:omar-rahman",
+  ]);
   const detail = projections.filter(row => row.recordId === "demo-contact-1");
   assert.equal(detail.length, 2);
   assert.ok(detail.every(row => row.personId === "contact:kenji-watanabe"));

@@ -187,6 +187,8 @@ test("profile save verification rejects a partial readback", () => {
     headline: "验证刷新回读",
     homeMarket: "东京企业软件",
     industry: "企业软件",
+    primaryIndustryId: "technology_internet",
+    secondaryIndustryId: "technology_internet.enterprise_software",
     offering: ["跨端验证"],
     organization: "轨道质量实验室",
     preferredFollowUpWindow: "",
@@ -206,6 +208,13 @@ test("profile save verification rejects a partial readback", () => {
   } as ProfilePayload;
 
   assert.equal(profileReadbackMatches(update, payload), true);
+  assert.equal(
+    profileReadbackMatches(update, {
+      ...payload,
+      profile: { ...payload.profile!, secondaryIndustryId: "technology_internet.cybersecurity" },
+    }),
+    false,
+  );
   assert.equal(
     profileReadbackMatches(update, {
       ...payload,

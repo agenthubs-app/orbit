@@ -6,6 +6,8 @@ import { mockContactDetail, mockUpdatedContactDetail } from "../../features/cont
 import { mockRelationshipNaturalSearchResults, mockPilotOperatorSearchFixture, mockFintechReferralSearchFixture } from "../../features/search/fixtures";
 import { legacyDefaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMockStateStore } from "../../shared/mock/state-store";
+import { createContactsRecommendationSearchTool } from "../../features/contacts/contact-recommendation-search";
+import { createMockRelationshipNaturalSearchService } from "../../features/search/mock-service";
 
 // Incremental inventory: pending families below remain in SC-05's denominator.
 // Do not import seed CLIs here: some load credentials or write during import.
@@ -142,6 +144,13 @@ export async function readIndustryFixtureProjections(): Promise<IndustryFixtureP
     ["mockUpdatedContactDetail", mockUpdatedContactDetail],
   ] as const) {
     add("features/contacts/detail-fixtures.ts", constructor, item.id, "contact:kenji-watanabe", item);
+  }
+  const recommendations = await createContactsRecommendationSearchTool({
+    relationshipSearchService: createMockRelationshipNaturalSearchService(),
+  }).recommend({ query: "" });
+  if (recommendations.state !== "success") throw new Error("Recommendation fixture service failed during inventory");
+  for (const candidate of recommendations.candidates) {
+    add("features/search/fixtures.ts", "createContactsRecommendationSearchTool.recommend.candidates", candidate.contactId, candidate.contactId, candidate);
   }
   const legacy = createMockStateStore(legacyDefaultMockFixtures).getState();
   for (const profile of legacy.profiles) {

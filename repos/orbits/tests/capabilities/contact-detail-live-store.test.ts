@@ -337,10 +337,14 @@ test("live contact detail reads only evidence for the selected contact graph", a
     role: "Founder",
     location: "Tokyo",
     profileSnippet: "Selected profile",
+    primaryIndustryId: "technology_internet",
+    secondaryIndustryId: "technology_internet.enterprise_software",
     publicProfile: {
       bio: "Public biography from the contact profile",
       selfIntroduction: "First-person introduction from the contact",
       industry: "Industrial software",
+      primaryIndustryId: "technology_internet",
+      secondaryIndustryId: "technology_internet.enterprise_software",
       offering: ["Factory operations expertise"],
       seeking: ["A deployment partner"],
       topics: ["quality systems", "automation"],
@@ -467,6 +471,8 @@ test("live contact detail reads only evidence for the selected contact graph", a
 
   assert.equal(detail.success, true);
   assert.equal(detail.data.contact?.id, selectedContact.id);
+  assert.equal(detail.data.contact?.primaryIndustryId, "technology_internet");
+  assert.equal(detail.data.contact?.secondaryIndustryId, "technology_internet.enterprise_software");
   assert.equal(
     detail.data.contact?.publicProfile.bio,
     selectedContact.publicProfile.bio,

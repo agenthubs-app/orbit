@@ -344,6 +344,8 @@ test("model keyword mismatch falls back to the strongest evidence-backed Chinese
                 },
               ],
               industry: "风险投资",
+              primaryIndustryId: "finance_investment",
+              secondaryIndustryId: "finance_investment.venture_capital",
               location: "东京",
               matchScore: {
                 rationale: "关系强度和商业相关性较高。",
@@ -382,6 +384,8 @@ test("model keyword mismatch falls back to the strongest evidence-backed Chinese
   assert.equal(result.state, "success");
   assert.equal(result.candidates.length, 1);
   assert.equal(result.candidates[0]?.displayName, "林玫");
+  assert.equal(Reflect.get(result.candidates[0]!, "primaryIndustryId"), "finance_investment");
+  assert.equal(Reflect.get(result.candidates[0]!, "secondaryIndustryId"), "finance_investment.venture_capital");
   assert.equal(result.candidates[0]?.matchScore, 69);
   assert.match(result.summary, /No exact search-term match/);
   assert.match(result.candidates[0]?.matchReasons[0] ?? "", /ranked by existing/);
@@ -442,6 +446,8 @@ test("contacts recommendation search adapter awaits async relationship search se
                 followUpStatus: "needs_follow_up",
                 id: "relationship-search-result:async-live",
                 industry: "enterprise_saas",
+                primaryIndustryId: "technology_internet",
+                secondaryIndustryId: "technology_internet.enterprise_software",
                 location: "Tokyo",
                 matchScore: {
                   band: "high",
@@ -481,6 +487,8 @@ test("contacts recommendation search adapter awaits async relationship search se
 
   assert.equal(result.state, "success");
   assert.equal(result.candidates[0]?.displayName, "Async Live Contact");
+  assert.equal(Reflect.get(result.candidates[0]!, "primaryIndustryId"), "technology_internet");
+  assert.equal(Reflect.get(result.candidates[0]!, "secondaryIndustryId"), "technology_internet.enterprise_software");
   assert.deepEqual(result.candidates[0]?.evidenceIds, ["evidence:async-live"]);
 });
 
