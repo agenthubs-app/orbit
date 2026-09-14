@@ -26,7 +26,11 @@ App 的 `tests/profile-view-model.test.ts` 与 `tests/profile-manual-edit-view-m
 
 ## 源数据与关联
 
+`b5e868112` 后同版本I全量：Web2966 pass／47 fail／168 skip，失败名称集合与上一版相同；App2582 pass／1 fail／0 skip。新增App失败是任务设置按钮的几何测量43.99998474121094小于严格44下限，并非行业断言。相关任务页和测试不在这三个提交的差异中；未改源码／断言，限定用例重跑1/1。按钮位于slide Modal、minHeight使用44pt token，当前推断是动画测量精度，尚不构成已修复证据。本次全量失败保留，不能用重跑一项覆盖它。
+
 已解析现有 JSON，没有导入或运行生成器：
+
+几何失败的整个 `tests/app-wide-workspaces.test.ts` 随后原样重跑44/44（`build/harness-logs/sprint-0023-layout-full-file-recheck.log`），没有任何修复性编辑。两次限定诊断均未复现，保留间歇性失败记录，不再次运行整套测试来筛选绿色结果。
 
 | 集合 | 记录数 | 已核实关联 |
 | --- | --- | --- |
@@ -41,6 +45,48 @@ App 的 `tests/profile-view-model.test.ts` 与 `tests/profile-manual-edit-view-m
 旧类别为 restaurant_inbound、ai_saas、manufacturing_dx、cross_border_ecommerce、venture_capital、community_events、retail_omnichannel、legal_accounting、tourism_hospitality、education_training。部分语义不能唯一确定二级 ID，例如 legal_accounting 同时包含法律和财税。不能按公司 ID 数字或数组位置轮换新子类，不能把需求中的行业当作本人的行业，也不能把所有歧义对象统一填为“其他”来通过检查。
 
 下一步分类清单需为每个正常人物列出稳定 ID、确认的父子 ID、来源依据和关联投影；没有唯一依据的对象明确计入“缺依据”，不能算补齐成功。要补齐全部正常对象，须先审阅这部分映射。14 个一级和 79 个二级的覆盖仍由完整测试范围承担，不虚构这 132 人已覆盖全部目录。
+
+## 新核实的接续范围（待审，不是新增授权）
+
+### App 自然搜索
+
+无网络调用实际复现：`buildRelationshipSearchRequest` 只收到两级行业数组时返回输入为空；同时传 query 时只留下 query。`relationshipSearchToView` 的结果不含两个行业 ID。请求构造器影响 LOW／1个直接调用者 `ContactsScreen.runRelationshipSearch`，共7个受影响符号、0条已识别流程；结果 mapper 图谱为LOW／0直接，源码另确认 `relationshipSearchToView` 的 `.map` 消费。
+
+- 需增加生产文件白名单：App `src/view-models/relationship-search.ts`。只接现有两级数组请求、可选结果ID和规范标签；沿用同层OR／两层AND及旧五领域兼容，不另建目录。
+- App `src/screens/contacts/ContactsScreen.tsx` 已在原白名单：在现有筛选区接单选父子行业，保留旧领域，不另建页面。依赖 mapper 修复，不能先开放无效控件。
+- 验证范围补入现有 App `tests/relationship-search-view-model.test.ts` 和 `tests/ink-signal-contacts.test.ts` 的实际搜索交互：仅行业条件、同父不同子、清空、旧领域、失败和换号，不用源文本断言代替点击和请求结果。
+- `b5e868112` 只先补齐 App邀请／搜索、Web简报的正常源数据；3条缺字段RED后App两完整文件9/9、Web简报完整文件11/11，两端typecheck通过。App搜索卡片仍为旧结果模型，源数据通过不代表该消费者已修复。
+
+### 联系人 seed 的纯数据边界
+
+拟将纯定义与纯构造器提取到新增 Web `shared/mock/account-contact-fixtures.ts`，此精确新文件尚未获准。原 `scripts/seed-account-contact-fixtures.ts` 保留CLI、认证与既有行为，只改为消费纯构造结果；覆盖清单只调用无环境读取、无存储访问的构造器。构造器返回既有 contact／connection／evidence 数据及固定源序位，保留正文、日期和关联，只新增已确认的行业投影。当前ID使用账号SHA256前10位加固定序位01～12，不能重排或重新分配ID。
+
+该CLI还会软删除命中的旧fixture，并改写一条已知介绍草稿；即使提取后也不能为行业验收直接执行它。实际补齐仍用独立版本条件写方案。
+
+下表是12条源定义的只读映射准备，不是已补齐数据：
+
+| 固定序位／人物 | 二级ID提议或缺项 |
+| --- | --- |
+| 01 林玫 | `finance_investment.venture_capital`：风险投资。 |
+| 02 佐藤健司 | `manufacturing_supply_chain.robotics`：机器人和产线自动化。 |
+| 03 田中爱子 | `professional_services.startup_services`：保留已有父类，原行业为创业服务；不按社群职称擅自改父类。 |
+| 04 普丽娅·拉奥 | `technology_internet.ai_data`：企业人工智能交付。 |
+| 05 索菲娅·马丁内斯 | `retail_consumer.ecommerce`：跨境电商。 |
+| 06 奥马尔·拉赫曼 | `technology_internet.cloud_infrastructure`：云基础设施和云迁移。 |
+| 07 森花 | 原父类为社群／非营利，简介为可持续发展顾问；不足以确认社群运营、公益组织或另一父类的咨询业务，保留缺依据。 |
+| 08 陈立安 | `technology_internet.enterprise_software`：企业软件。 |
+| 09 艾玛·威尔逊 | `media_creative.advertising_marketing`：品牌战略与上市营销。 |
+| 10 小林大地 | 只知制造业和工厂数字化，未说明设备、汽车、电子或材料等实际生产行业，保留缺依据。 |
+| 11 诺拉·费舍尔 | 数字医疗工具评估未区分医疗服务、器械或健康管理；目录没有独立“数字医疗”子类，保留缺依据。 |
+| 12 拉菲尔·科斯塔 | `food_hospitality.hotels_tourism`：酒店集团。 |
+
+### 活动问卷与内联数据
+
+`features/events/registration/contract.ts` 将 `EventParticipantProfileAnswers` 定义为8个原文字段的Partial Record；`normalizeEventParticipantAnswers` 按白名单重建对象，直接写入行业ID会被丢掉。`eventOperationsParticipantFromRegistration` 优先读取 interviewResponses，再产生参与者DTO；冻结快照读取也调用同一归一化。结构化行业的领域归属、公开资料／问卷隐私和冻结版本关系需事件领域补充契约，不能扩答案字段后声称兼容。
+
+E2E定义有64个匹配参与者和6条已取消历史，合计70个账号；后者不是无理由遗漏，不能为补行业改变其状态。已按源码和校验条件确认数量，未执行seed。其他事件内联样本含问卷迁移、非法值与冻结哈希反例；App泛称“互联网”的资料、原父类为专业服务的设计师也需分类依据，不能批量填值把反例变成正常记录。
+
+上述缺项只限制对应动作。32个正常投影和非个人行业来源的现有验证继续有效；跨仓库内联清单仍未完整执行，本表不代表 SC-05 通过。
 
 ## 生成器边界
 
