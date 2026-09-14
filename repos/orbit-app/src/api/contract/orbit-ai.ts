@@ -51,11 +51,14 @@ export type OrbitAiTaskCategoryCode =
   | "other";
 
 export interface OrbitAiTaskInteractionContract {
-  state: "created" | "suggested" | "failed";
+  state: "created" | "suggested" | "needs_date_confirmation" | "failed";
   title: string;
   category: OrbitAiTaskCategoryCode;
   reason?: string;
   dueAt?: string;
   taskId?: string;
   suggestionId?: string;
+  sourceNoteId?: string;
+  sourceNoteVersion?: number;
+  relatedContactIds?: readonly string[];
 }

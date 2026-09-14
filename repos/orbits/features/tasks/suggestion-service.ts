@@ -39,6 +39,9 @@ export interface TaskSuggestionService {
     relatedEventId?: string;
     relatedMeetingId?: string;
     relatedConversationId?: string;
+    relatedContactIds?: readonly string[];
+    sourceNoteId?: string;
+    sourceNoteVersion?: number;
     evidenceIds: readonly string[];
     confidence: number;
     deduplicationKey: string;
@@ -94,6 +97,11 @@ function cooldownEnd(now: string): string {
 export function createTaskSuggestionService(input: {
   repository: TaskSuggestionRepository;
   taskService: TaskService;
+  validateSourceNote?: (input: {
+    actorId: string;
+    noteId: string;
+    version: number;
+  }) => Promise<boolean>;
 }): TaskSuggestionService {
   return {
     get(query) {
@@ -181,8 +189,8 @@ export function createTaskSuggestionService(input: {
         ...(suggestInput.suggestedDueAt
           ? { suggestedDueAt: suggestInput.suggestedDueAt }
           : {}),
-        ...(suggestInput.relatedContactId
-          ? { relatedContactId: suggestInput.relatedContactId }
+        ...(suggestInput.relatedContactId ?? suggestInput.relatedContactIds?.[0]
+          ? { relatedContactId: suggestInput.relatedContactId ?? suggestInput.relatedContactIds![0] }
           : {}),
         ...(suggestInput.relatedEventId
           ? { relatedEventId: suggestInput.relatedEventId }
@@ -192,6 +200,15 @@ export function createTaskSuggestionService(input: {
           : {}),
         ...(suggestInput.relatedConversationId
           ? { relatedConversationId: suggestInput.relatedConversationId }
+          : {}),
+        ...(suggestInput.relatedContactIds?.length
+          ? { relatedContactIds: [...new Set(suggestInput.relatedContactIds)].sort() }
+          : {}),
+        ...(suggestInput.sourceNoteId
+          ? { sourceNoteId: suggestInput.sourceNoteId }
+          : {}),
+        ...(suggestInput.sourceNoteVersion !== undefined
+          ? { sourceNoteVersion: suggestInput.sourceNoteVersion }
           : {}),
         evidenceIds: suggestInput.evidenceIds,
         confidence: suggestInput.confidence,
@@ -222,6 +239,18 @@ export function createTaskSuggestionService(input: {
           `Task suggestion cannot be accepted from ${suggestion.status}`,
         );
       }
+      if (
+        suggestion.sourceNoteId &&
+        suggestion.sourceNoteVersion !== undefined &&
+        (!input.validateSourceNote ||
+          !(await input.validateSourceNote({
+            actorId: acceptInput.actorId,
+            noteId: suggestion.sourceNoteId,
+            version: suggestion.sourceNoteVersion,
+          })))
+      ) {
+        throw new TaskSuggestionServiceError("Source note changed or is unavailable");
+      }
 
       const taskResult = await input.taskService.create({
         actorId: acceptInput.actorId,
@@ -237,6 +266,8 @@ export function createTaskSuggestionService(input: {
         relatedMeetingId: suggestion.relatedMeetingId,
         relatedConversationId: suggestion.relatedConversationId,
         suggestionId: suggestion.id,
+        sourceNoteId: suggestion.sourceNoteId,
+        sourceNoteVersion: suggestion.sourceNoteVersion,
         idempotencyKey: `accepted-suggestion:${suggestion.id}`,
         now: acceptInput.now,
       });

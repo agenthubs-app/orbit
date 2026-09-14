@@ -149,6 +149,17 @@ function readHistory(value: unknown): OrbitAgentSendMessageInput["history"] {
   return turns.length > 0 ? turns : undefined;
 }
 
+function readSourceNote(value: unknown): OrbitAgentSendMessageInput["sourceNote"] {
+  if (value === undefined) return undefined;
+  if (!isRecord(value) || typeof value.id !== "string" || !value.id.trim()) {
+    return { id: "invalid-source-note", version: 0 };
+  }
+  if (!Number.isInteger(value.version) || Number(value.version) < 1) {
+    return { id: value.id.trim(), version: 0 };
+  }
+  return { id: value.id.trim(), version: Number(value.version) };
+}
+
 function readListInput(request: Request): OrbitAgentConversationInput {
   const searchParams = new URL(request.url).searchParams;
 
@@ -168,6 +179,7 @@ async function readSendInput(
     history: readHistory(body.history),
     locale: readString(body.locale),
     message: readString(body.message) ?? readString(body.prompt),
+    sourceNote: readSourceNote(body.sourceNote),
     scenario: searchParams.get("scenario") ?? readString(body.scenario),
   };
 }
@@ -382,6 +394,7 @@ async function applyTaskInteraction(
     message,
     now: new Date().toISOString(),
     proposedActionRequests: result.data.proposedActionRequests ?? [],
+    sourceNote: input.sourceNote,
   });
   const interaction = handled.interaction;
   const assistantMessage =
@@ -389,6 +402,8 @@ async function applyTaskInteraction(
       ? `已创建待办：${interaction.title}`
       : interaction?.state === "suggested"
         ? `${result.data.assistantMessage}\n\n要把“${interaction.title}”加入待办吗？`
+        : interaction?.state === "needs_date_confirmation"
+          ? `${result.data.assistantMessage}\n\n${interaction.reason}`
         : interaction?.state === "failed"
           ? `我整理出了待办“${interaction.title}”，但暂时没有写入成功，请稍后重试。`
           : result.data.assistantMessage;
@@ -525,7 +540,7 @@ export async function POST(request: Request): Promise<Response> {
     : createOrbitAgentConversationService();
   let result: OrbitAgentConversationResult;
 
-  if (mode === "mock" && isChatKnownWorkflowInput(trustedInput)) {
+  if (mode === "mock" && !trustedInput.sourceNote && isChatKnownWorkflowInput(trustedInput)) {
     // 已知工作流必须在 bounded planner/provider 之前命中。listConversations
     // 只读取会话基态，用来保留 activeConversationId；它不会生成模型回复。
     const conversationResult = await service.listConversations({

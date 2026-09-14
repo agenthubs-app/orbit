@@ -12,6 +12,7 @@ import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { contactsToSummaries } from "../../view-models/contacts";
 import { buildNoteUpdateRequest, confirmedNote, noteFromPayload, type NoteView } from "../../view-models/notes";
+import { buildNoteSuggestionNavigation, noteSourceTasksFromPayload } from "../../view-models/note-suggestions";
 import { NoteContactPicker } from "./NoteContactPicker";
 
 let updateSequence = 0;
@@ -26,8 +27,10 @@ export function NoteDetailScreen({ actorId, noteId, scopeKey, isScopeCurrent = (
   const client = useOrbitApiClient({ scopeKey });
   const state = useApiResource<unknown>(notePath(noteId), () => false, { scopeKey, cachePolicy: "network-only" });
   const contactsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.contacts, () => false, { scopeKey });
+  const tasksState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.tasks, () => false, { scopeKey });
   const serverNote = state.kind === "success" || state.kind === "empty" ? noteFromPayload(state.data, actorId, noteId) : null;
   const contacts = contactsState.kind === "success" || contactsState.kind === "empty" ? contactsToSummaries(contactsState.data) : [];
+  const sourceTasks = tasksState.kind === "success" || tasksState.kind === "empty" ? noteSourceTasksFromPayload(tasksState.data, actorId, noteId) : [];
   const [confirmed, setConfirmed] = useState<NoteView | null>(null);
   const current = confirmed && (!serverNote || confirmed.version >= serverNote.version) ? confirmed : serverNote;
   const [draft, setDraft] = useState("");
@@ -107,6 +110,15 @@ export function NoteDetailScreen({ actorId, noteId, scopeKey, isScopeCurrent = (
       </View> : null}
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       {saved ? <Text accessibilityLiveRegion="polite" style={styles.notice}>笔记已更新。</Text> : null}
+      {sourceTasks.length ? <View style={styles.links}>
+        <Text style={styles.label}>由这篇笔记创建的待办</Text>
+        {sourceTasks.map((task) => <Pressable key={task.id} accessibilityRole="button" accessibilityLabel={`打开来源待办 ${task.title}`} onPress={() => router.push(`/tasks/${encodeURIComponent(task.id)}`)} style={styles.contactLink}>
+          <Text style={styles.contactLinkText}>{task.title} · 笔记版本 {task.sourceNoteVersion}</Text>
+        </Pressable>)}
+      </View> : null}
+      <Pressable accessibilityRole="button" accessibilityLabel="从这篇笔记整理待办" disabled={pending || dirty} onPress={() => router.push(buildNoteSuggestionNavigation(current))} style={[styles.suggest, (pending || dirty) && styles.disabled]}>
+        <Text style={styles.suggestText}>从这篇笔记整理待办</Text>
+      </Pressable>
       <Pressable accessibilityRole="button" accessibilityLabel={pending ? "保存中" : "保存修改"} accessibilityState={{ disabled: pending || !dirty || !draft.trim() }} disabled={pending || !dirty || !draft.trim()} onPress={() => { void save(); }} style={[styles.save, (pending || !dirty || !draft.trim()) && styles.disabled]}>
         <Text style={styles.saveText}>{pending ? "保存中" : "保存修改"}</Text>
       </Pressable>
@@ -128,5 +140,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   notice: { color: colors.text3, fontSize: typography.small, lineHeight: 20 },
   save: { alignItems: "center", backgroundColor: colors.accent, borderRadius: radius.md, justifyContent: "center", minHeight: 48, paddingHorizontal: spacing.lg },
   saveText: { color: colors.onAccent, fontSize: typography.body, fontWeight: "700" },
+  suggest: { alignItems: "center", borderColor: colors.accent, borderRadius: radius.md, borderWidth: 1, justifyContent: "center", minHeight: 48, paddingHorizontal: spacing.lg },
+  suggestText: { color: colors.accent, fontSize: typography.body, fontWeight: "700" },
   disabled: { opacity: 0.45 },
 }));

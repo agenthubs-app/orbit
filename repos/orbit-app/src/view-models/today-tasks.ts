@@ -55,6 +55,8 @@ export interface TaskDetailView {
   sourceLabel?: string;
   relatedContactId?: string;
   relatedEventId?: string;
+  sourceNoteId?: string;
+  sourceNoteVersion?: number;
   priority: TaskItemContract["priority"];
   updatedAt: string;
 }
@@ -423,6 +425,9 @@ export function taskDetailToView(payload: unknown): TaskDetailView | null {
     ...(Object.hasOwn(sourceLabels, task.source) ? { sourceLabel: sourceLabels[task.source] } : {}),
     ...(text(task.relatedContactId) ? { relatedContactId: task.relatedContactId } : {}),
     ...(text(task.relatedEventId) ? { relatedEventId: task.relatedEventId } : {}),
+    ...(text(task.sourceNoteId) && Number.isSafeInteger(task.sourceNoteVersion) && Number(task.sourceNoteVersion) >= 1
+      ? { sourceNoteId: task.sourceNoteId, sourceNoteVersion: Number(task.sourceNoteVersion) }
+      : {}),
     priority: task.priority,
     updatedAt: task.updatedAt,
   };

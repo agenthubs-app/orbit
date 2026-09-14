@@ -25,6 +25,8 @@ export interface TaskItemContract {
   relatedMeetingId?: string;
   relatedConversationId?: string;
   suggestionId?: string;
+  sourceNoteId?: string;
+  sourceNoteVersion?: number;
   completedAt?: string;
   completedBy?: string;
   completionSource?: "user" | "agent_confirmed" | "notification_action";
@@ -43,6 +45,9 @@ export interface TaskSuggestionContract {
   relatedContactId?: string;
   relatedEventId?: string;
   relatedMeetingId?: string;
+  relatedContactIds?: readonly string[];
+  sourceNoteId?: string;
+  sourceNoteVersion?: number;
 }
 
 export interface ScheduleItemContract {

@@ -40,7 +40,7 @@ test("AI conversation persists a consumed initial message before canonical navig
 test("AI conversation keeps a pending task suggestion visible before canonical navigation", () => {
   assert.match(
     screenSource,
-    /waitForTask: nextThread\.taskInteraction\?\.state === "suggested"/u
+    /waitForTask: \["suggested", "needs_date_confirmation"\]\.includes\(nextThread\.taskInteraction\?\.state \?\? ""\)/u
   );
   assert.match(
     screenSource,

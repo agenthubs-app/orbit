@@ -5,6 +5,7 @@ import type { TaskCategory } from "../tasks/contract";
 import type { TaskService } from "../tasks/service";
 import type { TaskSuggestionService } from "../tasks/suggestion-service";
 import type { AgentNaturalLanguageActionRequest } from "../agent/natural-language-actions/contract";
+import type { NoteService } from "../notes/service";
 
 const PROACTIVE_SUGGESTION_WINDOW_MS = 6 * 60 * 60 * 1000;
 
@@ -15,6 +16,7 @@ export interface OrbitAiTaskInteractionService {
     message: string;
     now: string;
     proposedActionRequests: readonly AgentNaturalLanguageActionRequest[];
+    sourceNote?: { id: string; version: number };
   }) => Promise<{
     interaction?: OrbitAiTaskInteractionContract;
     remainingActionRequests: readonly AgentNaturalLanguageActionRequest[];
@@ -92,15 +94,38 @@ function proactiveBucket(now: string): number {
 }
 
 export function createOrbitAiTaskInteractionService(input: {
+  noteService?: NoteService;
   taskService: TaskService;
   suggestionService: TaskSuggestionService;
 }): OrbitAiTaskInteractionService {
   return {
     async handle(request) {
+      let sourceNote = null;
+      try {
+        sourceNote = request.sourceNote
+          ? await input.noteService?.get({ actorId: request.actorId, noteId: request.sourceNote.id }) ?? null
+          : null;
+      } catch {
+        sourceNote = null;
+      }
+      if (request.sourceNote && (!sourceNote || sourceNote.version !== request.sourceNote.version)) {
+        return {
+          interaction: {
+            category: "work",
+            reason: "来源笔记已变化或不可访问，请返回笔记页重新整理。",
+            sourceNoteId: request.sourceNote.id,
+            sourceNoteVersion: request.sourceNote.version,
+            state: "failed",
+            title: "从笔记整理待办",
+          },
+          remainingActionRequests: request.proposedActionRequests,
+        };
+      }
       const plannedTask = taskRequest(request.proposedActionRequests);
       const explicit = isExplicitTaskRequest(request.message);
       const title =
         plannedTask?.arguments.title ??
+        (sourceNote?.body.split(/\r?\n/u).map((line) => line.trim()).find(Boolean)?.slice(0, 180)) ??
         (explicit
           ? explicitTaskTitle(request.message)
           : inferredTaskTitle(request.message));
@@ -115,7 +140,27 @@ export function createOrbitAiTaskInteractionService(input: {
       const category = taskCategory(title);
       const dueAt = plannedTask?.arguments.dueAt;
 
-      if (explicit) {
+      if (
+        sourceNote &&
+        !dueAt &&
+        /(?:今天|明天|后天|下周|本周|稍后|改天|近期|today|tomorrow|next\s+week|later)/iu.test(`${request.message}\n${sourceNote.body}`) &&
+        !/\b\d{4}-\d{2}-\d{2}\b/u.test(request.message)
+      ) {
+        return {
+          interaction: {
+            category,
+            reason: "请补充明确日期后再发送，当前没有创建建议或待办。",
+            relatedContactIds: sourceNote.contactIds,
+            sourceNoteId: sourceNote.id,
+            sourceNoteVersion: sourceNote.version,
+            state: "needs_date_confirmation",
+            title,
+          },
+          remainingActionRequests,
+        };
+      }
+
+      if (explicit && !sourceNote) {
         try {
           const created = await input.taskService.create({
             actorId: request.actorId,
@@ -161,9 +206,19 @@ export function createOrbitAiTaskInteractionService(input: {
           category,
           ...(dueAt ? { suggestedDueAt: dueAt } : {}),
           relatedConversationId: request.conversationId,
+          ...(sourceNote
+            ? {
+                relatedContactId: sourceNote.contactIds[0],
+                relatedContactIds: sourceNote.contactIds,
+                sourceNoteId: sourceNote.id,
+                sourceNoteVersion: sourceNote.version,
+              }
+            : {}),
           evidenceIds: [],
           confidence: plannedTask ? 0.88 : 0.76,
-          deduplicationKey: `agent-chat-window:${nowBucket}`,
+          deduplicationKey: sourceNote
+            ? `agent-note:${sourceNote.id}:${sourceNote.version}:${shortHash(request.message)}`
+            : `agent-chat-window:${nowBucket}`,
           expiresAt: new Date(
             Date.parse(request.now) + 14 * 24 * 60 * 60 * 1000,
           ).toISOString(),
@@ -181,12 +236,32 @@ export function createOrbitAiTaskInteractionService(input: {
             reason: suggestion.reason,
             state: "suggested",
             suggestionId: suggestion.id,
+            ...(sourceNote
+              ? {
+                  relatedContactIds: sourceNote.contactIds,
+                  sourceNoteId: sourceNote.id,
+                  sourceNoteVersion: sourceNote.version,
+                }
+              : {}),
             title: suggestion.title,
           },
           remainingActionRequests,
         };
       } catch {
-        return { remainingActionRequests };
+        return sourceNote
+          ? {
+              interaction: {
+                category,
+                reason: "待办建议暂时无法保存，笔记和输入均已保留，请稍后重试。",
+                relatedContactIds: sourceNote.contactIds,
+                sourceNoteId: sourceNote.id,
+                sourceNoteVersion: sourceNote.version,
+                state: "failed",
+                title,
+              },
+              remainingActionRequests,
+            }
+          : { remainingActionRequests };
       }
     },
   };

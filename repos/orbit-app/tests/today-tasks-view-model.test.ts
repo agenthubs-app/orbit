@@ -180,10 +180,12 @@ test("today decoders discard malformed records instead of crashing the screen", 
 });
 
 test("task detail and activity history expose stable Chinese labels", () => {
-  const detail = taskDetailToView({ task: openTask });
+  const detail = taskDetailToView({ task: { ...openTask, sourceNoteId: "note:one", sourceNoteVersion: 3 } });
   assert.equal(detail?.title, "整理活动参会名单");
   assert.equal(detail?.categoryLabel, "活动");
   assert.equal(detail?.statusLabel, "待办");
+  assert.equal(detail?.sourceNoteId, "note:one");
+  assert.equal(detail?.sourceNoteVersion, 3);
 
   const activities = taskActivitiesToView({
     activities: [

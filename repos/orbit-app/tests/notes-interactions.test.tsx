@@ -170,3 +170,18 @@ test("detail conflict keeps edits and unlink removes only one relation with expe
   assert.equal(request.body.expectedVersion, 2);
   assert.equal(await editor.inputValue(), "本地未保存版本");
 });
+
+test("note detail opens an editable IORBIT template without making a write request", async (t) => {
+  const value = await page(t, "detail");
+  await value.getByRole("button", { name: "从这篇笔记整理待办" }).click();
+  assert.deepEqual(await value.evaluate(() => (window as any).fixture.requests), []);
+  assert.deepEqual(await value.evaluate(() => (window as any).fixture.navigation), [{
+    pathname: "/ai/[id]",
+    params: {
+      id: "new",
+      initialMessage: "请根据这篇笔记整理一个待办，并明确标题和日期。",
+      sourceNoteId: "note:one",
+      sourceNoteVersion: "2",
+    },
+  }]);
+});

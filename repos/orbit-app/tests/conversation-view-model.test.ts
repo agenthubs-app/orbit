@@ -189,6 +189,29 @@ test("conversationPayloadToChatView exposes a confirmable task suggestion", () =
   });
 });
 
+test("conversationPayloadToChatView preserves note provenance and date confirmation state", () => {
+  const view = conversationPayloadToChatView({ taskInteraction: {
+    category: "relationship",
+    reason: "请补充明确日期后再发送，当前没有创建建议或待办。",
+    relatedContactIds: ["contact:li", "contact:sato"],
+    sourceNoteId: "note:one",
+    sourceNoteVersion: 3,
+    state: "needs_date_confirmation",
+    title: "联系佐藤",
+  } });
+  assert.deepEqual(view.taskInteraction, {
+    category: "relationship",
+    reason: "请补充明确日期后再发送，当前没有创建建议或待办。",
+    relatedContactIds: ["contact:li", "contact:sato"],
+    sourceNoteId: "note:one",
+    sourceNoteVersion: 3,
+    state: "needs_date_confirmation",
+    suggestionId: "",
+    taskId: "",
+    title: "联系佐藤",
+  });
+});
+
 test("orbitAiHomeChatWindow leaves the bootstrap welcome to home question starters", () => {
   const view = orbitAiHomeChatWindow({
     activeConversationId: "live-orbit-agent-conversation",

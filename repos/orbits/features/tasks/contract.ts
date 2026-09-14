@@ -41,6 +41,8 @@ export interface TaskItemDTO {
   relatedMeetingId?: string;
   relatedConversationId?: string;
   suggestionId?: string;
+  sourceNoteId?: string;
+  sourceNoteVersion?: number;
   completedAt?: string;
   completedBy?: string;
   completionSource?: TaskCompletionSource;
@@ -102,6 +104,9 @@ export interface TaskSuggestionDTO {
   relatedEventId?: string;
   relatedMeetingId?: string;
   relatedConversationId?: string;
+  relatedContactIds?: readonly string[];
+  sourceNoteId?: string;
+  sourceNoteVersion?: number;
   evidenceIds: readonly string[];
   confidence: number;
   deduplicationKey: string;

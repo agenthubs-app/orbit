@@ -113,10 +113,16 @@ function readTask(value: unknown, actorId: string): TaskItemDTO | null {
     !isOptionalString(value.relatedMeetingId) ||
     !isOptionalString(value.relatedConversationId) ||
     !isOptionalString(value.suggestionId) ||
+    !isOptionalString(value.sourceNoteId) ||
+    (value.sourceNoteVersion !== undefined &&
+      (!Number.isInteger(value.sourceNoteVersion) || Number(value.sourceNoteVersion) < 1)) ||
     !isIsoDateTime(value.createdAt) ||
     !isIsoDateTime(value.updatedAt) ||
     (completed ? !hasValidCompletion : !hasNoCompletion)
   ) {
+    return null;
+  }
+  if ((value.sourceNoteId === undefined) !== (value.sourceNoteVersion === undefined)) {
     return null;
   }
 

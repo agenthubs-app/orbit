@@ -113,10 +113,13 @@ export interface TaskInteractionView {
   category: string;
   dueAt?: string;
   reason: string;
-  state: "created" | "suggested" | "failed";
+  state: "created" | "suggested" | "needs_date_confirmation" | "failed";
   suggestionId: string;
   taskId: string;
   title: string;
+  sourceNoteId?: string;
+  sourceNoteVersion?: number;
+  relatedContactIds?: readonly string[];
 }
 
 export interface ConversationChatView {
@@ -549,7 +552,7 @@ export function conversationPayloadToChatView(
     })),
     taskInteraction:
       taskInteraction &&
-      ["created", "suggested", "failed"].includes(taskInteractionState)
+      ["created", "suggested", "needs_date_confirmation", "failed"].includes(taskInteractionState)
         ? {
             category: stringField(taskInteraction, "category", "other"),
             ...(stringField(taskInteraction, "dueAt")
@@ -559,6 +562,15 @@ export function conversationPayloadToChatView(
             state: taskInteractionState as TaskInteractionView["state"],
             suggestionId: stringField(taskInteraction, "suggestionId"),
             taskId: stringField(taskInteraction, "taskId"),
+            ...(stringField(taskInteraction, "sourceNoteId")
+              ? { sourceNoteId: stringField(taskInteraction, "sourceNoteId") }
+              : {}),
+            ...(Number.isSafeInteger(taskInteraction.sourceNoteVersion) && Number(taskInteraction.sourceNoteVersion) >= 1
+              ? { sourceNoteVersion: Number(taskInteraction.sourceNoteVersion) }
+              : {}),
+            ...(Array.isArray(taskInteraction.relatedContactIds) && taskInteraction.relatedContactIds.every((id) => typeof id === "string" && id.trim())
+              ? { relatedContactIds: taskInteraction.relatedContactIds as string[] }
+              : {}),
             title: stringField(taskInteraction, "title")
           }
         : null

@@ -48,6 +48,8 @@ export interface TaskCreateInput {
   relatedMeetingId?: string;
   relatedConversationId?: string;
   suggestionId?: string;
+  sourceNoteId?: string;
+  sourceNoteVersion?: number;
   idempotencyKey: string;
   now: string;
 }
@@ -302,6 +304,12 @@ export function createTaskService(input: {
           : {}),
         ...(createInput.suggestionId
           ? { suggestionId: createInput.suggestionId }
+          : {}),
+        ...(createInput.sourceNoteId
+          ? { sourceNoteId: createInput.sourceNoteId }
+          : {}),
+        ...(createInput.sourceNoteVersion !== undefined
+          ? { sourceNoteVersion: createInput.sourceNoteVersion }
           : {}),
         createdAt: createInput.now,
         updatedAt: createInput.now,

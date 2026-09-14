@@ -17,7 +17,7 @@ const actorId = "account:xiaoyu";
 const workspaceId = "workspace:task-suggestion-routes";
 const now = "2026-08-29T09:00:00.000Z";
 
-function dependencies(authenticatedActor: string | null = actorId) {
+function dependencies(authenticatedActor: string | null = actorId, currentNoteVersion?: number) {
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   const taskService = createTaskService({
     repository: createTaskRepository({ store, workspaceId }),
@@ -25,6 +25,10 @@ function dependencies(authenticatedActor: string | null = actorId) {
   const suggestionService = createTaskSuggestionService({
     repository: createTaskSuggestionRepository({ store, workspaceId }),
     taskService,
+    ...(currentNoteVersion === undefined ? {} : {
+      validateSourceNote: async (input: { actorId: string; noteId: string; version: number }) =>
+        input.actorId === actorId && input.noteId === "note:source" && input.version === currentNoteVersion,
+    }),
   });
   return {
     now: () => now,
@@ -65,6 +69,37 @@ test("lists actor-owned pending suggestions", async () => {
 
   assert.equal(response.status, 200);
   assert.equal((await json(response)).data.suggestions.length, 1);
+});
+
+test("accept endpoint rejects a stale note suggestion and returns source identity for a current one", async () => {
+  const staleDeps = dependencies(actorId, 3);
+  const stale = await staleDeps.service.suggest({
+    actorId, title: "联系佐藤", reason: "来源笔记", category: "relationship",
+    relatedContactIds: ["contact:li", "contact:sato"], sourceNoteId: "note:source", sourceNoteVersion: 2,
+    evidenceIds: [], confidence: 0.9, deduplicationKey: "note:source:2", now,
+  });
+  const staleResponse = await createTaskSuggestionAcceptPostHandler(staleDeps)(
+    new Request("https://orbit.local/accept", { body: JSON.stringify({ idempotencyKey: "accept:stale" }), method: "POST" }),
+    { params: Promise.resolve({ id: stale.id }) },
+  );
+  assert.equal(staleResponse.status, 409);
+  assert.deepEqual(await staleDeps.taskService.list({ actorId }), []);
+
+  const currentDeps = dependencies(actorId, 3);
+  const current = await currentDeps.service.suggest({
+    actorId, title: "联系佐藤", reason: "来源笔记", category: "relationship",
+    relatedContactIds: ["contact:li", "contact:sato"], sourceNoteId: "note:source", sourceNoteVersion: 3,
+    evidenceIds: [], confidence: 0.9, deduplicationKey: "note:source:3", now,
+  });
+  const response = await createTaskSuggestionAcceptPostHandler(currentDeps)(
+    new Request("https://orbit.local/accept", { body: JSON.stringify({ idempotencyKey: "accept:current" }), method: "POST" }),
+    { params: Promise.resolve({ id: current.id }) },
+  );
+  const data = (await json(response)).data;
+  assert.equal(response.status, 200);
+  assert.equal(data.task.sourceNoteId, "note:source");
+  assert.equal(data.task.sourceNoteVersion, 3);
+  assert.equal(data.task.relatedContactId, "contact:li");
 });
 
 test("accepts only allowlisted overrides and creates one canonical task", async () => {

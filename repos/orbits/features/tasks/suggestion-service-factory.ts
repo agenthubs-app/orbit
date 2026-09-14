@@ -1,4 +1,6 @@
 import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
+import { createNoteRepository } from "../notes/repository";
+import { createNoteService } from "../notes/service";
 import { createTaskRepository } from "./repository";
 import { createTaskService } from "./service";
 import { createTaskSuggestionRepository } from "./suggestion-repository";
@@ -15,11 +17,21 @@ export function createConfiguredTaskSuggestionService() {
       workspaceId: configured.workspaceId,
     }),
   });
+  const noteService = createNoteService({
+    repository: createNoteRepository({
+      store: configured.store,
+      workspaceId: configured.workspaceId,
+    }),
+  });
   return createTaskSuggestionService({
     repository: createTaskSuggestionRepository({
       store: configured.store,
       workspaceId: configured.workspaceId,
     }),
     taskService,
+    async validateSourceNote(input) {
+      const note = await noteService.get({ actorId: input.actorId, noteId: input.noteId });
+      return note?.version === input.version;
+    },
   });
 }
