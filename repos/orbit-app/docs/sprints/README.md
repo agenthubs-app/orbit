@@ -65,7 +65,7 @@ build/harness-logs/
 | [0015](0015-locale-assistant-workflows/GOAL.md) | 用中日英操作 AI、事项和消息，保留内容与日期 | R-12 | 0013、0006、0010、0012 | blocked |
 | [0016](0016-native-navigation/GOAL.md) | 用实际设备验收导航、字号、键盘和辅助功能 | R-09、R-12 | 0014、0015；原生审批／设备 | blocked |
 | [0017](0017-cross-client-acceptance/GOAL.md) | 用真实主流程及五类记录双向回读证明两端一致 | R-01、R-14及主链路余项 | 0003～0016；共同环境／授权 | blocked |
-| [0018](0018-notes-core/GOAL.md) | 一份私密笔记关联多人，保留旧内容并安全切换入口 | R-13 | 0017；B8／D7／迁移设计 | blocked |
+| [0018](0018-notes-core/GOAL.md) | 一份私密笔记关联多人，保留旧内容并安全切换入口 | R-13 | 功能提交 `8e81e588e`；本地实现与 App 全量通过，真实跨端／原生验收缺失，见 REPORT | blocked |
 | [0019](0019-note-suggestions/GOAL.md) | 确认笔记建议后只建一次事项，逐项验收全部原需求 | R-13、R-14 | 0018；D5／B6／B8建议协议 | blocked |
 | [0020](0020-secondary-industries-self-profile/GOAL.md) | 二级行业在资料、联系人和检索中复用，AI 能读取本人资料，现有测试数据补齐 | 2026-09-14 新增；关联 R-03／R-06 | run-01 已结束；部分代码未提交，HTTP/provider/trace/生成源范围缺项与 H 验证未通过；见 REPORT | blocked |
 | [0021](0021-ai-session-organization/GOAL.md) | 保存 AI 会话入口与首条内容，按项目式分组整理，并能置顶、改名、删除和跨端回读 | 2026-09-14 新增；关联 R-00／R-02／R-06 | 执行指令已收到；仍需 B3 稳定协议／Web 恢复边界及跨端计划审阅 | planned |
@@ -93,6 +93,15 @@ build/harness-logs/
 - 新增 [0021 Planner](0021-ai-session-organization/PLANNER.md)及[参考与交互规格](0021-ai-session-organization/REFERENCE_AND_BEHAVIOR.md)，记录会话入口元信息、项目式分组、置顶／改名／删除和跨端持久化。用户已澄清只参考 ChatGPT App 的功能与组织形式，公开截图由代理寻找，不做像素复刻。当前只编制，planned、run_count = 0、未产生 REPORT；原 0001～0020 的状态不变。
 
 ## 运行记录
+
+### 0018 / run-01
+
+- owner：当前主代理 `/root`；run_count：1；开始：2026-09-15 06:55 JST。原地 `chat-agent`，单一 Generator，无其他写入者或 Evaluator。
+- 用户明确要求开始实现 0018 与 0019；复用 `RULES.md` 第 0、6 节的整体批准。0017 未完成的真实共同环境验收不阻止本地跨端实现，但 SC-0018-05 没有真实回读证据前不得将本 Sprint 标为 completed。
+- 基线 HEAD `40338854659b1408ea9903b19a043d56a214352f`；根 `AGENTS.md`、`CLAUDE.md` 的既有用户改动不属于本 Sprint，保持不写不暂存。
+- Planner revision 3 SHA256：`750df5d4ceb63b6691de6b61667eda96152da779833ead97e1b171c02057b79b`。完成目标所需的 Web/API、共享契约、App 路由与测试追加范围见[跨端实施补充](0018-notes-core/APPROVED_SCOPE_ADDENDUM.md)。
+- 当前代码没有独立 `/api/notes`、App notes 路由或笔记版本／多人关联契约；实现使用现有 `orbit_records` 通用信封，不创建数据库迁移、不访问真实账号或记录。
+- run-01 于 2026-09-15 07:45 JST 结束为 blocked。功能提交 `8e81e588e`；Web notes 定向 13/13、类型检查通过，App 全量 2583/2583 通过。Web 全量 3004 pass／52 fail／183 skip，新增 notes 测试通过，既有环境／审计失败及相对旧文档基线扩大的 5 个审计子项已在 [REPORT](0018-notes-core/REPORT.md) 逐项记录。SC-0018-05 因缺真实共同环境、同账号与原生设备证据未关闭。
 
 ### 0003 / run-01
 
