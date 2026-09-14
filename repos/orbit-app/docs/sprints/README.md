@@ -61,7 +61,7 @@ build/harness-logs/
 | [0011](0011-home-analysis/GOAL.md) | 首页符合确认布局，分析可辨新旧，目标可单独保存 | R-09、R-10 | 本地功能与 H 验证完成；真实登录态 Simulator、provider 报告及同账号双端回读未运行，见 REPORT | blocked |
 | [0012](0012-message-state/GOAL.md) | 前台新消息及时出现，已读角标与跳转目标正确 | R-11 | 功能提交 `218fb3d4b`；自动化与 iOS 打包通过，真实双用户原生／实体推送环境缺失，见 REPORT | blocked |
 | [0013](0013-locale-foundation/GOAL.md) | 用中日英操作账号、首页和设置，切语言不丢输入 | R-12 | run-01 completed；功能 `cc3930449`、`1bd99f737`、`9d5c13622`，见 REPORT | completed |
-| [0014](0014-locale-relationships-events/GOAL.md) | 用中日英处理人脉、名片和活动，保留原文与答案 | R-12 | 0013、0004、0007、0008 | blocked |
+| [0014](0014-locale-relationships-events/GOAL.md) | 用中日英处理人脉、名片和活动，保留原文与答案 | R-12 | run-01 执行中；共享字典由本 Sprint 串行独占，精确页面锁见补充 | running |
 | [0015](0015-locale-assistant-workflows/GOAL.md) | 用中日英操作 AI、事项和消息，保留内容与日期 | R-12 | 0013、0006、0010、0012 | blocked |
 | [0016](0016-native-navigation/GOAL.md) | 用实际设备验收导航、字号、键盘和辅助功能 | R-09、R-12 | 0014、0015；原生审批／设备 | blocked |
 | [0017](0017-cross-client-acceptance/GOAL.md) | 用真实主流程及五类记录双向回读证明两端一致 | R-01、R-14及主链路余项 | 0003～0016；共同环境／授权 | blocked |
@@ -93,6 +93,12 @@ build/harness-logs/
 - 新增 [0021 Planner](0021-ai-session-organization/PLANNER.md)及[参考与交互规格](0021-ai-session-organization/REFERENCE_AND_BEHAVIOR.md)，记录会话入口元信息、项目式分组、置顶／改名／删除和跨端持久化。用户已澄清只参考 ChatGPT App 的功能与组织形式，公开截图由代理寻找，不做像素复刻。当前只编制，planned、run_count = 0、未产生 REPORT；原 0001～0020 的状态不变。
 
 ## 运行记录
+
+### 0014 / run-01
+
+- owner：当前主代理 `/root`；run_count：1；开始 2026-09-15 06:05 JST，原地 `chat-agent`，单一 Generator。基线 HEAD `caf533bb8`；Planner revision 1／SHA256 `19628ee910d5240c8114b686cc15c95392359fd3f06d7ad134916362c64758b9`。
+- 0013 已 completed，0004/0008 本地业务语义 completed；0007 的实体 OCR／真实联系人外部阻塞不妨碍本轮零付费三语 UI 实现。启动基线四个 Planner 文件 182/182 通过，provider keys 清空。
+- 目录已收窄为人脉列表／详情／邀请、名片入口／摄入／复核、活动发现／详情／报名真实路由；排除运营、分析、签到等页面。必要 component/view-model 追加与 H 档验证登记在[范围补充](0014-locale-relationships-events/APPROVED_SCOPE_ADDENDUM.md)。
 
 ### 0013 / run-01
 
