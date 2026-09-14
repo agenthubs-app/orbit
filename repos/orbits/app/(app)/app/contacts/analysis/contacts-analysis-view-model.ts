@@ -17,7 +17,7 @@ export type ContactsAnalysisView = { state: "error" | "pending" } | {
   summary: string;
   metrics: { contacts: number; newContacts: number; highValue: number; pendingFollowups: number; dormant: number };
   activity: Array<{ id: string; label: string; occurredAt: string; source: string }>;
-  goal: AnalysisSection<{ id: string | null; text: string; canEdit: boolean }>;
+  goal: AnalysisSection<{ id: string | null; text: string; updatedAt: string; canEdit: boolean }>;
   structure: AnalysisSection<{
     dimensions: Record<AnalysisDimension, AnalysisBucket[]>;
     health: Array<{ id: "strong" | "warm" | "weak"; count: number; percentage: number; risk: "low" | "moderate" | "high" }>;
@@ -56,7 +56,7 @@ export function contactsAnalysisToView(input: unknown, language: OrbitLanguage):
       dormant: data.aggregate.dormantContacts.count,
     },
     activity: data.aggregate.recentActivity.map((item) => ({ id: item.activityId, label: item.label, occurredAt: item.occurredAt, source: item.sourceLabel })),
-    goal: section(data.profile, (value) => ({ id: value.profile?.id ?? null, text: value.profile?.relationshipGoal ?? "", canEdit: value.editor.canSave && Boolean(value.profile) })),
+    goal: section(data.profile, (value) => ({ id: value.profile?.id ?? null, text: value.profile?.relationshipGoal ?? "", updatedAt: value.profile?.updatedAt ?? "", canEdit: value.editor.canSave && Boolean(value.profile) })),
     structure: section(data.distributions, (value) => ({
       dimensions: Object.fromEntries(Object.entries(value.structureDistributions).map(([dimension, buckets]) => [dimension, buckets.map((bucket) => ({
         id: bucket.bucketId,
