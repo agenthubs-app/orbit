@@ -94,6 +94,7 @@ build/harness-logs/
 
 ### 0003 / run-01
 
+- 原子保存已提交 `6082b9961`：版本比较、幂等回执、事务回滚，14项临时PostgreSQL测试实际执行。App全量2593/2593；Web最终3005 pass／47原有fail／168skip，失败名称与基线一致。首次48 fail中的旧首页工厂断言已定位并修订，历史日志保留。临时实例已停止，继续同一批两端补全交互及认证导航，不把子功能算作Sprint完成。
 - 已提交资料基础层 `65c2a8050`：独立onboarding、私密生日及投影隔离；App全量2593/2593，Web2990 pass／47原有fail／168skip，失败名称与基线完全一致。首次App全量的统计重试时序失败保留，受控回包修订后相关156/156及全量通过。继续事务保存与补全导航，未关闭任何完整SC，见[进度证据](0003-profile-completion/PROGRESS.md)。
 - owner：当前主代理 `/root`；run_count：1；开始：2026-09-14 21:26 JST，原地 `chat-agent`，无第二实现者。前序0002报告及B1技术提案已读取，复用整体批准，见[跨端实施补充](0003-profile-completion/APPROVED_SCOPE_ADDENDUM.md)。
 - 基线功能HEAD `f4bdef4c0`；原Planner revision 2 SHA256 `8315be01f929ce997cc43dfeadd87f489522c63ce53d1dd7102c7288018c4bd1`。本任务产品文件无未提交差异，0023仅剩协调文档；未跟踪用户素材保留。
