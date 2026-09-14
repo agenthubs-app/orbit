@@ -50,7 +50,7 @@ build/harness-logs/
 | --- | --- | --- | --- | --- |
 | [0001](0001-event-discovery/GOAL.md) | 用全部地点和话题找到活动，筛选后仍能翻页和打开详情 | R-09 | 无；接续当前四文件 | completed |
 | [0002](0002-readiness-handoff/GOAL.md) | 查清已完成能力、后续缺项和每项开工条件 | R-01、R-00～R-12 依赖 | 无；只读文档工作 | completed |
-| [0003](0003-profile-completion/GOAL.md) | 注册、补全资料后回到原页面，完整用户不再被拦截 | R-03 | B1整体批准已生效；本地实现启动，真实账号／Google验收按对象另核 | running |
+| [0003](0003-profile-completion/GOAL.md) | 注册、补全资料后回到原页面，完整用户不再被拦截 | R-03 | 本地实现已提交；SC-01～04通过，真实 Google 最终回跳与同账号双端回读缺失，见 REPORT | blocked |
 | [0004](0004-registration/GOAL.md) | 报名、取消和重报后，答案、人数及各页状态一致 | R-04 | run-01 已完成；功能 `319f6f7bb`，见 REPORT | completed |
 | [0005](0005-ai-session-reliability/GOAL.md) | AI 重试不重复生成，Web/App 续聊不丢历史 | R-00、R-02 | 原产品提交 `30c1e210c`、主线集成 `efbfc23ae`；本地／隔离 PostgreSQL 验证完成，真实同账号双端设备往返和 R-00 首次 503 根因仍缺证据，见 REPORT | blocked |
 | [0006](0006-contact-mentions/GOAL.md) | @ 选准联系人，带入 AI 的问题由用户确认发送 | R-06 | 原功能 `09e1a71fa`、主线集成 `0ff447a55`；本地实现与回归完成，真实同账号 Web↔App 引用回读仍缺证据，见 REPORT | blocked |
@@ -146,12 +146,14 @@ build/harness-logs/
 
 ### 0003 / run-01
 
-- 原子保存已提交 `6082b9961`：版本比较、幂等回执、事务回滚，14项临时PostgreSQL测试实际执行。App全量2593/2593；Web最终3005 pass／47原有fail／168skip，失败名称与基线一致。首次48 fail中的旧首页工厂断言已定位并修订，历史日志保留。临时实例已停止，继续同一批两端补全交互及认证导航，不把子功能算作Sprint完成。
-- 已提交资料基础层 `65c2a8050`：独立onboarding、私密生日及投影隔离；App全量2593/2593，Web2990 pass／47原有fail／168skip，失败名称与基线完全一致。首次App全量的统计重试时序失败保留，受控回包修订后相关156/156及全量通过。继续事务保存与补全导航，未关闭任何完整SC，见[进度证据](0003-profile-completion/PROGRESS.md)。
+- 结束：2026-09-15 03:03 JST；结果 blocked；最后功能 HEAD `b2afc634d`、当前集成主线 `e93ba57cf`，见[执行报告](0003-profile-completion/REPORT.md)。SC-01～04 已通过，只剩 SC-05 的真实 Google 最终回跳和同一账号 Web/App 双向回读。
+- 当前主线 0003 定向集为 App 209/209、Web 非 PostgreSQL 54/54；App 全量2672/2672、两端typecheck exit0。Google broker/PKCE 已真实到 Google 官方登录页，但当前浏览器无用户登录态且 Chrome 控制不可用，没有把到达登录页写成完整 OAuth 成功。
+- 历史检查点：原子保存已提交 `6082b9961`：版本比较、幂等回执、事务回滚，14项临时PostgreSQL测试实际执行。App全量2593/2593；Web最终3005 pass／47原有fail／168skip，失败名称与基线一致。首次48 fail中的旧首页工厂断言已定位并修订，历史日志保留。当时继续同一批两端补全交互及认证导航，未把子功能算作Sprint完成。
+- 历史检查点：已提交资料基础层 `65c2a8050`：独立onboarding、私密生日及投影隔离；App全量2593/2593，Web2990 pass／47原有fail／168skip，失败名称与基线完全一致。首次App全量的统计重试时序失败保留，受控回包修订后相关156/156及全量通过。当时继续事务保存与补全导航，尚未关闭完整SC，见[进度证据](0003-profile-completion/PROGRESS.md)。
 - owner：当前主代理 `/root`；run_count：1；开始：2026-09-14 21:26 JST，原地 `chat-agent`，无第二实现者。前序0002报告及B1技术提案已读取，复用整体批准，见[跨端实施补充](0003-profile-completion/APPROVED_SCOPE_ADDENDUM.md)。
 - 基线功能HEAD `f4bdef4c0`；原Planner revision 2 SHA256 `8315be01f929ce997cc43dfeadd87f489522c63ce53d1dd7102c7288018c4bd1`。本任务产品文件无未提交差异，0023仅剩协调文档；未跟踪用户素材保留。
-- 当前有效基线：App2593 pass／0 fail／0 skip，Web2969 pass／47既有fail／168skip，两端typecheck exit0。Web失败名称与原I版本一致，沿用已批准的基线继续，不降低SC。
-- 文件锁按原Planner及补充归当前主代理；0023不同时写本任务的资料／契约文件。真实注册、Google系统回跳、共同账号双端回读尚未执行；不因此阻止独立本地实现。
+- 历史检查点：当时的有效基线为 App2593 pass／0 fail／0 skip，Web2969 pass／47既有fail／168skip，两端typecheck exit0。Web失败名称与原I版本一致，沿用已批准的基线继续，不降低SC。
+- 历史检查点：文件锁当时按原Planner及补充归当前主代理；0023不同时写本任务的资料／契约文件。当时真实注册、Google系统回跳、共同账号双端回读均未执行；目前真实注册已完成，最终 Google 回跳及同一账号双端回读仍缺，不因此阻止其他独立本地实现。
 
 ### 0023 / run-01
 
