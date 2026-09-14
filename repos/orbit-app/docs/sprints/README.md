@@ -58,7 +58,7 @@ build/harness-logs/
 | [0008](0008-identity-chat/GOAL.md) | 验证邀请和身份绑定后，双方能真实收发消息 | R-05 | run-01 已完成；原功能 `6d8173b78`、主线集成 `64629369d`，见 REPORT | completed |
 | [0009](0009-timezone/GOAL.md) | 同一事项在首页、待办、日历和活动中不落错日 | R-09 | run-01 已完成；功能 `a4bbfd9f6`，见 REPORT | completed |
 | [0010](0010-task-schedule-editing/GOAL.md) | 个人事项能创建、编辑和清空字段，各页与提醒一致 | R-08 | run-01 已完成；功能 `d005c2b79`，见 REPORT | completed |
-| [0011](0011-home-analysis/GOAL.md) | 首页符合确认布局，分析可辨新旧，目标可单独保存 | R-09、R-10 | run-01 已启动；B7／App分析／首页三个不重叠切片并行实施 | running |
+| [0011](0011-home-analysis/GOAL.md) | 首页符合确认布局，分析可辨新旧，目标可单独保存 | R-09、R-10 | 本地功能与 H 验证完成；真实登录态 Simulator、provider 报告及同账号双端回读未运行，见 REPORT | blocked |
 | [0012](0012-message-state/GOAL.md) | 前台新消息及时出现，已读角标与跳转目标正确 | R-11 | 功能提交 `218fb3d4b`；自动化与 iOS 打包通过，真实双用户原生／实体推送环境缺失，见 REPORT | blocked |
 | [0013](0013-locale-foundation/GOAL.md) | 用中日英操作账号、首页和设置，切语言不丢输入 | R-12 | 0009、0011；D6 | blocked |
 | [0014](0014-locale-relationships-events/GOAL.md) | 用中日英处理人脉、名片和活动，保留原文与答案 | R-12 | 0013、0004、0007、0008 | blocked |
@@ -93,6 +93,13 @@ build/harness-logs/
 - 新增 [0021 Planner](0021-ai-session-organization/PLANNER.md)及[参考与交互规格](0021-ai-session-organization/REFERENCE_AND_BEHAVIOR.md)，记录会话入口元信息、项目式分组、置顶／改名／删除和跨端持久化。用户已澄清只参考 ChatGPT App 的功能与组织形式，公开截图由代理寻找，不做像素复刻。当前只编制，planned、run_count = 0、未产生 REPORT；原 0001～0020 的状态不变。
 
 ## 运行记录
+
+### 0011 / run-01
+
+- owner：当前主代理 `/root`；run_count：1；开始 2026-09-15 03:17 JST，结束本地实现与验证 04:18 JST。Planner revision 3／SHA256 `1b817d35135aec7cdbe2eb231c047ad7f298d3142bc34d02e1fb1f43345d19f6`；最后功能 HEAD `9a10522b1`。
+- 功能提交：目标字段保存 `a1d7d7665`、首页 `727aeeae2`、可信报告服务 `7a2e9f767`、Web IORBIT 入口 `3038e8ea7`、App 消费 `9a10522b1`。进入/刷新不生成，报告带服务端验证的生成时间、源数据版本和分析版本；目标保存不覆盖其他资料。
+- App Planner 组合 72/72、28/28、5/5，生命周期组合 128/128，最终全量 2715/2715；Web 0011 组合 99/99；两端 typecheck exit0。所有 provider key 清空，新增付费调用 0。
+- 结果 blocked：iOS 26.4 Simulator 仅确认 Orbit 可启动但停在登录页；没有授权共同账号/真实分析对象，未完成登录态首页/Pipeline、真实 provider 报告生成后双端重开、关系目标同账号 Web↔App 回读。见[执行报告](0011-home-analysis/REPORT.md)与 Bridge BR-014。
 
 ### 0004 / run-01
 

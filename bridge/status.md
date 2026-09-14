@@ -1,5 +1,12 @@
 # 两端当前状态
 
+## 2026-09-15 A 线 0011 增量
+
+- 首页由 `727aeeae2` 使用真实推荐活动替换旧联系跟进区块，按既有排序最多显示五条未完成待办并在成功完成后补位；Pipeline 保持独立入口。
+- Web/API 由 `7a2e9f767` 提供 actor-scoped source version、持久化生成时间/分析版本和服务端受信执行标记；Web UI `3038e8ea7`、App `9a10522b1` 只在用户显式发送 IORBIT 草稿后生成。关系目标字段级版本写入为 `a1d7d7665`。
+- 本地结果：App 2715/2715、0011 组合 72/72+28/28+5/5、生命周期组合 128/128；Web 0011 组合 99/99；两端 typecheck 通过，provider keys 全部清空。
+- 运行时仍 blocked：Simulator 无共同登录账号，未进入登录态首页/分析/Pipeline；真实 provider 报告和同账号 Web↔App 目标回读未执行。详情见 [BR-014](handoffs.md#br-014--首页与可信人脉分析)与 [Sprint 0011 报告](../repos/orbit-app/docs/sprints/0011-home-analysis/REPORT.md)。
+
 2026-09-15 本地主线增量：事项与个人日程编辑已在 `d005c2b79` 同时接通 Web/API 与 App，独立 PostgreSQL 和 iOS Simulator 完成同记录双向回读；待办统一由 `ef5d0b02d` 将 App 全部／人脉和未完成／已完成视图接到同一 canonical 集合，并完成 App→Web→App 同记录完成／恢复回读；身份邀请与共享聊天由 E 线原提交 `6d8173b78`、主线集成 `64629369d` 接通，消息状态由原提交 `218fb3d4b`、主线集成 `8c9bf60cc` 接通。0012 仍缺真实 Expo project、push server key 和双用户实体／持续前台证据，保持 blocked；这些本地结果不表示远程部署或生产 OAuth 已验收。
 
 2026-09-10 保存进度集成：用户已接受 App 1389 通过/1 失败、Web 3134 通过/8 失败的当前版本，授权合并到 `chat-agent` 并普通推送；未完成验收不因此关闭。当前结果、远程输入和边界见 [集成交接](2026-09-10-chat-agent-integration.md)。下方 2026-09-07 数字保留为历史快照，不是当前测试或发布状态。

@@ -23,6 +23,20 @@
 | BR-011 | P1 | 消息前台刷新、已读、角标与推送 | blocked | 运行环境负责人 | 提供 Expo project、push server key、双用户原生账号及实体推送环境后补真实验收 |
 | BR-012 | P1 | 双面名片按卡复核并一次创建联系人 | blocked | Bridge／共同环境负责人 | 实体 iPhone 在共同 API/OCR 环境完成双面创建，Web/App 重开同一联系人和字段来源 |
 | BR-013 | P1 | 统一待办与人脉筛选跨端一致 | verified | 已完成；0011/0013/0015/0018 可消费 | 同一任务在 App 全部／人脉视图、旧链接及 Web 完成／恢复回读一致 |
+| BR-014 | P1 | 首页与可信人脉分析 | blocked | Bridge／共同环境负责人 | 登录态 Simulator 核对首页/Pipeline；真实分析及目标在同账号 Web/App 双向回读 |
+
+## BR-014 — 首页与可信人脉分析
+
+- 创建/更新日期：2026-09-15。
+- 总状态：`blocked`；web_status：`source_ready`；app_status：`consumer_ready`；verification_status：本地通过、真实运行时 blocked。
+- 用户可见变化：首页原联系跟进区块改为真实推荐活动，未完成待办最多五条且成功完成后补位；人脉页展示已存报告、真实生成时间/版本和 stale 提示。点击分析只打开可编辑 IORBIT 草稿，发送前无生成；关系目标只保存自身字段。
+- Web/API：`GET /api/mobile/contacts-dashboard` 可选返回 analysis current/report/stale；可靠发送对 `contacts.analysis@1` 在执行前重算 actor-scoped source hash，并在首轮 assistant 成功持久化后写 server-only verification。普通 session 写入不能伪造。
+- App：同步共享 contract/schema；dashboard、目标保存与机会重算绑定 actor+baseUrl。StrictMode/失焦保留一次性草稿，切号清除；旧 ACK 不覆盖新编辑，409 刷新版本后使用新 mutation 重试。
+- 版本：目标保存 `a1d7d7665`、首页 `727aeeae2`、服务端可信报告 `7a2e9f767`、Web 入口 `3038e8ea7`、App 消费 `9a10522b1`。
+- 本地验证：App 全量 2715/2715；App 0011 三组 72/72、28/28、5/5，生命周期组合 128/128；Web 0011 组合 99/99；两端 typecheck exit0。provider keys 全部清空，未执行模型或外部写入。
+- 兼容与失败：旧 App 缺 analysis 时显示 unavailable；部分消息持久化而 verification 未完成时不会冒充报告，重放可补 marker 而不重新生成；旧跟进业务与 Pipeline 未删除。
+- 未检查：真实 provider 生成、真实业务数据库、共同登录账号、登录态原生首页/分析/Pipeline、Web 写→App 回读与 App 写→Web 回读、部署版本。
+- 关闭条件：在同一已配置环境和授权账号中，登录 Simulator 对照首页活动/五待办/Pipeline；显式发送一次分析并在 Web/App 重开同一持久报告；两端各保存一次 relationshipGoal 并核对相同 profile/version 及其他资料字段未变。
 
 ## BR-013 — 统一待办与人脉筛选
 
