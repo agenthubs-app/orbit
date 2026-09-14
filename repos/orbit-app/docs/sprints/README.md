@@ -172,6 +172,7 @@ build/harness-logs/
 - 更新 H 全量（`1adb805c7`）：推荐候选在同步／异步及普通／排序路径保留行业 ID、null 和省略语义；12个新增路径用例先见8个预期RED，修复后相关两文件29/29。App全量2583 pass／0 fail／0 skip；Web2964 pass／47 fail／168 skip，失败名称集合与上一版无变化；两端typecheck exit0。日志为 build/harness-logs/sprint-0023-recommendation-{web,app}-full.log。继续本地夹具盘点，不以阶段提交结束整体工作。
 - 后续L数据检查：`d34712307` 补内联资料／联系人／推荐输入并登记4个实际推荐投影，清单现8人32正常投影；5个RED后四文件43/43。`e5db81a32` 将AI输出／统计桶／活动偏好与活动领域三个来源列入明确非个人行业分类，登记RED后四文件20/20；两次Web typecheck均exit0。两个反例保留，其他10个来源族仍未完成；不把这两次局部检查称为新的全量。
 - `b5e868112` 补App邀请／搜索及Web简报正常输入，3条RED后App9/9、Web11/11，两端typecheck通过。连续三个L提交后的I全量：Web2966 pass／47 fail／168 skip，失败名称无新增；App2582 pass／1 fail／0 skip。App失败为 `app-wide-workspaces.test.ts` 任务设置关闭按钮测量43.99998474121094未满足严格44下限；未改代码或断言，限定该用例重跑1/1。它使用slide Modal且按钮样式minHeight来自44pt token，动画几何精度只是当前诊断，不能把单次通过当修复或把全量改记通过。日志为 build/harness-logs/sprint-0023-inline-integration-{web,app}-full.log 和 sprint-0023-layout-failure-repro.log。新增App搜索mapper及纯seed构造器的待审精确边界见数据进度页。
+- `64defa67d` 新增离线受审行业 backfill 计划与注入式条件事务 apply：CLI 拒绝 `--apply`，没有连接或写入真实数据库。汇总清单为20人／56投影，其中17人有依据、3人缺依据；保留2个反例、10个非人物记录和10类待盘点来源，明确 `complete:false`。定向20/20、Web typecheck通过；真实快照、并发／回读及完整盘点仍缺，SC-05继续 running／blocked-by-object，不因工具可用而关闭。
 
 ### 0020 / run-01
 
