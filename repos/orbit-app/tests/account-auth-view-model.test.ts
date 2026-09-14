@@ -115,7 +115,7 @@ test("nextHrefForAccountAuthSubmit keeps fallback navigation deterministic", () 
       mode: "login",
       next: "/profile"
     }),
-    "/profile"
+    "/profile?complete=1&next=%2Fprofile"
   );
   assert.equal(
     nextHrefForAccountAuthSubmit({

@@ -32,7 +32,10 @@ test("legacy batch private login return preserves context and omits the path id"
   const next = new URL(login, "https://orbit.invalid").searchParams.get("next")!;
   assert.equal(next, `${path}?tab=review#card`);
   assert.equal(normalizedNext(next), next);
-  assert.equal(nextHrefForAccountAuthSubmit({ email: "test@example.invalid", mode: "login", next }), next);
+  assert.equal(
+    nextHrefForAccountAuthSubmit({ email: "test@example.invalid", mode: "login", next }),
+    `/profile?complete=1&next=${encodeURIComponent(next)}`
+  );
 });
 
 test("mobile actor workspaces share one private-route policy", () => {
@@ -164,7 +167,7 @@ test("party query, duplicate values and fragment survive the complete login retu
       mode: "login",
       next: encodedNext ?? undefined
     }),
-    expected
+    `/profile?complete=1&next=${encodeURIComponent(expected)}`
   );
 });
 

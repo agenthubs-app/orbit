@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as Crypto from "expo-crypto";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { type Href, useRouter } from "expo-router";
@@ -55,8 +56,8 @@ import {
   type ProfileSummary
 } from "../../view-models/profile";
 
-type ProfileDraft = ProfileManualEditDraft & { targetRelationshipTypesText: string; preferredFollowUpWindow: string; preferredIntroChannelsText: string };
-type SaveProfile = (draft: ProfileDraft, isDraftCurrent: () => boolean) => Promise<boolean>;
+type ProfileDraft = ProfileManualEditDraft & { birthDate: string; targetRelationshipTypesText: string; preferredFollowUpWindow: string; preferredIntroChannelsText: string };
+type SaveProfile = (draft: ProfileDraft, base: ProfileDetail, isDraftCurrent: () => boolean) => Promise<ProfileDetail | null>;
 type DraftChanged = (field: keyof ProfileDraft, quiet?: boolean) => void;
 const suggestionDraftFields = { headline: "headline", homeMarket: "timezone", relationshipGoal: "relationshipGoal", targetRelationshipTypes: "targetRelationshipTypesText", preferredFollowUpWindow: "preferredFollowUpWindow", preferredIntroChannels: "preferredIntroChannelsText" } as const;
 const suggestionFieldLabels = { headline: "标题", homeMarket: "主要市场", relationshipGoal: "关系目标", targetRelationshipTypes: "目标关系类型", preferredFollowUpWindow: "联系时间", preferredIntroChannels: "介绍渠道" } as const;
@@ -93,7 +94,7 @@ function profileBusinessText(value: string): string {
 }
 
 function profileDraftFromDetail(data: ProfileDetail): ProfileDraft {
-  return { ...profileSummaryToEditDraft(profileToSummary(data)), targetRelationshipTypesText: data.profile?.targetRelationshipTypes.join("\n") ?? "",
+  return { ...profileSummaryToEditDraft(profileToSummary(data)), birthDate: data.profile?.birthDate ?? "", targetRelationshipTypesText: data.profile?.targetRelationshipTypes.join("\n") ?? "",
     preferredFollowUpWindow: data.profile?.preferredFollowUpWindow ?? "", preferredIntroChannelsText: data.profile?.preferredIntroChannels.join("\n") ?? "" };
 }
 
@@ -101,6 +102,7 @@ function profileDraftToRequest(draft: ProfileDraft, data: ProfileDetail): Profil
   const request = buildProfileUpdateRequest(draft);
   if (!request) return null;
   const result: ProfileSaveRequest = { ...request,
+    ...(draft.birthDate.trim() || data.profile?.birthDate !== undefined ? { birthDate: draft.birthDate.trim() || null } : {}),
     targetRelationshipTypes: draft.targetRelationshipTypesText.split(/\n|,|，|、/u).map(value => value.trim()).filter(Boolean),
     preferredFollowUpWindow: draft.preferredFollowUpWindow.trim(),
     preferredIntroChannels: draft.preferredIntroChannelsText.split(/\n|,|，|、/u).map(value => value.trim()).filter(Boolean) };
@@ -130,7 +132,7 @@ function useProfileOperation(scopeKey: string, isScopeCurrent: () => boolean) {
   };
 }
 
-export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => true }: { scopeKey?: string; isScopeCurrent?: () => boolean } = {}) {
+export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => true, completionNext = null }: { scopeKey?: string; isScopeCurrent?: () => boolean; completionNext?: string | null } = {}) {
   const { colors, styles } = useStyles();
   const router = useRouter();
   const auth = useOrbitAuthSession();
@@ -158,6 +160,7 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
   >(null);
   const [acceptedProfilePatch, setAcceptedProfilePatch] = useState<AcceptedProfileSuggestion | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
+  const pendingSave = useRef<{ fingerprint: string; request: ProfileSaveRequest } | null>(null);
   const [profileActionError, setProfileActionError] = useState<string | null>(
     null
   );
@@ -192,6 +195,14 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
   const canEdit = loadedData !== null && loadedData.state !== "pending" && (loadedData.state === "empty" || loadedData.editor.canSave);
   const editable = useRef(canEdit); editable.current = canEdit;
   const canAct = () => current() && editable.current;
+  const completionHandled = useRef(false);
+
+  useEffect(() => {
+    if (!completionNext || completionHandled.current || !current()
+      || loadedData?.onboarding?.status !== "complete") return;
+    completionHandled.current = true;
+    router.replace(completionNext as Href);
+  }, [completionNext, loadedData?.onboarding?.status]);
 
   useEffect(() => {
     setAcceptingSuggestionId(null); setSavingProfile(false); setExtractingProfileDocumentKind(null);
@@ -289,17 +300,28 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
     setProfileActionMessage("提取结果已放进编辑表单。检查后保存资料。");
   }
 
-  async function onSaveProfile(draft: ProfileDraft, isDraftCurrent: () => boolean): Promise<boolean> {
-    if (!canAct() || !data) return false;
-    const request = profileDraftToRequest(draft, data);
+  async function onSaveProfile(draft: ProfileDraft, base: ProfileDetail, isDraftCurrent: () => boolean): Promise<ProfileDetail | null> {
+    if (!canAct() || !data) return null;
+    const fields = profileDraftToRequest(draft, base);
 
-    if (!request) {
+    if (!fields) {
       setProfileActionError("先写名字。");
       setProfileActionMessage(null);
-      return false;
+      return null;
     }
+    const versioned = { ...fields, expectedUpdatedAt: base.profile?.updatedAt ?? null };
+    const fingerprint = JSON.stringify(versioned);
+    if (pendingSave.current?.fingerprint !== fingerprint) {
+      try {
+        pendingSave.current = { fingerprint, request: { ...versioned, mutationId: `ios:profile:${Crypto.randomUUID()}` } };
+      } catch {
+        setProfileActionError("暂时无法准备保存，请重试。");
+        return null;
+      }
+    }
+    const request = pendingSave.current.request;
     const controller = saveOperation.start();
-    if (!controller) return false;
+    if (!controller) return null;
 
     setSavingProfile(true);
     setProfileActionError(null);
@@ -309,21 +331,29 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
       const result = await client.put<unknown>(ORBIT_API_ENDPOINTS.profile, {
         body: request, signal: controller.signal
       });
-      if (!saveOperation.owns(controller)) return false;
-      const receipt = result.success && result.status >= 200 && result.status < 300 ? profileSaveReceiptSchema(data.profile?.id ?? null, request).safeParse(result.data) : null;
+      if (!saveOperation.owns(controller)) return null;
+      if (result.status === 409) {
+        setProfileActionError("资料已在其他地方更新。草稿已保留，请刷新后核对。");
+        return null;
+      }
+      const receipt = result.success && result.status >= 200 && result.status < 300 ? profileSaveReceiptSchema(base.profile?.id ?? null, request).safeParse(result.data) : null;
       if (!receipt?.success) {
         setProfileActionError("资料尚未确认保存，请重试。");
-        return false;
+        return null;
       }
 
       setSavedData({ scope: readScope, data: receipt.data });
       if (isDraftCurrent()) setProfileActionMessage("资料已保存。");
       setAcceptedProfilePatch(null);
       setAppliedProfileExtraction(null);
-      return true;
+      if (completionNext && receipt.data.onboarding?.status === "complete" && isDraftCurrent()) {
+        completionHandled.current = true;
+        router.replace(completionNext as Href);
+      }
+      return receipt.data;
     } catch {
       if (saveOperation.owns(controller)) setProfileActionError("资料尚未确认保存，请重试。");
-      return false;
+      return null;
     } finally {
       if (saveOperation.owns(controller)) setSavingProfile(false);
       saveOperation.finish(controller);
@@ -385,6 +415,8 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
       ) : null}
       {auth.signedIn && state.kind === "loading" ? <Text accessibilityLiveRegion="polite" style={styles.pageNotice}>正在读取个人资料</Text> : null}
       {auth.signedIn && loadedData?.state === "pending" ? <Text accessibilityLiveRegion="polite" style={styles.pageNotice}>个人资料正在等待复核，暂时不能保存。</Text> : null}
+      {auth.signedIn && completionNext && loadedData && !loadedData.onboarding ? <Text accessibilityRole="alert" style={styles.profileActionError}>尚未确认资料补全状态，请重试。</Text> : null}
+      {auth.signedIn && completionNext && data?.onboarding?.status === "incomplete" ? <Text style={styles.pageNotice}>还需填写：{data.onboarding.missingFields.map(field => ({ displayName: "名字", primaryIndustryId: "主要行业", secondaryIndustryId: "二级行业", birthDate: "生日" })[field]).join("、")}</Text> : null}
       {auth.signedIn && (state.kind === "offline" || state.kind === "failure") ? (
         <View style={styles.pageNotice}>
           <Text accessibilityRole="alert" style={styles.profileActionError}>个人资料未能读取</Text>
@@ -421,6 +453,7 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
           profileDocumentExtractionKind={extractingProfileDocumentKind}
           savingProfile={savingProfile}
           suggestionsState={suggestionsState}
+          startEditing={Boolean(completionNext && data.onboarding?.status === "incomplete")}
         />
       ) : null}
       </ScrollView>
@@ -451,7 +484,8 @@ function ProfileCard({
   profileActionError,
   profileActionMessage,
   savingProfile,
-  suggestionsState
+  suggestionsState,
+  startEditing
 }: {
   scopeKey: string;
   isScopeCurrent: () => boolean;
@@ -478,10 +512,11 @@ function ProfileCard({
   profileActionMessage: string | null;
   savingProfile: boolean;
   suggestionsState: ApiResourceState<ProfileSuggestions>;
+  startEditing: boolean;
 }) {
   const { styles } = useStyles();
-  const [editing, setEditing] = useState(false);
-  const [editorMounted, setEditorMounted] = useState(false);
+  const [editing, setEditing] = useState(startEditing);
+  const [editorMounted, setEditorMounted] = useState(startEditing);
   const storedProfile = profileToSummary(data);
   const displayProfile = storedProfile;
 
@@ -882,6 +917,7 @@ function ProfileManualEditCard({
   const { colors, styles } = useStyles();
   const profileFingerprint = JSON.stringify(data.profile);
   const [draft, setDraft] = useState<ProfileDraft>(() => profileDraftFromDetail(data));
+  const draftBase = useRef(data);
   const dirtyDraft = useRef(false);
   const draftRevision = useRef(0);
   const latestDraft = useRef(draft); latestDraft.current = draft;
@@ -895,7 +931,7 @@ function ProfileManualEditCard({
     : null;
 
   useEffect(() => {
-    if (!dirtyDraft.current) setDraft(profileDraftFromDetail(data));
+    if (!dirtyDraft.current) { draftBase.current = data; setDraft(profileDraftFromDetail(data)); }
   }, [profileFingerprint]);
 
   useEffect(() => {
@@ -952,8 +988,10 @@ function ProfileManualEditCard({
     if (!isScopeCurrent() || !editable.current || !dirtyDraft.current) return;
     const revision = draftRevision.current;
     const isDraftCurrent = () => isScopeCurrent() && draftRevision.current === revision;
-    if (await onSave(latestDraft.current, isDraftCurrent) && isDraftCurrent()) {
-      dirtyDraft.current = false;
+    const receipt = await onSave(latestDraft.current, draftBase.current, isDraftCurrent);
+    if (receipt && isScopeCurrent()) {
+      draftBase.current = receipt;
+      if (isDraftCurrent()) dirtyDraft.current = false;
       setDraft(current => ({ ...current }));
     }
   }
@@ -970,7 +1008,7 @@ function ProfileManualEditCard({
   }
 
   return (
-    <DataCard detail="保存后同步到 web 个人资料" title="编辑对外资料" variant="inset">
+    <DataCard detail="保存后同步到 Web 个人资料，生日仅自己可见。" title="编辑个人资料" variant="inset">
       <View style={styles.manualEditStack}>
         {acceptedPatchView ? (
           <ProfileAcceptedPatchNotice view={acceptedPatchView} />
@@ -985,6 +1023,17 @@ function ProfileManualEditCard({
           onChangeText={(value) => updateDraft("headline", value)}
           value={draft.headline}
         />
+        <ProfileTextInput
+          label="公司"
+          onChangeText={(value) => updateDraft("organization", value)}
+          value={draft.organization}
+        />
+        <ProfileTextInput
+          label="职位"
+          onChangeText={(value) => updateDraft("role", value)}
+          value={draft.role}
+        />
+        <ProfileTextInput label="生日（仅自己可见）" placeholder="YYYY-MM-DD，例如 1996-02-29" onChangeText={value => updateDraft("birthDate", value)} value={draft.birthDate} />
         <ProfileIndustryPicker label="主要行业" selected={draft.primaryIndustryId ?? null} options={INDUSTRY_CATALOG.map(item => ({ id: item.id, label: item.labels.zh }))} disabled={saving || !canEdit} onSelect={primaryIndustryId => updateIndustry({ primaryIndustryId, secondaryIndustryId: null })} />
         <ProfileIndustryPicker label="二级行业" selected={draft.secondaryIndustryId ?? null} options={draft.primaryIndustryId ? listSecondaryIndustries(draft.primaryIndustryId).map(item => ({ id: item.id, label: item.labels.zh })) : []} disabled={saving || !canEdit || !draft.primaryIndustryId} onSelect={secondaryIndustryId => updateIndustry({ secondaryIndustryId })} />
         {industryIncomplete ? <Text style={styles.evidenceText}>请选择二级行业。</Text> : null}
@@ -1009,6 +1058,13 @@ function ProfileManualEditCard({
           value={draft.seekingText}
         />
         <ProfileTextInput
+          label="想聊的话题"
+          multiline
+          onChangeText={(value) => updateDraft("topicsText", value)}
+          placeholder="一行一个话题"
+          value={draft.topicsText}
+        />
+        <ProfileTextInput
           label="关系目标"
           multiline
           onChangeText={(value) => updateDraft("relationshipGoal", value)}
@@ -1022,6 +1078,16 @@ function ProfileManualEditCard({
         ) : null}
         {actionError ? (
           <Text style={styles.profileActionError}>{actionError}</Text>
+        ) : null}
+        {dirtyDraft.current && draftBase.current.profile?.updatedAt !== data.profile?.updatedAt ? (
+          <Pressable accessibilityRole="button" accessibilityLabel="放弃草稿并载入最新资料" disabled={saving || !canEdit} onPress={() => {
+            if (!isScopeCurrent() || !editable.current || saving) return;
+            draftRevision.current++; dirtyDraft.current = false; draftBase.current = data;
+            setDraft(profileDraftFromDetail(data));
+            onDraftChanged("displayName");
+          }} style={styles.profileExtractionButton}>
+            <Text style={styles.profileExtractionButtonText}>放弃草稿并载入最新资料</Text>
+          </Pressable>
         ) : null}
         <Pressable
           accessibilityLabel="保存资料"

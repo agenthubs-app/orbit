@@ -191,5 +191,5 @@ export function nextHrefForAccountAuthSubmit({
     return `/account/login?next=${encodeURIComponent(safeNext)}`;
   }
 
-  return safeNext;
+  return `/profile?complete=1&next=${encodeURIComponent(safeNext)}`;
 }

@@ -61,6 +61,9 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
   const [scope, setScope] = useState({ client, actorId, ready, mode });
   const scopeRef = useRef(scope);
   const mounted = useRef(true);
+  const authPending = useRef(false);
+  const authScopeKey = `${server.baseUrl}\u0000${mode}`;
+  const authScopeRef = useRef(authScopeKey);
   const recoveryPending = useRef(false);
   useEffect(() => {
     mounted.current = true;
@@ -77,13 +80,19 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
   const next = normalizedNext(firstParam(params.next, view.defaultNext));
   const created = firstParam(params.created) === "1";
 
+  if (authScopeRef.current !== authScopeKey) {
+    authScopeRef.current = authScopeKey;
+    authPending.current = false;
+  }
+
   if (scope.client !== client || scope.actorId !== actorId || scope.ready !== ready || scope.mode !== mode) {
     const nextScope = { client, actorId, ready, mode };
     scopeRef.current = nextScope;
     setScope(nextScope);
+    authPending.current = false;
+    setSubmitting(false);
     if (mode === "forgot" || scope.mode === "forgot") {
       recoveryPending.current = false;
-      setSubmitting(false);
       setValues({ email: "", password: "" });
       setNotice(null);
       setError(null);
@@ -127,6 +136,10 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
       }
       return;
     }
+    if (!ready || authPending.current) return;
+    authPending.current = true;
+    const requestAuthScope = authScopeKey;
+    const isCurrent = () => mounted.current && authScopeRef.current === requestAuthScope;
     setSubmitting(true);
     setNotice(null);
     setError(null);
@@ -138,6 +151,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
           password: values.password
         });
 
+        if (!isCurrent()) return;
         if (!result.success) {
           setError(result.message ?? "创建账号失败，请稍后再试。");
           return;
@@ -159,6 +173,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
         redirectTo: next
       });
 
+      if (!isCurrent()) return;
       if (!result.success) {
         setError(result.message ?? "登录失败，请稍后再试。");
         return;
@@ -172,11 +187,18 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
         }) as Href
       );
     } finally {
-      setSubmitting(false);
+      if (isCurrent()) {
+        authPending.current = false;
+        setSubmitting(false);
+      }
     }
   }
 
   async function startGoogleSignIn() {
+    if (!ready || authPending.current) return;
+    authPending.current = true;
+    const requestAuthScope = authScopeKey;
+    const isCurrent = () => mounted.current && authScopeRef.current === requestAuthScope;
     setSubmitting(true);
     setNotice(null);
     setError(null);
@@ -184,6 +206,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
     try {
       const result = await auth.startGoogleSignIn({ redirectTo: next });
 
+      if (!isCurrent()) return;
       if (!result.success) {
         if (result.message === "已取消 Google 登录。") {
           setNotice(result.message);
@@ -201,7 +224,10 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
         }) as Href
       );
     } finally {
-      setSubmitting(false);
+      if (isCurrent()) {
+        authPending.current = false;
+        setSubmitting(false);
+      }
     }
   }
 
