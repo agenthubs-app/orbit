@@ -83,6 +83,8 @@ function relationship(): RelationshipNaturalSearchResultItem {
     role: "Founder",
     organization: "Aster Grid",
     industry: "climate",
+    primaryIndustryId: "manufacturing_supply_chain",
+    secondaryIndustryId: "manufacturing_supply_chain.industrial_equipment",
     location: "Tokyo",
     relationshipContext: "Discussed a storage pilot.",
     matchedBusinessIntents: ["explore_partnership"],
@@ -131,6 +133,13 @@ function relationship(): RelationshipNaturalSearchResultItem {
     notificationDelivered: false,
   };
 }
+
+test("normal brief relationship fixture agrees with the storage-pilot contact industry", () => {
+  const fixture = relationship();
+  assert.equal(fixture.primaryIndustryId, "manufacturing_supply_chain");
+  assert.equal(fixture.secondaryIndustryId, "manufacturing_supply_chain.industrial_equipment");
+  assert.equal(fixture.industry, "climate");
+});
 
 test("live Agent runtime fails closed without an authenticated actor", () => {
   assert.throws(

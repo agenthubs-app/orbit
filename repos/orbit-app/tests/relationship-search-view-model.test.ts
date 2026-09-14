@@ -232,7 +232,7 @@ test("relationshipSearchToView maps web natural search results into Chinese card
   const searchModule = await loadRelationshipSearchModule();
   assert.equal(typeof searchModule?.relationshipSearchToView, "function");
 
-  const view = searchModule?.relationshipSearchToView?.({
+  const payload = {
     appliedFilters: {
       businessIntent: "find_warm_intro",
       followUpStatuses: ["needs_follow_up"],
@@ -256,6 +256,8 @@ test("relationshipSearchToView maps web natural search results into Chinese card
         followUpStatus: "needs_follow_up",
         id: "relationship-search-result:kenji-watanabe",
         industry: "climate",
+        primaryIndustryId: "manufacturing_supply_chain",
+        secondaryIndustryId: "manufacturing_supply_chain.industrial_equipment",
         location: "Tokyo",
         matchScore: {
           band: "high",
@@ -286,7 +288,10 @@ test("relationshipSearchToView maps web natural search results into Chinese card
     ],
     state: "success",
     summary: "1 relationship result(s) matched the mock natural search boundary."
-  });
+  };
+  assert.equal(Reflect.get(payload.results[0]!, "primaryIndustryId"), "manufacturing_supply_chain");
+  assert.equal(Reflect.get(payload.results[0]!, "secondaryIndustryId"), "manufacturing_supply_chain.industrial_equipment");
+  const view = searchModule?.relationshipSearchToView?.(payload);
 
   assert.deepEqual(view, {
     emptyText: "",

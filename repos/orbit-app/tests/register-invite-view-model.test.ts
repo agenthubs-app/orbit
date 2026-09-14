@@ -4,7 +4,7 @@ import test from "node:test";
 import { registerInviteToView } from "../src/view-models/register-invite";
 
 test("registerInviteToView combines event and profile into a Chinese mobile invite preview", () => {
-  const view = registerInviteToView({
+  const input = {
     eventPayload: {
       event: {
         description:
@@ -39,6 +39,8 @@ test("registerInviteToView combines event and profile into a Chinese mobile invi
         displayName: "赵翔",
         headline: "Orbit 创始人，用 AI 帮企业提效、降本、落地增长",
         industry: "AI 企业应用 · 日本市场 · B2B",
+        primaryIndustryId: "technology_internet",
+        secondaryIndustryId: "technology_internet.ai_data",
         offering: ["企业知识库 / RAG / 内部助手方案", "中日市场资源"],
         organization: "Orbit",
         relationshipGoal: "找到能长期互相帮忙的人。",
@@ -48,7 +50,12 @@ test("registerInviteToView combines event and profile into a Chinese mobile invi
         topics: ["企业 AI 降本增效", "Agent 工作流"]
       }
     }
-  });
+  };
+  // This normal source profile is shared with the AI profile fixtures, even
+  // though this invite preview deliberately displays only a compact subset.
+  assert.equal(Reflect.get(input.profilePayload.profile, "primaryIndustryId"), "technology_internet");
+  assert.equal(Reflect.get(input.profilePayload.profile, "secondaryIndustryId"), "technology_internet.ai_data");
+  const view = registerInviteToView(input);
 
   assert.deepEqual(view, {
     actions: [
