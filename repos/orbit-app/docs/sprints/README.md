@@ -48,13 +48,13 @@ build/harness-logs/
 | --- | --- | --- | --- | --- |
 | [0001](0001-event-discovery/GOAL.md) | 用全部地点和话题找到活动，筛选后仍能翻页和打开详情 | R-09 | 无；接续当前四文件 | completed |
 | [0002](0002-readiness-handoff/GOAL.md) | 查清已完成能力、后续缺项和每项开工条件 | R-01、R-00～R-12 依赖 | 无；只读文档工作 | completed |
-| [0003](0003-profile-completion/GOAL.md) | 注册、补全资料后回到原页面，完整用户不再被拦截 | R-03 | 0002；B1/D2 | blocked |
+| [0003](0003-profile-completion/GOAL.md) | 注册、补全资料后回到原页面，完整用户不再被拦截 | R-03 | 产品规则已确认；B1 跨端技术提案／旧账号策略待审，授权账号／Google 环境 | blocked |
 | [0004](0004-registration/GOAL.md) | 报名、取消和重报后，答案、人数及各页状态一致 | R-04 | 0002、0003；B2／问卷服务 | blocked |
-| [0005](0005-ai-session-reliability/GOAL.md) | AI 重试不重复生成，Web/App 续聊不丢历史 | R-00、R-02 | 0002；B3／Web 恢复风险 | blocked |
+| [0005](0005-ai-session-reliability/GOAL.md) | AI 重试不重复生成，Web/App 续聊不丢历史 | R-00、R-02 | B3 跨端提案待审；已隔离复现旧快照覆盖，真实恢复／503 证据仍缺 | blocked |
 | [0006](0006-contact-mentions/GOAL.md) | @ 选准联系人，带入 AI 的问题由用户确认发送 | R-06 | 0005；B3 引用／D3 | blocked |
 | [0007](0007-two-sided-cards/GOAL.md) | 正反面名片复核后只创建一个联系人 | R-07 | 0002；B5／OCR 环境 | blocked |
 | [0008](0008-identity-chat/GOAL.md) | 验证邀请和身份绑定后，双方能真实收发消息 | R-05 | 0002；B4／双用户 | blocked |
-| [0009](0009-timezone/GOAL.md) | 同一事项在首页、待办、日历和活动中不落错日 | R-09 | 0001、0002；时区决策 | blocked |
+| [0009](0009-timezone/GOAL.md) | 同一事项在首页、待办、日历和活动中不落错日 | R-09 | 设备跟随策略已确认；DST／异常／脏稿技术提案待审及原生证据 | blocked |
 | [0010](0010-task-schedule-editing/GOAL.md) | 个人事项能创建、编辑和清空字段，各页与提醒一致 | R-08 | 0009；B6 | blocked |
 | [0011](0011-home-analysis/GOAL.md) | 首页符合确认布局，分析可辨新旧，目标可单独保存 | R-09、R-10 | 0006；B7／首页／D4 | blocked |
 | [0012](0012-message-state/GOAL.md) | 前台新消息及时出现，已读角标与跳转目标正确 | R-11 | 0008；消息契约／通知环境 | blocked |
@@ -136,6 +136,8 @@ build/harness-logs/
 此前 0020／0021“只编制、需另行执行指令”是历史事实；用户现已要求完成 0022 后逐步实现，[实施顺序](EXECUTION_ORDER.md)承接本次授权。两项 Planner 中的旧“本次只编制”不再作为缺执行指令的理由，但其明确要求的书面技术审阅、依赖及真实写入批准继续保留。0022 的 [设计](0022-unified-tasks/DESIGN.md)与 [Planner](0022-unified-tasks/PLANNER.md)已经编制，run_count 为 0，不预建 REPORT。
 
 用户随后说明将离线一小时，要求独立推进、不再提问、优先无需用户决定的工作。执行安全技术准备和依赖核查；没有就绪 Sprint 时如实记录，不擅自批准契约或消耗 run。
+
+用户再次要求执行后，按新增停止规则继续推进：[0020 源码／数据入口核查](0020-secondary-industries-self-profile/READINESS_AUDIT.md)、[0003/B1 技术补充](0003-profile-completion/TECHNICAL_PREPARATION.md)、[0005/B3 协议与隔离复现](0005-ai-session-reliability/B3_PROTOCOL_PREPARATION.md)已落盘。当前产品基线为 `df824de70`；新增 Web 字典 3 项、App 同步／账户 20 项、Web 会话 7 项基线均通过，旧快照覆盖在全新 memory store 复现；不代表新功能通过、真实数据损失或已启动 run。继续动作见 EXECUTION_ORDER，不因这些文档完成而结束整体实施。
 
 ## 2026-09-13 暂停点（历史基线）
 
