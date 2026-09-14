@@ -192,7 +192,8 @@ test(
         eventCoreService: service,
         now,
         async readParticipantSummaries(eventIds) {
-          assert.equal(new Set(eventIds).size, 13);
+          assert.equal(new Set(eventIds).size, eventIds.length);
+          assert.equal(eventIds.length === 1 || eventIds.length === 13, true);
           return eventIds.map((eventId) => ({
             activeRegistrationCount: eventId === "event_signup_01" ? 64 : 0,
             attendeeResultsAvailable: false,
@@ -208,6 +209,7 @@ test(
       assert.equal(snapshot.events.length, 13);
       assert.equal(recordSnapshot.records.length, 13);
       assert.equal(recordSnapshot.generatedAt, snapshot.generatedAt);
+      assert.deepEqual(recordSnapshot.participantCounts, snapshot.participantCounts);
       assert.deepEqual(recordSnapshot.publicCodes, snapshot.publicCodes);
       assert.deepEqual(
         recordSnapshot.records.map((record) => record.id),
@@ -253,7 +255,12 @@ test(
 
         const byId = await catalogue.readRecord(expected.id);
         const byCode = await catalogue.readRecord(planned?.publicCode ?? "");
+        const entry = await catalogue.readRecordEntry(expected.id);
         assert.deepEqual(byCode, byId);
+        assert.equal(
+          entry?.participantCount,
+          snapshot.participantCounts[expected.id],
+        );
         assert.equal(byId?.id, expected.id);
         assert.equal(byId?.calendarSyncRequested, false);
         assert.equal(byId?.calendarProviderRequested, false);

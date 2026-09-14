@@ -621,6 +621,9 @@ test("canonical event recommendation reader rejects invalid snapshots", async ()
           organizerIds: {
             "event:canonical:invalid": "actor:canonical-organizer",
           },
+          participantCounts: {
+            "event:canonical:invalid": 0,
+          },
           publicCodes: {
             "event:canonical:invalid": "INVALID-CANONICAL-EVENT",
           },

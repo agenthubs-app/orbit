@@ -107,6 +107,7 @@ function catalogue(input: {
         organizerIds: Object.fromEntries(
           snapshot.events.map((event) => [event.id, event.organizerId ?? ""]),
         ),
+        participantCounts: snapshot.participantCounts,
         publicCodes: snapshot.publicCodes,
         records: [canonicalRecord],
       };
@@ -117,7 +118,13 @@ function catalogue(input: {
         : routeId === EVENT_ID
           ? canonicalRecord
           : null;
-      return record ? { organizerId: ORGANIZER_ID, record } : null;
+      return record
+        ? {
+            organizerId: ORGANIZER_ID,
+            participantCount: canonicalSnapshot.participantCounts[EVENT_ID]!,
+            record,
+          }
+        : null;
     },
     async readRecord(routeId) {
       if (input.readRecord) return input.readRecord(routeId);
@@ -137,7 +144,11 @@ test("public events list keeps the envelope and event fields while using canonic
   const response = await handler();
   const body = (await responseBody(response)) as {
     data?: {
-      events?: Array<EventRecord & { code?: string; organizer?: string }>;
+      events?: Array<EventRecord & {
+        code?: string;
+        organizer?: string;
+        participantCount?: number;
+      }>;
       generatedAt?: string;
       organizer?: { name?: string };
     };
@@ -152,6 +163,7 @@ test("public events list keeps the envelope and event fields while using canonic
     ...canonicalRecord,
     code: PUBLIC_CODE,
     organizer: canonicalPublicOrganizerLabel(ORGANIZER_ID),
+    participantCount: canonicalSnapshot.participantCounts[EVENT_ID],
   }]);
   assert.equal(response.headers.get("cache-control"), "no-store");
 });
@@ -176,7 +188,9 @@ test("public event detail resolves canonical IDs, public codes, and registered a
       context(id),
     );
     const body = (await responseBody(response)) as {
-      data?: { event?: EventRecord & { organizer?: string } };
+      data?: {
+        event?: EventRecord & { organizer?: string; participantCount?: number };
+      };
       success?: boolean;
     };
     assert.equal(response.status, 200);
@@ -184,6 +198,7 @@ test("public event detail resolves canonical IDs, public codes, and registered a
     assert.deepEqual(body.data?.event, {
       ...canonicalRecord,
       organizer: canonicalPublicOrganizerLabel(ORGANIZER_ID),
+      participantCount: canonicalSnapshot.participantCounts[EVENT_ID],
     });
   }
   assert.deepEqual(observed, [EVENT_ID, PUBLIC_CODE, LEGACY_ALIAS]);

@@ -22,12 +22,14 @@ export interface PublicEventCatalogueSnapshot {
 export interface PublicEventRecordCatalogueSnapshot {
   generatedAt: string;
   organizerIds: Readonly<Record<string, string>>;
+  participantCounts: Readonly<Record<string, number>>;
   publicCodes: Readonly<Record<string, string>>;
   records: readonly EventRecord[];
 }
 
 export interface PublicEventRecordEntry {
   organizerId: string;
+  participantCount: number;
   record: EventRecord;
 }
 
@@ -344,24 +346,22 @@ async function readCanonicalPublicEvents(
 async function readCanonicalPublicEventRecords(
   input: CanonicalPublicEventCatalogueDependencies,
 ): Promise<PublicEventRecordCatalogueSnapshot> {
-  const { events, generatedAt } = await readCanonicalPublicEvents(input);
+  const { generatedAt, items } = await readCanonicalPublicItems(input);
   return {
     generatedAt,
     organizerIds: Object.fromEntries(
-      events.map((event) => [
-        event.eventId,
-        requiredText(event.organizerActorId, "organizerActorId", event.eventId),
+      items.map((item) => [
+        item.event.id,
+        requiredText(item.event.organizerId, "organizerActorId", item.event.id),
       ]),
+    ),
+    participantCounts: Object.fromEntries(
+      items.map((item) => [item.event.id, item.participantCount]),
     ),
     publicCodes: Object.fromEntries(
-      events.map((event) => [
-        event.eventId,
-        requiredText(event.publicCode, "publicCode", event.eventId),
-      ]),
+      items.map((item) => [item.event.id, item.publicCode]),
     ),
-    records: events.map((event) =>
-      publishedCanonicalEventToEventRecord(event, generatedAt),
-    ),
+    records: items.map((item) => item.eventRecord),
   };
 }
 
@@ -379,12 +379,22 @@ async function readCanonicalPublicEventRecordEntry(
     invalid(event.eventId, "lifecycleState");
   }
   if (!event.publicCode?.trim()) return null;
+  const participantSummaries = await input.readParticipantSummaries([
+    event.eventId,
+  ]);
+  if (
+    participantSummaries.length !== 1 ||
+    participantSummaries[0]?.eventId !== event.eventId
+  ) {
+    invalid(event.eventId, "participant summary");
+  }
   return {
     organizerId: requiredText(
       event.organizerActorId,
       "organizerActorId",
       event.eventId,
     ),
+    participantCount: summaryCount(participantSummaries[0]!),
     record: publishedCanonicalEventToEventRecord(
       event,
       input.now.toISOString(),
