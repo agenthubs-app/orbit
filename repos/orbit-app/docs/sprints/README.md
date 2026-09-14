@@ -55,7 +55,7 @@ build/harness-logs/
 | [0005](0005-ai-session-reliability/GOAL.md) | AI 重试不重复生成，Web/App 续聊不丢历史 | R-00、R-02 | B3 跨端提案待审；已隔离复现旧快照覆盖，真实恢复／503 证据仍缺 | blocked |
 | [0006](0006-contact-mentions/GOAL.md) | @ 选准联系人，带入 AI 的问题由用户确认发送 | R-06 | 0005；B3 引用／D3 | blocked |
 | [0007](0007-two-sided-cards/GOAL.md) | 正反面名片复核后只创建一个联系人 | R-07 | 0002；B5／OCR 环境 | blocked |
-| [0008](0008-identity-chat/GOAL.md) | 验证邀请和身份绑定后，双方能真实收发消息 | R-05 | 0002；B4／双用户 | blocked |
+| [0008](0008-identity-chat/GOAL.md) | 验证邀请和身份绑定后，双方能真实收发消息 | R-05 | 0002；B4 契约已冻结；E 线 run-01 正在实现，真实双用户证据随环境核验 | running |
 | [0009](0009-timezone/GOAL.md) | 同一事项在首页、待办、日历和活动中不落错日 | R-09 | 设备跟随策略已确认；DST／异常／脏稿技术提案待审及原生证据 | blocked |
 | [0010](0010-task-schedule-editing/GOAL.md) | 个人事项能创建、编辑和清空字段，各页与提醒一致 | R-08 | 0009；B6 | blocked |
 | [0011](0011-home-analysis/GOAL.md) | 首页符合确认布局，分析可辨新旧，目标可单独保存 | R-09、R-10 | 0006；B7／首页／D4 | blocked |
@@ -172,6 +172,14 @@ build/harness-logs/
 - 验证：五项SC通过；14个相对链接、17行就绪条件和15处源码引用检查通过；暂存detect仅3个文档／16个Section／0受影响流程。D档，无产品测试、HTTP或原生操作。
 - 原文件锁：`docs/api-gaps.md`、`docs/verification/2026-09-13-app-connectivity.md`、`docs/superpowers/plans/2026-09-08-app-wide-native-qa-matrix.md` 及 0002 报告，现已释放。只读源码，未接管 Simulator、API、账号、费用或 Git。
 - 0002 不依赖0001结果；与0001收尾只并行处理无重叠文档，仍各自只有一个 Generator。
+
+### 0008 / run-01
+
+- owner：`/root/e_line`；run_count：1；开始：2026-09-14 23:24 JST。
+- Planner revision：1 + B4 已批准技术契约；SHA256：`a20d9e1084b2b77d1d1fe29f3c3aab79f853874234a44b5bf8dce7f73b2261d1`。
+- 起始 HEAD：`fca77373f123c03e29a0584cba46bade5f5eb907`；启动前产品工作区干净。
+- 文件锁：0008 Planner 白名单、已登记的必要 Web/API 契约与实现路径，以及对应测试。与 B 线共享的 `ContactDetailScreen`、`RelationshipChatScreen`、`RelationshipInboxScreen` 仅在本 worktree 修改并在报告中明确交接。
+- B4 契约已冻结；真实双用户、数据库和实体设备环境在执行中核验，缺少外部环境只影响对应真实证据，不降低本地权限、幂等与隔离验收。
 
 0020/run-01 已以 blocked 结束，代码未提交；其 REPORT 逐项记录剩余 Sprint 的范围、设计、依赖与环境门槛，不表示全部实施完成。用户要求连续实施所有剩余 Sprint 的指令保持有效，不逐项重复询问；适用条件闭合后按单次运行规则安排接续。0001／0002 不重新运行。管理框架、19份Planner和0001报告提交为 `1a0c7086420a421169f63e8e4b0a04c6cc329315`；本报告／登记表提交可从Git历史查看，不在报告内追填自身SHA。
 

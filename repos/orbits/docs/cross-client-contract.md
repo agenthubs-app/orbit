@@ -56,6 +56,7 @@ shared/api-schema/       运行时响应校验，单独同步到移动端 src/ap
 | 个人资料 | `profile.ts` | 资料、完整度、编辑器状态；provenance 未跨端 |
 | 跟进任务 | `followups.ts` | 任务、触发原因、复核提示 |
 | 活动 | `events.ts` | 活动记录、来源元数据、证据 |
+| 关系沟通 | `relationship-communication.ts` | 资格、邀请、共享会话、消息投递与已读回执 |
 | 行业与语言 | `industries.ts`、`language.ts` | 纯类型；运行时字典在 shared/domain，按两个文件白名单同步 |
 
 移动端对应的取值器分别是 `contactField`、`conversationField` / `messageField` /

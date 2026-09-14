@@ -64,6 +64,7 @@ export const ORBIT_API_ENDPOINTS = {
   scheduleItems: "/api/schedule-items",
   proactiveTurns: "/api/ai/proactive-turns",
   relationshipInbox: "/api/chat/relationship-inbox",
+  relationshipCommunication: "/api/relationship-communication",
   relationshipSignalsEmailCalendar: "/api/relationship-signals/email-calendar",
   relationshipSearch: "/api/search/relationships",
   relationshipSearchSuggestions: "/api/search/suggestions",
@@ -732,6 +733,38 @@ export function relationshipInboxPath(conversationId?: string | null): string {
   return `${ORBIT_API_ENDPOINTS.relationshipInbox}?conversationId=${encodeURIComponent(
     conversationId.trim()
   )}`;
+}
+
+export function relationshipCommunicationEligibilityPath(contactId: string): string {
+  return `${ORBIT_API_ENDPOINTS.relationshipCommunication}/eligibility?contactId=${encodeURIComponent(contactId.trim())}`;
+}
+
+export function relationshipCommunicationInvitationsPath(): string {
+  return `${ORBIT_API_ENDPOINTS.relationshipCommunication}/invitations`;
+}
+
+export function relationshipCommunicationInvitationAcceptPath(token: string): string {
+  return `${relationshipCommunicationInvitationPath(token)}/accept`;
+}
+
+export function relationshipCommunicationInvitationPath(token: string): string {
+  return `${relationshipCommunicationInvitationsPath()}/${encodeURIComponent(token.trim())}`;
+}
+
+export function relationshipCommunicationConversationsPath(): string {
+  return `${ORBIT_API_ENDPOINTS.relationshipCommunication}/conversations`;
+}
+
+export function relationshipCommunicationConversationPath(id: string): string {
+  return `${relationshipCommunicationConversationsPath()}/${encodeURIComponent(id.trim())}`;
+}
+
+export function relationshipCommunicationMessagesPath(id: string): string {
+  return `${relationshipCommunicationConversationPath(id)}/messages`;
+}
+
+export function relationshipCommunicationReadPath(id: string): string {
+  return `${relationshipCommunicationConversationPath(id)}/read`;
 }
 
 export interface RelationshipSignalsEmailCalendarPathInput {

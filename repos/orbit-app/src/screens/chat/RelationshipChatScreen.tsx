@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
 import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
-import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
+import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
+import { relationshipCommunicationConversationsPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
@@ -11,16 +12,22 @@ import { textStyles, radius, spacing, typography } from "../../design/tokens";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import {
-  relationshipChatListToView,
-  type RelationshipChatConversationView,
   type RelationshipChatMetricView
 } from "../../view-models/relationship-chat";
+import {
+  isRelationshipConversationList,
+  relationshipCommunicationListToView,
+  type RelationshipCommunicationConversationView
+} from "../../view-models/contact-communication";
 
 export function RelationshipChatScreen() {
   const { colors } = useOrbitTheme();
+  const auth = useOrbitAuthSession();
+  const actorId = auth.user?.id ?? "";
   const state = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.chatConversations,
-    (data) => relationshipChatListToView(data).conversations.length === 0
+    relationshipCommunicationConversationsPath(),
+    (data) => isRelationshipConversationList(data) && data.conversations.length === 0,
+    { scopeKey: actorId, cachePolicy: "network-only" }
   );
 
   return (
@@ -48,15 +55,16 @@ export function RelationshipChatScreen() {
           title="暂无关系对话"
         />
       ) : null}
-      {state.kind === "success" ? <ChatListContent data={state.data} /> : null}
+      {state.kind === "success" && isRelationshipConversationList(state.data) ? <ChatListContent actorId={actorId} data={state.data} /> : null}
+      {state.kind === "success" && !isRelationshipConversationList(state.data) ? <ErrorState message="对话列表格式不完整，请刷新后重试。" /> : null}
     </AppScreen>
   );
 }
 
-function ChatListContent({ data }: { data: unknown }) {
+function ChatListContent({ actorId, data }: { actorId: string; data: Parameters<typeof relationshipCommunicationListToView>[0] }) {
   const { colors, styles } = useStyles();
   const router = useRouter();
-  const view = relationshipChatListToView(data);
+  const view = relationshipCommunicationListToView(data, actorId);
 
   return (
     <>
@@ -66,7 +74,7 @@ function ChatListContent({ data }: { data: unknown }) {
         <View style={styles.callout}>
           <Ionicons color={colors.accent} name="chatbubbles-outline" size={18} />
           <Text style={styles.calloutText}>
-            这里看关系对话上下文。真正发出消息前仍然要确认。
+            这里显示真实的 Orbit 站内消息；发送前仍会重新验证聊天资格。
           </Text>
         </View>
       </DataCard>
@@ -127,7 +135,7 @@ function ConversationRow({
   conversation,
   onPress
 }: {
-  conversation: RelationshipChatConversationView;
+  conversation: RelationshipCommunicationConversationView;
   onPress: () => void;
 }) {
   const { styles } = useStyles();

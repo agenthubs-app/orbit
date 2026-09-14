@@ -23,6 +23,8 @@ const task = { id: "task-one", taskId: "task-one", accountId: "reader", ownerUse
 const conversation = { conversationId: "thread-one", participantContactId: "person-one", participantName: "林悦", organization: "Orbit", title: "合作讨论", status: "needs_followup", unreadCount: 1, lastMessagePreview: "周四讨论合作资料", lastMessageAt: "2026-09-07T01:00:00Z" };
 const chatBoundary = { canSendInMock: true, confirmationRequiredBeforeLiveSend: true, status: "ready", realtimeTransportRequested: false, websocketSubscriptionRequested: false, productionMessageStorageRequested: false, externalSendRequested: false };
 const chatMessage = { messageId: "message-one", conversationId: "thread-one", body: "周四讨论合作资料", senderRole: "contact", senderName: "林悦", createdAt: "2026-09-07T01:00:00Z", deliveryState: "mock_received", source: { type: "manual", id: "source:style" }, evidenceIds: ["evidence:style"], realtimeTransportRequested: false, websocketSubscriptionRequested: false, productionMessageStorageRequested: false, externalNetworkRequested: false, liveDatabaseReadExecuted: true, liveDatabaseWriteExecuted: false, aiProviderRequested: false, emailSendRequested: false, calendarWriteRequested: false, notificationSendRequested: false, devicePushRequested: false };
+const relationshipMessage = { messageId: "message-one", conversationId: "thread-one", body: "周四讨论合作资料", senderAccountId: "account:lin", senderDisplayName: "林悦", sentAt: "2026-09-07T01:00:00Z", deliveryState: "delivered" };
+const relationshipConversation = { conversationId: "thread-one", contactId: "person-one", participantAccountIds: ["reader", "account:lin"], participantDisplayNames: { reader: "我", "account:lin": "林悦" }, qualificationVersion: "qv:style", status: "active", createdAt: "2026-09-07T00:00:00Z", updatedAt: "2026-09-07T01:00:00Z", unreadCount: 1, messages: [relationshipMessage] };
 const event = { id: "event-one", eventId: "event-one", title: "合作交流会", startsAt: "2026-09-08T14:00:00+09:00", endsAt: "2026-09-08T15:00:00+09:00", date: "2026-09-08", location: "东京", venue: "东京", status: "published" };
 const entry = { entryId: "action-one", runId: "run-one", workflowKey: "post_event_followup_v1", contactName: "林悦", organization: "Orbit", title: "建立会后待办", preview: "确认合作资料", whyNow: "延续活动讨论", status: "awaiting_confirmation", riskLevel: "write", undoable: true, createdAt: "2026-09-07T01:00:00Z", updatedAt: "2026-09-07T01:00:00Z", evidenceIds: [], evidenceChips: [], sourceRefs: [], operations: [{ operationId: "operation-one", operationType: "create_followup_task", title: "创建会后待办", effectSummary: "创建任务，不会自动发送消息。", status: "pending", selectedByDefault: true, autoSendCapable: false, idempotencyKey: "operation-one:v1" }] };
 function dataFor(path) {
@@ -39,6 +41,8 @@ function dataFor(path) {
   if (path.includes("sessions")) return { sessions: state.empty ? [] : [{ id: "session-one", title: "合作计划", messages: [{ role: "user", content: "讨论合作时间", createdAt: "2026-09-07T01:00:00Z" }], updatedAt: "2026-09-07T01:00:00Z", createdAt: "2026-09-07T01:00:00Z", pinned: true }] };
   if (path.startsWith("/api/ai/conversations")) return screen === "conversation" ? { ...aiThread, messages: [{ ...aiConversationPayload.messages[1], conversationId: "thread-one", messageId: "reply", role: "assistant", content: "可以先确认周四的合作时间。", createdAt: "2026-09-07T01:00:00Z" }], proposedToolIntents: [] } : {};
   if (path.includes("relationship-inbox")) return { inbox: { conversations: [{ ...conversation, contactId: "person-one", subject: "合作讨论", preview: "周四讨论合作资料", lastCorrespondenceAt: "2026-09-07T01:00:00Z", nextActionLabel: "", sourceContextLabels: [] }] }, currentUser: { displayName: "我" }, selectedThread: null, sideEffects: {} };
+  if (path === "/api/relationship-communication/conversations/thread-one") return { ...relationshipConversation, messages: state.empty ? [] : [relationshipMessage] };
+  if (path === "/api/relationship-communication/conversations") return { conversations: state.empty ? [] : [{ ...relationshipConversation, messages: [relationshipMessage] }], refreshedAt: "2026-09-08T03:00:00Z" };
   if (path.includes("extractions")) return {};
   if (path.startsWith("/api/chat/conversations/")) return { state: state.empty ? "empty" : "success", conversation, messages: state.empty ? [] : [chatMessage], sendMessageState: chatBoundary };
   if (path === "/api/chat/conversations") return { conversations: state.empty ? [] : [conversation] };
@@ -60,9 +64,9 @@ const client = Object.fromEntries(["get", "post", "patch", "delete", "put"].map(
   state.requests.push({ method, path, body: options?.body });
   if (finalInsets) {
     if (method === "get" && path === "/api/ai/runs/ai-run-style") return { success: true, status: 200, meta: { featureMode: null, privacy: null, runtimeBoundary: null }, data: { run: { runId: "ai-run-style", promptTemplateId: "style-review", evidenceIds: ["evidence:style"], output: { text: "可以先核对采购合作资料。" } }, summary: "已核对会话来源", nextAction: "检查依据后继续" } };
-    if (method === "post" && path === "/api/chat/conversations/thread-one/messages") {
-      const message = { ...chatMessage, messageId: "draft:style", body: options.body.body, senderRole: "orbit_user", senderName: "我", createdAt: "2026-09-08T03:00:00Z", deliveryState: "mock_recorded_locally", liveDatabaseWriteExecuted: true };
-      return { success: true, status: 201, data: { state: "success", conversationId: "thread-one", oneToOneContext: { participantName: "林悦", contactId: "person-one", organization: "Orbit" }, message, messages: [chatMessage, message], sendMessageState: chatBoundary } };
+    if (method === "post" && path === "/api/relationship-communication/conversations/thread-one/messages") {
+      const message = { ...relationshipMessage, messageId: "message:style", body: options.body.body, senderAccountId: "reader", senderDisplayName: "我", sentAt: "2026-09-08T03:00:00Z" };
+      return { success: true, status: 201, data: { conversationId: "thread-one", deliveryState: "delivered", qualificationVersion: "qv:style", message } };
     }
     if (method === "get" && path === "/api/chat/privacy?conversationId=thread-one") return { success: true, data: { conversationId: "thread-one", participantName: "林悦", organization: "Orbit", analysisOptIn: { enabled: true, status: "opted_in" }, analysisDeletion: { status: "available" }, sensitiveShareConfirmation: { confirmationRequired: true, status: "required" }, privateNotes: [], state: "success" } };
     if (method === "post" && path === "/api/chat/assist/rewrite") return { success: true, data: { assists: [{ assistId: "assist:style", label: "润色建议", rationale: "先核对时间", source: { label: "合作讨论" }, suggestedText: "周四可以一起核对合作资料。" }], state: "success" } };
@@ -136,18 +140,14 @@ for (const scheme of ["light", "dark"] as const) {
     assert.equal(await reply.inputValue(), "仍需核对的草稿");
     assert.deepEqual(radii, ["12px", "12px", "12px", "12px", "12px", "12px", "12px", "12px", "12px", "12px"], "contact/event/followup/profile/schedule suggestions, intentBlock, taskInteractionCard, aiRunPanel, aiRunReference, aiRunResult");
   });
-  test(`${scheme}: final inset chat extraction and saved draft keep the exact request boundary`, async t => {
+  test(`${scheme}: final inset chat extraction and delivered message keep the exact request boundary`, async t => {
     const page = await open(t, "thread&insets=true", scheme);
-    const signal = page.getByText("寻找日本采购合作伙伴", { exact: true }).locator("..");
-    const radii = [await signal.evaluate(el => getComputedStyle(el).borderRadius)];
-    const draft = page.getByPlaceholder("写一版给对方的回复"); await draft.fill("周四可以");
-    await page.getByRole("button", { name: "保存草稿", exact: true }).click();
-    const result = page.getByText("回复草稿已保存", { exact: true }).locator(".."); await result.waitFor();
-    radii.push(await result.evaluate(el => getComputedStyle(el).borderRadius));
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "post", path: "/api/chat/conversations/thread-one/messages", body: { body: "周四可以", requestId: "test-uuid" } }]);
+    await page.getByText("寻找日本采购合作伙伴", { exact: true }).waitFor();
+    const draft = page.getByPlaceholder("写给已验证联系人"); await draft.fill("周四可以");
+    await page.getByRole("button", { name: "发送消息", exact: true }).click();
+    await page.getByText("消息已送达已验证的 Orbit 账号。", { exact: true }).waitFor();
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "post", path: "/api/relationship-communication/conversations/thread-one/messages", body: { body: "周四可以", qualificationVersion: "qv:style" } }]);
     assert.equal(await draft.inputValue(), "");
-    await page.getByText("草稿已保存，未发送给对方。", { exact: true }).waitFor();
-    assert.deepEqual(radii, ["12px", "12px"], "signalRow, draftResult");
   });
   test(`${scheme}: final inset inbox empty feedback has the shared boundary`, async t => {
     const page = await open(t, "inbox", scheme);
@@ -241,12 +241,12 @@ test("reading canvas keeps its draft when opening shortcuts and uses the shared 
   await page.getByRole("button", { name: "打开快捷入口", exact: true }).click();
   assert.equal(await reply.inputValue(), "先核对资料"); await noWrites(page);
 });
-test("chat list and detail retain navigation, messages and a failed draft without sending", async t => {
+test("chat list and detail retain navigation, messages and a failed real delivery", async t => {
   const page = await open(t, "chat", "dark"); const row = page.getByRole("button", { name: /林悦/ }); await fits(row); await row.click(); await noWrites(page);
   assert.equal(await page.getByText("林悦", { exact: true }).evaluate(el => getComputedStyle(el).fontSize), "15px");
-  const detail = await open(t, "thread"); const draft = detail.getByPlaceholder("写一版给对方的回复"); await draft.fill("周四可以");
-  await fits(detail.getByRole("button", { name: "保存草稿", exact: true }), 50);
-  await detail.getByRole("button", { name: "保存草稿", exact: true }).click(); await detail.getByText("草稿暂时保存不了，输入已保留。请重试。", { exact: true }).waitFor();
+  const detail = await open(t, "thread"); const draft = detail.getByPlaceholder("写给已验证联系人"); await draft.fill("周四可以");
+  await fits(detail.getByRole("button", { name: "发送消息", exact: true }), 50);
+  await detail.getByRole("button", { name: "发送消息", exact: true }).click(); await detail.getByText("尚未确认消息送达，输入已保留。请刷新资格后重试。", { exact: true }).waitFor();
   assert.equal(await draft.inputValue(), "周四可以");
   assert.equal(await detail.evaluate(() => (window as any).fixture.requests.length), 1);
 });
@@ -328,7 +328,7 @@ test("calendar agendas retain complete time and event text at doubled native fon
   }
 });
 test("primary workspace action labels use the shared bold role", async t => {
-  for (const [screen, label] of [["actions", "确认建议"], ["ledger", "确认执行"], ["followups", "生成候选"], ["task", "标记完成"], ["thread", "保存草稿"]]) {
+  for (const [screen, label] of [["actions", "确认建议"], ["ledger", "确认执行"], ["followups", "生成候选"], ["task", "标记完成"], ["thread", "发送消息"]]) {
     const page = await open(t, screen!); const action = page.getByRole("button", { name: label!, exact: true }).first(); await action.waitFor();
     assert.equal(await action.locator("[dir='auto']").first().evaluate(el => getComputedStyle(el).fontWeight), "700", `${screen} primary label weight`);
   }

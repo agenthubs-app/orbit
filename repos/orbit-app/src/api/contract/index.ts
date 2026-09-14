@@ -153,3 +153,15 @@ export type {
   IngestManifestEntryContract,
   IngestUploadResponseContract
 } from "./business-card-batch";
+export type {
+  RelationshipConversationDTO,
+  RelationshipConversationListDTO,
+  RelationshipDeliveryReceiptDTO,
+  RelationshipEligibilityDTO,
+  RelationshipEligibilityStatus,
+  RelationshipInvitationDTO,
+  RelationshipInvitationPreviewDTO,
+  RelationshipMessageDTO,
+  RelationshipReadReceiptDTO,
+  RelationshipRemoteAccountDTO,
+} from "./relationship-communication";

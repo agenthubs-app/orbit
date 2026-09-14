@@ -24,6 +24,7 @@ import { INDUSTRY_CATALOG, listSecondaryIndustries, secondaryIndustryLabel } fro
 import {
   contactDetailPath,
   ORBIT_API_ENDPOINTS,
+  relationshipCommunicationEligibilityPath,
   relationshipValueAnalysisPath,
   relationshipValueRecomputePath
 } from "../../api/endpoints";
@@ -51,6 +52,7 @@ import {
   relationshipValueToView
 } from "../../view-models/relationship-value";
 import { buildContactDetailEditRequest, confirmContactDetailEdit, contactDetailEditorFrom, contactDetailReadSchema as detailReadSchema, type ContactDetailEditor, type ContactDetailEditDraft } from "../../view-models/contact-detail-editor";
+import { isRelationshipEligibility, relationshipCommunicationEligibilityToView } from "../../view-models/contact-communication";
 
 const detailFont = Platform.select({ web: '-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif', ios: "System", default: "sans-serif" });
 const recomputeReadSchema = z.discriminatedUnion("state", [
@@ -97,6 +99,11 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
     () => false,
     { scopeKey: scopeKey ?? actorId }
   );
+  const eligibilityState = useApiResource<unknown>(
+    relationshipCommunicationEligibilityPath(contactId),
+    () => false,
+    { scopeKey: scopeKey ?? actorId, cachePolicy: "network-only" }
+  );
   const connectionId =
     relationshipConnectionIdForContact(
       state.kind === "success" || state.kind === "empty" ? state.data : null,
@@ -140,6 +147,7 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
   const refreshing =
     state.refreshing ||
     connectionsState.refreshing ||
+    eligibilityState.refreshing ||
     relationshipValueState.refreshing ||
     relationshipValuePending;
 
@@ -162,6 +170,7 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
     setRelationshipValueOverride(null);
     state.refresh();
     connectionsState.refresh();
+    eligibilityState.refresh();
     relationshipValueState.refresh();
   }
 
@@ -274,6 +283,7 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
           client={client}
           contactId={contactId}
           data={detailData}
+          eligibilityState={eligibilityState}
           isScopeCurrent={isCurrent}
           onScrollTo={y => scrollRef.current?.scrollTo({ y: bodyTop.current + y, animated: true })}
           onNotesRefresh={state.refresh}
@@ -293,6 +303,7 @@ function ContactDetailCard({
   client,
   contactId,
   data,
+  eligibilityState,
   isScopeCurrent,
   onScrollTo,
   onNotesRefresh,
@@ -305,6 +316,7 @@ function ContactDetailCard({
   client: OrbitApiClient;
   contactId: string;
   data: unknown;
+  eligibilityState: ApiResourceState<unknown>;
   isScopeCurrent: () => boolean;
   onScrollTo: (y: number) => void;
   onNotesRefresh: () => void;
@@ -336,6 +348,7 @@ function ContactDetailCard({
         sourceLabel={contact.sourceLabel}
         toneStyle={toneStyle}
       />
+      <ContactCommunicationStatus contactId={contactId} state={eligibilityState} />
       <NextStepCard
         action={contact.nextAction}
         onPress={() => { if (isScopeCurrent()) router.push(inboxHref); }}
@@ -359,6 +372,36 @@ function ContactDetailCard({
         />
       </DisclosureSection>
     </>
+  );
+}
+
+function ContactCommunicationStatus({ contactId, state }: { contactId: string; state: ApiResourceState<unknown> }) {
+  const { styles } = useStyles();
+  const router = useRouter();
+  const data = state.kind === "success" || state.kind === "empty" ? state.data : null;
+  if (state.kind === "loading") {
+    return <View style={styles.nextStepCard}><Text style={styles.bodyText}>正在验证聊天资格…</Text></View>;
+  }
+  if (!isRelationshipEligibility(data) || data.contactId !== contactId) {
+    return <View style={styles.nextStepCard}><Text style={styles.bodyText}>聊天资格暂时无法确认，当前不能发送。</Text></View>;
+  }
+  const view = relationshipCommunicationEligibilityToView(data);
+  return (
+    <View style={styles.nextStepCard}>
+      <View style={{ flex: 1, gap: spacing.xs }}>
+        <Text style={styles.sectionTitle}>聊天资格</Text>
+        <Text style={styles.bodyText}>{view.statusLabel}{view.remoteName ? ` · ${view.remoteName}` : ""}</Text>
+      </View>
+      {view.canSend ? (
+        <Pressable accessibilityRole="button" onPress={() => router.push(`/chat/${encodeURIComponent(view.conversationId)}` as Href)} style={styles.secondaryActionButton}>
+          <Text style={styles.secondaryActionText}>打开关系对话</Text>
+        </Pressable>
+      ) : view.canInvite ? (
+        <Pressable accessibilityRole="button" onPress={() => router.push("/contacts/intros" as Href)} style={styles.secondaryActionButton}>
+          <Text style={styles.secondaryActionText}>创建邀请链接</Text>
+        </Pressable>
+      ) : null}
+    </View>
   );
 }
 
