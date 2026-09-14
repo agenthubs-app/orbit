@@ -22,6 +22,8 @@ Service factory 提供 profile、document extraction 和 signal review queue ser
 
 本人资料与联系人共用 `shared/domain/industries.ts` 的一级／二级目录，但各自保持原有服务和权限边界。字段为 `primaryIndustryId`、`secondaryIndustryId`；旧 `industry` 原文不被覆盖，显示标签按 ID 派生。
 
+资料页的服务结果、页面组合模型和展示适配器都保留这两个可选 ID。缺少 ID 的旧资料仍显示原行业文字，不自动推断新分类；这避免了数据库已保存、页面投影却丢字段的问题。
+
 联系人详情的 HTTP PATCH 已接通两个 ID：新选择提交完整父子对，切换一级清空旧子项，明确错配在任何附带备注／标签写入前拒绝。旧客户端省略两个字段时保留选择；只改一级时由存储层清除不再适用的二级。Web 和 App 都检查保存回执的两个 ID，失败保留草稿，重新打开后读取保存值。此接线不表示真实同记录跨端或原生操作已验收。
 
 ## Mock 行为

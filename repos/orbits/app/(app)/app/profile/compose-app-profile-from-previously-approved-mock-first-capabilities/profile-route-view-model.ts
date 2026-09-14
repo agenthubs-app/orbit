@@ -85,6 +85,8 @@ export interface AppProfileSuccessViewModel {
     | "handles"
     | "homeMarket"
     | "industry"
+    | "primaryIndustryId"
+    | "secondaryIndustryId"
     | "offering"
     | "organization"
     | "preferredFollowUpWindow"
@@ -435,6 +437,8 @@ function successViewModel(input: {
       headline: profile.headline,
       homeMarket: profile.homeMarket,
       industry: profile.industry,
+      primaryIndustryId: profile.primaryIndustryId,
+      secondaryIndustryId: profile.secondaryIndustryId,
       offering: profile.offering,
       organization: profile.organization,
       preferredFollowUpWindow: profile.preferredFollowUpWindow,

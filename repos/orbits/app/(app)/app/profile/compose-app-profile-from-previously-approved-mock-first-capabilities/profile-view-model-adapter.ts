@@ -38,6 +38,8 @@ export function profileRouteToOrbitProfileViewModel(
       fullName: profile.displayName,
       headline: profile.headline,
       industry: profile.industry ?? profile.homeMarket,
+      primaryIndustryId: profile.primaryIndustryId,
+      secondaryIndustryId: profile.secondaryIndustryId,
       intro: profile.relationshipGoal,
       lineId: profile.handles?.lineId ?? "",
       offering,

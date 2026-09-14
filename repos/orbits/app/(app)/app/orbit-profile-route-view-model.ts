@@ -1,3 +1,5 @@
+import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../shared/contract/industries";
+
 export interface OrbitProfileView {
   bio: string;
   company: string;
@@ -5,6 +7,8 @@ export interface OrbitProfileView {
   fullName: string;
   headline: string;
   industry: string;
+  primaryIndustryId?: IndustryIdCode | null;
+  secondaryIndustryId?: SecondaryIndustryIdCode | null;
   intro: string;
   lineId: string;
   offering: string[];
