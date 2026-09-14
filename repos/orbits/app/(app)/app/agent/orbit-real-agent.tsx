@@ -5,6 +5,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { aiSessionOrganizationSchema, aiSessionOriginSchema, reliableAiSendInputSchema, reliableAiSendReceiptSchema } from "../../../../shared/api-schema/ai-sessions";
 import type {
+  AiSessionOriginInputContract,
   AiSessionGroupContract,
   AiSessionOrganizationContract,
   ReliableAiSendInputContract,
@@ -21,7 +22,7 @@ import type {
 } from "../orbit-agent-route-view-model";
 import { AccountTopNav } from "../orbit-account-shell";
 import { useOrbitAskTarget } from "../orbit-global-ask/orbit-ask-context";
-import { takePendingAsk } from "../orbit-global-ask/orbit-ask-draft";
+import { takeAgentPrefill, takePendingAsk, type OrbitAgentPrefill } from "../orbit-global-ask/orbit-ask-draft";
 import { eventCoverPhoto } from "../orbit-event-cover-photo";
 import { EventCover } from "../events/orbit-event-cover";
 import { useOrbitLanguage } from "../orbit-language-context";
@@ -2531,6 +2532,7 @@ export function OrbitRealAgent({
   const { language, preserveHref, t } = useOrbitLanguage();
   // dashboard ⇄ 对话页：有消息（或点了「新对话」）即进入对话页，返回键回 dashboard。
   const [chatOpen, setChatOpen] = useState(false);
+  const [agentPrefill, setAgentPrefill] = useState<OrbitAgentPrefill | null>(null);
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const taskSuggestions = useAgentTaskSuggestions((original, next) => {
     // Object identity confines a delayed response to its original message.
@@ -2707,6 +2709,7 @@ export function OrbitRealAgent({
   const ask = useCallback(async (
     query: string,
     retryAssistantIndex?: number,
+    originOverride?: AiSessionOriginInputContract,
   ) => {
     const locale = languageRef.current === "zh" ? "zh" : "en";
     const failureText =
@@ -2752,7 +2755,7 @@ export function OrbitRealAgent({
         ...(existingSession
           ? {}
           : {
-              origin: {
+              origin: originOverride ?? {
                 entryClient: "web",
                 entryPointId: "ai.new_chat",
                 initialGroupId: initialGroupIdRef.current,
@@ -3052,7 +3055,9 @@ export function OrbitRealAgent({
         setActiveSessionId(null);
         activeSessionIdRef.current = null;
         void ask(query);
+        return;
       }
+      setAgentPrefill(takeAgentPrefill());
     };
 
     void hydrateHistory();
@@ -3592,9 +3597,15 @@ export function OrbitRealAgent({
   ) : home ? (
     <OrbitAgentDashboard
       home={home}
+      initialBriefText={agentPrefill?.query}
       language={language}
       navigate={navigate}
       onAsk={ask}
+      onBriefAsk={agentPrefill ? (query) => {
+        const origin = agentPrefill.origin;
+        setAgentPrefill(null);
+        void ask(query, undefined, origin);
+      } : undefined}
       registrationAvailabilityByEventId={registrationAvailabilityByEventId}
       t={t}
     />

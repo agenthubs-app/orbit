@@ -88,21 +88,25 @@ function appointmentDate(slot: ConfirmedSlot | null): Date | null {
 
 export function OrbitAgentDashboard({
   home,
+  initialBriefText = "",
   language,
   navigate,
   onAsk,
+  onBriefAsk,
   registrationAvailabilityByEventId,
   t,
 }: {
   home: OrbitHomeViewModel;
+  initialBriefText?: string;
   language: OrbitLanguage;
   navigate: (href: string) => void;
   onAsk: (query: string) => void;
+  onBriefAsk?: (query: string) => void;
   registrationAvailabilityByEventId: Readonly<Record<string, EventRegistrationAvailability>>;
   t: Translate;
 }) {
   const [appointments, setAppointments] = useState<AppointmentView[]>([]);
-  const [briefText, setBriefText] = useState("");
+  const [briefText, setBriefText] = useState(initialBriefText);
   const [showEmptyAccountDemo, setShowEmptyAccountDemo] = useState(false);
 
   useEffect(() => {
@@ -117,6 +121,10 @@ export function OrbitAgentDashboard({
       });
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    if (initialBriefText) setBriefText((current) => current || initialBriefText);
+  }, [initialBriefText]);
 
   const now = new Date();
   const locale = language === "en" ? "en-US" : "zh-CN";
@@ -170,7 +178,7 @@ export function OrbitAgentDashboard({
     const value = briefText.trim();
     if (!value) return;
     setBriefText("");
-    onAsk(value);
+    (onBriefAsk ?? onAsk)(value);
   };
 
   const appointmentStart = appointmentDate(upcomingAppointment?.confirmed ?? null);

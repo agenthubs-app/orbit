@@ -26,6 +26,51 @@ test("analysis uses aggregate totals, not the loaded contact sample", async () =
   assert.deepEqual(view.metrics, { contacts: 78, newContacts: 13, highValue: 12, pendingFollowups: 4, dormant: 5 });
 });
 
+test("persisted analysis keeps its own generated time and version instead of the response assembly time", async () => {
+  const data = await payload();
+  const currentVersion = "a".repeat(64);
+  const reportVersion = "b".repeat(64);
+  data.generatedAt = "2026-09-15T15:00:00.000Z";
+  data.analysis = {
+    current: { analysisVersion: "contacts.analysis@1", sourceDataVersion: currentVersion },
+    report: {
+      analysisVersion: "contacts.analysis@1",
+      body: "东京制造业联系人覆盖不足。",
+      generatedAt: "2026-09-14T08:30:00.000Z",
+      messageId: "message:analysis",
+      sessionId: "session:analysis",
+      sourceDataVersion: reportVersion,
+    },
+    stale: true,
+  };
+  const view = contactsAnalysisToView(data, "zh");
+  assert.equal(view.state, "ready");
+  if (view.state !== "ready" || view.analysis.state !== "ready") throw new Error("Missing analysis report");
+  assert.deepEqual(view.analysis.current, { analysisVersion: "contacts.analysis@1", sourceDataVersion: currentVersion });
+  assert.equal(view.analysis.report?.generatedAt, "2026-09-14T08:30:00.000Z");
+  assert.equal(view.analysis.report?.body, "东京制造业联系人覆盖不足。");
+  assert.equal(view.analysis.stale, true);
+});
+
+test("missing analysis is unavailable while an available provider can truthfully report no prior run", async () => {
+  const data = await payload();
+  data.analysis = undefined;
+  let view = contactsAnalysisToView(data, "zh");
+  assert.equal(view.state, "ready");
+  if (view.state !== "ready") return;
+  assert.deepEqual(view.analysis, { state: "unavailable" });
+
+  data.analysis = {
+    current: { analysisVersion: "contacts.analysis@1", sourceDataVersion: "c".repeat(64) },
+    report: null,
+    stale: false,
+  };
+  view = contactsAnalysisToView(data, "zh");
+  if (view.state !== "ready" || view.analysis.state !== "ready") throw new Error("Missing current analysis version");
+  assert.equal(view.analysis.report, null);
+  assert.equal(view.analysis.stale, false);
+});
+
 test("missing, pending and empty sections are distinct, without synthetic zero scores", async () => {
   const data = await payload();
   data.gaps = null;

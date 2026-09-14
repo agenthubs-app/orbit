@@ -168,14 +168,23 @@ async function mountPage(
     artifacts: [],
   },
   restoredSession?: Record<string, unknown>,
+  analysisPrefill?: { query: string; origin: Record<string, unknown>; returnTo: string },
 ) {
   const previous = Object.getOwnPropertyDescriptor(globalThis, "window");
   const previousDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
   Object.defineProperty(globalThis, "document", { configurable: true, value: { addEventListener() {}, removeEventListener() {} } });
-  const storage = { getItem: () => null, setItem() {}, removeItem() {} };
+  const localValues = new Map<string, string>();
+  const sessionValues = new Map<string, string>();
+  if (analysisPrefill) sessionValues.set("orbit.agent.prefill", JSON.stringify(analysisPrefill));
+  const storageFor = (values: Map<string, string>) => ({
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => { values.set(key, value); },
+    removeItem: (key: string) => { values.delete(key); },
+  });
   Object.defineProperty(globalThis, "window", { configurable: true, value: {
-    location: { search: restoredSession ? `?session=${encodeURIComponent(String(restoredSession.id))}` : "?q=准备会面", origin: "https://orbit.test" }, history: { pushState() {} },
-    localStorage: storage, sessionStorage: storage, addEventListener() {}, removeEventListener() {},
+    location: { search: analysisPrefill ? "" : restoredSession ? `?session=${encodeURIComponent(String(restoredSession.id))}` : "?q=准备会面", origin: "https://orbit.test" }, history: { pushState() {} },
+    localStorage: storageFor(localValues), sessionStorage: storageFor(sessionValues), addEventListener() {}, removeEventListener() {},
+    matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
     setInterval, clearInterval, setTimeout, clearTimeout,
   } });
   let root: ReactTestRenderer | undefined;
@@ -242,7 +251,8 @@ async function mountPage(
     }
     return Response.json({ success: true, data: {} });
   });
-  await act(async () => { root = create(<OrbitRealAgent viewModel={createOrbitAgentStarterViewModel()} />); });
+  const home = analysisPrefill ? { account: { fullName: "本人", headline: "", initial: "本" }, events: [], stats: { events: 0, people: 1, inProgress: 0 } } : undefined;
+  await act(async () => { root = create(<OrbitRealAgent home={home} viewModel={createOrbitAgentStarterViewModel()} />); });
   return { root: root!, persisted, requests, organizationMutations, conversationRequests, pendingSaves, respond: (response: Response) => respond(response) };
 }
 
@@ -277,6 +287,37 @@ test("Web first send uses the reliable protocol and records a controlled origin"
     kind: "manual",
     template: null,
   });
+});
+
+test("contacts analysis opens as an editable draft and sends its structured origin only after submit", async (t) => {
+  const sourceDataVersion = "a".repeat(64);
+  const origin = {
+    entryClient: "web",
+    entryPointId: "contacts.analysis",
+    initialGroupId: null,
+    kind: "structured",
+    sourceDataVersion,
+    template: { id: "contacts.analysis", version: 1 },
+  };
+  const { root, conversationRequests } = await mountPage(t, false, undefined, undefined, {
+    origin,
+    query: "请根据我的关系目标和当前人脉数据生成分析报告。",
+    returnTo: "/app/contacts/dashboard",
+  });
+
+  assert.equal(conversationRequests.length, 0, "opening a prefill must not generate");
+  const inputs = root.root.findAllByProps({ "aria-label": "向 iOrbit 提问" });
+  assert.equal(inputs.length, 2);
+  assert.ok(inputs.every((input) => input.props.value === "请根据我的关系目标和当前人脉数据生成分析报告。"));
+  const input = inputs[0];
+  await act(async () => { input.props.onChange({ target: { value: "请重点分析我在东京制造业的人脉缺口。" } }); });
+  await act(async () => {
+    root.root.findAllByProps({ className: "glass brief-input" })[0].props.onSubmit({ preventDefault() {} });
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  });
+  assert.equal(conversationRequests.length, 1);
+  assert.equal(conversationRequests[0]?.message, "请重点分析我在东京制造业的人脉缺口。");
+  assert.deepEqual(conversationRequests[0]?.origin, origin);
 });
 
 test("Web chat started from a group records the origin and persists group membership after the first reply", async (t) => {

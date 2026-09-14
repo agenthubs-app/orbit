@@ -7,6 +7,7 @@ import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../../orbit-layout-constants";
 import { CrmSidebar } from "../orbit-crm-sidebar";
 import { AnalysisGoalEditor } from "./analysis-goal-editor";
 import { contactsAnalysisToView, type AnalysisDimension, type ContactsAnalysisView } from "./contacts-analysis-view-model";
+import { stashAgentPrefill } from "../../orbit-global-ask/orbit-ask-draft";
 
 export type AnalysisTab = "overview" | "structure" | "opportunities";
 const colors = ["var(--accent)", "var(--sky)", "var(--live)", "#a790ce", "#d49b64", "#809b96"];
@@ -62,6 +63,26 @@ export function ContactsAnalysisContent({ initialView, initialTab = "overview" }
   const pending = useRef(false);
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  const requestAnalysis = () => {
+    if (view.state !== "ready" || view.analysis.state !== "ready" || typeof window === "undefined") return;
+    stashAgentPrefill({
+      origin: {
+        entryClient: "web",
+        entryPointId: "contacts.analysis",
+        initialGroupId: null,
+        kind: "structured",
+        sourceDataVersion: view.analysis.current.sourceDataVersion,
+        template: { id: "contacts.analysis", version: 1 },
+      },
+      query: t({
+        zh: "请根据我的关系目标和当前人脉数据生成分析报告，指出结构缺口和最值得推进的下一步。",
+        en: "Analyze my current network against my relationship goal, including structural gaps and the next steps worth prioritizing.",
+        ja: "現在の人脈を関係づくりの目標に照らして分析し、構成上の不足と優先すべき次の行動をまとめてください。",
+      }),
+      returnTo: "/app/contacts/dashboard",
+    });
+    window.location.href = preserveHref("/app/agent");
+  };
   const refresh = async (recompute = false) => {
     if (pending.current) return;
     pending.current = true; setBusy(true); setError("");
@@ -102,11 +123,32 @@ export function ContactsAnalysisContent({ initialView, initialTab = "overview" }
     {error ? <div className="analysis-notice" role="alert">{error}</div> : null}
     {view.state !== "ready" ? <section className="card analysis-card">{unavailable("analysis", view.state)}</section> : <>
       <section className="card analysis-card" style={{ marginBottom: 18 }}><div className="analysis-head" style={{ marginBottom: 0 }}><div><div className="eyebrow">{t({ zh: "当前关系目标", en: "Relationship goal", ja: "現在の目標" })}</div>{"data" in view.goal ? <p>{view.goal.data.text || t({ zh: "尚未设置关系目标", en: "No relationship goal yet", ja: "目標はまだ設定されていません" })}</p> : unavailable("goal", view.goal.state)}</div>{"data" in view.goal && view.goal.data.canEdit ? <button className="btn btn-ghost btn-sm" data-analysis-goal-edit disabled={busy} onClick={() => setEditingGoal(true)}>{t({ zh: "编辑目标", en: "Edit goal", ja: "目標を編集" })}</button> : <a className="btn btn-ghost btn-sm" href={preserveHref("/app/profile")}>{t({ zh: "完善个人资料", en: "Complete profile", ja: "プロフィールを入力" })}</a>}</div></section>
-      {goalSaved ? <p role="status" className="analysis-muted">{t({ zh: "目标已保存，现有建议仍是上次分析。请在机会页重算。", en: "Goal saved. Suggestions still reflect the previous analysis. Recompute them in Opportunities.", ja: "目標を保存しました。提案は前回の分析結果です。「機会」で再計算してください。" })}</p> : null}
+      {goalSaved ? <p role="status" className="analysis-muted">{t({ zh: "目标已保存。已有报告仍保留上次结果；需要时可交给 iOrbit 重新分析。", en: "Goal saved. The existing report still reflects the previous run; ask iOrbit to analyze again when needed.", ja: "目標を保存しました。既存のレポートは前回の結果のままです。必要に応じて iOrbit に再分析を依頼してください。" })}</p> : null}
       {editingGoal && "data" in view.goal && view.goal.data.id ? <AnalysisGoalEditor key={view.goal.data.id} profileId={view.goal.data.id} initialGoal={view.goal.data.text} initialUpdatedAt={view.goal.data.updatedAt} onClose={() => setEditingGoal(false)} onSaved={(text, updatedAt) => {
         setView((current) => current.state === "ready" && "data" in current.goal ? { ...current, goal: { ...current.goal, data: { ...current.goal.data, text, updatedAt } } } : current);
         setEditingGoal(false); setGoalSaved(true);
       }} /> : null}
+      <section className="card analysis-card" data-analysis-report style={{ marginBottom: 18 }}>
+        <div className="analysis-head" style={{ alignItems: "flex-start", marginBottom: 0 }}>
+          <div style={{ minWidth: 0 }}>
+            <h2>{t({ zh: "iOrbit 人脉报告", en: "iOrbit network report", ja: "iOrbit 人脈レポート" })}</h2>
+            {view.analysis.state === "unavailable" ? unavailable("stored-analysis", "unavailable") : <>
+              {view.analysis.report ? <>
+                <p style={{ lineHeight: 1.75, whiteSpace: "pre-wrap" }}>{view.analysis.report.body}</p>
+                <p className="analysis-muted">
+                  {t({ zh: "生成于", en: "Generated", ja: "生成日時" })}: <time dateTime={view.analysis.report.generatedAt}>{view.analysis.report.generatedAt.replace("T", " ").slice(0, 19)} UTC</time>
+                  {" · "}{t({ zh: "分析版本", en: "Analysis version", ja: "分析バージョン" })}: {view.analysis.report.analysisVersion}
+                </p>
+                {view.analysis.stale ? <p className="analysis-notice" data-analysis-stale>{t({ zh: "人脉数据已变化，这份报告需要重新分析。", en: "Your network data has changed. This report needs a new analysis.", ja: "人脈データが更新されています。このレポートは再分析が必要です。" })}</p> : null}
+              </> : <p className="analysis-muted" data-analysis-report-empty>{t({ zh: "尚未生成过人脉报告。", en: "No network report has been generated yet.", ja: "人脈レポートはまだ生成されていません。" })}</p>}
+              <p className="analysis-muted">{t({ zh: "当前版本", en: "Current version", ja: "現在のバージョン" })}: {view.analysis.current.analysisVersion}</p>
+            </>}
+          </div>
+          {view.analysis.state === "ready" ? <button className="btn btn-primary btn-sm" data-analysis-request onClick={requestAnalysis} type="button">
+            {view.analysis.report ? t({ zh: "交给 iOrbit 重新分析", en: "Analyze again with iOrbit", ja: "iOrbit で再分析" }) : t({ zh: "交给 iOrbit 分析", en: "Analyze with iOrbit", ja: "iOrbit で分析" })}
+          </button> : null}
+        </div>
+      </section>
       <div className="analysis-tabs" role="tablist" aria-label={t({ zh: "人脉分析视图", en: "Analysis views", ja: "分析ビュー" })}>{tabs.map(([id, label], index) => <button key={id} role="tab" id={`analysis-tab-${id}`} aria-controls={`analysis-panel-${id}`} aria-selected={tab === id} tabIndex={tab === id ? 0 : -1} className={`btn ${tab === id ? "btn-primary" : "btn-ghost"}`} data-analysis-tab={id} onClick={() => setTab(id)} onKeyDown={(event) => { if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return; event.preventDefault(); const next = event.key === "Home" ? 0 : event.key === "End" ? 2 : (index + (event.key === "ArrowRight" ? 1 : 2)) % 3; setTab(tabs[next][0]); document.getElementById(`analysis-tab-${tabs[next][0]}`)?.focus(); }}>{label}</button>)}</div>
       {view.metrics.contacts === 0 ? <p className="analysis-notice">{t({ zh: "还没有联系人，添加后可查看人脉结构。", en: "Add your first contact to start exploring your network.", ja: "連絡先を追加すると、人脈の構成を確認できます。" })} <a href={preserveHref("/app/contacts/new")}>{t({ zh: "添加联系人", en: "Add contact", ja: "連絡先を追加" })}</a></p> : null}
       <div role="tabpanel" id={`analysis-panel-${tab}`} aria-labelledby={`analysis-tab-${tab}`}>
@@ -127,7 +169,6 @@ export function ContactsAnalysisContent({ initialView, initialTab = "overview" }
           })()}</section><section className="card analysis-card"><h2>{t({ zh: "关系健康", en: "Relationship health", ja: "関係の健全性" })}</h2><p className="analysis-muted">{view.structure.data.summary}</p>{view.structure.data.health.map((item) => <div className="analysis-notice" key={item.id}><strong>{item.id === "strong" ? t({ zh: "强关系", en: "Strong", ja: "強い関係" }) : item.id === "warm" ? t({ zh: "中关系", en: "Warm", ja: "中程度の関係" }) : t({ zh: "弱关系", en: "Weak", ja: "弱い関係" })}</strong><p>{item.count} · {item.percentage}%</p><meter min={0} max={100} value={item.percentage} style={{ width: "100%" }} /><p className="analysis-muted">{t({ zh: "跟进风险", en: "Follow-up risk", ja: "フォローアップのリスク" })}: {item.risk === "high" ? t({ zh: "高", en: "High", ja: "高" }) : item.risk === "moderate" ? t({ zh: "中", en: "Moderate", ja: "中" }) : t({ zh: "低", en: "Low", ja: "低" })}</p></div>)}</section></div> : unavailable("structure", view.structure.state)}</> : null}
         {tab === "opportunities" ? <div data-analysis-opportunities><div className="analysis-head"><h2 className="h-section">{t({ zh: "下一步行动", en: "Next actions", ja: "次の行動" })}</h2><button className="btn btn-ghost btn-sm" data-analysis-recompute disabled={busy} onClick={() => refresh(true)}>{t({ zh: "重算机会", en: "Recompute opportunities", ja: "機会を再計算" })}</button></div><div className="analysis-grid"><div>{"data" in view.opportunities ? <><p className="analysis-muted">{view.opportunities.data.summary}</p>{view.opportunities.data.actions.map((action) => <article className="card analysis-card" key={action.id} style={{ marginBottom: 14 }}><div className="eyebrow">{action.contactName} · {action.dueLabel}</div><h3>{action.title}</h3><p>{action.judgment}</p><h4>{t({ zh: "依据", en: "Evidence", ja: "根拠" })}</h4>{action.evidence.length ? <ul>{action.evidence.map((item, i) => <li key={i}>{item}</li>)}</ul> : <p className="analysis-muted" data-analysis-evidence-unavailable>{t({ zh: "尚无可读依据，请打开联系人核对来源后再行动。", en: "Readable evidence is unavailable. Check the contact’s sources before acting.", ja: "参照できる根拠がありません。行動する前に連絡先の情報源を確認してください。" })}</p>}{action.steps.length ? <><h4>{t({ zh: "建议步骤", en: "Suggested steps", ja: "推奨する手順" })}</h4><ol>{action.steps.map((item, i) => <li key={i}>{item}</li>)}</ol></> : null}<div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}><a className="btn btn-primary btn-sm" href={preserveHref(action.primary.href)}>{action.primary.label}</a>{action.secondary ? <a className="btn btn-ghost btn-sm" href={preserveHref(action.secondary.href)}>{action.secondary.label}</a> : null}</div></article>)}{view.opportunities.data.actions.length === 0 ? <p className="analysis-notice">{t({ zh: "当前没有优先行动建议", en: "No priority actions right now", ja: "現在、優先する行動はありません" })}</p> : null}{view.opportunities.data.dormant.map((item) => <article className="card analysis-card" key={item.id} style={{ marginTop: 14 }}><h3><a href={preserveHref(item.href)}>{item.name}</a></h3><p>{item.reason}</p><p className="analysis-muted">{item.action}</p></article>)}</> : unavailable("opportunities", view.opportunities.state)}</div>{coverage}</div></div> : null}
       </div>
-      <p className="analysis-muted" style={{ marginTop: 22 }}>{t({ zh: "数据生成时间", en: "Data generated", ja: "データ生成日時" })}: <time dateTime={view.generatedAt}>{view.generatedAt.replace("T", " ").slice(0, 19)} UTC</time></p>
     </>}
   </div>;
 }

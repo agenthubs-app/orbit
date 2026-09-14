@@ -115,6 +115,58 @@ test("unavailable coverage is visible, and failed refresh retains the previous d
   assert.ok(root.root.findByProps({ "data-analysis-metrics": true }));
 });
 
+test("stored analysis displays its persisted timestamp, version and stale state", async () => {
+  const data = await fixture();
+  data.generatedAt = "2026-09-15T15:00:00.000Z";
+  data.analysis = {
+    current: { analysisVersion: "contacts.analysis@1", sourceDataVersion: "a".repeat(64) },
+    report: {
+      analysisVersion: "contacts.analysis@1",
+      body: "东京制造业联系人覆盖不足。",
+      generatedAt: "2026-09-14T08:30:00.000Z",
+      messageId: "message:analysis",
+      sessionId: "session:analysis",
+      sourceDataVersion: "b".repeat(64),
+    },
+    stale: true,
+  };
+  const html = renderToStaticMarkup(<ContactsAnalysisContent initialView={contactsAnalysisToView(data, "zh")} />);
+  assert.match(html, /东京制造业联系人覆盖不足/);
+  assert.match(html, /2026-09-14 08:30:00/);
+  assert.match(html, /contacts\.analysis@1/);
+  assert.match(html, /data-analysis-stale/);
+  assert.doesNotMatch(html, /2026-09-15 15:00:00/);
+});
+
+test("explicit analysis request stages an editable iOrbit prefill without a generation request", async (t) => {
+  const data = await fixture();
+  data.analysis = {
+    current: { analysisVersion: "contacts.analysis@1", sourceDataVersion: "d".repeat(64) },
+    report: null,
+    stale: false,
+  };
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const stored = new Map<string, string>();
+  const location = { href: "https://orbit.test/app/contacts/dashboard" };
+  Object.defineProperty(globalThis, "window", { configurable: true, value: {
+    location,
+    sessionStorage: { getItem: (key: string) => stored.get(key) ?? null, setItem: (key: string, value: string) => stored.set(key, value), removeItem: (key: string) => stored.delete(key) },
+  } });
+  let fetches = 0;
+  t.mock.method(globalThis, "fetch", async () => { fetches += 1; return Response.json({ success: false }); });
+  let root!: ReturnType<typeof create>;
+  await act(async () => { root = create(<ContactsAnalysisContent initialView={contactsAnalysisToView(data, "zh")} />); });
+  t.after(() => { act(() => root.unmount()); if (previousWindow) Object.defineProperty(globalThis, "window", previousWindow); else Reflect.deleteProperty(globalThis, "window"); });
+
+  await act(async () => { root.root.findByProps({ "data-analysis-request": true }).props.onClick(); });
+  assert.equal(fetches, 0);
+  assert.equal(location.href, "/app/agent");
+  const prefill = JSON.parse(stored.get("orbit.agent.prefill") ?? "null");
+  assert.equal(prefill.origin.sourceDataVersion, "d".repeat(64));
+  assert.equal(prefill.origin.entryPointId, "contacts.analysis");
+  assert.match(prefill.query, /分析报告/);
+});
+
 test("missing readable opportunity evidence is disclosed without inventing a source", async () => {
   const data = await fixture();
   assert.ok(data.opportunities);
