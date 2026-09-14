@@ -204,7 +204,7 @@ test("Orbit Agent chat session deletion is idempotent", async () => {
   });
 
   assert.equal(await provider.deleteSession("delete-once-session"), true);
-  assert.equal(await provider.deleteSession("delete-once-session"), false);
+  assert.equal(await provider.deleteSession("delete-once-session"), true);
   assert.equal(await provider.getSession("delete-once-session"), null);
   assert.deepEqual(await provider.listSessions(), []);
 });

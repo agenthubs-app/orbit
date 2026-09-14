@@ -51,6 +51,46 @@ export type StoredAiSessionOriginContract =
   | AiSessionOriginContract
   | LegacyAiSessionOriginContract;
 
+export interface AiSessionOrganizationContract {
+  customTitle: string | null;
+  groupId: string | null;
+  pinned: boolean;
+  revision: number;
+}
+
+export interface AiSessionGroupContract {
+  createdAt: string;
+  id: string;
+  name: string;
+  revision: number;
+  updatedAt: string;
+}
+
+export interface AiSessionOrganizationMutationContract {
+  expectedRevision: number;
+  mutationId: string;
+  patch: Partial<
+    Pick<AiSessionOrganizationContract, "customTitle" | "groupId" | "pinned">
+  >;
+}
+
+export interface AiSessionGroupCreateContract {
+  id: string;
+  mutationId: string;
+  name: string;
+}
+
+export interface AiSessionGroupMutationContract {
+  expectedRevision: number;
+  mutationId: string;
+  name: string;
+}
+
+export interface AiSessionGroupDeleteContract {
+  expectedRevision: number;
+  mutationId: string;
+}
+
 export interface ReliableAiSendInputContract {
   clientMessageId: string;
   expectedMessageRevision: number;

@@ -49,6 +49,12 @@ export interface OrbitAgentChatSessionSnapshot {
   id: string;
   messageRevision?: number;
   messages: readonly OrbitAgentChatSessionMessage[];
+  organization?: {
+    customTitle: string | null;
+    groupId: string | null;
+    pinned: boolean;
+    revision: number;
+  };
   origin?: StoredAiSessionOriginContract | undefined;
   panel?: Record<string, unknown> | null;
   pinned?: boolean;
@@ -441,10 +447,11 @@ export function createStorageOrbitAgentChatSessionProvider({
       const deletedAt = new Date().toISOString();
       const activeSession = await store.getRecord({
         collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
+        includeDeleted: true,
         recordId: sessionId,
         workspaceId: actorWorkspaceId,
       });
-      const deletedSession = activeSession
+      const deletedSession = activeSession?.lifecycleState === "active"
         ? await store.deleteRecord({
             collectionName:
               ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
@@ -475,7 +482,7 @@ export function createStorageOrbitAgentChatSessionProvider({
         ),
       );
 
-      return Boolean(deletedSession);
+      return Boolean(activeSession ?? deletedSession);
     },
 
     async getSession(sessionId) {
@@ -493,7 +500,7 @@ export function createStorageOrbitAgentChatSessionProvider({
     async listSessions(options = {}) {
       const limit = Math.max(
         1,
-        Math.min(options.limit ?? DEFAULT_SESSION_LIST_LIMIT, 50),
+        Math.min(options.limit ?? DEFAULT_SESSION_LIST_LIMIT, 10_000),
       );
       const records = await store.listRecords({
         collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,

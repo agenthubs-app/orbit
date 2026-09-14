@@ -3,6 +3,11 @@ import { z } from "zod";
 import type {
   AiSessionOriginContract,
   AiSessionOriginInputContract,
+  AiSessionGroupCreateContract,
+  AiSessionGroupDeleteContract,
+  AiSessionGroupMutationContract,
+  AiSessionOrganizationContract,
+  AiSessionOrganizationMutationContract,
   AiSessionReferenceContract,
   LegacyAiSessionOriginContract,
   StoredAiSessionOriginContract,
@@ -67,6 +72,43 @@ export const aiSessionOriginSchema = z.union([
   recordedOriginSchema,
   legacyOriginSchema,
 ]) as unknown as z.ZodType<StoredAiSessionOriginContract>;
+
+export const aiSessionOrganizationSchema: z.ZodType<AiSessionOrganizationContract> =
+  z.object({
+    customTitle: z.string().trim().min(1).max(120).nullable(),
+    groupId: identifier.nullable(),
+    pinned: z.boolean(),
+    revision: z.number().int().nonnegative(),
+  }) as unknown as z.ZodType<AiSessionOrganizationContract>;
+
+export const aiSessionOrganizationMutationSchema: z.ZodType<AiSessionOrganizationMutationContract> =
+  z.object({
+    expectedRevision: z.number().int().nonnegative(),
+    mutationId: identifier,
+    patch: z
+      .object({
+        customTitle: z.string().trim().min(1).max(120).nullable().optional(),
+        groupId: identifier.nullable().optional(),
+        pinned: z.boolean().optional(),
+      })
+      .refine((patch) => Object.keys(patch).length > 0),
+  }) as unknown as z.ZodType<AiSessionOrganizationMutationContract>;
+
+export const aiSessionGroupCreateSchema: z.ZodType<AiSessionGroupCreateContract> =
+  z.object({ id: identifier, mutationId: identifier, name: z.string().trim().min(1).max(80) });
+
+export const aiSessionGroupMutationSchema: z.ZodType<AiSessionGroupMutationContract> =
+  z.object({
+    expectedRevision: z.number().int().nonnegative(),
+    mutationId: identifier,
+    name: z.string().trim().min(1).max(80),
+  });
+
+export const aiSessionGroupDeleteSchema: z.ZodType<AiSessionGroupDeleteContract> =
+  z.object({
+    expectedRevision: z.number().int().nonnegative(),
+    mutationId: identifier,
+  });
 
 export const reliableAiSendInputSchema: z.ZodType<ReliableAiSendInputContract> =
   z.object({

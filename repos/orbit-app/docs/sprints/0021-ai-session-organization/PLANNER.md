@@ -148,17 +148,17 @@ type SessionGroup = {
 
 ### Task 1 — 起源契约与首次持久化（SC-01／04／05）
 
-- [ ] 对齐 B3 实际协议、获批范围和新旧响应形状，登记基线／Planner 哈希及 run-01。
-- [ ] 新增 Web `tests/capabilities/ai-session-origin.test.ts`；扩展已有 `orbit-agent-chat-session-api.test.ts`、`orbit-agent-chat-session-live-store.test.ts`。预期失败：首轮只含用户消息也能保存 origin；后续改变 firstSentText 被拒绝；101 条以后首条仍保留；旧请求缺字段不清空。
-- [ ] 观察 RED 后实现共享 schema、首发送持久化及 provider 读写；同步 App，再扩展 `tests/ai-send-intent.test.ts` 和 `tests/ink-signal-ai-conversation.test.ts`，验证入口隔离和存储失败时模型调用为零。
-- [ ] 检查已有手动入口、首页建议和 Web 创建路径；模板未来消费者使用同一契约夹具，不提前做模板产品实现。验证后提交。
+- [x] 对齐 B3 实际协议、获批范围和新旧响应形状，登记基线／Planner 哈希及 run-01。
+- [x] 新增 Web `tests/capabilities/ai-session-origin.test.ts`；扩展已有 `orbit-agent-chat-session-api.test.ts`、`orbit-agent-chat-session-live-store.test.ts`。预期失败：首轮只含用户消息也能保存 origin；后续改变 firstSentText 被拒绝；101 条以后首条仍保留；旧请求缺字段不清空。
+- [x] 观察 RED 后实现共享 schema、首发送持久化及 provider 读写；同步 App，再扩展 `tests/ai-send-intent.test.ts` 和 `tests/ink-signal-ai-conversation.test.ts`，验证入口隔离和存储失败时模型调用为零。
+- [x] 检查已有手动入口、首页建议和 Web 创建路径；模板未来消费者使用同一契约夹具，不提前做模板产品实现。验证后提交。
 
 ### Task 2 — 组织 API 与存储原子性（SC-02／03／04）
 
-- [ ] 新增 Web `tests/capabilities/ai-session-organization-api.test.ts`、`ai-session-organization-store.test.ts`、`ai-session-organization-postgres.test.ts`。
-- [ ] RED 覆盖创建组、移组、元信息 patch、分页／搜索、双 actor、409、重复 mutationId；61 条会话删组无遗漏；晚到保存返回 410 而不复活；故障注入时事务整体回滚。
-- [ ] 在 feature 存储层复用事务设施，补 groups 路由与 sessions PATCH；保留旧 POST 的正确行为。测试同名组和无权限对象，不通过客户端过滤伪装隔离。
-- [ ] 隔离 PostgreSQL 验证和必要权限到位后才运行集成；缺失则该证据 blocked。相关检查后提交已验证部分。
+- [x] 新增 Web `tests/capabilities/ai-session-organization-api.test.ts`、`ai-session-organization-store.test.ts`、`ai-session-organization-postgres.test.ts`。
+- [x] RED 覆盖创建组、移组、元信息 patch、分页／搜索、双 actor、409、重复 mutationId；61 条会话删组无遗漏；晚到保存返回 410 而不复活；故障注入时事务整体回滚。
+- [x] 在 feature 存储层复用事务设施，补 groups 路由与 sessions PATCH；保留旧 POST 的正确行为。测试同名组和无权限对象，不通过客户端过滤伪装隔离。
+- [x] 隔离 PostgreSQL 验证和必要权限到位后才运行集成；缺失则该证据 blocked。相关检查后提交已验证部分。
 
 ### Task 3 — App 操作与 Web 消费（SC-01／02／03）
 
