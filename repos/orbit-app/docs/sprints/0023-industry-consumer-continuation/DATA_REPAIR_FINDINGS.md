@@ -18,6 +18,8 @@ App 的 `tests/profile-view-model.test.ts` 与 `tests/profile-manual-edit-view-m
 
 上述 App 名片／编辑夹具提交为 `805188a56`；`2d1add128` 继续补齐首页、资料解码和建议／抽取转换中的明确 AI 样本。后者先观察5条缺字段 RED，补源输入后六个完整相关文件51/51，App typecheck通过；不更改首页事件领域或空资料反例。
 
+`1adb805c7` 修复原白名单内 Contacts 推荐适配器的行业投影：同步／异步、普通／排序四条路径保留规范 ID、显式 null 和旧数据省略语义，不改排序和旧领域过滤。12个新路径用例中8个先因字段丢失失败，修复后推荐及夹具两个完整文件29/29。该版本 H 全量：App 2583 pass／0 fail／0 skip；Web 2964 pass／47 fail／168 skip，两端 typecheck exit0。与上一份全量日志逐项比较失败名称，没有新增或消失的失败。日志为 `build/harness-logs/sprint-0023-recommendation-{web,app}-full.log`。推荐投影尚待并入上述增量清单；不计作新的独立人物。
+
 ## 源数据与关联
 
 已解析现有 JSON，没有导入或运行生成器：
