@@ -114,6 +114,7 @@ function monthGridDateKeys(selectedDateKey: string): string[] {
 }
 
 export function ScheduleScreen() {
+  const router = useRouter();
   const { timeZone } = useOrbitTimeZone();
   const { colors } = useOrbitTheme();
   const tasksState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.tasks, () => false);
@@ -164,6 +165,7 @@ export function ScheduleScreen() {
         />
       }
       title="日程"
+      headerActions={<Pressable accessibilityRole="button" accessibilityLabel="新建个人日程" onPress={() => router.push("/schedule/personal/new" as Href)} style={{ minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" }}><Ionicons name="add" size={26} color={colors.accent} /></Pressable>}
     >
       {loading ? <LoadingState /> : null}
       {tasksState.kind === "offline" ? (

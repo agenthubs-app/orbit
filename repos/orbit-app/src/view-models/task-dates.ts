@@ -2,9 +2,9 @@ import type { TaskItemContract } from "../api/contract/tasks";
 import { taskDetailToView } from "./today-tasks";
 import { resolveLocalDateTime, validTimeZone } from "../time/date-time";
 
-export type TaskDateDraft = { plannedDate: string; dueDate: string; dueTime: string };
-export type TaskDatePatch = Pick<TaskItemContract, "plannedDate" | "dueAt">;
-type TaskDates = TaskDatePatch;
+export type TaskDateDraft = { plannedDate: string; dueDate: string; dueTime: string; location?: string };
+export type TaskDatePatch = { plannedDate?: string | null; dueAt?: string | null; location?: string | null };
+type TaskDates = Pick<TaskItemContract, "plannedDate" | "dueAt" | "location">;
 type TaskDateChange = { kind: "invalid"; message: string } | { kind: "unchanged" } | { kind: "ready"; patch: TaskDatePatch };
 
 function isLocalDate(value: string): boolean {
@@ -20,7 +20,7 @@ function isDateTime(value: unknown): value is string {
 }
 
 export function taskDateDraftFromView(view: TaskDates | null, timeZone = "Asia/Tokyo"): TaskDateDraft {
-  const draft = { plannedDate: view?.plannedDate ?? "", dueDate: "", dueTime: "" };
+  const draft = { plannedDate: view?.plannedDate ?? "", dueDate: "", dueTime: "", ...(view && "location" in view ? { location: view.location ?? "" } : {}) };
   if (!isDateTime(view?.dueAt)) return draft;
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(view.dueAt));
   const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(item => item.type === type)?.value ?? "";
@@ -32,15 +32,15 @@ export function buildTaskDatePatch(baseline: TaskDates, draft: TaskDateDraft, ti
   const plannedDate = draft.plannedDate.trim();
   const dueDate = draft.dueDate.trim();
   const dueTime = draft.dueTime.trim();
-  if (baseline.plannedDate && !plannedDate) return { kind: "invalid", message: "暂不支持清空已有安排日期，请保留或修改日期。" };
-  if (baseline.dueAt && !dueDate && !dueTime) return { kind: "invalid", message: "暂不支持清空已有截止时间，请保留或修改时间。" };
   if (plannedDate && !isLocalDate(plannedDate)) return { kind: "invalid", message: "请输入有效的安排日期，格式为 YYYY-MM-DD。" };
   if (Boolean(dueDate) !== Boolean(dueTime)) return { kind: "invalid", message: "截止日期和时间需要一起填写。不确定时间时，可只填写安排日期。" };
   if (dueDate && !isLocalDate(dueDate)) return { kind: "invalid", message: "请输入有效的截止日期，格式为 YYYY-MM-DD。" };
   if (dueTime && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(dueTime)) return { kind: "invalid", message: "截止时间请使用 24 小时制，格式为 HH:mm。" };
   const previous = taskDateDraftFromView(baseline, timeZone);
   const patch: TaskDatePatch = {};
-  if (plannedDate !== previous.plannedDate) patch.plannedDate = plannedDate;
+  if (plannedDate !== previous.plannedDate) patch.plannedDate = plannedDate || null;
+  if (baseline.dueAt && !dueDate && !dueTime) patch.dueAt = null;
+  if (draft.location !== undefined && draft.location.trim() !== (baseline.location ?? "")) patch.location = draft.location.trim() || null;
   // Do not overwrite seconds/offset when the minute-resolution editor is unchanged.
   if (dueDate && (dueDate !== previous.dueDate || dueTime !== previous.dueTime)) {
     const dueAt = resolveLocalDateTime(dueDate, dueTime, timeZone);
@@ -61,7 +61,10 @@ export function taskDateReceiptMatches(data: unknown, taskId: string, actorId: s
   if (raw.notes !== undefined && typeof raw.notes !== "string") return false;
   if (raw.plannedDate !== undefined && (typeof raw.plannedDate !== "string" || !isLocalDate(raw.plannedDate))) return false;
   if (raw.dueAt !== undefined && !isDateTime(raw.dueAt)) return false;
-  if (patch.plannedDate !== undefined && raw.plannedDate !== patch.plannedDate) return false;
-  if (patch.dueAt !== undefined && (!isDateTime(raw.dueAt) || Date.parse(raw.dueAt) !== Date.parse(patch.dueAt))) return false;
+  if (patch.plannedDate !== undefined && raw.plannedDate !== (patch.plannedDate ?? undefined)) return false;
+  if (patch.location !== undefined && raw.location !== (patch.location ?? undefined)) return false;
+  if (raw.location !== undefined && (typeof raw.location !== "string" || !raw.location.trim())) return false;
+  if (patch.dueAt === null && raw.dueAt !== undefined) return false;
+  if (patch.dueAt !== undefined && patch.dueAt !== null && (!isDateTime(raw.dueAt) || Date.parse(raw.dueAt) !== Date.parse(patch.dueAt))) return false;
   return taskDetailToView(data) !== null;
 }

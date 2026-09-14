@@ -1,4 +1,5 @@
 import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
+import { PersonalScheduleList } from "../schedule/PersonalScheduleList";
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -136,7 +137,7 @@ export function TasksScreen() {
                   {item.title}
                 </Text>
                 <Text style={styles.rowDetail}>
-                  {item.categoryLabel} · {item.dateLabel}
+                  {[item.categoryLabel, item.dateLabel, item.location].filter(Boolean).join(" · ")}
                 </Text>
               </Pressable>
               <Ionicons color={colors.text4} name="chevron-forward" size={17} />
@@ -146,6 +147,7 @@ export function TasksScreen() {
       ))}
       </View>
       {mutationError ? <Text accessibilityRole="alert" style={styles.errorText}>{mutationError}</Text> : null}
+      <PersonalScheduleList />
     </AppScreen>
   );
 }

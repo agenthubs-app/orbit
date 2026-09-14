@@ -197,3 +197,33 @@ test("terminal task actions cancel future reminder plans exactly once", async ()
     { actorId, taskId: deleted.task.id, reason: "deleted" },
   ]);
 });
+
+test("concurrent edits accept one version and keep its task and activity together", async () => {
+  const { service } = serviceWithStore();
+  const created = await createTask(service);
+  const common = { actorId, taskId: created.task.id, expectedUpdatedAt: created.task.updatedAt, now: "2026-08-29T02:01:00.000Z" };
+  const results = await Promise.allSettled([
+    service.update({ ...common, patch: { title: "First" }, idempotencyKey: "parallel:first" }),
+    service.update({ ...common, patch: { notes: "Second" }, idempotencyKey: "parallel:second" }),
+  ]);
+  assert.equal(results.filter(result => result.status === "fulfilled").length, 1);
+  assert.equal(results.filter(result => result.status === "rejected" && result.reason.code === "TASK_VERSION_CONFLICT").length, 1);
+  assert.equal((await service.history({ actorId })).length, 2);
+});
+
+test("mutation replay rejects a reused key with different content and retains the original receipt", async () => {
+  const { service } = serviceWithStore();
+  const created = await createTask(service);
+  const input = { actorId, taskId: created.task.id, expectedUpdatedAt: created.task.updatedAt, patch: { title: "First" }, idempotencyKey: "receipt:first", now: "2026-08-29T02:01:00.000Z" };
+  const first = await service.update(input);
+  await assert.rejects(service.update({ ...input, patch: { title: "Different" } }), (error: any) => error.code === "TASK_VERSION_CONFLICT");
+  await service.update({ ...input, expectedUpdatedAt: first.task.updatedAt, patch: { title: "Later" }, idempotencyKey: "receipt:later", now: "2026-08-29T02:02:00.000Z" });
+  assert.deepEqual(await service.update({ ...input, now: "2026-08-29T03:00:00.000Z" }), first);
+});
+
+test("same-clock mutations still advance the version token", async () => {
+  const { service } = serviceWithStore();
+  const created = await createTask(service);
+  const completed = await service.complete({ actorId, taskId: created.task.id, completedBy: actorId, completionSource: "user", idempotencyKey: "same-clock:complete", now });
+  assert.ok(Date.parse(completed.task.updatedAt) > Date.parse(created.task.updatedAt));
+});

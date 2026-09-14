@@ -94,6 +94,15 @@ export function createTasksClient(fetcher: typeof fetch = fetch) {
         patch: { title: normalized, ...(notes.trim() ? { notes: notes.trim() } : {}) },
       });
     },
+    updateSchedule: (baseline: TaskView, patch: { plannedDate?: string | null; dueAt?: string | null; location?: string | null }) => request(pathFor(baseline.id), data => {
+      const updated = single(data);
+      if (updated.id !== baseline.id || !baseline.ownerUserId || updated.ownerUserId !== baseline.ownerUserId || updated.accountId !== baseline.accountId || updated.status === "cancelled" || Date.parse(updated.updatedAt) <= Date.parse(baseline.updatedAt)) throw new Error("Invalid task receipt");
+      for (const field of ["plannedDate", "dueAt", "location"] as const) {
+        if (patch[field] === undefined) continue;
+        if (patch[field] === null ? updated[field] !== undefined : field === "dueAt" ? Date.parse(updated[field] ?? "") !== Date.parse(patch[field]!) : updated[field] !== patch[field]) throw new Error("Task receipt does not match saved fields");
+      }
+      return updated;
+    }, "PATCH", { action: "update", expectedUpdatedAt: baseline.updatedAt, patch, idempotencyKey: key() }),
     setCompleted: (id: string, completed: boolean) => request(pathFor(id), single, "PATCH", {
       action: completed ? "complete" : "reopen", idempotencyKey: key(),
     }),

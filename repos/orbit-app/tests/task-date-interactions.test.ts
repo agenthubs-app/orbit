@@ -106,7 +106,7 @@ async function update(p: Page, patch: object) { await p.evaluate(patch => (windo
 async function refresh(p: Page) { await p.evaluate(() => (window as any).fixture.refresh()); await settle(p); }
 async function writes(p: Page) { return p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method !== "GET").map((r: any) => ({ method: r.method, path: r.path, origin: r.origin, body: r.body }))); }
 async function reply(p: Page, status = 200, taskPatch: object = {}, dataOverride?: object) {
-  await p.evaluate(({ status, taskPatch, dataOverride }) => { const s = (window as any).fixture; const i = s.requests.findLastIndex((r: any) => r.method !== "GET"); const task = { ...s.task, ...s.requests[i].body.patch, updatedAt: "2026-09-13T03:00:00.000Z", ...taskPatch }; if (status === 200 && !dataOverride) s.task = task; s.reply(i, status, dataOverride ?? (status === 200 ? { task } : undefined)); }, { status, taskPatch, dataOverride }); await settle(p);
+  await p.evaluate(({ status, taskPatch, dataOverride }) => { const s = (window as any).fixture; const i = s.requests.findLastIndex((r: any) => r.method !== "GET"); const task = { ...s.task, ...s.requests[i].body.patch, updatedAt: "2026-09-13T03:00:00.000Z", ...taskPatch }; for (const key of ["plannedDate", "dueAt", "location"]) if (task[key] === null) delete task[key]; if (status === 200 && !dataOverride) s.task = task; s.reply(i, status, dataOverride ?? (status === 200 ? { task } : undefined)); }, { status, taskPatch, dataOverride }); await settle(p);
 }
 
 test("date editor saves only changed dates with version/key and rereads detail, history and reminders", async t => {
@@ -211,9 +211,9 @@ test("late date acknowledgement does not conceal a newer revision already read",
   await press(p, "放弃草稿并载入最新内容"); assert.equal(await p.getByRole("textbox", { name: "安排日期", exact: true }).inputValue(), "2026-09-17");
 });
 
-test("invalid date, incomplete deadline and unsupported clear do not send a write", async t => {
+test("invalid date and incomplete deadline do not send a write", async t => {
   const p = await open(t, { task: { ...initialTask, plannedDate: "2026-09-14" } });
-  for (const value of ["2026-02-29", ""]) { await fill(p, "安排日期", value); await press(p, "保存日期和时间"); await p.getByRole("alert").waitFor(); }
+  for (const value of ["2026-02-29"]) { await fill(p, "安排日期", value); await press(p, "保存日期和时间"); await p.getByRole("alert").waitFor(); }
   await fill(p, "安排日期", "2026-09-15"); await fill(p, "截止日期", "2026-09-16"); await press(p, "保存日期和时间"); await p.getByRole("alert").waitFor(); assert.deepEqual(await writes(p), []);
 });
 
@@ -270,4 +270,20 @@ test("clean editor follows foreground timezone without changing the original ins
   assert.equal(await p.getByRole("textbox", { name: "截止日期", exact: true }).inputValue(), "2026-09-13");
   assert.equal(await p.getByRole("textbox", { name: "截止时间", exact: true }).inputValue(), "17:30");
   await press(p, "保存日期和时间"); assert.deepEqual(await writes(p), []);
+});
+
+test("location saves with dates while unsaved title remains an independent draft", async t => {
+  const p = await open(t); await fill(p, "地点", "Kyoto station"); await fill(p, "安排日期", "2026-09-15");
+  await press(p, "保存日期和时间");
+  assert.deepEqual((await writes(p))[0].body.patch, { plannedDate: "2026-09-15", location: "Kyoto station" });
+  await reply(p); assert.equal(await p.getByRole("textbox", { name: "地点", exact: true }).inputValue(), "Kyoto station");
+});
+
+
+test("clearing existing dates and location removes persisted fields after acknowledgement", async t => {
+  const p = await open(t, { task: { ...initialTask, plannedDate: "2026-09-14", dueAt: "2026-09-14T00:30:00Z", location: "Tokyo" } });
+  for (const label of ["安排日期", "截止日期", "截止时间", "地点"]) await fill(p, label, "");
+  await press(p, "保存日期和时间"); assert.deepEqual((await writes(p))[0].body.patch, { plannedDate: null, dueAt: null, location: null });
+  await reply(p); await press(p, "关闭待办设置"); await press(p, "编辑日期和时间");
+  for (const label of ["安排日期", "截止日期", "截止时间", "地点"]) assert.equal(await p.getByRole("textbox", { name: label, exact: true }).inputValue(), "");
 });

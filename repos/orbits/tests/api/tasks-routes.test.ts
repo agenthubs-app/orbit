@@ -243,3 +243,18 @@ test("maps stale updates to conflict and soft deletes with retained history", as
     ["created", "deleted"],
   );
 });
+
+test("location and explicit null dates persist, while omission preserves the other fields", async () => {
+  const dependencies = testDependencies();
+  const collection = createTaskCollectionHandlers(dependencies);
+  const detail = createTaskDetailHandlers({ ...dependencies, now: () => "2026-08-29T07:00:00.000Z" });
+  const create = await collection.POST(new Request("https://orbit.local/api/tasks", { method: "POST", body: JSON.stringify({ category: "personal", title: "Private appointment", plannedDate: "2026-09-01", dueAt: "2026-09-01T01:00:00Z", location: "Kyoto", idempotencyKey: "location:create" }) }));
+  assert.equal(create.status, 201);
+  const task = (await responseData(create)).data.task;
+  const context = { params: Promise.resolve({ id: task.id }) };
+  const response = await detail.PATCH(new Request("https://orbit.local/api/tasks/one", { method: "PATCH", body: JSON.stringify({ action: "update", expectedUpdatedAt: task.updatedAt, patch: { plannedDate: null, dueAt: null, location: null }, idempotencyKey: "location:clear" }) }), context);
+  assert.equal(response.status, 200);
+  const read = (await responseData(await detail.GET(new Request("https://orbit.local/api/tasks/one"), context))).data.task;
+  assert.equal(read.title, task.title);
+  for (const key of ["plannedDate", "dueAt", "location"]) assert.equal(Object.hasOwn(read, key), false);
+});

@@ -30,6 +30,7 @@ export interface TaskItemDTO {
   ownerUserId: string;
   title: string;
   notes?: string;
+  location?: string;
   status: TaskStatus;
   category: TaskCategory;
   plannedDate?: string;

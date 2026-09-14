@@ -14,6 +14,7 @@ export interface TaskItemContract {
   ownerUserId: string;
   title: string;
   notes?: string;
+  location?: string;
   status: TaskStatus;
   category: TaskCategory;
   plannedDate?: string;
@@ -55,4 +56,13 @@ export interface ScheduleItemContract {
   endsAt?: string;
   location?: string;
   sourceId: string;
+}
+
+export interface PersonalScheduleContract extends ScheduleItemContract {
+  kind: "personal";
+  category: "personal";
+  accountId: string;
+  ownerUserId: string;
+  createdAt: string;
+  updatedAt: string;
 }

@@ -25,6 +25,7 @@ const categoryLabels: Record<TaskCategory, string> = {
 };
 
 export interface TodayTaskRowView {
+  location?: string;
   id: string;
   title: string;
   categoryLabel: string;
@@ -43,6 +44,7 @@ export interface TaskListRowView extends TodayTaskRowView {
 }
 
 export interface TaskDetailView {
+  location?: string;
   id: string;
   title: string;
   notes: string;
@@ -225,6 +227,7 @@ function taskDue(
 
 function taskRow(task: TaskItemContract, now: Date, timeZone: string): TodayTaskRowView {
   return {
+    ...(task.location ? { location: task.location } : {}),
     id: task.id,
     title: task.title,
     categoryLabel: categoryLabels[task.category],
@@ -410,6 +413,7 @@ export function taskDetailToView(payload: unknown): TaskDetailView | null {
     id: task.id,
     title: task.title,
     notes: task.notes ?? "",
+    ...(text(task.location) ? { location: text(task.location)! } : {}),
     status: task.status,
     statusLabel:
       task.status === "completed"

@@ -10,7 +10,8 @@ let browser: Browser, server: Server, url: string;
 // Only native services, routing and HTTP are replaced. Real screen state,
 // presentation, view-model decoding and action handlers run in the browser.
 const fixture = `
-import React, { useSyncExternalStore } from "react";
+import React, { useEffect, useSyncExternalStore } from "react";
+export const useFocusEffect = effect => useEffect(effect, [effect]);
 import { View } from "react-native";
 import { aiConversationPayload, emptyAiConversationPayload, aiSessionListPayload } from "./tests/helpers/ai-fixtures";
 let revision = 0; const listeners = new Set();

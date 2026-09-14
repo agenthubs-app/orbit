@@ -354,7 +354,7 @@ function TaskRow({
         style={({ pressed }) => [styles.taskBody, pressed ? styles.pressed : null]}
       >
         <Text numberOfLines={1} style={styles.rowTitle}>{task.title}</Text>
-        <Text style={styles.rowMeta}>{task.categoryLabel}</Text>
+        <Text style={styles.rowMeta}>{[task.categoryLabel, task.location].filter(Boolean).join(" · ")}</Text>
       </Pressable>
       {task.dueLabel ? (
         <Text

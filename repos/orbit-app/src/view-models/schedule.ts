@@ -377,7 +377,8 @@ function followupTimelineItems(
         actionLabel: "处理待办",
         dateKey: calendarOnly?.dateKey ?? normalizedDate?.dateKey ?? "",
         dayLabel: calendarOnly?.dayLabel ?? normalizedDate?.dayLabel ?? item.dayLabel,
-        detail: item.recommendedAction,
+        detail: [item.recommendedAction, stringField(task, "location")].filter(Boolean).join(" · "),
+        ...(stringField(task, "location") ? { location: stringField(task, "location") } : {}),
         durationMinutes: 30,
         href: stringField(task, "id")
           ? `/tasks/${encodeURIComponent(stringField(task, "id"))}`
@@ -388,7 +389,7 @@ function followupTimelineItems(
         reason: item.recommendedAction,
         sortAt,
         statusLabel: item.priority,
-        subtitle: item.organization || "人脉待办",
+        subtitle: [item.organization || (stringField(task, "category") === "relationship" ? "人脉待办" : "待办"), stringField(task, "location")].filter(Boolean).join(" · "),
         timeLabel: calendarOnly ? "" : normalizedDate?.timeLabel ?? item.timeLabel,
         title: item.title
       };
@@ -430,7 +431,7 @@ function canonicalScheduleTimelineItems(scheduleItems: unknown, timeZone: string
           : 60,
         href: kind === "event" && sourceId.startsWith("event")
           ? `/schedule/events/${encodeURIComponent(sourceId)}`
-          : "/schedule",
+          : kind === "personal" ? `/schedule/personal/${encodeURIComponent(id)}` : "/schedule",
         id,
         kind,
         ...(location ? { location } : {}),

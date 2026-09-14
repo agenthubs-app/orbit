@@ -1,3 +1,4 @@
+import { createConfiguredTransactionalPostgresRuntime } from "../../shared/storage/transactional-postgres";
 import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
 import { createTaskRepository } from "./repository";
 import { createTaskService } from "./service";
@@ -13,6 +14,7 @@ export function createConfiguredTaskSuggestionService() {
     repository: createTaskRepository({
       store: configured.store,
       workspaceId: configured.workspaceId,
+      transactionClient: createConfiguredTransactionalPostgresRuntime()?.client,
     }),
   });
   return createTaskSuggestionService({

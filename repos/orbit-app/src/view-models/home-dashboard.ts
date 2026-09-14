@@ -122,7 +122,7 @@ export function homeScheduleToView(payload: unknown, selectedDateKey: string, no
       start, id: item.id, title: item.title, state,
       timeLabel: (startDate === selectedDateKey ? "" : dateNumber(startDate) + " ") + time,
       detail: [item.location, duration].filter(Boolean).join(" · "),
-      href: item.kind === "event" ? "/schedule/events/" + encodeURIComponent(item.sourceId) : "/schedule"
+      href: item.kind === "event" ? "/schedule/events/" + encodeURIComponent(item.sourceId) : item.kind === "personal" ? "/schedule/personal/" + encodeURIComponent(item.id) : "/schedule"
     });
   }
   return rows.sort((left, right) => left.start - right.start).map(({ start: _start, ...row }) => row);

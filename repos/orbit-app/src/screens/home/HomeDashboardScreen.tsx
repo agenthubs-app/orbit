@@ -262,7 +262,7 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
           </Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel={"查看待办：" + task.title} onPress={() => navigate("/tasks/" + encodeURIComponent(task.id))} style={styles.taskContent}>
             <Text style={styles.rowTitle}>{task.title}</Text>
-            <Text style={[styles.detail, task.dueTone === "danger" && styles.error]}>{[task.categoryLabel, task.dueLabel].filter(Boolean).join(" · ")}</Text>
+            <Text style={[styles.detail, task.dueTone === "danger" && styles.error]}>{[task.categoryLabel, task.dueLabel, task.location].filter(Boolean).join(" · ")}</Text>
           </Pressable>
         </View>) : <Text style={styles.empty}>当天没有待办</Text>)}
         {mutationError ? <Text accessibilityRole="alert" style={styles.error}>{mutationError}</Text> : null}

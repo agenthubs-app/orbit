@@ -25,7 +25,7 @@ test("current batch private entry and encoded detail preserve auth return contex
   for (const suffix of ["%ZZ", "%2E", "%2E%2E", "a/extra"]) assert.equal(resolveInitialRouteHref("/contacts/new/batch2/" + suffix), "/home");
 });
 
-test("legacy batch private login return preserves context and omits the path id", () => {
+test("legacy batch login completion handoff preserves context and omits the path id", () => {
   const path = "/contacts/new/batch/batch%3A%2F%20%E7%A9%BA";
   assert.equal(isPrivateMobileRoute(path), true);
   const login = mobileLoginHref(path, { id: ["batch:/ 空", "duplicate"], tab: "review", "#": "card" });
@@ -143,7 +143,7 @@ test("auth return parameter ownership follows the matched route instead of globa
   );
 });
 
-test("party query, duplicate values and fragment survive the complete login return", () => {
+test("party query, duplicate values and fragment survive the login completion handoff", () => {
   const expected =
     "/party?code=event-1&code=event-2&view=graph#relationship-map";
   const loginHref = mobileLoginHref("/party", {
@@ -260,6 +260,8 @@ test("every root-level private entry uses the shared render gate", () => {
     "party/graph.tsx",
     "platform.tsx",
     "schedule/events/[id].tsx",
+    "schedule/personal/[id].tsx",
+    "schedule/personal/new.tsx",
     "settings.tsx",
     "settings/api.tsx",
     "today.tsx"

@@ -363,6 +363,7 @@ export function TaskDetailScreen() {
               <Text style={[styles.metadataValue, styles.linkValue]}>查看关联活动</Text>
               <Ionicons color={colors.text4} name="chevron-forward" size={17} />
             </Pressable> : null}
+            {(latest ?? detail).location ? <View style={styles.metadataRow}><Text style={metadataLabelStyle}>地点</Text><Text style={styles.metadataValue}>{(latest ?? detail).location}</Text></View> : null}
             {detail.sourceLabel ? <View style={styles.metadataRow}>
               <Text style={metadataLabelStyle}>来源</Text>
               <Text style={styles.metadataValue}>{detail.sourceLabel}</Text>
@@ -413,22 +414,23 @@ export function TaskDetailScreen() {
                     </Pressable>
                   </View> : null}
                   <Text style={styles.sheetSection}>日期和时间</Text>
-                  <Text style={styles.dateHint}>没有具体时间时，只填写安排日期。截止时间使用 {editTimeZone}。</Text>
+                  <Text style={styles.dateHint}>没有具体时间时，只填写安排日期。截止时间使用 {editTimeZone}。清空日期或地点后保存即可移除。</Text>
                   {([
                     ["plannedDate", "安排日期", "YYYY-MM-DD"],
                     ["dueDate", "截止日期", "YYYY-MM-DD"],
                     ["dueTime", "截止时间", "HH:mm"],
+                    ["location", "地点", "填写地点，清空可移除"],
                   ] as const).map(([field, label, placeholder]) => <View key={field} style={styles.dateField}>
                     <Text style={styles.dateFieldLabel}>{label}</Text>
                     <TextInput accessibilityLabel={label} autoCapitalize="none" autoCorrect={false} editable={!saving && detail.status !== "cancelled"}
                       onChangeText={value => changeDate(field, value)}
-                      placeholder={placeholder} placeholderTextColor={colors.text4} style={styles.dateInput} value={dateDraft[field]} />
+                      placeholder={placeholder} placeholderTextColor={colors.text4} style={styles.dateInput} value={dateDraft[field] ?? ""} />
                   </View>)}
                   <Text style={styles.dateHint}>修改日期不会自动调整已有提醒。</Text>
                   {detail.status === "cancelled" ? <Text style={styles.dateHint}>已取消的待办不能修改日期。</Text> : null}
                   <Pressable accessibilityLabel="保存日期和时间" accessibilityRole="button" disabled={saving || staleDraft || detail.status === "cancelled"} onPress={saveDates}
                     style={[styles.dateSaveButton, (saving || staleDraft || detail.status === "cancelled") && styles.pressed]}>
-                    <Text style={styles.completeButtonText}>{saving ? "正在保存…" : "保存日期和时间"}</Text>
+                    <Text style={styles.completeButtonText}>{saving ? "正在保存…" : "保存日期、时间和地点"}</Text>
                   </Pressable>
                   <Text style={styles.sheetSection}>提醒选项</Text>
                   {reminders.map((item) => (

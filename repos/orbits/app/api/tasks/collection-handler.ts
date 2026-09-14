@@ -24,6 +24,7 @@ const createKeys = [
   "dueAt",
   "idempotencyKey",
   "notes",
+  "location",
   "plannedDate",
   "priority",
   "relatedContactId",
@@ -59,6 +60,7 @@ function parseCreateBody(body: Record<string, unknown>) {
     throw new AppError("VALIDATION_ERROR", "priority is invalid.");
   }
   const notes = optionalString(body, "notes");
+  const location = optionalString(body, "location");
   const plannedDate = optionalString(body, "plannedDate");
   const dueAt = optionalString(body, "dueAt");
   const relatedContactId = optionalString(body, "relatedContactId");
@@ -72,6 +74,7 @@ function parseCreateBody(body: Record<string, unknown>) {
     idempotencyKey: requireString(body.idempotencyKey, "idempotencyKey"),
     title: requireString(body.title, "title"),
     ...(notes ? { notes } : {}),
+    ...(location ? { location } : {}),
     ...(plannedDate ? { plannedDate } : {}),
     ...(dueAt ? { dueAt } : {}),
     ...(body.priority ? { priority: body.priority as "normal" | "high" } : {}),

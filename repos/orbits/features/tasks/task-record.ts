@@ -106,6 +106,7 @@ function readTask(value: unknown, actorId: string): TaskItemDTO | null {
     !priorities.has(String(value.priority)) ||
     !taskSources.has(String(value.source)) ||
     !isOptionalString(value.notes) ||
+    !isOptionalString(value.location) ||
     (value.plannedDate !== undefined && !isLocalDate(value.plannedDate)) ||
     (value.dueAt !== undefined && !isIsoDateTime(value.dueAt)) ||
     !isOptionalString(value.relatedContactId) ||

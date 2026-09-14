@@ -44,8 +44,6 @@ for (const [name, baseline, draft] of [
   ["24 hour", {}, { ...empty, dueDate: "2026-09-15", dueTime: "24:00" }],
   ["60 minute", {}, { ...empty, dueDate: "2026-09-15", dueTime: "09:60" }],
   ["non-padded time", {}, { ...empty, dueDate: "2026-09-15", dueTime: "9:00" }],
-  ["clear planned date", { plannedDate: "2026-09-15" }, empty],
-  ["clear deadline", { dueAt: "2026-09-15T09:00:00Z" }, empty],
 ] as const) test(`invalid ${name} gives an explanation without a writable patch`, () => {
   const result = buildTaskDatePatch(baseline, draft);
   assert.equal(result.kind, "invalid");
@@ -82,4 +80,10 @@ test("DST gaps and ambiguous minutes cannot silently choose a writable instant",
 });
 test("invalid device zone rejects saving even a date-only draft", () => {
   assert.equal(buildTaskDatePatch({}, { ...empty, plannedDate: "2026-09-14" }, "Invalid/Zone").kind, "invalid");
+});
+
+test("explicit empty date and location drafts produce null deletion patches", () => {
+  assert.deepEqual(buildTaskDatePatch({ plannedDate: "2026-09-14", dueAt: "2026-09-14T00:30:00Z", location: "Tokyo" }, { ...empty, location: "" }), { kind: "ready", patch: { plannedDate: null, dueAt: null, location: null } });
+  assert.equal(taskDateReceiptMatches({ task: { ...task, plannedDate: undefined, dueAt: undefined, location: undefined } }, task.id, "actor-1", { plannedDate: null, dueAt: null, location: null }), true);
+  assert.equal(taskDateReceiptMatches({ task }, task.id, "actor-1", { plannedDate: null }), false);
 });
