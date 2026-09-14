@@ -55,11 +55,11 @@ build/harness-logs/
 | [0005](0005-ai-session-reliability/GOAL.md) | AI 重试不重复生成，Web/App 续聊不丢历史 | R-00、R-02 | B3 跨端提案待审；已隔离复现旧快照覆盖，真实恢复／503 证据仍缺 | blocked |
 | [0006](0006-contact-mentions/GOAL.md) | @ 选准联系人，带入 AI 的问题由用户确认发送 | R-06 | 0005；B3 引用／D3 | blocked |
 | [0007](0007-two-sided-cards/GOAL.md) | 正反面名片复核后只创建一个联系人 | R-07 | 0002；B5／OCR 环境 | blocked |
-| [0008](0008-identity-chat/GOAL.md) | 验证邀请和身份绑定后，双方能真实收发消息 | R-05 | 0002；B4 契约已冻结；E 线 run-01 正在实现，真实双用户证据随环境核验 | running |
+| [0008](0008-identity-chat/GOAL.md) | 验证邀请和身份绑定后，双方能真实收发消息 | R-05 | 0002；B4 契约已实现；功能提交 `6d8173b78`，见 REPORT | completed |
 | [0009](0009-timezone/GOAL.md) | 同一事项在首页、待办、日历和活动中不落错日 | R-09 | 设备跟随策略已确认；DST／异常／脏稿技术提案待审及原生证据 | blocked |
 | [0010](0010-task-schedule-editing/GOAL.md) | 个人事项能创建、编辑和清空字段，各页与提醒一致 | R-08 | 0009；B6 | blocked |
 | [0011](0011-home-analysis/GOAL.md) | 首页符合确认布局，分析可辨新旧，目标可单独保存 | R-09、R-10 | 0006；B7／首页／D4 | blocked |
-| [0012](0012-message-state/GOAL.md) | 前台新消息及时出现，已读角标与跳转目标正确 | R-11 | 0008；消息契约／通知环境 | blocked |
+| [0012](0012-message-state/GOAL.md) | 前台新消息及时出现，已读角标与跳转目标正确 | R-11 | 0008 已完成；E 线 run-01 正在实现消息状态与通知生命周期 | running |
 | [0013](0013-locale-foundation/GOAL.md) | 用中日英操作账号、首页和设置，切语言不丢输入 | R-12 | 0009、0011；D6 | blocked |
 | [0014](0014-locale-relationships-events/GOAL.md) | 用中日英处理人脉、名片和活动，保留原文与答案 | R-12 | 0013、0004、0007、0008 | blocked |
 | [0015](0015-locale-assistant-workflows/GOAL.md) | 用中日英操作 AI、事项和消息，保留内容与日期 | R-12 | 0013、0006、0010、0012 | blocked |
@@ -180,6 +180,15 @@ build/harness-logs/
 - 起始 HEAD：`fca77373f123c03e29a0584cba46bade5f5eb907`；启动前产品工作区干净。
 - 文件锁：0008 Planner 白名单、已登记的必要 Web/API 契约与实现路径，以及对应测试。与 B 线共享的 `ContactDetailScreen`、`RelationshipChatScreen`、`RelationshipInboxScreen` 仅在本 worktree 修改并在报告中明确交接。
 - B4 契约已冻结；真实双用户、数据库和实体设备环境在执行中核验，缺少外部环境只影响对应真实证据，不降低本地权限、幂等与隔离验收。
+- 结束：2026-09-15 00:36 JST；功能提交：`6d8173b786105d24642a1ab7b83c4253e4a79eb9`；[执行报告](0008-identity-chat/REPORT.md)。
+- 验证：两端类型与 0008 定向集通过，PostgreSQL live-store 1/1；iOS Simulator 构建 0 error／0 warning 并成功安装启动。Web 全量受既有 live 环境基线影响，报告保留原始失败数。
+- 文件锁已转交 0012 所需的 Inbox 与通知范围；根 `AGENTS.md`、`CLAUDE.md` 用户改动未纳入功能提交。
+
+### 0012 / run-01
+
+- owner：`/root/e_line`；run_count：1；开始：2026-09-15 00:36 JST。
+- 前置：0008 功能提交 `6d8173b78`；启动时先刷新 GitNexus 索引并冻结前台刷新、已读回执、角标失效及通知注册契约。
+- 范围：0012 Planner 列出的 Inbox、badge、notification lifecycle、条件性 message-state 模块及对应测试；不生成或保存推送服务密钥。
 
 0020/run-01 已以 blocked 结束，代码未提交；其 REPORT 逐项记录剩余 Sprint 的范围、设计、依赖与环境门槛，不表示全部实施完成。用户要求连续实施所有剩余 Sprint 的指令保持有效，不逐项重复询问；适用条件闭合后按单次运行规则安排接续。0001／0002 不重新运行。管理框架、19份Planner和0001报告提交为 `1a0c7086420a421169f63e8e4b0a04c6cc329315`；本报告／登记表提交可从Git历史查看，不在报告内追填自身SHA。
 
