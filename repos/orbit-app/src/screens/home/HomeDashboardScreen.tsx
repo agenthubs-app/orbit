@@ -33,7 +33,7 @@ const quickActions = [
   { label: "扫名片", href: "/contacts/new", icon: "scan" },
   { label: "查看日程", href: "/schedule", icon: "calendar" },
   { label: "新建待办", href: "/today", icon: "task" },
-  { label: "联系跟进", href: "/followups", icon: "contacts" },
+  { label: "记笔记", href: "/notes/new", icon: "notes" },
 ] as const;
 
 export function HomeDashboardScreen() {
@@ -305,7 +305,7 @@ function HomeInboxBadge({ scopeKey }: { scopeKey: string }) {
   return count === undefined ? null : <View testID="home-inbox-badge" style={styles.badge}><Text style={styles.badgeText}>{count}</Text></View>;
 }
 
-function HomeIcon({ name, size, color }: { name: "search" | "inbox" | "scan" | "calendar" | "task" | "contacts"; size: number; color: string }) {
+function HomeIcon({ name, size, color }: { name: "search" | "inbox" | "scan" | "calendar" | "task" | "contacts" | "notes"; size: number; color: string }) {
   if (name === "contacts") return <OrbitNavigationIcon name="contacts" size={size} color={color} />;
   // Exact source geometry from 1c-首页. Calendar reuses the source's existing
   // calendar outline without the creation mark because this opens the calendar.
@@ -316,6 +316,7 @@ function HomeIcon({ name, size, color }: { name: "search" | "inbox" | "scan" | "
     {name === "scan" ? <Path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M3 12h18" /> : null}
     {name === "calendar" ? <><Rect x={3} y={5} width={18} height={16} rx={3} /><Path d="M3 10h18M8 3v4M16 3v4" /></> : null}
     {name === "task" ? <><Rect x={4} y={4} width={16} height={16} rx={4} /><Path d="M8 12l3 3 5-6" /></> : null}
+    {name === "notes" ? <><Path d="M6 3h9l3 3v15H6z" /><Path d="M15 3v4h4M9 11h6M9 15h6" /></> : null}
   </Svg>;
 }
 

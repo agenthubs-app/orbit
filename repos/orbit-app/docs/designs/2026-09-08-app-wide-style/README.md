@@ -147,6 +147,8 @@ Tasks 1–5 的领域实现、修补及独立复审已经闭合，58 个真实 `
 | `/[...legacy]` | `LegacyDeepLinkRoute → resolveInitialRouteHref` | redirect | `.tmp/app-wide-style/after/redirects/final-native-route-observations.json`: unsupported URL 实际到达 AI | `tests/initial-route.test.ts`: legacy/query/hash canonicalization 与 unsupported fallback |
 <!-- route-coverage:end -->
 
+Sprint 0018 在该 58 路由视觉快照之后新增 `/notes`、`/notes/new` 与 `/notes/[id]`。它们由 `tests/notes-interactions.test.tsx` 和 `tests/app-wide-route-coverage.test.ts` 覆盖功能接线；尚无原生视觉验收记录，因此不计入上方 58 项快照。
+
 计数来源相互独立：批准规格显式列出 58 项；测试从真实 `app/` 递归扫描并排除 `_layout`；README 表由测试再次解析。原生 observation 分布为 Task 2 主 JSON 9 项 + 独立 detail 1 项 + Task 3 17 项 + Task 4 14 项 + Task 5 13 项 + final redirects 4 项 = 58。
 
 ## 非路由状态与证据边界

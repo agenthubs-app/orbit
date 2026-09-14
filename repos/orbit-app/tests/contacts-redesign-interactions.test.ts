@@ -176,26 +176,15 @@ test("detail disclosures keep read and editing content available without writes 
   await page.getByRole("button", { name: "互动渠道：邮件", exact: true }).waitFor();
   await page.getByRole("button", { name: "取消编辑", exact: true }).click();
   assert.equal(await page.getByText("跟进状态", { exact: true }).count(), 0);
-  const notes = page.getByRole("button", { name: "联系人备注", exact: true });
-  const note = page.getByRole("textbox", { name: "添加联系人备注", exact: true });
-  assert.equal(await note.count(), 0);
+  const notes = page.getByRole("button", { name: "历史联系人备注", exact: true });
   await notes.click();
-  await page.getByText("还没有联系人备注。", { exact: true }).waitFor();
+  await page.getByText("没有历史联系人备注。", { exact: true }).waitFor();
   assert.equal(await page.getByRole("alert").count(), 0, "valid empty notes must not render a read failure");
-  await note.fill("下次带上门店资料");
-  await notes.click();
-  assert.equal(await note.count(), 0);
-  await notes.click();
-  assert.equal(await note.inputValue(), "下次带上门店资料");
+  assert.equal(await page.getByRole("textbox", { name: "添加联系人备注" }).count(), 0);
+  await page.getByRole("button", { name: "查看关联笔记", exact: true }).click();
+  await page.getByRole("button", { name: "为此人新建笔记", exact: true }).click();
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
-  await page.evaluate(() => { (window as any).fixture.failure = true; });
-  const save = page.getByRole("button", { name: "保存备注", exact: true });
-  await save.click();
-  await page.getByRole("alert").getByText("尚未确认保存成功，内容已保留，请重试。", { exact: true }).waitFor();
-  assert.equal(await note.inputValue(), "下次带上门店资料");
-  assert.equal(await save.isEnabled(), true);
-  const requests = await page.evaluate(() => (window as any).fixture.requests);
-  assert.deepEqual(requests, [{ method: "PATCH", path: "/api/contacts/contact%3A0", body: { note: { authorLabel: "我", body: "下次带上门店资料" } } }]);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/notes?contactId=contact%3A0", "/notes/new?contactId=contact%3A0"]);
 });
 
 for (const detail of [false, true]) {

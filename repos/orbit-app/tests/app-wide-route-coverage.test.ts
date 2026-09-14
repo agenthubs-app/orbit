@@ -172,7 +172,10 @@ const integratedFeatureRoutes = [
   "/contacts/new/batch2/[id]",
   "/contacts/new/import/[id]",
   "/events/[id]/operations/experience",
-  "/invitations/[token]"
+  "/invitations/[token]",
+  "/notes",
+  "/notes/[id]",
+  "/notes/new"
 ] as const;
 
 function scanAppRouteEntries(directory: string): string[] {
