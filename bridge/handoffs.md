@@ -18,6 +18,9 @@
 | BR-006 | P1 | Web 发布门槛与 App 公网依赖 | blocked | Web 发布负责人 | 记录解除 1C 的证据及部署版本，完成同环境 iOS 访问验证 |
 | BR-007 | P2 | 文档描述落后于代码 | identified | Bridge + 各端文档负责人 | README/契约迁移表与实际已发布能力一致；保留历史记录 |
 | BR-008 | P2 | App 未提交界面工作交接 | identified | App 负责人 | 提供最终文件/版本/验收范围，刷新 bridge 基线 |
+| BR-009 | P1 | 事项与个人日程编辑跨端一致 | verified | 已完成；0022 可消费 | 同一合成 actor/记录完成 Web↔App 创建、编辑、清空、冲突与提醒回读 |
+| BR-010 | P1 | 身份邀请、绑定与共享聊天 | verified | 已完成；0012 可消费 | 隔离双 actor 与 PostgreSQL 证明资格、幂等投递、撤销和双方回读 |
+| BR-011 | P1 | 消息前台刷新、已读、角标与推送 | blocked | 运行环境负责人 | 提供 Expo project、push server key、双用户原生账号及实体推送环境后补真实验收 |
 
 ## BR-001 — Today
 
@@ -67,3 +70,24 @@
 - BR-007：App README 的部分运营写操作描述和 Web 契约迁移清单落后；本次在 bridge 标出差异，尚未修改各开发者原有文档。
 - BR-008：App 74 个 tracked 文件及额外未跟踪内容已记录在基线快照；不能把当前 SHA 单独作为它们的可复现版本。最终交接由 App 负责人提供适用 commit/diff 与 UI 验收。
 - 两项 verification_status 均为未完成；没有将任何任务擅自标记为另一位开发者已接单。
+
+## BR-009 — 事项与个人日程编辑
+
+- web_status：`d005c2b79` 已提供任务地点／日期清空、乐观版本与幂等写入，以及 actor-owned 个人日程集合／详情路由和 Web 编辑页面。
+- app_status：同一提交同步契约并接入任务详情、首页、Today、日历和个人日程列表／编辑入口。
+- verification_status：verified。独立 PostgreSQL 中同一任务和个人日程完成 Web→App、App→Web 回读；冲突保稿、重复请求、纯日期不造午夜截止、提醒 DTO 保持不变。鉴权为注入的合成 actor，未宣称生产登录或实体推送。
+- 交接：0022 使用同一 task ID、`expectedUpdatedAt` 和 idempotency key；不得重新实现编辑器或把个人日程混成联系人任务。证据见 `repos/orbit-app/docs/sprints/0010-task-schedule-editing/REPORT.md`。
+
+## BR-010 — 身份邀请与共享聊天
+
+- web_status：E 线原功能 `6d8173b78`、主线集成 `64629369d` 提供邀请、接受、绑定、会话、消息和已读路由及共享 DTO。
+- app_status：联系人资格、显式分享、邀请接受和真实会话收发已接入；失败保留输入，回执核对 actor／conversation／message／eligibility version。
+- verification_status：verified。定向 service/route/App、PostgreSQL 双 actor 回读和 Simulator 构建通过；没有自动对外发送邀请，也未把合成 actor 当真实个人身份。
+- 交接：0012 只在该权威会话与绑定上做消息状态，不得退回本地草稿会话。详情见 `repos/orbit-app/docs/sprints/0008-identity-chat/REPORT.md`。
+
+## BR-011 — 消息状态与推送
+
+- web_status：复用 BR-010 的持久已读接口；服务端 live-store 回读通过。
+- app_status：E 线原功能 `218fb3d4b`、主线集成 `8c9bf60cc` 已实现15秒前台刷新、已读回执、角标失效和合法通知跳转。
+- verification_status：blocked。App全量2589/2589、E定向411/411、主线组合260/260、两端typecheck及PostgreSQL 通过，但没有 Expo project ID、`ORBIT_PUSH_TOKEN_KEY`、可登录双用户原生账号和实体推送环境。
+- 恢复条件：提供上述环境后验证持续前台到达、真实已读角标同步、无权限目标及实体推送；完成前不把0012标为completed。详情见 `repos/orbit-app/docs/sprints/0012-message-state/REPORT.md`。
