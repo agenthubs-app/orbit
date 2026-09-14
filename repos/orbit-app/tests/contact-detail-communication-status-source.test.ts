@@ -8,7 +8,7 @@ test("contact detail shows server eligibility and only opens a verified conversa
   assert.match(source, /relationshipCommunicationEligibilityPath/u);
   assert.match(source, /relationshipCommunicationEligibilityToView/u);
   assert.match(source, /isRelationshipEligibility/u);
-  assert.match(source, /聊天资格/u);
-  assert.match(source, /创建邀请链接/u);
+  assert.match(source, /contacts\.chatEligibility/u);
+  assert.match(source, /contacts\.createInvitation/u);
   assert.match(source, /router\.push\(`\/chat\/\$\{encodeURIComponent\(view\.conversationId\)\}` as Href\)/u);
 });

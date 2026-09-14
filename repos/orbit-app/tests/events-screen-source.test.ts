@@ -80,7 +80,7 @@ test("events screen uses compact composable discovery controls", () => {
   assert.match(screenSource, /statusFilter,\s*setStatusFilter/u);
   assert.match(screenSource, /topicFilter,\s*setTopicFilter/u);
   assert.match(screenSource, /useState<EventDiscoveryStatusFilter>\("upcoming"\)/u);
-  assert.match(screenSource, /placeholder="搜索活动、地点或主题"/u);
+  assert.match(screenSource, /placeholder=\{locale\.t\("events\.searchPlaceholder"\)\}/u);
   assert.match(screenSource, /全部/u);
   assert.match(screenSource, /即将/u);
   assert.match(screenSource, /进行中/u);

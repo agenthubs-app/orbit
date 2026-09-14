@@ -4,6 +4,7 @@ import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-na
 import type { OrbitApiClient } from "../../api/client";
 import { contactDetailPath } from "../../api/endpoints";
 import { radius, spacing, typography, type OrbitColors } from "../../design/tokens";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { buildContactDetailNoteRequest } from "../../view-models/contacts";
 import { contactNotesToView, confirmedContactNotes, type ContactNoteView } from "../../view-models/contact-notes";
 
@@ -18,6 +19,7 @@ export function ContactNotesSection({ actorId, client, colors, contactId, data, 
   preview?: boolean;
   isScopeCurrent?: () => boolean;
 }) {
+  const locale = useOrbitLocale();
   const styles = useMemo(() => createNotesStyles(colors), [colors]);
   const [scope, setScope] = useState({ actorId, client, contactId });
   const scopeRef = useRef(scope);
@@ -77,13 +79,13 @@ export function ContactNotesSection({ actorId, client, colors, contactId, data, 
       if (!isCurrent()) return;
       const notes = result.success && result.status >= 200 && result.status < 300 && typeof result.data === "object" && result.data !== null && "state" in result.data && result.data.state === "success"
         ? confirmedContactNotes(result.data, contactId, request.request.body.note.body) : null;
-      if (!notes) { setError("尚未确认保存成功，内容已保留，请重试。"); return; }
+      if (!notes) { setError(locale.t("contactNotes.saveUnconfirmed")); return; }
       setConfirmed(notes);
       setDraft("");
       setSaved(true);
       onRefresh();
     } catch {
-      if (isCurrent()) setError("尚未确认保存成功，内容已保留，请重试。");
+      if (isCurrent()) setError(locale.t("contactNotes.saveUnconfirmed"));
     } finally {
       if (isCurrent()) { pendingRef.current = false; setPending(false); }
       if (controllerRef.current === controller) controllerRef.current = null;
@@ -92,44 +94,44 @@ export function ContactNotesSection({ actorId, client, colors, contactId, data, 
 
   return (
     <View style={styles.section}>
-      <Pressable accessibilityRole="button" accessibilityLabel="联系人备注" accessibilityState={{ expanded }} onPress={() => setExpanded((value) => !value)} style={[styles.header, preview && styles.previewHeader]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contactNotes.title")} accessibilityState={{ expanded }} onPress={() => setExpanded((value) => !value)} style={[styles.header, preview && styles.previewHeader]}>
         <View style={styles.heading}>
-          <Text style={[styles.title, preview && styles.previewTitle]}>联系人备注</Text>
-          <Text style={styles.caption}>仅自己可见{notes.length ? ` · ${notes.length} 条` : ""}</Text>
+          <Text style={[styles.title, preview && styles.previewTitle]}>{locale.t("contactNotes.title")}</Text>
+          <Text style={styles.caption}>{notes.length ? locale.t("contactNotes.privateCount", { count: notes.length }) : locale.t("contactNotes.private")}</Text>
         </View>
         <Ionicons color={colors.text3} name={expanded ? "chevron-up" : "chevron-down"} size={18} />
       </Pressable>
       {preview && !expanded ? <View style={styles.previewList}>
-        {view.state === "unavailable" ? <Text accessibilityRole="alert" style={styles.error}>备注暂时读取不了，请刷新后重试。</Text> : null}
-        {view.state === "ready" && notes.length === 0 ? <Text style={styles.caption}>还没有联系人备注。</Text> : null}
-        {notes.slice(0, 3).map(note => <Pressable key={note.id} accessibilityRole="button" accessibilityLabel="查看联系人备注" onPress={() => setExpanded(true)} style={styles.previewRow}>
+        {view.state === "unavailable" ? <Text accessibilityRole="alert" style={styles.error}>{locale.t("contactNotes.unavailable")}</Text> : null}
+        {view.state === "ready" && notes.length === 0 ? <Text style={styles.caption}>{locale.t("contactNotes.empty")}</Text> : null}
+        {notes.slice(0, 3).map(note => <Pressable key={note.id} accessibilityRole="button" accessibilityLabel={locale.t("contactNotes.view")} onPress={() => setExpanded(true)} style={styles.previewRow}>
           <View style={styles.previewIcon}><Ionicons color={colors.ink} name="document-text-outline" size={16} /></View>
           <Text style={styles.previewBody}>{note.body}</Text>
           <Ionicons color={colors.text3} name="chevron-forward" size={15} />
         </Pressable>)}
       </View> : null}
       {expanded ? <View style={styles.content}>
-        {view.state === "unavailable" ? <Text accessibilityRole="alert" style={styles.error}>备注暂时读取不了，请刷新后重试。</Text> : null}
-        {view.state === "ready" && notes.length === 0 ? <Text style={styles.caption}>还没有联系人备注。</Text> : null}
+        {view.state === "unavailable" ? <Text accessibilityRole="alert" style={styles.error}>{locale.t("contactNotes.unavailable")}</Text> : null}
+        {view.state === "ready" && notes.length === 0 ? <Text style={styles.caption}>{locale.t("contactNotes.empty")}</Text> : null}
         {notes.map((note) => <View key={note.id} style={styles.note}>
           <Text selectable style={styles.body}>{note.body}</Text>
-          <Text style={styles.caption}>{Number.isFinite(Date.parse(note.createdAt)) ? new Date(note.createdAt).toLocaleString("zh-CN") : note.createdAt}</Text>
+          <Text style={styles.caption}>{Number.isFinite(Date.parse(note.createdAt)) ? new Date(note.createdAt).toLocaleString(locale.language === "zh" ? "zh-CN" : locale.language === "ja" ? "ja-JP" : "en-US") : locale.t.literal(note.createdAt)}</Text>
         </View>)}
         <TextInput
-          accessibilityLabel="添加联系人备注"
+          accessibilityLabel={locale.t("contactNotes.add")}
           editable={!pending}
           multiline
           onChangeText={(value) => { setDraft(value); setSaved(false); setError(null); }}
-          placeholder="记下下次联系时想记得的事"
+          placeholder={locale.t("contactNotes.placeholder")}
           placeholderTextColor={colors.text4}
           style={styles.input}
           textAlignVertical="top"
           value={draft}
         />
         {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
-        {saved ? <Text accessibilityLiveRegion="polite" style={styles.caption}>备注已保存。</Text> : null}
+        {saved ? <Text accessibilityLiveRegion="polite" style={styles.caption}>{locale.t("contactNotes.saved")}</Text> : null}
         <Pressable accessibilityRole="button" accessibilityState={{ disabled: pending || !draft.trim() }} disabled={pending || !draft.trim()} onPress={saveNote} style={({ pressed }) => [styles.save, (pending || !draft.trim()) && styles.disabled, pressed && styles.pressed]}>
-          <Text style={styles.saveText}>{pending ? "保存中" : "保存备注"}</Text>
+          <Text style={styles.saveText}>{pending ? locale.t("contactNotes.saving") : locale.t("contactNotes.save")}</Text>
         </Pressable>
       </View> : null}
     </View>

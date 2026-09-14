@@ -5,12 +5,13 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, View, type LayoutCha
 import { SafeAreaView } from "react-native-safe-area-context";
 import { layout, textStyles } from "../../design/tokens";
 import { createThemedStyles } from "../../design/theme";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 
 // Contact-only chrome: other routes retain their own screen layouts.
 export function ContactPage({
   children,
   detail = false,
-  backLabel = "联系人",
+  backLabel,
   backHref,
   toolbarLeft,
   toolbarRight,
@@ -32,7 +33,9 @@ export function ContactPage({
   title: string;
 }>) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const router = useRouter();
+  const resolvedBackLabel = backLabel ?? locale.t("contacts.back");
   return (
     <SafeAreaView edges={["top"]} style={styles.safeArea}>
       <ScrollView
@@ -45,7 +48,7 @@ export function ContactPage({
       >
         <View style={[styles.toolbar, detail && styles.detailToolbar]}>
           {toolbarLeft ?? <Pressable
-            accessibilityLabel={`返回${backLabel}`}
+            accessibilityLabel={locale.t("common.backToNamed", { name: resolvedBackLabel })}
             accessibilityRole="button"
             onPress={() => isCurrent?.() === false ? undefined : router.canGoBack()
               ? router.back()
@@ -53,7 +56,7 @@ export function ContactPage({
             style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
           >
             <Ionicons color={colors.accent} name="chevron-back" size={23} />
-            <Text style={styles.backText}>{backLabel}</Text>
+            <Text style={styles.backText}>{resolvedBackLabel}</Text>
           </Pressable>}
           {detail ? <Text accessibilityRole="header" style={styles.detailTitle}>{title}</Text> : null}
           {detail ? <View style={styles.toolbarBalance}>{toolbarRight}</View> : null}

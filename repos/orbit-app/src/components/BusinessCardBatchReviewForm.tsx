@@ -4,6 +4,8 @@ import { Image, Pressable, StyleSheet, Text, TextInput, View, useWindowDimension
 import type { BusinessCardReviewIssueContract, IngestCardFieldSourcesContract } from "../api/contract/business-card-batch";
 import { createThemedStyles } from "../design/theme";
 import { spacing } from "../design/tokens";
+import { useOrbitLocale } from "../i18n/OrbitLocaleContext";
+import type { MessageKey } from "../i18n/messages";
 import type { BusinessCardFieldChoice, BusinessCardReviewFields } from "../view-models/business-card-batch";
 
 export type BusinessCardReviewImage =
@@ -34,9 +36,9 @@ export interface BusinessCardBatchReviewFormProps {
   onOpenDuplicate: () => void;
 }
 
-const fieldLabels: ReadonlyArray<[keyof BusinessCardReviewFields, string]> = [
-  ["displayName", "姓名"], ["organization", "公司"], ["role", "职位"],
-  ["email", "邮箱"], ["phone", "电话"], ["relationshipContext", "认识背景"], ["notes", "备注"],
+const fieldLabels: ReadonlyArray<[keyof BusinessCardReviewFields, MessageKey]> = [
+  ["displayName", "businessCard.fieldName"], ["organization", "businessCard.fieldOrganization"], ["role", "businessCard.fieldRole"],
+  ["email", "businessCard.fieldEmail"], ["phone", "businessCard.fieldPhone"], ["relationshipContext", "businessCard.fieldRelationshipContext"], ["notes", "businessCard.fieldNotes"],
 ];
 
 function ReviewButton({ label, icon, disabled, primary = false, onPress }: { label: string; icon: keyof typeof Ionicons.glyphMap; disabled: boolean; primary?: boolean; onPress: () => void }) {
@@ -48,43 +50,47 @@ function ReviewButton({ label, icon, disabled, primary = false, onPress }: { lab
 
 export function BusinessCardBatchReviewForm(props: BusinessCardBatchReviewFormProps) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const { fields, image, disabled } = props;
   const large = useWindowDimensions().fontScale > 1.3;
   const [fieldHeights, setFieldHeights] = useState<Partial<Record<keyof BusinessCardReviewFields, number>>>({});
   return <View style={styles.section}>
     <View style={[styles.imageFrame, large && styles.imageFrameLarge]}>
-      {image.status === "available" ? <Image accessibilityLabel="名片图片" accessibilityRole="image" source={{ uri: image.uri }} onError={props.onImageError} resizeMode="contain" style={styles.image} />
-        : <Text accessibilityLiveRegion="polite" style={styles.caption}>{image.status === "loading" ? "正在读取图片..." : image.status === "unavailable" ? image.message : "暂无名片图片"}</Text>}
+      {image.status === "available" ? <Image accessibilityLabel={locale.t("businessCard.image")} accessibilityRole="image" source={{ uri: image.uri }} onError={props.onImageError} resizeMode="contain" style={styles.image} />
+        : <Text accessibilityLiveRegion="polite" style={styles.caption}>{image.status === "loading" ? locale.t("businessCard.imageLoading") : image.status === "unavailable" ? locale.t.literal(image.message) : locale.t("businessCard.noImage")}</Text>}
     </View>
     <View style={[styles.headingRow, large && styles.stacked]}>
-      <Text accessibilityRole="header" style={styles.heading}>识别结果</Text>
+      <Text accessibilityRole="header" style={styles.heading}>{locale.t("businessCard.recognitionResult")}</Text>
       <Text style={styles.caption}>{props.statusLabel}</Text>
     </View>
-    {props.unresolvedConflicts?.length ? <Text style={styles.warning}>正反面信息不一致，请选择来源。</Text> : null}
-    {fields ? <View style={styles.fields}>{fieldLabels.map(([field, label]) => <View key={field} style={[styles.field, large && styles.stacked]}>
+    {props.unresolvedConflicts?.length ? <Text style={styles.warning}>{locale.t("businessCard.conflictPrompt")}</Text> : null}
+    {fields ? <View style={styles.fields}>{fieldLabels.map(([field, labelKey]) => {
+      const label = locale.t(labelKey);
+      return <View key={field} style={[styles.field, large && styles.stacked]}>
       <Text style={[styles.label, large && styles.labelLarge]}>{label}</Text>
       <View style={styles.fieldValue}>
       <TextInput accessibilityLabel={label} value={fields[field]} editable={!disabled} multiline={large || field === "notes" || field === "relationshipContext"} numberOfLines={1} submitBehavior={field === "notes" || field === "relationshipContext" ? "newline" : "blurAndSubmit"} scrollEnabled={false} autoCapitalize={field === "email" ? "none" : "sentences"} keyboardType={field === "email" ? "email-address" : field === "phone" ? "phone-pad" : "default"} onChangeText={value => { if (!disabled) props.onChange({ ...fields, [field]: value }); }} onContentSizeChange={({ nativeEvent }) => {
         const height = Math.max(44, Math.ceil(nativeEvent.contentSize.height));
         setFieldHeights(current => current[field] === height ? current : { ...current, [field]: height });
       }} placeholderTextColor={colors.text3} style={[styles.input, large && styles.inputLarge, (large || field === "notes" || field === "relationshipContext") && { height: fieldHeights[field] ?? 44 }, field === "notes" && styles.notes]} textAlignVertical="top" />
-      {field in (props.fieldSources ?? {}) ? <Text style={styles.caption}>来源：{props.unresolvedConflicts?.includes(field as keyof IngestCardFieldSourcesContract) ? "尚未选择" : props.fieldSources?.[field as keyof IngestCardFieldSourcesContract] ? props.conflicts?.[field as keyof IngestCardFieldSourcesContract]?.find(choice => choice.itemId === props.fieldSources?.[field as keyof IngestCardFieldSourcesContract])?.side === "back" ? "反面" : "正面" : "手动编辑"}</Text> : null}
-      {props.conflicts?.[field as keyof IngestCardFieldSourcesContract]?.map(choice => <ReviewButton key={choice.itemId} label={`使用${choice.side === "front" ? "正面" : "反面"}${label}`} icon="swap-horizontal-outline" disabled={disabled} onPress={() => props.onSelectFieldSource?.(field as keyof IngestCardFieldSourcesContract, choice)} />)}
+      {field in (props.fieldSources ?? {}) ? <Text style={styles.caption}>{locale.t("businessCard.source", { value: props.unresolvedConflicts?.includes(field as keyof IngestCardFieldSourcesContract) ? locale.t("businessCard.sourceUnselected") : props.fieldSources?.[field as keyof IngestCardFieldSourcesContract] ? props.conflicts?.[field as keyof IngestCardFieldSourcesContract]?.find(choice => choice.itemId === props.fieldSources?.[field as keyof IngestCardFieldSourcesContract])?.side === "back" ? locale.t("businessCard.sideBack") : locale.t("businessCard.sideFront") : locale.t("businessCard.sourceManual") })}</Text> : null}
+      {props.conflicts?.[field as keyof IngestCardFieldSourcesContract]?.map(choice => <ReviewButton key={choice.itemId} label={locale.t("businessCard.useSourceField", { side: locale.t(choice.side === "front" ? "businessCard.sideFront" : "businessCard.sideBack"), field: label })} icon="swap-horizontal-outline" disabled={disabled} onPress={() => props.onSelectFieldSource?.(field as keyof IngestCardFieldSourcesContract, choice)} />)}
       </View>
-    </View>)}</View> : null}
-    {props.reviewIssues.map((issue, index) => <Text key={`${issue.code}-${index}`} style={styles.warning}>{issue.message}</Text>)}
+    </View>;
+    })}</View> : null}
+    {props.reviewIssues.map((issue, index) => <Text key={`${issue.code}-${index}`} style={styles.warning}>{locale.t.literal(issue.message)}</Text>)}
     {props.duplicateContactId ? <View style={styles.section}>
-      <Text style={styles.warning}>发现可能重复的联系人，尚未收录。</Text>
+      <Text style={styles.warning}>{locale.t("businessCard.duplicateWarning")}</Text>
       <View style={styles.row}>
-        <ReviewButton label="查看重复联系人" icon="person-outline" disabled={disabled} onPress={props.onOpenDuplicate} />
-        <ReviewButton label="仍然收录" icon="checkmark-done-outline" disabled={disabled || !props.canConfirm} onPress={props.onOverride} />
+        <ReviewButton label={locale.t("businessCard.viewDuplicate")} icon="person-outline" disabled={disabled} onPress={props.onOpenDuplicate} />
+        <ReviewButton label={locale.t("businessCard.overrideDuplicate")} icon="checkmark-done-outline" disabled={disabled || !props.canConfirm} onPress={props.onOverride} />
       </View>
     </View> : null}
     <View style={styles.actions}>
-      {fields ? <ReviewButton primary label="确认收录" icon="checkmark-outline" disabled={disabled || !props.canConfirm || Boolean(props.duplicateContactId)} onPress={props.onConfirm} /> : null}
+      {fields ? <ReviewButton primary label={locale.t("businessCard.confirm")} icon="checkmark-outline" disabled={disabled || !props.canConfirm || Boolean(props.duplicateContactId)} onPress={props.onConfirm} /> : null}
       <View style={styles.row}>
-        <ReviewButton label="跳过名片" icon="play-skip-forward-outline" disabled={disabled || !props.canSkip} onPress={props.onSkip} />
-        <ReviewButton label="重试识别" icon="refresh-outline" disabled={disabled || !props.canRetry} onPress={props.onRetry} />
+        <ReviewButton label={locale.t("businessCard.skip")} icon="play-skip-forward-outline" disabled={disabled || !props.canSkip} onPress={props.onSkip} />
+        <ReviewButton label={locale.t("businessCard.retry")} icon="refresh-outline" disabled={disabled || !props.canRetry} onPress={props.onRetry} />
       </View>
     </View>
   </View>;

@@ -13,6 +13,7 @@ import { BusinessCardBatchReviewForm, type BusinessCardReviewImage } from "../..
 import { createThemedStyles } from "../../design/theme";
 import { spacing, typography } from "../../design/tokens";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { acceptedLegacyBatch, acceptedLegacyConfirmation, legacyBatchPath, legacyBatchPresentation, reconcileBusinessCardReviewDraft, type BusinessCardReviewDraft, type BusinessCardReviewFields } from "../../view-models/business-card-batch";
 
 type Action = "confirm" | "skip" | "retry" | "finish";
@@ -39,6 +40,7 @@ function BatchButton({ label, icon, disabled = false, selected = false, iconOnly
 }
 
 export function BusinessCardBatchScreen() {
+  const locale = useOrbitLocale();
   const large = useWindowDimensions().fontScale > 1.3;
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const batchId = (Array.isArray(params.id) ? params.id[0] : params.id) ?? "";
@@ -246,9 +248,9 @@ export function BusinessCardBatchScreen() {
   const imageValue: BusinessCardReviewImage = imageKey ? image?.key === imageKey ? image.value : { status: "loading" } : { status: "none" };
   const disabled = !active || !ready || Boolean(state.busy) || expired();
   function formIsCurrent() { return isCurrent() && current.current.selectedId === selected?.id && current.current.detail === detail && current.current.drafts[selected?.id ?? ""] === draft; }
-  return <AppScreen title={large ? "名片\n导入" : "名片导入"}>
+  return <AppScreen title={large && locale.language === "zh" ? "名片\n导入" : locale.t("businessCard.importTitle")}>
     {!detail ? <View style={styles.row}>
-      <BatchButton label="刷新批次" icon="refresh-outline" iconOnly disabled={!ready || !active || state.loading || Boolean(state.busy)} onPress={() => void load()} />
+      <BatchButton label={locale.t("businessCard.refreshBatch")} icon="refresh-outline" iconOnly disabled={!ready || !active || state.loading || Boolean(state.busy)} onPress={() => void load()} />
       <BatchButton label="返回人脉" icon="people-outline" onPress={() => router.push("/contacts" as Href)} />
     </View> : null}
     {!ready ? <Text style={styles.caption}>{batchId ? "正在确认账号与服务状态..." : "缺少批次编号。"}</Text> : null}
@@ -277,7 +279,7 @@ export function BusinessCardBatchScreen() {
         </View>
       </> : null}
     <View style={styles.row}>
-      <BatchButton label="刷新批次" icon="refresh-outline" iconOnly disabled={!ready || !active || state.loading || Boolean(state.busy)} onPress={() => void load()} />
+      <BatchButton label={locale.t("businessCard.refreshBatch")} icon="refresh-outline" iconOnly disabled={!ready || !active || state.loading || Boolean(state.busy)} onPress={() => void load()} />
       <BatchButton label="返回人脉" icon="people-outline" onPress={() => router.push("/contacts" as Href)} />
     </View>
       <Text style={styles.heading}>{detail.batch.status === "cancelled" ? "已取消" : detail.batch.status === "completed" ? "已完成" : detail.batch.status === "processing" ? "正在处理名片" : "待复核批次"}</Text>

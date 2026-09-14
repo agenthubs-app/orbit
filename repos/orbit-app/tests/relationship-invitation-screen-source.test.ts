@@ -12,5 +12,5 @@ test("native invitation route previews and accepts only after an explicit press"
   assert.match(source, /confirmed: true/u);
   assert.match(source, /acceptInvitation/u);
   assert.match(source, /onPress=\{\(\) => void acceptInvitation\(\)\}/u);
-  assert.match(source, /接受邀请并建立关系对话/u);
+  assert.match(source, /locale\.t\("invitation\.accept"\)/u);
 });

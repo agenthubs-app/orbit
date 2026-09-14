@@ -14,12 +14,13 @@ import React, { useSyncExternalStore } from "react";
 import { View } from "react-native-web";
 import glyphs from "@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/Ionicons.json";
 import { onSessionExpired } from "./src/api/session-expiry";
+import { createTranslator } from "./src/i18n/messages";
 const listeners = new Set(); let version = 0;
 const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => version);
 const contact = { id: "contact:/1", displayName: "林悦", role: "产品设计师", organization: "云间工作室", location: "东京 · 日本", primaryIndustryId: "professional_services", primaryIndustryLabel: "专业服务", primaryEmail: "lin.yue@example.test", relationshipContext: "在设计交流会上认识", source: { type: "manual", label: "手动记录" }, status: "active", tags: ["设计合作", "用户研究"],
   publicProfile: { bio: "关注产品体验与跨团队协作。", offering: ["设计研究与原型验证"], seeking: ["产品与工程合作伙伴"], topics: [], conversationPrompts: [] }, evidence: [], lastInteraction: { channel: "手动记录", occurredAt: "2026-09-10T09:00:00+09:00", summary: "讨论合作方向" },
   nextAction: "确认产品试点范围", notes: [{ noteId: "note-1", body: "9月10日 · 合作方向讨论\\n确认产品试点范围。", createdAt: "2026-09-10T09:00:00+09:00", privacy: "private", authorLabel: "我" }] };
-const state = window.fixture = { requests: [], pending: [], navigation: [], presses: {}, expiries: 0, contactId: contact.id, actor: "actor-1", cookieHeader: "", baseUrl: "https://orbit.example", ready: true, baseReady: true, signedIn: true, focused: true, mounted: true, canGoBack: false, width: 390, fontScale: 1, contact, ...window.initialFixture,
+const state = window.fixture = { requests: [], pending: [], navigation: [], presses: {}, expiries: 0, contactId: contact.id, actor: "actor-1", cookieHeader: "", baseUrl: "https://orbit.example", ready: true, baseReady: true, signedIn: true, focused: true, mounted: true, canGoBack: false, width: 390, fontScale: 1, language: "zh", contact, ...window.initialFixture,
   update(patch) { Object.assign(state, patch); version++; listeners.forEach(fn => fn()); },
   data(path) {
     if (path.startsWith("/api/contacts/")) return state.invalid ? {} : { state: "success", contact: { ...state.contact, id: state.wrongId ? "wrong" : state.contactId, ...(state.longText ? { displayName: "林悦跨团队合作负责人", role: "产品体验与跨团队协作及服务设计负责人", primaryEmail: "long-contact-identity-without-shortening@example.test", publicProfile: { ...state.contact.publicProfile, offering: ["从用户访谈到交互原型验证及跨团队协作流程的完整研究与设计支持，保留全部合作信息。", "本地社区资源", "补充的第三项合作资源"] } } : {}) }, editableStatusOptions: ["active", "needs_follow_up", "nurture", "archived"], editableTagOptions: [], summary: "", nextAction: "" };
@@ -41,6 +42,7 @@ window.fetch = async (input, init) => {
 export const useFixture = () => { observe(); return state; };
 export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, user: { id: state.actor }, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
+export const useOrbitLocale = () => { observe(); return { language: state.language, t: createTranslator(state.language) }; };
 export const useIsFocused = () => { observe(); return state.focused; };
 export const useLocalSearchParams = () => { observe(); return { id: state.contactId }; };
 export const useGlobalSearchParams = useLocalSearchParams;
@@ -62,7 +64,7 @@ test.before(async () => {
     plugins: [{ name: "ink-detail-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "detail" }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context|@react-navigation\/native)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "detail" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context|@react-navigation\/native)$|\/(ApiBaseUrlProvider|AuthSessionProvider|OrbitLocaleContext|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "detail" }));
       plugin.onLoad({ filter: /.*/, namespace: "detail" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, Text as RealText, TextInput as RealTextInput, RefreshControl as RealRefreshControl, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web";
 import { useFixture } from "fixture"; export * from "react-native-web";
@@ -166,6 +168,36 @@ test("editor is staged, presents only supported fields and cancels without write
   await press(p, "编辑资料"); assert.equal(await p.getByRole("button", { name: "移除标签：新合作", exact: true }).count(), 0);
   await press(p, "保存人脉"); assert.deepEqual(await writes(p), []);
   assert.equal(await p.getByRole("heading", { name: "人脉详情", exact: true }).count(), 1);
+});
+
+test("switching contact-detail language preserves the dirty draft, literal identity, and PATCH meaning", async t => {
+  const p = await open(t, { holdWrites: true });
+  await press(p, "编辑资料");
+  await p.getByRole("textbox", { name: "添加标签", exact: true }).fill("原文タグ / source");
+  await p.getByRole("textbox", { name: "互动摘要", exact: true }).fill("Keep this draft / 下書き");
+  await press(p, "跟进状态：长期维护");
+  await press(p, "互动渠道：邮件");
+
+  await update(p, { language: "ja" });
+  assert.equal(await p.getByRole("heading", { name: "つながりを編集", exact: true }).count(), 1);
+  assert.equal(await p.getByRole("button", { name: "フォロー状況: 長期フォロー", exact: true }).getAttribute("aria-selected"), "true");
+  assert.equal(await p.getByTestId("contact-editor").getByText("林悦", { exact: true }).count(), 1);
+  assert.equal(await p.getByTestId("contact-editor").getByText("云间工作室", { exact: true }).count(), 1);
+  assert.equal(await p.getByRole("textbox", { name: "タグを追加", exact: true }).inputValue(), "原文タグ / source");
+  assert.equal(await p.getByRole("textbox", { name: "概要", exact: true }).inputValue(), "Keep this draft / 下書き");
+
+  await update(p, { language: "en" });
+  assert.equal(await p.getByRole("heading", { name: "Edit connection", exact: true }).count(), 1);
+  assert.equal(await p.getByRole("button", { name: "Follow-up status: Long-term", exact: true }).getAttribute("aria-selected"), "true");
+  assert.equal(await p.getByRole("textbox", { name: "Add tag", exact: true }).inputValue(), "原文タグ / source");
+  assert.equal(await p.getByRole("textbox", { name: "Summary", exact: true }).inputValue(), "Keep this draft / 下書き");
+  await press(p, "Save");
+
+  assert.deepEqual(await writes(p), [{ method: "PATCH", path: "/api/contacts/contact%3A%2F1", body: {
+    status: "nurture",
+    tags: ["设计合作", "用户研究", "原文タグ / source"],
+    lastInteraction: { channel: "email_signal", occurredAt: "2026-09-10T09:00:00+09:00", summary: "Keep this draft / 下書き" }
+  } }]);
 });
 
 test("editor submits one combined request only on explicit save and confirms returned fields", async t => {

@@ -14,11 +14,12 @@ import React, { useSyncExternalStore } from "react";
 import { View } from "react-native-web";
 import glyphs from "@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/Ionicons.json";
 import { onSessionExpired } from "./src/api/session-expiry";
+import { createTranslator } from "./src/i18n/messages";
 const listeners = new Set(); let revision = 0;
 const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
 const titles = ["周末产品交流会", "设计师午间聚会", "创业者交流夜", "产品与工程圆桌"];
 const events = titles.map((title, index) => ({ id: "event:" + (index + 1), title, startsAt: "2026-09-" + [12, 13, 15, 18][index] + "T" + ["14:00", "12:00", "18:00", "19:00"][index] + ":00+09:00", endsAt: "2026-09-" + [12, 13, 15, 18][index] + "T21:00:00+09:00", status: "imported", venue: "东京", location: "东京", subtitle: ["涩谷 · 产品经验交流", "代官山 · 设计灵感分享", "丸之内 · 创业经验分享", "五反田 · 产品技术讨论"][index], tags: [index === 1 ? "设计" : "产品"], coverPath: "/orbit-covers/meeting.jpg", organizer: "星野社区", description: "带着一个正在推进的问题交流。", relationshipContext: "公开活动", recommendedPreparation: "确认参加要求", nextAction: "先看活动详情", sourceMetadata: { type: "event_import", label: "活动主办方" }, evidence: [], code: "public-" + index }));
-const state = window.fixture = { requests: [], pending: [], navigation: [], presses: {}, expiries: 0, actor: "actor-1", cookieHeader: "", baseUrl: "https://orbit.example", ready: true, baseReady: true, signedIn: true, focused: true, mounted: true, width: 390, fontScale: 1, events, ...window.initialFixture,
+const state = window.fixture = { requests: [], pending: [], navigation: [], presses: {}, expiries: 0, actor: "actor-1", cookieHeader: "", baseUrl: "https://orbit.example", ready: true, baseReady: true, signedIn: true, focused: true, mounted: true, width: 390, fontScale: 1, language: "zh", events, ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
   data(path) {
     if (path === "/api/events/public") { const items = state.empty ? [] : state.events; return state.invalid ? {} : { events: state.badField ? items.map((event, i) => i === 0 ? { ...event, [typeof state.badField === "string" ? state.badField : "title"]: 42 } : event) : state.duplicate ? [...items, items[0]] : items, generatedAt: "2026-09-12T00:00:00Z", organizer: null }; }
@@ -39,6 +40,7 @@ window.fetch = async (input, init) => {
 export const useFixture = () => { observe(); return state; };
 export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, user: state.signedIn ? { id: state.actor } : null, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
+export const useOrbitLocale = () => { observe(); return { language: state.language, t: createTranslator(state.language) }; };
 export const useIsFocused = () => { observe(); return state.focused; };
 export const useLocalSearchParams = () => ({});
 export const usePathname = () => "/events";
@@ -57,7 +59,7 @@ test.before(async () => {
     plugins: [{ name: "ink-events-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "events" }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "events" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|OrbitLocaleContext|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "events" }));
       plugin.onLoad({ filter: /.*/, namespace: "events" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, Text as RealText, TextInput as RealTextInput, RefreshControl as RealRefreshControl, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web";
 import { useFixture } from "fixture"; export * from "react-native-web";
@@ -228,6 +230,32 @@ test("event catalogue uses the approved title, inline operator entry, tabs and c
   assert.equal(await p.evaluate(() => (window as any).fixture.requests.some((r: any) => r.path === "/api/recommendations/events")), false);
   assert.deepEqual(await writes(p), []);
   if (process.env.APP_STYLE_SCREENSHOTS) await p.screenshot({ path: "/tmp/orbit-ink-signal-events-390-" + (process.env.EVENTS_QA_PASS ?? "current") + ".png" });
+});
+
+test("switching event-catalogue language preserves the query, filters, and literal event identity", async t => {
+  const p = await open(t);
+  const search = p.getByPlaceholder("搜索活动、地点或主题", { exact: true });
+  await search.fill("设计师");
+  await press(p, "筛选活动地点");
+  await press(p, "东京");
+
+  await update(p, { language: "ja" });
+  const japaneseSearch = p.getByPlaceholder("イベント、場所、テーマを検索", { exact: true });
+  await japaneseSearch.waitFor();
+  assert.equal(await p.getByRole("tab", { name: "おすすめ", exact: true }).count(), 1);
+  assert.equal(await p.getByRole("button", { name: "イベント日時を絞り込む", exact: true }).count(), 1);
+  assert.equal(await p.getByRole("button", { name: "場所で絞り込む", exact: true }).count(), 1);
+  assert.equal(await japaneseSearch.inputValue(), "设计师");
+  assert.equal(await p.getByText("设计师午间聚会", { exact: true }).count(), 1);
+
+  await update(p, { language: "en" });
+  const englishSearch = p.getByPlaceholder("Search events, places, or topics", { exact: true });
+  await englishSearch.waitFor();
+  assert.equal(await p.getByRole("tab", { name: "Recommended", exact: true }).count(), 1);
+  assert.equal(await p.getByRole("button", { name: "Filter by event time", exact: true }).count(), 1);
+  assert.equal(await englishSearch.inputValue(), "设计师");
+  assert.equal(await p.getByText("设计师午间聚会", { exact: true }).count(), 1);
+  assert.deepEqual(await writes(p), []);
 });
 
 test("catalogue tabs keep source text alignment and a text-width underline without shrinking their touch targets", async t => {

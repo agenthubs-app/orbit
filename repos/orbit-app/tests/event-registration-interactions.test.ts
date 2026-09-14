@@ -14,10 +14,11 @@ const fixture = `
 import React, { useSyncExternalStore } from "react";
 import { View } from "react-native-web";
 import { onSessionExpired } from "./src/api/session-expiry";
+import { createTranslator } from "./src/i18n/messages";
 const listeners = new Set(); let revision = 0;
 const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
 const state = window.fixture = {
-  actor: "actor-1", eventId: "event:1", baseUrl: "https://orbit.example", cookieHeader: "", ready: true, baseReady: true, signedIn: true, mounted: true,
+  actor: "actor-1", eventId: "event:1", language: "zh", baseUrl: "https://orbit.example", cookieHeader: "", ready: true, baseReady: true, signedIn: true, mounted: true,
   requests: [], pending: [], presses: {}, alerts: [], navigation: [], expiries: 0, holdReads: false,
   eventStatus: 200, registrationStatus: 200, cachedRegistration: false, snapshotReads: [], snapshotWrites: [],
   version: 1, hash: "a".repeat(64), prompt: "Who would you like to meet?", savedAnswer: "Saved answer", registered: true,
@@ -51,6 +52,7 @@ window.fetch = async (input, init) => { const index = state.requests.length; con
 export const useFixture = () => { observe(); return state; };
 export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, user: state.signedIn ? { id: state.actor } : null, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
+export const useOrbitLocale = () => { observe(); return { language: state.language, t: createTranslator(state.language) }; };
 export const useLocalSearchParams = () => { observe(); return { id: state.eventId }; };
 export const useGlobalSearchParams = useLocalSearchParams;
 export const usePathname = () => "/events/" + encodeURIComponent(state.eventId) + "/register";
@@ -69,7 +71,7 @@ test.before(async () => {
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "registration-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "registration" }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "registration" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|OrbitLocaleContext|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "registration" }));
       plugin.onLoad({ filter: /.*/, namespace: "registration" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, RefreshControl as RealRefreshControl } from "react-native-web"; export * from "react-native-web";
 export const Pressable = props => { const text = React.Children.toArray(props.children).find(child => React.isValidElement(child) && typeof child.props.children === "string"); const label = props.accessibilityLabel || text?.props.children; if (label) window.fixture.presses[label] = props.onPress; return <RealPressable {...props} />; };
@@ -108,6 +110,24 @@ test("registration reads canonical public event context without a legacy private
     { method: "GET", path: "/api/events/public/event%3A1", query: "" }
   ]);
   assert.equal(await p.getByText("Networking meeting", { exact: true }).count(), 1);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("switching registration language preserves a dirty answer and requests localized product copy", async t => {
+  const p = await open(t);
+  await fill(p, "日本産業パートナー / Climate founders");
+  await update(p, { language: "ja" });
+  await p.getByRole("heading", { name: "参加登録情報", exact: true }).waitFor();
+  await p.getByRole("button", { name: "登録情報を更新", exact: true }).waitFor();
+  assert.equal(await p.getByPlaceholder("具体的な内容を1文で入力してください。", { exact: true }).inputValue(), "日本産業パートナー / Climate founders");
+  assert.equal(await p.getByText("Networking meeting", { exact: true }).count(), 1);
+  assert.ok(await p.evaluate(() => (window as any).fixture.requests.some((request: any) => request.query === "?language=ja")));
+
+  await update(p, { language: "en" });
+  await p.getByRole("heading", { name: "Registration details", exact: true }).waitFor();
+  await p.getByRole("button", { name: "Update registration", exact: true }).waitFor();
+  assert.equal(await p.getByPlaceholder("Add a specific answer.", { exact: true }).inputValue(), "日本産業パートナー / Climate founders");
+  assert.ok(await p.evaluate(() => (window as any).fixture.requests.some((request: any) => request.query === "?language=en")));
   assert.deepEqual(await writes(p), []);
 });
 

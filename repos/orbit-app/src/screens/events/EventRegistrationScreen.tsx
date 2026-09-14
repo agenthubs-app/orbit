@@ -30,6 +30,7 @@ import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import {
   buildEventRegistrationAdaptiveBody,
   buildEventRegistrationAnswers,
@@ -66,6 +67,7 @@ function answersFromView(view: EventRegistrationView | null): Record<string, str
 
 export function EventRegistrationScreen() {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const eventId = firstParam(id);
   const router = useRouter();
@@ -84,13 +86,13 @@ export function EventRegistrationScreen() {
   const editRevision = useRef(0);
   const eventState = useApiResource<unknown>(publicEventDetailPath(eventId), () => false, { scopeKey });
   const registrationState = useApiResource<unknown>(
-    `${eventRegistrationPath(eventId)}?language=zh`,
+    `${eventRegistrationPath(eventId)}?language=${encodeURIComponent(locale.language)}`,
     () => false,
     { scopeKey, cachePolicy: "network-only" }
   );
   const loadedRegistrationView =
     registrationState.kind === "success" || registrationState.kind === "empty"
-      ? eventRegistrationToView(registrationState.data)
+      ? eventRegistrationToView(registrationState.data, locale.language)
       : null;
   const latestView = useRef(loadedRegistrationView); latestView.current = loadedRegistrationView;
   const [registrationView, setRegistrationView] = useState<EventRegistrationView | null>(null);
@@ -149,7 +151,7 @@ export function EventRegistrationScreen() {
 
   useEffect(() => {
     if (!ready || !registrationData) return;
-    const received = eventRegistrationToView(registrationData);
+    const received = eventRegistrationToView(registrationData, locale.language);
     const previous = formView.current;
     if (!previous) { resetDraft(received); return; }
     if (eventRegistrationQuestionKey(previous) !== eventRegistrationQuestionKey(received)) {
@@ -482,7 +484,7 @@ export function EventRegistrationScreen() {
 
   return (
     <AppScreen
-      eyebrow="活动报名"
+      eyebrow={locale.t("registration.eyebrow")}
       refreshControl={
         <RefreshControl
           onRefresh={refresh}
@@ -490,7 +492,7 @@ export function EventRegistrationScreen() {
           tintColor={colors.accent}
         />
       }
-      title="报名资料"
+      title={locale.t("registration.title")}
     >
       {eventState.kind === "loading" || registrationState.kind === "loading" ? (
         <LoadingState />
@@ -607,6 +609,7 @@ function RegistrationForm({
   submitError: string | null;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   return (
     <>
       <DataCard detail={readConfirmed ? registration.statusDetail : "显示上次读取的报名资料，当前答案和辅助问答已保留。"} title={eventTitle}>
@@ -623,10 +626,10 @@ function RegistrationForm({
           ]}
         >
           <Ionicons color={colors.accent} name="arrow-back-outline" size={17} />
-          <Text style={styles.secondaryButtonText}>返回活动</Text>
+          <Text style={styles.secondaryButtonText}>{locale.t("registration.backEvent")}</Text>
         </Pressable>
       </DataCard>
-      <DataCard variant="inset" detail="标记为必答的问题需要回答，其余问题可以跳过" title="参与资料">
+      <DataCard variant="inset" detail={locale.t("registration.profileDetail")} title={locale.t("registration.profileTitle")}>
         {questionsChanged ? <>
           <Text style={styles.errorText}>报名问题已更新，当前答案和辅助问答已保留。</Text>
           <Pressable accessibilityRole="button" disabled={pendingAction !== null || adaptivePending !== null || !readConfirmed}
@@ -663,7 +666,7 @@ function RegistrationForm({
         >
           <Ionicons color={colors.onAccent} name="checkmark-outline" size={18} />
           <Text style={styles.primaryButtonText}>
-            {pendingAction === "register" ? "保存中" : registration.confirmLabel}
+            {pendingAction === "register" ? locale.t("profile.saving") : registration.confirmLabel || locale.t("registration.submit")}
           </Text>
         </Pressable>
         {registration.canCancel ? (
@@ -838,10 +841,11 @@ function RegistrationQuestion({
   question: EventRegistrationQuestionView;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   return (
     <View style={styles.questionBlock}>
       <Text style={styles.questionText}>{question.prompt}</Text>
-      <Text style={styles.evidenceText}>{question.required ? "必答" : "可选"}</Text>
+      <Text style={styles.evidenceText}>{locale.t(question.required ? "registration.required" : "registration.optional")}</Text>
       {question.options.length > 0 ? (
         <View style={styles.optionsRow}>
           {question.options.map((option) => (
@@ -870,7 +874,7 @@ function RegistrationQuestion({
       <TextInput
         multiline
         onChangeText={onChange}
-        placeholder="写一句具体的补充。"
+        placeholder={locale.t("registration.answerPlaceholder")}
         placeholderTextColor={colors.text4}
         style={styles.answerInput}
         textAlignVertical="top"

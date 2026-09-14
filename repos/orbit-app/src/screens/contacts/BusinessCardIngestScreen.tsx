@@ -8,6 +8,7 @@ import type { IngestBatchDetailContract, IngestItemContract } from "../../api/co
 import { ingestBatchActionResponseSchema, ingestFinalizeResponseSchema, ingestItemActionResponseSchema } from "../../api/schema/business-card-batch";
 import { AppScreen } from "../../components/AppScreen";
 import { BusinessCardBatchReviewForm, type BusinessCardReviewImage } from "../../components/BusinessCardBatchReviewForm";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { businessCardReviewFields, reconcileBusinessCardReviewCard, reconcileBusinessCardReviewDraft, type BusinessCardReviewCardDraft, type BusinessCardReviewDraft } from "../../view-models/business-card-batch";
 import { acceptedIngestDetail, acceptedIngestReview, canFinalizeIngest, canReviewIngest, cardConfirmationSnapshot, ingestBatchPath, ingestCards, ingestExpired, ingestItemPath, itemReplacePath, ingestTerminal, isHttpSuccess, uploadPendingPass, type IngestReviewAction } from "../../view-models/business-card-ingest";
 import { clearPendingFiles, pendingFiles, rememberPendingFiles } from "./business-card-pending-files";
@@ -38,6 +39,7 @@ export function BusinessCardIngestScreen() {
   return <IngestContent key={session.scope.key} session={session} />;
 }
 function IngestContent({ session }: { session: IngestSession }) {
+  const locale = useOrbitLocale();
   const large = useWindowDimensions().fontScale > 1.3;
   const { scope, active, isCurrent, capture } = session;
   const { styles } = useIngestStyles();
@@ -387,7 +389,7 @@ function IngestContent({ session }: { session: IngestSession }) {
   const renderedImageAttempt = imageAttempt.current;
   const local = detail && !state.reviewInvalidated ? pendingFiles(fileScope, detail) : new Map();
   const labels: Record<IngestItemContract["status"], string> = { awaiting_upload: "等待上传", uploaded: "已上传", excluded: "已排除", queued: "等待识别", processing: "正在识别", extracted: "待复核", terminal_failed: "识别失败", confirmed: "已收录", skipped: "已跳过" };
-  return <AppScreen title={large ? "名片\n导入" : "名片导入"}>
+  return <AppScreen title={large && locale.language === "zh" ? "名片\n导入" : locale.t("businessCard.importTitle")}>
     {state.loading ? <Text style={styles.text}>正在读取批次...</Text> : null}
     {state.busy ? <Text style={styles.text}>正在处理...</Text> : null}
     {state.error ? <Text accessibilityRole="alert" style={styles.error}>{state.error}</Text> : null}
@@ -396,7 +398,7 @@ function IngestContent({ session }: { session: IngestSession }) {
     {selected && selectedCard && detail ? <View>
       {selectedCard.items.some(item => item.status === "terminal_failed") ? <Text style={styles.error}>{selectedCard.back ? "至少一面识别失败。可重试对应图片，或核对后手动填写整张名片。" : selected.errorCode === "IMAGE_INVALID" || selected.errorCode === "LEASE_EXHAUSTED" ? "识别失败，不再自动重试。可手动重试、替换图片或填写名片。" : "识别失败。可手动重试或填写名片。"}</Text> : null}
       {selectedCard.back ? <View style={styles.row}><IngestButton label="查看正面" icon="image-outline" disabled={!active || selectedSide === "front"} onPress={() => setSelectedSide("front")} /><IngestButton label="查看反面" icon="copy-outline" disabled={!active || selectedSide === "back"} onPress={() => setSelectedSide("back")} /></View> : null}
-      <BusinessCardBatchReviewForm fields={draft?.fields ?? null} image={active && imageOwner.current === imageKey ? image : { status: "none" }} reviewIssues={selectedCard.items.flatMap(item => item.reviewIssues)} statusLabel={selectedCard.items.some(item => item.status === "terminal_failed") ? "手动填写名片" : selectedCard.back ? "复核正反面" : "复核名片"}
+      <BusinessCardBatchReviewForm fields={draft?.fields ?? null} image={active && imageOwner.current === imageKey ? image : { status: "none" }} reviewIssues={selectedCard.items.flatMap(item => item.reviewIssues)} statusLabel={selectedCard.items.some(item => item.status === "terminal_failed") ? "手动填写名片" : selectedCard.back ? "复核正反面" : locale.t("businessCard.review")}
         disabled={!active || state.busy} canConfirm={enabled && Boolean(draft?.fields.displayName.trim()) && !draft?.unresolvedConflicts.length && reviewAllowed(selected, selectedCard.items.some(item => item.status === "terminal_failed") ? "manual-entry" : "confirm")} canSkip={enabled && reviewAllowed(selected, "skip")} canRetry={enabled && Boolean(retryTarget)} duplicateContactId={state.duplicate?.contactId ?? null}
         {...(draft ? { fieldSources: draft.sources, conflicts: draft.conflicts, unresolvedConflicts: draft.unresolvedConflicts } : {})}
         onChange={fields => {
@@ -421,7 +423,7 @@ function IngestContent({ session }: { session: IngestSession }) {
       <IngestButton label="重新载入字段" icon="refresh-outline" disabled={!enabled} onPress={() => reloadFields(selected)} />
       {image.status === "unavailable" ? <IngestButton label="重新读取图片" icon="image-outline" disabled={!active} onPress={() => { if (isCurrent() && !current.current.reviewInvalidated && current.current.detail === detail) { imageAttempt.current = null; setImageRetry(n => n + 1); } }} /> : null}
     </View> : null}
-    <View style={styles.row}><Text style={styles.heading}>{detail ? batchStatusLabel(ingestExpired(detail) ? "expired" : detail.batch.status) : "批次"}</Text><IngestButton label="刷新批次" icon="refresh-outline" disabled={!active || state.busy || state.loading} onPress={() => { update({ error: null }); void load(); }} /></View>
+    <View style={styles.row}><Text style={styles.heading}>{detail ? batchStatusLabel(ingestExpired(detail) ? "expired" : detail.batch.status) : "批次"}</Text><IngestButton label={locale.t("businessCard.refreshBatch")} icon="refresh-outline" disabled={!active || state.busy || state.loading} onPress={() => { update({ error: null }); void load(); }} /></View>
     {collecting ? <View style={styles.row}>
       <IngestButton label="重新选择名片" icon="images-outline" disabled={!enabled} onPress={() => void reselect()} />
       <IngestButton label="上传待传名片" icon="cloud-upload-outline" disabled={!enabled || !local.size} onPress={() => void upload()} />

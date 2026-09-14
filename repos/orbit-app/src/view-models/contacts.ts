@@ -1,7 +1,9 @@
 import { ORBIT_API_ENDPOINTS } from "../api/endpoints";
 import type { ContactListItemContract } from "../api/contract/contacts";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../api/contract/industries";
+import type { OrbitLanguage } from "../api/contract/language";
 import { industryLabel, isIndustryIdCode, secondaryIndustryLabel, validateIndustrySelection } from "../api/domain/industries";
+import { createTranslator, type MessageKey } from "../i18n/messages";
 
 export interface ContactSummary {
   id: string;
@@ -356,6 +358,43 @@ function statusLabel(value: string): string {
   return labels[normalized] ?? labelFromToken(value, "推进中");
 }
 
+const localizedStatusKeys: Readonly<Record<string, MessageKey>> = {
+  active: "contacts.statusActive",
+  archived: "contacts.statusArchived",
+  dormant: "contacts.statusDormant",
+  needs_follow_up: "contacts.statusNeedsFollowUp",
+  nurture: "contacts.statusNurture",
+  weak: "contacts.statusWeak"
+};
+
+function statusLabelForLanguage(value: string, language: OrbitLanguage): string {
+  if (language === "zh") return statusLabel(value);
+  const normalized = value.trim().toLowerCase();
+  const key = localizedStatusKeys[normalized];
+  return key ? createTranslator(language)(key) : labelFromToken(value, createTranslator(language)("contacts.statusActive"));
+}
+
+function valueLabelsForLanguage(contact: Record<string, unknown>, language: OrbitLanguage): string[] {
+  if (language === "zh") return valueLabels(contact);
+  const value = contact.value;
+  const valueTypes = isRecord(value) && Array.isArray(value.valueTypes) ? value.valueTypes : [];
+  const keys: Readonly<Record<string, MessageKey>> = {
+    business_opportunity: "contacts.valueBusinessOpportunity",
+    commercial_opportunity: "contacts.valueBusinessOpportunity",
+    community_context: "contacts.valueCommunityResource",
+    community_resource: "contacts.valueCommunityResource",
+    intro_path: "contacts.valueIntroPath",
+    knowledge_exchange: "contacts.valueKnowledgeExchange",
+    referral_path: "contacts.valueIntroPath",
+    strategic_fit: "contacts.valueStrategicFit"
+  };
+  const t = createTranslator(language);
+  return valueTypes
+    .filter((valueType): valueType is string => typeof valueType === "string")
+    .map(valueType => keys[valueType] ? t(keys[valueType]) : labelFromToken(valueType, valueType))
+    .filter(Boolean);
+}
+
 export function contactAvatarFor(
   contact: Pick<ContactSummary, "id" | "name">
 ): ContactAvatarView {
@@ -613,8 +652,24 @@ function optionSelected(
   return selectedValues.has(value) || option.selected === true;
 }
 
-function sourceFilterLabel(value: string): string {
+function sourceFilterLabel(value: string, language: OrbitLanguage = "zh"): string {
   const normalized = value.trim().toLowerCase();
+  if (language !== "zh") {
+    const keys: Readonly<Record<string, MessageKey>> = {
+      business_card_ocr: "contacts.scanCard",
+      calendar_signal: "contacts.channelCalendar",
+      email_signal: "contacts.channelEmail",
+      event_import: "contacts.channelEventNote",
+      external_contacts: "contacts.library",
+      manual: "contacts.channelManualNote",
+      "manual note": "contacts.channelManualNote",
+      qr: "contacts.addDetail",
+      qr_scan: "contacts.addDetail",
+      referral: "contacts.channelReferral",
+      registration: "registration.submit"
+    };
+    return keys[normalized] ? createTranslator(language)(keys[normalized]) : value.trim();
+  }
   const labels: Record<string, string> = {
     business_card_ocr: "名片识别",
     calendar_signal: "日程线索",
@@ -632,7 +687,8 @@ function sourceFilterLabel(value: string): string {
   return labels[normalized] ?? preferredChineseSegment(value);
 }
 
-function tagFilterLabel(value: string): string {
+function tagFilterLabel(value: string, language: OrbitLanguage = "zh"): string {
+  if (language !== "zh") return value.trim();
   const normalized = value.trim().toLowerCase();
   const labels: Record<string, string> = {
     "event:climate-founders-dinner": "气候创始人晚宴",
@@ -648,8 +704,21 @@ function tagFilterLabel(value: string): string {
   return labels[normalized] ?? value.replace(/^[a-z]+:/iu, "").trim();
 }
 
-function valueFilterLabel(value: string): string {
+function valueFilterLabel(value: string, language: OrbitLanguage = "zh"): string {
   const normalized = value.trim().toLowerCase();
+  if (language !== "zh") {
+    const keys: Readonly<Record<string, MessageKey>> = {
+      business_opportunity: "contacts.valueBusinessOpportunity",
+      commercial_opportunity: "contacts.valueBusinessOpportunity",
+      community_context: "contacts.valueCommunityResource",
+      community_resource: "contacts.valueCommunityResource",
+      intro_path: "contacts.valueIntroPath",
+      knowledge_exchange: "contacts.valueKnowledgeExchange",
+      referral_path: "contacts.valueIntroPath",
+      strategic_fit: "contacts.valueStrategicFit"
+    };
+    return keys[normalized] ? createTranslator(language)(keys[normalized]) : value.trim();
+  }
   const labels: Record<string, string> = {
     business_opportunity: "商业机会",
     commercial_opportunity: "商业机会",
@@ -713,32 +782,34 @@ function contactSearchFilterSection(
 
 export function contactSearchFilterSections(
   data: unknown,
-  selection: ContactSearchFilterSelection = {}
+  selection: ContactSearchFilterSelection = {},
+  language: OrbitLanguage = "zh"
 ): ContactSearchFilterSectionView[] {
+  const t = createTranslator(language);
   return [
     contactSearchFilterSection(
       data,
       "source",
-      "添加方式",
+      t("contacts.addMethod"),
       "sources",
       normalizedFilterValues(selection.sourceFilters),
-      sourceFilterLabel
+      value => sourceFilterLabel(value, language)
     ),
     contactSearchFilterSection(
       data,
       "tag",
-      "标签",
+      t("contacts.tags"),
       "tags",
       normalizedFilterValues(selection.tagFilters),
-      tagFilterLabel
+      value => tagFilterLabel(value, language)
     ),
     contactSearchFilterSection(
       data,
       "value",
-      "价值",
+      t("contacts.value"),
       "values",
       normalizedFilterValues(selection.valueFilters),
-      valueFilterLabel
+      value => valueFilterLabel(value, language)
     )
   ].filter(
     (section): section is ContactSearchFilterSectionView => section !== null
@@ -859,8 +930,9 @@ function filterValues(
     .filter(Boolean);
 }
 
-function contactsSearchFiltersLabel(data: unknown): string {
+function contactsSearchFiltersLabel(data: unknown, language: OrbitLanguage): string {
   const filters = searchAppliedFilters(data);
+  const t = createTranslator(language);
   const labels: string[] = [];
   const query =
     stringField(filters, "query") ||
@@ -871,26 +943,26 @@ function contactsSearchFiltersLabel(data: unknown): string {
   const valueFilters = filterValues(filters, "valueFilters");
 
   if (query) {
-    labels.push(`关键词：${query}`);
+    labels.push(t("contacts.keyword", { value: query }));
   }
 
   if (sourceFilters.length > 0) {
-    labels.push(`来源：${sourceFilters.map(sourceFilterLabel).join("、")}`);
+    labels.push(t("contacts.source", { value: sourceFilters.map(value => sourceFilterLabel(value, language)).join(language === "en" ? ", " : "、") }));
   }
 
   if (statusFilters.length > 0) {
-    labels.push(`状态：${statusFilters.map(statusLabel).join("、")}`);
+    labels.push(t("contacts.status", { value: statusFilters.map(value => statusLabelForLanguage(value, language)).join(language === "en" ? ", " : "、") }));
   }
 
   if (tagFilters.length > 0) {
-    labels.push(`标签：${tagFilters.map(tagFilterLabel).join("、")}`);
+    labels.push(`${t("contacts.tags")}${language === "en" ? ": " : "："}${tagFilters.map(value => tagFilterLabel(value, language)).join(language === "en" ? ", " : "、")}`);
   }
 
   if (valueFilters.length > 0) {
-    labels.push(`价值：${valueFilters.map(valueFilterLabel).join("、")}`);
+    labels.push(`${t("contacts.value")}${language === "en" ? ": " : "："}${valueFilters.map(value => valueFilterLabel(value, language)).join(language === "en" ? ", " : "、")}`);
   }
 
-  return labels.length > 0 ? labels.join(" · ") : "未设置筛选";
+  return labels.length > 0 ? labels.join(" · ") : t("contacts.noFilters");
 }
 
 function contactSearchResultDetail(contact: ContactSummary): string {
@@ -899,13 +971,15 @@ function contactSearchResultDetail(contact: ContactSummary): string {
     .join(" · ");
 }
 
-function contactsSearchNextAction(data: unknown, count: number): string {
+function contactsSearchNextAction(data: unknown, count: number, language: OrbitLanguage): string {
+  const t = createTranslator(language);
   if (count === 0) {
-    return "这次没有找到合适的人。";
+    return t("contacts.searchNone");
   }
 
   if (isRecord(data)) {
     const rawNextAction = stringField(data, "nextAction");
+    if (language !== "zh" && rawNextAction && !containsImplementationLabel(rawNextAction)) return rawNextAction;
     const chinese = preferredChineseSegment(rawNextAction);
 
     if (segmentLooksChinese(chinese) && !containsImplementationLabel(chinese)) {
@@ -913,16 +987,17 @@ function contactsSearchNextAction(data: unknown, count: number): string {
     }
   }
 
-  return "先看匹配到的人和关系背景，再决定要不要联系。";
+  return t("contacts.searchNext");
 }
 
-export function contactsSearchToView(data: unknown): ContactsSearchView {
-  const contacts = contactsToSummaries(data).slice(0, 3);
+export function contactsSearchToView(data: unknown, language: OrbitLanguage = "zh"): ContactsSearchView {
+  const t = createTranslator(language);
+  const contacts = contactsToSummaries(data, language).slice(0, 3);
 
   return {
-    emptyText: contacts.length === 0 ? "换个关键词，或先清空筛选。" : "",
-    filtersLabel: contactsSearchFiltersLabel(data),
-    nextAction: contactsSearchNextAction(data, contacts.length),
+    emptyText: contacts.length === 0 ? t("contacts.searchEmpty") : "",
+    filtersLabel: contactsSearchFiltersLabel(data, language),
+    nextAction: contactsSearchNextAction(data, contacts.length, language),
     results: contacts.map((contact) => ({
       detail: contactSearchResultDetail(contact),
       id: contact.id,
@@ -933,8 +1008,8 @@ export function contactsSearchToView(data: unknown): ContactsSearchView {
       valueLabels: contact.valueLabels,
       valueScore: contact.valueScore
     })),
-    summary: contacts.length === 0 ? "暂无匹配" : `${contacts.length} 位匹配`,
-    title: "深度搜索"
+    summary: contacts.length === 0 ? (language === "zh" ? "暂无匹配" : t("contacts.noMatch")) : t("contacts.matchCount", { count: contacts.length }),
+    title: t("contacts.deepSearch")
   };
 }
 
@@ -980,6 +1055,39 @@ function archiveAction(
     nextStatus: "archived",
     pendingLabel: "归档中",
     successMessage: `已归档 ${name}。`
+  };
+}
+
+function statusActionForLanguage(
+  rawStatus: string,
+  name: string,
+  language: OrbitLanguage
+): ContactDetailStatusActionView | null {
+  if (language === "zh") return statusAction(rawStatus, name);
+  const normalized = rawStatus.trim().toLowerCase();
+  const t = createTranslator(language);
+  if (normalized === "needs_follow_up") return {
+    label: t("contacts.actionMarkActive"), nextStatus: "active",
+    pendingLabel: t("contacts.actionUpdating"), successMessage: t("contacts.markedActive", { name })
+  };
+  if (normalized === "active" || normalized === "nurture") return {
+    label: t("contacts.actionReturnFollowUp"), nextStatus: "needs_follow_up",
+    pendingLabel: t("contacts.actionUpdating"), successMessage: t("contacts.returnedFollowUp", { name })
+  };
+  return null;
+}
+
+function archiveActionForLanguage(
+  rawStatus: string,
+  name: string,
+  language: OrbitLanguage
+): ContactDetailStatusActionView | null {
+  if (language === "zh") return archiveAction(rawStatus, name);
+  if (rawStatus.trim().toLowerCase() === "archived") return null;
+  const t = createTranslator(language);
+  return {
+    label: t("contacts.actionArchive"), nextStatus: "archived",
+    pendingLabel: t("contacts.actionArchiving"), successMessage: t("contacts.archived", { name })
   };
 }
 
@@ -1238,6 +1346,33 @@ function analysisLocationLabel(value: string): string {
   return /[a-z]{3,}/iu.test(trimmed) ? "其他地区" : trimmed;
 }
 
+function relationshipTextForLanguage(
+  contact: Record<string, unknown>,
+  language: OrbitLanguage
+): string {
+  if (language === "zh") return relationshipText(contact);
+  const candidates = [
+    stringField(contact, "profileSnippet"),
+    stringField(contact, "relationshipContext"),
+    publicProfileBio(contact),
+    stringField(contact, "role")
+  ];
+  return candidates.find(value => value.trim() && !containsImplementationLabel(value))
+    ?? createTranslator(language)("contacts.relationshipPending");
+}
+
+function nextActionTextForLanguage(
+  contact: Record<string, unknown>,
+  name: string,
+  language: OrbitLanguage
+): string {
+  if (language === "zh") return nextActionText(contact, name);
+  const value = stringField(contact, "nextAction");
+  return value && !/\b(review|agent|source evidence|before agent use)\b/iu.test(value)
+    ? value
+    : createTranslator(language)("contacts.reviewEvidenceBeforeContact", { name });
+}
+
 export function contactLocationsToValues(data: unknown): string[] {
   return listFromPayload(data, "contacts")
     .filter(isRecord)
@@ -1245,7 +1380,10 @@ export function contactLocationsToValues(data: unknown): string[] {
     .filter((location) => location.length > 0);
 }
 
-export function contactsToSummaries(data: unknown): ContactSummary[] {
+export function contactsToSummaries(
+  data: unknown,
+  language: OrbitLanguage = "zh"
+): ContactSummary[] {
   return listFromPayload(data, "contacts")
     .filter(isRecord)
     .map((contact) => {
@@ -1260,24 +1398,25 @@ export function contactsToSummaries(data: unknown): ContactSummary[] {
           stringField(contact, "name", "Contact")
         ),
         nextAction: contactField(contact, "nextAction"),
-        organization: organizationLabel(
-          contactField(contact, "organization", "Independent")
-        ),
-        relationship: relationshipText(contact),
-        role: roleLabel(contactField(contact, "role")),
-        status: statusLabel(contactField(contact, "status")),
-        valueLabels: valueLabels(contact),
+        organization: language === "zh"
+          ? organizationLabel(contactField(contact, "organization", "Independent"))
+          : contactField(contact, "organization", "Independent"),
+        relationship: relationshipTextForLanguage(contact, language),
+        role: language === "zh" ? roleLabel(contactField(contact, "role")) : contactField(contact, "role"),
+        status: statusLabelForLanguage(contactField(contact, "status"), language),
+        valueLabels: valueLabelsForLanguage(contact, language),
         valueScore: valueScore(contact)
       };
     })
     .map((contact) => ({
       ...contact,
-      nextAction: nextActionText(
+      nextAction: nextActionTextForLanguage(
         listFromPayload(data, "contacts")
           .filter(isRecord)
           .find((rawContact) => stringField(rawContact, "id", "contact") === contact.id) ??
           {},
-        contact.name
+        contact.name,
+        language
       )
     }));
 }
@@ -1441,7 +1580,7 @@ function evidenceExcerpts(contact: Record<string, unknown>): string[] {
 }
 
 function detailTags(contact: Record<string, unknown>): string[] {
-  return uniqueStrings(stringListField(contact, "tags").map(tagFilterLabel));
+  return uniqueStrings(stringListField(contact, "tags").map(value => tagFilterLabel(value)));
 }
 
 function noteSummaries(contact: Record<string, unknown>): string[] {
@@ -1454,8 +1593,12 @@ function noteSummaries(contact: Record<string, unknown>): string[] {
   ).slice(0, 2);
 }
 
-export function contactDetailToSummary(data: unknown): ContactDetailSummary {
+export function contactDetailToSummary(
+  data: unknown,
+  language: OrbitLanguage = "zh"
+): ContactDetailSummary {
   const contact = contactRecordFromPayload(data);
+  const t = createTranslator(language);
 
   if (!contact) {
     return {
@@ -1463,10 +1606,10 @@ export function contactDetailToSummary(data: unknown): ContactDetailSummary {
       detailTags: [],
       evidenceExcerpts: [],
       id: "contact",
-      lastInteractionAt: "暂无记录",
+      lastInteractionAt: language === "zh" ? "暂无记录" : t("profile.notFilled"),
       location: "",
       name: "Contact",
-      nextAction: "查看来源证据后再联系 Contact。",
+      nextAction: t("contacts.reviewEvidenceBeforeContact", { name: "Contact" }),
       noteSummaries: [],
       organization: "Independent",
       publicBio: "",
@@ -1477,7 +1620,7 @@ export function contactDetailToSummary(data: unknown): ContactDetailSummary {
       relationship: "Relationship context pending",
       role: "",
       sourceLabel: "",
-      status: "推进中",
+      status: t("contacts.statusActive"),
       statusAction: null,
       valueLabels: [],
       valueScore: null
@@ -1492,22 +1635,22 @@ export function contactDetailToSummary(data: unknown): ContactDetailSummary {
   const imageUrl = contactImageUrl(contact);
 
   return {
-    archiveAction: archiveAction(stringField(contact, "status"), name),
-    detailTags: detailTags(contact),
-    evidenceExcerpts: evidenceExcerpts(contact),
+    archiveAction: archiveActionForLanguage(stringField(contact, "status"), name, language),
+    detailTags: language === "zh" ? detailTags(contact) : uniqueStrings(stringListField(contact, "tags")),
+    evidenceExcerpts: language === "zh" ? evidenceExcerpts(contact) : uniqueStrings(listFromPayload(contact, "evidence").filter(isRecord).map(item => stringField(item, "excerpt")).filter(value => value && !containsImplementationLabel(value))).slice(0, 3),
     id: stringField(contact, "id", "contact"),
     ...(imageUrl ? { imageUrl } : {}),
     lastInteractionAt: isRecord(contact.lastInteraction)
-      ? stringField(contact.lastInteraction, "occurredAt", "暂无记录")
-      : stringField(contact, "lastInteractionAt", "暂无记录"),
+      ? stringField(contact.lastInteraction, "occurredAt", language === "zh" ? "暂无记录" : t("profile.notFilled"))
+      : stringField(contact, "lastInteractionAt", language === "zh" ? "暂无记录" : t("profile.notFilled")),
     ...(isRecord(contact.lastInteraction)
       ? { lastInteractionSummary: stringField(contact.lastInteraction, "summary") }
       : {}),
-    location: locationLabel(stringField(contact, "location")),
+    location: language === "zh" ? locationLabel(stringField(contact, "location")) : stringField(contact, "location", t("contacts.locationPending")),
     name,
-    nextAction: nextActionText(contact, name),
-    noteSummaries: noteSummaries(contact),
-    organization: organizationLabel(stringField(contact, "organization")),
+    nextAction: nextActionTextForLanguage(contact, name, language),
+    noteSummaries: language === "zh" ? noteSummaries(contact) : uniqueStrings(listFromPayload(contact, "notes").filter(isRecord).filter(note => note.privacy !== "private").map(note => stringField(note, "body")).filter(value => value && !containsImplementationLabel(value))).slice(0, 2),
+    organization: language === "zh" ? organizationLabel(stringField(contact, "organization")) : stringField(contact, "organization"),
     publicBio: publicProfileBio(contact),
     publicOffering: publicProfileList(contact, "offering"),
     publicPrompts: publicProfileList(contact, "conversationPrompts"),
@@ -1517,19 +1660,19 @@ export function contactDetailToSummary(data: unknown): ContactDetailSummary {
       ? { primaryIndustryId: contact.primaryIndustryId }
       : {}),
     ...(isIndustryIdCode(contact.primaryIndustryId)
-      ? { primaryIndustryLabel: industryLabel(contact.primaryIndustryId, "zh") }
+      ? { primaryIndustryLabel: industryLabel(contact.primaryIndustryId, language) }
       : stringField(contact, "primaryIndustryLabel")
         ? { primaryIndustryLabel: stringField(contact, "primaryIndustryLabel") }
         : {}),
     ...(typeof contact.secondaryIndustryId === "string" && validateIndustrySelection(contact).valid
-      ? { secondaryIndustryId: contact.secondaryIndustryId as SecondaryIndustryIdCode, secondaryIndustryLabel: secondaryIndustryLabel(contact.secondaryIndustryId as SecondaryIndustryIdCode, "zh") }
+      ? { secondaryIndustryId: contact.secondaryIndustryId as SecondaryIndustryIdCode, secondaryIndustryLabel: secondaryIndustryLabel(contact.secondaryIndustryId as SecondaryIndustryIdCode, language) }
       : {}),
-    relationship: relationshipText(contact),
-    role: roleLabel(stringField(contact, "role")),
-    sourceLabel: sourceLabel(contact),
-    status: statusLabel(stringField(contact, "status")),
-    statusAction: statusAction(stringField(contact, "status"), name),
-    valueLabels: valueLabels(contact),
+    relationship: relationshipTextForLanguage(contact, language),
+    role: language === "zh" ? roleLabel(stringField(contact, "role")) : stringField(contact, "role"),
+    sourceLabel: language === "zh" ? sourceLabel(contact) : stringField(nestedRecord(contact, "source"), "label") || stringField(nestedRecord(nestedRecord(contact, "publicProfile"), "source"), "label"),
+    status: statusLabelForLanguage(stringField(contact, "status"), language),
+    statusAction: statusActionForLanguage(stringField(contact, "status"), name, language),
+    valueLabels: valueLabelsForLanguage(contact, language),
     valueScore: valueScore(contact)
   };
 }

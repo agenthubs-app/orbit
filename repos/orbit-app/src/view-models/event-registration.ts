@@ -1,3 +1,6 @@
+import type { OrbitLanguage } from "../api/contract/language";
+import { createTranslator } from "../i18n/messages";
+
 export interface EventRegistrationQuestionView {
   answer: string;
   field: string;
@@ -261,40 +264,43 @@ function answerMap(registration: Record<string, unknown>): Record<string, unknow
   return nestedRecord(participantProfile, "answers");
 }
 
-function statusLabel(status: string): string {
+function statusLabel(status: string, language: OrbitLanguage): string {
+  const t = createTranslator(language);
   if (status === "rsvped") {
-    return "已报名";
+    return t("registration.statusRegistered");
   }
 
   if (status === "cancelled") {
-    return "已取消";
+    return t("registration.statusCancelled");
   }
 
-  return "尚未报名";
+  return t("registration.statusUnregistered");
 }
 
-function statusDetail(status: string): string {
+function statusDetail(status: string, language: OrbitLanguage): string {
+  const t = createTranslator(language);
   if (status === "rsvped") {
-    return "不会写入个人主页，也不会自动发消息。";
+    return t("registration.detailRegistered");
   }
 
   if (status === "cancelled") {
-    return "可以重新报名，原来的活动资料会被覆盖。";
+    return t("registration.detailCancelled");
   }
 
-  return "确认后只保存这场活动的参与资料。";
+  return t("registration.detailUnregistered");
 }
 
-function confirmLabel(status: string): string {
+function confirmLabel(status: string, language: OrbitLanguage): string {
+  const t = createTranslator(language);
   if (status === "rsvped") {
-    return "更新报名资料";
+    return t("registration.actionUpdate");
   }
 
   if (status === "cancelled") {
-    return "重新报名";
+    return t("registration.actionReactivate");
   }
 
-  return "确认报名";
+  return t("registration.actionConfirm");
 }
 
 function eligibilityView(data: Record<string, unknown>): {
@@ -344,7 +350,7 @@ function eligibilityView(data: Record<string, unknown>): {
 function eligibilityCopy(input: {
   actions: readonly EventRegistrationActionView[];
   state: EventRegistrationEligibilityStateView;
-}): {
+}, language: OrbitLanguage): {
   cancelLabel: string;
   confirmLabel: string;
   detail: string;
@@ -361,11 +367,12 @@ function eligibilityCopy(input: {
   if (input.state === "withdrawn") return { cancelLabel: "", confirmLabel: "申请已撤回", detail: "申请已经撤回。", label: "已撤回" };
   if (input.state === "unavailable") return { cancelLabel: "", confirmLabel: "暂不可操作", detail: "暂时无法确认服务端资格，刷新成功前不会提交。", label: "资格暂不可用" };
   if (input.state === "registered") {
+    const t = createTranslator(language);
     return {
-      cancelLabel: input.actions.includes("withdraw") ? "撤回申请" : "取消报名",
-      confirmLabel: input.actions.includes("update") ? "更新报名资料" : "报名资料不可修改",
-      detail: "报名已确认；当前只开放服务端列出的操作。",
-      label: "已报名"
+      cancelLabel: input.actions.includes("withdraw") ? t("registration.actionWithdraw") : t("registration.actionCancel"),
+      confirmLabel: input.actions.includes("update") ? t("registration.actionUpdate") : t("registration.actionUnmodifiable"),
+      detail: t("registration.detailRegisteredServer"),
+      label: t("registration.statusRegistered")
     };
   }
   if (input.state === "registration_cancelled") return { cancelLabel: "", confirmLabel: "重新报名", detail: "报名已取消；开放期间可以重新报名。", label: "已取消" };
@@ -402,7 +409,7 @@ function questionsFromPayload(
     .filter((question) => question.field && question.prompt);
 }
 
-export function eventRegistrationToView(data: unknown): EventRegistrationView {
+export function eventRegistrationToView(data: unknown, language: OrbitLanguage = "zh"): EventRegistrationView {
   const payload = isRecord(data) ? data : {};
   const registration = registrationRecord(payload);
   const status = stringField(registration, "status", "unregistered");
@@ -414,7 +421,7 @@ export function eventRegistrationToView(data: unknown): EventRegistrationView {
   const questionSetVersionValue = nestedRecord(payload, "questionSet").questionSetVersion;
   const eligibility = eligibilityView(payload);
   const copy = eligibility
-    ? eligibilityCopy({ actions: eligibility.allowedActions, state: eligibility.state })
+    ? eligibilityCopy({ actions: eligibility.allowedActions, state: eligibility.state }, language)
     : null;
 
   return {
@@ -436,7 +443,7 @@ export function eventRegistrationToView(data: unknown): EventRegistrationView {
           action === "cancel" || action === "withdraw"
         )
       : status === "rsvped",
-    confirmLabel: copy?.confirmLabel ?? confirmLabel(status),
+    confirmLabel: copy?.confirmLabel ?? confirmLabel(status, language),
     questionSetHash: questionSetHash || null,
     questionSetVersion:
       typeof questionSetVersionValue === "number" &&
@@ -444,8 +451,8 @@ export function eventRegistrationToView(data: unknown): EventRegistrationView {
         ? questionSetVersionValue
         : null,
     questions: questionsFromPayload(payload, answers),
-    statusDetail: copy?.detail ?? statusDetail(status),
-    statusLabel: copy?.label ?? statusLabel(status)
+    statusDetail: copy?.detail ?? statusDetail(status, language),
+    statusLabel: copy?.label ?? statusLabel(status, language)
   };
 }
 

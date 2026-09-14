@@ -40,6 +40,7 @@ import {
   type ApiResourceState
 } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { contactMessageTemplate, registerAiTemplatePrefill } from "../../data/ai-template-prefill";
 import {
   contactDetailHeroToView,
@@ -85,6 +86,7 @@ function assetUrl(baseUrl: string, path: string): string {
 
 export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: string; isScopeCurrent?: () => boolean } = {}) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const contactId = firstParam(id);
   const actorId = useOrbitAuthSession().user?.id ?? null;
@@ -192,12 +194,12 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
       const parsed = result.success && result.status >= 200 && result.status < 300 ? recomputeReadSchema.safeParse(result.data) : null;
       if (parsed?.success && (parsed.data.state === "empty" || (parsed.data.assessment.contactId === contactId && parsed.data.assessment.connectionId === connectionId))) {
         setRelationshipValueOverride({ scope: valueScope, data: parsed.data });
-        setValueFeedback({ scope: valueScope, error: false, message: parsed.data.state === "empty" ? "当前证据不足，暂时无法判断关系价值。" : "已重新计算。未创建任务，也没有发送消息。" });
+        setValueFeedback({ scope: valueScope, error: false, message: parsed.data.state === "empty" ? locale.t("contacts.valueInsufficient") : locale.t("contacts.valueRecomputed") });
       } else {
-        setValueFeedback({ scope: valueScope, error: true, message: "关系价值暂时算不了。先刷新来源证据再试。" });
+        setValueFeedback({ scope: valueScope, error: true, message: locale.t("contacts.valueError") });
       }
     } catch {
-      if (isValueCurrent() && !controller.signal.aborted) setValueFeedback({ scope: valueScope, error: true, message: "关系价值暂时算不了。先刷新来源证据再试。" });
+      if (isValueCurrent() && !controller.signal.aborted) setValueFeedback({ scope: valueScope, error: true, message: locale.t("contacts.valueError") });
     } finally {
       if (isValueCurrent() && !controller.signal.aborted) setPendingValueScope(null);
       if (valueController.current === controller) valueController.current = null;
@@ -208,7 +210,7 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
     if (!isCurrent() || (state.kind !== "success" && state.kind !== "empty")) return;
     const original = contactDetailEditorFrom(state.data, contactId);
     setFeedback(null);
-    if (!original) { setActionError("编辑选项暂时读取不了，请刷新后再试。"); return; }
+    if (!original) { setActionError(locale.t("contacts.editUnavailable")); return; }
     setEditing({ original, draft: original.draft, tagInput: "", scope });
     setActionError(null); scrollRef.current?.scrollTo({ y: 0, animated: false });
   }
@@ -232,12 +234,12 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
       const result = await client.patch<unknown>(contactDetailPath(contactId), { body: request.body, signal: controller.signal });
       if (!isCurrent() || controller.signal.aborted) return;
       if (result.success && result.status >= 200 && result.status < 300 && confirmContactDetailEdit(result.data, contactId, request.body)) {
-        setEditing(null); setFeedback("资料已保存。"); refreshAll(); scrollRef.current?.scrollTo({ y: 0, animated: false });
+        setEditing(null); setFeedback(locale.t("contacts.saved")); refreshAll(); scrollRef.current?.scrollTo({ y: 0, animated: false });
       } else {
-        setActionError("尚未确认保存成功，修改已保留，请重试。");
+        setActionError(locale.t("contacts.saveUnconfirmed"));
       }
     } catch {
-      if (isCurrent() && !controller.signal.aborted) setActionError("尚未确认保存成功，修改已保留，请重试。");
+      if (isCurrent() && !controller.signal.aborted) setActionError(locale.t("contacts.saveUnconfirmed"));
     } finally {
       if (isCurrent() && !controller.signal.aborted) setEditPending(false);
       if (editController.current === controller) editController.current = null;
@@ -247,15 +249,15 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
   return (
     <ContactPage
       detail
-      backLabel="人脉"
+      backLabel={locale.t("contacts.back")}
       backHref="/contacts"
       scrollRef={scrollRef}
       isCurrent={isCurrent}
       onBodyLayout={event => { bodyTop.current = event.nativeEvent.layout.y; }}
-      toolbarLeft={currentEdit ? <Pressable accessibilityRole="button" accessibilityLabel="取消编辑" disabled={editPending} onPress={cancelEditor} style={styles.cancelHeaderButton}><Text style={styles.cancelHeaderText}>取消</Text></Pressable> : undefined}
+      toolbarLeft={currentEdit ? <Pressable accessibilityRole="button" accessibilityLabel={locale.language === "zh" ? "取消编辑" : locale.t("common.cancel")} disabled={editPending} onPress={cancelEditor} style={styles.cancelHeaderButton}><Text style={styles.cancelHeaderText}>{locale.t("common.cancel")}</Text></Pressable> : undefined}
       toolbarRight={currentEdit
-        ? <Pressable accessibilityRole="button" accessibilityLabel="保存人脉" disabled={editPending} onPress={saveEditor} style={[styles.editHeaderButton, editPending && styles.disabled]}><Text style={styles.editHeaderText}>{editPending ? "保存中" : "保存"}</Text></Pressable>
-        : state.kind === "success" || state.kind === "empty" ? <Pressable accessibilityRole="button" accessibilityLabel="编辑资料" onPress={openEditor} style={styles.editHeaderButton}><Text style={styles.editHeaderText}>编辑资料</Text></Pressable> : null}
+        ? <Pressable accessibilityRole="button" accessibilityLabel={locale.language === "zh" ? "保存人脉" : locale.t("common.save")} disabled={editPending} onPress={saveEditor} style={[styles.editHeaderButton, editPending && styles.disabled]}><Text style={styles.editHeaderText}>{editPending ? locale.t("contacts.saving") : locale.t("common.save")}</Text></Pressable>
+        : state.kind === "success" || state.kind === "empty" ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.edit")} onPress={openEditor} style={styles.editHeaderButton}><Text style={styles.editHeaderText}>{locale.t("contacts.edit")}</Text></Pressable> : null}
       refreshControl={
         <RefreshControl
           onRefresh={refreshAll}
@@ -263,16 +265,16 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
           tintColor={colors.accent}
         />
       }
-      title={currentEdit ? "编辑人脉" : "人脉详情"}
+      title={currentEdit ? locale.t("contacts.editTitle") : locale.t("contacts.detailTitle")}
     >
       {state.kind === "loading" ? <LoadingState /> : null}
       {state.kind === "offline" ? (
-        <ErrorState message={state.error.message} title="服务器连不上" />
+        <ErrorState message={state.error.message} title={locale.t("contacts.serverUnavailable")} />
       ) : null}
       {state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
-      {state.kind === "offline" || state.kind === "failure" ? <Pressable accessibilityRole="button" accessibilityLabel="重新读取人脉详情" onPress={refreshAll} style={styles.statusButton}><Text style={styles.statusButtonText}>重新读取</Text></Pressable> : null}
+      {state.kind === "offline" || state.kind === "failure" ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.retryDetail")} onPress={refreshAll} style={styles.statusButton}><Text style={styles.statusButtonText}>{locale.t("contacts.readAgain")}</Text></Pressable> : null}
       {feedback ? <Text style={styles.feedbackText}>{feedback}</Text> : null}
       {actionError ? <Text style={styles.errorText}>{actionError}</Text> : null}
       {valueFeedback?.scope === valueScope ? <Text style={valueFeedback.error ? styles.errorText : styles.feedbackText}>{valueFeedback.message}</Text> : null}
@@ -328,9 +330,10 @@ function ContactDetailCard({
 }) {
   const { colors } = useOrbitTheme();
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
   const router = useRouter();
   const { baseUrl } = useOrbitApiBaseUrl();
-  const contact = contactDetailToSummary(data);
+  const contact = contactDetailToSummary(data, locale.language);
   const hero = contactDetailHeroToView(contact);
   const toneStyle = avatarToneStyles(colors)[hero.avatar.tone];
   const [detailsExpanded, setDetailsExpanded] = useState(false);
@@ -339,7 +342,7 @@ function ContactDetailCard({
   const notesTop = useRef(0);
   function openMessageDraft() {
     if (!isScopeCurrent()) return;
-    if (!actorId || !baseUrl) { setPrefillError("请先登录后再打开 IORBIT。"); return; }
+    if (!actorId || !baseUrl) { setPrefillError(locale.t("contacts.signInForAi")); return; }
     const prefillIntent = registerAiTemplatePrefill({ actorId, baseUrl, ...contactMessageTemplate(contact) });
     setPrefillError(null);
     router.push({ pathname: "/ai/[id]", params: { id: "new", prefillIntent } } as Href);
@@ -365,10 +368,10 @@ function ContactDetailCard({
       <ContactOverview contact={contact} email={detailReadSchema.safeParse(data).data?.contact.primaryEmail} />
       <View onLayout={event => { notesTop.current = event.nativeEvent.layout.y; }}><ContactNotesSection actorId={actorId} client={client} colors={colors} contactId={contactId} data={data} onRefresh={onNotesRefresh} openRequest={notesRequest} preview isScopeCurrent={isScopeCurrent} /></View>
       <DisclosureSection
-        detail="公开介绍、关系价值和来源记录"
+        detail={locale.t("contacts.fullDetailsDetail")}
         expanded={detailsExpanded}
         onPress={() => setDetailsExpanded((current) => !current)}
-        title="完整资料"
+        title={locale.t("contacts.fullDetails")}
       >
         <FullDetailsPanel
           contact={contact}
@@ -384,28 +387,38 @@ function ContactDetailCard({
 
 function ContactCommunicationStatus({ contactId, state }: { contactId: string; state: ApiResourceState<unknown> }) {
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
   const router = useRouter();
   const data = state.kind === "success" || state.kind === "empty" ? state.data : null;
   if (state.kind === "loading") {
-    return <View style={styles.nextStepCard}><Text style={styles.bodyText}>正在验证聊天资格…</Text></View>;
+    return <View style={styles.nextStepCard}><Text style={styles.bodyText}>{locale.t("contacts.chatChecking")}</Text></View>;
   }
   if (!isRelationshipEligibility(data) || data.contactId !== contactId) {
-    return <View style={styles.nextStepCard}><Text style={styles.bodyText}>聊天资格暂时无法确认，当前不能发送。</Text></View>;
+    return <View style={styles.nextStepCard}><Text style={styles.bodyText}>{locale.t("contacts.chatUnavailable")}</Text></View>;
   }
   const view = relationshipCommunicationEligibilityToView(data);
+  const statusLabel = {
+    confirmed: locale.t("contacts.statusConfirmed"),
+    conflict: locale.t("contacts.statusConflict"),
+    expired: locale.t("contacts.statusExpired"),
+    forbidden: locale.t("contacts.statusForbidden"),
+    pending: locale.t("contacts.statusPending"),
+    revoked: locale.t("contacts.statusRevoked"),
+    unregistered: locale.t("contacts.statusUnregistered")
+  }[view.status];
   return (
     <View style={styles.nextStepCard}>
       <View style={{ flex: 1, gap: spacing.xs }}>
-        <Text style={styles.sectionTitle}>聊天资格</Text>
-        <Text style={styles.bodyText}>{view.statusLabel}{view.remoteName ? ` · ${view.remoteName}` : ""}</Text>
+        <Text style={styles.sectionTitle}>{locale.t("contacts.chatEligibility")}</Text>
+        <Text style={styles.bodyText}>{statusLabel}{view.remoteName ? ` · ${locale.t.literal(view.remoteName)}` : ""}</Text>
       </View>
       {view.canSend ? (
         <Pressable accessibilityRole="button" onPress={() => router.push(`/chat/${encodeURIComponent(view.conversationId)}` as Href)} style={styles.secondaryActionButton}>
-          <Text style={styles.secondaryActionText}>打开关系对话</Text>
+          <Text style={styles.secondaryActionText}>{locale.t("contacts.openChat")}</Text>
         </Pressable>
       ) : view.canInvite ? (
         <Pressable accessibilityRole="button" onPress={() => router.push("/contacts/intros" as Href)} style={styles.secondaryActionButton}>
-          <Text style={styles.secondaryActionText}>创建邀请链接</Text>
+          <Text style={styles.secondaryActionText}>{locale.t("contacts.createInvitation")}</Text>
         </Pressable>
       ) : null}
     </View>
@@ -479,6 +492,7 @@ function NextStepCard({
   onNotes: () => void;
 }) {
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
   const { width, fontScale } = useWindowDimensions();
   return (
     <View accessibilityHint={action} style={[styles.nextStepCard, (fontScale >= 1.4 || width < 360) && styles.actionStack]}>
@@ -490,28 +504,29 @@ function NextStepCard({
           pressed ? styles.pressed : null
         ]}
       >
-        <Text style={styles.primaryActionButtonText}>起草消息</Text>
+        <Text style={styles.primaryActionButtonText}>{locale.t("contacts.draftMessage")}</Text>
       </Pressable>
-      <Pressable accessibilityRole="button" onPress={onSchedule} style={styles.secondaryActionButton}><Text style={styles.secondaryActionText}>查看日程</Text></Pressable>
-      <Pressable accessibilityRole="button" onPress={onNotes} style={styles.secondaryActionButton}><Text style={styles.secondaryActionText}>写备注</Text></Pressable>
+      <Pressable accessibilityRole="button" onPress={onSchedule} style={styles.secondaryActionButton}><Text style={styles.secondaryActionText}>{locale.t("contacts.viewSchedule")}</Text></Pressable>
+      <Pressable accessibilityRole="button" onPress={onNotes} style={styles.secondaryActionButton}><Text style={styles.secondaryActionText}>{locale.t("contacts.writeNote")}</Text></Pressable>
     </View>
   );
 }
 
 function ContactOverview({ contact, email }: { contact: ContactDetailSummary; email?: string | undefined }) {
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
   const exchange = relationshipExchangeFor(contact);
 
   return (
     <View style={styles.overviewSurface}>
-      <DetailSection title="基本资料">
-        <View>{[["身份", contact.role], ["公司", contact.organization], ["行业", [contact.primaryIndustryLabel, contact.secondaryIndustryLabel || (contact.primaryIndustryId ? "二级未填写" : "")].filter(Boolean).join(" / ")], ["邮箱", email]].map(([label, value]) => <View key={label} style={styles.basicRow}><Text style={styles.basicLabel}>{label}</Text><Text selectable style={styles.basicValue}>{value || "未填写"}</Text></View>)}</View>
+      <DetailSection title={locale.t("contacts.basicDetails")}>
+        <View>{[[locale.t("contacts.identity"), contact.role], [locale.t("profile.organization"), contact.organization], [locale.t("contacts.filterIndustry"), [contact.primaryIndustryLabel, contact.secondaryIndustryLabel || (contact.primaryIndustryId ? locale.t("contacts.secondaryIndustryMissing") : "")].filter(Boolean).join(" / ")], [locale.t("profile.email"), email]].map(([label, value]) => <View key={label} style={styles.basicRow}><Text style={styles.basicLabel}>{label}</Text><Text selectable style={styles.basicValue}>{value || locale.t("profile.notFilled")}</Text></View>)}</View>
       </DetailSection>
-      <DetailSection title="简介与合作信息">
-        <Text style={styles.bodyText}>{contact.publicBio || contact.relationship || "暂未记录介绍。"}</Text>
+      <DetailSection title={locale.t("contacts.aboutCollaboration")}>
+        <Text style={styles.bodyText}>{locale.t.literal(contact.publicBio || contact.relationship) || locale.t("contacts.noIntroduction")}</Text>
         <View style={styles.exchangeRows}>
-          <ExchangeValueRow label="可提供" values={exchange.offering} />
-          <ExchangeValueRow label="正在寻找" values={exchange.seeking} />
+          <ExchangeValueRow label={locale.t("contacts.offering")} values={exchange.offering} />
+          <ExchangeValueRow label={locale.t("contacts.seeking")} values={exchange.seeking} />
         </View>
       </DetailSection>
     </View>
@@ -526,12 +541,13 @@ function ExchangeValueRow({
   values: string[];
 }) {
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
 
   return (
     <View style={styles.exchangeRow}>
       <Text style={styles.exchangeLabel}>{label}</Text>
       <Text style={styles.exchangeValue}>
-        {values.length > 0 ? values.join(" · ") : "暂未记录"}
+        {values.length > 0 ? locale.t.literal(values.join(" · ")) : locale.t("contacts.notRecorded")}
       </Text>
     </View>
   );
@@ -543,18 +559,19 @@ function LatestActivityPreview({
   contact: ContactDetailSummary;
 }) {
   const { colors, styles } = useStyles();
-  const hasInteraction = contact.lastInteractionAt !== "暂无记录";
+  const locale = useOrbitLocale();
+  const hasInteraction = contact.lastInteractionAt !== locale.t("profile.notFilled") && contact.lastInteractionAt !== "暂无记录";
   const latest = hasInteraction ? contact.lastInteractionSummary || contact.noteSummaries[0] : undefined;
-  const meta = compactInteractionDate(contact.lastInteractionAt);
+  const meta = compactInteractionDate(contact.lastInteractionAt, locale.language);
 
   return (
-    <DetailSection detail={meta} title="最近动态">
+    <DetailSection detail={meta} title={locale.t("contacts.latestActivity")}>
       <View style={styles.activityRow}>
         <View style={styles.activityIcon}>
           <Ionicons color={colors.text3} name="time-outline" size={24} />
         </View>
         <Text numberOfLines={2} style={latest ? styles.activityText : styles.emptyText}>
-          {latest ?? "还没有记录互动。"}
+          {latest ? locale.t.literal(latest) : locale.t("contacts.noInteractions")}
         </Text>
       </View>
     </DetailSection>
@@ -617,6 +634,7 @@ function FullDetailsPanel({
   relationshipValueState: ApiResourceState<unknown>;
 }) {
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
   const publicTags = uniqueDisplayItems([
     ...contact.publicTopics,
     ...contact.valueLabels
@@ -628,12 +646,12 @@ function FullDetailsPanel({
   );
   return (
     <>
-      <DetailSection title="关系背景"><Text style={styles.bodyText}>{contact.relationship}</Text><Text style={styles.bodyText}>{relationshipSummaryFor(contact)}</Text></DetailSection>
-      <DetailSection title="下一步"><Text style={styles.bodyText}>{contact.nextAction}</Text></DetailSection>
+      <DetailSection title={locale.t("contacts.relationshipBackground")}><Text style={styles.bodyText}>{locale.t.literal(contact.relationship)}</Text><Text style={styles.bodyText}>{relationshipSummaryFor(contact, locale.t)}</Text></DetailSection>
+      <DetailSection title={locale.t("contacts.nextStep")}><Text style={styles.bodyText}>{locale.t.literal(contact.nextAction)}</Text></DetailSection>
       <LatestActivityPreview contact={contact} />
-      {publicTags.length > 0 ? <DetailSection detail="对外可见的信息" title="公开话题"><TagList items={publicTags} /></DetailSection> : null}
+      {publicTags.length > 0 ? <DetailSection detail={locale.t("contacts.publicTopicsDetail")} title={locale.t("contacts.publicTopics")}><TagList items={publicTags} /></DetailSection> : null}
       <SectionDivider />
-      <DetailSection title="关系价值">
+      <DetailSection title={locale.t("contacts.relationshipValue")}>
         <RelationshipValueCard
           onRecompute={onRecompute}
           overrideData={relationshipValueOverride}
@@ -642,13 +660,13 @@ function FullDetailsPanel({
         />
       </DetailSection>
       <SectionDivider />
-      <DetailSection detail={contact.sourceLabel} title="来源记录">
+      <DetailSection detail={locale.t.literal(contact.sourceLabel)} title={locale.t("contacts.sourceRecords")}>
         <EvidenceList contact={contact} />
       </DetailSection>
       {contact.noteSummaries.length > 1 ? (
         <>
           <SectionDivider />
-          <DetailSection detail={contact.lastInteractionAt} title="更多记录">
+          <DetailSection detail={locale.t.literal(contact.lastInteractionAt)} title={locale.t("contacts.moreRecords")}>
             <PromptList prompts={contact.noteSummaries.slice(1)} />
           </DetailSection>
         </>
@@ -673,37 +691,38 @@ function UpdateContactPanel({
   onChange: (patch: Partial<ContactDetailEditDraft>) => void;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const { baseUrl } = useOrbitApiBaseUrl();
   const { width, fontScale } = useWindowDimensions();
   const gradientId = useId().replace(/:/gu, "");
   const contact = original.contact;
-  const avatar = contactDetailHeroToView(contactDetailToSummary({ contact })).avatar;
-  const statusLabels = { active: "推进中", needs_follow_up: "待联系", nurture: "长期维护", archived: "暂不推进" };
-  const channels = [{ id: "manual_note", label: "手动记录" }, { id: "event_note", label: "活动记录" }, { id: "email_signal", label: "邮件" }, { id: "calendar_signal", label: "日程" }, { id: "referral", label: "引荐" }];
+  const avatar = contactDetailHeroToView(contactDetailToSummary({ contact }, locale.language)).avatar;
+  const statusLabels = { active: locale.t("contacts.statusActive"), needs_follow_up: locale.t("contacts.statusNeedsFollowUp"), nurture: locale.t("contacts.statusNurture"), archived: locale.t("contacts.statusArchived") };
+  const channels = [{ id: "manual_note", label: locale.t("contacts.channelManualNote") }, { id: "event_note", label: locale.t("contacts.channelEventNote") }, { id: "email_signal", label: locale.t("contacts.channelEmail") }, { id: "calendar_signal", label: locale.t("contacts.channelCalendar") }, { id: "referral", label: locale.t("contacts.channelReferral") }];
 
   return (
     <View testID="contact-editor">
       <View style={styles.editIdentity}>
         <View testID="contact-edit-avatar" style={[styles.heroAvatar, styles.editAvatar]}>
-          {avatar.imageUrl ? <Image accessibilityLabel={`${contact.displayName} 的头像`} source={{ uri: assetUrl(baseUrl, avatar.imageUrl) }} style={styles.heroAvatarImage} />
+          {avatar.imageUrl ? <Image accessibilityLabel={locale.t("contacts.avatarFor", { name: locale.t.literal(contact.displayName) })} source={{ uri: assetUrl(baseUrl, avatar.imageUrl) }} style={styles.heroAvatarImage} />
             : <><Svg accessible={false} width="100%" height="100%" viewBox="0 0 76 76" style={StyleSheet.absoluteFill}><Defs><LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1"><Stop offset="0" stopColor="#7FB3FF" /><Stop offset="1" stopColor="#3B82F6" /></LinearGradient></Defs><Rect width="76" height="76" fill={`url(#${gradientId})`} /></Svg><Text style={styles.heroAvatarText}>{avatar.initial}</Text></>}
         </View>
-        <Text style={styles.editReadOnlyHint}>头像与身份资料当前仅可查看</Text>
+        <Text style={styles.editReadOnlyHint}>{locale.t("contacts.readOnlyIdentity")}</Text>
       </View>
       <View style={styles.editForm}>
-        <EditReadOnlyField label="姓名" value={contact.displayName} prominent />
-        <View style={[styles.editColumns, (width < 360 || fontScale >= 1.4) && styles.actionStack]}><EditReadOnlyField label="公司" value={contact.organization} column={width >= 360 && fontScale < 1.4} /><EditReadOnlyField label="职位" value={contact.role} column={width >= 360 && fontScale < 1.4} /></View>
-        <View><Text style={styles.editLabel}>行业</Text><IndustryPicker pending={pending} selectedId={draft.primaryIndustryId ?? undefined} selectedLabel={INDUSTRY_CATALOG.find(item => item.id === draft.primaryIndustryId)?.labels.zh} onSelect={primaryIndustryId => onChange({ primaryIndustryId, ...(primaryIndustryId !== draft.primaryIndustryId ? { secondaryIndustryId: null } : {}) })} /></View>
-        <View><Text style={styles.editLabel}>二级行业</Text><SecondaryIndustryPicker pending={pending} primaryIndustryId={draft.primaryIndustryId} selectedId={draft.secondaryIndustryId ?? null} onSelect={secondaryIndustryId => onChange({ secondaryIndustryId })} /></View>
-        <EditReadOnlyField label="邮箱" value={contact.primaryEmail ?? ""} />
-        <View><Text style={styles.editLabel}>跟进状态</Text><View style={styles.editChips}>{original.statusOptions.map(status => <Pressable key={status} accessibilityRole="button" accessibilityLabel={`跟进状态：${statusLabels[status]}`} accessibilityState={{ selected: draft.status === status }} aria-selected={draft.status === status} disabled={pending} onPress={() => onChange({ status })} style={[styles.editChip, draft.status === status && styles.editChipSelected]}><Text style={[styles.editChipText, draft.status === status && styles.editChipSelectedText]}>{statusLabels[status]}</Text></Pressable>)}</View></View>
-        <View><Text style={styles.editLabel}>标签</Text><View style={styles.editChips}>{draft.tags.map(tag => <Pressable key={tag} accessibilityRole="button" accessibilityLabel={`移除标签：${tag}`} disabled={pending} onPress={() => onChange({ tags: draft.tags.filter(value => value !== tag) })} style={[styles.editChip, styles.editChipSelected]}><Text style={[styles.editChipText, styles.editChipSelectedText]}>{tag}</Text><Ionicons color={colors.onAccent} name="close" size={14} /></Pressable>)}</View>
-          <View style={styles.editTagEntry}><TextInput accessibilityLabel="添加标签" editable={!pending} value={tagInput} onChangeText={onChangeTagInput} placeholder="输入新标签" placeholderTextColor={colors.text3} style={[styles.editInput, styles.editTagInput]} /><Pressable accessibilityRole="button" accessibilityLabel="添加此标签" disabled={pending || !tagInput.trim()} onPress={() => { if (pending || !tagInput.trim()) return; onChange({ tags: [...new Set([...draft.tags, tagInput.trim()])] }); onChangeTagInput(""); }} style={[styles.editChip, styles.editTagAdd]}><Ionicons color={colors.text3} name="add" size={16} /><Text style={styles.editChipText}>添加</Text></Pressable></View>
+        <EditReadOnlyField label={locale.t("contacts.name")} value={contact.displayName} prominent />
+        <View style={[styles.editColumns, (width < 360 || fontScale >= 1.4) && styles.actionStack]}><EditReadOnlyField label={locale.t("profile.organization")} value={contact.organization} column={width >= 360 && fontScale < 1.4} /><EditReadOnlyField label={locale.t("profile.role")} value={contact.role} column={width >= 360 && fontScale < 1.4} /></View>
+        <View><Text style={styles.editLabel}>{locale.t("contacts.filterIndustry")}</Text><IndustryPicker pending={pending} selectedId={draft.primaryIndustryId ?? undefined} selectedLabel={INDUSTRY_CATALOG.find(item => item.id === draft.primaryIndustryId)?.labels[locale.language]} onSelect={primaryIndustryId => onChange({ primaryIndustryId, ...(primaryIndustryId !== draft.primaryIndustryId ? { secondaryIndustryId: null } : {}) })} /></View>
+        <View><Text style={styles.editLabel}>{locale.t("contacts.secondaryIndustry")}</Text><SecondaryIndustryPicker pending={pending} primaryIndustryId={draft.primaryIndustryId} selectedId={draft.secondaryIndustryId ?? null} onSelect={secondaryIndustryId => onChange({ secondaryIndustryId })} /></View>
+        <EditReadOnlyField label={locale.t("profile.email")} value={contact.primaryEmail ?? ""} />
+        <View><Text style={styles.editLabel}>{locale.t("contacts.followUpStatus")}</Text><View style={styles.editChips}>{original.statusOptions.map(status => <Pressable key={status} accessibilityRole="button" accessibilityLabel={locale.language === "zh" ? `跟进状态：${statusLabels[status]}` : `${locale.t("contacts.followUpStatus")}: ${statusLabels[status]}`} accessibilityState={{ selected: draft.status === status }} aria-selected={draft.status === status} disabled={pending} onPress={() => onChange({ status })} style={[styles.editChip, draft.status === status && styles.editChipSelected]}><Text style={[styles.editChipText, draft.status === status && styles.editChipSelectedText]}>{statusLabels[status]}</Text></Pressable>)}</View></View>
+        <View><Text style={styles.editLabel}>{locale.t("contacts.tags")}</Text><View style={styles.editChips}>{draft.tags.map(tag => <Pressable key={tag} accessibilityRole="button" accessibilityLabel={locale.t("contacts.removeTag", { tag: locale.t.literal(tag) })} disabled={pending} onPress={() => onChange({ tags: draft.tags.filter(value => value !== tag) })} style={[styles.editChip, styles.editChipSelected]}><Text style={[styles.editChipText, styles.editChipSelectedText]}>{locale.t.literal(tag)}</Text><Ionicons color={colors.onAccent} name="close" size={14} /></Pressable>)}</View>
+          <View style={styles.editTagEntry}><TextInput accessibilityLabel={locale.t("contacts.addTag")} editable={!pending} value={tagInput} onChangeText={onChangeTagInput} placeholder={locale.t("contacts.inputNewTag")} placeholderTextColor={colors.text3} style={[styles.editInput, styles.editTagInput]} /><Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.addThisTag")} disabled={pending || !tagInput.trim()} onPress={() => { if (pending || !tagInput.trim()) return; onChange({ tags: [...new Set([...draft.tags, tagInput.trim()])] }); onChangeTagInput(""); }} style={[styles.editChip, styles.editTagAdd]}><Ionicons color={colors.text3} name="add" size={16} /><Text style={styles.editChipText}>{locale.t("contacts.add")}</Text></Pressable></View>
         </View>
-        <View style={styles.editInteraction}><Text style={styles.sectionTitle}>互动记录</Text><Text style={styles.editReadOnlyHint}>只修改这里的内容时，才更新最近互动。</Text>
-          <Text style={styles.editLabel}>时间</Text><TextInput accessibilityLabel="互动时间" editable={!pending} value={draft.lastInteraction.occurredAt} onChangeText={occurredAt => onChange({ lastInteraction: { ...draft.lastInteraction, occurredAt } })} placeholder="今天下午或 2026-07-24 09:30" placeholderTextColor={colors.text3} style={styles.editInput} />
-          <Text style={styles.editLabel}>渠道</Text><View style={styles.editChips}>{channels.map(channel => <Pressable key={channel.id} accessibilityRole="button" accessibilityLabel={`互动渠道：${channel.label}`} accessibilityState={{ selected: draft.lastInteraction.channel === channel.id }} aria-selected={draft.lastInteraction.channel === channel.id} disabled={pending} onPress={() => onChange({ lastInteraction: { ...draft.lastInteraction, channel: channel.id } })} style={[styles.editChip, draft.lastInteraction.channel === channel.id && styles.editChipSelected]}><Text style={[styles.editChipText, draft.lastInteraction.channel === channel.id && styles.editChipSelectedText]}>{channel.label}</Text></Pressable>)}</View>
-          <Text style={styles.editLabel}>摘要</Text><TextInput accessibilityLabel="互动摘要" editable={!pending} multiline value={draft.lastInteraction.summary} onChangeText={summary => onChange({ lastInteraction: { ...draft.lastInteraction, summary } })} placeholder="刚确认了什么，下一步卡在哪里" placeholderTextColor={colors.text3} style={[styles.editInput, styles.editSummary]} textAlignVertical="top" />
+        <View style={styles.editInteraction}><Text style={styles.sectionTitle}>{locale.t("contacts.interactionHistory")}</Text><Text style={styles.editReadOnlyHint}>{locale.t("contacts.interactionOnlyUpdatesLatest")}</Text>
+          <Text style={styles.editLabel}>{locale.t("contacts.time")}</Text><TextInput accessibilityLabel={locale.language === "zh" ? "互动时间" : locale.t("contacts.time")} editable={!pending} value={draft.lastInteraction.occurredAt} onChangeText={occurredAt => onChange({ lastInteraction: { ...draft.lastInteraction, occurredAt } })} placeholder={locale.t("contacts.interactionTimePlaceholder")} placeholderTextColor={colors.text3} style={styles.editInput} />
+          <Text style={styles.editLabel}>{locale.t("contacts.channel")}</Text><View style={styles.editChips}>{channels.map(channel => <Pressable key={channel.id} accessibilityRole="button" accessibilityLabel={locale.language === "zh" ? `互动渠道：${channel.label}` : `${locale.t("contacts.channel")}: ${channel.label}`} accessibilityState={{ selected: draft.lastInteraction.channel === channel.id }} aria-selected={draft.lastInteraction.channel === channel.id} disabled={pending} onPress={() => onChange({ lastInteraction: { ...draft.lastInteraction, channel: channel.id } })} style={[styles.editChip, draft.lastInteraction.channel === channel.id && styles.editChipSelected]}><Text style={[styles.editChipText, draft.lastInteraction.channel === channel.id && styles.editChipSelectedText]}>{channel.label}</Text></Pressable>)}</View>
+          <Text style={styles.editLabel}>{locale.t("contacts.summary")}</Text><TextInput accessibilityLabel={locale.language === "zh" ? "互动摘要" : locale.t("contacts.summary")} editable={!pending} multiline value={draft.lastInteraction.summary} onChangeText={summary => onChange({ lastInteraction: { ...draft.lastInteraction, summary } })} placeholder={locale.t("contacts.interactionSummaryPlaceholder")} placeholderTextColor={colors.text3} style={[styles.editInput, styles.editSummary]} textAlignVertical="top" />
         </View>
       </View>
     </View>
@@ -712,7 +731,8 @@ function UpdateContactPanel({
 
 function EditReadOnlyField({ label, value, prominent = false, column = false }: { label: string; value: string; prominent?: boolean; column?: boolean }) {
   const { styles } = useStyles();
-  return <View style={[styles.editField, column && styles.editColumn]}><Text style={styles.editLabel}>{label}</Text><View style={[styles.editReadOnlyValue, prominent && styles.editNameLine]}><Text selectable style={[styles.editValueText, prominent && styles.editNameText]}>{value || "未填写"}</Text></View></View>;
+  const locale = useOrbitLocale();
+  return <View style={[styles.editField, column && styles.editColumn]}><Text style={styles.editLabel}>{label}</Text><View style={[styles.editReadOnlyValue, prominent && styles.editNameLine]}><Text selectable style={[styles.editValueText, prominent && styles.editNameText]}>{locale.t.literal(value) || locale.t("profile.notFilled")}</Text></View></View>;
 }
 
 function SecondaryIndustryPicker({ primaryIndustryId, selectedId, pending, onSelect }: {
@@ -722,15 +742,16 @@ function SecondaryIndustryPicker({ primaryIndustryId, selectedId, pending, onSel
   onSelect: (value: SecondaryIndustryIdCode) => void;
 }) {
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
   const [expanded, setExpanded] = useState(false);
   return <View style={styles.industryPicker}>
-    <Pressable accessibilityRole="button" accessibilityLabel="选择二级行业" accessibilityState={{ expanded }} disabled={pending || !primaryIndustryId} onPress={() => setExpanded(value => !value)} style={[styles.editIndustryButton, (pending || !primaryIndustryId) && styles.disabled]}>
-      <Text style={styles.editValueText}>{selectedId ? secondaryIndustryLabel(selectedId, "zh") : "二级未填写"}</Text>
+    <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.selectSecondaryIndustry")} accessibilityState={{ expanded }} disabled={pending || !primaryIndustryId} onPress={() => setExpanded(value => !value)} style={[styles.editIndustryButton, (pending || !primaryIndustryId) && styles.disabled]}>
+      <Text style={styles.editValueText}>{selectedId ? secondaryIndustryLabel(selectedId, locale.language) : locale.t("contacts.secondaryIndustryMissing")}</Text>
       <Ionicons color="#C4C9D4" name={expanded ? "caret-up" : "caret-down"} size={12} />
     </Pressable>
     {expanded && primaryIndustryId ? <View style={styles.industryOptions}>
-      {listSecondaryIndustries(primaryIndustryId).map(industry => <Pressable key={industry.id} accessibilityRole="button" accessibilityLabel={`二级行业：${industry.labels.zh}`} accessibilityState={{ selected: selectedId === industry.id }} disabled={pending} onPress={() => { onSelect(industry.id); setExpanded(false); }} style={[styles.industryOption, selectedId === industry.id && styles.industryOptionSelected]}>
-        <Text style={[styles.industryOptionText, selectedId === industry.id && styles.industryOptionTextSelected]}>{industry.labels.zh}</Text>
+      {listSecondaryIndustries(primaryIndustryId).map(industry => <Pressable key={industry.id} accessibilityRole="button" accessibilityLabel={locale.t("contacts.setSecondaryIndustry", { name: industry.labels[locale.language] })} accessibilityState={{ selected: selectedId === industry.id }} disabled={pending} onPress={() => { onSelect(industry.id); setExpanded(false); }} style={[styles.industryOption, selectedId === industry.id && styles.industryOptionSelected]}>
+        <Text style={[styles.industryOptionText, selectedId === industry.id && styles.industryOptionTextSelected]}>{industry.labels[locale.language]}</Text>
       </Pressable>)}
     </View> : null}
   </View>;
@@ -748,12 +769,13 @@ function IndustryPicker({
   selectedLabel: string | undefined;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const [expanded, setExpanded] = useState(false);
 
   return (
     <View style={styles.industryPicker}>
       <Pressable
-        accessibilityLabel="选择主要行业"
+        accessibilityLabel={locale.t("contacts.selectPrimaryIndustry")}
         accessibilityRole="button"
         accessibilityState={{ expanded }}
         disabled={pending}
@@ -766,7 +788,7 @@ function IndustryPicker({
       >
         <View style={styles.industryPickerCopy}>
           <Text style={styles.editValueText}>
-            {selectedLabel || "未填写"}
+            {selectedLabel || locale.t("profile.notFilled")}
           </Text>
         </View>
         <Ionicons
@@ -777,13 +799,13 @@ function IndustryPicker({
       </Pressable>
       {expanded ? (
         <View style={styles.industryOptions}>
-          <Pressable accessibilityRole="button" accessibilityLabel="清空主要行业" disabled={pending} onPress={() => { onSelect(null); setExpanded(false); }} style={styles.industryOption}><Text style={styles.industryOptionText}>未填写</Text></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.clearPrimaryIndustry")} disabled={pending} onPress={() => { onSelect(null); setExpanded(false); }} style={styles.industryOption}><Text style={styles.industryOptionText}>{locale.t("profile.notFilled")}</Text></Pressable>
           {INDUSTRY_CATALOG.map((industry) => {
             const selected = industry.id === selectedId;
 
             return (
               <Pressable
-                accessibilityLabel={`设为${industry.labels.zh}`}
+                accessibilityLabel={locale.t("contacts.setPrimaryIndustry", { name: industry.labels[locale.language] })}
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
                 disabled={pending}
@@ -804,7 +826,7 @@ function IndustryPicker({
                     selected ? styles.industryOptionTextSelected : null
                   ]}
                 >
-                  {industry.labels.zh}
+                  {industry.labels[locale.language]}
                 </Text>
                 {selected ? (
                   <Ionicons color={colors.accent} name="checkmark" size={18} />
@@ -852,13 +874,13 @@ function uniqueDisplayItems(items: string[]): string[] {
   return [...new Set(items.map((item) => item.trim()).filter(Boolean))];
 }
 
-function relationshipSummaryFor(contact: ContactDetailSummary): string {
+function relationshipSummaryFor(contact: ContactDetailSummary, t: ReturnType<typeof useOrbitLocale>["t"]): string {
   const identity = contact.organization && contact.role
-    ? `${contact.organization}的${contact.role}`
+    ? `${contact.organization} · ${contact.role}`
     : contact.organization || contact.role || contact.name;
-  const location = contact.location ? `，常驻${contact.location}` : "";
+  const location = contact.location ? t("contacts.relationshipLocation", { location: t.literal(contact.location) }) : "";
 
-  return `${identity}${location}，目前处于${contact.status}。`;
+  return t("contacts.relationshipSummary", { identity: t.literal(identity), location, status: contact.status });
 }
 
 function relationshipExchangeFor(contact: ContactDetailSummary): {
@@ -886,14 +908,17 @@ function relationshipExchangeFor(contact: ContactDetailSummary): {
   };
 }
 
-function compactInteractionDate(value: string): string {
+function compactInteractionDate(value: string, language: "en" | "ja" | "zh"): string {
   const dateMatch = /^(\d{4})-(\d{2})-(\d{2})/u.exec(value);
 
   if (!dateMatch) {
     return value;
   }
 
-  return `${Number(dateMatch[2])}月${Number(dateMatch[3])}日`;
+  const locale = language === "zh" ? "zh-CN" : language === "ja" ? "ja-JP" : "en-US";
+  return new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", timeZone: "UTC" }).format(
+    new Date(Date.UTC(Number(dateMatch[1]), Number(dateMatch[2]) - 1, Number(dateMatch[3])))
+  );
 }
 
 const avatarToneStyles = (colors: OrbitColors): Record<
@@ -935,8 +960,9 @@ function PromptList({ prompts }: { prompts: string[] }) {
 
 function EvidenceList({ contact }: { contact: ContactDetailSummary }) {
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
   if (contact.evidenceExcerpts.length === 0) {
-    return <Text style={styles.bodyText}>这条关系有来源记录。</Text>;
+    return <Text style={styles.bodyText}>{locale.t("contacts.sourceEvidenceExists")}</Text>;
   }
 
   return (
@@ -962,11 +988,12 @@ function RelationshipValueCard({
   state: ApiResourceState<unknown>;
 }) {
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
   if (!overrideData && state.kind === "loading") {
     return (
       <View style={styles.relationshipValueContent}>
-        <Text style={styles.sectionDetail}>正在读取关系记录</Text>
-        <Text style={styles.bodyText}>正在看这条关系是否值得优先推进。</Text>
+        <Text style={styles.sectionDetail}>{locale.t("contacts.valueReading")}</Text>
+        <Text style={styles.bodyText}>{locale.t("contacts.valueReadingBody")}</Text>
         <RelationshipRecomputeButton onPress={onRecompute} pending={pending} />
       </View>
     );
@@ -975,10 +1002,8 @@ function RelationshipValueCard({
   if (!overrideData && (state.kind === "failure" || state.kind === "offline")) {
     return (
       <View style={styles.relationshipValueContent}>
-        <Text style={styles.sectionDetail}>暂时不可用</Text>
-        <Text style={styles.bodyText}>
-          这条关系的价值分析暂时取不到，联系人资料仍可继续编辑。
-        </Text>
+        <Text style={styles.sectionDetail}>{locale.t("contacts.unavailable")}</Text>
+        <Text style={styles.bodyText}>{locale.t("contacts.valueUnavailableBody")}</Text>
         <RelationshipRecomputeButton onPress={onRecompute} pending={pending} />
       </View>
     );
@@ -1020,6 +1045,7 @@ function RelationshipRecomputeButton({
   pending: boolean;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   return (
     <Pressable
       accessibilityRole="button"
@@ -1033,7 +1059,7 @@ function RelationshipRecomputeButton({
     >
       <Ionicons color={colors.accent} name="refresh-outline" size={16} />
       <Text style={styles.relationshipRecomputeButtonText}>
-        {pending ? "计算中" : "重新计算"}
+        {pending ? locale.t("contacts.calculating") : locale.t("contacts.recalculate")}
       </Text>
     </Pressable>
   );

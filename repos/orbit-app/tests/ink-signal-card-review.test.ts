@@ -17,10 +17,11 @@ const fixture = `
 import React, { useEffect, useSyncExternalStore } from "react";
 import { View } from "react-native-web";
 import glyphs from "@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/Ionicons.json";
+import { createTranslator } from "./src/i18n/messages";
 let revision = 0; const listeners = new Set();
 const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII=";
 const stamp = "2026-09-12T00:00:00Z";
-const s = window.fixture = { screen: "legacy", width: 390, fontScale: 1, batchId: "batch:review", status: "extracted", batchStatus: "ready_for_review", image: "available", requests: [], navigation: [], alerts: [], refreshes: 0, ...window.initialFixture,
+const s = window.fixture = { screen: "legacy", width: 390, fontScale: 1, language: "zh", batchId: "batch:review", status: "extracted", batchStatus: "ready_for_review", image: "available", requests: [], navigation: [], alerts: [], refreshes: 0, ...window.initialFixture,
   update(patch) { Object.assign(s, patch); revision++; listeners.forEach(fn => fn()); } };
 export const useFixture = () => { useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision); return s; };
 const extraction = () => ({ fullName: "许妍", nativeFullName: "许妍", romanizedFullName: null, organization: s.long ? "白露设计与国际合作研究工作室" : "白露设计", title: "创始人", departments: [], emails: [{ label: null, value: "xu.yan@example.test" }], contactPoints: [{ type: "mobile", label: null, value: "+81 90 1234 5678" }], website: null, addresses: [], certifications: [], detectedLanguages: ["zh"] });
@@ -58,6 +59,7 @@ const client = {
   async patch(path, options) { s.requests.push({ method: "PATCH", path, body: options.body }); return s.writeFailure ? { success: false, status: 503, error: { code: "UNAVAILABLE", message: "暂时无法保存，请重试。" } } : { success: true, status: 200, data: { reviewDraft: { ...draft(), ...options.body.reviewedFields } } }; }
 };
 export const useOrbitApiClient = () => client;
+export const useOrbitLocale = () => { useFixture(); return { language: s.language, t: createTranslator(s.language) }; };
 export const useApiResource = () => ({ kind: "loading", refreshing: false, refresh() { s.refreshes++; } });
 export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, user: { id: "actor" }, cookieHeader: "" });
 export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.example" });
@@ -85,7 +87,7 @@ export const randomUUID = () => "key-1";
 test.before(async () => {
   const result = await build({ stdin: { contents: `import React from "react"; import { createRoot } from "react-dom/client"; import { useFixture } from "fixture"; import { BusinessCardBatchScreen } from "./src/screens/contacts/BusinessCardBatchScreen"; import { BusinessCardIngestScreen } from "./src/screens/contacts/BusinessCardIngestScreen"; import { ContactAcquisitionScreen } from "./src/screens/contacts/ContactAcquisitionScreen"; function App() { const s = useFixture(); return s.screen === "single" ? <ContactAcquisitionScreen /> : s.screen === "legacy" ? <BusinessCardBatchScreen /> : <BusinessCardIngestScreen />; } createRoot(document.getElementById("root")).render(<App />);`, loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" }, plugins: [{ name: "ink-card-boundaries", setup(plugin) {
     plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "ink-card" }));
-    plugin.onResolve({ filter: /^(fixture|expo-router|expo-camera|expo-image-picker|expo-file-system|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|useApiResource|useOrbitApiClient)$/ }, () => ({ path: "fixture", namespace: "ink-card" }));
+    plugin.onResolve({ filter: /^(fixture|expo-router|expo-camera|expo-image-picker|expo-file-system|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|OrbitLocaleContext|useApiResource|useOrbitApiClient)$/ }, () => ({ path: "fixture", namespace: "ink-card" }));
     plugin.onLoad({ filter: /.*/, namespace: "ink-card" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Image as RealImage, Text as RealText, TextInput as RealInput, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web"; import { useFixture } from "fixture"; export * from "react-native-web"; export { Alert, AppState } from "fixture";
 export const useWindowDimensions = () => { const s = useFixture(); return { ...realDimensions(), width: s.width, fontScale: s.fontScale }; };
@@ -159,6 +161,20 @@ test("single open fields retain risk consent, failed-save drafts and exact revie
   const requests = await writes(page), written = requests.at(-1);
   assert.equal(written.path, "/api/contacts/business-card/confirm");
   assert.equal(written.body.confirmed, true); assert.equal(written.body.displayName, "许妍"); assert.equal(written.body.email, "correct@example.invalid");
+});
+
+test("single-card acquisition chrome follows language without rewriting the recognized candidate", async t => {
+  const page = await open(t, { screen: "single" });
+  await page.evaluate(() => (window as any).fixture.update({ language: "ja" }));
+  await page.getByRole("heading", { name: "名刺インポート", exact: true }).first().waitFor();
+  assert.equal(await page.getByRole("button", { name: "確認候補を生成", exact: true }).count(), 1);
+  assert.equal(await page.getByLabel("氏名", { exact: true }).inputValue(), "许妍");
+
+  await page.evaluate(() => (window as any).fixture.update({ language: "en" }));
+  await page.getByRole("heading", { name: "Business card import", exact: true }).first().waitFor();
+  assert.equal(await page.getByRole("button", { name: "Generate review candidate", exact: true }).count(), 1);
+  assert.equal(await page.getByLabel("Name", { exact: true }).inputValue(), "许妍");
+  assert.equal((await writes(page)).filter((request: any) => request.path === "/api/contacts/business-card/confirm").length, 0);
 });
 
 test("single review image belongs to the submitted scan and stale image failures cannot hide a rescan", async t => {
@@ -309,6 +325,45 @@ for (const screen of ["legacy", "ingest"]) test(`${screen} open review still edi
   await page.getByRole("button", { name: "查看重复联系人", exact: true }).click();
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/contacts/duplicate%3A1"]);
   await shot(page, screen + "-duplicate");
+});
+
+test("switching ingest-review language preserves dirty OCR fields, stable ids, and the confirm payload", async t => {
+  const page = await open(t, { screen: "ingest" });
+  await page.getByLabel("姓名", { exact: true }).fill("さくら / Sakura");
+  await page.getByLabel("邮箱", { exact: true }).fill("sakura@example.invalid");
+  await page.getByLabel("备注", { exact: true }).fill("OCR: 原文 / source text");
+
+  await page.evaluate(() => (window as any).fixture.update({ language: "ja" }));
+  await page.getByLabel("氏名", { exact: true }).waitFor();
+  assert.equal(await page.getByLabel("氏名", { exact: true }).inputValue(), "さくら / Sakura");
+  assert.equal(await page.getByLabel("メール", { exact: true }).inputValue(), "sakura@example.invalid");
+  assert.equal(await page.getByLabel("メモ", { exact: true }).inputValue(), "OCR: 原文 / source text");
+
+  await page.evaluate(() => (window as any).fixture.update({ language: "en" }));
+  await page.getByLabel("Name", { exact: true }).waitFor();
+  assert.equal(await page.getByLabel("Name", { exact: true }).inputValue(), "さくら / Sakura");
+  assert.equal(await page.getByLabel("Email", { exact: true }).inputValue(), "sakura@example.invalid");
+  assert.equal(await page.getByLabel("Notes", { exact: true }).inputValue(), "OCR: 原文 / source text");
+  await page.getByRole("button", { name: "Confirm contact", exact: true }).click();
+
+  const requests = await writes(page);
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].path, "/api/contact-drafts/business-card/batches/v2/batch%3Areview/items/item%3A1/confirm");
+  assert.equal(requests[0].body.displayName, "さくら / Sakura");
+  assert.equal(requests[0].body.email, "sakura@example.invalid");
+  assert.equal(requests[0].body.notes, "OCR: 原文 / source text");
+  assert.deepEqual(requests[0].body.expectedCardItems, [{ itemId: "item:1", version: 1, imageDigest: "sha256:" + "b".repeat(64) }]);
+});
+
+for (const screen of ["legacy", "ingest"]) test(`${screen} batch progress chrome follows the active language`, async t => {
+  const page = await open(t, { screen });
+  await page.evaluate(() => (window as any).fixture.update({ language: "ja" }));
+  await page.getByRole("heading", { name: "名刺インポート", exact: true }).waitFor();
+  assert.ok(await page.getByRole("button", { name: "バッチを再読み込み", exact: true }).count());
+
+  await page.evaluate(() => (window as any).fixture.update({ language: "en" }));
+  await page.getByRole("heading", { name: "Business card import", exact: true }).waitFor();
+  assert.ok(await page.getByRole("button", { name: "Refresh batch", exact: true }).count());
 });
 
 for (const screen of ["legacy", "ingest"]) test(`${screen} unavailable and loading images remain explicit without hiding review fields`, async t => {

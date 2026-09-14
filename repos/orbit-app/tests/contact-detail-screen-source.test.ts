@@ -22,11 +22,11 @@ test("contact detail screen can update tags and last interaction metadata", () =
   // behavior run through the real editor in ink-signal-contact-detail.test.ts.
   assert.match(screenSource, /buildContactDetailEditRequest/u);
   assert.match(screenSource, /confirmContactDetailEdit/u);
-  assert.match(screenSource, /accessibilityLabel="互动时间"/u);
-  assert.match(screenSource, /accessibilityLabel="互动摘要"/u);
-  assert.match(screenSource, /accessibilityLabel="添加标签"/u);
-  assert.match(screenSource, /placeholder="今天下午或 2026-07-24 09:30"/u);
-  assert.match(screenSource, /placeholder="刚确认了什么，下一步卡在哪里"/u);
+  assert.match(screenSource, /"互动时间"/u);
+  assert.match(screenSource, /"互动摘要"/u);
+  assert.match(screenSource, /contacts\.addTag/u);
+  assert.match(screenSource, /contacts\.interactionTimePlaceholder/u);
+  assert.match(screenSource, /contacts\.interactionSummaryPlaceholder/u);
   assert.doesNotMatch(
     screenSource,
     /topic:storage-pilots|priority:warm-follow-up|2026-07-24T09:30:00\.000Z/u
@@ -35,9 +35,9 @@ test("contact detail screen can update tags and last interaction metadata", () =
 });
 
 test("contact detail screen exposes a reviewed archive action", () => {
-  assert.match(screenSource, /archived: "暂不推进"/u);
+  assert.match(screenSource, /archived: locale\.t\("contacts\.statusArchived"\)/u);
   assert.match(screenSource, /original\.statusOptions\.map/u);
-  assert.match(screenSource, /accessibilityLabel="保存人脉"/u);
+  assert.match(screenSource, /"保存人脉"/u);
 });
 
 test("contact detail screen reads and renders relationship value analysis", () => {
@@ -48,7 +48,7 @@ test("contact detail screen reads and renders relationship value analysis", () =
   assert.match(screenSource, /relationshipValueToView/u);
   assert.match(screenSource, /relationshipValueState/u);
   assert.match(screenSource, /RelationshipValueCard/u);
-  assert.match(screenSource, /title="关系价值"/u);
+  assert.match(screenSource, /contacts\.relationshipValue/u);
 });
 
 test("contact detail screen can recompute relationship value without external actions", () => {
@@ -57,8 +57,8 @@ test("contact detail screen can recompute relationship value without external ac
   assert.match(screenSource, /client\.post<unknown>\(\s*relationshipValueRecomputePath\(\)/u);
   assert.match(screenSource, /body: \{\s*connectionId/u);
   assert.match(screenSource, /onRecompute=\{recomputeRelationshipValue\}/u);
-  assert.match(screenSource, /重新计算/u);
-  assert.match(screenSource, /未创建任务，也没有发送消息/u);
+  assert.match(screenSource, /contacts\.recalculate/u);
+  assert.match(screenSource, /contacts\.valueRecomputed/u);
   assert.doesNotMatch(screenSource, /messageDraftPath|ORBIT_API_ENDPOINTS\.messageDrafts/u);
 });
 
@@ -72,7 +72,7 @@ test("contact detail screen renders web avatar assets when available", () => {
 });
 
 test("contact detail status card does not use location as its status subtitle", () => {
-  assert.match(screenSource, /跟进状态/u);
+  assert.match(screenSource, /contacts\.followUpStatus/u);
   assert.doesNotMatch(
     screenSource,
     /<DataCard detail=\{contact\.location\} title="当前状态">/u
@@ -80,7 +80,7 @@ test("contact detail status card does not use location as its status subtitle", 
 });
 
 test("contact detail screen prioritizes identity, next step, and relationship context", () => {
-  assert.match(screenSource, /title=\{currentEdit \? "编辑人脉" : "人脉详情"\}/u);
+  assert.match(screenSource, /title=\{currentEdit \? locale\.t\("contacts\.editTitle"\) : locale\.t\("contacts\.detailTitle"\)\}/u);
   assert.doesNotMatch(screenSource, /eyebrow="联系人详情"/u);
   assert.match(screenSource, /ContactIdentityHeader/u);
   assert.match(screenSource, /NextStepCard/u);
@@ -98,14 +98,14 @@ test("contact detail screen prioritizes identity, next step, and relationship co
 });
 
 test("contact detail screen structures exchange value and recent activity as compact rows", () => {
-  assert.match(screenSource, /title="简介与合作信息"/u);
-  assert.match(screenSource, /label="正在寻找"/u);
-  assert.match(screenSource, /label="可提供"/u);
+  assert.match(screenSource, /contacts\.aboutCollaboration/u);
+  assert.match(screenSource, /contacts\.seeking/u);
+  assert.match(screenSource, /contacts\.offering/u);
   assert.match(screenSource, /relationshipExchangeFor/u);
   assert.match(screenSource, /LatestActivityPreview/u);
   assert.match(
     screenSource,
-    /const hasInteraction = contact\.lastInteractionAt !== "暂无记录"/u
+    /const hasInteraction = contact\.lastInteractionAt !== locale\.t\("profile\.notFilled"\)/u
   );
   // Nested interaction content and private-note separation are exercised by
   // ink-signal-contact-detail.test.ts against the real rendered detail.
@@ -125,14 +125,14 @@ test("contact detail summary does not repeat exchange values or scores", () => {
   );
 
   assert.match(screenSource, /relationshipSummaryFor/u);
-  assert.match(screenSource, /目前处于\$\{contact\.status\}/u);
+  assert.match(screenSource, /contacts\.relationshipSummary/u);
   assert.doesNotMatch(latestActivitySource, /contact\.sourceLabel/u);
 });
 
 test("contact detail screen progressively discloses full data and editing controls", () => {
   assert.match(screenSource, /useState\(false\)/u);
-  assert.match(screenSource, /title="完整资料"/u);
-  assert.match(screenSource, /accessibilityLabel="编辑资料"/u);
+  assert.match(screenSource, /contacts\.fullDetails/u);
+  assert.match(screenSource, /accessibilityLabel=\{locale\.t\("contacts\.edit"\)\}/u);
   assert.match(screenSource, /DisclosureSection/u);
   assert.match(screenSource, /accessibilityState=\{\{ expanded \}\}/u);
   assert.match(screenSource, /name=\{expanded \? "chevron-up" : "chevron-down"\}/u);
@@ -141,8 +141,8 @@ test("contact detail screen progressively discloses full data and editing contro
 test("contact detail edits one fixed primary industry separately from custom tags", () => {
   assert.match(screenSource, /INDUSTRY_CATALOG/u);
   assert.match(screenSource, /primaryIndustryId/u);
-  assert.match(screenSource, /主要行业/u);
-  assert.match(screenSource, /accessibilityLabel="添加标签"/u);
+  assert.match(screenSource, /contacts\.selectPrimaryIndustry/u);
+  assert.match(screenSource, /contacts\.addTag/u);
   assert.match(screenSource, /client\.patch<unknown>\(contactDetailPath\(contactId\)/u);
 });
 

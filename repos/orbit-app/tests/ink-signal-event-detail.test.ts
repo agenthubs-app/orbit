@@ -17,13 +17,14 @@ import React, { useSyncExternalStore } from "react";
 import { View } from "react-native-web";
 import glyphs from "@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/Ionicons.json";
 import { onSessionExpired } from "./src/api/session-expiry";
+import { createTranslator } from "./src/i18n/messages";
 const listeners = new Set(); let revision = 0;
 const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
 const source = { id: "event-core:event:1:v1", type: "event_import", label: "活动主办方", captureMethod: "organizer_feed", provider: "event-core-postgres", providerRecordId: "event:1", importedAt: "2026-09-12T00:00:00Z", calendarSyncRequested: false, externalNetworkRequested: false, liveDatabaseWriteExecuted: false, organizerFeedRequested: false };
 const event = { id: "event:1", title: "周末产品交流会", startsAt: "2026-09-12T05:00:00Z", endsAt: "2026-09-12T08:00:00Z", status: "imported", venue: "东京 · 涩谷", organizer: "星野社区", description: "带着一个正在推进的产品问题，和其他参与者交流做法与经验。", recommendedPreparation: "带上想交流的产品问题。", relationshipContext: "与产品同行交流实际经验。", nextAction: "先确认活动要求，再继续报名。", sourceMetadata: source, evidence: [], aiProviderRequested: false, calendarProviderRequested: false, calendarSyncRequested: false, emailProviderRequested: false, externalNetworkRequested: false, liveDatabaseWriteExecuted: false, notificationDelivered: false, organizerFeedRequested: false,
   coverPath: "/orbit-covers/meeting.jpg", stats: { count: 24, youRsvped: false }, feeLabel: "免费", agenda: [{ time: "14:00", label: "见面与介绍", description: "主办方介绍、参与者自我介绍" }, { time: "14:30", label: "小组讨论", description: "围绕实际问题展开交流" }, { time: "16:00", label: "自由交流", description: "开放讨论与建立联系" }]
 };
-const state = window.fixture = { requests: [], pending: [], navigation: [], presses: {}, shares: [], expiries: 0, actor: "actor-1", cookieHeader: "", baseUrl: "https://orbit.example", ready: true, baseReady: true, signedIn: false, focused: true, mounted: true, id: "public-product", width: 390, fontScale: 1, event, ...window.initialFixture,
+const state = window.fixture = { requests: [], pending: [], navigation: [], presses: {}, shares: [], expiries: 0, actor: "actor-1", cookieHeader: "", baseUrl: "https://orbit.example", ready: true, baseReady: true, signedIn: false, focused: true, mounted: true, id: "public-product", width: 390, fontScale: 1, language: "zh", event, ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
   data(path) { if (path.startsWith("/api/events/public/")) return state.invalid ? {} : { event: { ...state.event, ...state.eventPatch } }; if (path.endsWith("/registration")) return state.registration ?? { eligibility: { allowedActions: ["register"], applicationVersion: null, evaluatedAt: "2026-09-12T00:00:00.000Z", policyVersion: null, reason: "open", registrationVersion: null, state: "open" }, questionSet: { questions: [] }, registration: null }; return state.personal?.[path] ?? {}; },
   reply(index, status = 200, payload) { const r = state.requests[index]; state.pending[index]?.(new Response(JSON.stringify(status === 200 || payload !== undefined ? { success: true, data: payload === undefined ? state.data(r.path) : payload } : { success: false, error: { code: status === 404 ? "NOT_FOUND" : "UNAVAILABLE", message: "暂时无法读取，请重试" } }), { status, headers: { "Content-Type": "application/json" } })); }
@@ -40,6 +41,7 @@ window.fetch = async (input, init) => {
 export const useFixture = () => { observe(); return state; };
 export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, user: state.signedIn ? { id: state.actor } : null, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
+export const useOrbitLocale = () => { observe(); return { language: state.language, t: createTranslator(state.language) }; };
 export const useIsFocused = () => { observe(); return state.focused; };
 export const useLocalSearchParams = () => { observe(); return { id: state.id }; };
 export const usePathname = () => "/events/" + state.id;
@@ -58,7 +60,7 @@ test.before(async () => {
     plugins: [{ name: "event-detail-http-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "detail" }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "detail" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|OrbitLocaleContext|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "detail" }));
       plugin.onLoad({ filter: /.*/, namespace: "detail" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, Text as RealText, TextInput as RealTextInput, RefreshControl as RealRefreshControl, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web";
 import { useFixture } from "fixture"; export * from "react-native-web";
@@ -122,6 +124,23 @@ test("native weekday segmentation does not corrupt the event date or share text"
   assert.equal(await p.getByText("11:30 – 13:00", { exact: true }).count(), 1);
   await press(p, "分享活动");
   assert.match(await p.evaluate(() => (window as any).fixture.shares[0].message), /8月29日 周六/);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("switching event-detail language localizes chrome while preserving literal event data and id", async t => {
+  const p = await open(t);
+  await update(p, { language: "ja" });
+  assert.equal(await p.getByRole("button", { name: "イベントを共有", exact: true }).count(), 1);
+  assert.equal(await p.getByRole("heading", { name: "イベント紹介", exact: true }).count(), 1);
+  assert.equal(await p.getByText("日付", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("周末产品交流会", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("东京 · 涩谷", { exact: true }).count(), 1);
+
+  await update(p, { language: "en" });
+  assert.equal(await p.getByRole("button", { name: "Share event", exact: true }).count(), 1);
+  assert.equal(await p.getByRole("heading", { name: "About this event", exact: true }).count(), 1);
+  assert.equal(await p.getByText("Date", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("周末产品交流会", { exact: true }).count(), 1);
   assert.deepEqual(await writes(p), []);
 });
 

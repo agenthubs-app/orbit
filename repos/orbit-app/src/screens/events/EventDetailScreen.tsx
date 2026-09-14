@@ -45,6 +45,7 @@ import {
   useApiResource
 } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import {
   eventDetailHeroToView,
   eventDetailToSummary,
@@ -80,6 +81,7 @@ function firstParam(value: string | string[] | undefined): string {
 
 export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: string; isScopeCurrent?: () => boolean } = {}) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const eventId = firstParam(id);
@@ -140,9 +142,9 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
             <Text style={styles.backLabel}>{canGoBack ? "返回" : "活动"}</Text>
           </Pressable>
         </View>
-        <Text accessibilityRole="header" style={styles.navigationTitle}>活动详情</Text>
+        <Text accessibilityRole="header" style={styles.navigationTitle}>{locale.t("events.detailTitle")}</Text>
         <View style={[styles.navigationSide, styles.navigationRight]}>
-          {event ? <Pressable accessibilityRole="button" accessibilityLabel="分享活动" disabled={sharePending}
+          {event ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("events.share")} disabled={sharePending}
             onPress={() => { void shareEvent(); }} style={({ pressed }) => [styles.shareButton, pressed && styles.actionButtonPressed]}>
             <Ionicons name="share-outline" size={22} color={colors.ink} />
           </Pressable> : null}
@@ -293,6 +295,7 @@ function EventDetailCard({
   personalizedModules: ReactNode;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const { width, fontScale } = useWindowDimensions();
   const { timeZone } = useOrbitTimeZone();
   const event = publicEventDetailToSummary(data, timeZone);
@@ -326,25 +329,25 @@ function EventDetailCard({
       <View style={styles.infoGrid}>
         <View style={[styles.infoGridRow, narrow && styles.infoGridRowNarrow]}>
           <View style={[styles.infoTile, !narrow && styles.infoTileFirst, narrow && styles.infoTileNarrow]}>
-            <Text style={styles.infoTileDetail}>日期</Text>
+            <Text style={styles.infoTileDetail}>{locale.t("events.date")}</Text>
             <Text style={styles.infoTileTime}>{timing.date}</Text>
           </View>
           <View style={[styles.infoTile, !narrow && styles.infoTileSecond, narrow && styles.infoTileNext, narrow && styles.infoTileNarrow]}>
-            <Text style={styles.infoTileDetail}>时间</Text>
+            <Text style={styles.infoTileDetail}>{locale.t("events.time")}</Text>
             <Text style={styles.infoTileTime}>{timing.time}</Text>
           </View>
         </View>
         <View style={[styles.infoGridRow, styles.infoGridSecondRow, narrow && styles.infoGridRowNarrow]}>
           <View style={[styles.infoTile, !narrow && styles.infoTileFirst, narrow && styles.infoTileNarrow]}>
-            <Text style={styles.infoTileDetail}>地点</Text>
-            <Text style={styles.infoTileTitle}>{event.location || "地点待定"}</Text>
+            <Text style={styles.infoTileDetail}>{locale.t("events.location")}</Text>
+            <Text style={styles.infoTileTitle}>{event.location || locale.t("events.locationPending")}</Text>
             {event.address && event.address !== event.location ? <Text style={styles.infoTileDetail}>{event.address}</Text> : null}
           </View>
           <EventOrganizerModule event={event} narrow={narrow} />
         </View>
       </View>
       <View style={styles.publicSection}>
-        <Text accessibilityRole="header" style={styles.sectionTitle}>活动介绍</Text>
+        <Text accessibilityRole="header" style={styles.sectionTitle}>{locale.t("events.about")}</Text>
         <Text style={styles.publicBody}>{heroSummary}</Text>
       </View>
       <EventAboutModule sections={data.event.about?.length ? event.aboutSections : []} />
