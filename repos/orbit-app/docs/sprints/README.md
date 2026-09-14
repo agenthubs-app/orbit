@@ -53,7 +53,7 @@ build/harness-logs/
 | [0003](0003-profile-completion/GOAL.md) | 注册、补全资料后回到原页面，完整用户不再被拦截 | R-03 | B1整体批准已生效；本地实现启动，真实账号／Google验收按对象另核 | running |
 | [0004](0004-registration/GOAL.md) | 报名、取消和重报后，答案、人数及各页状态一致 | R-04 | run-01 已完成；功能 `319f6f7bb`，见 REPORT | completed |
 | [0005](0005-ai-session-reliability/GOAL.md) | AI 重试不重复生成，Web/App 续聊不丢历史 | R-00、R-02 | 原产品提交 `30c1e210c`、主线集成 `efbfc23ae`；本地／隔离 PostgreSQL 验证完成，真实同账号双端设备往返和 R-00 首次 503 根因仍缺证据，见 REPORT | blocked |
-| [0006](0006-contact-mentions/GOAL.md) | @ 选准联系人，带入 AI 的问题由用户确认发送 | R-06 | 0005；B3 引用／D3 | blocked |
+| [0006](0006-contact-mentions/GOAL.md) | @ 选准联系人，带入 AI 的问题由用户确认发送 | R-06 | 原功能 `09e1a71fa`、主线集成 `0ff447a55`；本地实现与回归完成，真实同账号 Web↔App 引用回读仍缺证据，见 REPORT | blocked |
 | [0007](0007-two-sided-cards/GOAL.md) | 正反面名片复核后只创建一个联系人 | R-07 | run-01 已结束；本地双面契约与一次确认已提交，实体 iPhone／真实 OCR／同记录跨端验收缺环境；见 REPORT | blocked |
 | [0008](0008-identity-chat/GOAL.md) | 验证邀请和身份绑定后，双方能真实收发消息 | R-05 | run-01 已完成；原功能 `6d8173b78`、主线集成 `64629369d`，见 REPORT | completed |
 | [0009](0009-timezone/GOAL.md) | 同一事项在首页、待办、日历和活动中不落错日 | R-09 | run-01 已完成；功能 `a4bbfd9f6`，见 REPORT | completed |
@@ -123,6 +123,12 @@ build/harness-logs/
 - 结果 blocked：实体 iPhone `shinhaha (26.2)` 离线，没有共同 API/OCR 环境、真实非空批次和授权联系人对象，SC-01～05 的实体／真实跨端证据未闭合。没有真实迁移、部署、push 或 merge。
 - 费用：原记录 USD 0.012780／5.00；全量至少 4 个用例进入 provider 请求路径，日志无用量，且首次中断轮是否到达该区段未知，本轮增量待核算。
 - checkpoint：`build/harness-state/evidence/sprint-0007/run-01/checkpoint.md`（App cwd，被忽略）；没有 D 线活进程。20 分钟线程心跳保持启用，外部条件恢复后从报告的关闭条件继续。
+
+### 0006 / run-01
+
+- owner：B 线当前主代理 `/root`；run_count：1；开始：2026-09-15 JST。基线 HEAD `75eca33e9`，启动时 tracked 工作树干净；Planner revision 2 SHA256 `303ad11647d89384ff31d64cb7d125a660dc95026028a8bc83aaa15c6d90f173`。
+- 承接 0005 protocol v2 与 0021 origin schemaVersion 1；按已批准入口 1／2／3／7 实现一次性预填意图、稳定联系人引用和服务端 actor 验权。真实账号／设备证据按可用环境单列，不阻塞本地可执行实现。
+- 原功能提交 `09e1a71fa`，主线集成 `0ff447a55`；App 全量 2604/2604、两端 typecheck 和全部 0006 定向测试通过。Web 安全全量 3020 pass／48 个无关既有 fail／184 skip；真实同账号 Web↔App 引用回读仍 blocked，详见 [REPORT](0006-contact-mentions/REPORT.md)。
 
 ### 0005 / run-01
 
