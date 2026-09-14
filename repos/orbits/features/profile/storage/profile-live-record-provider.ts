@@ -210,13 +210,35 @@ export function createStorageProfileProvider({
 }: StorageProfileProviderOptions): LiveProfileProvider {
   async function existingProfileRecord(
     profileId: string,
+    actorId: string,
   ): Promise<LiveRecord<Record<string, unknown>> | null> {
-    return store.getRecord({
+    const records = await store.listRecords({
       workspaceId,
       collectionName: PROFILE_LIVE_RECORD_COLLECTIONS.profiles,
-      recordId: profileId,
       includeDeleted: true,
     });
+    const matches = records.filter(
+      (record) => record.recordId === profileId || record.payload.id === profileId,
+    );
+    const activeMatches = matches.filter(
+      (record) => record.lifecycleState !== "deleted",
+    );
+    const candidates = activeMatches.length > 0 ? activeMatches : matches;
+
+    if (candidates.length > 1) {
+      throw new Error("Profile storage identity is ambiguous.");
+    }
+
+    const existing = candidates[0] ?? null;
+    if (
+      existing &&
+      (existing.payload.accountId !== actorId ||
+        (existing.userId != null && existing.userId !== actorId))
+    ) {
+      throw new Error("Profile record belongs to a different actor.");
+    }
+
+    return existing;
   }
 
   return {
@@ -259,14 +281,7 @@ export function createStorageProfileProvider({
         throw new Error("Profile actor does not match the target account.");
       }
 
-      const existing = await existingProfileRecord(profile.id);
-      if (
-        existing &&
-        (existing.payload.accountId !== actorId ||
-          (existing.userId != null && existing.userId !== actorId))
-      ) {
-        throw new Error("Profile record belongs to a different actor.");
-      }
+      const existing = await existingProfileRecord(profile.id, actorId);
       const evidenceIds =
         existing && existing.evidenceIds.length > 0
           ? existing.evidenceIds
@@ -274,7 +289,7 @@ export function createStorageProfileProvider({
       const record: LiveRecord<Record<string, unknown>> = {
         workspaceId,
         collectionName: PROFILE_LIVE_RECORD_COLLECTIONS.profiles,
-        recordId: profile.id,
+        recordId: existing?.recordId ?? profile.id,
         userId: actorId,
         sourceType: existing?.sourceType ?? "manual",
         sourceId: existing?.sourceId ?? `source:profile:${profile.id}`,
