@@ -18,6 +18,8 @@ const profilePayload = {
     displayName: "Xinyi Zhao",
     headline: "Orbit 创始人",
     industry: "AI 企业应用",
+    primaryIndustryId: "technology_internet",
+    secondaryIndustryId: "technology_internet.ai_data",
     offering: ["AI 落地路径", "企业知识库"],
     organization: "Orbit",
     relationshipGoal: "找到能互相帮忙的企业客户、合作伙伴和日本本地资源。",
@@ -82,6 +84,8 @@ test("homeToView combines profile, events, and contacts into a Chinese mobile hu
   });
 
   assert.equal(view.profile.displayName, "Xinyi Zhao");
+  assert.equal(view.profile.primaryIndustryId, "technology_internet");
+  assert.equal(view.profile.secondaryIndustryId, "technology_internet.ai_data");
   assert.deepEqual(view.stats, {
     events: "3",
     inProgress: "1",

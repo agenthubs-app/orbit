@@ -870,6 +870,8 @@ test("profileToSummary maps profile payloads and empty profiles", () => {
         headline: "Relationship operator",
         homeMarket: "Tokyo",
         industry: "AI 企业应用",
+        primaryIndustryId: "technology_internet",
+        secondaryIndustryId: "technology_internet.ai_data",
         offering: ["AI 落地方案拆解", "业务流程自动化建议"],
         organization: "Orbit",
         relationshipGoal: "Use Orbit to find the next useful relationship.",
@@ -884,6 +886,8 @@ test("profileToSummary maps profile payloads and empty profiles", () => {
       displayName: "林晓",
       headline: "Relationship operator",
       industry: "AI 企业应用",
+      primaryIndustryId: "technology_internet",
+      secondaryIndustryId: "technology_internet.ai_data",
       offering: ["AI 落地方案拆解", "业务流程自动化建议"],
       organization: "Orbit",
       relationshipGoal: "Use Orbit to find the next useful relationship.",
@@ -931,6 +935,8 @@ test("profileToSummary preserves the actor's stored profile without identity rew
       headline: "Relationship operator",
       homeMarket: "Tokyo",
       industry: "AI 企业应用",
+      primaryIndustryId: "technology_internet",
+      secondaryIndustryId: "technology_internet.ai_data",
       offering: ["AI 落地方案拆解"],
       organization: "Orbit",
       relationshipGoal: "Use Orbit to find the next useful relationship.",
@@ -941,6 +947,8 @@ test("profileToSummary preserves the actor's stored profile without identity rew
   });
 
   assert.equal(profile.displayName, "赵翔");
+  assert.equal(profile.primaryIndustryId, "technology_internet");
+  assert.equal(profile.secondaryIndustryId, "technology_internet.ai_data");
   assert.equal(profile.organization, "Orbit");
   assert.equal(profile.role, "创始人");
   assert.equal(profile.bio, "短介绍");

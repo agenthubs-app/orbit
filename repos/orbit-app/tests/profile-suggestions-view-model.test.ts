@@ -299,6 +299,8 @@ test("applyProfileAcceptedPatchToDraft seeds supported profile fields into the e
     displayName: "小雨",
     headline: "旧标题",
     industry: "AI",
+    primaryIndustryId: "technology_internet",
+    secondaryIndustryId: "technology_internet.ai_data",
     offering: ["企业 AI 导入"],
     organization: "Orbit",
     relationshipGoal: "旧目标",
@@ -320,6 +322,8 @@ test("applyProfileAcceptedPatchToDraft seeds supported profile fields into the e
     {
       ...draft,
       headline: "围绕活动场景做人脉关系工作流的创始人",
+      primaryIndustryId: "technology_internet",
+      secondaryIndustryId: "technology_internet.ai_data",
       relationshipGoal: "活动后带着明确背景联系对方。",
       timezone: "东京和新加坡"
     }
@@ -332,6 +336,8 @@ test("applyProfileDocumentExtractionToDraft seeds extracted profile fields into 
     displayName: "小雨",
     headline: "旧标题",
     industry: "AI",
+    primaryIndustryId: "technology_internet",
+    secondaryIndustryId: "technology_internet.ai_data",
     offering: ["企业 AI 导入"],
     organization: "Orbit",
     relationshipGoal: "旧目标",
@@ -364,6 +370,8 @@ test("applyProfileDocumentExtractionToDraft seeds extracted profile fields into 
     {
       ...draft,
       displayName: "赵翔",
+      primaryIndustryId: "technology_internet",
+      secondaryIndustryId: "technology_internet.ai_data",
       headline: "Orbit founder helping companies adopt practical AI",
       relationshipGoal: "把活动背景变成有依据的联系判断。",
       seekingText: "创始人、商务合作伙伴"
