@@ -101,6 +101,7 @@ build/harness-logs/
 - Planner SHA256：`5ab6f8a60493c73fd52200981dc99b44dcb9492bc2d338b96d2002a1c787b68d`。联系人接线已提交 `9daf52dad`，搜索 HTTP 已提交 `36f7255d8`，资料页投影已提交 `db972c3f8`。三个额外传递／兼容文件的批准见[范围补充](0023-industry-consumer-continuation/APPROVED_SCOPE_ADDENDUM.md)，不再等待重复批准。
 - AI 本人资料工具、完整 trace 和 Agent 报告兼容已提交 `2c079ee93`。用户明确批准三个报告文件的最小兼容修复后，缺失说明的 RED 已消除；五个完整相关文件 13/13，Web typecheck exit0。报告只登记新能力和动态数量，保留原实测、受限项和安全断言。
 - 本地数据提交：`464e7f816` 固定资料／联系人／搜索夹具；`10c2ecd7b` 可执行增量清单；`fd91387b0` 旧全局人物及关联投影。清单现有8人／28个正常投影／两个反例，生成数据、其余内联样本和既有测试库仍未补齐，见[数据进度](0023-industry-consumer-continuation/DATA_REPAIR_FINDINGS.md)。
+- App 资料正常夹具补齐：`805188a56` 名片／编辑／保存，`2d1add128` 首页及建议／抽取转换；五个修改文件加既有行业交互测试共51/51、App typecheck exit0。空资料、缺姓名和旧版无ID反例保留，尚未并入 Web 的增量投影清单；没有因此声明 App 全部测试数据已补齐。
 - 最近 H 全量（`fd91387b0` 同一源码版本）：App 2582 pass／0 fail／0 skip；Web 2952 pass／47 fail／168 skip，两端 typecheck exit0。Web 47项失败与上次逐项对比没有新增，原48项中的 Agent 报告模块错误已消失；不是把旧计数直接改写。日志在 build/harness-logs/sprint-0023-fixture-{web,app}-full.log。真实模型、跨端、原生和既有测试库验收仍未完成，环境隔离历史与未核算费用保留。
 
 ### 0020 / run-01
