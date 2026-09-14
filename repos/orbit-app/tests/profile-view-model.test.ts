@@ -12,6 +12,8 @@ const profile: ProfileSummary = {
   displayName: "小雨",
   headline: "Orbit 创始人",
   industry: "AI 企业应用",
+  primaryIndustryId: "technology_internet",
+  secondaryIndustryId: "technology_internet.ai_data",
   offering: ["AI 落地", "日本资源"],
   organization: "Orbit",
   relationshipGoal: "找到能互相帮忙的人。",
@@ -33,13 +35,15 @@ test("profileBusinessCard limits visible tags and reports overflow", () => {
   assert.deepEqual(card.seeking.values, ["企业客户", "合作伙伴"]);
   assert.equal(card.seeking.overflow, 1);
   assert.equal(card.initial, "小");
-  assert.equal(card.metaLine, "Orbit · 创始人 · AI 企业应用");
+  assert.equal(card.metaLine, "Orbit · 创始人 · 人工智能与数据");
 });
 
 test("profileBusinessCard omits empty metadata and tag groups", () => {
   const card = profileBusinessCard({
     ...profile,
     industry: "",
+    primaryIndustryId: null,
+    secondaryIndustryId: null,
     offering: [],
     organization: "",
     role: "",
@@ -58,6 +62,14 @@ test("profileBusinessCard has a safe initial for an empty name", () => {
   });
 
   assert.equal(card.initial, "O");
+});
+
+test("profileBusinessCard retains unstructured industry text for a legacy profile without IDs", () => {
+  const legacy = { ...profile };
+  delete legacy.primaryIndustryId;
+  delete legacy.secondaryIndustryId;
+  const card = profileBusinessCard(legacy);
+  assert.equal(card.metaLine, "Orbit · 创始人 · AI 企业应用");
 });
 
 test("profile screen keeps the Orbit identity without decorative motion", () => {
