@@ -3,6 +3,11 @@
 import { type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { aiSessionOriginSchema, reliableAiSendInputSchema, reliableAiSendReceiptSchema } from "../../../../shared/api-schema/ai-sessions";
+import type {
+  ReliableAiSendInputContract,
+  StoredAiSessionOriginContract,
+} from "../../../../shared/contract/ai-sessions";
 
 import type {
   OrbitAgentEventResultView,
@@ -45,17 +50,20 @@ interface OrbitRealAgentProps {
 }
 
 type AgentPanel = Pick<OrbitAgentScenarioView, "items" | "kind" | "panelTitle">;
+type AgentReliableRequest = ReliableAiSendInputContract;
 
 type AgentMessage =
-  | { role: "user"; text: string }
+  | { id?: string; role: "user"; text: string }
   | {
       actionIds?: readonly string[];
       evidenceRefs?: readonly AgentEvidenceRef[];
       items: OrbitAgentScenarioView["items"];
       kind: OrbitAgentScenarioView["kind"];
+      id?: string;
       note?: string;
       panelTitle: string;
       retryRequest?: string;
+      reliableRequest?: AgentReliableRequest;
       role: "assistant";
       runId?: string;
       taskInteraction?: AgentTaskInteractionView;
@@ -494,6 +502,14 @@ function isStoredAgentMessage(value: unknown): value is AgentMessage {
     return false;
   }
 
+  if (
+    (typeof value.id !== "undefined" && typeof value.id !== "string") ||
+    (typeof value.reliableRequest !== "undefined" &&
+      !reliableAiSendInputSchema.safeParse(value.reliableRequest).success)
+  ) {
+    return false;
+  }
+
   if (value.role === "user") {
     return true;
   }
@@ -527,7 +543,9 @@ export interface AgentStoredChatSession {
   createdAt: string;
   customTitle?: string;
   id: string;
+  messageRevision?: number;
   messages: AgentMessage[];
+  origin?: StoredAiSessionOriginContract;
   panel?: AgentPanel | null;
   pinned?: boolean;
   title: string;
@@ -572,8 +590,16 @@ function parseAgentChatSessionsArray(value: unknown): AgentStoredChatSession[] {
 
   return value
     .filter(isRecord)
-    .map((session) => ({
+    .map((session) => {
+      const origin = aiSessionOriginSchema.safeParse(session.origin);
+      return {
       id: typeof session.id === "string" ? session.id : "",
+      messageRevision:
+        typeof session.messageRevision === "number" &&
+        Number.isSafeInteger(session.messageRevision) &&
+        session.messageRevision >= 0
+          ? session.messageRevision
+          : undefined,
       messages: Array.isArray(session.messages)
         ? session.messages
             .flatMap((message) => {
@@ -583,6 +609,7 @@ function parseAgentChatSessionsArray(value: unknown): AgentStoredChatSession[] {
             })
         : [],
       panel: isRecord(session.panel) ? (session.panel as AgentPanel) : null,
+      origin: origin.success ? origin.data : undefined,
       createdAt:
         typeof session.createdAt === "string" ? session.createdAt : "",
       customTitle:
@@ -591,7 +618,8 @@ function parseAgentChatSessionsArray(value: unknown): AgentStoredChatSession[] {
       title: typeof session.title === "string" ? session.title.trim() : "",
       updatedAt:
         typeof session.updatedAt === "string" ? session.updatedAt : "",
-    }))
+      };
+    })
     .map((session) => ({
       ...session,
       createdAt: session.createdAt || session.updatedAt,
@@ -2462,6 +2490,8 @@ export function OrbitRealAgent({
   const activeSessionIdRef = useRef<string | null>(activeSessionId);
   const historyHydratedRef = useRef(false);
   const skipRestoredSessionPersistenceRef = useRef(false);
+  const suppressReliableSessionPersistenceRef = useRef(false);
+  const reliableMessageRevisionRef = useRef<number | null>(null);
 
   languageRef.current = language;
   messagesRef.current = messages;
@@ -2495,6 +2525,7 @@ export function OrbitRealAgent({
     setActiveQ("");
     setActiveSessionId(session.id);
     activeSessionIdRef.current = session.id;
+    reliableMessageRevisionRef.current = session.messageRevision ?? session.messages.length;
     if (typeof window !== "undefined") {
       window.localStorage.setItem(
         AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY,
@@ -2516,6 +2547,10 @@ export function OrbitRealAgent({
       return;
     }
 
+    if (suppressReliableSessionPersistenceRef.current) {
+      return;
+    }
+
     const hasUserMessage = nextMessages.some((message) => message.role === "user");
     if (!hasUserMessage) {
       return;
@@ -2532,7 +2567,12 @@ export function OrbitRealAgent({
       createdAt: existingSession?.createdAt ?? now,
       customTitle,
       id: sessionId,
+      messageRevision:
+        reliableMessageRevisionRef.current ??
+        existingSession?.messageRevision ??
+        nextMessages.length,
       messages: [...nextMessages],
+      origin: existingSession?.origin,
       panel: nextPanel,
       pinned: existingSession?.pinned,
       title: customTitle || autoTitle,
@@ -2597,23 +2637,71 @@ export function OrbitRealAgent({
             retryAssistantIndex,
           )
         : null;
+    const failedMessage =
+      typeof retryAssistantIndex === "number"
+        ? messagesRef.current[retryAssistantIndex]
+        : null;
+    const retryRequest =
+      failedMessage?.role === "assistant"
+        ? failedMessage.reliableRequest
+        : undefined;
+    const sessionId =
+      retryRequest?.sessionId ??
+      activeSessionIdRef.current ??
+      createAgentSessionId();
+    const existingSession = storedSessionsRef.current.find(
+      (session) => session.id === sessionId,
+    );
+    const stableId = (kind: "message" | "request") => {
+      const id = globalThis.crypto?.randomUUID?.() ?? createAgentSessionId();
+      return `${kind}:${id}`;
+    };
+    const reliableRequest: AgentReliableRequest =
+      retryRequest ?? {
+        clientMessageId: stableId("message"),
+        expectedMessageRevision:
+          existingSession?.messageRevision ?? existingSession?.messages.length ?? 0,
+        locale,
+        message: query,
+        ...(existingSession
+          ? {}
+          : {
+              origin: {
+                entryClient: "web",
+                entryPointId: "ai.new_chat",
+                initialGroupId: null,
+                kind: "manual",
+                template: null,
+              },
+            }),
+        protocolVersion: 2,
+        references: [],
+        requestId: stableId("request"),
+        sessionId,
+      };
     const historySource = retry?.historyMessages ?? messagesRef.current;
     const history = historySource
       .map((turn) => ({ content: historyContentFor(turn), role: turn.role }))
       .filter((turn) => turn.content)
       .slice(-8);
 
+    suppressReliableSessionPersistenceRef.current = true;
+    activeSessionIdRef.current = sessionId;
+    setActiveSessionId(sessionId);
     if (retry) {
       setMessages(retry.visibleMessages);
     } else {
-      setMessages((current) => [...current, { role: "user", text: query }]);
+      setMessages((current) => [
+        ...current,
+        { id: reliableRequest.clientMessageId, role: "user", text: query },
+      ]);
     }
     setThinking(true);
     // 等待回复期间保留现有侧边栏；新回复带结果时才替换。
 
     try {
       const response = await fetchAgentConversation(
-        JSON.stringify({ history, locale, message: query }),
+        JSON.stringify({ history, ...reliableRequest }),
       );
       const payload = (await response.json().catch(() => null)) as {
         data?: {
@@ -2622,12 +2710,44 @@ export function OrbitRealAgent({
           assistantMessage?: string;
           runId?: unknown;
           taskInteraction?: unknown;
+          messages?: unknown;
+          reliableSend?: unknown;
         };
         error?: { code?: string; message?: string };
         success?: boolean;
       } | null;
+      const reliableReceipt = reliableAiSendReceiptSchema.safeParse(
+        payload?.data?.reliableSend,
+      );
 
-      if (!response.ok || payload?.success !== true || !payload.data) {
+      if (
+        reliableReceipt.success &&
+        reliableReceipt.data.state !== "completed"
+      ) {
+        setMessages((current) => [
+          ...current,
+          {
+            items: [],
+            kind: "people",
+            panelTitle: "",
+            reliableRequest,
+            retryRequest: query,
+            role: "assistant",
+            text:
+              locale === "zh"
+                ? "请求结果尚未确认。再次检查会复用同一请求，不会重复生成。"
+                : "The result is not confirmed yet. Checking again reuses this request without generating twice.",
+          },
+        ]);
+        return;
+      }
+
+      if (
+        !response.ok ||
+        payload?.success !== true ||
+        !payload.data ||
+        !reliableReceipt.success
+      ) {
         // 服务端错误原文是内部诊断（provider 名、英文超时串），不拼进用户文案——
         // 这里只做归类：超时给「通常重试一次即可」的可操作说法，其余走通用文案。
         // 原文进 console 供排查，与「普通用户对话不展示内部诊断」的边界一致。
@@ -2649,6 +2769,7 @@ export function OrbitRealAgent({
             items: [],
             kind: "people",
             panelTitle: "",
+            reliableRequest,
             retryRequest: query,
             role: "assistant",
             text: errorText,
@@ -2726,6 +2847,20 @@ export function OrbitRealAgent({
               : [],
           )
         : [];
+      const assistantMessageId = Array.isArray(payload.data.messages)
+        ? [...payload.data.messages]
+            .reverse()
+            .find(
+              (message) =>
+                isRecord(message) &&
+                message.role === "assistant" &&
+                typeof message.messageId === "string",
+            )?.messageId
+        : undefined;
+      reliableMessageRevisionRef.current =
+        reliableReceipt.data.messageRevision ??
+        reliableRequest.expectedMessageRevision + 2;
+      suppressReliableSessionPersistenceRef.current = false;
       setMessages((current) => [
         ...current,
         {
@@ -2733,6 +2868,10 @@ export function OrbitRealAgent({
           evidenceRefs,
           items,
           kind,
+          id:
+            typeof assistantMessageId === "string"
+              ? assistantMessageId
+              : `assistant:${reliableRequest.requestId}`,
           panelTitle,
           role: "assistant",
           runId,
@@ -2751,11 +2890,12 @@ export function OrbitRealAgent({
           : failureText;
       setMessages((current) => [
         ...current,
-        {
-          items: [],
-          kind: "people",
-          panelTitle: "",
-          retryRequest: query,
+          {
+            items: [],
+            kind: "people",
+            panelTitle: "",
+            reliableRequest,
+            retryRequest: query,
           role: "assistant",
           text: requestFailureText,
         },
@@ -2925,6 +3065,8 @@ export function OrbitRealAgent({
     setPanel(null);
     setActiveSessionId(null);
     activeSessionIdRef.current = null;
+    reliableMessageRevisionRef.current = null;
+    suppressReliableSessionPersistenceRef.current = false;
     navigate(`/agent?q=${encodeURIComponent(item.q)}`);
     void ask(item.q);
   };

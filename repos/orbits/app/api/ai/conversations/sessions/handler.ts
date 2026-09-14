@@ -14,6 +14,7 @@ import {
   getHttpStatusForAppErrorCode,
 } from "../../../../../shared/errors/app-error";
 import {
+  OrbitAgentChatSessionWriteError,
   normalizeOrbitAgentChatSessionSnapshot,
   type OrbitAgentChatSessionProvider,
 } from "../../../../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
@@ -167,7 +168,11 @@ export function createOrbitAgentChatSessionsHandlers(
           },
         );
       } catch (error) {
-        return responseForError(mode, error);
+        return responseForError(
+          mode,
+          error,
+          error instanceof OrbitAgentChatSessionWriteError ? 409 : undefined,
+        );
       }
     },
   };

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { OrbitAiConversationSummaryContract, OrbitAiMessageContract } from "./contract/orbit-ai";
-import { reliableAiSendReceiptSchema } from "./schema/ai-sessions";
+import { aiSessionOriginSchema, reliableAiSendReceiptSchema } from "./schema/ai-sessions";
 import type { ReliableAiSendReceiptContract } from "./contract/ai-sessions";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -30,6 +30,7 @@ export const aiConversationListSchema = z.object({
 export const aiSessionSchema = z.object({
   id: identifier, title: z.string().trim().min(1), customTitle: z.string().optional(), createdAt: timestamp, updatedAt: timestamp,
   messageRevision: z.number().int().nonnegative().optional(),
+  origin: aiSessionOriginSchema.optional(),
   pinned: z.boolean().optional(), panel: z.record(z.string(), z.unknown()).nullable().optional(),
   messages: z.array(z.object({ id: identifier.optional(), createdAt: timestamp.optional(), role: z.enum(["user", "assistant"]), text: z.string().trim().min(1) }).passthrough()).min(1)
 }).passthrough();

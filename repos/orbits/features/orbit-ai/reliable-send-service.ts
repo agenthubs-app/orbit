@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 
+import type { AiSessionOriginInputContract } from "../../shared/contract/ai-sessions";
 import type { OrbitAgentChatSessionProvider } from "./storage/orbit-agent-chat-session-live-record-provider";
 
 export interface ReliableSendInput {
@@ -7,6 +8,7 @@ export interface ReliableSendInput {
   expectedMessageRevision: number;
   locale: string;
   message: string;
+  origin?: AiSessionOriginInputContract | undefined;
   protocolVersion: 2;
   references: readonly { id: string; type: "contact" | "event" | "note" }[];
   requestId: string;
@@ -324,6 +326,18 @@ export function createReliableOrbitAgentSendService(dependencies: {
                 text: request.input.message,
               },
             ],
+            origin:
+              current?.origin ??
+              (request.input.origin
+                ? {
+                    ...request.input.origin,
+                    firstSentText: request.input.message,
+                    firstUserMessageId: request.input.clientMessageId,
+                    recordedAt: userCreatedAt,
+                    references: request.input.references,
+                    schemaVersion: 1,
+                  }
+                : undefined),
             panel: current?.panel,
             pinned: current?.pinned,
             title: current?.title ?? request.input.message.slice(0, 120),

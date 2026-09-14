@@ -1,8 +1,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { consumeAiSendIntent, registerAiSendIntent } from "../src/data/ai-send-intent";
+import { aiSendIntentOrigin, consumeAiSendIntent, registerAiSendIntent } from "../src/data/ai-send-intent";
 
-const intent = { id: "click-1", actorId: "actor-1", baseUrl: "https://orbit.example", message: "准备交流会" };
+const intent = {
+  id: "click-1",
+  actorId: "actor-1",
+  baseUrl: "https://orbit.example",
+  message: "准备交流会",
+  origin: {
+    entryClient: "app" as const,
+    entryPointId: "home.event_preparation" as const,
+    initialGroupId: null,
+    kind: "structured" as const,
+    template: { id: "home.event_preparation", version: 1 }
+  }
+};
 
 test("AI send intent is available only once after the matching explicit click", () => {
   registerAiSendIntent(intent);
@@ -24,8 +36,16 @@ test("AI send intent retains only the latest click and copies its original input
   const next = { ...intent, id: "click-2" };
   registerAiSendIntent(next);
   next.message = "mutated";
+  next.origin.template.version = 99;
   assert.equal(consumeAiSendIntent(intent), false);
   assert.equal(consumeAiSendIntent({ ...intent, id: "click-2" }), true);
+  assert.deepEqual(aiSendIntentOrigin("click-2")?.origin, {
+    entryClient: "app",
+    entryPointId: "home.event_preparation",
+    initialGroupId: null,
+    kind: "structured",
+    template: { id: "home.event_preparation", version: 1 }
+  });
 });
 for (const key of ["id", "actorId", "baseUrl", "message"] as const) test("AI send intent never accepts a missing " + key, () => {
   registerAiSendIntent(intent);

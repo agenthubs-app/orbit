@@ -24,7 +24,7 @@ test("relationship chat screen opens with an Orbit AI relationship entry", () =>
     "AI relationship entry should appear before the raw conversation list"
   );
   assert.match(screenSource, /function RelationshipAgentEntry/u);
-  assert.match(screenSource, /router\.push\("\/ai" as Href\)/u);
+  assert.match(screenSource, /entryPointId: "chat\.ai_assistant"/u);
   assert.ok(screenSource.includes("让 Orbit AI 先帮我判断"));
   assert.match(screenSource, /styles\.agentEntry/u);
   assert.match(screenSource, /styles\.agentPrompt/u);

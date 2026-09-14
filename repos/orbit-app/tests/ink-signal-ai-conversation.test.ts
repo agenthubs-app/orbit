@@ -109,6 +109,7 @@ function reliableRequestBase(request: any) {
     references: _references,
     requestId: _requestId,
     sessionId: _sessionId,
+    origin: _origin,
     ...body
   } = request.body;
   return { ...request, body };
@@ -137,6 +138,9 @@ test("AI home click issues a scoped one-use intent and continues without another
   const target = (await navigation(p))[0];
   assert.equal((await navigation(p)).length, 1);
   assert.equal(target.params.sendIntent, "test-send-1");
+  const firstWrite = (await writes(p))[0];
+  assert.equal(firstWrite.body.origin.entryClient, "app");
+  assert.equal(firstWrite.body.origin.entryPointId, "ai.home");
   assert.deepEqual((await writes(p)).map(reliableRequestBase), [{ method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "首页明确发送的问题" } }]);
   await update(p, { mounted: false }); await update(p, { mounted: true, params: target.params });
   assert.equal((await writes(p)).length, 1, "reopening even the original unconsumed URL cannot replay the click");

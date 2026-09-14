@@ -188,6 +188,7 @@ async function mountPage(
   });
   const persisted: Array<{ messages: Array<{ role: string; taskInteraction?: Record<string, unknown> }> }> = [];
   const requests: Array<{ path: string; body: unknown }> = [];
+  const conversationRequests: Array<Record<string, unknown>> = [];
   let respond!: (response: Response) => void;
   t.mock.method(globalThis, "fetch", async (input: string, init?: RequestInit) => {
     const path = String(input);
@@ -201,7 +202,20 @@ async function mountPage(
       return commit();
     }
     if (path.startsWith("/api/ai/conversations/sessions")) return Response.json({ success: true, data: { sessions: restoredSession ? [restoredSession] : [] } });
-    if (path === "/api/ai/conversations") return Response.json({ success: true, data: reply });
+    if (path === "/api/ai/conversations") {
+      conversationRequests.push(body);
+      return Response.json({ success: true, data: {
+        ...reply,
+        reliableSend: {
+          messageRevision: 2,
+          protocolVersion: 2,
+          replayed: false,
+          requestId: body.requestId,
+          sessionId: body.sessionId,
+          state: "completed",
+        },
+      } });
+    }
     if (path.startsWith("/api/task-suggestions/")) {
       requests.push({ path, body });
       return new Promise<Response>((resolve) => { respond = resolve; });
@@ -209,8 +223,41 @@ async function mountPage(
     return Response.json({ success: true, data: {} });
   });
   await act(async () => { root = create(<OrbitRealAgent viewModel={createOrbitAgentStarterViewModel()} />); });
-  return { root: root!, persisted, requests, pendingSaves, respond: (response: Response) => respond(response) };
+  return { root: root!, persisted, requests, conversationRequests, pendingSaves, respond: (response: Response) => respond(response) };
 }
+
+async function waitForPendingSessionSave(pendingSaves: Array<() => void>) {
+  for (let attempt = 0; attempt < 8 && pendingSaves.length === 0; attempt += 1) {
+    await act(async () => new Promise<void>((resolve) => setImmediate(resolve)));
+  }
+}
+
+async function drainPendingSessionSaves(pendingSaves: Array<() => void>) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    if (pendingSaves.length > 0) {
+      await act(async () => pendingSaves.shift()!());
+    } else {
+      await act(async () => new Promise<void>((resolve) => setImmediate(resolve)));
+    }
+  }
+}
+
+test("Web first send uses the reliable protocol and records a controlled origin", async (t) => {
+  const { conversationRequests } = await mountPage(t);
+  assert.equal(conversationRequests.length, 1);
+  assert.equal(conversationRequests[0]?.protocolVersion, 2);
+  assert.equal(conversationRequests[0]?.expectedMessageRevision, 0);
+  assert.equal(typeof conversationRequests[0]?.sessionId, "string");
+  assert.equal(typeof conversationRequests[0]?.clientMessageId, "string");
+  assert.equal(typeof conversationRequests[0]?.requestId, "string");
+  assert.deepEqual(conversationRequests[0]?.origin, {
+    entryClient: "web",
+    entryPointId: "ai.new_chat",
+    initialGroupId: null,
+    kind: "manual",
+    template: null,
+  });
+});
 
 test("opening a restored Web session performs no automatic POST", async (t) => {
   const session = {
@@ -326,21 +373,20 @@ test("starting a new conversation during acceptance never writes the old card in
 
 test("delayed history writes cannot overwrite a newer accepted-task snapshot", async (t) => {
   const { root, pendingSaves, persisted, respond } = await mountPage(t, true);
+  await waitForPendingSessionSave(pendingSaves);
   assert.equal(pendingSaves.length, 1, "only one session snapshot can be in flight");
   let request: Promise<void>;
   await act(async () => { request = root.root.findAllByProps({ "aria-label": "加入待办：准备会面" })[0].props.onClick(); });
   await act(async () => { respond(Response.json({ success: true, data: { task } })); await request; });
   assert.equal(pendingSaves.length, 1);
-  for (let step = 0; step < 3; step++) {
-    assert.equal(pendingSaves.length, 1);
-    await act(async () => pendingSaves.shift()!());
-  }
+  await drainPendingSessionSaves(pendingSaves);
   assert.equal(pendingSaves.length, 0);
   assert.equal(persisted.at(-1)?.messages.at(-1)?.taskInteraction?.state, "created");
 });
 
 test("renaming while a task is accepted preserves both the name and task in saved and reopened history", async (t) => {
   const { root, pendingSaves, persisted, respond } = await mountPage(t, true);
+  await waitForPendingSessionSave(pendingSaves);
   act(() => root.root.findAllByProps({ "aria-label": "更多操作" })[0].props.onClick());
   const rename = root.root.findAll((node) => node.type === "button" && node.props["data-orbit-agent-history-rename"])[0];
   act(() => rename.props.onClick());
@@ -350,10 +396,7 @@ test("renaming while a task is accepted preserves both the name and task in save
   let request: Promise<void>;
   await act(async () => { request = root.root.findAllByProps({ "aria-label": "加入待办：准备会面" })[0].props.onClick(); });
   await act(async () => { respond(Response.json({ success: true, data: { task } })); await request; });
-  for (let step = 0; step < 4; step++) {
-    assert.equal(pendingSaves.length, 1);
-    await act(async () => pendingSaves.shift()!());
-  }
+  await drainPendingSessionSaves(pendingSaves);
   assert.equal(persisted.at(-1)?.messages.at(-1)?.taskInteraction?.state, "created");
   assert.equal((persisted.at(-1) as any).customTitle, "会面资料");
   await act(async () => root.root.findAllByProps({ className: "btn btn-quiet orbit-agent-history-entry" })[0].props.onClick());

@@ -36,6 +36,7 @@ import { iorbitBrandMark } from "../../design/iorbit-brand";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { aiConversationListSchema, aiSessionReadSchema, aiSessionReceiptMatches, aiReplyPayload, aiReliableSendReceipt, aiReliableSendRecovery, aiTaskReceipt, type AiConversationPayload, type AiSession } from "../../api/ai-history-contract";
+import type { AiSessionOriginInputContract } from "../../api/contract/ai-sessions";
 import {
   aiRunDetailToView,
   buildAiRunDetailRequest,
@@ -106,6 +107,7 @@ function assetUrl(baseUrl: string, path: string): string {
 type ReliableSendAttempt = {
   clientMessageId: string;
   expectedMessageRevision: number;
+  origin?: AiSessionOriginInputContract;
   requestId: string;
   sessionId: string;
 };
@@ -146,8 +148,8 @@ function rawSessionThread(session: AiSession): ConversationThreadView {
   };
 }
 
-export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, claimInitialPrompt, allowInitialPrompt = true, journal: providedJournal }: {
-  scopeKey?: string; isScopeCurrent?: () => boolean; claimInitialPrompt?: () => boolean; allowInitialPrompt?: boolean; journal?: AiConversationJournal;
+export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, claimInitialPrompt, allowInitialPrompt = true, journal: providedJournal, sessionOrigin }: {
+  scopeKey?: string; isScopeCurrent?: () => boolean; claimInitialPrompt?: () => boolean; allowInitialPrompt?: boolean; journal?: AiConversationJournal; sessionOrigin?: AiSessionOriginInputContract;
 } = {}) {
   const { colors, styles } = useStyles();
   const insets = useSafeAreaInsets();
@@ -272,6 +274,15 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       reliable: {
         clientMessageId: randomUUID(),
         expectedMessageRevision: previousSession?.messageRevision ?? previousSession?.messages.length ?? 0,
+        ...(!previousSession ? {
+          origin: sessionOrigin ?? {
+            entryClient: "app",
+            entryPointId: "ai.new_chat",
+            initialGroupId: null,
+            kind: "manual",
+            template: null,
+          }
+        } : {}),
         requestId: randomUUID(),
         sessionId,
       },

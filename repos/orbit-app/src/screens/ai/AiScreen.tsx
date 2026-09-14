@@ -29,6 +29,8 @@ import {
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { aiConversationListSchema, aiHistoryRows, aiSessionDeleteReceiptSchema, aiSessionListSchema } from "../../api/ai-history-contract";
+import type { AiSessionEntryPointId } from "../../api/contract/ai-sessions";
+import { aiSessionOriginInputSchema } from "../../api/schema/ai-sessions";
 import { validateApiResourceState } from "../../api/validated-resource-state";
 import { iorbitBrandMark } from "../../design/iorbit-brand";
 import { registerAiSendIntent } from "../../data/ai-send-intent";
@@ -181,7 +183,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   const router = useRouter();
   const auth = useOrbitAuthSession();
   const { baseUrl } = useOrbitApiBaseUrl();
-  const params = useLocalSearchParams<{ drawer?: string | string[] }>();
+  const params = useLocalSearchParams<{ drawer?: string | string[]; entryPointId?: string | string[] }>();
   const keyboardBottomInset = useStableKeyboardBottomInset();
   const [refreshIndex, setRefreshIndex] = useState(0);
   const [historyAttempt, setHistoryAttempt] = useState(0);
@@ -220,6 +222,16 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   const [composerMenuOpen, setComposerMenuOpen] = useState(false);
   const [startedNewChat, setStartedNewChat] = useState(false);
   const [draftMessage, setDraftMessage] = useState("");
+  const requestedOrigin = aiSessionOriginInputSchema.safeParse({
+    entryClient: "app",
+    entryPointId: optionalParam(params.entryPointId) || "ai.home",
+    initialGroupId: null,
+    kind: "manual",
+    template: null,
+  });
+  const [entryPointId, setEntryPointId] = useState<AiSessionEntryPointId>(
+    requestedOrigin.success ? requestedOrigin.data.entryPointId : "ai.home",
+  );
   const [sendError, setSendError] = useState<string | null>(null);
   const [historyDeleteError, setHistoryDeleteError] = useState<string | null>(
     null
@@ -317,7 +329,19 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
       setSendError("暂时无法发送，问题已保留，请重试。");
       return;
     }
-    registerAiSendIntent({ id: sendIntent, actorId: auth.user.id, baseUrl, message });
+    registerAiSendIntent({
+      id: sendIntent,
+      actorId: auth.user.id,
+      baseUrl,
+      message,
+      origin: {
+        entryClient: "app",
+        entryPointId,
+        initialGroupId: null,
+        kind: "manual",
+        template: null,
+      },
+    });
     setSendError(null);
     navigationLock.current = true;
     router.push({
@@ -333,6 +357,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     setHistoryOpen(false);
     setDrawerOpen(false);
     setStartedNewChat(true);
+    setEntryPointId("ai.new_chat");
     setDraftMessage("");
     setSendError(null);
   }

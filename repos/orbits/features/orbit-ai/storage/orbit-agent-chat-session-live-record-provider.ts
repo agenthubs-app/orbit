@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 
+import { aiSessionOriginSchema } from "../../../shared/api-schema/ai-sessions";
+import type { StoredAiSessionOriginContract } from "../../../shared/contract/ai-sessions";
 import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
 import {
   resolveLiveDatabaseConnectionConfig,
@@ -26,11 +28,16 @@ export interface OrbitAgentChatSessionMessage
 
 export class OrbitAgentChatSessionWriteError extends Error {
   constructor(
-    readonly code: "SESSION_DELETED" | "SESSION_SNAPSHOT_STALE",
+    readonly code:
+      | "SESSION_DELETED"
+      | "SESSION_ORIGIN_IMMUTABLE"
+      | "SESSION_SNAPSHOT_STALE",
   ) {
     super(
       code === "SESSION_DELETED"
         ? "Deleted session cannot be restored by a late save"
+        : code === "SESSION_ORIGIN_IMMUTABLE"
+          ? "Session origin is immutable after the first saved message"
         : "Stale session snapshot cannot replace newer history",
     );
   }
@@ -42,6 +49,7 @@ export interface OrbitAgentChatSessionSnapshot {
   id: string;
   messageRevision?: number;
   messages: readonly OrbitAgentChatSessionMessage[];
+  origin?: StoredAiSessionOriginContract | undefined;
   panel?: Record<string, unknown> | null;
   pinned?: boolean;
   title: string;
@@ -175,6 +183,7 @@ export function normalizeOrbitAgentChatSessionSnapshot(
     value.messageRevision >= messages.length
       ? value.messageRevision
       : messages.length;
+  const parsedOrigin = aiSessionOriginSchema.safeParse(value.origin);
 
   if (!id || !title || !updatedAt || messages.length === 0) {
     return null;
@@ -186,6 +195,7 @@ export function normalizeOrbitAgentChatSessionSnapshot(
     id,
     messageRevision,
     messages,
+    origin: parsedOrigin.success ? cloneJson(parsedOrigin.data) : undefined,
     panel: isRecord(value.panel) ? cloneJson(value.panel) : null,
     pinned: value.pinned === true,
     title,
@@ -262,6 +272,7 @@ function sessionRecord(input: {
       lastMessagePreview: lastMessagePreview(session.messages),
       messageCount: session.messages.length,
       messageRevision: session.messageRevision ?? session.messages.length,
+      origin: session.origin ?? null,
       panel: session.panel ?? null,
       pinned: session.pinned === true,
       title: session.title,
@@ -375,17 +386,37 @@ async function sessionFromRecord(
     : record.updatedAt;
   const messages = await readMessages(store, workspaceId, id);
 
-  return normalizeOrbitAgentChatSessionSnapshot({
+  const normalized = normalizeOrbitAgentChatSessionSnapshot({
     createdAt,
     customTitle,
     id,
     messageRevision: payload.messageRevision,
     messages,
+    origin: payload.origin,
     panel: isRecord(payload.panel) ? payload.panel : null,
     pinned: payload.pinned === true,
     title,
     updatedAt,
   });
+  return normalized
+    ? {
+        ...normalized,
+        origin:
+          normalized.origin ??
+          {
+            entryClient: "unknown",
+            entryPointId: "legacy.unknown",
+            firstSentText: null,
+            firstUserMessageId: null,
+            initialGroupId: null,
+            kind: "legacy_unknown",
+            recordedAt: null,
+            references: [],
+            schemaVersion: 1,
+            template: null,
+          },
+      }
+    : null;
 }
 
 export function createStorageOrbitAgentChatSessionProvider({
@@ -486,7 +517,7 @@ export function createStorageOrbitAgentChatSessionProvider({
     },
 
     async upsertSession(sessionInput) {
-      const session = normalizeOrbitAgentChatSessionSnapshot(sessionInput);
+      let session = normalizeOrbitAgentChatSessionSnapshot(sessionInput);
 
       if (!session) {
         throw new Error("Invalid Orbit Agent chat session snapshot");
@@ -504,6 +535,16 @@ export function createStorageOrbitAgentChatSessionProvider({
       const existingSnapshot = existingSession
         ? await sessionFromRecord(store, actorWorkspaceId, existingSession)
         : null;
+      if (
+        existingSnapshot?.origin &&
+        session.origin &&
+        JSON.stringify(existingSnapshot.origin) !== JSON.stringify(session.origin)
+      ) {
+        throw new OrbitAgentChatSessionWriteError("SESSION_ORIGIN_IMMUTABLE");
+      }
+      if (existingSnapshot?.origin) {
+        session = { ...session, origin: existingSnapshot.origin };
+      }
       if (
         existingSnapshot &&
         (session.updatedAt < existingSnapshot.updatedAt ||

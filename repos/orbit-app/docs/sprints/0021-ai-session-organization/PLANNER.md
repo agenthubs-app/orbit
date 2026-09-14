@@ -32,6 +32,20 @@
 
 以上为源码盘点，不是运行时故障复现结论。本次未操作数据库、模型或设备。
 
+## run-01 实施对照（2026-09-15）
+
+启动时保留原 revision 1 哈希 `8cdec6ff046502d9363bc0cb2d5829c856d76aac2ce920a785db1d36283b7811`。0005 功能提交 `30c1e210c` 已发布下列实际 B3 字段；本节只完成 Planner 要求的字段对照，不改变目标、SC 或排除范围。
+
+| B3 已发布字段／行为 | 0021 承接方式 |
+| --- | --- |
+| 输入 `protocolVersion: 2`、`sessionId`、`clientMessageId`、`requestId`、`expectedMessageRevision`、`message`、`locale`、`references` | 在同一输入 schema 增加可选、受控的 `origin`；不新增另一套发送 ID、引用或幂等字段。 |
+| 回执 `protocolVersion`、`requestId`、`sessionId`、`state`、`replayed`、可选 `messageRevision` | 首次发送完成回执继续以 `messageRevision` 表示消息变化；组织 mutation 使用独立 `organization.revision`，两者不混用。 |
+| 请求状态 `pending`／`completed`／`failed_before_execution`／`outcome_unknown` | 起源在首次用户消息落盘时冻结；执行前保存失败仍为可重试，未知结果查询不改变起源。 |
+| session snapshot 的稳定 message ID 与 `messageRevision`；删除 tombstone 和旧短快照保护 | 组织字段由服务端合并保留；旧客户端省略字段不得清空 origin／organization，删除后所有消息或组织写入仍返回不可恢复。 |
+| 请求存储的 actor-scoped PostgreSQL advisory transaction lock | 组织 CAS、mutation 幂等和删组移出会话使用同一事务设施，但使用独立记录和锁域。 |
+
+共享契约继续使用 `shared/contract/ai-sessions.ts` 与 `shared/api-schema/ai-sessions.ts`，App 只通过现有 `npm run sync:contract` 取得副本。Task 1 先接 origin，Task 2 再接 organization/groups；受控入口登记不授权引用读取，也不触发模型调用。
+
 ## 契约提案
 
 ### A. 稳定会话和不可变起源
