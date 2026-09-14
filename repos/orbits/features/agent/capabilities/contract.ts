@@ -47,6 +47,7 @@ export const AGENT_READ_TOOL_NAMES = [
   "contacts.recommend",
   "followups.reviewQueue",
   "chat.context",
+  "profile.getSelf",
 ] as const;
 
 export const AGENT_WORKFLOW_KEYS = [
@@ -100,6 +101,7 @@ export interface AgentCapabilityDefinition {
     | "matchmaking"
     | "memory"
     | "notifications"
+    | "profile"
   )[];
   executionBoundary: AgentCapabilityExecutionBoundary;
   riskLevel: AgentActionRiskLevel;

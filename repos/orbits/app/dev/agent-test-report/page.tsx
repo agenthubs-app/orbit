@@ -395,7 +395,7 @@ export default function AgentFunctionalTestReportPage() {
         <section id="capabilities">
           <div className="agent-report__section-head">
             <p className="agent-report__eyebrow">Capability inventory</p>
-            <h2>注册表中的全部 20 项能力</h2>
+            <h2>{`注册表中的全部 ${AGENT_EVALUATION_SUMMARY.capabilities} 项能力`}</h2>
             <p>
               页面直接从 Agent 能力注册表生成清单；新增能力如果没有测试说明，报告测试会失败，防止文档落后于实现。
             </p>

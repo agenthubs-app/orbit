@@ -96,6 +96,10 @@ const capabilityChineseCopy: Record<
     title: "读取关系上下文",
     effect: "读取联系人、互动和证据，为解释、摘要与草稿提供有依据的上下文。",
   },
+  "profile.getSelf": {
+    title: "读取本人资料",
+    effect: "只读当前登录用户的资料和行业，供本轮对话使用。空资料或读取失败会明确返回，调试记录不保存资料正文。",
+  },
   "followups.createTask": {
     title: "创建跟进任务",
     effect: "经确认后创建 Orbit 内部跟进或准备任务，可撤销。",

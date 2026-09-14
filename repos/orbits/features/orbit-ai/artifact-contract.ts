@@ -15,6 +15,7 @@ export const ORBIT_AGENT_ARTIFACT_KINDS = [
   "followup_queue",
   "relationship_chat_context",
   "generic",
+  "self_profile",
 ] as const;
 
 export const ORBIT_AGENT_ARTIFACT_STATUSES = [
@@ -34,6 +35,7 @@ export const ORBIT_AGENT_ARTIFACT_PRODUCERS = [
   "contact_recommendation_producer",
   "followup_review_producer",
   "relationship_chat_review_producer",
+  "self_profile_reader",
 ] as const;
 
 export const ORBIT_AGENT_ARTIFACT_ERROR_CODES = [
@@ -75,6 +77,7 @@ export type OrbitAgentArtifactSourceModule =
   | "events"
   | "contacts"
   | "followups"
+  | "profile"
   | "chat";
 
 export interface OrbitAgentArtifactPresentation {
@@ -210,6 +213,13 @@ export interface OrbitAgentArtifactResult {
   provenance: OrbitAgentArtifactProvenance;
   safety: OrbitAgentArtifactSafety;
   nextAction: string;
+  // Only read metadata is serializable. Private profile content stays in the current runtime.
+  selfProfile?: {
+    status: "ok" | "empty" | "error";
+    reference: string;
+    sourceVersion: string | null;
+    code?: "UNAUTHORIZED" | "FORBIDDEN" | "SERVICE_UNAVAILABLE";
+  };
 }
 
 // Payload 拆成 task/result，方便 UI 同时展示“用户请求了什么”和“artifact producer 产出了什么”。

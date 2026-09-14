@@ -188,6 +188,13 @@ export const AGENT_CAPABILITY_DEFINITIONS = [
     triggers: ["chat", "scheduler", "domain_signal", "manual"],
     userConfigurableAutomation: true,
   }),
+  readCapability({
+    toolName: "profile.getSelf",
+    title: "Read my profile",
+    description: "Read the signed-in user's profile for this conversation, without changing it.",
+    domains: ["agent", "profile"],
+    triggers: ["chat"],
+  }),
   runtimeAction({
     executorKey: AGENT_RUNTIME_EXECUTOR_KEYS[0],
     title: "Create follow-up task",

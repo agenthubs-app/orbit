@@ -151,6 +151,7 @@ function labelFor(kind: OrbitAgentArtifactKind, locale: ArtifactLocale): string 
     OrbitAgentArtifactKind,
     Record<ArtifactLocale, string>
   > = {
+    self_profile: { en: "My profile", zh: "本人资料" },
     contact_recommendations: {
       en: "Recommended contacts",
       zh: "推荐人脉",
@@ -187,6 +188,7 @@ function presentationFor(
 ): OrbitAgentArtifactPresentation {
   // 每类 artifact 有默认展示面；调用方可以覆盖标题/宽度等 presentation 字段。
   const defaults: Record<OrbitAgentArtifactKind, OrbitAgentArtifactPresentation> = {
+    self_profile: { preferredSurface: "inline_card", title: labelFor("self_profile", locale) },
     contact_recommendations: {
       preferredSurface: "side_panel",
       subtitle: localize(locale, {
@@ -797,7 +799,7 @@ export function createMockOrbitAgentArtifactTaskService(): OrbitAgentArtifactTas
 
       const kind = normalizeKind(input.kind);
 
-      if (!kind) {
+      if (!kind || kind === "self_profile") {
         return failure("ORBIT_AGENT_ARTIFACT_UNSUPPORTED_KIND");
       }
 
@@ -815,6 +817,9 @@ export function createMockOrbitAgentArtifactTaskService(): OrbitAgentArtifactTas
     },
 
     getArtifactTask(input): OrbitAgentArtifactResultEnvelope {
+      if (input.artifactId.startsWith("artifact:self-profile:")) {
+        return failure("ORBIT_AGENT_ARTIFACT_NOT_FOUND");
+      }
       // get 路径按 artifactId 回放同一类 mock payload，方便 UI 详情页/调试页复用。
       const scenario = normalizeScenario(input.scenario);
 

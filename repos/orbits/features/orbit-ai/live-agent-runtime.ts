@@ -39,6 +39,7 @@ import { createOrbitAgentLiveArtifactTaskService } from "./live-artifact-task-se
 import { classifyOutOfServiceScope } from "./service-scope-service";
 import type { OrbitAgentArtifactTaskService } from "./service";
 import { executeOrbitAgentTool } from "./agent-tools/registry";
+import { selfProfileContextForSynthesis } from "./self-profile-artifact-service";
 
 export const liveCollectedAt = "2026-06-27T00:00:00.000Z";
 export const liveConversationId = "live-orbit-agent-conversation";
@@ -109,6 +110,7 @@ export function safetyLedger(input: {
   aiProviderRequested: boolean;
   domainToolCallsExecuted?: boolean;
   externalNetworkRequested: boolean;
+  liveDatabaseReadExecuted?: boolean;
 }): OrbitAgentSafetyLedger {
   return {
     aiProviderRequested: input.aiProviderRequested,
@@ -117,7 +119,7 @@ export function safetyLedger(input: {
     emailProviderRequested: false,
     externalNetworkRequested: input.externalNetworkRequested,
     externalSideEffectsExecuted: false,
-    liveDatabaseReadExecuted: false,
+    liveDatabaseReadExecuted: input.liveDatabaseReadExecuted ?? false,
     liveDatabaseWriteExecuted: false,
     notificationDelivered: false,
   };
@@ -952,6 +954,10 @@ export function routingDecisionFromPlannerIntent(
       toolFamily: OrbitAgentRoutingToolFamily | null;
     }
   > = {
+    self_profile: {
+      intent: "self_profile",
+      toolFamily: "profile",
+    },
     contact_recommendations: {
       intent: "contact_discovery",
       toolFamily: "contacts",
@@ -1002,6 +1008,7 @@ export function routingDecisionFromPlannerIntent(
 export function toolNameForIntent(
   intent: GeminiOrbitAgentIntent,
 ): GeminiOrbitAgentToolName | null {
+  if (intent === "self_profile") return "profile.getSelf";
   if (intent === "event_recommendations") return "events.recommend";
   if (intent === "contact_recommendations") return "contacts.recommend";
   if (intent === "followup_queue") return "followups.reviewQueue";
@@ -1014,6 +1021,7 @@ export function artifactKindForTool(
   toolName: GeminiOrbitAgentToolName,
 ): OrbitAgentArtifactKind {
   const kinds: Record<GeminiOrbitAgentToolName, OrbitAgentArtifactKind> = {
+    "profile.getSelf": "self_profile",
     "chat.context": "relationship_chat_context",
     "contacts.recommend": "contact_recommendations",
     "events.recommend": "event_recommendations",
@@ -1024,6 +1032,7 @@ export function artifactKindForTool(
 }
 
 export function toolFamilyForToolName(toolName: string): string {
+  if (toolName === "profile.getSelf") return "profile";
   if (toolName === "chat.context") return "relationship_chat";
   if (toolName.startsWith("events.")) return "events";
   if (toolName.startsWith("contacts.")) return "contacts";
@@ -1041,6 +1050,10 @@ export function proposedIntentForTool(
     GeminiOrbitAgentToolName,
     Record<OrbitAgentLocale, string>
   > = {
+    "profile.getSelf": {
+      en: "Read my profile",
+      zh: "读取本人资料",
+    },
     "chat.context": {
       en: "Review relationship conversation context",
       zh: "复核关系对话上下文",
@@ -1119,7 +1132,10 @@ export async function artifactForRequest(input: {
               widthHint: "half",
             },
             query: validatedInput.query,
-            toolArguments: {
+            toolArguments: toolName === "profile.getSelf" ? {
+              query: validatedInput.query,
+              locale: validatedInput.locale ?? locale,
+            } : {
               query: validatedInput.query,
               locale: validatedInput.locale,
               searchTerms: validatedInput.searchTerms,
@@ -1146,6 +1162,14 @@ export async function artifactForRequest(input: {
 export function artifactSummaryForSynthesis(
   artifact: OrbitAgentArtifactPayload,
 ): GeminiOrbitAgentToolResultSummary {
+  if (artifact.task.kind === "self_profile") {
+    return {
+      kind: "self_profile",
+      preferredSurface: artifact.result.presentation.preferredSurface,
+      title: artifact.result.presentation.title,
+      summary: JSON.stringify({ untrustedProfileData: selfProfileContextForSynthesis(artifact) }),
+    };
+  }
   // 把排名靠前的条目（姓名/职位等）一并交给 synthesis，让最终回复能具体说出
   // 推荐了谁、为什么，而不是只报一个数量。
   const topItems = (artifact.result.generatedView?.sections ?? [])
@@ -1326,6 +1350,9 @@ export function conversationForRuntimeSuccess(input: {
     aiProviderRequested: input.aiProviderRequested,
     domainToolCallsExecuted: input.artifacts.length > 0,
     externalNetworkRequested: input.aiProviderRequested,
+    liveDatabaseReadExecuted: input.artifacts.some(artifact =>
+      artifact.task.kind === "self_profile" && artifact.result.safety.liveDatabaseReadExecuted,
+    ),
   });
   const nextAction =
     input.maxLoopSteps === 1 && input.toolRequests.length > 0

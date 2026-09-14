@@ -314,6 +314,7 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
         "contacts.recommend",
         "followups.reviewQueue",
         "chat.context",
+        "profile.getSelf",
       ],
     );
 
@@ -323,11 +324,13 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
       (tool) => tool.toolName === "followups.reviewQueue",
     );
     const chatTool = tools.find((tool) => tool.toolName === "chat.context");
+    const profileTool = tools.find((tool) => tool.toolName === "profile.getSelf");
 
     assert.equal(eventTool?.selectedInCurrentRun, true);
     assert.equal(contactTool?.selectedInCurrentRun, false);
     assert.equal(followupTool?.selectedInCurrentRun, false);
     assert.equal(chatTool?.selectedInCurrentRun, false);
+    assert.equal(profileTool?.selectedInCurrentRun, false);
     assert.equal(eventTool?.riskLevel, "read");
     assert.equal(eventTool?.requiresConfirmation, true);
     assert.match(eventTool?.descriptionZh ?? "", /活动/);

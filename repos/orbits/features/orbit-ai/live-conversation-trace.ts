@@ -368,6 +368,7 @@ function skippedDatabaseInteraction(reason: string): OrbitAiTraceDatabaseInterac
 function sourceModulesForArtifactKind(
   kind: OrbitAgentArtifactKind,
 ): readonly OrbitAgentArtifactSourceModule[] {
+  if (kind === "self_profile") return ["orbit-ai", "profile"];
   if (kind === "event_recommendations") {
     return ["orbit-ai", "events"];
   }
@@ -392,6 +393,7 @@ function sourceModulesForArtifactKind(
 }
 
 function artifactProducerForArtifactKind(kind: OrbitAgentArtifactKind): string {
+  if (kind === "self_profile") return "self_profile_reader";
   if (kind === "event_recommendations") {
     return "event_recommendation_producer";
   }
@@ -930,6 +932,52 @@ function traceFailureForPlannerResult(
   };
 }
 
+function redactSelfProfileTrace(payload: OrbitAiTracePayload): OrbitAiTracePayload {
+  const omitted = "[private profile content omitted]";
+  const chain = payload.fullChain;
+  const artifacts = chain.conversation.artifacts
+    .filter(artifact => artifact.task.kind === "self_profile")
+    .map(artifact => ({ ...artifact, task: { ...artifact.task, query: omitted } }));
+  const observations = artifacts.map(artifact => ({ toolName: "profile.getSelf", ...artifact.result.selfProfile }));
+  const requests = payload.plannerOnly.toolTrace.toolRequests.map(request => ({ ...request, arguments: {} }));
+  // A self-profile turn is metadata-only in debug output. Redact whole text
+  // surfaces, including model paraphrases, rather than matching names in strings.
+  return {
+    fullChain: {
+      ...chain,
+      input: { ...chain.input, message: omitted },
+      raw: {},
+      conversation: {
+        state: chain.conversation.state,
+        activeConversationId: null,
+        conversations: [], messages: [], artifacts,
+        assistantMessage: omitted, nextAction: omitted, proposedToolIntents: [],
+        provenance: { ...chain.conversation.provenance, evidenceIds: [] },
+        diagnostics: chain.conversation.diagnostics,
+        routingDecision: chain.conversation.routingDecision,
+      },
+      dataSources: chain.dataSources
+        .filter(source => source.artifactKind === "self_profile")
+        .map(source => ({ ...source, generatedViewSectionTitles: [] })),
+      toolCalls: chain.toolCalls.map(call => ({ ...call, reason: omitted, evidenceIds: [] })),
+      stages: chain.stages.map(traceStage => ({
+        ...traceStage,
+        inputs: { redacted: true }, outputs: { redacted: true },
+        outputSource: sourceView(traceStage.id === "artifact_generation" ? observations : { redacted: true }),
+      })),
+    },
+    plannerOnly: {
+      ...payload.plannerOnly,
+      input: payload.plannerOnly.input ? { ...payload.plannerOnly.input, message: omitted } : undefined,
+      planner: payload.plannerOnly.planner ? {
+        parsed: { ...payload.plannerOnly.planner.parsed, assistantMessage: omitted, toolRequests: requests },
+        rawOutputText: omitted,
+      } : undefined,
+      toolTrace: { ...payload.plannerOnly.toolTrace, toolRequests: requests },
+    },
+  };
+}
+
 export function createLiveOrbitAgentTrace(
   config: LiveOrbitAgentTraceConfig = {},
 ): OrbitAgentTraceRunner {
@@ -985,9 +1033,12 @@ export function createLiveOrbitAgentTrace(
         synthesisResult,
         toolRequests,
       } = runtimeResult;
+      const hasSelfProfile = toolRequests.some(request => request.toolName === "profile.getSelf");
       const databaseStartedAt = nowMs();
       const databaseInteractions = [
-        await databaseInteractionForTools(toolRequests, config),
+        hasSelfProfile
+          ? skippedDatabaseInteraction("Self-profile traces keep read metadata only; no diagnostic record scan was performed.")
+          : await databaseInteractionForTools(toolRequests, config),
       ];
       const databaseDurationMs = elapsedSince(databaseStartedAt);
       const dataSources = dataSourcesForArtifacts(artifacts);
@@ -1159,8 +1210,7 @@ export function createLiveOrbitAgentTrace(
         }),
       ];
 
-      return {
-        data: {
+      const payload: OrbitAiTracePayload = {
           fullChain: fullChain({
             conversation,
             databaseInteractions,
@@ -1204,9 +1254,8 @@ export function createLiveOrbitAgentTrace(
                   })),
                 },
               },
-        },
-        success: true,
       };
+      return { data: hasSelfProfile ? redactSelfProfileTrace(payload) : payload, success: true };
     },
   };
 }

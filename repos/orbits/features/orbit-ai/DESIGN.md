@@ -57,6 +57,7 @@ artifact producer 只生成“可复核结果”，不代表动作已经执行�
 - `contact_recommendation_producer`
 - `followup_review_producer`
 - `relationship_chat_review_producer`
+- `self_profile_reader`
 
 artifact payload 必须保留：
 
@@ -99,6 +100,15 @@ Orbit AI planner/runtime
 - `contacts.recommend`：Contacts 或 Recommendations 拥有人脉候选资格、联系人排序、推荐理由和联系人动作；它可以调用 Relationship Search 获取 evidence-backed candidates。
 - `followups.reviewQueue`：Followups 拥有跟进队列、逾期/沉睡关系解释和提醒动作边界。
 - `chat.context`：Chat 拥有会话上下文、隐私边界和草稿准备策略。
+- `profile.getSelf`：Profile 拥有本人资料的读取和字段白名单；身份只由认证服务装配注入，模型不能选择账号。该能力只声明 chat 触发，不用于自动化。
+
+`profile.getSelf` 使用 `self_profile` intent/artifact，只接受 `query` 和 `locale`；执行校验拒绝未知参数。它区分未认证、空资料和读取失败，不回退示例账号。每次调用重新读取，账号切换或资料更新不会复用旧快照。
+
+完整白名单资料只通过当前 artifact 对象关联的 WeakMap 传给本轮 replan/synthesis，不能按 ID 回放，也不随 artifact JSON 保存。可序列化的 `selfProfile` 只含状态、来源版本和随机引用。自我介绍等原文在模型输入中标为不可信数据，不能授权工具或改变身份。
+
+本人资料工具不提高既有循环上限。当前 runtime 默认深度为 2，执行读取但跳过综合回复；深度至少为 3 时资料才进入 replan/synthesis。本地受控测试使用深度 3，真实模型与实际运行配置尚未验收，不能将该测试写成默认产品配置已完成资料综合回答。
+
+包含本人资料工具的完整 trace 使用元数据模式：省略原始消息、模型正文、参数、各阶段输入／输出正文及其他结果正文，保留工具状态、版本、脱敏引用和时序；不额外扫描未按账号限定的诊断数据集合。该处理发生在 runtime 完成后，不清空模型合法输入。旧工具单独运行时保持原追踪行为；通用 preview/mock 服务拒绝生成本人资料结果。
 
 当前 live artifact 链中，`chat.context` 通过 `createOrbitAgentChatContextArtifactService()` 调用 Chat conversation/message service，读取 live `conversations`、`messages`、`contacts` 和 `connections` 派生出的 thread payload，再映射为 `relationship_chat_context` artifact。Orbit AI 只负责工具适配、可复核 artifact、trace 和 safety 标记；artifact 生成不会绕过 feature service 直接读取 `orbit_records`，不会写消息，也不会打开实时传输、外部网络、邮件、日历或通知。
 
@@ -140,7 +150,7 @@ Live conversation 使用 server-side model provider API。必需环境变量：
 
 `orbit-ai-proactive-agent` 的 live 模式是 policy provider，不是推送系统。它把结构化 signal 转成 `deliverySurface: "orbit_ai_chat"` 的 assistant proactive turn，并用 safety ledger 证明没有 push、notification、email、calendar、live storage write、AI provider 或 external network side effect。Notifications 仍只负责底层投递机制和 deep link，不生成主动管家文案。
 
-Provider planner 输出必须经过 schema validation、allowed intent mapping 和 safety guard。当前只有 `events.recommend`、`contacts.recommend`、`followups.reviewQueue` 和 `chat.context` 可以进入内部工具适配层。
+Provider planner 输出必须经过 schema validation、allowed intent mapping 和 safety guard。当前允许 `events.recommend`、`contacts.recommend`、`followups.reviewQueue`、`chat.context` 和 `profile.getSelf` 进入内部工具适配层。
 
 Provider API 映射：
 

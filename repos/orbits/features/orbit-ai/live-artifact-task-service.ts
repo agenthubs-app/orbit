@@ -11,6 +11,7 @@ import { createOrbitAgentArtifactPreviewService } from "./artifact-task-preview-
 import { createOrbitLanguageNormalizationService } from "./language-normalization-service";
 import { createConfiguredActorScopedLiveRelationshipNaturalSearchService } from "../search/live-service";
 import type { OrbitAgentArtifactTaskService } from "./service";
+import { createSelfProfileArtifactService } from "./self-profile-artifact-service";
 
 export interface OrbitAgentLiveArtifactTaskServiceOptions {
   actorId?: string | null;
@@ -44,7 +45,7 @@ export function createOrbitAgentLiveArtifactTaskService(
   // 反复向用户要信息）。方法配置非法时不注入，让 artifact service 报配置错误。
   const contactMethodResolution = resolveContactRecommendationMethod();
 
-  return createOrbitAgentContactRecommendationArtifactService({
+  const contactService = createOrbitAgentContactRecommendationArtifactService({
     fallbackService: eventService,
     matcher:
       contactMethodResolution.success === true
@@ -60,5 +61,9 @@ export function createOrbitAgentLiveArtifactTaskService(
     // live 路径启用"模型抽英文检索词"：任意语言 query → 英文关键词 → 现有子串搜索。
     // 缺 provider key 时抽词返回空，自动回退到确定性正则词表。
     normalizationService: createOrbitLanguageNormalizationService(),
+  });
+  return createSelfProfileArtifactService({
+    context: { actorId: actorId ?? "", mode: "live" },
+    fallbackService: contactService,
   });
 }

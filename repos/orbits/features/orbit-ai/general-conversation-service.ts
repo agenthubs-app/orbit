@@ -377,6 +377,7 @@ function decision(input: OrbitAiGeneralConversationInput): OrbitAgentRoutingDeci
       ? "followups"
       : families[0] ?? null;
   const intentByFamily: Record<OrbitAgentRoutingToolFamily, OrbitAgentRoutingIntent> = {
+    profile: "self_profile",
     calendar: "calendar_staging",
     contacts: "contact_discovery",
     events: "event_discovery",

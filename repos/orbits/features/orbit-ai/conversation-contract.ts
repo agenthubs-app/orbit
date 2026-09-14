@@ -93,6 +93,7 @@ export interface OrbitAgentSendMessageInput extends OrbitAgentConversationInput 
 
 
 export type OrbitAgentRoutingToolFamily =
+  | "profile"
   | "calendar"
   | "contacts"
   | "events"
@@ -100,6 +101,7 @@ export type OrbitAgentRoutingToolFamily =
   | "todo";
 
 export type OrbitAgentRoutingIntent =
+  | "self_profile"
   | "calendar_staging"
   | "clarification"
   | "contact_discovery"
@@ -131,7 +133,7 @@ export interface OrbitAgentSafetyLedger {
   domainToolCallsExecuted: boolean;
   aiProviderRequested: boolean;
   externalNetworkRequested: boolean;
-  liveDatabaseReadExecuted: false;
+  liveDatabaseReadExecuted: boolean;
   liveDatabaseWriteExecuted: false;
   emailProviderRequested: false;
   calendarProviderRequested: false;

@@ -115,6 +115,7 @@ function labelFor(kind: OrbitAgentArtifactKind, locale: PreviewLocale): string {
     OrbitAgentArtifactKind,
     Record<PreviewLocale, string>
   > = {
+    self_profile: { en: "My profile", zh: "本人资料" },
     contact_recommendations: {
       en: "Contact recommendations",
       zh: "推荐人脉",
@@ -150,6 +151,7 @@ function presentationFor(
   presentation?: Partial<OrbitAgentArtifactPresentation>,
 ): OrbitAgentArtifactPresentation {
   const defaults: Record<OrbitAgentArtifactKind, OrbitAgentArtifactPresentation> = {
+    self_profile: { preferredSurface: "inline_card", title: labelFor("self_profile", locale) },
     contact_recommendations: {
       preferredSurface: "side_panel",
       subtitle: localize(locale, {
@@ -434,7 +436,7 @@ export function createOrbitAgentArtifactPreviewService(): OrbitAgentArtifactTask
 
       const kind = normalizeKind(input.kind);
 
-      if (!kind) {
+      if (!kind || kind === "self_profile") {
         return failure("ORBIT_AGENT_ARTIFACT_UNSUPPORTED_KIND");
       }
 
@@ -461,7 +463,7 @@ export function createOrbitAgentArtifactPreviewService(): OrbitAgentArtifactTask
         (candidate) => artifactId === artifactIdFor(candidate),
       );
 
-      if (!kind) {
+      if (!kind || kind === "self_profile") {
         return failure("ORBIT_AGENT_ARTIFACT_NOT_FOUND", { artifactId });
       }
 

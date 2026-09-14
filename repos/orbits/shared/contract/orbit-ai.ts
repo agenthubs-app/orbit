@@ -11,6 +11,7 @@ export type OrbitAiToolFamilyCode =
   | "relationship_chat"
   | "events"
   | "contacts"
+  | "profile"
   | "followups";
 
 // 会话列表的一条，用于历史记录面板。
