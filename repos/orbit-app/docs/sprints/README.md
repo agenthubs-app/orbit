@@ -56,8 +56,8 @@ build/harness-logs/
 | [0006](0006-contact-mentions/GOAL.md) | @ 选准联系人，带入 AI 的问题由用户确认发送 | R-06 | 0005；B3 引用／D3 | blocked |
 | [0007](0007-two-sided-cards/GOAL.md) | 正反面名片复核后只创建一个联系人 | R-07 | 0002；B5／OCR 环境 | blocked |
 | [0008](0008-identity-chat/GOAL.md) | 验证邀请和身份绑定后，双方能真实收发消息 | R-05 | 0002；B4／双用户 | blocked |
-| [0009](0009-timezone/GOAL.md) | 同一事项在首页、待办、日历和活动中不落错日 | R-09 | 设备跟随策略已确认；DST／异常／脏稿技术提案待审及原生证据 | blocked |
-| [0010](0010-task-schedule-editing/GOAL.md) | 个人事项能创建、编辑和清空字段，各页与提醒一致 | R-08 | 0009；B6 | blocked |
+| [0009](0009-timezone/GOAL.md) | 同一事项在首页、待办、日历和活动中不落错日 | R-09 | run-01 已完成；功能 `a4bbfd9f6`，见 REPORT | completed |
+| [0010](0010-task-schedule-editing/GOAL.md) | 个人事项能创建、编辑和清空字段，各页与提醒一致 | R-08 | 0009；B6 已批准，C 线 run-01 启动 | running |
 | [0011](0011-home-analysis/GOAL.md) | 首页符合确认布局，分析可辨新旧，目标可单独保存 | R-09、R-10 | 0006；B7／首页／D4 | blocked |
 | [0012](0012-message-state/GOAL.md) | 前台新消息及时出现，已读角标与跳转目标正确 | R-11 | 0008；消息契约／通知环境 | blocked |
 | [0013](0013-locale-foundation/GOAL.md) | 用中日英操作账号、首页和设置，切语言不丢输入 | R-12 | 0009、0011；D6 | blocked |
@@ -93,6 +93,16 @@ build/harness-logs/
 - 新增 [0021 Planner](0021-ai-session-organization/PLANNER.md)及[参考与交互规格](0021-ai-session-organization/REFERENCE_AND_BEHAVIOR.md)，记录会话入口元信息、项目式分组、置顶／改名／删除和跨端持久化。用户已澄清只参考 ChatGPT App 的功能与组织形式，公开截图由代理寻找，不做像素复刻。当前只编制，planned、run_count = 0、未产生 REPORT；原 0001～0020 的状态不变。
 
 ## 运行记录
+
+### 0009 / run-01
+
+- owner：C 线任务；run_count：1；基线 `fca77373f`，功能提交 `a4bbfd9f6`。设备时区、DST／异常、全天日期、草稿时区和跨页解释已实现。
+- 主树组合验证为 App typecheck exit0、全量2632/2632、0 skip、diff-check通过；真实原生 Tokyo／Los Angeles／Kolkata 与独立 PostgreSQL 同记录 Web/App 回读证据见 [REPORT](0009-timezone/REPORT.md)。合成身份注入边界和 GitNexus 重建失败均保留，不写成真实登录或生产链路通过。
+
+### 0010 / run-01
+
+- owner：C 线任务；run_count：1；开始：2026-09-15 00:12 JST。承接 `a4bbfd9f6` 与 B6 已批准协议，使用独立 PostgreSQL／Simulator，不与 A0004 共用事件报名文件。
+- C 线独占事项、日程、首页的0010白名单；共享登记表与Git提交仍由协调者处理。原 Planner SHA256 `5f169b6879af07d7f21515e1d02f7f9ab14a9bcd0b207d950c47080be0c66c16`。
 
 ### 0003 / run-01
 
