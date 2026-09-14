@@ -19,21 +19,27 @@ const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () 
 const effects = { calendarEntryCreated: false, externalMessageSent: false, networkRequestMade: false, notificationDelivered: false, savedRecordCreated: false };
 const state = window.fixture = {
   actor: "actor:one", cookieHeader: "", ready: true, signedIn: true, baseReady: true, baseUrl: "https://orbit.example", mounted: true,
-  detail: false, conversationId: "thread:one", seed: {}, requests: [], replies: [], presses: {}, navigation: [], expiries: 0, holdReads: false, notifications: undefined, focused: true, appState: "active",
+  detail: false, detailUnread: 0, conversationId: "thread:one", seed: {}, requests: [], replies: [], presses: {}, navigation: [], expiries: 0, holdReads: false, notifications: undefined, focused: true, appState: "active",
   ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
   emit(appState) { state.appState = appState; nativeListeners.forEach(fn => fn(appState)); },
-  conversation() { return { conversationId: state.conversationId, contactId: "contact:one", participantName: state.actor, organization: "Example", subject: "会话主题", preview: "已有消息", unreadCount: 2, lastCorrespondenceAt: "2026-09-13T00:00:00Z", nextActionLabel: "", sourceContextLabels: [] }; },
-  thread(body = "已有消息") { return { conversationId: state.conversationId, subject: "会话主题", summary: "", sourceContextLabels: [], messages: [{ messageId: "message:one", senderRole: "contact", senderName: state.actor, body, occurredAt: "2026-09-13T00:00:00Z" }] }; },
+  conversation(unreadCount = 2, body = "已有消息") { const remote = "remote:" + state.actor; return { conversationId: state.conversationId, contactId: "contact:one", participantAccountIds: [state.actor, remote], participantDisplayNames: { [state.actor]: "当前用户", [remote]: state.actor }, qualificationVersion: "qualification:one", status: "active", createdAt: "2026-09-13T00:00:00Z", updatedAt: "2026-09-13T00:01:00Z", unreadCount, messages: [
+    { messageId: "message:one", conversationId: state.conversationId, senderAccountId: remote, senderDisplayName: state.actor, body, sentAt: "2026-09-13T00:00:00Z", deliveryState: "delivered" },
+    ...(unreadCount > 1 ? [{ messageId: "message:two", conversationId: state.conversationId, senderAccountId: remote, senderDisplayName: state.actor, body: "已有消息", sentAt: "2026-09-13T00:01:00Z", deliveryState: "delivered" }] : [])
+  ] }; },
+  thread(body = "已有消息") { return state.conversation(state.detailUnread, body); },
   data(path) {
+    if (path.endsWith("/read")) return { conversationId: state.conversationId, lastReadMessageId: state.detailUnread > 1 ? "message:two" : "message:one", readAt: "2026-09-15T00:02:00Z" };
     if (path.includes("/notifications/deliveries/") && state.delivery !== undefined) return state.delivery;
     if (path.includes("/notifications/deliveries/")) return { deliveryId: state.seed.deliveryId, signalId: "signal:one", signalRevision: "one", phase: "pre_event", channel: "in_app", status: "scheduled", title: "当前提醒", body: "确认提醒内容", target: { kind: "inbox", deliveryId: state.seed.deliveryId }, data: { deliveryId: state.seed.deliveryId }, scheduledFor: "2026-09-13T00:00:00Z", availableAt: "2026-09-13T00:00:00Z", attempt: 0, maxAttempts: 3, createdAt: "2026-09-13T00:00:00Z", updatedAt: "2026-09-13T00:00:00Z" };
     if (path === "/api/notifications") return state.notifications !== undefined ? state.notifications : { state: "success", reminders: [{ reminderId: "reminder:one", title: "需要准备资料", organization: "Example", priority: "normal", dueAt: "2026-09-13T00:00:00Z" }] };
     if (path.includes("relationship-signals")) return state.signals || { signals: [] };
     if (path === "/api/chat/privacy") return { conversationId: state.conversationId, participantName: state.actor, organization: "Example", analysisOptIn: { enabled: state.allowPrivateAnalysis ?? true, status: state.allowPrivateAnalysis === false ? "opted_out" : "opted_in" }, analysisDeletion: { status: "available" }, sensitiveShareConfirmation: { confirmationRequired: true, status: "required" }, privateNotes: [], provenance: { sourceLabel: "对话记录" }, state: "success" };
+    if (path === "/api/relationship-communication/conversations") return { conversations: [state.conversation()], refreshedAt: "2026-09-15T00:00:00Z" };
+    if (path.includes("/api/relationship-communication/conversations/")) return state.thread(state.serverDraftReply || "已有消息");
     return { inbox: { conversations: [state.conversation()] }, selectedThread: state.detail ? state.thread() : null, currentUser: { displayName: "当前用户" }, draftReply: { body: state.serverDraftReply || "" }, sideEffects: effects };
   },
-  preview() { const r = state.requests.findLast(r => r.method === "POST"); return { inboxItem: { ...state.conversation(), participantName: r.body.participantName, subject: r.body.subject }, thread: { ...state.thread(r.body.body), subject: r.body.subject }, sideEffects: effects }; },
+  preview() { const r = state.requests.findLast(r => r.method === "POST"); return { inboxItem: { conversationId: "draft:one", contactId: "contact:one", participantName: r.body.participantName, organization: r.body.organization, subject: r.body.subject, preview: r.body.body, unreadCount: 0, lastCorrespondenceAt: "2026-09-15T00:00:00Z", nextActionLabel: "", sourceContextLabels: [] }, thread: { conversationId: "draft:one", subject: r.body.subject, summary: "", sourceContextLabels: [], messages: [{ messageId: "draft-message:one", senderRole: "orbit_user", senderName: "当前用户", body: r.body.body, occurredAt: "2026-09-15T00:00:00Z" }] }, sideEffects: effects }; },
   reply(index, status = 200, data) { state.replies[index]?.(new Response(JSON.stringify(status >= 400 && data === undefined ? { success: false, error: { code: status === 401 ? "UNAUTHORIZED" : "SERVICE_UNAVAILABLE", message: "测试服务暂不可用" } } : { success: true, data: data === undefined ? state.data(state.requests[index].path) : data }), { status, headers: { "content-type": "application/json" } })); }
 };
 onSessionExpired(() => state.expiries++);
@@ -83,6 +89,7 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
   const errors: string[] = []; p.on("pageerror", error => errors.push(error.message));
   t.after(async () => { await p.close(); assert.deepEqual(errors, []); });
   await p.route("**/*", r => r.abort()); await p.setContent('<div id="root"></div>');
+  if (patch.clock) await p.clock.install();
   await p.evaluate(patch => { (window as any).initialFixture = patch; }, patch); await p.addScriptTag({ content: script }); await settle(p); return p;
 }
 async function update(p: Page, patch: object) { await p.evaluate(patch => (window as any).fixture.update(patch), patch); await settle(p); }
@@ -182,6 +189,31 @@ test("missing thread identity shows an error without reading a generic inbox", a
   const p = await open(t, { detail: true, conversationId: "" });
   assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), 0);
   assert.match(await p.locator("body").innerText(), /缺少对话 ID/u);
+});
+
+test("opening an unread real thread persists the delivered tail before clearing unread state", async t => {
+  const p = await open(t, { detail: true, detailUnread: 1 });
+  await p.waitForFunction(() => (window as any).fixture.requests.some((request: any) => request.path.endsWith("/read")));
+  const write = await p.evaluate(() => { const s = (window as any).fixture; const index = s.requests.findLastIndex((request: any) => request.path.endsWith("/read")); return { index, request: s.requests[index] }; });
+  assert.equal(write.request.path, "/api/relationship-communication/conversations/thread%3Aone/read");
+  assert.deepEqual(write.request.body, { lastReadMessageId: "message:one" });
+  await p.evaluate(index => { const s = (window as any).fixture; s.detailUnread = 0; s.reply(index, 200, { conversationId: s.conversationId, lastReadMessageId: "message:one", readAt: "2026-09-15T00:02:00Z" }); }, write.index);
+  await settle(p);
+  assert.equal((await writes(p)).filter((request: any) => request.path.endsWith("/read")).length, 1);
+  assert.doesNotMatch(await p.locator("body").innerText(), /已读状态未能确认/u);
+});
+
+test("a mismatched read receipt keeps unread state visible and retries after a fresh detail read", async t => {
+  const p = await open(t, { detail: true, detailUnread: 1 });
+  await p.waitForFunction(() => (window as any).fixture.requests.some((request: any) => request.path.endsWith("/read")));
+  await p.evaluate(() => { const s = (window as any).fixture; const index = s.requests.findLastIndex((request: any) => request.path.endsWith("/read")); s.reply(index, 200, { conversationId: "thread:other", lastReadMessageId: "message:one", readAt: "2026-09-15T00:02:00Z" }); });
+  await p.getByText("已读状态未能确认，消息仍保留为未读。稍后会重试。", { exact: true }).waitFor();
+  assert.match(await p.locator("body").innerText(), /已有消息/u);
+  await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
+  await p.waitForFunction(() => (window as any).fixture.requests.filter((request: any) => request.path.endsWith("/read")).length === 2);
+  await p.evaluate(() => { const s = (window as any).fixture; const index = s.requests.findLastIndex((request: any) => request.path.endsWith("/read")); s.detailUnread = 0; s.reply(index, 200, { conversationId: s.conversationId, lastReadMessageId: "message:one", readAt: "2026-09-15T00:03:00Z" }); });
+  await settle(p);
+  assert.doesNotMatch(await p.locator("body").innerText(), /已读状态未能确认/u);
 });
 
 const persistentReminder = { reminderId: "reminder:one", title: "需要准备资料", organization: "Example", priority: "normal", dueAt: "2026-09-13T00:00:00Z", href: "/tasks/task%3Aone" };
@@ -393,6 +425,18 @@ test("delivery clears an earlier success before reporting the next failed action
 
 // Foreground regression: removing the screen's native revocation or reusing a
 // previous read lifetime would allow old content/actions or discard local input.
+test("inbox polls real conversations within fifteen seconds without replacing an unsent draft", async t => {
+  const p = await open(t, { clock: true });
+  await p.getByRole("button", { name: "写消息", exact: true }).click();
+  await p.getByRole("textbox", { name: "正文", exact: true }).fill("十五秒内不能丢的草稿");
+  await p.evaluate(() => { (window as any).fixture.holdReads = true; });
+  await p.clock.fastForward(15_001); await settle(p);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.path === "/api/relationship-communication/conversations").length), 2);
+  assert.equal(await p.getByRole("textbox", { name: "正文", exact: true }).inputValue(), "十五秒内不能丢的草稿");
+  await p.evaluate(() => { const s = (window as any).fixture; const index = s.requests.findLastIndex((request: any) => request.path === "/api/relationship-communication/conversations"); s.reply(index); }); await settle(p);
+  assert.equal(await p.getByRole("textbox", { name: "正文", exact: true }).inputValue(), "十五秒内不能丢的草稿");
+});
+
 for (const detail of [false, true]) {
   test(`inbox foreground permits the committed ${detail ? "thread" : "list"} read after Strict Mode effect replay`, async t => {
     const p = await open(t, { detail, strict: true });
@@ -538,7 +582,7 @@ test("inbox foreground read failure keeps the reply draft recoverable without sh
   assert.match(await p.locator("body").innerText(), /已有消息/u);
 });
 
-test("inbox foreground preserves a dirty reply when the reread contains a different server draft", async t => {
+test("inbox foreground preserves a dirty reply when remote message content changes", async t => {
   const p = await open(t, { detail: true, serverDraftReply: "原来的服务端草稿" });
   await p.getByRole("textbox", { name: "回复正文", exact: true }).fill("本机还没提交的回复");
   await p.evaluate(() => { const s = (window as any).fixture; s.emit("background"); s.serverDraftReply = "另一端更新了草稿"; }); await settle(p);
@@ -547,11 +591,12 @@ test("inbox foreground preserves a dirty reply when the reread contains a differ
   assert.deepEqual(await writes(p), []);
 });
 
-test("inbox foreground accepts a fresh server draft when the reply was never edited", async t => {
+test("real message refresh never invents a server-side reply draft", async t => {
   const p = await open(t, { detail: true, serverDraftReply: "原来的服务端草稿" });
   await p.evaluate(() => { const s = (window as any).fixture; s.emit("background"); s.serverDraftReply = "另一端更新了草稿"; }); await settle(p);
   await p.evaluate(() => (window as any).fixture.emit("active")); await settle(p);
-  assert.equal(await p.getByRole("textbox", { name: "回复正文", exact: true }).inputValue(), "另一端更新了草稿");
+  assert.equal(await p.getByRole("textbox", { name: "回复正文", exact: true }).inputValue(), "");
+  assert.match(await p.locator("body").innerText(), /另一端更新了草稿/u);
   assert.deepEqual(await writes(p), []);
 });
 

@@ -22,6 +22,10 @@ const effects = { calendarEntryCreated: false, externalMessageSent: false, netwo
 const names = ["林悦", "程川", "陈默", "孙宁", "吴清"];
 const subjects = ["周末产品交流会", "项目介绍", "合作记录", "设计师午间聚会", "上周会话摘要"];
 const conversations = names.map((name, i) => ({ conversationId: "thread:" + i, contactId: "contact:" + i, participantName: name, organization: "星野社区", subject: subjects[i], preview: "请确认时间后再安排下一步。", unreadCount: i < 2 ? 1 : 0, lastCorrespondenceAt: "2026-09-11T10:24:00+09:00", nextActionLabel: "", sourceContextLabels: [] }));
+const relationshipConversations = conversations.map((item, i) => {
+ const remoteId = "account:" + i;
+ return { conversationId: item.conversationId, contactId: item.contactId, participantAccountIds: ["inbox-style-actor", remoteId], participantDisplayNames: { "inbox-style-actor": "我", [remoteId]: item.participantName }, qualificationVersion: "qualification:" + i, status: "active", createdAt: "2026-09-11T09:24:00+09:00", updatedAt: item.lastCorrespondenceAt, unreadCount: item.unreadCount, messages: [{ messageId: "message:" + i, conversationId: item.conversationId, body: item.preview, senderAccountId: remoteId, senderDisplayName: item.participantName, sentAt: item.lastCorrespondenceAt, deliveryState: "delivered" }] };
+});
 const reminders = [{ reminderId: "reminder:1", title: "周末产品交流会需要准备资料", organization: "星野社区", priority: "normal", dueAt: "2026-09-12T18:00:00+09:00" }, { reminderId: "reminder:2", title: "给程川发送项目介绍", organization: "山海科技", priority: "high", dueAt: "2026-09-13T18:00:00+09:00" }];
 const signal = { id: "signal:mail", displayName: "田中由纪", organization: "星野社区", role: "负责人", sourceKind: "email", signalKind: "introduction", relationshipContext: "对方希望先了解合作的范围与时间安排。", suggestedNextAction: "先核对邮件中的背景信息，再决定下一步。", occurredAt: "2026-09-11T10:24:00+09:00", confirmation: { state: "pending" }, permission: { state: "granted" }, confidence: "high", evidence: [{ excerpt: "邮件标题提到了上次交流的主题。" }] };
 export const useLocalSearchParams = () => { useFixture(); return state.detail ? { id: "thread:0" } : {}; };
@@ -30,16 +34,17 @@ export const useRouter = () => ({ canGoBack: () => state.hasHistory, back() { st
 export const useApiResource = path => {
  const part = path.includes("notifications") ? "notifications" : path.includes("signals") ? "signals" : "inbox";
  const kind = part === "inbox" ? state.kind : state[part + "Kind"];
- const items = state.long ? conversations.map(c => ({ ...c, participantName: c.participantName + "与跨国项目的合作负责人", subject: c.subject + "：确认项目的分工和下一次讨论安排", preview: "请核对全部事项，确认时间后再安排下一步，不要遗漏约定的合作范围。" })) : conversations;
+ const items = state.long ? relationshipConversations.map((c, i) => { const remoteId = "account:" + i, name = names[i] + "与跨国项目的合作负责人", body = "请核对全部事项，确认时间后再安排下一步，不要遗漏约定的合作范围。"; return { ...c, participantDisplayNames: { ...c.participantDisplayNames, [remoteId]: name }, messages: [{ ...c.messages[0], body, senderDisplayName: name }] }; }) : relationshipConversations;
  const data = part === "notifications" ? { reminders: kind === "empty" ? [] : reminders }
   : part === "signals" ? { signals: state.signals ? [{ ...signal, ...(state.long ? { displayName: "田中由纪与跨国合作项目的负责人", relationshipContext: signal.relationshipContext.repeat(3), evidence: [{ excerpt: signal.evidence[0].excerpt.repeat(3) }] } : {}) }] : [] }
-  : { inbox: { conversations: kind === "empty" ? [] : items }, selectedThread: state.detail ? { conversationId: "thread:0", subject: "周末产品交流会", summary: "", messages: [{ messageId: "message:0", senderRole: "contact", senderName: "林悦", body: "周末交流会安排在下午，请带上资料。", occurredAt: "2026-09-11T10:24:00+09:00" }] } : null, currentUser: { displayName: "我" }, draftReply: { body: "" }, sideEffects: effects };
+  : state.detail ? { ...items[0], unreadCount: 0, lastReadMessageId: items[0].messages[0].messageId }
+  : { conversations: kind === "empty" ? [] : items, refreshedAt: "2026-09-11T10:25:00+09:00" };
  return { kind, data, error: { message: part === "notifications" ? "提醒读取失败，请重试。" : part === "signals" ? "关系线索读取失败，请重试。" : "消息读取失败，请重试。" }, refreshing: false, refresh() { state.refreshes.push(part); } };
 };
 // The same presentation fixture now feeds the screen's real network resource.
 // Keep auxiliary/action requests separate from its initial content reads.
 const client = { async get(path) {
- if (path.includes("relationship-inbox") || path === "/api/notifications" || path.includes("relationship-signals")) {
+ if (path.startsWith("/api/relationship-communication/conversations") || path.includes("relationship-inbox") || path === "/api/notifications" || path.includes("relationship-signals")) {
   state.resourceReads.push(path);
   const resource = useApiResource(path); if (resource.kind === "loading") return new Promise(() => {});
   return { success: resource.kind === "success" || resource.kind === "empty", status: resource.kind === "offline" ? 0 : resource.kind === "failure" ? 503 : 200, data: resource.data, error: { code: "READ_FAILED", ...resource.error }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };

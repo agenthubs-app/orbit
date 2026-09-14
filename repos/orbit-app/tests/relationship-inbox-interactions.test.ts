@@ -19,11 +19,16 @@ const subscribe = listener => { listeners.add(listener); return () => listeners.
 const emit = () => { revision++; listeners.forEach(listener => listener()); };
 const rerender = () => useSyncExternalStore(subscribe, () => revision);
 const conversations = [
-  { conversationId: "thread:wei", contactId: "contact:wei", participantName: "曾伟", organization: "Orbit", subject: "活动安排", preview: "周四见面，带上资料。", unreadCount: 2, lastCorrespondenceAt: "2026-06-28T13:00:00+09:00", nextActionLabel: "Review relationship context before external follow-up", sourceContextLabels: [] },
-  { conversationId: "thread:hu", contactId: "contact:hu", participantName: "胡家明", organization: "Example", subject: "项目进度", preview: "下周讨论预算。", unreadCount: 0, lastCorrespondenceAt: "2026-06-27T13:00:00+09:00", nextActionLabel: "", sourceContextLabels: [] }
+  { conversationId: "thread:wei", contactId: "contact:wei", participantAccountIds: ["inbox-test-actor", "actor:wei"], participantDisplayNames: { "inbox-test-actor": "我", "actor:wei": "曾伟" }, qualificationVersion: "qualification:wei", status: "active", createdAt: "2026-06-28T13:00:00+09:00", updatedAt: "2026-06-28T13:00:00+09:00", unreadCount: 2, messages: [
+    { messageId: "message:wei:one", conversationId: "thread:wei", senderAccountId: "actor:wei", senderDisplayName: "曾伟", body: "活动安排已经确认。", sentAt: "2026-06-28T12:00:00+09:00", deliveryState: "delivered" },
+    { messageId: "message:wei:two", conversationId: "thread:wei", senderAccountId: "actor:wei", senderDisplayName: "曾伟", body: "周四见面，带上资料。", sentAt: "2026-06-28T13:00:00+09:00", deliveryState: "delivered" }
+  ] },
+  { conversationId: "thread:hu", contactId: "contact:hu", participantAccountIds: ["inbox-test-actor", "actor:hu"], participantDisplayNames: { "inbox-test-actor": "我", "actor:hu": "胡家明" }, qualificationVersion: "qualification:hu", status: "active", createdAt: "2026-06-27T13:00:00+09:00", updatedAt: "2026-06-27T13:00:00+09:00", unreadCount: 0, messages: [
+    { messageId: "message:hu", conversationId: "thread:hu", senderAccountId: "actor:hu", senderDisplayName: "胡家明", body: "下周讨论预算。", sentAt: "2026-06-27T13:00:00+09:00", deliveryState: "delivered" }
+  ] }
 ];
 const effects = { calendarEntryCreated: false, externalMessageSent: false, networkRequestMade: false, notificationDelivered: false, savedRecordCreated: false };
-const thread = { conversationId: "thread:wei", subject: "活动安排", summary: "先复核关系上下文。", sourceContextLabels: [], messages: [{ messageId: "message:wei", senderRole: "contact", senderName: "曾伟", body: "周四见面，带上资料。", occurredAt: "2026-06-28T13:00:00+09:00" }] };
+const thread = { ...conversations[0], unreadCount: 0 };
 const state = window.fixture = { requests: [], navigation: [], detail: false, failure: false, hold: false, seed: {}, kind: "success", emptyMessages: false,
   update(patch) { Object.assign(state, patch); emit(); }
 };
@@ -35,12 +40,14 @@ export const useApiResource = path => {
   if (state.kind !== "success") return { kind: state.kind, error: { message: "连接暂时失败" }, refreshing: false, refresh() {} };
   const data = path.includes("notifications") ? { reminders: Array.from({ length: 8 }, (_, i) => ({ reminderId: "reminder:" + i, title: "联系提醒" + i, contactName: "联系人" + i, organization: "Orbit", priority: "normal", dueAt: "2026-09-09T13:00:00+09:00" })) }
     : path.includes("signals") ? { signals: [] }
-    : { inbox: { conversations }, selectedThread: state.detail ? { ...thread, messages: state.emptyMessages ? Array.from({ length: 10 }, (_, i) => ({ ...thread.messages[0], messageId: "empty:" + i, senderRole: "orbit_user", body: "", occurredAt: "2026-06-" + String(i + 1).padStart(2, "0") + "T13:00:00+09:00" })) : thread.messages } : null, currentUser: { displayName: "我" }, draftReply: { body: "" }, sideEffects: effects };
+    : path === "/api/relationship-communication/conversations" ? { conversations, refreshedAt: "2026-09-15T00:00:00Z" }
+    : path.includes("/api/relationship-communication/conversations/") ? { ...thread, messages: state.emptyMessages ? [{ ...thread.messages[0], body: "" }] : thread.messages }
+    : { inbox: { conversations: [] }, selectedThread: null, currentUser: { displayName: "我" }, draftReply: { body: "" }, sideEffects: effects };
   return { kind: "success", data, refreshing: false, refresh() {} };
 };
 const client = {
   async get(path) {
-    if (path.includes("relationship-inbox") || path === "/api/notifications" || path.includes("relationship-signals")) {
+    if (path.includes("relationship-communication/conversations") || path === "/api/notifications" || path.includes("relationship-signals")) {
       const resource = useApiResource(path); if (resource.kind === "loading") return new Promise(() => {});
       return { success: resource.kind === "success", status: resource.kind === "offline" ? 0 : resource.kind === "failure" ? 503 : 200, data: resource.data, error: { code: "READ_FAILED", ...resource.error }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
     }
@@ -51,7 +58,7 @@ const client = {
     if (state.hold) await new Promise(resolve => { state.release = resolve; });
     if (state.failure) return { success: false, error: { message: "连接暂时失败" } };
     const draft = options.body;
-    return { success: true, data: { inboxItem: { ...conversations[0], participantName: draft.participantName, subject: draft.subject }, thread: { ...thread, subject: draft.subject, messages: [{ ...thread.messages[0], senderRole: "orbit_user", body: draft.body }] }, sideEffects: effects } };
+    return { success: true, data: { inboxItem: { conversationId: "draft:one", contactId: "contact:draft", participantName: draft.participantName, organization: draft.organization, subject: draft.subject, preview: draft.body, unreadCount: 0, lastCorrespondenceAt: "2026-09-15T00:00:00Z", nextActionLabel: "", sourceContextLabels: [] }, thread: { conversationId: "draft:one", subject: draft.subject, summary: "", sourceContextLabels: [], messages: [{ messageId: "draft-message:one", senderRole: "orbit_user", senderName: "我", body: draft.body, occurredAt: "2026-09-15T00:00:00Z" }] }, sideEffects: effects } };
   }
 };
 export const useOrbitApiClient = () => { rerender(); return React.useMemo(() => ({ ...client }), [revision]); };
@@ -103,7 +110,7 @@ test("mail inbox searches actual sender, subject and body without exposing workf
   const page = await openScreen(t);
   const search = page.getByRole("textbox", { name: "搜索姓名、主题或内容", exact: true });
   assert.ok((await search.boundingBox())!.height >= 44, "the editable search target must be at least 44pt");
-  for (const query of ["曾伟", "活动安排", "资料", " orbit "]) {
+  for (const query of ["曾伟", "资料", " 周四 "]) {
     await search.fill(query);
     assert.equal(await page.getByText("曾伟", { exact: true }).count(), 1);
     assert.equal(await page.getByText("胡家明", { exact: true }).count(), 0);
@@ -211,16 +218,9 @@ test("reply preview is local and privacy controls are available without crowding
   await page.getByText("隐私控制暂时不可用。", { exact: true }).waitFor();
 });
 
-test("empty-body history is visibly counted and expandable without burying the reply editor", async t => {
+test("an empty-body server message fails closed instead of becoming inbox content", async t => {
   const page = await openScreen(t);
   await page.evaluate(() => { (window as any).fixture.update({ emptyMessages: true }); (window as any).openDetail(); });
-  await page.getByText("联系人：曾伟", { exact: true }).waitFor();
-  await page.getByText("10 条记录没有可显示的正文。", { exact: true }).waitFor();
-  assert.equal(await page.getByText("暂无消息正文", { exact: true }).count(), 0);
-  const replyBox = await page.getByRole("textbox", { name: "回复正文", exact: true }).boundingBox();
-  assert.ok(replyBox && replyBox.y + replyBox.height < 874);
-  await page.getByRole("button", { name: "展开无正文记录", exact: true }).click();
-  assert.equal(await page.getByText("暂无消息正文", { exact: true }).count(), 10);
-  await page.getByRole("button", { name: "收起无正文记录", exact: true }).click();
-  assert.equal(await page.getByText("暂无消息正文", { exact: true }).count(), 0);
+  await page.getByText("消息内容暂时无法确认，请重新读取。", { exact: true }).waitFor();
+  assert.equal(await page.getByRole("textbox", { name: "回复正文", exact: true }).count(), 0);
 });

@@ -3,12 +3,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AppState } from "react-native";
 import { useOrbitApiBaseUrl } from "../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../api/AuthSessionProvider";
-import { ORBIT_API_ENDPOINTS, relationshipInboxPath } from "../api/endpoints";
+import { ORBIT_API_ENDPOINTS, relationshipCommunicationConversationsPath } from "../api/endpoints";
+import {
+  MESSAGE_STATE_FOREGROUND_REFRESH_MS,
+  relationshipConversationListToInbox,
+  subscribeMessageStateInvalidation,
+} from "../api/message-state";
 import { useOrbitApiClient } from "./useOrbitApiClient";
 import {
   relationshipAlertsToView,
   relationshipInboxBadgeCount,
-  relationshipInboxToView
 } from "../view-models/relationship-inbox";
 
 export function useRelationshipInboxBadgeCount(scopeKey?: string): number | undefined {
@@ -17,12 +21,14 @@ export function useRelationshipInboxBadgeCount(scopeKey?: string): number | unde
   const focused = useIsFocused();
   const [foreground, setForeground] = useState(AppState.currentState === "active");
   const [resumeIndex, setResumeIndex] = useState(0);
+  const [attempt, setAttempt] = useState(0);
   const nativeActive = useRef(foreground);
   const pending = useRef<AbortController | null>(null);
   const sequence = useRef(0);
-  const ready = focused && foreground && auth.ready && auth.signedIn && server.ready && Boolean(auth.user?.id);
+  const actorId = auth.user?.id ?? "";
+  const ready = focused && foreground && auth.ready && auth.signedIn && server.ready && Boolean(actorId);
   const scope = useMemo(() => ({ key: String(++sequence.current), ready }),
-    [ready, auth.user?.id, auth.cookieHeader, server.baseUrl, scopeKey, resumeIndex]);
+    [ready, actorId, auth.cookieHeader, server.baseUrl, scopeKey, resumeIndex]);
   const latest = useRef(scope);
   latest.current = scope;
   const client = useOrbitApiClient({ scopeKey: scope.key });
@@ -42,6 +48,14 @@ export function useRelationshipInboxBadgeCount(scopeKey?: string): number | unde
 
   useEffect(() => {
     if (!scope.ready) return;
+    const refresh = () => setAttempt(value => value + 1);
+    const timer = setInterval(refresh, MESSAGE_STATE_FOREGROUND_REFRESH_MS);
+    const unsubscribe = subscribeMessageStateInvalidation(refresh);
+    return () => { clearInterval(timer); unsubscribe(); };
+  }, [scope]);
+
+  useEffect(() => {
+    if (!scope.ready) return;
     const controller = new AbortController();
     pending.current = controller;
     const current = () => latest.current === scope && !controller.signal.aborted;
@@ -57,18 +71,20 @@ export function useRelationshipInboxBadgeCount(scopeKey?: string): number | unde
         if (!current()) return;
         data[source] = null;
       }
-      const inbox = relationshipInboxToView(data.inbox);
+      const inbox = relationshipConversationListToInbox(data.inbox, actorId);
       const alerts = relationshipAlertsToView(data.notifications);
-      const count = relationshipInboxBadgeCount(inbox, alerts);
+      const count = relationshipInboxBadgeCount(inbox ?? {
+        conversations: [], selected: null, summary: "暂无对话", title: "收件箱"
+      }, alerts);
       setSnapshot({ scope, signal: controller.signal, count: count > 0 ? Math.min(count, 99) : undefined });
     }
-    void read(relationshipInboxPath(), "inbox");
+    void read(relationshipCommunicationConversationsPath(), "inbox");
     void read(ORBIT_API_ENDPOINTS.notifications, "notifications");
     return () => {
       controller.abort();
       if (pending.current === controller) pending.current = null;
     };
-  }, [client, scope]);
+  }, [actorId, attempt, client, scope]);
 
   return scope.ready && snapshot?.scope === scope && !snapshot.signal.aborted ? snapshot.count : undefined;
 }
