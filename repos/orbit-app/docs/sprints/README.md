@@ -58,7 +58,7 @@ build/harness-logs/
 | [0008](0008-identity-chat/GOAL.md) | 验证邀请和身份绑定后，双方能真实收发消息 | R-05 | run-01 已完成；原功能 `6d8173b78`、主线集成 `64629369d`，见 REPORT | completed |
 | [0009](0009-timezone/GOAL.md) | 同一事项在首页、待办、日历和活动中不落错日 | R-09 | run-01 已完成；功能 `a4bbfd9f6`，见 REPORT | completed |
 | [0010](0010-task-schedule-editing/GOAL.md) | 个人事项能创建、编辑和清空字段，各页与提醒一致 | R-08 | run-01 已完成；功能 `d005c2b79`，见 REPORT | completed |
-| [0011](0011-home-analysis/GOAL.md) | 首页符合确认布局，分析可辨新旧，目标可单独保存 | R-09、R-10 | 0006；B7／首页／D4 | blocked |
+| [0011](0011-home-analysis/GOAL.md) | 首页符合确认布局，分析可辨新旧，目标可单独保存 | R-09、R-10 | run-01 已启动；B7／App分析／首页三个不重叠切片并行实施 | running |
 | [0012](0012-message-state/GOAL.md) | 前台新消息及时出现，已读角标与跳转目标正确 | R-11 | 功能提交 `218fb3d4b`；自动化与 iOS 打包通过，真实双用户原生／实体推送环境缺失，见 REPORT | blocked |
 | [0013](0013-locale-foundation/GOAL.md) | 用中日英操作账号、首页和设置，切语言不丢输入 | R-12 | 0009、0011；D6 | blocked |
 | [0014](0014-locale-relationships-events/GOAL.md) | 用中日英处理人脉、名片和活动，保留原文与答案 | R-12 | 0013、0004、0007、0008 | blocked |
