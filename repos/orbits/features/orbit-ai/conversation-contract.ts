@@ -89,6 +89,10 @@ export interface OrbitAgentSendMessageInput extends OrbitAgentConversationInput 
   outcomes?: readonly OrbitAgentOutcomeContext[];
   message?: string | null;
   locale?: "zh" | "en" | string | null;
+  sourceNote?: {
+    id: string;
+    version: number;
+  };
 }
 
 

@@ -79,6 +79,7 @@ import {
   tasksToScheduleItems,
   type ScheduleItem
 } from "../../view-models/schedule";
+import { noteSourceFromParams } from "../../view-models/note-suggestions";
 
 type ResourceKind = "empty" | "failure" | "loading" | "offline" | "success";
 
@@ -115,7 +116,7 @@ type ReliableSendAttempt = {
   requestId: string;
   sessionId: string;
 };
-type SendRequest = { path: string; message: string; history?: { content: string; role: "user" | "assistant" }[] | undefined; reliable?: ReliableSendAttempt; revision: number };
+type SendRequest = { path: string; message: string; history?: { content: string; role: "user" | "assistant" }[] | undefined; reliable?: ReliableSendAttempt; revision: number; sourceNote?: { id: string; version: number } };
 type PendingSessionSave = { session: AiSession; revision: number; canonicalize: boolean; waitForTask: boolean };
 type ConversationJournalState = {
   draftMessage: string; latestData: AiConversationPayload | null; resolvedConversationId: string | null;
@@ -159,11 +160,12 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const insets = useSafeAreaInsets();
-  const { id, initialMessage, initialMessageConsumed, source } = useLocalSearchParams<{
-    id?: string | string[]; initialMessage?: string | string[]; initialMessageConsumed?: string | string[]; source?: string | string[];
+  const { id, initialMessage, initialMessageConsumed, source, sourceNoteId, sourceNoteVersion } = useLocalSearchParams<{
+    id?: string | string[]; initialMessage?: string | string[]; initialMessageConsumed?: string | string[]; source?: string | string[]; sourceNoteId?: string | string[]; sourceNoteVersion?: string | string[];
   }>();
   const conversationId = firstParam(id);
   const initialPrompt = allowInitialPrompt ? optionalParam(initialMessage).trim() : "";
+  const sourceNote = noteSourceFromParams({ sourceNoteId, sourceNoteVersion });
   const isStoredAgentSession = optionalParam(source) === "session";
   const isDraftConversation = conversationId === "new";
   const router = useRouter();
@@ -335,6 +337,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
         locale: locale.language,
         message: request.message,
         ...(request.history ? { history: request.history } : {}),
+        ...(request.sourceNote ? { sourceNote: request.sourceNote } : {}),
         ...(request.reliable ? {
           ...request.reliable,
           protocolVersion: 2,
@@ -349,8 +352,9 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     if (payload) {
       setTaskInteractionResolution(null); setAcceptedTaskId(null);
       setLatestData(payload); setResolvedConversationId(payload.activeConversationId);
-      if (draftRevision.current === request.revision) { draftValue.current = ""; setDraftMessage(""); }
       const nextThread = rawConversationThread(payload, locale.t("aiConversation.sessionTitle"), locale.language);
+      const preserveSourceDraft = Boolean(request.sourceNote && ["failed", "needs_date_confirmation"].includes(nextThread.taskInteraction?.state ?? ""));
+      if (draftRevision.current === request.revision && !preserveSourceDraft) { draftValue.current = ""; setDraftMessage(""); }
       if (request.reliable && receipt?.state === "completed") {
         const turnStart = payload.messages.findLastIndex(item => item.role === "user");
         const messages = payload.messages.slice(turnStart).filter((item): item is typeof item & { role: "user" | "assistant" } => item.role === "user" || item.role === "assistant")
@@ -404,7 +408,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
         const session: AiSession = previousSession
           ? { ...previousSession, messages: [...previousSession.messages, ...messages], updatedAt: now }
           : { id: `agent-session-mobile-${identity}`, title: request.message.slice(0, 120), createdAt: now, updatedAt: now, pinned: false, messages };
-        const pending = { session, revision: request.revision, canonicalize: isDraftConversation, waitForTask: nextThread.taskInteraction?.state === "suggested" };
+        const pending = { session, revision: request.revision, canonicalize: isDraftConversation, waitForTask: ["suggested", "needs_date_confirmation"].includes(nextThread.taskInteraction?.state ?? "") };
         setSessionSnapshot(session); pendingSaveRef.current = pending; setPendingSave(pending);
         await persistAndCanonicalizeDraftConversation(pending);
       }
@@ -426,7 +430,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     const history = previousSession ? conversationHistoryForRequest() : undefined;
     const sendPath = usesSessionHistory ? ORBIT_API_ENDPOINTS.conversations
       : resolvedConversationId ? aiConversationPath(resolvedConversationId) : path;
-    await submitRequest(requestForSend({ path: sendPath, message, revision: draftRevision.current, history: history?.length ? history : undefined }));
+    await submitRequest(requestForSend({ path: sendPath, message, revision: draftRevision.current, history: history?.length ? history : undefined, ...(sourceNote ? { sourceNote } : {}) }));
   }
 
   function addMention(contact: MentionContact) {
@@ -445,13 +449,13 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     submittedInitialPrompt.current = initialPrompt;
     if (!claimInitialPrompt?.()) {
       if (optionalParam(initialMessageConsumed) === "1" && !latestData && !failedRequest) {
-        setFailedRequest({ path: ORBIT_API_ENDPOINTS.conversations, message: initialPrompt, revision: draftRevision.current });
+        setFailedRequest({ path: ORBIT_API_ENDPOINTS.conversations, message: initialPrompt, revision: draftRevision.current, ...(sourceNote ? { sourceNote } : {}) });
         setSendError(locale.t("aiConversation.duplicateUnknown"));
       }
       return;
     }
-    void submitRequest(requestForSend({ path: ORBIT_API_ENDPOINTS.conversations, message: initialPrompt, revision: draftRevision.current }));
-  }, [client, initialPrompt, isDraftConversation]);
+    void submitRequest(requestForSend({ path: ORBIT_API_ENDPOINTS.conversations, message: initialPrompt, revision: draftRevision.current, ...(sourceNote ? { sourceNote } : {}) }));
+  }, [client, initialPrompt, isDraftConversation, sourceNote?.id, sourceNote?.version]);
 
   async function recoverRequest(request: SendRequest) {
     if (!request.reliable || !owns() || sendOperation.current) {
@@ -899,6 +903,7 @@ function TaskInteractionCard({
   const completed = interaction.state === "created" || resolution === "accepted";
   const dismissed = resolution === "dismissed";
   const failed = interaction.state === "failed";
+  const needsDate = interaction.state === "needs_date_confirmation";
 
   return (
     <View style={[styles.taskInteractionCard, failed ? styles.taskInteractionFailed : null]}>
@@ -914,6 +919,8 @@ function TaskInteractionCard({
           <Text style={styles.taskInteractionEyebrow}>
             {failed
               ? locale.t("aiConversation.taskFailed")
+              : needsDate
+                ? locale.t("aiConversation.taskNeedsDate")
               : completed
                 ? locale.t("aiConversation.taskAdded")
                 : dismissed
@@ -953,6 +960,11 @@ function TaskInteractionCard({
             </Text>
           </Pressable>
         </View>
+      ) : null}
+      {interaction.sourceNoteId ? (
+        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("aiConversation.returnSourceNote")} onPress={() => onOpenHref(`/notes/${encodeURIComponent(interaction.sourceNoteId!)}`)} style={styles.recordLink}>
+          <Text style={styles.recordLinkText}>{locale.t("aiConversation.viewSourceNote")}</Text><Ionicons color={colors.accent} name="arrow-up-right-box-outline" size={18} />
+        </Pressable>
       ) : null}
       {completed && conversationTaskDetailHref(interaction.taskId) ? (
         <Pressable accessibilityRole="button" accessibilityLabel={locale.t("aiConversation.openTaskNamed", { title: interaction.title })} onPress={() => onOpenHref(conversationTaskDetailHref(interaction.taskId)!)} style={styles.recordLink}>

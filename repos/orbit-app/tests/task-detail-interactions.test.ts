@@ -18,13 +18,13 @@ const emit = () => { revision++; listeners.forEach(listener => listener()); };
 const subscribe = (listener) => { listeners.add(listener); return () => listeners.delete(listener); };
 const rerender = () => useSyncExternalStore(subscribe, () => revision);
 const state = window.fixture = {
-  task: { id: "task:edit", accountId: "test", ownerUserId: "test", title: "Original title", notes: "Original notes", status: "open", category: "work", priority: "normal", source: "manual", createdAt: "2026-09-07T00:00:00.000Z", updatedAt: "2026-09-07T00:00:00.000Z" },
+  task: { id: "task:edit", accountId: "test", ownerUserId: "test", title: "Original title", notes: "Original notes", status: "open", category: "work", priority: "normal", source: "ai_confirmed", sourceNoteId: "note:source", sourceNoteVersion: 3, createdAt: "2026-09-07T00:00:00.000Z", updatedAt: "2026-09-07T00:00:00.000Z" },
   requests: [], refreshes: 0, failure: false, hold: false, thrown: false, notifications: 0, navigation: [], permissionCalls: 0, holdPermission: false, permission: "denied", reminders: [],
   update(patch) { state.task = { ...state.task, ...patch }; emit(); },
   switchClient() { client = { ...client }; emit(); }
 };
 export const useLocalSearchParams = () => { rerender(); return { id: state.task.id }; };
-export const useRouter = () => ({ replace(path) { state.navigation.push(path); }, push() {} });
+export const useRouter = () => ({ replace(path) { state.navigation.push(path); }, push(path) { state.navigation.push(path); } });
 export const useApiResource = (path) => {
   rerender();
   return { kind: "success", data: path.endsWith("/activities") ? { activities: [] } : path.startsWith("/api/reminders") ? { reminders: state.reminders } : { task: state.task }, refreshing: false, refresh() { state.refreshes++; emit(); } };
@@ -115,6 +115,13 @@ async function openScreen(t: { after: (fn: () => Promise<void>) => void }): Prom
   await page.waitForFunction(() => document.querySelector<HTMLTextAreaElement>('[aria-label="待办标题"]')?.value === "Original title");
   return page;
 }
+
+test("a note-backed task returns to its exact source note without writing", async (t) => {
+  const page = await openScreen(t);
+  await page.getByRole("button", { name: "查看来源笔记", exact: true }).click();
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/notes/note%3Asource"]);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
+});
 
 test("task settings retain an accessible close and decorative pointer dismissal without writes", async (t) => {
   const page = await openScreen(t);

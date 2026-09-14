@@ -28,6 +28,10 @@ function optionalString(value: unknown): value is string | undefined {
   return value === undefined || nonEmpty(value);
 }
 
+function optionalStringArray(value: unknown): value is readonly string[] | undefined {
+  return value === undefined || (Array.isArray(value) && value.every(nonEmpty));
+}
+
 function isoDateTime(value: unknown): value is string {
   return typeof value === "string" && Number.isFinite(Date.parse(value));
 }
@@ -67,6 +71,10 @@ function decodeSuggestion(
     !optionalString(value.relatedEventId) ||
     !optionalString(value.relatedMeetingId) ||
     !optionalString(value.relatedConversationId) ||
+    !optionalStringArray(value.relatedContactIds) ||
+    !optionalString(value.sourceNoteId) ||
+    (value.sourceNoteVersion !== undefined &&
+      (!Number.isInteger(value.sourceNoteVersion) || Number(value.sourceNoteVersion) < 1)) ||
     !Array.isArray(value.evidenceIds) ||
     !value.evidenceIds.every(nonEmpty) ||
     typeof value.confidence !== "number" ||
@@ -78,6 +86,14 @@ function decodeSuggestion(
     !optionalString(value.acceptedTaskId) ||
     !isoDateTime(value.createdAt) ||
     !isoDateTime(value.updatedAt)
+  ) {
+    return null;
+  }
+  if (
+    (value.sourceNoteId === undefined) !== (value.sourceNoteVersion === undefined) ||
+    (Array.isArray(value.relatedContactIds) &&
+      (new Set(value.relatedContactIds).size !== value.relatedContactIds.length ||
+        (value.relatedContactId !== undefined && !value.relatedContactIds.includes(value.relatedContactId))))
   ) {
     return null;
   }

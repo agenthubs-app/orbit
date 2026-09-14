@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
+import { createNoteRepository } from "../../features/notes/repository";
+import { createNoteService } from "../../features/notes/service";
 import { createOrbitAiTaskInteractionService } from "../../features/orbit-ai/task-interaction-service";
 import { createTaskRepository } from "../../features/tasks/repository";
 import { createTaskService } from "../../features/tasks/service";
@@ -16,6 +18,9 @@ function services() {
   const taskService = createTaskService({
     repository: createTaskRepository({ store, workspaceId: "workspace:orbit-ai-task" }),
   });
+  const noteService = createNoteService({
+    repository: createNoteRepository({ store, workspaceId: "workspace:orbit-ai-task" }),
+  });
   const suggestionService = createTaskSuggestionService({
     repository: createTaskSuggestionRepository({
       store,
@@ -25,13 +30,73 @@ function services() {
   });
   return {
     interactionService: createOrbitAiTaskInteractionService({
+      noteService,
       suggestionService,
       taskService,
     }),
+    noteService,
     suggestionService,
     taskService,
   };
 }
+
+test("a note source always creates a confirmable suggestion with immutable provenance", async () => {
+  const { interactionService, noteService, suggestionService, taskService } = services();
+  const note = await noteService.create({
+    actorId,
+    body: "2026-09-20 前联系佐藤确认合同范围",
+    contactIds: ["contact:sato", "contact:li"],
+    idempotencyKey: "note:contract",
+    now: "2026-09-15T01:00:00.000Z",
+  });
+
+  const result = await interactionService.handle({
+    actorId,
+    conversationId,
+    message: "请从这篇笔记创建待办",
+    now: "2026-09-15T01:05:00.000Z",
+    proposedActionRequests: [{
+      arguments: { dueAt: "2026-09-20T09:00:00.000Z", title: "联系佐藤确认合同范围" },
+      capabilityId: "followups.createTask",
+      requiresUserConfirmation: true,
+    }],
+    sourceNote: { id: note.id, version: note.version },
+  });
+
+  assert.equal(result.interaction?.state, "suggested");
+  assert.equal(result.interaction?.sourceNoteId, note.id);
+  assert.equal(result.interaction?.sourceNoteVersion, 1);
+  assert.deepEqual(result.interaction?.relatedContactIds, ["contact:li", "contact:sato"]);
+  assert.equal((await taskService.list({ actorId })).length, 0);
+  const suggestions = await suggestionService.list({ actorId, now: "2026-09-15T01:05:00.000Z" });
+  assert.equal(suggestions.length, 1);
+  assert.equal(suggestions[0]?.sourceNoteId, note.id);
+  assert.deepEqual(suggestions[0]?.relatedContactIds, ["contact:li", "contact:sato"]);
+});
+
+test("a note source with an ambiguous date asks for confirmation without persisting", async () => {
+  const { interactionService, noteService, suggestionService, taskService } = services();
+  const note = await noteService.create({
+    actorId,
+    body: "下周联系佐藤确认合同范围",
+    idempotencyKey: "note:ambiguous-date",
+    now: "2026-09-15T01:00:00.000Z",
+  });
+
+  const result = await interactionService.handle({
+    actorId,
+    conversationId,
+    message: "请从这篇笔记整理待办",
+    now: "2026-09-15T01:05:00.000Z",
+    proposedActionRequests: [],
+    sourceNote: { id: note.id, version: note.version },
+  });
+
+  assert.equal(result.interaction?.state, "needs_date_confirmation");
+  assert.match(result.interaction?.reason ?? "", /明确日期/u);
+  assert.deepEqual(await taskService.list({ actorId }), []);
+  assert.deepEqual(await suggestionService.list({ actorId, now: "2026-09-15T01:05:00.000Z" }), []);
+});
 
 test("explicit task language creates one canonical task immediately", async () => {
   const { interactionService, taskService } = services();

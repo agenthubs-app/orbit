@@ -11,7 +11,7 @@ const workspaceId = "workspace:task-suggestions";
 const actorId = "account:xiaoyu";
 const now = "2026-08-29T08:00:00.000Z";
 
-function services() {
+function services(validateSourceNote?: (input: { actorId: string; noteId: string; version: number }) => Promise<boolean>) {
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   const taskService = createTaskService({
     repository: createTaskRepository({ store, workspaceId }),
@@ -19,9 +19,54 @@ function services() {
   const suggestionService = createTaskSuggestionService({
     repository: createTaskSuggestionRepository({ store, workspaceId }),
     taskService,
+    validateSourceNote,
   });
   return { store, suggestionService, taskService };
 }
+
+test("note-backed acceptance revalidates the version and creates one source-linked task", async () => {
+  let currentVersion = 3;
+  const { suggestionService, taskService } = services(async ({ actorId: owner, noteId, version }) =>
+    owner === actorId && noteId === "note:source" && version === currentVersion,
+  );
+  const stale = await suggestionService.suggest(suggestionInput({
+    deduplicationKey: "note:source:2",
+    relatedContactIds: ["contact:li", "contact:sato"],
+    sourceNoteId: "note:source",
+    sourceNoteVersion: 2,
+  }));
+  await assert.rejects(
+    suggestionService.accept({ actorId, suggestionId: stale.id, idempotencyKey: "accept:stale", now }),
+    /source note changed/i,
+  );
+  assert.deepEqual(await taskService.list({ actorId }), []);
+
+  const current = await suggestionService.suggest(suggestionInput({
+    deduplicationKey: "note:source:3",
+    relatedContactIds: ["contact:li", "contact:sato"],
+    sourceNoteId: "note:source",
+    sourceNoteVersion: 3,
+  }));
+  const accepted = await suggestionService.accept({
+    actorId,
+    suggestionId: current.id,
+    idempotencyKey: "accept:current",
+    now: "2026-09-15T02:00:00.000Z",
+  });
+  currentVersion = 4;
+  const replay = await suggestionService.accept({
+    actorId,
+    suggestionId: current.id,
+    idempotencyKey: "accept:current",
+    now: "2026-09-15T02:05:00.000Z",
+  });
+
+  assert.equal(accepted.task.sourceNoteId, "note:source");
+  assert.equal(accepted.task.sourceNoteVersion, 3);
+  assert.equal(accepted.task.relatedContactId, "contact:li");
+  assert.equal(replay.task.id, accepted.task.id);
+  assert.equal((await taskService.list({ actorId })).length, 1);
+});
 
 function suggestionInput(overrides: Record<string, unknown> = {}) {
   return {
