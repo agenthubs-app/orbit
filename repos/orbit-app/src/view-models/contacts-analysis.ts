@@ -120,6 +120,81 @@ export interface ContactsAnalysisView {
   structureDimensions: ContactsAnalysisStructureDimensionView[];
 }
 
+interface ContactsAnalysisReportInput {
+  current: {
+    analysisVersion: "contacts.analysis@1";
+    sourceDataVersion: string;
+  };
+  report: null | {
+    analysisVersion: "contacts.analysis@1";
+    body: string;
+    generatedAt: string;
+    messageId: string;
+    sessionId: string;
+    sourceDataVersion: string;
+  };
+  stale: boolean;
+}
+
+export type ContactsAnalysisReportView =
+  | {
+      actionLabel: null;
+      analysisVersion: null;
+      body: null;
+      generatedAt: null;
+      sourceDataVersion: null;
+      stale: false;
+      state: "unavailable";
+    }
+  | {
+      actionLabel: "开始分析" | "重新分析";
+      analysisVersion: "contacts.analysis@1";
+      body: string | null;
+      generatedAt: string | null;
+      sourceDataVersion: string;
+      stale: boolean;
+      state: "empty" | "ready";
+    };
+
+export function contactsAnalysisReportToView(
+  analysis: ContactsAnalysisReportInput | null | undefined,
+  unavailableSections: readonly string[],
+): ContactsAnalysisReportView {
+  if (analysis === undefined || analysis === null || unavailableSections.includes("analysis")) {
+    return {
+      actionLabel: null,
+      analysisVersion: null,
+      body: null,
+      generatedAt: null,
+      sourceDataVersion: null,
+      stale: false,
+      state: "unavailable",
+    };
+  }
+
+  if (analysis.report === null) {
+    return {
+      actionLabel: "开始分析",
+      analysisVersion: analysis.current.analysisVersion,
+      body: null,
+      generatedAt: null,
+      sourceDataVersion: analysis.current.sourceDataVersion,
+      stale: false,
+      state: "empty",
+    };
+  }
+
+  return {
+    actionLabel: "重新分析",
+    analysisVersion: analysis.report.analysisVersion,
+    body: analysis.report.body,
+    generatedAt: analysis.report.generatedAt,
+    sourceDataVersion: analysis.current.sourceDataVersion,
+    stale: analysis.stale,
+    state: "ready",
+  };
+}
+
 const defaultGoal = "先补充你最近想认识的人或合作方向";
 
 type UnknownRecord = Record<string, unknown>;

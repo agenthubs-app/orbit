@@ -27,6 +27,7 @@ export function registerAiTemplatePrefill(input: {
   entryPointId: AiSessionEntryPointId;
   message: string;
   references: readonly AiSessionReferenceContract[];
+  sourceDataVersion?: string;
   template: { id: string; version: number };
 }): string {
   const id = `ai-prefill-${Date.now().toString(36)}-${(++sequence).toString(36)}`;
@@ -35,6 +36,9 @@ export function registerAiTemplatePrefill(input: {
     entryPointId: input.entryPointId,
     initialGroupId: null,
     kind: "structured",
+    ...(input.sourceDataVersion
+      ? { sourceDataVersion: input.sourceDataVersion }
+      : {}),
     template: input.template,
   });
   if (!input.actorId.trim() || !input.baseUrl.trim() || !input.message.trim()) {
@@ -111,5 +115,15 @@ export function followupCandidateTemplate(kind: "task" | "reminder") {
       : "请根据我当前已保存的到期跟进，整理待复核的提醒候选。不要自动创建提醒、发送推送或消息。",
     references: [],
     template: { id: kind === "task" ? "followup.task_candidate" : "followup.reminder_candidate", version: 1 },
+  };
+}
+
+export function contactsAnalysisTemplate(sourceDataVersion: string) {
+  return {
+    entryPointId: "contacts.analysis" as const,
+    message: "请根据当前已保存的人脉资料生成一份人脉分析。请说明关系结构、目标覆盖和下一步建议，并标明判断依据。",
+    references: [],
+    sourceDataVersion,
+    template: { id: "contacts.analysis", version: 1 as const },
   };
 }

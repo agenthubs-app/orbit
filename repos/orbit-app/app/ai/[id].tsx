@@ -1,12 +1,12 @@
 import { useIsFocused, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOrbitAuthSession } from "../../src/api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../src/api/ApiBaseUrlProvider";
 import { AiConversationScreen, type AiConversationJournal } from "../../src/screens/ai/AiConversationScreen";
 import { withOrbitPrivateRoute } from "../../src/components/OrbitRouteAccessBoundary";
 import { aiSendIntentOrigin, consumeAiSendIntent } from "../../src/data/ai-send-intent";
 import { aiSessionOriginInputSchema } from "../../src/api/schema/ai-sessions";
-import { consumeAiTemplatePrefill } from "../../src/data/ai-template-prefill";
+import { consumeAiTemplatePrefill, type AiTemplatePrefill } from "../../src/data/ai-template-prefill";
 
 const ProtectedConversation = withOrbitPrivateRoute<NonNullable<Parameters<typeof AiConversationScreen>[0]>>(AiConversationScreen);
 
@@ -40,9 +40,34 @@ export default function AiConversationRoute() {
   });
   const sessionOrigin = intent.registeredOrigin ?? (parsedOrigin.success ? parsedOrigin.data : undefined);
   const identity = JSON.stringify([auth.user?.id, server.baseUrl]);
-  const prefill = useMemo(() => enabled && prefillIntent && auth.user?.id
-    ? consumeAiTemplatePrefill({ id: prefillIntent, actorId: auth.user.id, baseUrl: server.baseUrl })
-    : null, [enabled, prefillIntent, auth.user?.id, server.baseUrl]);
+  const [prefillSnapshot, setPrefillSnapshot] = useState<{
+    identity: string;
+    intentId: string;
+    value: AiTemplatePrefill | null;
+  } | null>(null);
+  const prefillClaim = useRef(prefillSnapshot);
+  useEffect(() => {
+    if (!auth.ready || !auth.signedIn || !server.ready || !auth.user?.id || !prefillIntent) {
+      return;
+    }
+    const claimed = prefillClaim.current?.identity === identity
+      && prefillClaim.current.intentId === prefillIntent
+      ? prefillClaim.current
+      : {
+        identity,
+        intentId: prefillIntent,
+        value: consumeAiTemplatePrefill({
+          id: prefillIntent,
+          actorId: auth.user.id,
+          baseUrl: server.baseUrl,
+        }),
+      };
+    prefillClaim.current = claimed;
+    setPrefillSnapshot(claimed);
+  }, [auth.ready, auth.signedIn, auth.user?.id, identity, prefillIntent, server.baseUrl, server.ready]);
+  const prefillResolved = !prefillIntent
+    || (prefillSnapshot?.identity === identity && prefillSnapshot.intentId === prefillIntent);
+  const prefill = prefillResolved ? prefillSnapshot?.value ?? null : null;
   if (enabled && intent.owner === null) intent.owner = identity;
   const allowInitialPrompt = intent.owner === identity;
   useEffect(() => {
@@ -60,10 +85,11 @@ export default function AiConversationRoute() {
     return true;
   }, [allowInitialPrompt, intent, params.initialMessageConsumed, sendIntent, initialMessage, auth.user?.id, server.baseUrl, router]);
   const sequence = useRef(0);
-  const scope = useMemo(() => ({ key: String(++sequence.current), enabled }), [enabled, auth.signedIn, auth.user?.id, auth.cookieHeader, server.baseUrl, intentKey]);
+  const routeEnabled = enabled && prefillResolved;
+  const scope = useMemo(() => ({ key: String(++sequence.current), enabled: routeEnabled }), [routeEnabled, auth.signedIn, auth.user?.id, auth.cookieHeader, server.baseUrl, intentKey]);
   const latest = useRef(scope);
   latest.current = scope;
   const isScopeCurrent = useCallback(() => latest.current === scope && scope.enabled, [scope]);
   const effectiveOrigin = prefill?.origin ?? sessionOrigin;
-  return enabled ? <ProtectedConversation key={scope.key} scopeKey={scope.key} isScopeCurrent={isScopeCurrent} claimInitialPrompt={claimInitialPrompt} allowInitialPrompt={allowInitialPrompt} journal={journal} {...(prefill?.message ? { initialDraft: prefill.message } : {})} {...(prefill?.references ? { initialReferences: prefill.references } : {})} {...(effectiveOrigin ? { sessionOrigin: effectiveOrigin } : {})} /> : null;
+  return routeEnabled ? <ProtectedConversation key={scope.key} scopeKey={scope.key} isScopeCurrent={isScopeCurrent} claimInitialPrompt={claimInitialPrompt} allowInitialPrompt={allowInitialPrompt} journal={journal} {...(prefill?.message ? { initialDraft: prefill.message } : {})} {...(prefill?.references ? { initialReferences: prefill.references } : {})} {...(effectiveOrigin ? { sessionOrigin: effectiveOrigin } : {})} /> : null;
 }

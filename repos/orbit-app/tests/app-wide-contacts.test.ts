@@ -16,16 +16,18 @@ const fixture = `
 import React, { useSyncExternalStore } from "react";
 import { View } from "react-native";
 const listeners = new Set(); let revision = 0;
-const state = window.fixture = { requests: [], navigation: [], nativeCalls: [], cameraGranted: true, photoGranted: true, kind: "success", update(patch) { Object.assign(state, patch); revision++; listeners.forEach(f => f()); } };
+const state = window.fixture = { actor: "actor:one", baseUrl: "http://fixture", requests: [], navigation: [], nativeCalls: [], cameraGranted: true, photoGranted: true, kind: "success", postMode: "failure", putMode: "failure", pendingPost: null, pendingPut: null, refreshes: 0, resourceScopeKey: JSON.stringify(["actor:one", "http://fixture"]), uuidSequence: 0, update(patch) { Object.assign(state, patch); revision++; listeners.forEach(f => f()); } };
 const rerender = () => useSyncExternalStore(f => { listeners.add(f); return () => listeners.delete(f); }, () => revision);
 const contacts = { contacts: [{ id: "contact:1", displayName: "林悦", organization: "红桥科技", role: "市场负责人", location: "东京", industry: "enterprise_saas", status: "active", value: { score: 89, valueTypes: [] } }] };
 const mobile = {
   aggregate: { relationshipAssetTotals: { contacts: 1 }, highValueCount: 1, pendingFollowups: { count: 1 }, dormantContacts: { count: 0 } },
-  contacts, profile: { profile: { displayName: "测试用户", relationshipGoal: "拓展日本零售合作" } },
+  analysis: { current: { analysisVersion: "contacts.analysis@1", sourceDataVersion: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }, report: { analysisVersion: "contacts.analysis@1", body: "现有人脉覆盖零售合作，下一步应补充投资人联系。", generatedAt: "2026-09-15T01:00:01.000Z", messageId: "message:analysis:1", sessionId: "session:analysis:1", sourceDataVersion: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }, stale: true },
+  contacts, profile: { profile: { id: "profile:one", displayName: "测试用户", relationshipGoal: "拓展日本零售合作", updatedAt: "2026-09-15T00:00:00.000Z" } },
   summary: { metrics: [{ id: "relationship-assets", value: 1 }, { id: "high-value", value: 1 }] },
   distributions: { industryDistribution: [{ bucketId: "industry:technology", label: "科技", contactCount: 1, percentage: 100, topOrganizations: ["红桥科技"] }], relationshipStrengthDistribution: [{ strength: "strong", relationshipCount: 1, percentage: 100, followupRisk: "low" }], valueTypeDistribution: [] },
   gaps: { coverageScore: 72, gaps: [] },
-  opportunities: { highPriorityOpportunities: [{ contactId: "contact:1", contactName: "林悦", organization: "红桥科技", title: "确认合作时间", priorityScore: 91, dueLabel: "今天", reason: "合作时间待确认", suggestedAction: "联系林悦", actionBrief: { ruleVersion: "opportunity-brief-v1", type: "follow_up", title: "确认合作时间", judgment: "本周需要确认合作安排。", evidence: ["已有交流记录"], steps: ["查看最近记录", "确认合作安排"], primaryAction: { contactId: "contact:1", kind: "open_contact", label: "开始联系" }, secondaryAction: { contactId: "contact:1", kind: "open_contact", label: "查看联系人" }, priority: { total: 91 }, evidenceIds: [], evaluatedAt: "2026-09-08T00:00:00Z" } }] }
+  opportunities: { highPriorityOpportunities: [{ contactId: "contact:1", contactName: "林悦", organization: "红桥科技", title: "确认合作时间", priorityScore: 91, dueLabel: "今天", reason: "合作时间待确认", suggestedAction: "联系林悦", actionBrief: { ruleVersion: "opportunity-brief-v1", type: "follow_up", title: "确认合作时间", judgment: "本周需要确认合作安排。", evidence: ["已有交流记录"], steps: ["查看最近记录", "确认合作安排"], primaryAction: { contactId: "contact:1", kind: "open_contact", label: "开始联系" }, secondaryAction: { contactId: "contact:1", kind: "open_contact", label: "查看联系人" }, priority: { total: 91 }, evidenceIds: [], evaluatedAt: "2026-09-08T00:00:00Z" } }] },
+  unavailableSections: []
 };
 export const useLocalSearchParams = () => ({ dimension: "industry", bucketId: "industry:technology" });
 export const usePathname = () => "/contacts";
@@ -33,14 +35,19 @@ export const useRouter = () => ({ canGoBack: () => false, back() { state.navigat
 const structure = { dimension: "industry", bucket: { label: "科技合作伙伴", contactCount: 1, percentage: 100 }, contacts: [{ ...contacts.contacts[0], relationshipStrength: "strong" }], commonTags: [{ label: "日本市场", contactCount: 1 }], relationshipQuality: [{ id: "strong", label: "强关系", contactCount: 1, percentage: 100 }], insight: "科技合作伙伴已有交流基础。" };
 const connections = { connections: [{ id: "connection:1", contactId: "contact:1", displayName: "林悦", organization: "红桥科技", relationshipStage: "needs_follow_up", strengthScore: 89, sourceLinks: [{ label: "朋友引荐", type: "referral" }], evidenceTimeline: [{ title: "已有交流记录" }] }] };
 export const useApiResource = path => { rerender(); return { kind: state.kind, error: { message: "连接暂时失败" }, data: path.includes("structure/") ? structure : path.includes("connections") ? connections : path.includes("tasks") ? { tasks: [] } : path.includes("draft") ? {} : path.includes("aggregate") ? mobile.aggregate : path.includes("opportunities") ? mobile.opportunities : path.includes("distributions") ? mobile.distributions : path.includes("gaps") ? mobile.gaps : contacts, refreshing: false, refresh() {} }; };
-export const useValidatedApiResource = () => { rerender(); return { kind: state.kind, data: mobile, error: { message: "连接暂时失败" }, refreshing: false, refresh() {} }; };
+export const useValidatedApiResource = (_path, _schema, isEmpty, options = {}) => { rerender(); state.dashboardScopeKey = options.scopeKey; const base = state.zeroContacts ? { ...mobile, aggregate: { ...mobile.aggregate, relationshipAssetTotals: { ...mobile.aggregate.relationshipAssetTotals, contacts: 0 } }, contacts: { contacts: [] } } : mobile; const data = state.remoteGoal === undefined ? base : { ...base, profile: { ...base.profile, profile: { ...base.profile.profile, relationshipGoal: state.remoteGoal, updatedAt: state.remoteUpdatedAt } } }; const scopeCurrent = options.scopeKey === undefined || options.scopeKey === state.resourceScopeKey; return { kind: scopeCurrent ? (isEmpty(data) ? "empty" : state.kind) : "loading", data, error: { message: "连接暂时失败" }, refreshing: false, refresh() { state.refreshes++; state.resourceScopeKey = options.scopeKey; revision++; listeners.forEach(f => f()); } }; };
 const record = method => async (path, options) => {
   state.requests.push({ method, path, body: options?.body });
+  if (method === "POST" && state.postMode === "pending") return new Promise(resolve => { state.pendingPost = resolve; });
+  if (method === "PUT" && state.putMode === "pending") return new Promise(resolve => { state.pendingPut = resolve; });
+  if (method === "PUT" && state.putMode === "conflict") { state.remoteGoal = "服务器上的并发目标"; state.remoteUpdatedAt = "2026-09-15T00:00:05.000Z"; return { success: false, status: 409, error: { message: "关系目标已在另一端更新" } }; }
   if (method === "GET" && path === "/api/connections/connection%3A1") return { success: true, data: { connection: connections.connections[0], sourceLinks: [{ evidenceId: "source:1", label: "朋友引荐", type: "referral" }], evidenceTimeline: [{ evidenceId: "evidence:1", title: "已有交流记录", excerpt: "上周确认了合作方向。", contribution: "user_note" }] } };
   return { success: false, error: { message: "暂时无法保存，请重试" } };
 };
-export const useOrbitApiClient = () => ({ post: record("POST"), put: record("PUT"), patch: record("PATCH"), get: record("GET") });
-export const useOrbitApiBaseUrl = () => ({ baseUrl: "http://fixture" });
+export const useOrbitApiClient = (options = {}) => { state.clientScopeKey = options.scopeKey; return { post: record("POST"), put: record("PUT"), patch: record("PATCH"), get: record("GET") }; };
+export const useOrbitApiBaseUrl = () => { rerender(); return { baseUrl: state.baseUrl }; };
+export const useOrbitAuthSession = () => { rerender(); return { ready: true, signedIn: true, user: { id: state.actor } }; };
+export const randomUUID = () => "fixture-relationship-goal-mutation-" + ++state.uuidSequence;
 export const useRelationshipInboxBadgeCount = () => 0;
 export const SafeAreaView = ({ children, edges, ...props }) => <View {...props}>{children}</View>;
 export const Ionicons = ({ size }) => <span aria-hidden="true" style={{ display: "inline-block", flexShrink: 0, width: size, height: size }} />;
@@ -71,7 +78,7 @@ createRoot(document.getElementById("root")).render(<Screen />);`, resolveDir: pr
     plugins: [{ name: "contacts-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-      plugin.onResolve({ filter: /^(expo-router|@expo\/vector-icons|react-native-safe-area-context|expo-camera|expo-image-picker)$|\/(useApiResource|useValidatedApiResource|useOrbitApiClient|ApiBaseUrlProvider|useRelationshipInboxBadgeCount)$/ }, () => ({ path: "fixture", namespace: "contacts-test" }));
+      plugin.onResolve({ filter: /^(expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context|expo-camera|expo-image-picker)$|\/(useApiResource|useValidatedApiResource|useOrbitApiClient|ApiBaseUrlProvider|AuthSessionProvider|useRelationshipInboxBadgeCount)$/ }, () => ({ path: "fixture", namespace: "contacts-test" }));
       plugin.onLoad({ filter: /.*/, namespace: "contacts-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
     } }]
   });
@@ -195,6 +202,150 @@ test("analysis uses open 15/22 sections and keeps structure, opportunity and goa
   assert.equal(requests[0].method, "PUT");
   assert.equal(requests[0].path, "/api/profile");
   assert.equal(requests[0].body.relationshipGoal, "先确认零售合作时间");
+  assert.equal(requests[0].body.expectedUpdatedAt, "2026-09-15T00:00:00.000Z");
+  assert.match(requests[0].body.mutationId, /^ios:relationship-goal:/u);
+  assert.deepEqual(Object.keys(requests[0].body).sort(), ["expectedUpdatedAt", "mutationId", "relationshipGoal"]);
+  await page.evaluate(() => (window as any).fixture.update({
+    remoteGoal: "服务器上的新目标",
+    remoteUpdatedAt: "2026-09-15T00:00:02.000Z",
+  }));
+  assert.equal(await input.inputValue(), "先确认零售合作时间", "a failed draft survives a newer dashboard read");
+  await page.getByRole("button", { name: "保存关系目标", exact: true }).click();
+  const retried = await page.evaluate(() => (window as any).fixture.requests);
+  assert.equal(retried.length, 2);
+  assert.equal(retried[1].body.mutationId, requests[0].body.mutationId);
+  assert.equal(retried[1].body.expectedUpdatedAt, requests[0].body.expectedUpdatedAt);
+});
+
+test("analysis displays the persisted report and opens a one-time editable IORBIT draft without a model request", async t => {
+  const page = await openScreen(t, "analysis");
+  await page.getByText("现有人脉覆盖零售合作，下一步应补充投资人联系。", { exact: true }).waitFor();
+  await page.getByText("数据已变化，需要重新分析", { exact: true }).waitFor();
+  assert.match(await page.getByText(/生成时间：/).textContent() ?? "", /contacts\.analysis@1/u);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
+
+  await page.getByRole("button", { name: "重新分析", exact: true }).click();
+
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
+  const navigation = await page.evaluate(() => (window as any).fixture.navigation.at(-1));
+  assert.equal(navigation.pathname, "/ai/[id]");
+  assert.equal(navigation.params.id, "new");
+  assert.match(navigation.params.prefillIntent, /^ai-prefill-/u);
+});
+
+test("analysis keeps an existing stale report visible when the current contact count is zero", async t => {
+  const page = await openScreen(t, "analysis");
+  await page.evaluate(() => (window as any).fixture.update({ zeroContacts: true }));
+  await page.getByText("现有人脉覆盖零售合作，下一步应补充投资人联系。", { exact: true }).waitFor();
+  await page.getByText("数据已变化，需要重新分析", { exact: true }).waitFor();
+  assert.equal(await page.getByText("暂无人脉资产", { exact: true }).count(), 0);
+});
+
+test("analysis keeps edits made during a goal save when the older acknowledgement arrives", async t => {
+  const page = await openScreen(t, "analysis");
+  await page.evaluate(() => (window as any).fixture.update({ putMode: "pending" }));
+  await page.getByRole("button", { name: /当前目标.*编辑目标/ }).click();
+  const input = page.getByRole("textbox", { name: "关系目标", exact: true });
+  await input.fill("正在保存的目标");
+  await page.getByRole("button", { name: "保存关系目标", exact: true }).click();
+  await page.waitForFunction(() => Boolean((window as any).fixture.pendingPut));
+  await input.fill("保存过程中继续编辑的新草稿");
+  await page.evaluate(() => {
+    const fixture = (window as any).fixture;
+    fixture.pendingPut({
+      success: true,
+      status: 200,
+      data: {
+        editor: { lastSavedAt: "2026-09-15T00:00:01.000Z" },
+        mutationId: fixture.requests.at(-1).body.mutationId,
+        profile: { id: "profile:one", relationshipGoal: "正在保存的目标", updatedAt: "2026-09-15T00:00:01.000Z" },
+      },
+    });
+  });
+
+  await page.getByText("上一版关系目标已保存，新的修改仍在草稿中。", { exact: true }).waitFor();
+  assert.equal(await input.inputValue(), "保存过程中继续编辑的新草稿");
+});
+
+test("analysis scopes dashboard reads and writes to actor plus server and hides old actions on switch", async t => {
+  const page = await openScreen(t, "analysis");
+  assert.equal(await page.evaluate(() => (window as any).fixture.dashboardScopeKey), JSON.stringify(["actor:one", "http://fixture"]));
+  assert.equal(await page.evaluate(() => (window as any).fixture.clientScopeKey), JSON.stringify(["actor:one", "http://fixture"]));
+  await page.evaluate(() => (window as any).fixture.update({ actor: "actor:two", baseUrl: "https://other.example" }));
+  await page.getByLabel("正在加载", { exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "重新分析", exact: true }).count(), 0);
+  assert.equal(await page.getByRole("button", { name: /当前目标.*编辑目标/ }).count(), 0);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
+});
+
+test("analysis ignores an old opportunity recompute after actor and server scope replacement", async t => {
+  const page = await openScreen(t, "analysis");
+  await page.evaluate(() => (window as any).fixture.update({ postMode: "pending" }));
+  await page.getByRole("button", { name: "重新计算机会", exact: true }).first().click();
+  await page.waitForFunction(() => Boolean((window as any).fixture.pendingPost));
+
+  const newScope = JSON.stringify(["actor:two", "https://other.example"]);
+  await page.evaluate(newScope => (window as any).fixture.update({
+    actor: "actor:two",
+    baseUrl: "https://other.example",
+    resourceScopeKey: newScope,
+  }), newScope);
+  await page.getByRole("button", { name: "重新计算机会", exact: true }).first().waitFor();
+  await page.evaluate(() => (window as any).fixture.pendingPost({
+    success: true,
+    status: 200,
+    data: { evaluatedContacts: 99, generatedOpportunityCount: 88, state: "success" },
+  }));
+  await page.waitForTimeout(50);
+
+  assert.equal(await page.getByText("机会提醒已更新", { exact: true }).count(), 0);
+  assert.equal(await page.getByText("检查了 99 位联系人，更新 88 条机会。", { exact: true }).count(), 0);
+  assert.equal(await page.getByRole("button", { name: "重新计算机会", exact: true }).first().isEnabled(), true);
+});
+
+test("analysis rebases a preserved goal draft after 409 and retries with a new baseline and mutation", async t => {
+  const page = await openScreen(t, "analysis");
+  await page.evaluate(() => (window as any).fixture.update({ putMode: "conflict" }));
+  await page.getByRole("button", { name: /当前目标.*编辑目标/ }).click();
+  const input = page.getByRole("textbox", { name: "关系目标", exact: true });
+  await input.fill("需要重试的本地草稿");
+  await page.getByRole("button", { name: "保存关系目标", exact: true }).click();
+  await page.getByText("关系目标已在另一端更新", { exact: true }).waitFor();
+  assert.equal(await input.inputValue(), "需要重试的本地草稿");
+  assert.equal(await page.evaluate(() => (window as any).fixture.refreshes), 1);
+
+  await page.evaluate(() => (window as any).fixture.update({ putMode: "failure" }));
+  await page.getByRole("button", { name: "保存关系目标", exact: true }).click();
+  const requests = await page.evaluate(() => (window as any).fixture.requests);
+  assert.equal(requests.length, 2);
+  assert.equal(requests[1].body.expectedUpdatedAt, "2026-09-15T00:00:05.000Z");
+  assert.notEqual(requests[1].body.mutationId, requests[0].body.mutationId);
+  assert.equal(requests[1].body.relationshipGoal, "需要重试的本地草稿");
+});
+
+test("a goal save response from the previous actor cannot publish success or failure into the new actor", async t => {
+  const page = await openScreen(t, "analysis");
+  await page.evaluate(() => (window as any).fixture.update({ putMode: "pending" }));
+  await page.getByRole("button", { name: /当前目标.*编辑目标/ }).click();
+  const input = page.getByRole("textbox", { name: "关系目标", exact: true });
+  await input.fill("仅属于旧账号的目标草稿");
+  await page.getByRole("button", { name: "保存关系目标", exact: true }).click();
+  await page.waitForFunction(() => Boolean((window as any).fixture.pendingPut));
+
+  await page.evaluate(() => (window as any).fixture.update({ actor: "actor:two" }));
+  await page.waitForFunction(() => (window as any).fixture.actor === "actor:two");
+  await page.evaluate(() => (window as any).fixture.pendingPut({
+    success: false,
+    error: { message: "旧账号请求失败" },
+  }));
+
+  await assert.rejects(
+    page.getByText("旧账号请求失败", { exact: true }).waitFor({ timeout: 250 }),
+  );
+  await assert.rejects(
+    page.getByText("关系目标已保存。", { exact: true }).waitFor({ timeout: 250 }),
+  );
+  assert.equal(await input.count(), 0, "the old actor's editor disappears with its scoped dashboard data");
 });
 
 test("structure detail renders real success content and opens its contact at 320pt", async t => {

@@ -8,12 +8,16 @@ import { useApiResource } from "./useApiResource";
 export function useValidatedApiResource<TData>(
   path: string,
   schema: RuntimeSchema<TData>,
-  isEmpty: (data: TData) => boolean
+  isEmpty: (data: TData) => boolean,
+  options: {
+    cachePolicy?: "default" | "network-only";
+    scopeKey?: string | null;
+  } = {},
 ): ApiResourceState<TData> {
   const state = useApiResource<unknown>(path, (data) => {
     const parsed = schema.safeParse(data);
     return parsed.success ? isEmpty(parsed.data) : false;
-  });
+  }, options);
 
   return validateApiResourceState(state, schema);
 }

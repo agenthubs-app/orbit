@@ -27,6 +27,7 @@ const entryPointIdSchema = z.enum([
   "chat.ai_assistant",
   "contact.followup_draft",
   "contact.message_draft",
+  "contacts.analysis",
   "followup.task_candidate",
   "home.contact_priority",
   "home.event_preparation",
@@ -35,17 +36,50 @@ const entryPointIdSchema = z.enum([
   "notes.task_suggestions",
 ]);
 
+const sourceDataVersionSchema = z.string().regex(/^[a-f0-9]{64}$/);
+
 const aiSessionOriginInputObject = z.object({
     entryClient: z.enum(["app", "web"]),
     entryPointId: entryPointIdSchema,
     initialGroupId: identifier.nullable(),
     kind: z.enum(["manual", "structured"]),
+    sourceDataVersion: sourceDataVersionSchema.optional(),
     template: z
       .object({ id: identifier, version: z.number().int().positive() })
       .nullable(),
   });
+
+function validateOriginTemplateMapping(
+  value: z.infer<typeof aiSessionOriginInputObject>,
+  context: z.RefinementCtx,
+) {
+  if (value.entryPointId === "contacts.analysis") {
+    if (
+      value.kind !== "structured" ||
+      value.template?.id !== "contacts.analysis" ||
+      value.template.version !== 1 ||
+      !value.sourceDataVersion
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "contacts.analysis requires its registered template and source version",
+        path: ["template"],
+      });
+    }
+    return;
+  }
+
+  if (value.sourceDataVersion !== undefined) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "sourceDataVersion is only registered for contacts.analysis",
+      path: ["sourceDataVersion"],
+    });
+  }
+}
+
 export const aiSessionOriginInputSchema =
-  aiSessionOriginInputObject as unknown as z.ZodType<AiSessionOriginInputContract>;
+  aiSessionOriginInputObject.superRefine(validateOriginTemplateMapping) as unknown as z.ZodType<AiSessionOriginInputContract>;
 
 const recordedOriginSchema: z.ZodType<AiSessionOriginContract> =
   aiSessionOriginInputObject.extend({
@@ -54,6 +88,23 @@ const recordedOriginSchema: z.ZodType<AiSessionOriginContract> =
     recordedAt: z.string().datetime(),
     references: z.array(referenceSchema).max(20),
     schemaVersion: z.literal(1),
+    verification: z.object({
+      analysisVersion: z.literal("contacts.analysis@1"),
+      kind: z.literal("contacts_analysis_execution"),
+      sourceDataVersion: sourceDataVersionSchema,
+    }).optional(),
+  }).superRefine((value, context) => {
+    validateOriginTemplateMapping(value, context);
+    if (value.verification && (
+      value.entryPointId !== "contacts.analysis" ||
+      value.verification.sourceDataVersion !== value.sourceDataVersion
+    )) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "analysis verification must match its stored origin",
+        path: ["verification"],
+      });
+    }
   }) as unknown as z.ZodType<AiSessionOriginContract>;
 
 const legacyOriginSchema: z.ZodType<LegacyAiSessionOriginContract> = z.object({

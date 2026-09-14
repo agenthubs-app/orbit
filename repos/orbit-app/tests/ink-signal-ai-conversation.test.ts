@@ -51,7 +51,7 @@ export const readSnapshot = async () => null; export const writeSnapshot = async
 `;
 test.before(async () => {
   const result = await build({
-    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/ai/[id]"; import HomeRoute from "./app/(app)/ai"; import { useFixture } from "fixture"; function App() { const s = useFixture(); return s.mounted ? s.screen === "home" ? <HomeRoute /> : <Route /> : null; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() },
+    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/ai/[id]"; import HomeRoute from "./app/(app)/ai"; import { useFixture } from "fixture"; function App() { const s = useFixture(); return s.mounted ? s.screen === "home" ? <HomeRoute /> : <Route /> : null; } const app = <App />; createRoot(document.getElementById("root")).render(window.initialFixture?.strictMode ? <React.StrictMode>{app}</React.StrictMode> : app);', loader: "tsx", resolveDir: process.cwd() },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
     define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "ai-http-boundaries", setup(plugin) {
@@ -213,6 +213,93 @@ test("business template prefill is one-use and sends its stable contact referenc
   await replyLastWrite(p, { session: sessionWrite.body.session, storage: aiSessionListPayload.storage });
   await update(p, { mounted: false }); await update(p, { mounted: true });
   assert.equal((await writes(p)).length, 2);
+});
+
+test("contacts analysis prefill stays editable, cancels without generation and sends its source version only on user action", async t => {
+  const sourceDataVersion = "a".repeat(64);
+  const prefill = {
+    entryPointId: "contacts.analysis",
+    message: "请根据当前已保存的人脉资料生成一份人脉分析。",
+    references: [],
+    sourceDataVersion,
+    template: { id: "contacts.analysis", version: 1 },
+  };
+  const cancelled = await open(t, { prefill });
+  assert.deepEqual(await writes(cancelled), []);
+  await update(cancelled, { mounted: false });
+  assert.deepEqual(await writes(cancelled), []);
+
+  const p = await open(t, { prefill });
+  const composer = p.getByRole("textbox", { name: "消息", exact: true });
+  await composer.fill("请重新分析，并优先说明投资人覆盖。 ");
+  assert.deepEqual(await writes(p), []);
+  await press(p, "发送消息");
+  const write = (await writes(p))[0];
+  assert.equal(write.body.message, "请重新分析，并优先说明投资人覆盖。");
+  assert.equal(write.body.origin.entryPointId, "contacts.analysis");
+  assert.equal(write.body.origin.sourceDataVersion, sourceDataVersion);
+  assert.deepEqual(write.body.origin.template, { id: "contacts.analysis", version: 1 });
+});
+
+test("contacts analysis prefill keeps its origin through a focus round trip before explicit send", async t => {
+  const sourceDataVersion = "c".repeat(64);
+  const message = "请根据当前人脉资料检查合作伙伴覆盖。";
+  const p = await open(t, {
+    prefill: {
+      entryPointId: "contacts.analysis",
+      message,
+      references: [],
+      sourceDataVersion,
+      template: { id: "contacts.analysis", version: 1 },
+    },
+  });
+
+  assert.equal(await p.getByRole("textbox", { name: "消息", exact: true }).inputValue(), message);
+  await update(p, { focused: false });
+  await update(p, { focused: true });
+  assert.equal(await p.getByRole("textbox", { name: "消息", exact: true }).inputValue(), message);
+  assert.deepEqual(await writes(p), []);
+
+  await press(p, "发送消息");
+  const write = (await writes(p))[0];
+  assert.equal(write.body.origin.entryPointId, "contacts.analysis");
+  assert.equal(write.body.origin.sourceDataVersion, sourceDataVersion);
+});
+
+test("contacts analysis prefill is claimed once when StrictMode replays its effect", async t => {
+  const sourceDataVersion = "e".repeat(64);
+  const message = "请在严格模式下保留人脉分析来源。";
+  const p = await open(t, {
+    strictMode: true,
+    prefill: {
+      entryPointId: "contacts.analysis",
+      message,
+      references: [],
+      sourceDataVersion,
+      template: { id: "contacts.analysis", version: 1 },
+    },
+  });
+
+  assert.equal(await p.getByRole("textbox", { name: "消息", exact: true }).inputValue(), message);
+  await press(p, "发送消息");
+  const writesAfterSend = await writes(p);
+  assert.equal(writesAfterSend.length, 1);
+  assert.equal(writesAfterSend[0].body.origin.sourceDataVersion, sourceDataVersion);
+});
+
+for (const patch of [{ actor: "actor-2" }, { baseUrl: "https://other.example" }]) test("contacts analysis prefill clears on identity scope change " + JSON.stringify(patch), async t => {
+  const p = await open(t, {
+    prefill: {
+      entryPointId: "contacts.analysis",
+      message: "仅属于原账号的人脉分析草稿",
+      references: [],
+      sourceDataVersion: "d".repeat(64),
+      template: { id: "contacts.analysis", version: 1 },
+    },
+  });
+  await update(p, patch);
+  assert.equal(await p.getByRole("textbox", { name: "消息", exact: true }).inputValue(), "");
+  assert.deepEqual(await writes(p), []);
 });
 
 test("mention picker disambiguates same-name contacts and sends the selected stable id", async t => {

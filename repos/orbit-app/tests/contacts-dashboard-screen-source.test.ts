@@ -22,15 +22,33 @@ test("contacts dashboard screen can safely recompute opportunity reminders throu
 
 test("contacts dashboard screen can edit the relationship goal through the profile API", () => {
   assert.match(screenSource, /ORBIT_API_ENDPOINTS\.profile/u);
-  assert.match(screenSource, /profileToSummary/u);
-  assert.match(screenSource, /profileSummaryToEditDraft/u);
-  assert.match(screenSource, /buildProfileUpdateRequest/u);
-  assert.match(screenSource, /relationshipGoalDraft/u);
+  assert.match(screenSource, /createRelationshipGoalSaveAttempt/u);
+  assert.match(screenSource, /acceptRelationshipGoalSaveReceipt/u);
+  assert.match(screenSource, /expectedUpdatedAt/u);
+  assert.match(screenSource, /relationshipGoalAttempt/u);
   assert.match(screenSource, /saveContactDashboardGoal/u);
   assert.match(screenSource, /client\.put<unknown>\(\s*ORBIT_API_ENDPOINTS\.profile/u);
   assert.match(screenSource, /dashboardState\.refresh\(\)/u);
   assert.match(screenSource, /"关系目标"/u);
   assert.match(screenSource, /"保存目标"/u);
+  assert.doesNotMatch(screenSource, /buildProfileUpdateRequest/u);
+});
+
+test("persisted analysis opens an editable one-time IORBIT prefill without generating on refresh", () => {
+  assert.match(screenSource, /contactsAnalysisReportToView/u);
+  assert.match(screenSource, /contactsAnalysisTemplate/u);
+  assert.match(screenSource, /registerAiTemplatePrefill/u);
+  assert.match(screenSource, /pathname: "\/ai\/\[id\]"/u);
+  assert.match(screenSource, /params: \{ id: "new", prefillIntent \}/u);
+  assert.match(screenSource, /"已存人脉分析"/u);
+  assert.match(screenSource, /"数据已变化，需要重新分析"/u);
+  assert.match(screenSource, /暂时无法判断是否生成过分析/u);
+  const refreshBody = screenSource.slice(
+    screenSource.indexOf("function refreshAll"),
+    screenSource.indexOf("async function recomputeContactDashboardOpportunities"),
+  );
+  assert.match(refreshBody, /dashboardState\.refresh\(\)/u);
+  assert.doesNotMatch(refreshBody, /client\.(post|put|patch|delete)/u);
 });
 
 test("contacts analysis leads with the relationship goal and actionable evidence", () => {
