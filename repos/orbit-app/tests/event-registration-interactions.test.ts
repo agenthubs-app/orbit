@@ -24,15 +24,17 @@ const state = window.fixture = {
   ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
   receipt(patch = {}) {
+    const updatedAt = state.registrationVersion ?? "2026-09-13T00:00:00Z"; const action = state.receiptAction ?? (state.registered ? "update" : "cancel");
     return { id: "registration:1", eventId: state.eventId, userId: state.actor, status: state.registered ? "rsvped" : "cancelled",
-      participantProfileId: "participant:1", registeredAt: "2026-09-10T00:00:00Z", updatedAt: "2026-09-13T00:00:00Z", cancelledAt: null, reactivatedAt: null,
+      participantProfileId: "participant:1", registeredAt: "2026-09-10T00:00:00Z", cancelledAt: null, reactivatedAt: null,
       participantProfile: { id: "participant:1", eventId: state.eventId, userId: state.actor, answers: { targetAttendees: state.savedAnswer }, createdAt: "2026-09-10T00:00:00Z", updatedAt: "2026-09-13T00:00:00Z" },
-      sideEffects: { calendarUpdateExecuted: false, emailSent: false, globalProfileWriteExecuted: false, notificationDelivered: false, organizerMessageSent: false, refundRequested: false }, ...patch };
+      mutationReceipt: { action, actorId: state.actor, eventId: state.eventId, recordId: "registration:1", registrationVersion: updatedAt },
+      sideEffects: { calendarUpdateExecuted: false, emailSent: false, globalProfileWriteExecuted: false, notificationDelivered: false, organizerMessageSent: false, refundRequested: false }, ...patch, updatedAt };
   },
   data(path) {
-    if (path.endsWith("/registration")) return { registration: state.receipt(), questionSet: { questionSetHash: state.hash, questionSetVersion: state.version,
+    if (path.endsWith("/registration")) { const eligibilityState = state.eligibilityState ?? (state.registered ? "registered" : "registration_cancelled"); const allowedActions = state.allowedActions ?? (state.registered ? ["update", "cancel"] : ["reactivate"]); return { eligibility: { allowedActions, applicationVersion: state.applicationVersion ?? null, evaluatedAt: "2026-09-15T01:00:00.000Z", policyVersion: state.policyVersion ?? null, reason: eligibilityState, registrationVersion: state.registrationVersion ?? "2026-09-13T00:00:00Z", state: eligibilityState }, registration: state.receipt(), questionSet: { questionSetHash: state.hash, questionSetVersion: state.version,
       questions: [{ id: "target_attendees", intent: "target_attendees", participantProfileField: "targetAttendees", prompt: state.prompt, options: [], required: true }],
-      provenance: { aiProviderRequested: false, externalNetworkRequested: false, fallbackReason: null, generationMethod: "deterministic-fallback", model: null, provider: null } } };
+      provenance: { aiProviderRequested: false, externalNetworkRequested: false, fallbackReason: null, generationMethod: "deterministic-fallback", model: null, provider: null } } }; }
     return { event: { id: state.eventId, title: "Networking meeting", startsAt: "2026-09-20T10:00:00+09:00", endsAt: "2026-09-20T12:00:00+09:00", status: "confirmed", venue: "Tokyo", location: "Tokyo", description: "Meet local founders", stats: { rsvpCount: state.registered ? 2 : 1, youRsvped: state.registered } } };
   },
   reply(index, status = 200, data) {
@@ -161,7 +163,7 @@ test("failed registration refresh retains drafts but disables every write until 
   assert.equal(await p.getByPlaceholder("写一句具体的补充。").nth(0).inputValue(), "Unsaved local answer");
   assert.equal(await p.getByPlaceholder("写一句具体的补充。").nth(1).inputValue(), "Unsaved auxiliary answer");
   await press(p, "更新报名资料");
-  assert.deepEqual((await writes(p)).at(-1)?.body, { answers: { targetAttendees: "Unsaved local answer" }, questionSetHash: "a".repeat(64), questionSetVersion: 1 });
+  assert.deepEqual((await writes(p)).at(-1)?.body, { answers: { targetAttendees: "Unsaved local answer" }, intent: "update", questionSetHash: "a".repeat(64), questionSetVersion: 1 });
 });
 
 test("registration disables stale write callbacks immediately when a refresh starts", async t => {
@@ -188,7 +190,7 @@ test("registration refresh preserves the auxiliary question, answer, transcript 
 test("registration submission is single-flight and refreshes both current resources", async t => {
   const p = await open(t); await fill(p, "  Local answer  ");
   await p.evaluate(() => { const fn = (window as any).fixture.presses["更新报名资料"]; fn(); fn(); }); await settle(p);
-  assert.deepEqual(await writes(p), [{ method: "POST", path: "/api/events/event%3A1/registration", body: { answers: { targetAttendees: "Local answer" }, questionSetHash: "a".repeat(64), questionSetVersion: 1 } }]);
+  assert.deepEqual(await writes(p), [{ method: "POST", path: "/api/events/event%3A1/registration", body: { answers: { targetAttendees: "Local answer" }, intent: "update", questionSetHash: "a".repeat(64), questionSetVersion: 1 } }]);
   await update(p, { savedAnswer: "Local answer" }); await reply(p);
   assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.slice(3).map((r: any) => r.path).sort()), ["/api/events/event%3A1/registration", "/api/events/public/event%3A1"]);
   assert.equal(await p.getByText("报名资料已保存。", { exact: true }).count(), 1);
@@ -203,11 +205,54 @@ test("registration save acknowledgement and refresh do not overwrite a newer edi
 test("registration cancellation is single-flight and reads status and event again", async t => {
   const p = await open(t); await fill(p, "Keep unsaved answer");
   await p.evaluate(() => { const fn = (window as any).fixture.presses["取消报名"]; fn(); fn(); }); await settle(p);
-  assert.deepEqual(await writes(p), [{ method: "POST", path: "/api/events/event%3A1/registration/cancel", body: null }]);
+  assert.deepEqual(await writes(p), [{ method: "POST", path: "/api/events/event%3A1/registration/cancel", body: { expectedRegistrationVersion: "2026-09-13T00:00:00Z", intent: "cancel" } }]);
   await update(p, { registered: false }); await reply(p);
   assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.slice(3).map((r: any) => r.path).sort()), ["/api/events/event%3A1/registration", "/api/events/public/event%3A1"]);
   assert.equal(await p.getByPlaceholder("写一句具体的补充。").inputValue(), "Keep unsaved answer");
   assert.equal(await p.getByRole("button", { name: "重新报名", exact: true }).count(), 1);
+});
+
+test("server eligibility revocation disables writes and invalidates retained callbacks", async t => {
+  const p = await open(t);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldSubmit = s.presses["更新报名资料"]; s.oldCancel = s.presses["取消报名"]; });
+  await update(p, { eligibilityState: "registration_closed", allowedActions: [], registrationVersion: "version:2" });
+  await refresh(p);
+  assert.ok(await p.getByText("报名已截止", { exact: true }).count());
+  assert.equal(await p.getByRole("button", { name: "报名已截止", exact: true }).isDisabled(), true);
+  assert.equal(await p.getByRole("button", { name: "取消报名", exact: true }).count(), 0);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldSubmit(); s.oldCancel(); });
+  await settle(p);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("pending admission uses the versioned withdrawal endpoint and verifies the actor receipt", async t => {
+  const p = await open(t, {
+    allowedActions: ["withdraw"],
+    applicationVersion: 2,
+    eligibilityState: "pending_review"
+  });
+  await p.evaluate(() => { const fn = (window as any).fixture.presses["撤回申请"]; fn(); fn(); });
+  await settle(p);
+  assert.deepEqual(await p.evaluate(() => {
+    const request = (window as any).fixture.requests.at(-1);
+    return { body: request.body, method: request.method, path: request.path };
+  }), {
+    body: { expectedApplicationVersion: 2 },
+    method: "DELETE",
+    path: "/api/events/event%3A1/admission/application"
+  });
+  await p.evaluate(() => {
+    const s = (window as any).fixture;
+    const index = s.requests.findLastIndex((request: any) => request.method === "DELETE");
+    s.reply(index, 200, {
+      actorId: s.actor,
+      applicationVersion: 3,
+      eventId: s.eventId,
+      status: "withdrawn"
+    });
+  });
+  await settle(p);
+  assert.equal(await p.getByText("已撤回申请。", { exact: true }).count(), 1);
 });
 
 for (const kind of ["error", "empty", "wrong-event", "wrong-actor", "wrong-status", "http-error"]) test(`registration ${kind} receipt cannot claim persistence or discard input`, async t => {

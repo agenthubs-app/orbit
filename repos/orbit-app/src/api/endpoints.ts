@@ -471,6 +471,10 @@ export function eventRegistrationCancelPath(id: string): string {
   return `${eventRegistrationPath(id)}/cancel`;
 }
 
+export function eventAdmissionApplicationPath(id: string): string {
+  return `${eventDetailPath(id)}/admission/application`;
+}
+
 export function eventRegistrationInterviewPath(id: string): string {
   return `${eventRegistrationPath(id)}/interview`;
 }

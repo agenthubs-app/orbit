@@ -23,6 +23,7 @@ import {
   eventPostEventConfirmPath,
   eventPostEventPath,
   publicEventDetailPath,
+  eventRegistrationPath,
   eventReadinessPath,
   eventRecommendationsPath
 } from "../../api/endpoints";
@@ -62,6 +63,10 @@ import {
   eventReadinessToView,
   eventRecommendationsToView
 } from "../../view-models/events";
+import {
+  eventRegistrationToView,
+  type EventRegistrationView
+} from "../../view-models/event-registration";
 
 const detailFont = Platform.select({ web: '-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif', ios: "System", default: "sans-serif" });
 
@@ -156,7 +161,14 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
           personalizedModules={signedIn ? <AuthenticatedEventDetailModules eventId={event.id} key={event.id}
             refreshKey={personalizedRefreshKey} scopeKey={scopeKey ?? "event-detail"} isScopeCurrent={isCurrent} /> : null} /> : null}
       </ScrollView>
-      {event ? (
+      {event ? signedIn ? (
+        <AuthenticatedEventRegistrationModule
+          event={event}
+          onRegister={() => navigate(`/events/${encodeURIComponent(event.id)}/register` as Href)}
+          refreshKey={personalizedRefreshKey}
+          scopeKey={scopeKey ?? "event-detail"}
+        />
+      ) : (
         <EventRegistrationModule event={event} onRegister={() => {
           if (event.status !== "已结束" && event.status !== "已取消") navigate(`/events/${encodeURIComponent(event.id)}/register` as Href);
         }} />
@@ -464,32 +476,107 @@ function EventPersonalNotice({ state, empty, labels, isCurrent }: {
 
 function EventRegistrationModule({
   event,
-  onRegister
+  onRegister,
+  registration,
+  verifying = false
 }: {
   event: EventDetailSummary;
   onRegister: () => void;
+  registration?: EventRegistrationView | null;
+  verifying?: boolean;
 }) {
   const { styles } = useStyles();
-  const closed = event.status === "已结束" || event.status === "已取消";
+  const publicClosed = event.status === "已结束" || event.status === "已取消";
+  const state = registration?.eligibilityState;
+  const canOpenRegistration = Boolean(
+    !verifying &&
+    !publicClosed &&
+    (registration === undefined ||
+      registration === null ||
+      registration.allowedActions === undefined ||
+      registration.allowedActions.some((action) =>
+        action === "register" || action === "reactivate" || action === "update"
+      ) ||
+      state === "pending_review" ||
+      state === "registered" ||
+      state === "waitlisted")
+  );
+  const actionLabel = verifying
+    ? "正在确认报名资格"
+    : state === "pending_review" || state === "waitlisted"
+      ? "查看申请"
+      : state === "registered"
+        ? "查看报名"
+        : state === "open"
+          ? event.registrationActionLabel
+          : registration?.confirmLabel ?? event.registrationActionLabel;
+  const detail = verifying
+    ? "正在读取服务端资格"
+    : registration?.statusDetail ??
+      (publicClosed ? "仍可查看活动资料与参会者入口" : "提交前请确认活动要求");
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.registrationFooter}>
       <View style={styles.registrationCard}>
-      <Text style={styles.registrationFooterHint}>{closed ? "仍可查看活动资料与参会者入口" : "提交前请确认活动要求"}</Text>
+      <Text style={styles.registrationFooterHint}>{detail}</Text>
       <Pressable
         accessibilityRole="button"
-        disabled={closed}
+        disabled={!canOpenRegistration}
         onPress={onRegister}
         style={({ pressed }) => [
           styles.primaryCta,
-          closed ? styles.inlineButtonDisabled : null,
+          !canOpenRegistration ? styles.inlineButtonDisabled : null,
           pressed ? styles.actionButtonPressed : null
         ]}
       >
-        <Text style={styles.primaryCtaText}>{event.registrationActionLabel}</Text>
+        <Text style={styles.primaryCtaText}>{actionLabel}</Text>
       </Pressable>
       </View>
     </SafeAreaView>
+  );
+}
+
+function AuthenticatedEventRegistrationModule({
+  event,
+  onRegister,
+  refreshKey,
+  scopeKey
+}: {
+  event: EventDetailSummary;
+  onRegister: () => void;
+  refreshKey: number;
+  scopeKey: string;
+}) {
+  const state = useApiResource<unknown>(
+    `${eventRegistrationPath(event.id)}?questions=false`,
+    () => false,
+    {
+      cachePolicy: "network-only",
+      scopeKey: JSON.stringify([scopeKey, event.id, "registration-eligibility", refreshKey])
+    }
+  );
+  const registration = state.kind === "success" || state.kind === "empty"
+    ? eventRegistrationToView(state.data)
+    : state.kind === "failure" || state.kind === "offline"
+      ? eventRegistrationToView({
+          eligibility: {
+            allowedActions: [],
+            applicationVersion: null,
+            evaluatedAt: "",
+            policyVersion: null,
+            reason: "unavailable",
+            registrationVersion: null,
+            state: "unavailable"
+          }
+        })
+      : null;
+  return (
+    <EventRegistrationModule
+      event={event}
+      onRegister={onRegister}
+      registration={registration}
+      verifying={state.kind === "loading"}
+    />
   );
 }
 

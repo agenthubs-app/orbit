@@ -25,7 +25,7 @@ const event = { id: "event:1", title: "周末产品交流会", startsAt: "2026-0
 };
 const state = window.fixture = { requests: [], pending: [], navigation: [], presses: {}, shares: [], expiries: 0, actor: "actor-1", cookieHeader: "", baseUrl: "https://orbit.example", ready: true, baseReady: true, signedIn: false, focused: true, mounted: true, id: "public-product", width: 390, fontScale: 1, event, ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
-  data(path) { if (path.startsWith("/api/events/public/")) return state.invalid ? {} : { event: { ...state.event, ...state.eventPatch } }; return state.personal?.[path] ?? {}; },
+  data(path) { if (path.startsWith("/api/events/public/")) return state.invalid ? {} : { event: { ...state.event, ...state.eventPatch } }; if (path.endsWith("/registration")) return state.registration ?? { eligibility: { allowedActions: ["register"], applicationVersion: null, evaluatedAt: "2026-09-12T00:00:00.000Z", policyVersion: null, reason: "open", registrationVersion: null, state: "open" }, questionSet: { questions: [] }, registration: null }; return state.personal?.[path] ?? {}; },
   reply(index, status = 200, payload) { const r = state.requests[index]; state.pending[index]?.(new Response(JSON.stringify(status === 200 || payload !== undefined ? { success: true, data: payload === undefined ? state.data(r.path) : payload } : { success: false, error: { code: status === 404 ? "NOT_FOUND" : "UNAVAILABLE", message: "暂时无法读取，请重试" } }), { status, headers: { "Content-Type": "application/json" } })); }
 };
 Date.now = () => Date.parse("2026-09-12T00:00:00Z");
@@ -145,6 +145,39 @@ test("an explicitly cancelled future event cannot open registration", async t =>
   assert.equal(await p.getByRole("button", { name: "报名参加", exact: true }).count(), 0);
 });
 
+test("signed-in detail uses server eligibility for closed and pending registration states", async t => {
+  const closed = await open(t, {
+    signedIn: true,
+    registration: {
+      eligibility: {
+        allowedActions: [], applicationVersion: null,
+        evaluatedAt: "2038-01-19T03:14:07.000Z", policyVersion: null,
+        reason: "registration_closed", registrationVersion: null,
+        state: "registration_closed"
+      },
+      questionSet: { questions: [] }, registration: null
+    }
+  });
+  const closedButton = closed.getByRole("button", { name: "报名已截止", exact: true });
+  assert.equal(await closedButton.isDisabled(), true);
+  assert.equal(await closed.evaluate(() => (window as any).fixture.requests.some((request: any) => request.path.endsWith("/registration"))), true);
+
+  const pending = await open(t, {
+    signedIn: true,
+    registration: {
+      eligibility: {
+        allowedActions: ["withdraw"], applicationVersion: 2,
+        evaluatedAt: "2038-01-19T03:14:07.000Z", policyVersion: 1,
+        reason: "pending_review", registrationVersion: null,
+        state: "pending_review"
+      },
+      questionSet: { questions: [] }, registration: null
+    }
+  });
+  await press(pending, "查看申请");
+  assert.deepEqual(await pending.evaluate(() => (window as any).fixture.navigation), ["/events/event%3A1/register"]);
+});
+
 test("canonical service placeholders become readable labels without replacing real business copy", async t => {
   const p = await open(t, { eventPatch: { description: "", relationshipContext: "Published event context.",
     sourceMetadata: { label: "event-core-postgres" }, evidence: [{ excerpt: "Canonical event event:1." }],
@@ -166,7 +199,7 @@ test("personal modules read canonical event IDs without writing and expose the g
   assert.equal(await p.getByText("会前准备度", { exact: true }).count(), 1);
   assert.equal(await p.getByText("推荐认识的人", { exact: true }).count(), 1);
   assert.equal(await p.getByText("会后复核", { exact: true }).count(), 1);
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.map((r: any) => r.path).sort()), ["/api/events/public/public-product", ...Object.keys(personalPayloads)].sort());
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.map((r: any) => r.path).sort()), ["/api/events/public/public-product", "/api/events/event%3A1/registration", ...Object.keys(personalPayloads)].sort());
   assert.deepEqual(await writes(p), []);
   if (process.env.APP_STYLE_SCREENSHOTS) { await p.getByText("会前准备度", { exact: true }).scrollIntoViewIfNeeded(); await p.screenshot({ path: "/tmp/orbit-ink-signal-event-detail-private-390.png" }); }
 });
@@ -181,7 +214,7 @@ test("personal loading, pending and empty states remain visible with independent
     "/api/recommendations/event/event%3A1": { ...peoplePayload, state: "pending", recommendations: [] },
     "/api/events/event%3A1/post-event": { ...reviewPayload, state: "pending", contacts: [] }
   };
-  await p.evaluate(payloads => { const s = (window as any).fixture; for (let i = 1; i < s.requests.length; i++) s.reply(i, 200, payloads[s.requests[i].path as keyof typeof payloads]); }, pendingPayloads); await settle(p);
+  await p.evaluate(payloads => { const s = (window as any).fixture; for (let i = 1; i < s.requests.length; i++) s.reply(i, 200, payloads[s.requests[i].path as keyof typeof payloads] ?? s.data(s.requests[i].path)); }, pendingPayloads); await settle(p);
   for (const label of ["会前准备还在更新", "推荐对象还在准备中", "会后资料还在准备中"]) assert.equal(await p.getByText(label, { exact: true }).count(), 1);
   if (process.env.APP_STYLE_SCREENSHOTS) await p.screenshot({ path: "/tmp/orbit-ink-signal-event-detail-private-pending.png" });
   const emptyPayloads = {

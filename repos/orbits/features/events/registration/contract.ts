@@ -95,6 +95,60 @@ export interface EventRegistration {
   userId: string;
 }
 
+export const EVENT_REGISTRATION_ACTIONS = [
+  "register",
+  "update",
+  "cancel",
+  "reactivate",
+  "withdraw",
+] as const;
+
+export type EventRegistrationAction =
+  (typeof EVENT_REGISTRATION_ACTIONS)[number];
+
+export const EVENT_REGISTRATION_ELIGIBILITY_STATES = [
+  "not_open",
+  "open",
+  "registered",
+  "registration_cancelled",
+  "registration_closed",
+  "event_ended",
+  "event_cancelled",
+  "full",
+  "pending_review",
+  "waitlisted",
+  "rejected",
+  "withdrawn",
+  "unavailable",
+] as const;
+
+export type EventRegistrationEligibilityState =
+  (typeof EVENT_REGISTRATION_ELIGIBILITY_STATES)[number];
+
+/**
+ * Actor/event-scoped server decision consumed by Web and App.
+ *
+ * Clients may render this snapshot, but every mutation must re-check the
+ * underlying event, admission policy, capacity and registration versions.
+ */
+export interface EventRegistrationEligibility {
+  allowedActions: readonly EventRegistrationAction[];
+  applicationVersion: number | null;
+  evaluatedAt: string;
+  policyVersion: number | null;
+  reason: EventRegistrationEligibilityState;
+  registrationVersion: string | null;
+  state: EventRegistrationEligibilityState;
+}
+
+export interface EventRegistrationMutationReceipt {
+  action: EventRegistrationAction;
+  actorId: string;
+  eventId: string;
+  recordId: string;
+  registrationVersion: string;
+}
+
 export interface RegisterForEventInput {
   answers?: EventParticipantProfileAnswers | null;
   displayName?: string | null;

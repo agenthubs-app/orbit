@@ -1,11 +1,17 @@
 import { auth } from "../../../../../auth";
 import { createEventRegistrationRouteHandlers } from "./route-handlers";
-import { resolveConfiguredEventAdmissionRegistrationControl } from "../../../../../features/events/admission/registration-control";
+import {
+  resolveConfiguredEventAdmissionRegistrationControl,
+  resolveConfiguredEventAdmissionRegistrationState,
+} from "../../../../../features/events/admission/registration-control";
+import { readRuntimeEventRegistrationAvailability } from "../../../../../features/events/registration/runtime";
 
 export const dynamic = "force-dynamic";
 
 const handlers = createEventRegistrationRouteHandlers({
+  readRegistrationAvailability: readRuntimeEventRegistrationAvailability,
   resolveAdmissionControl: resolveConfiguredEventAdmissionRegistrationControl,
+  resolveAdmissionState: resolveConfiguredEventAdmissionRegistrationState,
   async resolveActor() {
     const session = await auth();
     return session?.user?.id

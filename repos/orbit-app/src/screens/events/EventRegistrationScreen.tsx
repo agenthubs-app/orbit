@@ -13,6 +13,7 @@ import {
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import {
+  eventAdmissionApplicationPath,
   publicEventDetailPath,
   eventRegistrationCancelPath,
   eventRegistrationInterviewPath,
@@ -32,7 +33,9 @@ import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
   buildEventRegistrationAdaptiveBody,
   buildEventRegistrationAnswers,
+  eventAdmissionWithdrawalMatches,
   eventRegistrationAdaptiveStepToView,
+  eventRegistrationAuthorityKey,
   eventRegistrationPersonaToView,
   eventRegistrationQuestionKey,
   eventRegistrationReceiptMatches,
@@ -179,6 +182,24 @@ export function EventRegistrationScreen() {
     return controller;
   }
 
+  function beginRegistrationAction(
+    action: "cancel" | "reactivate" | "register" | "update" | "withdraw"
+  ) {
+    const current = formView.current;
+    const latest = latestView.current;
+    if (
+      !current ||
+      !latest ||
+      (current.allowedActions !== undefined &&
+        !current.allowedActions.includes(action)) ||
+      eventRegistrationAuthorityKey(current) !==
+        eventRegistrationAuthorityKey(latest)
+    ) {
+      return null;
+    }
+    return beginRequest(action !== "cancel" && action !== "withdraw");
+  }
+
   function finishRequest(controller: AbortController) {
     if (!isScopeCurrent() || request.current !== controller) return;
     request.current = null;
@@ -320,7 +341,10 @@ export function EventRegistrationScreen() {
     if (!registrationView) {
       return;
     }
-    const controller = beginRequest();
+    const action = registrationView.allowedActions?.find((value) =>
+      value === "register" || value === "reactivate" || value === "update"
+    ) ?? "register";
+    const controller = beginRegistrationAction(action);
     if (!controller) return;
     const revision = editRevision.current;
 
@@ -332,6 +356,7 @@ export function EventRegistrationScreen() {
       signal: controller.signal,
       body: {
         answers: buildEventRegistrationAnswers(registrationView.questions, answers),
+        intent: action,
         ...(registrationView.questionSetHash &&
         registrationView.questionSetVersion !== null
           ? {
@@ -345,7 +370,7 @@ export function EventRegistrationScreen() {
     if (!isScopeCurrent() || request.current !== controller) return;
 
     if (result.success && result.status >= 200 && result.status < 300 &&
-      eventRegistrationReceiptMatches(result.data, eventId, actorId, "rsvped")) {
+      eventRegistrationReceiptMatches(result.data, eventId, actorId, "rsvped", action)) {
       if (editRevision.current === revision) dirty.current = false;
       setFeedback("报名资料已保存。");
       eventState.refresh();
@@ -358,19 +383,52 @@ export function EventRegistrationScreen() {
   }
 
   async function cancelRegistration() {
-    const controller = beginRequest(false);
+    const action = registrationView?.allowedActions?.includes("withdraw")
+      ? "withdraw"
+      : "cancel";
+    const controller = beginRegistrationAction(action);
     if (!controller) return;
     setPendingAction("cancel");
     setSubmitError(null);
     setFeedback(null);
 
-    const result = await client.post<unknown>(eventRegistrationCancelPath(eventId), { signal: controller.signal });
+    const expectedApplicationVersion = registrationView?.applicationVersion;
+    if (action === "withdraw" && expectedApplicationVersion === null) {
+      finishRequest(controller);
+      setSubmitError("无法确认当前申请版本，请刷新后再试。");
+      return;
+    }
+    const result = action === "withdraw"
+      ? await client.delete<unknown>(eventAdmissionApplicationPath(eventId), {
+          body: { expectedApplicationVersion },
+          signal: controller.signal
+        })
+      : await client.post<unknown>(eventRegistrationCancelPath(eventId), {
+          body: {
+            expectedRegistrationVersion: registrationView?.registrationVersion ?? null,
+            intent: "cancel"
+          },
+          signal: controller.signal
+        });
 
     if (!isScopeCurrent() || request.current !== controller) return;
 
-    if (result.success && result.status >= 200 && result.status < 300 &&
-      eventRegistrationReceiptMatches(result.data, eventId, actorId, "cancelled")) {
-      setFeedback("已取消报名。");
+    const receiptMatches = action === "withdraw"
+      ? eventAdmissionWithdrawalMatches(
+          result.success ? result.data : null,
+          eventId,
+          actorId,
+          expectedApplicationVersion ?? 0
+        )
+      : eventRegistrationReceiptMatches(
+          result.success ? result.data : null,
+          eventId,
+          actorId,
+          "cancelled",
+          "cancel"
+        );
+    if (result.success && result.status >= 200 && result.status < 300 && receiptMatches) {
+      setFeedback(action === "withdraw" ? "已撤回申请。" : "已取消报名。");
       eventState.refresh();
       registrationState.refresh();
     } else {
@@ -553,11 +611,11 @@ function RegistrationForm({
         {feedback ? <Text style={styles.feedbackText}>{feedback}</Text> : null}
         <Pressable
           accessibilityRole="button"
-          disabled={pendingAction !== null || adaptivePending !== null || questionsChanged || !readConfirmed}
+          disabled={pendingAction !== null || adaptivePending !== null || questionsChanged || !readConfirmed || registration.canSubmit === false}
           onPress={onSubmit}
           style={({ pressed }) => [
             styles.primaryButton,
-            pendingAction || !readConfirmed ? styles.disabled : null,
+            pendingAction || !readConfirmed || registration.canSubmit === false ? styles.disabled : null,
             pressed ? styles.pressed : null
           ]}
         >
@@ -579,7 +637,7 @@ function RegistrationForm({
           >
             <Ionicons color={colors.rose} name="close-outline" size={18} />
             <Text style={styles.cancelButtonText}>
-              {pendingAction === "cancel" ? "取消中" : "取消报名"}
+              {pendingAction === "cancel" ? "取消中" : registration.cancelLabel ?? "取消报名"}
             </Text>
           </Pressable>
         ) : null}

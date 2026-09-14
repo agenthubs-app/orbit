@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   eventRegistrationCancelPath,
+  eventAdmissionApplicationPath,
   eventRegistrationInterviewPath,
   eventRegistrationPersonaPath,
   eventRegistrationPath
@@ -10,11 +11,73 @@ import {
   buildEventRegistrationAdaptiveBody,
   buildEventRegistrationAnswers,
   eventRegistrationAdaptiveStepToView,
+  eventAdmissionWithdrawalMatches,
+  eventRegistrationAuthorityKey,
   eventRegistrationPersonaToView,
   eventRegistrationQuestionKey,
   eventRegistrationReceiptMatches,
   eventRegistrationToView
 } from "../src/view-models/event-registration";
+
+test("registration eligibility maps every server state without using the device clock", () => {
+  const rows = [
+    ["not_open", [], "报名尚未开放", false, "等待开放"],
+    ["registration_closed", [], "报名已截止", false, "报名已截止"],
+    ["event_ended", [], "活动已结束", false, "活动已结束"],
+    ["event_cancelled", [], "活动已取消", false, "活动已取消"],
+    ["full", [], "名额已满", false, "名额已满"],
+    ["pending_review", ["withdraw"], "待审核", true, "等待审核"],
+    ["waitlisted", ["withdraw"], "候补中", true, "当前候补"],
+    ["registered", ["cancel"], "已报名", true, "报名资料不可修改"],
+    ["registration_cancelled", ["reactivate"], "已取消", false, "重新报名"],
+    ["unavailable", [], "资格暂不可用", false, "暂不可操作"],
+  ] as const;
+
+  for (const [state, allowedActions, label, canCancel, actionLabel] of rows) {
+    const view = eventRegistrationToView({
+      eligibility: {
+        allowedActions,
+        applicationVersion: state === "pending_review" ? 2 : null,
+        evaluatedAt: "2038-01-19T03:14:07.000Z",
+        policyVersion: null,
+        reason: state,
+        registrationVersion: "2026-09-15T00:00:00.000Z",
+        state,
+      },
+      questionSet: { questions: [] },
+      registration: null,
+    });
+    assert.equal(view.statusLabel, label);
+    assert.equal(view.canCancel, canCancel);
+    assert.equal(view.confirmLabel, actionLabel);
+    assert.deepEqual(view.allowedActions, allowedActions);
+    assert.equal(view.eligibilityEvaluatedAt, "2038-01-19T03:14:07.000Z");
+  }
+});
+
+test("registration authority identity changes with permissions and server versions", () => {
+  const view = eventRegistrationToView({
+    eligibility: {
+      allowedActions: ["update", "cancel"],
+      applicationVersion: null,
+      evaluatedAt: "2026-09-15T00:00:00.000Z",
+      policyVersion: null,
+      reason: "registered",
+      registrationVersion: "version:1",
+      state: "registered",
+    },
+    questionSet: { questions: [] },
+    registration: { status: "rsvped" },
+  });
+  assert.notEqual(
+    eventRegistrationAuthorityKey(view),
+    eventRegistrationAuthorityKey({
+      ...view,
+      allowedActions: ["cancel"],
+      registrationVersion: "version:2",
+    }),
+  );
+});
 
 test("registration question identity excludes answers but tracks published and legacy question changes", () => {
   const view = eventRegistrationToView({ questionSet: { questionSetHash: "a".repeat(64), questionSetVersion: 1, questions: [{ id: "target_attendees", participantProfileField: "targetAttendees", prompt: "Who?", required: true, options: ["Founders"] }] } });
@@ -34,7 +97,36 @@ test("registration receipt must belong to the current actor and event with the i
   for (const data of [null, [], {}, "success"]) assert.equal(eventRegistrationReceiptMatches(data, "event:1", "actor:1", "rsvped"), false);
 });
 
+test("registration mutation receipts and admission withdrawals must match the current action version", () => {
+  const receipt = {
+    eventId: "event:1",
+    id: "registration:1",
+    mutationReceipt: {
+      action: "update",
+      actorId: "actor:1",
+      eventId: "event:1",
+      recordId: "registration:1",
+      registrationVersion: "version:2"
+    },
+    participantProfile: {
+      answers: {}, eventId: "event:1", id: "profile:1", userId: "actor:1"
+    },
+    participantProfileId: "profile:1",
+    status: "rsvped",
+    updatedAt: "version:2",
+    userId: "actor:1"
+  };
+  assert.equal(eventRegistrationReceiptMatches(receipt, "event:1", "actor:1", "rsvped", "update"), true);
+  assert.equal(eventRegistrationReceiptMatches(receipt, "event:1", "actor:1", "rsvped", "reactivate"), false);
+  assert.equal(eventAdmissionWithdrawalMatches({ actorId: "actor:1", eventId: "event:1", status: "withdrawn", applicationVersion: 3 }, "event:1", "actor:1", 2), true);
+  assert.equal(eventAdmissionWithdrawalMatches({ actorId: "actor:1", eventId: "event:1", status: "withdrawn", applicationVersion: 2 }, "event:1", "actor:1", 2), false);
+});
+
 test("event registration endpoint helpers URL-encode ids", () => {
+  assert.equal(
+    eventAdmissionApplicationPath("event/with space"),
+    "/api/events/event%2Fwith%20space/admission/application"
+  );
   assert.equal(
     eventRegistrationPath("event/with space"),
     "/api/events/event%2Fwith%20space/registration"

@@ -93,6 +93,13 @@ test("event registration routes create cancel and reactivate the same record", a
   assert.equal(firstResponse.status, 200);
   assert.equal(firstBody.success, true);
   assert.equal(firstBody.data.status, "rsvped");
+  assert.deepEqual(firstBody.data.mutationReceipt, {
+    action: "register",
+    actorId: actor.id,
+    eventId,
+    recordId: firstBody.data.id,
+    registrationVersion: firstBody.data.updatedAt,
+  });
 
   const cancelResponse = await cancelRegistration(
     new Request(
@@ -106,6 +113,8 @@ test("event registration routes create cancel and reactivate the same record", a
   assert.equal(cancelResponse.status, 200);
   assert.equal(cancelBody.data.id, firstBody.data.id);
   assert.equal(cancelBody.data.status, "cancelled");
+  assert.equal(cancelBody.data.mutationReceipt.action, "cancel");
+  assert.equal(cancelBody.data.mutationReceipt.registrationVersion, cancelBody.data.updatedAt);
 
   const reactivatedResponse = await register(
     new Request(`http://orbit.local/api/events/${eventId}/registration`, {
@@ -126,6 +135,27 @@ test("event registration routes create cancel and reactivate the same record", a
   assert.equal(reactivatedBody.data.id, firstBody.data.id);
   assert.equal(reactivatedBody.data.status, "rsvped");
   assert.ok(reactivatedBody.data.reactivatedAt);
+  assert.equal(reactivatedBody.data.mutationReceipt.action, "reactivate");
+
+  const duplicateResponse = await register(
+    new Request(`http://orbit.local/api/events/${eventId}/registration`, {
+      body: JSON.stringify({
+        answers: {
+          targetAttendees: "Two climate operators",
+          valueOffered: "A working relationship graph",
+        },
+        intent: "reactivate",
+      }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    }),
+    context,
+  );
+  const duplicateBody = await duplicateResponse.json();
+  assert.equal(duplicateResponse.status, 200);
+  assert.equal(duplicateBody.data.id, reactivatedBody.data.id);
+  assert.equal(duplicateBody.data.updatedAt, reactivatedBody.data.updatedAt);
+  assert.equal(duplicateBody.data.mutationReceipt.action, "reactivate");
 
   const stateResponse = await getRegistration(
     new Request(
@@ -138,6 +168,65 @@ test("event registration routes create cancel and reactivate the same record", a
   assert.equal(stateResponse.status, 200);
   assert.equal(stateBody.data.registration.id, firstBody.data.id);
   assert.deepEqual(stateBody.data.questionSet.questions, []);
+});
+
+test("registration GET returns the server-evaluated allowed actions and record version", async () => {
+  const provider = createMemoryEventRegistrationProvider();
+  const service = createEventRegistrationService({
+    now: () => "2026-09-15T01:00:00.000Z",
+    provider,
+  });
+  await service.register({
+    answers: {
+      targetAttendees: "Climate operators",
+      valueOffered: "A working relationship graph",
+    },
+    eventId,
+    userId: actor.id,
+  });
+  const { GET } = createEventRegistrationRouteHandlers({
+    getPublishedQuestionSet: noPublishedQuestionSet,
+    loadEvent: loadRegistrationEvent,
+    now: () => new Date("2026-09-15T01:00:00.000Z"),
+    readRegistrationAvailability: async () => "open",
+    registrationService: service,
+    resolveActor: async () => actor,
+    resolveAdmissionState: async () => ({ state: "legacy" }),
+  });
+
+  const response = await GET(
+    new Request(`http://orbit.local/api/events/${eventId}/registration?questions=false`),
+    context,
+  );
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(body.data.eligibility.allowedActions, ["update", "cancel"]);
+  assert.equal(body.data.eligibility.state, "registered");
+  assert.equal(body.data.eligibility.evaluatedAt, "2026-09-15T01:00:00.000Z");
+  assert.equal(body.data.eligibility.registrationVersion, body.data.registration.updatedAt);
+});
+
+test("registration GET fails closed with a JSON envelope when admission state cannot be read", async () => {
+  const { GET } = createEventRegistrationRouteHandlers({
+    getPublishedQuestionSet: noPublishedQuestionSet,
+    loadEvent: loadRegistrationEvent,
+    registrationService,
+    resolveActor: async () => actor,
+    async resolveAdmissionState() {
+      throw new Error("synthetic admission read failure");
+    },
+  });
+
+  const response = await GET(
+    new Request(`http://orbit.local/api/events/${eventId}/registration?questions=false`),
+    context,
+  );
+  const body = await response.json();
+
+  assert.equal(response.status, 503);
+  assert.equal(body.success, false);
+  assert.equal(body.error.code, "SERVICE_UNAVAILABLE");
 });
 
 test("plain registration answers cannot bypass the two required questions", async () => {
@@ -175,6 +264,43 @@ test("cancelling without a registration returns a stable not-found envelope", as
   assert.equal(response.status, 404);
   assert.equal(body.success, false);
   assert.equal(body.error.code, "NOT_FOUND");
+});
+
+test("versioned cancellation rejects stale active state but accepts an idempotent retry", async () => {
+  let now = "2026-09-15T01:00:00.000Z";
+  const service = createEventRegistrationService({
+    now: () => now,
+    provider: createMemoryEventRegistrationProvider(),
+  });
+  const active = await service.register({ eventId, userId: actor.id });
+  const handler = createEventRegistrationCancelRouteHandler({
+    registrationService: service,
+    resolveActor: async () => actor,
+  });
+  const request = (expectedRegistrationVersion: string, intent = "cancel") =>
+    new Request(`http://orbit.local/api/events/${eventId}/registration/cancel`, {
+      body: JSON.stringify({ expectedRegistrationVersion, intent }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    });
+
+  const stale = await handler(request("version:stale"), context);
+  assert.equal(stale.status, 409);
+  assert.equal((await service.get({ eventId, userId: actor.id }))?.status, "rsvped");
+
+  const invalid = await handler(request(active.updatedAt, "withdraw"), context);
+  assert.equal(invalid.status, 422);
+
+  now = "2026-09-15T01:01:00.000Z";
+  const first = await handler(request(active.updatedAt), context);
+  const firstBody = await first.json();
+  const retry = await handler(request(active.updatedAt), context);
+  const retryBody = await retry.json();
+  assert.equal(first.status, 200);
+  assert.equal(retry.status, 200);
+  assert.equal(retryBody.data.id, firstBody.data.id);
+  assert.equal(retryBody.data.updatedAt, firstBody.data.updatedAt);
+  assert.equal(retryBody.data.mutationReceipt.registrationVersion, firstBody.data.updatedAt);
 });
 
 test("event registration route rejects requests without an authenticated actor", async () => {
