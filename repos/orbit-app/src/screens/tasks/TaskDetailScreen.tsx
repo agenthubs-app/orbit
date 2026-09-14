@@ -1,3 +1,5 @@
+import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
+import { localParts } from "../../time/date-time";
 import { Ionicons } from "@expo/vector-icons";
 import * as Crypto from "expo-crypto";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
@@ -29,21 +31,23 @@ function mutationKey() {
   return `ios:task:${Crypto.randomUUID()}`;
 }
 
-function dateLabel(value?: string): string {
+function dateLabel(value: string | undefined, timeZone: string): string {
   if (!value) return "未安排日期";
   const hasTime = value.length !== 10;
-  const parsed = new Date(hasTime ? value : `${value}T12:00:00+09:00`);
+  const parsed = new Date(hasTime ? value : `${value}T12:00:00Z`);
   return new Intl.DateTimeFormat("zh-CN", {
     day: "numeric",
     hour: hasTime ? "2-digit" : undefined,
     minute: hasTime ? "2-digit" : undefined,
     month: "long",
-    timeZone: "Asia/Tokyo",
+    timeZone: hasTime ? timeZone : "UTC",
     weekday: "short",
   }).format(parsed);
 }
 
 export function TaskDetailScreen() {
+  const { timeZone, canSave } = useOrbitTimeZone();
+  const [editTimeZone, setEditTimeZone] = useState(timeZone);
   const { colors, styles } = useStyles();
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
@@ -68,11 +72,11 @@ export function TaskDetailScreen() {
   const activitiesState = useApiResource<unknown>(activitiesPath, () => false, { scopeKey });
   const remindersState = useApiResource<unknown>(reminderResourcePath, () => false, { scopeKey });
   const detail = ready && (detailState.kind === "success" || detailState.kind === "empty") ? taskDetailToView(detailState.data) : null;
-  const activities = activitiesState.kind === "success" || activitiesState.kind === "empty" ? taskActivitiesToView(activitiesState.data) : [];
+  const activities = activitiesState.kind === "success" || activitiesState.kind === "empty" ? taskActivitiesToView(activitiesState.data, timeZone) : [];
   const reminders = remindersState.kind === "success" || remindersState.kind === "empty"
-    ? reminderPlansToView(remindersState.data).filter((item) => item.status === "scheduled")
+    ? reminderPlansToView(remindersState.data, timeZone).filter((item) => item.status === "scheduled")
     : [];
-  const quickReminderOptions = useMemo(() => reminderQuickOptions(new Date()), []);
+  const quickReminderOptions = useMemo(() => reminderQuickOptions(new Date(), timeZone), [timeZone]);
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [dateDraft, setDateDraft] = useState(() => taskDateDraftFromView(null));
@@ -94,6 +98,7 @@ export function TaskDetailScreen() {
     // Reset before the new scope is committed, including same-ID/same-version
     // tasks from another account. An effect-only reset can expose the old form.
     setEditorScope(mutationScope);
+    setEditTimeZone(timeZone);
     setBaseline(null); setLatest(null); setTitle(""); setNotes("");
     setDateDraft(taskDateDraftFromView(null));
     setMoreOpen(false); setSaving(false); setMutationError(null); setReminderMessage(null);
@@ -150,17 +155,27 @@ export function TaskDetailScreen() {
     latestRef.current = detail;
     setLatest(detail);
     if (!baseline || baseline.id !== detail.id || (
-      baseline.updatedAt !== detail.updatedAt && title === baseline.title && notes === baseline.notes && buildTaskDatePatch(baseline, dateDraft).kind === "unchanged"
+      baseline.updatedAt !== detail.updatedAt && title === baseline.title && notes === baseline.notes && buildTaskDatePatch(baseline, dateDraft, editTimeZone).kind === "unchanged"
     )) {
+      setEditTimeZone(timeZone);
       setBaseline(detail);
       setTitle(detail.title);
       setNotes(detail.notes);
-      dateDraftRef.current = taskDateDraftFromView(detail);
+      dateDraftRef.current = taskDateDraftFromView(detail, timeZone);
       setDateDraft(dateDraftRef.current);
     }
     // Only a newly received revision may replace the editor. A successful
     // write can arrive before the GET resource refreshes its older snapshot.
   }, [detail?.id, detail?.updatedAt, mutationScope]);
+  useEffect(() => {
+    if (!baseline || timeZone === editTimeZone || saving) return;
+    const clean = title === baseline.title && notes === baseline.notes && buildTaskDatePatch(baseline, dateDraft, editTimeZone).kind === "unchanged";
+    if (clean) {
+      setEditTimeZone(timeZone);
+      dateDraftRef.current = taskDateDraftFromView(baseline, timeZone);
+      setDateDraft(dateDraftRef.current);
+    }
+  }, [timeZone, editTimeZone, baseline, title, notes, dateDraft, saving]);
   const staleDraft = !!baseline && !!latest && baseline.id === latest.id && baseline.updatedAt !== latest.updatedAt;
   const displayedDate = (latest ?? detail)?.dueAt ?? (latest ?? detail)?.plannedDate;
 
@@ -172,8 +187,9 @@ export function TaskDetailScreen() {
 
   function discardDraft() {
     if (!latest || saving) return;
+    setEditTimeZone(timeZone);
     setBaseline(latest); setTitle(latest.title); setNotes(latest.notes);
-    dateDraftRef.current = taskDateDraftFromView(latest);
+    dateDraftRef.current = taskDateDraftFromView(latest, timeZone);
     setDateDraft(dateDraftRef.current); setMutationError(null);
   }
 
@@ -184,10 +200,11 @@ export function TaskDetailScreen() {
   }
 
   async function saveDates() {
+    if (!canSave) { setMutationError("无法读取设备时区，草稿已保留。请恢复时区后保存。"); return; }
     if (!ready || scopeRef.current !== mutationScope || !mutationScope.active || dateDraftRef.current !== dateDraft) return;
     if (!detail || !baseline || baseline.id !== taskId || detail.status === "cancelled" || staleDraft || saving) return;
     if (latestRef.current?.id !== baseline.id || latestRef.current.updatedAt !== baseline.updatedAt) return;
-    const change = buildTaskDatePatch(baseline, dateDraft);
+    const change = buildTaskDatePatch(baseline, dateDraft, editTimeZone);
     if (change.kind === "invalid") { setMutationError(change.message); return; }
     if (change.kind === "unchanged") { setMutationError(null); return; }
     const revisionAtStart = latest?.updatedAt;
@@ -197,7 +214,7 @@ export function TaskDetailScreen() {
       const updated = taskDetailToView(data)!; // Accepted below before acknowledging.
       if (latestRef.current?.updatedAt === revisionAtStart) setLatest(updated);
       setBaseline(updated);
-      dateDraftRef.current = taskDateDraftFromView(updated);
+      dateDraftRef.current = taskDateDraftFromView(updated, editTimeZone);
       setDateDraft(dateDraftRef.current);
       // Title and notes may still be unsaved. Their draft belongs to the user.
       refresh();
@@ -252,6 +269,7 @@ export function TaskDetailScreen() {
   }
 
   async function addReminder(fireAt: string) {
+    if (!canSave) { setReminderMessage("无法读取设备时区，请稍后设置提醒。"); return; }
     if (!detail) return;
     let systemEnabled = false;
     await mutate("post", ORBIT_API_ENDPOINTS.reminders, async () => {
@@ -266,7 +284,7 @@ export function TaskDetailScreen() {
         fireAt,
         targetId: taskId,
         targetType: "task",
-        timeZone: "Asia/Tokyo",
+        timeZone,
         title: "待办提醒",
       };
     }, () => {
@@ -317,7 +335,7 @@ export function TaskDetailScreen() {
                 style={[styles.titleInput, { minHeight: Math.max(32 * fontScale, titleHeight) }]} value={title} />
               <View style={styles.badges}>
                 <Text style={styles.statusText}>{detail.status === "open" ? "未完成" : detail.statusLabel}</Text>
-                {displayedDate ? <Text style={styles.dateBadge}>{taskDateLabel(displayedDate)}</Text> : null}
+                {displayedDate ? <Text style={styles.dateBadge}>{taskDateLabel(displayedDate, timeZone)}</Text> : null}
               </View>
             </View>
           </View>
@@ -332,7 +350,7 @@ export function TaskDetailScreen() {
           <View style={styles.metadataGroup}>
             <Pressable accessibilityLabel="编辑日期和时间" accessibilityRole="button" onPress={() => setMoreOpen(true)} style={styles.metadataRow}>
               <Text style={metadataLabelStyle}>{(latest ?? detail).dueAt ? "截止" : "安排"}</Text>
-              <Text style={styles.metadataValue}>{taskDateLabel(displayedDate)}</Text>
+              <Text style={styles.metadataValue}>{taskDateLabel(displayedDate, timeZone)}</Text>
               <Ionicons color={colors.text4} name="chevron-forward" size={17} />
             </Pressable>
             {detail.relatedContactId ? <Pressable accessibilityLabel="查看关联人脉" accessibilityRole="button" onPress={() => router.push(`/contacts/${encodeURIComponent(detail.relatedContactId!)}` as Href)} style={styles.metadataRow}>
@@ -351,7 +369,7 @@ export function TaskDetailScreen() {
             </View> : null}
             {detail.createdAt ? <View style={styles.metadataRow}>
               <Text style={metadataLabelStyle}>创建于</Text>
-              <Text style={styles.metadataValue}>{createdDateLabel(detail.createdAt)}</Text>
+              <Text style={styles.metadataValue}>{createdDateLabel(detail.createdAt, timeZone)}</Text>
             </View> : null}
             <View style={styles.metadataRow}>
               <Text style={metadataLabelStyle}>分类</Text>
@@ -387,18 +405,19 @@ export function TaskDetailScreen() {
                 </View>
                 <ScrollView automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" contentContainerStyle={styles.sheetBody}>
                   {mutationError ? <Text accessibilityRole="alert" style={styles.errorText}>{mutationError}</Text> : null}
-                  {staleDraft ? <View>
+                  {timeZone !== editTimeZone ? <Text accessibilityRole="alert">此草稿按原时区 {editTimeZone} 保存。</Text> : null}
+              {staleDraft ? <View>
                     <Text accessibilityRole="alert" style={styles.errorText}>这条待办已有新版本，草稿已保留。请复制需要保留的内容，再载入最新版本。</Text>
                     <Pressable accessibilityRole="button" disabled={saving} onPress={discardDraft} style={styles.sheetRow}>
                       <Text style={styles.sheetRowAction}>放弃草稿并载入最新内容</Text>
                     </Pressable>
                   </View> : null}
                   <Text style={styles.sheetSection}>日期和时间</Text>
-                  <Text style={styles.dateHint}>没有具体时间时，只填写安排日期。截止时间使用东京时间。</Text>
+                  <Text style={styles.dateHint}>没有具体时间时，只填写安排日期。截止时间使用 {editTimeZone}。</Text>
                   {([
                     ["plannedDate", "安排日期", "YYYY-MM-DD"],
                     ["dueDate", "截止日期", "YYYY-MM-DD"],
-                    ["dueTime", "截止时间（东京）", "HH:mm"],
+                    ["dueTime", "截止时间", "HH:mm"],
                   ] as const).map(([field, label, placeholder]) => <View key={field} style={styles.dateField}>
                     <Text style={styles.dateFieldLabel}>{label}</Text>
                     <TextInput accessibilityLabel={label} autoCapitalize="none" autoCorrect={false} editable={!saving && detail.status !== "cancelled"}
@@ -461,20 +480,19 @@ export function TaskDetailScreen() {
   );
 }
 
-function taskDateLabel(value?: string): string {
+function taskDateLabel(value: string | undefined, timeZone: string): string {
   if (!value) return "未安排日期";
   const now = new Date();
   const date = new Date(value.length === 10 ? `${value}T12:00:00+09:00` : value);
   if (!Number.isFinite(date.getTime())) return "日期不可用";
-  const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" });
-  if (day.format(date) === day.format(now)) {
-    return value.length === 10 ? "今天" : `今天 ${new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(date)}`;
+  if ((value.length === 10 ? value : localParts(date, timeZone).date) === localParts(now, timeZone).date) {
+    return value.length === 10 ? "今天" : `今天 ${new Intl.DateTimeFormat("zh-CN", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(date)}`;
   }
-  return dateLabel(value);
+  return dateLabel(value, timeZone);
 }
 
-function createdDateLabel(value: string): string {
-  const parts = new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(value));
+function createdDateLabel(value: string, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("zh-CN", { timeZone, month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(value));
   const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(item => item.type === type)?.value ?? "";
   return `${part("month")}月${part("day")}日 ${part("hour")}:${part("minute")}`;
 }

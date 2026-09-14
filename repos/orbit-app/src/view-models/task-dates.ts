@@ -1,5 +1,6 @@
 import type { TaskItemContract } from "../api/contract/tasks";
 import { taskDetailToView } from "./today-tasks";
+import { resolveLocalDateTime, validTimeZone } from "../time/date-time";
 
 export type TaskDateDraft = { plannedDate: string; dueDate: string; dueTime: string };
 export type TaskDatePatch = Pick<TaskItemContract, "plannedDate" | "dueAt">;
@@ -18,15 +19,16 @@ function isDateTime(value: unknown): value is string {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value));
 }
 
-export function taskDateDraftFromView(view: TaskDates | null): TaskDateDraft {
+export function taskDateDraftFromView(view: TaskDates | null, timeZone = "Asia/Tokyo"): TaskDateDraft {
   const draft = { plannedDate: view?.plannedDate ?? "", dueDate: "", dueTime: "" };
   if (!isDateTime(view?.dueAt)) return draft;
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(view.dueAt));
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(view.dueAt));
   const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(item => item.type === type)?.value ?? "";
   return { ...draft, dueDate: `${part("year")}-${part("month")}-${part("day")}`, dueTime: `${part("hour")}:${part("minute")}` };
 }
 
-export function buildTaskDatePatch(baseline: TaskDates, draft: TaskDateDraft): TaskDateChange {
+export function buildTaskDatePatch(baseline: TaskDates, draft: TaskDateDraft, timeZone = "Asia/Tokyo"): TaskDateChange {
+  if (!validTimeZone(timeZone)) return { kind: "invalid", message: "无法读取设备时区，草稿已保留。请恢复时区后保存。" };
   const plannedDate = draft.plannedDate.trim();
   const dueDate = draft.dueDate.trim();
   const dueTime = draft.dueTime.trim();
@@ -36,12 +38,14 @@ export function buildTaskDatePatch(baseline: TaskDates, draft: TaskDateDraft): T
   if (Boolean(dueDate) !== Boolean(dueTime)) return { kind: "invalid", message: "截止日期和时间需要一起填写。不确定时间时，可只填写安排日期。" };
   if (dueDate && !isLocalDate(dueDate)) return { kind: "invalid", message: "请输入有效的截止日期，格式为 YYYY-MM-DD。" };
   if (dueTime && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(dueTime)) return { kind: "invalid", message: "截止时间请使用 24 小时制，格式为 HH:mm。" };
-  const previous = taskDateDraftFromView(baseline);
+  const previous = taskDateDraftFromView(baseline, timeZone);
   const patch: TaskDatePatch = {};
   if (plannedDate !== previous.plannedDate) patch.plannedDate = plannedDate;
   // Do not overwrite seconds/offset when the minute-resolution editor is unchanged.
   if (dueDate && (dueDate !== previous.dueDate || dueTime !== previous.dueTime)) {
-    patch.dueAt = new Date(`${dueDate}T${dueTime}:00+09:00`).toISOString();
+    const dueAt = resolveLocalDateTime(dueDate, dueTime, timeZone);
+    if (!dueAt) return { kind: "invalid", message: "此当地时间不存在或有两个可能的时刻，请选择明确的时间。草稿已保留。" };
+    patch.dueAt = dueAt;
   }
   return Object.keys(patch).length ? { kind: "ready", patch } : { kind: "unchanged" };
 }

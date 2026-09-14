@@ -73,13 +73,14 @@ function previewNextAction(value: string): string {
 }
 
 export function scheduleEventPreviewToView(
-  data: unknown
+  data: unknown,
+  timeZone = "Asia/Tokyo"
 ): ScheduleEventPreviewView {
   if (!data) {
     return failureView();
   }
 
-  const event = eventDetailToSummary(data);
+  const event = eventDetailToSummary(data, timeZone);
 
   if (!event.id || event.id === "event") {
     return failureView();

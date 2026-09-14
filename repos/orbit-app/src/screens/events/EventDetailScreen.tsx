@@ -1,3 +1,4 @@
+import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -90,7 +91,8 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
   const rawState = useApiResource<unknown>(publicEventDetailPath(eventId), () => false, { scopeKey: JSON.stringify([scopeKey ?? "public-event-detail", eventId]) });
   const state = validateApiResourceState(rawState, publicEventDetailSchema);
   const data = state.kind === "success" || state.kind === "empty" ? state.data : null;
-  const event = data ? publicEventDetailToSummary(data) : null;
+  const { timeZone } = useOrbitTimeZone();
+  const event = data ? publicEventDetailToSummary(data, timeZone) : null;
   const [personalizedRefreshKey, setPersonalizedRefreshKey] = useState(0);
   const sharing = useRef(false);
   const [sharePending, setSharePending] = useState(false);
@@ -112,7 +114,7 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
     sharing.current = true;
     setSharePending(true);
     setShareError(null);
-    const timing = eventDetailTiming(data.event.startsAt, data.event.endsAt);
+    const timing = eventDetailTiming(data.event.startsAt, data.event.endsAt, timeZone);
     try {
       await Share.share({ message: `${event.title}\n${timing.date} ${timing.time}\n${event.location || "地点待定"}` });
     } catch {
@@ -163,8 +165,8 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
   );
 }
 
-function publicEventDetailToSummary(data: PublicEventDetail): EventDetailSummary {
-  const event = eventDetailToSummary(data);
+function publicEventDetailToSummary(data: PublicEventDetail, timeZone: string): EventDetailSummary {
+  const event = eventDetailToSummary(data, timeZone);
   const canonical = data.event.sourceMetadata?.label === "event-core-postgres";
   // The public catalogue encodes its ended phase as cancelled. Do not apply
   // that compatibility rule to genuinely cancelled records from other sources.
@@ -186,10 +188,10 @@ function publicEventDetailToSummary(data: PublicEventDetail): EventDetailSummary
   };
 }
 
-function eventDetailTiming(startsAt: string, endsAt: string) {
-  const dateFormatter = new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric" });
-  const weekdayFormatter = new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Tokyo", weekday: "short" });
-  const timeFormatter = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+function eventDetailTiming(startsAt: string, endsAt: string, timeZone: string) {
+  const dateFormatter = new Intl.DateTimeFormat("zh-CN", { timeZone, month: "numeric", day: "numeric" });
+  const weekdayFormatter = new Intl.DateTimeFormat("zh-CN", { timeZone, weekday: "short" });
+  const timeFormatter = new Intl.DateTimeFormat("en-GB", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
   const start = new Date(startsAt); const end = new Date(endsAt);
   const parts = dateFormatter.formatToParts(start);
   const value = (type: Intl.DateTimeFormatPartTypes) => parts.find(part => part.type === type)?.value ?? "";
@@ -280,13 +282,14 @@ function EventDetailCard({
 }) {
   const { colors, styles } = useStyles();
   const { width, fontScale } = useWindowDimensions();
-  const event = publicEventDetailToSummary(data);
+  const { timeZone } = useOrbitTimeZone();
+  const event = publicEventDetailToSummary(data, timeZone);
   const hero = eventDetailHeroToView(event);
   const heroStatus = publicEventDetailStatus(hero.status);
   const heroSummary = publicEventDetailSummary(hero.summary);
   const attendeesHref = `/events/${encodeURIComponent(event.id)}/attendees` as Href;
   const partyHref = `/party?eventId=${encodeURIComponent(event.id)}` as Href;
-  const timing = eventDetailTiming(data.event.startsAt, data.event.endsAt);
+  const timing = eventDetailTiming(data.event.startsAt, data.event.endsAt, timeZone);
   const narrow = width < 360 || fontScale >= 1.4;
   const attendeeCount = data.event.stats?.count ?? data.event.participantCount;
   const participantLabel = attendeeCount === undefined ? event.participantCountLabel : `${attendeeCount} 人已报名`;

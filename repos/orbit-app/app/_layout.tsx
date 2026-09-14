@@ -1,3 +1,4 @@
+import { OrbitTimeZoneProvider } from "../src/time/OrbitTimeZoneProvider";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { OrbitAuthSessionProvider } from "../src/api/AuthSessionProvider";
@@ -32,10 +33,12 @@ export default function RootLayout() {
       <AppErrorBoundary>
         <OrbitApiBaseUrlProvider>
           <OrbitAuthSessionProvider>
+            <OrbitTimeZoneProvider>
             <OrbitNotificationsCoordinator />
             <OrbitNotificationLifecycle />
             <OrbitRouteAccessBoundary />
             <StatusBar style={scheme === "dark" ? "light" : "dark"} />
+          </OrbitTimeZoneProvider>
           </OrbitAuthSessionProvider>
         </OrbitApiBaseUrlProvider>
       </AppErrorBoundary>

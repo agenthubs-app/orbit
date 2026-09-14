@@ -1,8 +1,8 @@
+import { localDayStart, shiftCalendarDate } from "../time/date-time";
 import { contactsToSummaries, type ContactSummary } from "./contacts";
 import { todayToView, type TodayTaskRowView } from "./today-tasks";
 import type { ScheduleItemContract } from "../api/contract/tasks";
 
-const timeZone = "Asia/Tokyo";
 const categories = ["relationship", "meeting", "event", "work", "personal", "other"];
 const weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
 
@@ -26,7 +26,7 @@ function validTimestamp(value: unknown): value is string {
     Number.isFinite(Date.parse(value));
 }
 
-function tokyoDate(value: Date): string {
+function tokyoDate(value: Date, timeZone: string): string {
   const parts = new Intl.DateTimeFormat("en-US", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(value);
   const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
   return values.year + "-" + values.month + "-" + values.day;
@@ -36,10 +36,10 @@ function dateNumber(date: string): string {
   return Number(date.slice(5, 7)) + "." + Number(date.slice(8, 10));
 }
 
-export function homeDateView(now: Date, selectedDateKey?: string) {
-  const today = tokyoDate(now);
+export function homeDateView(now: Date, selectedDateKey?: string, timeZone = "Asia/Tokyo") {
+  const today = tokyoDate(now, timeZone);
   const selected = validDate(selectedDateKey) ? selectedDateKey : today;
-  const date = new Date(selected + "T12:00:00+09:00");
+  const date = new Date(selected + "T12:00:00Z");
   const weekday = date.getUTCDay();
   const monday = new Date(date);
   monday.setUTCDate(monday.getUTCDate() - (weekday + 6) % 7);
@@ -51,7 +51,7 @@ export function homeDateView(now: Date, selectedDateKey?: string) {
     week: Array.from({ length: 7 }, (_, index) => {
       const day = new Date(monday);
       day.setUTCDate(day.getUTCDate() + index);
-      const dateKey = tokyoDate(day);
+      const dateKey = day.toISOString().slice(0, 10);
       return { dateKey, dayNumber: String(day.getUTCDate()), weekdayLabel: weekdays[day.getUTCDay()]!, isSelected: dateKey === selected, isToday: dateKey === today };
     })
   };
@@ -59,7 +59,7 @@ export function homeDateView(now: Date, selectedDateKey?: string) {
 
 // Validate only the fields this consumer uses; this is not a replacement for
 // the server/shared task contract. A bad collection is a visible failure.
-export function homeTasksToView(payload: unknown, selectedDateKey: string, now: Date): TodayTaskRowView[] | null {
+export function homeTasksToView(payload: unknown, selectedDateKey: string, now: Date, timeZone = "Asia/Tokyo"): TodayTaskRowView[] | null {
   if (!validDate(selectedDateKey) || !record(payload) || !Array.isArray(payload.tasks)) return null;
   const tasks: Record<string, unknown>[] = [];
   const ids = new Set<string>();
@@ -73,12 +73,12 @@ export function homeTasksToView(payload: unknown, selectedDateKey: string, now: 
     // Same selection rule as the existing TodayService, applied to this day.
     if (item.status === "open" && (
       (typeof item.plannedDate === "string" && item.plannedDate <= selectedDateKey) ||
-      (typeof item.dueAt === "string" && tokyoDate(new Date(item.dueAt)) <= selectedDateKey)
+      (typeof item.dueAt === "string" && tokyoDate(new Date(item.dueAt), timeZone) <= selectedDateKey)
     )) tasks.push(item);
   }
   tasks.sort((left, right) => String(left.dueAt ?? left.plannedDate + "T23:59:59").localeCompare(String(right.dueAt ?? right.plannedDate + "T23:59:59")));
-  const rows = todayToView({ date: selectedDateKey, tasks, suggestions: [], schedule: [], completedCount: 0 }, now).tasks;
-  const today = tokyoDate(now);
+  const rows = todayToView({ date: selectedDateKey, tasks, suggestions: [], schedule: [], completedCount: 0 }, now, timeZone).tasks;
+  const today = tokyoDate(now, timeZone);
   return rows.map((row, index) => {
     const source = tasks[index]!;
     return !source.dueAt && typeof source.plannedDate === "string" && source.plannedDate !== today
@@ -96,10 +96,11 @@ export interface HomeScheduleRow {
   href: string;
 }
 
-export function homeScheduleToView(payload: unknown, selectedDateKey: string, now: Date): HomeScheduleRow[] | null {
+export function homeScheduleToView(payload: unknown, selectedDateKey: string, now: Date, timeZone = "Asia/Tokyo"): HomeScheduleRow[] | null {
   if (!validDate(selectedDateKey) || !record(payload) || !Array.isArray(payload.scheduleItems)) return null;
-  const startOfDay = Date.parse(selectedDateKey + "T00:00:00+09:00");
-  const endOfDay = startOfDay + 86_400_000;
+  const startOfDay = localDayStart(selectedDateKey, timeZone);
+  const endOfDay = localDayStart(shiftCalendarDate(selectedDateKey, 1), timeZone);
+  if (startOfDay === null || endOfDay === null) return null;
   const rows: Array<HomeScheduleRow & { start: number }> = [];
   const ids = new Set<string>();
   for (const item of payload.scheduleItems) {
@@ -114,7 +115,7 @@ export function homeScheduleToView(payload: unknown, selectedDateKey: string, no
     if (end !== null && end <= start) return null;
     if (item.state === "cancelled" || start >= endOfDay || (end === null ? start < startOfDay : end <= startOfDay)) continue;
     const state = start > now.getTime() ? "upcoming" : end !== null && end > now.getTime() ? "ongoing" : "ended";
-    const startDate = tokyoDate(new Date(start));
+    const startDate = tokyoDate(new Date(start), timeZone);
     const time = new Intl.DateTimeFormat("en-GB", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(start));
     const duration = end === null ? "" : Math.round((end - start) / 60_000) + " 分钟";
     rows.push({

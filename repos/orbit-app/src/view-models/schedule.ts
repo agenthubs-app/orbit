@@ -1,3 +1,4 @@
+import { localParts, resolveLocalDateTime } from "../time/date-time";
 import * as holidayJp from "@holiday-jp/holiday_jp";
 import { eventsToSummaries } from "./events";
 import type { FollowupTaskContract } from "../api/contract/followups";
@@ -21,6 +22,7 @@ export interface ScheduleTimelineItem {
   actionLabel: string;
   coverPath?: string;
   dateKey: string;
+  endDateKey?: string;
   dayLabel: string;
   detail: string;
   durationMinutes: number;
@@ -168,7 +170,7 @@ const enWeekdayToZh: Record<string, string> = {
   Wed: "周三",
 };
 
-function dateParts(value: string):
+function dateParts(value: string, timeZone = "Asia/Tokyo"):
   | {
       dateKey: string;
       dayLabel: string;
@@ -189,13 +191,12 @@ function dateParts(value: string):
     hourCycle: "h23",
     minute: "2-digit",
     month: "numeric",
-    timeZone: "Asia/Tokyo",
-    weekday: "short",
+    timeZone,
     year: "numeric"
   }).formatToParts(date);
   const partValue = (type: Intl.DateTimeFormatPartTypes) =>
     parts.find((part) => part.type === type)?.value ?? "";
-  const normalizedWeekday = enWeekdayToZh[partValue("weekday")] ?? "";
+  const normalizedWeekday = enWeekdayToZh[new Intl.DateTimeFormat("en-US", { timeZone, weekday: "short" }).format(date)] ?? "";
   const month = partValue("month");
   const day = partValue("day");
   const year = partValue("year");
@@ -216,11 +217,11 @@ function timestamp(value: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function tokyoDatePrefix(value: Date): string {
+function tokyoDatePrefix(value: Date, timeZone = "Asia/Tokyo"): string {
   const parts = new Intl.DateTimeFormat("en-US", {
     day: "2-digit",
     month: "2-digit",
-    timeZone: "Asia/Tokyo",
+    timeZone,
     year: "numeric"
   }).formatToParts(value);
   const partValue = (type: Intl.DateTimeFormatPartTypes) =>
@@ -229,8 +230,8 @@ function tokyoDatePrefix(value: Date): string {
   return `${partValue("year")}-${partValue("month")}-${partValue("day")}`;
 }
 
-function todayTimestampWithTime(now: Date, timeLabel: string): string {
-  return `${tokyoDatePrefix(now)}T${timeLabel || "09:00"}:00+09:00`;
+function todayTimestampWithTime(now: Date, timeLabel: string, timeZone: string): string {
+  return resolveLocalDateTime(tokyoDatePrefix(now, timeZone), timeLabel || "09:00", timeZone) ?? "";
 }
 
 function shouldNormalizeTaskToToday(
@@ -289,9 +290,9 @@ function recommendedAction(task: Record<string, unknown>): string {
   return value;
 }
 
-function taskToScheduleItem(task: Record<string, unknown>): ScheduleItem {
+function taskToScheduleItem(task: Record<string, unknown>, timeZone = "Asia/Tokyo"): ScheduleItem {
   const rawDueAt = taskField(task, "dueAt");
-  const formatted = rawDueAt ? dateParts(rawDueAt) : null;
+  const formatted = rawDueAt ? dateParts(rawDueAt, timeZone) : null;
   const fallbackDue = dueLabel(task);
   const dueAt = formatted
     ? `${formatted.dayLabel} ${formatted.timeLabel}`
@@ -311,10 +312,10 @@ function taskToScheduleItem(task: Record<string, unknown>): ScheduleItem {
   };
 }
 
-export function tasksToScheduleItems(data: unknown): ScheduleItem[] {
+export function tasksToScheduleItems(data: unknown, timeZone = "Asia/Tokyo"): ScheduleItem[] {
   return listFromPayload(data, "tasks")
     .filter(isRecord)
-    .map(taskToScheduleItem);
+    .map(task => taskToScheduleItem(task, timeZone));
 }
 
 function eventStatusLabel(value: string): string {
@@ -353,17 +354,20 @@ function shouldShowEvent(event: Record<string, unknown>, now: number): boolean {
 function followupTimelineItems(
   tasks: unknown,
   now: Date,
-  limit = maxTimelineFollowups
+  limit = maxTimelineFollowups,
+  timeZone = "Asia/Tokyo"
 ): TimelineItemWithSort[] {
   return listFromPayload(tasks, "tasks")
     .filter(isRecord)
     .map((task) => {
-      const item = taskToScheduleItem(task);
+      const item = taskToScheduleItem(task, timeZone);
+      const plannedDate = stringField(task, "plannedDate");
+      const calendarOnly = !taskField(task, "dueAt") && /^\d{4}-\d{2}-\d{2}$/.test(plannedDate) ? dateParts(`${plannedDate}T12:00:00Z`, "UTC") : null;
       const rawDueAt = taskField(task, "dueAt");
       const normalizedDueAt = shouldNormalizeTaskToToday(task, rawDueAt, now)
-        ? todayTimestampWithTime(now, item.timeLabel)
+        ? todayTimestampWithTime(now, item.timeLabel, timeZone)
         : rawDueAt;
-      const normalizedDate = normalizedDueAt ? dateParts(normalizedDueAt) : null;
+      const normalizedDate = normalizedDueAt ? dateParts(normalizedDueAt, timeZone) : null;
       const sortAt =
         timestamp(normalizedDueAt) ??
         timestamp(rawDueAt) ??
@@ -371,8 +375,8 @@ function followupTimelineItems(
 
       return {
         actionLabel: "处理待办",
-        dateKey: normalizedDate?.dateKey ?? "",
-        dayLabel: normalizedDate?.dayLabel ?? item.dayLabel,
+        dateKey: calendarOnly?.dateKey ?? normalizedDate?.dateKey ?? "",
+        dayLabel: calendarOnly?.dayLabel ?? normalizedDate?.dayLabel ?? item.dayLabel,
         detail: item.recommendedAction,
         durationMinutes: 30,
         href: stringField(task, "id")
@@ -380,12 +384,12 @@ function followupTimelineItems(
           : "/followups",
         id: item.id,
         kind: "followup" as const,
-        monthLabel: normalizedDate?.monthLabel ?? item.monthLabel,
+        monthLabel: calendarOnly?.monthLabel ?? normalizedDate?.monthLabel ?? item.monthLabel,
         reason: item.recommendedAction,
         sortAt,
         statusLabel: item.priority,
         subtitle: item.organization || "人脉待办",
-        timeLabel: normalizedDate?.timeLabel ?? item.timeLabel,
+        timeLabel: calendarOnly ? "" : normalizedDate?.timeLabel ?? item.timeLabel,
         title: item.title
       };
     })
@@ -393,7 +397,7 @@ function followupTimelineItems(
     .slice(0, limit);
 }
 
-function canonicalScheduleTimelineItems(scheduleItems: unknown): TimelineItemWithSort[] {
+function canonicalScheduleTimelineItems(scheduleItems: unknown, timeZone: string): TimelineItemWithSort[] {
   return listFromPayload(scheduleItems, "scheduleItems")
     .filter(isRecord)
     .filter((item) => stringField(item, "state") !== "cancelled")
@@ -403,7 +407,7 @@ function canonicalScheduleTimelineItems(scheduleItems: unknown): TimelineItemWit
         kindValue === "meeting" || kindValue === "personal" ? kindValue : "event";
       const rawStartsAt = stringField(item, "startsAt");
       const startsAt = timestamp(rawStartsAt);
-      const formatted = rawStartsAt ? dateParts(rawStartsAt) : null;
+      const formatted = rawStartsAt ? dateParts(rawStartsAt, timeZone) : null;
       const rawEndsAt = stringField(item, "endsAt");
       const endsAt = timestamp(rawEndsAt);
       if (startsAt === null || !formatted) return [];
@@ -418,6 +422,7 @@ function canonicalScheduleTimelineItems(scheduleItems: unknown): TimelineItemWit
       return [{
         actionLabel: labels.action,
         dateKey: formatted.dateKey,
+        ...(endsAt !== null && endsAt > startsAt ? { endDateKey: localParts(endsAt - 1, timeZone).date } : {}),
         dayLabel: formatted.dayLabel,
         detail: [formatted.timeLabel, location].filter(Boolean).join(" · "),
         durationMinutes: endsAt !== null && endsAt > startsAt
@@ -443,10 +448,11 @@ function canonicalScheduleTimelineItems(scheduleItems: unknown): TimelineItemWit
 function eventTimelineItems(
   events: unknown,
   now: Date,
-  includePastEvents = false
+  includePastEvents = false,
+  timeZone = "Asia/Tokyo"
 ): TimelineItemWithSort[] {
   const summaryById = new Map(
-    eventsToSummaries(events).map((event) => [event.id, event])
+    eventsToSummaries(events, timeZone).map((event) => [event.id, event])
   );
 
   return listFromPayload(events, "events")
@@ -457,7 +463,7 @@ function eventTimelineItems(
     .map((event) => {
       const rawStartsAt = stringField(event, "startsAt");
       const rawEndsAt = stringField(event, "endsAt");
-      const formatted = rawStartsAt ? dateParts(rawStartsAt) : null;
+      const formatted = rawStartsAt ? dateParts(rawStartsAt, timeZone) : null;
       const startsAt = timestamp(rawStartsAt) ?? Number.MAX_SAFE_INTEGER;
       const endsAt = timestamp(rawEndsAt);
       const durationMinutes =
@@ -476,6 +482,7 @@ function eventTimelineItems(
         actionLabel: "查看活动安排",
         ...(summary?.coverPath ? { coverPath: summary.coverPath } : {}),
         dateKey: formatted?.dateKey ?? "",
+        ...(endsAt !== null && endsAt > startsAt ? { endDateKey: localParts(endsAt - 1, timeZone).date } : {}),
         dayLabel: formatted?.dayLabel ?? "时间待定",
         detail: [
           formatted?.timeLabel ? `活动时间 ${formatted.timeLabel}` : "",
@@ -513,6 +520,7 @@ function publicTimelineItem(item: TimelineItemWithSort): ScheduleTimelineItem {
     actionLabel: item.actionLabel,
     ...(item.coverPath ? { coverPath: item.coverPath } : {}),
     dateKey: item.dateKey,
+    ...(item.endDateKey ? { endDateKey: item.endDateKey } : {}),
     dayLabel: item.dayLabel,
     detail: item.detail,
     durationMinutes: item.durationMinutes,
@@ -560,8 +568,9 @@ function summaryCopy(input: {
   followupCount: number;
   now: Date;
   sections: ScheduleTimelineSection[];
+  timeZone: string;
 }): string {
-  const today = dateParts(input.now.toISOString())?.dayLabel;
+  const today = dateParts(input.now.toISOString(), input.timeZone)?.dayLabel;
   const prefix = input.sections[0]?.title === today ? "今天" : "近期";
 
   return `${prefix}有 ${input.followupCount} 项待办和 ${input.eventCount} 场活动需要判断。`;
@@ -570,14 +579,16 @@ function summaryCopy(input: {
 export function scheduleToTimelineView({
   events,
   now = new Date(),
-  tasks
+  tasks,
+  timeZone = "Asia/Tokyo"
 }: {
   events: unknown;
   now?: Date;
   tasks: unknown;
+  timeZone?: string;
 }): ScheduleTimelineView {
-  const followups = followupTimelineItems(tasks, now);
-  const eventItems = eventTimelineItems(events, now);
+  const followups = followupTimelineItems(tasks, now, maxTimelineFollowups, timeZone);
+  const eventItems = eventTimelineItems(events, now, false, timeZone);
   const items = [...followups, ...eventItems].sort((left, right) => {
     if (left.sortAt !== right.sortAt) {
       return left.sortAt - right.sortAt;
@@ -604,7 +615,7 @@ export function scheduleToTimelineView({
       eventCount: eventItems.length,
       followupCount: followups.length,
       now,
-      sections
+      sections, timeZone
     })
   };
 }
@@ -725,7 +736,8 @@ export function scheduleToCalendarView({
   scheduleItems = { scheduleItems: [] },
   selectedDateKey,
   tasks,
-  weekStartsOn = 0
+  weekStartsOn = 0,
+  timeZone = "Asia/Tokyo"
 }: {
   events: unknown;
   now?: Date;
@@ -733,23 +745,24 @@ export function scheduleToCalendarView({
   selectedDateKey?: string;
   tasks: unknown;
   weekStartsOn?: 0 | 1;
+  timeZone?: string;
 }): ScheduleCalendarView {
-  const todayDateKey = tokyoDatePrefix(now);
+  const todayDateKey = tokyoDatePrefix(now, timeZone);
   const selected = dateForKey(selectedDateKey ?? "")
     ? (selectedDateKey as string)
     : todayDateKey;
   const weekStart = startOfWeek(selected, weekStartsOn);
-  const timeline = scheduleToTimelineView({ events, now, tasks });
+  const timeline = scheduleToTimelineView({ events, now, tasks, timeZone });
   const items = [
-    ...followupTimelineItems(tasks, now, Number.MAX_SAFE_INTEGER),
-    ...eventTimelineItems(events, now, true),
-    ...canonicalScheduleTimelineItems(scheduleItems)
+    ...followupTimelineItems(tasks, now, Number.MAX_SAFE_INTEGER, timeZone),
+    ...eventTimelineItems(events, now, true, timeZone),
+    ...canonicalScheduleTimelineItems(scheduleItems, timeZone)
   ]
     .sort((left, right) => left.sortAt - right.sortAt)
     .map(publicTimelineItem);
   const days = Array.from({ length: 7 }, (_, index) => {
     const dateKey = shiftScheduleDateKey(weekStart, index);
-    const dateItems = items.filter((item) => item.dateKey === dateKey);
+    const dateItems = items.filter((item) => item.dateKey === dateKey || (item.endDateKey && item.dateKey < dateKey && item.endDateKey >= dateKey));
     const calendarDateInfo = japanCalendarDateInfo(dateKey);
 
     return {

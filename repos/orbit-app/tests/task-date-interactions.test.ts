@@ -33,6 +33,17 @@ window.fetch = async (input, init) => { const index = state.requests.length; con
   if (init.method === "GET" && !state.holdReads) queueMicrotask(() => state.reply(index));
   return response;
 };
+const foregroundListeners = new Set();
+export const AppState = { currentState: "active", addEventListener: (_name, fn) => { foregroundListeners.add(fn); return { remove: () => foregroundListeners.delete(fn) }; } };
+const OriginalDateTimeFormat = Intl.DateTimeFormat;
+state.setDeviceZone = zone => {
+  Intl.DateTimeFormat = function(locale, options) {
+    if (options?.timeZone) return new OriginalDateTimeFormat(locale, options);
+    if (zone === "invalid") throw new Error("Device zone unavailable");
+    return new OriginalDateTimeFormat(locale, { ...options, timeZone: zone });
+  };
+  foregroundListeners.forEach(fn => fn("active"));
+};
 export const useFixture = () => { observe(); return state; };
 export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, user: state.signedIn ? { id: state.actor } : null, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
@@ -63,6 +74,7 @@ test.before(async () => {
       plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store|native-notifications|useRelationshipInboxBadgeCount)$/ }, () => ({ path: "fixture", namespace: "task-dates" }));
       plugin.onLoad({ filter: /.*/, namespace: "task-dates" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, RefreshControl as RealRefreshControl, Text as RealText, TextInput as RealInput, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web"; import { useFixture } from "fixture"; export * from "react-native-web";
+export { AppState } from "fixture";
 export const useWindowDimensions = () => ({ ...realDimensions(), fontScale: useFixture().fontScale });
 const scaled = (style, scale) => { const s = StyleSheet.flatten(style) || {}; return [style, s.fontSize && { fontSize: s.fontSize * scale, ...(s.lineHeight ? { lineHeight: s.lineHeight * scale } : {}) }]; };
 export const Text = props => <RealText {...props} style={scaled(props.style, useFixture().fontScale)} />;
@@ -77,7 +89,7 @@ export const RefreshControl = props => { window.fixture.refresh = props.onRefres
 test.after(async () => { await browser?.close(); });
 async function settle(p: Page) { await p.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))); }
 async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<string, unknown> = {}, settings = true) {
-  const p = await browser.newPage({ viewport: { width: Number(patch.width ?? 390), height: 844 }, timezoneId: String(patch.timezoneId ?? "America/Los_Angeles"), colorScheme: patch.dark ? "dark" : "light" });
+  const p = await browser.newPage({ viewport: { width: Number(patch.width ?? 390), height: 844 }, timezoneId: String(patch.timezoneId ?? "Asia/Tokyo"), colorScheme: patch.dark ? "dark" : "light" });
   p.setDefaultTimeout(1800); const errors: string[] = []; p.on("pageerror", e => errors.push(e.message));
   t.after(async () => { await p.close(); assert.deepEqual(errors, []); });
   await p.route("**/*", r => r.abort()); await p.setContent('<style>html,body,#root{margin:0;height:100%}#root{display:flex;flex-direction:column}</style><div id="root"></div>');
@@ -109,10 +121,10 @@ test("date editor saves only changed dates with version/key and rereads detail, 
   assert.deepEqual(await p.evaluate(() => [(window as any).fixture.permissionCalls, (window as any).fixture.notifications]), [0, 0]);
 });
 
-test("deadline uses Tokyo despite browser timezone and planned-only edits remain timeless", async t => {
-  const p = await open(t); await fill(p, "截止日期", "2026-09-15"); await fill(p, "截止时间（东京）", "00:30"); await press(p, "保存日期和时间");
+test("deadline follows the device zone and planned-only edits remain timeless", async t => {
+  const p = await open(t); await fill(p, "截止日期", "2026-09-15"); await fill(p, "截止时间", "00:30"); await press(p, "保存日期和时间");
   assert.deepEqual((await writes(p))[0].body.patch, { dueAt: "2026-09-14T15:30:00.000Z" }); await reply(p);
-  assert.equal(await p.getByRole("textbox", { name: "截止时间（东京）", exact: true }).inputValue(), "00:30");
+  assert.equal(await p.getByRole("textbox", { name: "截止时间", exact: true }).inputValue(), "00:30");
 });
 
 test("accepted date updates both visible labels while authoritative rereads are still pending", async t => {
@@ -227,10 +239,35 @@ for (const change of ["actor", "server", "task", "unmount", "ready"]) test(`${ch
 
 for (const variant of [{ name: "normal", width: 390 }, { name: "narrow-large", width: 320, fontScale: 2 }, { name: "dark", width: 390, dark: true }]) test(`${variant.name} date controls remain reachable, legible and at least 44 points`, async t => {
   const p = await open(t, variant);
-  for (const label of ["安排日期", "截止日期", "截止时间（东京）"]) { const input = p.getByRole("textbox", { name: label, exact: true }); await input.scrollIntoViewIfNeeded(); const b = (await input.boundingBox())!; assert.ok(b.height >= 44 && b.x >= 0 && b.x + b.width <= variant.width); }
+  for (const label of ["安排日期", "截止日期", "截止时间"]) { const input = p.getByRole("textbox", { name: label, exact: true }); await input.scrollIntoViewIfNeeded(); const b = (await input.boundingBox())!; assert.ok(b.height >= 44 && b.x >= 0 && b.x + b.width <= variant.width); }
   const button = p.getByRole("button", { name: "保存日期和时间", exact: true }); await button.scrollIntoViewIfNeeded(); const b = (await button.boundingBox())!; assert.ok(b.height >= 44 && b.y + b.height <= 844);
   assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   assert.deepEqual(await p.locator('[dir="auto"]').evaluateAll(nodes => nodes.filter(n => n.clientWidth > 0 && n.scrollWidth > n.clientWidth + 1).map(n => n.textContent)), []);
   if (process.env.APP_STYLE_SCREENSHOTS) await p.screenshot({ path: `/tmp/orbit-task-dates-${variant.name}-20260913.png`, fullPage: true });
   await press(p, "关闭待办设置"); assert.deepEqual(await writes(p), []);
+});
+
+test("Los Angeles device deadline saves its own absolute instant", async t => {
+  const p = await open(t, { timezoneId: "America/Los_Angeles" });
+  await fill(p, "截止日期", "2026-09-15"); await fill(p, "截止时间", "00:30"); await press(p, "保存日期和时间");
+  assert.deepEqual((await writes(p))[0].body.patch, { dueAt: "2026-09-15T07:30:00.000Z" });
+});
+
+test("foreground zone change preserves dirty title and dates and saves under original zone", async t => {
+  const p = await open(t);
+  await fill(p, "截止日期", "2026-09-15"); await fill(p, "截止时间", "00:30");
+  await p.evaluate(() => (window as any).fixture.setDeviceZone("America/Los_Angeles")); await settle(p);
+  assert.deepEqual(await writes(p), []);
+  assert.equal(await p.getByRole("textbox", { name: "截止时间", exact: true }).inputValue(), "00:30");
+  assert.ok(await p.getByText(/此草稿按原时区 Asia\/Tokyo 保存/).count());
+  await press(p, "保存日期和时间");
+  assert.deepEqual((await writes(p))[0].body.patch, { dueAt: "2026-09-14T15:30:00.000Z" });
+});
+test("clean editor follows foreground timezone without changing the original instant", async t => {
+  const p = await open(t, { task: { ...initialTask, dueAt: "2026-09-14T00:30:42.123Z" } });
+  assert.equal(await p.getByRole("textbox", { name: "截止时间", exact: true }).inputValue(), "09:30");
+  await p.evaluate(() => (window as any).fixture.setDeviceZone("America/Los_Angeles")); await settle(p);
+  assert.equal(await p.getByRole("textbox", { name: "截止日期", exact: true }).inputValue(), "2026-09-13");
+  assert.equal(await p.getByRole("textbox", { name: "截止时间", exact: true }).inputValue(), "17:30");
+  await press(p, "保存日期和时间"); assert.deepEqual(await writes(p), []);
 });

@@ -1,3 +1,4 @@
+import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -26,6 +27,7 @@ function mutationKey(action: string) {
 }
 
 export function TasksScreen() {
+  const { timeZone } = useOrbitTimeZone();
   const { colors, styles } = useStyles();
   const params = useLocalSearchParams<{ view?: string | string[] }>();
   const router = useRouter();
@@ -37,15 +39,15 @@ export function TasksScreen() {
   const state = useApiResource<unknown>(tasksPath(), () => false);
   const ready = state.kind === "success" || state.kind === "empty";
   const now = new Date();
-  const open = ready ? tasksToListView(state.data, "open", now).items : null;
-  const completed = ready ? tasksToListView(state.data, "completed", now).items : null;
-  const today = tokyoDateKey(now);
+  const open = ready ? tasksToListView(state.data, "open", now, timeZone).items : null;
+  const completed = ready ? tasksToListView(state.data, "completed", now, timeZone).items : null;
+  const today = tokyoDateKey(now, timeZone);
   const groups = open && completed ? [
     ...(mode === "open" ? [
-      { label: "已逾期", items: open.filter(item => taskDateKey(item) && taskDateKey(item)! < today), tone: "danger" },
-      { label: "今天", items: open.filter(item => taskDateKey(item) === today), tone: "today" },
-      { label: "之后", items: open.filter(item => taskDateKey(item) && taskDateKey(item)! > today), tone: "muted" },
-      { label: "未安排", items: open.filter(item => !taskDateKey(item)), tone: "muted" },
+      { label: "已逾期", items: open.filter(item => taskDateKey(item, timeZone) && taskDateKey(item, timeZone)! < today), tone: "danger" },
+      { label: "今天", items: open.filter(item => taskDateKey(item, timeZone) === today), tone: "today" },
+      { label: "之后", items: open.filter(item => taskDateKey(item, timeZone) && taskDateKey(item, timeZone)! > today), tone: "muted" },
+      { label: "未安排", items: open.filter(item => !taskDateKey(item, timeZone)), tone: "muted" },
     ] : []),
     { label: "已完成", items: completed, tone: "completed" },
   ].filter(group => group.items.length > 0) : [];
@@ -190,12 +192,12 @@ function TaskModeSwitcher({
   );
 }
 
-function tokyoDateKey(date: Date): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+function tokyoDateKey(date: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
 }
 
-function taskDateKey(item: TaskListRowView): string | undefined {
-  if (item.dueAt && Number.isFinite(Date.parse(item.dueAt))) return tokyoDateKey(new Date(item.dueAt));
+function taskDateKey(item: TaskListRowView, timeZone: string): string | undefined {
+  if (item.dueAt && Number.isFinite(Date.parse(item.dueAt))) return tokyoDateKey(new Date(item.dueAt), timeZone);
   return item.plannedDate;
 }
 

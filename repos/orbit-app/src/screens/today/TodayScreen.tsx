@@ -1,3 +1,4 @@
+import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
 import { useMemo, useState } from "react";
@@ -30,11 +31,11 @@ import {
   type TodayView,
 } from "../../view-models/today-tasks";
 
-function todayDateKey(): string {
+function todayDateKey(timeZone: string): string {
   const parts = new Intl.DateTimeFormat("en-US", {
     day: "2-digit",
     month: "2-digit",
-    timeZone: "Asia/Tokyo",
+    timeZone,
     year: "numeric",
   }).formatToParts(new Date());
   const value = Object.fromEntries(parts.map((item) => [item.type, item.value]));
@@ -50,18 +51,20 @@ function usable<T>(state: ReturnType<typeof useApiResource<T>>) {
 }
 
 export function TodayScreen() {
+  const { timeZone, canSave } = useOrbitTimeZone();
   const { colors, styles } = useStyles();
   const router = useRouter();
   const client = useOrbitApiClient();
-  const path = useMemo(() => todayPath("Asia/Tokyo"), []);
+  const path = useMemo(() => todayPath(timeZone), [timeZone]);
   const todayState = useApiResource<unknown>(path, () => false);
   const [draft, setDraft] = useState("");
   const [creating, setCreating] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
-  const view = usable(todayState) ? todayToView(todayState.data) : null;
+  const view = usable(todayState) ? todayToView(todayState.data, new Date(), timeZone) : null;
 
   async function createTask() {
+    if (!canSave) { setMutationError("无法读取设备时区，请恢复后创建事项。草稿已保留。"); return; }
     const title = draft.trim();
     if (!title || creating) return;
     setCreating(true);
@@ -70,7 +73,7 @@ export function TodayScreen() {
       body: {
         category: "other",
         idempotencyKey: mutationKey("create-task"),
-        plannedDate: todayDateKey(),
+        plannedDate: todayDateKey(timeZone),
         title,
       },
     });

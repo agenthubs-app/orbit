@@ -1,3 +1,4 @@
+import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
@@ -54,6 +55,7 @@ export function HomeDashboardScreen() {
 }
 
 function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolean }) {
+  const { timeZone } = useOrbitTimeZone();
   const router = useRouter();
   const { colors, styles } = useStyles();
   const { width, fontScale } = useWindowDimensions();
@@ -65,7 +67,7 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
   const [query, setQuery] = useState("");
   const [now, setNow] = useState(() => new Date());
   const [selected, setSelected] = useState<string>();
-  const date = homeDateView(now, selected);
+  const date = homeDateView(now, selected, timeZone);
   const selectedDate = useRef(date.selectedDateKey);
   selectedDate.current = date.selectedDateKey;
   const [resources, setResources] = useState<Resources>(loading);
@@ -112,15 +114,15 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
       if (!ticket.valid()) return;
       const time = new Date();
       const accepted = result.success && result.status >= 200 && result.status < 300;
-      const data = accepted ? (section === "tasks" ? homeTasksToView(result.data, selectedDate.current, time)
-        : section === "schedule" ? homeScheduleToView(result.data, selectedDate.current, time) : homeFollowupsToView(result.data)) : null;
+      const data = accepted ? (section === "tasks" ? homeTasksToView(result.data, selectedDate.current, time, timeZone)
+        : section === "schedule" ? homeScheduleToView(result.data, selectedDate.current, time, timeZone) : homeFollowupsToView(result.data)) : null;
       put(section, accepted && data !== null ? { kind: "ready", data: result.data }
         : { kind: "error", message: result.success ? invalidData : result.error.message });
     } finally {
       if (ticket.valid()) r.reading.delete(section);
       ticket.release();
     }
-  }, [capture, isCurrent, put, scope]);
+  }, [capture, isCurrent, put, scope, timeZone]);
   const refresh = useCallback(() => {
     if (!isCurrent()) return;
     setInboxReadVersion(value => value + 1);
@@ -147,7 +149,7 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
     const r = runtime.current;
     const resource = r.resources.tasks;
     if (!isCurrent() || r.mutating || resource.kind !== "ready" ||
-      !homeTasksToView(resource.data, selectedDate.current, new Date())?.some(task => task.id === id)) return;
+      !homeTasksToView(resource.data, selectedDate.current, new Date(), timeZone)?.some(task => task.id === id)) return;
     r.mutating = true; setUpdatingId(id); setMutationError("");
     const ticket = capture();
     try {
@@ -167,8 +169,8 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
     } finally { ticket.release(); }
   }
   function navigate(href: string) { if (isCurrent()) router.push(href as Href); }
-  const schedules = resources.schedule.kind === "ready" ? homeScheduleToView(resources.schedule.data, date.selectedDateKey, now) : null;
-  const tasks = resources.tasks.kind === "ready" ? homeTasksToView(resources.tasks.data, date.selectedDateKey, now) : null;
+  const schedules = resources.schedule.kind === "ready" ? homeScheduleToView(resources.schedule.data, date.selectedDateKey, now, timeZone) : null;
+  const tasks = resources.tasks.kind === "ready" ? homeTasksToView(resources.tasks.data, date.selectedDateKey, now, timeZone) : null;
   const followups = resources.followups.kind === "ready" ? homeFollowupsToView(resources.followups.data) : null;
   const highlightedSchedule = schedules?.find(item => item.state === "ongoing") ?? schedules?.find(item => item.state === "upcoming");
 

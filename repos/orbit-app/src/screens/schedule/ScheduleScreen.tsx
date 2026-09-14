@@ -1,3 +1,4 @@
+import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -51,12 +52,12 @@ function minuteOfDay(timeLabel: string): number | null {
     : null;
 }
 
-function currentTokyoMinute(now: Date): number {
+function currentTokyoMinute(now: Date, timeZone: string): number {
   const parts = new Intl.DateTimeFormat("en-US", {
     hour: "2-digit",
     hourCycle: "h23",
     minute: "2-digit",
-    timeZone: "Asia/Tokyo"
+    timeZone
   }).formatToParts(now);
   const value = (type: Intl.DateTimeFormatPartTypes) =>
     Number(parts.find((part) => part.type === type)?.value ?? 0);
@@ -113,6 +114,7 @@ function monthGridDateKeys(selectedDateKey: string): string[] {
 }
 
 export function ScheduleScreen() {
+  const { timeZone } = useOrbitTimeZone();
   const { colors } = useOrbitTheme();
   const tasksState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.tasks, () => false);
   const eventsState = useApiResource<unknown>(
@@ -139,7 +141,7 @@ export function ScheduleScreen() {
 
   const hasAnyData = usable(tasksState) || usable(eventsState) || usable(scheduleItemsState);
   const view = hasAnyData
-    ? scheduleToCalendarView({
+    ? scheduleToCalendarView({ timeZone,
         events: usable(eventsState) ? eventsState.data : { events: [] },
         now,
         scheduleItems: usable(scheduleItemsState)
@@ -483,7 +485,8 @@ function ScheduleTimeGrid({
     (_, index) => startHour + index
   );
   const gridHeight = (endHour - startHour) * hourHeight;
-  const currentMinute = currentTokyoMinute(now);
+  const { timeZone } = useOrbitTimeZone();
+  const currentMinute = currentTokyoMinute(now, timeZone);
   const currentTop = ((currentMinute - startHour * 60) / 60) * hourHeight;
   const nextMinute = isToday ? Math.min(...itemMinutes.filter(minute => minute >= currentMinute)) : Infinity;
 

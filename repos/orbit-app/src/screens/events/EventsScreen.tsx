@@ -1,3 +1,4 @@
+import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -480,9 +481,10 @@ export function EventsScreen({ scopeKey, isScopeCurrent }: { scopeKey?: string; 
   const router = useRouter();
   const { baseUrl } = useOrbitApiBaseUrl();
   const { signedIn } = useOrbitAuthSession();
+  const { timeZone } = useOrbitTimeZone();
   const rawState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.publicEvents,
-    (data) => eventsToSummaries(data).length === 0,
+    (data) => eventsToSummaries(data, timeZone).length === 0,
     { scopeKey: scopeKey ?? "public-events" }
   );
   const state = validateApiResourceState(rawState, publicEventsSchema);
@@ -498,7 +500,7 @@ export function EventsScreen({ scopeKey, isScopeCurrent }: { scopeKey?: string; 
   const [locationFilter, setLocationFilter] = useState("");
   const [visibleEventCount, setVisibleEventCount] = useState(eventPageSize);
   const refreshing = state.refreshing;
-  const events = state.kind === "success" || state.kind === "empty" ? eventsToSummaries(state.data) : [];
+  const events = state.kind === "success" || state.kind === "empty" ? eventsToSummaries(state.data, timeZone) : [];
   const currentTime = Date.now();
   // Public records use "imported" for both future and live events. Keep their
   // source status for display and derive only the discovery time filter here.

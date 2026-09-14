@@ -68,3 +68,18 @@ test("missing receipt and missing actor never acknowledge a save", () => {
   for (const data of [null, {}, { task: [] }]) assert.equal(taskDateReceiptMatches(data, "task:edit", "actor-1", { plannedDate: "2026-09-15" }), false);
   assert.equal(taskDateReceiptMatches({ task }, "task:edit", "", { plannedDate: "2026-09-15" }), false);
 });
+
+// A fixed Tokyo offset would save the wrong instant on other devices.
+test("explicit device zone preserves calendar dates and resolves half-hour deadlines", () => {
+  assert.deepEqual(taskDateDraftFromView({ plannedDate: "2026-09-14", dueAt: "2026-09-14T00:30:00Z" }, "America/Los_Angeles"), { plannedDate: "2026-09-14", dueDate: "2026-09-13", dueTime: "17:30" });
+  assert.deepEqual(buildTaskDatePatch({}, { ...empty, dueDate: "2026-09-14", dueTime: "09:00" }, "Asia/Kolkata"), { kind: "ready", patch: { dueAt: "2026-09-14T03:30:00.000Z" } });
+});
+test("DST gaps and ambiguous minutes cannot silently choose a writable instant", () => {
+  for (const [dueDate, dueTime] of [["2026-03-08", "02:30"], ["2026-11-01", "01:30"]]) {
+    assert.equal(buildTaskDatePatch({}, { ...empty, dueDate: dueDate!, dueTime: dueTime! }, "America/New_York").kind, "invalid");
+  }
+  assert.deepEqual(buildTaskDatePatch({ dueAt: "2026-11-01T06:30:42.123Z" }, { ...empty, dueDate: "2026-11-01", dueTime: "01:30" }, "America/New_York"), { kind: "unchanged" });
+});
+test("invalid device zone rejects saving even a date-only draft", () => {
+  assert.equal(buildTaskDatePatch({}, { ...empty, plannedDate: "2026-09-14" }, "Invalid/Zone").kind, "invalid");
+});

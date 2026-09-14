@@ -1,3 +1,4 @@
+import { localParts } from "../time/date-time";
 import type {
   ScheduleItemContract,
   TaskCategory,
@@ -169,14 +170,14 @@ function scheduleFrom(value: unknown): ScheduleItemContract | null {
   return value as unknown as ScheduleItemContract;
 }
 
-function tokyoParts(value: string) {
+function tokyoParts(value: string, timeZone = "Asia/Tokyo") {
   const parts = new Intl.DateTimeFormat("zh-CN", {
     day: "numeric",
     hour: "2-digit",
     hourCycle: "h23",
     minute: "2-digit",
     month: "numeric",
-    timeZone: "Asia/Tokyo",
+    timeZone,
   }).formatToParts(new Date(value));
   const part = (type: Intl.DateTimeFormatPartTypes) =>
     parts.find((item) => item.type === type)?.value ?? "";
@@ -186,34 +187,35 @@ function tokyoParts(value: string) {
     minute: part("minute"),
     month: part("month"),
     // Native Intl can fold weekday into day and lose time-part types when combined.
-    weekday: new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Tokyo", weekday: "short" }).format(new Date(value)),
+    weekday: new Intl.DateTimeFormat("zh-CN", { timeZone, weekday: "short" }).format(new Date(value)),
   };
 }
 
 function dateLabel(date: string): string {
-  const parts = tokyoParts(`${date}T12:00:00+09:00`);
+  const parts = tokyoParts(`${date}T12:00:00Z`, "UTC");
   return `${parts.month}月${parts.day}日 ${parts.weekday}`;
 }
 
-function timeLabel(value: string): string {
-  const parts = tokyoParts(value);
+function timeLabel(value: string, timeZone: string): string {
+  const parts = tokyoParts(value, timeZone);
   return `${parts.hour}:${parts.minute}`;
 }
 
-function dateTimeLabel(value: string): string {
-  const parts = tokyoParts(value);
+function dateTimeLabel(value: string, timeZone: string): string {
+  const parts = tokyoParts(value, timeZone);
   return `${parts.month}月${parts.day}日 ${parts.hour}:${parts.minute}`;
 }
 
 function taskDue(
   task: TaskItemContract,
   now: Date,
+  timeZone: string,
 ): Pick<TodayTaskRowView, "dueLabel" | "dueTone"> {
   if (task.dueAt) {
     if (Date.parse(task.dueAt) < now.getTime()) {
       return { dueLabel: "已逾期", dueTone: "danger" };
     }
-    return { dueLabel: timeLabel(task.dueAt), dueTone: "normal" };
+    return { dueLabel: timeLabel(task.dueAt, timeZone), dueTone: "normal" };
   }
   if (task.plannedDate) {
     return { dueLabel: "今天", dueTone: "muted" };
@@ -221,17 +223,17 @@ function taskDue(
   return { dueLabel: "", dueTone: "muted" };
 }
 
-function taskRow(task: TaskItemContract, now: Date): TodayTaskRowView {
+function taskRow(task: TaskItemContract, now: Date, timeZone: string): TodayTaskRowView {
   return {
     id: task.id,
     title: task.title,
     categoryLabel: categoryLabels[task.category],
-    ...taskDue(task, now),
+    ...taskDue(task, now, timeZone),
     priority: task.priority,
   };
 }
 
-export function todayToView(payload: unknown, now = new Date()): TodayView {
+export function todayToView(payload: unknown, now = new Date(), timeZone = "Asia/Tokyo"): TodayView {
   const root = isRecord(payload) ? payload : {};
   const tasks = Array.isArray(root.tasks)
     ? root.tasks.map(taskFrom).filter((item): item is TaskItemContract => item !== null)
@@ -250,14 +252,12 @@ export function todayToView(payload: unknown, now = new Date()): TodayView {
     typeof root.completedCount === "number" && root.completedCount >= 0
       ? root.completedCount
       : 0;
-  const rawDate = text(root.date) ?? new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Tokyo",
-  }).format(now);
+  const rawDate = text(root.date) ?? localParts(now, timeZone).date;
 
   return {
     dateLabel: dateLabel(rawDate),
     summary: `${tasks.length} 项待办 · ${schedule.length} 项日程`,
-    tasks: tasks.map((item) => taskRow(item, now)),
+    tasks: tasks.map((item) => taskRow(item, now, timeZone)),
     completedCount,
     completedLabel: `已完成 ${completedCount}`,
     suggestions: suggestions.map((item) => ({
@@ -280,7 +280,7 @@ export function todayToView(payload: unknown, now = new Date()): TodayView {
             ? "进行中"
             : item.state === "cancelled"
               ? "已取消"
-              : timeLabel(item.startsAt),
+              : timeLabel(item.startsAt, timeZone),
     })),
   };
 }
@@ -288,10 +288,11 @@ export function todayToView(payload: unknown, now = new Date()): TodayView {
 export function todayHomeSummary(
   payload: unknown,
   now = new Date(),
+  timeZone = "Asia/Tokyo",
 ): TodayHomeSummaryView {
   const root = isRecord(payload) ? payload : {};
   const summary = isRecord(root.summary) ? root.summary : {};
-  const today = todayToView(payload, now);
+  const today = todayToView(payload, now, timeZone);
   const items = [
     ...today.tasks.map((task) => ({
       context: [task.categoryLabel, task.dueLabel].filter(Boolean).join(" · "),
@@ -361,6 +362,7 @@ export function tasksToListView(
   payload: unknown,
   view: "open" | "completed",
   now = new Date(),
+  timeZone = "Asia/Tokyo",
 ) {
   const root = isRecord(payload) ? payload : {};
   const tasks = Array.isArray(root.tasks)
@@ -380,15 +382,15 @@ export function tasksToListView(
       return view === "completed" ? rightTime - leftTime : leftTime - rightTime;
     })
     .map((item) => ({
-      ...taskRow(item, now),
+      ...taskRow(item, now, timeZone),
       ...(item.notes ? { notes: item.notes } : {}),
       ...(item.plannedDate ? { plannedDate: item.plannedDate } : {}),
       ...(item.dueAt ? { dueAt: item.dueAt } : {}),
       status: item.status,
       dateLabel: item.completedAt
-        ? dateTimeLabel(item.completedAt)
+        ? dateTimeLabel(item.completedAt, timeZone)
         : item.dueAt
-          ? dateTimeLabel(item.dueAt)
+          ? dateTimeLabel(item.dueAt, timeZone)
           : item.plannedDate
             ? dateLabel(item.plannedDate)
             : "未安排日期",
@@ -438,7 +440,7 @@ const activityLabels: Readonly<Record<string, string>> = {
   deleted: "删除待办",
 };
 
-export function taskActivitiesToView(payload: unknown): TaskActivityView[] {
+export function taskActivitiesToView(payload: unknown, timeZone = "Asia/Tokyo"): TaskActivityView[] {
   const root = isRecord(payload) ? payload : {};
   if (!Array.isArray(root.activities)) return [];
   return root.activities.flatMap((value): TaskActivityView[] => {
@@ -449,6 +451,6 @@ export function taskActivitiesToView(payload: unknown): TaskActivityView[] {
     if (!id || !occurredAt || !label || !Number.isFinite(Date.parse(occurredAt))) {
       return [];
     }
-    return [{ id, label, dateLabel: dateTimeLabel(occurredAt) }];
+    return [{ id, label, dateLabel: dateTimeLabel(occurredAt, timeZone) }];
   });
 }

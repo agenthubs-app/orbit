@@ -453,7 +453,7 @@ function eventCoverPath(event: Record<string, unknown>, title: string): string {
   return "/orbit-covers/meeting.jpg";
 }
 
-function formatDateTime(value: string): string {
+function formatDateTime(value: string, timeZone = "Asia/Tokyo"): string {
   const timestamp = Date.parse(value);
 
   if (!Number.isFinite(timestamp)) {
@@ -467,13 +467,12 @@ function formatDateTime(value: string): string {
     hourCycle: "h23",
     minute: "2-digit",
     month: "numeric",
-    timeZone: "Asia/Tokyo",
-    weekday: "short"
+    timeZone
   }).formatToParts(date);
   const partValue = (type: Intl.DateTimeFormatPartTypes) =>
     parts.find((part) => part.type === type)?.value ?? "";
 
-  const tokyoWeekday = enWeekdayToZh[partValue("weekday")] ?? "";
+  const tokyoWeekday = enWeekdayToZh[new Intl.DateTimeFormat("en-US", { timeZone, weekday: "short" }).format(date)] ?? "";
   const time = [partValue("hour"), partValue("minute")]
     .filter(Boolean)
     .join(":");
@@ -745,7 +744,7 @@ function eventRegistrationDetail(youRsvped: boolean): string {
     : "确认参加后可见完整参会者名单。";
 }
 
-export function eventsToSummaries(data: unknown): EventSummary[] {
+export function eventsToSummaries(data: unknown, timeZone = "Asia/Tokyo"): EventSummary[] {
   return listFromPayload(data, "events")
     .filter(isRecord)
     .map((event) => {
@@ -761,7 +760,7 @@ export function eventsToSummaries(data: unknown): EventSummary[] {
           stringField(event, "location") ||
           stringField(event, "locationLabel"),
         participantCountLabel: eventParticipantCountLabel(event),
-        startsAt: formatDateTime(eventField(event, "startsAt", "Time pending")),
+        startsAt: formatDateTime(eventField(event, "startsAt", "Time pending"), timeZone),
         status: statusLabel(rawStatus),
         subtitle: eventSubtitle(event),
         topics: eventTopics(event),
@@ -790,7 +789,7 @@ function eventRecordFromPayload(data: unknown): Record<string, unknown> | null {
   return isRecord(data) ? data : null;
 }
 
-export function eventDetailToSummary(data: unknown): EventDetailSummary {
+export function eventDetailToSummary(data: unknown, timeZone = "Asia/Tokyo"): EventDetailSummary {
   const event = eventRecordFromPayload(data);
 
   if (!event) {
@@ -830,7 +829,7 @@ export function eventDetailToSummary(data: unknown): EventDetailSummary {
     eventField(event, "venue") ||
     stringField(event, "location") ||
     stringField(event, "locationLabel");
-  const startsAt = formatDateTime(eventField(event, "startsAt", "Time pending"));
+  const startsAt = formatDateTime(eventField(event, "startsAt", "Time pending"), timeZone);
   const description = userFacingText(eventField(event, "description"), "");
   const nextAction = userFacingText(
     eventField(event, "nextAction"),

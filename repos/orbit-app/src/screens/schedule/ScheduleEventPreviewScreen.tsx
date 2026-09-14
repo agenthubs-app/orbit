@@ -1,3 +1,4 @@
+import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
@@ -58,8 +59,9 @@ export function ScheduleEventPreviewScreen() {
 }
 
 function PreviewContent({ data }: { data: unknown }) {
+  const { timeZone } = useOrbitTimeZone();
   const { colors, styles } = useStyles();
-  const view = scheduleEventPreviewToView(data);
+  const view = scheduleEventPreviewToView(data, timeZone);
 
   return (
     <>
@@ -80,6 +82,7 @@ function PreviewContent({ data }: { data: unknown }) {
 }
 
 function PreviewFailure({ data }: { data: unknown }) {
+  const { timeZone } = useOrbitTimeZone();
   const { styles } = useStyles();
   const view = scheduleEventPreviewToView(data);
 
