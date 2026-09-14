@@ -65,6 +65,10 @@ App 的 `tests/profile-view-model.test.ts` 与 `tests/profile-manual-edit-view-m
 
 ### 联系人 seed 的纯数据边界
 
+上述纯构造、行业投影和可执行清单已提交 `f4bdef4c0`；没有真实数据写入。
+
+现已提取纯构造器并接回原CLI。新增 Web `tests/capabilities/account-contact-fixture-industries.test.ts`、更新既有 localization／coverage／inventory，以及本端 `docs/account-contact-fixtures.md`，均是本节批准范围的必要验证与说明。9名人物的contact及publicProfile补齐规范二级，另3名明确登记缺依据；完整清单新增12人／24投影，其中18投影完整、6投影缺依据，不把后者移出分母。先观察缺二级字段RED和缺清单reader RED，三个完整相关文件9/9、Web typecheck通过。两账号构造结果除批准行业字段外与提取前逐字段一致；CLI写入、归档及介绍迁移块逐字未变，没有执行CLI。Web全量2969 pass／47 fail／168 skip，失败名称集合与原I版本相同；日志为 `build/harness-logs/sprint-0023-seed-{pure-red,pure-green,inventory-red,related-green,web-full}.log`。App未受此次纯seed改动影响，沿用上述2593/2593结果；SC-05仍未完成。
+
 拟将纯定义与纯构造器提取到新增 Web `shared/mock/account-contact-fixtures.ts`，此精确新文件已随上述整体批准纳入范围。原 `scripts/seed-account-contact-fixtures.ts` 保留CLI、认证与既有行为，只改为消费纯构造结果；覆盖清单只调用无环境读取、无存储访问的构造器。构造器返回既有 contact／connection／evidence 数据及固定源序位，保留正文、日期和关联，只新增已确认的行业投影。当前ID使用账号SHA256前10位加固定序位01～12，不能重排或重新分配ID。
 
 该CLI还会软删除命中的旧fixture，并改写一条已知介绍草稿；即使提取后也不能为行业验收直接执行它。实际补齐仍用独立版本条件写方案。

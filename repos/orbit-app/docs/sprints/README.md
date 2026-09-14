@@ -48,7 +48,7 @@ build/harness-logs/
 | --- | --- | --- | --- | --- |
 | [0001](0001-event-discovery/GOAL.md) | 用全部地点和话题找到活动，筛选后仍能翻页和打开详情 | R-09 | 无；接续当前四文件 | completed |
 | [0002](0002-readiness-handoff/GOAL.md) | 查清已完成能力、后续缺项和每项开工条件 | R-01、R-00～R-12 依赖 | 无；只读文档工作 | completed |
-| [0003](0003-profile-completion/GOAL.md) | 注册、补全资料后回到原页面，完整用户不再被拦截 | R-03 | 产品规则已确认；B1 跨端技术提案／旧账号策略待审，授权账号／Google 环境 | blocked |
+| [0003](0003-profile-completion/GOAL.md) | 注册、补全资料后回到原页面，完整用户不再被拦截 | R-03 | B1整体批准已生效；本地实现启动，真实账号／Google验收按对象另核 | running |
 | [0004](0004-registration/GOAL.md) | 报名、取消和重报后，答案、人数及各页状态一致 | R-04 | 0002、0003；B2；历史题库表不可见已定位，当前库／schema／迁移核查待授权 | blocked |
 | [0005](0005-ai-session-reliability/GOAL.md) | AI 重试不重复生成，Web/App 续聊不丢历史 | R-00、R-02 | B3 跨端提案待审；已隔离复现旧快照覆盖，真实恢复／503 证据仍缺 | blocked |
 | [0006](0006-contact-mentions/GOAL.md) | @ 选准联系人，带入 AI 的问题由用户确认发送 | R-06 | 0005；B3 引用／D3 | blocked |
@@ -92,9 +92,17 @@ build/harness-logs/
 
 ## 运行记录
 
+### 0003 / run-01
+
+- owner：当前主代理 `/root`；run_count：1；开始：2026-09-14 21:26 JST，原地 `chat-agent`，无第二实现者。前序0002报告及B1技术提案已读取，复用整体批准，见[跨端实施补充](0003-profile-completion/APPROVED_SCOPE_ADDENDUM.md)。
+- 基线功能HEAD `f4bdef4c0`；原Planner revision 2 SHA256 `8315be01f929ce997cc43dfeadd87f489522c63ce53d1dd7102c7288018c4bd1`。本任务产品文件无未提交差异，0023仅剩协调文档；未跟踪用户素材保留。
+- 当前有效基线：App2593 pass／0 fail／0 skip，Web2969 pass／47既有fail／168skip，两端typecheck exit0。Web失败名称与原I版本一致，沿用已批准的基线继续，不降低SC。
+- 文件锁按原Planner及补充归当前主代理；0023不同时写本任务的资料／契约文件。真实注册、Google系统回跳、共同账号双端回读尚未执行；不因此阻止独立本地实现。
+
 ### 0023 / run-01
 
 - 最新整体批准已按 RULES 第0节生效，旧“待审”不再构成逐文件审批停点。App两级搜索与筛选交互已提交 `e181bbdc3`；App全量2593/2593、两端typecheck通过。继续纯seed构造与数据投影，不执行写库CLI；真实环境、分类缺依据及费用核算仍分别保留。
+- 纯seed构造、9名人物行业投影与12人／24投影清单已提交 `f4bdef4c0`；相关9/9，Web全量2969 pass／47既有fail／168skip、typecheck通过。3名人物缺依据，未执行CLI／写库；后续资料文件锁暂交0003的同一主代理，0023剩余SC不自动关闭。
 
 - owner：当前主代理 `/root`；run_count：1；开始：2026-09-14 16:42 JST。原地 `chat-agent`，无其他写入者或 Evaluator。
 - 用户明确“全部同意”当前 8 个新增文件及接续 Sprint，并要求快速持续执行；必要付费调用已批准。复用这些批准，不反复请求同一事项。未具体界定的未来破坏性操作、真实数据库写入及部署不推定授权。
