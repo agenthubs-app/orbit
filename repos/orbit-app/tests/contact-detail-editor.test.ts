@@ -17,7 +17,7 @@ test("editor keeps opaque raw tags and makes an unchanged draft a no-op", () => 
 });
 test("combined changes contain only changed writable fields, never identity or unrelated interaction", () => {
   const value = original();
-  assert.deepEqual(editor.buildContactDetailEditRequest(value, { ...value.draft, status: "nurture", tags: ["topic:community", " 新合作 ", "新合作"], primaryIndustryId: "technology_internet" }), { success: true, body: { status: "nurture", tags: ["topic:community", "新合作"], primaryIndustryId: "technology_internet" } });
+  assert.deepEqual(editor.buildContactDetailEditRequest(value, { ...value.draft, status: "nurture", tags: ["topic:community", " 新合作 ", "新合作"], primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.ai_data" }), { success: true, body: { status: "nurture", tags: ["topic:community", "新合作"], primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.ai_data" } });
 });
 test("clearing tags and industry sends explicit clearing values", () => {
   const value = original();

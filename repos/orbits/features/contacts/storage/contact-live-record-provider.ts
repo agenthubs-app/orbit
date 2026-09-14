@@ -605,6 +605,7 @@ export function createStorageContactGraphProvider({
       contactId: string,
       actorId: string,
       primaryIndustryId: IndustryIdCode | null,
+      secondaryIndustryId?: SecondaryIndustryIdCode | null,
     ) {
       const normalizedActorId = actorId.trim();
       const normalizedContactId = contactId.trim();
@@ -636,6 +637,7 @@ export function createStorageContactGraphProvider({
       const nextPayload = { ...contactRecord.payload };
       const selection = mergeIndustrySelection(contactFromRecord(contactRecord) ?? {}, {
         primaryIndustryId,
+        secondaryIndustryId,
       });
       if (!validateIndustrySelection(selection).valid) {
         throw new Error("Contact industry selection is invalid.");

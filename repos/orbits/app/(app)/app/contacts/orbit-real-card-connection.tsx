@@ -19,7 +19,7 @@ import { Basis, SourceBadge } from "./orbit-real-contacts";
 import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
 import { ORBIT_Z } from "../orbit-z";
 import { agentHrefForContext } from "../orbit-agent-context-href";
-import { industryLabel, isIndustryIdCode } from "../../../../shared/domain/industries";
+import { industryLabel, isIndustryIdCode, SECONDARY_INDUSTRY_CATALOG } from "../../../../shared/domain/industries";
 import { ContactIndustryEditor } from "./contact-industry-editor";
 import { ContactTagEditor } from "./contact-tag-editor";
 import { ContactInteractionEditor } from "./contact-interaction-editor";
@@ -141,6 +141,7 @@ function ContactCard({ contact, t, onEditIndustry, onEditInteraction }: { contac
       {contact.lineId ? <Frow icon="message" k="LINE"><span className="mono">{contact.lineId}</span></Frow> : null}
       <Frow icon="briefcase" k={t({ en: "Industry", zh: "行业" })}>
         <span>{sourcedValue(contact.industry) || t({ en: "Unclassified", zh: "未分类" })}</span>{" "}
+        {contact.primaryIndustryId ? <span> / {contact.secondaryIndustryLabel || t({ en: "Secondary industry not set", zh: "二级未填写" })}</span> : null}{" "}
         <button className="btn btn-quiet btn-sm" type="button" aria-label={t({ en: "Edit primary industry", zh: "编辑主要行业" })} onClick={onEditIndustry}>{t({ en: "Edit", zh: "编辑" })}</button>
       </Frow>
       {sourcedValue(contact.location) ? <Frow icon="pin" k={t({ en: "Location", zh: "所在地" })}>{sourcedValue(contact.location)}</Frow> : null}
@@ -398,7 +399,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
   const { language, t } = useOrbitLanguage();
   const sourceContact = viewModel.connections.find((item) => item.id === contactId) ?? viewModel.connections[0];
   const [industryEditContactId, setIndustryEditContactId] = useState<string | null>(null);
-  const [industryUpdate, setIndustryUpdate] = useState<{ source: OrbitContactView; value: string | null } | null>(null);
+  const [industryUpdate, setIndustryUpdate] = useState<{ source: OrbitContactView; value: string | null; secondaryValue: string | null } | null>(null);
   const [tagEditContactId, setTagEditContactId] = useState<string | null>(null);
   const [tagUpdate, setTagUpdate] = useState<{ source: OrbitContactView; tags: { value: string; label: string }[] } | null>(null);
   const [interactionEditContactId, setInteractionEditContactId] = useState<string | null>(null);
@@ -410,6 +411,8 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
   const industryContact = industryUpdate?.source === sourceContact ? {
     ...sourceContact,
     primaryIndustryId: industryUpdate.value ?? undefined,
+    secondaryIndustryId: industryUpdate.secondaryValue ?? undefined,
+    secondaryIndustryLabel: SECONDARY_INDUSTRY_CATALOG.find(item => item.id === industryUpdate.secondaryValue)?.labels[language],
     industry: isIndustryIdCode(industryUpdate.value) ? industryLabel(industryUpdate.value, language) : "",
   } : sourceContact;
   const tagContact = tagUpdate?.source === sourceContact ? { ...industryContact, editableTags: tagUpdate.tags, valueTags: tagUpdate.tags.map((tag) => tag.label) } : industryContact;
@@ -559,8 +562,8 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
       ) : null}
 
       {industryEditContactId === contact.id ? (
-        <ContactIndustryEditor key={contact.id} contactId={contact.id} initialIndustryId={contact.primaryIndustryId} language={language} onClose={() => setIndustryEditContactId(null)} onSaved={(value) => {
-          setIndustryUpdate({ source: sourceContact, value });
+        <ContactIndustryEditor key={contact.id} contactId={contact.id} initialIndustryId={contact.primaryIndustryId} initialSecondaryIndustryId={contact.secondaryIndustryId} language={language} onClose={() => setIndustryEditContactId(null)} onSaved={(value, secondaryValue) => {
+          setIndustryUpdate({ source: sourceContact, value, secondaryValue });
           setIndustryEditContactId(null);
         }} />
       ) : null}

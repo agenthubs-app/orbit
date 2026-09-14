@@ -59,6 +59,9 @@ export function contactDetailEditorFrom(data: unknown, contactId: string): Conta
 export function buildContactDetailEditRequest(original: ContactDetailEditor, draft: ContactDetailEditDraft): { success: true; body: ContactDetailEditBody } | { success: false; error: string } {
   const body: ContactDetailEditBody = {};
   if (!validateIndustrySelection(draft).valid) return { success: false, error: "二级行业与主要行业不匹配，请重新选择。" };
+  if (draft.primaryIndustryId && draft.primaryIndustryId !== original.draft.primaryIndustryId && !draft.secondaryIndustryId) {
+    return { success: false, error: "请选择新行业对应的二级行业。" };
+  }
   if (draft.status !== original.draft.status) {
     if (!original.statusOptions.includes(draft.status)) return { success: false, error: "请选择当前可用的跟进状态。" };
     body.status = draft.status;

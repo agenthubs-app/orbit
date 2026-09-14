@@ -31,27 +31,29 @@ async function mount(t: TestContext, fetcher: typeof fetch, initialIndustryId?: 
     if (previous) Object.defineProperty(globalThis, "document", previous);
     else Reflect.deleteProperty(globalThis, "document");
   });
-  return { root, element, saved: () => saved, select: () => root.root.findByType("select"), save: () => root.root.findByProps({ "data-industry-save": true }) };
+  return { root, element, saved: () => saved, select: () => root.root.find(node => node.type === "select" && node.props["aria-label"] === "主要行业"), secondary: () => root.root.findByProps({ "aria-label": "二级行业" }), save: () => root.root.findByProps({ "data-industry-save": true }) };
 }
 
-const acknowledged = (primaryIndustryId?: string) => Response.json({ success: true, data: {
-  state: "ready", contact: { id: "contact:one/two", primaryIndustryId },
+const acknowledged = (primaryIndustryId?: string, secondaryIndustryId?: string) => Response.json({ success: true, data: {
+  state: "ready", contact: { id: "contact:one/two", primaryIndustryId, secondaryIndustryId },
 } });
 
-test("saving sends only the stable industry ID and blocks duplicate writes while pending", async (t) => {
+test("saving sends only stable industry IDs and blocks duplicate writes while pending", async (t) => {
   const calls: Array<{ path: string; init?: RequestInit }> = [];
   let respond!: (response: Response) => void;
   const ui = await mount(t, (async (path, init) => { calls.push({ path: String(path), init }); return new Promise<Response>((resolve) => { respond = resolve; }); }) as typeof fetch);
   assert.equal(ui.select().findAllByType("option").length, 15);
   await act(async () => { ui.select().props.onChange({ target: { value: "technology_internet" } }); });
+  await act(async () => { ui.secondary().props.onChange({ target: { value: "technology_internet.ai_data" } }); });
   let pending!: Promise<void>;
   await act(async () => { pending = ui.save().props.onClick(); void ui.save().props.onClick(); });
   assert.equal(calls.length, 1);
   assert.equal(calls[0].path, "/api/contacts/contact%3Aone%2Ftwo");
   assert.equal(calls[0].init?.method, "PATCH");
-  assert.deepEqual(JSON.parse(String(calls[0].init?.body)), { primaryIndustryId: "technology_internet" });
+  assert.deepEqual(JSON.parse(String(calls[0].init?.body)), { primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.ai_data" });
   assert.equal(ui.select().props.disabled, true);
-  await act(async () => { respond(acknowledged("technology_internet")); await pending; });
+  assert.equal(ui.secondary().props.disabled, true);
+  await act(async () => { respond(acknowledged("technology_internet", "technology_internet.ai_data")); await pending; });
   assert.equal(ui.saved(), 1);
   assert.equal(ui.save().props.disabled, true);
   assert.ok(ui.root.root.findByProps({ role: "status" }));
@@ -62,7 +64,7 @@ test("clearing an industry explicitly sends null and accepts the canonical missi
   const ui = await mount(t, (async (_path, init) => { bodies.push(JSON.parse(String(init?.body))); return acknowledged(); }) as typeof fetch, "technology_internet");
   await act(async () => { ui.select().props.onChange({ target: { value: "" } }); });
   await act(async () => { await ui.save().props.onClick(); });
-  assert.deepEqual(bodies, [{ primaryIndustryId: null }]);
+  assert.deepEqual(bodies, [{ primaryIndustryId: null, secondaryIndustryId: null }]);
   assert.equal(ui.saved(), 1);
 });
 
@@ -72,14 +74,16 @@ test("network or malformed acknowledgement preserves the draft and allows an exp
     attempt += 1;
     if (attempt === 1) throw new Error("offline");
     if (attempt === 2) return Response.json({ success: true, data: { contact: { id: "other", primaryIndustryId: "finance_investment" } } });
-    return acknowledged("finance_investment");
+    return acknowledged("finance_investment", "finance_investment.banking");
   }) as typeof fetch, "technology_internet");
   await act(async () => { ui.select().props.onChange({ target: { value: "finance_investment" } }); });
+  await act(async () => { ui.secondary().props.onChange({ target: { value: "finance_investment.banking" } }); });
   for (let retry = 0; retry < 2; retry += 1) {
     await act(async () => { await ui.save().props.onClick(); });
     assert.ok(ui.root.root.findByProps({ role: "alert" }));
     assert.equal(ui.saved(), 0);
     assert.equal(ui.select().props.value, "finance_investment");
+    assert.equal(ui.secondary().props.value, "finance_investment.banking");
     assert.equal(ui.save().props.disabled, false);
   }
   await act(async () => { await ui.save().props.onClick(); });
@@ -87,20 +91,23 @@ test("network or malformed acknowledgement preserves the draft and allows an exp
 });
 
 test("a refreshed source cannot replace a draft while the editor is open", async (t) => {
-  const ui = await mount(t, (async () => acknowledged("finance_investment")) as typeof fetch, "technology_internet");
+  const ui = await mount(t, (async () => acknowledged("finance_investment", "finance_investment.banking")) as typeof fetch, "technology_internet");
   await act(async () => { ui.select().props.onChange({ target: { value: "finance_investment" } }); });
+  await act(async () => { ui.secondary().props.onChange({ target: { value: "finance_investment.banking" } }); });
   await act(async () => { ui.root.update(ui.element("other")); });
   assert.equal(ui.select().props.value, "finance_investment");
+  assert.equal(ui.secondary().props.value, "finance_investment.banking");
 });
 
 test("a late response after leaving the editor cannot refresh a different contact", async (t) => {
   let respond!: (response: Response) => void;
   const ui = await mount(t, (async () => new Promise<Response>((resolve) => { respond = resolve; })) as typeof fetch);
   await act(async () => { ui.select().props.onChange({ target: { value: "other" } }); });
+  await act(async () => { ui.secondary().props.onChange({ target: { value: "other.other" } }); });
   let pending!: Promise<void>;
   await act(async () => { pending = ui.save().props.onClick(); });
   act(() => ui.root.unmount());
-  await act(async () => { respond(acknowledged("other")); await pending; });
+  await act(async () => { respond(acknowledged("other", "other.other")); await pending; });
   assert.equal(ui.saved(), 0);
 });
 
@@ -132,12 +139,14 @@ test("the editor payload works through the real authenticated handler and surviv
     return patch(new Request(`http://localhost${path}`, init), { params: Promise.resolve({ id: "contact_078" }) });
   }) as typeof fetch, undefined, "contact_078");
   await act(async () => { ui.select().props.onChange({ target: { value: "finance_investment" } }); });
+  await act(async () => { ui.secondary().props.onChange({ target: { value: "finance_investment.banking" } }); });
   await act(async () => { await ui.save().props.onClick(); });
   assert.equal(ui.saved(), 1);
   const readback = await service().getContactDetail({ actorId, contactId: "contact_078" });
   assert.equal(readback.success, true);
   if (!readback.success) throw new Error("Missing saved contact");
   assert.equal(readback.data.contact?.primaryIndustryId, "finance_investment");
+  assert.equal(readback.data.contact?.secondaryIndustryId, "finance_investment.banking");
   assert.deepEqual(readback.data.contact?.tags, before.data.contact?.tags);
   assert.equal(readback.data.contact?.status, before.data.contact?.status);
   await act(async () => { ui.select().props.onChange({ target: { value: "" } }); });
@@ -147,4 +156,5 @@ test("the editor payload works through the real authenticated handler and surviv
   assert.equal(cleared.success, true);
   if (!cleared.success) throw new Error("Missing cleared contact");
   assert.equal(cleared.data.contact?.primaryIndustryId, undefined);
+  assert.equal(cleared.data.contact?.secondaryIndustryId, undefined);
 });

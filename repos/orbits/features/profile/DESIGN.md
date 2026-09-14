@@ -18,6 +18,12 @@ Profile 是很多关系动作的基础上下文。消息草稿、活动介绍、
 
 Service factory 提供 profile、document extraction 和 signal review queue services。
 
+### 结构化行业与联系人互操作
+
+本人资料与联系人共用 `shared/domain/industries.ts` 的一级／二级目录，但各自保持原有服务和权限边界。字段为 `primaryIndustryId`、`secondaryIndustryId`；旧 `industry` 原文不被覆盖，显示标签按 ID 派生。
+
+联系人详情的 HTTP PATCH 已接通两个 ID：新选择提交完整父子对，切换一级清空旧子项，明确错配在任何附带备注／标签写入前拒绝。旧客户端省略两个字段时保留选择；只改一级时由存储层清除不再适用的二级。Web 和 App 都检查保存回执的两个 ID，失败保留草稿，重新打开后读取保存值。此接线不表示真实同记录跨端或原生操作已验收。
+
 ## Mock 行为
 
 Mock 使用本地 Ari Lane 资料和确定性建议。文档抽取不会调用 OCR 或文件存储；更新建议不会调用 AI provider；接受建议只返回本地 preview，不写真实 profile store。

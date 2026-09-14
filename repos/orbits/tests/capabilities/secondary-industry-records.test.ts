@@ -90,7 +90,7 @@ test("mock profile validates the same parent-child rules", async () => {
   assert.equal(invalid.success, false);
 });
 
-test("contact selections round-trip through storage and reject mismatches before writing notes", { todo: "SC-0020-02 blocked: frozen scope omits the provider interface and HTTP handler" }, async () => {
+test("contact selections round-trip through storage and reject mismatches before writing notes", async () => {
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   const workspaceId = "workspace:secondary-industry-contact";
   const actorId = "industry-contact-owner";
@@ -170,7 +170,7 @@ test("structured search uses OR within each level and AND across levels, without
   assert.equal(invalid.success, false);
 });
 
-test("contact PATCH preserves secondary industry and rejects non-string identifiers", { todo: "SC-0020-02 blocked: app/api/contacts/[id]/handler.ts is outside the frozen scope" }, async () => {
+test("contact PATCH preserves secondary industry and rejects non-string identifiers", async () => {
   const previous = process.env.ORBIT_FEATURE_MODE;
   process.env.ORBIT_FEATURE_MODE = "mock";
   try {

@@ -11,7 +11,7 @@ import {
 } from "./contact-graph-query";
 import type { LocalRemoteContactGraph } from "./contact-graph-provider";
 import type { ContactDTO } from "../../shared/domain/contracts";
-import type { IndustryIdCode } from "../../shared/contract/industries";
+import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../shared/contract/industries";
 import type { ContactsListSearchAndFilterService } from "./service";
 
 type LiveContactsProviderResult<TResult> = TResult | Promise<TResult>;
@@ -66,6 +66,7 @@ export interface LiveContactsGraphProvider {
     contactId: string,
     actorId: string,
     primaryIndustryId: IndustryIdCode | null,
+    secondaryIndustryId?: SecondaryIndustryIdCode | null,
   ) => LiveContactsProviderResult<ContactDTO>;
 }
 

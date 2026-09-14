@@ -34,6 +34,7 @@ type PatchBody = {
   lastInteraction?: ContactDetailLastInteractionInput;
   note?: ContactDetailNoteInput | string;
   primaryIndustryId?: string | null;
+  secondaryIndustryId?: string | null;
   removeTags?: readonly string[];
   scenario?: string;
   status?: string;
@@ -118,6 +119,12 @@ async function readPatchBody(request: Request): Promise<PatchBodyResult> {
       };
     }
 
+    if (["primaryIndustryId", "secondaryIndustryId"].some((field) =>
+      body[field] !== undefined && body[field] !== null && typeof body[field] !== "string",
+    )) {
+      return { success: false };
+    }
+
     return {
       success: true,
       body: {
@@ -129,6 +136,12 @@ async function readPatchBody(request: Request): Promise<PatchBodyResult> {
             ? null
             : typeof body.primaryIndustryId === "string"
               ? body.primaryIndustryId
+              : undefined,
+        secondaryIndustryId:
+          body.secondaryIndustryId === null
+            ? null
+            : typeof body.secondaryIndustryId === "string"
+              ? body.secondaryIndustryId
               : undefined,
         removeTags: readStringList(body.removeTags ?? body.removeTag),
         scenario:
@@ -221,6 +234,7 @@ export function createContactDetailPatchHandler(
       lastInteraction: body.lastInteraction,
       note: body.note,
       primaryIndustryId: body.primaryIndustryId,
+      secondaryIndustryId: body.secondaryIndustryId,
       removeTags: body.removeTags,
       scenario: searchParams.get("scenario") ?? body.scenario,
       status: body.status,

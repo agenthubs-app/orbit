@@ -19,8 +19,8 @@ import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import type { OrbitApiClient } from "../../api/client";
 import { ContactNotesSection } from "./ContactNotesSection";
-import type { IndustryIdCode } from "../../api/contract/industries";
-import { INDUSTRY_CATALOG } from "../../api/domain/industries";
+import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../api/contract/industries";
+import { INDUSTRY_CATALOG, listSecondaryIndustries, secondaryIndustryLabel } from "../../api/domain/industries";
 import {
   contactDetailPath,
   ORBIT_API_ENDPOINTS,
@@ -455,7 +455,7 @@ function ContactOverview({ contact, email }: { contact: ContactDetailSummary; em
   return (
     <View style={styles.overviewSurface}>
       <DetailSection title="基本资料">
-        <View>{[["身份", contact.role], ["公司", contact.organization], ["行业", contact.primaryIndustryLabel], ["邮箱", email]].map(([label, value]) => <View key={label} style={styles.basicRow}><Text style={styles.basicLabel}>{label}</Text><Text selectable style={styles.basicValue}>{value || "未填写"}</Text></View>)}</View>
+        <View>{[["身份", contact.role], ["公司", contact.organization], ["行业", [contact.primaryIndustryLabel, contact.secondaryIndustryLabel || (contact.primaryIndustryId ? "二级未填写" : "")].filter(Boolean).join(" / ")], ["邮箱", email]].map(([label, value]) => <View key={label} style={styles.basicRow}><Text style={styles.basicLabel}>{label}</Text><Text selectable style={styles.basicValue}>{value || "未填写"}</Text></View>)}</View>
       </DetailSection>
       <DetailSection title="简介与合作信息">
         <Text style={styles.bodyText}>{contact.publicBio || contact.relationship || "暂未记录介绍。"}</Text>
@@ -643,7 +643,8 @@ function UpdateContactPanel({
       <View style={styles.editForm}>
         <EditReadOnlyField label="姓名" value={contact.displayName} prominent />
         <View style={[styles.editColumns, (width < 360 || fontScale >= 1.4) && styles.actionStack]}><EditReadOnlyField label="公司" value={contact.organization} column={width >= 360 && fontScale < 1.4} /><EditReadOnlyField label="职位" value={contact.role} column={width >= 360 && fontScale < 1.4} /></View>
-        <View><Text style={styles.editLabel}>行业</Text><IndustryPicker pending={pending} selectedId={draft.primaryIndustryId ?? undefined} selectedLabel={INDUSTRY_CATALOG.find(item => item.id === draft.primaryIndustryId)?.labels.zh} onSelect={primaryIndustryId => onChange({ primaryIndustryId })} /></View>
+        <View><Text style={styles.editLabel}>行业</Text><IndustryPicker pending={pending} selectedId={draft.primaryIndustryId ?? undefined} selectedLabel={INDUSTRY_CATALOG.find(item => item.id === draft.primaryIndustryId)?.labels.zh} onSelect={primaryIndustryId => onChange({ primaryIndustryId, ...(primaryIndustryId !== draft.primaryIndustryId ? { secondaryIndustryId: null } : {}) })} /></View>
+        <View><Text style={styles.editLabel}>二级行业</Text><SecondaryIndustryPicker pending={pending} primaryIndustryId={draft.primaryIndustryId} selectedId={draft.secondaryIndustryId ?? null} onSelect={secondaryIndustryId => onChange({ secondaryIndustryId })} /></View>
         <EditReadOnlyField label="邮箱" value={contact.primaryEmail ?? ""} />
         <View><Text style={styles.editLabel}>跟进状态</Text><View style={styles.editChips}>{original.statusOptions.map(status => <Pressable key={status} accessibilityRole="button" accessibilityLabel={`跟进状态：${statusLabels[status]}`} accessibilityState={{ selected: draft.status === status }} aria-selected={draft.status === status} disabled={pending} onPress={() => onChange({ status })} style={[styles.editChip, draft.status === status && styles.editChipSelected]}><Text style={[styles.editChipText, draft.status === status && styles.editChipSelectedText]}>{statusLabels[status]}</Text></Pressable>)}</View></View>
         <View><Text style={styles.editLabel}>标签</Text><View style={styles.editChips}>{draft.tags.map(tag => <Pressable key={tag} accessibilityRole="button" accessibilityLabel={`移除标签：${tag}`} disabled={pending} onPress={() => onChange({ tags: draft.tags.filter(value => value !== tag) })} style={[styles.editChip, styles.editChipSelected]}><Text style={[styles.editChipText, styles.editChipSelectedText]}>{tag}</Text><Ionicons color={colors.onAccent} name="close" size={14} /></Pressable>)}</View>
@@ -662,6 +663,27 @@ function UpdateContactPanel({
 function EditReadOnlyField({ label, value, prominent = false, column = false }: { label: string; value: string; prominent?: boolean; column?: boolean }) {
   const { styles } = useStyles();
   return <View style={[styles.editField, column && styles.editColumn]}><Text style={styles.editLabel}>{label}</Text><View style={[styles.editReadOnlyValue, prominent && styles.editNameLine]}><Text selectable style={[styles.editValueText, prominent && styles.editNameText]}>{value || "未填写"}</Text></View></View>;
+}
+
+function SecondaryIndustryPicker({ primaryIndustryId, selectedId, pending, onSelect }: {
+  primaryIndustryId: IndustryIdCode | null;
+  selectedId: SecondaryIndustryIdCode | null;
+  pending: boolean;
+  onSelect: (value: SecondaryIndustryIdCode) => void;
+}) {
+  const { styles } = useStyles();
+  const [expanded, setExpanded] = useState(false);
+  return <View style={styles.industryPicker}>
+    <Pressable accessibilityRole="button" accessibilityLabel="选择二级行业" accessibilityState={{ expanded }} disabled={pending || !primaryIndustryId} onPress={() => setExpanded(value => !value)} style={[styles.editIndustryButton, (pending || !primaryIndustryId) && styles.disabled]}>
+      <Text style={styles.editValueText}>{selectedId ? secondaryIndustryLabel(selectedId, "zh") : "二级未填写"}</Text>
+      <Ionicons color="#C4C9D4" name={expanded ? "caret-up" : "caret-down"} size={12} />
+    </Pressable>
+    {expanded && primaryIndustryId ? <View style={styles.industryOptions}>
+      {listSecondaryIndustries(primaryIndustryId).map(industry => <Pressable key={industry.id} accessibilityRole="button" accessibilityLabel={`二级行业：${industry.labels.zh}`} accessibilityState={{ selected: selectedId === industry.id }} disabled={pending} onPress={() => { onSelect(industry.id); setExpanded(false); }} style={[styles.industryOption, selectedId === industry.id && styles.industryOptionSelected]}>
+        <Text style={[styles.industryOptionText, selectedId === industry.id && styles.industryOptionTextSelected]}>{industry.labels.zh}</Text>
+      </Pressable>)}
+    </View> : null}
+  </View>;
 }
 
 function IndustryPicker({

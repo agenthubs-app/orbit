@@ -1,7 +1,7 @@
 import { ORBIT_API_ENDPOINTS } from "../api/endpoints";
 import type { ContactListItemContract } from "../api/contract/contacts";
-import type { IndustryIdCode } from "../api/contract/industries";
-import { isIndustryIdCode } from "../api/domain/industries";
+import type { IndustryIdCode, SecondaryIndustryIdCode } from "../api/contract/industries";
+import { industryLabel, isIndustryIdCode, secondaryIndustryLabel, validateIndustrySelection } from "../api/domain/industries";
 
 export interface ContactSummary {
   id: string;
@@ -207,6 +207,8 @@ export interface ContactDetailSummary extends ContactSummary {
   publicTopics: string[];
   primaryIndustryId?: IndustryIdCode;
   primaryIndustryLabel?: string;
+  secondaryIndustryId?: SecondaryIndustryIdCode;
+  secondaryIndustryLabel?: string;
   role: string;
   sourceLabel: string;
   statusAction: ContactDetailStatusActionView | null;
@@ -1514,8 +1516,13 @@ export function contactDetailToSummary(data: unknown): ContactDetailSummary {
     ...(isIndustryIdCode(contact.primaryIndustryId)
       ? { primaryIndustryId: contact.primaryIndustryId }
       : {}),
-    ...(stringField(contact, "primaryIndustryLabel")
-      ? { primaryIndustryLabel: stringField(contact, "primaryIndustryLabel") }
+    ...(isIndustryIdCode(contact.primaryIndustryId)
+      ? { primaryIndustryLabel: industryLabel(contact.primaryIndustryId, "zh") }
+      : stringField(contact, "primaryIndustryLabel")
+        ? { primaryIndustryLabel: stringField(contact, "primaryIndustryLabel") }
+        : {}),
+    ...(typeof contact.secondaryIndustryId === "string" && validateIndustrySelection(contact).valid
+      ? { secondaryIndustryId: contact.secondaryIndustryId as SecondaryIndustryIdCode, secondaryIndustryLabel: secondaryIndustryLabel(contact.secondaryIndustryId as SecondaryIndustryIdCode, "zh") }
       : {}),
     relationship: relationshipText(contact),
     role: roleLabel(stringField(contact, "role")),

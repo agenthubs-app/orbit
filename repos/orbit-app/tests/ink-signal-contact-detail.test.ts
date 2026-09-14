@@ -170,12 +170,48 @@ test("editor is staged, presents only supported fields and cancels without write
 test("editor submits one combined request only on explicit save and confirms returned fields", async t => {
   const p = await open(t, { holdWrites: true }); await press(p, "编辑资料"); await press(p, "跟进状态：长期维护");
   await press(p, "选择主要行业"); await press(p, "设为科技与互联网");
+  await press(p, "选择二级行业"); await press(p, "二级行业：人工智能与数据");
   await press(p, "移除标签：用户研究"); await p.getByRole("textbox", { name: "添加标签", exact: true }).fill("新合作"); await press(p, "添加此标签");
   assert.deepEqual(await writes(p), []);
   await p.evaluate(() => { const s = (window as any).fixture; s.presses["保存人脉"](); s.presses["保存人脉"](); }); await settle(p);
-  assert.deepEqual(await writes(p), [{ method: "PATCH", path: "/api/contacts/contact%3A%2F1", body: { status: "nurture", primaryIndustryId: "technology_internet", tags: ["设计合作", "新合作"] } }]);
+  assert.deepEqual(await writes(p), [{ method: "PATCH", path: "/api/contacts/contact%3A%2F1", body: { status: "nurture", primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.ai_data", tags: ["设计合作", "新合作"] } }]);
   await p.evaluate(() => { const s = (window as any).fixture; const i = s.requests.findIndex((r: any) => r.method === "PATCH"); s.contact = { ...s.contact, ...s.requests[i].body }; s.reply(i, 200); }); await settle(p);
   assert.equal(await p.getByRole("heading", { name: "人脉详情", exact: true }).count(), 1); assert.equal(await p.getByText("资料已保存。", { exact: true }).count(), 1);
+});
+
+test("contact secondary industry survives save and reopening while a mismatched receipt keeps the draft", async t => {
+  const p = await open(t, { holdWrites: true });
+  await press(p, "编辑资料");
+  assert.equal(await p.getByRole("button", { name: "选择二级行业", exact: true }).count(), 1);
+  await press(p, "选择主要行业"); await press(p, "设为科技与互联网");
+  await press(p, "保存人脉");
+  assert.deepEqual(await writes(p), [], "changing the parent without a child must not write");
+  await press(p, "选择二级行业"); await press(p, "二级行业：人工智能与数据");
+  await press(p, "保存人脉");
+  assert.deepEqual(await writes(p), [{ method: "PATCH", path: "/api/contacts/contact%3A%2F1", body: {
+    primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.ai_data"
+  } }]);
+  await p.evaluate(() => {
+    const s = (window as any).fixture; const i = s.requests.findLastIndex((r: any) => r.method === "PATCH");
+    const data = s.data(s.requests[i].path);
+    data.contact = { ...data.contact, primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.cybersecurity" };
+    s.reply(i, 200, data);
+  }); await settle(p);
+  assert.equal(await p.getByRole("heading", { name: "编辑人脉", exact: true }).count(), 1);
+  assert.match(await p.getByRole("button", { name: "选择二级行业", exact: true }).innerText(), /人工智能与数据/);
+  await press(p, "保存人脉");
+  await p.evaluate(() => {
+    const s = (window as any).fixture; const i = s.requests.findLastIndex((r: any) => r.method === "PATCH");
+    s.contact = { ...s.contact, ...s.requests[i].body }; s.reply(i, 200);
+  }); await settle(p);
+  assert.equal(await p.getByRole("heading", { name: "人脉详情", exact: true }).count(), 1);
+  assert.match(await p.locator("body").innerText(), /科技与互联网 \/ 人工智能与数据/);
+  await press(p, "编辑资料");
+  assert.match(await p.getByRole("button", { name: "选择二级行业", exact: true }).innerText(), /人工智能与数据/);
+  await press(p, "选择主要行业"); await press(p, "设为金融与投资");
+  assert.match(await p.getByRole("button", { name: "选择二级行业", exact: true }).innerText(), /二级未填写/);
+  await press(p, "保存人脉");
+  assert.equal((await writes(p)).length, 2);
 });
 
 test("editor retains pending drafts across refresh and rejects every unconfirmed acknowledgement", async t => {
@@ -325,7 +361,7 @@ test("archive, clear and interaction edits retain their actual supported PATCH m
   await press(p, "跟进状态：暂不推进"); await press(p, "移除标签：设计合作"); await press(p, "移除标签：用户研究");
   await press(p, "选择主要行业"); await press(p, "清空主要行业"); await press(p, "互动渠道：邮件");
   await p.getByRole("textbox", { name: "互动摘要", exact: true }).fill("下一轮从邮件确认范围"); await press(p, "保存人脉");
-  assert.deepEqual(await writes(p), [{ method: "PATCH", path: "/api/contacts/contact%3A%2F1", body: { status: "archived", primaryIndustryId: null, tags: [], lastInteraction: { channel: "email_signal", occurredAt: "2026-09-10T09:00:00+09:00", summary: "下一轮从邮件确认范围" } } }]);
+  assert.deepEqual(await writes(p), [{ method: "PATCH", path: "/api/contacts/contact%3A%2F1", body: { status: "archived", primaryIndustryId: null, secondaryIndustryId: null, tags: [], lastInteraction: { channel: "email_signal", occurredAt: "2026-09-10T09:00:00+09:00", summary: "下一轮从邮件确认范围" } } }]);
   await p.evaluate(() => { const s = (window as any).fixture; const i = s.requests.findIndex((r: any) => r.method === "PATCH"); s.contact = { ...s.contact, ...s.requests[i].body }; s.reply(i); }); await settle(p);
   assert.equal(await p.getByRole("heading", { name: "人脉详情", exact: true }).count(), 1); assert.equal(await p.getByText("暂不推进", { exact: true }).count(), 1);
 });

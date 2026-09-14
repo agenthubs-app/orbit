@@ -1,4 +1,4 @@
-import { industryLabel, isIndustryIdCode } from "../../../../../shared/domain/industries";
+import { industryLabel, isIndustryIdCode, secondaryIndustryLabel } from "../../../../../shared/domain/industries";
 import { CONTACT_DETAIL_TAG_OPTIONS } from "../../../../../features/contacts/detail-contract";
 import type {
   ContactDetailSourceReference,
@@ -413,6 +413,8 @@ export function contactDetailRouteToOrbitContactsViewModel(
     id: model.contact.id,
     industry,
     primaryIndustryId: model.contact.primaryIndustryId,
+    secondaryIndustryId: model.contact.secondaryIndustryId,
+    secondaryIndustryLabel: model.contact.secondaryIndustryId ? secondaryIndustryLabel(model.contact.secondaryIndustryId, language) : undefined,
     initial:
       model.contact.displayName.trim().slice(0, 1).toUpperCase() ||
       model.contact.id.slice(0, 1).toUpperCase(),
