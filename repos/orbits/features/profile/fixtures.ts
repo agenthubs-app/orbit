@@ -29,6 +29,8 @@ export const mockProfileProvenance: ProfileProvenance = {
 
 export const mockManualProfile: ManualProfile = {
   id: "profile_ari_lane",
+  primaryIndustryId: "technology_internet",
+  secondaryIndustryId: "technology_internet.enterprise_software",
   displayName: "Ari Lane",
   headline: "Founder building a relationship operating system",
   organization: "Orbit",
@@ -132,6 +134,8 @@ export const mockProfileFailureProvenance: ProfileProvenance = {
 
 export const mockProfileUpdateInput: ManualProfileUpdateInput = {
   displayName: "Ari Lane",
+  primaryIndustryId: "technology_internet",
+  secondaryIndustryId: "technology_internet.enterprise_software",
   headline: "Founder building a relationship operating system",
   organization: "Orbit",
   role: "Founder",

@@ -30,6 +30,8 @@ Service factory 提供 profile、document extraction 和 signal review queue ser
 
 Mock 使用本地 Ari Lane 资料和确定性建议。文档抽取不会调用 OCR 或文件存储；更新建议不会调用 AI provider；接受建议只返回本地 preview，不写真实 profile store。
 
+Ari Lane 的正常手动资料夹具使用 `technology_internet.enterprise_software`，读取、编辑输入及保存预览保留同一父子选择；空资料反例仍为空，完整度评分不随本轮行业补齐改变。联系人列表、详情和搜索中的同一测试人物保持一致行业，旧搜索领域原文保留。此批固定夹具不代表生成数据、内联测试或既有测试库已全部补齐。
+
 ## Live 替换方案
 
 Live 可以接用户资料数据库、文档解析、OCR、LLM 信息抽取和人工编辑记录。文档抽取结果必须先进入 draft/review 状态，不能直接覆盖 Profile。来源和置信度必须保留。

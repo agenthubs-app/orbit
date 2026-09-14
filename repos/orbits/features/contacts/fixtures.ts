@@ -139,6 +139,8 @@ function evidenceFor(evidenceId: string): readonly ContactEvidence[] {
 export const mockContactListItems: readonly ContactListItem[] = [
   {
     id: "contact:kenji-watanabe",
+    primaryIndustryId: "manufacturing_supply_chain",
+    secondaryIndustryId: "manufacturing_supply_chain.industrial_equipment",
     displayName: "Kenji Watanabe",
     role: "Founder",
     organization: "Aster Grid",
@@ -173,6 +175,8 @@ export const mockContactListItems: readonly ContactListItem[] = [
   },
   {
     id: "contact:hana-sato",
+    primaryIndustryId: "community_nonprofit",
+    secondaryIndustryId: "community_nonprofit.community_operations",
     displayName: "Hana Sato",
     role: "Community Lead",
     organization: "Tokyo Climate Guild",
@@ -208,6 +212,8 @@ export const mockContactListItems: readonly ContactListItem[] = [
   },
   {
     id: "contact:omar-rahman",
+    primaryIndustryId: "finance_investment",
+    secondaryIndustryId: "finance_investment.venture_capital",
     displayName: "Omar Rahman",
     role: "Platform Partner",
     organization: "Northstar Ventures",
@@ -239,6 +245,8 @@ export const mockContactListItems: readonly ContactListItem[] = [
   },
   {
     id: "contact:mina-tan",
+    primaryIndustryId: "manufacturing_supply_chain",
+    secondaryIndustryId: "manufacturing_supply_chain.industrial_equipment",
     displayName: "Mina Tan",
     role: "Head of Partnerships",
     organization: "HarborGrid",

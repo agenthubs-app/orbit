@@ -1,3 +1,4 @@
+import { secondaryIndustryLabel } from "../../shared/domain/industries";
 import {
   CONTACT_DETAIL_STATUS_OPTIONS,
   CONTACT_DETAIL_TAG_OPTIONS,
@@ -122,6 +123,8 @@ export const mockContactDetailPublicProfile: ContactDetailPublicProfile = {
 
 export const mockContactDetail: ContactDetail = {
   id: "demo-contact-1",
+  primaryIndustryId: "manufacturing_supply_chain",
+  secondaryIndustryId: "manufacturing_supply_chain.industrial_equipment",
   contentLanguage: "en",
   displayName: "Kenji Watanabe",
   role: "Founder",
@@ -209,6 +212,9 @@ export const mockUpdatedContactDetailLastInteraction: ContactDetailLastInteracti
 
 export const mockUpdatedContactDetail: ContactDetail = {
   ...mockContactDetail,
+  secondaryIndustryLabel: mockContactDetail.secondaryIndustryId
+    ? secondaryIndustryLabel(mockContactDetail.secondaryIndustryId, mockContactDetail.contentLanguage)
+    : undefined,
   tags: [
     "topic:storage-pilots",
     "priority:warm-follow-up",

@@ -115,6 +115,8 @@ export const mockRelationshipNaturalSearchResults: readonly RelationshipNaturalS
   {
     id: "relationship-search-result:kenji-watanabe",
     contactId: "contact:kenji-watanabe",
+    primaryIndustryId: "manufacturing_supply_chain",
+    secondaryIndustryId: "manufacturing_supply_chain.industrial_equipment",
     displayName: "Kenji Watanabe",
     role: "Founder",
     organization: "Aster Grid",
@@ -162,6 +164,8 @@ export const mockRelationshipNaturalSearchResults: readonly RelationshipNaturalS
   {
     id: "relationship-search-result:omar-rahman",
     contactId: "contact:omar-rahman",
+    primaryIndustryId: "finance_investment",
+    secondaryIndustryId: "finance_investment.venture_capital",
     displayName: "Omar Rahman",
     role: "Platform Partner",
     organization: "Northstar Ventures",
@@ -202,6 +206,8 @@ export const mockRelationshipNaturalSearchResults: readonly RelationshipNaturalS
   {
     id: "relationship-search-result:hana-sato",
     contactId: "contact:hana-sato",
+    primaryIndustryId: "community_nonprofit",
+    secondaryIndustryId: "community_nonprofit.community_operations",
     displayName: "Hana Sato",
     role: "Community Lead",
     organization: "Tokyo Climate Guild",
@@ -245,6 +251,8 @@ export const mockRelationshipNaturalSearchResults: readonly RelationshipNaturalS
   {
     id: "relationship-search-result:mina-tan",
     contactId: "contact:mina-tan",
+    primaryIndustryId: "manufacturing_supply_chain",
+    secondaryIndustryId: "manufacturing_supply_chain.industrial_equipment",
     displayName: "Mina Tan",
     role: "Partnerships Director",
     organization: "Harbor Storage",
