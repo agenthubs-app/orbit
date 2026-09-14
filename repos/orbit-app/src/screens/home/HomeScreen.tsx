@@ -97,7 +97,7 @@ export function HomeScreen({ mode = "hub" }: { mode?: HomeMode }) {
     () => false
   );
   const eventsState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.events,
+    ORBIT_API_ENDPOINTS.publicEvents,
     () => false
   );
   const contactsState = useApiResource<unknown>(

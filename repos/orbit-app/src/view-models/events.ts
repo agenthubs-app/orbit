@@ -685,7 +685,7 @@ function eventParticipantCountLabel(event: Record<string, unknown>): string {
     optionalNumberField(stats, "count") ??
     optionalNumberField(event, "participantCount");
 
-  return count && count > 0 ? `${count} 人已报名` : "报名人数待确认";
+  return count !== null ? `${count} 人已报名` : "报名人数待确认";
 }
 
 function eventSubtitle(event: Record<string, unknown>): string {

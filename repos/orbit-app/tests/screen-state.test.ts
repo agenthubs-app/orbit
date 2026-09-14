@@ -162,7 +162,7 @@ test("eventsToSummaries exposes image-list metadata for event lists", () => {
     title: "关西企业 AI 交流会"
   });
   assert.equal(summaries[1]?.actionLabel, "查看");
-  assert.equal(summaries[1]?.participantCountLabel, "报名人数待确认");
+  assert.equal(summaries[1]?.participantCountLabel, "0 人已报名");
 });
 
 test("eventsToSummaries does not replace a manual title with its source note", () => {
