@@ -24,6 +24,18 @@
 | BR-012 | P1 | 双面名片按卡复核并一次创建联系人 | blocked | Bridge／共同环境负责人 | 实体 iPhone 在共同 API/OCR 环境完成双面创建，Web/App 重开同一联系人和字段来源 |
 | BR-013 | P1 | 统一待办与人脉筛选跨端一致 | verified | 已完成；0011/0013/0015/0018 可消费 | 同一任务在 App 全部／人脉视图、旧链接及 Web 完成／恢复回读一致 |
 | BR-014 | P1 | 首页与可信人脉分析 | blocked | Bridge／共同环境负责人 | 登录态 Simulator 核对首页/Pipeline；真实分析及目标在同账号 Web/App 双向回读 |
+| BR-015 | P1 | 账号语言偏好与三语基础 | verified | 已完成；0014/0015 可消费 | 独立账号偏好、三语 Provider、设备 A 保存→设备 B 服务端回读及失败／冲突证据齐全 |
+
+## BR-015 — 账号语言偏好与三语基础
+
+- 创建/更新日期：2026-09-15。
+- 总状态：`verified`；web_status：`source_ready`；app_status：`consumer_ready`；verification_status：隔离环境与原生本地验收通过。
+- Web/API：`GET/PUT /api/account/language-preference` 使用独立 actor-scoped 记录；PUT 以 expectedUpdatedAt、mutationId、SERIALIZABLE transaction 和 advisory lock 保护偏好与私有回执。
+- App：无手动偏好时跟随当前设备；手动中／日／英选择以账号为准，换号隔离，前台或显式刷新服务器事实。业务原文、身份字段和用户输入不进入翻译字典。
+- 版本：服务端 `cc3930449`；App 基础 `1bd99f737`；可达账号链路补齐 `9d5c13622`。
+- 验证：设备 A PUT 后独立 Provider 页面 B 以不同设备语言 GET 回读账号日文；真实 PostgreSQL 两连接并发、重放／碰撞、actor 隔离和回执失败回滚通过。App Provider 7/7、Profile 166/166、受影响组合 157/157、日期 5/5、原生 EN/JA 大字号通过。
+- 运行边界：当前是刷新式同步，不是实时推送；未访问生产账号、生产数据库或远程部署。全量尝试的旧夹具失败和定向修复结果见 Sprint 0013 REPORT，不写成最终全量通过。
+- 下游：0014/0015 复用唯一 Context、严格字典键和 literal 规则，按页面迁移产品 chrome；不得翻译姓名、公司、聊天、活动、题目或用户答案。
 
 ## BR-014 — 首页与可信人脉分析
 

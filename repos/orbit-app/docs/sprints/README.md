@@ -60,7 +60,7 @@ build/harness-logs/
 | [0010](0010-task-schedule-editing/GOAL.md) | 个人事项能创建、编辑和清空字段，各页与提醒一致 | R-08 | run-01 已完成；功能 `d005c2b79`，见 REPORT | completed |
 | [0011](0011-home-analysis/GOAL.md) | 首页符合确认布局，分析可辨新旧，目标可单独保存 | R-09、R-10 | 本地功能与 H 验证完成；真实登录态 Simulator、provider 报告及同账号双端回读未运行，见 REPORT | blocked |
 | [0012](0012-message-state/GOAL.md) | 前台新消息及时出现，已读角标与跳转目标正确 | R-11 | 功能提交 `218fb3d4b`；自动化与 iOS 打包通过，真实双用户原生／实体推送环境缺失，见 REPORT | blocked |
-| [0013](0013-locale-foundation/GOAL.md) | 用中日英操作账号、首页和设置，切语言不丢输入 | R-12 | run-01 执行中；采用已批准的独立账号语言偏好记录／端点方案 | running |
+| [0013](0013-locale-foundation/GOAL.md) | 用中日英操作账号、首页和设置，切语言不丢输入 | R-12 | run-01 completed；功能 `cc3930449`、`1bd99f737`、`9d5c13622`，见 REPORT | completed |
 | [0014](0014-locale-relationships-events/GOAL.md) | 用中日英处理人脉、名片和活动，保留原文与答案 | R-12 | 0013、0004、0007、0008 | blocked |
 | [0015](0015-locale-assistant-workflows/GOAL.md) | 用中日英操作 AI、事项和消息，保留内容与日期 | R-12 | 0013、0006、0010、0012 | blocked |
 | [0016](0016-native-navigation/GOAL.md) | 用实际设备验收导航、字号、键盘和辅助功能 | R-09、R-12 | 0014、0015；原生审批／设备 | blocked |
@@ -99,6 +99,7 @@ build/harness-logs/
 - owner：当前主代理 `/root`；run_count：1；开始 2026-09-15 04:35 JST，原地 `chat-agent`，单一 Generator。基线 HEAD `cdd82a31e`；原 Planner revision 2／SHA256 `6f02d207f00b2e044a6a85c7073a5b905c47036cdff677ad457d993742e48ae8`。
 - 采用 2026-09-14 已记录的整体批准与 `TECHNICAL_PREPARATION.md` 推荐方案 A：独立 actor-scoped 账号语言偏好记录／GET+PUT 端点；不从旧 `profile.preferredLanguage` 推断手动选择，不把设备语言写入账号。
 - 改动前基线：App 账号／资料／设置／首页 258/258 通过；Web 语言／profile 22/22 个可执行用例通过，14 个 PostgreSQL 用例因未配置一次性数据库 socket 明确跳过。实现后必须补齐独立记录的 PostgreSQL CAS／幂等／回滚／actor 隔离证据。
+- 结束 2026-09-15 06:02 JST；结果 completed；最后功能 HEAD `9d5c13622`。App 中／日／英基础与账号、资料、首页、设置及可达密码／权限链路完成；设备 A 保存→独立设备 B 服务端回读、真实 PostgreSQL 并发／幂等／回滚、日期不变量和原生大字号均通过。两次全量尝试及其旧夹具失败、后续完整受影响文件复验均按事实保留，不改写为最终全量通过。见[执行报告](0013-locale-foundation/REPORT.md)。
 
 ### 0011 / run-01
 

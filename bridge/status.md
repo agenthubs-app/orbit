@@ -1,5 +1,11 @@
 # 两端当前状态
 
+## 2026-09-15 A 线 0013 增量
+
+- Web/API `cc3930449` 新增 actor-scoped 账号语言偏好 GET/PUT、版本冲突、幂等回执和 SERIALIZABLE 事务保护；App `1bd99f737`、`9d5c13622` 建立中／日／英 Provider，并迁移账号、资料、首页、设置及其可达密码／权限页面。
+- 设备 A 保存→独立设备 B 服务端 GET 回读、服务／路由／真实 PostgreSQL 13/13、App Provider 7/7、Profile 166/166、受影响组合 157/157、日期不变量 5/5 和原生 EN/JA 大字号通过。
+- 业务原文和用户输入保持 literal；设备自动语言不写入账号。同步为登录／前台／显式刷新，不声称实时推送；未部署或写生产数据库。详情见 [BR-015](handoffs.md#br-015--账号语言偏好与三语基础)与 [Sprint 0013 报告](../repos/orbit-app/docs/sprints/0013-locale-foundation/REPORT.md)。
+
 ## 2026-09-15 A 线 0011 增量
 
 - 首页由 `727aeeae2` 使用真实推荐活动替换旧联系跟进区块，按既有排序最多显示五条未完成待办并在成功完成后补位；Pipeline 保持独立入口。

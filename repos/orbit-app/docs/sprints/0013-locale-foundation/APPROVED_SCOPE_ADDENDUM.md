@@ -27,7 +27,7 @@
 
 - `repos/orbit-app/package.json`、`package-lock.json`：直接声明 Expo 57 匹配的 `expo-localization`。
 - `repos/orbit-app/app/_layout.tsx`
-- `repos/orbit-app/src/i18n/locale-core.ts`
+- `repos/orbit-app/src/i18n/locale-core.ts`、`src/i18n/OrbitLocaleContext.tsx`（仅拆出无设备／认证副作用的 hook 与 fallback 边界）
 - `repos/orbit-app/src/i18n/OrbitLocaleProvider.tsx`
 - `repos/orbit-app/src/i18n/messages.ts`、`zh.ts`、`ja.ts`、`en.ts`
 - `repos/orbit-app/src/api/language-preference.ts`
@@ -40,6 +40,8 @@
 - 本 Sprint 新语言 core、账号同步、长内容测试，以及 Planner 已列的四组页面、0009 日期不变量和必要直接消费者回归。
 
 如果账号／设置主链路的真实可达操作仍残留固定中文，可追加 password reset、permissions、API settings、LoadingState 与 ErrorState 的精确消费者；追加只用于 SC-0013-02/04，不扩大到 0014/0015 页面。
+
+上述可达操作的直接 view-model、source/interaction 测试以及因 Context 拆分需要更新的窄测试 fixture 同属该追加范围；不得借此迁移下一批业务页面。
 
 ## 不在本补充内
 
