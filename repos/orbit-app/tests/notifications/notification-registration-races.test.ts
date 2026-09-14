@@ -124,6 +124,12 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
     createContext: () => ({ Provider: "Provider" }),
     useCallback: (callback: unknown, deps: unknown[]) => memo(() => callback, deps),
     useMemo: memo,
+    useRef(initial: unknown) {
+      const owner = frame;
+      const index = owner.cursor++;
+      if (!(index in owner.slots)) owner.slots[index] = { current: initial };
+      return owner.slots[index];
+    },
     useState(initial: unknown) {
       const owner = frame;
       const index = owner.cursor++;
@@ -207,7 +213,11 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
       if (id === "./native-auth-session-storage") return { nativeAuthSessionStorage: { read: async () => "test-cookie", write: async () => { calls.push("write-auth"); }, clear: async () => { calls.push("clear-auth"); } } };
       if (id === "./mobile-auth") return {
         validateAuthSession: async (options: { cookieHeader: string }) => ({ success: true, data: { user: { id: options.cookieHeader === "next-cookie" ? "actor-b" : "actor-a" } } }),
-        signInWithMobileCredentials: async () => ({ success: true, data: { cookieHeader: "next-cookie" } }),
+        signInWithMobileCredentials: async () => ({ success: true, data: {
+          cookieHeader: "next-cookie",
+          expiresAt: "2026-09-15T00:00:00Z",
+          user: { id: "actor-b", email: "actor-b@example.test", name: "Actor B" }
+        } }),
         fetchMobileAuthProviders: async () => ({ success: true, data: { providers: [] } }),
       };
       if (id === "./auth-session") return { signOutOrbitSession: async () => {

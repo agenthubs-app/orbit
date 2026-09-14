@@ -178,7 +178,7 @@ for (const theme of ["light", "dark"] as const) {
     assert.equal(await name.evaluate(el => el.scrollWidth <= el.clientWidth + 1 && el.scrollHeight <= el.clientHeight + 1), true, "long identity remains readable");
     await page.getByRole("button", { name: "编辑资料", exact: true }).click();
     const input = page.getByRole("textbox", { name: "名字", exact: true }); await fits(input); await input.fill("保留未保存名字");
-    const form = page.getByText("编辑对外资料", { exact: true }).locator("..").locator("..");
+    const form = page.getByText("编辑个人资料", { exact: true }).locator("..").locator("..");
     assert.equal(await form.evaluate(el => getComputedStyle(el).borderRadius), "12px");
     await fits(page.getByRole("button", { name: "保存资料", exact: true }), 50);
     for (const label of ["提取名片", "提取简历", "选择名片图片", "选择简历图片", "选择简历文件"]) await fits(page.getByRole("button", { name: label, exact: true }));

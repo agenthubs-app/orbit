@@ -40,12 +40,12 @@ test("profile screen can confirm profile update suggestions through the API", ()
   );
 });
 
-test("profile screen can save manual public profile edits through the API", () => {
+test("profile screen can save manual and private profile edits through the API", () => {
   assert.match(screenSource, /TextInput/u);
   assert.match(screenSource, /profileSummaryToEditDraft/u);
   assert.match(screenSource, /buildProfileUpdateRequest/u);
   assert.match(screenSource, /\.put<unknown>\(\s*ORBIT_API_ENDPOINTS\.profile/u);
-  assert.match(screenSource, /编辑对外资料/u);
+  assert.match(screenSource, /编辑个人资料/u);
   assert.match(screenSource, /保存资料/u);
 });
 
