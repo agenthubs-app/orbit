@@ -12,6 +12,39 @@ import { legacyDefaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMockStateStore } from "../../shared/mock/state-store";
 import * as fixtureInventory from "../support/industry-fixture-inventory";
 
+test("account seed inventory keeps all twelve people and identifies the three unresolved classifications", () => {
+  const read = Reflect.get(fixtureInventory, "readAccountContactIndustryFixtureSource") as undefined | (() => {
+    source: string;
+    constructor: string;
+    records: {
+      personId: string;
+      accountId: string;
+      classification: string;
+      basis: string;
+      projections: { recordId: string; path: string; selection: IndustrySelectionContract }[];
+    }[];
+  });
+  const source = read?.();
+  assert.ok(source, "seed coverage must execute the pure constructor without loading its CLI");
+  assert.equal(source.source, "shared/mock/account-contact-fixtures.ts");
+  assert.equal(source.constructor, "buildAccountContactFixtures");
+  assert.equal(source.records.length, 12);
+  assert.equal(source.records.filter((record) => record.classification === "confirmed").length, 9);
+  assert.deepEqual(source.records.filter((record) => record.classification === "missing_basis").map((record) => record.personId), [
+    "orbit-person-9cb4ed0cd2-07", "orbit-person-9cb4ed0cd2-10", "orbit-person-9cb4ed0cd2-11",
+  ]);
+  source.records.forEach((record, index) => {
+    assert.equal(record.accountId, "industry-fixture-account");
+    assert.ok(record.basis.length > 0);
+    assert.equal(record.projections.length, 2);
+    assert.deepEqual(record.projections.map((projection) => projection.path), ["contact", "contact.publicProfile"]);
+    assert.ok(record.projections.every((projection) => projection.recordId === `orbit-contact-9cb4ed0cd2-${String(index + 1).padStart(2, "0")}`));
+    assert.deepEqual(record.projections[0].selection, record.projections[1].selection);
+    assert.equal(validateIndustrySelection(record.projections[0].selection).valid, true);
+    assert.equal(Boolean(record.projections[0].selection.secondaryIndustryId), record.classification === "confirmed");
+  });
+});
+
 test("inventory classifies event domains, search preferences, aggregate buckets and message runs without inventing person industries", () => {
   const read = Reflect.get(fixtureInventory, "readNonPersonIndustryFixtureSources") as undefined | (() => {
     source: string;

@@ -11,6 +11,7 @@ import { createMockRelationshipNaturalSearchService } from "../../features/searc
 import { mockAiProviderRuns } from "../../shared/ai/mock-fixtures";
 import { mockNetworkDistributionAnalyticsFixture } from "../../features/dashboard/distribution-fixtures";
 import { mockEventValueRecommendationProfile, mockEventValueRecommendations } from "../../features/recommendations/event-value-fixtures";
+import { buildAccountContactFixtures } from "../../shared/mock/account-contact-fixtures";
 
 // Incremental inventory: pending families below remain in SC-05's denominator.
 // Do not import seed CLIs here: some load credentials or write during import.
@@ -77,7 +78,7 @@ export const industryFixtureExceptions = [
 
 export const pendingIndustryFixtureSources = [
   { source: "shared/mock/generated-relationship-fixtures.ts", reason: "Generated runtime projections require the separately reviewed source/output mapping; do not edit the generated output by hand." },
-  { source: "scripts/seed-account-contact-fixtures.ts", reason: "Seed CLI: inspect pure builders without import or execution." },
+  { source: "scripts/seed-account-contact-fixtures.ts", reason: "Pure constructor inventory covers 12 people / 24 projections: 9 confirmed, 3 missing classification basis. CLI and persisted records have not been executed or verified." },
   { source: "scripts/seed-account-agent-pressure-fixtures.ts", reason: "Seed CLI: inspect pure builders without import or execution." },
   { source: "scripts/seed-event-operations-e2e.ts", reason: "Seed CLI: inspect pure builders without import or execution." },
   { source: "scripts/seed-primary-test-account.ts", reason: "Seed CLI: inspect pure builders without import or execution." },
@@ -87,6 +88,43 @@ export const pendingIndustryFixtureSources = [
   { source: "repos/mockdata seed/generated/exports and root generator", reason: "132 users, 132 contacts, 500 participant source rows plus related projections; not unique-person totals. Exact mapping/output scope awaits separate review." },
   { source: "Persisted isolated test records", reason: "Environment, workspace, actor, record IDs, expected versions and write approval are not established." },
 ] as const;
+
+export function readAccountContactIndustryFixtureSource() {
+  const missingBasis: Record<number, string> = {
+    6: "社群／非营利父类下的可持续顾问，尚不能区分社群运营、公益组织或另一个父类的咨询业务。",
+    9: "只有制造业和工厂数字化信息，未说明具体生产行业，不能从其技术需求反推行业。",
+    10: "数字医疗试点评估不能唯一对应医疗服务、器械或健康管理，目录没有数字医疗子类。",
+  };
+  return {
+    source: "shared/mock/account-contact-fixtures.ts",
+    constructor: "buildAccountContactFixtures",
+    records: buildAccountContactFixtures("industry-fixture-account").map(({ sourceIndex, fixture, contact, connection }) => {
+      if (!contact.personId || !contact.publicProfile || connection.contactId !== contact.id) {
+        throw new Error(`Incomplete account fixture links at source index ${sourceIndex}`);
+      }
+      if (!contact.secondaryIndustryId && !missingBasis[sourceIndex]) {
+        throw new Error(`Unexplained missing industry at source index ${sourceIndex}`);
+      }
+      return {
+        personId: contact.personId,
+        accountId: connection.accountId,
+        classification: missingBasis[sourceIndex] ? "missing_basis" : "confirmed",
+        basis: missingBasis[sourceIndex] ?? `固定源定义：${fixture.industry}；${fixture.profileBio}`,
+        projections: [
+          { path: "contact", selection: contact },
+          { path: "contact.publicProfile", selection: contact.publicProfile },
+        ].map(({ path, selection }) => ({
+          recordId: contact.id,
+          path,
+          selection: {
+            primaryIndustryId: selection.primaryIndustryId,
+            secondaryIndustryId: selection.secondaryIndustryId,
+          },
+        })),
+      };
+    }),
+  };
+}
 
 // These families remain explicitly registered, outside the normal-person count.
 // Their full source and consumer paths were inspected; no person industry is inferred.
