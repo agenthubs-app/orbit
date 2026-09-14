@@ -9,6 +9,21 @@ const require = createRequire(import.meta.url);
 const iconFont = readFileSync("node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf").toString("base64");
 let browser: Browser;
 let script: string;
+const relationshipInbox = (count: number, actor = "one", id = "current") => {
+  const remote = `remote:${actor}`;
+  return {
+    conversations: [{
+      conversationId: id, contactId: `contact:${id}`, participantAccountIds: [actor, remote],
+      participantDisplayNames: { [actor]: actor, [remote]: remote }, qualificationVersion: `qualification:${id}`,
+      status: "active", createdAt: "2026-09-15T00:00:00Z", updatedAt: "2026-09-15T00:00:00Z", unreadCount: count,
+      messages: Array.from({ length: Math.max(count, 1) }, (_, index) => ({
+        messageId: `message:${id}:${index}`, conversationId: id, senderAccountId: remote,
+        senderDisplayName: remote, body: `message ${index}`, sentAt: "2026-09-15T00:00:00Z", deliveryState: "delivered"
+      }))
+    }],
+    refreshedAt: "2026-09-15T00:00:00Z"
+  };
+};
 const fixture = `
 import React, { useEffect, useSyncExternalStore } from "react";
 import { View } from "react-native-web";
@@ -44,12 +59,13 @@ const state = window.fixture = {
         schedule({ id: "visual-schedule-3", title: "周宁 · 项目讨论", startsAt: "2026-09-11T07:00:00Z", endsAt: "2026-09-11T07:45:00Z" }),
       ] };
       if (path === "/api/contacts") return { state: "success", contacts: [["林悦", "产品设计师"], ["陈默", "产品经理"], ["周宁", "市场负责人"], ["许妍", "创业者"]].map(([displayName, role], index) => contact({ id: "visual-contact-" + index, displayName, role })) };
-      if (/inbox/.test(path)) return { inbox: { conversations: [{ conversationId: "visual-inbox", unreadCount: 3 }] } };
+      if (path === "/api/relationship-communication/conversations") { const actor = state.actor, remote = "remote:" + actor; return { conversations: [{ conversationId: "visual-inbox", contactId: "contact:visual", participantAccountIds: [actor, remote], participantDisplayNames: { [actor]: actor, [remote]: remote }, qualificationVersion: "qualification:visual", status: "active", createdAt: "2026-09-15T00:00:00Z", updatedAt: "2026-09-15T00:00:00Z", unreadCount: 3, messages: [0, 1, 2].map(index => ({ messageId: "visual-message:" + index, conversationId: "visual-inbox", senderAccountId: remote, senderDisplayName: remote, body: "message " + index, sentAt: "2026-09-15T00:00:00Z", deliveryState: "delivered" })) }], refreshedAt: "2026-09-15T00:00:00Z" }; }
     }
     if (path === "/api/tasks") return { tasks: [task(), task({ id: "future", title: "周末整理资料", plannedDate: "2026-09-12" })] };
     if (path === "/api/schedule-items") return { scheduleItems: [schedule(), schedule({ id: "event", title: "设计分享会", kind: "event", sourceId: "event:/one",
       startsAt: "2026-09-11T07:00:00Z", endsAt: "2026-09-11T08:00:00Z" })] };
     if (path === "/api/contacts") return { state: "success", contacts: [contact(), contact({ id: "active", displayName: "李安", status: "active" })] };
+    if (path === "/api/relationship-communication/conversations") return { conversations: [], refreshedAt: "2026-09-15T00:00:00Z" };
     return { items: [], notifications: [] };
   },
   reply(index, data, status = 200, success = status === 200) {
@@ -286,16 +302,16 @@ for (const patch of [{ baseReady: false }, { ready: false }, { signedIn: false }
 
 test("inbox badge does not coalesce an empty-cookie read from a previous actor", async t => {
   const p = await open(t);
-  await p.waitForFunction(() => (window as any).fixture.requests.some((r: any) => /inbox/.test(r.path)));
-  const oldInbox = await p.evaluate(() => (window as any).fixture.requests.findIndex((r: any) => /inbox/.test(r.path)));
+  await p.waitForFunction(() => (window as any).fixture.requests.some((r: any) => /relationship-communication/.test(r.path)));
+  const oldInbox = await p.evaluate(() => (window as any).fixture.requests.findIndex((r: any) => /relationship-communication/.test(r.path)));
   assert.ok(oldInbox >= 0, JSON.stringify(await p.evaluate(() => ({ requests: (window as any).fixture.requests.map((r: any) => r.path), body: document.body.innerText }))));
   await update(p, { actor: "two" });
-  await p.waitForFunction(oldInbox => (window as any).fixture.requests.findLastIndex((r: any) => /inbox/.test(r.path)) > oldInbox, oldInbox);
-  const newInbox = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => /inbox/.test(r.path)));
+  await p.waitForFunction(oldInbox => (window as any).fixture.requests.findLastIndex((r: any) => /relationship-communication/.test(r.path)) > oldInbox, oldInbox);
+  const newInbox = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => /relationship-communication/.test(r.path)));
   assert.ok(newInbox > oldInbox, "new actor needs an independent inbox read");
-  await reply(p, oldInbox, { inbox: { conversations: [{ conversationId: "old", unreadCount: 99 }] } });
+  await reply(p, oldInbox, relationshipInbox(99, "one", "old"));
   assert.equal(await p.getByTestId("home-inbox-badge").count(), 0);
-  await reply(p, newInbox, { inbox: { conversations: [{ conversationId: "current", unreadCount: 2 }] } });
+  await reply(p, newInbox, relationshipInbox(2, "two"));
   assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "2");
 });
 
@@ -381,7 +397,7 @@ for (const change of [{ actor: "two" }, { focused: false }, { appState: "backgro
     const p = await open(t);
     await p.waitForFunction(() => (window as any).fixture.requests.length === 5);
     const indices = await p.evaluate(() => (window as any).fixture.requests.flatMap((r: any, index: number) =>
-      /inbox|notifications/.test(r.path) ? [index] : []));
+      /relationship-communication|notifications/.test(r.path) ? [index] : []));
     assert.equal(indices.length, 2);
     await update(p, change);
     for (const index of indices) await reply(p, index, {}, 401);
@@ -413,8 +429,8 @@ test("HTTP 503 with a success completion envelope cannot acknowledge the write",
 test("badge rejects counts carried by an HTTP 503 success envelope", async t => {
   const p = await open(t);
   await p.waitForFunction(() => (window as any).fixture.requests.length === 5);
-  const index = await p.evaluate(() => (window as any).fixture.requests.findIndex((r: any) => /inbox/.test(r.path)));
-  await p.evaluate(index => (window as any).fixture.reply(index, { inbox: { conversations: [{ conversationId: "invalid-status", unreadCount: 9 }] } }, 503, true), index);
+  const index = await p.evaluate(() => (window as any).fixture.requests.findIndex((r: any) => /relationship-communication/.test(r.path)));
+  await p.evaluate(index => (window as any).fixture.reply(index, { conversations: [], refreshedAt: "2026-09-15T00:00:00Z" }, 503, true), index);
   await settle(p); await hydrate(p);
   assert.equal(await p.getByTestId("home-inbox-badge").count(), 0);
 });
@@ -424,20 +440,20 @@ test("pulling home refresh re-reads both badge sources and updates the visible c
   assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "3");
   await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
   const reads = await p.evaluate(() => (window as any).fixture.requests.slice(5).map((r: any) => r.path).sort());
-  assert.deepEqual(reads, ["/api/chat/relationship-inbox", "/api/contacts", "/api/notifications", "/api/schedule-items", "/api/tasks"]);
-  const index = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => /inbox/.test(r.path)));
-  await reply(p, index, { inbox: { conversations: [{ conversationId: "current", unreadCount: 8 }] } }); await hydrate(p);
+  assert.deepEqual(reads, ["/api/contacts", "/api/notifications", "/api/relationship-communication/conversations", "/api/schedule-items", "/api/tasks"]);
+  const index = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => /relationship-communication/.test(r.path)));
+  await reply(p, index, relationshipInbox(8)); await hydrate(p);
   assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "8"); assert.deepEqual(await writes(p), []);
 });
 
 test("acknowledged home completion re-reads badge sources instead of decrementing them locally", async t => {
   const p = await open(t);
-  const inbox = await p.evaluate(() => (window as any).fixture.requests.findIndex((r: any) => /inbox/.test(r.path)));
-  await reply(p, inbox, { inbox: { conversations: [{ conversationId: "current", unreadCount: 3 }] } }); await hydrate(p);
+  const inbox = await p.evaluate(() => (window as any).fixture.requests.findIndex((r: any) => /relationship-communication/.test(r.path)));
+  await reply(p, inbox, relationshipInbox(3)); await hydrate(p);
   await press(p, "完成待办：发送项目介绍");
   assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "3");
   await reply(p, await writeIndex(p), { task: { id: "task:/one", status: "completed" } });
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.slice(6).map((r: any) => r.path).sort()), ["/api/chat/relationship-inbox", "/api/notifications", "/api/tasks"]);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.slice(6).map((r: any) => r.path).sort()), ["/api/notifications", "/api/relationship-communication/conversations", "/api/tasks"]);
   await hydrate(p);
   assert.equal(await p.getByTestId("home-inbox-badge").count(), 0);
   assert.equal((await writes(p)).length, 1);
@@ -446,13 +462,13 @@ test("acknowledged home completion re-reads badge sources instead of decrementin
 test("a newer home refresh revokes old badge responses before they can publish session expiry", async t => {
   const p = await open(t, { visual: true }); await hydrate(p);
   await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
-  const oldReads = await p.evaluate(() => (window as any).fixture.requests.flatMap((r: any, i: number) => i >= 5 && /inbox|notifications/.test(r.path) ? [i] : []));
+  const oldReads = await p.evaluate(() => (window as any).fixture.requests.flatMap((r: any, i: number) => i >= 5 && /relationship-communication|notifications/.test(r.path) ? [i] : []));
   assert.equal(oldReads.length, 2);
   await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
   assert.equal(await p.evaluate(indices => indices.every((i: number) => (window as any).fixture.requests[i].signal.aborted), oldReads), true);
   for (const index of oldReads) await reply(p, index, {}, 401);
-  const inbox = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => /inbox/.test(r.path)));
-  await reply(p, inbox, { inbox: { conversations: [{ conversationId: "current", unreadCount: 2 }] } }); await hydrate(p);
+  const inbox = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => /relationship-communication/.test(r.path)));
+  await reply(p, inbox, relationshipInbox(2)); await hydrate(p);
   assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "2");
   assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0); assert.deepEqual(await writes(p), []);
 });
@@ -462,7 +478,7 @@ test("an invalid completion receipt neither reloads nor changes the home badge",
   await press(p, "完成待办：发送项目介绍");
   await reply(p, await writeIndex(p), { task: { id: "another-task", status: "completed" } });
   assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "3");
-  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => /inbox|notifications/.test(r.path)).length), 2);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => /relationship-communication|notifications/.test(r.path)).length), 2);
   assert.equal((await writes(p)).length, 1);
 });
 
@@ -470,19 +486,19 @@ test("home badge re-reads persisted reminder states after returning from inbox",
   const p = await open(t);
   const reminders = ["notice:one", "notice:two", "notice:three"].map(reminderId => ({ reminderId, title: "准备资料", priority: "normal" }));
   const indices = await p.evaluate(() => { const s = (window as any).fixture; return {
-    inbox: s.requests.findIndex((r: any) => /inbox/.test(r.path)),
+    inbox: s.requests.findIndex((r: any) => /relationship-communication/.test(r.path)),
     notifications: s.requests.findIndex((r: any) => r.path === "/api/notifications"),
   }; });
-  await reply(p, indices.inbox, { inbox: { conversations: [{ conversationId: "thread:one", unreadCount: 2 }] } });
+  await reply(p, indices.inbox, relationshipInbox(2, "one", "thread:one"));
   await reply(p, indices.notifications, { state: "success", reminders, notificationInteractions: {} }); await hydrate(p);
   assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "5");
   await update(p, { focused: false }); await update(p, { focused: true });
   const current = await p.evaluate(() => { const s = (window as any).fixture; return {
-    inbox: s.requests.findLastIndex((r: any) => /inbox/.test(r.path)),
+    inbox: s.requests.findLastIndex((r: any) => /relationship-communication/.test(r.path)),
     notifications: s.requests.findLastIndex((r: any) => r.path === "/api/notifications"),
   }; });
   assert.ok(current.inbox > indices.inbox && current.notifications > indices.notifications);
-  await reply(p, current.inbox, { inbox: { conversations: [{ conversationId: "thread:one", unreadCount: 2 }] } });
+  await reply(p, current.inbox, relationshipInbox(2, "one", "thread:one"));
   await reply(p, current.notifications, { state: "success", reminders, notificationInteractions: { "notice:one": "read", "notice:two": "ignored" } }); await hydrate(p);
   assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "3");
   assert.deepEqual(await writes(p), []);

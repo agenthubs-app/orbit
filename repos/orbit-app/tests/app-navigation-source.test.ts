@@ -42,7 +42,7 @@ test("the Orbit AI drawer links Today to its canonical open task count", () => {
 });
 
 test("the inbox badge count reads only durable inbox and notification sources", () => {
-  assert.match(badgeHookSource, /relationshipInboxPath\(\)/u);
+  assert.match(badgeHookSource, /relationshipCommunicationConversationsPath\(\)/u);
   assert.match(badgeHookSource, /ORBIT_API_ENDPOINTS\.notifications/u);
   assert.doesNotMatch(badgeHookSource, /ORBIT_API_ENDPOINTS\.proactiveTurns/u);
   assert.match(badgeHookSource, /relationshipInboxBadgeCount/u);

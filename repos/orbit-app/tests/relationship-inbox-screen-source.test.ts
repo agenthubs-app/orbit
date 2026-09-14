@@ -163,7 +163,7 @@ test("relationship inbox opens threads on a dedicated detail route", () => {
     /router\.push\(`\/inbox\/\$\{encodeURIComponent\(conversationId\)\}` as Href\)/u
   );
   assert.match(screenSource, /export function RelationshipInboxThreadScreen/u);
-  assert.match(screenSource, /relationshipInboxPath\(conversationId\)/u);
+  assert.match(screenSource, /relationshipCommunicationConversationPath\(conversationId\)/u);
 
   const listStart = screenSource.indexOf("function InboxContent");
   const listEnd = screenSource.indexOf("function RelationshipSignalsCard");

@@ -10,6 +10,18 @@ const require = createRequire(import.meta.url);
 const iconFont = readFileSync("node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf").toString("base64");
 let browser: Browser;
 let script: string;
+const relationshipInbox = (count: number, actor = "actor-1") => {
+  const remote = `remote:${actor}`;
+  return {
+    conversations: count > 0 ? [{
+      conversationId: "thread:one", contactId: "contact:one", participantAccountIds: [actor, remote],
+      participantDisplayNames: { [actor]: actor, [remote]: remote }, qualificationVersion: "qualification:one",
+      status: "active", createdAt: "2026-09-15T00:00:00Z", updatedAt: "2026-09-15T00:00:00Z", unreadCount: count,
+      messages: Array.from({ length: count }, (_, index) => ({ messageId: `message:${index}`, conversationId: "thread:one", senderAccountId: remote, senderDisplayName: remote, body: `message ${index}`, sentAt: "2026-09-15T00:00:00Z", deliveryState: "delivered" }))
+    }] : [],
+    refreshedAt: "2026-09-15T00:00:00Z"
+  };
+};
 // Actual private route, hooks, HTTP client, screen and native-web controls.
 // Auth/device capabilities, network transport and local snapshot I/O are external boundaries.
 const fixture = `
@@ -104,7 +116,7 @@ test("AI home uses the supplied brand asset", async t => {
 
 for (const [state, dotCount] of [[undefined, 1], ["read", 0], ["ignored", 0]] as const) test(`AI drawer unread indicator respects server reminder state: ${state}`, async t => {
   const p = await open(t, { payloads: { ...aiReadPayloads,
-    "/api/chat/relationship-inbox": { inbox: { conversations: [] } },
+    "/api/relationship-communication/conversations": relationshipInbox(0),
     "/api/notifications": { state: "success", reminders: [{ reminderId: "notice:one", title: "准备资料", priority: "normal" }],
       notificationInteractions: state ? { "notice:one": state } : {} },
   } });
@@ -167,7 +179,7 @@ for (const [label, target] of [["交流会准备", "/ai/conversation%3A1"], ["�
 test("AI home returns to the real home without any data write", async t => { const p = await open(t); await press(p, "首页"); assert.deepEqual(await navigation(p), ["/home"]); assert.deepEqual(await writes(p), []); });
 test("AI foreground badge refresh leaves the unsent composer intact and does not read other sources again", async t => {
   const p = await open(t, { payloads: { ...aiReadPayloads,
-    "/api/chat/relationship-inbox": { inbox: { conversations: [{ conversationId: "thread:one", unreadCount: 2 }] } },
+    "/api/relationship-communication/conversations": relationshipInbox(2),
     "/api/notifications": { reminders: [] },
   } });
   await p.getByRole("textbox", { name: "消息", exact: true }).fill("切回应用后仍未发送的问题");
@@ -180,7 +192,7 @@ test("AI foreground badge refresh leaves the unsent composer intact and does not
   assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), before);
   await update(p, { appState: "active" });
   assert.equal(await inbox.locator(":scope > div").count(), 0);
-  assert.deepEqual(await p.evaluate(before => (window as any).fixture.requests.slice(before).map((r: any) => [r.method, r.path]).sort(), before), [["GET", "/api/chat/relationship-inbox"], ["GET", "/api/notifications"]]);
+  assert.deepEqual(await p.evaluate(before => (window as any).fixture.requests.slice(before).map((r: any) => [r.method, r.path]).sort(), before), [["GET", "/api/notifications"], ["GET", "/api/relationship-communication/conversations"]]);
   await p.evaluate(before => { const s = (window as any).fixture; s.requests.forEach((r: any, i: number) => { if (i >= before) s.reply(i); }); }, before); await settle(p);
   assert.equal(await inbox.locator(":scope > div").count(), 1);
   await p.getByRole("button", { name: "关闭侧栏", exact: true }).last().click(); await settle(p);

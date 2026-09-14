@@ -23,8 +23,19 @@ import {
   agentSignalPath,
   chatPrivacyControlsPath,
   notificationDeliveryPath,
-  relationshipInboxPath
+  relationshipCommunicationConversationPath,
+  relationshipCommunicationConversationsPath,
+  relationshipCommunicationReadPath
 } from "../../api/endpoints";
+import {
+  MESSAGE_STATE_FOREGROUND_REFRESH_MS,
+  emitMessageStateInvalidation,
+  relationshipConversationListToInbox,
+  relationshipConversationToThread,
+  relationshipReadReceiptMatches,
+  relationshipReadTarget,
+  subscribeMessageStateInvalidation,
+} from "../../api/message-state";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
@@ -45,7 +56,6 @@ import {
   relationshipConversationIdForContact,
   relationshipAlertsToView,
   relationshipInboxErrorText,
-  relationshipInboxToView,
   relationshipPrivacyControlsToView,
   relationshipRewriteToDraft,
   relationshipSignalConfirmToView,
@@ -82,7 +92,7 @@ function useInboxIdentity(routeKey: string) {
   const ready = auth.ready && auth.signedIn && server.ready && Boolean(actorId);
   // Opaque keys isolate reads and local drafts without storing credentials.
   const scopeKey = useMemo(() => randomUUID(), [actorId, auth.cookieHeader, server.baseUrl, ready, routeKey]);
-  return { ready, scopeKey };
+  return { actorId, ready, scopeKey };
 }
 
 function useInboxRequests(scopeKey: string) {
@@ -138,19 +148,27 @@ function useInboxRequests(scopeKey: string) {
 
 // Inbox permissions/content must be confirmed by this foreground lifetime.
 // Keep ordinary refresh behavior without changing other screens' cache policy.
+interface InboxResourceOptions {
+  clearOnRefresh?: boolean;
+  isValid?: (data: unknown) => boolean;
+  refreshIntervalMs?: number;
+}
+
 function useInboxResource(path: string, isEmpty: (data: unknown) => boolean,
-  clientGet: ClientGet, isCurrent: () => boolean, clearOnRefresh = false): ApiResourceState<unknown> {
+  clientGet: ClientGet, isCurrent: () => boolean, options: InboxResourceOptions = {}): ApiResourceState<unknown> {
   const [attempt, setAttempt] = useState(0);
   const pending = useRef<AbortController | null>(null);
   const emptyRef = useRef(isEmpty);
   emptyRef.current = isEmpty;
+  const validRef = useRef(options.isValid);
+  validRef.current = options.isValid;
   const [snapshot, setSnapshot] = useState<{ clientGet: ClientGet; state: RouteState<unknown>; refreshing: boolean } | null>(null);
   const refresh = useCallback(() => {
     if (!isCurrent()) return;
     pending.current?.abort();
-    setSnapshot(previous => ({ clientGet, state: !clearOnRefresh && previous?.clientGet === clientGet ? previous.state : { kind: "loading" }, refreshing: true }));
+    setSnapshot(previous => ({ clientGet, state: !options.clearOnRefresh && previous?.clientGet === clientGet ? previous.state : { kind: "loading" }, refreshing: true }));
     setAttempt(value => value + 1);
-  }, [clearOnRefresh, clientGet, isCurrent]);
+  }, [clientGet, isCurrent, options.clearOnRefresh]);
   useEffect(() => {
     if (!isCurrent()) return;
     const controller = new AbortController();
@@ -158,7 +176,10 @@ function useInboxResource(path: string, isEmpty: (data: unknown) => boolean,
     void clientGet(path, { signal: controller.signal }).then(received => {
       if (!isCurrent() || controller.signal.aborted) return;
       const result = received.success && (received.status < 200 || received.status >= 300)
-        ? { ...received, success: false as const, error: { code: "ORBIT_APP_UNEXPECTED_STATUS", message: "请求暂时无法完成，请稍后重试。" } } : received;
+        ? { ...received, success: false as const, error: { code: "ORBIT_APP_UNEXPECTED_STATUS", message: "请求暂时无法完成，请稍后重试。" } }
+        : received.success && validRef.current && !validRef.current(received.data)
+          ? { ...received, success: false as const, error: { code: "ORBIT_APP_INVALID_MESSAGE_STATE", message: "消息内容暂时无法确认，请重新读取。" } }
+          : received;
       setSnapshot({ clientGet, state: resultToRouteState(result, emptyRef.current), refreshing: false });
     }).catch(() => {
       if (!isCurrent() || controller.signal.aborted) return;
@@ -166,6 +187,11 @@ function useInboxResource(path: string, isEmpty: (data: unknown) => boolean,
     });
     return () => controller.abort();
   }, [attempt, clientGet, isCurrent, path]);
+  useEffect(() => {
+    if (!options.refreshIntervalMs || !isCurrent()) return;
+    const timer = setInterval(refresh, options.refreshIntervalMs);
+    return () => clearInterval(timer);
+  }, [isCurrent, options.refreshIntervalMs, refresh]);
   return { ...(isCurrent() && snapshot?.clientGet === clientGet ? snapshot.state : { kind: "loading" as const }), refresh,
     refreshing: isCurrent() && snapshot?.clientGet === clientGet ? snapshot.refreshing : false };
 }
@@ -235,13 +261,13 @@ export function RelationshipInboxScreen() {
   const deliveryId = firstParam(params.deliveryId);
   const seedName = firstParam(params.participantName);
   const seedOrganization = firstParam(params.organization);
-  const { ready, scopeKey } = useInboxIdentity(JSON.stringify([seedContactId, deliveryId, seedName, seedOrganization]));
+  const { actorId, ready, scopeKey } = useInboxIdentity(JSON.stringify([seedContactId, deliveryId, seedName, seedOrganization]));
   if (!ready) return <InboxLayout title="收件箱"><LoadingState /></InboxLayout>;
-  return <ScopedRelationshipInboxScreen key={scopeKey} scopeKey={scopeKey} seedContactId={seedContactId} deliveryId={deliveryId} seedName={seedName} seedOrganization={seedOrganization} />;
+  return <ScopedRelationshipInboxScreen key={scopeKey} actorId={actorId} scopeKey={scopeKey} seedContactId={seedContactId} deliveryId={deliveryId} seedName={seedName} seedOrganization={seedOrganization} />;
 }
 
-function ScopedRelationshipInboxScreen({ scopeKey, seedContactId, deliveryId, seedName, seedOrganization }: {
-  scopeKey: string; seedContactId: string; deliveryId: string; seedName: string; seedOrganization: string;
+function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliveryId, seedName, seedOrganization }: {
+  actorId: string; scopeKey: string; seedContactId: string; deliveryId: string; seedName: string; seedOrganization: string;
 }) {
   const { colors } = useOrbitTheme();
   const router = useRouter();
@@ -257,14 +283,17 @@ function ScopedRelationshipInboxScreen({ scopeKey, seedContactId, deliveryId, se
     | { data: DeliveryView; kind: "success"; signal: AbortSignal }
   >({ kind: "idle" });
   const state = useInboxResource(
-    relationshipInboxPath(null),
-    (data) => relationshipInboxToView(data).conversations.length === 0,
-    clientGet, isCurrent
+    relationshipCommunicationConversationsPath(),
+    (data) => relationshipConversationListToInbox(data, actorId)?.conversations.length === 0,
+    clientGet, isCurrent, {
+      isValid: (data) => relationshipConversationListToInbox(data, actorId) !== null,
+      refreshIntervalMs: MESSAGE_STATE_FOREGROUND_REFRESH_MS,
+    }
   );
   const notificationsState = useInboxResource(
     ORBIT_API_ENDPOINTS.notifications,
     (data) => relationshipAlertsToView(data).alerts.length === 0,
-    clientGet, isCurrent, true
+    clientGet, isCurrent, { clearOnRefresh: true }
   );
   const notificationsData = notificationsState.kind === "success" || notificationsState.kind === "empty"
     ? notificationsState.data : null;
@@ -293,6 +322,8 @@ function ScopedRelationshipInboxScreen({ scopeKey, seedContactId, deliveryId, se
   const currentContent = useRef(contentReady);
   currentContent.current = contentReady;
   const isContentCurrent = useCallback(() => isCurrent() && currentContent.current, [isCurrent, contentReady]);
+
+  useEffect(() => subscribeMessageStateInvalidation(state.refresh), [state.refresh]);
 
   useEffect(() => {
     currentDelivery.current = null;
@@ -408,6 +439,7 @@ function ScopedRelationshipInboxScreen({ scopeKey, seedContactId, deliveryId, se
           clientPost={clientPost}
           isCurrent={isContentCurrent}
           contentReady={contentReady}
+          actorId={actorId}
           getCurrentNotifications={getCurrentNotifications}
           createdThread={createdThread}
           data={retainedContent.current.data}
@@ -455,30 +487,64 @@ function ScopedRelationshipInboxScreen({ scopeKey, seedContactId, deliveryId, se
 export function RelationshipInboxThreadScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const conversationId = firstParam(params.id);
-  const { ready, scopeKey } = useInboxIdentity(conversationId);
+  const { actorId, ready, scopeKey } = useInboxIdentity(conversationId);
   if (!ready) return <InboxLayout title="消息"><LoadingState /></InboxLayout>;
   if (!conversationId) return <InboxLayout title="消息"><ErrorState message="缺少对话 ID。" title="打不开对话" /></InboxLayout>;
-  return <ScopedRelationshipInboxThreadScreen key={scopeKey} conversationId={conversationId} scopeKey={scopeKey} />;
+  return <ScopedRelationshipInboxThreadScreen key={scopeKey} actorId={actorId} conversationId={conversationId} scopeKey={scopeKey} />;
 }
 
-function ScopedRelationshipInboxThreadScreen({ conversationId, scopeKey }: { conversationId: string; scopeKey: string }) {
+function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey }: { actorId: string; conversationId: string; scopeKey: string }) {
   const { colors } = useOrbitTheme();
   const { clientGet, clientPost, isCurrent } = useInboxRequests(scopeKey);
   const state = useInboxResource(
-    relationshipInboxPath(conversationId),
-    (data) => relationshipInboxToView(data).selected === null,
-    clientGet, isCurrent
+    relationshipCommunicationConversationPath(conversationId),
+    (data) => relationshipConversationToThread(data, actorId)?.messages.length === 0,
+    clientGet, isCurrent, {
+      isValid: (data) => relationshipConversationToThread(data, actorId) !== null,
+      refreshIntervalMs: MESSAGE_STATE_FOREGROUND_REFRESH_MS,
+    }
   );
-  const view =
-    state.kind === "success" || state.kind === "empty"
-      ? relationshipInboxToView(state.data)
-      : null;
+  const stateData = state.kind === "success" || state.kind === "empty" ? state.data : null;
+  const detail = stateData ? relationshipConversationToThread(stateData, actorId) : null;
   const retainedDetail = useRef<RelationshipThreadDetailView | null>(null);
-  if (view?.selected) retainedDetail.current = view.selected;
-  const contentReady = Boolean(view?.selected);
+  if (detail) retainedDetail.current = detail;
+  const contentReady = Boolean(detail);
   const currentContent = useRef(contentReady);
   currentContent.current = contentReady;
   const isContentCurrent = useCallback(() => isCurrent() && currentContent.current, [isCurrent, contentReady]);
+  const readAttempt = useRef<{ data: unknown; key: string } | null>(null);
+  const [readError, setReadError] = useState("");
+
+  useEffect(() => subscribeMessageStateInvalidation(state.refresh), [state.refresh]);
+  useEffect(() => {
+    if (!stateData || !isContentCurrent()) return;
+    const target = relationshipReadTarget(stateData, actorId);
+    if (!target) {
+      setReadError("");
+      return;
+    }
+    const key = `${target.conversationId}\u001f${target.lastReadMessageId}`;
+    const previousAttempt = readAttempt.current;
+    if (previousAttempt?.data === stateData && previousAttempt.key === key) return;
+    readAttempt.current = { data: stateData, key };
+    setReadError("");
+    void clientPost(relationshipCommunicationReadPath(target.conversationId), {
+      lastReadMessageId: target.lastReadMessageId,
+    }).then(result => {
+      if (!isContentCurrent() || readAttempt.current?.data !== stateData) return;
+      if (!result.success || result.status === undefined || result.status < 200 || result.status >= 300
+        || !relationshipReadReceiptMatches(result.data, target)) {
+        setReadError("已读状态未能确认，消息仍保留为未读。稍后会重试。");
+        return;
+      }
+      setReadError("");
+      emitMessageStateInvalidation();
+    }).catch(() => {
+      if (isContentCurrent() && readAttempt.current?.data === stateData) {
+        setReadError("已读状态未能确认，消息仍保留为未读。稍后会重试。");
+      }
+    });
+  }, [actorId, clientPost, isContentCurrent, stateData]);
 
   return (
     <InboxLayout
@@ -501,8 +567,9 @@ function ScopedRelationshipInboxThreadScreen({ conversationId, scopeKey }: { con
       {conversationId && state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
+      {conversationId && readError ? <Text accessibilityRole="alert">{readError}</Text> : null}
       {conversationId && retainedDetail.current ? (
-        <View style={!view?.selected ? { display: "none" } : undefined}>
+        <View style={!detail ? { display: "none" } : undefined}>
         <ThreadDetail
           clientGet={clientGet}
           clientPost={clientPost}
@@ -678,6 +745,7 @@ function NotificationDeliveryCard({
 }
 
 function InboxContent({
+  actorId,
   clientGet,
   clientPost,
   isCurrent,
@@ -700,6 +768,7 @@ function InboxContent({
   signalsLoading,
   setComposing
 }: {
+  actorId: string;
   clientGet: ClientGet;
   clientPost: ClientPost;
   isCurrent: () => boolean;
@@ -724,7 +793,9 @@ function InboxContent({
 }) {
   const { colors, styles } = useStyles();
   const { fontScale } = useWindowDimensions();
-  const view = relationshipInboxToView(data);
+  const view = relationshipConversationListToInbox(data, actorId) ?? {
+    conversations: [], selected: null, summary: "暂无对话", title: "收件箱"
+  };
   const alertsView = relationshipAlertsToView(notificationsData);
   const signalsView = relationshipSignalsToView(signalsData);
   const signalCount = signalsView.signals.length;
@@ -775,6 +846,7 @@ function InboxContent({
         setNotificationError("提醒状态未能确认，请重试。原提醒仍保留。");
         return;
       }
+      emitMessageStateInvalidation();
       onRefreshNotifications();
       if (state === "read") onOpenNotificationTarget(action.href!);
     } catch {
