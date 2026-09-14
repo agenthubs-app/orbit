@@ -1,10 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import { Image, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
-import type { BusinessCardReviewIssueContract } from "../api/contract/business-card-batch";
+import type { BusinessCardReviewIssueContract, IngestCardFieldSourcesContract } from "../api/contract/business-card-batch";
 import { createThemedStyles } from "../design/theme";
 import { spacing } from "../design/tokens";
-import type { BusinessCardReviewFields } from "../view-models/business-card-batch";
+import type { BusinessCardFieldChoice, BusinessCardReviewFields } from "../view-models/business-card-batch";
 
 export type BusinessCardReviewImage =
   | { status: "available"; uri: string }
@@ -21,6 +21,10 @@ export interface BusinessCardBatchReviewFormProps {
   canSkip: boolean;
   canRetry: boolean;
   duplicateContactId: string | null;
+  fieldSources?: IngestCardFieldSourcesContract;
+  conflicts?: Partial<Record<keyof IngestCardFieldSourcesContract, readonly BusinessCardFieldChoice[]>>;
+  unresolvedConflicts?: readonly (keyof IngestCardFieldSourcesContract)[];
+  onSelectFieldSource?: (field: keyof IngestCardFieldSourcesContract, choice: BusinessCardFieldChoice) => void;
   onChange: (fields: BusinessCardReviewFields) => void;
   onImageError: () => void;
   onConfirm: () => void;
@@ -56,12 +60,17 @@ export function BusinessCardBatchReviewForm(props: BusinessCardBatchReviewFormPr
       <Text accessibilityRole="header" style={styles.heading}>识别结果</Text>
       <Text style={styles.caption}>{props.statusLabel}</Text>
     </View>
+    {props.unresolvedConflicts?.length ? <Text style={styles.warning}>正反面信息不一致，请选择来源。</Text> : null}
     {fields ? <View style={styles.fields}>{fieldLabels.map(([field, label]) => <View key={field} style={[styles.field, large && styles.stacked]}>
       <Text style={[styles.label, large && styles.labelLarge]}>{label}</Text>
+      <View style={styles.fieldValue}>
       <TextInput accessibilityLabel={label} value={fields[field]} editable={!disabled} multiline={large || field === "notes" || field === "relationshipContext"} numberOfLines={1} submitBehavior={field === "notes" || field === "relationshipContext" ? "newline" : "blurAndSubmit"} scrollEnabled={false} autoCapitalize={field === "email" ? "none" : "sentences"} keyboardType={field === "email" ? "email-address" : field === "phone" ? "phone-pad" : "default"} onChangeText={value => { if (!disabled) props.onChange({ ...fields, [field]: value }); }} onContentSizeChange={({ nativeEvent }) => {
         const height = Math.max(44, Math.ceil(nativeEvent.contentSize.height));
         setFieldHeights(current => current[field] === height ? current : { ...current, [field]: height });
       }} placeholderTextColor={colors.text3} style={[styles.input, large && styles.inputLarge, (large || field === "notes" || field === "relationshipContext") && { height: fieldHeights[field] ?? 44 }, field === "notes" && styles.notes]} textAlignVertical="top" />
+      {field in (props.fieldSources ?? {}) ? <Text style={styles.caption}>来源：{props.unresolvedConflicts?.includes(field as keyof IngestCardFieldSourcesContract) ? "尚未选择" : props.fieldSources?.[field as keyof IngestCardFieldSourcesContract] ? props.conflicts?.[field as keyof IngestCardFieldSourcesContract]?.find(choice => choice.itemId === props.fieldSources?.[field as keyof IngestCardFieldSourcesContract])?.side === "back" ? "反面" : "正面" : "手动编辑"}</Text> : null}
+      {props.conflicts?.[field as keyof IngestCardFieldSourcesContract]?.map(choice => <ReviewButton key={choice.itemId} label={`使用${choice.side === "front" ? "正面" : "反面"}${label}`} icon="swap-horizontal-outline" disabled={disabled} onPress={() => props.onSelectFieldSource?.(field as keyof IngestCardFieldSourcesContract, choice)} />)}
+      </View>
     </View>)}</View> : null}
     {props.reviewIssues.map((issue, index) => <Text key={`${issue.code}-${index}`} style={styles.warning}>{issue.message}</Text>)}
     {props.duplicateContactId ? <View style={styles.section}>
@@ -85,6 +94,7 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   section: { gap: spacing.md },
   fields: { borderTopWidth: 1, borderTopColor: colors.border },
   field: { flexDirection: "row", alignItems: "center", borderBottomWidth: 1, borderBottomColor: colors.border2, paddingVertical: 2 },
+  fieldValue: { flexGrow: 1, flexShrink: 1, minWidth: 0, gap: 4 },
   stacked: { flexDirection: "column", alignItems: "stretch", gap: 4 },
   label: { width: 72, color: colors.text4, fontSize: 14, lineHeight: 20 },
   labelLarge: { width: "100%", paddingTop: 10 },

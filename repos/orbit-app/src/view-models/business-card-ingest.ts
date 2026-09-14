@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { OrbitApiClient } from "../api/client";
 import { readPreparedBatchImage, type BatchImageNative, type PreparedBatchImage } from "../api/batch-images";
-import type { BusinessCardBatchContract, IngestBatchContract, IngestBatchDetailContract, IngestItemContract, IngestManifestEntryContract } from "../api/contract/business-card-batch";
+import type { BusinessCardBatchContract, IngestBatchContract, IngestBatchDetailContract, IngestCardFieldSourcesContract, IngestItemContract, IngestManifestEntryContract } from "../api/contract/business-card-batch";
 import { businessCardBatchSchema, ingestBatchCollectionResponseSchema, ingestBatchCreateResponseSchema, ingestBatchDetailSchema, ingestConfirmationResponseSchema, ingestItemActionResponseSchema, ingestManifestEntrySchema, ingestUploadResponseSchema } from "../api/schema/business-card-batch";
 import type { ApiResult } from "../api/types";
 
@@ -17,14 +17,62 @@ export function itemReplacePath(batchId: string, itemId: string): string { retur
 export function batchRoutePath(source: BatchSource, batchId: string): string { return "/contacts/new/" + (source === "current" ? "batch2/" : "batch/") + encodeURIComponent(batchId); }
 export function isHttpSuccess(result: ApiResult<unknown>): result is ApiResult<unknown> & { success: true } { return result.success && result.status >= 200 && result.status < 300; }
 
-export function creationAttempt(files: readonly PreparedBatchImage[], previous: CreationAttempt | null, key: () => string): CreationAttempt {
+export type IngestCardImage = PreparedBatchImage & { readonly cardId?: string; readonly side?: "front" | "back" };
+
+export function creationAttempt(files: readonly IngestCardImage[], previous: CreationAttempt | null, key: () => string): CreationAttempt {
   if (!files.length || files.length > 100) throw new Error("请选择 1 至 100 张名片。");
   const manifest = files.map((file, index) => {
     if (file.rawSize > 10485760) throw new Error("每张名片不得超过 10 MiB。");
-    return Object.freeze(ingestManifestEntrySchema.parse({ fileName: file.fileName, mimeType: file.mimeType, rawSize: file.rawSize, seq: index + 1, clientDigest: file.clientDigest }));
+    const cardId = file.cardId?.trim() || `legacy:${index + 1}`;
+    const side = file.side ?? "front";
+    return Object.freeze(ingestManifestEntrySchema.parse({ cardId, side, fileName: file.fileName, mimeType: file.mimeType, rawSize: file.rawSize, seq: index + 1, clientDigest: file.clientDigest }));
   });
+  const groups = new Map<string, IngestManifestEntryContract[]>();
+  manifest.forEach(entry => groups.set(entry.cardId, [...(groups.get(entry.cardId) ?? []), entry]));
+  for (const entries of groups.values()) {
+    if (entries.filter(entry => entry.side === "front").length !== 1) throw new Error("每张名片必须且只能有一个正面。");
+    if (entries.filter(entry => entry.side === "back").length > 1) throw new Error("每张名片最多只能有一个反面。");
+  }
   if (previous && JSON.stringify(previous.manifest) === JSON.stringify(manifest)) return previous;
   return Object.freeze({ idempotencyKey: key(), manifest: Object.freeze(manifest) });
+}
+
+export interface IngestCard {
+  readonly cardId: string;
+  readonly front: IngestItemContract;
+  readonly back: IngestItemContract | null;
+  readonly items: readonly IngestItemContract[];
+}
+
+export function ingestCards(detail: IngestBatchDetailContract): readonly IngestCard[] {
+  const grouped = new Map<string, IngestItemContract[]>();
+  for (const item of [...detail.items].sort((a, b) => a.seq - b.seq)) {
+    grouped.set(item.cardId, [...(grouped.get(item.cardId) ?? []), item]);
+  }
+  const cards: IngestCard[] = [];
+  for (const [cardId, items] of grouped) {
+    const front = items.find(item => item.side === "front");
+    const backs = items.filter(item => item.side === "back");
+    if (!front || items.filter(item => item.side === "front").length !== 1 || backs.length > 1) continue;
+    cards.push({ cardId, front, back: backs[0] ?? null, items: Object.freeze([...items]) });
+  }
+  return Object.freeze(cards);
+}
+
+export function cardConfirmationSnapshot(
+  items: readonly IngestItemContract[],
+  confirmationIntentId: string,
+  fieldSources: IngestCardFieldSourcesContract,
+) {
+  return {
+    confirmationIntentId,
+    expectedCardItems: [...items].sort((a, b) => a.seq - b.seq).map(item => ({
+      itemId: item.id,
+      version: item.version,
+      imageDigest: item.imageDigest ?? item.clientDigest,
+    })),
+    fieldSources: { ...fieldSources },
+  };
 }
 
 export function acceptedIngestDetail(result: ApiResult<unknown>, batchId: string, ownerId: string | null): IngestBatchDetailContract | null {
@@ -35,6 +83,7 @@ export function acceptedIngestDetail(result: ApiResult<unknown>, batchId: string
   if (d.batch.id !== batchId || (ownerId !== null && d.batch.actorId !== ownerId) || d.batch.expectedItems > 100 || d.items.length !== d.batch.expectedItems) return null;
   if (new Set(d.items.map(i => i.id)).size !== d.items.length || new Set(d.items.map(i => i.seq)).size !== d.items.length) return null;
   if (d.items.some(i => i.seq > d.items.length || i.rawSize > 10485760 || (i.status === "confirmed" && !i.confirmedContactId))) return null;
+  if (ingestCards(d).reduce((count, card) => count + card.items.length, 0) !== d.items.length) return null;
   return d;
 }
 
@@ -45,9 +94,12 @@ export function acceptedIngestCreate(result: ApiResult<unknown>, attempt: Creati
   const d = acceptedIngestDetail(result, parsed.data.batch.id, null);
   if (!d || d.batch.idempotencyKey !== attempt.idempotencyKey || d.items.length !== attempt.manifest.length) return null;
   if (!parsed.data.reused && (d.batch.status !== "collecting" || d.items.some(i => i.status !== "awaiting_upload"))) return null;
+  const legacySingleSide = attempt.manifest.every(entry => entry.side === "front") && new Set(attempt.manifest.map(entry => entry.cardId)).size === attempt.manifest.length;
   return d.items.every(i => {
     const entry = attempt.manifest[i.seq - 1];
-    return entry && i.sourceFileName === entry.fileName && i.rawMimeType === entry.mimeType && i.rawSize === entry.rawSize && i.clientDigest === entry.clientDigest;
+    const cardMatches = entry && (i.cardId === entry.cardId && i.side === entry.side
+      || legacySingleSide && i.cardId === `legacy:${i.seq}` && i.side === "front");
+    return entry && cardMatches && i.sourceFileName === entry.fileName && i.rawMimeType === entry.mimeType && i.rawSize === entry.rawSize && i.clientDigest === entry.clientDigest;
   }) ? d : null;
 }
 
@@ -89,18 +141,36 @@ export function canReviewIngest(detail: IngestBatchDetailContract, item: IngestI
   return item.status === "terminal_failed";
 }
 
-export function acceptedIngestReview(result: ApiResult<unknown>, detail: IngestBatchDetailContract, old: IngestItemContract, action: IngestReviewAction, replacement?: PreparedBatchImage): { state: "duplicate_review"; duplicateContactId: string } | { state: "accepted"; item: IngestItemContract } | null {
-  if (!isHttpSuccess(result) || !canReviewIngest(detail, old, action)) return null;
+export function acceptedIngestReview(result: ApiResult<unknown>, detail: IngestBatchDetailContract, old: IngestItemContract, action: IngestReviewAction, replacement?: PreparedBatchImage): { state: "duplicate_review"; duplicateContactId: string } | { state: "accepted"; item: IngestItemContract; items: readonly IngestItemContract[] } | null {
+  if (!isHttpSuccess(result)) return null;
+  const oldCard = detail.items.map(candidate => candidate.id === old.id ? old : candidate).filter(candidate => candidate.cardId === old.cardId);
+  const allowed = action === "confirm"
+    ? oldCard.length > 0 && oldCard.every(item => item.status === "extracted")
+    : action === "manual-entry"
+      ? oldCard.length > 0 && oldCard.every(item => item.status === "extracted" || item.status === "terminal_failed") && oldCard.some(item => item.status === "terminal_failed")
+      : action === "skip"
+        ? oldCard.length > 0 && oldCard.every(item => item.status === "extracted" || item.status === "terminal_failed")
+        : canReviewIngest(detail, old, action);
+  if (!allowed) return null;
   const parsed = action === "confirm" || action === "manual-entry" ? ingestConfirmationResponseSchema.safeParse(result.data) : ingestItemActionResponseSchema.safeParse(result.data);
   if (!parsed.success) return null;
   if ("state" in parsed.data && parsed.data.state === "duplicate_review") return parsed.data;
   const item = parsed.data.item;
+  const items = "items" in parsed.data ? parsed.data.items : [item];
   const expected = action === "replace" ? detail.batch.status === "collecting" ? "uploaded" : "queued" : action === "retry" ? "queued" : action === "skip" ? "skipped" : "confirmed";
-  if (item.id !== old.id || item.batchId !== detail.batch.id || item.seq !== old.seq || item.version <= old.version || item.status !== expected) return null;
+  if (item.id !== old.id || item.batchId !== detail.batch.id || item.cardId !== old.cardId || item.side !== old.side || item.seq !== old.seq || item.version <= old.version || item.status !== expected) return null;
   if (item.clientDigest !== old.clientDigest || item.rawSize !== old.rawSize || item.rawMimeType !== old.rawMimeType) return null;
+  if (action === "confirm" || action === "manual-entry") {
+    if (items.length !== oldCard.length) return null;
+    for (const accepted of items) {
+      const before = oldCard.find(candidate => candidate.id === accepted.id);
+      if (!before || accepted.cardId !== before.cardId || accepted.side !== before.side || accepted.seq !== before.seq || accepted.version <= before.version
+        || accepted.status !== "confirmed" || accepted.clientDigest !== before.clientDigest || accepted.rawSize !== before.rawSize || accepted.rawMimeType !== before.rawMimeType) return null;
+    }
+  }
   // Replacement changes the derivative identity, never the original upload manifest.
   if (action === "replace" && (!replacement || item.imageDigest !== replacement.clientDigest || !item.derivativeObjectKey || !item.derivativeSize || item.extraction !== null)) return null;
-  return { state: "accepted", item };
+  return { state: "accepted", item, items };
 }
 
 export interface UploadPassOptions {

@@ -107,6 +107,8 @@ async function readyBatch(harness: Harness, count: number) {
     actorId: ACTOR,
     idempotencyKey: `key:${randomUUID()}`,
     manifest: Array.from({ length: count }, (_, index) => ({
+      cardId: `card:${index + 1}`,
+      side: "front" as const,
       fileName: `card-${index + 1}.jpg`,
       mimeType: "image/jpeg",
       rawSize: 1000,

@@ -6,12 +6,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppState, Pressable, StyleSheet, Text, View } from "react-native";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
-import { prepareBatchImages, type PreparedBatchImage } from "../../api/batch-images";
+import { prepareBatchImages } from "../../api/batch-images";
 import type { BusinessCardBatchContract, IngestBatchContract } from "../../api/contract/business-card-batch";
 import { AppScreen } from "../../components/AppScreen";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
-import { acceptedBatchCollection, acceptedIngestCreate, batchRoutePath, creationAttempt, INGEST_COLLECTION_PATH, LEGACY_COLLECTION_PATH, type BatchSource, type CreationAttempt } from "../../view-models/business-card-ingest";
+import { acceptedBatchCollection, acceptedIngestCreate, batchRoutePath, creationAttempt, INGEST_COLLECTION_PATH, LEGACY_COLLECTION_PATH, type BatchSource, type CreationAttempt, type IngestCardImage } from "../../view-models/business-card-ingest";
 import { activatePendingIdentity, rememberPendingFiles, retainPendingIdentity } from "./business-card-pending-files";
 
 export const batchPickerOptions: ImagePicker.ImagePickerOptions = {
@@ -114,7 +114,7 @@ function IngestStartContent({ session }: { session: IngestSession }) {
   const { scope, active, isCurrent, capture } = session;
   const router = useRouter();
   const { styles } = useIngestStyles();
-  const [files, setFiles] = useState<PreparedBatchImage[]>([]);
+  const [files, setFiles] = useState<IngestCardImage[]>([]);
   const currentFiles = useRef(files);
   const attempt = useRef<CreationAttempt | null>(null);
   const [busy, setBusy] = useState(false);
@@ -163,17 +163,52 @@ function IngestStartContent({ session }: { session: IngestSession }) {
       const prepared = await prepareBatchImages(selection.assets, { signal: ticket.signal });
       if (!ticket.valid() || currentFiles.current !== before) return;
       if (!prepared.length) return;
-      currentFiles.current = prepared; setFiles(prepared);
+      const previousFronts = before.filter(file => file.side !== "back");
+      const tagged = prepared.map((file, index): IngestCardImage => {
+        const previous = previousFronts[index];
+        const unchanged = previous && previous.fileName === file.fileName && previous.mimeType === file.mimeType
+          && previous.rawSize === file.rawSize && previous.clientDigest === file.clientDigest;
+        return { ...file, cardId: unchanged && previous.cardId ? previous.cardId : `card:${randomUUID()}`, side: "front" };
+      });
+      currentFiles.current = tagged; setFiles(tagged);
       // A URI-only reselection retains the same server manifest/key.
-      attempt.current = creationAttempt(prepared, attempt.current, randomUUID);
+      attempt.current = creationAttempt(tagged, attempt.current, randomUUID);
     } catch (error) { if (await ticket.waitForForeground()) setError(error instanceof Error ? error.message : "无法读取所选名片。"); }
     finally { if (ticket.owned()) { lock.current = false; setBusy(false); } ticket.release(); }
   }
-  function remove(index: number) {
+  async function selectBack(cardId: string) {
     if (!isCurrent() || lock.current) return;
-    const next = currentFiles.current.filter((_, i) => i !== index);
+    if (currentFiles.current.length >= 100) { setError("一个批次最多选择 100 张图片。"); return; }
+    const ticket = session.capturePicker();
+    if (!ticket) return;
+    lock.current = true; setBusy(true); setError(null);
+    const before = currentFiles.current;
+    try {
+      const selection = await ImagePicker.launchImageLibraryAsync({ ...batchPickerOptions, allowsMultipleSelection: false, selectionLimit: 1 });
+      if (!await ticket.waitForForeground() || currentFiles.current !== before || selection.canceled) return;
+      const prepared = await prepareBatchImages(selection.assets, { signal: ticket.signal });
+      if (!ticket.valid() || currentFiles.current !== before || prepared.length !== 1) return;
+      const frontIndex = before.findIndex(file => file.cardId === cardId && file.side === "front");
+      if (frontIndex < 0) return;
+      const withoutOldBack = before.filter(file => file.cardId !== cardId || file.side !== "back");
+      const insertAt = withoutOldBack.findIndex(file => file.cardId === cardId && file.side === "front") + 1;
+      const next = [...withoutOldBack.slice(0, insertAt), { ...prepared[0]!, cardId, side: "back" as const }, ...withoutOldBack.slice(insertAt)];
+      currentFiles.current = next; setFiles(next);
+      attempt.current = creationAttempt(next, attempt.current, randomUUID);
+    } catch (error) { if (await ticket.waitForForeground()) setError(error instanceof Error ? error.message : "无法读取所选名片反面。"); }
+    finally { if (ticket.owned()) { lock.current = false; setBusy(false); } ticket.release(); }
+  }
+  function remove(cardId: string) {
+    if (!isCurrent() || lock.current) return;
+    const next = currentFiles.current.filter(file => file.cardId !== cardId);
     currentFiles.current = next; setFiles(next); setError(null);
     attempt.current = next.length ? creationAttempt(next, attempt.current, randomUUID) : null;
+  }
+  function removeBack(cardId: string) {
+    if (!isCurrent() || lock.current) return;
+    const next = currentFiles.current.filter(file => file.cardId !== cardId || file.side !== "back");
+    currentFiles.current = next; setFiles(next); setError(null);
+    attempt.current = creationAttempt(next, attempt.current, randomUUID);
   }
   async function create() {
     if (!isCurrent() || lock.current || !currentFiles.current.length) return;
@@ -200,10 +235,19 @@ function IngestStartContent({ session }: { session: IngestSession }) {
     <View style={styles.row}><IngestButton label="选择名片" icon="images-outline" disabled={!active || busy} onPress={() => void select()} /><IngestButton label="创建批次" icon="add-circle-outline" disabled={!active || busy || !files.length} onPress={() => void create()} /></View>
     {busy ? <Text style={styles.text}>正在处理...</Text> : null}
     {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
-    {files.map((file, index) => <View key={index} style={styles.fileRow}>
-      <View style={styles.grow}><Text style={styles.text}>{file.fileName}</Text><Text style={styles.muted}>{(file.rawSize / 1048576).toFixed(2)} MiB</Text></View>
-      <IngestButton label={"移除名片 " + (index + 1)} icon="close-outline" disabled={!active || busy} onPress={() => remove(index)} />
-    </View>)}
+    {files.filter(file => file.side === "front").map((front, index) => {
+      const back = files.find(file => file.cardId === front.cardId && file.side === "back");
+      return <View key={front.cardId} style={styles.fileRow}>
+        <View style={styles.grow}>
+          <Text style={styles.text}>{"名片 " + (index + 1) + " · 正面 · " + front.fileName}</Text>
+          <Text style={styles.muted}>{(front.rawSize / 1048576).toFixed(2)} MiB</Text>
+          {back ? <><Text style={styles.text}>{"反面 · " + back.fileName}</Text><Text style={styles.muted}>{(back.rawSize / 1048576).toFixed(2)} MiB</Text></> : <Text style={styles.muted}>未添加反面（可跳过）</Text>}
+        </View>
+        <IngestButton label={(back ? "替换反面 " : "添加反面 ") + (index + 1)} icon="copy-outline" disabled={!active || busy} onPress={() => void selectBack(front.cardId!)} />
+        {back ? <IngestButton label={"移除反面 " + (index + 1)} icon="remove-circle-outline" disabled={!active || busy} onPress={() => removeBack(front.cardId!)} /> : null}
+        <IngestButton label={"移除名片 " + (index + 1)} icon="close-outline" disabled={!active || busy} onPress={() => remove(front.cardId!)} />
+      </View>;
+    })}
     <View style={styles.row}><Text style={styles.heading}>最近批次</Text><IngestButton label="刷新列表" icon="refresh-outline" disabled={!active || loading} onPress={() => void refresh()} /></View>
     {loading ? <Text style={styles.text}>正在读取列表...</Text> : null}
     {Object.values(listErrors).filter(Boolean).map((message, index) => <Text key={index} accessibilityRole="alert" style={styles.error}>{message}</Text>)}

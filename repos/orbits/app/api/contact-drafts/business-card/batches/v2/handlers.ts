@@ -12,6 +12,7 @@ import {
   INGEST_V2_MAX_RAW_BYTES,
   IngestConflictError,
   type IngestItemDTO,
+  type IngestCardFieldSources,
   type IngestManifestEntry,
 } from "../../../../../../features/acquisition/business-card-ingest-v2/contract";
 import type { IngestDerivativeStore } from "../../../../../../features/acquisition/business-card-ingest-v2/derivative-store";
@@ -27,6 +28,7 @@ import type {
 import { createLiveBusinessCardContactWriteService } from "../../../../../../features/contacts/live-contact-write-service";
 import { createStorageBusinessCardContactWriteProvider } from "../../../../../../features/contacts/storage/contact-write-live-record-provider";
 import { createPostgresLiveRecordStore } from "../../../../../../shared/storage/postgres-live-record-store";
+import { ingestCardConfirmationInputSchema } from "../../../../../../shared/api-schema/business-card-batch";
 import {
   failure,
   runtimeBoundaryHeaders,
@@ -167,7 +169,7 @@ function parseManifest(payload: unknown): IngestManifestEntry[] {
       `manifest exceeds ${INGEST_V2_MAX_ITEMS} items`,
     );
   }
-  return manifest.map((entry, index) => {
+  const parsed = manifest.map((entry, index) => {
     const record = entry as Record<string, unknown>;
     const fileName = typeof record.fileName === "string" ? record.fileName.trim() : "";
     const mimeType = typeof record.mimeType === "string" ? record.mimeType.trim() : "";
@@ -175,6 +177,10 @@ function parseManifest(payload: unknown): IngestManifestEntry[] {
     const seq = Number(record.seq);
     const clientDigest =
       typeof record.clientDigest === "string" ? record.clientDigest.trim() : "";
+    const hasCardId = Object.hasOwn(record, "cardId");
+    const hasSide = Object.hasOwn(record, "side");
+    const cardId = hasCardId && typeof record.cardId === "string" ? record.cardId.trim() : `legacy:${seq}`;
+    const side = hasSide ? record.side : "front";
     if (
       !fileName ||
       !mimeType ||
@@ -183,11 +189,14 @@ function parseManifest(payload: unknown): IngestManifestEntry[] {
       rawSize > INGEST_V2_MAX_RAW_BYTES ||
       !Number.isInteger(seq) ||
       seq <= 0 ||
-      !/^sha256:[0-9a-f]{64}$/.test(clientDigest)
+      !/^sha256:[0-9a-f]{64}$/.test(clientDigest) ||
+      hasCardId !== hasSide ||
+      !cardId ||
+      (side !== "front" && side !== "back")
     ) {
       throw new IngestConflictError(
         "EMPTY_BATCH",
-        `manifest entry ${index} is invalid (fileName/mimeType/rawSize/seq/clientDigest)`,
+        `manifest entry ${index} is invalid (cardId/side/fileName/mimeType/rawSize/seq/clientDigest)`,
       );
     }
     if (!isIngestUploadMimeType(mimeType)) {
@@ -196,8 +205,19 @@ function parseManifest(payload: unknown): IngestManifestEntry[] {
         `manifest entry ${index} has unsupported mimeType ${mimeType}`,
       );
     }
-    return { fileName, mimeType, rawSize, seq, clientDigest };
+    return { cardId, side: side as IngestManifestEntry["side"], legacyIdentity: !hasCardId, fileName, mimeType, rawSize, seq, clientDigest };
   });
+  if (new Set(parsed.map(entry => entry.legacyIdentity)).size > 1) {
+    throw new IngestConflictError("IDEMPOTENCY_CONFLICT", "legacy and explicit card identities cannot be mixed in one manifest");
+  }
+  const cards = new Map<string, IngestManifestEntry[]>();
+  parsed.forEach(entry => cards.set(entry.cardId, [...(cards.get(entry.cardId) ?? []), entry]));
+  for (const [cardId, entries] of cards) {
+    if (entries.filter(entry => entry.side === "front").length !== 1 || entries.filter(entry => entry.side === "back").length > 1) {
+      throw new IngestConflictError("IDEMPOTENCY_CONFLICT", `card ${cardId} must have one front and at most one back`);
+    }
+  }
+  return parsed;
 }
 
 async function readRawBody(request: Request): Promise<Buffer> {
@@ -518,6 +538,35 @@ function textField(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
+function confirmationFingerprint(body: {
+  confirmationIntentId: string;
+  expectedCardItems: readonly { itemId: string; version: number; imageDigest: string }[];
+  fieldSources: IngestCardFieldSources;
+  displayName: string;
+  organization: string;
+  role: string;
+  email: string;
+  phone: string;
+  relationshipContext: string;
+  notes: string;
+  allowDuplicate?: boolean;
+}): string {
+  const canonical = {
+    allowDuplicate: body.allowDuplicate === true,
+    confirmationIntentId: body.confirmationIntentId,
+    displayName: body.displayName,
+    email: body.email,
+    expectedCardItems: [...body.expectedCardItems].sort((a, b) => a.itemId.localeCompare(b.itemId)),
+    fieldSources: Object.fromEntries(Object.entries(body.fieldSources).sort(([a], [b]) => a.localeCompare(b))),
+    notes: body.notes,
+    organization: body.organization,
+    phone: body.phone,
+    relationshipContext: body.relationshipContext,
+    role: body.role,
+  };
+  return createHash("sha256").update(JSON.stringify(canonical)).digest("hex");
+}
+
 /** 把确认事务的 client 包装成 record store，让联系人写入与 item 转换同事务。 */
 function buildTxContactService(client: IngestQueryClient, workspaceId: string) {
   const txStore = createPostgresLiveRecordStore({
@@ -574,7 +623,7 @@ function editedReviewFields(
 
 function createConfirmLikeHandler(
   deps: IngestV2HandlerDeps,
-  allowFrom: readonly ["extracted"] | readonly ["terminal_failed"],
+  allowFrom: readonly ("extracted" | "terminal_failed")[],
 ) {
   return async function POST(
     request: Request,
@@ -590,30 +639,61 @@ function createConfirmLikeHandler(
       if (!item) {
         return jsonError(new AppError("NOT_FOUND", `item ${itemId} was not found`), mode);
       }
-
+      const cardItems = detail!.items.filter((entry) => entry.cardId === item.cardId).sort((a, b) => a.seq - b.seq);
+      const legacyFields = {
+        displayName: textField(body.displayName),
+        organization: textField(body.organization),
+        role: textField(body.role),
+        email: textField(body.email),
+        phone: textField(body.phone),
+        relationshipContext: textField(body.relationshipContext),
+        notes: textField(body.notes),
+        allowDuplicate: body.allowDuplicate === true,
+      };
+      const legacySeed = createHash("sha256").update(JSON.stringify(legacyFields)).digest("hex");
+      const hasConfirmationMetadata = Object.hasOwn(body, "confirmationIntentId") || Object.hasOwn(body, "expectedCardItems") || Object.hasOwn(body, "fieldSources");
+      if (!hasConfirmationMetadata && (cardItems.length !== 1 || item.cardIdentityExplicit !== false)) {
+        return jsonError(new AppError("VALIDATION_ERROR", "Card confirmation metadata is required for explicit card identities."), mode);
+      }
+      const candidate = hasConfirmationMetadata
+        ? body
+        : {
+            ...legacyFields,
+            confirmationIntentId: `legacy:${item.cardId}:${legacySeed}`,
+            expectedCardItems: cardItems.map((entry) => ({ itemId: entry.id, version: entry.version, imageDigest: entry.imageDigest ?? entry.clientDigest })),
+            fieldSources: { displayName: item.id, organization: item.id, role: item.id, email: item.id, phone: item.id },
+          };
+      const confirmation = ingestCardConfirmationInputSchema.safeParse(candidate);
+      if (!confirmation.success) {
+        return jsonError(new AppError("VALIDATION_ERROR", "Card confirmation intent, source versions, or field provenance is invalid."), mode);
+      }
       try {
-        const confirmed = await runtime.repository.confirmItem({
+        const confirmed = await runtime.repository.confirmCard({
           actorId,
           batchId: id,
           itemId,
           allowFrom,
+          confirmationIntentId: confirmation.data.confirmationIntentId,
+          confirmationFingerprint: confirmationFingerprint(confirmation.data),
+          expectedItems: confirmation.data.expectedCardItems,
+          fieldSources: confirmation.data.fieldSources,
           async createContact(client) {
             const contacts = buildTxContactService(client, runtime.workspaceId);
             const result = await contacts.confirmBusinessCardContact({
               actorId,
               actorLabel: actorId,
-              allowDuplicate: body.allowDuplicate === true,
+              allowDuplicate: confirmation.data.allowDuplicate === true,
               confirmed: true,
-              displayName: textField(body.displayName),
-              draftId: itemId,
-              email: textField(body.email),
-              evidenceIds: [`evidence:business-card-batch:${itemId}`],
-              imageDigest: item.imageDigest ?? itemId,
-              notes: textField(body.notes),
-              organization: textField(body.organization),
-              phone: textField(body.phone),
-              relationshipContext: textField(body.relationshipContext),
-              role: textField(body.role),
+              displayName: confirmation.data.displayName,
+              draftId: `business-card-batch:${id}:${item.cardId}`,
+              email: confirmation.data.email,
+              evidenceIds: cardItems.map((entry) => `evidence:business-card-batch:${entry.id}:${entry.side}`),
+              imageDigest: createHash("sha256").update(cardItems.map((entry) => entry.imageDigest ?? entry.id).join("\n")).digest("hex"),
+              notes: confirmation.data.notes,
+              organization: confirmation.data.organization,
+              phone: confirmation.data.phone,
+              relationshipContext: confirmation.data.relationshipContext,
+              role: confirmation.data.role,
             });
             if (result.success === false) {
               throw new ContactWriteRejected(result.error.message);
@@ -624,19 +704,22 @@ function createConfirmLikeHandler(
             return result.data.contactId;
           },
         });
-        if (item.extraction) {
-          const edited = editedReviewFields(item.extraction, body);
+        for (const source of cardItems) if (source.extraction) {
+          const edited = editedReviewFields(source.extraction, body);
           if (edited.length > 0) {
             console.info(
               "[ingest-v2] review edits",
-              JSON.stringify({ batchId: id, edited, itemId }),
+              JSON.stringify({ batchId: id, cardId: item.cardId, edited, itemId: source.id }),
             );
           }
         }
+        const confirmedItem = confirmed.items.find((entry) => entry.id === itemId) ?? confirmed.items[0]!;
         return NextResponse.json(
           success({
-            contactId: confirmed.confirmedContactId,
-            item: confirmed,
+            contactId: confirmedItem.confirmedContactId,
+            item: confirmedItem,
+            items: confirmed.items,
+            replayed: confirmed.replayed,
             state: "created",
           }),
           { headers: runtimeBoundaryHeaders(mode) },
@@ -666,7 +749,7 @@ export function createIngestV2ConfirmHandler(deps: IngestV2HandlerDeps = {}) {
 
 /** 手工录入（方案 §五）：与确认同构，从 terminal_failed 进入 confirmed。 */
 export function createIngestV2ManualEntryHandler(deps: IngestV2HandlerDeps = {}) {
-  return createConfirmLikeHandler(deps, ["terminal_failed"] as const);
+  return createConfirmLikeHandler(deps, ["extracted", "terminal_failed"] as const);
 }
 
 export function createIngestV2SkipHandler(deps: IngestV2HandlerDeps = {}) {

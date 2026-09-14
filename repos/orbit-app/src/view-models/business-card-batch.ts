@@ -1,9 +1,17 @@
-import type { BusinessCardBatchDetailContract, BusinessCardStructuredExtractionContract } from "../api/contract/business-card-batch";
+import type { BusinessCardBatchDetailContract, BusinessCardStructuredExtractionContract, IngestCardFieldSourcesContract, IngestItemContract } from "../api/contract/business-card-batch";
 import type { ApiResult } from "../api/types";
 import { businessCardBatchConfirmationResponseSchema, businessCardBatchDetailSchema } from "../api/schema/business-card-batch";
 
 export type BusinessCardReviewFields = { displayName: string; organization: string; role: string; email: string; phone: string; relationshipContext: string; notes: string };
 export interface BusinessCardReviewDraft { fields: BusinessCardReviewFields; dirty: boolean; }
+export interface BusinessCardFieldChoice { value: string; itemId: string; side: "front" | "back"; }
+export interface BusinessCardReviewCardDraft extends BusinessCardReviewDraft {
+  sources: IngestCardFieldSourcesContract;
+  conflicts: Partial<Record<keyof IngestCardFieldSourcesContract, readonly BusinessCardFieldChoice[]>>;
+  unresolvedConflicts: readonly (keyof IngestCardFieldSourcesContract)[];
+  manualFields: readonly (keyof BusinessCardReviewFields)[];
+  itemVersions: Readonly<Record<string, string>>;
+}
 
 export function reconcileBusinessCardReviewDraft(extraction: BusinessCardStructuredExtractionContract | null | undefined, previous: BusinessCardReviewDraft | undefined, reload = false): BusinessCardReviewDraft | null {
   // Processing may omit extraction for every item, even an extracted one.
@@ -40,6 +48,47 @@ export function businessCardReviewFields(extraction: BusinessCardStructuredExtra
   extraction.certifications.forEach(value => add("资格", value));
   fields.notes = notes.join("\n");
   return fields;
+}
+
+export function reconcileBusinessCardReviewCard(
+  items: readonly IngestItemContract[],
+  previous?: BusinessCardReviewCardDraft,
+  reload = false,
+): BusinessCardReviewCardDraft {
+  const ordered = [...items].sort((a, b) => a.side === b.side ? a.seq - b.seq : a.side === "front" ? -1 : 1);
+  const itemVersions = Object.fromEntries(ordered.map(item => [item.id, JSON.stringify([item.version, item.imageDigest, item.extractionSchemaVersion])])) as Readonly<Record<string, string>>;
+  if (previous?.dirty && !reload && JSON.stringify(previous.itemVersions) === JSON.stringify(itemVersions)) return previous;
+  const byItem = ordered.map(item => ({ item, fields: businessCardReviewFields(item.extraction) }));
+  const fields: BusinessCardReviewFields = { displayName: "", organization: "", role: "", email: "", phone: "", relationshipContext: "", notes: "" };
+  const sources: IngestCardFieldSourcesContract = { displayName: null, organization: null, role: null, email: null, phone: null };
+  const conflicts: BusinessCardReviewCardDraft["conflicts"] = {};
+  const unresolvedConflicts: (keyof IngestCardFieldSourcesContract)[] = [];
+  for (const field of ["displayName", "organization", "role", "email", "phone"] as const) {
+    const choices: BusinessCardFieldChoice[] = [];
+    const seen = new Set<string>();
+    for (const { item, fields: candidate } of byItem) {
+      const value = candidate[field].trim();
+      if (!value || seen.has(value)) continue;
+      seen.add(value);
+      choices.push({ value, itemId: item.id, side: item.side });
+    }
+    if (choices[0]) {
+      fields[field] = choices[0].value;
+      sources[field] = choices.length === 1 ? choices[0].itemId : null;
+    }
+    if (choices.length > 1) {
+      conflicts[field] = Object.freeze(choices);
+      unresolvedConflicts.push(field);
+    }
+  }
+  fields.notes = [...new Set(byItem.flatMap(({ fields: value }) => value.notes.split("\n").filter(Boolean)))].join("\n");
+  const manualFields = previous?.dirty && !reload ? [...previous.manualFields] : [];
+  for (const field of manualFields) {
+    fields[field] = previous!.fields[field];
+    if (field in sources) sources[field as keyof IngestCardFieldSourcesContract] = null;
+  }
+  const unresolved = unresolvedConflicts.filter(field => !manualFields.includes(field));
+  return { fields, sources, conflicts, unresolvedConflicts: Object.freeze(unresolved), manualFields: Object.freeze(manualFields), itemVersions, dirty: manualFields.length > 0 };
 }
 
 export function legacyBatchPath(batchId: string, itemId?: string, action?: "confirm" | "retry" | "skip" | "image" | "finish"): string {

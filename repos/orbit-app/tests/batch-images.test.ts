@@ -58,7 +58,7 @@ test("rejects empty, oversized, unsupported and ambiguous images", async () => {
 
 test("prepared digest satisfies the synced manifest schema and the exact digest-checked bytes are uploaded", async () => {
   const prepared = await prepareBatchImage(input, { native: native() });
-  const manifest = ingestManifestEntrySchema.parse({ ...prepared, seq: 1 });
+  const manifest = ingestManifestEntrySchema.parse({ ...prepared, cardId: "card:one", side: "front", seq: 1 });
   assert.match(manifest.clientDigest, /^sha256:[0-9a-f]{64}$/);
   const bytes = await readPreparedBatchImage(prepared, { native: native() });
   let uploaded: BodyInit | null | undefined;

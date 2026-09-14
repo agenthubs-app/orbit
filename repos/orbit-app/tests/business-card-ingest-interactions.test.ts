@@ -13,7 +13,7 @@ const fixture = "\nimport React, { useEffect, useSyncExternalStore } from \"reac
 const reviewFixture = `
 const originalDetail = s.detail;
 const extraction = { fullName: "Misaki", nativeFullName: "林 美咲", romanizedFullName: "HAYASHI", organization: "Orbit", title: "Director", departments: ["Research"], emails: [{ label: null, value: "one@example.invalid" }, { label: "Personal", value: "two@example.invalid" }], contactPoints: [{ type: "mobile", label: null, value: "090" }, { type: "fax", label: null, value: "090" }, { type: "wechat", label: null, value: "chat" }], website: null, addresses: [], certifications: [], detectedLanguages: ["ja"] };
-s.detail = (patch = {}) => { const d = originalDetail(patch); d.batch.reviewGeneration = patch.generation ?? 0; d.items.forEach(i => { i.extraction = i.status === "extracted" ? { ...extraction, organization: patch.organization ?? "Orbit" } : null; i.reviewIssues = i.status === "extracted" ? [{ code: "INVALID_EMAIL", field: "email", message: "核对邮箱" }] : []; i.errorCode = i.status === "terminal_failed" ? patch.errorCode ?? "IMAGE_INVALID" : null; }); return d; };
+s.detail = (patch = {}) => { const d = originalDetail(patch); d.batch.reviewGeneration = patch.generation ?? 0; d.items.forEach((i, index) => { if (patch.twoSided) { i.cardId = "card:paired"; i.side = index === 0 ? "front" : "back"; } i.extraction = i.status === "extracted" ? { ...extraction, organization: patch.organization ?? "Orbit" } : null; i.reviewIssues = i.status === "extracted" ? [{ code: "INVALID_EMAIL", field: "email", message: "核对邮箱" }] : []; i.errorCode = i.status === "terminal_failed" ? patch.errorCode ?? "IMAGE_INVALID" : null; }); return d; };
 s.respond = (index, data, status = 200) => s.replies[index](new Response(JSON.stringify({ success: true, data }), { status, headers: { "content-type": "application/json" } }));
 s.image = index => s.replies[index](new Response(png, { status: 200, headers: { "content-type": "image/png" } }));
 `;
@@ -73,6 +73,61 @@ test("FinalFix I1 current confirmation body preserves labeled channel meanings",
   for (const line of ["phone (Office): 0312345678", "fax (Office): 0312345678", "wechat (Tokyo): same-account", "whatsapp (Tokyo): same-account"]) {
     assert.equal(body.notes.split("\n").filter((note: string) => note === line).length, 1, line);
   }
+});
+
+test("D line reviews one paired card, exposes both sides and binds confirmation provenance", async t => {
+  const p = await open(t, { screen: "detail" });
+  await p.evaluate(() => {
+    const s = (window as any).fixture;
+    const d = s.detail({ status: "ready_for_review", statuses: ["extracted", "extracted"], twoSided: true });
+    d.items[1].extraction.organization = "Back Office";
+    s.respond(0, d);
+  }); await settle(p);
+  assert.equal(await p.getByRole("button", { name: "复核名片 1", exact: true }).count(), 1);
+  assert.equal(await p.getByRole("button", { name: "复核名片 2", exact: true }).count(), 0);
+  assert.equal(await p.getByRole("button", { name: "查看正面", exact: true }).count(), 1);
+  assert.equal(await p.getByRole("button", { name: "查看反面", exact: true }).count(), 1);
+  await press(p, "查看反面");
+  await p.waitForFunction(() => (window as any).fixture.requests.some((r: any) => r.path.endsWith("/item%3A1/image")));
+  assert.ok(await p.getByText("正反面信息不一致，请选择来源。", { exact: true }).count());
+  assert.equal(await p.getByRole("button", { name: "确认收录", exact: true }).isDisabled(), true, "unresolved conflicts must block confirmation");
+  await press(p, "使用反面公司");
+  assert.equal(await p.getByLabel("公司", { exact: true }).inputValue(), "Back Office");
+  assert.equal(await p.getByRole("button", { name: "确认收录", exact: true }).isEnabled(), true);
+  await press(p, "确认收录");
+  const body = await p.evaluate(() => (window as any).fixture.requests.find((r: any) => r.path.endsWith("/confirm")).body);
+  assert.equal(body.expectedCardItems.length, 2);
+  assert.equal(body.expectedCardItems[0].itemId, "item:0");
+  assert.equal(body.expectedCardItems[1].itemId, "item:1");
+  assert.equal(body.fieldSources.organization, "item:1");
+  assert.match(body.confirmationIntentId, /^key-/);
+});
+
+test("D line retries the failed back side of a mixed-status card", async t => {
+  const p = await open(t, { screen: "detail" });
+  await p.evaluate(() => {
+    const s = (window as any).fixture;
+    s.respond(0, s.detail({ status: "ready_for_review", statuses: ["extracted", "terminal_failed"], twoSided: true }));
+  }); await settle(p);
+  assert.equal(await p.getByRole("button", { name: "重试识别", exact: true }).isEnabled(), true);
+  await press(p, "重试识别");
+  await confirm(p);
+  await p.waitForFunction(() => (window as any).fixture.requests.some((r: any) => r.path.endsWith("/item%3A1/retry")));
+  assert.ok(await p.evaluate(() => (window as any).fixture.requests.some((r: any) => r.path.endsWith("/item%3A1/retry"))));
+});
+
+test("D line retries an unchanged confirmation with the same client intent", async t => {
+  const p = await review(t);
+  await press(p, "确认收录");
+  const first = await p.evaluate(() => (window as any).fixture.requests.findIndex((r: any) => r.path.endsWith("/confirm")));
+  await respond(p, first, "confirm", 503);
+  await p.waitForFunction(first => (window as any).fixture.requests.some((r: any, index: number) => index > first && r.method === "GET" && !r.path.endsWith("/image")), first);
+  const recovery = await p.evaluate(first => (window as any).fixture.requests.findIndex((r: any, index: number) => index > first && r.method === "GET" && !r.path.endsWith("/image")), first);
+  await reply(p, recovery, "ok", { status: "ready_for_review", statuses: ["extracted"] });
+  await press(p, "确认收录");
+  const intents = await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path.endsWith("/confirm")).map((r: any) => r.body.confirmationIntentId));
+  assert.equal(intents.length, 2);
+  assert.equal(intents[0], intents[1]);
 });
 
 test("FinalFix I2 owned whole-batch GET404 clears pending files", async t => {
@@ -796,13 +851,24 @@ test("selection cancellation is neutral; original representation, count/byte lim
   await update(p, { rawSize: 10485761 }); await press(p, "选择名片"); await pick(p, 3);
   assert.equal(await p.getByRole("alert").count(), 1); assert.equal(await count(p), 2);
 });
+test("D line pairs an explicitly selected back with its front in the create manifest", async t => {
+  const p = await open(t); await selected(p);
+  await press(p, "添加反面 1"); await pick(p, 1, 1, false, { fileName: "back.png" });
+  await press(p, "创建批次");
+  const manifest = await p.evaluate(() => (window as any).fixture.requests[2].body.manifest);
+  assert.equal(manifest.length, 2);
+  assert.equal(manifest[0].side, "front"); assert.equal(manifest[1].side, "back");
+  assert.equal(manifest[0].cardId, manifest[1].cardId);
+  assert.equal(manifest[1].fileName, "back.png");
+  assert.deepEqual(await p.evaluate(() => { const o = (window as any).fixture.picks[1]; return [o.allowsMultipleSelection, o.selectionLimit]; }), [false, 1]);
+});
 test("ambiguous creation retries frozen key and manifest; changed selection makes a new key", async t => {
   const p = await open(t); await selected(p); await direct(p, "创建批次"); assert.equal(await count(p), 3);
   await reply(p, 2, "fail"); await press(p, "创建批次");
   assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests[2].body), await p.evaluate(() => (window as any).fixture.requests[3].body));
   await reply(p, 3, "ok", { wrongKey: true }); assert.equal(await p.getByRole("alert").count(), 1); assert.equal(await p.evaluate(() => (window as any).fixture.navigation.length), 0);
   await press(p, "选择名片"); await pick(p, 1, 1, false, { fileName: "new.png" }); await press(p, "创建批次");
-  assert.equal(await p.evaluate(() => (window as any).fixture.requests[4].body.idempotencyKey), "key-2");
+  assert.notEqual(await p.evaluate(() => (window as any).fixture.requests[4].body.idempotencyKey), await p.evaluate(() => (window as any).fixture.requests[3].body.idempotencyKey));
   await reply(p, 4); assert.equal(await p.evaluate(() => (window as any).fixture.navigation.at(-1)), "/contacts/new/batch2/batch%3A%2F");
   assert.equal(await count(p), 5);
 });

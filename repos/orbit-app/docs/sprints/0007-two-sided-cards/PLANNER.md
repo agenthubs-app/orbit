@@ -2,10 +2,18 @@
 
 **Plan revision:** 1。**模式:** existing-codebase / single-generator。运行状态只在登记表。
 **原需求:** R-07／B5。**单一目标:** 同一张卡正反面经过来源复核后只创建一个联系人。
-**基线:** 承接 0002 的实际 REPORT；启动时记录 HEAD／涉及文件 diff，不预填运行结果。
+**基线:** `fca77373f123c03e29a0584cba46bade5f5eb907`；承接 0002 的实际 REPORT。
 **已有成果:** 单面导入、进度恢复、取消与重试保留；[证据第 22 节](../../verification/2026-09-13-app-connectivity.md#22-r-07双面名片契约与读取副作用)确认现协议按单图建条目，尚无同卡合并。
-**进入条件:** 0002 提供获准初始化环境、隔离名片／联系人对象和实体 iPhone；B5 发布并审阅同卡身份、正反面、来源冲突、确认幂等、去重及原图保留策略。
-**契约前置:** B5 的实际方法／路径、请求／回执及同步副本文件清单须补入本 Planner 并完成适用审阅后才能启动；当前不能把下列条件性步骤当成已批准实现协议。
+**进入条件:** 0002 报告已存在；2026-09-14 用户明确启动 D 线并授予本线实现权限，B5 的本地跨端契约按下述增量执行。实体 iPhone、真实 OCR、具体数据库／迁移和真实联系人写入仍按精确环境与对象验收，不阻塞无副作用的本地实现。
+**运行登记:** `run-01`，2026-09-14 启动；唯一 Generator 为当前 D 线会话。
+
+## B5 已批准契约增量
+
+- `POST /api/contact-drafts/business-card/batches/v2` 的 manifest 项新增稳定 `cardId` 与 `side: front | back`。每卡恰有一个正面、至多一个反面；旧客户端未传这两个字段时，每个旧图片按独立单面卡兼容，禁止按相邻 `seq` 自动配对。
+- 批次与 item 回执保留 `cardId`／`side`。App 在创建前明确展示每卡正面与可选反面，复核时按卡聚合两面的 OCR、图片与字段来源；姓名和公司优先保留用户选择的原语言值。
+- 现有 item confirm 路径继续兼容，但服务端以该 item 的 `cardId` 锁定整卡。确认请求携带稳定 `confirmationIntentId`、两面 item/version/imageDigest 快照和字段来源；同意图重放、双击及并发只返回同一联系人，异内容或过期版本返回冲突。
+- 确认事务验证所有来源属于当前 actor／batch／card，创建一次联系人，并把同卡两面原子标为同一 `confirmedContactId`。证据 ID 保留两面 item 身份；确认后两面衍生图进入既有 cleanup，复核前仍分别通过受保护图片路由读取。
+- 旧单面批次继续使用原 item 路由与单面确认语义；反面跳过通过“不加入 manifest”表达。重拍只替换指定 side 并使旧 version 快照失效。
 
 ## 范围与文件
 
@@ -13,9 +21,11 @@
 - 读取：`src/api/batch-images.ts`、`src/api/contract/business-card-batch.ts`、`src/api/schema/business-card-batch.ts`；副本只能走批准的同步渠道。
 - 修改白名单：`src/screens/contacts/ContactAcquisitionScreen.tsx`、`BusinessCardIngestStartScreen.tsx`、`BusinessCardIngestScreen.tsx`、`BusinessCardBatchScreen.tsx`、`BusinessCardImportScreen.tsx`（后四项均在同一目录）。
 - 修改白名单：`src/components/BusinessCardBatchReviewForm.tsx`、`src/screens/contacts/business-card-pending-files.ts`、`src/view-models/business-card-ingest.ts`、`src/view-models/business-card-batch.ts`。
+- Web/API 必要文件：`repos/orbits/features/acquisition/business-card-ingest-v2/{contract,migrations,repository}.ts`、`repos/orbits/app/api/contact-drafts/business-card/batches/v2/handlers.ts`、现有 confirm route 与对应 Web 测试。
+- 共享契约必要文件：`repos/orbits/shared/{contract,api-schema}/business-card-batch.ts`，通过 `npm run sync:contract` 生成 App 副本；不手改生成副本。
 - 测试白名单：下列命令列出的现有测试；条件性新增 `tests/business-card-two-sided-interactions.test.tsx`，用于真实路由和 HTTP 边界受控交互，当前尚不存在。
 - 文档产出仅本 Sprint `REPORT.md`；原始证据在 `build/harness-state/evidence/sprint-0007/run-01/`，先确认被忽略。
-- 排除：服务端迁移／trigger／worker 修改、擅加 manifest 字段、本地权威 OCR 合并、新联系人匹配算法、第三方资料抓取与批量真实导入。
+- 排除：运行任何真实环境迁移、修改 OCR worker/provider、本地权威 OCR 合并、新联系人匹配算法、第三方资料抓取与批量真实导入。仅允许为上述 B5 契约新增受版本控制的本地迁移定义和 manifest 字段。
 
 ## 验收契约（最多五项）
 

@@ -215,6 +215,25 @@ create trigger bc_ingest_attach_image_write_trigger
     create index bc_ingest_raw_uploads_cleanup on bc_ingest_raw_uploads (workspace_id, pipeline, next_attempt_at)
       where state <> 'deleted';`,
   },
+  {
+    name: "business-card-two-sided-identity",
+    version: 5,
+    sql: `alter table bc_ingest_items add column card_id text;
+    alter table bc_ingest_items add column card_side text;
+    alter table bc_ingest_items add column card_identity_explicit boolean not null default false;
+    alter table bc_ingest_items add column confirmation_intent_id text;
+    alter table bc_ingest_items add column confirmation_fingerprint text;
+    alter table bc_ingest_items add column confirmation_field_sources jsonb;
+    update bc_ingest_items
+      set card_id = 'legacy:' || seq::text, card_side = 'front'
+      where card_id is null or card_side is null;
+    alter table bc_ingest_items alter column card_id set not null;
+    alter table bc_ingest_items alter column card_side set not null;
+    alter table bc_ingest_items add constraint bc_ingest_items_card_side_check
+      check (card_side in ('front', 'back'));
+    create unique index bc_ingest_items_card_side_unique
+      on bc_ingest_items (workspace_id, batch_id, card_id, card_side);`,
+  },
 ];
 
 function checksum(sql: string): string {

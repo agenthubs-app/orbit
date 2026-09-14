@@ -61,6 +61,8 @@ export type IngestItemErrorCode =
   | "OCR_INVALID_OUTPUT"
   | "LEASE_EXHAUSTED";
 
+export type IngestCardSide = "front" | "back";
+
 /** 是否可重试由 error_code 集中判定，不落冗余字段（方案决策 27）。 */
 export function isRetryableIngestError(code: IngestItemErrorCode): boolean {
   switch (code) {
@@ -75,6 +77,10 @@ export function isRetryableIngestError(code: IngestItemErrorCode): boolean {
 }
 
 export interface IngestManifestEntry {
+  cardId: string;
+  side: IngestCardSide;
+  /** Internal marker for requests using the pre-two-sided manifest shape. */
+  legacyIdentity?: boolean;
   fileName: string;
   mimeType: string;
   rawSize: number;
@@ -101,6 +107,8 @@ export interface IngestBatchDTO {
 export interface IngestItemDTO {
   id: string;
   batchId: string;
+  cardId: string;
+  side: IngestCardSide;
   seq: number;
   status: IngestItemStatus;
   version: number;
@@ -116,6 +124,9 @@ export interface IngestItemDTO {
   reviewIssues: readonly BusinessCardReviewIssue[];
   usage: BusinessCardCloudOcrUsage | null;
   confirmedContactId: string | null;
+  confirmedFieldSources?: IngestCardFieldSources | null;
+  /** False for migrated rows and requests using the legacy manifest shape. */
+  cardIdentityExplicit?: boolean;
   attemptCount: number;
   nextRetryAt: string | null;
   leaseExpiresAt: string | null;
@@ -123,6 +134,20 @@ export interface IngestItemDTO {
   errorCode: IngestItemErrorCode | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface IngestCardConfirmationItem {
+  itemId: string;
+  version: number;
+  imageDigest: string;
+}
+
+export interface IngestCardFieldSources {
+  displayName: string | null;
+  organization: string | null;
+  role: string | null;
+  email: string | null;
+  phone: string | null;
 }
 
 /** ?view=summary 的派生计数——单条 SQL 同快照返回，batch 不落计数字段。 */

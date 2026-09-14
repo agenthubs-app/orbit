@@ -253,7 +253,7 @@ for (const screen of ["legacy", "ingest"]) test(`${screen} review puts the actua
   const name = page.getByLabel("姓名", { exact: true }); assert.equal(await name.inputValue(), "许妍");
   assert.equal(await name.evaluate(el => getComputedStyle(el).borderTopWidth), "0px");
   assert.equal(await name.evaluate(el => getComputedStyle(el).fontSize), "14px");
-  assert.equal(await name.locator("..").evaluate(el => getComputedStyle(el).borderBottomWidth), "1px");
+  assert.equal(await name.locator("../..").evaluate(el => getComputedStyle(el).borderBottomWidth), "1px");
   const label = page.getByText("姓名", { exact: true });
   assert.equal((await name.boundingBox())!.x - (await label.boundingBox())!.x, 72);
   const action = page.getByRole("button", { name: "确认收录", exact: true });
@@ -294,7 +294,14 @@ for (const screen of ["legacy", "ingest"]) test(`${screen} open review still edi
   await page.getByRole("button", { name: "查看重复联系人", exact: true }).waitFor();
   const requests = await writes(page);
   assert.equal(requests.length, 1); assert.equal(requests[0].path, `/api/contact-drafts/business-card/batches/${screen === "ingest" ? "v2/" : ""}batch%3Areview/items/item%3A1/confirm`);
-  assert.deepEqual(requests[0].body, { displayName: "核对后姓名", organization: "白露设计", role: "创始人", email: "correct@example.invalid", phone: "+81 90 1234 5678", relationshipContext: "", notes: "保留原始来源", allowDuplicate: false });
+  const expectedFields = { displayName: "核对后姓名", organization: "白露设计", role: "创始人", email: "correct@example.invalid", phone: "+81 90 1234 5678", relationshipContext: "", notes: "保留原始来源", allowDuplicate: false };
+  if (screen === "legacy") assert.deepEqual(requests[0].body, expectedFields);
+  else assert.deepEqual(requests[0].body, {
+    ...expectedFields,
+    confirmationIntentId: "key-1",
+    expectedCardItems: [{ itemId: "item:1", version: 1, imageDigest: "sha256:" + "b".repeat(64) }],
+    fieldSources: { displayName: null, organization: "item:1", role: "item:1", email: null, phone: "item:1" },
+  });
   assert.equal(await page.getByRole("button", { name: "确认收录", exact: true }).isDisabled(), true);
   assert.equal(await page.getByRole("button", { name: "合并到已有人脉", exact: true }).count(), 0);
   await page.getByRole("button", { name: "仍然收录", exact: true }).click();

@@ -51,7 +51,7 @@ test("V2 source consumption atomically uploads/replaces real images and survives
       raw.set(source.objectKey, bytes); return source;
     };
     const batch = await repository.createBatch({ actorId, idempotencyKey: randomUUID(), manifest: [{
-      fileName: "card.jpg", mimeType: "image/jpeg", rawSize: large.length, clientDigest: digest(large), seq: 1,
+      cardId: "card:source-consumer", side: "front", fileName: "card.jpg", mimeType: "image/jpeg", rawSize: large.length, clientDigest: digest(large), seq: 1,
     }] });
     const source = await reserve(large);
     const input = { actorId, batchId: batch.batch.id, itemId: batch.items[0].id, sourceId: source.id, operation: "upload" as const };

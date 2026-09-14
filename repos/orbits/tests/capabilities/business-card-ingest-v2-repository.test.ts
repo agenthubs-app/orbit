@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import test from "node:test";
 
 import { Pool } from "pg";
@@ -75,6 +75,8 @@ async function withRepo(fn: (harness: Harness) => Promise<void>): Promise<void> 
 
 function manifest(count: number): IngestManifestEntry[] {
   return Array.from({ length: count }, (_, index) => ({
+    cardId: `card:${index + 1}`,
+    side: "front",
     fileName: `card-${index + 1}.heic`,
     mimeType: "image/heic",
     rawSize: 1_500_000 + index,
@@ -193,6 +195,22 @@ test("manifest fingerprint is order-insensitive but content-sensitive", { skip }
   const altered = manifest(3);
   altered[1] = { ...altered[1]!, clientDigest: "sha256:other" };
   assert.notEqual(computeManifestFingerprint(base), computeManifestFingerprint(altered));
+});
+
+test("legacy manifest fingerprint remains compatible across the two-sided migration", { skip }, async () => {
+  await withRepo(async ({ repo, pool }) => {
+    const legacy = manifest(2).map(({ cardId: _cardId, side: _side, ...entry }) => ({ ...entry, legacyIdentity: true })) as unknown as IngestManifestEntry[];
+    const oldCanonical = [...legacy].sort((a, b) => a.seq - b.seq)
+      .map(entry => [entry.seq, entry.fileName, entry.mimeType, entry.rawSize, entry.clientDigest].join("\u0000")).join("\n");
+    const oldFingerprint = createHash("sha256").update(oldCanonical).digest("hex");
+    assert.equal(computeManifestFingerprint(legacy), oldFingerprint);
+    const key = `legacy:${randomUUID()}`;
+    const first = await repo.createBatch({ actorId: ACTOR, idempotencyKey: key, manifest: legacy });
+    await pool.query(`update bc_ingest_batches set manifest_fingerprint = $1 where id = $2`, [oldFingerprint, first.batch.id]);
+    const replay = await repo.createBatch({ actorId: ACTOR, idempotencyKey: key, manifest: legacy });
+    assert.equal(replay.reused, true);
+    assert.equal(replay.batch.id, first.batch.id);
+  });
 });
 
 test("upload is idempotent on same digest and 409 on different digest", { skip }, async () => {
@@ -808,5 +826,90 @@ test("summary derives counts in a single snapshot", { skip }, async () => {
     assert.equal(summary.counts.queuedReady, 2);
     assert.equal(summary.counts.uploaded, 0);
     assert.equal(summary.batch.status, "processing");
+  });
+});
+
+test("two-sided confirmation locks both sides and replays one contact under concurrency", { skip }, async () => {
+  await withRepo(async ({ repo }) => {
+    const created = await repo.createBatch({
+      actorId: ACTOR,
+      idempotencyKey: `two-sided:${randomUUID()}`,
+      manifest: [
+        { cardId: "card:two-sided", side: "front", fileName: "front.heic", mimeType: "image/heic", rawSize: 100, seq: 1, clientDigest: "sha256:front" },
+        { cardId: "card:two-sided", side: "back", fileName: "back.heic", mimeType: "image/heic", rawSize: 120, seq: 2, clientDigest: "sha256:back" },
+      ],
+    });
+    for (const item of created.items) {
+      await repo.markItemUploaded({ actorId: ACTOR, batchId: created.batch.id, itemId: item.id,
+        imageDigest: item.clientDigest, derivativeObjectKey: `obj/${item.id}.jpg`, derivativeSize: 80 });
+    }
+    await repo.finalizeBatch({ actorId: ACTOR, batchId: created.batch.id });
+    const claimed = await repo.claimItems({ limit: 2 });
+    for (const item of claimed) {
+      await repo.submitExtraction({ itemId: item.id, leaseToken: item.leaseToken, expectedVersion: item.version,
+        extraction: EXTRACTION, reviewIssues: [], usage: null });
+    }
+    const review = (await repo.getBatch({ actorId: ACTOR, batchId: created.batch.id }))!;
+    const expectedItems = review.items.map(item => ({ itemId: item.id, version: item.version, imageDigest: item.imageDigest! }));
+    const confirmCard = (repo as unknown as { confirmCard?: (input: Record<string, unknown>) => Promise<{ items: typeof review.items; replayed: boolean }> }).confirmCard;
+    assert.equal(typeof confirmCard, "function", "repository must expose card-level confirmation");
+    let writes = 0;
+    const input = {
+      actorId: ACTOR, batchId: created.batch.id, itemId: review.items[0]!.id,
+      confirmationIntentId: "intent:one", confirmationFingerprint: "fingerprint:one", expectedItems,
+      fieldSources: { displayName: review.items[0]!.id, organization: review.items[0]!.id, role: null, email: review.items[1]!.id, phone: null },
+      allowFrom: ["extracted"] as const,
+      createContact: async () => { writes++; return "contact:one"; },
+    };
+    const results = await Promise.all([confirmCard!(input), confirmCard!(input)]);
+    assert.equal(writes, 1);
+    assert.deepEqual(results.map(result => result.replayed).sort(), [false, true]);
+    assert.ok(results.every(result => result.items.length === 2 && result.items.every(item => item.status === "confirmed" && item.confirmedContactId === "contact:one")));
+    for (const result of results) for (const item of result.items) assert.deepEqual(item.confirmedFieldSources, input.fieldSources);
+    await assertConflict(confirmCard!({ ...input, confirmationFingerprint: "fingerprint:changed" }), "IDEMPOTENCY_CONFLICT");
+  });
+});
+
+test("two-sided creation rejects missing fronts and duplicate sides before persistence", { skip }, async () => {
+  await withRepo(async ({ repo }) => {
+    const base = { fileName: "card.heic", mimeType: "image/heic", rawSize: 10, seq: 1, clientDigest: "sha256:a" };
+    await assertConflict(repo.createBatch({ actorId: ACTOR, idempotencyKey: "back-only", manifest: [{ ...base, cardId: "card:one", side: "back" }] }), "IDEMPOTENCY_CONFLICT");
+    await assertConflict(repo.createBatch({ actorId: ACTOR, idempotencyKey: "two-fronts", manifest: [
+      { ...base, cardId: "card:one", side: "front" },
+      { ...base, seq: 2, clientDigest: "sha256:b", cardId: "card:one", side: "front" },
+    ] }), "IDEMPOTENCY_CONFLICT");
+  });
+});
+
+test("two-sided exclude and skip settle the whole card and enqueue both derivatives", { skip }, async () => {
+  await withRepo(async ({ repo, pool }) => {
+    const createPair = async (key: string) => {
+      const created = await repo.createBatch({ actorId: ACTOR, idempotencyKey: key, manifest: [
+        { cardId: `card:${key}`, side: "front", fileName: "front.png", mimeType: "image/png", rawSize: 10, seq: 1, clientDigest: "sha256:front" },
+        { cardId: `card:${key}`, side: "back", fileName: "back.png", mimeType: "image/png", rawSize: 11, seq: 2, clientDigest: "sha256:back" },
+      ] });
+      for (const item of created.items) await repo.markItemUploaded({ actorId: ACTOR, batchId: created.batch.id, itemId: item.id,
+        imageDigest: item.clientDigest, derivativeObjectKey: `object/${key}/${item.side}`, derivativeSize: 8 });
+      return created;
+    };
+
+    const excluded = await createPair(`exclude:${randomUUID()}`);
+    await repo.excludeItem({ actorId: ACTOR, batchId: excluded.batch.id, itemId: excluded.items[0]!.id });
+    const excludedDetail = (await repo.getBatch({ actorId: ACTOR, batchId: excluded.batch.id }))!;
+    assert.deepEqual(excludedDetail.items.map(item => item.status), ["excluded", "excluded"]);
+
+    const skipped = await createPair(`skip:${randomUUID()}`);
+    await repo.finalizeBatch({ actorId: ACTOR, batchId: skipped.batch.id });
+    const claimed = await repo.claimItems({ limit: 2 });
+    for (const item of claimed.filter(item => item.batchId === skipped.batch.id)) await repo.submitExtraction({
+      itemId: item.id, leaseToken: item.leaseToken, expectedVersion: item.version, extraction: EXTRACTION, reviewIssues: [], usage: null,
+    });
+    await repo.skipItem({ actorId: ACTOR, batchId: skipped.batch.id, itemId: skipped.items[0]!.id });
+    const skippedDetail = (await repo.getBatch({ actorId: ACTOR, batchId: skipped.batch.id }))!;
+    assert.deepEqual(skippedDetail.items.map(item => item.status), ["skipped", "skipped"]);
+    assert.equal(skippedDetail.batch.status, "completed");
+
+    const cleanup = await pool.query(`select object_key from bc_ingest_cleanup_tasks where batch_id = any($1::text[]) order by object_key`, [[excluded.batch.id, skipped.batch.id]]);
+    assert.equal(cleanup.rows.length, 4);
   });
 });

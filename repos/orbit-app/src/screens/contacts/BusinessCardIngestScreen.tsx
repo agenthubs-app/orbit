@@ -1,4 +1,5 @@
 import * as ImagePicker from "expo-image-picker";
+import { randomUUID } from "expo-crypto";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Alert, Text, View, useWindowDimensions } from "react-native";
@@ -7,8 +8,8 @@ import type { IngestBatchDetailContract, IngestItemContract } from "../../api/co
 import { ingestBatchActionResponseSchema, ingestFinalizeResponseSchema, ingestItemActionResponseSchema } from "../../api/schema/business-card-batch";
 import { AppScreen } from "../../components/AppScreen";
 import { BusinessCardBatchReviewForm, type BusinessCardReviewImage } from "../../components/BusinessCardBatchReviewForm";
-import { businessCardReviewFields, reconcileBusinessCardReviewDraft, type BusinessCardReviewDraft } from "../../view-models/business-card-batch";
-import { acceptedIngestDetail, acceptedIngestReview, canFinalizeIngest, canReviewIngest, ingestBatchPath, ingestExpired, ingestItemPath, itemReplacePath, ingestTerminal, isHttpSuccess, uploadPendingPass, type IngestReviewAction } from "../../view-models/business-card-ingest";
+import { businessCardReviewFields, reconcileBusinessCardReviewCard, reconcileBusinessCardReviewDraft, type BusinessCardReviewCardDraft, type BusinessCardReviewDraft } from "../../view-models/business-card-batch";
+import { acceptedIngestDetail, acceptedIngestReview, canFinalizeIngest, canReviewIngest, cardConfirmationSnapshot, ingestBatchPath, ingestCards, ingestExpired, ingestItemPath, itemReplacePath, ingestTerminal, isHttpSuccess, uploadPendingPass, type IngestReviewAction } from "../../view-models/business-card-ingest";
 import { clearPendingFiles, pendingFiles, rememberPendingFiles } from "./business-card-pending-files";
 import { batchPickerOptions, batchStatusLabel, IngestButton, useIngestScope, useIngestStyles, type IngestSession } from "./BusinessCardIngestStartScreen";
 
@@ -25,9 +26,10 @@ interface IngestState {
   selectedId: string | null;
   reviewInvalidated: boolean;
   drafts: Map<string, BusinessCardReviewDraft>;
-  duplicate: { item: IngestItemContract; draft: BusinessCardReviewDraft; contactId: string } | null;
+  cardDrafts: Map<string, BusinessCardReviewCardDraft>;
+  duplicate: { item: IngestItemContract; draft: BusinessCardReviewCardDraft; contactId: string } | null;
 }
-const emptyState = (): IngestState => ({ detail: null, authorized: false, busy: false, loading: false, error: null, notice: null, failures: {}, unmatched: [], selectedId: null, reviewInvalidated: false, drafts: new Map(), duplicate: null });
+const emptyState = (): IngestState => ({ detail: null, authorized: false, busy: false, loading: false, error: null, notice: null, failures: {}, unmatched: [], selectedId: null, reviewInvalidated: false, drafts: new Map(), cardDrafts: new Map(), duplicate: null });
 
 export function BusinessCardIngestScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
@@ -45,14 +47,16 @@ function IngestContent({ session }: { session: IngestSession }) {
   const lock = useRef(false);
   const [image, setImage] = useState<BusinessCardReviewImage>({ status: "none" });
   const [imageRetry, setImageRetry] = useState(0);
+  const [selectedSide, setSelectedSide] = useState<"front" | "back">("front");
   const imageAttempt = useRef<object | null>(null);
   const imageOwner = useRef<string | null>(null);
   const selectionEpoch = useRef(0);
+  const confirmationIntents = useRef(new Map<string, { signature: string; id: string }>());
   const fileScope = { identity: scope.identity, batchId: scope.batchId };
   function update(patch: Partial<IngestState>) {
     if (patch.detail && ingestTerminal(patch.detail)) {
       clearPendingFiles(fileScope); imageAttempt.current = null; setImage({ status: "none" });
-      patch = { ...patch, drafts: new Map(), selectedId: null, duplicate: null, authorized: false };
+      patch = { ...patch, drafts: new Map(), cardDrafts: new Map(), selectedId: null, duplicate: null, authorized: false };
     }
     if (patch.selectedId !== undefined && patch.selectedId !== current.current.selectedId) selectionEpoch.current++;
     current.current = { ...current.current, ...patch }; setState(current.current);
@@ -93,7 +97,7 @@ function IngestContent({ session }: { session: IngestSession }) {
       const detail = acceptedIngestDetail(response, scope.batchId, previous?.batch.actorId ?? null);
       const regressed = detail && previous && (detail.batch.version < previous.batch.version || detail.batch.reviewGeneration < previous.batch.reviewGeneration || detail.batch.idempotencyKey !== previous.batch.idempotencyKey || detail.batch.manifestFingerprint !== previous.batch.manifestFingerprint || detail.items.length !== previous.items.length || previous.items.some(i => {
         const next = detail.items.find(n => n.id === i.id);
-        return !next || next.version < i.version || next.seq !== i.seq || next.clientDigest !== i.clientDigest || next.rawSize !== i.rawSize || next.rawMimeType !== i.rawMimeType || next.sourceFileName !== i.sourceFileName || (["excluded", "confirmed", "skipped"].includes(i.status) && next.status !== i.status);
+        return !next || next.version < i.version || next.cardId !== i.cardId || next.side !== i.side || next.seq !== i.seq || next.clientDigest !== i.clientDigest || next.rawSize !== i.rawSize || next.rawMimeType !== i.rawMimeType || next.sourceFileName !== i.sourceFileName || (["excluded", "confirmed", "skipped"].includes(i.status) && next.status !== i.status);
       }) || (["completed", "cancelled", "expired"].includes(previous.batch.status) && detail.batch.status !== previous.batch.status));
       if (!detail || regressed) {
         observeUnavailable(response.status, true);
@@ -111,9 +115,17 @@ function IngestContent({ session }: { session: IngestSession }) {
         const draft = reconcileBusinessCardReviewDraft(item.extraction, before, reset) ?? (item.status === "terminal_failed" ? { fields: businessCardReviewFields(null), dirty: false } : null);
         if (draft) drafts.set(item.id, draft);
       }
-      const candidates = detail.items.filter(i => ["extracted", "terminal_failed"].includes(i.status));
+      const cards = ingestCards(detail);
+      const cardDrafts = new Map<string, BusinessCardReviewCardDraft>();
+      for (const card of cards) {
+        if (!card.items.some(item => ["extracted", "terminal_failed", "queued", "processing"].includes(item.status))) continue;
+        const before = current.current.cardDrafts.get(card.cardId);
+        const reset = Boolean(reload && card.items.some(item => item.id === reload.id) && before === reload.draft && current.current.selectedId === card.front.id && reload.selectionEpoch === selectionEpoch.current);
+        cardDrafts.set(card.cardId, reconcileBusinessCardReviewCard(card.items, before, reset));
+      }
+      const candidates = cards.filter(card => card.items.some(item => ["extracted", "terminal_failed"].includes(item.status))).map(card => card.front);
       const selectedId = candidates.find(i => i.id === current.current.selectedId)?.id ?? candidates[0]?.id ?? null;
-      update({ detail, failures, drafts, selectedId, reviewInvalidated: false, duplicate: null, authorized: !ingestTerminal(detail), ...(ingestExpired(detail) ? { error: "批次已过期，无法继续操作。" } : {}) });
+      update({ detail, failures, drafts, cardDrafts, selectedId, reviewInvalidated: false, duplicate: null, authorized: !ingestTerminal(detail), ...(ingestExpired(detail) ? { error: "批次已过期，无法继续操作。" } : {}) });
     } catch { if (ticket.valid()) update({ error: "暂时无法读取批次，请刷新重试。" }); }
     finally { if (ticket.valid()) { lock.current = false; update({ loading: false }); } ticket.release(); }
   }
@@ -230,18 +242,25 @@ function IngestContent({ session }: { session: IngestSession }) {
   function clearReview(preserveDrafts = false) {
     imageAttempt.current = null; setImage({ status: "none" });
     // Ambiguous item 404 retains data, never authority; only accepted detail releases it.
-    update({ ...(preserveDrafts ? {} : { drafts: new Map() }), selectedId: null, duplicate: null, reviewInvalidated: true, authorized: false });
+    update({ ...(preserveDrafts ? {} : { drafts: new Map(), cardDrafts: new Map() }), selectedId: null, duplicate: null, reviewInvalidated: true, authorized: false });
   }
   function reviewSnapshot(item: IngestItemContract) {
     const detail = current.current.detail!;
-    const draft = current.current.drafts.get(item.id);
+    const card = ingestCards(detail).find(candidate => candidate.cardId === item.cardId)!;
+    const draft = current.current.cardDrafts.get(item.cardId);
     const selectedId = current.current.selectedId;
     const epoch = selectionEpoch.current;
-    return { detail, item, draft, valid: () => isCurrent() && selectionEpoch.current === epoch && current.current.detail === detail && current.current.selectedId === selectedId && current.current.drafts.get(item.id) === draft && !ingestTerminal(detail) };
+    return { detail, item, card, draft, valid: () => isCurrent() && selectionEpoch.current === epoch && current.current.detail === detail && current.current.selectedId === selectedId && current.current.cardDrafts.get(item.cardId) === draft && !ingestTerminal(detail) };
   }
   function reviewAllowed(item: IngestItemContract, action: IngestReviewAction) {
     const s = current.current;
-    return isCurrent() && !lock.current && s.authorized && s.detail && s.detail.items.includes(item) && canReviewIngest(s.detail, item, action);
+    if (!isCurrent() || lock.current || !s.authorized || !s.detail || !s.detail.items.includes(item)) return false;
+    const card = ingestCards(s.detail).find(candidate => candidate.cardId === item.cardId);
+    if (!card) return false;
+    if (action === "confirm") return card.items.every(side => side.status === "extracted");
+    if (action === "manual-entry") return card.items.every(side => side.status === "extracted" || side.status === "terminal_failed") && card.items.some(side => side.status === "terminal_failed");
+    if (action === "skip") return card.items.every(side => side.status === "extracted" || side.status === "terminal_failed");
+    return canReviewIngest(s.detail, item, action);
   }
   function askReview(item: IngestItemContract, action: IngestReviewAction, override = false) {
     if (!reviewAllowed(item, action)) return;
@@ -265,7 +284,15 @@ function IngestContent({ session }: { session: IngestSession }) {
     const ticket = capture();
     let refresh = true;
     try {
-      const response = await scope.client.post<unknown>(ingestItemPath(scope.batchId, snapshot.item.id) + "/" + action, { body: action === "confirm" || action === "manual-entry" ? { ...snapshot.draft!.fields, allowDuplicate: override } : {}, signal: ticket.signal });
+      let body: object = {};
+      if (action === "confirm" || action === "manual-entry") {
+        const signature = JSON.stringify({ items: snapshot.card.items.map(item => [item.id, item.version, item.imageDigest ?? item.clientDigest]), fields: snapshot.draft!.fields, sources: snapshot.draft!.sources, override });
+        const remembered = confirmationIntents.current.get(snapshot.card.cardId);
+        const intent = remembered?.signature === signature ? remembered : { signature, id: randomUUID() };
+        confirmationIntents.current.set(snapshot.card.cardId, intent);
+        body = { ...snapshot.draft!.fields, ...cardConfirmationSnapshot(snapshot.card.items, intent.id, snapshot.draft!.sources), allowDuplicate: override };
+      }
+      const response = await scope.client.post<unknown>(ingestItemPath(scope.batchId, snapshot.item.id) + "/" + action, { body, signal: ticket.signal });
       if (!ticket.valid()) return;
       if (observeUnavailable(response.status)) return;
       if (!snapshot.valid()) return;
@@ -275,8 +302,12 @@ function IngestContent({ session }: { session: IngestSession }) {
         update({ duplicate: { item: snapshot.item, draft: snapshot.draft!, contactId: accepted.duplicateContactId } });
       } else if (accepted) {
         const drafts = new Map(current.current.drafts);
+        const cardDrafts = new Map(current.current.cardDrafts);
         if (action !== "retry") drafts.delete(snapshot.item.id);
-        update({ drafts, duplicate: null, detail: { ...snapshot.detail, items: snapshot.detail.items.map(i => i.id === accepted.item.id ? accepted.item : i) }, notice: action === "retry" ? "已提交重新识别。" : action === "skip" ? "已跳过名片。" : "已收录。" });
+        if (action !== "retry") cardDrafts.delete(snapshot.card.cardId);
+        const acceptedItems = accepted.items ?? [accepted.item];
+        const byId = new Map(acceptedItems.map(item => [item.id, item]));
+        update({ drafts, cardDrafts, duplicate: null, detail: { ...snapshot.detail, items: snapshot.detail.items.map(i => byId.get(i.id) ?? i) }, notice: action === "retry" ? "已提交重新识别。" : action === "skip" ? "已跳过名片。" : "已收录。" });
       } else {
         update({ error: response.status === 409 ? "版本已变化，编辑已保留，请核对刷新后的名片。" : "操作结果无法确认，请刷新后重试。" });
       }
@@ -328,20 +359,25 @@ function IngestContent({ session }: { session: IngestSession }) {
   const terminal = detail ? ingestTerminal(detail) : false;
   const collecting = detail?.batch.status === "collecting" && !terminal;
   const enabled = active && state.authorized && !state.busy && !state.loading;
-  const selected = !terminal && !state.reviewInvalidated ? detail?.items.find(i => i.id === state.selectedId && ["extracted", "terminal_failed"].includes(i.status)) : undefined;
-  const draft = selected ? state.drafts.get(selected.id) : undefined;
-  const imageKey = selected ? JSON.stringify([selected.id, selected.imageDigest, selected.derivativeObjectKey]) : null;
+  const cards = detail ? ingestCards(detail) : [];
+  const selectedCard = !terminal && !state.reviewInvalidated ? cards.find(card => card.front.id === state.selectedId && card.items.some(item => ["extracted", "terminal_failed"].includes(item.status))) : undefined;
+  const selected = selectedCard?.front;
+  const retryTarget = selectedCard?.items.find(item => canReviewIngest(detail!, item, "retry"));
+  const displayed = selectedSide === "back" && selectedCard?.back ? selectedCard.back : selected;
+  const draft = selectedCard ? state.cardDrafts.get(selectedCard.cardId) : undefined;
+  const imageKey = displayed ? JSON.stringify([displayed.id, displayed.imageDigest, displayed.derivativeObjectKey]) : null;
+  useEffect(() => { setSelectedSide("front"); }, [selectedCard?.cardId]);
   useEffect(() => {
     const attempt = {}; imageAttempt.current = attempt;
     imageOwner.current = imageKey;
     setImage({ status: active && imageKey ? "loading" : "none" });
-    if (!active || state.reviewInvalidated || !imageKey || !selected) return;
+    if (!active || state.reviewInvalidated || !imageKey || !displayed) return;
     const ticket = capture();
     let alive = true;
     const controller = new AbortController();
     const abort = () => controller.abort();
     ticket.signal.addEventListener("abort", abort, { once: true });
-    void loadSelectedBatchImage(scope.client, ingestItemPath(scope.batchId, selected.id) + "/image", { signal: controller.signal }).then(value => {
+    void loadSelectedBatchImage(scope.client, ingestItemPath(scope.batchId, displayed.id) + "/image", { signal: controller.signal }).then(value => {
       if (alive && ticket.valid() && imageAttempt.current === attempt) setImage({ status: "available", uri: value.uri });
     }).catch(() => {
       if (alive && ticket.valid() && imageAttempt.current === attempt) setImage({ status: "unavailable", message: "图片暂时无法显示。" });
@@ -357,13 +393,30 @@ function IngestContent({ session }: { session: IngestSession }) {
     {state.error ? <Text accessibilityRole="alert" style={styles.error}>{state.error}</Text> : null}
     {state.notice ? <Text style={styles.text}>{state.notice}</Text> : null}
     {state.unmatched.map((name, index) => <Text accessibilityRole="alert" key={index} style={styles.error}>未匹配名片：{name}</Text>)}
-    {selected && detail ? <View>
-      {selected.status === "terminal_failed" ? <Text style={styles.error}>{selected.errorCode === "IMAGE_INVALID" || selected.errorCode === "LEASE_EXHAUSTED" ? "识别失败，不再自动重试。可手动重试、替换图片或填写名片。" : "识别失败。可手动重试或填写名片。"}</Text> : null}
-      <BusinessCardBatchReviewForm fields={draft?.fields ?? null} image={active && imageOwner.current === imageKey ? image : { status: "none" }} reviewIssues={selected.reviewIssues} statusLabel={selected.status === "terminal_failed" ? "手动填写名片" : "复核名片"}
-        disabled={!active || state.busy} canConfirm={enabled && Boolean(draft?.fields.displayName.trim())} canSkip={enabled && canReviewIngest(detail, selected, "skip")} canRetry={enabled && canReviewIngest(detail, selected, "retry")} duplicateContactId={state.duplicate?.contactId ?? null}
-        onChange={fields => { if (!isCurrent() || current.current.busy || current.current.selectedId !== selected.id) return; const drafts = new Map(current.current.drafts); drafts.set(selected.id, { fields, dirty: true }); update({ drafts, duplicate: null }); }}
+    {selected && selectedCard && detail ? <View>
+      {selectedCard.items.some(item => item.status === "terminal_failed") ? <Text style={styles.error}>{selectedCard.back ? "至少一面识别失败。可重试对应图片，或核对后手动填写整张名片。" : selected.errorCode === "IMAGE_INVALID" || selected.errorCode === "LEASE_EXHAUSTED" ? "识别失败，不再自动重试。可手动重试、替换图片或填写名片。" : "识别失败。可手动重试或填写名片。"}</Text> : null}
+      {selectedCard.back ? <View style={styles.row}><IngestButton label="查看正面" icon="image-outline" disabled={!active || selectedSide === "front"} onPress={() => setSelectedSide("front")} /><IngestButton label="查看反面" icon="copy-outline" disabled={!active || selectedSide === "back"} onPress={() => setSelectedSide("back")} /></View> : null}
+      <BusinessCardBatchReviewForm fields={draft?.fields ?? null} image={active && imageOwner.current === imageKey ? image : { status: "none" }} reviewIssues={selectedCard.items.flatMap(item => item.reviewIssues)} statusLabel={selectedCard.items.some(item => item.status === "terminal_failed") ? "手动填写名片" : selectedCard.back ? "复核正反面" : "复核名片"}
+        disabled={!active || state.busy} canConfirm={enabled && Boolean(draft?.fields.displayName.trim()) && !draft?.unresolvedConflicts.length && reviewAllowed(selected, selectedCard.items.some(item => item.status === "terminal_failed") ? "manual-entry" : "confirm")} canSkip={enabled && reviewAllowed(selected, "skip")} canRetry={enabled && Boolean(retryTarget)} duplicateContactId={state.duplicate?.contactId ?? null}
+        {...(draft ? { fieldSources: draft.sources, conflicts: draft.conflicts, unresolvedConflicts: draft.unresolvedConflicts } : {})}
+        onChange={fields => {
+          if (!isCurrent() || current.current.busy || current.current.selectedId !== selected.id || !draft) return;
+          const sources = { ...draft.sources };
+          const changed = (Object.keys(fields) as (keyof typeof fields)[]).filter(field => fields[field] !== draft.fields[field]);
+          for (const field of ["displayName", "organization", "role", "email", "phone"] as const) if (changed.includes(field)) sources[field] = null;
+          const manualFields = [...new Set([...draft.manualFields, ...changed])];
+          const unresolvedConflicts = draft.unresolvedConflicts.filter(field => !changed.includes(field));
+          const cardDrafts = new Map(current.current.cardDrafts); cardDrafts.set(selectedCard.cardId, { ...draft, fields, sources, manualFields, unresolvedConflicts, dirty: true });
+          update({ cardDrafts, duplicate: null });
+        }}
+        onSelectFieldSource={(field, choice) => {
+          if (!isCurrent() || current.current.busy || current.current.selectedId !== selected.id || !draft) return;
+          const cardDrafts = new Map(current.current.cardDrafts);
+          cardDrafts.set(selectedCard.cardId, { ...draft, fields: { ...draft.fields, [field]: choice.value }, sources: { ...draft.sources, [field]: choice.itemId }, unresolvedConflicts: draft.unresolvedConflicts.filter(value => value !== field), manualFields: draft.manualFields.filter(value => value !== field), dirty: true });
+          update({ cardDrafts, duplicate: null });
+        }}
         onImageError={() => { if (isCurrent() && current.current.selectedId === selected.id && imageAttempt.current === renderedImageAttempt && renderedImageAttempt) setImage({ status: "unavailable", message: "图片暂时无法显示。" }); }}
-        onConfirm={() => askReview(selected, selected.status === "terminal_failed" ? "manual-entry" : "confirm")} onSkip={() => askReview(selected, "skip")} onRetry={() => askReview(selected, "retry")} onOverride={() => askReview(selected, selected.status === "terminal_failed" ? "manual-entry" : "confirm", true)}
+        onConfirm={() => askReview(selected, selectedCard.items.some(item => item.status === "terminal_failed") ? "manual-entry" : "confirm")} onSkip={() => askReview(selected, "skip")} onRetry={() => { if (retryTarget) askReview(retryTarget, "retry"); }} onOverride={() => askReview(selected, selectedCard.items.some(item => item.status === "terminal_failed") ? "manual-entry" : "confirm", true)}
         onOpenDuplicate={() => { if (isCurrent() && current.current.duplicate === state.duplicate && state.duplicate) router.push(("/contacts/" + encodeURIComponent(state.duplicate.contactId)) as Href); }} />
       <IngestButton label="重新载入字段" icon="refresh-outline" disabled={!enabled} onPress={() => reloadFields(selected)} />
       {image.status === "unavailable" ? <IngestButton label="重新读取图片" icon="image-outline" disabled={!active} onPress={() => { if (isCurrent() && !current.current.reviewInvalidated && current.current.detail === detail) { imageAttempt.current = null; setImageRetry(n => n + 1); } }} /> : null}
@@ -375,14 +428,14 @@ function IngestContent({ session }: { session: IngestSession }) {
       <IngestButton label="开始识别" icon="scan-outline" disabled={!enabled || !detail || !canFinalizeIngest(detail)} onPress={() => ask("finalize")} />
     </View> : null}
     {detail && !terminal ? <IngestButton label="取消批次" icon="close-circle-outline" disabled={!enabled} onPress={() => ask("cancel")} /> : null}
-    {detail?.items.map(item => <View key={item.id} style={styles.fileRow}>
-      <View style={styles.grow}><Text style={styles.text}>{item.seq}. {item.sourceFileName}</Text><Text style={styles.muted}>{labels[item.status]}{item.status === "awaiting_upload" ? local.has(item.id) ? " · 已匹配文件" : " · 尚未选择文件" : ""}</Text>
-        {Object.hasOwn(state.failures, item.id) ? <Text accessibilityRole="alert" style={styles.error}>{state.failures[item.id]}</Text> : null}
+    {cards.map((card, index) => <View key={card.cardId} style={styles.fileRow}>
+      <View style={styles.grow}><Text style={styles.text}>{index + 1}. {card.front.sourceFileName}{card.back ? ` · 反面 ${card.back.sourceFileName}` : ""}</Text><Text style={styles.muted}>{card.back ? card.items.map(item => `${item.side === "front" ? "正面" : "反面"} ${labels[item.status]}${item.status === "awaiting_upload" ? local.has(item.id) ? " · 已匹配文件" : " · 尚未选择文件" : ""}`).join("；") : `${labels[card.front.status]}${card.front.status === "awaiting_upload" ? local.has(card.front.id) ? " · 已匹配文件" : " · 尚未选择文件" : ""}`}</Text>
+        {card.items.filter(item => Object.hasOwn(state.failures, item.id)).map(item => <Text key={item.id} accessibilityRole="alert" style={styles.error}>{state.failures[item.id]}</Text>)}
       </View>
-      {collecting && ["awaiting_upload", "uploaded"].includes(item.status) ? <IngestButton label={"排除名片 " + item.seq} icon="remove-circle-outline" disabled={!enabled} onPress={() => ask("exclude", item.id)} /> : null}
-      {!terminal && ["extracted", "terminal_failed"].includes(item.status) ? <IngestButton label={"复核名片 " + item.seq} icon="create-outline" disabled={!active || state.reviewInvalidated} onPress={() => { if (isCurrent() && !current.current.reviewInvalidated && current.current.detail === detail) update({ selectedId: item.id, duplicate: null }); }} /> : null}
-      {detail && canReviewIngest(detail, item, "replace") ? <IngestButton label={"替换名片 " + item.seq} icon="image-outline" disabled={!enabled} onPress={() => askReview(item, "replace")} /> : null}
-      {item.status === "confirmed" && item.confirmedContactId ? <IngestButton label={"打开联系人 " + item.seq} icon="person-outline" disabled={!active} onPress={() => { if (isCurrent()) router.push(("/contacts/" + encodeURIComponent(item.confirmedContactId!)) as Href); }} /> : null}
+      {collecting && card.items.some(item => ["awaiting_upload", "uploaded"].includes(item.status)) ? <IngestButton label={"排除名片 " + (index + 1)} icon="remove-circle-outline" disabled={!enabled} onPress={() => ask("exclude", card.front.id)} /> : null}
+      {!terminal && card.items.some(item => ["extracted", "terminal_failed"].includes(item.status)) ? <IngestButton label={"复核名片 " + (index + 1)} icon="create-outline" disabled={!active || state.reviewInvalidated} onPress={() => { if (isCurrent() && !current.current.reviewInvalidated && current.current.detail === detail) update({ selectedId: card.front.id, duplicate: null }); }} /> : null}
+      {card.items.filter(item => detail && canReviewIngest(detail, item, "replace")).map(item => <IngestButton key={item.id} label={card.back ? `替换${item.side === "front" ? "正面" : "反面"} ${index + 1}` : `替换名片 ${index + 1}`} icon="image-outline" disabled={!enabled} onPress={() => askReview(item, "replace")} />)}
+      {card.items.every(item => item.status === "confirmed") && card.front.confirmedContactId ? <IngestButton label={"打开联系人 " + (index + 1)} icon="person-outline" disabled={!active} onPress={() => { if (isCurrent()) router.push(("/contacts/" + encodeURIComponent(card.front.confirmedContactId!)) as Href); }} /> : null}
     </View>)}
   </AppScreen>;
 }

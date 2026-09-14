@@ -36,7 +36,7 @@ async function withDatabase(run: (pool: Pool, client: ClosableLiveRecordSqlClien
   }
 }
 
-function manifest() { return [{ fileName: "test.jpg", mimeType: "image/jpeg", rawSize: 4, seq: 1, clientDigest: `sha256:${"a".repeat(64)}` }]; }
+function manifest() { return [{ cardId: "card:test", side: "front" as const, fileName: "test.jpg", mimeType: "image/jpeg", rawSize: 4, seq: 1, clientDigest: `sha256:${"a".repeat(64)}` }]; }
 
 test("card scan authenticates before touching storage and returns only aggregate results", async () => {
   const secret = "s".repeat(32); let runs = 0;
