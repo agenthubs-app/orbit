@@ -31,6 +31,8 @@ import { SectionHeader } from "../../components/SectionHeader";
 import { radius, spacing, textStyles, typography } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleProvider";
+import type { MessageKey } from "../../i18n/messages";
 import {
   type ApiResourceState,
   useApiResource
@@ -60,7 +62,8 @@ type ProfileDraft = ProfileManualEditDraft & { birthDate: string; targetRelation
 type SaveProfile = (draft: ProfileDraft, base: ProfileDetail, isDraftCurrent: () => boolean) => Promise<ProfileDetail | null>;
 type DraftChanged = (field: keyof ProfileDraft, quiet?: boolean) => void;
 const suggestionDraftFields = { headline: "headline", homeMarket: "timezone", relationshipGoal: "relationshipGoal", targetRelationshipTypes: "targetRelationshipTypesText", preferredFollowUpWindow: "preferredFollowUpWindow", preferredIntroChannels: "preferredIntroChannelsText" } as const;
-const suggestionFieldLabels = { headline: "标题", homeMarket: "主要市场", relationshipGoal: "关系目标", targetRelationshipTypes: "目标关系类型", preferredFollowUpWindow: "联系时间", preferredIntroChannels: "介绍渠道" } as const;
+const suggestionFieldLabelKeys = { headline: "profile.headline", homeMarket: "profile.primaryIndustry", relationshipGoal: "profile.relationshipGoal", targetRelationshipTypes: "profile.targetRelationshipTypes", preferredFollowUpWindow: "profile.followUpWindow", preferredIntroChannels: "profile.introChannels" } as const satisfies Record<keyof typeof suggestionDraftFields, MessageKey>;
+const missingFieldKeys = { displayName: "profile.name", primaryIndustryId: "profile.primaryIndustry", secondaryIndustryId: "profile.secondaryIndustry", birthDate: "profile.birthDate" } as const satisfies Record<string, MessageKey>;
 
 function profileBusinessText(value: string): string {
   const text = value.trim();
@@ -134,6 +137,7 @@ function useProfileOperation(scopeKey: string, isScopeCurrent: () => boolean) {
 
 export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => true, completionNext = null }: { scopeKey?: string; isScopeCurrent?: () => boolean; completionNext?: string | null } = {}) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const router = useRouter();
   const auth = useOrbitAuthSession();
   const mounted = useRef(true);
@@ -230,19 +234,19 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
       if (!suggestionOperation.owns(controller)) return;
       const receipt = result.success && result.status >= 200 && result.status < 300 ? profileSuggestionReceiptSchema(suggestion).safeParse(result.data) : null;
       if (!receipt?.success) {
-        setSuggestionActionError("这条建议尚未确认，请重试。");
+        setSuggestionActionError(locale.t("profile.suggestionUnconfirmed"));
         return;
       }
 
       if ((fieldRevisions.current[field] ?? 0) === revision) {
         setAcceptedProfilePatch(receipt.data);
-        setSuggestionActionMessage("建议已放进编辑表单。检查后保存资料。");
+        setSuggestionActionMessage(locale.t("profile.suggestionApplied"));
       } else {
-        setSuggestionActionMessage(`${suggestionFieldLabels[suggestion.targetProfileField]}已有新的编辑，建议未覆盖这项改动。`);
+        setSuggestionActionMessage(locale.t("profile.suggestionPreserved", { field: locale.t(suggestionFieldLabelKeys[suggestion.targetProfileField]) }));
       }
       suggestionsState.refresh();
     } catch {
-      if (suggestionOperation.owns(controller)) setSuggestionActionError("这条建议尚未确认，请重试。");
+      if (suggestionOperation.owns(controller)) setSuggestionActionError(locale.t("profile.suggestionUnconfirmed"));
     } finally {
       if (suggestionOperation.owns(controller)) setAcceptingSuggestionId(null);
       suggestionOperation.finish(controller);
@@ -257,7 +261,7 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
     const request = buildProfileDocumentExtractionRequest(kind, input);
 
     if (!request) {
-      setProfileExtractionError("先粘贴需要提取的原文。");
+      setProfileExtractionError(locale.t("profile.extractionPasteFirst"));
       setProfileExtractionResult(null);
       return;
     }
@@ -277,13 +281,13 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
       if (!extractionOperation.owns(controller)) return;
       const receipt = result.success && result.status >= 200 && result.status < 300 ? profileExtractionReceiptSchema(kind).safeParse(result.data) : null;
       if (!receipt?.success) {
-        setProfileExtractionError("提取结果尚未确认，请重试。");
+        setProfileExtractionError(locale.t("profile.extractionUnconfirmed"));
         return;
       }
 
       setProfileExtractionResult(receipt.data);
     } catch {
-      if (extractionOperation.owns(controller)) setProfileExtractionError("提取结果尚未确认，请重试。");
+      if (extractionOperation.owns(controller)) setProfileExtractionError(locale.t("profile.extractionUnconfirmed"));
     } finally {
       if (extractionOperation.owns(controller)) setExtractingProfileDocumentKind(null);
       extractionOperation.finish(controller);
@@ -297,7 +301,7 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
 
     setAppliedProfileExtraction(profileExtractionResult);
     setProfileActionError(null);
-    setProfileActionMessage("提取结果已放进编辑表单。检查后保存资料。");
+    setProfileActionMessage(locale.t("profile.extractionApplied"));
   }
 
   async function onSaveProfile(draft: ProfileDraft, base: ProfileDetail, isDraftCurrent: () => boolean): Promise<ProfileDetail | null> {
@@ -305,7 +309,7 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
     const fields = profileDraftToRequest(draft, base);
 
     if (!fields) {
-      setProfileActionError("先写名字。");
+      setProfileActionError(locale.t("profile.nameRequired"));
       setProfileActionMessage(null);
       return null;
     }
@@ -315,7 +319,7 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
       try {
         pendingSave.current = { fingerprint, request: { ...versioned, mutationId: `ios:profile:${Crypto.randomUUID()}` } };
       } catch {
-        setProfileActionError("暂时无法准备保存，请重试。");
+        setProfileActionError(locale.t("profile.savePrepareFailed"));
         return null;
       }
     }
@@ -333,17 +337,17 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
       });
       if (!saveOperation.owns(controller)) return null;
       if (result.status === 409) {
-        setProfileActionError("资料已在其他地方更新。草稿已保留，请刷新后核对。");
+        setProfileActionError(locale.t("profile.saveConflict"));
         return null;
       }
       const receipt = result.success && result.status >= 200 && result.status < 300 ? profileSaveReceiptSchema(base.profile?.id ?? null, request).safeParse(result.data) : null;
       if (!receipt?.success) {
-        setProfileActionError("资料尚未确认保存，请重试。");
+        setProfileActionError(locale.t("profile.saveUnconfirmed"));
         return null;
       }
 
       setSavedData({ scope: readScope, data: receipt.data });
-      if (isDraftCurrent()) setProfileActionMessage("资料已保存。");
+      if (isDraftCurrent()) setProfileActionMessage(locale.t("profile.saved"));
       setAcceptedProfilePatch(null);
       setAppliedProfileExtraction(null);
       if (completionNext && receipt.data.onboarding?.status === "complete" && isDraftCurrent()) {
@@ -352,7 +356,7 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
       }
       return receipt.data;
     } catch {
-      if (saveOperation.owns(controller)) setProfileActionError("资料尚未确认保存，请重试。");
+      if (saveOperation.owns(controller)) setProfileActionError(locale.t("profile.saveUnconfirmed"));
       return null;
     } finally {
       if (saveOperation.owns(controller)) setSavingProfile(false);
@@ -383,22 +387,22 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
         }
       >
       <View style={styles.pageHeader}>
-        <Text accessibilityRole="header" style={styles.pageTitle}>我的</Text>
-        <Pressable accessibilityRole="button" accessibilityLabel="设置" onPress={() => { if (current()) router.push("/settings" as Href); }} style={({ pressed }) => [styles.settingsButton, pressed && styles.pressed]}>
+        <Text accessibilityRole="header" style={styles.pageTitle}>{locale.t("profile.title")}</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("profile.settings")} onPress={() => { if (current()) router.push("/settings" as Href); }} style={({ pressed }) => [styles.settingsButton, pressed && styles.pressed]}>
           <Ionicons name="sunny-outline" size={20} color={colors.ink} />
         </Pressable>
       </View>
-      {!auth.ready ? <LoadingState /> : null}
+      {!auth.ready ? <LoadingState accessibilityLabel={locale.t("common.loadingLabel")} /> : null}
       {auth.ready && !auth.signedIn ? (
         <DataCard
-          detail="当前设备没有已验证身份，Orbit 不会展示任何人的资料。"
-          title="登录后查看个人资料"
+          detail={locale.t("profile.signedOutDetail")}
+          title={locale.t("profile.signedOutTitle")}
         >
           <Text style={styles.bodyText}>
-            使用邮箱或 Google 登录，完成后会回到这里。
+            {locale.t("profile.signedOutBody")}
           </Text>
           <Pressable
-            accessibilityLabel="登录查看个人资料"
+            accessibilityLabel={locale.t("profile.login")}
             accessibilityRole="button"
             onPress={() =>
               router.push("/account/login?next=%2Fprofile" as Href)
@@ -409,19 +413,19 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
             ]}
           >
             <Ionicons color={colors.onAccent} name="log-in-outline" size={16} />
-            <Text style={styles.profileLoginButtonText}>登录查看个人资料</Text>
+            <Text style={styles.profileLoginButtonText}>{locale.t("profile.login")}</Text>
           </Pressable>
         </DataCard>
       ) : null}
-      {auth.signedIn && state.kind === "loading" ? <Text accessibilityLiveRegion="polite" style={styles.pageNotice}>正在读取个人资料</Text> : null}
-      {auth.signedIn && loadedData?.state === "pending" ? <Text accessibilityLiveRegion="polite" style={styles.pageNotice}>个人资料正在等待复核，暂时不能保存。</Text> : null}
-      {auth.signedIn && completionNext && loadedData && !loadedData.onboarding ? <Text accessibilityRole="alert" style={styles.profileActionError}>尚未确认资料补全状态，请重试。</Text> : null}
-      {auth.signedIn && completionNext && data?.onboarding?.status === "incomplete" ? <Text style={styles.pageNotice}>还需填写：{data.onboarding.missingFields.map(field => ({ displayName: "名字", primaryIndustryId: "主要行业", secondaryIndustryId: "二级行业", birthDate: "生日" })[field]).join("、")}</Text> : null}
+      {auth.signedIn && state.kind === "loading" ? <Text accessibilityLiveRegion="polite" style={styles.pageNotice}>{locale.t("profile.loading")}</Text> : null}
+      {auth.signedIn && loadedData?.state === "pending" ? <Text accessibilityLiveRegion="polite" style={styles.pageNotice}>{locale.t("profile.pending")}</Text> : null}
+      {auth.signedIn && completionNext && loadedData && !loadedData.onboarding ? <Text accessibilityRole="alert" style={styles.profileActionError}>{locale.t("profile.completionUnconfirmed")}</Text> : null}
+      {auth.signedIn && completionNext && data?.onboarding?.status === "incomplete" ? <Text style={styles.pageNotice}>{locale.t("profile.missingPrefix")}{data.onboarding.missingFields.map(field => locale.t(missingFieldKeys[field])).join("、")}</Text> : null}
       {auth.signedIn && (state.kind === "offline" || state.kind === "failure") ? (
         <View style={styles.pageNotice}>
-          <Text accessibilityRole="alert" style={styles.profileActionError}>个人资料未能读取</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel="重试个人资料" onPress={() => { if (current()) setRefreshKey(value => value + 1); }} style={styles.profileExtractionButton}>
-            <Text style={styles.profileExtractionButtonText}>重试个人资料</Text>
+          <Text accessibilityRole="alert" style={styles.profileActionError}>{locale.t("profile.readError")}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={locale.t("profile.retry")} onPress={() => { if (current()) setRefreshKey(value => value + 1); }} style={styles.profileExtractionButton}>
+            <Text style={styles.profileExtractionButtonText}>{locale.t("profile.retry")}</Text>
           </Pressable>
         </View>
       ) : null}
@@ -515,6 +519,7 @@ function ProfileCard({
   startEditing: boolean;
 }) {
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
   const [editing, setEditing] = useState(startEditing);
   const [editorMounted, setEditorMounted] = useState(startEditing);
   const storedProfile = profileToSummary(data);
@@ -525,35 +530,35 @@ function ProfileCard({
       {!editing ? <>
         <OrbitBusinessCard profile={displayProfile} onEdit={() => { if (isScopeCurrent()) { setEditorMounted(true); setEditing(true); } }} />
         <ProfileStatistics scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} />
-        {!storedProfile.displayName ? <Text style={styles.pageNotice}>尚未填写个人资料</Text> : null}
+        {!storedProfile.displayName ? <Text style={styles.pageNotice}>{locale.t("profile.empty")}</Text> : null}
         <View style={styles.basicSection}>
-          <Text accessibilityRole="header" style={styles.sectionTitle}>基本资料</Text>
+          <Text accessibilityRole="header" style={styles.sectionTitle}>{locale.t("profile.basic")}</Text>
           <View style={styles.basicRows}>
-            {[["行业", displayProfile.secondaryIndustryId ? secondaryIndustryLabel(displayProfile.secondaryIndustryId, "zh") : displayProfile.primaryIndustryId ? `${industryLabel(displayProfile.primaryIndustryId, "zh")} · 二级未填写` : displayProfile.industry], ["公司", displayProfile.organization], ["职位", displayProfile.role], ["简介", displayProfile.bio]].map(([label, value], index) => (
+            {[[locale.t("profile.industry"), displayProfile.secondaryIndustryId ? secondaryIndustryLabel(displayProfile.secondaryIndustryId, locale.language) : displayProfile.primaryIndustryId ? `${industryLabel(displayProfile.primaryIndustryId, locale.language)} · ${locale.t("profile.secondaryMissing")}` : displayProfile.industry], [locale.t("profile.organization"), displayProfile.organization], [locale.t("profile.role"), displayProfile.role], [locale.t("profile.bio"), displayProfile.bio]].map(([label, value], index) => (
               <View key={label} style={[styles.basicRow, index === 3 && styles.bioRow]}>
                 <Text style={styles.basicLabel}>{label}</Text>
-                <Text style={[styles.basicValue, index === 3 && styles.bioValue]}>{value || "未填写"}</Text>
+                <Text style={[styles.basicValue, index === 3 && styles.bioValue]}>{value || locale.t("profile.notFilled")}</Text>
               </View>
             ))}
           </View>
         </View>
         <View style={styles.previewTags}>
-          <Text accessibilityRole="header" style={styles.sectionTitle}>我能提供 · 我想寻找 · 想聊的话题</Text>
+          <Text accessibilityRole="header" style={styles.sectionTitle}>{locale.t("profile.tagSummary")}</Text>
           <View style={styles.previewTagGroups}>
-            {[["我能提供", displayProfile.offering], ["我想寻找", displayProfile.seeking], ["想聊的话题", displayProfile.topics]].map(([label, values], index) => (
+            {[[locale.t("profile.offering"), displayProfile.offering], [locale.t("profile.seeking"), displayProfile.seeking], [locale.t("profile.topics"), displayProfile.topics]].map(([label, values], index) => (
               <View key={label as string} accessibilityLabel={label as string} style={styles.previewTagGroup}>
                 {(values as string[]).map((item, itemIndex) => <Text key={itemIndex} style={[styles.previewTag, index === 0 && styles.offeringTag]}>{item}</Text>)}
               </View>
             ))}
           </View>
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel="账号与工作区" onPress={onOpenAccount} style={({ pressed }) => [styles.accountRow, pressed && styles.pressed]}>
-          <Text style={styles.accountTitle}>账号与工作区</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("profile.accountWorkspace")} onPress={onOpenAccount} style={({ pressed }) => [styles.accountRow, pressed && styles.pressed]}>
+          <Text style={styles.accountTitle}>{locale.t("profile.accountWorkspace")}</Text>
           <Ionicons name="chevron-forward" size={16} color={styles.basicLabel.color} />
         </Pressable>
-        {displayProfile.relationshipGoal ? <View style={styles.extraSection}><Text style={styles.sectionTitle}>关系目标</Text><Text style={styles.bodyText}>{displayProfile.relationshipGoal}</Text></View> : null}
-      </> : <Pressable accessibilityRole="button" accessibilityLabel="返回资料预览" onPress={() => { if (isScopeCurrent()) setEditing(false); }} style={styles.previewBack}>
-        <Text style={styles.profileExtractionButtonText}>返回资料预览</Text>
+        {displayProfile.relationshipGoal ? <View style={styles.extraSection}><Text style={styles.sectionTitle}>{locale.t("profile.relationshipGoal")}</Text><Text style={styles.bodyText}>{locale.t.literal(displayProfile.relationshipGoal)}</Text></View> : null}
+      </> : <Pressable accessibilityRole="button" accessibilityLabel={locale.t("profile.backToPreview")} onPress={() => { if (isScopeCurrent()) setEditing(false); }} style={styles.previewBack}>
+        <Text style={styles.profileExtractionButtonText}>{locale.t("profile.backToPreview")}</Text>
       </Pressable>}
       {editorMounted ? <View style={[styles.editorSections, !editing && styles.hidden]}>
       <ProfileManualEditCard
@@ -915,6 +920,7 @@ function ProfileManualEditCard({
   saving: boolean;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const profileFingerprint = JSON.stringify(data.profile);
   const [draft, setDraft] = useState<ProfileDraft>(() => profileDraftFromDetail(data));
   const draftBase = useRef(data);
@@ -1008,71 +1014,71 @@ function ProfileManualEditCard({
   }
 
   return (
-    <DataCard detail="保存后同步到 Web 个人资料，生日仅自己可见。" title="编辑个人资料" variant="inset">
+    <DataCard detail={locale.t("profile.editDetail")} title={locale.t("profile.editTitle")} variant="inset">
       <View style={styles.manualEditStack}>
         {acceptedPatchView ? (
           <ProfileAcceptedPatchNotice view={acceptedPatchView} />
         ) : null}
         <ProfileTextInput
-          label="名字"
+          label={locale.t("profile.name")}
           onChangeText={(value) => updateDraft("displayName", value)}
           value={draft.displayName}
         />
         <ProfileTextInput
-          label="标题"
+          label={locale.t("profile.headline")}
           onChangeText={(value) => updateDraft("headline", value)}
           value={draft.headline}
         />
         <ProfileTextInput
-          label="公司"
+          label={locale.t("profile.organization")}
           onChangeText={(value) => updateDraft("organization", value)}
           value={draft.organization}
         />
         <ProfileTextInput
-          label="职位"
+          label={locale.t("profile.role")}
           onChangeText={(value) => updateDraft("role", value)}
           value={draft.role}
         />
-        <ProfileTextInput label="生日（仅自己可见）" placeholder="YYYY-MM-DD，例如 1996-02-29" onChangeText={value => updateDraft("birthDate", value)} value={draft.birthDate} />
-        <ProfileIndustryPicker label="主要行业" selected={draft.primaryIndustryId ?? null} options={INDUSTRY_CATALOG.map(item => ({ id: item.id, label: item.labels.zh }))} disabled={saving || !canEdit} onSelect={primaryIndustryId => updateIndustry({ primaryIndustryId, secondaryIndustryId: null })} />
-        <ProfileIndustryPicker label="二级行业" selected={draft.secondaryIndustryId ?? null} options={draft.primaryIndustryId ? listSecondaryIndustries(draft.primaryIndustryId).map(item => ({ id: item.id, label: item.labels.zh })) : []} disabled={saving || !canEdit || !draft.primaryIndustryId} onSelect={secondaryIndustryId => updateIndustry({ secondaryIndustryId })} />
-        {industryIncomplete ? <Text style={styles.evidenceText}>请选择二级行业。</Text> : null}
+        <ProfileTextInput label={locale.t("profile.birthDatePrivate")} placeholder={locale.t("profile.birthDatePlaceholder")} onChangeText={value => updateDraft("birthDate", value)} value={draft.birthDate} />
+        <ProfileIndustryPicker label={locale.t("profile.primaryIndustry")} selected={draft.primaryIndustryId ?? null} options={INDUSTRY_CATALOG.map(item => ({ id: item.id, label: item.labels[locale.language] }))} disabled={saving || !canEdit} onSelect={primaryIndustryId => updateIndustry({ primaryIndustryId, secondaryIndustryId: null })} />
+        <ProfileIndustryPicker label={locale.t("profile.secondaryIndustry")} selected={draft.secondaryIndustryId ?? null} options={draft.primaryIndustryId ? listSecondaryIndustries(draft.primaryIndustryId).map(item => ({ id: item.id, label: item.labels[locale.language] })) : []} disabled={saving || !canEdit || !draft.primaryIndustryId} onSelect={secondaryIndustryId => updateIndustry({ secondaryIndustryId })} />
+        {industryIncomplete ? <Text style={styles.evidenceText}>{locale.t("profile.chooseSecondaryIndustry")}</Text> : null}
         <ProfileTextInput
-          label="简介"
+          label={locale.t("profile.bio")}
           multiline
           onChangeText={(value) => updateDraft("bio", value)}
           value={draft.bio}
         />
         <ProfileTextInput
-          label="我能提供"
+          label={locale.t("profile.offering")}
           multiline
           onChangeText={(value) => updateDraft("offeringText", value)}
-          placeholder="一行一个资源"
+          placeholder={locale.t("profile.resourcePlaceholder")}
           value={draft.offeringText}
         />
         <ProfileTextInput
-          label="我想认识"
+          label={locale.t("profile.wantToMeet")}
           multiline
           onChangeText={(value) => updateDraft("seekingText", value)}
-          placeholder="一行一个需求"
+          placeholder={locale.t("profile.seekingPlaceholder")}
           value={draft.seekingText}
         />
         <ProfileTextInput
-          label="想聊的话题"
+          label={locale.t("profile.topics")}
           multiline
           onChangeText={(value) => updateDraft("topicsText", value)}
-          placeholder="一行一个话题"
+          placeholder={locale.t("profile.topicPlaceholder")}
           value={draft.topicsText}
         />
         <ProfileTextInput
-          label="关系目标"
+          label={locale.t("profile.relationshipGoal")}
           multiline
           onChangeText={(value) => updateDraft("relationshipGoal", value)}
           value={draft.relationshipGoal}
         />
-        <ProfileTextInput label="目标关系类型" multiline onChangeText={value => updateDraft("targetRelationshipTypesText", value)} value={draft.targetRelationshipTypesText} placeholder="一行一种关系" />
-        <ProfileTextInput label="联系时间" onChangeText={value => updateDraft("preferredFollowUpWindow", value)} value={draft.preferredFollowUpWindow} />
-        <ProfileTextInput label="介绍渠道" multiline onChangeText={value => updateDraft("preferredIntroChannelsText", value)} value={draft.preferredIntroChannelsText} placeholder="一行一种渠道" />
+        <ProfileTextInput label={locale.t("profile.targetRelationshipTypes")} multiline onChangeText={value => updateDraft("targetRelationshipTypesText", value)} value={draft.targetRelationshipTypesText} placeholder={locale.t("profile.relationshipTypePlaceholder")} />
+        <ProfileTextInput label={locale.t("profile.followUpWindow")} onChangeText={value => updateDraft("preferredFollowUpWindow", value)} value={draft.preferredFollowUpWindow} />
+        <ProfileTextInput label={locale.t("profile.introChannels")} multiline onChangeText={value => updateDraft("preferredIntroChannelsText", value)} value={draft.preferredIntroChannelsText} placeholder={locale.t("profile.channelPlaceholder")} />
         {actionMessage ? (
           <Text style={styles.profileActionMessage}>{actionMessage}</Text>
         ) : null}
@@ -1080,17 +1086,17 @@ function ProfileManualEditCard({
           <Text style={styles.profileActionError}>{actionError}</Text>
         ) : null}
         {dirtyDraft.current && draftBase.current.profile?.updatedAt !== data.profile?.updatedAt ? (
-          <Pressable accessibilityRole="button" accessibilityLabel="放弃草稿并载入最新资料" disabled={saving || !canEdit} onPress={() => {
+          <Pressable accessibilityRole="button" accessibilityLabel={locale.t("profile.discardDraft")} disabled={saving || !canEdit} onPress={() => {
             if (!isScopeCurrent() || !editable.current || saving) return;
             draftRevision.current++; dirtyDraft.current = false; draftBase.current = data;
             setDraft(profileDraftFromDetail(data));
             onDraftChanged("displayName");
           }} style={styles.profileExtractionButton}>
-            <Text style={styles.profileExtractionButtonText}>放弃草稿并载入最新资料</Text>
+            <Text style={styles.profileExtractionButtonText}>{locale.t("profile.discardDraft")}</Text>
           </Pressable>
         ) : null}
         <Pressable
-          accessibilityLabel="保存资料"
+          accessibilityLabel={locale.t("profile.save")}
           accessibilityRole="button"
           disabled={saveDisabled}
           onPress={() => { void saveDraft(); }}
@@ -1106,7 +1112,7 @@ function ProfileManualEditCard({
             size={16}
           />
           <Text style={styles.profileSaveButtonText}>
-            {saving ? "保存中" : "保存资料"}
+            {saving ? locale.t("profile.saving") : locale.t("profile.save")}
           </Text>
         </Pressable>
       </View>
@@ -1122,14 +1128,15 @@ function ProfileIndustryPicker<TId extends string>({ label, selected, options, d
   onSelect: (id: TId | null) => void;
 }) {
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
   const [expanded, setExpanded] = useState(false);
   return <View>
     <Text style={styles.evidenceText}>{label}</Text>
-    <Pressable accessibilityRole="button" accessibilityLabel={`选择${label}`} accessibilityState={{ expanded, disabled }} disabled={disabled} onPress={() => setExpanded(value => !value)} style={styles.profileExtractionButton}>
-      <Text style={styles.bodyText}>{options.find(item => item.id === selected)?.label ?? "未填写"}</Text>
+    <Pressable accessibilityRole="button" accessibilityLabel={locale.t("profile.chooseNamed", { name: label })} accessibilityState={{ expanded, disabled }} disabled={disabled} onPress={() => setExpanded(value => !value)} style={styles.profileExtractionButton}>
+      <Text style={styles.bodyText}>{options.find(item => item.id === selected)?.label ?? locale.t("profile.notFilled")}</Text>
     </Pressable>
     {expanded && !disabled ? <View style={styles.profileExtractionStack}>
-      <Pressable accessibilityRole="button" accessibilityLabel={`清空${label}`} onPress={() => { onSelect(null); setExpanded(false); }} style={styles.profileExtractionButton}><Text style={styles.bodyText}>未填写</Text></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel={locale.t("profile.clearNamed", { name: label })} onPress={() => { onSelect(null); setExpanded(false); }} style={styles.profileExtractionButton}><Text style={styles.bodyText}>{locale.t("profile.notFilled")}</Text></Pressable>
       {options.map(item => <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`${label}：${item.label}`} accessibilityState={{ selected: item.id === selected }} onPress={() => { onSelect(item.id); setExpanded(false); }} style={styles.profileExtractionButton}><Text style={styles.bodyText}>{item.label}</Text></Pressable>)}
     </View> : null}
   </View>;
@@ -1223,6 +1230,7 @@ function BusinessCardTagRow({
 
 function OrbitBusinessCard({ profile, onEdit }: { profile: ProfileSummary; onEdit: () => void }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const card = profileBusinessCard(profile);
   const { width, fontScale } = useWindowDimensions();
   const narrow = width < 360 || fontScale > 1.2;
@@ -1239,8 +1247,8 @@ function OrbitBusinessCard({ profile, onEdit }: { profile: ProfileSummary; onEdi
           {profile.timezone ? <Text style={styles.profileLocation}>{profile.timezone}</Text> : null}
         </View>
       </View>
-      <Pressable accessibilityRole="button" accessibilityLabel="编辑资料" onPress={onEdit} style={({ pressed }) => [styles.profileEditLink, pressed && styles.pressed]}>
-        <Text style={styles.profileEditText}>编辑资料</Text><Ionicons name="chevron-forward" size={14} color={colors.accent} />
+      <Pressable accessibilityRole="button" accessibilityLabel={locale.t("profile.edit")} onPress={onEdit} style={({ pressed }) => [styles.profileEditLink, pressed && styles.pressed]}>
+        <Text style={styles.profileEditText}>{locale.t("profile.edit")}</Text><Ionicons name="chevron-forward" size={14} color={colors.accent} />
       </Pressable>
     </View>
   );
@@ -1248,12 +1256,13 @@ function OrbitBusinessCard({ profile, onEdit }: { profile: ProfileSummary; onEdi
 
 function ProfileStatistics({ scopeKey, isScopeCurrent }: { scopeKey: string; isScopeCurrent: () => boolean }) {
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
   const { width, fontScale } = useWindowDimensions();
   const narrow = width < 360 || fontScale > 1.2;
   return <View style={[styles.statistics, narrow && styles.statisticsNarrow]}>
-    <ProfileStatistic label="人脉" path={ORBIT_API_ENDPOINTS.contacts} href="/contacts" count={profileContactsCount} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} first narrow={narrow} />
-    <ProfileStatistic label="今日待办" path={ORBIT_API_ENDPOINTS.tasks + "?status=open"} href="/tasks" count={profileTodayTasksCount} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} narrow={narrow} />
-    <ProfileStatistic label="近期日程" path={ORBIT_API_ENDPOINTS.scheduleItems} href="/schedule" count={profileUpcomingScheduleCount} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} narrow={narrow} />
+    <ProfileStatistic label={locale.t("profile.contacts")} path={ORBIT_API_ENDPOINTS.contacts} href="/contacts" count={profileContactsCount} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} first narrow={narrow} />
+    <ProfileStatistic label={locale.t("profile.todayTasks")} path={ORBIT_API_ENDPOINTS.tasks + "?status=open"} href="/tasks" count={profileTodayTasksCount} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} narrow={narrow} />
+    <ProfileStatistic label={locale.t("profile.upcomingSchedule")} path={ORBIT_API_ENDPOINTS.scheduleItems} href="/schedule" count={profileUpcomingScheduleCount} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} narrow={narrow} />
   </View>;
 }
 
@@ -1261,6 +1270,7 @@ function ProfileStatistic({ label, path, href, count, scopeKey, isScopeCurrent, 
   label: string; path: string; href: Href; count: (data: unknown) => number | null; scopeKey: string; isScopeCurrent: () => boolean; first?: boolean; narrow: boolean;
 }) {
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
   const router = useRouter();
   const [attempt, setAttempt] = useState(0);
   const state = useApiResource<unknown>(path, () => false, { scopeKey: JSON.stringify([scopeKey, path, attempt]) });
@@ -1270,9 +1280,9 @@ function ProfileStatistic({ label, path, href, count, scopeKey, isScopeCurrent, 
     <Text style={styles.statisticValue}>{value}</Text><Text style={styles.statisticLabel}>{label}</Text>
   </Pressable>;
   return <View style={cellStyles}>
-    <Text accessibilityRole={state.kind === "loading" ? "text" : "alert"} accessibilityLiveRegion="polite" style={styles.statisticState}>{state.kind === "loading" ? "读取中" : "未读到"}</Text>
+    <Text accessibilityRole={state.kind === "loading" ? "text" : "alert"} accessibilityLiveRegion="polite" style={styles.statisticState}>{state.kind === "loading" ? locale.t("profile.reading") : locale.t("profile.unavailable")}</Text>
     <Text style={styles.statisticLabel}>{label}</Text>
-    {state.kind !== "loading" ? <Pressable accessibilityRole="button" accessibilityLabel={"重试" + label} onPress={() => { if (isScopeCurrent()) setAttempt(value => value + 1); }} style={styles.statisticRetry}><Text style={styles.profileEditText}>重试</Text></Pressable> : null}
+    {state.kind !== "loading" ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("profile.retryNamed", { name: label })} onPress={() => { if (isScopeCurrent()) setAttempt(value => value + 1); }} style={styles.statisticRetry}><Text style={styles.profileEditText}>{locale.t("common.retry")}</Text></Pressable> : null}
   </View>;
 }
 

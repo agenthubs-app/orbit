@@ -2,9 +2,23 @@ import { localDayStart, shiftCalendarDate } from "../time/date-time";
 import { contactsToSummaries, type ContactSummary } from "./contacts";
 import { todayToView, type TodayTaskRowView } from "./today-tasks";
 import type { ScheduleItemContract } from "../api/contract/tasks";
+import type { OrbitLanguage } from "../api/contract/language";
+import { createTranslator, type MessageKey } from "../i18n/messages";
 
 const categories = ["relationship", "meeting", "event", "work", "personal", "other"];
-const weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+const categoryKeys = {
+  relationship: "home.taskCategoryRelationship",
+  meeting: "home.taskCategoryMeeting",
+  event: "home.taskCategoryEvent",
+  work: "home.taskCategoryWork",
+  personal: "home.taskCategoryPersonal",
+  other: "home.taskCategoryOther",
+} as const satisfies Record<string, MessageKey>;
+const weekdays: Record<OrbitLanguage, readonly string[]> = {
+  zh: ["周日", "周一", "周二", "周三", "周四", "周五", "周六"],
+  en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+  ja: ["日", "月", "火", "水", "木", "金", "土"],
+};
 
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -36,7 +50,7 @@ function dateNumber(date: string): string {
   return Number(date.slice(5, 7)) + "." + Number(date.slice(8, 10));
 }
 
-export function homeDateView(now: Date, selectedDateKey?: string, timeZone = "Asia/Tokyo") {
+export function homeDateView(now: Date, selectedDateKey?: string, timeZone = "Asia/Tokyo", language: OrbitLanguage = "zh") {
   const today = tokyoDate(now, timeZone);
   const selected = validDate(selectedDateKey) ? selectedDateKey : today;
   const date = new Date(selected + "T12:00:00Z");
@@ -46,20 +60,20 @@ export function homeDateView(now: Date, selectedDateKey?: string, timeZone = "As
   return {
     selectedDateKey: selected,
     dateLabel: dateNumber(selected),
-    weekdayLabel: weekdays[weekday]!,
+    weekdayLabel: weekdays[language][weekday]!,
     isToday: selected === today,
     week: Array.from({ length: 7 }, (_, index) => {
       const day = new Date(monday);
       day.setUTCDate(day.getUTCDate() + index);
       const dateKey = day.toISOString().slice(0, 10);
-      return { dateKey, dayNumber: String(day.getUTCDate()), weekdayLabel: weekdays[day.getUTCDay()]!, isSelected: dateKey === selected, isToday: dateKey === today };
+      return { dateKey, dayNumber: String(day.getUTCDate()), weekdayLabel: weekdays[language][day.getUTCDay()]!, isSelected: dateKey === selected, isToday: dateKey === today };
     })
   };
 }
 
 // Validate only the fields this consumer uses; this is not a replacement for
 // the server/shared task contract. A bad collection is a visible failure.
-export function homeTasksToView(payload: unknown, selectedDateKey: string, now: Date, timeZone = "Asia/Tokyo"): TodayTaskRowView[] | null {
+export function homeTasksToView(payload: unknown, selectedDateKey: string, now: Date, timeZone = "Asia/Tokyo", language: OrbitLanguage = "zh"): TodayTaskRowView[] | null {
   if (!validDate(selectedDateKey) || !record(payload) || !Array.isArray(payload.tasks)) return null;
   const tasks: Record<string, unknown>[] = [];
   const ids = new Set<string>();
@@ -79,11 +93,21 @@ export function homeTasksToView(payload: unknown, selectedDateKey: string, now: 
   tasks.sort((left, right) => String(left.dueAt ?? left.plannedDate + "T23:59:59").localeCompare(String(right.dueAt ?? right.plannedDate + "T23:59:59")));
   const rows = todayToView({ date: selectedDateKey, tasks, suggestions: [], schedule: [], completedCount: 0 }, now, timeZone).tasks;
   const today = tokyoDate(now, timeZone);
+  const t = createTranslator(language);
   return rows.map((row, index) => {
     const source = tasks[index]!;
-    return !source.dueAt && typeof source.plannedDate === "string" && source.plannedDate !== today
-      ? { ...row, dueLabel: dateNumber(source.plannedDate).replace(".", "/") }
-      : row;
+    const dueLabel = source.dueAt && Date.parse(String(source.dueAt)) < now.getTime()
+      ? t("home.taskOverdue")
+      : !source.dueAt && typeof source.plannedDate === "string"
+        ? source.plannedDate === today
+          ? t("home.taskToday")
+          : dateNumber(source.plannedDate).replace(".", "/")
+        : row.dueLabel;
+    return {
+      ...row,
+      categoryLabel: t(categoryKeys[String(source.category) as keyof typeof categoryKeys]),
+      dueLabel,
+    };
   });
 }
 
@@ -104,16 +128,19 @@ export interface HomeRecommendedEventRow {
   imagePath?: string;
 }
 
-function eventDateLabel(value: string, timeZone: string): string {
+function eventDateLabel(value: string, timeZone: string, language: OrbitLanguage): string {
   const date = new Date(value);
-  const parts = new Intl.DateTimeFormat("zh-CN", {
+  const locale = language === "en" ? "en-US" : language === "ja" ? "ja-JP" : "zh-CN";
+  const parts = new Intl.DateTimeFormat(locale, {
     day: "numeric", hour: "2-digit", hourCycle: "h23", minute: "2-digit", month: "numeric", timeZone, weekday: "short",
   }).formatToParts(date);
   const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(item => item.type === type)?.value ?? "";
+  if (language === "en") return `${part("weekday")}, ${part("month")}/${part("day")} ${part("hour")}:${part("minute")}`;
+  if (language === "ja") return `${part("month")}月${part("day")}日(${part("weekday")}) ${part("hour")}:${part("minute")}`;
   return part("month") + "月" + part("day") + "日 " + part("weekday") + " " + part("hour") + ":" + part("minute");
 }
 
-export function homeRecommendedEventsToView(payload: unknown, timeZone = "Asia/Tokyo"): HomeRecommendedEventRow[] | null {
+export function homeRecommendedEventsToView(payload: unknown, timeZone = "Asia/Tokyo", language: OrbitLanguage = "zh"): HomeRecommendedEventRow[] | null {
   if (!record(payload) || !["success", "empty", "pending"].includes(String(payload.state)) || !Array.isArray(payload.recommendations) ||
     (payload.state === "success") !== (payload.recommendations.length > 0)) return null;
   const rows: HomeRecommendedEventRow[] = [];
@@ -130,15 +157,15 @@ export function homeRecommendedEventsToView(payload: unknown, timeZone = "Asia/T
     rows.push({
       id: item.eventId,
       title: item.title.trim(),
-      dateLabel: eventDateLabel(item.startsAt, timeZone),
-      locationLabel: [...new Set([item.location.trim(), item.venue.trim()].filter(Boolean))].join(" · ") || "地点待定",
+      dateLabel: eventDateLabel(item.startsAt, timeZone, language),
+      locationLabel: [...new Set([item.location.trim(), item.venue.trim()].filter(Boolean))].join(" · ") || createTranslator(language)("home.locationPending"),
       ...(imagePath ? { imagePath } : {}),
     });
   }
   return rows;
 }
 
-export function homeScheduleToView(payload: unknown, selectedDateKey: string, now: Date, timeZone = "Asia/Tokyo"): HomeScheduleRow[] | null {
+export function homeScheduleToView(payload: unknown, selectedDateKey: string, now: Date, timeZone = "Asia/Tokyo", language: OrbitLanguage = "zh"): HomeScheduleRow[] | null {
   if (!validDate(selectedDateKey) || !record(payload) || !Array.isArray(payload.scheduleItems)) return null;
   const startOfDay = localDayStart(selectedDateKey, timeZone);
   const endOfDay = localDayStart(shiftCalendarDate(selectedDateKey, 1), timeZone);
@@ -159,7 +186,7 @@ export function homeScheduleToView(payload: unknown, selectedDateKey: string, no
     const state = start > now.getTime() ? "upcoming" : end !== null && end > now.getTime() ? "ongoing" : "ended";
     const startDate = tokyoDate(new Date(start), timeZone);
     const time = new Intl.DateTimeFormat("en-GB", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(start));
-    const duration = end === null ? "" : Math.round((end - start) / 60_000) + " 分钟";
+    const duration = end === null ? "" : createTranslator(language)("home.durationMinutes", { count: Math.round((end - start) / 60_000) });
     rows.push({
       start, id: item.id, title: item.title, state,
       timeLabel: (startDate === selectedDateKey ? "" : dateNumber(startDate) + " ") + time,

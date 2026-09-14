@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { healthPayloadToSummary } from "../src/view-models/health";
+import { createTranslator } from "../src/i18n/messages";
 
 test("healthPayloadToSummary maps ok health payloads without runtime labels", () => {
   const summary = healthPayloadToSummary({
@@ -24,4 +25,12 @@ test("healthPayloadToSummary maps unknown payloads safely", () => {
     detail: "服务器已经响应，但暂时无法读取健康详情。",
     title: "服务器已响应"
   });
+});
+
+test("healthPayloadToSummary localizes chrome without exposing runtime labels", () => {
+  assert.deepEqual(healthPayloadToSummary({ status: "ok" }, createTranslator("en")), {
+    detail: "Orbit responded normally. You can continue.",
+    title: "Server available",
+  });
+  assert.equal(healthPayloadToSummary({}, createTranslator("ja")).title, "サーバーが応答しました");
 });

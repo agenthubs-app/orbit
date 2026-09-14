@@ -15,10 +15,12 @@ import { DataCard } from "../../components/DataCard";
 import { spacing, textStyles } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleProvider";
 import { healthPayloadToSummary } from "../../view-models/health";
 
 export function ApiSettingsScreen() {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const { baseUrl, error, ready, resetBaseUrl, setBaseUrl } =
     useOrbitApiBaseUrl();
   const [draftBaseUrl, setDraftBaseUrl] = useState(baseUrl);
@@ -32,7 +34,7 @@ export function ApiSettingsScreen() {
 
   async function saveBaseUrl() {
     const result = await setBaseUrl(draftBaseUrl);
-    setMessage(result.success ? "服务器地址已保存。" : result.error);
+    setMessage(result.success ? locale.t("settings.apiSaved") : result.error);
   }
 
   async function checkServerHealth() {
@@ -50,7 +52,7 @@ export function ApiSettingsScreen() {
       const result = await client.get<unknown>(ORBIT_API_ENDPOINTS.health);
 
       if (result.success) {
-        const summary = healthPayloadToSummary(result.data);
+        const summary = healthPayloadToSummary(result.data, locale.t);
         setHealthMessage(`${summary.title}. ${summary.detail}`);
       } else {
         setHealthMessage(result.error.message);
@@ -59,7 +61,7 @@ export function ApiSettingsScreen() {
       setHealthMessage(
         checkError instanceof Error
           ? checkError.message
-          : "暂时无法检查这台服务器。"
+          : locale.t("settings.apiCheckUnavailable")
       );
     } finally {
       setCheckingHealth(false);
@@ -69,23 +71,23 @@ export function ApiSettingsScreen() {
   async function resetServerAddress() {
     await resetBaseUrl();
     setHealthMessage(null);
-    setMessage("服务器地址已重置。");
+    setMessage(locale.t("settings.apiResetMessage"));
   }
 
   return (
-    <AppScreen eyebrow="开发设置" title="服务器">
+    <AppScreen eyebrow={locale.t("settings.apiEyebrow")} title={locale.t("settings.server")}>
       <DataCard
-        detail={ready ? baseUrl : "正在读取已保存地址"}
-        title="当前服务器"
+        detail={ready ? baseUrl : locale.t("settings.apiReading")}
+        title={locale.t("settings.apiCurrent")}
       />
       <DataCard
-        detail="iOS 模拟器使用 localhost；真机请填写 Mac 的局域网地址或远程服务器地址。"
-        title="服务器地址"
+        detail={locale.t("settings.apiDetail")}
+        title={locale.t("settings.apiAddress")}
         variant="inset"
       >
         <View style={styles.form}>
           <TextInput
-            accessibilityLabel="服务器地址"
+            accessibilityLabel={locale.t("settings.apiAddress")}
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="url"
@@ -104,7 +106,7 @@ export function ApiSettingsScreen() {
                 pressed ? styles.pressed : null
               ]}
             >
-              <Text style={styles.primaryButtonText}>保存</Text>
+              <Text style={styles.primaryButtonText}>{locale.t("common.save")}</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
@@ -117,7 +119,7 @@ export function ApiSettingsScreen() {
               ]}
             >
               <Text style={styles.secondaryButtonText}>
-                {checkingHealth ? "检查中" : "检查"}
+                {checkingHealth ? locale.t("settings.apiChecking") : locale.t("settings.apiCheck")}
               </Text>
             </Pressable>
             <Pressable
@@ -128,7 +130,7 @@ export function ApiSettingsScreen() {
                 pressed ? styles.pressed : null
               ]}
             >
-              <Text style={styles.secondaryButtonText}>重置</Text>
+              <Text style={styles.secondaryButtonText}>{locale.t("settings.apiReset")}</Text>
             </Pressable>
           </View>
           {message || error ? (

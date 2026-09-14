@@ -16,11 +16,13 @@ import {
   accountSessionToView,
   type AccountSessionView
 } from "../../view-models/account-session";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleProvider";
 
 export function AccountScreen() {
   const { colors } = useOrbitTheme();
   const { fontScale } = useWindowDimensions();
   const auth = useOrbitAuthSession();
+  const locale = useOrbitLocale();
   const state = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.accountMe,
     (data) =>
@@ -39,25 +41,26 @@ export function AccountScreen() {
           tintColor={colors.accent}
         />
       }
-      title={fontScale > 1.3 ? "账号与\n工作区" : "账号与工作区"}
+      title={fontScale > 1.3 ? locale.t("account.title").replace("与", "与\n") : locale.t("account.title")}
     >
-      {!auth.ready ? <LoadingState /> : null}
+      {!auth.ready ? <LoadingState accessibilityLabel={locale.t("common.loadingLabel")} /> : null}
       {auth.ready && !auth.signedIn ? (
         <AccountContent
           onRefresh={state.refresh}
           signedIn={false}
           view={accountSessionToView(null, {
             authenticated: false,
-            authUser: null
+            authUser: null,
+            t: locale.t
           })}
         />
       ) : null}
-      {auth.signedIn && state.kind === "loading" ? <LoadingState /> : null}
+      {auth.signedIn && state.kind === "loading" ? <LoadingState accessibilityLabel={locale.t("common.loadingLabel")} /> : null}
       {auth.signedIn && state.kind === "offline" ? (
-        <ErrorState message={state.error.message} title="服务器连不上" />
+        <ErrorState message={state.error.message} title={locale.t("account.serverOffline")} />
       ) : null}
       {auth.signedIn && state.kind === "failure" ? (
-        <ErrorState message={state.error.message} title="账号状态不可用" />
+        <ErrorState message={state.error.message} title={locale.t("account.unavailable")} />
       ) : null}
       {auth.signedIn &&
       (state.kind === "success" || state.kind === "empty") ? (
@@ -66,7 +69,8 @@ export function AccountScreen() {
           signedIn={auth.signedIn}
           view={accountSessionToView(state.data, {
             authenticated: auth.signedIn,
-            authUser: auth.user
+            authUser: auth.user,
+            t: locale.t
           })}
         />
       ) : null}
@@ -87,6 +91,7 @@ function AccountContent({
   const { fontScale } = useWindowDimensions();
   const router = useRouter();
   const auth = useOrbitAuthSession();
+  const locale = useOrbitLocale();
   const [feedback, setFeedback] = useState<string | null>(null);
 
   async function signOut() {
@@ -94,7 +99,7 @@ function AccountContent({
     const result = await auth.signOut();
 
     if (!result.success) {
-      setFeedback(result.message ?? "退出登录失败，请稍后再试。");
+      setFeedback(result.message ?? locale.t("account.signOutFailure"));
       return;
     }
 
@@ -113,32 +118,32 @@ function AccountContent({
                 {auth.user?.email ? <Text style={styles.identityEmail}>{auth.user.email}</Text> : null}
               </View>
             </View>
-            <Pressable accessibilityRole="button" accessibilityLabel="修改个人资料"
+            <Pressable accessibilityRole="button" accessibilityLabel={locale.t("account.editProfile")}
               onPress={() => router.push("/profile" as Href)} style={({ pressed }) => [styles.editButton, pressed && styles.pressed]}>
-              <Text style={styles.editText}>修改</Text>
+              <Text style={styles.editText}>{locale.t("account.editProfile")}</Text>
               <Ionicons color={colors.accent} name="chevron-forward" size={14} />
             </Pressable>
           </View>
 
           <View style={styles.section}>
-            <Text accessibilityRole="header" style={styles.sectionTitle}>工作区</Text>
+            <Text accessibilityRole="header" style={styles.sectionTitle}>{locale.t("account.workspace")}</Text>
             <View style={styles.workspace}>
-              <View style={styles.workspaceIcon}><Text style={styles.workspaceInitial}>{view.workspaceName === "未设置工作区" ? "—" : Array.from(view.workspaceName)[0]}</Text></View>
+              <View style={styles.workspaceIcon}><Text style={styles.workspaceInitial}>{view.workspaceName === locale.t("account.workspaceMissing") ? "—" : Array.from(view.workspaceName)[0]}</Text></View>
               <View style={styles.workspaceCopy}>
                 <Text style={styles.workspaceName}>{view.workspaceName}</Text>
                 <Text style={styles.workspaceDetail}>{view.roleLabel}</Text>
               </View>
-              {view.workspaceName !== "未设置工作区" ? <View style={styles.currentBadge}><Text style={styles.currentText}>当前</Text></View> : null}
+              {view.workspaceName !== locale.t("account.workspaceMissing") ? <View style={styles.currentBadge}><Text style={styles.currentText}>{locale.t("common.current")}</Text></View> : null}
             </View>
             <View style={[styles.infoGrid, fontScale > 1.3 && styles.infoGridLarge]}>
-              <InfoCell label="方案" value={view.planLabel} />
-              <InfoCell label="时区" value={view.timezoneLabel} />
-              <InfoCell label="登录状态" value={view.statusLabel} />
+              <InfoCell label={locale.t("account.plan")} value={view.planLabel} />
+              <InfoCell label={locale.t("account.timeZone")} value={view.timezoneLabel} />
+              <InfoCell label={locale.t("account.status")} value={view.statusLabel} />
             </View>
           </View>
 
           <View style={styles.section}>
-            <Text accessibilityRole="header" style={styles.sectionTitle}>连接目标</Text>
+            <Text accessibilityRole="header" style={styles.sectionTitle}>{locale.t("account.goal")}</Text>
             <View style={styles.goalContent}>
               <Text style={styles.bodyText}>{view.goal}</Text>
               <Text style={styles.workspaceDetail}>{view.nextAction}</Text>
@@ -146,7 +151,7 @@ function AccountContent({
           </View>
         </>
       ) : (
-        <DataCard detail={view.summary} title="登录后查看账号与工作区">
+        <DataCard detail={view.summary} title={locale.t("account.signedOutTitle")}>
           <View style={styles.statusRow}>
             <View style={[styles.statusBadge, styles.statusBadgeMuted]}>
               <Ionicons
@@ -167,27 +172,27 @@ function AccountContent({
       <View style={styles.accessRows}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="服务器设置"
-          accessibilityHint="本地调试或真机测试时切换 Orbit API 地址；修改后，联系人、活动和 Orbit AI 都会使用新的服务器。"
+          accessibilityLabel={locale.t("account.serverSettings")}
+          accessibilityHint={locale.t("account.serverHint")}
           onPress={() => router.push("/settings/api" as Href)}
           style={({ pressed }) => [styles.accessRow, pressed && styles.pressed]}
         >
-          <Text style={styles.accessText}>服务器设置</Text>
+          <Text style={styles.accessText}>{locale.t("account.serverSettings")}</Text>
           <Ionicons color={colors.text3} name="chevron-forward" size={16} />
         </Pressable>
         {signedIn ? (
-          <Pressable accessibilityRole="button" accessibilityLabel="权限中心"
-            accessibilityHint="日历、通知、相机和联系人能力"
+          <Pressable accessibilityRole="button" accessibilityLabel={locale.t("account.permissions")}
+            accessibilityHint={locale.t("account.permissionsHint")}
             onPress={() => router.push("/account/permissions" as Href)}
             style={({ pressed }) => [styles.accessRow, pressed && styles.pressed]}>
-            <Text style={styles.accessText}>权限中心</Text>
+            <Text style={styles.accessText}>{locale.t("account.permissions")}</Text>
             <Ionicons color={colors.text3} name="chevron-forward" size={16} />
           </Pressable>
         ) : null}
       </View>
 
       {view.authActions.length > 0 ? (
-        <DataCard detail="先进入账号入口，再回到个人资料完善别人能看到的信息。" title="账号入口">
+        <DataCard detail={locale.t("account.entryDetail")} title={locale.t("account.entry")}>
           <View style={styles.actionRow}>
             {view.authActions.map((action, index) => (
               <Pressable
@@ -218,9 +223,9 @@ function AccountContent({
               pressed ? styles.pressed : null
             ]}
           >
-            <Text style={styles.signOutText}>退出登录</Text>
+            <Text style={styles.signOutText}>{locale.t("account.signOut")}</Text>
           </Pressable>
-          <Text style={styles.workspaceDetail}>退出后，这台设备会清除保存的登录会话。</Text>
+          <Text style={styles.workspaceDetail}>{locale.t("account.signOutDetail")}</Text>
         </View>
       ) : null}
     </>

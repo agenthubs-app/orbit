@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { zh } from "../src/i18n/zh";
 
 const repoRoot = new URL("..", import.meta.url).pathname;
 const screenSource = readFileSync(
@@ -9,22 +10,19 @@ const screenSource = readFileSync(
   "utf8"
 );
 
-test("API settings screen uses Chinese product copy", () => {
+test("API settings screen uses localized product copy with the Chinese contract preserved", () => {
   for (const copy of [
-    'eyebrow="开发设置"',
-    'title="服务器"',
-    'title="当前服务器"',
-    'title="服务器地址"',
-    "保存",
-    "检查",
-    "检查中",
-    "重置"
+    "settings.apiEyebrow",
+    "settings.server",
+    "settings.apiCurrent",
+    "settings.apiAddress",
+    "common.save",
+    "settings.apiCheck",
+    "settings.apiChecking",
+    "settings.apiReset"
   ]) {
     assert.match(screenSource, new RegExp(copy, "u"));
   }
-
-  assert.doesNotMatch(
-    screenSource,
-    /"Development"|"Current server"|"Server address"|"Loading saved address"|"Server address saved\."|"Server address reset\."|"Use localhost|"Save"|"Checking"|"Check"|"Reset"|"Could not check this server\."/u
-  );
+  assert.equal(zh["settings.apiCurrent"], "当前服务器");
+  assert.equal(zh["settings.apiAddress"], "服务器地址");
 });

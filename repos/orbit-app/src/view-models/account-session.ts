@@ -1,4 +1,5 @@
 import { mobileUserDisplayName } from "./mobile-profile";
+import { createTranslator, type OrbitTranslator } from "../i18n/messages";
 
 export interface AccountSessionView {
   authActions: {
@@ -26,6 +27,7 @@ export interface AccountSessionOptions {
     id: string;
     name: string;
   } | null;
+  t?: OrbitTranslator;
 }
 
 type UnknownRecord = Record<string, unknown>;
@@ -48,19 +50,19 @@ function nestedRecord(record: UnknownRecord, fieldName: string): UnknownRecord {
   return isRecord(value) ? value : {};
 }
 
-function statusLabel(status: string): string {
+function statusLabel(status: string, t: OrbitTranslator): string {
   if (status === "signed-in") {
-    return "已登录";
+    return t("account.signedIn");
   }
 
   if (status === "pending") {
-    return "等待确认";
+    return t("account.pending");
   }
 
-  return "未登录";
+  return t("account.signedOut");
 }
 
-function authActions(status: string): AccountSessionView["authActions"] {
+function authActions(status: string, t: OrbitTranslator): AccountSessionView["authActions"] {
   if (status === "signed-in") {
     return [];
   }
@@ -68,37 +70,37 @@ function authActions(status: string): AccountSessionView["authActions"] {
   return [
     {
       href: "/account/login",
-      label: "登录"
+      label: t("auth.loginPrimary")
     },
     {
       href: "/account/signup",
-      label: "创建账号"
+      label: t("auth.signupPrimary")
     }
   ];
 }
 
-function timezoneLabel(value: string): string {
+function timezoneLabel(value: string, t: OrbitTranslator): string {
   if (value === "Asia/Tokyo" || value === "Tokyo") {
-    return "东京时间";
+    return t("account.tokyoTime");
   }
 
-  return value.trim() || "未填写";
+  return value.trim() || t("account.notProvided");
 }
 
-function planLabel(value: string): string {
+function planLabel(value: string, t: OrbitTranslator): string {
   if (value === "mock-pro" || value === "live-relationship-os") {
-    return "人脉交换工作区";
+    return t("account.relationshipWorkspace");
   }
 
-  return value.trim() || "未设置方案";
+  return value.trim() || t("account.planUnset");
 }
 
-function roleLabel(value: string): string {
+function roleLabel(value: string, t: OrbitTranslator): string {
   if (value === "founder-operator" || value === "operator") {
-    return value === "founder-operator" ? "创始人" : "运营者";
+    return value === "founder-operator" ? t("account.founder") : t("account.operator");
   }
 
-  return value.trim() || "未填写";
+  return value.trim() || t("account.notProvided");
 }
 
 function effectiveStatus(
@@ -120,6 +122,7 @@ export function accountSessionToView(
   data: unknown,
   options: AccountSessionOptions = {}
 ): AccountSessionView {
+  const t = options.t ?? createTranslator("zh");
   const payload = isRecord(data) ? data : {};
   const account = nestedRecord(payload, "account");
   const user = nestedRecord(payload, "user");
@@ -132,18 +135,18 @@ export function accountSessionToView(
 
   if (status !== "signed-in") {
     return {
-      authActions: authActions(status),
-      displayName: "账号",
-      emptyMessage: "登录后才会显示你的身份、工作区和关系目标。",
-      emptyTitle: "尚未登录",
+      authActions: authActions(status, t),
+      displayName: t("account.guestName"),
+      emptyMessage: t("account.guestEmpty"),
+      emptyTitle: t("account.guestTitle"),
       goal: "",
-      nextAction: "登录后可以继续完善个人资料。",
+      nextAction: t("account.guestNext"),
       planLabel: "",
       roleLabel: "",
-      statusLabel: statusLabel(status),
-      summary: "当前设备没有已验证身份，Orbit 不会展示任何人的账号资料。",
+      statusLabel: statusLabel(status, t),
+      summary: t("account.guestSummary"),
       timezoneLabel: "",
-      title: "账号与工作区",
+      title: t("account.title"),
       workspaceName: ""
     };
   }
@@ -154,21 +157,21 @@ export function accountSessionToView(
         options.authUser,
         stringField(user, "displayName") ||
           stringField(account, "displayName")
-      ) || "未填写姓名",
-    emptyMessage: "当前账号接口没有返回可展示的登录信息。",
-    emptyTitle: "账号状态不可用",
-    goal: stringField(profile, "relationshipGoal", "尚未填写关系目标。"),
-    authActions: authActions(status),
-    nextAction: "回到个人资料，补全希望别人看到的信息。",
-    planLabel: planLabel(stringField(account, "plan")),
-    roleLabel: roleLabel(stringField(account, "role")),
-    statusLabel: statusLabel(status),
-    summary: "查看当前登录身份、工作区和关系目标。",
+      ) || t("account.nameMissing"),
+    emptyMessage: t("account.unavailable"),
+    emptyTitle: t("account.unavailable"),
+    goal: stringField(profile, "relationshipGoal", t("account.goalMissing")),
+    authActions: authActions(status, t),
+    nextAction: t("account.profileNext"),
+    planLabel: planLabel(stringField(account, "plan"), t),
+    roleLabel: roleLabel(stringField(account, "role"), t),
+    statusLabel: statusLabel(status, t),
+    summary: t("account.summary"),
     timezoneLabel: timezoneLabel(
       stringField(user, "timezone") || stringField(profile, "homeMarket")
-    ),
-    title: "账号与工作区",
+    , t),
+    title: t("account.title"),
     workspaceName:
-      stringField(account, "workspaceName") || "未设置工作区"
+      stringField(account, "workspaceName") || t("account.workspaceMissing")
   };
 }

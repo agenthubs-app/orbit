@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { zh } from "../src/i18n/zh";
 
 const repoRoot = new URL("..", import.meta.url).pathname;
 const screenPath = join(
@@ -19,7 +20,8 @@ const accountScreenSource = readFileSync(
 
 test("account screen links to the native permissions center", () => {
   assert.match(accountScreenSource, /\/account\/permissions/u);
-  assert.match(accountScreenSource, /权限中心/u);
+  assert.match(accountScreenSource, /account\.permissions/u);
+  assert.equal(zh["account.permissions"], "权限中心");
 });
 
 // Server-settings availability, order before login and its actual destination
