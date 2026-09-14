@@ -102,6 +102,8 @@ build/harness-logs/
 - 验证：两端 typecheck 通过；App 全量 2581/2581；Web 全量 2932 pass、51 fail、168 skipped、2 TODO。10 项审计失败在基线复现；本轮使资料页旧运行证据失效，未擅自改审计断言。4 项 provider 环境失败离线复验通过。
 - 费用：原已记录 $0.012780/$5，Web 全量遗漏 DeepSeek 环境隔离产生意外 provider 路径，本轮增量待核算，不是 0；核算前停止额外付费调用。
 - checkpoint：`build/harness-state/evidence/sprint-0020/run-01/checkpoint.md`（App cwd，被忽略）；所有测试进程已结束，不自动重开 run-01。
+- 12:29 JST 后续：用户明确要求先提交再推进；34 文件部分实现已 WIP 提交 `5355f0c6a`，非完成验收。新复验 Web 22 pass／2 个仍失败的 TODO、App 163 pass、两端 typecheck 通过；原全量失败不变。提交后补成[精确接续范围提案](0020-secondary-industries-self-profile/CONTINUATION_PROPOSAL.md)，未改冻结 Planner、未自动重开 Generator。
+- 最新授权：用户两次明确允许必要付费调用，沿用原累计 $5 上限，费用逐次核对；此前意外调用增量未核算，不当作零。接线文件／接续方案的独立审阅与真实数据写入边界不变。
 
 ### 产品决定记录（2026-09-14，后续确认）
 
