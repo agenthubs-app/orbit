@@ -132,10 +132,14 @@ export function relationshipConversationListToInbox(value: unknown, actorId: str
   const conversationDtos = decoded as RelationshipConversationDTO[];
   if (new Set(conversationDtos.map(value => value.conversationId)).size !== conversationDtos.length) return null;
   const conversations = conversationDtos.map(value => conversationView(value, actorId));
-  const unreadTotal = conversations.reduce((total, item) => total + item.unreadCount, 0);
+  const pageUnreadTotal = conversations.reduce((total, item) => total + item.unreadCount, 0);
+  if (payload.unreadTotal !== undefined && (!Number.isSafeInteger(payload.unreadTotal) || (payload.unreadTotal as number) < pageUnreadTotal)) return null;
+  if (payload.nextCursor !== undefined && payload.nextCursor !== null && !exactString(payload.nextCursor)) return null;
+  const unreadTotal = typeof payload.unreadTotal === "number" ? payload.unreadTotal : pageUnreadTotal;
   return {
     conversations,
     selected: null,
+    ...(payload.unreadTotal !== undefined ? { unreadTotal } : {}),
     summary: conversations.length ? `${conversations.length} 段对话 · ${unreadTotal} 条未读消息` : "暂无对话",
     title: "收件箱",
   };

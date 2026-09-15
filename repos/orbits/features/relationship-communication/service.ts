@@ -82,7 +82,7 @@ export interface RelationshipCommunicationService {
   getConversation(conversationId: string): Promise<RelationshipConversationDTO>;
   getEligibility(contactId: string): Promise<RelationshipEligibilityDTO>;
   getInvitationPreview(token: string): Promise<RelationshipInvitationPreviewDTO>;
-  listConversations(): Promise<RelationshipConversationListDTO>;
+  listConversations(input?: { limit?: number; cursor?: string }): Promise<RelationshipConversationListDTO>;
   markConversationRead(
     input: MarkRelationshipConversationReadInput,
   ): Promise<RelationshipReadReceiptDTO>;
@@ -763,7 +763,17 @@ export function createRelationshipCommunicationService({
       };
     },
 
-    async listConversations() {
+    async listConversations(input = {}) {
+      const limit = input.limit ?? 50;
+      if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error("Invalid conversation page limit");
+      let after: [string, string] | null = null;
+      if (input.cursor) {
+        try {
+          const decoded = JSON.parse(Buffer.from(input.cursor, "base64url").toString("utf8"));
+          if (!Array.isArray(decoded) || decoded.length !== 3 || decoded[0] !== accountId || !Number.isFinite(Date.parse(decoded[1])) || typeof decoded[2] !== "string") throw new Error();
+          after = [decoded[1], decoded[2]];
+        } catch { throw new Error("Invalid conversation cursor"); }
+      }
       const records = await store.listRecords({
         collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.conversations,
         workspaceId: scopedWorkspaceId,
@@ -784,10 +794,14 @@ export function createRelationshipCommunicationService({
       const conversations = candidates.filter(
         (item): item is RelationshipConversationDTO => item !== null,
       );
+      conversations.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt) || left.conversationId.localeCompare(right.conversationId));
+      const remaining = after ? conversations.filter(item => item.updatedAt < after![0] || (item.updatedAt === after![0] && item.conversationId.localeCompare(after![1]) > 0)) : conversations;
+      const page = remaining.slice(0, limit);
+      const last = page.at(-1);
       return {
-        conversations: conversations.sort(
-          (left, right) => right.updatedAt.localeCompare(left.updatedAt),
-        ),
+        conversations: page,
+        nextCursor: remaining.length > limit && last ? Buffer.from(JSON.stringify([accountId, last.updatedAt, last.conversationId])).toString("base64url") : null,
+        unreadTotal: conversations.reduce((sum, item) => sum + item.unreadCount, 0),
         refreshedAt: now(),
       };
     },

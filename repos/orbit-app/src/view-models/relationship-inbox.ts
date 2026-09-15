@@ -42,6 +42,7 @@ export interface RelationshipThreadDetailView {
 }
 
 export interface RelationshipInboxView {
+  unreadTotal?: number;
   conversations: RelationshipConversationView[];
   selected: RelationshipThreadDetailView | null;
   summary: string;
@@ -1471,7 +1472,7 @@ export function relationshipInboxBadgeCount(
     0
   );
 
-  return unreadThreads + alerts.alerts.filter(alert => !alert.read).length;
+  return (inbox.unreadTotal ?? unreadThreads) + alerts.alerts.filter(alert => !alert.read).length;
 }
 
 export function relationshipConversationIdForContact(

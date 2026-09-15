@@ -27,6 +27,9 @@ import {
 } from "./inbox-panel-view-model";
 import { ORBIT_Z } from "../orbit-z";
 
+import { ContactMessagesTab, communicationRequest, readContactMessageActor } from "./contact-messages-tab";
+import { toContactMessageInbox } from "./inbox-panel-view-model";
+
 type InboxTab = "threads" | "alerts";
 
 const RELATIONSHIP_INBOX_WIDTH_STORAGE_KEY =
@@ -122,34 +125,28 @@ function initialOf(name: string): string {
   return name.trim().slice(0, 1).toUpperCase() || "?";
 }
 
-const badgeCountRequests = new Map<OrbitLanguage, Promise<number>>();
+export async function readInboxUnreadCounts(language: OrbitLanguage, expectedActor?: string): Promise<Record<InboxTab, number>> {
+  const actor = await readContactMessageActor();
+  if (expectedActor && actor !== expectedActor) throw new Error("Account changed");
+  const [messages, reminders] = await Promise.allSettled([
+    communicationRequest("/api/relationship-communication/conversations"), fetchReminderAlerts(language),
+  ]);
+  if (await readContactMessageActor() !== actor) throw new Error("Account changed");
+  let threads = 0;
+  if (messages.status === "fulfilled") {
+    const rows = toContactMessageInbox(messages.value, actor);
+    const total = (messages.value as { unreadTotal?: number }).unreadTotal;
+    threads = Number.isSafeInteger(total) && total! >= 0 ? total! : rows.reduce((sum, row) => sum + row.unreadCount, 0);
+  }
+  return { threads, alerts: reminders.status === "fulfilled" ? reminders.value.length : 0 };
+}
 
-// badge 聚合：未读对话数 + 来源明确的待处理提醒数。fail-closed 返回 0。
-// 响应式页面可能同时挂载 desktop/mobile 两棵顶栏；同语言的并发读取共享一次请求。
+// The outer indicator is a dot; each inbox tab owns its own unread count.
 async function fetchBadgeCount(language: OrbitLanguage): Promise<number> {
-  const pending = badgeCountRequests.get(language);
-  if (pending) return pending;
-
-  const request = (async () => {
-    try {
-      const [inbox, reminders] = await Promise.all([
-        fetchInboxWorkspace(undefined, language).catch(() => null),
-        fetchReminderAlerts(language),
-      ]);
-      const unreadThreads = inbox ? unreadThreadCount(inbox.threads) : 0;
-      return unreadThreads + reminders.length;
-    } catch {
-      return 0;
-    }
-  })();
-
-  badgeCountRequests.set(language, request);
-  void request.finally(() => {
-    if (badgeCountRequests.get(language) === request) {
-      badgeCountRequests.delete(language);
-    }
-  });
-  return request;
+  try {
+    const counts = await readInboxUnreadCounts(language);
+    return counts.threads > 0 || counts.alerts > 0 ? 1 : 0;
+  } catch { return 0; }
 }
 
 export function hasRenderedComposeTriggerArea(
@@ -1038,9 +1035,40 @@ function RelationshipInboxPanel({
   onClose: () => void;
   initialSeed?: NewThreadSeed | null;
 }) {
-  const { t } = useOrbitLanguage();
+  const { t, language } = useOrbitLanguage();
   // 带 seed（来自联系人详情页"起草邮件"）时默认进对话 tab。
   const [tab, setTab] = useState<InboxTab>("threads");
+  const [actorId, setActorId] = useState<string | null>(null);
+  const [identityError, setIdentityError] = useState(false);
+  const [counts, setCounts] = useState<Record<InboxTab, number>>({ threads: 0, alerts: 0 });
+  useEffect(() => {
+    if (!actorId) return;
+    let active = true;
+    let loading = false;
+    async function refreshCounts() {
+      if (loading || document.visibilityState === "hidden") return;
+      loading = true;
+      try { const next = await readInboxUnreadCounts(language, actorId!); if (active) setCounts(next); }
+      catch { if (active) setCounts({ threads: 0, alerts: 0 }); }
+      finally { loading = false; }
+    }
+    void refreshCounts();
+    const timer = setInterval(() => void refreshCounts(), 15_000);
+    return () => { active = false; clearInterval(timer); };
+  }, [actorId, language, tab]);
+  useEffect(() => {
+    const controller = new AbortController();
+    void readContactMessageActor(controller.signal).then(actor => {
+      if (controller.signal.aborted) return;
+      setActorId(actor);
+      try { if (!initialSeed && localStorage.getItem("orbit:inbox:tab:" + actor) === "alerts") setTab("alerts"); } catch { /* Tab memory is optional. */ }
+    }).catch(() => { if (!controller.signal.aborted) setIdentityError(true); });
+    return () => controller.abort();
+  }, [initialSeed]);
+  function selectTab(next: InboxTab) {
+    setTab(next);
+    if (actorId) try { localStorage.setItem("orbit:inbox:tab:" + actorId, next); } catch { /* Keep the selected tab for this visit. */ }
+  }
   const [seed, setSeed] = useState<NewThreadSeed | null>(initialSeed ?? null);
   const [panelWidth, setPanelWidth] = useState(
     RELATIONSHIP_INBOX_DEFAULT_WIDTH,
@@ -1193,8 +1221,8 @@ function RelationshipInboxPanel({
   };
 
   const tabs: { id: InboxTab; icon: string; label: ReactNode }[] = [
-    { id: "threads", icon: "message", label: t({ en: "Threads", zh: "对话" }) },
-    { id: "alerts", icon: "bell", label: t({ en: "Alerts", zh: "提醒" }) },
+    { id: "threads", icon: "message", label: t({ en: "Messages", zh: "消息", ja: "メッセージ" }) },
+    { id: "alerts", icon: "bell", label: t({ en: "Notifications", zh: "通知", ja: "通知" }) },
   ];
 
   return (
@@ -1283,19 +1311,20 @@ function RelationshipInboxPanel({
               aria-selected={tab === item.id}
               className={`ri-tab${tab === item.id ? " is-on" : ""}`}
               key={item.id}
-              onClick={() => setTab(item.id)}
+              onClick={() => selectTab(item.id)}
               role="tab"
               type="button"
             >
               <Icon name={item.icon} size={15} />
               {item.label}
+              {counts[item.id] > 0 ? <span className="ri-row-unread">{counts[item.id]}</span> : null}
             </button>
           ))}
         </div>
 
         <div className={`ri-panel-body${tab === "alerts" ? " scroll" : ""}`}>
           {tab === "threads" ? (
-            <ThreadsTab newThreadSeed={seed} onNewThreadConsumed={() => setSeed(null)} />
+            seed ? <ThreadsTab newThreadSeed={seed} onNewThreadConsumed={() => setSeed(null)} /> : actorId ? <ContactMessagesTab key={actorId} actorId={actorId} onIdentityChanged={() => { setActorId(null); setIdentityError(true); }} /> : <p role="status">{identityError ? t({ zh: "登录状态已变化，请重新打开收件箱。", en: "Your session changed. Please reopen the inbox.", ja: "ログイン状態が変わりました。受信トレイを開き直してください。" }) : t({ zh: "正在读取消息…", en: "Loading messages…", ja: "メッセージを読み込み中…" })}</p>
           ) : (
             <AlertsTab />
           )}
@@ -1566,22 +1595,22 @@ export function RelationshipInboxTrigger({ unreadCount = 0 }: { unreadCount?: nu
         {displayCount > 0 ? (
           <span
             aria-hidden="true"
+            data-inbox-unread="true"
             style={{
               background: "var(--signal, #c8323b)",
               borderRadius: 999,
               color: "#fff",
               fontSize: 11,
               fontWeight: 700,
-              lineHeight: "17px",
-              minWidth: 17,
-              padding: "0 4px",
+              height: 8,
+              width: 8,
               position: "absolute",
               right: 2,
               textAlign: "center",
               top: 2,
             }}
           >
-            {displayCount > 99 ? "99+" : displayCount}
+
           </span>
         ) : null}
       </button>

@@ -289,3 +289,38 @@ export function toProactiveAlerts(
 export function unreadThreadCount(threads: readonly InboxThreadListItem[]): number {
   return threads.reduce((total, thread) => total + Math.max(0, thread.unreadCount), 0);
 }
+
+export interface ContactMessageInboxItem {
+  id: string;
+  name: string;
+  preview: string;
+  unreadCount: number;
+  conversation: import('../../../../shared/contract/relationship-communication').RelationshipConversationDTO;
+}
+
+/** Real Orbit messages are literal user content, never demo-localized. */
+export function toContactMessageInbox(payload: unknown, actorId: string): ContactMessageInboxItem[] {
+  const data = payload as import('../../../../shared/contract/relationship-communication').RelationshipConversationListDTO | null;
+  if (!actorId || !data || !Array.isArray(data.conversations) || !Number.isFinite(Date.parse(data.refreshedAt))) throw new Error('Invalid message inbox');
+  const seen = new Set<string>();
+  return data.conversations.map(conversation => {
+    const participants = conversation.participantAccountIds;
+    if (!Array.isArray(participants) || participants.length !== 2 || new Set(participants).size !== 2 || !participants.includes(actorId)
+      || !conversation.conversationId || seen.has(conversation.conversationId) || conversation.status !== 'active'
+      || !conversation.qualificationVersion || !conversation.contactId || !Array.isArray(conversation.messages)
+      || !Number.isInteger(conversation.unreadCount) || conversation.unreadCount < 0) throw new Error('Invalid message ownership');
+    seen.add(conversation.conversationId);
+    const remote = participants.find(id => id !== actorId)!;
+    const name = conversation.participantDisplayNames?.[remote];
+    if (typeof name !== 'string' || !name.trim()) throw new Error('Missing contact name');
+    const ids = new Set<string>();
+    for (const message of conversation.messages) {
+      if (!message.messageId || ids.has(message.messageId) || message.conversationId !== conversation.conversationId
+        || !participants.includes(message.senderAccountId) || typeof message.body !== 'string' || !message.body.trim()
+        || typeof message.senderDisplayName !== 'string' || !message.senderDisplayName.trim()
+        || !Number.isFinite(Date.parse(message.sentAt)) || message.deliveryState !== 'delivered') throw new Error('Invalid message');
+      ids.add(message.messageId);
+    }
+    return { id: conversation.conversationId, name, preview: conversation.messages.at(-1)?.body ?? '', unreadCount: conversation.unreadCount, conversation };
+  });
+}

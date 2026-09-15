@@ -118,16 +118,15 @@ function sources(): FeedFixture {
 test("unified feed validates ownership, classifies sources, sorts by occurrence and exposes exact read actions", () => {
   const view = inboxFeedFromSources(sources());
 
-  assert.deepEqual(view.items.map(item => item.category), ["activity", "task", "contact", "assistant", "contact"]);
+  assert.deepEqual(view.items.map(item => item.category), ["activity", "task", "assistant", "contact"]);
   assert.deepEqual(view.items.map(item => item.occurredAt), [
     "2026-09-15T11:00:00.000Z",
     "2026-09-15T10:00:00.000Z",
-    "2026-09-15T09:00:00.000Z",
     "2026-09-15T08:00:00.000Z",
     "2026-09-15T07:00:00.000Z",
   ]);
   assert.equal(new Set(view.items.map(item => item.id)).size, view.items.length);
-  assert.equal(view.unreadCount, 4);
+  assert.equal(view.unreadCount, 3);
   assert.equal(view.coverageConfirmed, true);
   assert.equal(view.items[0]?.read, true);
   assert.equal(view.items[1]?.targetHref, "/tasks/task%3Aone");
@@ -136,13 +135,8 @@ test("unified feed validates ownership, classifies sources, sorts by occurrence 
     endpoint: "/api/notifications/task%3Aone/state",
     expected: { notificationId: "task:one", state: "read" },
   });
-  assert.equal(view.items[2]?.targetHref, "/inbox/thread%3Aone");
-  assert.deepEqual(view.items[2]?.readAction, {
-    body: { lastReadMessageId: "message:one" },
-    endpoint: "/api/relationship-communication/conversations/thread%3Aone/read",
-    expected: { conversationId: "thread:one", lastReadMessageId: "message:one" },
-  });
-  assert.equal(view.items[4]?.readAction, undefined);
+  assert.equal(view.items.some(item => item.id.startsWith("conversation:")), false);
+  assert.equal(view.items[3]?.readAction, undefined);
 });
 
 test("foreign conversations and duplicate source ids never enter the actor feed", () => {
@@ -154,7 +148,7 @@ test("foreign conversations and duplicate source ids never enter the actor feed"
   ];
 
   const view = inboxFeedFromSources(input);
-  assert.equal(view.items.filter(item => item.targetHref?.startsWith("/inbox/")).length, 1);
+  assert.equal(view.items.filter(item => item.targetHref?.startsWith("/inbox/")).length, 0);
   assert.equal(view.items.some(item => item.targetHref === "/inbox/thread%3Aforeign"), false);
 });
 
@@ -173,7 +167,7 @@ test("tabs retain global order and assistant entries appear only in all", () => 
   const view = inboxFeedFromSources(sources());
   assert.deepEqual(filterInboxFeed(view, "activity").items.map(item => item.category), ["activity"]);
   assert.deepEqual(filterInboxFeed(view, "task").items.map(item => item.category), ["task"]);
-  assert.deepEqual(filterInboxFeed(view, "contact").items.map(item => item.category), ["contact", "contact"]);
+  assert.deepEqual(filterInboxFeed(view, "contact").items.map(item => item.category), ["contact"]);
   assert.equal(filterInboxFeed(view, "all").items.some(item => item.category === "assistant"), true);
 });
 

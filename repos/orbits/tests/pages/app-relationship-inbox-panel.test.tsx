@@ -46,12 +46,14 @@ test("relationship inbox trigger shows an unread badge only when there are unrea
   const withBadge = renderTrigger({ unreadCount: 3 });
   const withoutBadge = renderTrigger({ unreadCount: 0 });
 
-  assert.match(withBadge, />3<\/span>/);
+  assert.match(withBadge, /data-inbox-unread="true"/);
+  assert.doesNotMatch(withBadge, />3<\/span>/);
   // 0 未读时不渲染 badge。
   assert.doesNotMatch(withoutBadge, /border-radius:999px[^>]*>0<\/span>/);
 
   const capped = renderTrigger({ unreadCount: 128 });
-  assert.match(capped, />99\+<\/span>/);
+  assert.match(capped, /data-inbox-unread="true"/);
+  assert.doesNotMatch(capped, /99\+/);
 });
 
 test("openRelationshipInboxCompose dispatches a compose event with the seed", async () => {
@@ -163,7 +165,8 @@ test("responsive compose arbitration ignores a mounted trigger with no rendered 
     ),
   );
   assert.doesNotMatch(source, /offsetParent === null/);
-  assert.match(source, /badgeCountRequests\.get\(language\)/);
+  // Global language-only request coalescing was removed: it can cross account sessions.
+  // Actor ownership is exercised by inbox-message-separation.test.tsx.
 });
 
 test("contact detail card connection routes 起草邮件 into the inbox compose flow", async () => {

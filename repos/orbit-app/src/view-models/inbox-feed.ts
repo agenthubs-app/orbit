@@ -223,12 +223,12 @@ export function inboxFeedFromSources(input: {
 }): InboxFeedView {
   const now = trustedTimestamp(input.now);
   const actorId = exactText(input.actorId);
-  const conversations = actorId ? conversationItems(input.conversationsData, actorId) : { complete: false, items: [] };
+
   const notifications = notificationItems(input.notificationsData, input.language);
   const signals = signalItems(input.signalsData, input.language);
   const end = now ? Date.parse(now) : Number.NaN;
   const start = end - THIRTY_DAYS_MS;
-  const sourceItems = [...notifications.items, ...conversations.items, ...signals.items];
+  const sourceItems = actorId ? [...notifications.items, ...signals.items] : [];
   const items = sourceItems
     .filter(item => !item.occurredAt || (Number.isFinite(end) && inWindow(item.occurredAt, start, end)))
     .sort((left, right) => {
@@ -237,7 +237,7 @@ export function inboxFeedFromSources(input: {
       return timeDifference || `${left.category}:${left.id}`.localeCompare(`${right.category}:${right.id}`);
     });
   return {
-    coverageConfirmed: Boolean(now) && conversations.complete && notifications.complete && signals.complete
+    coverageConfirmed: Boolean(now) && Boolean(actorId) && notifications.complete && signals.complete
       && items.every(item => Boolean(item.occurredAt)),
     items,
     unreadCount: items.filter(item => !item.read).length,
@@ -251,4 +251,9 @@ export function filterInboxFeed(view: InboxFeedView, filter: InboxFeedFilter): I
     items,
     unreadCount: items.filter(item => !item.read).length,
   };
+}
+
+// Message history has no notification age window and cannot share read actions.
+export function inboxMessageReadItems(value: unknown, actorId: string): readonly InboxFeedItem[] {
+  return conversationItems(value, actorId).items;
 }

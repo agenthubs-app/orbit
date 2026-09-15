@@ -17,3 +17,17 @@
 ## 验证原则
 
 每项以 [PLANNER](PLANNER.md) 的5项SC为准，先行为反例再最小实现。新功能的真实业务证据必须来自当次构建的Web/API与原生App，权限/身份/状态不能用截图或mock证明。
+
+## run-01 实施范围补充（2026-09-16）
+
+依 RULES §0 追加必要接线，不改变 Planner 验收契约：
+
+- Web `app/(app)/app/inbox/contact-messages-tab.tsx`：原收件箱为草稿会话，新组件消费权威 relationship-communication API，承担 SC-01/02/03/04。
+- Web `shared/contract/relationship-communication.ts` 与同步生成的 App 副本：可选 `nextCursor`、`unreadTotal`，老客户端兼容；列表分页与独立消息计数对应 SC-01/03。沿用现有存储，不触碰 0033 的同步协议。
+- App `src/screens/home/HomeDashboardScreen.tsx`：外层未读点，去掉消息与通知混合数字，对应 SC-03。
+- App 既有 `app-wide-workspaces`、`home-dashboard-interactions`、`ink-signal-inbox`、`relationship-inbox-{interactions,lifecycle}` 与 Web 既有 `app-relationship-inbox-panel` 测试：保留原行为/样式检查，通知相关检查显式打开通知页签；首访消息与真实通信由新增行为测试覆盖。
+- 本轮独立 QA：本工作树 Web 31037、独立本地数据库/工作区、两个新建测试账号；iPhone 17 Pro 使用独立 QA bundle ID，保留原 App 数据。0033 使用自己的模拟器和 Web 3113，本轮不接管这些进程。
+
+上述为实现范围与环境登记，不代表验收完成。执行状态以 README 和最终实际 REPORT 为准。
+
+真实原生验收发现 `/inbox/[id]` 仍复用仅预览的 ReplyComposer，而 `/chat` 已具备发送 API。0037 在原 `RelationshipInboxScreen.tsx` 的已验证消息详情中接通现有 delivery request/receipt 校验，保留显式草稿流程的预览行为；增加三语会话文案及超时重试、迟到跨账号回执测试。此项属于 SC-02/04 的必要消费接线，未改变联系人绑定或 AI 自动发送边界。

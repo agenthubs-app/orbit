@@ -113,37 +113,37 @@ async function enterComposer(page: Page, participantName = "王明") {
 
 test("unified inbox filters contact messages and opens the selected conversation", async t => {
   const page = await openScreen(t);
-  await page.getByRole("tab", { name: "人脉", exact: true }).click();
-  assert.equal(await page.getByText("与曾伟的对话", { exact: true }).count(), 1);
-  assert.equal(await page.getByText("与胡家明的对话", { exact: true }).count(), 1);
+  assert.equal(await page.getByText("曾伟", { exact: true }).count(), 1);
+  assert.equal(await page.getByText("胡家明", { exact: true }).count(), 1);
   assert.equal(await page.getByText("联系提醒0", { exact: true }).count(), 0);
   assert.equal(await page.getByText("复核关系上下文后再决定是否外发。", { exact: true }).count(), 0);
-  await page.getByRole("button", { name: /^与曾伟的对话，/ }).click();
+  await page.getByRole("button", { name: /^曾伟,/ }).click();
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/inbox/thread%3Awei"]);
 });
 
 test("a contact seed opens a focused editor and cancel restores the inbox without requests", async t => {
   const page = await openScreen(t);
   await enterComposer(page);
-  assert.equal(await page.getByText("与曾伟的对话", { exact: true }).count(), 0);
+  assert.equal(await page.getByText("曾伟", { exact: true }).count(), 0);
   assert.equal(await page.getByRole("textbox", { name: "搜索姓名、主题或内容" }).count(), 0);
   assert.equal(await page.getByRole("textbox", { name: "正文", exact: true }).inputValue(), "");
   assert.equal(await page.getByRole("textbox", { name: "主题", exact: true }).inputValue(), "");
   await page.getByRole("textbox", { name: "收件人", exact: true }).fill("王明");
   await page.getByRole("button", { name: "取消", exact: true }).click();
-  assert.equal(await page.getByText("与曾伟的对话", { exact: true }).count(), 1);
+  assert.equal(await page.getByText("曾伟", { exact: true }).count(), 1);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
 });
 
 test("task filter exposes every task reminder without mixing contact rows", async t => {
   const page = await openScreen(t);
+  await page.getByRole("tab", { name: /^通知/ }).click();
   await page.getByRole("tab", { name: "待办", exact: true }).click();
   assert.equal(await page.getByText("暂无关系线索", { exact: true }).count(), 0);
-  assert.equal(await page.getByText("与曾伟的对话", { exact: true }).count(), 0);
+  assert.equal(await page.getByText("曾伟", { exact: true }).count(), 0);
   await page.getByText("联系提醒7", { exact: true }).waitFor();
   assert.equal(await page.getByText(/^联系提醒/u).count(), 8);
-  await page.getByRole("tab", { name: /全部/u }).click();
-  await page.getByText("与曾伟的对话", { exact: true }).waitFor();
+  await page.getByRole("tab", { name: /^消息/u }).click();
+  await page.getByText("曾伟", { exact: true }).waitFor();
 });
 
 test("draft creation retains input on failure and clearly identifies a non-persistent preview", async t => {
@@ -197,7 +197,7 @@ for (const kind of ["loading", "offline", "failure"]) {
   });
 }
 
-test("reply preview is local and privacy controls are available without crowding message reading", async t => {
+test("a real reply waits for explicit send and privacy controls do not crowd message reading", async t => {
   const page = await openScreen(t);
   await page.evaluate(() => (window as any).openDetail());
   const reply = page.getByRole("textbox", { name: "回复正文", exact: true });
@@ -205,10 +205,9 @@ test("reply preview is local and privacy controls are available without crowding
   assert.equal(await reply.inputValue(), "");
   assert.equal(await page.getByText("隐私控制暂时不可用。", { exact: true }).count(), 0);
   await reply.fill("周四见。");
-  await page.getByRole("button", { name: "预览回复", exact: true }).click();
-  await page.getByText("仅在本页预览，尚未保存或发送。", { exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "发送消息", exact: true }).isEnabled(), true);
+  assert.equal(await page.getByRole("button", { name: "预览回复", exact: true }).count(), 0);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
-  await page.getByRole("button", { name: "继续编辑", exact: true }).click();
   assert.equal(await reply.inputValue(), "周四见。");
   await page.getByRole("button", { name: "隐私设置", exact: true }).click();
   await page.getByText("隐私控制暂时不可用。", { exact: true }).waitFor();

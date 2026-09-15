@@ -182,7 +182,7 @@ test("ordinary inbox refresh retains the in-progress preview and its draft", asy
 
 test("a retained inbox conversation callback cannot navigate after account change", async t => {
   const p = await open(t);
-  await p.evaluate(() => { const s = (window as any).fixture; s.oldOpen = Object.entries(s.presses).find(([name]) => name.startsWith("与actor:one的对话，"))?.[1]; });
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldOpen = Object.entries(s.presses).find(([name]) => name.startsWith("actor:one,"))?.[1]; });
   await update(p, { actor: "actor:two" });
   await p.evaluate(() => (window as any).fixture.oldOpen()); await settle(p);
   assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), []);
@@ -247,7 +247,7 @@ test("a mismatched read receipt keeps unread state visible and retries after a f
 const persistentReminder = { reminderId: "reminder:one", title: "需要准备资料", organization: "Example", priority: "normal", dueAt: "2026-09-13T00:00:00Z", href: "/tasks/task%3Aone" };
 const persistentNotifications = { state: "success", reminders: [persistentReminder], notificationInteractions: {} };
 const readReceipt = { notificationId: "reminder:one", state: "read", updatedAt: "2026-09-13T00:01:00Z" };
-async function alerts(p: Page) { await p.getByRole("tab", { name: "待办", exact: true }).click(); await settle(p); }
+async function alerts(p: Page) { await p.getByRole("tab", { name: /^通知/ }).click(); await p.getByRole("tab", { name: "待办", exact: true }).click(); await settle(p); }
 function reminderButton(p: Page) { return p.getByRole("button", { name: /^需要准备资料，/u }); }
 
 test("opening a reminder waits for a single valid read receipt before navigating and rereading", async t => {
@@ -542,7 +542,7 @@ test("inbox foreground preserves reply input and does not replay an IORBIT hando
 
 test("inbox foreground rejects old conversation callbacks even after the next read succeeds", async t => {
   const p = await open(t);
-  await p.evaluate(() => { const s = (window as any).fixture; s.oldOpen = Object.entries(s.presses).find(([name]) => name.startsWith("与actor:one的对话，"))?.[1]; s.emit("background"); s.oldOpen(); }); await settle(p);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldOpen = Object.entries(s.presses).find(([name]) => name.startsWith("actor:one,"))?.[1]; s.emit("background"); s.oldOpen(); }); await settle(p);
   assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), []);
   await p.evaluate(() => (window as any).fixture.emit("active")); await settle(p);
   await p.evaluate(() => (window as any).fixture.oldOpen()); await settle(p);
@@ -627,7 +627,7 @@ test("inbox foreground refreshes disclosed privacy controls and rejects its inte
 test("inbox foreground revokes a relationship signal confirmation and rereads the current list", async t => {
   const signal = { id: "signal:mail", displayName: "待核对联系人", organization: "Example", role: "负责人", sourceKind: "email", signalKind: "introduction", relationshipContext: "需要核对交流背景", suggestedNextAction: "确认来源", occurredAt: "2026-09-13T00:00:00Z", confirmation: { state: "pending" }, permission: { state: "granted" }, confidence: "high", evidence: [{ excerpt: "已有交流记录" }] };
   const p = await open(t, { signals: { signals: [signal] } });
-  await p.getByRole("tab", { name: "人脉", exact: true }).click(); await settle(p);
+  await p.getByRole("tab", { name: /^通知/ }).click(); await p.getByRole("tab", { name: "人脉", exact: true }).click(); await settle(p);
   await p.getByRole("button", { name: /^待核对联系人，/u }).click(); await settle(p);
   await p.getByRole("button", { name: "确认线索", exact: true }).click(); await settle(p);
   await p.evaluate(() => { const s = (window as any).fixture; s.oldWrite = s.requests.findLastIndex((r: any) => r.method === "POST"); s.oldAction = s.presses["确认线索"]; s.emit("background"); }); await settle(p);
@@ -649,4 +649,32 @@ test("inbox foreground clears the hidden draft when identity changes in the back
   assert.equal(await p.getByRole("textbox", { name: "回复正文", exact: true }).inputValue(), "");
   assert.match(await p.locator("body").innerText(), /actor:two/u);
   assert.doesNotMatch(await p.locator("body").innerText(), /actor:one/u);
+});
+
+test("the real inbox thread sends with AI analysis off and retains the delivery identity after a timeout", async t => {
+  const p = await open(t, { detail: true, allowPrivateAnalysis: false });
+  const input = p.getByRole("textbox", { name: "回复正文" });
+  await input.fill("从收件箱发送的回复");
+  await p.getByRole("button", { name: "发送消息", exact: true }).click();
+  const first = await p.evaluate(() => { const s = (window as any).fixture; const i = s.requests.findLastIndex((r: any) => r.path.endsWith("/messages")); s.reply(i, 503); return s.requests[i].body; });
+  await settle(p);
+  assert.equal(await input.inputValue(), "从收件箱发送的回复");
+  await p.getByRole("button", { name: "重试发送", exact: true }).click();
+  const second = await p.evaluate(() => { const s = (window as any).fixture; const i = s.requests.findLastIndex((r: any) => r.path.endsWith("/messages")); const body = s.requests[i].body; s.reply(i, 201, { conversationId: s.conversationId, qualificationVersion: body.qualificationVersion, deliveryState: "delivered", message: { conversationId: s.conversationId, messageId: "sent:one", deliveryState: "delivered", senderAccountId: s.actor, body: body.body } }); return body; });
+  await settle(p);
+  assert.equal(first.requestId, second.requestId);
+  assert.equal(await input.inputValue(), "");
+});
+
+test("a reply receipt from the previous account cannot update the next account's composer", async t => {
+  const p = await open(t, { detail: true });
+  await p.getByRole("textbox", { name: "回复正文" }).fill("旧账号的消息");
+  await p.getByRole("button", { name: "发送消息", exact: true }).click();
+  const index = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => r.path.endsWith("/messages")));
+  await update(p, { actor: "actor:two" });
+  await p.evaluate(i => { const s = (window as any).fixture; s.reply(i, 401); }, index);
+  await settle(p);
+  assert.equal(await p.getByRole("textbox", { name: "回复正文" }).inputValue(), "");
+  assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path.endsWith("/messages")).length), 1);
 });

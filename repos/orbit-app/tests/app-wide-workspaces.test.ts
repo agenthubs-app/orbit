@@ -161,6 +161,7 @@ for (const scheme of ["light", "dark"] as const) {
   });
   test(`${scheme}: inbox empty filter keeps the compact no-compose boundary`, async t => {
     const page = await open(t, "inbox", scheme);
+    await page.getByRole("tab", { name: "通知", exact: true }).click();
     await page.getByRole("tab", { name: "活动", exact: true }).click();
     const empty = page.getByText("暂无消息", { exact: true }).locator("..").locator("..");
     assert.equal(await empty.evaluate(el => getComputedStyle(el).borderRadius), "0px", "emptyInboxSection");
