@@ -15,7 +15,7 @@ import {
 export const PUSH_DEVICE_COLLECTION = "pushDevices" as const;
 
 export type PushDevicePlatform = "ios" | "android" | "web";
-export type PushPermissionState = "granted" | "denied" | "undetermined";
+export type PushPermissionState = "granted" | "provisional" | "denied" | "undetermined";
 
 export interface PushDevice {
   deviceId: string;
@@ -179,7 +179,7 @@ export function createStoragePushDeviceService({
       });
       return records.flatMap((record) => {
         const value = deviceFromRecord(record, tokenVault);
-        return value && !value.device.revokedAt && value.device.permission === "granted"
+        return value && !value.device.revokedAt && (value.device.permission === "granted" || value.device.permission === "provisional")
           ? [{ ...descriptor(value.device), token: value.token }]
           : [];
       });
@@ -191,7 +191,7 @@ export function createStoragePushDeviceService({
         throw new Error("Push platform is invalid.");
       }
       const permission = input.permission ?? "granted";
-      if (permission !== "granted" && permission !== "denied" && permission !== "undetermined") {
+      if (permission !== "granted" && permission !== "provisional" && permission !== "denied" && permission !== "undetermined") {
         throw new Error("Push permission is invalid.");
       }
       const updatedAt = now();

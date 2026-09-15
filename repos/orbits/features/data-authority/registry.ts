@@ -106,7 +106,11 @@ export const DATA_AUTHORITY_REGISTRY: readonly DataAuthorityEntry[] = [
     ],
     migration: {
       status: "consolidating",
-      legacySources: ["AsyncStorage/orbit.notifications.device-id.v1", "/api/devices/push-token"],
+      legacySources: [
+        "AsyncStorage/orbit.notifications.device-id.v1",
+        "orbit_records/devicePushTokens",
+        "/api/devices/push-token",
+      ],
       completionCondition: "legacy id is migrated/revoked and lifecycle traffic uses plural endpoint",
     },
   },

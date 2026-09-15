@@ -3,11 +3,9 @@ import { type Href, useRouter } from "expo-router";
 import { Platform, Pressable, Text, View, StyleSheet } from "react-native";
 import { useEffect, useState } from "react";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
-import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { AppScreen } from "../../components/AppScreen";
 import { createThemedStyles } from "../../design/theme";
-import { revokeNotificationDevice } from "../../notifications/native-notifications";
 import { revokePushDeviceRegistrations } from "../../notifications/push-registration-queue";
 import {
   isPushNotificationsOptedIn,
@@ -56,7 +54,6 @@ export function SettingsScreen() {
   const router = useRouter();
   const auth = useOrbitAuthSession();
   const client = useOrbitApiClient();
-  const { baseUrl } = useOrbitApiBaseUrl();
   const locale = useOrbitLocale();
   const [pushOptIn, setPushOptIn] = useState<boolean | null>(null);
   const [pushOptInBusy, setPushOptInBusy] = useState(false);
@@ -93,8 +90,7 @@ export function SettingsScreen() {
       await setPushNotificationsOptIn(false);
       setPushOptIn(false);
       const revoked = await revokePushDeviceRegistrations([
-        () => revokeNotificationDevice(client),
-        () => revokeRegisteredPushDevice({ baseUrl, cookieHeader: auth.cookieHeader }),
+        () => revokeRegisteredPushDevice({ client }),
       ]);
       if (!revoked) setPushOptInError(locale.t("settings.remindersUnlinkError"));
     } catch {

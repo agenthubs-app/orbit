@@ -34,8 +34,7 @@ export const SafeAreaView = ({ edges, style, ...props }) => <View {...props} sty
 export const Ionicons = ({ name, size, color }) => <span aria-hidden="true" style={{ fontFamily: "OrbitTestIonicons", fontSize: size, color, width: size, height: size, flexShrink: 0, lineHeight: 1 }}>{String.fromCodePoint(glyphs[name])}</span>;
 export const isPushNotificationsOptedIn = async () => { if (state.holdRead) await new Promise(resolve => state.releaseRead = resolve); return state.optedIn; };
 export const setPushNotificationsOptIn = async enabled => { state.calls.push("opt-in:" + enabled); state.optedIn = enabled; };
-export const revokeNotificationDevice = async () => { state.calls.push("revoke-local"); if (state.hold) await new Promise(resolve => state.release = resolve); return !state.revokeFailure; };
-export const revokeRegisteredPushDevice = async input => { state.calls.push("revoke-durable"); state.revocationScope = input; return true; };
+export const revokeRegisteredPushDevice = async input => { state.calls.push("revoke-device"); state.revocationUsesClient = input.client === client; if (state.hold) await new Promise(resolve => state.release = resolve); return !state.revokeFailure; };
 `;
 
 test.before(async () => {
@@ -103,7 +102,7 @@ test("notification status stays unknown until the stored preference is read", as
   assert.equal(await ready.isEnabled(), true);
 });
 
-test("notification opt-in requires a click and opt-out keeps both revocations and retry", async t => {
+test("notification opt-in requires a click and opt-out keeps canonical revocation and retry", async t => {
   const page = await open(t, { optedIn: false });
   assert.deepEqual(await calls(page), []);
   await page.getByRole("button", { name: "开启关键提醒", exact: true }).click();
@@ -111,15 +110,15 @@ test("notification opt-in requires a click and opt-out keeps both revocations an
   await page.evaluate(() => (window as any).fixture.update({ hold: true, revokeFailure: true }));
   await page.getByRole("button", { name: "关闭关键提醒", exact: true }).click();
   assert.equal(await page.getByRole("button", { name: "正在准备…", exact: true }).isDisabled(), true);
-  assert.deepEqual(await calls(page), ["opt-in:true", "opt-in:false", "revoke-local", "revoke-durable"]);
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.revocationScope), { baseUrl: "https://orbit.test", cookieHeader: "test-cookie" });
+  assert.deepEqual(await calls(page), ["opt-in:true", "opt-in:false", "revoke-device"]);
+  assert.equal(await page.evaluate(() => (window as any).fixture.revocationUsesClient), true);
   await page.evaluate(() => { (window as any).fixture.update({ hold: false }); (window as any).fixture.release(); });
   await page.getByRole("alert").waitFor(); await shot(page, "settings-error");
   await page.evaluate(() => (window as any).fixture.update({ revokeFailure: false }));
   await page.getByRole("button", { name: "重试关闭关键提醒", exact: true }).click();
   await page.getByRole("button", { name: "开启关键提醒", exact: true }).waitFor();
   assert.equal(await page.getByRole("alert").count(), 0);
-  assert.deepEqual(await calls(page), ["opt-in:true", "opt-in:false", "revoke-local", "revoke-durable", "opt-in:false", "revoke-local", "revoke-durable"]);
+  assert.deepEqual(await calls(page), ["opt-in:true", "opt-in:false", "revoke-device", "opt-in:false", "revoke-device"]);
 });
 
 test("account shows open verified identity and only the actual workspace", async t => {

@@ -41,7 +41,7 @@ function notificationAction(tree: any): any {
 function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToken?: boolean; rejectPost?: boolean; failedDelete?: string; failPostOnce?: string; throwPostFailure?: boolean; failLogout?: boolean } = {}) {
   const calls: string[] = [];
   const warnings: unknown[][] = [];
-  const registry = { [durablePath]: false, [localPath]: false };
+  const registry = { [durablePath]: false, [localPath]: true };
   const scheduled = new Map<string, any>();
   const clientScopes: string[] = [];
   const postEntered = deferred<void>();
@@ -84,8 +84,8 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
     baseUrl: "http://localhost",
     async get(_path: string): Promise<any> { return { success: true, data: { reminders: [] } }; },
     async post(path: string, options: { body: { deviceId: string; token: string } }) {
-      assert.ok(path === durablePath || path === localPath);
-      assert.equal(options.body.deviceId, path === durablePath ? "durable-device" : "ios:local-device");
+      assert.equal(path, durablePath);
+      assert.equal(options.body.deviceId, "durable-device");
       calls.push(`POST-start:${path}`);
       if (path === input.blockedPost) {
         postEntered.resolve();
@@ -102,9 +102,10 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
       calls.push(`POST-commit:${path}`);
       return { success: true, data: {} };
     },
-    async delete(path: string) {
+    async delete(path: string, options?: { body?: { deviceId?: string } }) {
       const registryPath = path === localPath ? localPath : durablePath;
       assert.ok(path === localPath || path === `${durablePath}/durable-device`);
+      if (path === localPath) assert.equal(options?.body?.deviceId, "ios:local-device");
       calls.push(`DELETE:${registryPath}`);
       if (input.failedDelete === registryPath) return { success: false, error: { message: "offline" } };
       registry[registryPath] = false;
@@ -197,6 +198,7 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
       if (id === "@react-native-async-storage/async-storage") return {
         getItem: async (key: string) => storage.get(key) ?? null,
         setItem: async (key: string, value: string) => { storage.set(key, value); },
+        removeItem: async (key: string) => { storage.delete(key); },
       };
       if (id === "expo-secure-store") return {
         getItemAsync: async (key: string) => storage.get(key) ?? null,
@@ -316,9 +318,8 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
 }
 
 for (const action of ["opt-out", "logout"] as const) {
-  for (const blockedPost of [durablePath, localPath]) {
-    test(`${action} leaves both registries revoked after in-flight ${blockedPost} commits`, { timeout: 5000 }, async () => {
-      const app = harness({ blockedPost });
+    test(`${action} leaves the canonical registry revoked after an in-flight registration commits`, { timeout: 5000 }, async () => {
+      const app = harness({ blockedPost: durablePath });
       try {
         await app.mount();
         await app.postEntered.promise;
@@ -331,9 +332,8 @@ for (const action of ["opt-out", "logout"] as const) {
         await completion;
         await settle();
         assert.deepEqual(app.registry, { [durablePath]: false, [localPath]: false });
-        for (const path of [durablePath, localPath]) {
-          assert.ok(app.calls.lastIndexOf(`DELETE:${path}`) > app.calls.lastIndexOf(`POST-commit:${path}`), app.calls.join("\n"));
-        }
+        assert.ok(app.calls.lastIndexOf(`DELETE:${durablePath}`) > app.calls.lastIndexOf(`POST-commit:${durablePath}`), app.calls.join("\n"));
+        assert.ok(app.calls.includes(`DELETE:${localPath}`), "upgrade must clean the legacy registration");
         if (action === "logout") {
           assert.ok(app.calls.indexOf("logout") > app.calls.indexOf(`DELETE:${durablePath}`));
           assert.ok(app.calls.indexOf("logout") > app.calls.indexOf(`DELETE:${localPath}`));
@@ -346,22 +346,21 @@ for (const action of ["opt-out", "logout"] as const) {
         app.close();
       }
     });
-  }
 }
 
-test("foreground retries both registrations after token acquisition recovers", { timeout: 5000 }, async () => {
+test("foreground retries the canonical registration after token acquisition recovers", { timeout: 5000 }, async () => {
   const app = harness({ failFirstToken: true });
   try {
     await app.mount();
     await settle();
-    assert.deepEqual(app.registry, { [durablePath]: false, [localPath]: false });
+    assert.deepEqual(app.registry, { [durablePath]: false, [localPath]: true });
     app.foreground();
     await settle();
-    assert.deepEqual(app.registry, { [durablePath]: true, [localPath]: true });
+    assert.deepEqual(app.registry, { [durablePath]: true, [localPath]: false });
   } finally { app.close(); }
 });
 
-test("failed logout preserves auth and restores both push registries and local reminders on foreground", { timeout: 5000 }, async () => {
+test("failed logout preserves auth and restores the canonical push registry and local reminders on foreground", { timeout: 5000 }, async () => {
   const app = harness({ failLogout: true });
   let reminderReads = 0;
   app.api.get = async () => {
@@ -371,7 +370,7 @@ test("failed logout preserves auth and restores both push registries and local r
   try {
     await app.mount();
     app.mountReminders();
-    await waitFor(() => app.registry[durablePath] && app.registry[localPath] && app.scheduled.has("current-plan"), "initial notifications did not synchronize");
+    await waitFor(() => app.registry[durablePath] && !app.registry[localPath] && app.scheduled.has("current-plan"), "initial notifications did not synchronize");
     assert.equal((await app.logout()).success, false);
     assert.deepEqual(app.registry, { [durablePath]: false, [localPath]: false });
     assert.equal(app.scheduled.size, 0);
@@ -385,10 +384,10 @@ test("failed logout preserves auth and restores both push registries and local r
     const readsBeforeForeground = reminderReads;
     app.foreground();
     await waitFor(() =>
-      app.registry[durablePath] && app.registry[localPath]
+      app.registry[durablePath] && !app.registry[localPath]
       && app.scheduled.has("current-plan")
       && reminderReads > readsBeforeForeground
-      && app.calls.filter((call) => call.startsWith("POST-start:")).length >= postsBeforeForeground + 2,
+      && app.calls.filter((call) => call.startsWith("POST-start:")).length >= postsBeforeForeground + 1,
     "failed logout left the retained account's notification sessions stopped");
     assert.equal(app.tokenListeners.size, 1);
     assert.equal(app.foregroundListeners.size, 2);
@@ -397,7 +396,6 @@ test("failed logout preserves auth and restores both push registries and local r
 
 for (const [failedPath, description, throwPostFailure] of [
   [durablePath, "durable failure envelope", false],
-  [localPath, "local registration false result", false],
   [durablePath, "durable thrown failure", true],
 ] as const) {
   test(`${description} emits a sanitized warning and recovers on foreground`, { timeout: 5000 }, async () => {
@@ -407,12 +405,12 @@ for (const [failedPath, description, throwPostFailure] of [
       await settle();
       assert.ok(app.calls.includes(`POST-rejected:${failedPath}`));
       assert.equal(app.registry[failedPath], false);
-      assert.equal(app.registry[failedPath === durablePath ? localPath : durablePath], true);
+      assert.equal(app.registry[localPath], false);
       assert.equal(app.warnings.length, 1);
       assert.match(JSON.stringify(app.warnings), /注册.*未|未.*注册/);
       assert.doesNotMatch(JSON.stringify(app.warnings), /private-payload|test-cookie|ExponentPushToken|SERVICE_UNAVAILABLE/);
       app.foreground();
-      await waitFor(() => app.registry[durablePath] && app.registry[localPath], "foreground did not retry the failed registration");
+      await waitFor(() => app.registry[durablePath] && !app.registry[localPath], "foreground did not retry the failed registration");
       assert.equal(app.warnings.length, 1);
     } finally { app.close(); }
   });
@@ -432,7 +430,7 @@ test("cleanup during registration cannot leave late listeners or request permiss
     assert.equal(app.foregroundListeners.size, 0);
     assert.equal(app.linkingListeners.size, 0);
     assert.equal(app.calls.includes("permission-request"), false);
-    assert.deepEqual(app.registry, { [durablePath]: false, [localPath]: false });
+    assert.deepEqual(app.registry, { [durablePath]: false, [localPath]: true });
   } finally { permission.resolve({ status: "denied", granted: false }); app.close(); }
 });
 
@@ -462,7 +460,7 @@ test("a rejected in-flight registration does not skip either logout revocation",
 });
 
 for (const failedDelete of [localPath, durablePath]) {
-  test(`logout warns on failed ${failedDelete} revocation but attempts both and clears the local session`, { timeout: 5000 }, async () => {
+  test(`logout warns on failed ${failedDelete} cleanup but attempts canonical and legacy cleanup`, { timeout: 5000 }, async () => {
     const app = harness({ failedDelete });
     try {
       await app.mount();
@@ -474,10 +472,10 @@ for (const failedDelete of [localPath, durablePath]) {
       assert.equal(app.calls.includes("logout"), true);
       assert.equal(app.calls.includes("clear-auth"), true);
       assert.equal(app.calls.includes("clear-snapshots"), true);
-      assert.equal(app.warnings.length, 1);
+      assert.ok(app.warnings.length >= 1);
       assert.match(JSON.stringify(app.warnings), /通知.*未|未.*通知/);
       assert.doesNotMatch(JSON.stringify(app.warnings), /test-cookie|ExponentPushToken|durable-device|local-device/);
-      assert.deepEqual(app.clientScopes, ["test-cookie", "test-cookie", "test-cookie"]);
+      assert.deepEqual(app.clientScopes, ["test-cookie", "test-cookie"]);
     } finally { app.close(); }
   });
 }
@@ -497,13 +495,13 @@ test("failed opt-out remains locally disabled but exposes an error and retry act
     assert.ok(action, "failed opt-out must retain a retry action");
     action.props.onPress();
     await app.settingsIdle();
-    assert.equal(app.calls.filter((call) => call.startsWith("DELETE:")).length, before + 2);
+    assert.equal(app.calls.filter((call) => call.startsWith("DELETE:")).length, before + 1);
     assert.equal(app.storage.has("orbit.pushNotificationsEnabled"), false);
   } finally { app.close(); }
 });
 
 test("account switch warns on unlink failure but still clears old reminders and accepts the new session", { timeout: 5000 }, async () => {
-  const app = harness({ failedDelete: localPath });
+  const app = harness({ failedDelete: durablePath });
   try {
     await app.mount();
     await settle();
@@ -516,7 +514,7 @@ test("account switch warns on unlink failure but still clears old reminders and 
     assert.equal(app.scheduled.size, 0);
     assert.equal(app.warnings.length, 1);
     assert.doesNotMatch(JSON.stringify(app.warnings), /test-cookie|ExponentPushToken|durable-device|local-device/);
-    assert.deepEqual(app.clientScopes, ["test-cookie", "next-cookie", "test-cookie", "test-cookie"]);
+    assert.deepEqual(app.clientScopes, ["test-cookie", "next-cookie", "test-cookie"]);
   } finally { app.close(); }
 });
 
@@ -536,7 +534,7 @@ test("account switch drains the old reminder sync and revokes with the old auth 
     assert.equal((await switching).success, true);
     await settle();
     assert.equal(app.scheduled.size, 0);
-    assert.deepEqual(app.clientScopes, ["test-cookie", "next-cookie", "test-cookie", "test-cookie"]);
+    assert.deepEqual(app.clientScopes, ["test-cookie", "next-cookie", "test-cookie"]);
     assert.deepEqual(app.registry, { [durablePath]: false, [localPath]: false });
     assert.ok(app.calls.indexOf("write-auth") > app.calls.indexOf(`DELETE:${durablePath}`));
     app.api.get = async () => ({ success: true, data: { reminders: [] } });

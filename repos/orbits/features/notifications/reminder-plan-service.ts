@@ -13,6 +13,7 @@ import type {
 } from "./reminder-plan-contract";
 import type { ReminderPlanRepository } from "./reminder-plan-repository";
 import type { PushProvider } from "./push-provider";
+import type { ReminderPushDeviceGateway } from "./push-device-reminder-adapter";
 
 export class ReminderPlanServiceError extends Error {
   constructor(
@@ -130,10 +131,12 @@ function delivery(input: { plan: ReminderPlanDTO; channel: ReminderChannel; devi
 
 export function createReminderPlanService({
   now,
+  pushDevices,
   repository,
   targetAuthorizer,
 }: {
   now: () => string;
+  pushDevices?: ReminderPushDeviceGateway;
   repository: ReminderPlanRepository;
   targetAuthorizer?: ReminderTargetAuthorizer;
 }): ReminderPlanService {
@@ -151,6 +154,31 @@ export function createReminderPlanService({
     const changedAt = now();
     return repository.saveDevice({ ...device, ...(reason ? { failureCode: reason } : {}), invalidatedAt: changedAt, status, updatedAt: changedAt });
   }
+
+  const deviceGateway: ReminderPushDeviceGateway = pushDevices ?? {
+    listActive: async (actorId) => (await repository.listDevices(actorId)).filter(
+      (item) => item.status === "active" && (item.permission === "granted" || item.permission === "provisional"),
+    ),
+    async register(input) {
+      const existing = (await repository.listDevices(input.actorId)).find((item) => item.deviceId === input.deviceId);
+      const timestamp = now();
+      return repository.saveDevice({
+        accountId: input.actorId,
+        createdAt: existing?.createdAt ?? timestamp,
+        deviceId: text(input.deviceId, "deviceId"),
+        id: existing?.id ?? stableId("push-device", input.actorId, input.deviceId),
+        lastVerifiedAt: timestamp,
+        ownerUserId: input.actorId,
+        permission: input.permission,
+        platform: input.platform,
+        status: input.permission === "granted" || input.permission === "provisional" ? "active" : "revoked",
+        token: text(input.token, "token"),
+        updatedAt: timestamp,
+      });
+    },
+    revoke: ({ actorId, deviceId }) => setDeviceStatus(actorId, deviceId, "revoked"),
+    invalidate: ({ actorId, deviceId, reason }) => setDeviceStatus(actorId, deviceId, "invalid", reason),
+  };
 
   return {
     list: (input) => repository.listPlans(input),
@@ -214,30 +242,26 @@ export function createReminderPlanService({
       const value: NotificationPreferencesDTO = { accountId: input.actorId, inAppEnabled: input.inAppEnabled, iosPushEnabled: input.iosPushEnabled, lockScreenContent: input.lockScreenContent, ownerUserId: input.actorId, quietHours: input.quietHours, updatedAt: now() };
       return repository.savePreferences(value);
     },
-    async registerDevice(input) {
-      const existing = (await repository.listDevices(input.actorId)).find((item) => item.deviceId === input.deviceId);
-      const timestamp = now();
-      const device: DevicePushTokenDTO = {
-        accountId: input.actorId,
-        createdAt: existing?.createdAt ?? timestamp,
-        deviceId: text(input.deviceId, "deviceId"),
-        id: existing?.id ?? stableId("push-device", input.actorId, input.deviceId),
-        lastVerifiedAt: timestamp,
-        ownerUserId: input.actorId,
-        permission: input.permission,
-        platform: input.platform,
-        status: input.permission === "granted" || input.permission === "provisional" ? "active" : "revoked",
-        token: text(input.token, "token"),
-        updatedAt: timestamp,
-      };
-      return repository.saveDevice(device);
+    registerDevice: (input) => deviceGateway.register(input),
+    async revokeDevice(input) {
+      const [canonical, legacy] = await Promise.all([
+        deviceGateway.revoke(input),
+        pushDevices ? setDeviceStatus(input.actorId, input.deviceId, "revoked") : Promise.resolve(null),
+      ]);
+      return canonical ?? legacy;
     },
-    revokeDevice: ({ actorId, deviceId }) => setDeviceStatus(actorId, deviceId, "revoked"),
-    invalidateDevice: ({ actorId, deviceId, reason }) => setDeviceStatus(actorId, deviceId, "invalid", reason),
+    async invalidateDevice(input) {
+      const [canonical, legacy] = await Promise.all([
+        deviceGateway.invalidate(input),
+        pushDevices
+          ? setDeviceStatus(input.actorId, input.deviceId, "invalid", input.reason)
+          : Promise.resolve(null),
+      ]);
+      return canonical ?? legacy;
+    },
     async notificationAvailability(actorId) {
-      const devices = await repository.listDevices(actorId);
-      const active = devices.filter((item) => item.status === "active" && (item.permission === "granted" || item.permission === "provisional"));
-      const permission = active[0]?.permission ?? devices.at(-1)?.permission ?? "undetermined";
+      const active = await deviceGateway.listActive(actorId);
+      const permission = active[0]?.permission ?? "undetermined";
       return { inAppAvailable: (await this.getPreferences(actorId)).inAppEnabled, iosPushAvailable: active.length > 0, permission };
     },
     async dispatchDue(input) {
@@ -259,7 +283,7 @@ export function createReminderPlanService({
             delivered = true;
           }
           if (plan.channels.includes("ios_push") && preferences.iosPushEnabled) {
-            const devices = (await repository.listDevices(plan.ownerUserId)).filter((item) => item.status === "active" && (item.permission === "granted" || item.permission === "provisional"));
+            const devices = await deviceGateway.listActive(plan.ownerUserId);
             for (const device of devices) {
               const value = delivery({ channel: "ios_push", deviceId: device.deviceId, now: input.now, plan, status: "claimed" });
               if (quietAt(input.now, preferences.quietHours)) {
@@ -276,7 +300,7 @@ export function createReminderPlanService({
               } else if (providerResult.ok === false) {
                 await repository.saveDelivery({ ...value, failureCode: providerResult.code, status: "failed", updatedAt: input.now });
                 result.pushFailed += 1;
-                if (providerResult.tokenInvalid) await setDeviceStatus(plan.ownerUserId, device.deviceId, "invalid", providerResult.code);
+                if (providerResult.tokenInvalid) await deviceGateway.invalidate({ actorId: plan.ownerUserId, deviceId: device.deviceId, reason: providerResult.code });
               }
             }
           }

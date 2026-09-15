@@ -1,6 +1,8 @@
 import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
 import { createReminderPlanRepository } from "./reminder-plan-repository";
 import { createReminderPlanService, type ReminderTargetAuthorizer } from "./reminder-plan-service";
+import { createReminderPushDeviceGateway } from "./push-device-reminder-adapter";
+import { createPushDeviceService } from "./push-device-service";
 
 function containsId(value: unknown, id: string, depth = 0): boolean {
   if (depth > 4) return false;
@@ -27,6 +29,9 @@ export function createConfiguredReminderPlanService() {
   };
   return createReminderPlanService({
     now: () => new Date().toISOString(),
+    pushDevices: createReminderPushDeviceGateway({
+      serviceForActor: (actorId) => createPushDeviceService({ actorId }),
+    }),
     repository: createReminderPlanRepository({ store: configured.store, workspaceId: configured.workspaceId }),
     targetAuthorizer,
   });
