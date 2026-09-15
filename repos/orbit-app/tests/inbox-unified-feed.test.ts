@@ -231,6 +231,27 @@ test("missing or invalid occurrence times remain visible but make 30-day coverag
   assert.equal(view.coverageConfirmed, false);
 });
 
+test("legacy task reminders use their canonical followup id without inventing an occurrence time", () => {
+  const input = sources();
+  input.conversationsData.conversations = [];
+  input.notificationsData.reminders = [{
+    dueAt: "2026-07-29T09:00:00+00:00",
+    followupTaskId: "task:legacy",
+    priority: "normal",
+    reminderId: "reminder:legacy",
+    title: "准备跟进",
+  }];
+  input.notificationsData.notificationInteractions = {};
+  input.signalsData.signals = [];
+
+  const view = inboxFeedFromSources(input);
+  assert.equal(view.items.length, 1);
+  assert.equal(view.items[0]?.category, "task");
+  assert.equal(view.items[0]?.targetHref, "/tasks/task%3Alegacy");
+  assert.equal(view.items[0]?.occurredAt, "");
+  assert.equal(view.coverageConfirmed, false);
+});
+
 test("unknown notifications are omitted instead of being mislabeled as IORBIT", () => {
   const input = sources();
   input.conversationsData.conversations = [];
