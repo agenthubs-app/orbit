@@ -199,7 +199,7 @@ const legacySourceTypes = new Set([
 
 function isoDateTime(value: unknown): value is string {
   return typeof value === "string"
-    && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(value)
+    && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/.test(value)
     && Number.isFinite(Date.parse(value));
 }
 
@@ -215,7 +215,8 @@ function legacyTaskFromPayload(
   const source = asRecord(payload.source);
   const evidenceIds = payload.evidenceIds;
   if (
-    payload.accountId !== actorId
+    (Object.hasOwn(payload, "accountId") && payload.accountId !== actorId)
+    || (Object.hasOwn(payload, "ownerUserId") && payload.ownerUserId !== actorId)
     || payload.id !== recordId
     || !string(payload.title)
     || !legacyStatuses.has(String(payload.status))
@@ -427,6 +428,9 @@ export function createIncrementalSyncReadService({
         input.limit + 1,
       ]);
       const pageRows = result.rows.slice(0, input.limit);
+      if (pageRows.some((row) => row.workspace_id !== input.workspaceId || row.user_id !== input.actorId)) {
+        throw new SyncReadError("SYNC_SCOPE_MISMATCH", "Sync rows must match the authenticated scope.");
+      }
       const hasMore = result.rows.length > input.limit;
       afterRevision = hasMore
         ? String(pageRows.at(-1)?.sync_revision ?? afterRevision)
