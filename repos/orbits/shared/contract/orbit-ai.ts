@@ -12,7 +12,10 @@ export type OrbitAiToolFamilyCode =
   | "events"
   | "contacts"
   | "profile"
-  | "followups";
+  | "followups"
+  | "notes"
+  | "tasks"
+  | "schedule";
 
 // 会话列表的一条，用于历史记录面板。
 export interface OrbitAiConversationSummaryContract {

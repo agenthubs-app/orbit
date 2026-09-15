@@ -39,6 +39,10 @@ export const GEMINI_ORBIT_AGENT_INTENTS = [
   "followup_queue",
   "relationship_chat_context",
   "self_profile",
+  "notes_query",
+  "tasks_query",
+  "followups_query",
+  "schedule_query",
   "action_proposal",
 ] as const;
 
@@ -455,6 +459,14 @@ function expectedToolNameForIntent(
       return "followups.reviewQueue";
     case "relationship_chat_context":
       return "chat.context";
+    case "notes_query":
+      return "notes.query";
+    case "tasks_query":
+      return "tasks.query";
+    case "followups_query":
+      return "followups.query";
+    case "schedule_query":
+      return "schedule.query";
     case "general_chat":
     default:
       return null;
@@ -746,7 +758,7 @@ function systemInstruction(): string {
   return [
     "You are Orbit Agent, a relationship-work orchestration planner.",
     "Return only a JSON object with assistantMessage, intent, toolRequests, and actionRequests.",
-    "Allowed intents: general_chat, event_recommendations, contact_recommendations, followup_queue, relationship_chat_context, self_profile, action_proposal.",
+    "Allowed intents: general_chat, event_recommendations, contact_recommendations, followup_queue, relationship_chat_context, self_profile, notes_query, tasks_query, followups_query, schedule_query, action_proposal.",
     `Allowed tool names: ${ORBIT_AGENT_TOOL_NAMES.join(", ")}.`,
     `Allowed action capability ids: ${AGENT_NATURAL_LANGUAGE_ACTION_CAPABILITY_IDS.join(", ")}.`,
     "Tool registry:",
@@ -770,6 +782,11 @@ function systemInstruction(): string {
     "- event preparation / who to meet at an event / opening lines -> event_recommendations with events.recommend.",
     "- contact recommendation / who can introduce or help / network search -> contact_recommendations with contacts.recommend.",
     "- follow-up review / this week / dormant relationship / queue -> followup_queue with followups.reviewQueue.",
+    "- list/search/open my saved notes -> notes_query with notes.query.",
+    "- list/search/open my confirmed tasks -> tasks_query with tasks.query; never use task suggestions.",
+    "- list/search/open confirmed relationship follow-ups -> followups_query with followups.query; use followup_queue only for ranked recommendations.",
+    "- list/search/open my schedule or meetings -> schedule_query with schedule.query.",
+    "For notes.query, tasks.query, followups.query, and schedule.query, set arguments.operation to list, search, or get. For get, copy the exact entity id from the current user message into arguments.id. Never provide actorId, userId, accountId, or profileId.",
     "- explicit create-task / remind-me / save-this-draft / remember-this request -> action_proposal with the matching actionRequest.",
     "- privacy control / delete / do not analyze / sensitive share -> general_chat unless current chat context review is explicitly needed.",
     // 服务范围分类：Orbit 是商务关系工作助手，不是通用问答。与商业/职业/人脉
@@ -798,6 +815,10 @@ function systemInstruction(): string {
     '- "我为什么认识某联系人" -> relationship_chat_context with chat.context.',
     '- "明天活动该认识谁" -> event_recommendations with events.recommend.',
     '- "本周应该跟进谁" -> followup_queue with followups.reviewQueue.',
+    '- "查找我的项目笔记" -> notes_query with notes.query operation=search.',
+    '- "Show my open tasks" -> tasks_query with tasks.query operation=list status=open.',
+    '- "保存済みのフォローアップを見せて" -> followups_query with followups.query operation=list.',
+    '- "今週の予定を見せて" -> schedule_query with schedule.query operation=list.',
     '- "帮我写一条跟进消息" -> relationship_chat_context with chat.context.',
     '- "这段聊天不要给 AI 分析" -> general_chat and explain the privacy boundary; do not run analysis.',
     '- "帮我发给她" -> relationship_chat_context with chat.context only to prepare a reviewable draft; do not send.',
@@ -856,6 +877,14 @@ function plannerInput(input: GeminiOrbitAgentPlannerInput): string {
             domains: ORBIT_AGENT_RECOMMENDATION_DOMAINS,
             limit: "integer 1-10 when the user requests a count",
             searchTerms: "string",
+            operation: ["list", "search", "get"],
+            id: "exact actor-scoped entity id for get",
+            cursor: "opaque cursor returned by the same query",
+            status: ["open", "completed", "cancelled"],
+            from: "ISO-8601 date-time",
+            to: "ISO-8601 date-time",
+            contactId: "actor-scoped contact id",
+            eventId: "actor-scoped event id",
           },
           requiresUserConfirmation: true,
           toolName: ORBIT_AGENT_TOOL_NAMES,

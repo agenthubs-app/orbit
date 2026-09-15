@@ -46,7 +46,7 @@ export async function runScheduleAuthorityMigrationCommand(argv: readonly string
     });
     process.stdout.write(`${JSON.stringify({ ...result, actorId: command.actorId, mode: command.mode, workspaceId: configured.workspaceId }, null, 2)}\n`);
   } finally {
-    await configured.client.end();
+    await configured.client.close();
   }
 }
 

@@ -16,6 +16,7 @@ export const ORBIT_AGENT_ARTIFACT_KINDS = [
   "relationship_chat_context",
   "generic",
   "self_profile",
+  "data_query",
 ] as const;
 
 export const ORBIT_AGENT_ARTIFACT_STATUSES = [
@@ -36,6 +37,7 @@ export const ORBIT_AGENT_ARTIFACT_PRODUCERS = [
   "followup_review_producer",
   "relationship_chat_review_producer",
   "self_profile_reader",
+  "actor_scoped_query_reader",
 ] as const;
 
 export const ORBIT_AGENT_ARTIFACT_ERROR_CODES = [
@@ -78,7 +80,10 @@ export type OrbitAgentArtifactSourceModule =
   | "contacts"
   | "followups"
   | "profile"
-  | "chat";
+  | "chat"
+  | "notes"
+  | "tasks"
+  | "schedule";
 
 export interface OrbitAgentArtifactPresentation {
   preferredSurface: OrbitAgentArtifactSurface;
@@ -219,6 +224,12 @@ export interface OrbitAgentArtifactResult {
     reference: string;
     sourceVersion: string | null;
     code?: "UNAUTHORIZED" | "FORBIDDEN" | "SERVICE_UNAVAILABLE";
+  };
+  dataVisibility?: {
+    usedDataDomains: readonly ("notes" | "tasks" | "followups" | "schedule")[];
+    unreadDataDomains: readonly ("notes" | "tasks" | "followups" | "schedule")[];
+    truncated: boolean;
+    nextCursor?: string;
   };
 }
 

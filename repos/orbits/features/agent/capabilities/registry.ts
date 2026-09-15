@@ -195,6 +195,30 @@ export const AGENT_CAPABILITY_DEFINITIONS = [
     domains: ["agent", "profile"],
     triggers: ["chat"],
   }),
+  readCapability({
+    toolName: "notes.query",
+    title: "Query notes",
+    description: "List, search, or open actor-owned notes through a bounded field allowlist.",
+    domains: ["agent", "notes"],
+  }),
+  readCapability({
+    toolName: "tasks.query",
+    title: "Query tasks",
+    description: "List, search, or open confirmed actor-owned tasks without task suggestions.",
+    domains: ["agent", "tasks"],
+  }),
+  readCapability({
+    toolName: "followups.query",
+    title: "Query confirmed follow-ups",
+    description: "Read confirmed Relationship Connection follow-ups separately from the derived review queue.",
+    domains: ["agent", "followups", "tasks"],
+  }),
+  readCapability({
+    toolName: "schedule.query",
+    title: "Query schedule",
+    description: "List, search, or open actor-owned canonical schedule items.",
+    domains: ["agent", "schedule"],
+  }),
   runtimeAction({
     executorKey: AGENT_RUNTIME_EXECUTOR_KEYS[0],
     title: "Create follow-up task",

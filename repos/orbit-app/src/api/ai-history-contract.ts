@@ -19,7 +19,7 @@ const message: z.ZodType<OrbitAiMessageContract> = z.object({
 export const aiConversationListSchema = z.object({
   state: z.enum(["success", "empty", "pending"]), activeConversationId: identifier.nullable(), assistantMessage: z.string(),
   conversations: z.array(conversationSummary), messages: z.array(message), artifacts: z.array(z.unknown()),
-  proposedToolIntents: z.array(z.object({ intentId: identifier, toolFamily: z.enum(["relationship_chat", "events", "contacts", "followups"]), label: z.string(), reason: z.string(), requiresUserConfirmation: z.boolean() })),
+  proposedToolIntents: z.array(z.object({ intentId: identifier, toolFamily: z.enum(["relationship_chat", "events", "contacts", "followups", "notes", "tasks", "schedule"]), label: z.string(), reason: z.string(), requiresUserConfirmation: z.boolean() })),
   nextAction: z.string()
 }).passthrough().refine(data => new Set(data.conversations.map(item => item.conversationId)).size === data.conversations.length
   && new Set(data.messages.map(item => item.messageId)).size === data.messages.length
