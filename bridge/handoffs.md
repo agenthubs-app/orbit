@@ -32,6 +32,7 @@
 | [BR-020](2026-09-15-canonical-app-identity.md) | P1 | App raw 登录主体与 canonical 业务账号分离 | verified | 已关闭 | `/api/account/me` 唯一身份、owner-scoped 消费者、完整回归与原生三链已验证 |
 | [BR-021](2026-09-15-schedule-meeting-details.md) | P1 | 四类日程详情与会议说明 | verified | 总控集成；尚未合并 | appointment 共享说明、旧会议私有兼容、四类原生打开及保存重开已验证 |
 | [BR-022](2026-09-15-profile-page-group-redesign.md) | P1 | “我的”页面组、资料编辑与公开投影 | consumer_ready | 协调者按固定 D SHA 合并并验证 | D 分支双向资料版本、409、actor 隔离、八屏、Dynamic Type 和隐私投影通过；`chat-agent` 合并树待验证 |
+| [BR-023](2026-09-15-data-authority-ai-read-surface.md) | P1 | 数据权威源与 AI 只读面 | consumer_ready | 共同环境负责人 | 本地源码/回归完成；真实 migration apply、授权 calendar 与同 actor Web/App 四域回读 |
 
 ## BR-022 — “我的”页面组、资料编辑与公开投影
 
@@ -52,6 +53,14 @@
 - 版本：独立分支 `codex/c-line-sprint-0027`；Planner `01bcceeb5`；主体 `3ca1f5936`；旧会议兼容 `0cbc45ffa`。尚未合并到 `chat-agent`。
 - 验证：Web 25/25、PostgreSQL 1/1、App 90/90、两端 typecheck、Web production build、3000 health、iOS build 和 Simulator 四类入口／会议保存重开清空通过。
 - 详细交接：[2026-09-15-schedule-meeting-details.md](2026-09-15-schedule-meeting-details.md)。
+
+## BR-023 — 数据权威与 AI 只读面
+
+- 创建/更新日期：2026-09-15。
+- 总状态：`consumer_ready`；Web/API 与 App 本地源码和回归已完成，真实 migration apply、授权 Calendar provider 与同 actor Web/App 四域回读仍待共同环境验证。
+- Web/API：建立 machine-readable authority registry，收口 personal schedule 与 push device identity，并新增 visibility manifest 及 `notes.query`、`tasks.query`、`followups.query`、`schedule.query` 四个 actor-scoped 只读工具。
+- App：同步 `data_query` artifact contract；AI 只能经认证 actor 和显式函数读取允许的数据域，不能绕过权限直接读取存储。
+- 版本：固定最终 SHA `f5bded060`。完整交接见 [BR-023 文件](2026-09-15-data-authority-ai-read-surface.md)和 [Sprint 0029 报告](../repos/orbit-app/docs/sprints/0029-data-authority-ai-read-surface/REPORT.md)。
 
 ## BR-016 — 人脉、名片与活动三语消费
 

@@ -12,6 +12,12 @@
 - Web 预约／legacy 回归 25/25、PostgreSQL 并发／幂等 1/1、App 日程组合 90/90、两端 typecheck、Web 生产构建和 iOS build 通过。3000 已运行最终生产产物，health 为 `live/ok`。
 - 登录态 Simulator 已逐类打开待办、活动、个人日程和会议，并完成会议新增说明、保存、返回、重开回读和清空恢复。BR-021 为 `verified`，详见 [交接](2026-09-15-schedule-meeting-details.md)与 [Sprint 0027 报告](../repos/orbit-app/docs/sprints/0027-open-schedule-meeting-details/REPORT.md)。该分支尚未合并到 `chat-agent`。
 
+## 2026-09-15 B 线 0029 数据权威与 AI 只读面
+
+- Web/API 以 `c4a1beef2` 建立 machine-readable authority registry，`8c9e43015` 将日程新写入统一到 `personal_schedule_items`，`5fff469ab` 增加 visibility manifest 与 `notes.query`、`tasks.query`、`followups.query`、`schedule.query` 四个 actor-scoped 只读工具。
+- App/Web 由 `dd28ec473` 把 push device identity 收口到 SecureStore ID 与复数 push-token API；App 同步 `data_query` artifact contract。旧 schedule/push 链只保留分类读取、迁移与撤销窗口。
+- 本地定向、全量、两端 typecheck、Web production build 和独立 iPhone 17 Pro Max / iOS 26.4 安装启动证据见 [BR-023](2026-09-15-data-authority-ai-read-surface.md)。真实账号、数据库 migration apply 与授权 calendar provider 因环境缺失保持开放；本地结果不表示远程部署或生产验收。
+
 ## 2026-09-15 C 线 0026 canonical 身份增量
 
 - App `f5f595df4` 在登录／恢复后从既有 `/api/account/me` 读取 canonical `account.id`，并把待办、个人日程、笔记、快照、草稿、AI intent、人脉与消息边界接到 `auth.actorId`；`3385369dd` 补齐关系邀请 scope。

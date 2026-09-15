@@ -1,5 +1,12 @@
 # Bridge 历史记录
 
+## 2026-09-15 — Sprint 0029 数据权威与 AI 只读面
+
+- authority registry、push device identity、canonical schedule service 与四个 actor-scoped AI query tool 已按 A–E 轨提交；Web/App contract 同步。
+- 自动化覆盖 canonical 唯一性、旧 ID/源迁移、日程 parity、actor 隔离、schema 注入、字段白名单、routing、bounded output 与 artifact evidence；完整命令和数字见 BR-021 与 Sprint REPORT。
+- 当前环境缺数据库 URL、Auth.js secret、可登录测试账号和授权 calendar provider；migration 只完成 fixture 分类，真实 dry-run 明确退出，没有 apply。未登录 Web 边界保持 401。
+- Xcode 26.6 原生构建成功，当前源码在独立 iPhone 17 Pro Max / iOS 26.4 完成安装启动，Metro 打包 1938 modules 并显示 Orbit 登录页；没有 merge、push、deploy 或远程数据库写入。
+
 ## 2026-09-07 — 建立首个 Web/App 状态基线
 
 - 需求：由 Bridge 协调 Web 与 App 两位开发者，先理解两端现状，再建立状态交接目录。

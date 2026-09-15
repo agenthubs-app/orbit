@@ -315,6 +315,10 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
         "followups.reviewQueue",
         "chat.context",
         "profile.getSelf",
+        "notes.query",
+        "tasks.query",
+        "followups.query",
+        "schedule.query",
       ],
     );
 
@@ -325,12 +329,22 @@ test("development Orbit AI trace route returns full-chain trace and planner comp
     );
     const chatTool = tools.find((tool) => tool.toolName === "chat.context");
     const profileTool = tools.find((tool) => tool.toolName === "profile.getSelf");
+    const notesTool = tools.find((tool) => tool.toolName === "notes.query");
+    const tasksTool = tools.find((tool) => tool.toolName === "tasks.query");
+    const persistedFollowupsTool = tools.find(
+      (tool) => tool.toolName === "followups.query",
+    );
+    const scheduleTool = tools.find((tool) => tool.toolName === "schedule.query");
 
     assert.equal(eventTool?.selectedInCurrentRun, true);
     assert.equal(contactTool?.selectedInCurrentRun, false);
     assert.equal(followupTool?.selectedInCurrentRun, false);
     assert.equal(chatTool?.selectedInCurrentRun, false);
     assert.equal(profileTool?.selectedInCurrentRun, false);
+    assert.equal(notesTool?.selectedInCurrentRun, false);
+    assert.equal(tasksTool?.selectedInCurrentRun, false);
+    assert.equal(persistedFollowupsTool?.selectedInCurrentRun, false);
+    assert.equal(scheduleTool?.selectedInCurrentRun, false);
     assert.equal(eventTool?.riskLevel, "read");
     assert.equal(eventTool?.requiresConfirmation, true);
     assert.match(eventTool?.descriptionZh ?? "", /活动/);

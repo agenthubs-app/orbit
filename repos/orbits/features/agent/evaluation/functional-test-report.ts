@@ -100,6 +100,22 @@ const capabilityChineseCopy: Record<
     title: "读取本人资料",
     effect: "只读当前登录用户的资料和行业，供本轮对话使用。空资料或读取失败会明确返回，调试记录不保存资料正文。",
   },
+  "notes.query": {
+    title: "查询本人笔记",
+    effect: "只读当前登录用户的笔记摘要；正文仅在本轮明确选择笔记 ID 后有界返回。",
+  },
+  "tasks.query": {
+    title: "查询本人待办",
+    effect: "只读当前登录用户的已确认待办，不把建议候选冒充已创建任务。",
+  },
+  "followups.query": {
+    title: "查询已确认跟进",
+    effect: "只读与关系连接关联的持久化跟进和有限证据摘要，与派生复核队列分开。",
+  },
+  "schedule.query": {
+    title: "查询本人日程",
+    effect: "只读当前登录用户的 canonical 日程，并明确标识缺少的会议字段。",
+  },
   "followups.createTask": {
     title: "创建跟进任务",
     effect: "经确认后创建 Orbit 内部跟进或准备任务，可撤销。",

@@ -7,11 +7,11 @@
 | 能力 | Web 现状 | App 现状 | 对齐状态 / 下一步 |
 | --- | --- | --- | --- |
 | 登录/身份 | Auth.js/NextAuth、canonical actor 解析、移动 credentials/Google bridge | 密码和 Google bridge、SecureStore 会话、401 清理 | 已接入·待联验；同账号 actor/权限、公私入口和切换账号验收 |
-| AI 问答 | `agent/orbit-real-agent.tsx` 调用 AI conversations，支持 artifacts/actions | `AiConversationScreen.tsx` 调用相同会话边界，映射联系人/活动/任务信息 | 已接入·待联验；逐类核对响应与可执行动作，不以正文一致替代 |
+| AI 问答 | `agent/orbit-real-agent.tsx` 调用 AI conversations，支持 artifacts/actions；新增四个 actor-scoped data query tool 与 visibility manifest | `AiConversationScreen.tsx` 调用相同会话边界并消费 `data_query` artifact | BR-021 consumer_ready；本地契约/权限反例通过，待真实同 actor 四域查询与 provider 联验 |
 | AI 历史 | 历史读取、续聊、删除、改名、置顶 | 读取 Web sessions、续聊写回、删除；展示置顶状态，未发现改名/置顶写入口 | 存在差异 BR-003；另验旧会话跨端续聊不丢消息 |
 | Today | `today/today-page-content.tsx` 汇总账本、关系安排、跟进日程，分区降级 | `TodayScreen.tsx` 读 `/api/today`，任务创建/完成、建议接受，账本在 all-actions | 存在差异 BR-001；同名页不等于同一业务集合 |
 | 行动账本 | all-actions 与 Today 消费 Agent Ledger，确认/推迟等状态转换 | `AgentLedgerScreen.tsx` 消费 `/api/agent/ledger` 与 transition | 已接入·待联验；App wire types 仍单独维护，见 BR-004 |
-| 任务/日程/提醒 | tasks、schedule-items、reminders、today 服务/API及 Web 日程组合 | Today/Tasks/TaskDetail/Schedule 和本地通知适配 | 已接入·待联验；同 ID、时区、取消状态与另一端回读 |
+| 任务/日程/提醒 | tasks、canonical `personal_schedule_items`、reminders、today 服务/API；legacy schedule 只读兼容 | Today/Tasks/TaskDetail/Schedule；push 使用 SecureStore canonical device ID | BR-021 consumer_ready；本地 parity/迁移/生命周期通过，待真实 migration 与同账号回读 |
 | 联系人/资料 | contacts/profile 服务、手动编辑、来源与资料提取 | ContactDetail/Profile 支持行业、资料等受支持字段写入 | 已接入·待联验；核对字段丢失、枚举、账号归属 |
 | 人脉分析 | Web route model 组合 contacts/dashboard 服务 | `ContactsDashboardScreen.tsx` 消费 `/api/mobile/contacts-dashboard`，四维圆盘与详情 | 已接入·待联验；共享 Schema 的定向检查通过，需同数据核对口径 |
 | 图谱/关系进展/引荐 | connections、evidence、stage 与邀请服务 | ContactsGraph/ContactPipeline/ContactIntros 对接相应接口 | 已接入·待联验；区分保存草稿、更新状态与真实发送 |
