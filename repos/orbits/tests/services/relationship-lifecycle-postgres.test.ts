@@ -23,7 +23,7 @@ const databaseTest = { skip: databaseUrl ? false : "ORBIT_LIFECYCLE_TEST_DATABAS
 test("SQL mutation checks receipts then locks only actor/workspace-owned records before writes", async () => {
   const calls: { sql: string; values?: readonly unknown[] }[] = [];
   const row = (collection: string, id: string, payload: Record<string, unknown>) => ({ workspace_id: workspaceId, collection_name: collection, record_id: id, user_id: actorId, payload, created_at: now, updated_at: now, lifecycle_state: "active" });
-  const answers = [[], [row("connections", connectionId, connectionPayload)], [row("contacts", contactId, { id: contactId })], []];
+  const answers = [[], [], [row("connections", connectionId, connectionPayload)], [row("contacts", contactId, { id: contactId })], []];
   let transactions = 0;
   const client: TransactionalPostgresClient = {
     async query<T>(sql: string, values?: readonly unknown[]) {
@@ -38,12 +38,13 @@ test("SQL mutation checks receipts then locks only actor/workspace-owned records
   assert.equal(transactions, 1);
   assert.match(calls[0].sql, /select[\s\S]+relationship_lifecycle_command_receipts/i);
   assert.deepEqual(calls[0].values, [workspaceId, actorId, "key:1"]);
-  assert.match(calls[1].sql, /collection_name = 'connections'[\s\S]+user_id = \$\d+[\s\S]+for update/i);
-  assert.ok(calls[1].values?.includes(workspaceId));
-  assert.ok(calls[1].values?.includes(connectionId));
-  assert.ok(calls[1].values?.includes(actorId));
-  assert.match(calls[2].sql, /collection_name = 'contacts'[\s\S]+user_id = \$\d+/i);
-  assert.match(calls[3].sql, /collection_name = 'tasks'[\s\S]+user_id = \$\d+[\s\S]+connectionId[\s\S]+for update/i);
+  assert.match(calls[1].sql, /orbit_records_acquire_sync_write_lock\('tasks'\)/i);
+  assert.match(calls[2].sql, /collection_name = 'connections'[\s\S]+user_id = \$\d+[\s\S]+for update/i);
+  assert.ok(calls[2].values?.includes(workspaceId));
+  assert.ok(calls[2].values?.includes(connectionId));
+  assert.ok(calls[2].values?.includes(actorId));
+  assert.match(calls[3].sql, /collection_name = 'contacts'[\s\S]+user_id = \$\d+/i);
+  assert.match(calls[4].sql, /collection_name = 'tasks'[\s\S]+user_id = \$\d+[\s\S]+connectionId[\s\S]+for update/i);
   const update = calls.find(({ sql }) => /update orbit_records/i.test(sql));
   assert.match(update?.sql ?? "", /version/);
   assert.ok(update?.values?.includes(3));
@@ -67,7 +68,7 @@ async function withDatabase(operation: (fixture: {
     await runRelationshipLifecycleMigrations(client);
     await runRelationshipLifecycleMigrations(client);
     const insert = async (collection: string, id: string, owner: string, payload: Record<string, unknown>) => {
-      await client.query("insert into orbit_records (workspace_id, collection_name, record_id, user_id, source_type, source_id, payload, created_at, updated_at) values ($1,$2,$3,$4,'manual','test:source',$5,$6,$6)", [workspaceId, collection, id, owner, payload, now]);
+      await client.query("with sync_write_lock as materialized (select orbit_records_acquire_sync_write_lock($2) as acquired) insert into orbit_records (workspace_id, collection_name, record_id, user_id, source_type, source_id, payload, created_at, updated_at) select $1,$2,$3,$4,'manual','test:source',$5,$6,$6 from sync_write_lock where sync_write_lock.acquired", [workspaceId, collection, id, owner, payload, now]);
     };
     await insert("contacts", contactId, actorId, { id: contactId });
     await insert("connections", connectionId, actorId, connectionPayload);
@@ -212,7 +213,7 @@ test("PostgreSQL preserves generic tasks and existing task provenance while clos
   const generic = { id: "task:generic", connectionId, title: "普通任务", status: "open" };
   await insert("tasks", "task:generic", actorId, generic);
   await repo.mutate(mutation, (snapshot) => applyRelationshipStageCommand({ command, current: snapshot.connection, tasks: snapshot.tasks, now }));
-  await client.query("update orbit_records set payload=payload || $1::jsonb where collection_name='tasks' and record_id='task:1'", [{ evidenceIds: ["evidence:keep"], summary: "保留任务内容" }]);
+  await client.query("with sync_write_lock as materialized (select orbit_records_acquire_sync_write_lock('tasks') as acquired) update orbit_records set payload=payload || $1::jsonb from sync_write_lock where collection_name='tasks' and record_id='task:1' and sync_write_lock.acquired", [{ evidenceIds: ["evidence:keep"], summary: "保留任务内容" }]);
   await repo.mutate({ ...mutation, expectedVersion: 4, idempotencyKey: "archive", requestHash: "archive" }, (snapshot) => applyRelationshipStageCommand({ command: { actorId, connectionId, expectedVersion: 4, idempotencyKey: "archive", stage: "archived", dismissTaskIds: ["task:1"] }, current: snapshot.connection, tasks: snapshot.tasks, now }));
   const rows = await client.query<{ record_id: string; payload: Record<string, unknown> }>("select record_id,payload from orbit_records where collection_name='tasks'");
   assert.deepEqual(rows.rows.find(({ record_id }) => record_id === "task:generic")?.payload, generic);

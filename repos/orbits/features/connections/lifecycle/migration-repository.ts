@@ -88,6 +88,7 @@ export function createPostgresLifecycleMigrationRepository({ client, workspaceId
           if (stored.request_hash !== requestHash) throw new LifecycleMigrationError("CONFLICT");
           return parseStoredReceipt(stored.response_receipt, stored.response_hash, input, workspaceId);
         }
+        await sql.query("select orbit_records_acquire_sync_write_lock('tasks')");
         const records = await loadSource(sql, workspaceId, true);
         const plan = planRelationshipLifecycleMigration({ manifest: input.manifest, records });
         assertLifecycleMigrationReview({ ...input, plan, workspaceId });

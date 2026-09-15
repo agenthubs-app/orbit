@@ -19,7 +19,7 @@ test("migration dry-run reads a complete source snapshot and never writes", data
   assert.equal(JSON.stringify(plan).includes("PRIVATE"), false);
   assert.deepEqual(await records(), before);
   assert.equal(await receiptCount(), 0);
-  await client.query("update orbit_records set payload=payload || '{\"private\":\"changed\"}'::jsonb where collection_name='tasks'");
+  await client.query("with sync_write_lock as materialized (select orbit_records_acquire_sync_write_lock('tasks') as acquired) update orbit_records set payload=payload || '{\"private\":\"changed\"}'::jsonb from sync_write_lock where collection_name='tasks' and sync_write_lock.acquired");
   assert.notEqual((await repo.dryRun(manifest)).sourceHash, plan.sourceHash);
 }));
 
@@ -44,7 +44,9 @@ test("reviewed minimal patches, owner repair, audit and receipt commit atomicall
   for (const original of before) {
     const next = after.find(row => row.workspace_id === original.workspace_id && row.collection_name === original.collection_name && row.record_id === original.record_id)!;
     const patch = original.workspace_id === workspaceId ? plan.changes.find(change => change.collectionName === original.collection_name && change.recordId === original.record_id) : undefined;
-    assert.deepEqual(next, { ...original, user_id: patch?.owner ?? original.user_id, payload: { ...original.payload, ...patch?.payload } });
+    assert.deepEqual({ ...next, sync_revision: original.sync_revision }, { ...original, user_id: patch?.owner ?? original.user_id, payload: { ...original.payload, ...patch?.payload } });
+    if (patch) assert.ok(Number(next.sync_revision) > Number(original.sync_revision));
+    else assert.equal(next.sync_revision, original.sync_revision);
   }
   const audits = after.filter(row => row.collection_name === "relationship_lifecycle_migration_audits");
   assert.equal(audits.length, 1);

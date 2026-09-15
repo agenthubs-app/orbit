@@ -142,6 +142,9 @@ test("postgres live record store upserts records with parameterized SQL", async 
   assert.equal(saved.payload.title, "Operator dinner");
   assert.equal(client.calls.length, 1);
   assert.match(client.calls[0]?.text ?? "", /insert into orbit_records/i);
+  assert.match(client.calls[0]?.text ?? "", /with sync_write_lock as materialized/i);
+  assert.match(client.calls[0]?.text ?? "", /orbit_records_acquire_sync_write_lock\(\$2\)/i);
+  assert.match(client.calls[0]?.text ?? "", /orbit_records\.user_id is not distinct from excluded\.user_id/i);
   assert.match(client.calls[0]?.text ?? "", /on conflict/i);
   assert.deepEqual(client.calls[0]?.values?.slice(0, 3), [
     "workspace:test",
@@ -197,6 +200,8 @@ test("postgres live record store lists gets and soft deletes records", async () 
   assert.ok(client.calls[0]?.values?.includes("%operator%"));
   assert.ok(client.calls[0]?.values?.includes("account:owner"));
   assert.match(client.calls[2]?.text ?? "", /update orbit_records/i);
+  assert.match(client.calls[2]?.text ?? "", /with sync_write_lock as materialized/i);
+  assert.match(client.calls[2]?.text ?? "", /orbit_records_acquire_sync_write_lock\(\$2\)/i);
   assert.match(client.calls[2]?.text ?? "", /set lifecycle_state = 'deleted'/i);
 });
 

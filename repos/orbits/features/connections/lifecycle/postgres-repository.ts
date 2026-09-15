@@ -127,6 +127,7 @@ export function createPostgresRelationshipLifecycleRepository({ client, workspac
           }
           return { snapshot: parseReceiptSnapshot(receipt.response_snapshot, input.actorId, input.connectionId), replayed: true };
         }
+        await sql.query("select orbit_records_acquire_sync_write_lock('tasks')");
         const before = await loadSnapshot(sql, workspaceId, input.actorId, input.connectionId);
         if (!before) throw new RelationshipLifecycleError("NOT_FOUND", "Connection not found.");
         if (before.connection.version !== input.expectedVersion) throw new RelationshipLifecycleError("CONFLICT", "Connection version has changed.");

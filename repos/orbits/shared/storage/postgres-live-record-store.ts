@@ -276,13 +276,18 @@ export function createPostgresLiveRecordStore<
     ): Promise<LiveRecord<TPayload> | null> {
       const result = await client.query<PostgresLiveRecordRow>(
         `
+          with sync_write_lock as materialized (
+            select orbit_records_acquire_sync_write_lock($2) as acquired
+          )
           update orbit_records
           set lifecycle_state = 'deleted',
             deleted_at = $4,
             updated_at = $4
+          from sync_write_lock
           where workspace_id = $1
             and collection_name = $2
             and record_id = $3
+            and sync_write_lock.acquired
           returning ${recordColumns}
         `,
         [
@@ -337,11 +342,15 @@ export function createPostgresLiveRecordStore<
     async upsertRecord(record: LiveRecord<TPayload>): Promise<LiveRecord<TPayload>> {
       const result = await client.query<PostgresLiveRecordRow>(
         `
+          with sync_write_lock as materialized (
+            select orbit_records_acquire_sync_write_lock($2) as acquired
+          )
           insert into orbit_records (${recordColumns})
-          values (
+          select
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
             $11, $12, $13, $14, $15, $16, $17, $18, $19
-          )
+          from sync_write_lock
+          where sync_write_lock.acquired
           on conflict (workspace_id, collection_name, record_id)
           do update set
             user_id = excluded.user_id,
@@ -359,6 +368,8 @@ export function createPostgresLiveRecordStore<
             payload = excluded.payload,
             updated_at = excluded.updated_at,
             deleted_at = excluded.deleted_at
+          where not orbit_records_is_sync_collection(excluded.collection_name)
+            or orbit_records.user_id is not distinct from excluded.user_id
           returning ${recordColumns}
         `,
         recordValues(record),

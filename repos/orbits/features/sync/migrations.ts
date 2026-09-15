@@ -4,6 +4,59 @@ create sequence if not exists orbit_records_sync_revision_seq;
 alter table orbit_records
   add column if not exists sync_revision bigint;
 
+create or replace function orbit_records_is_sync_collection(target_collection text)
+returns boolean
+language sql
+immutable
+parallel safe
+as $$
+  select target_collection in ('notes', 'tasks', 'personal_schedule_items');
+$$;
+
+create or replace function orbit_records_sync_write_lock_key()
+returns bigint
+language sql
+stable
+parallel safe
+as $$
+  select hashtextextended(
+    'orbit:sync:commit-order:v1:' || 'orbit_records'::regclass::oid::text,
+    0
+  );
+$$;
+
+create or replace function orbit_records_acquire_sync_write_lock(target_collection text)
+returns boolean
+language plpgsql
+as $$
+declare
+  lock_key bigint;
+begin
+  if orbit_records_is_sync_collection(target_collection) then
+    lock_key := orbit_records_sync_write_lock_key();
+    perform pg_advisory_xact_lock(lock_key);
+    perform set_config('orbit.sync_write_lock_key', lock_key::text, true);
+  end if;
+  return true;
+end;
+$$;
+
+create or replace function orbit_records_assign_sync_revision()
+returns trigger
+language plpgsql
+as $$
+begin
+  if orbit_records_is_sync_collection(new.collection_name)
+    and current_setting('orbit.sync_write_lock_key', true)
+      is distinct from orbit_records_sync_write_lock_key()::text then
+    raise exception 'SYNC_WRITE_LOCK_REQUIRED'
+      using errcode = '55P03';
+  end if;
+  new.sync_revision := nextval('orbit_records_sync_revision_seq'::regclass);
+  return new;
+end;
+$$;
+
 with revision_state as (
   select
     coalesce((select max(sync_revision) from orbit_records), 0) as table_max,
@@ -21,9 +74,14 @@ select setval(
 )
 from revision_state;
 
+with sync_write_lock as materialized (
+  select orbit_records_acquire_sync_write_lock('notes') as acquired
+)
 update orbit_records
 set sync_revision = nextval('orbit_records_sync_revision_seq'::regclass)
-where sync_revision is null;
+from sync_write_lock
+where sync_revision is null
+  and sync_write_lock.acquired;
 
 with revision_state as (
   select
@@ -62,21 +120,6 @@ alter table orbit_records
 
 create unique index if not exists orbit_records_sync_revision_uidx
   on orbit_records (sync_revision);
-
-create or replace function orbit_records_assign_sync_revision()
-returns trigger
-language plpgsql
-as $$
-begin
-  if new.collection_name in ('notes', 'tasks', 'personal_schedule_items') then
-    perform pg_advisory_xact_lock(
-      hashtextextended('orbit:sync:commit-order:v1', 0)
-    );
-  end if;
-  new.sync_revision := nextval('orbit_records_sync_revision_seq'::regclass);
-  return new;
-end;
-$$;
 
 drop trigger if exists orbit_records_assign_sync_revision_trigger on orbit_records;
 create trigger orbit_records_assign_sync_revision_trigger

@@ -93,12 +93,18 @@ async function main(): Promise<void> {
         );
 
         for (const row of rows.rows as Record<string, unknown>[]) {
-          await local.query(
-            `insert into orbit_records (
+          const saved = await local.query<{ record_id: string }>(
+            `with sync_write_lock as materialized (
+               select orbit_records_acquire_sync_write_lock($2) as acquired
+             )
+             insert into orbit_records (
                workspace_id, collection_name, record_id, user_id, source_type, source_id,
                source_label, provider, provider_record_id, evidence_ids, target_type, target_id,
                occurred_at, lifecycle_state, search_text, payload, created_at, updated_at, deleted_at
-             ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+             )
+             select $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19
+             from sync_write_lock
+             where sync_write_lock.acquired
              on conflict (workspace_id, collection_name, record_id) do update set
                user_id = excluded.user_id,
                source_type = excluded.source_type,
@@ -114,7 +120,10 @@ async function main(): Promise<void> {
                search_text = excluded.search_text,
                payload = excluded.payload,
                updated_at = excluded.updated_at,
-               deleted_at = excluded.deleted_at`,
+               deleted_at = excluded.deleted_at
+             where not orbit_records_is_sync_collection(excluded.collection_name)
+               or orbit_records.user_id is not distinct from excluded.user_id
+             returning record_id`,
             [
               row.workspace_id,
               row.collection_name,
@@ -137,6 +146,9 @@ async function main(): Promise<void> {
               row.deleted_at,
             ],
           );
+          if (saved.rows.length !== 1) {
+            throw new Error(`Refusing to transfer ownership of ${collection}/${String(row.record_id)}.`);
+          }
         }
 
         total += rows.rows.length;

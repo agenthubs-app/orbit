@@ -7,7 +7,7 @@ import { lifecycleMigrationDatabaseTest as databaseTest, lifecycleMigrationFixtu
 
 const scope = { actorId, workspaceId, now, timeZone: "Asia/Tokyo" };
 const read = (client: TransactionalPostgresClient) => readCanonicalContactLifecycles({ client, ...scope });
-const canonical = (client: TransactionalPostgresClient) => client.query("update orbit_records set payload=payload || '{\"version\":1}'::jsonb where workspace_id=$1 and user_id=$2", [workspaceId, actorId]);
+const canonical = (client: TransactionalPostgresClient) => client.query("with sync_write_lock as materialized (select orbit_records_acquire_sync_write_lock('tasks') as acquired) update orbit_records set payload=payload || '{\"version\":1}'::jsonb from sync_write_lock where workspace_id=$1 and user_id=$2 and sync_write_lock.acquired", [workspaceId, actorId]);
 function trace(client: TransactionalPostgresClient, afterFirst?: () => Promise<void>) {
   const calls: { sql: string; values?: readonly unknown[]; rows: readonly unknown[] }[] = [];
   let transactions = 0;
@@ -70,7 +70,7 @@ for (const defect of ["orphan-contact", "foreign-contact", "foreign-connection",
   if (defect === "orphan-task") await insert(record("tasks", "task:orphan", { id: "task:orphan", connectionId: "connection:missing" }));
   if (defect === "malformed-task") {
     await insert(record("tasks", "task:malformed", {}));
-    await client.query("update orbit_records set payload='null'::jsonb where collection_name='tasks'");
+    await client.query("with sync_write_lock as materialized (select orbit_records_acquire_sync_write_lock('tasks') as acquired) update orbit_records set payload='null'::jsonb from sync_write_lock where collection_name='tasks' and sync_write_lock.acquired");
   }
   if (defect === "null-owner-task") await insert(record("tasks", "task:unowned", { id: "task:unowned", connectionId: "connection:a", private: "FOREIGN PRIVATE" }, null));
   const traced = trace(client);
