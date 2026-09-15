@@ -188,13 +188,13 @@ export function createSyncLifecycle(input: {
       });
     },
 
-    withDatabase<T>(scope: SyncSessionScope | null, operation: (database: LocalSyncDatabase) => Promise<T>): Promise<T | null> {
+    withDatabase<T>(scope: SyncSessionScope | null, operation: (database: LocalSyncDatabase, activeScope: Readonly<SyncSessionScope>) => Promise<T>): Promise<T | null> {
       const requestToken = token;
       return enqueue(async () => {
         if (requestToken !== token || !current?.database || current.blocked) return null;
         if (scope && (!sameScope(current.scope, scope) || (scope.workspaceId !== undefined && scope.workspaceId !== current.scope.workspaceId))) return null;
         try {
-          const result = await operation(current.database);
+          const result = await operation(current.database, { ...current.scope });
           return requestToken === token ? result : null;
         } catch {
           input.report("SYNC_OPERATION_FAILED", current.digest);

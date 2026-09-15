@@ -8,7 +8,7 @@ export const syncLifecycle = {
   },
   async withDatabase<T>(
     _scope: SyncSessionScope | null,
-    _operation: (database: LocalSyncDatabase) => Promise<T>,
+    _operation: (database: LocalSyncDatabase, activeScope: Readonly<SyncSessionScope>) => Promise<T>,
   ): Promise<T | null> {
     return null;
   },

@@ -130,7 +130,7 @@ test("snapshot reads measure SQLite plus parse work without changing the returne
     export const state = window.fixture = { measurements: [] };
     export const syncLifecycle = { async withDatabase(scope, work) { return work({
       async get() { return { payload: JSON.stringify({ contacts: [{ id: "contact:one" }] }), status: 200, synced_at: "2026-09-15T00:00:00.000Z" }; }
-    }); } };
+    }, scope); } };
     export function appPerformanceScenarioForPath() { return "app.profile"; }
     export function appPerformanceInput(metric, scenario) { return { commit: "baseline-sha", environment: "app-release-simulator", metric, run: 1, scenario, unit: "milliseconds" }; }
     export function isAppPerformanceEnabled() { return true; }

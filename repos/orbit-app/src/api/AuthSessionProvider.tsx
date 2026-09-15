@@ -317,6 +317,10 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
               console.warn("Orbit 旧账号通知清理未完全确认，继续切换账号；服务端可能仍保留设备注册");
             }
           }
+          if (authEnvironment.current.revision !== requestRevision) {
+            await discardUnacceptedSession(session);
+            return obsoleteAuthActionResult();
+          }
           await nativeAuthSessionStorage.write(baseUrl, session.cookieHeader);
           if (authEnvironment.current.revision !== requestRevision) {
             await discardUnacceptedSession(session);

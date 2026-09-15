@@ -75,8 +75,20 @@ export const syncRecordSchema = z
 export const clientSyncMutationSchema = z.strictObject({
   kind: syncEntityKindSchema,
   id: nonEmptyIdentifier,
-  payload: syncPayloadSchema,
+  payload: syncPayloadSchema.refine(
+    (payload) => !containsActorIdentity(payload),
+    "payload must not contain actor identity",
+  ),
 });
+
+function containsActorIdentity(value: unknown): boolean {
+  if (typeof value !== "object" || value === null) return false;
+  if (Array.isArray(value)) return value.some(containsActorIdentity);
+  return Object.entries(value).some(([key, nested]) =>
+    key.toLowerCase().replaceAll("_", "").replaceAll("-", "") === "actorid"
+    || containsActorIdentity(nested),
+  );
+}
 
 export const DATA_AUTHORITY_REGISTRY: readonly DataAuthorityEntry[] = [
   {

@@ -33,6 +33,7 @@ const baseRecord = {
 } as const satisfies SyncRecord<{ title: string }>;
 
 test("sync schemas accept only the six provider-neutral entity kinds", () => {
+  assert.deepEqual(syncEntityKindSchema.options, entityKinds);
   for (const kind of entityKinds) assert.equal(syncEntityKindSchema.parse(kind), kind);
   assert.equal(syncEntityKindSchema.safeParse("provider_calendar_event").success, false);
 });
@@ -61,6 +62,8 @@ test("sync record tombstones have null payload while live records retain payload
 });
 
 test("sync schemas freeze the four local states and two AI visibility states", () => {
+  assert.deepEqual(localSyncStateSchema.options, ["synced", "pending", "conflicted", "failed"]);
+  assert.deepEqual(aiSyncVisibilitySchema.options, ["available_when_synced", "excluded"]);
   for (const state of ["synced", "pending", "conflicted", "failed"] as const) {
     assert.equal(localSyncStateSchema.parse(state), state);
   }
@@ -90,5 +93,30 @@ test("client sync mutations reject every client-supplied authority field", () =>
       false,
       authorityField,
     );
+  }
+});
+
+test("client sync payloads reject actor identity recursively through objects and arrays", async t => {
+  for (const field of ["actorId", "actor_id", "Actor-ID"] as const) {
+    const payloads = [{ [field]: "injected" }, { nested: { [field]: "injected" } }, { nested: [{ deeper: { [field]: "injected" } }] }];
+    for (const [depth, payload] of payloads.entries()) {
+      await t.test(`${field} at depth ${depth}`, () => {
+        assert.equal(clientSyncMutationSchema.safeParse({ kind: "note", id: "note:one", payload }).success, false);
+      });
+    }
+  }
+});
+
+test("client sync payloads retain arbitrary non-authority JSON and cannot serialize hook-injected identity", () => {
+  for (const payload of [null, "text", 42, true, [null, { nested: [false, { title: "edit", actorLabel: "label", revision: "quoted text" }] }]]) {
+    assert.deepEqual(clientSyncMutationSchema.parse({ kind: "note", id: "note:one", payload }).payload, payload);
+  }
+  let hookCalls = 0;
+  const hooked = Object.assign(Object.create({ toJSON() { hookCalls++; return { actorId: "injected" }; } }), { safe: "edit" });
+  const parsed = clientSyncMutationSchema.parse({ kind: "note", id: "note:one", payload: { nested: [hooked] } });
+  assert.deepEqual(JSON.parse(JSON.stringify(parsed.payload)), { nested: [{ safe: "edit" }] });
+  assert.equal(hookCalls, 0);
+  for (const payload of [{ toJSON() { return { actor_id: "injected" }; } }, { nested: undefined }, { score: Number.NaN }]) {
+    assert.equal(clientSyncMutationSchema.safeParse({ kind: "note", id: "note:one", payload }).success, false);
   }
 });

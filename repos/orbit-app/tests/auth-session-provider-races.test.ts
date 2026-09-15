@@ -47,9 +47,9 @@ export async function signInWithMobileCredentials(input) {
 export async function validateAuthSession({ cookieHeader }) {
   return { success: true, data: { user: { id: state.validationActor || (cookieHeader === "session=first" ? "actor-first" : cookieHeader === "session=second" ? "actor-second" : "restored"), email: "member@example.test", name: "Member", image: null, emailVerified: true } } };
 }
-export async function createGoogleOAuthAttempt() { throw new Error("unused"); }
-export async function exchangeGoogleOAuthCode() { throw new Error("unused"); }
-export function parseGoogleOAuthBrowserResult() { throw new Error("unused"); }
+export async function createGoogleOAuthAttempt() { return { startUrl: "https://first.example/google", redirectUri: "orbit://callback", state: "test-state", codeVerifier: "test-verifier" }; }
+export async function exchangeGoogleOAuthCode(input) { return signInWithMobileCredentials(input); }
+export function parseGoogleOAuthBrowserResult() { return { success: true, code: "test-code", state: "test-state" }; }
 export const nativeAuthSessionStorage = {
   async read() { return state.storedCookie; },
   async write(baseUrl, cookie) { state.writes.push({ baseUrl, cookie }); state.storedCookie = cookie; },
@@ -61,8 +61,19 @@ export const nativeAuthSessionStorage = {
 };
 export async function registerOrbitAccount() { return { success: true }; }
 export const syncLifecycle = {
-  async setScope(scope) { state.scopeChanges.push(scope); return !state.keyDeleteFails; }
+  async setScope(scope) {
+    state.scopeChanges.push(scope);
+    if (state.keyDeleteFails) return false;
+    state.currentScope = scope;
+    return true;
+  }
 };
+export async function cancelOrbitManagedNotifications() {
+  if (state.holdNotificationCleanup) {
+    state.holdNotificationCleanup = false;
+    await new Promise(resolve => { state.releaseNotificationCleanup = resolve; });
+  }
+}
 export function onSessionExpired(handler) { state.expire = handler; return () => { state.expire = null; }; }
 export async function signOutOrbitSession(input) {
   state.signOuts.push(input);
@@ -109,6 +120,7 @@ const root = createRoot(document.getElementById("root")); window.fixture.unmount
           if (args.path.endsWith("/session-expiry")) return { contents: "export { onSessionExpired } from 'fixture';", loader: "js", resolveDir: process.cwd() };
           if (args.path.endsWith("/client")) return { contents: "export { createOrbitApiClient } from 'fixture';", loader: "js", resolveDir: process.cwd() };
           if (args.path.endsWith("/push-registration-queue")) return { contents: "export async function revokePushDeviceRegistrations() { return true; }", loader: "js" };
+          if (args.path.endsWith("/native-notifications")) return { contents: "export { cancelOrbitManagedNotifications } from 'fixture';", loader: "js", resolveDir: process.cwd() };
           return { contents: "export async function clearSnapshots() {} export async function cancelOrbitManagedNotifications() {} export async function revokeNotificationDevice() {} export async function revokeRegisteredPushDevice() {}", loader: "js" };
         });
       }
@@ -330,3 +342,38 @@ test("rejecting obsolete login A cannot erase accepted login B's persisted cooki
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.clears), ["https://first.example"]);
   assert.equal(await page.evaluate(() => (window as any).fixture.results[1].success), false);
 });
+
+for (const method of ["credentials", "google"] as const) {
+  test(`obsolete ${method} login held at notification cleanup cannot overwrite accepted login B`, async t => {
+    const page = await open(t, { storedCookie: "session=restored", holdNotificationCleanup: true });
+    await page.evaluate(method => {
+      const state = (window as any).fixture;
+      state.canonicalAccountId = "account:A";
+      const action = method === "google"
+        ? state.auth.signInWithGoogle()
+        : state.auth.signIn({ email: "member@example.test", password: "secret" });
+      state.loginA = action;
+    }, method);
+    await page.waitForFunction(() => (window as any).fixture.releases.length === 1);
+    await page.evaluate(() => (window as any).fixture.releases[0]());
+    await page.waitForFunction(() => Boolean((window as any).fixture.releaseNotificationCleanup));
+    await page.getByRole("button", { name: "sign in" }).click();
+    await page.waitForFunction(() => (window as any).fixture.releases.length === 2);
+    await page.evaluate(() => {
+      const state = (window as any).fixture;
+      state.canonicalAccountId = "account:B";
+      state.releases[1]({ cookieHeader: "session=second", expiresAt: "2026-09-15T00:00:00Z", user: { id: "actor-second", email: "member@example.test", name: "Member" } });
+    });
+    await page.waitForFunction(() => (window as any).fixture.auth.actorId === "account:B");
+    await page.evaluate(() => (window as any).fixture.releaseNotificationCleanup());
+    assert.equal(await page.evaluate(async () => (await (window as any).fixture.loginA).success), false);
+    assert.deepEqual(await page.evaluate(() => {
+      const state = (window as any).fixture;
+      return { actorId: state.auth.actorId, userId: state.auth.user.id, cookieHeader: state.auth.cookieHeader, storedCookie: state.storedCookie, scope: state.currentScope, writes: state.writes, clears: state.clears };
+    }), {
+      actorId: "account:B", userId: "actor-second", cookieHeader: "session=second", storedCookie: "session=second",
+      scope: { baseUrl: "https://first.example", actorId: "account:B" },
+      writes: [{ baseUrl: "https://first.example", cookie: "session=second" }], clears: [],
+    });
+  });
+}

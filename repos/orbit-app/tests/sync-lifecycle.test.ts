@@ -339,3 +339,47 @@ test("legacy snapshot interface reads and writes only the active encrypted scope
   assert.equal(await readSnapshot(scope.baseUrl, scope.actorId, "/api/notes"), null);
   assert.equal(f.keys.size, 1);
 });
+
+test("legacy snapshots isolate active workspaces and preserve each workspace until logout", async t => {
+  const f = await lifecycle(t);
+  t.mock.method(syncLifecycle, "withDatabase", f.coordinator.withDatabase);
+  const first = { ...scope, workspaceId: "first|_%" };
+  const second = { ...scope, workspaceId: "second" };
+  const result = { data: { title: "workspace A fixture" }, status: 200, success: true as const, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
+  await f.coordinator.setScope(first);
+  await writeSnapshot(scope.baseUrl, scope.actorId, "/api/notes", result);
+  await f.coordinator.setScope(second);
+  assert.equal(await readSnapshot(scope.baseUrl, scope.actorId, "/api/notes"), null);
+  const secondResult = { ...result, data: { title: "workspace B fixture" } };
+  await writeSnapshot(scope.baseUrl, scope.actorId, "/api/notes", secondResult);
+  assert.deepEqual((await readSnapshot(scope.baseUrl, scope.actorId, "/api/notes"))?.result, secondResult);
+  await f.coordinator.setScope(first);
+  assert.deepEqual((await readSnapshot(scope.baseUrl, scope.actorId, "/api/notes"))?.result, result);
+  await f.coordinator.setScope(null);
+  for (const workspace of [first, second]) {
+    await f.coordinator.setScope(workspace);
+    assert.equal(await readSnapshot(scope.baseUrl, scope.actorId, "/api/notes"), null);
+  }
+});
+
+test("clearing snapshots affects only the active workspace, including the default workspace", async t => {
+  const f = await lifecycle(t);
+  t.mock.method(syncLifecycle, "withDatabase", f.coordinator.withDatabase);
+  const workspaces = [scope, { ...scope, workspaceId: "null" }, { ...scope, workspaceId: "first|_%" }];
+  const result = { data: { title: "private fixture" }, status: 200, success: true as const, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
+  for (const workspace of workspaces) {
+    await f.coordinator.setScope(workspace);
+    await writeSnapshot(scope.baseUrl, scope.actorId, "/api/notes", result);
+  }
+  await f.coordinator.withDatabase(workspaces[2]!, db => db.run("INSERT INTO sync_cursors VALUES (?, ?, ?, ?)", ["first|_%", "cursor", "2026-09-16T00:00:00Z", "complete"]));
+  for (let index = 0; index < workspaces.length; index++) {
+    await f.coordinator.setScope(workspaces[index]!);
+    assert.deepEqual((await readSnapshot(scope.baseUrl, scope.actorId, "/api/notes"))?.result, result);
+    await clearSnapshots();
+    assert.equal(await readSnapshot(scope.baseUrl, scope.actorId, "/api/notes"), null);
+    const remaining = await f.coordinator.withDatabase(workspaces[index]!, db => db.all("SELECT * FROM legacy_api_snapshots"));
+    assert.equal(remaining?.length, workspaces.length - index - 1);
+  }
+  assert.equal((await f.coordinator.withDatabase(workspaces[2]!, db => db.all("SELECT * FROM sync_cursors")))?.length, 1);
+  assert.equal(f.keys.size, 1);
+});

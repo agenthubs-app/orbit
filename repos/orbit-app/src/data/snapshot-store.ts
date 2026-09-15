@@ -13,6 +13,12 @@ export function snapshotKey(baseUrl: string, actorId: string, path: string): str
   return `v2|${encodeURIComponent(baseUrl)}|${encodeURIComponent(actorId)}|${path}`;
 }
 
+function workspaceSnapshotPrefix(workspaceId: string | undefined): string {
+  // JSON distinguishes the default workspace from every named workspace;
+  // URI encoding makes the prefix delimiter and SQLite substring length exact.
+  return `v3|${encodeURIComponent(JSON.stringify(workspaceId ?? null))}|`;
+}
+
 interface SnapshotRow {
   payload: string;
   status: number;
@@ -29,11 +35,11 @@ export async function readSnapshot<TData>(
   actorId: string,
   path: string
 ): Promise<SnapshotRecord<TData> | null> {
-  return syncLifecycle.withDatabase({ baseUrl, actorId }, async db => {
+  return syncLifecycle.withDatabase({ baseUrl, actorId }, async (db, activeScope) => {
     const readAndParse = async (): Promise<SnapshotRecord<TData> | null> => {
       const row = await db.get<SnapshotRow>(
         "SELECT payload, status, synced_at FROM legacy_api_snapshots WHERE path = ?",
-        [snapshotKey(baseUrl, actorId, path)]
+        [workspaceSnapshotPrefix(activeScope.workspaceId) + snapshotKey(baseUrl, actorId, path)]
       );
       if (!row) return null;
       return {
@@ -64,7 +70,7 @@ export async function writeSnapshot<TData>(
   if (!result.success) {
     return;
   }
-  await syncLifecycle.withDatabase({ baseUrl, actorId }, async db => {
+  await syncLifecycle.withDatabase({ baseUrl, actorId }, async (db, activeScope) => {
     const persist = () => db.run(
       `INSERT INTO legacy_api_snapshots (path, payload, status, synced_at)
        VALUES (?, ?, ?, ?)
@@ -72,7 +78,7 @@ export async function writeSnapshot<TData>(
          payload = excluded.payload,
          status = excluded.status,
          synced_at = excluded.synced_at`,
-      [snapshotKey(baseUrl, actorId, path), JSON.stringify(result.data), result.status, new Date().toISOString()]
+      [workspaceSnapshotPrefix(activeScope.workspaceId) + snapshotKey(baseUrl, actorId, path), JSON.stringify(result.data), result.status, new Date().toISOString()]
     );
     const scenario = isAppPerformanceEnabled()
       ? appPerformanceScenarioForPath(path)
@@ -85,8 +91,11 @@ export async function writeSnapshot<TData>(
   });
 }
 
-// Explicit cache invalidation retains the current key and other mirror tables.
+// Explicit cache invalidation clears only the active workspace's snapshots.
 // Authentication logout instead purges the whole scope through syncLifecycle.
 export async function clearSnapshots(): Promise<void> {
-  await syncLifecycle.withDatabase(null, db => db.run("DELETE FROM legacy_api_snapshots"));
+  await syncLifecycle.withDatabase(null, (db, activeScope) => {
+    const prefix = workspaceSnapshotPrefix(activeScope.workspaceId);
+    return db.run("DELETE FROM legacy_api_snapshots WHERE substr(path, 1, ?) = ?", [prefix.length, prefix]);
+  });
 }
