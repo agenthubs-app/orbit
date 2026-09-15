@@ -1,6 +1,7 @@
 # Local agent/runtime state
 .learnings/
 .playwright-mcp/
+.gitnexus
 .pytest_cache/
 .uv-cache/
 .venv/
@@ -33,10 +34,16 @@ repos/tokyo-business-connect/
 
 # App build/dependency outputs
 repos/orbits/node_modules/
+repos/orbit-app/node_modules
 repos/orbits/.next/
 repos/orbits/dist/
 repos/orbits/build/
 repos/orbits/npm-debug.log*
+
+# Local render intermediates and standalone nested repositories
+/tmp/
+/sites/
+/repos/orbit-app/prototypes/
 
 # Local visual exports
 repos/orbit-app/.tmp/
