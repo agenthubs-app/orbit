@@ -4,7 +4,7 @@
 
 本线实现及五项 SC 的本地验收通过。六类记录已有共享权威契约，App 使用按 server/actor 分库、按 workspace 隔离的 SQLCipher 镜像；记录与 cursor 同事务写入，原生进程重启可回读，登出会清除数据库及设备密钥。现有页面继续使用原读取接口和在线写入。
 
-Sprint 状态仍为 **running，等待协调者合并到 `chat-agent` 并验证精确合并树**。本报告不把本线通过记作已合并完成。
+Sprint 状态为 **completed**。固定分支已经合并到 `chat-agent`，精确合并树通过 App／Web 定向测试、两端 typecheck、App 全量测试与 Web production build，并已重新启动主线 Web 服务。
 
 ## 运行记录
 
@@ -15,8 +15,8 @@ Sprint 状态仍为 **running，等待协调者合并到 `chat-agent` 并验证�
 - Planner SHA-256：`1bf2a101dd9cf0f7e4cf57f6ef90be78dbd23e3a288a46fc0dbf158f3c2fa580`。
 - DESIGN SHA-256：`8e84f91694f8fc00ee72c359b8126d111a103f85b74bcb6d7c8b810fe60b2b3f`。
 - 本线最终文档 SHA：本报告提交后记录于忽略的 `final-fix-report.md` 并交接协调者；不追填本报告自身 commit。
-- `chat-agent` 精确 merge SHA／合并树复验：**等待协调者**。
-- push／部署：未执行。
+- 本线最终 HEAD：`1e40ee9159f67f27c6e46e47a3ec6a1f8ff531de`；`chat-agent` 精确 merge SHA：`00b81ab180777da5b59f01fb4de94f6463002865`。
+- push：本次收口文档提交后执行；Web production build 已重新生成并在本机 `127.0.0.1:3108` 以 `live/ok` 运行。
 - 原始证据：本工作树忽略目录 `.superpowers/sdd/PLANNER/task-4-*`（历史）及 `final-fix-*`（本次最终修复）。固定 SHA 与最终交接见同目录 `final-fix-report.md`。
 
 ## 实现与提交
@@ -51,6 +51,15 @@ Web（相对 `repos/orbits/`）：`shared/contract/sync.ts`、`tests/architectur
 | SC-0032-03 | pass | 最终 lifecycle/repository/auth 定向集通过；重新构建的 Simulator seed 8/8、重启／清理／隔离 48/48。实际写 A 快照→切 B 读不到→B 写同路径→回 A 仍读 A；清 B 后 A 快照及 record/cursor/outbox 保留；重新写 B 后登出，A/B 快照均不可恢复。另有 server/actor 拒读、第二 actor 空库、密钥与主文件/sidecar 删除证据。旧 Task 4 的 35 项未验证跨 workspace 快照，本次新增证据才证明该项。 |
 | SC-0032-04 | pass | iOS arm64 Release 构建成功；生成配置 `expo.sqlite.useSQLCipher=true`，编译含 `SQLITE_HAS_CODEC` 与 `SQLCIPHER_CRYPTO_CC`；真实 `PRAGMA cipher_version` 非空。进程停止后 at-rest 5/5：文件有内容，无普通 SQLite header，合成 payload/标识不以 UTF-8/UTF-16 明文出现，未提供 key 的系统 sqlite3 读取被拒绝。故障注入测试覆盖 cipher/key/schema 初始化失败无明文回退。 |
 | SC-0032-05 | pass | 最终 App 主定向 94/94、两端 typecheck；扩展消费者首轮 113/114，唯一旧 performance double 未传 activeScope，修正后完整 performance 文件 3/3，其余 111 项证据复用。最终 native snapshot 重启回读与产品登录页 smoke 通过。四域页面、hooks、view-models、文案未改，无实体镜像 reader 接入或 offline write 文案。 |
+
+## 主线合并树复验
+
+- 精确合并提交：`00b81ab180777da5b59f01fb4de94f6463002865`，父树包含 `chat-agent@1129d72d3` 与本线 `1e40ee915`。
+- App 0032 主定向：94/94；共享消费者：49/49；App typecheck：exit 0。
+- Web authority/contract：19/19；Web typecheck：exit 0。
+- App 全量：2934/2934，0 failed，exit 0。
+- Web production build：48/48 static pages，exit 0；重启后 `/api/health` 返回 `{"mode":"live","status":"ok"}`。
+- 以上检查均在合并后的 `chat-agent` 工作树执行；本节不复用 feature branch 退出码。
 
 ## 最终修复验证
 
@@ -135,8 +144,8 @@ Task 4 历史文档暂存检查：`git diff --check` 与 `git diff --cached --ch
 
 ## 交接与限制
 
-- 本线已验证；协调者须接收固定 SHA、合并 `chat-agent`、记录精确 merge SHA 并验证该合并树，之后才能把 0032 标为 completed 并启动 0033。
-- 未实现页面切换、增量同步 HTTP、outbox sender、离线确认保存或冲突 UI；它们仍属于 0033 之后。没有 provider、真实账号、生产业务数据、迁移、部署或 push 操作。
+- 本线已验证、合并并完成主线复验；0033 的串行依赖已释放。
+- 未实现页面切换、增量同步 HTTP、outbox sender、离线确认保存或冲突 UI；它们仍属于 0033 之后。没有 provider、真实账号、生产业务数据、迁移或部署操作；主线 push 属于协调者交付步骤。
 - 旧明文 `orbit-cache.db` 不迁移；升级后的首次离线读取不能依赖旧缓存，这是已批准设计限制。
 - Simulator 证明实际原生加密及存储生命周期，不替代实体设备或后续同账号 Web↔App 业务往返。
 - 新增 AI/OCR/provider 调用与费用：0；不重置原累计账本。
