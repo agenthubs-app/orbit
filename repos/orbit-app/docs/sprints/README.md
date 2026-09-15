@@ -73,6 +73,7 @@ build/harness-logs/
 | [0023](0023-industry-consumer-continuation/GOAL.md) | 接通联系人行业、搜索 HTTP 与本人资料工具，承接 0020 全部未完成验收 | SC-0020-01～05；明确获准接续 | 现有部分实现与 8 文件补充方案已批准；真实数据／设备按对象处理 | running |
 | [0024](0024-contact-needs-ranking/GOAL.md) | 在人脉主页保存需求，并在独立页面按可核对依据稳定排序 | 用户批准 `concept-v2.png`；关联 0011／0023 | Web `bf35efb85`；App 最终 HEAD `d4cc8a441`；SC-01～05 全部通过，见 REPORT | completed |
 | [0025](0025-notes-ink-signal-search/GOAL.md) | 按最新 4a 重做笔记列表、编辑、详情与联系人笔记页签，用加号和输入搜索关联人脉，不平铺联系人全集 | 2026-09-15 新增；承接 R-13／0018／0019 | run-01 已完成；五项 SC、同账号 Web↔App、Web／iOS 构建与有界搜索均通过；见 [REPORT](0025-notes-ink-signal-search/REPORT.md) | completed |
+| [0026](0026-canonical-app-account-identity/GOAL.md) | 统一 App 登录主体与业务账号身份，让待办、个人日程和笔记正确读取 canonical owner | 用户批准追加 C 线 Sprint；承接现有 `/api/account/me` | run-01 已启动；H + I，按 canonical 身份 RED→GREEN 实施 | running |
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
 
@@ -202,6 +203,13 @@ build/harness-logs/
 - 结束：2026-09-15 12:44 JST；结果 completed；功能提交 `01a1592d9801702b37d874c7d7477b16f2e75472`；[执行报告](0025-notes-ink-signal-search/REPORT.md)。
 - 验证：Web 定向 45/45、typecheck、production build 5 与 live health 通过；App 定向 65/65、typecheck、契约同步、全量 2598/2598 和 iOS 构建 0 error／0 warning 通过；Web 全量的唯一新增失败已修复，剩余 52 与既有基线相同。
 - 同账号验收：浏览器与原生 App 均为 `qa@orbit.test`，双向创建／编辑／搜索、版本 2、actor 404、stale 409 和幂等均已验证；BR-019 为 verified。
+
+### 0026 / run-01
+
+- Generator owner：C 线当前主代理 `/root`；开始时间：2026-09-15 15:20 JST；基线 HEAD：`34f95a20a1953b824444b61a5d691d95a070f165`。
+- Planner revision 1；SHA-256：`716e6886b4df3295480860e07cdf81e94d1fcfda8b6de9202d5c5bbe4f159bb1`；档位 H + I。
+- 文件锁：0026 Planner 白名单内的 App auth、actor-scoped snapshot、待办／个人日程／笔记／配对 AI intent 消费者、直接测试与 Sprint／Bridge 文档。Web/API 产品代码和全部既有未跟踪设计资产不写、不暂存。
+- 运行目标：先用 RED 证明 raw `userId` 与 canonical `accountId` 不同会误拒合法 owner，再从 `/api/account/me` 建立唯一 canonical 身份，并保持 foreign owner、失败接口和缺字段 fail closed。
 
 ### 0018 / run-01
 
