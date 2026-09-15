@@ -1,8 +1,14 @@
 import { OrbitTimeZoneProvider } from "../src/time/OrbitTimeZoneProvider";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { OrbitAuthSessionProvider } from "../src/api/AuthSessionProvider";
-import { OrbitApiBaseUrlProvider } from "../src/api/ApiBaseUrlProvider";
+import {
+  OrbitAuthSessionProvider,
+  useOrbitAuthSession,
+} from "../src/api/AuthSessionProvider";
+import {
+  OrbitApiBaseUrlProvider,
+  useOrbitApiBaseUrl,
+} from "../src/api/ApiBaseUrlProvider";
 import {
   AppErrorBoundary,
   AppErrorScreen
@@ -12,6 +18,50 @@ import { OrbitNotificationsCoordinator } from "../src/components/OrbitNotificati
 import { OrbitNotificationLifecycle } from "../src/notifications/NotificationLifecycle";
 import { useOrbitTheme } from "../src/design/theme";
 import { OrbitLocaleProvider } from "../src/i18n/OrbitLocaleProvider";
+import { useEffect, useRef } from "react";
+import {
+  appPerformanceInput,
+  isAppPerformanceEnabled,
+  markAppPerformance,
+  setAppPerformanceScope,
+} from "../src/performance/app-performance";
+
+const ROOT_LAYOUT_STARTED_AT = isAppPerformanceEnabled()
+  ? globalThis.performance.now()
+  : 0;
+
+function AppPerformanceRootObserver() {
+  const auth = useOrbitAuthSession();
+  const { baseUrl } = useOrbitApiBaseUrl();
+  const startupRecorded = useRef(false);
+  const authRestoreRecorded = useRef(false);
+
+  useEffect(() => {
+    if (!isAppPerformanceEnabled()) {
+      return;
+    }
+    setAppPerformanceScope({ actorId: auth.actorId, baseUrl });
+    const durationMs = globalThis.performance.now() - ROOT_LAYOUT_STARTED_AT;
+    if (!startupRecorded.current) {
+      startupRecorded.current = true;
+      markAppPerformance({
+        ...appPerformanceInput("app.startup", "app.startup"),
+        durationMs,
+        failed: false,
+      });
+    }
+    if (auth.ready && !authRestoreRecorded.current) {
+      authRestoreRecorded.current = true;
+      markAppPerformance({
+        ...appPerformanceInput("app.auth_restore", "app.auth_restore"),
+        durationMs,
+        failed: false,
+      });
+    }
+  }, [auth.actorId, auth.ready, baseUrl]);
+
+  return null;
+}
 
 // expo-router 会把这个导出当作根段的错误边界：出错时只重置这一段，
 // 导航器保持挂载，retry() 之后跳转仍然可用。
@@ -34,6 +84,7 @@ export default function RootLayout() {
       <AppErrorBoundary>
         <OrbitApiBaseUrlProvider>
           <OrbitAuthSessionProvider>
+            <AppPerformanceRootObserver />
             <OrbitLocaleProvider>
               <OrbitTimeZoneProvider>
                 <OrbitNotificationsCoordinator />
