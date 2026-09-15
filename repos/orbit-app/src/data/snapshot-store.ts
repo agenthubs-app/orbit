@@ -1,5 +1,5 @@
 import type { ApiResult } from "../api/types";
-import { Platform } from "react-native";
+import { syncLifecycle } from "./sync/sync-lifecycle";
 import {
   appPerformanceInput,
   appPerformanceScenarioForPath,
@@ -7,23 +7,16 @@ import {
   measureAppPerformance,
 } from "../performance/app-performance";
 
-// 每一次成功的 GET 都在本地留一份快照，下次打开这一屏时先渲染它，
-// 网络回来了再覆盖。断网时快照就是用户看到的内容——离线是常态，
-// 内容页不会因此变成错误屏。
-//
-// 缓存是优化，不是依赖：SQLite 打不开（Web 端、模拟器异常、磁盘满）时
-// 全部操作降级成空操作，App 行为退回改造前，不会因为缓存层出问题而崩。
-//
-// 快照里是真实人脉数据，所以登出时必须整表清空，见 clearSnapshots。
-
-// 快照按「服务器 + 登录用户 + 路径」建键。服务器和路径不足以表达数据归属：
-// 同一台服务器切换账号时，旧账号的离线人脉不能作为新账号的首屏内容。
-export function snapshotKey(
-  baseUrl: string,
-  actorId: string,
-  path: string
-): string {
+// Old pages retain their snapshot interface; the authenticated lifecycle owns
+// the encrypted file. Page parameters can never open or switch an actor scope.
+export function snapshotKey(baseUrl: string, actorId: string, path: string): string {
   return `v2|${encodeURIComponent(baseUrl)}|${encodeURIComponent(actorId)}|${path}`;
+}
+
+function workspaceSnapshotPrefix(workspaceId: string | undefined): string {
+  // JSON distinguishes the default workspace from every named workspace;
+  // URI encoding makes the prefix delimiter and SQLite substring length exact.
+  return `v3|${encodeURIComponent(JSON.stringify(workspaceId ?? null))}|`;
 }
 
 interface SnapshotRow {
@@ -37,89 +30,18 @@ export interface SnapshotRecord<TData> {
   syncedAt: string;
 }
 
-type Database = {
-  execAsync: (source: string) => Promise<unknown>;
-  getFirstAsync: (
-    source: string,
-    ...params: unknown[]
-  ) => Promise<SnapshotRow | null>;
-  runAsync: (source: string, ...params: unknown[]) => Promise<unknown>;
-};
-
-const DATABASE_NAME = "orbit-cache.db";
-
-const CREATE_TABLE = `
-  CREATE TABLE IF NOT EXISTS api_snapshots (
-    path TEXT PRIMARY KEY NOT NULL,
-    payload TEXT NOT NULL,
-    status INTEGER NOT NULL,
-    synced_at TEXT NOT NULL
-  );
-`;
-
-let databasePromise: Promise<Database | null> | null = null;
-let reportedUnavailable = false;
-
-function reportUnavailable(error: unknown): null {
-  if (!reportedUnavailable) {
-    reportedUnavailable = true;
-    console.warn("Orbit 本地缓存不可用，将只走网络", error);
-  }
-
-  return null;
-}
-
-async function database(): Promise<Database | null> {
-  if (Platform.OS === "web") {
-    return null;
-  }
-
-  if (databasePromise) {
-    return databasePromise;
-  }
-
-  databasePromise = (async () => {
-    try {
-      // 动态引入：Node 测试环境和 Web 端没有这个原生模块，
-      // 顶层 import 会让引用到本模块的一切一起挂掉。
-      const sqlite = (await import("expo-sqlite")) as {
-        openDatabaseAsync: (name: string) => Promise<Database>;
-      };
-      const db = await sqlite.openDatabaseAsync(DATABASE_NAME);
-      await db.execAsync(CREATE_TABLE);
-      // v1 快照没有 actor 归属，不能安全迁移；升级后一次性清除。
-      await db.runAsync("DELETE FROM api_snapshots WHERE path NOT LIKE 'v2|%'");
-      return db;
-    } catch (error) {
-      return reportUnavailable(error);
-    }
-  })();
-
-  return databasePromise;
-}
-
 export async function readSnapshot<TData>(
   baseUrl: string,
   actorId: string,
   path: string
 ): Promise<SnapshotRecord<TData> | null> {
-  const db = await database();
-
-  if (!db) {
-    return null;
-  }
-
-  try {
+  return syncLifecycle.withDatabase({ baseUrl, actorId }, async (db, activeScope) => {
     const readAndParse = async (): Promise<SnapshotRecord<TData> | null> => {
-      const row = await db.getFirstAsync(
-        "SELECT payload, status, synced_at FROM api_snapshots WHERE path = ?",
-        snapshotKey(baseUrl, actorId, path)
+      const row = await db.get<SnapshotRow>(
+        "SELECT payload, status, synced_at FROM legacy_api_snapshots WHERE path = ?",
+        [workspaceSnapshotPrefix(activeScope.workspaceId) + snapshotKey(baseUrl, actorId, path)]
       );
-
-      if (!row) {
-        return null;
-      }
-
+      if (!row) return null;
       return {
         result: {
           data: JSON.parse(row.payload) as TData,
@@ -134,16 +56,9 @@ export async function readSnapshot<TData>(
       ? appPerformanceScenarioForPath(path)
       : null;
     return scenario
-      ? await measureAppPerformance(
-          appPerformanceInput("app.snapshot", scenario),
-          readAndParse,
-        )
-      : await readAndParse();
-  } catch (error) {
-    // 快照坏了不该影响这次请求，下一次成功响应会把它覆盖掉。
-    console.warn("Orbit 读取本地快照失败", error);
-    return null;
-  }
+      ? measureAppPerformance(appPerformanceInput("app.snapshot", scenario), readAndParse)
+      : readAndParse();
+  });
 }
 
 export async function writeSnapshot<TData>(
@@ -155,54 +70,32 @@ export async function writeSnapshot<TData>(
   if (!result.success) {
     return;
   }
-
-  const db = await database();
-
-  if (!db) {
-    return;
-  }
-
-  try {
-    const persist = () =>
-      db.runAsync(
-        `INSERT INTO api_snapshots (path, payload, status, synced_at)
-         VALUES (?, ?, ?, ?)
-         ON CONFLICT(path) DO UPDATE SET
-           payload = excluded.payload,
-           status = excluded.status,
-           synced_at = excluded.synced_at`,
-        snapshotKey(baseUrl, actorId, path),
-        JSON.stringify(result.data),
-        result.status,
-        new Date().toISOString()
-      );
+  await syncLifecycle.withDatabase({ baseUrl, actorId }, async (db, activeScope) => {
+    const persist = () => db.run(
+      `INSERT INTO legacy_api_snapshots (path, payload, status, synced_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(path) DO UPDATE SET
+         payload = excluded.payload,
+         status = excluded.status,
+         synced_at = excluded.synced_at`,
+      [workspaceSnapshotPrefix(activeScope.workspaceId) + snapshotKey(baseUrl, actorId, path), JSON.stringify(result.data), result.status, new Date().toISOString()]
+    );
     const scenario = isAppPerformanceEnabled()
       ? appPerformanceScenarioForPath(path)
       : null;
     if (scenario) {
-      await measureAppPerformance(
-        appPerformanceInput("app.snapshot", scenario),
-        persist,
-      );
+      await measureAppPerformance(appPerformanceInput("app.snapshot", scenario), persist);
     } else {
       await persist();
     }
-  } catch (error) {
-    console.warn("Orbit 写入本地快照失败", error);
-  }
+  });
 }
 
-// 登出时必须调用：快照里是上一个账号的人脉数据。
+// Explicit cache invalidation clears only the active workspace's snapshots.
+// Authentication logout instead purges the whole scope through syncLifecycle.
 export async function clearSnapshots(): Promise<void> {
-  const db = await database();
-
-  if (!db) {
-    return;
-  }
-
-  try {
-    await db.runAsync("DELETE FROM api_snapshots");
-  } catch (error) {
-    console.warn("Orbit 清除本地快照失败", error);
-  }
+  await syncLifecycle.withDatabase(null, (db, activeScope) => {
+    const prefix = workspaceSnapshotPrefix(activeScope.workspaceId);
+    return db.run("DELETE FROM legacy_api_snapshots WHERE substr(path, 1, ?) = ?", [prefix.length, prefix]);
+  });
 }

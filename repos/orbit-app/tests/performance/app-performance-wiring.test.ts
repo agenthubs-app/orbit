@@ -128,12 +128,9 @@ test("useApiResource measures the core network phase and scopes samples by actor
 test("snapshot reads measure SQLite plus parse work without changing the returned record", async (t) => {
   const fixture = `
     export const state = window.fixture = { measurements: [] };
-    export const Platform = { OS: "ios" };
-    export async function openDatabaseAsync() { return {
-      async execAsync() {},
-      async runAsync() {},
-      async getFirstAsync() { return { payload: JSON.stringify({ contacts: [{ id: "contact:one" }] }), status: 200, synced_at: "2026-09-15T00:00:00.000Z" }; }
-    }; }
+    export const syncLifecycle = { async withDatabase(scope, work) { return work({
+      async get() { return { payload: JSON.stringify({ contacts: [{ id: "contact:one" }] }), status: 200, synced_at: "2026-09-15T00:00:00.000Z" }; }
+    }, scope); } };
     export function appPerformanceScenarioForPath() { return "app.profile"; }
     export function appPerformanceInput(metric, scenario) { return { commit: "baseline-sha", environment: "app-release-simulator", metric, run: 1, scenario, unit: "milliseconds" }; }
     export function isAppPerformanceEnabled() { return true; }
@@ -143,7 +140,7 @@ test("snapshot reads measure SQLite plus parse work without changing the returne
     name: "snapshot-performance-boundaries",
     setup(buildApi) {
       buildApi.onResolve(
-        { filter: /^(react-native|expo-sqlite)$/ },
+        { filter: /\/sync-lifecycle$/ },
         () => ({ path: "fixture", namespace: "snapshot-performance" }),
       );
       buildApi.onResolve(

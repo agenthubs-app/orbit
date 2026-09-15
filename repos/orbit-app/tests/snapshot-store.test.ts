@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import * as webSnapshots from "../src/data/snapshot-store.web";
 import {
   clearSnapshots,
   readSnapshot,
@@ -27,22 +28,9 @@ test("SQLite 不可用时读取快照返回空而不是抛错", async () => {
   assert.equal(snapshot, null);
 });
 
-test("Web 端明确跳过原生 SQLite 快照层", () => {
-  const storeSource = readFileSync(
-    join(repoRoot, "src", "data", "snapshot-store.ts"),
-    "utf8"
-  );
-  const webStoreSource = readFileSync(
-    join(repoRoot, "src", "data", "snapshot-store.web.ts"),
-    "utf8"
-  );
-
-  assert.match(
-    storeSource,
-    /if \(Platform\.OS === "web"\) \{\s*return null;/u
-  );
-  assert.match(webStoreSource, /return null;/u);
-  assert.doesNotMatch(webStoreSource, /expo-sqlite|openDatabaseAsync/u);
+test("Web 端明确跳过原生 SQLite 快照层", async () => {
+  assert.equal(await webSnapshots.readSnapshot("https://example.test", "actor", "/api/notes"), null);
+  await assert.doesNotReject(webSnapshots.clearSnapshots());
 });
 
 test("SQLite 不可用时写入快照静默降级", async () => {
@@ -75,7 +63,6 @@ test("快照按服务器、actor 与路径建键，换账号或服务器都不�
     snapshotKey("http://localhost:4000", "actor-a", "/api/contacts")
   );
   assert.match(storeSource, /snapshotKey\(baseUrl, actorId, path\)/u);
-  assert.match(storeSource, /DELETE FROM api_snapshots WHERE path NOT LIKE 'v2\|%'/u);
 });
 
 test("失败的响应不写快照", async () => {
@@ -128,29 +115,4 @@ test("网络失败但有快照时继续显示快照，不退回错误屏", () =>
 
 test("下拉刷新失败且没有快照时保留当前内容", () => {
   assert.match(hookSource, /if \(!isRefresh \|\| cachePolicy === "network-only"\) \{\s*setState\(resultToRouteState\(result, isEmptyRef\.current\)\);/u);
-});
-
-test("登出与会话过期都清空本地快照", () => {
-  const providerSource = readFileSync(
-    join(repoRoot, "src", "api", "AuthSessionProvider.tsx"),
-    "utf8"
-  );
-
-  const occurrences = providerSource.match(/clearSnapshots\(\)/gu) ?? [];
-  assert.ok(
-    occurrences.length >= 2,
-    "主动登出和 401 过期两条路径都要清快照"
-  );
-});
-
-test("同一服务器更换登录主体或 canonical account 时先清除旧账号快照", () => {
-  const providerSource = readFileSync(
-    join(repoRoot, "src", "api", "AuthSessionProvider.tsx"),
-    "utf8"
-  );
-
-  assert.match(
-    providerSource,
-    /\(user && user\.id !== validation\.data\.user\.id\) \|\|\s*\(accountId && accountId !== identity\.accountId\)[\s\S]*?await clearSnapshots\(\);/u
-  );
 });
