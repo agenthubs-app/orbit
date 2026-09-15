@@ -70,17 +70,22 @@
 **Files:**
 - Modify: `repos/orbit-app/src/screens/notes/NotesScreen.tsx`
 - Modify: `repos/orbit-app/src/screens/notes/NoteDetailScreen.tsx`
+- Modify: `repos/orbit-app/src/screens/notes/NewNoteScreen.tsx`
+- Modify: `repos/orbit-app/src/screens/notes/EditNoteScreen.tsx`
 - Modify: `repos/orbit-app/src/screens/tasks/TasksScreen.tsx`
 - Modify: `repos/orbit-app/src/screens/tasks/TaskDetailScreen.tsx`
 - Modify: `repos/orbit-app/src/screens/schedule/PersonalScheduleList.tsx`
 - Modify: `repos/orbit-app/src/screens/schedule/PersonalScheduleScreen.tsx`
 - Modify only for domain snapshot retirement: `repos/orbit-app/src/data/snapshot-store.ts`
-- Modify direct tests: `repos/orbit-app/tests/notes-list-interactions.test.tsx`, `repos/orbit-app/tests/notes-interactions.test.ts`, `repos/orbit-app/tests/task-list-scope.test.ts`, `repos/orbit-app/tests/task-detail-interactions.test.ts`, `repos/orbit-app/tests/followups-screen-source.test.ts`, `repos/orbit-app/tests/personal-schedule-interactions.test.ts`, `repos/orbit-app/tests/schedule-screen-source.test.ts`, `repos/orbit-app/tests/snapshot-store.test.ts`, plus the existing locale workflow tests for freshness copy
+- Modify for the same narrow API export: `repos/orbit-app/src/data/snapshot-store.web.ts`
+- Modify locale copy: `repos/orbit-app/src/i18n/messages.ts`, `repos/orbit-app/src/i18n/zh.ts`, `repos/orbit-app/src/i18n/ja.ts`, `repos/orbit-app/src/i18n/en.ts`
+- Modify direct tests: `repos/orbit-app/tests/notes-list-interactions.test.tsx`, `repos/orbit-app/tests/notes-interactions.test.ts`, `repos/orbit-app/tests/task-list-scope.test.ts`, `repos/orbit-app/tests/task-detail-interactions.test.ts`, `repos/orbit-app/tests/followups-screen-source.test.ts`, `repos/orbit-app/tests/personal-schedule-interactions.test.ts`, `repos/orbit-app/tests/schedule-screen-source.test.ts`, `repos/orbit-app/tests/snapshot-store.test.ts`, plus new/expanded `TasksScreen` and `PersonalScheduleList` behavior harnesses and the existing locale workflow tests for freshness copy
 
 - [ ] For each domain, first change its interaction/source test to require mirror-first state, visible last-sync/failure semantics and no duplicate GET inside TTL; preserve a focused RED before editing the screen.
 - [ ] Replace only read resource wiring. `/followups` already redirects to `TasksScreen`, so its relationship view derives from mirrored tasks instead of reviving dead `SavedFollowupsList`. Keep existing POST/PATCH/DELETE handlers online and require their current receipts; after successful writes, trigger an immediate delta refresh.
+- [ ] Include note create/edit success paths in that refresh rule: a successful POST/PATCH must publish an immediate delta refresh before the mirror-backed detail is treated as current. Do not add a second fetch or optimistic cloud-canonical record.
 - [ ] In `TaskDetailScreen`, only the primary task record comes from the mirror; `/activities` and reminders stay online and retain their existing error semantics. Contact-embedded note editors remain online in this Sprint; only the listed Notes collection/detail screens switch.
-- [ ] After a completed bootstrap, clear only that domain's legacy snapshot keys. Do not delete `api_snapshots` or alter unrelated consumers.
+- [ ] Add a narrow, identically exported native/Web snapshot-retirement API. After a completed bootstrap, clear only exact snapshot keys proven to have no remaining legacy reader. Shared root keys such as `/api/tasks` and `/api/schedule-items` remain until Schedule/Home/Profile/AI/ContactPipeline consumers migrate; task activities/reminders and every unrelated snapshot are explicitly excluded. Do not change `readSnapshot`, `writeSnapshot`, `clearSnapshots` or `useApiResource` semantics.
 - [ ] Run every listed direct test and App typecheck.
 
 ### Task 4: Cross-client runtime acceptance and delivery

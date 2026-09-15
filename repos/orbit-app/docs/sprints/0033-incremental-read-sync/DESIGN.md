@@ -53,8 +53,9 @@ HTTP 层继续使用项目统一 envelope：成功体是 `{ success: true, data:
 - TTL：前台普通读取 5 分钟内复用 mirror；显式 refresh、失效标记、App 从后台恢复超过 60 秒均绕过 TTL。
 - 同 scope 同一时刻仅一个 sync；订阅者共享结果，最后一个订阅取消只取消尚未发出的下一页，不回滚已提交页。
 - 页面状态区分 `local-ready/syncing/fresh/stale/failure`。有本地数据的网络失败不清空内容；空镜像失败不能变成 empty。
-- 旧 `api_snapshots` 只作为一次兼容首屏，不能转换成 canonical entity rows；域 bootstrap 成功后删除对应路径快照。全 App 迁移完成前不删表。
+- 旧 `api_snapshots` 只作为一次兼容首屏，不能转换成 canonical entity rows。域 bootstrap 成功后只退役已证明无其他 reader 的精确 key；`/api/tasks` 和 `/api/schedule-items` 等仍被未迁移页面共享的 root key 继续保留，task activities/reminders 与其他域快照不受影响。native/Web 必须暴露相同的窄退役 API；全 App 迁移完成前不删表。
 - `/followups` 继续复用 `TasksScreen` 的关系分类视图，不恢复无引用的 `SavedFollowupsList`。`TaskDetailScreen` 只有主 task 从镜像读取，activities 与 reminders 仍走在线资源；联系人内嵌笔记编辑也继续在线。
+- notes/tasks/personal schedule 的现有在线 POST/PATCH/DELETE 回执保持不变；包括笔记新建/编辑在内，一旦成功就触发立即 delta refresh，不再依赖旧集合 GET 把新记录送到镜像详情页。
 
 ## 冲突与失败
 
