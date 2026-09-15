@@ -133,6 +133,36 @@ test("schema v1 creates the sync tables and records encrypted metadata", async (
   );
 });
 
+test("opaque nonblank identifiers are accepted and preserved exactly", async (t) => {
+  const setup = await repository("  actor-a  ");
+  t.after(() => setup.database.close());
+  assert.throws(
+    () =>
+      createLocalSyncRepository({
+        actorId: "   ",
+        database: setup.database,
+      }),
+    /actorId is invalid/,
+  );
+  const opaqueRecord = record({
+    actorId: "  actor-a  ",
+    workspaceId: "  workspace-a  ",
+    id: "  note-a  ",
+    revision: "  opaque server value  ",
+  });
+
+  await setup.repository.putRecord(opaqueRecord);
+
+  assert.deepEqual(
+    await setup.repository.getRecord({
+      workspaceId: "  workspace-a  ",
+      kind: "note",
+      id: "  note-a  ",
+    }),
+    opaqueRecord,
+  );
+});
+
 test("page records and its cursor roll back together when cursor storage fails", async (t) => {
   const setup = await repository();
   t.after(() => setup.database.close());
@@ -263,6 +293,65 @@ test("record and outbox ordering compares timestamp instants across offsets", as
       ({ mutationId }) => mutationId,
     ),
     ["mutation-a", "mutation-z", "mutation-later"],
+  );
+});
+
+test("record and outbox ordering preserves sub-millisecond precision", async (t) => {
+  const setup = await repository();
+  t.after(() => setup.database.close());
+  await setup.repository.applyPage({
+    workspaceId: "workspace-a",
+    records: [
+      record({
+        id: "note-z-later",
+        updatedAt: "2026-09-16T09:00:00.000000001+09:00",
+      }),
+      record({
+        id: "note-a-earlier",
+        updatedAt: "2026-09-16T00:00:00.000000000Z",
+      }),
+    ],
+    cursor: "cursor-nanoseconds",
+    syncedAt: "2026-09-16T00:01:00.000Z",
+    bootstrapState: "complete",
+  });
+  const outboxBase: Omit<LocalSyncOutboxMutation, "mutationId" | "createdAt"> = {
+    actorId: "actor-a",
+    workspaceId: "workspace-a",
+    kind: "task",
+    id: "task-a",
+    operation: "update",
+    patch: { title: "precisely ordered" },
+    baseRevision: "revision-1",
+    retryCount: 0,
+    nextRetryAt: null,
+    lastErrorCode: null,
+  };
+  await setup.repository.enqueueOutboxMutation({
+    ...outboxBase,
+    mutationId: "mutation-z-earlier",
+    createdAt: "2026-09-16T00:00:00.000000000Z",
+  });
+  await setup.repository.enqueueOutboxMutation({
+    ...outboxBase,
+    mutationId: "mutation-a-later",
+    createdAt: "2026-09-16T09:00:00.000000001+09:00",
+  });
+
+  assert.deepEqual(
+    (
+      await setup.repository.listRecords({
+        workspaceId: "workspace-a",
+        kind: "note",
+      })
+    ).map(({ id }) => id),
+    ["note-z-later", "note-a-earlier"],
+  );
+  assert.deepEqual(
+    (await setup.repository.listOutboxMutations("workspace-a")).map(
+      ({ mutationId }) => mutationId,
+    ),
+    ["mutation-z-earlier", "mutation-a-later"],
   );
 });
 
@@ -491,9 +580,9 @@ test("contract identifiers, timestamps, live payloads, and JSON are validated be
     message: RegExp;
   }> = [
     { value: record({ revision: "   " }), message: /revision is invalid/ },
-    { value: record({ id: " note-a" }), message: /id is invalid/ },
+    { value: record({ id: "   " }), message: /id is invalid/ },
     {
-      value: record({ workspaceId: "workspace\u0000a" }),
+      value: record({ workspaceId: "   " }),
       message: /workspaceId is invalid/,
     },
     {

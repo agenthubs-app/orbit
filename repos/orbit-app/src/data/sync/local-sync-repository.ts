@@ -222,11 +222,16 @@ export function createLocalSyncRepository(input: {
         `SELECT workspace_id, kind, record_id, revision, updated_at, deleted_at,
                 payload_json, sync_state, ai_visibility
          FROM sync_records
-         WHERE workspace_id = ? AND kind = ?${deletedPredicate}
-         ORDER BY julianday(updated_at) DESC, record_id ASC`,
+         WHERE workspace_id = ? AND kind = ?${deletedPredicate}`,
         [query.workspaceId, query.kind],
       );
-      return rows.map((row) => recordFromRow(row, actorId));
+      return rows
+        .map((row) => recordFromRow(row, actorId))
+        .sort(
+          (left, right) =>
+            compareSyncTimestamps(right.updatedAt, left.updatedAt) ||
+            compareOpaqueStrings(left.id, right.id),
+        );
     },
 
     async getCursor(workspaceId: string): Promise<LocalSyncCursor | null> {
@@ -290,24 +295,29 @@ export function createLocalSyncRepository(input: {
                 patch_json, base_revision, created_at, retry_count,
                 next_retry_at, last_error_code
          FROM sync_outbox
-         WHERE workspace_id = ?
-         ORDER BY julianday(created_at) ASC, mutation_id ASC`,
+         WHERE workspace_id = ?`,
         [workspaceId],
       );
-      return rows.map((row) => ({
-        actorId,
-        workspaceId: row.workspace_id,
-        mutationId: row.mutation_id,
-        kind: row.kind,
-        id: row.record_id,
-        operation: row.operation,
-        patch: row.patch_json === null ? null : JSON.parse(row.patch_json),
-        baseRevision: row.base_revision,
-        createdAt: row.created_at,
-        retryCount: row.retry_count,
-        nextRetryAt: row.next_retry_at,
-        lastErrorCode: row.last_error_code,
-      }));
+      return rows
+        .map((row) => ({
+          actorId,
+          workspaceId: row.workspace_id,
+          mutationId: row.mutation_id,
+          kind: row.kind,
+          id: row.record_id,
+          operation: row.operation,
+          patch: row.patch_json === null ? null : JSON.parse(row.patch_json),
+          baseRevision: row.base_revision,
+          createdAt: row.created_at,
+          retryCount: row.retry_count,
+          nextRetryAt: row.next_retry_at,
+          lastErrorCode: row.last_error_code,
+        }))
+        .sort(
+          (left, right) =>
+            compareSyncTimestamps(left.createdAt, right.createdAt) ||
+            compareOpaqueStrings(left.mutationId, right.mutationId),
+        );
     },
   };
 }
@@ -436,14 +446,50 @@ function assertNonEmptyString(
   value: unknown,
   field: string,
 ): asserts value is string {
-  if (
-    typeof value !== "string" ||
-    value.length === 0 ||
-    value !== value.trim() ||
-    /[\u0000-\u001f\u007f]/u.test(value)
-  ) {
+  if (typeof value !== "string" || value.trim().length === 0) {
     throw new TypeError(`${field} is invalid`);
   }
+}
+
+function compareSyncTimestamps(left: string, right: string): number {
+  const leftParts = timestampParts(left);
+  const rightParts = timestampParts(right);
+  if (leftParts.wholeSecond !== rightParts.wholeSecond) {
+    return leftParts.wholeSecond < rightParts.wholeSecond ? -1 : 1;
+  }
+  const width = Math.max(
+    leftParts.fraction.length,
+    rightParts.fraction.length,
+  );
+  for (let index = 0; index < width; index += 1) {
+    const leftDigit = leftParts.fraction[index] ?? "0";
+    const rightDigit = rightParts.fraction[index] ?? "0";
+    if (leftDigit !== rightDigit) {
+      return leftDigit < rightDigit ? -1 : 1;
+    }
+  }
+  return 0;
+}
+
+function timestampParts(value: string): {
+  wholeSecond: number;
+  fraction: string;
+} {
+  const fractionMatch = /\.(\d+)(Z|[+-]\d{2}:\d{2})$/u.exec(value);
+  const timestampWithoutFraction = fractionMatch
+    ? `${value.slice(0, fractionMatch.index)}${fractionMatch[2]}`
+    : value;
+  return {
+    wholeSecond: Date.parse(timestampWithoutFraction) / 1_000,
+    fraction: fractionMatch?.[1] ?? "",
+  };
+}
+
+function compareOpaqueStrings(left: string, right: string): number {
+  if (left === right) {
+    return 0;
+  }
+  return left < right ? -1 : 1;
 }
 
 function assertNullableString(
