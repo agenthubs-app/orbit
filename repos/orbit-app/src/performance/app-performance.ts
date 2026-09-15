@@ -216,13 +216,18 @@ export function createAppPerformanceRecorder({
   };
 }
 
+export function formatAppPerformanceLog(sample: AppPerformanceSample): string {
+  assertSample(sample);
+  return `ORBIT_PERF ${JSON.stringify(sample)}`;
+}
+
 const PRODUCTION_ENABLED =
   process.env.EXPO_PUBLIC_ORBIT_PERFORMANCE_RUN === "1";
 const productionRecorder = PRODUCTION_ENABLED
   ? createAppPerformanceRecorder({
       enabled: true,
       now: () => globalThis.performance.now(),
-      sink: (sample) => console.info(`ORBIT_PERF ${JSON.stringify(sample)}`),
+      sink: (sample) => console.error(formatAppPerformanceLog(sample)),
     })
   : null;
 

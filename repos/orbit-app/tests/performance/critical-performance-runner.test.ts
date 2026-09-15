@@ -2,9 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  APP_PERFORMANCE_COHORTS,
   APP_PERFORMANCE_SCENARIOS,
   buildAppRunPlan,
   parseAppPerformanceLogLine,
+  simulatorLogPredicate,
+  simulatorProcessIdentifier,
   validateAppMeasurementSamples,
   validateSimulatorTarget,
 } from "../../scripts/measure-critical-performance.mjs";
@@ -22,10 +25,27 @@ test("the Release runner plans exactly three warmups and ten formal read-only ru
     "app.profile",
   ]);
 
+  assert.deepEqual(
+    APP_PERFORMANCE_COHORTS.map(({ metric, scenario }) => [scenario, metric]),
+    [
+      ["app.startup", "app.startup"],
+      ["app.auth_restore", "app.auth_restore"],
+      ["app.notes", "app.resource"],
+      ["app.notes", "app.snapshot"],
+      ["app.inbox", "app.resource"],
+      ["app.inbox", "app.snapshot"],
+      ["app.schedule", "app.resource"],
+      ["app.schedule", "app.snapshot"],
+      ["app.profile", "app.resource"],
+      ["app.profile", "app.snapshot"],
+    ],
+  );
+
   const plan = buildAppRunPlan({ buildSha: SHA, udid: UDID });
-  assert.equal(plan.length, 6 * 13);
-  for (const scenario of APP_PERFORMANCE_SCENARIOS) {
-    const runs = plan.filter((run) => run.scenario === scenario.scenario);
+  assert.equal(plan.length, APP_PERFORMANCE_COHORTS.length * 13);
+  for (const cohort of APP_PERFORMANCE_COHORTS) {
+    const runs = plan.filter((run) =>
+      run.scenario === cohort.scenario && run.metric === cohort.metric);
     assert.deepEqual(runs.map(({ phase }) => phase), [
       "warmup", "warmup", "warmup",
       "formal", "formal", "formal", "formal", "formal",
@@ -89,8 +109,18 @@ test("only exact redacted ORBIT_PERF samples from the measured build are accepte
   );
 });
 
+test("collects only the current Simulator process from unified logging", () => {
+  assert.equal(simulatorProcessIdentifier("app.agenthubs.orbit: 37952\n"), 37952);
+  assert.throws(() => simulatorProcessIdentifier("launch failed"), /process identifier/);
+  assert.equal(
+    simulatorLogPredicate(37952),
+    'processIdentifier == 37952 AND eventMessage CONTAINS "ORBIT_PERF"',
+  );
+  assert.throws(() => simulatorLogPredicate(-1), /process identifier/);
+});
+
 test("formal output requires exactly ten runs for every scenario and retains failures", () => {
-  const samples = APP_PERFORMANCE_SCENARIOS.flatMap(({ metric, scenario }) =>
+  const samples = APP_PERFORMANCE_COHORTS.flatMap(({ metric, scenario }) =>
     Array.from({ length: 10 }, (_, index) => ({
       commit: SHA,
       durationMs: index + 1,

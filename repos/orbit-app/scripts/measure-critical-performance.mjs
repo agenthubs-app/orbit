@@ -1,9 +1,7 @@
 #!/usr/bin/env node
 
 import { execFile, execFileSync } from "node:child_process";
-import { readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
@@ -32,12 +30,20 @@ export const APP_PERFORMANCE_SCENARIOS = Object.freeze([
   Object.freeze({ metric: "app.resource", route: "orbit://profile", scenario: "app.profile" }),
 ]);
 
+export const APP_PERFORMANCE_COHORTS = Object.freeze([
+  ...APP_PERFORMANCE_SCENARIOS.slice(0, 2),
+  ...APP_PERFORMANCE_SCENARIOS.slice(2).flatMap((definition) => [
+    definition,
+    Object.freeze({ ...definition, metric: "app.snapshot" }),
+  ]),
+]);
+
 const SCENARIO_NAMES = new Set(APP_PERFORMANCE_SCENARIOS.map(({ scenario }) => scenario));
 
 export function buildAppRunPlan({ buildSha, udid }) {
   if (!/^[a-f0-9]{40}$/u.test(buildSha)) throw new Error("The measured build SHA must be a full lowercase Git SHA.");
   if (!udid?.trim()) throw new Error("A Simulator UDID is required.");
-  return APP_PERFORMANCE_SCENARIOS.flatMap((definition) =>
+  return APP_PERFORMANCE_COHORTS.flatMap((definition) =>
     Array.from({ length: 13 }, (_, index) => {
       const phase = index < 3 ? "warmup" : "formal";
       return Object.freeze({
@@ -89,19 +95,35 @@ export function parseAppPerformanceLogLine(line, expectedBuildSha) {
   return value;
 }
 
+export function simulatorProcessIdentifier(output) {
+  const match = /:\s*(\d+)\s*$/u.exec(output);
+  const processIdentifier = Number(match?.[1]);
+  if (!Number.isInteger(processIdentifier) || processIdentifier <= 0) {
+    throw new Error("Simulator launch did not return a valid process identifier.");
+  }
+  return processIdentifier;
+}
+
+export function simulatorLogPredicate(processIdentifier) {
+  if (!Number.isInteger(processIdentifier) || processIdentifier <= 0) {
+    throw new Error("Simulator log collection requires a valid process identifier.");
+  }
+  return `processIdentifier == ${processIdentifier} AND eventMessage CONTAINS "ORBIT_PERF"`;
+}
+
 export function validateAppMeasurementSamples(samples, expectedBuildSha) {
   for (const sample of samples) {
     assertExactSample(sample);
     if (sample.commit !== expectedBuildSha) throw new Error("The App performance sample build SHA differs from the measured build SHA.");
   }
-  for (const { metric, scenario } of APP_PERFORMANCE_SCENARIOS) {
-    const cohort = samples.filter((sample) => sample.scenario === scenario);
+  for (const { metric, scenario } of APP_PERFORMANCE_COHORTS) {
+    const cohort = samples.filter((sample) =>
+      sample.scenario === scenario && sample.metric === metric);
     if (cohort.length !== 10) throw new Error(`${scenario} requires exactly ten formal samples.`);
-    if (cohort.some((sample) => sample.metric !== metric)) throw new Error(`${scenario} contains an unexpected metric.`);
     const runs = cohort.map(({ run }) => run).sort((left, right) => left - right);
-    if (runs.some((run, index) => run !== index + 1)) throw new Error(`${scenario} requires formal run numbers 1 through 10.`);
+    if (runs.some((run, index) => run !== index + 1)) throw new Error(`${scenario}/${metric} requires formal run numbers 1 through 10.`);
   }
-  if (samples.length !== APP_PERFORMANCE_SCENARIOS.length * 10) {
+  if (samples.length !== APP_PERFORMANCE_COHORTS.length * 10) {
     const unexpected = samples.find((sample) => !SCENARIO_NAMES.has(sample.scenario));
     if (unexpected) throw new Error(`App performance output has an unexpected scenario ${String(unexpected.scenario)}.`);
     throw new Error("App performance output contains unexpected samples.");
@@ -129,37 +151,36 @@ function simulatorTarget(udid) {
   return lines.filter(Boolean).map((line) => JSON.parse(line)).find((target) => target.udid === udid) ?? null;
 }
 
-async function waitForSample(logPath, expectedBuildSha, expectedMetric, expectedScenario, timeoutMs = 30_000) {
+async function waitForSample(udid, processIdentifier, expectedBuildSha, expectedMetric, expectedScenario, timeoutMs = 30_000) {
   const startedAt = performance.now();
   while (performance.now() - startedAt < timeoutMs) {
-    let contents = "";
-    try {
-      contents = await readFile(logPath, "utf8");
-    } catch (error) {
-      if (error?.code !== "ENOENT") throw error;
-    }
+    const { stdout: contents } = await execFileAsync("xcrun", [
+      "simctl", "spawn", udid, "log", "show", "--last", "1m", "--style", "compact",
+      "--predicate", simulatorLogPredicate(processIdentifier),
+    ]);
     for (const line of contents.split("\n")) {
       const sample = parseAppPerformanceLogLine(line, expectedBuildSha);
       if (sample?.metric === expectedMetric && sample.scenario === expectedScenario) return sample;
     }
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }
   throw new Error(`Timed out waiting for ${expectedMetric}/${expectedScenario}.`);
 }
 
 async function executeRun(item) {
-  const logPath = join(tmpdir(), `orbit-sprint31-${item.scenario.replaceAll(".", "-")}-${item.phase}-${item.run}.log`);
-  await rm(logPath, { force: true });
   await execFileAsync("xcrun", ["simctl", "terminate", item.udid, BUNDLE_IDENTIFIER]).catch(() => undefined);
-  await execFileAsync("xcrun", [
-    "simctl", "launch", `--stdout=${logPath}`, `--stderr=${logPath}`,
-    item.udid, BUNDLE_IDENTIFIER,
-  ]);
+  const launched = await execFileAsync("xcrun", ["simctl", "launch", item.udid, BUNDLE_IDENTIFIER]);
+  const processIdentifier = simulatorProcessIdentifier(launched.stdout);
   if (item.scenario !== "app.startup" && item.scenario !== "app.auth_restore") {
     await execFileAsync("xcrun", ["simctl", "openurl", item.udid, item.actions[2].value]);
   }
-  const sample = await waitForSample(logPath, item.buildSha, item.metric, item.scenario);
-  await rm(logPath, { force: true });
+  const sample = await waitForSample(
+    item.udid,
+    processIdentifier,
+    item.buildSha,
+    item.metric,
+    item.scenario,
+  );
   return { ...sample, run: item.run };
 }
 

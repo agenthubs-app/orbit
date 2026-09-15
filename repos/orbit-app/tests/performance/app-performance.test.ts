@@ -5,6 +5,7 @@ import {
   appPerformanceInput,
   appPerformanceScenarioForPath,
   createAppPerformanceRecorder,
+  formatAppPerformanceLog,
   isAppPerformanceEnabled,
   type AppPerformanceInput,
 } from "../../src/performance/app-performance";
@@ -147,6 +148,11 @@ test("emits each validated sample to an injected redaction-safe sink", () => {
   assert.deepEqual(emitted, [
     { ...INPUT, durationMs: 3, failed: false },
   ]);
+});
+
+test("formats a single redacted sample for the native Release log collector", () => {
+  const sample = { ...INPUT, durationMs: 3, failed: false };
+  assert.equal(formatAppPerformanceLog(sample), `ORBIT_PERF ${JSON.stringify(sample)}`);
 });
 
 test("does not let a measurement sink failure affect app behavior", () => {
