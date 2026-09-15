@@ -125,3 +125,46 @@ test("conditional cleanup only deletes the rejected session and serializes again
   assert.equal(await clearIfMatches(baseUrl, "attempt-B"), true);
   assert.equal(await storage.read(baseUrl), null);
 });
+
+test("failed clear waits for its delayed sibling deletion before releasing a newer write", async () => {
+  const legacy = new MemoryStorage();
+  const secure = new MemoryStorage();
+  const storage = createAuthSessionStorage({ legacy, secure });
+  await storage.write(baseUrl, "old-attempt");
+
+  let releaseDelete!: () => void;
+  let enterDelete!: () => void;
+  let finishDelete!: () => void;
+  const gate = new Promise<void>(resolve => { releaseDelete = resolve; });
+  const entered = new Promise<void>(resolve => { enterDelete = resolve; });
+  const deleted = new Promise<void>(resolve => { finishDelete = resolve; });
+  secure.delete = async key => {
+    enterDelete();
+    await gate;
+    secure.values.delete(key);
+    finishDelete();
+  };
+  const failure = new Error("legacy deletion failed");
+  let deleteCalls = 0;
+  legacy.delete = async key => {
+    if (++deleteCalls === 1) throw failure;
+    legacy.values.delete(key);
+  };
+  let clearSettled = false;
+  let writeSettled = false;
+  let clearFailure: unknown;
+  const clearing = storage.clear(baseUrl).then(
+    () => { clearSettled = true; },
+    error => { clearSettled = true; clearFailure = error; },
+  );
+  await entered;
+  const writing = storage.write(baseUrl, "new-attempt").then(() => { writeSettled = true; });
+  await new Promise<void>(resolve => setImmediate(resolve));
+  const beforeRelease = { clearSettled, writeSettled };
+  releaseDelete();
+  await Promise.all([clearing, writing, deleted]);
+
+  assert.equal(await storage.read(baseUrl), "new-attempt");
+  assert.deepEqual(beforeRelease, { clearSettled: false, writeSettled: false });
+  assert.equal(clearFailure, failure, "clear must retain its original rejection after both deletions settle");
+});

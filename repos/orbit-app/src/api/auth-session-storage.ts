@@ -47,10 +47,19 @@ export function createAuthSessionStorage({
 
   return {
     async clear(baseUrl) {
-      await serialize(() => Promise.all([
-        secure.delete(secureKey(baseUrl)),
-        legacy.delete(legacyKey(baseUrl))
-      ]));
+      await serialize(async () => {
+        const deletions = [
+          secure.delete(secureKey(baseUrl)),
+          legacy.delete(legacyKey(baseUrl))
+        ];
+        try {
+          await Promise.all(deletions);
+        } catch (error) {
+          // A rejected sibling must not release the queue ahead of a late delete.
+          await Promise.allSettled(deletions);
+          throw error;
+        }
+      });
     },
     clearIfMatches(baseUrl, expectedValue) {
       return serialize(async () => {
