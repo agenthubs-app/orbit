@@ -1,7 +1,11 @@
 import { runEventOperationsMigrations } from "../../features/events/event-operations/storage/migrations";
 import { runRelationshipLifecycleMigrations } from "../../features/connections/lifecycle/migrations";
+import {
+  appendSyncRevisionMigration,
+  runSyncRevisionMigration,
+} from "../../features/sync/migrations";
 
-export const ORBIT_RECORDS_SCHEMA_SQL = `
+const ORBIT_RECORDS_BASE_SCHEMA_SQL = `
 create table if not exists orbit_records (
   workspace_id text not null,
   collection_name text not null,
@@ -45,6 +49,10 @@ create index if not exists orbit_records_search_text_idx
   on orbit_records using gin (to_tsvector('simple', search_text));
 `;
 
+export const ORBIT_RECORDS_SCHEMA_SQL = appendSyncRevisionMigration(
+  ORBIT_RECORDS_BASE_SCHEMA_SQL,
+);
+
 export interface OrbitRecordsMigrationClient {
   query: (text: string) => Promise<unknown>;
 }
@@ -52,7 +60,7 @@ export interface OrbitRecordsMigrationClient {
 export async function runOrbitRecordsMigration(
   client: OrbitRecordsMigrationClient,
 ): Promise<void> {
-  await client.query(ORBIT_RECORDS_SCHEMA_SQL);
+  await runSyncRevisionMigration(client, ORBIT_RECORDS_SCHEMA_SQL);
   await runRelationshipLifecycleMigrations(client);
   await runEventOperationsMigrations(client);
 }
