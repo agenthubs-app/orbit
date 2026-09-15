@@ -40,6 +40,8 @@ build/harness-logs/
 
 原始日志和截图使用已有被忽略的 `build/` 子目录，不改 `.gitignore`、不进产品源码或 Git。运行目录只在对应 Sprint 启动时创建。用户要求的 Planner／报告是可提交文档，集中在 `docs/sprints/`。证据只读留存，不自动清空 `build/` 或迁移旧日志。
 
+2026-09-16 新增[收件箱与自主通知项目计划](NOTIFICATION_PROGRAM.md)：0037 → 0038 → 0039 → 0040，分别交付联系人消息、三类通知、AI有依据的发现、推送与旧流切换。本轮仅编制，不登记虚构run或REPORT。
+
 ## Sprint 登记表
 
 未列入下方运行记录的 Sprint 均为 `run_count = 0`、`report = 未产生`。表中的依赖是进入条件，不声称已满足。0001 接续既有四文件；0002 不依赖0001的功能结果。其余按依赖就绪执行，不以编号大小证明就绪。
@@ -84,6 +86,10 @@ build/harness-logs/
 | [0034](0034-offline-personal-mutations/GOAL.md) | 四类个人数据可离线确认保存、幂等上传并由用户解决冲突 | 同上；AI 只读取已同步云端版本 | 依赖 0033 completed/merged；planned，run_count=0 | planned |
 | [0035](0035-sync-invalidation-recovery/GOAL.md) | 用提供商无关的轻量状态检测加速刷新，并以启动／前台／cursor 修复漏提示 | 同上；兼容本地 PostgreSQL、Supabase、Neon 或其他 PostgreSQL provider | 依赖 0034 completed/merged；供应商选型不阻塞 portable core；planned，run_count=0 | planned |
 | [0036](0036-ai-sync-visibility-acceptance/GOAL.md) | 让 AI 报告四域云端数据新鲜度，完成跨端验收并更新私有 Data Atlas | 数据审查、AI 盲区与同步方案最终收口 | 依赖 0035 completed/merged、同账号 runtime 与已授权 AI provider；planned，run_count=0 | planned |
+| [0037](0037-contact-message-inbox/GOAL.md) | 把联系人消息从通知中独立出来，让用户看到真实对话并可靠收发、回复和同步已读。 | 2026-09-16 已确认的消息/三类通知设计 | 复用已合并通信与身份能力，启动时核实当前基线；本次仅规划，run_count=0 | planned |
+| [0038](0038-typed-notification-inbox/GOAL.md) | 让每条通知明确属于提醒、建议或动态，显示原因和可追溯来源，并让 Web 与 App 操作同一条记录。 | 2026-09-16 已确认的消息/三类通知设计 | 依赖 0037 固定SHA合并及相关验证；本次仅规划，run_count=0 | planned |
+| [0039](0039-evidence-based-notification-discovery/GOAL.md) | 让 AI 从允许使用的真实信息中自主发现具体动作，有可信时间才提醒，并展示可核查的原文依据。 | 2026-09-16 已确认的消息/三类通知设计 | 依赖 0038 固定SHA合并及相关验证；本次仅规划，run_count=0 | planned |
+| [0040](0040-notification-delivery-cutover/GOAL.md) | 让消息和通知按独立偏好可靠送达，减少重复打扰，并安全替换旧通知数据与旧发送链。 | 2026-09-16 已确认的消息/三类通知设计 | 依赖 0039 固定SHA合并及相关验证；真实Push需有效provider/设备；本次仅规划，run_count=0 | planned |
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
 
