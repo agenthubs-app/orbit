@@ -71,6 +71,46 @@ final result: passed
 
 ---
 
+# Sprint 0028 “我的”页面组 Design QA
+
+## Comparison Target
+
+- Source visual truth: `repos/orbit-app/docs/sprints/0028-profile-page-group-redesign/assets/*.png`
+- Web-rendered comparison: `repos/orbit-app/build/harness-state/evidence/sprint-0028/run-01/web-rendered/`
+- Native implementation: `repos/orbit-app/build/harness-state/evidence/sprint-0028/run-01/native/`
+- Runtime: iPhone 17 Pro Simulator, iOS 26.4, `7df4819a2` source bundle on port 8083
+
+## Eight-screen findings
+
+| Screen | Result | Evidence and accepted differences |
+| --- | --- | --- |
+| Profile overview | passed | `native/profile-overview.png`; real account and statistics states, with recoverable unavailable copy instead of fixture counts. |
+| Settings | passed | `native/settings.png`; real notification, locale, account, privacy, server and sign-out actions only. |
+| Account/workspace | passed | `native/account.png`; canonical single workspace, with no invented members, invitations, creation or role editing. |
+| Edit profile | passed | `native/profile-edit.png`; canonical save, completeness, 80-character bio, two tag groups, more and preview routes. |
+| More profile | passed | `native/profile-more.png`; P1 field density fixed with compact inline rows. Existing email, phone and intro-channel fields remain because the contract supports them. |
+| Tag picker | passed | `native/profile-tags.png`; real candidates and custom values, maximum five, without copying the fixture catalog. |
+| Suggestions | passed | `native/profile-suggestions.png`; real source and decision state, persistent accept/dismiss and partial-failure recovery. |
+| Public preview | passed | `native/profile-preview.png`; private birth date, follow-up window, private handles and provenance excluded; self-preview CTAs disabled. |
+
+## Responsive and accessibility evidence
+
+- The 320pt + fontScale 2 harness verifies reachable content and controls of at least 44pt.
+- Native Accessibility Medium exposed fixed-line-height clipping and three-column navigation overlap. The RED reproduced 22 clipped strings; the shared profile primitives now remove fixed line heights and stack navigation, section metadata, inline fields and preview actions at large text.
+- A cold-start rerun at the large-text setting is captured in `native/profile-preview-large-text-fixed.png`; notice, identity, body, tags and disabled actions all wrap fully.
+- `native/profile-preview-accessibility-fixed.json` exposes the back button, header, complete public text and both preview actions with `enabled=false`.
+- Chinese, Japanese and English main paths, dark harnesses and the eight light native screens were checked. The system must finish Dynamic Type relayout (or cold-start) before a screenshot is treated as final evidence.
+
+## Severity conclusion
+
+- P0: none.
+- P1: all resolved, including More-screen density, preview hierarchy/disabled actions, suggestion hierarchy, fixed Dynamic Type line heights and large-text navigation overlap.
+- P2: accepted product-boundary differences are the existing extra contact fields, live tag/suggestion content, omitted unsupported Settings/Account capabilities, recoverable unavailable statistics, and disabled preview actions.
+
+final result: passed
+
+---
+
 # iOS 行业分布环绕标注方案 1 Design QA
 
 ## Comparison Target
