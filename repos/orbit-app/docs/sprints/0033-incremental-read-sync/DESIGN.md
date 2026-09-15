@@ -83,4 +83,16 @@ mode 0600 并在 finally 清理；优先仅在内存中传递，不落盘。
 缺测试、失败、跳过或清理失败均不得报告通过。最终 REPORT 和运行服务操作等待管理线
 提供集成 SHA 与环境所有权。
 
+2026-09-16 第二轮复审补充：不从原工作树执行测试。验证同根目录、精确路径、clean
+状态与同一 HEAD 后，仅从该 SHA 的 `git archive` 生成 mode 0700 自有临时快照；
+拒绝 archive 中不安全路径、symlink/gitlink，校验解包文件与 Git blob 一致，仅为依赖
+建立指向原树 node_modules 的临时 symlink；测试 cwd 必须是快照内两端目录，finally
+删除快照。原树在测试期间变化不得改变执行源码。
+数据库用同一 cluster 的自有唯一 control database（template0、验证 owner/身份后创建）
+与目标库的官方 pg_dump schema-only 输出比较，不再依靠手工业务对象 catalog 清单；
+对象检查固定 `--schema-only --no-owner --no-privileges`，另比较带 privileges 的 dump
+以覆盖 schema/object ACL，并检查数据库/角色设置、数据库/parameter ACL 与 large objects。
+control database 身份和所有权在删除前再次核验，只删除本次确认创建的 control；
+绝不删除或重建传入的目标库。快照、dump、控制库或清理任一步失败均不能报告通过。
+
 四域读取页面由规范化镜像提供首屏；Web→App 四域同账号修改通过 delta 到达；每个服务端响应有稳定分页、actor 隔离和 bounded payload；网络失败/无效 cursor/删除均有真实 UI 和恢复证据。

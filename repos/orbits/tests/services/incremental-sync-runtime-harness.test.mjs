@@ -16,10 +16,10 @@ test('database URL requires literal loopback, explicit port/user, dedicated name
 test('read-only preflight verifies actual server, database marker and no user objects before writes', async () => {
   assert.equal(typeof h.probeDatabase, 'function');
   const target = h.databaseTarget(url);
-  const good = { database: target.database, host: '127.0.0.1', port: 5432, marker: 'orbit:sprint-0033:disposable', objects: 0, owner: 'tester', current_user: 'tester' };
-  for (const row of [good, { ...good, database:'production' }, { ...good, host:'10.0.0.1' }, { ...good, port:5433 }, { ...good, marker:null }, { ...good, objects:1 }]) {
+  const good = { database: target.database, host: '127.0.0.1', port: 5432, marker: 'orbit:sprint-0033:disposable', default_acl: true, settings: 0, parameter_acls: 0, large_objects: 0, owner: 'tester', current_user: 'tester' };
+  for (const row of [good, { ...good, database:'production' }, { ...good, host:'10.0.0.1' }, { ...good, port:5433 }, { ...good, marker:null }, { ...good, settings:1 }]) {
     const calls = []; const client = { query:async sql => { calls.push(sql); return { rows:[row] }; } };
-    if (row === good) await h.probeDatabase(client,target); else await assert.rejects(h.probeDatabase(client,target));
+    if (row === good) await h.probeDatabase(client,target,async()=>true); else await assert.rejects(h.probeDatabase(client,target,async()=>true));
     assert.equal(calls[0],'BEGIN READ ONLY'); assert.equal(calls.at(-1),'ROLLBACK');
     assert.ok(calls.every(sql => !/\b(create|insert|update|delete|drop|alter)\b/i.test(sql)));
   }
@@ -142,20 +142,22 @@ test('source identity rejects another Git top-level and a nested App repository 
   } finally { await rm(a.top, { recursive: true, force: true }); await rm(b.top, { recursive: true, force: true }); }
 });
 
-test('database probe checks owner and all user-object catalogs, with explicit system allowlists', async () => {
+test('database probe checks owner and settings/ACL outside the authoritative schema dump', async () => {
   const target = h.databaseTarget(url); let query = '';
-  const good = { database: target.database, host: target.host, port: target.port, marker: 'orbit:sprint-0033:disposable', objects: 0, owner: 'tester', current_user: 'tester' };
+  const good = { database: target.database, host: target.host, port: target.port, marker: 'orbit:sprint-0033:disposable', default_acl: true, settings: 0, parameter_acls: 0, large_objects: 0, owner: 'tester', current_user: 'tester' };
   const client = row => ({query: async sql => { if (sql.startsWith('select')) query = sql; return {rows:[row]}; }});
-  await h.probeDatabase(client(good),target);
-  await assert.rejects(h.probeDatabase(client({...good,current_user:'foreign'}),target));
-  for (const catalog of ['pg_namespace','pg_class','pg_proc','pg_type','pg_extension','pg_operator','pg_opclass','pg_opfamily','pg_collation','pg_conversion','pg_ts_config','pg_ts_dict','pg_ts_parser','pg_ts_template','pg_foreign_server','pg_foreign_data_wrapper','pg_event_trigger','pg_largeobject_metadata','pg_publication','pg_subscription','pg_default_acl']) assert.ok(query.includes(catalog), catalog);
+  await h.probeDatabase(client(good),target,async()=>true);
+  await assert.rejects(h.probeDatabase(client({...good,current_user:'foreign'}),target,async()=>true));
+  for (const catalog of ['pg_db_role_setting','pg_parameter_acl','pg_largeobject_metadata']) assert.ok(query.includes(catalog), catalog);
+  await assert.rejects(h.probeDatabase(client(good),target,async()=>false));
+  await assert.rejects(h.probeDatabase(client(good),target));
   assert.ok(query.includes('pg_get_userbyid')); assert.ok(query.includes('current_user'));
   assert.doesNotMatch(query,/not like 'pg_%'/i);
 });
 
 test('real disposable PostgreSQL rejects enum/domain residues in preflight and cleanup and rejects non-owner', async () => {
   const { Client } = await import('pg'); const { createServer } = await import('node:net');
-  const dir = await mkdtemp(join(tmpdir(), 'sync-probe-pg-')); let running = false; let owner; let foreign;
+  const dir = await mkdtemp(join(tmpdir(), 'sync-probe-pg-')); let running = false; let owner; let foreign; let probe;
   const env = h.childEnvironment(process.env);
   const command = (name, args) => { const r = spawnSync(name, args, { env, encoding:'utf8', timeout:15000 }); assert.equal(r.status,0,'owned PostgreSQL command failed'); };
   try {
@@ -166,23 +168,97 @@ test('real disposable PostgreSQL rejects enum/domain residues in preflight and c
     owner=new Client(options);await owner.connect();await owner.query('create database orbit_sync_acceptance_probe');await owner.end();
     const target={...options,database:'orbit_sync_acceptance_probe'};owner=new Client(target);await owner.connect();
     await owner.query("comment on database orbit_sync_acceptance_probe is 'orbit:sprint-0033:disposable'");
-    await h.probeDatabase(owner,target);
+    probe=h.createDatabaseProbe(owner,target);await probe.initialize();await probe.probe();
     const checks=[];
-    for(const [create,drop] of [["create type public.probe_enum as enum ('one')",'drop type public.probe_enum'],['create domain public.probe_domain as integer','drop domain public.probe_domain']]) {
+    for(const [create,drop] of [["create type public.probe_enum as enum ('one')",'drop type public.probe_enum'],['create domain public.probe_domain as integer','drop domain public.probe_domain'],['create access method probe_am type table handler heap_tableam_handler','drop access method probe_am'],["alter database orbit_sync_acceptance_probe set work_mem = '8MB'",'alter database orbit_sync_acceptance_probe reset all']]) {
       await owner.query(create);
-      let rejected=false;try{await h.probeDatabase(owner,target);}catch{rejected=true;}checks.push(rejected);
+      let rejected=false;try{await probe.probe();}catch{rejected=true;}checks.push(rejected);
       await owner.query(drop);
       let writes=0;
-      const evidence=await h.executeAcceptance({prepare:async()=>({databaseHash:'a'.repeat(64),sourceHash:'b'.repeat(64)}),probe:()=>h.probeDatabase(owner,target),run:async()=>{if(++writes===1)await owner.query(create);return {passed:1,failed:0,skipped:0,pass:true};},close:async()=>{}});
+      const evidence=await h.executeAcceptance({prepare:async()=>({databaseHash:'a'.repeat(64),sourceHash:'b'.repeat(64)}),probe:()=>probe.probe(),run:async()=>{if(++writes===1)await owner.query(create);return {passed:1,failed:0,skipped:0,pass:true};},close:async()=>{}});
       checks.push(evidence.cleanupPassed===false&&evidence.pass===false);
       await owner.query(drop);
     }
     await owner.query('create role acceptance_reader login');
     foreign=new Client({...target,user:'acceptance_reader'});await foreign.connect();
-    let rejected=false;try{await h.probeDatabase(foreign,{...target,user:'acceptance_reader'});}catch{rejected=true;}checks.push(rejected);
-    await h.probeDatabase(owner,target);
-    assert.deepEqual(checks,[true,true,true,true,true]);
+    let rejected=false;try{await h.createDatabaseProbe(foreign,{...target,user:'acceptance_reader'}).initialize();}catch{rejected=true;}checks.push(rejected);
+    await probe.probe();
+    const controls = async () => (await owner.query("select datname from pg_database where datname like 'orbit_sync_acceptance_control_%'")).rows;
+    const controlCount = (await controls()).length;
+    const failedDump = h.createDatabaseProbe(owner,target,{dump:async()=>{throw Error('dump failed');}});
+    const dumpEvidence = await h.executeAcceptance({prepare:async()=>{await failedDump.initialize();return {databaseHash:'a'.repeat(64),sourceHash:'b'.repeat(64)};},probe:()=>failedDump.probe(),run:async()=>{throw Error('must not run');},close:()=>failedDump.close()});
+    assert.equal(dumpEvidence.pass,false);assert.equal(dumpEvidence.cleanupPassed,true);assert.equal((await controls()).length,controlCount);
+    let drops=0;
+    const failedDrop = h.createDatabaseProbe(owner,target,{drop:async sql=>{if(++drops===1)throw Error('drop failed');return owner.query(sql);}});
+    const dropEvidence=await h.executeAcceptance({prepare:async()=>{await failedDrop.initialize();return {databaseHash:'a'.repeat(64),sourceHash:'b'.repeat(64)};},probe:()=>failedDrop.probe(),run:async()=>({passed:1,failed:0,skipped:0,pass:true}),close:()=>failedDrop.close()});
+    assert.equal(dropEvidence.pass,false);assert.equal(dropEvidence.cleanupPassed,false);assert.equal((await controls()).length,controlCount+1);
+    await failedDrop.close();assert.equal((await controls()).length,controlCount);
+    assert.equal((await owner.query('select current_database() as name')).rows[0].name,target.database);
+    let aclWrites=0;
+    const aclEvidence=await h.executeAcceptance({prepare:async()=>({databaseHash:'a'.repeat(64),sourceHash:'b'.repeat(64)}),probe:()=>probe.probe(),run:async()=>{if(++aclWrites===1)await owner.query('revoke connect on database orbit_sync_acceptance_probe from public');return {passed:1,failed:0,skipped:0,pass:true};},close:async()=>{}});
+    assert.equal(aclEvidence.cleanupPassed,false);assert.equal(aclEvidence.pass,false);
+    let aclRejected=false;try{await probe.probe();}catch{aclRejected=true;}checks.push(aclRejected);
+    assert.deepEqual(checks,Array(10).fill(true));
   } finally {
-    try{if(foreign)await foreign.end();}finally{try{if(owner)await owner.end();}finally{try{if(running)command('pg_ctl',['-D',join(dir,'data'),'-m','immediate','-w','stop']);}finally{await rm(dir,{recursive:true,force:true});}}}
+    try{if(probe)await probe.close();}finally{try{if(foreign)await foreign.end();}finally{try{if(owner)await owner.end();}finally{try{if(running)command('pg_ctl',['-D',join(dir,'data'),'-m','immediate','-w','stop']);}finally{await rm(dir,{recursive:true,force:true});}}}}
   }
+});
+
+test('archive snapshot uses committed bytes and snapshot cwd despite original web/app dirty then restore', async () => {
+  assert.equal(typeof h.createSourceSnapshot,'function');
+  const f=await gitFixture(); let snapshot;
+  try {
+    await writeFile(join(f.top,'.gitignore'),'node_modules/\n');
+    const phase = `import {readFileSync} from 'node:fs'; if(readFileSync('tracked','utf8')!=='original')process.exit(7); process.stdout.write(${JSON.stringify(tap())});`;
+    await writeFile(join(f.web,'phase.mjs'),phase);await writeFile(join(f.app,'phase.mjs'),phase);
+    f.git(['add','.']);f.git(['commit','-qm','ignore dependencies']);
+    await mkdir(join(f.web,'node_modules'));await mkdir(join(f.app,'node_modules'));
+    snapshot=h.createSourceSnapshot(f.web,f.app);const identity=await snapshot.prepare();
+    const {readFile,stat}=await import('node:fs/promises');const {createHash}=await import('node:crypto');
+    assert.equal(identity.sourceHash,createHash('sha256').update(f.git(['rev-parse','HEAD'])).digest('hex'));
+    assert.equal((await stat(snapshot.directory)).mode & 0o777,0o700);
+    for(const [name,root] of [['web',f.web],['app',f.app]]) {
+      await writeFile(join(root,'tracked'),'changed during phase');
+      await writeFile(join(root,'phase.mjs'),'process.exit(9);');
+      const executed=await snapshot.run(name,['phase.mjs'],h.childEnvironment(process.env));
+      assert.equal(executed.pass,true);assert.match(executed.cwdHash,/^[a-f0-9]{64}$/);
+      await snapshot.run(name,[],{},async (_exe,_args,options)=>{
+        assert.notEqual(options.cwd,root);assert.equal(options.cwd,name==='web'?snapshot.webRoot:snapshot.appRoot);
+        assert.equal(await readFile(join(options.cwd,'tracked'),'utf8'),f.git(['show',`HEAD:repos/${name==='web'?'orbits':'orbit-app'}/tracked`]));
+        return {passed:1,failed:0,skipped:0,pass:true};
+      });
+      await writeFile(join(root,'tracked'),'original');
+      await writeFile(join(root,'phase.mjs'),phase);
+    }
+    const directory=snapshot.directory;await snapshot.close();await assert.rejects(stat(directory));
+  }finally{if(snapshot)await snapshot.close();await rm(f.top,{recursive:true,force:true});}
+});
+
+test('archive, extraction, dependency-link and snapshot cleanup failures remain fail-closed',async()=>{
+  assert.equal(typeof h.createSourceSnapshot,'function');
+  const f=await gitFixture();
+  try{
+    await writeFile(join(f.top,'.gitignore'),'node_modules/\n');f.git(['add','.']);f.git(['commit','-qm','dependencies']);
+    await mkdir(join(f.web,'node_modules'));await mkdir(join(f.app,'node_modules'));
+    for(const stage of ['archive','extract','link','remove']) {
+      const snapshot=h.createSourceSnapshot(f.web,f.app,{[stage]:async()=>{throw Error('injected');}});
+      const evidence=await h.executeAcceptance({prepare:async()=>({...await snapshot.prepare(),databaseHash:'a'.repeat(64)}),probe:async()=>{},run:async()=>({passed:1,failed:0,skipped:0,pass:true}),close:()=>snapshot.close()});
+      assert.equal(evidence.pass,false);if(stage==='remove')assert.equal(evidence.cleanupPassed,false);
+      if(snapshot.directory)await rm(snapshot.directory,{recursive:true,force:true});
+    }
+  }finally{await rm(f.top,{recursive:true,force:true});}
+});
+
+test('snapshot rejects unsafe tree paths and tracked symlinks before archive extraction',async()=>{
+  assert.equal(typeof h.validateArchiveTree,'function');
+  for(const path of ['/absolute','repos/orbits/../escape','repos/orbits/a\\b','repos/orbits/node_modules/pkg','repos/orbits/.git/config','other/file'])assert.throws(()=>h.validateArchiveTree(`100644 blob ${'a'.repeat(40)}\t${path}\0`));
+  assert.throws(()=>h.validateArchiveTree(`120000 blob ${'a'.repeat(40)}\trepos/orbits/link\0`));
+  const valid=h.validateArchiveTree(`100644 blob ${'a'.repeat(40)}\trepos/orbits/file\0`);assert.equal(valid.length,1);
+});
+
+test('dump normalization removes only random restrict keys and preserves extra DDL and ACL',()=>{
+  const base='-- PostgreSQL database dump\n\\restrict abc123\nCREATE SCHEMA public;\n\\unrestrict abc123\n-- PostgreSQL database dump complete\n';
+  assert.equal(h.normalizeSchemaDump(base),h.normalizeSchemaDump(base.replaceAll('abc123','xyz456')));
+  for(const ddl of ['CREATE ACCESS METHOD custom TYPE TABLE HANDLER heap_tableam_handler;','CREATE TYPE custom AS ENUM (\'x\');','GRANT USAGE ON SCHEMA public TO PUBLIC;'])assert.notEqual(h.normalizeSchemaDump(base),h.normalizeSchemaDump(base+ddl));
+  assert.throws(()=>h.normalizeSchemaDump('partial output'));
 });
