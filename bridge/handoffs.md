@@ -18,8 +18,8 @@
 | BR-006 | P1 | Web 发布门槛与 App 公网依赖 | blocked | Web 发布负责人 | 记录解除 1C 的证据及部署版本，完成同环境 iOS 访问验证 |
 | BR-007 | P2 | 文档描述落后于代码 | identified | Bridge + 各端文档负责人 | README/契约迁移表与实际已发布能力一致；保留历史记录 |
 | BR-008 | P2 | App 未提交界面工作交接 | identified | App 负责人 | 提供最终文件/版本/验收范围，刷新 bridge 基线 |
-| [BR-009](2026-09-15-notes-core.md) | P1 | 独立私有笔记核心 | consumer_ready | Bridge 验证 | 同环境完成 Web/App 双向读写、刷新、版本冲突与原生设备验证 |
-| [BR-010](2026-09-15-note-suggestions.md) | P1 | 笔记来源待办建议 | consumer_ready | Bridge 验证 | 同环境完成建议接受的双向回读、来源版本核对与原生设备验证 |
+| [BR-009](2026-09-15-notes-core.md) | P1 | 独立私有笔记核心 | verified | 已关闭 | 同环境双向读写、刷新、版本冲突、actor 隔离与原生 App 已于 2026-09-15 验证 |
+| [BR-010](2026-09-15-note-suggestions.md) | P1 | 笔记来源待办建议 | verified | 已关闭 | 同环境建议接受、幂等、来源版本、日期确认与原生 App 已于 2026-09-15 验证 |
 
 ## BR-001 — Today
 
