@@ -67,6 +67,8 @@ Visibility manifest 共登记 13 个 source：原有 5 个读取工具、4 个�
 
 当前环境没有数据库 URL、Auth.js secret 或可登录测试账号，也没有授权 calendar provider 连接。宿主存在 DeepSeek key，但它不是 calendar provider；本轮测试与构建均显式清空模型 key。因认证边界正确返回 401，不能绕过身份去制造“真实账号/provider 已验证”的证据。
 
+固定最终 SHA `f5bded060` 已由 merge commit `6f5f141ed` 合并到 `chat-agent`。精确合并树新增测试 8/8、Web/App typecheck 和 Web production build 通过；旧 3000 进程已由当前主线产物替换，`GET /api/health` 返回 200、`live/ok`。该收口证明代码与本地运行时已集成，不代替下列真实环境验收。
+
 未完成的外部验收只有：
 
 1. 在审阅真实 dry-run 行数后，以 receipt/idempotency key 执行 schedule migration apply。

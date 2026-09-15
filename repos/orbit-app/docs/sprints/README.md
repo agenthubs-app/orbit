@@ -75,7 +75,7 @@ build/harness-logs/
 | [0025](0025-notes-ink-signal-search/GOAL.md) | 按最新 4a 重做笔记列表、编辑、详情与联系人笔记页签，用加号和输入搜索关联人脉，不平铺联系人全集 | 2026-09-15 新增；承接 R-13／0018／0019 | run-01 已完成；五项 SC、同账号 Web↔App、Web／iOS 构建与有界搜索均通过；见 [REPORT](0025-notes-ink-signal-search/REPORT.md) | completed |
 | [0026](0026-canonical-app-account-identity/GOAL.md) | 统一 App 登录主体与业务账号身份，让待办、个人日程和笔记正确读取 canonical owner | 用户批准追加 C 线 Sprint；承接现有 `/api/account/me` | run-01 completed；功能 `f5f595df4`、邀请补漏 `3385369dd`；见 [REPORT](0026-canonical-app-account-identity/REPORT.md) | completed |
 | [0027](0027-open-schedule-meeting-details/GOAL.md) | 让四类日程进入对应详情，并按来源安全添加、编辑或清空会议说明 | 用户批准追加 C 线 Sprint；承接 appointment 聚合与 0026 canonical actor | run-01 completed；功能 `3ca1f5936`、旧日程兼容 `0cbc45ffa`；见 [REPORT](0027-open-schedule-meeting-details/REPORT.md) | completed |
-| [0028](0028-profile-page-group-redesign/GOAL.md) | 按最新八屏设计重做“我的”、设置、账号与完整资料编辑流程，保持真实数据、隐私和跨端一致 | 用户提供 `软件UI设计现代化 (5).zip` 并指定 D 线实现 | 固定最终 SHA `d37d6545d`；本线实现、提交与本地验收完成，等待 `chat-agent` 精确合并树复验，见 [REPORT](0028-profile-page-group-redesign/REPORT.md) | running |
+| [0028](0028-profile-page-group-redesign/GOAL.md) | 按最新八屏设计重做“我的”、设置、账号与完整资料编辑流程，保持真实数据、隐私和跨端一致 | 用户提供 `软件UI设计现代化 (5).zip` 并指定 D 线实现 | 固定最终 SHA `d37d6545d` 已由 `314aedd7c` 合并；主线目标 237/237、全量 2860/2860、typecheck、iOS build、Web live health 与 Simulator 安装启动通过，见 [REPORT](0028-profile-page-group-redesign/REPORT.md) | completed |
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
 
@@ -107,7 +107,7 @@ build/harness-logs/
 
 - 用户提供 `/Users/xzhao/Downloads/软件UI设计现代化 (5).zip`，指定把新的“我的”页面组写成 Sprint 后交由 D 线实现。压缩包只作为设计资料，不执行其中脚本或说明。
 - 0028 采用八张目标图：“我的”、设置、账号与工作区、编辑资料、更多资料、选择标签、资料建议复核、资料预览。其余 32 张图不属于本 Sprint；来源、哈希、字段兼容和不伪造功能规则见[设计参考](0028-profile-page-group-redesign/DESIGN.md)。
-- 0027 已由用户分配给 C 线的日程详情任务，故本任务使用下一个编号 0028。D 线已完成实现提交 `6dd44b94a`；App 全量与 PostgreSQL 定向验证通过，最终原生运行证据与 REPORT 仍在收口，不能提前标记 completed。
+- 0027 已由用户分配给 C 线的日程详情任务，故本任务使用下一个编号 0028。D 线固定最终 SHA `d37d6545d` 已由主线 merge commit `314aedd7c` 合并并完成精确合并树验证，Sprint 现为 completed。
 
 ## 运行记录
 

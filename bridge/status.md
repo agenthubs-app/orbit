@@ -4,19 +4,20 @@
 
 - Web/API 与共享 contract 扩展资料语言、LinkedIn／X、稳定标签上限和 actor-scoped 建议 dismiss；profile CAS、receipt 与序列化重试在隔离 PostgreSQL 14/14 通过。
 - App 把资料编辑拆成五个共享 session 的 private route，并按八图重做“我的”、设置、账号；公共预览统一排除生日、跟进节奏、私密 handles 和 provenance，本人 CTA disabled。
-- 当前 production Web/API、同账号浏览器 session 与 iPhone 17 Pro Simulator 完成 Web→App、App→Web、409 和另一 actor 隔离；八屏、Dynamic Type 冷启动与 VoiceOver tree 通过。D 分支已提交并进入待集成状态；Sprint 0028 在协调者合并 `chat-agent` 并验证精确合并树前保持 `running`，详见 [BR-022](handoffs.md#br-022--我的页面组资料编辑与公开投影)和 [REPORT](../repos/orbit-app/docs/sprints/0028-profile-page-group-redesign/REPORT.md)。
+- 当前 production Web/API、同账号浏览器 session 与 iPhone 17 Pro Simulator 完成 Web→App、App→Web、409 和另一 actor 隔离；八屏、Dynamic Type 冷启动与 VoiceOver tree 通过。固定 D SHA 已由 `314aedd7c` 合并到 `chat-agent`；主线目标 237/237、App 全量 2860/2860、typecheck、iOS build、Web live health 与两台 Simulator 安装启动通过，Sprint 0028 已完成。详见 [BR-022](handoffs.md#br-022--我的页面组资料编辑与公开投影)和 [REPORT](../repos/orbit-app/docs/sprints/0028-profile-page-group-redesign/REPORT.md)。
 
 ## 2026-09-15 C 线 0027 日程详情增量
 
 - C 线独立分支 `codex/c-line-sprint-0027` 以 `3ca1f5936` 接通四类日程目的地和 appointment 参会人共享会议说明，并以 `0cbc45ffa` 修复当前旧 schedule meeting 被当成 appointment 后 404 的运行时问题；旧会议说明明确为当前账号私有。
 - Web 预约／legacy 回归 25/25、PostgreSQL 并发／幂等 1/1、App 日程组合 90/90、两端 typecheck、Web 生产构建和 iOS build 通过。3000 已运行最终生产产物，health 为 `live/ok`。
-- 登录态 Simulator 已逐类打开待办、活动、个人日程和会议，并完成会议新增说明、保存、返回、重开回读和清空恢复。BR-021 为 `verified`，详见 [交接](2026-09-15-schedule-meeting-details.md)与 [Sprint 0027 报告](../repos/orbit-app/docs/sprints/0027-open-schedule-meeting-details/REPORT.md)。该分支尚未合并到 `chat-agent`。
+- 登录态 Simulator 已逐类打开待办、活动、个人日程和会议，并完成会议新增说明、保存、返回、重开回读和清空恢复。BR-021 为 `verified`，功能 `0cbc45ffa` 与关闭记录 `7064f4bae` 均已进入 `chat-agent`。详见 [交接](2026-09-15-schedule-meeting-details.md)与 [Sprint 0027 报告](../repos/orbit-app/docs/sprints/0027-open-schedule-meeting-details/REPORT.md)。
 
 ## 2026-09-15 B 线 0029 数据权威与 AI 只读面
 
 - Web/API 以 `c4a1beef2` 建立 machine-readable authority registry，`8c9e43015` 将日程新写入统一到 `personal_schedule_items`，`5fff469ab` 增加 visibility manifest 与 `notes.query`、`tasks.query`、`followups.query`、`schedule.query` 四个 actor-scoped 只读工具。
 - App/Web 由 `dd28ec473` 把 push device identity 收口到 SecureStore ID 与复数 push-token API；App 同步 `data_query` artifact contract。旧 schedule/push 链只保留分类读取、迁移与撤销窗口。
 - 本地定向、全量、两端 typecheck、Web production build 和独立 iPhone 17 Pro Max / iOS 26.4 安装启动证据见 [BR-023](2026-09-15-data-authority-ai-read-surface.md)。真实账号、数据库 migration apply 与授权 calendar provider 因环境缺失保持开放；本地结果不表示远程部署或生产验收。
+- 固定 B SHA `f5bded060` 已由 `6f5f141ed` 合并到 `chat-agent`；主线新增测试 8/8、两端 typecheck、Web production build 与重启后的 `live/ok` 通过。外部验收缺口不因代码合并而关闭。
 
 ## 2026-09-15 C 线 0026 canonical 身份增量
 

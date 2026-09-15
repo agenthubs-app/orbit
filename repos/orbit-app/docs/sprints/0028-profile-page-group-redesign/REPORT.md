@@ -1,6 +1,6 @@
 # Sprint 0028 / run-01 执行报告
 
-- 状态：`running`（本线实现、提交和本地验收已完成；等待协调者合并到 `chat-agent` 并验证精确合并树）
+- 状态：`completed`（固定 D SHA 已合并到 `chat-agent`，精确合并树验证通过）
 - Generator：D 线 `/root`
 - 开始／结束：2026-09-15 16:20–19:17 JST
 - Planner revision：1；SHA-256 `ffeb99d13b5a3704dd9893fe28fd36687651ce87b7384e11b261df343153dd45`
@@ -57,7 +57,14 @@ App 首次全量暴露 15 项：12 项超时／并行波动在失败文件独立
 - SC-0028-04：pass。单一公开投影、私密字段负断言、disabled CTA、未保存草稿预览、大字号冷启动和 VoiceOver tree 均通过。
 - SC-0028-05：pass。当前生产 Web/API、当前 App build、同账号双向版本回读、409、另一 actor、八屏视觉及最后构建门槛均完成。
 
-上述 SC 是 D 分支固定版本的本地结果。按 `chat-agent@1fd708c7b` 收口规则，它们不能在合并前把 Sprint 状态提升为 `completed`；协调者必须以本线最终固定 SHA 合并，并在精确合并树复跑受影响测试、typecheck 和适用运行时验证后更新登记状态。
+上述 D 分支结果与主线收口证据共同满足 Sprint 完成门槛；发布仍由 BR-006 单独验收。
+
+## 主线收口
+
+- 固定最终 SHA `d37d6545d` 已由 merge commit `314aedd7c` 合并到 `chat-agent`；该 merge 的第二父提交正是固定 SHA。
+- 精确合并树的 profile 目标矩阵 237/237、App 全量 2860/2860、App typecheck 均通过。全量首次暴露的 3 个 Inbox workspace 旧交互断言先稳定 RED，按 Sprint 0030 当前默认 Inbox 契约更新测试后独立 44/44 GREEN，再从头全量通过；没有为此修改 Inbox 产品行为。
+- 当前主线 iOS generic Simulator build 为 `BUILD SUCCEEDED`；依赖库与迁移后的 DerivedData stale-path 有警告，无构建错误。两台已启动的 iOS 26.4 Simulator 已安装并启动 `app.agenthubs.orbit` 当前主线包。
+- 当前主线 Web 已重新 production build，旧 3000 进程已替换；`GET /api/health` 返回 200、`live/ok`。这些是本地共同环境证据，不代表远程部署或实体设备发布。
 
 ## 已知边界
 

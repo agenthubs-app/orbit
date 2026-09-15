@@ -30,19 +30,19 @@
 | [BR-018](2026-09-15-note-suggestions.md) | P1 | 笔记来源待办建议 | verified | 已关闭 | 同环境建议接受、幂等、来源版本、日期确认与原生 App 已于 2026-09-15 验证 |
 | [BR-019](2026-09-15-notes-ink-signal-search.md) | P1 | 笔记 4a 与搜索式关联 | verified | 已关闭 | 同账号 Web/App 双向 note v2、有界联系人搜索、原生 4a 六状态与版本／权限反例已于 2026-09-15 验证 |
 | [BR-020](2026-09-15-canonical-app-identity.md) | P1 | App raw 登录主体与 canonical 业务账号分离 | verified | 已关闭 | `/api/account/me` 唯一身份、owner-scoped 消费者、完整回归与原生三链已验证 |
-| [BR-021](2026-09-15-schedule-meeting-details.md) | P1 | 四类日程详情与会议说明 | verified | 总控集成；尚未合并 | appointment 共享说明、旧会议私有兼容、四类原生打开及保存重开已验证 |
-| [BR-022](2026-09-15-profile-page-group-redesign.md) | P1 | “我的”页面组、资料编辑与公开投影 | consumer_ready | 协调者按固定 D SHA 合并并验证 | D 分支双向资料版本、409、actor 隔离、八屏、Dynamic Type 和隐私投影通过；`chat-agent` 合并树待验证 |
+| [BR-021](2026-09-15-schedule-meeting-details.md) | P1 | 四类日程详情与会议说明 | verified | 已关闭 | appointment 共享说明、旧会议私有兼容、四类原生打开及保存重开已验证并已进入 `chat-agent` |
+| [BR-022](2026-09-15-profile-page-group-redesign.md) | P1 | “我的”页面组、资料编辑与公开投影 | verified | 已关闭 | 固定 D SHA 已合并；主线目标、全量、typecheck、iOS build、Web live health 与 Simulator 安装启动通过 |
 | [BR-023](2026-09-15-data-authority-ai-read-surface.md) | P1 | 数据权威源与 AI 只读面 | consumer_ready | 共同环境负责人 | 本地源码/回归完成；真实 migration apply、授权 calendar 与同 actor Web/App 四域回读 |
 
 ## BR-022 — “我的”页面组、资料编辑与公开投影
 
 - 创建/更新日期：2026-09-15。
-- 总状态：`consumer_ready`；web_status：`source_ready`；app_status：`consumer_ready`；verification_status：D 分支本地共同运行环境与原生 Simulator 通过，`chat-agent` 合并树待验证。
+- 总状态：`verified`；web_status：`source_ready`；app_status：`verified`；verification_status：固定 D SHA 已合并，`chat-agent` 精确合并树验证通过。
 - Web/API：profile 新增语言和 LinkedIn／X 兼容字段、80／5／5 服务端校验、transactional CAS／receipt，以及 actor-scoped suggestion accept／dismiss；self-profile reader 使用同一显式公开投影。
 - App：新增主编辑、更多、标签、建议和预览五个 private route，按 origin＋canonical actor 共享草稿；主页、设置、账号使用真实数据和既有能力，不伪造设计 fixture。
-- 版本：规划 `c66761eea`；含 0026 基线 `c0d0ac094`；主体功能 `6dd44b94a`；视觉／Dynamic Type `7df4819a2`；固定最终 SHA `d37d6545d`。完整交接见 [BR-022 文件](2026-09-15-profile-page-group-redesign.md)和 [Sprint 0028 报告](../repos/orbit-app/docs/sprints/0028-profile-page-group-redesign/REPORT.md)。
+- 版本：规划 `c66761eea`；含 0026 基线 `c0d0ac094`；主体功能 `6dd44b94a`；视觉／Dynamic Type `7df4819a2`；固定最终 SHA `d37d6545d`；主线 merge `314aedd7c`。完整交接见 [BR-022 文件](2026-09-15-profile-page-group-redesign.md)和 [Sprint 0028 报告](../repos/orbit-app/docs/sprints/0028-profile-page-group-redesign/REPORT.md)。
 - 验证：Web 定向 41 pass＋14 环境 skip，专用 PostgreSQL 14/14；App 最终定向 227/227、全量 2829/2829、typecheck；Web production build／live health、iOS build 0 error／0 warning、双向回读、409 和隐私负断言均通过。
-- 运行边界：本地刷新式同步，不代表远程部署、实体设备或生产数据验收。协调者以交接的固定最终 SHA 合并并在精确合并树复跑矩阵；完成前 Sprint 保持 `running`，D 线不自行合并。
+- 主线验证：目标 237/237、App 全量 2860/2860、typecheck、iOS build、Web `live/ok` 与两台 Simulator 安装启动通过。运行边界仍是本地刷新式同步，不代表远程部署、实体设备或生产数据验收。
 
 ## BR-021 — 日程详情与会议说明
 
@@ -50,7 +50,7 @@
 - 总状态：`verified`；web_status：`source_ready`；app_status：`consumer_ready`；verification_status：本地共同运行环境与原生 Simulator 通过。
 - Web/API：appointment 会议使用 participant-only、原子 CAS 和 idempotency；旧 `orbitScheduleItems` meeting 使用 actor-scoped 私有详情 route，避免把 schedule ID 错投 appointment route。
 - App：任务、活动、个人日程和会议分别打开稳定详情；会议页按来源读取，显示真实标题和共享／私有提示，失败、冲突与错误回执均保留草稿。
-- 版本：独立分支 `codex/c-line-sprint-0027`；Planner `01bcceeb5`；主体 `3ca1f5936`；旧会议兼容 `0cbc45ffa`。尚未合并到 `chat-agent`。
+- 版本：独立分支 `codex/c-line-sprint-0027`；Planner `01bcceeb5`；主体 `3ca1f5936`；旧会议兼容 `0cbc45ffa`；关闭记录 `7064f4bae`，均已进入 `chat-agent`。
 - 验证：Web 25/25、PostgreSQL 1/1、App 90/90、两端 typecheck、Web production build、3000 health、iOS build 和 Simulator 四类入口／会议保存重开清空通过。
 - 详细交接：[2026-09-15-schedule-meeting-details.md](2026-09-15-schedule-meeting-details.md)。
 
@@ -60,7 +60,7 @@
 - 总状态：`consumer_ready`；Web/API 与 App 本地源码和回归已完成，真实 migration apply、授权 Calendar provider 与同 actor Web/App 四域回读仍待共同环境验证。
 - Web/API：建立 machine-readable authority registry，收口 personal schedule 与 push device identity，并新增 visibility manifest 及 `notes.query`、`tasks.query`、`followups.query`、`schedule.query` 四个 actor-scoped 只读工具。
 - App：同步 `data_query` artifact contract；AI 只能经认证 actor 和显式函数读取允许的数据域，不能绕过权限直接读取存储。
-- 版本：固定最终 SHA `f5bded060`。完整交接见 [BR-023 文件](2026-09-15-data-authority-ai-read-surface.md)和 [Sprint 0029 报告](../repos/orbit-app/docs/sprints/0029-data-authority-ai-read-surface/REPORT.md)。
+- 版本：固定最终 SHA `f5bded060`；主线 merge `6f5f141ed`。完整交接见 [BR-023 文件](2026-09-15-data-authority-ai-read-surface.md)和 [Sprint 0029 报告](../repos/orbit-app/docs/sprints/0029-data-authority-ai-read-surface/REPORT.md)。
 
 ## BR-016 — 人脉、名片与活动三语消费
 

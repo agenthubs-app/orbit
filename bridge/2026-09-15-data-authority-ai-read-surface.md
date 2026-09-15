@@ -30,6 +30,7 @@
 - App 写 → Web 回读：未运行，同上。
 - 冲突、失败、权限与异步场景：版本冲突、幂等、actor isolation、任意 identity 注入、secret fields、大输出、旧 device ID、双 schedule source、取消/登出/账号切换均有自动化反例。
 - 原生 UI/浏览器验证：Xcode 26.6 `xcodebuild` exit 0，独立 iPhone 17 Pro Max / iOS 26.4 完成安装与启动，Metro 打包 1938 modules，Orbit 登录页可见；Web 已验证重新启动后的未登录边界。真实账号 UI 仍受环境阻塞，截图见 [Sprint REPORT](../repos/orbit-app/docs/sprints/0029-data-authority-ai-read-surface/REPORT.md)。
+- 主线集成：固定最终 SHA `f5bded060` 已由 `6f5f141ed` 合并；主线新增测试 8/8、Web/App typecheck、Web production build 与重启后的 `live/ok` 通过。真实 migration apply、授权 Calendar provider 和同 actor 四域回读仍保持开放。
 - Provider：当前没有授权 calendar provider。宿主 DeepSeek key 不是 calendar 数据源；测试/构建显式清空模型 key，不以 mock 或未认证调用代替。
 - Migration：fixture dry-run 分类通过；真实 CLI 因无数据库 URL 明确退出。没有受影响行数可审阅，因此没有执行 apply。
 - 未检查范围：真实迁移行数/apply receipt、授权 calendar 对齐、真实 actor 的四域查询与 Web↔App 回读、远程部署。
