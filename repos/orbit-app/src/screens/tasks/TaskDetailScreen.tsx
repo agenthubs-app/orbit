@@ -379,11 +379,6 @@ export function TaskDetailScreen() {
               <Text style={[styles.metadataValue, styles.linkValue]}>{locale.t("taskDetail.viewSourceNoteVersion", { version: detail.sourceNoteVersion })}</Text>
               <Ionicons color={colors.text4} name="chevron-forward" size={17} />
             </Pressable> : null}
-            {detail.sourceNoteId ? <Pressable accessibilityLabel="查看来源笔记" accessibilityRole="button" onPress={() => router.push(`/notes/${encodeURIComponent(detail.sourceNoteId!)}` as Href)} style={styles.metadataRow}>
-              <Text style={metadataLabelStyle}>来源笔记</Text>
-              <Text style={[styles.metadataValue, styles.linkValue]}>查看版本 {detail.sourceNoteVersion}</Text>
-              <Ionicons color={colors.text4} name="chevron-forward" size={17} />
-            </Pressable> : null}
             {detail.sourceLabel ? <View style={styles.metadataRow}>
               <Text style={metadataLabelStyle}>{locale.t("taskDetail.source")}</Text>
               <Text style={styles.metadataValue}>{detail.sourceLabel}</Text>

@@ -25,12 +25,6 @@ export function createConfiguredTaskSuggestionService() {
       workspaceId: configured.workspaceId,
     }),
   });
-  const noteService = createNoteService({
-    repository: createNoteRepository({
-      store: configured.store,
-      workspaceId: configured.workspaceId,
-    }),
-  });
   return createTaskSuggestionService({
     repository: createTaskSuggestionRepository({
       store: configured.store,

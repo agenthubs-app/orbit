@@ -364,34 +364,6 @@ test("note template stays local until explicit send and retains input for date c
   assert.equal(await p.getByText("需要确认日期", { exact: true }).count(), 1);
   assert.equal(await p.getByRole("button", { name: "加入待办", exact: true }).count(), 0);
 });
-test("note template stays local until explicit send and retains input for date confirmation", async t => {
-  const p = await open(t, { params: {
-    id: "new",
-    initialMessage: "请根据这篇笔记整理一个待办，并明确标题和日期。",
-    sourceNoteId: "note:one",
-    sourceNoteVersion: "3",
-  } });
-  assert.deepEqual(await writes(p), []);
-  const input = p.getByRole("textbox");
-  assert.equal(await input.inputValue(), "请根据这篇笔记整理一个待办，并明确标题和日期。");
-  await input.fill("请整理待办，下周完成");
-  await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
-  assert.deepEqual(await writes(p), []);
-  await press(p, "发送消息");
-  assert.deepEqual((await writes(p))[0], {
-    method: "POST",
-    path: "/api/ai/conversations",
-    body: { locale: "zh", message: "请整理待办，下周完成", sourceNote: { id: "note:one", version: 3 } },
-  });
-  await replyLastWrite(p, { ...replyPayload("请整理待办，下周完成"), taskInteraction: {
-    category: "work", reason: "请补充明确日期后再发送，当前没有创建建议或待办。",
-    relatedContactIds: ["contact:a"], sourceNoteId: "note:one", sourceNoteVersion: 3,
-    state: "needs_date_confirmation", title: "整理待办",
-  } });
-  assert.equal(await input.inputValue(), "请整理待办，下周完成");
-  assert.equal(await p.getByText("需要确认日期", { exact: true }).count(), 1);
-  assert.equal(await p.getByRole("button", { name: "加入待办", exact: true }).count(), 0);
-});
 for (const initialMessage of [undefined, "   "]) test("AI empty new conversation accepts its first explicit question " + JSON.stringify(initialMessage), async t => {
   const p = await open(t, { params: { id: "new", initialMessage } });
   assert.deepEqual(await writes(p), []);
