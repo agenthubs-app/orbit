@@ -62,7 +62,7 @@
 
 - [ ] Production-build/restart Web/API and rebuild/install the current App against the same redacted database/account; confirm health and exact commits.
 - [ ] For each of notes/tasks/followups/personal schedule, prove online Web→App→AI revision equality and offline App pending→old AI revision→ack→new AI revision.
-- [ ] Prove conflict, deletion tombstone, missed realtime hint, App reinstall/bootstrap and account A→B→A isolation. Record only IDs hashed with a run-specific salt.
+- [ ] Prove conflict, deletion tombstone, missed invalidation hint, App reinstall/bootstrap and account A→B→A isolation. Record only IDs hashed with a run-specific salt.
 - [ ] Treat unavailable provider, missing authorized account, migration or Simulator as an incomplete SC; mocks may support tests but cannot replace runtime evidence.
 
 ### Task 4: Refresh and publish the private Data Atlas

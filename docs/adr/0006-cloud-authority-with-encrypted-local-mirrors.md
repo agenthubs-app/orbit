@@ -1,6 +1,6 @@
 # Cloud authority with encrypted local mirrors
 
-Orbit will keep authenticated server records as the cross-device and Orbit AI authority while the App maintains an actor-scoped, encrypted SQLite mirror and a bounded mutation outbox for explicitly supported offline work. This preserves fast and resilient mobile reads without creating a second source of truth: only server-acknowledged revisions are canonical, realtime messages are invalidation hints, and cursor synchronization repairs missed updates and deletions.
+Orbit will keep authenticated server records as the cross-device and Orbit AI authority while the App maintains an actor-scoped, encrypted SQLite mirror and a bounded mutation outbox for explicitly supported offline work. This preserves fast and resilient mobile reads without creating a second source of truth: only server-acknowledged revisions are canonical, provider-neutral transport messages are invalidation hints, and cursor synchronization repairs missed updates and deletions.
 
 ## Considered Options
 
@@ -10,4 +10,4 @@ Orbit will keep authenticated server records as the cross-device and Orbit AI au
 
 ## Consequences
 
-Notes, confirmed tasks, confirmed relationship follow-ups, personal schedule items, contacts, and inbox projections may be mirrored locally. Offline writes are limited initially to notes, confirmed tasks, confirmed relationship follow-ups, and personal schedule items; invitations, registrations, shared meetings, permissions, account deletion, and AI side effects remain online-only. Device-only drafts are not model-visible, pending changes must be labelled as unavailable to Orbit AI, and the App must use foreground/cursor recovery even when realtime delivery exists.
+Notes, confirmed tasks, confirmed relationship follow-ups, personal schedule items, contacts, and inbox projections may be mirrored locally. Offline writes are limited initially to notes, confirmed tasks, confirmed relationship follow-ups, and personal schedule items; invitations, registrations, shared meetings, permissions, account deletion, and AI side effects remain online-only. Device-only drafts are not model-visible, pending changes must be labelled as unavailable to Orbit AI, and the App must use foreground/cursor recovery regardless of which optional realtime, push, or polling transport is configured.

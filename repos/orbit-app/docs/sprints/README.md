@@ -82,7 +82,7 @@ build/harness-logs/
 | [0032](0032-hybrid-sync-foundation/GOAL.md) | 建立云端权威、加密且按账号隔离的 App 本地实体镜像 | 用户批准“云端权威＋本地持久镜像＋增量同步”方案 | 依赖 0031 合并并释放共享缓存／性能文件；planned，run_count=0 | planned |
 | [0033](0033-incremental-read-sync/GOAL.md) | 首次分页同步，之后只拉取笔记、待办、跟进和个人日程的变化与删除 | 同上；减少重复上传下载的读取阶段 | 依赖 0032 completed/merged；planned，run_count=0 | planned |
 | [0034](0034-offline-personal-mutations/GOAL.md) | 四类个人数据可离线确认保存、幂等上传并由用户解决冲突 | 同上；AI 只读取已同步云端版本 | 依赖 0033 completed/merged；planned，run_count=0 | planned |
-| [0035](0035-sync-invalidation-recovery/GOAL.md) | 用私有实时提示加速刷新，并以启动／前台／cursor 修复所有漏消息 | 同上；面向 Vercel＋Supabase 运行形态 | 依赖 0034 completed/merged；Supabase migration apply 保留对象门槛；planned，run_count=0 | planned |
+| [0035](0035-sync-invalidation-recovery/GOAL.md) | 用提供商无关的轻量状态检测加速刷新，并以启动／前台／cursor 修复漏提示 | 同上；兼容本地 PostgreSQL、Supabase、Neon 或其他 PostgreSQL provider | 依赖 0034 completed/merged；供应商选型不阻塞 portable core；planned，run_count=0 | planned |
 | [0036](0036-ai-sync-visibility-acceptance/GOAL.md) | 让 AI 报告四域云端数据新鲜度，完成跨端验收并更新私有 Data Atlas | 数据审查、AI 盲区与同步方案最终收口 | 依赖 0035 completed/merged、同账号 runtime 与已授权 AI provider；planned，run_count=0 | planned |
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。

@@ -43,7 +43,7 @@
 1. [0032](0032-hybrid-sync-foundation/PLANNER.md)：冻结 authority/sync/AI visibility 契约，建立 SQLCipher SQLite、scope、cursor/outbox 表与安全生命周期；不切页面。
 2. [0033](0033-incremental-read-sync/PLANNER.md)：提供稳定高水位 cursor 与四域镜像优先读取；写操作仍在线。
 3. [0034](0034-offline-personal-mutations/PLANNER.md)：仅为笔记、确认待办、确认跟进和个人日程开放离线 outbox、幂等 receipt 和显式冲突处理。
-4. [0035](0035-sync-invalidation-recovery/PLANNER.md)：Supabase 私有 realtime 只作 content-free invalidation；启动、前台、网络恢复和手动刷新始终由 cursor 补偿。
+4. [0035](0035-sync-invalidation-recovery/PLANNER.md)：以 PostgreSQL `sync_revision` 和认证 status endpoint 实现 provider-neutral invalidation；Supabase、Neon relay、push 等只作为可替换 transport，启动、前台、网络恢复和手动刷新始终由 cursor 补偿。
 5. [0036](0036-ai-sync-visibility-acceptance/PLANNER.md)：四个 AI query 工具增加 canonical freshness，执行 Web/App/AI 数据真值矩阵，更新并发布私有 Data Atlas，最后在合并树做一次全量收口。
 
 每个 Sprint 一个 Generator、一个 run-01；功能完成即路径限定 commit 并由协调者合并到 `chat-agent`，不是等五个 Sprint 全做完才一起合并。前一步失败或 blocked 只阻止依赖它的后一步，不改变已有线上读写行为。
