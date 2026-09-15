@@ -1049,7 +1049,6 @@ function InboxContent({
         disabled={notificationPending !== null}
         items={visibleFeed.items}
         onOpen={openFeedItem}
-        windowed={activeFilter === "all"}
       />
       {reviewSignals && activeFilter === "contact" ? (
         <RelationshipSignalsCard
@@ -1286,25 +1285,16 @@ function UnifiedFeedList({
   disabled,
   items,
   onOpen,
-  windowed,
 }: {
   disabled: boolean;
   items: readonly InboxFeedItem[];
   onOpen: (item: InboxFeedItem) => void;
-  windowed: boolean;
 }) {
   const locale = useOrbitLocale();
   const { styles } = useStyles();
   const { fontScale } = useWindowDimensions();
-  const [expanded, setExpanded] = useState(false);
-  const categoryCounts = new Map<InboxFeedItem["category"], number>();
-  const visibleItems = !windowed || expanded
-    ? items
-    : items.filter((item) => {
-      const count = categoryCounts.get(item.category) ?? 0;
-      categoryCounts.set(item.category, count + 1);
-      return count < 4;
-    });
+  const [visibleCount, setVisibleCount] = useState(12);
+  const visibleItems = items.slice(0, visibleCount);
   const showMoreLabel = locale.language === "zh"
     ? "显示更多"
     : locale.language === "ja"
@@ -1355,7 +1345,7 @@ function UnifiedFeedList({
         <Pressable
           accessibilityLabel={showMoreLabel}
           accessibilityRole="button"
-          onPress={() => setExpanded(true)}
+          onPress={() => setVisibleCount(items.length)}
           style={({ pressed }) => [styles.feedMore, pressed && styles.pressed]}
         >
           <Text style={styles.feedMoreText}>{showMoreLabel}</Text>
