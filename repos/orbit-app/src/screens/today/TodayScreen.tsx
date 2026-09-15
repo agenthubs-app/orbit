@@ -1,3 +1,4 @@
+import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
 import { useMemo, useState } from "react";
@@ -24,17 +25,18 @@ import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import {
   todayToView,
   type TodayTaskRowView,
   type TodayView,
 } from "../../view-models/today-tasks";
 
-function todayDateKey(): string {
+function todayDateKey(timeZone: string): string {
   const parts = new Intl.DateTimeFormat("en-US", {
     day: "2-digit",
     month: "2-digit",
-    timeZone: "Asia/Tokyo",
+    timeZone,
     year: "numeric",
   }).formatToParts(new Date());
   const value = Object.fromEntries(parts.map((item) => [item.type, item.value]));
@@ -50,18 +52,21 @@ function usable<T>(state: ReturnType<typeof useApiResource<T>>) {
 }
 
 export function TodayScreen() {
+  const { timeZone, canSave } = useOrbitTimeZone();
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const router = useRouter();
   const client = useOrbitApiClient();
-  const path = useMemo(() => todayPath("Asia/Tokyo"), []);
+  const path = useMemo(() => todayPath(timeZone), [timeZone]);
   const todayState = useApiResource<unknown>(path, () => false);
   const [draft, setDraft] = useState("");
   const [creating, setCreating] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
-  const view = usable(todayState) ? todayToView(todayState.data) : null;
+  const view = usable(todayState) ? todayToView(todayState.data, new Date(), timeZone, locale.language) : null;
 
   async function createTask() {
+    if (!canSave) { setMutationError(locale.t("today.timezoneUnavailable")); return; }
     const title = draft.trim();
     if (!title || creating) return;
     setCreating(true);
@@ -70,7 +75,7 @@ export function TodayScreen() {
       body: {
         category: "other",
         idempotencyKey: mutationKey("create-task"),
-        plannedDate: todayDateKey(),
+        plannedDate: todayDateKey(timeZone),
         title,
       },
     });
@@ -123,11 +128,11 @@ export function TodayScreen() {
           tintColor={colors.accent}
         />
       }
-      title="今天"
+      title={locale.t("today.title")}
     >
       {todayState.kind === "loading" ? <LoadingState /> : null}
       {todayState.kind === "failure" || todayState.kind === "offline" ? (
-        <ErrorState message={todayState.error.message} title="今天暂时打不开" />
+        <ErrorState message={todayState.error.message} title={locale.t("today.unavailable")} />
       ) : null}
       {view ? (
         <TodayWorkspace
@@ -179,6 +184,7 @@ function TodayWorkspace({
   updatingId: string | null;
   view: TodayView;
 }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   return (
     <View style={styles.workspace}>
@@ -189,23 +195,23 @@ function TodayWorkspace({
       <View style={styles.quickAdd}>
         <Ionicons color={colors.text3} name="add-circle-outline" size={21} />
         <TextInput
-          accessibilityLabel="添加待办"
+          accessibilityLabel={locale.t("today.addTask")}
           blurOnSubmit={false}
           onChangeText={onChangeDraft}
           onSubmitEditing={onCreateTask}
-          placeholder="添加待办"
+          placeholder={locale.t("today.addTask")}
           placeholderTextColor={colors.text4}
           returnKeyType="done"
           style={styles.quickAddInput}
           value={draft}
         />
-        {creating ? <Text style={styles.savingText}>添加中</Text> : null}
+        {creating ? <Text style={styles.savingText}>{locale.t("today.creating")}</Text> : null}
       </View>
 
-      <SectionHeader action="全部" onPress={onOpenTasks} title="待办" />
+      <SectionHeader action={locale.t("today.all")} onPress={onOpenTasks} title={locale.t("today.tasks")} />
       <View style={styles.group}>
         {view.tasks.length === 0 ? (
-          <Text style={styles.emptyText}>今天没有待办</Text>
+          <Text style={styles.emptyText}>{locale.t("today.emptyTasks")}</Text>
         ) : (
           view.tasks.map((task, index) => (
             <TaskRow
@@ -231,7 +237,7 @@ function TodayWorkspace({
 
       {view.suggestions.length > 0 ? (
         <>
-          <SectionHeader title="Orbit 建议" />
+          <SectionHeader title={locale.t("today.suggestions")} />
           <View style={styles.group}>
             {view.suggestions.map((item, index) => (
               <View
@@ -246,7 +252,7 @@ function TodayWorkspace({
                   <Text numberOfLines={2} style={styles.rowDetail}>{item.reason}</Text>
                 </View>
                 <Pressable
-                  accessibilityLabel={`加入待办：${item.title}`}
+                  accessibilityLabel={locale.t("today.addNamed", { title: item.title })}
                   accessibilityRole="button"
                   disabled={updatingId === item.id}
                   onPress={() => onAcceptSuggestion(item.id)}
@@ -256,7 +262,7 @@ function TodayWorkspace({
                   ]}
                 >
                   <Text style={styles.addSuggestionText}>
-                    {updatingId === item.id ? "加入中" : "加入"}
+                    {locale.t(updatingId === item.id ? "today.adding" : "today.add")}
                   </Text>
                 </Pressable>
               </View>
@@ -265,10 +271,10 @@ function TodayWorkspace({
         </>
       ) : null}
 
-      <SectionHeader action="日历" onPress={onOpenSchedule} title="日程" />
+      <SectionHeader action={locale.t("today.schedule")} onPress={onOpenSchedule} title={locale.t("schedule.title")} />
       <View style={styles.group}>
         {view.schedule.length === 0 ? (
-          <Text style={styles.emptyText}>今天没有日程</Text>
+          <Text style={styles.emptyText}>{locale.t("today.emptySchedule")}</Text>
         ) : (
           view.schedule.map((item, index) => (
             <Pressable
@@ -331,11 +337,12 @@ function TaskRow({
   onOpen: () => void;
   task: TodayTaskRowView;
 }) {
+  const locale = useOrbitLocale();
   const { styles } = useStyles();
   return (
     <View style={[styles.taskRow, !last ? styles.rowBorder : null]}>
       <Pressable
-        accessibilityLabel={`完成待办：${task.title}`}
+        accessibilityLabel={locale.t("today.completeNamed", { title: task.title })}
         accessibilityRole="checkbox"
         disabled={loading}
         onPress={onComplete}
@@ -351,7 +358,7 @@ function TaskRow({
         style={({ pressed }) => [styles.taskBody, pressed ? styles.pressed : null]}
       >
         <Text numberOfLines={1} style={styles.rowTitle}>{task.title}</Text>
-        <Text style={styles.rowMeta}>{task.categoryLabel}</Text>
+        <Text style={styles.rowMeta}>{[task.categoryLabel, task.location].filter(Boolean).join(" · ")}</Text>
       </Pressable>
       {task.dueLabel ? (
         <Text

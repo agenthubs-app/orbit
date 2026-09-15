@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as Crypto from "expo-crypto";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { type Href, useRouter } from "expo-router";
@@ -30,6 +31,8 @@ import { SectionHeader } from "../../components/SectionHeader";
 import { radius, spacing, textStyles, typography } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import type { MessageKey, OrbitTranslator } from "../../i18n/messages";
 import {
   type ApiResourceState,
   useApiResource
@@ -55,14 +58,16 @@ import {
   type ProfileSummary
 } from "../../view-models/profile";
 
-type ProfileDraft = ProfileManualEditDraft & { targetRelationshipTypesText: string; preferredFollowUpWindow: string; preferredIntroChannelsText: string };
-type SaveProfile = (draft: ProfileDraft, isDraftCurrent: () => boolean) => Promise<boolean>;
+type ProfileDraft = ProfileManualEditDraft & { birthDate: string; targetRelationshipTypesText: string; preferredFollowUpWindow: string; preferredIntroChannelsText: string };
+type SaveProfile = (draft: ProfileDraft, base: ProfileDetail, isDraftCurrent: () => boolean) => Promise<ProfileDetail | null>;
 type DraftChanged = (field: keyof ProfileDraft, quiet?: boolean) => void;
 const suggestionDraftFields = { headline: "headline", homeMarket: "timezone", relationshipGoal: "relationshipGoal", targetRelationshipTypes: "targetRelationshipTypesText", preferredFollowUpWindow: "preferredFollowUpWindow", preferredIntroChannels: "preferredIntroChannelsText" } as const;
-const suggestionFieldLabels = { headline: "标题", homeMarket: "主要市场", relationshipGoal: "关系目标", targetRelationshipTypes: "目标关系类型", preferredFollowUpWindow: "联系时间", preferredIntroChannels: "介绍渠道" } as const;
+const suggestionFieldLabelKeys = { headline: "profile.headline", homeMarket: "profile.primaryIndustry", relationshipGoal: "profile.relationshipGoal", targetRelationshipTypes: "profile.targetRelationshipTypes", preferredFollowUpWindow: "profile.followUpWindow", preferredIntroChannels: "profile.introChannels" } as const satisfies Record<keyof typeof suggestionDraftFields, MessageKey>;
+const missingFieldKeys = { displayName: "profile.name", primaryIndustryId: "profile.primaryIndustry", secondaryIndustryId: "profile.secondaryIndustry", birthDate: "profile.birthDate" } as const satisfies Record<string, MessageKey>;
 
-function profileBusinessText(value: string): string {
+function profileBusinessText(value: string, language: string): string {
   const text = value.trim();
+  if (language !== "zh") return text;
   // Exact service-authored explanations, never a keyword filter on user data.
   const copy: Record<string, string> = {
     "The strongest generated relationship graph edges cluster around operators, founders, and community introduction paths.": "近期关系记录主要涉及运营者、创始人和社群引荐。",
@@ -92,8 +97,58 @@ function profileBusinessText(value: string): string {
   return count ? `识别到 ${count[1]} 项资料，请逐项核对。` : text;
 }
 
+function profileFieldLabel(field: string, t: OrbitTranslator): string {
+  const keys: Record<string, MessageKey> = {
+    displayName: "profile.name",
+    email: "profile.email",
+    headline: "profile.headline",
+    homeMarket: "profile.primaryIndustry",
+    organization: "profile.organization",
+    phone: "profile.phone",
+    preferredFollowUpWindow: "profile.followUpWindow",
+    preferredIntroChannels: "profile.introChannels",
+    relationshipGoal: "profile.relationshipGoal",
+    role: "profile.role",
+    targetRelationshipTypes: "profile.targetRelationshipTypes",
+    website: "profile.website",
+  };
+  return t(keys[field] ?? "profile.fieldDefault");
+}
+
+function profileConfidenceLabel(confidence: string, t: OrbitTranslator): string {
+  if (confidence === "high") return t("profile.confidenceHigh");
+  if (confidence === "low") return t("profile.confidenceLow");
+  if (confidence === "medium") return t("profile.confidenceMedium");
+  return t("profile.confidencePending");
+}
+
+function profileExtractionStateLabel(state: string, hasDraft: boolean, t: OrbitTranslator): string {
+  if (state === "pending") return t("profile.extractionStatePending");
+  if (!hasDraft || state === "empty") return t("profile.extractionStateEmpty");
+  return t("profile.extractionStateReview");
+}
+
+function profileSuggestionStateLabel(state: string, count: number, t: OrbitTranslator): string {
+  if (count === 0 || state === "empty") return t("profile.suggestionStateEmpty");
+  if (state === "pending") return t("profile.suggestionStatePending");
+  return t("profile.suggestionStateReview");
+}
+
+function profileSuggestionStatusLabel(status: string, t: OrbitTranslator): string {
+  if (status === "accepted") return t("profile.suggestionStatusAccepted");
+  if (status === "dismissed") return t("profile.suggestionStatusDismissed");
+  return t("profile.suggestionStatusPending");
+}
+
+function profileSignalSourceLabel(source: string, t: OrbitTranslator): string {
+  if (source === "chat") return t("profile.signalSourceChat");
+  if (source === "activity") return t("profile.signalSourceActivity");
+  if (source === "contact") return t("profile.signalSourceContact");
+  return t("profile.signalSourceDefault");
+}
+
 function profileDraftFromDetail(data: ProfileDetail): ProfileDraft {
-  return { ...profileSummaryToEditDraft(profileToSummary(data)), targetRelationshipTypesText: data.profile?.targetRelationshipTypes.join("\n") ?? "",
+  return { ...profileSummaryToEditDraft(profileToSummary(data)), birthDate: data.profile?.birthDate ?? "", targetRelationshipTypesText: data.profile?.targetRelationshipTypes.join("\n") ?? "",
     preferredFollowUpWindow: data.profile?.preferredFollowUpWindow ?? "", preferredIntroChannelsText: data.profile?.preferredIntroChannels.join("\n") ?? "" };
 }
 
@@ -101,6 +156,7 @@ function profileDraftToRequest(draft: ProfileDraft, data: ProfileDetail): Profil
   const request = buildProfileUpdateRequest(draft);
   if (!request) return null;
   const result: ProfileSaveRequest = { ...request,
+    ...(draft.birthDate.trim() || data.profile?.birthDate !== undefined ? { birthDate: draft.birthDate.trim() || null } : {}),
     targetRelationshipTypes: draft.targetRelationshipTypesText.split(/\n|,|，|、/u).map(value => value.trim()).filter(Boolean),
     preferredFollowUpWindow: draft.preferredFollowUpWindow.trim(),
     preferredIntroChannels: draft.preferredIntroChannelsText.split(/\n|,|，|、/u).map(value => value.trim()).filter(Boolean) };
@@ -130,8 +186,9 @@ function useProfileOperation(scopeKey: string, isScopeCurrent: () => boolean) {
   };
 }
 
-export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => true }: { scopeKey?: string; isScopeCurrent?: () => boolean } = {}) {
+export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => true, completionNext = null }: { scopeKey?: string; isScopeCurrent?: () => boolean; completionNext?: string | null } = {}) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const router = useRouter();
   const auth = useOrbitAuthSession();
   const mounted = useRef(true);
@@ -158,6 +215,7 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
   >(null);
   const [acceptedProfilePatch, setAcceptedProfilePatch] = useState<AcceptedProfileSuggestion | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
+  const pendingSave = useRef<{ fingerprint: string; request: ProfileSaveRequest } | null>(null);
   const [profileActionError, setProfileActionError] = useState<string | null>(
     null
   );
@@ -192,6 +250,14 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
   const canEdit = loadedData !== null && loadedData.state !== "pending" && (loadedData.state === "empty" || loadedData.editor.canSave);
   const editable = useRef(canEdit); editable.current = canEdit;
   const canAct = () => current() && editable.current;
+  const completionHandled = useRef(false);
+
+  useEffect(() => {
+    if (!completionNext || completionHandled.current || !current()
+      || loadedData?.onboarding?.status !== "complete") return;
+    completionHandled.current = true;
+    router.replace(completionNext as Href);
+  }, [completionNext, loadedData?.onboarding?.status]);
 
   useEffect(() => {
     setAcceptingSuggestionId(null); setSavingProfile(false); setExtractingProfileDocumentKind(null);
@@ -219,19 +285,19 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
       if (!suggestionOperation.owns(controller)) return;
       const receipt = result.success && result.status >= 200 && result.status < 300 ? profileSuggestionReceiptSchema(suggestion).safeParse(result.data) : null;
       if (!receipt?.success) {
-        setSuggestionActionError("这条建议尚未确认，请重试。");
+        setSuggestionActionError(locale.t("profile.suggestionUnconfirmed"));
         return;
       }
 
       if ((fieldRevisions.current[field] ?? 0) === revision) {
         setAcceptedProfilePatch(receipt.data);
-        setSuggestionActionMessage("建议已放进编辑表单。检查后保存资料。");
+        setSuggestionActionMessage(locale.t("profile.suggestionApplied"));
       } else {
-        setSuggestionActionMessage(`${suggestionFieldLabels[suggestion.targetProfileField]}已有新的编辑，建议未覆盖这项改动。`);
+        setSuggestionActionMessage(locale.t("profile.suggestionPreserved", { field: locale.t(suggestionFieldLabelKeys[suggestion.targetProfileField]) }));
       }
       suggestionsState.refresh();
     } catch {
-      if (suggestionOperation.owns(controller)) setSuggestionActionError("这条建议尚未确认，请重试。");
+      if (suggestionOperation.owns(controller)) setSuggestionActionError(locale.t("profile.suggestionUnconfirmed"));
     } finally {
       if (suggestionOperation.owns(controller)) setAcceptingSuggestionId(null);
       suggestionOperation.finish(controller);
@@ -246,7 +312,7 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
     const request = buildProfileDocumentExtractionRequest(kind, input);
 
     if (!request) {
-      setProfileExtractionError("先粘贴需要提取的原文。");
+      setProfileExtractionError(locale.t("profile.extractionPasteFirst"));
       setProfileExtractionResult(null);
       return;
     }
@@ -266,13 +332,13 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
       if (!extractionOperation.owns(controller)) return;
       const receipt = result.success && result.status >= 200 && result.status < 300 ? profileExtractionReceiptSchema(kind).safeParse(result.data) : null;
       if (!receipt?.success) {
-        setProfileExtractionError("提取结果尚未确认，请重试。");
+        setProfileExtractionError(locale.t("profile.extractionUnconfirmed"));
         return;
       }
 
       setProfileExtractionResult(receipt.data);
     } catch {
-      if (extractionOperation.owns(controller)) setProfileExtractionError("提取结果尚未确认，请重试。");
+      if (extractionOperation.owns(controller)) setProfileExtractionError(locale.t("profile.extractionUnconfirmed"));
     } finally {
       if (extractionOperation.owns(controller)) setExtractingProfileDocumentKind(null);
       extractionOperation.finish(controller);
@@ -286,20 +352,31 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
 
     setAppliedProfileExtraction(profileExtractionResult);
     setProfileActionError(null);
-    setProfileActionMessage("提取结果已放进编辑表单。检查后保存资料。");
+    setProfileActionMessage(locale.t("profile.extractionApplied"));
   }
 
-  async function onSaveProfile(draft: ProfileDraft, isDraftCurrent: () => boolean): Promise<boolean> {
-    if (!canAct() || !data) return false;
-    const request = profileDraftToRequest(draft, data);
+  async function onSaveProfile(draft: ProfileDraft, base: ProfileDetail, isDraftCurrent: () => boolean): Promise<ProfileDetail | null> {
+    if (!canAct() || !data) return null;
+    const fields = profileDraftToRequest(draft, base);
 
-    if (!request) {
-      setProfileActionError("先写名字。");
+    if (!fields) {
+      setProfileActionError(locale.t("profile.nameRequired"));
       setProfileActionMessage(null);
-      return false;
+      return null;
     }
+    const versioned = { ...fields, expectedUpdatedAt: base.profile?.updatedAt ?? null };
+    const fingerprint = JSON.stringify(versioned);
+    if (pendingSave.current?.fingerprint !== fingerprint) {
+      try {
+        pendingSave.current = { fingerprint, request: { ...versioned, mutationId: `ios:profile:${Crypto.randomUUID()}` } };
+      } catch {
+        setProfileActionError(locale.t("profile.savePrepareFailed"));
+        return null;
+      }
+    }
+    const request = pendingSave.current.request;
     const controller = saveOperation.start();
-    if (!controller) return false;
+    if (!controller) return null;
 
     setSavingProfile(true);
     setProfileActionError(null);
@@ -309,21 +386,29 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
       const result = await client.put<unknown>(ORBIT_API_ENDPOINTS.profile, {
         body: request, signal: controller.signal
       });
-      if (!saveOperation.owns(controller)) return false;
-      const receipt = result.success && result.status >= 200 && result.status < 300 ? profileSaveReceiptSchema(data.profile?.id ?? null, request).safeParse(result.data) : null;
+      if (!saveOperation.owns(controller)) return null;
+      if (result.status === 409) {
+        setProfileActionError(locale.t("profile.saveConflict"));
+        return null;
+      }
+      const receipt = result.success && result.status >= 200 && result.status < 300 ? profileSaveReceiptSchema(base.profile?.id ?? null, request).safeParse(result.data) : null;
       if (!receipt?.success) {
-        setProfileActionError("资料尚未确认保存，请重试。");
-        return false;
+        setProfileActionError(locale.t("profile.saveUnconfirmed"));
+        return null;
       }
 
       setSavedData({ scope: readScope, data: receipt.data });
-      if (isDraftCurrent()) setProfileActionMessage("资料已保存。");
+      if (isDraftCurrent()) setProfileActionMessage(locale.t("profile.saved"));
       setAcceptedProfilePatch(null);
       setAppliedProfileExtraction(null);
-      return true;
+      if (completionNext && receipt.data.onboarding?.status === "complete" && isDraftCurrent()) {
+        completionHandled.current = true;
+        router.replace(completionNext as Href);
+      }
+      return receipt.data;
     } catch {
-      if (saveOperation.owns(controller)) setProfileActionError("资料尚未确认保存，请重试。");
-      return false;
+      if (saveOperation.owns(controller)) setProfileActionError(locale.t("profile.saveUnconfirmed"));
+      return null;
     } finally {
       if (saveOperation.owns(controller)) setSavingProfile(false);
       saveOperation.finish(controller);
@@ -353,22 +438,22 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
         }
       >
       <View style={styles.pageHeader}>
-        <Text accessibilityRole="header" style={styles.pageTitle}>我的</Text>
-        <Pressable accessibilityRole="button" accessibilityLabel="设置" onPress={() => { if (current()) router.push("/settings" as Href); }} style={({ pressed }) => [styles.settingsButton, pressed && styles.pressed]}>
+        <Text accessibilityRole="header" style={styles.pageTitle}>{locale.t("profile.title")}</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("profile.settings")} onPress={() => { if (current()) router.push("/settings" as Href); }} style={({ pressed }) => [styles.settingsButton, pressed && styles.pressed]}>
           <Ionicons name="sunny-outline" size={20} color={colors.ink} />
         </Pressable>
       </View>
-      {!auth.ready ? <LoadingState /> : null}
+      {!auth.ready ? <LoadingState accessibilityLabel={locale.t("common.loadingLabel")} /> : null}
       {auth.ready && !auth.signedIn ? (
         <DataCard
-          detail="当前设备没有已验证身份，Orbit 不会展示任何人的资料。"
-          title="登录后查看个人资料"
+          detail={locale.t("profile.signedOutDetail")}
+          title={locale.t("profile.signedOutTitle")}
         >
           <Text style={styles.bodyText}>
-            使用邮箱或 Google 登录，完成后会回到这里。
+            {locale.t("profile.signedOutBody")}
           </Text>
           <Pressable
-            accessibilityLabel="登录查看个人资料"
+            accessibilityLabel={locale.t("profile.login")}
             accessibilityRole="button"
             onPress={() =>
               router.push("/account/login?next=%2Fprofile" as Href)
@@ -379,17 +464,19 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
             ]}
           >
             <Ionicons color={colors.onAccent} name="log-in-outline" size={16} />
-            <Text style={styles.profileLoginButtonText}>登录查看个人资料</Text>
+            <Text style={styles.profileLoginButtonText}>{locale.t("profile.login")}</Text>
           </Pressable>
         </DataCard>
       ) : null}
-      {auth.signedIn && state.kind === "loading" ? <Text accessibilityLiveRegion="polite" style={styles.pageNotice}>正在读取个人资料</Text> : null}
-      {auth.signedIn && loadedData?.state === "pending" ? <Text accessibilityLiveRegion="polite" style={styles.pageNotice}>个人资料正在等待复核，暂时不能保存。</Text> : null}
+      {auth.signedIn && state.kind === "loading" ? <Text accessibilityLiveRegion="polite" style={styles.pageNotice}>{locale.t("profile.loading")}</Text> : null}
+      {auth.signedIn && loadedData?.state === "pending" ? <Text accessibilityLiveRegion="polite" style={styles.pageNotice}>{locale.t("profile.pending")}</Text> : null}
+      {auth.signedIn && completionNext && loadedData && !loadedData.onboarding ? <Text accessibilityRole="alert" style={styles.profileActionError}>{locale.t("profile.completionUnconfirmed")}</Text> : null}
+      {auth.signedIn && completionNext && data?.onboarding?.status === "incomplete" ? <Text style={styles.pageNotice}>{locale.t("profile.missingPrefix")}{data.onboarding.missingFields.map(field => locale.t(missingFieldKeys[field])).join("、")}</Text> : null}
       {auth.signedIn && (state.kind === "offline" || state.kind === "failure") ? (
         <View style={styles.pageNotice}>
-          <Text accessibilityRole="alert" style={styles.profileActionError}>个人资料未能读取</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel="重试个人资料" onPress={() => { if (current()) setRefreshKey(value => value + 1); }} style={styles.profileExtractionButton}>
-            <Text style={styles.profileExtractionButtonText}>重试个人资料</Text>
+          <Text accessibilityRole="alert" style={styles.profileActionError}>{locale.t("profile.readError")}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={locale.t("profile.retry")} onPress={() => { if (current()) setRefreshKey(value => value + 1); }} style={styles.profileExtractionButton}>
+            <Text style={styles.profileExtractionButtonText}>{locale.t("profile.retry")}</Text>
           </Pressable>
         </View>
       ) : null}
@@ -421,6 +508,7 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
           profileDocumentExtractionKind={extractingProfileDocumentKind}
           savingProfile={savingProfile}
           suggestionsState={suggestionsState}
+          startEditing={Boolean(completionNext && data.onboarding?.status === "incomplete")}
         />
       ) : null}
       </ScrollView>
@@ -451,7 +539,8 @@ function ProfileCard({
   profileActionError,
   profileActionMessage,
   savingProfile,
-  suggestionsState
+  suggestionsState,
+  startEditing
 }: {
   scopeKey: string;
   isScopeCurrent: () => boolean;
@@ -478,10 +567,12 @@ function ProfileCard({
   profileActionMessage: string | null;
   savingProfile: boolean;
   suggestionsState: ApiResourceState<ProfileSuggestions>;
+  startEditing: boolean;
 }) {
   const { styles } = useStyles();
-  const [editing, setEditing] = useState(false);
-  const [editorMounted, setEditorMounted] = useState(false);
+  const locale = useOrbitLocale();
+  const [editing, setEditing] = useState(startEditing);
+  const [editorMounted, setEditorMounted] = useState(startEditing);
   const storedProfile = profileToSummary(data);
   const displayProfile = storedProfile;
 
@@ -490,35 +581,35 @@ function ProfileCard({
       {!editing ? <>
         <OrbitBusinessCard profile={displayProfile} onEdit={() => { if (isScopeCurrent()) { setEditorMounted(true); setEditing(true); } }} />
         <ProfileStatistics scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} />
-        {!storedProfile.displayName ? <Text style={styles.pageNotice}>尚未填写个人资料</Text> : null}
+        {!storedProfile.displayName ? <Text style={styles.pageNotice}>{locale.t("profile.empty")}</Text> : null}
         <View style={styles.basicSection}>
-          <Text accessibilityRole="header" style={styles.sectionTitle}>基本资料</Text>
+          <Text accessibilityRole="header" style={styles.sectionTitle}>{locale.t("profile.basic")}</Text>
           <View style={styles.basicRows}>
-            {[["行业", displayProfile.secondaryIndustryId ? secondaryIndustryLabel(displayProfile.secondaryIndustryId, "zh") : displayProfile.primaryIndustryId ? `${industryLabel(displayProfile.primaryIndustryId, "zh")} · 二级未填写` : displayProfile.industry], ["公司", displayProfile.organization], ["职位", displayProfile.role], ["简介", displayProfile.bio]].map(([label, value], index) => (
+            {[[locale.t("profile.industry"), displayProfile.secondaryIndustryId ? secondaryIndustryLabel(displayProfile.secondaryIndustryId, locale.language) : displayProfile.primaryIndustryId ? `${industryLabel(displayProfile.primaryIndustryId, locale.language)} · ${locale.t("profile.secondaryMissing")}` : displayProfile.industry], [locale.t("profile.organization"), displayProfile.organization], [locale.t("profile.role"), displayProfile.role], [locale.t("profile.bio"), displayProfile.bio]].map(([label, value], index) => (
               <View key={label} style={[styles.basicRow, index === 3 && styles.bioRow]}>
                 <Text style={styles.basicLabel}>{label}</Text>
-                <Text style={[styles.basicValue, index === 3 && styles.bioValue]}>{value || "未填写"}</Text>
+                <Text style={[styles.basicValue, index === 3 && styles.bioValue]}>{value || locale.t("profile.notFilled")}</Text>
               </View>
             ))}
           </View>
         </View>
         <View style={styles.previewTags}>
-          <Text accessibilityRole="header" style={styles.sectionTitle}>我能提供 · 我想寻找 · 想聊的话题</Text>
+          <Text accessibilityRole="header" style={styles.sectionTitle}>{locale.t("profile.tagSummary")}</Text>
           <View style={styles.previewTagGroups}>
-            {[["我能提供", displayProfile.offering], ["我想寻找", displayProfile.seeking], ["想聊的话题", displayProfile.topics]].map(([label, values], index) => (
+            {[[locale.t("profile.offering"), displayProfile.offering], [locale.t("profile.seeking"), displayProfile.seeking], [locale.t("profile.topics"), displayProfile.topics]].map(([label, values], index) => (
               <View key={label as string} accessibilityLabel={label as string} style={styles.previewTagGroup}>
                 {(values as string[]).map((item, itemIndex) => <Text key={itemIndex} style={[styles.previewTag, index === 0 && styles.offeringTag]}>{item}</Text>)}
               </View>
             ))}
           </View>
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel="账号与工作区" onPress={onOpenAccount} style={({ pressed }) => [styles.accountRow, pressed && styles.pressed]}>
-          <Text style={styles.accountTitle}>账号与工作区</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("profile.accountWorkspace")} onPress={onOpenAccount} style={({ pressed }) => [styles.accountRow, pressed && styles.pressed]}>
+          <Text style={styles.accountTitle}>{locale.t("profile.accountWorkspace")}</Text>
           <Ionicons name="chevron-forward" size={16} color={styles.basicLabel.color} />
         </Pressable>
-        {displayProfile.relationshipGoal ? <View style={styles.extraSection}><Text style={styles.sectionTitle}>关系目标</Text><Text style={styles.bodyText}>{displayProfile.relationshipGoal}</Text></View> : null}
-      </> : <Pressable accessibilityRole="button" accessibilityLabel="返回资料预览" onPress={() => { if (isScopeCurrent()) setEditing(false); }} style={styles.previewBack}>
-        <Text style={styles.profileExtractionButtonText}>返回资料预览</Text>
+        {displayProfile.relationshipGoal ? <View style={styles.extraSection}><Text style={styles.sectionTitle}>{locale.t("profile.relationshipGoal")}</Text><Text style={styles.bodyText}>{locale.t.literal(displayProfile.relationshipGoal)}</Text></View> : null}
+      </> : <Pressable accessibilityRole="button" accessibilityLabel={locale.t("profile.backToPreview")} onPress={() => { if (isScopeCurrent()) setEditing(false); }} style={styles.previewBack}>
+        <Text style={styles.profileExtractionButtonText}>{locale.t("profile.backToPreview")}</Text>
       </Pressable>}
       {editorMounted ? <View style={[styles.editorSections, !editing && styles.hidden]}>
       <ProfileManualEditCard
@@ -580,6 +671,7 @@ function ProfileDocumentExtractionCard({
   result: ProfileExtraction | null;
 }) {
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
   const [sourceText, setSourceText] = useState("");
   const [pickerError, setPickerError] = useState<string | null>(null);
   const [pickerPending, setPickerPending] = useState(false);
@@ -588,14 +680,18 @@ function ProfileDocumentExtractionCard({
   const source = useRef(sourceText); source.current = sourceText;
   const picker = useProfileOperation(scopeKey, isScopeCurrent);
   const baseView = result ? profileDocumentExtractionToView(result) : null;
-  const fieldLabels: Record<string, string> = { displayName: "姓名", headline: "标题", homeMarket: "主要市场", relationshipGoal: "关系目标", targetRelationshipTypes: "目标关系", preferredFollowUpWindow: "联系时间", preferredIntroChannels: "介绍渠道", organization: "公司", role: "角色", email: "邮箱", phone: "电话", website: "网站" };
-  const view = baseView && result ? { ...baseView, summary: profileBusinessText(result.confidenceSummary), nextAction: profileBusinessText(result.nextAction),
-    stateLabel: result.state === "pending" ? "处理中" : baseView.stateLabel,
+  const kindLabel = result?.kind === "business-card" ? locale.t("profile.kindCard") : locale.t("profile.kindResume");
+  const view = baseView && result ? { ...baseView,
+    confidenceLabel: profileConfidenceLabel(result.draft?.confidence ?? "", locale.t),
+    nextAction: profileBusinessText(result.nextAction, locale.language) || (result.state === "empty" ? locale.t("profile.extractionNextEmpty") : result.state === "pending" ? locale.t("profile.extractionNextPending") : result.kind === "business-card" ? locale.t("profile.extractionNextCard") : locale.t("profile.extractionNextResume")),
+    stateLabel: profileExtractionStateLabel(result.state, !!result.draft, locale.t),
+    summary: profileBusinessText(result.confidenceSummary, locale.language) || (!result.draft ? locale.t("profile.extractionSummaryNone") : result.kind === "business-card" && result.draft.confidence === "medium" ? locale.t("profile.extractionSummaryCardMedium") : result.kind === "business-card" ? locale.t("profile.extractionSummaryCard") : result.draft.confidence === "high" ? locale.t("profile.extractionSummaryResumeHigh") : locale.t("profile.extractionSummaryPartial")),
+    title: locale.t("profile.extractionResultNamed", { name: kindLabel }),
     draft: baseView.draft && result.draft ? { ...baseView.draft,
-      displayName: result.draft.displayName || "未识别姓名", metaLine: [result.draft.role, result.draft.organization].filter(Boolean).join(" · "),
+      displayName: result.draft.displayName || locale.t("profile.unrecognizedName"), kindLabel, metaLine: [result.draft.role, result.draft.organization].filter(Boolean).join(" · "),
       relationshipGoal: result.draft.relationshipGoal,
-      suggestedFields: Object.entries(result.draft.suggestedProfileFields).map(([field, value]) => ({ label: fieldLabels[field] ?? "资料字段", value: Array.isArray(value) ? value.join("、") : value ?? "" })).filter(field => field.value),
-      evidence: result.draft.evidence.map(item => ({ label: Object.prototype.hasOwnProperty.call(fieldLabels, item.field) ? fieldLabels[item.field]! : "资料字段", excerpt: item.excerpt }))
+      suggestedFields: Object.entries(result.draft.suggestedProfileFields).map(([field, value]) => ({ label: profileFieldLabel(field, locale.t), value: Array.isArray(value) ? value.join("、") : value ?? "" })).filter(field => field.value),
+      evidence: result.draft.evidence.map(item => ({ label: profileFieldLabel(item.field, locale.t), excerpt: item.excerpt }))
     } : null } : null;
   const actionDisabled = !canEdit || extractingKind !== null || pickerPending;
   const actionsBusy = useRef(actionDisabled); actionsBusy.current = actionDisabled;
@@ -626,7 +722,7 @@ function ProfileDocumentExtractionCard({
       const asset = result.assets[0];
 
       if (!asset) {
-        setPickerError("没有选到可读取的图片。");
+        setPickerError(locale.t("profile.imageMissing"));
         return;
       }
 
@@ -634,7 +730,7 @@ function ProfileDocumentExtractionCard({
       setSelectedFile(file);
       if (source.current.trim() && editable.current) onExtract(kind, { fileName: file.fileName, mimeType: file.mimeType, text: source.current });
     } catch {
-      if (picker.owns(controller)) setPickerError("这张图片暂时读取不了，请重试。");
+      if (picker.owns(controller)) setPickerError(locale.t("profile.imageReadFailure"));
     } finally {
       if (picker.owns(controller)) setPickerPending(false);
       picker.finish(controller);
@@ -661,7 +757,7 @@ function ProfileDocumentExtractionCard({
       const asset = result.assets[0];
 
       if (!asset) {
-        setPickerError("没有选到可读取的文件。");
+        setPickerError(locale.t("profile.fileMissing"));
         return;
       }
 
@@ -669,7 +765,7 @@ function ProfileDocumentExtractionCard({
       setSelectedFile(file);
       if (source.current.trim() && editable.current) onExtract("resume", { fileName: file.fileName, mimeType: file.mimeType, text: source.current });
     } catch {
-      if (picker.owns(controller)) setPickerError("这份文件暂时读取不了，请重试。");
+      if (picker.owns(controller)) setPickerError(locale.t("profile.fileReadFailure"));
     } finally {
       if (picker.owns(controller)) setPickerPending(false);
       picker.finish(controller);
@@ -677,15 +773,15 @@ function ProfileDocumentExtractionCard({
   }
 
   return (
-    <DataCard detail="提取结果只用于复核，不会直接修改个人资料" title="补全资料" variant="inset">
+    <DataCard detail={locale.t("profile.extractionDetail")} title={locale.t("profile.extractionTitle")} variant="inset">
       <View style={styles.profileExtractionStack}>
-        <Text style={styles.evidenceText}>此处提取粘贴的文本，不读取图片或 PDF 的内容。</Text>
-        {selectedFile ? <Text style={styles.bodyText}>{sourceText.trim() ? `已选择 ${selectedFile.fileName}。提取时仅使用下方原文。` : `已选择 ${selectedFile.fileName}。此处只能提取粘贴的文本，请补充原文。`}</Text> : null}
+        <Text style={styles.evidenceText}>{locale.t("profile.extractionGuidance")}</Text>
+        {selectedFile ? <Text style={styles.bodyText}>{locale.t(sourceText.trim() ? "profile.selectedWithText" : "profile.selectedNeedsText", { name: selectedFile.fileName })}</Text> : null}
         <ProfileTextInput
-          label="名片文本或简历摘要"
+          label={locale.t("profile.extractionInput")}
           multiline
           onChangeText={value => { if (picker.isCurrent()) setSourceText(value); }}
-          placeholder="姓名、公司、角色、联系方式、关系目标"
+          placeholder={locale.t("profile.extractionPlaceholder")}
           value={sourceText}
         />
         {actionError ? (
@@ -695,31 +791,31 @@ function ProfileDocumentExtractionCard({
           <ProfileExtractionButton
             disabled={actionDisabled}
             icon="id-card-outline"
-            label={extractingKind === "business-card" ? "提取中" : "提取名片"}
+            label={extractingKind === "business-card" ? locale.t("profile.extracting") : locale.t("profile.extractCard")}
             onPress={() => { if (picker.isCurrent() && !actionsBusy.current) onExtract("business-card", { text: sourceText, ...(selectedFile?.kind === "business-card" ? { fileName: selectedFile.fileName, mimeType: selectedFile.mimeType } : {}) }); }}
           />
           <ProfileExtractionButton
             disabled={actionDisabled}
             icon="document-text-outline"
-            label={extractingKind === "resume" ? "提取中" : "提取简历"}
+            label={extractingKind === "resume" ? locale.t("profile.extracting") : locale.t("profile.extractResume")}
             onPress={() => { if (picker.isCurrent() && !actionsBusy.current) onExtract("resume", { text: sourceText, ...(selectedFile?.kind === "resume" ? { fileName: selectedFile.fileName, mimeType: selectedFile.mimeType } : {}) }); }}
           />
           <ProfileExtractionButton
             disabled={actionDisabled}
             icon="image-outline"
-            label="选择名片图片"
+            label={locale.t("profile.chooseCardImage")}
             onPress={() => pickProfileDocumentImage("business-card")}
           />
           <ProfileExtractionButton
             disabled={actionDisabled}
             icon="images-outline"
-            label="选择简历图片"
+            label={locale.t("profile.chooseResumeImage")}
             onPress={() => pickProfileDocumentImage("resume")}
           />
           <ProfileExtractionButton
             disabled={actionDisabled}
             icon="document-attach-outline"
-            label="选择简历文件"
+            label={locale.t("profile.chooseResumeFile")}
             onPress={pickProfileDocumentFile}
           />
         </View>
@@ -778,6 +874,7 @@ function ProfileDocumentExtractionResult({
   view: ProfileDocumentExtractionView;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   return (
     <View style={styles.profileExtractionResult}>
       <View style={styles.profileExtractionResultHeader}>
@@ -838,7 +935,7 @@ function ProfileDocumentExtractionResult({
       <Text style={styles.evidenceText}>{view.nextAction}</Text>
       {view.draft && canApply ? (
         <Pressable
-          accessibilityLabel="应用到编辑表单"
+          accessibilityLabel={locale.t("profile.applyExtraction")}
           accessibilityRole="button"
           onPress={onApply}
           style={({ pressed }) => [
@@ -848,7 +945,7 @@ function ProfileDocumentExtractionResult({
         >
           <Ionicons color={colors.accent} name="create-outline" size={16} />
           <Text style={styles.profileExtractionApplyButtonText}>
-            应用到编辑表单
+            {locale.t("profile.applyExtraction")}
           </Text>
         </Pressable>
       ) : null}
@@ -880,22 +977,28 @@ function ProfileManualEditCard({
   saving: boolean;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const profileFingerprint = JSON.stringify(data.profile);
   const [draft, setDraft] = useState<ProfileDraft>(() => profileDraftFromDetail(data));
+  const draftBase = useRef(data);
   const dirtyDraft = useRef(false);
   const draftRevision = useRef(0);
   const latestDraft = useRef(draft); latestDraft.current = draft;
   const editable = useRef(canEdit); editable.current = canEdit;
-  const acceptedPatchView = acceptedPatch
-    ? { ...profileAcceptedPatchToView(acceptedPatch), nextAction: profileBusinessText(acceptedPatch.nextAction),
-      fields: profileAcceptedPatchToView(acceptedPatch).fields.map((field, index) => {
+  const acceptedPatchBaseView = acceptedPatch ? profileAcceptedPatchToView(acceptedPatch) : null;
+  const acceptedPatchView = acceptedPatch && acceptedPatchBaseView
+    ? { ...acceptedPatchBaseView,
+      nextAction: profileBusinessText(acceptedPatch.nextAction, locale.language) || locale.t("profile.reviewBeforeSave"),
+      summary: locale.t("profile.saveRequired"),
+      title: locale.t("profile.pendingChanges"),
+      fields: acceptedPatchBaseView.fields.map((field, index) => {
         const value = acceptedPatch.profilePatch[acceptedPatch.appliedFields[index]!];
-        return { ...field, value: Array.isArray(value) ? value.join("、") : value ?? "" };
+        return { ...field, label: profileFieldLabel(acceptedPatch.appliedFields[index] ?? "", locale.t), value: Array.isArray(value) ? value.join("、") : value ?? "" };
       }) }
     : null;
 
   useEffect(() => {
-    if (!dirtyDraft.current) setDraft(profileDraftFromDetail(data));
+    if (!dirtyDraft.current) { draftBase.current = data; setDraft(profileDraftFromDetail(data)); }
   }, [profileFingerprint]);
 
   useEffect(() => {
@@ -952,8 +1055,10 @@ function ProfileManualEditCard({
     if (!isScopeCurrent() || !editable.current || !dirtyDraft.current) return;
     const revision = draftRevision.current;
     const isDraftCurrent = () => isScopeCurrent() && draftRevision.current === revision;
-    if (await onSave(latestDraft.current, isDraftCurrent) && isDraftCurrent()) {
-      dirtyDraft.current = false;
+    const receipt = await onSave(latestDraft.current, draftBase.current, isDraftCurrent);
+    if (receipt && isScopeCurrent()) {
+      draftBase.current = receipt;
+      if (isDraftCurrent()) dirtyDraft.current = false;
       setDraft(current => ({ ...current }));
     }
   }
@@ -970,61 +1075,89 @@ function ProfileManualEditCard({
   }
 
   return (
-    <DataCard detail="保存后同步到 web 个人资料" title="编辑对外资料" variant="inset">
+    <DataCard detail={locale.t("profile.editDetail")} title={locale.t("profile.editTitle")} variant="inset">
       <View style={styles.manualEditStack}>
         {acceptedPatchView ? (
           <ProfileAcceptedPatchNotice view={acceptedPatchView} />
         ) : null}
         <ProfileTextInput
-          label="名字"
+          label={locale.t("profile.name")}
           onChangeText={(value) => updateDraft("displayName", value)}
           value={draft.displayName}
         />
         <ProfileTextInput
-          label="标题"
+          label={locale.t("profile.headline")}
           onChangeText={(value) => updateDraft("headline", value)}
           value={draft.headline}
         />
-        <ProfileIndustryPicker label="主要行业" selected={draft.primaryIndustryId ?? null} options={INDUSTRY_CATALOG.map(item => ({ id: item.id, label: item.labels.zh }))} disabled={saving || !canEdit} onSelect={primaryIndustryId => updateIndustry({ primaryIndustryId, secondaryIndustryId: null })} />
-        <ProfileIndustryPicker label="二级行业" selected={draft.secondaryIndustryId ?? null} options={draft.primaryIndustryId ? listSecondaryIndustries(draft.primaryIndustryId).map(item => ({ id: item.id, label: item.labels.zh })) : []} disabled={saving || !canEdit || !draft.primaryIndustryId} onSelect={secondaryIndustryId => updateIndustry({ secondaryIndustryId })} />
-        {industryIncomplete ? <Text style={styles.evidenceText}>请选择二级行业。</Text> : null}
         <ProfileTextInput
-          label="简介"
+          label={locale.t("profile.organization")}
+          onChangeText={(value) => updateDraft("organization", value)}
+          value={draft.organization}
+        />
+        <ProfileTextInput
+          label={locale.t("profile.role")}
+          onChangeText={(value) => updateDraft("role", value)}
+          value={draft.role}
+        />
+        <ProfileTextInput label={locale.t("profile.birthDatePrivate")} placeholder={locale.t("profile.birthDatePlaceholder")} onChangeText={value => updateDraft("birthDate", value)} value={draft.birthDate} />
+        <ProfileIndustryPicker label={locale.t("profile.primaryIndustry")} selected={draft.primaryIndustryId ?? null} options={INDUSTRY_CATALOG.map(item => ({ id: item.id, label: item.labels[locale.language] }))} disabled={saving || !canEdit} onSelect={primaryIndustryId => updateIndustry({ primaryIndustryId, secondaryIndustryId: null })} />
+        <ProfileIndustryPicker label={locale.t("profile.secondaryIndustry")} selected={draft.secondaryIndustryId ?? null} options={draft.primaryIndustryId ? listSecondaryIndustries(draft.primaryIndustryId).map(item => ({ id: item.id, label: item.labels[locale.language] })) : []} disabled={saving || !canEdit || !draft.primaryIndustryId} onSelect={secondaryIndustryId => updateIndustry({ secondaryIndustryId })} />
+        {industryIncomplete ? <Text style={styles.evidenceText}>{locale.t("profile.chooseSecondaryIndustry")}</Text> : null}
+        <ProfileTextInput
+          label={locale.t("profile.bio")}
           multiline
           onChangeText={(value) => updateDraft("bio", value)}
           value={draft.bio}
         />
         <ProfileTextInput
-          label="我能提供"
+          label={locale.t("profile.offering")}
           multiline
           onChangeText={(value) => updateDraft("offeringText", value)}
-          placeholder="一行一个资源"
+          placeholder={locale.t("profile.resourcePlaceholder")}
           value={draft.offeringText}
         />
         <ProfileTextInput
-          label="我想认识"
+          label={locale.t("profile.wantToMeet")}
           multiline
           onChangeText={(value) => updateDraft("seekingText", value)}
-          placeholder="一行一个需求"
+          placeholder={locale.t("profile.seekingPlaceholder")}
           value={draft.seekingText}
         />
         <ProfileTextInput
-          label="关系目标"
+          label={locale.t("profile.topics")}
+          multiline
+          onChangeText={(value) => updateDraft("topicsText", value)}
+          placeholder={locale.t("profile.topicPlaceholder")}
+          value={draft.topicsText}
+        />
+        <ProfileTextInput
+          label={locale.t("profile.relationshipGoal")}
           multiline
           onChangeText={(value) => updateDraft("relationshipGoal", value)}
           value={draft.relationshipGoal}
         />
-        <ProfileTextInput label="目标关系类型" multiline onChangeText={value => updateDraft("targetRelationshipTypesText", value)} value={draft.targetRelationshipTypesText} placeholder="一行一种关系" />
-        <ProfileTextInput label="联系时间" onChangeText={value => updateDraft("preferredFollowUpWindow", value)} value={draft.preferredFollowUpWindow} />
-        <ProfileTextInput label="介绍渠道" multiline onChangeText={value => updateDraft("preferredIntroChannelsText", value)} value={draft.preferredIntroChannelsText} placeholder="一行一种渠道" />
+        <ProfileTextInput label={locale.t("profile.targetRelationshipTypes")} multiline onChangeText={value => updateDraft("targetRelationshipTypesText", value)} value={draft.targetRelationshipTypesText} placeholder={locale.t("profile.relationshipTypePlaceholder")} />
+        <ProfileTextInput label={locale.t("profile.followUpWindow")} onChangeText={value => updateDraft("preferredFollowUpWindow", value)} value={draft.preferredFollowUpWindow} />
+        <ProfileTextInput label={locale.t("profile.introChannels")} multiline onChangeText={value => updateDraft("preferredIntroChannelsText", value)} value={draft.preferredIntroChannelsText} placeholder={locale.t("profile.channelPlaceholder")} />
         {actionMessage ? (
           <Text style={styles.profileActionMessage}>{actionMessage}</Text>
         ) : null}
         {actionError ? (
           <Text style={styles.profileActionError}>{actionError}</Text>
         ) : null}
+        {dirtyDraft.current && draftBase.current.profile?.updatedAt !== data.profile?.updatedAt ? (
+          <Pressable accessibilityRole="button" accessibilityLabel={locale.t("profile.discardDraft")} disabled={saving || !canEdit} onPress={() => {
+            if (!isScopeCurrent() || !editable.current || saving) return;
+            draftRevision.current++; dirtyDraft.current = false; draftBase.current = data;
+            setDraft(profileDraftFromDetail(data));
+            onDraftChanged("displayName");
+          }} style={styles.profileExtractionButton}>
+            <Text style={styles.profileExtractionButtonText}>{locale.t("profile.discardDraft")}</Text>
+          </Pressable>
+        ) : null}
         <Pressable
-          accessibilityLabel="保存资料"
+          accessibilityLabel={locale.t("profile.save")}
           accessibilityRole="button"
           disabled={saveDisabled}
           onPress={() => { void saveDraft(); }}
@@ -1040,7 +1173,7 @@ function ProfileManualEditCard({
             size={16}
           />
           <Text style={styles.profileSaveButtonText}>
-            {saving ? "保存中" : "保存资料"}
+            {saving ? locale.t("profile.saving") : locale.t("profile.save")}
           </Text>
         </Pressable>
       </View>
@@ -1056,14 +1189,15 @@ function ProfileIndustryPicker<TId extends string>({ label, selected, options, d
   onSelect: (id: TId | null) => void;
 }) {
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
   const [expanded, setExpanded] = useState(false);
   return <View>
     <Text style={styles.evidenceText}>{label}</Text>
-    <Pressable accessibilityRole="button" accessibilityLabel={`选择${label}`} accessibilityState={{ expanded, disabled }} disabled={disabled} onPress={() => setExpanded(value => !value)} style={styles.profileExtractionButton}>
-      <Text style={styles.bodyText}>{options.find(item => item.id === selected)?.label ?? "未填写"}</Text>
+    <Pressable accessibilityRole="button" accessibilityLabel={locale.t("profile.chooseNamed", { name: label })} accessibilityState={{ expanded, disabled }} disabled={disabled} onPress={() => setExpanded(value => !value)} style={styles.profileExtractionButton}>
+      <Text style={styles.bodyText}>{options.find(item => item.id === selected)?.label ?? locale.t("profile.notFilled")}</Text>
     </Pressable>
     {expanded && !disabled ? <View style={styles.profileExtractionStack}>
-      <Pressable accessibilityRole="button" accessibilityLabel={`清空${label}`} onPress={() => { onSelect(null); setExpanded(false); }} style={styles.profileExtractionButton}><Text style={styles.bodyText}>未填写</Text></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel={locale.t("profile.clearNamed", { name: label })} onPress={() => { onSelect(null); setExpanded(false); }} style={styles.profileExtractionButton}><Text style={styles.bodyText}>{locale.t("profile.notFilled")}</Text></Pressable>
       {options.map(item => <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`${label}：${item.label}`} accessibilityState={{ selected: item.id === selected }} onPress={() => { onSelect(item.id); setExpanded(false); }} style={styles.profileExtractionButton}><Text style={styles.bodyText}>{item.label}</Text></Pressable>)}
     </View> : null}
   </View>;
@@ -1157,6 +1291,7 @@ function BusinessCardTagRow({
 
 function OrbitBusinessCard({ profile, onEdit }: { profile: ProfileSummary; onEdit: () => void }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const card = profileBusinessCard(profile);
   const { width, fontScale } = useWindowDimensions();
   const narrow = width < 360 || fontScale > 1.2;
@@ -1173,8 +1308,8 @@ function OrbitBusinessCard({ profile, onEdit }: { profile: ProfileSummary; onEdi
           {profile.timezone ? <Text style={styles.profileLocation}>{profile.timezone}</Text> : null}
         </View>
       </View>
-      <Pressable accessibilityRole="button" accessibilityLabel="编辑资料" onPress={onEdit} style={({ pressed }) => [styles.profileEditLink, pressed && styles.pressed]}>
-        <Text style={styles.profileEditText}>编辑资料</Text><Ionicons name="chevron-forward" size={14} color={colors.accent} />
+      <Pressable accessibilityRole="button" accessibilityLabel={locale.t("profile.edit")} onPress={onEdit} style={({ pressed }) => [styles.profileEditLink, pressed && styles.pressed]}>
+        <Text style={styles.profileEditText}>{locale.t("profile.edit")}</Text><Ionicons name="chevron-forward" size={14} color={colors.accent} />
       </Pressable>
     </View>
   );
@@ -1182,12 +1317,13 @@ function OrbitBusinessCard({ profile, onEdit }: { profile: ProfileSummary; onEdi
 
 function ProfileStatistics({ scopeKey, isScopeCurrent }: { scopeKey: string; isScopeCurrent: () => boolean }) {
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
   const { width, fontScale } = useWindowDimensions();
   const narrow = width < 360 || fontScale > 1.2;
   return <View style={[styles.statistics, narrow && styles.statisticsNarrow]}>
-    <ProfileStatistic label="人脉" path={ORBIT_API_ENDPOINTS.contacts} href="/contacts" count={profileContactsCount} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} first narrow={narrow} />
-    <ProfileStatistic label="今日待办" path={ORBIT_API_ENDPOINTS.tasks + "?status=open"} href="/tasks" count={profileTodayTasksCount} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} narrow={narrow} />
-    <ProfileStatistic label="近期日程" path={ORBIT_API_ENDPOINTS.scheduleItems} href="/schedule" count={profileUpcomingScheduleCount} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} narrow={narrow} />
+    <ProfileStatistic label={locale.t("profile.contacts")} path={ORBIT_API_ENDPOINTS.contacts} href="/contacts" count={profileContactsCount} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} first narrow={narrow} />
+    <ProfileStatistic label={locale.t("profile.todayTasks")} path={ORBIT_API_ENDPOINTS.tasks + "?status=open"} href="/tasks" count={profileTodayTasksCount} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} narrow={narrow} />
+    <ProfileStatistic label={locale.t("profile.upcomingSchedule")} path={ORBIT_API_ENDPOINTS.scheduleItems} href="/schedule" count={profileUpcomingScheduleCount} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} narrow={narrow} />
   </View>;
 }
 
@@ -1195,6 +1331,7 @@ function ProfileStatistic({ label, path, href, count, scopeKey, isScopeCurrent, 
   label: string; path: string; href: Href; count: (data: unknown) => number | null; scopeKey: string; isScopeCurrent: () => boolean; first?: boolean; narrow: boolean;
 }) {
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
   const router = useRouter();
   const [attempt, setAttempt] = useState(0);
   const state = useApiResource<unknown>(path, () => false, { scopeKey: JSON.stringify([scopeKey, path, attempt]) });
@@ -1204,9 +1341,9 @@ function ProfileStatistic({ label, path, href, count, scopeKey, isScopeCurrent, 
     <Text style={styles.statisticValue}>{value}</Text><Text style={styles.statisticLabel}>{label}</Text>
   </Pressable>;
   return <View style={cellStyles}>
-    <Text accessibilityRole={state.kind === "loading" ? "text" : "alert"} accessibilityLiveRegion="polite" style={styles.statisticState}>{state.kind === "loading" ? "读取中" : "未读到"}</Text>
+    <Text accessibilityRole={state.kind === "loading" ? "text" : "alert"} accessibilityLiveRegion="polite" style={styles.statisticState}>{state.kind === "loading" ? locale.t("profile.reading") : locale.t("profile.unavailable")}</Text>
     <Text style={styles.statisticLabel}>{label}</Text>
-    {state.kind !== "loading" ? <Pressable accessibilityRole="button" accessibilityLabel={"重试" + label} onPress={() => { if (isScopeCurrent()) setAttempt(value => value + 1); }} style={styles.statisticRetry}><Text style={styles.profileEditText}>重试</Text></Pressable> : null}
+    {state.kind !== "loading" ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("profile.retryNamed", { name: label })} onPress={() => { if (isScopeCurrent()) setAttempt(value => value + 1); }} style={styles.statisticRetry}><Text style={styles.profileEditText}>{locale.t("common.retry")}</Text></Pressable> : null}
   </View>;
 }
 
@@ -1228,28 +1365,37 @@ function ProfileUpdateSuggestionsCard({
   state: ApiResourceState<ProfileSuggestions>;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const data = state.kind === "success" || state.kind === "empty" ? state.data : null;
-  const notice = state.kind === "loading" ? "正在读取资料建议" : !data ? "资料建议未能读取"
-    : data.state === "pending" ? "资料建议正在准备" : data.state === "empty" || data.suggestions.length === 0 ? "暂无资料建议" : null;
+  const notice = state.kind === "loading" ? locale.t("profile.suggestionsReading") : !data ? locale.t("profile.suggestionsUnavailable")
+    : data.state === "pending" ? locale.t("profile.suggestionsPending") : data.state === "empty" || data.suggestions.length === 0 ? locale.t("profile.suggestionsEmpty") : null;
   if (notice) {
-    return <DataCard title="资料更新建议">
+    return <DataCard title={locale.t("profile.suggestionsTitle")}>
       <Text accessibilityRole={!data && state.kind !== "loading" ? "alert" : "text"} style={styles.bodyText}>{notice}</Text>
       {actionError ? <Text accessibilityRole="alert" style={styles.suggestionActionError}>{actionError}</Text> : null}
       {actionMessage ? <Text style={styles.suggestionActionMessage}>{actionMessage}</Text> : null}
-      {state.kind !== "loading" ? <ProfileExtractionButton disabled={!isScopeCurrent()} icon="refresh-outline" label="重试资料建议" onPress={() => { if (isScopeCurrent()) state.refresh(); }} /> : null}
+      {state.kind !== "loading" ? <ProfileExtractionButton disabled={!isScopeCurrent()} icon="refresh-outline" label={locale.t("profile.retrySuggestions")} onPress={() => { if (isScopeCurrent()) state.refresh(); }} /> : null}
     </DataCard>;
   }
   if (!data) return null;
   const baseView = profileUpdateSuggestionsToView(data);
-  const view = { ...baseView, nextAction: profileBusinessText(data.nextAction), suggestions: baseView.suggestions.map((view, index) => {
+  const view = { ...baseView,
+    nextAction: profileBusinessText(data.nextAction, locale.language),
+    stateLabel: profileSuggestionStateLabel(data.state, data.suggestions.length, locale.t),
+    suggestions: baseView.suggestions.map((view, index) => {
     const item = data.suggestions[index]!;
     return { ...view, canAccept: canEdit && view.canAccept, currentValue: Array.isArray(item.currentValue) ? item.currentValue.join("、") : item.currentValue,
       suggestedValue: Array.isArray(item.suggestedValue) ? item.suggestedValue.join("、") : item.suggestedValue,
-      sourceLabel: profileBusinessText(item.sourceLabel), rationale: profileBusinessText(item.rationale), evidenceExcerpt: item.evidence.map(evidence => profileBusinessText(evidence.excerpt)).join("\n") };
+      confidenceLabel: profileConfidenceLabel(item.confidence, locale.t),
+      fieldLabel: profileFieldLabel(item.targetProfileField, locale.t),
+      sourceLabel: profileBusinessText(item.sourceLabel, locale.language) || profileSignalSourceLabel(item.sourceKind, locale.t),
+      statusLabel: profileSuggestionStatusLabel(item.status, locale.t),
+      rationale: profileBusinessText(item.rationale, locale.language),
+      evidenceExcerpt: item.evidence.map(evidence => profileBusinessText(evidence.excerpt, locale.language)).join("\n") };
   }) };
 
   return (
-    <DataCard detail={`${view.stateLabel} · ${view.nextAction}`} title="资料更新建议">
+    <DataCard detail={`${view.stateLabel} · ${view.nextAction}`} title={locale.t("profile.suggestionsTitle")}>
       <View style={styles.suggestionsStack}>
         {actionMessage ? (
           <Text style={styles.suggestionActionMessage}>{actionMessage}</Text>
@@ -1273,11 +1419,11 @@ function ProfileUpdateSuggestionsCard({
               </View>
               <Text style={styles.suggestionField}>{suggestion.fieldLabel}</Text>
               <View style={styles.suggestionDiff}>
-                <Text style={styles.suggestionLabel}>当前</Text>
+                <Text style={styles.suggestionLabel}>{locale.t("profile.currentValue")}</Text>
                 <Text style={styles.suggestionValue}>
                   {suggestion.currentValue}
                 </Text>
-                <Text style={styles.suggestionLabel}>建议</Text>
+                <Text style={styles.suggestionLabel}>{locale.t("profile.suggestedValue")}</Text>
                 <Text style={styles.suggestionValueStrong}>
                   {suggestion.suggestedValue}
                 </Text>
@@ -1288,7 +1434,7 @@ function ProfileUpdateSuggestionsCard({
               </Text>
               {suggestion.canAccept ? (
                 <Pressable
-                  accessibilityLabel={`确认${suggestion.fieldLabel}建议`}
+                  accessibilityLabel={locale.t("profile.confirmNamedSuggestion", { field: suggestion.fieldLabel })}
                   accessibilityRole="button"
                   disabled={actionDisabled}
                   onPress={() => onAcceptSuggestion(suggestion.id)}
@@ -1304,7 +1450,7 @@ function ProfileUpdateSuggestionsCard({
                     size={16}
                   />
                   <Text style={styles.suggestionActionButtonText}>
-                    {isAccepting ? "确认中" : "确认建议"}
+                    {isAccepting ? locale.t("profile.confirming") : locale.t("profile.confirmSuggestion")}
                   </Text>
                 </Pressable>
               ) : null}
@@ -1324,13 +1470,14 @@ function ProfileTagSection({
   title: string;
 }) {
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
   if (items.length === 0) {
     return null;
   }
 
   return (
     <View>
-      <SectionHeader detail={`${items.length} 项`} title={title} />
+      <SectionHeader detail={locale.t("profile.itemsCount", { count: items.length })} title={title} />
       <View style={styles.tagsWrap}>
         {items.map((item) => (
           <Text key={item} style={styles.tagText}>

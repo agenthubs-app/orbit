@@ -18,7 +18,7 @@ loader._load = (name, ...args) => {
   if (name === "expo-router") return {
     useLocalSearchParams: () => ({}), useRouter: () => ({ push() {} })
   };
-  if (name.endsWith("/api/AuthSessionProvider")) return { useOrbitAuthSession: () => ({ ready: true, user: { id: "guidance-reader", name: "测试读者", email: "reader@example.test", emailVerified: true, image: null } }) };
+  if (name.endsWith("/api/AuthSessionProvider")) return { useOrbitAuthSession: () => ({ ready: true, accountId: "guidance-reader", actorId: "guidance-reader", user: { id: "guidance-reader", name: "测试读者", email: "reader@example.test", emailVerified: true, image: null } }) };
   if (name.endsWith("/api/ApiBaseUrlProvider")) return { useOrbitApiBaseUrl: () => ({ baseUrl: "https://orbit.test" }) };
   if (name.endsWith("/hooks/useOrbitApiClient")) return { useOrbitApiClient: () => ({}) };
   if (name.endsWith("/hooks/useRelationshipInboxBadgeCount")) return { useRelationshipInboxBadgeCount: () => 0 };

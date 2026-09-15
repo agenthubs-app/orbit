@@ -22,6 +22,7 @@ const patchKeys = [
   "category",
   "dueAt",
   "notes",
+  "location",
   "plannedDate",
   "priority",
   "relatedContactId",
@@ -37,9 +38,9 @@ function parsePatch(value: unknown): TaskUpdatePatch {
   }
   const patch = value as Record<string, unknown>;
   requireExactKeys(patch, patchKeys);
-  const parsed: Record<string, string> = {};
+  const parsed: Record<string, string | null> = {};
   for (const key of Object.keys(patch)) {
-    parsed[key] = requireString(patch[key], key);
+    parsed[key] = patch[key] === null && ["plannedDate", "dueAt", "location"].includes(key) ? null : requireString(patch[key], key);
   }
   return parsed as TaskUpdatePatch;
 }

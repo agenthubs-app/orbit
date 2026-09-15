@@ -46,8 +46,12 @@ test.before(async () => {
     stdin: {
       contents: `import React from "react"; import { createRoot } from "react-dom/client";
         import { ContactNotesSection } from "./src/screens/contacts/ContactNotesSection";
+        import { OrbitLocaleContext } from "./src/i18n/OrbitLocaleContext";
+        import { createTranslator } from "./src/i18n/messages";
         import { data, colors, client } from "fixture";
-        createRoot(document.getElementById("root")).render(<ContactNotesSection actorId="account:one" client={client} colors={colors} contactId="contact:/notes" data={data} onRefresh={() => { throw new Error("legacy refresh called"); }} preview />);`,
+        const language = new URLSearchParams(location.search).get("language") || "zh";
+        const locale = { choice: language, deviceLanguage: language, error: null, language, preference: { mode: "manual", language, updatedAt: null }, retryLanguageSave: async () => {}, setLanguage: async () => {}, source: "account", syncState: "idle", t: createTranslator(language) };
+        createRoot(document.getElementById("root")).render(<OrbitLocaleContext.Provider value={locale}><ContactNotesSection actorId="account:one" client={client} colors={colors} contactId="contact:/notes" data={data} onRefresh={() => { throw new Error("legacy refresh called"); }} preview /></OrbitLocaleContext.Provider>);`,
       resolveDir: process.cwd(),
       loader: "tsx",
     },
@@ -82,11 +86,11 @@ test.after(async () => {
   if (server) await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
 });
 
-async function open(t: { after(fn: () => Promise<void>): void }): Promise<Page> {
+async function open(t: { after(fn: () => Promise<void>): void }, language = "zh"): Promise<Page> {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   t.after(() => page.close());
-  await page.goto(url);
-  await page.getByRole("button", { name: "笔记", exact: true }).click();
+  await page.goto(`${url}?language=${language}`);
+  await page.getByRole("button", { name: language === "en" ? "Notes" : "笔记", exact: true }).click();
   return page;
 }
 
@@ -122,4 +126,13 @@ test("legacy section opens independent filtered notes and create routes without 
     "/notes?contactId=contact%3A%2Fnotes",
     "/notes/new?contactId=contact%3A%2Fnotes",
   ]);
+});
+
+test("an English contact detail translates note chrome and preserves legacy text", async (t) => {
+  const page = await open(t, "en");
+  await page.getByRole("textbox", { name: "Search related notes" }).waitFor();
+  await page.getByRole("button", { name: "View all related notes" }).waitFor();
+  await page.getByText("Legacy contact notes (read only)", { exact: true }).waitFor();
+  await page.getByText(literal, { exact: true }).waitFor();
+  await page.getByText("客户提案跟进", { exact: true }).waitFor();
 });

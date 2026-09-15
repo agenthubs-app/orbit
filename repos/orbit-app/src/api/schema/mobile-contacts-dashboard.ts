@@ -349,7 +349,41 @@ const contactsPayloadSchema = z
   })
   .passthrough();
 
+const analysisVersionSchema = z.literal("contacts.analysis@1");
+const sourceDataVersionSchema = z.string().regex(/^[a-f0-9]{64}$/);
+const dashboardAnalysisReportSchema = z.object({
+  analysisVersion: analysisVersionSchema,
+  body: nonEmptyString,
+  generatedAt: z.string().datetime(),
+  messageId: nonEmptyString,
+  sessionId: nonEmptyString,
+  sourceDataVersion: sourceDataVersionSchema,
+});
+const dashboardAnalysisSchema = z
+  .object({
+    current: z.object({
+      analysisVersion: analysisVersionSchema,
+      sourceDataVersion: sourceDataVersionSchema,
+    }),
+    report: dashboardAnalysisReportSchema.nullable(),
+    stale: z.boolean(),
+  })
+  .superRefine((analysis, context) => {
+    const expectedStale = analysis.report
+      ? analysis.report.sourceDataVersion !== analysis.current.sourceDataVersion ||
+        analysis.report.analysisVersion !== analysis.current.analysisVersion
+      : false;
+    if (analysis.stale !== expectedStale) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "analysis stale state must match its persisted versions",
+        path: ["stale"],
+      });
+    }
+  });
+
 export const mobileContactsDashboardSectionSchemas = {
+  analysis: dashboardAnalysisSchema,
   aggregate: dashboardAggregateSchema,
   summary: dashboardSummarySchema,
   opportunities: dashboardOpportunitiesSchema,
@@ -360,6 +394,7 @@ export const mobileContactsDashboardSectionSchemas = {
 } as const;
 
 export const MOBILE_CONTACTS_DASHBOARD_OPTIONAL_SECTIONS = [
+  "analysis",
   "summary",
   "opportunities",
   "gaps",
@@ -371,6 +406,7 @@ export const MOBILE_CONTACTS_DASHBOARD_OPTIONAL_SECTIONS = [
 export const mobileContactsDashboardPayloadSchema = z.object({
   schemaVersion: z.literal(1),
   generatedAt: nonEmptyString,
+  analysis: dashboardAnalysisSchema.nullable().optional(),
   aggregate: dashboardAggregateSchema,
   summary: dashboardSummarySchema.nullable(),
   opportunities: dashboardOpportunitiesSchema.nullable(),

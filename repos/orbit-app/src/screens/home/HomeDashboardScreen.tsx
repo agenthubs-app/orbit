@@ -1,46 +1,46 @@
+import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ActivityIndicator, AppState, Image, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
-import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from "react-native-svg";
+import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
-import { ORBIT_API_ENDPOINTS, taskPath, tasksPath } from "../../api/endpoints";
+import { eventValueRecommendationsPath, ORBIT_API_ENDPOINTS, taskPath, tasksPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { LoadingState } from "../../components/LoadingState";
-import { OrbitNavigationIcon } from "../../components/OrbitNavigationIcon";
 import { createThemedStyles } from "../../design/theme";
-import { layout } from "../../design/tokens";
 import { useRelationshipInboxBadgeCount } from "../../hooks/useRelationshipInboxBadgeCount";
 import { useHomeDashboardClient } from "../../hooks/useHomeDashboardClient";
-import { contactAvatarFor } from "../../view-models/contacts";
-import { homeDateView, homeFollowupsToView, homeScheduleToView, homeTasksToView } from "../../view-models/home-dashboard";
+import { homeDateView, homeRecommendedEventsToView, homeScheduleToView, homeTasksToView } from "../../view-models/home-dashboard";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import type { MessageKey } from "../../i18n/messages";
 
-type Section = "schedule" | "tasks" | "followups";
+type Section = "schedule" | "tasks" | "events";
 type Resource = { kind: "loading" } | { kind: "ready"; data: unknown } | { kind: "error"; message: string };
 type Resources = Record<Section, Resource>;
 type Scope = { key: number; ready: boolean; baseUrl: string; client: ReturnType<typeof useHomeDashboardClient> };
-const paths: Record<Section, string> = { schedule: ORBIT_API_ENDPOINTS.scheduleItems, tasks: tasksPath("open"), followups: ORBIT_API_ENDPOINTS.contacts };
-const sections: Section[] = ["schedule", "tasks", "followups"];
-const loading = (): Resources => ({ schedule: { kind: "loading" }, tasks: { kind: "loading" }, followups: { kind: "loading" } });
-const invalidData = "返回的数据不完整，请重新读取。";
+const paths: Record<Section, string> = { schedule: ORBIT_API_ENDPOINTS.scheduleItems, tasks: tasksPath("open"), events: eventValueRecommendationsPath({ limit: 3 }) };
+const sections: Section[] = ["schedule", "tasks", "events"];
+const loading = (): Resources => ({ schedule: { kind: "loading" }, tasks: { kind: "loading" }, events: { kind: "loading" } });
 const homeFont = Platform.select({
   web: '-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif',
   ios: "System",
   default: "sans-serif",
 });
 const quickActions = [
-  { label: "扫名片", href: "/contacts/new", icon: "scan" },
-  { label: "查看日程", href: "/schedule", icon: "calendar" },
-  { label: "新建待办", href: "/today", icon: "task" },
-  { label: "记笔记", href: "/notes/new", icon: "notes" },
-] as const;
+  { labelKey: "home.scanCard", href: "/contacts/new", icon: "scan" },
+  { labelKey: "home.viewSchedule", href: "/schedule", icon: "calendar" },
+  { labelKey: "home.newTask", href: "/today", icon: "task" },
+  { labelKey: "home.newNote", href: "/notes/new", icon: "notes" },
+] as const satisfies readonly { labelKey: MessageKey; href: string; icon: "scan" | "calendar" | "task" | "notes" }[];
 
 export function HomeDashboardScreen() {
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
   const client = useHomeDashboardClient();
-  const actor = auth.user?.id ?? "";
+  const locale = useOrbitLocale();
+  const actor = auth.actorId ?? "";
   const ready = auth.ready && auth.signedIn && server.ready && Boolean(actor);
   const sequence = useRef(0);
   const scope = useMemo<Scope>(() => ({
@@ -50,14 +50,15 @@ export function HomeDashboardScreen() {
   latest.current = scope;
   const current = useCallback(() => latest.current === scope && scope.ready, [scope]);
   return scope.ready ? <HomeDashboard key={scope.key} scope={scope} current={current} />
-    : <AppScreen title="首页"><LoadingState /></AppScreen>;
+    : <AppScreen title={locale.t("home.title")}><LoadingState accessibilityLabel={locale.t("common.loadingLabel")} /></AppScreen>;
 }
 
 function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolean }) {
+  const { timeZone } = useOrbitTimeZone();
+  const locale = useOrbitLocale();
   const router = useRouter();
   const { colors, styles } = useStyles();
   const { width, fontScale } = useWindowDimensions();
-  const avatarScope = useId().replace(/:/gu, "");
   const singleColumn = fontScale >= 1.15 || width < 360;
   const wideQuickActions = fontScale >= 1.5 || width < 360;
   const [active, setActive] = useState(false);
@@ -65,7 +66,7 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
   const [query, setQuery] = useState("");
   const [now, setNow] = useState(() => new Date());
   const [selected, setSelected] = useState<string>();
-  const date = homeDateView(now, selected);
+  const date = homeDateView(now, selected, timeZone, locale.language);
   const selectedDate = useRef(date.selectedDateKey);
   selectedDate.current = date.selectedDateKey;
   const [resources, setResources] = useState<Resources>(loading);
@@ -112,15 +113,15 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
       if (!ticket.valid()) return;
       const time = new Date();
       const accepted = result.success && result.status >= 200 && result.status < 300;
-      const data = accepted ? (section === "tasks" ? homeTasksToView(result.data, selectedDate.current, time)
-        : section === "schedule" ? homeScheduleToView(result.data, selectedDate.current, time) : homeFollowupsToView(result.data)) : null;
+      const data = accepted ? (section === "tasks" ? homeTasksToView(result.data, selectedDate.current, time, timeZone, locale.language)
+        : section === "schedule" ? homeScheduleToView(result.data, selectedDate.current, time, timeZone, locale.language) : homeRecommendedEventsToView(result.data, timeZone, locale.language)) : null;
       put(section, accepted && data !== null ? { kind: "ready", data: result.data }
-        : { kind: "error", message: result.success ? invalidData : result.error.message });
+        : { kind: "error", message: result.success ? locale.t("home.invalidData") : result.error.message });
     } finally {
       if (ticket.valid()) r.reading.delete(section);
       ticket.release();
     }
-  }, [capture, isCurrent, put, scope]);
+  }, [capture, isCurrent, locale.language, locale.t, put, scope, timeZone]);
   const refresh = useCallback(() => {
     if (!isCurrent()) return;
     setInboxReadVersion(value => value + 1);
@@ -147,7 +148,7 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
     const r = runtime.current;
     const resource = r.resources.tasks;
     if (!isCurrent() || r.mutating || resource.kind !== "ready" ||
-      !homeTasksToView(resource.data, selectedDate.current, new Date())?.some(task => task.id === id)) return;
+      !homeTasksToView(resource.data, selectedDate.current, new Date(), timeZone, locale.language)?.some(task => task.id === id)) return;
     r.mutating = true; setUpdatingId(id); setMutationError("");
     const ticket = capture();
     try {
@@ -163,18 +164,19 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
         // optimistic checkbox or a generic HTTP 200 response.
         void read("tasks");
         setInboxReadVersion(value => value + 1);
-      } else setMutationError(result.success ? "未能确认待办已完成，请重新读取后再试。" : result.error.message);
+      } else setMutationError(result.success ? locale.t("home.completeUnconfirmed") : result.error.message);
     } finally { ticket.release(); }
   }
   function navigate(href: string) { if (isCurrent()) router.push(href as Href); }
-  const schedules = resources.schedule.kind === "ready" ? homeScheduleToView(resources.schedule.data, date.selectedDateKey, now) : null;
-  const tasks = resources.tasks.kind === "ready" ? homeTasksToView(resources.tasks.data, date.selectedDateKey, now) : null;
-  const followups = resources.followups.kind === "ready" ? homeFollowupsToView(resources.followups.data) : null;
+  const schedules = resources.schedule.kind === "ready" ? homeScheduleToView(resources.schedule.data, date.selectedDateKey, now, timeZone, locale.language) : null;
+  const tasks = resources.tasks.kind === "ready" ? homeTasksToView(resources.tasks.data, date.selectedDateKey, now, timeZone, locale.language) : null;
+  const events = resources.events.kind === "ready" ? homeRecommendedEventsToView(resources.events.data, timeZone, locale.language) : null;
+  const visibleTasks = tasks?.slice(0, 5);
   const highlightedSchedule = schedules?.find(item => item.state === "ongoing") ?? schedules?.find(item => item.state === "upcoming");
 
   function sectionBody(section: Section, label: string, content: ReactNode) {
     const state = resources[section];
-    if (state.kind === "loading") return <View accessibilityRole="progressbar" accessibilityLabel={"正在读取" + label} style={styles.skeleton}>
+    if (state.kind === "loading") return <View accessibilityRole="progressbar" accessibilityLabel={locale.t("home.readingNamed", { name: label })} style={styles.skeleton}>
       {(section === "tasks" ? [0, 1, 2] : [0, 1]).map(index => <View key={index} importantForAccessibility="no-hide-descendants" aria-hidden style={styles.skeletonRow}>
         <View style={section === "tasks" ? styles.skeletonCheckbox : section === "schedule" ? styles.skeletonMarker : styles.skeletonAvatar} />
         <View style={styles.skeletonContent}>
@@ -186,8 +188,8 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
     </View>;
     if (state.kind === "error") return <View style={styles.errorGroup}>
       <Text accessibilityRole="alert" style={styles.error}>{state.message}</Text>
-      <Pressable accessibilityRole="button" accessibilityLabel={"重试" + label} onPress={() => { void read(section); }} style={styles.retry}>
-        <Text style={styles.link}>重新读取</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel={locale.t("home.retryNamed", { name: label })} onPress={() => { void read(section); }} style={styles.retry}>
+        <Text style={styles.link}>{locale.t("home.readAgain")}</Text>
       </Pressable>
     </View>;
     return content;
@@ -201,17 +203,17 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
       </View>
     </Pressable>;
   }
-  return <AppScreen title="首页" refreshControl={<RefreshControl onRefresh={refresh} refreshing={sections.some(section => resources[section].kind === "loading")} tintColor={colors.accent} />}
+  return <AppScreen title={locale.t("home.title")} refreshControl={<RefreshControl onRefresh={refresh} refreshing={sections.some(section => resources[section].kind === "loading")} tintColor={colors.accent} />}
     header={<View style={[styles.header, singleColumn && styles.headerWrap]}>
       <Text style={styles.brand}>Orbit<Text style={styles.signal}>.</Text></Text>
       <View style={[styles.search, singleColumn && styles.largeHeaderControl]}>
         <View pointerEvents="none" style={styles.searchSurface} />
         <HomeIcon name="search" color={colors.text3} size={16} />
-        <TextInput accessibilityLabel="搜索人脉" placeholder="搜索人脉" placeholderTextColor={colors.text3}
+        <TextInput accessibilityLabel={locale.t("home.searchPeople")} placeholder={locale.t("home.searchPeople")} placeholderTextColor={colors.text3}
           value={query} onChangeText={setQuery} onSubmitEditing={() => { const value = query.trim(); if (value) navigate("/contacts/list?q=" + encodeURIComponent(value)); }}
           returnKeyType="search" style={styles.searchInput} />
       </View>
-      <Pressable accessibilityRole="button" accessibilityLabel="收件箱" onPress={() => navigate("/inbox")} style={[styles.inbox, singleColumn && styles.largeHeaderControl]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={locale.t("home.inbox")} onPress={() => navigate("/inbox")} style={[styles.inbox, singleColumn && styles.largeHeaderControl]}>
         <View pointerEvents="none" style={styles.inboxSurface} />
         <HomeIcon name="inbox" color={colors.ink} size={18} />
         {active ? <HomeInboxBadge scopeKey={JSON.stringify([scope.key, inboxReadVersion])} /> : null}
@@ -221,7 +223,7 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
       <Text accessibilityRole="header" style={styles.date}>{date.dateLabel}</Text>
       {resources.schedule.kind === "loading" && resources.tasks.kind === "loading" ?
         <View testID="home-summary-loading" aria-hidden importantForAccessibility="no-hide-descendants" style={styles.summarySkeleton} /> :
-        <Text style={styles.dateSummary}>{[date.weekdayLabel, ...(schedules ? [schedules.length + " 项日程"] : []), ...(tasks ? [tasks.length + " 项待办"] : [])].join(" · ")}</Text>}
+        <Text style={styles.dateSummary}>{[date.weekdayLabel, ...(schedules ? [locale.t("home.scheduleCount", { count: schedules.length })] : []), ...(tasks ? [locale.t("home.taskCount", { count: tasks.length })] : [])].join(" · ")}</Text>}
     </View>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.weekScroll} contentContainerStyle={styles.week}>
       {date.week.map(day => <Pressable key={day.dateKey} accessibilityRole="button" accessibilityLabel={day.dateKey + " " + day.weekdayLabel}
@@ -233,68 +235,58 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
       </Pressable>)}
     </ScrollView>
     <View style={[styles.quickActions, wideQuickActions && styles.quickActionsWrap]}>
-      {quickActions.map(action => <Pressable key={action.href} accessibilityRole="button" accessibilityLabel={action.label}
+      {quickActions.map(action => <Pressable key={action.href} accessibilityRole="button" accessibilityLabel={locale.t(action.labelKey)}
         onPress={() => navigate(action.href)} style={[styles.quickAction, wideQuickActions && styles.quickActionWide]}>
-        <HomeIcon name={action.icon} size={singleColumn ? 24 : 22} color={colors.ink} /><Text style={styles.quickLabel}>{action.label}</Text>
+        <HomeIcon name={action.icon} size={singleColumn ? 24 : 22} color={colors.ink} /><Text style={styles.quickLabel}>{locale.t(action.labelKey)}</Text>
       </Pressable>)}
     </View>
     <View testID="home-day-sections" style={[styles.daySections, singleColumn && styles.singleColumn, singleColumn && styles.largeSections]}>
       <View style={[styles.scheduleColumn, singleColumn && styles.fullSchedule]}>
-        {sectionHeading(date.isToday ? "今天" : "日程", schedules?.length, "/schedule", "全部日程", resources.schedule.kind === "loading")}
-        {sectionBody("schedule", "日程", schedules?.length ? schedules.map(item =>
-          <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={"查看日程：" + item.title} onPress={() => navigate(item.href)} style={[styles.scheduleRow, singleColumn && styles.largeScheduleRow]}>
+        {sectionHeading(date.isToday ? locale.t("home.today") : locale.t("home.schedule"), schedules?.length, "/schedule", locale.t("home.allSchedule"), resources.schedule.kind === "loading")}
+        {sectionBody("schedule", locale.t("home.schedule"), schedules?.length ? schedules.map(item =>
+          <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={locale.t("home.openSchedule", { name: item.title })} onPress={() => navigate(item.href)} style={[styles.scheduleRow, singleColumn && styles.largeScheduleRow]}>
             <View style={[styles.scheduleMarker, item.id !== highlightedSchedule?.id && styles.endedMarker]} />
             <View style={styles.rowContent}>
               <Text style={styles.time}>{item.timeLabel}</Text><Text style={[styles.rowTitle, styles.scheduleTitle]}>{item.title}</Text>
               {item.detail ? <Text style={styles.detail}>{item.detail}</Text> : null}
             </View>
-          </Pressable>) : <Text style={styles.empty}>当天没有日程</Text>)}
+          </Pressable>) : <Text style={styles.empty}>{locale.t("home.noSchedule")}</Text>)}
       </View>
       <View style={[styles.taskColumn, singleColumn && styles.fullTasks]}>
-        {sectionHeading("待办", tasks?.length, "/tasks", "全部待办", resources.tasks.kind === "loading")}
-        {sectionBody("tasks", "待办", tasks?.length ? tasks.map(task => <View key={task.id} style={styles.taskRow}>
-          <Pressable accessibilityRole="button" accessibilityLabel={"完成待办：" + task.title}
+        {sectionHeading(locale.t("home.tasks"), tasks?.length, "/tasks", locale.t("home.allTasks"), resources.tasks.kind === "loading")}
+        {sectionBody("tasks", locale.t("home.tasks"), visibleTasks?.length ? visibleTasks.map(task => <View key={task.id} style={styles.taskRow}>
+          <Pressable accessibilityRole="button" accessibilityLabel={locale.t("home.completeTask", { name: task.title })}
             accessibilityState={{ disabled: updatingId !== null }} disabled={updatingId !== null}
             onPress={() => { void complete(task.id); }} style={styles.checkTarget}>
             {updatingId === task.id ? <ActivityIndicator size="small" color={colors.accent} /> : <View style={styles.checkbox} />}
           </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel={"查看待办：" + task.title} onPress={() => navigate("/tasks/" + encodeURIComponent(task.id))} style={styles.taskContent}>
+          <Pressable accessibilityRole="button" accessibilityLabel={locale.t("home.openTask", { name: task.title })} onPress={() => navigate("/tasks/" + encodeURIComponent(task.id))} style={styles.taskContent}>
             <Text style={styles.rowTitle}>{task.title}</Text>
-            <Text style={[styles.detail, task.dueTone === "danger" && styles.error]}>{[task.categoryLabel, task.dueLabel].filter(Boolean).join(" · ")}</Text>
+            <Text style={[styles.detail, task.dueTone === "danger" && styles.error]}>{[task.categoryLabel, task.dueLabel, task.location].filter(Boolean).join(" · ")}</Text>
           </Pressable>
-        </View>) : <Text style={styles.empty}>当天没有待办</Text>)}
+        </View>) : <Text style={styles.empty}>{locale.t("home.noTasks")}</Text>)}
         {mutationError ? <Text accessibilityRole="alert" style={styles.error}>{mutationError}</Text> : null}
       </View>
     </View>
-    <View style={styles.followups}>
-      {sectionHeading("联系跟进", followups?.length, "/followups", "全部联系跟进", resources.followups.kind === "loading")}
-      {sectionBody("followups", "联系跟进", followups?.length ? <View style={styles.people}>
-        {followups.map((contact, index) => {
-          const avatar = contactAvatarFor(contact);
-          // Source 1c avatar colors and 135-degree stops. The existing ID-based
-          // tone selection remains stable; sample names do not dictate colors.
-          const tones = { sky: ["#7FB3FF", "#3B82F6"], emerald: ["#5EEAD4", "#0EA5E9"], amber: ["#FCD34D", "#F59E0B"], violet: ["#A78BFA", "#6366F1"], rose: ["#FDA4AF", "#F472B6"] } as const;
-          const gradientId = "home-avatar-" + avatarScope + "-" + index;
-          const uri = contact.imageUrl ? (/^https?:\/\//iu.test(contact.imageUrl) ? contact.imageUrl : scope.baseUrl.replace(/\/+$/u, "") + "/" + contact.imageUrl.replace(/^\/+/u, "")) : undefined;
-          return <Pressable key={contact.id} accessibilityRole="button" accessibilityLabel={"查看人脉：" + contact.name}
-            onPress={() => navigate("/contacts/" + encodeURIComponent(contact.id))}
-            style={[styles.person, { width: (Math.min(width, layout.contentMax) - 2 * layout.pageInset - 16) / 2 }, singleColumn && styles.fullPerson]}>
-            <View style={styles.avatar}>
-              {uri ? <Image accessible={false} source={{ uri }} style={styles.avatarImage} /> : <>
-                <Svg accessible={false} style={StyleSheet.absoluteFill} width={36} height={36} viewBox="0 0 36 36">
-                  <Defs><LinearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-                    <Stop offset="0%" stopColor={tones[avatar.tone][0]} /><Stop offset="100%" stopColor={tones[avatar.tone][1]} />
-                  </LinearGradient></Defs>
-                  <Circle cx={18} cy={18} r={18} fill={"url(#" + gradientId + ")"} />
-                </Svg>
-                <Text style={styles.initial}>{avatar.initial}</Text>
-              </>}
+    <View style={styles.events}>
+      {sectionHeading(locale.t("home.recommendedEvents"), events?.length, "/events", locale.t("home.allEvents"), resources.events.kind === "loading")}
+      {sectionBody("events", locale.t("home.events"), events?.length ? <View style={styles.eventList}>
+        {events.map(event => {
+          const uri = event.imagePath ? (/^https?:\/\//iu.test(event.imagePath) ? event.imagePath : scope.baseUrl.replace(/\/+$/u, "") + "/" + event.imagePath.replace(/^\/+/u, "")) : undefined;
+          return <Pressable key={event.id} accessibilityRole="button" accessibilityLabel={locale.t("home.openEvent", { name: event.title })}
+            onPress={() => navigate("/events/" + encodeURIComponent(event.id))} style={styles.eventRow}>
+            <View style={styles.eventThumbnail}>
+              {uri ? <Image accessible={false} resizeMode="cover" source={{ uri }} style={styles.eventImage} />
+                : <Ionicons name="calendar-outline" size={22} color={colors.accent} />}
             </View>
-            <View style={styles.rowContent}><Text style={styles.personName}>{contact.name}</Text>{contact.role ? <Text style={styles.detail}>{contact.role}</Text> : null}</View>
+            <View style={styles.rowContent}>
+              <Text style={styles.eventTitle}>{event.title}</Text>
+              <Text style={styles.eventMeta}>{event.dateLabel + " · " + event.locationLabel}</Text>
+            </View>
             <Ionicons name="chevron-forward" size={12} color={colors.text4} />
           </Pressable>;
         })}
-      </View> : <Text style={styles.empty}>暂无需要联系的人脉</Text>)}
+      </View> : <Text style={styles.empty}>{locale.t("home.noRecommendedEvents")}</Text>)}
     </View>
   </AppScreen>;
 }
@@ -305,8 +297,7 @@ function HomeInboxBadge({ scopeKey }: { scopeKey: string }) {
   return count === undefined ? null : <View testID="home-inbox-badge" style={styles.badge}><Text style={styles.badgeText}>{count}</Text></View>;
 }
 
-function HomeIcon({ name, size, color }: { name: "search" | "inbox" | "scan" | "calendar" | "task" | "contacts" | "notes"; size: number; color: string }) {
-  if (name === "contacts") return <OrbitNavigationIcon name="contacts" size={size} color={color} />;
+function HomeIcon({ name, size, color }: { name: "search" | "inbox" | "scan" | "calendar" | "task" | "notes"; size: number; color: string }) {
   // Exact source geometry from 1c-首页. Calendar reuses the source's existing
   // calendar outline without the creation mark because this opens the calendar.
   return <Svg accessible={false} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
@@ -372,14 +363,13 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   checkTarget: { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center", marginLeft: -10 },
   checkbox: { width: 16, height: 16, borderRadius: 4, borderWidth: 1.5, borderColor: colors.ink },
   taskContent: { flex: 1, minWidth: 44, minHeight: 44, justifyContent: "center", paddingVertical: 7 },
-  followups: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8 },
-  people: { flexDirection: "row", flexWrap: "wrap", columnGap: 16 },
-  person: { minHeight: 54, paddingVertical: 9, flexDirection: "row", alignItems: "center", gap: 10, borderBottomWidth: 1, borderBottomColor: colors.border2 },
-  fullPerson: { width: "100%" },
-  avatar: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", overflow: "hidden" },
-  avatarImage: { width: 36, height: 36 },
-  initial: { color: "#FFFFFF", fontFamily: homeFont, fontSize: 14, fontWeight: "700" },
-  personName: { color: colors.ink, fontFamily: homeFont, fontSize: 14, lineHeight: 18, fontWeight: "600" },
+  events: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8 },
+  eventList: { gap: 0 },
+  eventRow: { minHeight: 52, paddingVertical: 4, flexDirection: "row", alignItems: "center", gap: 10, borderBottomWidth: 1, borderBottomColor: colors.border2 },
+  eventThumbnail: { width: 60, height: 44, borderRadius: 8, overflow: "hidden", alignItems: "center", justifyContent: "center", backgroundColor: colors.surface2 },
+  eventImage: { width: "100%", height: "100%" },
+  eventTitle: { color: colors.ink, fontFamily: homeFont, fontSize: 14, lineHeight: 19, fontWeight: "700" },
+  eventMeta: { color: colors.text3, fontFamily: homeFont, fontSize: 11, lineHeight: 16 },
   empty: { color: colors.text3, fontFamily: homeFont, fontSize: 13, lineHeight: 20, paddingVertical: 12 },
   errorGroup: { gap: 4 },
   error: { color: colors.rose, fontFamily: homeFont, fontSize: 12, lineHeight: 18 },

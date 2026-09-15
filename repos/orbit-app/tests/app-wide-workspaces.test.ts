@@ -10,7 +10,8 @@ let browser: Browser, server: Server, url: string;
 // Only native services, routing and HTTP are replaced. Real screen state,
 // presentation, view-model decoding and action handlers run in the browser.
 const fixture = `
-import React, { useSyncExternalStore } from "react";
+import React, { useEffect, useSyncExternalStore } from "react";
+export const useFocusEffect = effect => useEffect(effect, [effect]);
 import { View } from "react-native";
 import { aiConversationPayload, emptyAiConversationPayload, aiSessionListPayload } from "./tests/helpers/ai-fixtures";
 let revision = 0; const listeners = new Set();
@@ -28,7 +29,7 @@ const relationshipConversation = { conversationId: "thread-one", contactId: "per
 const event = { id: "event-one", eventId: "event-one", title: "合作交流会", startsAt: "2026-09-08T14:00:00+09:00", endsAt: "2026-09-08T15:00:00+09:00", date: "2026-09-08", location: "东京", venue: "东京", status: "published" };
 const entry = { entryId: "action-one", runId: "run-one", workflowKey: "post_event_followup_v1", contactName: "林悦", organization: "Orbit", title: "建立会后待办", preview: "确认合作资料", whyNow: "延续活动讨论", status: "awaiting_confirmation", riskLevel: "write", undoable: true, createdAt: "2026-09-07T01:00:00Z", updatedAt: "2026-09-07T01:00:00Z", evidenceIds: [], evidenceChips: [], sourceRefs: [], operations: [{ operationId: "operation-one", operationType: "create_followup_task", title: "创建会后待办", effectSummary: "创建任务，不会自动发送消息。", status: "pending", selectedByDefault: true, autoSendCapable: false, idempotencyKey: "operation-one:v1" }] };
 function dataFor(path) {
-  if (screen === "ai" && path.includes("/sessions")) return { ...aiSessionListPayload, sessions: state.empty ? [] : [{ ...aiSessionListPayload.sessions[0], id: "session-one", title: "合作计划", customTitle: "讨论合作时间", pinned: true }] };
+  if (screen === "ai" && path.includes("/sessions")) return { ...aiSessionListPayload, sessions: state.empty ? [] : [{ ...aiSessionListPayload.sessions[0], id: "session-one", title: "合作计划", customTitle: "讨论合作时间", organization: { ...aiSessionListPayload.sessions[0].organization, customTitle: "讨论合作时间", pinned: true }, pinned: true }] };
   if (screen === "ai" && path.startsWith("/api/ai/conversations")) return emptyAiConversationPayload;
   if (finalInsets && path.startsWith("/api/ai/conversations")) return { ...aiThread, messages: [{ ...aiConversationPayload.messages[0], conversationId: "thread-one", messageId: "question", role: "user", content: "整理联系人、活动、跟进、日程和个人档案。", createdAt: "2026-09-07T01:00:00Z" }, { ...aiConversationPayload.messages[1], conversationId: "thread-one", messageId: "reply", role: "assistant", content: "可以先核对合作背景。", createdAt: "2026-09-07T01:00:01Z" }], proposedToolIntents: [{ intentId: "intent:style", toolFamily: "contacts", label: "核对合作信息", reason: "先确认事实再行动", requiresUserConfirmation: true }], taskInteraction: { state: "suggested", title: "待确认的采购讨论", category: "relationship", reason: "先检查安排", suggestionId: "suggestion:style", taskId: "" }, aiRuns: [{ runId: "ai-run-style" }] };
   if (finalInsets && path === "/api/contacts") return { contacts: [{ id: "person-one", displayName: "林悦", organization: "Orbit", role: "采购负责人", status: "active" }] };
@@ -74,12 +75,12 @@ const client = Object.fromEntries(["get", "post", "patch", "delete", "put"].map(
   return { success: false, error: { message: "操作暂时失败" } };
 }]));
 export const useOrbitApiClient = () => { rerender(); return React.useMemo(() => ({ ...client }), [revision]); };
-export const useLocalSearchParams = () => ({ id: screen === "task" ? "task-one" : "thread-one" });
+export const useLocalSearchParams = () => ({ id: screen === "task" ? "task-one" : "thread-one", ...(screen === "followups" ? { scope: "relationship" } : {}) });
 export const useIsFocused = () => true;
 export const usePathname = () => "/" + screen;
 export const useRouter = () => ({ canGoBack: () => true, back() { state.navigation.push("back"); }, push(path) { state.navigation.push(path); }, replace(path) { state.navigation.push(path); } });
 export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.test" });
-export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, user: { id: "reader", name: "林悦", email: "reader@example.test" }, cookieHeader: "" });
+export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, accountId: "reader", actorId: "reader", user: { id: "reader", name: "林悦", email: "reader@example.test" }, cookieHeader: "" });
 export const useRelationshipInboxBadgeCount = () => 0;
 export const SafeAreaView = ({ edges, ...props }) => <View {...props} />;
 export const useSafeAreaInsets = () => ({ top: 0, bottom: 0, left: 0, right: 0 });
@@ -90,7 +91,9 @@ export const requestNotificationPermission = async () => "denied";
 `;
 
 test.before(async () => {
-  const screens = { ai: "ai/AiScreen", conversation: "ai/AiConversationScreen", actions: "ai/AgentActionsScreen", chat: "chat/RelationshipChatScreen", thread: "chat/RelationshipChatDetailScreen", inbox: "inbox/RelationshipInboxScreen", inboxThread: "inbox/RelationshipInboxScreen", today: "today/TodayScreen", tasks: "tasks/TasksScreen", task: "tasks/TaskDetailScreen", schedule: "schedule/ScheduleScreen", preview: "schedule/ScheduleEventPreviewScreen", followups: "followups/FollowupsScreen", ledger: "agent/AgentLedgerScreen" };
+  // Legacy redirect behavior is covered by ink-signal-followups. This fixture
+  // exercises the retained tools in the unified relationship workspace.
+  const screens = { ai: "ai/AiScreen", conversation: "ai/AiConversationScreen", actions: "ai/AgentActionsScreen", chat: "chat/RelationshipChatScreen", thread: "chat/RelationshipChatDetailScreen", inbox: "inbox/RelationshipInboxScreen", inboxThread: "inbox/RelationshipInboxScreen", today: "today/TodayScreen", tasks: "tasks/TasksScreen", task: "tasks/TaskDetailScreen", schedule: "schedule/ScheduleScreen", preview: "schedule/ScheduleEventPreviewScreen", followups: "tasks/TasksScreen", ledger: "agent/AgentLedgerScreen" };
   const imports = Object.entries(screens).map(([key, path]) => `import { ${key === "ledger" ? "AllActionsAgentLedgerScreen" : key === "inboxThread" ? "RelationshipInboxThreadScreen" : path.split("/")[1]} as ${key} } from "./src/screens/${path}";`).join("\n");
   const result = await build({ stdin: { contents: `${imports}\nimport React from "react"; import { createRoot } from "react-dom/client"; const screens = { ${Object.keys(screens).join(",")} }; const Screen = screens[new URLSearchParams(location.search).get("screen")]; createRoot(document.getElementById("root")).render(<Screen />);`, loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { "process.env.NODE_ENV": '"test"', __DEV__: "false" }, plugins: [{ name: "workspace-boundaries", setup(plugin) {
     plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "workspace-native" }));
@@ -156,7 +159,7 @@ for (const scheme of ["light", "dark"] as const) {
     assert.equal(await empty.evaluate(el => getComputedStyle(el).borderRadius), "12px", "emptyInboxSection");
     await noWrites(page);
   });
-  test(`${scheme}: final inset inbox privacy, rewrite and local preview preserve the reply`, async t => {
+  test(`${scheme}: final inset inbox privacy, IORBIT handoff and local preview preserve the reply`, async t => {
     const page = await open(t, "inboxThread&insets=true", scheme);
     const reply = page.getByRole("textbox", { name: "回复正文", exact: true }); await reply.fill("周四可以");
     await page.getByRole("button", { name: "隐私设置", exact: true }).click();
@@ -164,16 +167,17 @@ for (const scheme of ["light", "dark"] as const) {
     await page.getByText("允许关系分析", { exact: true }).waitFor();
     const radii = [await privacy.evaluate(el => getComputedStyle(el).borderRadius)];
     await page.getByRole("button", { name: "润色草稿", exact: true }).click();
-    const rewrite = page.getByText("润色建议", { exact: true }).locator(".."); await rewrite.waitFor();
-    radii.push(await rewrite.evaluate(el => getComputedStyle(el).borderRadius));
-    assert.equal(await reply.inputValue(), "周四可以一起核对合作资料。");
+    const navigation = await page.evaluate(() => (window as any).fixture.navigation);
+    assert.equal(navigation[0].pathname, "/ai/[id]"); assert.match(navigation[0].params.prefillIntent, /^ai-prefill-/);
+    assert.doesNotMatch(JSON.stringify(navigation[0]), /周四可以|person-one|林悦/);
+    assert.equal(await reply.inputValue(), "周四可以");
     await page.getByRole("button", { name: "预览回复", exact: true }).click();
     const staged = page.getByText("回复预览", { exact: true }).locator(".."); await staged.waitFor();
     radii.push(await staged.evaluate(el => getComputedStyle(el).borderRadius));
     await page.getByRole("button", { name: "继续编辑", exact: true }).click();
-    assert.equal(await reply.inputValue(), "周四可以一起核对合作资料。");
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "get", path: "/api/chat/privacy?conversationId=thread-one", body: undefined }, { method: "post", path: "/api/chat/assist/rewrite", body: { conversationId: "thread-one", organization: "", participantName: "林悦", sourceText: "周四可以" } }]);
-    assert.deepEqual(radii, ["12px", "12px", "12px"], "privacyBox, rewriteBox, stagedBox");
+    assert.equal(await reply.inputValue(), "周四可以");
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "get", path: "/api/chat/privacy?conversationId=thread-one", body: undefined }]);
+    assert.deepEqual(radii, ["12px", "12px"], "privacyBox, stagedBox");
   });
 }
 
@@ -258,7 +262,7 @@ test("AI next actions uses open sections and clear section hierarchy", async t =
 });
 for (const [screen, label] of [["actions", "确认建议"], ["today", "加入待办：确认参会伙伴"], ["followups", "生成候选"], ["ledger", "确认执行"]]) {
   test(`${screen}: successful workspace exposes a reachable primary action without implicit writes`, async t => {
-    const page = await open(t, screen!, "dark"); await fits(page.getByRole("button", { name: label!, exact: true }).first(), screen === "today" ? 44 : 50); await noWrites(page);
+    const page = await open(t, screen!, "dark"); await fits(page.getByRole("button", { name: label!, exact: true }).first(), screen === "today" || screen === "followups" ? 44 : 50); await noWrites(page);
   });
 }
 test("inbox mail composer has a full-size primary preview while cancellation stays local", async t => {
@@ -327,10 +331,10 @@ test("calendar agendas retain complete time and event text at doubled native fon
     if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-workspaces-calendar-agenda-${mode}-large.png`, fullPage: true });
   }
 });
-test("primary workspace action labels use the shared bold role", async t => {
+test("workspace actions and template navigation use their shared control text roles", async t => {
   for (const [screen, label] of [["actions", "确认建议"], ["ledger", "确认执行"], ["followups", "生成候选"], ["task", "标记完成"], ["thread", "发送消息"]]) {
     const page = await open(t, screen!); const action = page.getByRole("button", { name: label!, exact: true }).first(); await action.waitFor();
-    assert.equal(await action.locator("[dir='auto']").first().evaluate(el => getComputedStyle(el).fontWeight), "700", `${screen} primary label weight`);
+    assert.equal(await action.locator("[dir='auto']").first().evaluate(el => getComputedStyle(el).fontWeight), screen === "followups" ? "600" : "700", `${screen} shared control label weight`);
   }
 });
 for (const [screen, title] of [["tasks", "暂无待办"], ["chat", "暂无关系对话"], ["thread", "暂无消息"], ["ledger", "操作账本还是空的"]]) {

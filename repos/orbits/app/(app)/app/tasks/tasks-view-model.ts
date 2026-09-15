@@ -2,6 +2,9 @@ import { z } from "zod";
 import type { TaskCategory, TaskItemContract, TaskStatus } from "../../../../shared/contract/tasks";
 
 export interface TaskView {
+  accountId?: string;
+  ownerUserId?: string;
+  location?: string;
   id: string;
   title: string;
   notes: string;
@@ -37,6 +40,7 @@ const instant = z.string().refine((value) => Number.isFinite(Date.parse(value)))
 const category = z.enum(["relationship", "meeting", "event", "work", "personal", "other"]);
 const taskSchema = z.object({
   id: nonempty, title: nonempty, notes: z.string().optional(),
+  accountId: nonempty.optional(), ownerUserId: nonempty.optional(), location: nonempty.optional(),
   status: z.enum(["open", "completed", "cancelled"]), category,
   plannedDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), dueAt: instant.optional(),
   priority: z.enum(["normal", "high"]), updatedAt: instant,
@@ -45,7 +49,7 @@ const suggestionSchema = z.object({ id: nonempty, title: nonempty, reason: nonem
 
 export function taskToView(value: unknown): TaskView {
   const task = taskSchema.parse(value) as Pick<TaskItemContract,
-    "id" | "title" | "notes" | "status" | "category" | "plannedDate" | "dueAt" | "priority" | "updatedAt">;
+    "id" | "title" | "notes" | "location" | "accountId" | "ownerUserId" | "status" | "category" | "plannedDate" | "dueAt" | "priority" | "updatedAt">;
   return { ...task, notes: task.notes ?? "", href: `/app/tasks/${encodeURIComponent(task.id)}` };
 }
 
@@ -95,12 +99,12 @@ export function taskCategoryLabel(value: TaskCategory, english: boolean): string
   return labels[value][english ? 1 : 0];
 }
 
-export function taskTimeLabel(value: string | undefined, english: boolean): string {
+export function taskTimeLabel(value: string | undefined, english: boolean, timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone): string {
   if (!value) return english ? "No date set" : "未安排日期";
   const dayOnly = value.length === 10;
-  const date = new Date(dayOnly ? `${value}T12:00:00+09:00` : value);
+  const date = new Date(dayOnly ? `${value}T12:00:00Z` : value);
   return new Intl.DateTimeFormat(english ? "en-GB" : "zh-CN", {
-    month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Tokyo",
+    month: "short", day: "numeric", year: "numeric", timeZone: dayOnly ? "UTC" : timeZone,
     ...(dayOnly ? {} : { hour: "2-digit", minute: "2-digit" }),
   }).format(date);
 }

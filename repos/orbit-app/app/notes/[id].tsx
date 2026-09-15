@@ -10,7 +10,7 @@ function NoteDetailRoute() {
   const focused = useIsFocused(); const auth = useOrbitAuthSession(); const server = useOrbitApiBaseUrl();
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const noteId = (Array.isArray(id) ? id[0] : id) ?? "";
-  const actorId = auth.user?.id ?? "";
+  const actorId = auth.actorId ?? "";
   const enabled = focused && auth.ready && auth.signedIn && server.ready && Boolean(actorId && noteId);
   const sequence = useRef(0);
   const scope = useMemo(() => ({ key: String(++sequence.current), enabled }), [enabled, actorId, auth.cookieHeader, server.baseUrl, noteId]);

@@ -1,3 +1,5 @@
+import { taskListHref } from "./task-list-scope";
+
 type InitialRoutePath =
   | "/account"
   | "/account/forgot-password"
@@ -18,6 +20,7 @@ type InitialRoutePath =
   | "/home/events"
   | "/contacts"
   | "/contacts/list"
+  | "/contacts/matches"
   | "/inbox"
   | "/login-admin"
   | `/o/${string}`
@@ -31,6 +34,9 @@ type InitialRoutePath =
   | "/settings"
   | "/settings/api"
   | "/today"
+  | "/tasks"
+  | `/tasks/${string}`
+  | `/schedule/personal/${string}`
   | `/schedule/events/${string}`
   | "/profile"
   | `/ai/${string}`
@@ -61,6 +67,7 @@ const routeByKey: Record<string, InitialRoutePath> = {
   chat: "/chat",
   contacts: "/contacts",
   "contacts/list": "/contacts/list",
+  "contacts/matches": "/contacts/matches",
   "contacts/new/batch2": "/contacts/new/batch2",
   dashboard: "/dashboard",
   events: "/events",
@@ -79,6 +86,8 @@ const routeByKey: Record<string, InitialRoutePath> = {
   settings: "/settings",
   "settings/api": "/settings/api",
   today: "/today",
+  tasks: "/tasks",
+  "tasks/personal": "/tasks/personal",
 };
 
 function parsedConfiguredRoute(configuredRoute?: string): {
@@ -163,6 +172,16 @@ function hasContactsListQuery(searchParams: URLSearchParams): boolean {
 }
 
 function detailRouteHref(routeKey: string): InitialRoutePath | null {
+  const taskMatch = /^(tasks|schedule\/personal)\/((?:[A-Za-z0-9_.!~*'()-]|%[0-9A-Fa-f]{2})+)$/u.exec(routeKey);
+  if (taskMatch) {
+    try {
+      const id = decodeURIComponent(taskMatch[2]!);
+      if (id === "." || id === ".." || !id.trim()) return null;
+      return `/${taskMatch[1]}/${encodeURIComponent(id)}` as InitialRoutePath;
+    } catch {
+      return null;
+    }
+  }
   if (/^contacts\/new\/import\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/u.test(routeKey)) {
     return ("/" + routeKey) as InitialRoutePath;
   }
@@ -253,6 +272,10 @@ export function resolveSupportedInitialRouteHref(
   }
 
   const routeKey = webShellRouteKey(parsedRoute.routeKey);
+
+  if (routeKey === "tasks" || routeKey === "followups") {
+    return taskListHref({ scope: routeKey === "followups" ? "relationship" : parsedRoute.searchParams.get("scope"), view: parsedRoute.searchParams.get("view") }) as InitialRouteHref;
+  }
 
   if (routeKey === "register") {
     const codeRoute = registerCodeRoute(parsedRoute.searchParams);

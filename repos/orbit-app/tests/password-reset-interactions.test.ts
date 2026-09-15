@@ -305,6 +305,6 @@ test("existing login, signup and Google still navigate after intentional auth id
     await fill(page, mode === "signup" ? "设置密码" : "密码", "password");
     await page.getByRole("button", { name: mode === "google" ? "使用 Google 登录" : mode === "signup" ? "创建账号" : "登录", exact: true }).click();
     await settle(page);
-    assert.ok(await page.evaluate(mode => { const s = (window as any).fixture; return s.actor === "authenticated" && s.navigation.length === 1 && s.navigation[0].startsWith(mode === "signup" ? "/account/login?created=1" : "/dashboard"); }, mode));
+    assert.ok(await page.evaluate(mode => { const s = (window as any).fixture; return s.actor === "authenticated" && s.navigation.length === 1 && s.navigation[0].startsWith(mode === "signup" ? "/account/login?created=1" : "/profile?complete=1&next=%2Fdashboard"); }, mode));
   }
 });

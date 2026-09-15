@@ -216,7 +216,7 @@ test("registration options have full touch targets and failed submission preserv
   const input = page.getByPlaceholder("写一句具体的补充。"); assert.equal(await input.inputValue(), "日本本地 SaaS 买方");
   const submit = page.getByRole("button", { name: "确认报名", exact: true }); await fits(submit, 50); await capture(page, "registration-dark"); await submit.click();
   await page.getByText("暂时无法保存，请重试", { exact: true }).waitFor(); assert.equal(await input.inputValue(), "日本本地 SaaS 买方");
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "POST", path: "/api/events/event%3Astyle/registration", body: { answers: { targetAttendees: "日本本地 SaaS 买方" } } }]);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "POST", path: "/api/events/event%3Astyle/registration", body: { answers: { targetAttendees: "日本本地 SaaS 买方" }, intent: "register" } }]);
 });
 
 test("operations uses open sections and a 50pt publication action with unchanged generation identity", async t => {
@@ -333,8 +333,8 @@ test("real Home hub validates and trims AI input, routes prompts and destination
   await page.getByText("别人会看到的资料", { exact: true }).click();
   await page.getByRole("button", { name: "全部", exact: true }).click(); await page.getByText(title, { exact: true }).click();
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), [
-    { params: { id: "new", initialMessage: "帮我安排日本合作伙伴会面" }, pathname: "/ai/[id]" },
-    { params: { id: "new", initialMessage: "帮我准备最近一场活动" }, pathname: "/ai/[id]" },
+    { params: { entryPointId: "ai.home", id: "new", initialMessage: "帮我安排日本合作伙伴会面" }, pathname: "/ai/[id]" },
+    { params: { entryPointId: "home.event_preparation", id: "new", initialMessage: "帮我准备最近一场活动" }, pathname: "/ai/[id]" },
     "/profile", "/contacts", "/schedule", "/profile", "/home/events", "/events/event%3Astyle"
   ]);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);

@@ -44,8 +44,6 @@ for (const [name, baseline, draft] of [
   ["24 hour", {}, { ...empty, dueDate: "2026-09-15", dueTime: "24:00" }],
   ["60 minute", {}, { ...empty, dueDate: "2026-09-15", dueTime: "09:60" }],
   ["non-padded time", {}, { ...empty, dueDate: "2026-09-15", dueTime: "9:00" }],
-  ["clear planned date", { plannedDate: "2026-09-15" }, empty],
-  ["clear deadline", { dueAt: "2026-09-15T09:00:00Z" }, empty],
 ] as const) test(`invalid ${name} gives an explanation without a writable patch`, () => {
   const result = buildTaskDatePatch(baseline, draft);
   assert.equal(result.kind, "invalid");
@@ -67,4 +65,25 @@ for (const patch of [
 test("missing receipt and missing actor never acknowledge a save", () => {
   for (const data of [null, {}, { task: [] }]) assert.equal(taskDateReceiptMatches(data, "task:edit", "actor-1", { plannedDate: "2026-09-15" }), false);
   assert.equal(taskDateReceiptMatches({ task }, "task:edit", "", { plannedDate: "2026-09-15" }), false);
+});
+
+// A fixed Tokyo offset would save the wrong instant on other devices.
+test("explicit device zone preserves calendar dates and resolves half-hour deadlines", () => {
+  assert.deepEqual(taskDateDraftFromView({ plannedDate: "2026-09-14", dueAt: "2026-09-14T00:30:00Z" }, "America/Los_Angeles"), { plannedDate: "2026-09-14", dueDate: "2026-09-13", dueTime: "17:30" });
+  assert.deepEqual(buildTaskDatePatch({}, { ...empty, dueDate: "2026-09-14", dueTime: "09:00" }, "Asia/Kolkata"), { kind: "ready", patch: { dueAt: "2026-09-14T03:30:00.000Z" } });
+});
+test("DST gaps and ambiguous minutes cannot silently choose a writable instant", () => {
+  for (const [dueDate, dueTime] of [["2026-03-08", "02:30"], ["2026-11-01", "01:30"]]) {
+    assert.equal(buildTaskDatePatch({}, { ...empty, dueDate: dueDate!, dueTime: dueTime! }, "America/New_York").kind, "invalid");
+  }
+  assert.deepEqual(buildTaskDatePatch({ dueAt: "2026-11-01T06:30:42.123Z" }, { ...empty, dueDate: "2026-11-01", dueTime: "01:30" }, "America/New_York"), { kind: "unchanged" });
+});
+test("invalid device zone rejects saving even a date-only draft", () => {
+  assert.equal(buildTaskDatePatch({}, { ...empty, plannedDate: "2026-09-14" }, "Invalid/Zone").kind, "invalid");
+});
+
+test("explicit empty date and location drafts produce null deletion patches", () => {
+  assert.deepEqual(buildTaskDatePatch({ plannedDate: "2026-09-14", dueAt: "2026-09-14T00:30:00Z", location: "Tokyo" }, { ...empty, location: "" }), { kind: "ready", patch: { plannedDate: null, dueAt: null, location: null } });
+  assert.equal(taskDateReceiptMatches({ task: { ...task, plannedDate: undefined, dueAt: undefined, location: undefined } }, task.id, "actor-1", { plannedDate: null, dueAt: null, location: null }), true);
+  assert.equal(taskDateReceiptMatches({ task }, task.id, "actor-1", { plannedDate: null }), false);
 });

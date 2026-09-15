@@ -115,6 +115,58 @@ test("unavailable coverage is visible, and failed refresh retains the previous d
   assert.ok(root.root.findByProps({ "data-analysis-metrics": true }));
 });
 
+test("stored analysis displays its persisted timestamp, version and stale state", async () => {
+  const data = await fixture();
+  data.generatedAt = "2026-09-15T15:00:00.000Z";
+  data.analysis = {
+    current: { analysisVersion: "contacts.analysis@1", sourceDataVersion: "a".repeat(64) },
+    report: {
+      analysisVersion: "contacts.analysis@1",
+      body: "东京制造业联系人覆盖不足。",
+      generatedAt: "2026-09-14T08:30:00.000Z",
+      messageId: "message:analysis",
+      sessionId: "session:analysis",
+      sourceDataVersion: "b".repeat(64),
+    },
+    stale: true,
+  };
+  const html = renderToStaticMarkup(<ContactsAnalysisContent initialView={contactsAnalysisToView(data, "zh")} />);
+  assert.match(html, /东京制造业联系人覆盖不足/);
+  assert.match(html, /2026-09-14 08:30:00/);
+  assert.match(html, /contacts\.analysis@1/);
+  assert.match(html, /data-analysis-stale/);
+  assert.doesNotMatch(html, /2026-09-15 15:00:00/);
+});
+
+test("explicit analysis request stages an editable iOrbit prefill without a generation request", async (t) => {
+  const data = await fixture();
+  data.analysis = {
+    current: { analysisVersion: "contacts.analysis@1", sourceDataVersion: "d".repeat(64) },
+    report: null,
+    stale: false,
+  };
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const stored = new Map<string, string>();
+  const location = { href: "https://orbit.test/app/contacts/dashboard" };
+  Object.defineProperty(globalThis, "window", { configurable: true, value: {
+    location,
+    sessionStorage: { getItem: (key: string) => stored.get(key) ?? null, setItem: (key: string, value: string) => stored.set(key, value), removeItem: (key: string) => stored.delete(key) },
+  } });
+  let fetches = 0;
+  t.mock.method(globalThis, "fetch", async () => { fetches += 1; return Response.json({ success: false }); });
+  let root!: ReturnType<typeof create>;
+  await act(async () => { root = create(<ContactsAnalysisContent initialView={contactsAnalysisToView(data, "zh")} />); });
+  t.after(() => { act(() => root.unmount()); if (previousWindow) Object.defineProperty(globalThis, "window", previousWindow); else Reflect.deleteProperty(globalThis, "window"); });
+
+  await act(async () => { root.root.findByProps({ "data-analysis-request": true }).props.onClick(); });
+  assert.equal(fetches, 0);
+  assert.equal(location.href, "/app/agent");
+  const prefill = JSON.parse(stored.get("orbit.agent.prefill") ?? "null");
+  assert.equal(prefill.origin.sourceDataVersion, "d".repeat(64));
+  assert.equal(prefill.origin.entryPointId, "contacts.analysis");
+  assert.match(prefill.query, /分析报告/);
+});
+
 test("missing readable opportunity evidence is disclosed without inventing a source", async () => {
   const data = await fixture();
   assert.ok(data.opportunities);
@@ -145,9 +197,14 @@ test("recompute checks the acknowledgement and only refreshes after success", as
 
 test("saving a goal updates the visible goal immediately and keeps it when refresh fails", async (t) => {
   const data = await fixture();
+  const updatedAt = "2026-09-15T12:00:00.000Z";
   const previous = Object.getOwnPropertyDescriptor(globalThis, "document");
   Object.defineProperty(globalThis, "document", { configurable: true, value: { activeElement: null, addEventListener() {}, removeEventListener() {} } });
-  t.mock.method(globalThis, "fetch", async (path) => String(path) === "/api/profile" ? Response.json({ success: true, data: { profile: { id: data.profile?.profile?.id, relationshipGoal: "认识东京制造业伙伴" } } }) : Response.json({ success: false }, { status: 503 }));
+  t.mock.method(globalThis, "fetch", async (path, init) => {
+    if (String(path) !== "/api/profile") return Response.json({ success: false }, { status: 503 });
+    const body = JSON.parse(String(init?.body));
+    return Response.json({ success: true, data: { mutationId: body.mutationId, profile: { id: data.profile?.profile?.id, relationshipGoal: "认识东京制造业伙伴", updatedAt }, editor: { lastSavedAt: updatedAt } } });
+  });
   let root!: ReturnType<typeof create>;
   await act(async () => { root = create(<ContactsAnalysisContent initialView={contactsAnalysisToView(data, "zh")} />); });
   t.after(() => { act(() => root.unmount()); if (previous) Object.defineProperty(globalThis, "document", previous); else Reflect.deleteProperty(globalThis, "document"); });
@@ -164,12 +221,14 @@ test("saving a goal updates the visible goal immediately and keeps it when refre
 test("goal save keeps its acknowledgement without an automatic stale dashboard read", async (t) => {
   const data = await fixture();
   const recomputed = await createOpportunityReminderAnalyticsService("mock").recomputeOpportunityReminderAnalytics();
+  const updatedAt = "2026-09-15T12:00:00.000Z";
   const previous = Object.getOwnPropertyDescriptor(globalThis, "document");
   Object.defineProperty(globalThis, "document", { configurable: true, value: { activeElement: null, addEventListener() {}, removeEventListener() {} } });
   const calls: string[] = [];
-  t.mock.method(globalThis, "fetch", async (path) => {
+  t.mock.method(globalThis, "fetch", async (path, init) => {
     calls.push(String(path));
-    return Response.json(String(path).includes("recompute") ? recomputed : String(path) === "/api/profile" ? { success: true, data: { profile: { id: data.profile?.profile?.id, relationshipGoal: "新目标" } } } : { success: true, data });
+    const body = String(path) === "/api/profile" ? JSON.parse(String(init?.body)) : null;
+    return Response.json(String(path).includes("recompute") ? recomputed : String(path) === "/api/profile" ? { success: true, data: { mutationId: body.mutationId, profile: { id: data.profile?.profile?.id, relationshipGoal: "新目标", updatedAt }, editor: { lastSavedAt: updatedAt } } } : { success: true, data });
   });
   let root!: ReturnType<typeof create>;
   await act(async () => { root = create(<ContactsAnalysisContent initialView={contactsAnalysisToView(data, "zh")} />); });
@@ -184,4 +243,28 @@ test("goal save keeps its acknowledgement without an automatic stale dashboard r
   await act(async () => { await root.root.findByProps({ "data-analysis-recompute": true }).props.onClick(); });
   assert.equal(root.root.findAllByProps({ role: "status" }).length, 0);
   assert.deepEqual(calls.slice(1), ["/api/dashboard/opportunities/recompute", "/api/mobile/contacts-dashboard"]);
+});
+
+test("a second goal edit uses the version acknowledged by the first save", async (t) => {
+  const data = await fixture();
+  const previous = Object.getOwnPropertyDescriptor(globalThis, "document");
+  Object.defineProperty(globalThis, "document", { configurable: true, value: { activeElement: null, addEventListener() {}, removeEventListener() {} } });
+  const requests: Array<{ expectedUpdatedAt: string; mutationId: string; relationshipGoal: string }> = [];
+  t.mock.method(globalThis, "fetch", async (_path, init) => {
+    const body = JSON.parse(String(init?.body));
+    requests.push(body);
+    const updatedAt = `2026-09-15T12:00:0${requests.length}.000Z`;
+    return Response.json({ success: true, data: { mutationId: body.mutationId, profile: { id: data.profile?.profile?.id, relationshipGoal: body.relationshipGoal, updatedAt }, editor: { lastSavedAt: updatedAt } } });
+  });
+  let root!: ReturnType<typeof create>;
+  await act(async () => { root = create(<ContactsAnalysisContent initialView={contactsAnalysisToView(data, "zh")} />); });
+  t.after(() => { act(() => root.unmount()); if (previous) Object.defineProperty(globalThis, "document", previous); else Reflect.deleteProperty(globalThis, "document"); });
+  for (const goal of ["第一版目标", "第二版目标"]) {
+    await act(async () => { root.root.findByProps({ "data-analysis-goal-edit": true }).props.onClick(); });
+    await act(async () => { root.root.findByType("textarea").props.onChange({ target: { value: goal } }); });
+    await act(async () => { await root.root.findByProps({ "data-analysis-goal-save": true }).props.onClick(); });
+  }
+  assert.equal(requests.length, 2);
+  assert.equal(requests[0].expectedUpdatedAt, data.profile?.profile?.updatedAt);
+  assert.equal(requests[1].expectedUpdatedAt, "2026-09-15T12:00:01.000Z");
 });

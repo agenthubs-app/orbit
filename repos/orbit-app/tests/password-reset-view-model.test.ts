@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import test from "node:test";
+import { createTranslator } from "../src/i18n/messages";
 
 const source = new URL("../src/view-models/password-reset.ts", import.meta.url);
 const token = "a".repeat(43);
@@ -50,4 +51,8 @@ test("password validation respects eight characters, 72 UTF-8 bytes and confirma
   for (const value of ["a".repeat(7), "a".repeat(73), "界".repeat(25), "😀".repeat(19)]) assert.ok(typeof validate(value, value) === "string");
   for (const value of ["a".repeat(8), "a".repeat(72), "界".repeat(24), "😀".repeat(18)]) assert.equal(validate(value, value), null);
   assert.ok(typeof validate("a".repeat(8), "b".repeat(8)) === "string");
+  const en = createTranslator("en");
+  const ja = createTranslator("ja");
+  assert.equal(validate("short", "short", en), "Use at least 8 characters.");
+  assert.equal(validate("a".repeat(8), "b".repeat(8), ja), "入力したパスワードが一致しません。");
 });

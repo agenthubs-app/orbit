@@ -1,3 +1,4 @@
+import { createConfiguredTransactionalPostgresRuntime } from "../../shared/storage/transactional-postgres";
 import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
 import { createNoteRepository } from "../notes/repository";
 import { createNoteService } from "../notes/service";
@@ -13,6 +14,13 @@ export function createConfiguredTaskSuggestionService() {
   }
   const taskService = createTaskService({
     repository: createTaskRepository({
+      store: configured.store,
+      workspaceId: configured.workspaceId,
+      transactionClient: createConfiguredTransactionalPostgresRuntime()?.client,
+    }),
+  });
+  const noteService = createNoteService({
+    repository: createNoteRepository({
       store: configured.store,
       workspaceId: configured.workspaceId,
     }),

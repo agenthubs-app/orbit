@@ -72,7 +72,7 @@ test("Agent signals map contact and task targets to native routes", () => {
   });
 
   assert.equal(rows[0]?.actions[0]?.route, "/contacts/contact%3Ademo%2F1");
-  assert.equal(rows[1]?.actions[0]?.route, "/followups");
+  assert.equal(rows[1]?.actions[0]?.route, "/tasks/task%3Ademo%2F1");
 });
 
 test("resolved Agent signals show completion without actions", () => {

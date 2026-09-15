@@ -102,6 +102,7 @@ function catalogue(input: {
         organizerIds: Object.fromEntries(
           snapshot.events.map((event) => [event.id, event.organizerId ?? ""]),
         ),
+        participantCounts: snapshot.participantCounts,
         publicCodes: snapshot.publicCodes,
         records: [],
       };

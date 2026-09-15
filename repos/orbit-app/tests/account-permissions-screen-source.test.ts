@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { zh } from "../src/i18n/zh";
 
 const repoRoot = new URL("..", import.meta.url).pathname;
 const screenPath = join(
@@ -19,7 +20,8 @@ const accountScreenSource = readFileSync(
 
 test("account screen links to the native permissions center", () => {
   assert.match(accountScreenSource, /\/account\/permissions/u);
-  assert.match(accountScreenSource, /权限中心/u);
+  assert.match(accountScreenSource, /account\.permissions/u);
+  assert.equal(zh["account.permissions"], "权限中心");
 });
 
 // Server-settings availability, order before login and its actual destination
@@ -37,7 +39,9 @@ test("account permissions route renders a native staged permission center", () =
   assert.match(screenSource, /calendarPermissionRequestPath/u);
   assert.match(screenSource, /permissionStatesToView/u);
   assert.match(screenSource, /calendarPermissionRequestToView/u);
-  assert.match(screenSource, /title="权限中心"/u);
+  assert.match(screenSource, /locale\.t\("permissions\.title"\)/u);
+  assert.equal(zh["permissions.title"], "权限中心");
   assert.match(screenSource, /\.post<unknown>\(/u);
-  assert.match(screenSource, /申请日历复核/u);
+  assert.match(screenSource, /permissions\.requestCalendar/u);
+  assert.equal(zh["permissions.requestCalendar"], "申请日历复核");
 });

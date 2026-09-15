@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   todayHomeSummary,
+  ownedTaskDetailToView,
   taskActivitiesToView,
   taskDetailToView,
   tasksToListView,
@@ -208,6 +209,13 @@ test("task detail and activity history expose stable Chinese labels", () => {
     ["创建待办", "完成待办"],
   );
   assert.equal(activities[1]?.dateLabel, "8月29日 11:00");
+});
+
+test("owned task detail accepts the canonical account and rejects a foreign owner", () => {
+  assert.equal(ownedTaskDetailToView({ task: openTask }, "account:xiaoyu")?.id, openTask.id);
+  assert.equal(ownedTaskDetailToView({ task: openTask }, "user:raw-login"), null);
+  assert.equal(ownedTaskDetailToView({ task: { ...openTask, ownerUserId: "account:other" } }, "account:xiaoyu"), null);
+  assert.equal(ownedTaskDetailToView({ task: { ...openTask, accountId: "account:other" } }, "account:xiaoyu"), null);
 });
 
 test("todayHomeSummary limits home rows and keeps tasks, schedules, and suggestions distinct", () => {

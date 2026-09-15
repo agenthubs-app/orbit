@@ -54,7 +54,7 @@ for (const statuses of [[409, 410], [410, 409], [410, 503]]) test("Fix1 concurre
   assert.equal(replies.length, 2, "recovery must stop dispatch of the third item");
 });
 function detail(count = 1): IngestBatchDetailContract {
-  return { batch: { id: "batch:/", actorId: "canonical-owner", status: "collecting", expectedItems: count, version: 1, reviewGeneration: 0, idempotencyKey: "key-1", manifestFingerprint: "a".repeat(64), statusReason: null, createdAt: stamp, updatedAt: stamp, finalizedAt: null, expiresAt: "2099-01-01T00:00:00Z" }, items: Array.from({ length: count }, (_, i) => ({ id: "item:" + i, batchId: "batch:/", seq: i + 1, status: "awaiting_upload", version: 1, sourceFileName: "card.png", rawSize: png.length, rawMimeType: "image/png", clientDigest: digest, imageDigest: null, derivativeObjectKey: null, derivativeSize: null, extraction: null, extractionSchemaVersion: null, reviewIssues: [], usage: null, confirmedContactId: null, attemptCount: 0, nextRetryAt: null, leaseExpiresAt: null, errorStage: null, errorCode: null, createdAt: stamp, updatedAt: stamp })) };
+  return { batch: { id: "batch:/", actorId: "canonical-owner", status: "collecting", expectedItems: count, version: 1, reviewGeneration: 0, idempotencyKey: "key-1", manifestFingerprint: "a".repeat(64), statusReason: null, createdAt: stamp, updatedAt: stamp, finalizedAt: null, expiresAt: "2099-01-01T00:00:00Z" }, items: Array.from({ length: count }, (_, i) => ({ id: "item:" + i, batchId: "batch:/", cardId: "legacy:" + (i + 1), side: "front" as const, seq: i + 1, status: "awaiting_upload", version: 1, sourceFileName: "card.png", rawSize: png.length, rawMimeType: "image/png", clientDigest: digest, imageDigest: null, derivativeObjectKey: null, derivativeSize: null, extraction: null, extractionSchemaVersion: null, reviewIssues: [], usage: null, confirmedContactId: null, attemptCount: 0, nextRetryAt: null, leaseExpiresAt: null, errorStage: null, errorCode: null, createdAt: stamp, updatedAt: stamp })) };
 }
 const ok = (data: unknown, status = 200) => ({ success: true as const, data, status, meta: { featureMode: null, privacy: null, runtimeBoundary: null } });
 
@@ -85,9 +85,9 @@ test("Task5 review acknowledgments reject stale versions, state and contact inco
   const d = detail(); d.batch.status = "ready_for_review";
   const old = { ...d.items[0]!, status: "extracted" as const };
   const item = { ...old, status: "confirmed" as const, version: 2, confirmedContactId: "contact" };
-  assert.equal(ingest.acceptedIngestReview(ok({ state: "created", contactId: "contact", item }), d, old, "confirm")?.state, "accepted");
+  assert.equal(ingest.acceptedIngestReview(ok({ state: "created", contactId: "contact", item, items: [item], replayed: false }), d, old, "confirm")?.state, "accepted");
   for (const patch of [{ id: "other" }, { batchId: "other" }, { version: 1 }, { version: 0 }, { seq: 2 }, { status: "extracted" }, { confirmedContactId: "other" }, { clientDigest: "sha256:" + "b".repeat(64) }]) {
-    assert.equal(ingest.acceptedIngestReview(ok({ state: "created", contactId: "contact", item: { ...item, ...patch } }), d, old, "confirm"), null);
+    assert.equal(ingest.acceptedIngestReview(ok({ state: "created", contactId: "contact", item: { ...item, ...patch }, items: [{ ...item, ...patch }], replayed: false }), d, old, "confirm"), null);
   }
   for (const status of ["completed", "cancelled", "expired", "collecting"] as const) {
     assert.equal(ingest.canReviewIngest({ ...d, batch: { ...d.batch, status } }, old, "confirm"), false);
@@ -98,7 +98,7 @@ test("creation freezes manifest/key across ambiguous retry and changes key on ma
   const files = [{ ...file }]; let keys = 0;
   const first = ingest.creationAttempt(files, null, () => "key-" + ++keys);
   assert.ok(first);
-  assert.deepEqual(first.manifest, [{ fileName: "card.png", mimeType: "image/png", rawSize: png.length, seq: 1, clientDigest: digest }]);
+  assert.deepEqual(first.manifest, [{ cardId: "legacy:1", side: "front", fileName: "card.png", mimeType: "image/png", rawSize: png.length, seq: 1, clientDigest: digest }]);
   assert.equal(ingest.creationAttempt(files, first, () => "key-" + ++keys), first);
   files[0]!.fileName = "changed.png";
   assert.equal(ingest.creationAttempt(files, first, () => "key-" + ++keys).idempotencyKey, "key-2");

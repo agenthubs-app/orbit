@@ -60,7 +60,7 @@ test("AI conversation screen can inspect web AI run details", () => {
   assert.match(screenSource, /aiRunDetailToView/u);
   assert.match(screenSource, /inspectAiRun/u);
   assert.match(screenSource, /client\.get<unknown>\(\s*request\.request\.path/u);
-  assert.match(screenSource, />AI 运行依据</u);
+  assert.match(screenSource, /locale\.t\("aiConversation\.runBasis"\)/u);
   assert.match(screenSource, /runReferences\.map/u);
 });
 

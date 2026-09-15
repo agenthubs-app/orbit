@@ -1,3 +1,4 @@
+import { createConfiguredTransactionalPostgresRuntime } from "../../shared/storage/transactional-postgres";
 import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
 import { createConfiguredReminderPlanService } from "../notifications/reminder-plan-service-factory";
 import { createTaskRepository } from "./repository";
@@ -14,6 +15,7 @@ export function createConfiguredTaskService() {
     repository: createTaskRepository({
       store: configured.store,
       workspaceId: configured.workspaceId,
+      transactionClient: createConfiguredTransactionalPostgresRuntime()?.client,
     }),
     onTaskTerminated: async ({ actorId, taskId, reason }) => {
       await reminders.cancelFutureForTarget({

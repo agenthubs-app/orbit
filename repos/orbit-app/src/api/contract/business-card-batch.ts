@@ -124,8 +124,11 @@ export type IngestItemStatus =
 export type IngestItemErrorStage = "normalize" | "ocr" | "lease";
 export type IngestItemErrorCode =
   | "IMAGE_INVALID" | "OCR_PROVIDER_FAILED" | "OCR_PROVIDER_TIMEOUT" | "OCR_INVALID_OUTPUT" | "LEASE_EXHAUSTED";
+export type IngestCardSide = "front" | "back";
 
 export interface IngestManifestEntryContract {
+  cardId: string;
+  side: IngestCardSide;
   fileName: string;
   mimeType: string;
   rawSize: number;
@@ -152,6 +155,8 @@ export interface IngestBatchContract {
 export interface IngestItemContract {
   id: string;
   batchId: string;
+  cardId: string;
+  side: IngestCardSide;
   seq: number;
   status: IngestItemStatus;
   version: number;
@@ -167,6 +172,8 @@ export interface IngestItemContract {
   reviewIssues: readonly BusinessCardReviewIssueContract[];
   usage: BusinessCardCloudOcrUsageContract | null;
   confirmedContactId: string | null;
+  /** Null for unconfirmed and legacy confirmed items; present after card-aware confirmation. */
+  confirmedFieldSources?: IngestCardFieldSourcesContract | null | undefined;
   attemptCount: number;
   nextRetryAt: string | null;
   leaseExpiresAt: string | null;
@@ -203,6 +210,27 @@ export interface IngestItemActionResponseContract { item: IngestItemContract; }
 export interface IngestUploadResponseContract extends IngestItemActionResponseContract { alreadyUploaded: boolean; }
 export interface IngestBatchActionResponseContract { batch: IngestBatchContract; }
 export interface IngestFinalizeResponseContract extends IngestBatchActionResponseContract { alreadyFinalized: boolean; }
+
+export interface IngestCardConfirmationItemContract {
+  itemId: string;
+  version: number;
+  imageDigest: string;
+}
+
+export interface IngestCardFieldSourcesContract {
+  displayName: string | null;
+  organization: string | null;
+  role: string | null;
+  email: string | null;
+  phone: string | null;
+}
+
+export interface IngestCardConfirmationInputContract extends BusinessCardBatchReviewInputContract {
+  confirmationIntentId: string;
+  expectedCardItems: readonly IngestCardConfirmationItemContract[];
+  fieldSources: IngestCardFieldSourcesContract;
+}
+
 export type IngestConfirmationResponseContract =
-  | { state: "created"; contactId: string; item: IngestItemContract }
+  | { state: "created"; contactId: string; item: IngestItemContract; items: readonly IngestItemContract[]; replayed: boolean }
   | { state: "duplicate_review"; duplicateContactId: string };

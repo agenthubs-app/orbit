@@ -13,6 +13,7 @@ import {
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import {
+  eventAdmissionApplicationPath,
   publicEventDetailPath,
   eventRegistrationCancelPath,
   eventRegistrationInterviewPath,
@@ -29,10 +30,15 @@ import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import {
   buildEventRegistrationAdaptiveBody,
   buildEventRegistrationAnswers,
+  eventAdmissionApplicationMatches,
+  eventAdmissionApplicationResponses,
+  eventAdmissionWithdrawalMatches,
   eventRegistrationAdaptiveStepToView,
+  eventRegistrationAuthorityKey,
   eventRegistrationPersonaToView,
   eventRegistrationQuestionKey,
   eventRegistrationReceiptMatches,
@@ -61,6 +67,7 @@ function answersFromView(view: EventRegistrationView | null): Record<string, str
 
 export function EventRegistrationScreen() {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const eventId = firstParam(id);
   const router = useRouter();
@@ -79,13 +86,13 @@ export function EventRegistrationScreen() {
   const editRevision = useRef(0);
   const eventState = useApiResource<unknown>(publicEventDetailPath(eventId), () => false, { scopeKey });
   const registrationState = useApiResource<unknown>(
-    `${eventRegistrationPath(eventId)}?language=zh`,
+    `${eventRegistrationPath(eventId)}?language=${encodeURIComponent(locale.language)}`,
     () => false,
     { scopeKey, cachePolicy: "network-only" }
   );
   const loadedRegistrationView =
     registrationState.kind === "success" || registrationState.kind === "empty"
-      ? eventRegistrationToView(registrationState.data)
+      ? eventRegistrationToView(registrationState.data, locale.language)
       : null;
   const latestView = useRef(loadedRegistrationView); latestView.current = loadedRegistrationView;
   const [registrationView, setRegistrationView] = useState<EventRegistrationView | null>(null);
@@ -144,7 +151,7 @@ export function EventRegistrationScreen() {
 
   useEffect(() => {
     if (!ready || !registrationData) return;
-    const received = eventRegistrationToView(registrationData);
+    const received = eventRegistrationToView(registrationData, locale.language);
     const previous = formView.current;
     if (!previous) { resetDraft(received); return; }
     if (eventRegistrationQuestionKey(previous) !== eventRegistrationQuestionKey(received)) {
@@ -177,6 +184,24 @@ export function EventRegistrationScreen() {
       (requireCurrentQuestions && eventRegistrationQuestionKey(formView.current) !== eventRegistrationQuestionKey(latestView.current))) return null;
     const controller = new AbortController(); request.current = controller;
     return controller;
+  }
+
+  function beginRegistrationAction(
+    action: "apply" | "cancel" | "reactivate" | "register" | "update" | "withdraw"
+  ) {
+    const current = formView.current;
+    const latest = latestView.current;
+    if (
+      !current ||
+      !latest ||
+      (current.allowedActions !== undefined &&
+        !current.allowedActions.includes(action)) ||
+      eventRegistrationAuthorityKey(current) !==
+        eventRegistrationAuthorityKey(latest)
+    ) {
+      return null;
+    }
+    return beginRequest(action !== "cancel" && action !== "withdraw");
   }
 
   function finishRequest(controller: AbortController) {
@@ -230,14 +255,19 @@ export function EventRegistrationScreen() {
             {
               answer: adaptiveAnswer,
               field: adaptiveQuestion.field,
-              prompt: adaptiveQuestion.prompt
+              prompt: adaptiveQuestion.prompt,
+              ...(adaptiveQuestion.questionToken
+                ? { questionToken: adaptiveQuestion.questionToken }
+                : {})
             }
           ]
         : adaptiveTurns;
 
     return {
       body: buildEventRegistrationAdaptiveBody(
-        registrationView?.questions ?? [],
+        registrationView?.allowedActions?.includes("apply")
+          ? []
+          : registrationView?.questions ?? [],
         answers,
         nextTurns
       ),
@@ -320,7 +350,17 @@ export function EventRegistrationScreen() {
     if (!registrationView) {
       return;
     }
-    const controller = beginRequest();
+    const action = registrationView.allowedActions?.find((value) =>
+      value === "apply" || value === "register" || value === "reactivate" || value === "update"
+    ) ?? "register";
+    const admissionResponses = eventAdmissionApplicationResponses(
+      action === "apply" ? adaptiveBody().turns : adaptiveTurns
+    );
+    if (action === "apply" && admissionResponses.length < 2) {
+      setSubmitError("请先在活动画像中完成两道必答问题，再提交申请。");
+      return;
+    }
+    const controller = beginRegistrationAction(action);
     if (!controller) return;
     const revision = editRevision.current;
 
@@ -328,26 +368,55 @@ export function EventRegistrationScreen() {
     setSubmitError(null);
     setFeedback(null);
 
-    const result = await client.post<unknown>(eventRegistrationPath(eventId), {
-      signal: controller.signal,
-      body: {
-        answers: buildEventRegistrationAnswers(registrationView.questions, answers),
-        ...(registrationView.questionSetHash &&
-        registrationView.questionSetVersion !== null
-          ? {
-              questionSetHash: registrationView.questionSetHash,
-              questionSetVersion: registrationView.questionSetVersion
-            }
-          : {})
-      }
-    });
+    const result = action === "apply"
+      ? await client.post<unknown>(eventAdmissionApplicationPath(eventId), {
+          signal: controller.signal,
+          body: { responses: admissionResponses }
+        })
+      : await client.post<unknown>(eventRegistrationPath(eventId), {
+          signal: controller.signal,
+          body: {
+            answers: buildEventRegistrationAnswers(registrationView.questions, answers),
+            intent: action,
+            ...(registrationView.questionSetHash &&
+            registrationView.questionSetVersion !== null
+              ? {
+                  questionSetHash: registrationView.questionSetHash,
+                  questionSetVersion: registrationView.questionSetVersion
+                }
+              : {})
+          }
+        });
 
     if (!isScopeCurrent() || request.current !== controller) return;
 
-    if (result.success && result.status >= 200 && result.status < 300 &&
-      eventRegistrationReceiptMatches(result.data, eventId, actorId, "rsvped")) {
+    const receiptMatches = action === "apply"
+      ? eventAdmissionApplicationMatches(
+          result.success ? result.data : null,
+          eventId,
+          actorId
+        )
+      : eventRegistrationReceiptMatches(
+          result.success ? result.data : null,
+          eventId,
+          actorId,
+          "rsvped",
+          action
+        );
+    if (result.success && result.status >= 200 && result.status < 300 && receiptMatches) {
       if (editRevision.current === revision) dirty.current = false;
-      setFeedback("报名资料已保存。");
+      const applicationStatus = result.success && typeof result.data === "object" && result.data
+        ? (result.data as { status?: unknown }).status
+        : null;
+      setFeedback(
+        action !== "apply"
+          ? "报名资料已保存。"
+          : applicationStatus === "admitted"
+            ? "报名已确认。"
+            : applicationStatus === "waitlisted"
+              ? "申请已进入候补。"
+              : "申请已提交，等待审核。"
+      );
       eventState.refresh();
       registrationState.refresh();
     } else {
@@ -358,19 +427,52 @@ export function EventRegistrationScreen() {
   }
 
   async function cancelRegistration() {
-    const controller = beginRequest(false);
+    const action = registrationView?.allowedActions?.includes("withdraw")
+      ? "withdraw"
+      : "cancel";
+    const controller = beginRegistrationAction(action);
     if (!controller) return;
     setPendingAction("cancel");
     setSubmitError(null);
     setFeedback(null);
 
-    const result = await client.post<unknown>(eventRegistrationCancelPath(eventId), { signal: controller.signal });
+    const expectedApplicationVersion = registrationView?.applicationVersion;
+    if (action === "withdraw" && expectedApplicationVersion === null) {
+      finishRequest(controller);
+      setSubmitError("无法确认当前申请版本，请刷新后再试。");
+      return;
+    }
+    const result = action === "withdraw"
+      ? await client.delete<unknown>(eventAdmissionApplicationPath(eventId), {
+          body: { expectedApplicationVersion },
+          signal: controller.signal
+        })
+      : await client.post<unknown>(eventRegistrationCancelPath(eventId), {
+          body: {
+            expectedRegistrationVersion: registrationView?.registrationVersion ?? null,
+            intent: "cancel"
+          },
+          signal: controller.signal
+        });
 
     if (!isScopeCurrent() || request.current !== controller) return;
 
-    if (result.success && result.status >= 200 && result.status < 300 &&
-      eventRegistrationReceiptMatches(result.data, eventId, actorId, "cancelled")) {
-      setFeedback("已取消报名。");
+    const receiptMatches = action === "withdraw"
+      ? eventAdmissionWithdrawalMatches(
+          result.success ? result.data : null,
+          eventId,
+          actorId,
+          expectedApplicationVersion ?? 0
+        )
+      : eventRegistrationReceiptMatches(
+          result.success ? result.data : null,
+          eventId,
+          actorId,
+          "cancelled",
+          "cancel"
+        );
+    if (result.success && result.status >= 200 && result.status < 300 && receiptMatches) {
+      setFeedback(action === "withdraw" ? "已撤回申请。" : "已取消报名。");
       eventState.refresh();
       registrationState.refresh();
     } else {
@@ -382,7 +484,7 @@ export function EventRegistrationScreen() {
 
   return (
     <AppScreen
-      eyebrow="活动报名"
+      eyebrow={locale.t("registration.eyebrow")}
       refreshControl={
         <RefreshControl
           onRefresh={refresh}
@@ -390,7 +492,7 @@ export function EventRegistrationScreen() {
           tintColor={colors.accent}
         />
       }
-      title="报名资料"
+      title={locale.t("registration.title")}
     >
       {eventState.kind === "loading" || registrationState.kind === "loading" ? (
         <LoadingState />
@@ -507,6 +609,7 @@ function RegistrationForm({
   submitError: string | null;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   return (
     <>
       <DataCard detail={readConfirmed ? registration.statusDetail : "显示上次读取的报名资料，当前答案和辅助问答已保留。"} title={eventTitle}>
@@ -523,10 +626,10 @@ function RegistrationForm({
           ]}
         >
           <Ionicons color={colors.accent} name="arrow-back-outline" size={17} />
-          <Text style={styles.secondaryButtonText}>返回活动</Text>
+          <Text style={styles.secondaryButtonText}>{locale.t("registration.backEvent")}</Text>
         </Pressable>
       </DataCard>
-      <DataCard variant="inset" detail="标记为必答的问题需要回答，其余问题可以跳过" title="参与资料">
+      <DataCard variant="inset" detail={locale.t("registration.profileDetail")} title={locale.t("registration.profileTitle")}>
         {questionsChanged ? <>
           <Text style={styles.errorText}>报名问题已更新，当前答案和辅助问答已保留。</Text>
           <Pressable accessibilityRole="button" disabled={pendingAction !== null || adaptivePending !== null || !readConfirmed}
@@ -553,17 +656,17 @@ function RegistrationForm({
         {feedback ? <Text style={styles.feedbackText}>{feedback}</Text> : null}
         <Pressable
           accessibilityRole="button"
-          disabled={pendingAction !== null || adaptivePending !== null || questionsChanged || !readConfirmed}
+          disabled={pendingAction !== null || adaptivePending !== null || questionsChanged || !readConfirmed || registration.canSubmit === false}
           onPress={onSubmit}
           style={({ pressed }) => [
             styles.primaryButton,
-            pendingAction || !readConfirmed ? styles.disabled : null,
+            pendingAction || !readConfirmed || registration.canSubmit === false ? styles.disabled : null,
             pressed ? styles.pressed : null
           ]}
         >
           <Ionicons color={colors.onAccent} name="checkmark-outline" size={18} />
           <Text style={styles.primaryButtonText}>
-            {pendingAction === "register" ? "保存中" : registration.confirmLabel}
+            {pendingAction === "register" ? locale.t("profile.saving") : registration.confirmLabel || locale.t("registration.submit")}
           </Text>
         </Pressable>
         {registration.canCancel ? (
@@ -579,7 +682,7 @@ function RegistrationForm({
           >
             <Ionicons color={colors.rose} name="close-outline" size={18} />
             <Text style={styles.cancelButtonText}>
-              {pendingAction === "cancel" ? "取消中" : "取消报名"}
+              {pendingAction === "cancel" ? "取消中" : registration.cancelLabel ?? "取消报名"}
             </Text>
           </Pressable>
         ) : null}
@@ -738,10 +841,11 @@ function RegistrationQuestion({
   question: EventRegistrationQuestionView;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   return (
     <View style={styles.questionBlock}>
       <Text style={styles.questionText}>{question.prompt}</Text>
-      <Text style={styles.evidenceText}>{question.required ? "必答" : "可选"}</Text>
+      <Text style={styles.evidenceText}>{locale.t(question.required ? "registration.required" : "registration.optional")}</Text>
       {question.options.length > 0 ? (
         <View style={styles.optionsRow}>
           {question.options.map((option) => (
@@ -770,7 +874,7 @@ function RegistrationQuestion({
       <TextInput
         multiline
         onChangeText={onChange}
-        placeholder="写一句具体的补充。"
+        placeholder={locale.t("registration.answerPlaceholder")}
         placeholderTextColor={colors.text4}
         style={styles.answerInput}
         textAlignVertical="top"

@@ -16,7 +16,7 @@ test("schedule screen reads the same public event collection as event discovery"
 });
 
 test("schedule screen uses one title and a calendar-first hierarchy", () => {
-  assert.match(screenSource, /title="日程"/u);
+  assert.match(screenSource, /title=\{locale\.t\("schedule\.title"\)\}/u);
   assert.doesNotMatch(screenSource, /eyebrow="关系日程"/u);
   assert.doesNotMatch(screenSource, /title="关系日程"/u);
   assert.match(screenSource, /function ScheduleWeekStrip/u);
@@ -34,17 +34,17 @@ test("schedule time blocks expose a useful VoiceOver action label", () => {
 
   assert.match(
     moduleSource,
-    /accessibilityLabel=\{`\$\{item\.title\}，\$\{item\.timeLabel \|\| "时间待定"\}，\$\{item\.actionLabel\}`\}/u
+    /accessibilityLabel=\{`\$\{item\.title\}，\$\{item\.timeLabel \|\| locale\.t\("schedule\.timePending"\)\}，\$\{item\.actionLabel\}`\}/u
   );
-  assert.match(moduleSource, /accessibilityHint="打开日程详情"/u);
+  assert.match(moduleSource, /accessibilityHint=\{locale\.t\("schedule\.openDetail"\)\}/u);
 });
 
 test("schedule screen offers working day, week, and month view controls", () => {
   assert.match(screenSource, /type ScheduleViewMode = "day" \| "week" \| "month"/u);
   assert.match(screenSource, /setViewMode/u);
-  assert.match(screenSource, /label: "日"/u);
-  assert.match(screenSource, /label: "周"/u);
-  assert.match(screenSource, /label: "月"/u);
+  assert.match(screenSource, /label: locale\.t\("schedule\.viewDay"\)/u);
+  assert.match(screenSource, /label: locale\.t\("schedule\.viewWeek"\)/u);
+  assert.match(screenSource, /label: locale\.t\("schedule\.viewMonth"\)/u);
   assert.match(screenSource, /function ScheduleWeekAgenda/u);
   assert.match(screenSource, /function ScheduleMonthGrid/u);
 });
@@ -52,8 +52,9 @@ test("schedule screen offers working day, week, and month view controls", () => 
 test("schedule calendar marks Japanese holidays and weekends without replacing event colors", () => {
   assert.match(
     screenSource,
-    /const weekdayLabels = \["周一", "周二", "周三", "周四", "周五", "周六", "周日"\]/u
+    /weekdayReferenceKeys\.map\(\(dateKey, index\) =>/u
   );
+  assert.match(screenSource, /localizedWeekday\(dateKey, locale\.language, true\)/u);
   assert.match(screenSource, /const mondayOffset = -\(\(firstDate\.getUTCDay\(\) \+ 6\) % 7\)/u);
   assert.match(screenSource, /index === 5 \? styles\.saturdayText/u);
   assert.match(screenSource, /index === 6 \? styles\.holidayText/u);

@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Image,
   Modal,
@@ -9,10 +9,10 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View
 } from "react-native";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
+import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import {
   dashboardOpportunitiesRecomputePath,
   ORBIT_API_ENDPOINTS
@@ -29,7 +29,13 @@ import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useValidatedApiResource } from "../../hooks/useValidatedApiResource";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import {
+  contactsAnalysisTemplate,
+  registerAiTemplatePrefill
+} from "../../data/ai-template-prefill";
+import {
+  contactsAnalysisReportToView,
   contactsAnalysisToView,
   type ContactsAnalysisActivityView,
   type ContactsAnalysisActionView,
@@ -39,7 +45,8 @@ import {
   type ContactsAnalysisHealthView,
   type ContactsAnalysisStructureDimensionId,
   type ContactsAnalysisStructureDimensionView,
-  type ContactsAnalysisStructureItemView
+  type ContactsAnalysisStructureItemView,
+  type ContactsAnalysisReportView
 } from "../../view-models/contacts-analysis";
 import {
   contactsDashboardToView,
@@ -63,12 +70,6 @@ import {
   type DashboardStrengthView,
   type DashboardValueTypeView
 } from "../../view-models/dashboard";
-import {
-  buildProfileUpdateRequest,
-  profileSummaryToEditDraft,
-  profileToSummary,
-  type ProfileManualEditDraft
-} from "../../view-models/profile";
 
 type ContactsDashboardOverviewFilter = {
   source?: string;
@@ -99,54 +100,61 @@ function overviewFilterFor(
 
 export function ContactsDashboardScreen() {
   const { colors } = useOrbitTheme();
-  const client = useOrbitApiClient();
+  const auth = useOrbitAuthSession();
   const { baseUrl } = useOrbitApiBaseUrl();
+  const actorId = auth.actorId ?? "";
+  const dashboardScopeKey = JSON.stringify([actorId, auth.cookieHeader, baseUrl]);
+  const client = useOrbitApiClient({ scopeKey: dashboardScopeKey });
   const [recomputing, setRecomputing] = useState(false);
   const [recomputeResult, setRecomputeResult] =
     useState<DashboardOpportunitiesRecomputeView | null>(null);
   const [recomputeError, setRecomputeError] = useState<string | null>(null);
-  const [relationshipGoalDraft, setRelationshipGoalDraft] =
-    useState<ProfileManualEditDraft | null>(null);
-  const [relationshipGoalError, setRelationshipGoalError] =
-    useState<string | null>(null);
-  const [relationshipGoalMessage, setRelationshipGoalMessage] =
-    useState<string | null>(null);
-  const [savingRelationshipGoal, setSavingRelationshipGoal] = useState(false);
+  const recomputeAbortController = useRef<AbortController | null>(null);
+  const currentDashboardScope = useRef(dashboardScopeKey);
+  currentDashboardScope.current = dashboardScopeKey;
   const dashboardState = useValidatedApiResource(
     ORBIT_API_ENDPOINTS.mobileContactsDashboard,
     mobileContactsDashboardPayloadSchema,
-    (data) => data.aggregate.relationshipAssetTotals.contacts === 0
+    (data) => data.aggregate.relationshipAssetTotals.contacts === 0 && !data.analysis?.report,
+    { scopeKey: dashboardScopeKey },
   );
   const dashboard =
     dashboardState.kind === "success" || dashboardState.kind === "empty"
       ? dashboardState.data
       : null;
-  const profile =
-    dashboard?.profile
-      ? profileToSummary(dashboard.profile)
-      : null;
+  const manualProfile = dashboard?.profile?.profile ?? null;
 
   useEffect(() => {
-    if (profile) {
-      setRelationshipGoalDraft(profileSummaryToEditDraft(profile));
-    }
-  }, [profile?.displayName, profile?.relationshipGoal]);
+    recomputeAbortController.current?.abort();
+    recomputeAbortController.current = null;
+    setRecomputing(false);
+    setRecomputeResult(null);
+    setRecomputeError(null);
+    return () => {
+      recomputeAbortController.current?.abort();
+    };
+  }, [dashboardScopeKey]);
 
   function refreshAll() {
     setRecomputeError(null);
-    setRelationshipGoalError(null);
     dashboardState.refresh();
   }
 
   async function recomputeContactDashboardOpportunities() {
+    const requestScope = dashboardScopeKey;
+    const controller = new AbortController();
+    recomputeAbortController.current?.abort();
+    recomputeAbortController.current = controller;
     setRecomputing(true);
     setRecomputeResult(null);
     setRecomputeError(null);
 
     try {
       const result = await client.post<unknown>(
-        dashboardOpportunitiesRecomputePath()
+        dashboardOpportunitiesRecomputePath(),
+        { signal: controller.signal },
       );
+      if (currentDashboardScope.current !== requestScope) return;
 
       if (result.success) {
         setRecomputeResult(
@@ -157,51 +165,17 @@ export function ContactsDashboardScreen() {
         setRecomputeError(result.error.message);
       }
     } catch {
-      setRecomputeError("机会提醒暂时不能重新计算。请稍后再试。");
-    } finally {
-      setRecomputing(false);
-    }
-  }
-
-  async function saveContactDashboardGoal() {
-    if (!relationshipGoalDraft) {
-      setRelationshipGoalError("个人资料还没加载完成。");
-      setRelationshipGoalMessage(null);
-      return;
-    }
-
-    const request = buildProfileUpdateRequest(relationshipGoalDraft);
-
-    if (!request) {
-      setRelationshipGoalError("先到个人资料页补姓名，再保存目标。");
-      setRelationshipGoalMessage(null);
-      return;
-    }
-
-    setSavingRelationshipGoal(true);
-    setRelationshipGoalError(null);
-    setRelationshipGoalMessage(null);
-
-    try {
-      const result = await client.put<unknown>(ORBIT_API_ENDPOINTS.profile, {
-        body: request
-      });
-
-      if (!result.success) {
-        setRelationshipGoalError(
-          result.error.message || "关系目标暂时保存不了。"
-        );
-        return;
+      if (currentDashboardScope.current === requestScope) {
+        setRecomputeError("机会提醒暂时不能重新计算。请稍后再试。");
       }
-
-      setRelationshipGoalMessage("关系目标已保存。");
-      dashboardState.refresh();
-    } catch (error) {
-      setRelationshipGoalError(
-        error instanceof Error ? error.message : "关系目标暂时保存不了。"
-      );
     } finally {
-      setSavingRelationshipGoal(false);
+      if (
+        currentDashboardScope.current === requestScope
+        && recomputeAbortController.current === controller
+      ) {
+        recomputeAbortController.current = null;
+        setRecomputing(false);
+      }
     }
   }
 
@@ -233,6 +207,8 @@ export function ContactsDashboardScreen() {
       {dashboardState.kind === "success" ? (
         <ContactsDashboardContent
           aggregate={dashboardState.data.aggregate}
+          actorId={actorId}
+          analysis={dashboardState.data.analysis}
           baseUrl={baseUrl}
           contactsPayload={dashboardState.data.contacts}
           distributions={dashboardState.data.distributions}
@@ -242,22 +218,9 @@ export function ContactsDashboardScreen() {
           recomputeError={recomputeError}
           recomputeResult={recomputeResult}
           recomputing={recomputing}
-          onRelationshipGoalChange={(value) =>
-            setRelationshipGoalDraft((current) =>
-              current
-                ? {
-                    ...current,
-                    relationshipGoal: value
-                  }
-                : current
-            )
-          }
-          onSaveRelationshipGoal={saveContactDashboardGoal}
-          relationshipGoalDraft={relationshipGoalDraft}
-          relationshipGoalError={relationshipGoalError}
-          relationshipGoalMessage={relationshipGoalMessage}
-          savingRelationshipGoal={savingRelationshipGoal}
+          relationshipGoal={manualProfile?.relationshipGoal ?? ""}
           summary={dashboardState.data.summary}
+          unavailableSections={dashboardState.data.unavailableSections}
         />
       ) : null}
     </AppScreen>
@@ -266,6 +229,8 @@ export function ContactsDashboardScreen() {
 
 function ContactsDashboardContent({
   aggregate,
+  actorId,
+  analysis,
   baseUrl,
   contactsPayload,
   distributions,
@@ -275,42 +240,37 @@ function ContactsDashboardContent({
   recomputeError,
   recomputeResult,
   recomputing,
-  onRelationshipGoalChange,
-  onSaveRelationshipGoal,
-  relationshipGoalDraft,
-  relationshipGoalError,
-  relationshipGoalMessage,
-  savingRelationshipGoal,
-  summary
+  relationshipGoal,
+  summary,
+  unavailableSections
 }: {
   aggregate: unknown;
+  actorId: string;
+  analysis: Parameters<typeof contactsAnalysisReportToView>[0];
   baseUrl: string;
   contactsPayload: unknown;
   distributions: unknown;
   gaps: unknown;
   onRecompute: () => void;
-  onRelationshipGoalChange: (value: string) => void;
-  onSaveRelationshipGoal: () => void;
   opportunities: unknown;
   recomputeError: string | null;
   recomputeResult: DashboardOpportunitiesRecomputeView | null;
   recomputing: boolean;
-  relationshipGoalDraft: ProfileManualEditDraft | null;
-  relationshipGoalError: string | null;
-  relationshipGoalMessage: string | null;
-  savingRelationshipGoal: boolean;
+  relationshipGoal: string;
   summary: unknown;
+  unavailableSections: readonly string[];
 }) {
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
   const router = useRouter();
   const [analysisSegment, setAnalysisSegment] =
     useState<AnalysisSegment>("overview");
   const [structureDimension, setStructureDimension] =
     useState<ContactsAnalysisStructureDimensionId>("industry");
-  const [editingGoal, setEditingGoal] = useState(false);
   const [healthExpanded, setHealthExpanded] = useState(false);
   const [selectedAction, setSelectedAction] =
     useState<ContactsAnalysisActionView | null>(null);
+  const [analysisPrefillError, setAnalysisPrefillError] = useState<string | null>(null);
   const contacts = contactsToSummaries(contactsPayload);
   const contactLocations = contactLocationsToValues(contactsPayload);
   const view = contactsAnalysisToView(
@@ -321,10 +281,32 @@ function ContactsDashboardContent({
       opportunities,
       summary
     },
-    relationshipGoalDraft?.relationshipGoal ?? "",
+    relationshipGoal,
     contacts,
     contactLocations
   );
+  const analysisReport = contactsAnalysisReportToView(analysis, unavailableSections);
+
+  function openAnalysisPrefill() {
+    if (!analysisReport.sourceDataVersion || !actorId || !baseUrl) {
+      setAnalysisPrefillError(locale.t("contacts.analysisReportPrefillUnavailable"));
+      return;
+    }
+    try {
+      const prefillIntent = registerAiTemplatePrefill({
+        actorId,
+        baseUrl,
+        ...contactsAnalysisTemplate(analysisReport.sourceDataVersion),
+      });
+      setAnalysisPrefillError(null);
+      router.push({
+        pathname: "/ai/[id]",
+        params: { id: "new", prefillIntent },
+      } as Href);
+    } catch {
+      setAnalysisPrefillError(locale.t("contacts.analysisReportPrefillFailed"));
+    }
+  }
 
   function openRecommendedAction(action: ContactsAnalysisActionView) {
     if (action.brief) {
@@ -340,7 +322,7 @@ function ContactsDashboardContent({
     }
 
     if (action.id === "complete-goal") {
-      setEditingGoal(true);
+      router.push("/contacts" as Href);
       return;
     }
 
@@ -412,7 +394,7 @@ function ContactsDashboardContent({
     if (view.goalConfigured) {
       router.push("/contacts/pipeline" as Href);
     } else {
-      setEditingGoal(true);
+      router.push("/contacts" as Href);
     }
   }
 
@@ -427,26 +409,8 @@ function ContactsDashboardContent({
 
   return (
     <>
-      <GoalBar
-        goal={view.goal}
-        onEdit={() => setEditingGoal((current) => !current)}
-      />
-
-      {editingGoal && relationshipGoalDraft ? (
-        <ContactDashboardGoalCard
-          draft={relationshipGoalDraft}
-          error={relationshipGoalError}
-          message={relationshipGoalMessage}
-          onChange={onRelationshipGoalChange}
-          onSave={onSaveRelationshipGoal}
-          saving={savingRelationshipGoal}
-        />
-      ) : null}
-
       <AnalysisDiagnosisCard
         diagnosis={view.diagnosis}
-        onRecompute={onRecompute}
-        recomputing={recomputing}
       />
 
       <AnalysisSegmentedControl
@@ -512,6 +476,12 @@ function ContactsDashboardContent({
           recomputing={recomputing}
         />
       ) : null}
+
+      <PersistedAnalysisCard
+        error={analysisPrefillError}
+        onAnalyze={openAnalysisPrefill}
+        view={analysisReport}
+      />
 
       <OpportunityActionBriefSheet
         action={selectedAction}
@@ -680,39 +650,74 @@ function OpportunityActionBriefSheet({
   );
 }
 
-function GoalBar({ goal, onEdit }: { goal: string; onEdit: () => void }) {
+function PersistedAnalysisCard({
+  error,
+  onAnalyze,
+  view
+}: {
+  error: string | null;
+  onAnalyze: () => void;
+  view: ContactsAnalysisReportView;
+}) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
+  const detail = view.state === "unavailable"
+    ? locale.t("contacts.analysisReportUnavailable")
+    : view.state === "empty"
+      ? locale.t("contacts.analysisReportEmpty")
+      : view.stale
+        ? locale.t("contacts.analysisReportStale")
+        : locale.t("contacts.analysisReportCurrent");
+
   return (
-    <Pressable
-      accessibilityLabel={`当前目标：${goal}，编辑目标`}
-      accessibilityRole="button"
-      onPress={onEdit}
-      style={({ pressed }) => [
-        styles.goalBar,
-        pressed ? styles.pressed : null
-      ]}
-    >
-      <View style={styles.goalBarCopy}>
-        <Text style={styles.goalBarLabel}>当前目标</Text>
-        <Text style={styles.goalBarValue}>
-          {goal}
+    <DataCard detail={detail} title={locale.t("contacts.analysisReportTitle")} variant="inset">
+      {view.state === "unavailable" ? (
+        <Text style={styles.bodyText}>
+          {locale.t("contacts.analysisReportUnavailableDescription")}
         </Text>
-      </View>
-      <View style={styles.goalEditButton}>
-        <Ionicons color={colors.ink} name="pencil-outline" size={19} />
-      </View>
-    </Pressable>
+      ) : null}
+      {view.state === "empty" ? (
+        <Text style={styles.bodyText}>
+          {locale.t("contacts.analysisReportDescription")}
+        </Text>
+      ) : null}
+      {view.state === "ready" ? (
+        <>
+          <Text style={styles.bodyText}>{view.body}</Text>
+          <Text style={styles.recomputeStatus}>
+            {locale.t("contacts.analysisReportMeta", {
+              generatedAt: view.generatedAt?.replace("T", " ").replace("Z", " UTC") ?? "",
+              version: view.analysisVersion ?? "",
+            })}
+          </Text>
+        </>
+      ) : null}
+      {view.action ? (
+        <Pressable
+          accessibilityLabel={locale.t("contacts.analysisReportAction")}
+          accessibilityRole="button"
+          onPress={onAnalyze}
+          style={({ pressed }) => [
+            styles.saveGoalButton,
+            pressed ? styles.pressed : null
+          ]}
+        >
+          <Ionicons color={colors.onAccent} name="sparkles-outline" size={17} />
+          <Text style={styles.saveGoalButtonText}>{locale.t("contacts.analysisReportAction")}</Text>
+        </Pressable>
+      ) : null}
+      {view.action ? (
+        <Text style={styles.recomputeStatus}>{locale.t("contacts.analysisReportActionHint")}</Text>
+      ) : null}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+    </DataCard>
   );
 }
 
 function AnalysisDiagnosisCard({
-  diagnosis,
-  onRecompute,
-  recomputing
+  diagnosis
 }: {
   diagnosis: ReturnType<typeof contactsAnalysisToView>["diagnosis"];
-  onRecompute: () => void;
-  recomputing: boolean;
 }) {
   const { colors, styles } = useStyles();
   return (
@@ -729,19 +734,6 @@ function AnalysisDiagnosisCard({
           {diagnosis.scoreLabel}
         </Text>
       </View>
-      <Pressable
-        accessibilityLabel="重新计算人脉分析"
-        accessibilityRole="button"
-        disabled={recomputing}
-        onPress={onRecompute}
-        style={({ pressed }) => [
-          styles.analysisDiagnosisRefresh,
-          recomputing ? styles.disabled : null,
-          pressed ? styles.pressed : null
-        ]}
-      >
-        <Ionicons color={colors.text3} name="refresh-outline" size={17} />
-      </Pressable>
     </View>
   );
 }
@@ -1248,6 +1240,7 @@ function GoalCoverageCard({
   recomputing: boolean;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   return (
     <View style={styles.analysisSurface}>
       <View style={styles.analysisSectionHeader}>
@@ -1256,7 +1249,7 @@ function GoalCoverageCard({
           <Text style={styles.analysisSectionDetail}>{coverage.statusLabel}</Text>
         </View>
         <Pressable
-          accessibilityLabel="重新计算机会"
+          accessibilityLabel={locale.t("contacts.refreshOpportunities")}
           accessibilityRole="button"
           disabled={recomputing}
           onPress={onRecompute}
@@ -1271,6 +1264,7 @@ function GoalCoverageCard({
             name="refresh-outline"
             size={18}
           />
+          <Text style={styles.refreshAnalysisButtonText}>{locale.t("contacts.refreshOpportunities")}</Text>
         </Pressable>
       </View>
 
@@ -1656,55 +1650,6 @@ function healthVisual(tone: ContactsAnalysisHealthView["tone"], colors: OrbitCol
   return { backgroundColor: colors.amberSoft, color: colors.amber };
 }
 
-function ContactDashboardGoalCard({
-  draft,
-  error,
-  message,
-  onChange,
-  onSave,
-  saving
-}: {
-  draft: ProfileManualEditDraft;
-  error: string | null;
-  message: string | null;
-  onChange: (value: string) => void;
-  onSave: () => void;
-  saving: boolean;
-}) {
-  const { colors, styles } = useStyles();
-  return (
-    <DataCard detail="会影响推荐和机会排序" title="关系目标" variant="inset">
-      <TextInput
-        accessibilityLabel="关系目标"
-        multiline
-        onChangeText={onChange}
-        placeholder="最近想认识什么人，或者想推进哪类合作"
-        placeholderTextColor={colors.text3}
-        style={styles.goalInput}
-        value={draft.relationshipGoal}
-      />
-      <Pressable
-        accessibilityLabel="保存关系目标"
-        accessibilityRole="button"
-        disabled={saving}
-        onPress={onSave}
-        style={({ pressed }) => [
-          styles.saveGoalButton,
-          saving ? styles.disabled : null,
-          pressed ? styles.pressed : null
-        ]}
-      >
-        <Ionicons color={colors.onAccent} name="save-outline" size={17} />
-        <Text style={styles.saveGoalButtonText}>
-          {saving ? "保存中" : "保存目标"}
-        </Text>
-      </Pressable>
-      {message ? <Text style={styles.successText}>{message}</Text> : null}
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-    </DataCard>
-  );
-}
-
 function OrbitMap({ view }: { view: ContactsDashboardView }) {
   const { styles } = useStyles();
   return (
@@ -2043,12 +1988,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     fontWeight: "600",
     textAlign: "right"
   },
-  analysisDiagnosisRefresh: {
-    alignItems: "center",
-    height: 44,
-    justifyContent: "center",
-    width: 44
-  },
   analysisDiagnosisScore: {
     alignItems: "flex-end",
     gap: spacing.xxs,
@@ -2365,30 +2304,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 22,
     textAlign: "right"
   },
-  goalBar: {
-    backgroundColor: colors.surface2,
-    borderRadius: radius.card,
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.md,
-    minHeight: 68,
-    padding: spacing.md
-  },
-  goalBarCopy: {
-    flex: 1,
-    gap: spacing.xs,
-    minWidth: 0
-  },
-  goalBarLabel: {
-    ...textStyles.caption,
-    color: colors.text3,
-    fontWeight: "600"
-  },
-  goalBarValue: {
-    ...textStyles.body,
-    color: colors.ink,
-    fontWeight: "600"
-  },
   goalEditButton: {
     alignItems: "center",
     height: 44,
@@ -2476,9 +2391,16 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.control,
     borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.xs,
     height: 44,
     justifyContent: "center",
-    width: 44
+    paddingHorizontal: spacing.sm
+  },
+  refreshAnalysisButtonText: {
+    ...textStyles.small,
+    color: colors.text3,
+    fontWeight: "700"
   },
   barFill: {
     backgroundColor: colors.live,
@@ -2574,11 +2496,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   flexText: {
     flex: 1,
     gap: spacing.xs
-  },
-  goalInput: {
-    ...createControlStyles(colors).input,
-    minHeight: 92,
-    textAlignVertical: "top"
   },
   itemTitle: {
     ...textStyles.listTitle,

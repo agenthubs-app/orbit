@@ -8,6 +8,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type PropsWithChildren
 } from "react";
@@ -30,6 +31,11 @@ import {
 } from "./mobile-auth";
 import { nativeAuthSessionStorage } from "./native-auth-session-storage";
 import { createOrbitApiClient } from "./client";
+import { ORBIT_API_ENDPOINTS } from "./endpoints";
+import {
+  canonicalAccountIdentityFromPayload,
+  type CanonicalAccountIdentity
+} from "./canonical-account-identity";
 import { cancelOrbitManagedNotifications, revokeNotificationDevice } from "../notifications/native-notifications";
 import { revokeRegisteredPushDevice } from "../notifications/push-device-session";
 import { revokePushDeviceRegistrations } from "../notifications/push-registration-queue";
@@ -52,6 +58,8 @@ interface SignInInput {
 }
 
 interface AuthSessionContextValue {
+  accountId: string | null;
+  actorId: string | null;
   cookieHeader: string;
   googleEnabled: boolean;
   notificationSessionRevision: number;
@@ -69,6 +77,10 @@ interface AuthSessionContextValue {
 const AuthSessionContext = createContext<AuthSessionContextValue | null>(null);
 const usesBrowserManagedSession = Platform.OS === "web";
 
+function obsoleteAuthActionResult(): AuthActionResult {
+  return { message: "登录服务器已切换，请重新登录。", success: false };
+}
+
 async function sha256(value: Uint8Array): Promise<Uint8Array> {
   const bytes = new Uint8Array(value.byteLength);
   bytes.set(value);
@@ -78,13 +90,48 @@ async function sha256(value: Uint8Array): Promise<Uint8Array> {
   );
 }
 
+async function resolveCanonicalAccountIdentity(input: {
+  baseUrl: string;
+  cookieHeader: string;
+}): Promise<CanonicalAccountIdentity | null> {
+  const client = createOrbitApiClient({
+    authCookieHeader: input.cookieHeader,
+    baseUrl: input.baseUrl
+  });
+  const result = await client.get<unknown>(ORBIT_API_ENDPOINTS.accountMe);
+
+  return result.success
+    ? canonicalAccountIdentityFromPayload(result.data)
+    : null;
+}
+
 export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
   const { baseUrl, ready: baseUrlReady } = useOrbitApiBaseUrl();
+  const [accountId, setAccountId] = useState<string | null>(null);
   const [cookieHeader, setCookieHeader] = useState("");
   const [providers, setProviders] = useState<readonly "google"[]>([]);
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState<MobileAuthUser | null>(null);
   const [notificationSessionRevision, setNotificationSessionRevision] = useState(0);
+  const authEnvironment = useRef({ baseUrl, baseUrlReady, revision: 0 });
+
+  if (
+    authEnvironment.current.baseUrl !== baseUrl ||
+    authEnvironment.current.baseUrlReady !== baseUrlReady
+  ) {
+    authEnvironment.current = {
+      baseUrl,
+      baseUrlReady,
+      revision: authEnvironment.current.revision + 1
+    };
+  }
+
+  useEffect(() => () => {
+    authEnvironment.current = {
+      ...authEnvironment.current,
+      revision: authEnvironment.current.revision + 1
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -96,6 +143,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
     }
 
     setReady(false);
+    setAccountId(null);
     setCookieHeader("");
     setProviders([]);
     setUser(null);
@@ -120,7 +168,17 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
         }
 
         if (result.success) {
+          const identity = await resolveCanonicalAccountIdentity({
+            baseUrl,
+            cookieHeader: usesBrowserManagedSession ? "" : storedValue
+          });
+
+          if (!active || !identity) {
+            return;
+          }
+
           setCookieHeader(usesBrowserManagedSession ? "" : storedValue);
+          setAccountId(identity.accountId);
           setUser(result.data.user);
           return;
         }
@@ -133,6 +191,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
         }
       } catch {
         if (active) {
+          setAccountId(null);
           setCookieHeader("");
           setUser(null);
         }
@@ -173,8 +232,27 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       && results[1].status === "fulfilled";
   }, [baseUrl, cookieHeader]);
 
+  const discardUnacceptedSession = useCallback(async (session: MobileAuthSession) => {
+    await Promise.allSettled([
+      signOutOrbitSession({
+        baseUrl,
+        cookieHeader: usesBrowserManagedSession ? "" : session.cookieHeader
+      }),
+      ...(!usesBrowserManagedSession
+        ? [nativeAuthSessionStorage.clear(baseUrl)]
+        : [])
+    ]);
+  }, [baseUrl]);
+
   const acceptSession = useCallback(
-    async (session: MobileAuthSession): Promise<AuthActionResult> => {
+    async (
+      session: MobileAuthSession,
+      requestRevision: number
+    ): Promise<AuthActionResult> => {
+      if (authEnvironment.current.revision !== requestRevision) {
+        await discardUnacceptedSession(session);
+        return obsoleteAuthActionResult();
+      }
       const validation = await validateAuthSession({
         baseUrl,
         // Web 依赖刚由响应写入的 HttpOnly cookie；原生只使用返回 envelope
@@ -182,22 +260,58 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
         cookieHeader: usesBrowserManagedSession ? "" : session.cookieHeader
       });
 
+      if (authEnvironment.current.revision !== requestRevision) {
+        await discardUnacceptedSession(session);
+        return obsoleteAuthActionResult();
+      }
       if (!validation.success) {
+        await discardUnacceptedSession(session);
         return {
           message: validation.error.message,
+          success: false
+        };
+      }
+      if (validation.data.user.id !== session.user.id) {
+        await discardUnacceptedSession(session);
+        return {
+          message: "登录身份校验失败，请重新登录。",
+          success: false
+        };
+      }
+
+      const identity = await resolveCanonicalAccountIdentity({
+        baseUrl,
+        cookieHeader: usesBrowserManagedSession ? "" : session.cookieHeader
+      });
+
+      if (authEnvironment.current.revision !== requestRevision) {
+        await discardUnacceptedSession(session);
+        return obsoleteAuthActionResult();
+      }
+      if (!identity) {
+        await discardUnacceptedSession(session);
+        return {
+          message: "无法确认当前账号，请稍后重试。",
           success: false
         };
       }
 
       if (!usesBrowserManagedSession) {
         try {
-          if (user && user.id !== validation.data.user.id) {
+          if (
+            (user && user.id !== validation.data.user.id) ||
+            (accountId && accountId !== identity.accountId)
+          ) {
             await clearSnapshots();
             if (!(await clearNotificationSession())) {
               console.warn("Orbit 旧账号通知清理未完全确认，继续切换账号；服务端可能仍保留设备注册");
             }
           }
           await nativeAuthSessionStorage.write(baseUrl, session.cookieHeader);
+          if (authEnvironment.current.revision !== requestRevision) {
+            await discardUnacceptedSession(session);
+            return obsoleteAuthActionResult();
+          }
         } catch {
           return {
             message: "无法安全保存登录状态，请稍后再试。",
@@ -207,14 +321,16 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       }
 
       setCookieHeader(usesBrowserManagedSession ? "" : session.cookieHeader);
+      setAccountId(identity.accountId);
       setUser(validation.data.user);
       return { success: true };
     },
-    [baseUrl, clearNotificationSession, user]
+    [accountId, baseUrl, clearNotificationSession, discardUnacceptedSession, user]
   );
 
   const signIn = useCallback(
     async (input: SignInInput): Promise<AuthActionResult> => {
+      const requestRevision = authEnvironment.current.revision;
       const result = await signInWithMobileCredentials({
         baseUrl,
         email: input.email,
@@ -225,13 +341,18 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
         return { message: result.error.message, success: false };
       }
 
-      return acceptSession(result.data);
+      if (authEnvironment.current.revision !== requestRevision) {
+        await discardUnacceptedSession(result.data);
+        return obsoleteAuthActionResult();
+      }
+      return acceptSession(result.data, requestRevision);
     },
-    [acceptSession, baseUrl]
+    [acceptSession, baseUrl, discardUnacceptedSession]
   );
 
   const signInWithGoogle = useCallback(
     async (next = "/profile"): Promise<AuthActionResult> => {
+      const requestRevision = authEnvironment.current.revision;
       try {
         const attempt = await createGoogleOAuthAttempt({
           baseUrl,
@@ -248,6 +369,9 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
           attempt.state
         );
 
+        if (authEnvironment.current.revision !== requestRevision) {
+          return obsoleteAuthActionResult();
+        }
         if (!callback.success) {
           return {
             message: callback.error.message,
@@ -269,7 +393,11 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
           };
         }
 
-        return acceptSession(exchange.data);
+        if (authEnvironment.current.revision !== requestRevision) {
+          await discardUnacceptedSession(exchange.data);
+          return obsoleteAuthActionResult();
+        }
+        return acceptSession(exchange.data, requestRevision);
       } catch (error) {
         console.error("Orbit Google 登录启动失败", error);
         return {
@@ -278,11 +406,12 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
         };
       }
     },
-    [acceptSession, baseUrl]
+    [acceptSession, baseUrl, discardUnacceptedSession]
   );
 
   const register = useCallback(
     async (input: RegisterInput): Promise<AuthActionResult> => {
+      const requestRevision = authEnvironment.current.revision;
       const result = await registerOrbitAccount({
         baseUrl,
         email: input.email,
@@ -294,6 +423,9 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
         return { message: result.error.message, success: false };
       }
 
+      if (authEnvironment.current.revision !== requestRevision) {
+        return obsoleteAuthActionResult();
+      }
       return { success: true };
     },
     [baseUrl]
@@ -325,6 +457,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
 
     // 登出后设备上不该再留着这个账号的人脉数据。
     await clearSnapshots();
+    setAccountId(null);
     setCookieHeader("");
     setUser(null);
     return { success: true };
@@ -348,6 +481,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       }
       // 快照里是这个账号的人脉数据，会话失效就不该继续留在设备上。
       void clearSnapshots();
+      setAccountId(null);
       setCookieHeader("");
       setUser(null);
       router.replace("/account/login" as Href);
@@ -356,6 +490,8 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
 
   const value = useMemo(
     () => ({
+      accountId,
+      actorId: accountId,
       cookieHeader,
       googleEnabled: providers.includes("google"),
       notificationSessionRevision,
@@ -371,6 +507,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       user
     }),
     [
+      accountId,
       cookieHeader,
       notificationSessionRevision,
       providers,

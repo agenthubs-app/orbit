@@ -28,7 +28,11 @@ import {
 } from "../../api/endpoints";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
-import { aiConversationListSchema, aiHistoryRows, aiSessionDeleteReceiptSchema, aiSessionListSchema } from "../../api/ai-history-contract";
+import { aiConversationListSchema, aiHistoryRows, aiSessionDeleteReceiptSchema, aiSessionGroupListSchema, aiSessionListSchema, type AiSession } from "../../api/ai-history-contract";
+import type { AiSessionEntryPointId, AiSessionGroupContract } from "../../api/contract/ai-sessions";
+import type { OrbitLanguage } from "../../api/contract/language";
+import { createAiSessionGroup, deleteAiSessionGroup, renameAiSessionGroup, updateAiSessionOrganization } from "../../api/ai-session-management";
+import { aiSessionOriginInputSchema } from "../../api/schema/ai-sessions";
 import { validateApiResourceState } from "../../api/validated-resource-state";
 import { iorbitBrandMark } from "../../design/iorbit-brand";
 import { registerAiSendIntent } from "../../data/ai-send-intent";
@@ -41,6 +45,8 @@ import {
 } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useRelationshipInboxBadgeCount } from "../../hooks/useRelationshipInboxBadgeCount";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import type { MessageKey } from "../../i18n/messages";
 import { mobileUserDisplayName } from "../../view-models/mobile-profile";
 import {
   orbitAiHomeChatWindow,
@@ -54,35 +60,36 @@ import {
 } from "../../view-models/today-tasks";
 import { OrbitNextActions } from "./OrbitNextActions";
 import { homeQuestionSnapshot, type HomeQuestionSnapshot } from "../../view-models/home-question-snapshot";
+import { AiSessionOrganizationPanel } from "./AiSessionOrganization";
 
 type CapabilityTone = "accent" | "amber" | "live" | "sky";
 
 const capabilityEntries: {
-  detail: string;
+  detailKey: MessageKey;
   href: Href;
   icon: keyof typeof Ionicons.glyphMap;
-  title: string;
+  titleKey: MessageKey;
   tone: CapabilityTone;
 }[] = [
   {
-    detail: "待办与日程",
+    detailKey: "ai.capabilityTodayDetail",
     href: "/today" as Href,
     icon: "calendar-outline",
-    title: "今天",
+    titleKey: "ai.capabilityToday",
     tone: "accent"
   },
   {
-    detail: "联系人、关系进展与分析",
+    detailKey: "ai.capabilityContactsDetail",
     href: "/contacts" as Href,
     icon: "people-outline",
-    title: "人脉",
+    titleKey: "ai.capabilityContacts",
     tone: "sky"
   },
   {
-    detail: "发现、报名与现场",
+    detailKey: "ai.capabilityEventsDetail",
     href: "/events" as Href,
     icon: "ticket-outline",
-    title: "活动",
+    titleKey: "ai.capabilityEvents",
     tone: "live"
   }
 ];
@@ -95,7 +102,9 @@ const toneStyles = (colors: OrbitColors): Record<CapabilityTone, { icon: string;
 });
 
 type AiDrawerHistoryItem = {
+  groupId: string | null;
   id: string;
+  organizationRevision: number;
   pinned: boolean;
   preview: string;
   source: "conversation" | "session";
@@ -177,26 +186,32 @@ function useStableKeyboardBottomInset(): number {
 }
 
 export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?: string; isScopeCurrent?: () => boolean } = {}) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const router = useRouter();
   const auth = useOrbitAuthSession();
   const { baseUrl } = useOrbitApiBaseUrl();
-  const params = useLocalSearchParams<{ drawer?: string | string[] }>();
+  const params = useLocalSearchParams<{ drawer?: string | string[]; entryPointId?: string | string[] }>();
   const keyboardBottomInset = useStableKeyboardBottomInset();
   const [refreshIndex, setRefreshIndex] = useState(0);
   const [historyAttempt, setHistoryAttempt] = useState(0);
+  const [groupsAttempt, setGroupsAttempt] = useState(0);
   const [conversationAttempt, setConversationAttempt] = useState(0);
+  const [additionalHistorySessions, setAdditionalHistorySessions] = useState<AiSession[]>([]);
+  const [historyPaginationBusy, setHistoryPaginationBusy] = useState(false);
+  const [historyPaginationError, setHistoryPaginationError] = useState<string | null>(null);
   const readScope = JSON.stringify([scopeKey, refreshIndex]);
   const ownership = useMemo(() => ({}), [readScope]);
   const latest = useRef(ownership);
   latest.current = ownership;
   const mounted = useRef(true);
   const deleteOperation = useRef<AbortController | null>(null);
+  const organizationOperation = useRef<AbortController | null>(null);
   const navigationLock = useRef(false);
   const owns = () => mounted.current && latest.current === ownership && isScopeCurrent();
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; deleteOperation.current?.abort(); deleteOperation.current = null; };
+    return () => { mounted.current = false; deleteOperation.current?.abort(); deleteOperation.current = null; organizationOperation.current?.abort(); organizationOperation.current = null; };
   }, [ownership]);
   const client = useOrbitApiClient({ scopeKey: readScope });
   const inboxBadge = useRelationshipInboxBadgeCount(readScope);
@@ -206,20 +221,43 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     { scopeKey: JSON.stringify([readScope, conversationAttempt]) }
   ), aiConversationListSchema);
   const historyState = validateApiResourceState(useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.aiConversationSessions,
+    `${ORBIT_API_ENDPOINTS.aiConversationSessions}?v=2&limit=50`,
     () => false,
     { scopeKey: JSON.stringify([readScope, historyAttempt]) }
   ), aiSessionListSchema);
+  const groupsState = validateApiResourceState(useApiResource<unknown>(
+    ORBIT_API_ENDPOINTS.aiConversationGroups,
+    () => false,
+    { scopeKey: JSON.stringify([readScope, groupsAttempt]) }
+  ), aiSessionGroupListSchema);
   const todayState = useApiResource<unknown>(
     todayPath("Asia/Tokyo"),
-    (data) => todayHomeSummary(data).items.length === 0,
+    (data) => todayHomeSummary(data, new Date(), "Asia/Tokyo", locale.language).items.length === 0,
     { scopeKey: readScope }
   );
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyPendingOpen, setHistoryPendingOpen] = useState(false);
+  const [organizationOpen, setOrganizationOpen] = useState(false);
+  const [organizationPendingOpen, setOrganizationPendingOpen] = useState(false);
+  const [organizationItem, setOrganizationItem] = useState<AiDrawerHistoryItem | null>(null);
+  const [organizationBusy, setOrganizationBusy] = useState(false);
+  const [organizationError, setOrganizationError] = useState<string | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [initialGroupId, setInitialGroupId] = useState<string | null>(null);
   const [composerMenuOpen, setComposerMenuOpen] = useState(false);
   const [startedNewChat, setStartedNewChat] = useState(false);
   const [draftMessage, setDraftMessage] = useState("");
+  const requestedOrigin = aiSessionOriginInputSchema.safeParse({
+    entryClient: "app",
+    entryPointId: optionalParam(params.entryPointId) || "ai.home",
+    initialGroupId: null,
+    kind: "manual",
+    template: null,
+  });
+  const [entryPointId, setEntryPointId] = useState<AiSessionEntryPointId>(
+    requestedOrigin.success ? requestedOrigin.data.entryPointId : "ai.home",
+  );
   const [sendError, setSendError] = useState<string | null>(null);
   const [historyDeleteError, setHistoryDeleteError] = useState<string | null>(
     null
@@ -227,8 +265,66 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   const [deletingHistoryId, setDeletingHistoryId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<AiDrawerHistoryItem | null>(null);
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
+  const firstHistoryPage = historyState.kind === "success" || historyState.kind === "empty"
+    ? historyState.data
+    : null;
+  const firstHistoryPageIdentity = firstHistoryPage
+    ? JSON.stringify([readScope, historyAttempt, firstHistoryPage.nextCursor, firstHistoryPage.sessions.map(session => session.id)])
+    : JSON.stringify([readScope, historyAttempt, historyState.kind]);
+  useEffect(() => {
+    setAdditionalHistorySessions([]);
+    setHistoryPaginationError(null);
+    if (!firstHistoryPage?.nextCursor) {
+      setHistoryPaginationBusy(false);
+      return;
+    }
+    let active = true;
+    const controller = new AbortController();
+    const loadRemainingHistory = async () => {
+      setHistoryPaginationBusy(true);
+      const sessions: AiSession[] = [];
+      const seenCursors = new Set<string>();
+      let cursor: string | null = firstHistoryPage.nextCursor ?? null;
+      for (let page = 0; active && cursor && page < 199; page += 1) {
+        if (seenCursors.has(cursor)) {
+          setHistoryPaginationError(locale.t("ai.historyUnreadable"));
+          break;
+        }
+        seenCursors.add(cursor);
+        const result = await client.get<unknown>(
+          `${ORBIT_API_ENDPOINTS.aiConversationSessions}?v=2&limit=50&cursor=${encodeURIComponent(cursor)}`,
+          { signal: controller.signal },
+        );
+        if (!active || controller.signal.aborted) return;
+        const parsed = result.success ? aiSessionListSchema.safeParse(result.data) : null;
+        if (!result.success || !parsed?.success) {
+          setHistoryPaginationError(locale.t("ai.historyUnreadable"));
+          break;
+        }
+        sessions.push(...parsed.data.sessions);
+        cursor = parsed.data.nextCursor ?? null;
+      }
+      if (active) {
+        setAdditionalHistorySessions(sessions);
+        setHistoryPaginationBusy(false);
+      }
+    };
+    void loadRemainingHistory();
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [client, firstHistoryPageIdentity]);
+  const completeHistoryData = firstHistoryPage ? {
+    ...firstHistoryPage,
+    sessions: [...new Map(
+      [...firstHistoryPage.sessions, ...additionalHistorySessions].map(session => [session.id, session]),
+    ).values()],
+  } : null;
   const projectedHomeChat = orbitAiHomeChatWindow(
-    startedNewChat || state.kind !== "success" ? null : state.data
+    startedNewChat || state.kind !== "success" ? null : state.data,
+    null,
+    locale.language
   );
   // Preserve the existing bootstrap/window selection, but render the validated
   // business text verbatim rather than the shared legacy keyword replacement.
@@ -236,28 +332,33 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     content: state.kind === "success" ? state.data.messages.find(item => item.messageId === message.id)?.content ?? state.data.assistantMessage : message.content
   })) };
   const historyItems = aiHistoryRows(state.kind === "success" || state.kind === "empty" ? state.data : null,
-    historyState.kind === "success" || historyState.kind === "empty" ? historyState.data : null)
+    completeHistoryData)
     .filter(item => item.source !== "session" || !deletedIds.includes(item.id));
+  const groups = groupsState.kind === "success" || groupsState.kind === "empty"
+    ? groupsState.data.groups
+    : [];
   const historyNotices: { message: string; retryLabel?: string; onRetry?: () => void }[] = [];
-  if (state.kind === "loading" || historyState.kind === "loading") historyNotices.push({ message: "正在读取最近会话" });
-  if (state.kind === "failure" || state.kind === "offline") historyNotices.push({ message: "会话记录未能读取", retryLabel: "重试会话记录", onRetry: () => { if (owns()) setConversationAttempt(value => value + 1); } });
-  if (historyState.kind === "failure" || historyState.kind === "offline") historyNotices.push({ message: "历史记录未能读取", retryLabel: "重试历史记录", onRetry: () => { if (owns()) setHistoryAttempt(value => value + 1); } });
-  if ((state.kind === "success" || state.kind === "empty") && state.data.state === "pending") historyNotices.push({ message: "会话记录正在准备" });
-  if ((historyState.kind === "success" || historyState.kind === "empty") && !historyState.data.storage.configured) historyNotices.push({ message: "历史记录暂不可用，仍可开始新会话。" });
+  if (state.kind === "loading" || historyState.kind === "loading") historyNotices.push({ message: locale.t("ai.loadingRecent") });
+  if (historyPaginationBusy) historyNotices.push({ message: locale.t("ai.loadingAllHistory") });
+  if (historyPaginationError) historyNotices.push({ message: historyPaginationError, retryLabel: locale.t("ai.retryRead"), onRetry: () => { if (owns()) setHistoryAttempt(value => value + 1); } });
+  if (state.kind === "failure" || state.kind === "offline") historyNotices.push({ message: locale.t("ai.conversationsUnreadable"), retryLabel: locale.t("ai.retryConversations"), onRetry: () => { if (owns()) setConversationAttempt(value => value + 1); } });
+  if (historyState.kind === "failure" || historyState.kind === "offline") historyNotices.push({ message: locale.t("ai.historyUnreadable"), retryLabel: locale.t("ai.retryHistory"), onRetry: () => { if (owns()) setHistoryAttempt(value => value + 1); } });
+  if ((state.kind === "success" || state.kind === "empty") && state.data.state === "pending") historyNotices.push({ message: locale.t("ai.conversationPreparing") });
+  if ((historyState.kind === "success" || historyState.kind === "empty") && !historyState.data.storage.configured) historyNotices.push({ message: locale.t("ai.historyUnavailable") });
   const todayPayload =
     todayState.kind === "success" || todayState.kind === "empty"
       ? todayState.data
       : null;
-  const todaySummary = todayHomeSummary(todayPayload);
+  const todaySummary = todayHomeSummary(todayPayload, new Date(), "Asia/Tokyo", locale.language);
   const [questionSnapshot, setQuestionSnapshot] = useState<HomeQuestionSnapshot | null>(null);
   const nextQuestionSnapshot = homeQuestionSnapshot(questionSnapshot, {
-    scope: JSON.stringify([baseUrl, auth.user?.id ?? null]),
+    scope: JSON.stringify([baseUrl, auth.actorId]),
     payload: todayPayload,
     ready: auth.ready && todayState.kind !== "loading",
     refreshing: todayState.refreshing
   });
   if (nextQuestionSnapshot !== questionSnapshot) setQuestionSnapshot(nextQuestionSnapshot);
-  const suggestedPrompts = [...(nextQuestionSnapshot.questions ?? todayHomeQuestions(null)), { kind: "discussion", label: "回看与某位人脉的讨论" }];
+  const suggestedPrompts = [...(nextQuestionSnapshot.questions ?? todayHomeQuestions(null, new Date(), locale.language)), { kind: "discussion", label: locale.t("ai.discussionPrompt") }];
   const todayError =
     todayState.kind === "offline" || todayState.kind === "failure"
       ? todayState.error.message
@@ -302,11 +403,11 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   }
 
   function sendMessage() {
-    if (!owns() || navigationLock.current || !auth.user?.id) return;
+    if (!owns() || navigationLock.current || !auth.actorId) return;
     const message = draftMessage.trim();
 
     if (!message) {
-      setSendError("先输入问题。");
+      setSendError(locale.t("ai.enterQuestion"));
       return;
     }
 
@@ -314,10 +415,22 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     try {
       sendIntent = randomUUID();
     } catch {
-      setSendError("暂时无法发送，问题已保留，请重试。");
+      setSendError(locale.t("ai.sendFailed"));
       return;
     }
-    registerAiSendIntent({ id: sendIntent, actorId: auth.user.id, baseUrl, message });
+    registerAiSendIntent({
+      id: sendIntent,
+      actorId: auth.actorId,
+      baseUrl,
+      message,
+      origin: {
+        entryClient: "app",
+        entryPointId,
+        initialGroupId,
+        kind: "manual",
+        template: null,
+      },
+    });
     setSendError(null);
     navigationLock.current = true;
     router.push({
@@ -326,15 +439,103 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     });
   }
 
-  function startNewChat() {
+  function startNewChat(groupId: string | null = null) {
     if (!owns()) return;
     navigationLock.current = false;
     setComposerMenuOpen(false);
     setHistoryOpen(false);
     setDrawerOpen(false);
     setStartedNewChat(true);
+    setInitialGroupId(groupId);
+    setEntryPointId("ai.new_chat");
     setDraftMessage("");
     setSendError(null);
+  }
+
+  function openOrganization(item: AiDrawerHistoryItem | null) {
+    if (!owns()) return;
+    setOrganizationItem(item);
+    setOrganizationError(null);
+    setOrganizationPendingOpen(true);
+    setHistoryOpen(false);
+    if (Platform.OS === "web") {
+      setOrganizationPendingOpen(false);
+      setOrganizationOpen(true);
+    }
+  }
+
+  function closeOrganizationAndOpenHistory() {
+    setHistoryPendingOpen(true);
+    setOrganizationOpen(false);
+    if (Platform.OS === "web") {
+      setHistoryPendingOpen(false);
+      setHistoryOpen(true);
+    }
+  }
+
+  async function mutateOrganization(
+    item: AiDrawerHistoryItem,
+    patch: { customTitle?: string | null; groupId?: string | null; pinned?: boolean },
+  ) {
+    if (!owns() || organizationOperation.current || item.source !== "session") return;
+    const operation = new AbortController();
+    organizationOperation.current = operation;
+    setOrganizationBusy(true);
+    setOrganizationError(null);
+    const result = await updateAiSessionOrganization(client, item.id, {
+      expectedRevision: item.organizationRevision,
+      mutationId: randomUUID(),
+      patch,
+    }, operation.signal);
+    if (!owns() || operation.signal.aborted || organizationOperation.current !== operation) return;
+    if (result.ok) {
+      const organization = result.value.organization;
+      if (organization) {
+        setOrganizationItem(current => current?.id === item.id ? {
+          ...current,
+          groupId: organization.groupId,
+          organizationRevision: organization.revision,
+          pinned: organization.pinned,
+          title: organization.customTitle ?? current.title,
+        } : current);
+      }
+      setHistoryAttempt(value => value + 1);
+    } else {
+      setOrganizationError(result.error);
+    }
+    organizationOperation.current = null;
+    setOrganizationBusy(false);
+  }
+
+  async function createGroup(name: string) {
+    if (!owns() || organizationOperation.current) return;
+    const operation = new AbortController(); organizationOperation.current = operation; setOrganizationBusy(true); setOrganizationError(null);
+    const id = `group:${randomUUID()}`;
+    const result = await createAiSessionGroup(client, { id, mutationId: randomUUID(), name }, operation.signal);
+    if (!owns() || operation.signal.aborted || organizationOperation.current !== operation) return;
+    if (result.ok) setGroupsAttempt(value => value + 1); else setOrganizationError(result.error);
+    organizationOperation.current = null; setOrganizationBusy(false);
+  }
+
+  async function renameGroup(group: AiSessionGroupContract, name: string) {
+    if (!owns() || organizationOperation.current) return;
+    const operation = new AbortController(); organizationOperation.current = operation; setOrganizationBusy(true); setOrganizationError(null);
+    const result = await renameAiSessionGroup(client, group.id, { expectedRevision: group.revision, mutationId: randomUUID(), name }, operation.signal);
+    if (!owns() || operation.signal.aborted || organizationOperation.current !== operation) return;
+    if (result.ok) setGroupsAttempt(value => value + 1); else setOrganizationError(result.error);
+    organizationOperation.current = null; setOrganizationBusy(false);
+  }
+
+  async function deleteGroup(group: AiSessionGroupContract) {
+    if (!owns() || organizationOperation.current) return;
+    const operation = new AbortController(); organizationOperation.current = operation; setOrganizationBusy(true); setOrganizationError(null);
+    const result = await deleteAiSessionGroup(client, group.id, { expectedRevision: group.revision, mutationId: randomUUID() }, operation.signal);
+    if (!owns() || operation.signal.aborted || organizationOperation.current !== operation) return;
+    if (result.ok) {
+      if (selectedGroupId === group.id) setSelectedGroupId(null);
+      setGroupsAttempt(value => value + 1); setHistoryAttempt(value => value + 1);
+    } else setOrganizationError(result.error);
+    organizationOperation.current = null; setOrganizationBusy(false);
   }
 
   function openCapability(href: Href) {
@@ -378,7 +579,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
       setConfirmDelete(null);
       setHistoryAttempt(value => value + 1);
     } else {
-      setHistoryDeleteError("尚未确认删除，请重试。");
+      setHistoryDeleteError(locale.t("ai.deleteUnconfirmed"));
     }
     deleteOperation.current = null;
     setDeletingHistoryId(null);
@@ -408,12 +609,12 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
               todayState.refreshing
             }
           >
-            <Text accessibilityRole="header" style={styles.heroTitle}>{"今天想\n整理什么？"}</Text>
-            <Text style={styles.heroSubtitle}>从人脉、日程或待办开始，整理接下来要做的事。</Text>
+            <Text accessibilityRole="header" style={styles.heroTitle}>{locale.t("ai.promptTitle")}</Text>
+            <Text style={styles.heroSubtitle}>{locale.t("ai.promptSubtitle")}</Text>
             <View style={styles.suggestionList}>
-              <Text style={styles.suggestionHeading}>可以从这里开始</Text>
+              <Text style={styles.suggestionHeading}>{locale.t("ai.suggestionHeading")}</Text>
               {suggestedPrompts.map(prompt => (
-                <Pressable accessibilityLabel={`填入问题：${prompt.label}`} accessibilityHint="填入输入框后，你仍可修改或确认发送" accessibilityRole="button" key={prompt.kind}
+                <Pressable accessibilityLabel={locale.t("ai.fillQuestion", { question: prompt.label })} accessibilityHint={locale.t("ai.fillQuestionHint")} accessibilityRole="button" key={prompt.kind}
                   onPress={() => { if (owns()) { navigationLock.current = false; setDraftMessage(prompt.label); } }}
                   style={({ pressed }) => [styles.suggestionRow, pressed ? styles.pressed : null]}>
                   <Ionicons color={colors.ink} name={prompt.kind === "discovery" || prompt.kind === "preparation" ? "calendar-outline" : prompt.kind === "discussion" || prompt.kind === "followup" ? "people-outline" : "checkbox-outline"} size={20} />
@@ -424,23 +625,23 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
             </View>
             <View style={styles.recentSection}>
               <View style={styles.recentHeader}>
-                <Text style={styles.sectionLabel}>最近会话</Text>
-                <Pressable accessibilityLabel="全部会话" accessibilityRole="button" onPress={() => setHistoryOpen(true)} style={styles.allHistoryButton}>
-                  <Text style={styles.allHistoryText}>全部</Text><Ionicons name="chevron-forward" color={colors.accent} size={14} />
+                <Text style={styles.sectionLabel}>{locale.t("ai.recentChats")}</Text>
+                <Pressable accessibilityLabel={locale.t("ai.allChats")} accessibilityRole="button" onPress={() => setHistoryOpen(true)} style={styles.allHistoryButton}>
+                  <Text style={styles.allHistoryText}>{locale.t("ai.all")}</Text><Ionicons name="chevron-forward" color={colors.accent} size={14} />
                 </Pressable>
               </View>
               {historyItems.slice(0, 3).map(item => (
-                <Pressable accessibilityLabel={`继续会话：${item.title}`} accessibilityRole="button" key={`${item.source}:${item.id}`} onPress={() => openHistoryItem(item)} style={({ pressed }) => [styles.recentRow, pressed ? styles.pressed : null]}>
+                <Pressable accessibilityLabel={locale.t("ai.continueChat", { title: item.title })} accessibilityRole="button" key={`${item.source}:${item.id}`} onPress={() => openHistoryItem(item)} style={({ pressed }) => [styles.recentRow, pressed ? styles.pressed : null]}>
                   <View style={styles.recentCopy}><Text numberOfLines={2} style={styles.recentTitle}>{item.title}</Text><Text numberOfLines={1} style={styles.recentPreview}>{item.preview}</Text></View>
                   <Text style={styles.recentWhen}>{item.when}</Text><Ionicons name="chevron-forward" color={colors.text4} size={14} />
                 </Pressable>
               ))}
-              {state.kind === "loading" || historyState.kind === "loading" ? <Text accessibilityLiveRegion="polite" style={styles.recentState}>正在读取最近会话</Text> : null}
-              {(state.kind === "success" || state.kind === "empty") && state.data.state === "pending" ? <Text accessibilityLiveRegion="polite" style={styles.recentState}>会话记录正在准备</Text> : null}
-              {state.kind === "failure" || state.kind === "offline" ? <View style={styles.recentFailure}><Text style={styles.errorText}>会话记录未能读取</Text><Pressable accessibilityLabel="重试会话记录" accessibilityRole="button" onPress={() => { if (owns()) setConversationAttempt(value => value + 1); }} style={styles.retryButton}><Text style={styles.allHistoryText}>重试</Text></Pressable></View> : null}
-              {historyState.kind === "failure" || historyState.kind === "offline" ? <View style={styles.recentFailure}><Text style={styles.errorText}>历史记录未能读取</Text><Pressable accessibilityLabel="重试历史记录" accessibilityRole="button" onPress={() => { if (owns()) setHistoryAttempt(value => value + 1); }} style={styles.retryButton}><Text style={styles.allHistoryText}>重试</Text></Pressable></View> : null}
-              {(historyState.kind === "success" || historyState.kind === "empty") && !historyState.data.storage.configured ? <Text style={styles.recentState}>历史记录暂不可用，仍可开始新会话。</Text> : null}
-              {historyItems.length === 0 && (state.kind === "success" || state.kind === "empty") && state.data.state !== "pending" && (historyState.kind === "success" || historyState.kind === "empty") && historyState.data.storage.configured ? <Text style={styles.recentState}>还没有会话</Text> : null}
+              {state.kind === "loading" || historyState.kind === "loading" ? <Text accessibilityLiveRegion="polite" style={styles.recentState}>{locale.t("ai.loadingRecent")}</Text> : null}
+              {(state.kind === "success" || state.kind === "empty") && state.data.state === "pending" ? <Text accessibilityLiveRegion="polite" style={styles.recentState}>{locale.t("ai.conversationPreparing")}</Text> : null}
+              {state.kind === "failure" || state.kind === "offline" ? <View style={styles.recentFailure}><Text style={styles.errorText}>{locale.t("ai.conversationsUnreadable")}</Text><Pressable accessibilityLabel={locale.t("ai.retryConversations")} accessibilityRole="button" onPress={() => { if (owns()) setConversationAttempt(value => value + 1); }} style={styles.retryButton}><Text style={styles.allHistoryText}>{locale.t("common.retry")}</Text></Pressable></View> : null}
+              {historyState.kind === "failure" || historyState.kind === "offline" ? <View style={styles.recentFailure}><Text style={styles.errorText}>{locale.t("ai.historyUnreadable")}</Text><Pressable accessibilityLabel={locale.t("ai.retryHistory")} accessibilityRole="button" onPress={() => { if (owns()) setHistoryAttempt(value => value + 1); }} style={styles.retryButton}><Text style={styles.allHistoryText}>{locale.t("common.retry")}</Text></Pressable></View> : null}
+              {(historyState.kind === "success" || historyState.kind === "empty") && !historyState.data.storage.configured ? <Text style={styles.recentState}>{locale.t("ai.historyUnavailable")}</Text> : null}
+              {historyItems.length === 0 && (state.kind === "success" || state.kind === "empty") && state.data.state !== "pending" && (historyState.kind === "success" || historyState.kind === "empty") && historyState.data.storage.configured ? <Text style={styles.recentState}>{locale.t("ai.noConversations")}</Text> : null}
             </View>
             <OrbitNextActions
               error={todayError}
@@ -463,7 +664,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
         </View>
       </View>
       <OrbitAiDrawer
-        accountName={mobileUserDisplayName(auth.user, "账号")}
+        accountName={mobileUserDisplayName(auth.user, locale.t("ai.account"))}
         inboxBadge={inboxBadge}
         historyItems={historyItems}
         historyNotices={historyNotices}
@@ -477,7 +678,10 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
       <OrbitAiHistoryPanel
         deletingHistoryId={deletingHistoryId}
         historyDeleteError={historyDeleteError}
-        historyItems={historyItems}
+        historyPaginationError={historyPaginationError}
+        historyPaging={historyPaginationBusy}
+        historyItems={selectedGroupId ? historyItems.filter(item => item.groupId === selectedGroupId) : historyItems}
+        groupFilterName={groups.find(group => group.id === selectedGroupId)?.name ?? null}
         historyStateKind={historyState.kind}
         conversationStateKind={state.kind}
         conversationPending={(state.kind === "success" || state.kind === "empty") && state.data.state === "pending"}
@@ -488,9 +692,39 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
         onCancelDelete={() => { if (!deleteOperation.current) setConfirmDelete(null); }}
         onConfirmDelete={() => { if (confirmDelete) void deleteHistoryItem(confirmDelete); }}
         onClose={() => setHistoryOpen(false)}
+        onDismiss={() => {
+          if (!organizationPendingOpen) return;
+          setOrganizationPendingOpen(false);
+          if (owns()) setOrganizationOpen(true);
+        }}
         onDeleteHistoryItem={item => { if (owns() && !deleteOperation.current) { setHistoryDeleteError(null); setConfirmDelete(item); } }}
+        onManageGroups={() => openOrganization(null)}
+        onManageHistoryItem={item => openOrganization(item)}
         onOpenHistoryItem={openHistoryItem}
+        onClearGroupFilter={() => setSelectedGroupId(null)}
         visible={historyOpen}
+      />
+      <AiSessionOrganizationPanel
+        busy={organizationBusy}
+        error={organizationError}
+        groups={groups}
+        item={organizationItem}
+        onClose={() => { if (!organizationBusy) setOrganizationOpen(false); }}
+        onDismiss={() => {
+          if (!historyPendingOpen) return;
+          setHistoryPendingOpen(false);
+          if (owns()) setHistoryOpen(true);
+        }}
+        onCreateGroup={name => { void createGroup(name); }}
+        onDeleteGroup={group => { void deleteGroup(group); }}
+        onDeleteSession={item => { const historyItem = historyItems.find(row => row.id === item.id); if (historyItem) { setConfirmDelete(historyItem); closeOrganizationAndOpenHistory(); } }}
+        onMoveSession={(item, groupId) => { void mutateOrganization(item as AiDrawerHistoryItem, { groupId }); }}
+        onOpenGroup={group => { setSelectedGroupId(group.id); closeOrganizationAndOpenHistory(); }}
+        onRenameGroup={(group, name) => { void renameGroup(group, name); }}
+        onRenameSession={(item, title) => { void mutateOrganization(item as AiDrawerHistoryItem, { customTitle: title.trim() }); }}
+        onStartGroupChat={group => { setOrganizationOpen(false); startNewChat(group.id); }}
+        onTogglePin={item => { void mutateOrganization(item as AiDrawerHistoryItem, { pinned: !item.pinned }); }}
+        visible={organizationOpen}
       />
       <ComposerMenuSheet
         onClose={() => setComposerMenuOpen(false)}
@@ -510,11 +744,12 @@ function ChatTopBar({
   onHome: () => void;
   onOpenHistory: () => void;
 }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   return (
     <View style={styles.topBar}>
       <Pressable
-        accessibilityLabel="首页"
+        accessibilityLabel={locale.t("ai.home")}
         accessibilityRole="button"
         onPress={onHome}
         style={({ pressed }) => [
@@ -522,11 +757,11 @@ function ChatTopBar({
           pressed ? styles.pressed : null
         ]}
       >
-        <Ionicons color={colors.accent} name="chevron-back" size={19} /><Text style={styles.homeButtonText}>首页</Text>
+        <Ionicons color={colors.accent} name="chevron-back" size={19} /><Text style={styles.homeButtonText}>{locale.t("ai.home")}</Text>
       </Pressable>
       <View style={styles.brand}><Image accessible={false} testID="iorbit-brand-mark" source={iorbitBrandMark} style={{ width: 18, height: 18 }} /><Text style={styles.topBarTitle}>IORBIT</Text></View>
       <Pressable
-        accessibilityLabel="对话历史"
+        accessibilityLabel={locale.t("ai.history")}
         accessibilityRole="button"
         onPress={onOpenHistory}
         style={({ pressed }) => [
@@ -540,7 +775,7 @@ function ChatTopBar({
   );
 }
 
-function messageTimestamp(message: ChatMessageView): string {
+function messageTimestamp(message: ChatMessageView, language: OrbitLanguage): string {
   if (!message.createdAt) {
     return "";
   }
@@ -551,7 +786,7 @@ function messageTimestamp(message: ChatMessageView): string {
     return "";
   }
 
-  return new Intl.DateTimeFormat("zh-CN", {
+  return new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : language === "ja" ? "ja-JP" : "en-US", {
     hour: "2-digit",
     hourCycle: "h23",
     minute: "2-digit",
@@ -570,6 +805,7 @@ function ChatTranscript({
   onRefresh: () => void;
   refreshing: boolean;
 }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   return (
     <ScrollView
@@ -587,7 +823,7 @@ function ChatTranscript({
       {children}
       {chat.messages.map((message) => {
         const isUser = message.role === "user";
-        const when = messageTimestamp(message);
+        const when = messageTimestamp(message, locale.language);
 
         return (
           <View
@@ -637,6 +873,7 @@ function ChatComposer({
   onOpenMenu: () => void;
   onSend: () => void;
 }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const { fontScale } = useWindowDimensions();
   const minimumInputHeight = Math.max(44, Math.ceil(22 * fontScale + 12));
@@ -646,19 +883,19 @@ function ChatComposer({
   return (
     <View style={styles.composerBar}>
       <TextInput
-        accessibilityLabel="消息"
+        accessibilityLabel={locale.t("ai.message")}
         multiline
         numberOfLines={1}
         onChangeText={value => { if (!value) setInputHeight(minimumInputHeight); onDraftMessageChange(value); }}
         onContentSizeChange={event => setInputHeight(Math.min(120, Math.max(minimumInputHeight, event.nativeEvent.contentSize.height)))}
-        placeholder="询问 IORBIT"
+        placeholder={locale.t("ai.askPlaceholder")}
         placeholderTextColor={colors.text4}
         style={[styles.composerInput, { height: Math.max(minimumInputHeight, inputHeight) }]}
         value={draftMessage}
       />
       <View style={styles.composerActions}>
       <Pressable
-        accessibilityLabel="更多操作"
+        accessibilityLabel={locale.t("ai.moreActions")}
         accessibilityRole="button"
         onPress={onOpenMenu}
         style={({ pressed }) => [
@@ -669,7 +906,7 @@ function ChatComposer({
         <Ionicons color={colors.ink} name="add" size={22} />
       </Pressable>
       <Pressable
-        accessibilityLabel="发送"
+        accessibilityLabel={locale.t("ai.send")}
         accessibilityRole="button"
         disabled={!canSend}
         onPress={onSend}
@@ -703,6 +940,7 @@ function ComposerMenuSheet({
   onScanCard: () => void;
   visible: boolean;
 }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   return (
     <Modal
@@ -713,7 +951,7 @@ function ComposerMenuSheet({
     >
       <View style={styles.sheetRoot}>
         <Pressable
-          accessibilityLabel="关闭菜单"
+          accessibilityLabel={locale.t("ai.closeMenu")}
           onPress={onClose}
           style={styles.sheetScrim}
         />
@@ -729,7 +967,7 @@ function ComposerMenuSheet({
             <View style={styles.sheetRowIcon}>
               <Ionicons color={colors.ink} name="scan-outline" size={19} />
             </View>
-            <Text style={styles.sheetRowText}>扫名片</Text>
+            <Text style={styles.sheetRowText}>{locale.t("ai.scanCard")}</Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
@@ -742,11 +980,11 @@ function ComposerMenuSheet({
             <View style={styles.sheetRowIcon}>
               <Ionicons color={colors.ink} name="create-outline" size={19} />
             </View>
-            <Text style={styles.sheetRowText}>新对话</Text>
+            <Text style={styles.sheetRowText}>{locale.t("ai.newChat")}</Text>
           </Pressable>
           <Pressable accessibilityRole="button" onPress={onOpenDrawer} style={({ pressed }) => [styles.sheetRow, pressed ? styles.pressed : null]}>
             <View style={styles.sheetRowIcon}><Ionicons color={colors.ink} name="menu-outline" size={19} /></View>
-            <Text style={styles.sheetRowText}>常用入口</Text>
+            <Text style={styles.sheetRowText}>{locale.t("ai.commonEntries")}</Text>
           </Pressable>
         </View>
       </View>
@@ -777,6 +1015,7 @@ function OrbitAiDrawer({
   onOpenHistoryItem: (item: AiDrawerHistoryItem) => void;
   visible: boolean;
 }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const [historyQuery, setHistoryQuery] = useState("");
   const normalizedQuery = historyQuery.trim().toLocaleLowerCase();
@@ -795,7 +1034,7 @@ function OrbitAiDrawer({
     >
       <View style={styles.drawerModalRoot}>
         <Pressable
-          accessibilityLabel="关闭侧栏"
+          accessibilityLabel={locale.t("ai.closeSidebar")}
           onPress={onClose}
           style={styles.drawerScrim}
         />
@@ -804,7 +1043,7 @@ function OrbitAiDrawer({
             <Text style={styles.drawerTitle}>Orbit AI</Text>
             <View style={styles.drawerHeaderActions}>
               <Pressable
-                accessibilityLabel="打开收件箱"
+                accessibilityLabel={locale.t("ai.openInbox")}
                 accessibilityRole="button"
                 onPress={() => onOpenCapability("/inbox" as Href)}
                 style={({ pressed }) => [styles.drawerIconButton, pressed ? styles.pressed : null]}
@@ -813,7 +1052,7 @@ function OrbitAiDrawer({
                 {inboxBadge ? <View style={styles.drawerInboxDot} /> : null}
               </Pressable>
               <Pressable
-                accessibilityLabel="关闭侧栏"
+                accessibilityLabel={locale.t("ai.closeSidebar")}
                 accessibilityRole="button"
                 onPress={onClose}
                 style={({ pressed }) => [styles.drawerIconButton, pressed ? styles.pressed : null]}
@@ -828,25 +1067,25 @@ function OrbitAiDrawer({
             style={styles.drawerScroll}
           >
             <Pressable
-              accessibilityLabel="新对话"
+              accessibilityLabel={locale.t("ai.newChat")}
               accessibilityRole="button"
               onPress={onNewChat}
               style={({ pressed }) => [styles.drawerNewChat, pressed ? styles.pressed : null]}
             >
               <Ionicons color={colors.onAccent} name="create-outline" size={19} />
-              <Text style={styles.drawerNewChatText}>新对话</Text>
+              <Text style={styles.drawerNewChatText}>{locale.t("ai.newChat")}</Text>
             </Pressable>
             <View style={styles.drawerSearchBox}>
               <Ionicons color={colors.text3} name="search-outline" size={17} />
               <TextInput
                 onChangeText={setHistoryQuery}
-                placeholder="搜索对话"
+                placeholder={locale.t("ai.searchConversations")}
                 placeholderTextColor={colors.text4}
                 style={styles.drawerSearchInput}
                 value={historyQuery}
               />
             </View>
-            <Text style={styles.drawerSectionTitle}>常用入口</Text>
+            <Text style={styles.drawerSectionTitle}>{locale.t("ai.commonEntries")}</Text>
             <View style={styles.drawerRowGroup}>
               {capabilityEntries.map((entry, index) => (
                 <CapabilityRow
@@ -859,10 +1098,10 @@ function OrbitAiDrawer({
                 />
               ))}
             </View>
-            <Text style={styles.drawerSectionTitle}>最近对话</Text>
+            <Text style={styles.drawerSectionTitle}>{locale.t("ai.recentChats")}</Text>
             {historyNotices.map(notice => <View key={notice.message} style={styles.recentFailure}>
               <Text accessibilityLiveRegion="polite" style={notice.onRetry ? styles.errorText : styles.drawerEmptyText}>{notice.message}</Text>
-              {notice.onRetry ? <Pressable accessibilityLabel={notice.retryLabel} accessibilityRole="button" onPress={notice.onRetry} style={styles.retryButton}><Text style={styles.allHistoryText}>重试</Text></Pressable> : null}
+              {notice.onRetry ? <Pressable accessibilityLabel={notice.retryLabel} accessibilityRole="button" onPress={notice.onRetry} style={styles.retryButton}><Text style={styles.allHistoryText}>{locale.t("common.retry")}</Text></Pressable> : null}
             </View>)}
             <View style={styles.drawerRecentList}>
               {filteredHistoryItems.slice(0, 8).map((item) => (
@@ -880,13 +1119,13 @@ function OrbitAiDrawer({
                 </Pressable>
               ))}
               {filteredHistoryItems.length === 0 && historyNotices.length === 0 ? (
-                <Text style={styles.drawerEmptyText}>还没有匹配的对话。</Text>
+                <Text style={styles.drawerEmptyText}>{locale.t("ai.noMatchingChats")}</Text>
               ) : null}
             </View>
           </ScrollView>
           <View style={styles.drawerFooter}>
             <Pressable
-              accessibilityLabel="打开个人档案"
+              accessibilityLabel={locale.t("ai.openProfile")}
               accessibilityRole="button"
               onPress={() => onOpenCapability("/profile" as Href)}
               style={({ pressed }) => [
@@ -902,7 +1141,7 @@ function OrbitAiDrawer({
               </Text>
             </Pressable>
             <Pressable
-              accessibilityLabel="打开设置"
+              accessibilityLabel={locale.t("ai.openSettings")}
               accessibilityRole="button"
               onPress={() => onOpenCapability("/settings" as Href)}
               style={({ pressed }) => [
@@ -932,6 +1171,7 @@ function CapabilityRow({
   last: boolean;
   onPress: () => void;
 }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const tone = toneStyles(colors)[entry.tone];
 
@@ -950,11 +1190,11 @@ function CapabilityRow({
       </View>
       <View style={styles.capabilityRowText}>
         <Text numberOfLines={1} style={styles.capabilityTitle}>
-          {entry.title}
+          {locale.t(entry.titleKey)}
         </Text>
-        {entry.detail ? (
+        {entry.detailKey ? (
           <Text numberOfLines={1} style={styles.capabilityDetail}>
-            {entry.detail}
+            {locale.t(entry.detailKey)}
           </Text>
         ) : null}
       </View>
@@ -982,13 +1222,20 @@ function OrbitAiHistoryPanel({
   confirmDelete,
   deletingHistoryId,
   historyDeleteError,
+  historyPaginationError,
+  historyPaging,
   historyItems,
+  groupFilterName,
   historyStateKind,
   onClose,
+  onDismiss,
   onCancelDelete,
   onConfirmDelete,
   onDeleteHistoryItem,
+  onManageGroups,
+  onManageHistoryItem,
   onOpenHistoryItem,
+  onClearGroupFilter,
   visible
 }: {
   conversationStateKind: ApiResourceState<unknown>["kind"];
@@ -999,15 +1246,23 @@ function OrbitAiHistoryPanel({
   confirmDelete: AiDrawerHistoryItem | null;
   deletingHistoryId: string | null;
   historyDeleteError: string | null;
+  historyPaginationError: string | null;
+  historyPaging: boolean;
   historyItems: AiDrawerHistoryItem[];
+  groupFilterName: string | null;
   historyStateKind: ApiResourceState<unknown>["kind"];
   onClose: () => void;
+  onDismiss: () => void;
   onCancelDelete: () => void;
   onConfirmDelete: () => void;
   onDeleteHistoryItem: (item: AiDrawerHistoryItem) => void;
+  onManageGroups: () => void;
+  onManageHistoryItem: (item: AiDrawerHistoryItem) => void;
   onOpenHistoryItem: (item: AiDrawerHistoryItem) => void;
+  onClearGroupFilter: () => void;
   visible: boolean;
 }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const [historyQuery, setHistoryQuery] = useState("");
   const normalizedHistoryQuery = historyQuery.trim().toLocaleLowerCase();
@@ -1021,7 +1276,7 @@ function OrbitAiHistoryPanel({
     : historyItems;
   const conversationFailed = conversationStateKind === "failure" || conversationStateKind === "offline";
   const historyFailed = historyStateKind === "failure" || historyStateKind === "offline";
-  const loading = conversationStateKind === "loading" || historyStateKind === "loading";
+  const loading = conversationStateKind === "loading" || historyStateKind === "loading" || historyPaging;
 
   useEffect(() => {
     if (!visible) {
@@ -1032,21 +1287,24 @@ function OrbitAiHistoryPanel({
   return (
     <Modal
       animationType="fade"
+      onDismiss={onDismiss}
       onRequestClose={onClose}
       transparent
       visible={visible}
     >
       <View style={styles.historyModalRoot}>
         <Pressable
-          accessibilityLabel="关闭历史"
+          accessibilityLabel={locale.t("ai.closeHistory")}
           onPress={onClose}
           style={styles.drawerScrim}
         />
         <View style={styles.historyPanel}>
           <View style={styles.drawerHeader}>
-            <Text style={styles.drawerTitle}>历史记录</Text>
+            <Text style={styles.drawerTitle}>{groupFilterName ? locale.t("ai.historyNamed", { name: groupFilterName }) : locale.t("ai.historyTitle")}</Text>
+            <View style={styles.drawerHeaderActions}>
+            <Pressable accessibilityLabel={locale.t("ai.manageGroups")} accessibilityRole="button" onPress={onManageGroups} style={styles.drawerIconButton}><Ionicons color={colors.text2} name="folder-open-outline" size={19} /></Pressable>
             <Pressable
-              accessibilityLabel="关闭历史"
+              accessibilityLabel={locale.t("ai.closeHistory")}
               accessibilityRole="button"
               onPress={onClose}
               style={({ pressed }) => [
@@ -1056,28 +1314,31 @@ function OrbitAiHistoryPanel({
             >
               <Ionicons color={colors.text2} name="close" size={20} />
             </Pressable>
+            </View>
           </View>
-          {loading ? <Text accessibilityLiveRegion="polite" style={styles.recentState}>正在读取历史记录。</Text> : null}
-          {conversationPending ? <Text accessibilityLiveRegion="polite" style={styles.recentState}>会话记录正在准备</Text> : null}
-          {historyUnavailable ? <Text style={styles.recentState}>历史记录暂不可用，仍可开始新会话。</Text> : null}
-          {conversationFailed ? <View style={styles.recentFailure}><Text style={styles.errorText}>会话记录未能读取</Text><Pressable accessibilityLabel="重试会话记录" accessibilityRole="button" onPress={onRetryConversation} style={styles.retryButton}><Text style={styles.allHistoryText}>重试</Text></Pressable></View> : null}
-          {historyFailed ? <View style={styles.recentFailure}><Text style={styles.errorText}>历史记录未能读取</Text><Pressable accessibilityLabel="重试历史记录" accessibilityRole="button" onPress={onRetryHistory} style={styles.retryButton}><Text style={styles.allHistoryText}>重试</Text></Pressable></View> : null}
+          {groupFilterName ? <Pressable accessibilityLabel={locale.t("ai.showAllHistory")} accessibilityRole="button" onPress={onClearGroupFilter} style={styles.retryButton}><Text style={styles.allHistoryText}>{locale.t("ai.all")}</Text></Pressable> : null}
+          {loading ? <Text accessibilityLiveRegion="polite" style={styles.recentState}>{locale.t("ai.loadingHistory")}</Text> : null}
+          {conversationPending ? <Text accessibilityLiveRegion="polite" style={styles.recentState}>{locale.t("ai.conversationPreparing")}</Text> : null}
+          {historyUnavailable ? <Text style={styles.recentState}>{locale.t("ai.historyUnavailable")}</Text> : null}
+          {conversationFailed ? <View style={styles.recentFailure}><Text style={styles.errorText}>{locale.t("ai.conversationsUnreadable")}</Text><Pressable accessibilityLabel={locale.t("ai.retryConversations")} accessibilityRole="button" onPress={onRetryConversation} style={styles.retryButton}><Text style={styles.allHistoryText}>{locale.t("common.retry")}</Text></Pressable></View> : null}
+          {historyFailed ? <View style={styles.recentFailure}><Text style={styles.errorText}>{locale.t("ai.historyUnreadable")}</Text><Pressable accessibilityLabel={locale.t("ai.retryHistory")} accessibilityRole="button" onPress={onRetryHistory} style={styles.retryButton}><Text style={styles.allHistoryText}>{locale.t("common.retry")}</Text></Pressable></View> : null}
           {historyDeleteError ? (
             <Text style={styles.errorText}>{historyDeleteError}</Text>
           ) : null}
+          {historyPaginationError ? <Text style={styles.errorText}>{historyPaginationError}</Text> : null}
           {confirmDelete ? <View style={styles.deleteConfirmation}>
-            <Text style={styles.recentTitle}>删除「{confirmDelete.title}」？</Text>
-            <Text style={styles.recentPreview}>这条历史记录删除后无法恢复。</Text>
+            <Text style={styles.recentTitle}>{locale.t("ai.deleteNamed", { title: confirmDelete.title })}</Text>
+            <Text style={styles.recentPreview}>{locale.t("ai.deleteIrreversible")}</Text>
             <View style={styles.deleteActions}>
-              <Pressable accessibilityRole="button" accessibilityLabel="取消删除" disabled={Boolean(deletingHistoryId)} onPress={onCancelDelete} style={styles.retryButton}><Text style={styles.allHistoryText}>取消删除</Text></Pressable>
-              <Pressable accessibilityRole="button" accessibilityLabel="确认删除" disabled={Boolean(deletingHistoryId)} onPress={onConfirmDelete} style={[styles.confirmButton, deletingHistoryId ? styles.disabled : null]}><Text style={styles.confirmButtonText}>{deletingHistoryId ? "删除中" : "确认删除"}</Text></Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel={locale.t("ai.cancelDelete")} disabled={Boolean(deletingHistoryId)} onPress={onCancelDelete} style={styles.retryButton}><Text style={styles.allHistoryText}>{locale.t("ai.cancelDelete")}</Text></Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel={locale.t("ai.confirmDelete")} disabled={Boolean(deletingHistoryId)} onPress={onConfirmDelete} style={[styles.confirmButton, deletingHistoryId ? styles.disabled : null]}><Text style={styles.confirmButtonText}>{locale.t(deletingHistoryId ? "ai.deleting" : "ai.confirmDelete")}</Text></Pressable>
             </View>
           </View> : null}
           <View style={styles.drawerSearchBox}>
             <Ionicons color={colors.text3} name="search-outline" size={15} />
             <TextInput
               onChangeText={setHistoryQuery}
-              placeholder="搜索历史"
+              placeholder={locale.t("ai.searchHistory")}
               placeholderTextColor={colors.text4}
               style={styles.drawerSearchInput}
               value={historyQuery}
@@ -1089,6 +1350,7 @@ function OrbitAiHistoryPanel({
             hasQuery={normalizedHistoryQuery.length > 0}
             canShowEmpty={!conversationFailed && !historyFailed && !loading && !conversationPending && !historyUnavailable}
             onDeleteHistoryItem={onDeleteHistoryItem}
+            onManageHistoryItem={onManageHistoryItem}
             onOpenHistoryItem={onOpenHistoryItem}
           />
         </View>
@@ -1103,6 +1365,7 @@ function DrawerHistoryList({
   canShowEmpty,
   hasQuery,
   onDeleteHistoryItem,
+  onManageHistoryItem,
   onOpenHistoryItem
 }: {
   deletingHistoryId: string | null;
@@ -1110,8 +1373,10 @@ function DrawerHistoryList({
   canShowEmpty: boolean;
   hasQuery: boolean;
   onDeleteHistoryItem: (item: AiDrawerHistoryItem) => void;
+  onManageHistoryItem: (item: AiDrawerHistoryItem) => void;
   onOpenHistoryItem: (item: AiDrawerHistoryItem) => void;
 }) {
+  const locale = useOrbitLocale();
   const { styles } = useStyles();
   if (historyItems.length > 0) {
     return (
@@ -1126,6 +1391,7 @@ function DrawerHistoryList({
             key={`${item.source}:${item.id}`}
             deleting={deletingHistoryId === item.id}
             onDelete={() => onDeleteHistoryItem(item)}
+            onManage={() => onManageHistoryItem(item)}
             onPress={() => onOpenHistoryItem(item)}
           />
         ))}
@@ -1137,8 +1403,8 @@ function DrawerHistoryList({
 
   return (
     <View style={styles.drawerEmptyBox}>
-      <Text style={styles.drawerEmptyTitle}>{hasQuery ? "还没有匹配的对话。" : "还没有历史记录"}</Text>
-      <Text style={styles.drawerEmptyText}>{hasQuery ? "换个关键词试试。" : "从一个问题开始，后续会出现在这里。"}</Text>
+      <Text style={styles.drawerEmptyTitle}>{locale.t(hasQuery ? "ai.emptyMatched" : "ai.emptyHistory")}</Text>
+      <Text style={styles.drawerEmptyText}>{locale.t(hasQuery ? "ai.changeKeyword" : "ai.startQuestion")}</Text>
     </View>
   );
 }
@@ -1147,21 +1413,25 @@ function DrawerHistoryRow({
   deleting,
   item,
   onDelete,
+  onManage,
   onPress
 }: {
   deleting: boolean;
   item: AiDrawerHistoryItem;
   onDelete: () => void;
+  onManage: () => void;
   onPress: () => void;
 }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const canDelete = item.source === "session";
 
   return (
     <View style={styles.drawerHistoryRow}>
       <Pressable
-        accessibilityLabel={`打开历史记录：${item.title}`}
+        accessibilityLabel={locale.t("ai.openHistoryNamed", { title: item.title })}
         accessibilityRole="button"
+        onLongPress={canDelete ? onManage : undefined}
         onPress={onPress}
         style={({ pressed }) => [
           styles.drawerHistoryOpenButton,
@@ -1181,13 +1451,18 @@ function DrawerHistoryRow({
             {item.title}
           </Text>
           <Text numberOfLines={2} style={styles.drawerHistoryPreview}>
-            {item.preview || "继续问一个具体问题。"}
+            {item.preview || locale.t("ai.continueQuestion")}
           </Text>
         </View>
       </Pressable>
       {canDelete ? (
+        <Pressable accessibilityLabel={locale.t("ai.manageConversation")} accessibilityRole="button" disabled={deleting} onPress={onManage} style={({ pressed }) => [styles.historyDeleteButton, pressed ? styles.pressed : null]}>
+          <Ionicons color={colors.text3} name="ellipsis-horizontal" size={15} />
+        </Pressable>
+      ) : null}
+      {canDelete ? (
         <Pressable
-          accessibilityLabel="删除历史记录"
+          accessibilityLabel={locale.t("ai.deleteHistory")}
           accessibilityRole="button"
           disabled={deleting}
           onPress={onDelete}
@@ -1199,9 +1474,9 @@ function DrawerHistoryRow({
         >
           <Ionicons color={colors.rose} name="trash-outline" size={14} />
           {deleting ? (
-            <Text style={styles.historyDeleteText}>删除中</Text>
+            <Text style={styles.historyDeleteText}>{locale.t("ai.deleting")}</Text>
           ) : (
-            <Text style={styles.historyDeleteText}>删除</Text>
+            <Text style={styles.historyDeleteText}>{locale.t("ai.deleteHistory")}</Text>
           )}
         </Pressable>
       ) : null}

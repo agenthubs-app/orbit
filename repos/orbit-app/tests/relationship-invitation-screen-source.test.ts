@@ -9,8 +9,10 @@ test("native invitation route previews and accepts only after an explicit press"
   assert.match(route, /withOrbitPrivateRoute\(RelationshipInvitationScreen\)/u);
   assert.match(source, /relationshipCommunicationInvitationPath/u);
   assert.match(source, /relationshipCommunicationInvitationAcceptPath/u);
+  assert.match(source, /useOrbitAuthSession\(\)\.actorId \?\? ""/u);
+  assert.doesNotMatch(source, /useOrbitAuthSession\(\)\.user\?\.id/u);
   assert.match(source, /confirmed: true/u);
   assert.match(source, /acceptInvitation/u);
   assert.match(source, /onPress=\{\(\) => void acceptInvitation\(\)\}/u);
-  assert.match(source, /接受邀请并建立关系对话/u);
+  assert.match(source, /locale\.t\("invitation\.accept"\)/u);
 });

@@ -1,4 +1,6 @@
 import { aiRunPath } from "../api/endpoints";
+import type { OrbitLanguage } from "../api/contract/language";
+import { createTranslator } from "../i18n/messages";
 import type {
   OrbitAiConversationSummaryContract,
   OrbitAiMessageContract,
@@ -151,6 +153,7 @@ export interface ConversationInlinePanelView {
     | "/contacts/list"
     | "/events"
     | "/followups"
+    | "/tasks"
     | "/profile"
     | "/schedule";
   actionLabel: string;
@@ -166,6 +169,7 @@ export interface ConversationQuickRouteView {
     | "/contacts/list"
     | "/events"
     | "/followups"
+    | "/tasks"
     | "/profile"
     | "/schedule";
   title: string;
@@ -291,34 +295,34 @@ function containsChinese(value: string): boolean {
   return /[\u3400-\u9fff]/u.test(value);
 }
 
-function userFacingChineseText(value: string, fallback: string): string {
+function userFacingText(value: string, fallback: string): string {
   const text = normalizeOrbitAiName(value).trim();
 
-  if (!text || containsImplementationLabel(text) || !containsChinese(text)) {
+  if (!text || containsImplementationLabel(text)) {
     return fallback;
   }
 
   return text;
 }
 
-function conversationTitle(value: string): string {
+function conversationTitle(value: string, t = createTranslator("zh")): string {
   const title = normalizeOrbitAiName(value);
   return title && !containsImplementationLabel(title)
     ? title
-    : "Orbit AI 对话";
+    : t("conversationVm.defaultTitle");
 }
 
-function conversationPreview(value: string): string {
+function conversationPreview(value: string, t = createTranslator("zh")): string {
   const preview = normalizeOrbitAiName(value);
 
   if (!preview || containsImplementationLabel(preview)) {
-    return "问一个具体问题，Orbit AI 会把相关人脉和下一步整理出来。";
+    return t("conversationVm.defaultPreview");
   }
 
   return preview;
 }
 
-function assistantMessageContent(value: string): string {
+function assistantMessageContent(value: string, t = createTranslator("zh")): string {
   const content = normalizeOrbitAiName(value);
 
   if (!content) {
@@ -326,25 +330,25 @@ function assistantMessageContent(value: string): string {
   }
 
   if (containsImplementationLabel(content)) {
-    return "有什么需要我做的吗？找活动、准备会面、整理人脉，我可以先帮您梳理下一步。";
+    return t("conversationVm.assistantFallback");
   }
 
   return content;
 }
 
-function chatMessageContent(role: string, value: string): string {
+function chatMessageContent(role: string, value: string, t = createTranslator("zh")): string {
   if (role === "assistant") {
-    return assistantMessageContent(value);
+    return assistantMessageContent(value, t);
   }
 
   return normalizeOrbitAiName(value);
 }
 
-function nextActionCopy(value: string): string {
+function nextActionCopy(value: string, t = createTranslator("zh")): string {
   const nextAction = normalizeOrbitAiName(value);
 
   if (!nextAction || containsImplementationLabel(nextAction)) {
-    return "继续问一个具体问题，Orbit AI 会先整理上下文，再给出下一步。";
+    return t("conversationVm.nextActionFallback");
   }
 
   return nextAction;
@@ -390,8 +394,10 @@ function aiRunRecordId(record: Record<string, unknown>): string {
 }
 
 export function conversationAiRunReferencesFor(
-  data: unknown
+  data: unknown,
+  language: OrbitLanguage = "zh"
 ): ConversationAiRunReferenceView[] {
+  const t = createTranslator(language);
   const payload = isRecord(data) ? data : {};
   const runIds = new Set<string>();
 
@@ -408,21 +414,23 @@ export function conversationAiRunReferencesFor(
     .forEach((message) => addRunIdsFromText(runIds, stringField(message, "content")));
 
   return Array.from(runIds).map((id) => ({
-    actionLabel: "查看依据",
-    detail: `查看 ${id} 的来源、证据和安全边界。`,
+    actionLabel: t("conversationVm.runViewEvidence"),
+    detail: t("conversationVm.runReferenceDetail", { id: t.literal(id) }),
     id,
-    title: "AI 运行依据"
+    title: t("conversationVm.runTitle")
   }));
 }
 
 export function buildAiRunDetailRequest(
-  runId: string
+  runId: string,
+  language: OrbitLanguage = "zh"
 ): AiRunDetailRequestResult {
+  const t = createTranslator(language);
   const normalizedRunId = runId.trim();
 
   if (!normalizedRunId) {
     return {
-      error: "这次 AI 运行缺少编号，暂时不能查看依据。",
+      error: t("conversationVm.runMissing"),
       success: false
     };
   }
@@ -435,17 +443,18 @@ export function buildAiRunDetailRequest(
   };
 }
 
-function aiRunOutputPreview(output: Record<string, unknown>): string {
+function aiRunOutputPreview(output: Record<string, unknown>, language: OrbitLanguage): string {
   const text = normalizeOrbitAiName(stringField(output, "text")).trim();
 
   if (!text || containsImplementationLabel(text)) {
-    return "这次运行没有返回可展示输出。";
+    return createTranslator(language)("conversationVm.runNoOutput");
   }
 
   return text;
 }
 
-export function aiRunDetailToView(data: unknown): AiRunDetailView {
+export function aiRunDetailToView(data: unknown, language: OrbitLanguage = "zh"): AiRunDetailView {
+  const t = createTranslator(language);
   const payload = envelopeData(data);
   const record = isRecord(payload) ? payload : {};
   const run = nestedRecord(record, "run");
@@ -453,28 +462,30 @@ export function aiRunDetailToView(data: unknown): AiRunDetailView {
     ? nestedRecord(record, "provenance")
     : nestedRecord(run, "provenance");
   const output = nestedRecord(run, "output");
-  const runId = stringField(run, "runId", stringField(provenance, "runId", "未标注运行"));
-  const promptTemplateId = stringField(run, "promptTemplateId", "未标注模板");
+  const runId = stringField(run, "runId", stringField(provenance, "runId", t("conversationVm.runUnknown")));
+  const promptTemplateId = stringField(run, "promptTemplateId", t("conversationVm.templateUnknown"));
   const evidenceCount =
     listField(run, "evidenceIds").length || listField(provenance, "evidenceIds").length;
 
   return {
-    metrics: [`运行 ${runId}`, `模板 ${promptTemplateId}`, `证据 ${evidenceCount} 条`],
-    nextAction: userFacingChineseText(
+    metrics: [t("conversationVm.runMetric", { id: t.literal(runId) }), t("conversationVm.templateMetric", { id: t.literal(promptTemplateId) }), t("conversationVm.evidenceMetric", { count: evidenceCount })],
+    nextAction: userFacingText(
       stringField(record, "nextAction"),
-      "先核对证据和输出，再决定是否继续。"
+      t("conversationVm.runNext")
     ),
-    outputPreview: aiRunOutputPreview(output),
-    safetyText: "不会自动发送消息、写日历、改联系人或触发通知。",
-    summary: userFacingChineseText(
-      stringField(record, "summary"),
-      "这次回复有可复核的运行记录。"
-    ),
-    title: "AI 运行依据"
+    outputPreview: aiRunOutputPreview(output, language),
+    safetyText: t("conversationVm.runSafety"),
+    summary: /\b(prompt template|input hash|fallback behavior|run provenance|local rules)\b/iu.test(
+      stringField(record, "summary")
+    )
+      ? t("conversationVm.runSummary")
+      : userFacingText(stringField(record, "summary"), t("conversationVm.runSummary")),
+    title: t("conversationVm.runTitle")
   };
 }
 
-export function conversationsToSummaries(data: unknown): ConversationSummary[] {
+export function conversationsToSummaries(data: unknown, language: OrbitLanguage = "zh"): ConversationSummary[] {
+  const t = createTranslator(language);
   return listFromPayload(data, "conversations")
     .filter(isRecord)
     .map((conversation) => ({
@@ -484,10 +495,10 @@ export function conversationsToSummaries(data: unknown): ConversationSummary[] {
         stringField(conversation, "id", "conversation")
       ),
       preview:
-        conversationPreview(conversationField(conversation, "lastMessagePreview")) ||
-        conversationPreview(stringField(conversation, "preview")),
+        conversationPreview(conversationField(conversation, "lastMessagePreview"), t) ||
+        conversationPreview(stringField(conversation, "preview"), t),
       title: conversationTitle(
-        conversationField(conversation, "title", "Orbit AI 对话")
+        conversationField(conversation, "title", t("conversationVm.defaultTitle")), t
       )
     }));
 }
@@ -510,8 +521,10 @@ function actionRequiresConfirmation(action: Record<string, unknown>): boolean {
 }
 
 export function conversationPayloadToChatView(
-  data: unknown
+  data: unknown,
+  language: OrbitLanguage = "zh"
 ): ConversationChatView {
+  const t = createTranslator(language);
   const payload = isRecord(data) ? data : {};
   const messages = Array.isArray(payload.messages) ? payload.messages : [];
   const proposedToolIntents = Array.isArray(payload.proposedToolIntents)
@@ -528,13 +541,13 @@ export function conversationPayloadToChatView(
   return {
     activeConversationId: activeConversationId || null,
     assistantMessage: assistantMessageContent(
-      stringField(payload, "assistantMessage")
+      stringField(payload, "assistantMessage"), t
     ),
     messages: messages.filter(isRecord).map((message) => {
       const role = messageField(message, "role", "assistant");
 
       return {
-        content: chatMessageContent(role, messageField(message, "content")),
+        content: chatMessageContent(role, messageField(message, "content"), t),
         createdAt: messageField(message, "createdAt"),
         id: stringField(
           message,
@@ -546,7 +559,7 @@ export function conversationPayloadToChatView(
     }),
     proposedToolIntents: proposedToolIntents.filter(isRecord).map((intent) => ({
       id: stringField(intent, "intentId", stringField(intent, "id", "intent")),
-      label: intentField(intent, "label", "建议动作"),
+      label: intentField(intent, "label", t("conversationVm.suggestedAction")),
       reason: stringField(intent, "reason"),
       requiresUserConfirmation: actionRequiresConfirmation(intent)
     })),
@@ -579,9 +592,10 @@ export function conversationPayloadToChatView(
 
 export function orbitAiHomeChatWindow(
   data: unknown,
-  latestChat: ConversationChatView | null = null
+  latestChat: ConversationChatView | null = null,
+  language: OrbitLanguage = "zh"
 ): OrbitAiHomeChatWindow {
-  const chat = latestChat ?? conversationPayloadToChatView(data);
+  const chat = latestChat ?? conversationPayloadToChatView(data, language);
   // This ID belongs to the server's bootstrap welcome, not a user conversation.
   // Keep the general conversation decoder unchanged for history/detail screens.
   const homeMessages = chat.messages.filter((message) =>
@@ -609,8 +623,10 @@ export function orbitAiHomeChatWindow(
 }
 
 export function pendingConversationThreadView(
-  message: string
+  message: string,
+  language: OrbitLanguage = "zh"
 ): ConversationThreadView {
+  const t = createTranslator(language);
   return {
     activeConversationId: null,
     assistantMessage: "",
@@ -622,16 +638,16 @@ export function pendingConversationThreadView(
         role: "user"
       },
       {
-        content: "正在整理相关上下文。",
+        content: t("conversationVm.pendingContext"),
         createdAt: "",
         id: "pending-assistant-message",
         role: "assistant"
       }
     ],
-    nextAction: "正在处理你的问题。",
+    nextAction: t("conversationVm.pendingAction"),
     proposedToolIntents: [],
     taskInteraction: null,
-    title: "正在处理"
+    title: t("conversationVm.pendingTitle")
   };
 }
 
@@ -879,8 +895,10 @@ export function prioritizeConversationEvents<
 }
 
 export function conversationInlinePanelsForThread(
-  thread: ConversationThreadView
+  thread: ConversationThreadView,
+  language: OrbitLanguage = "zh"
 ): ConversationInlinePanelView[] {
+  const t = createTranslator(language);
   const searchText = threadSearchText(thread);
   const panels: ConversationInlinePanelView[] = [];
 
@@ -890,11 +908,11 @@ export function conversationInlinePanelsForThread(
     )
   ) {
     panels.push({
-      actionHref: "/followups",
-      actionLabel: "查看全部待办",
-      detail: "根据你的问题，先把今天的待办放在对话里。",
+      actionHref: "/tasks",
+      actionLabel: t("conversationVm.panelTasksAction"),
+      detail: t("conversationVm.panelTasksDetail"),
       kind: "followups",
-      title: "待办"
+      title: t("conversationVm.panelTasksTitle")
     });
   }
 
@@ -905,10 +923,10 @@ export function conversationInlinePanelsForThread(
   ) {
     panels.push({
       actionHref: "/contacts/list",
-      actionLabel: "查看联系人列表",
-      detail: "根据你的问题，先把值得查看和适合推进的人放在对话里。",
+      actionLabel: t("conversationVm.panelPeopleAction"),
+      detail: t("conversationVm.panelPeopleDetail"),
       kind: "people",
-      title: "相关人脉"
+      title: t("conversationVm.panelPeopleTitle")
     });
   }
 
@@ -919,10 +937,10 @@ export function conversationInlinePanelsForThread(
   ) {
     panels.push({
       actionHref: "/events",
-      actionLabel: "查看全部活动",
-      detail: "根据你的问题，先把可参加和需要准备的活动放在对话里。",
+      actionLabel: t("conversationVm.panelEventsAction"),
+      detail: t("conversationVm.panelEventsDetail"),
       kind: "events",
-      title: "相关活动"
+      title: t("conversationVm.panelEventsTitle")
     });
   }
 
@@ -933,10 +951,10 @@ export function conversationInlinePanelsForThread(
   ) {
     panels.push({
       actionHref: "/schedule",
-      actionLabel: "查看日程",
-      detail: "根据你的问题，先把最近需要处理的时间和待办放在对话里。",
+      actionLabel: t("conversationVm.panelScheduleAction"),
+      detail: t("conversationVm.panelScheduleDetail"),
       kind: "schedule",
-      title: "近日安排"
+      title: t("conversationVm.panelScheduleTitle")
     });
   }
 
@@ -947,42 +965,43 @@ export function conversationInlinePanelsForThread(
   ) {
     panels.push({
       actionHref: "/profile",
-      actionLabel: "完善档案",
-      detail: "根据你的问题，先把别人会看到的自我介绍和资源标签放在对话里。",
+      actionLabel: t("conversationVm.panelProfileAction"),
+      detail: t("conversationVm.panelProfileDetail"),
       kind: "profile",
-      title: "个人档案"
+      title: t("conversationVm.panelProfileTitle")
     });
   }
 
   return panels;
 }
 
-export function conversationQuickRoutes(): ConversationQuickRouteView[] {
+export function conversationQuickRoutes(language: OrbitLanguage = "zh"): ConversationQuickRouteView[] {
+  const t = createTranslator(language);
   return [
     {
-      detail: "找活动、报名和会前准备",
+      detail: t("conversationVm.routeEventsDetail"),
       href: "/events",
-      title: "活动"
+      title: t("conversationVm.routeEventsTitle")
     },
     {
-      detail: "看联系人、关系和介绍机会",
+      detail: t("conversationVm.routePeopleDetail"),
       href: "/contacts",
-      title: "人脉"
+      title: t("conversationVm.routePeopleTitle")
     },
     {
-      detail: "处理今天该联系的人",
-      href: "/followups",
-      title: "待办"
+      detail: t("conversationVm.routeTasksDetail"),
+      href: "/tasks",
+      title: t("conversationVm.routeTasksTitle")
     },
     {
-      detail: "查看约见和待办时间",
+      detail: t("conversationVm.routeScheduleDetail"),
       href: "/schedule",
-      title: "日程"
+      title: t("conversationVm.routeScheduleTitle")
     },
     {
-      detail: "完善别人看到的介绍",
+      detail: t("conversationVm.routeProfileDetail"),
       href: "/profile",
-      title: "档案"
+      title: t("conversationVm.routeProfileTitle")
     }
   ];
 }
@@ -1004,25 +1023,29 @@ export function shouldSubmitInitialPrompt({
 }
 
 export function conversationPayloadToThreadView(
-  data: unknown
+  data: unknown,
+  language: OrbitLanguage = "zh"
 ): ConversationThreadView {
+  const t = createTranslator(language);
   const payload = isRecord(data) ? data : {};
-  const chat = conversationPayloadToChatView(payload);
+  const chat = conversationPayloadToChatView(payload, language);
   const activeConversationId = chat.activeConversationId;
-  const conversation = conversationsToSummaries(payload).find(
+  const conversation = conversationsToSummaries(payload, language).find(
     (summary) => summary.id === activeConversationId
   );
 
   return {
     ...chat,
-    nextAction: nextActionCopy(stringField(payload, "nextAction")),
-    title: conversation?.title ?? "Orbit AI 对话"
+    nextAction: nextActionCopy(stringField(payload, "nextAction"), t),
+    title: conversation?.title ?? t("conversationVm.defaultTitle")
   };
 }
 
 export function proactiveTurnPayloadToChatView(
-  data: unknown
+  data: unknown,
+  language: OrbitLanguage = "zh"
 ): ConversationChatView {
+  const t = createTranslator(language);
   const payload = isRecord(data) ? data : {};
   const message = isRecord(payload.message) ? payload.message : {};
   const suggestedActions = Array.isArray(payload.suggestedActions)
@@ -1050,8 +1073,8 @@ export function proactiveTurnPayloadToChatView(
       : [],
     proposedToolIntents: suggestedActions.filter(isRecord).map((action) => ({
       id: stringField(action, "actionId", stringField(action, "id", "action")),
-      label: stringField(action, "label", "建议动作"),
-      reason: stringField(action, "reason", "Orbit AI 建议先处理这一步。"),
+      label: stringField(action, "label", t("conversationVm.suggestedAction")),
+      reason: stringField(action, "reason", t("conversationVm.suggestedReason")),
       requiresUserConfirmation: actionRequiresConfirmation(action)
     })),
     taskInteraction: null

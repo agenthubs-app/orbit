@@ -18,6 +18,7 @@ import React, { useSyncExternalStore } from "react";
 import { View } from "react-native-web";
 import glyphs from "@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/Ionicons.json";
 import { onSessionExpired } from "./src/api/session-expiry";
+import { registerAiTemplatePrefill } from "./src/data/ai-template-prefill";
 let revision = 0; const listeners = new Set();
 const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
 const NativeDate = Date;
@@ -26,13 +27,14 @@ const state = window.fixture = { requests: [], pending: [], navigation: [], pres
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
   reply(index, status = 200, payload) { const r = state.requests[index]; r.replied = true; state.pending[index]?.(new Response(JSON.stringify(status === 200 || payload !== undefined ? { success: true, data: payload === undefined ? state.payloads[r.path] : payload } : { success: false, error: { code: "UNAVAILABLE", message: "暂时无法读取，请重试。" } }), { status, headers: { "Content-Type": "application/json" } })); }
 };
+if (window.initialFixture.prefill) state.params = { id: "new", prefillIntent: registerAiTemplatePrefill({ actorId: state.actor, baseUrl: state.baseUrl, ...window.initialFixture.prefill }) };
 onSessionExpired(() => state.expiries++);
 window.fetch = async (input, init) => { const index = state.requests.length; const url = new URL(String(input)); state.requests.push({ path: url.pathname, url: String(input), method: init.method, body: init.body ? JSON.parse(init.body) : null, signal: init.signal });
   const pending = new Promise(resolve => state.pending[index] = resolve);
   if (!(state.holdReads && init.method === "GET") && !(state.holdWrites && init.method !== "GET")) queueMicrotask(() => state.reply(index, init.method !== "GET" ? 503 : (state.failPaths?.includes(url.pathname) ? 503 : 200))); return pending;
 };
 export const useFixture = () => { observe(); return state; };
-export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, user: state.signedIn ? { id: state.actor, name: "程川", email: "person@example.test" } : null, cookieHeader: state.cookieHeader }; };
+export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.signedIn ? state.actor : null, actorId: state.signedIn ? state.actor : null, user: state.signedIn ? { id: state.actor, name: "程川", email: "person@example.test" } : null, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
 export const useIsFocused = () => { observe(); return state.focused; };
 export const useGlobalSearchParams = () => { observe(); return state.params; };
@@ -49,7 +51,7 @@ export const readSnapshot = async () => null; export const writeSnapshot = async
 `;
 test.before(async () => {
   const result = await build({
-    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/ai/[id]"; import HomeRoute from "./app/(app)/ai"; import { useFixture } from "fixture"; function App() { const s = useFixture(); return s.mounted ? s.screen === "home" ? <HomeRoute /> : <Route /> : null; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() },
+    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/ai/[id]"; import HomeRoute from "./app/(app)/ai"; import { useFixture } from "fixture"; function App() { const s = useFixture(); return s.mounted ? s.screen === "home" ? <HomeRoute /> : <Route /> : null; } const app = <App />; createRoot(document.getElementById("root")).render(window.initialFixture?.strictMode ? <React.StrictMode>{app}</React.StrictMode> : app);', loader: "tsx", resolveDir: process.cwd() },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
     define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "ai-http-boundaries", setup(plugin) {
@@ -94,6 +96,27 @@ async function writes(p: Page) { return p.evaluate(() => (window as any).fixture
 async function navigation(p: Page) { return p.evaluate(() => (window as any).fixture.navigation); }
 async function twice(p: Page, label: string) { await p.evaluate(label => { const fn = (window as any).fixture.presses[label]; fn(); fn(); }, label); await settle(p); }
 
+function reliableRequestBase(request: any) {
+  assert.equal(request.body.protocolVersion, 2);
+  assert.equal(request.body.references.length, 0);
+  assert.equal(typeof request.body.sessionId, "string");
+  assert.equal(typeof request.body.clientMessageId, "string");
+  assert.equal(typeof request.body.requestId, "string");
+  assert.notEqual(request.body.clientMessageId, request.body.requestId);
+  assert.equal(Number.isSafeInteger(request.body.expectedMessageRevision), true);
+  const {
+    clientMessageId: _clientMessageId,
+    expectedMessageRevision: _expectedMessageRevision,
+    protocolVersion: _protocolVersion,
+    references: _references,
+    requestId: _requestId,
+    sessionId: _sessionId,
+    origin: _origin,
+    ...body
+  } = request.body;
+  return { ...request, body };
+}
+
 const conversationReadPayloads = {
   ...aiReadPayloads,
   "/api/ai/conversations/conversation%3A1": aiConversationPayload,
@@ -117,7 +140,10 @@ test("AI home click issues a scoped one-use intent and continues without another
   const target = (await navigation(p))[0];
   assert.equal((await navigation(p)).length, 1);
   assert.equal(target.params.sendIntent, "test-send-1");
-  assert.deepEqual(await writes(p), [{ method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "首页明确发送的问题" } }]);
+  const firstWrite = (await writes(p))[0];
+  assert.equal(firstWrite.body.origin.entryClient, "app");
+  assert.equal(firstWrite.body.origin.entryPointId, "ai.home");
+  assert.deepEqual((await writes(p)).map(reliableRequestBase), [{ method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "首页明确发送的问题" } }]);
   await update(p, { mounted: false }); await update(p, { mounted: true, params: target.params });
   assert.equal((await writes(p)).length, 1, "reopening even the original unconsumed URL cannot replay the click");
 });
@@ -163,7 +189,180 @@ for (const extra of [{}, { source: "business" }, { source: "send", sendIntent: "
   assert.equal(await p.getByRole("textbox").inputValue(), "我修改后的问题");
   assert.deepEqual(await writes(p), []);
   await twice(p, "发送消息");
-  assert.deepEqual(await writes(p), [{ method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "我修改后的问题" } }]);
+  assert.deepEqual((await writes(p)).map(reliableRequestBase), [{ method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "我修改后的问题" } }]);
+});
+
+test("business template prefill is one-use and sends its stable contact reference with origin", async t => {
+  const contact = { id: "contact:lin:design", displayName: "林悦", organization: "云间设计", role: "设计师", status: "active" };
+  const message = "请为 @林悦 起草一封联系邮件，只生成草稿，不要发送。";
+  const p = await open(t, {
+    prefill: { entryPointId: "contact.message_draft", message, references: [{ id: contact.id, type: "contact" }], template: { id: "contact.message_draft", version: 1 } },
+    payloads: { ...conversationReadPayloads, "/api/contacts": { contacts: [contact] } },
+  });
+  assert.deepEqual(await writes(p), []);
+  assert.equal(await p.getByRole("textbox", { name: "消息", exact: true }).inputValue(), message);
+  await p.getByRole("button", { name: "移除联系人：林悦", exact: true }).waitFor();
+  await press(p, "发送消息");
+  const write = (await writes(p))[0];
+  assert.deepEqual(write.body.references, [{ id: "contact:lin:design", type: "contact" }]);
+  assert.equal(write.body.origin.entryPointId, "contact.message_draft");
+  assert.deepEqual(write.body.origin.template, { id: "contact.message_draft", version: 1 });
+  await replyLastWrite(p, replyPayload(message));
+  const sessionWrite = (await writes(p))[1];
+  assert.deepEqual(sessionWrite.body.session.messages.find((item: any) => item.role === "user").references, [{ id: "contact:lin:design", type: "contact" }]);
+  await replyLastWrite(p, { session: sessionWrite.body.session, storage: aiSessionListPayload.storage });
+  await update(p, { mounted: false }); await update(p, { mounted: true });
+  assert.equal((await writes(p)).length, 2);
+});
+
+test("contacts analysis prefill stays editable, cancels without generation and sends its source version only on user action", async t => {
+  const sourceDataVersion = "a".repeat(64);
+  const prefill = {
+    entryPointId: "contacts.analysis",
+    message: "请根据当前已保存的人脉资料生成一份人脉分析。",
+    references: [],
+    sourceDataVersion,
+    template: { id: "contacts.analysis", version: 1 },
+  };
+  const cancelled = await open(t, { prefill });
+  assert.deepEqual(await writes(cancelled), []);
+  await update(cancelled, { mounted: false });
+  assert.deepEqual(await writes(cancelled), []);
+
+  const p = await open(t, { prefill });
+  const composer = p.getByRole("textbox", { name: "消息", exact: true });
+  await composer.fill("请重新分析，并优先说明投资人覆盖。 ");
+  assert.deepEqual(await writes(p), []);
+  await press(p, "发送消息");
+  const write = (await writes(p))[0];
+  assert.equal(write.body.message, "请重新分析，并优先说明投资人覆盖。");
+  assert.equal(write.body.origin.entryPointId, "contacts.analysis");
+  assert.equal(write.body.origin.sourceDataVersion, sourceDataVersion);
+  assert.deepEqual(write.body.origin.template, { id: "contacts.analysis", version: 1 });
+});
+
+test("contacts analysis prefill keeps its origin through a focus round trip before explicit send", async t => {
+  const sourceDataVersion = "c".repeat(64);
+  const message = "请根据当前人脉资料检查合作伙伴覆盖。";
+  const p = await open(t, {
+    prefill: {
+      entryPointId: "contacts.analysis",
+      message,
+      references: [],
+      sourceDataVersion,
+      template: { id: "contacts.analysis", version: 1 },
+    },
+  });
+
+  assert.equal(await p.getByRole("textbox", { name: "消息", exact: true }).inputValue(), message);
+  await update(p, { focused: false });
+  await update(p, { focused: true });
+  assert.equal(await p.getByRole("textbox", { name: "消息", exact: true }).inputValue(), message);
+  assert.deepEqual(await writes(p), []);
+
+  await press(p, "发送消息");
+  const write = (await writes(p))[0];
+  assert.equal(write.body.origin.entryPointId, "contacts.analysis");
+  assert.equal(write.body.origin.sourceDataVersion, sourceDataVersion);
+});
+
+test("contacts analysis prefill is claimed once when StrictMode replays its effect", async t => {
+  const sourceDataVersion = "e".repeat(64);
+  const message = "请在严格模式下保留人脉分析来源。";
+  const p = await open(t, {
+    strictMode: true,
+    prefill: {
+      entryPointId: "contacts.analysis",
+      message,
+      references: [],
+      sourceDataVersion,
+      template: { id: "contacts.analysis", version: 1 },
+    },
+  });
+
+  assert.equal(await p.getByRole("textbox", { name: "消息", exact: true }).inputValue(), message);
+  await press(p, "发送消息");
+  const writesAfterSend = await writes(p);
+  assert.equal(writesAfterSend.length, 1);
+  assert.equal(writesAfterSend[0].body.origin.sourceDataVersion, sourceDataVersion);
+});
+
+for (const patch of [{ actor: "actor-2" }, { baseUrl: "https://other.example" }]) test("contacts analysis prefill clears on identity scope change " + JSON.stringify(patch), async t => {
+  const p = await open(t, {
+    prefill: {
+      entryPointId: "contacts.analysis",
+      message: "仅属于原账号的人脉分析草稿",
+      references: [],
+      sourceDataVersion: "d".repeat(64),
+      template: { id: "contacts.analysis", version: 1 },
+    },
+  });
+  await update(p, patch);
+  assert.equal(await p.getByRole("textbox", { name: "消息", exact: true }).inputValue(), "");
+  assert.deepEqual(await writes(p), []);
+});
+
+test("mention picker disambiguates same-name contacts and sends the selected stable id", async t => {
+  const contacts = [
+    { id: "contact:lin:design", displayName: "林悦", organization: "云间设计", role: "设计师", status: "active" },
+    { id: "contact:lin:commerce", displayName: "林悦", organization: "云间商贸", role: "采购", status: "active" },
+  ];
+  const p = await open(t, { params: { id: "new" }, payloads: { ...conversationReadPayloads, "/api/contacts": { contacts } } });
+  await press(p, "提及联系人");
+  await p.getByRole("textbox", { name: "搜索要提及的联系人", exact: true }).fill("商贸");
+  await press(p, "选择联系人：林悦，云间商贸，采购");
+  assert.match(await p.getByRole("textbox", { name: "消息", exact: true }).inputValue(), /@林悦/u);
+  await press(p, "发送消息");
+  assert.deepEqual((await writes(p))[0].body.references, [{ id: "contact:lin:commerce", type: "contact" }]);
+});
+
+test("mention picker explains empty and unavailable contact sources without blocking ordinary questions", async t => {
+  const empty = await open(t, { params: { id: "new" } });
+  await press(empty, "提及联系人");
+  await empty.getByText("没有匹配的联系人。", { exact: true }).waitFor();
+  assert.deepEqual(await writes(empty), []);
+
+  const unavailable = await open(t, { params: { id: "new" }, failPaths: ["/api/contacts"] });
+  await press(unavailable, "提及联系人");
+  await unavailable.getByText("联系人暂时不可用，问题仍可不关联联系人发送。", { exact: true }).waitFor();
+  await unavailable.getByRole("textbox", { name: "消息", exact: true }).fill("不关联联系人也可以继续");
+  await press(unavailable, "发送消息");
+  assert.deepEqual((await writes(unavailable))[0].body.references, []);
+});
+test("note template stays local until explicit send and retains input for date confirmation", async t => {
+  const p = await open(t, { params: {
+    id: "new",
+    initialMessage: "请根据这篇笔记整理一个待办，并明确标题和日期。",
+    sourceNoteId: "note:one",
+    sourceNoteVersion: "3",
+  } });
+  assert.deepEqual(await writes(p), []);
+  const input = p.getByRole("textbox");
+  assert.equal(await input.inputValue(), "请根据这篇笔记整理一个待办，并明确标题和日期。");
+  await input.fill("请整理待办，下周完成");
+  await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
+  assert.deepEqual(await writes(p), []);
+  await press(p, "发送消息");
+  const sent = (await writes(p))[0];
+  assert.equal(sent.method, "POST");
+  assert.equal(sent.path, "/api/ai/conversations");
+  assert.equal(sent.body.locale, "zh");
+  assert.equal(sent.body.message, "请整理待办，下周完成");
+  assert.deepEqual(sent.body.sourceNote, { id: "note:one", version: 3 });
+  assert.equal(sent.body.protocolVersion, 2);
+  assert.equal(sent.body.expectedMessageRevision, 0);
+  assert.deepEqual(sent.body.references, []);
+  assert.match(sent.body.sessionId, /^agent-session-mobile-/u);
+  assert.equal(typeof sent.body.clientMessageId, "string");
+  assert.equal(typeof sent.body.requestId, "string");
+  await replyLastWrite(p, { ...replyPayload("请整理待办，下周完成"), taskInteraction: {
+    category: "work", reason: "请补充明确日期后再发送，当前没有创建建议或待办。",
+    relatedContactIds: ["contact:a"], sourceNoteId: "note:one", sourceNoteVersion: 3,
+    state: "needs_date_confirmation", title: "整理待办",
+  } });
+  assert.equal(await input.inputValue(), "请整理待办，下周完成");
+  assert.equal(await p.getByText("需要确认日期", { exact: true }).count(), 1);
+  assert.equal(await p.getByRole("button", { name: "加入待办", exact: true }).count(), 0);
 });
 test("note template stays local until explicit send and retains input for date confirmation", async t => {
   const p = await open(t, { params: {
@@ -199,11 +398,86 @@ for (const initialMessage of [undefined, "   "]) test("AI empty new conversation
   assert.equal(await p.getByRole("textbox").count(), 1);
   assert.equal(await p.evaluate(() => (window as any).fixture.requests.some((r: any) => r.path === "/api/ai/conversations/new")), false);
   await p.getByRole("textbox").fill("再想一个方案"); await twice(p, "发送消息");
-  assert.deepEqual(await writes(p), [{ method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "再想一个方案" } }]);
+  assert.deepEqual((await writes(p)).map(reliableRequestBase), [{ method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "再想一个方案" } }]);
   await replyLastWrite(p, replyPayload());
   const session = (await writes(p))[1].body.session;
   await replyLastWrite(p, { session, storage: aiSessionListPayload.storage });
   assert.deepEqual(await navigation(p), [{ pathname: "/ai/[id]", params: { id: session.id, source: "session" } }]);
+});
+test("AI first reliable reply joins the group selected before the chat started", async t => {
+  const p = await open(t, { params: { id: "new", entryPointId: "ai.new_chat", initialGroupId: "group:work" } });
+  await p.getByRole("textbox").fill("分组里的新问题");
+  await press(p, "发送消息");
+  const first = (await writes(p))[0];
+  assert.equal(first.body.origin.initialGroupId, "group:work");
+  await replyLastWrite(p, {
+    ...replyPayload("分组里的新问题", "已经整理完成。"),
+    reliableSend: {
+      messageRevision: 2,
+      protocolVersion: 2,
+      replayed: false,
+      requestId: first.body.requestId,
+      sessionId: first.body.sessionId,
+      state: "completed",
+    },
+  });
+  const patchRequest = (await writes(p))[1];
+  assert.deepEqual({ method: patchRequest.method, path: patchRequest.path, patch: patchRequest.body.patch, expectedRevision: patchRequest.body.expectedRevision }, {
+    method: "PATCH",
+    path: `/api/ai/conversations/sessions/${encodeURIComponent(first.body.sessionId)}`,
+    patch: { groupId: "group:work" },
+    expectedRevision: 0,
+  });
+  const now = "2026-09-12T03:00:00.000Z";
+  await replyLastWrite(p, {
+    session: {
+      id: first.body.sessionId,
+      title: "分组里的新问题",
+      createdAt: now,
+      updatedAt: now,
+      messages: [{ id: first.body.clientMessageId, role: "user", text: "分组里的新问题" }, { id: "new-assistant", role: "assistant", text: "已经整理完成。" }],
+      organization: { customTitle: null, groupId: "group:work", pinned: false, revision: 1 },
+      pinned: false,
+    },
+    storage: aiSessionListPayload.storage,
+  });
+  assert.equal((await writes(p)).length, 2);
+  assert.deepEqual(await navigation(p), [{ pathname: "/ai/[id]", params: { id: first.body.sessionId, source: "session" } }]);
+});
+test("AI reliable send creates stable ids before dispatch and queries an unknown result before retrying", async t => {
+  const p = await open(t, { params: { id: "new" } });
+  await p.getByRole("textbox").fill("需要可靠恢复的问题");
+  await press(p, "发送消息");
+  const firstWrite = (await writes(p))[0];
+
+  assert.equal(firstWrite.path, "/api/ai/conversations");
+  assert.equal(firstWrite.body.protocolVersion, 2);
+  assert.equal(firstWrite.body.expectedMessageRevision, 0);
+  assert.equal(firstWrite.body.message, "需要可靠恢复的问题");
+  assert.deepEqual(firstWrite.body.references, []);
+  assert.match(firstWrite.body.sessionId, /^agent-session-mobile-/);
+  assert.ok(firstWrite.body.clientMessageId);
+  assert.ok(firstWrite.body.requestId);
+  assert.notEqual(firstWrite.body.clientMessageId, firstWrite.body.requestId);
+
+  await replyLastWrite(p, undefined, 503);
+  await press(p, "检查结果");
+  const requests = await p.evaluate(() =>
+    (window as any).fixture.requests.map((request: any) => ({
+      method: request.method,
+      url: request.url,
+    })),
+  );
+  const recovery = requests.at(-1)!;
+
+  assert.equal(recovery.method, "GET");
+  assert.match(
+    recovery.url,
+    new RegExp(
+      `/api/ai/conversations/sessions/${encodeURIComponent(firstWrite.body.sessionId)}\\?requestId=${encodeURIComponent(firstWrite.body.requestId)}`,
+    ),
+  );
+  assert.equal((await writes(p)).length, 1, "unknown result recovery must not dispatch a second model request");
 });
 for (const patch of [{ actor: "actor-2" }, { baseUrl: "https://other.example" }]) test("AI prefilled question does not transfer to another identity " + JSON.stringify(patch), async t => {
   const p = await open(t, { params: { id: "new", initialMessage: "原账号的活动背景" } });
@@ -265,7 +539,7 @@ test("AI stored session preserves raw multiline history and its custom title", a
   assert.equal(await p.getByText("Live provider 日本語", { exact: true }).count(), 1);
   assert.equal(await p.getByText("第一段", { exact: true }).count(), 1); assert.equal(await p.getByText("保留结构", { exact: true }).count(), 1);
   await p.getByRole("textbox").fill("继续讨论"); await press(p, "发送消息");
-  assert.deepEqual((await writes(p))[0], { method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "继续讨论", history: [{ role: "user", content: "最初の相談\nEnglish context" }, { role: "assistant", content: "第一段\n\n1. **保留结构**\n\n第二段" }] } });
+  assert.deepEqual(reliableRequestBase((await writes(p))[0]), { method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "继续讨论", history: [{ role: "user", content: "最初の相談\nEnglish context" }, { role: "assistant", content: "第一段\n\n1. **保留结构**\n\n第二段" }] } });
 });
 test("AI initial generation awaits a persisted matching session receipt before canonical navigation", async t => {
   const p = await openAndSend(t, { params: { id: "new", initialMessage: "再想一个方案" } }); await replyLastWrite(p, replyPayload());
@@ -343,7 +617,7 @@ test("AI saved session sends its complete recent history on every continuation",
   const firstSave = (await writes(p))[1];
   await replyLastWrite(p, { session: firstSave.body.session, storage: aiSessionListPayload.storage });
   await input.fill("接着讨论下一步"); await twice(p, "发送消息");
-  assert.deepEqual((await writes(p))[2], { method: "POST", path: "/api/ai/conversations", body: {
+  assert.deepEqual(reliableRequestBase((await writes(p))[2]), { method: "POST", path: "/api/ai/conversations", body: {
     locale: "zh", message: "接着讨论下一步", history: [
       { role: "user", content: "讨论产品试点" }, { role: "assistant", content: "梳理了试点范围、时间节点和资源需求。" },
       { role: "user", content: "再想一个方案" }, { role: "assistant", content: "可以先讨论时间安排。" }
@@ -364,7 +638,7 @@ test("AI saved session sends its complete recent history on every continuation",
   assert.equal((await writes(p)).length, 4); assert.deepEqual(await navigation(p), []);
 });
 
-test("AI draft continuation keeps confirmed history and freezes it for a failed retry", async t => {
+test("AI draft continuation keeps confirmed history and queries a failed send without blind retry", async t => {
   const p = await openAndSend(t, { params: { id: "new", initialMessage: "再想一个方案" } });
   const input = p.getByRole("textbox"); await input.fill("接着讨论下一步");
   await replyLastWrite(p, replyPayload());
@@ -374,15 +648,16 @@ test("AI draft continuation keeps confirmed history and freezes it for a failed 
   await press(p, "发送消息");
   const continuation = { method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "接着讨论下一步",
     history: [{ role: "user", content: "再想一个方案" }, { role: "assistant", content: "可以先讨论时间安排。" }] } };
-  assert.deepEqual((await writes(p))[2], continuation);
+  assert.deepEqual(reliableRequestBase((await writes(p))[2]), continuation);
   await replyLastWrite(p, undefined, 503);
-  await input.fill("第三条问题尚未发送"); await twice(p, "重新生成");
-  assert.deepEqual((await writes(p))[3], continuation);
-  await replyLastWrite(p, replyPayload("接着讨论下一步", "下一步核对参与人员。"));
-  const nextSave = (await writes(p))[4];
-  assert.equal(nextSave.body.session.id, firstSave.body.session.id);
-  assert.equal(nextSave.body.session.messages.length, 4);
-  await replyLastWrite(p, { session: nextSave.body.session, storage: aiSessionListPayload.storage });
+  await input.fill("第三条问题尚未发送"); await press(p, "检查结果");
+  assert.equal((await writes(p)).length, 3, "outcome-unknown recovery must not issue another POST");
+  const lastRequest = await p.evaluate(() => {
+    const request = (window as any).fixture.requests.at(-1);
+    return { method: request.method, url: request.url };
+  });
+  assert.equal(lastRequest.method, "GET");
+  assert.match(lastRequest.url, /\/api\/ai\/conversations\/sessions\/.+\?requestId=/);
   assert.equal(await input.inputValue(), "第三条问题尚未发送"); assert.deepEqual(await navigation(p), []);
 });
 
@@ -390,7 +665,7 @@ test("AI edited first failure never becomes confirmed history for a new question
   const p = await openAndSend(t, { params: { id: "new", initialMessage: "尚未成功的问题" } });
   await replyLastWrite(p, undefined, 503); await press(p, "编辑问题");
   await p.getByRole("textbox").fill("修改后重新提问"); await press(p, "发送消息");
-  assert.deepEqual((await writes(p))[1], { method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "修改后重新提问" } });
+  assert.deepEqual(reliableRequestBase((await writes(p))[1]), { method: "POST", path: "/api/ai/conversations", body: { locale: "zh", message: "修改后重新提问" } });
 });
 
 for (const session of [{ ...aiSession, id: "other-session" }, { ...aiSession, messages: [] }, {}]) test("AI invalid or mismatched session cannot become a successful empty conversation " + JSON.stringify(session), async t => {

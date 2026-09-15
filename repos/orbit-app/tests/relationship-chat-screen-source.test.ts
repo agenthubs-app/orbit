@@ -24,7 +24,7 @@ test("relationship chat screen opens with an Orbit AI relationship entry", () =>
     "AI relationship entry should appear before the raw conversation list"
   );
   assert.match(screenSource, /function RelationshipAgentEntry/u);
-  assert.match(screenSource, /router\.push\("\/ai" as Href\)/u);
+  assert.match(screenSource, /entryPointId: "chat\.ai_assistant"/u);
   assert.ok(screenSource.includes("让 Orbit AI 先帮我判断"));
   assert.match(screenSource, /styles\.agentEntry/u);
   assert.match(screenSource, /styles\.agentPrompt/u);
@@ -34,7 +34,8 @@ test("relationship chat screen reads the verified shared conversation list for t
   assert.match(screenSource, /relationshipCommunicationConversationsPath/u);
   assert.match(screenSource, /relationshipCommunicationListToView/u);
   assert.match(screenSource, /useOrbitAuthSession/u);
-  assert.match(screenSource, /auth\.user\?\.id/u);
+  assert.match(screenSource, /auth\.actorId/u);
+  assert.doesNotMatch(screenSource, /auth\.user\?\.id/u);
   assert.doesNotMatch(screenSource, /ORBIT_API_ENDPOINTS\.chatConversations/u);
   assert.match(screenSource, /Orbit 站内消息/u);
 });

@@ -1,3 +1,4 @@
+import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -22,6 +23,7 @@ import {
   eventPostEventConfirmPath,
   eventPostEventPath,
   publicEventDetailPath,
+  eventRegistrationPath,
   eventReadinessPath,
   eventRecommendationsPath
 } from "../../api/endpoints";
@@ -43,6 +45,7 @@ import {
   useApiResource
 } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import {
   eventDetailHeroToView,
   eventDetailToSummary,
@@ -61,6 +64,10 @@ import {
   eventReadinessToView,
   eventRecommendationsToView
 } from "../../view-models/events";
+import {
+  eventRegistrationToView,
+  type EventRegistrationView
+} from "../../view-models/event-registration";
 
 const detailFont = Platform.select({ web: '-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif', ios: "System", default: "sans-serif" });
 
@@ -74,6 +81,7 @@ function firstParam(value: string | string[] | undefined): string {
 
 export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: string; isScopeCurrent?: () => boolean } = {}) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const eventId = firstParam(id);
@@ -90,7 +98,8 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
   const rawState = useApiResource<unknown>(publicEventDetailPath(eventId), () => false, { scopeKey: JSON.stringify([scopeKey ?? "public-event-detail", eventId]) });
   const state = validateApiResourceState(rawState, publicEventDetailSchema);
   const data = state.kind === "success" || state.kind === "empty" ? state.data : null;
-  const event = data ? publicEventDetailToSummary(data) : null;
+  const { timeZone } = useOrbitTimeZone();
+  const event = data ? publicEventDetailToSummary(data, timeZone) : null;
   const [personalizedRefreshKey, setPersonalizedRefreshKey] = useState(0);
   const sharing = useRef(false);
   const [sharePending, setSharePending] = useState(false);
@@ -112,7 +121,7 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
     sharing.current = true;
     setSharePending(true);
     setShareError(null);
-    const timing = eventDetailTiming(data.event.startsAt, data.event.endsAt);
+    const timing = eventDetailTiming(data.event.startsAt, data.event.endsAt, timeZone);
     try {
       await Share.share({ message: `${event.title}\n${timing.date} ${timing.time}\n${event.location || "地点待定"}` });
     } catch {
@@ -133,9 +142,9 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
             <Text style={styles.backLabel}>{canGoBack ? "返回" : "活动"}</Text>
           </Pressable>
         </View>
-        <Text accessibilityRole="header" style={styles.navigationTitle}>活动详情</Text>
+        <Text accessibilityRole="header" style={styles.navigationTitle}>{locale.t("events.detailTitle")}</Text>
         <View style={[styles.navigationSide, styles.navigationRight]}>
-          {event ? <Pressable accessibilityRole="button" accessibilityLabel="分享活动" disabled={sharePending}
+          {event ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("events.share")} disabled={sharePending}
             onPress={() => { void shareEvent(); }} style={({ pressed }) => [styles.shareButton, pressed && styles.actionButtonPressed]}>
             <Ionicons name="share-outline" size={22} color={colors.ink} />
           </Pressable> : null}
@@ -154,7 +163,14 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
           personalizedModules={signedIn ? <AuthenticatedEventDetailModules eventId={event.id} key={event.id}
             refreshKey={personalizedRefreshKey} scopeKey={scopeKey ?? "event-detail"} isScopeCurrent={isCurrent} /> : null} /> : null}
       </ScrollView>
-      {event ? (
+      {event ? signedIn ? (
+        <AuthenticatedEventRegistrationModule
+          event={event}
+          onRegister={() => navigate(`/events/${encodeURIComponent(event.id)}/register` as Href)}
+          refreshKey={personalizedRefreshKey}
+          scopeKey={scopeKey ?? "event-detail"}
+        />
+      ) : (
         <EventRegistrationModule event={event} onRegister={() => {
           if (event.status !== "已结束" && event.status !== "已取消") navigate(`/events/${encodeURIComponent(event.id)}/register` as Href);
         }} />
@@ -163,8 +179,8 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
   );
 }
 
-function publicEventDetailToSummary(data: PublicEventDetail): EventDetailSummary {
-  const event = eventDetailToSummary(data);
+function publicEventDetailToSummary(data: PublicEventDetail, timeZone: string): EventDetailSummary {
+  const event = eventDetailToSummary(data, timeZone);
   const canonical = data.event.sourceMetadata?.label === "event-core-postgres";
   // The public catalogue encodes its ended phase as cancelled. Do not apply
   // that compatibility rule to genuinely cancelled records from other sources.
@@ -186,10 +202,10 @@ function publicEventDetailToSummary(data: PublicEventDetail): EventDetailSummary
   };
 }
 
-function eventDetailTiming(startsAt: string, endsAt: string) {
-  const dateFormatter = new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric" });
-  const weekdayFormatter = new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Tokyo", weekday: "short" });
-  const timeFormatter = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+function eventDetailTiming(startsAt: string, endsAt: string, timeZone: string) {
+  const dateFormatter = new Intl.DateTimeFormat("zh-CN", { timeZone, month: "numeric", day: "numeric" });
+  const weekdayFormatter = new Intl.DateTimeFormat("zh-CN", { timeZone, weekday: "short" });
+  const timeFormatter = new Intl.DateTimeFormat("en-GB", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
   const start = new Date(startsAt); const end = new Date(endsAt);
   const parts = dateFormatter.formatToParts(start);
   const value = (type: Intl.DateTimeFormatPartTypes) => parts.find(part => part.type === type)?.value ?? "";
@@ -279,14 +295,16 @@ function EventDetailCard({
   personalizedModules: ReactNode;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const { width, fontScale } = useWindowDimensions();
-  const event = publicEventDetailToSummary(data);
+  const { timeZone } = useOrbitTimeZone();
+  const event = publicEventDetailToSummary(data, timeZone);
   const hero = eventDetailHeroToView(event);
   const heroStatus = publicEventDetailStatus(hero.status);
   const heroSummary = publicEventDetailSummary(hero.summary);
   const attendeesHref = `/events/${encodeURIComponent(event.id)}/attendees` as Href;
   const partyHref = `/party?eventId=${encodeURIComponent(event.id)}` as Href;
-  const timing = eventDetailTiming(data.event.startsAt, data.event.endsAt);
+  const timing = eventDetailTiming(data.event.startsAt, data.event.endsAt, timeZone);
   const narrow = width < 360 || fontScale >= 1.4;
   const attendeeCount = data.event.stats?.count ?? data.event.participantCount;
   const participantLabel = attendeeCount === undefined ? event.participantCountLabel : `${attendeeCount} 人已报名`;
@@ -311,25 +329,25 @@ function EventDetailCard({
       <View style={styles.infoGrid}>
         <View style={[styles.infoGridRow, narrow && styles.infoGridRowNarrow]}>
           <View style={[styles.infoTile, !narrow && styles.infoTileFirst, narrow && styles.infoTileNarrow]}>
-            <Text style={styles.infoTileDetail}>日期</Text>
+            <Text style={styles.infoTileDetail}>{locale.t("events.date")}</Text>
             <Text style={styles.infoTileTime}>{timing.date}</Text>
           </View>
           <View style={[styles.infoTile, !narrow && styles.infoTileSecond, narrow && styles.infoTileNext, narrow && styles.infoTileNarrow]}>
-            <Text style={styles.infoTileDetail}>时间</Text>
+            <Text style={styles.infoTileDetail}>{locale.t("events.time")}</Text>
             <Text style={styles.infoTileTime}>{timing.time}</Text>
           </View>
         </View>
         <View style={[styles.infoGridRow, styles.infoGridSecondRow, narrow && styles.infoGridRowNarrow]}>
           <View style={[styles.infoTile, !narrow && styles.infoTileFirst, narrow && styles.infoTileNarrow]}>
-            <Text style={styles.infoTileDetail}>地点</Text>
-            <Text style={styles.infoTileTitle}>{event.location || "地点待定"}</Text>
+            <Text style={styles.infoTileDetail}>{locale.t("events.location")}</Text>
+            <Text style={styles.infoTileTitle}>{event.location || locale.t("events.locationPending")}</Text>
             {event.address && event.address !== event.location ? <Text style={styles.infoTileDetail}>{event.address}</Text> : null}
           </View>
           <EventOrganizerModule event={event} narrow={narrow} />
         </View>
       </View>
       <View style={styles.publicSection}>
-        <Text accessibilityRole="header" style={styles.sectionTitle}>活动介绍</Text>
+        <Text accessibilityRole="header" style={styles.sectionTitle}>{locale.t("events.about")}</Text>
         <Text style={styles.publicBody}>{heroSummary}</Text>
       </View>
       <EventAboutModule sections={data.event.about?.length ? event.aboutSections : []} />
@@ -461,32 +479,107 @@ function EventPersonalNotice({ state, empty, labels, isCurrent }: {
 
 function EventRegistrationModule({
   event,
-  onRegister
+  onRegister,
+  registration,
+  verifying = false
 }: {
   event: EventDetailSummary;
   onRegister: () => void;
+  registration?: EventRegistrationView | null;
+  verifying?: boolean;
 }) {
   const { styles } = useStyles();
-  const closed = event.status === "已结束" || event.status === "已取消";
+  const publicClosed = event.status === "已结束" || event.status === "已取消";
+  const state = registration?.eligibilityState;
+  const canOpenRegistration = Boolean(
+    !verifying &&
+    !publicClosed &&
+    (registration === undefined ||
+      registration === null ||
+      registration.allowedActions === undefined ||
+      registration.allowedActions.some((action) =>
+        action === "apply" || action === "register" || action === "reactivate" || action === "update"
+      ) ||
+      state === "pending_review" ||
+      state === "registered" ||
+      state === "waitlisted")
+  );
+  const actionLabel = verifying
+    ? "正在确认报名资格"
+    : state === "pending_review" || state === "waitlisted"
+      ? "查看申请"
+      : state === "registered"
+        ? "查看报名"
+        : state === "open"
+          ? event.registrationActionLabel
+          : registration?.confirmLabel ?? event.registrationActionLabel;
+  const detail = verifying
+    ? "正在读取服务端资格"
+    : registration?.statusDetail ??
+      (publicClosed ? "仍可查看活动资料与参会者入口" : "提交前请确认活动要求");
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.registrationFooter}>
       <View style={styles.registrationCard}>
-      <Text style={styles.registrationFooterHint}>{closed ? "仍可查看活动资料与参会者入口" : "提交前请确认活动要求"}</Text>
+      <Text style={styles.registrationFooterHint}>{detail}</Text>
       <Pressable
         accessibilityRole="button"
-        disabled={closed}
+        disabled={!canOpenRegistration}
         onPress={onRegister}
         style={({ pressed }) => [
           styles.primaryCta,
-          closed ? styles.inlineButtonDisabled : null,
+          !canOpenRegistration ? styles.inlineButtonDisabled : null,
           pressed ? styles.actionButtonPressed : null
         ]}
       >
-        <Text style={styles.primaryCtaText}>{event.registrationActionLabel}</Text>
+        <Text style={styles.primaryCtaText}>{actionLabel}</Text>
       </Pressable>
       </View>
     </SafeAreaView>
+  );
+}
+
+function AuthenticatedEventRegistrationModule({
+  event,
+  onRegister,
+  refreshKey,
+  scopeKey
+}: {
+  event: EventDetailSummary;
+  onRegister: () => void;
+  refreshKey: number;
+  scopeKey: string;
+}) {
+  const state = useApiResource<unknown>(
+    `${eventRegistrationPath(event.id)}?questions=false`,
+    () => false,
+    {
+      cachePolicy: "network-only",
+      scopeKey: JSON.stringify([scopeKey, event.id, "registration-eligibility", refreshKey])
+    }
+  );
+  const registration = state.kind === "success" || state.kind === "empty"
+    ? eventRegistrationToView(state.data)
+    : state.kind === "failure" || state.kind === "offline"
+      ? eventRegistrationToView({
+          eligibility: {
+            allowedActions: [],
+            applicationVersion: null,
+            evaluatedAt: "",
+            policyVersion: null,
+            reason: "unavailable",
+            registrationVersion: null,
+            state: "unavailable"
+          }
+        })
+      : null;
+  return (
+    <EventRegistrationModule
+      event={event}
+      onRegister={onRegister}
+      registration={registration}
+      verifying={state.kind === "loading"}
+    />
   );
 }
 

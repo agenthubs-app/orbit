@@ -23,7 +23,7 @@ import {
 export function RelationshipChatScreen() {
   const { colors } = useOrbitTheme();
   const auth = useOrbitAuthSession();
-  const actorId = auth.user?.id ?? "";
+  const actorId = auth.actorId ?? "";
   const state = useApiResource<unknown>(
     relationshipCommunicationConversationsPath(),
     (data) => isRelationshipConversationList(data) && data.conversations.length === 0,
@@ -68,7 +68,11 @@ function ChatListContent({ actorId, data }: { actorId: string; data: Parameters<
 
   return (
     <>
-      <RelationshipAgentEntry onPress={() => router.push("/ai" as Href)} />
+      <RelationshipAgentEntry
+        onPress={() =>
+          router.push({ pathname: "/ai", params: { entryPointId: "chat.ai_assistant" } })
+        }
+      />
       <DataCard detail={view.summary} title={view.title}>
         <MetricGrid metrics={view.metrics} />
         <View style={styles.callout}>

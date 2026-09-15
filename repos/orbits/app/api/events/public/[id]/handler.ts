@@ -83,6 +83,7 @@ export function createPublicEventDetailGetHandler(
           event: {
             ...entry.record,
             organizer: canonicalPublicOrganizerLabel(entry.organizerId),
+            participantCount: entry.participantCount,
           },
         }),
         {

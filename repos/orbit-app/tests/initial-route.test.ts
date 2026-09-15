@@ -31,7 +31,7 @@ describe("resolveInitialRouteHref", () => {
     assert.equal(resolveInitialRouteHref("events"), "/events");
     assert.equal(resolveInitialRouteHref("/contacts"), "/contacts");
     assert.equal(resolveInitialRouteHref("dashboard"), "/dashboard");
-    assert.equal(resolveInitialRouteHref("followups"), "/followups");
+    assert.equal(resolveInitialRouteHref("followups"), "/tasks?scope=relationship");
     assert.equal(resolveInitialRouteHref("home"), "/home");
     assert.equal(resolveInitialRouteHref("home/events"), "/home/events");
     assert.equal(resolveInitialRouteHref("inbox"), "/inbox");
@@ -85,6 +85,10 @@ describe("resolveInitialRouteHref", () => {
       "/contacts/dashboard"
     );
     assert.equal(
+      resolveInitialRouteHref("contacts/matches"),
+      "/contacts/matches"
+    );
+    assert.equal(
       resolveInitialRouteHref("chat/demo-conversation-1"),
       "/chat/demo-conversation-1"
     );
@@ -130,7 +134,7 @@ describe("resolveInitialRouteHref", () => {
       resolveInitialRouteHref("/home/cards/contact_029"),
       "/contacts/contact_029"
     );
-    assert.equal(resolveInitialRouteHref("/home/schedule"), "/followups");
+    assert.equal(resolveInitialRouteHref("/home/schedule"), "/tasks?scope=relationship");
     assert.equal(resolveInitialRouteHref("/home/profile"), "/profile");
     assert.equal(
       resolveInitialRouteHref("/agent?panel=events"),

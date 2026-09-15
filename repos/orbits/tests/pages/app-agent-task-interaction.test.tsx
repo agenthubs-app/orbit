@@ -167,14 +167,24 @@ async function mountPage(
     taskInteraction: suggestion,
     artifacts: [],
   },
+  restoredSession?: Record<string, unknown>,
+  analysisPrefill?: { query: string; origin: Record<string, unknown>; returnTo: string },
 ) {
   const previous = Object.getOwnPropertyDescriptor(globalThis, "window");
   const previousDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
   Object.defineProperty(globalThis, "document", { configurable: true, value: { addEventListener() {}, removeEventListener() {} } });
-  const storage = { getItem: () => null, setItem() {}, removeItem() {} };
+  const localValues = new Map<string, string>();
+  const sessionValues = new Map<string, string>();
+  if (analysisPrefill) sessionValues.set("orbit.agent.prefill", JSON.stringify(analysisPrefill));
+  const storageFor = (values: Map<string, string>) => ({
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => { values.set(key, value); },
+    removeItem: (key: string) => { values.delete(key); },
+  });
   Object.defineProperty(globalThis, "window", { configurable: true, value: {
-    location: { search: "?q=准备会面", origin: "https://orbit.test" }, history: { pushState() {} },
-    localStorage: storage, sessionStorage: storage, addEventListener() {}, removeEventListener() {},
+    location: { search: analysisPrefill ? "" : restoredSession ? `?session=${encodeURIComponent(String(restoredSession.id))}` : "?q=准备会面", origin: "https://orbit.test" }, history: { pushState() {} },
+    localStorage: storageFor(localValues), sessionStorage: storageFor(sessionValues), addEventListener() {}, removeEventListener() {},
+    matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
     setInterval, clearInterval, setTimeout, clearTimeout,
   } });
   let root: ReactTestRenderer | undefined;
@@ -187,10 +197,21 @@ async function mountPage(
   });
   const persisted: Array<{ messages: Array<{ role: string; taskInteraction?: Record<string, unknown> }> }> = [];
   const requests: Array<{ path: string; body: unknown }> = [];
+  const organizationMutations: Array<Record<string, unknown>> = [];
+  const conversationRequests: Array<Record<string, unknown>> = [];
   let respond!: (response: Response) => void;
   t.mock.method(globalThis, "fetch", async (input: string, init?: RequestInit) => {
     const path = String(input);
     const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+    if (path === "/api/ai/conversations/groups") {
+      return Response.json({ success: true, data: { groups: [{
+        createdAt: "2026-09-08T00:00:00.000Z",
+        id: "group:work",
+        name: "工作",
+        revision: 1,
+        updatedAt: "2026-09-08T00:00:00.000Z",
+      }] } });
+    }
     if (path === "/api/ai/conversations/sessions" && init?.method === "POST") {
       const commit = () => {
         persisted.push(body.session);
@@ -199,17 +220,134 @@ async function mountPage(
       if (deferSaves) return new Promise<Response>((resolve) => pendingSaves.push(() => resolve(commit())));
       return commit();
     }
-    if (path.startsWith("/api/ai/conversations/sessions")) return Response.json({ success: true, data: { sessions: [] } });
-    if (path === "/api/ai/conversations") return Response.json({ success: true, data: reply });
+    if (path.startsWith("/api/ai/conversations/sessions/") && init?.method === "PATCH") {
+      organizationMutations.push(body);
+      const patch = body.patch as Record<string, unknown>;
+      return Response.json({ success: true, data: { session: {
+        ...(restoredSession ?? { createdAt: "2026-09-08T00:00:00Z", id: "session:test", messages: [{ role: "user", text: "准备会面" }], title: "会面准备", updatedAt: "2026-09-08T00:00:00Z" }),
+        customTitle: patch.customTitle,
+        organization: { customTitle: patch.customTitle ?? null, groupId: patch.groupId ?? null, pinned: patch.pinned === true, revision: 1 },
+        pinned: patch.pinned === true,
+      }, storage: { configured: true, persisted: true } } });
+    }
+    if (path.startsWith("/api/ai/conversations/sessions")) return Response.json({ success: true, data: { sessions: restoredSession ? [restoredSession] : [] } });
+    if (path === "/api/ai/conversations") {
+      conversationRequests.push(body);
+      return Response.json({ success: true, data: {
+        ...reply,
+        reliableSend: {
+          messageRevision: 2,
+          protocolVersion: 2,
+          replayed: false,
+          requestId: body.requestId,
+          sessionId: body.sessionId,
+          state: "completed",
+        },
+      } });
+    }
     if (path.startsWith("/api/task-suggestions/")) {
       requests.push({ path, body });
       return new Promise<Response>((resolve) => { respond = resolve; });
     }
     return Response.json({ success: true, data: {} });
   });
-  await act(async () => { root = create(<OrbitRealAgent viewModel={createOrbitAgentStarterViewModel()} />); });
-  return { root: root!, persisted, requests, pendingSaves, respond: (response: Response) => respond(response) };
+  const home = analysisPrefill ? { account: { fullName: "本人", headline: "", initial: "本" }, events: [], stats: { events: 0, people: 1, inProgress: 0 } } : undefined;
+  await act(async () => { root = create(<OrbitRealAgent home={home} viewModel={createOrbitAgentStarterViewModel()} />); });
+  return { root: root!, persisted, requests, organizationMutations, conversationRequests, pendingSaves, respond: (response: Response) => respond(response) };
 }
+
+async function waitForPendingSessionSave(pendingSaves: Array<() => void>) {
+  for (let attempt = 0; attempt < 8 && pendingSaves.length === 0; attempt += 1) {
+    await act(async () => new Promise<void>((resolve) => setImmediate(resolve)));
+  }
+}
+
+async function drainPendingSessionSaves(pendingSaves: Array<() => void>) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    if (pendingSaves.length > 0) {
+      await act(async () => pendingSaves.shift()!());
+    } else {
+      await act(async () => new Promise<void>((resolve) => setImmediate(resolve)));
+    }
+  }
+}
+
+test("Web first send uses the reliable protocol and records a controlled origin", async (t) => {
+  const { conversationRequests } = await mountPage(t);
+  assert.equal(conversationRequests.length, 1);
+  assert.equal(conversationRequests[0]?.protocolVersion, 2);
+  assert.equal(conversationRequests[0]?.expectedMessageRevision, 0);
+  assert.equal(typeof conversationRequests[0]?.sessionId, "string");
+  assert.equal(typeof conversationRequests[0]?.clientMessageId, "string");
+  assert.equal(typeof conversationRequests[0]?.requestId, "string");
+  assert.deepEqual(conversationRequests[0]?.origin, {
+    entryClient: "web",
+    entryPointId: "ai.new_chat",
+    initialGroupId: null,
+    kind: "manual",
+    template: null,
+  });
+});
+
+test("contacts analysis opens as an editable draft and sends its structured origin only after submit", async (t) => {
+  const sourceDataVersion = "a".repeat(64);
+  const origin = {
+    entryClient: "web",
+    entryPointId: "contacts.analysis",
+    initialGroupId: null,
+    kind: "structured",
+    sourceDataVersion,
+    template: { id: "contacts.analysis", version: 1 },
+  };
+  const { root, conversationRequests } = await mountPage(t, false, undefined, undefined, {
+    origin,
+    query: "请根据我的关系目标和当前人脉数据生成分析报告。",
+    returnTo: "/app/contacts/dashboard",
+  });
+
+  assert.equal(conversationRequests.length, 0, "opening a prefill must not generate");
+  const inputs = root.root.findAllByProps({ "aria-label": "向 iOrbit 提问" });
+  assert.equal(inputs.length, 2);
+  assert.ok(inputs.every((input) => input.props.value === "请根据我的关系目标和当前人脉数据生成分析报告。"));
+  const input = inputs[0];
+  await act(async () => { input.props.onChange({ target: { value: "请重点分析我在东京制造业的人脉缺口。" } }); });
+  await act(async () => {
+    root.root.findAllByProps({ className: "glass brief-input" })[0].props.onSubmit({ preventDefault() {} });
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  });
+  assert.equal(conversationRequests.length, 1);
+  assert.equal(conversationRequests[0]?.message, "请重点分析我在东京制造业的人脉缺口。");
+  assert.deepEqual(conversationRequests[0]?.origin, origin);
+});
+
+test("Web chat started from a group records the origin and persists group membership after the first reply", async (t) => {
+  const { root, organizationMutations, conversationRequests } = await mountPage(t);
+  act(() => root.root.findAllByType("button").find((button) => button.children.includes("分组"))!.props.onClick());
+  act(() => root.root.findAllByType("button").find((button) => button.children.includes("新建"))!.props.onClick());
+  await act(async () => {
+    await root.root.findAllByProps({ className: "chip" })[0]!.props.onClick();
+  });
+
+  assert.equal((conversationRequests.at(-1)?.origin as { initialGroupId?: string } | undefined)?.initialGroupId, "group:work");
+  assert.deepEqual(organizationMutations.at(-1)?.patch, { groupId: "group:work" });
+  assert.equal(organizationMutations.at(-1)?.expectedRevision, 0);
+});
+
+test("opening a restored Web session performs no automatic POST", async (t) => {
+  const session = {
+    createdAt: "2026-09-14T00:00:00.000Z",
+    id: "session:restored",
+    messages: [
+      { id: "message:1", role: "user", text: "已经保存的问题" },
+      { id: "message:2", role: "assistant", text: "已经保存的回答", items: [], kind: "people", panelTitle: "" },
+    ],
+    title: "恢复会话",
+    updatedAt: "2026-09-14T00:01:00.000Z",
+  };
+  const { persisted } = await mountPage(t, false, undefined, session);
+
+  assert.equal(persisted.length, 0);
+});
 
 const emptyEvidenceMessage = /No verifiable result|本次没有从你已授权/u;
 const arbitraryAssistantMessage = "服务端任意回复，不可作为推荐依据。";
@@ -309,21 +447,20 @@ test("starting a new conversation during acceptance never writes the old card in
 
 test("delayed history writes cannot overwrite a newer accepted-task snapshot", async (t) => {
   const { root, pendingSaves, persisted, respond } = await mountPage(t, true);
+  await waitForPendingSessionSave(pendingSaves);
   assert.equal(pendingSaves.length, 1, "only one session snapshot can be in flight");
   let request: Promise<void>;
   await act(async () => { request = root.root.findAllByProps({ "aria-label": "加入待办：准备会面" })[0].props.onClick(); });
   await act(async () => { respond(Response.json({ success: true, data: { task } })); await request; });
   assert.equal(pendingSaves.length, 1);
-  for (let step = 0; step < 3; step++) {
-    assert.equal(pendingSaves.length, 1);
-    await act(async () => pendingSaves.shift()!());
-  }
+  await drainPendingSessionSaves(pendingSaves);
   assert.equal(pendingSaves.length, 0);
   assert.equal(persisted.at(-1)?.messages.at(-1)?.taskInteraction?.state, "created");
 });
 
 test("renaming while a task is accepted preserves both the name and task in saved and reopened history", async (t) => {
-  const { root, pendingSaves, persisted, respond } = await mountPage(t, true);
+  const { root, pendingSaves, persisted, organizationMutations, respond } = await mountPage(t, true);
+  await waitForPendingSessionSave(pendingSaves);
   act(() => root.root.findAllByProps({ "aria-label": "更多操作" })[0].props.onClick());
   const rename = root.root.findAll((node) => node.type === "button" && node.props["data-orbit-agent-history-rename"])[0];
   act(() => rename.props.onClick());
@@ -333,12 +470,9 @@ test("renaming while a task is accepted preserves both the name and task in save
   let request: Promise<void>;
   await act(async () => { request = root.root.findAllByProps({ "aria-label": "加入待办：准备会面" })[0].props.onClick(); });
   await act(async () => { respond(Response.json({ success: true, data: { task } })); await request; });
-  for (let step = 0; step < 4; step++) {
-    assert.equal(pendingSaves.length, 1);
-    await act(async () => pendingSaves.shift()!());
-  }
+  await drainPendingSessionSaves(pendingSaves);
   assert.equal(persisted.at(-1)?.messages.at(-1)?.taskInteraction?.state, "created");
-  assert.equal((persisted.at(-1) as any).customTitle, "会面资料");
+  assert.equal((organizationMutations.at(-1) as any).patch.customTitle, "会面资料");
   await act(async () => root.root.findAllByProps({ className: "btn btn-quiet orbit-agent-history-entry" })[0].props.onClick());
   assert.equal(root.root.findAllByProps({ href: "/app/tasks/task%3Aone%2Ftwo" }).length, 2);
 });

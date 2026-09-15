@@ -1,3 +1,4 @@
+import { resolveLocalDateTime } from "../time/date-time";
 import type { ReminderPlanContract } from "../api/contract/reminders";
 
 export interface ReminderQuickOption {
@@ -15,11 +16,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function tokyoDateKey(date: Date): string {
+function tokyoDateKey(date: Date, timeZone: string): string {
   const parts = new Intl.DateTimeFormat("en-US", {
     day: "2-digit",
     month: "2-digit",
-    timeZone: "Asia/Tokyo",
+    timeZone,
     year: "numeric",
   }).formatToParts(date);
   const value = (type: Intl.DateTimeFormatPartTypes) =>
@@ -33,22 +34,22 @@ function nextDateKey(dateKey: string): string {
   return date.toISOString().slice(0, 10);
 }
 
-export function reminderQuickOptions(now: Date): ReminderQuickOption[] {
-  const dateKey = tokyoDateKey(now);
+export function reminderQuickOptions(now: Date, timeZone = "Asia/Tokyo"): ReminderQuickOption[] {
+  const dateKey = tokyoDateKey(now, timeZone);
   const inOneHour = new Date(now.getTime() + 60 * 60_000);
-  const todayEvening = new Date(`${dateKey}T18:00:00+09:00`);
-  const tomorrowMorning = new Date(`${nextDateKey(dateKey)}T09:00:00+09:00`);
+  const todayEvening = resolveLocalDateTime(dateKey, "18:00", timeZone);
+  const tomorrowMorning = resolveLocalDateTime(nextDateKey(dateKey), "09:00", timeZone);
   const options: ReminderQuickOption[] = [
     { fireAt: inOneHour.toISOString(), label: "1 小时后" },
   ];
-  if (todayEvening.getTime() > now.getTime()) {
-    options.push({ fireAt: todayEvening.toISOString(), label: "今天 18:00" });
+  if (todayEvening && Date.parse(todayEvening) > now.getTime()) {
+    options.push({ fireAt: todayEvening, label: "今天 18:00" });
   }
-  options.push({ fireAt: tomorrowMorning.toISOString(), label: "明天 09:00" });
+  if (tomorrowMorning) options.push({ fireAt: tomorrowMorning, label: "明天 09:00" });
   return options;
 }
 
-export function reminderPlansToView(payload: unknown): ReminderPlanRow[] {
+export function reminderPlansToView(payload: unknown, timeZone = "Asia/Tokyo"): ReminderPlanRow[] {
   if (!isRecord(payload) || !Array.isArray(payload.reminders)) return [];
   return payload.reminders.flatMap((value): ReminderPlanRow[] => {
     if (!isRecord(value) || typeof value.id !== "string" || typeof value.fireAt !== "string") return [];
@@ -60,7 +61,7 @@ export function reminderPlansToView(payload: unknown): ReminderPlanRow[] {
       hourCycle: "h23",
       minute: "2-digit",
       month: "numeric",
-      timeZone: "Asia/Tokyo",
+      timeZone,
     }).formatToParts(new Date(value.fireAt));
     const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "";
     return [{

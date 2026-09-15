@@ -1,6 +1,6 @@
 # Sprint 0006 — 类型化 @联系人与 AI 入口
 
-**Plan revision:** 2（记录已批准入口决定；执行范围仍待补齐审阅）。**模式:** existing-codebase / single-generator；运行状态只在[登记表](../README.md)；具体运行状态以登记表为准。
+**Plan revision:** 2（记录已批准入口决定；run-01 的实施对照补齐执行范围）。**模式:** existing-codebase / single-generator；运行状态只在[登记表](../README.md)；具体运行状态以登记表为准。
 **原需求:** R-06；继承0005可靠会话，复用已批准D3边界。
 **目标:** 用户能用稳定联系人ID提问，业务入口统一预填IORBIT且不提前生成。
 
@@ -9,6 +9,25 @@
 0005完成；B3发送／响应／历史有类型化引用并按actor验权；按下方已确认的D3清单补齐执行范围与验证；存在授权同名联系人样本。
 
 开始前从前序实际 REPORT 读取版本和未完成，不把目录存在当依赖完成。起始 HEAD／diff、Planner SHA256、owner 和 run-01 在领取时登记；当前不填写虚构运行信息。当前发送parser会忽略自造contactIds字段，类型化协议未就绪前不能实现picker。D3产品入口清单已确认，不重复索要相同批准；文件白名单、模板上下文协议和逐入口验证仍须在启动前补齐并审阅。
+
+## run-01 实施对照（2026-09-15）
+
+启动时保留 revision 2 哈希 `303ad11647d89384ff31d64cb7d125a660dc95026028a8bc83aaa15c6d90f173`，基线 HEAD `75eca33e9`，tracked 工作树干净。0005／0021 已发布 `ai-sessions` protocol v2、origin schemaVersion 1、稳定 message/session ID、`references: { type, id }[]` 和四个已登记 entryPointId；本轮不另建发送协议。
+
+实现采用 actor／服务器绑定的一次性预填意图：业务页只把随机 `prefillIntent` 放入路由，实际模板、草稿和稳定引用留在内存；IORBIT 消费后只填编辑器，用户点击发送前不 POST。模板冻结如下：
+
+| 入口 | entryPointId | template id / version | 输入 |
+| --- | --- | --- | --- |
+| 联系人详情起草消息 | `contact.message_draft` | `contact.message_draft` / 1 | contact ID、显示名、公司 |
+| 跟进 AI 起草／起草联系消息 | `contact.followup_draft` | `contact.followup_chat_draft` / 1、`contact.followup_email_draft` / 1 | task 的 contactId、联系人、公司、已保存下一步与理由 |
+| 收件箱润色草稿 | `inbox.polish_draft` | `inbox.polish_draft` / 1 | thread 对应 contact ID、当前可编辑草稿 |
+| 生成候选／提醒候选 | `followup.task_candidate` | `followup.task_candidate` / 1、`followup.reminder_candidate` / 1 | 当前已保存跟进集合；不预选联系人 |
+
+服务端在可靠发送持久化和模型执行前，以及 canonical session 独立保存前，通过 Contacts 领域服务核对每个 contact reference 的当前 actor 读取权限；删除、无权限、跨账号统一拒绝且不泄露对象是否存在，读取服务不可用则返回可重试失败。授权引用同时保存到对应 user message；首轮引用继续冻结在 origin。旧客户端按同一 message ID 保存但省略引用时保留已有引用，替换已有引用则冲突。普通问题允许空引用。
+
+按 RULES 第0／6节和用户已授予的跨端实现权限补充必要文件：App `app/ai/[id].tsx`、`src/data/ai-template-prefill.ts`、`src/screens/ai/ContactMentionPicker.tsx`、`src/screens/followups/FollowupsScreen.tsx`、`src/view-models/followups.ts`、`src/screens/inbox/RelationshipInboxScreen.tsx`、`src/view-models/relationship-inbox.ts`、相关现有测试；Web `features/orbit-ai/ai-session-reference-authorization.ts`、`reliable-send-service.ts`、session provider、conversation route、共享 schema 和对应测试。共享副本仅在共享 schema 实际改变时走 sync；本轮优先复用已有 reference 契约。
+
+`relationshipInboxToView` 的 upstream impact 为 HIGH（4 个直接消费者、4 个模块）；本轮不修改该符号，新增窄的 contact ID 提取器，避免改变其返回形状。session provider 为 LOW（3 个直接调用方、1 个模块、无已识别流程），session collection handler 为 LOW（1 个直接 route 调用方、无已识别流程）。其他已解析待改符号为 LOW；旧索引未解析的符号用实际 import／调用搜索和直接消费者测试补审。
 
 ## 已确认的入口决定（2026-09-14）
 

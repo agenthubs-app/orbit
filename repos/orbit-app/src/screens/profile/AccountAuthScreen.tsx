@@ -25,6 +25,8 @@ import {
   type AccountAuthFieldView,
   type AccountAuthMode
 } from "../../view-models/account-auth";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import type { OrbitTranslator } from "../../i18n/messages";
 
 function firstParam(value: string | string[] | undefined, fallback = ""): string {
   if (Array.isArray(value)) {
@@ -54,6 +56,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const auth = useOrbitAuthSession();
+  const locale = useOrbitLocale();
   const client = useOrbitApiClient();
   const server = useOrbitApiBaseUrl();
   const actorId = auth.user?.id ?? null;
@@ -61,6 +64,9 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
   const [scope, setScope] = useState({ client, actorId, ready, mode });
   const scopeRef = useRef(scope);
   const mounted = useRef(true);
+  const authPending = useRef(false);
+  const authScopeKey = `${server.baseUrl}\u0000${mode}`;
+  const authScopeRef = useRef(authScopeKey);
   const recoveryPending = useRef(false);
   useEffect(() => {
     mounted.current = true;
@@ -71,19 +77,25 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
     password: ""
   });
   const view = useMemo(
-    () => accountAuthToView(mode, { googleEnabled: auth.googleEnabled }),
-    [auth.googleEnabled, mode]
+    () => accountAuthToView(mode, { googleEnabled: auth.googleEnabled, t: locale.t }),
+    [auth.googleEnabled, locale.t, mode]
   );
   const next = normalizedNext(firstParam(params.next, view.defaultNext));
   const created = firstParam(params.created) === "1";
+
+  if (authScopeRef.current !== authScopeKey) {
+    authScopeRef.current = authScopeKey;
+    authPending.current = false;
+  }
 
   if (scope.client !== client || scope.actorId !== actorId || scope.ready !== ready || scope.mode !== mode) {
     const nextScope = { client, actorId, ready, mode };
     scopeRef.current = nextScope;
     setScope(nextScope);
+    authPending.current = false;
+    setSubmitting(false);
     if (mode === "forgot" || scope.mode === "forgot") {
       recoveryPending.current = false;
-      setSubmitting(false);
       setValues({ email: "", password: "" });
       setNotice(null);
       setError(null);
@@ -118,15 +130,19 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
         if (!isCurrent()) return;
         if (!result.success) setError(result.error.message);
         else if (typeof result.data?.message !== "string" || !result.data.message.trim() || result.status >= 400) {
-          setError("尚未确认受理，请稍后重试。");
+          setError(locale.t("auth.pendingUnconfirmed"));
         } else setNotice(result.data.message);
       } catch {
-        if (isCurrent()) setError("暂时无法连接服务，请稍后重试。");
+        if (isCurrent()) setError(locale.t("auth.networkFailure"));
       } finally {
         if (isCurrent()) { recoveryPending.current = false; setSubmitting(false); }
       }
       return;
     }
+    if (!ready || authPending.current) return;
+    authPending.current = true;
+    const requestAuthScope = authScopeKey;
+    const isCurrent = () => mounted.current && authScopeRef.current === requestAuthScope;
     setSubmitting(true);
     setNotice(null);
     setError(null);
@@ -138,8 +154,9 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
           password: values.password
         });
 
+        if (!isCurrent()) return;
         if (!result.success) {
-          setError(result.message ?? "创建账号失败，请稍后再试。");
+          setError(result.message ?? locale.t("auth.signupFailure"));
           return;
         }
 
@@ -159,8 +176,9 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
         redirectTo: next
       });
 
+      if (!isCurrent()) return;
       if (!result.success) {
-        setError(result.message ?? "登录失败，请稍后再试。");
+        setError(result.message ?? locale.t("auth.loginFailure"));
         return;
       }
 
@@ -172,11 +190,18 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
         }) as Href
       );
     } finally {
-      setSubmitting(false);
+      if (isCurrent()) {
+        authPending.current = false;
+        setSubmitting(false);
+      }
     }
   }
 
   async function startGoogleSignIn() {
+    if (!ready || authPending.current) return;
+    authPending.current = true;
+    const requestAuthScope = authScopeKey;
+    const isCurrent = () => mounted.current && authScopeRef.current === requestAuthScope;
     setSubmitting(true);
     setNotice(null);
     setError(null);
@@ -184,11 +209,12 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
     try {
       const result = await auth.startGoogleSignIn({ redirectTo: next });
 
+      if (!isCurrent()) return;
       if (!result.success) {
         if (result.message === "已取消 Google 登录。") {
-          setNotice(result.message);
+          setNotice(locale.t("auth.googleCancelled"));
         } else {
-          setError(result.message ?? "Google 登录没有完成，请重新登录。");
+          setError(result.message ?? locale.t("auth.googleIncomplete"));
         }
         return;
       }
@@ -201,7 +227,10 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
         }) as Href
       );
     } finally {
-      setSubmitting(false);
+      if (isCurrent()) {
+        authPending.current = false;
+        setSubmitting(false);
+      }
     }
   }
 
@@ -209,13 +238,13 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
     <SafeAreaView edges={["top", "bottom"]} style={styles.screen}>
       <View style={styles.header}>
         <Pressable
-          accessibilityLabel="关闭"
+          accessibilityLabel={locale.t("auth.close")}
           accessibilityRole="button"
           onPress={() => router.canGoBack() ? router.back() : router.replace("/account")}
           style={({ pressed }) => [styles.closeButton, pressed ? styles.pressed : null]}
         >
           <Ionicons color={colors.accent} name="chevron-back" size={18} />
-          <Text style={styles.closeText}>关闭</Text>
+          <Text style={styles.closeText}>{locale.t("auth.close")}</Text>
         </Pressable>
       </View>
       <ScrollView
@@ -227,9 +256,9 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
       >
         <View style={styles.hero}>
           <OrbitAuthLogo />
-          <Text accessibilityRole="header" style={styles.title}>{mode === "signup" ? "创建账号" : view.title}</Text>
+          <Text accessibilityRole="header" style={styles.title}>{mode === "signup" ? locale.t("auth.signupTitle") : view.title}</Text>
           <Text style={styles.description}>
-            {mode === "login" ? "登录你的账号，继续高效连接。" : view.description}
+            {mode === "login" ? locale.t("auth.loginDescription") : view.description}
           </Text>
         </View>
         {view.restrictionMessage ? (
@@ -259,6 +288,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
               field={field}
               key={field.name}
               onChange={(value) => updateValue(field, value)}
+              t={locale.t}
               value={fieldValue(field, values)}
             />
           ))}
@@ -288,7 +318,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
           ) : null}
           <View style={[styles.actions, view.helperLinks.length > 0 ? styles.actionsAfterHelper : null]}>
           {created ? (
-            <Text style={styles.noticeText}>账号已创建。请用刚才的邮箱继续登录。</Text>
+            <Text style={styles.noticeText}>{locale.t("auth.createdNotice")}</Text>
           ) : null}
           {notice ? <Text style={styles.noticeText}>{notice}</Text> : null}
           {error ? <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text> : null}
@@ -311,7 +341,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
             <View style={styles.oauthStack}>
               <View style={styles.dividerRow}>
                 <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>或</Text>
+                <Text style={styles.dividerText}>{locale.t("auth.or")}</Text>
                 <View style={styles.dividerLine} />
               </View>
               {view.oauthActions.map((action) => (
@@ -328,7 +358,7 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
                   ]}
                 >
                   <Ionicons color={colors.ink} name="logo-google" size={18} />
-                  <Text style={styles.oauthButtonText}>{fontScale > 1.3 ? "Google 登录" : action.label}</Text>
+                  <Text style={styles.oauthButtonText}>{fontScale > 1.3 ? locale.t("auth.googleShort") : action.label}</Text>
                 </Pressable>
               ))}
             </View>
@@ -350,8 +380,8 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
             ]}
           >
             <Text style={styles.switchText}>
-              {mode === "login" ? "还没有账号？ " : mode === "signup" ? "已有账号？ " : ""}
-              <Text style={styles.switchAction}>{mode === "login" ? "注册" : mode === "signup" ? "登录" : view.switchLabel}</Text>
+              {mode === "login" ? locale.t("auth.noAccount") : mode === "signup" ? locale.t("auth.hasAccount") : ""}
+              <Text style={styles.switchAction}>{mode === "login" ? locale.t("auth.register") : mode === "signup" ? locale.t("auth.loginPrimary") : view.switchLabel}</Text>
             </Text>
           </Pressable>
           </View>
@@ -371,10 +401,12 @@ function OrbitAuthLogo() {
 function AuthField({
   field,
   onChange,
+  t,
   value
 }: {
   field: AccountAuthFieldView;
   onChange: (value: string) => void;
+  t: OrbitTranslator;
   value: string;
 }) {
   const { colors, styles } = useStyles();
@@ -403,7 +435,7 @@ function AuthField({
         />
         {field.secure ? (
           <Pressable
-            accessibilityLabel={passwordVisible ? "隐藏密码" : "显示密码"}
+            accessibilityLabel={passwordVisible ? t("auth.hidePassword") : t("auth.showPassword")}
             accessibilityRole="button"
             hitSlop={8}
             onPress={() => setPasswordVisible((current) => !current)}

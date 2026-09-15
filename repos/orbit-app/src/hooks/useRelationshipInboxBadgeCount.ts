@@ -25,7 +25,7 @@ export function useRelationshipInboxBadgeCount(scopeKey?: string): number | unde
   const nativeActive = useRef(foreground);
   const pending = useRef<AbortController | null>(null);
   const sequence = useRef(0);
-  const actorId = auth.user?.id ?? "";
+  const actorId = auth.actorId ?? "";
   const ready = focused && foreground && auth.ready && auth.signedIn && server.ready && Boolean(actorId);
   const scope = useMemo(() => ({ key: String(++sequence.current), ready }),
     [ready, actorId, auth.cookieHeader, server.baseUrl, scopeKey, resumeIndex]);

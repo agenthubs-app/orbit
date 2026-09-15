@@ -1,15 +1,16 @@
-const NOTE_SUGGESTION_PROMPT = "请根据这篇笔记整理一个待办，并明确标题和日期。";
+import type { OrbitLanguage } from "../api/contract/language";
+import { createTranslator } from "../i18n/messages";
 
 function first(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
 }
 
-export function buildNoteSuggestionNavigation(note: { id: string; version: number }) {
+export function buildNoteSuggestionNavigation(note: { id: string; version: number }, language: OrbitLanguage = "zh") {
   return {
     pathname: "/ai/[id]" as const,
     params: {
       id: "new",
-      initialMessage: NOTE_SUGGESTION_PROMPT,
+      initialMessage: createTranslator(language)("notes.aiTaskPrompt"),
       sourceNoteId: note.id,
       sourceNoteVersion: String(note.version),
     },

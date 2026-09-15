@@ -29,7 +29,7 @@ test("contacts screen can run the web deep contact search", () => {
   assert.match(screenSource, /sourceFilters: selectedSourceFilters/u);
   assert.match(screenSource, /tagFilters: selectedTagFilters/u);
   assert.match(screenSource, /valueFilters: selectedValueFilters/u);
-  assert.match(screenSource, /"深度搜索"/u);
+  assert.match(screenSource, /locale\.t\("contacts\.deepSearch"\)/u);
 });
 
 test("contacts screen loads relationship natural search suggestions", () => {
@@ -42,8 +42,8 @@ test("contacts screen loads relationship natural search suggestions", () => {
   assert.match(screenSource, /RelationshipSearchSuggestionsRow/u);
   assert.match(screenSource, /onSelectRelationshipSuggestion/u);
   assert.match(screenSource, /runRelationshipSearch/u);
-  assert.match(screenSource, /"关系搜索"/u);
-  assert.match(screenSource, /推荐搜索/u);
+  assert.match(screenSource, /locale\.t\("contacts\.relationshipSearch"\)/u);
+  assert.match(screenSource, /locale\.t\("contacts\.suggestedSearches"\)/u);
 });
 
 test("contacts screen keeps industry filters without a persistent intent picker", () => {
@@ -51,7 +51,7 @@ test("contacts screen keeps industry filters without a persistent intent picker"
   assert.match(screenSource, /selectedRelationshipIndustries/u);
   assert.match(screenSource, /toggleRelationshipIndustryFilter/u);
   assert.match(screenSource, /industryFilters: selectedRelationshipIndustries/u);
-  assert.match(screenSource, /label: "行业"/u);
+  assert.match(screenSource, /label: locale\.t\("contacts\.filterIndustry"\)/u);
   assert.match(screenSource, /"企业 SaaS"/u);
   assert.doesNotMatch(screenSource, /selectedRelationshipIntent/u);
   assert.doesNotMatch(screenSource, /onRelationshipIntentChange/u);
@@ -166,7 +166,7 @@ test("contacts overview prioritizes workbench modules and hides the long contact
   const overviewSource = screenSource.slice(overviewStart, listStart);
   const listSource = screenSource.slice(listStart);
   const analysisIndex = screenSource.indexOf(
-    'title="人脉分析"',
+    'title={locale.t("contacts.analysis")}',
     priorityToolsStart
   );
   const listEntryIndex = overviewSource.indexOf("<ContactsLibraryEntry");
@@ -174,10 +174,10 @@ test("contacts overview prioritizes workbench modules and hides the long contact
   assert.match(contactsTabSource, /ContactsScreen/u);
   assert.doesNotMatch(contactsTabSource, /mode="list"/u);
   assert.match(contactsListRouteSource, /<ContactsScreen mode="list" \/>/u);
-  assert.match(screenSource, /<AppScreen title="人脉">/u);
-  assert.doesNotMatch(screenSource, /<AppScreen eyebrow="人脉总览" title="人脉">/u);
+  assert.match(screenSource, /<AppScreen title=\{locale\.t\("contacts\.title"\)\}>/u);
+  assert.doesNotMatch(screenSource, /<AppScreen eyebrow=/u);
   // List navigation and touch targets are exercised by contacts-redesign-interactions.
-  assert.match(screenSource, /联系人库/u);
+  assert.match(screenSource, /locale\.t\("contacts\.library"\)/u);
   assert.doesNotMatch(screenSource, /人脉工作台/u);
   assert.ok(overviewStart > -1);
   assert.ok(listStart > overviewStart);
@@ -200,7 +200,7 @@ test("contacts overview retains its library and analysis route wiring", () => {
   assert.doesNotMatch(overviewSource, /<RelationshipWorkbenchHero/u);
   assert.match(overviewSource, /<OverviewToolGrid/u);
   assert.match(overviewSource, /<PriorityNetworkTools \/>/u);
-  assert.match(screenSource, /<NetworkPriorityCard[\s\S]*title="人脉分析"/u);
+  assert.match(screenSource, /<NetworkPriorityCard[\s\S]*title=\{locale\.t\("contacts\.analysis"\)\}/u);
   assert.ok(listDrilldownIndex > -1);
   // Visible row order and touch geometry are exercised against the real screen
   // in app-wide-contacts.test.ts; JSX wrapper positions do not imply layout.
@@ -226,9 +226,9 @@ test("contacts overview retains merged analysis semantics and its single destina
   assert.doesNotMatch(screenSource, /networkPriorityCardInverted/u);
   assert.match(
     screenSource,
-    /<NetworkPriorityCard[\s\S]*route="\/contacts\/dashboard"[\s\S]*title="人脉分析"/u
+    /<NetworkPriorityCard[\s\S]*route="\/contacts\/dashboard"[\s\S]*title=\{locale\.t\("contacts\.analysis"\)\}/u
   );
-  assert.match(screenSource, /detail="结构、机会与关系质量"/u);
+  assert.match(screenSource, /detail=\{locale\.t\("contacts\.analysisDetail"\)\}/u);
   assert.doesNotMatch(overviewSource, /\/contacts\/graph/u);
 });
 
@@ -244,7 +244,7 @@ test("contacts overview retains the contacts library label and direct entry", ()
   assert.ok(libraryStart > -1);
   assert.match(overviewSource, /<ContactsLibraryEntry/u);
   assert.match(overviewSource, /router\.push\("\/contacts\/list" as Href\)/u);
-  assert.match(librarySource, /联系人库/u);
+  assert.match(librarySource, /locale\.t\("contacts\.library"\)/u);
   assert.doesNotMatch(librarySource, /藏在更深一层/u);
   assert.match(librarySource, /people-outline/u);
   // Compact full-width rows replace the old 88pt card requirement. Actual
@@ -293,8 +293,8 @@ test("contacts list keeps recent relationship searches as local reusable chips",
   assert.match(screenSource, /recentRelationshipSearches/u);
   assert.match(screenSource, /rememberRelationshipSearch/u);
   assert.match(screenSource, /onSelectRecentRelationshipSearch/u);
-  assert.match(screenSource, /最近搜索/u);
-  assert.match(screenSource, /只保存在本机/u);
+  assert.match(screenSource, /locale\.t\("contacts\.recentSearches"\)/u);
+  assert.match(screenSource, /locale\.t\("contacts\.localOnly"\)/u);
   assert.match(screenSource, /runRelationshipSearch\([\s\S]*rememberRecent/u);
   assert.match(screenSource, /<RecentRelationshipSearchesRow[\s\S]*searches=\{recentRelationshipSearches\}/u);
   assert.doesNotMatch(screenSource, /AsyncStorage|SecureStore|savedSearchesApi/u);
@@ -319,10 +319,10 @@ test("contact filters share one compact four-button toolbar", () => {
   const toolbarSource = screenSource.slice(toolbarStart, toolbarEnd);
 
   assert.match(toolbarSource, /useState<ContactFilterMenuId \| null>/u);
-  assert.match(toolbarSource, /label: "行业"/u);
-  assert.match(toolbarSource, /label: "进展"/u);
-  assert.match(toolbarSource, /label: "行动"/u);
-  assert.match(toolbarSource, /label: "更多"/u);
+  assert.match(toolbarSource, /label: locale\.t\("contacts\.filterIndustry"\)/u);
+  assert.match(toolbarSource, /label: locale\.t\("contacts\.filterProgress"\)/u);
+  assert.match(toolbarSource, /label: locale\.t\("contacts\.filterAction"\)/u);
+  assert.match(toolbarSource, /label: locale\.t\("contacts\.filterMore"\)/u);
   assert.match(toolbarSource, /accessibilityState=\{\{ expanded: activeMenu === item\.id \}\}/u);
   assert.match(screenSource, /filterToolbarRow:[\s\S]*flexDirection: "row"/u);
   assert.match(screenSource, /filterToolbarButton:[\s\S]*flex: 1/u);

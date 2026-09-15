@@ -5,18 +5,21 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { createThemedStyles } from "../design/theme";
 import type { MainTab } from "../view-models/app-navigation";
 import { OrbitNavigationIcon } from "./OrbitNavigationIcon";
+import { useOrbitLocale } from "../i18n/OrbitLocaleContext";
+import type { MessageKey } from "../i18n/messages";
 
 const tabs = [
-  { id: "home", label: "首页", href: "/home" },
-  { id: "contacts", label: "人脉", href: "/contacts" },
-  { id: "ai", label: "IORBIT", href: "/ai" },
-  { id: "events", label: "活动", href: "/events" },
-  { id: "profile", label: "我的", href: "/profile" }
+  { id: "home", labelKey: "nav.home", href: "/home" },
+  { id: "contacts", labelKey: "nav.contacts", href: "/contacts" },
+  { id: "ai", labelKey: "nav.ai", href: "/ai" },
+  { id: "events", labelKey: "nav.events", href: "/events" },
+  { id: "profile", labelKey: "nav.profile", href: "/profile" }
 ] as const;
 
 export function OrbitTabBar({ active }: { active: MainTab }) {
   const { colors, styles } = useStyles();
   const router = useRouter();
+  const locale = useOrbitLocale();
   const [keyboardVisible, setKeyboardVisible] = useState(() => Keyboard.isVisible());
   useEffect(() => {
     const show = Keyboard.addListener("keyboardDidShow", () => setKeyboardVisible(true));
@@ -27,20 +30,21 @@ export function OrbitTabBar({ active }: { active: MainTab }) {
   if (keyboardVisible) return null;
   return (
     <SafeAreaView edges={{ bottom: "maximum" }} pointerEvents="box-none" style={styles.safeArea}>
-      <View accessibilityRole="tablist" accessibilityLabel="主导航" style={styles.bar}>
+      <View accessibilityRole="tablist" accessibilityLabel={locale.t("nav.main")} style={styles.bar}>
         {tabs.map(tab => {
+          const label = locale.t(tab.labelKey as MessageKey);
           const selected = active === tab.id;
           const central = tab.id === "ai";
           const color = central ? colors.onAccent : selected ? colors.accent : colors.text3;
           return (
-            <Pressable key={tab.id} accessibilityRole="tab" accessibilityLabel={tab.label}
+            <Pressable key={tab.id} accessibilityRole="tab" accessibilityLabel={label}
               accessibilityState={{ selected }} aria-selected={selected}
               onPress={() => central ? router.push(tab.href) : router.replace(tab.href)}
               style={({ pressed }) => [styles.tab, central && styles.centralTab, selected && styles.selected, pressed && styles.pressed]}>
               <View style={central ? styles.planet : null}>
                 <OrbitNavigationIcon name={tab.id} size={central ? 24 : 22} color={color} />
               </View>
-              <Text style={[styles.label, { color: central ? colors.ink : color }, central && styles.centralLabel]}>{tab.label}</Text>
+              <Text style={[styles.label, { color: central ? colors.ink : color }, central && styles.centralLabel]}>{label}</Text>
             </Pressable>
           );
         })}

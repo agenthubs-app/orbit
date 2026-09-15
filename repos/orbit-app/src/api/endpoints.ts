@@ -37,9 +37,11 @@ export const ORBIT_API_ENDPOINTS = {
   agentSettings: "/api/agent/settings",
   connections: "/api/connections",
   contacts: "/api/contacts",
+  contactNeedsMatches: "/api/contacts/needs-matches",
   contactsSearch: "/api/contacts/search",
   conversations: "/api/ai/conversations",
   aiConversationSessions: "/api/ai/conversations/sessions",
+  aiConversationGroups: "/api/ai/conversations/groups",
   aiRuns: "/api/ai/runs",
   dashboard: "/api/dashboard",
   dashboardDistributions: "/api/dashboard/distributions",
@@ -504,6 +506,10 @@ export function eventRegistrationCancelPath(id: string): string {
   return `${eventRegistrationPath(id)}/cancel`;
 }
 
+export function eventAdmissionApplicationPath(id: string): string {
+  return `${eventDetailPath(id)}/admission/application`;
+}
+
 export function eventRegistrationInterviewPath(id: string): string {
   return `${eventRegistrationPath(id)}/interview`;
 }
@@ -751,6 +757,10 @@ export function aiConversationPath(id: string): string {
 
 export function aiConversationSessionPath(id: string): string {
   return detailPath(ORBIT_API_ENDPOINTS.aiConversationSessions, id);
+}
+
+export function aiConversationGroupPath(id: string): string {
+  return detailPath(ORBIT_API_ENDPOINTS.aiConversationGroups, id);
 }
 
 export function aiRunPath(id: string, scenario?: string | null): string {

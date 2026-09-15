@@ -56,9 +56,9 @@ const homeEventFilterOrder: HomeEventFilter[] = [
 ];
 
 const homeAskPrompts = [
-  "今天我应该先联系谁？",
-  "帮我准备最近一场活动",
-  "有哪些人适合互相介绍？"
+  { entryPointId: "home.contact_priority", message: "今天我应该先联系谁？" },
+  { entryPointId: "home.event_preparation", message: "帮我准备最近一场活动" },
+  { entryPointId: "home.introductions", message: "有哪些人适合互相介绍？" }
 ] as const;
 
 function isReady(
@@ -97,7 +97,7 @@ export function HomeScreen({ mode = "hub" }: { mode?: HomeMode }) {
     () => false
   );
   const eventsState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.events,
+    ORBIT_API_ENDPOINTS.publicEvents,
     () => false
   );
   const contactsState = useApiResource<unknown>(
@@ -180,9 +180,9 @@ export function HomeScreen({ mode = "hub" }: { mode?: HomeMode }) {
         ) : (
           <HomeHubContent
             baseUrl={baseUrl}
-            onAskOrbit={(message) =>
+            onAskOrbit={(message, entryPointId) =>
               router.push({
-                params: { id: "new", initialMessage: message },
+                params: { id: "new", initialMessage: message, entryPointId },
                 pathname: "/ai/[id]"
               })
             }
@@ -208,7 +208,7 @@ function HomeHubContent({
   view
 }: {
   baseUrl: string;
-  onAskOrbit: (message: string) => void;
+  onAskOrbit: (message: string, entryPointId: string) => void;
   onOpenEntry: (href: HomeEntryView["href"]) => void;
   onOpenEvent: (eventId: string) => void;
   onOpenEvents: () => void;
@@ -219,7 +219,7 @@ function HomeHubContent({
   const [askDraft, setAskDraft] = useState("");
   const [askError, setAskError] = useState<string | null>(null);
 
-  function submitAsk(message: string) {
+  function submitAsk(message: string, entryPointId = "ai.home") {
     const trimmed = message.trim();
 
     if (!trimmed) {
@@ -229,7 +229,7 @@ function HomeHubContent({
 
     setAskError(null);
     setAskDraft("");
-    onAskOrbit(trimmed);
+    onAskOrbit(trimmed, entryPointId);
   }
 
   return (
@@ -275,14 +275,14 @@ function HomeHubContent({
           {homeAskPrompts.map((prompt) => (
             <Pressable
               accessibilityRole="button"
-              key={prompt}
-              onPress={() => submitAsk(prompt)}
+              key={prompt.entryPointId}
+              onPress={() => submitAsk(prompt.message, prompt.entryPointId)}
               style={({ pressed }) => [
                 styles.promptChip,
                 pressed ? styles.pressed : null
               ]}
             >
-              <Text style={styles.promptChipText}>{prompt}</Text>
+              <Text style={styles.promptChipText}>{prompt.message}</Text>
             </Pressable>
           ))}
         </View>

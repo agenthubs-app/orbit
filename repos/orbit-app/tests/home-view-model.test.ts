@@ -7,6 +7,7 @@ import {
   homeToView,
   type HomeEventFilter
 } from "../src/view-models/home";
+import { scheduleToTimelineView } from "../src/view-models/schedule";
 
 function flattenedText(value: unknown): string {
   return JSON.stringify(value);
@@ -257,6 +258,43 @@ test("home events route renders events as an image-first list", () => {
   assert.doesNotMatch(contentSource, /homeEventFilterBlock/u);
   assert.doesNotMatch(contentSource, /title="活动状态"/u);
   assert.doesNotMatch(contentSource, /<EventRow/u);
+});
+
+test("home and schedule consume the same canonical public event count", () => {
+  const source = readFileSync(
+    new URL("../src/screens/home/HomeScreen.tsx", import.meta.url),
+    "utf8"
+  );
+  assert.match(
+    source,
+    /const eventsState = useApiResource<unknown>\(\s*ORBIT_API_ENDPOINTS\.publicEvents/u
+  );
+
+  const events = {
+    events: [{
+      id: "event:registration",
+      participantCount: 0,
+      startsAt: "2026-09-17T10:00:00+09:00",
+      status: "imported",
+      title: "准入活动"
+    }]
+  };
+  const home = homeToView({
+    contacts: { contacts: [] },
+    events,
+    now: new Date("2026-09-15T00:00:00+09:00"),
+    profile: { profile: {} }
+  });
+  const schedule = scheduleToTimelineView({
+    events,
+    now: new Date("2026-09-15T00:00:00+09:00"),
+    tasks: { tasks: [] }
+  });
+  assert.equal(home.events[0]?.participantCountLabel, "0 人已报名");
+  assert.equal(
+    schedule.eventHighlights[0]?.participantCountLabel,
+    home.events[0]?.participantCountLabel
+  );
 });
 
 test("home hub event preview also uses the image-first event list", () => {

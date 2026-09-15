@@ -25,14 +25,17 @@ test("current batch private entry and encoded detail preserve auth return contex
   for (const suffix of ["%ZZ", "%2E", "%2E%2E", "a/extra"]) assert.equal(resolveInitialRouteHref("/contacts/new/batch2/" + suffix), "/home");
 });
 
-test("legacy batch private login return preserves context and omits the path id", () => {
+test("legacy batch login completion handoff preserves context and omits the path id", () => {
   const path = "/contacts/new/batch/batch%3A%2F%20%E7%A9%BA";
   assert.equal(isPrivateMobileRoute(path), true);
   const login = mobileLoginHref(path, { id: ["batch:/ 空", "duplicate"], tab: "review", "#": "card" });
   const next = new URL(login, "https://orbit.invalid").searchParams.get("next")!;
   assert.equal(next, `${path}?tab=review#card`);
   assert.equal(normalizedNext(next), next);
-  assert.equal(nextHrefForAccountAuthSubmit({ email: "test@example.invalid", mode: "login", next }), next);
+  assert.equal(
+    nextHrefForAccountAuthSubmit({ email: "test@example.invalid", mode: "login", next }),
+    `/profile?complete=1&next=${encodeURIComponent(next)}`
+  );
 });
 
 test("mobile actor workspaces share one private-route policy", () => {
@@ -42,6 +45,7 @@ test("mobile actor workspaces share one private-route policy", () => {
     "/agent",
     "/ai/conversation-1",
     "/chat/thread-1",
+    "/contacts/matches",
     "/contacts/person-1",
     "/dashboard",
     "/followups",
@@ -138,9 +142,16 @@ test("auth return parameter ownership follows the matched route instead of globa
     }),
     "/contacts/list?id=query-owned-on-static-route&q=tokyo"
   );
+  assert.equal(
+    mobileAuthReturnHref("/contacts/matches", {
+      id: "query-owned-on-static-route",
+      view: "all"
+    }),
+    "/contacts/matches?id=query-owned-on-static-route&view=all"
+  );
 });
 
-test("party query, duplicate values and fragment survive the complete login return", () => {
+test("party query, duplicate values and fragment survive the login completion handoff", () => {
   const expected =
     "/party?code=event-1&code=event-2&view=graph#relationship-map";
   const loginHref = mobileLoginHref("/party", {
@@ -164,7 +175,7 @@ test("party query, duplicate values and fragment survive the complete login retu
       mode: "login",
       next: encodedNext ?? undefined
     }),
-    expected
+    `/profile?complete=1&next=${encodeURIComponent(expected)}`
   );
 });
 
@@ -232,6 +243,7 @@ test("every root-level private entry uses the shared render gate", () => {
     "contacts/graph.tsx",
     "contacts/intros.tsx",
     "contacts/list.tsx",
+    "contacts/matches.tsx",
     "contacts/new.tsx",
     "contacts/new/batch/[id].tsx",
     "contacts/new/batch2/[id].tsx",
@@ -257,6 +269,11 @@ test("every root-level private entry uses the shared render gate", () => {
     "party/graph.tsx",
     "platform.tsx",
     "schedule/events/[id].tsx",
+    "schedule/personal/[id].tsx",
+    "schedule/personal/new.tsx",
+    "tasks.tsx",
+    "tasks/[id].tsx",
+    "tasks/personal.tsx",
     "settings.tsx",
     "settings/api.tsx",
     "today.tsx"

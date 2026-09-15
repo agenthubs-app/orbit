@@ -14,14 +14,16 @@ export const aiConversationPayload = {
 export const emptyAiConversationPayload = { ...aiConversationPayload, state: "empty", activeConversationId: null, assistantMessage: "", conversations: [], messages: [] };
 export const aiSession = {
   id: "session:1", title: "产品试点讨论", customTitle: "产品试点讨论", pinned: false, createdAt: "2026-09-11T00:00:00Z", updatedAt: "2026-09-11T01:00:00Z", panel: null,
+  organization: { customTitle: "产品试点讨论", groupId: "group:work", pinned: false, revision: 2 },
   messages: [{ role: "user", text: "讨论产品试点" }, { role: "assistant", text: "梳理了试点范围、时间节点和资源需求。" }]
 };
-export const aiSessionListPayload = { sessions: [aiSession, { ...aiSession, id: "session:2", title: "本周安排", customTitle: "本周安排", updatedAt: "2026-09-09T01:00:00Z", messages: [{ role: "user", text: "本周安排" }, { role: "assistant", text: "汇总本周重点工作与待办事项。" }] }], storage: { configured: true, persisted: true, source: "session-store" } };
+export const aiSessionListPayload = { sessions: [aiSession, { ...aiSession, id: "session:2", title: "本周安排", customTitle: "本周安排", organization: { ...aiSession.organization, customTitle: "本周安排" }, updatedAt: "2026-09-09T01:00:00Z", messages: [{ role: "user", text: "本周安排" }, { role: "assistant", text: "汇总本周重点工作与待办事项。" }] }], storage: { configured: true, persisted: true, source: "session-store" } };
 export const emptyAiSessionListPayload = { ...aiSessionListPayload, sessions: [] };
 export const aiTodayPayload = { date: "2026-09-12", timeZone: "Asia/Tokyo", tasks: [profileTasksPayload.tasks[0]], completedCount: 0, suggestions: [], schedule: [], summary: { openTaskCount: 1, completedCount: 0, suggestionCount: 0, scheduleCount: 0 } };
 export const aiReadPayloads = {
   "/api/ai/conversations": aiConversationPayload,
   "/api/ai/conversations/sessions": aiSessionListPayload,
+  "/api/ai/conversations/groups": { groups: [{ id: "group:work", name: "工作", revision: 1, createdAt: "2026-09-10T00:00:00Z", updatedAt: "2026-09-10T00:00:00Z" }] },
   "/api/today": aiTodayPayload,
   "/api/chat/relationship-inbox": { items: [] },
   "/api/notifications": { notifications: [] }

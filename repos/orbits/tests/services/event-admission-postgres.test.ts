@@ -311,8 +311,18 @@ test(
       const a = await service.submitApplication("actor:A", {
         eventId: "event:instant", profilePayload: profile("actor:A"),
       });
+      const retriedProfile = profile("actor:A");
       const duplicateA = await service.submitApplication("actor:A", {
-        eventId: "event:instant", profilePayload: profile("actor:A"),
+        eventId: "event:instant",
+        profilePayload: {
+          ...retriedProfile,
+          interviewResponses: retriedProfile.interviewResponses.map(
+            (response) => ({
+              ...response,
+              answeredAt: "2026-08-04T00:59:00.000Z",
+            }),
+          ),
+        },
       });
       assert.deepEqual(duplicateA, a);
       await assert.rejects(

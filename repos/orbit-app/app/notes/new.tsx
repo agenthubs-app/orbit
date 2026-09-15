@@ -8,7 +8,7 @@ import { NewNoteScreen } from "../../src/screens/notes/NewNoteScreen";
 
 function NewNoteRoute() {
   const focused = useIsFocused(); const auth = useOrbitAuthSession(); const server = useOrbitApiBaseUrl();
-  const actorId = auth.user?.id ?? "";
+  const actorId = auth.actorId ?? "";
   const enabled = focused && auth.ready && auth.signedIn && server.ready && Boolean(actorId);
   const sequence = useRef(0);
   const scope = useMemo(() => ({ key: String(++sequence.current), enabled }), [enabled, actorId, auth.cookieHeader, server.baseUrl]);

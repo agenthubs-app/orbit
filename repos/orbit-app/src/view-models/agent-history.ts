@@ -4,7 +4,9 @@ const MAX_HISTORY_ROWS = 12;
 const MAX_TITLE_LENGTH = 34;
 
 export interface AgentHistorySummary {
+  groupId: string | null;
   id: string;
+  organizationRevision: number;
   pinned: boolean;
   preview: string;
   routeParams: {
@@ -30,6 +32,12 @@ interface AgentSession {
   customTitle: string;
   id: string;
   messages: AgentSessionMessage[];
+  organization: {
+    customTitle: string | null;
+    groupId: string | null;
+    pinned: boolean;
+    revision: number;
+  };
   panel: unknown | null;
   pinned: boolean;
   title: string;
@@ -189,14 +197,26 @@ function sessionFromRecord(value: unknown): AgentSession | null {
         .map((message, index) => messageFromRecord(message, index, baseSession))
         .filter((message): message is AgentSessionMessage => message !== null)
     : [];
+  const customTitle = stringField(value, "customTitle");
 
   return {
     createdAt,
-    customTitle: stringField(value, "customTitle"),
+    customTitle,
     id,
     messages,
+    organization: isRecord(value.organization) ? {
+      customTitle: stringField(value.organization, "customTitle") || null,
+      groupId: stringField(value.organization, "groupId") || null,
+      pinned: value.organization.pinned === true,
+      revision: typeof value.organization.revision === "number" ? value.organization.revision : 0
+    } : {
+      customTitle: customTitle || null,
+      groupId: null,
+      pinned: value.pinned === true,
+      revision: 0
+    },
     panel: isRecord(value.panel) ? value.panel : null,
-    pinned: value.pinned === true,
+    pinned: isRecord(value.organization) ? value.organization.pinned === true : value.pinned === true,
     title: stringField(value, "title"),
     updatedAt
   };
@@ -236,7 +256,9 @@ export function agentHistorySessionsToSummaries(
     )
     .slice(0, MAX_HISTORY_ROWS)
     .map((session) => ({
+      groupId: session.organization.groupId,
       id: session.id,
+      organizationRevision: session.organization.revision,
       pinned: session.pinned,
       preview: displayPreviewForSession(session),
       routeParams: {

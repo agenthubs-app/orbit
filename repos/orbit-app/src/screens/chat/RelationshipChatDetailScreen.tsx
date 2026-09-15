@@ -56,7 +56,7 @@ export function RelationshipChatDetailScreen() {
   const conversationId = firstParam(params.id);
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
-  const actorId = auth.user?.id ?? "";
+  const actorId = auth.actorId ?? "";
   const ready = auth.ready && auth.signedIn && server.ready && Boolean(actorId);
   const scopeKey = useMemo(
     () => randomUUID(),

@@ -12,16 +12,88 @@
 | --- | --- | --- | --- | --- | --- |
 | BR-001 | P1 | Today 同名但数据与动作集合不同 | identified | Bridge 梳理，Web/App 接口负责人协作 | 逐项映射账本/安排/任务；实现或有依据接受差异；双向验证 |
 | BR-002 | P1 | Agent 高级设置移动缺口 | identified | Bridge + App，Web 提供 HTTP 边界 | memory/feedback/automations/preferences 覆盖方案及逐操作验收 |
-| BR-003 | P1 | 会话历史操作与持久化确认 | identified | Bridge + App，Web sessions 负责人协作 | 改名/置顶范围明确；跨端续聊、失败恢复不丢历史的实测证据 |
-| BR-004 | P1 | 未共享响应 DTO / Schema 覆盖 | identified | Web 契约负责人 + App | 按消费者列清单，逐模块迁移与同步；已有 whitelist 不扩张 |
-| BR-005 | P1 | 缺少当前版本双向状态验收 | identified | Bridge | 账号/联系人/任务/报名/运营/会话的双向读写与刷新证据 |
+| BR-003 | P1 | 会话历史操作与持久化确认 | verified | 已完成；0005/0006 可消费 | 同账号 Web/App 组织、删除、刷新及 iOS 失败反馈证据齐全 |
+| BR-004 | P1 | 未共享响应 DTO / Schema 覆盖 | identified | Web 契约负责人 + App | AI sessions 已共享；其余消费者按模块继续迁移与同步 |
+| BR-005 | P1 | 缺少当前版本双向状态验收 | specified | Bridge | 账号/联系人/任务/报名/运营/会话的双向读写与刷新证据 |
 | BR-006 | P1 | Web 发布门槛与 App 公网依赖 | blocked | Web 发布负责人 | 记录解除 1C 的证据及部署版本，完成同环境 iOS 访问验证 |
 | BR-007 | P2 | 文档描述落后于代码 | identified | Bridge + 各端文档负责人 | README/契约迁移表与实际已发布能力一致；保留历史记录 |
 | BR-008 | P2 | App 未提交界面工作交接 | identified | App 负责人 | 提供最终文件/版本/验收范围，刷新 bridge 基线 |
-| [BR-009](2026-09-15-notes-core.md) | P1 | 独立私有笔记核心 | verified | 已关闭 | 同环境双向读写、刷新、版本冲突、actor 隔离与原生 App 已于 2026-09-15 验证 |
-| [BR-010](2026-09-15-note-suggestions.md) | P1 | 笔记来源待办建议 | verified | 已关闭 | 同环境建议接受、幂等、来源版本、日期确认与原生 App 已于 2026-09-15 验证 |
-| [BR-011](2026-09-15-notes-ink-signal-search.md) | P1 | 笔记 4a 与搜索式关联 | verified | 已关闭 | 同账号 Web/App 双向 note v2、有界联系人搜索、原生 4a 六状态与版本／权限反例已于 2026-09-15 验证 |
+| BR-009 | P1 | 事项与个人日程编辑跨端一致 | verified | 已完成；0022 可消费 | 同一合成 actor/记录完成 Web↔App 创建、编辑、清空、冲突与提醒回读 |
+| BR-010 | P1 | 身份邀请、绑定与共享聊天 | verified | 已完成；0012 可消费 | 隔离双 actor 与 PostgreSQL 证明资格、幂等投递、撤销和双方回读 |
+| BR-011 | P1 | 消息前台刷新、已读、角标与推送 | blocked | 运行环境负责人 | 提供 Expo project、push server key、双用户原生账号及实体推送环境后补真实验收 |
+| BR-012 | P1 | 双面名片按卡复核并一次创建联系人 | blocked | Bridge／共同环境负责人 | 实体 iPhone 在共同 API/OCR 环境完成双面创建，Web/App 重开同一联系人和字段来源 |
+| BR-013 | P1 | 统一待办与人脉筛选跨端一致 | verified | 已完成；0011/0013/0015/0018 可消费 | 同一任务在 App 全部／人脉视图、旧链接及 Web 完成／恢复回读一致 |
+| BR-014 | P1 | 首页与可信人脉分析 | blocked | provider 环境负责人 | 仅剩真实 provider 显式生成后，在 Web/App 重开同一持久报告 |
+| BR-015 | P1 | 账号语言偏好与三语基础 | verified | 已完成；0014/0015 可消费 | 独立账号偏好、三语 Provider、设备 A 保存→设备 B 服务端回读及失败／冲突证据齐全 |
+| BR-016 | P1 | 人脉、名片与活动三语消费 | consumer_ready | 0015；0016/0017 验收 | App 三语主链路本地回归通过；实体设备与共同远程环境由系统级 Sprint 验收 |
+| [BR-017](2026-09-15-notes-core.md) | P1 | 独立私有笔记核心 | verified | 已关闭 | 同环境双向读写、刷新、版本冲突、actor 隔离与原生 App 已于 2026-09-15 验证 |
+| [BR-018](2026-09-15-note-suggestions.md) | P1 | 笔记来源待办建议 | verified | 已关闭 | 同环境建议接受、幂等、来源版本、日期确认与原生 App 已于 2026-09-15 验证 |
+| [BR-019](2026-09-15-notes-ink-signal-search.md) | P1 | 笔记 4a 与搜索式关联 | verified | 已关闭 | 同账号 Web/App 双向 note v2、有界联系人搜索、原生 4a 六状态与版本／权限反例已于 2026-09-15 验证 |
+| [BR-020](2026-09-15-canonical-app-identity.md) | P1 | App raw 登录主体与 canonical 业务账号分离 | verified | 已关闭 | `/api/account/me` 唯一身份、owner-scoped 消费者、完整回归与原生三链已验证 |
 
+## BR-016 — 人脉、名片与活动三语消费
+
+- 创建/更新日期：2026-09-15。
+- 总状态：`consumer_ready`；web_status：`source_ready`（本轮无 Web 产品改动）；app_status：`consumer_ready`；verification_status：App 本地完整回归通过，实体设备／共同远程环境未运行。
+- App：人脉列表、详情、关系搜索、邀请、名片摄入／复核、活动发现、详情与报名消费 BR-015 的唯一 locale Context；只翻译产品 chrome 和已知枚举，服务端业务文本、姓名、公司、OCR、活动内容、题目、答案和 ID 保持 literal。
+- 状态不变量：运行中切换中／日／英不清空搜索和筛选，不覆盖联系人／OCR 编辑，不改变名片来源选择、活动 ID、报名答案或确认 payload；默认中文导航与既有可访问标签保持兼容。
+- 版本：App `9761b343d`；账号语言偏好 Web/API 继续为 `cc3930449`。没有新增或变更 HTTP、Schema、权限、OCR、报名资格与服务端语言规则。
+- 验证：0014 目标组合 197/197；首轮完整 App 回归发现 11 个旧源码硬编码断言和 4 个默认中文导航／布局兼容失败，修复后相关 42/42；随后两轮完整 App 均为 2753/2753，最终一轮显式清空全部 provider key；typecheck、diff-check 通过。
+- 外部边界：未部署、未访问生产账号／业务数据库，未调用真实 OCR／模型。实体 iPhone、相机权限、同账号共同远程环境和跨端业务回读不在本轮本地完成声明内。
+- 下游：0015 复用字典与 literal 边界迁移 AI／事项／消息；0016 在实际设备验收导航、字号、键盘和辅助功能；0017 在共同环境完成跨端系统验收。
+
+## BR-015 — 账号语言偏好与三语基础
+
+- 创建/更新日期：2026-09-15。
+- 总状态：`verified`；web_status：`source_ready`；app_status：`consumer_ready`；verification_status：隔离环境与原生本地验收通过。
+- Web/API：`GET/PUT /api/account/language-preference` 使用独立 actor-scoped 记录；PUT 以 expectedUpdatedAt、mutationId、SERIALIZABLE transaction 和 advisory lock 保护偏好与私有回执。
+- App：无手动偏好时跟随当前设备；手动中／日／英选择以账号为准，换号隔离，前台或显式刷新服务器事实。业务原文、身份字段和用户输入不进入翻译字典。
+- 版本：服务端 `cc3930449`；App 基础 `1bd99f737`；可达账号链路补齐 `9d5c13622`。
+- 验证：设备 A PUT 后独立 Provider 页面 B 以不同设备语言 GET 回读账号日文；真实 PostgreSQL 两连接并发、重放／碰撞、actor 隔离和回执失败回滚通过。App Provider 7/7、Profile 166/166、受影响组合 157/157、日期 5/5、原生 EN/JA 大字号通过。
+- 运行边界：当前是刷新式同步，不是实时推送；未访问生产账号、生产数据库或远程部署。全量尝试的旧夹具失败和定向修复结果见 Sprint 0013 REPORT，不写成最终全量通过。
+- 下游：0014/0015 复用唯一 Context、严格字典键和 literal 规则，按页面迁移产品 chrome；不得翻译姓名、公司、聊天、活动、题目或用户答案。
+
+## BR-014 — 首页与可信人脉分析
+
+- 创建/更新日期：2026-09-15。
+- 总状态：`blocked`；web_status：`source_ready`；app_status：`consumer_ready`；verification_status：登录态原生与目标跨端通过，仅真实 provider 报告 blocked。
+- 用户可见变化：首页原联系跟进区块改为真实推荐活动，未完成待办最多五条且成功完成后补位；人脉页展示已存报告、真实生成时间/版本和 stale 提示。点击分析只打开可编辑 IORBIT 草稿，发送前无生成；关系目标只保存自身字段。
+- Web/API：`GET /api/mobile/contacts-dashboard` 可选返回 analysis current/report/stale；可靠发送对 `contacts.analysis@1` 在执行前重算 actor-scoped source hash，并在首轮 assistant 成功持久化后写 server-only verification。普通 session 写入不能伪造。
+- App：同步共享 contract/schema；dashboard、目标保存与机会重算绑定 actor+baseUrl。StrictMode/失焦保留一次性草稿，切号清除；旧 ACK 不覆盖新编辑，409 刷新版本后使用新 mutation 重试。
+- 版本：目标保存 `a1d7d7665`、首页 `727aeeae2`、服务端可信报告 `7a2e9f767`、Web 入口 `3038e8ea7`、App 消费 `9a10522b1`。
+- 本地验证：App 全量 2715/2715；App 0011 三组 72/72、28/28、5/5，生命周期组合 128/128；Web 0011 组合 99/99；两端 typecheck exit0。provider keys 全部清空，未执行模型或外部写入。
+- 兼容与失败：旧 App 缺 analysis 时显示 unavailable；部分消息持久化而 verification 未完成时不会冒充报告，重放可补 marker 而不重新生成；旧跟进业务与 Pipeline 未删除。
+- 已补运行时证据：当前登录态 iOS Simulator 对照首页活动／五待办／Pipeline 与旧路径通过；同一合成账号完成 App 保存 relationshipGoal→Web 回读、Web 更新→App 回读，并核对相同 profile/version。
+- 未检查／关闭条件：仅剩配置真实 provider 后由用户显式发送一次分析，再在 Web/App 重开同一持久报告；部署版本另由 BR-006 验收，不重复阻塞 0011 的本地产品功能。
+
+## BR-013 — 统一待办与人脉筛选
+
+- 创建/更新日期：2026-09-15。
+- 总状态：`verified`；web_status：`source_ready`；app_status：`consumer_ready`；verification_status：`verified`。
+- Web/API：复用 BR-009 的 canonical task、版本与幂等动作；本轮未新增 Web 筛选 UI 或 API 字段。
+- App：`/tasks` 提供全部／人脉与未完成／已完成正交视图；旧 `/followups` 保持私有并归一化到 `/tasks?scope=relationship`。Pipeline、AI、消息、日历分别按语义进入筛选页或真实任务详情。
+- 工具与历史：联系人／事项必须显式选择后才启用 IORBIT 起草；URL 不携带正文，用户发送前零生成。候选、提醒和 canonical task 分开计数，既有会话历史仍可回读。
+- 版本：主线功能 `ef5d0b02d`；[Sprint 0022 报告](../repos/orbit-app/docs/sprints/0022-unified-tasks/REPORT.md)。
+- 验证：主线相关集65/65、任务集83/83、导航消费者208/208、App typecheck通过；隔离 PostgreSQL 与 iOS Simulator 中同一任务完成／恢复完成 App→Web→App 回读，联系人 payload 未变。
+- 风险记录：实施前 `initial-route` 链为 HIGH，已覆盖登录回跳、旧链接和导航消费者；主线 GitNexus 索引陈旧返回0，不作为低风险证据。原全量44项旧夹具失败及后续65项复验分别保留。
+- 下游稳定地址：全部待办 `/tasks`，人脉待办 `/tasks?scope=relationship`，完成维度 `view=completed`，详情 `/tasks/<encoded-id>`。候选不得伪造 task ID；完成人脉待办不得自动推进联系人 lifecycle。
+
+## BR-012 — 双面名片卡片级确认
+
+- 创建/更新日期：2026-09-15。
+- 总状态：`blocked`；web_status：`source_ready`；app_status：`consumer_ready`；verification_status：本地通过、真实跨端 blocked。
+- 发起角色：Bridge；下一责任方：共同环境／实体设备验收负责人，尚无可用对象。
+- 授权来源：用户明确启动 D 线并授予持续实现权限；真实环境迁移、具体联系人和样本仍以实际对象记录验收。
+- 用户可见变化：App 可为一张名片选择正面和可选反面，复核两面图片及字段来源，冲突需明确处理；一次确认只返回一个联系人。
+- Web/API：`POST /api/contact-drafts/business-card/batches/v2` manifest 新增 `cardId`、`side`；现有 item confirm 路径以整卡确认，接收 `confirmationIntentId`、`expectedCardItems`、`fieldSources`。
+- App：`BusinessCardIngestStartScreen` 负责显式配对；`BusinessCardIngestScreen` 和 `BusinessCardBatchReviewForm` 负责双面切换、来源选择、重拍失效和卡片级动作。
+- 版本：D 线原功能 `0a1ca09a4`、主线集成 `011b575bb`；共享契约与 App 副本已同步。
+- 数据与幂等：每卡恰有一个 front、至多一个 back；确认事务锁定 actor/batch/card，校验两面版本和摘要，同一意图重放返回同一联系人。证据 ID 保留两面 item；联系人 draft identity 包含 batch，避免不同批次的 client `cardId` 碰撞。
+- 旧 App：缺少 `cardId`／`side` 的 manifest 每图独立成为单面卡，并保留旧 manifest fingerprint；只允许这类真实 legacy 单面请求省略新确认元数据。
+- 刷新／失败：重拍或重 OCR 改变 side 版本后旧来源选择失效，手工字段保留；失败的反面可独立重试；确认、跳过和清理均按整卡收口。
+- 本地证据：App 全量 2603/2603；两端 typecheck exit 0；隔离 PostgreSQL 名片 API／repository 28/28；Web 全量中的 D 线相关断言无新增失败。详见 `repos/orbit-app/docs/sprints/0007-two-sided-cards/REPORT.md`。
+- 未检查：真实迁移、真实 OCR、实体相机拒权／重拍、真实联系人写入、Web→App／App→Web 同记录回读、部署版本和实际新增费用。
+- 关闭条件：实体 iPhone 在线，并在同一已配置环境用授权双面样本完成拍摄→OCR→来源复核→一次创建；记录 App/API 版本、脱敏 card/contact ID、两端重开、图片过期及累计费用。
 ## BR-001 — Today
 
 - web_status：已实现三来源组合；证据 `repos/orbits/app/(app)/app/today/today-page-content.tsx` 与 `compose-app-today-from-agent-ledger/today-merged-view-model.ts`。
@@ -39,24 +111,24 @@
 
 ## BR-003 — AI 会话
 
-- web_status：`agent/orbit-real-agent.tsx` 有 renameHistorySession/togglePinnedHistorySession/deleteHistorySession。
-- app_status：`AiScreen.tsx` 可读历史、显示 pinned、删除 session，未发现改名/置顶写入口；`AiConversationScreen.tsx` 对部分 session 更新使用不等待结果的 POST。
-- verification_status：历史映射/续聊 wiring 测试包含在本轮 752 项中，但未跨端断网/重开验证。
-- 下一步：确认改名/置顶是否要移动对齐；验证 Web 创建 → App 续聊 → Web 重开以及反方向。故意使保存失败，检查是否可恢复和是否向用户正确表达保存状态；未复现前不要把风险记为确定 bug。
+- web_status：功能 HEAD `3de117902`。Web 能分页读取全部会话，改名、置顶、移动、确认删除，并创建／改名／删除分组；写入走 revisioned PATCH，focus 时刷新。
+- app_status：产品功能同一 HEAD；原生弹窗顺序修复为 `9bc7039a5`。App 支持同一组操作，长按和可访问“整理会话”共用操作面板；组内新会话在首次可靠发送成功后以 organization revision 0 落组。
+- verification_status：`verified`。Web 0021 定向 39/39、App 定向 95/95、弹窗修复文件 73/73、两端 typecheck 通过；同一全新合成账号完成 App 创建／改名→Web 读取、Web 改名→App 重载读取，以及 App 删除→Web 确认消失。当前 iOS Simulator 的长按、更多、组选择、删除确认和真实 409 反馈可见。
+- 下一步：0005／0006 可以复用已验证的会话组织与刷新链路；它们各自的 provider／联系人引用验收仍按原 REPORT 独立关闭，不由 BR-003 自动代替。
 
 ## BR-004 — 契约覆盖
 
-- web_status：12 个共享类型文件 + 1 个运行时 Schema + 2 个允许同步的字典。
-- app_status：副本一致；`src/api/agent-ledger-contract.ts` 明确注明 Ledger 类型未升入 shared，活动运营等页面仍有 unknown 解码。
-- verification_status：副本、目录边界与 dashboard 定向检查通过；全接口字段覆盖未验收。
-- 下一步：按现有 HTTP 消费者先列 DTO 差异，优先账本/运营/审核/角色等写操作。字段修订要附旧 App 兼容策略、请求版本条件和缺失字段行为，不直接批量复制 feature 目录。
+- web_status：AI sessions 新增 `shared/contract/ai-sessions.ts` 和 `shared/api-schema/ai-sessions.ts`；发送 protocol v2，起源 schemaVersion 1，消息 revision 与 organization revision 分离。其余模块沿用既有迁移状态。
+- app_status：AI sessions 副本通过 `npm run sync:contract` 生成并由运行时 schema 解码；App mutation 客户端只发送窄 patch。Ledger 与活动运营等既有未共享 DTO 不因本次自动关闭。
+- verification_status：两端类型检查、同步副本、origin／organization handler 和客户端定向测试通过；GitNexus 索引陈旧，提交范围另按真实 diff 审查。全接口字段覆盖仍未验收。
+- 下一步：0006 使用已登记的四个 contact 模板入口和稳定引用，不复制契约；必须补当前 actor 联系人读取授权。其他 DTO 继续按消费者逐模块迁移。
 
 ## BR-005 — 双向读写与刷新
 
-- web_status：服务端页面直接服务调用与 HTTP 并存。
-- app_status：HTTP + 本地 GET 快照；显式 refresh，长任务另有轮询。
-- verification_status：本轮未进行同账号 E2E；不能套用 2026-08-31 图表视觉截图。
-- 下一步：按 [数据交接验收](contracts.md) 用相同环境验证。普通用户与活动管理角色分别使用正确夹具；记录允许的刷新方式和异步等待边界。
+- web_status：会话组织写入由 actor-scoped API／事务存储完成；页面 focus 刷新，未新增 WebSocket。
+- app_status：会话列表／分组经 HTTP 和 actor／服务器范围读取；进入页面、focus 或显式操作后刷新，失败不把本地状态冒充持久化成功。
+- verification_status：AI 会话子域已用同版本 Web/API、当前 App bundle 和同一全新合成账号完成真实双向操作；双 actor、旧客户端、CAS、回滚、61 条删组与 tombstone 也已在内存和一次隔离 PostgreSQL 中验证。BR-005 仍保持 `specified`，因为联系人／报名／运营等其他子域仍须逐项验收。
+- 下一步：把 AI 会话子域视为已验收，不重复执行；其他业务模块继续按 [数据交接验收](contracts.md) 逐项补证。
 
 ## BR-006 — 发布
 
@@ -70,3 +142,24 @@
 - BR-007：App README 的部分运营写操作描述和 Web 契约迁移清单落后；本次在 bridge 标出差异，尚未修改各开发者原有文档。
 - BR-008：App 74 个 tracked 文件及额外未跟踪内容已记录在基线快照；不能把当前 SHA 单独作为它们的可复现版本。最终交接由 App 负责人提供适用 commit/diff 与 UI 验收。
 - 两项 verification_status 均为未完成；没有将任何任务擅自标记为另一位开发者已接单。
+
+## BR-009 — 事项与个人日程编辑
+
+- web_status：`d005c2b79` 已提供任务地点／日期清空、乐观版本与幂等写入，以及 actor-owned 个人日程集合／详情路由和 Web 编辑页面。
+- app_status：同一提交同步契约并接入任务详情、首页、Today、日历和个人日程列表／编辑入口。
+- verification_status：verified。独立 PostgreSQL 中同一任务和个人日程完成 Web→App、App→Web 回读；冲突保稿、重复请求、纯日期不造午夜截止、提醒 DTO 保持不变。鉴权为注入的合成 actor，未宣称生产登录或实体推送。
+- 交接：0022 使用同一 task ID、`expectedUpdatedAt` 和 idempotency key；不得重新实现编辑器或把个人日程混成联系人任务。证据见 `repos/orbit-app/docs/sprints/0010-task-schedule-editing/REPORT.md`。
+
+## BR-010 — 身份邀请与共享聊天
+
+- web_status：E 线原功能 `6d8173b78`、主线集成 `64629369d` 提供邀请、接受、绑定、会话、消息和已读路由及共享 DTO。
+- app_status：联系人资格、显式分享、邀请接受和真实会话收发已接入；失败保留输入，回执核对 actor／conversation／message／eligibility version。
+- verification_status：verified。定向 service/route/App、PostgreSQL 双 actor 回读和 Simulator 构建通过；没有自动对外发送邀请，也未把合成 actor 当真实个人身份。
+- 交接：0012 只在该权威会话与绑定上做消息状态，不得退回本地草稿会话。详情见 `repos/orbit-app/docs/sprints/0008-identity-chat/REPORT.md`。
+
+## BR-011 — 消息状态与推送
+
+- web_status：复用 BR-010 的持久已读接口；服务端 live-store 回读通过。
+- app_status：E 线原功能 `218fb3d4b`、主线集成 `8c9bf60cc` 已实现15秒前台刷新、已读回执、角标失效和合法通知跳转。
+- verification_status：blocked。App全量2589/2589、E定向411/411、主线组合260/260、两端typecheck及PostgreSQL 通过，但没有 Expo project ID、`ORBIT_PUSH_TOKEN_KEY`、可登录双用户原生账号和实体推送环境。
+- 恢复条件：提供上述环境后验证持续前台到达、真实已读角标同步、无权限目标及实体推送；完成前不把0012标为completed。详情见 `repos/orbit-app/docs/sprints/0012-message-state/REPORT.md`。

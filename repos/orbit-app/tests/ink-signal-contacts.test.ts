@@ -14,6 +14,7 @@ import React, { useSyncExternalStore } from "react";
 import { View } from "react-native-web";
 import iconGlyphs from "@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/Ionicons.json";
 import { onSessionExpired } from "./src/api/session-expiry";
+import { createTranslator } from "./src/i18n/messages";
 const listeners = new Set(); let version = 0;
 const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => version);
 const names = [["林悦", "产品设计师", "云间工作室"], ["陈默", "产品经理", "山海科技"], ["周宁", "市场负责人", "松石咨询"], ["许妍", "创业者", "白露设计"], ["李珊", "用户研究", "谷雨科技"], ["王安", "软件工程师", "北辰工作室"], ["苏禾", "品牌设计", "夏木设计"], ["赵乔", "运营经理", "远山科技"]];
@@ -21,7 +22,7 @@ const contacts = names.map(([displayName, role, organization], i) => ({ id: "con
   location: "东京", profileSnippet: "", relationshipContext: "", lastInteractionAt: "", nextAction: "", source: { type: "manual", id: "source-" + i, label: "手动添加", evidenceId: "evidence-" + i },
   evidence: [], tags: [], value: { score: 80, valueTypes: [], rationale: "", evidenceIds: [] }, status: i === 0 ? "needs_follow_up" : "active" }));
 const state = window.fixture = { requests: [], navigation: [], nativeCalls: [], expiries: 0, pending: [], presses: {}, actor: "one", cookieHeader: "", baseUrl: "https://orbit.example", signedIn: true, ready: true, baseReady: true,
-  focused: true, mounted: true, fontScale: 1, width: 390, params: {}, ...window.initialFixture,
+  focused: true, mounted: true, fontScale: 1, width: 390, language: "zh", params: {}, ...window.initialFixture,
   update(patch) { Object.assign(state, patch); version++; listeners.forEach(fn => fn()); },
   data(path, url) {
     if (path === "/api/contacts") {
@@ -49,8 +50,9 @@ window.fetch = async (input, init) => {
   return pending;
 };
 export const useFixture = () => { observe(); return state; };
-export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, user: { id: state.actor }, cookieHeader: state.cookieHeader }; };
+export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.actor, actorId: state.actor, user: { id: state.actor }, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
+export const useOrbitLocale = () => { observe(); return { language: state.language, t: createTranslator(state.language) }; };
 export const useIsFocused = () => { observe(); return state.focused; };
 export const useLocalSearchParams = () => { observe(); return state.params; };
 export const useGlobalSearchParams = useLocalSearchParams;
@@ -80,7 +82,7 @@ test.before(async () => {
     plugins: [{ name: "ink-contact-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "contacts" }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context|expo-camera|expo-image-picker)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "contacts" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context|expo-camera|expo-image-picker)$|\/(ApiBaseUrlProvider|AuthSessionProvider|OrbitLocaleContext|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "contacts" }));
       plugin.onLoad({ filter: /.*/, namespace: "contacts" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, Text as RealText, TextInput as RealTextInput, StyleSheet, useWindowDimensions as useRealDimensions } from "react-native-web";
 import { useFixture } from "fixture"; export * from "react-native-web";
@@ -120,6 +122,26 @@ test("main contacts route shows the actual list, real count and Ink navigation w
   assert.equal(await p.getByRole("button", { name: "返回联系人" }).count(), 0);
   assert.deepEqual(await writes(p), []);
   if (process.env.APP_STYLE_SCREENSHOTS) await p.screenshot({ path: "/tmp/orbit-ink-signal-contacts-390-" + (process.env.CONTACTS_QA_PASS ?? "current") + ".png" });
+});
+
+test("switching contact-list language preserves the query, literal identity, and selected contact id", async t => {
+  const p = await open(t);
+  const input = p.getByRole("textbox", { name: "搜索姓名、公司、资源", exact: true });
+  await input.fill("林悦");
+  await settle(p);
+
+  await update(p, { language: "ja" });
+  assert.equal(await p.getByRole("heading", { name: "つながり", exact: true }).count(), 1);
+  assert.equal(await p.getByRole("textbox", { name: "名前、会社、リソースを検索", exact: true }).inputValue(), "林悦");
+  assert.equal(await p.getByText("林悦", { exact: true }).count(), 1);
+  assert.equal(await p.getByRole("button", { name: /林悦.*云间工作室.*連絡先詳細/u }).count(), 1);
+
+  await update(p, { language: "en" });
+  assert.equal(await p.getByRole("heading", { name: "People", exact: true }).count(), 1);
+  assert.equal(await p.getByRole("textbox", { name: "Search names, companies, or resources", exact: true }).inputValue(), "林悦");
+  await p.getByRole("button", { name: /林悦.*Open contact details for 林悦/u }).click();
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), [{ params: { id: "contact:/0" }, pathname: "/contacts/[id]" }]);
+  assert.deepEqual(await writes(p), []);
 });
 
 test("main contact controls preserve scan, manual, analysis, progress and library destinations", async t => {

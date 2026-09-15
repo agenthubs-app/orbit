@@ -50,7 +50,7 @@ const batch: IngestBatchDTO = {
   statusReason: null, createdAt: now, updatedAt: now, finalizedAt: null, expiresAt: now,
 };
 const item: IngestItemDTO = {
-  id: "item:current", batchId: batch.id, seq: 1, status: "awaiting_upload", version: 1,
+  id: "item:current", batchId: batch.id, cardId: "card:current", side: "front", seq: 1, status: "awaiting_upload", version: 1,
   sourceFileName: "card.heic", rawSize: 100, rawMimeType: "image/heic", clientDigest: digest,
   imageDigest: null, derivativeObjectKey: null, derivativeSize: null, extraction: null,
   extractionSchemaVersion: null, reviewIssues: [], usage: null, confirmedContactId: null,
@@ -61,7 +61,7 @@ const summary: IngestBatchSummary = {
   batch, counts: { awaitingUpload: 1, uploaded: 0, excluded: 0, queuedReady: 0, queuedWaitingRetry: 0,
     processing: 0, extracted: 0, terminalFailed: 0, confirmed: 0, skipped: 0 },
 };
-const manifest = { fileName: "card.heic", mimeType: "image/heic", rawSize: 100, seq: 1, clientDigest: digest };
+const manifest = { cardId: "card:current", side: "front", fileName: "card.heic", mimeType: "image/heic", rawSize: 100, seq: 1, clientDigest: digest };
 const reviewInput = { displayName: "Aki Example", organization: "Example Inc.", role: "Director",
   email: "aki@example.test", phone: "", relationshipContext: "Met at event", notes: "Keep this text", allowDuplicate: false };
 
@@ -89,7 +89,11 @@ const validFixtures: Record<string, unknown> = {
   ingestBatchCollectionResponseSchema: { batches: [batch] }, ingestBatchCreateResponseSchema: { batch, items: [item], reused: false },
   ingestItemActionResponseSchema: { item }, ingestUploadResponseSchema: { item, alreadyUploaded: false },
   ingestBatchActionResponseSchema: { batch }, ingestFinalizeResponseSchema: { batch, alreadyFinalized: false },
-  ingestConfirmationResponseSchema: { state: "created", contactId: "contact:new", item: { ...item, status: "confirmed", confirmedContactId: "contact:new" } },
+  ingestConfirmationResponseSchema: {
+    state: "created", contactId: "contact:new",
+    item: { ...item, status: "confirmed", confirmedContactId: "contact:new" },
+    items: [{ ...item, status: "confirmed", confirmedContactId: "contact:new" }], replayed: false,
+  },
 };
 
 for (const [name, value] of Object.entries(validFixtures)) {

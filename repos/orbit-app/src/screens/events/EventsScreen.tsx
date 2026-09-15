@@ -1,3 +1,4 @@
+import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -36,6 +37,7 @@ import {
   type ApiResourceState
 } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import {
   eventsToSummaries,
   eventValueRecommendationAcceptanceToView,
@@ -333,6 +335,7 @@ function EventDiscoveryControls({
   onTabChange: (tab: "all" | "recommended") => void;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const [filterMenu, setFilterMenu] = useState<"time" | "location" | "topic" | null>(null);
   const hasQuery = query.trim().length > 0;
 
@@ -344,7 +347,7 @@ function EventDiscoveryControls({
           autoCapitalize="none"
           autoCorrect={false}
           onChangeText={onQueryChange}
-          placeholder="搜索活动、地点或主题"
+          placeholder={locale.t("events.searchPlaceholder")}
           placeholderTextColor={colors.text4}
           returnKeyType="search"
           style={styles.discoverySearchInput}
@@ -352,7 +355,7 @@ function EventDiscoveryControls({
         />
         {hasQuery ? (
           <Pressable
-            accessibilityLabel="清空活动搜索"
+            accessibilityLabel={locale.t("events.clearSearch")}
             accessibilityRole="button"
             onPress={() => onQueryChange("")}
             style={styles.discoveryIconButton}
@@ -361,26 +364,26 @@ function EventDiscoveryControls({
           </Pressable>
         ) : null}
       </View>
-      <View accessibilityRole="tablist" accessibilityLabel="活动列表" style={styles.catalogueTabs}>
-        {([{ id: "recommended", label: "推荐" }, { id: "all", label: "全部" }] as const).map(item => <Pressable key={item.id} accessibilityRole="tab" accessibilityLabel={item.label} accessibilityState={{ selected: tab === item.id }} aria-selected={tab === item.id} onPress={() => onTabChange(item.id)} style={styles.catalogueTab}><View style={[styles.catalogueTabLabel, tab === item.id && styles.catalogueTabSelected]}><Text style={[styles.catalogueTabText, tab === item.id && styles.catalogueTabTextSelected]}>{item.label}</Text></View></Pressable>)}
+      <View accessibilityRole="tablist" accessibilityLabel={locale.t("events.listLabel")} style={styles.catalogueTabs}>
+        {([{ id: "recommended", label: locale.t("events.tabRecommended") }, { id: "all", label: locale.t("events.tabAll") }] as const).map(item => <Pressable key={item.id} accessibilityRole="tab" accessibilityLabel={item.label} accessibilityState={{ selected: tab === item.id }} aria-selected={tab === item.id} onPress={() => onTabChange(item.id)} style={styles.catalogueTab}><View style={[styles.catalogueTabLabel, tab === item.id && styles.catalogueTabSelected]}><Text style={[styles.catalogueTabText, tab === item.id && styles.catalogueTabTextSelected]}>{item.label}</Text></View></Pressable>)}
       </View>
       <View style={styles.filterButtons}>
-        {([{ id: "time", label: "筛选活动时间", value: statusFilter === "upcoming" ? "即将开始" : statusFilter === "all" ? "全部时间" : eventDiscoveryStatusLabels[statusFilter] }, { id: "location", label: "筛选活动地点", value: locationFilter || "全部地点" }, { id: "topic", label: "筛选活动主题", value: topicFilter || "全部主题" }] as const).map(item => <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={item.label} accessibilityState={{ expanded: filterMenu === item.id }} aria-expanded={filterMenu === item.id} onPress={() => setFilterMenu(current => current === item.id ? null : item.id)} style={styles.filterButton}><Text style={styles.filterButtonText}>{item.value}</Text><Ionicons color={colors.text2} name="caret-down" size={10} /></Pressable>)}
+        {([{ id: "time", label: locale.t("events.filterTime"), value: statusFilter === "upcoming" ? locale.t("events.upcomingSoon") : statusFilter === "all" ? locale.t("events.allTime") : eventDiscoveryStatusLabels[statusFilter] }, { id: "location", label: locale.t("events.filterLocation"), value: locationFilter || locale.t("events.allLocations") }, { id: "topic", label: locale.t("events.filterTopic"), value: topicFilter || locale.t("events.allTopics") }] as const).map(item => <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={item.label} accessibilityState={{ expanded: filterMenu === item.id }} aria-expanded={filterMenu === item.id} onPress={() => setFilterMenu(current => current === item.id ? null : item.id)} style={styles.filterButton}><Text style={styles.filterButtonText}>{item.value}</Text><Ionicons color={colors.text2} name="caret-down" size={10} /></Pressable>)}
       </View>
       {filterMenu ? (
         <View style={styles.expandedFilters}>
-          {filterMenu === "time" ? <View style={styles.discoveryChipRow}>{eventDiscoveryStatusFilters.map(filter => <EventFilterChip key={filter} count={counts[filter]} label={filter === "all" ? "全部时间" : filter === "upcoming" ? "即将开始" : eventDiscoveryStatusLabels[filter]} onPress={() => { onStatusChange(filter); setFilterMenu(null); }} selected={statusFilter === filter} />)}</View> : null}
+          {filterMenu === "time" ? <View style={styles.discoveryChipRow}>{eventDiscoveryStatusFilters.map(filter => <EventFilterChip key={filter} count={counts[filter]} label={filter === "all" ? locale.t("events.allTime") : filter === "upcoming" ? locale.t("events.upcomingSoon") : eventDiscoveryStatusLabels[filter]} onPress={() => { onStatusChange(filter); setFilterMenu(null); }} selected={statusFilter === filter} />)}</View> : null}
           {filterMenu === "location" ? <EventFilterRail
             activeValue={locationFilter}
-            allLabel="全部地点"
-            label="地点"
+            allLabel={locale.t("events.allLocations")}
+            label={locale.t("events.location")}
             onChange={value => { onLocationChange(value); setFilterMenu(null); }}
             values={locations}
           /> : null}
           {filterMenu === "topic" ? <EventFilterRail
             activeValue={topicFilter}
-            allLabel="全部主题"
-            label="主题"
+            allLabel={locale.t("events.allTopics")}
+            label={locale.t("events.topic")}
             onChange={value => { onTopicChange(value); setFilterMenu(null); }}
             values={topics}
           /> : null}
@@ -477,12 +480,14 @@ function EventCenterEntry({ onPress }: { onPress: () => void }) {
 
 export function EventsScreen({ scopeKey, isScopeCurrent }: { scopeKey?: string; isScopeCurrent?: () => boolean } = {}) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const router = useRouter();
   const { baseUrl } = useOrbitApiBaseUrl();
   const { signedIn } = useOrbitAuthSession();
+  const { timeZone } = useOrbitTimeZone();
   const rawState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.publicEvents,
-    (data) => eventsToSummaries(data).length === 0,
+    (data) => eventsToSummaries(data, timeZone).length === 0,
     { scopeKey: scopeKey ?? "public-events" }
   );
   const state = validateApiResourceState(rawState, publicEventsSchema);
@@ -498,7 +503,7 @@ export function EventsScreen({ scopeKey, isScopeCurrent }: { scopeKey?: string; 
   const [locationFilter, setLocationFilter] = useState("");
   const [visibleEventCount, setVisibleEventCount] = useState(eventPageSize);
   const refreshing = state.refreshing;
-  const events = state.kind === "success" || state.kind === "empty" ? eventsToSummaries(state.data) : [];
+  const events = state.kind === "success" || state.kind === "empty" ? eventsToSummaries(state.data, timeZone) : [];
   const currentTime = Date.now();
   // Public records use "imported" for both future and live events. Keep their
   // source status for display and derive only the discovery time filter here.
@@ -593,7 +598,7 @@ export function EventsScreen({ scopeKey, isScopeCurrent }: { scopeKey?: string; 
         />
       }
     >
-      <View style={styles.pageHeader}><Text accessibilityRole="header" style={styles.pageTitle}>活动</Text>{signedIn ? <EventCenterEntry onPress={() => { if (isCurrent()) router.push("/events/center" as Href); }} /> : null}</View>
+      <View style={styles.pageHeader}><Text accessibilityRole="header" style={styles.pageTitle}>{locale.t("events.title")}</Text>{signedIn ? <EventCenterEntry onPress={() => { if (isCurrent()) router.push("/events/center" as Href); }} /> : null}</View>
       {state.kind === "loading" ? <LoadingState /> : null}
       {state.kind === "offline" ? (
         <ErrorState message={state.error.message} title="服务器连不上" />

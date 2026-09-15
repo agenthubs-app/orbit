@@ -33,10 +33,10 @@ window.fetch = async (input, init) => { const index = state.requests.length; con
   return pending;
 };
 export const useFixture = () => { observe(); return state; };
-export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, user: state.signedIn ? { id: state.actor, name: state.name, email: "person@example.test" } : null, cookieHeader: state.cookieHeader }; };
+export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.signedIn ? state.actor : null, actorId: state.signedIn ? state.actor : null, user: state.signedIn ? { id: state.actor, name: state.name, email: "person@example.test" } : null, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
 export const useIsFocused = () => { observe(); return state.focused; };
-export const useGlobalSearchParams = () => ({});
+export const useGlobalSearchParams = () => ({ complete: state.complete, next: state.next });
 export const usePathname = () => "/profile";
 export const useRouter = () => ({ canGoBack: () => false, back() { state.navigation.push("back"); }, replace(href) { state.navigation.push(href); }, push(href) { state.navigation.push(href); } });
 export const Redirect = ({ href }) => <div role="status">{href}</div>;
@@ -47,6 +47,8 @@ export const launchImageLibraryAsync = async options => { state.picks.push({ kin
 export const getDocumentAsync = async options => { state.picks.push({ kind: "document", options }); return new Promise(resolve => state.finishPick = resolve); };
 export const readSnapshot = async () => null;
 export const writeSnapshot = async () => {};
+let mutationSequence = 0;
+export const randomUUID = () => { if (state.failMutationId) throw new Error("Device random source unavailable"); return "profile-fixture-" + ++mutationSequence; };
 `;
 
 test.before(async () => {
@@ -57,7 +59,7 @@ test.before(async () => {
     plugins: [{ name: "profile-http-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "profile" }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|expo-image-picker|expo-document-picker|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "profile" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|expo-image-picker|expo-document-picker|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "profile" }));
       plugin.onLoad({ filter: /.*/, namespace: "profile" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, Text as RealText, TextInput as RealTextInput, RefreshControl as RealRefreshControl, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web";
 import { useFixture } from "fixture"; export * from "react-native-web";
@@ -101,6 +103,107 @@ async function replyWrite(p: Page, data: unknown, status = 200) {
   await p.evaluate(({ data, status }) => { const s = (window as any).fixture; const i = s.requests.findLastIndex((r: any) => r.method !== "GET"); s.reply(i, status, data); }, { data, status }); await settle(p);
 }
 async function refresh(p: Page) { await p.evaluate(() => (window as any).fixture.refresh()); await settle(p); }
+async function savedProfile(p: Page, profile: Record<string, unknown>) {
+  return { ...profilePayload, onboarding: { policyVersion: 1, status: "incomplete", missingFields: ["birthDate"] },
+    mutationId: (await writes(p)).at(-1).body.mutationId,
+    profile: { ...profilePayload.profile, ...profile, updatedAt: "2026-09-12T00:00:01Z" },
+    editor: { ...profilePayload.editor, lastSavedAt: "2026-09-12T00:00:01Z" } };
+}
+
+test("profile completion opens the existing editor from the server policy without writing", async t => {
+  const p = await open(t, { complete: "1", next: "/events/event-1", payloads: { ...profileReadPayloads,
+    "/api/profile": { ...profilePayload, onboarding: { policyVersion: 1, status: "incomplete", missingFields: ["birthDate"] } } } });
+  await p.getByRole("textbox", { name: "生日（仅自己可见）", exact: true }).waitFor();
+  assert.equal(await p.getByText("还需填写：生日", { exact: true }).count(), 1);
+  assert.deepEqual(await writes(p), []);
+  assert.deepEqual(await navigation(p), []);
+});
+
+for (const [next, expected] of [["/events/event-1?tab=details", "/events/event-1?tab=details"], ["https://untrusted.test", "/dashboard"]]) {
+  test("profile completion already complete returns only to a safe target " + next, async t => {
+    const p = await open(t, { complete: "1", next, payloads: { ...profileReadPayloads,
+      "/api/profile": { ...profilePayload, onboarding: { policyVersion: 1, status: "complete", missingFields: [] } } } });
+    await p.waitForFunction(() => (window as any).fixture.navigation.length > 0);
+    assert.deepEqual(await navigation(p), [expected]);
+    assert.deepEqual(await writes(p), []);
+  });
+}
+
+test("profile completion cannot infer a missing policy from the old richness score", async t => {
+  const p = await open(t, { complete: "1", next: "/events/event-1" });
+  await p.getByText("尚未确认资料补全状态，请重试。", { exact: true }).waitFor();
+  assert.deepEqual(await navigation(p), []);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("profile completion returns to the safe target only after the matching save completes the server policy", async t => {
+  const p = await open(t, { complete: "1", next: "/events/event-1", holdWrites: true, payloads: { ...profileReadPayloads,
+    "/api/profile": { ...profilePayload, onboarding: { policyVersion: 1, status: "incomplete", missingFields: ["birthDate"] } } } });
+  await p.getByRole("textbox", { name: "生日（仅自己可见）", exact: true }).fill("2000-02-29");
+  await press(p, "保存资料");
+  assert.deepEqual(await navigation(p), []);
+  const sent = (await writes(p))[0].body;
+  await replyWrite(p, { ...profilePayload, mutationId: sent.mutationId,
+    onboarding: { policyVersion: 1, status: "complete", missingFields: [] },
+    profile: { ...profilePayload.profile, birthDate: "2000-02-29", updatedAt: "2026-09-12T00:00:01Z" },
+    editor: { ...profilePayload.editor, lastSavedAt: "2026-09-12T00:00:01Z" } });
+  assert.deepEqual(await navigation(p), ["/events/event-1"]);
+});
+
+test("profile CAS retry keeps the original version and mutation ID across a failed save", async t => {
+  const p = await edit(t);
+  await p.getByRole("textbox", { name: "简介", exact: true }).fill("保留的介绍");
+  await press(p, "保存资料");
+  const first = (await writes(p))[0].body;
+  assert.equal(first.expectedUpdatedAt, "2026-09-12T00:00:00Z");
+  assert.equal(typeof first.mutationId, "string");
+  assert.ok(first.mutationId.length > 0);
+  await replyWrite(p, undefined, 503);
+  await press(p, "保存资料");
+  assert.deepEqual((await writes(p))[1].body, first);
+});
+
+test("profile CAS device ID failure stays visible without writing or losing the draft", async t => {
+  const p = await edit(t, { failMutationId: true });
+  const bio = p.getByRole("textbox", { name: "简介", exact: true });
+  await bio.fill("设备失败时保留");
+  await press(p, "保存资料");
+  await p.getByText("暂时无法准备保存，请重试。", { exact: true }).waitFor();
+  assert.equal(await bio.inputValue(), "设备失败时保留");
+  assert.deepEqual(await writes(p), []);
+});
+
+test("profile CAS refresh cannot attach a newer server version to an older dirty draft", async t => {
+  const p = await edit(t);
+  const bio = p.getByRole("textbox", { name: "简介", exact: true });
+  await bio.fill("我的未保存介绍");
+  const newer = { ...profilePayload, profile: { ...profilePayload.profile, bio: "另一端的新介绍", updatedAt: "2026-09-12T00:00:02Z" }, editor: { ...profilePayload.editor, lastSavedAt: "2026-09-12T00:00:02Z" } };
+  await update(p, { payloads: { ...profileReadPayloads, "/api/profile": newer } });
+  await refresh(p);
+  assert.equal(await bio.inputValue(), "我的未保存介绍");
+  await press(p, "保存资料");
+  assert.equal((await writes(p))[0].body.expectedUpdatedAt, "2026-09-12T00:00:00Z");
+  await replyWrite(p, undefined, 409);
+  await p.getByText("资料已在其他地方更新。草稿已保留，请刷新后核对。", { exact: true }).waitFor();
+  assert.equal(await bio.inputValue(), "我的未保存介绍");
+  await press(p, "放弃草稿并载入最新资料");
+  assert.equal(await bio.inputValue(), "另一端的新介绍");
+  assert.equal((await writes(p)).length, 1);
+});
+
+test("profile private birthday stays in the editor and saves the unchanged calendar day", async t => {
+  const p = await edit(t, { payloads: { ...profileReadPayloads, "/api/profile": { ...profilePayload, profile: { ...profilePayload.profile, birthDate: "2000-02-29" } } } });
+  const birth = p.getByRole("textbox", { name: "生日（仅自己可见）", exact: true });
+  assert.equal(await birth.inputValue(), "2000-02-29");
+  await birth.fill("1996-02-29");
+  await press(p, "保存资料");
+  assert.equal((await writes(p))[0].body.birthDate, "1996-02-29");
+  await replyWrite(p, undefined, 503);
+  await press(p, "返回资料预览");
+  assert.equal(await p.getByText("2000-02-29", { exact: true }).filter({ visible: true }).count(), 0);
+  await press(p, "编辑资料");
+  assert.equal(await birth.inputValue(), "1996-02-29");
+});
 
 test("profile overview follows the approved hierarchy with real statistics and no writes", async t => {
   const p = await open(t);
@@ -294,11 +397,32 @@ test("profile save confirms a matching receipt once and does not submit an uncha
   await pressTwice(p, "保存资料");
   const sent = await writes(p); assert.equal(sent.length, 1);
   assert.equal(sent[0].method, "PUT"); assert.equal(sent[0].path, "/api/profile");
-  assert.deepEqual(sent[0].body, { displayName: "程川", headline: "产品经理 · 星野工作室", bio: "新的真实介绍", industry: "互联网", organization: "星野工作室", role: "产品经理", homeMarket: "东京 · 日本", relationshipGoal: "认识可以一起做产品的同行", offering: ["产品研究", "需求梳理"], seeking: ["设计合作", "技术交流"], topics: ["产品设计", "用户研究"], targetRelationshipTypes: ["产品伙伴"], preferredFollowUpWindow: "本周", preferredIntroChannels: ["email"] });
-  await replyWrite(p, { ...profilePayload, profile: { ...profilePayload.profile, bio: "新的真实介绍" } });
+  const { mutationId, expectedUpdatedAt, ...fields } = sent[0].body;
+  assert.equal(typeof mutationId, "string"); assert.ok(mutationId.length > 0);
+  assert.equal(expectedUpdatedAt, "2026-09-12T00:00:00Z");
+  assert.deepEqual(fields, { displayName: "程川", headline: "产品经理 · 星野工作室", bio: "新的真实介绍", industry: "互联网", organization: "星野工作室", role: "产品经理", homeMarket: "东京 · 日本", relationshipGoal: "认识可以一起做产品的同行", offering: ["产品研究", "需求梳理"], seeking: ["设计合作", "技术交流"], topics: ["产品设计", "用户研究"], targetRelationshipTypes: ["产品伙伴"], preferredFollowUpWindow: "本周", preferredIntroChannels: ["email"] });
+  await replyWrite(p, await savedProfile(p, { bio: "新的真实介绍" }));
   assert.equal(await p.getByText("资料已保存。", { exact: true }).count(), 1);
   await pressTwice(p, "保存资料"); assert.equal((await writes(p)).length, 1);
   await press(p, "返回资料预览"); assert.equal(await p.getByText("新的真实介绍", { exact: true }).filter({ visible: true }).count(), 1);
+});
+
+test("profile editor lets the member update company role and conversation topics", async t => {
+  const p = await edit(t);
+  await p.getByRole("textbox", { name: "公司", exact: true }).fill("新公司");
+  await p.getByRole("textbox", { name: "职位", exact: true }).fill("新职位");
+  await p.getByRole("textbox", { name: "想聊的话题", exact: true }).fill("AI 产品\n创业");
+  await press(p, "保存资料");
+  const sent = (await writes(p))[0].body;
+  assert.equal(sent.organization, "新公司");
+  assert.equal(sent.role, "新职位");
+  assert.deepEqual(sent.topics, ["AI 产品", "创业"]);
+  await replyWrite(p, await savedProfile(p, {
+    organization: "新公司",
+    role: "新职位",
+    topics: ["AI 产品", "创业"]
+  }));
+  assert.equal(await p.getByText("资料已保存。", { exact: true }).count(), 1);
 });
 
 for (const [name, payload, status] of [
@@ -331,9 +455,11 @@ test("profile refresh failure and recovery preserve both manual and extraction i
 test("profile save receipt cannot erase a newer edit or mark that newer draft saved", async t => {
   const p = await edit(t); const bio = p.getByRole("textbox", { name: "简介", exact: true });
   await bio.fill("提交中的介绍"); await press(p, "保存资料"); await bio.fill("继续修改的介绍");
-  await replyWrite(p, { ...profilePayload, profile: { ...profilePayload.profile, bio: "提交中的介绍" } });
+  await replyWrite(p, await savedProfile(p, { bio: "提交中的介绍" }));
   assert.equal(await bio.inputValue(), "继续修改的介绍"); assert.equal(await p.getByText("资料已保存。", { exact: true }).count(), 0);
   await press(p, "保存资料"); assert.equal((await writes(p))[1].body.bio, "继续修改的介绍");
+  assert.equal((await writes(p))[1].body.expectedUpdatedAt, "2026-09-12T00:00:01Z");
+  assert.notEqual((await writes(p))[0].body.mutationId, (await writes(p))[1].body.mutationId);
 });
 
 test("a pending profile remains visible but cannot save", async t => {
@@ -482,8 +608,14 @@ test("profile pending extraction without a draft stays pending rather than looki
 test("profile creates an empty record only after its own new profile receipt", async t => {
   const p = await edit(t, { payloads: { ...profileReadPayloads, "/api/profile": emptyProfilePayload } });
   await p.getByRole("textbox", { name: "名字", exact: true }).fill("新用户"); await press(p, "保存资料");
-  assert.equal((await writes(p))[0].body.displayName, "新用户");
-  await replyWrite(p, { ...profilePayload, profile: { id: "profile:new", displayName: "新用户", headline: "", homeMarket: "", organization: "", role: "", relationshipGoal: "", targetRelationshipTypes: [], preferredFollowUpWindow: "", preferredIntroChannels: [], preferredLanguage: "zh", updatedAt: "2026-09-12T00:00:00Z" } });
+  const sent = (await writes(p))[0].body;
+  assert.equal(sent.displayName, "新用户");
+  const { expectedUpdatedAt, mutationId, ...profileFields } = sent;
+  assert.equal(expectedUpdatedAt, null);
+  await replyWrite(p, { ...profilePayload, mutationId,
+    onboarding: { policyVersion: 1, status: "incomplete", missingFields: ["primaryIndustryId", "secondaryIndustryId", "birthDate"] },
+    profile: { id: "profile:new", ...profileFields, preferredLanguage: "zh", updatedAt: "2026-09-12T00:00:00Z" },
+    editor: { ...profilePayload.editor, lastSavedAt: "2026-09-12T00:00:00Z" } });
   assert.equal(await p.getByText("资料已保存。", { exact: true }).count(), 1);
 });
 

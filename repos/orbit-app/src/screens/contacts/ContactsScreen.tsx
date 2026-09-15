@@ -24,6 +24,7 @@ import {
 import Svg, { Circle, Defs, LinearGradient, Path, Stop } from "react-native-svg";
 import { z } from "zod";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
+import type { OrbitLanguage } from "../../api/contract/language";
 import { contactsListPath, ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { INDUSTRY_CATALOG, SECONDARY_INDUSTRY_CATALOG } from "../../api/domain/industries";
 import { mobileContactsDashboardSectionSchemas } from "../../api/schema/mobile-contacts-dashboard";
@@ -39,7 +40,10 @@ import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import { createTranslator } from "../../i18n/messages";
 import { ContactPage } from "./ContactPage";
+import { ContactNeedsHomeEntry } from "./ContactNeedsHomeEntry";
 import {
   buildContactsSearchRequest,
   contactAvatarFor,
@@ -141,9 +145,24 @@ const mainRelationshipSearchSchema = z.object({
 
 function relationshipFilterLabel(
   options: RelationshipFilterOption[],
-  value?: string
+  value?: string,
+  language: OrbitLanguage = "zh"
 ): string {
-  return options.find((option) => option.value === value)?.label ?? "";
+  const option = options.find((entry) => entry.value === value);
+  if (!option || language === "zh") return option?.label ?? "";
+  const t = createTranslator(language);
+  const keyByValue = {
+    climate: "contacts.industryClimate",
+    enterprise_saas: "contacts.industryEnterpriseSaas",
+    explore_partnership: "contacts.intentPartnership",
+    find_warm_intro: "contacts.intentWarmIntro",
+    fintech: "contacts.industryFintech",
+    healthcare: "contacts.industryHealthcare",
+    mobility: "contacts.industryMobility",
+    recover_event_follow_up: "contacts.intentEventFollowUp",
+    source_customer_reference: "contacts.intentCustomerReference"
+  } as const;
+  return value && value in keyByValue ? t(keyByValue[value as keyof typeof keyByValue]) : option.label;
 }
 
 function relationshipSearchBodyId(body: RelationshipSearchRequestBody): string {
@@ -200,45 +219,51 @@ function relationshipSearchBodyCopy(
 }
 
 function relationshipSearchRecentLabel(
-  body: RelationshipSearchRequestBody
+  body: RelationshipSearchRequestBody,
+  language: OrbitLanguage = "zh"
 ): string {
-  const queryLabel = body.query?.trim() || "关系搜索";
+  const t = createTranslator(language);
+  const queryLabel = body.query?.trim() || t("contacts.relationshipSearch");
   const intentLabel = relationshipFilterLabel(
     relationshipIntentOptions,
-    body.businessIntent
+    body.businessIntent,
+    language
   );
   const industryLabel = (body.industryFilters ?? [])
-    .map((value) => relationshipFilterLabel(relationshipIndustryOptions, value))
+    .map((value) => relationshipFilterLabel(relationshipIndustryOptions, value, language))
     .filter(Boolean)
     .slice(0, 2)
     .join("、");
 
   const structuredIndustryLabel = body.secondaryIndustryIds?.length
     ? SECONDARY_INDUSTRY_CATALOG.filter((entry) => body.secondaryIndustryIds?.includes(entry.id))
-        .map((entry) => entry.labels.zh).join("、")
+        .map((entry) => entry.labels[language]).join(language === "en" ? ", " : "、")
     : INDUSTRY_CATALOG.filter((entry) => body.primaryIndustryIds?.includes(entry.id))
-        .map((entry) => entry.labels.zh).join("、");
+        .map((entry) => entry.labels[language]).join(language === "en" ? ", " : "、");
 
   return [queryLabel, intentLabel, structuredIndustryLabel, industryLabel].filter(Boolean).join(" · ");
 }
 
 function relationshipSearchRecentDetail(
-  body: RelationshipSearchRequestBody
+  body: RelationshipSearchRequestBody,
+  language: OrbitLanguage = "zh"
 ): string {
+  const t = createTranslator(language);
   const filterCount =
     (body.sourceFilters ?? []).length +
     (body.valueTypeFilters ?? []).length +
     (body.followUpStatusFilters ?? []).length;
 
   if (filterCount > 0) {
-    return `${filterCount} 个列表筛选`;
+    return t("contacts.listFilterCount", { count: filterCount });
   }
 
-  return "点一下重新检索";
+  return t("contacts.tapSearchAgain");
 }
 
 function relationshipSearchToRecent(
-  body: RelationshipSearchRequestBody
+  body: RelationshipSearchRequestBody,
+  language: OrbitLanguage = "zh"
 ): RecentRelationshipSearch | null {
   const id = relationshipSearchBodyId(body);
 
@@ -248,9 +273,9 @@ function relationshipSearchToRecent(
 
   return {
     body: relationshipSearchBodyCopy(body),
-    detail: relationshipSearchRecentDetail(body),
+    detail: relationshipSearchRecentDetail(body, language),
     id,
-    label: relationshipSearchRecentLabel(body)
+    label: relationshipSearchRecentLabel(body, language)
   };
 }
 
@@ -301,13 +326,15 @@ function hasContactData(
 
 function emptyMessage(
   query: string,
-  hasFilters: boolean
+  hasFilters: boolean,
+  language: OrbitLanguage = "zh"
 ): string {
+  const t = createTranslator(language);
   if (query.trim() || hasFilters) {
-    return "换个关键词或清空筛选后再看。";
+    return t("contacts.emptyFilteredBody");
   }
 
-  return "名片、报名和引荐形成的联系人会出现在这里。";
+  return t("contacts.emptyListBody");
 }
 
 function firstRouteParam(value?: string | string[]): string {
@@ -426,6 +453,7 @@ function ContactFilterToolbar({
   hasFilters?: boolean;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const [activeMenu, setActiveMenu] = useState<ContactFilterMenuId | null>(null);
   const { width, fontScale } = useWindowDimensions();
   const filterScale = Math.max(1, fontScale);
@@ -439,20 +467,20 @@ function ContactFilterToolbar({
     id: ContactFilterMenuId;
     label: string;
   }> = [
-    { count: selectedRelationshipIndustries.length + selectedPrimaryIndustryIds.length + selectedSecondaryIndustryIds.length, id: "industry", label: "行业" },
+    { count: selectedRelationshipIndustries.length + selectedPrimaryIndustryIds.length + selectedSecondaryIndustryIds.length, id: "industry", label: locale.t("contacts.filterIndustry") },
     {
       count: selectedRelationshipProgress ? 1 : 0,
       id: "progress",
-      label: "进展"
+      label: locale.t("contacts.filterProgress")
     },
-    { count: selectedActionState ? 1 : 0, id: "action", label: "行动" },
-    { count: advancedCount, id: "more", label: "更多" }
+    { count: selectedActionState ? 1 : 0, id: "action", label: locale.t("contacts.filterAction") },
+    { count: advancedCount, id: "more", label: locale.t("contacts.filterMore") }
   ];
 
   const toolbarRow = <View style={[styles.filterToolbarRow, primary && styles.mainFilterRow, primary && { minWidth: (Math.min(width, layout.contentMax) - 2 * layout.pageInset) * filterScale }]}>
-        {primary ? <Pressable accessibilityRole="button" accessibilityLabel="全部人脉" accessibilityState={{ selected: !hasFilters }} aria-selected={!hasFilters}
+        {primary ? <Pressable accessibilityRole="button" accessibilityLabel={locale.language === "zh" ? "全部人脉" : locale.t("contacts.all")} accessibilityState={{ selected: !hasFilters }} aria-selected={!hasFilters}
           onPress={() => { setActiveMenu(null); onReset?.(); }} style={[styles.mainAll, { width: 44 * filterScale }]}>
-          <Text style={[styles.mainFilterText, !hasFilters && styles.mainActiveText]}>全部</Text>
+          <Text style={[styles.mainFilterText, !hasFilters && styles.mainActiveText]}>{locale.t("contacts.all")}</Text>
           {!hasFilters ? <View accessible={false} style={[styles.mainAllUnderline, { width: 26 * filterScale }]} /> : null}
         </Pressable> : null}
         {menuItems.map((item) => {
@@ -461,8 +489,8 @@ function ContactFilterToolbar({
 
           return (
             <Pressable
-              accessibilityLabel={`${item.label}筛选${
-                selected ? `，已选 ${item.count} 项` : ""
+              accessibilityLabel={`${locale.t("contacts.filterNamed", { label: item.label })}${
+                selected ? locale.t("contacts.selectedCount", { count: item.count }) : ""
               }`}
               accessibilityRole="button"
               accessibilityState={{ expanded: activeMenu === item.id }}
@@ -500,8 +528,8 @@ function ContactFilterToolbar({
             </Pressable>
           );
         })}
-        {primary ? <Pressable accessibilityRole="button" accessibilityLabel="人脉分析" onPress={onAnalysis} style={[styles.mainAnalysis, { minWidth: 60 * filterScale }]}>
-          <Text style={styles.mainLink}>人脉分析</Text>
+        {primary ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.analysis")} onPress={onAnalysis} style={[styles.mainAnalysis, { minWidth: 60 * filterScale }]}>
+          <Text style={styles.mainLink}>{locale.t("contacts.analysis")}</Text>
         </Pressable> : null}
       </View>;
 
@@ -512,10 +540,10 @@ function ContactFilterToolbar({
         <View style={styles.filterToolbarPanel}>
           {activeMenu === "industry" ? (
             <>
-            <Text style={styles.filterToolbarPanelTitle}>用于关系搜索</Text>
+            <Text style={styles.filterToolbarPanelTitle}>{locale.t("contacts.filterForRelationshipSearch")}</Text>
             {[
-              { label: "一级行业", options: INDUSTRY_CATALOG, selected: selectedPrimaryIndustryIds, onSelect: onSelectPrimaryIndustry },
-              { label: "二级行业", options: SECONDARY_INDUSTRY_CATALOG.filter((entry) => selectedPrimaryIndustryIds.includes(entry.parentId)), selected: selectedSecondaryIndustryIds, onSelect: onSelectSecondaryIndustry }
+              { label: locale.t("contacts.primaryIndustry"), options: INDUSTRY_CATALOG, selected: selectedPrimaryIndustryIds, onSelect: onSelectPrimaryIndustry },
+              { label: locale.t("contacts.secondaryIndustry"), options: SECONDARY_INDUSTRY_CATALOG.filter((entry) => selectedPrimaryIndustryIds.includes(entry.parentId)), selected: selectedSecondaryIndustryIds, onSelect: onSelectSecondaryIndustry }
             ].map((group) => (
               <View key={group.label} style={styles.filterToolbarMoreSection}>
                 <Text style={styles.filterToolbarPanelTitle}>{group.label}</Text>
@@ -523,17 +551,17 @@ function ContactFilterToolbar({
                   {group.options.map((option) => {
                     const selected = group.selected.includes(option.id);
                     return <Pressable key={option.id} accessibilityRole="button"
-                      accessibilityLabel={`${group.label}：${option.labels.zh}`}
+                      accessibilityLabel={`${group.label}${locale.language === "en" ? ": " : "："}${option.labels[locale.language]}`}
                       accessibilityState={{ selected }} aria-selected={selected}
                       onPress={() => group.onSelect(option.id)}
                       style={({ pressed }) => [styles.filterChip, selected && styles.filterChipSelected, pressed && styles.filterChipPressed]}>
-                      <Text style={[styles.filterChipText, selected && styles.filterChipTextSelected]}>{option.labels.zh}</Text>
+                      <Text style={[styles.filterChipText, selected && styles.filterChipTextSelected]}>{option.labels[locale.language]}</Text>
                     </Pressable>;
                   })}
-                </ScrollView> : <Text style={styles.filterToolbarPanelTitle}>先选择一级行业</Text>}
+                </ScrollView> : <Text style={styles.filterToolbarPanelTitle}>{locale.t("contacts.choosePrimaryIndustryFirst")}</Text>}
               </View>
             ))}
-            <Text style={styles.filterToolbarPanelTitle}>关系领域</Text>
+            <Text style={styles.filterToolbarPanelTitle}>{locale.t("contacts.relationshipArea")}</Text>
             <ScrollView
               contentContainerStyle={styles.filterList}
               horizontal
@@ -563,7 +591,7 @@ function ContactFilterToolbar({
                         selected ? styles.filterChipTextSelected : null
                       ]}
                     >
-                      {option.label}
+                      {relationshipFilterLabel(relationshipIndustryOptions, option.value, locale.language)}
                     </Text>
                   </Pressable>
                 );
@@ -690,6 +718,7 @@ function ContactCard({
   primary?: boolean;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const avatar = contactAvatarFor(contact);
   const avatarId = useId().replace(/:/gu, "");
   const tones = { sky: ["#7FB3FF", "#3B82F6"], emerald: ["#5EEAD4", "#0EA5E9"], amber: ["#FCD34D", "#F59E0B"], violet: ["#A78BFA", "#6366F1"], rose: ["#FDA4AF", "#F472B6"] } as const;
@@ -698,7 +727,9 @@ function ContactCard({
   const identityDetail = (primary ? [contact.role, contact.organization] : [contact.organization, contact.role])
     .filter(Boolean)
     .join(" · ");
-  const contactAccessibilityLabel = `${contact.name}，${detail}，打开联系人详情`;
+  const contactAccessibilityLabel = locale.language === "zh"
+    ? `${contact.name}，${detail}，打开联系人详情`
+    : `${locale.t.literal(contact.name)}, ${locale.t.literal(detail)}, ${locale.t("contacts.openDetail", { name: locale.t.literal(contact.name) })}`;
 
   return (
     <Pressable
@@ -984,12 +1015,13 @@ function RelationshipSearchSuggestionsRow({
   view: RelationshipSearchSuggestionsView;
 }) {
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
   if (view.suggestions.length === 0) {
     return null;
   }
 
   return (
-    <View accessibilityLabel="推荐搜索" style={styles.relationshipSuggestions}>
+    <View accessibilityLabel={locale.t("contacts.suggestedSearches")} style={styles.relationshipSuggestions}>
       <View style={styles.relationshipSuggestionsHeader}>
         <Text style={styles.relationshipSuggestionsTitle}>{view.title}</Text>
         <Text style={styles.relationshipSuggestionsMeta}>{view.summary}</Text>
@@ -1031,15 +1063,16 @@ function RecentRelationshipSearchesRow({
   searches: RecentRelationshipSearch[];
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   if (searches.length === 0) {
     return null;
   }
 
   return (
-    <View accessibilityLabel="最近搜索" style={styles.recentRelationshipSearches}>
+    <View accessibilityLabel={locale.t("contacts.recentSearches")} style={styles.recentRelationshipSearches}>
       <View style={styles.recentRelationshipSearchesHeader}>
-        <Text style={styles.recentRelationshipSearchesTitle}>最近搜索</Text>
-        <Text style={styles.recentRelationshipSearchesMeta}>只保存在本机</Text>
+        <Text style={styles.recentRelationshipSearchesTitle}>{locale.t("contacts.recentSearches")}</Text>
+        <Text style={styles.recentRelationshipSearchesMeta}>{locale.t("contacts.localOnly")}</Text>
       </View>
       <View style={styles.recentRelationshipSearchList}>
         {searches.map((search) => (
@@ -1167,6 +1200,7 @@ function ContactsLibraryEntry({
   onPress: () => void;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   return (
     <Pressable
       accessibilityRole="button"
@@ -1180,13 +1214,13 @@ function ContactsLibraryEntry({
         <Ionicons color={colors.accent} name="people-outline" size={24} />
       </View>
       <View style={styles.contactsLibraryText}>
-        <Text style={styles.contactsLibraryTitle}>联系人库</Text>
+        <Text style={styles.contactsLibraryTitle}>{locale.t("contacts.library")}</Text>
         <Text style={styles.contactsLibraryDetail}>
           {contactsLabel}
         </Text>
       </View>
       <View style={styles.contactsLibraryAction}>
-        <Text style={styles.contactsLibraryActionText}>进入</Text>
+        <Text style={styles.contactsLibraryActionText}>{locale.t("contacts.enter")}</Text>
         <Ionicons color={colors.text3} name="chevron-forward" size={15} />
       </View>
     </Pressable>
@@ -1238,13 +1272,14 @@ function NetworkPriorityCard({
 }
 
 function PriorityNetworkTools() {
+  const locale = useOrbitLocale();
   return (
     <NetworkPriorityCard
-      action="查看"
-      detail="结构、机会与关系质量"
+      action={locale.t("contacts.see")}
+      detail={locale.t("contacts.analysisDetail")}
       iconName="analytics-outline"
       route="/contacts/dashboard"
-      title="人脉分析"
+      title={locale.t("contacts.analysis")}
     />
   );
 }
@@ -1255,10 +1290,11 @@ function ContactsOverviewContent({
   contactsCount?: number | null;
 } = {}) {
   const router = useRouter();
+  const locale = useOrbitLocale();
   const contactsLabel =
     typeof contactsCount === "number" && contactsCount > 0
-      ? `${contactsCount} 位联系人`
-      : "搜索、筛选、打开联系人详情";
+      ? locale.t("contacts.contactCount", { count: contactsCount })
+      : locale.t("contacts.overviewDetail");
 
   return (
     <OverviewToolGrid>
@@ -1268,19 +1304,19 @@ function ContactsOverviewContent({
       />
       <PriorityNetworkTools />
       <OverviewToolCard
-        action="看下一步"
-        detail="推进中、长期维护、已合作"
+        action={locale.t("contacts.seeNext")}
+        detail={locale.t("contacts.progressDetail")}
         iconName="list-outline"
         onPress={() => router.push("/contacts/pipeline" as Href)}
-        title="关系进展"
+        title={locale.t("contacts.progress")}
         tone="amber"
       />
       <OverviewToolCard
-        action="开始添加"
-        detail="名片、QR、手动记录"
+        action={locale.t("contacts.startAdding")}
+        detail={locale.t("contacts.addDetail")}
         iconName="add-circle-outline"
         onPress={() => router.push("/contacts/new")}
-        title="添加人脉"
+        title={locale.t("contacts.addPeople")}
         tone="accent"
       />
     </OverviewToolGrid>
@@ -1372,6 +1408,7 @@ function ContactsListContent({
   onNavigate?: (href: string) => void;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const router = useRouter();
   const navigate = onNavigate ?? ((href: string) => router.push(href as Href));
   const [searchOptionsOpen, setSearchOptionsOpen] = useState(false);
@@ -1387,12 +1424,12 @@ function ContactsListContent({
         <View style={[styles.searchRow, primary && styles.mainSearchRow]}>
           <Ionicons color={colors.text3} name="search-outline" size={18} />
           <TextInput
-            accessibilityLabel="搜索姓名、公司、资源"
+            accessibilityLabel={locale.t("contacts.searchPlaceholder")}
             autoCapitalize="none"
             autoCorrect={false}
             onChangeText={onQueryChange}
             onSubmitEditing={onRunDeepSearch}
-            placeholder="搜索姓名、公司、资源"
+            placeholder={locale.t("contacts.searchPlaceholder")}
             placeholderTextColor={colors.text4}
             returnKeyType="search"
             style={[styles.searchInput, primary && styles.mainSearchInput]}
@@ -1400,7 +1437,7 @@ function ContactsListContent({
           />
           {query.trim() ? (
             <Pressable
-              accessibilityLabel="清空搜索"
+              accessibilityLabel={locale.t("contacts.clearSearch")}
               accessibilityRole="button"
               onPress={onClearQuery}
               style={styles.clearButton}
@@ -1408,7 +1445,7 @@ function ContactsListContent({
               <Ionicons color={colors.text3} name="close-circle" size={19} />
             </Pressable>
           ) : null}
-          {primary ? <Pressable accessibilityRole="button" accessibilityLabel="搜索选项" accessibilityState={{ expanded: searchOptionsOpen }} aria-expanded={searchOptionsOpen}
+          {primary ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.searchOptions")} accessibilityState={{ expanded: searchOptionsOpen }} aria-expanded={searchOptionsOpen}
             onPress={() => setSearchOptionsOpen(open => !open)} style={styles.mainSearchOptionsButton}>
             <Ionicons name="options-outline" size={18} color={colors.text3} />
           </Pressable> : null}
@@ -1430,7 +1467,7 @@ function ContactsListContent({
               size={17}
             />
             <Text style={styles.deepSearchButtonText}>
-              {searching ? "搜索中" : "深度搜索"}
+              {searching ? locale.t("contacts.searching") : locale.t("contacts.deepSearch")}
             </Text>
           </Pressable>
           <Pressable
@@ -1445,7 +1482,7 @@ function ContactsListContent({
           >
             <Ionicons color={colors.accent} name="git-network-outline" size={17} />
             <Text style={styles.relationshipSearchButtonText}>
-              {relationshipSearching ? "检索中" : "关系搜索"}
+              {relationshipSearching ? locale.t("contacts.relationshipSearching") : locale.t("contacts.relationshipSearch")}
             </Text>
           </Pressable>
           {searchError ? (
@@ -1456,17 +1493,18 @@ function ContactsListContent({
           ) : null}
         </View> : null}
         {primary && showSearchOptions ? <View style={styles.mainTools}>
-          <Pressable accessibilityRole="button" accessibilityLabel="关系进展" onPress={() => navigate("/contacts/pipeline")} style={styles.mainTool}>
-            <Text style={styles.mainLink}>关系进展</Text><Ionicons name="chevron-forward" size={12} color={colors.accent} />
+          <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.progress")} onPress={() => navigate("/contacts/pipeline")} style={styles.mainTool}>
+            <Text style={styles.mainLink}>{locale.t("contacts.progress")}</Text><Ionicons name="chevron-forward" size={12} color={colors.accent} />
           </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel="联系人库" onPress={() => navigate("/contacts/list")} style={styles.mainTool}>
-            <Text style={styles.mainLink}>联系人库</Text><Ionicons name="chevron-forward" size={12} color={colors.accent} />
+          <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.library")} onPress={() => navigate("/contacts/list")} style={styles.mainTool}>
+            <Text style={styles.mainLink}>{locale.t("contacts.library")}</Text><Ionicons name="chevron-forward" size={12} color={colors.accent} />
           </Pressable>
         </View> : null}
         {showSearchOptions ? <RecentRelationshipSearchesRow
           onSelectRecentRelationshipSearch={onSelectRecentRelationshipSearch}
           searches={recentRelationshipSearches}
         /> : null}
+        {primary ? <ContactNeedsHomeEntry /> : null}
         {!directoryEmpty ? <ContactFilterToolbar
           actionStateOptions={actionStateOptions}
           advancedFilterSections={advancedFilterSections}
@@ -1504,33 +1542,33 @@ function ContactsListContent({
       ) : null}
       {state.kind === "loading" ? <LoadingState /> : null}
       {state.kind === "offline" ? (
-        <ErrorState message={state.error.message} title="服务器连不上" />
+        <ErrorState message={state.error.message} title={locale.t("contacts.serverUnavailable")} />
       ) : null}
       {state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
-      {primary && (state.kind === "offline" || state.kind === "failure") ? <Pressable accessibilityRole="button" accessibilityLabel="重新读取人脉" onPress={state.refresh} style={styles.mainRetry}>
-        <Text style={styles.mainLink}>重新读取</Text>
+      {primary && (state.kind === "offline" || state.kind === "failure") ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.retryRead")} onPress={state.refresh} style={styles.mainRetry}>
+        <Text style={styles.mainLink}>{locale.t("contacts.readAgain")}</Text>
       </Pressable> : null}
       {directoryEmpty ? <View style={styles.mainEmpty}>
         <View style={styles.mainEmptyIcon}><OrbitNavigationIcon name="contacts" size={28} color={colors.ink} /></View>
-        <Text accessibilityRole="header" style={styles.mainEmptyTitle}>还没有人脉</Text>
-        <Text style={styles.mainEmptyCopy}>扫一张名片，或手动添加第一位联系人。IORBIT 会从这里开始了解你的工作。</Text>
+        <Text accessibilityRole="header" style={styles.mainEmptyTitle}>{locale.t("contacts.emptyTitle")}</Text>
+        <Text style={styles.mainEmptyCopy}>{locale.t("contacts.emptyBody")}</Text>
         <View style={styles.mainEmptyActions}>
-          <Pressable accessibilityRole="button" accessibilityLabel="扫名片" onPress={() => navigate("/contacts/new")} style={styles.mainEmptyScan}>
-            <Text style={styles.mainEmptyScanText}>扫名片</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.scanCard")} onPress={() => navigate("/contacts/new")} style={styles.mainEmptyScan}>
+            <Text style={styles.mainEmptyScanText}>{locale.t("contacts.scanCard")}</Text>
           </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel="手动添加" onPress={() => navigate("/contacts/new?mode=manual")} style={styles.mainEmptyManual}>
-            <Text style={styles.mainEmptyManualText}>手动添加</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.manualAdd")} onPress={() => navigate("/contacts/new?mode=manual")} style={styles.mainEmptyManual}>
+            <Text style={styles.mainEmptyManualText}>{locale.t("contacts.manualAdd")}</Text>
           </Pressable>
         </View>
       </View> : loadedWithoutContacts ? (
         <EmptyState
-          message={emptyMessage(query, hasListFilters)}
+          message={emptyMessage(query, hasListFilters, locale.language)}
           title={
             query.trim() || hasListFilters
-              ? "没有匹配的人脉"
-              : "暂无联系人"
+              ? locale.t("contacts.noMatch")
+              : locale.t("contacts.none")
           }
         />
       ) : null}
@@ -1559,14 +1597,16 @@ function ContactsListContent({
 }
 
 function ContactsOverviewScreen() {
+  const locale = useOrbitLocale();
   return (
-    <AppScreen title="人脉">
+    <AppScreen title={locale.t("contacts.title")}>
       <ContactsOverviewContent />
     </AppScreen>
   );
 }
 
 function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { primary?: boolean; scopeKey?: string | undefined; isScopeCurrent?: (() => boolean) | undefined } = {}) {
+  const locale = useOrbitLocale();
   const { colors } = useOrbitTheme();
   const { styles } = useStyles();
   const router = useRouter();
@@ -1683,7 +1723,7 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
   );
   const rawState = useApiResource<unknown>(
     contactsPath,
-    (data) => contactsToSummaries(data).length === 0,
+    (data) => contactsToSummaries(data, locale.language).length === 0,
     scopeKey === undefined ? {} : { scopeKey }
   );
   const validatedState = primary ? validateApiResourceState(rawState, mainContactsSchema) : rawState;
@@ -1697,7 +1737,7 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
   const contactData = hasContactData(state) ? state.data : null;
   const relationshipSuggestions =
     hasContactData(relationshipSuggestionsState)
-      ? relationshipSearchSuggestionsToView(relationshipSuggestionsState.data)
+      ? relationshipSearchSuggestionsToView(relationshipSuggestionsState.data, locale.language)
       : null;
   const dimensionFilterOptions = contactDimensionFilterOptions(contactData, {
     actionState: selectedActionState,
@@ -1707,7 +1747,7 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
     sourceFilters: selectedSourceFilters,
     tagFilters: selectedTagFilters,
     valueFilters: selectedValueFilters
-  });
+  }, locale.language);
   const hasAdvancedFilters =
     selectedSourceFilters.length > 0 ||
     selectedTagFilters.length > 0 ||
@@ -1720,7 +1760,7 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
     actionState: selectedActionState,
     relationshipProgress: selectedRelationshipProgress
   });
-  const contacts = contactData ? contactsToSummaries(filteredContactData) : [];
+  const contacts = contactData ? contactsToSummaries(filteredContactData, locale.language) : [];
   const openContact = (id: string) => {
     if (!isCurrent()) return;
     router.push({
@@ -1812,7 +1852,7 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
   }
 
   function rememberRelationshipSearch(body: RelationshipSearchRequestBody) {
-    const recentSearch = relationshipSearchToRecent(body);
+    const recentSearch = relationshipSearchToRecent(body, locale.language);
 
     if (!recentSearch) {
       return;
@@ -1876,14 +1916,14 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
       if (!ticket.valid()) return;
 
       if (result.success && (!primary || (result.status >= 200 && result.status < 300 && mainRelationshipSearchSchema.safeParse(result.data).success))) {
-        setRelationshipSearchResult(relationshipSearchToView(result.data));
+        setRelationshipSearchResult(relationshipSearchToView(result.data, locale.language));
         if (options.rememberRecent) {
           rememberRelationshipSearch(request.request.body);
         }
         return;
       }
 
-      setRelationshipSearchError(result.success ? "未能确认搜索结果，请重试。" : result.error.message);
+      setRelationshipSearchError(result.success ? locale.t("contacts.relationshipSearchUnconfirmed") : result.error.message);
       setRelationshipSearchResult(null);
     } finally {
       if (ticket.valid()) setRelationshipSearching(false);
@@ -1926,13 +1966,14 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
             filterContactListPayloadByDimensions(result.data, {
               actionState: selectedActionState,
               relationshipProgress: selectedRelationshipProgress
-            })
+            }),
+            locale.language
           )
         );
         return;
       }
 
-      setSearchError(result.success ? "未能确认搜索结果，请重试。" : result.error.message);
+      setSearchError(result.success ? locale.t("contacts.searchUnconfirmed") : result.error.message);
       setSearchResult(null);
     } finally {
       if (ticket.valid()) setSearching(false);
@@ -2018,21 +2059,21 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
         }}
         onNavigate={navigate}
       />;
-  if (!primary) return <ContactPage refreshControl={refreshControl} title="联系人列表">{content}</ContactPage>;
+  if (!primary) return <ContactPage backLabel={locale.t("contacts.listBack")} refreshControl={refreshControl} title={locale.t("contacts.listTitle")}>{content}</ContactPage>;
   const directoryEmpty = hasContactData(state) && contacts.length === 0 && !query.trim() && !hasListFilters;
-  return <AppScreen title="人脉" refreshControl={refreshControl} header={<View style={styles.mainHeader}>
+  return <AppScreen title={locale.t("contacts.title")} refreshControl={refreshControl} header={<View style={styles.mainHeader}>
     <View style={styles.mainHeading}>
-      <Text accessibilityRole="header" style={styles.mainTitle}>人脉</Text>
-      {hasContactData(state) ? <Text testID="contacts-main-count" accessibilityLabel={contacts.length + " 位人脉"} style={[styles.mainCount, directoryEmpty && styles.mainCountEmpty]}>{contacts.length}</Text> : null}
+      <Text accessibilityRole="header" style={styles.mainTitle}>{locale.t("contacts.title")}</Text>
+      {hasContactData(state) ? <Text testID="contacts-main-count" accessibilityLabel={locale.t("contacts.count", { count: contacts.length })} style={[styles.mainCount, directoryEmpty && styles.mainCountEmpty]}>{contacts.length}</Text> : null}
     </View>
     {!directoryEmpty ? <View style={styles.mainHeaderActions}>
-      <Pressable accessibilityRole="button" accessibilityLabel="扫名片" onPress={() => navigate("/contacts/new")} style={styles.mainHeaderButton}>
+      <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.scanCard")} onPress={() => navigate("/contacts/new")} style={styles.mainHeaderButton}>
         <View pointerEvents="none" style={styles.mainScanSurface} />
         <Svg accessible={false} width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.ink} strokeWidth={1.8} strokeLinecap="round">
           <Path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M3 12h18" />
         </Svg>
       </Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel="手动添加" onPress={() => navigate("/contacts/new?mode=manual")} style={styles.mainHeaderButton}>
+      <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.manualAdd")} onPress={() => navigate("/contacts/new?mode=manual")} style={styles.mainHeaderButton}>
         <View pointerEvents="none" style={styles.mainAddSurface} /><Ionicons name="add" size={18} color={colors.onAccent} />
       </Pressable>
     </View> : null}

@@ -1,4 +1,5 @@
 "use client";
+import { TaskScheduleEditor } from "./task-schedule-editor";
 
 import { useEffect, useMemo, useState } from "react";
 import { useOrbitLanguage } from "../orbit-language-context";
@@ -74,6 +75,8 @@ function TaskDetail({ taskId }: { taskId: string }) {
         </div>
         <aside className="task-details" aria-label={t({ zh: "待办信息", en: "Task information" })}>
           <dl><dt>{t({ zh: "安排", en: "Planned for" })}</dt><dd>{taskTimeLabel(task.data.dueAt ?? task.data.plannedDate, english)}</dd><dt>{t({ zh: "分类", en: "Category" })}</dt><dd>{taskCategoryLabel(task.data.category, english)}</dd></dl>
+          {task.data.location ? <p>地点：{task.data.location}</p> : null}
+          <TaskScheduleEditor task={task.data} client={client} onSaved={updated => { task.replace(updated); activities.refresh(); reminders.refresh(); }} />
           <section><h2>{t({ zh: "提醒", en: "Reminders" })}</h2>
             <p className="task-meta">{t({ zh: "网页设置站内提醒；不代表已开启手机推送。", en: "Web reminders appear in Orbit. They do not enable phone push notifications." })}</p>
             <TasksReadError error={reminders.error} hasData={!!reminders.data} onRetry={reminders.refresh} />

@@ -32,6 +32,20 @@
 
 以上为源码盘点，不是运行时故障复现结论。本次未操作数据库、模型或设备。
 
+## run-01 实施对照（2026-09-15）
+
+启动时保留原 revision 1 哈希 `8cdec6ff046502d9363bc0cb2d5829c856d76aac2ce920a785db1d36283b7811`。0005 功能提交 `30c1e210c` 已发布下列实际 B3 字段；本节只完成 Planner 要求的字段对照，不改变目标、SC 或排除范围。
+
+| B3 已发布字段／行为 | 0021 承接方式 |
+| --- | --- |
+| 输入 `protocolVersion: 2`、`sessionId`、`clientMessageId`、`requestId`、`expectedMessageRevision`、`message`、`locale`、`references` | 在同一输入 schema 增加可选、受控的 `origin`；不新增另一套发送 ID、引用或幂等字段。 |
+| 回执 `protocolVersion`、`requestId`、`sessionId`、`state`、`replayed`、可选 `messageRevision` | 首次发送完成回执继续以 `messageRevision` 表示消息变化；组织 mutation 使用独立 `organization.revision`，两者不混用。 |
+| 请求状态 `pending`／`completed`／`failed_before_execution`／`outcome_unknown` | 起源在首次用户消息落盘时冻结；执行前保存失败仍为可重试，未知结果查询不改变起源。 |
+| session snapshot 的稳定 message ID 与 `messageRevision`；删除 tombstone 和旧短快照保护 | 组织字段由服务端合并保留；旧客户端省略字段不得清空 origin／organization，删除后所有消息或组织写入仍返回不可恢复。 |
+| 请求存储的 actor-scoped PostgreSQL advisory transaction lock | 组织 CAS、mutation 幂等和删组移出会话使用同一事务设施，但使用独立记录和锁域。 |
+
+共享契约继续使用 `shared/contract/ai-sessions.ts` 与 `shared/api-schema/ai-sessions.ts`，App 只通过现有 `npm run sync:contract` 取得副本。Task 1 先接 origin，Task 2 再接 organization/groups；受控入口登记不授权引用读取，也不触发模型调用。
+
 ## 契约提案
 
 ### A. 稳定会话和不可变起源
@@ -134,31 +148,33 @@ type SessionGroup = {
 
 ### Task 1 — 起源契约与首次持久化（SC-01／04／05）
 
-- [ ] 对齐 B3 实际协议、获批范围和新旧响应形状，登记基线／Planner 哈希及 run-01。
-- [ ] 新增 Web `tests/capabilities/ai-session-origin.test.ts`；扩展已有 `orbit-agent-chat-session-api.test.ts`、`orbit-agent-chat-session-live-store.test.ts`。预期失败：首轮只含用户消息也能保存 origin；后续改变 firstSentText 被拒绝；101 条以后首条仍保留；旧请求缺字段不清空。
-- [ ] 观察 RED 后实现共享 schema、首发送持久化及 provider 读写；同步 App，再扩展 `tests/ai-send-intent.test.ts` 和 `tests/ink-signal-ai-conversation.test.ts`，验证入口隔离和存储失败时模型调用为零。
-- [ ] 检查已有手动入口、首页建议和 Web 创建路径；模板未来消费者使用同一契约夹具，不提前做模板产品实现。验证后提交。
+- [x] 对齐 B3 实际协议、获批范围和新旧响应形状，登记基线／Planner 哈希及 run-01。
+- [x] 新增 Web `tests/capabilities/ai-session-origin.test.ts`；扩展已有 `orbit-agent-chat-session-api.test.ts`、`orbit-agent-chat-session-live-store.test.ts`。预期失败：首轮只含用户消息也能保存 origin；后续改变 firstSentText 被拒绝；101 条以后首条仍保留；旧请求缺字段不清空。
+- [x] 观察 RED 后实现共享 schema、首发送持久化及 provider 读写；同步 App，再扩展 `tests/ai-send-intent.test.ts` 和 `tests/ink-signal-ai-conversation.test.ts`，验证入口隔离和存储失败时模型调用为零。
+- [x] 检查已有手动入口、首页建议和 Web 创建路径；模板未来消费者使用同一契约夹具，不提前做模板产品实现。验证后提交。
 
 ### Task 2 — 组织 API 与存储原子性（SC-02／03／04）
 
-- [ ] 新增 Web `tests/capabilities/ai-session-organization-api.test.ts`、`ai-session-organization-store.test.ts`、`ai-session-organization-postgres.test.ts`。
-- [ ] RED 覆盖创建组、移组、元信息 patch、分页／搜索、双 actor、409、重复 mutationId；61 条会话删组无遗漏；晚到保存返回 410 而不复活；故障注入时事务整体回滚。
-- [ ] 在 feature 存储层复用事务设施，补 groups 路由与 sessions PATCH；保留旧 POST 的正确行为。测试同名组和无权限对象，不通过客户端过滤伪装隔离。
-- [ ] 隔离 PostgreSQL 验证和必要权限到位后才运行集成；缺失则该证据 blocked。相关检查后提交已验证部分。
+- [x] 新增 Web `tests/capabilities/ai-session-organization-api.test.ts`、`ai-session-organization-store.test.ts`、`ai-session-organization-postgres.test.ts`。
+- [x] RED 覆盖创建组、移组、元信息 patch、分页／搜索、双 actor、409、重复 mutationId；61 条会话删组无遗漏；晚到保存返回 410 而不复活；故障注入时事务整体回滚。
+- [x] 在 feature 存储层复用事务设施，补 groups 路由与 sessions PATCH；保留旧 POST 的正确行为。测试同名组和无权限对象，不通过客户端过滤伪装隔离。
+- [x] 隔离 PostgreSQL 验证和必要权限到位后才运行集成；缺失则该证据 blocked。相关检查后提交已验证部分。
 
 ### Task 3 — App 操作与 Web 消费（SC-01／02／03）
 
-- [ ] 新增 App `tests/ai-session-organization-interactions.test.ts`；扩展 `tests/agent-history-view-model.test.ts`、`tests/ink-signal-ai-conversation.test.ts`。通过渲染／HTTP fixture 点击实际菜单，不能只断言源码中出现按钮名。
-- [ ] 观察失败后实现附件规定的侧栏／分组／菜单／会话信息；长按与可访问更多入口同功能。确认和持久化失败分支一起实现。
-- [ ] 新增 Web `tests/pages/app-agent-session-organization.test.tsx`；扩展 `tests/pages/app-agent-chat-history.test.ts`、`app-agent-session-mutations.test.ts`，再接 Web 组织控件、解析／保存和刷新，保留已有改名／置顶能力。
-- [ ] 检验组内新建、移动后源组消失、全局置顶标组、旧会话、当前会话删除及旧快照到达；验证后提交。
+- [x] 新增 App `tests/ai-session-organization-interactions.test.ts`；扩展 `tests/agent-history-view-model.test.ts`、`tests/ink-signal-ai-conversation.test.ts`。通过渲染／HTTP fixture 点击实际菜单，不能只断言源码中出现按钮名。
+- [x] 观察失败后实现附件规定的侧栏／分组／菜单／会话信息；长按与可访问更多入口同功能。确认和持久化失败分支一起实现。
+- [x] 新增 Web `tests/pages/app-agent-session-organization.test.tsx`；扩展 `tests/pages/app-agent-chat-history.test.ts`、`app-agent-session-mutations.test.ts`，再接 Web 组织控件、解析／保存和刷新，保留已有改名／置顶能力。
+- [x] 检验组内新建、移动后源组消失、全局置顶标组、旧会话、当前会话删除及旧快照到达；验证后提交。
 
 ### Task 4 — 跨端和同版本收口（全部 SC）
 
 - [ ] 在获准测试账号新建会话，App 移组／置顶→Web 刷新核对→Web 改名／取消置顶→App 重开核对；两端分别删除不同测试会话并核对另一端不可恢复旧 ID。
 - [ ] 实际 iOS 操作长按、更多菜单、组选择、确认与失败反馈；功能／组织对照附件，不做像素打分。
-- [ ] 跑以下 H 档最小检查，记录私密信息保护、版本、actor 脱敏 ID、全部五项证据和未完成。无授权设备／数据库／双端条件时不得以单测替代必需证据。
-- [ ] 执行结束创建 REPORT；协调者更新登记与 BR-003／004／005 交接，向 0006／0019 给出真实 contract 版本和未来入口接线清单。原 Sprint 的未完成验收保持不变。
+- [x] 跑以下 H 档最小检查，记录私密信息保护、版本、actor 脱敏 ID、全部五项证据和未完成。无授权设备／数据库／双端条件时不得以单测替代必需证据。
+- [x] 执行结束创建 REPORT；协调者更新登记与 BR-003／004／005 交接，向 0006／0019 给出真实 contract 版本和未来入口接线清单。原 Sprint 的未完成验收保持不变。
+
+run-01 收口：功能 HEAD `3de117902`；Web 定向 39/39、App 定向 95/95、两端 typecheck 和临时隔离 PostgreSQL 事务证据通过。真实同账号 Web↔App 写读与当前 iOS 构建交互没有可用环境，前两项保持未勾选，结果按 `blocked` 记录于 [REPORT](REPORT.md)。
 
 ## 测试命令与证据
 

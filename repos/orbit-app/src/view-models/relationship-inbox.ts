@@ -3,6 +3,8 @@ import {
   chatPrivacyAnalysisTogglePath,
   relationshipSignalConfirmPath
 } from "../api/endpoints";
+import type { OrbitLanguage } from "../api/contract/language";
+import { createTranslator, type OrbitTranslator } from "../i18n/messages";
 import { inboxNotificationActions } from "./inbox-notification-actions";
 
 export interface RelationshipConversationView {
@@ -339,7 +341,8 @@ function userFacingText(value: string, fallback = ""): string {
 
 export function relationshipInboxErrorText(
   value: unknown,
-  fallback: string
+  fallback: string,
+  language: OrbitLanguage = "zh"
 ): string {
   const rawText =
     typeof value === "string"
@@ -348,70 +351,146 @@ export function relationshipInboxErrorText(
         ? value.message
         : "";
 
+  if (language !== "zh" && rawText.trim() && !containsImplementationLabel(rawText)) {
+    return rawText.trim();
+  }
+
   return userFacingText(rawText, fallback) || fallback;
 }
 
-function formatDateTime(value: string): string {
+function formatDateTime(value: string, language: OrbitLanguage = "zh"): string {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
     return value;
   }
 
-  return `${date.getMonth() + 1}月${date.getDate()}日 ${date
-    .getHours()
-    .toString()
-    .padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+  if (language === "zh") {
+    return `${date.getMonth() + 1}月${date.getDate()}日 ${date
+      .getHours()
+      .toString()
+      .padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+  }
+
+  return new Intl.DateTimeFormat(language === "ja" ? "ja-JP" : "en-US", {
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    month: language === "ja" ? "numeric" : "short",
+  }).format(date);
 }
 
-function formatDateWithWeekday(value: string): string {
+function formatDateWithWeekday(value: string, language: OrbitLanguage = "zh"): string {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
     return value;
   }
 
-  return `${date.getMonth() + 1}月${date.getDate()}日 ${
-    WEEKDAYS[date.getDay()]
-  } ${date.getHours().toString().padStart(2, "0")}:${date
-    .getMinutes()
-    .toString()
-    .padStart(2, "0")}`;
+  if (language === "zh") {
+    return `${date.getMonth() + 1}月${date.getDate()}日 ${
+      WEEKDAYS[date.getDay()]
+    } ${date.getHours().toString().padStart(2, "0")}:${date
+      .getMinutes()
+      .toString()
+      .padStart(2, "0")}`;
+  }
+
+  return new Intl.DateTimeFormat(language === "ja" ? "ja-JP" : "en-US", {
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    month: language === "ja" ? "numeric" : "short",
+    weekday: "short",
+  }).format(date);
 }
 
-function formatDateWithClock(value: string, clock: string): string {
+function formatDateWithClock(
+  value: string,
+  clock: string,
+  language: OrbitLanguage = "zh"
+): string {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
     return clock ? `${value} ${clock}` : value;
   }
 
-  return `${date.getMonth() + 1}月${date.getDate()}日 ${
-    WEEKDAYS[date.getDay()]
-  } ${clock}`;
+  if (language === "zh") {
+    return `${date.getMonth() + 1}月${date.getDate()}日 ${
+      WEEKDAYS[date.getDay()]
+    } ${clock}`;
+  }
+
+  const dateLabel = new Intl.DateTimeFormat(language === "ja" ? "ja-JP" : "en-US", {
+    day: "numeric",
+    month: language === "ja" ? "numeric" : "short",
+    weekday: "short",
+  }).format(date);
+  return `${dateLabel} ${clock}`;
 }
 
 function localizeSourceLabel(value: string, fallback = ""): string {
   return SOURCE_LABELS[value] ?? userFacingText(value, fallback);
 }
 
-function localizeSourceLabels(values: unknown[]): string[] {
+function sourceLabelForLanguage(
+  value: string,
+  fallback: string,
+  language: OrbitLanguage
+): string {
+  if (language === "zh") {
+    return localizeSourceLabel(value, fallback);
+  }
+
+  const trimmedValue = value.trim();
+  return trimmedValue && !containsImplementationLabel(trimmedValue)
+    ? trimmedValue
+    : fallback;
+}
+
+function generatedTextForLanguage(
+  value: string,
+  fallback: string,
+  language: OrbitLanguage
+): string {
+  if (language !== "zh" && value.trim() && !containsImplementationLabel(value)) {
+    return value.trim();
+  }
+
+  return userFacingText(value, fallback);
+}
+
+function localizeSourceLabels(
+  values: unknown[],
+  language: OrbitLanguage = "zh",
+  t = createTranslator(language)
+): string[] {
   return [
     ...new Set(
       values
         .filter((value): value is string => typeof value === "string")
-        .map((value) => localizeSourceLabel(value))
+        .map((value) => sourceLabelForLanguage(
+          value,
+          t("inboxVm.sourceRecorded"),
+          language
+        ))
         .filter(Boolean)
     )
   ];
 }
 
-function localizeSubject(conversationId: string, value: string): string {
+function localizeSubject(
+  conversationId: string,
+  value: string,
+  language: OrbitLanguage = "zh",
+  t = createTranslator(language)
+): string {
   return (
-    KNOWN_THREAD_COPY[conversationId]?.subject ??
+    (language === "zh" ? KNOWN_THREAD_COPY[conversationId]?.subject : undefined) ??
     (/^与.+的关系跟进$/u.test(value.trim())
-      ? "后续沟通"
-      : mailContent(value, "后续沟通"))
+      ? t("inboxVm.followupSubject")
+      : mailContent(value, t("inboxVm.followupSubject")))
   );
 }
 
@@ -425,27 +504,41 @@ function mailContent(value: string, fallback: string): string {
   return text;
 }
 
-function localizePreview(conversationId: string, value: string): string {
+function localizePreview(
+  conversationId: string,
+  value: string,
+  language: OrbitLanguage = "zh",
+  t = createTranslator(language)
+): string {
   return (
-    KNOWN_THREAD_COPY[conversationId]?.preview ??
-    mailContent(value, "暂无消息正文")
+    (language === "zh" ? KNOWN_THREAD_COPY[conversationId]?.preview : undefined) ??
+    mailContent(value, t("inbox.noMessageBody"))
   );
 }
 
-function localizeSummary(conversationId: string, value: string): string {
-  const fallback = "先确认这段关系背景，再准备联系。";
+function localizeSummary(
+  conversationId: string,
+  value: string,
+  language: OrbitLanguage = "zh",
+  t = createTranslator(language)
+): string {
+  const fallback = t("inboxVm.prepareContext");
 
   return (
-    KNOWN_THREAD_COPY[conversationId]?.summary ??
+    (language === "zh" ? KNOWN_THREAD_COPY[conversationId]?.summary : undefined) ??
     (/\b(?:community_events|matches)\b/iu.test(value)
       ? fallback
-      : userFacingText(value, fallback))
+      : generatedTextForLanguage(value, fallback, language))
   );
 }
 
-function localizeDraftReply(conversationId: string, value: string): string {
+function localizeDraftReply(
+  conversationId: string,
+  value: string,
+  language: OrbitLanguage = "zh"
+): string {
   return (
-    KNOWN_THREAD_COPY[conversationId]?.draftReply ??
+    (language === "zh" ? KNOWN_THREAD_COPY[conversationId]?.draftReply : undefined) ??
     mailContent(value, "")
   );
 }
@@ -453,18 +546,24 @@ function localizeDraftReply(conversationId: string, value: string): string {
 function localizeMessageBody(
   conversationId: string,
   messageId: string,
-  value: string
+  value: string,
+  language: OrbitLanguage = "zh",
+  t = createTranslator(language)
 ): string {
   return (
-    KNOWN_THREAD_COPY[conversationId]?.messages?.[messageId] ??
-    mailContent(value, "暂无消息正文")
+    (language === "zh" ? KNOWN_THREAD_COPY[conversationId]?.messages?.[messageId] : undefined) ??
+    mailContent(value, t("inbox.noMessageBody"))
   );
 }
 
-function nextActionLabel(value: string): string {
+function nextActionLabel(
+  value: string,
+  language: OrbitLanguage = "zh",
+  t = createTranslator(language)
+): string {
   return (
-    NEXT_ACTIONS[value] ??
-    userFacingText(value, "先准备一版回复，确认后再发送。")
+    (language === "zh" ? NEXT_ACTIONS[value] : undefined) ??
+    generatedTextForLanguage(value, t("inboxVm.prepareReply"), language)
   );
 }
 
@@ -480,12 +579,12 @@ function unwrappedPayload(data: unknown): UnknownRecord {
   return data;
 }
 
-function currentUserName(value: string): string {
+function currentUserName(value: string, t: OrbitTranslator): string {
   if (/^(alex tan|orbit operator|profile_orbit_generated_operator)$/iu.test(value.trim())) {
-    return "我";
+    return t("inboxVm.me");
   }
 
-  return value.trim() || "我";
+  return value.trim() || t("inboxVm.me");
 }
 
 function allSideEffectsFalse(record: UnknownRecord): boolean {
@@ -498,30 +597,34 @@ function allSideEffectsFalse(record: UnknownRecord): boolean {
   );
 }
 
-function safetyText(sideEffects: UnknownRecord): string {
+function safetyText(sideEffects: UnknownRecord, t: OrbitTranslator): string {
   if (allSideEffectsFalse(sideEffects)) {
-    return "这里先写草稿。未经确认，不会发送消息或创建日程。";
+    return t("inboxVm.draftSafety");
   }
 
-  return "请先复核这段草稿，再决定下一步。";
+  return t("inboxVm.draftReview");
 }
 
-function conversationView(item: UnknownRecord): RelationshipConversationView {
+function conversationView(
+  item: UnknownRecord,
+  language: OrbitLanguage = "zh",
+  t = createTranslator(language)
+): RelationshipConversationView {
   const id = stringField(item, "conversationId", "conversation");
   const unreadCount = Math.max(0, numberField(item, "unreadCount"));
 
   return {
     contactId: stringField(item, "contactId", "contact"),
     id,
-    lastAt: formatDateTime(stringField(item, "lastCorrespondenceAt")),
-    name: stringField(item, "participantName", "联系人"),
-    nextAction: nextActionLabel(stringField(item, "nextActionLabel")),
+    lastAt: formatDateTime(stringField(item, "lastCorrespondenceAt"), language),
+    name: stringField(item, "participantName", t("inboxVm.contactFallback")),
+    nextAction: nextActionLabel(stringField(item, "nextActionLabel"), language, t),
     organization: stringField(item, "organization"),
-    preview: localizePreview(id, stringField(item, "preview")),
-    sourceLabels: localizeSourceLabels(listField(item, "sourceContextLabels")),
-    subject: localizeSubject(id, stringField(item, "subject")),
+    preview: localizePreview(id, stringField(item, "preview"), language, t),
+    sourceLabels: localizeSourceLabels(listField(item, "sourceContextLabels"), language, t),
+    subject: localizeSubject(id, stringField(item, "subject"), language, t),
     unreadCount,
-    unreadLabel: unreadCount > 0 ? `${unreadCount} 条新消息` : ""
+    unreadLabel: unreadCount > 0 ? t("inboxVm.newMessages", { count: unreadCount }) : ""
   };
 }
 
@@ -537,6 +640,21 @@ function selectedConversationItem(
   return (
     conversations.find((conversation) => conversation.id === selectedId) ?? null
   );
+}
+
+export function relationshipInboxSelectedContactId(data: unknown): string {
+  if (!isRecord(data)) return "";
+  const selectedThread = selectedThreadFromPayload(data);
+  if (!selectedThread) return "";
+  const directContactId = stringField(selectedThread, "contactId");
+  if (directContactId) return directContactId;
+  const selectedId = stringField(selectedThread, "conversationId");
+  if (!selectedId) return "";
+  const inbox = nestedRecord(data, "inbox");
+  const selectedConversation = listField(inbox, "conversations")
+    .filter(isRecord)
+    .find((conversation) => stringField(conversation, "conversationId") === selectedId);
+  return selectedConversation ? stringField(selectedConversation, "contactId") : "";
 }
 
 function deduplicateMessages(
@@ -565,7 +683,9 @@ function threadDetailView(
   thread: UnknownRecord,
   currentUser: string,
   sideEffects: UnknownRecord,
-  fallbackParticipantName = ""
+  fallbackParticipantName = "",
+  language: OrbitLanguage = "zh",
+  t = createTranslator(language)
 ): RelationshipThreadDetailView {
   const conversationId = stringField(thread, "conversationId", "conversation");
   const messages = deduplicateMessages(
@@ -579,37 +699,43 @@ function threadDetailView(
       body: localizeMessageBody(
         conversationId,
         messageId,
-        stringField(message, "body")
+        stringField(message, "body"),
+        language,
+        t
       ),
       fromMe,
       id: messageId,
       sender: fromMe
-        ? "我"
-        : stringField(message, "senderName", fallbackParticipantName || "联系人"),
-      time: formatDateTime(stringField(message, "occurredAt"))
+        ? t("inboxVm.me")
+        : stringField(message, "senderName", fallbackParticipantName || t("inboxVm.contactFallback")),
+      time: formatDateTime(stringField(message, "occurredAt"), language)
     };
   });
 
   return {
     conversationId,
-    currentUserName: currentUserName(currentUser),
+    currentUserName: currentUserName(currentUser, t),
     draftReply: "",
     messages: localizedMessages,
-    participantName: fallbackParticipantName || "联系人",
-    safetyText: safetyText(sideEffects),
-    sourceLabels: localizeSourceLabels(listField(thread, "sourceContextLabels")),
-    subject: localizeSubject(conversationId, stringField(thread, "subject")),
-    summary: localizeSummary(conversationId, stringField(thread, "summary"))
+    participantName: fallbackParticipantName || t("inboxVm.contactFallback"),
+    safetyText: safetyText(sideEffects, t),
+    sourceLabels: localizeSourceLabels(listField(thread, "sourceContextLabels"), language, t),
+    subject: localizeSubject(conversationId, stringField(thread, "subject"), language, t),
+    summary: localizeSummary(conversationId, stringField(thread, "summary"), language, t)
   };
 }
 
-export function relationshipInboxToView(data: unknown): RelationshipInboxView {
+export function relationshipInboxToView(
+  data: unknown,
+  language: OrbitLanguage = "zh"
+): RelationshipInboxView {
+  const t = createTranslator(language);
   if (!isRecord(data)) {
     return {
       conversations: [],
       selected: null,
-      summary: "暂无对话",
-      title: "收件箱"
+      summary: t("inboxVm.noConversations"),
+      title: t("inbox.title")
     };
   }
 
@@ -618,7 +744,7 @@ export function relationshipInboxToView(data: unknown): RelationshipInboxView {
   const sideEffects = nestedRecord(data, "sideEffects");
   const conversations = listField(inbox, "conversations")
     .filter(isRecord)
-    .map(conversationView);
+    .map(item => conversationView(item, language, t));
   const unreadTotal = conversations.filter((item) => item.unreadLabel).length;
   const selectedThread = selectedThreadFromPayload(data);
   const selectedId = selectedThread
@@ -632,13 +758,16 @@ export function relationshipInboxToView(data: unknown): RelationshipInboxView {
     ? {
         ...threadDetailView(
           selectedThread,
-          stringField(currentUser, "displayName", "我"),
+          stringField(currentUser, "displayName", t("inboxVm.me")),
           sideEffects,
-          selectedItem?.name
+          selectedItem?.name,
+          language,
+          t
         ),
         draftReply: localizeDraftReply(
           selectedId,
-          stringField(draftReply, "body")
+          stringField(draftReply, "body"),
+          language
         )
       }
     : null;
@@ -647,33 +776,51 @@ export function relationshipInboxToView(data: unknown): RelationshipInboxView {
     conversations,
     selected,
     summary: conversations.length
-      ? `${conversations.length} 段对话 · ${unreadTotal} 条新消息`
-      : "暂无对话",
-    title: "收件箱"
+      ? t("inboxVm.conversationsSummary", {
+          count: conversations.length,
+          unread: unreadTotal
+        })
+      : t("inboxVm.noConversations"),
+    title: t("inbox.title")
   };
 }
 
-function createdSummary(value: string, participantName: string): string {
+function createdSummary(
+  value: string,
+  participantName: string,
+  language: OrbitLanguage,
+  t: OrbitTranslator
+): string {
+  const fallback = t("inboxVm.createdSummary", { name: participantName });
+
   if (/new relationship thread staged from a reviewed draft/i.test(value)) {
-    return `致 ${participantName} · 草稿预览`;
+    return fallback;
   }
 
-  return userFacingText(value, `致 ${participantName} · 草稿预览`);
+  if (language !== "zh" && value.trim() && !containsImplementationLabel(value)) {
+    return value.trim();
+  }
+
+  return userFacingText(value, fallback);
 }
 
 export function createdRelationshipThreadToView(
-  data: unknown
+  data: unknown,
+  language: OrbitLanguage = "zh"
 ): RelationshipCreatedThreadView {
+  const t = createTranslator(language);
   const record = isRecord(data) ? data : {};
   const inboxItem = nestedRecord(record, "inboxItem");
   const thread = nestedRecord(record, "thread");
   const sideEffects = nestedRecord(record, "sideEffects");
-  const conversation = conversationView(inboxItem);
+  const conversation = conversationView(inboxItem, language, t);
   const detail = threadDetailView(
     thread,
-    "我",
+    t("inboxVm.me"),
     sideEffects,
-    conversation.name
+    conversation.name,
+    language,
+    t
   );
 
   return {
@@ -681,8 +828,17 @@ export function createdRelationshipThreadToView(
     detail: {
       ...detail,
       draftReply: "",
-      sourceLabels: localizeSourceLabels(listField(thread, "sourceContextLabels")),
-      summary: createdSummary(stringField(thread, "summary"), conversation.name)
+      sourceLabels: localizeSourceLabels(
+        listField(thread, "sourceContextLabels"),
+        language,
+        t
+      ),
+      summary: createdSummary(
+        stringField(thread, "summary"),
+        conversation.name,
+        language,
+        t
+      )
     }
   };
 }
@@ -692,8 +848,10 @@ function trimmed(value: string): string {
 }
 
 export function buildRelationshipThreadDraftRequest(
-  input: RelationshipThreadDraftInput
+  input: RelationshipThreadDraftInput,
+  language: OrbitLanguage = "zh"
 ): RelationshipThreadDraftRequestResult {
+  const t = createTranslator(language);
   const participantName = trimmed(input.participantName);
   const subject = trimmed(input.subject);
   const body = trimmed(input.body);
@@ -702,21 +860,21 @@ export function buildRelationshipThreadDraftRequest(
 
   if (!participantName) {
     return {
-      error: "先写收件人。",
+      error: t("inboxVm.recipientRequired"),
       success: false
     };
   }
 
   if (!subject) {
     return {
-      error: "先写主题。",
+      error: t("inboxVm.subjectRequired"),
       success: false
     };
   }
 
   if (!body) {
     return {
-      error: "先写正文。",
+      error: t("inboxVm.bodyRequired"),
       success: false
     };
   }
@@ -738,8 +896,10 @@ export function buildRelationshipThreadDraftRequest(
 }
 
 export function buildRelationshipRewriteRequest(
-  input: RelationshipRewriteRequestInput
+  input: RelationshipRewriteRequestInput,
+  language: OrbitLanguage = "zh"
 ): RelationshipRewriteRequestResult {
+  const t = createTranslator(language);
   const conversationId = trimmed(input.conversationId);
   const organization = trimmed(input.organization);
   const participantName = trimmed(input.participantName);
@@ -747,7 +907,7 @@ export function buildRelationshipRewriteRequest(
 
   if (!sourceText) {
     return {
-      error: "先写草稿，再润色。",
+      error: t("inboxVm.draftRequired"),
       success: false
     };
   }
@@ -797,29 +957,31 @@ export function relationshipRewriteToDraft(
   };
 }
 
-function privacyDeletionLabel(value: string): string {
-  const labels: Record<string, string> = {
-    available: "可请求删除分析记录",
-    deleted_mock_only: "已请求删除分析记录",
-    pending: "删除请求待确认"
+function privacyDeletionLabel(value: string, t: OrbitTranslator): string {
+  const labels: Record<string, ReturnType<OrbitTranslator>> = {
+    available: t("inboxVm.deletionAvailable"),
+    deleted_mock_only: t("inboxVm.deletionRequested"),
+    pending: t("inboxVm.deletionPending")
   };
 
-  return labels[value.trim().toLowerCase()] ?? "可请求删除分析记录";
+  return labels[value.trim().toLowerCase()] ?? t("inboxVm.deletionAvailable");
 }
 
-function privacyShareLabel(record: UnknownRecord): string {
+function privacyShareLabel(record: UnknownRecord, t: OrbitTranslator): string {
   const confirmationRequired = record.confirmationRequired === true;
 
   if (confirmationRequired) {
-    return "共享前需要确认";
+    return t("inboxVm.shareRequired");
   }
 
-  return "共享预览已确认";
+  return t("inboxVm.shareConfirmed");
 }
 
 export function relationshipPrivacyControlsToView(
-  payload: unknown
+  payload: unknown,
+  language: OrbitLanguage = "zh"
 ): RelationshipPrivacyControlsView {
+  const t = createTranslator(language);
   const record = isRecord(payload) ? payload : {};
   const analysis = nestedRecord(record, "analysisOptIn");
   const deletion = nestedRecord(record, "analysisDeletion");
@@ -828,39 +990,48 @@ export function relationshipPrivacyControlsToView(
   const privateNoteCount = listField(record, "privateNotes").filter(isRecord)
     .length;
   const analysisEnabled = analysis.enabled === true;
-  const analysisLabel = analysisEnabled ? "允许关系分析" : "已停止关系分析";
-  const privateNotesLabel = privateNoteCount
-    ? `${privateNoteCount} 条私密备注已隐藏`
-    : "没有私密备注";
+  const analysisLabel = analysisEnabled
+    ? t("inboxVm.analysisAllowed")
+    : t("inboxVm.analysisStopped");
+  const privateNotesLabel = privateNoteCount === 1
+    ? t("inboxVm.privateNoteOne")
+    : privateNoteCount
+      ? t("inboxVm.privateNotesCount", { count: privateNoteCount })
+      : t("inboxVm.privateNotesNone");
 
   return {
     analysisDetail: analysisEnabled
-      ? "Orbit 可以用这段关系上下文生成提醒和草稿。"
-      : "Orbit 不会用这段对话做后续分析。",
+      ? t("inboxVm.analysisDetailOn")
+      : t("inboxVm.analysisDetailOff"),
     analysisLabel,
-    deletionLabel: privacyDeletionLabel(stringField(deletion, "status")),
+    deletionLabel: privacyDeletionLabel(stringField(deletion, "status"), t),
     nextEnabled: !analysisEnabled,
     privateNotesLabel,
-    safetyText: "私密备注默认隐藏，不会进入分享预览。",
-    shareLabel: privacyShareLabel(share),
-    sourceLabel: localizeSourceLabel(
+    safetyText: t("inboxVm.privacySafety"),
+    shareLabel: privacyShareLabel(share, t),
+    sourceLabel: sourceLabelForLanguage(
       stringField(provenance, "sourceLabel"),
-      "来源已记录"
+      t("inboxVm.sourceRecorded"),
+      language
     ),
     summary: `${analysisLabel} · ${privateNotesLabel}`,
-    title: "隐私控制",
-    toggleLabel: analysisEnabled ? "停止分析" : "允许分析"
+    title: t("inboxVm.privacyTitle"),
+    toggleLabel: analysisEnabled
+      ? t("inboxVm.stopAnalysis")
+      : t("inboxVm.allowAnalysis")
   };
 }
 
 export function buildRelationshipPrivacyToggleRequest(
-  input: RelationshipPrivacyToggleInput
+  input: RelationshipPrivacyToggleInput,
+  language: OrbitLanguage = "zh"
 ): RelationshipPrivacyToggleRequestResult {
+  const t = createTranslator(language);
   const conversationId = trimmed(input.conversationId);
 
   if (!conversationId) {
     return {
-      error: "先选择一段对话。",
+      error: t("inboxVm.conversationRequired"),
       success: false
     };
   }
@@ -876,112 +1047,138 @@ export function buildRelationshipPrivacyToggleRequest(
   };
 }
 
-function relationshipSignalSourceLabel(value: string): string {
+function relationshipSignalSourceLabel(value: string, t: OrbitTranslator): string {
   const labels: Record<string, string> = {
-    gmail: "邮件线索",
-    google_calendar: "日程线索",
-    microsoft_graph: "邮件/日程线索"
+    gmail: t("inboxVm.signalSourceEmail"),
+    google_calendar: t("inboxVm.signalSourceCalendar"),
+    microsoft_graph: t("inboxVm.signalSourceBoth")
   };
 
-  return labels[value.trim().toLowerCase()] ?? "关系线索";
+  return labels[value.trim().toLowerCase()] ?? t("inboxVm.signalFallback");
 }
 
-function relationshipSignalKindLabel(value: string): string {
+function relationshipSignalKindLabel(value: string, t: OrbitTranslator): string {
   const labels: Record<string, string> = {
-    calendar_meeting: "日程会面",
-    email_calendar_overlap: "邮件/日程重叠",
-    email_intro: "邮件引荐"
+    calendar_meeting: t("inboxVm.signalKindMeeting"),
+    email_calendar_overlap: t("inboxVm.signalKindOverlap"),
+    email_intro: t("inboxVm.signalKindIntro")
   };
 
-  return labels[value.trim().toLowerCase()] ?? "关系线索";
+  return labels[value.trim().toLowerCase()] ?? t("inboxVm.signalFallback");
 }
 
-function relationshipSignalConfidenceLabel(value: string): string {
+function relationshipSignalConfidenceLabel(value: string, t: OrbitTranslator): string {
   const labels: Record<string, string> = {
-    high: "高可信",
-    low: "低可信",
-    medium: "中可信"
+    high: t("inboxVm.confidenceHigh"),
+    low: t("inboxVm.confidenceLow"),
+    medium: t("inboxVm.confidenceMedium")
   };
 
-  return labels[value.trim().toLowerCase()] ?? "待确认";
+  return labels[value.trim().toLowerCase()] ?? t("inboxVm.signalPending");
 }
 
-function relationshipSignalStatusLabel(confirmation: UnknownRecord): string {
-  return stringField(confirmation, "state") === "confirmed" ? "已确认" : "待确认";
+function relationshipSignalStatusLabel(
+  confirmation: UnknownRecord,
+  t: OrbitTranslator
+): string {
+  return stringField(confirmation, "state") === "confirmed"
+    ? t("inboxVm.signalConfirmed")
+    : t("inboxVm.signalPending");
 }
 
 function relationshipSignalCanConfirm(confirmation: UnknownRecord): boolean {
   return stringField(confirmation, "state") !== "confirmed";
 }
 
-function relationshipSignalPermissionLabel(permission: UnknownRecord): string {
+function relationshipSignalPermissionLabel(
+  permission: UnknownRecord,
+  t: OrbitTranslator
+): string {
   const state = stringField(permission, "state");
 
   if (state.includes("pending")) {
-    return "待授权";
+    return t("inboxVm.permissionPending");
   }
 
   if (state.includes("missing")) {
-    return "缺少授权";
+    return t("inboxVm.permissionMissing");
   }
 
-  return "可复核";
+  return t("inboxVm.permissionReviewable");
 }
 
-function relationshipSignalContextText(value: string, sourceKind: string): string {
+function relationshipSignalContextText(
+  value: string,
+  sourceKind: string,
+  language: OrbitLanguage,
+  t: OrbitTranslator
+): string {
   if (/intro email metadata|warm climate-infrastructure founder/iu.test(value)) {
-    return "邮件线索里出现了一条熟人引荐。";
+    return t("inboxVm.contextIntro");
   }
 
   if (/calendar fixture shows|shared LP breakfast/iu.test(value)) {
-    return "日程线索里出现了一次值得复核的会面。";
+    return t("inboxVm.contextCalendar");
   }
 
   if (/metadata fixture links|partner follow-up thread|calendar overlap/iu.test(value)) {
-    return "邮件和日程里出现了同一个合作联系人。";
+    return t("inboxVm.contextOverlap");
   }
 
-  return userFacingText(
+  return generatedTextForLanguage(
     value,
     sourceKind === "google_calendar"
-      ? "日程线索里出现了一次值得复核的会面。"
-      : "这条关系线索需要先复核来源。"
+      ? t("inboxVm.contextCalendar")
+      : t("inboxVm.contextReview"),
+    language
   );
 }
 
-function relationshipSignalNextActionText(value: string): string {
+function relationshipSignalNextActionText(
+  value: string,
+  language: OrbitLanguage,
+  t: OrbitTranslator
+): string {
   if (/context from the introducer/iu.test(value)) {
-    return "先向介绍人确认背景，再决定要不要联系。";
+    return t("inboxVm.nextIntro");
   }
 
   if (/calendar signal|post-breakfast note/iu.test(value)) {
-    return "先确认这次会面，再写一版简短消息。";
+    return t("inboxVm.nextCalendar");
   }
 
   if (/metadata-only signal|partnership follow-ups/iu.test(value)) {
-    return "先确认背景，再决定是否创建合作待办。";
+    return t("inboxVm.nextPartnership");
   }
 
-  return userFacingText(value, "先确认来源，再决定下一步。");
+  return generatedTextForLanguage(value, t("inboxVm.nextReview"), language);
 }
 
-function relationshipSignalEvidenceText(value: string): string {
+function relationshipSignalEvidenceText(
+  value: string,
+  language: OrbitLanguage,
+  t: OrbitTranslator
+): string {
   if (/header and subject fixture|intro for Aiko/iu.test(value)) {
-    return "邮件标题和参与人信息支持这条线索。";
+    return t("inboxVm.evidenceEmail");
   }
 
   if (/calendar title fixture|Climate LP breakfast/iu.test(value)) {
-    return "日程标题和参与人信息支持这条线索。";
+    return t("inboxVm.evidenceCalendar");
   }
 
   if (/subject and calendar overlap fixture|metadata/iu.test(value)) {
-    return "邮件和日程的重叠信息支持这条线索。";
+    return t("inboxVm.evidenceOverlap");
   }
 
-  return userFacingText(value, "这条线索有来源记录，确认前先复核。");
+  return generatedTextForLanguage(value, t("inboxVm.evidenceReview"), language);
 }
 
-function relationshipSignalView(signal: UnknownRecord): RelationshipSignalView {
+function relationshipSignalView(
+  signal: UnknownRecord,
+  language: OrbitLanguage,
+  t: OrbitTranslator
+): RelationshipSignalView {
   const confirmation = nestedRecord(signal, "confirmation");
   const permission = nestedRecord(signal, "permission");
   const evidence = listField(signal, "evidence").filter(isRecord)[0];
@@ -990,64 +1187,74 @@ function relationshipSignalView(signal: UnknownRecord): RelationshipSignalView {
   return {
     canConfirm: relationshipSignalCanConfirm(confirmation),
     confidenceLabel: relationshipSignalConfidenceLabel(
-      stringField(signal, "confidence")
+      stringField(signal, "confidence"),
+      t
     ),
     context: relationshipSignalContextText(
       stringField(signal, "relationshipContext"),
-      sourceKind
+      sourceKind,
+      language,
+      t
     ),
     evidenceExcerpt: relationshipSignalEvidenceText(
-      evidence ? stringField(evidence, "excerpt") : ""
+      evidence ? stringField(evidence, "excerpt") : "",
+      language,
+      t
     ),
     id: stringField(signal, "id", "relationship-signal"),
     metaLine: [
       stringField(signal, "organization"),
       stringField(signal, "role"),
-      relationshipSignalKindLabel(stringField(signal, "signalKind"))
+      relationshipSignalKindLabel(stringField(signal, "signalKind"), t)
     ]
       .filter(Boolean)
       .join(" · "),
     nextAction: relationshipSignalNextActionText(
       stringField(signal, "suggestedNextAction")
+      , language, t
     ),
-    occurredAt: formatDateTime(stringField(signal, "occurredAt")),
-    permissionLabel: relationshipSignalPermissionLabel(permission),
-    sourceLabel: relationshipSignalSourceLabel(sourceKind),
-    statusLabel: relationshipSignalStatusLabel(confirmation),
-    title: stringField(signal, "displayName", "关系线索")
+    occurredAt: formatDateTime(stringField(signal, "occurredAt"), language),
+    permissionLabel: relationshipSignalPermissionLabel(permission, t),
+    sourceLabel: relationshipSignalSourceLabel(sourceKind, t),
+    statusLabel: relationshipSignalStatusLabel(confirmation, t),
+    title: stringField(signal, "displayName", t("inboxVm.signalFallback"))
   };
 }
 
 export function relationshipSignalsToView(
-  payload: unknown
+  payload: unknown,
+  language: OrbitLanguage = "zh"
 ): RelationshipSignalsView {
+  const t = createTranslator(language);
   const record = unwrappedPayload(payload);
   const signals = listField(record, "signals")
     .filter(isRecord)
-    .map(relationshipSignalView);
+    .map(signal => relationshipSignalView(signal, language, t));
 
   return {
-    emptyText: signals.length ? "" : "暂无需要确认的邮件或日程线索。",
+    emptyText: signals.length ? "" : t("inboxVm.signalsEmpty"),
     nextAction: signals.length
-      ? "逐条确认。确认前不会写联系人，也不会发消息。"
-      : "有新线索时会先放到这里复核。",
-    safetyText: "这里只确认线索。不会读取正文、发送消息或写联系人。",
+      ? t("inboxVm.signalsReview")
+      : t("inboxVm.signalsWait"),
+    safetyText: t("inboxVm.signalsSafety"),
     signals,
     summary: signals.length
-      ? `${signals.length} 条邮件/日程线索，确认前不会写联系人。`
-      : "暂无邮件/日程线索",
-    title: "关系线索"
+      ? t("inboxVm.signalsSummary", { count: signals.length })
+      : t("inbox.noSignals"),
+    title: t("inbox.signalsTitle")
   };
 }
 
 export function buildRelationshipSignalConfirmRequest(
-  id: string
+  id: string,
+  language: OrbitLanguage = "zh"
 ): RelationshipSignalConfirmRequestResult {
+  const t = createTranslator(language);
   const signalId = trimmed(id);
 
   if (!signalId) {
     return {
-      error: "先选择一条线索。",
+      error: t("inboxVm.signalRequired"),
       success: false
     };
   }
@@ -1064,27 +1271,29 @@ export function buildRelationshipSignalConfirmRequest(
 }
 
 export function relationshipSignalConfirmToView(
-  payload: unknown
+  payload: unknown,
+  language: OrbitLanguage = "zh"
 ): RelationshipSignalConfirmView {
+  const t = createTranslator(language);
   const record = unwrappedPayload(payload);
   const signal = nestedRecord(record, "confirmedSignal");
 
   return {
-    confirmedAt: formatDateTime(stringField(record, "confirmedAt")),
+    confirmedAt: formatDateTime(stringField(record, "confirmedAt"), language),
     contactLine: [
-      stringField(signal, "displayName", "这条线索"),
+      stringField(signal, "displayName", t("inboxVm.signalFallback")),
       stringField(signal, "organization"),
       stringField(signal, "role")
     ]
       .filter(Boolean)
       .join(" · "),
-    detail: "已作为后续联系记录保留。",
+    detail: t("inboxVm.signalConfirmedDetail"),
     safetyText:
       record.externalActionExecuted === false &&
       record.relationshipWriteExecuted === false
-        ? "没有发送消息，也没有写联系人。"
-        : "请复核这次确认后的后续动作。",
-    title: "线索已确认"
+        ? t("inboxVm.signalConfirmedSafe")
+        : t("inboxVm.signalConfirmedReview"),
+    title: t("inboxVm.signalConfirmedTitle")
   };
 }
 
@@ -1106,35 +1315,48 @@ export function formatRelationshipDateForDisplay(value: string): string {
   return formatDateWithWeekday(value);
 }
 
-function priorityLabel(value: string): string {
+function priorityLabel(value: string, t: OrbitTranslator): string {
   const labels: Record<string, string> = {
-    high: "高优先级",
-    low: "低优先级",
-    normal: "普通优先级"
+    high: t("inboxVm.priorityHigh"),
+    low: t("inboxVm.priorityLow"),
+    normal: t("inboxVm.priorityNormal")
   };
 
-  return labels[value.trim().toLowerCase()] ?? "普通优先级";
+  return labels[value.trim().toLowerCase()] ?? t("inboxVm.priorityNormal");
 }
 
-function reminderTitle(reminder: UnknownRecord): string {
-  const contactName = stringField(reminder, "contactName", "这位联系人");
+function reminderTitle(
+  reminder: UnknownRecord,
+  language: OrbitLanguage,
+  t: OrbitTranslator
+): string {
+  const contactName = stringField(
+    reminder,
+    "contactName",
+    t("inboxVm.contactFallback")
+  );
   const title = stringField(reminder, "title");
+  const fallback = t("inboxVm.contactTitle", { name: contactName });
 
   if (/^review follow-up for /iu.test(title)) {
-    return `联系${contactName}`;
+    return fallback;
   }
 
-  return userFacingText(title, `联系${contactName}`);
+  return generatedTextForLanguage(title, fallback, language);
 }
 
-function reminderAlert(reminder: UnknownRecord): RelationshipAlertView {
+function reminderAlert(
+  reminder: UnknownRecord,
+  language: OrbitLanguage,
+  t: OrbitTranslator
+): RelationshipAlertView {
   return {
     detail: stringField(reminder, "organization"),
-    dueLabel: formatDateWithWeekday(stringField(reminder, "dueAt")),
+    dueLabel: formatDateWithWeekday(stringField(reminder, "dueAt"), language),
     id: stringField(reminder, "reminderId", "reminder"),
     kind: "reminder",
-    priorityLabel: priorityLabel(stringField(reminder, "priority")),
-    title: reminderTitle(reminder)
+    priorityLabel: priorityLabel(stringField(reminder, "priority"), t),
+    title: reminderTitle(reminder, language, t)
   };
 }
 
@@ -1155,19 +1377,31 @@ function proactiveClock(message: string, occursAt: string): string {
     .padStart(2, "0")}`;
 }
 
-function proactiveTitle(signal: UnknownRecord, message: string): string {
+function proactiveTitle(
+  signal: UnknownRecord,
+  message: string,
+  language: OrbitLanguage,
+  t: OrbitTranslator
+): string {
   const title = stringField(signal, "title");
   const participantMatch = /^Breakfast with (.+) tomorrow$/iu.exec(title);
   const clock = proactiveClock(message, stringField(signal, "occursAt"));
 
   if (participantMatch?.[1]?.trim() && clock) {
-    return `明天 ${clock} 见 ${participantMatch[1].trim()}`;
+    return t("inboxVm.tomorrowContact", {
+      clock,
+      name: participantMatch[1].trim()
+    });
   }
 
-  return userFacingText(title, "有一条关系提醒需要准备");
+  return generatedTextForLanguage(title, t("inboxVm.proactiveTitle"), language);
 }
 
-function proactiveAlert(data: UnknownRecord): RelationshipAlertView | null {
+function proactiveAlert(
+  data: UnknownRecord,
+  language: OrbitLanguage,
+  t: OrbitTranslator
+): RelationshipAlertView | null {
   const message = nestedRecord(data, "message");
   const signal = nestedRecord(data, "signal");
   const messageText = stringField(message, "content");
@@ -1180,25 +1414,31 @@ function proactiveAlert(data: UnknownRecord): RelationshipAlertView | null {
   return {
     detail: messageText || userFacingText(stringField(signal, "body")),
     dueLabel: occursAt
-      ? formatDateWithClock(occursAt, proactiveClock(messageText, occursAt))
+      ? formatDateWithClock(
+          occursAt,
+          proactiveClock(messageText, occursAt),
+          language
+        )
       : "",
     id: stringField(message, "messageId", stringField(signal, "signalId", "proactive")),
     kind: "proactive",
-    priorityLabel: "需要准备",
-    title: proactiveTitle(signal, messageText)
+    priorityLabel: t("inboxVm.prepare"),
+    title: proactiveTitle(signal, messageText, language, t)
   };
 }
 
 export function relationshipAlertsToView(
   notificationsData: unknown,
-  proactiveData?: unknown
+  proactiveData?: unknown,
+  language: OrbitLanguage = "zh"
 ): RelationshipAlertsView {
+  const t = createTranslator(language);
   const notificationRecord = isRecord(notificationsData) ? notificationsData : {};
   const actions = inboxNotificationActions(notificationsData);
   const reminders = listField(notificationRecord, "reminders")
     .filter(isRecord)
     .flatMap(reminder => {
-      const alert = reminderAlert(reminder);
+      const alert = reminderAlert(reminder, language, t);
       const action = actions.get(alert.id);
       return action?.ignored ? [] : [{
         ...alert,
@@ -1206,13 +1446,19 @@ export function relationshipAlertsToView(
         ...(action?.canPersist ? { canPersistState: true, read: action.read } : {}),
       }];
     });
-  const proactive = isRecord(proactiveData) ? proactiveAlert(proactiveData) : null;
+  const proactive = isRecord(proactiveData)
+    ? proactiveAlert(proactiveData, language, t)
+    : null;
   const alerts = proactive ? [...reminders, proactive] : reminders;
 
   return {
     alerts,
-    safetyText: "这些只是提醒，不会发送推送、邮件或短信。",
-    summary: alerts.length ? `${alerts.length} 条提醒` : "暂无提醒"
+    safetyText: t("inboxVm.alertsSafety"),
+    summary: alerts.length === 1
+      ? t("inboxVm.alertsOne")
+      : alerts.length
+        ? t("inbox.alertsCount", { count: alerts.length })
+        : t("inbox.noAlerts")
   };
 }
 

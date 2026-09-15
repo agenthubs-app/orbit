@@ -15,6 +15,20 @@
 
 const DRAFT_KEY = "orbit.ask.draft";
 const PENDING_KEY = "orbit.ask.pending";
+const AGENT_PREFILL_KEY = "orbit.agent.prefill";
+
+export interface OrbitAgentPrefill {
+  origin: {
+    entryClient: "web";
+    entryPointId: "contacts.analysis";
+    initialGroupId: string | null;
+    kind: "structured";
+    sourceDataVersion: string;
+    template: { id: "contacts.analysis"; version: 1 };
+  };
+  query: string;
+  returnTo: string;
+}
 
 /** 跨页提问的交接单：在来源页写入，落到 iOrbit 页后取出并立即清除。 */
 export interface OrbitPendingAsk {
@@ -90,6 +104,37 @@ export function takePendingAsk(): OrbitPendingAsk | null {
   }
 }
 
+export function stashAgentPrefill(prefill: OrbitAgentPrefill): void {
+  try {
+    session()?.setItem(AGENT_PREFILL_KEY, JSON.stringify(prefill));
+  } catch {
+    // The destination remains usable as an ordinary new chat when storage is unavailable.
+  }
+}
+
+export function takeAgentPrefill(): OrbitAgentPrefill | null {
+  try {
+    const store = session();
+    const raw = store?.getItem(AGENT_PREFILL_KEY);
+    if (!raw) return null;
+    store?.removeItem(AGENT_PREFILL_KEY);
+    const value = JSON.parse(raw) as Partial<OrbitAgentPrefill> | null;
+    const origin = value?.origin;
+    const query = typeof value?.query === "string" ? value.query.trim() : "";
+    const returnTo = typeof value?.returnTo === "string" ? value.returnTo : "";
+    if (
+      !query || returnTo !== "/app/contacts/dashboard" ||
+      origin?.entryClient !== "web" || origin.entryPointId !== "contacts.analysis" ||
+      origin.initialGroupId !== null || origin.kind !== "structured" ||
+      !/^[a-f0-9]{64}$/u.test(origin.sourceDataVersion ?? "") ||
+      origin.template?.id !== "contacts.analysis" || origin.template.version !== 1
+    ) return null;
+    return { origin: { ...origin, sourceDataVersion: origin.sourceDataVersion! } as OrbitAgentPrefill["origin"], query, returnTo };
+  } catch {
+    return null;
+  }
+}
+
 /** 登出时清干净：草稿和待办提问都属于上一个登录态。 */
 export function clearOrbitAskSession(): void {
   try {
@@ -97,6 +142,7 @@ export function clearOrbitAskSession(): void {
 
     store?.removeItem(DRAFT_KEY);
     store?.removeItem(PENDING_KEY);
+    store?.removeItem(AGENT_PREFILL_KEY);
   } catch {
     // 同上：清理失败不值得中断登出流程。
   }

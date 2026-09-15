@@ -20,6 +20,12 @@ const schedule = (patch = {}) => ({
   state: "upcoming", startsAt: "2026-09-11T05:30:00Z", endsAt: "2026-09-11T06:00:00Z",
   location: "线上", sourceId: "appointment:one", ...patch
 });
+const recommendation = (patch = {}) => ({
+  eventId: "event:one", title: "周末产品交流会", startsAt: "2026-09-12T05:00:00Z",
+  location: "东京", venue: "涩谷", valueScore: 92, scoreBand: "high",
+  signals: [{ label: "目标一致", detail: "适合交流产品经验", weight: 1 }],
+  recommendedAction: "先查看活动详情", ...patch
+});
 const contact = (patch = {}) => ({
   id: "contact:lin", displayName: "林悦", role: "产品设计师", organization: "星野", location: "东京",
   profileSnippet: "", relationshipContext: "讨论合作", lastInteractionAt: "2026-09-09T00:00:00Z",
@@ -125,7 +131,30 @@ test("malformed schedule data never creates invented time, kind or source destin
   assert.deepEqual(read({ scheduleItems: [] }, "2026-09-11", now), []);
 });
 
-test("followup people are derived only from existing needs-follow-up state and retain real identities", () => {
+test("home recommendations keep real event identity, local time and venue", () => {
+  const rows = subject("homeRecommendedEventsToView")({ state: "success", recommendations: [
+    recommendation(), recommendation({ eventId: "event:two", title: "设计师午间聚会", startsAt: "2026-09-13T03:00:00Z", location: "东京", venue: "代官山" })
+  ] }, "Asia/Tokyo");
+  assert.deepEqual(rows, [
+    { id: "event:one", title: "周末产品交流会", dateLabel: "9月12日 周六 14:00", locationLabel: "东京 · 涩谷" },
+    { id: "event:two", title: "设计师午间聚会", dateLabel: "9月13日 周日 12:00", locationLabel: "东京 · 代官山" }
+  ]);
+  assert.deepEqual(subject("homeRecommendedEventsToView")({ state: "empty", recommendations: [] }), []);
+  assert.deepEqual(subject("homeRecommendedEventsToView")({ state: "pending", recommendations: [] }), []);
+});
+
+test("invalid recommendation payloads are failures instead of invented or empty events", () => {
+  const read = subject("homeRecommendedEventsToView");
+  for (const payload of [{}, { state: "success", recommendations: [] }, { state: "empty", recommendations: [recommendation()] },
+    { state: "success", recommendations: [null] }, { state: "success", recommendations: [recommendation({ eventId: "" })] },
+    { state: "success", recommendations: [recommendation({ startsAt: "bad" })] },
+    { state: "success", recommendations: [recommendation({ valueScore: 101 })] },
+    { state: "success", recommendations: [recommendation(), recommendation()] }]) {
+    assert.equal(read(payload, "Asia/Tokyo"), null);
+  }
+});
+
+test("followup people remain available to non-home consumers with real identities", () => {
   const rows = subject("homeFollowupsToView")({ state: "success", contacts: [
     contact(), contact({ id: "active", status: "active" }), contact({ id: "archived", status: "archived" }),
     contact({ id: "contact:chen", displayName: "陈默", role: "产品经理" })

@@ -168,6 +168,8 @@ export const businessCardBatchSkipResponseSchema: z.ZodType<Contract.BusinessCar
 export const businessCardBatchFinishResponseSchema: z.ZodType<Contract.BusinessCardBatchFinishResponseContract> = z.strictObject({ state: z.literal("completed") });
 
 export const ingestManifestEntrySchema: z.ZodType<Contract.IngestManifestEntryContract> = z.object({
+  cardId: identity,
+  side: z.enum(["front", "back"]),
   fileName: identity,
   mimeType: identity,
   rawSize: positiveInteger,
@@ -191,9 +193,32 @@ export const ingestBatchSchema: z.ZodType<Contract.IngestBatchContract> = z.obje
   expiresAt: timestamp,
 }).transform((value) => ({ ...value, statusReason: value.statusReason, finalizedAt: value.finalizedAt }));
 
-export const ingestItemSchema: z.ZodType<Contract.IngestItemContract> = z.object({
+const ingestCardFieldSourcesSchema: z.ZodType<Contract.IngestCardFieldSourcesContract> = z.object({
+  displayName: identity.nullable(),
+  organization: identity.nullable(),
+  role: identity.nullable(),
+  email: identity.nullable(),
+  phone: identity.nullable(),
+}).transform((value): Contract.IngestCardFieldSourcesContract => ({
+  displayName: value.displayName,
+  organization: value.organization,
+  role: value.role,
+  email: value.email,
+  phone: value.phone,
+}));
+
+function normalizeLegacyIngestItem(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const item = value as Record<string, unknown>;
+  if (item.cardId !== undefined || item.side !== undefined || !Number.isInteger(item.seq)) return value;
+  return { ...item, cardId: `legacy:${item.seq}`, side: "front" };
+}
+
+export const ingestItemSchema: z.ZodType<Contract.IngestItemContract> = z.preprocess(normalizeLegacyIngestItem, z.object({
   id: identity,
   batchId: identity,
+  cardId: identity,
+  side: z.enum(["front", "back"]),
   seq: positiveInteger,
   status: z.enum(["awaiting_upload", "uploaded", "excluded", "queued", "processing", "extracted", "terminal_failed", "confirmed", "skipped"]),
   version: positiveInteger,
@@ -209,6 +234,7 @@ export const ingestItemSchema: z.ZodType<Contract.IngestItemContract> = z.object
   reviewIssues: z.array(businessCardReviewIssueSchema).readonly(),
   usage: businessCardCloudOcrUsageSchema.nullable(),
   confirmedContactId: identity.nullable(),
+  confirmedFieldSources: ingestCardFieldSourcesSchema.nullable().optional(),
   attemptCount: count,
   nextRetryAt: timestamp.nullable(),
   leaseExpiresAt: timestamp.nullable(),
@@ -216,7 +242,7 @@ export const ingestItemSchema: z.ZodType<Contract.IngestItemContract> = z.object
   errorCode: z.enum(["IMAGE_INVALID", "OCR_PROVIDER_FAILED", "OCR_PROVIDER_TIMEOUT", "OCR_INVALID_OUTPUT", "LEASE_EXHAUSTED"]).nullable(),
   createdAt: timestamp,
   updatedAt: timestamp,
-}).transform((value) => ({
+})).transform((value) => ({
   ...value,
   imageDigest: value.imageDigest,
   derivativeObjectKey: value.derivativeObjectKey,
@@ -277,18 +303,74 @@ export const ingestBatchActionResponseSchema: z.ZodType<Contract.IngestBatchActi
 export const ingestFinalizeResponseSchema: z.ZodType<Contract.IngestFinalizeResponseContract> = z.object({ batch: ingestBatchSchema, alreadyFinalized: z.boolean() })
   .transform((value) => ({ ...value, batch: value.batch }));
 
-export const ingestConfirmationResponseSchema: z.ZodType<Contract.IngestConfirmationResponseContract> = z.discriminatedUnion("state", [
-  z.strictObject({ state: z.literal("created"), contactId: identity, item: ingestItemSchema }),
-  duplicateReviewSchema,
-]).superRefine((value, context) => {
-  if (value.state === "created") {
-    if (value.item.status !== "confirmed") {
-      context.addIssue({ code: "custom", path: ["item", "status"], message: "Created confirmation must return a confirmed item." });
+const ingestCardConfirmationItemSchema: z.ZodType<Contract.IngestCardConfirmationItemContract> = z.object({
+  itemId: identity,
+  version: positiveInteger,
+  imageDigest: digest,
+});
+
+export const ingestCardConfirmationInputSchema: z.ZodType<Contract.IngestCardConfirmationInputContract> = z.object({
+  confirmationIntentId: identity,
+  expectedCardItems: z.array(ingestCardConfirmationItemSchema).min(1).max(2).readonly(),
+  fieldSources: ingestCardFieldSourcesSchema,
+  displayName: z.string(),
+  organization: z.string(),
+  role: z.string(),
+  email: z.string(),
+  phone: z.string(),
+  relationshipContext: z.string(),
+  notes: z.string(),
+  allowDuplicate: z.boolean().optional(),
+}).superRefine((value, context) => {
+  const itemIds = value.expectedCardItems.map((item) => item.itemId);
+  if (new Set(itemIds).size !== itemIds.length) {
+    context.addIssue({ code: "custom", path: ["expectedCardItems"], message: "Card item snapshots must be unique." });
+  }
+  for (const [field, source] of Object.entries(value.fieldSources)) {
+    if (source !== null && !itemIds.includes(source)) {
+      context.addIssue({ code: "custom", path: ["fieldSources", field], message: "Field source must identify an item in this card snapshot." });
     }
-    if (value.item.confirmedContactId !== value.contactId) {
-      context.addIssue({ code: "custom", path: ["item", "confirmedContactId"], message: "Confirmed contact must match the response contact." });
+  }
+}).transform((value): Contract.IngestCardConfirmationInputContract => {
+  const confirmation = {
+    confirmationIntentId: value.confirmationIntentId,
+    expectedCardItems: value.expectedCardItems!,
+    fieldSources: value.fieldSources,
+    displayName: value.displayName,
+    organization: value.organization,
+    role: value.role,
+    email: value.email,
+    phone: value.phone,
+    relationshipContext: value.relationshipContext,
+    notes: value.notes,
+  };
+  const { allowDuplicate } = value;
+  return allowDuplicate === undefined ? confirmation : { ...confirmation, allowDuplicate };
+});
+
+function normalizeLegacyIngestConfirmation(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const response = value as Record<string, unknown>;
+  if (response.state !== "created" || !response.item || response.items !== undefined || response.replayed !== undefined) return value;
+  return { ...response, items: [response.item], replayed: false };
+}
+
+export const ingestConfirmationResponseSchema: z.ZodType<Contract.IngestConfirmationResponseContract> = z.preprocess(normalizeLegacyIngestConfirmation, z.discriminatedUnion("state", [
+  z.strictObject({ state: z.literal("created"), contactId: identity, item: ingestItemSchema, items: z.array(ingestItemSchema).min(1).max(2).readonly(), replayed: z.boolean() }),
+  duplicateReviewSchema,
+])).superRefine((value, context) => {
+  if (value.state === "created") {
+    const ids = value.items.map((item) => item.id);
+    const selected = value.items.find((item) => item.id === value.item.id);
+    if (!selected || new Set(ids).size !== ids.length
+      || value.item.status !== "confirmed" || value.item.confirmedContactId !== value.contactId
+      || selected.version !== value.item.version || selected.cardId !== value.item.cardId || selected.side !== value.item.side) {
+      context.addIssue({ code: "custom", path: ["items"], message: "Confirmation items must uniquely include the selected item." });
+    }
+    if (value.items.some((item) => item.cardId !== value.item.cardId || item.status !== "confirmed" || item.confirmedContactId !== value.contactId)) {
+      context.addIssue({ code: "custom", path: ["items"], message: "Every card side must resolve to the returned contact." });
     }
   }
 }).transform((value): Contract.IngestConfirmationResponseContract => value.state === "created"
-  ? { ...value, item: value.item }
+  ? { ...value, item: value.item, items: value.items }
   : value);

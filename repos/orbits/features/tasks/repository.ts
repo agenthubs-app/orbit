@@ -1,3 +1,6 @@
+import type { TransactionalPostgresClient } from "../../shared/storage/transactional-postgres";
+import { runTaskMutation, type TaskMutationCommand } from "./mutations";
+import type { TaskMutationResult } from "./service";
 import type {
   LiveRecord,
   LiveRecordStoreLike,
@@ -15,6 +18,7 @@ export interface StoredTaskRecord {
 }
 
 export interface TaskRepository {
+  mutate: (action: string, command: TaskMutationCommand, operation: (repository: TaskRepository) => Promise<TaskMutationResult>) => Promise<TaskMutationResult>;
   get: (
     actorId: string,
     taskId: string,
@@ -52,8 +56,10 @@ function decodeStoredRecord(
 export function createTaskRepository(input: {
   store: LiveRecordStoreLike<Record<string, unknown>>;
   workspaceId: string;
+  transactionClient?: TransactionalPostgresClient;
 }): TaskRepository {
   return {
+    mutate: (action, command, operation) => runTaskMutation({ ...input, client: input.transactionClient, action, command, operation: store => operation(createTaskRepository({ store, workspaceId: input.workspaceId })) }),
     async get(actorId, taskId, options = {}) {
       const record = await input.store.getRecord({
         workspaceId: input.workspaceId,

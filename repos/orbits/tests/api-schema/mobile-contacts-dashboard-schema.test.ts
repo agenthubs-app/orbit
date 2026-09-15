@@ -83,3 +83,63 @@ test("mobile contacts dashboard schema rejects unknown schema versions", () => {
 
   assert.equal(result.success, false);
 });
+
+test("mobile contacts dashboard schema accepts absent and unavailable analysis for rolling clients", () => {
+  const absent = mobileContactsDashboardPayloadSchema.safeParse(validPayload());
+  const unavailable = mobileContactsDashboardPayloadSchema.safeParse({
+    ...validPayload(),
+    analysis: null,
+    unavailableSections: ["analysis"],
+  });
+
+  assert.equal(absent.success, true);
+  assert.equal(unavailable.success, true);
+});
+
+test("mobile contacts dashboard schema accepts empty, fresh, and stale persisted analysis states", () => {
+  const sourceDataVersion = "a".repeat(64);
+  const current = {
+    analysisVersion: "contacts.analysis@1",
+    sourceDataVersion,
+  };
+  const report = {
+    analysisVersion: "contacts.analysis@1",
+    body: "人脉结构稳定，建议补充投资人联系。",
+    generatedAt: "2026-09-15T01:00:01.000Z",
+    messageId: "message:analysis:1",
+    sessionId: "session:analysis:1",
+    sourceDataVersion,
+  };
+
+  for (const analysis of [
+    { current, report: null, stale: false },
+    { current, report, stale: false },
+    { current, report: { ...report, sourceDataVersion: "b".repeat(64) }, stale: true },
+  ]) {
+    assert.equal(
+      mobileContactsDashboardPayloadSchema.safeParse({ ...validPayload(), analysis }).success,
+      true,
+    );
+  }
+});
+
+test("mobile contacts dashboard schema rejects an analysis report whose stale flag contradicts its versions", () => {
+  const sourceDataVersion = "a".repeat(64);
+  const result = mobileContactsDashboardPayloadSchema.safeParse({
+    ...validPayload(),
+    analysis: {
+      current: { analysisVersion: "contacts.analysis@1", sourceDataVersion },
+      report: {
+        analysisVersion: "contacts.analysis@1",
+        body: "已存报告",
+        generatedAt: "2026-09-15T01:00:01.000Z",
+        messageId: "message:analysis:1",
+        sessionId: "session:analysis:1",
+        sourceDataVersion: "b".repeat(64),
+      },
+      stale: false,
+    },
+  });
+
+  assert.equal(result.success, false);
+});

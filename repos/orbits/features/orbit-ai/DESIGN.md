@@ -208,11 +208,19 @@ artifact 读取都会进入 conversation timings，随后持久化为 Run step�
 
 会面备忘录（备忘录/会前准备）复用 `chat.context`：planner 把人名放进 `arguments.searchTerms`，synthesis 按固定四段模板输出（背景/上次进展/建议话题/待确认事项），只允许使用工具结果与对话历史里的事实，缺口写「待补充」。
 
-`history` 在服务端的用途：route 校验角色和长度后透传；runtime 把同一份最近轮次交给 planner（消解追问指代并按前文目标路由工具）、artifact contextMessages（参与检索词抽取与路径选择）和 synthesis（保持多轮连贯）。会话仍不做服务端持久化，历史由页面随每次请求携带。
+`history` 在模型运行时的用途：route 校验角色和长度后透传；runtime 把同一份最近轮次交给 planner（消解追问指代并按前文目标路由工具）、artifact contextMessages（参与检索词抽取与路径选择）和 synthesis（保持多轮连贯）。可靠发送会把规范消息写入 actor-scoped session store；页面携带的最近轮次仍是本次模型上下文，不能替代持久会话记录。
 
 带推荐结果的 assistant 轮在 history 中附加 `[本轮推荐明细]` 结构化行（名称/时间/地点/分数/理由）。实体详情查询走两级：明细块已含答案时 planner 用 general_chat 直接作答；需要完整记录时 planner 复用 `events.recommend` / `contacts.recommend`，把实体名放进 `arguments.searchTerms` 从 live 库取回完整记录（Contacts 排名 token 支持中日文名子串匹配；planner 提供的 searchTerms 优先于抽词服务，不会被覆盖）。不为实体详情新增白名单工具。等待回复期间侧边栏保持上一轮结果，新回复带结果时才替换。
 
 当 Orbit AI 嵌入 `/app/chat` 等模块页面时，模块页面不直接依赖 raw payload。嵌入方应在自己的 route view model 中调用 Orbit AI service，把 proposed tool intents、assistant reply 和 artifact surface 映射成该页面的 view model。
+
+## 会话起源与整理
+
+Web 与 App 共用 `shared/contract/ai-sessions.ts` 和对应运行时 schema。可靠发送保持 protocol v2；首次用户消息保存时冻结 schemaVersion 1 的 origin，包括受控入口 ID、客户端、模板版本、经授权引用、初始分组、稳定首消息 ID 和实际发送文本。后续消息或旧客户端省略新字段时必须保留 origin，不能从最近消息窗口重新推断。
+
+会话展示元信息使用独立的 `organization.revision`。客户端只通过 session PATCH 提交 `expectedRevision`、`mutationId` 和改动字段；消息快照不携带组织字段的覆盖权。分组创建、改名和删除也使用 revisioned mutation。删除非空分组会在一个事务里保留并移出成员会话；删除会话建立 tombstone，迟到保存不能复活旧 ID。
+
+列表 API 支持游标、搜索、分组和置顶过滤，每页最多 50 条。两端消费全部分页后才做完整历史搜索和分组展示。另一端的变化通过页面 focus 或显式 refresh 获取；当前没有实时订阅。所有读取与 mutation 都绑定服务端认证 actor，origin 中的 reference 只是来源声明，不能授予联系人、活动或笔记读取权限，也不能触发模型或外部动作。
 
 ## 测试要求
 

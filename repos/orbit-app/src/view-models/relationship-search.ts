@@ -1,5 +1,6 @@
 import { ORBIT_API_ENDPOINTS } from "../api/endpoints";
 import type { IndustrySelectionContract, SecondaryIndustryIdCode } from "../api/contract/industries";
+import type { OrbitLanguage } from "../api/contract/language";
 import {
   industryLabel as primaryIndustryLabel,
   isIndustryIdCode,
@@ -7,6 +8,7 @@ import {
   secondaryIndustryLabel,
   validateIndustrySelection
 } from "../api/domain/industries";
+import { createTranslator, type MessageKey } from "../i18n/messages";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -132,7 +134,8 @@ function envelopeData(data: unknown): unknown {
   return data.success === true && "data" in data ? data.data : data;
 }
 
-function queryText(value: string): string {
+function queryText(value: string, language: OrbitLanguage = "zh"): string {
+  if (language !== "zh") return value.trim() || createTranslator(language)("contacts.relationshipSearch");
   switch (value) {
     case "Find customer reference opportunities from live contacts":
       return "找客户参考机会";
@@ -151,7 +154,16 @@ function queryText(value: string): string {
   }
 }
 
-function businessIntentLabel(value: string): string {
+function businessIntentLabel(value: string, language: OrbitLanguage = "zh"): string {
+  if (language !== "zh") {
+    const keys: Readonly<Record<string, MessageKey>> = {
+      explore_partnership: "contacts.intentPartnership",
+      find_warm_intro: "contacts.intentWarmIntro",
+      recover_event_follow_up: "contacts.intentEventFollowUp",
+      source_customer_reference: "contacts.intentCustomerReference"
+    };
+    return createTranslator(language)(keys[value] ?? "contacts.relationshipSearch");
+  }
   switch (value) {
     case "explore_partnership":
       return "找合作机会";
@@ -166,7 +178,17 @@ function businessIntentLabel(value: string): string {
   }
 }
 
-function industryLabel(value: string): string {
+function industryLabel(value: string, language: OrbitLanguage = "zh"): string {
+  if (language !== "zh") {
+    const keys: Readonly<Record<string, MessageKey>> = {
+      climate: "contacts.industryClimate",
+      enterprise_saas: "contacts.industryEnterpriseSaas",
+      fintech: "contacts.industryFintech",
+      healthcare: "contacts.industryHealthcare",
+      mobility: "contacts.industryMobility"
+    };
+    return keys[value] ? createTranslator(language)(keys[value]) : value;
+  }
   switch (value) {
     case "climate":
       return "气候";
@@ -183,7 +205,17 @@ function industryLabel(value: string): string {
   }
 }
 
-function valueTypeLabel(value: string): string {
+function valueTypeLabel(value: string, language: OrbitLanguage = "zh"): string {
+  if (language !== "zh") {
+    const keys: Readonly<Record<string, MessageKey>> = {
+      commercial_opportunity: "contacts.valueBusinessOpportunity",
+      community_context: "contacts.valueCommunityResource",
+      knowledge_exchange: "contacts.valueKnowledgeExchange",
+      referral_path: "contacts.valueIntroPath",
+      strategic_intro: "contacts.valueIntroPath"
+    };
+    return keys[value] ? createTranslator(language)(keys[value]) : value;
+  }
   switch (value) {
     case "commercial_opportunity":
       return "商业机会";
@@ -200,7 +232,17 @@ function valueTypeLabel(value: string): string {
   }
 }
 
-function followUpStatusLabel(value: string): string {
+function followUpStatusLabel(value: string, language: OrbitLanguage = "zh"): string {
+  if (language !== "zh") {
+    const keys: Readonly<Record<string, MessageKey>> = {
+      active: "contacts.statusActive",
+      dormant: "contacts.statusDormant",
+      needs_follow_up: "contacts.statusNeedsFollowUp",
+      nurture: "contacts.statusNurture",
+      waiting_on_them: "contacts.statusWaiting"
+    };
+    return keys[value] ? createTranslator(language)(keys[value]) : value;
+  }
   switch (value) {
     case "active":
       return "推进中";
@@ -217,7 +259,18 @@ function followUpStatusLabel(value: string): string {
   }
 }
 
-function sourceTypeLabel(value: string): string {
+function sourceTypeLabel(value: string, language: OrbitLanguage = "zh"): string {
+  if (language !== "zh") {
+    const keys: Readonly<Record<string, MessageKey>> = {
+      calendar_signal: "contacts.channelCalendar",
+      email_signal: "contacts.channelEmail",
+      event_import: "contacts.channelEventNote",
+      external_contacts: "contacts.library",
+      manual: "contacts.channelManualNote",
+      referral: "contacts.channelReferral"
+    };
+    return keys[value] ? createTranslator(language)(keys[value]) : value;
+  }
   switch (value) {
     case "calendar_signal":
       return "日程线索";
@@ -236,7 +289,8 @@ function sourceTypeLabel(value: string): string {
   }
 }
 
-function roleLabel(value: string): string {
+function roleLabel(value: string, language: OrbitLanguage = "zh"): string {
+  if (language !== "zh") return value;
   switch (value) {
     case "Community Lead":
       return "社群负责人";
@@ -251,7 +305,8 @@ function roleLabel(value: string): string {
   }
 }
 
-function locationLabel(value: string): string {
+function locationLabel(value: string, language: OrbitLanguage = "zh"): string {
+  if (language !== "zh") return value;
   switch (value) {
     case "San Francisco":
       return "旧金山";
@@ -264,7 +319,15 @@ function locationLabel(value: string): string {
   }
 }
 
-function scoreBandLabel(value: string): string {
+function scoreBandLabel(value: string, language: OrbitLanguage = "zh"): string {
+  if (language !== "zh") {
+    const keys: Readonly<Record<string, MessageKey>> = {
+      high: "contacts.scoreHigh",
+      medium: "contacts.scoreMedium",
+      low: "contacts.scoreLow"
+    };
+    return createTranslator(language)(keys[value] ?? "contacts.scoreMatched");
+  }
   switch (value) {
     case "high":
       return "高匹配";
@@ -277,7 +340,8 @@ function scoreBandLabel(value: string): string {
   }
 }
 
-function evidenceHintText(value: string): string {
+function evidenceHintText(value: string, language: OrbitLanguage = "zh"): string {
+  if (language !== "zh") return value.trim() || createTranslator(language)("contacts.sourceEvidenceExists");
   if (/manual dinner notes/i.test(value)) {
     return "来自饭局记录和活动名单。";
   }
@@ -293,7 +357,8 @@ function evidenceHintText(value: string): string {
   return "来自已记录的关系证据。";
 }
 
-function relationshipContextText(value: string): string {
+function relationshipContextText(value: string, language: OrbitLanguage = "zh"): string {
+  if (language !== "zh") return value.trim() || createTranslator(language)("contacts.relationshipPending");
   switch (value) {
     case "Email signal says Omar offered fintech and venture ecosystem referrals.":
       return "邮件线索显示，他愿意介绍金融科技和投资生态资源。";
@@ -308,7 +373,8 @@ function relationshipContextText(value: string): string {
   }
 }
 
-function evidenceText(value: string): string {
+function evidenceText(value: string, language: OrbitLanguage = "zh"): string {
+  if (language !== "zh") return value.trim() || createTranslator(language)("contacts.sourceEvidenceExists");
   switch (value) {
     case "Email signal says Omar can broker fintech investor and partner referrals after a short context brief.":
       return "邮件线索：Omar 可在收到简短背景后介绍金融科技投资人与合作方。";
@@ -323,7 +389,8 @@ function evidenceText(value: string): string {
   }
 }
 
-function recommendedActionText(value: string, name: string): string {
+function recommendedActionText(value: string, name: string, language: OrbitLanguage = "zh"): string {
+  if (language !== "zh") return value.trim() || createTranslator(language)("contacts.reviewEvidenceBeforeContact", { name });
   switch (value) {
     case "Ask Hana whether the guild wants a founder roundtable follow-up.":
       return "问 Hana 是否愿意继续聊创业者圆桌后的合作。";
@@ -338,55 +405,77 @@ function recommendedActionText(value: string, name: string): string {
   }
 }
 
-function appliedFiltersLabel(record: UnknownRecord): string {
+function appliedFiltersLabel(record: UnknownRecord, language: OrbitLanguage = "zh"): string {
+  if (language === "zh") {
+    const businessIntent = stringField(record, "businessIntent");
+    const parts = [
+      businessIntent ? `意图：${businessIntentLabel(businessIntent)}` : "",
+      stringListField(record, "primaryIndustryIds").length
+        ? `一级行业：${stringListField(record, "primaryIndustryIds").map((id) => isIndustryIdCode(id) ? primaryIndustryLabel(id, "zh") : id).join("、")}` : "",
+      stringListField(record, "secondaryIndustryIds").length
+        ? `二级行业：${stringListField(record, "secondaryIndustryIds").map((id) => SECONDARY_INDUSTRY_CATALOG.find((entry) => entry.id === id)?.labels.zh ?? id).join("、")}` : "",
+      stringListField(record, "industries").length
+        ? `行业：${stringListField(record, "industries").map(value => industryLabel(value)).join("、")}` : "",
+      stringListField(record, "sources").length
+        ? `来源：${stringListField(record, "sources").map(value => sourceTypeLabel(value)).join("、")}` : "",
+      stringListField(record, "valueTypes").length
+        ? `价值：${stringListField(record, "valueTypes").map(value => valueTypeLabel(value)).join("、")}` : "",
+      stringListField(record, "followUpStatuses").length
+        ? `状态：${stringListField(record, "followUpStatuses").map(value => followUpStatusLabel(value)).join("、")}` : ""
+    ].filter(Boolean);
+    return parts.length ? parts.join(" · ") : "未使用筛选";
+  }
+  const t = createTranslator(language);
+  const separator = language === "en" ? ", " : "、";
   const businessIntent = stringField(record, "businessIntent");
   const parts = [
-    businessIntent ? `意图：${businessIntentLabel(businessIntent)}` : "",
+    businessIntent ? `${t("contacts.filterAction")}: ${businessIntentLabel(businessIntent, language)}` : "",
     stringListField(record, "primaryIndustryIds").length
-      ? `一级行业：${stringListField(record, "primaryIndustryIds")
-          .map((id) => isIndustryIdCode(id) ? primaryIndustryLabel(id, "zh") : id).join("、")}`
+      ? `${t("contacts.primaryIndustry")}: ${stringListField(record, "primaryIndustryIds")
+          .map((id) => isIndustryIdCode(id) ? primaryIndustryLabel(id, language) : id).join(separator)}`
       : "",
     stringListField(record, "secondaryIndustryIds").length
-      ? `二级行业：${stringListField(record, "secondaryIndustryIds")
-          .map((id) => SECONDARY_INDUSTRY_CATALOG.find((entry) => entry.id === id)?.labels.zh ?? id).join("、")}`
+      ? `${t("contacts.secondaryIndustry")}: ${stringListField(record, "secondaryIndustryIds")
+          .map((id) => SECONDARY_INDUSTRY_CATALOG.find((entry) => entry.id === id)?.labels[language] ?? id).join(separator)}`
       : "",
     stringListField(record, "industries").length
-      ? `行业：${stringListField(record, "industries").map(industryLabel).join("、")}`
+      ? `${t("contacts.filterIndustry")}: ${stringListField(record, "industries").map(value => industryLabel(value, language)).join(separator)}`
       : "",
     stringListField(record, "sources").length
-      ? `来源：${stringListField(record, "sources").map(sourceTypeLabel).join("、")}`
+      ? t("contacts.source", { value: stringListField(record, "sources").map(value => sourceTypeLabel(value, language)).join(separator) })
       : "",
     stringListField(record, "valueTypes").length
-      ? `价值：${stringListField(record, "valueTypes").map(valueTypeLabel).join("、")}`
+      ? `${t("contacts.value")}: ${stringListField(record, "valueTypes").map(value => valueTypeLabel(value, language)).join(separator)}`
       : "",
     stringListField(record, "followUpStatuses").length
-      ? `状态：${stringListField(record, "followUpStatuses")
-          .map(followUpStatusLabel)
-          .join("、")}`
+      ? t("contacts.status", { value: stringListField(record, "followUpStatuses")
+          .map(value => followUpStatusLabel(value, language))
+          .join(separator) })
       : ""
   ].filter(Boolean);
 
-  return parts.length ? parts.join(" · ") : "未使用筛选";
+  return parts.length ? parts.join(" · ") : t("contacts.noFilters");
 }
 
 function filterPreviewDetail(
   suggestion: UnknownRecord,
-  businessIntent: string
+  businessIntent: string,
+  language: OrbitLanguage = "zh"
 ): string {
   const preview = isRecord(suggestion.filterPreview)
     ? suggestion.filterPreview
     : {};
   const labels = [
-    businessIntentLabel(businessIntent),
+    businessIntentLabel(businessIntent, language),
     ...listField(preview, "industries")
       .filter((value): value is string => typeof value === "string")
-      .map(industryLabel),
+      .map(value => industryLabel(value, language)),
     ...listField(preview, "valueTypes")
       .filter((value): value is string => typeof value === "string")
-      .map(valueTypeLabel),
+      .map(value => valueTypeLabel(value, language)),
     ...listField(preview, "followUpStatuses")
       .filter((value): value is string => typeof value === "string")
-      .map(followUpStatusLabel)
+      .map(value => followUpStatusLabel(value, language))
   ].filter(Boolean);
 
   return labels.join(" · ");
@@ -429,15 +518,16 @@ function requestBodyFromSuggestion(
 
 function suggestionView(
   suggestion: UnknownRecord,
-  index: number
+  index: number,
+  language: OrbitLanguage = "zh"
 ): RelationshipSearchSuggestionView {
   const businessIntent = stringField(suggestion, "businessIntent");
 
   return {
-    detail: filterPreviewDetail(suggestion, businessIntent),
-    evidenceHint: evidenceHintText(stringField(suggestion, "evidenceHint")),
+    detail: filterPreviewDetail(suggestion, businessIntent, language),
+    evidenceHint: evidenceHintText(stringField(suggestion, "evidenceHint"), language),
     id: stringField(suggestion, "id", `relationship-search-suggestion-${index + 1}`),
-    query: queryText(stringField(suggestion, "query")),
+    query: queryText(stringField(suggestion, "query"), language),
     request: {
       body: requestBodyFromSuggestion(suggestion, businessIntent),
       endpoint: ORBIT_API_ENDPOINTS.relationshipSearch
@@ -520,7 +610,8 @@ export function buildRelationshipSearchRequest(
 
 function relationshipSearchResultView(
   result: UnknownRecord,
-  index: number
+  index: number,
+  language: OrbitLanguage = "zh"
 ): RelationshipSearchResultView {
   const matchScore = isRecord(result.matchScore) ? result.matchScore : {};
   const value = isRecord(result.value) ? result.value : {};
@@ -536,65 +627,70 @@ function relationshipSearchResultView(
         ? { secondaryIndustryId: result.secondaryIndustryId as SecondaryIndustryIdCode } : {})
   };
   const industry = selection.secondaryIndustryId
-    ? secondaryIndustryLabel(selection.secondaryIndustryId, "zh")
+    ? secondaryIndustryLabel(selection.secondaryIndustryId, language)
     : selection.primaryIndustryId
-      ? `${primaryIndustryLabel(selection.primaryIndustryId, "zh")} · 二级未填写`
-      : industryLabel(stringField(result, "industry"));
+      ? `${primaryIndustryLabel(selection.primaryIndustryId, language)} · ${createTranslator(language)("contacts.secondaryIndustryMissing")}`
+      : industryLabel(stringField(result, "industry"), language);
   const detail = [
     stringField(result, "organization"),
-    roleLabel(stringField(result, "role")),
+    roleLabel(stringField(result, "role"), language),
     industry,
-    locationLabel(stringField(result, "location"))
+    locationLabel(stringField(result, "location"), language)
   ].filter(Boolean);
 
   return {
     contactId: stringField(result, "contactId", stringField(result, "id")),
     ...selection,
     detail: detail.join(" · "),
-    evidence: evidenceText(stringField(evidence, "excerpt")),
+    evidence: evidenceText(stringField(evidence, "excerpt"), language),
     id: stringField(result, "id", `relationship-search-result-${index + 1}`),
     ...imageUrlFields(result),
     name,
     nextAction: recommendedActionText(
       stringField(result, "recommendedAction"),
-      name
+      name,
+      language
     ),
     relationship: relationshipContextText(
-      stringField(result, "relationshipContext")
+      stringField(result, "relationshipContext"),
+      language
     ),
     score: score === null ? "-" : String(score),
-    scoreLabel: scoreBandLabel(stringField(matchScore, "band")),
-    valueLabels: stringListField(value, "valueTypes").map(valueTypeLabel)
+    scoreLabel: scoreBandLabel(stringField(matchScore, "band"), language),
+    valueLabels: stringListField(value, "valueTypes").map(valueType => valueTypeLabel(valueType, language))
   };
 }
 
 export function relationshipSearchSuggestionsToView(
-  data: unknown
+  data: unknown,
+  language: OrbitLanguage = "zh"
 ): RelationshipSearchSuggestionsView {
+  const t = createTranslator(language);
   const payload = envelopeData(data);
   const record = isRecord(payload) ? payload : {};
   const suggestions = listField(record, "suggestions")
     .filter(isRecord)
-    .map(suggestionView);
+    .map((suggestion, index) => suggestionView(suggestion, index, language));
 
   return {
-    emptyText: suggestions.length === 0 ? "暂时没有推荐搜索。" : "",
+    emptyText: suggestions.length === 0 ? t("contacts.suggestionsEmpty") : "",
     nextAction:
       suggestions.length > 0
-        ? "选一个问题，先看来源证据。"
-        : "可以直接输入姓名、公司、资源或想找的人。",
+        ? t("contacts.suggestionsNext")
+        : t("contacts.suggestionsUseDirect"),
     suggestions,
-    summary: `${suggestions.length} 个搜索建议`,
-    title: "推荐搜索"
+    summary: t("contacts.suggestionsCount", { count: suggestions.length }),
+    title: t("contacts.suggestedSearches")
   };
 }
 
-export function relationshipSearchToView(data: unknown): RelationshipSearchView {
+export function relationshipSearchToView(data: unknown, language: OrbitLanguage = "zh"): RelationshipSearchView {
+  const t = createTranslator(language);
   const payload = envelopeData(data);
   const record = isRecord(payload) ? payload : {};
   const results = listField(record, "results")
     .filter(isRecord)
-    .map(relationshipSearchResultView);
+    .map((result, index) => relationshipSearchResultView(result, index, language));
   const query = stringField(record, "query");
   const appliedFilters = isRecord(record.appliedFilters)
     ? record.appliedFilters
@@ -602,15 +698,15 @@ export function relationshipSearchToView(data: unknown): RelationshipSearchView 
 
   return {
     emptyText:
-      results.length === 0 ? "没有找到合适的人。换个问法，或先清空筛选。" : "",
-    filtersLabel: appliedFiltersLabel(appliedFilters),
+      results.length === 0 ? t("contacts.noSuitablePeople") : "",
+    filtersLabel: appliedFiltersLabel(appliedFilters, language),
     nextAction:
       results.length > 0
-        ? "先看关系背景，再决定是否联系。"
-        : "换个问法，或先清空筛选。",
-    queryLabel: `问题：${queryText(query)}`,
+        ? t("contacts.reviewBackground")
+        : t("contacts.clearOrRephrase"),
+    queryLabel: t("contacts.question", { value: queryText(query, language) }),
     results,
-    summary: `${results.length} 位相关人脉`,
-    title: "关系搜索结果"
+    summary: t("contacts.relatedCount", { count: results.length }),
+    title: t("contacts.connectionSearchResults")
   };
 }

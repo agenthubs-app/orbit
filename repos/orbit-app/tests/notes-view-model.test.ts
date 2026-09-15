@@ -52,6 +52,27 @@ test("create and update requests reject empty drafts and canonicalize contact se
   });
 });
 
+test("local validation errors follow the active app language", () => {
+  assert.deepEqual(buildNoteCreateRequest("   ", [], "create:key", "en"), {
+    success: false,
+    error: "Enter note content.",
+  });
+  assert.deepEqual(buildRichNoteCreateRequest({
+    title: "   ",
+    body: "正文",
+    manualContactIds: [],
+    mentions: [],
+    eventIds: [],
+  }, "create:v2", "ja"), {
+    success: false,
+    error: "メモのタイトルを入力してください。",
+  });
+  assert.deepEqual(buildNoteUpdateRequest("正文", [], 0, "update:key", "en"), {
+    success: false,
+    error: "The note version is invalid. Reload it.",
+  });
+});
+
 test("a write clears draft state only after an exact actor, body and relation acknowledgement", () => {
   assert.deepEqual(confirmedNote({ note }, {
     actorId: "account:one",

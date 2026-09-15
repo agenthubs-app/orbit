@@ -9,12 +9,12 @@ const screenSource = readFileSync(
   "utf8"
 );
 
-test("Orbit AI home uses a compact Chinese chat entry", () => {
+test("Orbit AI home uses a compact localized chat entry", () => {
   assert.doesNotMatch(
     screenSource,
     /Ask first|直接问今天|让 AI 带你过去|已准备好|有什么需要处理|把问题发过来/u
   );
-  assert.match(screenSource, /placeholder="询问 IORBIT"/u);
+  assert.match(screenSource, /placeholder=\{locale\.t\("ai\.askPlaceholder"\)\}/u);
   assert.match(screenSource, />IORBIT</u);
   assert.doesNotMatch(screenSource, />我是您的人脉管家</u);
   assert.doesNotMatch(screenSource, /eyebrow=/u);
@@ -48,13 +48,13 @@ test("Orbit AI composer controls keep the 44 point touch baseline", () => {
 });
 
 test("Orbit AI home opens conversation history from the top right", () => {
-  assert.match(screenSource, /accessibilityLabel="对话历史"/u);
+  assert.match(screenSource, /accessibilityLabel=\{locale\.t\("ai\.history"\)\}/u);
   assert.match(screenSource, /OrbitAiHistoryPanel/u);
   assert.match(screenSource, /historyOpen/u);
   assert.match(screenSource, /onOpenHistory=\{\(\) => setHistoryOpen\(true\)\}/u);
 
-  const menuIndex = screenSource.indexOf('accessibilityLabel="首页"');
-  const historyIndex = screenSource.indexOf('accessibilityLabel="对话历史"');
+  const menuIndex = screenSource.indexOf('accessibilityLabel={locale.t("ai.home")}');
+  const historyIndex = screenSource.indexOf('accessibilityLabel={locale.t("ai.history")}');
 
   assert.notEqual(menuIndex, -1);
   assert.notEqual(historyIndex, -1);
@@ -63,8 +63,8 @@ test("Orbit AI home opens conversation history from the top right", () => {
 
 test("Orbit AI composer menu carries card scanning and a new chat", () => {
   assert.match(screenSource, /ComposerMenuSheet/u);
-  assert.match(screenSource, />扫名片</u);
-  assert.match(screenSource, />新对话</u);
+  assert.match(screenSource, /locale\.t\("ai\.scanCard"\)/u);
+  assert.match(screenSource, /locale\.t\("ai\.newChat"\)/u);
   assert.match(screenSource, /onScanCard=\{\(\) => openCapability\("\/contacts\/new" as Href\)\}/u);
 });
 
@@ -77,8 +77,8 @@ test("Orbit AI home uses a ChatGPT-style drawer for shortcuts and history", () =
   // Actual source-specific rows and menu navigation are covered by the
   // private-route/HTTP tests in ink-signal-ai-home.test.ts.
   assert.match(screenSource, /aiHistoryRows/u);
-  assert.match(screenSource, />常用入口</u);
-  assert.match(screenSource, />历史记录</u);
+  assert.match(screenSource, /locale\.t\("ai\.commonEntries"\)/u);
+  assert.match(screenSource, /locale\.t\("ai\.historyTitle"\)/u);
   assert.doesNotMatch(
     screenSource,
     /<CapabilityGrid onOpen=\{\(href\) => router\.push\(href\)\} \/>/u
@@ -95,8 +95,8 @@ test("Orbit AI drawer can delete imported web session history", () => {
   );
   // Deletion receipt and source-only refresh are exercised through real HTTP.
   assert.match(screenSource, /setHistoryAttempt/u);
-  assert.match(screenSource, />删除</u);
-  assert.match(screenSource, />删除中</u);
+  assert.match(screenSource, /locale\.t\("ai\.deleteHistory"\)/u);
+  assert.match(screenSource, /locale\.t\("ai\.deleting"\)/u);
   assert.match(screenSource, /item\.source !== "session"/u);
 });
 
@@ -108,9 +108,9 @@ test("Orbit AI history keeps open and delete actions as sibling buttons", () => 
   assert.match(rowSource, /<View style=\{styles\.drawerHistoryRow\}>/u);
   assert.match(
     rowSource,
-    /accessibilityLabel=\{`打开历史记录：\$\{item\.title\}`\}/u
+    /accessibilityLabel=\{locale\.t\("ai\.openHistoryNamed", \{ title: item\.title \}\)\}/u
   );
-  assert.match(rowSource, /accessibilityLabel="删除历史记录"/u);
+  assert.match(rowSource, /accessibilityLabel=\{locale\.t\("ai\.deleteHistory"\)\}/u);
   assert.doesNotMatch(
     rowSource,
     /<Pressable[\s\S]*styles\.drawerHistoryRow[\s\S]*<Pressable/u
@@ -131,10 +131,10 @@ test("Orbit AI drawer keeps web sessions and normal AI conversations in history"
 test("Orbit AI drawer can search long history lists", () => {
   assert.match(screenSource, /historyQuery/u);
   assert.match(screenSource, /filteredHistoryItems/u);
-  assert.match(screenSource, /placeholder="搜索历史"/u);
+  assert.match(screenSource, /placeholder=\{locale\.t\("ai\.searchHistory"\)\}/u);
   assert.match(screenSource, /historyItems=\{filteredHistoryItems\}/u);
 
-  const searchIndex = screenSource.indexOf('placeholder="搜索历史"');
+  const searchIndex = screenSource.indexOf('placeholder={locale.t("ai.searchHistory")}');
   const listIndex = screenSource.indexOf("historyItems={filteredHistoryItems}");
 
   assert.notEqual(searchIndex, -1);
@@ -168,10 +168,10 @@ test("Orbit AI drawer exposes three workspace goals and keeps inbox in the heade
     );
   }
 
-  for (const title of ["今天", "人脉", "活动"]) {
-    assert.match(screenSource, new RegExp(`title: "${title}"`, "u"));
+  for (const titleKey of ["ai.capabilityToday", "ai.capabilityContacts", "ai.capabilityEvents"]) {
+    assert.match(screenSource, new RegExp(`titleKey: "${titleKey.replace(".", "\\.")}"`, "u"));
   }
-  assert.doesNotMatch(screenSource, /title: "收件箱"/u);
+  assert.doesNotMatch(screenSource, /titleKey: "ai\.openInbox"/u);
   assert.doesNotMatch(
     screenSource,
     /关系仪表盘|关系对话|活动现场|动作中心|更多入口/u
@@ -238,11 +238,11 @@ test("Orbit AI drawer integrates workspace shortcuts, inbox, search, and recent 
   assert.doesNotMatch(screenSource, /FeaturedCapabilityTile/u);
   assert.doesNotMatch(screenSource, /drawerFeaturedGrid/u);
   assert.match(screenSource, />Orbit AI</u);
-  assert.match(screenSource, /accessibilityLabel="打开收件箱"/u);
-  assert.match(screenSource, /placeholder="搜索对话"/u);
-  assert.match(screenSource, />最近对话</u);
+  assert.match(screenSource, /accessibilityLabel=\{locale\.t\("ai\.openInbox"\)\}/u);
+  assert.match(screenSource, /placeholder=\{locale\.t\("ai\.searchConversations"\)\}/u);
+  assert.match(screenSource, /locale\.t\("ai\.recentChats"\)/u);
   assert.match(screenSource, /filteredHistoryItems\.slice/u);
-  assert.match(screenSource, /accessibilityLabel="新对话"/u);
+  assert.match(screenSource, /accessibilityLabel=\{locale\.t\("ai\.newChat"\)\}/u);
 
   for (const icon of [
     "calendar-outline",
@@ -251,7 +251,7 @@ test("Orbit AI drawer integrates workspace shortcuts, inbox, search, and recent 
   ]) {
     assert.match(screenSource, new RegExp(`icon: "${icon}"`, "u"));
   }
-  assert.doesNotMatch(screenSource, /title: "收件箱"/u);
+  assert.doesNotMatch(screenSource, /titleKey: "ai\.openInbox"/u);
 });
 
 test("Orbit AI drawer combines the signed-in account and settings in its footer", () => {
@@ -263,8 +263,8 @@ test("Orbit AI drawer combines the signed-in account and settings in its footer"
   assert.match(screenSource, /styles\.drawerAccount/u);
   assert.match(screenSource, /onOpenCapability\("\/profile" as Href\)/u);
   assert.match(screenSource, /onOpenCapability\("\/settings" as Href\)/u);
-  assert.match(screenSource, /accessibilityLabel="打开个人档案"/u);
-  assert.match(screenSource, /accessibilityLabel="打开设置"/u);
+  assert.match(screenSource, /accessibilityLabel=\{locale\.t\("ai\.openProfile"\)\}/u);
+  assert.match(screenSource, /accessibilityLabel=\{locale\.t\("ai\.openSettings"\)\}/u);
   assert.doesNotMatch(screenSource, /const settingsEntry/u);
 });
 

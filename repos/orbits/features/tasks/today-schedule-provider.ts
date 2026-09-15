@@ -1,3 +1,4 @@
+import { createConfiguredPersonalScheduleService } from "../personal-schedule/service-factory";
 import { createConfiguredAppointmentService } from "../appointments/runtime";
 import { listConfiguredOrbitScheduleItems } from "../events/orbit-schedule-reader";
 import type { ScheduleItemDTO } from "./today-contract";
@@ -23,11 +24,13 @@ function appointmentLocation(
 export function createConfiguredTodayScheduleProvider(): TodayScheduleProvider {
   return {
     async list({ actorId }) {
-      const [eventItems, appointmentItems] = await Promise.all([
+      const [eventItems, appointmentItems, personalItems] = await Promise.all([
         listConfiguredOrbitScheduleItems(actorId),
         createConfiguredAppointmentService()?.list({ actorId }) ?? [],
+        createConfiguredPersonalScheduleService().list({ actorId }),
       ]);
       return [
+        ...personalItems,
         ...eventItems.map(
           (item): ScheduleItemDTO => ({
             id: item.id,

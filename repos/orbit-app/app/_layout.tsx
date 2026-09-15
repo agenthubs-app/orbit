@@ -1,3 +1,4 @@
+import { OrbitTimeZoneProvider } from "../src/time/OrbitTimeZoneProvider";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { OrbitAuthSessionProvider } from "../src/api/AuthSessionProvider";
@@ -10,6 +11,7 @@ import { OrbitRouteAccessBoundary } from "../src/components/OrbitRouteAccessBoun
 import { OrbitNotificationsCoordinator } from "../src/components/OrbitNotificationsCoordinator";
 import { OrbitNotificationLifecycle } from "../src/notifications/NotificationLifecycle";
 import { useOrbitTheme } from "../src/design/theme";
+import { OrbitLocaleProvider } from "../src/i18n/OrbitLocaleProvider";
 
 // expo-router 会把这个导出当作根段的错误边界：出错时只重置这一段，
 // 导航器保持挂载，retry() 之后跳转仍然可用。
@@ -32,10 +34,14 @@ export default function RootLayout() {
       <AppErrorBoundary>
         <OrbitApiBaseUrlProvider>
           <OrbitAuthSessionProvider>
-            <OrbitNotificationsCoordinator />
-            <OrbitNotificationLifecycle />
-            <OrbitRouteAccessBoundary />
-            <StatusBar style={scheme === "dark" ? "light" : "dark"} />
+            <OrbitLocaleProvider>
+              <OrbitTimeZoneProvider>
+                <OrbitNotificationsCoordinator />
+                <OrbitNotificationLifecycle />
+                <OrbitRouteAccessBoundary />
+                <StatusBar style={scheme === "dark" ? "light" : "dark"} />
+              </OrbitTimeZoneProvider>
+            </OrbitLocaleProvider>
           </OrbitAuthSessionProvider>
         </OrbitApiBaseUrlProvider>
       </AppErrorBoundary>

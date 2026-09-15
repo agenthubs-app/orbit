@@ -204,7 +204,105 @@ test("Orbit Agent chat session deletion is idempotent", async () => {
   });
 
   assert.equal(await provider.deleteSession("delete-once-session"), true);
-  assert.equal(await provider.deleteSession("delete-once-session"), false);
+  assert.equal(await provider.deleteSession("delete-once-session"), true);
   assert.equal(await provider.getSession("delete-once-session"), null);
   assert.deepEqual(await provider.listSessions(), []);
+});
+
+test("Orbit Agent chat session provider rejects a stale shorter snapshot without deleting newer messages", async () => {
+  const provider = createStorageOrbitAgentChatSessionProvider({
+    actorId: "account:stale-writer",
+    store: createMemoryLiveRecordStore<Record<string, unknown>>(),
+    workspaceId: "workspace:orbit-agent-chat-session-stale-write",
+  });
+  const id = "shared-session";
+
+  await provider.upsertSession({
+    createdAt: "2026-09-14T00:00:00.000Z",
+    id,
+    messages: [
+      { id: "message-1", role: "user", text: "第一问" },
+      { id: "message-2", role: "assistant", text: "第一答" },
+      { id: "message-3", role: "user", text: "第二问" },
+      { id: "message-4", role: "assistant", text: "第二答" },
+    ],
+    title: "可靠会话",
+    updatedAt: "2026-09-14T00:02:00.000Z",
+  });
+
+  await assert.rejects(
+    provider.upsertSession({
+      createdAt: "2026-09-14T00:00:00.000Z",
+      id,
+      messages: [
+        { id: "message-1", role: "user", text: "第一问" },
+        { id: "message-2", role: "assistant", text: "第一答" },
+      ],
+      title: "可靠会话",
+      updatedAt: "2026-09-14T00:01:00.000Z",
+    }),
+    /stale session snapshot/i,
+  );
+
+  assert.deepEqual(
+    (await provider.getSession(id))?.messages.map((message) => message.id),
+    ["message-1", "message-2", "message-3", "message-4"],
+  );
+});
+
+test("Orbit Agent chat session provider rejects late saves after deletion", async () => {
+  const provider = createStorageOrbitAgentChatSessionProvider({
+    actorId: "account:deleted-session-owner",
+    store: createMemoryLiveRecordStore<Record<string, unknown>>(),
+    workspaceId: "workspace:orbit-agent-chat-session-delete-race",
+  });
+  const session = {
+    createdAt: "2026-09-14T00:00:00.000Z",
+    id: "deleted-session",
+    messages: [{ id: "message-1", role: "user" as const, text: "不要复活" }],
+    title: "删除保护",
+    updatedAt: "2026-09-14T00:01:00.000Z",
+  };
+
+  await provider.upsertSession(session);
+  assert.equal(await provider.deleteSession(session.id), true);
+
+  await assert.rejects(
+    provider.upsertSession({
+      ...session,
+      messages: [
+        ...session.messages,
+        { id: "message-2", role: "assistant", text: "晚到回复" },
+      ],
+      updatedAt: "2026-09-14T00:02:00.000Z",
+    }),
+    /deleted session/i,
+  );
+  assert.equal(await provider.getSession(session.id), null);
+});
+
+test("Orbit Agent chat session provider retains more than one hundred immutable messages", async () => {
+  const provider = createStorageOrbitAgentChatSessionProvider({
+    actorId: "account:long-history-owner",
+    store: createMemoryLiveRecordStore<Record<string, unknown>>(),
+    workspaceId: "workspace:orbit-agent-chat-session-long-history",
+  });
+  const messages = Array.from({ length: 101 }, (_, index) => ({
+    id: `message-${index + 1}`,
+    role: index % 2 === 0 ? "user" as const : "assistant" as const,
+    text: `消息 ${index + 1}`,
+  }));
+
+  await provider.upsertSession({
+    createdAt: "2026-09-14T00:00:00.000Z",
+    id: "long-session",
+    messageRevision: messages.length,
+    messages,
+    title: "完整历史",
+    updatedAt: "2026-09-14T00:10:00.000Z",
+  });
+
+  const restored = await provider.getSession("long-session");
+  assert.equal(restored?.messages.length, 101);
+  assert.deepEqual(restored?.messages.map((message) => message.id), messages.map((message) => message.id));
 });

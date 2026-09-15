@@ -87,7 +87,7 @@ test("/app/agent localizes server view models and sends locale through the API b
   assert.match(agentSource, /const locale = languageRef\.current === "zh" \? "zh" : "en"/);
   assert.match(
     agentSource,
-    /JSON\.stringify\(\{ history, locale, message: query \}\)/,
+    /JSON\.stringify\(\{ history, \.\.\.reliableRequest \}\)/,
   );
   assert.match(agentSource, /artifactMetadataValue\(item, \["分数", "Score"\]\)/);
   assert.match(agentSource, /locale === "zh"/);

@@ -110,15 +110,17 @@ E2E定义有64个匹配参与者和6条已取消历史，合计70个账号；后
 
 已核实可复用的现有基础设施是 `shared/storage/transactional-postgres.ts` 的 `createTransactionalPostgresClient`。它在同一连接中使用 serializable 事务，失败 rollback，最后释放连接。无需为数据维护修改所有业务 provider 或扩大通用 store 接口。
 
-建议由原计划中的专用维护脚本使用该事务入口，对已批准的精确 workspace/collection/record/user 进行参数化条件更新，同时校验预期 updated_at 与原 payload。只改行业字段及必要版本字段；未匹配行作为冲突，不能转为无条件 upsert。关联投影应在同一事务校验与更新，有任一冲突则全部回滚；串行化失败报告冲突，重新生成并审阅差异后才能再执行。该方案尚未实现，也未经真实 PostgreSQL 验证。
+`64defa67d` 已新增专用维护脚本的受限实现：输入必须显式列出 environment、workspace／collection／record／user、预期 `updatedAt`、人物依据、父子行业和投影路径；离线 dry-run 生成稳定 SHA-256 计划，CLI 明确拒绝 `--apply`。实际 apply 只能由调用者注入已获准的事务客户端和完全一致的受审哈希，使用 actor／记录范围、active／未删除、原版本及原 payload 的条件更新；任一关联记录冲突会回滚全部更新，重复执行同一计划只返回 already-valid，不再次写入。
+
+同一提交把已登记来源汇总为 20 名人物／56 个投影：17 人有依据、3 人缺依据；两个反例、10 个非人物行业记录和 10 类待盘点来源都保留，`complete` 明确为 false。完整两文件定向复验 20/20、Web typecheck exit 0、三文件 diff-check 通过。测试使用注入的 SQL 传输验证条件、回执、回滚和幂等语义，没有连接真实 PostgreSQL，也没有把它写成并发或真实写库证据。
 
 维护脚本必须显式取得隔离环境与精确清单，默认只读，不能自动读取产品环境配置后连接未知数据库。单测可以检查 SQL 参数、失败传播和 rollback，但不能替代真实库的并发及回读证据。
 
 ## 尚未具备的执行条件
 
-- `tests/support/industry-fixture-inventory.ts` 已有上述增量实现，完整正常对象盘点仍未完成；`scripts/backfill-test-secondary-industries.ts` 尚不存在，不能引用为已实现补齐工具。
+- `tests/support/industry-fixture-inventory.ts` 与 `scripts/backfill-test-secondary-industries.ts` 已有上述受限实现；完整正常对象盘点、3 人分类依据和 10 类待盘点来源仍未完成，未取得精确真实环境前不能执行 apply 或将工具存在视作数据已补齐。
 - 生成源、精确输出文件、人物分类依据及条件更新方案需要独立范围审阅；不是对已批准联系人／搜索／资料接线重复审批。
-- 真实环境、schema、workspace、actor、记录 ID、预期版本和写入对象未确认；本次没有连接数据库盘点、迁移或补齐。
+- 真实环境、schema、workspace、actor、记录 ID、预期版本和写入对象未确认；本次没有连接数据库盘点、迁移或补齐。未来执行前还需把真实快照生成的计划及哈希逐项审阅，并在隔离 PostgreSQL 做并发、回滚和回读验证。
 - 真实模型验收另受累计 USD 5 上限约束；先前已结算 USD 0.012780，旧 0020 意外增量尚未核算。现有浏览器只有空白标签，没有可复用的账单登录会话。没有新增付费请求，未将增量记作零。
 
 本页将可安全准备的内容具体化，不缩减原五项 SC，也不代表整体任务完成。

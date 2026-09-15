@@ -50,28 +50,31 @@ build/harness-logs/
 | --- | --- | --- | --- | --- |
 | [0001](0001-event-discovery/GOAL.md) | 用全部地点和话题找到活动，筛选后仍能翻页和打开详情 | R-09 | 无；接续当前四文件 | completed |
 | [0002](0002-readiness-handoff/GOAL.md) | 查清已完成能力、后续缺项和每项开工条件 | R-01、R-00～R-12 依赖 | 无；只读文档工作 | completed |
-| [0003](0003-profile-completion/GOAL.md) | 注册、补全资料后回到原页面，完整用户不再被拦截 | R-03 | B1整体批准已生效；本地实现启动，真实账号／Google验收按对象另核 | running |
-| [0004](0004-registration/GOAL.md) | 报名、取消和重报后，答案、人数及各页状态一致 | R-04 | 0002、0003；B2；历史题库表不可见已定位，当前库／schema／迁移核查待授权 | blocked |
-| [0005](0005-ai-session-reliability/GOAL.md) | AI 重试不重复生成，Web/App 续聊不丢历史 | R-00、R-02 | B3 跨端提案待审；已隔离复现旧快照覆盖，真实恢复／503 证据仍缺 | blocked |
-| [0006](0006-contact-mentions/GOAL.md) | @ 选准联系人，带入 AI 的问题由用户确认发送 | R-06 | 0005；B3 引用／D3 | blocked |
-| [0007](0007-two-sided-cards/GOAL.md) | 正反面名片复核后只创建一个联系人 | R-07 | 0002；B5／OCR 环境 | blocked |
-| [0008](0008-identity-chat/GOAL.md) | 验证邀请和身份绑定后，双方能真实收发消息 | R-05 | 0002；B4 契约已实现；功能提交 `6d8173b78`，见 REPORT | completed |
-| [0009](0009-timezone/GOAL.md) | 同一事项在首页、待办、日历和活动中不落错日 | R-09 | 设备跟随策略已确认；DST／异常／脏稿技术提案待审及原生证据 | blocked |
-| [0010](0010-task-schedule-editing/GOAL.md) | 个人事项能创建、编辑和清空字段，各页与提醒一致 | R-08 | 0009；B6 | blocked |
-| [0011](0011-home-analysis/GOAL.md) | 首页符合确认布局，分析可辨新旧，目标可单独保存 | R-09、R-10 | 0006；B7／首页／D4 | blocked |
+| [0003](0003-profile-completion/GOAL.md) | 注册、补全资料后回到原页面，完整用户不再被拦截 | R-03 | 本地实现已提交；SC-01～04通过，真实 Google 最终回跳与同账号双端回读缺失，见 REPORT | blocked |
+| [0004](0004-registration/GOAL.md) | 报名、取消和重报后，答案、人数及各页状态一致 | R-04 | run-01 已完成；功能 `319f6f7bb`，见 REPORT | completed |
+| [0005](0005-ai-session-reliability/GOAL.md) | AI 重试不重复生成，Web/App 续聊不丢历史 | R-00、R-02 | 原产品提交 `30c1e210c`、主线集成 `efbfc23ae`；本地／隔离 PostgreSQL 验证完成，真实同账号双端设备往返和 R-00 首次 503 根因仍缺证据，见 REPORT | blocked |
+| [0006](0006-contact-mentions/GOAL.md) | @ 选准联系人，带入 AI 的问题由用户确认发送 | R-06 | 原功能 `09e1a71fa`、主线集成 `0ff447a55`；本地实现与回归完成，真实同账号 Web↔App 引用回读仍缺证据，见 REPORT | blocked |
+| [0007](0007-two-sided-cards/GOAL.md) | 正反面名片复核后只创建一个联系人 | R-07 | run-01 已结束；本地双面契约与一次确认已提交，实体 iPhone／真实 OCR／同记录跨端验收缺环境；见 REPORT | blocked |
+| [0008](0008-identity-chat/GOAL.md) | 验证邀请和身份绑定后，双方能真实收发消息 | R-05 | run-01 已完成；原功能 `6d8173b78`、主线集成 `64629369d`，见 REPORT | completed |
+| [0009](0009-timezone/GOAL.md) | 同一事项在首页、待办、日历和活动中不落错日 | R-09 | run-01 已完成；功能 `a4bbfd9f6`，见 REPORT | completed |
+| [0010](0010-task-schedule-editing/GOAL.md) | 个人事项能创建、编辑和清空字段，各页与提醒一致 | R-08 | run-01 已完成；功能 `d005c2b79`，见 REPORT | completed |
+| [0011](0011-home-analysis/GOAL.md) | 首页符合确认布局，分析可辨新旧，目标可单独保存 | R-09、R-10 | 登录态 Simulator 首页／Pipeline 与同账号 Web↔App 目标回读已完成；仅真实 provider 报告生成与两端回读未运行，见 REPORT | blocked |
 | [0012](0012-message-state/GOAL.md) | 前台新消息及时出现，已读角标与跳转目标正确 | R-11 | 功能提交 `218fb3d4b`；自动化与 iOS 打包通过，真实双用户原生／实体推送环境缺失，见 REPORT | blocked |
-| [0013](0013-locale-foundation/GOAL.md) | 用中日英操作账号、首页和设置，切语言不丢输入 | R-12 | 0009、0011；D6 | blocked |
-| [0014](0014-locale-relationships-events/GOAL.md) | 用中日英处理人脉、名片和活动，保留原文与答案 | R-12 | 0013、0004、0007、0008 | blocked |
-| [0015](0015-locale-assistant-workflows/GOAL.md) | 用中日英操作 AI、事项和消息，保留内容与日期 | R-12 | 0013、0006、0010、0012 | blocked |
+| [0013](0013-locale-foundation/GOAL.md) | 用中日英操作账号、首页和设置，切语言不丢输入 | R-12 | run-01 completed；功能 `cc3930449`、`1bd99f737`、`9d5c13622`，见 REPORT | completed |
+| [0014](0014-locale-relationships-events/GOAL.md) | 用中日英处理人脉、名片和活动，保留原文与答案 | R-12 | run-01 completed；功能 `9761b343d`，见 REPORT | completed |
+| [0015](0015-locale-assistant-workflows/GOAL.md) | 用中日英操作 AI、事项和消息，保留内容与日期 | R-12 | 功能 `d7180e134`；原生返回修复 `16d545b06`；SC-01～04 全部通过，见 REPORT | completed |
 | [0016](0016-native-navigation/GOAL.md) | 用实际设备验收导航、字号、键盘和辅助功能 | R-09、R-12 | 0014、0015；原生审批／设备 | blocked |
 | [0017](0017-cross-client-acceptance/GOAL.md) | 用真实主流程及五类记录双向回读证明两端一致 | R-01、R-14及主链路余项 | 0003～0016；共同环境／授权 | blocked |
 | [0018](0018-notes-core/GOAL.md) | 一份私密笔记关联多人，保留旧内容并安全切换入口 | R-13 | 功能提交 `8e81e588e`；同账号 live Web/API、PostgreSQL 与原生 iOS Simulator 双向验收已补齐，见 REPORT | completed |
 | [0019](0019-note-suggestions/GOAL.md) | 确认笔记建议后只建一次事项，逐项验收全部原需求 | R-13、R-14 | 功能提交 `15685b18e`；SC-0019-04 真实跨端／原生验收已补齐，SC-0019-05 仍等待 R-00～R-14 全范围关闭，见 REPORT | blocked |
 | [0020](0020-secondary-industries-self-profile/GOAL.md) | 二级行业在资料、联系人和检索中复用，AI 能读取本人资料，现有测试数据补齐 | 2026-09-14 新增；关联 R-03／R-06 | run-01 已结束；部分代码未提交，HTTP/provider/trace/生成源范围缺项与 H 验证未通过；见 REPORT | blocked |
-| [0021](0021-ai-session-organization/GOAL.md) | 保存 AI 会话入口与首条内容，按项目式分组整理，并能置顶、改名、删除和跨端回读 | 2026-09-14 新增；关联 R-00／R-02／R-06 | 执行指令已收到；仍需 B3 稳定协议／Web 恢复边界及跨端计划审阅 | planned |
-| [0022](0022-unified-tasks/GOAL.md) | 同一待办入口切换全部／人脉，兼容旧跟进链接并保留草稿、建议和提醒入口 | 2026-09-14 新增；关联 R-08／R-09／R-06 | 产品方向与执行指令已确认；书面规格审阅，0006 模板与 0010 动作交付 | planned |
+| [0021](0021-ai-session-organization/GOAL.md) | 保存 AI 会话入口与首条内容，按项目式分组整理，并能置顶、改名、删除和跨端回读 | 2026-09-14 新增；关联 R-00／R-02／R-06 | 功能 HEAD `9bc7039a5`；同账号 Web↔App、当前 iOS 长按／更多／分组／确认／真实冲突反馈均已验证，见 REPORT | completed |
+| [0022](0022-unified-tasks/GOAL.md) | 同一待办入口切换全部／人脉，兼容旧跟进链接并保留草稿、建议和提醒入口 | 2026-09-14 新增；关联 R-08／R-09／R-06 | run-01 已完成；功能 `ef5d0b02d`，见 REPORT | completed |
 | [0023](0023-industry-consumer-continuation/GOAL.md) | 接通联系人行业、搜索 HTTP 与本人资料工具，承接 0020 全部未完成验收 | SC-0020-01～05；明确获准接续 | 现有部分实现与 8 文件补充方案已批准；真实数据／设备按对象处理 | running |
+| [0024](0024-contact-needs-ranking/GOAL.md) | 在人脉主页保存需求，并在独立页面按可核对依据稳定排序 | 用户批准 `concept-v2.png`；关联 0011／0023 | Web `bf35efb85`；App 最终 HEAD `d4cc8a441`；SC-01～05 全部通过，见 REPORT | completed |
 | [0025](0025-notes-ink-signal-search/GOAL.md) | 按最新 4a 重做笔记列表、编辑、详情与联系人笔记页签，用加号和输入搜索关联人脉，不平铺联系人全集 | 2026-09-15 新增；承接 R-13／0018／0019 | run-01 已完成；五项 SC、同账号 Web↔App、Web／iOS 构建与有界搜索均通过；见 [REPORT](0025-notes-ink-signal-search/REPORT.md) | completed |
+| [0026](0026-canonical-app-account-identity/GOAL.md) | 统一 App 登录主体与业务账号身份，让待办、个人日程和笔记正确读取 canonical owner | 用户批准追加 C 线 Sprint；承接现有 `/api/account/me` | run-01 completed；功能 `f5f595df4`、邀请补漏 `3385369dd`；见 [REPORT](0026-canonical-app-account-identity/REPORT.md) | completed |
+| [0027](0027-open-schedule-meeting-details/GOAL.md) | 让四类日程进入对应详情，并可安全添加、编辑或清空参会人共享的会议说明 | 用户批准追加 C 线 Sprint；承接 appointment 聚合与 0026 canonical actor | run-01 running；Planner revision 1，见下方运行记录 | running |
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
 
@@ -101,6 +104,104 @@ build/harness-logs/
 
 ## 运行记录
 
+### 0027 / run-01
+
+- owner：C 线任务 `01a0a041-c352-7022-98de-1783b8b1adb8`；run_count：1；开始 2026-09-15 16:34 JST。用户已批准 0027 目标、推荐方案与实施；Planner revision 1／SHA256 `01635159a35495b325ed401aaff09a3224940578d321c8eec2ff4de542efba84`。
+- 起始 HEAD：`5bfd59e96e555019a88749a2f2b461a7d2ac06a8`；tracked 产品工作区无其他修改。根 `AGENTS.md`／`CLAUDE.md`、`.gitnexus`、设计图、prototype、`output/` 与 `tmp/` 均为既有用户／外部内容，不写、不暂存。
+- 范围：Web appointment 共享说明、participant-only CAS/idempotent details API、共享 DTO/schema；App 四类日程 href、会议详情读写、三语与失败保留草稿。Web/API 改动后重建重启当前共同服务，再进行 Simulator 8082 验收。
+- 文件锁：本 Sprint Planner 所列 Web appointment／details route／shared contract 与 App schedule／meeting detail／同步副本／字典／直接测试；Bridge 与本 Sprint 文档在收口时更新。C 线独占 Git 暂存与提交。
+
+### 0024 / run-01
+
+- owner：C 线任务 `01a0a041-c352-7022-98de-1783b8b1adb8`；run_count：1；开始 2026-09-15 07:42 JST。用户已批准 v2 图与实施；Planner revision 1／SHA256 `2caf94fa29c71a474a8d95ccf72944e317ce5550a0493ea4524a2eb8cf5c9cea`。
+- 实际主线产品基线 `c5c091fba`，设计导入／登记前 HEAD `32f5d16af`；C worktree 的旧副本已存 pre-start 备份，不做 reset 或整树覆盖。Planner 早期记录的 `42edbdc15` 不再作为实现基线。
+- 先释放全新 Web contract／schema／feature／route／测试范围，和 0015 无共享文件；App 字典仍由 0015 独占。精确锁、交接和后续 App 解锁条件见[范围补充](0024-contact-needs-ranking/APPROVED_SCOPE_ADDENDUM.md)。
+- run-01 已 `completed`：Web `bf35efb85`、App `725e60b39`、空态修复 `146f5fa09`、原生可访问性与三语返回修复 `d4cc8a441` 已提交。同账号 Web↔App 双向回读、真实 100 分→依据→详情→返回、中／日／英及原生 Dynamic Type 均通过，见 [REPORT](0024-contact-needs-ranking/REPORT.md)。
+
+### 0015 / run-01
+
+- owner：当前主代理 `/root`；run_count：1；开始 2026-09-15 07:39 JST，原地 `chat-agent`，单一 Generator。基线 HEAD `c5c091fba`；Planner revision 1／SHA256 `50280129380cfa0a181bdbdb4a38d1a74dfae38c7ddb815b027151982810f858`。
+- 0013／0014 已 completed 并释放共享字典锁；0006、0010、0012 的本地实现可消费，三者尚欠的真实双端／实体推送证据不阻塞本轮零付费 UI 本地化，仍由原报告与 0016／0017 承接。
+- 页面锁收窄为 AI 6、事项／Today 4、日程 4、收件箱 1 个真实文件；必要 direct consumer、literal 边界与验证档升级条件见[范围补充](0015-locale-assistant-workflows/APPROVED_SCOPE_ADDENDUM.md)。
+- run-01 已于 2026-09-15 12:39 JST `completed`：主体功能 `d7180e134`；原生发现的日文直达返回中文问题先 RED 后由 `16d545b06` 修复。最终目标组合 130/130、App 全量 2776/2776、typecheck 和 diff-check 通过；中文 AI、日文事项、英文日程／收件箱在专用模拟器完成零付费冒烟，见 [REPORT](0015-locale-assistant-workflows/REPORT.md)。
+
+### 0014 / run-01
+
+- owner：当前主代理 `/root`；run_count：1；开始 2026-09-15 06:05 JST，原地 `chat-agent`，单一 Generator。基线 HEAD `caf533bb8`；Planner revision 1／SHA256 `19628ee910d5240c8114b686cc15c95392359fd3f06d7ad134916362c64758b9`。
+- 0013 已 completed，0004/0008 本地业务语义 completed；0007 的实体 OCR／真实联系人外部阻塞不妨碍本轮零付费三语 UI 实现。启动基线四个 Planner 文件 182/182 通过，provider keys 清空。
+- 目录已收窄为人脉列表／详情／邀请、名片入口／摄入／复核、活动发现／详情／报名真实路由；排除运营、分析、签到等页面。必要 component/view-model 追加与 H 档验证登记在[范围补充](0014-locale-relationships-events/APPROVED_SCOPE_ADDENDUM.md)。
+- 结束 2026-09-15 07:30 JST；结果 completed；功能 `9761b343d`。中／日／英动态切换保留搜索、筛选、OCR 编辑、报名答案、业务原文和稳定 ID；目标组合 197/197，首轮全量发现的 15 项旧源码／默认中文兼容失败修复后复验 42/42，最终清空 provider key 的 App 全量 2753/2753、typecheck 与 diff-check 通过。见[执行报告](0014-locale-relationships-events/REPORT.md)。
+
+### 0013 / run-01
+
+- owner：当前主代理 `/root`；run_count：1；开始 2026-09-15 04:35 JST，原地 `chat-agent`，单一 Generator。基线 HEAD `cdd82a31e`；原 Planner revision 2／SHA256 `6f02d207f00b2e044a6a85c7073a5b905c47036cdff677ad457d993742e48ae8`。
+- 采用 2026-09-14 已记录的整体批准与 `TECHNICAL_PREPARATION.md` 推荐方案 A：独立 actor-scoped 账号语言偏好记录／GET+PUT 端点；不从旧 `profile.preferredLanguage` 推断手动选择，不把设备语言写入账号。
+- 改动前基线：App 账号／资料／设置／首页 258/258 通过；Web 语言／profile 22/22 个可执行用例通过，14 个 PostgreSQL 用例因未配置一次性数据库 socket 明确跳过。实现后必须补齐独立记录的 PostgreSQL CAS／幂等／回滚／actor 隔离证据。
+- 结束 2026-09-15 06:02 JST；结果 completed；最后功能 HEAD `9d5c13622`。App 中／日／英基础与账号、资料、首页、设置及可达密码／权限链路完成；设备 A 保存→独立设备 B 服务端回读、真实 PostgreSQL 并发／幂等／回滚、日期不变量和原生大字号均通过。两次全量尝试及其旧夹具失败、后续完整受影响文件复验均按事实保留，不改写为最终全量通过。见[执行报告](0013-locale-foundation/REPORT.md)。
+
+### 0011 / run-01
+
+- owner：当前主代理 `/root`；run_count：1；开始 2026-09-15 03:17 JST，结束本地实现与验证 04:18 JST。Planner revision 3／SHA256 `1b817d35135aec7cdbe2eb231c047ad7f298d3142bc34d02e1fb1f43345d19f6`；最后功能 HEAD `9a10522b1`。
+- 功能提交：目标字段保存 `a1d7d7665`、首页 `727aeeae2`、可信报告服务 `7a2e9f767`、Web IORBIT 入口 `3038e8ea7`、App 消费 `9a10522b1`。进入/刷新不生成，报告带服务端验证的生成时间、源数据版本和分析版本；目标保存不覆盖其他资料。
+- App Planner 组合 72/72、28/28、5/5，生命周期组合 128/128，最终全量 2715/2715；Web 0011 组合 99/99；两端 typecheck exit0。所有 provider key 清空，新增付费调用 0。
+- 结果 blocked：iOS 26.4 Simulator 仅确认 Orbit 可启动但停在登录页；没有授权共同账号/真实分析对象，未完成登录态首页/Pipeline、真实 provider 报告生成后双端重开、关系目标同账号 Web↔App 回读。见[执行报告](0011-home-analysis/REPORT.md)与 Bridge BR-014。
+
+### 0004 / run-01
+
+- owner：当前主代理 `/root`；run_count：1；开始：2026-09-15 00:55 JST，原地 `chat-agent`，无第二实现者。基线 HEAD `b2afc634d`，原 Planner SHA256 `1e4d139e552c9090eb7fda71b6438a22753a04a4b1e69f3d0b690f0ed8ea9519`。
+- 历史题库 500 已定位为 `event_ops_experience_heads` 不可见；当前本地 `orbit_events/public` 已执行 `event-experience-v1-versioned-heads` 迁移并幂等复验，日志在被忽略证据目录。用户的连续执行与必要环境授权已记录为[跨端实施范围补充](0004-registration/APPROVED_SCOPE_ADDENDUM.md)。
+- 结束：2026-09-15 02:20 JST；结果 completed；最后功能 HEAD `319f6f7bb`，见[执行报告](0004-registration/REPORT.md)。资格、报名／取消／重报、准入申请与撤回、答案匹配及详情／列表／首页／日历同记录回读均通过。
+- 功能提交：`6c3ff4cc6`、`4591428b7`、`58c01f49a`、`603a59e1a`、`319f6f7bb`。App 最终全量 2642/2642、两端 typecheck exit0；Web 相关注册／公开目录／真实 PostgreSQL 组通过。真实原生证据在被忽略的 `build/harness-state/evidence/sprint-0004/run-01/`。
+- 合成 QA 数据已按精确 workspace／actor 清理，默认活动恢复到运行前 revision 3 并复核公开人数为0。至少4次真实 DeepSeek 调用的精确 token／增量金额未取得，不记为0；用户未跟踪设计素材和 prototype 未触碰。A 线报名文件锁已释放。
+
+### 0009 / run-01
+
+- owner：C 线任务；run_count：1；基线 `fca77373f`，功能提交 `a4bbfd9f6`。设备时区、DST／异常、全天日期、草稿时区和跨页解释已实现。
+- 主树组合验证为 App typecheck exit0、全量2632/2632、0 skip、diff-check通过；真实原生 Tokyo／Los Angeles／Kolkata 与独立 PostgreSQL 同记录 Web/App 回读证据见 [REPORT](0009-timezone/REPORT.md)。合成身份注入边界和 GitNexus 重建失败均保留，不写成真实登录或生产链路通过。
+
+### 0010 / run-01
+
+- owner：C 线任务；run_count：1；开始：2026-09-15 00:12 JST。承接 `a4bbfd9f6` 与 B6 已批准协议，使用独立 PostgreSQL／Simulator，不与 A0004 共用事件报名文件。
+- C 线独占事项、日程、首页的0010白名单；共享登记表与Git提交仍由协调者处理。原 Planner SHA256 `5f169b6879af07d7f21515e1d02f7f9ab14a9bcd0b207d950c47080be0c66c16`。
+- 结束：2026-09-15；结果 completed；主线功能提交 `d005c2b79`，见[执行报告](0010-task-schedule-editing/REPORT.md)与[批准范围补充](0010-task-schedule-editing/APPROVED_SCOPE_ADDENDUM.md)。个人事项、日期／截止／地点清空、个人日程 CRUD、版本冲突、幂等和提醒保持原计划均完成。
+- 冻结补丁61文件 SHA256 `e94ec5eb4c079b7d0583a966d898cd5778b6ef91c4dbf8653d083abc66c4eea6`。主线整合后两端typecheck exit0、App组合154/154、Web组合26/26及任务日期17/17；真实 PostgreSQL 与原生双向同记录证据保存在被忽略的 run-01 目录。旧全量失败／skip和未计量provider费用按报告保留，不改写为通过或0。
+
+### 0022 / run-01
+
+- owner：C 线任务；run_count：1；结束：2026-09-15；结果 completed。Planner SHA256 `d58db78992f48873a32ed040554a997241c2ee02e6573f30fc80a85ec283d9a7`；主线功能提交 `ef5d0b02d`，见[执行报告](0022-unified-tasks/REPORT.md)与[必要测试范围补充](0022-unified-tasks/APPROVED_SCOPE_ADDENDUM.md)。
+- 通用待办、人脉待办及未完成／已完成四个视图共用 canonical task 集合；旧 `/followups` 私有入口归一化到人脉筛选，Pipeline、AI、消息和日历跳转到稳定任务地址。候选／提醒不伪装成已保存待办，起草只预填 IORBIT，用户显式发送前不生成。
+- 主线复验 65/65、83/83、208/208，App typecheck exit0；隔离 PostgreSQL 与 iOS Simulator 完成同一任务 App完成→Web回读→Web恢复→App回读。原 App 全量 2645 中44项因旧测试夹具编译失败的历史结果保留，夹具修复后的65项完整相关集通过，不改写为全量通过。
+- 实施前 `initial-route` 影响为 HIGH，主线陈旧 GitNexus staged detect 错误返回0；按HIGH覆盖导航消费者并人工核对24路径。22份冻结文件逐字一致，另两测试分别保留A0003登录补全和E线真实消息变化。
+
+### 0007 / run-01
+
+- owner：当前主代理 `/root`；run_count：1；2026-09-14 启动，2026-09-15 01:05 JST 结束本地实现与验证。
+- 基线 `fca77373f123c03e29a0584cba46bade5f5eb907`；Planner revision 1／SHA256 `05b1e519f405a25ef4da034abd1115cf5f4c501c5552448efa9e56bc013ede46`。
+- 双面 manifest、来源复核、稳定确认意图、整卡原子一次创建和旧单面兼容由 D 线原提交 `0a1ca09a4`、主线集成 `011b575bb` 交付；[执行报告](0007-two-sided-cards/REPORT.md)。
+- 最终 App 全量 2603/2603，两端 typecheck 通过，PostgreSQL 名片 API／repository 28/28。Web 全量 2990 pass／51 fail／187 skip；其中 47 个失败与既有基线逐名相同，4 个新增 provider 环境失败在清空全部 key 后 63/63 通过，不称 Web 全量通过。
+- 结果 blocked：实体 iPhone `shinhaha (26.2)` 离线，没有共同 API/OCR 环境、真实非空批次和授权联系人对象，SC-01～05 的实体／真实跨端证据未闭合。没有真实迁移、部署、push 或 merge。
+- 费用：原记录 USD 0.012780／5.00；全量至少 4 个用例进入 provider 请求路径，日志无用量，且首次中断轮是否到达该区段未知，本轮增量待核算。
+- checkpoint：`build/harness-state/evidence/sprint-0007/run-01/checkpoint.md`（App cwd，被忽略）；没有 D 线活进程。20 分钟线程心跳保持启用，外部条件恢复后从报告的关闭条件继续。
+
+### 0006 / run-01
+
+- owner：B 线当前主代理 `/root`；run_count：1；开始：2026-09-15 JST。基线 HEAD `75eca33e9`，启动时 tracked 工作树干净；Planner revision 2 SHA256 `303ad11647d89384ff31d64cb7d125a660dc95026028a8bc83aaa15c6d90f173`。
+- 承接 0005 protocol v2 与 0021 origin schemaVersion 1；按已批准入口 1／2／3／7 实现一次性预填意图、稳定联系人引用和服务端 actor 验权。真实账号／设备证据按可用环境单列，不阻塞本地可执行实现。
+- 原功能提交 `09e1a71fa`，主线集成 `0ff447a55`；App 全量 2604/2604、两端 typecheck 和全部 0006 定向测试通过。Web 安全全量 3020 pass／48 个无关既有 fail／184 skip；真实同账号 Web↔App 引用回读仍 blocked，详见 [REPORT](0006-contact-mentions/REPORT.md)。
+
+### 0005 / run-01
+
+- owner：B 线当前主代理 `/root`；run_count：1；开始：2026-09-14 JST。独立 worktree `/Volumes/ORICO/Dev/MacMovedData/dot-codex/worktrees/8475/orbit`，不接管 A 线 profile/auth 改动，不启动第二实现者。
+- 基线 HEAD `fca77373f123c03e29a0584cba46bade5f5eb907`，启动时 tracked 工作树干净；原 Planner revision 1 SHA256 `4b7910b723924b457a36769ecbce8d565f371f5e38191125eabab80a4cffe089`。
+- 用户明确启动 B 线并授予完成 0005→0021→0006 所需权限；按 RULES 第0节复用批准，B3 跨端必要文件见[范围补充](0005-ai-session-reliability/APPROVED_SCOPE_ADDENDUM.md)。真实数据库、设备、账号和付费调用仍按实际证据与累计预算登记。
+- 当前从存储并发／旧快照保护的 RED 开始；GitNexus 索引落后当前 HEAD 5 个提交，依用户此前要求不运行会改根 AGENTS 的索引刷新命令，使用现有影响结果并逐文件源码补查。
+- 原产品实现提交 `30c1e210c`，主线集成 `efbfc23ae`；Web 定向 42/42、App 定向 83/83、两端 typecheck、隔离 PostgreSQL 1/1。真实双端设备与 R-00 503 根因仍 blocked，详见 [REPORT](0005-ai-session-reliability/REPORT.md)。
+
+### 0021 / run-01
+
+- owner：B 线当前主代理 `/root`；run_count：1；开始：2026-09-15 00:19 JST。承接 0005 功能 HEAD `30c1e210c` 和同一 B 线授权，串行持有 AI 会话／契约／provider 文件。
+- 实施前先把 B3 实际字段与 0021 organization revision 对照写入 Planner，并读取 Bridge 状态与交接，避免覆盖 E 线联系人详情／聊天／收件箱范围。
+- 功能提交 `c645d357a`、`cabf07b27`、`9f4396d1c`、`3de117902`、`9bc7039a5`；Web 定向 39/39、App 定向 95/95、原生弹窗修复文件 73/73、两端 typecheck 及临时隔离 PostgreSQL 通过。当前 iOS Simulator 已完成长按／更多／分组／确认和真实 409 反馈；同一全新合成账号完成 App→Web→App 分组改名与删除回读，结果 completed，详见 [REPORT](0021-ai-session-organization/REPORT.md)。
 ### 0025 / run-01
 
 - Generator owner：`/root`；开始时间：2026-09-15 10:05 JST；基线 HEAD：`e594f076e5b36e302043bc13026a14af98b4cada`。
@@ -109,7 +210,17 @@ build/harness-logs/
 - 运行目标：先用 RED 覆盖兼容契约与有界联系人搜索，再实现 App 搜索式关联、提及／草稿和六个 4a 状态；Web/API 改动后必须重新生产构建、重启并以同账号／同数据库完成浏览器与原生 App 双向回读。
 - 结束：2026-09-15 12:44 JST；结果 completed；功能提交 `01a1592d9801702b37d874c7d7477b16f2e75472`；[执行报告](0025-notes-ink-signal-search/REPORT.md)。
 - 验证：Web 定向 45/45、typecheck、production build 5 与 live health 通过；App 定向 65/65、typecheck、契约同步、全量 2598/2598 和 iOS 构建 0 error／0 warning 通过；Web 全量的唯一新增失败已修复，剩余 52 与既有基线相同。
-- 同账号验收：浏览器与原生 App 均为 `qa@orbit.test`，双向创建／编辑／搜索、版本 2、actor 404、stale 409 和幂等均已验证；BR-011 为 verified。
+- 同账号验收：浏览器与原生 App 均为 `qa@orbit.test`，双向创建／编辑／搜索、版本 2、actor 404、stale 409 和幂等均已验证；BR-019 为 verified。
+
+### 0026 / run-01
+
+- Generator owner：C 线当前主代理 `/root`；开始时间：2026-09-15 15:20 JST；基线 HEAD：`34f95a20a1953b824444b61a5d691d95a070f165`。
+- Planner revision 1；SHA-256：`716e6886b4df3295480860e07cdf81e94d1fcfda8b6de9202d5c5bbe4f159bb1`；档位 H + I。
+- 文件锁：0026 Planner 白名单内的 App auth、actor-scoped snapshot、待办／个人日程／笔记／配对 AI intent 消费者、直接测试与 Sprint／Bridge 文档。Web/API 产品代码和全部既有未跟踪设计资产不写、不暂存。
+- 运行目标：先用 RED 证明 raw `userId` 与 canonical `accountId` 不同会误拒合法 owner，再从 `/api/account/me` 建立唯一 canonical 身份，并保持 foreign owner、失败接口和缺字段 fail closed。
+- 结束：2026-09-15 16:17 JST；结果 completed；功能提交 `f5f595df447afc1aad9c028a467f075421073709`，邀请 scope 审计补漏 `3385369ddf42b19b590007ec9c573cab82d8f03d`；[执行报告](0026-canonical-app-account-identity/REPORT.md)。
+- 验证：App typecheck、契约同步、身份／任务／日程／笔记／AI／消息定向和最终全量 2804/2804 通过；当前 Web health live/ok；iOS 当前源码构建 0 error／0 warning，登录态 Simulator 在 8082 读取待办、日程和笔记工作区。
+- 审计：业务 owner、actor-scoped cache／draft／receipt 使用 canonical `auth.actorId`；活动会话、名片导入 session scope、认证与密码重置保留 raw subject，见 [身份审计](0026-canonical-app-account-identity/IDENTITY_AUDIT.md)与 [BR-020](../../../../bridge/2026-09-15-canonical-app-identity.md)。
 
 ### 0018 / run-01
 
@@ -132,12 +243,14 @@ build/harness-logs/
 
 ### 0003 / run-01
 
-- 原子保存已提交 `6082b9961`：版本比较、幂等回执、事务回滚，14项临时PostgreSQL测试实际执行。App全量2593/2593；Web最终3005 pass／47原有fail／168skip，失败名称与基线一致。首次48 fail中的旧首页工厂断言已定位并修订，历史日志保留。临时实例已停止，继续同一批两端补全交互及认证导航，不把子功能算作Sprint完成。
-- 已提交资料基础层 `65c2a8050`：独立onboarding、私密生日及投影隔离；App全量2593/2593，Web2990 pass／47原有fail／168skip，失败名称与基线完全一致。首次App全量的统计重试时序失败保留，受控回包修订后相关156/156及全量通过。继续事务保存与补全导航，未关闭任何完整SC，见[进度证据](0003-profile-completion/PROGRESS.md)。
+- 结束：2026-09-15 03:03 JST；结果 blocked；最后功能 HEAD `b2afc634d`、当前集成主线 `e93ba57cf`，见[执行报告](0003-profile-completion/REPORT.md)。SC-01～04 已通过，只剩 SC-05 的真实 Google 最终回跳和同一账号 Web/App 双向回读。
+- 当前主线 0003 定向集为 App 209/209、Web 非 PostgreSQL 54/54；App 全量2672/2672、两端typecheck exit0。Google broker/PKCE 已真实到 Google 官方登录页，但当前浏览器无用户登录态且 Chrome 控制不可用，没有把到达登录页写成完整 OAuth 成功。
+- 历史检查点：原子保存已提交 `6082b9961`：版本比较、幂等回执、事务回滚，14项临时PostgreSQL测试实际执行。App全量2593/2593；Web最终3005 pass／47原有fail／168skip，失败名称与基线一致。首次48 fail中的旧首页工厂断言已定位并修订，历史日志保留。当时继续同一批两端补全交互及认证导航，未把子功能算作Sprint完成。
+- 历史检查点：已提交资料基础层 `65c2a8050`：独立onboarding、私密生日及投影隔离；App全量2593/2593，Web2990 pass／47原有fail／168skip，失败名称与基线完全一致。首次App全量的统计重试时序失败保留，受控回包修订后相关156/156及全量通过。当时继续事务保存与补全导航，尚未关闭完整SC，见[进度证据](0003-profile-completion/PROGRESS.md)。
 - owner：当前主代理 `/root`；run_count：1；开始：2026-09-14 21:26 JST，原地 `chat-agent`，无第二实现者。前序0002报告及B1技术提案已读取，复用整体批准，见[跨端实施补充](0003-profile-completion/APPROVED_SCOPE_ADDENDUM.md)。
 - 基线功能HEAD `f4bdef4c0`；原Planner revision 2 SHA256 `8315be01f929ce997cc43dfeadd87f489522c63ce53d1dd7102c7288018c4bd1`。本任务产品文件无未提交差异，0023仅剩协调文档；未跟踪用户素材保留。
-- 当前有效基线：App2593 pass／0 fail／0 skip，Web2969 pass／47既有fail／168skip，两端typecheck exit0。Web失败名称与原I版本一致，沿用已批准的基线继续，不降低SC。
-- 文件锁按原Planner及补充归当前主代理；0023不同时写本任务的资料／契约文件。真实注册、Google系统回跳、共同账号双端回读尚未执行；不因此阻止独立本地实现。
+- 历史检查点：当时的有效基线为 App2593 pass／0 fail／0 skip，Web2969 pass／47既有fail／168skip，两端typecheck exit0。Web失败名称与原I版本一致，沿用已批准的基线继续，不降低SC。
+- 历史检查点：文件锁当时按原Planner及补充归当前主代理；0023不同时写本任务的资料／契约文件。当时真实注册、Google系统回跳、共同账号双端回读均未执行；目前真实注册已完成，最终 Google 回跳及同一账号双端回读仍缺，不因此阻止其他独立本地实现。
 
 ### 0023 / run-01
 
@@ -156,6 +269,7 @@ build/harness-logs/
 - 更新 H 全量（`1adb805c7`）：推荐候选在同步／异步及普通／排序路径保留行业 ID、null 和省略语义；12个新增路径用例先见8个预期RED，修复后相关两文件29/29。App全量2583 pass／0 fail／0 skip；Web2964 pass／47 fail／168 skip，失败名称集合与上一版无变化；两端typecheck exit0。日志为 build/harness-logs/sprint-0023-recommendation-{web,app}-full.log。继续本地夹具盘点，不以阶段提交结束整体工作。
 - 后续L数据检查：`d34712307` 补内联资料／联系人／推荐输入并登记4个实际推荐投影，清单现8人32正常投影；5个RED后四文件43/43。`e5db81a32` 将AI输出／统计桶／活动偏好与活动领域三个来源列入明确非个人行业分类，登记RED后四文件20/20；两次Web typecheck均exit0。两个反例保留，其他10个来源族仍未完成；不把这两次局部检查称为新的全量。
 - `b5e868112` 补App邀请／搜索及Web简报正常输入，3条RED后App9/9、Web11/11，两端typecheck通过。连续三个L提交后的I全量：Web2966 pass／47 fail／168 skip，失败名称无新增；App2582 pass／1 fail／0 skip。App失败为 `app-wide-workspaces.test.ts` 任务设置关闭按钮测量43.99998474121094未满足严格44下限；未改代码或断言，限定该用例重跑1/1。它使用slide Modal且按钮样式minHeight来自44pt token，动画几何精度只是当前诊断，不能把单次通过当修复或把全量改记通过。日志为 build/harness-logs/sprint-0023-inline-integration-{web,app}-full.log 和 sprint-0023-layout-failure-repro.log。新增App搜索mapper及纯seed构造器的待审精确边界见数据进度页。
+- `64defa67d` 新增离线受审行业 backfill 计划与注入式条件事务 apply：CLI 拒绝 `--apply`，没有连接或写入真实数据库。汇总清单为20人／56投影，其中17人有依据、3人缺依据；保留2个反例、10个非人物记录和10类待盘点来源，明确 `complete:false`。定向20/20、Web typecheck通过；真实快照、并发／回读及完整盘点仍缺，SC-05继续 running／blocked-by-object，不因工具可用而关闭。
 
 ### 0020 / run-01
 

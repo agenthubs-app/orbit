@@ -1,4 +1,4 @@
-# BR-009 — 独立私有笔记核心
+# BR-017 — 独立私有笔记核心
 
 - 创建/更新日期：2026-09-15
 - 总状态：verified
@@ -35,4 +35,4 @@
 ## 更新历史
 
 - 2026-09-15 07:45 JST，Bridge：功能提交 `8e81e588e`；App 全量通过，Web notes 定向通过且 Web 全量既有失败如实保留；真实双向环境仍待提供。
-- 2026-09-15 09:21 JST，Bridge：在生产构建的 live Web/API、隔离 PostgreSQL、同账号 Web/App 和原生 iOS Simulator 完成双向读写、刷新、冲突及 actor 隔离；BR-009 更新为 `verified`。
+- 2026-09-15 09:21 JST，Bridge：在生产构建的 live Web/API、隔离 PostgreSQL、同账号 Web/App 和原生 iOS Simulator 完成双向读写、刷新、冲突及 actor 隔离；BR-017 更新为 `verified`。

@@ -31,6 +31,8 @@ function item(overrides: Partial<IngestItemDTO> = {}): IngestItemDTO {
   return {
     attemptCount: 1,
     batchId: "batch-1",
+    cardId: "card-1",
+    side: "front",
     clientDigest: "sha256:client",
     confirmedContactId: null,
     createdAt: NOW,

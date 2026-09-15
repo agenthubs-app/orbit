@@ -1,20 +1,28 @@
 import { z } from "zod";
 import { homeDateView, homeFollowupsToView, homeScheduleToView, homeTasksToView } from "../view-models/home-dashboard";
 import type { ScheduleItemContract } from "./contract/tasks";
-import type { ManualProfileContract } from "./contract/profile";
+import type { ManualProfileContract, ProfileSaveConcurrencyContract } from "./contract/profile";
 import { validateIndustrySelection } from "./domain/industries";
 
 // This page validates its existing HTTP responses locally. These schemas are
 // not shared generated contracts and do not add server capabilities.
 const fields = z.enum(["displayName", "headline", "relationshipGoal", "homeMarket", "targetRelationshipTypes", "preferredIntroChannels"]);
 const timestamp = z.iso.datetime({ offset: true });
+export const profileOnboardingSchema = z.object({
+  policyVersion: z.literal(1), status: z.enum(["incomplete", "complete"]),
+  missingFields: z.array(z.enum(["displayName", "primaryIndustryId", "secondaryIndustryId", "birthDate"])),
+}).refine(value => new Set(value.missingFields).size === value.missingFields.length
+  && (value.status === "complete") === (value.missingFields.length === 0));
 export const profileDetailSchema = z.object({
   state: z.enum(["success", "empty", "pending"]),
+  onboarding: profileOnboardingSchema.optional(),
+  mutationId: z.string().min(1).optional(),
   profile: z.object({
     id: z.string().trim().min(1), displayName: z.string(), headline: z.string(), organization: z.string(), role: z.string(),
     homeMarket: z.string(), relationshipGoal: z.string(), targetRelationshipTypes: z.array(z.string()),
     preferredFollowUpWindow: z.string(), preferredLanguage: z.enum(["zh", "en", "ja"]), preferredIntroChannels: z.array(z.string()),
     primaryIndustryId: z.string().nullable().optional(), secondaryIndustryId: z.string().nullable().optional(),
+    birthDate: z.iso.date().nullable().optional(),
     industry: z.string().optional(), bio: z.string().optional(), offering: z.array(z.string()).optional(), seeking: z.array(z.string()).optional(), topics: z.array(z.string()).optional(), updatedAt: timestamp
   }).passthrough().refine(profile => validateIndustrySelection(profile).valid).nullable(),
   completeness: z.object({ score: z.number().int().min(0).max(100), status: z.enum(["not-started", "action-needed", "ready"]), completedFields: z.array(fields), missingFields: z.array(fields), nextBestField: fields.nullable() }),
@@ -23,12 +31,16 @@ export const profileDetailSchema = z.object({
 }).passthrough().refine(data => (data.state === "empty") === (data.profile === null));
 export type ProfileDetail = z.infer<typeof profileDetailSchema>;
 
-export type ProfileSaveRequest = Partial<Omit<ManualProfileContract, "id" | "updatedAt">> & { displayName: string };
+export type ProfileSaveRequest = Partial<Omit<ManualProfileContract, "id" | "updatedAt">> & ProfileSaveConcurrencyContract & { displayName: string };
 export function profileSaveReceiptSchema(profileId: string | null, request: ProfileSaveRequest) {
+  const { expectedUpdatedAt, mutationId, ...fields } = request;
+  const versioned = expectedUpdatedAt !== undefined || mutationId !== undefined;
   return profileDetailSchema.refine(data => data.state === "success" && data.profile !== null
     && (profileId === null || data.profile.id === profileId)
     && data.editor.lastSavedAt !== null && data.editor.lastSavedAt === data.profile.updatedAt
-    && Object.entries(request).every(([field, value]) => JSON.stringify(data.profile?.[field]) === JSON.stringify(value)));
+    && (!versioned || (expectedUpdatedAt !== undefined && Boolean(mutationId) && data.mutationId === mutationId
+      && data.onboarding !== undefined && (expectedUpdatedAt === null || Date.parse(data.profile.updatedAt) > Date.parse(expectedUpdatedAt))))
+    && Object.entries(fields).every(([field, value]) => JSON.stringify(data.profile?.[field]) === JSON.stringify(value)));
 }
 
 const identifier = z.string().trim().min(1);

@@ -27,7 +27,7 @@ test("app destinations live in a stack group without bottom tabs", () => {
 });
 
 test("the Orbit AI drawer exposes the relationship inbox with its unread badge", () => {
-  assert.match(aiScreenSource, /accessibilityLabel="打开收件箱"/u);
+  assert.match(aiScreenSource, /accessibilityLabel=\{locale\.t\("ai\.openInbox"\)\}/u);
   assert.match(aiScreenSource, /onOpenCapability\("\/inbox" as Href\)/u);
   assert.match(aiScreenSource, /file-tray-full-outline/u);
   assert.match(aiScreenSource, /useRelationshipInboxBadgeCount/u);

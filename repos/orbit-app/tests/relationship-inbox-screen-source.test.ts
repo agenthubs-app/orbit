@@ -16,7 +16,7 @@ const detailRoutePath = join(repoRoot, "app", "inbox", "[id].tsx");
 test("relationship inbox alerts can be dismissed locally like the web inbox panel", () => {
   assert.match(screenSource, /dismissedAlertIds/u);
   assert.match(screenSource, /onDismissAlert/u);
-  assert.match(screenSource, /label="忽略"/u);
+  assert.match(screenSource, /label=\{locale\.t\("inbox\.ignore"\)\}/u);
 });
 
 test("relationship inbox does not GET the POST-only proactive signal endpoint", () => {
@@ -30,7 +30,7 @@ test("notification deep links fetch an authenticated delivery and expose signal 
   assert.match(screenSource, /updateSignal\("acknowledged"\)/u);
   assert.match(screenSource, /updateSignal\("snoozed"\)/u);
   assert.match(screenSource, /updateSignal\("dismissed"\)/u);
-  assert.match(screenSource, /label=\{pendingAction === "snoozed"/u);
+  assert.match(screenSource, /locale\.t\(pendingAction === "snoozed"/u);
   assert.doesNotMatch(screenSource, /mark.*delivery.*complete/u);
 });
 
@@ -42,13 +42,13 @@ test("notification delivery card binds themed styles locally", () => {
   assert.match(screenSource.slice(start, end), /const \{ styles \} = useStyles\(\)/u);
 });
 
-test("relationship inbox can rewrite reply drafts through the web assist boundary", () => {
-  assert.match(screenSource, /ORBIT_API_ENDPOINTS\.chatAssistRewrite/u);
-  assert.match(screenSource, /buildRelationshipRewriteRequest/u);
-  assert.match(screenSource, /relationshipRewriteToDraft/u);
-  assert.match(screenSource, /label="润色草稿"/u);
-  assert.match(screenSource, /setBody\(rewrite\.body\)/u);
-  assert.doesNotMatch(screenSource, /send-message/u);
+test("relationship inbox hands reply drafts to an opaque stable-contact IORBIT prefill", () => {
+  assert.match(screenSource, /relationshipConversationContactId/u);
+  assert.match(screenSource, /registerAiTemplatePrefill/u);
+  assert.match(screenSource, /inboxPolishTemplate\(\{ contactId, contactName: detail\.participantName, draft: body\.trim\(\) \}\)/u);
+  assert.match(screenSource, /pathname: "\/ai\/\[id\]", params: \{ id: "new", prefillIntent \}/u);
+  assert.match(screenSource, /label=\{locale\.t\("inbox\.polishDraft"\)\}/u);
+  assert.doesNotMatch(screenSource, /ORBIT_API_ENDPOINTS\.chatAssistRewrite|buildRelationshipRewriteRequest|relationshipRewriteToDraft/u);
 });
 
 test("relationship inbox shows chat privacy controls from the web boundary", () => {
@@ -65,7 +65,7 @@ test("relationship inbox shows chat privacy controls from the web boundary", () 
     /clientPost\(request\.request\.endpoint,\s*request\.request\.body\)/u
   );
   assert.match(screenSource, /label=\{privacy\.toggleLabel\}/u);
-  assert.match(screenSource, /"隐私控制"/u);
+  assert.match(screenSource, /locale\.t\("inbox\.privacy"\)/u);
 });
 
 test("relationship inbox privacy controls never render raw implementation errors", () => {
@@ -82,11 +82,11 @@ test("relationship inbox privacy controls never render raw implementation errors
   assert.doesNotMatch(panelSource, /setPrivacyError\([\s\S]*requestError\.message/u);
   assert.match(
     panelSource,
-    /relationshipInboxErrorText\(\s*result\.error\?\.message,\s*"隐私控制暂时不可用。"\s*\)/u
+    /relationshipInboxErrorText\(\s*result\.error\?\.message,\s*locale\.t\("inbox\.privacyUnavailable"\),\s*locale\.language\s*\)/u
   );
   assert.match(
     panelSource,
-    /relationshipInboxErrorText\(\s*requestError,\s*"隐私控制暂时更新不了。"\s*\)/u
+    /relationshipInboxErrorText\(\s*requestError,\s*locale\.t\("inbox\.privacyUpdateFailed"\),\s*locale\.language\s*\)/u
   );
 });
 
@@ -94,19 +94,13 @@ test("relationship inbox actions sanitize user-facing error text", () => {
   const screenActions = [
     {
       end: "function InboxSegmentedControl",
-      fallback: "这条线索暂时确认不了。",
+      fallback: "inbox\\.signalConfirmFailed",
       name: "RelationshipSignalsCard",
       setter: "setActionError"
     },
     {
-      end: "function NewThreadComposer",
-      fallback: "这段草稿暂时润色不了。",
-      name: "ReplyComposer",
-      setter: "setRewriteError"
-    },
-    {
       end: "function LabeledInput",
-      fallback: "这段草稿暂时创建不了。",
+      fallback: "inbox\\.createDraftFailed",
       name: "NewThreadComposer",
       setter: "setError"
     }
@@ -144,8 +138,8 @@ test("relationship inbox shows and confirms email or calendar relationship signa
   assert.match(screenSource, /relationshipSignalConfirmToView/u);
   assert.match(screenSource, /RelationshipSignalsCard/u);
   assert.match(screenSource, /onConfirmSignal/u);
-  assert.match(screenSource, /label="确认线索"/u);
-  assert.match(screenSource, /title="关系线索"/u);
+  assert.match(screenSource, /label=\{locale\.t\("inbox\.confirmSignal"\)\}/u);
+  assert.match(screenSource, /title=\{locale\.t\("inbox\.signalsTitle"\)\}/u);
 });
 
 test("relationship inbox opens an existing thread before composing from a contact seed", () => {

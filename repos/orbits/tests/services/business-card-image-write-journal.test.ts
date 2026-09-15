@@ -28,7 +28,7 @@ async function fixture(run: (f: {
     const repository = createBusinessCardIngestRepository({ pool, workspaceId });
     const imageDigest = `sha256:${"a".repeat(64)}`;
     const created = await repository.createBatch({ actorId: "test", idempotencyKey: "test", manifest: [{
-      fileName: "test.jpg", mimeType: "image/jpeg", rawSize: 4, seq: 1, clientDigest: imageDigest,
+      cardId: "card:test", side: "front", fileName: "test.jpg", mimeType: "image/jpeg", rawSize: 4, seq: 1, clientDigest: imageDigest,
     }] });
     const objects = new Map<string, Buffer>();
     const client: PrivateCardBlobClient = {

@@ -10,6 +10,7 @@ import { LoadingState } from "../../components/LoadingState";
 import { createThemedStyles } from "../../design/theme";
 import { radius, spacing, typography } from "../../design/tokens";
 import { useApiResource } from "../../hooks/useApiResource";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { noteFromPayload } from "../../view-models/notes";
 import { buildNoteSuggestionNavigation, noteSourceTasksFromPayload } from "../../view-models/note-suggestions";
 import { eventsToSummaries } from "../../view-models/events";
@@ -36,10 +37,11 @@ function MentionedBody({ body, mentions, mentionStyle, textStyle }: {
 
 export function NoteDetailScreen({ actorId, noteId, scopeKey }: { actorId: string; noteId: string; scopeKey: string }) {
   const router = useRouter();
+  const locale = useOrbitLocale();
   const state = useApiResource<unknown>(notePath(noteId), () => false, { scopeKey, cachePolicy: "network-only" });
   const tasksState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.tasks, () => false, { scopeKey });
   const eventsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.events, () => false, { scopeKey });
-  const note = state.kind === "success" || state.kind === "empty" ? noteFromPayload(state.data, actorId, noteId) : null;
+  const note = state.kind === "success" || state.kind === "empty" ? noteFromPayload(state.data, actorId, noteId, locale.language) : null;
   const contactSummaries = useNoteContactSummaries(note?.contactIds ?? [], scopeKey);
   const sourceTasks = tasksState.kind === "success" || tasksState.kind === "empty" ? noteSourceTasksFromPayload(tasksState.data, actorId, noteId) : [];
   const events = eventsState.kind === "success" || eventsState.kind === "empty" ? eventsToSummaries(eventsState.data) : [];
@@ -47,28 +49,29 @@ export function NoteDetailScreen({ actorId, noteId, scopeKey }: { actorId: strin
   contactSummaries.forEach((contact, id) => contactNames.set(id, contact.name));
   const eventNames = new Map(events.map((event) => [event.id, event.title]));
   const { styles, colors } = useStyles();
-  return <AppScreen title="笔记" refreshControl={<RefreshControl refreshing={state.refreshing} onRefresh={state.refresh} />}>
+  const dateLocale = locale.language === "en" ? "en-US" : locale.language === "ja" ? "ja-JP" : "zh-CN";
+  return <AppScreen title={locale.t("notes.title")} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")} refreshControl={<RefreshControl refreshing={state.refreshing} onRefresh={state.refresh} />}>
     {state.kind === "loading" ? <LoadingState /> : null}
     {state.kind === "failure" || state.kind === "offline" ? <ErrorState message={state.error.message} /> : null}
-    {(state.kind === "success" || state.kind === "empty") && !note ? <ErrorState message="笔记不存在或返回内容不完整。" /> : null}
+    {(state.kind === "success" || state.kind === "empty") && !note ? <ErrorState message={locale.t("notes.missing")} /> : null}
     {note ? <>
       <View style={styles.heading}>
-        <View style={styles.privatePill}><Ionicons color={colors.text3} name="lock-closed-outline" size={13} /><Text style={styles.private}>仅自己可见</Text></View>
+        <View style={styles.privatePill}><Ionicons color={colors.text3} name="lock-closed-outline" size={13} /><Text style={styles.private}>{locale.t("notes.private")}</Text></View>
         <Text style={styles.title}>{note.title}</Text>
-        <Text style={styles.date}>{new Date(note.updatedAt).toLocaleString("zh-CN", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })} · v{note.version}</Text>
+        <Text style={styles.date}>{new Date(note.updatedAt).toLocaleString(dateLocale, { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })} · v{note.version}</Text>
       </View>
       <View style={styles.paper}><MentionedBody body={note.body} mentions={note.mentions} mentionStyle={styles.mention} textStyle={styles.body} /></View>
       {note.contactIds.length ? <View style={styles.section}>
-        <Text style={styles.sectionTitle}>相关人脉</Text>
-        <View style={styles.chips}>{note.contactIds.map((contactId) => <Pressable key={contactId} accessibilityRole="button" accessibilityLabel={`打开关联人脉 ${contactNames.get(contactId) ?? contactId}`} onPress={() => router.push(`/contacts/${encodeURIComponent(contactId)}` as Href)} style={styles.chip}>
+        <Text style={styles.sectionTitle}>{locale.t("notes.relatedPeople")}</Text>
+        <View style={styles.chips}>{note.contactIds.map((contactId) => <Pressable key={contactId} accessibilityRole="button" accessibilityLabel={locale.t("notes.openRelatedPerson", { name: contactNames.get(contactId) ?? contactId })} onPress={() => router.push(`/contacts/${encodeURIComponent(contactId)}` as Href)} style={styles.chip}>
           <View style={styles.avatar}><Text style={styles.avatarText}>{(contactNames.get(contactId) ?? contactId.replace(/^contact:/, "")).slice(0, 1).toLocaleUpperCase()}</Text></View><Text numberOfLines={1} style={styles.chipText}>{contactNames.get(contactId) ?? contactId.replace(/^contact:/, "")}</Text>
         </Pressable>)}</View>
       </View> : null}
-      {note.eventIds.length ? <View style={styles.section}><Text style={styles.sectionTitle}>相关活动</Text>{note.eventIds.map((eventId) => <Pressable key={eventId} accessibilityRole="button" accessibilityLabel={`打开关联活动 ${eventNames.get(eventId) ?? eventId}`} onPress={() => router.push(`/events/${encodeURIComponent(eventId)}` as Href)} style={styles.linkRow}><Ionicons color={colors.accent} name="calendar-outline" size={19} /><Text style={styles.linkText}>{eventNames.get(eventId) ?? eventId.replace(/^event:/, "")}</Text><Ionicons color={colors.text4} name="chevron-forward" size={18} /></Pressable>)}</View> : null}
-      {sourceTasks.length ? <View style={styles.section}><Text style={styles.sectionTitle}>由这篇笔记创建</Text>{sourceTasks.map((task) => <Pressable key={task.id} accessibilityRole="button" accessibilityLabel={`打开来源待办 ${task.title}`} onPress={() => router.push(`/tasks/${encodeURIComponent(task.id)}` as Href)} style={styles.linkRow}><Ionicons color={colors.accent} name="checkbox-outline" size={19} /><Text style={styles.linkText}>{task.title}</Text><Ionicons color={colors.text4} name="chevron-forward" size={18} /></Pressable>)}</View> : null}
+      {note.eventIds.length ? <View style={styles.section}><Text style={styles.sectionTitle}>{locale.t("notes.relatedEvents")}</Text>{note.eventIds.map((eventId) => <Pressable key={eventId} accessibilityRole="button" accessibilityLabel={locale.t("notes.openRelatedEvent", { name: eventNames.get(eventId) ?? eventId })} onPress={() => router.push(`/events/${encodeURIComponent(eventId)}` as Href)} style={styles.linkRow}><Ionicons color={colors.accent} name="calendar-outline" size={19} /><Text style={styles.linkText}>{eventNames.get(eventId) ?? eventId.replace(/^event:/, "")}</Text><Ionicons color={colors.text4} name="chevron-forward" size={18} /></Pressable>)}</View> : null}
+      {sourceTasks.length ? <View style={styles.section}><Text style={styles.sectionTitle}>{locale.t("notes.createdFromNote")}</Text>{sourceTasks.map((task) => <Pressable key={task.id} accessibilityRole="button" accessibilityLabel={locale.t("notes.openSourceTask", { title: task.title })} onPress={() => router.push(`/tasks/${encodeURIComponent(task.id)}` as Href)} style={styles.linkRow}><Ionicons color={colors.accent} name="checkbox-outline" size={19} /><Text style={styles.linkText}>{task.title}</Text><Ionicons color={colors.text4} name="chevron-forward" size={18} /></Pressable>)}</View> : null}
       <View style={styles.actions}>
-        <Pressable accessibilityRole="button" accessibilityLabel="编辑笔记" onPress={() => router.push(`/notes/${encodeURIComponent(note.id)}/edit` as Href)} style={styles.editLarge}><Text style={styles.editText}>编辑笔记</Text></Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel="IORBIT 总结" onPress={() => router.push(buildNoteSuggestionNavigation(note))} style={styles.iorbit}><View style={styles.orbitMark}><Ionicons color={colors.onAccent} name="sparkles" size={16} /></View><Text style={styles.iorbitTitle}>IORBIT 总结</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.edit")} onPress={() => router.push(`/notes/${encodeURIComponent(note.id)}/edit` as Href)} style={styles.editLarge}><Text style={styles.editText}>{locale.t("notes.edit")}</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.aiSummary")} onPress={() => router.push(buildNoteSuggestionNavigation(note, locale.language))} style={styles.iorbit}><View style={styles.orbitMark}><Ionicons color={colors.onAccent} name="sparkles" size={16} /></View><Text style={styles.iorbitTitle}>{locale.t("notes.aiSummary")}</Text></Pressable>
       </View>
     </> : null}
   </AppScreen>;

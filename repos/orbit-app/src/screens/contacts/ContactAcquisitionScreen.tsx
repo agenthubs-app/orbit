@@ -29,6 +29,8 @@ import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import type { MessageKey } from "../../i18n/messages";
 import {
   buildEventAttendeeContactDraftImportRequest,
   eventAttendeeContactDraftImportToView,
@@ -141,6 +143,7 @@ function keepBusinessCardWriteCandidate(
 
 export function ContactAcquisitionScreen() {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const router = useRouter();
   const { eventId: eventIdParam, mode: modeParam } = useLocalSearchParams<{
     eventId?: string | string[];
@@ -886,7 +889,7 @@ export function ContactAcquisitionScreen() {
           tintColor={colors.accent}
         />
       }
-      title={mode === "businessCard" ? "名片导入" : "添加人脉"}
+      title={mode === "businessCard" ? locale.t("businessCard.importTitle") : "添加人脉"}
     >
       {mode === "businessCard" ? resultCard : null}
       <Pressable
@@ -971,7 +974,7 @@ export function ContactAcquisitionScreen() {
         >
           <Ionicons color={colors.onAccent} name="add-outline" size={18} />
           <Text style={styles.primaryButtonText}>
-            {submitting ? "提交中" : "生成待确认候选"}
+            {submitting ? locale.t("businessCard.generatingCandidate") : locale.t("businessCard.generateCandidate")}
           </Text>
         </Pressable>
       </DataCard>
@@ -1653,21 +1656,31 @@ function BusinessCardReviewFields({
   saveLabel: string;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const { styles: cardStyles } = useCardReviewStyles();
   const large = useWindowDimensions().fontScale > 1.3;
   const [fieldHeights, setFieldHeights] = useState<Partial<Record<ContactDraftReviewFieldName, number>>>({});
   return (
     <View style={cardStyles.review}>
-      <Text accessibilityRole="header" style={cardStyles.heading}>识别结果</Text>
+      <Text accessibilityRole="header" style={cardStyles.heading}>{locale.t("businessCard.recognitionResult")}</Text>
       <View style={cardStyles.fields}>
-      {fields.map((field) => (
+      {fields.map((field) => {
+        const labelKey: Record<ContactDraftReviewFieldName, MessageKey> = {
+          displayName: "businessCard.fieldName",
+          organization: "businessCard.fieldOrganization",
+          role: "businessCard.fieldRole",
+          email: "businessCard.fieldEmail",
+          phone: "businessCard.fieldPhone"
+        };
+        const label = locale.t(labelKey[field.field]);
+        return (
         <View key={field.field} style={[cardStyles.field, large && cardStyles.fieldStack]}>
-          <Text style={[cardStyles.label, large && cardStyles.labelLarge]}>{field.label}</Text>
+          <Text style={[cardStyles.label, large && cardStyles.labelLarge]}>{label}</Text>
           <View style={cardStyles.fieldValue}>
           <TextInput
-            accessibilityLabel={field.label}
+            accessibilityLabel={label}
             onChangeText={(value) => onChange(field.field, value)}
-            placeholder={field.value || field.label}
+            placeholder={field.value || label}
             placeholderTextColor={colors.text4}
             multiline={large}
             numberOfLines={1}
@@ -1683,7 +1696,7 @@ function BusinessCardReviewFields({
             <Text style={cardStyles.meta}>{field.confidenceLabel} · {field.stateLabel}</Text>
           </View>
         </View>
-      ))}
+      );})}
       </View>
       <Text style={styles.helperText}>保存后仍然只是候选，不会写入联系人。</Text>
       <Pressable

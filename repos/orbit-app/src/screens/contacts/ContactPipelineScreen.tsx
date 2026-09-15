@@ -226,7 +226,7 @@ function PipelineContent({
             onContactPress={(contactId) =>
               router.push(`/contacts/${encodeURIComponent(contactId)}` as Href)
             }
-            onViewAll={() => router.push("/followups" as Href)}
+            onViewAll={() => router.push("/tasks?scope=relationship" as Href)}
             tasks={view.actionItems.slice(0, 3)}
             unavailable={tasksUnavailable}
           />

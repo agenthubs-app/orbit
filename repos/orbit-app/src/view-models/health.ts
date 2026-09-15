@@ -15,19 +15,20 @@ function stringField(
   return typeof value === "string" && value.trim() ? value : "";
 }
 
-export function healthPayloadToSummary(data: unknown): HealthCheckSummary {
+export function healthPayloadToSummary(data: unknown, t: OrbitTranslator = createTranslator("zh")): HealthCheckSummary {
   const payload = isRecord(data) ? data : {};
   const status = stringField(payload, "status").toLowerCase();
 
   if (status === "ok") {
     return {
-      detail: "Orbit 服务响应正常，可以继续使用。",
-      title: "服务器可用"
+      detail: t("settings.healthReadyDetail"),
+      title: t("settings.healthReadyTitle")
     };
   }
 
   return {
-    detail: "服务器已经响应，但暂时无法读取健康详情。",
-    title: "服务器已响应"
+    detail: t("settings.healthRespondedDetail"),
+    title: t("settings.healthRespondedTitle")
   };
 }
+import { createTranslator, type OrbitTranslator } from "../i18n/messages";

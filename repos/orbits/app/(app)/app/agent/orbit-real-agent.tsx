@@ -3,6 +3,14 @@
 import { type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { aiSessionOrganizationSchema, aiSessionOriginSchema, reliableAiSendInputSchema, reliableAiSendReceiptSchema } from "../../../../shared/api-schema/ai-sessions";
+import type {
+  AiSessionOriginInputContract,
+  AiSessionGroupContract,
+  AiSessionOrganizationContract,
+  ReliableAiSendInputContract,
+  StoredAiSessionOriginContract,
+} from "../../../../shared/contract/ai-sessions";
 
 import type {
   OrbitAgentEventResultView,
@@ -14,7 +22,7 @@ import type {
 } from "../orbit-agent-route-view-model";
 import { AccountTopNav } from "../orbit-account-shell";
 import { useOrbitAskTarget } from "../orbit-global-ask/orbit-ask-context";
-import { takePendingAsk } from "../orbit-global-ask/orbit-ask-draft";
+import { takeAgentPrefill, takePendingAsk, type OrbitAgentPrefill } from "../orbit-global-ask/orbit-ask-draft";
 import { eventCoverPhoto } from "../orbit-event-cover-photo";
 import { EventCover } from "../events/orbit-event-cover";
 import { useOrbitLanguage } from "../orbit-language-context";
@@ -26,6 +34,14 @@ import { ORBIT_Z } from "../orbit-z";
 import { AgentActionStatusCard } from "./agent-action-status-card";
 import { AgentOutcomeFeedback } from "./agent-outcome-feedback";
 import { createAgentChatSessionMutationQueue } from "./agent-chat-session-mutations";
+import {
+  AgentChatHistoryOrganization,
+  createAgentChatGroup,
+  deleteAgentChatGroup,
+  loadAgentChatGroups,
+  patchAgentChatSessionOrganization,
+  renameAgentChatGroup,
+} from "./agent-chat-history-organization";
 import { AgentTaskInteractionCard } from "./agent-task-interaction-card";
 import { useAgentTaskSuggestions } from "./agent-task-interaction-client";
 import { parseAgentTaskInteraction, type AgentTaskInteractionView } from "./agent-task-interaction-view-model";
@@ -45,17 +61,20 @@ interface OrbitRealAgentProps {
 }
 
 type AgentPanel = Pick<OrbitAgentScenarioView, "items" | "kind" | "panelTitle">;
+type AgentReliableRequest = ReliableAiSendInputContract;
 
 type AgentMessage =
-  | { role: "user"; text: string }
+  | { id?: string; role: "user"; text: string }
   | {
       actionIds?: readonly string[];
       evidenceRefs?: readonly AgentEvidenceRef[];
       items: OrbitAgentScenarioView["items"];
       kind: OrbitAgentScenarioView["kind"];
+      id?: string;
       note?: string;
       panelTitle: string;
       retryRequest?: string;
+      reliableRequest?: AgentReliableRequest;
       role: "assistant";
       runId?: string;
       taskInteraction?: AgentTaskInteractionView;
@@ -200,7 +219,7 @@ export function uniqueAgentEvidenceRefs(
 
 const AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY = "orbit-agent-chat-active-session-v1";
 const AGENT_CHAT_SESSIONS_API_PATH = "/api/ai/conversations/sessions";
-const MAX_AGENT_CHAT_HISTORY_SESSIONS = 12;
+const MAX_AGENT_CHAT_HISTORY_SESSIONS = 10_000;
 const HISTORY_SIDEBAR_DEFAULT_WIDTH = ORBIT_LEFT_SIDEBAR_WIDTH;
 const HISTORY_SIDEBAR_MAX_WIDTH = 380;
 const HISTORY_SIDEBAR_MIN_WIDTH = 180;
@@ -494,6 +513,14 @@ function isStoredAgentMessage(value: unknown): value is AgentMessage {
     return false;
   }
 
+  if (
+    (typeof value.id !== "undefined" && typeof value.id !== "string") ||
+    (typeof value.reliableRequest !== "undefined" &&
+      !reliableAiSendInputSchema.safeParse(value.reliableRequest).success)
+  ) {
+    return false;
+  }
+
   if (value.role === "user") {
     return true;
   }
@@ -527,7 +554,10 @@ export interface AgentStoredChatSession {
   createdAt: string;
   customTitle?: string;
   id: string;
+  messageRevision?: number;
   messages: AgentMessage[];
+  organization?: AiSessionOrganizationContract;
+  origin?: StoredAiSessionOriginContract;
   panel?: AgentPanel | null;
   pinned?: boolean;
   title: string;
@@ -572,8 +602,17 @@ function parseAgentChatSessionsArray(value: unknown): AgentStoredChatSession[] {
 
   return value
     .filter(isRecord)
-    .map((session) => ({
+    .map((session) => {
+      const origin = aiSessionOriginSchema.safeParse(session.origin);
+      const organization = aiSessionOrganizationSchema.safeParse(session.organization);
+      return {
       id: typeof session.id === "string" ? session.id : "",
+      messageRevision:
+        typeof session.messageRevision === "number" &&
+        Number.isSafeInteger(session.messageRevision) &&
+        session.messageRevision >= 0
+          ? session.messageRevision
+          : undefined,
       messages: Array.isArray(session.messages)
         ? session.messages
             .flatMap((message) => {
@@ -583,15 +622,23 @@ function parseAgentChatSessionsArray(value: unknown): AgentStoredChatSession[] {
             })
         : [],
       panel: isRecord(session.panel) ? (session.panel as AgentPanel) : null,
+      origin: origin.success ? origin.data : undefined,
+      organization: organization.success ? organization.data : {
+        customTitle: typeof session.customTitle === "string" && session.customTitle.trim() ? session.customTitle.trim() : null,
+        groupId: null,
+        pinned: session.pinned === true,
+        revision: 0,
+      },
       createdAt:
         typeof session.createdAt === "string" ? session.createdAt : "",
       customTitle:
         typeof session.customTitle === "string" ? session.customTitle.trim() : "",
-      pinned: session.pinned === true,
+      pinned: organization.success ? organization.data.pinned : session.pinned === true,
       title: typeof session.title === "string" ? session.title.trim() : "",
       updatedAt:
         typeof session.updatedAt === "string" ? session.updatedAt : "",
-    }))
+      };
+    })
     .map((session) => ({
       ...session,
       createdAt: session.createdAt || session.updatedAt,
@@ -636,8 +683,10 @@ function parseAgentChatSessionData(value: unknown): AgentStoredChatSession | nul
 export function agentChatHistorySessionsToHistory(
   sessions: readonly AgentStoredChatSession[],
   language: AgentHistoryLanguage,
+  groups: readonly AiSessionGroupContract[] = [],
 ): OrbitAgentHistoryView[] {
-  const group = language === "zh" ? "更早" : "Earlier";
+  const fallbackGroup = language === "zh" ? "未分组" : "Ungrouped";
+  const groupNames = new Map(groups.map((group) => [group.id, group.name]));
 
   return [...sessions]
     .sort(
@@ -651,15 +700,18 @@ export function agentChatHistorySessionsToHistory(
         session.messages.find((message) => message.role === "user")?.text ??
         session.title;
       const title = displayTitleForStoredSession(session);
+      const groupId = session.organization?.groupId ?? null;
 
       return {
-        group,
+        group: groupId ? groupNames.get(groupId) ?? fallbackGroup : fallbackGroup,
+        groupId,
         id: `session:${session.id}`,
+        organizationRevision: session.organization?.revision ?? 0,
         pinned: session.pinned,
         q: firstUserMessage,
         sessionId: session.id,
         title,
-        when: group,
+        when: groupId ? groupNames.get(groupId) ?? fallbackGroup : fallbackGroup,
       };
     });
 }
@@ -820,17 +872,28 @@ export function agentChatHistoryMutationWasPersisted(
   );
 }
 
-async function loadStoredAgentChatSessions(): Promise<AgentStoredChatSession[]> {
+export async function loadStoredAgentChatSessions(): Promise<AgentStoredChatSession[]> {
   try {
-    const response = await fetch(agentChatSessionsApiPath(), {
-      headers: { accept: "application/json" },
-      method: "GET",
-    });
-    const payload = await readJsonResponse(response);
-
-    return response.ok && isRecord(payload) && payload.success === true
-      ? parseAgentChatSessionsData(payload.data)
-      : [];
+    const sessions: AgentStoredChatSession[] = [];
+    let cursor: string | null = null;
+    for (let page = 0; page < 200; page += 1) {
+      const query = new URLSearchParams({ limit: "50", v: "2" });
+      if (cursor) query.set("cursor", cursor);
+      const response = await fetch(`${agentChatSessionsApiPath()}?${query}`, {
+        headers: { accept: "application/json" },
+        method: "GET",
+      });
+      const payload = await readJsonResponse(response);
+      if (!response.ok || !isRecord(payload) || payload.success !== true || !isRecord(payload.data)) {
+        return [];
+      }
+      sessions.push(...parseAgentChatSessionsData(payload.data));
+      cursor = typeof payload.data.nextCursor === "string" && payload.data.nextCursor
+        ? payload.data.nextCursor
+        : null;
+      if (!cursor) break;
+    }
+    return [...new Map(sessions.map((session) => [session.id, session])).values()];
   } catch {
     return [];
   }
@@ -987,6 +1050,8 @@ function AgentHistoryList({
   onDelete,
   onPick,
   onRename,
+  onMove,
+  sessionGroups,
   onTogglePin,
   pendingSessionId,
 }: {
@@ -996,8 +1061,10 @@ function AgentHistoryList({
   onDelete: (history: OrbitAgentHistoryView) => void;
   onPick: (history: OrbitAgentHistoryView) => void;
   onRename: (history: OrbitAgentHistoryView, title: string) => void;
+  onMove: (history: OrbitAgentHistoryView, groupId: string | null) => void;
   onTogglePin: (history: OrbitAgentHistoryView) => void;
   pendingSessionId: string | null;
+  sessionGroups: readonly AiSessionGroupContract[];
 }) {
   const { t } = useOrbitLanguage();
   const [historyMenuOpenId, setHistoryMenuOpenId] = useState<string | null>(null);
@@ -1226,6 +1293,9 @@ function AgentHistoryList({
                               <Icon name="edit" size={14} />
                               {t({ en: "Rename", zh: "重命名" })}
                             </button>
+                            <div className="eyebrow" style={{ padding: "6px 8px 2px" }}>{t({ en: "Move to", zh: "移动到" })}</div>
+                            <button className="btn btn-sm btn-quiet" disabled={pending || item.groupId === null} onClick={() => { setHistoryMenuOpenId(null); onMove(item, null); }} role="menuitem" style={{ height: 34, justifyContent: "flex-start", width: "100%" }} type="button">{t({ en: "Ungrouped", zh: "未分组" })}</button>
+                            {sessionGroups.map((group) => <button className="btn btn-sm btn-quiet" disabled={pending || item.groupId === group.id} key={group.id} onClick={() => { setHistoryMenuOpenId(null); onMove(item, group.id); }} role="menuitem" style={{ height: 34, justifyContent: "flex-start", width: "100%" }} type="button">{group.name}</button>)}
                             <div style={{ background: "var(--border)", height: 1, margin: "5px 4px" }} />
                             <button
                               data-orbit-agent-history-delete={item.sessionId}
@@ -1361,26 +1431,46 @@ function AgentMobileHistoryDrawer({
   activeQ,
   activeSessionId,
   history,
+  language,
+  groupMutationPending,
+  groups,
   onClose,
   onDelete,
   onNavigate,
   onNewChat,
   onPick,
   onRename,
+  onMove,
+  onCreateGroup,
+  onDeleteGroup,
+  onFilterGroup,
+  onNewInGroup,
+  onRenameGroup,
+  sessionGroups,
   onTogglePin,
   pendingSessionId,
 }: {
   activeQ: string;
   activeSessionId: string | null;
   history: OrbitAgentHistoryView[];
+  language: AgentHistoryLanguage;
+  groupMutationPending: boolean;
+  groups: readonly AiSessionGroupContract[];
   onClose: () => void;
   onDelete: (history: OrbitAgentHistoryView) => void;
   onNavigate: (href: string) => void;
   onNewChat: () => void;
   onPick: (history: OrbitAgentHistoryView) => void;
   onRename: (history: OrbitAgentHistoryView, title: string) => void;
+  onMove: (history: OrbitAgentHistoryView, groupId: string | null) => void;
+  onCreateGroup: (name: string) => void;
+  onDeleteGroup: (group: AiSessionGroupContract) => void;
+  onFilterGroup: (groupId: string | null) => void;
+  onNewInGroup: (groupId: string) => void;
+  onRenameGroup: (group: AiSessionGroupContract, name: string) => void;
   onTogglePin: (history: OrbitAgentHistoryView) => void;
   pendingSessionId: string | null;
+  sessionGroups: readonly AiSessionGroupContract[];
 }) {
   const { t } = useOrbitLanguage();
   const drawerRef = useOrbitModalA11y(onClose);
@@ -1418,6 +1508,17 @@ function AgentMobileHistoryDrawer({
             {t({ en: "New chat", zh: "新对话" })}
           </button>
         </div>
+        <AgentChatHistoryOrganization
+          busy={groupMutationPending}
+          currentGroupId={null}
+          groups={groups}
+          language={language}
+          onCreate={onCreateGroup}
+          onDelete={onDeleteGroup}
+          onFilter={onFilterGroup}
+          onNew={onNewInGroup}
+          onRename={onRenameGroup}
+        />
         <div style={{ display: "flex", flexDirection: "column", gap: 0, padding: "0 12px 4px" }}>
           <div className="eyebrow" style={{ padding: "2px 8px 6px" }}>{t({ en: "Go to", zh: "前往" })}</div>
           {[
@@ -1451,8 +1552,10 @@ function AgentMobileHistoryDrawer({
             onDelete={onDelete}
             onPick={onPick}
             onRename={onRename}
+            onMove={onMove}
             onTogglePin={onTogglePin}
             pendingSessionId={pendingSessionId}
+            sessionGroups={sessionGroups}
           />
         </div>
       </div>
@@ -2429,6 +2532,7 @@ export function OrbitRealAgent({
   const { language, preserveHref, t } = useOrbitLanguage();
   // dashboard ⇄ 对话页：有消息（或点了「新对话」）即进入对话页，返回键回 dashboard。
   const [chatOpen, setChatOpen] = useState(false);
+  const [agentPrefill, setAgentPrefill] = useState<OrbitAgentPrefill | null>(null);
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const taskSuggestions = useAgentTaskSuggestions((original, next) => {
     // Object identity confines a delayed response to its original message.
@@ -2448,6 +2552,9 @@ export function OrbitRealAgent({
     HISTORY_SIDEBAR_DEFAULT_WIDTH,
   );
   const [storedSessions, setStoredSessions] = useState<AgentStoredChatSession[]>([]);
+  const [sessionGroups, setSessionGroups] = useState<AiSessionGroupContract[]>([]);
+  const [selectedSessionGroupId, setSelectedSessionGroupId] = useState<string | null>(null);
+  const [groupMutationPending, setGroupMutationPending] = useState(false);
   const [historyMutationQueue] = useState(createAgentChatSessionMutationQueue);
   const [historyDeleteError, setHistoryDeleteError] = useState<string | null>(null);
   const [historyFeedback, setHistoryFeedback] = useState<AgentHistoryFeedback | null>(null);
@@ -2461,14 +2568,20 @@ export function OrbitRealAgent({
   const storedSessionsRef = useRef<AgentStoredChatSession[]>(storedSessions);
   const activeSessionIdRef = useRef<string | null>(activeSessionId);
   const historyHydratedRef = useRef(false);
+  const skipRestoredSessionPersistenceRef = useRef(false);
+  const suppressReliableSessionPersistenceRef = useRef(false);
+  const reliableMessageRevisionRef = useRef<number | null>(null);
+  const initialGroupIdRef = useRef<string | null>(null);
+  const initialOrganizationRef = useRef<{ organization: AiSessionOrganizationContract; sessionId: string } | null>(null);
 
   languageRef.current = language;
   messagesRef.current = messages;
   storedSessionsRef.current = storedSessions;
   activeSessionIdRef.current = activeSessionId;
   const storedHistory = useMemo(
-    () => agentChatHistorySessionsToHistory(storedSessions, language),
-    [language, storedSessions],
+    () => agentChatHistorySessionsToHistory(storedSessions, language, sessionGroups)
+      .filter((item) => !selectedSessionGroupId || item.groupId === selectedSessionGroupId),
+    [language, selectedSessionGroupId, sessionGroups, storedSessions],
   );
 
   const navigate = useCallback((prototypeHref: string) => {
@@ -2485,6 +2598,7 @@ export function OrbitRealAgent({
   }, [preserveHref]);
 
   const restoreSession = useCallback((session: AgentStoredChatSession) => {
+    skipRestoredSessionPersistenceRef.current = true;
     setHistOpen(false);
     setMessages(session.messages);
     setPanel(session.panel ?? panelFromMessages(session.messages));
@@ -2493,6 +2607,8 @@ export function OrbitRealAgent({
     setActiveQ("");
     setActiveSessionId(session.id);
     activeSessionIdRef.current = session.id;
+    initialGroupIdRef.current = session.organization?.groupId ?? null;
+    reliableMessageRevisionRef.current = session.messageRevision ?? session.messages.length;
     if (typeof window !== "undefined") {
       window.localStorage.setItem(
         AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY,
@@ -2506,6 +2622,15 @@ export function OrbitRealAgent({
     nextPanel: AgentPanel | null,
   ) => {
     if (!historyHydratedRef.current || nextMessages.length === 0) {
+      return;
+    }
+
+    if (skipRestoredSessionPersistenceRef.current) {
+      skipRestoredSessionPersistenceRef.current = false;
+      return;
+    }
+
+    if (suppressReliableSessionPersistenceRef.current) {
       return;
     }
 
@@ -2525,7 +2650,17 @@ export function OrbitRealAgent({
       createdAt: existingSession?.createdAt ?? now,
       customTitle,
       id: sessionId,
+      messageRevision:
+        reliableMessageRevisionRef.current ??
+        existingSession?.messageRevision ??
+        nextMessages.length,
       messages: [...nextMessages],
+      origin: existingSession?.origin,
+      organization:
+        existingSession?.organization ??
+        (initialOrganizationRef.current?.sessionId === sessionId
+          ? initialOrganizationRef.current.organization
+          : undefined),
       panel: nextPanel,
       pinned: existingSession?.pinned,
       title: customTitle || autoTitle,
@@ -2574,6 +2709,7 @@ export function OrbitRealAgent({
   const ask = useCallback(async (
     query: string,
     retryAssistantIndex?: number,
+    originOverride?: AiSessionOriginInputContract,
   ) => {
     const locale = languageRef.current === "zh" ? "zh" : "en";
     const failureText =
@@ -2590,23 +2726,71 @@ export function OrbitRealAgent({
             retryAssistantIndex,
           )
         : null;
+    const failedMessage =
+      typeof retryAssistantIndex === "number"
+        ? messagesRef.current[retryAssistantIndex]
+        : null;
+    const retryRequest =
+      failedMessage?.role === "assistant"
+        ? failedMessage.reliableRequest
+        : undefined;
+    const sessionId =
+      retryRequest?.sessionId ??
+      activeSessionIdRef.current ??
+      createAgentSessionId();
+    const existingSession = storedSessionsRef.current.find(
+      (session) => session.id === sessionId,
+    );
+    const stableId = (kind: "message" | "request") => {
+      const id = globalThis.crypto?.randomUUID?.() ?? createAgentSessionId();
+      return `${kind}:${id}`;
+    };
+    const reliableRequest: AgentReliableRequest =
+      retryRequest ?? {
+        clientMessageId: stableId("message"),
+        expectedMessageRevision:
+          existingSession?.messageRevision ?? existingSession?.messages.length ?? 0,
+        locale,
+        message: query,
+        ...(existingSession
+          ? {}
+          : {
+              origin: originOverride ?? {
+                entryClient: "web",
+                entryPointId: "ai.new_chat",
+                initialGroupId: initialGroupIdRef.current,
+                kind: "manual",
+                template: null,
+              },
+            }),
+        protocolVersion: 2,
+        references: [],
+        requestId: stableId("request"),
+        sessionId,
+      };
     const historySource = retry?.historyMessages ?? messagesRef.current;
     const history = historySource
       .map((turn) => ({ content: historyContentFor(turn), role: turn.role }))
       .filter((turn) => turn.content)
       .slice(-8);
 
+    suppressReliableSessionPersistenceRef.current = true;
+    activeSessionIdRef.current = sessionId;
+    setActiveSessionId(sessionId);
     if (retry) {
       setMessages(retry.visibleMessages);
     } else {
-      setMessages((current) => [...current, { role: "user", text: query }]);
+      setMessages((current) => [
+        ...current,
+        { id: reliableRequest.clientMessageId, role: "user", text: query },
+      ]);
     }
     setThinking(true);
     // 等待回复期间保留现有侧边栏；新回复带结果时才替换。
 
     try {
       const response = await fetchAgentConversation(
-        JSON.stringify({ history, locale, message: query }),
+        JSON.stringify({ history, ...reliableRequest }),
       );
       const payload = (await response.json().catch(() => null)) as {
         data?: {
@@ -2615,12 +2799,44 @@ export function OrbitRealAgent({
           assistantMessage?: string;
           runId?: unknown;
           taskInteraction?: unknown;
+          messages?: unknown;
+          reliableSend?: unknown;
         };
         error?: { code?: string; message?: string };
         success?: boolean;
       } | null;
+      const reliableReceipt = reliableAiSendReceiptSchema.safeParse(
+        payload?.data?.reliableSend,
+      );
 
-      if (!response.ok || payload?.success !== true || !payload.data) {
+      if (
+        reliableReceipt.success &&
+        reliableReceipt.data.state !== "completed"
+      ) {
+        setMessages((current) => [
+          ...current,
+          {
+            items: [],
+            kind: "people",
+            panelTitle: "",
+            reliableRequest,
+            retryRequest: query,
+            role: "assistant",
+            text:
+              locale === "zh"
+                ? "请求结果尚未确认。再次检查会复用同一请求，不会重复生成。"
+                : "The result is not confirmed yet. Checking again reuses this request without generating twice.",
+          },
+        ]);
+        return;
+      }
+
+      if (
+        !response.ok ||
+        payload?.success !== true ||
+        !payload.data ||
+        !reliableReceipt.success
+      ) {
         // 服务端错误原文是内部诊断（provider 名、英文超时串），不拼进用户文案——
         // 这里只做归类：超时给「通常重试一次即可」的可操作说法，其余走通用文案。
         // 原文进 console 供排查，与「普通用户对话不展示内部诊断」的边界一致。
@@ -2642,6 +2858,7 @@ export function OrbitRealAgent({
             items: [],
             kind: "people",
             panelTitle: "",
+            reliableRequest,
             retryRequest: query,
             role: "assistant",
             text: errorText,
@@ -2719,6 +2936,37 @@ export function OrbitRealAgent({
               : [],
           )
         : [];
+      const assistantMessageId = Array.isArray(payload.data.messages)
+        ? [...payload.data.messages]
+            .reverse()
+            .find(
+              (message) =>
+                isRecord(message) &&
+                message.role === "assistant" &&
+                typeof message.messageId === "string",
+            )?.messageId
+        : undefined;
+      reliableMessageRevisionRef.current =
+        reliableReceipt.data.messageRevision ??
+        reliableRequest.expectedMessageRevision + 2;
+      if (!existingSession && initialGroupIdRef.current) {
+        const organization = await patchAgentChatSessionOrganization(sessionId, {
+          expectedRevision: 0,
+          mutationId: stableId("request"),
+          patch: { groupId: initialGroupIdRef.current },
+        });
+        if (organization) {
+          initialOrganizationRef.current = { organization, sessionId };
+        } else {
+          setHistoryFeedback({
+            kind: "error",
+            text: locale === "zh"
+              ? "回复已保存，但会话暂未加入所选分组。请在历史记录中重试移动。"
+              : "The reply was saved, but the conversation was not added to the selected group. Move it from history to retry.",
+          });
+        }
+      }
+      suppressReliableSessionPersistenceRef.current = false;
       setMessages((current) => [
         ...current,
         {
@@ -2726,6 +2974,10 @@ export function OrbitRealAgent({
           evidenceRefs,
           items,
           kind,
+          id:
+            typeof assistantMessageId === "string"
+              ? assistantMessageId
+              : `assistant:${reliableRequest.requestId}`,
           panelTitle,
           role: "assistant",
           runId,
@@ -2744,11 +2996,12 @@ export function OrbitRealAgent({
           : failureText;
       setMessages((current) => [
         ...current,
-        {
-          items: [],
-          kind: "people",
-          panelTitle: "",
-          retryRequest: query,
+          {
+            items: [],
+            kind: "people",
+            panelTitle: "",
+            reliableRequest,
+            retryRequest: query,
           role: "assistant",
           text: requestFailureText,
         },
@@ -2763,7 +3016,10 @@ export function OrbitRealAgent({
 
     const hydrateHistory = async () => {
       const sessionId = currentAgentSessionId();
-      const sessions = await loadStoredAgentChatSessions();
+      const [sessions, groups] = await Promise.all([
+        loadStoredAgentChatSessions(),
+        loadAgentChatGroups(),
+      ]);
 
       if (cancelled) {
         return;
@@ -2783,6 +3039,7 @@ export function OrbitRealAgent({
 
       storedSessionsRef.current = nextSessions;
       setStoredSessions(nextSessions);
+      setSessionGroups(groups);
       historyHydratedRef.current = true;
 
       if (session) {
@@ -2798,7 +3055,9 @@ export function OrbitRealAgent({
         setActiveSessionId(null);
         activeSessionIdRef.current = null;
         void ask(query);
+        return;
       }
+      setAgentPrefill(takeAgentPrefill());
     };
 
     void hydrateHistory();
@@ -2807,6 +3066,25 @@ export function OrbitRealAgent({
       cancelled = true;
     };
   }, [ask, restoreSession]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const refreshAcrossClients = () => {
+      void Promise.all([loadStoredAgentChatSessions(), loadAgentChatGroups()]).then(
+        ([sessions, groups]) => {
+          if (cancelled) return;
+          storedSessionsRef.current = sessions;
+          setStoredSessions(sessions);
+          setSessionGroups(groups);
+        },
+      );
+    };
+    window.addEventListener("focus", refreshAcrossClients);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", refreshAcrossClients);
+    };
+  }, []);
 
   useEffect(() => {
     persistCurrentSession(messages, panel);
@@ -2918,11 +3196,13 @@ export function OrbitRealAgent({
     setPanel(null);
     setActiveSessionId(null);
     activeSessionIdRef.current = null;
+    reliableMessageRevisionRef.current = null;
+    suppressReliableSessionPersistenceRef.current = false;
     navigate(`/agent?q=${encodeURIComponent(item.q)}`);
     void ask(item.q);
   };
 
-  const clearConversation = (openChat: boolean) => {
+  const clearConversation = (openChat: boolean, initialGroupId: string | null = null) => {
     setHistOpen(false);
     setMessages([]);
     setPanel(null);
@@ -2931,6 +3211,8 @@ export function OrbitRealAgent({
     setActiveSessionId(null);
     setChatOpen(openChat);
     activeSessionIdRef.current = null;
+    initialGroupIdRef.current = initialGroupId;
+    initialOrganizationRef.current = null;
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY);
     }
@@ -2939,11 +3221,12 @@ export function OrbitRealAgent({
 
   // 「新对话」：进入对话页的空态；「返回」：回 dashboard（当前对话已在历史里）。
   const newChat = () => clearConversation(true);
+  const newChatInGroup = (groupId: string) => clearConversation(true, groupId);
   const backToDashboard = () => clearConversation(false);
 
   const updateHistorySession = async (
     sessionId: string,
-    update: (session: AgentStoredChatSession) => AgentStoredChatSession,
+    patch: Partial<Pick<AiSessionOrganizationContract, "customTitle" | "groupId" | "pinned">>,
     successText: string,
   ): Promise<boolean> => {
     if (historyMutationSessionIdRef.current) {
@@ -2958,20 +3241,22 @@ export function OrbitRealAgent({
       return false;
     }
 
-    let nextSession = {
-      ...update(currentSession),
-      updatedAt: new Date().toISOString(),
-    };
-
     historyMutationSessionIdRef.current = sessionId;
     setHistoryMutationSessionId(sessionId);
     setHistoryFeedback(null);
 
     try {
+      let savedOrganization: AiSessionOrganizationContract | null = null;
       const persisted = await historyMutationQueue.save(sessionId, () => {
         const latest = storedSessionsRef.current.find((session) => session.id === sessionId) ?? currentSession;
-        nextSession = { ...update(latest), updatedAt: nextSession.updatedAt };
-        return persistStoredAgentChatSession(nextSession);
+        return patchAgentChatSessionOrganization(sessionId, {
+          expectedRevision: latest.organization?.revision ?? 0,
+          mutationId: globalThis.crypto?.randomUUID?.() ?? createAgentSessionId(),
+          patch,
+        }).then((organization) => {
+          savedOrganization = organization;
+          return organization !== null;
+        });
       });
       if (!persisted) {
         setHistoryFeedback({
@@ -2984,12 +3269,14 @@ export function OrbitRealAgent({
         return false;
       }
 
-      const latest = storedSessionsRef.current.find((session) => session.id === sessionId) ?? nextSession;
+      const latest = storedSessionsRef.current.find((session) => session.id === sessionId) ?? currentSession;
+      if (!savedOrganization) return false;
       const nextSessions = upsertAgentChatSession(storedSessionsRef.current, {
         ...latest,
-        customTitle: nextSession.customTitle,
-        pinned: nextSession.pinned,
-        title: nextSession.title,
+        customTitle: savedOrganization.customTitle ?? undefined,
+        organization: savedOrganization,
+        pinned: savedOrganization.pinned,
+        title: savedOrganization.customTitle ?? latest.title,
       });
       storedSessionsRef.current = nextSessions;
       setStoredSessions(nextSessions);
@@ -3008,10 +3295,7 @@ export function OrbitRealAgent({
 
     void updateHistorySession(
       item.sessionId,
-      (session) => ({
-        ...session,
-        pinned: !session.pinned,
-      }),
+      { pinned: !item.pinned },
       item.pinned
         ? t({ en: "Conversation unpinned", zh: "已取消置顶" })
         : t({ en: "Conversation pinned", zh: "对话已置顶" }),
@@ -3033,13 +3317,78 @@ export function OrbitRealAgent({
 
     void updateHistorySession(
       item.sessionId,
-      (session) => ({
-        ...session,
-        customTitle,
-        title: customTitle,
-      }),
+      { customTitle },
       t({ en: "Conversation renamed", zh: "对话已重命名" }),
     );
+  };
+
+  const moveHistorySession = (item: OrbitAgentHistoryView, groupId: string | null) => {
+    if (!item.sessionId) return;
+    void updateHistorySession(
+      item.sessionId,
+      { groupId },
+      t({ en: "Conversation moved", zh: "已移动对话" }),
+    );
+  };
+
+  const createHistoryGroup = async (name: string) => {
+    if (groupMutationPending) return;
+    setGroupMutationPending(true);
+    const id = `group:${globalThis.crypto?.randomUUID?.() ?? createAgentSessionId()}`;
+    const group = await createAgentChatGroup({
+      id,
+      mutationId: globalThis.crypto?.randomUUID?.() ?? createAgentSessionId(),
+      name: name.trim(),
+    });
+    if (group) {
+      setSessionGroups((current) => [...current.filter((item) => item.id !== group.id), group]);
+      setHistoryFeedback({ kind: "success", text: t({ en: "Group created", zh: "已创建分组" }) });
+    } else {
+      setHistoryFeedback({ kind: "error", text: t({ en: "The group was not saved. Refresh and try again.", zh: "分组尚未保存，请刷新后重试。" }) });
+    }
+    setGroupMutationPending(false);
+  };
+
+  const renameHistoryGroup = async (group: AiSessionGroupContract, name: string) => {
+    if (groupMutationPending) return;
+    setGroupMutationPending(true);
+    const saved = await renameAgentChatGroup(group.id, {
+      expectedRevision: group.revision,
+      mutationId: globalThis.crypto?.randomUUID?.() ?? createAgentSessionId(),
+      name: name.trim(),
+    });
+    if (saved) {
+      setSessionGroups((current) => current.map((item) => item.id === saved.id ? saved : item));
+      setHistoryFeedback({ kind: "success", text: t({ en: "Group renamed", zh: "已重命名分组" }) });
+    } else {
+      setHistoryFeedback({ kind: "error", text: t({ en: "The group name was not saved. Refresh and try again.", zh: "分组名称尚未保存，请刷新后重试。" }) });
+    }
+    setGroupMutationPending(false);
+  };
+
+  const deleteHistoryGroup = async (group: AiSessionGroupContract) => {
+    if (groupMutationPending) return;
+    setGroupMutationPending(true);
+    const deleted = await deleteAgentChatGroup(group.id, {
+      expectedRevision: group.revision,
+      mutationId: globalThis.crypto?.randomUUID?.() ?? createAgentSessionId(),
+    });
+    if (deleted) {
+      setSessionGroups((current) => current.filter((item) => item.id !== group.id));
+      setStoredSessions((current) => {
+        const next = current.map((session) => session.organization?.groupId === group.id ? {
+          ...session,
+          organization: { ...session.organization, groupId: null, revision: session.organization.revision + 1 },
+        } : session);
+        storedSessionsRef.current = next;
+        return next;
+      });
+      if (selectedSessionGroupId === group.id) setSelectedSessionGroupId(null);
+      setHistoryFeedback({ kind: "success", text: t({ en: "Group deleted; conversations kept", zh: "已删除分组并保留全部对话" }) });
+    } else {
+      setHistoryFeedback({ kind: "error", text: t({ en: "The group was not deleted. Refresh and try again.", zh: "分组尚未删除，请刷新后重试。" }) });
+    }
+    setGroupMutationPending(false);
   };
 
   const deleteHistorySession = (item: OrbitAgentHistoryView) => {
@@ -3248,9 +3597,15 @@ export function OrbitRealAgent({
   ) : home ? (
     <OrbitAgentDashboard
       home={home}
+      initialBriefText={agentPrefill?.query}
       language={language}
       navigate={navigate}
       onAsk={ask}
+      onBriefAsk={agentPrefill ? (query) => {
+        const origin = agentPrefill.origin;
+        setAgentPrefill(null);
+        void ask(query, undefined, origin);
+      } : undefined}
       registrationAvailabilityByEventId={registrationAvailabilityByEventId}
       t={t}
     />
@@ -3312,8 +3667,19 @@ export function OrbitRealAgent({
           <div className="agent-history-heading orbit-agent-history-heading">
             <div className="eyebrow">{t({ en: "Chat history", zh: "对话历史" })}</div>
           </div>
+          <AgentChatHistoryOrganization
+            busy={groupMutationPending}
+            currentGroupId={selectedSessionGroupId}
+            groups={sessionGroups}
+            language={language}
+            onCreate={(name) => { void createHistoryGroup(name); }}
+            onDelete={(group) => { void deleteHistoryGroup(group); }}
+            onFilter={setSelectedSessionGroupId}
+            onNew={newChatInGroup}
+            onRename={(group, name) => { void renameHistoryGroup(group, name); }}
+          />
           <div className="scroll agent-history-scroll orbit-agent-history-scroll">
-            <AgentHistoryList activeQ={activeQ} activeSessionId={activeSessionId} history={storedHistory} onDelete={deleteHistorySession} onPick={pickHistory} onRename={renameHistorySession} onTogglePin={togglePinnedHistorySession} pendingSessionId={historyMutationSessionId} />
+            <AgentHistoryList activeQ={activeQ} activeSessionId={activeSessionId} history={storedHistory} onDelete={deleteHistorySession} onMove={moveHistorySession} onPick={pickHistory} onRename={renameHistorySession} onTogglePin={togglePinnedHistorySession} pendingSessionId={historyMutationSessionId} sessionGroups={sessionGroups} />
           </div>
         </aside>
         <button
@@ -3360,15 +3726,25 @@ export function OrbitRealAgent({
         <AgentMobileHistoryDrawer
           activeQ={activeQ}
           activeSessionId={activeSessionId}
+          groupMutationPending={groupMutationPending}
+          groups={sessionGroups}
           history={storedHistory}
+          language={language}
           onClose={() => setHistOpen(false)}
           onDelete={deleteHistorySession}
+          onCreateGroup={(name) => { void createHistoryGroup(name); }}
+          onDeleteGroup={(group) => { void deleteHistoryGroup(group); }}
+          onFilterGroup={setSelectedSessionGroupId}
           onNavigate={navigate}
           onNewChat={newChat}
+          onNewInGroup={newChatInGroup}
+          onMove={moveHistorySession}
           onPick={pickHistory}
           onRename={renameHistorySession}
+          onRenameGroup={(group, name) => { void renameHistoryGroup(group, name); }}
           onTogglePin={togglePinnedHistorySession}
           pendingSessionId={historyMutationSessionId}
+          sessionGroups={sessionGroups}
         />
       ) : null}
       {pendingDeleteHistory ? (

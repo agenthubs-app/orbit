@@ -106,7 +106,29 @@ for (const mode of ["login", "signup"] as const) test(`${mode} keeps real payloa
   await page.getByRole("button", { name: "显示密码", exact: true }).click(); assert.equal(await page.locator("input[type=password]").count(), 0);
   await page.evaluate(() => (window as any).fixture.update({ failure: false })); await primary.click();
   assert.deepEqual((await requests(page))[0], { name: mode === "login" ? "signIn" : "register", payload: { email: "cheng.chuan@example.test", password: "fixture8", ...(mode === "login" ? { redirectTo: "/profile" } : {}) } });
-  assert.deepEqual(await navigation(page), [mode === "login" ? "/profile" : "/account/login?created=1&email=cheng.chuan%40example.test&next=%2Fprofile"]);
+  assert.deepEqual(await navigation(page), [mode === "login" ? "/profile?complete=1&next=%2Fprofile" : "/account/login?created=1&email=cheng.chuan%40example.test&next=%2Fprofile"]);
+});
+
+test("Google login enters profile completion while preserving the safe return target", async t => {
+  const page = await open(t, { next: "/events/event-1?tab=details" });
+  await page.getByRole("button", { name: "使用 Google 登录", exact: true }).click();
+  assert.deepEqual(await requests(page), [{ name: "google", payload: { redirectTo: "/events/event-1?tab=details" } }]);
+  assert.deepEqual(await navigation(page), ["/profile?complete=1&next=%2Fevents%2Fevent-1%3Ftab%3Ddetails"]);
+});
+
+for (const action of ["password", "google"] as const) test(`obsolete ${action} login cannot navigate a replacement auth scope`, async t => {
+  const page = await open(t, { hold: true });
+  if (action === "password") {
+    await fill(page);
+    await page.getByRole("button", { name: "登录", exact: true }).click();
+  } else {
+    await page.getByRole("button", { name: "使用 Google 登录", exact: true }).click();
+  }
+  await page.evaluate(() => (window as any).fixture.update({ mode: "signup" }));
+  await page.getByRole("heading", { name: "创建账号", exact: true }).waitFor();
+  await page.evaluate(() => { const s = (window as any).fixture; s.update({ hold: false }); s.release(); });
+  await page.waitForTimeout(20);
+  assert.deepEqual(await navigation(page), []);
 });
 
 test("provider availability, cancellation and unsafe next remain truthful", async t => {

@@ -35,7 +35,7 @@ test("committed upload and replacement survive dispatch failure; rejected replac
   await withHarness(async ({ runtime, deps }) => {
     const bytes = await readFile(FIXTURE_HEIC);
     const created = await runtime.repository.createBatch({ actorId: "actor:test", idempotencyKey: "dispatch-failure", manifest: [{
-      fileName: "card.heic", mimeType: "image/heic", rawSize: bytes.length, seq: 1, clientDigest: sha256(bytes),
+      cardId: "card:dispatch-failure", side: "front", fileName: "card.heic", mimeType: "image/heic", rawSize: bytes.length, seq: 1, clientDigest: sha256(bytes),
     }] });
     const batchId = created.batch.id;
     const itemId = created.items[0]!.id;
@@ -420,6 +420,85 @@ test("v2 confirm creates the contact in the same transaction, exactly once", { s
     const finalCount = await pool.query(
       `select count(*)::int as n from orbit_records where collection_name = 'contacts'`,
     );
+    assert.equal(finalCount.rows[0].n, 2);
+  });
+});
+
+test("v2 two-sided confirm binds both source snapshots and replays one contact", { skip }, async () => {
+  await withHarness(async ({ deps, runtime, pool }) => {
+    const heic = await readFile(FIXTURE_HEIC);
+    const collection = createIngestV2CollectionHandlers(deps);
+    const createdResponse = await collection.POST(new Request("http://test/api/v2", {
+      method: "POST",
+      body: JSON.stringify({ idempotencyKey: "key-two-sided", manifest: [
+        { cardId: "card:one", side: "front", fileName: "front.heic", mimeType: "image/heic", rawSize: heic.length, seq: 1, clientDigest: sha256(heic) },
+        { cardId: "card:one", side: "back", fileName: "back.heic", mimeType: "image/heic", rawSize: heic.length, seq: 2, clientDigest: sha256(heic) },
+      ] }),
+    }));
+    assert.equal(createdResponse.status, 201);
+    const created = await envelope(createdResponse);
+    const batch = created.batch as { id: string };
+    const items = created.items as Array<{ id: string }>;
+    const upload = createIngestV2UploadHandler(deps);
+    for (const item of items) {
+      const response = await upload(new Request("http://test/upload", { method: "PUT", body: new Uint8Array(heic), headers: { "content-type": "image/heic" } }), params({ id: batch.id, itemId: item.id }));
+      assert.equal(response.status, 200);
+    }
+    await createIngestV2FinalizeHandler(deps)(new Request("http://test/finalize", { method: "POST" }), params({ id: batch.id }));
+    const extraction: BusinessCardStructuredExtraction = {
+      fullName: "山田 太郎", nativeFullName: "山田 太郎", romanizedFullName: "Taro Yamada",
+      organization: "Orbit 株式会社", departments: [], title: "代表", emails: [{ label: null, value: "taro@example.test" }],
+      contactPoints: [], website: null, addresses: [], certifications: [], detectedLanguages: ["ja"],
+    };
+    for (const item of await runtime.repository.claimItems({ limit: 2 })) {
+      await runtime.repository.submitExtraction({ itemId: item.id, leaseToken: item.leaseToken, expectedVersion: item.version, extraction, reviewIssues: [], usage: null });
+    }
+    const review = (await runtime.repository.getBatch({ actorId: "actor:test", batchId: batch.id }))!;
+    const body = {
+      confirmationIntentId: "confirm:card-one",
+      expectedCardItems: review.items.map(item => ({ itemId: item.id, version: item.version, imageDigest: item.imageDigest })),
+      fieldSources: { displayName: review.items[0]!.id, organization: review.items[0]!.id, role: review.items[0]!.id, email: review.items[1]!.id, phone: null },
+      displayName: "山田 太郎", organization: "Orbit 株式会社", role: "代表", email: "taro@example.test", phone: "", relationshipContext: "展示会", notes: "両面確認", allowDuplicate: false,
+    };
+    const confirm = createIngestV2ConfirmHandler(deps);
+    const missingMetadata = await confirm(new Request("http://test/confirm", { method: "POST", body: JSON.stringify({ displayName: "山田 太郎", organization: "Orbit 株式会社", role: "代表", email: "taro@example.test", phone: "", relationshipContext: "", notes: "" }) }), params({ id: batch.id, itemId: review.items[0]!.id }));
+    assert.equal(missingMetadata.status, 400, "explicit/two-sided cards cannot use the legacy confirmation fallback");
+    const invoke = () => confirm(new Request("http://test/confirm", { method: "POST", body: JSON.stringify(body) }), params({ id: batch.id, itemId: review.items[0]!.id }));
+    const responses = await Promise.all([invoke(), invoke()]);
+    assert.deepEqual(responses.map(response => response.status), [200, 200]);
+    const payloads = await Promise.all(responses.map(envelope));
+    assert.equal(payloads[0]!.contactId, payloads[1]!.contactId);
+    assert.deepEqual(payloads.map(payload => payload.replayed).sort(), [false, true]);
+    for (const payload of payloads) {
+      const confirmed = payload.items as Array<{ cardId: string; side: string; confirmedContactId: string }>;
+      assert.deepEqual(confirmed.map(item => item.side), ["front", "back"]);
+      assert.ok(confirmed.every(item => item.cardId === "card:one" && item.confirmedContactId === payload.contactId));
+    }
+    const count = await pool.query(`select count(*)::int as n from orbit_records where collection_name = 'contacts'`);
+    assert.equal(count.rows[0].n, 1);
+    const reopened = (await runtime.repository.getBatch({ actorId: "actor:test", batchId: batch.id }))!;
+    assert.deepEqual(reopened.items[0]!.confirmedFieldSources, body.fieldSources);
+    assert.deepEqual(reopened.items[1]!.confirmedFieldSources, body.fieldSources);
+    const conflict = await confirm(new Request("http://test/confirm", { method: "POST", body: JSON.stringify({ ...body, organization: "Changed" }) }), params({ id: batch.id, itemId: review.items[0]!.id }));
+    assert.equal(conflict.status, 409);
+
+    const secondCreated = await envelope(await collection.POST(new Request("http://test/api/v2", { method: "POST", body: JSON.stringify({ idempotencyKey: "key-two-sided-second", manifest: [
+      { cardId: "card:one", side: "front", fileName: "second.heic", mimeType: "image/heic", rawSize: heic.length, seq: 1, clientDigest: sha256(heic) },
+    ] }) })));
+    const secondBatch = secondCreated.batch as { id: string };
+    const secondItem = (secondCreated.items as Array<{ id: string }>)[0]!;
+    assert.equal((await upload(new Request("http://test/upload", { method: "PUT", body: new Uint8Array(heic), headers: { "content-type": "image/heic" } }), params({ id: secondBatch.id, itemId: secondItem.id }))).status, 200);
+    await createIngestV2FinalizeHandler(deps)(new Request("http://test/finalize", { method: "POST" }), params({ id: secondBatch.id }));
+    const [secondClaimed] = (await runtime.repository.claimItems({ limit: 1 })).filter(item => item.batchId === secondBatch.id);
+    assert.ok(secondClaimed);
+    await runtime.repository.submitExtraction({ itemId: secondClaimed.id, leaseToken: secondClaimed.leaseToken, expectedVersion: secondClaimed.version, extraction, reviewIssues: [], usage: null });
+    const secondReview = (await runtime.repository.getBatch({ actorId: "actor:test", batchId: secondBatch.id }))!;
+    const secondBody = { ...body, confirmationIntentId: "confirm:card-one-second", expectedCardItems: secondReview.items.map(item => ({ itemId: item.id, version: item.version, imageDigest: item.imageDigest })), fieldSources: { displayName: secondItem.id, organization: secondItem.id, role: secondItem.id, email: secondItem.id, phone: null }, displayName: "次郎", email: "jiro@example.test", allowDuplicate: true };
+    const secondResponse = await confirm(new Request("http://test/confirm", { method: "POST", body: JSON.stringify(secondBody) }), params({ id: secondBatch.id, itemId: secondItem.id }));
+    assert.equal(secondResponse.status, 200);
+    const secondPayload = await envelope(secondResponse);
+    assert.notEqual(secondPayload.contactId, payloads[0]!.contactId, "same client cardId in another batch must create an independent contact");
+    const finalCount = await pool.query(`select count(*)::int as n from orbit_records where collection_name = 'contacts'`);
     assert.equal(finalCount.rows[0].n, 2);
   });
 });

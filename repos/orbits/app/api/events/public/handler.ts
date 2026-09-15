@@ -47,11 +47,14 @@ export function createPublicEventsGetHandler(
       const events = snapshot.records.map((record) => {
         const code = snapshot.publicCodes[record.id];
         const organizerId = snapshot.organizerIds[record.id];
+        const participantCount = snapshot.participantCounts[record.id];
         if (
           typeof code !== "string" ||
           !code.trim() ||
           typeof organizerId !== "string" ||
-          !organizerId.trim()
+          !organizerId.trim() ||
+          !Number.isSafeInteger(participantCount) ||
+          participantCount < 0
         ) {
           throw new Error(
             "Canonical public catalogue snapshot is inconsistent.",
@@ -61,6 +64,7 @@ export function createPublicEventsGetHandler(
           ...record,
           code,
           organizer: canonicalPublicOrganizerLabel(organizerId),
+          participantCount,
         });
       });
 

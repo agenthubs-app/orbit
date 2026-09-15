@@ -12,29 +12,32 @@ import { createThemedStyles } from "../../design/theme";
 import { radius, spacing, typography } from "../../design/tokens";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import type { MessageKey } from "../../i18n/messages";
 import { notesPageFromPayload, type NoteView } from "../../view-models/notes";
 
 type Filter = "all" | "contacts" | "events" | "unlinked";
-const filters: readonly { value: Filter; label: string }[] = [
-  { value: "all", label: "全部" },
-  { value: "contacts", label: "关联人脉" },
-  { value: "events", label: "关联活动" },
-  { value: "unlinked", label: "未关联" },
+const filters: readonly { value: Filter; labelKey: MessageKey }[] = [
+  { value: "all", labelKey: "notes.filterAll" },
+  { value: "contacts", labelKey: "notes.filterPeople" },
+  { value: "events", labelKey: "notes.filterEvents" },
+  { value: "unlinked", labelKey: "notes.unlinked" },
 ];
 
-function noteTime(value: string): string {
+function noteTime(value: string, language: "en" | "ja" | "zh"): string {
   const date = new Date(value);
   const now = new Date();
-  if (date.toDateString() === now.toDateString()) return date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
-  return date.toLocaleDateString("zh-CN", { month: "short", day: "numeric" });
+  const locale = language === "en" ? "en-US" : language === "ja" ? "ja-JP" : "zh-CN";
+  if (date.toDateString() === now.toDateString()) return date.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
+  return date.toLocaleDateString(locale, { month: "short", day: "numeric" });
 }
 
-function noteGroup(value: string): "今天" | "本周" | "更早" {
+function noteGroup(value: string): "earlier" | "today" | "week" {
   const date = new Date(value);
   const now = new Date();
-  if (date.toDateString() === now.toDateString()) return "今天";
+  if (date.toDateString() === now.toDateString()) return "today";
   const start = new Date(now); start.setHours(0, 0, 0, 0); start.setDate(start.getDate() - 6);
-  return date >= start ? "本周" : "更早";
+  return date >= start ? "week" : "earlier";
 }
 
 export function NotesScreen({ actorId, scopeKey }: { actorId: string; scopeKey: string }) {
@@ -55,8 +58,9 @@ export function NotesScreen({ actorId, scopeKey }: { actorId: string; scopeKey: 
   const path = notesSearchPath({ association: filter, ...(contactId ? { contactId } : {}), q: debouncedQuery, limit: 20 });
   const state = useApiResource<unknown>(path, () => false, { scopeKey, cachePolicy: "network-only" });
   const client = useOrbitApiClient();
+  const locale = useOrbitLocale();
   const { styles, colors } = useStyles();
-  const basePage = state.kind === "success" || state.kind === "empty" ? notesPageFromPayload(state.data, actorId) : null;
+  const basePage = state.kind === "success" || state.kind === "empty" ? notesPageFromPayload(state.data, actorId, locale.language) : null;
   useEffect(() => {
     setExtraNotes([]);
     setNextCursor(null);
@@ -66,7 +70,11 @@ export function NotesScreen({ actorId, scopeKey }: { actorId: string; scopeKey: 
     if (basePage) setNextCursor(basePage.nextCursor);
   }, [state]);
   const notes = useMemo(() => basePage ? [...basePage.notes, ...extraNotes] : null, [basePage, extraNotes]);
-  const groups = useMemo(() => (["今天", "本周", "更早"] as const).map((label) => ({ label, notes: notes?.filter((note) => noteGroup(note.updatedAt) === label) ?? [] })).filter((group) => group.notes.length), [notes]);
+  const groups = useMemo(() => ([
+    { value: "today", label: locale.t("notes.groupToday") },
+    { value: "week", label: locale.t("notes.groupWeek") },
+    { value: "earlier", label: locale.t("notes.groupEarlier") },
+  ] as const).map((group) => ({ ...group, notes: notes?.filter((note) => noteGroup(note.updatedAt) === group.value) ?? [] })).filter((group) => group.notes.length), [locale, notes]);
 
   async function loadMore() {
     if (!nextCursor || loadingMore) return;
@@ -74,47 +82,47 @@ export function NotesScreen({ actorId, scopeKey }: { actorId: string; scopeKey: 
     setPageError("");
     const result = await client.get<unknown>(notesSearchPath({ association: filter, ...(contactId ? { contactId } : {}), q: debouncedQuery, limit: 20, cursor: nextCursor }));
     if (result.success) {
-      const page = notesPageFromPayload(result.data, actorId);
+      const page = notesPageFromPayload(result.data, actorId, locale.language);
       if (page) {
         setExtraNotes((items) => [...new Map([...items, ...page.notes].map((note) => [note.id, note])).values()]);
         setNextCursor(page.nextCursor);
       } else {
-        setPageError("服务返回的下一页笔记不完整，请重试。");
+        setPageError(locale.t("notes.nextPageInvalid"));
       }
     } else {
       setPageError(result.error.message);
     }
     setLoadingMore(false);
   }
-  return <AppScreen title="我的笔记" refreshControl={<RefreshControl refreshing={state.refreshing} onRefresh={state.refresh} />} headerActions={
-    <Pressable accessibilityRole="button" accessibilityLabel="新建笔记" onPress={() => router.push((contactId ? `/notes/new?contactId=${encodeURIComponent(contactId)}` : "/notes/new") as Href)} style={styles.add}>
+  return <AppScreen title={locale.t("notes.myNotes")} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("nav.home") })} backLabel={locale.t("nav.home")} refreshControl={<RefreshControl refreshing={state.refreshing} onRefresh={state.refresh} />} headerActions={
+    <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.new")} onPress={() => router.push((contactId ? `/notes/new?contactId=${encodeURIComponent(contactId)}` : "/notes/new") as Href)} style={styles.add}>
       <Ionicons color={colors.onAccent} name="add" size={24} />
     </Pressable>
   }>
-    <View style={styles.hero}><Text maxFontSizeMultiplier={2} style={styles.heroTitle}>笔记</Text><Text maxFontSizeMultiplier={2} style={styles.heroCount}>{basePage?.total ?? 0}</Text></View>
+    <View style={styles.hero}><Text maxFontSizeMultiplier={2} style={styles.heroTitle}>{locale.t("notes.title")}</Text><Text maxFontSizeMultiplier={2} style={styles.heroCount}>{basePage?.total ?? 0}</Text></View>
     <View style={styles.searchBox}>
       <Ionicons color={colors.text3} name="search" size={19} />
-      <TextInput accessibilityLabel="搜索笔记" autoCorrect={false} maxFontSizeMultiplier={2} onChangeText={setQuery} placeholder="搜索标题、正文或人名" placeholderTextColor={colors.text4} style={styles.searchInput} value={query} />
-      {query ? <Pressable accessibilityRole="button" accessibilityLabel="清空笔记搜索" onPress={() => setQuery("")}><Ionicons color={colors.text3} name="close-circle" size={19} /></Pressable> : null}
+      <TextInput accessibilityLabel={locale.t("notes.search")} autoCorrect={false} maxFontSizeMultiplier={2} onChangeText={setQuery} placeholder={locale.t("notes.searchPlaceholder")} placeholderTextColor={colors.text4} style={styles.searchInput} value={query} />
+      {query ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.clearSearch")} onPress={() => setQuery("")}><Ionicons color={colors.text3} name="close-circle" size={19} /></Pressable> : null}
     </View>
     {!contactId ? <><View accessibilityRole="tablist" style={styles.filters}>{filters.map((item) => <Pressable key={item.value} accessibilityRole="tab" accessibilityState={{ selected: filter === item.value }} onPress={() => setFilter(item.value)} style={[styles.filter, filter === item.value && styles.filterSelected]}>
-      <Text maxFontSizeMultiplier={2} style={[styles.filterText, filter === item.value && styles.filterTextSelected]}>{item.label}</Text>
-    </Pressable>)}</View><Text maxFontSizeMultiplier={2} style={styles.sort}>最近编辑 ▾</Text></> : null}
+      <Text maxFontSizeMultiplier={2} style={[styles.filterText, filter === item.value && styles.filterTextSelected]}>{locale.t(item.labelKey)}</Text>
+    </Pressable>)}</View><Text maxFontSizeMultiplier={2} style={styles.sort}>{locale.t("notes.sortRecent")}</Text></> : null}
     {state.kind === "loading" ? <LoadingState /> : null}
     {state.kind === "offline" || state.kind === "failure" ? <ErrorState message={state.error.message} /> : null}
-    {(state.kind === "success" || state.kind === "empty") && notes === null ? <ErrorState message="服务返回的笔记不完整，请重新读取。" /> : null}
+    {(state.kind === "success" || state.kind === "empty") && notes === null ? <ErrorState message={locale.t("notes.invalidPayload")} /> : null}
     {pageError ? <ErrorState message={pageError} /> : null}
-    {notes?.length === 0 ? <EmptyState title={query ? "没有找到笔记" : contactId ? "还没有关联笔记" : "还没有笔记"} message={query ? "换一个词，或清空筛选后再试。" : "点右上角加号，记下值得保留的内容。"} /> : null}
-    <View style={styles.list}>{groups.map((group) => <View key={group.label}><Text maxFontSizeMultiplier={2} style={styles.groupTitle}>{group.label}</Text>{group.notes.map((note) => <Pressable key={note.id} accessibilityRole="button" accessibilityLabel={`查看笔记 ${note.title}`} onPress={() => router.push(`/notes/${encodeURIComponent(note.id)}` as Href)} style={styles.row}>
-      <View style={styles.rowTop}><Text maxFontSizeMultiplier={2} numberOfLines={2} style={styles.title}>{note.title}</Text><Text maxFontSizeMultiplier={2} style={styles.time}>{noteTime(note.updatedAt)}</Text></View>
+    {notes?.length === 0 ? <EmptyState title={locale.t(query ? "notes.emptySearch" : contactId ? "notes.emptyLinked" : "notes.empty")} message={locale.t(query ? "notes.emptySearchBody" : "notes.emptyBody")} /> : null}
+    <View style={styles.list}>{groups.map((group) => <View key={group.value}><Text maxFontSizeMultiplier={2} style={styles.groupTitle}>{group.label}</Text>{group.notes.map((note) => <Pressable key={note.id} accessibilityRole="button" accessibilityLabel={locale.t("notes.viewNamed", { title: note.title })} onPress={() => router.push(`/notes/${encodeURIComponent(note.id)}` as Href)} style={styles.row}>
+      <View style={styles.rowTop}><Text maxFontSizeMultiplier={2} numberOfLines={2} style={styles.title}>{note.title}</Text><Text maxFontSizeMultiplier={2} style={styles.time}>{noteTime(note.updatedAt, locale.language)}</Text></View>
       <Text maxFontSizeMultiplier={2} numberOfLines={2} style={styles.summary}>{note.body.replace(/\s+/g, " ")}</Text>
       <View style={styles.metaRow}>
-        {note.contactIds.length ? <View style={styles.metaPill}><Ionicons color={colors.accent} name="people-outline" size={14} /><Text maxFontSizeMultiplier={2} style={styles.meta}>{note.contactIds.length} 人</Text></View> : null}
-        {note.eventIds.length ? <View style={styles.metaPill}><Ionicons color={colors.accent} name="calendar-outline" size={14} /><Text maxFontSizeMultiplier={2} style={styles.meta}>{note.eventIds.length} 活动</Text></View> : null}
-        {!note.contactIds.length && !note.eventIds.length ? <Text maxFontSizeMultiplier={2} style={styles.meta}>未关联</Text> : null}
+        {note.contactIds.length ? <View style={styles.metaPill}><Ionicons color={colors.accent} name="people-outline" size={14} /><Text maxFontSizeMultiplier={2} style={styles.meta}>{locale.t("notes.peopleCount", { count: note.contactIds.length })}</Text></View> : null}
+        {note.eventIds.length ? <View style={styles.metaPill}><Ionicons color={colors.accent} name="calendar-outline" size={14} /><Text maxFontSizeMultiplier={2} style={styles.meta}>{locale.t("notes.eventsCount", { count: note.eventIds.length })}</Text></View> : null}
+        {!note.contactIds.length && !note.eventIds.length ? <Text maxFontSizeMultiplier={2} style={styles.meta}>{locale.t("notes.unlinked")}</Text> : null}
       </View>
     </Pressable>)}</View>)}</View>
-    {nextCursor ? <Pressable accessibilityRole="button" accessibilityLabel="加载更多笔记" disabled={loadingMore} onPress={() => { void loadMore(); }} style={styles.more}><Text maxFontSizeMultiplier={2} style={styles.moreText}>{loadingMore ? "加载中…" : "加载更多"}</Text></Pressable> : null}
+    {nextCursor ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.loadMore")} disabled={loadingMore} onPress={() => { void loadMore(); }} style={styles.more}><Text maxFontSizeMultiplier={2} style={styles.moreText}>{locale.t(loadingMore ? "notes.loadingMore" : "notes.loadMore")}</Text></Pressable> : null}
   </AppScreen>;
 }
 

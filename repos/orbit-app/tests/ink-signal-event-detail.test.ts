@@ -17,15 +17,16 @@ import React, { useSyncExternalStore } from "react";
 import { View } from "react-native-web";
 import glyphs from "@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/Ionicons.json";
 import { onSessionExpired } from "./src/api/session-expiry";
+import { createTranslator } from "./src/i18n/messages";
 const listeners = new Set(); let revision = 0;
 const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
 const source = { id: "event-core:event:1:v1", type: "event_import", label: "活动主办方", captureMethod: "organizer_feed", provider: "event-core-postgres", providerRecordId: "event:1", importedAt: "2026-09-12T00:00:00Z", calendarSyncRequested: false, externalNetworkRequested: false, liveDatabaseWriteExecuted: false, organizerFeedRequested: false };
 const event = { id: "event:1", title: "周末产品交流会", startsAt: "2026-09-12T05:00:00Z", endsAt: "2026-09-12T08:00:00Z", status: "imported", venue: "东京 · 涩谷", organizer: "星野社区", description: "带着一个正在推进的产品问题，和其他参与者交流做法与经验。", recommendedPreparation: "带上想交流的产品问题。", relationshipContext: "与产品同行交流实际经验。", nextAction: "先确认活动要求，再继续报名。", sourceMetadata: source, evidence: [], aiProviderRequested: false, calendarProviderRequested: false, calendarSyncRequested: false, emailProviderRequested: false, externalNetworkRequested: false, liveDatabaseWriteExecuted: false, notificationDelivered: false, organizerFeedRequested: false,
   coverPath: "/orbit-covers/meeting.jpg", stats: { count: 24, youRsvped: false }, feeLabel: "免费", agenda: [{ time: "14:00", label: "见面与介绍", description: "主办方介绍、参与者自我介绍" }, { time: "14:30", label: "小组讨论", description: "围绕实际问题展开交流" }, { time: "16:00", label: "自由交流", description: "开放讨论与建立联系" }]
 };
-const state = window.fixture = { requests: [], pending: [], navigation: [], presses: {}, shares: [], expiries: 0, actor: "actor-1", cookieHeader: "", baseUrl: "https://orbit.example", ready: true, baseReady: true, signedIn: false, focused: true, mounted: true, id: "public-product", width: 390, fontScale: 1, event, ...window.initialFixture,
+const state = window.fixture = { requests: [], pending: [], navigation: [], presses: {}, shares: [], expiries: 0, actor: "actor-1", cookieHeader: "", baseUrl: "https://orbit.example", ready: true, baseReady: true, signedIn: false, focused: true, mounted: true, id: "public-product", width: 390, fontScale: 1, language: "zh", event, ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
-  data(path) { if (path.startsWith("/api/events/public/")) return state.invalid ? {} : { event: { ...state.event, ...state.eventPatch } }; return state.personal?.[path] ?? {}; },
+  data(path) { if (path.startsWith("/api/events/public/")) return state.invalid ? {} : { event: { ...state.event, ...state.eventPatch } }; if (path.endsWith("/registration")) return state.registration ?? { eligibility: { allowedActions: ["register"], applicationVersion: null, evaluatedAt: "2026-09-12T00:00:00.000Z", policyVersion: null, reason: "open", registrationVersion: null, state: "open" }, questionSet: { questions: [] }, registration: null }; return state.personal?.[path] ?? {}; },
   reply(index, status = 200, payload) { const r = state.requests[index]; state.pending[index]?.(new Response(JSON.stringify(status === 200 || payload !== undefined ? { success: true, data: payload === undefined ? state.data(r.path) : payload } : { success: false, error: { code: status === 404 ? "NOT_FOUND" : "UNAVAILABLE", message: "暂时无法读取，请重试" } }), { status, headers: { "Content-Type": "application/json" } })); }
 };
 Date.now = () => Date.parse("2026-09-12T00:00:00Z");
@@ -40,6 +41,7 @@ window.fetch = async (input, init) => {
 export const useFixture = () => { observe(); return state; };
 export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, user: state.signedIn ? { id: state.actor } : null, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
+export const useOrbitLocale = () => { observe(); return { language: state.language, t: createTranslator(state.language) }; };
 export const useIsFocused = () => { observe(); return state.focused; };
 export const useLocalSearchParams = () => { observe(); return { id: state.id }; };
 export const usePathname = () => "/events/" + state.id;
@@ -58,7 +60,7 @@ test.before(async () => {
     plugins: [{ name: "event-detail-http-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "detail" }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "detail" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|OrbitLocaleContext|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "detail" }));
       plugin.onLoad({ filter: /.*/, namespace: "detail" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, Text as RealText, TextInput as RealTextInput, RefreshControl as RealRefreshControl, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web";
 import { useFixture } from "fixture"; export * from "react-native-web";
@@ -125,6 +127,23 @@ test("native weekday segmentation does not corrupt the event date or share text"
   assert.deepEqual(await writes(p), []);
 });
 
+test("switching event-detail language localizes chrome while preserving literal event data and id", async t => {
+  const p = await open(t);
+  await update(p, { language: "ja" });
+  assert.equal(await p.getByRole("button", { name: "イベントを共有", exact: true }).count(), 1);
+  assert.equal(await p.getByRole("heading", { name: "イベント紹介", exact: true }).count(), 1);
+  assert.equal(await p.getByText("日付", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("周末产品交流会", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("东京 · 涩谷", { exact: true }).count(), 1);
+
+  await update(p, { language: "en" });
+  assert.equal(await p.getByRole("button", { name: "Share event", exact: true }).count(), 1);
+  assert.equal(await p.getByRole("heading", { name: "About this event", exact: true }).count(), 1);
+  assert.equal(await p.getByText("Date", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("周末产品交流会", { exact: true }).count(), 1);
+  assert.deepEqual(await writes(p), []);
+});
+
 test("ended canonical detail says ended and never sends the footer into registration", async t => {
   const p = await open(t, { eventPatch: { status: "cancelled", startsAt: "2026-09-10T05:00:00Z", endsAt: "2026-09-10T08:00:00Z", sourceMetadata: { label: "event-core-postgres" } } });
   assert.equal(await p.getByText("已结束", { exact: true }).count(), 1);
@@ -143,6 +162,58 @@ test("an explicitly cancelled future event cannot open registration", async t =>
   assert.equal(await p.getByText("已取消", { exact: true }).count(), 1);
   assert.equal(await p.getByRole("button", { name: "活动已取消", exact: true }).isDisabled(), true);
   assert.equal(await p.getByRole("button", { name: "报名参加", exact: true }).count(), 0);
+});
+
+test("signed-in detail uses server eligibility for closed and pending registration states", async t => {
+  const closed = await open(t, {
+    signedIn: true,
+    registration: {
+      eligibility: {
+        allowedActions: [], applicationVersion: null,
+        evaluatedAt: "2038-01-19T03:14:07.000Z", policyVersion: null,
+        reason: "registration_closed", registrationVersion: null,
+        state: "registration_closed"
+      },
+      questionSet: { questions: [] }, registration: null
+    }
+  });
+  const closedButton = closed.getByRole("button", { name: "报名已截止", exact: true });
+  assert.equal(await closedButton.isDisabled(), true);
+  assert.equal(await closed.evaluate(() => (window as any).fixture.requests.some((request: any) => request.path.endsWith("/registration"))), true);
+
+  const pending = await open(t, {
+    signedIn: true,
+    registration: {
+      eligibility: {
+        allowedActions: ["withdraw"], applicationVersion: 2,
+        evaluatedAt: "2038-01-19T03:14:07.000Z", policyVersion: 1,
+        reason: "pending_review", registrationVersion: null,
+        state: "pending_review"
+      },
+      questionSet: { questions: [] }, registration: null
+    }
+  });
+  await press(pending, "查看申请");
+  assert.deepEqual(await pending.evaluate(() => (window as any).fixture.navigation), ["/events/event%3A1/register"]);
+});
+
+test("open admission can enter the registration interview from event detail", async t => {
+  const p = await open(t, {
+    signedIn: true,
+    registration: {
+      eligibility: {
+        allowedActions: ["apply"], applicationVersion: null,
+        evaluatedAt: "2038-01-19T03:14:07.000Z", policyVersion: 1,
+        reason: "open", registrationVersion: null,
+        state: "open"
+      },
+      questionSet: { questions: [] }, registration: null
+    }
+  });
+  const apply = p.getByRole("button", { name: "报名参加", exact: true });
+  assert.equal(await apply.isDisabled(), false);
+  await apply.click();
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/events/event%3A1/register"]);
 });
 
 test("canonical service placeholders become readable labels without replacing real business copy", async t => {
@@ -166,7 +237,7 @@ test("personal modules read canonical event IDs without writing and expose the g
   assert.equal(await p.getByText("会前准备度", { exact: true }).count(), 1);
   assert.equal(await p.getByText("推荐认识的人", { exact: true }).count(), 1);
   assert.equal(await p.getByText("会后复核", { exact: true }).count(), 1);
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.map((r: any) => r.path).sort()), ["/api/events/public/public-product", ...Object.keys(personalPayloads)].sort());
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.map((r: any) => r.path).sort()), ["/api/events/public/public-product", "/api/events/event%3A1/registration", ...Object.keys(personalPayloads)].sort());
   assert.deepEqual(await writes(p), []);
   if (process.env.APP_STYLE_SCREENSHOTS) { await p.getByText("会前准备度", { exact: true }).scrollIntoViewIfNeeded(); await p.screenshot({ path: "/tmp/orbit-ink-signal-event-detail-private-390.png" }); }
 });
@@ -181,7 +252,7 @@ test("personal loading, pending and empty states remain visible with independent
     "/api/recommendations/event/event%3A1": { ...peoplePayload, state: "pending", recommendations: [] },
     "/api/events/event%3A1/post-event": { ...reviewPayload, state: "pending", contacts: [] }
   };
-  await p.evaluate(payloads => { const s = (window as any).fixture; for (let i = 1; i < s.requests.length; i++) s.reply(i, 200, payloads[s.requests[i].path as keyof typeof payloads]); }, pendingPayloads); await settle(p);
+  await p.evaluate(payloads => { const s = (window as any).fixture; for (let i = 1; i < s.requests.length; i++) s.reply(i, 200, payloads[s.requests[i].path as keyof typeof payloads] ?? s.data(s.requests[i].path)); }, pendingPayloads); await settle(p);
   for (const label of ["会前准备还在更新", "推荐对象还在准备中", "会后资料还在准备中"]) assert.equal(await p.getByText(label, { exact: true }).count(), 1);
   if (process.env.APP_STYLE_SCREENSHOTS) await p.screenshot({ path: "/tmp/orbit-ink-signal-event-detail-private-pending.png" });
   const emptyPayloads = {
@@ -548,9 +619,9 @@ for (const action of ["确认目标", "换一句", "确认这些候选"]) for (c
 for (const patch of [{ actor: "actor-2" }, { cookieHeader: "fixture-2" }, { baseUrl: "https://second.example" }, { id: "event:2" }, { focused: false }, { signedIn: false }, { mounted: false }, { refresh: true }]) test("obsolete private reads cannot expire the new scope " + JSON.stringify(patch), async t => {
   const p = await open(t, { signedIn: true, holdReads: true });
   await p.evaluate(() => (window as any).fixture.reply(0)); await settle(p);
-  assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), 4);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), 5);
   if ("refresh" in patch) { await p.evaluate(() => (window as any).fixture.refresh()); await settle(p); } else await update(p, patch);
-  for (const index of [1, 2, 3]) {
+  for (const index of [1, 2, 3, 4]) {
     assert.equal(await p.evaluate(index => (window as any).fixture.requests[index].signal?.aborted, index), true);
     await p.evaluate(index => (window as any).fixture.reply(index, 401), index); await settle(p);
   }

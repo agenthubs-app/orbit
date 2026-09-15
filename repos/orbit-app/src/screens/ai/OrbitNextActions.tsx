@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { textStyles, radius, spacing, typography } from "../../design/tokens";
 import { createThemedStyles } from "../../design/theme";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type {
   TodayHomeActionView,
   TodayHomeSummaryView,
@@ -26,6 +27,7 @@ export function OrbitNextActions({
   summary,
 }: OrbitNextActionsProps) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   return (
     <View style={styles.section}>
       <View style={styles.header}>
@@ -33,13 +35,13 @@ export function OrbitNextActions({
           <View style={styles.mark}>
             <Ionicons color={colors.onAccent} name="sparkles" size={14} />
           </View>
-          <Text style={styles.heading}>下一步</Text>
+          <Text style={styles.heading}>{locale.t("todayActions.title")}</Text>
           {!loading && summary.openTaskCount > 0 ? (
             <Text style={styles.count}>{summary.openTaskCount}</Text>
           ) : null}
         </View>
         <Pressable
-          accessibilityLabel="刷新下一步"
+          accessibilityLabel={locale.t("todayActions.refresh")}
           accessibilityRole="button"
           onPress={onRefresh}
           style={({ pressed }) => [styles.iconButton, pressed ? styles.pressed : null]}
@@ -56,22 +58,22 @@ export function OrbitNextActions({
             onPress={onRefresh}
             style={({ pressed }) => [styles.retryButton, pressed ? styles.pressed : null]}
           >
-            <Text style={styles.retryText}>重试</Text>
+            <Text style={styles.retryText}>{locale.t("common.retry")}</Text>
           </Pressable>
         </View>
       ) : null}
 
       {loading ? (
         <Text accessibilityLiveRegion="polite" style={styles.stateText}>
-          正在核对下一步
+          {locale.t("todayActions.loading")}
         </Text>
       ) : summary.items.length === 0 && !error ? (
-        <Text style={styles.stateText}>现在没有必须处理的事项</Text>
+        <Text style={styles.stateText}>{locale.t("todayActions.empty")}</Text>
       ) : summary.items.length > 0 ? (
         <View style={styles.list}>
           {summary.items.map((item) => (
             <Pressable
-              accessibilityLabel={`${item.kind === "schedule" ? "打开日程" : "打开待办"}：${item.title}`}
+              accessibilityLabel={locale.t(item.kind === "schedule" ? "todayActions.openSchedule" : "todayActions.openTask", { title: locale.t.literal(item.title) })}
               accessibilityRole="button"
               key={`${item.kind}:${item.id}`}
               onPress={() => onOpen(item)}
@@ -101,7 +103,7 @@ export function OrbitNextActions({
           style={({ pressed }) => [styles.suggestionLink, pressed ? styles.pressed : null]}
         >
           <Ionicons color={colors.accent} name="sparkles-outline" size={15} />
-          <Text style={styles.suggestionText}>{summary.suggestionCount} 条待办建议</Text>
+          <Text style={styles.suggestionText}>{locale.t("todayActions.suggestions", { count: summary.suggestionCount })}</Text>
           <Ionicons color={colors.text4} name="chevron-forward" size={15} />
         </Pressable>
       ) : null}

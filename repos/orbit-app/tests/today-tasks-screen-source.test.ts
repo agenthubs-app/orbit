@@ -14,13 +14,13 @@ const tasksSource = readFileSync(
 );
 
 test("Today is a compact task-first workspace with schedule kept distinct", () => {
-  assert.match(todaySource, /title="今天"/u);
+  assert.match(todaySource, /title=\{locale\.t\("today\.title"\)\}/u);
   assert.doesNotMatch(todaySource, /eyebrow=/u);
-  assert.match(todaySource, /placeholder="添加待办"/u);
-  assert.match(todaySource, /title="待办"/u);
+  assert.match(todaySource, /placeholder=\{locale\.t\("today\.addTask"\)\}/u);
+  assert.match(todaySource, /title=\{locale\.t\("today\.tasks"\)\}/u);
   assert.match(todaySource, /completedLabel/u);
-  assert.match(todaySource, /title="Orbit 建议"/u);
-  assert.match(todaySource, /title="日程"/u);
+  assert.match(todaySource, /title=\{locale\.t\("today\.suggestions"\)\}/u);
+  assert.match(todaySource, /title=\{locale\.t\("schedule\.title"\)\}/u);
   assert.match(todaySource, /router\.push\("\/schedule" as Href\)/u);
   assert.doesNotMatch(todaySource, /DataCard|MetricPill/u);
 });
@@ -35,8 +35,8 @@ test("Today mutations use canonical task and suggestion endpoints", () => {
 
 test("all tasks keeps open and completed history as visible tabs", () => {
   assert.match(tasksSource, /type TaskListMode = "open" \| "completed"/u);
-  assert.match(tasksSource, /label: "未完成"/u);
-  assert.match(tasksSource, /label: "已完成"/u);
+  assert.match(tasksSource, /label: locale\.t\("tasks\.viewOpen"\)/u);
+  assert.match(tasksSource, /label: locale\.t\("tasks\.viewCompleted"\)/u);
   assert.match(tasksSource, /accessibilityRole="tablist"/u);
   assert.match(tasksSource, /tasksPath\(\)/u);
   assert.match(tasksSource, /item.status === "completed" \? "reopen" : "complete"/u);

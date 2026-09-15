@@ -87,3 +87,13 @@ test("malformed envelopes and task records fail visibly instead of becoming empt
   const offline = createTasksClient(async () => { throw new TypeError("Failed to fetch"); });
   await assert.rejects(offline.loadList("open"), (error: any) => error.code === "NETWORK_ERROR");
 });
+
+test("Web date/location patches use canonical null clearing and validate the echoed fields", async () => {
+  const { client, requests } = taskHarness();
+  const task = await client.create("个人事项");
+  const saved = await client.updateSchedule(task, { plannedDate: null, dueAt: "2026-09-14T00:30:00Z", location: "Kyoto" });
+  assert.equal(saved.plannedDate, undefined); assert.equal(saved.location, "Kyoto");
+  const cleared = await client.updateSchedule(saved, { dueAt: null, location: null });
+  assert.equal((await client.loadTask(task.id)).location, undefined); assert.equal(cleared.dueAt, undefined);
+  assert.deepEqual((await requests.filter(r => r.method === "PATCH")[0].clone().json()).patch, { plannedDate: null, dueAt: "2026-09-14T00:30:00Z", location: "Kyoto" });
+});

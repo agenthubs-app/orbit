@@ -6,8 +6,8 @@ import { useOrbitLanguage } from "../../orbit-language-context";
 import { useOrbitModalA11y } from "../../orbit-modal-a11y";
 import { ORBIT_Z } from "../../orbit-z";
 
-export function AnalysisGoalEditor({ profileId, initialGoal, onClose, onSaved }: {
-  profileId: string; initialGoal: string; onClose: () => void; onSaved: (goal: string) => void;
+export function AnalysisGoalEditor({ profileId, initialGoal, initialUpdatedAt, onClose, onSaved }: {
+  profileId: string; initialGoal: string; initialUpdatedAt: string; onClose: () => void; onSaved: (goal: string, updatedAt: string) => void;
 }) {
   const { t } = useOrbitLanguage();
   const [baseline, setBaseline] = useState(initialGoal);
@@ -15,19 +15,27 @@ export function AnalysisGoalEditor({ profileId, initialGoal, onClose, onSaved }:
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
   const pending = useRef(false);
   const mounted = useRef(true);
+  const attempt = useRef<{ fingerprint: string; mutationId: string } | null>(null);
   const modalRef = useOrbitModalA11y(() => { if (!pending.current) onClose(); });
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const changed = draft.trim() !== baseline.trim();
   const save = async () => {
     if (pending.current || !changed) return;
     const goal = draft.trim();
+    const fingerprint = `${initialUpdatedAt}\u0000${goal}`;
+    const mutationId = attempt.current?.fingerprint === fingerprint
+      ? attempt.current.mutationId
+      : `web:relationship-goal:${globalThis.crypto.randomUUID()}`;
+    attempt.current = { fingerprint, mutationId };
     pending.current = true; setStatus("saving");
     try {
-      const response = await fetch("/api/profile", { method: "PUT", credentials: "same-origin", cache: "no-store", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ relationshipGoal: goal }) });
-      const result = z.object({ success: z.literal(true), data: z.object({ profile: z.object({ id: z.literal(profileId), relationshipGoal: z.literal(goal) }) }) }).parse(await response.json());
+      const response = await fetch("/api/profile", { method: "PUT", credentials: "same-origin", cache: "no-store", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ relationshipGoal: goal, expectedUpdatedAt: initialUpdatedAt, mutationId }) });
+      const result = z.object({ success: z.literal(true), data: z.object({ mutationId: z.literal(mutationId), profile: z.object({ id: z.literal(profileId), relationshipGoal: z.literal(goal), updatedAt: z.string() }), editor: z.object({ lastSavedAt: z.string() }) }) }).parse(await response.json());
       if (!response.ok) throw new Error("Unconfirmed goal");
+      const updatedAt = result.data.profile.updatedAt;
+      if (!Number.isFinite(Date.parse(updatedAt)) || Date.parse(updatedAt) <= Date.parse(initialUpdatedAt) || result.data.editor.lastSavedAt !== updatedAt) throw new Error("Unconfirmed goal");
       if (!mounted.current) return;
-      setBaseline(result.data.profile.relationshipGoal); setStatus("idle"); onSaved(result.data.profile.relationshipGoal);
+      attempt.current = null; setBaseline(result.data.profile.relationshipGoal); setStatus("idle"); onSaved(result.data.profile.relationshipGoal, updatedAt);
     } catch { if (mounted.current) setStatus("error"); }
     finally { pending.current = false; }
   };

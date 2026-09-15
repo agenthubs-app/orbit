@@ -38,6 +38,7 @@ export interface TaskCreateInput {
   actorId: string;
   title: string;
   notes?: string;
+  location?: string;
   category: TaskCategory;
   plannedDate?: string;
   dueAt?: string;
@@ -58,8 +59,9 @@ export interface TaskUpdatePatch {
   title?: string;
   notes?: string;
   category?: TaskCategory;
-  plannedDate?: string;
-  dueAt?: string;
+  plannedDate?: string | null;
+  dueAt?: string | null;
+  location?: string | null;
   priority?: TaskPriority;
   relatedContactId?: string;
   relatedEventId?: string;
@@ -216,12 +218,29 @@ function transitionActorType(
 
 export function createTaskService(input: {
   repository: TaskRepository;
+  insideMutation?: boolean;
   onTaskTerminated?: (input: {
     actorId: string;
     taskId: string;
     reason: "completed" | "cancelled" | "deleted";
   }) => Promise<void>;
 }): TaskService {
+  if (!input.insideMutation) {
+    const read = createTaskService({ ...input, insideMutation: true });
+    const run = async <K extends "create" | "update" | "complete" | "reopen" | "cancel" | "delete">(action: K, command: Parameters<TaskService[K]>[0]) => {
+      let termination: Parameters<NonNullable<typeof input.onTaskTerminated>>[0] | undefined;
+      const result = await input.repository.mutate(action, command, repository => {
+        const service = createTaskService({ repository, insideMutation: true, onTaskTerminated: async value => { termination = value; } });
+        return service[action](command as never);
+      });
+      if (termination) await input.onTaskTerminated?.(termination);
+      return result;
+    };
+    return { list: read.list, history: read.history,
+      create: command => run("create", command), update: command => run("update", command),
+      complete: command => run("complete", command), reopen: command => run("reopen", command),
+      cancel: command => run("cancel", command), delete: command => run("delete", command) };
+  }
   return {
     async list(query) {
       const records = await input.repository.list(query.actorId);
@@ -282,6 +301,7 @@ export function createTaskService(input: {
         ownerUserId: createInput.actorId,
         title: createInput.title,
         ...(createInput.notes ? { notes: createInput.notes } : {}),
+        ...(createInput.location ? { location: createInput.location } : {}),
         status: "open",
         category: createInput.category,
         ...(createInput.plannedDate
@@ -361,9 +381,12 @@ export function createTaskService(input: {
 
       const task: TaskItemDTO = {
         ...stored.payload.task,
-        ...updateInput.patch,
-        updatedAt: updateInput.now,
+        ...Object.fromEntries(Object.entries(updateInput.patch).filter(([, value]) => value !== null)),
+        updatedAt: new Date(Math.max(Date.parse(updateInput.now), Date.parse(stored.payload.task.updatedAt) + 1)).toISOString(),
       };
+      for (const field of ["plannedDate", "dueAt", "location"] as const) {
+        if (updateInput.patch[field] === null) delete task[field];
+      }
       const activity = taskActivity({
         task,
         type: "updated",
@@ -412,7 +435,7 @@ export function createTaskService(input: {
         completedAt: completeInput.now,
         completedBy: completeInput.completedBy,
         completionSource: completeInput.completionSource,
-        updatedAt: completeInput.now,
+        updatedAt: new Date(Math.max(Date.parse(completeInput.now), Date.parse(stored.payload.task.updatedAt) + 1)).toISOString(),
       };
       const activity = taskActivity({
         task,
@@ -455,7 +478,7 @@ export function createTaskService(input: {
       const task: TaskItemDTO = {
         ...withoutCompletion(stored.payload.task),
         status: "open",
-        updatedAt: reopenInput.now,
+        updatedAt: new Date(Math.max(Date.parse(reopenInput.now), Date.parse(stored.payload.task.updatedAt) + 1)).toISOString(),
       };
       const activity = taskActivity({
         task,
@@ -495,7 +518,7 @@ export function createTaskService(input: {
       const task: TaskItemDTO = {
         ...withoutCompletion(stored.payload.task),
         status: "cancelled",
-        updatedAt: cancelInput.now,
+        updatedAt: new Date(Math.max(Date.parse(cancelInput.now), Date.parse(stored.payload.task.updatedAt) + 1)).toISOString(),
       };
       const activity = taskActivity({
         task,
@@ -536,7 +559,7 @@ export function createTaskService(input: {
 
       const task: TaskItemDTO = {
         ...stored.payload.task,
-        updatedAt: deleteInput.now,
+        updatedAt: new Date(Math.max(Date.parse(deleteInput.now), Date.parse(stored.payload.task.updatedAt) + 1)).toISOString(),
       };
       const activity = taskActivity({
         task,

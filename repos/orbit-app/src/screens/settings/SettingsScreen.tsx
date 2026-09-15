@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
-import { Pressable, Text, View, StyleSheet } from "react-native";
+import { Platform, Pressable, Text, View, StyleSheet } from "react-native";
 import { useEffect, useState } from "react";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
@@ -14,28 +14,42 @@ import {
   revokeRegisteredPushDevice,
   setPushNotificationsOptIn
 } from "../../notifications/push-device-session";
+import { useOrbitLocale, type OrbitLanguageChoice } from "../../i18n/OrbitLocaleContext";
+import type { MessageKey } from "../../i18n/messages";
 
 const settingsDestinations = [
   {
-    detail: "账号、工作区与登录状态",
+    accessibleKey: "settings.account" as MessageKey,
+    detailKey: "settings.accountDetail" as MessageKey,
     href: "/account",
-    section: "账号",
-    title: "账号"
+    section: "account",
+    titleKey: "settings.accountWorkspace" as MessageKey
   },
   {
-    detail: "日历、通知、相机和联系人能力",
+    accessibleKey: "settings.permissions" as MessageKey,
+    detailKey: "settings.permissionsDetail" as MessageKey,
     href: "/account/permissions",
-    section: "通用",
-    title: "权限中心",
+    section: "general",
+    titleKey: "settings.permissions" as MessageKey,
     requiresAuthentication: true
   },
   {
-    detail: "本地调试或真机测试使用的 Orbit API 地址",
+    accessibleKey: "settings.server" as MessageKey,
+    detailKey: "settings.serverDetail" as MessageKey,
     href: "/settings/api",
-    section: "服务器",
-    title: "服务器"
+    section: "server",
+    titleKey: "settings.server" as MessageKey
   }
 ] as const;
+
+const languageOptions = [
+  { choice: "system", labelKey: "settings.languageSystem" },
+  { choice: "zh", labelKey: "settings.languageZh" },
+  { choice: "ja", labelKey: "settings.languageJa" },
+  { choice: "en", labelKey: "settings.languageEn" }
+] as const satisfies readonly { choice: OrbitLanguageChoice; labelKey: MessageKey }[];
+
+const webScrollMargin = Platform.OS === "web" ? ({ scrollMarginBottom: 1 } as never) : undefined;
 
 export function SettingsScreen() {
   const { colors, styles } = useStyles();
@@ -43,6 +57,7 @@ export function SettingsScreen() {
   const auth = useOrbitAuthSession();
   const client = useOrbitApiClient();
   const { baseUrl } = useOrbitApiBaseUrl();
+  const locale = useOrbitLocale();
   const [pushOptIn, setPushOptIn] = useState<boolean | null>(null);
   const [pushOptInBusy, setPushOptInBusy] = useState(false);
   const [pushOptInError, setPushOptInError] = useState("");
@@ -81,25 +96,65 @@ export function SettingsScreen() {
         () => revokeNotificationDevice(client),
         () => revokeRegisteredPushDevice({ baseUrl, cookieHeader: auth.cookieHeader }),
       ]);
-      if (!revoked) setPushOptInError("通知解绑未完成，请重试关闭。");
+      if (!revoked) setPushOptInError(locale.t("settings.remindersUnlinkError"));
     } catch {
-      setPushOptInError("通知解绑未完成，请重试关闭。");
+      setPushOptInError(locale.t("settings.remindersUnlinkError"));
     } finally {
       setPushOptInBusy(false);
     }
   }
 
   return (
-    <AppScreen eyebrow="Orbit" title="设置">
+    <AppScreen eyebrow="Orbit" title={locale.t("settings.title")}>
       <View style={styles.sections}>
-        {(["通用", "账号", "服务器"] as const).map((section) => section === "通用" && !auth.signedIn ? null : (
+        {(["general", "account", "server"] as const).map((section) => section === "general" && !auth.signedIn ? null : (
           <View key={section} style={styles.section}>
-            <Text accessibilityRole="header" style={styles.sectionTitle}>{section}</Text>
+            <Text accessibilityRole="header" style={styles.sectionTitle}>{locale.t(`settings.${section}` as MessageKey)}</Text>
             <View style={styles.sectionRows}>
-              {section === "通用" && auth.signedIn ? <>
+              {section === "general" && auth.signedIn ? <>
+                <View style={styles.languageBlock}>
+                  <Text style={styles.destinationText}>{locale.t("settings.language")}</Text>
+                  <Text style={styles.notificationBody}>{locale.t("settings.languageHint")}</Text>
+                  <View accessibilityRole="radiogroup" style={styles.languageOptions}>
+                    {languageOptions.map((option) => (
+                      <Pressable
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: locale.choice === option.choice }}
+                        disabled={locale.syncState === "saving"}
+                        key={option.choice}
+                        onPress={() => void locale.setLanguage(option.choice)}
+                        style={({ pressed }) => [
+                          styles.languageOption,
+                          locale.choice === option.choice && styles.languageOptionSelected,
+                          pressed && styles.pressed
+                        ]}
+                      >
+                        <Text style={locale.choice === option.choice ? styles.languageOptionSelectedText : styles.languageOptionText}>
+                          {locale.t(option.labelKey)}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  {locale.syncState === "loading" ? <Text style={styles.notificationBody}>{locale.t("settings.languageLoading")}</Text> : null}
+                  {locale.syncState === "saving" ? <Text style={styles.notificationBody}>{locale.t("settings.languageSaving")}</Text> : null}
+                  {locale.syncState === "error" || locale.syncState === "conflict" ? (
+                    <Pressable accessibilityRole="button" onPress={() => void locale.retryLanguageSave()} style={styles.retryLanguage}>
+                      <Text accessibilityRole="alert" style={styles.errorText}>{locale.t("settings.languageUnsynced")}</Text>
+                      <Text style={styles.retryLanguageText}>{locale.t("common.retry")}</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
                 <Pressable
-                  accessibilityLabel={pushOptInBusy ? "正在准备…" : pushOptIn === null ? "正在读取关键提醒状态" : pushOptInError ? "重试关闭关键提醒" : pushOptIn === true ? "关闭关键提醒" : "开启关键提醒"}
-                  accessibilityHint="会前准备、待跟进和关系提醒；锁屏只显示通用摘要。"
+                  accessibilityLabel={pushOptInBusy
+                    ? locale.t("settings.remindersPreparing")
+                    : pushOptIn === null
+                      ? locale.t("settings.remindersReadingLabel")
+                      : pushOptInError
+                        ? locale.t("settings.remindersRetryOffLabel")
+                        : pushOptIn === true
+                          ? locale.t("settings.remindersTurnOffLabel")
+                          : locale.t("settings.remindersTurnOnLabel")}
+                  accessibilityHint={locale.t("settings.remindersHint")}
                   accessibilityRole="button"
                   disabled={pushOptInBusy || pushOptIn === null}
                   onPress={() =>
@@ -111,25 +166,26 @@ export function SettingsScreen() {
                   }
                   style={({ pressed }) => [
                     styles.destination,
+                    webScrollMargin,
                     pressed && styles.pressed,
                     pushOptInBusy && styles.actionDisabled
                   ]}
                 >
-                  <Text style={styles.destinationText}>关键提醒</Text>
+                  <Text style={styles.destinationText}>{locale.t("settings.reminders")}</Text>
                   <Text style={styles.valueText}>
                     {pushOptInBusy
-                      ? "正在准备…"
+                      ? locale.t("settings.remindersPreparing")
                       : pushOptInError
-                        ? "重试关闭"
+                        ? locale.t("settings.remindersRetryOff")
                         : pushOptIn === null
-                          ? "读取中…"
+                          ? locale.t("settings.remindersReading")
                           : pushOptIn === true
-                            ? "开启"
-                            : "关闭"}
+                            ? locale.t("settings.remindersOn")
+                            : locale.t("settings.remindersOff")}
                   </Text>
                 </Pressable>
                 <Text style={styles.notificationBody}>
-                  会前准备、待跟进和关系提醒；锁屏只显示通用摘要。先由你明确开启系统通知；已允许时，Orbit 会在前后台同步当前设备。
+                  {locale.t("settings.remindersHint")}
                 </Text>
                 {pushOptInError ? <Text accessibilityRole="alert" style={styles.errorText}>{pushOptInError}</Text> : null}
               </> : null}
@@ -143,19 +199,19 @@ export function SettingsScreen() {
                 )
                 .map((destination) => (
                   <Pressable
-                    accessibilityLabel={`打开${destination.title}`}
-                    accessibilityHint={destination.detail}
+                    accessibilityLabel={locale.t("common.openNamed", { name: locale.t(destination.accessibleKey) })}
+                    accessibilityHint={locale.t(destination.detailKey)}
                     accessibilityRole="button"
                     key={destination.href}
                     onPress={() => router.push(destination.href as Href)}
-                    style={({ pressed }) => [styles.destination, pressed ? styles.pressed : null]}
+                    style={({ pressed }) => [styles.destination, webScrollMargin, pressed ? styles.pressed : null]}
                   >
-                    <Text style={styles.destinationText}>{destination.href === "/account" ? "账号与工作区" : destination.title}</Text>
+                    <Text style={styles.destinationText}>{locale.t(destination.titleKey)}</Text>
                     <Ionicons color={colors.text3} name="chevron-forward" size={16} />
                   </Pressable>
                 ))}
             </View>
-            {section === "服务器" ? <Text style={styles.notificationBody}>本地调试或真机测试使用的 Orbit API 地址</Text> : null}
+            {section === "server" ? <Text style={styles.notificationBody}>{locale.t("settings.serverDetail")}</Text> : null}
           </View>
         ))}
       </View>
@@ -164,10 +220,18 @@ export function SettingsScreen() {
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  sections: { gap: 22, paddingTop: 8 },
+  sections: { gap: 22, paddingBottom: 1, paddingTop: 8 },
   section: { gap: 6 },
   sectionTitle: { color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: "800" },
   sectionRows: { borderTopColor: colors.border, borderTopWidth: 1 },
+  languageBlock: { borderBottomColor: colors.border, borderBottomWidth: 1, gap: 8, paddingVertical: 13.5 },
+  languageOptions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  languageOption: { borderColor: colors.border, borderRadius: 999, borderWidth: 1, justifyContent: "center", minHeight: 44, paddingHorizontal: 14, paddingVertical: 8 },
+  languageOptionSelected: { backgroundColor: colors.accent, borderColor: colors.accent },
+  languageOptionText: { color: colors.text, fontSize: 13, fontWeight: "600", lineHeight: 18 },
+  languageOptionSelectedText: { color: colors.onAccent, fontSize: 13, fontWeight: "700", lineHeight: 18 },
+  retryLanguage: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: 8, minHeight: 44 },
+  retryLanguageText: { color: colors.accent, fontSize: 13, fontWeight: "700", lineHeight: 20 },
   destination: {
     alignItems: "center",
     borderBottomColor: colors.border,
@@ -175,7 +239,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     flexDirection: "row",
     gap: 12,
     minHeight: 50,
-    paddingVertical: 13.5
+    paddingVertical: 13.25
   },
   destinationText: {
     color: colors.text,

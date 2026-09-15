@@ -10,6 +10,7 @@ import { AppError } from "../../../../../shared/errors/app-error";
 import type {
   EventParticipantProfileAnswers,
   EventParticipantProfileField,
+  EventRegistrationAction,
 } from "../../../../../features/events/registration/contract";
 import type { EventExperiencePublishedQuestionSet } from "../../../../../features/events/experience/contract";
 import { createConfiguredEventExperienceService } from "../../../../../features/events/experience/runtime";
@@ -28,8 +29,13 @@ import { EventRegistrationWindowError } from "../../../../../features/events/reg
 import { loadEventForRegistration } from "../../../../../features/events/registration/event-loader";
 import { generateEventRegistrationQuestions } from "../../../../../features/events/registration/question-generator";
 import { eventRegistrationRuntimeService } from "../../../../../features/events/registration/runtime";
+import { resolveEventRegistrationEligibility } from "../../../../../features/events/registration/eligibility";
 import type { EventRegistrationService } from "../../../../../features/events/registration/service";
-import type { ResolveEventAdmissionRegistrationControl } from "../../../../../features/events/admission/registration-control";
+import type {
+  ResolveEventAdmissionRegistrationControl,
+  ResolveEventAdmissionRegistrationState,
+} from "../../../../../features/events/admission/registration-control";
+import type { EventRegistrationAvailability } from "../../../../../features/events/registration/deadline-gated-service";
 
 interface EventRegistrationRouteContext {
   params: Promise<{ id: string }>;
@@ -50,6 +56,7 @@ async function readRegistrationPayload(
   },
 ): Promise<{
   answers: EventParticipantProfileAnswers;
+  intent?: Extract<EventRegistrationAction, "reactivate" | "register" | "update">;
   interviewResponses: readonly EventProfileResponseSnapshot[];
   questionSetHash?: string;
   questionSetVersion?: number;
@@ -69,6 +76,23 @@ async function readRegistrationPayload(
         "The two required event-registration answers are missing.",
       );
     }
+    const intent = body.intent;
+    if (
+      intent !== undefined &&
+      intent !== "register" &&
+      intent !== "reactivate" &&
+      intent !== "update"
+    ) {
+      throw new InterviewQuestionTokenError(
+        "INTERVIEW_QUESTION_TOKEN_INVALID",
+        "The registration action intent is invalid.",
+      );
+    }
+    const normalizedIntent = intent as
+      | "reactivate"
+      | "register"
+      | "update"
+      | undefined;
     if (Array.isArray(body.responses)) {
       const submissions = body.responses.flatMap((value) => {
         if (
@@ -130,6 +154,7 @@ async function readRegistrationPayload(
       }
       return {
         answers: answersFromProfileResponses(mergedResponses),
+        ...(normalizedIntent ? { intent: normalizedIntent } : {}),
         interviewResponses: mergedResponses,
         ...questionSetMetadata(body),
       };
@@ -153,6 +178,7 @@ async function readRegistrationPayload(
     }
     return {
       answers: answersFromProfileResponses(answerSnapshots),
+      ...(normalizedIntent ? { intent: normalizedIntent } : {}),
       interviewResponses: answerSnapshots,
       ...questionSetMetadata(body),
     };
@@ -214,8 +240,12 @@ export function createEventRegistrationRouteHandlers(input: {
   ) => Promise<EventExperiencePublishedQuestionSet | null>;
   loadEvent?: typeof loadEventForRegistration;
   now?: () => Date;
+  readRegistrationAvailability?: (
+    eventId: string,
+  ) => Promise<EventRegistrationAvailability>;
   registrationService?: EventRegistrationService;
   resolveAdmissionControl?: ResolveEventAdmissionRegistrationControl;
+  resolveAdmissionState?: ResolveEventAdmissionRegistrationState;
   resolveActor: () => Promise<RegistrationActor | null>;
 }) {
   const registrationService =
@@ -227,6 +257,10 @@ export function createEventRegistrationRouteHandlers(input: {
       (await createConfiguredEventExperienceService())?.getPublishedQuestionSet(
         eventId,
       ) ?? null);
+  const readRegistrationAvailability =
+    input.readRegistrationAvailability ?? (async () => "open" as const);
+  const resolveAdmissionState =
+    input.resolveAdmissionState ?? (async () => ({ state: "legacy" as const }));
   async function GET(
     request: Request,
     context: EventRegistrationRouteContext,
@@ -241,45 +275,87 @@ export function createEventRegistrationRouteHandlers(input: {
 
     const mode = resolveFeatureMode();
     const { id } = await context.params;
-    const event = await loadEvent(id, actor.id);
-    if (!event) {
+    try {
+      const event = await loadEvent(id, actor.id);
+      if (!event) {
+        return errorResponse(
+          new AppError("NOT_FOUND", "The event could not be found."),
+          404,
+        );
+      }
+
+      const searchParams = new URL(request.url).searchParams;
+      const shouldGenerateQuestions = searchParams.get("questions") !== "false";
+      const [publishedQuestionSet, registration, admissionState] =
+        await Promise.all([
+          shouldGenerateQuestions ? getPublishedQuestionSet(event.id) : null,
+          registrationService.get({ eventId: event.id, userId: actor.id }),
+          resolveAdmissionState(actor.id, event.id),
+        ]);
+      if (admissionState.state === "unavailable") {
+        throw new Error("Event admission state is unavailable.");
+      }
+      const legacyAvailability =
+        admissionState.state === "legacy"
+          ? await readRegistrationAvailability(event.id)
+          : "open";
+      const activeRegistrationCount =
+        admissionState.state === "admission" &&
+        admissionState.policy.capacity !== null
+          ? (await registrationService.list({ eventId: event.id })).filter(
+              (value) => value.status === "rsvped",
+            ).length
+          : null;
+      const evaluatedAt = (input.now?.() ?? new Date()).toISOString();
+      const eligibility = resolveEventRegistrationEligibility({
+        ...(admissionState.state === "admission"
+          ? {
+              admission: {
+                activeRegistrationCount,
+                application: admissionState.application,
+                policy: admissionState.policy,
+              },
+            }
+          : {}),
+        evaluatedAt,
+        event,
+        legacyAvailability,
+        registration,
+      });
+      const questionSet = shouldGenerateQuestions
+        ? await generateEventRegistrationQuestions({
+            event,
+            language: searchParams.get("language") === "en" ? "en" : "zh",
+            publishedQuestionSet,
+          })
+        : {
+            provenance: {
+              aiProviderRequested: false,
+              externalNetworkRequested: false,
+              fallbackReason: "QUESTIONS_NOT_REQUESTED",
+              generationMethod: "deterministic-not-requested" as const,
+              model: null,
+              provider: null,
+            },
+            questions: [],
+          };
+
+      return NextResponse.json(
+        success({ eligibility, questionSet, registration }),
+        { headers: runtimeBoundaryHeaders(mode), status: 200 },
+      );
+    } catch (error) {
+      if (error instanceof AppError) {
+        return errorResponse(error, error.code === "NOT_FOUND" ? 404 : 503);
+      }
       return errorResponse(
-        new AppError("NOT_FOUND", "The event could not be found."),
-        404,
+        new AppError(
+          "SERVICE_UNAVAILABLE",
+          "The current registration state could not be verified. No registration action is available until this page is refreshed.",
+        ),
+        503,
       );
     }
-
-    const searchParams = new URL(request.url).searchParams;
-    const shouldGenerateQuestions = searchParams.get("questions") !== "false";
-    const publishedQuestionSet = shouldGenerateQuestions
-      ? await getPublishedQuestionSet(event.id)
-      : null;
-    const registration = await registrationService.get({
-      eventId: event.id,
-      userId: actor.id,
-    });
-    const questionSet = shouldGenerateQuestions
-      ? await generateEventRegistrationQuestions({
-          event,
-          language: searchParams.get("language") === "en" ? "en" : "zh",
-          publishedQuestionSet,
-        })
-      : {
-          provenance: {
-            aiProviderRequested: false,
-            externalNetworkRequested: false,
-            fallbackReason: "QUESTIONS_NOT_REQUESTED",
-            generationMethod: "deterministic-not-requested" as const,
-            model: null,
-            provider: null,
-          },
-          questions: [],
-        };
-
-    return NextResponse.json(success({ questionSet, registration }), {
-      headers: runtimeBoundaryHeaders(mode),
-      status: 200,
-    });
   }
 
   async function POST(
@@ -341,6 +417,10 @@ export function createEventRegistrationRouteHandlers(input: {
     }
 
     let registration;
+    let registrationAction: Extract<
+      EventRegistrationAction,
+      "reactivate" | "register" | "update"
+    > = "register";
     try {
       const publishedQuestionSet = await getPublishedQuestionSet(event.id);
       const requiredFields = publishedQuestionSet
@@ -353,6 +433,28 @@ export function createEventRegistrationRouteHandlers(input: {
         eventId: event.id,
         requiredFields,
       });
+      const existing = await registrationService.get({
+        eventId: event.id,
+        userId: actor.id,
+      });
+      registrationAction =
+        payload.intent ??
+        (existing?.status === "cancelled"
+          ? "reactivate"
+          : existing?.status === "rsvped"
+            ? "update"
+            : "register");
+      const intentMatchesCurrentState =
+        (registrationAction === "register" && existing?.status !== "cancelled") ||
+        (registrationAction === "update" && existing?.status === "rsvped") ||
+        (registrationAction === "reactivate" &&
+          (existing?.status === "cancelled" || existing?.status === "rsvped"));
+      if (!intentMatchesCurrentState) {
+        throw new AppError(
+          "CONFLICT",
+          "The registration changed before this action could be applied. Refresh before trying again.",
+        );
+      }
       if (
         publishedQuestionSet &&
         ((payload.questionSetVersion !== undefined &&
@@ -403,7 +505,16 @@ export function createEventRegistrationRouteHandlers(input: {
       throw error;
     }
 
-    return NextResponse.json(success(registration), {
+    return NextResponse.json(success({
+      ...registration,
+      mutationReceipt: {
+        action: registrationAction,
+        actorId: actor.id,
+        eventId: registration.eventId,
+        recordId: registration.id,
+        registrationVersion: registration.updatedAt,
+      },
+    }), {
       headers: runtimeBoundaryHeaders(mode),
       status: 200,
     });

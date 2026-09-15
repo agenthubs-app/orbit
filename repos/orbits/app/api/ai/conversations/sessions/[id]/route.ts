@@ -6,3 +6,4 @@ const handlers = createOrbitAgentChatSessionHandlers();
 
 export const DELETE = handlers.DELETE;
 export const GET = handlers.GET;
+export const PATCH = handlers.PATCH;

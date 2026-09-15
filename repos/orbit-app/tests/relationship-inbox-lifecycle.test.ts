@@ -47,7 +47,7 @@ window.fetch = (input, init) => { const url = new URL(String(input)); const inde
 export const useFixture = () => { observe(); return state; };
 export const useIsFocused = () => { observe(); return state.focused; };
 export const AppState = { get currentState() { return state.appState; }, addEventListener(_event, fn) { nativeListeners.add(fn); return { remove() { nativeListeners.delete(fn); } }; } };
-export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, user: state.actor ? { id: state.actor } : null, cookieHeader: state.cookieHeader }; };
+export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.actor || null, actorId: state.actor || null, user: state.actor ? { id: state.actor } : null, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
 export const useLocalSearchParams = () => { observe(); return state.detail ? { id: state.conversationId } : state.seed; };
 export const useGlobalSearchParams = useLocalSearchParams;
@@ -173,14 +173,15 @@ test("a notification target change revokes the old delivery action and late expi
   assert.equal(await p.getByRole("button", { name: "查看建议", exact: true }).isEnabled(), true);
 });
 
-test("moving to another thread revokes rewrite results and clears the previous local reply", async t => {
+test("moving to another thread clears the previous local reply after an opaque IORBIT handoff", async t => {
   const p = await open(t, { detail: true });
   await p.getByRole("textbox", { name: "回复正文", exact: true }).fill("旧会话回复");
   await p.getByRole("button", { name: "润色草稿", exact: true }).click(); await settle(p);
-  await p.evaluate(() => { const s = (window as any).fixture; s.oldWrite = s.requests.findLastIndex((r: any) => r.method === "POST"); });
+  const navigation = await p.evaluate(() => (window as any).fixture.navigation);
+  assert.equal(navigation[0].pathname, "/ai/[id]"); assert.match(navigation[0].params.prefillIntent, /^ai-prefill-/);
+  assert.doesNotMatch(JSON.stringify(navigation[0]), /旧会话回复|contact:one/);
+  assert.deepEqual(await writes(p), []);
   await update(p, { conversationId: "thread:two" });
-  assert.equal(await p.evaluate(() => { const s = (window as any).fixture; return s.requests[s.oldWrite].signal?.aborted; }), true);
-  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.oldWrite, 401); }); await settle(p);
   assert.equal(await p.getByRole("textbox", { name: "回复正文", exact: true }).inputValue(), "");
   assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0);
 });
@@ -518,17 +519,17 @@ test("inbox foreground preserves an unsent composer and never replays an interru
   assert.equal(await p.getByRole("heading", { name: "草稿预览", exact: true }).count(), 1);
 });
 
-test("inbox foreground preserves reply input and makes an interrupted rewrite retryable without late overwrite", async t => {
+test("inbox foreground preserves reply input and does not replay an IORBIT handoff", async t => {
   const p = await open(t, { detail: true });
   await p.getByRole("textbox", { name: "回复正文", exact: true }).fill("离开前未发送的回复");
   await p.getByRole("button", { name: "润色草稿", exact: true }).click(); await settle(p);
-  await p.evaluate(() => { const s = (window as any).fixture; s.oldWrite = s.requests.findLastIndex((r: any) => r.method === "POST"); s.oldAction = s.presses["润色草稿"]; s.emit("inactive"); }); await settle(p);
-  assert.equal(await p.evaluate(() => { const s = (window as any).fixture; return s.requests[s.oldWrite].signal.aborted; }), true);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldAction = s.presses["润色草稿"]; s.emit("inactive"); }); await settle(p);
   await p.evaluate(() => (window as any).fixture.emit("active")); await settle(p);
   assert.equal(await p.getByRole("textbox", { name: "回复正文", exact: true }).inputValue(), "离开前未发送的回复");
   assert.equal(await p.getByRole("button", { name: "润色草稿", exact: true }).isEnabled(), true);
-  await p.evaluate(() => { const s = (window as any).fixture; s.oldAction(); s.reply(s.oldWrite, 401); }); await settle(p);
-  assert.equal((await writes(p)).length, 1);
+  await p.evaluate(() => (window as any).fixture.oldAction()); await settle(p);
+  assert.deepEqual(await writes(p), []);
+  assert.equal(await p.evaluate(() => (window as any).fixture.navigation.length), 1);
   assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0);
   assert.equal(await p.getByRole("textbox", { name: "回复正文", exact: true }).inputValue(), "离开前未发送的回复");
 });

@@ -7,18 +7,18 @@ import { createStorageProfileProvider } from "../../features/profile/storage/pro
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
-async function mount(t: TestContext, fetcher: typeof fetch, profileId = "profile:one") {
+async function mount(t: TestContext, fetcher: typeof fetch, profileId = "profile:one", initialUpdatedAt = "2026-09-14T00:00:00.000Z") {
   t.mock.method(globalThis, "fetch", fetcher);
   const previous = Object.getOwnPropertyDescriptor(globalThis, "document");
   Object.defineProperty(globalThis, "document", { configurable: true, value: { activeElement: null, addEventListener() {}, removeEventListener() {} } });
   const saved: string[] = [];
-  const element = (text = "原目标") => <AnalysisGoalEditor profileId={profileId} initialGoal={text} onClose={() => {}} onSaved={(text) => saved.push(text)} />;
+  const element = (text = "原目标") => <AnalysisGoalEditor profileId={profileId} initialGoal={text} initialUpdatedAt={initialUpdatedAt} onClose={() => {}} onSaved={(text) => saved.push(text)} />;
   let root!: ReturnType<typeof create>;
   await act(async () => { root = create(element()); });
   t.after(() => { act(() => root.unmount()); if (previous) Object.defineProperty(globalThis, "document", previous); else Reflect.deleteProperty(globalThis, "document"); });
   return { root, saved, element, save: () => root.root.findByProps({ "data-analysis-goal-save": true }), change: async (value: string) => { await act(async () => { root.root.findByType("textarea").props.onChange({ target: { value } }); }); } };
 }
-const ack = (text: string, id = "profile:one") => Response.json({ success: true, data: { profile: { id, relationshipGoal: text } } });
+const ack = (text: string, mutationId: string, id = "profile:one", updatedAt = "2026-09-15T00:00:00.000Z") => Response.json({ success: true, data: { mutationId, profile: { id, relationshipGoal: text, updatedAt }, editor: { lastSavedAt: updatedAt } } });
 
 test("goal editing sends only the changed goal, trims text and blocks duplicate submissions", async (t) => {
   const calls: Array<{ path: string; init?: RequestInit }> = []; let respond!: (response: Response) => void;
@@ -30,14 +30,22 @@ test("goal editing sends only the changed goal, trims text and blocks duplicate 
   assert.equal(calls.length, 1);
   assert.equal(calls[0].path, "/api/profile");
   assert.equal(calls[0].init?.method, "PUT");
-  assert.deepEqual(JSON.parse(String(calls[0].init?.body)), { relationshipGoal: "认识日本供应链伙伴" });
-  await act(async () => { respond(ack("认识日本供应链伙伴")); await pending; });
+  const body = JSON.parse(String(calls[0].init?.body));
+  assert.deepEqual(Object.keys(body).sort(), ["expectedUpdatedAt", "mutationId", "relationshipGoal"]);
+  assert.equal(body.relationshipGoal, "认识日本供应链伙伴");
+  assert.equal(body.expectedUpdatedAt, "2026-09-14T00:00:00.000Z");
+  assert.match(body.mutationId, /^web:relationship-goal:/u);
+  await act(async () => { respond(ack("认识日本供应链伙伴", body.mutationId)); await pending; });
   assert.deepEqual(ui.saved, ["认识日本供应链伙伴"]);
 });
 
 test("goal failure and wrong-account ACK retain the draft across prop refresh and retry", async (t) => {
-  let calls = 0;
-  const ui = await mount(t, (async () => { calls++; if (calls === 1) throw new Error("offline"); return ack("新目标", calls === 2 ? "profile:another" : "profile:one"); }) as typeof fetch);
+  const bodies: Array<{ mutationId: string }> = [];
+  const ui = await mount(t, (async (_path, init) => {
+    const body = JSON.parse(String(init?.body)); bodies.push(body);
+    if (bodies.length === 1) throw new Error("offline");
+    return ack("新目标", body.mutationId, bodies.length === 2 ? "profile:another" : "profile:one");
+  }) as typeof fetch);
   await ui.change("新目标");
   await act(async () => { ui.root.update(ui.element("远端变更")); });
   for (let i = 0; i < 2; i++) {
@@ -48,24 +56,31 @@ test("goal failure and wrong-account ACK retain the draft across prop refresh an
   }
   await act(async () => { await ui.save().props.onClick(); });
   assert.deepEqual(ui.saved, ["新目标"]);
+  assert.equal(new Set(bodies.map((body) => body.mutationId)).size, 1);
 });
 
 test("clearing a goal sends an explicit empty string", async (t) => {
   const bodies: unknown[] = [];
-  const ui = await mount(t, (async (_path, init) => { bodies.push(JSON.parse(String(init?.body))); return ack(""); }) as typeof fetch);
+  const ui = await mount(t, (async (_path, init) => { const body = JSON.parse(String(init?.body)); bodies.push(body); return ack("", body.mutationId); }) as typeof fetch);
   await ui.change("  ");
   await act(async () => { await ui.save().props.onClick(); });
-  assert.deepEqual(bodies, [{ relationshipGoal: "" }]);
+  assert.equal(bodies.length, 1);
+  assert.deepEqual(Object.keys(bodies[0] as object).sort(), ["expectedUpdatedAt", "mutationId", "relationshipGoal"]);
+  assert.equal((bodies[0] as { relationshipGoal: string }).relationshipGoal, "");
   assert.deepEqual(ui.saved, [""]);
 });
 
 test("a late response after unmount cannot update the parent", async (t) => {
   let respond!: (response: Response) => void;
-  const ui = await mount(t, (() => new Promise<Response>((resolve) => { respond = resolve; })) as typeof fetch);
+  let mutationId = "";
+  const ui = await mount(t, ((_path, init) => {
+    mutationId = JSON.parse(String(init?.body)).mutationId;
+    return new Promise<Response>((resolve) => { respond = resolve; });
+  }) as typeof fetch);
   await ui.change("新目标"); let pending!: Promise<void>;
   await act(async () => { pending = ui.save().props.onClick(); });
   await act(async () => { ui.root.unmount(); });
-  await act(async () => { respond(ack("新目标")); await pending; });
+  await act(async () => { respond(ack("新目标", mutationId)); await pending; });
   assert.deepEqual(ui.saved, []);
 });
 
@@ -80,12 +95,20 @@ test("goal-only UI writes survive a lost ACK and cold-read without replacing oth
   if (!seeded.success || !seeded.data.profile) throw new Error("Missing live profile fixture");
   const before = seeded.data.profile;
   let attempts = 0;
+  let receipt: Awaited<ReturnType<typeof service.updateProfile>> | null = null;
   const ui = await mount(t, (async (path, init) => {
     assert.equal(path, "/api/profile");
-    const result = await service.updateProfile(JSON.parse(String(init?.body)), { actorId });
+    const body = JSON.parse(String(init?.body));
+    assert.deepEqual(Object.keys(body).sort(), ["expectedUpdatedAt", "mutationId", "relationshipGoal"]);
+    if (!receipt) {
+      const saved = await service.updateProfile({ relationshipGoal: body.relationshipGoal }, { actorId });
+      receipt = saved.success
+        ? { ...saved, data: { ...saved.data, mutationId: body.mutationId } }
+        : saved;
+    }
     if (++attempts === 1) throw new Error("Response lost after write");
-    return Response.json(result);
-  }) as typeof fetch, before.id);
+    return Response.json(receipt);
+  }) as typeof fetch, before.id, before.updatedAt);
   await ui.change("认识东京制造业伙伴");
   await act(async () => { await ui.save().props.onClick(); });
   assert.deepEqual(ui.saved, []);

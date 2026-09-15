@@ -70,4 +70,4 @@ Web/API 与 App 共用 `NoteContract` v2，保存标题、正文、手动联系�
 - NoteContract／storage schemaVersion 为 2；Contacts list 新增 `total`／`nextCursor`。App 同步副本已验证逐字一致。
 - 联系人搜索必须保持服务端分页；不得恢复空查询 A–Z 全量列表，也不得在 App 或 route 先读取全集再 `.slice()`。
 - live Web 进程和 Metro 在报告生成时仍运行；构建／验收产物在 `build/`，不进入功能提交。
-- BR-011 已登记为 verified；本 Sprint 无剩余实现项。
+- BR-019 已登记为 verified；本 Sprint 无剩余实现项。

@@ -245,3 +245,39 @@ export async function readIndustryFixtureProjections(): Promise<IndustryFixtureP
   }
   return rows;
 }
+
+// This combines the already enumerated sources; pending families remain open.
+// It is an inventory, never a list of authorized database write targets.
+export async function readIndustryFixtureCoverage() {
+  const rows = await readIndustryFixtureProjections();
+  const people = new Map<string, { personId: string; classification: string; basis: string; projections: { source: string; recordId: string; path: string; selection: IndustrySelectionContract }[] }>();
+  for (const row of rows) {
+    const mapping = industryFixturePeople[row.personId as keyof typeof industryFixturePeople];
+    if (!mapping) throw new Error(`Unregistered normal fixture ${row.personId}`);
+    if (row.selection.primaryIndustryId !== mapping.primaryIndustryId || row.selection.secondaryIndustryId !== mapping.secondaryIndustryId) throw new Error(`Conflicting industry projection for ${row.personId}`);
+    const person = people.get(row.personId) ?? { personId: row.personId, classification: "confirmed", basis: mapping.basis, projections: [] };
+    person.projections.push({ source: row.source, recordId: row.recordId, path: row.constructor, selection: row.selection });
+    people.set(row.personId, person);
+  }
+  const accountSource = readAccountContactIndustryFixtureSource();
+  for (const record of accountSource.records) {
+    if (people.has(record.personId)) throw new Error(`Duplicate source person ${record.personId}`);
+    people.set(record.personId, { personId: record.personId, classification: record.classification, basis: record.basis, projections: record.projections.map(projection => ({ ...projection, source: accountSource.source })) });
+  }
+  const values = [...people.values()];
+  return {
+    complete: false,
+    counts: {
+      people: values.length,
+      confirmedPeople: values.filter(person => person.classification === "confirmed").length,
+      missingBasisPeople: values.filter(person => person.classification === "missing_basis").length,
+      projections: values.reduce((total, person) => total + person.projections.length, 0),
+      exceptions: industryFixtureExceptions.length,
+      nonPersonRecords: readNonPersonIndustryFixtureSources().reduce((total, source) => total + source.records.length, 0),
+      pendingSources: pendingIndustryFixtureSources.length,
+    },
+    people: values,
+    exceptions: industryFixtureExceptions,
+    pendingSources: pendingIndustryFixtureSources,
+  };
+}

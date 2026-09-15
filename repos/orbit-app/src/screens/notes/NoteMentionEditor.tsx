@@ -6,6 +6,7 @@ import type { NoteMentionContract } from "../../api/contract/notes";
 import type { ContactSummary } from "../../view-models/contacts";
 import { createThemedStyles } from "../../design/theme";
 import { radius, spacing, typography } from "../../design/tokens";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { NoteContactSearchPage } from "./NoteContactPicker";
 
 export function activeMentionQuery(body: string): { start: number; query: string } | null {
@@ -55,6 +56,7 @@ export function NoteMentionEditor({ body, disabled = false, mentions, onChange, 
   search: (query: string, cursor: string | undefined, signal: AbortSignal) => Promise<NoteContactSearchPage>;
 }) {
   const { styles, colors } = useStyles();
+  const locale = useOrbitLocale();
   const [results, setResults] = useState<ContactSummary[]>([]);
   const [searching, setSearching] = useState(false);
   const active = activeMentionQuery(body);
@@ -81,10 +83,10 @@ export function NoteMentionEditor({ body, disabled = false, mentions, onChange, 
   }
 
   return <View style={styles.editor}>
-    <TextInput accessibilityLabel="笔记内容" editable={!disabled} multiline onChangeText={updateBody} placeholder="开始写下想法…  输入 @ 可以提及人脉" placeholderTextColor={colors.text4} style={styles.input} textAlignVertical="top" value={body} />
-    {active ? <View accessibilityLabel="人脉提及候选" style={styles.suggestions}>
-      <View style={styles.suggestionHeader}><Ionicons color={colors.accent} name="at" size={16} /><Text style={styles.suggestionTitle}>{searching ? "正在搜索…" : results.length ? "选择要提及的人脉" : "没有匹配的人脉"}</Text></View>
-      {results.map((contact) => <Pressable key={contact.id} accessibilityRole="button" accessibilityLabel={`提及 ${contact.name}`} onPress={() => {
+    <TextInput accessibilityLabel={locale.t("notes.body")} editable={!disabled} multiline onChangeText={updateBody} placeholder={locale.t("notes.bodyPlaceholder")} placeholderTextColor={colors.text4} style={styles.input} textAlignVertical="top" value={body} />
+    {active ? <View accessibilityLabel={locale.t("notes.mentionCandidates")} style={styles.suggestions}>
+      <View style={styles.suggestionHeader}><Ionicons color={colors.accent} name="at" size={16} /><Text style={styles.suggestionTitle}>{locale.t(searching ? "notes.mentionSearching" : results.length ? "notes.mentionChoose" : "notes.mentionNone")}</Text></View>
+      {results.map((contact) => <Pressable key={contact.id} accessibilityRole="button" accessibilityLabel={locale.t("notes.mentionNamed", { name: contact.name })} onPress={() => {
         const inserted = insertMention(body, active, contact);
         onChange(inserted.body, [...mentions, inserted.mention]);
         setResults([]);

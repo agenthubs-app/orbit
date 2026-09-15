@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import {
   agentChatHistoryMutationWasPersisted,
   agentChatHistorySessionsToHistory,
+  loadStoredAgentChatSessions,
   parseAgentChatHistoryStorage,
   titleFromMessages,
 } from "../../app/(app)/app/agent/orbit-real-agent";
@@ -68,7 +69,7 @@ test("agent sidebar adapter does not expose relationship chat groups as history"
   assert.deepEqual(viewModel.history, []);
 });
 
-test("agent chat history parser keeps refreshable sessions under the older group", () => {
+test("agent chat history parser keeps refreshable sessions under the ungrouped section", () => {
   const sessions = parseAgentChatHistoryStorage(
     JSON.stringify([
       {
@@ -92,10 +93,38 @@ test("agent chat history parser keeps refreshable sessions under the older group
   const history = agentChatHistorySessionsToHistory(sessions, "zh");
 
   assert.equal(history.length, 1);
-  assert.equal(history[0].group, "更早");
+  assert.equal(history[0].group, "未分组");
   assert.equal(history[0].sessionId, "session-1");
   assert.equal(history[0].title, "食品供应链人脉");
   assert.doesNotMatch(history.map((item) => item.group).join(" "), /关系聊天/);
+});
+
+test("agent chat history follows every server cursor instead of truncating after the first page", async (t) => {
+  const session = (index: number) => ({
+    createdAt: `2026-07-09T02:${String(index).padStart(2, "0")}:00.000Z`,
+    id: `session-${index}`,
+    messages: [{ role: "user", text: `问题 ${index}` }, { role: "assistant", text: `回答 ${index}` }],
+    title: `会话 ${index}`,
+    updatedAt: `2026-07-09T02:${String(index).padStart(2, "0")}:30.000Z`,
+  });
+  const pages = [Array.from({ length: 50 }, (_, index) => session(index)), [session(50)]];
+  const requested: string[] = [];
+  t.mock.method(globalThis, "fetch", async (input: string | URL | Request) => {
+    requested.push(String(input));
+    const cursor = new URL(String(input), "https://orbit.test").searchParams.get("cursor");
+    const page = cursor ? 1 : 0;
+    return Response.json({ success: true, data: {
+      sessions: pages[page],
+      nextCursor: page === 0 ? "page-two" : null,
+    } });
+  });
+
+  const sessions = await loadStoredAgentChatSessions();
+
+  assert.equal(sessions.length, 51);
+  assert.equal(new Set(sessions.map((item) => item.id)).size, 51);
+  assert.equal(requested.length, 2);
+  assert.match(requested[1]!, /cursor=page-two/u);
 });
 
 test("agent chat history parser preserves minimal persisted assistant messages", () => {

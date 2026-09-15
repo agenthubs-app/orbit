@@ -103,6 +103,75 @@ test("live profile service reads and upserts generated profile records", async (
   assert.equal(languageOnlyUpdate.data.profile?.preferredLanguage, "en");
 });
 
+test("profile updates preserve a legacy storage record id instead of creating a second auth membership", async () => {
+  const actorId = "account:legacy";
+  const profileId = "user:legacy";
+  const workspaceId = "workspace:profile-legacy-record-id";
+  const legacyRecordId = `profile:auth-membership:${profileId}`;
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>([
+    {
+      workspaceId,
+      collectionName: "accounts",
+      recordId: actorId,
+      userId: actorId,
+      sourceType: "manual",
+      sourceId: actorId,
+      evidenceIds: [],
+      lifecycleState: "active",
+      payload: {
+        id: actorId,
+        name: "Legacy account",
+        createdAt: "2026-09-01T00:00:00.000Z",
+        updatedAt: "2026-09-01T00:00:00.000Z",
+      },
+      createdAt: "2026-09-01T00:00:00.000Z",
+      updatedAt: "2026-09-01T00:00:00.000Z",
+    },
+    {
+      workspaceId,
+      collectionName: "profiles",
+      recordId: legacyRecordId,
+      userId: actorId,
+      sourceType: "manual",
+      sourceId: profileId,
+      evidenceIds: [],
+      lifecycleState: "active",
+      payload: {
+        id: profileId,
+        accountId: actorId,
+        displayName: "Legacy member",
+        createdAt: "2026-09-01T00:00:00.000Z",
+        updatedAt: "2026-09-01T00:00:00.000Z",
+      },
+      createdAt: "2026-09-01T00:00:00.000Z",
+      updatedAt: "2026-09-01T00:00:00.000Z",
+    },
+  ]);
+  const service = createLiveProfileService({
+    now: () => "2026-09-15T00:00:00.000Z",
+    provider: createStorageProfileProvider({ store, workspaceId }),
+  });
+
+  const result = await service.updateProfile(
+    { headline: "Updated in place" },
+    { actorId },
+  );
+
+  assert.equal(result.success, true);
+  assert.equal(
+    store.getRecord({ workspaceId, collectionName: "profiles", recordId: legacyRecordId })?.payload.headline,
+    "Updated in place",
+  );
+  assert.equal(
+    store.getRecord({ workspaceId, collectionName: "profiles", recordId: profileId }),
+    null,
+  );
+  assert.equal(
+    store.listRecords({ workspaceId, collectionName: "profiles" }).length,
+    1,
+  );
+});
+
 test("live profile service requires an actor and cannot read another actor's profile", async () => {
   const workspaceId = "workspace:profile-live-actor-boundary";
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();

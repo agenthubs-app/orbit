@@ -15,6 +15,42 @@ interface EventRegistrationCancelRouteContext {
   params: Promise<{ id: string }>;
 }
 
+async function cancellationPrecondition(request: Request): Promise<{
+  expectedRegistrationVersion: string | null;
+} | null> {
+  if (!request.body) return null;
+  if (!(request.headers.get("content-type") ?? "").includes("application/json")) {
+    throw new AppError("VALIDATION_ERROR", "Cancellation must be submitted as JSON.");
+  }
+  let value: unknown;
+  try {
+    value = await request.json();
+  } catch {
+    throw new AppError("VALIDATION_ERROR", "The cancellation request is not valid JSON.");
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new AppError("VALIDATION_ERROR", "The cancellation request is invalid.");
+  }
+  const body = value as Record<string, unknown>;
+  if (
+    Reflect.ownKeys(body).some(
+      (key) => key !== "expectedRegistrationVersion" && key !== "intent",
+    ) ||
+    body.intent !== "cancel" ||
+    (body.expectedRegistrationVersion !== null &&
+      (typeof body.expectedRegistrationVersion !== "string" ||
+        !body.expectedRegistrationVersion.trim()))
+  ) {
+    throw new AppError("VALIDATION_ERROR", "The cancellation request is invalid.");
+  }
+  return {
+    expectedRegistrationVersion:
+      typeof body.expectedRegistrationVersion === "string"
+        ? body.expectedRegistrationVersion.trim()
+        : null,
+  };
+}
+
 export function createEventRegistrationCancelRouteHandler(input: {
   registrationService?: EventRegistrationService;
   resolveAdmissionControl?: ResolveEventAdmissionRegistrationControl;
@@ -23,7 +59,7 @@ export function createEventRegistrationCancelRouteHandler(input: {
   const registrationService =
     input.registrationService ?? eventRegistrationRuntimeService;
   return async function POST(
-    _request: Request,
+    request: Request,
     context: EventRegistrationCancelRouteContext,
   ): Promise<Response> {
     const actor = await input.resolveActor();
@@ -55,10 +91,40 @@ export function createEventRegistrationCancelRouteHandler(input: {
         },
       );
     }
-    const registration = await registrationService.cancel({
+    let precondition;
+    try {
+      precondition = await cancellationPrecondition(request);
+    } catch (error) {
+      const appError = error instanceof AppError
+        ? error
+        : new AppError("VALIDATION_ERROR", "The cancellation request is invalid.");
+      return NextResponse.json(failure(appError), {
+        headers: runtimeBoundaryHeaders(mode),
+        status: 422,
+      });
+    }
+    const existing = await registrationService.get({
       eventId: id,
       userId: actor.id,
     });
+    if (
+      existing?.status === "rsvped" &&
+      precondition?.expectedRegistrationVersion &&
+      precondition.expectedRegistrationVersion !== existing.updatedAt
+    ) {
+      return NextResponse.json(
+        failure(
+          new AppError(
+            "CONFLICT",
+            "The registration changed before cancellation. Refresh before trying again.",
+          ),
+        ),
+        { headers: runtimeBoundaryHeaders(mode), status: 409 },
+      );
+    }
+    const registration = existing?.status === "cancelled"
+      ? existing
+      : await registrationService.cancel({ eventId: id, userId: actor.id });
     if (!registration) {
       return NextResponse.json(
         failure(
@@ -74,7 +140,16 @@ export function createEventRegistrationCancelRouteHandler(input: {
       );
     }
 
-    return NextResponse.json(success(registration), {
+    return NextResponse.json(success({
+      ...registration,
+      mutationReceipt: {
+        action: "cancel" as const,
+        actorId: actor.id,
+        eventId: registration.eventId,
+        recordId: registration.id,
+        registrationVersion: registration.updatedAt,
+      },
+    }), {
       headers: runtimeBoundaryHeaders(mode),
       status: 200,
     });

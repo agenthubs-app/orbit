@@ -1,3 +1,6 @@
+import { localParts } from "../time/date-time";
+import type { OrbitLanguage } from "../api/contract/language";
+import { createTranslator, type MessageKey } from "../i18n/messages";
 import type {
   ScheduleItemContract,
   TaskCategory,
@@ -14,16 +17,17 @@ const categories: readonly TaskCategory[] = [
   "other",
 ];
 
-const categoryLabels: Record<TaskCategory, string> = {
-  relationship: "人脉",
-  meeting: "会面",
-  event: "活动",
-  work: "工作",
-  personal: "个人",
-  other: "其他",
+const categoryLabelKeys: Record<TaskCategory, MessageKey> = {
+  relationship: "workflow.categoryRelationship",
+  meeting: "workflow.categoryMeeting",
+  event: "workflow.categoryEvent",
+  work: "workflow.categoryWork",
+  personal: "workflow.categoryPersonal",
+  other: "workflow.categoryOther",
 };
 
 export interface TodayTaskRowView {
+  location?: string;
   id: string;
   title: string;
   categoryLabel: string;
@@ -42,6 +46,7 @@ export interface TaskListRowView extends TodayTaskRowView {
 }
 
 export interface TaskDetailView {
+  location?: string;
   id: string;
   title: string;
   notes: string;
@@ -78,7 +83,7 @@ export interface TodayView {
     title: string;
     reason: string;
     categoryLabel: string;
-    actionLabel: "加入待办";
+    actionLabel: string;
   }[];
   schedule: readonly {
     id: string;
@@ -171,14 +176,18 @@ function scheduleFrom(value: unknown): ScheduleItemContract | null {
   return value as unknown as ScheduleItemContract;
 }
 
-function tokyoParts(value: string) {
-  const parts = new Intl.DateTimeFormat("zh-CN", {
+function localeTag(language: OrbitLanguage): string {
+  return language === "zh" ? "zh-CN" : language === "ja" ? "ja-JP" : "en-US";
+}
+
+function tokyoParts(value: string, timeZone = "Asia/Tokyo", language: OrbitLanguage = "zh") {
+  const parts = new Intl.DateTimeFormat(localeTag(language), {
     day: "numeric",
     hour: "2-digit",
     hourCycle: "h23",
     minute: "2-digit",
     month: "numeric",
-    timeZone: "Asia/Tokyo",
+    timeZone,
   }).formatToParts(new Date(value));
   const part = (type: Intl.DateTimeFormatPartTypes) =>
     parts.find((item) => item.type === type)?.value ?? "";
@@ -188,52 +197,64 @@ function tokyoParts(value: string) {
     minute: part("minute"),
     month: part("month"),
     // Native Intl can fold weekday into day and lose time-part types when combined.
-    weekday: new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Tokyo", weekday: "short" }).format(new Date(value)),
+    weekday: new Intl.DateTimeFormat(localeTag(language), { timeZone, weekday: "short" }).format(new Date(value)),
   };
 }
 
-function dateLabel(date: string): string {
-  const parts = tokyoParts(`${date}T12:00:00+09:00`);
-  return `${parts.month}月${parts.day}日 ${parts.weekday}`;
+function dateLabel(date: string, language: OrbitLanguage): string {
+  const value = new Date(`${date}T12:00:00Z`);
+  if (language === "zh") {
+    const parts = tokyoParts(value.toISOString(), "UTC", language);
+    return `${parts.month}月${parts.day}日 ${parts.weekday}`;
+  }
+  return new Intl.DateTimeFormat(localeTag(language), { day: "numeric", month: "short", timeZone: "UTC", weekday: "short" }).format(value);
 }
 
-function timeLabel(value: string): string {
-  const parts = tokyoParts(value);
+function timeLabel(value: string, timeZone: string): string {
+  const parts = tokyoParts(value, timeZone);
   return `${parts.hour}:${parts.minute}`;
 }
 
-function dateTimeLabel(value: string): string {
-  const parts = tokyoParts(value);
-  return `${parts.month}月${parts.day}日 ${parts.hour}:${parts.minute}`;
+function dateTimeLabel(value: string, timeZone: string, language: OrbitLanguage): string {
+  if (language === "zh") {
+    const parts = tokyoParts(value, timeZone, language);
+    return `${parts.month}月${parts.day}日 ${parts.hour}:${parts.minute}`;
+  }
+  return new Intl.DateTimeFormat(localeTag(language), { day: "numeric", hour: "2-digit", hourCycle: "h23", minute: "2-digit", month: "short", timeZone }).format(new Date(value));
 }
 
 function taskDue(
   task: TaskItemContract,
   now: Date,
+  timeZone: string,
+  language: OrbitLanguage,
 ): Pick<TodayTaskRowView, "dueLabel" | "dueTone"> {
+  const t = createTranslator(language);
   if (task.dueAt) {
     if (Date.parse(task.dueAt) < now.getTime()) {
-      return { dueLabel: "已逾期", dueTone: "danger" };
+      return { dueLabel: t("todayVm.overdue"), dueTone: "danger" };
     }
-    return { dueLabel: timeLabel(task.dueAt), dueTone: "normal" };
+    return { dueLabel: timeLabel(task.dueAt, timeZone), dueTone: "normal" };
   }
   if (task.plannedDate) {
-    return { dueLabel: "今天", dueTone: "muted" };
+    return { dueLabel: t("todayVm.today"), dueTone: "muted" };
   }
   return { dueLabel: "", dueTone: "muted" };
 }
 
-function taskRow(task: TaskItemContract, now: Date): TodayTaskRowView {
+function taskRow(task: TaskItemContract, now: Date, timeZone: string, language: OrbitLanguage): TodayTaskRowView {
   return {
+    ...(task.location ? { location: task.location } : {}),
     id: task.id,
     title: task.title,
-    categoryLabel: categoryLabels[task.category],
-    ...taskDue(task, now),
+    categoryLabel: createTranslator(language)(categoryLabelKeys[task.category]),
+    ...taskDue(task, now, timeZone, language),
     priority: task.priority,
   };
 }
 
-export function todayToView(payload: unknown, now = new Date()): TodayView {
+export function todayToView(payload: unknown, now = new Date(), timeZone = "Asia/Tokyo", language: OrbitLanguage = "zh"): TodayView {
+  const t = createTranslator(language);
   const root = isRecord(payload) ? payload : {};
   const tasks = Array.isArray(root.tasks)
     ? root.tasks.map(taskFrom).filter((item): item is TaskItemContract => item !== null)
@@ -252,37 +273,35 @@ export function todayToView(payload: unknown, now = new Date()): TodayView {
     typeof root.completedCount === "number" && root.completedCount >= 0
       ? root.completedCount
       : 0;
-  const rawDate = text(root.date) ?? new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Tokyo",
-  }).format(now);
+  const rawDate = text(root.date) ?? localParts(now, timeZone).date;
 
   return {
-    dateLabel: dateLabel(rawDate),
-    summary: `${tasks.length} 项待办 · ${schedule.length} 项日程`,
-    tasks: tasks.map((item) => taskRow(item, now)),
+    dateLabel: dateLabel(rawDate, language),
+    summary: t("todayVm.summary", { tasks: tasks.length, schedule: schedule.length }),
+    tasks: tasks.map((item) => taskRow(item, now, timeZone, language)),
     completedCount,
-    completedLabel: `已完成 ${completedCount}`,
+    completedLabel: t("todayVm.completed", { count: completedCount }),
     suggestions: suggestions.map((item) => ({
       id: item.id,
       title: item.title,
       reason: item.reason,
-      categoryLabel: categoryLabels[item.category],
-      actionLabel: "加入待办",
+      categoryLabel: t(categoryLabelKeys[item.category]),
+      actionLabel: t("todayVm.addTask"),
     })),
     schedule: schedule.map((item) => ({
       id: item.id,
       title: item.title,
-      detail: item.location ?? categoryLabels[item.category],
+      detail: item.location ?? t(categoryLabelKeys[item.category]),
       kind: item.kind,
       sourceId: item.sourceId,
       stateLabel:
         item.state === "ended"
-          ? "已结束"
+          ? t("todayVm.ended")
           : item.state === "ongoing"
-            ? "进行中"
+            ? t("todayVm.ongoing")
             : item.state === "cancelled"
-              ? "已取消"
-              : timeLabel(item.startsAt),
+              ? t("todayVm.cancelled")
+              : timeLabel(item.startsAt, timeZone),
     })),
   };
 }
@@ -290,10 +309,12 @@ export function todayToView(payload: unknown, now = new Date()): TodayView {
 export function todayHomeSummary(
   payload: unknown,
   now = new Date(),
+  timeZone = "Asia/Tokyo",
+  language: OrbitLanguage = "zh",
 ): TodayHomeSummaryView {
   const root = isRecord(payload) ? payload : {};
   const summary = isRecord(root.summary) ? root.summary : {};
-  const today = todayToView(payload, now);
+  const today = todayToView(payload, now, timeZone, language);
   const items = [
     ...today.tasks.map((task) => ({
       context: [task.categoryLabel, task.dueLabel].filter(Boolean).join(" · "),
@@ -334,7 +355,9 @@ export interface HomeQuestion {
 export function todayHomeQuestions(
   payload: unknown,
   now = new Date(),
+  language: OrbitLanguage = "zh",
 ): readonly HomeQuestion[] {
+  const t = createTranslator(language);
   const root = isRecord(payload) ? payload : {};
   const tasks = (Array.isArray(root.tasks) ? root.tasks : [])
     .map(taskFrom)
@@ -349,20 +372,22 @@ export function todayHomeQuestions(
     item.state === "upcoming" && Date.parse(item.startsAt) > now.getTime());
   const followup = tasks.some((task) => task.category === "relationship");
   const primary: HomeQuestion = urgent
-    ? { kind: "tasks", label: "今天先处理哪些事？" }
+    ? { kind: "tasks", label: t("todayVm.questionTasks") }
     : preparation
-      ? { kind: "preparation", label: "接下来的会面或活动，该准备什么？" }
+      ? { kind: "preparation", label: t("todayVm.questionPreparation") }
       : followup
-        ? { kind: "followup", label: "哪些人值得先跟进？" }
-        : { kind: "tasks", label: "今天先处理哪些事？" };
+        ? { kind: "followup", label: t("todayVm.questionFollowup") }
+        : { kind: "tasks", label: t("todayVm.questionTasks") };
 
-  return [primary, { kind: "discovery", label: "最近有哪些活动适合我？" }];
+  return [primary, { kind: "discovery", label: t("todayVm.questionDiscovery") }];
 }
 
 export function tasksToListView(
   payload: unknown,
   view: "open" | "completed",
   now = new Date(),
+  timeZone = "Asia/Tokyo",
+  language: OrbitLanguage = "zh",
 ) {
   const root = isRecord(payload) ? payload : {};
   const tasks = Array.isArray(root.tasks)
@@ -382,43 +407,45 @@ export function tasksToListView(
       return view === "completed" ? rightTime - leftTime : leftTime - rightTime;
     })
     .map((item) => ({
-      ...taskRow(item, now),
+      ...taskRow(item, now, timeZone, language),
       ...(item.notes ? { notes: item.notes } : {}),
       ...(item.plannedDate ? { plannedDate: item.plannedDate } : {}),
       ...(item.dueAt ? { dueAt: item.dueAt } : {}),
       status: item.status,
       dateLabel: item.completedAt
-        ? dateTimeLabel(item.completedAt)
+        ? dateTimeLabel(item.completedAt, timeZone, language)
         : item.dueAt
-          ? dateTimeLabel(item.dueAt)
+          ? dateTimeLabel(item.dueAt, timeZone, language)
           : item.plannedDate
-            ? dateLabel(item.plannedDate)
-            : "未安排日期",
+            ? dateLabel(item.plannedDate, language)
+            : createTranslator(language)("todayVm.unplanned"),
       updatedAt: item.updatedAt,
     }));
   return { items, view };
 }
 
-export function taskDetailToView(payload: unknown): TaskDetailView | null {
+export function taskDetailToView(payload: unknown, language: OrbitLanguage = "zh"): TaskDetailView | null {
   const root = isRecord(payload) ? payload : {};
   const task = taskFrom(root.task);
   if (!task) return null;
+  const t = createTranslator(language);
   const sourceLabels: Record<TaskItemContract["source"], string> = {
-    manual: "手动创建", ai_confirmed: "IORBIT 确认", contact: "人脉", event: "活动", inbox: "收件箱",
+    manual: t("todayVm.sourceManual"), ai_confirmed: t("todayVm.sourceAi"), contact: t("todayVm.sourceContact"), event: t("todayVm.sourceEvent"), inbox: t("todayVm.sourceInbox"),
   };
   return {
     id: task.id,
     title: task.title,
     notes: task.notes ?? "",
+    ...(text(task.location) ? { location: text(task.location)! } : {}),
     status: task.status,
     statusLabel:
       task.status === "completed"
-        ? "已完成"
+        ? t("todayVm.statusCompleted")
         : task.status === "cancelled"
-          ? "已取消"
-          : "待办",
+          ? t("todayVm.cancelled")
+          : t("todayVm.statusOpen"),
     category: task.category,
-    categoryLabel: categoryLabels[task.category],
+    categoryLabel: t(categoryLabelKeys[task.category]),
     ...(task.plannedDate ? { plannedDate: task.plannedDate } : {}),
     ...(task.dueAt ? { dueAt: task.dueAt } : {}),
     ...(text(task.createdAt) && Number.isFinite(Date.parse(task.createdAt)) ? { createdAt: task.createdAt } : {}),
@@ -433,27 +460,48 @@ export function taskDetailToView(payload: unknown): TaskDetailView | null {
   };
 }
 
-const activityLabels: Readonly<Record<string, string>> = {
-  created: "创建待办",
-  updated: "修改待办",
-  rescheduled: "调整日期",
-  completed: "完成待办",
-  reopened: "恢复待办",
-  cancelled: "取消待办",
-  deleted: "删除待办",
+export function ownedTaskDetailToView(
+  payload: unknown,
+  actorId: string,
+  language: OrbitLanguage = "zh"
+): TaskDetailView | null {
+  const root = isRecord(payload) ? payload : {};
+  const task = isRecord(root.task) ? root.task : null;
+  const owner = actorId.trim();
+
+  if (
+    !task ||
+    !owner ||
+    task.accountId !== owner ||
+    task.ownerUserId !== owner
+  ) {
+    return null;
+  }
+
+  return taskDetailToView(payload, language);
+}
+
+const activityLabelKeys: Readonly<Record<string, MessageKey>> = {
+  created: "todayVm.activityCreated",
+  updated: "todayVm.activityUpdated",
+  rescheduled: "todayVm.activityRescheduled",
+  completed: "todayVm.activityCompleted",
+  reopened: "todayVm.activityReopened",
+  cancelled: "todayVm.activityCancelled",
+  deleted: "todayVm.activityDeleted",
 };
 
-export function taskActivitiesToView(payload: unknown): TaskActivityView[] {
+export function taskActivitiesToView(payload: unknown, timeZone = "Asia/Tokyo", language: OrbitLanguage = "zh"): TaskActivityView[] {
   const root = isRecord(payload) ? payload : {};
   if (!Array.isArray(root.activities)) return [];
   return root.activities.flatMap((value): TaskActivityView[] => {
     if (!isRecord(value)) return [];
     const id = text(value.id);
     const occurredAt = text(value.occurredAt);
-    const label = activityLabels[String(value.type)];
-    if (!id || !occurredAt || !label || !Number.isFinite(Date.parse(occurredAt))) {
+    const labelKey = activityLabelKeys[String(value.type)];
+    if (!id || !occurredAt || !labelKey || !Number.isFinite(Date.parse(occurredAt))) {
       return [];
     }
-    return [{ id, label, dateLabel: dateTimeLabel(occurredAt) }];
+    return [{ id, label: createTranslator(language)(labelKey), dateLabel: dateTimeLabel(occurredAt, timeZone, language) }];
   });
 }

@@ -26,6 +26,7 @@ const resetConversation = () => {
 const moduleLoader = Module as unknown as { _load: (name: string, ...args: unknown[]) => unknown };
 const originalLoad = moduleLoader._load;
 moduleLoader._load = (name, ...args) => {
+  if (name === "expo-crypto") return { randomUUID: () => "reading-test-request-id" };
   if (name === "expo-router") return {
     useLocalSearchParams: () => ({ id: "reading-test" }),
     useRouter: () => ({ push() {}, replace() {}, canGoBack: () => true }),

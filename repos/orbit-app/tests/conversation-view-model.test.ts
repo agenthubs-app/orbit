@@ -496,7 +496,7 @@ test("conversationInlinePanelsForThread opens a followups panel for follow-up qu
 
   assert.deepEqual(conversationInlinePanelsForThread(thread), [
     {
-      actionHref: "/followups",
+      actionHref: "/tasks",
       actionLabel: "查看全部待办",
       detail: "根据你的问题，先把今天的待办放在对话里。",
       kind: "followups",
@@ -625,7 +625,7 @@ test("conversationQuickRoutes keeps bottom AI shortcuts stable", () => {
     [
       ["/events", "活动"],
       ["/contacts", "人脉"],
-      ["/followups", "待办"],
+      ["/tasks", "待办"],
       ["/schedule", "日程"],
       ["/profile", "档案"]
     ]

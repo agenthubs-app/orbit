@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { zh } from "../src/i18n/zh";
 
 const repoRoot = new URL("..", import.meta.url).pathname;
 const screenSource = readFileSync(
@@ -12,7 +13,8 @@ const screenSource = readFileSync(
 test("profile screen loads sourced profile update suggestions", () => {
   assert.match(screenSource, /profileUpdateSuggestions/u);
   assert.match(screenSource, /profileUpdateSuggestionsToView/u);
-  assert.match(screenSource, /title="资料更新建议"/u);
+  assert.match(screenSource, /profile\.suggestionsTitle/u);
+  assert.equal(zh["profile.suggestionsTitle"], "资料更新建议");
 });
 
 test("profile screen can confirm profile update suggestions through the API", () => {
@@ -25,7 +27,8 @@ test("profile screen can confirm profile update suggestions through the API", ()
   assert.match(screenSource, /profileUpdateSuggestionAcceptPath/u);
   assert.match(screenSource, /\.post<unknown>\(/u);
   assert.match(screenSource, /onAcceptSuggestion/u);
-  assert.match(screenSource, /确认建议/u);
+  assert.match(screenSource, /profile\.confirmSuggestion/u);
+  assert.equal(zh["profile.confirmSuggestion"], "确认建议");
   assert.match(screenSource, /profileAcceptedPatchToView/u);
   // Real patch application and supported fields are exercised through the
   // HTTP route in ink-signal-profile.test.ts, not tied to the former VM helper.
@@ -40,13 +43,15 @@ test("profile screen can confirm profile update suggestions through the API", ()
   );
 });
 
-test("profile screen can save manual public profile edits through the API", () => {
+test("profile screen can save manual and private profile edits through the API", () => {
   assert.match(screenSource, /TextInput/u);
   assert.match(screenSource, /profileSummaryToEditDraft/u);
   assert.match(screenSource, /buildProfileUpdateRequest/u);
   assert.match(screenSource, /\.put<unknown>\(\s*ORBIT_API_ENDPOINTS\.profile/u);
-  assert.match(screenSource, /编辑对外资料/u);
-  assert.match(screenSource, /保存资料/u);
+  assert.match(screenSource, /locale\.t\("profile\.editTitle"\)/u);
+  assert.match(screenSource, /locale\.t\("profile\.save"\)/u);
+  assert.equal(zh["profile.editTitle"], "编辑个人资料");
+  assert.equal(zh["profile.save"], "保存资料");
 });
 
 test("profile editor preserves field labels for assistive technology", () => {
@@ -86,10 +91,13 @@ test("profile screen can extract profile drafts from pasted card or resume text"
   assert.match(screenSource, /profileDocumentExtractionToView/u);
   assert.match(screenSource, /onExtractProfileDocument/u);
   assert.match(screenSource, /\.post<unknown>\(\s*request\.endpoint/u);
-  assert.match(screenSource, /补全资料/u);
-  assert.match(screenSource, /提取名片/u);
-  assert.match(screenSource, /提取简历/u);
-  assert.match(screenSource, /提取结果只用于复核/u);
+  assert.match(screenSource, /profile\.extractionTitle/u);
+  assert.match(screenSource, /profile\.extractCard/u);
+  assert.match(screenSource, /profile\.extractResume/u);
+  assert.match(screenSource, /profile\.extractionDetail/u);
+  assert.equal(zh["profile.extractionTitle"], "补全资料");
+  assert.equal(zh["profile.extractCard"], "提取名片");
+  assert.equal(zh["profile.extractResume"], "提取简历");
 });
 
 test("profile screen can choose profile document images for extraction review", () => {
@@ -99,8 +107,8 @@ test("profile screen can choose profile document images for extraction review", 
   assert.match(screenSource, /mediaTypes: \["images"\]/u);
   assert.match(screenSource, /fileName:[\s\S]*asset\.fileName/u);
   assert.match(screenSource, /mimeType:[\s\S]*asset\.mimeType/u);
-  assert.match(screenSource, /选择名片图片/u);
-  assert.match(screenSource, /选择简历图片/u);
+  assert.match(screenSource, /profile\.chooseCardImage/u);
+  assert.match(screenSource, /profile\.chooseResumeImage/u);
 });
 
 test("profile screen can choose resume documents for extraction review", () => {
@@ -115,7 +123,7 @@ test("profile screen can choose resume documents for extraction review", () => {
   assert.match(screenSource, /text\/plain/u);
   assert.match(screenSource, /fileName:[\s\S]*asset\.name/u);
   assert.match(screenSource, /mimeType:[\s\S]*asset\.mimeType/u);
-  assert.match(screenSource, /选择简历文件/u);
+  assert.match(screenSource, /profile\.chooseResumeFile/u);
 });
 
 test("profile screen can apply extracted fields to the manual editor before saving", () => {
@@ -128,8 +136,10 @@ test("profile screen can apply extracted fields to the manual editor before savi
   // and the absence of an implicit PUT before the separate save action.
   assert.match(screenSource, /appliedProfileExtraction/u);
   assert.match(screenSource, /onApplyExtraction/u);
-  assert.match(screenSource, /应用到编辑表单/u);
-  assert.match(screenSource, /提取结果已放进编辑表单。检查后保存资料。/u);
+  assert.match(screenSource, /profile\.applyExtraction/u);
+  assert.equal(zh["profile.applyExtraction"], "应用到编辑表单");
+  assert.match(screenSource, /locale\.t\("profile\.extractionApplied"\)/u);
+  assert.equal(zh["profile.extractionApplied"], "提取结果已放进编辑表单。检查后保存资料。");
   assert.match(screenSource, /ProfileDocumentExtractionResult/u);
   assert.match(screenSource, /ProfileManualEditCard/u);
   assert.doesNotMatch(
@@ -152,9 +162,10 @@ test("profile signed-out gate gives a visible login action", () => {
   );
 
   assert.match(signedOutSlice, /Pressable/u);
-  assert.match(signedOutSlice, /accessibilityLabel="登录查看个人资料"/u);
+  assert.match(signedOutSlice, /accessibilityLabel=\{locale\.t\("profile\.login"\)\}/u);
   assert.match(signedOutSlice, /accessibilityRole="button"/u);
-  assert.match(signedOutSlice, /登录查看个人资料/u);
+  assert.match(signedOutSlice, /locale\.t\("profile\.login"\)/u);
+  assert.equal(zh["profile.login"], "登录查看个人资料");
   assert.match(
     signedOutSlice,
     /router\.push\("\/account\/login\?next=%2Fprofile" as Href\)/u
@@ -167,8 +178,10 @@ test("profile signed-out state does not render any person's profile", () => {
     screenSource.indexOf("auth.signedIn && state.kind === \"loading\"")
   );
 
-  assert.match(signedOutSlice, /title="登录后查看个人资料"/u);
-  assert.match(signedOutSlice, /Orbit 不会展示任何人的资料/u);
+  assert.match(signedOutSlice, /title=\{locale\.t\("profile\.signedOutTitle"\)\}/u);
+  assert.match(signedOutSlice, /locale\.t\("profile\.signedOutDetail"\)/u);
+  assert.equal(zh["profile.signedOutTitle"], "登录后查看个人资料");
+  assert.match(zh["profile.signedOutDetail"], /Orbit 不会展示任何人的资料/u);
   assert.doesNotMatch(screenSource, /function SignedOutProfilePreview/u);
   assert.doesNotMatch(signedOutSlice, /<SignedOutProfilePreview/u);
   assert.doesNotMatch(screenSource, /profileToSummary\(null\)/u);

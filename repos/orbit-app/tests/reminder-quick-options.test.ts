@@ -36,3 +36,9 @@ test("reminder plans become concise task-detail rows", () => {
   }] });
   assert.deepEqual(rows, [{ id: "reminder:one", label: "8月30日 09:00", status: "scheduled" }]);
 });
+
+test("device-local reminder choices cross DST using local calendar dates", () => {
+  const options = reminderQuickOptions(new Date("2026-03-07T17:00:00Z"), "America/New_York");
+  assert.equal(options.find(o => o.label === "明天 09:00")?.fireAt, "2026-03-08T13:00:00.000Z");
+  assert.equal(reminderPlansToView({ reminders: [{ id: "r", fireAt: "2026-09-14T00:30:00Z", status: "scheduled" }] }, "America/Los_Angeles")[0]?.label, "9月13日 17:30");
+});

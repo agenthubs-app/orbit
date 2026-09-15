@@ -9,6 +9,7 @@ import { createThemedStyles } from "../../design/theme";
 import { radius, spacing, typography } from "../../design/tokens";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useApiResource } from "../../hooks/useApiResource";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { noteDraftStorage } from "../../storage/note-draft-storage";
 import { contactsToSummaries, type ContactSummary } from "../../view-models/contacts";
 import { eventsToSummaries } from "../../view-models/events";
@@ -24,6 +25,7 @@ export function NewNoteScreen({ actorId, draftServer = "local", scopeKey, isScop
   const params = useLocalSearchParams<{ contactId?: string | string[] }>();
   const initialContactId = (Array.isArray(params.contactId) ? params.contactId[0] : params.contactId)?.trim();
   const client = useOrbitApiClient({ scopeKey });
+  const locale = useOrbitLocale();
   const eventsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.events, () => false, { scopeKey });
   const events = eventsState.kind === "success" || eventsState.kind === "empty" ? eventsToSummaries(eventsState.data) : [];
   const [title, setTitle] = useState("");
@@ -45,20 +47,20 @@ export function NewNoteScreen({ actorId, draftServer = "local", scopeKey, isScop
     let active = true;
     void noteDraftStorage.load({ accountId: actorId, server: draftServer }).then((stored) => {
       if (!active || !stored) return;
-      setTitle(stored.title); setDraft(stored.body); setSelectedIds([...new Set([...stored.manualContactIds, ...(initialContactId ? [initialContactId] : [])])]); setMentions([...stored.mentions]); setEventIds([...stored.eventIds]); setDraftStatus("已恢复草稿");
+      setTitle(stored.title); setDraft(stored.body); setSelectedIds([...new Set([...stored.manualContactIds, ...(initialContactId ? [initialContactId] : [])])]); setMentions([...stored.mentions]); setEventIds([...stored.eventIds]); setDraftStatus(locale.t("notes.restoredDraft"));
     });
     return () => { active = false; };
-  }, [actorId, draftServer]);
+  }, [actorId, draftServer, initialContactId, locale]);
   useEffect(() => {
     if (!title && !draft && selectedIds.length === 0 && mentions.length === 0 && eventIds.length === 0) return;
     const timer = setTimeout(() => {
-      setDraftStatus("正在自动保存…");
+      setDraftStatus(locale.t("notes.autosaving"));
       void noteDraftStorage.save({ accountId: actorId, server: draftServer }, { title, body: draft, manualContactIds: selectedIds, mentions, eventIds, savedAt: new Date().toISOString() })
-        .then(() => { if (mounted.current) setDraftStatus("已自动保存"); })
-        .catch(() => { if (mounted.current) setDraftStatus("自动保存失败，请手动保存笔记"); });
+        .then(() => { if (mounted.current) setDraftStatus(locale.t("notes.autosaved")); })
+        .catch(() => { if (mounted.current) setDraftStatus(locale.t("notes.autosaveFailed")); });
     }, 500);
     return () => clearTimeout(timer);
-  }, [actorId, draft, draftServer, eventIds, mentions, selectedIds, title]);
+  }, [actorId, draft, draftServer, eventIds, locale, mentions, selectedIds, title]);
   const owns = () => mounted.current && isScopeCurrent();
   const change = (value: string) => { setDraft(value); setError(""); };
   const toggle = (id: string, contact?: ContactSummary) => {
@@ -68,13 +70,13 @@ export function NewNoteScreen({ actorId, draftServer = "local", scopeKey, isScop
   };
   const searchContacts = useCallback(async (query: string, cursor: string | undefined, signal: AbortSignal) => {
     const result = await client.post<unknown>(ORBIT_API_ENDPOINTS.contactsSearch, { body: { query, limit: 20, ...(cursor ? { cursor } : {}) }, signal });
-    if (!result.success || result.status < 200 || result.status >= 300) throw new Error(result.success ? "搜索暂时不可用，请重试。" : result.error.message);
+    if (!result.success || result.status < 200 || result.status >= 300) throw new Error(result.success ? locale.t("notes.searchUnavailable") : result.error.message);
     const contacts = contactsToSummaries(result.data);
     const nextCursor = typeof result.data === "object" && result.data !== null && !Array.isArray(result.data) && typeof (result.data as Record<string, unknown>).nextCursor === "string"
       ? (result.data as Record<string, unknown>).nextCursor as string
       : undefined;
     return { contacts, ...(nextCursor ? { nextCursor } : {}) };
-  }, [client]);
+  }, [client, locale]);
 
   const draftScope = { accountId: actorId, server: draftServer };
   const initialIds = initialContactId ? [initialContactId] : [];
@@ -85,7 +87,7 @@ export function NewNoteScreen({ actorId, draftServer = "local", scopeKey, isScop
       await noteDraftStorage.save(draftScope, { title, body: draft, manualContactIds: selectedIds, mentions, eventIds, savedAt: new Date().toISOString() });
       if (owns()) router.back();
     } catch {
-      if (owns()) { setShowExitPrompt(false); setError("草稿未能保存，请继续编辑或稍后重试。"); }
+      if (owns()) { setShowExitPrompt(false); setError(locale.t("notes.draftSaveFailed")); }
     }
   }
   async function discardAndExit() {
@@ -95,36 +97,36 @@ export function NewNoteScreen({ actorId, draftServer = "local", scopeKey, isScop
 
   async function save() {
     if (!owns() || pending) return;
-    const request = buildRichNoteCreateRequest({ title, body: draft, manualContactIds: selectedIds, mentions, eventIds }, idempotencyKey.current);
+    const request = buildRichNoteCreateRequest({ title, body: draft, manualContactIds: selectedIds, mentions, eventIds }, idempotencyKey.current, locale.language);
     if (!request.success) { setError(request.error); return; }
     const operation = new AbortController(); controller.current = operation; setPending(true); setError("");
     const result = await client.post<unknown>(ORBIT_API_ENDPOINTS.notes, { body: request.body, signal: operation.signal });
     if (!owns() || operation.signal.aborted) return;
     const note = result.success && result.status >= 200 && result.status < 300
-      ? confirmedNote(result.data, { actorId, title: request.body.title, body: request.body.body, manualContactIds: request.body.manualContactIds, mentions: request.body.mentions, contactIds: [...request.body.manualContactIds, ...request.body.mentions.map((item) => item.contactId)], eventIds: request.body.eventIds }) : null;
+      ? confirmedNote(result.data, { actorId, title: request.body.title, body: request.body.body, manualContactIds: request.body.manualContactIds, mentions: request.body.mentions, contactIds: [...request.body.manualContactIds, ...request.body.mentions.map((item) => item.contactId)], eventIds: request.body.eventIds }, locale.language) : null;
     if (note) { await noteDraftStorage.clear(draftScope); router.replace(`/notes/${encodeURIComponent(note.id)}`); }
-    else { setError(result.success ? "尚未确认笔记已保存，内容已保留，请重试。" : result.error.message); setPending(false); }
+    else { setError(result.success ? locale.t("notes.createUnconfirmed") : result.error.message); setPending(false); }
     if (controller.current === operation) controller.current = null;
   }
 
   const saveDisabled = pending || !title.trim() || !draft.trim();
-  return <AppScreen title="新建笔记" headerActions={<View style={styles.headerActions}><Pressable accessibilityRole="button" accessibilityLabel="取消新建笔记" disabled={pending} onPress={() => hasChanges ? setShowExitPrompt(true) : router.back()} style={styles.cancel}><Text style={styles.cancelText}>取消</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={pending ? "保存中" : "保存笔记"} accessibilityState={{ disabled: saveDisabled }} disabled={saveDisabled} onPress={() => { void save(); }} style={styles.headerSave}><Text style={[styles.headerSaveText, saveDisabled && styles.headerSaveDisabled]}>{pending ? "保存中" : "保存"}</Text></Pressable></View>}>
+  return <AppScreen title={locale.t("notes.new")} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")} headerActions={<View style={styles.headerActions}><Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.cancelNew")} disabled={pending} onPress={() => hasChanges ? setShowExitPrompt(true) : router.back()} style={styles.cancel}><Text style={styles.cancelText}>{locale.t("common.cancel")}</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={locale.t(pending ? "notes.saving" : "notes.saveNote")} accessibilityState={{ disabled: saveDisabled }} disabled={saveDisabled} onPress={() => { void save(); }} style={styles.headerSave}><Text style={[styles.headerSaveText, saveDisabled && styles.headerSaveDisabled]}>{locale.t(pending ? "notes.saving" : "notes.save")}</Text></Pressable></View>}>
     {showExitPrompt ? <View accessibilityRole="alert" style={styles.exitPrompt}>
-      <Text style={styles.exitTitle}>保留这份草稿吗？</Text><Text style={styles.exitText}>可以保留后退出、放弃草稿，或继续编辑。</Text>
+      <Text style={styles.exitTitle}>{locale.t("notes.keepDraftTitle")}</Text><Text style={styles.exitText}>{locale.t("notes.keepDraftBody")}</Text>
       <View style={styles.exitActions}>
-        <Pressable accessibilityRole="button" accessibilityLabel="继续编辑笔记" onPress={() => setShowExitPrompt(false)} style={styles.exitButton}><Text style={styles.cancelText}>继续编辑</Text></Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel="放弃笔记草稿" onPress={() => { void discardAndExit(); }} style={styles.exitButton}><Text style={styles.destructiveText}>放弃</Text></Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel="保留笔记草稿并退出" onPress={() => { void preserveAndExit(); }} style={styles.exitPrimary}><Text style={styles.saveText}>保留并退出</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.continueEditing")} onPress={() => setShowExitPrompt(false)} style={styles.exitButton}><Text style={styles.cancelText}>{locale.t("notes.continueEditing")}</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.discard")} onPress={() => { void discardAndExit(); }} style={styles.exitButton}><Text style={styles.destructiveText}>{locale.t("notes.discard")}</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.keepAndExit")} onPress={() => { void preserveAndExit(); }} style={styles.exitPrimary}><Text style={styles.saveText}>{locale.t("notes.keepAndExit")}</Text></Pressable>
       </View>
     </View> : null}
     <View style={styles.paper}>
-      <TextInput accessibilityLabel="笔记标题" editable={!pending} maxLength={200} onChangeText={(value) => { setTitle(value); setError(""); }} placeholder="标题" placeholderTextColor={styles.placeholder.color} style={styles.titleInput} value={title} />
+      <TextInput accessibilityLabel={locale.t("notes.noteTitle")} editable={!pending} maxLength={200} onChangeText={(value) => { setTitle(value); setError(""); }} placeholder={locale.t("notes.noteTitle")} placeholderTextColor={styles.placeholder.color} style={styles.titleInput} value={title} />
       <View style={styles.rule} />
       <NoteMentionEditor body={draft} disabled={pending} mentions={mentions} onChange={(value, nextMentions) => { change(value); setMentions([...nextMentions]); }} search={searchContacts} />
     </View>
     <NoteContactPicker disabled={pending} search={searchContacts} selectedContacts={selectedContacts} selectedIds={selectedIds} onToggle={toggle} />
     <NoteEventPicker disabled={pending} events={events} selectedIds={eventIds} onToggle={(id) => setEventIds((items) => items.includes(id) ? items.filter((item) => item !== id) : [...items, id])} />
-    {draftStatus ? <Text accessibilityLiveRegion="polite" style={draftStatus.startsWith("自动保存失败") ? styles.error : styles.draftStatus}>{draftStatus}</Text> : null}
+    {draftStatus ? <Text accessibilityLiveRegion="polite" style={draftStatus === locale.t("notes.autosaveFailed") ? styles.error : styles.draftStatus}>{draftStatus}</Text> : null}
     {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
   </AppScreen>;
 }

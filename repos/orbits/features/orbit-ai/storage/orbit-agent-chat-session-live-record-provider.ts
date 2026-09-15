@@ -1,3 +1,7 @@
+import { createHash } from "node:crypto";
+
+import { aiSessionOriginSchema } from "../../../shared/api-schema/ai-sessions";
+import type { AiSessionEntryPointId, AiSessionOriginContract, AiSessionReferenceContract, StoredAiSessionOriginContract } from "../../../shared/contract/ai-sessions";
 import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
 import {
   resolveLiveDatabaseConnectionConfig,
@@ -17,15 +21,45 @@ export type OrbitAgentChatSessionMessageRole = "assistant" | "user";
 
 export interface OrbitAgentChatSessionMessage
   extends Record<string, unknown> {
+  id?: string;
+  references?: readonly AiSessionReferenceContract[];
   role: OrbitAgentChatSessionMessageRole;
   text: string;
+}
+
+export class OrbitAgentChatSessionWriteError extends Error {
+  constructor(
+    readonly code:
+      | "SESSION_DELETED"
+      | "SESSION_MESSAGE_REFERENCES_IMMUTABLE"
+      | "SESSION_ORIGIN_IMMUTABLE"
+      | "SESSION_SNAPSHOT_STALE",
+  ) {
+    super(
+      code === "SESSION_DELETED"
+        ? "Deleted session cannot be restored by a late save"
+        : code === "SESSION_MESSAGE_REFERENCES_IMMUTABLE"
+          ? "Saved message references are immutable"
+        : code === "SESSION_ORIGIN_IMMUTABLE"
+          ? "Session origin is immutable after the first saved message"
+        : "Stale session snapshot cannot replace newer history",
+    );
+  }
 }
 
 export interface OrbitAgentChatSessionSnapshot {
   createdAt: string;
   customTitle?: string;
   id: string;
+  messageRevision?: number;
   messages: readonly OrbitAgentChatSessionMessage[];
+  organization?: {
+    customTitle: string | null;
+    groupId: string | null;
+    pinned: boolean;
+    revision: number;
+  };
+  origin?: StoredAiSessionOriginContract | undefined;
   panel?: Record<string, unknown> | null;
   pinned?: boolean;
   title: string;
@@ -42,8 +76,15 @@ export interface OrbitAgentChatSessionProvider {
   listSessions: (options?: {
     limit?: number;
   }) => Promise<readonly OrbitAgentChatSessionSnapshot[]>;
+  listSessionsByEntryPoint: (entryPointId: AiSessionEntryPointId) => Promise<
+    readonly OrbitAgentChatSessionSnapshot[]
+  >;
   upsertSession: (
     session: OrbitAgentChatSessionSnapshot,
+  ) => Promise<OrbitAgentChatSessionSnapshot>;
+  upsertVerifiedAnalysisSession: (
+    session: OrbitAgentChatSessionSnapshot,
+    verification: NonNullable<AiSessionOriginContract["verification"]>,
   ) => Promise<OrbitAgentChatSessionSnapshot>;
 }
 
@@ -61,7 +102,6 @@ export interface ConfiguredStorageOrbitAgentChatSessionProviderOptions {
   sourceLabel?: string;
 }
 
-const MAX_SESSION_MESSAGES = 100;
 const MAX_MESSAGE_TEXT_LENGTH = 12000;
 const MAX_SESSION_TITLE_LENGTH = 120;
 const DEFAULT_SESSION_LIST_LIMIT = 12;
@@ -124,8 +164,16 @@ function normalizeMessage(
     return null;
   }
 
+  const references: AiSessionReferenceContract[] = Array.isArray(value.references)
+    ? value.references.flatMap((reference) => isRecord(reference)
+      && (reference.type === "contact" || reference.type === "event" || reference.type === "note")
+      && nonEmptyString(reference.id)
+        ? [{ id: reference.id.trim().slice(0, 160), type: reference.type as AiSessionReferenceContract["type"] }]
+        : []).slice(0, 20)
+    : [];
   return {
     ...cloneJson(value),
+    ...(references.length ? { references } : {}),
     role: value.role,
     text,
   };
@@ -154,6 +202,13 @@ export function normalizeOrbitAgentChatSessionSnapshot(
         return normalized ? [normalized] : [];
       })
     : [];
+  const messageRevision =
+    typeof value.messageRevision === "number" &&
+    Number.isSafeInteger(value.messageRevision) &&
+    value.messageRevision >= messages.length
+      ? value.messageRevision
+      : messages.length;
+  const parsedOrigin = aiSessionOriginSchema.safeParse(value.origin);
 
   if (!id || !title || !updatedAt || messages.length === 0) {
     return null;
@@ -163,7 +218,9 @@ export function normalizeOrbitAgentChatSessionSnapshot(
     createdAt: createdAt || updatedAt,
     customTitle: customTitle || undefined,
     id,
-    messages: messages.slice(-MAX_SESSION_MESSAGES),
+    messageRevision,
+    messages,
+    origin: parsedOrigin.success ? cloneJson(parsedOrigin.data) : undefined,
     panel: isRecord(value.panel) ? cloneJson(value.panel) : null,
     pinned: value.pinned === true,
     title,
@@ -171,8 +228,16 @@ export function normalizeOrbitAgentChatSessionSnapshot(
   };
 }
 
-function messageRecordId(sessionId: string, index: number): string {
-  return `${safeIdPart(sessionId)}:${String(index).padStart(4, "0")}`;
+function messageRecordId(
+  sessionId: string,
+  message: OrbitAgentChatSessionMessage,
+  index: number,
+): string {
+  const identity = message.id?.trim() || `legacy-index:${index}`;
+  const digest = createHash("sha256")
+    .update(JSON.stringify([sessionId, identity]))
+    .digest("hex");
+  return `${safeIdPart(sessionId)}:${digest}`;
 }
 
 function sourceIdFor(kind: "message" | "session", id: string): string {
@@ -199,6 +264,9 @@ function searchTextForSession(
   session: OrbitAgentChatSessionSnapshot,
 ): string {
   return [
+    session.origin && session.origin.entryClient !== "unknown"
+      ? `orbit-origin-entry-point:${session.origin.entryPointId}`
+      : null,
     session.id,
     session.title,
     session.customTitle,
@@ -231,6 +299,8 @@ function sessionRecord(input: {
       id: session.id,
       lastMessagePreview: lastMessagePreview(session.messages),
       messageCount: session.messages.length,
+      messageRevision: session.messageRevision ?? session.messages.length,
+      origin: session.origin ?? null,
       panel: session.panel ?? null,
       pinned: session.pinned === true,
       title: session.title,
@@ -258,7 +328,7 @@ function messageRecord(input: {
   sourceLabel: string;
   workspaceId: string;
 }): LiveRecord<Record<string, unknown>> {
-  const recordId = messageRecordId(input.session.id, input.index);
+  const recordId = messageRecordId(input.session.id, input.message, input.index);
 
   return {
     collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.messages,
@@ -344,16 +414,37 @@ async function sessionFromRecord(
     : record.updatedAt;
   const messages = await readMessages(store, workspaceId, id);
 
-  return normalizeOrbitAgentChatSessionSnapshot({
+  const normalized = normalizeOrbitAgentChatSessionSnapshot({
     createdAt,
     customTitle,
     id,
+    messageRevision: payload.messageRevision,
     messages,
+    origin: payload.origin,
     panel: isRecord(payload.panel) ? payload.panel : null,
     pinned: payload.pinned === true,
     title,
     updatedAt,
   });
+  return normalized
+    ? {
+        ...normalized,
+        origin:
+          normalized.origin ??
+          {
+            entryClient: "unknown",
+            entryPointId: "legacy.unknown",
+            firstSentText: null,
+            firstUserMessageId: null,
+            initialGroupId: null,
+            kind: "legacy_unknown",
+            recordedAt: null,
+            references: [],
+            schemaVersion: 1,
+            template: null,
+          },
+      }
+    : null;
 }
 
 export function createStorageOrbitAgentChatSessionProvider({
@@ -368,6 +459,115 @@ export function createStorageOrbitAgentChatSessionProvider({
     actorId,
   );
 
+  async function persistSession(
+    sessionInput: OrbitAgentChatSessionSnapshot,
+    trustedVerification?: NonNullable<AiSessionOriginContract["verification"]>,
+  ): Promise<OrbitAgentChatSessionSnapshot> {
+    let session = normalizeOrbitAgentChatSessionSnapshot(sessionInput);
+    if (!session) throw new Error("Invalid Orbit Agent chat session snapshot");
+
+    const existingSession = await store.getRecord({
+      collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
+      includeDeleted: true,
+      recordId: session.id,
+      workspaceId: actorWorkspaceId,
+    });
+    if (existingSession?.lifecycleState === "deleted") {
+      throw new OrbitAgentChatSessionWriteError("SESSION_DELETED");
+    }
+    const existingSnapshot = existingSession
+      ? await sessionFromRecord(store, actorWorkspaceId, existingSession)
+      : null;
+    const existingVerification = existingSnapshot?.origin?.entryClient !== "unknown"
+      ? existingSnapshot?.origin?.verification
+      : undefined;
+    const requestedVerification = session.origin?.entryClient !== "unknown"
+      ? session.origin?.verification
+      : undefined;
+    if (requestedVerification && !existingVerification && !trustedVerification) {
+      throw new OrbitAgentChatSessionWriteError("SESSION_ORIGIN_IMMUTABLE");
+    }
+    if (trustedVerification) {
+      if (
+        !existingSnapshot?.origin ||
+        existingSnapshot.origin.entryClient === "unknown" ||
+        existingSnapshot.origin.entryPointId !== "contacts.analysis" ||
+        existingSnapshot.origin.sourceDataVersion !== trustedVerification.sourceDataVersion ||
+        session.messages.length !== 2 ||
+        session.messages[0]?.role !== "user" ||
+        session.messages[0]?.id !== existingSnapshot.origin.firstUserMessageId ||
+        session.messages[1]?.role !== "assistant"
+      ) {
+        throw new OrbitAgentChatSessionWriteError("SESSION_ORIGIN_IMMUTABLE");
+      }
+      session = {
+        ...session,
+        origin: { ...existingSnapshot.origin, verification: trustedVerification },
+      };
+    }
+    if (existingSnapshot?.origin && session.origin) {
+      const existingBase = existingSnapshot.origin.entryClient === "unknown"
+        ? existingSnapshot.origin
+        : { ...existingSnapshot.origin, verification: undefined };
+      const incomingBase = session.origin.entryClient === "unknown"
+        ? session.origin
+        : { ...session.origin, verification: undefined };
+      if (JSON.stringify(existingBase) !== JSON.stringify(incomingBase)) {
+        throw new OrbitAgentChatSessionWriteError("SESSION_ORIGIN_IMMUTABLE");
+      }
+    }
+    if (existingSnapshot?.origin && !trustedVerification) {
+      session = { ...session, origin: existingSnapshot.origin };
+    }
+    if (existingSnapshot) {
+      const existingMessagesById = new Map(existingSnapshot.messages
+        .flatMap((message) => message.id ? [[message.id, message] as const] : []));
+      session = {
+        ...session,
+        messages: session.messages.map((message) => {
+          const existingMessage = message.id ? existingMessagesById.get(message.id) : undefined;
+          if (!existingMessage?.references?.length) return message;
+          if (message.references?.length
+            && JSON.stringify(message.references) !== JSON.stringify(existingMessage.references)) {
+            throw new OrbitAgentChatSessionWriteError("SESSION_MESSAGE_REFERENCES_IMMUTABLE");
+          }
+          return { ...message, references: existingMessage.references.map(reference => ({ ...reference })) };
+        }),
+      };
+    }
+    if (
+      existingSnapshot &&
+      (session.updatedAt < existingSnapshot.updatedAt ||
+        session.messages.length < existingSnapshot.messages.length)
+    ) {
+      throw new OrbitAgentChatSessionWriteError("SESSION_SNAPSHOT_STALE");
+    }
+    const createdAt = existingSession?.createdAt ?? session.createdAt;
+    const writeSession = () => store.upsertRecord(sessionRecord({
+      createdAt, session, sourceLabel, workspaceId: actorWorkspaceId,
+    }));
+    const writeMessages = () => Promise.all(session.messages.map((message, index) => store.upsertRecord(messageRecord({
+      createdAt, index, message, session, sourceLabel, workspaceId: actorWorkspaceId,
+    }))));
+    if (trustedVerification) {
+      await writeMessages();
+      await writeSession();
+    } else {
+      await writeSession();
+      await writeMessages();
+    }
+    const restoredRecord = await store.getRecord({
+      collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
+      recordId: session.id,
+      workspaceId: actorWorkspaceId,
+    });
+    const restored = restoredRecord
+      ? await sessionFromRecord(store, actorWorkspaceId, restoredRecord)
+      : null;
+    if (!restored) throw new Error("Orbit Agent chat session upsert did not restore");
+    return restored;
+  }
+
   return {
     source:
       source ??
@@ -378,10 +578,11 @@ export function createStorageOrbitAgentChatSessionProvider({
       const deletedAt = new Date().toISOString();
       const activeSession = await store.getRecord({
         collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
+        includeDeleted: true,
         recordId: sessionId,
         workspaceId: actorWorkspaceId,
       });
-      const deletedSession = activeSession
+      const deletedSession = activeSession?.lifecycleState === "active"
         ? await store.deleteRecord({
             collectionName:
               ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
@@ -412,7 +613,7 @@ export function createStorageOrbitAgentChatSessionProvider({
         ),
       );
 
-      return Boolean(deletedSession);
+      return Boolean(activeSession ?? deletedSession);
     },
 
     async getSession(sessionId) {
@@ -430,7 +631,7 @@ export function createStorageOrbitAgentChatSessionProvider({
     async listSessions(options = {}) {
       const limit = Math.max(
         1,
-        Math.min(options.limit ?? DEFAULT_SESSION_LIST_LIMIT, 50),
+        Math.min(options.limit ?? DEFAULT_SESSION_LIST_LIMIT, 10_000),
       );
       const records = await store.listRecords({
         collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
@@ -453,89 +654,28 @@ export function createStorageOrbitAgentChatSessionProvider({
       return sessions.flatMap((session) => (session ? [session] : []));
     },
 
+    async listSessionsByEntryPoint(entryPointId) {
+      const records = await store.listRecords({
+        collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
+        searchText: `orbit-origin-entry-point:${entryPointId}`,
+        workspaceId: actorWorkspaceId,
+      });
+      const sessions = await Promise.all(
+        [...records]
+          .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+          .map((record) => sessionFromRecord(store, actorWorkspaceId, record)),
+      );
+      return sessions.flatMap((session) =>
+        session?.origin?.entryPointId === entryPointId ? [session] : [],
+      );
+    },
+
     async upsertSession(sessionInput) {
-      const session = normalizeOrbitAgentChatSessionSnapshot(sessionInput);
+      return persistSession(sessionInput);
+    },
 
-      if (!session) {
-        throw new Error("Invalid Orbit Agent chat session snapshot");
-      }
-
-      const existingSession = await store.getRecord({
-        collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
-        includeDeleted: true,
-        recordId: session.id,
-        workspaceId: actorWorkspaceId,
-      });
-      const createdAt = existingSession?.createdAt ?? session.createdAt;
-      const nextMessageRecordIds = new Set<string>();
-
-      await store.upsertRecord(
-        sessionRecord({
-          createdAt,
-          session,
-          sourceLabel,
-          workspaceId: actorWorkspaceId,
-        }),
-      );
-
-      await Promise.all(
-        session.messages.map((message, index) => {
-          const recordId = messageRecordId(session.id, index);
-          nextMessageRecordIds.add(recordId);
-
-          return store.upsertRecord(
-            messageRecord({
-              createdAt,
-              index,
-              message,
-              session,
-              sourceLabel,
-              workspaceId: actorWorkspaceId,
-            }),
-          );
-        }),
-      );
-
-      const existingMessages = await store.listRecords({
-        collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.messages,
-        includeDeleted: true,
-        targetId: session.id,
-        targetType: "conversation",
-        workspaceId: actorWorkspaceId,
-      });
-
-      await Promise.all(
-        existingMessages
-          .filter(
-            (message) =>
-              message.lifecycleState !== "deleted" &&
-              !nextMessageRecordIds.has(message.recordId),
-          )
-          .map((message) =>
-            store.deleteRecord({
-              collectionName:
-                ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.messages,
-              deletedAt: session.updatedAt,
-              recordId: message.recordId,
-              workspaceId: actorWorkspaceId,
-            }),
-          ),
-      );
-
-      const restoredRecord = await store.getRecord({
-        collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
-        recordId: session.id,
-        workspaceId: actorWorkspaceId,
-      });
-      const restored = restoredRecord
-        ? await sessionFromRecord(store, actorWorkspaceId, restoredRecord)
-        : null;
-
-      if (!restored) {
-        throw new Error("Orbit Agent chat session upsert did not restore");
-      }
-
-      return restored;
+    async upsertVerifiedAnalysisSession(sessionInput, verification) {
+      return persistSession(sessionInput, verification);
     },
   };
 }

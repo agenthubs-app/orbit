@@ -1,3 +1,4 @@
+import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
@@ -10,6 +11,7 @@ import { textStyles, radius, spacing, typography } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import {
   scheduleEventPreviewToView,
   type ScheduleEventPreviewAction,
@@ -25,6 +27,7 @@ function firstParam(value: string | string[] | undefined): string {
 }
 
 export function ScheduleEventPreviewScreen() {
+  const locale = useOrbitLocale();
   const { colors } = useOrbitTheme();
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const eventId = firstParam(id);
@@ -35,7 +38,9 @@ export function ScheduleEventPreviewScreen() {
 
   return (
     <AppScreen
-      eyebrow="日程安排"
+      backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("schedule.title") })}
+      backLabel={locale.t("schedule.title")}
+      eyebrow={locale.t("schedule.previewEyebrow")}
       refreshControl={
         <RefreshControl
           onRefresh={state.refresh}
@@ -43,11 +48,11 @@ export function ScheduleEventPreviewScreen() {
           tintColor={colors.accent}
         />
       }
-      title="活动安排预览"
+      title={locale.t("schedule.previewTitle")}
     >
       {state.kind === "loading" ? <LoadingState /> : null}
       {state.kind === "offline" ? (
-        <ErrorState message={state.error.message} title="服务器连不上" />
+        <ErrorState message={state.error.message} title={locale.t("schedule.serverUnavailable")} />
       ) : null}
       {state.kind === "failure" ? <PreviewFailure data={null} /> : null}
       {state.kind === "success" || state.kind === "empty" ? (
@@ -58,19 +63,21 @@ export function ScheduleEventPreviewScreen() {
 }
 
 function PreviewContent({ data }: { data: unknown }) {
+  const { timeZone } = useOrbitTimeZone();
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
-  const view = scheduleEventPreviewToView(data);
+  const view = scheduleEventPreviewToView(data, timeZone, locale.language);
 
   return (
     <>
       <DataCard detail={view.description} title={view.title}>
         {view.event ? <EventPreview event={view.event} /> : null}
       </DataCard>
-      <DataCard detail={view.guardrail} title="操作边界">
+      <DataCard detail={view.guardrail} title={locale.t("schedule.operationBoundary")}>
         <View style={styles.guardrailRow}>
           <Ionicons color={colors.amber} name="lock-closed-outline" size={18} />
           <Text style={styles.bodyText}>
-            先回到日程或活动列表复核，所有外部动作都需要单独确认。
+            {locale.t("schedule.operationBoundaryBody")}
           </Text>
         </View>
       </DataCard>
@@ -80,8 +87,10 @@ function PreviewContent({ data }: { data: unknown }) {
 }
 
 function PreviewFailure({ data }: { data: unknown }) {
+  const { timeZone } = useOrbitTimeZone();
+  const locale = useOrbitLocale();
   const { styles } = useStyles();
-  const view = scheduleEventPreviewToView(data);
+  const view = scheduleEventPreviewToView(data, timeZone, locale.language);
 
   return (
     <>
