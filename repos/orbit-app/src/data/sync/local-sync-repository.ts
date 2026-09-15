@@ -39,6 +39,7 @@ const OUTBOX_OPERATIONS = new Set<LocalSyncOutboxOperation>([
 ]);
 const SYNC_TIMESTAMP = z.iso.datetime({ offset: true });
 const PLAIN_JSON = z.json();
+const LAST_SUCCESSFUL_WORKSPACE_KEY = "last_successful_workspace_id";
 
 export type LocalSyncBootstrapState = "pending" | "complete";
 export type LocalSyncOutboxOperation = "create" | "update" | "delete";
@@ -71,6 +72,7 @@ export interface ApplyLocalSyncPageInput {
   cursor: string;
   syncedAt: string;
   bootstrapState: LocalSyncBootstrapState;
+  canCommit?: () => boolean;
 }
 
 export interface ListLocalSyncRecordsInput {
@@ -123,6 +125,8 @@ interface SerializedRecord {
   payloadJson: string | null;
 }
 
+class LocalSyncPageSupersededError extends Error {}
+
 const UPSERT_RECORD = `INSERT INTO sync_records (
   workspace_id,
   kind,
@@ -159,7 +163,7 @@ export function createLocalSyncRepository(input: {
       await database.run(UPSERT_RECORD, recordParameters(serialized));
     },
 
-    async applyPage(page: ApplyLocalSyncPageInput): Promise<void> {
+    async applyPage(page: ApplyLocalSyncPageInput): Promise<boolean> {
       assertNonEmptyString(page.workspaceId, "workspaceId");
       assertNonEmptyString(page.cursor, "cursor");
       assertTimestamp(page.syncedAt, "syncedAt");
@@ -181,21 +185,72 @@ export function createLocalSyncRepository(input: {
         return serialized;
       });
 
-      await database.transaction(async () => {
-        for (const record of records) {
-          await database.run(APPLY_CANONICAL_RECORD, recordParameters(record));
-        }
-        await database.run(
-          `INSERT INTO sync_cursors (
-            workspace_id, cursor, last_successful_sync_at, bootstrap_state
-          ) VALUES (?, ?, ?, ?)
-          ON CONFLICT(workspace_id) DO UPDATE SET
-            cursor = excluded.cursor,
-            last_successful_sync_at = excluded.last_successful_sync_at,
-            bootstrap_state = excluded.bootstrap_state`,
-          [page.workspaceId, page.cursor, page.syncedAt, page.bootstrapState],
-        );
-      });
+      if (page.canCommit && !page.canCommit()) return false;
+      try {
+        await database.transaction(async () => {
+          for (const record of records) {
+            await database.run(APPLY_CANONICAL_RECORD, recordParameters(record));
+          }
+          await database.run(
+            `INSERT INTO sync_cursors (
+              workspace_id, cursor, last_successful_sync_at, bootstrap_state
+            ) VALUES (?, ?, ?, ?)
+            ON CONFLICT(workspace_id) DO UPDATE SET
+              cursor = excluded.cursor,
+              last_successful_sync_at = excluded.last_successful_sync_at,
+              bootstrap_state = excluded.bootstrap_state`,
+            [page.workspaceId, page.cursor, page.syncedAt, page.bootstrapState],
+          );
+          await database.run(
+            `INSERT INTO sync_meta (key, value) VALUES (?, ?)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+            [LAST_SUCCESSFUL_WORKSPACE_KEY, page.workspaceId],
+          );
+          if (page.canCommit && !page.canCommit()) {
+            throw new LocalSyncPageSupersededError();
+          }
+        });
+        return true;
+      } catch (error) {
+        if (error instanceof LocalSyncPageSupersededError) return false;
+        throw error;
+      }
+    },
+
+    async getLastWorkspaceId(): Promise<string | null> {
+      const row = await database.get<{ value: string }>(
+        "SELECT value FROM sync_meta WHERE key = ?",
+        [LAST_SUCCESSFUL_WORKSPACE_KEY],
+      );
+      return row && row.value.trim().length > 0 ? row.value : null;
+    },
+
+    async resetWorkspace(
+      workspaceId: string,
+      canCommit?: () => boolean,
+    ): Promise<boolean> {
+      assertNonEmptyString(workspaceId, "workspaceId");
+      if (canCommit && !canCommit()) return false;
+      try {
+        await database.transaction(async () => {
+          await database.run(
+            `DELETE FROM sync_records
+             WHERE workspace_id = ? AND sync_state = 'synced'`,
+            [workspaceId],
+          );
+          await database.run(
+            "DELETE FROM sync_cursors WHERE workspace_id = ?",
+            [workspaceId],
+          );
+          if (canCommit && !canCommit()) {
+            throw new LocalSyncPageSupersededError();
+          }
+        });
+        return true;
+      } catch (error) {
+        if (error instanceof LocalSyncPageSupersededError) return false;
+        throw error;
+      }
     },
 
     async getRecord(key: LocalSyncRecordKey): Promise<SyncRecord | null> {
