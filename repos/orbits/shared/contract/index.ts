@@ -197,3 +197,9 @@ export type {
   RelationshipReadReceiptDTO,
   RelationshipRemoteAccountDTO,
 } from "./relationship-communication";
+export type {
+  AiSyncVisibility,
+  LocalSyncState,
+  SyncEntityKind,
+  SyncRecord,
+} from "./sync";

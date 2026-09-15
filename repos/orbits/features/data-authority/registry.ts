@@ -1,3 +1,7 @@
+import { z } from "zod";
+
+import type { AiSyncVisibility } from "../../shared/contract/sync";
+
 export type DataAuthorityMigrationStatus =
   | "canonical"
   | "compatibility"
@@ -15,6 +19,8 @@ export interface DataAuthorityEntry {
   ownerKey: string;
   apiContract: string;
   aiPolicy: string;
+  localPersistenceClass: DataAuthorityLocalPersistenceClass;
+  aiVisibility: AiSyncVisibility;
   projections: readonly DataAuthorityProjection[];
   migration: {
     status: DataAuthorityMigrationStatus;
@@ -23,6 +29,55 @@ export interface DataAuthorityEntry {
   };
 }
 
+export type DataAuthorityLocalPersistenceClass =
+  | "durable_mirror"
+  | "short_lived_cache"
+  | "device_only"
+  | "server_only";
+
+export const syncEntityKindSchema = z.enum([
+  "contact",
+  "note",
+  "task",
+  "relationship_followup",
+  "personal_schedule",
+  "inbox_item",
+]);
+export const localSyncStateSchema = z.enum(["synced", "pending", "conflicted", "failed"]);
+export const aiSyncVisibilitySchema = z.enum(["available_when_synced", "excluded"]);
+
+const nonEmptyIdentifier = z.string().refine((value) => value.trim().length > 0, "value must not be blank");
+const timestamp = z.string().datetime({ offset: true });
+const syncPayloadSchema = z.json();
+
+export const syncRecordSchema = z
+  .strictObject({
+    actorId: nonEmptyIdentifier,
+    workspaceId: nonEmptyIdentifier,
+    kind: syncEntityKindSchema,
+    id: nonEmptyIdentifier,
+    revision: nonEmptyIdentifier,
+    updatedAt: timestamp,
+    deletedAt: timestamp.nullable(),
+    payload: syncPayloadSchema,
+    syncState: localSyncStateSchema,
+    aiVisibility: aiSyncVisibilitySchema,
+  })
+  .superRefine((record, context) => {
+    if (record.deletedAt === null && record.payload === null) {
+      context.addIssue({ code: "custom", message: "live sync records require a payload", path: ["payload"] });
+    }
+    if (record.deletedAt !== null && record.payload !== null) {
+      context.addIssue({ code: "custom", message: "sync record tombstones require a null payload", path: ["payload"] });
+    }
+  });
+
+export const clientSyncMutationSchema = z.strictObject({
+  kind: syncEntityKindSchema,
+  id: nonEmptyIdentifier,
+  payload: syncPayloadSchema,
+});
+
 export const DATA_AUTHORITY_REGISTRY: readonly DataAuthorityEntry[] = [
   {
     domain: "notes",
@@ -30,6 +85,8 @@ export const DATA_AUTHORITY_REGISTRY: readonly DataAuthorityEntry[] = [
     ownerKey: "user_id = accountId = ownerUserId",
     apiContract: "/api/notes and /api/notes/:id",
     aiPolicy: "actor-scoped notes.query allowlist; body only for authorized get; untrusted text",
+    localPersistenceClass: "durable_mirror",
+    aiVisibility: "available_when_synced",
     projections: [
       { name: "Notes Web and App clients", source: "orbit_records/notes" },
     ],
@@ -45,6 +102,8 @@ export const DATA_AUTHORITY_REGISTRY: readonly DataAuthorityEntry[] = [
     ownerKey: "user_id = accountId = ownerUserId",
     apiContract: "/api/tasks and /api/tasks/:id",
     aiPolicy: "actor-scoped tasks.query allowlist; taskSuggestions denied",
+    localPersistenceClass: "durable_mirror",
+    aiVisibility: "available_when_synced",
     projections: [
       { name: "Tasks and Today views", source: "orbit_records/tasks" },
     ],
@@ -60,6 +119,8 @@ export const DATA_AUTHORITY_REGISTRY: readonly DataAuthorityEntry[] = [
     ownerKey: "user_id = accountId = ownerUserId",
     apiContract: "internal Followups live graph filtered to Relationship Connection",
     aiPolicy: "actor-scoped followups.query allowlist; message bodies denied; evidence summarized",
+    localPersistenceClass: "durable_mirror",
+    aiVisibility: "available_when_synced",
     projections: [
       { name: "confirmed Relationship followups", source: "orbit_records/tasks" },
       { name: "followups.reviewQueue derived recommendation", source: "orbit_records/tasks" },
@@ -76,6 +137,8 @@ export const DATA_AUTHORITY_REGISTRY: readonly DataAuthorityEntry[] = [
     ownerKey: "user_id = accountId = ownerUserId",
     apiContract: "/api/schedule-items and /api/schedule-items/:id",
     aiPolicy: "actor-scoped schedule.query allowlist after canonical projection; provider tokens denied",
+    localPersistenceClass: "durable_mirror",
+    aiVisibility: "available_when_synced",
     projections: [
       { name: "Today, Schedule, Event action, and Agent action", source: "orbit_records/personal_schedule_items" },
       {
@@ -96,6 +159,8 @@ export const DATA_AUTHORITY_REGISTRY: readonly DataAuthorityEntry[] = [
     ownerKey: "server-injected actorId + installation deviceId",
     apiContract: "/api/devices/push-tokens and /api/devices/push-tokens/:id",
     aiPolicy: "denied; device ids and push tokens are never model-visible",
+    localPersistenceClass: "device_only",
+    aiVisibility: "excluded",
     projections: [
       { name: "App notification lifecycle", source: "SecureStore/orbit.pushDeviceId + orbit_records/pushDevices" },
       {
@@ -120,6 +185,8 @@ export const DATA_AUTHORITY_REGISTRY: readonly DataAuthorityEntry[] = [
     ownerKey: "server-injected authenticated actorId",
     apiContract: "Orbit AI live runtime provider-input contract",
     aiPolicy: "message/history/memory/outcomes are purpose-bound, bounded, redacted, and never authority",
+    localPersistenceClass: "server_only",
+    aiVisibility: "excluded",
     projections: [
       { name: "provider synthesis prompt", source: "ephemeral Orbit AI request context" },
     ],
