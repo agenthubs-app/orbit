@@ -36,7 +36,7 @@ import {
   canonicalAccountIdentityFromPayload,
   type CanonicalAccountIdentity
 } from "./canonical-account-identity";
-import { cancelOrbitManagedNotifications, revokeNotificationDevice } from "../notifications/native-notifications";
+import { cancelOrbitManagedNotifications } from "../notifications/native-notifications";
 import { revokeRegisteredPushDevice } from "../notifications/push-device-session";
 import { revokePushDeviceRegistrations } from "../notifications/push-registration-queue";
 
@@ -223,8 +223,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
     const client = createOrbitApiClient({ authCookieHeader: cookieHeader, baseUrl });
     const results = await Promise.allSettled([
       revokePushDeviceRegistrations([
-        () => revokeNotificationDevice(client),
-        () => revokeRegisteredPushDevice({ baseUrl, cookieHeader }),
+        () => revokeRegisteredPushDevice({ client }),
       ], { endSession: true }),
       cancelOrbitManagedNotifications(),
     ]);

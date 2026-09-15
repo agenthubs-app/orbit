@@ -7,7 +7,6 @@ import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { AppScreen } from "../../components/AppScreen";
 import { createThemedStyles } from "../../design/theme";
-import { revokeNotificationDevice } from "../../notifications/native-notifications";
 import { revokePushDeviceRegistrations } from "../../notifications/push-registration-queue";
 import {
   isPushNotificationsOptedIn,
@@ -110,8 +109,7 @@ export function SettingsScreen() {
       await setPushNotificationsOptIn(false);
       setPushOptIn(false);
       const revoked = await revokePushDeviceRegistrations([
-        () => revokeNotificationDevice(client),
-        () => revokeRegisteredPushDevice({ baseUrl, cookieHeader: auth.cookieHeader }),
+        () => revokeRegisteredPushDevice({ client }),
       ]);
       if (!revoked) setPushOptInError(locale.t("settings.remindersUnlinkError"));
     } catch {

@@ -58,6 +58,7 @@ function harness(input: { optedIn?: boolean; signedIn?: boolean; lastResponse?: 
     ...pushPolicy,
     async isPushNotificationsOptedIn() { return optedIn; },
     async readOrCreatePushDeviceId() { return "test-installation"; },
+    async migrateLegacyPushDeviceRegistration() { calls.push("migrate-legacy-device"); return true; },
     onPushNotificationsOptInChanged() { return () => {}; },
     async setPushNotificationsOptIn(value: boolean) { optedIn = value; calls.push(`opt-in:${value}`); },
     async revokeRegisteredPushDevice() { calls.push("revoke-durable-device"); return true; },
@@ -160,11 +161,12 @@ test("OS permission alone does not register either push device before explicit a
   app.close();
 });
 
-test("opted-in sessions register both reminder and durable delivery backends once", { timeout: 5000 }, async () => {
+test("opted-in sessions register the canonical push device once", { timeout: 5000 }, async () => {
   const app = harness({ optedIn: true });
   app.mount();
   await settle();
-  assert.equal(app.calls.filter(call => call === "register-legacy-device").length, 1);
+  assert.equal(app.calls.filter(call => call === "register-legacy-device").length, 0);
+  assert.equal(app.calls.filter(call => call === "migrate-legacy-device").length, 1);
   assert.equal(app.calls.filter(call => call === "post:/api/devices/push-tokens").length, 1);
   assert.ok(app.calls.includes("project:test-project"));
   app.close();
@@ -214,7 +216,7 @@ test("a cold-start local notification is not consumed before authentication", { 
   app.close();
 });
 
-test("turning off critical reminders revokes both device registrations", { timeout: 5000 }, async () => {
+test("turning off critical reminders revokes the canonical device registration", { timeout: 5000 }, async () => {
   const app = harness({ optedIn: true });
   app.settings();
   await settle();
@@ -225,6 +227,6 @@ test("turning off critical reminders revokes both device registrations", { timeo
   await settle();
   assert.ok(app.calls.includes("opt-in:false"));
   assert.ok(app.calls.includes("revoke-durable-device"));
-  assert.ok(app.calls.includes("revoke-legacy-device"));
+  assert.equal(app.calls.includes("revoke-legacy-device"), false);
   app.close();
 });

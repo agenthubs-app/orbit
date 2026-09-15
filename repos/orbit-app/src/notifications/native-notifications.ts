@@ -1,17 +1,12 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import Constants from "expo-constants";
-import * as Crypto from "expo-crypto";
-import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
 import type { OrbitApiClient } from "../api/client";
 import type { NotificationPermission, ReminderPlanContract } from "../api/contract/reminders";
-import { ORBIT_API_ENDPOINTS, remindersPath } from "../api/endpoints";
+import { remindersPath } from "../api/endpoints";
 import { notificationPermissionFromNative } from "./notification-model";
 import { syncLocalReminderNotifications, type LocalNotificationAdapter } from "./notification-sync";
 
-const DEVICE_ID_KEY = "orbit.notifications.device-id.v1";
 let pendingReminderOperation: Promise<unknown> = Promise.resolve();
 let reminderGeneration = 0;
 
@@ -51,14 +46,6 @@ export const expoLocalNotificationAdapter: LocalNotificationAdapter = {
     });
   },
 };
-
-export async function notificationDeviceId(): Promise<string> {
-  const stored = await AsyncStorage.getItem(DEVICE_ID_KEY);
-  if (stored) return stored;
-  const created = `ios:${Crypto.randomUUID()}`;
-  await AsyncStorage.setItem(DEVICE_ID_KEY, created);
-  return created;
-}
 
 export async function requestNotificationPermission(): Promise<NotificationPermission> {
   if (Platform.OS !== "ios") return "denied";
@@ -103,44 +90,6 @@ export async function cancelOrbitManagedNotifications(): Promise<number> {
     }
     return orbitManaged.length;
   });
-}
-
-function projectId(): string | null {
-  const value = Constants.expoConfig?.extra?.easProjectId ?? Constants.easConfig?.projectId;
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-export async function registerNotificationDevice(client: OrbitApiClient): Promise<boolean> {
-  if (Platform.OS !== "ios" || !Device.isDevice) return false;
-  const permissionStatus = await Notifications.getPermissionsAsync();
-  const permission = notificationPermissionFromNative(nativePermission(permissionStatus));
-  if (permission !== "granted" && permission !== "provisional") return false;
-  const easProjectId = projectId();
-  if (!easProjectId) return false;
-
-  try {
-    const token = await Notifications.getExpoPushTokenAsync({ projectId: easProjectId });
-    const response = await client.post(ORBIT_API_ENDPOINTS.devicePushToken, {
-      body: {
-        deviceId: await notificationDeviceId(),
-        permission,
-        platform: "ios",
-        token: token.data,
-      },
-    });
-    return response.success;
-  } catch (error) {
-    console.warn("Orbit 远程推送注册失败", error);
-    return false;
-  }
-}
-
-export async function revokeNotificationDevice(client: OrbitApiClient): Promise<boolean> {
-  if (Platform.OS !== "ios") return true;
-  const response = await client.delete(ORBIT_API_ENDPOINTS.devicePushToken, {
-    body: { deviceId: await notificationDeviceId() },
-  });
-  return response.success;
 }
 
 const reminderPlanChangedListeners = new Set<() => void>();

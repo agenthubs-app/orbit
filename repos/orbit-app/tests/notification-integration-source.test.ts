@@ -15,7 +15,8 @@ test("the root app coordinates native notification delivery and response routing
   assert.match(coordinator, /addNotificationResponseReceivedListener/u);
   assert.match(coordinator, /getLastNotificationResponseAsync/u);
   assert.match(coordinator, /syncReminderNotifications/u);
-  assert.match(lifecycle, /registerNotificationDevice/u);
+  assert.match(lifecycle, /ORBIT_API_ENDPOINTS\.pushTokens/u);
+  assert.match(lifecycle, /migrateLegacyPushDeviceRegistration/u);
   assert.doesNotMatch(lifecycle, /setNotificationHandler|addNotificationResponseReceivedListener/u);
 });
 
@@ -24,6 +25,6 @@ test("notification native module is configured and logout revokes this device", 
   const auth = source("src", "api", "AuthSessionProvider.tsx");
   assert.match(config, /"expo-notifications"/u);
   assert.match(config, /easProjectId/u);
-  assert.match(auth, /revokeNotificationDevice/u);
   assert.match(auth, /revokeRegisteredPushDevice/u);
+  assert.doesNotMatch(auth, /revokeNotificationDevice/u);
 });

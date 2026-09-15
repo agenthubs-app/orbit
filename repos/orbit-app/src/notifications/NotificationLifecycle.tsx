@@ -7,10 +7,10 @@ import { AppState, Platform } from "react-native";
 import { ORBIT_API_ENDPOINTS } from "../api/endpoints";
 import { useOrbitAuthSession } from "../api/AuthSessionProvider";
 import { useOrbitApiClient } from "../hooks/useOrbitApiClient";
-import { registerNotificationDevice } from "./native-notifications";
 import { createPushRegistrationSession } from "./push-registration-queue";
 import {
   isPushNotificationsOptedIn,
+  migrateLegacyPushDeviceRegistration,
   onPushNotificationsOptInChanged,
   readOrCreatePushDeviceId,
   shouldRegisterPushToken,
@@ -103,6 +103,10 @@ export function OrbitNotificationLifecycle() {
       const installationId = await readOrCreatePushDeviceId();
       const stillOptedIn = await isPushNotificationsOptedIn();
       if (!isCurrent() || !stillOptedIn) return;
+      const legacyMigrated = await migrateLegacyPushDeviceRegistration(api);
+      if (!legacyMigrated) {
+        console.warn("Orbit 旧推送设备清理未完成，将在下次回到前台时重试");
+      }
       const durableRegistration = await api.post(ORBIT_API_ENDPOINTS.pushTokens, {
         body: {
           appVersion: Constants.expoConfig?.version,
@@ -114,13 +118,6 @@ export function OrbitNotificationLifecycle() {
       }).catch(() => ({ success: false }));
       if (!durableRegistration.success) {
         console.warn("Orbit 收件箱推送注册未完成，将在下次回到前台时重试");
-      }
-      const registerLocal = await isPushNotificationsOptedIn();
-      if (isCurrent() && registerLocal) {
-        const localRegistration = await registerNotificationDevice(api);
-        if (!localRegistration) {
-          console.warn("Orbit 任务推送注册未完成，将在下次回到前台时重试");
-        }
       }
     };
 

@@ -4,9 +4,12 @@ import test from "node:test";
 import { orbitScheduleItemFromLiveRecord } from "../../features/events/orbit-schedule-reader";
 import type { LiveRecord } from "../../shared/storage/live-record-store";
 
-function record(payload: Record<string, unknown>): LiveRecord<Record<string, unknown>> {
+function record(
+  payload: Record<string, unknown>,
+  collectionName = "orbitScheduleItems",
+): LiveRecord<Record<string, unknown>> {
   return {
-    collectionName: "orbitScheduleItems",
+    collectionName,
     createdAt: "2026-08-29T00:00:00.000Z",
     evidenceIds: [],
     lifecycleState: "active",
@@ -24,15 +27,20 @@ test("schedule reader preserves personal and meeting kinds from canonical record
   const personal = orbitScheduleItemFromLiveRecord(record({
     accountId: "actor:a",
     category: "personal",
+    createdAt: "2026-08-29T00:00:00.000Z",
     endsAt: "2026-08-29T09:30:00.000Z",
+    evidenceIds: [],
     eventId: "schedule:review",
     id: "schedule:review",
     kind: "personal",
     location: "Orbit 办公室",
+    ownerUserId: "actor:a",
     sourceId: "schedule:review",
     startsAt: "2026-08-29T08:30:00.000Z",
+    state: "upcoming",
     title: "本周经营复盘与下周优先级",
-  }), "actor:a");
+    updatedAt: "2026-08-29T00:00:00.000Z",
+  }, "personal_schedule_items"), "actor:a");
 
   assert.deepEqual(personal, {
     category: "personal",

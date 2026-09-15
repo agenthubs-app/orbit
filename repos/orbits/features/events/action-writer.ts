@@ -1,4 +1,5 @@
 import type { LiveRecordStoreLike } from "../../shared/storage/live-record-store";
+import { createScheduleAuthorityService } from "../personal-schedule/authority-service";
 
 export interface EventActionWriter {
   saveMeetingNote: (input: {
@@ -40,6 +41,7 @@ export interface EventActionWriter {
       | "encounterNotes"
       | "eventBriefs"
       | "eventGoals"
+      | "personal_schedule_items"
       | "orbitScheduleItems",
     recordId: string,
     now: string,
@@ -51,6 +53,10 @@ export function createStorageEventActionWriter(input: {
   userId?: string | null;
   workspaceId: string;
 }): EventActionWriter {
+  const schedule = createScheduleAuthorityService({
+    store: input.store,
+    workspaceId: input.workspaceId,
+  });
   async function save(
     collectionName: string,
     recordId: string,
@@ -146,29 +152,29 @@ export function createStorageEventActionWriter(input: {
         goal.now,
       );
     },
-    saveScheduleItem(item) {
-      return save(
-        "orbitScheduleItems",
-        item.scheduleId,
-        item.eventId,
-        `${item.title} ${item.startsAt} ${item.location ?? ""}`,
-        item.evidenceIds,
-        {
-          id: item.scheduleId,
-          eventId: item.eventId,
-          title: item.title,
-          startsAt: item.startsAt,
-          endsAt: item.endsAt,
-          location: item.location,
-          status: "confirmed",
-          evidenceIds: item.evidenceIds,
-          createdAt: item.now,
-          updatedAt: item.now,
-        },
-        item.now,
-      );
+    async saveScheduleItem(item) {
+      const actorId = input.userId?.trim();
+      if (!actorId) throw new Error("Schedule actions require an authenticated actor.");
+      const saved = await schedule.saveEvent({
+        actorId,
+        endsAt: item.endsAt,
+        eventId: item.eventId,
+        evidenceIds: item.evidenceIds,
+        id: item.scheduleId,
+        location: item.location,
+        now: item.now,
+        startsAt: item.startsAt,
+        title: item.title,
+      });
+      return { recordId: saved.id };
     },
     async removeRecord(collectionName, recordId, now) {
+      if (collectionName === "orbitScheduleItems" || collectionName === "personal_schedule_items") {
+        const actorId = input.userId?.trim();
+        if (!actorId) throw new Error("Schedule actions require an authenticated actor.");
+        await schedule.cancel({ actorId, id: recordId });
+        return;
+      }
       await input.store.deleteRecord({
         workspaceId: input.workspaceId,
         collectionName,

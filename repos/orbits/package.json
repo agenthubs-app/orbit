@@ -28,6 +28,7 @@
     "event-experience:migrate": "tsx scripts/migrate-event-experience.ts",
     "event-analytics:finalize-due": "tsx scripts/finalize-event-analytics.ts",
     "appointments:migrate": "tsx scripts/migrate-appointments.ts",
+    "schedule-authority:migrate": "tsx scripts/migrate-schedule-authority.ts",
     "appointments:worker": "tsx scripts/run-appointment-worker.ts",
     "notifications:worker": "tsx scripts/run-reminder-worker.ts",
     "encounters:project": "tsx scripts/run-human-encounter-projector.ts",

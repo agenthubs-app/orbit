@@ -276,7 +276,7 @@ export function createAgentDomainExecutors(
           now: context.now,
         });
         return {
-          resultRef: `orbitScheduleItems:${result.recordId}`,
+          resultRef: `personal_schedule_items:${result.recordId}`,
           summary: "Event added to Orbit Schedule.",
         };
       },
@@ -285,12 +285,12 @@ export function createAgentDomainExecutors(
           optionalString(payload, "scheduleId") ??
           `schedule:agent:${context.idempotencyKey.replace(/^undo:/, "")}`;
         await dependencies.events.removeRecord(
-          "orbitScheduleItems",
+          "personal_schedule_items",
           scheduleId,
           context.now,
         );
         return {
-          resultRef: `orbitScheduleItems:${scheduleId}`,
+          resultRef: `personal_schedule_items:${scheduleId}`,
           summary: "Event removed from Orbit Schedule.",
         };
       },

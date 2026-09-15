@@ -330,14 +330,14 @@ test("pre-event workflow ranks three explainable people and keeps internal/exter
   assert.equal(brief?.status, "completed");
   assert.equal(schedule?.status, "awaiting_confirmation");
   assert.equal(external?.status, "awaiting_confirmation");
-  assert.equal((await records(harness, "orbitScheduleItems")).length, 0);
+  assert.equal((await records(harness, "personal_schedule_items")).length, 0);
 
   await harness.runtime.approveAction({
     actionId: schedule!.actionId,
     actorLabel: "Orbit user",
   });
   await harness.runtime.processOutbox({ actionId: schedule!.actionId });
-  const scheduleItems = await records(harness, "orbitScheduleItems");
+  const scheduleItems = await records(harness, "personal_schedule_items");
   assert.equal(scheduleItems.length, 1);
   assert.equal(scheduleItems[0].userId, harness.actorId);
   assert.equal(scheduleItems[0].payload.accountId, harness.actorId);
