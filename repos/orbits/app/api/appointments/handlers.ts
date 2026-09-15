@@ -64,7 +64,7 @@ function proposalFrom(value: unknown): AppointmentProposalInput | null {
   return { candidateTimes, durationMinutes: Number(proposal.durationMinutes), medium: parsedMedium, note: typeof proposal.note === "string" ? proposal.note : null, timezone: proposal.timezone };
 }
 
-function publicAppointment(value: AppointmentAggregate, actorId: string) {
+export function publicAppointment(value: AppointmentAggregate, actorId: string) {
   const roleFor = (valueActorId: string) => valueActorId === actorId ? "you" : "other";
   return {
     appointmentId: value.appointmentId,
@@ -72,6 +72,9 @@ function publicAppointment(value: AppointmentAggregate, actorId: string) {
     confirmed: value.confirmed ? { ...value.confirmed, confirmedBy: roleFor(value.confirmed.confirmedByActorId), confirmedByActorId: undefined } : null,
     contactId: value.contactIdsByActor[actorId] ?? null,
     createdAt: value.createdAt,
+    details: value.details ?? "",
+    detailsUpdatedAt: value.detailsUpdatedAt ?? null,
+    detailsUpdatedBy: value.detailsUpdatedByActorId ? roleFor(value.detailsUpdatedByActorId) : null,
     eventId: value.eventId,
     history: value.history.map(({ actorId: historyActorId, ...entry }) => ({ ...entry, actor: roleFor(historyActorId) })),
     pendingProposalRevision: value.pendingProposalRevision,

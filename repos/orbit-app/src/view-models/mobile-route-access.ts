@@ -93,7 +93,7 @@ function pathParamKeysForMobileRoute(pathname: string): ReadonlySet<string> {
 
   if (
     root === "schedule" &&
-    detail === "events" &&
+    (detail === "events" || detail === "meetings") &&
     leaf !== undefined &&
     segments.length === 3
   ) {

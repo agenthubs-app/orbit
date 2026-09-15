@@ -174,6 +174,7 @@ const integratedFeatureRoutes = [
   "/contacts/matches",
   "/events/[id]/operations/experience",
   "/invitations/[token]",
+  "/schedule/meetings/[id]",
   "/schedule/personal/[id]",
   "/schedule/personal/new",
   "/tasks/personal",

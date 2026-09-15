@@ -55,6 +55,7 @@ export const ORBIT_API_ENDPOINTS = {
   eventCenter: "/api/events/center",
   eventValueRecommendations: "/api/recommendations/events",
   messageDrafts: "/api/message-drafts",
+  appointments: "/api/appointments",
   notes: "/api/notes",
   mobileContactsDashboard: "/api/mobile/contacts-dashboard",
   devicePushToken: "/api/devices/push-token",
@@ -93,6 +94,14 @@ function detailPath(collectionPath: string, id: string): string {
 
 export function eventDetailPath(id: string): string {
   return detailPath(ORBIT_API_ENDPOINTS.events, id);
+}
+
+export function appointmentPath(id: string): string {
+  return detailPath(ORBIT_API_ENDPOINTS.appointments, id);
+}
+
+export function appointmentDetailsPath(id: string): string {
+  return `${appointmentPath(id)}/details`;
 }
 
 export function contactStructureDetailPath(

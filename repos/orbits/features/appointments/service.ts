@@ -21,6 +21,13 @@ export interface AppointmentService {
   }): Promise<AppointmentMutationResult>;
   get(input: { actorId: string; appointmentId: string }): Promise<AppointmentAggregate>;
   list(input: { actorId: string }): Promise<readonly AppointmentAggregate[]>;
+  updateDetails(input: {
+    actorId: string;
+    appointmentId: string;
+    details: string;
+    expectedVersion: number;
+    idempotencyKey: string;
+  }): Promise<AppointmentMutationResult>;
   command(input: {
     actorId: string;
     appointmentId: string;
@@ -47,6 +54,7 @@ export interface AppointmentAuthorityVerifier {
 
 const APPOINTMENT_ID_MAX = 256;
 const APPOINTMENT_HISTORY_MAX = 100;
+const APPOINTMENT_DETAILS_MAX = 5_000;
 
 function required(value: string, label: string, maxLength = APPOINTMENT_ID_MAX): string {
   if (typeof value !== "string") throw new AppointmentError("APPOINTMENT_INVALID_PROPOSAL", `${label} is required.`);
@@ -117,7 +125,7 @@ function proposalFor(input: AppointmentProposalInput, actorId: string, revision:
   };
 }
 
-function history(current: AppointmentAggregate, actorId: string, command: AppointmentCommand, timestamp: string, detail: string, proposalRevision: number | null) {
+function history(current: AppointmentAggregate, actorId: string, command: AppointmentAggregate["history"][number]["command"], timestamp: string, detail: string, proposalRevision: number | null) {
   if (current.history.length >= APPOINTMENT_HISTORY_MAX) throw new AppointmentError("APPOINTMENT_INVALID_TRANSITION", "This appointment has reached its negotiation history limit; create a new appointment.");
   return [...current.history, { actorId, at: timestamp, command, detail, proposalRevision, version: current.version + 1 }];
 }
@@ -236,6 +244,32 @@ export function createAppointmentService(input: { authorityVerifier: Appointment
       return appointment;
     },
     list: (value) => input.repository.listForActor(required(value.actorId, "Actor")),
+    async updateDetails(value) {
+      if (typeof value.details !== "string" || value.details.length > APPOINTMENT_DETAILS_MAX) {
+        throw new AppointmentError("APPOINTMENT_INVALID_PROPOSAL", `Appointment details must be at most ${APPOINTMENT_DETAILS_MAX} characters.`);
+      }
+      const details = value.details.replace(/\r\n?/gu, "\n").trim();
+      return input.repository.mutate({
+        actorId: required(value.actorId, "Actor"),
+        appointmentId: required(value.appointmentId, "Appointment"),
+        command: "update_details",
+        expectedVersion: value.expectedVersion,
+        idempotencyKey: idempotencyKey(value.idempotencyKey),
+        requestHash: requestHash({ details, expectedVersion: value.expectedVersion }),
+      }, (current) => {
+        const timestamp = now();
+        const appointment: AppointmentAggregate = {
+          ...current,
+          details,
+          detailsUpdatedAt: timestamp,
+          detailsUpdatedByActorId: value.actorId,
+          history: history(current, value.actorId, "details_updated", timestamp, details ? "Appointment details updated." : "Appointment details cleared.", current.pendingProposalRevision ?? current.confirmed?.proposalRevision ?? null),
+          updatedAt: timestamp,
+          version: current.version + 1,
+        };
+        return { appointment, outbox: [] };
+      });
+    },
     async command(value) {
       return input.repository.mutate({
         actorId: required(value.actorId, "Actor"),

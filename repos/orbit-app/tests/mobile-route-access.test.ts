@@ -63,6 +63,7 @@ test("mobile actor workspaces share one private-route policy", () => {
     "/platform",
     "/profile",
     "/schedule/events/event-1",
+    "/schedule/meetings/appointment-1",
     "/settings/api",
     "/today",
     "/app/contacts/person-1"
@@ -129,6 +130,7 @@ test("auth return parameter ownership follows the matched route instead of globa
     ["/events/event-1/operations/check-in", { id: "event-1", mode: "pending" }, "/events/event-1/operations/check-in?mode=pending"],
     ["/events/event-1/operations/roles", { id: "event-1", member: "actor:staff" }, "/events/event-1/operations/roles?member=actor%3Astaff"],
     ["/schedule/events/event-1", { id: "event-1", view: "day" }, "/schedule/events/event-1?view=day"],
+    ["/schedule/meetings/appointment-1", { id: "appointment-1", view: "day" }, "/schedule/meetings/appointment-1?view=day"],
     ["/register/invite-1", { code: "invite-1", source: "qr" }, "/register/invite-1?source=qr"],
     ["/o/orbit", { slug: "orbit", source: "share" }, "/o/orbit?source=share"]
   ] as const) {
@@ -269,6 +271,7 @@ test("every root-level private entry uses the shared render gate", () => {
     "party/graph.tsx",
     "platform.tsx",
     "schedule/events/[id].tsx",
+    "schedule/meetings/[id].tsx",
     "schedule/personal/[id].tsx",
     "schedule/personal/new.tsx",
     "tasks.tsx",

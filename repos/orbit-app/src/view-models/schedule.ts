@@ -428,9 +428,11 @@ function canonicalScheduleTimelineItems(scheduleItems: unknown, timeZone: string
         durationMinutes: endsAt !== null && endsAt > startsAt
           ? Math.max(30, Math.min(240, Math.round((endsAt - startsAt) / 60_000)))
           : 60,
-        href: kind === "event" && sourceId.startsWith("event")
+        href: kind === "event"
           ? `/schedule/events/${encodeURIComponent(sourceId)}`
-          : kind === "personal" ? `/schedule/personal/${encodeURIComponent(id)}` : "/schedule",
+          : kind === "meeting"
+            ? `/schedule/meetings/${encodeURIComponent(sourceId)}`
+            : `/schedule/personal/${encodeURIComponent(id)}`,
         id,
         kind,
         ...(location ? { location } : {}),

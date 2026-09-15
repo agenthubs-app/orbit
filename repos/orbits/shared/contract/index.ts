@@ -117,6 +117,13 @@ export type {
 } from "./tasks";
 
 export type {
+  MeetingDetailsActorRole,
+  MeetingDetailsContract,
+  MeetingDetailsMedium,
+  MeetingDetailsMutationContract
+} from "./appointments";
+
+export type {
   NoteContract,
   NoteDetailContract,
   NotesCollectionContract

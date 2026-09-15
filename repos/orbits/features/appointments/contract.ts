@@ -50,7 +50,7 @@ export interface AppointmentConfirmation {
 export interface AppointmentHistoryEntry {
   actorId: string;
   at: string;
-  command: "created" | AppointmentCommand | "reminders_invalidated";
+  command: "created" | AppointmentCommand | "details_updated" | "reminders_invalidated";
   detail: string;
   proposalRevision: number | null;
   version: number;
@@ -71,6 +71,9 @@ export interface AppointmentAggregate {
   contactIdsByActor: Readonly<Record<string, string>>;
   createdAt: string;
   createdByActorId: string;
+  details?: string;
+  detailsUpdatedAt?: string;
+  detailsUpdatedByActorId?: string;
   eventId: string | null;
   history: readonly AppointmentHistoryEntry[];
   inviteeActorId: string;
