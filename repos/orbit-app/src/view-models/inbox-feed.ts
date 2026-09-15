@@ -3,6 +3,7 @@ import {
   relationshipConversationListToInbox,
   relationshipReadTarget,
 } from "../api/message-state";
+import { createTranslator } from "../i18n/messages";
 import { relationshipSignalsToView } from "./relationship-inbox";
 import { inboxNotificationActions } from "./inbox-notification-actions";
 
@@ -84,9 +85,10 @@ function notificationCategory(record: UnknownRecord, href: string | undefined): 
     : null;
 }
 
-function notificationItems(value: unknown): { complete: boolean; items: InboxFeedItem[] } {
+function notificationItems(value: unknown, language: OrbitLanguage): { complete: boolean; items: InboxFeedItem[] } {
   const payload = record(value);
   if (!payload || !Array.isArray(payload.reminders)) return { complete: false, items: [] };
+  const t = createTranslator(language);
   const actions = inboxNotificationActions(value);
   const seen = new Set<string>();
   let complete = true;
@@ -104,7 +106,12 @@ function notificationItems(value: unknown): { complete: boolean; items: InboxFee
     const followupTaskId = exactText(item.followupTaskId);
     const targetHref = action?.href || (followupTaskId ? encodedPath("/tasks", followupTaskId) : undefined);
     const category = notificationCategory(item, targetHref);
-    const title = exactText(item.title);
+    const sourceTitle = exactText(item.title);
+    const title = /^review follow-up for /iu.test(sourceTitle)
+      ? t("inboxVm.contactTitle", {
+          name: exactText(item.contactName) || t("inboxVm.contactFallback"),
+        })
+      : sourceTitle;
     if (!category || !title) {
       complete = false;
       continue;
@@ -217,7 +224,7 @@ export function inboxFeedFromSources(input: {
   const now = trustedTimestamp(input.now);
   const actorId = exactText(input.actorId);
   const conversations = actorId ? conversationItems(input.conversationsData, actorId) : { complete: false, items: [] };
-  const notifications = notificationItems(input.notificationsData);
+  const notifications = notificationItems(input.notificationsData, input.language);
   const signals = signalItems(input.signalsData, input.language);
   const end = now ? Date.parse(now) : Number.NaN;
   const start = end - THIRTY_DAYS_MS;

@@ -14,6 +14,7 @@
     "db:seed:primary-test-account": "tsx scripts/seed-primary-test-account.ts",
     "db:verify:live-events": "tsx scripts/verify-live-events.ts",
     "db:verify:live-generated-fixtures": "tsx scripts/verify-live-generated-fixtures.ts",
+    "db:repair:generated-notification-titles": "tsx scripts/repair-generated-notification-titles.ts",
     "db:backfill:event-core": "tsx scripts/backfill-event-core.ts",
     "events:repair-profile-contract": "tsx scripts/repair-event-profile-contract.ts",
     "events:migrate-canonical-membership": "tsx scripts/migrate-event-canonical-membership.ts",
