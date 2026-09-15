@@ -77,6 +77,12 @@ import {
   type RelationshipThreadDetailView
 } from "../../view-models/relationship-inbox";
 import { inboxPolishTemplate, registerAiTemplatePrefill } from "../../data/ai-template-prefill";
+import {
+  appPerformanceInput,
+  appPerformanceScenarioForPath,
+  isAppPerformanceEnabled,
+  measureAppPerformance,
+} from "../../performance/app-performance";
 
 type InboxSection = "alerts" | "threads";
 type ClientGet = (endpoint: string, options?: { signal?: AbortSignal }) => Promise<ApiResult<unknown>>;
@@ -137,7 +143,16 @@ function useInboxRequests(scopeKey: string) {
     signal?.addEventListener("abort", abort, { once: true });
     scope.controller.signal.addEventListener("abort", abort, { once: true });
     try {
-      const result = await client[method]<unknown>(endpoint, { body, signal: controller.signal });
+      const performanceScenario = method === "get" && isAppPerformanceEnabled()
+        ? appPerformanceScenarioForPath(endpoint)
+        : null;
+      const execute = () => client[method]<unknown>(endpoint, { body, signal: controller.signal });
+      const result = performanceScenario
+        ? await measureAppPerformance(
+            appPerformanceInput("app.resource", performanceScenario),
+            execute,
+          )
+        : await execute();
       return isCurrent() && !controller.signal.aborted ? result : inactive;
     } finally {
       signal?.removeEventListener("abort", abort);

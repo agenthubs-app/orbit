@@ -32,10 +32,10 @@ export const APP_PERFORMANCE_SCENARIOS = Object.freeze([
 
 export const APP_PERFORMANCE_COHORTS = Object.freeze([
   ...APP_PERFORMANCE_SCENARIOS.slice(0, 2),
-  ...APP_PERFORMANCE_SCENARIOS.slice(2).flatMap((definition) => [
-    definition,
-    Object.freeze({ ...definition, metric: "app.snapshot" }),
-  ]),
+  ...APP_PERFORMANCE_SCENARIOS.slice(2).flatMap((definition) =>
+    definition.scenario === "app.schedule" || definition.scenario === "app.profile"
+      ? [definition, Object.freeze({ ...definition, metric: "app.snapshot" })]
+      : [definition]),
 ]);
 
 const SCENARIO_NAMES = new Set(APP_PERFORMANCE_SCENARIOS.map(({ scenario }) => scenario));
