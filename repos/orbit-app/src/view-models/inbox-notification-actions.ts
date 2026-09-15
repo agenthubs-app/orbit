@@ -65,9 +65,15 @@ export function inboxNotificationActions(value: unknown): Map<string, InboxNotif
     if (seen.has(id)) { actions.delete(id); continue; }
     seen.add(id);
     const state = states && Object.prototype.hasOwnProperty.call(states, id) ? states[id] : undefined;
+    const followupTaskId = notificationId(reminder.followupTaskId)
+      ? reminder.followupTaskId
+      : undefined;
+    const href = inboxNotificationHref(reminder.href);
     actions.set(id, {
       canPersist,
-      href: inboxNotificationHref(reminder.href),
+      href: href ?? (reminder.href === undefined && followupTaskId
+        ? `/tasks/${encodeURIComponent(followupTaskId)}`
+        : undefined),
       ignored: canPersist && state === "ignored",
       read: canPersist && state === "read",
     });
