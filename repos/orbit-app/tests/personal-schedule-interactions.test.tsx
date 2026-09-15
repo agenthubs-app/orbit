@@ -89,7 +89,7 @@ export const RefreshControl = props => { window.fixture.refresh = props.onRefres
 test.after(async () => { await browser?.close(); });
 async function settle(p: Page) { await p.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))); }
 async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<string, unknown> = {}) {
-  const p = await browser.newPage({ viewport: { width: 390, height: 844 }, timezoneId: "Asia/Tokyo" }); p.setDefaultTimeout(1800);
+  const p = await browser.newPage({ viewport: { width: 390, height: 844 }, timezoneId: "Asia/Tokyo", locale: "zh-CN" }); p.setDefaultTimeout(1800);
   const errors: string[] = []; p.on("pageerror", e => errors.push(e.message)); t.after(async () => { await p.close(); assert.deepEqual(errors, []); });
   await p.route("**/*", r => r.abort()); await p.setContent('<div id="root"></div>');
   await p.evaluate(patch => { (window as any).initialFixture = patch; }, { item: initialItem, ...patch }); await p.addScriptTag({ content: script });
@@ -104,31 +104,31 @@ async function reply(p: Page, status = 200, override?: object) {
 
 test("create without a contact, failure retry and reopen use one server record", async t => {
   const p = await open(t, { taskId: "" }); await fill(p, "日程标题", "Solo review"); await fill(p, "开始日期", "2026-09-17"); await fill(p, "开始时间", "09:30"); await fill(p, "日程地点", "Home");
-  await press(p, "保存个人日程"); await reply(p, 503); assert.equal(await p.getByRole("textbox", { name: "日程标题" }).inputValue(), "Solo review");
-  await press(p, "保存个人日程"); const w = await writes(p); assert.equal(w.length, 2); assert.equal(w[0].method, "POST"); assert.equal(w[0].body.idempotencyKey, w[1].body.idempotencyKey);
+  await press(p, "保存日程"); await reply(p, 503); assert.equal(await p.getByRole("textbox", { name: "日程标题" }).inputValue(), "Solo review");
+  await press(p, "保存日程"); const w = await writes(p); assert.equal(w.length, 2); assert.equal(w[0].method, "POST"); assert.equal(w[0].body.idempotencyKey, w[1].body.idempotencyKey);
   assert.equal(w[0].body.startsAt, "2026-09-17T00:30:00.000Z"); assert.equal(w[0].body.contactId, undefined); await reply(p);
   assert.equal(await p.evaluate(() => (window as any).fixture.navigation), "/schedule/personal/personal%3Aedit");
   await p.evaluate(() => (window as any).fixture.update({ taskId: "personal:edit" })); await settle(p);
   assert.equal(await p.getByRole("textbox", { name: "日程地点" }).inputValue(), "Home");
 });
 test("clear optional fields, retain conflicting draft, explicitly reload and confirm deletion", async t => {
-  const p = await open(t); await fill(p, "结束日期", ""); await fill(p, "结束时间", ""); await fill(p, "日程地点", ""); await press(p, "保存个人日程");
+  const p = await open(t); await fill(p, "结束日期", ""); await fill(p, "结束时间", ""); await fill(p, "日程地点", ""); await press(p, "保存日程");
   assert.deepEqual((await writes(p))[0].body.patch, { endsAt: null, location: null }); await reply(p); assert.equal(await p.getByRole("textbox", { name: "日程地点" }).inputValue(), "");
-  await fill(p, "日程标题", "Local draft"); await press(p, "保存个人日程"); await reply(p, 409);
+  await fill(p, "日程标题", "Local draft"); await press(p, "保存日程"); await reply(p, 409);
   await p.evaluate(() => { const s = (window as any).fixture; s.item = { ...s.item, title: "Remote", updatedAt: "2026-09-16T00:00:00Z" }; s.refresh(); }); await settle(p);
-  assert.equal(await p.getByRole("textbox", { name: "日程标题" }).inputValue(), "Local draft"); assert.equal(await p.getByRole("button", { name: "保存个人日程", exact: true }).isDisabled(), true);
+  assert.equal(await p.getByRole("textbox", { name: "日程标题" }).inputValue(), "Local draft"); assert.equal(await p.getByRole("button", { name: "保存日程", exact: true }).isDisabled(), true);
   await press(p, "放弃草稿并载入最新内容"); assert.equal(await p.getByRole("textbox", { name: "日程标题" }).inputValue(), "Remote");
   await press(p, "删除个人日程"); assert.equal((await writes(p)).length, 2); await press(p, "确认删除个人日程");
   assert.equal((await writes(p))[2].method, "DELETE");
   await reply(p, 200, { scheduleItem: { ...initialItem, state: "cancelled", updatedAt: "2026-09-17T00:00:00Z" }, deleted: true }); assert.equal(await p.evaluate(() => (window as any).fixture.navigation), "/schedule");
 });
 for (const wrong of ["owner", "id", "field"]) test(`${wrong} receipt retains draft and retry intent`, async t => {
-  const p = await open(t); await fill(p, "日程地点", "Local"); await press(p, "保存个人日程");
+  const p = await open(t); await fill(p, "日程地点", "Local"); await press(p, "保存日程");
   await reply(p, 200, { scheduleItem: { ...initialItem, updatedAt: "2026-09-15T00:00:00Z", location: wrong === "field" ? "Wrong" : "Local", ownerUserId: wrong === "owner" ? "other" : "actor-1", id: wrong === "id" ? "personal:other" : initialItem.id } });
-  await press(p, "保存个人日程"); const w = await writes(p); assert.equal(w.length, 2); assert.equal(w[0].body.idempotencyKey, w[1].body.idempotencyKey);
+  await press(p, "保存日程"); const w = await writes(p); assert.equal(w.length, 2); assert.equal(w[0].body.idempotencyKey, w[1].body.idempotencyKey);
 });
 test("account replacement cannot accept a late old save", async t => {
-  const p = await open(t); await fill(p, "日程地点", "Old draft"); await press(p, "保存个人日程");
+  const p = await open(t); await fill(p, "日程地点", "Old draft"); await press(p, "保存日程");
   await p.evaluate(() => { const s = (window as any).fixture; s.update({ actor: "actor-2", item: { ...s.item, accountId: "actor-2", ownerUserId: "actor-2", title: "New account" } }); }); await settle(p);
   await reply(p, 200, { scheduleItem: { ...initialItem, location: "Old draft", updatedAt: "2026-09-15T00:00:00Z" } });
   assert.equal(await p.getByRole("textbox", { name: "日程标题" }).inputValue(), "New account"); assert.equal(await p.evaluate(() => (window as any).fixture.navigation), undefined);
@@ -136,7 +136,7 @@ test("account replacement cannot accept a late old save", async t => {
 
 test("personal editor effect replay retains an active read and save scope", async t => {
   const p = await open(t, { strict: true });
-  await fill(p, "日程地点", "After replay"); await press(p, "保存个人日程"); await reply(p);
+  await fill(p, "日程地点", "After replay"); await press(p, "保存日程"); await reply(p);
   assert.equal(await p.getByRole("textbox", { name: "日程地点" }).inputValue(), "After replay");
   assert.equal((await writes(p)).length, 1);
   assert.equal(await p.getByRole("alert").count(), 0);

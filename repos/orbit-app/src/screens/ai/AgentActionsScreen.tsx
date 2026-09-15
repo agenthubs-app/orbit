@@ -22,6 +22,7 @@ import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import {
   agentActionsToView,
   type AgentActionCardView,
@@ -37,6 +38,7 @@ interface PendingAgentActionDecision {
 
 export function AgentActionsScreen() {
   const { colors } = useOrbitTheme();
+  const locale = useOrbitLocale();
   const client = useOrbitApiClient();
   const actionsState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.agentActions,
@@ -73,8 +75,8 @@ export function AgentActionsScreen() {
       if (result.success) {
         setFeedback(
           decision === "accept"
-            ? "已确认这条建议。后续对外动作仍会停下来等你确认。"
-            : "已暂不处理这条建议。"
+            ? locale.t("agentActions.acceptFeedback")
+            : locale.t("agentActions.dismissFeedback")
         );
         actionsState.refresh();
       } else {
@@ -82,7 +84,7 @@ export function AgentActionsScreen() {
       }
     } catch (error) {
       setActionError(
-        error instanceof Error ? error.message : "这条建议暂时处理不了。"
+        error instanceof Error ? error.message : locale.t("agentActions.unavailable")
       );
     } finally {
       setPendingDecision(null);
@@ -98,14 +100,14 @@ export function AgentActionsScreen() {
           tintColor={colors.accent}
         />
       }
-      title="Agent 动作中心"
+      title={locale.t("agentActions.title")}
     >
       {actionsState.kind === "loading" ? <LoadingState /> : null}
       {actionsState.kind === "offline" ? (
-        <ErrorState message={actionsState.error.message} title="服务器连不上" />
+        <ErrorState message={actionsState.error.message} title={locale.t("agentActions.serverUnavailable")} />
       ) : null}
       {actionsState.kind === "failure" ? (
-        <ErrorState message={actionsState.error.message} title="动作队列不可用" />
+        <ErrorState message={actionsState.error.message} title={locale.t("agentActions.queueUnavailable")} />
       ) : null}
       {actionsState.kind === "success" || actionsState.kind === "empty" ? (
         <AgentActionsContent
@@ -136,9 +138,10 @@ function AgentActionsContent({
   view: AgentActionsView;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   return (
     <>
-      <DataCard detail={view.summary} title="今天需要你决定什么">
+      <DataCard detail={view.summary} title={locale.t("agentActions.decideToday")}>
         <View style={styles.metricRow}>
           {view.metrics.map((metric) => (
             <View key={metric} style={styles.metricChip}>
@@ -156,7 +159,7 @@ function AgentActionsContent({
 
       <DataCard
         detail={view.settings.confirmationLabel}
-        title={`边界：${view.settings.policyLabel}`}
+        title={locale.t("agentActions.boundaryNamed", { name: locale.t.literal(view.settings.policyLabel) })}
       >
         <Text style={styles.bodyText}>{view.settings.summary}</Text>
         <View style={styles.ruleList}>
@@ -198,6 +201,7 @@ function AgentActionCard({
   pendingDecision: PendingAgentActionDecision | null;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const acceptPending =
     pendingDecision?.id === action.id && pendingDecision.decision === "accept";
   const dismissPending =
@@ -221,13 +225,13 @@ function AgentActionCard({
       <Text style={styles.bodyText}>{action.reason}</Text>
       <View style={styles.metaBox}>
         <View style={styles.metaRow}>
-          <Text style={styles.metaLabel}>对象</Text>
+          <Text style={styles.metaLabel}>{locale.t("agentActions.object")}</Text>
           <Text style={styles.metaValue}>
             {action.contactName} · {action.organization}
           </Text>
         </View>
         <View style={styles.metaRow}>
-          <Text style={styles.metaLabel}>边界</Text>
+          <Text style={styles.metaLabel}>{locale.t("agentActions.boundary")}</Text>
           <Text style={styles.metaValue}>{action.safetyLabel}</Text>
         </View>
       </View>
@@ -244,7 +248,7 @@ function AgentActionCard({
         >
           <Ionicons color={colors.onAccent} name="checkmark-outline" size={17} />
           <Text style={styles.primaryButtonText}>
-            {acceptPending ? "确认中" : action.acceptLabel}
+            {acceptPending ? locale.t("agentActions.confirming") : action.acceptLabel}
           </Text>
         </Pressable>
         <Pressable
@@ -259,7 +263,7 @@ function AgentActionCard({
         >
           <Ionicons color={colors.accent} name="close-outline" size={17} />
           <Text style={styles.secondaryButtonText}>
-            {dismissPending ? "处理中" : action.dismissLabel}
+            {dismissPending ? locale.t("agentActions.processing") : action.dismissLabel}
           </Text>
         </Pressable>
       </View>

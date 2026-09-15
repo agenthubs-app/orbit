@@ -16,6 +16,7 @@ import { layout } from "../../design/tokens";
 import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { tasksToListView, type TaskListRowView } from "../../view-models/today-tasks";
 import { contactsToSummaries } from "../../view-models/contacts";
 import { parseTaskListSelection, readTaskListItems, selectTaskListItems, taskListReceiptMatches } from "../../view-models/task-list-scope";
@@ -30,6 +31,7 @@ function mutationKey(action: string) {
 
 export function TasksScreen() {
   const { timeZone } = useOrbitTimeZone();
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const params = useLocalSearchParams<{ scope?: string | string[]; view?: string | string[] }>();
   const requested = parseTaskListSelection(params);
@@ -53,16 +55,16 @@ export function TasksScreen() {
   const canonical = loaded ? readTaskListItems(state.data, actorId) : null;
   const contacts = new Map(contactsToSummaries(ready && (contactsState.kind === "success" || contactsState.kind === "empty") ? contactsState.data : {}).map(contact => [contact.id, contact]));
   const now = new Date();
-  const open = canonical ? tasksToListView({ tasks: selectTaskListItems(canonical, { ...selection, view: "open" }) }, "open", now, timeZone).items : null;
-  const completed = canonical ? tasksToListView({ tasks: selectTaskListItems(canonical, { ...selection, view: "completed" }) }, "completed", now, timeZone).items : null;
+  const open = canonical ? tasksToListView({ tasks: selectTaskListItems(canonical, { ...selection, view: "open" }) }, "open", now, timeZone, locale.language).items : null;
+  const completed = canonical ? tasksToListView({ tasks: selectTaskListItems(canonical, { ...selection, view: "completed" }) }, "completed", now, timeZone, locale.language).items : null;
   const today = tokyoDateKey(now, timeZone);
   const groups = open && completed ? [
     ...(mode === "open" ? [
-      { label: "已逾期", items: open.filter(item => taskDateKey(item, timeZone) && taskDateKey(item, timeZone)! < today), tone: "danger" },
-      { label: "今天", items: open.filter(item => taskDateKey(item, timeZone) === today), tone: "today" },
-      { label: "之后", items: open.filter(item => taskDateKey(item, timeZone) && taskDateKey(item, timeZone)! > today), tone: "muted" },
-      { label: "未安排", items: open.filter(item => !taskDateKey(item, timeZone)), tone: "muted" },
-    ] : [{ label: "已完成", items: completed, tone: "completed" }]),
+      { label: locale.t("tasks.groupOverdue"), items: open.filter(item => taskDateKey(item, timeZone) && taskDateKey(item, timeZone)! < today), tone: "danger" },
+      { label: locale.t("tasks.groupToday"), items: open.filter(item => taskDateKey(item, timeZone) === today), tone: "today" },
+      { label: locale.t("tasks.groupLater"), items: open.filter(item => taskDateKey(item, timeZone) && taskDateKey(item, timeZone)! > today), tone: "muted" },
+      { label: locale.t("tasks.groupUnscheduled"), items: open.filter(item => !taskDateKey(item, timeZone)), tone: "muted" },
+    ] : [{ label: locale.t("tasks.groupCompleted"), items: completed, tone: "completed" }]),
   ].filter(group => group.items.length > 0) : [];
 
   useEffect(() => setSelection(requested), [requested.scope, requested.view]);
@@ -88,10 +90,10 @@ export function TasksScreen() {
       });
       if (!scope.active || currentScope.current !== scope) return;
       if (!result.success) setMutationError(result.error.message);
-      else if (result.status < 200 || result.status >= 300 || !taskListReceiptMatches(result.data, actorId, baseline, action)) setMutationError("未能确认操作结果，请刷新核对或重试。");
+      else if (result.status < 200 || result.status >= 300 || !taskListReceiptMatches(result.data, actorId, baseline, action)) setMutationError(locale.t("tasks.operationUnconfirmed"));
       else { scope.keys.delete(intent); state.refresh(); }
     } catch {
-      if (scope.active && currentScope.current === scope) setMutationError("操作未完成，请重试。");
+      if (scope.active && currentScope.current === scope) setMutationError(locale.t("tasks.operationFailed"));
     } finally {
       scope.busy = false;
       if (scope.active && currentScope.current === scope) setUpdatingId(null);
@@ -107,25 +109,25 @@ export function TasksScreen() {
           tintColor={colors.accent}
         />
       }
-      headerActions={<Pressable accessibilityLabel="添加待办（前往今天）" accessibilityRole="button" onPress={() => router.push("/today" as Href)} style={styles.addButton}>
+      headerActions={<Pressable accessibilityLabel={locale.t("tasks.addAtToday")} accessibilityRole="button" onPress={() => router.push("/today" as Href)} style={styles.addButton}>
         <Ionicons color={colors.accent} name="add" size={26} />
       </Pressable>}
-      title="待办"
+      title={locale.t("tasks.title")}
     >
       <View accessibilityRole="tablist" style={styles.tabs}>
-        {([ ["all", "全部"], ["relationship", "人脉"] ] as const).map(([value, label]) => <Pressable key={value} accessibilityRole="tab" accessibilityLabel={label} aria-selected={selection.scope === value} accessibilityState={{ selected: selection.scope === value }} onPress={() => setSelection(previous => ({ ...previous, scope: value }))} style={[styles.tab, selection.scope === value && styles.tabSelected]}><Text style={[styles.tabText, selection.scope === value && styles.tabTextSelected]}>{label}</Text></Pressable>)}
+        {([ ["all", locale.t("tasks.scopeAll")], ["relationship", locale.t("tasks.scopeRelationship")] ] as const).map(([value, label]) => <Pressable key={value} accessibilityRole="tab" accessibilityLabel={label} aria-selected={selection.scope === value} accessibilityState={{ selected: selection.scope === value }} onPress={() => setSelection(previous => ({ ...previous, scope: value }))} style={[styles.tab, selection.scope === value && styles.tabSelected]}><Text style={[styles.tabText, selection.scope === value && styles.tabTextSelected]}>{label}</Text></Pressable>)}
       </View>
       <TaskModeSwitcher mode={mode} onChange={view => setSelection(previous => ({ ...previous, view }))} openCount={open?.length} completedCount={completed?.length} />
       {state.kind === "loading" ? <LoadingState /> : null}
       {state.kind === "failure" || state.kind === "offline" ? (
-        <ErrorState message={state.error.message} title="待办暂时打不开" />
+        <ErrorState message={state.error.message} title={locale.t("tasks.unavailable")} />
       ) : null}
-      {loaded && !canonical ? <ErrorState title="待办数据暂不可用" message="无法确认事项所属账号或版本，请重新读取。" /> : null}
-      {ready && (contactsState.kind === "failure" || contactsState.kind === "offline") ? <ErrorState title="人脉信息暂不可用" message="待办仍可处理，请下拉刷新人脉信息。" /> : null}
+      {loaded && !canonical ? <ErrorState title={locale.t("tasks.dataUnavailable")} message={locale.t("tasks.dataUnavailableBody")} /> : null}
+      {ready && (contactsState.kind === "failure" || contactsState.kind === "offline") ? <ErrorState title={locale.t("tasks.contactsUnavailable")} message={locale.t("tasks.contactsUnavailableBody")} /> : null}
       {canonical && (mode === "open" ? open?.length === 0 : completed?.length === 0) ? (
         <EmptyState
-          message={mode === "open" ? "新待办会出现在这里。" : "完成待办后，这里会留下记录。"}
-          title={mode === "open" ? "暂无待办" : "暂无完成记录"}
+          message={locale.t(mode === "open" ? "tasks.emptyOpenBody" : "tasks.emptyCompletedBody")}
+          title={locale.t(mode === "open" ? "tasks.emptyOpenTitle" : "tasks.emptyCompletedTitle")}
         />
       ) : null}
       <View style={styles.groups}>
@@ -142,7 +144,7 @@ export function TasksScreen() {
               style={styles.row}
             >
               <Pressable
-                accessibilityLabel={item.status === "completed" ? `恢复：${item.title}` : `完成：${item.title}`}
+                accessibilityLabel={locale.t(item.status === "completed" ? "tasks.restoreNamed" : "tasks.completeNamed", { title: item.title })}
                 accessibilityRole="checkbox"
                 aria-checked={item.status === "completed"}
                 accessibilityState={{ checked: item.status === "completed", disabled: updatingId !== null, busy: updatingId === item.id }}
@@ -171,7 +173,7 @@ export function TasksScreen() {
               </Pressable>
               <Ionicons color={colors.text4} name="chevron-forward" size={17} />
             </View>
-            {contact ? <Pressable accessibilityRole="button" accessibilityLabel={`查看人脉：${contact.name}`} onPress={() => router.push(`/contacts/${encodeURIComponent(contact.id)}` as Href)} style={styles.contactLink}><Text style={styles.contactText}>{[contact.name, contact.organization].filter(Boolean).join(" · ")}</Text></Pressable> : contactId ? <Text style={styles.rowDetail}>关联人脉信息暂不可用</Text> : null}
+            {contact ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("tasks.viewContact", { name: contact.name })} onPress={() => router.push(`/contacts/${encodeURIComponent(contact.id)}` as Href)} style={styles.contactLink}><Text style={styles.contactText}>{[contact.name, contact.organization].filter(Boolean).join(" · ")}</Text></Pressable> : contactId ? <Text style={styles.rowDetail}>{locale.t("tasks.contactUnavailable")}</Text> : null}
             </View>;
           })}
         </View>
@@ -195,10 +197,11 @@ function TaskModeSwitcher({
   openCount: number | undefined;
   completedCount: number | undefined;
 }) {
+  const locale = useOrbitLocale();
   const { styles } = useStyles();
   const options: Array<{ label: string; value: TaskListMode }> = [
-    { label: "未完成", value: "open" },
-    { label: "已完成", value: "completed" },
+    { label: locale.t("tasks.viewOpen"), value: "open" },
+    { label: locale.t("tasks.viewCompleted"), value: "completed" },
   ];
   return (
     <View accessibilityRole="tablist" style={styles.tabs}>

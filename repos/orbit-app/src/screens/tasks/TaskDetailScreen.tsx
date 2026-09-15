@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ORBIT_API_ENDPOINTS, reminderPath, remindersPath, taskActivitiesPath, taskPath } from "../../api/endpoints";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
+import type { OrbitLanguage } from "../../api/contract/language";
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
@@ -18,6 +19,8 @@ import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import type { OrbitTranslator } from "../../i18n/messages";
 import { notifyReminderPlansChanged, requestNotificationPermission } from "../../notifications/native-notifications";
 import { reminderPlansToView, reminderQuickOptions } from "../../view-models/reminders";
 import { taskActivitiesToView, taskDetailToView, type TaskDetailView } from "../../view-models/today-tasks";
@@ -31,11 +34,15 @@ function mutationKey() {
   return `ios:task:${Crypto.randomUUID()}`;
 }
 
-function dateLabel(value: string | undefined, timeZone: string): string {
-  if (!value) return "未安排日期";
+function localeTag(language: OrbitLanguage): string {
+  return language === "zh" ? "zh-CN" : language === "ja" ? "ja-JP" : "en-US";
+}
+
+function dateLabel(value: string | undefined, timeZone: string, language: OrbitLanguage, t: OrbitTranslator): string {
+  if (!value) return t("taskDetail.dateUnscheduled");
   const hasTime = value.length !== 10;
   const parsed = new Date(hasTime ? value : `${value}T12:00:00Z`);
-  return new Intl.DateTimeFormat("zh-CN", {
+  return new Intl.DateTimeFormat(localeTag(language), {
     day: "numeric",
     hour: hasTime ? "2-digit" : undefined,
     minute: hasTime ? "2-digit" : undefined,
@@ -47,6 +54,7 @@ function dateLabel(value: string | undefined, timeZone: string): string {
 
 export function TaskDetailScreen() {
   const { timeZone, canSave } = useOrbitTimeZone();
+  const locale = useOrbitLocale();
   const [editTimeZone, setEditTimeZone] = useState(timeZone);
   const { colors, styles } = useStyles();
   const insets = useSafeAreaInsets();
@@ -71,8 +79,8 @@ export function TaskDetailScreen() {
   const detailState = useApiResource<unknown>(detailPath, () => false, { scopeKey });
   const activitiesState = useApiResource<unknown>(activitiesPath, () => false, { scopeKey });
   const remindersState = useApiResource<unknown>(reminderResourcePath, () => false, { scopeKey });
-  const detail = ready && (detailState.kind === "success" || detailState.kind === "empty") ? taskDetailToView(detailState.data) : null;
-  const activities = activitiesState.kind === "success" || activitiesState.kind === "empty" ? taskActivitiesToView(activitiesState.data, timeZone) : [];
+  const detail = ready && (detailState.kind === "success" || detailState.kind === "empty") ? taskDetailToView(detailState.data, locale.language) : null;
+  const activities = activitiesState.kind === "success" || activitiesState.kind === "empty" ? taskActivitiesToView(activitiesState.data, timeZone, locale.language) : [];
   const reminders = remindersState.kind === "success" || remindersState.kind === "empty"
     ? reminderPlansToView(remindersState.data, timeZone).filter((item) => item.status === "scheduled")
     : [];
@@ -136,14 +144,14 @@ export function TaskDetailScreen() {
       if (!isCurrent()) return;
       if (result.success) {
         if (accepts && (result.status < 200 || result.status >= 300 || !accepts(result.data))) {
-          setMutationError("未能确认日期已保存，草稿已保留。请重试或重新读取待办。");
+          setMutationError(locale.t("taskDetail.saveDateUnconfirmed"));
           return;
         }
         scope.keys.delete(fingerprint);
         onSuccess(result.data);
       } else setMutationError(result.error.message);
     } catch {
-      if (isCurrent()) setMutationError("操作未完成，请重试。");
+      if (isCurrent()) setMutationError(locale.t("taskDetail.operationFailed"));
     } finally {
       scope.busy = false;
       if (isCurrent()) setSaving(false);
@@ -200,7 +208,7 @@ export function TaskDetailScreen() {
   }
 
   async function saveDates() {
-    if (!canSave) { setMutationError("无法读取设备时区，草稿已保留。请恢复时区后保存。"); return; }
+    if (!canSave) { setMutationError(locale.t("taskDetail.timezoneUnavailable")); return; }
     if (!ready || scopeRef.current !== mutationScope || !mutationScope.active || dateDraftRef.current !== dateDraft) return;
     if (!detail || !baseline || baseline.id !== taskId || detail.status === "cancelled" || staleDraft || saving) return;
     if (latestRef.current?.id !== baseline.id || latestRef.current.updatedAt !== baseline.updatedAt) return;
@@ -211,7 +219,7 @@ export function TaskDetailScreen() {
     await mutate("patch", taskPath(taskId), {
       action: "update", expectedUpdatedAt: baseline.updatedAt, patch: change.patch,
     }, data => {
-      const updated = taskDetailToView(data)!; // Accepted below before acknowledging.
+      const updated = taskDetailToView(data, locale.language)!; // Accepted below before acknowledging.
       if (latestRef.current?.updatedAt === revisionAtStart) setLatest(updated);
       setBaseline(updated);
       dateDraftRef.current = taskDateDraftFromView(updated, editTimeZone);
@@ -226,7 +234,7 @@ export function TaskDetailScreen() {
     const normalizedTitle = title.trim();
     const normalizedNotes = notes.trim();
     if (baseline.notes && !normalizedNotes) {
-      setMutationError("暂不支持清空已有备注，请保留或修改内容。");
+      setMutationError(locale.t("taskDetail.noteClearUnsupported"));
       return;
     }
     if (normalizedTitle === baseline.title && normalizedNotes === baseline.notes.trim()) return;
@@ -240,7 +248,7 @@ export function TaskDetailScreen() {
       },
     }, (data) => {
       if (latestRef.current?.id !== baseline.id) return;
-      const updated = taskDetailToView(data);
+      const updated = taskDetailToView(data, locale.language);
       if (updated) {
         if (latestRef.current?.updatedAt === revisionAtStart) setLatest(updated);
         setBaseline(updated);
@@ -269,7 +277,7 @@ export function TaskDetailScreen() {
   }
 
   async function addReminder(fireAt: string) {
-    if (!canSave) { setReminderMessage("无法读取设备时区，请稍后设置提醒。"); return; }
+    if (!canSave) { setReminderMessage(locale.t("taskDetail.reminderTimezoneUnavailable")); return; }
     if (!detail) return;
     let systemEnabled = false;
     await mutate("post", ORBIT_API_ENDPOINTS.reminders, async () => {
@@ -285,10 +293,10 @@ export function TaskDetailScreen() {
         targetId: taskId,
         targetType: "task",
         timeZone,
-        title: "待办提醒",
+        title: locale.t("taskDetail.reminderTitle"),
       };
     }, () => {
-      setReminderMessage(systemEnabled ? "提醒已设置" : "已添加站内提醒；可在系统设置开启通知");
+      setReminderMessage(locale.t(systemEnabled ? "taskDetail.reminderSet" : "taskDetail.reminderSetInApp"));
       notifyReminderPlansChanged();
       remindersState.refresh();
     });
@@ -296,7 +304,7 @@ export function TaskDetailScreen() {
 
   async function cancelReminder(reminderId: string) {
     await mutate("patch", reminderPath(reminderId), { action: "cancel" }, () => {
-      setReminderMessage("提醒已取消");
+      setReminderMessage(locale.t("taskDetail.reminderCancelled"));
       notifyReminderPlansChanged();
       remindersState.refresh();
     });
@@ -306,18 +314,18 @@ export function TaskDetailScreen() {
     <View style={styles.screen}>
     <AppScreen
       refreshControl={<RefreshControl onRefresh={refresh} refreshing={detailState.refreshing || activitiesState.refreshing || remindersState.refreshing} tintColor={colors.accent} />}
-      headerActions={detail ? <Pressable accessibilityLabel="编辑待办" accessibilityRole="button" disabled={saving} onPress={() => titleInputRef.current?.focus()} style={styles.iconButton}>
-        {largeText ? <Ionicons color={colors.accent} name="create-outline" size={22} /> : <Text style={styles.editLink}>编辑</Text>}
+      headerActions={detail ? <Pressable accessibilityLabel={locale.t("taskDetail.edit")} accessibilityRole="button" disabled={saving} onPress={() => titleInputRef.current?.focus()} style={styles.iconButton}>
+        {largeText ? <Ionicons color={colors.accent} name="create-outline" size={22} /> : <Text style={styles.editLink}>{locale.t("taskDetail.edit")}</Text>}
       </Pressable> : null}
-      title="待办详情"
+      title={locale.t("taskDetail.title")}
     >
       {detailState.kind === "loading" ? <LoadingState /> : null}
-      {detailState.kind === "failure" || detailState.kind === "offline" ? <ErrorState message={detailState.error.message} title="待办暂时打不开" /> : null}
+      {detailState.kind === "failure" || detailState.kind === "offline" ? <ErrorState message={detailState.error.message} title={locale.t("taskDetail.unavailable")} /> : null}
       {detail ? (
         <>
           <View style={styles.hero}>
             <Pressable
-              accessibilityLabel={detail.status === "completed" ? `恢复：${detail.title}` : `完成：${detail.title}`}
+              accessibilityLabel={locale.t(detail.status === "completed" ? "tasks.restoreNamed" : "tasks.completeNamed", { title: detail.title })}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: detail.status === "completed", disabled: saving || detail.status === "cancelled" }}
               aria-checked={detail.status === "completed"}
@@ -330,64 +338,64 @@ export function TaskDetailScreen() {
               </View>
             </Pressable>
             <View style={styles.heroBody}>
-              <TextInput ref={titleInputRef} accessibilityLabel="待办标题" editable={!saving} multiline scrollEnabled={false} onBlur={save} onChangeText={setTitle}
+              <TextInput ref={titleInputRef} accessibilityLabel={locale.t("taskDetail.titleLabel")} editable={!saving} multiline scrollEnabled={false} onBlur={save} onChangeText={setTitle}
                 onContentSizeChange={event => setTitleHeight(event.nativeEvent.contentSize.height)}
                 style={[styles.titleInput, { minHeight: Math.max(32 * fontScale, titleHeight) }]} value={title} />
               <View style={styles.badges}>
-                <Text style={styles.statusText}>{detail.status === "open" ? "未完成" : detail.statusLabel}</Text>
-                {displayedDate ? <Text style={styles.dateBadge}>{taskDateLabel(displayedDate, timeZone)}</Text> : null}
+                <Text style={styles.statusText}>{detail.status === "open" ? locale.t("taskDetail.statusOpen") : detail.statusLabel}</Text>
+                {displayedDate ? <Text style={styles.dateBadge}>{taskDateLabel(displayedDate, timeZone, locale.language, locale.t)}</Text> : null}
               </View>
             </View>
           </View>
 
           {staleDraft && !moreOpen ? <View>
-            <Text accessibilityRole="alert" style={styles.errorText}>这条待办已有新版本，草稿已保留。请复制需要保留的内容，再载入最新版本。</Text>
+            <Text accessibilityRole="alert" style={styles.errorText}>{locale.t("taskDetail.staleWarning")}</Text>
             <Pressable accessibilityRole="button" disabled={saving} onPress={discardDraft} style={styles.sheetRow}>
-              <Text style={styles.sheetRowAction}>放弃草稿并载入最新内容</Text>
+              <Text style={styles.sheetRowAction}>{locale.t("taskDetail.discardDraft")}</Text>
             </Pressable>
           </View> : null}
 
           <View style={styles.metadataGroup}>
-            <Pressable accessibilityLabel="编辑日期和时间" accessibilityRole="button" onPress={() => setMoreOpen(true)} style={styles.metadataRow}>
-              <Text style={metadataLabelStyle}>{(latest ?? detail).dueAt ? "截止" : "安排"}</Text>
-              <Text style={styles.metadataValue}>{taskDateLabel(displayedDate, timeZone)}</Text>
+            <Pressable accessibilityLabel={locale.t("taskDetail.editDateTime")} accessibilityRole="button" onPress={() => setMoreOpen(true)} style={styles.metadataRow}>
+              <Text style={metadataLabelStyle}>{locale.t((latest ?? detail).dueAt ? "taskDetail.due" : "taskDetail.scheduled")}</Text>
+              <Text style={styles.metadataValue}>{taskDateLabel(displayedDate, timeZone, locale.language, locale.t)}</Text>
               <Ionicons color={colors.text4} name="chevron-forward" size={17} />
             </Pressable>
-            {detail.relatedContactId ? <Pressable accessibilityLabel="查看关联人脉" accessibilityRole="button" onPress={() => router.push(`/contacts/${encodeURIComponent(detail.relatedContactId!)}` as Href)} style={styles.metadataRow}>
-              <Text style={metadataLabelStyle}>相关人脉</Text>
-              <Text style={[styles.metadataValue, styles.linkValue]}>查看关联人脉</Text>
+            {detail.relatedContactId ? <Pressable accessibilityLabel={locale.t("taskDetail.viewContact")} accessibilityRole="button" onPress={() => router.push(`/contacts/${encodeURIComponent(detail.relatedContactId!)}` as Href)} style={styles.metadataRow}>
+              <Text style={metadataLabelStyle}>{locale.t("taskDetail.relatedContact")}</Text>
+              <Text style={[styles.metadataValue, styles.linkValue]}>{locale.t("taskDetail.viewContact")}</Text>
               <Ionicons color={colors.text4} name="chevron-forward" size={17} />
             </Pressable> : null}
-            {detail.relatedEventId ? <Pressable accessibilityLabel="查看关联活动" accessibilityRole="button" onPress={() => router.push(`/events/${encodeURIComponent(detail.relatedEventId!)}` as Href)} style={styles.metadataRow}>
-              <Text style={metadataLabelStyle}>相关活动</Text>
-              <Text style={[styles.metadataValue, styles.linkValue]}>查看关联活动</Text>
+            {detail.relatedEventId ? <Pressable accessibilityLabel={locale.t("taskDetail.viewEvent")} accessibilityRole="button" onPress={() => router.push(`/events/${encodeURIComponent(detail.relatedEventId!)}` as Href)} style={styles.metadataRow}>
+              <Text style={metadataLabelStyle}>{locale.t("taskDetail.relatedEvent")}</Text>
+              <Text style={[styles.metadataValue, styles.linkValue]}>{locale.t("taskDetail.viewEvent")}</Text>
               <Ionicons color={colors.text4} name="chevron-forward" size={17} />
             </Pressable> : null}
-            {(latest ?? detail).location ? <View style={styles.metadataRow}><Text style={metadataLabelStyle}>地点</Text><Text style={styles.metadataValue}>{(latest ?? detail).location}</Text></View> : null}
+            {(latest ?? detail).location ? <View style={styles.metadataRow}><Text style={metadataLabelStyle}>{locale.t("taskDetail.location")}</Text><Text style={styles.metadataValue}>{(latest ?? detail).location}</Text></View> : null}
             {detail.sourceLabel ? <View style={styles.metadataRow}>
-              <Text style={metadataLabelStyle}>来源</Text>
+              <Text style={metadataLabelStyle}>{locale.t("taskDetail.source")}</Text>
               <Text style={styles.metadataValue}>{detail.sourceLabel}</Text>
             </View> : null}
             {detail.createdAt ? <View style={styles.metadataRow}>
-              <Text style={metadataLabelStyle}>创建于</Text>
-              <Text style={styles.metadataValue}>{createdDateLabel(detail.createdAt, timeZone)}</Text>
+              <Text style={metadataLabelStyle}>{locale.t("taskDetail.createdAt")}</Text>
+              <Text style={styles.metadataValue}>{createdDateLabel(detail.createdAt, timeZone, locale.language)}</Text>
             </View> : null}
             <View style={styles.metadataRow}>
-              <Text style={metadataLabelStyle}>分类</Text>
+              <Text style={metadataLabelStyle}>{locale.t("taskDetail.category")}</Text>
               <Text style={styles.metadataValue}>{detail.categoryLabel}</Text>
             </View>
-            <Pressable accessibilityLabel="更多待办操作" accessibilityRole="button" onPress={() => setMoreOpen(true)} style={({ pressed }) => [styles.metadataRow, pressed ? styles.pressed : null]}>
-              <Text style={metadataLabelStyle}>提醒</Text>
-              <Text style={styles.metadataValue}>{reminders[0]?.label ?? "未设置"}</Text>
+            <Pressable accessibilityLabel={locale.t("taskDetail.moreActions")} accessibilityRole="button" onPress={() => setMoreOpen(true)} style={({ pressed }) => [styles.metadataRow, pressed ? styles.pressed : null]}>
+              <Text style={metadataLabelStyle}>{locale.t("taskDetail.reminder")}</Text>
+              <Text style={styles.metadataValue}>{reminders[0]?.label ?? locale.t("taskDetail.reminderUnset")}</Text>
               <Ionicons color={colors.text4} name="chevron-forward" size={17} />
             </Pressable>
           </View>
 
           <View style={styles.contentSection}>
-            <Text accessibilityRole="header" style={styles.contentHeading}>内容</Text>
-            <TextInput accessibilityLabel="备注" editable={!saving} multiline scrollEnabled={false} onBlur={save} onChangeText={setNotes}
+            <Text accessibilityRole="header" style={styles.contentHeading}>{locale.t("taskDetail.content")}</Text>
+            <TextInput accessibilityLabel={locale.t("taskDetail.notes")} editable={!saving} multiline scrollEnabled={false} onBlur={save} onChangeText={setNotes}
               onContentSizeChange={event => setNotesHeight(event.nativeEvent.contentSize.height)}
-              placeholder="写一点备注" placeholderTextColor={colors.text4}
+              placeholder={locale.t("taskDetail.notePlaceholder")} placeholderTextColor={colors.text4}
               style={[styles.notesInput, { height: Math.max(72, notesHeight, 24 * fontScale) }]} value={notes} />
           </View>
 
@@ -399,44 +407,44 @@ export function TaskDetailScreen() {
               <Pressable accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" testID="task-settings-scrim" style={styles.modalScrim} onPress={() => setMoreOpen(false)} />
               <View style={styles.sheet}>
                 <View style={styles.sheetHeader}>
-                  <Text style={styles.sheetTitle}>待办设置</Text>
-                  <Pressable accessibilityLabel="关闭待办设置" accessibilityRole="button" onPress={() => setMoreOpen(false)} style={styles.iconButton}>
+                  <Text style={styles.sheetTitle}>{locale.t("taskDetail.settings")}</Text>
+                  <Pressable accessibilityLabel={locale.t("taskDetail.closeSettings")} accessibilityRole="button" onPress={() => setMoreOpen(false)} style={styles.iconButton}>
                     <Ionicons color={colors.text2} name="close" size={21} />
                   </Pressable>
                 </View>
                 <ScrollView automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" contentContainerStyle={styles.sheetBody}>
                   {mutationError ? <Text accessibilityRole="alert" style={styles.errorText}>{mutationError}</Text> : null}
-                  {timeZone !== editTimeZone ? <Text accessibilityRole="alert">此草稿按原时区 {editTimeZone} 保存。</Text> : null}
+                  {timeZone !== editTimeZone ? <Text accessibilityRole="alert">{locale.t("taskDetail.draftTimeZone", { timeZone: editTimeZone })}</Text> : null}
               {staleDraft ? <View>
-                    <Text accessibilityRole="alert" style={styles.errorText}>这条待办已有新版本，草稿已保留。请复制需要保留的内容，再载入最新版本。</Text>
+                    <Text accessibilityRole="alert" style={styles.errorText}>{locale.t("taskDetail.staleWarning")}</Text>
                     <Pressable accessibilityRole="button" disabled={saving} onPress={discardDraft} style={styles.sheetRow}>
-                      <Text style={styles.sheetRowAction}>放弃草稿并载入最新内容</Text>
+                      <Text style={styles.sheetRowAction}>{locale.t("taskDetail.discardDraft")}</Text>
                     </Pressable>
                   </View> : null}
-                  <Text style={styles.sheetSection}>日期和时间</Text>
-                  <Text style={styles.dateHint}>没有具体时间时，只填写安排日期。截止时间使用 {editTimeZone}。清空日期或地点后保存即可移除。</Text>
+                  <Text style={styles.sheetSection}>{locale.t("taskDetail.dateTimeSection")}</Text>
+                  <Text style={styles.dateHint}>{locale.t("taskDetail.dateHint", { timeZone: editTimeZone })}</Text>
                   {([
-                    ["plannedDate", "安排日期", "YYYY-MM-DD"],
-                    ["dueDate", "截止日期", "YYYY-MM-DD"],
-                    ["dueTime", "截止时间", "HH:mm"],
-                    ["location", "地点", "填写地点，清空可移除"],
+                    ["plannedDate", locale.t("taskDetail.plannedDate"), "YYYY-MM-DD"],
+                    ["dueDate", locale.t("taskDetail.dueDate"), "YYYY-MM-DD"],
+                    ["dueTime", locale.t("taskDetail.dueTime"), "HH:mm"],
+                    ["location", locale.t("taskDetail.location"), locale.t("taskDetail.locationPlaceholder")],
                   ] as const).map(([field, label, placeholder]) => <View key={field} style={styles.dateField}>
                     <Text style={styles.dateFieldLabel}>{label}</Text>
                     <TextInput accessibilityLabel={label} autoCapitalize="none" autoCorrect={false} editable={!saving && detail.status !== "cancelled"}
                       onChangeText={value => changeDate(field, value)}
                       placeholder={placeholder} placeholderTextColor={colors.text4} style={styles.dateInput} value={dateDraft[field] ?? ""} />
                   </View>)}
-                  <Text style={styles.dateHint}>修改日期不会自动调整已有提醒。</Text>
-                  {detail.status === "cancelled" ? <Text style={styles.dateHint}>已取消的待办不能修改日期。</Text> : null}
-                  <Pressable accessibilityLabel="保存日期和时间" accessibilityRole="button" disabled={saving || staleDraft || detail.status === "cancelled"} onPress={saveDates}
+                  <Text style={styles.dateHint}>{locale.t("taskDetail.reminderUnaffected")}</Text>
+                  {detail.status === "cancelled" ? <Text style={styles.dateHint}>{locale.t("taskDetail.cancelledNoDate")}</Text> : null}
+                  <Pressable accessibilityLabel={locale.t("taskDetail.saveDateTime")} accessibilityRole="button" disabled={saving || staleDraft || detail.status === "cancelled"} onPress={saveDates}
                     style={[styles.dateSaveButton, (saving || staleDraft || detail.status === "cancelled") && styles.pressed]}>
-                    <Text style={styles.completeButtonText}>{saving ? "正在保存…" : "保存日期、时间和地点"}</Text>
+                    <Text style={styles.completeButtonText}>{locale.t(saving ? "taskDetail.saving" : "taskDetail.saveDateTime")}</Text>
                   </Pressable>
-                  <Text style={styles.sheetSection}>提醒选项</Text>
+                  <Text style={styles.sheetSection}>{locale.t("taskDetail.reminderOptions")}</Text>
                   {reminders.map((item) => (
                     <Pressable key={item.id} onPress={() => void cancelReminder(item.id)} style={styles.sheetRow}>
                       <Text style={styles.sheetRowText}>{item.label}</Text>
-                      <Text style={styles.sheetRowAction}>取消</Text>
+                      <Text style={styles.sheetRowAction}>{locale.t("taskDetail.cancelReminder")}</Text>
                     </Pressable>
                   ))}
                   {detail.status === "open" ? (
@@ -449,7 +457,7 @@ export function TaskDetailScreen() {
                     </View>
                   ) : null}
 
-                  <Text style={styles.sheetSection}>变更历史</Text>
+                  <Text style={styles.sheetSection}>{locale.t("taskDetail.changeHistory")}</Text>
                   {activities.slice(-5).reverse().map((item) => (
                     <View key={item.id} style={styles.sheetRow}>
                       <Text style={styles.sheetRowText}>{item.label}</Text>
@@ -459,7 +467,7 @@ export function TaskDetailScreen() {
 
                   <Pressable accessibilityRole="button" disabled={saving} onPress={deleteTask} style={styles.deleteButton}>
                     <Ionicons color={colors.rose} name="trash-outline" size={18} />
-                    <Text style={styles.deleteText}>删除待办</Text>
+                    <Text style={styles.deleteText}>{locale.t("taskDetail.deleteTask")}</Text>
                   </Pressable>
                 </ScrollView>
               </View>
@@ -471,10 +479,10 @@ export function TaskDetailScreen() {
     {detail ? <View testID="task-detail-actions" style={[styles.actionDock, { paddingBottom: Math.max(24, insets.bottom) }]}>
       <View style={styles.actionContent}>
         {detail.status !== "cancelled" ? <Pressable accessibilityRole="button" disabled={saving} onPress={changeStatus} style={({ pressed }) => [styles.completeButton, detail.status === "completed" ? styles.reopenButton : null, pressed ? styles.pressed : null]}>
-          <Text style={detail.status === "completed" ? styles.reopenButtonText : styles.completeButtonText}>{detail.status === "completed" ? "恢复待办" : "标记完成"}</Text>
+          <Text style={detail.status === "completed" ? styles.reopenButtonText : styles.completeButtonText}>{locale.t(detail.status === "completed" ? "taskDetail.restore" : "taskDetail.markComplete")}</Text>
         </Pressable> : null}
-        <Pressable accessibilityLabel="编辑待办" accessibilityRole="button" disabled={saving} onPress={() => titleInputRef.current?.focus()} style={({ pressed }) => [styles.editButton, pressed && styles.pressed]}>
-          <Text style={styles.editButtonText}>编辑待办</Text>
+        <Pressable accessibilityLabel={locale.t("taskDetail.edit")} accessibilityRole="button" disabled={saving} onPress={() => titleInputRef.current?.focus()} style={({ pressed }) => [styles.editButton, pressed && styles.pressed]}>
+          <Text style={styles.editButtonText}>{locale.t("taskDetail.edit")}</Text>
         </Pressable>
       </View>
     </View> : null}
@@ -482,21 +490,19 @@ export function TaskDetailScreen() {
   );
 }
 
-function taskDateLabel(value: string | undefined, timeZone: string): string {
-  if (!value) return "未安排日期";
+function taskDateLabel(value: string | undefined, timeZone: string, language: OrbitLanguage, t: OrbitTranslator): string {
+  if (!value) return t("taskDetail.dateUnscheduled");
   const now = new Date();
   const date = new Date(value.length === 10 ? `${value}T12:00:00+09:00` : value);
-  if (!Number.isFinite(date.getTime())) return "日期不可用";
+  if (!Number.isFinite(date.getTime())) return t("taskDetail.dateUnavailable");
   if ((value.length === 10 ? value : localParts(date, timeZone).date) === localParts(now, timeZone).date) {
-    return value.length === 10 ? "今天" : `今天 ${new Intl.DateTimeFormat("zh-CN", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(date)}`;
+    return value.length === 10 ? t("tasks.groupToday") : t("taskDetail.todayAt", { time: new Intl.DateTimeFormat(localeTag(language), { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(date) });
   }
-  return dateLabel(value, timeZone);
+  return dateLabel(value, timeZone, language, t);
 }
 
-function createdDateLabel(value: string, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat("zh-CN", { timeZone, month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(value));
-  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(item => item.type === type)?.value ?? "";
-  return `${part("month")}月${part("day")}日 ${part("hour")}:${part("minute")}`;
+function createdDateLabel(value: string, timeZone: string, language: OrbitLanguage): string {
+  return new Intl.DateTimeFormat(localeTag(language), { timeZone, month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(value));
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({

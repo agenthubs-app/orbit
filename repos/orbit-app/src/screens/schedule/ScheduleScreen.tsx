@@ -11,12 +11,14 @@ import {
   View
 } from "react-native";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
+import type { OrbitLanguage } from "../../api/contract/language";
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { layout, textStyles, radius, spacing, typography, type OrbitColors } from "../../design/tokens";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import {
   japanCalendarDateInfo,
   scheduleToCalendarView,
@@ -30,7 +32,15 @@ import {
 type ScheduleViewMode = "day" | "week" | "month";
 
 const hourHeight = 56;
-const weekdayLabels = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+const weekdayReferenceKeys = ["2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18", "2026-09-19", "2026-09-20"];
+
+function localeTag(language: OrbitLanguage): string {
+  return language === "zh" ? "zh-CN" : language === "ja" ? "ja-JP" : "en-US";
+}
+
+function localizedWeekday(dateKey: string, language: OrbitLanguage, narrow = false): string {
+  return new Intl.DateTimeFormat(localeTag(language), { timeZone: "UTC", weekday: narrow ? "narrow" : "short" }).format(new Date(`${dateKey}T12:00:00Z`));
+}
 
 function usable<TData>(
   state: ReturnType<typeof useApiResource<TData>>
@@ -115,6 +125,7 @@ function monthGridDateKeys(selectedDateKey: string): string[] {
 
 export function ScheduleScreen() {
   const router = useRouter();
+  const locale = useOrbitLocale();
   const { timeZone } = useOrbitTimeZone();
   const { colors } = useOrbitTheme();
   const tasksState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.tasks, () => false);
@@ -142,7 +153,7 @@ export function ScheduleScreen() {
 
   const hasAnyData = usable(tasksState) || usable(eventsState) || usable(scheduleItemsState);
   const view = hasAnyData
-    ? scheduleToCalendarView({ timeZone,
+    ? scheduleToCalendarView({ timeZone, language: locale.language,
         events: usable(eventsState) ? eventsState.data : { events: [] },
         now,
         scheduleItems: usable(scheduleItemsState)
@@ -164,24 +175,24 @@ export function ScheduleScreen() {
           tintColor={colors.accent}
         />
       }
-      title="日程"
-      headerActions={<Pressable accessibilityRole="button" accessibilityLabel="新建个人日程" onPress={() => router.push("/schedule/personal/new" as Href)} style={{ minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" }}><Ionicons name="add" size={26} color={colors.accent} /></Pressable>}
+      title={locale.t("schedule.title")}
+      headerActions={<Pressable accessibilityRole="button" accessibilityLabel={locale.t("schedule.newPersonal")} onPress={() => router.push("/schedule/personal/new" as Href)} style={{ minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" }}><Ionicons name="add" size={26} color={colors.accent} /></Pressable>}
     >
       {loading ? <LoadingState /> : null}
       {tasksState.kind === "offline" ? (
-        <ErrorState message={tasksState.error.message} title="待办暂时连不上" />
+        <ErrorState message={tasksState.error.message} title={locale.t("schedule.tasksOffline")} />
       ) : null}
       {eventsState.kind === "offline" ? (
-        <ErrorState message={eventsState.error.message} title="活动暂时连不上" />
+        <ErrorState message={eventsState.error.message} title={locale.t("schedule.eventsOffline")} />
       ) : null}
       {tasksState.kind === "failure" ? (
-        <ErrorState message={tasksState.error.message} title="待办加载失败" />
+        <ErrorState message={tasksState.error.message} title={locale.t("schedule.tasksFailed")} />
       ) : null}
       {eventsState.kind === "failure" ? (
-        <ErrorState message={eventsState.error.message} title="活动加载失败" />
+        <ErrorState message={eventsState.error.message} title={locale.t("schedule.eventsFailed")} />
       ) : null}
       {scheduleItemsState.kind === "failure" || scheduleItemsState.kind === "offline" ? (
-        <ErrorState message={scheduleItemsState.error.message} title="个人日程加载失败" />
+        <ErrorState message={scheduleItemsState.error.message} title={locale.t("schedule.personalFailed")} />
       ) : null}
       {view ? (
         <ScheduleWorkspace
@@ -212,18 +223,19 @@ function ScheduleWorkspace({
   view: ScheduleCalendarView;
   viewMode: ScheduleViewMode;
 }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   return (
     <View style={styles.workspace}>
       <View style={styles.commandRow}>
         <ScheduleViewSwitcher onChange={onViewModeChange} value={viewMode} />
         <Pressable
-          accessibilityLabel="回到今天"
+          accessibilityLabel={locale.t("schedule.backToday")}
           accessibilityRole="button"
           onPress={onToday}
           style={({ pressed }) => [styles.todayButton, pressed ? styles.pressed : null]}
         >
-          <Text style={styles.todayButtonText}>今天</Text>
+          <Text style={styles.todayButtonText}>{locale.t("tasks.groupToday")}</Text>
         </Pressable>
       </View>
       <ScheduleDateHeading onSelectDate={onSelectDate} view={view} viewMode={viewMode} />
@@ -240,16 +252,16 @@ function ScheduleWorkspace({
       {viewMode === "month" ? (
         <ScheduleCompactAgenda
           badgeLabel={view.selectedHolidayName}
-          emptyMessage="这一天暂无安排"
+          emptyMessage={locale.t("schedule.emptyDay")}
           items={[...view.allDayItems, ...view.timedItems]}
           title={view.selectedDayLabel}
         />
       ) : null}
       <View style={styles.legendRow}>
-        <ScheduleLegend color={colors.accent} label="人脉待办" />
-        <ScheduleLegend color={colors.sky} label="会面" />
-        <ScheduleLegend color={colors.amber} label="活动" />
-        <ScheduleLegend color={colors.live} label="个人日程" />
+        <ScheduleLegend color={colors.accent} label={locale.t("schedule.legendRelationship")} />
+        <ScheduleLegend color={colors.sky} label={locale.t("schedule.legendMeeting")} />
+        <ScheduleLegend color={colors.amber} label={locale.t("schedule.legendEvent")} />
+        <ScheduleLegend color={colors.live} label={locale.t("schedule.legendPersonal")} />
       </View>
     </View>
   );
@@ -272,11 +284,12 @@ function ScheduleViewSwitcher({
   onChange: (mode: ScheduleViewMode) => void;
   value: ScheduleViewMode;
 }) {
+  const locale = useOrbitLocale();
   const { styles } = useStyles();
   const options: Array<{ label: string; value: ScheduleViewMode }> = [
-    { label: "日", value: "day" },
-    { label: "周", value: "week" },
-    { label: "月", value: "month" }
+    { label: locale.t("schedule.viewDay"), value: "day" },
+    { label: locale.t("schedule.viewWeek"), value: "week" },
+    { label: locale.t("schedule.viewMonth"), value: "month" }
   ];
 
   return (
@@ -316,12 +329,13 @@ function ScheduleDateHeading({ onSelectDate, view, viewMode }: {
   view: ScheduleCalendarView;
   viewMode: ScheduleViewMode;
 }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const { fontScale } = useWindowDimensions();
   const compactDate = (dateKey: string) => dateKey.split("-").slice(1).map(Number).join(".");
   const title = viewMode === "day" ? compactDate(view.selectedDateKey)
     : viewMode === "week" ? `${compactDate(view.days[0]!.dateKey)} – ${compactDate(view.days[6]!.dateKey)}`
-    : `${view.selectedDateKey.slice(0, 4)} · ${Number(view.selectedDateKey.slice(5, 7))}月`;
+    : locale.t("schedule.monthLabel", { year: view.selectedDateKey.slice(0, 4), month: Number(view.selectedDateKey.slice(5, 7)) });
   const selectedDay = view.days.find(day => day.isSelected)!;
   // A Monday-first week's Thursday determines its ISO week-year.
   const thursday = new Date(`${view.days[3]!.dateKey}T00:00:00Z`);
@@ -335,16 +349,16 @@ function ScheduleDateHeading({ onSelectDate, view, viewMode }: {
       <View style={[styles.weekHeadingCopy, fontScale > 1.3 && styles.weekHeadingCopyLarge]}>
         <Text accessibilityRole="header" style={[styles.dateTitle, viewMode === "day" && styles.dayDateTitle]}>{title}</Text>
         {viewMode !== "month" ? <Text style={styles.dateSubtitle}>{viewMode === "day"
-          ? `${selectedDay.weekdayLabel} · ${selectedDay.items.length} 项`
-          : `${weekYear} · 第 ${weekNumber} 周`}</Text> : null}
+          ? locale.t("schedule.dayItemCount", { weekday: localizedWeekday(selectedDay.dateKey, locale.language), count: selectedDay.items.length })
+          : locale.t("schedule.weekLabel", { year: weekYear, week: weekNumber })}</Text> : null}
         {viewMode === "day" && view.selectedHolidayName ? <Text style={styles.holidayBadgeText}>{view.selectedHolidayName}</Text> : null}
       </View>
       <View style={styles.dateArrows}>
-        <Pressable accessibilityLabel={viewMode === "day" ? "上一天" : viewMode === "week" ? "上一周" : "上个月"} accessibilityRole="button"
+        <Pressable accessibilityLabel={locale.t(viewMode === "day" ? "schedule.previousDay" : viewMode === "week" ? "schedule.previousWeek" : "schedule.previousMonth")} accessibilityRole="button"
           onPress={() => move(-1)} style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
           <Ionicons color={colors.ink} name="chevron-back" size={18} />
         </Pressable>
-        <Pressable accessibilityLabel={viewMode === "day" ? "下一天" : viewMode === "week" ? "下一周" : "下个月"} accessibilityRole="button"
+        <Pressable accessibilityLabel={locale.t(viewMode === "day" ? "schedule.nextDay" : viewMode === "week" ? "schedule.nextWeek" : "schedule.nextMonth")} accessibilityRole="button"
           onPress={() => move(1)} style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
           <Ionicons color={colors.ink} name="chevron-forward" size={18} />
         </Pressable>
@@ -379,13 +393,15 @@ function ScheduleDayButton({
   day: ScheduleCalendarDay;
   onPress: (dateKey: string) => void;
 }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const { fontScale } = useWindowDimensions();
   const accessibilityHoliday = day.holidayName ? `，${day.holidayName}` : "";
+  const weekday = localizedWeekday(day.dateKey, locale.language);
 
   return (
     <Pressable
-      accessibilityLabel={`${day.weekdayLabel}${day.dayNumber}日${accessibilityHoliday}，${day.items.length}项安排`}
+      accessibilityLabel={locale.t("schedule.dayAccessibility", { weekday, day: day.dayNumber, holiday: accessibilityHoliday, count: day.items.length })}
       accessibilityRole="button"
       accessibilityState={{ selected: day.isSelected }}
       aria-selected={day.isSelected}
@@ -404,7 +420,7 @@ function ScheduleDayButton({
           day.isSelected ? styles.dayTextSelected : null
         ]}
       >
-        {fontScale > 1.3 ? day.weekdayLabel.replace("周", "") : day.weekdayLabel}
+        {fontScale > 1.3 ? localizedWeekday(day.dateKey, locale.language, true) : weekday}
       </Text>
       <Text
         style={[
@@ -435,13 +451,14 @@ function ScheduleDayButton({
 }
 
 function ScheduleDayView({ now, view }: { now: Date; view: ScheduleCalendarView }) {
+  const locale = useOrbitLocale();
   const { styles } = useStyles();
 
   return (
     <View style={styles.dayView}>
       {view.allDayItems.length > 0 ? (
         <View style={styles.allDayRow}>
-          <Text style={styles.allDayLabel}>全天</Text>
+          <Text style={styles.allDayLabel}>{locale.t("schedule.allDay")}</Text>
           <View style={styles.allDayItems}>
             {view.allDayItems.map((item) => (
               <ScheduleAgendaRow item={item} key={`${item.kind}-${item.id}`} />
@@ -467,6 +484,7 @@ function ScheduleTimeGrid({
   items: ScheduleTimelineItem[];
   now: Date;
 }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const { fontScale } = useWindowDimensions();
   const hourGutter = Math.max(42, Math.ceil(36 * fontScale + spacing.xs));
@@ -531,7 +549,7 @@ function ScheduleTimeGrid({
       {items.length === 0 ? (
         <View style={[styles.emptyTimeline, { left: hourGutter + 18 }]}>
           <Ionicons color={colors.text4} name="calendar-clear-outline" size={20} />
-          <Text style={styles.emptyTimelineText}>这一天暂无安排</Text>
+          <Text style={styles.emptyTimelineText}>{locale.t("schedule.emptyDay")}</Text>
         </View>
       ) : null}
     </View>
@@ -551,6 +569,7 @@ function ScheduleTimeBlock({
   nextUp: boolean;
   top: number;
 }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const router = useRouter();
   const tone = itemTone(item, colors);
@@ -558,8 +577,8 @@ function ScheduleTimeBlock({
 
   return (
     <Pressable
-      accessibilityHint="打开日程详情"
-      accessibilityLabel={`${item.title}，${item.timeLabel || "时间待定"}，${item.actionLabel}`}
+      accessibilityHint={locale.t("schedule.openDetail")}
+      accessibilityLabel={`${item.title}，${item.timeLabel || locale.t("schedule.timePending")}，${item.actionLabel}`}
       accessibilityRole="button"
       onPress={() => router.push(item.href as Href)}
       style={({ pressed }) => [
@@ -592,6 +611,7 @@ function ScheduleTimeBlock({
 }
 
 function ScheduleWeekAgenda({ view }: { view: ScheduleCalendarView }) {
+  const locale = useOrbitLocale();
   const { styles } = useStyles();
   const orderedDays = [...view.days.filter(day => day.dateKey >= view.selectedDateKey),
     ...view.days.filter(day => day.dateKey < view.selectedDateKey)];
@@ -600,7 +620,7 @@ function ScheduleWeekAgenda({ view }: { view: ScheduleCalendarView }) {
       <View style={styles.weekAgendaList}>
         {orderedDays.map((day) => (
           <View key={day.dateKey} style={styles.weekAgendaDay}>
-            {day.dateKey < view.selectedDateKey && day === view.days[0] ? <Text style={styles.earlierDaysLabel}>本周较早日期</Text> : null}
+            {day.dateKey < view.selectedDateKey && day === view.days[0] ? <Text style={styles.earlierDaysLabel}>{locale.t("schedule.earlierWeek")}</Text> : null}
             <View style={styles.weekAgendaDate}>
               <Text
                 accessibilityRole="header"
@@ -611,9 +631,9 @@ function ScheduleWeekAgenda({ view }: { view: ScheduleCalendarView }) {
                   day.isToday ? styles.todayDateText : null
                 ]}
               >
-                {day.isToday ? "今天 · " : ""}{Number(day.dateKey.slice(5, 7))}月{day.dayNumber}日 {day.weekdayLabel}
+                {day.isToday ? locale.t("schedule.todayPrefix") : ""}{locale.t("schedule.dateLabel", { month: Number(day.dateKey.slice(5, 7)), day: day.dayNumber, weekday: localizedWeekday(day.dateKey, locale.language) })}
               </Text>
-              <Text style={styles.sectionCount}>{day.items.length} 项</Text>
+              <Text style={styles.sectionCount}>{locale.t("schedule.itemCount", { count: day.items.length })}</Text>
             </View>
             {day.holidayName ? <Text style={styles.holidayBadgeText}>{day.holidayName}</Text> : null}
             <View style={styles.weekAgendaItems}>
@@ -622,7 +642,7 @@ function ScheduleWeekAgenda({ view }: { view: ScheduleCalendarView }) {
                   <ScheduleAgendaRow item={item} key={`${item.kind}-${item.id}`} />
                 ))
               ) : (
-                <Text style={styles.weekAgendaEmpty}>暂无安排</Text>
+                <Text style={styles.weekAgendaEmpty}>{locale.t("schedule.empty")}</Text>
               )}
             </View>
           </View>
@@ -639,6 +659,7 @@ function ScheduleMonthGrid({
   onSelectDate: (dateKey: string) => void;
   view: ScheduleCalendarView;
 }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const dateKeys = monthGridDateKeys(view.selectedDateKey);
   const selectedMonth = view.selectedDateKey.slice(0, 7);
@@ -646,16 +667,16 @@ function ScheduleMonthGrid({
   return (
     <View style={styles.calendarPanel}>
       <View style={styles.monthWeekdays}>
-        {weekdayLabels.map((label, index) => (
+        {weekdayReferenceKeys.map((dateKey, index) => (
           <Text
-            key={label}
+            key={dateKey}
             style={[
               styles.monthWeekday,
               index === 5 ? styles.saturdayText : null,
               index === 6 ? styles.holidayText : null
             ]}
           >
-            {label.replace("周", "")}
+            {localizedWeekday(dateKey, locale.language, true)}
           </Text>
         ))}
       </View>
@@ -667,7 +688,7 @@ function ScheduleMonthGrid({
           const calendarDateInfo = japanCalendarDateInfo(dateKey);
           return (
             <Pressable
-              accessibilityLabel={`${Number(dateKey.slice(-2))}日${calendarDateInfo.holidayName ? `，${calendarDateInfo.holidayName}` : ""}，${dateItems.length}项安排`}
+              accessibilityLabel={locale.t("schedule.dayAccessibility", { weekday: "", day: Number(dateKey.slice(-2)), holiday: calendarDateInfo.holidayName ? `，${calendarDateInfo.holidayName}` : "", count: dateItems.length })}
               accessibilityRole="button"
               accessibilityState={{ selected }}
               aria-selected={selected}
@@ -722,6 +743,7 @@ function ScheduleCompactAgenda({
   items: ScheduleTimelineItem[];
   title: string;
 }) {
+  const locale = useOrbitLocale();
   const { styles } = useStyles();
   return (
     <View style={[styles.agendaSection, styles.monthAgenda]}>
@@ -734,7 +756,7 @@ function ScheduleCompactAgenda({
             </View>
           ) : null}
         </View>
-        <Text style={styles.sectionCount}>{items.length} 项</Text>
+        <Text style={styles.sectionCount}>{locale.t("schedule.itemCount", { count: items.length })}</Text>
       </View>
       {items.length > 0 ? (
         <View style={styles.compactAgendaList}>
@@ -750,6 +772,7 @@ function ScheduleCompactAgenda({
 }
 
 function ScheduleAgendaRow({ item }: { item: ScheduleTimelineItem }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const { fontScale } = useWindowDimensions();
   const largeText = fontScale > 1.3;
@@ -758,13 +781,13 @@ function ScheduleAgendaRow({ item }: { item: ScheduleTimelineItem }) {
 
   return (
     <Pressable
-      accessibilityLabel={`${item.title}，${item.timeLabel || "全天"}`}
+      accessibilityLabel={`${item.title}，${item.timeLabel || locale.t("schedule.allDay")}`}
       accessibilityRole="button"
       onPress={() => router.push(item.href as Href)}
       style={({ pressed }) => [styles.agendaRow, largeText ? styles.agendaRowLarge : null, pressed ? styles.pressed : null]}
     >
       <Text style={[styles.agendaTime, largeText ? styles.agendaTimeLarge : null]}>
-        {item.timeLabel || "全天"}
+        {item.timeLabel || locale.t("schedule.allDay")}
       </Text>
       <View style={[styles.agendaMarker, { backgroundColor: tone.color }]} />
       <View style={[styles.agendaCopy, largeText ? styles.agendaCopyLarge : null]}>

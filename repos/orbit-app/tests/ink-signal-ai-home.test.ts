@@ -86,7 +86,7 @@ export const TextInput = props => { const s = useFixture(); return <RealTextInpu
 test.after(async () => { await browser?.close(); });
 async function settle(p: Page) { await p.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))); }
 async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<string, unknown> = {}) {
-  const p = await browser.newPage({ viewport: { width: Number(patch.width ?? 390), height: 844 }, deviceScaleFactor: 2, colorScheme: patch.dark ? "dark" : "light" });
+  const p = await browser.newPage({ viewport: { width: Number(patch.width ?? 390), height: 844 }, deviceScaleFactor: 2, colorScheme: patch.dark ? "dark" : "light", locale: "zh-CN" });
   p.setDefaultTimeout(1800); const errors: string[] = []; p.on("pageerror", error => errors.push(error.message));
   t.after(async () => { await p.close(); assert.deepEqual(errors, []); }); await p.route("**/*", r => r.abort());
   await p.setContent('<style>@font-face{font-family:OrbitTestIonicons;src:url(data:font/ttf;base64,' + iconFont + ')}html,body,#root{margin:0;height:100%}#root{display:flex;flex-direction:column}</style><div id="root"></div>');
@@ -267,10 +267,10 @@ for (const [patch, notice] of [
   [{ failPaths: ["/api/ai/conversations/sessions"], payloads: { ...aiReadPayloads, "/api/ai/conversations": emptyAiConversationPayload } }, "历史记录未能读取"]
 ] as const) test("AI capability drawer does not hide an incomplete history source " + notice, async t => {
   const p = await open(t, patch); await press(p, "更多操作"); await press(p, "常用入口"); await p.getByRole("button", { name: "扫名片", exact: true }).waitFor({ state: "hidden" });
-  const body = p.getByText("最近对话", { exact: true }).locator("..");
-  assert.equal(await body.getByText(notice, { exact: true }).count(), 1);
-  assert.equal(await body.getByText("还没有匹配的对话。", { exact: true }).count(), 0);
-  if (!("holdReads" in patch)) assert.equal(await body.getByRole("button", { name: notice.startsWith("会话") ? "重试会话记录" : "重试历史记录", exact: true }).count(), 1);
+  const drawer = p.getByRole("button", { name: "关闭侧栏", exact: true }).last().locator("..").locator("..").locator("..");
+  assert.equal(await drawer.getByText(notice, { exact: true }).count(), 1);
+  assert.equal(await drawer.getByText("还没有匹配的对话。", { exact: true }).count(), 0);
+  if (!("holdReads" in patch)) assert.equal(await drawer.getByRole("button", { name: notice.startsWith("会话") ? "重试会话记录" : "重试历史记录", exact: true }).count(), 1);
 });
 test("AI only genuine empty sources show an empty history", async t => {
   const p = await open(t, { payloads: { ...aiReadPayloads, "/api/ai/conversations": emptyAiConversationPayload, "/api/ai/conversations/sessions": emptyAiSessionListPayload } });

@@ -10,22 +10,24 @@ import { localParts } from "../../time/date-time";
 import { createThemedStyles } from "../../design/theme";
 import { LoadingState } from "../../components/LoadingState";
 import { ErrorState } from "../../components/ErrorState";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 
 export function PersonalScheduleList() {
   const auth = useOrbitAuthSession(); const { baseUrl } = useOrbitApiBaseUrl(); const actor = auth.user?.id ?? "";
+  const locale = useOrbitLocale();
   const { timeZone } = useOrbitTimeZone(); const router = useRouter(); const { styles } = useStyles();
   const state = useApiResource<unknown>(personalSchedulePath(), () => false, { scopeKey: JSON.stringify([actor, baseUrl]), cachePolicy: "network-only" });
   useFocusEffect(useCallback(() => { state.refresh(); }, [state.refresh]));
   const ready = state.kind === "success" || state.kind === "empty";
   const items = ready ? personalScheduleList(state.data, actor) : null;
   return <View style={styles.section}>
-    <View style={styles.heading}><Text accessibilityRole="header" style={styles.title}>个人日程</Text><Pressable accessibilityRole="button" onPress={() => router.push("/schedule/personal/new" as Href)} style={styles.button}><Text style={styles.link}>新建个人日程</Text></Pressable></View>
+    <View style={styles.heading}><Text accessibilityRole="header" style={styles.title}>{locale.t("schedule.personalTitle")}</Text><Pressable accessibilityRole="button" onPress={() => router.push("/schedule/personal/new" as Href)} style={styles.button}><Text style={styles.link}>{locale.t("schedule.newPersonal")}</Text></Pressable></View>
     {state.kind === "loading" ? <LoadingState /> : null}
-    {state.kind === "failure" || state.kind === "offline" || (ready && !items) ? <ErrorState title="个人日程加载失败" message="请重新读取，待办列表不受影响。" /> : null}
-    <Pressable accessibilityRole="button" onPress={state.refresh} style={styles.button}><Text style={styles.link}>刷新个人日程</Text></Pressable>
-    {items?.length === 0 ? <Text style={styles.detail}>暂无个人日程</Text> : null}
+    {state.kind === "failure" || state.kind === "offline" || (ready && !items) ? <ErrorState title={locale.t("schedule.personalLoadFailure")} message={locale.t("schedule.personalLoadFailureBody")} /> : null}
+    <Pressable accessibilityRole="button" onPress={state.refresh} style={styles.button}><Text style={styles.link}>{locale.t("schedule.refreshPersonal")}</Text></Pressable>
+    {items?.length === 0 ? <Text style={styles.detail}>{locale.t("schedule.emptyPersonal")}</Text> : null}
     {items?.map(item => { const parts = localParts(item.startsAt, timeZone); return <Pressable key={item.id} accessibilityRole="button" onPress={() => router.push(`/schedule/personal/${encodeURIComponent(item.id)}` as Href)} style={styles.row}>
-      <Text style={styles.title}>{item.title}</Text><Text style={styles.detail}>{[parts.date + " " + parts.time, item.location, item.state === "ended" ? "已结束" : item.state === "ongoing" ? "进行中" : "已安排"].filter(Boolean).join(" · ")}</Text>
+      <Text style={styles.title}>{item.title}</Text><Text style={styles.detail}>{[parts.date + " " + parts.time, item.location, locale.t(item.state === "ended" ? "schedule.stateEnded" : item.state === "ongoing" ? "schedule.stateOngoing" : "schedule.stateScheduled")].filter(Boolean).join(" · ")}</Text>
     </Pressable>; })}
   </View>;
 }

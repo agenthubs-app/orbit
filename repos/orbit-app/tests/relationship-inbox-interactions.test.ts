@@ -97,7 +97,7 @@ test.after(async () => {
 });
 
 async function openScreen(t: { after: (fn: () => Promise<void>) => void }): Promise<Page> {
-  const page = await browser.newPage({ viewport: { width: 402, height: 874 } });
+  const page = await browser.newPage({ viewport: { width: 402, height: 874 }, locale: "zh-CN" });
   page.setDefaultTimeout(2000);
   t.after(() => page.close());
   await page.route("**/*", route => route.request().url().startsWith(url) ? route.continue() : route.abort());

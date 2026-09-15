@@ -35,6 +35,7 @@ import { createThemedStyles } from "../../design/theme";
 import { iorbitBrandMark } from "../../design/iorbit-brand";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { aiConversationListSchema, aiSessionReadSchema, aiSessionReceiptMatches, aiReplyPayload, aiReliableSendReceipt, aiReliableSendRecovery, aiTaskReceipt, type AiConversationPayload, type AiSession } from "../../api/ai-history-contract";
 import type { AiSessionOriginInputContract, AiSessionReferenceContract } from "../../api/contract/ai-sessions";
 import { updateAiSessionOrganization } from "../../api/ai-session-management";
@@ -134,10 +135,10 @@ function useJournalState<K extends keyof ConversationJournalState>(journal: AiCo
   return [value, update] as const;
 }
 
-function rawConversationThread(payload: AiConversationPayload): ConversationThreadView {
+function rawConversationThread(payload: AiConversationPayload, fallbackTitle: string, language: "en" | "ja" | "zh"): ConversationThreadView {
   return {
-    ...conversationPayloadToThreadView(payload),
-    title: payload.conversations.find(item => item.conversationId === payload.activeConversationId)?.title || "IORBIT 会话",
+    ...conversationPayloadToThreadView(payload, language),
+    title: payload.conversations.find(item => item.conversationId === payload.activeConversationId)?.title || fallbackTitle,
     assistantMessage: payload.assistantMessage,
     messages: payload.messages.map(item => ({ id: item.messageId, role: item.role, content: item.content, createdAt: item.createdAt }))
   };
@@ -155,6 +156,7 @@ function rawSessionThread(session: AiSession): ConversationThreadView {
 export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, claimInitialPrompt, allowInitialPrompt = true, initialDraft, initialReferences = [], journal: providedJournal, sessionOrigin }: {
   scopeKey?: string; isScopeCurrent?: () => boolean; claimInitialPrompt?: () => boolean; allowInitialPrompt?: boolean; initialDraft?: string; initialReferences?: readonly AiSessionReferenceContract[]; journal?: AiConversationJournal; sessionOrigin?: AiSessionOriginInputContract;
 } = {}) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const insets = useSafeAreaInsets();
   const { id, initialMessage, initialMessageConsumed, source } = useLocalSearchParams<{
@@ -175,7 +177,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const state = useApiResource<unknown>(path, () => false, readOptions);
   const eventsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.events, data => eventsToSummaries(data).length === 0, readOptions);
   const contactsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.contacts, data => contactsToSummaries(data).length === 0, readOptions);
-  const tasksState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.tasks, data => followupsToView({ notificationsPayload: {}, tasksPayload: data }).tasks.length === 0, readOptions);
+  const tasksState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.tasks, data => followupsToView({ notificationsPayload: {}, tasksPayload: data }, locale.language).tasks.length === 0, readOptions);
   const profileState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.profile, () => false, readOptions);
   const [draftMessage, setDraftMessage] = useJournalState(journal, "draftMessage", isDraftConversation && optionalParam(initialMessageConsumed) !== "1" ? initialDraft ?? initialPrompt : "");
   const draftValue = useRef(draftMessage);
@@ -217,9 +219,9 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       mounted.current = false;
       if (journal.interruptedRequest) {
         journal.failedRequest = journal.interruptedRequest;
-        journal.sendError = "上次请求已中断，结果尚未确认。你可以重试或编辑问题。";
+        journal.sendError = locale.t("aiConversation.interrupted");
       }
-      if (journal.pendingSave) journal.saveError = "回复尚未确认保存，请重试保存。";
+      if (journal.pendingSave) journal.saveError = locale.t("aiConversation.savePending");
       requests.current.forEach(controller => controller.abort()); requests.current.clear();
     };
   }, [client, scopeKey]);
@@ -237,17 +239,17 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const conversationRead = loadedData && !isStoredAgentSession ? aiConversationListSchema.safeParse(loadedData) : null;
   const readInvalid = loadedData !== null && (isStoredAgentSession ? !loadedSession : !conversationRead?.success);
   const previousSession = sessionSnapshot ?? loadedSession;
-  const generatedThread = latestData ? rawConversationThread(latestData) : null;
+  const generatedThread = latestData ? rawConversationThread(latestData, locale.t("aiConversation.sessionTitle"), locale.language) : null;
   const submittedMessage = journal.interruptedRequest?.message ?? failedRequest?.message;
-  const initialThread: ConversationThreadView | null = !isDraftConversation ? null : submittedMessage ? pendingConversationThreadView(submittedMessage)
-    : { activeConversationId: null, assistantMessage: "", messages: [], nextAction: "", proposedToolIntents: [], title: "新会话" };
+  const initialThread: ConversationThreadView | null = !isDraftConversation ? null : submittedMessage ? pendingConversationThreadView(submittedMessage, locale.language)
+    : { activeConversationId: null, assistantMessage: "", messages: [], nextAction: "", proposedToolIntents: [], title: locale.t("aiConversation.newChat") };
   const thread = generatedThread
     ? previousSession ? { ...generatedThread, title: rawSessionThread(previousSession).title, messages: rawSessionThread(previousSession).messages } : generatedThread
     : loadedSession ? rawSessionThread(loadedSession)
-    : conversationRead?.success ? rawConversationThread(conversationRead.data)
-    : initialThread && failedRequest ? { ...initialThread, title: "未生成回答", messages: initialThread.messages.filter(item => item.role === "user") } : initialThread;
-  const runReferences = thread ? conversationAiRunReferencesFor(latestData ?? loadedData ?? thread) : [];
-  const inlinePanels = thread && (!isDraftConversation || latestData) ? conversationInlinePanelsForThread(thread) : [];
+    : conversationRead?.success ? rawConversationThread(conversationRead.data, locale.t("aiConversation.sessionTitle"), locale.language)
+    : initialThread && failedRequest ? { ...initialThread, title: locale.t("aiConversation.noAnswer"), messages: initialThread.messages.filter(item => item.role === "user") } : initialThread;
+  const runReferences = thread ? conversationAiRunReferencesFor(latestData ?? loadedData ?? thread, locale.language) : [];
+  const inlinePanels = thread && (!isDraftConversation || latestData) ? conversationInlinePanelsForThread(thread, locale.language) : [];
 
   function changeDraft(value: string) {
     if (!owns()) return;
@@ -309,13 +311,13 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
         || pending.session.title.trim().length > 120 || (pending.session.customTitle?.trim().length ?? 0) > 120;
       setSavedSessionId(saved.id);
       setSessionSnapshot(saved);
-      if (limited) setSaveNotice("会话已保存，但超出上限的内容已截断。服务最多保留最近 100 条消息，每条 12,000 字、标题 120 字。");
+      if (limited) setSaveNotice(locale.t("aiConversation.savedTruncated"));
       pendingSaveRef.current = null; setPendingSave(null);
       if (pending.canonicalize && !pending.waitForTask && !limited && !saveNotice && draftRevision.current === pending.revision && !draftValue.current.trim()) {
         router.replace({ params: { id: saved.id, source: "session" }, pathname: "/ai/[id]" });
       }
     } else {
-      setSaveError(result.success ? "回复已生成，但尚未确认保存。请重试保存。" : `回复已生成，但保存失败：${result.error.message}`);
+      setSaveError(result.success ? locale.t("aiConversation.generatedUnsaved") : locale.t("aiConversation.saveFailure", { error: result.error.message }));
     }
     requests.current.delete(controller); saveOperation.current = null; setSaving(false);
   }
@@ -330,7 +332,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     setAiRunError(null); setAiRunDetailView(null); setActionError(null);
     const result = await client.post<unknown>(request.path, {
       body: {
-        locale: "zh",
+        locale: locale.language,
         message: request.message,
         ...(request.history ? { history: request.history } : {}),
         ...(request.reliable ? {
@@ -348,7 +350,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       setTaskInteractionResolution(null); setAcceptedTaskId(null);
       setLatestData(payload); setResolvedConversationId(payload.activeConversationId);
       if (draftRevision.current === request.revision) { draftValue.current = ""; setDraftMessage(""); }
-      const nextThread = rawConversationThread(payload);
+      const nextThread = rawConversationThread(payload, locale.t("aiConversation.sessionTitle"), locale.language);
       if (request.reliable && receipt?.state === "completed") {
         const turnStart = payload.messages.findLastIndex(item => item.role === "user");
         const messages = payload.messages.slice(turnStart).filter((item): item is typeof item & { role: "user" | "assistant" } => item.role === "user" || item.role === "assistant")
@@ -377,7 +379,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
               pinned: grouped.value.organization.pinned,
             };
           } else {
-            setSaveNotice("回复已保存，但会话暂未加入所选分组。请在历史记录中重试移动。");
+            setSaveNotice(locale.t("aiConversation.groupFailure"));
           }
         }
         setSavedSessionId(session.id);
@@ -409,7 +411,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     } else {
       setFailedRequest(request);
       const unknown = Boolean(request.reliable) && (!result.success || receipt?.state === "pending" || receipt?.state === "outcome_unknown");
-      setSendError(unknown ? "请求结果尚未确认。请先检查结果，系统不会重复生成。" : result.success ? "服务返回的回答不完整，请重试或编辑问题。" : result.error.message);
+      setSendError(unknown ? locale.t("aiConversation.outcomeUnknown") : result.success ? locale.t("aiConversation.incomplete") : result.error.message);
       setSendCode(unknown ? receipt?.state ?? "OUTCOME_UNKNOWN" : result.success ? null : result.error.code);
     }
     if (!ownsRequest(controller)) return;
@@ -444,7 +446,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     if (!claimInitialPrompt?.()) {
       if (optionalParam(initialMessageConsumed) === "1" && !latestData && !failedRequest) {
         setFailedRequest({ path: ORBIT_API_ENDPOINTS.conversations, message: initialPrompt, revision: draftRevision.current });
-        setSendError("这条问题已提交过，结果尚未确认。你可以重试或编辑问题。");
+        setSendError(locale.t("aiConversation.duplicateUnknown"));
       }
       return;
     }
@@ -468,21 +470,21 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       return;
     }
     setFailedRequest(request);
-    setSendError(recovery ? "请求仍在处理中或结果未知。稍后再次检查；系统不会重复生成。" : result.success ? "暂时无法确认请求结果，请稍后再检查。" : result.error.message);
+    setSendError(recovery ? locale.t("aiConversation.stillUnknown") : result.success ? locale.t("aiConversation.inspectLater") : result.error.message);
     setSendCode(recovery?.receipt.state ?? (result.success ? "OUTCOME_UNKNOWN" : result.error.code));
   }
 
   async function inspectAiRun(reference: ConversationAiRunReferenceView) {
     if (!owns()) return;
-    const request = buildAiRunDetailRequest(reference.id);
+    const request = buildAiRunDetailRequest(reference.id, locale.language);
     if (!request.success) { setAiRunError(request.error); return; }
     runOperation.current?.abort();
     const controller = new AbortController(); runOperation.current = controller; requests.current.add(controller);
     setPendingAiRunId(reference.id); setAiRunError(null);
     const result = await client.get<unknown>(request.request.path, { signal: controller.signal });
     if (!ownsRequest(controller)) return;
-    if (result.success && result.status >= 200 && result.status < 300) setAiRunDetailView(aiRunDetailToView(result.data));
-    else setAiRunError(result.success ? "执行记录未能读取，请重试。" : result.error.message);
+    if (result.success && result.status >= 200 && result.status < 300) setAiRunDetailView(aiRunDetailToView(result.data, locale.language));
+    else setAiRunError(result.success ? locale.t("aiConversation.runUnreadable") : result.error.message);
     requests.current.delete(controller); runOperation.current = null; setPendingAiRunId(null);
   }
 
@@ -502,7 +504,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       setTaskInteractionResolution(action === "accept" ? "accepted" : "dismissed");
       if (action === "accept") tasksState.refresh();
       if (savedSessionId && !saveNotice && !draftValue.current.trim()) router.replace({ params: { id: savedSessionId, source: "session" }, pathname: "/ai/[id]" });
-    } else setActionError(result.success ? "尚未确认操作结果，请重试。" : result.error.message);
+    } else setActionError(result.success ? locale.t("aiConversation.operationUnconfirmed") : result.error.message);
     requests.current.delete(controller); taskOperation.current = null; setTaskInteractionBusy(false);
   }
 
@@ -515,11 +517,11 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     ? contactsToSummaries(contactsState.data)
     : [];
   const followupTasks = tasksState.kind === "success"
-    ? followupsToView({ notificationsPayload: {}, tasksPayload: tasksState.data })
+    ? followupsToView({ notificationsPayload: {}, tasksPayload: tasksState.data }, locale.language)
         .tasks
     : [];
   const scheduleItems = tasksState.kind === "success"
-    ? tasksToScheduleItems(tasksState.data)
+    ? tasksToScheduleItems(tasksState.data, "Asia/Tokyo", locale.language)
     : [];
   const profile = profileState.kind === "success" || profileState.kind === "empty"
     ? profileToSummary(profileState.data)
@@ -528,20 +530,20 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   return (
     <SafeAreaView edges={["top", "bottom"]} style={styles.readingSafeArea}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={insets.top} style={[styles.readingRoot, !thread ? styles.readingFallback : null]}>
-      {!thread ? <Pressable accessibilityLabel="返回 Orbit AI" accessibilityRole="button" onPress={() => { if (owns()) router.back(); }} style={styles.backButton}>
+      {!thread ? <Pressable accessibilityLabel={locale.t("aiConversation.back")} accessibilityRole="button" onPress={() => { if (owns()) router.back(); }} style={styles.backButton}>
         <Ionicons color={colors.ink} name="arrow-back-outline" size={24} />
       </Pressable> : null}
       {!isDraftConversation && state.kind === "loading" ? <LoadingState /> : null}
       {!isDraftConversation && state.kind === "offline" ? (
-        <ErrorState message={state.error.message} title="服务器连不上" />
+        <ErrorState message={state.error.message} title={locale.t("aiConversation.serverUnavailable")} />
       ) : null}
       {!isDraftConversation && state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
-      {readInvalid ? <ErrorState title="会话未能读取" message="服务返回的会话不完整或与当前记录不符，请重试。" /> : null}
-      {!thread && state.kind !== "loading" ? <Pressable accessibilityRole="button" onPress={refresh} style={styles.failureSecondary}><Text style={styles.failureSecondaryText}>重试读取</Text></Pressable> : null}
+      {readInvalid ? <ErrorState title={locale.t("aiConversation.readUnreadable")} message={locale.t("aiConversation.readInvalid")} /> : null}
+      {!thread && state.kind !== "loading" ? <Pressable accessibilityRole="button" onPress={refresh} style={styles.failureSecondary}><Text style={styles.failureSecondaryText}>{locale.t("aiConversation.retryRead")}</Text></Pressable> : null}
       {state.kind === "empty" && !thread ? (
-        <EmptyState message="这条对话还没有消息。" title="没有消息" />
+        <EmptyState message={locale.t("aiConversation.emptyBody")} title={locale.t("aiConversation.emptyTitle")} />
       ) : null}
       {thread ? (
         <ConversationThread
@@ -586,7 +588,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
           saveNotice={saveNotice}
           saving={saving}
           writingBlocked={!!pendingSave || saving || taskInteractionBusy}
-          retrySendLabel={failedRequest?.reliable && ["OUTCOME_UNKNOWN", "pending", "outcome_unknown"].includes(sendCode ?? "") ? "检查结果" : "重新生成"}
+          retrySendLabel={locale.t(failedRequest?.reliable && ["OUTCOME_UNKNOWN", "pending", "outcome_unknown"].includes(sendCode ?? "") ? "aiConversation.checkResult" : "aiConversation.regenerate")}
           onRetrySend={() => { if (failedRequest) void recoverRequest(failedRequest); }}
           onEditQuestion={() => { if (failedRequest && owns()) { changeDraft(failedRequest.message); setSendError(null); setSendCode(null); } }}
           onRetrySave={() => { if (pendingSave) void persistAndCanonicalizeDraftConversation(pendingSave); }}
@@ -694,6 +696,7 @@ function ConversationThread({
   taskInteractionResolution: "accepted" | "dismissed" | null;
   thread: ConversationThreadView;
 }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const [routesOpen, setRoutesOpen] = useState(false);
   const [mentionsOpen, setMentionsOpen] = useState(false);
@@ -709,8 +712,8 @@ function ConversationThread({
 
   return (
     <View style={styles.threadSurface}>
-      <View accessibilityLabel="对话导航" style={styles.threadHeader}>
-        <Pressable accessibilityLabel="返回 Orbit AI" accessibilityRole="button" onPress={() => { Keyboard.dismiss(); onBack(); }} style={styles.backButton}>
+      <View accessibilityLabel={locale.t("aiConversation.navigation")} style={styles.threadHeader}>
+        <Pressable accessibilityLabel={locale.t("aiConversation.back")} accessibilityRole="button" onPress={() => { Keyboard.dismiss(); onBack(); }} style={styles.backButton}>
           <Ionicons color={colors.ink} name="chevron-back" size={22} />
         </Pressable>
         <View style={styles.threadTitleBlock}>
@@ -720,7 +723,7 @@ function ConversationThread({
           </Text>
         </View>
         <Pressable
-          accessibilityLabel="更多对话选项"
+          accessibilityLabel={locale.t("aiConversation.moreOptions")}
           accessibilityRole="button"
           accessibilityState={{ expanded: routesOpen }}
           onPress={() => { Keyboard.dismiss(); setRoutesOpen(!routesOpen); }}
@@ -750,7 +753,7 @@ function ConversationThread({
       >
       <View style={styles.messagePanel}>
         {thread.messages.length === 0 ? (
-          <EmptyState message="这条对话还没有消息。" title="没有消息" />
+          <EmptyState message={locale.t("aiConversation.emptyBody")} title={locale.t("aiConversation.emptyTitle")} />
         ) : (
           <View style={styles.messageStack}>
             {thread.messages.map((message, index) => (
@@ -792,7 +795,7 @@ function ConversationThread({
       ) : null}
       {thread.proposedToolIntents.length > 0 ? (
         <View style={styles.intentPanel}>
-          <Text style={styles.panelTitle}>建议动作</Text>
+          <Text style={styles.panelTitle}>{locale.t("aiConversation.suggestedActions")}</Text>
           {thread.proposedToolIntents.map((intent) => (
             <View key={intent.id} style={styles.intentBlock}>
               <Text style={styles.intentTitle}>{intent.label}</Text>
@@ -813,53 +816,53 @@ function ConversationThread({
       {sendError ? <View accessibilityLiveRegion="polite" style={styles.failureStack}>
         <Text style={[styles.messageLabel, styles.assistantLabel]}>IORBIT</Text>
         <View style={styles.failureCard}>
-        <View style={styles.failureHeading}><Ionicons color={colors.rose} name="alert-circle-outline" size={28} /><Text style={styles.failureTitle}>这次回答没有生成</Text></View>
+        <View style={styles.failureHeading}><Ionicons color={colors.rose} name="alert-circle-outline" size={28} /><Text style={styles.failureTitle}>{locale.t("aiConversation.answerFailed")}</Text></View>
         <Text style={styles.failureBody}>{sendError}</Text>
         <View style={styles.failureActions}>
           <Pressable accessibilityRole="button" onPress={onRetrySend} disabled={sending || writingBlocked} style={styles.failurePrimary}><Text style={styles.failurePrimaryText}>{retrySendLabel}</Text></Pressable>
-          <Pressable accessibilityRole="button" onPress={onEditQuestion} disabled={sending} style={styles.failureSecondary}><Text style={styles.failureSecondaryText}>编辑问题</Text></Pressable>
+          <Pressable accessibilityRole="button" onPress={onEditQuestion} disabled={sending} style={styles.failureSecondary}><Text style={styles.failureSecondaryText}>{locale.t("aiConversation.editQuestion")}</Text></Pressable>
         </View>
         </View>
         {sendCode ? <Text selectable style={styles.failureCode}>{sendCode}</Text> : null}
       </View> : null}
       {actionError ? <Text accessibilityLiveRegion="polite" style={styles.errorText}>{actionError}</Text> : null}
       {saveError ? <View accessibilityLiveRegion="polite" style={styles.failureCard}>
-        <Text style={styles.failureTitle}>回复尚未保存</Text><Text style={styles.failureBody}>{saveError}</Text>
-        <Pressable accessibilityRole="button" onPress={onRetrySave} disabled={saving} style={styles.failurePrimary}><Text style={styles.failurePrimaryText}>重试保存</Text></Pressable>
+        <Text style={styles.failureTitle}>{locale.t("aiConversation.replyUnsaved")}</Text><Text style={styles.failureBody}>{saveError}</Text>
+        <Pressable accessibilityRole="button" onPress={onRetrySave} disabled={saving} style={styles.failurePrimary}><Text style={styles.failurePrimaryText}>{locale.t("aiConversation.retrySave")}</Text></Pressable>
       </View> : null}
-      {sending || saving ? <Text accessibilityLiveRegion="polite" style={styles.threadNextAction}>{saving ? "正在保存会话…" : "正在回复…"}</Text> : null}
+      {sending || saving ? <Text accessibilityLiveRegion="polite" style={styles.threadNextAction}>{locale.t(saving ? "aiConversation.saving" : "aiConversation.replying")}</Text> : null}
       </ScrollView>
       {saveNotice ? <Text accessibilityLiveRegion="polite" style={[styles.errorText, { marginHorizontal: layout.pageInset }]}>{saveNotice}</Text> : null}
       <View testID="conversation-composer" style={styles.composerPanel}>
         {selectedReferences.length > 0 ? <View style={styles.referenceRow}>{selectedReferences.map(reference => {
           const contact = contactCards.find(item => item.id === reference.id);
-          return <Pressable accessibilityLabel={`移除联系人：${contact?.name ?? reference.id}`} accessibilityRole="button" key={`${reference.type}:${reference.id}`} onPress={() => onRemoveReference(reference)} style={styles.referenceChip}><Text style={styles.referenceChipText}>@{contact?.name ?? reference.id} ×</Text></Pressable>;
+          return <Pressable accessibilityLabel={locale.t("aiConversation.removeContact", { name: contact?.name ?? reference.id })} accessibilityRole="button" key={`${reference.type}:${reference.id}`} onPress={() => onRemoveReference(reference)} style={styles.referenceChip}><Text style={styles.referenceChipText}>@{contact?.name ?? reference.id} ×</Text></Pressable>;
         })}</View> : null}
         {mentionsOpen ? contactsStateKind === "success" || contactsStateKind === "empty"
           ? <ContactMentionPicker contacts={contactCards} onSelect={(contact) => { onAddMention(contact); setMentionsOpen(false); }} selectedIds={selectedReferences.filter(reference => reference.type === "contact").map(reference => reference.id)} />
-          : <Text style={styles.errorText}>{contactsStateKind === "loading" ? "正在读取联系人…" : "联系人暂时不可用，问题仍可不关联联系人发送。"}</Text>
+          : <Text style={styles.errorText}>{locale.t(contactsStateKind === "loading" ? "aiConversation.contactsLoading" : "aiConversation.contactsUnavailable")}</Text>
         : null}
         <TextInput
-          accessibilityLabel="消息"
+          accessibilityLabel={locale.t("ai.message")}
           multiline
           numberOfLines={1}
           onChangeText={(value) => { if (!value) setInputHeight(minimumInputHeight); onChangeDraft(value); }}
           onContentSizeChange={(event) => setInputHeight(Math.min(120, Math.max(minimumInputHeight, event.nativeEvent.contentSize.height)))}
-          placeholder="继续追问，或换个角度问…"
+          placeholder={locale.t("aiConversation.continuePlaceholder")}
           placeholderTextColor={colors.text4}
           style={[styles.input, { height: Math.max(minimumInputHeight, inputHeight) }]}
           textAlignVertical="top"
           value={draftMessage}
         />
         <View style={styles.composerActions}>
-        <Pressable accessibilityLabel="提及联系人" accessibilityRole="button" onPress={() => setMentionsOpen(value => !value)} style={styles.composerPlusButton}>
+        <Pressable accessibilityLabel={locale.t("aiConversation.mentionContact")} accessibilityRole="button" onPress={() => setMentionsOpen(value => !value)} style={styles.composerPlusButton}>
           <Text style={styles.mentionButtonText}>@</Text>
         </Pressable>
-        <Pressable accessibilityLabel="打开快捷入口" accessibilityRole="button" onPress={() => { Keyboard.dismiss(); setRoutesOpen(!routesOpen); }} style={styles.composerPlusButton}>
+        <Pressable accessibilityLabel={locale.t("aiConversation.openShortcuts")} accessibilityRole="button" onPress={() => { Keyboard.dismiss(); setRoutesOpen(!routesOpen); }} style={styles.composerPlusButton}>
           <Ionicons color={colors.ink} name="add" size={22} />
         </Pressable>
         <Pressable
-          accessibilityLabel="发送消息"
+          accessibilityLabel={locale.t("aiConversation.sendMessage")}
           accessibilityRole="button"
           accessibilityState={{ disabled: sending || writingBlocked || !draftMessage.trim(), busy: sending || saving }}
           disabled={sending || writingBlocked || !draftMessage.trim()}
@@ -891,6 +894,7 @@ function TaskInteractionCard({
   onOpenHref: (href: string) => void;
   resolution: "accepted" | "dismissed" | null;
 }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const completed = interaction.state === "created" || resolution === "accepted";
   const dismissed = resolution === "dismissed";
@@ -909,12 +913,12 @@ function TaskInteractionCard({
         <View style={styles.taskInteractionCopy}>
           <Text style={styles.taskInteractionEyebrow}>
             {failed
-              ? "待办未创建"
+              ? locale.t("aiConversation.taskFailed")
               : completed
-                ? "已加入待办"
+                ? locale.t("aiConversation.taskAdded")
                 : dismissed
-                  ? "已暂不处理"
-                  : "待办建议"}
+                  ? locale.t("aiConversation.taskDismissed")
+                  : locale.t("aiConversation.taskSuggestion")}
           </Text>
           <Text style={styles.taskInteractionTitle}>{interaction.title}</Text>
           {!completed && !dismissed && interaction.reason ? (
@@ -933,7 +937,7 @@ function TaskInteractionCard({
               pressed ? styles.pressed : null
             ]}
           >
-            <Text style={styles.taskInteractionSecondaryText}>暂不需要</Text>
+            <Text style={styles.taskInteractionSecondaryText}>{locale.t("aiConversation.dismissTask")}</Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
@@ -945,14 +949,14 @@ function TaskInteractionCard({
             ]}
           >
             <Text style={styles.taskInteractionPrimaryText}>
-              {busy ? "处理中" : "加入待办"}
+              {locale.t(busy ? "aiConversation.processing" : "aiConversation.addTask")}
             </Text>
           </Pressable>
         </View>
       ) : null}
       {completed && conversationTaskDetailHref(interaction.taskId) ? (
-        <Pressable accessibilityRole="button" accessibilityLabel={`打开待办详情：${interaction.title}`} onPress={() => onOpenHref(conversationTaskDetailHref(interaction.taskId)!)} style={styles.recordLink}>
-          <Text style={styles.recordLinkText}>查看待办</Text><Ionicons color={colors.accent} name="arrow-up-right-box-outline" size={18} />
+        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("aiConversation.openTaskNamed", { title: interaction.title })} onPress={() => onOpenHref(conversationTaskDetailHref(interaction.taskId)!)} style={styles.recordLink}>
+          <Text style={styles.recordLinkText}>{locale.t("aiConversation.viewTask")}</Text><Ionicons color={colors.accent} name="arrow-up-right-box-outline" size={18} />
         </Pressable>
       ) : null}
     </View>
@@ -972,14 +976,15 @@ function AiRunAuditPanel({
   pendingAiRunId: string | null;
   runReferences: ConversationAiRunReferenceView[];
 }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   return (
     <View style={styles.aiRunPanel}>
       <View style={styles.aiRunHeader}>
         <View style={styles.inlinePanelTitleBlock}>
-          <Text style={styles.panelTitle}>AI 运行依据</Text>
+          <Text style={styles.panelTitle}>{locale.t("aiConversation.runBasis")}</Text>
           <Text style={styles.inlinePanelDetail}>
-            查看这次回复的来源、证据和安全边界。
+            {locale.t("aiConversation.runBasisDetail")}
           </Text>
         </View>
         <Ionicons color={colors.accent} name="shield-checkmark-outline" size={18} />
@@ -1010,7 +1015,7 @@ function AiRunAuditPanel({
                   </Text>
                 </View>
                 <Text style={styles.aiRunActionText}>
-                  {pending ? "读取中" : reference.actionLabel}
+                  {pending ? locale.t("aiConversation.reading") : reference.actionLabel}
                 </Text>
               </Pressable>
             );
@@ -1162,6 +1167,7 @@ function EventInlinePanel({
   thread: ConversationThreadView;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const prioritizedEvents = prioritizeConversationEvents(thread, eventCards);
   const header = (
       <View style={[styles.inlinePanelHeader, eventCards.length ? styles.eventPanelHeader : null]}>
@@ -1177,7 +1183,7 @@ function EventInlinePanel({
             pressed ? styles.pressed : null
           ]}
         >
-          <Text style={styles.inlinePanelActionText}>全部</Text>
+          <Text style={styles.inlinePanelActionText}>{locale.t("aiConversation.all")}</Text>
           <Ionicons color={colors.accent} name="chevron-forward" size={15} />
         </Pressable>
       </View>
@@ -1187,13 +1193,13 @@ function EventInlinePanel({
     <View style={styles.inlinePanel}>
       {!eventCards.length ? header : null}
       {eventsStateKind === "loading" ? (
-        <Text style={styles.inlinePanelDetail}>正在读取活动。</Text>
+        <Text style={styles.inlinePanelDetail}>{locale.t("aiConversation.eventsLoading")}</Text>
       ) : null}
       {eventsStateKind === "offline" || eventsStateKind === "failure" ? (
-        <Text style={styles.errorText}>活动暂时不可用。</Text>
+        <Text style={styles.errorText}>{locale.t("aiConversation.eventsUnavailable")}</Text>
       ) : null}
       {eventsStateKind === "empty" ? (
-        <Text style={styles.inlinePanelDetail}>现在还没有可展示的活动。</Text>
+        <Text style={styles.inlinePanelDetail}>{locale.t("aiConversation.eventsEmpty")}</Text>
       ) : null}
       {eventCards.length > 0 ? (
         <View style={styles.eventCardStack}>
@@ -1247,6 +1253,7 @@ function PeopleInlinePanel({
   thread: ConversationThreadView;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const prioritizedContacts = prioritizeConversationContacts(thread, contactCards);
 
   return (
@@ -1264,18 +1271,18 @@ function PeopleInlinePanel({
             pressed ? styles.pressed : null
           ]}
         >
-          <Text style={styles.inlinePanelActionText}>全部</Text>
+          <Text style={styles.inlinePanelActionText}>{locale.t("aiConversation.all")}</Text>
           <Ionicons color={colors.accent} name="chevron-forward" size={15} />
         </Pressable>
       </View>
       {contactsStateKind === "loading" ? (
-        <Text style={styles.inlinePanelDetail}>正在读取人脉。</Text>
+        <Text style={styles.inlinePanelDetail}>{locale.t("aiConversation.contactsLoading")}</Text>
       ) : null}
       {contactsStateKind === "offline" || contactsStateKind === "failure" ? (
-        <Text style={styles.errorText}>人脉暂时不可用。</Text>
+        <Text style={styles.errorText}>{locale.t("aiConversation.contactsUnavailable")}</Text>
       ) : null}
       {contactsStateKind === "empty" ? (
-        <Text style={styles.inlinePanelDetail}>现在还没有可展示的人脉。</Text>
+        <Text style={styles.inlinePanelDetail}>{locale.t("aiConversation.contactsEmpty")}</Text>
       ) : null}
       {prioritizedContacts.length > 0 ? (
         <View style={styles.contactCardStack}>
@@ -1347,6 +1354,7 @@ function FollowupsInlinePanel({
   panel: ConversationInlinePanelView;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   return (
     <View style={styles.inlinePanel}>
       <View style={styles.inlinePanelHeader}>
@@ -1362,22 +1370,22 @@ function FollowupsInlinePanel({
             pressed ? styles.pressed : null
           ]}
         >
-          <Text style={styles.inlinePanelActionText}>全部</Text>
+          <Text style={styles.inlinePanelActionText}>{locale.t("aiConversation.all")}</Text>
           <Ionicons color={colors.accent} name="chevron-forward" size={15} />
         </Pressable>
       </View>
       {followupsStateKind === "loading" ? (
-        <Text style={styles.inlinePanelDetail}>正在读取待办。</Text>
+        <Text style={styles.inlinePanelDetail}>{locale.t("aiConversation.tasksLoading")}</Text>
       ) : null}
       {followupsStateKind === "offline" || followupsStateKind === "failure" ? (
-        <Text style={styles.errorText}>待办暂时不可用。</Text>
+        <Text style={styles.errorText}>{locale.t("aiConversation.tasksUnavailable")}</Text>
       ) : null}
       {followupTasks.length > 0 ? (
         <View style={styles.followupCardStack}>
           {followupTasks.slice(0, 3).map((task) => (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`打开待办详情：${task.title}`}
+              accessibilityLabel={locale.t("aiConversation.openTaskNamed", { title: locale.t.literal(task.title) })}
               disabled={!conversationTaskDetailHref(task.id)}
               key={task.id}
               onPress={() => onOpenHref(conversationTaskDetailHref(task.id)!)}
@@ -1406,7 +1414,7 @@ function FollowupsInlinePanel({
           ))}
         </View>
       ) : followupsStateKind === "empty" ? (
-        <Text style={styles.inlinePanelDetail}>现在还没有需要复核的跟进。</Text>
+        <Text style={styles.inlinePanelDetail}>{locale.t("aiConversation.followupsEmpty")}</Text>
       ) : null}
     </View>
   );
@@ -1424,6 +1432,7 @@ function ScheduleInlinePanel({
   scheduleStateKind: ResourceKind;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   return (
     <View style={styles.inlinePanel}>
       <View style={styles.inlinePanelHeader}>
@@ -1439,22 +1448,22 @@ function ScheduleInlinePanel({
             pressed ? styles.pressed : null
           ]}
         >
-          <Text style={styles.inlinePanelActionText}>全部</Text>
+          <Text style={styles.inlinePanelActionText}>{locale.t("aiConversation.all")}</Text>
           <Ionicons color={colors.accent} name="chevron-forward" size={15} />
         </Pressable>
       </View>
       {scheduleStateKind === "loading" ? (
-        <Text style={styles.inlinePanelDetail}>正在读取日程。</Text>
+        <Text style={styles.inlinePanelDetail}>{locale.t("aiConversation.scheduleLoading")}</Text>
       ) : null}
       {scheduleStateKind === "offline" || scheduleStateKind === "failure" ? (
-        <Text style={styles.errorText}>日程暂时不可用。</Text>
+        <Text style={styles.errorText}>{locale.t("aiConversation.scheduleUnavailable")}</Text>
       ) : null}
       {scheduleItems.length > 0 ? (
         <View style={styles.scheduleCardStack}>
           {scheduleItems.slice(0, 3).map((item) => (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`打开待办详情：${item.title}`}
+              accessibilityLabel={locale.t("aiConversation.openTaskNamed", { title: locale.t.literal(item.title) })}
               disabled={!conversationTaskDetailHref(item.id)}
               key={item.id}
               onPress={() => onOpenHref(conversationTaskDetailHref(item.id)!)}
@@ -1486,7 +1495,7 @@ function ScheduleInlinePanel({
           ))}
         </View>
       ) : scheduleStateKind === "empty" ? (
-        <Text style={styles.inlinePanelDetail}>现在还没有可展示的日程。</Text>
+        <Text style={styles.inlinePanelDetail}>{locale.t("aiConversation.scheduleEmpty")}</Text>
       ) : null}
     </View>
   );
@@ -1504,6 +1513,7 @@ function ProfileInlinePanel({
   profileStateKind: ResourceKind;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   return (
     <View style={styles.inlinePanel}>
       <View style={styles.inlinePanelHeader}>
@@ -1519,15 +1529,15 @@ function ProfileInlinePanel({
             pressed ? styles.pressed : null
           ]}
         >
-          <Text style={styles.inlinePanelActionText}>完善</Text>
+          <Text style={styles.inlinePanelActionText}>{locale.t("aiConversation.profileComplete")}</Text>
           <Ionicons color={colors.accent} name="chevron-forward" size={15} />
         </Pressable>
       </View>
       {profileStateKind === "loading" ? (
-        <Text style={styles.inlinePanelDetail}>正在读取档案。</Text>
+        <Text style={styles.inlinePanelDetail}>{locale.t("aiConversation.profileLoading")}</Text>
       ) : null}
       {profileStateKind === "offline" || profileStateKind === "failure" ? (
-        <Text style={styles.errorText}>档案暂时不可用。</Text>
+        <Text style={styles.errorText}>{locale.t("aiConversation.profileUnavailable")}</Text>
       ) : null}
       {profile ? (
         <Pressable
@@ -1560,7 +1570,7 @@ function ProfileInlinePanel({
           </View>
         </Pressable>
       ) : profileStateKind === "empty" ? (
-        <Text style={styles.inlinePanelDetail}>现在还没有可展示的档案。</Text>
+        <Text style={styles.inlinePanelDetail}>{locale.t("aiConversation.profileEmpty")}</Text>
       ) : null}
     </View>
   );
@@ -1579,6 +1589,7 @@ function QuickRouteDock({
 }: {
   onOpenHref: (href: ConversationQuickRouteView["href"]) => void;
 }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const iconForRoute = (
     href: ConversationQuickRouteView["href"]
@@ -1594,9 +1605,9 @@ function QuickRouteDock({
 
   return (
     <View style={styles.quickRouteDock}>
-      <Text style={styles.quickRouteLabel}>通用入口</Text>
+      <Text style={styles.quickRouteLabel}>{locale.t("aiConversation.commonEntries")}</Text>
       <View style={styles.quickRouteGrid}>
-        {conversationQuickRoutes().map((route) => (
+        {conversationQuickRoutes(locale.language).map((route) => (
           <Pressable
             accessibilityRole="button"
             key={route.href}
@@ -1622,34 +1633,35 @@ function QuickRouteDock({
 }
 
 function MessageBubble({ baseUrl, message, onOpenHref }: { baseUrl: string; message: ChatMessageView; onOpenHref: (href: string) => void }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const isUser = message.role === "user";
   const links = conversationRecordLinks(message.content, baseUrl);
   const [linkError, setLinkError] = useState<string | null>(null);
 
   return (
-    <View accessibilityLabel={isUser ? "我的消息" : "Orbit AI 回复"} style={[styles.messageBubble, isUser ? styles.userBubble : null]}>
-      <Text style={[styles.messageLabel, !isUser ? styles.assistantLabel : null]}>{isUser ? "你" : "IORBIT"}</Text>
+    <View accessibilityLabel={locale.t(isUser ? "aiConversation.myMessage" : "aiConversation.aiReply")} style={[styles.messageBubble, isUser ? styles.userBubble : null]}>
+      <Text style={[styles.messageLabel, !isUser ? styles.assistantLabel : null]}>{isUser ? locale.t("aiConversation.you") : "IORBIT"}</Text>
       {isUser ? <Text selectable style={[styles.messageText, styles.messageTextUser]}>{message.content}</Text> : <MarkdownContent content={message.content} isUser={false} />}
       {links.map((link) => (
         <Pressable
-          accessibilityLabel={`打开${link.kind}详情：${link.id}`}
+          accessibilityLabel={locale.t("aiConversation.openRecordNamed", { kind: link.kind, id: link.id })}
           accessibilityRole="link"
           key={link.href}
           onPress={() => {
             Keyboard.dismiss();
             setLinkError(null);
-            if (link.external) void Linking.openURL(link.href).catch(() => setLinkError("链接暂时无法打开，请稍后重试。"));
+            if (link.external) void Linking.openURL(link.href).catch(() => setLinkError(locale.t("aiConversation.linkFailed")));
             else onOpenHref(link.href);
           }}
           style={styles.recordLink}
         >
           <Ionicons color={colors.accent} name={link.kind === "人脉" ? "person-outline" : link.kind === "待办" ? "checkbox-outline" : link.kind === "行动" ? "flash-outline" : "calendar-outline"} size={20} />
-          <Text style={styles.recordLinkText}>{link.kind}详情 · {link.id}{link.external ? " · 网页" : ""}</Text>
+          <Text style={styles.recordLinkText}>{locale.t("aiConversation.recordDetail", { kind: link.kind, id: link.id, web: link.external ? locale.t("aiConversation.web") : "" })}</Text>
           <Ionicons color={colors.accent} name="arrow-up-right-box-outline" size={18} />
         </Pressable>
       ))}
-      {/(?:https?:\/\/|orbit:\/\/|\]\()/iu.test(message.content) ? <Text style={styles.linkBoundary}>详情入口仅支持当前服务的记录；未提供入口的链接不会跳转。</Text> : null}
+      {/(?:https?:\/\/|orbit:\/\/|\]\()/iu.test(message.content) ? <Text style={styles.linkBoundary}>{locale.t("aiConversation.linkBoundary")}</Text> : null}
       {linkError ? <Text accessibilityLiveRegion="polite" style={styles.errorText}>{linkError}</Text> : null}
     </View>
   );

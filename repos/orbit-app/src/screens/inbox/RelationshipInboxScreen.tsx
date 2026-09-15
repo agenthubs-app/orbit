@@ -46,6 +46,7 @@ import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import type { ApiResourceState } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { resultToRouteState, type RouteState } from "../../view-models/route-state";
 import { inboxNotificationActions, inboxNotificationReceiptMatches, inboxNotificationsReadable } from "../../view-models/inbox-notification-actions";
 import {
@@ -95,6 +96,7 @@ function useInboxIdentity(routeKey: string) {
 }
 
 function useInboxRequests(scopeKey: string) {
+  const locale = useOrbitLocale();
   const focused = useIsFocused();
   const [foreground, setForeground] = useState(AppState.currentState === "active");
   const [resumeIndex, setResumeIndex] = useState(0);
@@ -125,7 +127,7 @@ function useInboxRequests(scopeKey: string) {
   }, [scope]);
   const isCurrent = useCallback(() => latest.current === scope && scope.ready && !scope.controller.signal.aborted, [scope]);
   const request = useCallback(async (method: "get" | "post" | "patch", endpoint: string, body?: unknown, signal?: AbortSignal): ReturnType<ClientGet> => {
-    const inactive: ApiResult<unknown> = { success: false, status: 0, meta: { featureMode: null, privacy: null, runtimeBoundary: null }, error: { code: "ORBIT_APP_INACTIVE_REQUEST", message: "这次操作已失效，请返回后重试。" } };
+    const inactive: ApiResult<unknown> = { success: false, status: 0, meta: { featureMode: null, privacy: null, runtimeBoundary: null }, error: { code: "ORBIT_APP_INACTIVE_REQUEST", message: locale.t("inbox.requestInactive") } };
     if (!isCurrent() || signal?.aborted) return inactive;
     const controller = new AbortController();
     const abort = () => controller.abort();
@@ -155,6 +157,7 @@ interface InboxResourceOptions {
 
 function useInboxResource(path: string, isEmpty: (data: unknown) => boolean,
   clientGet: ClientGet, isCurrent: () => boolean, options: InboxResourceOptions = {}): ApiResourceState<unknown> {
+  const locale = useOrbitLocale();
   const [attempt, setAttempt] = useState(0);
   const pending = useRef<AbortController | null>(null);
   const emptyRef = useRef(isEmpty);
@@ -175,14 +178,14 @@ function useInboxResource(path: string, isEmpty: (data: unknown) => boolean,
     void clientGet(path, { signal: controller.signal }).then(received => {
       if (!isCurrent() || controller.signal.aborted) return;
       const result = received.success && (received.status < 200 || received.status >= 300)
-        ? { ...received, success: false as const, error: { code: "ORBIT_APP_UNEXPECTED_STATUS", message: "请求暂时无法完成，请稍后重试。" } }
+        ? { ...received, success: false as const, error: { code: "ORBIT_APP_UNEXPECTED_STATUS", message: locale.t("inbox.requestFailed") } }
         : received.success && validRef.current && !validRef.current(received.data)
-          ? { ...received, success: false as const, error: { code: "ORBIT_APP_INVALID_MESSAGE_STATE", message: "消息内容暂时无法确认，请重新读取。" } }
+          ? { ...received, success: false as const, error: { code: "ORBIT_APP_INVALID_MESSAGE_STATE", message: locale.t("inbox.invalidMessageState") } }
           : received;
       setSnapshot({ clientGet, state: resultToRouteState(result, emptyRef.current), refreshing: false });
     }).catch(() => {
       if (!isCurrent() || controller.signal.aborted) return;
-      setSnapshot({ clientGet, state: { kind: "failure", status: 0, meta: { featureMode: null, privacy: null, runtimeBoundary: null }, error: { code: "ORBIT_APP_UNEXPECTED_ERROR", message: "请求暂时无法完成，请稍后重试。" } }, refreshing: false });
+      setSnapshot({ clientGet, state: { kind: "failure", status: 0, meta: { featureMode: null, privacy: null, runtimeBoundary: null }, error: { code: "ORBIT_APP_UNEXPECTED_ERROR", message: locale.t("inbox.requestFailed") } }, refreshing: false });
     });
     return () => controller.abort();
   }, [attempt, clientGet, isCurrent, path]);
@@ -211,13 +214,13 @@ interface DeliveryView {
   title: string;
 }
 
-function notificationDeliveryToView(value: unknown, deliveryId: string): DeliveryView | null {
+function notificationDeliveryToView(value: unknown, deliveryId: string, fallbackTitle: string, fallbackBody: string): DeliveryView | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const record = value as Partial<NotificationDeliveryContract>;
   if (record.deliveryId !== deliveryId || record.data?.deliveryId !== deliveryId
     || record.target?.deliveryId !== deliveryId || record.target?.kind !== "inbox") return null;
-  const title = typeof record.title === "string" ? record.title : "Orbit 提醒";
-  const body = typeof record.body === "string" ? record.body : "你有一条待处理提醒。";
+  const title = typeof record.title === "string" ? record.title : fallbackTitle;
+  const body = typeof record.body === "string" ? record.body : fallbackBody;
   const rawSignalId = typeof record.signalId === "string" ? record.signalId : "";
   // Only AgentSignal ids support the PATCH lifecycle. Event-derived delivery
   // ids are intentionally inbox-only until a real task/action target exists.
@@ -250,6 +253,7 @@ function uniqueConversations(
 }
 
 export function RelationshipInboxScreen() {
+  const locale = useOrbitLocale();
   const params = useLocalSearchParams<{
     contactId?: string | string[];
     deliveryId?: string | string[];
@@ -261,13 +265,14 @@ export function RelationshipInboxScreen() {
   const seedName = firstParam(params.participantName);
   const seedOrganization = firstParam(params.organization);
   const { actorId, ready, scopeKey } = useInboxIdentity(JSON.stringify([seedContactId, deliveryId, seedName, seedOrganization]));
-  if (!ready) return <InboxLayout title="收件箱"><LoadingState /></InboxLayout>;
+  if (!ready) return <InboxLayout title={locale.t("inbox.title")}><LoadingState /></InboxLayout>;
   return <ScopedRelationshipInboxScreen key={scopeKey} actorId={actorId} scopeKey={scopeKey} seedContactId={seedContactId} deliveryId={deliveryId} seedName={seedName} seedOrganization={seedOrganization} />;
 }
 
 function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliveryId, seedName, seedOrganization }: {
   actorId: string; scopeKey: string; seedContactId: string; deliveryId: string; seedName: string; seedOrganization: string;
 }) {
+  const locale = useOrbitLocale();
   const { colors } = useOrbitTheme();
   const router = useRouter();
   const { clientGet, clientPost, clientPatch, isCurrent } = useInboxRequests(scopeKey);
@@ -291,7 +296,7 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
   );
   const notificationsState = useInboxResource(
     ORBIT_API_ENDPOINTS.notifications,
-    (data) => relationshipAlertsToView(data).alerts.length === 0,
+    (data) => relationshipAlertsToView(data, undefined, locale.language).alerts.length === 0,
     clientGet, isCurrent, { clearOnRefresh: true }
   );
   const notificationsData = notificationsState.kind === "success" || notificationsState.kind === "empty"
@@ -307,7 +312,7 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
   }
   const signalsState = useInboxResource(
     ORBIT_API_ENDPOINTS.relationshipSignalsEmailCalendar,
-    (data) => relationshipSignalsToView(data).signals.length === 0,
+    (data) => relationshipSignalsToView(data, locale.language).signals.length === 0,
     clientGet, isCurrent
   );
   const [composing, setComposing] = useState(
@@ -342,21 +347,21 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
       if (!result.success || result.status === undefined || result.status < 200 || result.status >= 300) {
         setDeliveryState({
           kind: "failure",
-          message: "这条提醒暂时无法读取。"
+          message: locale.t("inbox.alertUnreadable")
         });
         return;
       }
-      const view = notificationDeliveryToView(result.data, deliveryId);
+      const view = notificationDeliveryToView(result.data, deliveryId, locale.t("inbox.fallbackAlertTitle"), locale.t("inbox.fallbackAlertBody"));
       currentDelivery.current = view;
       setDeliveryState(
         view ? { data: view, kind: "success", signal: controller.signal } : {
           kind: "failure",
-          message: "提醒内容暂时无法识别。"
+          message: locale.t("inbox.alertInvalid")
         }
       );
     }).catch(() => {
       if (isCurrent() && !controller.signal.aborted) {
-        setDeliveryState({ kind: "failure", message: "这条提醒暂时无法读取。" });
+        setDeliveryState({ kind: "failure", message: locale.t("inbox.alertUnreadable") });
       }
     });
     return () => {
@@ -410,7 +415,7 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
           tintColor={colors.accent}
         />
       }
-      title={contentReady && composing ? "写消息" : contentReady && createdThread ? "草稿预览" : "收件箱"}
+      title={locale.t(contentReady && composing ? "inbox.compose" : contentReady && createdThread ? "inbox.draftPreview" : "inbox.title")}
       onCompose={contentReady && !composing && !createdThread ? () => setComposing(true) : undefined}
       hideBack={contentReady && composing}
       onBack={createdThread ? () => setCreatedThread(null) : undefined}
@@ -419,14 +424,14 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
         <LoadingState />
       ) : null}
       {deliveryState.kind === "failure" ? (
-        <ErrorState message={deliveryState.message} title="提醒暂时打不开" />
+        <ErrorState message={deliveryState.message} title={locale.t("inbox.alertUnavailable")} />
       ) : null}
       {isCurrent() && deliveryState.kind === "success" ? (
         <NotificationDeliveryCard clientPatch={clientPatch} getCurrentDelivery={getCurrentDelivery} signal={deliveryState.signal} view={deliveryState.data} />
       ) : null}
       {state.kind === "loading" ? <LoadingState /> : null}
       {state.kind === "offline" ? (
-        <ErrorState message={state.error.message} title="服务器连不上" />
+        <ErrorState message={state.error.message} title={locale.t("inbox.serverUnavailable")} />
       ) : null}
       {state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
@@ -445,9 +450,9 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
           notificationsData={notificationsData}
           notificationsError={
             notificationsState.kind === "failure" || notificationsState.kind === "offline"
-              ? relationshipInboxErrorText(notificationsState.error.message, "提醒暂时不可用。")
+              ? relationshipInboxErrorText(notificationsState.error.message, locale.t("inbox.alertsUnavailable"), locale.language)
               : (notificationsState.kind === "success" || notificationsState.kind === "empty") && !notificationsReadable
-                ? "提醒内容暂时无法确认，请重新读取。" : ""
+                ? locale.t("inbox.alertsInvalid") : ""
           }
           notificationsLoading={notificationsState.kind === "loading"}
           onRefreshNotifications={refreshNotifications}
@@ -469,7 +474,8 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
             signalsState.kind === "failure" || signalsState.kind === "offline"
               ? relationshipInboxErrorText(
                   signalsState.error.message,
-                  "关系线索暂时不可用。"
+                  locale.t("inbox.signalsUnavailable"),
+                  locale.language
                 )
               : ""
           }
@@ -484,15 +490,17 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
 }
 
 export function RelationshipInboxThreadScreen() {
+  const locale = useOrbitLocale();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const conversationId = firstParam(params.id);
   const { actorId, ready, scopeKey } = useInboxIdentity(conversationId);
-  if (!ready) return <InboxLayout title="消息"><LoadingState /></InboxLayout>;
-  if (!conversationId) return <InboxLayout title="消息"><ErrorState message="缺少对话 ID。" title="打不开对话" /></InboxLayout>;
+  if (!ready) return <InboxLayout title={locale.t("inbox.messageTitle")}><LoadingState /></InboxLayout>;
+  if (!conversationId) return <InboxLayout title={locale.t("inbox.messageTitle")}><ErrorState message={locale.t("inbox.missingConversation")} title={locale.t("inbox.conversationUnavailable")} /></InboxLayout>;
   return <ScopedRelationshipInboxThreadScreen key={scopeKey} actorId={actorId} conversationId={conversationId} scopeKey={scopeKey} />;
 }
 
 function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey }: { actorId: string; conversationId: string; scopeKey: string }) {
+  const locale = useOrbitLocale();
   const { colors } = useOrbitTheme();
   const { clientGet, clientPost, isCurrent } = useInboxRequests(scopeKey);
   const state = useInboxResource(
@@ -537,14 +545,14 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
       if (!isContentCurrent() || readAttempt.current?.data !== stateData) return;
       if (!result.success || result.status === undefined || result.status < 200 || result.status >= 300
         || !relationshipReadReceiptMatches(result.data, target)) {
-        setReadError("已读状态未能确认，消息仍保留为未读。稍后会重试。");
+        setReadError(locale.t("inbox.readUnconfirmed"));
         return;
       }
       setReadError("");
       emitMessageStateInvalidation();
     }).catch(() => {
       if (isContentCurrent() && readAttempt.current?.data === stateData) {
-        setReadError("已读状态未能确认，消息仍保留为未读。稍后会重试。");
+        setReadError(locale.t("inbox.readUnconfirmed"));
       }
     });
   }, [actorId, clientPost, isContentCurrent, stateData]);
@@ -558,14 +566,14 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
           tintColor={colors.accent}
         />
       }
-      title="消息"
+      title={locale.t("inbox.messageTitle")}
     >
       {!conversationId ? (
-        <ErrorState message="缺少对话 ID。" title="打不开对话" />
+        <ErrorState message={locale.t("inbox.missingConversation")} title={locale.t("inbox.conversationUnavailable")} />
       ) : null}
       {conversationId && state.kind === "loading" ? <LoadingState /> : null}
       {conversationId && state.kind === "offline" ? (
-        <ErrorState message={state.error.message} title="服务器连不上" />
+        <ErrorState message={state.error.message} title={locale.t("inbox.serverUnavailable")} />
       ) : null}
       {conversationId && state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
@@ -584,8 +592,8 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
       ) : null}
       {conversationId && state.kind === "empty" ? (
         <EmptyState
-          message="这段往来还没有可显示的消息。"
-          title="暂无消息"
+          message={locale.t("inbox.emptyMessagesBody")}
+          title={locale.t("inbox.emptyMessagesTitle")}
         />
       ) : null}
     </InboxLayout>
@@ -599,6 +607,7 @@ function InboxLayout({ children, title, refreshControl, onCompose, onBack, hideB
   onBack?: (() => void) | undefined;
   hideBack?: boolean;
 }>) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const router = useRouter();
   const { fontScale } = useWindowDimensions();
@@ -610,29 +619,29 @@ function InboxLayout({ children, title, refreshControl, onCompose, onBack, hideB
           {!hideBack ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={onBack || canGoBack ? "返回" : "首页"}
+              accessibilityLabel={locale.t(onBack || canGoBack ? "inbox.back" : "inbox.home")}
               onPress={onBack ?? (() => canGoBack
                 ? router.back()
                 : router.replace("/home" as Href))}
               style={({ pressed }) => [styles.toolbarButton, pressed && styles.pressed]}
             >
               <Ionicons color={colors.accent} name="chevron-back" size={18} />
-              <Text style={styles.toolbarText}>{onBack || canGoBack ? "返回" : "首页"}</Text>
+              <Text style={styles.toolbarText}>{locale.t(onBack || canGoBack ? "inbox.back" : "inbox.home")}</Text>
             </Pressable>
           ) : null}
         </View>
         <Text accessibilityRole="header" style={styles.mailTitle}>
-          {fontScale > 1.3 && title === "草稿预览" ? "草稿\n预览" : title}
+          {title}
         </Text>
         <View style={[styles.toolbarSide, styles.toolbarEnd]}>
           {onCompose ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="写消息"
+              accessibilityLabel={locale.t("inbox.compose")}
               onPress={onCompose}
               style={({ pressed }) => [styles.toolbarButton, pressed && styles.pressed]}
             >
-              <Text style={styles.toolbarComposeText}>写消息</Text>
+              <Text style={styles.toolbarComposeText}>{locale.t("inbox.compose")}</Text>
             </Pressable>
           ) : null}
         </View>
@@ -662,6 +671,7 @@ function NotificationDeliveryCard({
   signal: AbortSignal;
   view: DeliveryView;
 }) {
+  const locale = useOrbitLocale();
   const { styles } = useStyles();
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
@@ -688,18 +698,18 @@ function NotificationDeliveryCard({
         || receipt?.signalId !== view.signalId || receipt.status !== status
         || typeof receipt.lastObservedAt !== "string" || !Number.isFinite(Date.parse(receipt.lastObservedAt))
         || (snoozedUntil !== undefined && receipt.snoozedUntil !== snoozedUntil)) {
-        setActionError("提醒状态尚未确认，请重试。");
+        setActionError(locale.t("inbox.signalUnconfirmed"));
         return;
       }
       setActionStatus(
         status === "acknowledged"
-          ? "已记录为查看建议。"
+          ? locale.t("inbox.acknowledged")
           : status === "snoozed"
-            ? "已稍后提醒。"
-            : "已忽略这条建议。"
+            ? locale.t("inbox.snoozed")
+            : locale.t("inbox.ignored")
       );
     } catch {
-      if (!signal.aborted && getCurrentDelivery() === view) setActionError("提醒状态尚未确认，请重试。");
+      if (!signal.aborted && getCurrentDelivery() === view) setActionError(locale.t("inbox.signalUnconfirmed"));
     } finally {
       actionLock.current = false;
       if (!signal.aborted && getCurrentDelivery() === view) setPendingAction(null);
@@ -708,35 +718,35 @@ function NotificationDeliveryCard({
 
   return (
     <DataCard
-      detail="已在登录后的收件箱安全读取；查看不会自动完成任务。"
+      detail={locale.t("inbox.deliveryDetail")}
       title={view.title}
     >
       <Text style={styles.bodyText}>{view.body}</Text>
       <Text style={styles.safetyText}>
         {view.targetKind === "inbox"
-          ? "这是一条 Orbit 主动提醒，后续动作仍需你在应用内确认。"
-          : "Orbit 已定位到提醒目标，后续动作仍需你在应用内确认。"}
+          ? locale.t("inbox.proactiveSafety")
+          : locale.t("inbox.targetedSafety")}
       </Text>
       {view.signalId ? (
         <View style={styles.buttonRow}>
           <ActionButton
             disabled={pendingAction !== null}
             icon="eye-outline"
-            label={pendingAction === "acknowledged" ? "处理中" : "查看建议"}
+            label={locale.t(pendingAction === "acknowledged" ? "aiConversation.processing" : "inbox.viewSuggestion")}
             onPress={() => void updateSignal("acknowledged")}
             variant="secondary"
           />
           <ActionButton
             disabled={pendingAction !== null}
             icon="time-outline"
-            label={pendingAction === "snoozed" ? "处理中" : "稍后"}
+            label={locale.t(pendingAction === "snoozed" ? "aiConversation.processing" : "inbox.later")}
             onPress={() => void updateSignal("snoozed")}
             variant="secondary"
           />
           <ActionButton
             disabled={pendingAction !== null}
             icon="close-outline"
-            label={pendingAction === "dismissed" ? "处理中" : "忽略"}
+            label={locale.t(pendingAction === "dismissed" ? "aiConversation.processing" : "inbox.ignore")}
             onPress={() => void updateSignal("dismissed")}
             variant="secondary"
           />
@@ -795,13 +805,18 @@ function InboxContent({
   signalsLoading: boolean;
   setComposing: (value: boolean) => void;
 }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const { fontScale } = useWindowDimensions();
   const view = relationshipConversationListToInbox(data, actorId) ?? {
-    conversations: [], selected: null, summary: "暂无对话", title: "收件箱"
+    conversations: [], selected: null, summary: locale.t("inbox.noMessages"), title: locale.t("inbox.title")
   };
-  const alertsView = relationshipAlertsToView(notificationsData);
-  const signalsView = relationshipSignalsToView(signalsData);
+  const alertsView = relationshipAlertsToView(
+    notificationsData,
+    undefined,
+    locale.language
+  );
+  const signalsView = relationshipSignalsToView(signalsData, locale.language);
   const signalCount = signalsView.signals.length;
   const conversations = uniqueConversations(view.conversations);
   const [activeSection, setActiveSection] = useState<InboxSection>("threads");
@@ -825,11 +840,11 @@ function InboxContent({
     const action = inboxNotificationActions(source).get(id);
     setNotificationError("");
     if (!action || action.ignored) {
-      setNotificationError("这条提醒已变化，请重新读取后再操作。");
+      setNotificationError(locale.t("inbox.notificationChanged"));
       return;
     }
     if (state === "read" && !action.href) {
-      setNotificationError("此提醒的目标暂不支持在 App 中打开。");
+      setNotificationError(locale.t("inbox.targetUnsupported"));
       return;
     }
     if (!action.canPersist && state === "ignored") {
@@ -847,14 +862,14 @@ function InboxContent({
       if (!isCurrent() || !alertsActive.current || getCurrentNotifications() !== source) return;
       if (!result.success || result.status === undefined || result.status < 200 || result.status >= 300
         || !inboxNotificationReceiptMatches(result.data, id, state)) {
-        setNotificationError("提醒状态未能确认，请重试。原提醒仍保留。");
+        setNotificationError(locale.t("inbox.stateUnconfirmed"));
         return;
       }
       emitMessageStateInvalidation();
       onRefreshNotifications();
       if (state === "read") onOpenNotificationTarget(action.href!);
     } catch {
-      if (isCurrent() && alertsActive.current && getCurrentNotifications() === source) setNotificationError("提醒状态未能确认，请重试。原提醒仍保留。");
+      if (isCurrent() && alertsActive.current && getCurrentNotifications() === source) setNotificationError(locale.t("inbox.stateUnconfirmed"));
     } finally {
       if (isCurrent()) { notificationLock.current = false; setNotificationPending(null); }
     }
@@ -865,7 +880,7 @@ function InboxContent({
   const visibleAlertsView: RelationshipAlertsView = {
     ...alertsView,
     alerts: visibleAlerts,
-    summary: visibleAlerts.length ? `${visibleAlerts.length} 条提醒` : "暂无提醒"
+    summary: visibleAlerts.length ? locale.t("inbox.alertsCount", { count: visibleAlerts.length }) : locale.t("inbox.noAlerts")
   };
   const seededConversationId = relationshipConversationIdForContact(
     view,
@@ -934,9 +949,9 @@ function InboxContent({
         <View style={styles.searchBox}>
           <Ionicons color={colors.text3} name="search-outline" size={20} />
           <TextInput
-            accessibilityLabel="搜索姓名、主题或内容"
+            accessibilityLabel={locale.t("inbox.search")}
             onChangeText={setQuery}
-            placeholder={fontScale > 1.3 ? "搜索消息" : "搜索姓名、主题或内容"}
+            placeholder={locale.t(fontScale > 1.3 ? "inbox.searchCompact" : "inbox.search")}
             placeholderTextColor={colors.text3}
             returnKeyType="search"
             style={styles.searchInput}
@@ -958,11 +973,11 @@ function InboxContent({
             />
           ) : null}
           {notificationsLoading ? (
-            <Text style={styles.resourceStatus}>正在读取提醒。</Text>
+            <Text style={styles.resourceStatus}>{locale.t("inbox.reminderLoading")}</Text>
           ) : notificationsError ? (
             <View style={styles.remindersPane}>
               <Text accessibilityRole="alert" style={styles.errorText}>{notificationsError}</Text>
-              <ActionButton icon="refresh-outline" label="重试读取提醒" onPress={onRefreshNotifications} variant="secondary" />
+              <ActionButton icon="refresh-outline" label={locale.t("inbox.retryAlerts")} onPress={onRefreshNotifications} variant="secondary" />
             </View>
           ) : <AlertsCard
             error={notificationError}
@@ -1000,6 +1015,7 @@ function RelationshipSignalsCard({
   onConfirmed: () => void;
   view: RelationshipSignalsView;
 }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const { fontScale } = useWindowDimensions();
   const [pendingSignalId, setPendingSignalId] = useState<string | null>(null);
@@ -1010,7 +1026,7 @@ function RelationshipSignalsCard({
 
   async function onConfirmSignal(id: string) {
     if (!isCurrent()) return;
-    const request = buildRelationshipSignalConfirmRequest(id);
+    const request = buildRelationshipSignalConfirmRequest(id, locale.language);
 
     if (!request.success) {
       setActionError(request.error);
@@ -1028,18 +1044,19 @@ function RelationshipSignalsCard({
         setActionError(
           relationshipInboxErrorText(
             result.error?.message,
-            "这条线索暂时确认不了。"
+            locale.t("inbox.signalConfirmFailed"),
+            locale.language
           )
         );
         return;
       }
 
-      setConfirmation(relationshipSignalConfirmToView(result.data));
+      setConfirmation(relationshipSignalConfirmToView(result.data, locale.language));
       onConfirmed();
     } catch (requestError) {
       if (!isCurrent()) return;
       setActionError(
-        relationshipInboxErrorText(requestError, "这条线索暂时确认不了。")
+        relationshipInboxErrorText(requestError, locale.t("inbox.signalConfirmFailed"), locale.language)
       );
     } finally {
       if (isCurrent()) setPendingSignalId(null);
@@ -1047,8 +1064,8 @@ function RelationshipSignalsCard({
   }
 
   return (
-    <DataCard detail={loading || error ? "" : view.summary} title="关系线索">
-      {loading ? <Text style={styles.threadPreview}>正在读取关系线索。</Text> : null}
+    <DataCard detail={loading || error ? "" : view.summary} title={locale.t("inbox.signalsTitle")}>
+      {loading ? <Text style={styles.threadPreview}>{locale.t("inbox.signalsLoading")}</Text> : null}
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
       {actionError ? <Text style={styles.errorText}>{actionError}</Text> : null}
       {confirmation ? (
@@ -1091,7 +1108,7 @@ function RelationshipSignalsCard({
                 <ActionButton
                   disabled={pendingSignalId !== null}
                   icon="checkmark-outline"
-                  label="确认线索"
+                  label={locale.t("inbox.confirmSignal")}
                   onPress={() => onConfirmSignal(signal.id)}
                   variant="secondary"
                 />
@@ -1102,7 +1119,7 @@ function RelationshipSignalsCard({
       ) : !loading && !error ? (
         <View style={styles.emptyInboxSection}>
           <Ionicons color={colors.text3} name="trail-sign-outline" size={22} />
-          <Text style={styles.emptyInboxTitle}>暂无关系线索</Text>
+          <Text style={styles.emptyInboxTitle}>{locale.t("inbox.noSignals")}</Text>
           <Text style={styles.threadPreview}>{view.emptyText}</Text>
         </View>
       ) : null}
@@ -1120,18 +1137,19 @@ function InboxSegmentedControl({
   alertCount: number;
   onChange: (section: InboxSection) => void;
 }) {
+  const locale = useOrbitLocale();
   const { styles } = useStyles();
   return (
     <View accessibilityRole="tablist" style={styles.segmentedControl}>
       <SegmentButton
         active={activeSection === "threads"}
-        label="消息"
+        label={locale.t("inbox.messagesTab")}
         onPress={() => onChange("threads")}
       />
       <SegmentButton
         active={activeSection === "alerts"}
         count={alertCount}
-        label="提醒"
+        label={locale.t("inbox.alertsTab")}
         onPress={() => onChange("alerts")}
       />
     </View>
@@ -1177,11 +1195,11 @@ function SegmentButton({
 
 function AlertDismissButton({
   disabled = false,
-  label = "忽略",
+  label,
   onPress
 }: {
   disabled?: boolean;
-  label?: string;
+  label: string;
   onPress: () => void;
 }) {
   const { colors, styles } = useStyles();
@@ -1217,14 +1235,15 @@ function AlertsCard({
   onOpenAlert: (id: string) => void;
   view: RelationshipAlertsView;
 }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const { fontScale } = useWindowDimensions();
   return (
     <View style={styles.remindersPane}>
-      <Text style={styles.threadPreview}>{view.alerts.some(alert => alert.canPersistState)
-        ? "已读和忽略会保存在当前账号。" : "忽略仅对本次查看生效。"}</Text>
+      <Text style={styles.threadPreview}>{locale.t(view.alerts.some(alert => alert.canPersistState)
+        ? "inbox.stateAccount" : "inbox.stateSession")}</Text>
       {error ? <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text> : null}
-      {pendingId ? <Text accessibilityLiveRegion="polite" style={styles.resourceStatus}>正在更新提醒。</Text> : null}
+      {pendingId ? <Text accessibilityLiveRegion="polite" style={styles.resourceStatus}>{locale.t("inbox.updating")}</Text> : null}
       {view.alerts.length > 0 ? (
         <View style={styles.listStack}>
           {view.alerts.map((alert) => (
@@ -1250,32 +1269,32 @@ function AlertsCard({
                 >
                   {alert.priorityLabel}
                 </Text>
-                {alert.read ? <Text style={styles.alertDetail}>已读</Text> : null}
+                {alert.read ? <Text style={styles.alertDetail}>{locale.t("inbox.read")}</Text> : null}
                 {alert.href ? (
-                  <Pressable accessibilityRole="button" accessibilityLabel={`打开提醒：${alert.title}`}
+                  <Pressable accessibilityRole="button" accessibilityLabel={locale.t("inbox.openAlert", { title: alert.title })}
                     accessibilityState={{ disabled: pendingId !== null }} disabled={pendingId !== null}
                     onPress={() => onOpenAlert(alert.id)}
                     style={({ pressed }) => [styles.alertDismissButton, pendingId ? styles.disabled : null, pressed ? styles.pressed : null]}>
                     <Ionicons color={colors.accent} name="arrow-forward-outline" size={15} />
-                    <Text style={styles.alertDismissText}>查看</Text>
+                    <Text style={styles.alertDismissText}>{locale.t("inbox.view")}</Text>
                   </Pressable>
                 ) : null}
                 <AlertDismissButton
                   disabled={pendingId !== null}
-                  label="忽略"
+                  label={locale.t("inbox.ignore")}
                   onPress={() => onDismissAlert(alert.id)}
                 />
               </View>
-              {alert.canPersistState && !alert.href ? <Text style={styles.alertDetail}>此提醒的目标暂不支持在 App 中打开。</Text> : null}
+              {alert.canPersistState && !alert.href ? <Text style={styles.alertDetail}>{locale.t("inbox.targetUnsupported")}</Text> : null}
             </View>
           ))}
         </View>
       ) : (
         <View style={styles.emptyInboxSection}>
           <Ionicons color={colors.text3} name="notifications-outline" size={22} />
-          <Text style={styles.emptyInboxTitle}>暂无提醒</Text>
+          <Text style={styles.emptyInboxTitle}>{locale.t("inbox.noAlerts")}</Text>
           <Text style={styles.threadPreview}>
-            有需要准备的会面、待办或 Orbit AI 提示时，会先出现在这里。
+            {locale.t("inbox.noAlertsBody")}
           </Text>
         </View>
       )}
@@ -1293,6 +1312,7 @@ function ConversationList({
   onSelect: (conversationId: string) => void;
   query: string;
 }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const { fontScale } = useWindowDimensions();
   const normalizedQuery = query.trim().toLocaleLowerCase();
@@ -1316,7 +1336,7 @@ function ConversationList({
           visibleConversations.map((conversation) => (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`${conversation.name}，${conversation.subject}，${conversation.lastAt}，${conversation.preview}${conversation.unreadCount > 0 ? `，${conversation.unreadCount} 条未读` : ""}`}
+              accessibilityLabel={`${conversation.name}，${conversation.subject}，${conversation.lastAt}，${conversation.preview}${conversation.unreadCount > 0 ? `，${locale.t("inbox.unreadCount", { count: conversation.unreadCount })}` : ""}`}
               key={conversation.id}
               onPress={() => onSelect(conversation.id)}
               style={({ pressed }) => [
@@ -1343,8 +1363,8 @@ function ConversationList({
         ) : (
           <View style={styles.emptyInboxSection}>
             <Ionicons color={colors.text3} name="search-outline" size={22} />
-            <Text style={styles.emptyInboxTitle}>{query.trim() ? "没有找到消息" : "暂无消息"}</Text>
-            <Text style={styles.threadPreview}>{query.trim() ? "换个姓名、主题或关键词试试。" : "收到的消息会显示在这里。"}</Text>
+            <Text style={styles.emptyInboxTitle}>{locale.t(query.trim() ? "inbox.noSearchResults" : "inbox.noMessages")}</Text>
+            <Text style={styles.threadPreview}>{locale.t(query.trim() ? "inbox.searchHint" : "inbox.messagesHint")}</Text>
           </View>
         )}
       </View>
@@ -1366,6 +1386,7 @@ function ThreadDetail({
   detail: RelationshipThreadDetailView;
   previewOnly?: boolean;
 }) {
+  const locale = useOrbitLocale();
   const { styles } = useStyles();
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showEmptyRecords, setShowEmptyRecords] = useState(false);
@@ -1376,17 +1397,17 @@ function ThreadDetail({
   return (
     <View style={styles.readingPane}>
       <Text accessibilityRole="header" style={styles.readingSubject}>{detail.subject}</Text>
-      {!previewOnly ? <Text style={styles.bodyText}>联系人：{detail.participantName}</Text> : null}
+      {!previewOnly ? <Text style={styles.bodyText}>{locale.t("inbox.contactNamed", { name: detail.participantName })}</Text> : null}
       {emptyCount > 0 ? (
         <View>
-          <Text style={styles.threadPreview}>{emptyCount} 条记录没有可显示的正文。</Text>
+          <Text style={styles.threadPreview}>{locale.t("inbox.emptyRecordCount", { count: emptyCount })}</Text>
           <Pressable
             accessibilityRole="button"
             accessibilityState={{ expanded: showEmptyRecords }}
             onPress={() => setShowEmptyRecords(value => !value)}
             style={styles.privacyDisclosure}
           >
-            <Text style={styles.threadPreview}>{showEmptyRecords ? "收起无正文记录" : "展开无正文记录"}</Text>
+            <Text style={styles.threadPreview}>{locale.t(showEmptyRecords ? "inbox.collapseEmpty" : "inbox.expandEmpty")}</Text>
           </Pressable>
         </View>
       ) : null}
@@ -1405,12 +1426,12 @@ function ThreadDetail({
         ))}
       </View>
       {previewOnly ? (
-        <Text style={styles.safetyText}>仅在本页预览，尚未保存或发送。</Text>
+        <Text style={styles.safetyText}>{locale.t("inbox.previewOnly")}</Text>
       ) : (
         <>
           <ReplyComposer contactId={contactId ?? ""} isCurrent={isCurrent} detail={detail} />
-          <Pressable accessibilityRole="button" accessibilityLabel="隐私设置" accessibilityState={{ expanded: showPrivacy }} onPress={() => setShowPrivacy(value => !value)} style={styles.privacyDisclosure}>
-            <Text style={styles.threadPreview}>{showPrivacy ? "收起隐私设置" : "隐私设置"}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={locale.t("inbox.privacy")} accessibilityState={{ expanded: showPrivacy }} onPress={() => setShowPrivacy(value => !value)} style={styles.privacyDisclosure}>
+            <Text style={styles.threadPreview}>{locale.t(showPrivacy ? "inbox.collapsePrivacy" : "inbox.privacy")}</Text>
           </Pressable>
           {showPrivacy ? <PrivacyControlsPanel clientGet={clientGet} clientPost={clientPost} isCurrent={isCurrent} detail={detail} /> : null}
         </>
@@ -1430,6 +1451,7 @@ function PrivacyControlsPanel({
   isCurrent: () => boolean;
   detail: RelationshipThreadDetailView;
 }) {
+  const locale = useOrbitLocale();
   const { styles } = useStyles();
   const [privacy, setPrivacy] = useState<RelationshipPrivacyControlsView | null>(
     null
@@ -1448,19 +1470,20 @@ function PrivacyControlsPanel({
       if (!isCurrent()) return;
 
       if (result.success) {
-        setPrivacy(relationshipPrivacyControlsToView(result.data));
+        setPrivacy(relationshipPrivacyControlsToView(result.data, locale.language));
       } else {
         setPrivacyError(
           relationshipInboxErrorText(
             result.error?.message,
-            "隐私控制暂时不可用。"
+            locale.t("inbox.privacyUnavailable"),
+            locale.language
           )
         );
       }
     } catch (requestError) {
       if (!isCurrent()) return;
       setPrivacyError(
-        relationshipInboxErrorText(requestError, "隐私控制暂时不可用。")
+        relationshipInboxErrorText(requestError, locale.t("inbox.privacyUnavailable"), locale.language)
       );
     } finally {
       if (isCurrent()) setPrivacyLoading(false);
@@ -1482,7 +1505,7 @@ function PrivacyControlsPanel({
     const request = buildRelationshipPrivacyToggleRequest({
       conversationId: detail.conversationId,
       enabled: privacy.nextEnabled
-    });
+    }, locale.language);
 
     if (!request.success) {
       setPrivacyError(request.error);
@@ -1497,19 +1520,20 @@ function PrivacyControlsPanel({
       if (!isCurrent()) return;
 
       if (result.success) {
-        setPrivacy(relationshipPrivacyControlsToView(result.data));
+        setPrivacy(relationshipPrivacyControlsToView(result.data, locale.language));
       } else {
         setPrivacyError(
           relationshipInboxErrorText(
             result.error?.message,
-            "隐私控制暂时更新不了。"
+            locale.t("inbox.privacyUpdateFailed"),
+            locale.language
           )
         );
       }
     } catch (requestError) {
       if (!isCurrent()) return;
       setPrivacyError(
-        relationshipInboxErrorText(requestError, "隐私控制暂时更新不了。")
+        relationshipInboxErrorText(requestError, locale.t("inbox.privacyUpdateFailed"), locale.language)
       );
     } finally {
       if (isCurrent()) setPrivacyToggling(false);
@@ -1519,15 +1543,15 @@ function PrivacyControlsPanel({
   if (!privacy) {
     return (
       <View style={styles.stagedBox}>
-        <Text style={styles.stagedTitle}>{"隐私控制"}</Text>
+        <Text style={styles.stagedTitle}>{locale.t("inbox.privacy")}</Text>
         <Text style={styles.threadPreview}>
-          {privacyLoading ? "正在读取这段对话的隐私状态。" : "隐私控制暂时不可用。"}
+          {locale.t(privacyLoading ? "inbox.privacyLoading" : "inbox.privacyUnavailable")}
         </Text>
         {privacyError ? <Text style={styles.errorText}>{privacyError}</Text> : null}
         {!privacyLoading ? (
           <ActionButton
             icon="refresh-outline"
-            label="重试"
+            label={locale.t("common.retry")}
             onPress={loadPrivacyControls}
             variant="secondary"
           />
@@ -1574,6 +1598,7 @@ function ReplyComposer({
   isCurrent: () => boolean;
   detail: RelationshipThreadDetailView;
 }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
@@ -1594,27 +1619,27 @@ function ReplyComposer({
   function rewriteDraft() {
     if (!isCurrent()) return;
     const actorId = auth.user?.id;
-    if (!body.trim()) { setRewriteError("请先写下要润色的草稿。"); return; }
-    if (!contactId) { setRewriteError("这段对话缺少可验证的人脉，请先补全关联人脉。"); return; }
-    if (!actorId || !server.baseUrl) { setRewriteError("请先登录后再打开 IORBIT。"); return; }
+    if (!body.trim()) { setRewriteError(locale.t("inbox.writeDraftFirst")); return; }
+    if (!contactId) { setRewriteError(locale.t("inbox.missingContact")); return; }
+    if (!actorId || !server.baseUrl) { setRewriteError(locale.t("inbox.signInForAi")); return; }
     try {
       const prefillIntent = registerAiTemplatePrefill({ actorId, baseUrl: server.baseUrl, ...inboxPolishTemplate({ contactId, contactName: detail.participantName, draft: body.trim() }) });
       setRewriteError(null);
       router.push({ pathname: "/ai/[id]", params: { id: "new", prefillIntent } } as Href);
     } catch {
-      setRewriteError("这段草稿暂时无法带入 IORBIT，请重试。");
+      setRewriteError(locale.t("inbox.transferFailed"));
     }
   }
 
   if (staged) {
     return (
       <View style={styles.stagedBox}>
-        <Text style={styles.stagedTitle}>回复预览</Text>
-        <Text style={styles.threadPreview}>仅在本页预览，尚未保存或发送。</Text>
+        <Text style={styles.stagedTitle}>{locale.t("inbox.replyPreview")}</Text>
+        <Text style={styles.threadPreview}>{locale.t("inbox.previewOnly")}</Text>
         <Text style={styles.bodyText}>{staged}</Text>
         <ActionButton
           icon="pencil-outline"
-          label="继续编辑"
+          label={locale.t("inbox.continueEditing")}
           onPress={() => setStaged("")}
           variant="secondary"
         />
@@ -1624,15 +1649,15 @@ function ReplyComposer({
 
   return (
     <View style={styles.composer}>
-      <Text style={styles.fieldLabel}>回复草稿</Text>
+      <Text style={styles.fieldLabel}>{locale.t("inbox.replyDraft")}</Text>
       <TextInput
-        accessibilityLabel="回复正文"
+        accessibilityLabel={locale.t("inbox.replyBody")}
         multiline
         onChangeText={(value) => {
           draftEdited.current = true;
           setBody(value);
         }}
-        placeholder="先写一版要说的话。"
+        placeholder={locale.t("inbox.replyPlaceholder")}
         placeholderTextColor={colors.text4}
         style={styles.input}
         value={body}
@@ -1643,14 +1668,14 @@ function ReplyComposer({
         <ActionButton
           disabled={!body.trim()}
           icon="sparkles-outline"
-          label="润色草稿"
+          label={locale.t("inbox.polishDraft")}
           onPress={rewriteDraft}
           variant="secondary"
         />
         <ActionButton
           disabled={!body.trim()}
           icon="mail-unread-outline"
-          label="预览回复"
+          label={locale.t("inbox.previewReply")}
           onPress={() => { draftEdited.current = true; setStaged(body.trim()); }}
         />
       </View>
@@ -1677,6 +1702,7 @@ function NewThreadComposer({
   onCreated: (thread: RelationshipCreatedThreadView) => void;
   seed: { contactId: string; organization: string; participantName: string };
 }) {
+  const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const [participantName, setParticipantName] = useState(seed.participantName);
   const [organization, setOrganization] = useState(seed.organization);
@@ -1701,7 +1727,7 @@ function NewThreadComposer({
       organization,
       participantName,
       subject
-    });
+    }, locale.language);
 
     if (!draft.success) {
       setError(draft.error);
@@ -1715,19 +1741,20 @@ function NewThreadComposer({
       const result = await clientPost(draft.request.endpoint, draft.request.body);
       if (!isCurrent()) return;
       if (result.success) {
-        onCreated(createdRelationshipThreadToView(result.data));
+        onCreated(createdRelationshipThreadToView(result.data, locale.language));
       } else {
         setError(
           relationshipInboxErrorText(
             result.error?.message,
-            "这段草稿暂时创建不了。"
+            locale.t("inbox.createDraftFailed"),
+            locale.language
           )
         );
       }
     } catch (requestError) {
       if (!isCurrent()) return;
       setError(
-        relationshipInboxErrorText(requestError, "这段草稿暂时创建不了。")
+        relationshipInboxErrorText(requestError, locale.t("inbox.createDraftFailed"), locale.language)
       );
     } finally {
       if (isCurrent()) setBusy(false);
@@ -1737,9 +1764,9 @@ function NewThreadComposer({
   if (preview) {
     return (
       <View style={styles.readingPane}>
-        <Text style={styles.bodyText}>收件人：{preview.conversation.name}</Text>
+        <Text style={styles.bodyText}>{locale.t("inbox.contactNamed", { name: preview.conversation.name })}</Text>
         <ThreadDetail clientGet={clientGet} clientPost={clientPost} isCurrent={isCurrent} detail={preview.detail} previewOnly />
-        <ActionButton icon="pencil-outline" label="继续编辑" onPress={onEdit} variant="secondary" />
+        <ActionButton icon="pencil-outline" label={locale.t("inbox.continueEditing")} onPress={onEdit} variant="secondary" />
       </View>
     );
   }
@@ -1749,52 +1776,52 @@ function NewThreadComposer({
       <View style={styles.composer}>
         <LabeledInput
           editable={!busy}
-          label="收件人"
+          label={locale.t("inbox.recipient")}
           onChangeText={setParticipantName}
-          placeholder="联系人姓名"
+          placeholder={locale.t("inbox.recipientPlaceholder")}
           value={participantName}
         />
         <LabeledInput
           editable={!busy}
-          label="公司/组织"
+          label={locale.t("inbox.organization")}
           onChangeText={setOrganization}
-          placeholder="选填"
+          placeholder={locale.t("inbox.optional")}
           value={organization}
         />
         <LabeledInput
           editable={!busy}
-          label="主题"
+          label={locale.t("inbox.subject")}
           onChangeText={setSubject}
-          placeholder="这次联系的主题"
+          placeholder={locale.t("inbox.subjectPlaceholder")}
           value={subject}
         />
-        <Text style={styles.fieldLabel}>正文</Text>
+        <Text style={styles.fieldLabel}>{locale.t("inbox.body")}</Text>
         <TextInput
-          accessibilityLabel="正文"
+          accessibilityLabel={locale.t("inbox.body")}
           editable={!busy}
           multiline
           onChangeText={setBody}
-          placeholder="写下第一条消息。"
+          placeholder={locale.t("inbox.firstMessagePlaceholder")}
           placeholderTextColor={colors.text4}
           style={styles.input}
           value={body}
         />
         <Text style={styles.safetyText}>
-          下一步只预览草稿，不会保存或发送消息。
+          {locale.t("inbox.previewSafety")}
         </Text>
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
         <View style={styles.buttonRow}>
           <ActionButton
             disabled={busy}
             icon="close-outline"
-            label="取消"
+            label={locale.t("common.cancel")}
             onPress={onCancel}
             variant="secondary"
           />
           <ActionButton
             disabled={busy}
             icon="checkmark-outline"
-            label={busy ? "正在准备" : "预览草稿"}
+            label={locale.t(busy ? "inbox.preparing" : "inbox.previewDraft")}
             onPress={createThread}
           />
         </View>

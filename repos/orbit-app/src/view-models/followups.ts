@@ -1,4 +1,6 @@
 import type { FollowupTaskContract } from "../api/contract/followups";
+import type { OrbitLanguage } from "../api/contract/language";
+import { createTranslator, type OrbitTranslator } from "../i18n/messages";
 export interface FollowupMetricView {
   label: string;
   value: string;
@@ -222,7 +224,7 @@ function listFromPayload(value: unknown, fieldName: string): UnknownRecord[] {
   return Array.isArray(field) ? field.filter(isRecord) : [];
 }
 
-function formatDateTime(value: string): string {
+function formatDateTime(value: string, language: OrbitLanguage = "zh"): string {
   const timestamp = Date.parse(value);
 
   if (!Number.isFinite(timestamp)) {
@@ -230,6 +232,9 @@ function formatDateTime(value: string): string {
   }
 
   const date = new Date(timestamp);
+  if (language !== "zh") {
+    return new Intl.DateTimeFormat(language === "ja" ? "ja-JP" : "en-US", { day: "numeric", hour: "2-digit", hourCycle: "h23", minute: "2-digit", month: "short", timeZone: "Asia/Tokyo", weekday: "short" }).format(date);
+  }
   const parts = new Intl.DateTimeFormat("en-US", {
     day: "numeric",
     hour: "2-digit",
@@ -259,99 +264,103 @@ function formatDateTime(value: string): string {
   } ${time}`.trim();
 }
 
-function dueLabel(record: UnknownRecord): string {
+function dueLabel(record: UnknownRecord, language: OrbitLanguage, t: OrbitTranslator): string {
   const dueAt = taskField(record, "dueAt");
   if (dueAt) {
-    return formatDateTime(dueAt);
+    return formatDateTime(dueAt, language);
   }
 
   const dueInDays = numberField(record, "dueInDays", -1);
   if (dueInDays === 0) {
-    return "今天";
+    return t("scheduleVm.today");
   }
 
   if (dueInDays === 1) {
-    return "明天";
+    return t("scheduleVm.tomorrow");
   }
 
-  return dueInDays > 1 ? `${dueInDays} 天后` : "待定";
+  return dueInDays > 1 ? t("scheduleVm.daysLater", { count: dueInDays }) : t("scheduleVm.tbd");
 }
 
-function priorityLabel(value: string): string {
+function priorityLabel(value: string, t: OrbitTranslator): string {
   const labels: Record<string, string> = {
-    high: "高优先级",
-    low: "低优先级",
-    normal: "普通优先级",
-    nurture: "长期经营",
-    this_week: "本周",
-    today: "今天"
+    high: t("followupVm.priorityHigh"),
+    low: t("followupVm.priorityLow"),
+    normal: t("followupVm.priorityNormal"),
+    nurture: t("followupVm.priorityNurture"),
+    this_week: t("scheduleVm.thisWeek"),
+    today: t("scheduleVm.today")
   };
 
-  return labels[value.trim().toLowerCase()] ?? "待确认";
+  return labels[value.trim().toLowerCase()] ?? t("scheduleVm.tbd");
 }
 
-function triggerLabel(value: string): string {
+function triggerLabel(value: string, t: OrbitTranslator): string {
   const labels: Record<string, string> = {
-    dormant_relationship: "冷关系唤醒",
-    event_encounter: "活动后",
-    new_connection: "新认识",
-    promised_action: "承诺事项"
+    dormant_relationship: t("followupVm.triggerDormant"),
+    event_encounter: t("followupVm.triggerEvent"),
+    new_connection: t("followupVm.triggerNew"),
+    promised_action: t("followupVm.triggerPromised")
   };
 
-  return labels[value.trim()] ?? "关系触发";
+  return labels[value.trim()] ?? t("followupVm.triggerFallback");
 }
 
-function contactName(record: UnknownRecord): string {
-  return taskField(record, "contactName", "联系人");
+function contactName(record: UnknownRecord, t: OrbitTranslator): string {
+  return taskField(record, "contactName", t("scheduleVm.contact"));
 }
 
-function followupTitle(record: UnknownRecord): string {
-  return `联系 ${contactName(record)}`;
+function followupTitle(record: UnknownRecord, t: OrbitTranslator): string {
+  return t("scheduleVm.contactNamed", { name: t.literal(contactName(record, t)) });
 }
 
-function recommendedAction(record: UnknownRecord): string {
+function recommendedAction(record: UnknownRecord, language: OrbitLanguage, t: OrbitTranslator): string {
   const action = taskField(record, "recommendedAction");
+  const fallback = t("scheduleVm.contactNext", { name: t.literal(contactName(record, t)) });
 
   if (!action || /\bcontact[_:-]?\d+|review follow-up\b/i.test(action)) {
-    return `联系 ${contactName(record)}，确认下一步。`;
+    return fallback;
   }
 
-  return userFacingText(action, `联系 ${contactName(record)}，确认下一步。`);
+  return language === "zh" ? userFacingText(action, fallback) : containsImplementationLabel(action) ? fallback : action.trim();
 }
 
-function rationale(record: UnknownRecord): string {
+function rationale(record: UnknownRecord, language: OrbitLanguage, t: OrbitTranslator): string {
+  const value = taskField(record, "rationale");
+  return language === "zh" ? userFacingText(
+    value,
+    t("followupVm.rationale")
+  ) : containsImplementationLabel(value) || !value ? t("followupVm.rationale") : value;
+}
+
+function sourceLabel(record: UnknownRecord, language: OrbitLanguage, t: OrbitTranslator): string {
+  const value = stringField(nestedRecord(record, "source"), "label");
+  if (language !== "zh") return containsImplementationLabel(value) || !value ? t("followupVm.sourceRecorded") : value;
   return userFacingText(
-    taskField(record, "rationale"),
-    "这项待办来自已记录的关系背景，确认后再行动。"
+    value,
+    t("followupVm.sourceRecorded")
   );
 }
 
-function sourceLabel(record: UnknownRecord): string {
-  return userFacingText(
-    stringField(nestedRecord(record, "source"), "label"),
-    "来源已记录"
-  );
-}
-
-function evidenceLabel(record: UnknownRecord): string {
+function evidenceLabel(record: UnknownRecord, t: OrbitTranslator): string {
   const count = listField(record, "evidenceIds").length;
-  return count > 0 ? `${count} 条来源` : "来源待补";
+  return count > 0 ? t("followupVm.evidenceCount", { count }) : t("followupVm.evidencePending");
 }
 
-function taskView(record: UnknownRecord): FollowupTaskView {
+function taskView(record: UnknownRecord, language: OrbitLanguage, t: OrbitTranslator): FollowupTaskView {
   return {
     contactId: taskField(record, "contactId", stringField(record, "relatedContactId")),
-    contactName: contactName(record),
-    dueLabel: dueLabel(record),
-    evidenceLabel: evidenceLabel(record),
+    contactName: contactName(record, t),
+    dueLabel: dueLabel(record, language, t),
+    evidenceLabel: evidenceLabel(record, t),
     id: taskField(record, "taskId", stringField(record, "id", "task")),
     organization: taskField(record, "organization"),
-    priorityLabel: priorityLabel(taskField(record, "priority")),
-    rationale: rationale(record),
-    recommendedAction: recommendedAction(record),
-    sourceLabel: sourceLabel(record),
-    title: followupTitle(record),
-    triggerLabel: triggerLabel(taskField(record, "triggerKind"))
+    priorityLabel: priorityLabel(taskField(record, "priority"), t),
+    rationale: rationale(record, language, t),
+    recommendedAction: recommendedAction(record, language, t),
+    sourceLabel: sourceLabel(record, language, t),
+    title: followupTitle(record, t),
+    triggerLabel: triggerLabel(taskField(record, "triggerKind"), t)
   };
 }
 
@@ -451,69 +460,74 @@ function chatFollowupDraftView(record: UnknownRecord): ChatFollowupDraftView {
   };
 }
 
-function reminderTitle(record: UnknownRecord): string {
+function reminderTitle(record: UnknownRecord, language: OrbitLanguage, t: OrbitTranslator): string {
   const title = stringField(record, "title");
-  const name = contactName(record);
+  const name = contactName(record, t);
+  const fallback = t("followupVm.reminderNamed", { name: t.literal(name) });
 
   if (!title || /^review follow-up for /iu.test(title)) {
-    return `提醒联系 ${name}`;
+    return fallback;
   }
 
-  return userFacingText(title, `提醒联系 ${name}`);
+  return language === "zh" ? userFacingText(title, fallback) : containsImplementationLabel(title) ? fallback : title;
 }
 
 function reminderQueueLabel(
   record: UnknownRecord,
-  queueEntries: UnknownRecord[]
+  queueEntries: UnknownRecord[],
+  t: OrbitTranslator
 ): string {
   const reminderId = stringField(record, "reminderId");
   const count = queueEntries.filter((entry) =>
     listField(entry, "reminderIds").includes(reminderId)
   ).length;
 
-  return count > 0 ? `${count} 条通知待确认` : "提醒待确认";
+  return count > 0 ? t("followupVm.queueCount", { count }) : t("followupVm.queuePending");
 }
 
 function reminderView(
   record: UnknownRecord,
-  queueEntries: UnknownRecord[]
+  queueEntries: UnknownRecord[],
+  language: OrbitLanguage,
+  t: OrbitTranslator
 ): FollowupReminderView {
   return {
-    dueLabel: dueLabel(record),
+    dueLabel: dueLabel(record, language, t),
     id: stringField(record, "reminderId", "reminder"),
     organization: taskField(record, "organization"),
-    priorityLabel: priorityLabel(taskField(record, "priority")),
-    queueLabel: reminderQueueLabel(record, queueEntries),
-    title: reminderTitle(record),
+    priorityLabel: priorityLabel(taskField(record, "priority"), t),
+    queueLabel: reminderQueueLabel(record, queueEntries, t),
+    title: reminderTitle(record, language, t),
     windowLabel: userFacingText(
       stringField(record, "recommendedWindow"),
-      "复核后再决定是否提醒。"
+      t("followupVm.reminderWindow")
     )
   };
 }
 
-function topTask(tasks: FollowupTaskView[]): FollowupTaskView | null {
+function topTask(tasks: FollowupTaskView[], t: OrbitTranslator): FollowupTaskView | null {
   return (
-    tasks.find((task) => task.priorityLabel === "今天") ??
-    tasks.find((task) => task.priorityLabel === "本周") ??
+    tasks.find((task) => task.priorityLabel === t("scheduleVm.today")) ??
+    tasks.find((task) => task.priorityLabel === t("scheduleVm.thisWeek")) ??
     tasks[0] ??
     null
   );
 }
 
-function nextAction(tasksPayload: unknown, tasks: FollowupTaskView[]): string {
+function nextAction(tasksPayload: unknown, tasks: FollowupTaskView[], language: OrbitLanguage, t: OrbitTranslator): string {
+  const value = stringField(recordFrom(tasksPayload), "nextAction");
   const sourceNextAction = userFacingText(
-    stringField(recordFrom(tasksPayload), "nextAction"),
+    value,
     ""
   );
 
-  if (sourceNextAction) {
-    return sourceNextAction;
+  if (sourceNextAction || (language !== "zh" && value && !containsImplementationLabel(value))) {
+    return language === "zh" ? sourceNextAction : value;
   }
 
   return tasks.length
-    ? "先处理今天到期、关系价值最高的那一条。"
-    : "先从联系人或活动里记录一个明确的下一步。";
+    ? t("followupVm.nextWithTasks")
+    : t("followupVm.nextEmpty");
 }
 
 function generatedNextAction(payload: unknown, tasks: FollowupTaskView[]): string {
@@ -551,41 +565,44 @@ export function followupInlineContextLabel(
   );
 }
 
-export function followupsToView(input: FollowupsViewInput): FollowupsView {
-  const tasks = listFromPayload(input.tasksPayload, "tasks").map(taskView);
+export function followupsToView(input: FollowupsViewInput, language: OrbitLanguage = "zh"): FollowupsView {
+  const t = createTranslator(language);
+  const tasks = listFromPayload(input.tasksPayload, "tasks").map(record => taskView(record, language, t));
   const notificationRecord = recordFrom(input.notificationsPayload);
   const queueEntries = listField(notificationRecord, "notificationQueue").filter(
     isRecord
   );
   const reminders = listFromPayload(input.notificationsPayload, "reminders").map(
-    (reminder) => reminderView(reminder, queueEntries)
+    (reminder) => reminderView(reminder, queueEntries, language, t)
   );
   const dueTodayCount = tasks.filter(
-    (task) => task.priorityLabel === "今天" || task.dueLabel.startsWith("今天")
+    (task) => task.priorityLabel === t("scheduleVm.today") || task.dueLabel.startsWith(t("scheduleVm.today"))
   ).length;
 
   return {
     metrics: [
-      { label: "待办", value: String(tasks.length) },
-      { label: "今天", value: String(dueTodayCount) },
-      { label: "提醒", value: String(reminders.length) }
+      { label: t("followupVm.statTasks"), value: String(tasks.length) },
+      { label: t("followupVm.statToday"), value: String(dueTodayCount) },
+      { label: t("followupVm.statReminders"), value: String(reminders.length) }
     ],
-    nextAction: nextAction(input.tasksPayload, tasks),
-    priorityTask: topTask(tasks),
+    nextAction: nextAction(input.tasksPayload, tasks, language, t),
+    priorityTask: topTask(tasks, t),
     reminders,
-    safetyText: "这里只供你确认，不会发送消息、创建提醒或写入日程。",
+    safetyText: t("followupVm.safety"),
     summary: tasks.length || reminders.length
-      ? `${tasks.length} 项待办 · ${reminders.length} 条提醒`
-      : "暂无待办",
+      ? t("followupVm.summary", { tasks: tasks.length, reminders: reminders.length })
+      : t("followupVm.empty"),
     tasks,
-    title: "待办"
+    title: t("followupVm.title")
   };
 }
 
 export function generatedFollowupTasksToView(
   payload: unknown
 ): GeneratedFollowupTasksView {
-  const tasks = listFromPayload(payload, "tasks").map(taskView);
+  const language: OrbitLanguage = "zh";
+  const t = createTranslator(language);
+  const tasks = listFromPayload(payload, "tasks").map(record => taskView(record, language, t));
 
   return {
     nextAction: generatedNextAction(payload, tasks),
@@ -601,10 +618,12 @@ export function generatedFollowupTasksToView(
 export function generatedFollowupRemindersToView(
   payload: unknown
 ): GeneratedFollowupRemindersView {
+  const language: OrbitLanguage = "zh";
+  const t = createTranslator(language);
   const record = recordFrom(payload);
   const queueEntries = listField(record, "notificationQueue").filter(isRecord);
   const reminders = listFromPayload(payload, "reminders").map((reminder) =>
-    reminderView(reminder, queueEntries)
+    reminderView(reminder, queueEntries, language, t)
   );
 
   return {

@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { radius, spacing } from "../../design/tokens";
 import { createThemedStyles } from "../../design/theme";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 
 export interface MentionContact {
   id: string;
@@ -29,22 +30,23 @@ export function ContactMentionPicker({ contacts, onSelect, selectedIds }: {
   selectedIds: readonly string[];
 }) {
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
   const [query, setQuery] = useState("");
   const results = useMemo(() => filterMentionContacts(contacts, query, selectedIds), [contacts, query, selectedIds]);
   return <View style={styles.panel}>
-    <Text style={styles.title}>@ 联系人</Text>
-    <TextInput accessibilityLabel="搜索要提及的联系人" onChangeText={setQuery} placeholder="按姓名或公司搜索" style={styles.input} value={query} />
+    <Text style={styles.title}>{locale.t("aiMention.title")}</Text>
+    <TextInput accessibilityLabel={locale.t("aiMention.searchLabel")} onChangeText={setQuery} placeholder={locale.t("aiMention.searchPlaceholder")} style={styles.input} value={query} />
     {results.map(contact => <Pressable
-      accessibilityLabel={`选择联系人：${contact.name}，${contact.organization || "未填写公司"}，${contact.role || "未填写职位"}`}
+      accessibilityLabel={locale.t("aiMention.selectContact", { name: locale.t.literal(contact.name), organization: locale.t.literal(contact.organization || locale.t("aiMention.companyMissing")), role: locale.t.literal(contact.role || locale.t("aiMention.roleMissing")) })}
       accessibilityRole="button"
       key={contact.id}
       onPress={() => { onSelect(contact); setQuery(""); }}
       style={styles.row}
     >
       <Text style={styles.name}>{contact.name}</Text>
-      <Text style={styles.detail}>{[contact.organization, contact.role].filter(Boolean).join(" · ") || "资料待补充"}</Text>
+      <Text style={styles.detail}>{[contact.organization, contact.role].filter(Boolean).join(" · ") || locale.t("aiMention.detailsMissing")}</Text>
     </Pressable>)}
-    {results.length === 0 ? <Text style={styles.empty}>没有匹配的联系人。</Text> : null}
+    {results.length === 0 ? <Text style={styles.empty}>{locale.t("aiMention.empty")}</Text> : null}
   </View>;
 }
 

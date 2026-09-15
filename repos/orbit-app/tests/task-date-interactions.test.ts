@@ -89,7 +89,7 @@ export const RefreshControl = props => { window.fixture.refresh = props.onRefres
 test.after(async () => { await browser?.close(); });
 async function settle(p: Page) { await p.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))); }
 async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<string, unknown> = {}, settings = true) {
-  const p = await browser.newPage({ viewport: { width: Number(patch.width ?? 390), height: 844 }, timezoneId: String(patch.timezoneId ?? "Asia/Tokyo"), colorScheme: patch.dark ? "dark" : "light" });
+  const p = await browser.newPage({ viewport: { width: Number(patch.width ?? 390), height: 844 }, timezoneId: String(patch.timezoneId ?? "Asia/Tokyo"), colorScheme: patch.dark ? "dark" : "light", locale: "zh-CN" });
   p.setDefaultTimeout(1800); const errors: string[] = []; p.on("pageerror", e => errors.push(e.message));
   t.after(async () => { await p.close(); assert.deepEqual(errors, []); });
   await p.route("**/*", r => r.abort()); await p.setContent('<style>html,body,#root{margin:0;height:100%}#root{display:flex;flex-direction:column}</style><div id="root"></div>');
@@ -111,10 +111,10 @@ async function reply(p: Page, status = 200, taskPatch: object = {}, dataOverride
 
 test("date editor saves only changed dates with version/key and rereads detail, history and reminders", async t => {
   const p = await open(t); await fill(p, "安排日期", "2026-09-15");
-  assert.deepEqual(await writes(p), []); await press(p, "保存日期和时间");
+  assert.deepEqual(await writes(p), []); await press(p, "保存日期、时间和地点");
   const [write] = await writes(p); assert.equal(write.method, "PATCH"); assert.equal(write.path, "/api/tasks/task%3Aedit");
   assert.deepEqual(write.body.patch, { plannedDate: "2026-09-15" }); assert.equal(write.body.action, "update"); assert.equal(write.body.expectedUpdatedAt, "2026-09-07T00:00:00.000Z"); assert.ok(write.body.idempotencyKey);
-  await reply(p); await press(p, "保存日期和时间"); assert.equal((await writes(p)).length, 1);
+  await reply(p); await press(p, "保存日期、时间和地点"); assert.equal((await writes(p)).length, 1);
   const gets = await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method === "GET").map((r: any) => r.path + r.query));
   assert.equal(gets.length, 6); for (const start of [0, 3]) assert.deepEqual(gets.slice(start, start + 3).sort(), ["/api/reminders?targetType=task&targetId=task%3Aedit", "/api/tasks/task%3Aedit", "/api/tasks/task%3Aedit/activities"]);
   assert.equal(await p.getByRole("textbox", { name: "安排日期", exact: true }).inputValue(), "2026-09-15");
@@ -122,7 +122,7 @@ test("date editor saves only changed dates with version/key and rereads detail, 
 });
 
 test("deadline follows the device zone and planned-only edits remain timeless", async t => {
-  const p = await open(t); await fill(p, "截止日期", "2026-09-15"); await fill(p, "截止时间", "00:30"); await press(p, "保存日期和时间");
+  const p = await open(t); await fill(p, "截止日期", "2026-09-15"); await fill(p, "截止时间", "00:30"); await press(p, "保存日期、时间和地点");
   assert.deepEqual((await writes(p))[0].body.patch, { dueAt: "2026-09-14T15:30:00.000Z" }); await reply(p);
   assert.equal(await p.getByRole("textbox", { name: "截止时间", exact: true }).inputValue(), "00:30");
 });
@@ -131,23 +131,23 @@ test("accepted date updates both visible labels while authoritative rereads are 
   const p = await open(t, { task: { ...initialTask, dueAt: "2026-09-14T00:00:00Z" } });
   await p.clock.install({ time: new Date("2026-09-13T00:00:00Z") });
   await fill(p, "截止日期", "2026-09-16"); await update(p, { holdReads: true });
-  await press(p, "保存日期和时间"); await reply(p); await press(p, "关闭待办设置");
+  await press(p, "保存日期、时间和地点"); await reply(p); await press(p, "关闭待办设置");
   assert.equal(await p.getByText(/9月16日/).count(), 2, "badge and metadata must agree with the acknowledged date even before GET completes");
   assert.equal(await p.getByText(/9月14日/).count(), 0);
 });
 
 for (const status of [503, 409]) test(`${status} retains date draft, retries with same key, and new input gets a new key`, async t => {
-  const p = await open(t); await fill(p, "安排日期", "2026-09-15"); await press(p, "保存日期和时间"); await reply(p, status);
+  const p = await open(t); await fill(p, "安排日期", "2026-09-15"); await press(p, "保存日期、时间和地点"); await reply(p, status);
   await p.getByRole("alert").waitFor(); assert.equal(await p.getByRole("textbox", { name: "安排日期", exact: true }).inputValue(), "2026-09-15");
-  await press(p, "保存日期和时间"); await reply(p, status); let requests = await writes(p); assert.equal(requests[0].body.idempotencyKey, requests[1].body.idempotencyKey);
-  await fill(p, "安排日期", "2026-09-16"); await press(p, "保存日期和时间"); requests = await writes(p); assert.notEqual(requests[1].body.idempotencyKey, requests[2].body.idempotencyKey);
+  await press(p, "保存日期、时间和地点"); await reply(p, status); let requests = await writes(p); assert.equal(requests[0].body.idempotencyKey, requests[1].body.idempotencyKey);
+  await fill(p, "安排日期", "2026-09-16"); await press(p, "保存日期、时间和地点"); requests = await writes(p); assert.notEqual(requests[1].body.idempotencyKey, requests[2].body.idempotencyKey);
   assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method === "GET").length), 3);
 });
 
 for (const bad of ["missing", "owner", "wrong-value", "non-2xx"]) test(`${bad} receipt cannot acknowledge the draft or discard its retry key`, async t => {
-  const p = await open(t); await fill(p, "安排日期", "2026-09-15"); await press(p, "保存日期和时间");
+  const p = await open(t); await fill(p, "安排日期", "2026-09-15"); await press(p, "保存日期、时间和地点");
   await reply(p, bad === "non-2xx" ? 500 : 200, {}, bad === "missing" ? {} : { task: { ...initialTask, plannedDate: bad === "wrong-value" ? "2026-09-16" : "2026-09-15", ownerUserId: bad === "owner" ? "actor-2" : "actor-1", updatedAt: "2026-09-13T03:00:00Z" } });
-  await p.getByRole("alert").waitFor(); await press(p, "保存日期和时间"); const requests = await writes(p);
+  await p.getByRole("alert").waitFor(); await press(p, "保存日期、时间和地点"); const requests = await writes(p);
   assert.equal(requests.length, 2); assert.equal(requests[0].body.idempotencyKey, requests[1].body.idempotencyKey); assert.equal(requests[1].body.expectedUpdatedAt, initialTask.updatedAt);
   assert.equal(await p.getByRole("textbox", { name: "安排日期", exact: true }).inputValue(), "2026-09-15");
 });
@@ -156,7 +156,7 @@ test("refresh preserves dirty dates and explicit discard adopts every latest fie
   const p = await open(t); await fill(p, "安排日期", "2026-09-15");
   await update(p, { task: { ...initialTask, title: "Remote title", plannedDate: "2026-09-17", updatedAt: "2026-09-13T01:00:00Z" } }); await refresh(p);
   assert.equal(await p.getByRole("textbox", { name: "安排日期", exact: true }).inputValue(), "2026-09-15");
-  assert.equal(await p.getByRole("button", { name: "保存日期和时间", exact: true }).isDisabled(), true);
+  assert.equal(await p.getByRole("button", { name: "保存日期、时间和地点", exact: true }).isDisabled(), true);
   await press(p, "放弃草稿并载入最新内容"); assert.equal(await p.getByRole("textbox", { name: "安排日期", exact: true }).inputValue(), "2026-09-17");
   await press(p, "关闭待办设置"); assert.equal(await p.getByRole("textbox", { name: "待办标题", exact: true }).inputValue(), "Remote title"); assert.deepEqual(await writes(p), []);
 });
@@ -165,68 +165,68 @@ test("closing settings retains dates; date save never silently saves or resets u
   const p = await open(t); await fill(p, "安排日期", "2026-09-15"); await press(p, "关闭待办设置");
   await p.evaluate(() => { const s = (window as any).fixture; s.inputs["待办标题"].onChangeText("Local title"); s.inputs["备注"].onChangeText("Local notes"); }); await settle(p);
   await press(p, "编辑日期和时间"); assert.equal(await p.getByRole("textbox", { name: "安排日期", exact: true }).inputValue(), "2026-09-15");
-  await press(p, "保存日期和时间"); assert.deepEqual((await writes(p))[0].body.patch, { plannedDate: "2026-09-15" }); await reply(p); await press(p, "关闭待办设置");
+  await press(p, "保存日期、时间和地点"); assert.deepEqual((await writes(p))[0].body.patch, { plannedDate: "2026-09-15" }); await reply(p); await press(p, "关闭待办设置");
   assert.equal(await p.getByRole("textbox", { name: "待办标题", exact: true }).inputValue(), "Local title"); assert.equal(await p.getByRole("textbox", { name: "备注", exact: true }).inputValue(), "Local notes");
 });
 
 test("title save preserves the independent date draft and advances its expected version", async t => {
   const p = await open(t); await fill(p, "安排日期", "2026-09-15"); await press(p, "关闭待办设置"); await fill(p, "待办标题", "Local title"); await p.getByRole("textbox", { name: "待办标题", exact: true }).blur(); await settle(p); await reply(p);
-  await press(p, "编辑日期和时间"); assert.equal(await p.getByRole("textbox", { name: "安排日期", exact: true }).inputValue(), "2026-09-15"); await press(p, "保存日期和时间");
+  await press(p, "编辑日期和时间"); assert.equal(await p.getByRole("textbox", { name: "安排日期", exact: true }).inputValue(), "2026-09-15"); await press(p, "保存日期、时间和地点");
   const requests = await writes(p); assert.deepEqual(requests[1].body.patch, { plannedDate: "2026-09-15" }); assert.equal(requests[1].body.expectedUpdatedAt, "2026-09-13T03:00:00.000Z");
 });
 
 test("same-frame duplicate saves are single flight and pending date inputs are read-only", async t => {
   const p = await open(t); await fill(p, "安排日期", "2026-09-15");
-  await p.evaluate(() => { const fn = (window as any).fixture.presses["保存日期和时间"]; fn(); fn(); }); await settle(p);
+  await p.evaluate(() => { const fn = (window as any).fixture.presses["保存日期、时间和地点"]; fn(); fn(); }); await settle(p);
   assert.equal((await writes(p)).length, 1); assert.equal(await p.getByRole("textbox", { name: "安排日期", exact: true }).isEditable(), false);
 });
 
 test("an old save callback cannot submit dates superseded by a newer local edit", async t => {
   const p = await open(t); await fill(p, "安排日期", "2026-09-15");
-  await p.evaluate(() => { const s = (window as any).fixture; s.oldSave = s.presses["保存日期和时间"]; });
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldSave = s.presses["保存日期、时间和地点"]; });
   await fill(p, "安排日期", "2026-09-16"); await p.evaluate(() => { void (window as any).fixture.oldSave(); }); await settle(p);
-  assert.deepEqual(await writes(p), []); await press(p, "保存日期和时间");
+  assert.deepEqual(await writes(p), []); await press(p, "保存日期、时间和地点");
   assert.deepEqual((await writes(p))[0].body.patch, { plannedDate: "2026-09-16" });
 });
 
 test("a same-frame input change invalidates a previously captured save callback", async t => {
   const p = await open(t); await fill(p, "安排日期", "2026-09-15");
-  await p.evaluate(() => { const s = (window as any).fixture; const save = s.presses["保存日期和时间"]; s.inputs["安排日期"].onChangeText("2026-09-16"); save(); }); await settle(p);
-  assert.deepEqual(await writes(p), []); await press(p, "保存日期和时间");
+  await p.evaluate(() => { const s = (window as any).fixture; const save = s.presses["保存日期、时间和地点"]; s.inputs["安排日期"].onChangeText("2026-09-16"); save(); }); await settle(p);
+  assert.deepEqual(await writes(p), []); await press(p, "保存日期、时间和地点");
   assert.deepEqual((await writes(p))[0].body.patch, { plannedDate: "2026-09-16" });
 });
 
 test("a callback from before a newer server revision cannot bypass the stale-version guard", async t => {
   const p = await open(t); await fill(p, "安排日期", "2026-09-15");
-  await p.evaluate(() => { const s = (window as any).fixture; s.oldSave = s.presses["保存日期和时间"]; });
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldSave = s.presses["保存日期、时间和地点"]; });
   await update(p, { task: { ...initialTask, plannedDate: "2026-09-17", updatedAt: "2026-09-13T04:00:00Z" } }); await refresh(p);
   await p.evaluate(() => { void (window as any).fixture.oldSave(); }); await settle(p); assert.deepEqual(await writes(p), []);
 });
 
 test("late date acknowledgement does not conceal a newer revision already read", async t => {
-  const p = await open(t); await fill(p, "安排日期", "2026-09-15"); await press(p, "保存日期和时间");
+  const p = await open(t); await fill(p, "安排日期", "2026-09-15"); await press(p, "保存日期、时间和地点");
   await update(p, { task: { ...initialTask, title: "Newer title", plannedDate: "2026-09-17", updatedAt: "2026-09-13T04:00:00Z" } }); await refresh(p);
   await reply(p, 200, {}, { task: { ...initialTask, plannedDate: "2026-09-15", updatedAt: "2026-09-13T03:00:00Z" } });
-  assert.equal(await p.getByRole("button", { name: "保存日期和时间", exact: true }).isDisabled(), true);
+  assert.equal(await p.getByRole("button", { name: "保存日期、时间和地点", exact: true }).isDisabled(), true);
   await press(p, "放弃草稿并载入最新内容"); assert.equal(await p.getByRole("textbox", { name: "安排日期", exact: true }).inputValue(), "2026-09-17");
 });
 
 test("invalid date and incomplete deadline do not send a write", async t => {
   const p = await open(t, { task: { ...initialTask, plannedDate: "2026-09-14" } });
-  for (const value of ["2026-02-29"]) { await fill(p, "安排日期", value); await press(p, "保存日期和时间"); await p.getByRole("alert").waitFor(); }
-  await fill(p, "安排日期", "2026-09-15"); await fill(p, "截止日期", "2026-09-16"); await press(p, "保存日期和时间"); await p.getByRole("alert").waitFor(); assert.deepEqual(await writes(p), []);
+  for (const value of ["2026-02-29"]) { await fill(p, "安排日期", value); await press(p, "保存日期、时间和地点"); await p.getByRole("alert").waitFor(); }
+  await fill(p, "安排日期", "2026-09-15"); await fill(p, "截止日期", "2026-09-16"); await press(p, "保存日期、时间和地点"); await p.getByRole("alert").waitFor(); assert.deepEqual(await writes(p), []);
 });
 
 test("cancelled task shows why dates cannot be saved and blocks retained callbacks", async t => {
   const p = await open(t, { task: { ...initialTask, status: "cancelled" } });
   assert.equal(await p.getByRole("textbox", { name: "安排日期", exact: true }).isEditable(), false);
-  assert.equal(await p.getByRole("button", { name: "保存日期和时间", exact: true }).isDisabled(), true);
-  await p.evaluate(() => (window as any).fixture.presses["保存日期和时间"]()); await settle(p); assert.deepEqual(await writes(p), []);
+  assert.equal(await p.getByRole("button", { name: "保存日期、时间和地点", exact: true }).isDisabled(), true);
+  await p.evaluate(() => (window as any).fixture.presses["保存日期、时间和地点"]()); await settle(p); assert.deepEqual(await writes(p), []);
 });
 
 for (const change of ["actor", "server", "task", "unmount", "ready"]) test(`${change} change revokes a pending write, old callbacks and late session expiry`, async t => {
   const p = await open(t); await fill(p, "安排日期", "2026-09-15");
-  await p.evaluate(() => { const s = (window as any).fixture; s.oldSave = s.presses["保存日期和时间"]; s.oldSave(); }); await settle(p);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldSave = s.presses["保存日期、时间和地点"]; s.oldSave(); }); await settle(p);
   const patch = change === "actor" ? { actor: "actor-2", task: { ...initialTask, accountId: "actor-2", ownerUserId: "actor-2", title: "Next owner" } }
     : change === "server" ? { baseUrl: "https://next.example", task: { ...initialTask, title: "Next server" } }
     : change === "task" ? { taskId: "task:next", task: { ...initialTask, id: "task:next", title: "Next task" } }
@@ -240,7 +240,7 @@ for (const change of ["actor", "server", "task", "unmount", "ready"]) test(`${ch
 for (const variant of [{ name: "normal", width: 390 }, { name: "narrow-large", width: 320, fontScale: 2 }, { name: "dark", width: 390, dark: true }]) test(`${variant.name} date controls remain reachable, legible and at least 44 points`, async t => {
   const p = await open(t, variant);
   for (const label of ["安排日期", "截止日期", "截止时间"]) { const input = p.getByRole("textbox", { name: label, exact: true }); await input.scrollIntoViewIfNeeded(); const b = (await input.boundingBox())!; assert.ok(b.height >= 44 && b.x >= 0 && b.x + b.width <= variant.width); }
-  const button = p.getByRole("button", { name: "保存日期和时间", exact: true }); await button.scrollIntoViewIfNeeded(); const b = (await button.boundingBox())!; assert.ok(b.height >= 44 && b.y + b.height <= 844);
+  const button = p.getByRole("button", { name: "保存日期、时间和地点", exact: true }); await button.scrollIntoViewIfNeeded(); const b = (await button.boundingBox())!; assert.ok(b.height >= 44 && b.y + b.height <= 844);
   assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   assert.deepEqual(await p.locator('[dir="auto"]').evaluateAll(nodes => nodes.filter(n => n.clientWidth > 0 && n.scrollWidth > n.clientWidth + 1).map(n => n.textContent)), []);
   if (process.env.APP_STYLE_SCREENSHOTS) await p.screenshot({ path: `/tmp/orbit-task-dates-${variant.name}-20260913.png`, fullPage: true });
@@ -249,7 +249,7 @@ for (const variant of [{ name: "normal", width: 390 }, { name: "narrow-large", w
 
 test("Los Angeles device deadline saves its own absolute instant", async t => {
   const p = await open(t, { timezoneId: "America/Los_Angeles" });
-  await fill(p, "截止日期", "2026-09-15"); await fill(p, "截止时间", "00:30"); await press(p, "保存日期和时间");
+  await fill(p, "截止日期", "2026-09-15"); await fill(p, "截止时间", "00:30"); await press(p, "保存日期、时间和地点");
   assert.deepEqual((await writes(p))[0].body.patch, { dueAt: "2026-09-15T07:30:00.000Z" });
 });
 
@@ -260,7 +260,7 @@ test("foreground zone change preserves dirty title and dates and saves under ori
   assert.deepEqual(await writes(p), []);
   assert.equal(await p.getByRole("textbox", { name: "截止时间", exact: true }).inputValue(), "00:30");
   assert.ok(await p.getByText(/此草稿按原时区 Asia\/Tokyo 保存/).count());
-  await press(p, "保存日期和时间");
+  await press(p, "保存日期、时间和地点");
   assert.deepEqual((await writes(p))[0].body.patch, { dueAt: "2026-09-14T15:30:00.000Z" });
 });
 test("clean editor follows foreground timezone without changing the original instant", async t => {
@@ -269,12 +269,12 @@ test("clean editor follows foreground timezone without changing the original ins
   await p.evaluate(() => (window as any).fixture.setDeviceZone("America/Los_Angeles")); await settle(p);
   assert.equal(await p.getByRole("textbox", { name: "截止日期", exact: true }).inputValue(), "2026-09-13");
   assert.equal(await p.getByRole("textbox", { name: "截止时间", exact: true }).inputValue(), "17:30");
-  await press(p, "保存日期和时间"); assert.deepEqual(await writes(p), []);
+  await press(p, "保存日期、时间和地点"); assert.deepEqual(await writes(p), []);
 });
 
 test("location saves with dates while unsaved title remains an independent draft", async t => {
   const p = await open(t); await fill(p, "地点", "Kyoto station"); await fill(p, "安排日期", "2026-09-15");
-  await press(p, "保存日期和时间");
+  await press(p, "保存日期、时间和地点");
   assert.deepEqual((await writes(p))[0].body.patch, { plannedDate: "2026-09-15", location: "Kyoto station" });
   await reply(p); assert.equal(await p.getByRole("textbox", { name: "地点", exact: true }).inputValue(), "Kyoto station");
 });
@@ -283,7 +283,7 @@ test("location saves with dates while unsaved title remains an independent draft
 test("clearing existing dates and location removes persisted fields after acknowledgement", async t => {
   const p = await open(t, { task: { ...initialTask, plannedDate: "2026-09-14", dueAt: "2026-09-14T00:30:00Z", location: "Tokyo" } });
   for (const label of ["安排日期", "截止日期", "截止时间", "地点"]) await fill(p, label, "");
-  await press(p, "保存日期和时间"); assert.deepEqual((await writes(p))[0].body.patch, { plannedDate: null, dueAt: null, location: null });
+  await press(p, "保存日期、时间和地点"); assert.deepEqual((await writes(p))[0].body.patch, { plannedDate: null, dueAt: null, location: null });
   await reply(p); await press(p, "关闭待办设置"); await press(p, "编辑日期和时间");
   for (const label of ["安排日期", "截止日期", "截止时间", "地点"]) assert.equal(await p.getByRole("textbox", { name: label, exact: true }).inputValue(), "");
 });
