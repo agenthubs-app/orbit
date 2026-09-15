@@ -94,3 +94,34 @@ test("session storage writes only to secure storage and clears both stores", asy
   assert.equal(await secure.get(storage.key(baseUrl)), null);
   assert.equal(await legacy.get(storage.legacyKey(baseUrl)), null);
 });
+
+test("conditional cleanup only deletes the rejected session and serializes against a newer write", async () => {
+  const legacy = new MemoryStorage();
+  const secure = new MemoryStorage();
+  const storage = createAuthSessionStorage({ legacy, secure });
+  const clearIfMatches = (storage as any).clearIfMatches;
+  assert.equal(typeof clearIfMatches, "function");
+  await storage.write(baseUrl, "attempt-A");
+  let release!: () => void;
+  let entered!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const ready = new Promise<void>(resolve => { entered = resolve; });
+  const originalGet = secure.get.bind(secure);
+  secure.get = async key => {
+    const value = await originalGet(key);
+    entered();
+    await gate;
+    return value;
+  };
+  const cleanup = clearIfMatches(baseUrl, "attempt-A");
+  await ready;
+  const replacement = storage.write(baseUrl, "attempt-B");
+  release();
+  assert.equal(await cleanup, true);
+  await replacement;
+  assert.equal(await storage.read(baseUrl), "attempt-B");
+  assert.equal(await clearIfMatches(baseUrl, "attempt-A"), false);
+  assert.equal(await storage.read(baseUrl), "attempt-B");
+  assert.equal(await clearIfMatches(baseUrl, "attempt-B"), true);
+  assert.equal(await storage.read(baseUrl), null);
+});

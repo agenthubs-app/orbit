@@ -18,9 +18,11 @@ const state = window.fixture = {
   canonicalAccountId: "account:canonical",
   storedCookie: null,
   requests: [],
+  releases: [],
   results: [],
   signOuts: [],
   writes: [],
+  clears: [],
   scopeChanges: [],
   keyDeleteFails: false,
   ...window.initialFixture,
@@ -37,18 +39,25 @@ export function useOrbitApiBaseUrl() {
 export async function fetchMobileAuthProviders() { return { success: true, data: { providers: [] } }; }
 export async function signInWithMobileCredentials(input) {
   state.requests.push(input);
-  return await new Promise(resolve => { state.release = () => resolve({ success: true, data: { cookieHeader: "session=first", expiresAt: "2026-09-15T00:00:00Z", user: { id: "actor-first", email: "member@example.test", name: "Member" } } }); });
+  return await new Promise(resolve => {
+    state.release = (session = { cookieHeader: "session=first", expiresAt: "2026-09-15T00:00:00Z", user: { id: "actor-first", email: "member@example.test", name: "Member" } }) => resolve({ success: true, data: session });
+    state.releases.push(state.release);
+  });
 }
 export async function validateAuthSession({ cookieHeader }) {
-  return { success: true, data: { user: { id: state.validationActor || (cookieHeader === "session=first" ? "actor-first" : "restored"), email: "member@example.test", name: "Member", image: null, emailVerified: true } } };
+  return { success: true, data: { user: { id: state.validationActor || (cookieHeader === "session=first" ? "actor-first" : cookieHeader === "session=second" ? "actor-second" : "restored"), email: "member@example.test", name: "Member", image: null, emailVerified: true } } };
 }
 export async function createGoogleOAuthAttempt() { throw new Error("unused"); }
 export async function exchangeGoogleOAuthCode() { throw new Error("unused"); }
 export function parseGoogleOAuthBrowserResult() { throw new Error("unused"); }
 export const nativeAuthSessionStorage = {
   async read() { return state.storedCookie; },
-  async write(baseUrl, cookie) { state.writes.push({ baseUrl, cookie }); },
-  async clear() {}
+  async write(baseUrl, cookie) { state.writes.push({ baseUrl, cookie }); state.storedCookie = cookie; },
+  async clear(baseUrl) { state.clears.push(baseUrl); state.storedCookie = null; },
+  async clearIfMatches(baseUrl, cookie) {
+    if (state.storedCookie !== cookie) return false;
+    state.clears.push(baseUrl); state.storedCookie = null; return true;
+  }
 };
 export async function registerOrbitAccount() { return { success: true }; }
 export const syncLifecycle = {
@@ -283,4 +292,41 @@ test("an old server logout response cannot purge or clear the newly restored ser
   assert.equal(await page.evaluate(async () => (await (window as any).fixture.logoutPromise).success), false);
   assert.equal(await page.evaluate(() => (window as any).fixture.auth.actorId), "account:second");
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.scopeChanges.at(-1)), { baseUrl: "https://second.example", actorId: "account:second" });
+});
+
+test("an earlier logout cannot purge a newer accepted login on the same server", async t => {
+  const page = await open(t, { storedCookie: "session=restored", holdSignOut: true });
+  await page.evaluate(() => { const state = (window as any).fixture; state.logoutPromise = state.auth.signOut(); });
+  await page.waitForFunction(() => Boolean((window as any).fixture.releaseSignOut));
+  await page.getByRole("button", { name: "sign in" }).click();
+  await page.waitForFunction(() => (window as any).fixture.requests.length === 1);
+  await page.evaluate(() => { const state = (window as any).fixture; state.canonicalAccountId = "account:new"; state.release(); });
+  await page.waitForFunction(() => (window as any).fixture.auth.actorId === "account:new");
+  await page.evaluate(() => (window as any).fixture.releaseSignOut());
+  assert.equal(await page.evaluate(async () => (await (window as any).fixture.logoutPromise).success), false);
+  assert.equal(await page.evaluate(() => (window as any).fixture.auth.actorId), "account:new");
+  assert.equal(await page.evaluate(() => (window as any).fixture.storedCookie), "session=first");
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.clears), []);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.scopeChanges.at(-1)), { baseUrl: "https://first.example", actorId: "account:new" });
+});
+
+test("rejecting obsolete login A cannot erase accepted login B's persisted cookie", async t => {
+  const page = await open(t);
+  await page.getByRole("button", { name: "sign in" }).click();
+  await page.waitForFunction(() => (window as any).fixture.requests.length === 1);
+  assert.equal(await page.evaluate(async () => (await (window as any).fixture.auth.signOut()).success), true);
+  await page.getByRole("button", { name: "sign in" }).click();
+  await page.waitForFunction(() => (window as any).fixture.requests.length === 2);
+  await page.evaluate(() => {
+    const state = (window as any).fixture;
+    state.canonicalAccountId = "account:B";
+    state.releases[1]({ cookieHeader: "session=second", expiresAt: "2026-09-15T00:00:00Z", user: { id: "actor-second", email: "member@example.test", name: "Member" } });
+  });
+  await page.waitForFunction(() => (window as any).fixture.auth.actorId === "account:B");
+  await page.evaluate(() => (window as any).fixture.releases[0]());
+  await page.waitForFunction(() => (window as any).fixture.results.length === 2);
+  assert.equal(await page.evaluate(() => (window as any).fixture.auth.actorId), "account:B");
+  assert.equal(await page.evaluate(() => (window as any).fixture.storedCookie), "session=second");
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.clears), ["https://first.example"]);
+  assert.equal(await page.evaluate(() => (window as any).fixture.results[1].success), false);
 });

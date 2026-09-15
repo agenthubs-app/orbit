@@ -46,3 +46,21 @@ export async function loadSyncDatabaseKey(
 export async function deleteSyncDatabaseKey(digest: string, native: SyncKeyDependencies): Promise<void> {
   await native.secureStore.deleteItemAsync(`orbit.sync.key.${digest}`, keyOptions(native));
 }
+
+const PENDING_CLEANUP_KEY = "orbit.sync.pending-cleanup";
+
+export async function readPendingSyncCleanup(native: SyncKeyDependencies): Promise<string | null> {
+  const digest = await native.secureStore.getItemAsync(PENDING_CLEANUP_KEY, keyOptions(native));
+  if (digest !== null && !/^[a-f0-9]{64}$/u.test(digest)) {
+    throw new Error("SYNC_CLEANUP_STATE_INVALID");
+  }
+  return digest;
+}
+
+export async function persistPendingSyncCleanup(digest: string, native: SyncKeyDependencies): Promise<void> {
+  await native.secureStore.setItemAsync(PENDING_CLEANUP_KEY, digest, keyOptions(native));
+}
+
+export async function clearPendingSyncCleanup(native: SyncKeyDependencies): Promise<void> {
+  await native.secureStore.deleteItemAsync(PENDING_CLEANUP_KEY, keyOptions(native));
+}

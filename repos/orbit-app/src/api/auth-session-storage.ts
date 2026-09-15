@@ -8,6 +8,7 @@ export interface KeyValueStorage {
 
 export interface AuthSessionStorage {
   clear(baseUrl: string): Promise<void>;
+  clearIfMatches(baseUrl: string, expectedValue: string): Promise<boolean>;
   key(baseUrl: string): string;
   legacyKey(baseUrl: string): string;
   read(baseUrl: string): Promise<string | null>;
@@ -36,35 +37,57 @@ export function createAuthSessionStorage({
   legacy: KeyValueStorage;
   secure: KeyValueStorage;
 }): AuthSessionStorage {
+  // Compare-and-delete must share ordering with writes and legacy migration.
+  let pending: Promise<unknown> = Promise.resolve();
+  function serialize<T>(operation: () => Promise<T>): Promise<T> {
+    const result = pending.then(operation);
+    pending = result.catch(() => undefined);
+    return result;
+  }
+
   return {
     async clear(baseUrl) {
-      await Promise.all([
+      await serialize(() => Promise.all([
         secure.delete(secureKey(baseUrl)),
         legacy.delete(legacyKey(baseUrl))
-      ]);
+      ]));
+    },
+    clearIfMatches(baseUrl, expectedValue) {
+      return serialize(async () => {
+        const [stored, legacyValue] = await Promise.all([
+          secure.get(secureKey(baseUrl)), legacy.get(legacyKey(baseUrl))
+        ]);
+        if (stored === expectedValue) await secure.delete(secureKey(baseUrl));
+        if (legacyValue === expectedValue) await legacy.delete(legacyKey(baseUrl));
+        return stored === expectedValue || legacyValue === expectedValue;
+      });
     },
     key: secureKey,
     legacyKey,
     async read(baseUrl) {
-      const stored = await secure.get(secureKey(baseUrl));
+      return serialize(async () => {
+        const stored = await secure.get(secureKey(baseUrl));
 
-      if (stored !== null) {
-        return stored;
-      }
+        if (stored !== null) {
+          return stored;
+        }
 
-      const legacyValue = await legacy.get(legacyKey(baseUrl));
-      if (legacyValue === null) {
-        return null;
-      }
+        const legacyValue = await legacy.get(legacyKey(baseUrl));
+        if (legacyValue === null) {
+          return null;
+        }
 
-      await secure.set(secureKey(baseUrl), legacyValue);
-      await legacy.delete(legacyKey(baseUrl));
+        await secure.set(secureKey(baseUrl), legacyValue);
+        await legacy.delete(legacyKey(baseUrl));
 
-      return legacyValue;
+        return legacyValue;
+      });
     },
     async write(baseUrl, value) {
-      await secure.set(secureKey(baseUrl), value);
-      await legacy.delete(legacyKey(baseUrl));
+      await serialize(async () => {
+        await secure.set(secureKey(baseUrl), value);
+        await legacy.delete(legacyKey(baseUrl));
+      });
     }
   };
 }

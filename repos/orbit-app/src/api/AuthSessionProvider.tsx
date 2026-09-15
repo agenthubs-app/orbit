@@ -243,7 +243,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
         cookieHeader: usesBrowserManagedSession ? "" : session.cookieHeader
       }),
       ...(!usesBrowserManagedSession
-        ? [nativeAuthSessionStorage.clear(baseUrl)]
+        ? [nativeAuthSessionStorage.clearIfMatches(baseUrl, session.cookieHeader)]
         : [])
     ]);
   }, [baseUrl]);
@@ -340,7 +340,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
 
   const signIn = useCallback(
     async (input: SignInInput): Promise<AuthActionResult> => {
-      const requestRevision = authEnvironment.current.revision;
+      const requestRevision = ++authEnvironment.current.revision;
       const result = await signInWithMobileCredentials({
         baseUrl,
         email: input.email,
@@ -362,7 +362,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
 
   const signInWithGoogle = useCallback(
     async (next = "/profile"): Promise<AuthActionResult> => {
-      const requestRevision = authEnvironment.current.revision;
+      const requestRevision = ++authEnvironment.current.revision;
       try {
         const attempt = await createGoogleOAuthAttempt({
           baseUrl,

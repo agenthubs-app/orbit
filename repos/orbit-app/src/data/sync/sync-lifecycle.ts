@@ -2,7 +2,10 @@ import { Platform } from "react-native";
 import { initializeLocalSyncDatabase, type LocalSyncDatabase, type LocalSyncSqlValue } from "./local-sync-database";
 import {
   deleteSyncDatabaseKey,
+  clearPendingSyncCleanup,
   loadSyncDatabaseKey,
+  persistPendingSyncCleanup,
+  readPendingSyncCleanup,
   syncScopeDigest,
   type SyncKeyDependencies,
   type SyncSessionScope,
@@ -65,6 +68,7 @@ export function createSyncLifecycle(input: {
   let token = 0;
   let queue: Promise<unknown> = Promise.resolve();
   let legacyRemoved = false;
+  let cleanupRecovered = false;
 
   function enqueue<T>(operation: () => Promise<T>): Promise<T> {
     const result = queue.then(operation);
@@ -72,10 +76,40 @@ export function createSyncLifecycle(input: {
     return result;
   }
 
+  async function finishPendingCleanup(digest: string): Promise<boolean> {
+    if (!native) return false;
+    try {
+      await deleteSyncDatabaseKey(digest, native);
+    } catch {
+      input.report("SYNC_KEY_DELETE_FAILED", digest);
+      return false;
+    }
+    try {
+      await native.sqlite.deleteDatabaseAsync(`orbit-sync-${digest}.db`);
+    } catch {
+      input.report("SYNC_FILE_DELETE_FAILED", digest);
+    }
+    try {
+      await clearPendingSyncCleanup(native);
+    } catch {
+      input.report("SYNC_CLEANUP_STATE_FAILED", digest);
+      return false;
+    }
+    return true;
+  }
+
   async function purge(): Promise<boolean> {
     if (!current || !native) return true;
     current.database = null;
     current.blocked = true;
+    try {
+      // Persist intent before closing/deleting: a restarted process must finish
+      // crypto erasure before it can accept any other identity.
+      await persistPendingSyncCleanup(current.digest, native);
+    } catch {
+      input.report("SYNC_CLEANUP_STATE_FAILED", current.digest);
+      return false;
+    }
     if (current.handle) {
       try {
         await current.handle.closeAsync();
@@ -85,18 +119,7 @@ export function createSyncLifecycle(input: {
         return false;
       }
     }
-    try {
-      await deleteSyncDatabaseKey(current.digest, native);
-    } catch {
-      input.report("SYNC_KEY_DELETE_FAILED", current.digest);
-      return false;
-    }
-    try {
-      // Deleting the database also removes records, snapshots, outbox and cursors.
-      await native.sqlite.deleteDatabaseAsync(current.name);
-    } catch {
-      input.report("SYNC_FILE_DELETE_FAILED", current.digest);
-    }
+    if (!(await finishPendingCleanup(current.digest))) return false;
     current = null;
     return true;
   }
@@ -106,13 +129,29 @@ export function createSyncLifecycle(input: {
       const requestToken = ++token;
       return enqueue(async () => {
         if (input.platform === "web") return true;
+        try {
+          native ??= await input.loadNative();
+        } catch {
+          input.report("SYNC_CLEANUP_STATE_FAILED");
+          return false;
+        }
+        if (!cleanupRecovered) {
+          try {
+            const pending = await readPendingSyncCleanup(native);
+            if (pending && !(await finishPendingCleanup(pending))) return false;
+            cleanupRecovered = true;
+          } catch {
+            // An unreadable marker cannot be treated as proof of no pending key.
+            input.report("SYNC_CLEANUP_STATE_FAILED");
+            return false;
+          }
+        }
         // Purge an old scope even if a newer request superseded this request.
         if (current && (current.blocked || !scope || !sameScope(current.scope, scope))) {
           if (!(await purge())) return false;
         }
         if (requestToken !== token) return false;
         try {
-          native ??= await input.loadNative();
           if (!legacyRemoved) {
             // The old implementation no longer opens or owns a plaintext handle.
             await native.sqlite.deleteDatabaseAsync("orbit-cache.db");
@@ -184,17 +223,25 @@ export async function deleteSyncDatabaseFiles(
 export const syncLifecycle = createSyncLifecycle({
   platform: Platform.OS,
   loadNative: async () => {
-    const [sqlite, crypto, secureStore, fileSystem] = await Promise.all([
-      import("expo-sqlite"), import("expo-crypto"), import("expo-secure-store"), import("expo-file-system"),
+    // Cleanup state must remain readable even if the optional SQLite binary is
+    // unavailable. Only inability to inspect device key state blocks identity.
+    const [crypto, secureStore] = await Promise.all([
+      import("expo-crypto"), import("expo-secure-store"),
     ]);
-    return {
-      sqlite: {
-        openDatabaseAsync: sqlite.openDatabaseAsync,
-        deleteDatabaseAsync: name => deleteSyncDatabaseFiles(name, sqlite, fileSystem.File),
-      },
-      crypto,
-      secureStore,
-    };
+    try {
+      const [sqlite, fileSystem] = await Promise.all([import("expo-sqlite"), import("expo-file-system")]);
+      return {
+        sqlite: {
+          openDatabaseAsync: sqlite.openDatabaseAsync,
+          deleteDatabaseAsync: (name: string) => deleteSyncDatabaseFiles(name, sqlite, fileSystem.File),
+        },
+        crypto,
+        secureStore,
+      };
+    } catch {
+      const unavailable = async (): Promise<never> => { throw new Error("SYNC_NATIVE_UNAVAILABLE"); };
+      return { crypto, secureStore, sqlite: { openDatabaseAsync: unavailable, deleteDatabaseAsync: unavailable } };
+    }
   },
   report: (code, scopeHash) => console.warn(code, scopeHash?.slice(0, 16) ?? "unavailable"),
 });

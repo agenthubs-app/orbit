@@ -26,7 +26,7 @@ function fixture() {
       async getItemAsync(key: string, option: unknown) { options.push(option); return keys.get(key) ?? null; },
       async setItemAsync(key: string, value: string, option: unknown) {
         options.push(option);
-        if (state.keyWriteFails) throw Error("secret-shaped-key-and-payload");
+        if (state.keyWriteFails && key.startsWith("orbit.sync.key.")) throw Error("secret-shaped-key-and-payload");
         keys.set(key, value); events.push("key-stored");
       },
       async deleteItemAsync(key: string, option: unknown) {
@@ -144,6 +144,43 @@ test("key deletion failure blocks switching even after the old handle was closed
   assert.equal(await f.coordinator.withDatabase(scope, () => Promise.resolve("private")), null);
   f.state.keyDeleteFails = false;
   assert.equal(await f.coordinator.setScope(next), true);
+});
+
+test("pending key cleanup survives process restart and blocks new identity until recovery", async t => {
+  const f = await lifecycle(t);
+  await f.coordinator.setScope(scope);
+  const oldName = [...f.files.keys()][0]!;
+  f.state.keyDeleteFails = true;
+  assert.equal(await f.coordinator.setScope(null), false);
+  const restarted = (await import("../src/data/sync/sync-lifecycle")).createSyncLifecycle({
+    platform: "ios", loadNative: async () => f.native as any, report: (...args) => f.logs.push(args),
+  });
+  const next = { ...scope, actorId: "other-private-fixture" };
+  assert.equal(await restarted.setScope(next), false);
+  assert.equal(f.events.filter(event => event.startsWith("open:")).length, 1);
+  assert.equal(await restarted.withDatabase(next, async () => "private"), null);
+  const marker = f.keys.get("orbit.sync.pending-cleanup");
+  assert.ok(typeof marker === "string" && /^[a-f0-9]{64}$/u.test(marker));
+  assert.ok(!marker!.includes(scope.actorId));
+  f.state.keyDeleteFails = false;
+  assert.equal(await restarted.setScope(next), true);
+  assert.equal(f.files.has(oldName), false);
+  assert.equal(f.keys.has("orbit.sync.pending-cleanup"), false);
+  assert.equal(await restarted.withDatabase(next, async () => "ready"), "ready");
+  assert.ok(!JSON.stringify(f.logs).includes("secret-shaped"));
+  assert.ok(!JSON.stringify(f.logs).includes(scope.actorId));
+});
+
+test("unavailable cleanup storage cannot bypass a pending key after restart", async t => {
+  const f = await lifecycle(t);
+  await f.coordinator.setScope(scope);
+  f.state.keyDeleteFails = true;
+  await f.coordinator.setScope(null);
+  const restarted = (await import("../src/data/sync/sync-lifecycle")).createSyncLifecycle({
+    platform: "ios", loadNative: async () => { throw Error("secret-shaped-key-and-payload"); }, report: (...args) => f.logs.push(args),
+  });
+  assert.equal(await restarted.setScope({ ...scope, actorId: "other-private-fixture" }), false);
+  assert.ok(!JSON.stringify(f.logs).includes("secret-shaped"));
 });
 
 test("file deletion failure after crypto erasure permits a separate scope but never reopens the orphan", async t => {
