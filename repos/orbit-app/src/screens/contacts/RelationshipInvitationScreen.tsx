@@ -28,7 +28,7 @@ export function RelationshipInvitationScreen() {
   const locale = useOrbitLocale();
   const params = useLocalSearchParams<{ token?: string | string[] }>();
   const token = firstParam(params.token);
-  const actorId = useOrbitAuthSession().user?.id ?? "";
+  const actorId = useOrbitAuthSession().actorId ?? "";
   const client = useOrbitApiClient({ scopeKey: `${actorId}:${token}` });
   const router = useRouter();
   const { styles } = useStyles();
