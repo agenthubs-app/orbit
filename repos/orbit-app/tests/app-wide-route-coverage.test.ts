@@ -181,7 +181,12 @@ const integratedFeatureRoutes = [
   "/notes",
   "/notes/[id]",
   "/notes/[id]/edit",
-  "/notes/new"
+  "/notes/new",
+  "/profile/edit",
+  "/profile/more",
+  "/profile/preview",
+  "/profile/suggestions",
+  "/profile/tags"
 ] as const;
 
 function scanAppRouteEntries(directory: string): string[] {

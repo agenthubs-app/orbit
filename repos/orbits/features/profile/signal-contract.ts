@@ -31,6 +31,9 @@ export type ProfileSignalSuggestionStatus =
 export type ProfileSignalConfidence = "high" | "medium" | "low";
 
 export type ProfileSignalProfileField =
+  | "bio"
+  | "offering"
+  | "seeking"
   | "headline"
   | "homeMarket"
   | "relationshipGoal"
@@ -146,6 +149,16 @@ export interface ProfileSignalSuggestionAcceptedPayload {
   profilePatch: ProfileSignalProfilePatch;
   appliedFields: readonly ProfileSignalProfileField[];
   acceptedAt: string;
+  mutationId?: string;
+  provenance: ProfileSignalReviewQueueProvenance;
+  nextAction: string;
+}
+
+export interface ProfileSignalSuggestionDismissedPayload {
+  state: "dismissed";
+  dismissedSuggestion: ProfileUpdateSuggestion;
+  dismissedAt: string;
+  mutationId?: string;
   provenance: ProfileSignalReviewQueueProvenance;
   nextAction: string;
 }
@@ -158,6 +171,11 @@ export interface ProfileSignalReviewQueueSuccess {
 export interface ProfileSignalSuggestionAcceptedSuccess {
   success: true;
   data: ProfileSignalSuggestionAcceptedPayload;
+}
+
+export interface ProfileSignalSuggestionDismissedSuccess {
+  success: true;
+  data: ProfileSignalSuggestionDismissedPayload;
 }
 
 export interface ProfileSignalReviewQueueFailure {
@@ -177,6 +195,15 @@ export type ProfileSignalSuggestionAcceptResult =
   | ProfileSignalSuggestionAcceptedSuccess
   | ProfileSignalReviewQueueFailure;
 
+export type ProfileSignalSuggestionDismissResult =
+  | ProfileSignalSuggestionDismissedSuccess
+  | ProfileSignalReviewQueueFailure;
+
+export interface ProfileSignalDecisionOptions {
+  actorId?: string | null;
+  mutationId?: string | null;
+}
+
 export type ProfileSignalReviewQueueServiceResult<TResult> =
   | TResult
   | Promise<TResult>;
@@ -187,6 +214,10 @@ export interface ProfileSignalReviewQueueService {
   ) => ProfileSignalReviewQueueServiceResult<ProfileSignalReviewQueueResult>;
   acceptUpdateSuggestion: (
     id: string,
-    options?: { actorId?: string | null },
+    options?: ProfileSignalDecisionOptions,
   ) => ProfileSignalReviewQueueServiceResult<ProfileSignalSuggestionAcceptResult>;
+  dismissUpdateSuggestion: (
+    id: string,
+    options?: ProfileSignalDecisionOptions,
+  ) => ProfileSignalReviewQueueServiceResult<ProfileSignalSuggestionDismissResult>;
 }

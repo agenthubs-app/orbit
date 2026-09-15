@@ -61,6 +61,7 @@ import {
   profileBusinessCardExtractionPath,
   profileResumeExtractionPath,
   profileUpdateSuggestionAcceptPath,
+  profileUpdateSuggestionDismissPath,
   relationshipCommunicationInvitationAcceptPath,
   relationshipCommunicationInvitationPath,
   relationshipValueAnalysisPath,
@@ -72,6 +73,11 @@ import * as endpoints from "../src/api/endpoints";
 
 test("Orbit API endpoints expose the proactive Orbit AI chat turn route", () => {
   assert.equal(ORBIT_API_ENDPOINTS.proactiveTurns, "/api/ai/proactive-turns");
+});
+
+test("profile suggestion decision paths encode the suggestion id", () => {
+  assert.equal(profileUpdateSuggestionAcceptPath("suggestion 001/next"), "/api/profile/update-suggestions/suggestion%20001%2Fnext/accept");
+  assert.equal(profileUpdateSuggestionDismissPath("suggestion 001/next"), "/api/profile/update-suggestions/suggestion%20001%2Fnext/dismiss");
 });
 
 test("Orbit API endpoints expose the compact Agent signals home feed", () => {

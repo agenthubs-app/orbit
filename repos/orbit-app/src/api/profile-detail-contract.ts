@@ -23,7 +23,12 @@ export const profileDetailSchema = z.object({
     preferredFollowUpWindow: z.string(), preferredLanguage: z.enum(["zh", "en", "ja"]), preferredIntroChannels: z.array(z.string()),
     primaryIndustryId: z.string().nullable().optional(), secondaryIndustryId: z.string().nullable().optional(),
     birthDate: z.iso.date().nullable().optional(),
-    industry: z.string().optional(), bio: z.string().optional(), offering: z.array(z.string()).optional(), seeking: z.array(z.string()).optional(), topics: z.array(z.string()).optional(), updatedAt: timestamp
+    handles: z.object({
+      email: z.string().optional(), phone: z.string().optional(), wechatId: z.string().optional(), lineId: z.string().optional(),
+      website: z.string().optional(), linkedinUrl: z.string().optional(), xHandle: z.string().optional()
+    }).optional(),
+    industry: z.string().optional(), bio: z.string().optional(), offering: z.array(z.string()).optional(), seeking: z.array(z.string()).optional(), topics: z.array(z.string()).optional(),
+    spokenLanguages: z.array(z.string()).optional(), updatedAt: timestamp
   }).passthrough().refine(profile => validateIndustrySelection(profile).valid).nullable(),
   completeness: z.object({ score: z.number().int().min(0).max(100), status: z.enum(["not-started", "action-needed", "ready"]), completedFields: z.array(fields), missingFields: z.array(fields), nextBestField: fields.nullable() }),
   editor: z.object({ canSave: z.boolean(), lastSavedAt: timestamp.nullable(), dirtyFields: z.array(fields), validationMessages: z.array(z.string()) }),
@@ -44,7 +49,7 @@ export function profileSaveReceiptSchema(profileId: string | null, request: Prof
 }
 
 const identifier = z.string().trim().min(1);
-const signalField = z.enum(["headline", "homeMarket", "relationshipGoal", "targetRelationshipTypes", "preferredFollowUpWindow", "preferredIntroChannels"]);
+const signalField = z.enum(["headline", "homeMarket", "relationshipGoal", "targetRelationshipTypes", "preferredFollowUpWindow", "preferredIntroChannels", "bio", "offering", "seeking"]);
 const signalValue = z.union([z.string(), z.array(z.string())]);
 const signalSource = z.enum(["chat", "activity", "contact"]);
 const signalProvenance = z.object({ source: z.string(), sourceLabel: z.string(), evidenceIds: z.array(z.string()), collectedAt: timestamp,
@@ -53,7 +58,7 @@ const suggestionSchema = z.object({
   id: identifier, sourceKind: signalSource, sourceLabel: z.string(), targetProfileField: signalField, currentValue: signalValue, suggestedValue: signalValue,
   rationale: z.string(), confidence: z.enum(["high", "medium", "low"]), status: z.enum(["pending", "accepted", "dismissed"]), createdAt: timestamp,
   evidence: z.array(z.object({ evidenceId: identifier, sourceKind: signalSource, sourceLabel: z.string(), excerpt: z.string(), collectedAt: timestamp })), provenance: signalProvenance
-}).refine(suggestion => ["targetRelationshipTypes", "preferredIntroChannels"].includes(suggestion.targetProfileField)
+}).refine(suggestion => ["targetRelationshipTypes", "preferredIntroChannels", "offering", "seeking"].includes(suggestion.targetProfileField)
   ? Array.isArray(suggestion.suggestedValue) : typeof suggestion.suggestedValue === "string");
 export const profileSuggestionsSchema = z.object({
   state: z.enum(["success", "empty", "pending"]), suggestions: z.array(suggestionSchema), summary: z.string(), provenance: signalProvenance, nextAction: z.string()
@@ -63,20 +68,35 @@ export type ProfileSuggestions = z.infer<typeof profileSuggestionsSchema>;
 export type ProfileSuggestion = z.infer<typeof suggestionSchema>;
 const profilePatchSchema = z.object({
   headline: z.string().optional(), homeMarket: z.string().optional(), relationshipGoal: z.string().optional(),
-  targetRelationshipTypes: z.array(z.string()).optional(), preferredFollowUpWindow: z.string().optional(), preferredIntroChannels: z.array(z.string()).optional()
+  targetRelationshipTypes: z.array(z.string()).optional(), preferredFollowUpWindow: z.string().optional(), preferredIntroChannels: z.array(z.string()).optional(),
+  bio: z.string().optional(), offering: z.array(z.string()).optional(), seeking: z.array(z.string()).optional()
 }).strict();
 const acceptedSuggestionSchema = z.object({
   state: z.literal("accepted"), acceptedSuggestion: suggestionSchema, profilePatch: profilePatchSchema, appliedFields: z.array(signalField),
-  acceptedAt: timestamp, provenance: signalProvenance, nextAction: z.string()
+  acceptedAt: timestamp, mutationId: identifier.optional(), provenance: signalProvenance, nextAction: z.string()
 });
 export type AcceptedProfileSuggestion = z.infer<typeof acceptedSuggestionSchema>;
-export function profileSuggestionReceiptSchema(suggestion: ProfileSuggestion) {
+export function profileSuggestionReceiptSchema(suggestion: ProfileSuggestion, mutationId?: string) {
   return acceptedSuggestionSchema.refine(data => data.acceptedSuggestion.id === suggestion.id
     && data.acceptedSuggestion.status === "accepted" && data.acceptedSuggestion.targetProfileField === suggestion.targetProfileField
     && JSON.stringify(data.acceptedSuggestion.suggestedValue) === JSON.stringify(suggestion.suggestedValue)
     && data.appliedFields.length === 1 && data.appliedFields[0] === suggestion.targetProfileField
     && Object.keys(data.profilePatch).length === 1
-    && JSON.stringify(data.profilePatch[suggestion.targetProfileField]) === JSON.stringify(suggestion.suggestedValue));
+    && JSON.stringify(data.profilePatch[suggestion.targetProfileField]) === JSON.stringify(suggestion.suggestedValue)
+    && (mutationId === undefined || data.mutationId === mutationId));
+}
+
+const dismissedSuggestionSchema = z.object({
+  state: z.literal("dismissed"), dismissedSuggestion: suggestionSchema, dismissedAt: timestamp,
+  mutationId: identifier.optional(), provenance: signalProvenance, nextAction: z.string()
+});
+
+export function profileSuggestionDismissReceiptSchema(suggestion: ProfileSuggestion, mutationId?: string) {
+  return dismissedSuggestionSchema.refine(data => data.dismissedSuggestion.id === suggestion.id
+    && data.dismissedSuggestion.status === "dismissed"
+    && data.dismissedSuggestion.targetProfileField === suggestion.targetProfileField
+    && JSON.stringify(data.dismissedSuggestion.suggestedValue) === JSON.stringify(suggestion.suggestedValue)
+    && (mutationId === undefined || data.mutationId === mutationId));
 }
 
 const documentKind = z.enum(["business-card", "resume"]);

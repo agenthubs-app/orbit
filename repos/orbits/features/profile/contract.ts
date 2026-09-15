@@ -1,11 +1,11 @@
 import type { AppErrorCode } from "../../shared/errors/app-error";
-import type { ContactHandlesDTO } from "../../shared/domain/contracts";
 import type { OrbitLanguage } from "../../shared/contract/language";
 import type { IndustrySelectionContract } from "../../shared/contract/industries";
 import type { SeniorityLevel } from "../../shared/domain/source-types";
 import type { ContractMatches } from "../../shared/contract-check";
 import type {
   ManualProfileContract,
+  ContactHandlesContract,
   ProfileCompletenessContract,
   ProfileCompletenessFieldCode,
   ProfileCompletenessStatusCode,
@@ -144,13 +144,14 @@ export interface ManualProfileUpdateInput extends IndustrySelectionContract, Pro
   preferredFollowUpWindow?: string;
   preferredLanguage?: OrbitLanguage;
   preferredIntroChannels?: readonly string[];
-  handles?: ContactHandlesDTO;
+  handles?: ContactHandlesContract;
   industry?: string;
   seniorityLevel?: SeniorityLevel;
   bio?: string;
   offering?: readonly string[];
   seeking?: readonly string[];
   topics?: readonly string[];
+  spokenLanguages?: readonly string[];
 }
 
 // ProfilePayload 是资料页成功响应的完整读模型。

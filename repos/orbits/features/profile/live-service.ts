@@ -185,6 +185,7 @@ function manualProfileFor(input: {
     offering: publicProfile?.offering,
     seeking: publicProfile?.seeking,
     topics: publicProfile?.topics,
+    spokenLanguages: input.profile.spokenLanguages,
     homeMarket: input.profile.homeMarket ?? "",
     relationshipGoal: input.profile.relationshipGoal ?? "",
     targetRelationshipTypes: input.profile.targetRelationshipTypes,
@@ -278,6 +279,49 @@ function normalizeStringList(
   return filtered ?? fallback;
 }
 
+function normalizeProfileTags(
+  value: readonly string[] | undefined,
+  fallback: readonly string[],
+): readonly string[] {
+  if (value === undefined) return fallback;
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+  for (const item of value) {
+    const display = item.normalize("NFKC").replace(/\s+/gu, " ").trim();
+    const key = display.toLowerCase();
+    if (!display || seen.has(key)) continue;
+    seen.add(key);
+    normalized.push(display);
+  }
+  return normalized;
+}
+
+function normalizeProfileHandles(
+  value: ManualProfileUpdateInput["handles"],
+  fallback: ManualProfileUpdateInput["handles"],
+): ManualProfileUpdateInput["handles"] {
+  if (value === undefined) return fallback;
+  const normalized = Object.fromEntries(
+    Object.entries(value)
+      .map(([key, item]) => [key, item?.trim()] as const)
+      .filter((entry): entry is readonly [string, string] => Boolean(entry[1])),
+  );
+  return normalized;
+}
+
+function profileInkSignalFieldsAreValid(update: ManualProfileUpdateInput): boolean {
+  const bio = update.bio?.trim() ?? "";
+  const Segmenter = (Intl as unknown as {
+    Segmenter?: new (locale?: string, options?: { granularity: "grapheme" }) => { segment(input: string): Iterable<unknown> };
+  }).Segmenter;
+  const visibleCharacters = Segmenter
+    ? Array.from(new Segmenter(undefined, { granularity: "grapheme" }).segment(bio)).length
+    : Array.from(bio).length;
+  return visibleCharacters <= 80
+    && normalizeProfileTags(update.offering, []).length <= 5
+    && normalizeProfileTags(update.seeking, []).length <= 5;
+}
+
 function mergeProfile(input: {
   actorId: string;
   base: LiveProfileRecord | null;
@@ -316,7 +360,7 @@ function mergeProfile(input: {
       input.update.headline,
       baseManual?.headline ?? "",
     ),
-    handles: input.update.handles ?? input.base?.handles,
+    handles: normalizeProfileHandles(input.update.handles, input.base?.handles),
     organization,
     homeMarket: normalizeText(
       input.update.homeMarket,
@@ -340,15 +384,19 @@ function mergeProfile(input: {
     ),
     preferredLanguage:
       input.update.preferredLanguage ?? baseManual?.preferredLanguage ?? "zh",
+    spokenLanguages: normalizeProfileTags(
+      input.update.spokenLanguages,
+      baseManual?.spokenLanguages ?? [],
+    ),
     publicProfile: {
       ...mergeIndustrySelection(baseManual ?? {}, input.update),
       bio: normalizeText(input.update.bio, baseManual?.bio ?? ""),
       industry: normalizeText(input.update.industry, baseManual?.industry ?? ""),
-      offering: normalizeStringList(
+      offering: normalizeProfileTags(
         input.update.offering,
         baseManual?.offering ?? [],
       ),
-      seeking: normalizeStringList(
+      seeking: normalizeProfileTags(
         input.update.seeking,
         baseManual?.seeking ?? [],
       ),
@@ -466,6 +514,14 @@ export function createLiveProfileService({
 
       if (input.birthDate !== undefined && input.birthDate !== null && !isValidProfileBirthDate(input.birthDate, collectedAt.slice(0, 10))) {
         return failure("PROFILE_BIRTH_DATE_INVALID", { collectedAt, provider });
+      }
+
+      if (!profileInkSignalFieldsAreValid(input)) {
+        return failure("PROFILE_VALIDATION_FAILED", {
+          collectedAt,
+          evidenceIds: ["evidence:profile-ink-signal-validation-failure"],
+          provider,
+        });
       }
 
       if (!provider) {

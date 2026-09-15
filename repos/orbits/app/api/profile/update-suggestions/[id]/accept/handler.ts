@@ -6,6 +6,7 @@ import {
 } from "../../../../../../shared/api/envelope";
 import { resolveFeatureMode } from "../../../../../../shared/config/feature-mode";
 import { getHttpStatusForAppErrorCode } from "../../../../../../shared/errors/app-error";
+import { AppError } from "../../../../../../shared/errors/app-error";
 import {
   createProfileSignalReviewQueueService,
   profileSignalReviewQueueFailureContext,
@@ -25,21 +26,40 @@ interface AcceptSuggestionRouteContext {
   }>;
 }
 
+async function optionalMutationId(request: Request): Promise<string | undefined> {
+  if (!request.headers.get("content-type") && !request.headers.get("content-length")) return undefined;
+  let value: unknown;
+  try { value = await request.json(); } catch { throw new AppError("VALIDATION_ERROR", "A valid mutationId is required."); }
+  if (!value || typeof value !== "object" || Array.isArray(value) || Reflect.ownKeys(value).length !== 1) {
+    throw new AppError("VALIDATION_ERROR", "A valid mutationId is required.");
+  }
+  const mutationId = (value as Record<string, unknown>).mutationId;
+  if (typeof mutationId !== "string" || !mutationId.trim()) throw new AppError("VALIDATION_ERROR", "A valid mutationId is required.");
+  return mutationId.trim();
+}
+
 export function createProfileSuggestionAcceptPostHandler(
   resolveActor: ResolveAuthenticatedApiActor = resolveAuthenticatedApiActor,
 ) {
   return async function POST(
-    _request: Request,
+    request: Request,
     context: AcceptSuggestionRouteContext,
   ): Promise<Response> {
     const mode = resolveFeatureMode();
     const actor = await resolveActor();
     if (!actor) return authenticatedApiActorRequiredResponse(mode);
 
+    let mutationId: string | undefined;
+    try { mutationId = await optionalMutationId(request); } catch (error) {
+      return NextResponse.json(failure(error, { boundary: "developer-admin", mode, privacy: "actor-scoped-profile-signals", provenance: "Profile suggestion decision request validation", service: "profile-signal-review-queue" }), {
+        headers: runtimeBoundaryHeaders(mode), status: 400,
+      });
+    }
     const signalService = createProfileSignalReviewQueueService();
     const { id } = await context.params;
     const result = await signalService.acceptUpdateSuggestion(id, {
       actorId: actor.id,
+      mutationId,
     });
 
     if (result.success === false) {

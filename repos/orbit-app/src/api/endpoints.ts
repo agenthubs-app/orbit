@@ -878,3 +878,7 @@ export function chatPrivacyAnalysisTogglePath(conversationId: string): string {
 export function profileUpdateSuggestionAcceptPath(id: string): string {
   return `${detailPath(ORBIT_API_ENDPOINTS.profileUpdateSuggestions, id)}/accept`;
 }
+
+export function profileUpdateSuggestionDismissPath(id: string): string {
+  return `${detailPath(ORBIT_API_ENDPOINTS.profileUpdateSuggestions, id)}/dismiss`;
+}

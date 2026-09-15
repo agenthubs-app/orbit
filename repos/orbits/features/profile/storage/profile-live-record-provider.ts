@@ -4,6 +4,7 @@ import { parseOrbitLanguage } from "../../../shared/i18n/orbit-language";
 import { createPostgresLiveRecordStore } from "../../../shared/storage/postgres-live-record-store";
 import { createConfiguredTransactionalPostgresRuntime, type TransactionalPostgresClient } from "../../../shared/storage/transactional-postgres";
 import type { ManualProfileUpdateInput, ProfileResult } from "../contract";
+import type { ContactHandlesContract } from "../../../shared/contract/profile";
 import { runProfileMutation } from "./profile-mutations";
 import {
   resolveLiveDatabaseConnectionConfig,
@@ -24,6 +25,8 @@ export interface LiveProfileRecord extends UserProfileDTO {
   preferredLanguage?: OrbitLanguage;
   relationshipGoal?: string;
   targetRelationshipTypes?: readonly string[];
+  spokenLanguages?: readonly string[];
+  handles?: ContactHandlesContract;
   evidenceIds: readonly string[];
 }
 
@@ -140,7 +143,7 @@ function profileFromRecord(
     timezone: optionalString(payload.timezone),
     headline: optionalString(payload.headline),
     handles: isRecord(payload.handles)
-      ? (payload.handles as UserProfileDTO["handles"])
+      ? (payload.handles as ContactHandlesContract)
       : undefined,
     homeMarket: optionalString(payload.homeMarket),
     organization: optionalString(payload.organization),
@@ -153,6 +156,7 @@ function profileFromRecord(
     ) ?? "zh",
     relationshipGoal: optionalString(payload.relationshipGoal),
     targetRelationshipTypes: stringArray(payload.targetRelationshipTypes),
+    spokenLanguages: stringArray(payload.spokenLanguages),
     publicProfile: (payload.publicProfile ?? undefined) as
       | PublicProfileDTO
       | undefined,

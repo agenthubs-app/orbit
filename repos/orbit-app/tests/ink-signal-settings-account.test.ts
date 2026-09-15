@@ -143,7 +143,7 @@ test("account shows open verified identity and only the actual workspace", async
 test("account links use existing destinations and sign-out failure remains visible", async t => {
   const page = await open(t, { screen: "account", logoutFailure: true });
   for (const name of ["修改个人资料", "服务器设置", "权限中心"]) await page.getByRole("button", { name, exact: true }).click();
-  assert.deepEqual(await navigation(page), ["/profile", "/settings/api", "/account/permissions"]); assert.deepEqual(await calls(page), []);
+  assert.deepEqual(await navigation(page), ["/profile/edit", "/settings/api", "/account/permissions"]); assert.deepEqual(await calls(page), []);
   await page.getByRole("button", { name: "退出登录", exact: true }).click();
   await page.getByText("退出未完成，请重试。", { exact: true }).waitFor();
   assert.equal(await page.evaluate(() => (window as any).fixture.refreshes), 0); await shot(page, "account-error");
