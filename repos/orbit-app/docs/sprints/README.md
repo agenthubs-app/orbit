@@ -76,6 +76,9 @@ build/harness-logs/
 | [0026](0026-canonical-app-account-identity/GOAL.md) | 统一 App 登录主体与业务账号身份，让待办、个人日程和笔记正确读取 canonical owner | 用户批准追加 C 线 Sprint；承接现有 `/api/account/me` | run-01 completed；功能 `f5f595df4`、邀请补漏 `3385369dd`；见 [REPORT](0026-canonical-app-account-identity/REPORT.md) | completed |
 | [0027](0027-open-schedule-meeting-details/GOAL.md) | 让四类日程进入对应详情，并按来源安全添加、编辑或清空会议说明 | 用户批准追加 C 线 Sprint；承接 appointment 聚合与 0026 canonical actor | run-01 completed；功能 `3ca1f5936`、旧日程兼容 `0cbc45ffa`；见 [REPORT](0027-open-schedule-meeting-details/REPORT.md) | completed |
 | [0028](0028-profile-page-group-redesign/GOAL.md) | 按最新八屏设计重做“我的”、设置、账号与完整资料编辑流程，保持真实数据、隐私和跨端一致 | 用户提供 `软件UI设计现代化 (5).zip` 并指定 D 线实现 | 固定最终 SHA `d37d6545d` 已由 `314aedd7c` 合并；主线目标 237/237、全量 2860/2860、typecheck、iOS build、Web live health 与 Simulator 安装启动通过，见 [REPORT](0028-profile-page-group-redesign/REPORT.md) | completed |
+| [0029](0029-data-authority-ai-read-surface/GOAL.md) | 统一数据权威源并让 AI 按认证 actor 查询笔记、待办、跟进和日程 | 用户要求全面数据审查并补齐 AI 盲区，交由 B 线实现 | 固定 B SHA `f5bded060` 已由 `6f5f141ed` 合并；本地源码/回归完成，真实 migration apply、Calendar provider 与同 actor 四域回读仍开放，见 [REPORT](0029-data-authority-ai-read-surface/REPORT.md) | blocked |
+| [0030](0030-inbox-ink-signal-unified-feed/GOAL.md) | 按 3a 设计把活动、待办、人脉和 IORBIT 通知组成真实统一收件箱 | 用户提供 `软件UI设计现代化 (5).zip` 并指定 E 线实现 | App 功能提交已合入 `chat-agent`；固定最终报告提交仍待协调者收口，不能提前标记 completed | running |
+| [0031](0031-cross-platform-performance/GOAL.md) | 以同环境真实性能基线优化 App 与 Web 的最慢关键路径，不改变功能与数据边界 | 用户批准基线驱动方案并指定 B 线执行 | Planner revision 1；基线 `c1ba721d1`；分支目标 `codex/b-line-sprint-0031`，尚未开始 run-01 | planned |
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
 
