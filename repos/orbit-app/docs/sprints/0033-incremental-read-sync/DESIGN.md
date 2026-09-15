@@ -6,6 +6,8 @@
 
 contacts 与 inbox 先保留基础设施可支持但不切换消费者，避免一次 Generator 扩散到全 App。meetings/events/chat 继续使用现有网络路径或短期快照。
 
+为完成四域 create/update/delete 与 tombstone 验收，0033 补齐唯一缺失的在线写能力：actor-scoped Note DELETE。它必须要求 `expectedVersion` 和 `idempotencyKey`，只做 canonical soft-delete，跨 actor 拒绝，重试幂等，并产生可由 `/api/sync` 读取的提交有序 tombstone。这不开放离线写入，也不改变其他 mutation 权威。
+
 ## 增量协议
 
 `GET /api/sync?cursor=<opaque>&limit=<1..200>` 的 actor/workspace 只能来自认证上下文。无 cursor 表示 bootstrap；响应严格为：

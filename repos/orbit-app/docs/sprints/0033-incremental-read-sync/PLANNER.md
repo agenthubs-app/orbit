@@ -65,6 +65,19 @@
 - [ ] Expose mirror state immediately and sync state separately; network failure with mirror returns stale data, while empty mirror returns failure.
 - [ ] Run the two new App test files plus `contract-sync.test.ts`.
 
+### Task 1b: Add the missing actor-scoped Note tombstone mutation
+
+**Files:**
+- Modify: `repos/orbits/app/api/notes/[id]/route.ts`
+- Modify: `repos/orbits/app/api/notes/[id]/handler.ts`
+- Modify: `repos/orbits/features/notes/service.ts`
+- Modify: `repos/orbits/features/notes/repository.ts`
+- Modify direct tests: `repos/orbits/tests/api/notes-routes.test.ts`, `repos/orbits/tests/services/notes-service.test.ts`, plus the incremental-sync tombstone integration test
+
+- [ ] Write RED tests for actor isolation, required `expectedVersion` and `idempotencyKey`, same-key replay, same-key/different-command rejection, version conflict, soft-delete visibility and one sync tombstone revision.
+- [ ] Add only the missing online Note DELETE path. It must authenticate actor/workspace on the server, use the existing shared envelope, persist a canonical soft-delete rather than physical SQL deletion, and preserve the commit-ordered sync revision contract. Do not add offline mutation behavior or broaden another domain.
+- [ ] Prove GET/list hide the deleted Note while `/api/sync` returns its delete change; production-build and restart the isolated Web verification service after the change.
+
 ### Task 3: Switch four read consumers without changing writes
 
 **Files:**
@@ -95,6 +108,8 @@
 - Modify: `repos/orbit-app/docs/sprints/README.md`
 - Modify: `bridge/status.md`, `bridge/handoffs.md`
 - Create: `bridge/requests/BR-0033-incremental-read-sync.md`
+- Modify: `bridge/history.md`
+- Modify if capability state changes: `bridge/capabilities.md`
 
 - [ ] Apply the real sync migration, production-build/restart Web/API, record commit/address/health/database/account hash, then install the current App build connected to that exact base URL.
 - [ ] For each of four domains create/update/delete one authorized disposable record in Web, foreground/refresh App, and prove the exact revision/tombstone arrives without full collection refetch.
