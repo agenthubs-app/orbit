@@ -25,7 +25,7 @@
 2. impact 后承接已有 RED 或写新行为失败测试。
 3. 最小实现，跑下述必要检查；只允许规则规定的有限本地修复。
 4. 按可独立验收的操作链审查、暂存 detect_changes、commit；不逐helper拆分。
-5. 写 REPORT、更新登记表并结束；不启动 Evaluator 或第二轮 Generator。
+5. 写 REPORT 并交接本线分支与固定最终 SHA；由协调者合并回 `chat-agent`，验证精确合并树并记录主线 merge SHA 后，才更新登记表为 completed。不启动 Evaluator 或第二轮 Generator。
 
 ## 最小测试与检查
 
@@ -40,4 +40,4 @@
 ## 失败与交接
 
 外部条件缺失先不启动；run 已开始则按规则产出 failed／blocked 报告。只承接具体前序结果，不自动重跑整个 Sprint。
-报告包含 SC 映射、功能 SHA／文件／理由、命令与退出码、未提交／失败、费用与下一步。
+报告包含 SC 映射、功能 SHA／文件／理由、命令与退出码、未提交／失败、费用与下一步；交接必须列本线分支、固定最终 SHA、待协调者合并的目标主线 `chat-agent`。未完成 commit 或未通过合并树验证不能标记 completed。

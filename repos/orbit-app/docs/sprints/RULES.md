@@ -18,7 +18,7 @@
 取消：独立 Evaluator、打分／rubric、契约协商循环、self_assess 模型调用、REFINE/PIVOT、最小迭代次数、评审后自动再次 Generator。
 本规程是文档驱动，不新增 Python／TypeScript SDK 编排程序，不选择或安装额外 provider／模型。若以后要实现后台调度器，其语言、模型与权限需要另行设计，不能假定本文已授权。
 
-`已批准 PLANNER.md → 一个 Generator 执行 → 必要验证 → 逐功能 commit → REPORT.md／交接 → 结束`
+`已批准 PLANNER.md → 一个 Generator 执行 → 必要验证 → Sprint 分支 commit → REPORT.md／交接 → 协调者合并 chat-agent → 合并树验证 → 结束`
 
 “一次”指同一契约的一次完整执行，不是只允许一次工具调用。Generator 可正常阅读、TDD、编辑、运行命令和有限修复；不能以自评分、外部 AI 评审或“再优化一版”为理由重开生成阶段。每个 Sprint 最多一次 Generator run，执行前登记为 run-01。
 
@@ -26,7 +26,7 @@
 
 - Planner 是每个 Sprint 的 `PLANNER.md`；本轮编制，不在运行时再启动 Planner 模型。它定义目标、输入、输出、范围、SC 验收项和必要检查。
 - Generator 是该 Sprint 唯一实现者，承担范围内实现和基于证据的自检；禁止再派另一个实现／评审代理形成隐式循环。
-- 协调者只领取就绪任务、管理文件／环境锁、维护登记表和统一 Git 提交，不增加一个模型评判阶段。Generator 就是当前主代理时可直接承担这些管理动作。
+- 协调者只领取就绪任务、管理文件／环境锁、维护登记表和统一 Git 集成，不增加一个模型评判阶段。Generator 在自己的 Sprint 分支提交本线改动；协调者核对最终 SHA 后合并到主线 `chat-agent`。Generator 就是当前主代理时可直接承担这些管理动作。
 - 默认逐个执行。确需并行时最多两个独立就绪 Sprint，各自一个 Generator；必须预先确认文件不重叠、没有依赖和共享运行环境争用。不是一个 Sprint 同时派两个 Generator。
 - 共享工作树中只有协调者操作暂存与 commit；通用 API/hooks、语言／时间基础设施和跨页共享 view-model 不并行修改。完整类型／全量测试前冻结全部相关写入者。
 - 同一 Simulator、浏览器账号、真实写入对象、付费账本和服务生命周期只有一个持有者。暂停一个界面步骤不等于允许另一个代理切换其账号。
@@ -102,7 +102,7 @@ TDD 不是被取消的 Evaluator 循环：观察预期失败→最小实现→�
 - App 默认实施目录为 `/Users/xzhao/Projects/orbit/repos/orbit-app`；修改 Planner 文件表、第 0 节登记的必要文件及本 Sprint 交接。不得覆盖无关用户工作，不能从本地源码授权推导对业务数据库、浏览器 localStorage 或环境密钥的操作权限。
 - 当前代理已获相关 Web/API 与 App 跨端实施批准；同一个 Generator 按依赖串行执行，各端使用自己的 cwd 和本端路径，协调者管理根仓库 Git／Bridge 交接。旧“只编制”及未列全的文件表不再阻止已批准功能接线；逐项登记实际改动和受影响消费者，保留子目录架构约束。
 - 共享副本只走现有批准的 `npm run sync:contract`，不手改或自行扩大同步通道。必要的本地实现依赖按第 0 节办理；真正的产品目标变更、迁移、部署及真实副作用单独核对已有授权，不重复请求已明确授予的批准。
-- 继续原地 `chat-agent`；不自动 worktree、merge、push、部署、换号或清缓存。App 开发所依赖的 Web/API 服务按第 5.4 节启动；Web/API 或共享契约更新后必须重新构建并重启。GET／导航若有初始化或保存副作用，按真实写入处理。
+- 主线固定为 `chat-agent`。Sprint 可按协调者分配在独立命名分支／worktree 实施，但不得由执行线直接覆盖主线或带入其他线、用户的未提交内容。每个 Sprint 收口后必须按第 8 节提交本线改动，并由协调者把固定最终 SHA 合并回 `chat-agent`；旧 Planner 中“不提交／不 merge”只作为当时历史边界，不再适用于当前及后续 Sprint。push、部署、换号或清缓存仍按相应授权处理。App 开发所依赖的 Web/API 服务按第 5.4 节启动；Web/API 或共享契约更新后必须重新构建并重启。GET／导航若有初始化或保存副作用，按真实写入处理。
 - AI/OCR 累计 $5，原账本已记录 $0.012780；开始付费场景前确认账本与未结算预留，由一个 owner 管理，禁止按 Sprint／run 重置。
 - 当前运行证据统一放 `build/harness-state/evidence/sprint-NNNN/run-01/`，命令／截图／API 元数据／Git 分目录；日志放 `build/harness-logs/`。先确认 `build/` 仍被 Git 忽略；若不再忽略，先用受控临时目录并记录位置，不自行修改配置或提交证据。
 - 原始日志只留必要脱敏字段；不保留 Cookie/token/密钥或完整个人对话。报告引用证据路径、时间、命令、退出码及脱敏 ID／摘要；不是复制原始内容。
@@ -117,7 +117,7 @@ TDD 不是被取消的 Evaluator 循环：观察预期失败→最小实现→�
 | ready | 进入条件与适用批准齐全，仍需全局 ACTIVE 才能领取 |
 | running | 唯一 Generator 的 run-01 正在执行 |
 | paused | 同一 run 因用户暂停或中断待恢复；先留 checkpoint，不默认重启未知活进程 |
-| completed | 本 Sprint 所有必需 SC 有同版本有效证据，功能提交与报告齐全；不代表所有 R 项完成 |
+| completed | 本 Sprint 所有必需 SC 有同版本有效证据，功能与报告已提交，固定最终 SHA 已合并到 `chat-agent`，且合并树验证通过；不代表所有 R 项完成 |
 | blocked | 缺外部条件；启动前 run_count=0 可在条件齐全后 ready；运行结束后 run_count=1 必须交报告，不能直接再运行 |
 | failed | Generator run 已结束，必需 SC 失败／预算到限；保留部分成果和报告，不自动二次生成 |
 
@@ -138,6 +138,18 @@ completed 由验收清单逐项事实决定，不由 Generator 的信心、平�
 
 运行中只维护一份简短进度／checkpoint；不在每个小提交后同时重写README、PROGRESS、交接和总结，也不强制配一条纯进度文档commit。生命周期、授权／文件边界变化及时登记；普通验证细节留在原日志和当前记录，Sprint结束时一次汇总REPORT／登记表。对用户的简短进度更新照常，不把写报告当成实现工作。
 
+### 8.1 Sprint 必须提交并合并回主线
+
+每个 Sprint 的实现收口必须完成以下 Git 闭环；任何一步缺失都不能把 Sprint 标为 `completed`：
+
+1. Generator 只暂存本 Sprint 的源码、测试和报告，执行 staged `gitnexus_detect_changes` 与适用验证后，在本线命名分支创建 commit；不得把其他线或用户的未提交文件带入。
+2. Generator 在交接中给出分支名、最后功能 SHA、报告 SHA、工作树剩余改动和完整验证结果，然后释放文件／环境锁。只有“改动仍在工作树、尚未 commit”不算交付。
+3. 协调者以交接中冻结的 commit SHA 为输入，不使用仍会移动的分支 HEAD；确认依赖顺序、提交归属及主线状态后，把该 SHA 合并回 `chat-agent`。执行线不得自行并发合并主线。
+4. 冲突只按两端已批准行为解决，不丢弃任一条线；冲突修改需补 impact／测试。合并后在精确合并树运行受影响测试、相关端 typecheck，以及第 5 节要求的集成／构建／运行时验证。
+5. 合并验证通过后，协调者在登记表／交接中记录 Sprint 最终 SHA、`chat-agent` 合并 SHA 和验证证据，才可写 `completed`。若合并或合并后验证失败，保留分支和 worktree，状态继续为 `running`、`blocked` 或 `failed`，不得假报完成。
+
+若 Sprint 以 `blocked`／`failed` 结束，已经独立验证且可安全复用的部分仍应路径限定 commit，并在报告中明确“部分提交、未完成”；是否合入主线由协调者按依赖和兼容性决定，但部分合入不会把 Sprint 状态改成 `completed`。远程 push 只有在已有适用授权时执行；push 后必须核对 `origin/chat-agent` 与本地主线 SHA 一致。
+
 ## 9. 对后续 AI 的启动指令
 
 ```text
@@ -148,7 +160,8 @@ completed 由验收清单逐项事实决定，不由 Generator 的信心、平�
 本 Sprint 只进行一个 Generator run，不启动 Evaluator、self_assess 或返工循环。
 沿一个用户操作链连续实现；开发中定向测试，按第5节触发集成验证，
 不逐子功能全量、不因三个commit自动全量。按第8节批量交付并路径限定commit；
-结束写REPORT.md并更新登记表。复用未变化的阅读／impact／验证，不重复准备。
+结束写REPORT.md并交接固定SHA，由协调者合并回chat-agent并验证合并树；只有该闭环完成后
+更新登记表为completed。复用未变化的阅读／impact／验证，不重复准备。
 失败如实结束，不降低验收条件，不自动创建第二轮。
 ```
 

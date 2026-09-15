@@ -2,7 +2,7 @@
 
 **运行状态：ACTIVE（2026-09-14，用户要求完成框架与文档后自主执行 Sprint）。** 本目录是文档驱动的 Sprint Dev 管理规程；当前代理按规程执行，不是另行安装的后台 SDK 编排程序。只领取前置条件与适用批准齐全的 Sprint。
 
-用户已指定：编号从 `0001` 开始，每个 Sprint 一份 Planner、一次 Generator，不设 Evaluator 或 Generator↔Evaluator 循环，验证遵守最小必要原则，完成后必须记录 commit 与总结。此规则取代先前草稿中 S0～S8 的编号、同一 Sprint 多实现者和固定独立评审安排。
+用户已指定：编号从 `0001` 开始，每个 Sprint 一份 Planner、一次 Generator，不设 Evaluator 或 Generator↔Evaluator 循环，验证遵守最小必要原则。每个 Sprint 实现收口后必须在本线提交 Git 改动，交接固定 SHA，由协调者合并回主线 `chat-agent` 并验证合并树；未 commit 或未 merge 的 Sprint 不能标记 completed。此规则取代先前草稿中 S0～S8 的编号、同一 Sprint 多实现者和固定独立评审安排。
 
 **2026-09-14 提速规则已生效：** 开发中跑定向测试，沿用户操作链批量交付；纯L默认不跑全量，含H在本地代码收口时对受影响端做一次集成检查。取消“每个子功能／三个提交后自动全量”，复用未变化的阅读和验证，合并碎片化进度文档。详见[RULES第4、5、8节](RULES.md)；覆盖旧Planner的执行频率，原SC、批准、预算及真实验收不变。
 
