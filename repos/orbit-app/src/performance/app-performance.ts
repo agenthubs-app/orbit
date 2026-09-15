@@ -222,6 +222,7 @@ export function formatAppPerformanceLog(sample: AppPerformanceSample): string {
 }
 
 const PRODUCTION_ENABLED =
+  typeof process !== "undefined" &&
   process.env.EXPO_PUBLIC_ORBIT_PERFORMANCE_RUN === "1";
 const productionRecorder = PRODUCTION_ENABLED
   ? createAppPerformanceRecorder({
