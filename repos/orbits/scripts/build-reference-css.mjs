@@ -31,6 +31,22 @@ const outputPath = path.join(
   repoRoot,
   "public/orbit-reference/orbit-reference.generated.css",
 );
+const overridesSourcePath = path.join(
+  repoRoot,
+  "app/(app)/app/orbit-reference-styles.tsx",
+);
+const agentConsoleSourcePath = path.join(
+  repoRoot,
+  "app/(app)/app/agent/orbit-agent-console-styles.tsx",
+);
+const overridesOutputPath = path.join(
+  repoRoot,
+  "public/orbit-reference/orbit-overrides.generated.css",
+);
+const agentConsoleOutputPath = path.join(
+  repoRoot,
+  "public/orbit-reference/orbit-agent-console.generated.css",
+);
 
 // Families whose `@font-face` blocks never win a font-family lookup on a product
 // page (see the module comment). Keep this list in sync with the `--ff*` tokens.
@@ -95,13 +111,38 @@ export function readPrototypeStyleText() {
     .join("\n");
 }
 
+export function readNamedTemplateLiteral(sourcePath, name) {
+  const source = fs.readFileSync(sourcePath, "utf8");
+  const declaration = source.indexOf(name);
+  const start = source.indexOf("`", declaration);
+  const end = source.indexOf("`;", start + 1);
+  if (declaration < 0 || start < 0 || end < 0) {
+    throw new Error(`CSS template ${name} was not found in ${sourcePath}.`);
+  }
+  const css = source.slice(start + 1, end);
+  if (css.includes("${")) {
+    throw new Error(`CSS template ${name} must not contain runtime interpolation.`);
+  }
+  return css;
+}
+
 const raw = readPrototypeStyleText();
 const stripped = stripUnusedFontFaces(raw);
+const overrides = [
+  "reactReferenceIsolationStyles",
+  "orbitNamecardStyles",
+  "orbitAttendeeCardStyles",
+].map((name) => readNamedTemplateLiteral(overridesSourcePath, name)).join("\n");
+const agentConsole = readNamedTemplateLiteral(agentConsoleSourcePath, "AGENT_CONSOLE_STYLES");
 
 fs.writeFileSync(outputPath, stripped, "utf8");
+fs.writeFileSync(overridesOutputPath, overrides, "utf8");
+fs.writeFileSync(agentConsoleOutputPath, agentConsole, "utf8");
 
 const asKb = (bytes) => `${(bytes / 1024).toFixed(1)} KB`;
 console.log(
   `orbit-reference.generated.css: ${asKb(raw.length)} -> ${asKb(stripped.length)} ` +
     `(dropped ${UNUSED_FONT_FAMILIES.join(", ")} @font-face blocks)`,
 );
+console.log(`orbit-overrides.generated.css: ${asKb(overrides.length)}`);
+console.log(`orbit-agent-console.generated.css: ${asKb(agentConsole.length)}`);

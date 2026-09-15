@@ -1,47 +1,4 @@
-import fs from "node:fs";
-import path from "node:path";
-import zlib from "node:zlib";
 
-const prototypeHtmlPath = path.join(
-  process.cwd(),
-  "public/orbit-reference/orbit-reference.html",
-);
-
-// Built by `npm run build:reference-css` (scripts/build-reference-css.mjs) and
-// committed. Serving it as a static file rather than inlining the prototype
-// stylesheet into every page is UI-audit fix P0-2: the inline form shipped
-// ~10 MB of HTML per navigation (5 MB in the `<style>` tag, the same 5 MB again
-// in the RSC flight payload) and measured a 4.9 s first contentful paint.
-const GENERATED_CSS_ROUTE = "/orbit-reference/orbit-reference.generated.css";
-const generatedCssPath = path.join(
-  process.cwd(),
-  "public/orbit-reference/orbit-reference.generated.css",
-);
-const GENERATED_OVERRIDES_CSS_ROUTE = "/orbit-reference/orbit-overrides.generated.css";
-const generatedOverridesCssPath = path.join(
-  process.cwd(),
-  "public/orbit-reference/orbit-overrides.generated.css",
-);
-
-// Kept in sync with UNUSED_FONT_FAMILIES in scripts/build-reference-css.mjs.
-const UNUSED_PROTOTYPE_FONT_FAMILIES = ["Inter", "Inter Tight", "Geist Mono"];
-
-let cachedStyleText: string | undefined;
-let cachedGeneratedCssExists: boolean | undefined;
-let cachedGeneratedOverridesCssExists: boolean | undefined;
-const cachedScriptText = new Map<string, string>();
-
-function generatedCssExists() {
-  cachedGeneratedCssExists ??= fs.existsSync(generatedCssPath);
-  return cachedGeneratedCssExists;
-}
-
-function generatedOverridesCssExists() {
-  cachedGeneratedOverridesCssExists ??= fs.existsSync(generatedOverridesCssPath);
-  return cachedGeneratedOverridesCssExists;
-}
-
-const reactReferenceIsolationStyles = `
 [data-orbit-real-page] button,
 [data-orbit-real-page] input,
 [data-orbit-real-page] select,
@@ -2842,132 +2799,8 @@ html[data-theme="light"] [data-orbit-real-page="agent"] .orbit-top-nav {
 [data-orbit-real-page] .orbit-organizer-date span {
   font-size: 11px;
 }
-`;
 
-interface BundledAsset {
-  compressed?: boolean;
-  data: string;
-  mime: string;
-}
 
-function decodeHtmlAttribute(value: string): string {
-  return value
-    .replace(/&quot;/g, "\"")
-    .replace(/&#39;/g, "'")
-    .replace(/&apos;/g, "'")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&");
-}
-
-function extractBundlerScript(srcDoc: string, type: string): string | undefined {
-  const escapedType = type.replace("/", "\\/");
-  return srcDoc.match(new RegExp(`<script type="${escapedType}">([\\s\\S]*?)<\\/script>`))?.[1];
-}
-
-function unpackTemplate(srcDoc: string) {
-  const manifestText = extractBundlerScript(srcDoc, "__bundler/manifest");
-  const templateText = extractBundlerScript(srcDoc, "__bundler/template");
-
-  if (!manifestText || !templateText) return srcDoc;
-
-  const manifest = JSON.parse(manifestText) as Record<string, BundledAsset>;
-  let template = JSON.parse(templateText) as string;
-
-  for (const [uuid, entry] of Object.entries(manifest)) {
-    const compressed = Buffer.from(entry.data, "base64");
-    const bytes = entry.compressed ? zlib.gunzipSync(compressed) : compressed;
-    const dataUrl = `data:${entry.mime};base64,${bytes.toString("base64")}`;
-    template = template.split(uuid).join(dataUrl);
-  }
-
-  return template;
-}
-
-/**
- * Fallback extraction path. The normal path serves
- * `public/orbit-reference/orbit-reference.generated.css` (built by
- * `npm run build:reference-css`) as a cacheable `<link>`; this only runs when
- * that asset is missing, so a fresh checkout that has not run the build script
- * still renders instead of shipping an unstyled page.
- *
- * Mirrors the stripping the build script does: the Inter / Inter Tight / Geist
- * Mono `@font-face` blocks (4.8 MB of base64) never win a font-family lookup
- * because the token layer below remaps every `--ff*` to Noto Sans SC / Noto
- * Serif SC / JetBrains Mono.
- */
-function readReferenceStyles() {
-  if (cachedStyleText) return cachedStyleText;
-
-  const html = fs.readFileSync(prototypeHtmlPath, "utf8");
-  const srcDoc = html.match(/<iframe class="browser-frame"[^>]*srcdoc="([\s\S]*?)"><\/iframe>/)?.[1];
-
-  if (!srcDoc) {
-    throw new Error("Orbit reference iframe srcdoc was not found.");
-  }
-
-  const template = unpackTemplate(decodeHtmlAttribute(srcDoc));
-  cachedStyleText = [...template.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)]
-    .map((match) => match[1])
-    .join("\n")
-    .replace(/@font-face\s*\{[^}]*\}\s*/g, (block) => {
-      const family = block.match(/font-family:\s*['"]([^'"]+)['"]/)?.[1];
-      return family && UNUSED_PROTOTYPE_FONT_FAMILIES.includes(family) ? "" : block;
-    });
-
-  return cachedStyleText;
-}
-
-export function readPrototypeScriptAsset(uuid: string) {
-  const cached = cachedScriptText.get(uuid);
-  if (cached) return cached;
-
-  const html = fs.readFileSync(prototypeHtmlPath, "utf8");
-  const srcDoc = html.match(/<iframe class="browser-frame"[^>]*srcdoc="([\s\S]*?)"><\/iframe>/)?.[1];
-
-  if (!srcDoc) {
-    throw new Error("Orbit reference iframe srcdoc was not found.");
-  }
-
-  const manifestText = extractBundlerScript(decodeHtmlAttribute(srcDoc), "__bundler/manifest");
-
-  if (!manifestText) {
-    throw new Error("Orbit reference manifest was not found.");
-  }
-
-  const manifest = JSON.parse(manifestText) as Record<string, BundledAsset>;
-  const entry = manifest[uuid];
-
-  if (!entry) {
-    throw new Error(`Orbit reference script asset ${uuid} was not found.`);
-  }
-
-  const compressed = Buffer.from(entry.data, "base64");
-  const bytes = entry.compressed ? zlib.gunzipSync(compressed) : compressed;
-  const script = bytes.toString("utf8");
-
-  cachedScriptText.set(uuid, script);
-  return script;
-}
-
-function scriptContent(value: string) {
-  return value.replace(/<\/script/gi, "<\\/script");
-}
-
-export function OrbitReferenceThreeRuntime() {
-  const threeScript = readPrototypeScriptAsset("4636af91-bda9-4959-bb19-8ab1c003d4e6");
-
-  return (
-    <>
-      <script dangerouslySetInnerHTML={{ __html: scriptContent(threeScript) }} />
-      <script dangerouslySetInnerHTML={{ __html: "window.__orbitPrototypeThreeReady = !!window.THREE;" }} />
-    </>
-  );
-}
-
-// 名片夹 UI 复刻 — 新增组件类（nc- 前缀，零撞名；复用现有 token）。
-// 现有类（card / card-hover / chip / btn / field / avatar / 标题 / eyebrow / mono）照用不变。
-const orbitNamecardStyles = `
 [data-orbit-real-page] .nc-src { display:inline-flex; align-items:center; gap:5px; height:22px; padding:0 9px; border-radius:var(--r-pill); font-size:11.5px; font-weight:600; white-space:nowrap; }
 [data-orbit-real-page] .nc-src svg { width:12px; height:12px; }
 [data-orbit-real-page] .nc-src-scan { background:var(--accent-soft); color:var(--accent); }
@@ -3033,21 +2866,8 @@ const orbitNamecardStyles = `
 .nc-sheet-foot { padding:14px 18px; border-top:1px solid var(--hairline); display:flex; gap:10px; }
 .nc-sheet-close { width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; border-radius:var(--r-sm); background:var(--surface-2); border:1px solid var(--border-2); color:var(--text-2); cursor:pointer; }
 .nc-flabel { display:block; font-size:13px; font-weight:600; color:var(--text-2); margin:0 0 6px; }
-`;
 
-/**
- * Event attendee cards — the participant directory and the recommendation list
- * inside the event journey's matchmaking panel.
- *
- * Authored purely in tokens (--ink / --text-* / --border / --surface-* /
- * --accent), never in literal colours, because the same markup renders on two
- * very different grounds: the light app surfaces, and the journey's `.cardB`
- * nite panel, which re-binds exactly those tokens to its dark glass values
- * (public/event-journey-green.css). `--accent-softer` and the semantic soft
- * fills (--live-soft, --amber-soft) are deliberately avoided — cardB does not
- * re-bind them, so they would punch a near-white block into the dark card.
- */
-const orbitAttendeeCardStyles = `
+
 [data-orbit-real-page] {
   --attendee-clear-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6 6 18'/%3E%3C/svg%3E");
 }
@@ -3306,31 +3126,4 @@ const orbitAttendeeCardStyles = `
 
 @media (max-width: 420px) {
   [data-orbit-real-page] .orbit-attendee-grid { grid-template-columns: minmax(0, 1fr); }
-}
-`;
-
-/**
- * Emits the product stylesheet in cascade order:
- *
- *   1. the prototype base — a cacheable `<link>` (React hoists it into `<head>`,
- *      so it stays ahead of everything below in document order);
- *   2. the Orbit override layer + namecard and attendee-card components as a
- *      second cacheable `<link>` generated from the source constants below.
- *
- * When either generated asset is missing, only that layer falls back to its
- * source text so a fresh checkout never renders unstyled.
- */
-export function OrbitReferenceStyles() {
-  const overrides = `${reactReferenceIsolationStyles}\n${orbitNamecardStyles}\n${orbitAttendeeCardStyles}`;
-
-  return (
-    <>
-      {generatedCssExists()
-        ? <link href={GENERATED_CSS_ROUTE} rel="stylesheet" />
-        : <style dangerouslySetInnerHTML={{ __html: readReferenceStyles() }} />}
-      {generatedOverridesCssExists()
-        ? <link href={GENERATED_OVERRIDES_CSS_ROUTE} rel="stylesheet" />
-        : <style dangerouslySetInnerHTML={{ __html: overrides }} />}
-    </>
-  );
 }

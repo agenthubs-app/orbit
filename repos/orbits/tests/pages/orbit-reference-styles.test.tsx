@@ -21,7 +21,7 @@ async function importProjectModule<TModule>(
   return (await import(pathToFileURL(absolutePath).href)) as TModule;
 }
 
-test("Orbit reference styles link the generated asset and keep only product overrides inline", async () => {
+test("Orbit reference styles link every generated asset without repeating product CSS inline", async () => {
   const referenceStyles = await importProjectModule<{
     OrbitReferenceStyles: () => React.ReactNode;
   }>("app/(app)/app/orbit-reference-styles.tsx");
@@ -32,8 +32,12 @@ test("Orbit reference styles link the generated asset and keep only product over
     html,
     /<link[^>]+href="\/orbit-reference\/orbit-reference\.generated\.css"[^>]+rel="stylesheet"/,
   );
-  assert.match(html, /<style>/);
-  assert.match(html, /reactReferenceIsolationStyles|data-orbit-real-page/);
+  assert.match(
+    html,
+    /<link[^>]+href="\/orbit-reference\/orbit-overrides\.generated\.css"[^>]+rel="stylesheet"/,
+  );
+  assert.doesNotMatch(html, /<style>/);
+  assert.doesNotMatch(html, /reactReferenceIsolationStyles|data-orbit-real-page/);
   assert.ok(
     html.length < 250_000,
     "rendered product overrides must not inline the multi-megabyte prototype base",
@@ -61,6 +65,22 @@ test("generated Orbit reference stylesheet contains the extracted prototype CSS"
   );
 });
 
+test("generated Orbit override and Agent console styles retain their scoped selectors", () => {
+  const overrides = readFileSync(
+    join(projectRoot, "public/orbit-reference/orbit-overrides.generated.css"),
+    "utf8",
+  );
+  const agentConsole = readFileSync(
+    join(projectRoot, "public/orbit-reference/orbit-agent-console.generated.css"),
+    "utf8",
+  );
+
+  assert.match(overrides, /\[data-orbit-real-page\]/);
+  assert.match(overrides, /\.nc-src/);
+  assert.match(overrides, /orbit-attendee-grid/);
+  assert.match(agentConsole, /\[data-orbit-real-page="agent"\] \.brief \{/);
+});
+
 test("reference CSS build writes the same static path used by the product component", () => {
   const buildSource = readFileSync(
     join(projectRoot, "scripts/build-reference-css.mjs"),
@@ -79,6 +99,9 @@ test("reference CSS build writes the same static path used by the product compon
     componentSource,
     /\/orbit-reference\/orbit-reference\.generated\.css/,
   );
+  assert.match(buildSource, /public\/orbit-reference\/orbit-overrides\.generated\.css/);
+  assert.match(buildSource, /public\/orbit-reference\/orbit-agent-console\.generated\.css/);
+  assert.match(componentSource, /\/orbit-reference\/orbit-overrides\.generated\.css/);
   assert.doesNotMatch(componentSource, /\/api\/orbit-reference\/styles/);
 });
 
