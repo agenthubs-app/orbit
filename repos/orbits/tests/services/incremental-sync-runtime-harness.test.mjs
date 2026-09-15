@@ -262,3 +262,55 @@ test('dump normalization removes only random restrict keys and preserves extra D
   for(const ddl of ['CREATE ACCESS METHOD custom TYPE TABLE HANDLER heap_tableam_handler;','CREATE TYPE custom AS ENUM (\'x\');','GRANT USAGE ON SCHEMA public TO PUBLIC;'])assert.notEqual(h.normalizeSchemaDump(base),h.normalizeSchemaDump(base+ddl));
   assert.throws(()=>h.normalizeSchemaDump('partial output'));
 });
+
+async function snapshotFixture() {
+  const f=await gitFixture();
+  await writeFile(join(f.top,'.gitignore'),'node_modules/\n');f.git(['add','.']);f.git(['commit','-qm','dependencies']);
+  await mkdir(join(f.web,'node_modules'));await mkdir(join(f.app,'node_modules'));
+  return f;
+}
+
+test('snapshot rejects altered program, extra path, mode and symlink before spawning',async()=>{
+  const {chmod,symlink}=await import('node:fs/promises');const f=await snapshotFixture();
+  try{
+    for(const mutation of [
+      async root=>{await chmod(join(root,'tracked'),0o600);await writeFile(join(root,'tracked'),'modified');await chmod(join(root,'tracked'),0o400);},
+      async root=>{await chmod(root,0o700);await writeFile(join(root,'extra'),'added');await chmod(root,0o500);},
+      async root=>chmod(join(root,'tracked'),0o600),
+      async root=>{await chmod(root,0o700);await rm(join(root,'tracked'));await symlink(join(f.web,'tracked'),join(root,'tracked'));await chmod(root,0o500);},
+    ]){
+      const snapshot=h.createSourceSnapshot(f.web,f.app);let spawned=false;
+      try{await snapshot.prepare();await mutation(snapshot.webRoot);await assert.rejects(snapshot.run('web',[],{},async()=>{spawned=true;return {passed:1,failed:0,skipped:0,pass:true};}));assert.equal(spawned,false);}
+      finally{await snapshot.close();}
+    }
+  }finally{await rm(f.top,{recursive:true,force:true});}
+});
+
+test('successful subprocess output cannot hide persistent self-modification or extra files',async()=>{
+  const f=await snapshotFixture();
+  try{
+    for(const mutate of ["fs.chmodSync('tracked',0o600);fs.writeFileSync('tracked','changed');fs.chmodSync('tracked',0o400);", "fs.chmodSync('.',0o700);fs.writeFileSync('extra','added');fs.chmodSync('.',0o500);"]){
+      const snapshot=h.createSourceSnapshot(f.web,f.app);
+      try{await snapshot.prepare();await assert.rejects(snapshot.run('web',['-e',`const fs=require('fs');${mutate}process.stdout.write(${JSON.stringify(tap())})`],h.childEnvironment(process.env)));}
+      finally{await snapshot.close();}
+    }
+  }finally{await rm(f.top,{recursive:true,force:true});}
+});
+
+test('suite snapshots are separate, read-only and sequential; Web has no App snapshot sibling',async()=>{
+  const {stat,access}=await import('node:fs/promises');const f=await snapshotFixture();const snapshot=h.createSourceSnapshot(f.web,f.app);
+  try{
+    await snapshot.prepare();const web=snapshot.webRoot;const webDirectory=snapshot.directory;
+    assert.equal((await stat(webDirectory)).mode&0o777,0o700);assert.equal((await stat(web)).mode&0o777,0o500);assert.equal((await stat(join(web,'tracked'))).mode&0o777,0o400);
+    await assert.rejects(access(join(web,'../orbit-app')));
+    assert.equal(snapshot.appRoot,undefined);
+    await snapshot.run('web',['-e',`if(require('fs').existsSync('../orbit-app'))process.exit(7);process.stdout.write(${JSON.stringify(tap())})`],h.childEnvironment(process.env));
+    await snapshot.run('app',[],{},async(_exe,_args,{cwd})=>{assert.notEqual(snapshot.directory,webDirectory);await assert.rejects(access(webDirectory));await assert.rejects(access(join(cwd,'../orbits')));return {passed:1,failed:0,skipped:0,pass:true};});
+  }finally{await snapshot.close();await rm(f.top,{recursive:true,force:true});}
+});
+
+test('read-only chmod failure prevents a suite and still permits owned cleanup',async()=>{
+  const f=await snapshotFixture();const snapshot=h.createSourceSnapshot(f.web,f.app,{chmod:async()=>{throw Error('injected chmod');}});
+  try{await assert.rejects(snapshot.prepare());await snapshot.close();}
+  finally{await snapshot.close();await rm(f.top,{recursive:true,force:true});}
+});

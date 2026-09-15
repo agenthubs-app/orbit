@@ -9,7 +9,7 @@
  */
 import { createHash, randomUUID } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
-import { access, readdir, stat, realpath, mkdtemp, mkdir, chmod, readFile, symlink, rm } from 'node:fs/promises';
+import { access, readdir, stat, lstat, readlink, realpath, mkdtemp, mkdir, chmod, readFile, symlink, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -155,53 +155,130 @@ export function validateArchiveTree(listing) {
     if (!match) throw new Error('UNSAFE_ARCHIVE_ENTRY');
     const path = match[3]; const parts = path.split('/');
     if (!/^repos\/(orbits|orbit-app)\//.test(path) || /[\\\x00-\x1f\x7f]/.test(path) || parts.some(part => ['', '.', '..', '.git', 'node_modules'].includes(part))) throw new Error('UNSAFE_ARCHIVE_PATH');
-    return { path, oid: match[2] };
+    return { path, oid: match[2], gitMode: match[1] };
   });
   if (!entries.length) throw new Error('EMPTY_ARCHIVE');
   return entries;
 }
 
+async function verifySnapshot(state) {
+  const seen = new Set();
+  const visit = async relative => {
+    const expected = state.manifest.get(relative);
+    if (!expected) throw new Error('SNAPSHOT_EXTRA_PATH');
+    const path = join(state.directory, relative); const actual = await lstat(path);
+    seen.add(relative);
+    if (expected.type === 'link') {
+      if (!actual.isSymbolicLink() || await readlink(path) !== state.dependency || await realpath(path) !== state.dependency || !(await stat(state.dependency)).isDirectory()) throw new Error('SNAPSHOT_LINK_CHANGED');
+      return; // Never enumerate or chmod dependency targets.
+    }
+    if ((actual.mode & 0o7777) !== expected.mode) throw new Error('SNAPSHOT_MODE_CHANGED');
+    if (expected.type === 'directory') {
+      if (!actual.isDirectory()) throw new Error('SNAPSHOT_TYPE_CHANGED');
+      for (const name of await readdir(path)) await visit(relative ? `${relative}/${name}` : name);
+    } else {
+      if (!actual.isFile() || actual.nlink !== 1) throw new Error('SNAPSHOT_TYPE_CHANGED');
+      const bytes = await readFile(path);
+      if (createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex') !== expected.oid) throw new Error('SNAPSHOT_BLOB_CHANGED');
+    }
+  };
+  await visit('');
+  if (seen.size !== state.manifest.size) throw new Error('SNAPSHOT_MISSING_PATH');
+}
+
+async function unlockOwnedDirectories(path) {
+  const entry = await lstat(path);
+  if (!entry.isDirectory()) return; // Includes node_modules and unexpected symlinks: do not follow them.
+  await chmod(path, 0o700);
+  for (const name of await readdir(path)) await unlockOwnedDirectories(join(path, name));
+}
+
+// Protects against mistakes, parallel work and persistent suite self-modification.
+// This is not an OS sandbox against an active same-UID attacker unlocking and restoring bytes/modes between checks.
 export function createSourceSnapshot(web, app, operations = {}) {
-  let directory; let tree; let prepared = false; let removed = false;
+  let source; let active; let prepared = false; let busy = false; let invalid = false; let closed = false;
+  const states = new Map();
+  const dispose = async state => {
+    if (!state || state.removed) return;
+    if (!(await lstat(state.directory)).isDirectory() || await realpath(state.directory) !== state.directory) throw new Error('SNAPSHOT_ROOT_CHANGED');
+    await unlockOwnedDirectories(state.directory);
+    await (operations.remove ?? rm)(state.directory, { recursive: true, force: true });
+    state.removed = true;
+  };
+  const build = async name => {
+    const prefix = `repos/${name === 'web' ? 'orbits' : 'orbit-app'}`;
+    const entries = source.entries.filter(entry => entry.path.startsWith(`${prefix}/`));
+    if (!entries.length) throw new Error('EMPTY_SUITE_ARCHIVE');
+    const directory = await realpath(await mkdtemp(join(tmpdir(), 'orbit-sync-snapshot-')));
+    const tree = join(directory, 'tree');
+    const state = { directory, tree, root: join(tree, prefix), dependency: source.dependencies[name], removed: false, manifest: new Map([['', { type: 'directory', mode: 0o700 }]]) };
+    states.set(name, state); active = state;
+    await chmod(directory, 0o700); await mkdir(tree, { mode: 0o700 });
+    const archive = join(directory, 'source.tar');
+    // Each suite archives only its own subtree from the same exact SHA, never a sibling suite tree.
+    await (operations.archive ?? command)(source.git, ['archive', '--format=tar', `--output=${archive}`, source.sha, '--', prefix], { cwd: source.top });
+    await (operations.extract ?? command)('/usr/bin/tar', ['-xf', archive, '-C', tree]);
+    for (const entry of entries) {
+      const relative = `tree/${entry.path}`; const path = join(directory, relative);
+      const actual = await lstat(path);
+      if (!actual.isFile() || actual.nlink !== 1) throw new Error('ARCHIVE_TYPE_MISMATCH');
+      const bytes = await readFile(path);
+      if (createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex') !== entry.oid) throw new Error('ARCHIVE_BLOB_MISMATCH');
+      // Both allowed Git regular modes normalize to 0400; original mode stays in the manifest.
+      state.manifest.set(relative, { type: 'file', mode: 0o400, oid: entry.oid, gitMode: entry.gitMode });
+      for (let parent = dirname(relative); parent !== '.'; parent = dirname(parent)) state.manifest.set(parent, { type: 'directory', mode: 0o500 });
+    }
+    await rm(archive);
+    await (operations.link ?? symlink)(state.dependency, join(state.root, 'node_modules'));
+    state.manifest.set(`tree/${prefix}/node_modules`, { type: 'link' });
+    const lock = operations.chmod ?? chmod;
+    for (const [relative, entry] of state.manifest) if (entry.type === 'file') await lock(join(directory, relative), entry.mode);
+    for (const [relative, entry] of [...state.manifest].sort((a, b) => b[0].length - a[0].length)) if (entry.type === 'directory' && relative) await lock(join(directory, relative), entry.mode);
+    await verifySnapshot(state);
+  };
   return Object.freeze({
-    get directory() { return directory; },
-    get webRoot() { return tree && join(tree, 'repos/orbits'); },
-    get appRoot() { return tree && join(tree, 'repos/orbit-app'); },
+    get directory() { return active?.directory; },
+    get webRoot() { return states.get('web')?.root; },
+    get appRoot() { return states.get('app')?.root; },
     async prepare() {
-      if (directory) throw new Error('SNAPSHOT_ALREADY_STARTED');
+      if (source || closed) throw new Error('SNAPSHOT_ALREADY_STARTED');
       const sourceHash = await assertSourceTree(web, app);
       const git = await executable('git');
       const top = await realpath(command(git, ['rev-parse', '--show-toplevel'], { cwd: web }).trim());
       const sha = command(git, ['rev-parse', 'HEAD'], { cwd: web }).trim();
       if (hash(sha) !== sourceHash) throw new Error('SOURCE_HEAD_CHANGED');
       const entries = validateArchiveTree(command(git, ['ls-tree', '-rz', sha, '--', 'repos/orbits', 'repos/orbit-app'], { cwd: top }));
-      directory = await realpath(await mkdtemp(join(tmpdir(), 'orbit-sync-snapshot-'))); await chmod(directory, 0o700);
-      tree = join(directory, 'tree'); await mkdir(tree, { mode: 0o700 });
-      const archive = join(directory, 'source.tar');
-      // No external archive input. Reject links and unsafe names from the exact Git tree before extraction.
-      await (operations.archive ?? command)(git, ['archive', '--format=tar', `--output=${archive}`, sha, '--', 'repos/orbits', 'repos/orbit-app'], { cwd: top });
-      await (operations.extract ?? command)('/usr/bin/tar', ['-xf', archive, '-C', tree]);
-      for (const entry of entries) {
-        const bytes = await readFile(join(tree, entry.path));
-        if (createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex') !== entry.oid) throw new Error('ARCHIVE_BLOB_MISMATCH');
-      }
-      await rm(archive);
-      for (const [source, name] of [[web, 'orbits'], [app, 'orbit-app']]) {
-        const dependency = await realpath(join(source, 'node_modules'));
+      const dependencies = {};
+      for (const [original, name] of [[web, 'web'], [app, 'app']]) {
+        const dependency = await realpath(join(original, 'node_modules'));
         if (!(await stat(dependency)).isDirectory()) throw new Error('INVALID_DEPENDENCIES');
-        await (operations.link ?? symlink)(dependency, join(tree, 'repos', name, 'node_modules'));
+        dependencies[name] = dependency;
       }
+      source = { git, top, sha, entries, dependencies };
+      await build('web');
       prepared = true;
       return { sourceHash };
     },
     async run(name, args, env, runner = runBounded) {
-      if (!prepared || removed || !['web', 'app'].includes(name)) throw new Error('INVALID_SNAPSHOT_RUN');
-      const cwd = join(tree, 'repos', name === 'web' ? 'orbits' : 'orbit-app');
-      if (await realpath(cwd) !== cwd) throw new Error('SNAPSHOT_CWD_CHANGED');
-      return { ...await runner(process.execPath, args, { cwd, env }), cwdHash: hash(cwd) };
+      if (!prepared || closed || busy || invalid || !['web', 'app'].includes(name)) throw new Error('INVALID_SNAPSHOT_RUN');
+      busy = true;
+      try {
+        if (name === 'app' && !states.has('app')) { await dispose(states.get('web')); await build('app'); }
+        const state = states.get(name);
+        if (!state || state.removed) throw new Error('SUITE_SNAPSHOT_RETIRED');
+        await verifySnapshot(state);
+        let result;
+        try { result = await runner(process.execPath, args, { cwd: state.root, env }); }
+        finally { await verifySnapshot(state); }
+        return { ...result, cwdHash: hash(state.root) };
+      } catch (error) { invalid = true; throw error; }
+      finally { busy = false; }
     },
     async close() {
-      if (directory && !removed) { await (operations.remove ?? rm)(directory, { recursive: true, force: true }); removed = true; }
+      if (busy) throw new Error('SUITE_STILL_RUNNING');
+      closed = true; let failed = false;
+      for (const state of states.values()) try { await dispose(state); } catch { failed = true; }
+      if (failed) throw new Error('SNAPSHOT_CLEANUP_FAILED');
     },
   });
 }
@@ -279,7 +356,6 @@ async function main() {
       snapshot = createSourceSnapshot(root, appRoot);
       const { sourceHash } = await snapshot.prepare();
       await assertCheckout(snapshot.webRoot, [...WEB_FILES, 'tests/fixtures/note-mutation-worker.ts']);
-      await assertCheckout(snapshot.appRoot, [...APP_FILES, 'tests/helpers/register-render-hooks.mjs']);
       const { Client } = await import('pg');
       client = new Client({ ...target, password: () => target.password });
       client.on('error', () => {});
@@ -289,7 +365,10 @@ async function main() {
       return { databaseHash: hash(`${target.host}:${target.port}/${target.database}`), sourceHash };
     },
     probe: () => databaseProbe.probe(),
-    run: name => snapshot.run(name, ['--test', '--test-concurrency=1', '--test-reporter=tap', '--import', 'tsx', ...(name === 'app' ? ['--import', './tests/helpers/register-render-hooks.mjs'] : []), ...(name === 'web' ? WEB_FILES : APP_FILES)], name === 'web' ? env : childEnvironment(process.env)),
+    run: name => snapshot.run(name, ['--test', '--test-concurrency=1', '--test-reporter=tap', '--import', 'tsx', ...(name === 'app' ? ['--import', './tests/helpers/register-render-hooks.mjs'] : []), ...(name === 'web' ? WEB_FILES : APP_FILES)], name === 'web' ? env : childEnvironment(process.env), async (exe, args, options) => {
+      await assertCheckout(options.cwd, name === 'web' ? [...WEB_FILES, 'tests/fixtures/note-mutation-worker.ts'] : [...APP_FILES, 'tests/helpers/register-render-hooks.mjs']);
+      return runBounded(exe, args, options);
+    }),
     close: async () => {
       let failed = false;
       for (const close of [() => databaseProbe?.close(), () => client?.end(), () => snapshot?.close()]) {

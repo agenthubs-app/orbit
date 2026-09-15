@@ -95,4 +95,15 @@ mode 0600 并在 finally 清理；优先仅在内存中传递，不落盘。
 control database 身份和所有权在删除前再次核验，只删除本次确认创建的 control；
 绝不删除或重建传入的目标库。快照、dump、控制库或清理任一步失败均不能报告通过。
 
+第三轮复审补充：Web/App suite 各用独立随机 mode 0700 容器。只先创建 Web 子树，
+Web suite 结束并校验、删除其快照后，才从同一 exact HEAD 创建 App 子树，避免存在
+另一端可写 sibling。依赖 symlink 建立后，所有 tracked regular files 统一锁为 0400、
+tracked directories 为 0500；原 Git regular mode 保留在清单中，核验使用上述统一只读模式。
+每个 suite 启动前与结束后重新枚举完整自有快照，核对 Git blob hash、类型、权限与路径集合；
+仅精确的 node_modules symlink 可例外，任何额外路径、缺项或持续修改均使 suite/整体失败，
+即使子进程输出通过也不能放行。finally 仅恢复自有目录的删除权限，不跟随 symlink、
+不 chmod 依赖目标；清理失败继续报告失败。
+威胁边界为误操作、并行任务和 suite 持续自修改；不声称抵抗主动同 UID 解锁、瞬时篡改
+后在检查间隙恢复原状的攻击，也不将此工具描述为操作系统沙箱。
+
 四域读取页面由规范化镜像提供首屏；Web→App 四域同账号修改通过 delta 到达；每个服务端响应有稳定分页、actor 隔离和 bounded payload；网络失败/无效 cursor/删除均有真实 UI 和恢复证据。
