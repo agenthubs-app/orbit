@@ -13,3 +13,9 @@
 - 立即释放给 0024 单一 Generator：Web 新增 `shared/contract/contact-needs.ts`、`shared/api-schema/contact-needs.ts`、`features/contact-needs/**`、`app/api/contacts/needs-matches/**`、对应两个新测试和必要的窄合同转发／索引。修改任何既有 symbol 前先做 upstream impact；HIGH／CRITICAL 必须回报后再继续。
 - 暂不释放给 0024：App `src/i18n/{messages,zh,ja,en}.ts`，由 0015 独占；根 `docs/sprints/README.md`、Bridge 和 Git 提交仍由 `/root` 独占。
 - 0024 可在 Web GREEN 后继续只读调查 App；App 新文件、`src/api/endpoints.ts`、`ContactsScreen.tsx`、`ContactsDashboardScreen.tsx` 的具体锁在与 0015 无重叠时由根协调者追加释放。不得在字典未释放时用硬编码中文规避锁。
+
+## App 阶段追加锁（2026-09-15 08:10 JST）
+
+- Web 功能提交 `bf35efb85` 已由根协调者复验并集成。现释放 App 路由、需求编辑页、需求排序页、`useContactNeeds`、需求 view-model、同步 contract/schema、endpoints、`ContactsScreen.tsx`、`ContactsDashboardScreen.tsx` 及 contact-needs／直接受影响 contacts-analysis 测试。
+- 为隔离 Expo 原生依赖并使主页入口与排序内容可做真实 render/interaction 测试，追加两个仅供本 Sprint 使用的纯展示文件：`src/screens/contacts/ContactNeedsHomeEntry.tsx`、`src/screens/contacts/ContactNeedsMatchesContent.tsx`。新增原因、RED→GREEN 和受影响测试必须随交接回报。
+- 0015 产品提交 `d7180e134` 后，根协调者已释放 App 四个 i18n 文件；0024 只可在该提交的三语字典上追加 contact-needs message key，不得覆盖或回退 0015 的既有文案。

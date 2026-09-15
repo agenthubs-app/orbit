@@ -4,11 +4,11 @@
 
 ## 运行记录
 
-- 结果：`blocked`。本地实现、Web/App 契约、浏览器交互与 H 档 App 全量均通过；必需的登录态 Simulator 业务页、真实 provider 生成后回读及同一账号 Web↔App 目标回读未执行，不能把本地结果写成完整 Sprint 通过。
-- run：run-01；owner `/root`；开始 2026-09-15 03:17 JST，结束本地实现与验证 2026-09-15 04:18 JST。
+- 结果：`blocked`。本地实现、Web/App 契约、浏览器交互、H 档 App 全量、登录态 Simulator 首页/Pipeline/旧路径以及同账号 Web↔App 目标双向回读均已通过；真实 provider 显式生成后的持久化与两端回读尚未执行，不能把完整 Sprint 写成通过。
+- run：run-01；owner `/root`；开始 2026-09-15 03:17 JST；本地实现与首轮验证结束 2026-09-15 04:18 JST；真实双端补证 2026-09-15 10:18–10:34 JST。
 - Planner revision 3；SHA256 `1b817d35135aec7cdbe2eb231c047ad7f298d3142bc34d02e1fb1f43345d19f6`。
-- 语义基线 `a1d7d7665`，启动登记 `6cf69280c`；最后功能 HEAD `9a10522b18edf2c05e818be02c3ba2ca5a2aa6b7`。
-- 环境：本地 Node 25；provider keys 全部显式清空；iOS 26.4 Simulator 可启动，但 Orbit 停在登录页，没有授权的共同测试账号或真实分析对象。没有读取密钥、连接真实业务数据库或执行部署。
+- 语义基线 `a1d7d7665`，启动登记 `6cf69280c`；0011 最后功能提交 `9a10522b18edf2c05e818be02c3ba2ca5a2aa6b7`；补证时主线 HEAD `146f5fa09`。
+- 环境：本地 Node 25；provider keys 全部显式清空；iOS 26.4 Simulator `F05ED7C9-1D75-4749-8F53-F9ECDEBC378E` 运行当前主工作区，App 通过 `http://localhost:3000` 连接同一台持续运行的 Web dev server。使用本地隔离测试账号，没有读取真实密钥、连接外部 provider、连接真实业务数据库或执行部署。
 
 ## 改了什么与 commit 对应
 
@@ -24,11 +24,11 @@
 
 | SC | 结果 | 本地证据与未闭合项 |
 | --- | --- | --- |
-| SC-0011-01 | blocked | 0/1/5/6+ 待办、成功补位、失败保留、活动空/错状态及真实详情路由的 App 组合 72/72 通过；登录态 Simulator 对照指定活动区块未运行。旧跟进区块与快捷按钮已移除，但 0018 的真实“记笔记”路由尚不存在，因此没有伪造入口。 |
+| SC-0011-01 | pass | 0/1/5/6+ 待办、成功补位、失败保留、活动空/错状态及真实详情路由的 App 组合 72/72 通过；当前主线登录态 Simulator 首页实测底部为 `All events` 和 `No recommendations yet. Browse all events.`，不是旧联系人区块。旧跟进区块与快捷按钮已移除。 |
 | SC-0011-02 | pass | 服务端只接受首轮、紧邻首条用户消息、带受信 verification 的报告；source hash 由 actor-scoped 当前 dashboard 重算，旧版本为 stale。进入/刷新不生成；App/Web 报告与 schema 组合通过。 |
 | SC-0011-03 | blocked | Web/App 均只登记一次性、actor+server 绑定的 editable prefill；取消、失焦、StrictMode 双 effect、切号及发送时点回归通过。真实 provider 显式发送→持久化→两端回读未运行。 |
-| SC-0011-04 | blocked | PUT 仅含 `relationshipGoal`、`expectedUpdatedAt`、`mutationId`；错误/伪回执保稿，旧 ACK 不覆盖新草稿，409 刷新 baseline 后用新版本与新 mutation 重试，换号迟到请求被中止。真实同账号 App 写→Web 回读及 Web 写→App 回读未运行。 |
-| SC-0011-05 | blocked | Pipeline 独立路由、旧入口、联系人生命周期及归档/历史回归通过；登录态 Simulator 的旧链接与返回路径未实际操作。 |
+| SC-0011-04 | pass | PUT 仅含 `relationshipGoal`、`expectedUpdatedAt`、`mutationId`；错误/伪回执保稿，旧 ACK 不覆盖新草稿，409 刷新 baseline 后用新版本与新 mutation 重试，换号迟到请求被中止。真实同账号补证完成：App 保存 `Find a manufacturing procurement partner in Japan` 后 Web `/app/contacts/dashboard` 原样回读；Web 再保存 `Find a manufacturing procurement partner in Japan and Osaka`，App 重新进入需求排序页后原样回读。 |
+| SC-0011-05 | pass | Pipeline 独立路由、旧入口、联系人生命周期及归档/历史回归通过；登录态 Simulator 实际打开 `orbit://contacts/pipeline`，显示真实联系人阶段分布；旧 `orbit://app/followups` 仍可进入 Tasks 页面，没有断链或假成功。 |
 
 ## 最小验证与未运行项
 
@@ -41,8 +41,9 @@
 | App `npm test` | 2715/2715，0 fail/skip，181500.90075ms | H 档最终全量，已含契约同步检查 |
 | `git diff --cached --check` | 无输出 | App 功能提交前检查 |
 | GitNexus staged detect | `No changes detected` | 索引对嵌套变更未映射，不能据此声称零影响；已人工审核精确 13 个 App 文件并覆盖直接消费者 |
-| iOS Simulator | Orbit 可启动，停在登录页 | 无授权共同账号，未进入首页/分析/Pipeline，不计为业务验收 |
-| 真实 provider / PostgreSQL / 同账号双端 | not_run | 本轮禁用所有 provider key；没有精确授权对象与共同环境 |
+| iOS Simulator | pass（0011-01、05） | 当前主线登录态首页活动空态、Pipeline 与旧 followups 深链均实际打开；App 请求命中正在运行的本地 Web 服务 |
+| 同账号 Web↔App 目标 | pass（0011-04） | 本地隔离账号完成 App 写→Web 读和 Web 写→App 读，文字与服务端版本刷新一致 |
+| 真实 provider | not_run（0011-03） | 本轮继续禁用所有 provider key；没有可用真实 provider 凭据，未把本地规则或夹具冒充模型生成 |
 
 ## 信任、失败与兼容边界
 
@@ -55,4 +56,4 @@
 
 本轮验证显式清空 OpenAI、Anthropic、Google/Gemini、DeepSeek key，新增付费模型调用为 0；不重置既有 USD 5 硬上限及已记 USD 0.012780，前序未核算增量仍保持未知。
 
-0013 可依赖已经稳定的首页、Pipeline 与分析入口代码，但 0011 仍保持 blocked，直到获得共同登录账号/环境后完成：登录态 Simulator 首页与 Pipeline；显式分析发送后真实报告持久化及 Web/App 重开；关系目标 App→Web 与 Web→App 同一 profile/version 回读。回退应限定到上表功能提交，不覆盖其他线路或用户未跟踪设计素材。
+0013 可依赖已经稳定的首页、Pipeline 与分析入口代码。0011 仍保持 blocked，但阻塞范围已收窄到 SC-0011-03：需要真实 provider 凭据完成一次用户显式发送，随后验证报告持久化及 Web/App 重开回读。登录态 Simulator 首页/Pipeline、旧路径和关系目标双端回读不再是缺项。回退应限定到上表功能提交，不覆盖其他线路或用户未跟踪设计素材。
