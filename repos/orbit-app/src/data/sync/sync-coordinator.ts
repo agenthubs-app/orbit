@@ -58,6 +58,20 @@ export interface SyncOptions {
 export interface SyncRequest<TPayload = unknown> {
   cancel(): void;
   promise: Promise<SyncedCollectionSnapshot<TPayload> | null>;
+  started: Promise<boolean>;
+}
+
+export interface SyncCoordinatorSession {
+  deactivate(): void;
+  invalidate(): void;
+  isCurrent(): boolean;
+  readCollection<TPayload = unknown>(
+    kind: SyncChangeKind,
+  ): Promise<SyncedCollectionSnapshot<TPayload> | null>;
+  synchronize<TPayload = unknown>(
+    kind: SyncChangeKind,
+    options?: SyncOptions,
+  ): SyncRequest<TPayload>;
 }
 
 interface ActiveScope extends SyncScopeInput {
@@ -66,6 +80,7 @@ interface ActiveScope extends SyncScopeInput {
   flight: SyncFlight | null;
   generation: number;
   invalidated: boolean;
+  leases: number;
   ready: Promise<void>;
   superseded: boolean;
   workspaceId: string | null;
@@ -75,6 +90,8 @@ interface SyncFlight {
   backgroundDurationMs: number;
   promise: Promise<SyncRunResult | null>;
   reason: SyncRefreshReason;
+  resolveStarted(started: boolean): void;
+  started: Promise<boolean>;
   stopAfterCurrent: boolean;
   subscribers: number;
 }
@@ -280,6 +297,7 @@ export function createSyncCoordinator(input: {
       }
       if (flight.stopAfterCurrent) return { error: null };
 
+      flight.resolveStarted(true);
       let resetAttempted = false;
       let pageCount = 0;
       let requestCursor = cursor?.cursor;
@@ -333,6 +351,8 @@ export function createSyncCoordinator(input: {
     } catch (error) {
       if (!isCurrent(scope)) return null;
       return { error: errorMessage(error) };
+    } finally {
+      flight.resolveStarted(false);
     }
   }
 
@@ -342,10 +362,11 @@ export function createSyncCoordinator(input: {
     scope.abortController?.abort();
   }
 
-  function openScope(scopeInput: SyncScopeInput) {
+  function openScope(scopeInput: SyncScopeInput): SyncCoordinatorSession {
     assertScope(scopeInput);
     if (
       active &&
+      !active.superseded &&
       active.scopeKey === scopeInput.scopeKey &&
       active.baseUrl === scopeInput.baseUrl &&
       active.actorId === scopeInput.actorId
@@ -360,6 +381,7 @@ export function createSyncCoordinator(input: {
         flight: null,
         generation: ++generation,
         invalidated: false,
+        leases: 0,
         ready: Promise.resolve(),
         superseded: false,
         workspaceId: null,
@@ -368,8 +390,19 @@ export function createSyncCoordinator(input: {
       active = next;
     }
     const bound = active;
+    bound.leases += 1;
+    let deactivated = false;
 
     return {
+      deactivate(): void {
+        if (deactivated) return;
+        deactivated = true;
+        bound.leases = Math.max(0, bound.leases - 1);
+        if (bound.leases === 0 && isCurrent(bound)) {
+          supersede(bound);
+          active = null;
+        }
+      },
       invalidate(): void {
         if (isCurrent(bound)) bound.invalidated = true;
       },
@@ -384,14 +417,21 @@ export function createSyncCoordinator(input: {
         options: SyncOptions = {},
       ): SyncRequest<TPayload> {
         if (!isCurrent(bound)) {
-          return { cancel() {}, promise: Promise.resolve(null) };
+          return {
+            cancel() {},
+            promise: Promise.resolve(null),
+            started: Promise.resolve(false),
+          };
         }
         let flight = bound.flight;
         if (!flight) {
+          const startSignal = deferredBoolean();
           const nextFlight: SyncFlight = {
             backgroundDurationMs: options.backgroundDurationMs ?? 0,
             promise: Promise.resolve({ error: null }),
             reason: options.reason ?? "mount",
+            resolveStarted: startSignal.resolve,
+            started: startSignal.promise,
             stopAfterCurrent: false,
             subscribers: 0,
           };
@@ -430,12 +470,32 @@ export function createSyncCoordinator(input: {
               ? null
               : finalSnapshot<TPayload>(bound, kind, result),
           ),
+          started: flight.started,
         };
       },
     };
   }
 
   return { openScope };
+}
+
+function deferredBoolean(): {
+  promise: Promise<boolean>;
+  resolve(value: boolean): void;
+} {
+  let settled = false;
+  let resolvePromise!: (value: boolean) => void;
+  const promise = new Promise<boolean>((resolve) => {
+    resolvePromise = resolve;
+  });
+  return {
+    promise,
+    resolve(value) {
+      if (settled) return;
+      settled = true;
+      resolvePromise(value);
+    },
+  };
 }
 
 function assertScope(scope: SyncScopeInput): void {

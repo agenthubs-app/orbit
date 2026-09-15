@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
+import { createRequire } from "node:module";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
+import { build } from "esbuild";
+import { chromium, type Browser, type Page } from "playwright";
 
 import type { SyncPage, SyncRecord } from "../src/api/contract/sync";
 import type { OrbitApiClient } from "../src/api/client";
@@ -29,6 +32,7 @@ const META = {
 };
 const BASE_URL = "http://127.0.0.1:3000";
 const NOW = Date.parse("2026-09-16T12:00:00.000Z");
+const require = createRequire(import.meta.url);
 
 class NodeTestDatabase implements LocalSyncDatabase {
   readonly database = new DatabaseSync(":memory:");
@@ -307,6 +311,20 @@ test("sync client rejects malformed runtime data and recognizes only exact reset
         !(error instanceof SyncResetRequiredError),
     );
   }
+});
+
+test("sync client rejects a success page carried by a non-success HTTP status", async () => {
+  const client = createSyncClient(
+    apiClient(async () => ({
+      ...success(page()),
+      status: 503,
+    })),
+  );
+
+  await assert.rejects(
+    client.getPage({ limit: 100, actorId: "actor-a" }),
+    /invalid sync response status/,
+  );
 });
 
 test("cold bootstrap pulls pages sequentially and completes only the final cursor", async (t) => {
@@ -899,4 +917,344 @@ test("network failure with an existing mirror preserves it as stale", async (t) 
   assert.equal(result?.status, "stale");
   assert.equal(result?.records[0]?.id, "cached");
   assert.match(result?.error ?? "", /request failed/);
+});
+
+const hookFixture = `
+import { useSyncExternalStore } from "react";
+let revision = 0;
+const subscribers = new Set();
+const appStateListeners = new Set();
+const meta = { featureMode: null, privacy: null, runtimeBoundary: null };
+const state = window.fixture = {
+  actorId: "actor-a", signedIn: true, ready: true, baseUrlReady: true,
+  baseUrl: "https://orbit.example", sessionRevision: 0, mounted: true,
+  componentCount: 1, appState: "active", requests: [], replies: [],
+  records: [], cursor: null, workspaceId: null, applies: 0, scopeOpens: 0,
+  renders: [], cursorReads: 0, holdSyncCursor: false, releaseCursor: null,
+  ...window.initialFixture,
+  update(patch) {
+    Object.assign(state, patch);
+    revision += 1;
+    subscribers.forEach(listener => listener());
+  },
+  reply(index, id) {
+    state.replies[index]({
+      success: true,
+      data: {
+        workspaceId: "workspace-a",
+        changes: [{
+          kind: "note", id, revision: "revision-" + id,
+          operation: "upsert", updatedAt: "2026-09-16T12:00:00.000Z",
+          payload: { title: id }, aiVisibility: "available_when_synced"
+        }],
+        nextCursor: "cursor-" + id, hasMore: false, highWatermark: "1",
+        serverTime: "2026-09-16T12:00:00.000Z"
+      },
+      meta,
+      status: 200
+    });
+  },
+};
+const observe = () => useSyncExternalStore(
+  listener => { subscribers.add(listener); return () => subscribers.delete(listener); },
+  () => revision,
+  () => revision,
+);
+const apiClient = {
+  get(path, options) {
+    const index = state.requests.length;
+    state.requests.push({ path, signal: options?.signal });
+    return new Promise(resolve => { state.replies[index] = resolve; });
+  }
+};
+export const useFixture = () => { observe(); return state; };
+export const useOrbitAuthSession = () => {
+  observe();
+  return {
+    actorId: state.actorId,
+    cookieHeader: "",
+    notificationSessionRevision: state.sessionRevision,
+    ready: state.ready,
+    signedIn: state.signedIn,
+  };
+};
+export const useOrbitApiBaseUrl = () => {
+  observe();
+  return { baseUrl: state.baseUrl, ready: state.baseUrlReady };
+};
+export const useOrbitApiClient = () => apiClient;
+export const AppState = {
+  get currentState() { return state.appState; },
+  addEventListener(_event, listener) {
+    appStateListeners.add(listener);
+    return { remove() { appStateListeners.delete(listener); } };
+  },
+};
+export const syncLifecycle = {
+  async setScope() { state.scopeOpens += 1; return true; },
+  async withDatabase(_scope, operation) { return operation({}, {}); },
+};
+export function createLocalSyncRepository() {
+  return {
+    async getLastWorkspaceId() { return state.workspaceId; },
+    async getCursor() {
+      state.cursorReads += 1;
+      if (state.holdSyncCursor && state.cursorReads === 2) {
+        await new Promise(resolve => { state.releaseCursor = resolve; });
+      }
+      return state.cursor;
+    },
+    async listRecords() { return state.records; },
+    async applyPage(input) {
+      if (input.canCommit && !input.canCommit()) return false;
+      state.applies += 1;
+      state.records = input.records;
+      state.workspaceId = input.workspaceId;
+      state.cursor = {
+        workspaceId: input.workspaceId,
+        cursor: input.cursor,
+        lastSyncedAt: input.syncedAt,
+        bootstrapState: input.bootstrapState,
+      };
+      if (input.canCommit && !input.canCommit()) {
+        state.applies -= 1;
+        state.records = [];
+        state.workspaceId = null;
+        state.cursor = null;
+        return false;
+      }
+      return true;
+    },
+    async resetWorkspace() { state.records = []; state.cursor = null; return true; },
+  };
+}
+`;
+
+let hookBrowser: Browser;
+let hookScript: string;
+
+test.before(async () => {
+  const result = await build({
+    stdin: {
+      contents: `import React from "react";
+import { createRoot } from "react-dom/client";
+import { renderToString } from "react-dom/server";
+import { useFixture } from "fixture";
+import { useSyncedCollection } from "./src/hooks/useSyncedCollection";
+function Probe({ index }) {
+  const state = useSyncedCollection({ kind: "note" });
+  const fixture = useFixture();
+  fixture.renders.push(state.status);
+  return <output data-probe={index}>{state.status + ":" + state.records.map(record => record.id).join(",")}</output>;
+}
+function App() {
+  const fixture = useFixture();
+  return fixture.mounted
+    ? <>{Array.from({ length: fixture.componentCount }, (_, index) => <Probe index={index} key={index} />)}</>
+    : null;
+}
+window.renderAbandoned = () => renderToString(<Probe index="abandoned" />);
+createRoot(document.getElementById("root")).render(<App />);`,
+      loader: "tsx",
+      resolveDir: process.cwd(),
+    },
+    bundle: true,
+    write: false,
+    format: "iife",
+    jsx: "automatic",
+    define: {
+      "process.env.NODE_ENV": '"test"',
+      "process.env": "{}",
+      __DEV__: "false",
+    },
+    plugins: [
+      {
+        name: "synced-collection-hook-boundaries",
+        setup(plugin) {
+          plugin.onResolve(
+            {
+              filter:
+                /^(fixture|react-native)$|\/(ApiBaseUrlProvider|AuthSessionProvider|useOrbitApiClient|sync-lifecycle|local-sync-repository)$/,
+            },
+            () => ({ path: "fixture", namespace: "sync-hook" }),
+          );
+          plugin.onLoad({ filter: /.*/, namespace: "sync-hook" }, () => ({
+            contents: hookFixture,
+            loader: "jsx",
+            resolveDir: process.cwd(),
+          }));
+          plugin.onResolve({ filter: /^react-native-web$/ }, () => ({
+            path: require.resolve("react-native-web"),
+          }));
+        },
+      },
+    ],
+  });
+  hookScript = result.outputFiles[0]!.text;
+  hookBrowser = await chromium.launch({
+    headless: true,
+    ...(process.env.ORBIT_TEST_CHROME_PATH
+      ? { executablePath: process.env.ORBIT_TEST_CHROME_PATH }
+      : {}),
+  });
+});
+
+test.after(async () => {
+  await hookBrowser?.close();
+});
+
+async function settleHook(page: Page): Promise<void> {
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
+}
+
+async function openHook(
+  t: { after(fn: () => Promise<void>): void },
+  patch: Record<string, unknown> = {},
+): Promise<Page> {
+  const page = await hookBrowser.newPage();
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  t.after(async () => {
+    await page.close();
+    assert.deepEqual(errors, []);
+  });
+  page.setDefaultTimeout(3_000);
+  await page.route("**/*", (route) => route.abort());
+  await page.setContent('<div id="root"></div>');
+  await page.evaluate((initial) => {
+    (window as unknown as { initialFixture: unknown }).initialFixture = initial;
+  }, patch);
+  await page.addScriptTag({ content: hookScript });
+  await settleHook(page);
+  return page;
+}
+
+async function updateHook(page: Page, patch: Record<string, unknown>) {
+  await page.evaluate((next) => {
+    (window as unknown as { fixture: { update(value: unknown): void } }).fixture.update(next);
+  }, patch);
+  await settleHook(page);
+}
+
+test("an abandoned React render does not open a coordinator scope", async (t) => {
+  const page = await openHook(t, { mounted: false });
+  await page.evaluate(() => {
+    (window as unknown as { renderAbandoned(): void }).renderAbandoned();
+  });
+  assert.equal(
+    await page.evaluate(() =>
+      (window as unknown as { fixture: { scopeOpens: number } }).fixture.scopeOpens,
+    ),
+    0,
+  );
+});
+
+test("signout and same-actor relogin reject the prior hook generation", async (t) => {
+  const page = await openHook(t);
+  await page.waitForFunction(() =>
+    (window as unknown as { fixture: { requests: unknown[] } }).fixture.requests.length === 1,
+  );
+  await updateHook(page, { actorId: null, signedIn: false });
+  assert.equal(
+    await page.evaluate(() => {
+      const request = (window as unknown as {
+        fixture: { requests: Array<{ signal?: AbortSignal }> };
+      }).fixture.requests[0];
+      return request?.signal?.aborted;
+    }),
+    true,
+  );
+  await updateHook(page, { actorId: "actor-a", signedIn: true });
+  await page.waitForFunction(() =>
+    (window as unknown as { fixture: { requests: unknown[] } }).fixture.requests.length === 2,
+  );
+
+  await page.evaluate(() => {
+    (window as unknown as { fixture: { reply(index: number, id: string): void } }).fixture.reply(0, "old");
+  });
+  await settleHook(page);
+  assert.equal(
+    await page.evaluate(() =>
+      (window as unknown as { fixture: { applies: number } }).fixture.applies,
+    ),
+    0,
+  );
+  assert.doesNotMatch(await page.locator("output").innerText(), /old/);
+
+  await page.evaluate(() => {
+    (window as unknown as { fixture: { reply(index: number, id: string): void } }).fixture.reply(1, "new");
+  });
+  await page.getByText("fresh:new", { exact: true }).waitFor();
+  assert.equal(
+    await page.evaluate(() =>
+      (window as unknown as { fixture: { applies: number } }).fixture.applies,
+    ),
+    1,
+  );
+});
+
+test("two committed hook consumers share one flight and one cleanup does not revoke it", async (t) => {
+  const page = await openHook(t, { componentCount: 2 });
+  await page.waitForFunction(() =>
+    (window as unknown as { fixture: { requests: unknown[] } }).fixture.requests.length === 1,
+  );
+  assert.equal(
+    await page.locator('output[data-probe="0"]').innerText(),
+    "syncing:",
+  );
+  await updateHook(page, { componentCount: 1 });
+  assert.equal(
+    await page.evaluate(() =>
+      (window as unknown as { fixture: { requests: unknown[] } }).fixture.requests.length,
+    ),
+    1,
+  );
+  await page.evaluate(() => {
+    (window as unknown as { fixture: { reply(index: number, id: string): void } }).fixture.reply(0, "shared");
+  });
+  await page.getByText("fresh:shared", { exact: true }).waitFor();
+});
+
+test("a TTL hit never publishes a synthetic syncing render", async (t) => {
+  const lastSyncedAt = new Date().toISOString();
+  const page = await openHook(t, {
+    cursor: {
+      workspaceId: "workspace-a",
+      cursor: "cursor-fresh",
+      lastSyncedAt,
+      bootstrapState: "complete",
+    },
+    workspaceId: "workspace-a",
+    holdSyncCursor: true,
+    records: [{
+      actorId: "actor-a", workspaceId: "workspace-a", kind: "note", id: "cached",
+      revision: "revision-cached", updatedAt: lastSyncedAt, deletedAt: null,
+      payload: { title: "cached" }, syncState: "synced",
+      aiVisibility: "available_when_synced",
+    }],
+  });
+  await page.waitForFunction(() =>
+    (window as unknown as { fixture: { cursorReads: number } }).fixture.cursorReads === 2,
+  );
+  assert.equal(
+    await page.evaluate(() => {
+      const fixture = (window as unknown as {
+        fixture: { renders: string[]; requests: unknown[] };
+      }).fixture;
+      return fixture.renders.includes("syncing");
+    }),
+    false,
+  );
+  await page.evaluate(() => {
+    (window as unknown as { fixture: { releaseCursor(): void } }).fixture.releaseCursor();
+  });
+  await page.getByText("fresh:cached", { exact: true }).waitFor();
+  assert.equal(
+    await page.evaluate(() =>
+      (window as unknown as { fixture: { requests: unknown[] } }).fixture.requests.length,
+    ),
+    0,
+  );
 });

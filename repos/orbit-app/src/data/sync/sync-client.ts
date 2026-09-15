@@ -131,6 +131,13 @@ export function createSyncClient(
         }
         throw new SyncRequestError(errorInput);
       }
+      if (
+        !Number.isInteger(result.status) ||
+        result.status < 200 ||
+        result.status >= 300
+      ) {
+        throw new TypeError("invalid sync response status");
+      }
 
       const parsed = PAGE.safeParse(result.data);
       if (!parsed.success) {

@@ -13,6 +13,7 @@ import { useOrbitApiBaseUrl } from "../api/ApiBaseUrlProvider";
 import { createSyncClient } from "../data/sync/sync-client";
 import {
   createSyncCoordinator,
+  type SyncCoordinatorSession,
   type SyncedCollectionSnapshot,
   type SyncRequest,
 } from "../data/sync/sync-coordinator";
@@ -47,22 +48,11 @@ export function useSyncedCollection<TPayload = unknown>(input: {
     [auth.actorId, auth.notificationSessionRevision, baseUrl],
   );
   const apiClient = useOrbitApiClient({ scopeKey });
-  const session = useMemo(
-    () =>
-      auth.actorId
-        ? appSyncCoordinator.openScope({
-            actorId: auth.actorId,
-            baseUrl,
-            client: createSyncClient(apiClient),
-            scopeKey,
-          })
-        : null,
-    [apiClient, auth.actorId, baseUrl, scopeKey],
-  );
   const [snapshot, setSnapshot] = useState<
     SyncedCollectionSnapshot<TPayload>
   >(() => emptySnapshot<TPayload>());
   const mounted = useRef(false);
+  const sessionRef = useRef<SyncCoordinatorSession | null>(null);
   const viewGeneration = useRef(0);
   const requests = useRef(new Set<SyncRequest<TPayload>>());
 
@@ -71,6 +61,7 @@ export function useSyncedCollection<TPayload = unknown>(input: {
       reason: "mount" | "explicit" | "foreground" | "invalidated",
       backgroundDurationMs?: number,
     ): Promise<void> => {
+      const session = sessionRef.current;
       if (!session || !session.isCurrent()) return;
       const requestGeneration = viewGeneration.current;
       const request = session.synchronize<TPayload>(input.kind, {
@@ -78,7 +69,9 @@ export function useSyncedCollection<TPayload = unknown>(input: {
         reason,
       });
       requests.current.add(request);
+      const started = await request.started;
       if (
+        started &&
         mounted.current &&
         viewGeneration.current === requestGeneration &&
         session.isCurrent()
@@ -103,18 +96,31 @@ export function useSyncedCollection<TPayload = unknown>(input: {
         requests.current.delete(request);
       }
     },
-    [input.kind, session],
+    [input.kind],
   );
 
   useEffect(() => {
     const effectGeneration = ++viewGeneration.current;
     mounted.current = true;
     setSnapshot(emptySnapshot<TPayload>());
-    if (!auth.ready || !baseUrlReady || !auth.signedIn || !session) {
+    if (
+      !auth.ready ||
+      !baseUrlReady ||
+      !auth.signedIn ||
+      !auth.actorId
+    ) {
+      sessionRef.current = null;
       return () => {
         mounted.current = false;
       };
     }
+    const session = appSyncCoordinator.openScope({
+      actorId: auth.actorId,
+      baseUrl,
+      client: createSyncClient(apiClient),
+      scopeKey,
+    });
+    sessionRef.current = session;
     let active = true;
     void session.readCollection<TPayload>(input.kind).then((mirror) => {
       if (
@@ -142,6 +148,8 @@ export function useSyncedCollection<TPayload = unknown>(input: {
       if (viewGeneration.current === effectGeneration) {
         viewGeneration.current += 1;
       }
+      if (sessionRef.current === session) sessionRef.current = null;
+      session.deactivate();
       unsubscribeAppState();
       for (const request of requests.current) request.cancel();
       requests.current.clear();
@@ -149,9 +157,12 @@ export function useSyncedCollection<TPayload = unknown>(input: {
   }, [
     auth.ready,
     auth.signedIn,
+    auth.actorId,
+    apiClient,
+    baseUrl,
     baseUrlReady,
     input.kind,
-    session,
+    scopeKey,
     startSync,
   ]);
 
@@ -160,9 +171,9 @@ export function useSyncedCollection<TPayload = unknown>(input: {
     [startSync],
   );
   const invalidate = useCallback(() => {
-    session?.invalidate();
+    sessionRef.current?.invalidate();
     return startSync("invalidated");
-  }, [session, startSync]);
+  }, [startSync]);
 
   return {
     ...snapshot,
