@@ -20,6 +20,14 @@ test("note suggestion navigation carries only an immutable reference and editabl
   assert.doesNotMatch(JSON.stringify(navigation), /笔记正文|原始笔记/u);
 });
 
+test("note suggestion prompt follows the active app language", () => {
+  const navigation = buildNoteSuggestionNavigation({ id: "note:one", version: 3 }, "en");
+
+  assert.equal(navigation.params.initialMessage, "Turn this note into a task with a clear title and date.");
+  assert.equal(navigation.params.sourceNoteId, "note:one");
+  assert.equal(navigation.params.sourceNoteVersion, "3");
+});
+
 test("note detail projects only actor-owned tasks created from that note", () => {
   const tasks = noteSourceTasksFromPayload({ tasks: [
     { id: "task:one", title: "联系佐藤", accountId: "account:one", ownerUserId: "account:one", sourceNoteId: "note:one", sourceNoteVersion: 3 },

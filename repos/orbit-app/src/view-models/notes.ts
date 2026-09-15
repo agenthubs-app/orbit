@@ -1,4 +1,6 @@
+import type { OrbitLanguage } from "../api/contract/language";
 import type { NoteContract, NoteMentionContract } from "../api/contract/notes";
+import { createTranslator } from "../i18n/messages";
 
 export type NoteView = NoteContract;
 
@@ -14,7 +16,7 @@ function nonEmpty(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-function normalizedNote(value: unknown, actorId: string): NoteView | null {
+function normalizedNote(value: unknown, actorId: string, language: OrbitLanguage): NoteView | null {
   if (!isRecord(value)) return null;
   const valid = nonEmpty(value.id)
     && value.accountId === actorId
@@ -44,7 +46,7 @@ function normalizedNote(value: unknown, actorId: string): NoteView | null {
   const eventIds = Array.isArray(value.eventIds) && value.eventIds.every(nonEmpty) ? contactIds(value.eventIds) : [];
   const title = nonEmpty(value.title)
     ? value.title.trim()
-    : body.split(/\r?\n/).map((line) => line.trim()).find(Boolean) ?? "未命名笔记";
+    : body.split(/\r?\n/).map((line) => line.trim()).find(Boolean) ?? createTranslator(language)("notes.untitled");
   const expectedCanonical = contactIds([...manualContactIds, ...mentions.map((item) => item.contactId)]);
   if (!sameIds(expectedCanonical, canonicalIds)) return null;
   return {
@@ -68,9 +70,9 @@ function sameIds(left: readonly string[], right: readonly string[]): boolean {
   return a.length === b.length && a.every((value, index) => value === b[index]);
 }
 
-export function notesFromPayload(data: unknown, actorId: string): NoteView[] | null {
+export function notesFromPayload(data: unknown, actorId: string, language: OrbitLanguage = "zh"): NoteView[] | null {
   if (!isRecord(data) || !Array.isArray(data.notes)) return null;
-  const notes = data.notes.map((item) => normalizedNote(item, actorId));
+  const notes = data.notes.map((item) => normalizedNote(item, actorId, language));
   if (notes.some((item) => item === null)) return null;
   return (notes as NoteView[]).sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 }
@@ -81,8 +83,8 @@ export interface NotesPageView {
   nextCursor: string | null;
 }
 
-export function notesPageFromPayload(data: unknown, actorId: string): NotesPageView | null {
-  const notes = notesFromPayload(data, actorId);
+export function notesPageFromPayload(data: unknown, actorId: string, language: OrbitLanguage = "zh"): NotesPageView | null {
+  const notes = notesFromPayload(data, actorId, language);
   if (notes === null || !isRecord(data)) return null;
   const total = Number(data.total);
   if (!Number.isSafeInteger(total) || total < notes.length) return null;
@@ -94,9 +96,9 @@ export function notesPageFromPayload(data: unknown, actorId: string): NotesPageV
   };
 }
 
-export function noteFromPayload(data: unknown, actorId: string, noteId: string): NoteView | null {
+export function noteFromPayload(data: unknown, actorId: string, noteId: string, language: OrbitLanguage = "zh"): NoteView | null {
   if (!isRecord(data)) return null;
-  const note = normalizedNote(data.note, actorId);
+  const note = normalizedNote(data.note, actorId, language);
   return note?.id === noteId ? note : null;
 }
 
@@ -111,11 +113,13 @@ export interface RichNoteDraft {
 export function buildRichNoteCreateRequest(
   draft: RichNoteDraft,
   idempotencyKey: string,
+  language: OrbitLanguage = "zh",
 ): NoteRequestResult<RichNoteDraft & { idempotencyKey: string }> {
+  const t = createTranslator(language);
   const title = draft.title.trim();
   const body = draft.body.trim();
-  if (!title) return { success: false, error: "请输入笔记标题。" };
-  if (!body) return { success: false, error: "请输入笔记内容。" };
+  if (!title) return { success: false, error: t("notes.titleRequired") };
+  if (!body) return { success: false, error: t("notes.bodyRequired") };
   return {
     success: true,
     body: {
@@ -133,9 +137,11 @@ export function buildRichNoteUpdateRequest(
   draft: RichNoteDraft,
   expectedVersion: number,
   idempotencyKey: string,
+  language: OrbitLanguage = "zh",
 ): NoteRequestResult<RichNoteDraft & { expectedVersion: number; idempotencyKey: string }> {
-  if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 1) return { success: false, error: "笔记版本无效，请重新读取。" };
-  const created = buildRichNoteCreateRequest(draft, idempotencyKey);
+  const t = createTranslator(language);
+  if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 1) return { success: false, error: t("notes.versionInvalid") };
+  const created = buildRichNoteCreateRequest(draft, idempotencyKey, language);
   return created.success
     ? { success: true, body: { ...created.body, expectedVersion } }
     : created;
@@ -145,9 +151,10 @@ export function buildNoteCreateRequest(
   draft: string,
   selectedContactIds: readonly string[],
   idempotencyKey: string,
+  language: OrbitLanguage = "zh",
 ): NoteRequestResult<{ body: string; contactIds: string[]; idempotencyKey: string }> {
   const body = draft.trim();
-  if (!body) return { success: false, error: "请输入笔记内容。" };
+  if (!body) return { success: false, error: createTranslator(language)("notes.bodyRequired") };
   return { success: true, body: { body, contactIds: contactIds(selectedContactIds), idempotencyKey } };
 }
 
@@ -156,10 +163,12 @@ export function buildNoteUpdateRequest(
   selectedContactIds: readonly string[],
   expectedVersion: number,
   idempotencyKey: string,
+  language: OrbitLanguage = "zh",
 ): NoteRequestResult<{ body: string; contactIds: string[]; expectedVersion: number; idempotencyKey: string }> {
+  const t = createTranslator(language);
   const body = draft.trim();
-  if (!body) return { success: false, error: "请输入笔记内容。" };
-  if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 1) return { success: false, error: "笔记版本无效，请重新读取。" };
+  if (!body) return { success: false, error: t("notes.bodyRequired") };
+  if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 1) return { success: false, error: t("notes.versionInvalid") };
   return { success: true, body: { body, contactIds: contactIds(selectedContactIds), expectedVersion, idempotencyKey } };
 }
 
@@ -172,9 +181,9 @@ export function confirmedNote(data: unknown, expected: {
   mentions?: readonly NoteMentionContract[];
   noteId?: string;
   title?: string;
-}): NoteView | null {
+}, language: OrbitLanguage = "zh"): NoteView | null {
   if (!isRecord(data)) return null;
-  const note = normalizedNote(data.note, expected.actorId);
+  const note = normalizedNote(data.note, expected.actorId, language);
   if (!note) return null;
   if (expected.noteId && note.id !== expected.noteId) return null;
   const mentionsMatch = expected.mentions === undefined || (

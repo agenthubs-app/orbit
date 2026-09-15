@@ -36,7 +36,12 @@ test.before(async () => {
   const result = await build({
     stdin: {
       contents: `import React from "react"; import { createRoot } from "react-dom/client";
-        import { NotesScreen } from "./src/screens/notes/NotesScreen"; createRoot(document.getElementById("root")).render(<NotesScreen actorId="account:one" scopeKey="scope" />);`,
+        import { NotesScreen } from "./src/screens/notes/NotesScreen";
+        import { OrbitLocaleContext } from "./src/i18n/OrbitLocaleContext";
+        import { createTranslator } from "./src/i18n/messages";
+        const language = window.initialFixture?.language || "zh";
+        const locale = { choice: language, deviceLanguage: language, error: null, language, preference: { mode: "manual", language, updatedAt: null }, retryLanguageSave: async () => {}, setLanguage: async () => {}, source: "account", syncState: "idle", t: createTranslator(language) };
+        createRoot(document.getElementById("root")).render(<OrbitLocaleContext.Provider value={locale}><NotesScreen actorId="account:one" scopeKey="scope" /></OrbitLocaleContext.Provider>);`,
       resolveDir: process.cwd(), loader: "tsx",
     },
     bundle: true, write: false, format: "iife", jsx: "automatic",
@@ -111,4 +116,13 @@ test("notes list caps accessibility text at two times and keeps labels readable"
   assert.ok(filters.every((box) => box && box.width <= 390 && box.height >= 44), JSON.stringify(filters));
   assert.equal(await page.getByText("发布会准备", { exact: true }).isVisible(), true);
   assert.equal(await page.getByText("发布会准备 正文摘要", { exact: true }).isVisible(), true);
+});
+
+test("an English account translates note-list chrome without changing note content", async (t) => {
+  const page = await open(t, { language: "en" });
+  await page.getByRole("textbox", { name: "Search notes" }).waitFor();
+  await page.getByRole("tab", { name: "Related events" }).waitFor();
+  await page.getByText("发布会准备", { exact: true }).waitFor();
+  await page.getByText("发布会准备 正文摘要", { exact: true }).waitFor();
+  assert.equal(await page.getByText("搜索笔记", { exact: true }).count(), 0);
 });

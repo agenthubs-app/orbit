@@ -374,7 +374,7 @@ export function TaskDetailScreen() {
               <Ionicons color={colors.text4} name="chevron-forward" size={17} />
             </Pressable> : null}
             {(latest ?? detail).location ? <View style={styles.metadataRow}><Text style={metadataLabelStyle}>{locale.t("taskDetail.location")}</Text><Text style={styles.metadataValue}>{(latest ?? detail).location}</Text></View> : null}
-            {detail.sourceNoteId ? <Pressable accessibilityLabel={locale.t("taskDetail.viewSourceNote")} accessibilityRole="button" onPress={() => router.push(`/notes/${encodeURIComponent(detail.sourceNoteId!)}` as Href)} style={styles.metadataRow}>
+            {detail.sourceNoteId && detail.sourceNoteVersion ? <Pressable accessibilityLabel={locale.t("taskDetail.viewSourceNote")} accessibilityRole="button" onPress={() => router.push(`/notes/${encodeURIComponent(detail.sourceNoteId!)}` as Href)} style={styles.metadataRow}>
               <Text style={metadataLabelStyle}>{locale.t("taskDetail.sourceNote")}</Text>
               <Text style={[styles.metadataValue, styles.linkValue]}>{locale.t("taskDetail.viewSourceNoteVersion", { version: detail.sourceNoteVersion })}</Text>
               <Ionicons color={colors.text4} name="chevron-forward" size={17} />

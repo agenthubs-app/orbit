@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import type { ContactSummary } from "../../view-models/contacts";
 import { createThemedStyles } from "../../design/theme";
 import { radius, spacing, typography } from "../../design/tokens";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 
 export interface NoteContactSearchPage {
   contacts: readonly ContactSummary[];
@@ -19,6 +20,7 @@ export function NoteContactPicker({ disabled = false, selectedIds, selectedConta
   search: (query: string, cursor: string | undefined, signal: AbortSignal) => Promise<NoteContactSearchPage>;
 }) {
   const { styles, colors } = useStyles();
+  const locale = useOrbitLocale();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ContactSummary[]>([]);
@@ -55,12 +57,12 @@ export function NoteContactPicker({ disabled = false, selectedIds, selectedConta
         setSearching(false);
       }).catch((reason: unknown) => {
         if (operation.signal.aborted || currentGeneration !== generation.current) return;
-        setError(reason instanceof Error ? reason.message : "搜索暂时不可用，请重试。");
+        setError(reason instanceof Error ? reason.message : locale.t("notes.searchUnavailable"));
         setSearching(false);
       });
     }, 250);
     return () => { clearTimeout(timer); operation.abort(); };
-  }, [open, query, search]);
+  }, [locale, open, query, search]);
 
   async function loadMore() {
     if (!nextCursor || searching) return;
@@ -74,7 +76,7 @@ export function NoteContactPicker({ disabled = false, selectedIds, selectedConta
       setResults((items) => [...new Map([...items, ...page.contacts].map((contact) => [contact.id, contact])).values()]);
       setNextCursor(page.nextCursor);
     } catch (reason) {
-      if (!operation.signal.aborted) setError(reason instanceof Error ? reason.message : "搜索暂时不可用，请重试。");
+      if (!operation.signal.aborted) setError(reason instanceof Error ? reason.message : locale.t("notes.searchUnavailable"));
     } finally {
       if (!operation.signal.aborted) setSearching(false);
     }
@@ -84,10 +86,10 @@ export function NoteContactPicker({ disabled = false, selectedIds, selectedConta
   return <View style={styles.group}>
     <View style={styles.labelRow}>
       <View>
-        <Text style={styles.label}>相关人脉</Text>
-        <Text style={styles.hint}>输入名字搜索，不会加载整个人脉列表</Text>
+        <Text style={styles.label}>{locale.t("notes.relatedPeople")}</Text>
+        <Text style={styles.hint}>{locale.t("notes.relatedPeopleHint")}</Text>
       </View>
-      <Pressable accessibilityRole="button" accessibilityLabel="添加相关人脉" disabled={disabled} onPress={() => setOpen((value) => !value)} style={styles.addButton}>
+      <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.addRelatedPeople")} disabled={disabled} onPress={() => setOpen((value) => !value)} style={styles.addButton}>
         <Ionicons color={colors.accent} name={open ? "close" : "add"} size={23} />
       </Pressable>
     </View>
@@ -95,7 +97,7 @@ export function NoteContactPicker({ disabled = false, selectedIds, selectedConta
       const contact = names.get(id);
       return <View key={id} style={styles.chip}>
         <Text numberOfLines={1} style={styles.chipText}>{contact?.name ?? id}</Text>
-        <Pressable accessibilityRole="button" accessibilityLabel={`移除相关人脉 ${contact?.name ?? id}`} disabled={disabled} onPress={() => onToggle(id, contact)} hitSlop={8}>
+        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.removeRelatedPerson", { name: contact?.name ?? id })} disabled={disabled} onPress={() => onToggle(id, contact)} hitSlop={8}>
           <Ionicons color={colors.text3} name="close-circle" size={18} />
         </Pressable>
       </View>;
@@ -103,24 +105,24 @@ export function NoteContactPicker({ disabled = false, selectedIds, selectedConta
     {open ? <View style={styles.searchPanel}>
       <View style={styles.searchBox}>
         <Ionicons color={colors.text3} name="search" size={19} />
-        <TextInput accessibilityLabel="搜索相关人脉" autoCapitalize="none" autoCorrect={false} editable={!disabled} onChangeText={setQuery} placeholder="输入姓名或公司" placeholderTextColor={colors.text4} style={styles.searchInput} value={query} />
+        <TextInput accessibilityLabel={locale.t("notes.searchRelatedPeople")} autoCapitalize="none" autoCorrect={false} editable={!disabled} onChangeText={setQuery} placeholder={locale.t("notes.searchPeoplePlaceholder")} placeholderTextColor={colors.text4} style={styles.searchInput} value={query} />
       </View>
-      {!query.trim() ? <Text style={styles.emptyHint}>输入至少一个字开始搜索</Text> : null}
-      {searching && results.length === 0 ? <Text accessibilityLiveRegion="polite" style={styles.emptyHint}>正在搜索…</Text> : null}
+      {!query.trim() ? <Text style={styles.emptyHint}>{locale.t("notes.searchPeopleStart")}</Text> : null}
+      {searching && results.length === 0 ? <Text accessibilityLiveRegion="polite" style={styles.emptyHint}>{locale.t("notes.searching")}</Text> : null}
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
-      {query.trim() && !searching && !error && results.length === 0 ? <Text style={styles.emptyHint}>没有找到匹配的人脉</Text> : null}
+      {query.trim() && !searching && !error && results.length === 0 ? <Text style={styles.emptyHint}>{locale.t("notes.noPeople")}</Text> : null}
       {results.map((contact) => {
         const checked = selected.has(contact.id);
         return <Pressable key={contact.id} accessibilityRole="checkbox" accessibilityState={{ checked, disabled }} disabled={disabled} onPress={() => onToggle(contact.id, contact)} style={styles.resultRow}>
           <View style={styles.avatar}><Text style={styles.avatarText}>{contact.name.slice(0, 1).toLocaleUpperCase()}</Text></View>
           <View style={styles.resultCopy}>
             <Text style={styles.resultName}>{contact.name}</Text>
-            <Text numberOfLines={1} style={styles.resultMeta}>{[contact.role, contact.organization].filter(Boolean).join(" · ") || "人脉资料"}</Text>
+            <Text numberOfLines={1} style={styles.resultMeta}>{[contact.role, contact.organization].filter(Boolean).join(" · ") || locale.t("notes.personProfile")}</Text>
           </View>
           <Ionicons color={checked ? colors.accent : colors.borderStrong} name={checked ? "checkmark-circle" : "ellipse-outline"} size={23} />
         </Pressable>;
       })}
-      {nextCursor ? <Pressable accessibilityRole="button" accessibilityLabel="加载更多人脉" disabled={searching} onPress={() => { void loadMore(); }} style={styles.more}><Text style={styles.moreText}>{searching ? "加载中…" : "加载更多"}</Text></Pressable> : null}
+      {nextCursor ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.loadMorePeople")} disabled={searching} onPress={() => { void loadMore(); }} style={styles.more}><Text style={styles.moreText}>{locale.t(searching ? "notes.loadingMore" : "notes.loadMore")}</Text></Pressable> : null}
     </View> : null}
   </View>;
 }

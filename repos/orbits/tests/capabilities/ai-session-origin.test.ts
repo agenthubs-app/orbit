@@ -7,7 +7,12 @@ import {
 } from "../../features/orbit-ai/reliable-send-service";
 import { createStorageOrbitAgentChatSessionProvider } from "../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
 import { reliableAiSendInputSchema } from "../../shared/api-schema/ai-sessions";
+import type { StoredAiSessionOriginContract } from "../../shared/contract/ai-sessions";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
+
+function verificationFor(origin: StoredAiSessionOriginContract | undefined) {
+  return origin && "verification" in origin ? origin.verification : undefined;
+}
 
 const originInput = {
   entryClient: "app" as const,
@@ -119,11 +124,11 @@ test("only a server-trusted analysis execution marker is persisted with the orig
     prepareExecution: async () => ({ trustedOriginVerification: verification }),
   });
   await new Promise<void>((resolve) => setImmediate(resolve));
-  assert.equal((await sessionProvider.getSession(input.sessionId))?.origin?.verification, undefined);
+  assert.equal(verificationFor((await sessionProvider.getSession(input.sessionId))?.origin), undefined);
   releaseExecution();
   await sending;
 
-  assert.deepEqual((await sessionProvider.getSession(input.sessionId))?.origin?.verification, verification);
+  assert.deepEqual(verificationFor((await sessionProvider.getSession(input.sessionId))?.origin), verification);
 });
 
 test("client-shaped session writes cannot forge analysis verification", async () => {
@@ -213,11 +218,11 @@ test("analysis verification survives outcome-unknown assistant recovery without 
   assert.equal((await service.send(request)).state, "outcome_unknown");
   const partial = await baseProvider.getSession(input.sessionId);
   assert.equal(partial?.messages.at(-1)?.id, "assistant:analysis-recovery");
-  assert.equal(partial?.origin?.verification, undefined);
+  assert.equal(verificationFor(partial?.origin), undefined);
   assert.equal((await service.send(request)).state, "completed");
   assert.equal(preparations, 1);
   assert.equal(executions, 1);
-  assert.deepEqual((await baseProvider.getSession(input.sessionId))?.origin?.verification, verification);
+  assert.deepEqual(verificationFor((await baseProvider.getSession(input.sessionId))?.origin), verification);
 });
 
 test("a preloaded unverified answer cannot be promoted by a later reliable analysis send", async () => {
@@ -269,7 +274,7 @@ test("a preloaded unverified answer cannot be promoted by a later reliable analy
     prepareExecution: async () => ({ trustedOriginVerification: verification }),
   }));
   assert.equal(executions, 0);
-  assert.equal((await provider.getSession("session:analysis-promotion"))?.origin?.verification, undefined);
+  assert.equal(verificationFor((await provider.getSession("session:analysis-promotion"))?.origin), undefined);
 });
 
 test("session origin survives old-client saves and rejects later replacement", async () => {

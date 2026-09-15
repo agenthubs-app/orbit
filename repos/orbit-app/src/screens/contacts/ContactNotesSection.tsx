@@ -6,6 +6,7 @@ import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-na
 import type { OrbitApiClient } from "../../api/client";
 import { notesSearchPath } from "../../api/endpoints";
 import { radius, spacing, typography, type OrbitColors } from "../../design/tokens";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { contactNotesToView } from "../../view-models/contact-notes";
 import { notesPageFromPayload, type NoteView } from "../../view-models/notes";
 
@@ -21,6 +22,7 @@ export function ContactNotesSection({ actorId, client, colors, contactId, data, 
   isScopeCurrent?: () => boolean;
 }) {
   const router = useRouter();
+  const locale = useOrbitLocale();
   const styles = useMemo(() => createNotesStyles(colors), [colors]);
   const [expanded, setExpanded] = useState(false);
   const [query, setQuery] = useState("");
@@ -40,7 +42,7 @@ export function ContactNotesSection({ actorId, client, colors, contactId, data, 
     if (!expanded) return;
     if (!actorId) {
       setLinkedState("failure");
-      setLinkedError("登录后才能读取关联笔记。");
+      setLinkedError(locale.t("notes.signIn"));
       return;
     }
     const controller = new AbortController();
@@ -52,13 +54,13 @@ export function ContactNotesSection({ actorId, client, colors, contactId, data, 
       if (controller.signal.aborted || isScopeCurrent?.() === false) return;
       if (!result.success || result.status < 200 || result.status >= 300) {
         setLinkedState("failure");
-        setLinkedError(result.success ? "关联笔记暂时读取不了，请重试。" : result.error.message);
+        setLinkedError(result.success ? locale.t("notes.linkedReadFailed") : result.error.message);
         return;
       }
-      const page = notesPageFromPayload(result.data, actorId);
+      const page = notesPageFromPayload(result.data, actorId, locale.language);
       if (!page) {
         setLinkedState("failure");
-        setLinkedError("服务返回的关联笔记不完整，请重试。");
+        setLinkedError(locale.t("notes.linkedInvalid"));
         return;
       }
       setLinkedNotes(page.notes);
@@ -68,11 +70,11 @@ export function ContactNotesSection({ actorId, client, colors, contactId, data, 
     }).catch(() => {
       if (!controller.signal.aborted && isScopeCurrent?.() !== false) {
         setLinkedState("failure");
-        setLinkedError("关联笔记暂时读取不了，请重试。");
+        setLinkedError(locale.t("notes.linkedReadFailed"));
       }
     });
     return () => controller.abort();
-  }, [actorId, client, contactId, debouncedQuery, expanded, isScopeCurrent]);
+  }, [actorId, client, contactId, debouncedQuery, expanded, isScopeCurrent, locale]);
   const view = contactNotesToView(data, contactId);
   const notes = view.state === "ready" ? view.notes : [];
   const navigate = (href: string) => { if (isScopeCurrent?.() !== false) router.push(href as Href); };
@@ -84,27 +86,27 @@ export function ContactNotesSection({ actorId, client, colors, contactId, data, 
     const result = await client.get<unknown>(notesSearchPath({ contactId, q: debouncedQuery, limit: 20, cursor: nextCursor }));
     if (isScopeCurrent?.() === false) return;
     if (result.success && result.status >= 200 && result.status < 300) {
-      const page = notesPageFromPayload(result.data, actorId);
+      const page = notesPageFromPayload(result.data, actorId, locale.language);
       if (page) {
         setLinkedNotes((items) => [...new Map([...items, ...page.notes].map((note) => [note.id, note])).values()]);
         setNextCursor(page.nextCursor);
-      } else setLinkedError("服务返回的下一页笔记不完整，请重试。");
-    } else setLinkedError(result.success ? "下一页暂时读取不了，请重试。" : result.error.message);
+      } else setLinkedError(locale.t("notes.nextLinkedInvalid"));
+    } else setLinkedError(result.success ? locale.t("notes.nextLinkedFailed") : result.error.message);
     setLoadingMore(false);
   }
 
   return <View style={styles.section}>
-    <Pressable accessibilityRole="button" accessibilityLabel="笔记" accessibilityState={{ expanded }} onPress={() => setExpanded((value) => !value)} style={[styles.header, preview && styles.previewHeader]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.contactSection")} accessibilityState={{ expanded }} onPress={() => setExpanded((value) => !value)} style={[styles.header, preview && styles.previewHeader]}>
       <View style={styles.heading}>
-        <Text style={[styles.title, preview && styles.previewTitle]}>笔记</Text>
-        <Text style={styles.caption}>关联笔记与历史备注 · 仅自己可见{linkedState === "ready" ? ` · ${linkedTotal} 条关联` : ""}</Text>
+        <Text style={[styles.title, preview && styles.previewTitle]}>{locale.t("notes.contactSection")}</Text>
+        <Text style={styles.caption}>{locale.t("notes.contactCaption")}{linkedState === "ready" ? ` · ${locale.t("notes.linkedCount", { count: linkedTotal })}` : ""}</Text>
       </View>
       <Ionicons color={colors.text3} name={expanded ? "chevron-up" : "chevron-down"} size={18} />
     </Pressable>
     {preview && !expanded ? <View style={styles.previewList}>
-      {view.state === "unavailable" ? <Text accessibilityRole="alert" style={styles.error}>历史备注暂时读取不了，请刷新后重试。</Text> : null}
-      {view.state === "ready" && notes.length === 0 ? <Text style={styles.caption}>还没有与此人有关的笔记。</Text> : null}
-      {notes.slice(0, 3).map((note) => <Pressable key={note.id} accessibilityRole="button" accessibilityLabel="查看历史联系人备注" onPress={() => setExpanded(true)} style={styles.previewRow}>
+      {view.state === "unavailable" ? <Text accessibilityRole="alert" style={styles.error}>{locale.t("notes.legacyReadFailed")}</Text> : null}
+      {view.state === "ready" && notes.length === 0 ? <Text style={styles.caption}>{locale.t("notes.noContactNotes")}</Text> : null}
+      {notes.slice(0, 3).map((note) => <Pressable key={note.id} accessibilityRole="button" accessibilityLabel={locale.t("notes.viewLegacy")} onPress={() => setExpanded(true)} style={styles.previewRow}>
         <View style={styles.previewIcon}><Ionicons color={colors.ink} name="document-text-outline" size={16} /></View>
         <Text style={styles.previewBody}>{note.body}</Text><Ionicons color={colors.text3} name="chevron-forward" size={15} />
       </Pressable>)}
@@ -112,35 +114,35 @@ export function ContactNotesSection({ actorId, client, colors, contactId, data, 
     {expanded ? <View style={styles.content}>
       <View style={styles.searchBox}>
         <Ionicons color={colors.text3} name="search" size={18} />
-        <TextInput accessibilityLabel="搜索关联笔记" autoCorrect={false} onChangeText={setQuery} placeholder="在此人的笔记中搜索" placeholderTextColor={colors.text3} style={styles.searchInput} value={query} />
-        {query ? <Pressable accessibilityRole="button" accessibilityLabel="清空关联笔记搜索" onPress={() => setQuery("")}><Ionicons color={colors.text3} name="close-circle" size={18} /></Pressable> : null}
+        <TextInput accessibilityLabel={locale.t("notes.searchLinked")} autoCorrect={false} onChangeText={setQuery} placeholder={locale.t("notes.searchLinkedPlaceholder")} placeholderTextColor={colors.text3} style={styles.searchInput} value={query} />
+        {query ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.clearLinkedSearch")} onPress={() => setQuery("")}><Ionicons color={colors.text3} name="close-circle" size={18} /></Pressable> : null}
       </View>
-      {linkedState === "loading" ? <Text accessibilityLiveRegion="polite" style={styles.caption}>正在读取关联笔记…</Text> : null}
+      {linkedState === "loading" ? <Text accessibilityLiveRegion="polite" style={styles.caption}>{locale.t("notes.readingLinked")}</Text> : null}
       {linkedState === "failure" ? <Text accessibilityRole="alert" style={styles.error}>{linkedError}</Text> : null}
-      {linkedState === "ready" && linkedNotes.length === 0 ? <Text style={styles.caption}>{query ? "没有找到匹配的关联笔记。" : "还没有关联笔记。"}</Text> : null}
-      {linkedNotes.map((note) => <Pressable key={note.id} accessibilityRole="button" accessibilityLabel={`查看关联笔记 ${note.title}`} onPress={() => navigate(`/notes/${encodeURIComponent(note.id)}`)} style={styles.linkedNote}>
-        <View style={styles.linkedHeading}><Text numberOfLines={1} style={styles.linkedTitle}>{note.title}</Text><Text style={styles.caption}>{new Date(note.updatedAt).toLocaleDateString("zh-CN", { month: "short", day: "numeric" })}</Text></View>
+      {linkedState === "ready" && linkedNotes.length === 0 ? <Text style={styles.caption}>{locale.t(query ? "notes.noLinkedSearch" : "notes.noLinked")}</Text> : null}
+      {linkedNotes.map((note) => <Pressable key={note.id} accessibilityRole="button" accessibilityLabel={locale.t("notes.viewLinkedNamed", { title: note.title })} onPress={() => navigate(`/notes/${encodeURIComponent(note.id)}`)} style={styles.linkedNote}>
+        <View style={styles.linkedHeading}><Text numberOfLines={1} style={styles.linkedTitle}>{note.title}</Text><Text style={styles.caption}>{new Date(note.updatedAt).toLocaleDateString(locale.language === "en" ? "en-US" : locale.language === "ja" ? "ja-JP" : "zh-CN", { month: "short", day: "numeric" })}</Text></View>
         <Text numberOfLines={2} style={styles.linkedBody}>{note.body.replace(/\s+/g, " ")}</Text>
-        <Text style={styles.caption}>{note.mentions.some((mention) => mention.contactId === contactId) ? "正文提及" : "手动关联"}</Text>
+        <Text style={styles.caption}>{locale.t(note.mentions.some((mention) => mention.contactId === contactId) ? "notes.mentionRelation" : "notes.manualRelation")}</Text>
       </Pressable>)}
-      {nextCursor ? <Pressable accessibilityRole="button" accessibilityLabel="加载更多关联笔记" disabled={loadingMore} onPress={() => { void loadMore(); }} style={styles.loadMore}><Text style={styles.secondaryText}>{loadingMore ? "加载中…" : "加载更多"}</Text></Pressable> : null}
+      {nextCursor ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.loadMoreLinked")} disabled={loadingMore} onPress={() => { void loadMore(); }} style={styles.loadMore}><Text style={styles.secondaryText}>{locale.t(loadingMore ? "notes.loadingMore" : "notes.loadMore")}</Text></Pressable> : null}
       {linkedError && linkedState === "ready" ? <Text accessibilityRole="alert" style={styles.error}>{linkedError}</Text> : null}
       <View style={styles.actions}>
-        <Pressable accessibilityRole="button" accessibilityLabel="查看全部关联笔记" onPress={() => navigate(`/notes?contactId=${encodeURIComponent(contactId)}`)} style={styles.secondary}>
-          <Text style={styles.secondaryText}>查看全部</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.viewAllLinked")} onPress={() => navigate(`/notes?contactId=${encodeURIComponent(contactId)}`)} style={styles.secondary}>
+          <Text style={styles.secondaryText}>{locale.t("notes.viewAll")}</Text>
         </Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel="为此人新建笔记" onPress={() => navigate(`/notes/new?contactId=${encodeURIComponent(contactId)}`)} style={styles.primary}>
-          <Ionicons color={colors.onAccent} name="add" size={18} /><Text style={styles.primaryText}>新建笔记</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.newForPerson")} onPress={() => navigate(`/notes/new?contactId=${encodeURIComponent(contactId)}`)} style={styles.primary}>
+          <Ionicons color={colors.onAccent} name="add" size={18} /><Text style={styles.primaryText}>{locale.t("notes.new")}</Text>
         </Pressable>
       </View>
-      <Text style={styles.subheading}>历史联系人备注（只读）</Text>
-      {view.state === "unavailable" ? <Text accessibilityRole="alert" style={styles.error}>历史备注暂时读取不了，请刷新后重试。</Text> : null}
-      {view.state === "ready" && notes.length === 0 ? <Text style={styles.caption}>没有历史联系人备注。</Text> : null}
+      <Text style={styles.subheading}>{locale.t("notes.legacyReadOnly")}</Text>
+      {view.state === "unavailable" ? <Text accessibilityRole="alert" style={styles.error}>{locale.t("notes.legacyReadFailed")}</Text> : null}
+      {view.state === "ready" && notes.length === 0 ? <Text style={styles.caption}>{locale.t("notes.noLegacy")}</Text> : null}
       {notes.map((note) => <View key={note.id} style={styles.note}>
         <Text selectable style={styles.body}>{note.body}</Text>
-        <Text style={styles.caption}>{Number.isFinite(Date.parse(note.createdAt)) ? new Date(note.createdAt).toLocaleString("zh-CN") : note.createdAt}</Text>
+        <Text style={styles.caption}>{Number.isFinite(Date.parse(note.createdAt)) ? new Date(note.createdAt).toLocaleString(locale.language === "en" ? "en-US" : locale.language === "ja" ? "ja-JP" : "zh-CN") : note.createdAt}</Text>
       </View>)}
-      <Text style={styles.caption}>新笔记在独立笔记页编辑，可关联多个人脉；历史内容不会迁移或删除。</Text>
+      <Text style={styles.caption}>{locale.t("notes.legacyMigration")}</Text>
     </View> : null}
   </View>;
 }

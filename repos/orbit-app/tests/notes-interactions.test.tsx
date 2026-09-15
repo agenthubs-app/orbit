@@ -90,10 +90,15 @@ test.before(async () => {
       contents: `import React from "react"; import { createRoot } from "react-dom/client";
         import { NewNoteScreen } from "./src/screens/notes/NewNoteScreen";
         import { NoteDetailScreen } from "./src/screens/notes/NoteDetailScreen";
-        const mode = new URLSearchParams(location.search).get("mode") || "new";
-        createRoot(document.getElementById("root")).render(mode === "new"
+        import { EditNoteScreen } from "./src/screens/notes/EditNoteScreen";
+        import { OrbitLocaleContext } from "./src/i18n/OrbitLocaleContext";
+        import { createTranslator } from "./src/i18n/messages";
+        const params = new URLSearchParams(location.search); const mode = params.get("mode") || "new"; const language = params.get("language") || "zh";
+        const locale = { choice: language, deviceLanguage: language, error: null, language, preference: { mode: "manual", language, updatedAt: null }, retryLanguageSave: async () => {}, setLanguage: async () => {}, source: "account", syncState: "idle", t: createTranslator(language) };
+        createRoot(document.getElementById("root")).render(<OrbitLocaleContext.Provider value={locale}>{mode === "new"
           ? <NewNoteScreen actorId="account:one" scopeKey="scope" />
-          : <NoteDetailScreen actorId="account:one" noteId="note:one" scopeKey="scope" />);`,
+          : mode === "edit" ? <EditNoteScreen actorId="account:one" noteId="note:one" scopeKey="scope" />
+          : <NoteDetailScreen actorId="account:one" noteId="note:one" scopeKey="scope" />}</OrbitLocaleContext.Provider>);`,
       resolveDir: process.cwd(),
       loader: "tsx",
     },
@@ -130,10 +135,10 @@ test.after(async () => {
   if (server) await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
 });
 
-async function page(t: { after(fn: () => Promise<void>): void }, mode: "new" | "detail"): Promise<Page> {
+async function page(t: { after(fn: () => Promise<void>): void }, mode: "new" | "detail" | "edit", language = "zh"): Promise<Page> {
   const value = await browser.newPage({ viewport: { width: 390, height: 844 } });
   t.after(() => value.close());
-  await value.goto(`${url}?mode=${mode}`);
+  await value.goto(`${url}?mode=${mode}&language=${language}`);
   return value;
 }
 
@@ -195,4 +200,28 @@ test("note detail opens an editable IORBIT template without making a write reque
       sourceNoteVersion: "2",
     },
   }]);
+});
+
+test("English note create and detail translate controls while preserving note content", async (t) => {
+  const create = await page(t, "new", "en");
+  await create.getByRole("textbox", { name: "Note title" }).waitFor();
+  await create.getByRole("textbox", { name: "Note body" }).waitFor();
+  await create.getByRole("button", { name: "Add related people" }).waitFor();
+  await create.getByRole("button", { name: "Add related event" }).waitFor();
+
+  const detail = await page(t, "detail", "en");
+  await detail.getByRole("button", { name: "Edit note" }).waitFor();
+  await detail.getByText("原始标题", { exact: true }).waitFor();
+  await detail.getByText("原始笔记", { exact: true }).waitFor();
+  assert.equal(await detail.getByText("仅自己可见", { exact: true }).count(), 0);
+});
+
+test("an English account can edit a note without fixed Chinese chrome", async (t) => {
+  const edit = await page(t, "edit", "en");
+  const title = edit.getByRole("textbox", { name: "Note title" });
+  await title.waitFor();
+  await edit.getByRole("textbox", { name: "Note body" }).waitFor();
+  await edit.getByRole("button", { name: "Cancel editing note" }).waitFor();
+  assert.equal(await title.inputValue(), "原始标题");
+  await edit.getByText("Only visible to you · Version 2", { exact: true }).waitFor();
 });

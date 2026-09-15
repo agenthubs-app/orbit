@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { EventSummary } from "../../view-models/events";
 import { createThemedStyles } from "../../design/theme";
 import { radius, spacing, typography } from "../../design/tokens";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 
 export function NoteEventPicker({ disabled = false, events, selectedIds, onToggle }: {
   disabled?: boolean;
@@ -13,12 +14,13 @@ export function NoteEventPicker({ disabled = false, events, selectedIds, onToggl
   onToggle: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const locale = useOrbitLocale();
   const { styles, colors } = useStyles();
   const selected = new Set(selectedIds);
   return <View style={styles.group}>
-    <View style={styles.header}><View><Text style={styles.label}>相关活动</Text><Text style={styles.hint}>可选，关联到一场真实活动</Text></View><Pressable accessibilityRole="button" accessibilityLabel="添加相关活动" disabled={disabled} onPress={() => setOpen((value) => !value)} style={styles.add}><Ionicons color={colors.accent} name={open ? "close" : "add"} size={23} /></Pressable></View>
-    {selectedIds.length ? <View style={styles.chips}>{selectedIds.map((id) => <View key={id} style={styles.chip}><Ionicons color={colors.accent} name="calendar-outline" size={15} /><Text numberOfLines={1} style={styles.chipText}>{events.find((event) => event.id === id)?.title ?? id.replace(/^event:/, "")}</Text><Pressable accessibilityRole="button" accessibilityLabel={`移除相关活动 ${id}`} onPress={() => onToggle(id)}><Ionicons color={colors.text3} name="close-circle" size={18} /></Pressable></View>)}</View> : null}
-    {open ? <View style={styles.panel}>{events.length ? events.slice(0, 20).map((event) => <Pressable key={event.id} accessibilityRole="checkbox" accessibilityState={{ checked: selected.has(event.id), disabled }} disabled={disabled} onPress={() => onToggle(event.id)} style={styles.row}><View style={styles.copy}><Text style={styles.name}>{event.title}</Text><Text numberOfLines={1} style={styles.meta}>{[event.startsAt, event.location].filter(Boolean).join(" · ")}</Text></View><Ionicons color={selected.has(event.id) ? colors.accent : colors.borderStrong} name={selected.has(event.id) ? "checkmark-circle" : "ellipse-outline"} size={23} /></Pressable>) : <Text style={styles.empty}>当前没有可关联的活动</Text>}</View> : null}
+    <View style={styles.header}><View><Text style={styles.label}>{locale.t("notes.relatedEvents")}</Text><Text style={styles.hint}>{locale.t("notes.relatedEventsHint")}</Text></View><Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.addRelatedEvent")} disabled={disabled} onPress={() => setOpen((value) => !value)} style={styles.add}><Ionicons color={colors.accent} name={open ? "close" : "add"} size={23} /></Pressable></View>
+    {selectedIds.length ? <View style={styles.chips}>{selectedIds.map((id) => <View key={id} style={styles.chip}><Ionicons color={colors.accent} name="calendar-outline" size={15} /><Text numberOfLines={1} style={styles.chipText}>{events.find((event) => event.id === id)?.title ?? id.replace(/^event:/, "")}</Text><Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.removeRelatedEvent", { id })} onPress={() => onToggle(id)}><Ionicons color={colors.text3} name="close-circle" size={18} /></Pressable></View>)}</View> : null}
+    {open ? <View style={styles.panel}>{events.length ? events.slice(0, 20).map((event) => <Pressable key={event.id} accessibilityRole="checkbox" accessibilityState={{ checked: selected.has(event.id), disabled }} disabled={disabled} onPress={() => onToggle(event.id)} style={styles.row}><View style={styles.copy}><Text style={styles.name}>{event.title}</Text><Text numberOfLines={1} style={styles.meta}>{[event.startsAt, event.location].filter(Boolean).join(" · ")}</Text></View><Ionicons color={selected.has(event.id) ? colors.accent : colors.borderStrong} name={selected.has(event.id) ? "checkmark-circle" : "ellipse-outline"} size={23} /></Pressable>) : <Text style={styles.empty}>{locale.t("notes.noEvents")}</Text>}</View> : null}
   </View>;
 }
 

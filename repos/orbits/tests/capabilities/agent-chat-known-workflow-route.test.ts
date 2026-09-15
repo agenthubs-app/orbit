@@ -12,6 +12,11 @@ import {
 import { createConfiguredMobileContactsDashboardService } from "../../features/mobile/contacts-dashboard-service";
 import { createContactsAnalysisSourceDataVersion } from "../../features/mobile/contacts-analysis-report-provider";
 import { createOrbitAgentChatSessionProvider } from "../../features/orbit-ai/storage/orbit-agent-chat-session-provider-factory";
+import type { StoredAiSessionOriginContract } from "../../shared/contract/ai-sessions";
+
+function verificationFor(origin: StoredAiSessionOriginContract | undefined) {
+  return origin && "verification" in origin ? origin.verification : undefined;
+}
 
 afterEach(() => {
   mock.restoreAll();
@@ -238,7 +243,7 @@ test("contacts analysis send verifies current actor data and records only a serv
   assert.match(sentMessages[0] ?? "", /^Execute the registered contacts\.analysis@1 task/u);
   assert.match(sentMessages[0] ?? "", /请重点分析需要恢复联系的人/u);
   const stored = await createOrbitAgentChatSessionProvider("mock", "mock:anonymous")?.getSession(acceptedBody.sessionId);
-  assert.deepEqual(stored?.origin?.verification, {
+  assert.deepEqual(verificationFor(stored?.origin), {
     analysisVersion: "contacts.analysis@1",
     kind: "contacts_analysis_execution",
     sourceDataVersion,
