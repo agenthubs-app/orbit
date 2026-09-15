@@ -73,7 +73,7 @@ build/harness-logs/
 | [0023](0023-industry-consumer-continuation/GOAL.md) | 接通联系人行业、搜索 HTTP 与本人资料工具，承接 0020 全部未完成验收 | SC-0020-01～05；明确获准接续 | 现有部分实现与 8 文件补充方案已批准；真实数据／设备按对象处理 | running |
 | [0024](0024-contact-needs-ranking/GOAL.md) | 在人脉主页保存需求，并在独立页面按可核对依据稳定排序 | 用户批准 `concept-v2.png`；关联 0011／0023 | Web `bf35efb85`；App 最终 HEAD `d4cc8a441`；SC-01～05 全部通过，见 REPORT | completed |
 | [0025](0025-notes-ink-signal-search/GOAL.md) | 按最新 4a 重做笔记列表、编辑、详情与联系人笔记页签，用加号和输入搜索关联人脉，不平铺联系人全集 | 2026-09-15 新增；承接 R-13／0018／0019 | run-01 已完成；五项 SC、同账号 Web↔App、Web／iOS 构建与有界搜索均通过；见 [REPORT](0025-notes-ink-signal-search/REPORT.md) | completed |
-| [0026](0026-canonical-app-account-identity/GOAL.md) | 统一 App 登录主体与业务账号身份，让待办、个人日程和笔记正确读取 canonical owner | 用户批准追加 C 线 Sprint；承接现有 `/api/account/me` | run-01 已启动；H + I，按 canonical 身份 RED→GREEN 实施 | running |
+| [0026](0026-canonical-app-account-identity/GOAL.md) | 统一 App 登录主体与业务账号身份，让待办、个人日程和笔记正确读取 canonical owner | 用户批准追加 C 线 Sprint；承接现有 `/api/account/me` | run-01 completed；功能 `f5f595df4`、邀请补漏 `3385369dd`；见 [REPORT](0026-canonical-app-account-identity/REPORT.md) | completed |
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
 
@@ -210,6 +210,9 @@ build/harness-logs/
 - Planner revision 1；SHA-256：`716e6886b4df3295480860e07cdf81e94d1fcfda8b6de9202d5c5bbe4f159bb1`；档位 H + I。
 - 文件锁：0026 Planner 白名单内的 App auth、actor-scoped snapshot、待办／个人日程／笔记／配对 AI intent 消费者、直接测试与 Sprint／Bridge 文档。Web/API 产品代码和全部既有未跟踪设计资产不写、不暂存。
 - 运行目标：先用 RED 证明 raw `userId` 与 canonical `accountId` 不同会误拒合法 owner，再从 `/api/account/me` 建立唯一 canonical 身份，并保持 foreign owner、失败接口和缺字段 fail closed。
+- 结束：2026-09-15 16:17 JST；结果 completed；功能提交 `f5f595df447afc1aad9c028a467f075421073709`，邀请 scope 审计补漏 `3385369ddf42b19b590007ec9c573cab82d8f03d`；[执行报告](0026-canonical-app-account-identity/REPORT.md)。
+- 验证：App typecheck、契约同步、身份／任务／日程／笔记／AI／消息定向和最终全量 2804/2804 通过；当前 Web health live/ok；iOS 当前源码构建 0 error／0 warning，登录态 Simulator 在 8082 读取待办、日程和笔记工作区。
+- 审计：业务 owner、actor-scoped cache／draft／receipt 使用 canonical `auth.actorId`；活动会话、名片导入 session scope、认证与密码重置保留 raw subject，见 [身份审计](0026-canonical-app-account-identity/IDENTITY_AUDIT.md)与 [BR-020](../../../../bridge/2026-09-15-canonical-app-identity.md)。
 
 ### 0018 / run-01
 

@@ -1,5 +1,11 @@
 # 两端当前状态
 
+## 2026-09-15 C 线 0026 canonical 身份增量
+
+- App `f5f595df4` 在登录／恢复后从既有 `/api/account/me` 读取 canonical `account.id`，并把待办、个人日程、笔记、快照、草稿、AI intent、人脉与消息边界接到 `auth.actorId`；`3385369dd` 补齐关系邀请 scope。
+- 身份接口失败、缺字段或空 ID 时 fail closed，不回退 Auth.js raw `userId`，foreign owner 继续被拒绝。活动会话、名片导入 session scope、认证和密码重置保留 raw subject，已逐项审计。
+- App 类型检查和完整回归通过；当前 live Web health 为 `live/ok`；iOS 当前源码构建 0 error／0 warning，登录态 Simulator 在 8082 bundle 下读取待办、日程与笔记工作区。BR-020 现为 `verified`，详见 [交接](2026-09-15-canonical-app-identity.md)与 [Sprint 0026 报告](../repos/orbit-app/docs/sprints/0026-canonical-app-account-identity/REPORT.md)。
+
 ## 2026-09-15 B 线 0021 验收增量
 
 - AI 会话组织功能在 `3de117902` 基础上由 `9bc7039a5` 修复原生连续 `Modal` 切换；历史→整理器与整理器→删除确认不再互相遮挡，Web 保留同步切换行为。
