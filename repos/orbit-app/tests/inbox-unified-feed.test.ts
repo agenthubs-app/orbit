@@ -266,3 +266,35 @@ test("unknown notifications are omitted instead of being mislabeled as IORBIT", 
 
   assert.deepEqual(inboxFeedFromSources(input).items, []);
 });
+
+test("legacy generated reminder titles use the resolved contact name without exposing fixture ids", () => {
+  const input = sources();
+  input.conversationsData.conversations = [];
+  input.notificationsData.reminders = [
+    {
+      contactName: "佐藤健一",
+      occurredAt: "2026-09-15T08:00:00.000Z",
+      priority: "normal",
+      reminderId: "legacy-named",
+      sourceKind: "system",
+      title: "Review follow-up for contact_021",
+    },
+    {
+      contactName: "高橋智子",
+      occurredAt: "2026-09-15T07:00:00.000Z",
+      priority: "normal",
+      reminderId: "current-readable",
+      sourceKind: "system",
+      title: "复核与高橋智子的下一步",
+    },
+  ];
+  input.notificationsData.notificationInteractions = {};
+  input.signalsData.signals = [];
+
+  const view = inboxFeedFromSources(input);
+  assert.deepEqual(view.items.map(item => item.title), [
+    "联系佐藤健一",
+    "复核与高橋智子的下一步",
+  ]);
+  assert.equal(view.items.some(item => /contact_\d+/u.test(item.title)), false);
+});
