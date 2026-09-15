@@ -16,9 +16,6 @@ function readProjectFile(relativePath: string): string {
 const agentSource = readProjectFile(
   "app/(app)/app/agent/orbit-real-agent.tsx",
 );
-const agentStylesSource = readProjectFile(
-  "app/(app)/app/agent/orbit-agent-console-styles.tsx",
-);
 const dashboardSource = readProjectFile(
   "app/(app)/app/agent/orbit-agent-dashboard.tsx",
 );
@@ -46,8 +43,10 @@ test("Orbit agent workspace exposes the console-green composition hooks", () => 
 });
 
 test("Orbit agent styles ship the scoped console-green skin", () => {
-  assert.match(agentStylesSource, /\/orbit-reference\/orbit-agent-console\.generated\.css/);
-  assert.doesNotMatch(agentSource, /const CONSOLE_STYLES = `/);
+  // 整页样式由 CONSOLE_STYLES 注入，全部限定在 agent 作用域
+  assert.match(agentSource, /const CONSOLE_STYLES = `/);
+  assert.match(agentSource, /\[data-orbit-real-page="agent"\] \.brief \{/);
+  assert.match(agentSource, /\[data-orbit-real-page="agent"\] \.hub-stats \{/);
   // 悬浮输入框的样式跟着组件搬去 orbit-global-ask-styles，不该再留在这里。
   assert.doesNotMatch(agentSource, /\.orb-overlay \{/);
   // 旧 Conversation+ 聊天皮肤不允许回流
@@ -87,17 +86,17 @@ test("Orbit agent brief renders a concise numbered action list", () => {
 
 test("Orbit agent brief aligns actions without changing the visual system", () => {
   assert.match(
-    agentStylesSource,
+    agentSource,
     /\.brief-action-row \{[\s\S]*?grid-template-columns:\s*32px minmax\(0, 1fr\) minmax\(220px, 268px\) 32px/,
   );
   assert.match(
-    agentStylesSource,
+    agentSource,
     /\.brief-action-buttons \{[\s\S]*?grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/,
   );
   assert.match(
-    agentStylesSource,
+    agentSource,
     /\.brief-action-context \{[\s\S]*?text-overflow:\s*ellipsis/,
   );
-  assert.match(agentStylesSource, /@media \(max-width: 720px\)/);
-  assert.match(agentStylesSource, /background:\s*radial-gradient\(64% 100%/);
+  assert.match(agentSource, /@media \(max-width: 720px\)/);
+  assert.match(agentSource, /background:\s*radial-gradient\(64% 100%/);
 });

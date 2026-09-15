@@ -17,28 +17,17 @@ const generatedCssPath = path.join(
   process.cwd(),
   "public/orbit-reference/orbit-reference.generated.css",
 );
-const GENERATED_OVERRIDES_CSS_ROUTE = "/orbit-reference/orbit-overrides.generated.css";
-const generatedOverridesCssPath = path.join(
-  process.cwd(),
-  "public/orbit-reference/orbit-overrides.generated.css",
-);
 
 // Kept in sync with UNUSED_FONT_FAMILIES in scripts/build-reference-css.mjs.
 const UNUSED_PROTOTYPE_FONT_FAMILIES = ["Inter", "Inter Tight", "Geist Mono"];
 
 let cachedStyleText: string | undefined;
 let cachedGeneratedCssExists: boolean | undefined;
-let cachedGeneratedOverridesCssExists: boolean | undefined;
 const cachedScriptText = new Map<string, string>();
 
 function generatedCssExists() {
   cachedGeneratedCssExists ??= fs.existsSync(generatedCssPath);
   return cachedGeneratedCssExists;
-}
-
-function generatedOverridesCssExists() {
-  cachedGeneratedOverridesCssExists ??= fs.existsSync(generatedOverridesCssPath);
-  return cachedGeneratedOverridesCssExists;
 }
 
 const reactReferenceIsolationStyles = `
@@ -3314,23 +3303,25 @@ const orbitAttendeeCardStyles = `
  *
  *   1. the prototype base — a cacheable `<link>` (React hoists it into `<head>`,
  *      so it stays ahead of everything below in document order);
- *   2. the Orbit override layer + namecard and attendee-card components as a
- *      second cacheable `<link>` generated from the source constants below.
+ *   2. the Orbit override layer + namecard and attendee-card components, still
+ *      inline because they are authored here and total ~90 KB.
  *
- * When either generated asset is missing, only that layer falls back to its
- * source text so a fresh checkout never renders unstyled.
+ * When the generated asset is missing (fresh checkout, no build step yet) the
+ * base falls back to inline extraction so pages never render unstyled.
  */
 export function OrbitReferenceStyles() {
   const overrides = `${reactReferenceIsolationStyles}\n${orbitNamecardStyles}\n${orbitAttendeeCardStyles}`;
 
+  if (!generatedCssExists()) {
+    return (
+      <style dangerouslySetInnerHTML={{ __html: `${readReferenceStyles()}\n${overrides}` }} />
+    );
+  }
+
   return (
     <>
-      {generatedCssExists()
-        ? <link href={GENERATED_CSS_ROUTE} rel="stylesheet" />
-        : <style dangerouslySetInnerHTML={{ __html: readReferenceStyles() }} />}
-      {generatedOverridesCssExists()
-        ? <link href={GENERATED_OVERRIDES_CSS_ROUTE} rel="stylesheet" />
-        : <style dangerouslySetInnerHTML={{ __html: overrides }} />}
+      <link href={GENERATED_CSS_ROUTE} rel="stylesheet" />
+      <style dangerouslySetInnerHTML={{ __html: overrides }} />
     </>
   );
 }

@@ -18,7 +18,6 @@ import {
 } from "../chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model";
 import { composeOrbitAgentEntryViewModel } from "../chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-view-model-adapter";
 import { OrbitRealAgent } from "./orbit-real-agent";
-import { OrbitAgentConsoleStyles } from "./orbit-agent-console-styles";
 import { loadAppHomeRouteViewModel } from "../home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model";
 import { presentOrbitEvents } from "../orbit-event-presentation";
 import { readRuntimeEventRegistrationStates } from "../../../../features/events/registration/runtime";
@@ -162,7 +161,6 @@ export default async function AppAgentPage({
   return (
     <>
       <OrbitReferenceStyles />
-      <OrbitAgentConsoleStyles />
       <OrbitVisualFreezeRuntime />
       {entryModel.state === "ready" ? (
         <div data-orbit-route="app-agent-route">
