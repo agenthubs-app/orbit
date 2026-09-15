@@ -5,6 +5,7 @@ import {
   WEB_PERFORMANCE_SCENARIOS,
   browserLaunchOptions,
   buildWebRunPlan,
+  eagerClosedPanelJsBytes,
   observationsToSamples,
   validateProductionRuntime,
   validateWebMeasurementSamples,
@@ -18,6 +19,14 @@ test("uses an explicit installed Chromium executable when configured", () => {
     headless: true,
   });
   assert.deepEqual(browserLaunchOptions({}), { headless: true });
+});
+
+test("counts only eagerly loaded Markdown runtime bytes without retaining asset contents", () => {
+  assert.equal(eagerClosedPanelJsBytes([
+    { decodedBodySize: 144_382, source: "...remarkPlugins...micromark..." },
+    { decodedBodySize: 80_000, source: "ordinary route code" },
+    { decodedBodySize: 40_000, source: "remarkPlugins without the parser signature" },
+  ]), 144_382);
 });
 
 test("plans cache-disabled first navigation and three warmups plus ten formal runs", () => {
@@ -67,6 +76,7 @@ test("maps browser observations to the shared redacted contract", () => {
     buildSha: SHA,
     observation: {
       cls: 0.01,
+      closedPanelEagerJsBytes: 144_382,
       decodedBytes: 8000,
       fcpMs: 120,
       htmlRscDecodedBytes: 2000,
@@ -81,7 +91,7 @@ test("maps browser observations to the shared redacted contract", () => {
       ttfbMs: 75,
     },
     run: 2,
-    scenario: "web.contacts",
+    scenario: "web.agent",
   });
   assert.deepEqual(samples.map(({ metric, unit }) => [metric, unit]), [
     ["navigation_ms", "milliseconds"],
@@ -97,6 +107,7 @@ test("maps browser observations to the shared redacted contract", () => {
     ["html_rsc_decoded_bytes", "bytes"],
     ["js_transfer_bytes", "bytes"],
     ["js_decoded_bytes", "bytes"],
+    ["closed_panel_eager_js_bytes", "bytes"],
   ]);
   assert.ok(samples.every((sample) => Object.keys(sample).sort().join(",") ===
     "commit,durationMs,environment,failed,metric,run,scenario,unit"));

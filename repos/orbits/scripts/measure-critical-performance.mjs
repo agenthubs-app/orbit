@@ -93,10 +93,21 @@ export function observationsToSamples({ buildSha, observation, run, scenario }) 
     ["js_transfer_bytes", "bytes", observation.jsTransferBytes],
     ["js_decoded_bytes", "bytes", observation.jsDecodedBytes],
   ];
+  if (scenario === "web.agent") {
+    definitions.push(["closed_panel_eager_js_bytes", "bytes", observation.closedPanelEagerJsBytes]);
+  }
   return definitions.map(([metric, unit, value]) => {
     if (!Number.isFinite(value) || value < 0) throw new Error(`Invalid browser observation ${metric}.`);
     return sample(buildSha, run, scenario, metric, unit, value);
   });
+}
+
+export function eagerClosedPanelJsBytes(resources) {
+  return resources.reduce((total, resource) => {
+    const isMarkdownRuntime = resource.source.includes("remarkPlugins")
+      && resource.source.includes("micromark");
+    return total + (isMarkdownRuntime ? resource.decodedBodySize : 0);
+  }, 0);
 }
 
 function assertExactSample(value) {
@@ -188,7 +199,7 @@ async function measurePage(page, url, disableCache) {
   });
   const response = await page.goto(url, { waitUntil: "networkidle", timeout: 60_000 });
   if (!response?.ok()) throw new Error(`Navigation failed with HTTP ${response?.status() ?? 0}.`);
-  return page.evaluate(() => {
+  const observation = await page.evaluate(() => {
     const navigation = performance.getEntriesByType("navigation")[0];
     const resources = performance.getEntriesByType("resource");
     const paints = performance.getEntriesByType("paint");
@@ -208,6 +219,10 @@ async function measurePage(page, url, disableCache) {
       htmlRscTransferBytes: htmlRscEntries.reduce((total, entry) => total + (entry.transferSize ?? 0), 0),
       inpMs: window.__orbitPerf.inpMs,
       jsDecodedBytes: jsEntries.reduce((total, entry) => total + (entry.decodedBodySize ?? 0), 0),
+      jsResources: jsEntries.map((entry) => ({
+        decodedBodySize: entry.decodedBodySize ?? 0,
+        url: entry.name,
+      })),
       jsTransferBytes: jsEntries.reduce((total, entry) => total + (entry.transferSize ?? 0), 0),
       lcpMs: window.__orbitPerf.lcpMs,
       navigationMs: navigation.duration,
@@ -216,6 +231,18 @@ async function measurePage(page, url, disableCache) {
       ttfbMs: navigation.responseStart,
     };
   });
+  const inspectedResources = await Promise.all(observation.jsResources.map(async (resource) => {
+    const scriptResponse = await page.context().request.get(resource.url);
+    if (!scriptResponse.ok()) {
+      throw new Error(`Unable to inspect an eager JavaScript resource (${scriptResponse.status()}).`);
+    }
+    return { decodedBodySize: resource.decodedBodySize, source: await scriptResponse.text() };
+  }));
+  const { jsResources: _discardedResourceUrls, ...redactedObservation } = observation;
+  return {
+    ...redactedObservation,
+    closedPanelEagerJsBytes: eagerClosedPanelJsBytes(inspectedResources),
+  };
 }
 
 async function measureLocalBoundary(page, options, item) {
