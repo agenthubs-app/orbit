@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { randomUUID } from "expo-crypto";
 import { type Href, useIsFocused, useLocalSearchParams, useRouter } from "expo-router";
-import { Profiler, type ProfilerOnRenderCallback, type PropsWithChildren, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type PropsWithChildren, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AppState,
   Pressable,
@@ -284,24 +284,24 @@ export function RelationshipInboxScreen() {
   const seedName = firstParam(params.participantName);
   const seedOrganization = firstParam(params.organization);
   const { actorId, ready, scopeKey } = useInboxIdentity(JSON.stringify([seedContactId, deliveryId, seedName, seedOrganization]));
-  const onRender = useCallback<ProfilerOnRenderCallback>((_id, _phase, actualDuration) => {
-    markAppPerformance({
-      ...appPerformanceInput("app.react_commit", "app.inbox"),
-      durationMs: actualDuration,
-      failed: false,
-    });
-  }, []);
-  const content = ready
-    ? <ScopedRelationshipInboxScreen key={scopeKey} actorId={actorId} scopeKey={scopeKey} seedContactId={seedContactId} deliveryId={deliveryId} seedName={seedName} seedOrganization={seedOrganization} />
-    : <InboxLayout title={locale.t("inbox.title")}><LoadingState /></InboxLayout>;
-  return isAppPerformanceEnabled()
-    ? <Profiler id="relationship-inbox" onRender={onRender}>{content}</Profiler>
-    : content;
+  if (!ready) return <InboxLayout title={locale.t("inbox.title")}><LoadingState /></InboxLayout>;
+  return <ScopedRelationshipInboxScreen key={scopeKey} actorId={actorId} scopeKey={scopeKey} seedContactId={seedContactId} deliveryId={deliveryId} seedName={seedName} seedOrganization={seedOrganization} />;
 }
 
 function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliveryId, seedName, seedOrganization }: {
   actorId: string; scopeKey: string; seedContactId: string; deliveryId: string; seedName: string; seedOrganization: string;
 }) {
+  const renderStartedAt = isAppPerformanceEnabled()
+    ? globalThis.performance.now()
+    : 0;
+  useEffect(() => {
+    if (!isAppPerformanceEnabled()) return;
+    markAppPerformance({
+      ...appPerformanceInput("app.react_commit", "app.inbox"),
+      durationMs: globalThis.performance.now() - renderStartedAt,
+      failed: false,
+    });
+  });
   const locale = useOrbitLocale();
   const { colors } = useOrbitTheme();
   const router = useRouter();
