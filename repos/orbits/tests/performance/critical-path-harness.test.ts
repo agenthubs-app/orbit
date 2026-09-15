@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   WEB_PERFORMANCE_SCENARIOS,
+  browserLaunchOptions,
   buildWebRunPlan,
   observationsToSamples,
   validateProductionRuntime,
@@ -10,6 +11,14 @@ import {
 } from "../../scripts/measure-critical-performance.mjs";
 
 const SHA = "747ea2349d000000000000000000000000000000";
+
+test("uses an explicit installed Chromium executable when configured", () => {
+  assert.deepEqual(browserLaunchOptions({ ORBIT_TEST_CHROME_PATH: "/Applications/Chrome" }), {
+    executablePath: "/Applications/Chrome",
+    headless: true,
+  });
+  assert.deepEqual(browserLaunchOptions({}), { headless: true });
+});
 
 test("plans cache-disabled first navigation and three warmups plus ten formal runs", () => {
   assert.deepEqual(WEB_PERFORMANCE_SCENARIOS.map(({ scenario }) => scenario), [
@@ -60,7 +69,11 @@ test("maps browser observations to the shared redacted contract", () => {
       cls: 0.01,
       decodedBytes: 8000,
       fcpMs: 120,
+      htmlRscDecodedBytes: 2000,
+      htmlRscTransferBytes: 1000,
       inpMs: 40,
+      jsDecodedBytes: 5000,
+      jsTransferBytes: 2500,
       lcpMs: 220,
       navigationMs: 250,
       requestCount: 9,
@@ -80,6 +93,10 @@ test("maps browser observations to the shared redacted contract", () => {
     ["request_count", "count"],
     ["transfer_bytes", "bytes"],
     ["decoded_bytes", "bytes"],
+    ["html_rsc_transfer_bytes", "bytes"],
+    ["html_rsc_decoded_bytes", "bytes"],
+    ["js_transfer_bytes", "bytes"],
+    ["js_decoded_bytes", "bytes"],
   ]);
   assert.ok(samples.every((sample) => Object.keys(sample).sort().join(",") ===
     "commit,durationMs,environment,failed,metric,run,scenario,unit"));
@@ -93,7 +110,11 @@ test("formal output requires ten runs for every emitted scenario and metric", ()
         cls: 0,
         decodedBytes: 100,
         fcpMs: 10,
+        htmlRscDecodedBytes: 50,
+        htmlRscTransferBytes: 25,
         inpMs: 0,
+        jsDecodedBytes: 30,
+        jsTransferBytes: 20,
         lcpMs: 20,
         navigationMs: 25,
         requestCount: 1,

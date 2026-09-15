@@ -21,6 +21,15 @@ export const WEB_PERFORMANCE_SCENARIOS = Object.freeze([
 
 const SCENARIO_NAMES = new Set(WEB_PERFORMANCE_SCENARIOS.map(({ scenario }) => scenario));
 
+export function browserLaunchOptions(environment = process.env) {
+  return {
+    ...(environment.ORBIT_TEST_CHROME_PATH
+      ? { executablePath: environment.ORBIT_TEST_CHROME_PATH }
+      : {}),
+    headless: true,
+  };
+}
+
 export function buildWebRunPlan({ buildSha, origin }) {
   if (!/^[a-f0-9]{40}$/u.test(buildSha)) throw new Error("The Web measured build SHA must be a full lowercase Git SHA.");
   const parsedOrigin = new URL(origin);
@@ -78,6 +87,10 @@ export function observationsToSamples({ buildSha, observation, run, scenario }) 
     ["request_count", "count", observation.requestCount],
     ["transfer_bytes", "bytes", observation.transferBytes],
     ["decoded_bytes", "bytes", observation.decodedBytes],
+    ["html_rsc_transfer_bytes", "bytes", observation.htmlRscTransferBytes],
+    ["html_rsc_decoded_bytes", "bytes", observation.htmlRscDecodedBytes],
+    ["js_transfer_bytes", "bytes", observation.jsTransferBytes],
+    ["js_decoded_bytes", "bytes", observation.jsDecodedBytes],
   ];
   return definitions.map(([metric, unit, value]) => {
     if (!Number.isFinite(value) || value < 0) throw new Error(`Invalid browser observation ${metric}.`);
@@ -180,11 +193,21 @@ async function measurePage(page, url, disableCache) {
     const paints = performance.getEntriesByType("paint");
     const fcp = paints.find((entry) => entry.name === "first-contentful-paint");
     const entries = [navigation, ...resources].filter(Boolean);
+    const htmlRscEntries = entries.filter(
+      (entry) => entry === navigation || entry.name.includes("_rsc="),
+    );
+    const jsEntries = resources.filter(
+      (entry) => entry.initiatorType === "script" || new URL(entry.name).pathname.endsWith(".js"),
+    );
     return {
       cls: window.__orbitPerf.cls,
       decodedBytes: entries.reduce((total, entry) => total + (entry.decodedBodySize ?? 0), 0),
       fcpMs: fcp?.startTime ?? 0,
+      htmlRscDecodedBytes: htmlRscEntries.reduce((total, entry) => total + (entry.decodedBodySize ?? 0), 0),
+      htmlRscTransferBytes: htmlRscEntries.reduce((total, entry) => total + (entry.transferSize ?? 0), 0),
       inpMs: window.__orbitPerf.inpMs,
+      jsDecodedBytes: jsEntries.reduce((total, entry) => total + (entry.decodedBodySize ?? 0), 0),
+      jsTransferBytes: jsEntries.reduce((total, entry) => total + (entry.transferSize ?? 0), 0),
       lcpMs: window.__orbitPerf.lcpMs,
       navigationMs: navigation.duration,
       requestCount: entries.length,
@@ -219,7 +242,7 @@ export async function main(argv = process.argv.slice(2)) {
   const options = parseArguments(argv);
   const plan = buildWebRunPlan(options);
   validateProductionRuntime(await readRuntime(options));
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch(browserLaunchOptions());
   const context = await browser.newContext();
   try {
     await authenticate(context, options.origin);
