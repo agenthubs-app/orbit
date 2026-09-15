@@ -39,12 +39,17 @@ async function request(method, path, options) {
     state.requests.push({ method, path, ...options });
     const action = options.body.action;
     const updated = { ...state.task, ...options.body.patch, status: action === "complete" ? "completed" : action === "reopen" ? "open" : state.task.status, updatedAt: "2026-09-07T03:00:00.000Z" };
+    if (action === "complete") Object.assign(updated, { completedAt: updated.updatedAt, completedBy: "test", completionSource: "user" });
+    if (action === "reopen") { delete updated.completedAt; delete updated.completedBy; delete updated.completionSource; }
     if (state.hold) await new Promise(resolve => { state.release = resolve; });
     if (state.thrown) throw Error("unexpected transport failure");
     if (state.failure) return { success: false, error: { message: "连接暂时失败" } };
     if (state.receiptMode === "invalid") return { success: true, status: 200, data: { task: { ...updated, ownerUserId: "other" } } };
     const type = method === "DELETE" ? "deleted" : action === "complete" ? "completed" : action === "reopen" ? "reopened" : "updated";
-    const activity = { id: "activity:" + type, accountId: "test", ownerUserId: "test", taskId: state.task.id, type, actorType: "user", actorId: "test", occurredAt: updated.updatedAt, taskSnapshot: { title: updated.title, category: updated.category } };
+    const activity = { id: "activity:" + type, accountId: "test", ownerUserId: "test", taskId: state.task.id, type, actorType: "user", actorId: "test", occurredAt: updated.updatedAt, taskSnapshot: { title: updated.title, category: updated.category }, ...(type === "updated" ? { changes: { ...options.body.patch } } : {}) };
+    if (state.receiptMode === "missing-update-changes") delete activity.changes;
+    if (state.receiptMode === "missing-completion-metadata") delete updated.completionSource;
+    if (state.receiptMode === "retained-reopen-completion") Object.assign(updated, { completedAt: state.task.completedAt, completedBy: state.task.completedBy, completionSource: state.task.completionSource });
     state.lastReceipt = { task: updated, activity };
     return { success: true, status: 200, data: state.lastReceipt };
 }
@@ -296,17 +301,23 @@ test("a fresh mirror without the requested task renders an explicit missing stat
   assert.equal(await page.getByRole("textbox", { name: "待办标题", exact: true }).count(), 0);
 });
 
-for (const operation of ["update", "complete", "delete"] as const) {
+for (const operation of ["update", "complete", "reopen", "delete"] as const) {
   test(`${operation} rejects a malformed 2xx receipt before sync or navigation and preserves retry identity`, async (t) => {
     const page = await openScreen(t);
-    await page.evaluate(() => { (window as any).fixture.receiptMode = "invalid"; });
+    await page.evaluate(operation => {
+      const fixture = (window as any).fixture;
+      if (operation === "reopen") fixture.update({ status: "completed", completedAt: "2026-09-07T01:00:00.000Z", completedBy: "test", completionSource: "user" });
+      fixture.receiptMode = operation === "update" ? "missing-update-changes"
+        : operation === "complete" ? "missing-completion-metadata"
+          : operation === "reopen" ? "retained-reopen-completion" : "invalid";
+    }, operation);
     let action;
     if (operation === "update") {
       action = page.getByRole("textbox", { name: "待办标题", exact: true });
       await action.fill("Receipt guarded title");
       await action.blur();
-    } else if (operation === "complete") {
-      action = page.getByRole("button", { name: "标记完成", exact: true });
+    } else if (operation === "complete" || operation === "reopen") {
+      action = page.getByRole("button", { name: operation === "complete" ? "标记完成" : "恢复待办", exact: true });
       await action.click();
     } else {
       await page.getByRole("button", { name: "更多待办操作", exact: true }).click();

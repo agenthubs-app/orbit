@@ -86,10 +86,28 @@ export function taskMutationReceiptMatches(
   const expectedStatus = expectation.action === "complete" ? "completed"
     : expectation.action === "reopen" ? "open" : baseline.status;
   if (task.status !== expectedStatus) return false;
+  if (expectation.action === "complete" && (
+    baseline.status !== "open" ||
+    typeof task.completedAt !== "string" ||
+    !Number.isFinite(Date.parse(task.completedAt)) ||
+    task.completedAt !== receipt.occurredAt ||
+    task.completedBy !== actorId ||
+    task.completionSource !== "user"
+  )) return false;
+  if (expectation.action === "reopen" && (
+    baseline.status !== "completed" ||
+    task.completedAt !== undefined ||
+    task.completedBy !== undefined ||
+    task.completionSource !== undefined
+  )) return false;
   if (expectation.action === "update") {
+    const changes = receipt.changes;
+    if (!changes || typeof changes !== "object" || Array.isArray(changes)) return false;
+    const patchEntries = Object.entries(expectation.patch);
+    if (Object.keys(changes).length !== patchEntries.length) return false;
     for (const [key, expected] of Object.entries(expectation.patch)) {
       const actual = task[key as keyof TaskItemContract];
-      if (expected === null ? actual !== undefined : actual !== expected) return false;
+      if ((expected === null ? actual !== undefined : actual !== expected) || (changes as Record<string, unknown>)[key] !== expected) return false;
     }
   }
   return true;
