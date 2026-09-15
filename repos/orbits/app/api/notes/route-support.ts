@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import type { NoteService } from "../../../features/notes/service";
+import type { NoteMentionContract } from "../../../shared/contract/notes";
 import { NoteServiceError } from "../../../features/notes/service";
 import { createConfiguredNoteService } from "../../../features/notes/service-factory";
 import { failure, runtimeBoundaryHeaders, success } from "../../../shared/api/envelope";
@@ -76,6 +77,11 @@ export function noteString(value: unknown, field: string): string {
   return value;
 }
 
+export function noteOptionalString(value: unknown, field: string): string | undefined {
+  if (value === undefined) return undefined;
+  return noteString(value, field);
+}
+
 export function noteVersion(value: unknown): number {
   if (!Number.isSafeInteger(value) || Number(value) < 1) throw new AppError("VALIDATION_ERROR", "expectedVersion is invalid.");
   return Number(value);
@@ -87,4 +93,20 @@ export function noteContactIds(value: unknown): readonly string[] | undefined {
     throw new AppError("VALIDATION_ERROR", "contactIds must contain non-empty strings.");
   }
   return value;
+}
+
+export function noteMentions(value: unknown): readonly NoteMentionContract[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) throw new AppError("VALIDATION_ERROR", "mentions must be an array.");
+  return value.map((item) => {
+    if (
+      typeof item !== "object" || item === null || Array.isArray(item) ||
+      typeof (item as Record<string, unknown>).contactId !== "string" ||
+      typeof (item as Record<string, unknown>).displayText !== "string" ||
+      !Number.isSafeInteger((item as Record<string, unknown>).start) ||
+      !Number.isSafeInteger((item as Record<string, unknown>).end)
+    ) throw new AppError("VALIDATION_ERROR", "mentions contains an invalid item.");
+    const mention = item as unknown as NoteMentionContract;
+    return { ...mention };
+  });
 }

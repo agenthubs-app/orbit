@@ -40,6 +40,7 @@ export const useApiResource = path => {
   return { kind: "success", data, refreshing: false, refresh() {} };
 };
 const client = {
+  async get() { return { success: true, status: 200, data: { notes: [], total: 0 }, meta: {} }; },
   async post(path, options) { state.requests.push({ method: "POST", path, body: options.body }); return { success: false, error: { message: "暂时无法搜索，请重试" } }; },
   async patch(path, options) { state.requests.push({ method: "PATCH", path, body: options.body }); return state.failure ? { success: false } : { success: true, data: {} }; }
 };
@@ -176,12 +177,12 @@ test("detail disclosures keep read and editing content available without writes 
   await page.getByRole("button", { name: "互动渠道：邮件", exact: true }).waitFor();
   await page.getByRole("button", { name: "取消编辑", exact: true }).click();
   assert.equal(await page.getByText("跟进状态", { exact: true }).count(), 0);
-  const notes = page.getByRole("button", { name: "历史联系人备注", exact: true });
+  const notes = page.getByRole("button", { name: "笔记", exact: true });
   await notes.click();
   await page.getByText("没有历史联系人备注。", { exact: true }).waitFor();
   assert.equal(await page.getByRole("alert").count(), 0, "valid empty notes must not render a read failure");
   assert.equal(await page.getByRole("textbox", { name: "添加联系人备注" }).count(), 0);
-  await page.getByRole("button", { name: "查看关联笔记", exact: true }).click();
+  await page.getByRole("button", { name: "查看全部关联笔记", exact: true }).click();
   await page.getByRole("button", { name: "为此人新建笔记", exact: true }).click();
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/notes?contactId=contact%3A0", "/notes/new?contactId=contact%3A0"]);

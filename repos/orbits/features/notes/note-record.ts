@@ -1,4 +1,5 @@
 import type { LiveRecord } from "../../shared/storage/live-record-store";
+import type { NoteMentionContract } from "../../shared/contract/notes";
 import type { NoteDTO, NoteOperationReceipt, NoteRecordPayload } from "./contract";
 
 export const NOTE_COLLECTION = "notes";
@@ -15,7 +16,36 @@ function isoDate(value: unknown): value is string {
   return typeof value === "string" && Number.isFinite(Date.parse(value));
 }
 
-function readNote(value: unknown, actorId: string): NoteDTO | null {
+function fallbackTitle(body: string): string {
+  return body.split(/\r?\n/).map((line) => line.trim()).find(Boolean) ?? "未命名笔记";
+}
+
+function readMentions(value: unknown, body: string): readonly NoteMentionContract[] | null {
+  if (!Array.isArray(value)) return null;
+  const mentions: NoteMentionContract[] = [];
+  for (const item of value) {
+    if (
+      !isRecord(item) ||
+      !nonEmpty(item.contactId) ||
+      !Number.isSafeInteger(item.start) ||
+      !Number.isSafeInteger(item.end) ||
+      Number(item.start) < 0 ||
+      Number(item.end) <= Number(item.start) ||
+      Number(item.end) > body.length ||
+      !nonEmpty(item.displayText) ||
+      body.slice(Number(item.start), Number(item.end)) !== item.displayText
+    ) return null;
+    mentions.push({
+      contactId: item.contactId,
+      start: Number(item.start),
+      end: Number(item.end),
+      displayText: item.displayText,
+    });
+  }
+  return mentions;
+}
+
+function readNote(value: unknown, actorId: string, schemaVersion: 1 | 2): NoteDTO | null {
   if (!isRecord(value)) return null;
   if (
     !nonEmpty(value.id) ||
@@ -30,7 +60,39 @@ function readNote(value: unknown, actorId: string): NoteDTO | null {
     !isoDate(value.createdAt) ||
     !isoDate(value.updatedAt)
   ) return null;
-  return value as unknown as NoteDTO;
+  const contactIds = [...new Set(value.contactIds as string[])].sort();
+  if (schemaVersion === 1) {
+    return {
+      ...(value as unknown as Omit<NoteDTO, "title" | "manualContactIds" | "mentions" | "eventIds">),
+      title: fallbackTitle(value.body as string),
+      manualContactIds: contactIds,
+      mentions: [],
+      contactIds,
+      eventIds: [],
+    };
+  }
+  if (
+    !nonEmpty(value.title) ||
+    !Array.isArray(value.manualContactIds) ||
+    !value.manualContactIds.every(nonEmpty) ||
+    !Array.isArray(value.eventIds) ||
+    !value.eventIds.every(nonEmpty)
+  ) return null;
+  const body = value.body as string;
+  const mentions = readMentions(value.mentions, body);
+  if (!mentions) return null;
+  const manualContactIds = [...new Set(value.manualContactIds as string[])].sort();
+  const eventIds = [...new Set(value.eventIds as string[])].sort();
+  const canonical = [...new Set([...manualContactIds, ...mentions.map((item) => item.contactId)])].sort();
+  if (canonical.length !== contactIds.length || canonical.some((id, index) => id !== contactIds[index])) return null;
+  return {
+    ...(value as unknown as NoteDTO),
+    title: value.title.trim(),
+    manualContactIds,
+    mentions,
+    contactIds,
+    eventIds,
+  };
 }
 
 function readReceipt(value: unknown): NoteOperationReceipt | null {
@@ -54,15 +116,16 @@ export function noteRecordFromLiveRecord(
     record.lifecycleState === "deleted" ||
     record.userId !== actorId ||
     !isRecord(record.payload) ||
-    record.payload.schemaVersion !== 1 ||
+    ![1, 2].includes(Number(record.payload.schemaVersion)) ||
     !Array.isArray(record.payload.operations)
   ) return null;
-  const note = readNote(record.payload.note, actorId);
+  const schemaVersion = Number(record.payload.schemaVersion) as 1 | 2;
+  const note = readNote(record.payload.note, actorId, schemaVersion);
   const operations = record.payload.operations.map(readReceipt);
   if (!note || operations.some((item) => item === null)) return null;
   const receipts = operations as NoteOperationReceipt[];
   if (new Set(receipts.map((item) => item.idempotencyKey)).size !== receipts.length) return null;
-  return { schemaVersion: 1, note, operations: receipts };
+  return { schemaVersion, note, operations: receipts };
 }
 
 export function noteLiveRecordFromPayload(input: {
@@ -85,8 +148,14 @@ export function noteLiveRecordFromPayload(input: {
     updatedAt: input.payload.note.updatedAt,
     lifecycleState: "active",
     payload: {
-      schemaVersion: 1,
-      note: { ...input.payload.note, contactIds: [...input.payload.note.contactIds] },
+      schemaVersion: input.payload.schemaVersion,
+      note: {
+        ...input.payload.note,
+        manualContactIds: [...input.payload.note.manualContactIds],
+        mentions: input.payload.note.mentions.map((item) => ({ ...item })),
+        contactIds: [...input.payload.note.contactIds],
+        eventIds: [...input.payload.note.eventIds],
+      },
       operations: input.payload.operations.map((item) => ({ ...item })),
     },
   }, actorId);
@@ -106,10 +175,16 @@ export function noteLiveRecordFromPayload(input: {
     createdAt: checked.note.createdAt,
     updatedAt: checked.note.updatedAt,
     lifecycleState: "active",
-    searchText: checked.note.body,
+    searchText: `${checked.note.title}\n${checked.note.body}`,
     payload: {
-      schemaVersion: 1,
-      note: { ...checked.note, contactIds: [...checked.note.contactIds] },
+      schemaVersion: checked.schemaVersion,
+      note: {
+        ...checked.note,
+        manualContactIds: [...checked.note.manualContactIds],
+        mentions: checked.note.mentions.map((item) => ({ ...item })),
+        contactIds: [...checked.note.contactIds],
+        eventIds: [...checked.note.eventIds],
+      },
       operations: checked.operations.map((item) => ({ ...item })),
     },
   };

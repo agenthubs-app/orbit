@@ -103,6 +103,9 @@ async function readContactsSearchInput(
     statusFilters: readSearchParamsList(url.searchParams, "status", "statuses"),
     tagFilters: readSearchParamsList(url.searchParams, "tag", "tags"),
     valueFilters: readSearchParamsList(url.searchParams, "value", "values"),
+    cursor: url.searchParams.get("cursor"),
+    limit: url.searchParams.has("limit") ? Number(url.searchParams.get("limit")) : null,
+    contextEventId: url.searchParams.get("contextEventId"),
   };
   const contentType = request.headers.get("content-type") ?? "";
 
@@ -137,6 +140,9 @@ async function readContactsSearchInput(
       statusFilters: mergeList(queryInput.statusFilters ?? [], statusFilters),
       tagFilters: mergeList(queryInput.tagFilters ?? [], tagFilters),
       valueFilters: mergeList(queryInput.valueFilters ?? [], valueFilters),
+      cursor: readFormText(formData, "cursor") ?? queryInput.cursor,
+      limit: readFormText(formData, "limit") === undefined ? queryInput.limit : Number(readFormText(formData, "limit")),
+      contextEventId: readFormText(formData, "contextEventId") ?? queryInput.contextEventId,
     };
   }
 
@@ -175,6 +181,9 @@ async function readContactsSearchInput(
       queryInput.valueFilters ?? [],
       readJsonList(body.valueFilters ?? body.values ?? body.value),
     ),
+    cursor: typeof body.cursor === "string" ? body.cursor : queryInput.cursor,
+    limit: typeof body.limit === "number" ? body.limit : queryInput.limit,
+    contextEventId: typeof body.contextEventId === "string" ? body.contextEventId : queryInput.contextEventId,
   };
 }
 

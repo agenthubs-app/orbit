@@ -13,7 +13,7 @@ const literal = "strategic_fit / CRM mock 案例\n刚刚聊到日本市场。";
 const fixture = `
 import React from "react";
 import { View } from "react-native";
-const state = window.fixture = { navigation: [] };
+const state = window.fixture = { navigation: [], requests: [] };
 export const useRouter = () => ({ push(href) { state.navigation.push(href); } });
 export const Ionicons = ({ size }) => <span aria-hidden="true" style={{ display: "inline-block", width: size, height: size }} />;
 export const data = { state: "success", contact: {
@@ -29,6 +29,16 @@ export const colors = {
   surface: "#fff", surface2: "#f7f7f7", surface3: "#eee", text: "#222", text2: "#444", text3: "#666", text4: "#888"
 };
 export const SafeAreaView = ({ children, ...props }) => <View {...props}>{children}</View>;
+export const linkedNotes = [
+  { id: "note:linked:1", accountId: "account:one", ownerUserId: "account:one", title: "客户提案跟进", body: "明天确认预算与交付时间。", manualContactIds: ["contact:/notes"], mentions: [], contactIds: ["contact:/notes"], eventIds: [], version: 2, createdAt: "2026-09-12T01:00:00.000Z", updatedAt: "2026-09-12T02:00:00.000Z" }
+];
+export const client = {
+  async get(path) {
+    state.requests.push({ method: "GET", path });
+    return { success: true, status: 200, data: { notes: linkedNotes, total: 1 }, meta: {} };
+  },
+  patch() { throw new Error("legacy write called"); }
+};
 `;
 
 test.before(async () => {
@@ -36,8 +46,8 @@ test.before(async () => {
     stdin: {
       contents: `import React from "react"; import { createRoot } from "react-dom/client";
         import { ContactNotesSection } from "./src/screens/contacts/ContactNotesSection";
-        import { data, colors } from "fixture";
-        createRoot(document.getElementById("root")).render(<ContactNotesSection actorId="account:one" client={{ patch() { throw new Error("legacy write called"); } }} colors={colors} contactId="contact:/notes" data={data} onRefresh={() => { throw new Error("legacy refresh called"); }} preview />);`,
+        import { data, colors, client } from "fixture";
+        createRoot(document.getElementById("root")).render(<ContactNotesSection actorId="account:one" client={client} colors={colors} contactId="contact:/notes" data={data} onRefresh={() => { throw new Error("legacy refresh called"); }} preview />);`,
       resolveDir: process.cwd(),
       loader: "tsx",
     },
@@ -76,7 +86,7 @@ async function open(t: { after(fn: () => Promise<void>): void }): Promise<Page> 
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   t.after(() => page.close());
   await page.goto(url);
-  await page.getByRole("button", { name: "历史联系人备注", exact: true }).click();
+  await page.getByRole("button", { name: "笔记", exact: true }).click();
   return page;
 }
 
@@ -85,14 +95,28 @@ test("legacy private notes remain readable and the old writer is closed", async 
   assert.equal(await page.getByText(literal, { exact: true }).count(), 1);
   assert.equal(await page.getByText("第二条备注", { exact: true }).count(), 1);
   assert.equal(await page.getByText("双方纪要", { exact: true }).count(), 0);
-  assert.equal(await page.getByRole("textbox").count(), 0);
+  assert.equal(await page.getByRole("textbox", { name: "搜索关联笔记" }).count(), 1);
   assert.equal(await page.getByRole("button", { name: "保存备注" }).count(), 0);
   assert.match(await page.locator("body").innerText(), /只读/);
 });
 
+test("contact note tab reads actor-scoped linked notes and searches only this contact", async (t) => {
+  const page = await open(t);
+  await page.getByText("客户提案跟进", { exact: true }).waitFor();
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests[0]), {
+    method: "GET",
+    path: "/api/notes?contactId=contact%3A%2Fnotes&limit=20",
+  });
+  await page.getByRole("textbox", { name: "搜索关联笔记" }).fill("预算");
+  await page.waitForFunction(() => (window as any).fixture.requests.length === 2);
+  assert.equal(await page.evaluate(() => (window as any).fixture.requests[1].path), "/api/notes?q=%E9%A2%84%E7%AE%97&contactId=contact%3A%2Fnotes&limit=20");
+  await page.getByRole("button", { name: "查看关联笔记 客户提案跟进" }).click();
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation.at(-1)), "/notes/note%3Alinked%3A1");
+});
+
 test("legacy section opens independent filtered notes and create routes without writes", async (t) => {
   const page = await open(t);
-  await page.getByRole("button", { name: "查看关联笔记", exact: true }).click();
+  await page.getByRole("button", { name: "查看全部关联笔记", exact: true }).click();
   await page.getByRole("button", { name: "为此人新建笔记", exact: true }).click();
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), [
     "/notes?contactId=contact%3A%2Fnotes",

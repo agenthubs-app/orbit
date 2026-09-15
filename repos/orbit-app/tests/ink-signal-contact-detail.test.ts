@@ -110,7 +110,7 @@ test("detail primary actions keep the real contact and do not send messages or c
   assert.equal(href.pathname, "/inbox"); assert.equal(href.searchParams.get("contactId"), "contact:/1"); assert.equal(href.searchParams.get("participantName"), "林悦");
   assert.equal(navigation[1], "/schedule"); assert.deepEqual(await writes(p), []);
   await press(p, "写备注");
-  await press(p, "查看关联笔记"); await press(p, "为此人新建笔记");
+  await press(p, "查看全部关联笔记"); await press(p, "为此人新建笔记");
   assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation.slice(2)), ["/notes?contactId=contact%3A%2F1", "/notes/new?contactId=contact%3A%2F1"]);
   assert.deepEqual(await writes(p), []);
 });
@@ -119,7 +119,7 @@ test("detail previews existing private notes and opens the complete read-only se
   const p = await open(t);
   assert.equal(await p.getByText("9月10日 · 合作方向讨论\n确认产品试点范围。", { exact: true }).count(), 1);
   assert.equal(await p.getByRole("textbox", { name: "添加联系人备注" }).count(), 0);
-  await press(p, "历史联系人备注");
+  await press(p, "笔记");
   assert.equal(await p.getByText("9月10日 · 合作方向讨论\n确认产品试点范围。", { exact: true }).count(), 1);
   assert.equal(await p.getByRole("textbox", { name: "添加联系人备注" }).count(), 0);
   assert.match(await p.locator("body").innerText(), /历史内容不会迁移或删除/);

@@ -1,146 +1,101 @@
-import { useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
-import { Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { type Href, useRouter } from "expo-router";
+import type { ReactNode } from "react";
+import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 
-import { noteContactPath, notePath, ORBIT_API_ENDPOINTS } from "../../api/endpoints";
+import { notePath, ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { createThemedStyles } from "../../design/theme";
 import { radius, spacing, typography } from "../../design/tokens";
 import { useApiResource } from "../../hooks/useApiResource";
-import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
-import { contactsToSummaries } from "../../view-models/contacts";
-import { buildNoteUpdateRequest, confirmedNote, noteFromPayload, type NoteView } from "../../view-models/notes";
+import { noteFromPayload } from "../../view-models/notes";
 import { buildNoteSuggestionNavigation, noteSourceTasksFromPayload } from "../../view-models/note-suggestions";
-import { NoteContactPicker } from "./NoteContactPicker";
+import { eventsToSummaries } from "../../view-models/events";
+import { useNoteContactSummaries } from "./useNoteContactSummaries";
 
-let updateSequence = 0;
-
-export function NoteDetailScreen({ actorId, noteId, scopeKey, isScopeCurrent = () => true }: {
-  actorId: string;
-  noteId: string;
-  scopeKey: string;
-  isScopeCurrent?: () => boolean;
+function MentionedBody({ body, mentions, mentionStyle, textStyle }: {
+  body: string;
+  mentions: readonly { start: number; end: number; displayText: string }[];
+  mentionStyle: object;
+  textStyle: object;
 }) {
+  if (!mentions.length) return <Text selectable style={textStyle}>{body}</Text>;
+  const ordered = [...mentions].sort((left, right) => left.start - right.start);
+  let cursor = 0;
+  const parts: ReactNode[] = [];
+  ordered.forEach((mention, index) => {
+    if (mention.start > cursor) parts.push(body.slice(cursor, mention.start));
+    parts.push(<Text key={`${mention.start}:${index}`} style={mentionStyle}>{mention.displayText}</Text>);
+    cursor = mention.end;
+  });
+  if (cursor < body.length) parts.push(body.slice(cursor));
+  return <Text selectable style={textStyle}>{parts}</Text>;
+}
+
+export function NoteDetailScreen({ actorId, noteId, scopeKey }: { actorId: string; noteId: string; scopeKey: string }) {
   const router = useRouter();
-  const client = useOrbitApiClient({ scopeKey });
   const state = useApiResource<unknown>(notePath(noteId), () => false, { scopeKey, cachePolicy: "network-only" });
-  const contactsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.contacts, () => false, { scopeKey });
   const tasksState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.tasks, () => false, { scopeKey });
-  const serverNote = state.kind === "success" || state.kind === "empty" ? noteFromPayload(state.data, actorId, noteId) : null;
-  const contacts = contactsState.kind === "success" || contactsState.kind === "empty" ? contactsToSummaries(contactsState.data) : [];
+  const eventsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.events, () => false, { scopeKey });
+  const note = state.kind === "success" || state.kind === "empty" ? noteFromPayload(state.data, actorId, noteId) : null;
+  const contactSummaries = useNoteContactSummaries(note?.contactIds ?? [], scopeKey);
   const sourceTasks = tasksState.kind === "success" || tasksState.kind === "empty" ? noteSourceTasksFromPayload(tasksState.data, actorId, noteId) : [];
-  const [confirmed, setConfirmed] = useState<NoteView | null>(null);
-  const current = confirmed && (!serverNote || confirmed.version >= serverNote.version) ? confirmed : serverNote;
-  const [draft, setDraft] = useState("");
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [dirty, setDirty] = useState(false);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState("");
-  const [saved, setSaved] = useState(false);
-  const mounted = useRef(true);
-  const controller = useRef<AbortController | null>(null);
-  const mutationKey = useRef(`ios:note:update:${noteId}:${++updateSequence}`);
-  const initializedVersion = useRef(0);
-  const { styles } = useStyles();
-  useEffect(() => () => { mounted.current = false; controller.current?.abort(); }, []);
-  useEffect(() => {
-    if (!current || dirty || current.version <= initializedVersion.current) return;
-    initializedVersion.current = current.version;
-    setDraft(current.body);
-    setSelectedIds([...current.contactIds]);
-  }, [current, dirty]);
-  const owns = () => mounted.current && isScopeCurrent();
-  const markChanged = () => { setDirty(true); setSaved(false); setError(""); mutationKey.current = `ios:note:update:${noteId}:${++updateSequence}`; };
-  const toggle = (id: string) => { setSelectedIds((items) => items.includes(id) ? items.filter((item) => item !== id) : [...items, id]); markChanged(); };
-
-  async function save() {
-    if (!owns() || pending || !current) return;
-    const request = buildNoteUpdateRequest(draft, selectedIds, current.version, mutationKey.current);
-    if (!request.success) { setError(request.error); return; }
-    const operation = new AbortController(); controller.current = operation; setPending(true); setError(""); setSaved(false);
-    const result = await client.patch<unknown>(notePath(noteId), { body: request.body, signal: operation.signal });
-    if (!owns() || operation.signal.aborted) return;
-    const note = result.success && result.status >= 200 && result.status < 300
-      ? confirmedNote(result.data, { actorId, body: request.body.body, contactIds: request.body.contactIds, noteId }) : null;
-    if (note) {
-      initializedVersion.current = note.version; setConfirmed(note); setDraft(note.body); setSelectedIds([...note.contactIds]); setDirty(false); setSaved(true); state.refresh();
-    } else setError(result.success ? "尚未确认修改已保存，草稿已保留，请重试。" : result.error.message);
-    if (owns()) setPending(false);
-    if (controller.current === operation) controller.current = null;
-  }
-
-  async function unlink(contactId: string) {
-    if (!owns() || pending || !current || !current.contactIds.includes(contactId)) return;
-    const operation = new AbortController(); controller.current = operation; setPending(true); setError(""); setSaved(false);
-    const expectedIds = current.contactIds.filter((id) => id !== contactId);
-    const result = await client.delete<unknown>(noteContactPath(noteId, contactId), {
-      body: { expectedVersion: current.version, idempotencyKey: `ios:note:unlink:${noteId}:${contactId}:${current.version}` },
-      signal: operation.signal,
-    });
-    if (!owns() || operation.signal.aborted) return;
-    const note = result.success && result.status >= 200 && result.status < 300
-      ? confirmedNote(result.data, { actorId, body: current.body, contactIds: expectedIds, noteId }) : null;
-    if (note) {
-      initializedVersion.current = note.version; setConfirmed(note); setSelectedIds((ids) => ids.filter((id) => id !== contactId)); setSaved(true); state.refresh();
-    } else setError(result.success ? "尚未确认已解除关联，内容和草稿均已保留。" : result.error.message);
-    if (owns()) setPending(false);
-    if (controller.current === operation) controller.current = null;
-  }
-
-  return <AppScreen title="笔记详情" refreshControl={<RefreshControl refreshing={state.refreshing} onRefresh={state.refresh} />}>
-    {state.kind === "loading" && !current ? <LoadingState /> : null}
+  const events = eventsState.kind === "success" || eventsState.kind === "empty" ? eventsToSummaries(eventsState.data) : [];
+  const contactNames = new Map(note?.mentions.map((mention) => [mention.contactId, mention.displayText.replace(/^@/, "")]) ?? []);
+  contactSummaries.forEach((contact, id) => contactNames.set(id, contact.name));
+  const eventNames = new Map(events.map((event) => [event.id, event.title]));
+  const { styles, colors } = useStyles();
+  return <AppScreen title="笔记" refreshControl={<RefreshControl refreshing={state.refreshing} onRefresh={state.refresh} />}>
+    {state.kind === "loading" ? <LoadingState /> : null}
     {state.kind === "failure" || state.kind === "offline" ? <ErrorState message={state.error.message} /> : null}
-    {(state.kind === "success" || state.kind === "empty") && !current ? <ErrorState message="笔记不存在或返回内容不完整。" /> : null}
-    {current ? <>
-      <Text style={styles.private}>仅自己可见 · 版本 {current.version}</Text>
-      <TextInput accessibilityLabel="笔记内容" editable={!pending} multiline value={draft} onChangeText={(value) => { setDraft(value); markChanged(); }} style={styles.input} textAlignVertical="top" />
-      <NoteContactPicker contacts={contacts} disabled={pending} selectedIds={selectedIds} onToggle={toggle} />
-      {current.contactIds.length ? <View style={styles.links}>
-        <Text style={styles.label}>当前关联</Text>
-        {current.contactIds.map((contactId) => <View key={contactId} style={styles.linkRow}>
-          <Pressable accessibilityRole="button" accessibilityLabel={`打开关联人脉 ${contactId}`} onPress={() => router.push(`/contacts/${encodeURIComponent(contactId)}`)} style={styles.contactLink}>
-            <Text style={styles.contactLinkText}>{contacts.find((item) => item.id === contactId)?.name ?? contactId}</Text>
-          </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel={`解除关联 ${contactId}`} disabled={pending} onPress={() => { void unlink(contactId); }} style={styles.unlink}>
-            <Text style={styles.unlinkText}>解除关联</Text>
-          </Pressable>
-        </View>)}
+    {(state.kind === "success" || state.kind === "empty") && !note ? <ErrorState message="笔记不存在或返回内容不完整。" /> : null}
+    {note ? <>
+      <View style={styles.heading}>
+        <View style={styles.privatePill}><Ionicons color={colors.text3} name="lock-closed-outline" size={13} /><Text style={styles.private}>仅自己可见</Text></View>
+        <Text style={styles.title}>{note.title}</Text>
+        <Text style={styles.date}>{new Date(note.updatedAt).toLocaleString("zh-CN", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })} · v{note.version}</Text>
+      </View>
+      <View style={styles.paper}><MentionedBody body={note.body} mentions={note.mentions} mentionStyle={styles.mention} textStyle={styles.body} /></View>
+      {note.contactIds.length ? <View style={styles.section}>
+        <Text style={styles.sectionTitle}>相关人脉</Text>
+        <View style={styles.chips}>{note.contactIds.map((contactId) => <Pressable key={contactId} accessibilityRole="button" accessibilityLabel={`打开关联人脉 ${contactNames.get(contactId) ?? contactId}`} onPress={() => router.push(`/contacts/${encodeURIComponent(contactId)}` as Href)} style={styles.chip}>
+          <View style={styles.avatar}><Text style={styles.avatarText}>{(contactNames.get(contactId) ?? contactId.replace(/^contact:/, "")).slice(0, 1).toLocaleUpperCase()}</Text></View><Text numberOfLines={1} style={styles.chipText}>{contactNames.get(contactId) ?? contactId.replace(/^contact:/, "")}</Text>
+        </Pressable>)}</View>
       </View> : null}
-      {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
-      {saved ? <Text accessibilityLiveRegion="polite" style={styles.notice}>笔记已更新。</Text> : null}
-      {sourceTasks.length ? <View style={styles.links}>
-        <Text style={styles.label}>由这篇笔记创建的待办</Text>
-        {sourceTasks.map((task) => <Pressable key={task.id} accessibilityRole="button" accessibilityLabel={`打开来源待办 ${task.title}`} onPress={() => router.push(`/tasks/${encodeURIComponent(task.id)}`)} style={styles.contactLink}>
-          <Text style={styles.contactLinkText}>{task.title} · 笔记版本 {task.sourceNoteVersion}</Text>
-        </Pressable>)}
-      </View> : null}
-      <Pressable accessibilityRole="button" accessibilityLabel="从这篇笔记整理待办" disabled={pending || dirty} onPress={() => router.push(buildNoteSuggestionNavigation(current))} style={[styles.suggest, (pending || dirty) && styles.disabled]}>
-        <Text style={styles.suggestText}>从这篇笔记整理待办</Text>
-      </Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel={pending ? "保存中" : "保存修改"} accessibilityState={{ disabled: pending || !dirty || !draft.trim() }} disabled={pending || !dirty || !draft.trim()} onPress={() => { void save(); }} style={[styles.save, (pending || !dirty || !draft.trim()) && styles.disabled]}>
-        <Text style={styles.saveText}>{pending ? "保存中" : "保存修改"}</Text>
-      </Pressable>
+      {note.eventIds.length ? <View style={styles.section}><Text style={styles.sectionTitle}>相关活动</Text>{note.eventIds.map((eventId) => <Pressable key={eventId} accessibilityRole="button" accessibilityLabel={`打开关联活动 ${eventNames.get(eventId) ?? eventId}`} onPress={() => router.push(`/events/${encodeURIComponent(eventId)}` as Href)} style={styles.linkRow}><Ionicons color={colors.accent} name="calendar-outline" size={19} /><Text style={styles.linkText}>{eventNames.get(eventId) ?? eventId.replace(/^event:/, "")}</Text><Ionicons color={colors.text4} name="chevron-forward" size={18} /></Pressable>)}</View> : null}
+      {sourceTasks.length ? <View style={styles.section}><Text style={styles.sectionTitle}>由这篇笔记创建</Text>{sourceTasks.map((task) => <Pressable key={task.id} accessibilityRole="button" accessibilityLabel={`打开来源待办 ${task.title}`} onPress={() => router.push(`/tasks/${encodeURIComponent(task.id)}` as Href)} style={styles.linkRow}><Ionicons color={colors.accent} name="checkbox-outline" size={19} /><Text style={styles.linkText}>{task.title}</Text><Ionicons color={colors.text4} name="chevron-forward" size={18} /></Pressable>)}</View> : null}
+      <View style={styles.actions}>
+        <Pressable accessibilityRole="button" accessibilityLabel="编辑笔记" onPress={() => router.push(`/notes/${encodeURIComponent(note.id)}/edit` as Href)} style={styles.editLarge}><Text style={styles.editText}>编辑笔记</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="IORBIT 总结" onPress={() => router.push(buildNoteSuggestionNavigation(note))} style={styles.iorbit}><View style={styles.orbitMark}><Ionicons color={colors.onAccent} name="sparkles" size={16} /></View><Text style={styles.iorbitTitle}>IORBIT 总结</Text></Pressable>
+      </View>
     </> : null}
   </AppScreen>;
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  private: { color: colors.text3, fontSize: typography.caption, lineHeight: 18 },
-  input: { backgroundColor: colors.surface2, borderColor: colors.border, borderRadius: radius.md, borderWidth: 1, color: colors.ink, fontSize: typography.body, lineHeight: 24, minHeight: 180, padding: spacing.lg },
-  links: { gap: spacing.sm },
-  label: { color: colors.ink, fontSize: typography.body, fontWeight: "700" },
-  linkRow: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: spacing.sm, minHeight: 48 },
-  contactLink: { flex: 1, minHeight: 44, justifyContent: "center" },
-  contactLinkText: { color: colors.accent, fontSize: typography.body },
-  unlink: { minHeight: 44, justifyContent: "center", paddingHorizontal: spacing.sm },
-  unlinkText: { color: colors.rose, fontSize: typography.small, fontWeight: "600" },
-  error: { color: colors.rose, fontSize: typography.small, lineHeight: 20 },
-  notice: { color: colors.text3, fontSize: typography.small, lineHeight: 20 },
-  save: { alignItems: "center", backgroundColor: colors.accent, borderRadius: radius.md, justifyContent: "center", minHeight: 48, paddingHorizontal: spacing.lg },
-  saveText: { color: colors.onAccent, fontSize: typography.body, fontWeight: "700" },
-  suggest: { alignItems: "center", borderColor: colors.accent, borderRadius: radius.md, borderWidth: 1, justifyContent: "center", minHeight: 48, paddingHorizontal: spacing.lg },
-  suggestText: { color: colors.accent, fontSize: typography.body, fontWeight: "700" },
-  disabled: { opacity: 0.45 },
+  heading: { gap: spacing.sm, paddingTop: spacing.sm },
+  privatePill: { alignItems: "center", alignSelf: "flex-start", backgroundColor: colors.surface3, borderRadius: radius.pill, flexDirection: "row", gap: 5, paddingHorizontal: 9, paddingVertical: 5 },
+  private: { color: colors.text3, fontSize: typography.caption, fontWeight: "700" },
+  title: { color: colors.ink, fontSize: 28, fontWeight: "900", letterSpacing: -0.5, lineHeight: 37 },
+  date: { color: colors.text3, fontSize: typography.caption, lineHeight: 18 },
+  paper: { borderBottomColor: colors.border, borderBottomWidth: 1, minHeight: 230, paddingBottom: spacing.xl, paddingTop: spacing.md },
+  body: { color: colors.ink, fontSize: 17, lineHeight: 29 },
+  mention: { backgroundColor: colors.accentSoft, color: colors.accent, fontWeight: "800" },
+  section: { gap: spacing.sm },
+  sectionTitle: { color: colors.ink, fontSize: typography.small, fontWeight: "800", letterSpacing: 0.3 },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  chip: { alignItems: "center", backgroundColor: colors.surface2, borderColor: colors.border, borderRadius: radius.pill, borderWidth: 1, flexDirection: "row", gap: 7, maxWidth: 180, minHeight: 42, paddingHorizontal: 8, paddingRight: 13 },
+  avatar: { alignItems: "center", backgroundColor: colors.accentSoft, borderRadius: radius.pill, height: 28, justifyContent: "center", width: 28 },
+  avatarText: { color: colors.accent, fontSize: typography.small, fontWeight: "900" },
+  chipText: { color: colors.text, flexShrink: 1, fontSize: typography.small, fontWeight: "700" },
+  linkRow: { alignItems: "center", backgroundColor: colors.surface2, borderColor: colors.border, borderRadius: radius.md, borderWidth: 1, flexDirection: "row", gap: spacing.sm, minHeight: 52, paddingHorizontal: spacing.md },
+  linkText: { color: colors.text, flex: 1, fontSize: typography.small, fontWeight: "700" },
+  actions: { flexDirection: "row", gap: spacing.sm, paddingTop: spacing.lg },
+  editLarge: { alignItems: "center", backgroundColor: colors.ink, borderRadius: radius.lg, flex: 1, justifyContent: "center", minHeight: 58 },
+  editText: { color: colors.bg, fontSize: typography.body, fontWeight: "800" },
+  iorbit: { alignItems: "center", borderColor: colors.ink, borderRadius: radius.lg, borderWidth: 1.5, flex: 1, flexDirection: "row", gap: spacing.sm, justifyContent: "center", minHeight: 58, paddingHorizontal: spacing.sm },
+  orbitMark: { alignItems: "center", backgroundColor: colors.ink, borderRadius: radius.sm, height: 28, justifyContent: "center", width: 28 },
+  iorbitTitle: { color: colors.ink, fontSize: typography.body, fontWeight: "800" },
 }));

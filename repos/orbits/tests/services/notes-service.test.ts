@@ -168,3 +168,140 @@ test("concurrent edits from one loaded version allow exactly one winner", async 
   assert.equal(final?.version, 2);
   assert.ok(final?.body === "版本 A" || final?.body === "版本 B");
 });
+
+test("v2 notes derive canonical contacts from manual links and checked UTF-16 mentions", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const repository = createNoteRepository({ store, workspaceId: "workspace:test" });
+  const service = createNoteService({
+    repository,
+    associationReader: {
+      async accessibleContactIds({ actorId, ids }) {
+        assert.equal(actorId, "account:one");
+        return ids.filter((id) => ["contact:ada", "contact:lin"].includes(id));
+      },
+      async accessibleEventIds({ ids }) {
+        return ids.filter((id) => id === "event:launch");
+      },
+      async searchContactIds() { return []; },
+    },
+  });
+  const body = "和 Ada 讨论发布计划";
+  const created = await service.create({
+    actorId: "account:one",
+    title: "发布会准备",
+    body,
+    manualContactIds: ["contact:lin"],
+    mentions: [{ contactId: "contact:ada", start: 2, end: 5, displayText: "Ada" }],
+    eventIds: ["event:launch"],
+    idempotencyKey: "create:v2",
+    now: "2026-09-15T00:00:00.000Z",
+  });
+
+  assert.equal(created.title, "发布会准备");
+  assert.deepEqual(created.manualContactIds, ["contact:lin"]);
+  assert.deepEqual(created.contactIds, ["contact:ada", "contact:lin"]);
+  assert.deepEqual(created.eventIds, ["event:launch"]);
+  assert.equal(created.mentions[0]?.displayText, "Ada");
+
+  await assert.rejects(
+    service.update({
+      actorId: "account:one",
+      noteId: created.id,
+      mentions: [{ contactId: "contact:ada", start: 2, end: 6, displayText: "Ada" }],
+      expectedVersion: 1,
+      idempotencyKey: "update:bad-range",
+      now: "2026-09-15T00:01:00.000Z",
+    }),
+    (error: unknown) => error instanceof NoteServiceError && error.code === "NOTE_INVALID_INPUT",
+  );
+});
+
+test("legacy contactIds remain manual links and omitted v2 fields survive old-client patches", async () => {
+  const { service } = fixture();
+  const created = await service.create({
+    actorId: "account:one",
+    body: "第一行标题\n第二行正文",
+    contactIds: ["contact:legacy"],
+    idempotencyKey: "create:legacy-shape",
+    now: "2026-09-15T00:00:00.000Z",
+  });
+  assert.equal(created.title, "第一行标题");
+  assert.deepEqual(created.manualContactIds, ["contact:legacy"]);
+  assert.deepEqual(created.mentions, []);
+  assert.deepEqual(created.eventIds, []);
+
+  const updated = await service.update({
+    actorId: "account:one",
+    noteId: created.id,
+    body: "旧客户端只改正文",
+    expectedVersion: 1,
+    idempotencyKey: "update:legacy-shape",
+    now: "2026-09-15T00:01:00.000Z",
+  });
+  assert.equal(updated.title, "第一行标题");
+  assert.deepEqual(updated.manualContactIds, ["contact:legacy"]);
+});
+
+test("an old client cannot leave stale mention ranges when replacing the body", async () => {
+  const { service } = fixture();
+  const body = "联系 Ada 确认时间";
+  const created = await service.create({
+    actorId: "account:one",
+    title: "确认安排",
+    body,
+    mentions: [{ contactId: "contact:ada", start: 3, end: 6, displayText: "Ada" }],
+    idempotencyKey: "create:mention-compat",
+    now: "2026-09-15T00:00:00.000Z",
+  });
+
+  await assert.rejects(
+    service.update({
+      actorId: "account:one",
+      noteId: created.id,
+      body: "旧客户端替换了整段正文",
+      expectedVersion: 1,
+      idempotencyKey: "update:mention-compat",
+      now: "2026-09-15T00:01:00.000Z",
+    }),
+    (error: unknown) => error instanceof NoteServiceError && error.code === "NOTE_INVALID_INPUT",
+  );
+  assert.deepEqual(await service.get({ actorId: "account:one", noteId: created.id }), created);
+});
+
+test("note list searches title, body and actor-scoped contact matches with stable pagination", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const repository = createNoteRepository({ store, workspaceId: "workspace:test" });
+  const service = createNoteService({
+    repository,
+    associationReader: {
+      async accessibleContactIds({ ids }) { return ids; },
+      async accessibleEventIds({ ids }) { return ids; },
+      async searchContactIds({ actorId, query }) {
+        assert.equal(actorId, "account:one");
+        return query === "Ada" ? ["contact:ada"] : [];
+      },
+    },
+  });
+  for (const [index, title, contactIds] of [
+    [0, "发布会", ["contact:ada"]],
+    [1, "预算", []],
+    [2, "回访", ["contact:ada"]],
+  ] as const) {
+    await service.create({
+      actorId: "account:one",
+      title,
+      body: `${title} 正文`,
+      contactIds,
+      idempotencyKey: `create:list:${index}`,
+      now: `2026-09-15T00:0${index}:00.000Z`,
+    });
+  }
+  const first = await service.search({ actorId: "account:one", q: "Ada", limit: 1 });
+  assert.equal(first.notes.length, 1);
+  assert.equal(first.total, 2);
+  assert.ok(first.nextCursor);
+  const second = await service.search({ actorId: "account:one", q: "Ada", limit: 1, cursor: first.nextCursor });
+  assert.equal(second.notes.length, 1);
+  assert.notEqual(second.notes[0]?.id, first.notes[0]?.id);
+  assert.equal(second.nextCursor, undefined);
+});

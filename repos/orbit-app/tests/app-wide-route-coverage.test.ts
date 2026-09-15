@@ -175,6 +175,7 @@ const integratedFeatureRoutes = [
   "/invitations/[token]",
   "/notes",
   "/notes/[id]",
+  "/notes/[id]/edit",
   "/notes/new"
 ] as const;
 

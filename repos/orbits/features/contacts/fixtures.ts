@@ -471,10 +471,22 @@ export function buildContactsListSearchPayload(
   // 这样测试可以覆盖组合筛选，而不用维护大量手写 fixture。
   const appliedFilters = appliedFiltersFromInput(input);
   const hasActiveRules = hasActiveSearchOrFilters(appliedFilters);
-  const contacts = mockContactListItems.filter((contact) =>
+  const matchedContacts = mockContactListItems.filter((contact) =>
     contactMatchesFilters(contact, appliedFilters),
   );
-  const state = contacts.length > 0 ? "success" : "empty";
+  const scope = JSON.stringify(appliedFilters);
+  let offset = 0;
+  if (input.cursor) {
+    try {
+      const decoded = JSON.parse(Buffer.from(input.cursor, "base64url").toString("utf8")) as { offset?: unknown; scope?: unknown };
+      if (Number.isSafeInteger(decoded.offset) && Number(decoded.offset) >= 0 && decoded.scope === scope) offset = Number(decoded.offset);
+    } catch { offset = 0; }
+  }
+  const paged = input.limit != null;
+  const limit = paged ? Math.min(50, Math.max(1, Math.floor(input.limit!))) : matchedContacts.length;
+  const contacts = matchedContacts.slice(offset, offset + limit);
+  const nextOffset = offset + contacts.length;
+  const state = matchedContacts.length > 0 ? "success" : "empty";
   const provenance: ContactsListSearchProvenance = {
     ...mockContactsListProvenance,
     evidenceIds: evidenceIdsForContacts(contacts),
@@ -492,6 +504,10 @@ export function buildContactsListSearchPayload(
     appliedFilters,
     availableFilters: buildAvailableFilters(appliedFilters),
     contacts,
+    total: matchedContacts.length,
+    ...(paged && nextOffset < matchedContacts.length
+      ? { nextCursor: Buffer.from(JSON.stringify({ offset: nextOffset, scope }), "utf8").toString("base64url") }
+      : {}),
     summary:
       contacts.length > 0
         ? hasActiveRules

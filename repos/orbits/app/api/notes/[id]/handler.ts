@@ -7,7 +7,9 @@ import {
   noteContactIds,
   noteError,
   noteExactKeys,
+  noteMentions,
   noteNow,
+  noteOptionalString,
   noteService,
   noteString,
   noteSuccess,
@@ -34,12 +36,16 @@ export function createNoteDetailHandlers(dependencies?: NoteRouteDependencies) {
       try {
         const { id } = await context.params;
         const body = await noteBody(request);
-        noteExactKeys(body, ["body", "contactIds", "expectedVersion", "idempotencyKey"]);
+        noteExactKeys(body, ["title", "body", "contactIds", "manualContactIds", "mentions", "eventIds", "expectedVersion", "idempotencyKey"]);
         const note = await noteService(dependencies).update({
           actorId: actor.id,
           noteId: id,
+          ...(body.title === undefined ? {} : { title: noteOptionalString(body.title, "title") }),
           ...(body.body === undefined ? {} : { body: noteString(body.body, "body") }),
           ...(body.contactIds === undefined ? {} : { contactIds: noteContactIds(body.contactIds) }),
+          ...(body.manualContactIds === undefined ? {} : { manualContactIds: noteContactIds(body.manualContactIds) }),
+          ...(body.mentions === undefined ? {} : { mentions: noteMentions(body.mentions) }),
+          ...(body.eventIds === undefined ? {} : { eventIds: noteContactIds(body.eventIds) }),
           expectedVersion: noteVersion(body.expectedVersion),
           idempotencyKey: noteString(body.idempotencyKey, "idempotencyKey"),
           now: noteNow(dependencies),
