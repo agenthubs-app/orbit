@@ -32,6 +32,14 @@ _Avoid_: Suggested follow-up, relationship stage
 A reviewable AI- or rule-generated proposal that becomes a Follow-up Task only after user confirmation.
 _Avoid_: Task, reminder, completed action
 
+**Relationship Follow-up View**:
+An actor-scoped query view of confirmed Follow-up Tasks and their relationship evidence. It is not a separately persisted entity and does not include Suggested Follow-ups unless a request explicitly asks for recommendations.
+_Avoid_: Follow-up Task, Suggested Follow-up, Follow-up Review Queue
+
+**Follow-up Review Queue**:
+A derived, ordered set of relationship actions that Orbit recommends reviewing now. It is not the authoritative Follow-up Task store and does not represent the user's complete follow-up history.
+_Avoid_: Relationship Follow-up View, full task list, follow-up history
+
 **Orbit Invitation**:
 An optional, separately confirmed email that invites a confirmed contact to join Orbit after the recipient address and message have been reviewed.
 _Avoid_: Contact confirmation, automatic welcome email

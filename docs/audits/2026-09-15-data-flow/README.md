@@ -103,7 +103,7 @@ Google Calendar / Gmail / Microsoft Graph / 名片图片
 ### 当前没有 AI 读取方法的数据
 
 - 笔记正文、提及与笔记关联图。
-- 完整任务清单、任意任务详情与任务建议清单（跟进工具只覆盖子集）。
+- 完整任务清单、任意任务详情、任务建议清单，以及已确认关系跟进的完整列表/详情（现有 `followups.reviewQueue` 只覆盖派生推荐子集）。
 - 个人日程/Orbit Schedule/appointment 的通用查询与详情。
 - 完整关系收件箱、通知、提醒计划与 delivery 状态。
 - 权限状态、语言/Agent 设置、push device、provider authorization/health。
@@ -120,7 +120,7 @@ Google Calendar / Gmail / Microsoft Graph / 名片图片
 | P0 | 日程双权威源 | UI、Agent action 与 Today 可能读到不同集合 | 选 `personal_schedule_items` 为 canonical；迁移/投影旧 `orbitScheduleItems`；加入双写禁令与 parity test |
 | P0 | 推送设备双身份/双 API | 注册、撤销、登出清理可能操作不同 device row | 统一 SecureStore device ID 与 `/push-tokens/:id`；提供一次性迁移和旧端点兼容窗口 |
 | P1 | AI 数据可见性没有产品级合同 | 用户预期与实际能力不一致；未来加工具可能过度暴露 | 建立字段级 allowlist、purpose、redaction、retention 与 audit matrix；UI 显示“本回答使用了哪些数据” |
-| P1 | Notes/Tasks/Schedule 是 AI 盲区 | AI 无法回答 App 核心个人工作流问题 | 分别增加 `notes.search`、`tasks.query`、`schedule.query` 只读工具；默认最小字段、数量上限、actor scope |
+| P1 | Notes/Tasks/Follow-ups/Schedule 是 AI 盲区 | AI 无法回答 App 核心个人工作流问题；现有 follow-up 工具只覆盖推荐队列 | 分别增加 `notes.query`、`tasks.query`、`followups.query`、`schedule.query`；支持列表/搜索/详情，默认最小字段、数量上限、actor scope |
 | P1 | 通用 JSONB 与专用表缺权威源登记 | 新功能容易从错误存储读取或重复写入 | 建立 machine-readable data authority registry，并在 service factory/API 测试中校验 |
 | P2 | App contract 仍以文件副本同步 | 测试能阻止漂移，但维护成本高，部分局部 contract 不受同一真源约束 | 保留离线自包含构建，同时生成副本与覆盖清单，禁止手工维护重复类型 |
 

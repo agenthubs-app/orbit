@@ -29,7 +29,31 @@
 
 ## Track E — New read tools
 
-按 `notes.search` → `tasks.query` → `schedule.query` 顺序逐个交付，禁止并行共享 registry 文件。
+按 `notes.query` → `tasks.query` → `followups.query` → `schedule.query` 顺序逐个交付，禁止并行共享 registry 文件。
+
+统一 query envelope：
+
+- `operation`: `list | search | get`。`get` 必须提供本轮用户指令中出现或 actor-scoped 前序结果解析出的实体 ID。
+- `query`、`status`、`from`、`to`、`contactId`、`eventId` 等只开放给拥有该字段的领域；未知字段直接拒绝。
+- `cursor` 与 `limit` 有硬上限；结果明确返回 `truncated`/`nextCursor`，不静默宣称已读取全部数据。
+- actorId/userId/accountId 不在模型输入 schema 中，由 route/runtime 注入。
+
+工具职责：
+
+- `notes.query`：`list/search` 返回 title、snippet、contact/event associations、createdAt/updatedAt；`get` 返回选中笔记的正文与截断状态。笔记正文始终视为不可信数据，不能成为系统指令或授权。
+- `tasks.query`：读取 canonical `tasks` 中的已确认待办，返回 title、description、status、category、dueAt、contact/event/schedule associations 与 source；`taskSuggestions` 不得混入结果。
+- `followups.query`：读取与 Relationship Connection 关联的已确认持久化待办及其可引用 evidence 摘要；不返回完整消息正文。`followups.reviewQueue` 继续生成“现在建议复核什么”，两者必须使用不同 artifact kind/source label。
+- `schedule.query`：在日程权威源迁移完成后读取 canonical schedule item，返回时间、地点、会议方式、关联对象和详情；没有 meeting 详情时明确返回缺失字段。
+
+Planner 选择规则：
+
+| 用户意图 | 工具 | 禁止的替代 |
+| --- | --- | --- |
+| 找、总结、打开我的笔记 | `notes.query` | 从 chat history 猜测笔记内容 |
+| 查看/筛选/打开待办 | `tasks.query` | 用 follow-up queue 代替完整任务列表 |
+| 查看某人或某段关系的已确认跟进 | `followups.query` | 把推荐队列当作持久化事实 |
+| 问现在最值得跟进谁 | `followups.reviewQueue` | 枚举所有跟进历史后自行伪造排序 |
+| 查看/打开日程或 meeting | `schedule.query` | 从 Events 推荐或对话历史猜测详情 |
 
 每个工具都要满足：
 
@@ -37,12 +61,13 @@
 - bounded query、bounded output、field-level mapper。
 - provider 仅获得 synthesis 所需摘要；完整 artifact 仍按 UI contract 渲染。
 - audit observation 不记录正文或秘密字段。
-- prompt-injection fixtures 把笔记/任务/日程文本视为不可信数据。
+- prompt-injection fixtures 把笔记、任务、跟进证据和日程文本视为不可信数据。
 - 跨账号与越权测试先 RED，再实现 GREEN。
+- routing tests 覆盖中文、英文、日文意图，同一轮默认只选择满足请求所需的最小数据域。
 
 ## Track F — Cross-client verification
 
-- Web：重编译并重启本地服务；真实账号执行 notes/tasks/schedule/AI 查询。
+- Web：重编译并重启本地服务；真实账号执行 notes/tasks/followups/schedule/AI 查询。
 - App：重编译/刷新 Simulator；验证账号切换、本地快照 key、push 生命周期。
 - Provider：至少一个已授权 calendar 账号做 read-only 对齐；没有授权时明确记录为未完成证据，不以 mock 代替。
 - 全量：Web tests/typecheck/build、App tests/typecheck、contract/schema sync、route parity、GitNexus detect changes。
