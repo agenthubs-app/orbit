@@ -45,6 +45,7 @@ test("mobile actor workspaces share one private-route policy", () => {
     "/agent",
     "/ai/conversation-1",
     "/chat/thread-1",
+    "/contacts/matches",
     "/contacts/person-1",
     "/dashboard",
     "/followups",
@@ -141,6 +142,13 @@ test("auth return parameter ownership follows the matched route instead of globa
     }),
     "/contacts/list?id=query-owned-on-static-route&q=tokyo"
   );
+  assert.equal(
+    mobileAuthReturnHref("/contacts/matches", {
+      id: "query-owned-on-static-route",
+      view: "all"
+    }),
+    "/contacts/matches?id=query-owned-on-static-route&view=all"
+  );
 });
 
 test("party query, duplicate values and fragment survive the login completion handoff", () => {
@@ -235,6 +243,7 @@ test("every root-level private entry uses the shared render gate", () => {
     "contacts/graph.tsx",
     "contacts/intros.tsx",
     "contacts/list.tsx",
+    "contacts/matches.tsx",
     "contacts/new.tsx",
     "contacts/new/batch/[id].tsx",
     "contacts/new/batch2/[id].tsx",

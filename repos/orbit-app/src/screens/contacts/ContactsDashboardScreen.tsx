@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import { randomUUID } from "expo-crypto";
 import { type Href, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -10,7 +9,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View
 } from "react-native";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
@@ -20,11 +18,6 @@ import {
   ORBIT_API_ENDPOINTS
 } from "../../api/endpoints";
 import { mobileContactsDashboardPayloadSchema } from "../../api/schema/mobile-contacts-dashboard";
-import {
-  acceptRelationshipGoalSaveReceipt,
-  createRelationshipGoalSaveAttempt,
-  type RelationshipGoalSaveAttempt
-} from "../../api/relationship-goal";
 import { AppScreen } from "../../components/AppScreen";
 import { AnalysisPieOrbitChart } from "../../components/AnalysisPieOrbitChart";
 import { DataCard } from "../../components/DataCard";
@@ -36,6 +29,7 @@ import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useValidatedApiResource } from "../../hooks/useValidatedApiResource";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import {
   contactsAnalysisTemplate,
   registerAiTemplatePrefill
@@ -86,16 +80,6 @@ type ContactsDashboardOverviewFilter = {
 
 type AnalysisSegment = "opportunity" | "overview" | "structure";
 
-interface RelationshipGoalEditorState {
-  baseline: {
-    profileId: string;
-    relationshipGoal: string;
-    updatedAt: string;
-  };
-  draft: string;
-  ownerKey: string;
-}
-
 function overviewFilterFor(
   item: ContactsDashboardOverviewItem
 ): ContactsDashboardOverviewFilter {
@@ -119,27 +103,15 @@ export function ContactsDashboardScreen() {
   const auth = useOrbitAuthSession();
   const { baseUrl } = useOrbitApiBaseUrl();
   const actorId = auth.user?.id ?? "";
-  const dashboardScopeKey = JSON.stringify([actorId, baseUrl]);
+  const dashboardScopeKey = JSON.stringify([actorId, auth.cookieHeader, baseUrl]);
   const client = useOrbitApiClient({ scopeKey: dashboardScopeKey });
   const [recomputing, setRecomputing] = useState(false);
   const [recomputeResult, setRecomputeResult] =
     useState<DashboardOpportunitiesRecomputeView | null>(null);
   const [recomputeError, setRecomputeError] = useState<string | null>(null);
-  const [relationshipGoalEditor, setRelationshipGoalEditor] =
-    useState<RelationshipGoalEditorState | null>(null);
-  const [relationshipGoalError, setRelationshipGoalError] =
-    useState<string | null>(null);
-  const [relationshipGoalMessage, setRelationshipGoalMessage] =
-    useState<string | null>(null);
-  const [savingRelationshipGoal, setSavingRelationshipGoal] = useState(false);
-  const relationshipGoalAttempt = useRef<RelationshipGoalSaveAttempt | null>(null);
-  const relationshipGoalRebaseRequested = useRef(false);
-  const relationshipGoalAbortController = useRef<AbortController | null>(null);
   const recomputeAbortController = useRef<AbortController | null>(null);
   const currentDashboardScope = useRef(dashboardScopeKey);
   currentDashboardScope.current = dashboardScopeKey;
-  const relationshipGoalEditorRef = useRef(relationshipGoalEditor);
-  relationshipGoalEditorRef.current = relationshipGoalEditor;
   const dashboardState = useValidatedApiResource(
     ORBIT_API_ENDPOINTS.mobileContactsDashboard,
     mobileContactsDashboardPayloadSchema,
@@ -151,11 +123,6 @@ export function ContactsDashboardScreen() {
       ? dashboardState.data
       : null;
   const manualProfile = dashboard?.profile?.profile ?? null;
-  const relationshipGoalOwnerKey = manualProfile
-    ? JSON.stringify([actorId, baseUrl, manualProfile.id])
-    : "";
-  const currentRelationshipGoalOwner = useRef(relationshipGoalOwnerKey);
-  currentRelationshipGoalOwner.current = relationshipGoalOwnerKey;
 
   useEffect(() => {
     recomputeAbortController.current?.abort();
@@ -168,54 +135,8 @@ export function ContactsDashboardScreen() {
     };
   }, [dashboardScopeKey]);
 
-  useEffect(() => {
-    relationshipGoalAbortController.current?.abort();
-    relationshipGoalAbortController.current = null;
-    relationshipGoalAttempt.current = null;
-    relationshipGoalRebaseRequested.current = false;
-    setRelationshipGoalError(null);
-    setRelationshipGoalMessage(null);
-    setSavingRelationshipGoal(false);
-    return () => {
-      relationshipGoalAbortController.current?.abort();
-    };
-  }, [relationshipGoalOwnerKey]);
-
-  useEffect(() => {
-    if (!manualProfile || !actorId) return;
-    setRelationshipGoalEditor((current) => {
-      const incoming = {
-        baseline: {
-          profileId: manualProfile.id,
-          relationshipGoal: manualProfile.relationshipGoal,
-          updatedAt: manualProfile.updatedAt,
-        },
-        draft: manualProfile.relationshipGoal,
-        ownerKey: relationshipGoalOwnerKey,
-      };
-      if (!current || current.ownerKey !== relationshipGoalOwnerKey) {
-        relationshipGoalAttempt.current = null;
-        return incoming;
-      }
-      if (current.draft.trim() === current.baseline.relationshipGoal.trim()) {
-        relationshipGoalRebaseRequested.current = false;
-        return incoming;
-      }
-      if (
-        relationshipGoalRebaseRequested.current
-        && current.baseline.updatedAt !== incoming.baseline.updatedAt
-      ) {
-        relationshipGoalAttempt.current = null;
-        relationshipGoalRebaseRequested.current = false;
-        return { ...current, baseline: incoming.baseline };
-      }
-      return current;
-    });
-  }, [actorId, manualProfile?.id, manualProfile?.relationshipGoal, manualProfile?.updatedAt, relationshipGoalOwnerKey]);
-
   function refreshAll() {
     setRecomputeError(null);
-    setRelationshipGoalError(null);
     dashboardState.refresh();
   }
 
@@ -254,103 +175,6 @@ export function ContactsDashboardScreen() {
       ) {
         recomputeAbortController.current = null;
         setRecomputing(false);
-      }
-    }
-  }
-
-  async function saveContactDashboardGoal() {
-    const editor = relationshipGoalEditorRef.current;
-    if (!editor || editor.ownerKey !== relationshipGoalOwnerKey || !actorId || !baseUrl) {
-      setRelationshipGoalError("个人资料还没加载完成。");
-      setRelationshipGoalMessage(null);
-      return;
-    }
-
-    const attempt = createRelationshipGoalSaveAttempt({
-      actorId,
-      baseUrl,
-      expectedUpdatedAt: editor.baseline.updatedAt,
-      profileId: editor.baseline.profileId,
-      relationshipGoal: editor.draft,
-    }, relationshipGoalAttempt.current, randomUUID);
-    relationshipGoalAttempt.current = attempt;
-    const requestOwnerKey = editor.ownerKey;
-    const submittedDraft = editor.draft;
-    const controller = new AbortController();
-    relationshipGoalAbortController.current?.abort();
-    relationshipGoalAbortController.current = controller;
-
-    setSavingRelationshipGoal(true);
-    setRelationshipGoalError(null);
-    setRelationshipGoalMessage(null);
-
-    try {
-      const result = await client.put<unknown>(ORBIT_API_ENDPOINTS.profile, {
-        body: attempt.body,
-        signal: controller.signal,
-      });
-      const currentEditor = relationshipGoalEditorRef.current;
-      if (
-        !currentEditor
-        || currentEditor.ownerKey !== requestOwnerKey
-        || currentRelationshipGoalOwner.current !== requestOwnerKey
-      ) {
-        return;
-      }
-
-      if (!result.success) {
-        setRelationshipGoalError(
-          result.error.message || "关系目标暂时保存不了。"
-        );
-        if (result.status === 409) {
-          relationshipGoalRebaseRequested.current = true;
-          dashboardState.refresh();
-        }
-        return;
-      }
-
-      const confirmation = acceptRelationshipGoalSaveReceipt(
-        attempt,
-        result.data,
-        {
-          actorId,
-          baseUrl,
-          profileId: currentEditor.baseline.profileId,
-        },
-      );
-      if (!confirmation.ok) {
-        setRelationshipGoalError("服务器没有确认这次保存，草稿已保留。请重试。");
-        return;
-      }
-
-      relationshipGoalAttempt.current = null;
-      const hasNewerDraft = currentEditor.draft !== submittedDraft;
-      setRelationshipGoalEditor({
-        baseline: {
-          profileId: attempt.scope.profileId,
-          relationshipGoal: confirmation.relationshipGoal,
-          updatedAt: confirmation.updatedAt,
-        },
-        draft: hasNewerDraft ? currentEditor.draft : confirmation.relationshipGoal,
-        ownerKey: currentEditor.ownerKey,
-      });
-      setRelationshipGoalMessage(hasNewerDraft
-        ? "上一版关系目标已保存，新的修改仍在草稿中。"
-        : "关系目标已保存。");
-      dashboardState.refresh();
-    } catch (error) {
-      if (currentRelationshipGoalOwner.current === requestOwnerKey) {
-        setRelationshipGoalError(
-          error instanceof Error ? error.message : "关系目标暂时保存不了。"
-        );
-      }
-    } finally {
-      if (
-        currentRelationshipGoalOwner.current === requestOwnerKey
-        && relationshipGoalAbortController.current === controller
-      ) {
-        relationshipGoalAbortController.current = null;
-        setSavingRelationshipGoal(false);
       }
     }
   }
@@ -394,20 +218,7 @@ export function ContactsDashboardScreen() {
           recomputeError={recomputeError}
           recomputeResult={recomputeResult}
           recomputing={recomputing}
-          onRelationshipGoalChange={(value) =>
-            {
-              setRelationshipGoalError(null);
-              setRelationshipGoalMessage(null);
-              setRelationshipGoalEditor((current) => current
-                ? { ...current, draft: value }
-                : current);
-            }
-          }
-          onSaveRelationshipGoal={saveContactDashboardGoal}
-          relationshipGoalDraft={relationshipGoalEditor?.draft ?? null}
-          relationshipGoalError={relationshipGoalError}
-          relationshipGoalMessage={relationshipGoalMessage}
-          savingRelationshipGoal={savingRelationshipGoal}
+          relationshipGoal={manualProfile?.relationshipGoal ?? ""}
           summary={dashboardState.data.summary}
           unavailableSections={dashboardState.data.unavailableSections}
         />
@@ -429,12 +240,7 @@ function ContactsDashboardContent({
   recomputeError,
   recomputeResult,
   recomputing,
-  onRelationshipGoalChange,
-  onSaveRelationshipGoal,
-  relationshipGoalDraft,
-  relationshipGoalError,
-  relationshipGoalMessage,
-  savingRelationshipGoal,
+  relationshipGoal,
   summary,
   unavailableSections
 }: {
@@ -446,26 +252,21 @@ function ContactsDashboardContent({
   distributions: unknown;
   gaps: unknown;
   onRecompute: () => void;
-  onRelationshipGoalChange: (value: string) => void;
-  onSaveRelationshipGoal: () => void;
   opportunities: unknown;
   recomputeError: string | null;
   recomputeResult: DashboardOpportunitiesRecomputeView | null;
   recomputing: boolean;
-  relationshipGoalDraft: string | null;
-  relationshipGoalError: string | null;
-  relationshipGoalMessage: string | null;
-  savingRelationshipGoal: boolean;
+  relationshipGoal: string;
   summary: unknown;
   unavailableSections: readonly string[];
 }) {
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
   const router = useRouter();
   const [analysisSegment, setAnalysisSegment] =
     useState<AnalysisSegment>("overview");
   const [structureDimension, setStructureDimension] =
     useState<ContactsAnalysisStructureDimensionId>("industry");
-  const [editingGoal, setEditingGoal] = useState(false);
   const [healthExpanded, setHealthExpanded] = useState(false);
   const [selectedAction, setSelectedAction] =
     useState<ContactsAnalysisActionView | null>(null);
@@ -480,7 +281,7 @@ function ContactsDashboardContent({
       opportunities,
       summary
     },
-    relationshipGoalDraft ?? "",
+    relationshipGoal,
     contacts,
     contactLocations
   );
@@ -488,7 +289,7 @@ function ContactsDashboardContent({
 
   function openAnalysisPrefill() {
     if (!analysisReport.sourceDataVersion || !actorId || !baseUrl) {
-      setAnalysisPrefillError("当前分析数据暂不可用，请刷新后再试。");
+      setAnalysisPrefillError(locale.t("contacts.analysisReportPrefillUnavailable"));
       return;
     }
     try {
@@ -503,7 +304,7 @@ function ContactsDashboardContent({
         params: { id: "new", prefillIntent },
       } as Href);
     } catch {
-      setAnalysisPrefillError("这次分析暂时无法带入 IORBIT，请重试。");
+      setAnalysisPrefillError(locale.t("contacts.analysisReportPrefillFailed"));
     }
   }
 
@@ -521,7 +322,7 @@ function ContactsDashboardContent({
     }
 
     if (action.id === "complete-goal") {
-      setEditingGoal(true);
+      router.push("/contacts" as Href);
       return;
     }
 
@@ -593,7 +394,7 @@ function ContactsDashboardContent({
     if (view.goalConfigured) {
       router.push("/contacts/pipeline" as Href);
     } else {
-      setEditingGoal(true);
+      router.push("/contacts" as Href);
     }
   }
 
@@ -608,32 +409,8 @@ function ContactsDashboardContent({
 
   return (
     <>
-      <GoalBar
-        goal={view.goal}
-        onEdit={() => setEditingGoal((current) => !current)}
-      />
-
-      {editingGoal && relationshipGoalDraft !== null ? (
-        <ContactDashboardGoalCard
-          draft={relationshipGoalDraft}
-          error={relationshipGoalError}
-          message={relationshipGoalMessage}
-          onChange={onRelationshipGoalChange}
-          onSave={onSaveRelationshipGoal}
-          saving={savingRelationshipGoal}
-        />
-      ) : null}
-
-      <PersistedAnalysisCard
-        error={analysisPrefillError}
-        onAnalyze={openAnalysisPrefill}
-        view={analysisReport}
-      />
-
       <AnalysisDiagnosisCard
         diagnosis={view.diagnosis}
-        onRecompute={onRecompute}
-        recomputing={recomputing}
       />
 
       <AnalysisSegmentedControl
@@ -699,6 +476,12 @@ function ContactsDashboardContent({
           recomputing={recomputing}
         />
       ) : null}
+
+      <PersistedAnalysisCard
+        error={analysisPrefillError}
+        onAnalyze={openAnalysisPrefill}
+        view={analysisReport}
+      />
 
       <OpportunityActionBriefSheet
         action={selectedAction}
@@ -867,31 +650,6 @@ function OpportunityActionBriefSheet({
   );
 }
 
-function GoalBar({ goal, onEdit }: { goal: string; onEdit: () => void }) {
-  const { colors, styles } = useStyles();
-  return (
-    <Pressable
-      accessibilityLabel={`当前目标：${goal}，编辑目标`}
-      accessibilityRole="button"
-      onPress={onEdit}
-      style={({ pressed }) => [
-        styles.goalBar,
-        pressed ? styles.pressed : null
-      ]}
-    >
-      <View style={styles.goalBarCopy}>
-        <Text style={styles.goalBarLabel}>当前目标</Text>
-        <Text style={styles.goalBarValue}>
-          {goal}
-        </Text>
-      </View>
-      <View style={styles.goalEditButton}>
-        <Ionicons color={colors.ink} name="pencil-outline" size={19} />
-      </View>
-    </Pressable>
-  );
-}
-
 function PersistedAnalysisCard({
   error,
   onAnalyze,
@@ -902,37 +660,41 @@ function PersistedAnalysisCard({
   view: ContactsAnalysisReportView;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const detail = view.state === "unavailable"
-    ? "分析记录暂不可用"
+    ? locale.t("contacts.analysisReportUnavailable")
     : view.state === "empty"
-      ? "尚未生成"
+      ? locale.t("contacts.analysisReportEmpty")
       : view.stale
-        ? "数据已变化，需要重新分析"
-        : "基于当前人脉数据";
+        ? locale.t("contacts.analysisReportStale")
+        : locale.t("contacts.analysisReportCurrent");
 
   return (
-    <DataCard detail={detail} title="已存人脉分析" variant="inset">
+    <DataCard detail={detail} title={locale.t("contacts.analysisReportTitle")} variant="inset">
       {view.state === "unavailable" ? (
         <Text style={styles.bodyText}>
-          暂时无法判断是否生成过分析。刷新后仍可继续查看其他人脉数据。
+          {locale.t("contacts.analysisReportUnavailableDescription")}
         </Text>
       ) : null}
       {view.state === "empty" ? (
         <Text style={styles.bodyText}>
-          当前还没有已保存的人脉分析。只有发送 IORBIT 草稿后才会生成。
+          {locale.t("contacts.analysisReportDescription")}
         </Text>
       ) : null}
       {view.state === "ready" ? (
         <>
           <Text style={styles.bodyText}>{view.body}</Text>
           <Text style={styles.recomputeStatus}>
-            生成时间：{view.generatedAt?.replace("T", " ").replace("Z", " UTC")} · 版本：{view.analysisVersion}
+            {locale.t("contacts.analysisReportMeta", {
+              generatedAt: view.generatedAt?.replace("T", " ").replace("Z", " UTC") ?? "",
+              version: view.analysisVersion ?? "",
+            })}
           </Text>
         </>
       ) : null}
-      {view.actionLabel ? (
+      {view.action ? (
         <Pressable
-          accessibilityLabel={view.actionLabel}
+          accessibilityLabel={locale.t("contacts.analysisReportAction")}
           accessibilityRole="button"
           onPress={onAnalyze}
           style={({ pressed }) => [
@@ -941,8 +703,11 @@ function PersistedAnalysisCard({
           ]}
         >
           <Ionicons color={colors.onAccent} name="sparkles-outline" size={17} />
-          <Text style={styles.saveGoalButtonText}>{view.actionLabel}</Text>
+          <Text style={styles.saveGoalButtonText}>{locale.t("contacts.analysisReportAction")}</Text>
         </Pressable>
+      ) : null}
+      {view.action ? (
+        <Text style={styles.recomputeStatus}>{locale.t("contacts.analysisReportActionHint")}</Text>
       ) : null}
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </DataCard>
@@ -950,13 +715,9 @@ function PersistedAnalysisCard({
 }
 
 function AnalysisDiagnosisCard({
-  diagnosis,
-  onRecompute,
-  recomputing
+  diagnosis
 }: {
   diagnosis: ReturnType<typeof contactsAnalysisToView>["diagnosis"];
-  onRecompute: () => void;
-  recomputing: boolean;
 }) {
   const { colors, styles } = useStyles();
   return (
@@ -973,19 +734,6 @@ function AnalysisDiagnosisCard({
           {diagnosis.scoreLabel}
         </Text>
       </View>
-      <Pressable
-        accessibilityLabel="重新计算机会"
-        accessibilityRole="button"
-        disabled={recomputing}
-        onPress={onRecompute}
-        style={({ pressed }) => [
-          styles.analysisDiagnosisRefresh,
-          recomputing ? styles.disabled : null,
-          pressed ? styles.pressed : null
-        ]}
-      >
-        <Ionicons color={colors.text3} name="refresh-outline" size={17} />
-      </Pressable>
     </View>
   );
 }
@@ -1492,6 +1240,7 @@ function GoalCoverageCard({
   recomputing: boolean;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   return (
     <View style={styles.analysisSurface}>
       <View style={styles.analysisSectionHeader}>
@@ -1500,7 +1249,7 @@ function GoalCoverageCard({
           <Text style={styles.analysisSectionDetail}>{coverage.statusLabel}</Text>
         </View>
         <Pressable
-          accessibilityLabel="重新计算机会"
+          accessibilityLabel={locale.t("contacts.refreshOpportunities")}
           accessibilityRole="button"
           disabled={recomputing}
           onPress={onRecompute}
@@ -1515,6 +1264,7 @@ function GoalCoverageCard({
             name="refresh-outline"
             size={18}
           />
+          <Text style={styles.refreshAnalysisButtonText}>{locale.t("contacts.refreshOpportunities")}</Text>
         </Pressable>
       </View>
 
@@ -1900,55 +1650,6 @@ function healthVisual(tone: ContactsAnalysisHealthView["tone"], colors: OrbitCol
   return { backgroundColor: colors.amberSoft, color: colors.amber };
 }
 
-function ContactDashboardGoalCard({
-  draft,
-  error,
-  message,
-  onChange,
-  onSave,
-  saving
-}: {
-  draft: string;
-  error: string | null;
-  message: string | null;
-  onChange: (value: string) => void;
-  onSave: () => void;
-  saving: boolean;
-}) {
-  const { colors, styles } = useStyles();
-  return (
-    <DataCard detail="会影响推荐和机会排序" title="关系目标" variant="inset">
-      <TextInput
-        accessibilityLabel="关系目标"
-        multiline
-        onChangeText={onChange}
-        placeholder="最近想认识什么人，或者想推进哪类合作"
-        placeholderTextColor={colors.text3}
-        style={styles.goalInput}
-        value={draft}
-      />
-      <Pressable
-        accessibilityLabel="保存关系目标"
-        accessibilityRole="button"
-        disabled={saving}
-        onPress={onSave}
-        style={({ pressed }) => [
-          styles.saveGoalButton,
-          saving ? styles.disabled : null,
-          pressed ? styles.pressed : null
-        ]}
-      >
-        <Ionicons color={colors.onAccent} name="save-outline" size={17} />
-        <Text style={styles.saveGoalButtonText}>
-          {saving ? "保存中" : "保存目标"}
-        </Text>
-      </Pressable>
-      {message ? <Text style={styles.successText}>{message}</Text> : null}
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-    </DataCard>
-  );
-}
-
 function OrbitMap({ view }: { view: ContactsDashboardView }) {
   const { styles } = useStyles();
   return (
@@ -2287,12 +1988,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     fontWeight: "600",
     textAlign: "right"
   },
-  analysisDiagnosisRefresh: {
-    alignItems: "center",
-    height: 44,
-    justifyContent: "center",
-    width: 44
-  },
   analysisDiagnosisScore: {
     alignItems: "flex-end",
     gap: spacing.xxs,
@@ -2609,30 +2304,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     minWidth: 22,
     textAlign: "right"
   },
-  goalBar: {
-    backgroundColor: colors.surface2,
-    borderRadius: radius.card,
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.md,
-    minHeight: 68,
-    padding: spacing.md
-  },
-  goalBarCopy: {
-    flex: 1,
-    gap: spacing.xs,
-    minWidth: 0
-  },
-  goalBarLabel: {
-    ...textStyles.caption,
-    color: colors.text3,
-    fontWeight: "600"
-  },
-  goalBarValue: {
-    ...textStyles.body,
-    color: colors.ink,
-    fontWeight: "600"
-  },
   goalEditButton: {
     alignItems: "center",
     height: 44,
@@ -2720,9 +2391,16 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.control,
     borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.xs,
     height: 44,
     justifyContent: "center",
-    width: 44
+    paddingHorizontal: spacing.sm
+  },
+  refreshAnalysisButtonText: {
+    ...textStyles.small,
+    color: colors.text3,
+    fontWeight: "700"
   },
   barFill: {
     backgroundColor: colors.live,
@@ -2818,11 +2496,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   flexText: {
     flex: 1,
     gap: spacing.xs
-  },
-  goalInput: {
-    ...createControlStyles(colors).input,
-    minHeight: 92,
-    textAlignVertical: "top"
   },
   itemTitle: {
     ...textStyles.listTitle,

@@ -138,7 +138,7 @@ interface ContactsAnalysisReportInput {
 
 export type ContactsAnalysisReportView =
   | {
-      actionLabel: null;
+      action: null;
       analysisVersion: null;
       body: null;
       generatedAt: null;
@@ -147,7 +147,7 @@ export type ContactsAnalysisReportView =
       state: "unavailable";
     }
   | {
-      actionLabel: "开始分析" | "重新分析";
+      action: "analyze" | "reanalyze";
       analysisVersion: "contacts.analysis@1";
       body: string | null;
       generatedAt: string | null;
@@ -162,7 +162,7 @@ export function contactsAnalysisReportToView(
 ): ContactsAnalysisReportView {
   if (analysis === undefined || analysis === null || unavailableSections.includes("analysis")) {
     return {
-      actionLabel: null,
+      action: null,
       analysisVersion: null,
       body: null,
       generatedAt: null,
@@ -174,7 +174,7 @@ export function contactsAnalysisReportToView(
 
   if (analysis.report === null) {
     return {
-      actionLabel: "开始分析",
+      action: "analyze",
       analysisVersion: analysis.current.analysisVersion,
       body: null,
       generatedAt: null,
@@ -185,7 +185,7 @@ export function contactsAnalysisReportToView(
   }
 
   return {
-    actionLabel: "重新分析",
+    action: "reanalyze",
     analysisVersion: analysis.report.analysisVersion,
     body: analysis.report.body,
     generatedAt: analysis.report.generatedAt,

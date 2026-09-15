@@ -30,6 +30,7 @@ const STATIC_CONTACT_ROUTES = new Set([
   "graph",
   "intros",
   "list",
+  "matches",
   "new",
   "pipeline"
 ]);

@@ -20,6 +20,7 @@ type InitialRoutePath =
   | "/home/events"
   | "/contacts"
   | "/contacts/list"
+  | "/contacts/matches"
   | "/inbox"
   | "/login-admin"
   | `/o/${string}`
@@ -66,6 +67,7 @@ const routeByKey: Record<string, InitialRoutePath> = {
   chat: "/chat",
   contacts: "/contacts",
   "contacts/list": "/contacts/list",
+  "contacts/matches": "/contacts/matches",
   "contacts/new/batch2": "/contacts/new/batch2",
   dashboard: "/dashboard",
   events: "/events",

@@ -93,7 +93,7 @@ test("analysis view distinguishes unavailable, never generated, current and stal
     "unavailable",
   );
   assert.deepEqual(contactsAnalysisReportToView({ current, report: null, stale: false }, []), {
-    actionLabel: "开始分析",
+    action: "analyze",
     analysisVersion: "contacts.analysis@1",
     body: null,
     generatedAt: null,
@@ -106,7 +106,7 @@ test("analysis view distinguishes unavailable, never generated, current and stal
     report: { ...report, sourceDataVersion: changedSourceDataVersion },
     stale: true,
   }, []), {
-    actionLabel: "重新分析",
+    action: "reanalyze",
     analysisVersion: "contacts.analysis@1",
     body: report.body,
     generatedAt: report.generatedAt,
