@@ -5,7 +5,7 @@ import {
   comparePerformanceSummaries,
   summarizePerformanceSamples,
   type PerformanceSample,
-} from "../../shared/performance/performance-sample.ts";
+} from "../../shared/performance/performance-sample";
 
 const BASE_SAMPLE: PerformanceSample = {
   commit: "c1ba721d13bea4d1100b36064647014f3466adb4",
