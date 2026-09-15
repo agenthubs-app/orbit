@@ -59,6 +59,8 @@
 ### Task 3: Build the uploader and conflict resolution core
 
 **Files:**
+- Modify: `repos/orbit-app/src/data/sync/local-sync-schema.ts`
+- Modify: `repos/orbit-app/src/data/sync/local-sync-repository.ts`
 - Create: `repos/orbit-app/src/data/sync/outbox-uploader.ts`
 - Create: `repos/orbit-app/src/data/sync/conflict-resolution.ts`
 - Create: `repos/orbit-app/src/hooks/useOfflineMutation.ts`
@@ -67,6 +69,7 @@
 
 - [ ] Write RED tests for max-four cross-entity concurrency, same-entity FIFO, retry/backoff classification, cancellation, 401 scope pause, 409 blocking one entity, permanent validation failure and atomic acknowledgment.
 - [ ] Implement uploader triggers for explicit retry and network recovery; background/foreground orchestration remains 0035 except the minimum current-session retry.
+- [ ] Before enabling any offline-write UI, migrate the encrypted local schema to store canonical base, pending patch and server conflict base/revision separately. Reconcile any pre-existing pending/conflicted/outbox rows idempotently; never hide conflict state in `sync_meta`.
 - [ ] Implement three explicit conflict commands using the server-returned revision; preserve original pending patch and never auto-select.
 - [ ] Run uploader/conflict tests and App typecheck.
 

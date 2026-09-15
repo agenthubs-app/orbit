@@ -58,7 +58,7 @@ HTTP 层继续使用项目统一 envelope：成功体是 `{ success: true, data:
 
 ## 冲突与失败
 
-本 Sprint 没有 pending 本地修改；如果仓库发现 pending/conflicted 行，delta 不覆盖它，而把服务器版本保存为 conflict base，供 0034 处理。401/403 清除当前同步资格并走现有 session expiry；无效 cursor 返回可识别的 reset-required，客户端在一个本地事务中只清除该 workspace 的 `synced` canonical rows 与 cursor 后重新 bootstrap，保留 pending/conflicted/failed、outbox 和 device-only drafts。
+本 Sprint 不产生 pending 本地修改；如果仓库已有 pending/conflicted 行，delta 不覆盖也不删除它。服务器 conflict base 的独立存储、迁移与首次对账归 0034，且必须在任何离线写入入口开放前完成；禁止把 server version 塞进 `sync_meta` 或在 0033 伪装冲突处理。401/403 清除当前同步资格并走现有 session expiry；无效 cursor 返回可识别的 reset-required，客户端在一个本地事务中只清除该 workspace 的 `synced` canonical rows 与 cursor 后重新 bootstrap，保留 pending/conflicted/failed、outbox 和 device-only drafts。
 
 ## 完成定义
 

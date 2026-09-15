@@ -48,6 +48,8 @@ export interface SyncMutationCommand {
 
 所有 update/delete 携带 `baseRevision`。服务器只在当前 revision 相等时执行；否则返回当前 allowlisted record 和 revision，不接受 last-write-wins。
 
+0034 在开放首个离线写入 UI 前，必须先扩展本地加密同步 schema，为 pending/conflicted 记录独立保存 server conflict base 及其 revision，并对 0032 留下的 pending/conflicted/outbox 做幂等首次对账。canonical base、pending patch 和 conflict base 不得共用 `sync_meta` 或互相覆盖。
+
 - 使用云端：丢弃冲突及该实体后续 pending patch，保留 server record。
 - 保留本机：用户显式确认后，以服务器当前 revision 创建新的 mutation；不是自动重试。
 - 另存副本：notes/tasks/personal schedule 可创建新记录；relationship followup 只有仍满足 connection 约束时允许。
