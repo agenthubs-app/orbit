@@ -17,7 +17,7 @@ const listeners = new Set(); let revision = 0, nextId = 0;
 const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
 const state = window.fixture = {
   actor: "actor-1", rawUserId: "user:raw-login", taskId: "personal:edit", baseUrl: "https://orbit.example", cookieHeader: "", ready: true, baseReady: true, signedIn: true, mounted: true, fontScale: 1,
-  requests: [], pending: [], presses: {}, inputs: {}, expiries: 0, notifications: 0, permissionCalls: 0, holdReads: false,
+  requests: [], pending: [], presses: {}, inputs: {}, expiries: 0, notifications: 0, permissionCalls: 0, holdReads: false, syncs: 0,
   ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
   data(path) { return { scheduleItem: state.item }; },
@@ -47,6 +47,8 @@ state.setDeviceZone = zone => {
 export const useFixture = () => { observe(); return state; };
 export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.signedIn ? state.actor : null, actorId: state.signedIn ? state.actor : null, user: state.signedIn ? { id: state.rawUserId } : null, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
+let cachedItem, cachedRecords = [];
+export const useSyncedCollection = () => { observe(); if (cachedItem !== state.item) { cachedItem = state.item; cachedRecords = state.item?.state === "cancelled" ? [] : [{ id: state.item.id, payload: state.item, revision: state.item.updatedAt }]; } return { records: cachedRecords, status: "fresh", error: null, lastSyncedAt: state.item?.updatedAt ?? null, refresh() { state.syncs++; state.update({}); }, async invalidate() { state.syncs++; state.update({}); } }; };
 export const useLocalSearchParams = () => { observe(); return { id: state.taskId }; };
 export const useGlobalSearchParams = useLocalSearchParams;
 export const usePathname = () => "/tasks/" + encodeURIComponent(state.taskId);
@@ -55,6 +57,7 @@ export const Redirect = () => <div role="status">Sign in</div>;
 export const Stack = () => null;
 export const readSnapshot = async () => null;
 export const writeSnapshot = async () => {};
+export const retireSnapshot = async () => {};
 export const useRelationshipInboxBadgeCount = () => 0;
 export const notifyReminderPlansChanged = () => { state.notifications++; };
 export const requestNotificationPermission = async () => { state.permissionCalls++; return "denied"; };
@@ -71,7 +74,7 @@ test.before(async () => {
     plugins: [{ name: "task-date-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "task-dates" }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store|native-notifications|useRelationshipInboxBadgeCount)$/ }, () => ({ path: "fixture", namespace: "task-dates" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store|native-notifications|useRelationshipInboxBadgeCount|useSyncedCollection)$/ }, () => ({ path: "fixture", namespace: "task-dates" }));
       plugin.onLoad({ filter: /.*/, namespace: "task-dates" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, RefreshControl as RealRefreshControl, Text as RealText, TextInput as RealInput, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web"; import { useFixture } from "fixture"; export * from "react-native-web";
 export { AppState } from "fixture";

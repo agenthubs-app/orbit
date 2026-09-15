@@ -3,13 +3,14 @@ import { type Href, useRouter } from "expo-router";
 import type { ReactNode } from "react";
 import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 
-import { notePath, ORBIT_API_ENDPOINTS } from "../../api/endpoints";
+import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { createThemedStyles } from "../../design/theme";
 import { radius, spacing, typography } from "../../design/tokens";
 import { useApiResource } from "../../hooks/useApiResource";
+import { useSyncedCollection } from "../../hooks/useSyncedCollection";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { noteFromPayload } from "../../view-models/notes";
 import { buildNoteSuggestionNavigation, noteSourceTasksFromPayload } from "../../view-models/note-suggestions";
@@ -38,22 +39,24 @@ function MentionedBody({ body, mentions, mentionStyle, textStyle }: {
 export function NoteDetailScreen({ actorId, noteId, scopeKey }: { actorId: string; noteId: string; scopeKey: string }) {
   const router = useRouter();
   const locale = useOrbitLocale();
-  const state = useApiResource<unknown>(notePath(noteId), () => false, { scopeKey, cachePolicy: "network-only" });
-  const tasksState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.tasks, () => false, { scopeKey });
+  const state = useSyncedCollection({ kind: "note" });
+  const tasksState = useSyncedCollection({ kind: "task" });
   const eventsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.events, () => false, { scopeKey });
-  const note = state.kind === "success" || state.kind === "empty" ? noteFromPayload(state.data, actorId, noteId, locale.language) : null;
+  const record = state.records.find((item) => item.id === noteId);
+  const note = record ? noteFromPayload({ note: record.payload }, actorId, noteId, locale.language) : null;
   const contactSummaries = useNoteContactSummaries(note?.contactIds ?? [], scopeKey);
-  const sourceTasks = tasksState.kind === "success" || tasksState.kind === "empty" ? noteSourceTasksFromPayload(tasksState.data, actorId, noteId) : [];
+  const sourceTasks = noteSourceTasksFromPayload({ tasks: tasksState.records.map((item) => item.payload) }, actorId, noteId);
   const events = eventsState.kind === "success" || eventsState.kind === "empty" ? eventsToSummaries(eventsState.data) : [];
   const contactNames = new Map(note?.mentions.map((mention) => [mention.contactId, mention.displayText.replace(/^@/, "")]) ?? []);
   contactSummaries.forEach((contact, id) => contactNames.set(id, contact.name));
   const eventNames = new Map(events.map((event) => [event.id, event.title]));
   const { styles, colors } = useStyles();
   const dateLocale = locale.language === "en" ? "en-US" : locale.language === "ja" ? "ja-JP" : "zh-CN";
-  return <AppScreen title={locale.t("notes.title")} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")} refreshControl={<RefreshControl refreshing={state.refreshing} onRefresh={state.refresh} />}>
-    {state.kind === "loading" ? <LoadingState /> : null}
-    {state.kind === "failure" || state.kind === "offline" ? <ErrorState message={state.error.message} /> : null}
-    {(state.kind === "success" || state.kind === "empty") && !note ? <ErrorState message={locale.t("notes.missing")} /> : null}
+  return <AppScreen title={locale.t("notes.title")} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")} refreshControl={<RefreshControl refreshing={state.status === "syncing"} onRefresh={() => { void state.refresh(); }} />}>
+    <Text accessibilityLiveRegion="polite" style={styles.date}>{locale.t(`sync.${state.status === "local-ready" ? "localReady" : state.status}` as import("../../i18n/messages").MessageKey)}{state.lastSyncedAt ? ` · ${locale.t("sync.lastSynced", { time: new Date(state.lastSyncedAt).toLocaleString() })}` : ""}</Text>
+    {state.status === "local-ready" && state.records.length === 0 ? <LoadingState /> : null}
+    {state.status === "failure" ? <ErrorState message={state.error ?? locale.t("sync.failure")} /> : null}
+    {state.status === "fresh" && !note ? <ErrorState message={locale.t("notes.missing")} /> : null}
     {note ? <>
       <View style={styles.heading}>
         <View style={styles.privatePill}><Ionicons color={colors.text3} name="lock-closed-outline" size={13} /><Text style={styles.private}>{locale.t("notes.private")}</Text></View>

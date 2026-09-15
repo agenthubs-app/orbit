@@ -19,15 +19,13 @@ const note = (id, title, minute) => ({
   createdAt: "2026-09-15T00:0" + minute + ":00.000Z", updatedAt: "2026-09-15T00:0" + minute + ":00.000Z"
 });
 const first = note("note:1", "发布会准备", 2); const second = note("note:2", "预算确认", 1);
-export const state = window.fixture = { latestPath: "", requests: [], navigation: [], fontScale: 1, ...window.initialFixture };
+export const state = window.fixture = { requests: [], navigation: [], fontScale: 1, refreshes: 0, retired: [], ...window.initialFixture };
 export const useLocalSearchParams = () => ({});
 export const usePathname = () => "/notes";
 export const useRouter = () => ({ canGoBack: () => false, back() { state.navigation.push("back"); }, push(href) { state.navigation.push(href); } });
-export const useApiResource = path => {
-  state.latestPath = path;
-  const filtered = path.includes("q=%E9%A2%84%E7%AE%97") ? [second] : [first];
-  return { kind: "success", data: { notes: filtered, total: path.includes("q=") ? 1 : 2, ...(path.includes("q=") ? {} : { nextCursor: "page:2" }) }, refreshing: false, refresh() {} };
-};
+export const useSyncedCollection = () => ({ records: [first, second].map((payload, index) => ({ id: payload.id, payload, revision: String(index + 1) })), status: state.status || "fresh", error: state.error || null, lastSyncedAt: "2026-09-16T00:00:00Z", refresh() { state.refreshes++; }, invalidate() { state.refreshes++; } });
+export const useOrbitApiBaseUrl = () => ({ baseUrl: "https://example.test", ready: true });
+export const retireSnapshot = (...args) => { state.retired.push(args); };
 export const useOrbitApiClient = () => ({ async get(path) { state.requests.push(path); return { success: true, status: 200, data: { notes: [second], total: 2 }, meta: {} }; } });
 export const SafeAreaView = ({ children, ...props }) => <View {...props}>{children}</View>;
 `;
@@ -51,7 +49,7 @@ test.before(async () => {
       name: "notes-list-boundaries",
       setup(plugin) {
         plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "notes-list-test" }));
-        plugin.onResolve({ filter: /^react-native-safe-area-context$|^expo-router$|\/(useApiResource|useOrbitApiClient)$/ }, () => ({ path: "fixture", namespace: "notes-list-test" }));
+        plugin.onResolve({ filter: /^react-native-safe-area-context$|^expo-router$|\/(useSyncedCollection|ApiBaseUrlProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "notes-list-test" }));
         plugin.onResolve({ filter: /^@expo\/vector-icons$/ }, () => ({ path: "icons", namespace: "notes-list-test" }));
         plugin.onLoad({ filter: /^fixture$/, namespace: "notes-list-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
         plugin.onLoad({ filter: /^native$/, namespace: "notes-list-test" }, () => ({ contents: `
@@ -90,19 +88,21 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
   t.after(() => page.close()); await page.goto(url); return page;
 }
 
-test("notes list searches, filters, follows stable ids and appends the next page", async (t) => {
+test("notes list renders the complete mirror, filters locally and follows stable ids", async (t) => {
   const page = await open(t);
   await page.getByText("发布会准备", { exact: true }).waitFor();
-  await page.getByRole("button", { name: "加载更多笔记" }).click();
   await page.getByText("预算确认", { exact: true }).waitFor();
-  assert.match((await page.evaluate(() => (window as any).fixture.requests[0])) as string, /cursor=page%3A2/);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.retired.map((entry: any[]) => entry[2])), ["/api/notes?limit=20"]);
   await page.getByRole("button", { name: "查看笔记 预算确认" }).click();
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/notes/note%3A2"]);
   await page.getByRole("textbox", { name: "搜索笔记" }).fill("预算");
-  await page.waitForFunction(() => (window as any).fixture.latestPath.includes("q=%E9%A2%84%E7%AE%97"));
+  await page.getByText("预算确认", { exact: true }).waitFor();
+  await page.waitForFunction(() => ![...document.querySelectorAll("*")].some((node) => node.textContent === "发布会准备"));
   assert.equal(await page.getByText("发布会准备", { exact: true }).count(), 0);
   await page.getByRole("tab", { name: "关联活动" }).click();
-  await page.waitForFunction(() => (window as any).fixture.latestPath.includes("association=events"));
+  assert.equal(await page.getByText("预算确认", { exact: true }).isVisible(), true);
+  assert.equal(await page.getByText("发布会准备", { exact: true }).count(), 0);
 });
 
 test("notes list caps accessibility text at two times and keeps labels readable", async (t) => {

@@ -17,8 +17,10 @@ import { LoadingState } from "../../components/LoadingState";
 import { layout, textStyles, radius, spacing, typography } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
+import { retireSnapshot } from "../../data/snapshot-store";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useSyncedCollection } from "../../hooks/useSyncedCollection";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { OrbitTranslator } from "../../i18n/messages";
 import { notifyReminderPlansChanged, requestNotificationPermission } from "../../notifications/native-notifications";
@@ -73,17 +75,20 @@ export function TaskDetailScreen() {
   const ready = auth.ready && auth.signedIn && server.ready && Boolean(actorId);
   const scopeKey = JSON.stringify([server.baseUrl, actorId, taskId, ready]);
   const client = useOrbitApiClient({ scopeKey });
-  const detailPath = useMemo(() => taskPath(taskId), [taskId]);
   const activitiesPath = useMemo(() => taskActivitiesPath(taskId), [taskId]);
   const reminderResourcePath = useMemo(() => remindersPath("task", taskId), [taskId]);
-  const detailState = useApiResource<unknown>(detailPath, () => false, { scopeKey });
+  const taskSync = useSyncedCollection({ kind: "task" });
   const activitiesState = useApiResource<unknown>(activitiesPath, () => false, { scopeKey });
   const remindersState = useApiResource<unknown>(reminderResourcePath, () => false, { scopeKey });
-  const detail = ready && (detailState.kind === "success" || detailState.kind === "empty") ? ownedTaskDetailToView(detailState.data, actorId, locale.language) : null;
+  const taskRecord = taskSync.records.find((record) => record.id === taskId);
+  const detail = ready && taskRecord ? ownedTaskDetailToView({ task: taskRecord.payload }, actorId, locale.language) : null;
   const activities = activitiesState.kind === "success" || activitiesState.kind === "empty" ? taskActivitiesToView(activitiesState.data, timeZone, locale.language) : [];
   const reminders = remindersState.kind === "success" || remindersState.kind === "empty"
     ? reminderPlansToView(remindersState.data, timeZone).filter((item) => item.status === "scheduled")
     : [];
+  useEffect(() => {
+    if (taskSync.status === "fresh") void retireSnapshot(server.baseUrl, actorId, taskPath(taskId));
+  }, [actorId, server.baseUrl, taskId, taskSync.status]);
   const quickReminderOptions = useMemo(() => reminderQuickOptions(new Date(), timeZone), [timeZone]);
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
@@ -125,7 +130,7 @@ export function TaskDetailScreen() {
     method: "patch" | "post" | "delete",
     path: string,
     body: Record<string, unknown> | (() => Promise<Record<string, unknown>>),
-    onSuccess: (data: unknown) => void,
+    onSuccess: (data: unknown) => void | Promise<void>,
     accepts?: (data: unknown) => boolean,
   ) {
     const scope = mutationScope;
@@ -148,7 +153,7 @@ export function TaskDetailScreen() {
           return;
         }
         scope.keys.delete(fingerprint);
-        onSuccess(result.data);
+        await onSuccess(result.data);
       } else setMutationError(result.error.message);
     } catch {
       if (isCurrent()) setMutationError(locale.t("taskDetail.operationFailed"));
@@ -188,7 +193,13 @@ export function TaskDetailScreen() {
   const displayedDate = (latest ?? detail)?.dueAt ?? (latest ?? detail)?.plannedDate;
 
   function refresh() {
-    detailState.refresh();
+    void taskSync.refresh();
+    activitiesState.refresh();
+    remindersState.refresh();
+  }
+
+  async function refreshTask() {
+    await taskSync.invalidate();
     activitiesState.refresh();
     remindersState.refresh();
   }
@@ -218,14 +229,14 @@ export function TaskDetailScreen() {
     const revisionAtStart = latest?.updatedAt;
     await mutate("patch", taskPath(taskId), {
       action: "update", expectedUpdatedAt: baseline.updatedAt, patch: change.patch,
-    }, data => {
+    }, async data => {
       const updated = ownedTaskDetailToView(data, actorId, locale.language)!; // Accepted below before acknowledging.
       if (latestRef.current?.updatedAt === revisionAtStart) setLatest(updated);
       setBaseline(updated);
       dateDraftRef.current = taskDateDraftFromView(updated, editTimeZone);
       setDateDraft(dateDraftRef.current);
       // Title and notes may still be unsaved. Their draft belongs to the user.
-      refresh();
+      await refreshTask();
     }, data => taskDateReceiptMatches(data, taskId, actorId, change.patch));
   }
 
@@ -246,7 +257,7 @@ export function TaskDetailScreen() {
         ...(normalizedNotes ? { notes: normalizedNotes } : {}),
         title: normalizedTitle,
       },
-    }, (data) => {
+    }, async (data) => {
       if (latestRef.current?.id !== baseline.id) return;
       const updated = ownedTaskDetailToView(data, actorId, locale.language);
       if (updated) {
@@ -255,23 +266,24 @@ export function TaskDetailScreen() {
         setTitle(updated.title);
         setNotes(updated.notes);
       }
-      refresh();
+      await refreshTask();
     });
   }
 
   async function changeStatus() {
     if (!detail) return;
     const action = detail.status === "completed" ? "reopen" : "complete";
-    await mutate("patch", taskPath(taskId), { action }, () => {
+    await mutate("patch", taskPath(taskId), { action }, async () => {
       notifyReminderPlansChanged();
-      refresh();
+      await refreshTask();
     });
   }
 
   async function deleteTask() {
-    await mutate("delete", taskPath(taskId), {}, () => {
+    await mutate("delete", taskPath(taskId), {}, async () => {
       notifyReminderPlansChanged();
       setMoreOpen(false);
+      await taskSync.invalidate();
       router.replace("/tasks" as Href);
     });
   }
@@ -315,14 +327,15 @@ export function TaskDetailScreen() {
     <AppScreen
       backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("tasks.title") })}
       backLabel={locale.t("tasks.title")}
-      refreshControl={<RefreshControl onRefresh={refresh} refreshing={detailState.refreshing || activitiesState.refreshing || remindersState.refreshing} tintColor={colors.accent} />}
+      refreshControl={<RefreshControl onRefresh={refresh} refreshing={taskSync.status === "syncing" || activitiesState.refreshing || remindersState.refreshing} tintColor={colors.accent} />}
       headerActions={detail ? <Pressable accessibilityLabel={locale.t("taskDetail.edit")} accessibilityRole="button" disabled={saving} onPress={() => titleInputRef.current?.focus()} style={styles.iconButton}>
         {largeText ? <Ionicons color={colors.accent} name="create-outline" size={22} /> : <Text style={styles.editLink}>{locale.t("taskDetail.edit")}</Text>}
       </Pressable> : null}
       title={locale.t("taskDetail.title")}
     >
-      {detailState.kind === "loading" ? <LoadingState /> : null}
-      {detailState.kind === "failure" || detailState.kind === "offline" ? <ErrorState message={detailState.error.message} title={locale.t("taskDetail.unavailable")} /> : null}
+      <Text accessibilityLiveRegion="polite" style={styles.metadataValue}>{locale.t(`sync.${taskSync.status === "local-ready" ? "localReady" : taskSync.status}` as import("../../i18n/messages").MessageKey)}{taskSync.lastSyncedAt ? ` · ${locale.t("sync.lastSynced", { time: new Date(taskSync.lastSyncedAt).toLocaleString() })}` : ""}</Text>
+      {taskSync.status === "local-ready" && taskSync.records.length === 0 ? <LoadingState /> : null}
+      {taskSync.status === "failure" ? <ErrorState message={taskSync.error ?? locale.t("sync.failure")} title={locale.t("taskDetail.unavailable")} /> : null}
       {detail ? (
         <>
           <View style={styles.hero}>

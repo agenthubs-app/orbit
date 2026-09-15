@@ -11,6 +11,7 @@ import { createThemedStyles } from "../../design/theme";
 import { radius, spacing, typography } from "../../design/tokens";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useSyncedCollection } from "../../hooks/useSyncedCollection";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { noteDraftStorage } from "../../storage/note-draft-storage";
 import { contactsToSummaries, type ContactSummary } from "../../view-models/contacts";
@@ -33,6 +34,7 @@ export function EditNoteScreen({ actorId, draftServer = "local", noteId, scopeKe
   const router = useRouter();
   const locale = useOrbitLocale();
   const client = useOrbitApiClient({ scopeKey });
+  const noteSync = useSyncedCollection({ kind: "note" });
   const state = useApiResource<unknown>(notePath(noteId), () => false, { scopeKey, cachePolicy: "network-only" });
   const eventsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.events, () => false, { scopeKey });
   const events = eventsState.kind === "success" || eventsState.kind === "empty" ? eventsToSummaries(eventsState.data) : [];
@@ -132,7 +134,7 @@ export function EditNoteScreen({ actorId, draftServer = "local", noteId, scopeKe
       ? confirmedNote(result.data, { actorId, title: request.body.title, body: request.body.body, manualContactIds: request.body.manualContactIds, mentions: request.body.mentions, contactIds: [...request.body.manualContactIds, ...request.body.mentions.map((item) => item.contactId)], eventIds: request.body.eventIds, noteId }, locale.language) : null;
     if (note) {
       await noteDraftStorage.clear(draftScope);
-      initializedVersion.current = note.version; setConfirmed(note); setTitle(note.title); setDraft(note.body); setMentions([...note.mentions]); setSelectedIds([...note.manualContactIds]); setEventIds([...note.eventIds]); setDirty(false); setDraftStatus(""); setSaved(true); state.refresh();
+      initializedVersion.current = note.version; setConfirmed(note); setTitle(note.title); setDraft(note.body); setMentions([...note.mentions]); setSelectedIds([...note.manualContactIds]); setEventIds([...note.eventIds]); setDirty(false); setDraftStatus(""); setSaved(true); await noteSync.invalidate();
     } else setError(result.success ? locale.t("notes.updateUnconfirmed") : result.error.message);
     if (owns()) setPending(false);
     if (controller.current === operation) controller.current = null;

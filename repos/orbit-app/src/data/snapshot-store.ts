@@ -91,6 +91,19 @@ export async function writeSnapshot<TData>(
   });
 }
 
+export async function retireSnapshot(
+  baseUrl: string,
+  actorId: string,
+  path: string,
+): Promise<void> {
+  await syncLifecycle.withDatabase({ baseUrl, actorId }, async (db, activeScope) => {
+    await db.run(
+      "DELETE FROM legacy_api_snapshots WHERE path = ?",
+      [workspaceSnapshotPrefix(activeScope.workspaceId) + snapshotKey(baseUrl, actorId, path)],
+    );
+  });
+}
+
 // Explicit cache invalidation clears only the active workspace's snapshots.
 // Authentication logout instead purges the whole scope through syncLifecycle.
 export async function clearSnapshots(): Promise<void> {

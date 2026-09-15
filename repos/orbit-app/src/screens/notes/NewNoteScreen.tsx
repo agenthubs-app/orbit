@@ -9,6 +9,7 @@ import { createThemedStyles } from "../../design/theme";
 import { radius, spacing, typography } from "../../design/tokens";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useApiResource } from "../../hooks/useApiResource";
+import { useSyncedCollection } from "../../hooks/useSyncedCollection";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { noteDraftStorage } from "../../storage/note-draft-storage";
 import { contactsToSummaries, type ContactSummary } from "../../view-models/contacts";
@@ -25,6 +26,7 @@ export function NewNoteScreen({ actorId, draftServer = "local", scopeKey, isScop
   const params = useLocalSearchParams<{ contactId?: string | string[] }>();
   const initialContactId = (Array.isArray(params.contactId) ? params.contactId[0] : params.contactId)?.trim();
   const client = useOrbitApiClient({ scopeKey });
+  const noteSync = useSyncedCollection({ kind: "note" });
   const locale = useOrbitLocale();
   const eventsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.events, () => false, { scopeKey });
   const events = eventsState.kind === "success" || eventsState.kind === "empty" ? eventsToSummaries(eventsState.data) : [];
@@ -104,7 +106,7 @@ export function NewNoteScreen({ actorId, draftServer = "local", scopeKey, isScop
     if (!owns() || operation.signal.aborted) return;
     const note = result.success && result.status >= 200 && result.status < 300
       ? confirmedNote(result.data, { actorId, title: request.body.title, body: request.body.body, manualContactIds: request.body.manualContactIds, mentions: request.body.mentions, contactIds: [...request.body.manualContactIds, ...request.body.mentions.map((item) => item.contactId)], eventIds: request.body.eventIds }, locale.language) : null;
-    if (note) { await noteDraftStorage.clear(draftScope); router.replace(`/notes/${encodeURIComponent(note.id)}`); }
+    if (note) { await noteDraftStorage.clear(draftScope); await noteSync.invalidate(); if (owns()) router.replace(`/notes/${encodeURIComponent(note.id)}`); }
     else { setError(result.success ? locale.t("notes.createUnconfirmed") : result.error.message); setPending(false); }
     if (controller.current === operation) controller.current = null;
   }

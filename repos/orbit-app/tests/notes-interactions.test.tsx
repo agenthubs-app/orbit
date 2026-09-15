@@ -22,7 +22,7 @@ const original = {
 };
 const state = window.fixture = {
   mode: new URLSearchParams(location.search).get("mode") || "new",
-  response: "success", requests: [], navigation: [], note: original,
+  response: "success", requests: [], navigation: [], note: original, syncs: 0,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(listener => listener()); }
 };
 const contacts = { total: 3, contacts: [
@@ -69,6 +69,7 @@ const client = {
   }
 };
 export const useOrbitApiClient = () => client;
+export const useSyncedCollection = input => ({ records: input.kind === "note" ? [{ id: state.note.id, payload: state.note, revision: String(state.note.version) }] : [], status: "fresh", error: null, lastSyncedAt: state.note.updatedAt, refresh() { state.syncs++; }, async invalidate() { state.syncs++; } });
 export const useApiResource = path => {
   rerender();
   return { kind: "success", data: path === "/api/contacts" ? contacts : { note: state.note }, refreshing: false, refresh() { state.update({}); } };
@@ -112,7 +113,7 @@ test.before(async () => {
       name: "note-screen-boundaries",
       setup(plugin) {
         plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
-        plugin.onResolve({ filter: /^react-native-safe-area-context$|^expo-router$|\/(useApiResource|useOrbitApiClient)$/ }, () => ({ path: "fixture", namespace: "notes-test" }));
+        plugin.onResolve({ filter: /^react-native-safe-area-context$|^expo-router$|\/(useApiResource|useOrbitApiClient|useSyncedCollection)$/ }, () => ({ path: "fixture", namespace: "notes-test" }));
         plugin.onResolve({ filter: /^@expo\/vector-icons$/ }, () => ({ path: "icons", namespace: "notes-test" }));
         plugin.onLoad({ filter: /^fixture$/, namespace: "notes-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
         plugin.onLoad({ filter: /^icons$/, namespace: "notes-test" }, () => ({ contents: 'export const Ionicons=()=>null;', loader: "js" }));
@@ -176,6 +177,7 @@ test("confirmed create navigates to the server note and cancel never creates an 
   await value.getByRole("button", { name: "保存笔记" }).click();
   await value.waitForFunction(() => (window as any).fixture.navigation.length === 2);
   assert.deepEqual(await value.evaluate(() => (window as any).fixture.navigation), ["back", "/notes/note%3Acreated"]);
+  assert.equal(await value.evaluate(() => (window as any).fixture.syncs), 1, "the mirror delta completes before detail navigation");
 });
 
 test("detail is read-only and opens the dedicated edit route", async (t) => {

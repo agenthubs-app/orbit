@@ -5,10 +5,12 @@ import * as Crypto from "expo-crypto";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useSyncedCollection } from "../../hooks/useSyncedCollection";
 import { AppScreen } from "../../components/AppScreen";
 import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { createThemedStyles } from "../../design/theme";
 import { createControlStyles } from "../../design/controls";
+import { retireSnapshot } from "../../data/snapshot-store";
 import { LoadingState } from "../../components/LoadingState";
 import { personalSchedulePath, readPersonalSchedule, personalScheduleReceiptMatches } from "../../api/personal-schedule";
 import type { PersonalScheduleContract } from "../../api/contract/tasks";
@@ -20,21 +22,21 @@ export function PersonalScheduleScreen() {
   const id = (Array.isArray(params.id) ? params.id[0] : params.id) ?? "";
   const actorId = auth.actorId ?? ""; const ready = auth.ready && auth.signedIn && server.ready && !!actorId;
   const scopeKey = JSON.stringify([actorId, server.baseUrl, id, ready]);
-  return <PersonalScheduleEditor key={scopeKey} id={id} actorId={actorId} ready={ready} scopeKey={scopeKey} />;
+  return <PersonalScheduleEditor key={scopeKey} id={id} actorId={actorId} baseUrl={server.baseUrl} ready={ready} scopeKey={scopeKey} />;
 }
-function PersonalScheduleEditor({ id, actorId, ready, scopeKey }: { id: string; actorId: string; ready: boolean; scopeKey: string }) {
+function PersonalScheduleEditor({ id, actorId, baseUrl, ready, scopeKey }: { id: string; actorId: string; baseUrl: string; ready: boolean; scopeKey: string }) {
   const router = useRouter(); const { timeZone, canSave } = useOrbitTimeZone(); const { styles, colors } = useStyles();
   const locale = useOrbitLocale();
   const [editZone, setEditZone] = useState(timeZone);
   const client = useOrbitApiClient({ scopeKey });
+  const scheduleSync = useSyncedCollection({ kind: "personal_schedule" });
   const scope = useMemo(() => ({ active: true, busy: false, controller: new AbortController(), keys: new Map<string, string>() }), [client]);
   const current = useRef(scope); current.current = scope;
   const [baseline, setBaseline] = useState<PersonalScheduleContract | null>(null);
   const [latest, setLatest] = useState<PersonalScheduleContract | null>(null);
   const [draft, setDraft] = useState(() => personalScheduleDraft(null, editZone));
-  const [loading, setLoading] = useState(!!id); const [saving, setSaving] = useState(false);
+  const loading = !!id && scheduleSync.status === "local-ready" && scheduleSync.records.length === 0; const [saving, setSaving] = useState(false);
   const [error, setError] = useState(""); const [message, setMessage] = useState(""); const [confirmDelete, setConfirmDelete] = useState(false);
-  const [revision, setRevision] = useState(0);
   const clean = JSON.stringify(draft) === JSON.stringify(personalScheduleDraft(baseline, editZone));
   const stateRef = useRef({ baseline, draft, clean, editZone }); stateRef.current = { baseline, draft, clean, editZone };
   const stale = !!baseline && !!latest && baseline.updatedAt !== latest.updatedAt;
@@ -44,17 +46,21 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey }: { id: string; 
     return () => { scope.active = false; scope.controller.abort(); };
   }, [scope]);
   useEffect(() => {
-    if (!ready || !id) { setLoading(false); return; }
-    let active = true; setLoading(true);
-    void client.get<unknown>(personalSchedulePath(id), { signal: scope.controller.signal }).then(result => {
-      if (!active || !scope.active || current.current !== scope) return;
-      const item = result.success ? readPersonalSchedule(result.data) : null;
-      if (!item || item.id !== id || item.ownerUserId !== actorId || item.accountId !== actorId) { setError(result.success ? locale.t("schedule.readUnconfirmed") : result.error.message); return; }
-      setLatest(item); setError("");
-      if (!stateRef.current.baseline || stateRef.current.clean) { setBaseline(item); setDraft(personalScheduleDraft(item, stateRef.current.editZone)); }
-    }).catch(() => { if (active && scope.active) setError(locale.t("schedule.readFailed")); }).finally(() => { if (active && scope.active) setLoading(false); });
-    return () => { active = false; };
-  }, [ready, id, actorId, client, scope, revision]);
+    if (id && scheduleSync.status === "fresh") {
+      void retireSnapshot(baseUrl, actorId, personalSchedulePath(id));
+    }
+  }, [actorId, baseUrl, id, scheduleSync.status]);
+  useEffect(() => {
+    if (!ready || !id) return;
+    const record = scheduleSync.records.find((item) => item.id === id);
+    const item = record ? readPersonalSchedule({ scheduleItem: record.payload }) : null;
+    if (!item || item.ownerUserId !== actorId || item.accountId !== actorId) {
+      if (scheduleSync.status === "fresh") setError(locale.t("schedule.readUnconfirmed"));
+      return;
+    }
+    setLatest(item); setError("");
+    if (!stateRef.current.baseline || stateRef.current.clean) { setBaseline(item); setDraft(personalScheduleDraft(item, stateRef.current.editZone)); }
+  }, [ready, id, actorId, locale, scheduleSync.records, scheduleSync.status]);
   useEffect(() => { if (clean && !saving && editZone !== timeZone) { setEditZone(timeZone); setDraft(personalScheduleDraft(baseline, timeZone)); } }, [timeZone, editZone, clean, saving, baseline]);
   const discard = () => { setBaseline(latest); setEditZone(timeZone); setDraft(personalScheduleDraft(latest, timeZone)); setError(""); };
   async function save(remove = false) {
@@ -74,13 +80,15 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey }: { id: string; 
       const item = readPersonalSchedule(result.data);
       if (result.status < 200 || result.status >= 300 || !item || !personalScheduleReceiptMatches(result.data, actorId, id || undefined, change.fields, remove) || (baseline && Date.parse(item.updatedAt) <= Date.parse(baseline.updatedAt))) { setError(locale.t("schedule.saveUnconfirmed")); return; }
       scope.keys.delete(fingerprint);
+      await scheduleSync.invalidate();
       if (remove) { router.replace("/schedule" as Href); return; }
       setBaseline(item); setLatest(item); setDraft(personalScheduleDraft(item, editZone)); setMessage(locale.t("schedule.saved"));
-      if (!id) router.replace(`/schedule/personal/${encodeURIComponent(item.id)}` as Href); else setRevision(value => value + 1);
+      if (!id) router.replace(`/schedule/personal/${encodeURIComponent(item.id)}` as Href);
     } catch { if (scope.active && current.current === scope) setError(locale.t("schedule.operationFailed")); }
     finally { scope.busy = false; if (scope.active && current.current === scope) setSaving(false); }
   }
-  return <AppScreen backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("schedule.title") })} backLabel={locale.t("schedule.title")} title={locale.t(id ? "schedule.personalTitle" : "schedule.newPersonalTitle")} refreshControl={<RefreshControl refreshing={loading} onRefresh={() => setRevision(value => value + 1)} />}>
+  return <AppScreen backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("schedule.title") })} backLabel={locale.t("schedule.title")} title={locale.t(id ? "schedule.personalTitle" : "schedule.newPersonalTitle")} refreshControl={<RefreshControl refreshing={scheduleSync.status === "syncing"} onRefresh={() => { void scheduleSync.refresh(); }} />}>
+    <Text accessibilityLiveRegion="polite" style={styles.hint}>{locale.t(`sync.${scheduleSync.status === "local-ready" ? "localReady" : scheduleSync.status}` as import("../../i18n/messages").MessageKey)}{scheduleSync.lastSyncedAt ? ` · ${locale.t("sync.lastSynced", { time: new Date(scheduleSync.lastSyncedAt).toLocaleString() })}` : ""}</Text>
     {loading && !baseline ? <LoadingState /> : null}
     <Text style={styles.hint}>{locale.t("schedule.editorHint", { timeZone: editZone })}</Text>
     {editZone !== timeZone ? <Text accessibilityRole="alert" style={styles.hint}>{locale.t("schedule.draftZone", { timeZone: editZone })}</Text> : null}

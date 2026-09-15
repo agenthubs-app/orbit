@@ -29,6 +29,10 @@ export const useApiResource = (path) => {
   rerender();
   return { kind: "success", data: path.endsWith("/activities") ? { activities: [] } : path.startsWith("/api/reminders") ? { reminders: state.reminders } : { task: state.task }, refreshing: false, refresh() { state.refreshes++; emit(); } };
 };
+export const useSyncedCollection = () => {
+  rerender();
+  return { records: [{ id: state.task.id, payload: state.task, revision: state.task.updatedAt }], status: "fresh", error: null, lastSyncedAt: state.task.updatedAt, refresh() { state.refreshes++; emit(); }, async invalidate() { state.refreshes++; emit(); } };
+};
 async function request(method, path, options) {
     state.requests.push({ method, path, ...options });
     const updated = { ...state.task, ...options.body.patch, updatedAt: "2026-09-07T03:00:00.000Z" };
@@ -45,6 +49,7 @@ let client = {
 export const useOrbitApiClient = () => client;
 export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, accountId: "test", actorId: "test", user: { id: "raw-login-test" }, cookieHeader: "" });
 export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.example" });
+export const retireSnapshot = () => {};
 export const useSafeAreaInsets = () => ({ top: 0, bottom: 0, left: 0, right: 0 });
 export const AppScreen = ({ children }) => <main>{children}</main>;
 export const ErrorState = ({ message }) => <div>{message}</div>;
@@ -84,7 +89,7 @@ test.before(async () => {
             });`,
           loader: "jsx", resolveDir: process.cwd(),
         }));
-        plugin.onResolve({ filter: /^(expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|AuthSessionProvider|ApiBaseUrlProvider|native-notifications|AppScreen|ErrorState|LoadingState)$|\/design\/theme$/ }, () => ({ path: "fixture", namespace: "task-test" }));
+        plugin.onResolve({ filter: /^(expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|useSyncedCollection|AuthSessionProvider|ApiBaseUrlProvider|snapshot-store|native-notifications|AppScreen|ErrorState|LoadingState)$|\/design\/theme$/ }, () => ({ path: "fixture", namespace: "task-test" }));
         plugin.onLoad({ filter: /.*/, namespace: "task-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
       },
     }],
@@ -359,6 +364,6 @@ for (const operation of ["complete", "reopen", "delete", "reminder", "cancel"]) 
       assert.equal(request.body.body, "Original title");
     }
     assert.deepEqual(snapshot.navigation, operation === "delete" ? ["/tasks"] : []);
-    assert.equal(snapshot.refreshes, operation === "delete" ? 0 : ["reminder", "cancel"].includes(operation) ? 1 : 3);
+    assert.equal(snapshot.refreshes, ["delete", "reminder", "cancel"].includes(operation) ? 1 : 3);
   });
 }
