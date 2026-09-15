@@ -61,7 +61,7 @@ const client = {
 export const useOrbitApiClient = () => client;
 export const useOrbitLocale = () => { useFixture(); return { language: s.language, t: createTranslator(s.language) }; };
 export const useApiResource = () => ({ kind: "loading", refreshing: false, refresh() { s.refreshes++; } });
-export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, user: { id: "actor" }, cookieHeader: "" });
+export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, accountId: "actor", actorId: "actor", user: { id: "actor" }, cookieHeader: "" });
 export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.example" });
 export const useLocalSearchParams = () => ({ id: s.batchId });
 export const usePathname = () => s.screen === "single" ? "/contacts/new" : s.screen === "legacy" ? "/contacts/new/batch/" + s.batchId : "/contacts/new/batch2/" + s.batchId;

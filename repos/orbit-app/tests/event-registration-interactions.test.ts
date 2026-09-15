@@ -50,7 +50,7 @@ window.fetch = async (input, init) => { const index = state.requests.length; con
   return response;
 };
 export const useFixture = () => { observe(); return state; };
-export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, user: state.signedIn ? { id: state.actor } : null, cookieHeader: state.cookieHeader }; };
+export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.signedIn ? state.actor : null, actorId: state.signedIn ? state.actor : null, user: state.signedIn ? { id: state.actor } : null, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
 export const useOrbitLocale = () => { observe(); return { language: state.language, t: createTranslator(state.language) }; };
 export const useLocalSearchParams = () => { observe(); return { id: state.eventId }; };

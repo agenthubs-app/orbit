@@ -11,9 +11,9 @@ function ContactDetailRoute() {
   const server = useOrbitApiBaseUrl();
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const contactId = Array.isArray(id) ? id[0] : id;
-  const enabled = focused && auth.ready && auth.signedIn && server.ready && Boolean(auth.user?.id && contactId);
+  const enabled = focused && auth.ready && auth.signedIn && server.ready && Boolean(auth.actorId && contactId);
   const sequence = useRef(0);
-  const scope = useMemo(() => ({ key: String(++sequence.current), enabled }), [enabled, auth.user?.id, auth.cookieHeader, server.baseUrl, contactId]);
+  const scope = useMemo(() => ({ key: String(++sequence.current), enabled }), [enabled, auth.actorId, auth.cookieHeader, server.baseUrl, contactId]);
   const latest = useRef(scope);
   latest.current = scope;
   const isScopeCurrent = useCallback(() => latest.current === scope && scope.enabled, [scope]);

@@ -23,7 +23,7 @@ import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { OrbitTranslator } from "../../i18n/messages";
 import { notifyReminderPlansChanged, requestNotificationPermission } from "../../notifications/native-notifications";
 import { reminderPlansToView, reminderQuickOptions } from "../../view-models/reminders";
-import { taskActivitiesToView, taskDetailToView, type TaskDetailView } from "../../view-models/today-tasks";
+import { ownedTaskDetailToView, taskActivitiesToView, type TaskDetailView } from "../../view-models/today-tasks";
 import { buildTaskDatePatch, taskDateDraftFromView, taskDateReceiptMatches, type TaskDateDraft } from "../../view-models/task-dates";
 
 function first(value: string | string[] | undefined): string {
@@ -69,7 +69,7 @@ export function TaskDetailScreen() {
   const router = useRouter();
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
-  const actorId = auth.user?.id ?? "";
+  const actorId = auth.actorId ?? "";
   const ready = auth.ready && auth.signedIn && server.ready && Boolean(actorId);
   const scopeKey = JSON.stringify([server.baseUrl, actorId, taskId, ready]);
   const client = useOrbitApiClient({ scopeKey });
@@ -79,7 +79,7 @@ export function TaskDetailScreen() {
   const detailState = useApiResource<unknown>(detailPath, () => false, { scopeKey });
   const activitiesState = useApiResource<unknown>(activitiesPath, () => false, { scopeKey });
   const remindersState = useApiResource<unknown>(reminderResourcePath, () => false, { scopeKey });
-  const detail = ready && (detailState.kind === "success" || detailState.kind === "empty") ? taskDetailToView(detailState.data, locale.language) : null;
+  const detail = ready && (detailState.kind === "success" || detailState.kind === "empty") ? ownedTaskDetailToView(detailState.data, actorId, locale.language) : null;
   const activities = activitiesState.kind === "success" || activitiesState.kind === "empty" ? taskActivitiesToView(activitiesState.data, timeZone, locale.language) : [];
   const reminders = remindersState.kind === "success" || remindersState.kind === "empty"
     ? reminderPlansToView(remindersState.data, timeZone).filter((item) => item.status === "scheduled")
@@ -219,7 +219,7 @@ export function TaskDetailScreen() {
     await mutate("patch", taskPath(taskId), {
       action: "update", expectedUpdatedAt: baseline.updatedAt, patch: change.patch,
     }, data => {
-      const updated = taskDetailToView(data, locale.language)!; // Accepted below before acknowledging.
+      const updated = ownedTaskDetailToView(data, actorId, locale.language)!; // Accepted below before acknowledging.
       if (latestRef.current?.updatedAt === revisionAtStart) setLatest(updated);
       setBaseline(updated);
       dateDraftRef.current = taskDateDraftFromView(updated, editTimeZone);
@@ -248,7 +248,7 @@ export function TaskDetailScreen() {
       },
     }, (data) => {
       if (latestRef.current?.id !== baseline.id) return;
-      const updated = taskDetailToView(data, locale.language);
+      const updated = ownedTaskDetailToView(data, actorId, locale.language);
       if (updated) {
         if (latestRef.current?.updatedAt === revisionAtStart) setLatest(updated);
         setBaseline(updated);

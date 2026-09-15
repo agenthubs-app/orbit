@@ -88,7 +88,7 @@ type ClientPatch = (endpoint: string, body: unknown, options?: { signal?: AbortS
 function useInboxIdentity(routeKey: string) {
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
-  const actorId = auth.user?.id ?? "";
+  const actorId = auth.actorId ?? "";
   const ready = auth.ready && auth.signedIn && server.ready && Boolean(actorId);
   // Opaque keys isolate reads and local drafts without storing credentials.
   const scopeKey = useMemo(() => randomUUID(), [actorId, auth.cookieHeader, server.baseUrl, ready, routeKey]);
@@ -1618,7 +1618,7 @@ function ReplyComposer({
 
   function rewriteDraft() {
     if (!isCurrent()) return;
-    const actorId = auth.user?.id;
+    const actorId = auth.actorId;
     if (!body.trim()) { setRewriteError(locale.t("inbox.writeDraftFirst")); return; }
     if (!contactId) { setRewriteError(locale.t("inbox.missingContact")); return; }
     if (!actorId || !server.baseUrl) { setRewriteError(locale.t("inbox.signInForAi")); return; }

@@ -460,6 +460,27 @@ export function taskDetailToView(payload: unknown, language: OrbitLanguage = "zh
   };
 }
 
+export function ownedTaskDetailToView(
+  payload: unknown,
+  actorId: string,
+  language: OrbitLanguage = "zh"
+): TaskDetailView | null {
+  const root = isRecord(payload) ? payload : {};
+  const task = isRecord(root.task) ? root.task : null;
+  const owner = actorId.trim();
+
+  if (
+    !task ||
+    !owner ||
+    task.accountId !== owner ||
+    task.ownerUserId !== owner
+  ) {
+    return null;
+  }
+
+  return taskDetailToView(payload, language);
+}
+
 const activityLabelKeys: Readonly<Record<string, MessageKey>> = {
   created: "todayVm.activityCreated",
   updated: "todayVm.activityUpdated",

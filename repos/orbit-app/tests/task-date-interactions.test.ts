@@ -16,7 +16,7 @@ import { onSessionExpired } from "./src/api/session-expiry";
 const listeners = new Set(); let revision = 0, nextId = 0;
 const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
 const state = window.fixture = {
-  actor: "actor-1", taskId: "task:edit", baseUrl: "https://orbit.example", cookieHeader: "", ready: true, baseReady: true, signedIn: true, mounted: true, fontScale: 1,
+  actor: "actor-1", rawUserId: "user:raw-login", taskId: "task:edit", baseUrl: "https://orbit.example", cookieHeader: "", ready: true, baseReady: true, signedIn: true, mounted: true, fontScale: 1,
   requests: [], pending: [], presses: {}, inputs: {}, expiries: 0, notifications: 0, permissionCalls: 0, holdReads: false,
   ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
@@ -45,7 +45,7 @@ state.setDeviceZone = zone => {
   foregroundListeners.forEach(fn => fn("active"));
 };
 export const useFixture = () => { observe(); return state; };
-export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, user: state.signedIn ? { id: state.actor } : null, cookieHeader: state.cookieHeader }; };
+export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.signedIn ? state.actor : null, actorId: state.signedIn ? state.actor : null, user: state.signedIn ? { id: state.rawUserId } : null, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
 export const useLocalSearchParams = () => { observe(); return { id: state.taskId }; };
 export const useGlobalSearchParams = useLocalSearchParams;

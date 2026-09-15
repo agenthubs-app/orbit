@@ -40,7 +40,7 @@ window.fetch = async (input, init) => {
   return pending;
 };
 export const useFixture = () => { observe(); return state; };
-export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, user: { id: state.actor }, cookieHeader: state.cookieHeader }; };
+export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.actor, actorId: state.actor, user: { id: state.actor }, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
 export const useOrbitLocale = () => { observe(); return { language: state.language, t: createTranslator(state.language) }; };
 export const useIsFocused = () => { observe(); return state.focused; };

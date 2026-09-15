@@ -80,7 +80,7 @@ export const useIsFocused = () => true;
 export const usePathname = () => "/" + screen;
 export const useRouter = () => ({ canGoBack: () => true, back() { state.navigation.push("back"); }, push(path) { state.navigation.push(path); }, replace(path) { state.navigation.push(path); } });
 export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.test" });
-export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, user: { id: "reader", name: "林悦", email: "reader@example.test" }, cookieHeader: "" });
+export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, accountId: "reader", actorId: "reader", user: { id: "reader", name: "林悦", email: "reader@example.test" }, cookieHeader: "" });
 export const useRelationshipInboxBadgeCount = () => 0;
 export const SafeAreaView = ({ edges, ...props }) => <View {...props} />;
 export const useSafeAreaInsets = () => ({ top: 0, bottom: 0, left: 0, right: 0 });

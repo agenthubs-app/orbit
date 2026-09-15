@@ -210,7 +210,25 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
         if (!scopedClients.has(auth.cookieHeader)) scopedClients.set(auth.cookieHeader, Object.create(api));
         return scopedClients.get(auth.cookieHeader);
       } };
-      if (id === "./client" || id.endsWith("/api/client")) return { createOrbitApiClient: (options: { authCookieHeader: string }) => { clientScopes.push(options.authCookieHeader); return api; } };
+      if (id === "./client" || id.endsWith("/api/client")) return { createOrbitApiClient: (options: { authCookieHeader: string }) => {
+        clientScopes.push(options.authCookieHeader);
+        return {
+          ...api,
+          async get(path: string) {
+            if (path === "/api/account/me") {
+              const accountId = options.authCookieHeader === "next-cookie" ? "actor-b" : "actor-a";
+              return {
+                success: true,
+                data: {
+                  account: { id: accountId },
+                  session: { status: "signed-in" }
+                }
+              };
+            }
+            return api.get(path);
+          }
+        };
+      } };
       if (id === "./native-auth-session-storage") return { nativeAuthSessionStorage: { read: async () => "test-cookie", write: async () => { calls.push("write-auth"); }, clear: async () => { calls.push("clear-auth"); } } };
       if (id === "./mobile-auth") return {
         validateAuthSession: async (options: { cookieHeader: string }) => ({ success: true, data: { user: { id: options.cookieHeader === "next-cookie" ? "actor-b" : "actor-a" } } }),
@@ -459,7 +477,7 @@ for (const failedDelete of [localPath, durablePath]) {
       assert.equal(app.warnings.length, 1);
       assert.match(JSON.stringify(app.warnings), /通知.*未|未.*通知/);
       assert.doesNotMatch(JSON.stringify(app.warnings), /test-cookie|ExponentPushToken|durable-device|local-device/);
-      assert.deepEqual(app.clientScopes, ["test-cookie", "test-cookie"]);
+      assert.deepEqual(app.clientScopes, ["test-cookie", "test-cookie", "test-cookie"]);
     } finally { app.close(); }
   });
 }
@@ -498,7 +516,7 @@ test("account switch warns on unlink failure but still clears old reminders and 
     assert.equal(app.scheduled.size, 0);
     assert.equal(app.warnings.length, 1);
     assert.doesNotMatch(JSON.stringify(app.warnings), /test-cookie|ExponentPushToken|durable-device|local-device/);
-    assert.deepEqual(app.clientScopes, ["test-cookie", "test-cookie"]);
+    assert.deepEqual(app.clientScopes, ["test-cookie", "next-cookie", "test-cookie", "test-cookie"]);
   } finally { app.close(); }
 });
 
@@ -518,7 +536,7 @@ test("account switch drains the old reminder sync and revokes with the old auth 
     assert.equal((await switching).success, true);
     await settle();
     assert.equal(app.scheduled.size, 0);
-    assert.deepEqual(app.clientScopes, ["test-cookie", "test-cookie"]);
+    assert.deepEqual(app.clientScopes, ["test-cookie", "next-cookie", "test-cookie", "test-cookie"]);
     assert.deepEqual(app.registry, { [durablePath]: false, [localPath]: false });
     assert.ok(app.calls.indexOf("write-auth") > app.calls.indexOf(`DELETE:${durablePath}`));
     app.api.get = async () => ({ success: true, data: { reminders: [] } });

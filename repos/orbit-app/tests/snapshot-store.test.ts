@@ -143,7 +143,7 @@ test("登出与会话过期都清空本地快照", () => {
   );
 });
 
-test("同一服务器直接更换账号时先清除旧账号快照", () => {
+test("同一服务器更换登录主体或 canonical account 时先清除旧账号快照", () => {
   const providerSource = readFileSync(
     join(repoRoot, "src", "api", "AuthSessionProvider.tsx"),
     "utf8"
@@ -151,6 +151,6 @@ test("同一服务器直接更换账号时先清除旧账号快照", () => {
 
   assert.match(
     providerSource,
-    /if \(user && user\.id !== validation\.data\.user\.id\) \{\s*await clearSnapshots\(\);/u
+    /\(user && user\.id !== validation\.data\.user\.id\) \|\|\s*\(accountId && accountId !== identity\.accountId\)[\s\S]*?await clearSnapshots\(\);/u
   );
 });

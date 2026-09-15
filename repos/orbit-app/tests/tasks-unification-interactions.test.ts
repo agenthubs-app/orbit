@@ -25,10 +25,10 @@ const fixture = `
 import React, { useEffect, useSyncExternalStore } from "react";
 import { View } from "react-native-web";
 let revision = 0, nextId = 0; const listeners = new Set();
-const state = window.fixture = { actor: "owner", signedIn: true, ready: true, baseUrl: "https://orbit.example", params: {}, requests: [], navigation: [], ...window.initialFixture,
+const state = window.fixture = { actor: "owner", rawUserId: "user:raw-login", signedIn: true, ready: true, baseUrl: "https://orbit.example", params: {}, requests: [], navigation: [], ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
 export const useFixture = () => { useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision); return state; };
-export const useOrbitAuthSession = () => { useFixture(); return { ready: state.ready, signedIn: state.signedIn, user: state.signedIn ? { id: state.actor } : null, cookieHeader: "" }; };
+export const useOrbitAuthSession = () => { useFixture(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.signedIn ? state.actor : null, actorId: state.signedIn ? state.actor : null, user: state.signedIn ? { id: state.rawUserId } : null, cookieHeader: "" }; };
 export const useOrbitApiBaseUrl = () => { useFixture(); return { ready: true, baseUrl: state.baseUrl }; };
 export const useLocalSearchParams = () => { useFixture(); return state.params; };
 export const useGlobalSearchParams = useLocalSearchParams;

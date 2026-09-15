@@ -16,13 +16,13 @@ const boundaries = `
 import { useSyncExternalStore } from "react";
 let revision = 0; const listeners = new Set();
 const state = window.fixture = {
-  actorId: "actor:A", requests: [], writes: [], snapshotReads: [],
-  switchActor(actorId) { state.actorId = actorId; revision++; listeners.forEach(listener => listener()); },
+  rawUserId: "user:raw-login", accountId: "account:A", requests: [], writes: [], snapshotReads: [],
+  switchActor(accountId) { state.accountId = accountId; revision++; listeners.forEach(listener => listener()); },
   reply(index, data, status = 200) { state.requests[index].resolve(new Response(JSON.stringify({ success: status === 200, data, error: { code: "INTERNAL_ERROR", message: "失败" } }), { status, headers: { "content-type": "application/json" } })); },
   fail(index, mode) { if (mode === "offline") state.requests[index].reject(new TypeError("Network unavailable")); else state.requests[index].resolve(new Response("upstream unavailable", { status: 500 })); }
 };
-window.fetch = (path, options) => new Promise((resolve, reject) => state.requests.push({ path: String(path), actorId: state.actorId, resolve, reject }));
-export const useOrbitAuthSession = () => { useSyncExternalStore(listener => { listeners.add(listener); return () => listeners.delete(listener); }, () => revision); return { ready: true, cookieHeader: "", user: { id: state.actorId } }; };
+window.fetch = (path, options) => new Promise((resolve, reject) => state.requests.push({ path: String(path), actorId: state.accountId, resolve, reject }));
+export const useOrbitAuthSession = () => { useSyncExternalStore(listener => { listeners.add(listener); return () => listeners.delete(listener); }, () => revision); return { ready: true, cookieHeader: "", accountId: state.accountId, actorId: state.accountId, user: { id: state.rawUserId } }; };
 export const useOrbitApiBaseUrl = () => ({ baseUrl: "http://fixture" });
 export const readSnapshot = async (baseUrl, actorId, path) => { state.snapshotReads.push({ baseUrl, actorId, path }); return location.search.includes("cached") ? { result: { success: true, status: 200, data: { value: "上次缓存内容" }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } }, syncedAt: "2026-09-12T00:00:00Z" } : null; };
 export const writeSnapshot = async (baseUrl, actorId, path, result) => { state.writes.push({ actorId, data: result.data }); };
@@ -31,7 +31,7 @@ export const writeSnapshot = async (baseUrl, actorId, path, result) => { state.w
 test.before(async () => {
   const result = await build({
     stdin: { contents: `import React from "react"; import { createRoot } from "react-dom/client"; import { useApiResource } from "./src/hooks/useApiResource"; import { useOrbitAuthSession } from "./src/api/AuthSessionProvider";
-      function Screen() { const auth = useOrbitAuthSession(); const state = useApiResource("/api/contacts/same-contact", () => false, { ...(location.search.includes("scoped") ? { scopeKey: auth.user.id } : {}), ...(location.search.includes("network-only") ? { cachePolicy: "network-only" } : {}) }); return <><output>{state.kind === "success" ? state.data.value : state.kind}</output><button onClick={state.refresh}>刷新</button></>; }
+      function Screen() { const auth = useOrbitAuthSession(); const state = useApiResource("/api/contacts/same-contact", () => false, { ...(location.search.includes("scoped") ? { scopeKey: auth.actorId } : {}), ...(location.search.includes("network-only") ? { cachePolicy: "network-only" } : {}) }); return <><output>{state.kind === "success" ? state.data.value : state.kind}</output><button onClick={state.refresh}>刷新</button></>; }
       createRoot(document.getElementById("root")).render(<Screen />);`, resolveDir: process.cwd(), loader: "tsx" },
     bundle: true, write: false, format: "iife", jsx: "automatic", define: { "process.env.NODE_ENV": '"test"', "process.env": "{}" },
     plugins: [{ name: "resource-boundaries", setup(plugin) {
@@ -58,7 +58,7 @@ test("scoped contact reads clear prior-account data and never reuse that account
   await page.getByText("A 的私有备注", { exact: true }).waitFor();
   await page.getByRole("button", { name: "刷新" }).click();
   await page.waitForFunction(() => (window as any).fixture.requests.length === 2);
-  await page.evaluate(() => (window as any).fixture.switchActor("actor:B"));
+  await page.evaluate(() => (window as any).fixture.switchActor("account:B"));
   await page.getByText("loading", { exact: true }).waitFor();
   await page.waitForFunction(() => (window as any).fixture.requests.length === 3);
   await page.evaluate(() => (window as any).fixture.reply(2, { value: "B 的私有备注" }));
@@ -67,7 +67,7 @@ test("scoped contact reads clear prior-account data and never reuse that account
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   assert.equal(await page.locator("output").innerText(), "B 的私有备注");
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.writes), [
-    { actorId: "actor:A", data: { value: "A 的私有备注" } }, { actorId: "actor:B", data: { value: "B 的私有备注" } }
+    { actorId: "account:A", data: { value: "A 的私有备注" } }, { actorId: "account:B", data: { value: "B 的私有备注" } }
   ]);
 });
 
@@ -93,6 +93,7 @@ test("default resources still show cached content when the initial network read 
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   assert.equal(await page.locator("output").innerText(), "上次缓存内容");
   assert.equal(await page.evaluate(() => (window as any).fixture.snapshotReads.length), 1);
+  assert.equal(await page.evaluate(() => (window as any).fixture.snapshotReads[0].actorId), "account:A");
 });
 
 test("network-only resources cannot confirm a cached result before or after a failed initial read", async t => {

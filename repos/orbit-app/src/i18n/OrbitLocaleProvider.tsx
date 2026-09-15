@@ -90,8 +90,9 @@ export function OrbitLocaleProvider({ children }: { children: ReactNode }) {
     && server.ready
     && auth.signedIn
     && auth.user
+    && auth.actorId
     ? {
-        actorId: auth.user.id,
+        actorId: auth.actorId,
         baseUrl: server.baseUrl,
         cookieHeader: auth.cookieHeader,
       }

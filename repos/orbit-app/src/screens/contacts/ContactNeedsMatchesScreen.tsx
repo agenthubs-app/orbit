@@ -28,7 +28,7 @@ export function ContactNeedsMatchesScreen() {
   const router = useRouter();
   const auth = useOrbitAuthSession();
   const { baseUrl } = useOrbitApiBaseUrl();
-  const scopeKey = JSON.stringify([auth.user?.id, auth.cookieHeader, baseUrl]);
+  const scopeKey = JSON.stringify([auth.actorId, auth.cookieHeader, baseUrl]);
   const matchesState = useValidatedApiResource(ORBIT_API_ENDPOINTS.contactNeedsMatches, contactNeedsMatchesPayloadSchema, () => false, { cachePolicy: "network-only", scopeKey });
   const needs = useContactNeeds({ onSaved: matchesState.refresh });
   const view = useMemo(() => matchesState.kind === "success" || matchesState.kind === "empty" ? contactNeedsToView(matchesState.data) : null, [matchesState]);

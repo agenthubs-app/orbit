@@ -40,7 +40,7 @@ export function HomeDashboardScreen() {
   const server = useOrbitApiBaseUrl();
   const client = useHomeDashboardClient();
   const locale = useOrbitLocale();
-  const actor = auth.user?.id ?? "";
+  const actor = auth.actorId ?? "";
   const ready = auth.ready && auth.signedIn && server.ready && Boolean(actor);
   const sequence = useRef(0);
   const scope = useMemo<Scope>(() => ({

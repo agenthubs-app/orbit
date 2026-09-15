@@ -52,7 +52,7 @@ const client = { async get(path) {
  state.requests.push({ method: "GET", path }); return { success: false, error: { message: "隐私控制暂时不可用。" } };
 }, async post(path, options) { state.requests.push({ method: "POST", path, body: options.body }); return { success: true, data: { confirmedSignal: signal, confirmedAt: "2026-09-11T10:24:00+09:00", externalActionExecuted: false, relationshipWriteExecuted: false } }; }, async patch(path, options) { state.requests.push({ method: "PATCH", path, body: options.body }); return { success: true }; } };
 export const useOrbitApiClient = () => { useFixture(); return React.useMemo(() => ({ ...client }), [revision]); };
-export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, user: { id: "inbox-style-actor" }, cookieHeader: "" });
+export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, accountId: "inbox-style-actor", actorId: "inbox-style-actor", user: { id: "inbox-style-actor" }, cookieHeader: "" });
 export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.example" });
 export const randomUUID = () => "inbox-style-" + (++uuid);
 export const SafeAreaView = ({ edges, style, ...props }) => <View {...props} style={[style, { paddingTop: edges?.includes("top") ? 48 : 0 }]} />;

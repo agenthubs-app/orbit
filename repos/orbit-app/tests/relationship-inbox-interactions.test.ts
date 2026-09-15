@@ -62,7 +62,7 @@ const client = {
   }
 };
 export const useOrbitApiClient = () => { rerender(); return React.useMemo(() => ({ ...client }), [revision]); };
-export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, user: { id: "inbox-test-actor" }, cookieHeader: "" });
+export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, accountId: "inbox-test-actor", actorId: "inbox-test-actor", user: { id: "inbox-test-actor" }, cookieHeader: "" });
 export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.example" });
 export const randomUUID = () => "inbox-test-" + (++uuid);
 export const SafeAreaView = ({ children, edges, ...props }) => <div>{children}</div>;

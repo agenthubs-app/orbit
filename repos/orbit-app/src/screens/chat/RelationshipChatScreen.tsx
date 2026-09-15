@@ -23,7 +23,7 @@ import {
 export function RelationshipChatScreen() {
   const { colors } = useOrbitTheme();
   const auth = useOrbitAuthSession();
-  const actorId = auth.user?.id ?? "";
+  const actorId = auth.actorId ?? "";
   const state = useApiResource<unknown>(
     relationshipCommunicationConversationsPath(),
     (data) => isRelationshipConversationList(data) && data.conversations.length === 0,
