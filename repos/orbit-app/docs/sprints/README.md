@@ -86,7 +86,7 @@ build/harness-logs/
 | [0034](0034-offline-personal-mutations/GOAL.md) | 四类个人数据可离线确认保存、幂等上传并由用户解决冲突 | 同上；AI 只读取已同步云端版本 | 依赖 0033 completed/merged；planned，run_count=0 | planned |
 | [0035](0035-sync-invalidation-recovery/GOAL.md) | 用提供商无关的轻量状态检测加速刷新，并以启动／前台／cursor 修复漏提示 | 同上；兼容本地 PostgreSQL、Supabase、Neon 或其他 PostgreSQL provider | 依赖 0034 completed/merged；供应商选型不阻塞 portable core；planned，run_count=0 | planned |
 | [0036](0036-ai-sync-visibility-acceptance/GOAL.md) | 让 AI 报告四域云端数据新鲜度，完成跨端验收并更新私有 Data Atlas | 数据审查、AI 盲区与同步方案最终收口 | 依赖 0035 completed/merged、同账号 runtime 与已授权 AI provider；planned，run_count=0 | planned |
-| [0037](0037-contact-message-inbox/GOAL.md) | 把联系人消息从通知中独立出来，让用户看到真实对话并可靠收发、回复和同步已读。 | 2026-09-16 已确认的消息/三类通知设计 | 复用已合并通信与身份能力，启动时核实当前基线；本次仅规划，run_count=0 | planned |
+| [0037](0037-contact-message-inbox/GOAL.md) | 把联系人消息从通知中独立出来，让用户看到真实对话并可靠收发、回复和同步已读。 | 2026-09-16 已确认的消息/三类通知设计 | 已核对0033工作树，消息链无直接冲突；E线run-01，见下方启动记录 | running |
 | [0038](0038-typed-notification-inbox/GOAL.md) | 让每条通知明确属于提醒、建议或动态，显示原因和可追溯来源，并让 Web 与 App 操作同一条记录。 | 2026-09-16 已确认的消息/三类通知设计 | 依赖 0037 固定SHA合并及相关验证；本次仅规划，run_count=0 | planned |
 | [0039](0039-evidence-based-notification-discovery/GOAL.md) | 让 AI 从允许使用的真实信息中自主发现具体动作，有可信时间才提醒，并展示可核查的原文依据。 | 2026-09-16 已确认的消息/三类通知设计 | 依赖 0038 固定SHA合并及相关验证；本次仅规划，run_count=0 | planned |
 | [0040](0040-notification-delivery-cutover/GOAL.md) | 让消息和通知按独立偏好可靠送达，减少重复打扰，并安全替换旧通知数据与旧发送链。 | 2026-09-16 已确认的消息/三类通知设计 | 依赖 0039 固定SHA合并及相关验证；真实Push需有效provider/设备；本次仅规划，run_count=0 | planned |
@@ -399,3 +399,11 @@ build/harness-logs/
 - 批准设计：`0030-inbox-ink-signal-unified-feed/assets/3a-inbox.png`，源自 `软件UI设计现代化 (5).zip` 的 `design_handoff_orbit_ink_signal/screenshots/3a-收件箱.png`，780×1688 px，SHA-256 `a2f576c474780cd451c10eb7a2b3fe339130a18974c0f6436f9a1494e2522702`。
 - 运行目标：以真实 conversation、notification、relationship signal 聚合四类收件箱，逐条确认“全部已读”，保留既有详情／定向写信能力，并在同账号、同数据库的 live Web/API 与 iOS Simulator 上验收。
 - 结果：产品/测试固定 HEAD `4d351f0a0eddc1479eebb3a6b6852a466cad322d`；inbox matrix 231/231、App 全量 2828/2828、typecheck、原生 0 error／0 warning和同账号 40/40 read 持久通过。当前 QA 数据缺 activity/contact/IORBIT/conversation，历史 reminder task 与 canonical task 交集为 0；这些运行限制登记在 [REPORT](0030-inbox-ink-signal-unified-feed/REPORT.md) 和 BR-024，不伪造记录。
+
+### 0037 / run-01
+
+- 开始：2026-09-15T22:12:36.030Z；owner：E线当前session主代理，唯一Generator；分支 codex/e-line-sprint-0037，工作树 /Volumes/ORICO/Dev/MacMovedData/dot-codex/worktrees/798d/orbit。
+- 基线：53c44973f；Planner SHA256：`111b90cae89d5bce491b3c2dd31b3ca6b948730b6b78b70b6d73d0b5f92cc9ed`；用户已明确要求本session实现0037～0040，复用适用批准。
+- 范围锁：0037 Planner的消息/收件箱消费者、必要语言文案及行为测试；不修改0033～0036的sync、outbox、AI freshness和未提交文件。共同Simulator/Web进程先核实使用者再接管。
+- 重叠检查：0033实际在codex/sprint-0033-runtime-acceptance等工作树推进，主线ready标签滞后；0037与已查文件无直接代码重叠。0039接入query-service/manifest前等0036写入结束或使用不修改这些文件的独立适配器；0040与0035通知协调器接线须集成后复验。语言文件与根台账只能串行合并。
+- 本run尚未做真实双账号/远程Push验收；按实际结果继续更新，不预填通过。
