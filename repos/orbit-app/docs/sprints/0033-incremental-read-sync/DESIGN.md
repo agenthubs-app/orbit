@@ -33,9 +33,11 @@ export interface SyncChange {
 
 HTTP 层继续使用项目统一 envelope：成功体是 `{ success: true, data: SyncPage }`；失败体是 `{ success: false, error }`。游标失效／过期／签名或 scope 不匹配返回 HTTP 409、共享 `CONFLICT`，并仅以 `error.context.syncErrorCode=SYNC_RESET_REQUIRED` 告知客户端恢复动作，不返回 actor、workspace 或签名细节。
 
-`workspaceId` 与 actor 一样只由服务端认证／运行上下文确定。`orbit_records` 新增数据库分配的单调 `sync_revision`，每次 insert/update/delete 都从 sequence 取得新值；迁移为现有行回填唯一 revision，不使用业务 payload 版本或客户端时间。迁移必须接入 `runOrbitRecordsMigration`，可幂等重跑，在 NOT NULL 前回填并将 sequence 推进到当前最大值，安装 trigger、唯一 revision 约束和 `(workspace_id,user_id,sync_revision)` 读取索引。
+`workspaceId` 与 actor 一样只由服务端认证／运行上下文确定。`orbit_records` 新增数据库分配的单调 `sync_revision`，每次 insert/update/delete 都从 sequence 取得新值；迁移为现有行回填唯一 revision，不使用业务 payload 版本或客户端时间。仅 sequence 不能保证事务提交顺序：三类同步 collection 的 trigger 必须在分配 revision 前取得同一个 transaction-scoped PostgreSQL advisory lock并持有到 commit，使后开始的同步写在先前写提交／回滚后才取号；回滚产生的 gap 可接受。其他 collection 不因本 Sprint 被该同步锁串行化。
 
-游标是用 server-only `ORBIT_SYNC_CURSOR_SECRET` 做 HMAC-SHA256 签名的 base64url token，客户端只把它当不透明字符串；内部固定版本、actor/workspace、`afterRevision`、本轮 `highWatermark` 与签发时间。v1 冻结为 24 小时 TTL、默认 page limit 100、最大 200、最大 token 2048 bytes，并用 constant-time 比较签名；密钥轮换使旧游标进入 reset-required。单条 allowlisted payload 的 UTF-8 JSON 上限为 256 KiB，整个成功 envelope 上限为 1 MiB；超限记录或页面必须显式失败，不能静默截断。
+迁移必须接入 `runOrbitRecordsMigration`，可幂等重跑，在 NOT NULL 前回填并将 sequence 推进到 table max 与 sequence 当前值的较大者，安装 trigger、唯一 revision 约束和 `(workspace_id,user_id,sync_revision)` 读取索引。
+
+游标是用至少 32 UTF-8 bytes 的 server-only `ORBIT_SYNC_CURSOR_SECRET` 做 HMAC-SHA256 签名的 canonical base64url token，客户端只把它当不透明字符串；内部固定版本、actor/workspace、`afterRevision`、本轮 `highWatermark` 与签发时间。v1 冻结为 24 小时 TTL、默认 page limit 100、最大 200、最大 token 2048 bytes，并用 constant-time 比较签名；密钥轮换使旧游标进入 reset-required。单条 allowlisted payload 的 UTF-8 JSON 上限为 256 KiB，整个成功 envelope 上限为 1 MiB；超限记录或页面必须显式失败，不能静默截断。
 
 每页只返回 `afterRevision < sync_revision <= highWatermark` 并按 `sync_revision` 升序。分页期间再次变化的行会获得大于 high-watermark 的新 revision：它可以从当前页暂时消失，但下一轮 delta 一定返回最新状态；因此不会把移动中的 `updated_at` 当成稳定快照。最后一页把 cursor 推进到 high-watermark。
 
