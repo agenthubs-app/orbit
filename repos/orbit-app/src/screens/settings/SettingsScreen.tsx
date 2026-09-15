@@ -16,6 +16,7 @@ import {
 } from "../../notifications/push-device-session";
 import { useOrbitLocale, type OrbitLanguageChoice } from "../../i18n/OrbitLocaleContext";
 import type { MessageKey } from "../../i18n/messages";
+import { clearProfileEditSession } from "../../data/profile-edit-session";
 
 const settingsDestinations = [
   {
@@ -61,6 +62,22 @@ export function SettingsScreen() {
   const [pushOptIn, setPushOptIn] = useState<boolean | null>(null);
   const [pushOptInBusy, setPushOptInBusy] = useState(false);
   const [pushOptInError, setPushOptInError] = useState("");
+  const [signOutBusy, setSignOutBusy] = useState(false);
+  const [signOutError, setSignOutError] = useState("");
+
+  async function signOut() {
+    if (signOutBusy || !auth.actorId) return;
+    const actorId = auth.actorId;
+    setSignOutBusy(true);
+    setSignOutError("");
+    const result = await auth.signOut();
+    if (result.success) {
+      clearProfileEditSession({ actorId, apiOrigin: baseUrl });
+    } else {
+      setSignOutError(result.message ?? locale.t("account.signOutFailure"));
+    }
+    setSignOutBusy(false);
+  }
 
   useEffect(() => {
     if (!auth.signedIn) {
@@ -210,6 +227,10 @@ export function SettingsScreen() {
                     <Ionicons color={colors.text3} name="chevron-forward" size={16} />
                   </Pressable>
                 ))}
+              {section === "account" && auth.signedIn ? <Pressable accessibilityLabel={locale.t("account.signOut")} accessibilityRole="button" disabled={signOutBusy} onPress={() => void signOut()} style={({ pressed }) => [styles.destination, signOutBusy && styles.actionDisabled, pressed && styles.pressed]}>
+                <Text style={styles.signOutText}>{locale.t("account.signOut")}</Text>
+              </Pressable> : null}
+              {section === "account" && signOutError ? <Text accessibilityRole="alert" style={styles.errorText}>{signOutError}</Text> : null}
             </View>
             {section === "server" ? <Text style={styles.notificationBody}>{locale.t("settings.serverDetail")}</Text> : null}
           </View>
@@ -259,6 +280,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   valueText: { color: colors.muted, flexShrink: 1, fontSize: 14, lineHeight: 20, textAlign: "right" },
   errorText: { color: colors.rose, fontSize: 13, lineHeight: 20, paddingVertical: 8 },
+  signOutText: { color: colors.rose, flex: 1, fontSize: 15, fontWeight: "600", lineHeight: 22 },
   pressed: {
     opacity: 0.82
   }

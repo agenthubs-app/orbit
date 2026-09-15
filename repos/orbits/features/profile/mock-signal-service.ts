@@ -21,6 +21,7 @@ import {
   type ProfileSignalSuggestionAcceptedPayload,
   type ProfileSignalSuggestionAcceptedSuccess,
   type ProfileSignalSuggestionAcceptResult,
+  type ProfileSignalSuggestionDismissedPayload,
   type ProfileUpdateSuggestion,
 } from "./signal-contract";
 import {
@@ -98,6 +99,14 @@ function findSuggestion(id: string): ProfileUpdateSuggestion | undefined {
 }
 
 export function createMockProfileSignalReviewQueueService(): ProfileSignalReviewQueueService {
+  const decisions = new Map<string, { status: "accepted" | "dismissed"; mutationId: string; decidedAt: string }>();
+  const queueWithDecisions = (payload: ProfileSignalReviewQueuePayload): ProfileSignalReviewQueuePayload => ({
+    ...payload,
+    suggestions: payload.suggestions.map(suggestion => ({
+      ...suggestion,
+      status: decisions.get(suggestion.id)?.status ?? suggestion.status,
+    })),
+  });
   // list 负责展示复核队列；accept 只生成 patch，真正保存仍需后续确认流程。
   return {
     listUpdateSuggestions(input = {}) {
@@ -110,23 +119,31 @@ export function createMockProfileSignalReviewQueueService(): ProfileSignalReview
           return failure("PROFILE_SIGNAL_REVIEW_QUEUE_FAILED");
         case "success":
         default:
-          return success(mockProfileSignalReviewQueueFixture);
+          return success(queueWithDecisions(mockProfileSignalReviewQueueFixture));
       }
     },
 
-    acceptUpdateSuggestion(id) {
+    acceptUpdateSuggestion(id, options = {}) {
       const suggestion = findSuggestion(id);
 
       if (!suggestion) {
         return failure("PROFILE_SIGNAL_SUGGESTION_NOT_FOUND");
       }
 
-      if (suggestion.status !== "pending") {
+      const mutationId = options.mutationId?.trim() || `legacy:accepted:${id}`;
+      const responseMutationId = options.mutationId?.trim() || undefined;
+      const existing = decisions.get(id);
+      if (existing && (existing.status !== "accepted" || existing.mutationId !== mutationId)) {
         return failure("PROFILE_SIGNAL_SUGGESTION_ALREADY_RESOLVED");
       }
 
+      decisions.set(id, { status: "accepted", mutationId, decidedAt: mockProfileSignalSuggestionAcceptedFixture.acceptedAt });
+
       if (id === mockProfileSignalSuggestionAcceptedFixture.acceptedSuggestion.id) {
-        return accepted(mockProfileSignalSuggestionAcceptedFixture);
+        return accepted({
+          ...mockProfileSignalSuggestionAcceptedFixture,
+          ...(responseMutationId ? { mutationId: responseMutationId } : {}),
+        });
       }
 
       return accepted({
@@ -140,10 +157,32 @@ export function createMockProfileSignalReviewQueueService(): ProfileSignalReview
         },
         appliedFields: [suggestion.targetProfileField],
         acceptedAt: mockProfileSignalSuggestionAcceptedFixture.acceptedAt,
+        ...(responseMutationId ? { mutationId: responseMutationId } : {}),
         provenance: suggestion.provenance,
         nextAction:
           "Apply this patch only after the operator confirms the profile save.",
       });
+    },
+
+    dismissUpdateSuggestion(id, options = {}) {
+      const suggestion = findSuggestion(id);
+      if (!suggestion) return failure("PROFILE_SIGNAL_SUGGESTION_NOT_FOUND");
+      const mutationId = options.mutationId?.trim() || `legacy:dismissed:${id}`;
+      const existing = decisions.get(id);
+      if (existing && (existing.status !== "dismissed" || existing.mutationId !== mutationId)) {
+        return failure("PROFILE_SIGNAL_SUGGESTION_ALREADY_RESOLVED");
+      }
+      const dismissedAt = mockProfileSignalSuggestionAcceptedFixture.acceptedAt;
+      decisions.set(id, { status: "dismissed", mutationId, decidedAt: dismissedAt });
+      const payload: ProfileSignalSuggestionDismissedPayload = {
+        state: "dismissed",
+        dismissedSuggestion: { ...suggestion, status: "dismissed" },
+        dismissedAt,
+        mutationId,
+        provenance: suggestion.provenance,
+        nextAction: "Keep the profile unchanged and continue reviewing pending suggestions.",
+      };
+      return { success: true, data: clonePayload(payload) };
     },
   };
 }

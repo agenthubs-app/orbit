@@ -50,3 +50,18 @@ test("profile extraction and suggestion operations have localized controls and s
   assert.equal(en("profile.confirmSuggestion"), "Confirm suggestion");
   assert.equal(en("profile.currentValue"), "Current");
 });
+
+test("the five routed profile pages have complete localized chrome", () => {
+  const keys = [
+    "profile.editPageTitle", "profile.moreTitle", "profile.tagsTitle", "profile.previewTitle",
+    "profile.currentWork", "profile.spokenLanguages", "profile.openSuggestions", "profile.openPreview",
+    "profile.dismissSuggestion", "profile.acceptAllSuggestions", "profile.previewNotice",
+  ] as const;
+  for (const language of ["zh", "ja", "en"] as const) {
+    const t = createTranslator(language);
+    for (const key of keys) {
+      assert.ok(t(key).trim().length > 0);
+      assert.notEqual(t(key), key);
+    }
+  }
+});

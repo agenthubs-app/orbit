@@ -39,6 +39,7 @@ import {
 } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import type { IndustrySelectionContract } from "../../api/contract/industries";
+import { projectPublicProfile, type ManualProfileContract } from "../../api/contract/profile";
 import { INDUSTRY_CATALOG, industryLabel, listSecondaryIndustries, secondaryIndustryLabel, validateIndustrySelection } from "../../api/domain/industries";
 import {
   buildProfileDocumentExtractionRequest,
@@ -61,8 +62,8 @@ import {
 type ProfileDraft = ProfileManualEditDraft & { birthDate: string; targetRelationshipTypesText: string; preferredFollowUpWindow: string; preferredIntroChannelsText: string };
 type SaveProfile = (draft: ProfileDraft, base: ProfileDetail, isDraftCurrent: () => boolean) => Promise<ProfileDetail | null>;
 type DraftChanged = (field: keyof ProfileDraft, quiet?: boolean) => void;
-const suggestionDraftFields = { headline: "headline", homeMarket: "timezone", relationshipGoal: "relationshipGoal", targetRelationshipTypes: "targetRelationshipTypesText", preferredFollowUpWindow: "preferredFollowUpWindow", preferredIntroChannels: "preferredIntroChannelsText" } as const;
-const suggestionFieldLabelKeys = { headline: "profile.headline", homeMarket: "profile.primaryIndustry", relationshipGoal: "profile.relationshipGoal", targetRelationshipTypes: "profile.targetRelationshipTypes", preferredFollowUpWindow: "profile.followUpWindow", preferredIntroChannels: "profile.introChannels" } as const satisfies Record<keyof typeof suggestionDraftFields, MessageKey>;
+const suggestionDraftFields = { headline: "headline", homeMarket: "timezone", relationshipGoal: "relationshipGoal", targetRelationshipTypes: "targetRelationshipTypesText", preferredFollowUpWindow: "preferredFollowUpWindow", preferredIntroChannels: "preferredIntroChannelsText", bio: "bio", offering: "offeringText", seeking: "seekingText" } as const;
+const suggestionFieldLabelKeys = { headline: "profile.headline", homeMarket: "profile.primaryIndustry", relationshipGoal: "profile.relationshipGoal", targetRelationshipTypes: "profile.targetRelationshipTypes", preferredFollowUpWindow: "profile.followUpWindow", preferredIntroChannels: "profile.introChannels", bio: "profile.currentWork", offering: "profile.offering", seeking: "profile.seeking" } as const satisfies Record<keyof typeof suggestionDraftFields, MessageKey>;
 const missingFieldKeys = { displayName: "profile.name", primaryIndustryId: "profile.primaryIndustry", secondaryIndustryId: "profile.secondaryIndustry", birthDate: "profile.birthDate" } as const satisfies Record<string, MessageKey>;
 
 function profileBusinessText(value: string, language: string): string {
@@ -571,15 +572,18 @@ function ProfileCard({
 }) {
   const { styles } = useStyles();
   const locale = useOrbitLocale();
+  const router = useRouter();
   const [editing, setEditing] = useState(startEditing);
   const [editorMounted, setEditorMounted] = useState(startEditing);
-  const storedProfile = profileToSummary(data);
+  const storedProfile = profileToSummary(data.profile
+    ? { profile: projectPublicProfile(data.profile as unknown as ManualProfileContract) }
+    : data);
   const displayProfile = storedProfile;
 
   return (
     <>
       {!editing ? <>
-        <OrbitBusinessCard profile={displayProfile} onEdit={() => { if (isScopeCurrent()) { setEditorMounted(true); setEditing(true); } }} />
+        <OrbitBusinessCard profile={displayProfile} onEdit={() => { if (isScopeCurrent()) { setEditorMounted(true); setEditing(true); router.push("/profile/edit" as Href); } }} />
         <ProfileStatistics scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} />
         {!storedProfile.displayName ? <Text style={styles.pageNotice}>{locale.t("profile.empty")}</Text> : null}
         <View style={styles.basicSection}>
@@ -1012,7 +1016,10 @@ function ProfileManualEditCard({
         ...(patch.relationshipGoal !== undefined && { relationshipGoal: patch.relationshipGoal }),
         ...(patch.targetRelationshipTypes !== undefined && { targetRelationshipTypesText: patch.targetRelationshipTypes.join("\n") }),
         ...(patch.preferredFollowUpWindow !== undefined && { preferredFollowUpWindow: patch.preferredFollowUpWindow }),
-        ...(patch.preferredIntroChannels !== undefined && { preferredIntroChannelsText: patch.preferredIntroChannels.join("\n") })
+        ...(patch.preferredIntroChannels !== undefined && { preferredIntroChannelsText: patch.preferredIntroChannels.join("\n") }),
+        ...(patch.bio !== undefined && { bio: patch.bio }),
+        ...(patch.offering !== undefined && { offeringText: patch.offering.join("\n") }),
+        ...(patch.seeking !== undefined && { seekingText: patch.seeking.join("\n") })
       }));
     }
   }, [acceptedPatch]);
@@ -1023,7 +1030,7 @@ function ProfileManualEditCard({
       dirtyDraft.current = true; draftRevision.current++;
       const fields = extracted.suggestedProfileFields;
       for (const field of ["displayName", "organization", "role"] as const) if (extracted[field]) onDraftChanged(field, true);
-      for (const field of Object.keys(suggestionDraftFields) as Array<keyof typeof suggestionDraftFields>) {
+      for (const field of ["headline", "homeMarket", "relationshipGoal", "targetRelationshipTypes", "preferredFollowUpWindow", "preferredIntroChannels"] as const) {
         const value = fields[field] ?? extracted[field];
         if (value?.length) onDraftChanged(suggestionDraftFields[field], true);
       }
@@ -1036,7 +1043,10 @@ function ProfileManualEditCard({
         ...((fields.relationshipGoal || extracted.relationshipGoal) && { relationshipGoal: fields.relationshipGoal || extracted.relationshipGoal }),
         ...((fields.targetRelationshipTypes ?? extracted.targetRelationshipTypes).length > 0 && { targetRelationshipTypesText: (fields.targetRelationshipTypes ?? extracted.targetRelationshipTypes).join("\n") }),
         ...((fields.preferredFollowUpWindow || extracted.preferredFollowUpWindow) && { preferredFollowUpWindow: fields.preferredFollowUpWindow || extracted.preferredFollowUpWindow }),
-        ...((fields.preferredIntroChannels ?? extracted.preferredIntroChannels).length > 0 && { preferredIntroChannelsText: (fields.preferredIntroChannels ?? extracted.preferredIntroChannels).join("\n") })
+        ...((fields.preferredIntroChannels ?? extracted.preferredIntroChannels).length > 0 && { preferredIntroChannelsText: (fields.preferredIntroChannels ?? extracted.preferredIntroChannels).join("\n") }),
+        ...(fields.bio !== undefined && { bio: fields.bio }),
+        ...(fields.offering !== undefined && { offeringText: fields.offering.join("\n") }),
+        ...(fields.seeking !== undefined && { seekingText: fields.seeking.join("\n") })
       }));
     }
   }, [appliedProfileExtraction]);

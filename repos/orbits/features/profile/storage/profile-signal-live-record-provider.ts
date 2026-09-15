@@ -7,7 +7,6 @@ import type {
   UserProfileDTO,
 } from "../../../shared/domain/contracts";
 import type { SourceReferenceDTO } from "../../../shared/domain/source-types";
-import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
 import {
   resolveLiveDatabaseConnectionConfig,
   type LiveDatabaseEnv,
@@ -16,6 +15,20 @@ import type {
   LiveRecord,
   LiveRecordStoreLike,
 } from "../../../shared/storage/live-record-store";
+import { createPostgresLiveRecordStore } from "../../../shared/storage/postgres-live-record-store";
+import {
+  createConfiguredTransactionalPostgresRuntime,
+  type TransactionalPostgresClient,
+} from "../../../shared/storage/transactional-postgres";
+import type { ProfileSignalSuggestionStatus } from "../signal-contract";
+
+export interface LiveProfileSignalDecision {
+  actorId: string;
+  suggestionId: string;
+  status: Exclude<ProfileSignalSuggestionStatus, "pending">;
+  mutationId: string;
+  decidedAt: string;
+}
 
 export interface LiveProfileSignalProfileRecord extends UserProfileDTO {
   headline?: string;
@@ -36,6 +49,7 @@ export interface LiveProfileSignalGraph {
   interactionMemories: readonly InteractionMemoryDTO[];
   messages: readonly MessageDTO[];
   profiles: readonly LiveProfileSignalProfileRecord[];
+  suggestionDecisions: readonly LiveProfileSignalDecision[];
 }
 
 export type LiveProfileSignalProviderResult<TResult> = TResult | Promise<TResult>;
@@ -46,6 +60,10 @@ export interface LiveProfileSignalProvider {
   readSignalGraph: (
     actorId: string,
   ) => LiveProfileSignalProviderResult<LiveProfileSignalGraph>;
+  saveSuggestionDecision: (
+    decision: LiveProfileSignalDecision,
+    actorId: string,
+  ) => LiveProfileSignalProviderResult<LiveProfileSignalDecision>;
 }
 
 export const PROFILE_SIGNAL_LIVE_RECORD_COLLECTIONS = {
@@ -55,6 +73,7 @@ export const PROFILE_SIGNAL_LIVE_RECORD_COLLECTIONS = {
   interactionMemories: "interactionMemories",
   messages: "messages",
   profiles: "profiles",
+  suggestionDecisions: "profileSuggestionDecisions",
 } as const;
 
 export interface StorageProfileSignalProviderOptions {
@@ -76,6 +95,30 @@ interface CachedConfiguredStorageProfileSignalProvider {
 
 let cachedDefaultProvider: CachedConfiguredStorageProfileSignalProvider | null =
   null;
+const decisionLocks = new WeakMap<object, Map<string, Promise<void>>>();
+
+async function withDecisionLock<TResult>(
+  store: LiveRecordStoreLike<Record<string, unknown>>,
+  key: string,
+  operation: () => Promise<TResult>,
+): Promise<TResult> {
+  let queue = decisionLocks.get(store);
+  if (!queue) {
+    queue = new Map();
+    decisionLocks.set(store, queue);
+  }
+  const previous = queue.get(key) ?? Promise.resolve();
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  queue.set(key, held);
+  await previous;
+  try {
+    return await operation();
+  } finally {
+    release();
+    if (queue.get(key) === held) queue.delete(key);
+  }
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -149,6 +192,9 @@ function profileFromRecord(
     headline: optionalString(payload.headline),
     homeMarket: optionalString(payload.homeMarket),
     organization: optionalString(payload.organization),
+    publicProfile: isRecord(payload.publicProfile)
+      ? (payload.publicProfile as UserProfileDTO["publicProfile"])
+      : undefined,
     preferredFollowUpWindow: optionalString(payload.preferredFollowUpWindow),
     preferredIntroChannels: stringArray(payload.preferredIntroChannels),
     relationshipGoal: optionalString(payload.relationshipGoal),
@@ -382,6 +428,31 @@ function referencedEvidenceIds(
   return new Set(records.flatMap((record) => evidenceIdsFromRecord(record)));
 }
 
+function suggestionDecisionFromRecord(
+  record: LiveRecord<Record<string, unknown>>,
+): LiveProfileSignalDecision | null {
+  const payload = record.payload;
+  if (
+    !nonEmptyString(payload.actorId) ||
+    !nonEmptyString(payload.suggestionId) ||
+    !nonEmptyString(payload.mutationId) ||
+    !nonEmptyString(payload.decidedAt) ||
+    (payload.status !== "accepted" && payload.status !== "dismissed") ||
+    record.userId !== payload.actorId
+  ) return null;
+  return {
+    actorId: payload.actorId,
+    suggestionId: payload.suggestionId,
+    mutationId: payload.mutationId,
+    decidedAt: payload.decidedAt,
+    status: payload.status,
+  };
+}
+
+function suggestionDecisionRecordId(actorId: string, suggestionId: string): string {
+  return `profile-suggestion-decision:${encodeURIComponent(actorId)}:${encodeURIComponent(suggestionId)}`;
+}
+
 export function createStorageProfileSignalProvider({
   source,
   sourceLabel = "Profile signal shared live storage",
@@ -399,6 +470,7 @@ export function createStorageProfileSignalProvider({
         messageRecords,
         interactionMemoryRecords,
         evidenceRecords,
+        suggestionDecisionRecords,
       ] = await Promise.all([
         store.listRecords({
           workspaceId,
@@ -424,6 +496,11 @@ export function createStorageProfileSignalProvider({
         store.listRecords({
           workspaceId,
           collectionName: PROFILE_SIGNAL_LIVE_RECORD_COLLECTIONS.evidence,
+        }),
+        store.listRecords({
+          workspaceId,
+          collectionName: PROFILE_SIGNAL_LIVE_RECORD_COLLECTIONS.suggestionDecisions,
+          userId: actorId,
         }),
       ]);
 
@@ -524,7 +601,96 @@ export function createStorageProfileSignalProvider({
             (profile): profile is LiveProfileSignalProfileRecord =>
               profile !== null,
           ),
+        suggestionDecisions: suggestionDecisionRecords
+          .map(suggestionDecisionFromRecord)
+          .filter((decision): decision is LiveProfileSignalDecision =>
+            decision !== null && decision.actorId === actorId),
       };
+    },
+    async saveSuggestionDecision(decision, actorId) {
+      return withDecisionLock(store, JSON.stringify([workspaceId, actorId, decision.suggestionId]), async () => {
+        if (decision.actorId !== actorId) {
+          throw new Error("Profile suggestion decision belongs to a different actor.");
+        }
+        const recordId = suggestionDecisionRecordId(actorId, decision.suggestionId);
+        const existing = await store.getRecord({
+          workspaceId,
+          collectionName: PROFILE_SIGNAL_LIVE_RECORD_COLLECTIONS.suggestionDecisions,
+          recordId,
+        });
+        if (existing) {
+          const parsed = suggestionDecisionFromRecord(existing);
+          if (!parsed || parsed.actorId !== actorId) {
+            throw new Error("Profile suggestion decision ownership is invalid.");
+          }
+          return parsed;
+        }
+        const saved = await store.upsertRecord({
+          workspaceId,
+          collectionName: PROFILE_SIGNAL_LIVE_RECORD_COLLECTIONS.suggestionDecisions,
+          recordId,
+          userId: actorId,
+          sourceType: "manual",
+          sourceId: `source:${recordId}`,
+          sourceLabel,
+          provider: "profile-signal-live-record-provider",
+          providerRecordId: recordId,
+          evidenceIds: [`evidence:${recordId}`],
+          targetType: "profile",
+          targetId: decision.suggestionId,
+          occurredAt: decision.decidedAt,
+          createdAt: decision.decidedAt,
+          updatedAt: decision.decidedAt,
+          deletedAt: null,
+          lifecycleState: "active",
+          searchText: null,
+          payload: { ...decision },
+        });
+        const parsed = suggestionDecisionFromRecord(saved);
+        if (!parsed) throw new Error("Profile suggestion decision write was invalid.");
+        return parsed;
+      });
+    },
+  };
+}
+
+export function createTransactionalStorageProfileSignalProvider({
+  client,
+  source,
+  sourceLabel = "Profile signal Postgres live storage",
+  workspaceId,
+}: {
+  client: TransactionalPostgresClient;
+  source?: string;
+  sourceLabel?: string;
+  workspaceId: string;
+}): LiveProfileSignalProvider {
+  const options = { source, sourceLabel, workspaceId };
+  const provider = createStorageProfileSignalProvider({
+    ...options,
+    store: createPostgresLiveRecordStore({ client }),
+  });
+  return {
+    ...provider,
+    async saveSuggestionDecision(decision, actorId) {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          return await client.transaction(async transaction => {
+            await transaction.query("select pg_advisory_xact_lock(hashtextextended($1, 0))", [
+              JSON.stringify(["profile-suggestion-decision", workspaceId, actorId, decision.suggestionId]),
+            ]);
+            return createStorageProfileSignalProvider({
+              ...options,
+              store: createPostgresLiveRecordStore({ client: transaction }),
+            }).saveSuggestionDecision(decision, actorId);
+          });
+        } catch (error) {
+          const code = error && typeof error === "object" && "code" in error ? error.code : null;
+          if ((code === "40001" || code === "40P01") && attempt < 2) continue;
+          throw error;
+        }
+      }
+      throw new Error("Profile suggestion decision retry limit reached.");
     },
   };
 }
@@ -547,19 +713,19 @@ export function createConfiguredStorageProfileSignalProvider({
     return cachedDefaultProvider.provider;
   }
 
-  const configuredStore = createConfiguredPostgresLiveRecordStore({
+  const runtime = createConfiguredTransactionalPostgresRuntime({
     env,
   });
 
-  if (!configuredStore) {
+  if (!runtime) {
     return null;
   }
 
-  const provider = createStorageProfileSignalProvider({
+  const provider = createTransactionalStorageProfileSignalProvider({
     source: `postgres-live-record-store:profile-signals:${config.workspaceId}`,
     sourceLabel,
-    store: configuredStore.store,
-    workspaceId: configuredStore.workspaceId,
+    client: runtime.client,
+    workspaceId: runtime.workspaceId,
   });
 
   if (canUseDefaultCache) {

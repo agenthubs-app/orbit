@@ -95,6 +95,7 @@ function harness(input: { optedIn?: boolean; signedIn?: boolean; lastResponse?: 
       if (id.endsWith("/native-notifications")) return native;
       if (id.endsWith("/push-device-session")) return pushSession;
       if (id.endsWith("/push-registration-queue")) return load("src/notifications/push-registration-queue.ts");
+      if (id.endsWith("/profile-edit-session")) return { clearProfileEditSession() {} };
       if (id.endsWith("/OrbitLocaleContext")) return {
         useOrbitLocale: () => ({
           choice: "system",

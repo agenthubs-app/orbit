@@ -13,9 +13,12 @@ import {
   type ProfileSignalSuggestionAcceptedPayload,
   type ProfileSignalSuggestionAcceptedSuccess,
   type ProfileSignalSuggestionAcceptResult,
+  type ProfileSignalSuggestionDismissedPayload,
+  type ProfileSignalSuggestionDismissResult,
   type ProfileUpdateSuggestion,
 } from "./signal-contract";
 import type {
+  LiveProfileSignalDecision,
   LiveProfileSignalGraph,
   LiveProfileSignalProfileRecord,
   LiveProfileSignalProvider,
@@ -154,7 +157,9 @@ function profileCurrentValue(
     return "";
   }
 
-  const value = profile[field];
+  const value = field === "bio" || field === "offering" || field === "seeking"
+    ? profile.publicProfile?.[field]
+    : profile[field];
 
   if (Array.isArray(value)) {
     return value;
@@ -229,7 +234,7 @@ function buildSuggestions(input: {
       createSuggestion({
         confidence: "high",
         createdAt: input.now,
-        currentValue: profileCurrentValue(input.profile, "relationshipGoal"),
+        currentValue: profileCurrentValue(input.profile, "seeking"),
         evidence: sourceEvidence({
           collectedAt: latestMessage.occurredAt,
           evidenceId,
@@ -243,8 +248,8 @@ function buildSuggestions(input: {
           "Recent chat notes repeatedly frame Orbit's value around concrete follow-up decisions.",
         sourceKind: "chat",
         sourceLabel: "Chat signal",
-        suggestedValue: `Use recent relationship context to prioritize concrete follow up: ${latestMessage.body}`,
-        targetProfileField: "relationshipGoal",
+        suggestedValue: ["follow-up collaborators"],
+        targetProfileField: "seeking",
       }),
     );
   }
@@ -264,7 +269,7 @@ function buildSuggestions(input: {
         createdAt: input.now,
         currentValue: profileCurrentValue(
           input.profile,
-          "preferredFollowUpWindow",
+          "bio",
         ),
         evidence: sourceEvidence({
           collectedAt: latestFollowUpMemory.occurredAt,
@@ -283,8 +288,8 @@ function buildSuggestions(input: {
           "Recent interaction memory includes follow-up requests, so the operator should review a shorter follow-up window.",
         sourceKind: "activity",
         sourceLabel: "Activity signal",
-        suggestedValue: "24 hours after sourced follow-up requests",
-        targetProfileField: "preferredFollowUpWindow",
+        suggestedValue: "Building sourced relationship follow-up workflows.",
+        targetProfileField: "bio",
       }),
     );
   }
@@ -306,7 +311,7 @@ function buildSuggestions(input: {
         createdAt: input.now,
         currentValue: profileCurrentValue(
           input.profile,
-          "targetRelationshipTypes",
+          "offering",
         ),
         evidence: sourceEvidence({
           collectedAt: strongestConnection.updatedAt,
@@ -325,8 +330,8 @@ function buildSuggestions(input: {
           "The strongest generated relationship graph edges cluster around operators, founders, and community introduction paths.",
         sourceKind: "contact",
         sourceLabel: "Contact signal",
-        suggestedValue: ["founders", "operators", "community leads"],
-        targetProfileField: "targetRelationshipTypes",
+        suggestedValue: ["event-grounded introductions"],
+        targetProfileField: "offering",
       }),
     );
   }
@@ -343,11 +348,18 @@ function payload(input: {
   state?: ProfileSignalReviewQueueState;
 }): ProfileSignalReviewQueuePayload {
   const profile = stableProfile(input.graph, input.actorId);
-  const suggestions = buildSuggestions({
+  const generatedSuggestions = buildSuggestions({
     graph: input.graph,
     now: input.now,
     profile,
     provider: input.provider,
+  });
+  const decisions = new Map(
+    (input.graph.suggestionDecisions ?? []).map(decision => [decision.suggestionId, decision]),
+  );
+  const suggestions = generatedSuggestions.map(suggestion => {
+    const decision = decisions.get(suggestion.id);
+    return decision ? { ...suggestion, status: decision.status } : suggestion;
   });
   const visibleSuggestions =
     input.forceEmpty === true
@@ -388,6 +400,8 @@ function acceptSuggestion(input: {
   now: string;
   payload: ProfileSignalReviewQueuePayload;
   provider: LiveProfileSignalProvider;
+  mutationId?: string;
+  acceptedAt?: string;
 }): ProfileSignalSuggestionAcceptResult {
   const suggestion = input.payload.suggestions.find(
     (candidate) => candidate.id === input.id,
@@ -421,11 +435,38 @@ function acceptSuggestion(input: {
       [suggestion.targetProfileField]: suggestion.suggestedValue,
     },
     appliedFields: [suggestion.targetProfileField],
-    acceptedAt: input.now,
+    acceptedAt: input.acceptedAt ?? input.now,
+    ...(input.mutationId ? { mutationId: input.mutationId } : {}),
     provenance: suggestion.provenance,
     nextAction:
       "Apply this patch only after the operator confirms the profile save.",
   });
+}
+
+function dismissedSuggestion(input: {
+  suggestion: ProfileUpdateSuggestion;
+  dismissedAt: string;
+  mutationId: string;
+}): { success: true; data: ProfileSignalSuggestionDismissedPayload } {
+  return {
+    success: true,
+    data: {
+      state: "dismissed",
+      dismissedSuggestion: { ...input.suggestion, status: "dismissed" },
+      dismissedAt: input.dismissedAt,
+      mutationId: input.mutationId,
+      provenance: input.suggestion.provenance,
+      nextAction: "Keep the profile unchanged and continue reviewing pending suggestions.",
+    },
+  };
+}
+
+function decisionMutationId(
+  suggestionId: string,
+  status: LiveProfileSignalDecision["status"],
+  mutationId?: string | null,
+): string {
+  return mutationId?.trim() || `legacy:${status}:${suggestionId}`;
 }
 
 export function createLiveProfileSignalReviewQueueService({
@@ -514,13 +555,92 @@ export function createLiveProfileSignalReviewQueueService({
         now: capturedNow,
         provider,
       });
-
+      const mutationId = decisionMutationId(id, "accepted", options.mutationId);
+      const responseMutationId = options.mutationId?.trim() || undefined;
+      const suggestion = queuePayload.suggestions.find(candidate => candidate.id === id);
+      if (!suggestion) {
+        return failure("PROFILE_SIGNAL_SUGGESTION_NOT_FOUND", {
+          evidenceIds: [`evidence:profile-signal-suggestion-not-found:${id}`],
+          now: capturedNow,
+          provider,
+        });
+      }
+      const existing = graph.suggestionDecisions?.find(decision => decision.suggestionId === id);
+      if (existing) {
+        if (existing.status === "accepted" && existing.mutationId === mutationId) {
+          return acceptSuggestion({
+            id,
+            now: capturedNow,
+            acceptedAt: existing.decidedAt,
+            mutationId: responseMutationId,
+            payload: { ...queuePayload, suggestions: queuePayload.suggestions.map(item =>
+              item.id === id ? { ...item, status: "pending" } : item) },
+            provider,
+          });
+        }
+        return failure("PROFILE_SIGNAL_SUGGESTION_ALREADY_RESOLVED", {
+          evidenceIds: [`evidence:profile-signal-suggestion-already-resolved:${id}`],
+          now: capturedNow,
+          provider,
+        });
+      }
+      const savedDecision = await provider.saveSuggestionDecision({
+        actorId,
+        suggestionId: id,
+        status: "accepted",
+        mutationId,
+        decidedAt: capturedNow,
+      }, actorId);
+      if (savedDecision.status !== "accepted" || savedDecision.mutationId !== mutationId) {
+        return failure("PROFILE_SIGNAL_SUGGESTION_ALREADY_RESOLVED", {
+          evidenceIds: [`evidence:profile-signal-suggestion-already-resolved:${id}`],
+          now: capturedNow,
+          provider,
+        });
+      }
       return acceptSuggestion({
         id,
         now: capturedNow,
+        acceptedAt: savedDecision.decidedAt,
+        mutationId: responseMutationId,
         payload: queuePayload,
         provider,
       });
+    },
+
+    async dismissUpdateSuggestion(id, options = {}): Promise<ProfileSignalSuggestionDismissResult> {
+      const capturedNow = now();
+      const actorId = options.actorId?.trim();
+      if (!actorId) return failure("PROFILE_SIGNAL_ACTOR_REQUIRED", { now: capturedNow, provider });
+      if (!provider) return failure("PROFILE_SIGNAL_LIVE_STORE_UNCONFIGURED", {
+        evidenceIds: [unconfiguredEvidenceId], now: capturedNow, provider,
+      });
+      const graphResult = provider.readSignalGraph(actorId);
+      const graph = isThenable(graphResult) ? await graphResult : graphResult;
+      const queuePayload = payload({ actorId, graph, now: capturedNow, provider });
+      const suggestion = queuePayload.suggestions.find(candidate => candidate.id === id);
+      if (!suggestion) return failure("PROFILE_SIGNAL_SUGGESTION_NOT_FOUND", {
+        evidenceIds: [`evidence:profile-signal-suggestion-not-found:${id}`], now: capturedNow, provider,
+      });
+      const mutationId = decisionMutationId(id, "dismissed", options.mutationId);
+      const existing = graph.suggestionDecisions?.find(decision => decision.suggestionId === id);
+      if (existing) {
+        if (existing.status === "dismissed" && existing.mutationId === mutationId) {
+          return dismissedSuggestion({ suggestion, dismissedAt: existing.decidedAt, mutationId });
+        }
+        return failure("PROFILE_SIGNAL_SUGGESTION_ALREADY_RESOLVED", {
+          evidenceIds: [`evidence:profile-signal-suggestion-already-resolved:${id}`], now: capturedNow, provider,
+        });
+      }
+      const savedDecision = await provider.saveSuggestionDecision({
+        actorId, suggestionId: id, status: "dismissed", mutationId, decidedAt: capturedNow,
+      }, actorId);
+      if (savedDecision.status !== "dismissed" || savedDecision.mutationId !== mutationId) {
+        return failure("PROFILE_SIGNAL_SUGGESTION_ALREADY_RESOLVED", {
+          evidenceIds: [`evidence:profile-signal-suggestion-already-resolved:${id}`], now: capturedNow, provider,
+        });
+      }
+      return dismissedSuggestion({ suggestion, dismissedAt: savedDecision.decidedAt, mutationId });
     },
   };
 }

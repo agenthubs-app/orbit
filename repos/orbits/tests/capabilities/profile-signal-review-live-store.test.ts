@@ -47,17 +47,13 @@ test("live profile signal review queue derives sourced suggestions without profi
   );
   assert.deepEqual(
     queue.data.suggestions.map((suggestion) => suggestion.targetProfileField),
-    ["relationshipGoal", "preferredFollowUpWindow", "targetRelationshipTypes"],
+    ["seeking", "bio", "offering"],
   );
-  assert.match(queue.data.suggestions[0]?.suggestedValue as string, /follow up/i);
+  assert.deepEqual(queue.data.suggestions[0]?.suggestedValue, ["follow-up collaborators"]);
   assert.equal(queue.data.suggestions[0]?.evidence[0]?.sourceKind, "chat");
-  assert.match(queue.data.suggestions[1]?.suggestedValue as string, /24 hours/);
+  assert.match(queue.data.suggestions[1]?.suggestedValue as string, /relationship follow-up/i);
   assert.equal(queue.data.suggestions[1]?.evidence[0]?.sourceKind, "activity");
-  assert.deepEqual(queue.data.suggestions[2]?.suggestedValue, [
-    "founders",
-    "operators",
-    "community leads",
-  ]);
+  assert.deepEqual(queue.data.suggestions[2]?.suggestedValue, ["event-grounded introductions"]);
   assert.equal(queue.data.suggestions[2]?.evidence[0]?.sourceKind, "contact");
   assert.equal(
     queue.data.provenance.source,
@@ -78,9 +74,9 @@ test("live profile signal review queue derives sourced suggestions without profi
 
   assert.equal(accepted.success, true);
   assert.equal(accepted.data.acceptedSuggestion.status, "accepted");
-  assert.deepEqual(accepted.data.appliedFields, ["relationshipGoal"]);
+  assert.deepEqual(accepted.data.appliedFields, ["seeking"]);
   assert.deepEqual(accepted.data.profilePatch, {
-    relationshipGoal: queue.data.suggestions[0]?.suggestedValue,
+    seeking: queue.data.suggestions[0]?.suggestedValue,
   });
   assert.equal(
     accepted.data.nextAction,

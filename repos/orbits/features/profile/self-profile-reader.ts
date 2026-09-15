@@ -1,18 +1,23 @@
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../shared/contract/industries";
 import type { OrbitLanguage } from "../../shared/contract/language";
 import { INDUSTRY_TAXONOMY_VERSION, industryLabel, secondaryIndustryLabel, validateIndustrySelection } from "../../shared/domain/industries";
+import { projectPublicProfile } from "../../shared/contract/profile";
 import { createProfileService } from "./service-factory";
 
 export type SelfProfileReadContext = { actorId: string; mode: "mock" | "hybrid" | "live" };
 export type SelfProfileForAi = {
   profileId: string;
   displayName: string;
+  headline: string;
   organization: string | null;
   role: string | null;
+  homeMarket: string;
+  preferredIntroChannels: readonly string[];
   bio: string | null;
   offering: readonly string[];
   seeking: readonly string[];
   topics: readonly string[];
+  spokenLanguages: readonly string[];
   industry: {
     primaryIndustryId: IndustryIdCode | null;
     secondaryIndustryId: SecondaryIndustryIdCode | null;
@@ -51,17 +56,22 @@ export async function getSelfProfileForAi(
     }
     const primaryIndustryId = profile.primaryIndustryId ?? null;
     const secondaryIndustryId = profile.secondaryIndustryId ?? null;
+    const publicProfile = projectPublicProfile(profile);
     return {
       status: "ok",
       profile: {
-        profileId: profile.id,
-        displayName: profile.displayName,
-        organization: profile.organization || null,
-        role: profile.role || null,
-        bio: profile.bio || null,
-        offering: [...(profile.offering ?? [])],
-        seeking: [...(profile.seeking ?? [])],
-        topics: [...(profile.topics ?? [])],
+        profileId: publicProfile.id,
+        displayName: publicProfile.displayName,
+        headline: publicProfile.headline,
+        organization: publicProfile.organization || null,
+        role: publicProfile.role || null,
+        homeMarket: publicProfile.homeMarket,
+        preferredIntroChannels: [...publicProfile.preferredIntroChannels],
+        bio: publicProfile.bio || null,
+        offering: [...(publicProfile.offering ?? [])],
+        seeking: [...(publicProfile.seeking ?? [])],
+        topics: [...(publicProfile.topics ?? [])],
+        spokenLanguages: [...(publicProfile.spokenLanguages ?? [])],
         industry: {
           primaryIndustryId,
           secondaryIndustryId,
@@ -69,7 +79,7 @@ export async function getSelfProfileForAi(
           secondaryLabel: secondaryIndustryId ? secondaryIndustryLabel(secondaryIndustryId, input.locale) : null,
           taxonomyVersion: INDUSTRY_TAXONOMY_VERSION,
         },
-        updatedAt: profile.updatedAt,
+        updatedAt: publicProfile.updatedAt,
       },
     };
   } catch {

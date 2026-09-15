@@ -3,6 +3,7 @@ import { type Href, useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, RefreshControl, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
+import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
@@ -17,6 +18,7 @@ import {
   type AccountSessionView
 } from "../../view-models/account-session";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import { clearProfileEditSession } from "../../data/profile-edit-session";
 
 export function AccountScreen() {
   const { colors } = useOrbitTheme();
@@ -92,6 +94,7 @@ function AccountContent({
   const { fontScale } = useWindowDimensions();
   const router = useRouter();
   const auth = useOrbitAuthSession();
+  const server = useOrbitApiBaseUrl();
   const locale = useOrbitLocale();
   const [feedback, setFeedback] = useState<string | null>(null);
 
@@ -103,6 +106,8 @@ function AccountContent({
       setFeedback(result.message ?? locale.t("account.signOutFailure"));
       return;
     }
+
+    if (auth.actorId) clearProfileEditSession({ actorId: auth.actorId, apiOrigin: server.baseUrl });
 
     onRefresh();
   }
@@ -120,7 +125,7 @@ function AccountContent({
               </View>
             </View>
             <Pressable accessibilityRole="button" accessibilityLabel={locale.t("account.editProfile")}
-              onPress={() => router.push("/profile" as Href)} style={({ pressed }) => [styles.editButton, pressed && styles.pressed]}>
+              onPress={() => router.push("/profile/edit" as Href)} style={({ pressed }) => [styles.editButton, pressed && styles.pressed]}>
               <Text style={styles.editText}>{locale.t("account.editProfile")}</Text>
               <Ionicons color={colors.accent} name="chevron-forward" size={14} />
             </Pressable>
