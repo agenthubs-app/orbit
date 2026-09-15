@@ -71,7 +71,7 @@ build/harness-logs/
 | [0021](0021-ai-session-organization/GOAL.md) | 保存 AI 会话入口与首条内容，按项目式分组整理，并能置顶、改名、删除和跨端回读 | 2026-09-14 新增；关联 R-00／R-02／R-06 | 功能 HEAD `3de117902`；起源、组织事务和两端 UI 已实现，真实同账号双端与当前 iOS 交互仍缺证据，见 REPORT | blocked |
 | [0022](0022-unified-tasks/GOAL.md) | 同一待办入口切换全部／人脉，兼容旧跟进链接并保留草稿、建议和提醒入口 | 2026-09-14 新增；关联 R-08／R-09／R-06 | run-01 已完成；功能 `ef5d0b02d`，见 REPORT | completed |
 | [0023](0023-industry-consumer-continuation/GOAL.md) | 接通联系人行业、搜索 HTTP 与本人资料工具，承接 0020 全部未完成验收 | SC-0020-01～05；明确获准接续 | 现有部分实现与 8 文件补充方案已批准；真实数据／设备按对象处理 | running |
-| [0024](0024-contact-needs-ranking/GOAL.md) | 在人脉主页保存需求，并在独立页面按可核对依据稳定排序 | 用户批准 `concept-v2.png`；关联 0011／0023 | run-01 执行中；先实现独立 Web 评分服务，App 字典等待 0015 释放 | running |
+| [0024](0024-contact-needs-ranking/GOAL.md) | 在人脉主页保存需求，并在独立页面按可核对依据稳定排序 | 用户批准 `concept-v2.png`；关联 0011／0023 | 功能 HEAD `146f5fa09`；SC-01～04 通过，SC-05 缺原生数字评分、返回和动态字号证据，见 REPORT | blocked |
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
 
@@ -100,6 +100,7 @@ build/harness-logs/
 - owner：C 线任务 `01a0a041-c352-7022-98de-1783b8b1adb8`；run_count：1；开始 2026-09-15 07:42 JST。用户已批准 v2 图与实施；Planner revision 1／SHA256 `2caf94fa29c71a474a8d95ccf72944e317ce5550a0493ea4524a2eb8cf5c9cea`。
 - 实际主线产品基线 `c5c091fba`，设计导入／登记前 HEAD `32f5d16af`；C worktree 的旧副本已存 pre-start 备份，不做 reset 或整树覆盖。Planner 早期记录的 `42edbdc15` 不再作为实现基线。
 - 先释放全新 Web contract／schema／feature／route／测试范围，和 0015 无共享文件；App 字典仍由 0015 独占。精确锁、交接和后续 App 解锁条件见[范围补充](0024-contact-needs-ranking/APPROVED_SCOPE_ADDENDUM.md)。
+- run-01 已结束为 `blocked`：Web `bf35efb85`、App `725e60b39`、空态修复 `146f5fa09` 已提交。当前 Simulator 已验证需求保存、零联系人明确空态、资料不足依据及详情入口；同账号 Web↔App 需求双向回读完成。数字评分联系人、详情返回和当前原生动态字号仍缺，见 [REPORT](0024-contact-needs-ranking/REPORT.md)。
 
 ### 0015 / run-01
 
