@@ -21,6 +21,7 @@ export const WEB_PERFORMANCE_SCENARIOS = Object.freeze([
 
 const SCENARIO_NAMES = new Set(WEB_PERFORMANCE_SCENARIOS.map(({ scenario }) => scenario));
 
+/** @param {Record<string, string | undefined>} environment */
 export function browserLaunchOptions(environment = process.env) {
   return {
     ...(environment.ORBIT_TEST_CHROME_PATH
