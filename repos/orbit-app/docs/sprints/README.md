@@ -75,7 +75,7 @@ build/harness-logs/
 | [0025](0025-notes-ink-signal-search/GOAL.md) | 按最新 4a 重做笔记列表、编辑、详情与联系人笔记页签，用加号和输入搜索关联人脉，不平铺联系人全集 | 2026-09-15 新增；承接 R-13／0018／0019 | run-01 已完成；五项 SC、同账号 Web↔App、Web／iOS 构建与有界搜索均通过；见 [REPORT](0025-notes-ink-signal-search/REPORT.md) | completed |
 | [0026](0026-canonical-app-account-identity/GOAL.md) | 统一 App 登录主体与业务账号身份，让待办、个人日程和笔记正确读取 canonical owner | 用户批准追加 C 线 Sprint；承接现有 `/api/account/me` | run-01 已启动；H + I，按 canonical 身份 RED→GREEN 实施 | running |
 | 0027（C 线预留） | 每个日程／meeting 都能打开详情，并支持 meeting 详情录入 | 用户批准追加 C 线 Sprint | 由 C 线在 0026 后建立并串行执行；本分支不占用、不实施 | planned |
-| [0028](0028-profile-page-group-redesign/GOAL.md) | 按最新八屏设计重做“我的”、设置、账号与完整资料编辑流程，保持真实数据、隐私和跨端一致 | 用户提供 `软件UI设计现代化 (5).zip` 并指定 D 线实现 | run-01 已完成；Web／App 契约、八屏、同账号双向回读、409、actor 隔离和原生大字号均通过，见 [REPORT](0028-profile-page-group-redesign/REPORT.md) | completed |
+| [0028](0028-profile-page-group-redesign/GOAL.md) | 按最新八屏设计重做“我的”、设置、账号与完整资料编辑流程，保持真实数据、隐私和跨端一致 | 用户提供 `软件UI设计现代化 (5).zip` 并指定 D 线实现 | 本线实现、提交与本地验收完成；等待协调者合并 `chat-agent` 并验证精确合并树，见 [REPORT](0028-profile-page-group-redesign/REPORT.md) | running |
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
 
@@ -223,7 +223,7 @@ build/harness-logs/
 
 - Generator owner：D 线 `/root`；开始时间：2026-09-15 16:20 JST；Planner revision 1，SHA-256 `ffeb99d13b5a3704dd9893fe28fd36687651ce87b7384e11b261df343153dd45`；run_count：1。
 - 实际基线 `c0d0ac094`，已包含 0026 canonical identity `f5f595df4`；规划 `c66761eea`，主体功能 `6dd44b94a`。D 线未接管 0027，也未自行合并到 `chat-agent`。
-- 结果 `completed`：资料契约、事务 CAS／幂等、建议采用／忽略、公共投影、五个独立编辑 route、主页／设置／账号和八屏视觉完成；同一 production Web/API 与当前 Simulator 双向回读、409 和第二 actor 隔离通过。
+- 本线结果 `running / 待集成`：资料契约、事务 CAS／幂等、建议采用／忽略、公共投影、五个独立编辑 route、主页／设置／账号和八屏视觉完成；同一 production Web/API 与当前 Simulator 双向回读、409 和第二 actor 隔离通过。协调者合并固定 D SHA 并验证合并树前不得更新为 `completed`。
 - Web 定向默认环境 41 pass＋14 skip，隔离 PostgreSQL 补跑 14/14；App 定向 227/227、全量 2829/2829、typecheck、iOS build 0 error／0 warning；最终失败历史见 [REPORT](0028-profile-page-group-redesign/REPORT.md)。
 
 ### 0018 / run-01

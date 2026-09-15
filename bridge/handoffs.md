@@ -29,17 +29,17 @@
 | [BR-017](2026-09-15-notes-core.md) | P1 | 独立私有笔记核心 | verified | 已关闭 | 同环境双向读写、刷新、版本冲突、actor 隔离与原生 App 已于 2026-09-15 验证 |
 | [BR-018](2026-09-15-note-suggestions.md) | P1 | 笔记来源待办建议 | verified | 已关闭 | 同环境建议接受、幂等、来源版本、日期确认与原生 App 已于 2026-09-15 验证 |
 | [BR-019](2026-09-15-notes-ink-signal-search.md) | P1 | 笔记 4a 与搜索式关联 | verified | 已关闭 | 同账号 Web/App 双向 note v2、有界联系人搜索、原生 4a 六状态与版本／权限反例已于 2026-09-15 验证 |
-| [BR-020](2026-09-15-profile-page-group-redesign.md) | P1 | “我的”页面组、资料编辑与公开投影 | verified | 协调者按 Sprint 顺序合并 | 当前 Web/App 双向资料版本、409、actor 隔离、八屏、Dynamic Type 和隐私投影均通过 |
+| [BR-020](2026-09-15-profile-page-group-redesign.md) | P1 | “我的”页面组、资料编辑与公开投影 | consumer_ready | 协调者按固定 D SHA 合并并验证 | D 分支双向资料版本、409、actor 隔离、八屏、Dynamic Type 和隐私投影通过；`chat-agent` 合并树待验证 |
 
 ## BR-020 — “我的”页面组、资料编辑与公开投影
 
 - 创建/更新日期：2026-09-15。
-- 总状态：`verified`；web_status：`source_ready`；app_status：`consumer_ready`；verification_status：当前 production Web/API、隔离 PostgreSQL、同账号 Web／iOS Simulator、409、另一 actor、八屏与大字号均通过。
+- 总状态：`consumer_ready`；web_status：`source_ready`；app_status：`consumer_ready`；verification_status：D 分支 production Web/API、隔离 PostgreSQL、同账号 Web／iOS Simulator、409、另一 actor、八屏与大字号均通过；`chat-agent` 合并树待验证。
 - Web/API：profile 新增语言和 LinkedIn／X 兼容字段、80／5／5 服务端校验、transactional CAS／receipt，以及 actor-scoped suggestion accept／dismiss；self-profile reader 使用同一显式公开投影。
 - App：新增主编辑、更多、标签、建议和预览五个 private route，按 origin＋canonical actor 共享草稿；主页、设置、账号使用真实数据和既有能力，不伪造设计 fixture。
 - 版本：规划 `c66761eea`；含 0026 基线 `c0d0ac094`；主体功能 `6dd44b94a`；视觉／Dynamic Type `7df4819a2`；完整交接见 [BR-020 文件](2026-09-15-profile-page-group-redesign.md)和 [Sprint 0028 报告](../repos/orbit-app/docs/sprints/0028-profile-page-group-redesign/REPORT.md)。
 - 验证：Web 定向 41 pass＋14 环境 skip，专用 PostgreSQL 14/14；App 最终定向 227/227、全量 2829/2829、typecheck；Web production build／live health、iOS build 0 error／0 warning、双向回读、409 和隐私负断言均通过。
-- 运行边界：本地刷新式同步，不代表远程部署、实体设备或生产数据验收。协调者在精确合并树复跑总矩阵；D 线不自行合并。
+- 运行边界：本地刷新式同步，不代表远程部署、实体设备或生产数据验收。协调者以交接的固定最终 SHA 合并并在精确合并树复跑矩阵；完成前 Sprint 保持 `running`，D 线不自行合并。
 
 ## BR-016 — 人脉、名片与活动三语消费
 

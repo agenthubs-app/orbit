@@ -1,6 +1,6 @@
 # Sprint 0028 / run-01 执行报告
 
-- 状态：`completed`
+- 状态：`running`（本线实现、提交和本地验收已完成；等待协调者合并到 `chat-agent` 并验证精确合并树）
 - Generator：D 线 `/root`
 - 开始／结束：2026-09-15 16:20–19:17 JST
 - Planner revision：1；SHA-256 `ffeb99d13b5a3704dd9893fe28fd36687651ce87b7384e11b261df343153dd45`
@@ -56,6 +56,8 @@ App 首次全量暴露 15 项：12 项超时／并行波动在失败文件独立
 - SC-0028-03：pass。采用／忽略持久化、重放、批量部分失败、抽取待复核与零自动 profile PUT 均通过。
 - SC-0028-04：pass。单一公开投影、私密字段负断言、disabled CTA、未保存草稿预览、大字号冷启动和 VoiceOver tree 均通过。
 - SC-0028-05：pass。当前生产 Web/API、当前 App build、同账号双向版本回读、409、另一 actor、八屏视觉及最后构建门槛均完成。
+
+上述 SC 是 D 分支固定版本的本地结果。按 `chat-agent@1fd708c7b` 收口规则，它们不能在合并前把 Sprint 状态提升为 `completed`；协调者必须以本线最终固定 SHA 合并，并在精确合并树复跑受影响测试、typecheck 和适用运行时验证后更新登记状态。
 
 ## 已知边界
 

@@ -1,14 +1,14 @@
 # BR-020 — “我的”页面组、资料编辑与公开投影
 
 - 创建/更新日期：2026-09-15
-- 总状态：verified
+- 总状态：consumer_ready
 - 优先级：P1
 - 发起角色：Bridge
 - 下一责任方及是否已接单：协调者按 Sprint 顺序合并到 `chat-agent`；D 线不自行合并
 - web_status：source_ready
 - app_status：consumer_ready
-- verification_status：当前 production Web/API、隔离 PostgreSQL、同账号 Web 与原生 iOS Simulator 已完成双向资料版本回读、409、actor 隔离、八屏和大字号验收
-- 依赖/阻塞：无本地产品阻塞；远程部署和实体设备属于发布验收
+- verification_status：D 分支当前 production Web/API、隔离 PostgreSQL、同账号 Web 与原生 iOS Simulator 已完成双向资料版本回读、409、actor 隔离、八屏和大字号验收；`chat-agent` 合并树待验证
+- 依赖/阻塞：协调者尚未合并固定 D SHA 并验证精确合并树；无本地产品阻塞，远程部署和实体设备属于发布验收
 - 设计/实现/发布授权来源（如适用）：用户提供八屏设计、指定 D 线实施并授权持续执行；不含远程部署或生产数据写入
 
 ## 变化与证据
@@ -31,10 +31,10 @@
 - 冲突、失败、权限与异步场景：stale PUT 409；第二 actor 隔离；建议重放／部分失败；profile CAS 多连接和 receipt rollback 14/14。
 - 原生 UI/浏览器验证：八张目标页当前 Simulator 截图、Web-rendered 对照、Accessibility Medium 冷启动和 VoiceOver JSON 均落盘；P0/P1 已清零，差异见根 `design-qa.md`。
 - 未检查范围：远程部署、实体设备、生产数据库、付费 provider、真实私人资料。
-- 可客观判断的关闭条件：本地 Sprint 已满足；协调者合并后在精确合并树复跑总矩阵，发布另走 BR-006。
+- 可客观判断的关闭条件：协调者以交接的固定最终 SHA 合并到 `chat-agent`，在精确合并树复跑受影响测试、typecheck 和适用运行时验证并记录 merge SHA；发布另走 BR-006。
 
 ## 更新历史
 
 - 2026-09-15，Bridge：D 线从包含 0026 canonical identity 的 `c0d0ac094` 开始 run-01。
 - 2026-09-15，Bridge：主体功能 `6dd44b94a` 完成；production Web/API 与 Simulator 完成双向版本回读、409 和另一 actor 隔离。
-- 2026-09-15，Bridge：原生 Dynamic Type 暴露固定行高／导航重叠，RED→GREEN 修复后冷启动截图和 accessibility tree 通过；BR-020 更新为 verified。
+- 2026-09-15，Bridge：原生 Dynamic Type 暴露固定行高／导航重叠，RED→GREEN 修复后冷启动截图和 accessibility tree 通过；D 分支本地验证完成，BR-020 更新为 `consumer_ready`，等待主线合并树验证。
