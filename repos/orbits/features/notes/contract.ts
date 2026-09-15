@@ -12,7 +12,7 @@ export interface NoteOperationReceipt {
 }
 
 export interface NoteRecordPayload {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   note: NoteDTO;
   operations: readonly NoteOperationReceipt[];
 }

@@ -152,6 +152,7 @@ function unsupportedFilterFailure(
   context: ContactsGraphQueryContext,
 ): ContactsListSearchFailure | null {
   if (
+    (input.limit !== undefined && input.limit !== null && (!Number.isSafeInteger(input.limit) || input.limit < 1)) ||
     normalizedValues(input.tagFilters).length > 20 ||
     normalizedValues(input.tagFilters).some((tag) => Array.from(tag).length > 32) ||
     hasUnsupportedValue(
@@ -370,6 +371,33 @@ function contactMatchesFilters(
   );
 }
 
+function paginationScope(input: ContactsListSearchFilterInput): string {
+  return JSON.stringify({
+    query: input.query?.trim().toLocaleLowerCase() ?? "",
+    sourceFilters: selectedValues(input.sourceFilters),
+    statusFilters: selectedValues(input.statusFilters),
+    tagFilters: selectedValues(input.tagFilters),
+    valueFilters: selectedValues(input.valueFilters),
+    contextEventId: input.contextEventId?.trim() ?? "",
+  });
+}
+
+function pageOffset(input: ContactsListSearchFilterInput): number {
+  if (!input.cursor) return 0;
+  try {
+    const value = JSON.parse(Buffer.from(input.cursor, "base64url").toString("utf8")) as { offset?: unknown; scope?: unknown };
+    return Number.isSafeInteger(value.offset) && Number(value.offset) >= 0 && value.scope === paginationScope(input)
+      ? Number(value.offset)
+      : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function nextPageCursor(offset: number, input: ContactsListSearchFilterInput): string {
+  return Buffer.from(JSON.stringify({ offset, scope: paginationScope(input) }), "utf8").toString("base64url");
+}
+
 // 计算 filter option 的 count 和 selected 状态，供 UI 直接渲染筛选器。
 function filterOption<TValue extends string>(
   value: TValue,
@@ -478,9 +506,14 @@ function buildPayload(
 ): ContactsListSearchPayload {
   const allContacts = toContactListItems(graph);
   const appliedFilters = appliedFiltersFromInput(input);
-  const contacts = allContacts.filter((contact) =>
+  const matchedContacts = allContacts.filter((contact) =>
     contactMatchesFilters(contact, appliedFilters),
   );
+  const paged = input.limit !== undefined && input.limit !== null;
+  const limit = paged ? Math.min(50, Math.max(1, Math.floor(input.limit!))) : matchedContacts.length;
+  const offset = paged ? pageOffset(input) : 0;
+  const contacts = matchedContacts.slice(offset, offset + limit);
+  const nextOffset = offset + contacts.length;
 
   return {
     state: contacts.length > 0 ? "success" : "empty",
@@ -488,9 +521,11 @@ function buildPayload(
     appliedFilters,
     availableFilters: buildAvailableFilters(allContacts, appliedFilters),
     contacts,
+    total: matchedContacts.length,
+    ...(paged && nextOffset < matchedContacts.length ? { nextCursor: nextPageCursor(nextOffset, input) } : {}),
     summary:
-      contacts.length > 0
-        ? `${contacts.length} contacts matched the hybrid local remote database query.`
+      matchedContacts.length > 0
+        ? `${matchedContacts.length} contacts matched the hybrid local remote database query.`
         : "No contacts matched the hybrid local remote database query.",
     provenance: buildProvenance(graph, contacts, context),
     nextAction:

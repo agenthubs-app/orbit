@@ -159,13 +159,22 @@ async function runLiveContactsQuery(
     ? await provider.readContactGraphForList(input, actorId)
     : await provider.readContactGraph(actorId);
 
-  return clonePayload(
-    runContactsGraphQuery(
-      graph,
-      input,
-      graphQueryContext(provider),
-    ),
+  const boundedPage = (graph as LocalRemoteContactGraph & {
+    boundedPage?: { nextCursor?: string; total: number };
+  }).boundedPage;
+  const result = runContactsGraphQuery(
+    graph,
+    boundedPage
+      ? { ...input, query: null, cursor: null, limit: null }
+      : input,
+    graphQueryContext(provider),
   );
+  if (result.success && boundedPage) {
+    result.data.total = boundedPage.total;
+    result.data.summary = `${boundedPage.total} contacts matched the live database query.`;
+    if (boundedPage.nextCursor) result.data.nextCursor = boundedPage.nextCursor;
+  }
+  return clonePayload(result);
 }
 
 export function createLiveContactsListSearchAndFilterService({

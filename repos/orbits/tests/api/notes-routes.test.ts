@@ -113,3 +113,33 @@ test("another actor receives not-found and cannot infer a private note", async (
   assert.equal(response.status, 404);
   assert.equal((await json(response)).error.code, "NOT_FOUND");
 });
+
+test("HTTP accepts v2 note fields while legacy PATCH preserves omitted associations", async () => {
+  const deps = dependencies();
+  const collection = createNoteCollectionHandlers(deps);
+  const body = "和 Ada 确认发布会";
+  const createdResponse = await collection.POST(new Request("https://orbit.local/api/notes", {
+    body: JSON.stringify({
+      title: "发布会",
+      body,
+      manualContactIds: ["contact:lin"],
+      mentions: [{ contactId: "contact:ada", start: 2, end: 5, displayText: "Ada" }],
+      eventIds: ["event:launch"],
+      idempotencyKey: "api:create:v2",
+    }),
+    method: "POST",
+  }));
+  assert.equal(createdResponse.status, 201);
+  const created = (await json(createdResponse)).data.note;
+  assert.deepEqual(created.contactIds, ["contact:ada", "contact:lin"]);
+
+  const detail = createNoteDetailHandlers(deps);
+  const updatedResponse = await detail.PATCH(new Request(`https://orbit.local/api/notes/${created.id}`, {
+    body: JSON.stringify({ body: "和 Ada 确认新日期", expectedVersion: 1, idempotencyKey: "api:update:legacy" }),
+    method: "PATCH",
+  }), { params: Promise.resolve({ id: created.id }) });
+  assert.equal(updatedResponse.status, 200);
+  const updated = (await json(updatedResponse)).data.note;
+  assert.deepEqual(updated.manualContactIds, ["contact:lin"]);
+  assert.deepEqual(updated.eventIds, ["event:launch"]);
+});

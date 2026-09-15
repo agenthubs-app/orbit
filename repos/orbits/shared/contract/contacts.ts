@@ -136,6 +136,8 @@ export interface ContactsListPayloadContract {
   appliedFilters: ContactsAppliedFiltersContract;
   availableFilters: ContactsAvailableFiltersContract;
   contacts: readonly ContactListItemContract[];
+  total?: number;
+  nextCursor?: string;
   summary: string;
   provenance: ContactsListProvenanceContract;
   nextAction: string;

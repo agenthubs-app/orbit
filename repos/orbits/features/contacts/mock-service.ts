@@ -109,6 +109,7 @@ function unsupportedFilterFailure(
 ): ContactsListSearchFailure | null {
   // 任何一个筛选维度出现未支持值，都返回同一个“筛选不支持”错误。
   if (
+    (input.limit !== undefined && input.limit !== null && (!Number.isSafeInteger(input.limit) || input.limit < 1)) ||
     hasUnsupportedValue(normalizedValues(input.tagFilters), supportedTags) ||
     hasUnsupportedValue(
       normalizedValues(input.sourceFilters),
@@ -161,7 +162,9 @@ function runContactsListSearch(
     !input.tagFilters?.length &&
     !input.sourceFilters?.length &&
     !input.valueFilters?.length &&
-    !input.statusFilters?.length
+    !input.statusFilters?.length &&
+    input.limit == null &&
+    !input.cursor
   ) {
     return success(mockContactsListFixture);
   }

@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import type {
   ConnectionDTO,
   ContactDTO,
@@ -16,7 +18,10 @@ import {
   resolveLiveDatabaseConnectionConfig,
   type LiveDatabaseEnv,
 } from "../../../shared/storage/live-database-config";
-import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
+import {
+  createConfiguredPostgresLiveRecordStore,
+  type ConfiguredPostgresLiveRecordStore,
+} from "../../../shared/storage/configured-live-record-store";
 import type {
   LiveRecord,
   LiveRecordStoreLike,
@@ -38,10 +43,27 @@ export const CONTACTS_LIVE_RECORD_COLLECTIONS = {
 } as const;
 
 export interface StorageContactGraphProviderOptions {
+  contactRecordPageReader?: ContactRecordPageReader;
   source?: string;
   sourceLabel?: string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
   workspaceId: string;
+}
+
+interface ContactRecordPage {
+  nextCursor?: string;
+  recordIds: readonly string[];
+  total: number;
+}
+
+type ContactRecordSqlClient = Pick<ConfiguredPostgresLiveRecordStore["client"], "query">;
+type ContactRecordPageReader = (input: ContactsListSearchFilterInput, actorId: string) => Promise<ContactRecordPage | null>;
+
+interface BoundedContactGraph extends LocalRemoteContactGraph {
+  boundedPage?: {
+    nextCursor?: string;
+    total: number;
+  };
 }
 
 export interface ConfiguredStorageContactGraphProviderOptions {
@@ -395,11 +417,12 @@ function graphFromRecords(input: {
 
 async function readFocusedContactGraph(input: {
   actorId?: string;
+  contactRecordPageReader?: ContactRecordPageReader;
   contactId?: string;
   listInput?: ContactsListSearchFilterInput;
   store: LiveRecordStoreLike<Record<string, unknown>>;
   workspaceId: string;
-}): Promise<LocalRemoteContactGraph> {
+}): Promise<BoundedContactGraph> {
   const actorId = input.actorId?.trim();
   if (!actorId) {
     return graphFromRecords({
@@ -411,19 +434,25 @@ async function readFocusedContactGraph(input: {
   }
 
   const query = input.listInput?.query?.trim().toLocaleLowerCase();
+  const boundedPage = input.listInput && input.contactRecordPageReader
+    ? await input.contactRecordPageReader(input.listInput, actorId)
+    : null;
   const [contactRecords, allConnectionRecords, detailStateRecords] = await Promise.all([
     input.store.listRecords({
       workspaceId: input.workspaceId,
       collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.contacts,
       ...(input.contactId ? { recordIds: [input.contactId] } : {}),
+      ...(boundedPage ? { recordIds: boundedPage.recordIds } : {}),
     }),
     input.store.listRecords({
       workspaceId: input.workspaceId,
       collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.connections,
+      ...(boundedPage ? { userId: actorId } : {}),
     }),
     input.store.listRecords({
       workspaceId: input.workspaceId,
       collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.detailStates,
+      ...(boundedPage ? { userId: actorId } : {}),
     }),
   ]);
   const actorConnectionRecords = allConnectionRecords.filter(
@@ -451,7 +480,8 @@ async function readFocusedContactGraph(input: {
   );
   const actorContactRecords = contactRecords.filter(
     (record) =>
-      (record.userId === actorId ||
+      (boundedPage !== null ||
+        record.userId === actorId ||
         (nonEmptyString(record.payload.id) &&
           actorContactIds.has(record.payload.id))) &&
       (!query ||
@@ -481,16 +511,118 @@ async function readFocusedContactGraph(input: {
         })
       : [];
 
-  return graphFromRecords({
+  const graph = graphFromRecords({
     actorId,
     contactRecords: actorContactRecords,
     connectionRecords,
     detailStateRecords: actorDetailStateRecords,
     evidenceRecords,
   });
+  return boundedPage
+    ? {
+        ...graph,
+        boundedPage: {
+          total: boundedPage.total,
+          ...(boundedPage.nextCursor ? { nextCursor: boundedPage.nextCursor } : {}),
+        },
+      }
+    : graph;
+}
+
+function supportsBoundedContactPage(input: ContactsListSearchFilterInput): boolean {
+  return Boolean(input.query?.trim())
+    && input.limit !== undefined
+    && input.limit !== null
+    && !(input.sourceFilters?.length)
+    && !(input.statusFilters?.length)
+    && !(input.tagFilters?.length)
+    && !(input.valueFilters?.length)
+    && !input.contextEventId?.trim();
+}
+
+function contactPageScope(input: ContactsListSearchFilterInput, actorId: string): string {
+  return createHash("sha256")
+    .update(JSON.stringify({ actorId, query: input.query?.trim().toLocaleLowerCase() ?? "" }))
+    .digest("base64url")
+    .slice(0, 24);
+}
+
+function contactPageOffset(input: ContactsListSearchFilterInput, actorId: string): number {
+  if (!input.cursor) return 0;
+  try {
+    const parsed = JSON.parse(Buffer.from(input.cursor, "base64url").toString("utf8")) as { offset?: unknown; scope?: unknown };
+    return Number.isSafeInteger(parsed.offset) && Number(parsed.offset) >= 0 && parsed.scope === contactPageScope(input, actorId)
+      ? Number(parsed.offset)
+      : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function contactPageCursor(offset: number, input: ContactsListSearchFilterInput, actorId: string): string {
+  return Buffer.from(JSON.stringify({ offset, scope: contactPageScope(input, actorId) }), "utf8").toString("base64url");
+}
+
+export function createPostgresContactRecordPageReader(input: {
+  client: ContactRecordSqlClient;
+  workspaceId: string;
+}): ContactRecordPageReader {
+  return async (query, actorId) => {
+    if (!supportsBoundedContactPage(query)) return null;
+    const search = query.query!.trim();
+    const limit = Math.min(50, Math.max(1, Math.floor(query.limit!)));
+    const offset = contactPageOffset(query, actorId);
+    const where = `
+      c.workspace_id = $1
+      and c.collection_name = $2
+      and c.lifecycle_state <> 'deleted'
+      and c.search_text ilike $3
+      and (
+        c.user_id = $4
+        or exists (
+          select 1 from orbit_records connection
+          where connection.workspace_id = c.workspace_id
+            and connection.collection_name = $5
+            and connection.lifecycle_state <> 'deleted'
+            and (connection.user_id = $4 or connection.payload->>'accountId' = $4)
+            and connection.payload->>'contactId' = coalesce(c.payload->>'id', c.record_id)
+        )
+      )
+    `;
+    const values = [
+      input.workspaceId,
+      CONTACTS_LIVE_RECORD_COLLECTIONS.contacts,
+      `%${search}%`,
+      actorId,
+      CONTACTS_LIVE_RECORD_COLLECTIONS.connections,
+    ] as const;
+    const [countResult, pageResult] = await Promise.all([
+      input.client.query<{ total: string | number }>(`select count(*) as total from orbit_records c where ${where}`, values),
+      input.client.query<{ record_id: string }>(`
+        select c.record_id
+        from orbit_records c
+        where ${where}
+        order by
+          case when coalesce(c.payload->>'displayName', '') ilike $6 then 0 else 1 end,
+          coalesce(c.occurred_at, c.updated_at) desc,
+          c.updated_at desc,
+          c.record_id asc
+        limit $7 offset $8
+      `, [...values, `${search}%`, limit, offset]),
+    ]);
+    const total = Number(countResult.rows[0]?.total ?? 0);
+    const recordIds = pageResult.rows.map((row) => row.record_id);
+    const nextOffset = offset + recordIds.length;
+    return {
+      recordIds,
+      total,
+      ...(nextOffset < total ? { nextCursor: contactPageCursor(nextOffset, query, actorId) } : {}),
+    };
+  };
 }
 
 export function createStorageContactGraphProvider({
+  contactRecordPageReader,
   source,
   sourceLabel = "Contacts shared live storage",
   store,
@@ -509,6 +641,7 @@ export function createStorageContactGraphProvider({
     readContactGraphForList(input, actorId) {
       return readFocusedContactGraph({
         actorId,
+        contactRecordPageReader,
         listInput: input,
         store,
         workspaceId,
@@ -699,6 +832,10 @@ export function createConfiguredStorageContactGraphProvider({
   }
 
   const provider = createStorageContactGraphProvider({
+    contactRecordPageReader: createPostgresContactRecordPageReader({
+      client: configuredStore.client,
+      workspaceId: configuredStore.workspaceId,
+    }),
     source: `postgres-live-record-store:contacts:${config.workspaceId}`,
     sourceLabel,
     store: configuredStore.store,

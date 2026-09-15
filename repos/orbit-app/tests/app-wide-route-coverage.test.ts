@@ -179,6 +179,7 @@ const integratedFeatureRoutes = [
   "/tasks/personal",
   "/notes",
   "/notes/[id]",
+  "/notes/[id]/edit",
   "/notes/new"
 ] as const;
 

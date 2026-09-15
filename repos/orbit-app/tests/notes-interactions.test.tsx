@@ -16,8 +16,8 @@ import { View } from "react-native";
 const listeners = new Set(); let revision = 0;
 const rerender = () => useSyncExternalStore(listener => { listeners.add(listener); return () => listeners.delete(listener); }, () => revision);
 const original = {
-  id: "note:one", accountId: "account:one", ownerUserId: "account:one", body: "原始笔记",
-  contactIds: ["contact:a", "contact:b"], version: 2,
+  id: "note:one", accountId: "account:one", ownerUserId: "account:one", title: "原始标题", body: "原始笔记",
+  manualContactIds: ["contact:a", "contact:b"], mentions: [], contactIds: ["contact:a", "contact:b"], eventIds: [], version: 2,
   createdAt: "2026-09-15T00:00:00.000Z", updatedAt: "2026-09-15T00:01:00.000Z"
 };
 const state = window.fixture = {
@@ -25,7 +25,7 @@ const state = window.fixture = {
   response: "success", requests: [], navigation: [], note: original,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(listener => listener()); }
 };
-const contacts = { contacts: [
+const contacts = { total: 3, contacts: [
   { id: "contact:a", displayName: "林悦", organization: "Orbit" },
   { id: "contact:b", displayName: "佐藤", organization: "Studio" },
   { id: "contact:c", displayName: "陈默", organization: "Lab" }
@@ -34,7 +34,7 @@ function result(kind, body) {
   if (state.response === "failure") return { success: false, status: 409, error: { code: "CONFLICT", message: "当前状态已经变化，请刷新后再试。" }, meta: {} };
   if (state.response === "mismatch") return { success: true, status: 200, data: { note: { ...original, body: "其他正文" } }, meta: {} };
   if (kind === "create") return { success: true, status: 201, data: { note: {
-    ...original, id: "note:created", body: body.body, contactIds: body.contactIds, version: 1,
+    ...original, id: "note:created", title: body.title, body: body.body, manualContactIds: body.manualContactIds, mentions: body.mentions, contactIds: body.manualContactIds, eventIds: body.eventIds, version: 1,
     createdAt: "2026-09-15T00:02:00.000Z", updatedAt: "2026-09-15T00:02:00.000Z"
   } }, meta: {} };
   if (kind === "unlink") return { success: true, status: 200, data: { note: {
@@ -47,7 +47,19 @@ function result(kind, body) {
   } }, meta: {} };
 }
 const client = {
-  async post(path, options) { state.requests.push({ method: "POST", path, body: options.body }); return result("create", options.body); },
+  async get(path) {
+    state.requests.push({ method: "GET", path });
+    const contactId = decodeURIComponent(path.split("/").at(-1));
+    const contact = contacts.contacts.find(item => item.id === contactId);
+    return contact
+      ? { success: true, status: 200, data: { contact }, meta: {} }
+      : { success: false, status: 404, error: { code: "NOT_FOUND", message: "没有找到联系人。" }, meta: {} };
+  },
+  async post(path, options) {
+    state.requests.push({ method: "POST", path, body: options.body });
+    if (path === "/api/contacts/search") return { success: true, status: 200, data: { ...contacts, contacts: contacts.contacts.filter(contact => (contact.displayName + " " + contact.organization).includes(options.body.query)) }, meta: {} };
+    return result("create", options.body);
+  },
   async patch(path, options) { state.requests.push({ method: "PATCH", path, body: options.body }); return result("update", options.body); },
   async delete(path, options) {
     state.requests.push({ method: "DELETE", path, body: options.body });
@@ -125,22 +137,28 @@ async function page(t: { after(fn: () => Promise<void>): void }, mode: "new" | "
   return value;
 }
 
-test("new note does not write before save, cancel is empty, and failed acknowledgement preserves the draft", async (t) => {
+test("new note searches only after a word, selects by id, and preserves a failed draft", async (t) => {
   const value = await page(t, "new");
   const editor = value.getByRole("textbox", { name: "笔记内容" });
-  assert.equal(await value.getByRole("checkbox", { name: /林悦/ }).count(), 1);
-  await editor.fill("  多人会议结论\n下周确认  ");
-  await value.getByRole("checkbox", { name: /佐藤/ }).click();
+  assert.equal(await value.getByRole("checkbox").count(), 0);
+  assert.deepEqual(await value.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "GET")), []);
+  await value.getByRole("button", { name: "添加相关人脉" }).click();
   assert.deepEqual(await value.evaluate(() => (window as any).fixture.requests), []);
+  await value.getByRole("textbox", { name: "搜索相关人脉" }).fill("佐");
+  await value.waitForFunction(() => (window as any).fixture.requests.some((request: any) => request.path === "/api/contacts/search"));
+  await value.getByRole("checkbox", { name: /佐藤/ }).click();
+  await value.getByRole("textbox", { name: "笔记标题" }).fill("多人会议");
+  await editor.fill("  多人会议结论\n下周确认  ");
+  assert.equal((await value.evaluate(() => (window as any).fixture.requests)).filter((request: any) => request.path === "/api/notes").length, 0);
   await value.evaluate(() => (window as any).fixture.update({ response: "mismatch" }));
   await value.getByRole("button", { name: "保存笔记" }).click();
   await value.getByRole("alert").waitFor();
   assert.equal(await editor.inputValue(), "  多人会议结论\n下周确认  ");
-  const first = await value.evaluate(() => (window as any).fixture.requests[0]);
+  const first = await value.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.path === "/api/notes")[0]);
   await value.getByRole("button", { name: "保存笔记" }).click();
-  const second = await value.evaluate(() => (window as any).fixture.requests[1]);
+  const second = await value.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.path === "/api/notes")[1]);
   assert.equal(first.body.idempotencyKey, second.body.idempotencyKey);
-  assert.deepEqual(first.body.contactIds, ["contact:a", "contact:b"]);
+  assert.deepEqual(first.body.manualContactIds, ["contact:a", "contact:b"]);
 });
 
 test("confirmed create navigates to the server note and cancel never creates an empty record", async (t) => {
@@ -148,33 +166,26 @@ test("confirmed create navigates to the server note and cancel never creates an 
   await value.getByRole("button", { name: "取消新建笔记" }).click();
   assert.deepEqual(await value.evaluate(() => (window as any).fixture.requests), []);
   assert.deepEqual(await value.evaluate(() => (window as any).fixture.navigation), ["back"]);
+  await value.getByRole("textbox", { name: "笔记标题" }).fill("确认标题");
   await value.getByRole("textbox", { name: "笔记内容" }).fill("确认保存");
   await value.getByRole("button", { name: "保存笔记" }).click();
   await value.waitForFunction(() => (window as any).fixture.navigation.length === 2);
   assert.deepEqual(await value.evaluate(() => (window as any).fixture.navigation), ["back", "/notes/note%3Acreated"]);
 });
 
-test("detail conflict keeps edits and unlink removes only one relation with expected version", async (t) => {
+test("detail is read-only and opens the dedicated edit route", async (t) => {
   const value = await page(t, "detail");
-  const editor = value.getByRole("textbox", { name: "笔记内容" });
-  await editor.fill("本地未保存版本");
-  await value.evaluate(() => (window as any).fixture.update({ response: "failure" }));
-  await value.getByRole("button", { name: "保存修改" }).click();
-  await value.getByRole("alert").waitFor();
-  assert.equal(await editor.inputValue(), "本地未保存版本");
-  await value.evaluate(() => (window as any).fixture.update({ response: "success" }));
-  await value.getByRole("button", { name: "解除关联 contact:b" }).click();
-  const request = await value.evaluate(() => (window as any).fixture.requests.at(-1));
-  assert.equal(request.method, "DELETE");
-  assert.equal(request.path, "/api/notes/note%3Aone/contacts/contact%3Ab");
-  assert.equal(request.body.expectedVersion, 2);
-  assert.equal(await editor.inputValue(), "本地未保存版本");
+  assert.equal(await value.getByRole("textbox").count(), 0);
+  await value.getByRole("button", { name: "打开关联人脉 林悦" }).waitFor();
+  await value.getByRole("button", { name: "打开关联人脉 佐藤" }).waitFor();
+  await value.getByRole("button", { name: "编辑笔记" }).click();
+  assert.deepEqual(await value.evaluate(() => (window as any).fixture.navigation), ["/notes/note%3Aone/edit"]);
 });
 
 test("note detail opens an editable IORBIT template without making a write request", async (t) => {
   const value = await page(t, "detail");
-  await value.getByRole("button", { name: "从这篇笔记整理待办" }).click();
-  assert.deepEqual(await value.evaluate(() => (window as any).fixture.requests), []);
+  await value.getByRole("button", { name: "IORBIT 总结" }).click();
+  assert.deepEqual(await value.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "GET")), []);
   assert.deepEqual(await value.evaluate(() => (window as any).fixture.navigation), [{
     pathname: "/ai/[id]",
     params: {
