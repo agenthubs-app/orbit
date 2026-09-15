@@ -28,6 +28,8 @@
 2026-09-15 本地主线增量：事项与个人日程编辑已在 `d005c2b79` 同时接通 Web/API 与 App，独立 PostgreSQL 和 iOS Simulator 完成同记录双向回读；待办统一由 `ef5d0b02d` 将 App 全部／人脉和未完成／已完成视图接到同一 canonical 集合，并完成 App→Web→App 同记录完成／恢复回读；身份邀请与共享聊天由 E 线原提交 `6d8173b78`、主线集成 `64629369d` 接通，消息状态由原提交 `218fb3d4b`、主线集成 `8c9bf60cc` 接通。0012 仍缺真实 Expo project、push server key 和双用户实体／持续前台证据，保持 blocked；这些本地结果不表示远程部署或生产 OAuth 已验收。
 2026-09-15 最新运行时验收：Web 已按当前源码完成 Next.js 生产构建并以 live 模式连接隔离 PostgreSQL；Web 浏览器与原生 iOS Simulator 使用同一服务地址和同一登录账号。BR-017 已完成 Web→App、App→Web、刷新、版本冲突与 actor 隔离；BR-018 已完成原生预填、显式发送、建议接受、幂等、Web 回读、返回来源和含糊日期零写入。两项均更新为 `verified`。这是本地生产进程验收，不代表远程部署或实体设备发布状态。
 
+2026-09-15 12:44 JST Notes 4a 运行时验收：BR-019 已完成 Note v2、服务端有界联系人搜索、App 六个笔记状态和联系人笔记页签。Web 按当时源码完成 Next.js 生产构建并以 live 模式连接隔离 PostgreSQL，原生 App 当时源码构建 0 error／0 warning；Web 浏览器与 iOS Simulator 使用同一服务地址、`qa@orbit.test` 和同一数据库，双向创建／编辑／搜索、幂等、版本冲突与 actor 隔离通过。BR-017～019 均为 `verified`。这是本地生产进程验收，不代表远程部署或实体设备发布状态。
+
 自本次起，涉及 App 可见行为、API、共享契约或状态同步时，Web/API 必须实际运行；Web 端每次更新后先重新生产构建、停止旧进程并启动新产物、检查健康状态，再进行 App 验收。具体规则见 [协作流程](workflow.md#app-开发时保持-webapi-实际运行) 和 [Sprint 规则](../repos/orbit-app/docs/sprints/RULES.md#54-app-开发期间的-web-运行门槛)。
 
 2026-09-10 保存进度集成：用户已接受 App 1389 通过/1 失败、Web 3134 通过/8 失败的当前版本，授权合并到 `chat-agent` 并普通推送；未完成验收不因此关闭。当前结果、远程输入和边界见 [集成交接](2026-09-10-chat-agent-integration.md)。下方 2026-09-07 数字保留为历史快照，不是当前测试或发布状态。
