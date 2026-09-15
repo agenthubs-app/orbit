@@ -6,6 +6,7 @@ import {
   browserLaunchOptions,
   buildWebRunPlan,
   eagerClosedPanelJsBytes,
+  inspectEagerClosedPanelJsBytes,
   observationsToSamples,
   validateProductionRuntime,
   validateWebMeasurementSamples,
@@ -27,6 +28,20 @@ test("counts only eagerly loaded Markdown runtime bytes without retaining asset 
     { decodedBodySize: 80_000, source: "ordinary route code" },
     { decodedBodySize: 40_000, source: "remarkPlugins without the parser signature" },
   ]), 144_382);
+});
+
+test("inspects each stable eager script once across repeated Agent runs", async () => {
+  const cache = new Map();
+  let reads = 0;
+  const resources = [{ decodedBodySize: 144_382, url: "http://127.0.0.1/chunk.js" }];
+  const readSource = async () => {
+    reads += 1;
+    return "...remarkPlugins...micromark...";
+  };
+
+  assert.equal(await inspectEagerClosedPanelJsBytes(resources, readSource, cache), 144_382);
+  assert.equal(await inspectEagerClosedPanelJsBytes(resources, readSource, cache), 144_382);
+  assert.equal(reads, 1);
 });
 
 test("plans cache-disabled first navigation and three warmups plus ten formal runs", () => {

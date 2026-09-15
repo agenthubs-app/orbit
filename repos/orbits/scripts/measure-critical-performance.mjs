@@ -110,6 +110,18 @@ export function eagerClosedPanelJsBytes(resources) {
   }, 0);
 }
 
+export async function inspectEagerClosedPanelJsBytes(resources, readSource, cache = new Map()) {
+  const inspected = await Promise.all(resources.map(async (resource) => {
+    let source = cache.get(resource.url);
+    if (source === undefined) {
+      source = await readSource(resource.url);
+      cache.set(resource.url, source);
+    }
+    return { decodedBodySize: resource.decodedBodySize, source };
+  }));
+  return eagerClosedPanelJsBytes(inspected);
+}
+
 function assertExactSample(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Web performance sample must be an object.");
   const fields = Object.keys(value).sort();
@@ -181,7 +193,9 @@ async function authenticate(context, origin) {
   if (!response.ok()) throw new Error(`Controlled account login failed with HTTP ${response.status()}.`);
 }
 
-async function measurePage(page, url, disableCache) {
+const eagerScriptSourceCache = new Map();
+
+async function measurePage(page, url, disableCache, inspectClosedPanel = false) {
   const session = await page.context().newCDPSession(page);
   await session.send("Network.enable");
   await session.send("Network.setCacheDisabled", { cacheDisabled: disableCache });
@@ -231,17 +245,22 @@ async function measurePage(page, url, disableCache) {
       ttfbMs: navigation.responseStart,
     };
   });
-  const inspectedResources = await Promise.all(observation.jsResources.map(async (resource) => {
-    const scriptResponse = await page.context().request.get(resource.url);
-    if (!scriptResponse.ok()) {
-      throw new Error(`Unable to inspect an eager JavaScript resource (${scriptResponse.status()}).`);
-    }
-    return { decodedBodySize: resource.decodedBodySize, source: await scriptResponse.text() };
-  }));
   const { jsResources: _discardedResourceUrls, ...redactedObservation } = observation;
   return {
     ...redactedObservation,
-    closedPanelEagerJsBytes: eagerClosedPanelJsBytes(inspectedResources),
+    closedPanelEagerJsBytes: inspectClosedPanel
+      ? await inspectEagerClosedPanelJsBytes(
+          observation.jsResources,
+          async (resourceUrl) => {
+            const scriptResponse = await page.context().request.get(resourceUrl);
+            if (!scriptResponse.ok()) {
+              throw new Error(`Unable to inspect an eager JavaScript resource (${scriptResponse.status()}).`);
+            }
+            return scriptResponse.text();
+          },
+          eagerScriptSourceCache,
+        )
+      : 0,
   };
 }
 
@@ -282,7 +301,12 @@ export async function main(argv = process.argv.slice(2)) {
           ? await measureLocalBoundary(page, options, item)
           : observationsToSamples({
               buildSha: options.buildSha,
-              observation: await measurePage(page, `${options.origin}${item.path}`, item.cacheMode === "disabled"),
+              observation: await measurePage(
+                page,
+                `${options.origin}${item.path}`,
+                item.cacheMode === "disabled",
+                item.scenario === "web.agent",
+              ),
               run: item.run,
               scenario: item.scenario,
             });
