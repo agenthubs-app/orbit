@@ -33,7 +33,9 @@ export const APP_PERFORMANCE_SCENARIOS = Object.freeze([
 export const APP_PERFORMANCE_COHORTS = Object.freeze([
   ...APP_PERFORMANCE_SCENARIOS.slice(0, 2),
   ...APP_PERFORMANCE_SCENARIOS.slice(2).flatMap((definition) =>
-    definition.scenario === "app.schedule" || definition.scenario === "app.profile"
+    definition.scenario === "app.inbox"
+      ? [definition, Object.freeze({ ...definition, metric: "app.react_commit" })]
+      : definition.scenario === "app.schedule" || definition.scenario === "app.profile"
       ? [definition, Object.freeze({ ...definition, metric: "app.snapshot" })]
       : [definition]),
 ]);
@@ -111,6 +113,13 @@ export function simulatorLogPredicate(processIdentifier) {
   return `processIdentifier == ${processIdentifier} AND eventMessage CONTAINS "ORBIT_PERF"`;
 }
 
+export function selectAppPerformanceSample(samples, metric) {
+  if (samples.length === 0) return null;
+  return metric === "app.react_commit"
+    ? samples.reduce((slowest, sample) => sample.durationMs > slowest.durationMs ? sample : slowest)
+    : samples[0];
+}
+
 export function validateAppMeasurementSamples(samples, expectedBuildSha) {
   for (const sample of samples) {
     assertExactSample(sample);
@@ -153,14 +162,22 @@ function simulatorTarget(udid) {
 
 async function waitForSample(udid, processIdentifier, expectedBuildSha, expectedMetric, expectedScenario, timeoutMs = 30_000) {
   const startedAt = performance.now();
+  let firstCommitSeenAt = null;
   while (performance.now() - startedAt < timeoutMs) {
     const { stdout: contents } = await execFileAsync("xcrun", [
       "simctl", "spawn", udid, "log", "show", "--last", "1m", "--style", "compact",
       "--predicate", simulatorLogPredicate(processIdentifier),
     ]);
+    const matching = [];
     for (const line of contents.split("\n")) {
       const sample = parseAppPerformanceLogLine(line, expectedBuildSha);
-      if (sample?.metric === expectedMetric && sample.scenario === expectedScenario) return sample;
+      if (sample?.metric === expectedMetric && sample.scenario === expectedScenario) matching.push(sample);
+    }
+    const selected = selectAppPerformanceSample(matching, expectedMetric);
+    if (selected && expectedMetric !== "app.react_commit") return selected;
+    if (selected) {
+      firstCommitSeenAt ??= performance.now();
+      if (performance.now() - firstCommitSeenAt >= 1_000) return selected;
     }
     await new Promise((resolve) => setTimeout(resolve, 500));
   }

@@ -6,6 +6,7 @@ import {
   APP_PERFORMANCE_SCENARIOS,
   buildAppRunPlan,
   parseAppPerformanceLogLine,
+  selectAppPerformanceSample,
   simulatorLogPredicate,
   simulatorProcessIdentifier,
   validateAppMeasurementSamples,
@@ -32,6 +33,7 @@ test("the Release runner plans exactly three warmups and ten formal read-only ru
       ["app.auth_restore", "app.auth_restore"],
       ["app.notes", "app.resource"],
       ["app.inbox", "app.resource"],
+      ["app.inbox", "app.react_commit"],
       ["app.schedule", "app.resource"],
       ["app.schedule", "app.snapshot"],
       ["app.profile", "app.resource"],
@@ -115,6 +117,21 @@ test("collects only the current Simulator process from unified logging", () => {
     'processIdentifier == 37952 AND eventMessage CONTAINS "ORBIT_PERF"',
   );
   assert.throws(() => simulatorLogPredicate(-1), /process identifier/);
+});
+
+test("selects the slowest observed commit without changing the sample shape", () => {
+  const samples = [2, 17, 9].map((durationMs) => ({
+    commit: SHA,
+    durationMs,
+    environment: "app-release-simulator",
+    failed: false,
+    metric: "app.react_commit",
+    run: 1,
+    scenario: "app.inbox",
+    unit: "milliseconds",
+  }));
+  assert.equal(selectAppPerformanceSample(samples, "app.react_commit")?.durationMs, 17);
+  assert.equal(selectAppPerformanceSample(samples, "app.resource")?.durationMs, 2);
 });
 
 test("formal output requires exactly ten runs for every scenario and retains failures", () => {

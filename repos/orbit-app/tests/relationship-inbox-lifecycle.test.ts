@@ -62,6 +62,7 @@ export const appPerformanceScenarioForPath = path => path === "/api/relationship
 export const appPerformanceInput = (metric, scenario) => ({ commit: "baseline-sha", environment: "app-release-simulator", metric, run: 1, scenario, unit: "milliseconds" });
 export const isAppPerformanceEnabled = () => true;
 export const measureAppPerformance = async (input, work) => { const result = await work(); state.measurements.push(input); return result; };
+export const markAppPerformance = sample => state.measurements.push(sample);
 export const Ionicons = () => <span aria-hidden="true" />;
 export const SafeAreaView = ({ edges, ...props }) => <View {...props} />;
 `;
@@ -110,7 +111,7 @@ async function preview(p: Page) {
 test("the inbox core read emits one redacted resource timing sample", async t => {
   const p = await open(t);
   await p.waitForFunction(() => (window as any).fixture.measurements.length > 0);
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.measurements), [{
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.measurements.filter((sample: any) => sample.metric === "app.resource")), [{
     commit: "baseline-sha",
     environment: "app-release-simulator",
     metric: "app.resource",
@@ -118,6 +119,14 @@ test("the inbox core read emits one redacted resource timing sample", async t =>
     scenario: "app.inbox",
     unit: "milliseconds",
   }]);
+});
+
+test("the inbox profiler emits redacted commit durations", async t => {
+  const p = await open(t);
+  await p.waitForFunction(() => (window as any).fixture.measurements.some((sample: any) => sample.metric === "app.react_commit"));
+  const commits = await p.evaluate(() => (window as any).fixture.measurements.filter((sample: any) => sample.metric === "app.react_commit"));
+  assert.ok(commits.length > 0);
+  assert.ok(commits.every((sample: any) => sample.scenario === "app.inbox" && sample.durationMs >= 0 && sample.failed === false));
 });
 
 for (const detail of [false, true]) {

@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { randomUUID } from "expo-crypto";
 import { type Href, useIsFocused, useLocalSearchParams, useRouter } from "expo-router";
-import { type PropsWithChildren, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Profiler, type ProfilerOnRenderCallback, type PropsWithChildren, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AppState,
   Pressable,
@@ -81,6 +81,7 @@ import {
   appPerformanceInput,
   appPerformanceScenarioForPath,
   isAppPerformanceEnabled,
+  markAppPerformance,
   measureAppPerformance,
 } from "../../performance/app-performance";
 
@@ -283,8 +284,19 @@ export function RelationshipInboxScreen() {
   const seedName = firstParam(params.participantName);
   const seedOrganization = firstParam(params.organization);
   const { actorId, ready, scopeKey } = useInboxIdentity(JSON.stringify([seedContactId, deliveryId, seedName, seedOrganization]));
-  if (!ready) return <InboxLayout title={locale.t("inbox.title")}><LoadingState /></InboxLayout>;
-  return <ScopedRelationshipInboxScreen key={scopeKey} actorId={actorId} scopeKey={scopeKey} seedContactId={seedContactId} deliveryId={deliveryId} seedName={seedName} seedOrganization={seedOrganization} />;
+  const onRender = useCallback<ProfilerOnRenderCallback>((_id, _phase, actualDuration) => {
+    markAppPerformance({
+      ...appPerformanceInput("app.react_commit", "app.inbox"),
+      durationMs: actualDuration,
+      failed: false,
+    });
+  }, []);
+  const content = ready
+    ? <ScopedRelationshipInboxScreen key={scopeKey} actorId={actorId} scopeKey={scopeKey} seedContactId={seedContactId} deliveryId={deliveryId} seedName={seedName} seedOrganization={seedOrganization} />
+    : <InboxLayout title={locale.t("inbox.title")}><LoadingState /></InboxLayout>;
+  return isAppPerformanceEnabled()
+    ? <Profiler id="relationship-inbox" onRender={onRender}>{content}</Profiler>
+    : content;
 }
 
 function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliveryId, seedName, seedOrganization }: {
