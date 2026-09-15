@@ -77,8 +77,8 @@ build/harness-logs/
 | [0027](0027-open-schedule-meeting-details/GOAL.md) | 让四类日程进入对应详情，并按来源安全添加、编辑或清空会议说明 | 用户批准追加 C 线 Sprint；承接 appointment 聚合与 0026 canonical actor | run-01 completed；功能 `3ca1f5936`、旧日程兼容 `0cbc45ffa`；见 [REPORT](0027-open-schedule-meeting-details/REPORT.md) | completed |
 | [0028](0028-profile-page-group-redesign/GOAL.md) | 按最新八屏设计重做“我的”、设置、账号与完整资料编辑流程，保持真实数据、隐私和跨端一致 | 用户提供 `软件UI设计现代化 (5).zip` 并指定 D 线实现 | 固定最终 SHA `d37d6545d` 已由 `314aedd7c` 合并；主线目标 237/237、全量 2860/2860、typecheck、iOS build、Web live health 与 Simulator 安装启动通过，见 [REPORT](0028-profile-page-group-redesign/REPORT.md) | completed |
 | [0029](0029-data-authority-ai-read-surface/GOAL.md) | 统一数据权威源并让 AI 按认证 actor 查询笔记、待办、跟进和日程 | 用户要求全面数据审查并补齐 AI 盲区，交由 B 线实现 | 固定 B SHA `f5bded060` 已由 `6f5f141ed` 合并；本地源码/回归完成，真实 migration apply、Calendar provider 与同 actor 四域回读仍开放，见 [REPORT](0029-data-authority-ai-read-surface/REPORT.md) | blocked |
-| [0030](0030-inbox-ink-signal-unified-feed/GOAL.md) | 按 3a 设计把活动、待办、人脉和 IORBIT 通知组成真实统一收件箱 | 用户提供 `软件UI设计现代化 (5).zip` 并指定 E 线实现 | App 功能提交已合入 `chat-agent`；固定最终报告提交仍待协调者收口，不能提前标记 completed | running |
-| [0031](0031-cross-platform-performance/GOAL.md) | 以同环境真实性能基线优化 App 与 Web 的最慢关键路径，不改变功能与数据边界 | 用户批准基线驱动方案并指定 B 线执行 | Planner revision 1；基线 `c1ba721d1`；分支目标 `codex/b-line-sprint-0031`，尚未开始 run-01 | planned |
+| [0030](0030-inbox-ink-signal-unified-feed/GOAL.md) | 按 3a 设计把活动、待办、人脉和 IORBIT 通知组成真实统一收件箱 | 用户提供 `软件UI设计现代化 (5).zip` 并指定 E 线实现 | E 线固定 SHA `a252220a8`；同账号 live task/read/refresh 已验收，缺失 live 类别见 [REPORT](0030-inbox-ink-signal-unified-feed/REPORT.md) | completed |
+| [0031](0031-cross-platform-performance/GOAL.md) | 以同环境真实性能基线优化 App 与 Web 的最慢关键路径，不改变功能与数据边界 | 用户批准基线驱动方案并指定 B 线执行 | Planner revision 1；基线 `1ed6e091b`；分支 `codex/b-line-sprint-0031`，run-01 进行中 | running |
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
 
@@ -381,7 +381,8 @@ build/harness-logs/
 
 ### 0030 / run-01
 
-- Generator owner：E 线当前代理 `/root`；开始时间：2026-09-15 JST；状态：in progress；分支：`codex/e-line-sprint-0030`。
+- Generator owner：E 线当前代理 `/root`；开始时间：2026-09-15 JST；结束时间：2026-09-15 19:41 JST；状态：completed；分支：`codex/e-line-sprint-0030`。
 - 集成基线：`01bcceeb5c11113c8677ca9e89be39d9678fb0bc`，基线合并与重复内容修复后 HEAD `03b63e8a5`；用户既有 `AGENTS.md`、`CLAUDE.md` 与未跟踪笔记设计目录保持未暂存。
 - 批准设计：`0030-inbox-ink-signal-unified-feed/assets/3a-inbox.png`，源自 `软件UI设计现代化 (5).zip` 的 `design_handoff_orbit_ink_signal/screenshots/3a-收件箱.png`，780×1688 px，SHA-256 `a2f576c474780cd451c10eb7a2b3fe339130a18974c0f6436f9a1494e2522702`。
 - 运行目标：以真实 conversation、notification、relationship signal 聚合四类收件箱，逐条确认“全部已读”，保留既有详情／定向写信能力，并在同账号、同数据库的 live Web/API 与 iOS Simulator 上验收。
+- 结果：产品/测试固定 HEAD `4d351f0a0eddc1479eebb3a6b6852a466cad322d`；inbox matrix 231/231、App 全量 2828/2828、typecheck、原生 0 error／0 warning和同账号 40/40 read 持久通过。当前 QA 数据缺 activity/contact/IORBIT/conversation，历史 reminder task 与 canonical task 交集为 0；这些运行限制登记在 [REPORT](0030-inbox-ink-signal-unified-feed/REPORT.md) 和 BR-024，不伪造记录。

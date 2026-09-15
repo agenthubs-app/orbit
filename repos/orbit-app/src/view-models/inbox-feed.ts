@@ -101,7 +101,9 @@ function notificationItems(value: unknown): { complete: boolean; items: InboxFee
     seen.add(id);
     const action = actions.get(id);
     if (action?.ignored) continue;
-    const category = notificationCategory(item, action?.href);
+    const followupTaskId = exactText(item.followupTaskId);
+    const targetHref = action?.href || (followupTaskId ? encodedPath("/tasks", followupTaskId) : undefined);
+    const category = notificationCategory(item, targetHref);
     const title = exactText(item.title);
     if (!category || !title) {
       complete = false;
@@ -122,7 +124,7 @@ function notificationItems(value: unknown): { complete: boolean; items: InboxFee
         },
       } : {}),
       subtitle: exactText(item.organization) || exactText(item.sourceLabel) || (category === "assistant" ? "IORBIT" : ""),
-      ...(action?.href ? { targetHref: action.href } : {}),
+      ...(targetHref ? { targetHref } : {}),
       title,
     });
   }

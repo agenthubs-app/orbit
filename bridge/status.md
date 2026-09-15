@@ -1,5 +1,11 @@
 # 两端当前状态
 
+## 2026-09-15 E 线 0030 统一收件箱增量
+
+- App `4d351f0a0` 按批准的 3a 设计把 conversation、notification 和 relationship signal 聚合为全部／活动／待办／人脉四筛选时间流；“全部已读”固定并发 4，并在逐项精确回执后刷新，不乐观清空。
+- 同账号 live Web/API 与 iOS Simulator 已验证 40 条真实 task reminder：单项 read 使 40→39，批量后服务端 40/40 read，pull-to-refresh 与前后台恢复保持 0；App 全量 2828/2828、typecheck、原生构建 0 error／0 warning。
+- 本轮没有 Web/API 源码改动；实际 Next production server `d37d6545d` 保持 `live/ok`。当前 QA payload 没有 activity/contact/IORBIT/conversation，且历史 reminder task 与 canonical task 交集为 0，因此 BR-024 为 `consumer_ready`；详情见 [交接](2026-09-15-unified-inbox.md)与 [Sprint 0030 报告](../repos/orbit-app/docs/sprints/0030-inbox-ink-signal-unified-feed/REPORT.md)。
+
 ## 2026-09-15 D 线 0028 验收增量
 
 - Web/API 与共享 contract 扩展资料语言、LinkedIn／X、稳定标签上限和 actor-scoped 建议 dismiss；profile CAS、receipt 与序列化重试在隔离 PostgreSQL 14/14 通过。

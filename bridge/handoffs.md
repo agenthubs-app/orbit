@@ -33,6 +33,7 @@
 | [BR-021](2026-09-15-schedule-meeting-details.md) | P1 | 四类日程详情与会议说明 | verified | 已关闭 | appointment 共享说明、旧会议私有兼容、四类原生打开及保存重开已验证并已进入 `chat-agent` |
 | [BR-022](2026-09-15-profile-page-group-redesign.md) | P1 | “我的”页面组、资料编辑与公开投影 | verified | 已关闭 | 固定 D SHA 已合并；主线目标、全量、typecheck、iOS build、Web live health 与 Simulator 安装启动通过 |
 | [BR-023](2026-09-15-data-authority-ai-read-surface.md) | P1 | 数据权威源与 AI 只读面 | consumer_ready | 共同环境负责人 | 本地源码/回归完成；真实 migration apply、授权 calendar 与同 actor Web/App 四域回读 |
+| [BR-024](2026-09-15-unified-inbox.md) | P1 | App 统一收件箱与确认式全部已读 | consumer_ready | 运行数据／共同环境负责人 | 同账号补齐 activity/contact/IORBIT/conversation 和受控 read 失败，完成原生点击与恢复验收 |
 
 ## BR-022 — “我的”页面组、资料编辑与公开投影
 
@@ -61,6 +62,15 @@
 - Web/API：建立 machine-readable authority registry，收口 personal schedule 与 push device identity，并新增 visibility manifest 及 `notes.query`、`tasks.query`、`followups.query`、`schedule.query` 四个 actor-scoped 只读工具。
 - App：同步 `data_query` artifact contract；AI 只能经认证 actor 和显式函数读取允许的数据域，不能绕过权限直接读取存储。
 - 版本：固定最终 SHA `f5bded060`；主线 merge `6f5f141ed`。完整交接见 [BR-023 文件](2026-09-15-data-authority-ai-read-surface.md)和 [Sprint 0029 报告](../repos/orbit-app/docs/sprints/0029-data-authority-ai-read-surface/REPORT.md)。
+
+## BR-024 — App 统一收件箱
+
+- 创建/更新日期：2026-09-15。
+- 总状态：`consumer_ready`；web_status：`source_ready`（0030 无 Web 产品改动）；app_status：`consumer_ready`；verification_status：本地完整回归及同账号真实 task/read/refresh 链路通过，缺失 live 类别仍待共同环境补证。
+- App：将 conversation、notification 与 relationship signal 投影为全部／活动／待办／人脉四筛选时间流；“全部已读”以固定并发和逐项精确回执执行，失败项保留重试。
+- 版本：E 线固定最终 SHA `a252220a8`；完整交接见 [BR-024 文件](2026-09-15-unified-inbox.md)和 [Sprint 0030 报告](../repos/orbit-app/docs/sprints/0030-inbox-ink-signal-unified-feed/REPORT.md)。
+- 已验证：App 全量 2828/2828、typecheck、原生构建，以及同账号 40 条 task reminder 单项/批量已读、刷新和前后台恢复。
+- 待补：当前 QA payload 没有 activity/contact/IORBIT/conversation，且历史 reminder 指向的 task 已不存在；需用目标仍存在的当前记录和受控单项 read failure 完成原生点击、恢复与 Web 回读。
 
 ## BR-016 — 人脉、名片与活动三语消费
 

@@ -19,6 +19,7 @@ const rerender = () => useSyncExternalStore(fn => { listeners.add(fn); return ()
 const state = window.fixture = { kind: "success", empty: false, requests: [], navigation: [], refreshes: [], update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
 const routeParams = new URLSearchParams(location.search);
 const screen = routeParams.get("screen");
+const seededInbox = routeParams.get("compose") === "true";
 const finalInsets = routeParams.get("insets") === "true";
 const aiThread = { ...aiConversationPayload, activeConversationId: "thread-one", conversations: [{ ...aiConversationPayload.conversations[0], conversationId: "thread-one" }] };
 const task = { id: "task-one", taskId: "task-one", accountId: "reader", ownerUserId: "reader", title: "确认合作时间", notes: "带上合作资料", category: "relationship", status: "open", priority: "normal", plannedDate: "2026-09-08", dueAt: "2026-09-08T10:00:00+09:00", createdAt: "2026-09-07T01:00:00Z", updatedAt: "2026-09-07T01:00:00Z", contactName: "林悦", organization: "Orbit", source: "manual" };
@@ -76,7 +77,12 @@ const client = Object.fromEntries(["get", "post", "patch", "delete", "put"].map(
   return { success: false, error: { message: "操作暂时失败" } };
 }]));
 export const useOrbitApiClient = () => { rerender(); return React.useMemo(() => ({ ...client }), [revision]); };
-export const useLocalSearchParams = () => ({ id: screen === "task" ? "task-one" : "thread-one", ...(screen === "followups" ? { scope: "relationship" } : {}), participantName: routeParams.get("participantName") ?? undefined });
+export const useLocalSearchParams = () => ({
+  id: screen === "task" ? "task-one" : "thread-one",
+  ...(screen === "followups" ? { scope: "relationship" } : {}),
+  participantName: routeParams.get("participantName") ?? (seededInbox ? "林悦" : undefined),
+  ...(seededInbox ? { organization: "Orbit" } : {}),
+});
 export const useIsFocused = () => true;
 export const usePathname = () => "/" + screen;
 export const useRouter = () => ({ canGoBack: () => true, back() { state.navigation.push("back"); }, push(path) { state.navigation.push(path); }, replace(path) { state.navigation.push(path); } });
@@ -160,6 +166,13 @@ for (const scheme of ["light", "dark"] as const) {
     assert.equal(await empty.evaluate(el => getComputedStyle(el).borderRadius), "0px", "emptyInboxSection");
     assert.equal(await page.getByRole("textbox").count(), 0);
     assert.equal(await page.getByRole("button", { name: "写消息", exact: true }).count(), 0);
+    await noWrites(page);
+  });
+  test(`${scheme}: final inset inbox empty feedback remains readable without writes`, async t => {
+    const page = await open(t, "inbox", scheme);
+    await page.evaluate(() => (window as any).fixture.update({ empty: true }));
+    const empty = page.getByText("暂无消息", { exact: true }); await empty.waitFor();
+    const bounds = await empty.boundingBox(); assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 320);
     await noWrites(page);
   });
   test(`${scheme}: final inset inbox privacy, IORBIT handoff and local preview preserve the reply`, async t => {
@@ -269,7 +282,7 @@ for (const [screen, label] of [["actions", "确认建议"], ["today", "加入待
   });
 }
 test("inbox mail composer has a full-size primary preview while cancellation stays local", async t => {
-  const page = await open(t, "inbox&participantName=%E7%8E%8B%E6%98%8E");
+  const page = await open(t, "inbox&compose=true&participantName=%E7%8E%8B%E6%98%8E");
   await page.getByRole("textbox", { name: "正文", exact: true }).waitFor();
   await fits(page.getByRole("button", { name: "预览草稿", exact: true }), 50);
   await page.getByRole("button", { name: "取消", exact: true }).click(); await noWrites(page);

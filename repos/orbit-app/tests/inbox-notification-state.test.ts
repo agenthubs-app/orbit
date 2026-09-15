@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { relationshipAlertsToView, relationshipInboxBadgeCount, relationshipInboxToView } from "../src/view-models/relationship-inbox";
+import { inboxNotificationActions } from "../src/view-models/inbox-notification-actions";
 
 const reminder = { reminderId: "notice:one", title: "准备资料", organization: "Example", dueAt: "2026-09-13T10:00:00Z", priority: "normal", href: "/tasks/task%3Aone" };
 const inbox = relationshipInboxToView({ inbox: { conversations: [{ conversationId: "thread:one", unreadCount: 2 }] } });
@@ -19,6 +20,16 @@ test("a legacy reminder remains unpersisted and retains the existing badge count
   assert.notEqual((view.alerts[0] as any).canPersistState, true);
   assert.notEqual((view.alerts[0] as any).read, true);
   assert.equal(relationshipInboxBadgeCount(inbox, view), 3);
+});
+
+test("a legacy task reminder without href opens its canonical followup task", () => {
+  const actions = inboxNotificationActions({
+    state: "success",
+    reminders: [{ ...reminder, href: undefined, followupTaskId: "task:canonical one" }],
+    notificationInteractions: {},
+  });
+
+  assert.equal(actions.get("notice:one")?.href, "/tasks/task%3Acanonical%20one");
 });
 
 for (const [href, expected] of [
@@ -44,7 +55,7 @@ for (const [href, expected] of [
   ["/tasks/task%3Aone?next=https://outside.example", undefined],
   [undefined, undefined],
 ] as const) test(`reminder target maps only an exact supported destination: ${href}`, () => {
-  const view = relationshipAlertsToView({ state: "success", reminders: [{ ...reminder, href, followupTaskId: "notification-is-not-a-task" }], notificationInteractions: {} });
+  const view = relationshipAlertsToView({ state: "success", reminders: [{ ...reminder, href, followupTaskId: undefined }], notificationInteractions: {} });
   assert.equal((view.alerts[0] as any).href, expected);
 });
 
