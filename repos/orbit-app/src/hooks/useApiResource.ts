@@ -30,7 +30,7 @@ export function useApiResource<TData>(
 ): ApiResourceState<TData> {
   const { baseUrl } = useOrbitApiBaseUrl();
   const auth = useOrbitAuthSession();
-  const actorId = auth.user?.id ?? null;
+  const actorId = auth.actorId;
   // Opt-in account isolation: do not coalesce this account's GET with an old
   // browser session's request when both sessions have an empty cookieHeader.
   const fetchImpl = useMemo<FetchLike>(

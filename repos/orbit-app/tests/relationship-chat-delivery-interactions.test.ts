@@ -27,7 +27,7 @@ const state = window.fixture = {
 };
 window.fetch = async (input, init = {}) => { const index = state.requests.length; const url = new URL(String(input)); state.requests.push({ method: init.method || "GET", path: url.pathname, body: init.body ? JSON.parse(init.body) : null, headers: Object.fromEntries(new Headers(init.headers).entries()), signal: init.signal }); const result = new Promise(resolve => state.pending[index] = resolve); if ((init.method || "GET") === "GET" && !state.holdReads) queueMicrotask(() => state.reply(index, state.readStatus)); return result; };
 export const useFixture = () => { observe(); return state; };
-export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, user: state.signedIn ? { id: state.actor } : null, cookieHeader: state.cookieHeader }; };
+export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.signedIn ? state.actor : null, actorId: state.signedIn ? state.actor : null, user: state.signedIn ? { id: state.actor } : null, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
 export const useLocalSearchParams = () => { observe(); return { id: state.conversationId }; };
 export const useGlobalSearchParams = useLocalSearchParams;

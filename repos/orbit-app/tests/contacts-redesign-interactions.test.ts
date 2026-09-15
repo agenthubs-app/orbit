@@ -45,7 +45,7 @@ const client = {
   async patch(path, options) { state.requests.push({ method: "PATCH", path, body: options.body }); return state.failure ? { success: false } : { success: true, data: {} }; }
 };
 export const useOrbitApiClient = () => client;
-const authSession = { ready: true, signedIn: true, cookieHeader: "", user: { id: "actor:contacts-test" } };
+const authSession = { ready: true, signedIn: true, accountId: "actor:contacts-test", actorId: "actor:contacts-test", cookieHeader: "", user: { id: "actor:contacts-test" } };
 export const useOrbitAuthSession = () => authSession;
 export const useOrbitApiBaseUrl = () => ({ baseUrl: "http://fixture" });
 export const SafeAreaView = ({ children, edges, ...props }) => <View {...props}>{children}</View>;

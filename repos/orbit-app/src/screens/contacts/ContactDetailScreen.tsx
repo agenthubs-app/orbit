@@ -89,7 +89,7 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
   const locale = useOrbitLocale();
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const contactId = firstParam(id);
-  const actorId = useOrbitAuthSession().user?.id ?? null;
+  const actorId = useOrbitAuthSession().actorId;
   const client = useOrbitApiClient(scopeKey === undefined ? {} : { scopeKey });
   const rawState = useApiResource<unknown>(
     contactDetailPath(contactId),

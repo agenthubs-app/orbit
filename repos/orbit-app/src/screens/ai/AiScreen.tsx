@@ -352,7 +352,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   const todaySummary = todayHomeSummary(todayPayload, new Date(), "Asia/Tokyo", locale.language);
   const [questionSnapshot, setQuestionSnapshot] = useState<HomeQuestionSnapshot | null>(null);
   const nextQuestionSnapshot = homeQuestionSnapshot(questionSnapshot, {
-    scope: JSON.stringify([baseUrl, auth.user?.id ?? null]),
+    scope: JSON.stringify([baseUrl, auth.actorId]),
     payload: todayPayload,
     ready: auth.ready && todayState.kind !== "loading",
     refreshing: todayState.refreshing
@@ -403,7 +403,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   }
 
   function sendMessage() {
-    if (!owns() || navigationLock.current || !auth.user?.id) return;
+    if (!owns() || navigationLock.current || !auth.actorId) return;
     const message = draftMessage.trim();
 
     if (!message) {
@@ -420,7 +420,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     }
     registerAiSendIntent({
       id: sendIntent,
-      actorId: auth.user.id,
+      actorId: auth.actorId,
       baseUrl,
       message,
       origin: {

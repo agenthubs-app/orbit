@@ -22,7 +22,7 @@ const state = window.fixture = { screen: "settings", width: 390, fontScale: 1, s
   data: { account: { workspaceName: "星野工作室", role: "operator", plan: "live-relationship-os" }, user: { timezone: "Asia/Tokyo" }, profile: { relationshipGoal: "认识日本市场的长期合作伙伴。" }, session: { status: "signed-in" } },
   ...window.initialFixture, update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
 export const useFixture = () => { useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision); return state; };
-export const useOrbitAuthSession = () => { useFixture(); return { ready: state.ready, signedIn: state.signedIn, user: state.user, cookieHeader: "test-cookie", signOut: async () => { state.calls.push("sign-out"); return state.logoutFailure ? { success: false, message: "退出未完成，请重试。" } : { success: true }; } }; };
+export const useOrbitAuthSession = () => { useFixture(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.signedIn ? state.user?.id ?? null : null, actorId: state.signedIn ? state.user?.id ?? null : null, user: state.user, cookieHeader: "test-cookie", signOut: async () => { state.calls.push("sign-out"); return state.logoutFailure ? { success: false, message: "退出未完成，请重试。" } : { success: true }; } }; };
 const client = {};
 export const useOrbitApiClient = () => client;
 export const useOrbitApiBaseUrl = () => ({ baseUrl: "https://orbit.test", ready: true });

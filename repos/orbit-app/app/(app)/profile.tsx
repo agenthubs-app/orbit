@@ -18,9 +18,9 @@ function ProfileMainRoute() {
   const completionNext = firstParam(params.complete) === "1"
     ? normalizedNext(firstParam(params.next))
     : null;
-  const enabled = focused && auth.ready && auth.signedIn && server.ready && Boolean(auth.user?.id);
+  const enabled = focused && auth.ready && auth.signedIn && server.ready && Boolean(auth.actorId);
   const sequence = useRef(0);
-  const scope = useMemo(() => ({ key: String(++sequence.current), enabled }), [enabled, auth.signedIn, auth.user?.id, auth.cookieHeader, server.baseUrl]);
+  const scope = useMemo(() => ({ key: String(++sequence.current), enabled }), [enabled, auth.signedIn, auth.actorId, auth.cookieHeader, server.baseUrl]);
   const latest = useRef(scope);
   latest.current = scope;
   const isScopeCurrent = useCallback(() => latest.current === scope && scope.enabled, [scope]);

@@ -29,7 +29,7 @@ const record = action => async payload => {
   if (state.pending) return new Promise(resolve => { state.resolve = () => resolve(failure); });
   return failure;
 };
-export const useOrbitAuthSession = () => { rerender(); return { ready: state.ready, signedIn: state.signedIn, googleEnabled: true, user: { id: "user:1", email: "lin@example.com", name: ${JSON.stringify(person)} }, signIn: record("signIn"), register: record("register"), startGoogleSignIn: record("google"), signOut: record("signOut") }; };
+export const useOrbitAuthSession = () => { rerender(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.signedIn ? "user:1" : null, actorId: state.signedIn ? "user:1" : null, googleEnabled: true, user: { id: "user:1", email: "lin@example.com", name: ${JSON.stringify(person)} }, signIn: record("signIn"), register: record("register"), startGoogleSignIn: record("google"), signOut: record("signOut") }; };
 export const useRouter = () => ({ canGoBack: () => false, back() {}, push(path) { state.navigation.push(path); }, replace(path) { state.navigation.push(path); } });
 export const usePathname = () => "/account";
 export const useLocalSearchParams = () => ({ next: "/profile", created: new URLSearchParams(location.search).get("created") || undefined });

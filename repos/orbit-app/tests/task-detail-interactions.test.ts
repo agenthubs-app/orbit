@@ -43,7 +43,7 @@ let client = {
   delete: (path, options) => request("DELETE", path, options)
 };
 export const useOrbitApiClient = () => client;
-export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, user: { id: "test" }, cookieHeader: "" });
+export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, accountId: "test", actorId: "test", user: { id: "raw-login-test" }, cookieHeader: "" });
 export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.example" });
 export const useSafeAreaInsets = () => ({ top: 0, bottom: 0, left: 0, right: 0 });
 export const AppScreen = ({ children }) => <main>{children}</main>;

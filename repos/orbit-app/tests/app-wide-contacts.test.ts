@@ -46,7 +46,7 @@ const record = method => async (path, options) => {
 };
 export const useOrbitApiClient = (options = {}) => { state.clientScopeKey = options.scopeKey; return { post: record("POST"), put: record("PUT"), patch: record("PATCH"), get: record("GET") }; };
 export const useOrbitApiBaseUrl = () => { rerender(); return { baseUrl: state.baseUrl }; };
-export const useOrbitAuthSession = () => { rerender(); return { ready: true, signedIn: true, cookieHeader: state.cookieHeader, user: { id: state.actor } }; };
+export const useOrbitAuthSession = () => { rerender(); return { ready: true, signedIn: true, accountId: state.actor, actorId: state.actor, cookieHeader: state.cookieHeader, user: { id: state.actor } }; };
 export const randomUUID = () => "fixture-relationship-goal-mutation-" + ++state.uuidSequence;
 export const useRelationshipInboxBadgeCount = () => 0;
 export const SafeAreaView = ({ children, edges, ...props }) => <View {...props}>{children}</View>;

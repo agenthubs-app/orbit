@@ -13,7 +13,7 @@ import { ErrorState } from "../../components/ErrorState";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 
 export function PersonalScheduleList() {
-  const auth = useOrbitAuthSession(); const { baseUrl } = useOrbitApiBaseUrl(); const actor = auth.user?.id ?? "";
+  const auth = useOrbitAuthSession(); const { baseUrl } = useOrbitApiBaseUrl(); const actor = auth.actorId ?? "";
   const locale = useOrbitLocale();
   const { timeZone } = useOrbitTimeZone(); const router = useRouter(); const { styles } = useStyles();
   const state = useApiResource<unknown>(personalSchedulePath(), () => false, { scopeKey: JSON.stringify([actor, baseUrl]), cachePolicy: "network-only" });

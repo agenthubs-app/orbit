@@ -18,7 +18,7 @@ import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 export function PersonalScheduleScreen() {
   const auth = useOrbitAuthSession(); const server = useOrbitApiBaseUrl(); const params = useLocalSearchParams<{ id?: string | string[] }>();
   const id = (Array.isArray(params.id) ? params.id[0] : params.id) ?? "";
-  const actorId = auth.user?.id ?? ""; const ready = auth.ready && auth.signedIn && server.ready && !!actorId;
+  const actorId = auth.actorId ?? ""; const ready = auth.ready && auth.signedIn && server.ready && !!actorId;
   const scopeKey = JSON.stringify([actorId, server.baseUrl, id, ready]);
   return <PersonalScheduleEditor key={scopeKey} id={id} actorId={actorId} ready={ready} scopeKey={scopeKey} />;
 }

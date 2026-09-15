@@ -29,7 +29,8 @@ export function RelationshipTaskTools({ tasks, contacts, tasksPayload }: {
   const router = useRouter();
   const { timeZone } = useOrbitTimeZone();
   const auth = useOrbitAuthSession(), server = useOrbitApiBaseUrl();
-  const scopeKey = JSON.stringify([auth.user?.id, server.baseUrl]);
+  const actorId = auth.actorId;
+  const scopeKey = JSON.stringify([actorId, server.baseUrl]);
   const notifications = useApiResource<unknown>(ORBIT_API_ENDPOINTS.notifications, () => false, { scopeKey, cachePolicy: "network-only" });
   const view = followupsToView({
     tasksPayload: followupsPageToView(tasksPayload, { contacts }).candidatesPayload,
@@ -55,12 +56,12 @@ export function RelationshipTaskTools({ tasks, contacts, tasksPayload }: {
     ...contacts.map(contact => ({ key: `contact:${contact.id}`, contact, task: null, label: [contact.name, contact.organization].filter(Boolean).join(" · ") })),
   ];
   const selected = options.find(option => option.key === selectedKey) ?? null;
-  const ready = auth.ready && auth.signedIn && server.ready && Boolean(auth.user?.id);
+  const ready = auth.ready && auth.signedIn && server.ready && Boolean(actorId);
 
   function openTemplate(template: ReturnType<typeof contactFollowupTemplate> | ReturnType<typeof followupCandidateTemplate>) {
-    if (!ready || !auth.user?.id) { setTemplateError(locale.t("relationshipTasks.signIn")); return; }
+    if (!ready || !actorId) { setTemplateError(locale.t("relationshipTasks.signIn")); return; }
     setTemplateError(null);
-    const prefillIntent = registerAiTemplatePrefill({ actorId: auth.user.id, baseUrl: server.baseUrl, ...template });
+    const prefillIntent = registerAiTemplatePrefill({ actorId, baseUrl: server.baseUrl, ...template });
     router.push({ pathname: "/ai/[id]", params: { id: "new", prefillIntent } } as Href);
   }
 

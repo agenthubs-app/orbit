@@ -28,7 +28,7 @@ export function useFixture() {
   return state;
 }
 export function useOrbitApiBaseUrl() { useFixture(); return { baseUrl: state.baseUrl, ready: state.ready }; }
-export function useOrbitAuthSession() { useFixture(); return { cookieHeader: state.cookieHeader, ready: state.ready, signedIn: state.signedIn, user: state.signedIn ? { id: state.actorId } : null }; }
+export function useOrbitAuthSession() { useFixture(); return { accountId: state.signedIn ? state.actorId : null, actorId: state.signedIn ? state.actorId : null, cookieHeader: state.cookieHeader, ready: state.ready, signedIn: state.signedIn, user: state.signedIn ? { id: state.actorId } : null }; }
 export function useOrbitApiClient() { useFixture(); return state.client; }
 export function getLocales() { return state.locales; }
 export const AppState = { addEventListener(_name, listener) { foregroundListeners.add(listener); return { remove() { foregroundListeners.delete(listener); } }; } };

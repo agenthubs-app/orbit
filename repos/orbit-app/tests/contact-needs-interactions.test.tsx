@@ -32,7 +32,7 @@ const state = window.fixture = {
   reply(index, result) { state.pending[index](result); revision += 1; listeners.forEach(fn => fn()); },
 };
 export const useFixture = () => { observe(); return state; };
-export const useOrbitAuthSession = () => { observe(); return { ready: true, signedIn: true, cookieHeader: state.cookieHeader, user: { id: state.actorId } }; };
+export const useOrbitAuthSession = () => { observe(); return { ready: true, signedIn: true, accountId: state.actorId, actorId: state.actorId, cookieHeader: state.cookieHeader, user: { id: state.actorId } }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: true, baseUrl: state.baseUrl }; };
 export const useOrbitApiClient = () => ({ put(path, options) { const index = state.requests.length; state.requests.push({ path, body: options.body, signal: options.signal }); return new Promise(resolve => state.pending[index] = resolve); } });
 export const useValidatedApiResource = () => { observe(); return { kind: "success", data: { state: "success", profile: state.profile, editor: { canSave: true } }, refreshing: false, refresh() { state.refreshes += 1; revision += 1; listeners.forEach(fn => fn()); } }; };

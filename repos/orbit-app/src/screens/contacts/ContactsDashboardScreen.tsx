@@ -102,7 +102,7 @@ export function ContactsDashboardScreen() {
   const { colors } = useOrbitTheme();
   const auth = useOrbitAuthSession();
   const { baseUrl } = useOrbitApiBaseUrl();
-  const actorId = auth.user?.id ?? "";
+  const actorId = auth.actorId ?? "";
   const dashboardScopeKey = JSON.stringify([actorId, auth.cookieHeader, baseUrl]);
   const client = useOrbitApiClient({ scopeKey: dashboardScopeKey });
   const [recomputing, setRecomputing] = useState(false);

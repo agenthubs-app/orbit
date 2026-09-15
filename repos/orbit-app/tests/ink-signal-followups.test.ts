@@ -12,7 +12,7 @@ const fixture = `
 import React from "react";
 import { View } from "react-native-web";
 const state = window.fixture = { ready: true, signedIn: true, params: {}, reads: [], writes: [], ...window.initialFixture };
-export const useOrbitAuthSession = () => ({ ready: state.ready, signedIn: state.signedIn, user: state.signedIn ? { id: "owner" } : null, cookieHeader: "" });
+export const useOrbitAuthSession = () => ({ ready: state.ready, signedIn: state.signedIn, accountId: state.signedIn ? "owner" : null, actorId: state.signedIn ? "owner" : null, user: state.signedIn ? { id: "owner" } : null, cookieHeader: "" });
 export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.example" });
 export const useLocalSearchParams = () => state.params;
 export const useGlobalSearchParams = useLocalSearchParams;

@@ -6,7 +6,7 @@ import { createOrbitApiClient } from "../api/client";
 export function useHomeDashboardClient() {
   const { baseUrl } = useOrbitApiBaseUrl();
   const auth = useOrbitAuthSession();
-  const actor = auth.user?.id ?? "";
+  const actor = auth.actorId ?? "";
   return useMemo(() => createOrbitApiClient({
     baseUrl,
     authCookieHeader: auth.cookieHeader,

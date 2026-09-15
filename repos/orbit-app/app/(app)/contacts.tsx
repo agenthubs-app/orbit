@@ -9,8 +9,8 @@ function ContactsMainRoute() {
   const focused = useIsFocused();
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
-  const scopeKey = JSON.stringify([auth.user?.id, auth.cookieHeader, server.baseUrl]);
-  const enabled = focused && auth.ready && auth.signedIn && server.ready && Boolean(auth.user?.id);
+  const scopeKey = JSON.stringify([auth.actorId, auth.cookieHeader, server.baseUrl]);
+  const enabled = focused && auth.ready && auth.signedIn && server.ready && Boolean(auth.actorId);
   const latest = useRef("");
   latest.current = enabled ? scopeKey : "";
   const isScopeCurrent = useCallback(() => latest.current === scopeKey, [scopeKey]);

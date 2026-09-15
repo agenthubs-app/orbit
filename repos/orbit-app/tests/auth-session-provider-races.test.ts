@@ -13,10 +13,15 @@ const listeners = new Set();
 const state = window.fixture = {
   baseUrl: "https://first.example",
   baseUrlReady: true,
+  accountFailure: false,
+  accountRequests: [],
+  canonicalAccountId: "account:canonical",
+  storedCookie: null,
   requests: [],
   results: [],
   signOuts: [],
   writes: [],
+  ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(listener => listener()); }
 };
 export function useFixture() {
@@ -39,12 +44,17 @@ export async function createGoogleOAuthAttempt() { throw new Error("unused"); }
 export async function exchangeGoogleOAuthCode() { throw new Error("unused"); }
 export function parseGoogleOAuthBrowserResult() { throw new Error("unused"); }
 export const nativeAuthSessionStorage = {
-  async read() { return null; },
+  async read() { return state.storedCookie; },
   async write(baseUrl, cookie) { state.writes.push({ baseUrl, cookie }); },
   async clear() {}
 };
 export async function registerOrbitAccount() { return { success: true }; }
 export async function signOutOrbitSession(input) { state.signOuts.push(input); return { success: true }; }
+export function createOrbitApiClient(input) { return { async get(path) {
+  state.accountRequests.push({ ...input, path });
+  if (state.accountFailure) return { success: false, status: 503, error: { code: "SERVICE_UNAVAILABLE", message: "账号暂时不可用" } };
+  return { success: true, status: 200, data: { account: { id: state.canonicalAccountId }, session: { status: "signed-in" }, user: { id: "profile:one" } } };
+} }; }
 `;
 
 test.before(async () => {
@@ -78,7 +88,7 @@ const root = createRoot(document.getElementById("root")); window.fixture.unmount
           if (args.path === "native") return { contents: "export const Platform = { OS: 'ios' };", loader: "js" };
           if (args.path.endsWith("/auth-session")) return { contents: "export { registerOrbitAccount, signOutOrbitSession } from 'fixture';", loader: "js", resolveDir: process.cwd() };
           if (args.path.endsWith("/session-expiry")) return { contents: "export function onSessionExpired() { return () => {}; }", loader: "js" };
-          if (args.path.endsWith("/client")) return { contents: "export function createOrbitApiClient() { return {}; }", loader: "js" };
+          if (args.path.endsWith("/client")) return { contents: "export { createOrbitApiClient } from 'fixture';", loader: "js", resolveDir: process.cwd() };
           if (args.path.endsWith("/push-registration-queue")) return { contents: "export async function revokePushDeviceRegistrations() { return true; }", loader: "js" };
           return { contents: "export async function clearSnapshots() {} export async function cancelOrbitManagedNotifications() {} export async function revokeNotificationDevice() {} export async function revokeRegisteredPushDevice() {}", loader: "js" };
         });
@@ -91,12 +101,13 @@ const root = createRoot(document.getElementById("root")); window.fixture.unmount
 
 test.after(async () => { await browser?.close(); });
 
-async function open(t: { after(fn: () => Promise<void>): void }): Promise<Page> {
+async function open(t: { after(fn: () => Promise<void>): void }, initial: Record<string, unknown> = {}): Promise<Page> {
   const page = await browser.newPage();
   const errors: string[] = [];
   page.on("pageerror", error => errors.push(error.message));
   t.after(async () => { await page.close(); assert.deepEqual(errors, []); });
   await page.setContent('<div id="root"></div>');
+  await page.evaluate(value => { (window as any).initialFixture = value; }, initial);
   await page.addScriptTag({ content: script });
   await page.getByRole("button", { name: "sign in" }).waitFor();
   await page.waitForFunction(() => (window as any).fixture.auth?.ready === true);
@@ -155,4 +166,55 @@ test("an unmounted auth provider rejects and discards a late login session", asy
   }]);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.writes), []);
   assert.equal(await page.evaluate(() => (window as any).fixture.signOuts.length), 1);
+});
+
+test("an accepted session exposes the raw login principal and canonical account separately", async t => {
+  const page = await open(t);
+  await page.getByRole("button", { name: "sign in" }).click();
+  await page.waitForFunction(() => (window as any).fixture.requests.length === 1);
+  await page.evaluate(() => (window as any).fixture.release());
+  await page.waitForFunction(() =>
+    (window as any).fixture.results.length === 1
+    && (window as any).fixture.auth?.user?.id === "actor-first"
+  );
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.results), [{ success: true }]);
+  assert.equal(await page.evaluate(() => (window as any).fixture.auth.user.id), "actor-first");
+  assert.equal(await page.evaluate(() => (window as any).fixture.auth.accountId), "account:canonical");
+  assert.equal(await page.evaluate(() => (window as any).fixture.auth.actorId), "account:canonical");
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.writes), [{
+    baseUrl: "https://first.example",
+    cookie: "session=first"
+  }]);
+});
+
+test("account identity failure rejects the new session without raw-id fallback", async t => {
+  const page = await open(t);
+  await page.evaluate(() => (window as any).fixture.update({ accountFailure: true }));
+  await page.getByRole("button", { name: "sign in" }).click();
+  await page.waitForFunction(() => (window as any).fixture.requests.length === 1);
+  await page.evaluate(() => (window as any).fixture.release());
+  await page.waitForFunction(() => (window as any).fixture.results.length === 1);
+  assert.equal(await page.evaluate(() => (window as any).fixture.auth.user), null);
+  assert.equal(await page.evaluate(() => (window as any).fixture.auth.actorId ?? null), null);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.writes), []);
+  assert.equal(await page.evaluate(() => (window as any).fixture.signOuts.length), 1);
+});
+
+test("restoring a stored session waits for and exposes its canonical account", async t => {
+  const page = await open(t, { storedCookie: "session=restored" });
+  await page.waitForFunction(() => (window as any).fixture.auth?.ready === true);
+  assert.equal(await page.evaluate(() => (window as any).fixture.auth.user.id), "restored");
+  assert.equal(await page.evaluate(() => (window as any).fixture.auth.actorId), "account:canonical");
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.accountRequests), [{
+    authCookieHeader: "session=restored",
+    baseUrl: "https://first.example",
+    path: "/api/account/me"
+  }]);
+});
+
+test("a stored session stays closed when account/me cannot establish an owner", async t => {
+  const page = await open(t, { accountFailure: true, storedCookie: "session=restored" });
+  await page.waitForFunction(() => (window as any).fixture.auth?.ready === true);
+  assert.equal(await page.evaluate(() => (window as any).fixture.auth.signedIn), false);
+  assert.equal(await page.evaluate(() => (window as any).fixture.auth.actorId), null);
 });

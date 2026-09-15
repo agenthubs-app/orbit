@@ -32,7 +32,7 @@ export const useApiResource = path => { useFixture(); if (!state.reads.includes(
 async function request(method, path, options) { state.requests.push({ method, path, ...options }); if (state.hold) await new Promise(resolve => state.release = resolve); if (state.thrown) throw Error("transport"); if (state.failure) return { success: false, error: { message: "保存失败，请重试。" } }; const record = state.tasks.find(task => path === "/api/tasks/" + encodeURIComponent(task.id)) ?? state.task; return { success: true, status: 200, data: { task: { ...record, ...options.body.patch, status: options.body.action === "complete" ? "completed" : options.body.action === "reopen" ? "open" : record.status, updatedAt: "2026-09-11T05:30:00Z" } } }; }
 const client = { patch: (p, o) => request("PATCH", p, o), post: (p, o) => request("POST", p, o), delete: (p, o) => request("DELETE", p, o) };
 export const useOrbitApiClient = () => client;
-export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, user: { id: "test" }, cookieHeader: "" });
+export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, accountId: "test", actorId: "test", user: { id: "test" }, cookieHeader: "" });
 export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.example" });
 export const useLocalSearchParams = () => { useFixture(); return state.screen === "detail" ? { id: state.task.id } : { view: state.view }; };
 export const useRouter = () => ({ canGoBack: () => false, push(href) { state.navigation.push(href); }, replace(href) { state.navigation.push(href); }, back() { state.navigation.push("back"); } });

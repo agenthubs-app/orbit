@@ -37,7 +37,7 @@ export function TasksScreen() {
   const requested = parseTaskListSelection(params);
   const router = useRouter();
   const auth = useOrbitAuthSession(), server = useOrbitApiBaseUrl();
-  const actorId = auth.user?.id ?? "";
+  const actorId = auth.actorId ?? "";
   const ready = auth.ready && auth.signedIn && server.ready && !!actorId;
   const scopeKey = JSON.stringify([actorId, server.baseUrl, ready]);
   const client = useOrbitApiClient({ scopeKey });

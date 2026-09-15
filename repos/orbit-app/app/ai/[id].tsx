@@ -19,7 +19,8 @@ export default function AiConversationRoute() {
   const focused = useIsFocused();
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
-  const enabled = focused && auth.ready && auth.signedIn && server.ready && Boolean(auth.user?.id);
+  const actorId = auth.actorId;
+  const enabled = focused && auth.ready && auth.signedIn && server.ready && Boolean(actorId);
   const intentKey = JSON.stringify([params.id, params.source, params.initialMessage, params.sendIntent, params.prefillIntent, params.entryPointId, params.initialGroupId, params.sourceNoteId, params.sourceNoteVersion]);
   // The navigation intent outlives an auth/focus remount. It must not replay an
   // inherited automatic write in a different identity scope.
@@ -39,7 +40,7 @@ export default function AiConversationRoute() {
       : null,
   });
   const sessionOrigin = intent.registeredOrigin ?? (parsedOrigin.success ? parsedOrigin.data : undefined);
-  const identity = JSON.stringify([auth.user?.id, server.baseUrl]);
+  const identity = JSON.stringify([actorId, server.baseUrl]);
   const [prefillSnapshot, setPrefillSnapshot] = useState<{
     identity: string;
     intentId: string;
@@ -47,7 +48,7 @@ export default function AiConversationRoute() {
   } | null>(null);
   const prefillClaim = useRef(prefillSnapshot);
   useEffect(() => {
-    if (!auth.ready || !auth.signedIn || !server.ready || !auth.user?.id || !prefillIntent) {
+    if (!auth.ready || !auth.signedIn || !server.ready || !actorId || !prefillIntent) {
       return;
     }
     const claimed = prefillClaim.current?.identity === identity
@@ -58,35 +59,35 @@ export default function AiConversationRoute() {
         intentId: prefillIntent,
         value: consumeAiTemplatePrefill({
           id: prefillIntent,
-          actorId: auth.user.id,
+          actorId,
           baseUrl: server.baseUrl,
         }),
       };
     prefillClaim.current = claimed;
     setPrefillSnapshot(claimed);
-  }, [auth.ready, auth.signedIn, auth.user?.id, identity, prefillIntent, server.baseUrl, server.ready]);
+  }, [actorId, auth.ready, auth.signedIn, identity, prefillIntent, server.baseUrl, server.ready]);
   const prefillResolved = !prefillIntent
     || (prefillSnapshot?.identity === identity && prefillSnapshot.intentId === prefillIntent);
   const prefill = prefillResolved ? prefillSnapshot?.value ?? null : null;
   if (enabled && intent.owner === null) intent.owner = identity;
   const allowInitialPrompt = intent.owner === identity;
   useEffect(() => {
-    if (enabled && !allowInitialPrompt && sendIntent && auth.user?.id) {
-      consumeAiSendIntent({ id: sendIntent, actorId: auth.user.id, baseUrl: server.baseUrl, message: initialMessage });
+    if (enabled && !allowInitialPrompt && sendIntent && actorId) {
+      consumeAiSendIntent({ id: sendIntent, actorId, baseUrl: server.baseUrl, message: initialMessage });
     }
-  }, [enabled, allowInitialPrompt, sendIntent, auth.user?.id, server.baseUrl, initialMessage]);
+  }, [actorId, enabled, allowInitialPrompt, sendIntent, server.baseUrl, initialMessage]);
   // Preserve local work across focus/cookie remounts, never across accounts or servers.
-  const journal = useMemo<AiConversationJournal>(() => ({}), [intentKey, auth.user?.id, server.baseUrl]);
+  const journal = useMemo<AiConversationJournal>(() => ({}), [intentKey, actorId, server.baseUrl]);
   const claimInitialPrompt = useCallback(() => {
-    if (!allowInitialPrompt || intent.submitted || params.initialMessageConsumed === "1" || !sendIntent || !auth.user?.id) return false;
-    if (!consumeAiSendIntent({ id: sendIntent, actorId: auth.user.id, baseUrl: server.baseUrl, message: initialMessage })) return false;
+    if (!allowInitialPrompt || intent.submitted || params.initialMessageConsumed === "1" || !sendIntent || !actorId) return false;
+    if (!consumeAiSendIntent({ id: sendIntent, actorId, baseUrl: server.baseUrl, message: initialMessage })) return false;
     intent.submitted = true;
     router.setParams({ initialMessageConsumed: "1" });
     return true;
-  }, [allowInitialPrompt, intent, params.initialMessageConsumed, sendIntent, initialMessage, auth.user?.id, server.baseUrl, router]);
+  }, [actorId, allowInitialPrompt, intent, params.initialMessageConsumed, sendIntent, initialMessage, server.baseUrl, router]);
   const sequence = useRef(0);
   const routeEnabled = enabled && prefillResolved;
-  const scope = useMemo(() => ({ key: String(++sequence.current), enabled: routeEnabled }), [routeEnabled, auth.signedIn, auth.user?.id, auth.cookieHeader, server.baseUrl, intentKey]);
+  const scope = useMemo(() => ({ key: String(++sequence.current), enabled: routeEnabled }), [routeEnabled, auth.signedIn, actorId, auth.cookieHeader, server.baseUrl, intentKey]);
   const latest = useRef(scope);
   latest.current = scope;
   const isScopeCurrent = useCallback(() => latest.current === scope && scope.enabled, [scope]);
