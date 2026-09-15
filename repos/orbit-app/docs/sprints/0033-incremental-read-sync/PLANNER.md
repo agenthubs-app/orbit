@@ -1,0 +1,107 @@
+# Sprint 0033 Incremental Read Sync Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Replace repeated full GETs for four personal domains with stable cursor-based server deltas and a local-mirror-first App read path.
+
+**Architecture:** Assign every canonical record change a database-monotonic `sync_revision`, project actor-owned records through one HMAC-cursor `/api/sync` endpoint, apply pages transactionally to the Sprint 0032 mirror, and expose domain selectors/hooks with explicit freshness. Existing mutation endpoints stay online-only.
+
+**Tech Stack:** Next.js route handlers, PostgreSQL `orbit_records`, TypeScript/Zod shared contract, Expo SQLite, React hooks, Node test runner, production Web runtime, iOS Simulator.
+
+**Spec:** `repos/orbit-app/docs/sprints/0033-incremental-read-sync/DESIGN.md`
+
+## Global Constraints
+
+- **原需求：** 不对每一次数据都上传和下载；App 可本地读取但云端保持权威。
+- **基线与依赖：** 0032 completed 且已合并 `chat-agent`；run-01 记录实际 merge SHA。0031 性能结果作为请求次数/首屏延迟回归基线，不修改其原始证据。
+- 只迁移 notes、tasks、confirmed relationship followups、personal schedule 的读取；contacts/inbox/events/meetings/chat 与所有写入不在本 Sprint 行为切换范围。
+- actor/workspace 只来自服务器认证；cursor 绑定 scope、有硬上限、不可被客户端用来扩大集合。
+- 增量响应必须经领域 allowlist mapper，不能直接下发任意 JSONB payload。
+- Web/API 或共享 contract 修改后必须 production build、停止旧进程、启动新产物，再让 Simulator 验收。
+- 单 Generator、TDD、编辑既有符号前 impact、提交前 detect_changes；最终 commit→merge `chat-agent`→合并树验证。
+
+---
+
+### Task 1: Implement the stable server cursor and route
+
+**Files:**
+- Create: `repos/orbits/features/sync/cursor.ts`
+- Create: `repos/orbits/features/sync/migrations.ts`
+- Create: `repos/orbits/features/sync/read-service.ts`
+- Create: `repos/orbits/app/api/sync/handler.ts`
+- Create: `repos/orbits/app/api/sync/route.ts`
+- Modify: `repos/orbits/shared/contract/sync.ts`
+- Create: `repos/orbits/tests/services/incremental-sync.test.ts`
+- Create: `repos/orbits/tests/services/sync-migrations.test.ts`
+- Create: `repos/orbits/tests/api/sync-route.test.ts`
+
+- [ ] Write RED tests for monotonic migration/backfill, bootstrap, multi-page high-watermark stability, concurrent insert, update after page one, deletion tombstone, limit 1/200 bounds, malformed/foreign actor cursor, missing secret and secret-field exclusion.
+- [ ] Add database-generated `sync_revision` for every `orbit_records` insert/update/delete; implement an HMAC cursor and actor-scoped query ordered only by that unique revision. A row moved above the current high-watermark must arrive in the immediately following delta.
+- [ ] Return reset-required for expired/invalid server cursor without leaking scope internals; no cursor may accept actorId/workspaceId from query input.
+- [ ] Run `node --test --import tsx tests/services/incremental-sync.test.ts tests/api/sync-route.test.ts` and Web typecheck.
+
+### Task 2: Build the App sync coordinator and freshness policy
+
+**Files:**
+- Create: `repos/orbit-app/src/data/sync/sync-client.ts`
+- Create: `repos/orbit-app/src/data/sync/sync-coordinator.ts`
+- Create: `repos/orbit-app/src/data/sync/sync-freshness.ts`
+- Create: `repos/orbit-app/src/hooks/useSyncedCollection.ts`
+- Create: `repos/orbit-app/tests/incremental-sync-coordinator.test.ts`
+- Create: `repos/orbit-app/tests/sync-freshness.test.ts`
+
+- [ ] Write RED tests for cold bootstrap, resume from cursor, single-flight, explicit refresh, 5-minute TTL, foreground after 60 seconds, partial-page failure, reset-required, cancellation, account switch and stale-response suppression.
+- [ ] Implement sequential bounded page pulls and atomic page/cursor commits; never mark bootstrap complete until final page.
+- [ ] Expose mirror state immediately and sync state separately; network failure with mirror returns stale data, while empty mirror returns failure.
+- [ ] Run the two new App test files plus `contract-sync.test.ts`.
+
+### Task 3: Switch four read consumers without changing writes
+
+**Files:**
+- Modify: `repos/orbit-app/src/screens/notes/NotesScreen.tsx`
+- Modify: `repos/orbit-app/src/screens/notes/NoteDetailScreen.tsx`
+- Modify: `repos/orbit-app/src/screens/tasks/TasksScreen.tsx`
+- Modify: `repos/orbit-app/src/screens/tasks/TaskDetailScreen.tsx`
+- Modify: `repos/orbit-app/src/screens/followups/SavedFollowupsList.tsx`
+- Modify: `repos/orbit-app/src/screens/schedule/PersonalScheduleList.tsx`
+- Modify: `repos/orbit-app/src/screens/schedule/PersonalScheduleScreen.tsx`
+- Modify only for domain snapshot retirement: `repos/orbit-app/src/data/snapshot-store.ts`
+- Modify direct tests: `repos/orbit-app/tests/notes-list-interactions.test.tsx`, `repos/orbit-app/tests/task-list-scope.test.ts`, `repos/orbit-app/tests/followups-screen-source.test.ts`, `repos/orbit-app/tests/schedule-screen-source.test.ts`, `repos/orbit-app/tests/snapshot-store.test.ts`
+
+- [ ] For each domain, first change its interaction/source test to require mirror-first state, visible last-sync/failure semantics and no duplicate GET inside TTL; preserve a focused RED before editing the screen.
+- [ ] Replace only read resource wiring. Keep existing POST/PATCH/DELETE handlers online and require their current receipts; after successful writes, trigger an immediate delta refresh.
+- [ ] After a completed bootstrap, clear only that domain's legacy snapshot keys. Do not delete `api_snapshots` or alter unrelated consumers.
+- [ ] Run every listed direct test and App typecheck.
+
+### Task 4: Cross-client runtime acceptance and delivery
+
+**Files:**
+- Create after execution: `repos/orbit-app/docs/sprints/0033-incremental-read-sync/REPORT.md`
+- Modify: `repos/orbit-app/docs/sprints/README.md`
+- Modify: `bridge/status.md`, `bridge/handoffs.md`
+- Create: `bridge/requests/BR-0033-incremental-read-sync.md`
+
+- [ ] Production-build/restart Web/API, record commit/address/health/database/account hash, then install the current App build connected to that exact base URL.
+- [ ] For each of four domains create/update/delete one authorized disposable record in Web, foreground/refresh App, and prove the exact revision/tombstone arrives without full collection refetch.
+- [ ] Disable network and prove cached content remains with stale status; restore network and prove cursor recovery. Test invalid cursor recovery without losing device-only drafts.
+- [ ] Run affected Web/App tests and typechecks once, `git diff --check`, `gitnexus_detect_changes(scope="staged")` and path-limited commits; report fixed SHA and merge-tree verification.
+
+## 验收契约（最多五项）
+
+| SC | 可观察行为 | 必需证据 |
+| --- | --- | --- |
+| SC-0033-01 | bootstrap/delta 在并发分页、同时间戳和删除下不漏不重 | server service/route RED→GREEN |
+| SC-0033-02 | actor/cursor/字段严格隔离，越权或秘密字段不能出现在响应 | negative route tests |
+| SC-0033-03 | 四域页面镜像优先，TTL 内无重复 GET，刷新/恢复会增量同步 | coordinator/freshness/screen tests |
+| SC-0033-04 | 网络失败保留本地内容并显示同步状态；空镜像与无效 cursor 有真实恢复 | failure injection + Simulator |
+| SC-0033-05 | 同账号 Web 的四域增删改以相同 revision/tombstone到达 App | production Web/API + Simulator 双端证据 |
+
+## 最小测试与检查
+
+- 档位 H/I：共享 API、认证读取、缓存替换及跨端状态发生变化。
+- 开发定向集按 Task；收口运行列明的 server route/service、App coordinator/screen/snapshot 直接消费者与两端 typecheck。
+- Web production build/restart 与同账号运行证据为必需；不调用外部 Calendar/Gmail/provider，不跑无关视觉矩阵。
+
+## 失败与交接
+
+任一分页漏数、actor 越界、删除复活或空镜像伪装成功均为硬失败。失败时保留现有在线写入和可回退的旧读取路径，不继续 0034。交接列 RED→GREEN、请求计数、revision/tombstone、服务版本、最终 SHA 与 `chat-agent` merge SHA。

@@ -108,6 +108,26 @@ _Avoid_: hybrid store, browser localStorage, mock fixtures
 A network-hosted database service that uses the same live provider boundary as Orbit production data storage.
 _Avoid_: local live database, hybrid store, provider sync
 
+**Cloud Canonical Record**:
+The server-owned version of a user record that resolves cross-device truth, permissions, conflicts, and Orbit AI visibility.
+_Avoid_: treating an App cache, pending local edit, provider object, or AI context as authoritative
+
+**Local Durable Mirror**:
+An encrypted, actor-scoped SQLite projection of Cloud Canonical Records used for fast reads and explicitly supported offline work. It can be rebuilt from the cloud and never becomes a second authority.
+_Avoid_: hybrid store, local authority, path-response cache
+
+**Pending Local Change**:
+An actor-scoped mutation durably queued on one device but not yet acknowledged as a Cloud Canonical Record. Until acknowledged, it must remain visibly pending and unavailable to server-side Orbit AI.
+_Avoid_: synced record, silent optimistic success
+
+**AI Data Freshness**:
+The revision and synchronization time attached to actor-scoped data returned to Orbit AI, indicating which Cloud Canonical Records were actually available to the model.
+_Avoid_: implying that device-only or pending local data was read by AI
+
+**Device-only Draft**:
+Transient user input or derived device state that is intentionally excluded from cloud synchronization and Orbit AI until the user performs the owning save action.
+_Avoid_: confirmed note, confirmed task, canonical record
+
 **Live Record**:
 A persistent Orbit data item stored through the live provider boundary, with shared metadata for ownership, provenance, and cross-feature lookup.
 _Avoid_: fixture row, localStorage item, provider-specific document

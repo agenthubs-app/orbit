@@ -79,8 +79,15 @@ build/harness-logs/
 | [0029](0029-data-authority-ai-read-surface/GOAL.md) | 统一数据权威源并让 AI 按认证 actor 查询笔记、待办、跟进和日程 | 用户要求全面数据审查并补齐 AI 盲区，交由 B 线实现 | 固定 B SHA `f5bded060` 已由 `6f5f141ed` 合并；本地源码/回归完成，真实 migration apply、Calendar provider 与同 actor 四域回读仍开放，见 [REPORT](0029-data-authority-ai-read-surface/REPORT.md) | blocked |
 | [0030](0030-inbox-ink-signal-unified-feed/GOAL.md) | 按 3a 设计把活动、待办、人脉和 IORBIT 通知组成真实统一收件箱 | 用户提供 `软件UI设计现代化 (5).zip` 并指定 E 线实现 | E 线固定 SHA `a252220a8`；同账号 live task/read/refresh 已验收，缺失 live 类别见 [REPORT](0030-inbox-ink-signal-unified-feed/REPORT.md) | completed |
 | [0031](0031-cross-platform-performance/GOAL.md) | 以同环境真实性能基线优化 App 与 Web 的最慢关键路径，不改变功能与数据边界 | 用户批准基线驱动方案并指定 B 线执行 | Planner revision 1；基线 `1ed6e091b`；分支 `codex/b-line-sprint-0031`，run-01 进行中 | running |
+| [0032](0032-hybrid-sync-foundation/GOAL.md) | 建立云端权威、加密且按账号隔离的 App 本地实体镜像 | 用户批准“云端权威＋本地持久镜像＋增量同步”方案 | 依赖 0031 合并并释放共享缓存／性能文件；planned，run_count=0 | planned |
+| [0033](0033-incremental-read-sync/GOAL.md) | 首次分页同步，之后只拉取笔记、待办、跟进和个人日程的变化与删除 | 同上；减少重复上传下载的读取阶段 | 依赖 0032 completed/merged；planned，run_count=0 | planned |
+| [0034](0034-offline-personal-mutations/GOAL.md) | 四类个人数据可离线确认保存、幂等上传并由用户解决冲突 | 同上；AI 只读取已同步云端版本 | 依赖 0033 completed/merged；planned，run_count=0 | planned |
+| [0035](0035-sync-invalidation-recovery/GOAL.md) | 用私有实时提示加速刷新，并以启动／前台／cursor 修复所有漏消息 | 同上；面向 Vercel＋Supabase 运行形态 | 依赖 0034 completed/merged；Supabase migration apply 保留对象门槛；planned，run_count=0 | planned |
+| [0036](0036-ai-sync-visibility-acceptance/GOAL.md) | 让 AI 报告四域云端数据新鲜度，完成跨端验收并更新私有 Data Atlas | 数据审查、AI 盲区与同步方案最终收口 | 依赖 0035 completed/merged、同账号 runtime 与已授权 AI provider；planned，run_count=0 | planned |
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
+
+0032～0036 是 2026-09-15 用户批准的本地持久化／云端同步多步方案，固定串行关系为 `0031 → 0032 → 0033 → 0034 → 0035 → 0036`。每一步只在前一步固定 SHA 已提交、合并到 `chat-agent` 并通过合并树验证后启动；不同时修改共享 sync contract、App 本地数据库或 Web sync route。0032～0035 分别只负责基础、读同步、写同步和失效恢复，0036 才执行全量跨端／AI／Data Atlas 收口，因此不能用后一步的测试替代前一步的必需证据。
 
 这是当前已知范围的首批拆分，不是对未知接口的实现承诺。缺协议的 Planner 必须在启动前补入实际契约并审阅；原生补丁、公开活动集合等调查若发现本表未覆盖的必要实现，由 Planner 明确补计划／新编号，不留到最终验收时假定已完成，也不借新编号自动重跑失败 Generator。
 
