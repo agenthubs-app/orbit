@@ -65,4 +65,22 @@ HTTP 层继续使用项目统一 envelope：成功体是 `{ success: true, data:
 
 ## 完成定义
 
+### Task 4 验收辅助工具范围补充（2026-09-16，管理线批准）
+
+新增 `repos/orbits/scripts/verify-incremental-sync-runtime.mjs` 与直接测试
+`repos/orbits/tests/services/incremental-sync-runtime-harness.test.mjs`。
+工具只负责环境安全预检、按固定清单运行已有 Web migration/actor CRUD/cursor
+测试及指定 App checkout 的 coordinator/freshness 测试、脱敏汇总；不得修改 Note、
+consumer 或其他业务符号，不复制业务实现，不启动 provider 或迁移未知数据库。
+仅允许显式指定的 loopback 专用测试库；先只读确认服务器地址、数据库身份和测试标记，
+无法证明目标安全时不运行任何写测试。子进程使用最小环境，禁止继承业务凭据或加载
+`.env` 文件。输出仅含固定键下的哈希、布尔和计数；禁止输出 URL、cookie、密钥、
+cursor、原始记录和未经筛选的异常/测试日志。若需临时凭据或 cookie 文件，必须
+mode 0600 并在 finally 清理；优先仅在内存中传递，不落盘。
+
+这些自动化检查是 Task 4 的准备证据，不能替代集成 SHA 的 production build/restart、
+真实四域 Web→Simulator revision/tombstone、离线可见 stale 与恢复、请求次数证据。
+缺测试、失败、跳过或清理失败均不得报告通过。最终 REPORT 和运行服务操作等待管理线
+提供集成 SHA 与环境所有权。
+
 四域读取页面由规范化镜像提供首屏；Web→App 四域同账号修改通过 delta 到达；每个服务端响应有稳定分页、actor 隔离和 bounded payload；网络失败/无效 cursor/删除均有真实 UI 和恢复证据。
