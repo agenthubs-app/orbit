@@ -520,6 +520,7 @@ export const zh = {
   "contacts.needPendingScore": "待补充",
   "contacts.needScoreValue": "{score}分",
   "contacts.needRankingExplanation": "按与你当前需求的匹配程度排序。",
+  "contacts.needNoContacts": "还没有联系人可用于需求匹配。",
   "contacts.needInsufficient": "资料不足",
   "contacts.needScoreFootnote": "分数只根据联系人现有资料与当前需求中的地区、行业、能力和关键词匹配计算。",
   "contacts.needMatchesTitle": "需求匹配",

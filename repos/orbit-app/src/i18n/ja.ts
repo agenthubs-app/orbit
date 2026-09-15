@@ -520,6 +520,7 @@ export const ja = {
   "contacts.needPendingScore": "要補足",
   "contacts.needScoreValue": "{score}点",
   "contacts.needRankingExplanation": "現在のニーズとの適合度順に表示します。",
+  "contacts.needNoContacts": "マッチングできる連絡先がまだありません。",
   "contacts.needInsufficient": "情報が不足しています",
   "contacts.needScoreFootnote": "スコアは、保存済みの連絡先情報と現在のニーズに含まれる地域、業界、能力、キーワードの一致だけで計算されます。",
   "contacts.needMatchesTitle": "ニーズとの一致",

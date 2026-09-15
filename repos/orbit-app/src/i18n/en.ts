@@ -520,6 +520,7 @@ export const en = {
   "contacts.needPendingScore": "Add details",
   "contacts.needScoreValue": "{score} pts",
   "contacts.needRankingExplanation": "Sorted by how well each contact matches your current need.",
+  "contacts.needNoContacts": "There are no contacts to match yet.",
   "contacts.needInsufficient": "Needs more information",
   "contacts.needScoreFootnote": "Scores use only matches between saved contact information and the locations, industries, capabilities, and keywords in your current need.",
   "contacts.needMatchesTitle": "Need matches",

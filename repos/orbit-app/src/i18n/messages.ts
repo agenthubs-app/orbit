@@ -523,6 +523,7 @@ export const messageKeys = [
   "contacts.needPendingScore",
   "contacts.needScoreValue",
   "contacts.needRankingExplanation",
+  "contacts.needNoContacts",
   "contacts.needInsufficient",
   "contacts.needScoreFootnote",
   "contacts.needMatchesTitle",

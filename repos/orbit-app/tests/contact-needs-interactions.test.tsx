@@ -201,6 +201,56 @@ test("matches page labels the score as need relevance and groups insufficient da
   assert.match(text, /查看匹配依据/);
 });
 
+test("a ready response with no contacts has its own three-language empty state without hiding zero scores or incomplete contacts", () => {
+  const emptyReadyView: ContactNeedsView = {
+    ...matchesView,
+    insufficient: [],
+    scored: [],
+  };
+  const render = (language: OrbitLanguage) => renderedText(inLanguage(language,
+    <ContactNeedsMatchesContent
+      error={null}
+      onEdit={() => undefined}
+      onOpenContact={() => undefined}
+      onRetry={() => undefined}
+      refreshing={false}
+      view={emptyReadyView}
+    />,
+  ));
+
+  const chinese = render("zh");
+  assert.match(chinese, /还没有联系人可用于需求匹配。/u);
+  assert.doesNotMatch(chinese, /需求匹配分|资料不足|待补充/u);
+  assert.match(render("ja"), /マッチングできる連絡先がまだありません。/u);
+  assert.match(render("en"), /There are no contacts to match yet\./u);
+
+  const zeroScore = renderedText(<ContactNeedsMatchesContent
+    error={null}
+    onEdit={() => undefined}
+    onOpenContact={() => undefined}
+    onRetry={() => undefined}
+    refreshing={false}
+    view={{
+      ...matchesView,
+      insufficient: [],
+      scored: [{ ...matchesView.scored[0]!, evidence: [], matchedCriteria: [], score: 0, status: "no_match" }],
+    }}
+  />);
+  assert.match(zeroScore, /0分/u);
+  assert.doesNotMatch(zeroScore, /还没有联系人可用于需求匹配。/u);
+
+  const incompleteContact = renderedText(<ContactNeedsMatchesContent
+    error={null}
+    onEdit={() => undefined}
+    onOpenContact={() => undefined}
+    onRetry={() => undefined}
+    refreshing={false}
+    view={{ ...matchesView, scored: [] }}
+  />);
+  assert.match(incompleteContact, /资料不足|待补充/u);
+  assert.doesNotMatch(incompleteContact, /还没有联系人可用于需求匹配。/u);
+});
+
 test("need entry and known scoring criteria render in Japanese and English without Chinese fallback copy", () => {
   const japaneseHome = renderedText(inLanguage("ja", <ContactNeedsHomeCard goal="" loading={false} onEdit={() => undefined} onOpenMatches={() => undefined} />));
   assert.match(japaneseHome, /まだ人脈ニーズを入力していません。/u);

@@ -127,6 +127,8 @@ export function ContactNeedsMatchesContent({ error, onEdit, onOpenContact, onRet
     </View>;
   };
 
+  const hasNoContacts = view.scored.length === 0 && view.insufficient.length === 0;
+
   return (
     <>
       <View style={[styles.goalCard, { backgroundColor: colors.surface2 }]}>
@@ -136,6 +138,11 @@ export function ContactNeedsMatchesContent({ error, onEdit, onOpenContact, onRet
       <Text style={[styles.explanation, { color: colors.text3 }]}>{locale.t("contacts.needRankingExplanation")}</Text>
       {error ? <ErrorState message={error} title={locale.t("contacts.needLoadFailed")} /> : null}
       {refreshing ? <Text style={[styles.caption, { color: colors.text3 }]}>{locale.t("common.loading")}</Text> : null}
+      {hasNoContacts ? (
+        <View style={styles.empty}>
+          <Text style={[styles.emptyText, { color: colors.text2 }]}>{locale.t("contacts.needNoContacts")}</Text>
+        </View>
+      ) : null}
       <View>{view.scored.map(row)}</View>
       {view.insufficient.length > 0 ? (
         <><Text accessibilityRole="header" style={[styles.sectionLabel, { backgroundColor: colors.surface2, color: colors.text3 }]}>{locale.t("contacts.needInsufficient")}</Text><View>{view.insufficient.map(row)}</View></>
