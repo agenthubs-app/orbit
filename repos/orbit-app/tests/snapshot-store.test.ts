@@ -6,6 +6,7 @@ import * as webSnapshots from "../src/data/snapshot-store.web";
 import {
   clearSnapshots,
   readSnapshot,
+  retireSnapshot,
   snapshotKey,
   writeSnapshot
 } from "../src/data/snapshot-store";
@@ -31,6 +32,15 @@ test("SQLite 不可用时读取快照返回空而不是抛错", async () => {
 test("Web 端明确跳过原生 SQLite 快照层", async () => {
   assert.equal(await webSnapshots.readSnapshot("https://example.test", "actor", "/api/notes"), null);
   await assert.doesNotReject(webSnapshots.clearSnapshots());
+  await assert.doesNotReject(webSnapshots.retireSnapshot("https://example.test", "actor", "/api/notes?association=all&limit=20"));
+});
+
+test("域迁移只提供精确键退休，不扩大到共享集合或其他快照", async () => {
+  await assert.doesNotReject(retireSnapshot("https://example.test", "actor", "/api/notes?association=all&limit=20"));
+  const source = readFileSync(join(repoRoot, "src", "data", "snapshot-store.ts"), "utf8");
+  const retirement = source.slice(source.indexOf("export async function retireSnapshot"), source.indexOf("// Explicit cache invalidation"));
+  assert.match(retirement, /WHERE path = \?/u);
+  assert.doesNotMatch(retirement, /LIKE|substr|\/api\/tasks|\/api\/schedule-items|activities|reminders/u);
 });
 
 test("SQLite 不可用时写入快照静默降级", async () => {

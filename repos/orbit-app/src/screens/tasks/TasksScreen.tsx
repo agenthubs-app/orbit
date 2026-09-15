@@ -7,7 +7,7 @@ import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 
-import { taskPath, tasksPath } from "../../api/endpoints";
+import { taskPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
@@ -16,6 +16,7 @@ import { layout } from "../../design/tokens";
 import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useSyncedCollection } from "../../hooks/useSyncedCollection";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { tasksToListView, type TaskListRowView } from "../../view-models/today-tasks";
 import { contactsToSummaries } from "../../view-models/contacts";
@@ -49,10 +50,10 @@ export function TasksScreen() {
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [displayScope, setDisplayScope] = useState(scope);
   if (displayScope !== scope) { setDisplayScope(scope); setUpdatingId(null); setMutationError(null); }
-  const state = useApiResource<unknown>(tasksPath(), () => false, { scopeKey, cachePolicy: "network-only" });
+  const state = useSyncedCollection({ kind: "task" });
   const contactsState = useApiResource<unknown>("/api/contacts", () => false, { scopeKey, cachePolicy: "network-only" });
-  const loaded = ready && (state.kind === "success" || state.kind === "empty");
-  const canonical = loaded ? readTaskListItems(state.data, actorId) : null;
+  const loaded = ready && state.status !== "local-ready";
+  const canonical = ready ? readTaskListItems({ tasks: state.records.map((record) => record.payload) }, actorId) : null;
   const contacts = new Map(contactsToSummaries(ready && (contactsState.kind === "success" || contactsState.kind === "empty") ? contactsState.data : {}).map(contact => [contact.id, contact]));
   const now = new Date();
   const open = canonical ? tasksToListView({ tasks: selectTaskListItems(canonical, { ...selection, view: "open" }) }, "open", now, timeZone, locale.language).items : null;
@@ -91,7 +92,17 @@ export function TasksScreen() {
       if (!scope.active || currentScope.current !== scope) return;
       if (!result.success) setMutationError(result.error.message);
       else if (result.status < 200 || result.status >= 300 || !taskListReceiptMatches(result.data, actorId, baseline, action)) setMutationError(locale.t("tasks.operationUnconfirmed"));
-      else { scope.keys.delete(intent); state.refresh(); }
+      else {
+        const mirror = await state.invalidate();
+        const mirrored = mirror?.status === "fresh"
+          ? readTaskListItems({ tasks: mirror.records.map((record) => record.payload) }, actorId)?.find((task) => task.id === item.id)
+          : null;
+        if (!mirrored || mirrored.status !== (action === "complete" ? "completed" : "open")) {
+          setMutationError(locale.t("sync.mutationPending"));
+        } else {
+          scope.keys.delete(intent);
+        }
+      }
     } catch {
       if (scope.active && currentScope.current === scope) setMutationError(locale.t("tasks.operationFailed"));
     } finally {
@@ -106,8 +117,8 @@ export function TasksScreen() {
       backLabel={locale.t("nav.home")}
       refreshControl={
         <RefreshControl
-          onRefresh={() => { state.refresh(); contactsState.refresh(); }}
-          refreshing={state.refreshing}
+          onRefresh={() => { void state.refresh(); contactsState.refresh(); }}
+          refreshing={state.status === "syncing"}
           tintColor={colors.accent}
         />
       }
@@ -120,13 +131,14 @@ export function TasksScreen() {
         {([ ["all", locale.t("tasks.scopeAll")], ["relationship", locale.t("tasks.scopeRelationship")] ] as const).map(([value, label]) => <Pressable key={value} accessibilityRole="tab" accessibilityLabel={label} aria-selected={selection.scope === value} accessibilityState={{ selected: selection.scope === value }} onPress={() => setSelection(previous => ({ ...previous, scope: value }))} style={[styles.tab, selection.scope === value && styles.tabSelected]}><Text style={[styles.tabText, selection.scope === value && styles.tabTextSelected]}>{label}</Text></Pressable>)}
       </View>
       <TaskModeSwitcher mode={mode} onChange={view => setSelection(previous => ({ ...previous, view }))} openCount={open?.length} completedCount={completed?.length} />
-      {state.kind === "loading" ? <LoadingState /> : null}
-      {state.kind === "failure" || state.kind === "offline" ? (
-        <ErrorState message={state.error.message} title={locale.t("tasks.unavailable")} />
+      <Text accessibilityLiveRegion="polite" style={styles.syncStatus}>{locale.t(`sync.${state.status === "local-ready" ? "localReady" : state.status}` as import("../../i18n/messages").MessageKey)}{state.lastSyncedAt ? ` · ${locale.t("sync.lastSynced", { time: new Date(state.lastSyncedAt).toLocaleString() })}` : ""}</Text>
+      {state.status === "local-ready" && state.records.length === 0 ? <LoadingState /> : null}
+      {state.status === "failure" ? (
+        <ErrorState message={state.error ?? locale.t("sync.failure")} title={locale.t("tasks.unavailable")} />
       ) : null}
       {loaded && !canonical ? <ErrorState title={locale.t("tasks.dataUnavailable")} message={locale.t("tasks.dataUnavailableBody")} /> : null}
       {ready && (contactsState.kind === "failure" || contactsState.kind === "offline") ? <ErrorState title={locale.t("tasks.contactsUnavailable")} message={locale.t("tasks.contactsUnavailableBody")} /> : null}
-      {canonical && (mode === "open" ? open?.length === 0 : completed?.length === 0) ? (
+      {state.status !== "failure" && canonical && (mode === "open" ? open?.length === 0 : completed?.length === 0) ? (
         <EmptyState
           message={locale.t(mode === "open" ? "tasks.emptyOpenBody" : "tasks.emptyCompletedBody")}
           title={locale.t(mode === "open" ? "tasks.emptyOpenTitle" : "tasks.emptyCompletedTitle")}
@@ -183,7 +195,7 @@ export function TasksScreen() {
       </View>
       {mutationError ? <Text accessibilityRole="alert" style={styles.errorText}>{mutationError}</Text> : null}
       {selection.scope === "all" && mode === "open" ? <PersonalScheduleList /> : null}
-      {selection.scope === "relationship" && canonical ? <RelationshipTaskTools key={scopeKey} tasks={canonical} contacts={[...contacts.values()]} tasksPayload={state.kind === "success" || state.kind === "empty" ? state.data : {}} /> : null}
+      {selection.scope === "relationship" && canonical ? <RelationshipTaskTools key={scopeKey} tasks={canonical} contacts={[...contacts.values()]} tasksPayload={{ tasks: canonical }} /> : null}
     </AppScreen>
   );
 }
@@ -250,6 +262,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   completedTitle: { color: colors.text3, textDecorationLine: "line-through" },
   danger: { color: colors.rose },
   errorText: { color: colors.rose, fontSize: 13 },
+  syncStatus: { color: colors.text3, fontSize: 12, lineHeight: 18 },
   groupCount: { color: colors.text3, fontSize: 22, lineHeight: 28, fontWeight: "800", letterSpacing: -0.44 },
   groupHeading: { alignItems: "baseline", flexDirection: "row", gap: 10, paddingBottom: 4 },
   groupTitle: { color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: "800" },

@@ -56,7 +56,7 @@ export interface SyncOptions {
 }
 
 export interface SyncRequest<TPayload = unknown> {
-  cancel(): void;
+  cancel(options?: { abandon?: boolean }): void;
   promise: Promise<SyncedCollectionSnapshot<TPayload> | null>;
   started: Promise<boolean>;
 }
@@ -88,6 +88,7 @@ interface ActiveScope extends SyncScopeInput {
 }
 
 interface SyncFlight {
+  abandoned: boolean;
   backgroundDurationMs: number;
   promise: Promise<SyncRunResult | null>;
   reason: SyncRefreshReason;
@@ -240,18 +241,23 @@ export function createSyncCoordinator(input: {
 
   async function resetKnownWorkspace(
     scope: ActiveScope,
+    flight: SyncFlight,
     cursor: LocalSyncCursor | null,
   ): Promise<void> {
     if (!cursor) {
       throw new Error("同步游标缺失，不能执行 reset。");
     }
     await withRepository(scope, (repository) =>
-      repository.resetWorkspace(cursor.workspaceId, () => isCurrent(scope)),
+      repository.resetWorkspace(
+        cursor.workspaceId,
+        () => isCurrent(scope) && !flight.abandoned,
+      ),
     );
   }
 
   async function applyPage(
     scope: ActiveScope,
+    flight: SyncFlight,
     response: Awaited<ReturnType<SyncClient["getPage"]>>,
   ): Promise<void> {
     const applied = await withRepository(scope, (repository) =>
@@ -261,16 +267,21 @@ export function createSyncCoordinator(input: {
         cursor: response.nextCursor,
         syncedAt: new Date(now()).toISOString(),
         bootstrapState: response.hasMore ? "pending" : "complete",
-        canCommit: () => isCurrent(scope),
+        canCommit: () => isCurrent(scope) && !flight.abandoned,
       }),
     );
-    if (!applied || !isCurrent(scope)) return;
+    if (!applied || !isCurrent(scope) || flight.abandoned) return;
     const serverScope = {
       baseUrl: scope.baseUrl,
       actorId: scope.actorId,
       workspaceId: response.workspaceId,
     };
-    if (!(await input.lifecycle.setScope(serverScope)) || !isCurrent(scope)) {
+    if (
+      flight.abandoned ||
+      !(await input.lifecycle.setScope(serverScope)) ||
+      !isCurrent(scope) ||
+      flight.abandoned
+    ) {
       throw new LocalMirrorUnavailableError();
     }
     scope.workspaceId = response.workspaceId;
@@ -282,9 +293,9 @@ export function createSyncCoordinator(input: {
   ): Promise<SyncRunResult | null> {
     try {
       await scope.ready;
-      if (!isCurrent(scope)) return null;
+      if (!isCurrent(scope) || flight.abandoned) return null;
       let cursor = await readCursor(scope);
-      if (!isCurrent(scope)) return null;
+      if (!isCurrent(scope) || flight.abandoned) return null;
       const reason = scope.invalidated ? "invalidated" : flight.reason;
       if (
         !shouldSynchronize({
@@ -296,6 +307,7 @@ export function createSyncCoordinator(input: {
       ) {
         return { error: null };
       }
+      if (flight.abandoned) return null;
       if (flight.stopAfterCurrent) return { error: null };
 
       flight.resolveStarted(true);
@@ -315,10 +327,10 @@ export function createSyncCoordinator(input: {
             signal: controller.signal,
           });
         } catch (error) {
-          if (!isCurrent(scope)) return null;
+          if (!isCurrent(scope) || flight.abandoned) return null;
           if (error instanceof SyncResetRequiredError && !resetAttempted) {
-            await resetKnownWorkspace(scope, cursor);
-            if (!isCurrent(scope)) return null;
+            await resetKnownWorkspace(scope, flight, cursor);
+            if (!isCurrent(scope) || flight.abandoned) return null;
             resetAttempted = true;
             cursor = null;
             requestCursor = undefined;
@@ -330,12 +342,12 @@ export function createSyncCoordinator(input: {
             scope.abortController = null;
           }
         }
-        if (!isCurrent(scope)) return null;
+        if (!isCurrent(scope) || flight.abandoned) return null;
         if (response.hasMore && response.nextCursor === requestCursor) {
           throw new Error("同步游标没有前进。");
         }
-        await applyPage(scope, response);
-        if (!isCurrent(scope)) return null;
+        await applyPage(scope, flight, response);
+        if (!isCurrent(scope) || flight.abandoned) return null;
         cursor = {
           workspaceId: response.workspaceId,
           cursor: response.nextCursor,
@@ -350,7 +362,7 @@ export function createSyncCoordinator(input: {
       }
       throw new Error("单次同步页数超过安全上限。");
     } catch (error) {
-      if (!isCurrent(scope)) return null;
+      if (!isCurrent(scope) || flight.abandoned) return null;
       return { error: errorMessage(error) };
     } finally {
       flight.resolveStarted(false);
@@ -440,6 +452,7 @@ export function createSyncCoordinator(input: {
         if (!flight) {
           const startSignal = deferredBoolean();
           const nextFlight: SyncFlight = {
+            abandoned: false,
             backgroundDurationMs: options.backgroundDurationMs ?? 0,
             promise: Promise.resolve({ error: null }),
             reason: options.reason ?? "mount",
@@ -472,11 +485,19 @@ export function createSyncCoordinator(input: {
         flight.subscribers += 1;
         let cancelled = false;
         return {
-          cancel(): void {
+          cancel(cancelOptions = {}): void {
             if (cancelled) return;
             cancelled = true;
             flight!.subscribers -= 1;
-            if (flight!.subscribers === 0) flight!.stopAfterCurrent = true;
+            if (flight!.subscribers === 0) {
+              flight!.stopAfterCurrent = true;
+              if (cancelOptions.abandon) {
+                flight!.abandoned = true;
+                if (bound.flight === flight) bound.flight = null;
+                bound.abortController?.abort();
+                bound.abortController = null;
+              }
+            }
           },
           promise: flight.promise.then((result) =>
             result === null
