@@ -297,3 +297,30 @@ test("business card contact confirmation API rejects unauthenticated writes befo
   assert.equal(body.error.code, "UNAUTHORIZED");
   assert.equal(body.error.context.service, "authenticated-api-actor");
 });
+
+test("confirmed business-card contacts record the capture method as their source, not the confirming actor", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const service = createLiveBusinessCardContactWriteService({
+    now: () => NOW,
+    provider: createStorageBusinessCardContactWriteProvider({
+      store,
+      workspaceId: WORKSPACE_ID,
+    }),
+  });
+
+  const result = await service.confirmBusinessCardContact({
+    ...INPUT,
+    // V2 handler 传的就是裸 actor id；它绝不能出现在用户可见的来源标签里。
+    actorLabel: "user_ms1n64k3_eh7j0g",
+  });
+  assert.equal(result.success, true);
+
+  const [record] = store.listRecords({
+    collectionName: "contacts",
+    workspaceId: WORKSPACE_ID,
+  });
+  const source = record?.payload.source as { label: string; type: string };
+  assert.equal(source.type, "business_card_ocr");
+  assert.equal(source.label, "Business card scan");
+  assert.ok(!source.label.includes("user_ms1n64k3_eh7j0g"));
+});

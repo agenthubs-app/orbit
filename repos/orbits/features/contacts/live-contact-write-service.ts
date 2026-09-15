@@ -64,6 +64,7 @@ function success(
 }
 
 function isValidInput(input: ConfirmBusinessCardContactInput): boolean {
+  // actorLabel 仍是必填的审计输入（写入必须可归属），只是不再进入来源标签。
   return Boolean(
     nonEmpty(input.actorId) &&
       nonEmpty(input.actorLabel) &&
@@ -102,6 +103,9 @@ function findDuplicate(
   );
 }
 
+/** 名片扫描的固定来源标签；展示层按 source.type 本地化，不拼接任何身份信息。 */
+export const BUSINESS_CARD_SOURCE_LABEL = "Business card scan";
+
 function contactFor(input: {
   contactId: string;
   confirmedAt: string;
@@ -131,9 +135,13 @@ function contactFor(input: {
     ...(profileSnippet ? { profileSnippet } : {}),
     ...(notes ? { notes } : {}),
     stage: "captured",
+    // 来源描述的是「这个联系人是怎么进来的」，不是「谁点的确认」。此前这里写的是
+    // `Business card confirmed by ${actorLabel}`，而 V2 handler 传的 actorLabel 就是
+    // actor UUID，于是联系人详情页的来源栏直接显示出内部 ID。确认者属于审计信息，
+    // 不进用户可见的来源标签；这里固定为采集方式本身。
     source: {
       id: input.request.imageDigest.trim(),
-      label: `Business card confirmed by ${input.request.actorLabel.trim()}`,
+      label: BUSINESS_CARD_SOURCE_LABEL,
       type: "business_card_ocr",
     },
     evidenceIds,

@@ -371,7 +371,8 @@ test("app contact detail live route renders a source-backed contact without fabr
     assert.equal(contact.strength, "unscored");
     assert.equal(contact.source, "scan");
     assert.deepEqual(contact.valueTags, ["名片来源"]);
-    assert.equal(viewModel.events.length, 1);
+    // 名片扫描只是采集方式，没有活动来源就不应凭空生成活动。
+    assert.equal(viewModel.events.length, 0);
   }
 });
 
@@ -509,9 +510,10 @@ test("contact detail view model selects one display language from multilingual l
     assert.equal(zhContact.title, "门店经营者");
     assert.match(zhContact.offering, /商业机会/);
     assert.match(zhContact.seeking, /中文下一步/);
-    assert.equal(zhViewModel.events[0]?.name, "二维码交换记录：佐藤 健一");
+    // QR 扫码是采集方式，不是活动；没有 event_import 来源就不生成活动。
+    assert.equal(zhViewModel.events.length, 0);
     assert.doesNotMatch(
-      `${zhContact.note} ${zhContact.encounters[0]?.context.publicProfile.bio} ${zhContact.offering} ${zhContact.seeking} ${zhContact.title} ${zhViewModel.events[0]?.name}`,
+      `${zhContact.note} ${zhContact.encounters[0]?.context.publicProfile.bio} ${zhContact.offering} ${zhContact.seeking} ${zhContact.title}`,
       /日本語|Store Owner|English|commercial opportunity|matches|through|QR scan for/,
     );
 

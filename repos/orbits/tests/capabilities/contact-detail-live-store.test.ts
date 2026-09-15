@@ -536,3 +536,56 @@ test("live contact detail requires an actor before provider access", async () =>
     assert.equal(result.error.provenance.databaseReadExecuted, false);
   }
 });
+
+test("business-card contacts show the capture method as their source, including legacy actor-labelled rows", async () => {
+  const actorId = "actor:contact-detail-source";
+  const workspaceId = "workspace:contact-detail-source";
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+
+  await seedGeneratedRelationshipFixturesIntoLiveStore({
+    now: () => "2026-09-02T00:00:00.000Z",
+    store,
+    workspaceId,
+  });
+  for (const collectionName of ["contacts", "connections", "evidence"]) {
+    const records = await store.listRecords({ collectionName, workspaceId });
+    for (const record of records) {
+      const isTarget =
+        collectionName === "contacts" && record.payload.id === "contact_078";
+      await store.upsertRecord({
+        ...record,
+        userId: actorId,
+        payload: {
+          ...record.payload,
+          accountId: actorId,
+          // 存量数据形态：确认者被当成来源写了进去。
+          ...(isTarget
+            ? {
+                source: {
+                  id: "sha256:legacy",
+                  label: "Business card confirmed by user_ms1n64k3_eh7j0g",
+                  type: "business_card_ocr",
+                },
+              }
+            : {}),
+        },
+      });
+    }
+  }
+
+  const service = createLiveContactDetailTagStatusService({
+    now: () => "2026-09-02T00:05:00.000Z",
+    provider: createStorageContactGraphProvider({
+      sourceLabel: "Contact detail memory live storage",
+      store,
+      workspaceId,
+    }),
+  });
+
+  const detail = await service.getContactDetail({ actorId, contactId: "contact_078" });
+
+  assert.equal(detail.success, true);
+  const label = detail.data.contact?.source.label ?? "";
+  assert.equal(label, "Business card scan");
+  assert.ok(!label.includes("user_ms1n64k3_eh7j0g"));
+});

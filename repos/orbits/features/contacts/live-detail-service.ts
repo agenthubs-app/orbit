@@ -115,6 +115,12 @@ function sourceLabelFor(input: {
   source: ContactDTO["source"];
   sourceType: ContactDetailSourceType;
 }): string {
+  // Legacy rows may store the confirming actor in the label. The capture
+  // method is the stable, user-facing source for every business-card row.
+  if (input.sourceType === "business_card_ocr") {
+    return "Business card scan";
+  }
+
   return localizeContactSourceLabel({
     displayName: input.displayName,
     label: input.source.label,
@@ -293,7 +299,6 @@ function publicProfileFor(input: {
   source: ContactDetailSourceReference;
 }): ContactDetailPublicProfile {
   const profile = input.contact.publicProfile;
-  const copy = contactDetailCopy(input.language);
   const sharedTopics = labelRelationshipValues(
     input.connection?.sharedTopics ?? [],
     input.language,
@@ -307,19 +312,20 @@ function publicProfileFor(input: {
   );
 
   return {
+    // 空画像不应被说明性占位文案伪装成真实资料。
     bio:
       labelRelationshipText(profile?.bio ?? "", input.language) ||
       labelRelationshipText(input.contact.profileSnippet ?? "", input.language) ||
       labelRelationshipText(input.connection?.summary ?? "", input.language) ||
-      copy.liveProfile,
+      "",
     selfIntroduction:
       labelRelationshipText(profile?.selfIntroduction ?? "", input.language) ||
       labelRelationshipText(input.contact.profileSnippet ?? "", input.language) ||
-      copy.generatedContext,
+      "",
     industry:
       labelRelationshipText(profile?.industry ?? "", input.language) ||
       sharedTopics[0] ||
-      copy.relationshipContext,
+      "",
     offering:
       profile?.offering?.length
         ? profile.offering.map((value) =>
@@ -558,11 +564,10 @@ function detailFor(input: {
     id: input.contact.id,
     displayName: input.contact.displayName,
     contentLanguage: input.language,
-    role: input.contact.role ?? contactDetailCopy(input.language).relationshipContact,
-    organization:
-      input.contact.organization ?? contactDetailCopy(input.language).unknownOrganization,
-    location:
-      input.contact.location ?? contactDetailCopy(input.language).unknownLocation,
+    // 缺失字段保持为空，由展示层条件渲染省略，而不是显示成虚构值。
+    role: input.contact.role ?? "",
+    organization: input.contact.organization ?? "",
+    location: input.contact.location ?? "",
     primaryIndustryId: input.contact.primaryIndustryId,
     secondaryIndustryId: input.contact.secondaryIndustryId,
     secondaryIndustryLabel: input.contact.secondaryIndustryId
@@ -627,11 +632,10 @@ function detailFor(input: {
           summary: persistedLastInteraction.summary,
         }
       : baseLastInteraction,
-    nextAction:
-      labelRelationshipText(
-        input.connection?.suggestedActions[0] ?? "",
-        input.language,
-      ) || contactDetailCopy(input.language).reviewBeforeAction,
+    nextAction: labelRelationshipText(
+      input.connection?.suggestedActions[0] ?? "",
+      input.language,
+    ),
     updatedAt: input.persistedState?.updatedAt ?? input.contact.updatedAt,
     tagWriteExecuted: false,
     statusWriteExecuted: false,

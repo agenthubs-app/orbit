@@ -135,6 +135,7 @@ const relationshipPhraseLabels: Record<"en" | "zh", readonly [RegExp, string][]>
     // Standalone source labels (for the "认识来源 / 认识于" field).
     [/Confirmed offline meeting note for\s*/gi, "线下见面确认："],
     [/Warm referral for\s*/gi, "引荐认识："],
+    [/Business card scan/gi, "名片扫描"],
     [/Business card exchange for\s*/gi, "名片交换："],
     [/QR scan for\s*/gi, "QR 扫码："],
     [/QR scan at\s*/gi, "QR 扫码："],
@@ -287,6 +288,23 @@ function sameDisplayCopy(left: string, right: string): boolean {
   );
 }
 
+// 活动只能来自数据里真的有活动的来源。此前这里一路回落到 lastInteraction /
+// contact.source，于是名片扫描进来的人也被安上一场「活动」，活动名就是来源标签
+// ——列表页是按 event_import 过滤的，详情页没有，两边对不上。
+//
+// 唯一的例外是现场扫码：sourceLabelFor 会把它规范成 "QR scan at <活动名>"
+// （对人扫码则是 "QR scan for <人名>"），前者的活动名确实存在于来源数据里，
+// 保留；后者和名片扫描一样，没有活动。
+const QR_SCAN_AT_EVENT = /^QR scan at\s+(.+)$/i;
+
+function qrScanEventName(model: AppContactDetailSuccessModel): string {
+  if (model.contact.source.type !== "qr_scan") {
+    return "";
+  }
+
+  return model.contact.source.label?.match(QR_SCAN_AT_EVENT)?.[1]?.trim() ?? "";
+}
+
 function eventIdFor(model: AppContactDetailSuccessModel): string {
   const eventSource = model.connection?.sourceLinks.find(
     (source) => source.type === "event_import",
@@ -300,28 +318,28 @@ function eventIdFor(model: AppContactDetailSuccessModel): string {
     return model.contact.source.id;
   }
 
-  if (model.contact.lastInteraction.source.id.startsWith("source:")) {
-    return model.contact.lastInteraction.source.label;
-  }
-
-  return (
-    model.contact.lastInteraction.source.id ||
-    model.connection?.sourceLinks[0]?.id ||
-    model.contact.source.id
-  );
+  // 用人类可读的来源标签而不是 source:qr_scan:xxx 这类内部 token——它会进入
+  // encounter.eventId 并被展示层拼进可见文本。
+  return qrScanEventName(model) ? (model.contact.source.label ?? "") : "";
 }
 
+// 活动名只能来自活动来源本身或现场扫码标签里真实带出的活动名，
+// 不能拿最近互动或任意来源标签冒充。
 function eventNameFor(
   model: AppContactDetailSuccessModel,
   eventId: string,
 ): string {
+  if (!eventId) {
+    return "";
+  }
+
   return (
     model.connection?.sourceLinks.find((source) => source.type === "event_import")
       ?.label ??
-    model.contact.lastInteraction.source.label ??
-    model.contact.source.label ??
     model.connection?.sourceLinks.find((source) => source.id === eventId)?.label ??
-    model.connection?.sourceLinks[0]?.label ??
+    (model.contact.source.type === "event_import"
+      ? model.contact.source.label
+      : model.contact.source.label) ??
     eventId
   );
 }
