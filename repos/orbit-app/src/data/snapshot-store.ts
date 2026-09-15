@@ -1,5 +1,11 @@
 import type { ApiResult } from "../api/types";
 import { Platform } from "react-native";
+import {
+  appPerformanceInput,
+  appPerformanceScenarioForPath,
+  isAppPerformanceEnabled,
+  measureAppPerformance,
+} from "../performance/app-performance";
 
 // 每一次成功的 GET 都在本地留一份快照，下次打开这一屏时先渲染它，
 // 网络回来了再覆盖。断网时快照就是用户看到的内容——离线是常态，
@@ -104,24 +110,35 @@ export async function readSnapshot<TData>(
   }
 
   try {
-    const row = await db.getFirstAsync(
-      "SELECT payload, status, synced_at FROM api_snapshots WHERE path = ?",
-      snapshotKey(baseUrl, actorId, path)
-    );
+    const readAndParse = async (): Promise<SnapshotRecord<TData> | null> => {
+      const row = await db.getFirstAsync(
+        "SELECT payload, status, synced_at FROM api_snapshots WHERE path = ?",
+        snapshotKey(baseUrl, actorId, path)
+      );
 
-    if (!row) {
-      return null;
-    }
+      if (!row) {
+        return null;
+      }
 
-    return {
-      result: {
-        data: JSON.parse(row.payload) as TData,
-        meta: { featureMode: null, privacy: null, runtimeBoundary: null },
-        status: row.status,
-        success: true
-      },
-      syncedAt: row.synced_at
+      return {
+        result: {
+          data: JSON.parse(row.payload) as TData,
+          meta: { featureMode: null, privacy: null, runtimeBoundary: null },
+          status: row.status,
+          success: true
+        },
+        syncedAt: row.synced_at
+      };
     };
+    const scenario = isAppPerformanceEnabled()
+      ? appPerformanceScenarioForPath(path)
+      : null;
+    return scenario
+      ? await measureAppPerformance(
+          appPerformanceInput("app.snapshot", scenario),
+          readAndParse,
+        )
+      : await readAndParse();
   } catch (error) {
     // 快照坏了不该影响这次请求，下一次成功响应会把它覆盖掉。
     console.warn("Orbit 读取本地快照失败", error);
@@ -146,18 +163,30 @@ export async function writeSnapshot<TData>(
   }
 
   try {
-    await db.runAsync(
-      `INSERT INTO api_snapshots (path, payload, status, synced_at)
-       VALUES (?, ?, ?, ?)
-       ON CONFLICT(path) DO UPDATE SET
-         payload = excluded.payload,
-         status = excluded.status,
-         synced_at = excluded.synced_at`,
-      snapshotKey(baseUrl, actorId, path),
-      JSON.stringify(result.data),
-      result.status,
-      new Date().toISOString()
-    );
+    const persist = () =>
+      db.runAsync(
+        `INSERT INTO api_snapshots (path, payload, status, synced_at)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT(path) DO UPDATE SET
+           payload = excluded.payload,
+           status = excluded.status,
+           synced_at = excluded.synced_at`,
+        snapshotKey(baseUrl, actorId, path),
+        JSON.stringify(result.data),
+        result.status,
+        new Date().toISOString()
+      );
+    const scenario = isAppPerformanceEnabled()
+      ? appPerformanceScenarioForPath(path)
+      : null;
+    if (scenario) {
+      await measureAppPerformance(
+        appPerformanceInput("app.snapshot", scenario),
+        persist,
+      );
+    } else {
+      await persist();
+    }
   } catch (error) {
     console.warn("Orbit 写入本地快照失败", error);
   }

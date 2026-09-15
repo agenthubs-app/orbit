@@ -5,6 +5,13 @@ import { createOrbitApiClient, type FetchLike } from "../api/client";
 import { readSnapshot, writeSnapshot } from "../data/snapshot-store";
 import type { RouteState } from "../view-models/route-state";
 import { resultToRouteState } from "../view-models/route-state";
+import {
+  appPerformanceInput,
+  appPerformanceScenarioForPath,
+  isAppPerformanceEnabled,
+  measureAppPerformance,
+  setAppPerformanceScope,
+} from "../performance/app-performance";
 
 export type ApiResourceState<TData> = RouteState<TData> & {
   refresh: () => void;
@@ -31,6 +38,9 @@ export function useApiResource<TData>(
   const { baseUrl } = useOrbitApiBaseUrl();
   const auth = useOrbitAuthSession();
   const actorId = auth.actorId;
+  const performanceScenario = isAppPerformanceEnabled()
+    ? appPerformanceScenarioForPath(path)
+    : null;
   // Opt-in account isolation: do not coalesce this account's GET with an old
   // browser session's request when both sessions have an empty cookieHeader.
   const fetchImpl = useMemo<FetchLike>(
@@ -68,6 +78,12 @@ export function useApiResource<TData>(
   useEffect(() => {
     isEmptyRef.current = isEmpty;
   }, [isEmpty]);
+
+  useEffect(() => {
+    if (isAppPerformanceEnabled()) {
+      setAppPerformanceScope({ actorId, baseUrl });
+    }
+  }, [actorId, baseUrl]);
 
   useEffect(() => {
     let active = true;
@@ -109,7 +125,12 @@ export function useApiResource<TData>(
       }
 
       try {
-        const received = await client.get<TData>(path, controller ? { signal: controller.signal } : undefined);
+        const received = performanceScenario
+          ? await measureAppPerformance(
+              appPerformanceInput("app.resource", performanceScenario),
+              () => client.get<TData>(path, controller ? { signal: controller.signal } : undefined),
+            )
+          : await client.get<TData>(path, controller ? { signal: controller.signal } : undefined);
         const result = controller && received.success && (received.status < 200 || received.status >= 300)
           ? { ...received, success: false as const, error: { code: "ORBIT_APP_UNEXPECTED_STATUS", message: "请求暂时无法完成，请稍后重试。" } }
           : received;
@@ -159,7 +180,7 @@ export function useApiResource<TData>(
       active = false;
       controller?.abort();
     };
-  }, [actorId, auth.ready, baseUrl, cachePolicy, client, path, refreshIndex, scopeKey]);
+  }, [actorId, auth.ready, baseUrl, cachePolicy, client, path, performanceScenario, refreshIndex, scopeKey]);
 
   return {
     ...state,

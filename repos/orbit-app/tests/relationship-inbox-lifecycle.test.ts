@@ -19,7 +19,7 @@ const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () 
 const effects = { calendarEntryCreated: false, externalMessageSent: false, networkRequestMade: false, notificationDelivered: false, savedRecordCreated: false };
 const state = window.fixture = {
   actor: "actor:one", cookieHeader: "", ready: true, signedIn: true, baseReady: true, baseUrl: "https://orbit.example", mounted: true,
-  detail: false, detailUnread: 0, conversationId: "thread:one", seed: {}, requests: [], replies: [], presses: {}, navigation: [], expiries: 0, holdReads: false, notifications: undefined, focused: true, appState: "active",
+  detail: false, detailUnread: 0, conversationId: "thread:one", seed: {}, requests: [], replies: [], presses: {}, navigation: [], expiries: 0, holdReads: false, notifications: undefined, focused: true, appState: "active", measurements: [],
   ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
   emit(appState) { state.appState = appState; nativeListeners.forEach(fn => fn(appState)); },
@@ -58,6 +58,11 @@ export const Stack = () => null;
 export const randomUUID = () => "test-inbox-scope-" + (++uuid);
 export const readSnapshot = async (_baseUrl, _actorId, path) => { const cached = path === "/api/notifications" ? state.cachedNotifications : state.cachedInbox; return cached ? { result: { success: true, status: 200, data: cached, meta: { featureMode: null, privacy: null, runtimeBoundary: null } }, syncedAt: "2026-09-12T00:00:00Z" } : null; };
 export const writeSnapshot = async () => {};
+export const appPerformanceScenarioForPath = path => path === "/api/relationship-communication/conversations" ? "app.inbox" : null;
+export const appPerformanceInput = (metric, scenario) => ({ commit: "baseline-sha", environment: "app-release-simulator", metric, run: 1, scenario, unit: "milliseconds" });
+export const isAppPerformanceEnabled = () => true;
+export const measureAppPerformance = async (input, work) => { const result = await work(); state.measurements.push(input); return result; };
+export const markAppPerformance = sample => state.measurements.push(sample);
 export const Ionicons = () => <span aria-hidden="true" />;
 export const SafeAreaView = ({ edges, ...props }) => <View {...props} />;
 `;
@@ -69,7 +74,7 @@ test.before(async () => {
     define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "inbox-lifecycle-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "inbox-lifecycle" }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(AuthSessionProvider|ApiBaseUrlProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "inbox-lifecycle" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(AuthSessionProvider|ApiBaseUrlProvider|snapshot-store|app-performance)$/ }, () => ({ path: "fixture", namespace: "inbox-lifecycle" }));
       plugin.onLoad({ filter: /.*/, namespace: "inbox-lifecycle" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, RefreshControl as RealRefreshControl } from "react-native-web"; export * from "react-native-web";
 export { AppState } from "fixture";
@@ -102,6 +107,27 @@ async function preview(p: Page) {
   await p.getByRole("textbox", { name: "正文", exact: true }).fill("不能进入另一个账号的正文");
   await p.getByRole("button", { name: "预览草稿", exact: true }).click(); await settle(p);
 }
+
+test("the inbox core read emits one redacted resource timing sample", async t => {
+  const p = await open(t);
+  await p.waitForFunction(() => (window as any).fixture.measurements.length > 0);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.measurements.filter((sample: any) => sample.metric === "app.resource")), [{
+    commit: "baseline-sha",
+    environment: "app-release-simulator",
+    metric: "app.resource",
+    run: 1,
+    scenario: "app.inbox",
+    unit: "milliseconds",
+  }]);
+});
+
+test("the inbox profiler emits redacted commit durations", async t => {
+  const p = await open(t);
+  await p.waitForFunction(() => (window as any).fixture.measurements.some((sample: any) => sample.metric === "app.react_commit"));
+  const commits = await p.evaluate(() => (window as any).fixture.measurements.filter((sample: any) => sample.metric === "app.react_commit"));
+  assert.ok(commits.length > 0);
+  assert.ok(commits.every((sample: any) => sample.scenario === "app.inbox" && sample.durationMs >= 0 && sample.failed === false));
+});
 
 for (const detail of [false, true]) {
   for (const patch of [{ ready: false }, { baseReady: false }, { actor: "" }]) test(`inbox ${detail ? "thread" : "list"} waits for full identity ${JSON.stringify(patch)}`, async t => {
