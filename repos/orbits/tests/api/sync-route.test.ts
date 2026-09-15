@@ -126,3 +126,25 @@ test("unexpected service failures are sanitized by the shared failure envelope",
   assert.equal(body.error.code, "SERVICE_UNAVAILABLE");
   assert.equal(JSON.stringify(body).includes("password"), false);
 });
+
+test("authentication and service construction failures use the sanitized shared 503 envelope", async () => {
+  const failures = [
+    createSyncRouteHandlers({
+      resolveActor: async () => { throw new Error("auth token details"); },
+    }),
+    createSyncRouteHandlers({
+      resolveActor: async () => actor,
+      createService: () => { throw new Error("database password details"); },
+    }),
+  ];
+
+  for (const handlers of failures) {
+    const response = await handlers.GET(request());
+    const body = await response.json();
+    assert.equal(response.status, 503);
+    assert.equal(body.success, false);
+    assert.equal(body.error.code, "SERVICE_UNAVAILABLE");
+    assert.equal(JSON.stringify(body).includes("token"), false);
+    assert.equal(JSON.stringify(body).includes("password"), false);
+  }
+});

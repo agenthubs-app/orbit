@@ -5,6 +5,8 @@ import type {
   SyncChangeKind,
   SyncPage,
 } from "../../shared/contract/sync";
+import type { TaskDTO as LegacyTaskDTO } from "../../shared/domain/contracts";
+import type { LiveRecord } from "../../shared/storage/live-record-store";
 import {
   resolveLiveDatabaseConnectionConfig,
   type LiveDatabaseEnv,
@@ -17,6 +19,10 @@ import {
   createSyncCursorCodec,
   type SyncCursorCodec,
 } from "./cursor";
+import { noteRecordFromLiveRecord } from "../notes/note-record";
+import { canonicalScheduleItemSchema } from "../personal-schedule/authority-contract";
+import { legacyTaskToTaskItem } from "../tasks/legacy-task-adapter";
+import { taskRecordFromLiveRecord } from "../tasks/task-record";
 
 export const SYNC_DEFAULT_LIMIT = 100;
 export const SYNC_MAX_LIMIT = 200;
@@ -24,6 +30,8 @@ export const SYNC_MAX_PAYLOAD_BYTES = 256 * 1_024;
 export const SYNC_MAX_PAGE_BYTES = 1_024 * 1_024;
 
 export type SyncReadErrorCode =
+  | "SYNC_INVALID_HIGH_WATERMARK"
+  | "SYNC_INVALID_RECORD"
   | "SYNC_PAYLOAD_TOO_LARGE"
   | "SYNC_PAGE_TOO_LARGE"
   | "SYNC_SCOPE_MISMATCH";
@@ -119,17 +127,7 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 }
 
 function string(value: unknown): string | undefined {
-  return typeof value === "string" && value.length > 0 ? value : undefined;
-}
-
-function finiteNumber(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
-}
-
-function stringArray(value: unknown): string[] | undefined {
-  return Array.isArray(value) && value.every((item) => typeof item === "string")
-    ? [...value]
-    : undefined;
+  return typeof value === "string" && value.trim().length > 0 ? value : undefined;
 }
 
 function put(
@@ -140,19 +138,33 @@ function put(
   if (value !== undefined) target[key] = value;
 }
 
-function mapNotePayload(payload: Record<string, unknown>, actorId: string, recordId: string) {
-  const note = asRecord(payload.note);
-  if (
-    !note
-    || note.id !== recordId
-    || note.accountId !== actorId
-    || note.ownerUserId !== actorId
-    || !string(note.title)
-    || !string(note.body)
-    || !string(note.createdAt)
-    || !string(note.updatedAt)
-    || !finiteNumber(note.version)
-  ) return null;
+function liveRecordFromRow(
+  row: SyncReadRow,
+  payload: Record<string, unknown>,
+): LiveRecord<Record<string, unknown>> {
+  const updatedAt = timestamp(row.updated_at);
+  return {
+    workspaceId: row.workspace_id,
+    collectionName: row.collection_name,
+    recordId: row.record_id,
+    userId: row.user_id,
+    sourceType: "system",
+    sourceId: row.record_id,
+    evidenceIds: [],
+    createdAt: updatedAt,
+    updatedAt,
+    ...(row.deleted_at === null ? {} : { deletedAt: timestamp(row.deleted_at) }),
+    lifecycleState: row.lifecycle_state as LiveRecord["lifecycleState"],
+    payload,
+  };
+}
+
+function mapNotePayload(row: SyncReadRow, actorId: string) {
+  const payload = asRecord(row.payload);
+  if (!payload) return null;
+  const parsed = noteRecordFromLiveRecord(liveRecordFromRow(row, payload), actorId);
+  const note = parsed?.note;
+  if (!note || note.id !== row.record_id) return null;
   const result: Record<string, unknown> = {
     id: note.id,
     accountId: actorId,
@@ -163,78 +175,88 @@ function mapNotePayload(payload: Record<string, unknown>, actorId: string, recor
     createdAt: note.createdAt,
     updatedAt: note.updatedAt,
   };
-  for (const field of ["manualContactIds", "contactIds", "eventIds"] as const) {
-    put(result, field, stringArray(note[field]));
-  }
-  if (Array.isArray(note.mentions)) {
-    const mentions = note.mentions.flatMap((value) => {
-      const mention = asRecord(value);
-      if (!mention || !string(mention.contactId) || !string(mention.displayText)) return [];
-      const start = finiteNumber(mention.start);
-      const end = finiteNumber(mention.end);
-      return start === undefined || end === undefined
-        ? []
-        : [{ contactId: mention.contactId, start, end, displayText: mention.displayText }];
-    });
-    if (mentions.length !== note.mentions.length) return null;
-    result.mentions = mentions;
-  }
+  result.manualContactIds = [...note.manualContactIds];
+  result.contactIds = [...note.contactIds];
+  result.eventIds = [...note.eventIds];
+  result.mentions = note.mentions.map((mention) => ({ ...mention }));
   return result;
 }
 
-function mapTaskPayload(payload: Record<string, unknown>, actorId: string, recordId: string) {
-  const nested = asRecord(payload.task);
-  if (!nested) {
-    if (
-      payload.id !== recordId
-      || payload.accountId !== actorId
-      || !string(payload.title)
-      || !string(payload.createdAt)
-      || !string(payload.updatedAt)
-    ) return null;
-    const status = payload.status === "completed"
-      ? "completed"
-      : payload.status === "cancelled" || payload.status === "dismissed"
-        ? "cancelled"
-        : "open";
-    const result: Record<string, unknown> = {
-      id: recordId,
-      accountId: actorId,
-      ownerUserId: actorId,
-      title: payload.title,
-      status,
-      category: string(payload.category) ?? "relationship",
-      priority: payload.priority === "high" ? "high" : "normal",
-      source: "ai_confirmed",
-      createdAt: payload.createdAt,
-      updatedAt: payload.updatedAt,
-    };
-    for (const field of ["notes", "location", "plannedDate", "dueAt"] as const) {
-      put(result, field, string(payload[field]));
-    }
-    put(result, "relatedContactId", string(payload.contactId));
-    put(result, "relatedEventId", string(payload.eventId));
-    put(result, "relatedMeetingId", string(payload.meetingId));
-    if (status === "completed") {
-      put(result, "completedAt", string(payload.completedAt) ?? string(payload.updatedAt));
-      result.completedBy = actorId;
-      result.completionSource = "agent_confirmed";
-    }
-    return result;
-  }
-  const task = nested;
+const legacyStatuses = new Set(["open", "scheduled", "completed", "dismissed"]);
+const legacySourceTypes = new Set([
+  "manual",
+  "business_card_ocr",
+  "qr_scan",
+  "event_import",
+  "external_contacts",
+  "email_signal",
+  "calendar_signal",
+  "referral",
+  "chat_summary",
+  "agent_action",
+  "system",
+]);
+
+function isoDateTime(value: unknown): value is string {
+  return typeof value === "string"
+    && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(value)
+    && Number.isFinite(Date.parse(value));
+}
+
+function optionalNonEmpty(value: unknown): value is string | undefined {
+  return value === undefined || string(value) !== undefined;
+}
+
+function legacyTaskFromPayload(
+  payload: Record<string, unknown>,
+  actorId: string,
+  recordId: string,
+): LegacyTaskDTO | null {
+  const source = asRecord(payload.source);
+  const evidenceIds = payload.evidenceIds;
   if (
-    task.id !== recordId
-    || task.accountId !== actorId
-    || task.ownerUserId !== actorId
-    || !string(task.title)
-    || !string(task.status)
-    || !string(task.category)
-    || !string(task.priority)
-    || !string(task.source)
-    || !string(task.createdAt)
-    || !string(task.updatedAt)
+    payload.accountId !== actorId
+    || payload.id !== recordId
+    || !string(payload.title)
+    || !legacyStatuses.has(String(payload.status))
+    || !optionalNonEmpty(payload.contactId)
+    || !optionalNonEmpty(payload.connectionId)
+    || (payload.dueAt !== undefined && !isoDateTime(payload.dueAt))
+    || !source
+    || !legacySourceTypes.has(String(source.type))
+    || !string(source.id)
+    || !optionalNonEmpty(source.label)
+    || !Array.isArray(evidenceIds)
+    || evidenceIds.length === 0
+    || !evidenceIds.every((value) => string(value) !== undefined)
+    || !isoDateTime(payload.createdAt)
+    || !isoDateTime(payload.updatedAt)
   ) return null;
+  return {
+    id: payload.id,
+    title: payload.title,
+    status: payload.status,
+    ...(payload.contactId === undefined ? {} : { contactId: payload.contactId }),
+    ...(payload.connectionId === undefined ? {} : { connectionId: payload.connectionId }),
+    ...(payload.dueAt === undefined ? {} : { dueAt: payload.dueAt }),
+    source: {
+      type: source.type,
+      id: source.id,
+      ...(source.label === undefined ? {} : { label: source.label }),
+    },
+    evidenceIds: evidenceIds as [string, ...string[]],
+    createdAt: payload.createdAt,
+    updatedAt: payload.updatedAt,
+  } as LegacyTaskDTO;
+}
+
+function mapTaskPayload(row: SyncReadRow, actorId: string) {
+  const payload = asRecord(row.payload);
+  if (!payload) return null;
+  const canonical = taskRecordFromLiveRecord(liveRecordFromRow(row, payload), actorId)?.task;
+  const legacy = canonical ? null : legacyTaskFromPayload(payload, actorId, row.record_id);
+  const task = canonical ?? (legacy ? legacyTaskToTaskItem(legacy, actorId) : null);
+  if (!task || task.id !== row.record_id) return null;
   const result: Record<string, unknown> = {
     id: task.id,
     accountId: actorId,
@@ -261,25 +283,22 @@ function mapTaskPayload(payload: Record<string, unknown>, actorId: string, recor
     "completedAt",
     "completedBy",
     "completionSource",
-  ] as const) put(result, field, string(task[field]));
-  put(result, "sourceNoteVersion", finiteNumber(task.sourceNoteVersion));
+  ] as const) put(result, field, task[field]);
+  put(result, "sourceNoteVersion", task.sourceNoteVersion);
   return result;
 }
 
-function mapSchedulePayload(payload: Record<string, unknown>, actorId: string, recordId: string) {
+function mapSchedulePayload(row: SyncReadRow, actorId: string) {
+  const candidate = asRecord(row.payload);
+  if (!candidate) return null;
+  const parsed = canonicalScheduleItemSchema.safeParse(candidate);
   if (
-    payload.id !== recordId
-    || payload.accountId !== actorId
-    || payload.ownerUserId !== actorId
-    || !string(payload.title)
-    || !string(payload.kind)
-    || !string(payload.category)
-    || !string(payload.state)
-    || !string(payload.sourceId)
-    || !string(payload.startsAt)
-    || !string(payload.createdAt)
-    || !string(payload.updatedAt)
+    !parsed.success
+    || parsed.data.id !== row.record_id
+    || parsed.data.accountId !== actorId
+    || parsed.data.ownerUserId !== actorId
   ) return null;
+  const payload = parsed.data;
   const result: Record<string, unknown> = {
     id: payload.id,
     accountId: actorId,
@@ -302,14 +321,23 @@ function mapSchedulePayload(payload: Record<string, unknown>, actorId: string, r
     "meetingId",
     "meetingMethod",
     "timeZone",
-  ] as const) put(result, field, string(payload[field]));
+  ] as const) put(result, field, payload[field]);
   if (typeof payload.allDay === "boolean") result.allDay = payload.allDay;
-  put(result, "evidenceIds", stringArray(payload.evidenceIds));
+  result.evidenceIds = [...payload.evidenceIds];
   return result;
 }
 
 function timestamp(value: Date | string): string {
-  return value instanceof Date ? value.toISOString() : value;
+  let normalized: string;
+  try {
+    normalized = value instanceof Date ? value.toISOString() : value;
+  } catch {
+    throw new SyncReadError("SYNC_INVALID_RECORD", "A canonical sync record is invalid.");
+  }
+  if (!isoDateTime(normalized)) {
+    throw new SyncReadError("SYNC_INVALID_RECORD", "A canonical sync record is invalid.");
+  }
+  return normalized;
 }
 
 function kindFor(collectionName: SyncReadRow["collection_name"]): SyncChangeKind {
@@ -318,7 +346,7 @@ function kindFor(collectionName: SyncReadRow["collection_name"]): SyncChangeKind
   return "personal_schedule";
 }
 
-function changeFromRow(row: SyncReadRow, actorId: string): SyncChange | null {
+function changeFromRow(row: SyncReadRow, actorId: string): SyncChange {
   const common = {
     aiVisibility: "available_when_synced" as const,
     id: row.record_id,
@@ -329,14 +357,17 @@ function changeFromRow(row: SyncReadRow, actorId: string): SyncChange | null {
   if (row.lifecycle_state === "deleted") {
     return { ...common, operation: "delete" };
   }
-  const payload = asRecord(row.payload);
-  if (!payload) return null;
+  if (row.lifecycle_state !== "active") {
+    throw new SyncReadError("SYNC_INVALID_RECORD", "A canonical sync record is invalid.");
+  }
   const mapped = row.collection_name === "notes"
-    ? mapNotePayload(payload, actorId, row.record_id)
+    ? mapNotePayload(row, actorId)
     : row.collection_name === "tasks"
-      ? mapTaskPayload(payload, actorId, row.record_id)
-      : mapSchedulePayload(payload, actorId, row.record_id);
-  if (!mapped) return null;
+      ? mapTaskPayload(row, actorId)
+      : mapSchedulePayload(row, actorId);
+  if (!mapped) {
+    throw new SyncReadError("SYNC_INVALID_RECORD", "A canonical sync record is invalid.");
+  }
   if (Buffer.byteLength(JSON.stringify(mapped), "utf8") > SYNC_MAX_PAYLOAD_BYTES) {
     throw new SyncReadError(
       "SYNC_PAYLOAD_TOO_LARGE",
@@ -351,8 +382,14 @@ function validLimit(limit: number): boolean {
 }
 
 function highWatermarkFrom(rows: readonly { high_watermark: string }[]): string {
-  const value = rows[0]?.high_watermark ?? "0";
-  return /^(?:0|[1-9]\d*)$/.test(value) ? value : "0";
+  const value = rows[0]?.high_watermark;
+  if (typeof value !== "string" || !/^(?:0|[1-9]\d*)$/.test(value)) {
+    throw new SyncReadError(
+      "SYNC_INVALID_HIGH_WATERMARK",
+      "The sync high watermark is invalid.",
+    );
+  }
+  return value;
 }
 
 export function createIncrementalSyncReadService({
@@ -394,10 +431,7 @@ export function createIncrementalSyncReadService({
       afterRevision = hasMore
         ? String(pageRows.at(-1)?.sync_revision ?? afterRevision)
         : highWatermark;
-      const changes = pageRows.flatMap((row) => {
-        const mapped = changeFromRow(row, input.actorId);
-        return mapped ? [mapped] : [];
-      });
+      const changes = pageRows.map((row) => changeFromRow(row, input.actorId));
       const page: SyncPage = {
         workspaceId: input.workspaceId,
         changes,

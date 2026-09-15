@@ -4,21 +4,43 @@ create sequence if not exists orbit_records_sync_revision_seq;
 alter table orbit_records
   add column if not exists sync_revision bigint;
 
+with revision_state as (
+  select
+    coalesce((select max(sync_revision) from orbit_records), 0) as table_max,
+    last_value as sequence_last_value,
+    is_called as sequence_is_called
+  from orbit_records_sync_revision_seq
+)
 select setval(
   'orbit_records_sync_revision_seq'::regclass,
-  greatest(coalesce((select max(sync_revision) from orbit_records), 0), 1),
-  coalesce((select max(sync_revision) from orbit_records), 0) > 0
-);
+  greatest(table_max, sequence_last_value, 1),
+  case
+    when table_max >= sequence_last_value then table_max > 0
+    else sequence_is_called
+  end
+)
+from revision_state;
 
 update orbit_records
 set sync_revision = nextval('orbit_records_sync_revision_seq'::regclass)
 where sync_revision is null;
 
+with revision_state as (
+  select
+    coalesce((select max(sync_revision) from orbit_records), 0) as table_max,
+    last_value as sequence_last_value,
+    is_called as sequence_is_called
+  from orbit_records_sync_revision_seq
+)
 select setval(
   'orbit_records_sync_revision_seq'::regclass,
-  greatest(coalesce((select max(sync_revision) from orbit_records), 0), 1),
-  coalesce((select max(sync_revision) from orbit_records), 0) > 0
-);
+  greatest(table_max, sequence_last_value, 1),
+  case
+    when table_max >= sequence_last_value then table_max > 0
+    else sequence_is_called
+  end
+)
+from revision_state;
 
 do $$
 begin
@@ -46,6 +68,11 @@ returns trigger
 language plpgsql
 as $$
 begin
+  if new.collection_name in ('notes', 'tasks', 'personal_schedule_items') then
+    perform pg_advisory_xact_lock(
+      hashtextextended('orbit:sync:commit-order:v1', 0)
+    );
+  end if;
   new.sync_revision := nextval('orbit_records_sync_revision_seq'::regclass);
   return new;
 end;

@@ -56,12 +56,12 @@ export function createSyncRouteHandlers(
   return {
     async GET(request: Request): Promise<Response> {
       const mode = resolveFeatureMode();
-      const actor = await resolveActor();
-      if (!actor) return authenticatedApiActorRequiredResponse(mode);
-      if (!actor.workspaceId) return unavailableResponse(mode);
-      const service = createService();
-      if (!service) return unavailableResponse(mode);
       try {
+        const actor = await resolveActor();
+        if (!actor) return authenticatedApiActorRequiredResponse(mode);
+        if (!actor.workspaceId) return unavailableResponse(mode);
+        const service = createService();
+        if (!service) return unavailableResponse(mode);
         const url = new URL(request.url);
         const hasCursor = url.searchParams.has("cursor");
         const cursor = url.searchParams.get("cursor") ?? "";

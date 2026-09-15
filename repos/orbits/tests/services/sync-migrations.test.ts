@@ -8,6 +8,7 @@ import {
   SYNC_REVISION_MIGRATION_SQL,
   runSyncRevisionMigration,
 } from "../../features/sync/migrations";
+import { createIncrementalSyncReadService } from "../../features/sync/read-service";
 import {
   ORBIT_RECORDS_SCHEMA_SQL,
   runOrbitRecordsMigration,
@@ -17,6 +18,39 @@ const databaseUrl = process.env.ORBIT_SYNC_TEST_DATABASE_URL;
 const databaseTest = {
   skip: databaseUrl ? false : "ORBIT_SYNC_TEST_DATABASE_URL is not configured",
 };
+
+async function waitForAdvisoryLockWait(pool: Pool, pid: number): Promise<void> {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    const state = await pool.query<{ wait_event: string | null; wait_event_type: string | null }>(`
+      select wait_event, wait_event_type from pg_stat_activity where pid = $1
+    `, [pid]);
+    if (state.rows[0]?.wait_event_type === "Lock" && state.rows[0]?.wait_event === "advisory") return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error(`backend ${pid} did not wait on the sync advisory lock`);
+}
+
+function canonicalNote(id: string, actorId: string, timestamp: string) {
+  return {
+    schemaVersion: 2,
+    note: {
+      id,
+      accountId: actorId,
+      ownerUserId: actorId,
+      title: id,
+      body: id,
+      manualContactIds: [],
+      mentions: [],
+      contactIds: [],
+      eventIds: [],
+      version: 1,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+    operations: [],
+  };
+}
 
 test("sync revision migration backfills before NOT NULL, advances the sequence, and installs trigger/index guards", () => {
   assert.match(SYNC_REVISION_MIGRATION_SQL, /create sequence if not exists orbit_records_sync_revision_seq/i);
@@ -117,7 +151,6 @@ test("real PostgreSQL migration is idempotent and assigns unique monotonic revis
     `);
 
     await runSyncRevisionMigration(pool);
-    await runSyncRevisionMigration(pool);
 
     const backfill = await pool.query<{ count: string; distinct_count: string; max_revision: string }>(`
       select count(*)::text as count,
@@ -126,6 +159,20 @@ test("real PostgreSQL migration is idempotent and assigns unique monotonic revis
       from orbit_records
     `);
     assert.deepEqual(backfill.rows[0], { count: "2", distinct_count: "2", max_revision: "41" });
+
+    const firstTriggered = await pool.query<{ revision: string }>(insertSql, [
+      "workspace:sync",
+      "notes",
+      "note:first-triggered",
+      "account:owner",
+      { note: { id: "note:first-triggered" } },
+      timestamp,
+    ]);
+    const firstTriggeredRevision = Number(firstTriggered.rows[0]?.revision);
+    assert.ok(firstTriggeredRevision > 41);
+
+    await pool.query("select setval('orbit_records_sync_revision_seq'::regclass, 100, false)");
+    await runSyncRevisionMigration(pool);
 
     const inserted = await pool.query<{ revision: string }>(insertSql, [
       "workspace:sync",
@@ -136,6 +183,7 @@ test("real PostgreSQL migration is idempotent and assigns unique monotonic revis
       timestamp,
     ]);
     const insertRevision = Number(inserted.rows[0]?.revision);
+    assert.equal(insertRevision, 100, "an idempotent rerun must preserve an ahead sequence and is_called=false");
     const updated = await pool.query<{ revision: string }>(`
       update orbit_records set payload = payload || '{"changed":true}'::jsonb
       where workspace_id = 'workspace:sync' and collection_name = 'notes' and record_id = 'note:inserted'
@@ -148,7 +196,7 @@ test("real PostgreSQL migration is idempotent and assigns unique monotonic revis
       returning sync_revision::text as revision
     `, [timestamp]);
     const deleteRevision = Number(deleted.rows[0]?.revision);
-    assert.ok(insertRevision > 41 && updateRevision > insertRevision && deleteRevision > updateRevision);
+    assert.ok(updateRevision > insertRevision && deleteRevision > updateRevision);
 
     const concurrent = await Promise.all(Array.from({ length: 20 }, async (_, index) => {
       const result = await pool.query<{ revision: string }>(insertSql, [
@@ -165,8 +213,21 @@ test("real PostgreSQL migration is idempotent and assigns unique monotonic revis
     assert.ok(concurrent.every((revision) => revision > deleteRevision));
 
     const sequence = await pool.query<{ last_value: string }>("select last_value::text from orbit_records_sync_revision_seq");
-    const maximum = await pool.query<{ max_revision: string }>("select max(sync_revision)::text as max_revision from orbit_records");
+    const maximum = await pool.query<{
+      count: string;
+      distinct_count: string;
+      max_revision: string;
+      null_count: string;
+    }>(`
+      select count(*)::text as count,
+        count(distinct sync_revision)::text as distinct_count,
+        count(*) filter (where sync_revision is null)::text as null_count,
+        max(sync_revision)::text as max_revision
+      from orbit_records
+    `);
     assert.ok(Number(sequence.rows[0]?.last_value) >= Number(maximum.rows[0]?.max_revision));
+    assert.equal(maximum.rows[0]?.null_count, "0");
+    assert.equal(maximum.rows[0]?.count, maximum.rows[0]?.distinct_count);
 
     const index = await pool.query<{ indexdef: string }>(`
       select indexdef from pg_indexes
@@ -175,6 +236,104 @@ test("real PostgreSQL migration is idempotent and assigns unique monotonic revis
     assert.match(index.rows[0]?.indexdef ?? "", /\(workspace_id, user_id, sync_revision\)/i);
     assert.match(index.rows[0]?.indexdef ?? "", /WHERE .*user_id IS NOT NULL/i);
   } finally {
+    await pool.end();
+    try {
+      await admin.query(`drop schema if exists ${schema} cascade`);
+    } finally {
+      await admin.end();
+    }
+  }
+});
+
+test("syncable revisions follow commit visibility and tolerate rollback gaps", databaseTest, async () => {
+  assert.ok(databaseUrl);
+  const schema = `sync_commit_${randomUUID().replaceAll("-", "")}`;
+  const workspaceId = "workspace:commit-order";
+  const actorId = "account:commit-order";
+  const timestamp = "2026-09-16T08:00:00.000Z";
+  const admin = new Pool({ connectionString: databaseUrl, max: 2, connectionTimeoutMillis: 2_000 });
+  const pool = new Pool({
+    connectionString: databaseUrl,
+    max: 6,
+    connectionTimeoutMillis: 2_000,
+    options: `-c search_path=${schema} -c statement_timeout=10000`,
+  });
+  const first = await pool.connect();
+  const second = await pool.connect();
+  const insert = `
+    insert into orbit_records (
+      workspace_id, collection_name, record_id, user_id, source_type, source_id,
+      evidence_ids, lifecycle_state, search_text, payload, created_at, updated_at
+    ) values ($1, 'notes', $2, $3, 'manual', $2, '{}', 'active', '', $4, $5, $5)
+    returning sync_revision::text as revision
+  `;
+  const write = (client: typeof first, id: string) => client.query<{ revision: string }>(insert, [
+    workspaceId,
+    id,
+    actorId,
+    canonicalNote(id, actorId, timestamp),
+    timestamp,
+  ]);
+
+  try {
+    await admin.query(`create schema ${schema}`);
+    await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
+    const secondPid = Number((await second.query<{ pid: number }>("select pg_backend_pid() as pid")).rows[0]?.pid);
+
+    await first.query("begin");
+    const firstWrite = await write(first, "note:commit-first");
+    await second.query("begin");
+    let secondSettled = false;
+    const secondWrite = write(second, "note:commit-second").then(
+      (result) => { secondSettled = true; return result; },
+      (error) => { secondSettled = true; throw error; },
+    );
+    await waitForAdvisoryLockWait(admin, secondPid);
+    assert.equal(secondSettled, false);
+    await first.query("commit");
+    const secondResult = await secondWrite;
+    await second.query("commit");
+    assert.ok(Number(secondResult.rows[0]?.revision) > Number(firstWrite.rows[0]?.revision));
+
+    await first.query("begin");
+    const rolledBack = await write(first, "note:rolled-back");
+    await second.query("begin");
+    secondSettled = false;
+    const afterRollback = write(second, "note:after-rollback").then(
+      (result) => { secondSettled = true; return result; },
+      (error) => { secondSettled = true; throw error; },
+    );
+    await waitForAdvisoryLockWait(admin, secondPid);
+    assert.equal(secondSettled, false);
+    await first.query("rollback");
+    const afterRollbackResult = await afterRollback;
+    await second.query("commit");
+    assert.ok(Number(afterRollbackResult.rows[0]?.revision) > Number(rolledBack.rows[0]?.revision));
+
+    const sqlClient = {
+      async query<TRow = Record<string, unknown>>(text: string, values: readonly unknown[] = []) {
+        const result = await pool.query(text, [...values]);
+        return { rows: result.rows as TRow[] };
+      },
+    };
+    const reader = createIncrementalSyncReadService({
+      client: sqlClient,
+      cursorSecret: "test-only-commit-order-cursor-secret",
+      now: () => timestamp,
+    });
+    const seen: string[] = [];
+    let page = await reader.readPage({ actorId, workspaceId, limit: 1 });
+    seen.push(...page.changes.map((change) => change.id));
+    while (page.hasMore) {
+      page = await reader.readPage({ actorId, workspaceId, cursor: page.nextCursor, limit: 1 });
+      seen.push(...page.changes.map((change) => change.id));
+    }
+    assert.deepEqual(seen, ["note:commit-first", "note:commit-second", "note:after-rollback"]);
+  } finally {
+    await first.query("rollback").catch(() => undefined);
+    await second.query("rollback").catch(() => undefined);
+    first.release();
+    second.release();
     await pool.end();
     try {
       await admin.query(`drop schema if exists ${schema} cascade`);

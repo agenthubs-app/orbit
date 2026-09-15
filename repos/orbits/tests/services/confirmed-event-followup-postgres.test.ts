@@ -47,9 +47,7 @@ test(
     const pool = new Pool({ connectionString: databaseUrl, max: 4, options: `-c search_path=${schema}` });
     try {
       await admin.query(`create schema ${schema}`);
-      for (const statement of ORBIT_RECORDS_SCHEMA_SQL.split(";")) {
-        if (statement.trim()) await pool.query(statement);
-      }
+      await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
       const store = createPostgresLiveRecordStore<Record<string, unknown>>({
         client: {
           async query(text, values) {

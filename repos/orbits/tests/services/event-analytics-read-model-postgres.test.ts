@@ -44,10 +44,8 @@ function at(base: number, minutes: number): string {
   return new Date(base + minutes * 60_000).toISOString();
 }
 
-async function runOrbitRecordsSchema(runtime: EventOperationsPostgresRuntime) {
-  for (const statement of ORBIT_RECORDS_SCHEMA_SQL.split(";")) {
-    if (statement.trim()) await runtime.client.query(statement);
-  }
+async function runOrbitRecordsSchema(pool: Pool) {
+  await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
 }
 
 test(
@@ -74,7 +72,7 @@ test(
     try {
       await adminPool.query(`create schema ${schema}`);
       await runEventOperationsMigrations(runtime.client);
-      await runOrbitRecordsSchema(runtime);
+      await runOrbitRecordsSchema(scopedPool);
       await runAppointmentMigrations(runtime.client);
       await runEventAnalyticsMigrations(runtime.client);
 

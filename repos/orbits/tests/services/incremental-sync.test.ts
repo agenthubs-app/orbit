@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import test from "node:test";
 
 import {
@@ -51,7 +52,12 @@ function row(input: {
         updatedAt,
         providerToken: "must-not-leak",
       },
-      operations: [{ idempotencyKey: "private-receipt" }],
+      operations: [{
+        idempotencyKey: "private-receipt",
+        kind: "create",
+        fingerprint: "private-fingerprint",
+        resultVersion: 1,
+      }],
       attachmentBytes: "must-not-leak",
     }
     : input.collectionName === "tasks"
@@ -71,7 +77,7 @@ function row(input: {
           updatedAt,
           authToken: "must-not-leak",
         },
-        activities: [{ rawAttachment: "must-not-leak" }],
+        activities: [],
         reminders: [{ providerToken: "must-not-leak" }],
       }
       : {
@@ -87,7 +93,6 @@ function row(input: {
         evidenceIds: [],
         createdAt: updatedAt,
         updatedAt,
-        providerToken: "must-not-leak",
       });
   return {
     collection_name: input.collectionName,
@@ -190,6 +195,90 @@ test("bootstrap returns authenticated workspace and paginates against one high w
   const delta = await reader.readPage({ actorId, workspaceId, cursor: second.nextCursor, limit: 2 });
   assert.deepEqual(delta.changes.map((change) => change.id), ["note:concurrent"]);
   assert.equal(delta.highWatermark, "4");
+});
+
+test("schema v1 notes use the canonical parser fallback title", async () => {
+  const legacy = row({ collectionName: "notes", id: "note:v1", revision: 1 });
+  legacy.payload = {
+    schemaVersion: 1,
+    note: {
+      id: legacy.record_id,
+      accountId: actorId,
+      ownerUserId: actorId,
+      body: "Legacy first line\nLegacy body",
+      contactIds: [],
+      version: 1,
+      createdAt: legacy.updated_at,
+      updatedAt: legacy.updated_at,
+    },
+    operations: [],
+  };
+
+  const page = await service(new MemorySyncSqlClient([legacy])).readPage({
+    actorId,
+    workspaceId,
+    limit: 1,
+  });
+
+  assert.equal(page.changes.length, 1);
+  assert.equal((page.changes[0]?.payload as Record<string, unknown>).title, "Legacy first line");
+});
+
+test("an unmappable active row fails the page and retrying the same cursor rereads it", async () => {
+  const invalid = row({ collectionName: "notes", id: "note:invalid", revision: 2 });
+  invalid.payload = { schemaVersion: 2, note: { id: invalid.record_id }, operations: [] };
+  const client = new MemorySyncSqlClient([
+    row({ collectionName: "notes", id: "note:first", revision: 1 }),
+    invalid,
+  ]);
+  const reader = service(client);
+  const first = await reader.readPage({ actorId, workspaceId, limit: 1 });
+
+  await assert.rejects(
+    reader.readPage({ actorId, workspaceId, cursor: first.nextCursor, limit: 1 }),
+    (error: unknown) => error instanceof SyncReadError && error.code === "SYNC_INVALID_RECORD",
+  );
+
+  invalid.payload = row({ collectionName: "notes", id: invalid.record_id, revision: 2 }).payload;
+  const retried = await reader.readPage({ actorId, workspaceId, cursor: first.nextCursor, limit: 1 });
+  assert.deepEqual(retried.changes.map((change) => change.id), [invalid.record_id]);
+});
+
+test("canonical validators reject invalid mentions, task enums, and schedule timestamps", async () => {
+  const invalidMention = row({ collectionName: "notes", id: "note:bad-mention", revision: 1 });
+  const note = (invalidMention.payload as Record<string, unknown>).note as Record<string, unknown>;
+  note.manualContactIds = [];
+  note.contactIds = ["contact:bad"];
+  note.mentions = [{ contactId: "contact:bad", start: 0, end: 7, displayText: "mismatch" }];
+
+  const invalidTask = row({ collectionName: "tasks", id: "task:bad-category", revision: 1 });
+  ((invalidTask.payload as Record<string, unknown>).task as Record<string, unknown>).category = "invented";
+
+  const invalidSchedule = row({ collectionName: "personal_schedule_items", id: "schedule:bad-time", revision: 1 });
+  (invalidSchedule.payload as Record<string, unknown>).startsAt = "tomorrow";
+
+  for (const candidate of [invalidMention, invalidTask, invalidSchedule]) {
+    await assert.rejects(
+      service(new MemorySyncSqlClient([candidate])).readPage({ actorId, workspaceId, limit: 1 }),
+      (error: unknown) => error instanceof SyncReadError && error.code === "SYNC_INVALID_RECORD",
+      candidate.record_id,
+    );
+  }
+});
+
+test("an invalid database high watermark fails visibly", async () => {
+  const client: SyncSqlClient = {
+    async query<TRow>(text: string) {
+      if (text.includes("sync:high-watermark")) {
+        return { rows: [{ high_watermark: "not-a-revision" }] as TRow[] };
+      }
+      return { rows: [] };
+    },
+  };
+  await assert.rejects(
+    service(client).readPage({ actorId, workspaceId, limit: 1 }),
+    (error: unknown) => error instanceof SyncReadError && error.code === "SYNC_INVALID_HIGH_WATERMARK",
+  );
 });
 
 test("a row updated after page one moves above the snapshot and arrives in the immediate next delta", async () => {
@@ -298,6 +387,48 @@ test("cursor signatures bind version/actor/workspace and enforce the 24-hour TTL
   ]) {
     assert.throws(operation, (error: unknown) => error instanceof SyncCursorError && error.code === "SYNC_RESET_REQUIRED");
   }
+});
+
+test("a correctly signed cursor with a non-v1 version still requires reset", () => {
+  const payload = Buffer.from(JSON.stringify({
+    version: 2,
+    actorId,
+    workspaceId,
+    afterRevision: "2",
+    highWatermark: "5",
+    issuedAt: Date.parse(now),
+  }), "utf8").toString("base64url");
+  const signature = createHmac("sha256", secret).update(payload, "utf8").digest("base64url");
+  const token = `${payload}.${signature}`;
+
+  assert.throws(
+    () => createSyncCursorCodec({ secret }).decode(token, { actorId, workspaceId }, Date.parse(now)),
+    (error: unknown) => error instanceof SyncCursorError && error.code === "SYNC_RESET_REQUIRED",
+  );
+});
+
+test("cursor secrets require at least 32 UTF-8 bytes", () => {
+  assert.throws(
+    () => createSyncCursorCodec({ secret: "x".repeat(31) }),
+    (error: unknown) => error instanceof SyncCursorError && error.code === "SYNC_CURSOR_SECRET_MISSING",
+  );
+  assert.doesNotThrow(() => createSyncCursorCodec({ secret: "密".repeat(11) }));
+});
+
+test("non-canonical base64url signature spellings are rejected", () => {
+  const codec = createSyncCursorCodec({ secret });
+  const token = codec.encode({ actorId, workspaceId, afterRevision: "2", highWatermark: "5" }, Date.parse(now));
+  const [payload, signature] = token.split(".") as [string, string];
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  const lastIndex = alphabet.indexOf(signature.at(-1) ?? "");
+  assert.equal(lastIndex % 4, 0);
+  const alias = `${signature.slice(0, -1)}${alphabet[lastIndex + 1]}`;
+  assert.deepEqual(Buffer.from(alias, "base64url"), Buffer.from(signature, "base64url"));
+
+  assert.throws(
+    () => codec.decode(`${payload}.${alias}`, { actorId, workspaceId }, Date.parse(now)),
+    (error: unknown) => error instanceof SyncCursorError && error.code === "SYNC_RESET_REQUIRED",
+  );
 });
 
 test("cursor configuration fails closed when the server secret is missing", () => {

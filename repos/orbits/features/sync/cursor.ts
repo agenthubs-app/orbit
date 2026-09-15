@@ -45,13 +45,19 @@ function validRevision(value: unknown): value is string {
 }
 
 function requireSecret(secret: string): string {
-  if (!secret.trim()) {
+  if (!secret.trim() || Buffer.byteLength(secret, "utf8") < 32) {
     throw new SyncCursorError(
       "SYNC_CURSOR_SECRET_MISSING",
       "The server sync cursor secret is not configured.",
     );
   }
   return secret;
+}
+
+function canonicalBase64url(value: string): Buffer {
+  if (!/^[A-Za-z0-9_-]+$/.test(value)) return resetRequired();
+  const decoded = Buffer.from(value, "base64url");
+  return decoded.toString("base64url") === value ? decoded : resetRequired();
 }
 
 function signature(payload: string, secret: string): Buffer {
@@ -92,17 +98,23 @@ export function createSyncCursorCodec({ secret }: { secret: string }) {
         return resetRequired();
       }
       const segments = token.split(".");
-      if (segments.length !== 2 || !segments[0] || !segments[1]) {
+      if (
+        segments.length !== 2
+        || !segments[0]
+        || !segments[1]
+        || segments[1].length !== 43
+      ) {
         return resetRequired();
       }
       try {
         const expected = signature(segments[0], signingSecret);
-        const supplied = Buffer.from(segments[1], "base64url");
+        canonicalBase64url(segments[0]);
+        const supplied = canonicalBase64url(segments[1]);
         if (expected.length !== supplied.length || !timingSafeEqual(expected, supplied)) {
           return resetRequired();
         }
         const decoded = JSON.parse(
-          Buffer.from(segments[0], "base64url").toString("utf8"),
+          canonicalBase64url(segments[0]).toString("utf8"),
         ) as Partial<StoredSyncCursor>;
         if (
           decoded.version !== SYNC_CURSOR_VERSION
