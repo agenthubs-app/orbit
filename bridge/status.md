@@ -1,6 +1,6 @@
 # 两端当前状态
 
-2026-09-15 最新运行时验收：Web 已按当前源码完成 Next.js 生产构建并以 live 模式连接隔离 PostgreSQL；Web 浏览器与原生 iOS Simulator 使用同一服务地址和同一登录账号。BR-009 已完成 Web→App、App→Web、刷新、版本冲突与 actor 隔离；BR-010 已完成原生预填、显式发送、建议接受、幂等、Web 回读、返回来源和含糊日期零写入。两项均更新为 `verified`。这是本地生产进程验收，不代表远程部署或实体设备发布状态。
+2026-09-15 12:44 JST 最新运行时验收：BR-011 已按 4a 完成 Note v2、服务端有界联系人搜索、App 六个笔记状态和联系人笔记页签。Web 按当前源码完成 Next.js 生产构建并以 live 模式连接隔离 PostgreSQL，原生 App 当前源码构建 0 error／0 warning；Web 浏览器与 iOS Simulator 使用同一服务地址、`qa@orbit.test` 和同一数据库，双向创建／编辑／搜索、幂等、版本冲突与 actor 隔离通过。BR-009～011 均为 `verified`。这是本地生产进程验收，不代表远程部署或实体设备发布状态。
 
 自本次起，涉及 App 可见行为、API、共享契约或状态同步时，Web/API 必须实际运行；Web 端每次更新后先重新生产构建、停止旧进程并启动新产物、检查健康状态，再进行 App 验收。具体规则见 [协作流程](workflow.md#app-开发时保持-webapi-实际运行) 和 [Sprint 规则](../repos/orbit-app/docs/sprints/RULES.md#54-app-开发期间的-web-运行门槛)。
 

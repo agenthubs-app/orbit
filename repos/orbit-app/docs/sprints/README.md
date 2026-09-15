@@ -71,7 +71,7 @@ build/harness-logs/
 | [0021](0021-ai-session-organization/GOAL.md) | 保存 AI 会话入口与首条内容，按项目式分组整理，并能置顶、改名、删除和跨端回读 | 2026-09-14 新增；关联 R-00／R-02／R-06 | 执行指令已收到；仍需 B3 稳定协议／Web 恢复边界及跨端计划审阅 | planned |
 | [0022](0022-unified-tasks/GOAL.md) | 同一待办入口切换全部／人脉，兼容旧跟进链接并保留草稿、建议和提醒入口 | 2026-09-14 新增；关联 R-08／R-09／R-06 | 产品方向与执行指令已确认；书面规格审阅，0006 模板与 0010 动作交付 | planned |
 | [0023](0023-industry-consumer-continuation/GOAL.md) | 接通联系人行业、搜索 HTTP 与本人资料工具，承接 0020 全部未完成验收 | SC-0020-01～05；明确获准接续 | 现有部分实现与 8 文件补充方案已批准；真实数据／设备按对象处理 | running |
-| [0025](0025-notes-ink-signal-search/GOAL.md) | 按最新 4a 重做笔记列表、编辑、详情与联系人笔记页签，用加号和输入搜索关联人脉，不平铺联系人全集 | 2026-09-15 新增；承接 R-13／0018／0019 | 设计与搜索式交互已确认；实施 run 未启动，需按 Planner 完成影响分析与 H/I 验收 | planned |
+| [0025](0025-notes-ink-signal-search/GOAL.md) | 按最新 4a 重做笔记列表、编辑、详情与联系人笔记页签，用加号和输入搜索关联人脉，不平铺联系人全集 | 2026-09-15 新增；承接 R-13／0018／0019 | run-01 已完成；五项 SC、同账号 Web↔App、Web／iOS 构建与有界搜索均通过；见 [REPORT](0025-notes-ink-signal-search/REPORT.md) | completed |
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
 
@@ -100,6 +100,16 @@ build/harness-logs/
 - 当前只完成 Sprint 文档，状态 planned、run_count = 0、未产生 REPORT，也未修改产品源码。后续 run 必须继续 0018 的私密／版本／幂等与 0019 的显式 IORBIT 确认，并按 Web 运行门槛在 Web/API 重建重启后做同账号 Web↔App 回读。
 
 ## 运行记录
+
+### 0025 / run-01
+
+- Generator owner：`/root`；开始时间：2026-09-15 10:05 JST；基线 HEAD：`e594f076e5b36e302043bc13026a14af98b4cada`。
+- Planner revision 1；SHA-256：`b22dda257617049ae6e0a9bb045b9bebf2f1bb2cc17be41abce92a2461d007cc`；档位 H + I。
+- 文件锁：Planner 白名单内的 Web/API、共享契约、App 笔记／联系人入口、0025 与 Bridge 交接文件；根 `AGENTS.md`、`CLAUDE.md` 及未跟踪 `docs/designs/2026-09-15-notes-contact-picker/` 属于既有用户内容，本 run 不写、不暂存。
+- 运行目标：先用 RED 覆盖兼容契约与有界联系人搜索，再实现 App 搜索式关联、提及／草稿和六个 4a 状态；Web/API 改动后必须重新生产构建、重启并以同账号／同数据库完成浏览器与原生 App 双向回读。
+- 结束：2026-09-15 12:44 JST；结果 completed；功能提交 `01a1592d9801702b37d874c7d7477b16f2e75472`；[执行报告](0025-notes-ink-signal-search/REPORT.md)。
+- 验证：Web 定向 45/45、typecheck、production build 5 与 live health 通过；App 定向 65/65、typecheck、契约同步、全量 2598/2598 和 iOS 构建 0 error／0 warning 通过；Web 全量的唯一新增失败已修复，剩余 52 与既有基线相同。
+- 同账号验收：浏览器与原生 App 均为 `qa@orbit.test`，双向创建／编辑／搜索、版本 2、actor 404、stale 409 和幂等均已验证；BR-011 为 verified。
 
 ### 0018 / run-01
 
