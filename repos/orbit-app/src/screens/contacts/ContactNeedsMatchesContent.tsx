@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import { layout, radius, spacing, textStyles, type OrbitColors } from "../../design/tokens";
 import { useOrbitTheme } from "../../design/theme";
@@ -57,6 +57,7 @@ export function ContactNeedsMatchesContent({ error, onEdit, onOpenContact, onRet
   const locale = useOrbitLocale();
   const { colors } = useOrbitTheme();
   const [expanded, setExpanded] = useState<string | null>(null);
+  const largeText = useWindowDimensions().fontScale > 1.3;
 
   function criterionLabel(criterion: { id: string; label: string }): string {
     const key = criterionMessageKeys[criterion.id as keyof typeof criterionMessageKeys];
@@ -95,15 +96,17 @@ export function ContactNeedsMatchesContent({ error, onEdit, onOpenContact, onRet
     const avatar = contactAvatarFor({ id: item.contactId, name: item.displayName });
     const avatarStyle = avatarColors(avatar.tone, colors);
     return <View key={item.contactId} style={[styles.row, { borderBottomColor: colors.hairline }]}>
-      <Pressable accessibilityLabel={locale.t("contacts.needOpenContact", { name: item.displayName })} accessibilityRole="button" onPress={() => onOpenContact(item.contactId)} style={styles.rowMain}>
-        <View style={[styles.avatar, { backgroundColor: avatarStyle.backgroundColor }]}><Text style={[styles.avatarText, { color: avatarStyle.color }]}>{avatar.initial}</Text></View>
-        <View style={styles.rowCopy}>
-          <Text style={[styles.name, { color: colors.ink }]}>{item.displayName}</Text>
-          <Text style={[styles.detail, { color: colors.text3 }]}>{[item.role, item.organization].filter(Boolean).join(" · ") || locale.t("contacts.needMissingProfile")}</Text>
-          <Text style={[styles.reason, { color: colors.text2 }]}>{matchReason(item)}</Text>
+      <Pressable accessibilityLabel={locale.t("contacts.needOpenContact", { name: item.displayName })} accessibilityRole="button" onPress={() => onOpenContact(item.contactId)} style={[styles.rowMain, largeText && styles.rowMainLarge]}>
+        <View style={[styles.identity, largeText && styles.identityLarge]}>
+          <View style={[styles.avatar, { backgroundColor: avatarStyle.backgroundColor }]}><Text allowFontScaling={false} style={[styles.avatarText, { color: avatarStyle.color }]}>{avatar.initial}</Text></View>
+          <View style={styles.rowCopy}>
+            <Text style={[styles.name, { color: colors.ink }]}>{item.displayName}</Text>
+            <Text style={[styles.detail, { color: colors.text3 }]}>{[item.role, item.organization].filter(Boolean).join(" · ") || locale.t("contacts.needMissingProfile")}</Text>
+            <Text style={[styles.reason, { color: colors.text2 }]}>{matchReason(item)}</Text>
+          </View>
         </View>
-        <View style={styles.score}><Text style={[styles.scoreLabel, { color: colors.text3 }]}>{locale.t("contacts.needScore")}</Text><Text style={[styles.scoreValue, { color: item.score === null ? colors.text3 : colors.accent }]}>{item.score === null ? locale.t("contacts.needPendingScore") : locale.t("contacts.needScoreValue", { score: item.score })}</Text></View>
-        <Ionicons color={colors.text4} name="chevron-forward" size={16} />
+        <View style={[styles.score, largeText && styles.scoreLarge]}><Text style={[styles.scoreLabel, { color: colors.text3 }]}>{locale.t("contacts.needScore")}</Text><Text style={[styles.scoreValue, { color: item.score === null ? colors.text3 : colors.accent }]}>{item.score === null ? locale.t("contacts.needPendingScore") : locale.t("contacts.needScoreValue", { score: item.score })}</Text></View>
+        {largeText ? null : <Ionicons color={colors.text4} name="chevron-forward" size={16} />}
       </Pressable>
       <Pressable accessibilityLabel={locale.t("contacts.needEvidenceFor", { name: item.displayName })} accessibilityRole="button" onPress={() => setExpanded((current) => current === item.contactId ? null : item.contactId)} style={styles.evidenceButton}>
         <Text style={[styles.evidenceButtonText, { color: colors.accent }]}>{locale.t("contacts.needEvidence")}</Text>
@@ -163,6 +166,9 @@ const styles = StyleSheet.create({
   explanation: { ...textStyles.body, marginVertical: spacing.lg },
   row: { borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: spacing.md },
   rowMain: { flexDirection: "row", alignItems: "center", minHeight: 65 },
+  rowMainLarge: { alignItems: "stretch", flexDirection: "column" },
+  identity: { alignItems: "center", flex: 1, flexDirection: "row", minWidth: 0 },
+  identityLarge: { flex: 0, width: "100%" },
   avatar: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", marginRight: spacing.md },
   avatarText: { fontSize: 15, lineHeight: 20, fontWeight: "700" },
   rowCopy: { flex: 1, minWidth: 0 },
@@ -170,6 +176,7 @@ const styles = StyleSheet.create({
   detail: { fontSize: 12, lineHeight: 17 },
   reason: { ...textStyles.small, marginTop: 2 },
   score: { alignItems: "flex-end", marginHorizontal: spacing.sm },
+  scoreLarge: { alignItems: "flex-start", marginLeft: 52, marginRight: 0, marginTop: spacing.sm },
   scoreLabel: { ...textStyles.caption },
   scoreValue: { ...textStyles.section, marginTop: 1 },
   evidenceButton: { minHeight: layout.control, justifyContent: "center", marginLeft: 52 },

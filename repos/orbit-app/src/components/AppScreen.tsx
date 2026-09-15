@@ -16,6 +16,8 @@ import { mainTabForPath, parentForPath } from "../view-models/app-navigation";
 import { OrbitTabBar } from "./OrbitTabBar";
 
 interface AppScreenProps extends PropsWithChildren {
+  backAccessibilityLabel?: string;
+  backLabel?: string;
   eyebrow?: string;
   header?: ReactNode;
   headerActions?: ReactNode;
@@ -27,6 +29,8 @@ interface AppScreenProps extends PropsWithChildren {
 }
 
 export function AppScreen({
+  backAccessibilityLabel,
+  backLabel,
   children,
   eyebrow,
   header,
@@ -49,11 +53,11 @@ export function AppScreen({
     <SafeAreaView edges={["top"]} style={styles.safeArea}>
       {navVisible ? (
         <View style={styles.navigation}>
-          <Pressable accessibilityLabel={canGoBack ? "返回" : "返回" + parent.label} accessibilityRole="button"
+          <Pressable accessibilityLabel={backAccessibilityLabel ?? (canGoBack ? "返回" : "返回" + parent.label)} accessibilityRole="button"
             onPress={() => canGoBack ? router.back() : router.replace(parent.href as Href)}
             style={({ pressed }) => [styles.backButton, pressed && styles.backButtonPressed]}>
             <Ionicons color={colors.accent} name="chevron-back" size={20} />
-            <Text style={styles.backLabel}>{canGoBack ? "返回" : parent.label}</Text>
+            <Text style={styles.backLabel}>{backLabel ?? (canGoBack ? "返回" : parent.label)}</Text>
           </Pressable>
           <Text accessibilityRole="header" style={styles.navigationTitle}>{title}</Text>
           <View style={styles.navigationActions}>{headerActions}</View>

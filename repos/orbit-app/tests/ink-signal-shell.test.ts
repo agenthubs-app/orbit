@@ -50,7 +50,7 @@ Keyboard.addListener = (event, fn) => {
 function Fixture() {
   const { colors } = useOrbitTheme(); const controls = createControlStyles(colors);
   const [draft, setDraft] = useState(""); const [selected, setSelected] = useState(false);
-  return <AppScreen title={location.search.includes("long") ? "查看活动报名与现场安排，继续处理所有尚未完成的工作" : "人脉"}
+  return <AppScreen backAccessibilityLabel={location.search.includes("localizedBack") ? "Back to People" : undefined} backLabel={location.search.includes("localizedBack") ? "People" : undefined} title={location.search.includes("long") ? "查看活动报名与现场安排，继续处理所有尚未完成的工作" : "人脉"}
     titleAccessory={<Text>247</Text>} headerActions={<Pressable accessibilityRole="button" accessibilityLabel="添加人脉" style={{ minHeight: 44, minWidth: 44 }}><Text>添加</Text></Pressable>}>
     <TextInput accessibilityLabel="备注草稿" style={controls.input} value={draft} onChangeText={setDraft} />
     <Pressable accessibilityRole="button" style={controls.primaryButton} onPress={() => window.fixture.writes.push(draft)}><Text style={controls.primaryButtonText}>保存</Text></Pressable>
@@ -136,6 +136,14 @@ test("secondary page has no tabs, prefers history and has a meaningful direct-op
   const direct = await open(t, "/settings/api");
   await direct.getByRole("button", { name: "返回设置", exact: true }).click();
   assert.deepEqual(await direct.evaluate(() => (window as any).fixture.navigation), [{ method: "replace", href: "/settings" }]);
+});
+
+test("a secondary page can localize its visible and accessible back labels without changing navigation", async t => {
+  const page = await open(t, "/contacts/matches", "history&localizedBack");
+  const back = page.getByRole("button", { name: "Back to People", exact: true });
+  assert.equal(await back.textContent(), "People");
+  await back.click();
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), [{ method: "back" }]);
 });
 
 test("direct-open login and permissions return to their public account parent", async t => {

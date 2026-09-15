@@ -25,7 +25,7 @@ import React, { useSyncExternalStore } from "react";
 const listeners = new Set(); let revision = 0;
 const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
 const state = window.fixture = {
-  actorId: "actor:one", baseUrl: "https://orbit.test", cookieHeader: "orbit_session=one", mode: "home", navigation: [], pending: [], requests: [], refreshes: 0,
+  actorId: "actor:one", baseUrl: "https://orbit.test", cookieHeader: "orbit_session=one", fontScale: 1, mode: "home", navigation: [], pending: [], requests: [], refreshes: 0,
   profile: { id: "profile:one", relationshipGoal: "", updatedAt: "2026-09-15T00:00:00.000Z" },
   ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision += 1; listeners.forEach(fn => fn()); },
@@ -74,8 +74,18 @@ createRoot(document.getElementById("root")).render(<App />);`,
         plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons)$|\/(ApiBaseUrlProvider|AuthSessionProvider|useOrbitApiClient|useValidatedApiResource)$/ }, () => ({ path: "fixture", namespace: "contact-needs" }));
         plugin.onLoad({ filter: /.*/, namespace: "contact-needs" }, (args) => ({
           contents: args.path === "native" ? `
-import React from "react"; import { Modal as _Modal } from "react-native-web"; export * from "react-native-web";
+import React from "react"; import { Modal as _Modal, StyleSheet as _StyleSheet, Text as _Text, useWindowDimensions as _useWindowDimensions } from "react-native-web"; import { useFixture } from "fixture"; export * from "react-native-web";
 export const Modal = ({ children, visible }) => visible ? <div role="dialog">{children}</div> : null;
+export const useWindowDimensions = () => ({ ..._useWindowDimensions(), fontScale: useFixture().fontScale });
+export const Text = React.forwardRef(({ allowFontScaling = true, style, ...props }, ref) => {
+  const { fontScale } = useFixture();
+  const flatStyle = _StyleSheet.flatten(style) || {};
+  const scale = allowFontScaling ? fontScale : 1;
+  return <_Text ref={ref} {...props} style={[style, {
+    fontSize: typeof flatStyle.fontSize === "number" ? flatStyle.fontSize * scale : undefined,
+    lineHeight: typeof flatStyle.lineHeight === "number" ? flatStyle.lineHeight * scale : undefined,
+  }]} />;
+});
 ` : browserFixture,
           loader: "jsx",
           resolveDir: process.cwd(),
@@ -276,6 +286,25 @@ test("matches page expands real evidence and opens the selected contact", async 
   }
   await page.getByRole("button", { name: "打开田中健的联系人详情", exact: true }).click();
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["contact:one"]);
+});
+
+test("matches page stacks score content and contains the avatar initial at accessibility text sizes", async (t) => {
+  const page = await openContactNeeds(t, { fontScale: 2.4, mode: "matches" });
+  const row = page.getByRole("button", { name: "打开田中健的联系人详情", exact: true });
+  const avatarInitial = page.getByText("田", { exact: true });
+  const reason = page.getByText("匹配：日本、制造与供应链", { exact: true });
+  const score = page.getByText("100分", { exact: true });
+  const [rowBox, avatarBox, avatarParentBox, reasonBox, scoreBox] = await Promise.all([
+    row.boundingBox(),
+    avatarInitial.boundingBox(),
+    avatarInitial.locator("..").boundingBox(),
+    reason.boundingBox(),
+    score.boundingBox(),
+  ]);
+  assert.ok(rowBox && avatarBox && avatarParentBox && reasonBox && scoreBox);
+  assert.ok(avatarBox.height <= avatarParentBox.height, `avatar initial ${avatarBox.height}px exceeds ${avatarParentBox.height}px circle`);
+  assert.ok(scoreBox.y >= reasonBox.y + reasonBox.height, `score starts at ${scoreBox.y}px before reason ends at ${reasonBox.y + reasonBox.height}px`);
+  assert.ok(scoreBox.x + scoreBox.width <= rowBox.x + rowBox.width, "score stays within the tappable row");
 });
 
 test("home editor saves a trimmed versioned need and rejects a false receipt without losing the draft", async (t) => {

@@ -35,7 +35,12 @@ export function ContactNeedsMatchesScreen() {
   const saveError = needs.error ? locale.t(contactNeedsErrorMessageKeys[needs.error]) : null;
   const saveMessage = needs.message ? locale.t(contactNeedsSuccessMessageKeys[needs.message]) : null;
   return (
-    <AppScreen title={locale.t("contacts.needMatchesTitle")} refreshControl={<RefreshControl onRefresh={matchesState.refresh} refreshing={matchesState.refreshing} tintColor={colors.accent} />}>
+    <AppScreen
+      backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("contacts.back") })}
+      backLabel={locale.t("contacts.back")}
+      title={locale.t("contacts.needMatchesTitle")}
+      refreshControl={<RefreshControl onRefresh={matchesState.refresh} refreshing={matchesState.refreshing} tintColor={colors.accent} />}
+    >
       {matchesState.kind === "loading" ? <LoadingState /> : null}
       {matchesState.kind === "offline" || matchesState.kind === "failure" ? (
         <View style={styles.failure}>
