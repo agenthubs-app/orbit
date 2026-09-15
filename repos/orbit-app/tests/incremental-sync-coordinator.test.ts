@@ -515,6 +515,43 @@ test("a replacement subscriber resumes a flight after the last subscriber cancel
   ]);
 });
 
+test("same-tick same-scope reacquire cancels deferred teardown", async (t) => {
+  const f = await setup();
+  t.after(() => f.database.close());
+  const pending = deferred<ReturnType<typeof success>>();
+  let calls = 0;
+  let signal: AbortSignal | undefined;
+  const client = createSyncClient(
+    apiClient(async (_path, options) => {
+      calls += 1;
+      signal = options?.signal;
+      return pending.promise;
+    }),
+  );
+  const firstSession = f.coordinator.openScope({
+    actorId: "actor-a",
+    baseUrl: BASE_URL,
+    client,
+    scopeKey: "same-auth-session",
+  });
+  const firstRequest = firstSession.synchronize("note");
+  await new Promise((resolve) => setImmediate(resolve));
+  firstRequest.cancel();
+  firstSession.deactivate();
+  const replacementSession = f.coordinator.openScope({
+    actorId: "actor-a",
+    baseUrl: BASE_URL,
+    client,
+    scopeKey: "same-auth-session",
+  });
+  const replacementRequest = replacementSession.synchronize("note");
+
+  assert.equal(calls, 1);
+  assert.equal(signal?.aborted, false);
+  pending.resolve(success(page()));
+  assert.equal((await replacementRequest.promise)?.status, "fresh");
+});
+
 test("AppState lifecycle counts an already-background mount and removes its listener", () => {
   let currentState = "background";
   let now = 1_000;
@@ -926,7 +963,8 @@ const subscribers = new Set();
 const appStateListeners = new Set();
 const meta = { featureMode: null, privacy: null, runtimeBoundary: null };
 const state = window.fixture = {
-  actorId: "actor-a", signedIn: true, ready: true, baseUrlReady: true,
+  actorId: "actor-a", user: { session: "session-a" }, signedIn: true,
+  ready: true, baseUrlReady: true,
   baseUrl: "https://orbit.example", sessionRevision: 0, mounted: true,
   componentCount: 1, appState: "active", requests: [], replies: [],
   records: [], cursor: null, workspaceId: null, applies: 0, scopeOpens: 0,
@@ -976,6 +1014,7 @@ export const useOrbitAuthSession = () => {
     notificationSessionRevision: state.sessionRevision,
     ready: state.ready,
     signedIn: state.signedIn,
+    user: state.user,
   };
 };
 export const useOrbitApiBaseUrl = () => {
@@ -1054,7 +1093,10 @@ function App() {
     : null;
 }
 window.renderAbandoned = () => renderToString(<Probe index="abandoned" />);
-createRoot(document.getElementById("root")).render(<App />);`,
+const app = <App />;
+createRoot(document.getElementById("root")).render(
+  window.initialFixture?.strictMode ? <React.StrictMode>{app}</React.StrictMode> : app,
+);`,
       loader: "tsx",
       resolveDir: process.cwd(),
     },
@@ -1156,7 +1198,7 @@ test("signout and same-actor relogin reject the prior hook generation", async (t
   await page.waitForFunction(() =>
     (window as unknown as { fixture: { requests: unknown[] } }).fixture.requests.length === 1,
   );
-  await updateHook(page, { actorId: null, signedIn: false });
+  await updateHook(page, { actorId: null, signedIn: false, user: null });
   assert.equal(
     await page.evaluate(() => {
       const request = (window as unknown as {
@@ -1166,7 +1208,11 @@ test("signout and same-actor relogin reject the prior hook generation", async (t
     }),
     true,
   );
-  await updateHook(page, { actorId: "actor-a", signedIn: true });
+  await updateHook(page, {
+    actorId: "actor-a",
+    signedIn: true,
+    user: { session: "session-b" },
+  });
   await page.waitForFunction(() =>
     (window as unknown as { fixture: { requests: unknown[] } }).fixture.requests.length === 2,
   );
@@ -1193,6 +1239,71 @@ test("signout and same-actor relogin reject the prior hook generation", async (t
     ),
     1,
   );
+});
+
+test("a new auth user object revokes the old flight in the same commit", async (t) => {
+  const page = await openHook(t);
+  await page.waitForFunction(() =>
+    (window as unknown as { fixture: { requests: unknown[] } }).fixture.requests.length === 1,
+  );
+
+  await updateHook(page, { user: { session: "session-b" } });
+  await page.waitForFunction(() =>
+    (window as unknown as { fixture: { requests: unknown[] } }).fixture.requests.length === 2,
+  );
+  assert.equal(
+    await page.evaluate(() => {
+      const request = (window as unknown as {
+        fixture: { requests: Array<{ signal?: AbortSignal }> };
+      }).fixture.requests[0];
+      return request?.signal?.aborted;
+    }),
+    true,
+  );
+
+  await page.evaluate(() => {
+    (window as unknown as { fixture: { reply(index: number, id: string): void } }).fixture.reply(0, "old-same-tick");
+  });
+  await settleHook(page);
+  assert.equal(
+    await page.evaluate(() =>
+      (window as unknown as { fixture: { applies: number } }).fixture.applies,
+    ),
+    0,
+  );
+  assert.doesNotMatch(await page.locator("output").innerText(), /old-same-tick/);
+
+  await page.evaluate(() => {
+    (window as unknown as { fixture: { reply(index: number, id: string): void } }).fixture.reply(1, "new-same-tick");
+  });
+  await page.getByText("fresh:new-same-tick", { exact: true }).waitFor();
+});
+
+test("StrictMode reuses one committed scope and flight without aborting it", async (t) => {
+  const page = await openHook(t, { strictMode: true });
+  await page.waitForFunction(() =>
+    (window as unknown as { fixture: { requests: unknown[] } }).fixture.requests.length === 1,
+  );
+  assert.deepEqual(
+    await page.evaluate(() => {
+      const fixture = (window as unknown as {
+        fixture: {
+          requests: Array<{ signal?: AbortSignal }>;
+          scopeOpens: number;
+        };
+      }).fixture;
+      return {
+        aborted: fixture.requests[0]?.signal?.aborted,
+        gets: fixture.requests.length,
+        scopeOpens: fixture.scopeOpens,
+      };
+    }),
+    { aborted: false, gets: 1, scopeOpens: 1 },
+  );
+  await page.evaluate(() => {
+    (window as unknown as { fixture: { reply(index: number, id: string): void } }).fixture.reply(0, "strict");
+  });
+  await page.getByText("fresh:strict", { exact: true }).waitFor();
 });
 
 test("two committed hook consumers share one flight and one cleanup does not revoke it", async (t) => {

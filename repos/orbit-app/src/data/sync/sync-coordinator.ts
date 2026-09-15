@@ -83,6 +83,7 @@ interface ActiveScope extends SyncScopeInput {
   leases: number;
   ready: Promise<void>;
   superseded: boolean;
+  teardownVersion: number;
   workspaceId: string | null;
 }
 
@@ -384,12 +385,14 @@ export function createSyncCoordinator(input: {
         leases: 0,
         ready: Promise.resolve(),
         superseded: false,
+        teardownVersion: 0,
         workspaceId: null,
       } satisfies ActiveScope;
       next.ready = initializeScope(next);
       active = next;
     }
     const bound = active;
+    bound.teardownVersion += 1;
     bound.leases += 1;
     let deactivated = false;
 
@@ -399,8 +402,18 @@ export function createSyncCoordinator(input: {
         deactivated = true;
         bound.leases = Math.max(0, bound.leases - 1);
         if (bound.leases === 0 && isCurrent(bound)) {
-          supersede(bound);
-          active = null;
+          const teardownVersion = ++bound.teardownVersion;
+          queueMicrotask(() => {
+            if (
+              bound.leases !== 0 ||
+              bound.teardownVersion !== teardownVersion ||
+              !isCurrent(bound)
+            ) {
+              return;
+            }
+            supersede(bound);
+            active = null;
+          });
         }
       },
       invalidate(): void {

@@ -22,6 +22,17 @@ import { syncLifecycle } from "../data/sync/sync-lifecycle";
 import { useOrbitApiClient } from "./useOrbitApiClient";
 
 const appSyncCoordinator = createSyncCoordinator({ lifecycle: syncLifecycle });
+const authSessionGenerations = new WeakMap<object, number>();
+let nextAuthSessionGeneration = 0;
+
+function authSessionGeneration(user: object | null): number {
+  if (user === null) return 0;
+  const existing = authSessionGenerations.get(user);
+  if (existing !== undefined) return existing;
+  nextAuthSessionGeneration += 1;
+  authSessionGenerations.set(user, nextAuthSessionGeneration);
+  return nextAuthSessionGeneration;
+}
 
 function emptySnapshot<TPayload>(): SyncedCollectionSnapshot<TPayload> {
   return {
@@ -38,14 +49,24 @@ export function useSyncedCollection<TPayload = unknown>(input: {
 }) {
   const auth = useOrbitAuthSession();
   const { baseUrl, ready: baseUrlReady } = useOrbitApiBaseUrl();
+  const sessionGeneration = useMemo(
+    () => authSessionGeneration(auth.user),
+    [auth.user],
+  );
   const scopeKey = useMemo(
     () =>
       JSON.stringify([
         baseUrl,
         auth.actorId,
         auth.notificationSessionRevision,
+        sessionGeneration,
       ]),
-    [auth.actorId, auth.notificationSessionRevision, baseUrl],
+    [
+      auth.actorId,
+      auth.notificationSessionRevision,
+      baseUrl,
+      sessionGeneration,
+    ],
   );
   const apiClient = useOrbitApiClient({ scopeKey });
   const [snapshot, setSnapshot] = useState<
