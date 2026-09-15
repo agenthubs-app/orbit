@@ -70,6 +70,8 @@
 **Files:**
 - Modify: `repos/orbits/app/api/notes/[id]/route.ts`
 - Modify: `repos/orbits/app/api/notes/[id]/handler.ts`
+- Modify: `repos/orbits/features/notes/contract.ts`
+- Modify: `repos/orbits/features/notes/note-record.ts`
 - Modify: `repos/orbits/features/notes/service.ts`
 - Modify: `repos/orbits/features/notes/repository.ts`
 - Modify direct tests: `repos/orbits/tests/api/notes-routes.test.ts`, `repos/orbits/tests/services/notes-service.test.ts`, plus the incremental-sync tombstone integration test
