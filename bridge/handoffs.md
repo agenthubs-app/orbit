@@ -30,6 +30,7 @@
 | [BR-018](2026-09-15-note-suggestions.md) | P1 | 笔记来源待办建议 | verified | 已关闭 | 同环境建议接受、幂等、来源版本、日期确认与原生 App 已于 2026-09-15 验证 |
 | [BR-019](2026-09-15-notes-ink-signal-search.md) | P1 | 笔记 4a 与搜索式关联 | verified | 已关闭 | 同账号 Web/App 双向 note v2、有界联系人搜索、原生 4a 六状态与版本／权限反例已于 2026-09-15 验证 |
 | [BR-020](2026-09-15-canonical-app-identity.md) | P1 | App raw 登录主体与 canonical 业务账号分离 | verified | 已关闭 | `/api/account/me` 唯一身份、owner-scoped 消费者、完整回归与原生三链已验证 |
+| [BR-021](2026-09-15-unified-inbox.md) | P1 | App 统一收件箱与确认式全部已读 | consumer_ready | 运行数据／共同环境负责人 | 同账号补齐 activity/contact/IORBIT/conversation 和受控 read 失败，完成原生点击与恢复验收 |
 
 ## BR-016 — 人脉、名片与活动三语消费
 

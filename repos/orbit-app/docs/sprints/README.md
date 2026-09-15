@@ -75,6 +75,7 @@ build/harness-logs/
 | [0025](0025-notes-ink-signal-search/GOAL.md) | 按最新 4a 重做笔记列表、编辑、详情与联系人笔记页签，用加号和输入搜索关联人脉，不平铺联系人全集 | 2026-09-15 新增；承接 R-13／0018／0019 | run-01 已完成；五项 SC、同账号 Web↔App、Web／iOS 构建与有界搜索均通过；见 [REPORT](0025-notes-ink-signal-search/REPORT.md) | completed |
 | [0026](0026-canonical-app-account-identity/GOAL.md) | 统一 App 登录主体与业务账号身份，让待办、个人日程和笔记正确读取 canonical owner | 用户批准追加 C 线 Sprint；承接现有 `/api/account/me` | run-01 completed；功能 `f5f595df4`、邀请补漏 `3385369dd`；见 [REPORT](0026-canonical-app-account-identity/REPORT.md) | completed |
 | [0027](0027-open-schedule-meeting-details/GOAL.md) | 让四类日程进入对应详情，并可安全添加、编辑或清空参会人共享的会议说明 | 用户批准追加 C 线 Sprint；承接 appointment 聚合与 0026 canonical actor | run-01 running；Planner revision 1，见下方运行记录 | running |
+| [0030](0030-inbox-ink-signal-unified-feed/GOAL.md) | 按 3a 设计把会话、提醒和关系信号统一为四筛选收件箱，并经真实回执全部已读 | 用户批准 E 线 Sprint；承接 BR-010／011／020 | run-01 implementation completed；产品/测试 HEAD `4d351f0a0`，同账号 live task/read/refresh 已验收，缺失 live 类别见 [REPORT](0030-inbox-ink-signal-unified-feed/REPORT.md) | completed |
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
 
@@ -370,7 +371,8 @@ build/harness-logs/
 
 ### 0030 / run-01
 
-- Generator owner：E 线当前代理 `/root`；开始时间：2026-09-15 JST；状态：in progress；分支：`codex/e-line-sprint-0030`。
+- Generator owner：E 线当前代理 `/root`；开始时间：2026-09-15 JST；结束时间：2026-09-15 19:41 JST；状态：completed；分支：`codex/e-line-sprint-0030`。
 - 集成基线：`01bcceeb5c11113c8677ca9e89be39d9678fb0bc`，基线合并与重复内容修复后 HEAD `03b63e8a5`；用户既有 `AGENTS.md`、`CLAUDE.md` 与未跟踪笔记设计目录保持未暂存。
 - 批准设计：`0030-inbox-ink-signal-unified-feed/assets/3a-inbox.png`，源自 `软件UI设计现代化 (5).zip` 的 `design_handoff_orbit_ink_signal/screenshots/3a-收件箱.png`，780×1688 px，SHA-256 `a2f576c474780cd451c10eb7a2b3fe339130a18974c0f6436f9a1494e2522702`。
 - 运行目标：以真实 conversation、notification、relationship signal 聚合四类收件箱，逐条确认“全部已读”，保留既有详情／定向写信能力，并在同账号、同数据库的 live Web/API 与 iOS Simulator 上验收。
+- 结果：产品/测试固定 HEAD `4d351f0a0eddc1479eebb3a6b6852a466cad322d`；inbox matrix 231/231、App 全量 2828/2828、typecheck、原生 0 error／0 warning和同账号 40/40 read 持久通过。当前 QA 数据缺 activity/contact/IORBIT/conversation，历史 reminder task 与 canonical task 交集为 0；这些运行限制登记在 [REPORT](0030-inbox-ink-signal-unified-feed/REPORT.md) 和 BR-021，不伪造记录。
