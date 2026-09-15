@@ -41,3 +41,30 @@ node node_modules/typescript/bin/tsc --noEmit --incremental false -p tsconfig.js
 `verify-full-review-read.mjs`／`review-full-read.json`。读取探针用 Node 22 的
 `--import <本仓库>/node_modules/tsx/dist/loader.mjs` 执行对应 `.mjs`；
 连接信息仅从受限私有运行文件加载，输出仅包含计数、布尔与哈希。
+
+## 个人日程的公开字段边界
+
+`personal_schedule` 流中的 `kind=personal` payload 必须符合既有
+`shared/api-schema/personal-schedule.ts` 严格 schema；该文件与 App schema
+逐字一致。authority schema 的 `evidenceIds` 默认值不属于公开个人日程契约，
+不能随同步投影增加，否则 App 会在同步成功后拒绝整份个人日程列表。
+个人日程只输出基础字段和可选的 `endsAt/location`；会议及活动原有投影不变。
+
+新增 `tests/services/incremental-sync-personal-schedule.test.ts`：两个个人日程
+兼容断言先 RED，会议证据字段回归通过；修复后三项全部 GREEN。完整 Web 组合
+在前述命令中加入该文件后为 57/57，零跳过，独占测试库清理成功。
+真实副本只读返回 149 条变化，唯一个人日程通过 App 原 strict schema 及
+`personalScheduleList` consumer，计数均为 1；没有附带 `evidenceIds`。
+该只读验证的外部脚本／证据为 `verify-personal-repair.mjs`／
+`personal-repair-live.json`，连接信息不进入输出。
+
+App 在对应仓库用 Node 22 执行下列检查，测试 41/41、零跳过，类型检查退出码 0；
+Web 完整类型检查也通过。
+
+```sh
+node --import tsx --import ./tests/helpers/register-render-hooks.mjs --test tests/personal-schedule-editor.test.ts tests/personal-schedule-list-sync-interactions.test.tsx tests/personal-schedule-interactions.test.tsx tests/incremental-sync-coordinator.test.ts
+node node_modules/typescript/bin/tsc --noEmit
+```
+
+此修改不改写数据库或 revision。已经缓存旧投影的客户端需要重新 bootstrap
+才能取得新投影；运行验收须单独验证重置后可见，不能把普通无变化 delta 当作修复生效。
