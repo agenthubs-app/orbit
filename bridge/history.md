@@ -1,5 +1,9 @@
 # Bridge 历史记录
 
+## 2026-09-16 — Sprint0037
+
+联系人消息独立，真实QA共同环境完成Web↔原生收发、重试去重和已读隔离；a591494b0已进入chat-agent，详见[BR-025](2026-09-16-contact-message-inbox.md)。保留全量失败与局部回归历史，不宣称远程发布或Push通过。
+
 ## 2026-09-15 — Sprint 0029 数据权威与 AI 只读面
 
 - authority registry、push device identity、canonical schedule service 与四个 actor-scoped AI query tool 已按 A–E 轨提交；Web/App contract 同步。

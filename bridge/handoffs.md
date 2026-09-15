@@ -204,3 +204,7 @@
 - app_status：E 线原功能 `218fb3d4b`、主线集成 `8c9bf60cc` 已实现15秒前台刷新、已读回执、角标失效和合法通知跳转。
 - verification_status：blocked。App全量2589/2589、E定向411/411、主线组合260/260、两端typecheck及PostgreSQL 通过，但没有 Expo project ID、`ORBIT_PUSH_TOKEN_KEY`、可登录双用户原生账号和实体推送环境。
 - 恢复条件：提供上述环境后验证持续前台到达、真实已读角标同步、无权限目标及实体推送；完成前不把0012标为completed。详情见 `repos/orbit-app/docs/sprints/0012-message-state/REPORT.md`。
+
+## BR-025 — 联系人消息独立收件箱
+
+verified（本地共同环境）；Web/App功能及主线a591494b0，实际双账号收发/原生回复/重试与已读已验收；[交接](2026-09-16-contact-message-inbox.md)。后续0038消费；Push仍由0040验证。

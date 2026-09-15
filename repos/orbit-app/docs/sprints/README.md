@@ -40,7 +40,7 @@ build/harness-logs/
 
 原始日志和截图使用已有被忽略的 `build/` 子目录，不改 `.gitignore`、不进产品源码或 Git。运行目录只在对应 Sprint 启动时创建。用户要求的 Planner／报告是可提交文档，集中在 `docs/sprints/`。证据只读留存，不自动清空 `build/` 或迁移旧日志。
 
-2026-09-16 新增[收件箱与自主通知项目计划](NOTIFICATION_PROGRAM.md)：0037 → 0038 → 0039 → 0040，分别交付联系人消息、三类通知、AI有依据的发现、推送与旧流切换。本轮仅编制，不登记虚构run或REPORT。
+2026-09-16 新增[收件箱与自主通知项目计划](NOTIFICATION_PROGRAM.md)：0037 → 0038 → 0039 → 0040，分别交付联系人消息、三类通知、AI有依据的发现、推送与旧流切换。2026-09-16用户已授权本session按重叠检查结果顺序实施；真实run见下方记录。
 
 ## Sprint 登记表
 
@@ -86,7 +86,7 @@ build/harness-logs/
 | [0034](0034-offline-personal-mutations/GOAL.md) | 四类个人数据可离线确认保存、幂等上传并由用户解决冲突 | 同上；AI 只读取已同步云端版本 | 依赖 0033 completed/merged；planned，run_count=0 | planned |
 | [0035](0035-sync-invalidation-recovery/GOAL.md) | 用提供商无关的轻量状态检测加速刷新，并以启动／前台／cursor 修复漏提示 | 同上；兼容本地 PostgreSQL、Supabase、Neon 或其他 PostgreSQL provider | 依赖 0034 completed/merged；供应商选型不阻塞 portable core；planned，run_count=0 | planned |
 | [0036](0036-ai-sync-visibility-acceptance/GOAL.md) | 让 AI 报告四域云端数据新鲜度，完成跨端验收并更新私有 Data Atlas | 数据审查、AI 盲区与同步方案最终收口 | 依赖 0035 completed/merged、同账号 runtime 与已授权 AI provider；planned，run_count=0 | planned |
-| [0037](0037-contact-message-inbox/GOAL.md) | 把联系人消息从通知中独立出来，让用户看到真实对话并可靠收发、回复和同步已读。 | 2026-09-16 已确认的消息/三类通知设计 | 已核对0033工作树，消息链无直接冲突；E线run-01，见下方启动记录 | running |
+| [0037](0037-contact-message-inbox/GOAL.md) | 把联系人消息从通知中独立出来，让用户看到真实对话并可靠收发、回复和同步已读。 | 2026-09-16 已确认的消息/三类通知设计 | 功能及主线 a591494b0；共同环境双账号通信/原生回读已验收，见 [REPORT](0037-contact-message-inbox/REPORT.md) | completed |
 | [0038](0038-typed-notification-inbox/GOAL.md) | 让每条通知明确属于提醒、建议或动态，显示原因和可追溯来源，并让 Web 与 App 操作同一条记录。 | 2026-09-16 已确认的消息/三类通知设计 | 依赖 0037 固定SHA合并及相关验证；本次仅规划，run_count=0 | planned |
 | [0039](0039-evidence-based-notification-discovery/GOAL.md) | 让 AI 从允许使用的真实信息中自主发现具体动作，有可信时间才提醒，并展示可核查的原文依据。 | 2026-09-16 已确认的消息/三类通知设计 | 依赖 0038 固定SHA合并及相关验证；本次仅规划，run_count=0 | planned |
 | [0040](0040-notification-delivery-cutover/GOAL.md) | 让消息和通知按独立偏好可靠送达，减少重复打扰，并安全替换旧通知数据与旧发送链。 | 2026-09-16 已确认的消息/三类通知设计 | 依赖 0039 固定SHA合并及相关验证；真实Push需有效provider/设备；本次仅规划，run_count=0 | planned |
@@ -407,3 +407,5 @@ build/harness-logs/
 - 范围锁：0037 Planner的消息/收件箱消费者、必要语言文案及行为测试；不修改0033～0036的sync、outbox、AI freshness和未提交文件。共同Simulator/Web进程先核实使用者再接管。
 - 重叠检查：0033实际在codex/sprint-0033-runtime-acceptance等工作树推进，主线ready标签滞后；0037与已查文件无直接代码重叠。0039接入query-service/manifest前等0036写入结束或使用不修改这些文件的独立适配器；0040与0035通知协调器接线须集成后复验。语言文件与根台账只能串行合并。
 - 本run尚未做真实双账号/远程Push验收；按实际结果继续更新，不预填通过。
+
+- 0037收口：功能/主线 a591494b0；两端同版本运行证据及失败历史见REPORT；下一步0038，未改0033～0036文件。
