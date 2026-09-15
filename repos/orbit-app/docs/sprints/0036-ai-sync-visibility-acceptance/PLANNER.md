@@ -15,10 +15,12 @@
 - **原需求：** AI 必须能按用户指令选择并读取笔记、任务、跟进和日程；同时全面说明数据原型、存储、接口统一性和错误使用。
 - **依赖：** 0035 completed/merged；0029 的四个 AI tools 仍通过；0032–0035 的 runtime evidence 可复现。
 - AI 只读 cloud canonical。不得上传本地正文、绕过同步、扩大字段 allowlist 或暗示 pending 已可见。
+- `followups.query` 只读取 canonical relationship tasks，并把实际使用的 task/connection/evidence `sync_revision` 列入 freshness；AI query cursor 与 sync cursor 不可互换。
+- App followups pending notice 从 `kind=task` + `category=relationship` 派生，不使用独立 followup store/kind。
 - App 的 pending notice 是客户端真实性状态；provider outcome 的 freshness 必须来自服务器实际读取。
 - 数据站点保持私有、脱敏并与提交文档同源；发布内容不得包含真实账号、记录、密钥、数据库 URL 或日志。
 - Web/API/shared 改动后 production build/restart；AI runtime 验收使用明确授权的 provider 和同一账号。
-- 单 Generator、impact、TDD、detect_changes、commit、merge `chat-agent`；最终全量只在合并树运行一次。
+- 单 Generator、impact、TDD、detect_changes、commit、merge `chat-agent`、合并树验证、push 并记录 remote SHA；最终全量只在合并树运行一次。
 
 ---
 
@@ -34,8 +36,8 @@
 - Modify: `repos/orbits/tests/architecture/ai-visibility-manifest.test.ts`
 - Modify: `repos/orbits/tests/capabilities/orbit-ai-query-routing.test.ts`
 
-- [ ] Write RED tests requiring `cloud_canonical`, server read time and item revision/updatedAt for notes/tasks/followups/schedule; cover empty, get/list/search, truncated/nextCursor and deleted records.
-- [ ] Add source revision mapping at the repository/service boundary; never synthesize revision from result order or App cursor.
+- [ ] Write RED tests requiring `cloud_canonical`, server read time and source kind/id/sync_revision/updatedAt for notes/tasks/followups/schedule; cover followup task+connection+evidence provenance, empty, get/list/search, truncated/query-nextCursor and deleted records.
+- [ ] Add source revision mapping at the repository/service boundary; never synthesize revision from payload version, updatedAt, result order or App/sync cursor.
 - [ ] Extend artifact and provider guidance so truncated data is described as partial and stale revision is not called current after a known conflict.
 - [ ] Run the three focused suites plus prompt-injection/trace tests and Web typecheck.
 
@@ -49,7 +51,7 @@
 - Create: `repos/orbit-app/tests/ai-sync-visibility.test.ts`
 - Modify: `repos/orbit-app/tests/ink-signal-ai-conversation.test.ts`
 
-- [ ] Write RED tests for pending/conflicted/failed domain counts, no content exposure, notice persistence across AI send/result, exact removal only after canonical acknowledgment+delta, locale parity and account switch.
+- [ ] Write RED tests for pending/conflicted/failed domain counts, followups derived from relationship tasks, no content exposure, notice persistence across AI send/result, exact removal only after canonical acknowledgment+delta, locale parity and account switch.
 - [ ] Implement a pure outbox summary and one reusable notice. Do not append local record content or a false tool outcome to the model request.
 - [ ] Ensure pending warning coexists with provider/network errors and cannot be dismissed as though synchronization succeeded.
 - [ ] Run both App AI tests, sync/outbox direct tests and App typecheck.
@@ -62,7 +64,7 @@
 
 - [ ] Production-build/restart Web/API and rebuild/install the current App against the same redacted database/account; confirm health and exact commits.
 - [ ] For each of notes/tasks/followups/personal schedule, prove online Web→App→AI revision equality and offline App pending→old AI revision→ack→new AI revision.
-- [ ] Prove conflict, deletion tombstone, missed invalidation hint, App reinstall/bootstrap and account A→B→A isolation. Record only IDs hashed with a run-specific salt.
+- [ ] Prove conflict, deletion tombstone, missed invalidation hint, invalid/expired cursor reset, App reinstall/bootstrap and account A→B→A isolation. Reset must rebuild synced mirror while preserving pending/conflicted/failed/outbox/drafts. Record only IDs hashed with a run-specific salt.
 - [ ] Treat unavailable provider, missing authorized account, migration or Simulator as an incomplete SC; mocks may support tests but cannot replace runtime evidence.
 
 ### Task 4: Refresh and publish the private Data Atlas

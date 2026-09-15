@@ -10,19 +10,24 @@ Orbit AI 运行在服务器，只读取认证 actor 的 Cloud Canonical Records�
 export interface AiQueryFreshness {
   authority: "cloud_canonical";
   readAt: string;
-  records: readonly { id: string; revision: string; updatedAt: string }[];
+  records: readonly {
+    kind: "note" | "task" | "personal_schedule" | "connection" | "evidence";
+    id: string;
+    revision: string;
+    updatedAt: string;
+  }[];
   truncated: boolean;
   nextCursor?: string;
 }
 ```
 
-`revision` 由对应 canonical record 产生，不使用 App cursor、客户端时间或模型推断。无结果仍返回 `readAt` 和 `authority`；`truncated=true` 时回答必须称为“当前返回范围”，不能称为完整清单。
+`revision` 明确使用 0033 的数据库 `sync_revision`，不使用 payload version、updatedAt、App cursor、客户端时间或模型推断。`nextCursor` 是各 AI query 自己的分页 cursor，与 `/api/sync` cursor 不可互换。`followups.query` 只筛选 `orbit_records/tasks` 中 `category=relationship` 且满足 confirmed/connection 约束的 canonical task，复用同一 task id；freshness 必须列出实际参与结果的 task 以及被读取的 connection/evidence source，不能只凭 task revision 声称 evidence 最新。无结果仍返回 `readAt` 和 `authority`；`truncated=true` 时回答必须称为“当前返回范围”，不能称为完整清单。
 
 ## App 真实性提示
 
 App 在打开/发送 AI 请求时读取本地 outbox 汇总，只传递或展示域级状态，不传业务正文：
 
-- `pendingDomains`: 仅用于客户端 UI，默认不发送 provider。
+- `pendingDomains`: 仅用于客户端 UI，默认不发送 provider；followups 从 pending task 的 `category=relationship` 派生。
 - 存在 pending/conflict/failed 时显示域名、数量和“Orbit AI 只看云端已同步版本”。
 - 用户仍可发问，但回答区域保持提示，不能把提示包装为工具已经读取本机内容。
 - acknowledgment 后由 delta 更新 mirror，再移除提示；仅清 outbox 但未取得 canonical revision 不算完成。
@@ -45,6 +50,7 @@ App 在打开/发送 AI 请求时读取本地 outbox 汇总，只传递或展示
 | 删除 | tombstone/不可读 | delta 后移除 | get 不返回已删正文 |
 | 重装/设备丢失 | canonical 保留 | bootstrap 重建；未同步草稿不可恢复 | canonical 不变 |
 | 换账号 | actor A/B 隔离 | mirror/outbox/channel 全隔离 | 工具结果全隔离 |
+| invalid/expired sync cursor | canonical 不变 | 只重建 synced mirror/cursor；pending/conflicted/failed/outbox/draft 保留 | 始终只读 cloud canonical |
 
 ## Data Atlas
 

@@ -11,13 +11,16 @@
 ```ts
 export interface SyncInvalidation {
   scopeVersion: 1;
+  workspaceId: string;
   latestRevision: string;
-  changedKinds: readonly SyncEntityKind[];
+  changedKinds: readonly ("note" | "task" | "personal_schedule")[];
   emittedAt: string;
 }
 ```
 
-actor/workspace 只来自现有 Orbit 认证会话，不接受 query、UI 或 transport payload 传入。App 前台每 15 秒最多执行一次轻量 status check；`latestRevision` 未前进时不调用数据 delta。100 次业务变更在状态响应中折叠为一个最新水位和去重后的领域集合。
+HTTP 层沿用共享 success/failure envelope；只有条件请求命中时允许标准 304 无 body。actor/workspace 只来自现有 Orbit 认证会话，不接受 query、UI 或 transport payload 传入。响应返回可信 `workspaceId`，旧 callback 必须同时匹配当前 scope generation。`afterRevision` 只能取 0033 已提交的 server highWatermark；无效、负数、未来或过期水位使用 HTTP 409 `CONFLICT` + `context.syncErrorCode=SYNC_RESET_REQUIRED`，复用 0033 的本地 reset 事务，不能清除 pending/conflicted/failed、outbox 或 device drafts。
+
+App 前台每 15 秒最多执行一次轻量 status check；`latestRevision` 未前进时不调用数据 delta。100 次业务变更在状态响应中折叠为一个最新水位和去重后的 wire kind。关系跟进变化返回 `task`，并同时失效 Tasks 与 followups category selector；不产生 `relationship_followup` canonical kind。
 
 ## 可替换 Transport
 

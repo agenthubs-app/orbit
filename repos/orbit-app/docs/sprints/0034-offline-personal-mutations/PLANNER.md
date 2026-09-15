@@ -17,8 +17,10 @@
 - 仅四个 actor-private 域允许离线。meeting/event/invitation/registration/chat/permissions/account deletion/provider/AI side effects 均 online-only。
 - 保留现有领域校验、owner、association、expected-version 和 receipt 规则；批量入口不得绕过 domain service 直接写 `orbit_records`。
 - 不采用 last-write-wins；冲突不自动覆盖任何一方。pending 不得标为 Web/AI 可见。
+- 本地队列保存认证 actor 与 0033 的可信 workspace 分区；wire command 不含 actor/workspace，上传前 scope 不匹配必须暂停。
+- `baseRevision` 只使用 `orbit_records.sync_revision`。人脉跟进始终为 `kind=task` 加 `category=relationship`；显式创建允许，suggestion accept 保持 online-only。
 - Web/API/shared 变更后 production build/restart，再做同账号 Web/App/AI 验收。
-- 单 Generator、逐符号 impact、TDD、提交前 detect_changes；commit 后合并 `chat-agent` 并复验。
+- 单 Generator、逐符号 impact、TDD、提交前 detect_changes；commit 后合并 `chat-agent`、精确合并树复验、push 并记录 remote SHA。
 
 ---
 
@@ -33,7 +35,7 @@
 - Create: `repos/orbit-app/tests/pending-overlay.test.ts`
 
 - [ ] Write RED tests for durable enqueue, stable mutation ID, local ID mapping, per-entity FIFO, four-way state, restart, dedupe, account isolation, canonical/pending separation and tombstone overlay.
-- [ ] Implement strict mutation schemas and repository transactions; reject forbidden kinds/operations and any client-supplied actor/workspace override.
+- [ ] Implement separate strict local-queue and authority-free wire schemas; reject forbidden kinds/operations and any wire actor/workspace field. Queue scope must match current authenticated workspace before upload.
 - [ ] Implement pure pending overlay selectors that never mutate the canonical base and expose `aiAvailable=false` until acknowledgment.
 - [ ] Sync contract copy and run the two tests plus contract-sync.
 
@@ -51,7 +53,7 @@
 
 - [ ] Write RED tests for one receipt per mutation, same-ID replay, same-ID/different-payload rejection, base-revision CAS, actor isolation, partial batch results, local→canonical ID mapping and forbidden domain rejection.
 - [ ] Implement batch limit 50 and dispatch only through existing domain services. Add the smallest adapter needed to expose a common canonical revision; never weaken existing validators.
-- [ ] Return per-item `acknowledged/conflict/retryable/permanent` with allowlisted canonical/conflict record; no partial item may be reported acknowledged before its domain transaction commits.
+- [ ] Return the shared success envelope with per-item `acknowledged/conflict/retryable/permanent` and allowlisted canonical/conflict record; no partial item may be reported acknowledged before its domain transaction commits. Domain conflict stays an HTTP 200 item result and must not impersonate cursor-reset 409.
 - [ ] Run both new server files plus existing notes/tasks/personal-schedule mutation suites and Web typecheck.
 
 ### Task 3: Build the uploader and conflict resolution core
@@ -76,14 +78,13 @@
 - Modify: `repos/orbit-app/src/screens/notes/NoteDetailScreen.tsx`
 - Modify: `repos/orbit-app/src/screens/tasks/TasksScreen.tsx`
 - Modify: `repos/orbit-app/src/screens/tasks/TaskDetailScreen.tsx`
-- Modify: `repos/orbit-app/src/screens/followups/SavedFollowupsList.tsx`
 - Modify: `repos/orbit-app/src/screens/schedule/PersonalScheduleScreen.tsx`
 - Create: `repos/orbit-app/src/components/SyncStateNotice.tsx`
 - Modify: `repos/orbit-app/src/i18n/messages.ts`, `zh.ts`, `ja.ts`, `en.ts`
 - Modify direct interaction tests for those screens; create `repos/orbit-app/tests/offline-mutation-eligibility.test.ts`
 
 - [ ] Add RED interaction tests for offline save, restart-visible pending, retry, conflict choices, local ID navigation, pending AI notice and blocked online-only operations.
-- [ ] Route only user-confirmed four-domain actions through `useOfflineMutation`; preserve existing drafts and require current confirmation dialogs.
+- [ ] Route only user-confirmed four-domain actions through `useOfflineMutation`; the `/followups` relationship view continues through `TasksScreen`/`TaskDetailScreen`, and no dead `SavedFollowupsList` is revived. Preserve existing drafts and require current confirmation dialogs.
 - [ ] Show localized per-record state and retry/conflict controls. Do not show global success while any selected operation is failed/conflicted.
 - [ ] Run direct screen tests, locale contract test and App typecheck.
 
@@ -98,8 +99,8 @@
 - [ ] Rebuild/restart production Web/API; rebuild/install App and connect it to the exact service/database/account.
 - [ ] Offline create/update/delete one disposable record in each domain, terminate/relaunch App, then reconnect and verify exactly-once Web readback and canonical ID/revision.
 - [ ] Produce a real conflict from Web while App is offline; verify all three user choices and no silent loss. Prove an invitation or meeting action is rejected offline and absent from outbox.
-- [ ] Before sync, query Orbit AI and verify freshness excludes pending; after acknowledgment, query again and verify the canonical revision is available.
-- [ ] Run affected suites/typechecks, `gitnexus_detect_changes(scope="staged")`, path-limited commits, REPORT and coordinator merge-tree verification.
+- [ ] Before sync, verify the App pending notice and that existing Orbit AI tools still return only the old cloud value; after acknowledgment, verify the new cloud value becomes readable. Exact AI freshness/revision equality remains Sprint 0036.
+- [ ] Run affected suites/typechecks, `gitnexus_detect_changes(scope="staged")`, path-limited commits, REPORT, coordinator merge-tree verification, push and remote-SHA verification.
 
 ## 验收契约（最多五项）
 
@@ -109,14 +110,14 @@
 | SC-0034-02 | 重试、崩溃和网络抖动下服务器只执行一次且 canonical ID/revision 原子落地 | server/uploader tests + Web readback |
 | SC-0034-03 | 冲突保留本机与云端版本，三种用户选择可验证且无静默覆盖 | conflict tests + Web/App conflict scenario |
 | SC-0034-04 | 不支持的多方/敏感操作离线明确失败且永不入队 | eligibility negative tests + Simulator |
-| SC-0034-05 | pending 明示 AI 不可见，ack 后 AI 才能读取对应 canonical revision | AI freshness query before/after sync |
+| SC-0034-05 | pending 明示 AI 不可见，ack 后现有 AI 工具才读到新的 cloud canonical 值 | existing AI query before/after sync; exact freshness deferred to 0036 |
 
 ## 最小测试与检查
 
 - 档位 H/I：认证写入、幂等、冲突、跨端与 AI 真实性。
 - 开发按 Task 定向；收口包括四领域既有 mutation suites、App 直接 screen tests、两端 typecheck、Web production build、iOS build。
-- 不调用 Calendar/Gmail 或付费 provider；AI 可用受控/已授权 provider，若真实 provider 不可用则 SC-05 未完成，不能用 mock 宣称完成。
+- 不调用 Calendar/Gmail。真实 AI provider 验收统一在 0036；0034 用现有工具的受控 actor-scoped service/runtime 证明 pending 前后云端可见性，不因 provider 缺失阻塞 outbox 正确性。
 
 ## 失败与交接
 
-数据丢失、重复写、跨账号、无确认覆盖或 pending 被 AI 当作已同步均为硬失败。保留 outbox 供恢复，不清除用户输入。交接记录每个领域的 RED→GREEN、失败分类、真实 conflict、AI freshness、固定 SHA 与 `chat-agent` merge SHA。
+数据丢失、重复写、跨账号、无确认覆盖或 pending 被 AI 当作已同步均为硬失败。保留 outbox 供恢复，不清除用户输入。交接记录每个领域的 RED→GREEN、失败分类、真实 conflict、AI cloud visibility、固定 SHA、`chat-agent` merge SHA、push 与 remote SHA。

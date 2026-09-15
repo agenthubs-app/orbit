@@ -15,10 +15,12 @@
 - **原需求：** 减少每次上传下载并保持 Web/App 一致；半本地方案不能因 iOS 后台限制丢数据，且不能预设一定使用 Supabase，部署也可能采用 Neon 或其他 PostgreSQL provider。
 - **依赖：** 0034 completed/merged；sync cursor、outbox、conflict 与 scope lifecycle 均有通过证据。
 - 必需 status endpoint 与 polling adapter 只返回 content-free watermark/kinds；不能下发业务 payload、作为完成 receipt 或代替 cursor。
+- status 沿用共享 envelope（304 是唯一无 body 例外），返回认证 `workspaceId` 和三种 wire kind；relationship followup 由 task category 派生。
+- `afterRevision` 只来自已提交 highWatermark；非法／未来／过期值复用 0033 的 reset-required 409 与保留 pending/outbox/drafts 的事务。
 - Supabase、Neon、独立 relay 和 push 均属于可选适配器。没有可选 realtime 时，15 秒前台 status check、启动、foreground 和手动刷新仍须满足全部正确性 SC。
 - iOS 后台执行是 best-effort；完成声明必须依赖启动/foreground/manual 的确定性恢复。
 - Web/API/shared 改动后 production build/restart；同一数据库/账号进行 Web→App runtime 验收。
-- 单 Generator、impact、TDD、detect_changes、commit、merge `chat-agent`、合并树验证。
+- 单 Generator、impact、TDD、detect_changes、commit、merge `chat-agent`、合并树验证、push 并记录 remote SHA。
 
 ---
 
@@ -33,8 +35,8 @@
 - Create: `repos/orbits/tests/services/sync-invalidation-status.test.ts`
 - Create: `repos/orbits/tests/api/sync-status-route.test.ts`
 
-- [ ] Write RED tests for `afterRevision`, latest watermark, deduplicated changed kinds, no-change response, 100-change collapse, actor/workspace isolation, invalid/negative/future revision, and absence of IDs/payload/secrets.
-- [ ] Implement one portable query over `orbit_records.sync_revision`, restricted to the four collections and server-injected actor/workspace. Return only `latestRevision`, `changedKinds`, `emittedAt` and contract metadata.
+- [ ] Write RED tests for committed `afterRevision`, latest watermark, deduplicated three-kind projection, relationship-task invalidation, no-change response, 100-change collapse, actor/workspace isolation, invalid/negative/future/expired revision, reset envelope and absence of IDs/payload/secrets.
+- [ ] Implement one portable query over `orbit_records.sync_revision`, restricted to the three collections/four logical domains and server-injected actor/workspace. Return only trusted `workspaceId`, `latestRevision`, `changedKinds`, `emittedAt` and contract metadata.
 - [ ] Expose the authenticated route with conditional response/ETag support; client-provided actor/workspace fields are rejected and status reads never mutate business data.
 - [ ] Run both new server tests, 0033 incremental-sync tests and Web typecheck against local PostgreSQL; keep the SQL free of provider-specific extensions.
 
@@ -90,7 +92,7 @@
 - [ ] Web-update each of four domains and prove foreground App detects the new watermark within 15 seconds and performs one delta; create 100 changes and prove the status endpoint collapses them without full payload transfer.
 - [ ] Background/kill App, change and delete records while no transport runs, relaunch/foreground and prove cursor repair. Repeat with network loss and account switch.
 - [ ] Run the same status/service conformance test against the selected remote provider if one is configured. Absence of a provider decision does not block the portable core; any optional adapter is a separately recorded addendum.
-- [ ] Run affected suites/typechecks/builds, `gitnexus_detect_changes(scope="staged")`, path-limited commits, REPORT and merge-tree verification.
+- [ ] Run affected suites/typechecks/builds, `gitnexus_detect_changes(scope="staged")`, path-limited commits, REPORT, merge-tree verification, push and remote-SHA verification.
 
 ## 验收契约（最多五项）
 
@@ -110,4 +112,4 @@
 
 ## 失败与交接
 
-跨账号状态读取、status/hint 含正文、请求风暴、供应商特有 SQL 渗入核心或恢复漏数据均为硬失败。交接明确实际 PostgreSQL provider、可选 transport 是否配置、无 transport 路径、丢提示恢复、请求预算、本线最终 SHA 和 `chat-agent` merge SHA。
+跨账号状态读取、status/hint 含正文、请求风暴、供应商特有 SQL 渗入核心或恢复漏数据均为硬失败。交接明确实际 PostgreSQL provider、可选 transport 是否配置、无 transport 路径、丢提示恢复、请求预算、本线最终 SHA、`chat-agent` merge SHA、push 与 remote SHA。
