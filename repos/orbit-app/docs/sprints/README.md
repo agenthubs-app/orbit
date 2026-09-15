@@ -74,6 +74,8 @@ build/harness-logs/
 | [0024](0024-contact-needs-ranking/GOAL.md) | 在人脉主页保存需求，并在独立页面按可核对依据稳定排序 | 用户批准 `concept-v2.png`；关联 0011／0023 | Web `bf35efb85`；App 最终 HEAD `d4cc8a441`；SC-01～05 全部通过，见 REPORT | completed |
 | [0025](0025-notes-ink-signal-search/GOAL.md) | 按最新 4a 重做笔记列表、编辑、详情与联系人笔记页签，用加号和输入搜索关联人脉，不平铺联系人全集 | 2026-09-15 新增；承接 R-13／0018／0019 | run-01 已完成；五项 SC、同账号 Web↔App、Web／iOS 构建与有界搜索均通过；见 [REPORT](0025-notes-ink-signal-search/REPORT.md) | completed |
 | [0026](0026-canonical-app-account-identity/GOAL.md) | 统一 App 登录主体与业务账号身份，让待办、个人日程和笔记正确读取 canonical owner | 用户批准追加 C 线 Sprint；承接现有 `/api/account/me` | run-01 已启动；H + I，按 canonical 身份 RED→GREEN 实施 | running |
+| 0027（C 线预留） | 每个日程／meeting 都能打开详情，并支持 meeting 详情录入 | 用户批准追加 C 线 Sprint | 由 C 线在 0026 后建立并串行执行；本分支不占用、不实施 | planned |
+| [0028](0028-profile-page-group-redesign/GOAL.md) | 按最新八屏设计重做“我的”、设置、账号与完整资料编辑流程，保持真实数据、隐私和跨端一致 | 用户提供 `软件UI设计现代化 (5).zip` 并指定 D 线实现 | Sprint 文档和设计资产已准备；等待 D 线登记 run-01 并从最新主线开始 | planned |
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
 
@@ -100,6 +102,12 @@ build/harness-logs/
 - 用户提供 `/Users/xzhao/Downloads/软件UI设计现代化 (3).zip`，明确只采用六张 `screenshots/4a-*` 及其对应代码，并指定创建 0025。虽然 0024 当前未使用，本次按用户的明确编号保留 0025；不补建或复用 0024。
 - [0025 设计参考](0025-notes-ink-signal-search/DESIGN.md)已保存六张截图、SHA-256、对应画板 HTML／fixture 摘录，并解决图稿与用户原话的冲突：不实施空查询 A–Z 联系人全集；实际为加号／`@` 入口，输入一个词后由服务端分页返回有限候选。
 - 当前只完成 Sprint 文档，状态 planned、run_count = 0、未产生 REPORT，也未修改产品源码。后续 run 必须继续 0018 的私密／版本／幂等与 0019 的显式 IORBIT 确认，并按 Web 运行门槛在 Web/API 重建重启后做同账号 Web↔App 回读。
+
+### 2026-09-15 “我的”页面组与 Sprint 0028
+
+- 用户提供 `/Users/xzhao/Downloads/软件UI设计现代化 (5).zip`，指定把新的“我的”页面组写成 Sprint 后交由 D 线实现。压缩包只作为设计资料，不执行其中脚本或说明。
+- 0028 采用八张目标图：“我的”、设置、账号与工作区、编辑资料、更多资料、选择标签、资料建议复核、资料预览。其余 32 张图不属于本 Sprint；来源、哈希、字段兼容和不伪造功能规则见[设计参考](0028-profile-page-group-redesign/DESIGN.md)。
+- 0027 已由用户分配给 C 线的日程详情任务，故本任务使用下一个编号 0028。D 线必须从最新 `chat-agent` 同步，不能基于其旧 0007 快照实现；当前仅完成规划，run_count = 0、未产生 REPORT。
 
 ## 运行记录
 
