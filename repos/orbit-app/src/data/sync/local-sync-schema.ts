@@ -1,6 +1,12 @@
 export const LOCAL_SYNC_SCHEMA_VERSION = 1;
 
 export const LOCAL_SYNC_SCHEMA_STATEMENTS = [
+  `CREATE TABLE IF NOT EXISTS legacy_api_snapshots (
+    path TEXT PRIMARY KEY NOT NULL,
+    payload TEXT NOT NULL,
+    status INTEGER NOT NULL,
+    synced_at TEXT NOT NULL
+  )`,
   `CREATE TABLE IF NOT EXISTS sync_records (
     workspace_id TEXT NOT NULL,
     kind TEXT NOT NULL CHECK (kind IN (

@@ -18,7 +18,7 @@ import {
 } from "./auth-session";
 import { useOrbitApiBaseUrl } from "./ApiBaseUrlProvider";
 import { onSessionExpired } from "./session-expiry";
-import { clearSnapshots } from "../data/snapshot-store";
+import { syncLifecycle } from "../data/sync/sync-lifecycle";
 import {
   createGoogleOAuthAttempt,
   exchangeGoogleOAuthCode,
@@ -149,7 +149,9 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
     setUser(null);
 
     const restoreSession = async () => {
+      const requestRevision = authEnvironment.current.revision;
       try {
+        if (!(await syncLifecycle.setScope(null)) || !active) return;
         const storedValue = usesBrowserManagedSession
           ? ""
           : (await nativeAuthSessionStorage.read(baseUrl)) ?? "";
@@ -163,7 +165,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
           cookieHeader: storedValue
         });
 
-        if (!active) {
+        if (!active || authEnvironment.current.revision !== requestRevision) {
           return;
         }
 
@@ -173,9 +175,12 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
             cookieHeader: usesBrowserManagedSession ? "" : storedValue
           });
 
-          if (!active || !identity) {
+          if (!active || authEnvironment.current.revision !== requestRevision || !identity) {
             return;
           }
+
+          if (!(await syncLifecycle.setScope({ baseUrl, actorId: identity.accountId }))) return;
+          if (!active || authEnvironment.current.revision !== requestRevision) return;
 
           setCookieHeader(usesBrowserManagedSession ? "" : storedValue);
           setAccountId(identity.accountId);
@@ -297,11 +302,17 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
 
       if (!usesBrowserManagedSession) {
         try {
+          if (!(await syncLifecycle.setScope({ baseUrl, actorId: identity.accountId }))) {
+            return { message: "无法安全清除上个账号的本地数据，请稍后再试。", success: false };
+          }
+          if (authEnvironment.current.revision !== requestRevision) {
+            await discardUnacceptedSession(session);
+            return obsoleteAuthActionResult();
+          }
           if (
             (user && user.id !== validation.data.user.id) ||
             (accountId && accountId !== identity.accountId)
           ) {
-            await clearSnapshots();
             if (!(await clearNotificationSession())) {
               console.warn("Orbit 旧账号通知清理未完全确认，继续切换账号；服务端可能仍保留设备注册");
             }
@@ -431,11 +442,14 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
   );
 
   const signOut = useCallback(async (): Promise<AuthActionResult> => {
+    const requestRevision = ++authEnvironment.current.revision;
     if (user !== null) {
       if (!(await clearNotificationSession())) {
         console.warn("Orbit 通知清理未完全确认，继续注销；服务端可能仍保留设备注册");
       }
+      if (authEnvironment.current.revision !== requestRevision) return obsoleteAuthActionResult();
       const result = await signOutOrbitSession({ baseUrl, cookieHeader });
+      if (authEnvironment.current.revision !== requestRevision) return obsoleteAuthActionResult();
 
       if (!result.success) {
         setNotificationSessionRevision((revision) => revision + 1);
@@ -445,6 +459,10 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
 
     if (!usesBrowserManagedSession) {
       try {
+        if (!(await syncLifecycle.setScope(null))) {
+          return { message: "无法安全清除这台设备上的本地数据，请稍后再试。", success: false };
+        }
+        if (authEnvironment.current.revision !== requestRevision) return obsoleteAuthActionResult();
         await nativeAuthSessionStorage.clear(baseUrl);
       } catch {
         return {
@@ -454,8 +472,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       }
     }
 
-    // 登出后设备上不该再留着这个账号的人脉数据。
-    await clearSnapshots();
+    if (authEnvironment.current.revision !== requestRevision) return obsoleteAuthActionResult();
     setAccountId(null);
     setCookieHeader("");
     setUser(null);
@@ -475,11 +492,12 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
     }
 
     return onSessionExpired(() => {
-      if (!usesBrowserManagedSession) {
-        void nativeAuthSessionStorage.clear(baseUrl).catch(() => undefined);
-      }
-      // 快照里是这个账号的人脉数据，会话失效就不该继续留在设备上。
-      void clearSnapshots();
+      authEnvironment.current.revision += 1;
+      // Keep the old auth storage if key deletion fails: restoring that scope
+      // must retry its cleanup before another account can be accepted.
+      void syncLifecycle.setScope(null).then(async cleared => {
+        if (cleared && !usesBrowserManagedSession) await nativeAuthSessionStorage.clear(baseUrl);
+      }).catch(() => console.warn("SYNC_SESSION_CLEANUP_FAILED"));
       setAccountId(null);
       setCookieHeader("");
       setUser(null);

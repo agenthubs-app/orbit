@@ -245,7 +245,7 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
         calls.push("logout");
         return input.failLogout ? { success: false, error: { message: "logout unavailable" } } : { success: true };
       } };
-      if (id.endsWith("/snapshot-store")) return { clearSnapshots: async () => { calls.push("clear-snapshots"); } };
+      if (id.endsWith("/sync-lifecycle")) return { syncLifecycle: { setScope: async () => { calls.push("sync-scope-change"); return true; } } };
       if (id.endsWith("/OrbitLocaleContext")) return {
         useOrbitLocale: () => ({
           choice: "system",
@@ -471,7 +471,7 @@ for (const failedDelete of [localPath, durablePath]) {
       assert.ok(app.calls.includes(`DELETE:${durablePath}`));
       assert.equal(app.calls.includes("logout"), true);
       assert.equal(app.calls.includes("clear-auth"), true);
-      assert.equal(app.calls.includes("clear-snapshots"), true);
+      assert.equal(app.calls.includes("sync-scope-change"), true);
       assert.ok(app.warnings.length >= 1);
       assert.match(JSON.stringify(app.warnings), /通知.*未|未.*通知/);
       assert.doesNotMatch(JSON.stringify(app.warnings), /test-cookie|ExponentPushToken|durable-device|local-device/);
@@ -510,7 +510,7 @@ test("account switch warns on unlink failure but still clears old reminders and 
     assert.ok(app.calls.includes(`DELETE:${localPath}`));
     assert.ok(app.calls.includes(`DELETE:${durablePath}`));
     assert.ok(app.calls.includes("write-auth"));
-    assert.ok(app.calls.includes("clear-snapshots"));
+    assert.ok(app.calls.includes("sync-scope-change"));
     assert.equal(app.scheduled.size, 0);
     assert.equal(app.warnings.length, 1);
     assert.doesNotMatch(JSON.stringify(app.warnings), /test-cookie|ExponentPushToken|durable-device|local-device/);
