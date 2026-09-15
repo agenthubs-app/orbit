@@ -313,6 +313,8 @@ export function TaskDetailScreen() {
   return (
     <View style={styles.screen}>
     <AppScreen
+      backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("tasks.title") })}
+      backLabel={locale.t("tasks.title")}
       refreshControl={<RefreshControl onRefresh={refresh} refreshing={detailState.refreshing || activitiesState.refreshing || remindersState.refreshing} tintColor={colors.accent} />}
       headerActions={detail ? <Pressable accessibilityLabel={locale.t("taskDetail.edit")} accessibilityRole="button" disabled={saving} onPress={() => titleInputRef.current?.focus()} style={styles.iconButton}>
         {largeText ? <Ionicons color={colors.accent} name="create-outline" size={22} /> : <Text style={styles.editLink}>{locale.t("taskDetail.edit")}</Text>}

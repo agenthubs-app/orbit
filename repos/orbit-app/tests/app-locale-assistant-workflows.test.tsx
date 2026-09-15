@@ -40,6 +40,15 @@ const workflowScreens = [
   "src/screens/inbox/RelationshipInboxScreen.tsx",
 ] as const;
 
+const appScreenWorkflowScreens = [
+  "src/screens/ai/AgentActionsScreen.tsx",
+  "src/screens/tasks/TaskDetailScreen.tsx",
+  "src/screens/tasks/TasksScreen.tsx",
+  "src/screens/schedule/PersonalScheduleScreen.tsx",
+  "src/screens/schedule/ScheduleEventPreviewScreen.tsx",
+  "src/screens/schedule/ScheduleScreen.tsx",
+] as const;
+
 function translate(language: "en" | "ja" | "zh", key: string): string {
   return createTranslator(language)(key as MessageKey);
 }
@@ -70,6 +79,14 @@ test("0015 workflow screens consume locale context instead of fixed-language chr
   for (const path of workflowScreens) {
     const source = await readFile(new URL(`../${path}`, import.meta.url), "utf8");
     assert.match(source, /useOrbitLocale/u, path);
+  }
+});
+
+test("0015 AppScreen workflows localize direct-entry back navigation", async () => {
+  for (const path of appScreenWorkflowScreens) {
+    const source = await readFile(new URL(`../${path}`, import.meta.url), "utf8");
+    assert.match(source, /backAccessibilityLabel=\{locale\.t\("common\.backToNamed"/u, path);
+    assert.match(source, /backLabel=\{locale\.t\(/u, path);
   }
 });
 

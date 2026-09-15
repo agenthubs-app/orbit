@@ -80,7 +80,7 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey }: { id: string; 
     } catch { if (scope.active && current.current === scope) setError(locale.t("schedule.operationFailed")); }
     finally { scope.busy = false; if (scope.active && current.current === scope) setSaving(false); }
   }
-  return <AppScreen title={locale.t(id ? "schedule.personalTitle" : "schedule.newPersonalTitle")} refreshControl={<RefreshControl refreshing={loading} onRefresh={() => setRevision(value => value + 1)} />}>
+  return <AppScreen backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("schedule.title") })} backLabel={locale.t("schedule.title")} title={locale.t(id ? "schedule.personalTitle" : "schedule.newPersonalTitle")} refreshControl={<RefreshControl refreshing={loading} onRefresh={() => setRevision(value => value + 1)} />}>
     {loading && !baseline ? <LoadingState /> : null}
     <Text style={styles.hint}>{locale.t("schedule.editorHint", { timeZone: editZone })}</Text>
     {editZone !== timeZone ? <Text accessibilityRole="alert" style={styles.hint}>{locale.t("schedule.draftZone", { timeZone: editZone })}</Text> : null}

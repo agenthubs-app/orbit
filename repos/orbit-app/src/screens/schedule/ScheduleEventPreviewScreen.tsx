@@ -38,6 +38,8 @@ export function ScheduleEventPreviewScreen() {
 
   return (
     <AppScreen
+      backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("schedule.title") })}
+      backLabel={locale.t("schedule.title")}
       eyebrow={locale.t("schedule.previewEyebrow")}
       refreshControl={
         <RefreshControl

@@ -93,6 +93,8 @@ export function AgentActionsScreen() {
 
   return (
     <AppScreen
+      backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("ai.title") })}
+      backLabel={locale.t("ai.title")}
       refreshControl={
         <RefreshControl
           onRefresh={refreshAll}

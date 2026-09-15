@@ -102,6 +102,8 @@ export function TasksScreen() {
 
   return (
     <AppScreen
+      backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("nav.home") })}
+      backLabel={locale.t("nav.home")}
       refreshControl={
         <RefreshControl
           onRefresh={() => { state.refresh(); contactsState.refresh(); }}

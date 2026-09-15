@@ -168,6 +168,8 @@ export function ScheduleScreen() {
 
   return (
     <AppScreen
+      backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("nav.home") })}
+      backLabel={locale.t("nav.home")}
       refreshControl={
         <RefreshControl
           onRefresh={refresh}
