@@ -72,6 +72,7 @@ build/harness-logs/
 | [0022](0022-unified-tasks/GOAL.md) | 同一待办入口切换全部／人脉，兼容旧跟进链接并保留草稿、建议和提醒入口 | 2026-09-14 新增；关联 R-08／R-09／R-06 | run-01 已完成；功能 `ef5d0b02d`，见 REPORT | completed |
 | [0023](0023-industry-consumer-continuation/GOAL.md) | 接通联系人行业、搜索 HTTP 与本人资料工具，承接 0020 全部未完成验收 | SC-0020-01～05；明确获准接续 | 现有部分实现与 8 文件补充方案已批准；真实数据／设备按对象处理 | running |
 | [0024](0024-contact-needs-ranking/GOAL.md) | 在人脉主页保存需求，并在独立页面按可核对依据稳定排序 | 用户批准 `concept-v2.png`；关联 0011／0023 | Web `bf35efb85`；App 最终 HEAD `d4cc8a441`；SC-01～05 全部通过，见 REPORT | completed |
+| [0025](0025-notes-ink-signal-search/GOAL.md) | 按最新 4a 重做笔记列表、编辑、详情与联系人笔记页签，用加号和输入搜索关联人脉，不平铺联系人全集 | 2026-09-15 新增；承接 R-13／0018／0019 | 设计与搜索式交互已确认；实施 run 未启动，需按 Planner 完成影响分析与 H/I 验收 | planned |
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
 
@@ -92,6 +93,12 @@ build/harness-logs/
 - 新增 [0020 Planner](0020-secondary-industries-self-profile/PLANNER.md)、[二级目录提案](0020-secondary-industries-self-profile/INDUSTRY_CATALOG.md)和[测试数据范围](0020-secondary-industries-self-profile/DATA_SCOPE.md)。用户本次明确只编制文档，不实现、不启动 Generator、不调用模型或改测试数据库。
 - 0020 按 planned 登记，run_count = 0，未产生 REPORT；单独执行指令和计划审阅齐全后才可检查 ready。它是新增需求，不是原失败 Sprint 的第二次运行，也不隐含必须排在 0019 后实施。
 - 新增 [0021 Planner](0021-ai-session-organization/PLANNER.md)及[参考与交互规格](0021-ai-session-organization/REFERENCE_AND_BEHAVIOR.md)，记录会话入口元信息、项目式分组、置顶／改名／删除和跨端持久化。用户已澄清只参考 ChatGPT App 的功能与组织形式，公开截图由代理寻找，不做像素复刻。当前只编制，planned、run_count = 0、未产生 REPORT；原 0001～0020 的状态不变。
+
+### 2026-09-15 最新笔记 4a 与 Sprint 0025
+
+- 用户提供 `/Users/xzhao/Downloads/软件UI设计现代化 (3).zip`，明确只采用六张 `screenshots/4a-*` 及其对应代码，并指定创建 0025。虽然 0024 当前未使用，本次按用户的明确编号保留 0025；不补建或复用 0024。
+- [0025 设计参考](0025-notes-ink-signal-search/DESIGN.md)已保存六张截图、SHA-256、对应画板 HTML／fixture 摘录，并解决图稿与用户原话的冲突：不实施空查询 A–Z 联系人全集；实际为加号／`@` 入口，输入一个词后由服务端分页返回有限候选。
+- 当前只完成 Sprint 文档，状态 planned、run_count = 0、未产生 REPORT，也未修改产品源码。后续 run 必须继续 0018 的私密／版本／幂等与 0019 的显式 IORBIT 确认，并按 Web 运行门槛在 Web/API 重建重启后做同账号 Web↔App 回读。
 
 ## 运行记录
 
