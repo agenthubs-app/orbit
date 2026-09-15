@@ -367,3 +367,10 @@ build/harness-logs/
 用户明确恢复后，由协调者把运行状态改为 ACTIVE，并检查相应 Planner 的进入条件、版本和审批。可以明确要求“执行 Sprint 0001”；这只授权它的既定范围，不自动批准后端、真实写入或其他未决设计。需要连续执行时，按用户授权范围依次领取就绪 Sprint。
 
 每次启动登记 `owner`、`run_count: 1`、Planner 哈希、起始 HEAD／diff 和开始时间。结束在本表更新状态并链接实际报告；登记表与报告有冲突时先停下核对，不能选择较乐观的状态。不填虚构 owner、运行时间或 commit。
+
+### 0030 / run-01
+
+- Generator owner：E 线当前代理 `/root`；开始时间：2026-09-15 JST；状态：in progress；分支：`codex/e-line-sprint-0030`。
+- 集成基线：`01bcceeb5c11113c8677ca9e89be39d9678fb0bc`，基线合并与重复内容修复后 HEAD `03b63e8a5`；用户既有 `AGENTS.md`、`CLAUDE.md` 与未跟踪笔记设计目录保持未暂存。
+- 批准设计：`0030-inbox-ink-signal-unified-feed/assets/3a-inbox.png`，源自 `软件UI设计现代化 (5).zip` 的 `design_handoff_orbit_ink_signal/screenshots/3a-收件箱.png`，780×1688 px，SHA-256 `a2f576c474780cd451c10eb7a2b3fe339130a18974c0f6436f9a1494e2522702`。
+- 运行目标：以真实 conversation、notification、relationship signal 聚合四类收件箱，逐条确认“全部已读”，保留既有详情／定向写信能力，并在同账号、同数据库的 live Web/API 与 iOS Simulator 上验收。
