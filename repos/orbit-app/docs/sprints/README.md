@@ -74,7 +74,7 @@ build/harness-logs/
 | [0024](0024-contact-needs-ranking/GOAL.md) | 在人脉主页保存需求，并在独立页面按可核对依据稳定排序 | 用户批准 `concept-v2.png`；关联 0011／0023 | Web `bf35efb85`；App 最终 HEAD `d4cc8a441`；SC-01～05 全部通过，见 REPORT | completed |
 | [0025](0025-notes-ink-signal-search/GOAL.md) | 按最新 4a 重做笔记列表、编辑、详情与联系人笔记页签，用加号和输入搜索关联人脉，不平铺联系人全集 | 2026-09-15 新增；承接 R-13／0018／0019 | run-01 已完成；五项 SC、同账号 Web↔App、Web／iOS 构建与有界搜索均通过；见 [REPORT](0025-notes-ink-signal-search/REPORT.md) | completed |
 | [0026](0026-canonical-app-account-identity/GOAL.md) | 统一 App 登录主体与业务账号身份，让待办、个人日程和笔记正确读取 canonical owner | 用户批准追加 C 线 Sprint；承接现有 `/api/account/me` | run-01 completed；功能 `f5f595df4`、邀请补漏 `3385369dd`；见 [REPORT](0026-canonical-app-account-identity/REPORT.md) | completed |
-| [0027](0027-open-schedule-meeting-details/GOAL.md) | 让四类日程进入对应详情，并可安全添加、编辑或清空参会人共享的会议说明 | 用户批准追加 C 线 Sprint；承接 appointment 聚合与 0026 canonical actor | run-01 running；Planner revision 1，见下方运行记录 | running |
+| [0027](0027-open-schedule-meeting-details/GOAL.md) | 让四类日程进入对应详情，并按来源安全添加、编辑或清空会议说明 | 用户批准追加 C 线 Sprint；承接 appointment 聚合与 0026 canonical actor | run-01 completed；功能 `3ca1f5936`、旧日程兼容 `0cbc45ffa`；见 [REPORT](0027-open-schedule-meeting-details/REPORT.md) | completed |
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
 
@@ -110,6 +110,7 @@ build/harness-logs/
 - 起始 HEAD：`5bfd59e96e555019a88749a2f2b461a7d2ac06a8`；tracked 产品工作区无其他修改。根 `AGENTS.md`／`CLAUDE.md`、`.gitnexus`、设计图、prototype、`output/` 与 `tmp/` 均为既有用户／外部内容，不写、不暂存。
 - 范围：Web appointment 共享说明、participant-only CAS/idempotent details API、共享 DTO/schema；App 四类日程 href、会议详情读写、三语与失败保留草稿。Web/API 改动后重建重启当前共同服务，再进行 Simulator 8082 验收。
 - 文件锁：本 Sprint Planner 所列 Web appointment／details route／shared contract 与 App schedule／meeting detail／同步副本／字典／直接测试；Bridge 与本 Sprint 文档在收口时更新。C 线独占 Git 暂存与提交。
+- run-01 已于 2026-09-15 17:45 JST `completed`：功能 `3ca1f5936`、当前旧日程会议兼容 `0cbc45ffa`。Web 预约／legacy 回归 25/25、PostgreSQL 并发 1/1、App 日程组合 90/90、两端 typecheck、Web 生产构建和 iOS build 通过；登录态 Simulator 四类详情及会议保存→重开→清空通过。详见 [REPORT](0027-open-schedule-meeting-details/REPORT.md)。
 
 ### 0024 / run-01
 

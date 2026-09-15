@@ -1,5 +1,11 @@
 # 两端当前状态
 
+## 2026-09-15 C 线 0027 日程详情增量
+
+- C 线独立分支 `codex/c-line-sprint-0027` 以 `3ca1f5936` 接通四类日程目的地和 appointment 参会人共享会议说明，并以 `0cbc45ffa` 修复当前旧 schedule meeting 被当成 appointment 后 404 的运行时问题；旧会议说明明确为当前账号私有。
+- Web 预约／legacy 回归 25/25、PostgreSQL 并发／幂等 1/1、App 日程组合 90/90、两端 typecheck、Web 生产构建和 iOS build 通过。3000 已运行最终生产产物，health 为 `live/ok`。
+- 登录态 Simulator 已逐类打开待办、活动、个人日程和会议，并完成会议新增说明、保存、返回、重开回读和清空恢复。BR-021 为 `verified`，详见 [交接](2026-09-15-schedule-meeting-details.md)与 [Sprint 0027 报告](../repos/orbit-app/docs/sprints/0027-open-schedule-meeting-details/REPORT.md)。该分支尚未合并到 `chat-agent`。
+
 ## 2026-09-15 C 线 0026 canonical 身份增量
 
 - App `f5f595df4` 在登录／恢复后从既有 `/api/account/me` 读取 canonical `account.id`，并把待办、个人日程、笔记、快照、草稿、AI intent、人脉与消息边界接到 `auth.actorId`；`3385369dd` 补齐关系邀请 scope。

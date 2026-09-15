@@ -30,6 +30,17 @@
 | [BR-018](2026-09-15-note-suggestions.md) | P1 | 笔记来源待办建议 | verified | 已关闭 | 同环境建议接受、幂等、来源版本、日期确认与原生 App 已于 2026-09-15 验证 |
 | [BR-019](2026-09-15-notes-ink-signal-search.md) | P1 | 笔记 4a 与搜索式关联 | verified | 已关闭 | 同账号 Web/App 双向 note v2、有界联系人搜索、原生 4a 六状态与版本／权限反例已于 2026-09-15 验证 |
 | [BR-020](2026-09-15-canonical-app-identity.md) | P1 | App raw 登录主体与 canonical 业务账号分离 | verified | 已关闭 | `/api/account/me` 唯一身份、owner-scoped 消费者、完整回归与原生三链已验证 |
+| [BR-021](2026-09-15-schedule-meeting-details.md) | P1 | 四类日程详情与会议说明 | verified | 总控集成；尚未合并 | appointment 共享说明、旧会议私有兼容、四类原生打开及保存重开已验证 |
+
+## BR-021 — 日程详情与会议说明
+
+- 创建/更新日期：2026-09-15。
+- 总状态：`verified`；web_status：`source_ready`；app_status：`consumer_ready`；verification_status：本地共同运行环境与原生 Simulator 通过。
+- Web/API：appointment 会议使用 participant-only、原子 CAS 和 idempotency；旧 `orbitScheduleItems` meeting 使用 actor-scoped 私有详情 route，避免把 schedule ID 错投 appointment route。
+- App：任务、活动、个人日程和会议分别打开稳定详情；会议页按来源读取，显示真实标题和共享／私有提示，失败、冲突与错误回执均保留草稿。
+- 版本：独立分支 `codex/c-line-sprint-0027`；Planner `01bcceeb5`；主体 `3ca1f5936`；旧会议兼容 `0cbc45ffa`。尚未合并到 `chat-agent`。
+- 验证：Web 25/25、PostgreSQL 1/1、App 90/90、两端 typecheck、Web production build、3000 health、iOS build 和 Simulator 四类入口／会议保存重开清空通过。
+- 详细交接：[2026-09-15-schedule-meeting-details.md](2026-09-15-schedule-meeting-details.md)。
 
 ## BR-016 — 人脉、名片与活动三语消费
 
