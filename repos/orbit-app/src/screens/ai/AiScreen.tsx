@@ -237,7 +237,9 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   );
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyPendingOpen, setHistoryPendingOpen] = useState(false);
   const [organizationOpen, setOrganizationOpen] = useState(false);
+  const [organizationPendingOpen, setOrganizationPendingOpen] = useState(false);
   const [organizationItem, setOrganizationItem] = useState<AiDrawerHistoryItem | null>(null);
   const [organizationBusy, setOrganizationBusy] = useState(false);
   const [organizationError, setOrganizationError] = useState<string | null>(null);
@@ -454,7 +456,21 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     if (!owns()) return;
     setOrganizationItem(item);
     setOrganizationError(null);
-    setOrganizationOpen(true);
+    setOrganizationPendingOpen(true);
+    setHistoryOpen(false);
+    if (Platform.OS === "web") {
+      setOrganizationPendingOpen(false);
+      setOrganizationOpen(true);
+    }
+  }
+
+  function closeOrganizationAndOpenHistory() {
+    setHistoryPendingOpen(true);
+    setOrganizationOpen(false);
+    if (Platform.OS === "web") {
+      setHistoryPendingOpen(false);
+      setHistoryOpen(true);
+    }
   }
 
   async function mutateOrganization(
@@ -676,6 +692,11 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
         onCancelDelete={() => { if (!deleteOperation.current) setConfirmDelete(null); }}
         onConfirmDelete={() => { if (confirmDelete) void deleteHistoryItem(confirmDelete); }}
         onClose={() => setHistoryOpen(false)}
+        onDismiss={() => {
+          if (!organizationPendingOpen) return;
+          setOrganizationPendingOpen(false);
+          if (owns()) setOrganizationOpen(true);
+        }}
         onDeleteHistoryItem={item => { if (owns() && !deleteOperation.current) { setHistoryDeleteError(null); setConfirmDelete(item); } }}
         onManageGroups={() => openOrganization(null)}
         onManageHistoryItem={item => openOrganization(item)}
@@ -689,11 +710,16 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
         groups={groups}
         item={organizationItem}
         onClose={() => { if (!organizationBusy) setOrganizationOpen(false); }}
+        onDismiss={() => {
+          if (!historyPendingOpen) return;
+          setHistoryPendingOpen(false);
+          if (owns()) setHistoryOpen(true);
+        }}
         onCreateGroup={name => { void createGroup(name); }}
         onDeleteGroup={group => { void deleteGroup(group); }}
-        onDeleteSession={item => { setOrganizationOpen(false); const historyItem = historyItems.find(row => row.id === item.id); if (historyItem) { setConfirmDelete(historyItem); } }}
+        onDeleteSession={item => { const historyItem = historyItems.find(row => row.id === item.id); if (historyItem) { setConfirmDelete(historyItem); closeOrganizationAndOpenHistory(); } }}
         onMoveSession={(item, groupId) => { void mutateOrganization(item as AiDrawerHistoryItem, { groupId }); }}
-        onOpenGroup={group => { setSelectedGroupId(group.id); setOrganizationOpen(false); setHistoryOpen(true); }}
+        onOpenGroup={group => { setSelectedGroupId(group.id); closeOrganizationAndOpenHistory(); }}
         onRenameGroup={(group, name) => { void renameGroup(group, name); }}
         onRenameSession={(item, title) => { void mutateOrganization(item as AiDrawerHistoryItem, { customTitle: title.trim() }); }}
         onStartGroupChat={group => { setOrganizationOpen(false); startNewChat(group.id); }}
@@ -1202,6 +1228,7 @@ function OrbitAiHistoryPanel({
   groupFilterName,
   historyStateKind,
   onClose,
+  onDismiss,
   onCancelDelete,
   onConfirmDelete,
   onDeleteHistoryItem,
@@ -1225,6 +1252,7 @@ function OrbitAiHistoryPanel({
   groupFilterName: string | null;
   historyStateKind: ApiResourceState<unknown>["kind"];
   onClose: () => void;
+  onDismiss: () => void;
   onCancelDelete: () => void;
   onConfirmDelete: () => void;
   onDeleteHistoryItem: (item: AiDrawerHistoryItem) => void;
@@ -1259,6 +1287,7 @@ function OrbitAiHistoryPanel({
   return (
     <Modal
       animationType="fade"
+      onDismiss={onDismiss}
       onRequestClose={onClose}
       transparent
       visible={visible}

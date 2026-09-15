@@ -20,6 +20,7 @@ export function AiSessionOrganizationPanel({
   groups,
   item,
   onClose,
+  onDismiss,
   onCreateGroup,
   onDeleteGroup,
   onDeleteSession,
@@ -36,6 +37,7 @@ export function AiSessionOrganizationPanel({
   groups: readonly AiSessionGroupContract[];
   item: AiSessionOrganizationItem | null;
   onClose: () => void;
+  onDismiss: () => void;
   onCreateGroup: (name: string) => void;
   onDeleteGroup: (group: AiSessionGroupContract) => void;
   onDeleteSession: (item: AiSessionOrganizationItem) => void;
@@ -59,7 +61,7 @@ export function AiSessionOrganizationPanel({
   }, [item?.id, item?.title, visible]);
 
   return (
-    <Modal animationType="fade" onRequestClose={onClose} transparent visible={visible}>
+    <Modal animationType="fade" onDismiss={onDismiss} onRequestClose={onClose} transparent visible={visible}>
       <View style={styles.root}>
         <Pressable accessibilityLabel={locale.t("aiOrganization.close")} onPress={onClose} style={styles.scrim} />
         <View style={styles.panel}>

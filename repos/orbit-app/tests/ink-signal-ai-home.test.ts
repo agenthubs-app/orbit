@@ -343,10 +343,22 @@ test("AI history organization menu persists pin and move through revisioned PATC
   }]);
   assert.equal((await writes(p)).some((item: { path: string }) => item.path === "/api/ai/conversations"), false);
 });
+test("AI organization delete returns to a visible history confirmation", async t => {
+  const p = await open(t, { holdWrites: true });
+  await press(p, "全部会话");
+  await p.getByRole("button", { name: "整理会话", exact: true }).first().click();
+  await settle(p);
+  await press(p, "删除会话");
+  await p.waitForTimeout(350);
+  assert.equal(await p.getByRole("button", { name: "确认删除", exact: true }).isVisible(), true);
+  assert.deepEqual(await writes(p), []);
+});
 test("AI group manager creates, opens, and starts a grouped chat without sending automatically", async t => {
   const p = await open(t, { holdWrites: true });
   await press(p, "全部会话");
   await press(p, "管理分组");
+  await p.waitForTimeout(350);
+  assert.equal(await p.getByText("历史记录", { exact: true }).isVisible(), false, "group manager replaces the native history modal instead of stacking a second modal behind it");
   await p.getByRole("textbox", { name: "新分组名称", exact: true }).fill("客户 A");
   await press(p, "创建分组");
   assert.deepEqual(await writes(p), [{
