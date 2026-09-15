@@ -2,7 +2,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View, type TextInputProps } from "react-native";
 import { profileExtractionReceiptSchema, type ProfileExtraction } from "../../api/profile-detail-contract";
 import { normalizeProfileTagValues, updateProfileEditDraft } from "../../data/profile-edit-session";
 import { createThemedStyles } from "../../design/theme";
@@ -14,6 +14,20 @@ import { useProfileEditSessionScreen } from "./useProfileEditSessionScreen";
 
 function splitValues(value: string): string[] {
   return normalizeProfileTagValues(value.split(/\n|,|，|、/u));
+}
+
+function ProfileInlineField({ label, ...props }: TextInputProps & { label: string }) {
+  const { colors, styles } = useStyles();
+  const largeText = useWindowDimensions().fontScale > 1.3;
+  return <View style={[styles.inlineField, largeText && styles.inlineFieldLarge]}>
+    <Text style={[styles.inlineLabel, largeText && styles.inlineLabelLarge]}>{label}</Text>
+    <TextInput
+      accessibilityLabel={label}
+      placeholderTextColor={colors.text4}
+      style={[styles.inlineInput, largeText && styles.inlineInputLarge]}
+      {...props}
+    />
+  </View>;
 }
 
 export function ProfileMoreScreen() {
@@ -92,23 +106,23 @@ export function ProfileMoreScreen() {
   return <ProfilePageFrame backLabel={locale.t("profile.editPageTitle")} onBack={() => router.back()} rightAction={done} title={locale.t("profile.moreTitle")}>
     {!session ? <ProfileNotice error>{locale.t("profile.noEditSession")}</ProfileNotice> : <>
       <ProfileSection title={locale.t("profile.publicInformation")}>
-        <ProfileTextField label={locale.t("profile.location")} onChangeText={value => patch({ homeMarket: value })} value={session.draft.homeMarket} />
-        <ProfileTextField label={locale.t("profile.industry")} onChangeText={value => patch({ industry: value })} value={session.draft.industry ?? ""} />
-        <ProfileTextField label={locale.t("profile.spokenLanguages")} onChangeText={value => patch({ spokenLanguages: splitValues(value) })} placeholder="中文、日本語、English" value={session.draft.spokenLanguages.join("、")} />
+        <ProfileInlineField label={locale.t("profile.location")} onChangeText={value => patch({ homeMarket: value })} placeholder={locale.t("profile.notFilled")} value={session.draft.homeMarket} />
+        <ProfileInlineField label={locale.t("profile.industry")} onChangeText={value => patch({ industry: value })} placeholder={locale.t("profile.notFilled")} value={session.draft.industry ?? ""} />
+        <ProfileInlineField label={locale.t("profile.spokenLanguages")} onChangeText={value => patch({ spokenLanguages: splitValues(value) })} placeholder="中文、日本語、English" value={session.draft.spokenLanguages.join("、")} />
       </ProfileSection>
       <ProfileSection title={locale.t("profile.contactInformation")}>
-        <ProfileTextField label={locale.t("profile.introChannels")} onChangeText={value => patch({ preferredIntroChannels: splitValues(value) })} value={session.draft.preferredIntroChannels.join("、")} />
-        <ProfileTextField keyboardType="email-address" label={locale.t("profile.email")} onChangeText={value => patch({ handles: { ...session.draft.handles, email: value } })} value={session.draft.handles.email ?? ""} />
-        <ProfileTextField keyboardType="phone-pad" label={locale.t("profile.phone")} onChangeText={value => patch({ handles: { ...session.draft.handles, phone: value } })} value={session.draft.handles.phone ?? ""} />
+        <ProfileInlineField label={locale.t("profile.introChannels")} onChangeText={value => patch({ preferredIntroChannels: splitValues(value) })} placeholder={locale.t("profile.notFilled")} value={session.draft.preferredIntroChannels.join("、")} />
+        <ProfileInlineField keyboardType="email-address" label={locale.t("profile.email")} onChangeText={value => patch({ handles: { ...session.draft.handles, email: value } })} placeholder={locale.t("profile.notFilled")} value={session.draft.handles.email ?? ""} />
+        <ProfileInlineField keyboardType="phone-pad" label={locale.t("profile.phone")} onChangeText={value => patch({ handles: { ...session.draft.handles, phone: value } })} placeholder={locale.t("profile.notFilled")} value={session.draft.handles.phone ?? ""} />
       </ProfileSection>
       <ProfileSection title={locale.t("profile.links")}>
-        <ProfileTextField autoCapitalize="none" keyboardType="url" label={locale.t("profile.website")} onChangeText={value => patch({ handles: { ...session.draft.handles, website: value } })} value={session.draft.handles.website ?? ""} />
-        <ProfileTextField autoCapitalize="none" keyboardType="url" label={locale.t("profile.linkedin")} onChangeText={value => patch({ handles: { ...session.draft.handles, linkedinUrl: value } })} value={session.draft.handles.linkedinUrl ?? ""} />
-        <ProfileTextField autoCapitalize="none" label={locale.t("profile.xHandle")} onChangeText={value => patch({ handles: { ...session.draft.handles, xHandle: value } })} value={session.draft.handles.xHandle ?? ""} />
+        <ProfileInlineField autoCapitalize="none" keyboardType="url" label={locale.t("profile.website")} onChangeText={value => patch({ handles: { ...session.draft.handles, website: value } })} placeholder={locale.t("profile.notFilled")} value={session.draft.handles.website ?? ""} />
+        <ProfileInlineField autoCapitalize="none" keyboardType="url" label={locale.t("profile.linkedin")} onChangeText={value => patch({ handles: { ...session.draft.handles, linkedinUrl: value } })} placeholder={locale.t("profile.notFilled")} value={session.draft.handles.linkedinUrl ?? ""} />
+        <ProfileInlineField autoCapitalize="none" label={locale.t("profile.xHandle")} onChangeText={value => patch({ handles: { ...session.draft.handles, xHandle: value } })} placeholder={locale.t("profile.notFilled")} value={session.draft.handles.xHandle ?? ""} />
       </ProfileSection>
       <ProfileSection title={locale.t("profile.privateInformation")}>
-        <ProfileTextField label={locale.t("profile.birthDatePrivate")} onChangeText={value => patch({ birthDate: value || null })} placeholder={locale.t("profile.birthDatePlaceholder")} value={session.draft.birthDate ?? ""} />
-        <ProfileTextField label={locale.t("profile.followUpWindow")} onChangeText={value => patch({ preferredFollowUpWindow: value })} value={session.draft.preferredFollowUpWindow} />
+        <ProfileInlineField label={locale.t("profile.birthDatePrivate")} onChangeText={value => patch({ birthDate: value || null })} placeholder={locale.t("profile.birthDatePlaceholder")} value={session.draft.birthDate ?? ""} />
+        <ProfileInlineField label={locale.t("profile.followUpWindow")} onChangeText={value => patch({ preferredFollowUpWindow: value })} placeholder={locale.t("profile.notFilled")} value={session.draft.preferredFollowUpWindow} />
       </ProfileSection>
       <ProfileSection detail={locale.t("profile.extractionDetail")} title={locale.t("profile.extractionTitle")}>
         <ProfileNotice>{locale.t("profile.extractionGuidance")}</ProfileNotice>
@@ -136,10 +150,16 @@ export function ProfileMoreScreen() {
 
 const useStyles = createThemedStyles(colors => StyleSheet.create({
   done: { alignItems: "center", justifyContent: "center", minHeight: 44, minWidth: 60 },
-  doneText: { color: colors.accent, fontSize: 14, fontWeight: "800", lineHeight: 20 },
+  doneText: { color: colors.accent, fontSize: 14, fontWeight: "800" },
   pressed: { opacity: 0.68 },
   extractionActions: { gap: 8, paddingVertical: 12 },
   extractionResult: { borderColor: colors.border, borderRadius: 8, borderWidth: 1, gap: 6, marginVertical: 12, padding: 12 },
-  extractionName: { color: colors.ink, fontSize: 16, fontWeight: "800", lineHeight: 23 },
-  extractionDetail: { color: colors.text3, fontSize: 13, lineHeight: 20 },
+  extractionName: { color: colors.ink, fontSize: 16, fontWeight: "800" },
+  extractionDetail: { color: colors.text3, fontSize: 13 },
+  inlineField: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: "row", gap: 12, minHeight: 52 },
+  inlineFieldLarge: { alignItems: "stretch", flexDirection: "column", gap: 0, paddingVertical: 10 },
+  inlineLabel: { color: colors.ink, flexShrink: 0, fontSize: 15, fontWeight: "600", maxWidth: "42%" },
+  inlineLabelLarge: { maxWidth: "100%" },
+  inlineInput: { color: colors.text3, flex: 1, fontSize: 14, minHeight: 48, paddingHorizontal: 0, paddingVertical: 10, textAlign: "right" },
+  inlineInputLarge: { textAlign: "left" },
 }));

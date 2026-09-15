@@ -57,7 +57,7 @@ function App(){ const s = useFixture(); const path = s.route.split("?")[0]; cons
       plugin.onResolve({ filter: /^react-native-web$/ }, () => ({ path: require.resolve("react-native-web") }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
       plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|expo-image-picker|expo-document-picker|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|OrbitLocaleContext|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "profile-pages" }));
-      plugin.onLoad({ filter: /.*/, namespace: "profile-pages" }, args => ({ contents: args.path === "native" ? `import React from "react"; import { Pressable as RealPressable, Text as RealText, TextInput as RealTextInput, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web"; export * from "react-native-web"; export const useWindowDimensions = () => ({ ...realDimensions(), width: window.innerWidth, fontScale: window.fixture.fontScale || 1 }); export const Pressable = props => <RealPressable {...props} />; const scaled = props => { const style = StyleSheet.flatten(props.style) || {}; const scale = window.fixture.fontScale || 1; return !style.fontSize ? props.style : [props.style, { fontSize: style.fontSize * scale, ...(style.lineHeight ? { lineHeight: style.lineHeight * scale } : {}) }]; }; export const Text = props => <RealText {...props} style={scaled(props)} />; export const TextInput = props => <RealTextInput {...props} style={scaled(props)} />;` : fixture, loader: "jsx", resolveDir: process.cwd() }));
+      plugin.onLoad({ filter: /.*/, namespace: "profile-pages" }, args => ({ contents: args.path === "native" ? `import React from "react"; import { Pressable as RealPressable, Text as RealText, TextInput as RealTextInput, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web"; export * from "react-native-web"; export const useWindowDimensions = () => ({ ...realDimensions(), width: window.innerWidth, fontScale: window.fixture.fontScale || 1 }); export const Pressable = props => <RealPressable {...props} />; const scaled = props => { const style = StyleSheet.flatten(props.style) || {}; const scale = window.fixture.fontScale || 1; return !style.fontSize ? props.style : [props.style, { fontSize: style.fontSize * scale, ...(style.lineHeight && !window.fixture.nativeLineHeight ? { lineHeight: style.lineHeight * scale } : {}) }]; }; export const Text = props => <RealText {...props} style={scaled(props)} />; export const TextInput = props => <RealTextInput {...props} style={scaled(props)} />;` : fixture, loader: "jsx", resolveDir: process.cwd() }));
     } }],
   });
   script = result.outputFiles[0]!.text;
@@ -189,4 +189,19 @@ test("compact large text keeps every visible control at least 44pt", async t => 
     const box = await button.boundingBox();
     assert.ok(box && box.height >= 44 && box.width >= 44, JSON.stringify(box));
   }
+});
+
+test("native Dynamic Type does not clip text or overlap preview navigation", async t => {
+  const page = await open(t, { width: 320, fontScale: 2, nativeLineHeight: true, route: "/profile/preview" });
+  const clipped = await page.locator("[dir=auto]").evaluateAll(elements => elements.flatMap(element => {
+    const style = getComputedStyle(element);
+    const fontSize = Number.parseFloat(style.fontSize);
+    const lineHeight = Number.parseFloat(style.lineHeight);
+    const text = element.textContent?.trim();
+    return text && Number.isFinite(fontSize) && Number.isFinite(lineHeight) && lineHeight < fontSize * 1.05 ? [text] : [];
+  }));
+  assert.deepEqual(clipped, []);
+  const back = await page.getByRole("button", { name: "编辑", exact: true }).boundingBox();
+  const title = await page.getByRole("heading", { name: "他人看到的样子" }).boundingBox();
+  assert.ok(back && title && back.y + back.height <= title.y, JSON.stringify({ back, title }));
 });

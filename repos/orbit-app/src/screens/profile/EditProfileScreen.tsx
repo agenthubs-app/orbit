@@ -150,14 +150,14 @@ export function EditProfileScreen() {
 const useStyles = createThemedStyles(colors => StyleSheet.create({
   avatarBlock: { alignItems: "center", alignSelf: "center", height: 92, justifyContent: "center", width: 92 },
   avatar: { alignItems: "center", backgroundColor: colors.ink, borderRadius: 40, height: 80, justifyContent: "center", width: 80 },
-  avatarText: { color: colors.onAccent, fontSize: 28, fontWeight: "800", lineHeight: 34 },
+  avatarText: { color: colors.onAccent, fontSize: 28, fontWeight: "800" },
   basicPair: { flexDirection: "row", gap: 14 },
   basicHalf: { flex: 1, minWidth: 0 },
   camera: { alignItems: "center", backgroundColor: colors.accent, borderColor: colors.surface, borderRadius: 16, borderWidth: 3, bottom: 0, height: 32, justifyContent: "center", position: "absolute", right: 0, width: 32 },
   progressTrack: { backgroundColor: colors.border, borderRadius: 3, height: 6, marginVertical: 12, overflow: "hidden" },
   progressValue: { backgroundColor: colors.ink, borderRadius: 3, height: 6 },
   saveAction: { alignItems: "center", justifyContent: "center", minHeight: 44, minWidth: 60 },
-  saveActionText: { color: colors.accent, fontSize: 14, fontWeight: "800", lineHeight: 20 },
+  saveActionText: { color: colors.accent, fontSize: 14, fontWeight: "800" },
   disabled: { opacity: 0.48 },
   pressed: { opacity: 0.68 },
 }));
