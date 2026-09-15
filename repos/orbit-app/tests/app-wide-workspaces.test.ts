@@ -17,8 +17,9 @@ import { aiConversationPayload, emptyAiConversationPayload, aiSessionListPayload
 let revision = 0; const listeners = new Set();
 const rerender = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
 const state = window.fixture = { kind: "success", empty: false, requests: [], navigation: [], refreshes: [], update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
-const screen = new URLSearchParams(location.search).get("screen");
-const finalInsets = new URLSearchParams(location.search).get("insets") === "true";
+const routeParams = new URLSearchParams(location.search);
+const screen = routeParams.get("screen");
+const finalInsets = routeParams.get("insets") === "true";
 const aiThread = { ...aiConversationPayload, activeConversationId: "thread-one", conversations: [{ ...aiConversationPayload.conversations[0], conversationId: "thread-one" }] };
 const task = { id: "task-one", taskId: "task-one", accountId: "reader", ownerUserId: "reader", title: "确认合作时间", notes: "带上合作资料", category: "relationship", status: "open", priority: "normal", plannedDate: "2026-09-08", dueAt: "2026-09-08T10:00:00+09:00", createdAt: "2026-09-07T01:00:00Z", updatedAt: "2026-09-07T01:00:00Z", contactName: "林悦", organization: "Orbit", source: "manual" };
 const conversation = { conversationId: "thread-one", participantContactId: "person-one", participantName: "林悦", organization: "Orbit", title: "合作讨论", status: "needs_followup", unreadCount: 1, lastMessagePreview: "周四讨论合作资料", lastMessageAt: "2026-09-07T01:00:00Z" };
@@ -75,7 +76,7 @@ const client = Object.fromEntries(["get", "post", "patch", "delete", "put"].map(
   return { success: false, error: { message: "操作暂时失败" } };
 }]));
 export const useOrbitApiClient = () => { rerender(); return React.useMemo(() => ({ ...client }), [revision]); };
-export const useLocalSearchParams = () => ({ id: screen === "task" ? "task-one" : "thread-one", ...(screen === "followups" ? { scope: "relationship" } : {}) });
+export const useLocalSearchParams = () => ({ id: screen === "task" ? "task-one" : "thread-one", ...(screen === "followups" ? { scope: "relationship" } : {}), participantName: routeParams.get("participantName") ?? undefined });
 export const useIsFocused = () => true;
 export const usePathname = () => "/" + screen;
 export const useRouter = () => ({ canGoBack: () => true, back() { state.navigation.push("back"); }, push(path) { state.navigation.push(path); }, replace(path) { state.navigation.push(path); } });
@@ -152,11 +153,13 @@ for (const scheme of ["light", "dark"] as const) {
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "post", path: "/api/relationship-communication/conversations/thread-one/messages", body: { body: "周四可以", qualificationVersion: "qv:style" } }]);
     assert.equal(await draft.inputValue(), "");
   });
-  test(`${scheme}: final inset inbox empty feedback has the shared boundary`, async t => {
+  test(`${scheme}: inbox empty filter keeps the compact no-compose boundary`, async t => {
     const page = await open(t, "inbox", scheme);
-    await page.getByRole("textbox").first().fill("没有这个联系人");
-    const empty = page.getByText("没有找到消息", { exact: true }).locator("..");
-    assert.equal(await empty.evaluate(el => getComputedStyle(el).borderRadius), "12px", "emptyInboxSection");
+    await page.getByRole("tab", { name: "活动", exact: true }).click();
+    const empty = page.getByText("暂无消息", { exact: true }).locator("..").locator("..");
+    assert.equal(await empty.evaluate(el => getComputedStyle(el).borderRadius), "0px", "emptyInboxSection");
+    assert.equal(await page.getByRole("textbox").count(), 0);
+    assert.equal(await page.getByRole("button", { name: "写消息", exact: true }).count(), 0);
     await noWrites(page);
   });
   test(`${scheme}: final inset inbox privacy, IORBIT handoff and local preview preserve the reply`, async t => {
@@ -266,7 +269,8 @@ for (const [screen, label] of [["actions", "确认建议"], ["today", "加入待
   });
 }
 test("inbox mail composer has a full-size primary preview while cancellation stays local", async t => {
-  const page = await open(t, "inbox"); await page.getByRole("button", { name: "写消息", exact: true }).click();
+  const page = await open(t, "inbox&participantName=%E7%8E%8B%E6%98%8E");
+  await page.getByRole("textbox", { name: "正文", exact: true }).waitFor();
   await fits(page.getByRole("button", { name: "预览草稿", exact: true }), 50);
   await page.getByRole("button", { name: "取消", exact: true }).click(); await noWrites(page);
 });

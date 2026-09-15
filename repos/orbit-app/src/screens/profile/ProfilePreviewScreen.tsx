@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, useWindowDimensions, View } from "react-native";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { ProfileNotice, ProfilePageFrame, ProfilePrimaryButton } from "./ProfilePagePrimitives";
@@ -11,11 +11,12 @@ export function ProfilePreviewScreen() {
   const { styles } = useStyles();
   const locale = useOrbitLocale();
   const router = useRouter();
+  const largeText = useWindowDimensions().fontScale > 1.3;
   const state = useProfileEditSessionScreen();
   const preview = state.session && state.baseProfile
     ? profilePreviewFromSession(state.session, state.baseProfile)
     : null;
-  const footer = preview ? <View style={styles.actions}>
+  const footer = preview ? <View style={[styles.actions, largeText && styles.actionsLarge]}>
     <ProfilePrimaryButton disabled label={locale.t("profile.previewMessage")} />
     <ProfilePrimaryButton disabled label={locale.t("profile.previewConnect")} secondary />
   </View> : undefined;
@@ -27,5 +28,6 @@ export function ProfilePreviewScreen() {
 
 const useStyles = createThemedStyles(colors => StyleSheet.create({
   actions: { flexDirection: "row", gap: 10 },
-  notice: { backgroundColor: colors.surface2, borderRadius: 8, padding: 12 },
+  actionsLarge: { flexDirection: "column" },
+  notice: { alignSelf: "stretch", backgroundColor: colors.surface2, borderRadius: 8, flexDirection: "row", padding: 12 },
 }));

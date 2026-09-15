@@ -1,5 +1,11 @@
 # 两端当前状态
 
+## 2026-09-15 D 线 0028 验收增量
+
+- Web/API 与共享 contract 扩展资料语言、LinkedIn／X、稳定标签上限和 actor-scoped 建议 dismiss；profile CAS、receipt 与序列化重试在隔离 PostgreSQL 14/14 通过。
+- App 把资料编辑拆成五个共享 session 的 private route，并按八图重做“我的”、设置、账号；公共预览统一排除生日、跟进节奏、私密 handles 和 provenance，本人 CTA disabled。
+- 当前 production Web/API、同账号浏览器 session 与 iPhone 17 Pro Simulator 完成 Web→App、App→Web、409 和另一 actor 隔离；八屏、Dynamic Type 冷启动与 VoiceOver tree 通过。D 分支已提交并进入待集成状态；Sprint 0028 在协调者合并 `chat-agent` 并验证精确合并树前保持 `running`，详见 [BR-022](handoffs.md#br-022--我的页面组资料编辑与公开投影)和 [REPORT](../repos/orbit-app/docs/sprints/0028-profile-page-group-redesign/REPORT.md)。
+
 ## 2026-09-15 C 线 0027 日程详情增量
 
 - C 线独立分支 `codex/c-line-sprint-0027` 以 `3ca1f5936` 接通四类日程目的地和 appointment 参会人共享会议说明，并以 `0cbc45ffa` 修复当前旧 schedule meeting 被当成 appointment 后 404 的运行时问题；旧会议说明明确为当前账号私有。

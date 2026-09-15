@@ -75,7 +75,7 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   tags: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingVertical: 12 },
   tag: { alignItems: "center", borderColor: colors.border, borderRadius: 8, borderWidth: 1, flexDirection: "row", gap: 6, minHeight: 44, paddingHorizontal: 12, paddingVertical: 8 },
   selectedTag: { backgroundColor: colors.accent, borderColor: colors.accent },
-  tagText: { color: colors.ink, fontSize: 13, fontWeight: "600", lineHeight: 19 },
-  selectedTagText: { color: colors.onAccent, fontSize: 13, fontWeight: "700", lineHeight: 19 },
+  tagText: { color: colors.ink, fontSize: 13, fontWeight: "600" },
+  selectedTagText: { color: colors.onAccent, fontSize: 13, fontWeight: "700" },
   pressed: { opacity: 0.68 },
 }));

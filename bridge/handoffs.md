@@ -31,6 +31,17 @@
 | [BR-019](2026-09-15-notes-ink-signal-search.md) | P1 | 笔记 4a 与搜索式关联 | verified | 已关闭 | 同账号 Web/App 双向 note v2、有界联系人搜索、原生 4a 六状态与版本／权限反例已于 2026-09-15 验证 |
 | [BR-020](2026-09-15-canonical-app-identity.md) | P1 | App raw 登录主体与 canonical 业务账号分离 | verified | 已关闭 | `/api/account/me` 唯一身份、owner-scoped 消费者、完整回归与原生三链已验证 |
 | [BR-021](2026-09-15-schedule-meeting-details.md) | P1 | 四类日程详情与会议说明 | verified | 总控集成；尚未合并 | appointment 共享说明、旧会议私有兼容、四类原生打开及保存重开已验证 |
+| [BR-022](2026-09-15-profile-page-group-redesign.md) | P1 | “我的”页面组、资料编辑与公开投影 | consumer_ready | 协调者按固定 D SHA 合并并验证 | D 分支双向资料版本、409、actor 隔离、八屏、Dynamic Type 和隐私投影通过；`chat-agent` 合并树待验证 |
+
+## BR-022 — “我的”页面组、资料编辑与公开投影
+
+- 创建/更新日期：2026-09-15。
+- 总状态：`consumer_ready`；web_status：`source_ready`；app_status：`consumer_ready`；verification_status：D 分支本地共同运行环境与原生 Simulator 通过，`chat-agent` 合并树待验证。
+- Web/API：profile 新增语言和 LinkedIn／X 兼容字段、80／5／5 服务端校验、transactional CAS／receipt，以及 actor-scoped suggestion accept／dismiss；self-profile reader 使用同一显式公开投影。
+- App：新增主编辑、更多、标签、建议和预览五个 private route，按 origin＋canonical actor 共享草稿；主页、设置、账号使用真实数据和既有能力，不伪造设计 fixture。
+- 版本：规划 `c66761eea`；含 0026 基线 `c0d0ac094`；主体功能 `6dd44b94a`；视觉／Dynamic Type `7df4819a2`；固定最终 SHA `d37d6545d`。完整交接见 [BR-022 文件](2026-09-15-profile-page-group-redesign.md)和 [Sprint 0028 报告](../repos/orbit-app/docs/sprints/0028-profile-page-group-redesign/REPORT.md)。
+- 验证：Web 定向 41 pass＋14 环境 skip，专用 PostgreSQL 14/14；App 最终定向 227/227、全量 2829/2829、typecheck；Web production build／live health、iOS build 0 error／0 warning、双向回读、409 和隐私负断言均通过。
+- 运行边界：本地刷新式同步，不代表远程部署、实体设备或生产数据验收。协调者以交接的固定最终 SHA 合并并在精确合并树复跑矩阵；完成前 Sprint 保持 `running`，D 线不自行合并。
 
 ## BR-021 — 日程详情与会议说明
 
