@@ -1,0 +1,902 @@
+[
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.startup",
+    "run": 1,
+    "scenario": "app.startup",
+    "unit": "milliseconds",
+    "durationMs": 16.802624940872192,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.startup",
+    "run": 2,
+    "scenario": "app.startup",
+    "unit": "milliseconds",
+    "durationMs": 15.950500011444092,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.startup",
+    "run": 3,
+    "scenario": "app.startup",
+    "unit": "milliseconds",
+    "durationMs": 16.735916018486023,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.startup",
+    "run": 4,
+    "scenario": "app.startup",
+    "unit": "milliseconds",
+    "durationMs": 15.850166916847229,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.startup",
+    "run": 5,
+    "scenario": "app.startup",
+    "unit": "milliseconds",
+    "durationMs": 17.07870900630951,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.startup",
+    "run": 6,
+    "scenario": "app.startup",
+    "unit": "milliseconds",
+    "durationMs": 16.133417010307312,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.startup",
+    "run": 7,
+    "scenario": "app.startup",
+    "unit": "milliseconds",
+    "durationMs": 16.466416001319885,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.startup",
+    "run": 8,
+    "scenario": "app.startup",
+    "unit": "milliseconds",
+    "durationMs": 16.572999954223633,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.startup",
+    "run": 9,
+    "scenario": "app.startup",
+    "unit": "milliseconds",
+    "durationMs": 16.35212504863739,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.startup",
+    "run": 10,
+    "scenario": "app.startup",
+    "unit": "milliseconds",
+    "durationMs": 16.152000069618225,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.auth_restore",
+    "run": 1,
+    "scenario": "app.auth_restore",
+    "unit": "milliseconds",
+    "durationMs": 76.11725008487701,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.auth_restore",
+    "run": 2,
+    "scenario": "app.auth_restore",
+    "unit": "milliseconds",
+    "durationMs": 139.073832988739,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.auth_restore",
+    "run": 3,
+    "scenario": "app.auth_restore",
+    "unit": "milliseconds",
+    "durationMs": 97.52600002288818,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.auth_restore",
+    "run": 4,
+    "scenario": "app.auth_restore",
+    "unit": "milliseconds",
+    "durationMs": 123.73925006389618,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.auth_restore",
+    "run": 5,
+    "scenario": "app.auth_restore",
+    "unit": "milliseconds",
+    "durationMs": 96.12616693973541,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.auth_restore",
+    "run": 6,
+    "scenario": "app.auth_restore",
+    "unit": "milliseconds",
+    "durationMs": 87.36104202270508,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.auth_restore",
+    "run": 7,
+    "scenario": "app.auth_restore",
+    "unit": "milliseconds",
+    "durationMs": 95.56133306026459,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.auth_restore",
+    "run": 8,
+    "scenario": "app.auth_restore",
+    "unit": "milliseconds",
+    "durationMs": 84.69800007343292,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.auth_restore",
+    "run": 9,
+    "scenario": "app.auth_restore",
+    "unit": "milliseconds",
+    "durationMs": 94.67425000667572,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.auth_restore",
+    "run": 10,
+    "scenario": "app.auth_restore",
+    "unit": "milliseconds",
+    "durationMs": 85.73279094696045,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 1,
+    "scenario": "app.notes",
+    "unit": "milliseconds",
+    "durationMs": 19.657457947731018,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 2,
+    "scenario": "app.notes",
+    "unit": "milliseconds",
+    "durationMs": 18.32312500476837,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 3,
+    "scenario": "app.notes",
+    "unit": "milliseconds",
+    "durationMs": 12.399792075157166,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 4,
+    "scenario": "app.notes",
+    "unit": "milliseconds",
+    "durationMs": 18.31108295917511,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 5,
+    "scenario": "app.notes",
+    "unit": "milliseconds",
+    "durationMs": 20.6458340883255,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 6,
+    "scenario": "app.notes",
+    "unit": "milliseconds",
+    "durationMs": 17.676709055900574,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 7,
+    "scenario": "app.notes",
+    "unit": "milliseconds",
+    "durationMs": 18.371874928474426,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 8,
+    "scenario": "app.notes",
+    "unit": "milliseconds",
+    "durationMs": 18.365916967391968,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 9,
+    "scenario": "app.notes",
+    "unit": "milliseconds",
+    "durationMs": 19.112082958221436,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 10,
+    "scenario": "app.notes",
+    "unit": "milliseconds",
+    "durationMs": 17.44308304786682,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 1,
+    "scenario": "app.inbox",
+    "unit": "milliseconds",
+    "durationMs": 79.8463339805603,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 2,
+    "scenario": "app.inbox",
+    "unit": "milliseconds",
+    "durationMs": 17.34237504005432,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 3,
+    "scenario": "app.inbox",
+    "unit": "milliseconds",
+    "durationMs": 23.827291011810303,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 4,
+    "scenario": "app.inbox",
+    "unit": "milliseconds",
+    "durationMs": 19.112332940101624,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 5,
+    "scenario": "app.inbox",
+    "unit": "milliseconds",
+    "durationMs": 22.302291989326477,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 6,
+    "scenario": "app.inbox",
+    "unit": "milliseconds",
+    "durationMs": 83.17974996566772,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 7,
+    "scenario": "app.inbox",
+    "unit": "milliseconds",
+    "durationMs": 22.710666060447693,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 8,
+    "scenario": "app.inbox",
+    "unit": "milliseconds",
+    "durationMs": 19.43733298778534,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 9,
+    "scenario": "app.inbox",
+    "unit": "milliseconds",
+    "durationMs": 22.423375010490417,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 10,
+    "scenario": "app.inbox",
+    "unit": "milliseconds",
+    "durationMs": 19.535374999046326,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.react_commit",
+    "run": 1,
+    "scenario": "app.inbox",
+    "unit": "milliseconds",
+    "durationMs": 31.17691695690155,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.react_commit",
+    "run": 2,
+    "scenario": "app.inbox",
+    "unit": "milliseconds",
+    "durationMs": 32.14045798778534,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.react_commit",
+    "run": 3,
+    "scenario": "app.inbox",
+    "unit": "milliseconds",
+    "durationMs": 31.988332986831665,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.react_commit",
+    "run": 4,
+    "scenario": "app.inbox",
+    "unit": "milliseconds",
+    "durationMs": 32.29966700077057,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.react_commit",
+    "run": 5,
+    "scenario": "app.inbox",
+    "unit": "milliseconds",
+    "durationMs": 34.86820888519287,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.react_commit",
+    "run": 6,
+    "scenario": "app.inbox",
+    "unit": "milliseconds",
+    "durationMs": 34.77941608428955,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.react_commit",
+    "run": 7,
+    "scenario": "app.inbox",
+    "unit": "milliseconds",
+    "durationMs": 34.02674996852875,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.react_commit",
+    "run": 8,
+    "scenario": "app.inbox",
+    "unit": "milliseconds",
+    "durationMs": 33.93383300304413,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.react_commit",
+    "run": 9,
+    "scenario": "app.inbox",
+    "unit": "milliseconds",
+    "durationMs": 31.532167077064514,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.react_commit",
+    "run": 10,
+    "scenario": "app.inbox",
+    "unit": "milliseconds",
+    "durationMs": 33.99037492275238,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 1,
+    "scenario": "app.schedule",
+    "unit": "milliseconds",
+    "durationMs": 29.319334030151367,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 2,
+    "scenario": "app.schedule",
+    "unit": "milliseconds",
+    "durationMs": 28.840625047683716,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 3,
+    "scenario": "app.schedule",
+    "unit": "milliseconds",
+    "durationMs": 29.44479191303253,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 4,
+    "scenario": "app.schedule",
+    "unit": "milliseconds",
+    "durationMs": 61.56495809555054,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 5,
+    "scenario": "app.schedule",
+    "unit": "milliseconds",
+    "durationMs": 29.104915976524353,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 6,
+    "scenario": "app.schedule",
+    "unit": "milliseconds",
+    "durationMs": 15.868124961853027,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 7,
+    "scenario": "app.schedule",
+    "unit": "milliseconds",
+    "durationMs": 28.620207905769348,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 8,
+    "scenario": "app.schedule",
+    "unit": "milliseconds",
+    "durationMs": 28.941500067710876,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 9,
+    "scenario": "app.schedule",
+    "unit": "milliseconds",
+    "durationMs": 28.466459035873413,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 10,
+    "scenario": "app.schedule",
+    "unit": "milliseconds",
+    "durationMs": 28.575541973114014,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.snapshot",
+    "run": 1,
+    "scenario": "app.schedule",
+    "unit": "milliseconds",
+    "durationMs": 2.56974995136261,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.snapshot",
+    "run": 2,
+    "scenario": "app.schedule",
+    "unit": "milliseconds",
+    "durationMs": 4.19825005531311,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.snapshot",
+    "run": 3,
+    "scenario": "app.schedule",
+    "unit": "milliseconds",
+    "durationMs": 2.845708966255188,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.snapshot",
+    "run": 4,
+    "scenario": "app.schedule",
+    "unit": "milliseconds",
+    "durationMs": 3.0434579849243164,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.snapshot",
+    "run": 5,
+    "scenario": "app.schedule",
+    "unit": "milliseconds",
+    "durationMs": 2.4721659421920776,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.snapshot",
+    "run": 6,
+    "scenario": "app.schedule",
+    "unit": "milliseconds",
+    "durationMs": 2.199750065803528,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.snapshot",
+    "run": 7,
+    "scenario": "app.schedule",
+    "unit": "milliseconds",
+    "durationMs": 3.0142499208450317,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.snapshot",
+    "run": 8,
+    "scenario": "app.schedule",
+    "unit": "milliseconds",
+    "durationMs": 2.9075000286102295,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.snapshot",
+    "run": 9,
+    "scenario": "app.schedule",
+    "unit": "milliseconds",
+    "durationMs": 2.215208053588867,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.snapshot",
+    "run": 10,
+    "scenario": "app.schedule",
+    "unit": "milliseconds",
+    "durationMs": 4.0922499895095825,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 1,
+    "scenario": "app.profile",
+    "unit": "milliseconds",
+    "durationMs": 40.76949989795685,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 2,
+    "scenario": "app.profile",
+    "unit": "milliseconds",
+    "durationMs": 27.720209002494812,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 3,
+    "scenario": "app.profile",
+    "unit": "milliseconds",
+    "durationMs": 14.76924991607666,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 4,
+    "scenario": "app.profile",
+    "unit": "milliseconds",
+    "durationMs": 26.782124996185303,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 5,
+    "scenario": "app.profile",
+    "unit": "milliseconds",
+    "durationMs": 39.34966707229614,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 6,
+    "scenario": "app.profile",
+    "unit": "milliseconds",
+    "durationMs": 27.9913330078125,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 7,
+    "scenario": "app.profile",
+    "unit": "milliseconds",
+    "durationMs": 15.819707989692688,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 8,
+    "scenario": "app.profile",
+    "unit": "milliseconds",
+    "durationMs": 26.655916929244995,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 9,
+    "scenario": "app.profile",
+    "unit": "milliseconds",
+    "durationMs": 27.086250066757202,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.resource",
+    "run": 10,
+    "scenario": "app.profile",
+    "unit": "milliseconds",
+    "durationMs": 27.24412500858307,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.snapshot",
+    "run": 1,
+    "scenario": "app.profile",
+    "unit": "milliseconds",
+    "durationMs": 1.992042064666748,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.snapshot",
+    "run": 2,
+    "scenario": "app.profile",
+    "unit": "milliseconds",
+    "durationMs": 2.0514169931411743,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.snapshot",
+    "run": 3,
+    "scenario": "app.profile",
+    "unit": "milliseconds",
+    "durationMs": 1.7925419807434082,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.snapshot",
+    "run": 4,
+    "scenario": "app.profile",
+    "unit": "milliseconds",
+    "durationMs": 2.713249921798706,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.snapshot",
+    "run": 5,
+    "scenario": "app.profile",
+    "unit": "milliseconds",
+    "durationMs": 1.801792025566101,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.snapshot",
+    "run": 6,
+    "scenario": "app.profile",
+    "unit": "milliseconds",
+    "durationMs": 2.0089160203933716,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.snapshot",
+    "run": 7,
+    "scenario": "app.profile",
+    "unit": "milliseconds",
+    "durationMs": 2.071916937828064,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.snapshot",
+    "run": 8,
+    "scenario": "app.profile",
+    "unit": "milliseconds",
+    "durationMs": 1.9988340139389038,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.snapshot",
+    "run": 9,
+    "scenario": "app.profile",
+    "unit": "milliseconds",
+    "durationMs": 1.8235830068588257,
+    "failed": false
+  },
+  {
+    "commit": "7da7e49dc4679bbea908244280754ea0fbfa2eb4",
+    "environment": "app-release-simulator",
+    "metric": "app.snapshot",
+    "run": 10,
+    "scenario": "app.profile",
+    "unit": "milliseconds",
+    "durationMs": 1.8576669692993164,
+    "failed": false
+  }
+]
