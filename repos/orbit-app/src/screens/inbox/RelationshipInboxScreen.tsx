@@ -49,6 +49,8 @@ import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { resultToRouteState, type RouteState } from "../../view-models/route-state";
 import { inboxNotificationActions, inboxNotificationReceiptMatches, inboxNotificationsReadable } from "../../view-models/inbox-notification-actions";
+import { inboxFeedFromSources } from "../../view-models/inbox-feed";
+import { runInboxReadBatch } from "../../view-models/inbox-read-batch";
 import {
   buildRelationshipSignalConfirmRequest,
   buildRelationshipPrivacyToggleRequest,
@@ -72,12 +74,7 @@ import { inboxPolishTemplate, registerAiTemplatePrefill } from "../../data/ai-te
 
 type InboxSection = "alerts" | "threads";
 type ClientGet = (endpoint: string, options?: { signal?: AbortSignal }) => Promise<ApiResult<unknown>>;
-type ClientPost = (endpoint: string, body: unknown) => Promise<{
-  data?: unknown;
-  error?: { message: string };
-  success: boolean;
-  status?: number;
-}>;
+type ClientPost = (endpoint: string, body: unknown) => Promise<ApiResult<unknown>>;
 type ClientPatch = (endpoint: string, body: unknown, options?: { signal?: AbortSignal }) => Promise<{
   data?: unknown;
   error?: { message: string };
@@ -817,6 +814,20 @@ function InboxContent({
     locale.language
   );
   const signalsView = relationshipSignalsToView(signalsData, locale.language);
+  const feed = useMemo(() => inboxFeedFromSources({
+    actorId,
+    conversationsData: data,
+    language: locale.language,
+    notificationsData,
+    now: new Date().toISOString(),
+    signalsData,
+  }), [actorId, data, locale.language, notificationsData, signalsData]);
+  const batchScope = useMemo(() => ({ actorId, data, notificationsData, signalsData }), [actorId, data, notificationsData, signalsData]);
+  const currentBatchScope = useRef(batchScope);
+  currentBatchScope.current = batchScope;
+  const [batchPending, setBatchPending] = useState(false);
+  const [batchError, setBatchError] = useState("");
+  const confirmableUnread = feed.items.filter(item => !item.read && item.readAction).length;
   const signalCount = signalsView.signals.length;
   const conversations = uniqueConversations(view.conversations);
   const [activeSection, setActiveSection] = useState<InboxSection>("threads");
@@ -832,6 +843,29 @@ function InboxContent({
   alertsActive.current = activeSection === "alerts" && !composing && !createdThread;
   useEffect(() => () => { alertsActive.current = false; }, []);
   useEffect(() => { notificationLock.current = false; setNotificationPending(null); setNotificationError(""); }, [isCurrent]);
+
+  async function markAllRead() {
+    if (!isCurrent() || batchPending || confirmableUnread === 0) return;
+    const scope = batchScope;
+    setBatchPending(true);
+    setBatchError("");
+    try {
+      const result = await runInboxReadBatch({
+        execute: action => clientPost(action.endpoint, action.body),
+        isCurrent: () => isCurrent() && currentBatchScope.current === scope,
+        items: feed.items,
+      });
+      if (result.stale || !isCurrent() || currentBatchScope.current !== scope) return;
+      if (result.failedIds.length > 0) {
+        setBatchError(`${result.failedIds.length} 条未能标为已读，请重试`);
+      }
+      emitMessageStateInvalidation();
+      onRefreshNotifications();
+      onRefreshSignals();
+    } finally {
+      if (isCurrent() && currentBatchScope.current === scope) setBatchPending(false);
+    }
+  }
 
   async function actOnAlert(id: string, state: "read" | "ignored") {
     if (!isCurrent() || notificationLock.current || !alertsActive.current) return;
@@ -940,6 +974,14 @@ function InboxContent({
 
   return (
     <View style={styles.mailContent}>
+      <ActionButton
+        disabled={batchPending || confirmableUnread === 0}
+        icon="checkmark-done-outline"
+        label="全部已读"
+        onPress={() => void markAllRead()}
+        variant="secondary"
+      />
+      {batchError ? <Text accessibilityRole="alert" style={styles.errorText}>{batchError}</Text> : null}
       <InboxSegmentedControl
         activeSection={activeSection}
         alertCount={visibleAlerts.length + signalCount}
