@@ -32,18 +32,6 @@ async function waitForAdvisoryLockWait(pool: Pool, pid: number): Promise<void> {
   throw new Error(`backend ${pid} did not wait on the sync advisory lock`);
 }
 
-async function waitForDatabaseLockWait(pool: Pool, pid: number): Promise<void> {
-  const deadline = Date.now() + 5_000;
-  while (Date.now() < deadline) {
-    const state = await pool.query<{ wait_event_type: string | null }>(`
-      select wait_event_type from pg_stat_activity where pid = $1
-    `, [pid]);
-    if (state.rows[0]?.wait_event_type === "Lock") return;
-    await new Promise((resolve) => setTimeout(resolve, 10));
-  }
-  throw new Error(`backend ${pid} did not wait on a database lock`);
-}
-
 function canonicalNote(id: string, actorId: string, timestamp: string) {
   return {
     schemaVersion: 2,
@@ -492,7 +480,7 @@ test("production upsert and delete acquire the sync lock before touching the sam
       ...record,
       updatedAt: "2026-09-16T08:01:00.000Z",
     });
-    await waitForDatabaseLockWait(admin, upsertingPid);
+    await waitForAdvisoryLockWait(admin, upsertingPid);
     await barrier.query("select pg_advisory_unlock($1)", [testBarrierKey]);
 
     const deleted = await deleteOperation;
@@ -680,6 +668,77 @@ test("syncable upsert cannot transfer an existing record between actors", databa
     await pool.end();
     try {
       await admin.query(`drop schema if exists ${schema} cascade`);
+    } finally {
+      await admin.end();
+    }
+  }
+});
+
+test("sync lock keys are table-scoped and non-sync upserts retain cross-owner compatibility", databaseTest, async () => {
+  assert.ok(databaseUrl);
+  const suffix = randomUUID().replaceAll("-", "");
+  const firstSchema = `sync_key_a_${suffix}`;
+  const secondSchema = `sync_key_b_${suffix}`;
+  const workspaceId = "workspace:non-sync-owner";
+  const timestamp = "2026-09-16T08:00:00.000Z";
+  const admin = new Pool({ connectionString: databaseUrl, max: 1, connectionTimeoutMillis: 2_000 });
+  const first = new Pool({
+    connectionString: databaseUrl,
+    max: 2,
+    connectionTimeoutMillis: 2_000,
+    options: `-c search_path=${firstSchema} -c statement_timeout=10000`,
+  });
+  const second = new Pool({
+    connectionString: databaseUrl,
+    max: 2,
+    connectionTimeoutMillis: 2_000,
+    options: `-c search_path=${secondSchema} -c statement_timeout=10000`,
+  });
+  const event = (userId: string) => ({
+    workspaceId,
+    collectionName: "events",
+    recordId: "event:shared-id",
+    userId,
+    sourceType: "manual",
+    sourceId: "event:shared-id",
+    sourceLabel: null,
+    provider: null,
+    providerRecordId: null,
+    evidenceIds: [],
+    targetType: "event",
+    targetId: "event:shared-id",
+    occurredAt: timestamp,
+    lifecycleState: "active" as const,
+    searchText: "",
+    payload: { id: "event:shared-id", actorId: userId },
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    deletedAt: null,
+  });
+
+  try {
+    await admin.query(`create schema ${firstSchema}`);
+    await admin.query(`create schema ${secondSchema}`);
+    await first.query(ORBIT_RECORDS_SCHEMA_SQL);
+    await second.query(ORBIT_RECORDS_SCHEMA_SQL);
+    const firstKey = await first.query<{ key: string }>("select orbit_records_sync_write_lock_key()::text as key");
+    const secondKey = await second.query<{ key: string }>("select orbit_records_sync_write_lock_key()::text as key");
+    assert.notEqual(firstKey.rows[0]?.key, secondKey.rows[0]?.key);
+
+    const store = createPostgresLiveRecordStore({ client: first });
+    await store.upsertRecord(event("account:original"));
+    const transferred = await store.upsertRecord(event("account:replacement"));
+    assert.equal(transferred.userId, "account:replacement");
+    const persisted = await first.query<{ user_id: string }>(`
+      select user_id from orbit_records
+      where workspace_id = $1 and collection_name = 'events' and record_id = 'event:shared-id'
+    `, [workspaceId]);
+    assert.equal(persisted.rows[0]?.user_id, "account:replacement");
+  } finally {
+    await Promise.all([first.end(), second.end()]);
+    try {
+      await admin.query(`drop schema if exists ${firstSchema} cascade`);
+      await admin.query(`drop schema if exists ${secondSchema} cascade`);
     } finally {
       await admin.end();
     }
