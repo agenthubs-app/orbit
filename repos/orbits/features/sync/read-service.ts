@@ -319,6 +319,11 @@ function mapSchedulePayload(row: SyncReadRow, actorId: string) {
     createdAt: payload.createdAt,
     updatedAt: payload.updatedAt,
   };
+  if (payload.kind === "personal") {
+    put(result, "endsAt", payload.endsAt);
+    put(result, "location", payload.location);
+    return result;
+  }
   for (const field of [
     "details",
     "endsAt",
