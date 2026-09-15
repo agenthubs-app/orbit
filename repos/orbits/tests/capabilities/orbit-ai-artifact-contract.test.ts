@@ -43,6 +43,7 @@ test("Orbit AI artifact contract exports supported kinds statuses surfaces and a
     "relationship_chat_context",
     "generic",
     "self_profile",
+    "data_query",
   ]);
   assert.deepEqual(contract.ORBIT_AGENT_ARTIFACT_STATUSES, [
     "pending",
@@ -60,6 +61,7 @@ test("Orbit AI artifact contract exports supported kinds statuses surfaces and a
     "followup_review_producer",
     "relationship_chat_review_producer",
     "self_profile_reader",
+    "actor_scoped_query_reader",
   ]);
   assert.deepEqual(contract.ORBIT_AGENT_ARTIFACT_ERROR_CODES, [
     "ORBIT_AGENT_ARTIFACT_QUERY_REQUIRED",

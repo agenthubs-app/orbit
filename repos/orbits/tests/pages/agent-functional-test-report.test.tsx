@@ -14,7 +14,7 @@ import {
 } from "../../features/agent/evaluation/functional-test-report";
 
 test("Agent functional report stays aligned with the capability registry", () => {
-  assert.equal(AGENT_CAPABILITY_DEFINITIONS.length, 21);
+  assert.equal(AGENT_CAPABILITY_DEFINITIONS.length, 25);
   assert.deepEqual(
     AGENT_EVALUATED_CAPABILITIES.map((capability) => capability.id),
     AGENT_CAPABILITY_DEFINITIONS.map((capability) => capability.id),
@@ -45,9 +45,13 @@ test("Agent functional report renders every expectation and actual result", () =
 
   assert.match(html, /Agent 全功能测试报告/);
   assert.match(html, /一次 Agent 请求经历什么/);
-  assert.match(html, /注册表中的全部 21 项能力/);
+  assert.match(html, /注册表中的全部 25 项能力/);
   assert.match(html, /读取本人资料/);
   assert.match(html, /profile\.getSelf/);
+  assert.match(html, /notes\.query/);
+  assert.match(html, /tasks\.query/);
+  assert.match(html, /followups\.query/);
+  assert.match(html, /schedule\.query/);
   assert.match(html, /逐项对照预期与实测/);
   assert.match(html, /为什么会出问题，以及怎么从根上修/);
 
