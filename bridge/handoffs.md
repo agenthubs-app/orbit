@@ -12,7 +12,7 @@
 | --- | --- | --- | --- | --- | --- |
 | BR-001 | P1 | Today 同名但数据与动作集合不同 | identified | Bridge 梳理，Web/App 接口负责人协作 | 逐项映射账本/安排/任务；实现或有依据接受差异；双向验证 |
 | BR-002 | P1 | Agent 高级设置移动缺口 | identified | Bridge + App，Web 提供 HTTP 边界 | memory/feedback/automations/preferences 覆盖方案及逐操作验收 |
-| BR-003 | P1 | 会话历史操作与持久化确认 | consumer_ready | Bridge 验收 | 真实同账号两端完成组织、续聊、删除和失败恢复往返 |
+| BR-003 | P1 | 会话历史操作与持久化确认 | verified | 已完成；0005/0006 可消费 | 同账号 Web/App 组织、删除、刷新及 iOS 失败反馈证据齐全 |
 | BR-004 | P1 | 未共享响应 DTO / Schema 覆盖 | identified | Web 契约负责人 + App | AI sessions 已共享；其余消费者按模块继续迁移与同步 |
 | BR-005 | P1 | 缺少当前版本双向状态验收 | specified | Bridge | 账号/联系人/任务/报名/运营/会话的双向读写与刷新证据 |
 | BR-006 | P1 | Web 发布门槛与 App 公网依赖 | blocked | Web 发布负责人 | 记录解除 1C 的证据及部署版本，完成同环境 iOS 访问验证 |
@@ -23,7 +23,7 @@
 | BR-011 | P1 | 消息前台刷新、已读、角标与推送 | blocked | 运行环境负责人 | 提供 Expo project、push server key、双用户原生账号及实体推送环境后补真实验收 |
 | BR-012 | P1 | 双面名片按卡复核并一次创建联系人 | blocked | Bridge／共同环境负责人 | 实体 iPhone 在共同 API/OCR 环境完成双面创建，Web/App 重开同一联系人和字段来源 |
 | BR-013 | P1 | 统一待办与人脉筛选跨端一致 | verified | 已完成；0011/0013/0015/0018 可消费 | 同一任务在 App 全部／人脉视图、旧链接及 Web 完成／恢复回读一致 |
-| BR-014 | P1 | 首页与可信人脉分析 | blocked | Bridge／共同环境负责人 | 登录态 Simulator 核对首页/Pipeline；真实分析及目标在同账号 Web/App 双向回读 |
+| BR-014 | P1 | 首页与可信人脉分析 | blocked | provider 环境负责人 | 仅剩真实 provider 显式生成后，在 Web/App 重开同一持久报告 |
 | BR-015 | P1 | 账号语言偏好与三语基础 | verified | 已完成；0014/0015 可消费 | 独立账号偏好、三语 Provider、设备 A 保存→设备 B 服务端回读及失败／冲突证据齐全 |
 | BR-016 | P1 | 人脉、名片与活动三语消费 | consumer_ready | 0015；0016/0017 验收 | App 三语主链路本地回归通过；实体设备与共同远程环境由系统级 Sprint 验收 |
 
@@ -52,15 +52,15 @@
 ## BR-014 — 首页与可信人脉分析
 
 - 创建/更新日期：2026-09-15。
-- 总状态：`blocked`；web_status：`source_ready`；app_status：`consumer_ready`；verification_status：本地通过、真实运行时 blocked。
+- 总状态：`blocked`；web_status：`source_ready`；app_status：`consumer_ready`；verification_status：登录态原生与目标跨端通过，仅真实 provider 报告 blocked。
 - 用户可见变化：首页原联系跟进区块改为真实推荐活动，未完成待办最多五条且成功完成后补位；人脉页展示已存报告、真实生成时间/版本和 stale 提示。点击分析只打开可编辑 IORBIT 草稿，发送前无生成；关系目标只保存自身字段。
 - Web/API：`GET /api/mobile/contacts-dashboard` 可选返回 analysis current/report/stale；可靠发送对 `contacts.analysis@1` 在执行前重算 actor-scoped source hash，并在首轮 assistant 成功持久化后写 server-only verification。普通 session 写入不能伪造。
 - App：同步共享 contract/schema；dashboard、目标保存与机会重算绑定 actor+baseUrl。StrictMode/失焦保留一次性草稿，切号清除；旧 ACK 不覆盖新编辑，409 刷新版本后使用新 mutation 重试。
 - 版本：目标保存 `a1d7d7665`、首页 `727aeeae2`、服务端可信报告 `7a2e9f767`、Web 入口 `3038e8ea7`、App 消费 `9a10522b1`。
 - 本地验证：App 全量 2715/2715；App 0011 三组 72/72、28/28、5/5，生命周期组合 128/128；Web 0011 组合 99/99；两端 typecheck exit0。provider keys 全部清空，未执行模型或外部写入。
 - 兼容与失败：旧 App 缺 analysis 时显示 unavailable；部分消息持久化而 verification 未完成时不会冒充报告，重放可补 marker 而不重新生成；旧跟进业务与 Pipeline 未删除。
-- 未检查：真实 provider 生成、真实业务数据库、共同登录账号、登录态原生首页/分析/Pipeline、Web 写→App 回读与 App 写→Web 回读、部署版本。
-- 关闭条件：在同一已配置环境和授权账号中，登录 Simulator 对照首页活动/五待办/Pipeline；显式发送一次分析并在 Web/App 重开同一持久报告；两端各保存一次 relationshipGoal 并核对相同 profile/version 及其他资料字段未变。
+- 已补运行时证据：当前登录态 iOS Simulator 对照首页活动／五待办／Pipeline 与旧路径通过；同一合成账号完成 App 保存 relationshipGoal→Web 回读、Web 更新→App 回读，并核对相同 profile/version。
+- 未检查／关闭条件：仅剩配置真实 provider 后由用户显式发送一次分析，再在 Web/App 重开同一持久报告；部署版本另由 BR-006 验收，不重复阻塞 0011 的本地产品功能。
 
 ## BR-013 — 统一待办与人脉筛选
 
@@ -109,9 +109,9 @@
 ## BR-003 — AI 会话
 
 - web_status：功能 HEAD `3de117902`。Web 能分页读取全部会话，改名、置顶、移动、确认删除，并创建／改名／删除分组；写入走 revisioned PATCH，focus 时刷新。
-- app_status：同一 HEAD 的 App 支持同一组操作，长按和“整理会话”共用操作面板；组内新会话在首次可靠发送成功后以 organization revision 0 落组。
-- verification_status：Web 0021 定向 39/39、App 定向 95/95，两端 typecheck 通过；冲突、失败保稿、删除 tombstone 和分页已有本地证据。未完成真实同账号双端断网／重开往返和当前 iOS 构建交互。
-- 下一步：按 0021 REPORT 的固定次序使用测试记录完成 App→Web→App 写读；两端各删一个测试会话并核对 410／不可恢复。完成前保持 `consumer_ready`。
+- app_status：产品功能同一 HEAD；原生弹窗顺序修复为 `9bc7039a5`。App 支持同一组操作，长按和可访问“整理会话”共用操作面板；组内新会话在首次可靠发送成功后以 organization revision 0 落组。
+- verification_status：`verified`。Web 0021 定向 39/39、App 定向 95/95、弹窗修复文件 73/73、两端 typecheck 通过；同一全新合成账号完成 App 创建／改名→Web 读取、Web 改名→App 重载读取，以及 App 删除→Web 确认消失。当前 iOS Simulator 的长按、更多、组选择、删除确认和真实 409 反馈可见。
+- 下一步：0005／0006 可以复用已验证的会话组织与刷新链路；它们各自的 provider／联系人引用验收仍按原 REPORT 独立关闭，不由 BR-003 自动代替。
 
 ## BR-004 — 契约覆盖
 
@@ -124,8 +124,8 @@
 
 - web_status：会话组织写入由 actor-scoped API／事务存储完成；页面 focus 刷新，未新增 WebSocket。
 - app_status：会话列表／分组经 HTTP 和 actor／服务器范围读取；进入页面、focus 或显式操作后刷新，失败不把本地状态冒充持久化成功。
-- verification_status：双 actor、旧客户端、CAS、回滚、61 条删组与 tombstone 已在内存和一次隔离 PostgreSQL 中验证；没有同版本真实账号 E2E，状态为 `specified`。
-- 下一步：按 [数据交接验收](contracts.md) 使用同一环境和测试会话完成双向操作；记录 Web focus、App 重开／focus 的刷新时间与最终 revision。其他业务模块仍逐项验收。
+- verification_status：AI 会话子域已用同版本 Web/API、当前 App bundle 和同一全新合成账号完成真实双向操作；双 actor、旧客户端、CAS、回滚、61 条删组与 tombstone 也已在内存和一次隔离 PostgreSQL 中验证。BR-005 仍保持 `specified`，因为联系人／报名／运营等其他子域仍须逐项验收。
+- 下一步：把 AI 会话子域视为已验收，不重复执行；其他业务模块继续按 [数据交接验收](contracts.md) 逐项补证。
 
 ## BR-006 — 发布
 

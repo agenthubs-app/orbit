@@ -58,7 +58,7 @@ build/harness-logs/
 | [0008](0008-identity-chat/GOAL.md) | 验证邀请和身份绑定后，双方能真实收发消息 | R-05 | run-01 已完成；原功能 `6d8173b78`、主线集成 `64629369d`，见 REPORT | completed |
 | [0009](0009-timezone/GOAL.md) | 同一事项在首页、待办、日历和活动中不落错日 | R-09 | run-01 已完成；功能 `a4bbfd9f6`，见 REPORT | completed |
 | [0010](0010-task-schedule-editing/GOAL.md) | 个人事项能创建、编辑和清空字段，各页与提醒一致 | R-08 | run-01 已完成；功能 `d005c2b79`，见 REPORT | completed |
-| [0011](0011-home-analysis/GOAL.md) | 首页符合确认布局，分析可辨新旧，目标可单独保存 | R-09、R-10 | 本地功能与 H 验证完成；真实登录态 Simulator、provider 报告及同账号双端回读未运行，见 REPORT | blocked |
+| [0011](0011-home-analysis/GOAL.md) | 首页符合确认布局，分析可辨新旧，目标可单独保存 | R-09、R-10 | 登录态 Simulator 首页／Pipeline 与同账号 Web↔App 目标回读已完成；仅真实 provider 报告生成与两端回读未运行，见 REPORT | blocked |
 | [0012](0012-message-state/GOAL.md) | 前台新消息及时出现，已读角标与跳转目标正确 | R-11 | 功能提交 `218fb3d4b`；自动化与 iOS 打包通过，真实双用户原生／实体推送环境缺失，见 REPORT | blocked |
 | [0013](0013-locale-foundation/GOAL.md) | 用中日英操作账号、首页和设置，切语言不丢输入 | R-12 | run-01 completed；功能 `cc3930449`、`1bd99f737`、`9d5c13622`，见 REPORT | completed |
 | [0014](0014-locale-relationships-events/GOAL.md) | 用中日英处理人脉、名片和活动，保留原文与答案 | R-12 | run-01 completed；功能 `9761b343d`，见 REPORT | completed |
@@ -68,7 +68,7 @@ build/harness-logs/
 | [0018](0018-notes-core/GOAL.md) | 一份私密笔记关联多人，保留旧内容并安全切换入口 | R-13 | 0017；B8／D7／迁移设计 | blocked |
 | [0019](0019-note-suggestions/GOAL.md) | 确认笔记建议后只建一次事项，逐项验收全部原需求 | R-13、R-14 | 0018；D5／B6／B8建议协议 | blocked |
 | [0020](0020-secondary-industries-self-profile/GOAL.md) | 二级行业在资料、联系人和检索中复用，AI 能读取本人资料，现有测试数据补齐 | 2026-09-14 新增；关联 R-03／R-06 | run-01 已结束；部分代码未提交，HTTP/provider/trace/生成源范围缺项与 H 验证未通过；见 REPORT | blocked |
-| [0021](0021-ai-session-organization/GOAL.md) | 保存 AI 会话入口与首条内容，按项目式分组整理，并能置顶、改名、删除和跨端回读 | 2026-09-14 新增；关联 R-00／R-02／R-06 | 功能 HEAD `3de117902`；起源、组织事务和两端 UI 已实现，真实同账号双端与当前 iOS 交互仍缺证据，见 REPORT | blocked |
+| [0021](0021-ai-session-organization/GOAL.md) | 保存 AI 会话入口与首条内容，按项目式分组整理，并能置顶、改名、删除和跨端回读 | 2026-09-14 新增；关联 R-00／R-02／R-06 | 功能 HEAD `9bc7039a5`；同账号 Web↔App、当前 iOS 长按／更多／分组／确认／真实冲突反馈均已验证，见 REPORT | completed |
 | [0022](0022-unified-tasks/GOAL.md) | 同一待办入口切换全部／人脉，兼容旧跟进链接并保留草稿、建议和提醒入口 | 2026-09-14 新增；关联 R-08／R-09／R-06 | run-01 已完成；功能 `ef5d0b02d`，见 REPORT | completed |
 | [0023](0023-industry-consumer-continuation/GOAL.md) | 接通联系人行业、搜索 HTTP 与本人资料工具，承接 0020 全部未完成验收 | SC-0020-01～05；明确获准接续 | 现有部分实现与 8 文件补充方案已批准；真实数据／设备按对象处理 | running |
 | [0024](0024-contact-needs-ranking/GOAL.md) | 在人脉主页保存需求，并在独立页面按可核对依据稳定排序 | 用户批准 `concept-v2.png`；关联 0011／0023 | 功能 HEAD `146f5fa09`；SC-01～04 通过，SC-05 缺原生数字评分、返回和动态字号证据，见 REPORT | blocked |
@@ -184,7 +184,7 @@ build/harness-logs/
 
 - owner：B 线当前主代理 `/root`；run_count：1；开始：2026-09-15 00:19 JST。承接 0005 功能 HEAD `30c1e210c` 和同一 B 线授权，串行持有 AI 会话／契约／provider 文件。
 - 实施前先把 B3 实际字段与 0021 organization revision 对照写入 Planner，并读取 Bridge 状态与交接，避免覆盖 E 线联系人详情／聊天／收件箱范围。
-- 功能提交 `c645d357a`、`cabf07b27`、`9f4396d1c`、`3de117902`；Web 定向 39/39、App 定向 95/95、两端 typecheck 及临时隔离 PostgreSQL 通过。真实同账号 Web↔App 与当前 iOS 构建交互仍 blocked，详见 [REPORT](0021-ai-session-organization/REPORT.md)。
+- 功能提交 `c645d357a`、`cabf07b27`、`9f4396d1c`、`3de117902`、`9bc7039a5`；Web 定向 39/39、App 定向 95/95、原生弹窗修复文件 73/73、两端 typecheck 及临时隔离 PostgreSQL 通过。当前 iOS Simulator 已完成长按／更多／分组／确认和真实 409 反馈；同一全新合成账号完成 App→Web→App 分组改名与删除回读，结果 completed，详见 [REPORT](0021-ai-session-organization/REPORT.md)。
 
 ### 0003 / run-01
 

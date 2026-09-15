@@ -1,5 +1,11 @@
 # 两端当前状态
 
+## 2026-09-15 B 线 0021 验收增量
+
+- AI 会话组织功能在 `3de117902` 基础上由 `9bc7039a5` 修复原生连续 `Modal` 切换；历史→整理器与整理器→删除确认不再互相遮挡，Web 保留同步切换行为。
+- 同一全新合成账号在运行中的本地 Web/API 与当前 App bundle 完成 App 创建／改名→Web 读取、Web 改名→App 重载读取、App 删除→Web 确认消失；当前 iOS Simulator 的长按、可访问更多、组选择、删除确认和真实 409 冲突反馈均可见。
+- Web 0021 定向 39/39、App 定向 95/95、弹窗修复文件 73/73、两端 typecheck 和隔离 PostgreSQL 证据通过。两条确定性会话均经正式 API 写入并在验收后删除，未调用模型；0021 现为 completed，详见 [BR-003](handoffs.md#br-003--ai-会话)与 [Sprint 0021 报告](../repos/orbit-app/docs/sprints/0021-ai-session-organization/REPORT.md)。
+
 ## 2026-09-15 A 线 0014 增量
 
 - App `9761b343d` 将人脉列表／详情／关系搜索／邀请、名片摄入／复核、活动发现／详情／报名接入 0013 的中／日／英账号语言环境；产品 chrome 与已知枚举本地化，姓名、公司、OCR 原文、活动内容、题目、答案和稳定 ID 保持 literal。
@@ -17,7 +23,7 @@
 - 首页由 `727aeeae2` 使用真实推荐活动替换旧联系跟进区块，按既有排序最多显示五条未完成待办并在成功完成后补位；Pipeline 保持独立入口。
 - Web/API 由 `7a2e9f767` 提供 actor-scoped source version、持久化生成时间/分析版本和服务端受信执行标记；Web UI `3038e8ea7`、App `9a10522b1` 只在用户显式发送 IORBIT 草稿后生成。关系目标字段级版本写入为 `a1d7d7665`。
 - 本地结果：App 2715/2715、0011 组合 72/72+28/28+5/5、生命周期组合 128/128；Web 0011 组合 99/99；两端 typecheck 通过，provider keys 全部清空。
-- 运行时仍 blocked：Simulator 无共同登录账号，未进入登录态首页/分析/Pipeline；真实 provider 报告和同账号 Web↔App 目标回读未执行。详情见 [BR-014](handoffs.md#br-014--首页与可信人脉分析)与 [Sprint 0011 报告](../repos/orbit-app/docs/sprints/0011-home-analysis/REPORT.md)。
+- 运行时阻塞已收窄：登录态 Simulator 首页／Pipeline、旧路径和同账号 Web↔App relationshipGoal 双向回读均已完成；仅真实 provider 显式生成后的持久报告与两端重开回读未执行。详情见 [BR-014](handoffs.md#br-014--首页与可信人脉分析)与 [Sprint 0011 报告](../repos/orbit-app/docs/sprints/0011-home-analysis/REPORT.md)。
 
 2026-09-15 本地主线增量：事项与个人日程编辑已在 `d005c2b79` 同时接通 Web/API 与 App，独立 PostgreSQL 和 iOS Simulator 完成同记录双向回读；待办统一由 `ef5d0b02d` 将 App 全部／人脉和未完成／已完成视图接到同一 canonical 集合，并完成 App→Web→App 同记录完成／恢复回读；身份邀请与共享聊天由 E 线原提交 `6d8173b78`、主线集成 `64629369d` 接通，消息状态由原提交 `218fb3d4b`、主线集成 `8c9bf60cc` 接通。0012 仍缺真实 Expo project、push server key 和双用户实体／持续前台证据，保持 blocked；这些本地结果不表示远程部署或生产 OAuth 已验收。
 
