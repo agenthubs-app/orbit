@@ -49,7 +49,13 @@ import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { resultToRouteState, type RouteState } from "../../view-models/route-state";
 import { inboxNotificationActions, inboxNotificationReceiptMatches, inboxNotificationsReadable } from "../../view-models/inbox-notification-actions";
-import { inboxFeedFromSources } from "../../view-models/inbox-feed";
+import {
+  filterInboxFeed,
+  inboxFeedFromSources,
+  type InboxFeedFilter,
+  type InboxFeedItem,
+  type InboxFeedView,
+} from "../../view-models/inbox-feed";
 import { runInboxReadBatch } from "../../view-models/inbox-read-batch";
 import {
   buildRelationshipSignalConfirmRequest,
@@ -312,6 +318,25 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
     (data) => relationshipSignalsToView(data, locale.language).signals.length === 0,
     clientGet, isCurrent
   );
+  const conversationsData = state.kind === "success" || state.kind === "empty" ? state.data : null;
+  const signalsData = signalsState.kind === "success" || signalsState.kind === "empty" ? signalsState.data : null;
+  const feed = useMemo(() => inboxFeedFromSources({
+    actorId,
+    conversationsData,
+    language: locale.language,
+    notificationsData,
+    now: new Date().toISOString(),
+    signalsData,
+  }), [actorId, conversationsData, locale.language, notificationsData, signalsData]);
+  const batchScope = useMemo(
+    () => ({ actorId, conversationsData, notificationsData, signalsData }),
+    [actorId, conversationsData, notificationsData, signalsData]
+  );
+  const currentBatchScope = useRef(batchScope);
+  currentBatchScope.current = batchScope;
+  const [batchPending, setBatchPending] = useState(false);
+  const [batchError, setBatchError] = useState("");
+  const confirmableUnread = feed.items.filter(item => !item.read && item.readAction).length;
   const [composing, setComposing] = useState(
     Boolean(!seedContactId && (seedName || seedOrganization))
   );
@@ -394,6 +419,29 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
     signalsState.refresh();
   }
 
+  async function markAllRead() {
+    if (!isCurrent() || batchPending || confirmableUnread === 0) return;
+    const scope = batchScope;
+    setBatchPending(true);
+    setBatchError("");
+    try {
+      const result = await runInboxReadBatch({
+        execute: action => clientPost(action.endpoint, action.body),
+        isCurrent: () => isCurrent() && currentBatchScope.current === scope,
+        items: feed.items,
+      });
+      if (result.stale || !isCurrent() || currentBatchScope.current !== scope) return;
+      if (result.failedIds.length > 0) {
+        setBatchError(locale.t("inbox.markAllReadFailed", { count: result.failedIds.length }));
+      }
+      emitMessageStateInvalidation();
+      refreshNotifications();
+      signalsState.refresh();
+    } finally {
+      if (isCurrent() && currentBatchScope.current === scope) setBatchPending(false);
+    }
+  }
+
   function openConversation(conversationId: string) {
     if (!isCurrent()) return;
     router.push(`/inbox/${encodeURIComponent(conversationId)}` as Href);
@@ -413,7 +461,8 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
         />
       }
       title={locale.t(contentReady && composing ? "inbox.compose" : contentReady && createdThread ? "inbox.draftPreview" : "inbox.title")}
-      onCompose={contentReady && !composing && !createdThread ? () => setComposing(true) : undefined}
+      onMarkAllRead={contentReady && !composing && !createdThread ? () => void markAllRead() : undefined}
+      markAllReadDisabled={batchPending || confirmableUnread === 0}
       hideBack={contentReady && composing}
       onBack={createdThread ? () => setCreatedThread(null) : undefined}
     >
@@ -444,6 +493,8 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
           getCurrentNotifications={getCurrentNotifications}
           createdThread={createdThread}
           data={retainedContent.current.data}
+          feed={feed}
+          batchError={batchError}
           notificationsData={notificationsData}
           notificationsError={
             notificationsState.kind === "failure" || notificationsState.kind === "offline"
@@ -462,11 +513,7 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
             organization: seedOrganization,
             participantName: seedName
           }}
-          signalsData={
-            signalsState.kind === "success" || signalsState.kind === "empty"
-              ? signalsState.data
-              : null
-          }
+          signalsData={signalsData}
           signalsError={
             signalsState.kind === "failure" || signalsState.kind === "offline"
               ? relationshipInboxErrorText(
@@ -597,10 +644,12 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
   );
 }
 
-function InboxLayout({ children, title, refreshControl, onCompose, onBack, hideBack = false }: PropsWithChildren<{
+function InboxLayout({ children, title, refreshControl, onCompose, onMarkAllRead, markAllReadDisabled = false, onBack, hideBack = false }: PropsWithChildren<{
   title: string;
   refreshControl?: React.ReactElement<React.ComponentProps<typeof RefreshControl>>;
   onCompose?: (() => void) | undefined;
+  onMarkAllRead?: (() => void) | undefined;
+  markAllReadDisabled?: boolean;
   onBack?: (() => void) | undefined;
   hideBack?: boolean;
 }>) {
@@ -616,14 +665,14 @@ function InboxLayout({ children, title, refreshControl, onCompose, onBack, hideB
           {!hideBack ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={locale.t(onBack || canGoBack ? "inbox.back" : "inbox.home")}
+              accessibilityLabel={locale.t(onMarkAllRead ? "inbox.home" : onBack || canGoBack ? "inbox.back" : "inbox.home")}
               onPress={onBack ?? (() => canGoBack
                 ? router.back()
                 : router.replace("/home" as Href))}
               style={({ pressed }) => [styles.toolbarButton, pressed && styles.pressed]}
             >
               <Ionicons color={colors.accent} name="chevron-back" size={18} />
-              <Text style={styles.toolbarText}>{locale.t(onBack || canGoBack ? "inbox.back" : "inbox.home")}</Text>
+              <Text style={styles.toolbarText}>{locale.t(onMarkAllRead ? "inbox.home" : onBack || canGoBack ? "inbox.back" : "inbox.home")}</Text>
             </Pressable>
           ) : null}
         </View>
@@ -631,7 +680,18 @@ function InboxLayout({ children, title, refreshControl, onCompose, onBack, hideB
           {title}
         </Text>
         <View style={[styles.toolbarSide, styles.toolbarEnd]}>
-          {onCompose ? (
+          {onMarkAllRead ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={locale.t("inbox.markAllRead")}
+              accessibilityState={{ disabled: markAllReadDisabled }}
+              disabled={markAllReadDisabled}
+              onPress={onMarkAllRead}
+              style={({ pressed }) => [styles.toolbarButton, markAllReadDisabled && styles.disabled, pressed && styles.pressed]}
+            >
+              <Text style={styles.toolbarComposeText}>{locale.t("inbox.markAllRead")}</Text>
+            </Pressable>
+          ) : onCompose ? (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={locale.t("inbox.compose")}
@@ -757,6 +817,7 @@ function NotificationDeliveryCard({
 
 function InboxContent({
   actorId,
+  batchError,
   clientGet,
   clientPost,
   isCurrent,
@@ -765,6 +826,7 @@ function InboxContent({
   composing,
   createdThread,
   data,
+  feed,
   notificationsData,
   notificationsError,
   notificationsLoading,
@@ -780,6 +842,7 @@ function InboxContent({
   setComposing
 }: {
   actorId: string;
+  batchError: string;
   clientGet: ClientGet;
   clientPost: ClientPost;
   isCurrent: () => boolean;
@@ -788,6 +851,7 @@ function InboxContent({
   composing: boolean;
   createdThread: RelationshipCreatedThreadView | null;
   data: unknown;
+  feed: InboxFeedView;
   notificationsData: unknown;
   notificationsError: string;
   notificationsLoading: boolean;
@@ -803,69 +867,22 @@ function InboxContent({
   setComposing: (value: boolean) => void;
 }) {
   const locale = useOrbitLocale();
-  const { colors, styles } = useStyles();
-  const { fontScale } = useWindowDimensions();
+  const { styles } = useStyles();
   const view = relationshipConversationListToInbox(data, actorId) ?? {
     conversations: [], selected: null, summary: locale.t("inbox.noMessages"), title: locale.t("inbox.title")
   };
-  const alertsView = relationshipAlertsToView(
-    notificationsData,
-    undefined,
-    locale.language
-  );
   const signalsView = relationshipSignalsToView(signalsData, locale.language);
-  const feed = useMemo(() => inboxFeedFromSources({
-    actorId,
-    conversationsData: data,
-    language: locale.language,
-    notificationsData,
-    now: new Date().toISOString(),
-    signalsData,
-  }), [actorId, data, locale.language, notificationsData, signalsData]);
-  const batchScope = useMemo(() => ({ actorId, data, notificationsData, signalsData }), [actorId, data, notificationsData, signalsData]);
-  const currentBatchScope = useRef(batchScope);
-  currentBatchScope.current = batchScope;
-  const [batchPending, setBatchPending] = useState(false);
-  const [batchError, setBatchError] = useState("");
-  const confirmableUnread = feed.items.filter(item => !item.read && item.readAction).length;
-  const signalCount = signalsView.signals.length;
-  const conversations = uniqueConversations(view.conversations);
-  const [activeSection, setActiveSection] = useState<InboxSection>("threads");
-  const [query, setQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState<InboxFeedFilter>("all");
+  const [reviewSignals, setReviewSignals] = useState(false);
   const [seedHandled, setSeedHandled] = useState(false);
-  const [dismissedAlertIds, setDismissedAlertIds] = useState<Set<string>>(
-    () => new Set()
-  );
   const [notificationPending, setNotificationPending] = useState<string | null>(null);
   const [notificationError, setNotificationError] = useState("");
   const notificationLock = useRef(false);
   const alertsActive = useRef(false);
-  alertsActive.current = activeSection === "alerts" && !composing && !createdThread;
+  alertsActive.current = !composing && !createdThread;
   useEffect(() => () => { alertsActive.current = false; }, []);
   useEffect(() => { notificationLock.current = false; setNotificationPending(null); setNotificationError(""); }, [isCurrent]);
 
-  async function markAllRead() {
-    if (!isCurrent() || batchPending || confirmableUnread === 0) return;
-    const scope = batchScope;
-    setBatchPending(true);
-    setBatchError("");
-    try {
-      const result = await runInboxReadBatch({
-        execute: action => clientPost(action.endpoint, action.body),
-        isCurrent: () => isCurrent() && currentBatchScope.current === scope,
-        items: feed.items,
-      });
-      if (result.stale || !isCurrent() || currentBatchScope.current !== scope) return;
-      if (result.failedIds.length > 0) {
-        setBatchError(`${result.failedIds.length} 条未能标为已读，请重试`);
-      }
-      emitMessageStateInvalidation();
-      onRefreshNotifications();
-      onRefreshSignals();
-    } finally {
-      if (isCurrent() && currentBatchScope.current === scope) setBatchPending(false);
-    }
-  }
 
   async function actOnAlert(id: string, state: "read" | "ignored") {
     if (!isCurrent() || notificationLock.current || !alertsActive.current) return;
@@ -881,10 +898,7 @@ function InboxContent({
       setNotificationError(locale.t("inbox.targetUnsupported"));
       return;
     }
-    if (!action.canPersist && state === "ignored") {
-      setDismissedAlertIds(current => new Set([...current, id]));
-      return;
-    }
+    if (!action.canPersist && state === "ignored") return;
     if (state === "read" && (!action.canPersist || action.read)) {
       onOpenNotificationTarget(action.href!);
       return;
@@ -908,14 +922,6 @@ function InboxContent({
       if (isCurrent()) { notificationLock.current = false; setNotificationPending(null); }
     }
   }
-  const visibleAlerts = alertsView.alerts.filter(
-    (alert) => !dismissedAlertIds.has(alert.id)
-  );
-  const visibleAlertsView: RelationshipAlertsView = {
-    ...alertsView,
-    alerts: visibleAlerts,
-    summary: visibleAlerts.length ? locale.t("inbox.alertsCount", { count: visibleAlerts.length }) : locale.t("inbox.noAlerts")
-  };
   const seededConversationId = relationshipConversationIdForContact(
     view,
     seed.contactId
@@ -945,7 +951,8 @@ function InboxContent({
 
   useEffect(() => {
     if (composing) {
-      setActiveSection("threads");
+      setActiveFilter("all");
+      setReviewSignals(false);
     }
   }, [composing]);
 
@@ -972,71 +979,65 @@ function InboxContent({
 
   if (!contentReady) return null;
 
+  const visibleFeed = filterInboxFeed(feed, activeFilter);
+
+  function openFeedItem(item: InboxFeedItem) {
+    if (item.id.startsWith("conversation:")) {
+      onOpenConversation(item.id.slice("conversation:".length));
+      return;
+    }
+    if (item.id.startsWith("notification:") && item.targetHref) {
+      void actOnAlert(item.id.slice("notification:".length), "read");
+      return;
+    }
+    if (item.targetHref) {
+      onOpenNotificationTarget(item.targetHref);
+      return;
+    }
+    if (item.id.startsWith("signal:")) setReviewSignals(true);
+  }
+
   return (
     <View style={styles.mailContent}>
-      <ActionButton
-        disabled={batchPending || confirmableUnread === 0}
-        icon="checkmark-done-outline"
-        label="全部已读"
-        onPress={() => void markAllRead()}
-        variant="secondary"
+      <UnifiedInboxTabs
+        activeFilter={activeFilter}
+        onChange={filter => {
+          setActiveFilter(filter);
+          setReviewSignals(false);
+        }}
+        unreadCount={feed.unreadCount}
       />
-      {batchError ? <Text accessibilityRole="alert" style={styles.errorText}>{batchError}</Text> : null}
-      <InboxSegmentedControl
-        activeSection={activeSection}
-        alertCount={visibleAlerts.length + signalCount}
-        onChange={setActiveSection}
-      />
-      {activeSection === "threads" ? (
-        <View style={styles.searchBox}>
-          <Ionicons color={colors.text3} name="search-outline" size={20} />
-          <TextInput
-            accessibilityLabel={locale.t("inbox.search")}
-            onChangeText={setQuery}
-            placeholder={locale.t(fontScale > 1.3 ? "inbox.searchCompact" : "inbox.search")}
-            placeholderTextColor={colors.text3}
-            returnKeyType="search"
-            style={styles.searchInput}
-            value={query}
-          />
+      {batchError ? <Text accessibilityRole="alert" style={styles.unifiedError}>{batchError}</Text> : null}
+      {notificationError ? <Text accessibilityRole="alert" style={styles.unifiedError}>{notificationError}</Text> : null}
+      {notificationsLoading ? <Text style={styles.resourceStatus}>{locale.t("inbox.reminderLoading")}</Text> : null}
+      {notificationsError ? (
+        <View style={styles.unifiedSourceError}>
+          <Text accessibilityRole="alert" style={styles.errorText}>{notificationsError}</Text>
+          <ActionButton icon="refresh-outline" label={locale.t("inbox.retryAlerts")} onPress={onRefreshNotifications} variant="secondary" />
         </View>
       ) : null}
-
-      {activeSection === "alerts" ? (
-        <>
-          {signalCount > 0 || signalsError || signalsLoading ? (
-            <RelationshipSignalsCard
-              clientPost={clientPost}
-              isCurrent={isCurrent}
-              error={signalsError}
-              loading={signalsLoading}
-              onConfirmed={onRefreshSignals}
-              view={signalsView}
-            />
-          ) : null}
-          {notificationsLoading ? (
-            <Text style={styles.resourceStatus}>{locale.t("inbox.reminderLoading")}</Text>
-          ) : notificationsError ? (
-            <View style={styles.remindersPane}>
-              <Text accessibilityRole="alert" style={styles.errorText}>{notificationsError}</Text>
-              <ActionButton icon="refresh-outline" label={locale.t("inbox.retryAlerts")} onPress={onRefreshNotifications} variant="secondary" />
-            </View>
-          ) : <AlertsCard
-            error={notificationError}
-            pendingId={notificationPending}
-            onDismissAlert={(id) => void actOnAlert(id, "ignored")}
-            onOpenAlert={(id) => void actOnAlert(id, "read")}
-            view={visibleAlertsView}
-          />}
-        </>
-      ) : null}
-
-      {activeSection === "threads" ? (
-        <ConversationList
-          conversations={conversations}
-          onSelect={onOpenConversation}
-          query={query}
+      {signalsLoading ? <Text style={styles.resourceStatus}>{locale.t("inbox.signalsLoading")}</Text> : null}
+      {signalsError ? <Text accessibilityRole="alert" style={styles.unifiedError}>{signalsError}</Text> : null}
+      <UnifiedFeedList
+        disabled={notificationPending !== null}
+        items={visibleFeed.items}
+        onOpen={openFeedItem}
+      />
+      {reviewSignals && activeFilter === "contact" ? (
+        <RelationshipSignalsCard
+          clientPost={clientPost}
+          isCurrent={isCurrent}
+          error={signalsError}
+          loading={signalsLoading}
+          onConfirmed={onRefreshSignals}
+          view={signalsView}
         />
+      ) : null}
+      {visibleFeed.items.length === 0 && !notificationsLoading && !signalsLoading ? (
+        <EmptyState message={locale.t("inbox.messagesHint")} title={locale.t("inbox.noMessages")} />
+      ) : null}
+      {feed.coverageConfirmed && visibleFeed.items.length > 0 ? (
+        <Text style={styles.feedCoverage}>{locale.t("inbox.recentThirtyDays")}</Text>
       ) : null}
     </View>
   );
@@ -1167,6 +1168,146 @@ function RelationshipSignalsCard({
       ) : null}
       <Text style={styles.safetyText}>{view.safetyText}</Text>
     </DataCard>
+  );
+}
+
+function UnifiedInboxTabs({
+  activeFilter,
+  onChange,
+  unreadCount,
+}: {
+  activeFilter: InboxFeedFilter;
+  onChange: (filter: InboxFeedFilter) => void;
+  unreadCount: number;
+}) {
+  const locale = useOrbitLocale();
+  const { styles } = useStyles();
+  const tabs: ReadonlyArray<{ filter: InboxFeedFilter; label: string }> = [
+    { filter: "all", label: locale.t("inbox.all") },
+    { filter: "activity", label: locale.t("inbox.activity") },
+    { filter: "task", label: locale.t("inbox.tasks") },
+    { filter: "contact", label: locale.t("inbox.contacts") },
+  ];
+  return (
+    <ScrollView
+      accessibilityRole="tablist"
+      contentContainerStyle={styles.feedTabsContent}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={styles.feedTabs}
+    >
+      {tabs.map(tab => {
+        const active = activeFilter === tab.filter;
+        const count = tab.filter === "all" ? unreadCount : 0;
+        const accessibleLabel = count ? `${tab.label} ${count}` : tab.label;
+        return (
+          <Pressable
+            accessibilityLabel={accessibleLabel}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            key={tab.filter}
+            onPress={() => onChange(tab.filter)}
+            style={({ pressed }) => [
+              styles.feedTab,
+              active && styles.feedTabActive,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Text style={[styles.feedTabText, active && styles.feedTabTextActive]}>{tab.label}{count > 0 ? " " : ""}</Text>
+            {count > 0 ? <Text style={styles.feedTabCount}>{count}</Text> : null}
+          </Pressable>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
+function feedCategoryLabel(category: InboxFeedItem["category"], t: ReturnType<typeof useOrbitLocale>["t"]): string {
+  const keys = {
+    activity: "inbox.sourceActivity",
+    assistant: "inbox.sourceAssistant",
+    contact: "inbox.sourceContact",
+    task: "inbox.sourceTask",
+  } as const;
+  return t(keys[category]);
+}
+
+function feedTimeLabel(value: string, language: ReturnType<typeof useOrbitLocale>["language"], yesterday: string): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+  const current = new Date();
+  const sameDay = date.getFullYear() === current.getFullYear()
+    && date.getMonth() === current.getMonth() && date.getDate() === current.getDate();
+  if (sameDay) return date.toLocaleTimeString(language === "en" ? "en-US" : language === "ja" ? "ja-JP" : "zh-CN", {
+    hour: "2-digit",
+    hour12: false,
+    minute: "2-digit",
+  });
+  const previous = new Date(current);
+  previous.setDate(current.getDate() - 1);
+  if (date.getFullYear() === previous.getFullYear()
+    && date.getMonth() === previous.getMonth() && date.getDate() === previous.getDate()) return yesterday;
+  return date.toLocaleDateString(language === "en" ? "en-US" : language === "ja" ? "ja-JP" : "zh-CN", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
+function UnifiedFeedList({
+  disabled,
+  items,
+  onOpen,
+}: {
+  disabled: boolean;
+  items: readonly InboxFeedItem[];
+  onOpen: (item: InboxFeedItem) => void;
+}) {
+  const locale = useOrbitLocale();
+  const { styles } = useStyles();
+  const { fontScale } = useWindowDimensions();
+  return (
+    <View style={styles.feedList}>
+      {items.map(item => {
+        const category = feedCategoryLabel(item.category, locale.t);
+        const subtitle = item.subtitle && item.subtitle !== category ? `${category} · ${item.subtitle}` : category;
+        const time = feedTimeLabel(item.occurredAt, locale.language, locale.t("inbox.yesterday"));
+        const state = locale.t(item.read ? "inbox.readState" : "inbox.unreadState");
+        const interactive = Boolean(item.targetHref || item.id.startsWith("conversation:") || item.id.startsWith("signal:"));
+        const content = (
+          <>
+            <View style={styles.feedUnreadGutter}>
+              {!item.read ? <View style={styles.feedUnreadDot} /> : null}
+            </View>
+            <View style={[styles.feedRowBody, fontScale > 1.3 && styles.feedRowBodyLarge]}>
+              <View style={styles.feedCopy}>
+                <Text style={[styles.feedTitle, !item.read && styles.feedTitleUnread]}>{item.title}</Text>
+                <Text style={styles.feedSubtitle}>{subtitle}</Text>
+              </View>
+              {time ? <Text style={[styles.feedTime, fontScale > 1.3 && styles.feedTimeLarge]}>{time}</Text> : null}
+            </View>
+          </>
+        );
+        const accessibilityLabel = [item.title, subtitle, time, state].filter(Boolean).join("，");
+        return interactive ? (
+          <Pressable
+            accessibilityLabel={accessibilityLabel}
+            accessibilityRole="button"
+            accessibilityState={{ disabled }}
+            disabled={disabled}
+            key={item.id}
+            onPress={() => onOpen(item)}
+            style={({ pressed }) => [styles.feedRow, pressed && styles.pressed]}
+          >
+            {content}
+          </Pressable>
+        ) : (
+          <View accessibilityLabel={accessibilityLabel} accessible key={item.id} style={styles.feedRow}>
+            {content}
+          </View>
+        );
+      })}
+    </View>
   );
 }
 
@@ -1983,17 +2124,17 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   toolbarText: {
     color: colors.accent,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 16,
+    lineHeight: 22,
     flexShrink: 1
   },
-  toolbarComposeText: { color: colors.accent, fontSize: 13, fontWeight: "700", lineHeight: 20, flexShrink: 1 },
+  toolbarComposeText: { color: colors.accent, fontSize: 16, fontWeight: "600", lineHeight: 22, flexShrink: 1 },
   mailTitle: {
     color: colors.ink,
     flex: 1,
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "800",
-    lineHeight: 22,
+    lineHeight: 24,
     textAlign: "center"
   },
   mailContent: { gap: 0 },
@@ -2184,6 +2325,126 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     fontSize: typography.caption,
     lineHeight: 18,
     padding: spacing.md
+  },
+  feedCoverage: {
+    color: colors.text4,
+    fontSize: 12,
+    lineHeight: 18,
+    paddingTop: 28,
+    textAlign: "center"
+  },
+  feedCopy: {
+    flex: 1,
+    gap: 3,
+    minWidth: 0
+  },
+  feedList: {
+    borderTopColor: colors.border,
+    borderTopWidth: 1
+  },
+  feedRow: {
+    alignItems: "stretch",
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    minHeight: 68,
+    paddingVertical: 12
+  },
+  feedRowBody: {
+    alignItems: "flex-start",
+    flex: 1,
+    flexDirection: "row",
+    gap: 12,
+    minWidth: 0
+  },
+  feedRowBodyLarge: {
+    flexDirection: "column",
+    gap: 4
+  },
+  feedSubtitle: {
+    color: colors.text3,
+    fontSize: 12,
+    lineHeight: 18
+  },
+  feedTab: {
+    alignItems: "center",
+    borderBottomColor: "transparent",
+    borderBottomWidth: 2,
+    flexDirection: "row",
+    gap: 4,
+    justifyContent: "center",
+    minHeight: 44,
+    minWidth: 44,
+    paddingHorizontal: 1
+  },
+  feedTabActive: {
+    borderBottomColor: colors.ink
+  },
+  feedTabCount: {
+    color: colors.accent,
+    fontSize: 15,
+    fontWeight: "800",
+    lineHeight: 21
+  },
+  feedTabText: {
+    color: colors.text3,
+    fontSize: 15,
+    fontWeight: "400",
+    lineHeight: 21
+  },
+  feedTabTextActive: {
+    color: colors.ink,
+    fontWeight: "800"
+  },
+  feedTabs: {
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    marginTop: 12
+  },
+  feedTabsContent: {
+    gap: 22
+  },
+  feedTime: {
+    color: colors.text4,
+    flexShrink: 0,
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: "right"
+  },
+  feedTimeLarge: {
+    alignSelf: "flex-end",
+    textAlign: "left"
+  },
+  feedTitle: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: "500",
+    lineHeight: 22
+  },
+  feedTitleUnread: {
+    fontWeight: "700"
+  },
+  feedUnreadDot: {
+    backgroundColor: colors.accent,
+    borderRadius: 4,
+    height: 8,
+    width: 8
+  },
+  feedUnreadGutter: {
+    alignItems: "flex-start",
+    justifyContent: "flex-start",
+    paddingTop: 6,
+    width: 20
+  },
+  unifiedError: {
+    color: colors.rose,
+    fontSize: 12,
+    lineHeight: 18,
+    paddingVertical: 8
+  },
+  unifiedSourceError: {
+    gap: 8,
+    paddingVertical: 8
   },
   searchBox: {
     alignItems: "center",
