@@ -38,14 +38,14 @@ function legacyRow(fraction = "123456"): SyncReadRow {
   };
 }
 
-function read(candidate: SyncReadRow) {
+function read(...candidates: SyncReadRow[]) {
   // Return even foreign rows to exercise the service's storage-boundary check.
   const client: SyncSqlClient = {
     async query<TRow>(sql: string, values: readonly unknown[] = []) {
       assert.deepEqual(values.slice(0, 2), [workspaceId, actorId]);
       const rows = sql.includes("sync:high-watermark")
-        ? [{ high_watermark: "1" }]
-        : [candidate];
+        ? [{ high_watermark: String(candidates.length) }]
+        : candidates;
       return { rows: rows as TRow[] };
     },
   };
@@ -85,6 +85,48 @@ test("matching explicit legacy owners remain accepted", async () => {
   const candidate = legacyRow();
   Object.assign(candidate.payload, { accountId: actorId, ownerUserId: actorId });
   assert.equal((await read(candidate)).changes.length, 1);
+});
+
+for (const date of ["2026-02-29", "2026-02-30", "2026-04-31", "1900-02-29"]) {
+  test(`legacy timestamps reject calendar overflow ${date}`, async () => {
+    const candidate = legacyRow();
+    Object.assign(candidate.payload, { createdAt: `${date}T08:00:00.123456+09:00` });
+    await assert.rejects(read(candidate), (error: unknown) =>
+      error instanceof SyncReadError && error.code === "SYNC_INVALID_RECORD");
+  });
+}
+
+test("valid leap dates retain local date, precision, and offset", async () => {
+  for (const date of ["2024-02-29", "2000-02-29"]) {
+    const timestamp = `${date}T00:30:00.123456+09:00`;
+    const candidate = legacyRow();
+    Object.assign(candidate.payload, { createdAt: timestamp, updatedAt: timestamp });
+    const payload = (await read(candidate)).changes[0].payload as Record<string, unknown>;
+    assert.equal(payload.createdAt, timestamp);
+    assert.equal(payload.updatedAt, timestamp);
+  }
+});
+
+for (const field of ["workspace_id", "user_id"] as const) {
+  test(`foreign ${field} in the lookahead row rejects the whole page`, async () => {
+    const lookahead = legacyRow("123");
+    lookahead.record_id = "task:lookahead";
+    lookahead.sync_revision = "2";
+    Object.assign(lookahead.payload, { id: lookahead.record_id, accountId: actorId });
+    lookahead[field] = "foreign:scope";
+    await assert.rejects(read(legacyRow("123"), lookahead), (error: unknown) =>
+      error instanceof SyncReadError && error.code === "SYNC_SCOPE_MISMATCH");
+  });
+}
+
+test("an owned lookahead still produces a one-record page with hasMore", async () => {
+  const lookahead = legacyRow();
+  lookahead.record_id = "task:lookahead";
+  lookahead.sync_revision = "2";
+  Object.assign(lookahead.payload, { id: lookahead.record_id });
+  const page = await read(legacyRow(), lookahead);
+  assert.equal(page.hasMore, true);
+  assert.deepEqual(page.changes.map(change => change.id), ["task:legacy"]);
 });
 
 for (const field of ["workspace_id", "user_id"] as const) {
