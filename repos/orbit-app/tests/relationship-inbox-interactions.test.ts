@@ -19,12 +19,12 @@ const subscribe = listener => { listeners.add(listener); return () => listeners.
 const emit = () => { revision++; listeners.forEach(listener => listener()); };
 const rerender = () => useSyncExternalStore(subscribe, () => revision);
 const conversations = [
-  { conversationId: "thread:wei", contactId: "contact:wei", participantAccountIds: ["inbox-test-actor", "actor:wei"], participantDisplayNames: { "inbox-test-actor": "我", "actor:wei": "曾伟" }, qualificationVersion: "qualification:wei", status: "active", createdAt: "2026-06-28T13:00:00+09:00", updatedAt: "2026-06-28T13:00:00+09:00", unreadCount: 2, messages: [
-    { messageId: "message:wei:one", conversationId: "thread:wei", senderAccountId: "actor:wei", senderDisplayName: "曾伟", body: "活动安排已经确认。", sentAt: "2026-06-28T12:00:00+09:00", deliveryState: "delivered" },
-    { messageId: "message:wei:two", conversationId: "thread:wei", senderAccountId: "actor:wei", senderDisplayName: "曾伟", body: "周四见面，带上资料。", sentAt: "2026-06-28T13:00:00+09:00", deliveryState: "delivered" }
+  { conversationId: "thread:wei", contactId: "contact:wei", participantAccountIds: ["inbox-test-actor", "actor:wei"], participantDisplayNames: { "inbox-test-actor": "我", "actor:wei": "曾伟" }, qualificationVersion: "qualification:wei", status: "active", createdAt: "2026-09-14T13:00:00+09:00", updatedAt: "2026-09-14T13:00:00+09:00", unreadCount: 2, messages: [
+    { messageId: "message:wei:one", conversationId: "thread:wei", senderAccountId: "actor:wei", senderDisplayName: "曾伟", body: "活动安排已经确认。", sentAt: "2026-09-14T12:00:00+09:00", deliveryState: "delivered" },
+    { messageId: "message:wei:two", conversationId: "thread:wei", senderAccountId: "actor:wei", senderDisplayName: "曾伟", body: "周四见面，带上资料。", sentAt: "2026-09-14T13:00:00+09:00", deliveryState: "delivered" }
   ] },
-  { conversationId: "thread:hu", contactId: "contact:hu", participantAccountIds: ["inbox-test-actor", "actor:hu"], participantDisplayNames: { "inbox-test-actor": "我", "actor:hu": "胡家明" }, qualificationVersion: "qualification:hu", status: "active", createdAt: "2026-06-27T13:00:00+09:00", updatedAt: "2026-06-27T13:00:00+09:00", unreadCount: 0, messages: [
-    { messageId: "message:hu", conversationId: "thread:hu", senderAccountId: "actor:hu", senderDisplayName: "胡家明", body: "下周讨论预算。", sentAt: "2026-06-27T13:00:00+09:00", deliveryState: "delivered" }
+  { conversationId: "thread:hu", contactId: "contact:hu", participantAccountIds: ["inbox-test-actor", "actor:hu"], participantDisplayNames: { "inbox-test-actor": "我", "actor:hu": "胡家明" }, qualificationVersion: "qualification:hu", status: "active", createdAt: "2026-09-13T13:00:00+09:00", updatedAt: "2026-09-13T13:00:00+09:00", unreadCount: 0, messages: [
+    { messageId: "message:hu", conversationId: "thread:hu", senderAccountId: "actor:hu", senderDisplayName: "胡家明", body: "下周讨论预算。", sentAt: "2026-09-13T13:00:00+09:00", deliveryState: "delivered" }
   ] }
 ];
 const effects = { calendarEntryCreated: false, externalMessageSent: false, networkRequestMade: false, notificationDelivered: false, savedRecordCreated: false };
@@ -38,7 +38,7 @@ export const usePathname = () => "/inbox";
 export const useRouter = () => ({ canGoBack: () => true, back() { state.navigation.push("back"); }, replace(path) { state.navigation.push(path); }, push(path) { state.navigation.push(path); } });
 export const useApiResource = path => {
   if (state.kind !== "success") return { kind: state.kind, error: { message: "连接暂时失败" }, refreshing: false, refresh() {} };
-  const data = path.includes("notifications") ? { reminders: Array.from({ length: 8 }, (_, i) => ({ reminderId: "reminder:" + i, title: "联系提醒" + i, contactName: "联系人" + i, organization: "Orbit", priority: "normal", dueAt: "2026-09-09T13:00:00+09:00" })) }
+  const data = path.includes("notifications") ? { reminders: Array.from({ length: 8 }, (_, i) => ({ reminderId: "reminder:" + i, title: "联系提醒" + i, contactName: "联系人" + i, organization: "Orbit", priority: "normal", occurredAt: "2026-09-15T0" + i + ":00:00+09:00", dueAt: "2026-09-16T13:00:00+09:00", href: "/tasks/task%3A" + i })) }
     : path.includes("signals") ? { signals: [] }
     : path === "/api/relationship-communication/conversations" ? { conversations, refreshedAt: "2026-09-15T00:00:00Z" }
     : path.includes("/api/relationship-communication/conversations/") ? { ...thread, messages: state.emptyMessages ? [{ ...thread.messages[0], body: "" }] : thread.messages }
@@ -102,57 +102,53 @@ async function openScreen(t: { after: (fn: () => Promise<void>) => void }): Prom
   t.after(() => page.close());
   await page.route("**/*", route => route.request().url().startsWith(url) ? route.continue() : route.abort());
   await page.goto(url);
-  await page.getByText("曾伟", { exact: true }).waitFor();
+  await page.getByRole("heading", { name: "收件箱", exact: true }).waitFor();
   return page;
 }
 
-test("mail inbox searches actual sender, subject and body without exposing workflow instructions", async t => {
+async function enterComposer(page: Page, participantName = "王明") {
+  await page.evaluate(participantName => (window as any).fixture.update({ seed: { participantName } }), participantName);
+  await page.getByRole("textbox", { name: "正文", exact: true }).waitFor();
+}
+
+test("unified inbox filters contact messages and opens the selected conversation", async t => {
   const page = await openScreen(t);
-  const search = page.getByRole("textbox", { name: "搜索姓名、主题或内容", exact: true });
-  assert.ok((await search.boundingBox())!.height >= 44, "the editable search target must be at least 44pt");
-  for (const query of ["曾伟", "资料", " 周四 "]) {
-    await search.fill(query);
-    assert.equal(await page.getByText("曾伟", { exact: true }).count(), 1);
-    assert.equal(await page.getByText("胡家明", { exact: true }).count(), 0);
-  }
-  await search.fill("不存在");
-  await page.getByText("没有找到消息", { exact: true }).waitFor();
-  await search.fill("");
-  assert.equal(await page.getByText("胡家明", { exact: true }).count(), 1);
+  await page.getByRole("tab", { name: "人脉", exact: true }).click();
+  assert.equal(await page.getByText("与曾伟的对话", { exact: true }).count(), 1);
+  assert.equal(await page.getByText("与胡家明的对话", { exact: true }).count(), 1);
+  assert.equal(await page.getByText("联系提醒0", { exact: true }).count(), 0);
   assert.equal(await page.getByText("复核关系上下文后再决定是否外发。", { exact: true }).count(), 0);
-  await page.getByRole("button", { name: /曾伟.*未读/ }).click();
+  await page.getByRole("button", { name: /^与曾伟的对话，/ }).click();
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/inbox/thread%3Awei"]);
 });
 
-test("writing a message is a focused editor and cancel restores the inbox without requests", async t => {
+test("a contact seed opens a focused editor and cancel restores the inbox without requests", async t => {
   const page = await openScreen(t);
-  await page.getByRole("button", { name: "写消息", exact: true }).click();
-  assert.equal(await page.getByText("曾伟", { exact: true }).count(), 0);
+  await enterComposer(page);
+  assert.equal(await page.getByText("与曾伟的对话", { exact: true }).count(), 0);
   assert.equal(await page.getByRole("textbox", { name: "搜索姓名、主题或内容" }).count(), 0);
   assert.equal(await page.getByRole("textbox", { name: "正文", exact: true }).inputValue(), "");
   assert.equal(await page.getByRole("textbox", { name: "主题", exact: true }).inputValue(), "");
   await page.getByRole("textbox", { name: "收件人", exact: true }).fill("王明");
   await page.getByRole("button", { name: "取消", exact: true }).click();
-  assert.equal(await page.getByText("曾伟", { exact: true }).count(), 1);
+  assert.equal(await page.getByText("与曾伟的对话", { exact: true }).count(), 1);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
 });
 
-test("reminder tab exposes every reminder and does not mix mail rows into the same list", async t => {
+test("task filter exposes every task reminder without mixing contact rows", async t => {
   const page = await openScreen(t);
-  await page.getByRole("tab", { name: "提醒 8", exact: true }).click();
+  await page.getByRole("tab", { name: "待办", exact: true }).click();
   assert.equal(await page.getByText("暂无关系线索", { exact: true }).count(), 0);
-  assert.equal(await page.getByText("曾伟", { exact: true }).count(), 0);
+  assert.equal(await page.getByText("与曾伟的对话", { exact: true }).count(), 0);
   await page.getByText("联系提醒7", { exact: true }).waitFor();
-  await page.getByRole("button", { name: /忽略/ }).first().click();
-  assert.equal(await page.getByText("联系提醒0", { exact: true }).count(), 0);
-  await page.getByRole("tab", { name: "提醒 7", exact: true }).waitFor();
-  await page.getByRole("tab", { name: "消息", exact: true }).click();
-  await page.getByText("曾伟", { exact: true }).waitFor();
+  assert.equal(await page.getByText(/^联系提醒/u).count(), 8);
+  await page.getByRole("tab", { name: /全部/u }).click();
+  await page.getByText("与曾伟的对话", { exact: true }).waitFor();
 });
 
 test("draft creation retains input on failure and clearly identifies a non-persistent preview", async t => {
   const page = await openScreen(t);
-  await page.getByRole("button", { name: "写消息", exact: true }).click();
+  await enterComposer(page);
   await page.getByRole("textbox", { name: "收件人", exact: true }).fill("王明");
   await page.getByRole("textbox", { name: "主题", exact: true }).fill("见面时间");
   await page.getByRole("textbox", { name: "正文", exact: true }).fill("周四下午方便吗？");
@@ -176,7 +172,7 @@ test("draft creation retains input on failure and clearly identifies a non-persi
 
 test("pending draft preview locks cancellation and duplicate submission until it finishes", async t => {
   const page = await openScreen(t);
-  await page.getByRole("button", { name: "写消息", exact: true }).click();
+  await enterComposer(page);
   await page.getByRole("textbox", { name: "收件人", exact: true }).fill("王明");
   await page.getByRole("textbox", { name: "主题", exact: true }).fill("时间");
   await page.getByRole("textbox", { name: "正文", exact: true }).fill("周四见。");

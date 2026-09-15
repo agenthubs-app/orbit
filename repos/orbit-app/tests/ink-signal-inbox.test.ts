@@ -15,7 +15,7 @@ import React, { useSyncExternalStore } from "react";
 import { View } from "react-native-web";
 import glyphs from "@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/Ionicons.json";
 let revision = 0, uuid = 0; const listeners = new Set();
-const state = window.fixture = { width: 390, fontScale: 1, kind: "success", notificationsKind: "success", signalsKind: "success", hasHistory: false, detail: false, requests: [], resourceReads: [], navigation: [], refreshes: [], ...window.initialFixture,
+const state = window.fixture = { width: 390, fontScale: 1, kind: "success", notificationsKind: "success", signalsKind: "success", hasHistory: false, detail: false, conversations: false, seed: {}, requests: [], resourceReads: [], navigation: [], refreshes: [], ...window.initialFixture,
  update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
 export const useFixture = () => { useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision); return state; };
 const effects = { calendarEntryCreated: false, externalMessageSent: false, networkRequestMade: false, notificationDelivered: false, savedRecordCreated: false };
@@ -26,19 +26,27 @@ const relationshipConversations = conversations.map((item, i) => {
  const remoteId = "account:" + i;
  return { conversationId: item.conversationId, contactId: item.contactId, participantAccountIds: ["inbox-style-actor", remoteId], participantDisplayNames: { "inbox-style-actor": "我", [remoteId]: item.participantName }, qualificationVersion: "qualification:" + i, status: "active", createdAt: "2026-09-11T09:24:00+09:00", updatedAt: item.lastCorrespondenceAt, unreadCount: item.unreadCount, messages: [{ messageId: "message:" + i, conversationId: item.conversationId, body: item.preview, senderAccountId: remoteId, senderDisplayName: item.participantName, sentAt: item.lastCorrespondenceAt, deliveryState: "delivered" }] };
 });
-const reminders = [{ reminderId: "reminder:1", title: "周末产品交流会需要准备资料", organization: "星野社区", priority: "normal", dueAt: "2026-09-12T18:00:00+09:00" }, { reminderId: "reminder:2", title: "给程川发送项目介绍", organization: "山海科技", priority: "high", dueAt: "2026-09-13T18:00:00+09:00" }];
+const reminders = [
+ { reminderId: "event:weekend", title: "林悦 报名了「周末产品交流会」", organization: "需要你审核", priority: "normal", occurredAt: "2026-09-15T10:24:00+09:00", href: "/events/event%3Aweekend" },
+ { reminderId: "task:intro", title: "待办「给林悦发送项目介绍」今天 18:00 到期", organization: "待办提醒", priority: "high", occurredAt: "2026-09-15T09:00:00+09:00", href: "/tasks/task%3Aintro" },
+ { reminderId: "contact:update", title: "陈默 更新了合作记录", organization: "山海科技", priority: "normal", occurredAt: "2026-09-14T16:00:00+09:00", href: "/contacts/contact%3Achen" },
+ { reminderId: "event:lunch", title: "「设计师午间聚会」报名已确认", organization: "星野社区", priority: "normal", occurredAt: "2026-09-14T12:00:00+09:00", href: "/events/event%3Alunch" },
+ { reminderId: "assistant:summary", title: "IORBIT 已整理上周会话摘要", priority: "normal", occurredAt: "2026-09-09T08:00:00+09:00", sourceKind: "system" },
+];
+const notificationInteractions = { "contact:update": "read", "event:lunch": "read", "assistant:summary": "read" };
 const signal = { id: "signal:mail", displayName: "田中由纪", organization: "星野社区", role: "负责人", sourceKind: "email", signalKind: "introduction", relationshipContext: "对方希望先了解合作的范围与时间安排。", suggestedNextAction: "先核对邮件中的背景信息，再决定下一步。", occurredAt: "2026-09-11T10:24:00+09:00", confirmation: { state: "pending" }, permission: { state: "granted" }, confidence: "high", evidence: [{ excerpt: "邮件标题提到了上次交流的主题。" }] };
-export const useLocalSearchParams = () => { useFixture(); return state.detail ? { id: "thread:0" } : {}; };
+export const useLocalSearchParams = () => { useFixture(); return state.detail ? { id: "thread:0" } : state.seed; };
 export const useIsFocused = () => true;
 export const useRouter = () => ({ canGoBack: () => state.hasHistory, back() { state.navigation.push("back"); }, replace(path) { state.navigation.push(path); }, push(path) { state.navigation.push(path); } });
 export const useApiResource = path => {
  const part = path.includes("notifications") ? "notifications" : path.includes("signals") ? "signals" : "inbox";
  const kind = part === "inbox" ? state.kind : state[part + "Kind"];
  const items = state.long ? relationshipConversations.map((c, i) => { const remoteId = "account:" + i, name = names[i] + "与跨国项目的合作负责人", body = "请核对全部事项，确认时间后再安排下一步，不要遗漏约定的合作范围。"; return { ...c, participantDisplayNames: { ...c.participantDisplayNames, [remoteId]: name }, messages: [{ ...c.messages[0], body, senderDisplayName: name }] }; }) : relationshipConversations;
- const data = part === "notifications" ? { reminders: kind === "empty" ? [] : reminders }
+ const visibleConversations = state.conversations || state.detail ? items : [];
+ const data = part === "notifications" ? { state: kind === "empty" ? "empty" : "success", reminders: kind === "empty" ? [] : reminders, notificationInteractions: kind === "empty" ? {} : notificationInteractions }
   : part === "signals" ? { signals: state.signals ? [{ ...signal, ...(state.long ? { displayName: "田中由纪与跨国合作项目的负责人", relationshipContext: signal.relationshipContext.repeat(3), evidence: [{ excerpt: signal.evidence[0].excerpt.repeat(3) }] } : {}) }] : [] }
   : state.detail ? { ...items[0], unreadCount: 0, lastReadMessageId: items[0].messages[0].messageId }
-  : { conversations: kind === "empty" ? [] : items, refreshedAt: "2026-09-11T10:25:00+09:00" };
+  : { conversations: kind === "empty" ? [] : visibleConversations, refreshedAt: "2026-09-15T10:25:00+09:00" };
  return { kind, data, error: { message: part === "notifications" ? "提醒读取失败，请重试。" : part === "signals" ? "关系线索读取失败，请重试。" : "消息读取失败，请重试。" }, refreshing: false, refresh() { state.refreshes.push(part); } };
 };
 // The same presentation fixture now feeds the screen's real network resource.
@@ -50,7 +58,11 @@ const client = { async get(path) {
   return { success: resource.kind === "success" || resource.kind === "empty", status: resource.kind === "offline" ? 0 : resource.kind === "failure" ? 503 : 200, data: resource.data, error: { code: "READ_FAILED", ...resource.error }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
  }
  state.requests.push({ method: "GET", path }); return { success: false, error: { message: "隐私控制暂时不可用。" } };
-}, async post(path, options) { state.requests.push({ method: "POST", path, body: options.body }); return { success: true, data: { confirmedSignal: signal, confirmedAt: "2026-09-11T10:24:00+09:00", externalActionExecuted: false, relationshipWriteExecuted: false } }; }, async patch(path, options) { state.requests.push({ method: "PATCH", path, body: options.body }); return { success: true }; } };
+}, async post(path, options) { state.requests.push({ method: "POST", path, body: options.body });
+ if (path.includes("/api/notifications/")) { const id = decodeURIComponent(path.split("/")[3]); return { success: true, status: 200, data: { notificationId: id, state: options.body.state, updatedAt: "2026-09-15T10:30:00+09:00" }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } }; }
+ if (path.endsWith("/read")) return { success: true, status: 200, data: { conversationId: "thread:0", lastReadMessageId: "message:0", readAt: "2026-09-15T10:30:00+09:00" }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
+ return { success: true, status: 200, data: { confirmedSignal: signal, confirmedAt: "2026-09-11T10:24:00+09:00", externalActionExecuted: false, relationshipWriteExecuted: false }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
+}, async patch(path, options) { state.requests.push({ method: "PATCH", path, body: options.body }); return { success: true }; } };
 export const useOrbitApiClient = () => { useFixture(); return React.useMemo(() => ({ ...client }), [revision]); };
 export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, accountId: "inbox-style-actor", actorId: "inbox-style-actor", user: { id: "inbox-style-actor" }, cookieHeader: "" });
 export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.example" });
@@ -89,67 +101,64 @@ async function requests(page: Page) { return page.evaluate(() => (window as any)
 async function textBounds(page: Page) {
   return page.locator('[dir="auto"]').evaluateAll(els => els.filter(el => el.textContent?.trim()).filter(el => {
     const s = getComputedStyle(el), b = el.getBoundingClientRect();
-    return s.visibility !== "hidden" && (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1 || b.x < 0 || b.right > innerWidth + 1);
+    const inHorizontalScroller = [...document.querySelectorAll<HTMLElement>("*")].some(parent => parent.contains(el) && parent !== el && /auto|scroll/.test(getComputedStyle(parent).overflowX));
+    return s.visibility !== "hidden" && (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1 || (!inHorizontalScroller && (b.x < 0 || b.right > innerWidth + 1)));
   }).map(el => el.textContent));
 }
 
-test("inbox uses compact fixed header and source ink tabs above the working search", async t => {
+test("inbox matches the approved compact header, four feed tabs and default action hierarchy", async t => {
   const page = await open(t);
   const title = page.getByRole("heading", { name: "收件箱", exact: true });
-  assert.equal(await title.evaluate(el => getComputedStyle(el).fontSize), "16px");
+  assert.equal(await title.evaluate(el => getComputedStyle(el).fontSize), "17px");
+  assert.equal(await title.evaluate(el => getComputedStyle(el).fontWeight), "800");
   assert.ok((await title.boundingBox())!.y < 96);
-  const tab = page.getByRole("tab", { name: "消息", exact: true });
+  assert.equal(await page.getByRole("button", { name: "首页", exact: true }).count(), 1);
+  assert.equal(await page.getByRole("button", { name: "全部已读", exact: true }).count(), 1);
+  assert.deepEqual(await page.getByRole("tab").allTextContents(), ["全部 2", "活动", "待办", "人脉"]);
+  const tab = page.getByRole("tab", { name: "全部 2", exact: true });
   assert.equal(await tab.evaluate(el => getComputedStyle(el).borderBottomColor), "rgb(11, 18, 32)");
-  assert.equal(await tab.getByText("消息", { exact: true }).evaluate(el => getComputedStyle(el).fontSize), "14px");
-  assert.ok((await tab.boundingBox())!.y < (await page.getByRole("textbox").boundingBox())!.y);
-  assert.equal(await page.getByRole("button", { name: "全部已读", exact: true }).count(), 0);
-  assert.equal(await page.getByText("已显示最近 30 天", { exact: true }).count(), 0);
+  assert.equal(await tab.getByText("全部", { exact: true }).evaluate(el => getComputedStyle(el).fontSize), "15px");
+  assert.equal(await page.getByRole("textbox").count(), 0);
+  assert.equal(await page.getByRole("button", { name: "写消息", exact: true }).count(), 0);
   assert.deepEqual(await requests(page), []); await shot(page, "list");
 });
 
-test("read and unread messages share the 20pt source gutter and compact row spacing", async t => {
+test("read and unread feed rows share the 20pt gutter, compact geometry and safe targets", async t => {
   const page = await open(t);
-  const first = page.getByRole("button", { name: /^林悦，/ });
-  const read = page.getByRole("button", { name: /^陈默，/ });
-  assert.equal(await first.evaluate(el => getComputedStyle(el).paddingTop), "14px");
+  const first = page.getByRole("button", { name: /^林悦 报名了/ });
+  const read = page.getByRole("button", { name: /^陈默 更新了/ });
+  assert.equal(await first.evaluate(el => getComputedStyle(el).paddingTop), "12px");
   assert.equal((await first.boundingBox())!.x, 16);
-  assert.equal((await page.getByText("林悦", { exact: true }).boundingBox())!.x, 36);
-  assert.equal((await page.getByText("陈默", { exact: true }).boundingBox())!.x, 36);
+  assert.equal((await page.getByText("林悦 报名了「周末产品交流会」", { exact: true }).boundingBox())!.x, 36);
+  assert.equal((await page.getByText("陈默 更新了合作记录", { exact: true }).boundingBox())!.x, 36);
   assert.ok((await first.boundingBox())!.height < 126);
-  assert.equal(await first.locator('[aria-hidden="true"]').count(), 1);
-  assert.equal(await read.locator('[aria-hidden="true"]').count(), 0);
-  await read.click(); assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/inbox/thread%3A2"]);
+  assert.equal(await first.locator("div").evaluateAll(nodes => nodes.filter(node => { const s = getComputedStyle(node); return s.width === "8px" && s.height === "8px"; }).length), 1);
+  assert.equal(await read.locator("div").evaluateAll(nodes => nodes.filter(node => { const s = getComputedStyle(node); return s.width === "8px" && s.height === "8px"; }).length), 0);
+  await read.click(); assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/contacts/contact%3Achen"]);
   assert.deepEqual(await requests(page), []);
 });
 
-test("no-history inbox returns to the selected home parent and history uses actual back", async t => {
+test("the home-labelled back control returns to home without history and uses real history when available", async t => {
   const page = await open(t);
   await page.getByRole("button", { name: "首页", exact: true }).click();
   await page.evaluate(() => (window as any).fixture.update({ hasHistory: true }));
-  await page.getByRole("button", { name: "返回", exact: true }).click();
+  await page.getByRole("button", { name: "首页", exact: true }).click();
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/home", "back"]);
 });
 
-test("large-text search hint fits the field and retains the full accessible search scope", async t => {
+test("large text keeps every feed tab reachable without restoring the removed search", async t => {
   const page = await open(t, { width: 320, fontScale: 2 });
-  const input = page.getByRole("textbox", { name: "搜索姓名、主题或内容", exact: true });
-  assert.equal(await input.getAttribute("placeholder"), "搜索消息");
-  const fits = await input.evaluate(el => {
-    const input = el as HTMLInputElement, style = getComputedStyle(input);
-    const context = document.createElement("canvas").getContext("2d")!;
-    context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
-    return context.measureText(input.placeholder).width <= input.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-  });
-  assert.equal(fits, true);
-  await input.fill("程川");
-  assert.equal(await input.inputValue(), "程川");
-  assert.equal(await page.getByText("程川", { exact: true }).count(), 1);
-  assert.equal(await page.getByText("林悦", { exact: true }).count(), 0);
+  assert.equal(await page.getByRole("textbox").count(), 0);
+  for (const name of ["全部 2", "活动", "待办", "人脉"]) {
+    const tab = page.getByRole("tab", { name, exact: true });
+    await tab.scrollIntoViewIfNeeded();
+    assert.ok((await tab.boundingBox())!.height >= 44);
+  }
+  assert.deepEqual(await textBounds(page), []);
 });
 
 for (const kind of ["failure", "loading"]) test(`reminder ${kind} is not presented as an empty successful inbox`, async t => {
   const page = await open(t, { notificationsKind: kind });
-  await page.getByRole("tab", { name: "提醒", exact: true }).click();
   await page.getByText(kind === "loading" ? "正在读取提醒。" : "提醒读取失败，请重试。", { exact: true }).waitFor();
   assert.equal(await page.getByText("暂无提醒", { exact: true }).count(), 0);
   if (kind === "failure") {
@@ -159,14 +168,12 @@ for (const kind of ["failure", "loading"]) test(`reminder ${kind} is not present
   assert.deepEqual(await requests(page), []); await shot(page, `reminders-${kind}`);
 });
 
-test("reminders and relationship signals keep real counts, local dismiss and explicit confirmation", async t => {
+test("relationship signals enter the contact filter and still require explicit confirmation", async t => {
   const page = await open(t, { signals: true });
-  await page.getByRole("tab", { name: "提醒 3", exact: true }).click();
-  await page.getByText("田中由纪", { exact: true }).waitFor();
-  await shot(page, "alerts");
-  await page.getByRole("button", { name: "忽略", exact: true }).first().click();
-  await page.getByRole("tab", { name: "提醒 2", exact: true }).waitFor();
-  assert.deepEqual(await requests(page), []);
+  await page.getByRole("tab", { name: "人脉", exact: true }).click();
+  await page.getByRole("button", { name: /^田中由纪，/ }).click();
+  await page.getByText("关系线索", { exact: true }).first().waitFor();
+  await shot(page, "contacts-signal-review");
   await page.getByRole("button", { name: "确认线索", exact: true }).click();
   await page.getByText("线索已确认", { exact: true }).waitFor();
   const calls = await requests(page); assert.equal(calls.length, 1); assert.equal(calls[0].method, "POST");
@@ -177,15 +184,32 @@ test("reminders and relationship signals keep real counts, local dismiss and exp
 
 test("unavailable relationship signals do not claim the source is empty", async t => {
   const page = await open(t, { signalsKind: "failure" });
-  await page.getByRole("tab", { name: "提醒 2", exact: true }).click();
   await page.getByText("关系线索读取失败，请重试。", { exact: true }).waitFor();
   assert.equal(await page.getByText(/暂无.*线索/).count(), 0);
   assert.deepEqual(await requests(page), []);
   await shot(page, "signals-failure");
 });
 
+test("mark all read writes only the two confirmable unread notifications and refreshes all sources", async t => {
+  const page = await open(t);
+  await page.getByRole("button", { name: "全部已读", exact: true }).click();
+  await page.waitForFunction(() => (window as any).fixture.requests.length === 2);
+  assert.deepEqual((await requests(page)).map((request: any) => ({ path: request.path, body: request.body })), [
+    { path: "/api/notifications/event%3Aweekend/state", body: { state: "read" } },
+    { path: "/api/notifications/task%3Aintro/state", body: { state: "read" } },
+  ]);
+  assert.equal(await page.evaluate(() => (window as any).fixture.resourceReads.filter((path: string) => path === "/api/notifications").length), 2);
+  assert.equal(await page.evaluate(() => (window as any).fixture.resourceReads.filter((path: string) => path.includes("relationship-signals")).length), 2);
+});
+
+test("real conversation rows remain encoded deep links when the notification feed is empty", async t => {
+  const page = await open(t, { conversations: true, notificationsKind: "empty" });
+  await page.getByRole("button", { name: /^与林悦的对话，/ }).click();
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/inbox/thread%3A0"]);
+});
+
 test("empty and failed message resources never imply successful message contents", async t => {
-  const page = await open(t, { kind: "empty" });
+  const page = await open(t, { kind: "empty", notificationsKind: "empty", signalsKind: "empty" });
   await page.getByText("暂无消息", { exact: true }).waitFor(); await shot(page, "empty");
   await page.evaluate(() => (window as any).fixture.update({ kind: "failure" }));
   await page.getByText("消息读取失败，请重试。", { exact: true }).waitFor();
@@ -195,8 +219,8 @@ test("empty and failed message resources never imply successful message contents
 });
 
 for (const variant of [{ name: "narrow-large", width: 320, fontScale: 1.6 }, { name: "narrow-double", width: 320, fontScale: 2 }, { name: "wide-dark", width: 820, fontScale: 1, dark: true }]) {
-  test(`${variant.name}: complete text and reachable controls across list, alerts, composer and detail`, async t => {
-    const page = await open(t, { ...variant, long: true, signals: true });
+  test(`${variant.name}: complete text and reachable controls across filters, seeded composer and detail`, async t => {
+    const page = await open(t, { ...variant, signals: true });
     async function check(name: string) {
       assert.deepEqual(await textBounds(page), [], `${name} text bounds`);
       const headerY = (await page.getByRole("heading").first().boundingBox())!.y;
@@ -214,8 +238,12 @@ for (const variant of [{ name: "narrow-large", width: 320, fontScale: 1.6 }, { n
       await shot(page, `${variant.name}-${name}-bottom`);
     }
     await check("list");
-    await page.getByRole("tab", { name: "提醒 3", exact: true }).click(); await check("alerts");
-    await page.getByRole("button", { name: "写消息", exact: true }).click(); await check("composer");
+    for (const name of ["活动", "待办", "人脉"]) {
+      await page.getByRole("tab", { name, exact: true }).click();
+      await check(name);
+    }
+    await page.evaluate(() => (window as any).fixture.update({ seed: { participantName: "新联系人" } }));
+    await page.getByRole("textbox", { name: "收件人", exact: true }).waitFor(); await check("composer");
     await page.getByRole("button", { name: "取消", exact: true }).click();
     await page.evaluate(() => (window as any).fixture.update({ detail: true })); await check("detail");
     assert.deepEqual(await requests(page), []);

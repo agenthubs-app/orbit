@@ -10,13 +10,15 @@ const screenSource = readFileSync(
 );
 const detailRoutePath = join(repoRoot, "app", "inbox", "[id].tsx");
 
-// Native route / HTTP boundary checks remain here. List, tabs, search, reading
-// and compose behavior are exercised in relationship-inbox-interactions.test.ts.
+// Native route / HTTP boundary checks remain here. Feed filters, reading and
+// seeded compose behavior are exercised in relationship-inbox-interactions.test.ts.
 
-test("relationship inbox alerts can be dismissed locally like the web inbox panel", () => {
-  assert.match(screenSource, /dismissedAlertIds/u);
-  assert.match(screenSource, /onDismissAlert/u);
-  assert.match(screenSource, /label=\{locale\.t\("inbox\.ignore"\)\}/u);
+test("relationship inbox uses the unified feed and does not expose local-only reminder dismissal", () => {
+  assert.match(screenSource, /inboxFeedFromSources/u);
+  assert.match(screenSource, /runInboxReadBatch/u);
+  assert.match(screenSource, /UnifiedInboxTabs/u);
+  assert.match(screenSource, /UnifiedFeedList/u);
+  assert.doesNotMatch(screenSource.slice(screenSource.indexOf("function InboxContent"), screenSource.indexOf("function RelationshipSignalsCard")), /onDismissAlert|inbox\.ignore/u);
 });
 
 test("relationship inbox does not GET the POST-only proactive signal endpoint", () => {
