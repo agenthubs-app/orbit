@@ -1,14 +1,14 @@
-# BR-010 — 笔记来源待办建议
+# BR-018 — 笔记来源待办建议
 
 - 创建/更新日期：2026-09-15
-- 总状态：consumer_ready
+- 总状态：verified
 - 优先级：P1
 - 发起角色：Bridge
-- 下一责任方及是否已接单：Bridge 验证；本地 Web/API 与 App 已接单并完成，真实共同环境验收待恢复
+- 下一责任方及是否已接单：本交接已完成；Sprint 0019 的全范围收口由各前序 Sprint 继续承担
 - web_status：source_ready
 - app_status：consumer_ready
-- verification_status：本地服务、HTTP、共享契约和 App 交互已验证；同账号 Web/App 双向运行时及原生设备未验证
-- 依赖/阻塞：缺少两端共同真实环境、同一账号和原生设备；R-00～R-14 仍有前序 Sprint 未关闭
+- verification_status：同一 live Web/API、隔离 PostgreSQL、同账号 Web/App、原生 iOS Simulator 已验证预填、零自动写入、建议接受、幂等、返回来源与日期确认
+- 依赖/阻塞：本交接无；Sprint 0019 的 SC-0019-05 仍依赖 R-00～R-14 的其他前序 Sprint 关闭
 - 设计/实现/发布授权来源（如适用）：用户 2026-09-15 连续实施指令；Sprint 0019 `APPROVED_SCOPE_ADDENDUM.md`
 
 ## 变化与证据
@@ -27,13 +27,14 @@
 - 本地：Web 定向 37/37、补充 12/12；App 受影响集 174/174、view-model 41/41、source 9/9；两端 typecheck 与契约同步通过。
 - App 全量：最终 2590/2590，0 skip，exit 0；此前断言迁移和一次浏览器进程异常均保留日志与复验事实。
 - Web 全量：3008 pass／52 fail／183 skip，exit 1；0019 新增测试通过，失败数量与 0018 基线相同。
-- Web 写 → App 回读：未运行；本地共享契约与消费测试不能替代真实同账号回读。
-- App 接受 → Web 回读：未运行；缺共同部署和账号。
-- 权限、版本、失败：本地覆盖 actor 读取、来源版本变化、接受幂等、错误回执、日期确认和作用域变化。
-- 原生 UI：React Native Web 组件交互已验证；原生设备未运行。
-- 未检查范围：真实 PostgreSQL、远程部署、真实账号、原生设备、外部日历／通知写入。
-- 客观关闭条件：在同一可访问部署和账号中完成两向刷新回读，确认 source note ID/version、suggestion ID、task ID 和联系人投影一致；在原生设备复验预填、日期确认、接受和返回来源；另由 Sprint 0019 逐项关闭 R-00～R-14 总验收。
+- Web 写 → App 回读：live Web/API 的版本 2 来源笔记由原生 App 回读后进入 IORBIT；预填阶段任务数为 0。
+- App 接受 → Web 回读：App 显式发送并接受后，Web API 回读唯一 task，source note ID/version、suggestion ID 和联系人一致；重复 accept 返回同一 task，任务总数仍为 1。
+- 权限、版本、失败：原生 App 对含 `tomorrow` 的来源笔记显示“需要确认日期”，Web 任务总数不增加；既有自动化继续覆盖来源版本变化、错误回执与作用域变化。
+- 原生 UI：iOS Simulator 中完成预填、显式发送、接受、任务详情及返回来源笔记；Next 生产 Web 和 App 原生构建均为本轮实际产物。
+- 未检查范围：远程部署、实体 iOS 设备、外部日历／通知写入；本场景不要求这些副作用。
+- 客观关闭条件：本 BR 条件已满足；Sprint 0019 的 R-00～R-14 总验收由 SC-0019-05 单独保持 blocked。
 
 ## 更新历史
 
 - 2026-09-15 08:16 JST，Bridge：本地功能提交 `15685b18e`，App 全量通过；真实双向／原生和全范围关闭证据仍缺失。
+- 2026-09-15 09:21 JST，Bridge：同账号原生 App 完成来源建议接受，Web 回读唯一事项并验证幂等；日期含糊时没有新增事项，App 可从任务返回来源笔记。BR-018 更新为 `verified`。

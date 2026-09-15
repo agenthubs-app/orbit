@@ -1,14 +1,14 @@
-# BR-009 — 独立私有笔记核心
+# BR-017 — 独立私有笔记核心
 
 - 创建/更新日期：2026-09-15
-- 总状态：consumer_ready
+- 总状态：verified
 - 优先级：P1
 - 发起角色：Bridge
-- 下一责任方及是否已接单：Bridge 验证；本地实现已接单，同环境双向验收待可用环境
+- 下一责任方及是否已接单：已完成，无待接单项
 - web_status：source_ready
 - app_status：consumer_ready
-- verification_status：本地契约、服务、HTTP 与 App 交互已验证；同账号 Web/App 双向运行时未验证
-- 依赖/阻塞：缺少本轮 Web 与原生 App 共用的真实环境、账号及原生设备证据
+- verification_status：同一 live Web/API、隔离 PostgreSQL、同账号 Web/App 双向读写、版本冲突、actor 隔离和原生 iOS Simulator 已验证
+- 依赖/阻塞：本交接无；远程部署与实体设备属于发布验收，不影响本地跨端关闭
 - 设计/实现/发布授权来源（如适用）：用户 2026-09-15 指令；Sprint 0018 `APPROVED_SCOPE_ADDENDUM.md`
 
 ## 变化与证据
@@ -25,13 +25,14 @@
 ## 验收结果
 
 - 命令、cwd、运行环境、exit code、通过/失败/跳过：Web 定向 13/13、Web typecheck、App 定向 62/62、联系人详情浏览器 40/40、App typecheck、`git diff --check` 均 exit 0；App 全量 2583/2583、0 skip，exit 0。Web 全量 3004 pass／52 fail／183 skip，exit 1；notes 新测试通过，失败属于既有环境／产品审计，其中 5 个审计子项相对旧文档基线扩大，详见 Sprint REPORT 与保留日志。
-- Web 写 → App 回读：未运行，证据：本地两端共用同一严格契约与 HTTP 路由测试；不等同真实同账号回读。
-- App 写 → Web 回读：未运行，证据同上。
-- 冲突、失败、权限与异步场景：服务测试覆盖 actor 隔离、幂等冲突、版本冲突、并发同版本单一胜者和解除关联；App 覆盖错误回执、取消、冲突与作用域变化。
-- 原生 UI/浏览器验证（需要时）：浏览器中的真实 RN Web 组件交互已验证；原生设备未运行。
-- 未检查范围：真实 PostgreSQL、远程部署、真实账号与原生设备；未引入迁移，也未写真实数据库。
-- 可客观判断的关闭条件：同一环境中完成 Web 创建 → App 刷新读取、App 更新 → Web 刷新读取，并保留 actor 隔离、版本冲突和原生设备证据。
+- Web 写 → App 回读：live Web API 创建版本 1、两联系人笔记，原生 App 同账号回读相同 ID／正文／版本／联系人；Web 更新为版本 2 后 App 离开并重开路由读取到新版本。
+- App 写 → Web 回读：原生 App 创建版本 1、单联系人笔记，Web API 回读相同 ID／正文／版本／联系人／owner。
+- 冲突、失败、权限与异步场景：对版本 2 使用 `expectedVersion: 1` 更新得到 HTTP 409／`CONFLICT`；第二个独立登录账号读取 owner 笔记得到 HTTP 404／`NOT_FOUND`。既有自动化继续覆盖并发单胜者、解除关联及失败保稿。
+- 原生 UI/浏览器验证（需要时）：Next 生产构建和 live 服务实际运行；Web 浏览器与原生 iOS Simulator 登录同一账号，App 原生构建 0 error／0 warning。截图与 accessibility 证据在 `build/live-e2e-0019/`。
+- 未检查范围：远程部署和实体 iOS 设备；未引入迁移，数据只写入隔离 QA PostgreSQL。
+- 可客观判断的关闭条件：已满足，本交接关闭。
 
 ## 更新历史
 
 - 2026-09-15 07:45 JST，Bridge：功能提交 `8e81e588e`；App 全量通过，Web notes 定向通过且 Web 全量既有失败如实保留；真实双向环境仍待提供。
+- 2026-09-15 09:21 JST，Bridge：在生产构建的 live Web/API、隔离 PostgreSQL、同账号 Web/App 和原生 iOS Simulator 完成双向读写、刷新、冲突及 actor 隔离；BR-017 更新为 `verified`。
