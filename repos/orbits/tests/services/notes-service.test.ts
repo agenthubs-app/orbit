@@ -116,6 +116,151 @@ test("stale edits and another account cannot overwrite a note", async () => {
   );
 });
 
+test("deleting a note preserves one canonical tombstone while hiding it from reads", async () => {
+  const { service, store } = fixture();
+  const created = await service.create({
+    actorId: "account:one",
+    body: "准备删除",
+    idempotencyKey: "create:delete",
+    now: "2026-09-15T00:00:00.000Z",
+  });
+
+  const deleted = await service.delete({
+    actorId: "account:one",
+    noteId: created.id,
+    expectedVersion: 1,
+    idempotencyKey: "delete:one",
+    now: "2026-09-15T00:01:00.000Z",
+  });
+
+  assert.equal(deleted.version, 2);
+  assert.equal(deleted.updatedAt, "2026-09-15T00:01:00.000Z");
+  assert.equal(await service.get({ actorId: "account:one", noteId: created.id }), null);
+  assert.deepEqual(await service.list({ actorId: "account:one" }), []);
+  const tombstone = await store.getRecord({
+    workspaceId: "workspace:test",
+    collectionName: "notes",
+    recordId: created.id,
+    includeDeleted: true,
+  });
+  assert.equal(tombstone?.lifecycleState, "deleted");
+  assert.equal(tombstone?.deletedAt, "2026-09-15T00:01:00.000Z");
+  assert.equal((tombstone?.payload.operations as Array<{ kind: string }>).at(-1)?.kind, "delete");
+});
+
+test("note deletion is actor scoped and leaves the owner's note unchanged", async () => {
+  const { service } = fixture();
+  const created = await service.create({
+    actorId: "account:one",
+    body: "私密删除目标",
+    idempotencyKey: "create:delete-private",
+    now: "2026-09-15T00:00:00.000Z",
+  });
+
+  await assert.rejects(
+    service.delete({
+      actorId: "account:two",
+      noteId: created.id,
+      expectedVersion: 1,
+      idempotencyKey: "delete:attacker",
+      now: "2026-09-15T00:01:00.000Z",
+    }),
+    (error: unknown) => error instanceof NoteServiceError && error.code === "NOTE_NOT_FOUND",
+  );
+  assert.deepEqual(await service.get({ actorId: "account:one", noteId: created.id }), created);
+});
+
+test("note deletion replays the same command and rejects reused keys with another command", async () => {
+  const { service } = fixture();
+  const created = await service.create({
+    actorId: "account:one",
+    body: "幂等删除",
+    idempotencyKey: "create:replay-delete",
+    now: "2026-09-15T00:00:00.000Z",
+  });
+  const command = {
+    actorId: "account:one",
+    noteId: created.id,
+    expectedVersion: 1,
+    idempotencyKey: "delete:replay",
+    now: "2026-09-15T00:01:00.000Z",
+  } as const;
+
+  const first = await service.delete(command);
+  assert.deepEqual(await service.delete({ ...command, now: "2026-09-15T00:02:00.000Z" }), first);
+  await assert.rejects(
+    service.delete({ ...command, expectedVersion: 2 }),
+    (error: unknown) => error instanceof NoteServiceError && error.code === "NOTE_IDEMPOTENCY_CONFLICT",
+  );
+
+  const second = await service.create({
+    actorId: "account:one",
+    body: "复用创建键",
+    idempotencyKey: "shared:command-key",
+    now: "2026-09-15T00:03:00.000Z",
+  });
+  await assert.rejects(
+    service.delete({
+      actorId: "account:one",
+      noteId: second.id,
+      expectedVersion: 1,
+      idempotencyKey: "shared:command-key",
+      now: "2026-09-15T00:04:00.000Z",
+    }),
+    (error: unknown) => error instanceof NoteServiceError && error.code === "NOTE_IDEMPOTENCY_CONFLICT",
+  );
+});
+
+test("note deletion rejects a stale expected version without changing visibility", async () => {
+  const { service } = fixture();
+  const created = await service.create({
+    actorId: "account:one",
+    body: "版本保护",
+    idempotencyKey: "create:delete-version",
+    now: "2026-09-15T00:00:00.000Z",
+  });
+
+  await assert.rejects(
+    service.delete({
+      actorId: "account:one",
+      noteId: created.id,
+      expectedVersion: 2,
+      idempotencyKey: "delete:stale",
+      now: "2026-09-15T00:01:00.000Z",
+    }),
+    (error: unknown) => error instanceof NoteServiceError && error.code === "NOTE_VERSION_CONFLICT",
+  );
+  assert.deepEqual(await service.get({ actorId: "account:one", noteId: created.id }), created);
+});
+
+test("retrying the original create command cannot resurrect a deleted note", async () => {
+  const { service, store } = fixture();
+  const createCommand = {
+    actorId: "account:one",
+    body: "不可复活",
+    idempotencyKey: "create:no-resurrection",
+    now: "2026-09-15T00:00:00.000Z",
+  } as const;
+  const created = await service.create(createCommand);
+  await service.delete({
+    actorId: "account:one",
+    noteId: created.id,
+    expectedVersion: 1,
+    idempotencyKey: "delete:no-resurrection",
+    now: "2026-09-15T00:01:00.000Z",
+  });
+
+  const replay = await service.create({ ...createCommand, now: "2026-09-15T00:02:00.000Z" });
+  assert.equal(replay.version, 2);
+  assert.equal(await service.get({ actorId: "account:one", noteId: created.id }), null);
+  assert.equal((await store.getRecord({
+    workspaceId: "workspace:test",
+    collectionName: "notes",
+    recordId: created.id,
+    includeDeleted: true,
+  }))?.lifecycleState, "deleted");
+});
+
 test("unlinking one contact preserves the body and every other relation", async () => {
   const { service } = fixture();
   const created = await service.create({

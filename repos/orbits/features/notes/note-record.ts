@@ -99,7 +99,7 @@ function readReceipt(value: unknown): NoteOperationReceipt | null {
   if (!isRecord(value)) return null;
   if (
     !nonEmpty(value.idempotencyKey) ||
-    !["create", "update", "unlink_contact"].includes(String(value.kind)) ||
+    !["create", "update", "unlink_contact", "delete"].includes(String(value.kind)) ||
     !nonEmpty(value.fingerprint) ||
     !Number.isSafeInteger(value.resultVersion) ||
     Number(value.resultVersion) < 1
@@ -129,6 +129,7 @@ export function noteRecordFromLiveRecord(
 }
 
 export function noteLiveRecordFromPayload(input: {
+  deletedAt?: string;
   workspaceId: string;
   payload: NoteRecordPayload;
 }): LiveRecord<Record<string, unknown>> {
@@ -174,7 +175,8 @@ export function noteLiveRecordFromPayload(input: {
     occurredAt: checked.note.updatedAt,
     createdAt: checked.note.createdAt,
     updatedAt: checked.note.updatedAt,
-    lifecycleState: "active",
+    ...(input.deletedAt ? { deletedAt: input.deletedAt } : {}),
+    lifecycleState: input.deletedAt ? "deleted" : "active",
     searchText: `${checked.note.title}\n${checked.note.body}`,
     payload: {
       schemaVersion: checked.schemaVersion,

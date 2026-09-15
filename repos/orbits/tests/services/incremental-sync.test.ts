@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
-import { createHmac } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 import test from "node:test";
+
+import { Pool } from "pg";
+
+import { createNoteRepository } from "../../features/notes/repository";
+import { createNoteService } from "../../features/notes/service";
 
 import {
   SYNC_CURSOR_TTL_MS,
@@ -18,6 +23,9 @@ import {
   type SyncReadRow,
   type SyncSqlClient,
 } from "../../features/sync/read-service";
+import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
+import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
+import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
 
 const actorId = "account:sync-owner";
 const workspaceId = "workspace:sync";
@@ -338,6 +346,52 @@ test("deletions emit payload-free tombstones and every tasks row remains kind=ta
   assert.equal(page.changes.some((change) => String(change.kind) === "relationship_followup"), false);
 });
 
+test("canonical note deletion becomes one payload-free sync tombstone", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const notes = createNoteService({ repository: createNoteRepository({ store, workspaceId }) });
+  const created = await notes.create({
+    actorId,
+    body: "Delete through the canonical note service",
+    idempotencyKey: "sync-note:create",
+    now,
+  });
+  await notes.delete({
+    actorId,
+    noteId: created.id,
+    expectedVersion: 1,
+    idempotencyKey: "sync-note:delete",
+    now: "2026-09-16T08:01:00.000Z",
+  });
+  const tombstone = await store.getRecord({
+    workspaceId,
+    collectionName: "notes",
+    recordId: created.id,
+    includeDeleted: true,
+  });
+  assert.ok(tombstone);
+
+  const page = await service(new MemorySyncSqlClient([{
+    collection_name: "notes",
+    deleted_at: tombstone.deletedAt ?? null,
+    lifecycle_state: tombstone.lifecycleState,
+    payload: tombstone.payload,
+    record_id: tombstone.recordId,
+    sync_revision: "2",
+    updated_at: tombstone.updatedAt,
+    user_id: tombstone.userId ?? null,
+    workspace_id: tombstone.workspaceId,
+  }])).readPage({ actorId, workspaceId, limit: 200 });
+
+  assert.deepEqual(page.changes, [{
+    aiVisibility: "available_when_synced",
+    id: created.id,
+    kind: "note",
+    operation: "delete",
+    revision: "2",
+    updatedAt: "2026-09-16T08:01:00.000Z",
+  }]);
+});
+
 test("domain mappers emit allowlisted entity payloads without secrets, activities, reminders, or storage receipts", async () => {
   const client = new MemorySyncSqlClient([
     row({ collectionName: "notes", id: "note:1", revision: 1 }),
@@ -457,4 +511,91 @@ test("oversized mapped records and success envelopes fail explicitly without tru
     service(new MemorySyncSqlClient(many)).readPage({ actorId, workspaceId, limit: 200 }),
     (error: unknown) => error instanceof SyncReadError && error.code === "SYNC_PAGE_TOO_LARGE",
   );
+});
+
+const databaseUrl = process.env.ORBIT_SYNC_TEST_DATABASE_URL;
+
+test("real PostgreSQL note deletion advances revision once and reads as one tombstone", {
+  skip: databaseUrl ? false : "ORBIT_SYNC_TEST_DATABASE_URL is not configured",
+}, async () => {
+  assert.ok(databaseUrl);
+  const schema = `sync_note_delete_${randomUUID().replaceAll("-", "")}`;
+  const admin = new Pool({ connectionString: databaseUrl, max: 1, connectionTimeoutMillis: 2_000 });
+  const pool = new Pool({
+    connectionString: databaseUrl,
+    max: 3,
+    connectionTimeoutMillis: 2_000,
+    options: `-c search_path=${schema} -c statement_timeout=10000`,
+  });
+  try {
+    await admin.query(`create schema ${schema}`);
+    await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
+    const store = createPostgresLiveRecordStore<Record<string, unknown>>({ client: pool });
+    const notes = createNoteService({ repository: createNoteRepository({ store, workspaceId }) });
+    const created = await notes.create({
+      actorId,
+      body: "PostgreSQL delete revision",
+      idempotencyKey: "pg-note:create",
+      now,
+    });
+    const inserted = await pool.query<{ sync_revision: string }>(`
+      select sync_revision::text from orbit_records
+      where workspace_id = $1 and collection_name = 'notes' and record_id = $2
+    `, [workspaceId, created.id]);
+    const deleted = await notes.delete({
+      actorId,
+      noteId: created.id,
+      expectedVersion: 1,
+      idempotencyKey: "pg-note:delete",
+      now: "2026-09-16T08:01:00.000Z",
+    });
+    const persisted = await pool.query<{
+      last_operation_kind: string;
+      lifecycle_state: string;
+      operation_count: string;
+      sync_revision: string;
+    }>(`
+      select lifecycle_state,
+        payload -> 'operations' -> -1 ->> 'kind' as last_operation_kind,
+        jsonb_array_length(payload -> 'operations')::text as operation_count,
+        sync_revision::text
+      from orbit_records
+      where workspace_id = $1 and collection_name = 'notes' and record_id = $2
+    `, [workspaceId, created.id]);
+    assert.equal(deleted.version, 2);
+    assert.equal(persisted.rows[0]?.lifecycle_state, "deleted");
+    assert.equal(persisted.rows[0]?.last_operation_kind, "delete");
+    assert.equal(persisted.rows[0]?.operation_count, "2");
+    assert.ok(BigInt(persisted.rows[0]!.sync_revision) > BigInt(inserted.rows[0]!.sync_revision));
+
+    assert.deepEqual(await notes.delete({
+      actorId,
+      noteId: created.id,
+      expectedVersion: 1,
+      idempotencyKey: "pg-note:delete",
+      now: "2026-09-16T08:02:00.000Z",
+    }), deleted);
+    const replayed = await pool.query<{ sync_revision: string }>(`
+      select sync_revision::text from orbit_records
+      where workspace_id = $1 and collection_name = 'notes' and record_id = $2
+    `, [workspaceId, created.id]);
+    assert.equal(replayed.rows[0]?.sync_revision, persisted.rows[0]?.sync_revision);
+
+    const page = await service(pool).readPage({ actorId, workspaceId, limit: 200 });
+    assert.deepEqual(page.changes, [{
+      aiVisibility: "available_when_synced",
+      id: created.id,
+      kind: "note",
+      operation: "delete",
+      revision: persisted.rows[0]!.sync_revision,
+      updatedAt: "2026-09-16T08:01:00.000Z",
+    }]);
+  } finally {
+    await pool.end();
+    try {
+      await admin.query(`drop schema if exists ${schema} cascade`);
+    } finally {
+      await admin.end();
+    }
+  }
 });
