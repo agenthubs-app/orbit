@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { fork, type ChildProcess } from "node:child_process";
 import { createHmac, randomUUID } from "node:crypto";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import { Pool } from "pg";
@@ -514,6 +516,136 @@ test("oversized mapped records and success envelopes fail explicitly without tru
 });
 
 const databaseUrl = process.env.ORBIT_SYNC_TEST_DATABASE_URL;
+
+type WorkerMessage = {
+  code?: string;
+  message?: string;
+  note?: { version?: number };
+  type: "at_write" | "error" | "result";
+};
+
+function startNoteMutationWorker(input: {
+  actorId: string;
+  noteId: string;
+  operation: "delete" | "update";
+  schema: string;
+  workspaceId: string;
+}): ChildProcess {
+  return fork(fileURLToPath(new URL("../fixtures/note-mutation-worker.ts", import.meta.url)), [], {
+    env: {
+      ...process.env,
+      ORBIT_NOTE_TEST_ACTOR_ID: input.actorId,
+      ORBIT_NOTE_TEST_NOTE_ID: input.noteId,
+      ORBIT_NOTE_TEST_OPERATION: input.operation,
+      ORBIT_NOTE_TEST_SCHEMA: input.schema,
+      ORBIT_NOTE_TEST_WORKSPACE_ID: input.workspaceId,
+    },
+    execArgv: ["--import", "tsx"],
+    stdio: ["ignore", "ignore", "ignore", "ipc"],
+  });
+}
+
+function nextWorkerMessage(worker: ChildProcess, type?: WorkerMessage["type"]): Promise<WorkerMessage> {
+  return new Promise((resolve, reject) => {
+    const onExit = (code: number | null) => {
+      cleanup();
+      reject(new Error(`Note mutation worker exited before ${type ?? "a message"}: ${code}`));
+    };
+    const onMessage = (message: WorkerMessage) => {
+      if (type && message.type !== type) return;
+      cleanup();
+      resolve(message);
+    };
+    const cleanup = () => {
+      worker.off("exit", onExit);
+      worker.off("message", onMessage);
+    };
+    worker.on("exit", onExit);
+    worker.on("message", onMessage);
+  });
+}
+
+test("real PostgreSQL CAS prevents a stale update instance from reviving a deleted note", {
+  skip: databaseUrl ? false : "ORBIT_SYNC_TEST_DATABASE_URL is not configured",
+}, async () => {
+  assert.ok(databaseUrl);
+  const schema = `sync_note_cas_${randomUUID().replaceAll("-", "")}`;
+  const admin = new Pool({ connectionString: databaseUrl, max: 1, connectionTimeoutMillis: 2_000 });
+  const connection = (max: number) => new Pool({
+    connectionString: databaseUrl,
+    max,
+    connectionTimeoutMillis: 2_000,
+    options: `-c search_path=${schema} -c statement_timeout=10000`,
+  });
+  const seedPool = connection(1);
+  let updateWorker: ChildProcess | undefined;
+  let deleteWorker: ChildProcess | undefined;
+  try {
+    await admin.query(`create schema ${schema}`);
+    await seedPool.query(ORBIT_RECORDS_SCHEMA_SQL);
+    const seeded = createNoteService({
+      repository: createNoteRepository({
+        store: createPostgresLiveRecordStore<Record<string, unknown>>({ client: seedPool }),
+        workspaceId,
+      }),
+    });
+    const createCommand = {
+      actorId,
+      body: "Never resurrect this note",
+      idempotencyKey: "pg-note-cas:create",
+      now,
+    } as const;
+    const created = await seeded.create(createCommand);
+
+    updateWorker = startNoteMutationWorker({
+      actorId,
+      noteId: created.id,
+      operation: "update",
+      schema,
+      workspaceId,
+    });
+    await nextWorkerMessage(updateWorker, "at_write");
+    deleteWorker = startNoteMutationWorker({
+      actorId,
+      noteId: created.id,
+      operation: "delete",
+      schema,
+      workspaceId,
+    });
+    const deletion = await nextWorkerMessage(deleteWorker);
+    assert.equal(deletion.type, "result");
+    updateWorker.send({ type: "release" });
+    const staleUpdate = await nextWorkerMessage(updateWorker);
+
+    assert.deepEqual(staleUpdate, {
+      code: "NOTE_NOT_FOUND",
+      message: `Note ${created.id} was not found`,
+      type: "error",
+    });
+    assert.equal(deletion.note?.version, 2);
+    assert.equal(await seeded.get({ actorId, noteId: created.id }), null);
+    assert.equal((await seedPool.query<{ lifecycle_state: string; body: string }>(`
+      select lifecycle_state, payload -> 'note' ->> 'body' as body
+      from orbit_records
+      where workspace_id = $1 and collection_name = 'notes' and record_id = $2
+    `, [workspaceId, created.id])).rows[0]?.lifecycle_state, "deleted");
+    assert.deepEqual(await seeded.create({ ...createCommand, now: "2026-09-16T08:03:00.000Z" }), {
+      ...created,
+      updatedAt: "2026-09-16T08:02:00.000Z",
+      version: 2,
+    });
+    assert.equal(await seeded.get({ actorId, noteId: created.id }), null);
+  } finally {
+    updateWorker?.kill();
+    deleteWorker?.kill();
+    await seedPool.end();
+    try {
+      await admin.query(`drop schema if exists ${schema} cascade`);
+    } finally {
+      await admin.end();
+    }
+  }
+});
 
 test("real PostgreSQL note deletion advances revision once and reads as one tombstone", {
   skip: databaseUrl ? false : "ORBIT_SYNC_TEST_DATABASE_URL is not configured",

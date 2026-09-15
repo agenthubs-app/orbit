@@ -126,6 +126,23 @@ test("DELETE requires authentication before parsing the note mutation body", asy
   assert.equal((await json(response)).error.code, "UNAUTHORIZED");
 });
 
+test("DELETE sanitizes actor-resolution failures as service unavailable", async () => {
+  const response = await createNoteDetailHandlers({
+    ...dependencies(),
+    resolveActor: async () => { throw new Error("secret auth provider detail"); },
+  }).DELETE(
+    new Request("https://orbit.local/api/notes/note:private", {
+      body: JSON.stringify({ expectedVersion: 1, idempotencyKey: "delete:auth-failure" }),
+      method: "DELETE",
+    }),
+    { params: Promise.resolve({ id: "note:private" }) },
+  );
+  const body = await json(response);
+  assert.equal(response.status, 503);
+  assert.equal(body.error.code, "SERVICE_UNAVAILABLE");
+  assert.equal(JSON.stringify(body).includes("secret auth provider detail"), false);
+});
+
 test("DELETE requires expectedVersion and idempotencyKey through the shared envelope", async () => {
   const detail = createNoteDetailHandlers(dependencies());
   for (const body of [

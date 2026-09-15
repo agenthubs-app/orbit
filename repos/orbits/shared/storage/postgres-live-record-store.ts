@@ -2,6 +2,7 @@ import { Pool, type PoolConfig } from "pg";
 
 import type {
   LiveRecord,
+  LiveRecordCompareAndSwapInput,
   LiveRecordDeleteInput,
   LiveRecordGetQuery,
   LiveRecordListQuery,
@@ -271,6 +272,68 @@ export function createPostgresLiveRecordStore<
   TPayload extends Record<string, unknown> = Record<string, unknown>,
 >({ client }: PostgresLiveRecordStoreOptions): LiveRecordStoreLike<TPayload> {
   return {
+    async compareAndSwapRecord(
+      input: LiveRecordCompareAndSwapInput<TPayload>,
+    ): Promise<LiveRecord<TPayload> | null> {
+      const values = recordValues(input.record);
+      const result = input.expected.kind === "absent"
+        ? await client.query<PostgresLiveRecordRow>(
+          `
+            with sync_write_lock as materialized (
+              select orbit_records_acquire_sync_write_lock($2) as acquired
+            )
+            insert into orbit_records (${recordColumns})
+            select
+              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+              $11, $12, $13, $14, $15, $16, $17, $18, $19
+            from sync_write_lock
+            where sync_write_lock.acquired
+            on conflict (workspace_id, collection_name, record_id) do nothing
+            returning ${recordColumns}
+          `,
+          values,
+        )
+        : await client.query<PostgresLiveRecordRow>(
+          `
+            with sync_write_lock as materialized (
+              select orbit_records_acquire_sync_write_lock($2) as acquired
+            )
+            update orbit_records
+            set user_id = $4,
+              source_type = $5,
+              source_id = $6,
+              source_label = $7,
+              provider = $8,
+              provider_record_id = $9,
+              evidence_ids = $10,
+              target_type = $11,
+              target_id = $12,
+              occurred_at = $13,
+              lifecycle_state = $14,
+              search_text = $15,
+              payload = $16,
+              created_at = $17,
+              updated_at = $18,
+              deleted_at = $19
+            from sync_write_lock
+            where orbit_records.workspace_id = $1
+              and orbit_records.collection_name = $2
+              and orbit_records.record_id = $3
+              and orbit_records.user_id is not distinct from $4
+              and orbit_records.lifecycle_state = $20
+              and orbit_records.payload #> $21::text[] = $22::jsonb
+              and sync_write_lock.acquired
+            returning ${recordColumns}
+          `,
+          [
+            ...values,
+            input.expected.lifecycleState,
+            [...input.expected.payloadPath],
+            JSON.stringify(input.expected.payloadValue),
+          ],
+        );
+      return result.rows[0] ? rowToRecord<TPayload>(result.rows[0]) : null;
+    },
     async deleteRecord(
       input: LiveRecordDeleteInput,
     ): Promise<LiveRecord<TPayload> | null> {

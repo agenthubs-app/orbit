@@ -5,7 +5,10 @@ import { NOTE_COLLECTION, noteLiveRecordFromPayload, noteRecordFromLiveRecord } 
 export interface NoteRepository {
   get(actorId: string, noteId: string, options?: { includeDeleted?: boolean }): Promise<NoteRecordPayload | null>;
   list(actorId: string): Promise<readonly NoteRecordPayload[]>;
-  save(payload: NoteRecordPayload, options?: { deletedAt?: string }): Promise<NoteRecordPayload>;
+  save(payload: NoteRecordPayload, options: {
+    deletedAt?: string;
+    expected: { kind: "absent" } | { kind: "version"; value: number };
+  }): Promise<NoteRecordPayload | null>;
 }
 
 export function createNoteRepository(input: {
@@ -21,10 +24,7 @@ export function createNoteRepository(input: {
         includeDeleted: options.includeDeleted,
       });
       if (!record || record.userId !== actorId) return null;
-      return noteRecordFromLiveRecord(
-        record.lifecycleState === "deleted" ? { ...record, lifecycleState: "active" } : record,
-        actorId,
-      );
+      return noteRecordFromLiveRecord(record, actorId, { includeDeleted: options.includeDeleted });
     },
     async list(actorId) {
       const records = await input.store.listRecords({
@@ -36,16 +36,29 @@ export function createNoteRepository(input: {
         .map((record) => noteRecordFromLiveRecord(record, actorId))
         .filter((record): record is NoteRecordPayload => record !== null);
     },
-    async save(payload, options = {}) {
-      const saved = await input.store.upsertRecord(noteLiveRecordFromPayload({
-        workspaceId: input.workspaceId,
-        payload,
-        deletedAt: options.deletedAt,
-      }));
-      const decoded = noteRecordFromLiveRecord(
-        saved.lifecycleState === "deleted" ? { ...saved, lifecycleState: "active" } : saved,
-        payload.note.ownerUserId,
-      );
+    async save(payload, options) {
+      if (!input.store.compareAndSwapRecord) {
+        throw new Error("Atomic note storage is not configured");
+      }
+      const saved = await input.store.compareAndSwapRecord({
+        expected: options.expected.kind === "absent"
+          ? options.expected
+          : {
+            kind: "match",
+            lifecycleState: "active",
+            payloadPath: ["note", "version"],
+            payloadValue: options.expected.value,
+          },
+        record: noteLiveRecordFromPayload({
+          workspaceId: input.workspaceId,
+          payload,
+          deletedAt: options.deletedAt,
+        }),
+      });
+      if (!saved) return null;
+      const decoded = noteRecordFromLiveRecord(saved, payload.note.ownerUserId, {
+        includeDeleted: saved.lifecycleState === "deleted",
+      });
       if (!decoded) throw new Error("Saved note record failed validation");
       return decoded;
     },

@@ -84,6 +84,12 @@ function createReadDedupedLiveRecordStore<
   }
 
   return {
+    compareAndSwapRecord: store.compareAndSwapRecord
+      ? (input) => {
+        inflightReads.clear();
+        return store.compareAndSwapRecord!(input);
+      }
+      : undefined,
     deleteRecord(input) {
       inflightReads.clear();
 
