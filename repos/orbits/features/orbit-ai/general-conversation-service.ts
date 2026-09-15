@@ -382,6 +382,9 @@ function decision(input: OrbitAiGeneralConversationInput): OrbitAgentRoutingDeci
     contacts: "contact_discovery",
     events: "event_discovery",
     followups: "followup_context",
+    notes: "data_query",
+    tasks: "data_query",
+    schedule: "data_query",
     todo: "todo_synthesis",
   };
 

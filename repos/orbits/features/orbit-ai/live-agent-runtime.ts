@@ -982,6 +982,22 @@ export function routingDecisionFromPlannerIntent(
       intent: "followup_context",
       toolFamily: "followups",
     },
+    notes_query: {
+      intent: "data_query",
+      toolFamily: "notes",
+    },
+    tasks_query: {
+      intent: "data_query",
+      toolFamily: "tasks",
+    },
+    followups_query: {
+      intent: "data_query",
+      toolFamily: "followups",
+    },
+    schedule_query: {
+      intent: "data_query",
+      toolFamily: "schedule",
+    },
   };
   const mapped = mapping[intent];
   const needsTool =
@@ -1013,6 +1029,10 @@ export function toolNameForIntent(
   if (intent === "contact_recommendations") return "contacts.recommend";
   if (intent === "followup_queue") return "followups.reviewQueue";
   if (intent === "relationship_chat_context") return "chat.context";
+  if (intent === "notes_query") return "notes.query";
+  if (intent === "tasks_query") return "tasks.query";
+  if (intent === "followups_query") return "followups.query";
+  if (intent === "schedule_query") return "schedule.query";
 
   return null;
 }
@@ -1026,6 +1046,10 @@ export function artifactKindForTool(
     "contacts.recommend": "contact_recommendations",
     "events.recommend": "event_recommendations",
     "followups.reviewQueue": "followup_queue",
+    "notes.query": "data_query",
+    "tasks.query": "data_query",
+    "followups.query": "data_query",
+    "schedule.query": "data_query",
   };
 
   return kinds[toolName];
@@ -1034,6 +1058,9 @@ export function artifactKindForTool(
 export function toolFamilyForToolName(toolName: string): string {
   if (toolName === "profile.getSelf") return "profile";
   if (toolName === "chat.context") return "relationship_chat";
+  if (toolName === "notes.query") return "notes";
+  if (toolName === "tasks.query") return "tasks";
+  if (toolName === "schedule.query") return "schedule";
   if (toolName.startsWith("events.")) return "events";
   if (toolName.startsWith("contacts.")) return "contacts";
   if (toolName.startsWith("followups.")) return "followups";
@@ -1070,6 +1097,10 @@ export function proposedIntentForTool(
       en: "Review follow-up queue",
       zh: "复核跟进队列",
     },
+    "notes.query": { en: "Query my notes", zh: "查询我的笔记" },
+    "tasks.query": { en: "Query my tasks", zh: "查询我的待办" },
+    "followups.query": { en: "Query confirmed follow-ups", zh: "查询已确认跟进" },
+    "schedule.query": { en: "Query my schedule", zh: "查询我的日程" },
   };
 
   return {
@@ -1085,7 +1116,7 @@ export function proposedIntentForTool(
             en: "The configured model provider selected this allowed Orbit tool from the user prompt; execution remains inside Orbit and requires confirmation before side effects.",
             zh: "模型 provider 从用户请求中选择了这个 Orbit 允许工具；执行仍停留在 Orbit 内部，任何副作用前都需要确认。",
           }),
-    requiresUserConfirmation: true,
+    requiresUserConfirmation: !request.toolName.endsWith(".query"),
     toolFamily: toolFamilyForToolName(request.toolName) as
       OrbitAgentProposedToolIntent["toolFamily"],
   };
@@ -1109,7 +1140,7 @@ export async function artifactForRequest(input: {
   try {
     const executed = await executeOrbitAgentTool({
       toolName: input.request.toolName,
-      arguments: { query: input.message, ...rawArguments },
+      arguments: { ...rawArguments, query: input.message },
       context: {
         mode: "live",
         async executeArtifactTool(toolName, validatedInput) {
@@ -1135,6 +1166,19 @@ export async function artifactForRequest(input: {
             toolArguments: toolName === "profile.getSelf" ? {
               query: validatedInput.query,
               locale: validatedInput.locale ?? locale,
+            } : toolName.endsWith(".query") ? {
+              queryToolName: toolName,
+              query: validatedInput.query,
+              locale: validatedInput.locale,
+              operation: validatedInput.operation,
+              id: validatedInput.id,
+              cursor: validatedInput.cursor,
+              limit: validatedInput.limit,
+              status: validatedInput.status,
+              from: validatedInput.from,
+              to: validatedInput.to,
+              contactId: validatedInput.contactId,
+              eventId: validatedInput.eventId,
             } : {
               query: validatedInput.query,
               locale: validatedInput.locale,

@@ -103,6 +103,9 @@ export type OrbitAgentRoutingToolFamily =
   | "contacts"
   | "events"
   | "followups"
+  | "notes"
+  | "tasks"
+  | "schedule"
   | "todo";
 
 export type OrbitAgentRoutingIntent =
@@ -112,6 +115,7 @@ export type OrbitAgentRoutingIntent =
   | "contact_discovery"
   | "event_discovery"
   | "followup_context"
+  | "data_query"
   | "general_conversation"
   | "action_proposal"
   | "todo_synthesis"

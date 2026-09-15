@@ -136,6 +136,10 @@ function labelFor(kind: OrbitAgentArtifactKind, locale: PreviewLocale): string {
       en: "Agent artifact",
       zh: "Agent 结果",
     },
+    data_query: {
+      en: "Data query",
+      zh: "数据查询",
+    },
     relationship_chat_context: {
       en: "Relationship chat context",
       zh: "关系上下文",
@@ -195,6 +199,11 @@ function presentationFor(
         zh: "由结果预览边界生成",
       }),
       title: labelFor("generic", locale),
+    },
+    data_query: {
+      preferredSurface: "side_panel",
+      title: labelFor("data_query", locale),
+      widthHint: "half",
     },
     relationship_chat_context: {
       preferredSurface: "side_panel",

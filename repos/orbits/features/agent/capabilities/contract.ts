@@ -48,6 +48,10 @@ export const AGENT_READ_TOOL_NAMES = [
   "followups.reviewQueue",
   "chat.context",
   "profile.getSelf",
+  "notes.query",
+  "tasks.query",
+  "followups.query",
+  "schedule.query",
 ] as const;
 
 export const AGENT_WORKFLOW_KEYS = [
@@ -101,7 +105,10 @@ export interface AgentCapabilityDefinition {
     | "matchmaking"
     | "memory"
     | "notifications"
+    | "notes"
     | "profile"
+    | "schedule"
+    | "tasks"
   )[];
   executionBoundary: AgentCapabilityExecutionBoundary;
   riskLevel: AgentActionRiskLevel;

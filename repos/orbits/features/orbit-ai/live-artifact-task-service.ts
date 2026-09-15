@@ -12,6 +12,8 @@ import { createOrbitLanguageNormalizationService } from "./language-normalizatio
 import { createConfiguredActorScopedLiveRelationshipNaturalSearchService } from "../search/live-service";
 import type { OrbitAgentArtifactTaskService } from "./service";
 import { createSelfProfileArtifactService } from "./self-profile-artifact-service";
+import { createActorScopedQueryArtifactService } from "./data-query/query-artifact-service";
+import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
 
 export interface OrbitAgentLiveArtifactTaskServiceOptions {
   actorId?: string | null;
@@ -62,8 +64,15 @@ export function createOrbitAgentLiveArtifactTaskService(
     // 缺 provider key 时抽词返回空，自动回退到确定性正则词表。
     normalizationService: createOrbitLanguageNormalizationService(),
   });
-  return createSelfProfileArtifactService({
+  const profileService = createSelfProfileArtifactService({
     context: { actorId: actorId ?? "", mode: "live" },
     fallbackService: contactService,
+  });
+  const configured = createConfiguredPostgresLiveRecordStore<Record<string, unknown>>();
+  return createActorScopedQueryArtifactService({
+    actorId: actorId ?? "",
+    fallbackService: profileService,
+    store: configured?.store,
+    workspaceId: configured?.workspaceId,
   });
 }
