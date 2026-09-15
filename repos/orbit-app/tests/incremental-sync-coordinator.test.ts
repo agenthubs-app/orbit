@@ -772,6 +772,50 @@ test("a second reset-required response fails visibly without resetting twice", a
   assert.match(result?.error ?? "", /request failed/);
 });
 
+test("abandoning a reset-required flight rolls back reset and never bootstraps", async (t) => {
+  const f = await setup();
+  t.after(() => f.database.close());
+  const repository = createLocalSyncRepository({ actorId: "actor-a", database: f.database });
+  await repository.applyPage({
+    workspaceId: "workspace-a",
+    records: [{
+      actorId: "actor-a", workspaceId: "workspace-a", kind: "note", id: "cached",
+      revision: "revision-cached", updatedAt: "2026-09-16T11:00:00.000Z", deletedAt: null,
+      payload: { title: "cached" }, syncState: "synced", aiVisibility: "available_when_synced",
+    }],
+    cursor: "cursor-cached",
+    syncedAt: "2026-09-16T11:00:00.000Z",
+    bootstrapState: "complete",
+  });
+  const resetStarted = deferred<void>();
+  const releaseReset = deferred<void>();
+  f.database.beforeRun = async (source) => {
+    if (source.includes("DELETE FROM sync_records")) {
+      resetStarted.resolve();
+      await releaseReset.promise;
+    }
+  };
+  let calls = 0;
+  const session = f.coordinator.openScope({
+    actorId: "actor-a", baseUrl: BASE_URL, scopeKey: "session-a",
+    client: createSyncClient(apiClient(async () => {
+      calls += 1;
+      return calls === 1
+        ? failure({ code: "CONFLICT", context: { syncErrorCode: "SYNC_RESET_REQUIRED" }, status: 409 })
+        : success(page({ nextCursor: "cursor-unexpected" }));
+    })),
+  });
+  const request = session.synchronize("note", { reason: "explicit" });
+  await resetStarted.promise;
+  request.cancel({ abandon: true });
+  releaseReset.resolve();
+
+  assert.equal(await request.promise, null);
+  assert.equal(calls, 1);
+  assert.equal((await repository.listRecords({ workspaceId: "workspace-a", kind: "note" }))[0]?.id, "cached");
+  assert.equal((await repository.getCursor("workspace-a"))?.cursor, "cursor-cached");
+});
+
 test("last-subscriber cancellation stops after the issued page", async (t) => {
   const f = await setup();
   t.after(() => f.database.close());
@@ -1379,7 +1423,7 @@ test("a TTL hit never publishes a synthetic syncing render", async (t) => {
   );
 });
 
-test("invalidation returns the final mirror snapshot and times out observably", async (t) => {
+test("timed-out invalidation leaves syncing, retries with a new request and rejects the late response", async (t) => {
   const lastSyncedAt = new Date().toISOString();
   const page = await openHook(t, {
     cursor: {
@@ -1403,25 +1447,47 @@ test("invalidation returns the final mirror snapshot and times out observably", 
       .fixture.invalidate({ timeoutMs: 20 });
   });
   await page.waitForTimeout(60);
-  assert.equal(
+  assert.deepEqual(
     await page.evaluate(() =>
       (window as unknown as { fixture: { invalidationResult: unknown } }).fixture.invalidationResult,
     ),
-    null,
+    { ids: ["cached"], status: "stale" },
   );
+  await page.getByText("stale:cached", { exact: true }).waitFor();
   assert.equal(
     await page.evaluate(() =>
       (window as unknown as { fixture: { requests: unknown[] } }).fixture.requests.length,
     ),
     1,
   );
+  assert.equal(
+    await page.evaluate(() =>
+      (window as unknown as { fixture: { requests: Array<{ signal?: AbortSignal }> } })
+        .fixture.requests[0]?.signal?.aborted,
+    ),
+    true,
+  );
 
   const completed = page.evaluate(() =>
     (window as unknown as { fixture: { invalidate(options: { timeoutMs: number }): Promise<unknown> } })
       .fixture.invalidate({ timeoutMs: 1_000 }),
   );
+  await page.waitForFunction(() =>
+    (window as unknown as { fixture: { requests: unknown[] } }).fixture.requests.length === 2,
+  );
   await page.evaluate(() => {
-    (window as unknown as { fixture: { reply(index: number, id: string): void } }).fixture.reply(0, "updated");
+    (window as unknown as { fixture: { reply(index: number, id: string): void } }).fixture.reply(1, "updated");
   });
   assert.deepEqual(await completed, { ids: ["updated"], status: "fresh" });
+  await page.evaluate(() => {
+    (window as unknown as { fixture: { reply(index: number, id: string): void } }).fixture.reply(0, "late");
+  });
+  await settleHook(page);
+  assert.equal(await page.locator("output").innerText(), "fresh:updated");
+  assert.equal(
+    await page.evaluate(() =>
+      (window as unknown as { fixture: { applies: number } }).fixture.applies,
+    ),
+    1,
+  );
 });

@@ -77,6 +77,8 @@ export function useSyncedCollection<TPayload = unknown>(input: {
   const [snapshot, setSnapshot] = useState<
     SyncedCollectionSnapshot<TPayload>
   >(() => emptySnapshot<TPayload>());
+  const snapshotRef = useRef(snapshot);
+  snapshotRef.current = snapshot;
   const mounted = useRef(false);
   const sessionRef = useRef<SyncCoordinatorSession | null>(null);
   const viewGeneration = useRef(0);
@@ -128,12 +130,32 @@ export function useSyncedCollection<TPayload = unknown>(input: {
       if (timeoutMs === undefined) return completion;
       let timer: ReturnType<typeof setTimeout> | undefined;
       try {
-        return await Promise.race([
+        const timeout = Symbol("sync-timeout");
+        const result = await Promise.race([
           completion,
-          new Promise<null>((resolve) => {
-            timer = setTimeout(resolve, Math.max(0, timeoutMs), null);
+          new Promise<typeof timeout>((resolve) => {
+            timer = setTimeout(resolve, Math.max(0, timeoutMs), timeout);
           }),
         ]);
+        if (result !== timeout) return result;
+        request.cancel({ abandon: true });
+        requests.current.delete(request);
+        if (
+          !mounted.current ||
+          viewGeneration.current !== requestGeneration ||
+          !session.isCurrent()
+        ) {
+          return null;
+        }
+        const current = snapshotRef.current;
+        const timedOut: SyncedCollectionSnapshot<TPayload> = {
+          ...current,
+          error: "同步请求超时，请重试。",
+          status: current.records.length > 0 ? "stale" : "failure",
+        };
+        snapshotRef.current = timedOut;
+        setSnapshot(timedOut);
+        return timedOut;
       } finally {
         if (timer !== undefined) clearTimeout(timer);
       }
