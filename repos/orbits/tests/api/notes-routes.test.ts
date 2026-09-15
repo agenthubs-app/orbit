@@ -114,6 +114,80 @@ test("another actor receives not-found and cannot infer a private note", async (
   assert.equal((await json(response)).error.code, "NOT_FOUND");
 });
 
+test("DELETE requires authentication before parsing the note mutation body", async () => {
+  const response = await createNoteDetailHandlers(dependencies(null)).DELETE(
+    new Request("https://orbit.local/api/notes/note:private", {
+      body: "{broken",
+      method: "DELETE",
+    }),
+    { params: Promise.resolve({ id: "note:private" }) },
+  );
+  assert.equal(response.status, 401);
+  assert.equal((await json(response)).error.code, "UNAUTHORIZED");
+});
+
+test("DELETE sanitizes actor-resolution failures as service unavailable", async () => {
+  const response = await createNoteDetailHandlers({
+    ...dependencies(),
+    resolveActor: async () => { throw new Error("secret auth provider detail"); },
+  }).DELETE(
+    new Request("https://orbit.local/api/notes/note:private", {
+      body: JSON.stringify({ expectedVersion: 1, idempotencyKey: "delete:auth-failure" }),
+      method: "DELETE",
+    }),
+    { params: Promise.resolve({ id: "note:private" }) },
+  );
+  const body = await json(response);
+  assert.equal(response.status, 503);
+  assert.equal(body.error.code, "SERVICE_UNAVAILABLE");
+  assert.equal(JSON.stringify(body).includes("secret auth provider detail"), false);
+});
+
+test("DELETE requires expectedVersion and idempotencyKey through the shared envelope", async () => {
+  const detail = createNoteDetailHandlers(dependencies());
+  for (const body of [
+    { idempotencyKey: "delete:missing-version" },
+    { expectedVersion: 1 },
+    { expectedVersion: 1, idempotencyKey: "delete:extra", actorId: "account:other" },
+  ]) {
+    const response = await detail.DELETE(new Request("https://orbit.local/api/notes/note:missing", {
+      body: JSON.stringify(body),
+      method: "DELETE",
+    }), { params: Promise.resolve({ id: "note:missing" }) });
+    assert.equal(response.status, 400);
+    assert.equal((await json(response)).error.code, "VALIDATION_ERROR");
+  }
+});
+
+test("DELETE is actor scoped, idempotent and hides the deleted note from GET and list", async () => {
+  const owner = dependencies();
+  const collection = createNoteCollectionHandlers(owner);
+  const created = (await json(await collection.POST(new Request("https://orbit.local/api/notes", {
+    body: JSON.stringify({ body: "删除 API", idempotencyKey: "api:create:delete" }),
+    method: "POST",
+  })))).data.note;
+  const context = { params: Promise.resolve({ id: created.id }) };
+  const attacker = { ...owner, resolveActor: async () => ({ id: "account:other", workspaceId }) };
+  const denied = await createNoteDetailHandlers(attacker).DELETE(new Request(`https://orbit.local/api/notes/${created.id}`, {
+    body: JSON.stringify({ expectedVersion: 1, idempotencyKey: "api:delete:attacker" }),
+    method: "DELETE",
+  }), context);
+  assert.equal(denied.status, 404);
+  assert.equal((await json(denied)).error.code, "NOT_FOUND");
+
+  const detail = createNoteDetailHandlers(owner);
+  const request = () => new Request(`https://orbit.local/api/notes/${created.id}`, {
+    body: JSON.stringify({ expectedVersion: 1, idempotencyKey: "api:delete:owner" }),
+    method: "DELETE",
+  });
+  const deleted = await detail.DELETE(request(), context);
+  assert.equal(deleted.status, 200);
+  assert.equal((await json(deleted)).data.note.version, 2);
+  assert.equal((await detail.DELETE(request(), context)).status, 200);
+  assert.equal((await detail.GET(new Request(`https://orbit.local/api/notes/${created.id}`), context)).status, 404);
+  assert.deepEqual((await json(await collection.GET(new Request("https://orbit.local/api/notes")))).data.notes, []);
+});
+
 test("HTTP accepts v2 note fields while legacy PATCH preserves omitted associations", async () => {
   const deps = dependencies();
   const collection = createNoteCollectionHandlers(deps);

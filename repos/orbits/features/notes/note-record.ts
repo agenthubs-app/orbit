@@ -99,7 +99,7 @@ function readReceipt(value: unknown): NoteOperationReceipt | null {
   if (!isRecord(value)) return null;
   if (
     !nonEmpty(value.idempotencyKey) ||
-    !["create", "update", "unlink_contact"].includes(String(value.kind)) ||
+    !["create", "update", "unlink_contact", "delete"].includes(String(value.kind)) ||
     !nonEmpty(value.fingerprint) ||
     !Number.isSafeInteger(value.resultVersion) ||
     Number(value.resultVersion) < 1
@@ -110,10 +110,11 @@ function readReceipt(value: unknown): NoteOperationReceipt | null {
 export function noteRecordFromLiveRecord(
   record: LiveRecord<Record<string, unknown>>,
   actorId: string,
+  options: { includeDeleted?: boolean } = {},
 ): NoteRecordPayload | null {
   if (
     record.collectionName !== NOTE_COLLECTION ||
-    record.lifecycleState === "deleted" ||
+    (record.lifecycleState === "deleted" && options.includeDeleted !== true) ||
     record.userId !== actorId ||
     !isRecord(record.payload) ||
     ![1, 2].includes(Number(record.payload.schemaVersion)) ||
@@ -125,14 +126,18 @@ export function noteRecordFromLiveRecord(
   if (!note || operations.some((item) => item === null)) return null;
   const receipts = operations as NoteOperationReceipt[];
   if (new Set(receipts.map((item) => item.idempotencyKey)).size !== receipts.length) return null;
+  const hasDeleteReceipt = receipts.some((item) => item.kind === "delete");
+  if (hasDeleteReceipt !== (record.lifecycleState === "deleted")) return null;
   return { schemaVersion, note, operations: receipts };
 }
 
 export function noteLiveRecordFromPayload(input: {
+  deletedAt?: string;
   workspaceId: string;
   payload: NoteRecordPayload;
 }): LiveRecord<Record<string, unknown>> {
   const actorId = input.payload.note.ownerUserId;
+  const lifecycleState = input.deletedAt ? "deleted" : "active";
   const checked = noteRecordFromLiveRecord({
     workspaceId: input.workspaceId,
     collectionName: NOTE_COLLECTION,
@@ -146,7 +151,7 @@ export function noteLiveRecordFromPayload(input: {
     occurredAt: input.payload.note.updatedAt,
     createdAt: input.payload.note.createdAt,
     updatedAt: input.payload.note.updatedAt,
-    lifecycleState: "active",
+    lifecycleState,
     payload: {
       schemaVersion: input.payload.schemaVersion,
       note: {
@@ -158,7 +163,7 @@ export function noteLiveRecordFromPayload(input: {
       },
       operations: input.payload.operations.map((item) => ({ ...item })),
     },
-  }, actorId);
+  }, actorId, { includeDeleted: lifecycleState === "deleted" });
   if (!checked) throw new Error("Note payload is invalid");
   return {
     workspaceId: input.workspaceId,
@@ -174,7 +179,8 @@ export function noteLiveRecordFromPayload(input: {
     occurredAt: checked.note.updatedAt,
     createdAt: checked.note.createdAt,
     updatedAt: checked.note.updatedAt,
-    lifecycleState: "active",
+    ...(input.deletedAt ? { deletedAt: input.deletedAt } : {}),
+    lifecycleState,
     searchText: `${checked.note.title}\n${checked.note.body}`,
     payload: {
       schemaVersion: checked.schemaVersion,

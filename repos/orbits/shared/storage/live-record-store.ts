@@ -62,7 +62,26 @@ export interface LiveRecordDeleteInput {
 
 export type LiveRecordStoreResult<TValue> = TValue | Promise<TValue>;
 
+export type LiveRecordCompareAndSwapExpected =
+  | { kind: "absent" }
+  | {
+    kind: "match";
+    lifecycleState: LiveRecordLifecycleState;
+    payloadPath: readonly string[];
+    payloadValue: boolean | number | string | null;
+  };
+
+export interface LiveRecordCompareAndSwapInput<
+  TPayload extends Record<string, unknown> = Record<string, unknown>,
+> {
+  expected: LiveRecordCompareAndSwapExpected;
+  record: LiveRecord<TPayload>;
+}
+
 export interface LiveRecordStoreLike<TPayload extends Record<string, unknown> = Record<string, unknown>> {
+  compareAndSwapRecord?: (
+    input: LiveRecordCompareAndSwapInput<TPayload>,
+  ) => LiveRecordStoreResult<LiveRecord<TPayload> | null>;
   deleteRecord: (
     input: LiveRecordDeleteInput,
   ) => LiveRecordStoreResult<LiveRecord<TPayload> | null>;
@@ -78,6 +97,9 @@ export interface LiveRecordStoreLike<TPayload extends Record<string, unknown> = 
 }
 
 export interface LiveRecordStore<TPayload extends Record<string, unknown> = Record<string, unknown>> {
+  compareAndSwapRecord: (
+    input: LiveRecordCompareAndSwapInput<TPayload>,
+  ) => LiveRecord<TPayload> | null;
   deleteRecord: (
     input: LiveRecordDeleteInput,
   ) => LiveRecord<TPayload> | null;
@@ -112,6 +134,15 @@ function isVisible(record: LiveRecord, includeDeleted?: boolean): boolean {
   return includeDeleted === true || record.lifecycleState !== "deleted";
 }
 
+function valueAtPath(value: unknown, path: readonly string[]): unknown {
+  let current = value;
+  for (const segment of path) {
+    if (typeof current !== "object" || current === null || Array.isArray(current)) return undefined;
+    current = (current as Record<string, unknown>)[segment];
+  }
+  return current;
+}
+
 function matchesListQuery(record: LiveRecord, query: LiveRecordListQuery): boolean {
   const recordIds = query.recordIds ? new Set(query.recordIds) : null;
 
@@ -144,6 +175,23 @@ export function createMemoryLiveRecordStore<
   }
 
   return {
+    compareAndSwapRecord(input) {
+      const key = recordKey(input.record);
+      const current = records.get(key);
+      if (input.expected.kind === "absent") {
+        if (current) return null;
+      } else if (
+        !current ||
+        current.userId !== input.record.userId ||
+        current.lifecycleState !== input.expected.lifecycleState ||
+        valueAtPath(current.payload, input.expected.payloadPath) !== input.expected.payloadValue
+      ) {
+        return null;
+      }
+      const nextRecord = cloneJson(input.record);
+      records.set(key, nextRecord);
+      return cloneJson(nextRecord);
+    },
     deleteRecord(input) {
       const key = recordKey(input);
       const record = records.get(key);

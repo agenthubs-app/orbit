@@ -17,6 +17,7 @@ import {
   type NoteRouteContext,
   type NoteRouteDependencies,
 } from "../route-support";
+import { NoteServiceError } from "../../../../features/notes/service";
 
 export function createNoteDetailHandlers(dependencies?: NoteRouteDependencies) {
   return {
@@ -52,6 +53,29 @@ export function createNoteDetailHandlers(dependencies?: NoteRouteDependencies) {
         });
         return noteSuccess({ note });
       } catch (error) { return noteError(error); }
+    },
+    async DELETE(request: Request, context: NoteRouteContext): Promise<Response> {
+      try {
+        const actor = await noteActorResolver(dependencies)();
+        if (!actor) return authenticatedApiActorRequiredResponse(resolveFeatureMode());
+        const { id } = await context.params;
+        const body = await noteBody(request);
+        noteExactKeys(body, ["expectedVersion", "idempotencyKey"]);
+        const note = await noteService(dependencies).delete({
+          actorId: actor.id,
+          noteId: id,
+          expectedVersion: noteVersion(body.expectedVersion),
+          idempotencyKey: noteString(body.idempotencyKey, "idempotencyKey"),
+          now: noteNow(dependencies),
+        });
+        return noteSuccess({ note });
+      } catch (error) {
+        return noteError(
+          error instanceof AppError || error instanceof NoteServiceError
+            ? error
+            : new AppError("SERVICE_UNAVAILABLE", "Notes are temporarily unavailable.", { cause: error }),
+        );
+      }
     },
   };
 }

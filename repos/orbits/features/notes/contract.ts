@@ -2,7 +2,7 @@ import type { NoteContract } from "../../shared/contract/notes";
 
 export type NoteDTO = NoteContract;
 
-export type NoteOperationKind = "create" | "update" | "unlink_contact";
+export type NoteOperationKind = "create" | "update" | "unlink_contact" | "delete";
 
 export interface NoteOperationReceipt {
   idempotencyKey: string;

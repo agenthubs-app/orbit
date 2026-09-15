@@ -23,6 +23,7 @@ export interface NoteService {
   get(input: { actorId: string; noteId: string }): Promise<NoteDTO | null>;
   create(input: NoteCreateInput): Promise<NoteDTO>;
   update(input: NoteUpdateInput): Promise<NoteDTO>;
+  delete(input: NoteDeleteInput): Promise<NoteDTO>;
   unlinkContact(input: { actorId: string; noteId: string; contactId: string; expectedVersion: number; idempotencyKey: string; now: string }): Promise<NoteDTO>;
 }
 
@@ -72,6 +73,14 @@ export interface NoteUpdateInput {
   manualContactIds?: readonly string[];
   mentions?: readonly NoteMentionContract[];
   eventIds?: readonly string[];
+  expectedVersion: number;
+  idempotencyKey: string;
+  now: string;
+}
+
+export interface NoteDeleteInput {
+  actorId: string;
+  noteId: string;
   expectedVersion: number;
   idempotencyKey: string;
   now: string;
@@ -200,6 +209,25 @@ function receipt(input: { idempotencyKey: string; kind: NoteOperationKind; finge
   return { ...input };
 }
 
+async function resolveConcurrentMutation(input: {
+  actorId: string;
+  fingerprint: string;
+  idempotencyKey: string;
+  kind: NoteOperationKind;
+  noteId: string;
+  repository: NoteRepository;
+}): Promise<NoteDTO> {
+  const current = await input.repository.get(input.actorId, input.noteId, { includeDeleted: true });
+  if (current) {
+    const replay = checkReplay(current, input);
+    if (replay) return replay;
+    if (current.operations.some((operation) => operation.kind === "delete")) {
+      throw new NoteServiceError("NOTE_NOT_FOUND", `Note ${input.noteId} was not found`);
+    }
+  }
+  throw new NoteServiceError("NOTE_VERSION_CONFLICT", "Note has changed since it was loaded");
+}
+
 export function createNoteService(input: { repository: NoteRepository; associationReader?: NoteAssociationReader }): NoteService {
   const associationReader: NoteAssociationReader = input.associationReader ?? {
     async accessibleContactIds({ ids }) { return ids; },
@@ -254,7 +282,7 @@ export function createNoteService(input: { repository: NoteRepository; associati
       const noteId = stableId(createInput.actorId, createInput.idempotencyKey);
       const operationFingerprint = fingerprint({ title, body, manualContactIds, mentions, eventIds });
       return withMutationLock(`${createInput.actorId}\u0000${noteId}`, async () => {
-        const existing = await input.repository.get(createInput.actorId, noteId);
+        const existing = await input.repository.get(createInput.actorId, noteId, { includeDeleted: true });
         if (existing) {
           const replay = checkReplay(existing, { idempotencyKey: createInput.idempotencyKey, kind: "create", fingerprint: operationFingerprint });
           if (replay) return replay;
@@ -274,12 +302,23 @@ export function createNoteService(input: { repository: NoteRepository; associati
           createdAt: createInput.now,
           updatedAt: createInput.now,
         };
-        const saved = await input.repository.save({
+        const payload: NoteRecordPayload = {
           schemaVersion: 2,
           note,
           operations: [receipt({ idempotencyKey: createInput.idempotencyKey, kind: "create", fingerprint: operationFingerprint, resultVersion: 1 })],
-        });
-        return saved.note;
+        };
+        const saved = await input.repository.save(payload, { expected: { kind: "absent" } });
+        if (saved) return saved.note;
+        const raced = await input.repository.get(createInput.actorId, noteId, { includeDeleted: true });
+        if (raced) {
+          const replay = checkReplay(raced, {
+            idempotencyKey: createInput.idempotencyKey,
+            kind: "create",
+            fingerprint: operationFingerprint,
+          });
+          if (replay) return replay;
+        }
+        throw new NoteServiceError("NOTE_IDEMPOTENCY_CONFLICT", "The idempotency key is already in use");
       });
     },
     async update(updateInput) {
@@ -318,11 +357,66 @@ export function createNoteService(input: { repository: NoteRepository; associati
           version: stored.note.version + 1,
           updatedAt: updateInput.now,
         };
-        return (await input.repository.save({
+        const saved = await input.repository.save({
           schemaVersion: 2,
           note,
           operations: [...stored.operations, receipt({ idempotencyKey: updateInput.idempotencyKey, kind: "update", fingerprint: operationFingerprint, resultVersion: note.version })],
-        })).note;
+        }, { expected: { kind: "version", value: stored.note.version } });
+        return saved?.note ?? resolveConcurrentMutation({
+          actorId: updateInput.actorId,
+          fingerprint: operationFingerprint,
+          idempotencyKey: updateInput.idempotencyKey,
+          kind: "update",
+          noteId: updateInput.noteId,
+          repository: input.repository,
+        });
+      });
+    },
+    async delete(deleteInput) {
+      const operationFingerprint = fingerprint({ expectedVersion: deleteInput.expectedVersion });
+      return withMutationLock(`${deleteInput.actorId}\u0000${deleteInput.noteId}`, async () => {
+        const stored = requirePayload(
+          await input.repository.get(deleteInput.actorId, deleteInput.noteId, { includeDeleted: true }),
+          deleteInput.noteId,
+        );
+        const replay = checkReplay(stored, {
+          idempotencyKey: deleteInput.idempotencyKey,
+          kind: "delete",
+          fingerprint: operationFingerprint,
+        });
+        if (replay) return replay;
+        if (stored.operations.some((operation) => operation.kind === "delete")) {
+          throw new NoteServiceError("NOTE_NOT_FOUND", `Note ${deleteInput.noteId} was not found`);
+        }
+        if (stored.note.version !== deleteInput.expectedVersion) {
+          throw new NoteServiceError("NOTE_VERSION_CONFLICT", "Note has changed since it was loaded");
+        }
+        const note: NoteDTO = {
+          ...stored.note,
+          version: stored.note.version + 1,
+          updatedAt: deleteInput.now,
+        };
+        const saved = await input.repository.save({
+          schemaVersion: 2,
+          note,
+          operations: [...stored.operations, receipt({
+            idempotencyKey: deleteInput.idempotencyKey,
+            kind: "delete",
+            fingerprint: operationFingerprint,
+            resultVersion: note.version,
+          })],
+        }, {
+          deletedAt: deleteInput.now,
+          expected: { kind: "version", value: stored.note.version },
+        });
+        return saved?.note ?? resolveConcurrentMutation({
+          actorId: deleteInput.actorId,
+          fingerprint: operationFingerprint,
+          idempotencyKey: deleteInput.idempotencyKey,
+          kind: "delete",
+          noteId: deleteInput.noteId,
+          repository: input.repository,
+        });
       });
     },
     async unlinkContact(unlinkInput) {
@@ -348,11 +442,19 @@ export function createNoteService(input: { repository: NoteRepository; associati
           version: stored.note.version + 1,
           updatedAt: unlinkInput.now,
         };
-        return (await input.repository.save({
+        const saved = await input.repository.save({
           schemaVersion: 2,
           note,
           operations: [...stored.operations, receipt({ idempotencyKey: unlinkInput.idempotencyKey, kind: "unlink_contact", fingerprint: operationFingerprint, resultVersion: note.version })],
-        })).note;
+        }, { expected: { kind: "version", value: stored.note.version } });
+        return saved?.note ?? resolveConcurrentMutation({
+          actorId: unlinkInput.actorId,
+          fingerprint: operationFingerprint,
+          idempotencyKey: unlinkInput.idempotencyKey,
+          kind: "unlink_contact",
+          noteId: unlinkInput.noteId,
+          repository: input.repository,
+        });
       });
     },
   };
