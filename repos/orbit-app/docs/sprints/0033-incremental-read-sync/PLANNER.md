@@ -105,7 +105,13 @@
 
 ### Task 4: Cross-client runtime acceptance and delivery
 
+2026-09-16 管理线批准的必要文件补充（保留原 SC）：补充前 Planner SHA256
+`f28384ff4c6ec8e597cc7ef5a49f7bddfb4be1c4b427fcf485bb4a5aabab6540`。
+先单独提交本范围修订，再 TDD 实现以下验收工具；不修改业务符号，不合并或推送。
+
 **Files:**
+- Create: `repos/orbits/scripts/verify-incremental-sync-runtime.mjs` — 固定测试清单、loopback 专用数据库只读预检、最小子进程环境、脱敏计数；App 测试仅从显式指定且版本一致的 App checkout 执行。
+- Create: `repos/orbits/tests/services/incremental-sync-runtime-harness.test.mjs` — TDD 覆盖拒绝未知数据库/URL 绕过/环境污染、固定测试选择、失败/跳过/超时 fail-closed、无敏感输出。
 - Create after execution: `repos/orbit-app/docs/sprints/0033-incremental-read-sync/REPORT.md`
 - Modify: `repos/orbit-app/docs/sprints/README.md`
 - Modify: `bridge/status.md`, `bridge/handoffs.md`
@@ -114,6 +120,9 @@
 - Modify if capability state changes: `bridge/capabilities.md`
 
 - [ ] Apply the real sync migration, production-build/restart Web/API, record commit/address/health/database/account hash, then install the current App build connected to that exact base URL.
+- [ ] Harness preparation: reuse existing migration/actor-scoped CRUD/cursor rotation/reset and App offline stale/recovery tests. Require explicit dedicated local test database identity plus a read-only test marker before any write test; reject unknown targets. Do not inherit business/provider credentials or load env files. Emit only fixed-key hashes/booleans/counts, never raw subprocess output, URLs, cookies, cursors or records. Temporary credentials/cookies, if needed, use mode 0600 and finally cleanup. Failed, missing, skipped, timed-out or cleanup-failed checks remain incomplete. Automated harness success is not Simulator or production-service acceptance.
+- [ ] Second-review hardening: run only from an owned mode-0700 snapshot made by `git archive` of the verified clean common HEAD, validate paths and blob content before dependency symlinks, and remove the snapshot in finally. Compare official schema-only pg_dump output against an owned unique template0 control database in the same cluster; include ACL/settings checks outside that dump. Never drop/recreate the supplied target; verify control identity/owner before its cleanup. Cover original-tree dirty→restore, archive/extract/link/cleanup failures, custom access method, enum/domain, non-owner, DB settings/ACL and final residue with real fixtures.
+- [ ] Third-review hardening: use separate, sequential Web/App archive snapshots; lock regular files to 0400 and directories to 0500 after linking dependencies. Enumerate and verify the entire snapshot before/after every suite; reject extra paths, changed blob/type/mode or failed chmod even after successful test output. Remove Web before creating App. Cleanup only unlocks owned directories and never follows dependency symlinks. Cover pre-spawn tampering, persistent subprocess self-modification, extra files, sibling isolation and chmod failure; document the active same-UID transient-restore threat exclusion.
 - [ ] For each of four domains create/update/delete one authorized disposable record in Web, foreground/refresh App, and prove the exact revision/tombstone arrives without full collection refetch.
 - [ ] Disable network and prove cached content remains with stale status; restore network and prove cursor recovery. Test invalid cursor recovery without losing device-only drafts.
 - [ ] Run affected Web/App tests and typechecks once, `git diff --check`, `gitnexus_detect_changes(scope="staged")` and path-limited commits; report fixed SHA and merge-tree verification.

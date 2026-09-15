@@ -65,4 +65,45 @@ HTTP 层继续使用项目统一 envelope：成功体是 `{ success: true, data:
 
 ## 完成定义
 
+### Task 4 验收辅助工具范围补充（2026-09-16，管理线批准）
+
+新增 `repos/orbits/scripts/verify-incremental-sync-runtime.mjs` 与直接测试
+`repos/orbits/tests/services/incremental-sync-runtime-harness.test.mjs`。
+工具只负责环境安全预检、按固定清单运行已有 Web migration/actor CRUD/cursor
+测试及指定 App checkout 的 coordinator/freshness 测试、脱敏汇总；不得修改 Note、
+consumer 或其他业务符号，不复制业务实现，不启动 provider 或迁移未知数据库。
+仅允许显式指定的 loopback 专用测试库；先只读确认服务器地址、数据库身份和测试标记，
+无法证明目标安全时不运行任何写测试。子进程使用最小环境，禁止继承业务凭据或加载
+`.env` 文件。输出仅含固定键下的哈希、布尔和计数；禁止输出 URL、cookie、密钥、
+cursor、原始记录和未经筛选的异常/测试日志。若需临时凭据或 cookie 文件，必须
+mode 0600 并在 finally 清理；优先仅在内存中传递，不落盘。
+
+这些自动化检查是 Task 4 的准备证据，不能替代集成 SHA 的 production build/restart、
+真实四域 Web→Simulator revision/tombstone、离线可见 stale 与恢复、请求次数证据。
+缺测试、失败、跳过或清理失败均不得报告通过。最终 REPORT 和运行服务操作等待管理线
+提供集成 SHA 与环境所有权。
+
+2026-09-16 第二轮复审补充：不从原工作树执行测试。验证同根目录、精确路径、clean
+状态与同一 HEAD 后，仅从该 SHA 的 `git archive` 生成 mode 0700 自有临时快照；
+拒绝 archive 中不安全路径、symlink/gitlink，校验解包文件与 Git blob 一致，仅为依赖
+建立指向原树 node_modules 的临时 symlink；测试 cwd 必须是快照内两端目录，finally
+删除快照。原树在测试期间变化不得改变执行源码。
+数据库用同一 cluster 的自有唯一 control database（template0、验证 owner/身份后创建）
+与目标库的官方 pg_dump schema-only 输出比较，不再依靠手工业务对象 catalog 清单；
+对象检查固定 `--schema-only --no-owner --no-privileges`，另比较带 privileges 的 dump
+以覆盖 schema/object ACL，并检查数据库/角色设置、数据库/parameter ACL 与 large objects。
+control database 身份和所有权在删除前再次核验，只删除本次确认创建的 control；
+绝不删除或重建传入的目标库。快照、dump、控制库或清理任一步失败均不能报告通过。
+
+第三轮复审补充：Web/App suite 各用独立随机 mode 0700 容器。只先创建 Web 子树，
+Web suite 结束并校验、删除其快照后，才从同一 exact HEAD 创建 App 子树，避免存在
+另一端可写 sibling。依赖 symlink 建立后，所有 tracked regular files 统一锁为 0400、
+tracked directories 为 0500；原 Git regular mode 保留在清单中，核验使用上述统一只读模式。
+每个 suite 启动前与结束后重新枚举完整自有快照，核对 Git blob hash、类型、权限与路径集合；
+仅精确的 node_modules symlink 可例外，任何额外路径、缺项或持续修改均使 suite/整体失败，
+即使子进程输出通过也不能放行。finally 仅恢复自有目录的删除权限，不跟随 symlink、
+不 chmod 依赖目标；清理失败继续报告失败。
+威胁边界为误操作、并行任务和 suite 持续自修改；不声称抵抗主动同 UID 解锁、瞬时篡改
+后在检查间隙恢复原状的攻击，也不将此工具描述为操作系统沙箱。
+
 四域读取页面由规范化镜像提供首屏；Web→App 四域同账号修改通过 delta 到达；每个服务端响应有稳定分页、actor 隔离和 bounded payload；网络失败/无效 cursor/删除均有真实 UI 和恢复证据。
