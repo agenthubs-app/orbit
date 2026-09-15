@@ -8,6 +8,7 @@ import type {
   LocalSyncDatabase,
   LocalSyncSqlValue,
 } from "./local-sync-database";
+import { z } from "zod";
 
 const SYNC_ENTITY_KINDS = new Set<SyncEntityKind>([
   "contact",
@@ -36,6 +37,8 @@ const OUTBOX_OPERATIONS = new Set<LocalSyncOutboxOperation>([
   "update",
   "delete",
 ]);
+const SYNC_TIMESTAMP = z.iso.datetime({ offset: true });
+const PLAIN_JSON = z.json();
 
 export type LocalSyncBootstrapState = "pending" | "complete";
 export type LocalSyncOutboxOperation = "create" | "update" | "delete";
@@ -159,7 +162,7 @@ export function createLocalSyncRepository(input: {
     async applyPage(page: ApplyLocalSyncPageInput): Promise<void> {
       assertNonEmptyString(page.workspaceId, "workspaceId");
       assertNonEmptyString(page.cursor, "cursor");
-      assertNonEmptyString(page.syncedAt, "syncedAt");
+      assertTimestamp(page.syncedAt, "syncedAt");
       if (!BOOTSTRAP_STATES.has(page.bootstrapState)) {
         throw new TypeError("bootstrapState is invalid");
       }
@@ -220,7 +223,7 @@ export function createLocalSyncRepository(input: {
                 payload_json, sync_state, ai_visibility
          FROM sync_records
          WHERE workspace_id = ? AND kind = ?${deletedPredicate}
-         ORDER BY updated_at DESC, record_id ASC`,
+         ORDER BY julianday(updated_at) DESC, record_id ASC`,
         [query.workspaceId, query.kind],
       );
       return rows.map((row) => recordFromRow(row, actorId));
@@ -288,7 +291,7 @@ export function createLocalSyncRepository(input: {
                 next_retry_at, last_error_code
          FROM sync_outbox
          WHERE workspace_id = ?
-         ORDER BY created_at ASC, mutation_id ASC`,
+         ORDER BY julianday(created_at) ASC, mutation_id ASC`,
         [workspaceId],
       );
       return rows.map((row) => ({
@@ -330,8 +333,8 @@ function validateAndSerializeRecord(
   assertSyncEntityKind(value.kind);
   assertNonEmptyString(value.id, "id");
   assertNonEmptyString(value.revision, "revision");
-  assertNonEmptyString(value.updatedAt, "updatedAt");
-  assertNullableString(value.deletedAt, "deletedAt");
+  assertTimestamp(value.updatedAt, "updatedAt");
+  assertNullableTimestamp(value.deletedAt, "deletedAt");
   if (!LOCAL_SYNC_STATES.has(value.syncState)) {
     throw new TypeError("syncState is invalid");
   }
@@ -344,8 +347,9 @@ function validateAndSerializeRecord(
   if (value.deletedAt !== null && value.payload !== null) {
     throw new TypeError("tombstone payload must be null");
   }
-  assertNoActorIdentity(value.payload, "payload");
-
+  if (value.deletedAt === null && value.payload === null) {
+    throw new TypeError("live record payload must not be null");
+  }
   return {
     record: value,
     payloadJson:
@@ -383,13 +387,12 @@ function validateAndSerializeOutboxMutation(
     throw new TypeError("operation is invalid");
   }
   assertNullableString(value.baseRevision, "baseRevision");
-  assertNonEmptyString(value.createdAt, "createdAt");
+  assertTimestamp(value.createdAt, "createdAt");
   if (!Number.isSafeInteger(value.retryCount) || value.retryCount < 0) {
     throw new TypeError("retryCount must be a non-negative safe integer");
   }
-  assertNullableString(value.nextRetryAt, "nextRetryAt");
+  assertNullableTimestamp(value.nextRetryAt, "nextRetryAt");
   assertNullableString(value.lastErrorCode, "lastErrorCode");
-  assertNoActorIdentity(value.patch, "patch");
   return value.patch === null ? null : serializeJson(value.patch, "patch");
 }
 
@@ -433,8 +436,13 @@ function assertNonEmptyString(
   value: unknown,
   field: string,
 ): asserts value is string {
-  if (typeof value !== "string" || value.length === 0) {
-    throw new TypeError(`${field} must be a non-empty string`);
+  if (
+    typeof value !== "string" ||
+    value.length === 0 ||
+    value !== value.trim() ||
+    /[\u0000-\u001f\u007f]/u.test(value)
+  ) {
+    throw new TypeError(`${field} is invalid`);
   }
 }
 
@@ -447,17 +455,28 @@ function assertNullableString(
   }
 }
 
+function assertTimestamp(value: unknown, field: string): asserts value is string {
+  if (!SYNC_TIMESTAMP.safeParse(value).success) {
+    throw new TypeError(`${field} is invalid`);
+  }
+}
+
+function assertNullableTimestamp(
+  value: unknown,
+  field: string,
+): asserts value is string | null {
+  if (value !== null) {
+    assertTimestamp(value, field);
+  }
+}
+
 function serializeJson(value: unknown, field: string): string {
-  let serialized: string | undefined;
-  try {
-    serialized = JSON.stringify(value);
-  } catch {
-    throw new TypeError(`${field} must be JSON-serializable`);
+  const parsed = PLAIN_JSON.safeParse(value);
+  if (!parsed.success) {
+    throw new TypeError(`${field} must be plain JSON`);
   }
-  if (serialized === undefined) {
-    throw new TypeError(`${field} must be JSON-serializable`);
-  }
-  return serialized;
+  assertNoActorIdentity(parsed.data, field);
+  return JSON.stringify(parsed.data);
 }
 
 function assertNoActorIdentity(

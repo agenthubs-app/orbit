@@ -201,6 +201,71 @@ test("queries records newest-first with a stable id tie-break and retains tombst
   assert.equal(tombstone?.payload, null);
 });
 
+test("record and outbox ordering compares timestamp instants across offsets", async (t) => {
+  const setup = await repository();
+  t.after(() => setup.database.close());
+  await setup.repository.applyPage({
+    workspaceId: "workspace-a",
+    records: [
+      record({ id: "note-z", updatedAt: "2026-09-16T01:00:00.000Z" }),
+      record({
+        id: "note-a",
+        updatedAt: "2026-09-16T10:00:00.000+09:00",
+      }),
+      record({
+        id: "note-earlier",
+        updatedAt: "2026-09-16T09:30:00.000+09:00",
+      }),
+    ],
+    cursor: "cursor-offsets",
+    syncedAt: "2026-09-16T02:00:00.000Z",
+    bootstrapState: "complete",
+  });
+  const outboxBase: Omit<LocalSyncOutboxMutation, "mutationId" | "createdAt"> = {
+    actorId: "actor-a",
+    workspaceId: "workspace-a",
+    kind: "task",
+    id: "task-a",
+    operation: "update",
+    patch: { title: "ordered" },
+    baseRevision: "revision-1",
+    retryCount: 0,
+    nextRetryAt: null,
+    lastErrorCode: null,
+  };
+  await setup.repository.enqueueOutboxMutation({
+    ...outboxBase,
+    mutationId: "mutation-z",
+    createdAt: "2026-09-16T09:30:00.000+09:00",
+  });
+  await setup.repository.enqueueOutboxMutation({
+    ...outboxBase,
+    mutationId: "mutation-later",
+    createdAt: "2026-09-16T01:00:00.000Z",
+  });
+  await setup.repository.enqueueOutboxMutation({
+    ...outboxBase,
+    mutationId: "mutation-a",
+    createdAt: "2026-09-16T00:30:00.000Z",
+  });
+
+  assert.deepEqual(
+    (
+      await setup.repository.listRecords({
+        workspaceId: "workspace-a",
+        kind: "note",
+      })
+    ).map(({ id }) => id),
+    ["note-a", "note-z", "note-earlier"],
+  );
+  assert.deepEqual(
+    (await setup.repository.listOutboxMutations("workspace-a")).map(
+      ({ mutationId }) => mutationId,
+    ),
+    ["mutation-a", "mutation-z", "mutation-later"],
+  );
+});
+
 test("canonical pages do not overwrite pending or conflicted local records", async (t) => {
   const setup = await repository();
   t.after(() => setup.database.close());
@@ -415,6 +480,101 @@ test("invalid or cross-actor records are rejected before any SQL runs", async (t
     /patch must not contain actor identity/,
   );
   assert.equal(setup.database.statementCount, 0);
+});
+
+test("contract identifiers, timestamps, live payloads, and JSON are validated before SQL", async (t) => {
+  const setup = await repository();
+  t.after(() => setup.database.close());
+  setup.database.statementCount = 0;
+  const invalidRecords: Array<{
+    value: SyncRecord;
+    message: RegExp;
+  }> = [
+    { value: record({ revision: "   " }), message: /revision is invalid/ },
+    { value: record({ id: " note-a" }), message: /id is invalid/ },
+    {
+      value: record({ workspaceId: "workspace\u0000a" }),
+      message: /workspaceId is invalid/,
+    },
+    {
+      value: record({ updatedAt: "2026-09-16 00:00:00Z" }),
+      message: /updatedAt is invalid/,
+    },
+    {
+      value: record({ deletedAt: "not-a-timestamp", payload: null }),
+      message: /deletedAt is invalid/,
+    },
+    {
+      value: record({ payload: null }),
+      message: /live record payload must not be null/,
+    },
+    {
+      value: record({
+        payload: { nested: { missing: undefined } },
+      }),
+      message: /payload must be plain JSON/,
+    },
+    {
+      value: record({ payload: { score: Number.NaN } }),
+      message: /payload must be plain JSON/,
+    },
+  ];
+
+  for (const invalid of invalidRecords) {
+    await assert.rejects(
+      setup.repository.putRecord(invalid.value),
+      invalid.message,
+    );
+  }
+  assert.equal(setup.database.statementCount, 0);
+});
+
+test("serialization hooks cannot inject actor identity into records or outbox patches", async (t) => {
+  const setup = await repository();
+  t.after(() => setup.database.close());
+  const payload = Object.assign(
+    Object.create({
+      toJSON: () => ({ actorId: "injected-record-actor" }),
+    }) as Record<string, unknown>,
+    { safe: "record-value" },
+  );
+  const patch = Object.assign(
+    Object.create({
+      toJSON: () => ({ actor_id: "injected-outbox-actor" }),
+    }) as Record<string, unknown>,
+    { safe: "patch-value" },
+  );
+
+  await setup.repository.putRecord(record({ payload }));
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a",
+    workspaceId: "workspace-a",
+    mutationId: "mutation-hook",
+    kind: "note",
+    id: "note-a",
+    operation: "update",
+    patch,
+    baseRevision: "revision-1",
+    createdAt: "2026-09-16T00:05:00.000Z",
+    retryCount: 0,
+    nextRetryAt: null,
+    lastErrorCode: null,
+  });
+
+  assert.deepEqual(
+    (
+      await setup.repository.getRecord({
+        workspaceId: "workspace-a",
+        kind: "note",
+        id: "note-a",
+      })
+    )?.payload,
+    { safe: "record-value" },
+  );
+  assert.deepEqual(
+    (await setup.repository.listOutboxMutations("workspace-a"))[0]?.patch,
+    { safe: "patch-value" },
+  );
 });
 
 test("outbox storage is stable, ordered, and workspace-isolated", async (t) => {
