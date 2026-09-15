@@ -11,8 +11,8 @@ import { View } from "react-native-web";
 const listeners = new Set(); let revision = 0;
 const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
 const task = { id: "task:mirror", accountId: "actor", ownerUserId: "actor", title: "Mirror task", status: "open", category: "relationship", priority: "normal", source: "manual", relatedContactId: "contact:one", createdAt: "2026-09-16T00:00:00Z", updatedAt: "2026-09-16T00:00:00Z" };
-export const state = window.fixture = { records: [{ id: task.id, payload: task, revision: "1" }], status: "stale", reads: [], writes: [], syncs: [], ...window.initialFixture, update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
-export const useSyncedCollection = () => { observe(); return { records: state.records, status: state.status, error: state.error || null, lastSyncedAt: "2026-09-16T00:00:00Z", refresh() { state.syncs.push("refresh"); }, async invalidate() { state.syncs.push("invalidate"); } }; };
+export const state = window.fixture = { records: [{ id: task.id, payload: task, revision: "1" }], status: "stale", reads: [], writes: [], syncs: [], syncResult: "success", ...window.initialFixture, update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
+export const useSyncedCollection = () => { observe(); return { records: state.records, status: state.status, error: state.error || null, lastSyncedAt: "2026-09-16T00:00:00Z", refresh() { state.syncs.push("refresh"); }, async invalidate() { state.syncs.push("invalidate"); if (state.syncResult === "pending") return null; const payload = { ...task, status: "completed", updatedAt: "2026-09-16T01:00:00Z" }; return { records: [{ id: payload.id, payload, revision: "2" }], status: "fresh", error: null, lastSyncedAt: payload.updatedAt, workspaceId: "workspace" }; } }; };
 export const useApiResource = path => { state.reads.push(path); return { kind: "success", data: { contacts: [{ id: "contact:one", displayName: "Ada", organization: "Orbit" }] }, refreshing: false, refresh() { state.reads.push(path); } }; };
 const client = { async patch(path, options) { state.writes.push({ path, body: options.body }); const payload = { ...task, status: "completed", updatedAt: "2026-09-16T01:00:00Z" }; return { success: true, status: 200, data: { task: payload } }; } };
 export const useOrbitApiClient = () => client;
@@ -57,4 +57,25 @@ test("TasksScreen is mirror-first, preserves stale content, invalidates after PA
   await page.getByText("Mirror task", { exact: true }).waitFor({ state: "detached" });
   await page.evaluate(() => (window as any).fixture.update({ status: "failure", error: "Offline sync failed" }));
   await page.getByRole("alert").filter({ hasText: "Offline sync failed" }).waitFor();
+});
+
+test("TasksScreen never renders empty success over a failed mirror", async t => {
+  const page = await open(t);
+  await page.evaluate(() => (window as any).fixture.update({ records: [], status: "failure", error: "Offline sync failed" }));
+  await page.getByRole("alert").filter({ hasText: "Offline sync failed" }).waitFor();
+  assert.equal(await page.getByText("No open tasks", { exact: true }).count(), 0);
+});
+
+test("a cloud receipt without a fresh mirror stays retryable and reuses its identity", async t => {
+  const page = await open(t);
+  await page.evaluate(() => (window as any).fixture.update({ status: "fresh", syncResult: "pending" }));
+  const checkbox = page.getByRole("checkbox", { name: "Complete: Mirror task" });
+  await checkbox.dispatchEvent("click");
+  await page.getByRole("alert").filter({ hasText: "saved in the cloud" }).waitFor();
+  assert.equal(await checkbox.isDisabled(), false);
+  await page.evaluate(() => (window as any).fixture.update({ syncResult: "success" }));
+  await checkbox.dispatchEvent("click");
+  await page.waitForFunction(() => (window as any).fixture.writes.length === 2);
+  const writes = await page.evaluate(() => (window as any).fixture.writes);
+  assert.equal(writes[0].body.idempotencyKey, writes[1].body.idempotencyKey);
 });

@@ -19,8 +19,9 @@ const subscribe = (listener) => { listeners.add(listener); return () => listener
 const rerender = () => useSyncExternalStore(subscribe, () => revision);
 const state = window.fixture = {
   task: { id: "task:edit", accountId: "test", ownerUserId: "test", title: "Original title", notes: "Original notes", status: "open", category: "work", priority: "normal", source: "ai_confirmed", sourceNoteId: "note:source", sourceNoteVersion: 3, createdAt: "2026-09-07T00:00:00.000Z", updatedAt: "2026-09-07T00:00:00.000Z" },
-  requests: [], refreshes: 0, failure: false, hold: false, thrown: false, notifications: 0, navigation: [], permissionCalls: 0, holdPermission: false, permission: "denied", reminders: [],
+  requests: [], refreshes: 0, syncs: 0, failure: false, hold: false, thrown: false, notifications: 0, navigation: [], permissionCalls: 0, holdPermission: false, permission: "denied", reminders: [], receiptMode: "valid", mirrorMode: "success", lastReceipt: null,
   update(patch) { state.task = { ...state.task, ...patch }; emit(); },
+  setState(patch) { Object.assign(state, patch); emit(); },
   switchClient() { client = { ...client }; emit(); }
 };
 export const useLocalSearchParams = () => { rerender(); return { id: state.task.id }; };
@@ -31,15 +32,21 @@ export const useApiResource = (path) => {
 };
 export const useSyncedCollection = () => {
   rerender();
-  return { records: [{ id: state.task.id, payload: state.task, revision: state.task.updatedAt }], status: "fresh", error: null, lastSyncedAt: state.task.updatedAt, refresh() { state.refreshes++; emit(); }, async invalidate() { state.refreshes++; emit(); } };
+  const records = state.records ?? [{ id: state.task.id, payload: state.task, revision: state.task.updatedAt }];
+  return { records, status: state.syncStatus ?? "fresh", error: state.syncError ?? null, lastSyncedAt: state.task.updatedAt, refresh() { state.refreshes++; emit(); }, async invalidate() { state.syncs++; if (state.mirrorMode === "pending") return null; const receipt = state.lastReceipt; const nextRecords = receipt?.activity?.type === "deleted" ? [] : receipt?.task ? [{ id: receipt.task.id, payload: receipt.task, revision: receipt.task.updatedAt }] : records; return { records: nextRecords, status: "fresh", error: null, lastSyncedAt: receipt?.task?.updatedAt ?? state.task.updatedAt, workspaceId: "workspace" }; } };
 };
 async function request(method, path, options) {
     state.requests.push({ method, path, ...options });
-    const updated = { ...state.task, ...options.body.patch, updatedAt: "2026-09-07T03:00:00.000Z" };
+    const action = options.body.action;
+    const updated = { ...state.task, ...options.body.patch, status: action === "complete" ? "completed" : action === "reopen" ? "open" : state.task.status, updatedAt: "2026-09-07T03:00:00.000Z" };
     if (state.hold) await new Promise(resolve => { state.release = resolve; });
     if (state.thrown) throw Error("unexpected transport failure");
     if (state.failure) return { success: false, error: { message: "连接暂时失败" } };
-    return { success: true, data: { task: updated } };
+    if (state.receiptMode === "invalid") return { success: true, status: 200, data: { task: { ...updated, ownerUserId: "other" } } };
+    const type = method === "DELETE" ? "deleted" : action === "complete" ? "completed" : action === "reopen" ? "reopened" : "updated";
+    const activity = { id: "activity:" + type, accountId: "test", ownerUserId: "test", taskId: state.task.id, type, actorType: "user", actorId: "test", occurredAt: updated.updatedAt, taskSnapshot: { title: updated.title, category: updated.category } };
+    state.lastReceipt = { task: updated, activity };
+    return { success: true, status: 200, data: state.lastReceipt };
 }
 let client = {
   patch: (path, options) => request("PATCH", path, options),
@@ -281,6 +288,61 @@ test("an unexpected mutation rejection unlocks the editor and offers a visible r
   assert.equal(requests[0].body.idempotencyKey, requests[1].body.idempotencyKey);
 });
 
+test("a fresh mirror without the requested task renders an explicit missing state", async (t) => {
+  const page = await openScreen(t);
+  await page.evaluate(() => (window as any).fixture.setState({ records: [], syncStatus: "fresh" }));
+  await page.waitForTimeout(100);
+  assert.match(await page.locator("body").innerText(), /这条待办已删除或不存在/u);
+  assert.equal(await page.getByRole("textbox", { name: "待办标题", exact: true }).count(), 0);
+});
+
+for (const operation of ["update", "complete", "delete"] as const) {
+  test(`${operation} rejects a malformed 2xx receipt before sync or navigation and preserves retry identity`, async (t) => {
+    const page = await openScreen(t);
+    await page.evaluate(() => { (window as any).fixture.receiptMode = "invalid"; });
+    let action;
+    if (operation === "update") {
+      action = page.getByRole("textbox", { name: "待办标题", exact: true });
+      await action.fill("Receipt guarded title");
+      await action.blur();
+    } else if (operation === "complete") {
+      action = page.getByRole("button", { name: "标记完成", exact: true });
+      await action.click();
+    } else {
+      await page.getByRole("button", { name: "更多待办操作", exact: true }).click();
+      action = page.getByRole("button", { name: "删除待办", exact: true });
+      await action.click();
+    }
+    await page.getByRole("alert").filter({ hasText: "未能确认" }).waitFor();
+    assert.equal(await page.evaluate(() => (window as any).fixture.syncs), 0);
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), []);
+    await page.evaluate(() => { (window as any).fixture.receiptMode = "valid"; });
+    if (operation === "update") {
+      await action.focus();
+      await action.blur();
+    } else {
+      await action.click();
+    }
+    await page.waitForFunction(() => (window as any).fixture.requests.length === 2);
+    const requests = await page.evaluate(() => (window as any).fixture.requests);
+    assert.equal(requests[0].body.idempotencyKey, requests[1].body.idempotencyKey);
+  });
+}
+
+test("a valid cloud receipt without fresh mirror confirmation stays retryable", async (t) => {
+  const page = await openScreen(t);
+  await page.evaluate(() => { (window as any).fixture.mirrorMode = "pending"; });
+  const action = page.getByRole("button", { name: "标记完成", exact: true });
+  await action.click();
+  await page.getByRole("alert").filter({ hasText: "云端已保存" }).waitFor();
+  assert.equal(await action.isDisabled(), false);
+  await page.evaluate(() => { (window as any).fixture.mirrorMode = "success"; });
+  await action.click();
+  await page.waitForFunction(() => (window as any).fixture.requests.length === 2);
+  const requests = await page.evaluate(() => (window as any).fixture.requests);
+  assert.equal(requests[0].body.idempotencyKey, requests[1].body.idempotencyKey);
+});
+
 for (const boundary of ["task", "client", "unmount"]) {
   test(`a delayed delete cannot navigate or refresh after changing ${boundary}`, async (t) => {
     const page = await openScreen(t);
@@ -348,8 +410,8 @@ for (const operation of ["complete", "reopen", "delete", "reminder", "cancel"]) 
     await action.click();
     await page.waitForFunction(() => (window as any).fixture.notifications === 1);
     const snapshot = await page.evaluate(() => {
-      const { requests, refreshes, navigation } = (window as any).fixture;
-      return { requests, refreshes, navigation };
+      const { requests, refreshes, navigation, syncs } = (window as any).fixture;
+      return { requests, refreshes, navigation, syncs };
     });
     assert.equal(snapshot.requests.length, 2);
     assert.equal(snapshot.requests[0].body.idempotencyKey, snapshot.requests[1].body.idempotencyKey);
@@ -364,6 +426,7 @@ for (const operation of ["complete", "reopen", "delete", "reminder", "cancel"]) 
       assert.equal(request.body.body, "Original title");
     }
     assert.deepEqual(snapshot.navigation, operation === "delete" ? ["/tasks"] : []);
-    assert.equal(snapshot.refreshes, ["delete", "reminder", "cancel"].includes(operation) ? 1 : 3);
+    assert.equal(snapshot.syncs, ["complete", "reopen", "delete"].includes(operation) ? 1 : 0);
+    assert.equal(snapshot.refreshes, ["complete", "reopen"].includes(operation) ? 2 : ["reminder", "cancel"].includes(operation) ? 1 : 0);
   });
 }

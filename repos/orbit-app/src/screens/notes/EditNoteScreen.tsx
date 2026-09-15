@@ -133,8 +133,15 @@ export function EditNoteScreen({ actorId, draftServer = "local", noteId, scopeKe
     const note = result.success && result.status >= 200 && result.status < 300
       ? confirmedNote(result.data, { actorId, title: request.body.title, body: request.body.body, manualContactIds: request.body.manualContactIds, mentions: request.body.mentions, contactIds: [...request.body.manualContactIds, ...request.body.mentions.map((item) => item.contactId)], eventIds: request.body.eventIds, noteId }, locale.language) : null;
     if (note) {
-      await noteDraftStorage.clear(draftScope);
-      initializedVersion.current = note.version; setConfirmed(note); setTitle(note.title); setDraft(note.body); setMentions([...note.mentions]); setSelectedIds([...note.manualContactIds]); setEventIds([...note.eventIds]); setDirty(false); setDraftStatus(""); setSaved(true); await noteSync.invalidate();
+      const mirror = await noteSync.invalidate();
+      const mirroredRecord = mirror?.records.find((item) => item.id === note.id);
+      const mirrored = mirroredRecord ? confirmedNote({ note: mirroredRecord.payload }, { actorId, body: note.body, contactIds: note.contactIds, eventIds: note.eventIds, manualContactIds: note.manualContactIds, mentions: note.mentions, noteId: note.id, title: note.title }, locale.language) : null;
+      if (mirror?.status !== "fresh" || !mirrored || mirrored.version < note.version) {
+        setError(locale.t("sync.mutationPending"));
+      } else {
+        await noteDraftStorage.clear(draftScope);
+        initializedVersion.current = note.version; setConfirmed(note); setTitle(note.title); setDraft(note.body); setMentions([...note.mentions]); setSelectedIds([...note.manualContactIds]); setEventIds([...note.eventIds]); setDirty(false); setDraftStatus(""); setSaved(true);
+      }
     } else setError(result.success ? locale.t("notes.updateUnconfirmed") : result.error.message);
     if (owns()) setPending(false);
     if (controller.current === operation) controller.current = null;

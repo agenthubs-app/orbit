@@ -1084,6 +1084,15 @@ function Probe({ index }) {
   const state = useSyncedCollection({ kind: "note" });
   const fixture = useFixture();
   fixture.renders.push(state.status);
+  fixture.invalidate = async options => {
+    fixture.invalidationResult = "pending";
+    const result = await state.invalidate(options);
+    fixture.invalidationResult = result ? {
+      ids: result.records.map(record => record.id),
+      status: result.status,
+    } : null;
+    return fixture.invalidationResult;
+  };
   return <output data-probe={index}>{state.status + ":" + state.records.map(record => record.id).join(",")}</output>;
 }
 function App() {
@@ -1368,4 +1377,51 @@ test("a TTL hit never publishes a synthetic syncing render", async (t) => {
     ),
     0,
   );
+});
+
+test("invalidation returns the final mirror snapshot and times out observably", async (t) => {
+  const lastSyncedAt = new Date().toISOString();
+  const page = await openHook(t, {
+    cursor: {
+      workspaceId: "workspace-a",
+      cursor: "cursor-fresh",
+      lastSyncedAt,
+      bootstrapState: "complete",
+    },
+    workspaceId: "workspace-a",
+    records: [{
+      actorId: "actor-a", workspaceId: "workspace-a", kind: "note", id: "cached",
+      revision: "revision-cached", updatedAt: lastSyncedAt, deletedAt: null,
+      payload: { title: "cached" }, syncState: "synced",
+      aiVisibility: "available_when_synced",
+    }],
+  });
+  await page.getByText("fresh:cached", { exact: true }).waitFor();
+
+  await page.evaluate(() => {
+    void (window as unknown as { fixture: { invalidate(options: { timeoutMs: number }): Promise<unknown> } })
+      .fixture.invalidate({ timeoutMs: 20 });
+  });
+  await page.waitForTimeout(60);
+  assert.equal(
+    await page.evaluate(() =>
+      (window as unknown as { fixture: { invalidationResult: unknown } }).fixture.invalidationResult,
+    ),
+    null,
+  );
+  assert.equal(
+    await page.evaluate(() =>
+      (window as unknown as { fixture: { requests: unknown[] } }).fixture.requests.length,
+    ),
+    1,
+  );
+
+  const completed = page.evaluate(() =>
+    (window as unknown as { fixture: { invalidate(options: { timeoutMs: number }): Promise<unknown> } })
+      .fixture.invalidate({ timeoutMs: 1_000 }),
+  );
+  await page.evaluate(() => {
+    (window as unknown as { fixture: { reply(index: number, id: string): void } }).fixture.reply(0, "updated");
+  });
+  assert.deepEqual(await completed, { ids: ["updated"], status: "fresh" });
 });

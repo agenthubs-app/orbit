@@ -79,8 +79,14 @@ function PersonalScheduleEditor({ id, actorId, baseUrl, ready, scopeKey }: { id:
       if (!result.success) { setError(result.error.message); return; }
       const item = readPersonalSchedule(result.data);
       if (result.status < 200 || result.status >= 300 || !item || !personalScheduleReceiptMatches(result.data, actorId, id || undefined, change.fields, remove) || (baseline && Date.parse(item.updatedAt) <= Date.parse(baseline.updatedAt))) { setError(locale.t("schedule.saveUnconfirmed")); return; }
+      const mirror = await scheduleSync.invalidate();
+      const mirroredRecord = mirror?.records.find((record) => record.id === item.id);
+      const mirrored = mirroredRecord ? readPersonalSchedule({ scheduleItem: mirroredRecord.payload }) : null;
+      const confirmed = remove
+        ? mirror?.status === "fresh" && !mirroredRecord
+        : mirror?.status === "fresh" && mirrored?.ownerUserId === actorId && mirrored.accountId === actorId && mirrored.updatedAt === item.updatedAt;
+      if (!confirmed) { setError(locale.t("sync.mutationPending")); return; }
       scope.keys.delete(fingerprint);
-      await scheduleSync.invalidate();
       if (remove) { router.replace("/schedule" as Href); return; }
       setBaseline(item); setLatest(item); setDraft(personalScheduleDraft(item, editZone)); setMessage(locale.t("schedule.saved"));
       if (!id) router.replace(`/schedule/personal/${encodeURIComponent(item.id)}` as Href);

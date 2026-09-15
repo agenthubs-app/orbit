@@ -22,7 +22,7 @@ const original = {
 };
 const state = window.fixture = {
   mode: new URLSearchParams(location.search).get("mode") || "new",
-  response: "success", requests: [], navigation: [], note: original, syncs: 0,
+  response: "success", requests: [], navigation: [], note: original, syncs: 0, syncResult: "success", lastReceipt: null, syncRefreshes: [], taskSyncStatus: "fresh", taskSyncError: null,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(listener => listener()); }
 };
 const contacts = { total: 3, contacts: [
@@ -33,18 +33,18 @@ const contacts = { total: 3, contacts: [
 function result(kind, body) {
   if (state.response === "failure") return { success: false, status: 409, error: { code: "CONFLICT", message: "当前状态已经变化，请刷新后再试。" }, meta: {} };
   if (state.response === "mismatch") return { success: true, status: 200, data: { note: { ...original, body: "其他正文" } }, meta: {} };
-  if (kind === "create") return { success: true, status: 201, data: { note: {
+  if (kind === "create") { const note = {
     ...original, id: "note:created", title: body.title, body: body.body, manualContactIds: body.manualContactIds, mentions: body.mentions, contactIds: body.manualContactIds, eventIds: body.eventIds, version: 1,
     createdAt: "2026-09-15T00:02:00.000Z", updatedAt: "2026-09-15T00:02:00.000Z"
-  } }, meta: {} };
+  }; state.lastReceipt = note; return { success: true, status: 201, data: { note }, meta: {} }; }
   if (kind === "unlink") return { success: true, status: 200, data: { note: {
     ...state.note, contactIds: state.note.contactIds.filter(id => id !== kind.contactId), version: state.note.version + 1,
     updatedAt: "2026-09-15T00:03:00.000Z"
   } }, meta: {} };
-  return { success: true, status: 200, data: { note: {
-    ...state.note, body: body.body, contactIds: body.contactIds, version: state.note.version + 1,
+  const note = {
+    ...state.note, title: body.title, body: body.body, manualContactIds: body.manualContactIds, mentions: body.mentions, contactIds: [...body.manualContactIds, ...body.mentions.map(item => item.contactId)], eventIds: body.eventIds, version: state.note.version + 1,
     updatedAt: "2026-09-15T00:03:00.000Z"
-  } }, meta: {} };
+  }; state.lastReceipt = note; return { success: true, status: 200, data: { note }, meta: {} };
 }
 const client = {
   async get(path) {
@@ -69,7 +69,7 @@ const client = {
   }
 };
 export const useOrbitApiClient = () => client;
-export const useSyncedCollection = input => ({ records: input.kind === "note" ? [{ id: state.note.id, payload: state.note, revision: String(state.note.version) }] : [], status: "fresh", error: null, lastSyncedAt: state.note.updatedAt, refresh() { state.syncs++; }, async invalidate() { state.syncs++; } });
+export const useSyncedCollection = input => { rerender(); const note = state.lastReceipt ?? state.note; const records = input.kind === "note" ? [{ id: note.id, payload: note, revision: String(note.version) }] : [{ id: "task:source", payload: { id: "task:source", accountId: "account:one", ownerUserId: "account:one", title: "Source task", status: "open", category: "work", priority: "normal", source: "ai_confirmed", sourceNoteId: state.note.id, sourceNoteVersion: state.note.version, createdAt: state.note.createdAt, updatedAt: state.note.updatedAt }, revision: "1" }]; const status = input.kind === "task" ? state.taskSyncStatus : "fresh"; return { records: input.kind === "note" && !state.lastReceipt ? [{ id: state.note.id, payload: state.note, revision: String(state.note.version) }] : records, status, error: input.kind === "task" ? state.taskSyncError : null, lastSyncedAt: note.updatedAt, refresh() { state.syncRefreshes.push(input.kind); }, async invalidate() { state.syncs++; if (state.syncResult === "pending") return null; const syncedNote = state.lastReceipt ?? state.note; const syncedRecords = input.kind === "note" ? [{ id: syncedNote.id, payload: syncedNote, revision: String(syncedNote.version) }] : records; return { records: syncedRecords, status: "fresh", error: null, lastSyncedAt: syncedNote.updatedAt, workspaceId: "workspace" }; } }; };
 export const useApiResource = path => {
   rerender();
   return { kind: "success", data: path === "/api/contacts" ? contacts : { note: state.note }, refreshing: false, refresh() { state.update({}); } };
@@ -112,10 +112,11 @@ test.before(async () => {
     plugins: [{
       name: "note-screen-boundaries",
       setup(plugin) {
-        plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
+        plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "notes-native", namespace: "notes-test" }));
         plugin.onResolve({ filter: /^react-native-safe-area-context$|^expo-router$|\/(useApiResource|useOrbitApiClient|useSyncedCollection)$/ }, () => ({ path: "fixture", namespace: "notes-test" }));
         plugin.onResolve({ filter: /^@expo\/vector-icons$/ }, () => ({ path: "icons", namespace: "notes-test" }));
         plugin.onLoad({ filter: /^fixture$/, namespace: "notes-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
+        plugin.onLoad({ filter: /^notes-native$/, namespace: "notes-test" }, () => ({ contents: `import React from "react"; export * from "react-native-web"; export const RefreshControl = props => <>{props.children}<button data-testid={props.testID} onClick={props.onRefresh}>refresh</button></>;`, loader: "jsx", resolveDir: process.cwd() }));
         plugin.onLoad({ filter: /^icons$/, namespace: "notes-test" }, () => ({ contents: 'export const Ionicons=()=>null;', loader: "js" }));
       },
     }],
@@ -180,6 +181,24 @@ test("confirmed create navigates to the server note and cancel never creates an 
   assert.equal(await value.evaluate(() => (window as any).fixture.syncs), 1, "the mirror delta completes before detail navigation");
 });
 
+for (const mode of ["new", "edit"] as const) test(`${mode} note keeps a confirmed cloud write retryable until the mirror is fresh`, { timeout: 6_000 }, async (t) => {
+  const value = await page(t, mode);
+  await value.evaluate(() => (window as any).fixture.update({ syncResult: "pending" }));
+  const title = value.getByRole("textbox", { name: "笔记标题" });
+  const body = value.getByRole("textbox", { name: "笔记内容" });
+  await title.fill(mode === "new" ? "同步待确认" : "原始标题已改");
+  if (mode === "new") await body.fill("需要保留的正文");
+  await value.getByRole("button", { name: mode === "new" ? "保存笔记" : "保存修改" }).click();
+  await value.getByRole("alert").filter({ hasText: "云端已保存" }).waitFor();
+  assert.deepEqual(await value.evaluate(() => (window as any).fixture.navigation), []);
+  assert.equal(await value.getByText("笔记已更新。", { exact: true }).count(), 0);
+  await value.evaluate(() => (window as any).fixture.update({ syncResult: "success" }));
+  await value.getByRole("button", { name: mode === "new" ? "保存笔记" : "保存修改" }).click();
+  await value.waitForFunction(() => (window as any).fixture.requests.filter((request: any) => request.path.includes("/api/notes")).length === 2);
+  const writes = await value.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.path.includes("/api/notes")));
+  assert.equal(writes[0].body.idempotencyKey, writes[1].body.idempotencyKey);
+});
+
 test("detail is read-only and opens the dedicated edit route", async (t) => {
   const value = await page(t, "detail");
   assert.equal(await value.getByRole("textbox").count(), 0);
@@ -187,6 +206,21 @@ test("detail is read-only and opens the dedicated edit route", async (t) => {
   await value.getByRole("button", { name: "打开关联人脉 佐藤" }).waitFor();
   await value.getByRole("button", { name: "编辑笔记" }).click();
   assert.deepEqual(await value.evaluate(() => (window as any).fixture.navigation), ["/notes/note%3Aone/edit"]);
+});
+
+test("note detail exposes source-task mirror freshness and refreshes both mirrors", { timeout: 5_000 }, async (t) => {
+  const value = await page(t, "detail");
+  await value.waitForTimeout(100);
+  assert.match(await value.locator("body").innerText(), /Source task/u);
+  await value.evaluate(() => (window as any).fixture.update({ taskSyncStatus: "stale", taskSyncError: "Task mirror offline" }));
+  await value.waitForTimeout(100);
+  assert.match(await value.locator("body").innerText(), /关联待办显示的是本地旧数据/u);
+  await value.evaluate(() => (window as any).fixture.update({ taskSyncStatus: "failure", taskSyncError: "Task mirror offline" }));
+  await value.waitForTimeout(100);
+  assert.match(await value.locator("body").innerText(), /Task mirror offline/u);
+  assert.equal(await value.locator('[data-testid="note-detail-refresh"]').count(), 1);
+  await value.locator('[data-testid="note-detail-refresh"]').dispatchEvent("click");
+  assert.deepEqual(await value.evaluate(() => (window as any).fixture.syncRefreshes), ["note", "task"]);
 });
 
 test("note detail opens an editable IORBIT template without making a write request", async (t) => {

@@ -17,7 +17,7 @@ const listeners = new Set(); let revision = 0, nextId = 0;
 const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
 const state = window.fixture = {
   actor: "actor-1", rawUserId: "user:raw-login", taskId: "personal:edit", baseUrl: "https://orbit.example", cookieHeader: "", ready: true, baseReady: true, signedIn: true, mounted: true, fontScale: 1,
-  requests: [], pending: [], presses: {}, inputs: {}, expiries: 0, notifications: 0, permissionCalls: 0, holdReads: false, syncs: 0,
+  requests: [], pending: [], presses: {}, inputs: {}, expiries: 0, notifications: 0, permissionCalls: 0, holdReads: false, syncs: 0, mirrorMode: "success",
   ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
   data(path) { return { scheduleItem: state.item }; },
@@ -48,7 +48,7 @@ export const useFixture = () => { observe(); return state; };
 export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.signedIn ? state.actor : null, actorId: state.signedIn ? state.actor : null, user: state.signedIn ? { id: state.rawUserId } : null, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
 let cachedItem, cachedRecords = [];
-export const useSyncedCollection = () => { observe(); if (cachedItem !== state.item) { cachedItem = state.item; cachedRecords = state.item?.state === "cancelled" ? [] : [{ id: state.item.id, payload: state.item, revision: state.item.updatedAt }]; } return { records: cachedRecords, status: "fresh", error: null, lastSyncedAt: state.item?.updatedAt ?? null, refresh() { state.syncs++; state.update({}); }, async invalidate() { state.syncs++; state.update({}); } }; };
+export const useSyncedCollection = () => { observe(); if (cachedItem !== state.item) { cachedItem = state.item; cachedRecords = state.item?.state === "cancelled" ? [] : [{ id: state.item.id, payload: state.item, revision: state.item.updatedAt }]; } return { records: cachedRecords, status: "fresh", error: null, lastSyncedAt: state.item?.updatedAt ?? null, refresh() { state.syncs++; state.update({}); }, async invalidate() { state.syncs++; if (state.mirrorMode === "pending") return null; cachedItem = state.item; cachedRecords = state.item?.state === "cancelled" ? [] : [{ id: state.item.id, payload: state.item, revision: state.item.updatedAt }]; state.update({}); return { records: cachedRecords, status: "fresh", error: null, lastSyncedAt: state.item?.updatedAt ?? null, workspaceId: "workspace" }; } }; };
 export const useLocalSearchParams = () => { observe(); return { id: state.taskId }; };
 export const useGlobalSearchParams = useLocalSearchParams;
 export const usePathname = () => "/tasks/" + encodeURIComponent(state.taskId);
@@ -102,7 +102,7 @@ async function fill(p: Page, label: string, value: string) { await p.getByRole("
 async function press(p: Page, name: string) { await p.getByRole("button", { name, exact: true }).click(); await settle(p); }
 async function writes(p: Page) { return p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method !== "GET").map((r: any) => ({ method: r.method, path: r.path, body: r.body }))); }
 async function reply(p: Page, status = 200, override?: object) {
-  await p.evaluate(({ status, override }) => { const s = (window as any).fixture; const i = s.requests.findLastIndex((r: any) => r.method !== "GET"); const r = s.requests[i]; const item = { ...s.item, ...(r.body.patch ?? r.body), updatedAt: "2026-09-15T00:00:00Z" }; delete item.idempotencyKey; for (const key of ["endsAt", "location"]) if (item[key] === null) delete item[key]; if (r.method === "DELETE") item.state = "cancelled"; if (status === 200 && !override) s.item = item; s.reply(i, status, override ?? (status === 200 ? { scheduleItem: item, ...(r.method === "DELETE" ? { deleted: true } : {}) } : undefined)); }, { status, override }); await settle(p);
+  await p.evaluate(({ status, override }) => { const s = (window as any).fixture; const i = s.requests.findLastIndex((r: any) => r.method !== "GET"); const r = s.requests[i]; const item = { ...s.item, ...(r.body.patch ?? r.body), updatedAt: "2026-09-15T00:00:00Z" }; delete item.idempotencyKey; for (const key of ["endsAt", "location"]) if (item[key] === null) delete item[key]; if (r.method === "DELETE") item.state = "cancelled"; if (status === 200 && s.mirrorMode !== "pending" && (!override || r.method === "DELETE")) s.item = override?.scheduleItem ?? item; s.reply(i, status, override ?? (status === 200 ? { scheduleItem: item, ...(r.method === "DELETE" ? { deleted: true } : {}) } : undefined)); }, { status, override }); await settle(p);
 }
 
 test("create without a contact, failure retry and reopen use one server record", async t => {
@@ -143,4 +143,19 @@ test("personal editor effect replay retains an active read and save scope", asyn
   assert.equal(await p.getByRole("textbox", { name: "日程地点" }).inputValue(), "After replay");
   assert.equal((await writes(p)).length, 1);
   assert.equal(await p.getByRole("alert").count(), 0);
+});
+
+test("a cloud-saved personal schedule remains retryable until its mirror confirms", async t => {
+  const p = await open(t, { mirrorMode: "pending" });
+  await fill(p, "日程地点", "Mirror pending");
+  await press(p, "保存日程");
+  await reply(p);
+  await p.getByRole("alert").filter({ hasText: "云端已保存" }).waitFor();
+  assert.equal(await p.getByRole("button", { name: "保存日程", exact: true }).isDisabled(), false);
+  await p.evaluate(() => { (window as any).fixture.mirrorMode = "success"; });
+  await press(p, "保存日程");
+  await reply(p);
+  const w = await writes(p);
+  assert.equal(w.length, 2);
+  assert.equal(w[0].body.idempotencyKey, w[1].body.idempotencyKey);
 });

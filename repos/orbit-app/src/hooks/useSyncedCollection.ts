@@ -24,6 +24,11 @@ import { useOrbitApiClient } from "./useOrbitApiClient";
 const appSyncCoordinator = createSyncCoordinator({ lifecycle: syncLifecycle });
 const authSessionGenerations = new WeakMap<object, number>();
 let nextAuthSessionGeneration = 0;
+const DEFAULT_INVALIDATION_TIMEOUT_MS = 8_000;
+
+export interface SyncInvalidationOptions {
+  timeoutMs?: number;
+}
 
 function authSessionGeneration(user: object | null): number {
   if (user === null) return 0;
@@ -81,40 +86,56 @@ export function useSyncedCollection<TPayload = unknown>(input: {
     async (
       reason: "mount" | "explicit" | "foreground" | "invalidated",
       backgroundDurationMs?: number,
-    ): Promise<void> => {
+      timeoutMs?: number,
+    ): Promise<SyncedCollectionSnapshot<TPayload> | null> => {
       const session = sessionRef.current;
-      if (!session || !session.isCurrent()) return;
+      if (!session || !session.isCurrent()) return null;
       const requestGeneration = viewGeneration.current;
       const request = session.synchronize<TPayload>(input.kind, {
         ...(backgroundDurationMs === undefined ? {} : { backgroundDurationMs }),
         reason,
       });
       requests.current.add(request);
-      const started = await request.started;
-      if (
-        started &&
-        mounted.current &&
-        viewGeneration.current === requestGeneration &&
-        session.isCurrent()
-      ) {
-        setSnapshot((current) => ({
-          ...current,
-          error: null,
-          status: "syncing",
-        }));
-      }
-      try {
-        const result = await request.promise;
+      const completion = (async () => {
+        const started = await request.started;
         if (
+          started &&
           mounted.current &&
           viewGeneration.current === requestGeneration &&
-          result &&
           session.isCurrent()
         ) {
-          setSnapshot(result);
+          setSnapshot((current) => ({
+            ...current,
+            error: null,
+            status: "syncing",
+          }));
         }
+        try {
+          const result = await request.promise;
+          if (
+            mounted.current &&
+            viewGeneration.current === requestGeneration &&
+            result &&
+            session.isCurrent()
+          ) {
+            setSnapshot(result);
+          }
+          return result;
+        } finally {
+          requests.current.delete(request);
+        }
+      })();
+      if (timeoutMs === undefined) return completion;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        return await Promise.race([
+          completion,
+          new Promise<null>((resolve) => {
+            timer = setTimeout(resolve, Math.max(0, timeoutMs), null);
+          }),
+        ]);
       } finally {
-        requests.current.delete(request);
+        if (timer !== undefined) clearTimeout(timer);
       }
     },
     [input.kind],
@@ -191,9 +212,13 @@ export function useSyncedCollection<TPayload = unknown>(input: {
     () => startSync("explicit"),
     [startSync],
   );
-  const invalidate = useCallback(() => {
+  const invalidate = useCallback((options: SyncInvalidationOptions = {}) => {
     sessionRef.current?.invalidate();
-    return startSync("invalidated");
+    return startSync(
+      "invalidated",
+      undefined,
+      options.timeoutMs ?? DEFAULT_INVALIDATION_TIMEOUT_MS,
+    );
   }, [startSync]);
 
   return {

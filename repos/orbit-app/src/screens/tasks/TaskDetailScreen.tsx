@@ -27,6 +27,7 @@ import { notifyReminderPlansChanged, requestNotificationPermission } from "../..
 import { reminderPlansToView, reminderQuickOptions } from "../../view-models/reminders";
 import { ownedTaskDetailToView, taskActivitiesToView, type TaskDetailView } from "../../view-models/today-tasks";
 import { buildTaskDatePatch, taskDateDraftFromView, taskDateReceiptMatches, type TaskDateDraft } from "../../view-models/task-dates";
+import { readTaskListItems, taskMutationReceiptMatches } from "../../view-models/task-list-scope";
 
 function first(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
@@ -81,6 +82,7 @@ export function TaskDetailScreen() {
   const activitiesState = useApiResource<unknown>(activitiesPath, () => false, { scopeKey });
   const remindersState = useApiResource<unknown>(reminderResourcePath, () => false, { scopeKey });
   const taskRecord = taskSync.records.find((record) => record.id === taskId);
+  const canonicalTask = ready && taskRecord ? readTaskListItems({ tasks: [taskRecord.payload] }, actorId)?.[0] ?? null : null;
   const detail = ready && taskRecord ? ownedTaskDetailToView({ task: taskRecord.payload }, actorId, locale.language) : null;
   const activities = activitiesState.kind === "success" || activitiesState.kind === "empty" ? taskActivitiesToView(activitiesState.data, timeZone, locale.language) : [];
   const reminders = remindersState.kind === "success" || remindersState.kind === "empty"
@@ -130,7 +132,7 @@ export function TaskDetailScreen() {
     method: "patch" | "post" | "delete",
     path: string,
     body: Record<string, unknown> | (() => Promise<Record<string, unknown>>),
-    onSuccess: (data: unknown) => void | Promise<void>,
+    onSuccess: (data: unknown) => void | boolean | Promise<void | boolean>,
     accepts?: (data: unknown) => boolean,
   ) {
     const scope = mutationScope;
@@ -148,12 +150,12 @@ export function TaskDetailScreen() {
       const result = await client[method]<unknown>(path, { body: { ...payload, idempotencyKey: key }, signal: scope.controller.signal });
       if (!isCurrent()) return;
       if (result.success) {
-        if (accepts && (result.status < 200 || result.status >= 300 || !accepts(result.data))) {
-          setMutationError(locale.t("taskDetail.saveDateUnconfirmed"));
+        if (result.status < 200 || result.status >= 300 || (accepts && !accepts(result.data))) {
+          setMutationError(locale.t("taskDetail.mutationUnconfirmed"));
           return;
         }
-        scope.keys.delete(fingerprint);
-        await onSuccess(result.data);
+        const completed = await onSuccess(result.data);
+        if (completed !== false) scope.keys.delete(fingerprint);
       } else setMutationError(result.error.message);
     } catch {
       if (isCurrent()) setMutationError(locale.t("taskDetail.operationFailed"));
@@ -198,10 +200,14 @@ export function TaskDetailScreen() {
     remindersState.refresh();
   }
 
-  async function refreshTask() {
-    await taskSync.invalidate();
+  async function refreshTask(expected: TaskDetailView): Promise<boolean> {
+    const mirror = await taskSync.invalidate();
     activitiesState.refresh();
     remindersState.refresh();
+    if (mirror?.status !== "fresh") return false;
+    const record = mirror.records.find((item) => item.id === expected.id);
+    const mirrored = record ? ownedTaskDetailToView({ task: record.payload }, actorId, locale.language) : null;
+    return mirrored?.updatedAt === expected.updatedAt;
   }
 
   function discardDraft() {
@@ -231,12 +237,15 @@ export function TaskDetailScreen() {
       action: "update", expectedUpdatedAt: baseline.updatedAt, patch: change.patch,
     }, async data => {
       const updated = ownedTaskDetailToView(data, actorId, locale.language)!; // Accepted below before acknowledging.
+      if (!(await refreshTask(updated))) {
+        setMutationError(locale.t("sync.mutationPending"));
+        return false;
+      }
       if (latestRef.current?.updatedAt === revisionAtStart) setLatest(updated);
       setBaseline(updated);
       dateDraftRef.current = taskDateDraftFromView(updated, editTimeZone);
       setDateDraft(dateDraftRef.current);
-      // Title and notes may still be unsaved. Their draft belongs to the user.
-      await refreshTask();
+      return true;
     }, data => taskDateReceiptMatches(data, taskId, actorId, change.patch));
   }
 
@@ -250,42 +259,55 @@ export function TaskDetailScreen() {
     }
     if (normalizedTitle === baseline.title && normalizedNotes === baseline.notes.trim()) return;
     const revisionAtStart = latest?.updatedAt;
+    const patch = {
+      ...(normalizedNotes ? { notes: normalizedNotes } : {}),
+      title: normalizedTitle,
+    };
     await mutate("patch", taskPath(taskId), {
       action: "update",
       expectedUpdatedAt: baseline.updatedAt,
-      patch: {
-        ...(normalizedNotes ? { notes: normalizedNotes } : {}),
-        title: normalizedTitle,
-      },
+      patch,
     }, async (data) => {
       if (latestRef.current?.id !== baseline.id) return;
       const updated = ownedTaskDetailToView(data, actorId, locale.language);
-      if (updated) {
-        if (latestRef.current?.updatedAt === revisionAtStart) setLatest(updated);
-        setBaseline(updated);
-        setTitle(updated.title);
-        setNotes(updated.notes);
+      if (!updated || !(await refreshTask(updated))) {
+        setMutationError(locale.t("sync.mutationPending"));
+        return false;
       }
-      await refreshTask();
-    });
+      if (latestRef.current?.updatedAt === revisionAtStart) setLatest(updated);
+      setBaseline(updated);
+      setTitle(updated.title);
+      setNotes(updated.notes);
+      return true;
+    }, data => !!canonicalTask && taskMutationReceiptMatches(data, actorId, canonicalTask, { action: "update", patch }));
   }
 
   async function changeStatus() {
     if (!detail) return;
     const action = detail.status === "completed" ? "reopen" : "complete";
-    await mutate("patch", taskPath(taskId), { action }, async () => {
+    await mutate("patch", taskPath(taskId), { action }, async data => {
+      const updated = ownedTaskDetailToView(data, actorId, locale.language);
+      if (!updated || !(await refreshTask(updated))) {
+        setMutationError(locale.t("sync.mutationPending"));
+        return false;
+      }
       notifyReminderPlansChanged();
-      await refreshTask();
-    });
+      return true;
+    }, data => !!canonicalTask && taskMutationReceiptMatches(data, actorId, canonicalTask, { action }));
   }
 
   async function deleteTask() {
     await mutate("delete", taskPath(taskId), {}, async () => {
+      const mirror = await taskSync.invalidate();
+      if (mirror?.status !== "fresh" || mirror.records.some((item) => item.id === taskId)) {
+        setMutationError(locale.t("sync.mutationPending"));
+        return false;
+      }
       notifyReminderPlansChanged();
       setMoreOpen(false);
-      await taskSync.invalidate();
       router.replace("/tasks" as Href);
-    });
+      return true;
+    }, data => !!canonicalTask && taskMutationReceiptMatches(data, actorId, canonicalTask, { action: "delete" }));
   }
 
   async function addReminder(fireAt: string) {
@@ -336,6 +358,7 @@ export function TaskDetailScreen() {
       <Text accessibilityLiveRegion="polite" style={styles.metadataValue}>{locale.t(`sync.${taskSync.status === "local-ready" ? "localReady" : taskSync.status}` as import("../../i18n/messages").MessageKey)}{taskSync.lastSyncedAt ? ` · ${locale.t("sync.lastSynced", { time: new Date(taskSync.lastSyncedAt).toLocaleString() })}` : ""}</Text>
       {taskSync.status === "local-ready" && taskSync.records.length === 0 ? <LoadingState /> : null}
       {taskSync.status === "failure" ? <ErrorState message={taskSync.error ?? locale.t("sync.failure")} title={locale.t("taskDetail.unavailable")} /> : null}
+      {taskSync.status === "fresh" && !detail ? <ErrorState message={locale.t("taskDetail.missing")} title={locale.t("taskDetail.unavailable")} /> : null}
       {detail ? (
         <>
           <View style={styles.hero}>

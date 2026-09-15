@@ -106,8 +106,17 @@ export function NewNoteScreen({ actorId, draftServer = "local", scopeKey, isScop
     if (!owns() || operation.signal.aborted) return;
     const note = result.success && result.status >= 200 && result.status < 300
       ? confirmedNote(result.data, { actorId, title: request.body.title, body: request.body.body, manualContactIds: request.body.manualContactIds, mentions: request.body.mentions, contactIds: [...request.body.manualContactIds, ...request.body.mentions.map((item) => item.contactId)], eventIds: request.body.eventIds }, locale.language) : null;
-    if (note) { await noteDraftStorage.clear(draftScope); await noteSync.invalidate(); if (owns()) router.replace(`/notes/${encodeURIComponent(note.id)}`); }
-    else { setError(result.success ? locale.t("notes.createUnconfirmed") : result.error.message); setPending(false); }
+    if (note) {
+      const mirror = await noteSync.invalidate();
+      const mirroredRecord = mirror?.records.find((item) => item.id === note.id);
+      const mirrored = mirroredRecord ? confirmedNote({ note: mirroredRecord.payload }, { actorId, body: note.body, contactIds: note.contactIds, eventIds: note.eventIds, manualContactIds: note.manualContactIds, mentions: note.mentions, noteId: note.id, title: note.title }, locale.language) : null;
+      if (mirror?.status !== "fresh" || !mirrored || mirrored.version < note.version) {
+        if (owns()) { setError(locale.t("sync.mutationPending")); setPending(false); }
+      } else {
+        await noteDraftStorage.clear(draftScope);
+        if (owns()) router.replace(`/notes/${encodeURIComponent(note.id)}`);
+      }
+    } else { setError(result.success ? locale.t("notes.createUnconfirmed") : result.error.message); setPending(false); }
     if (controller.current === operation) controller.current = null;
   }
 

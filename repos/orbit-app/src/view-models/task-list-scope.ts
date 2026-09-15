@@ -55,3 +55,42 @@ export function taskListReceiptMatches(payload: unknown, actorId: string, baseli
   const item = readTaskListItems({ tasks: [raw] }, actorId)?.[0];
   return !!item && item.id === baseline.id && item.status === (action === "complete" ? "completed" : "open") && Date.parse(item.updatedAt) > Date.parse(baseline.updatedAt);
 }
+
+export type TaskMutationExpectation =
+  | { action: "complete" | "reopen" | "delete" }
+  | { action: "update"; patch: Readonly<Record<string, string | null>> };
+
+export function taskMutationReceiptMatches(
+  payload: unknown,
+  actorId: string,
+  baseline: TaskItemContract,
+  expectation: TaskMutationExpectation,
+): boolean {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
+  const root = payload as Record<string, unknown>;
+  const task = readTaskListItems({ tasks: [root.task] }, actorId)?.[0];
+  const activity = root.activity;
+  if (!task || task.id !== baseline.id || Date.parse(task.updatedAt) <= Date.parse(baseline.updatedAt) ||
+    !activity || typeof activity !== "object" || Array.isArray(activity)) return false;
+  const receipt = activity as Record<string, unknown>;
+  const activityType = expectation.action === "complete" ? "completed"
+    : expectation.action === "reopen" ? "reopened"
+      : expectation.action === "delete" ? "deleted" : "updated";
+  if (receipt.accountId !== actorId || receipt.ownerUserId !== actorId || receipt.taskId !== baseline.id ||
+    receipt.actorId !== actorId || receipt.actorType !== "user" || receipt.type !== activityType ||
+    typeof receipt.id !== "string" || !receipt.id || typeof receipt.occurredAt !== "string" || !Number.isFinite(Date.parse(receipt.occurredAt))) return false;
+  const snapshot = receipt.taskSnapshot;
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot) ||
+    (snapshot as Record<string, unknown>).title !== task.title ||
+    (snapshot as Record<string, unknown>).category !== task.category) return false;
+  const expectedStatus = expectation.action === "complete" ? "completed"
+    : expectation.action === "reopen" ? "open" : baseline.status;
+  if (task.status !== expectedStatus) return false;
+  if (expectation.action === "update") {
+    for (const [key, expected] of Object.entries(expectation.patch)) {
+      const actual = task[key as keyof TaskItemContract];
+      if (expected === null ? actual !== undefined : actual !== expected) return false;
+    }
+  }
+  return true;
+}

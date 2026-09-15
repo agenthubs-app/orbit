@@ -92,7 +92,17 @@ export function TasksScreen() {
       if (!scope.active || currentScope.current !== scope) return;
       if (!result.success) setMutationError(result.error.message);
       else if (result.status < 200 || result.status >= 300 || !taskListReceiptMatches(result.data, actorId, baseline, action)) setMutationError(locale.t("tasks.operationUnconfirmed"));
-      else { scope.keys.delete(intent); await state.invalidate(); }
+      else {
+        const mirror = await state.invalidate();
+        const mirrored = mirror?.status === "fresh"
+          ? readTaskListItems({ tasks: mirror.records.map((record) => record.payload) }, actorId)?.find((task) => task.id === item.id)
+          : null;
+        if (!mirrored || mirrored.status !== (action === "complete" ? "completed" : "open")) {
+          setMutationError(locale.t("sync.mutationPending"));
+        } else {
+          scope.keys.delete(intent);
+        }
+      }
     } catch {
       if (scope.active && currentScope.current === scope) setMutationError(locale.t("tasks.operationFailed"));
     } finally {
@@ -128,7 +138,7 @@ export function TasksScreen() {
       ) : null}
       {loaded && !canonical ? <ErrorState title={locale.t("tasks.dataUnavailable")} message={locale.t("tasks.dataUnavailableBody")} /> : null}
       {ready && (contactsState.kind === "failure" || contactsState.kind === "offline") ? <ErrorState title={locale.t("tasks.contactsUnavailable")} message={locale.t("tasks.contactsUnavailableBody")} /> : null}
-      {canonical && (mode === "open" ? open?.length === 0 : completed?.length === 0) ? (
+      {state.status !== "failure" && canonical && (mode === "open" ? open?.length === 0 : completed?.length === 0) ? (
         <EmptyState
           message={locale.t(mode === "open" ? "tasks.emptyOpenBody" : "tasks.emptyCompletedBody")}
           title={locale.t(mode === "open" ? "tasks.emptyOpenTitle" : "tasks.emptyCompletedTitle")}

@@ -52,11 +52,13 @@ export function NoteDetailScreen({ actorId, noteId, scopeKey }: { actorId: strin
   const eventNames = new Map(events.map((event) => [event.id, event.title]));
   const { styles, colors } = useStyles();
   const dateLocale = locale.language === "en" ? "en-US" : locale.language === "ja" ? "ja-JP" : "zh-CN";
-  return <AppScreen title={locale.t("notes.title")} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")} refreshControl={<RefreshControl refreshing={state.status === "syncing"} onRefresh={() => { void state.refresh(); }} />}>
+  return <AppScreen title={locale.t("notes.title")} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")} refreshControl={<RefreshControl testID="note-detail-refresh" refreshing={state.status === "syncing" || tasksState.status === "syncing"} onRefresh={() => { void state.refresh(); void tasksState.refresh(); }} />}>
     <Text accessibilityLiveRegion="polite" style={styles.date}>{locale.t(`sync.${state.status === "local-ready" ? "localReady" : state.status}` as import("../../i18n/messages").MessageKey)}{state.lastSyncedAt ? ` · ${locale.t("sync.lastSynced", { time: new Date(state.lastSyncedAt).toLocaleString() })}` : ""}</Text>
     {state.status === "local-ready" && state.records.length === 0 ? <LoadingState /> : null}
     {state.status === "failure" ? <ErrorState message={state.error ?? locale.t("sync.failure")} /> : null}
     {state.status === "fresh" && !note ? <ErrorState message={locale.t("notes.missing")} /> : null}
+    {tasksState.status === "failure" ? <ErrorState message={tasksState.error ?? locale.t("sync.failure")} title={locale.t("notes.sourceTasksUnavailable")} /> : null}
+    {tasksState.status === "stale" ? <Text accessibilityRole="alert" style={styles.date}>{locale.t("notes.sourceTasksStale")}</Text> : null}
     {note ? <>
       <View style={styles.heading}>
         <View style={styles.privatePill}><Ionicons color={colors.text3} name="lock-closed-outline" size={13} /><Text style={styles.private}>{locale.t("notes.private")}</Text></View>
