@@ -27,25 +27,9 @@ const conversations = [
     { messageId: "message:hu", conversationId: "thread:hu", senderAccountId: "actor:hu", senderDisplayName: "胡家明", body: "下周讨论预算。", sentAt: "2026-09-13T13:00:00+09:00", deliveryState: "delivered" }
   ] }
 ];
-const largeConversations = Array.from({ length: 40 }, (_, index) => ({
-  ...conversations[index % conversations.length],
-  conversationId: "thread:large:" + index,
-  contactId: "contact:large:" + index,
-  participantAccountIds: ["inbox-test-actor", "actor:large:" + index],
-  participantDisplayNames: { "inbox-test-actor": "我", ["actor:large:" + index]: "联系人" + index },
-  unreadCount: 0,
-  updatedAt: "2026-09-15T" + String(index % 24).padStart(2, "0") + ":00:00+09:00",
-  messages: [{
-    ...conversations[0].messages[0],
-    messageId: "message:large:" + index,
-    conversationId: "thread:large:" + index,
-    senderAccountId: "actor:large:" + index,
-    senderDisplayName: "联系人" + index,
-  }],
-}));
 const effects = { calendarEntryCreated: false, externalMessageSent: false, networkRequestMade: false, notificationDelivered: false, savedRecordCreated: false };
 const thread = { ...conversations[0], unreadCount: 0 };
-const state = window.fixture = { requests: [], navigation: [], detail: false, failure: false, hold: false, seed: {}, kind: "success", emptyMessages: false, large: false,
+const state = window.fixture = { requests: [], navigation: [], detail: false, failure: false, hold: false, seed: {}, kind: "success", emptyMessages: false,
   update(patch) { Object.assign(state, patch); emit(); }
 };
 export const useLocalSearchParams = () => { rerender(); return state.detail ? { id: "thread:wei" } : state.seed; };
@@ -56,7 +40,7 @@ export const useApiResource = path => {
   if (state.kind !== "success") return { kind: state.kind, error: { message: "连接暂时失败" }, refreshing: false, refresh() {} };
   const data = path.includes("notifications") ? { reminders: Array.from({ length: 8 }, (_, i) => ({ reminderId: "reminder:" + i, title: "联系提醒" + i, contactName: "联系人" + i, organization: "Orbit", priority: "normal", occurredAt: "2026-09-15T0" + i + ":00:00+09:00", dueAt: "2026-09-16T13:00:00+09:00", href: "/tasks/task%3A" + i })) }
     : path.includes("signals") ? { signals: [] }
-    : path === "/api/relationship-communication/conversations" ? { conversations: state.large ? largeConversations : conversations, refreshedAt: "2026-09-15T00:00:00Z" }
+    : path === "/api/relationship-communication/conversations" ? { conversations, refreshedAt: "2026-09-15T00:00:00Z" }
     : path.includes("/api/relationship-communication/conversations/") ? { ...thread, messages: state.emptyMessages ? [{ ...thread.messages[0], body: "" }] : thread.messages }
     : { inbox: { conversations: [] }, selectedThread: null, currentUser: { displayName: "我" }, draftReply: { body: "" }, sideEffects: effects };
   return { kind: "success", data, refreshing: false, refresh() {} };
@@ -136,16 +120,6 @@ test("unified inbox filters contact messages and opens the selected conversation
   assert.equal(await page.getByText("复核关系上下文后再决定是否外发。", { exact: true }).count(), 0);
   await page.getByRole("button", { name: /^与曾伟的对话，/ }).click();
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/inbox/thread%3Awei"]);
-});
-
-test("large inbox renders a bounded first window and keeps every item reachable", async t => {
-  const page = await openScreen(t);
-  await page.evaluate(() => (window as any).fixture.update({ large: true }));
-  await page.getByText("与联系人39的对话", { exact: true }).waitFor();
-  assert.equal(await page.getByText("与联系人5的对话", { exact: true }).count(), 0);
-  await page.getByRole("button", { name: "显示更多", exact: true }).click();
-  await page.getByText("与联系人5的对话", { exact: true }).waitFor();
-  assert.equal(await page.getByRole("button", { name: "显示更多", exact: true }).count(), 0);
 });
 
 test("a contact seed opens a focused editor and cancel restores the inbox without requests", async t => {

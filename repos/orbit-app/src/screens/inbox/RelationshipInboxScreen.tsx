@@ -1293,16 +1293,9 @@ function UnifiedFeedList({
   const locale = useOrbitLocale();
   const { styles } = useStyles();
   const { fontScale } = useWindowDimensions();
-  const [visibleCount, setVisibleCount] = useState(12);
-  const visibleItems = items.slice(0, visibleCount);
-  const showMoreLabel = locale.language === "zh"
-    ? "显示更多"
-    : locale.language === "ja"
-      ? "さらに表示"
-      : "Show more";
   return (
     <View style={styles.feedList}>
-      {visibleItems.map(item => {
+      {items.map(item => {
         const category = feedCategoryLabel(item.category, locale.t);
         const subtitle = item.subtitle && item.subtitle !== category ? `${category} · ${item.subtitle}` : category;
         const time = feedTimeLabel(item.occurredAt, locale.language, locale.t("inbox.yesterday"));
@@ -1341,16 +1334,6 @@ function UnifiedFeedList({
           </View>
         );
       })}
-      {visibleItems.length < items.length ? (
-        <Pressable
-          accessibilityLabel={showMoreLabel}
-          accessibilityRole="button"
-          onPress={() => setVisibleCount(items.length)}
-          style={({ pressed }) => [styles.feedMore, pressed && styles.pressed]}
-        >
-          <Text style={styles.feedMoreText}>{showMoreLabel}</Text>
-        </Pressable>
-      ) : null}
     </View>
   );
 }
@@ -2385,16 +2368,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   feedList: {
     borderTopColor: colors.border,
     borderTopWidth: 1
-  },
-  feedMore: {
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 48
-  },
-  feedMoreText: {
-    color: colors.accent,
-    fontSize: typography.small,
-    fontWeight: "700"
   },
   feedRow: {
     alignItems: "stretch",
