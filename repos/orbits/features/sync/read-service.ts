@@ -198,9 +198,15 @@ const legacySourceTypes = new Set([
 ]);
 
 function isoDateTime(value: unknown): value is string {
-  return typeof value === "string"
-    && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(value)
-    && Number.isFinite(Date.parse(value));
+  if (typeof value !== "string") return false;
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,6})?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/.exec(value);
+  if (!match || !Number.isFinite(Date.parse(value))) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const monthDays = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return month >= 1 && month <= 12 && day >= 1 && day <= monthDays[month - 1];
 }
 
 function optionalNonEmpty(value: unknown): value is string | undefined {
@@ -215,7 +221,8 @@ function legacyTaskFromPayload(
   const source = asRecord(payload.source);
   const evidenceIds = payload.evidenceIds;
   if (
-    payload.accountId !== actorId
+    (Object.hasOwn(payload, "accountId") && payload.accountId !== actorId)
+    || (Object.hasOwn(payload, "ownerUserId") && payload.ownerUserId !== actorId)
     || payload.id !== recordId
     || !string(payload.title)
     || !legacyStatuses.has(String(payload.status))
@@ -426,6 +433,9 @@ export function createIncrementalSyncReadService({
         highWatermark,
         input.limit + 1,
       ]);
+      if (result.rows.some((row) => row.workspace_id !== input.workspaceId || row.user_id !== input.actorId)) {
+        throw new SyncReadError("SYNC_SCOPE_MISMATCH", "Sync rows must match the authenticated scope.");
+      }
       const pageRows = result.rows.slice(0, input.limit);
       const hasMore = result.rows.length > input.limit;
       afterRevision = hasMore
