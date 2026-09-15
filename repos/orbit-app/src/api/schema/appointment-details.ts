@@ -33,8 +33,10 @@ export const meetingDetailsSchema = z.object({
     timezone: text.max(128),
   })),
   status: z.enum(["draft", "awaiting_response", "negotiating", "confirmed", "reschedule_pending", "cancelled", "completed"]),
+  title: text.max(500),
   updatedAt: instant,
   version: z.number().int().positive(),
+  visibility: z.enum(["participants", "private"]),
 });
 
 export const meetingDetailsMutationSchema = meetingDetailsSchema.extend({

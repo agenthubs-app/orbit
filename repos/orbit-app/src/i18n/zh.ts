@@ -962,6 +962,7 @@ export const zh = {
   "meetingDetails.proposal": "约会说明",
   "meetingDetails.details": "会议说明",
   "meetingDetails.sharedHint": "参会双方都能看到。",
+  "meetingDetails.privateHint": "这是你的个人会议说明。",
   "meetingDetails.empty": "还没有会议说明。",
   "meetingDetails.edit": "编辑会议说明",
   "meetingDetails.inputLabel": "会议说明",

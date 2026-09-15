@@ -28,8 +28,10 @@ export interface MeetingDetailsContract {
     timezone: string;
   }[];
   status: "draft" | "awaiting_response" | "negotiating" | "confirmed" | "reschedule_pending" | "cancelled" | "completed";
+  title: string;
   updatedAt: string;
   version: number;
+  visibility: "participants" | "private";
 }
 
 export interface MeetingDetailsMutationContract extends MeetingDetailsContract {

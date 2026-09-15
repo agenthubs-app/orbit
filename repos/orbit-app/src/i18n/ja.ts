@@ -962,6 +962,7 @@ export const ja = {
   "meetingDetails.proposal": "約束時のメモ",
   "meetingDetails.details": "面会メモ",
   "meetingDetails.sharedHint": "参加者の両方に表示されます。",
+  "meetingDetails.privateHint": "これは自分だけに表示される面会メモです。",
   "meetingDetails.empty": "面会メモはまだありません。",
   "meetingDetails.edit": "面会メモを編集",
   "meetingDetails.inputLabel": "面会メモ",

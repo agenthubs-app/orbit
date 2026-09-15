@@ -18,8 +18,10 @@ const detail = {
   eventId: "event:one",
   proposals: [{ createdAt: "2026-09-13T00:00:00.000Z", durationMinutes: 45, medium: { kind: "in_person", location: "丸の内" }, note: "讨论合作范围", proposedBy: "you", revision: 1, timezone: "Asia/Tokyo" }],
   status: "confirmed",
+  title: "与田中健会面",
   updatedAt: "2026-09-15T07:00:00.000Z",
   version: 4,
+  visibility: "participants",
 };
 
 test("meeting details parser and view expose time, medium, proposal context, and stable links", () => {
@@ -27,12 +29,15 @@ test("meeting details parser and view expose time, medium, proposal context, and
   assert.ok(parsed);
   assert.equal(meetingDetailsPath("appointment:one"), "/api/appointments/appointment%3Aone");
   assert.equal(meetingDetailsPath("appointment:one", true), "/api/appointments/appointment%3Aone/details");
+  assert.equal(meetingDetailsPath("seed:meeting", false, "schedule"), "/api/schedule-items/seed%3Ameeting/meeting-details");
+  assert.equal(meetingDetailsPath("seed:meeting", true, "schedule"), "/api/schedule-items/seed%3Ameeting/meeting-details");
   assert.deepEqual(meetingDetailsToView(parsed!, "zh"), {
     contactHref: "/contacts/contact%3Aone",
     eventHref: "/events/event%3Aone",
     mediumLabel: "线下会面 · 丸の内",
     proposalNote: "讨论合作范围",
     statusLabel: "已确认",
+    title: "与田中健会面",
     timeLabel: "2026年9月20日 10:00 · 45分钟 · Asia/Tokyo",
     updatedLabel: "由对方更新 · 2026年9月15日 16:00",
   });

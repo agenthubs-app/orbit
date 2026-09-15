@@ -13,8 +13,10 @@ const detail = {
   eventId: "event:one",
   proposals: [{ createdAt: "2026-09-13T00:00:00.000Z", durationMinutes: 45, medium: { kind: "video", provider: "google_meet", joinUrl: null }, note: "讨论合作", proposedBy: "other", revision: 1, timezone: "Asia/Tokyo" }],
   status: "confirmed",
+  title: "人脉会面",
   updatedAt: "2026-09-15T07:00:00.000Z",
   version: 4,
+  visibility: "participants",
 };
 
 test("meeting detail schemas accept the shared receipt and reject unsafe shapes", () => {

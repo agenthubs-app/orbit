@@ -18,8 +18,10 @@ const initialItem = {
   eventId: "event:one",
   proposals: [{ createdAt: "2026-09-13T00:00:00.000Z", durationMinutes: 45, medium: { kind: "in_person", location: "丸の内" }, note: "讨论合作范围", proposedBy: "you", revision: 1, timezone: "Asia/Tokyo" }],
   status: "confirmed",
+  title: "与田中健会面",
   updatedAt: "2026-09-15T07:00:00.000Z",
   version: 4,
+  visibility: "participants",
 };
 
 const fixture = `
@@ -28,7 +30,7 @@ import { View } from "react-native-web";
 const listeners = new Set(); let revision = 0, keyIndex = 0;
 const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
 const state = window.fixture = {
-  actor: "actor:one", rawUserId: "raw:user", item: window.initialFixture.item, appointmentId: "appointment:one", baseUrl: "https://orbit.example", ready: true, baseReady: true, signedIn: true,
+  actor: "actor:one", rawUserId: "raw:user", item: window.initialFixture.item, appointmentId: "appointment:one", source: "appointment", baseUrl: "https://orbit.example", ready: true, baseReady: true, signedIn: true,
   requests: [], pending: [], navigations: [], ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
   reply(index, status = 200, data) {
@@ -45,7 +47,7 @@ window.fetch = async (input, init = {}) => { const index = state.requests.length
 export const useFixture = () => { observe(); return state; };
 export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.actor, actorId: state.actor, user: state.signedIn ? { id: state.rawUserId } : null, cookieHeader: "" }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
-export const useLocalSearchParams = () => { observe(); return { id: state.appointmentId }; };
+export const useLocalSearchParams = () => { observe(); return { id: state.appointmentId, source: state.source }; };
 export const useGlobalSearchParams = useLocalSearchParams;
 export const usePathname = () => "/schedule/meetings/" + encodeURIComponent(state.appointmentId);
 export const useRouter = () => ({ canGoBack: () => false, back() {}, push(path) { state.navigations.push(path); }, replace(path) { state.navigations.push(path); } });
@@ -163,4 +165,34 @@ test("meeting detail opens its contact and event and keeps an unverified receipt
   await replyLatestWrite(page, 200, { ...initialItem, details: "错误回执", detailsUpdatedBy: "you", replayed: false, version: 5 });
   await page.getByText("未能确认保存结果，文字已保留，请重试。", { exact: true }).waitFor();
   assert.equal(await page.getByRole("textbox", { name: "会议说明" }).inputValue(), "必须保留");
+});
+
+test("legacy schedule meetings use the private meeting-details endpoint", async t => {
+  const legacyItem = {
+    ...initialItem,
+    appointmentId: "schedule-item:legacy-meeting",
+    contactId: null,
+    eventId: null,
+    title: "与艾玛·威尔逊推进企业 AI 合作",
+    visibility: "private",
+  };
+  const page = await open(t, {
+    appointmentId: "schedule-item:legacy-meeting",
+    item: legacyItem,
+    source: "schedule",
+  });
+
+  assert.equal(await page.getByText("与艾玛·威尔逊推进企业 AI 合作", { exact: true }).count(), 1);
+  assert.equal(await page.getByText("这是你的个人会议说明。", { exact: true }).count(), 1);
+  assert.equal(
+    await page.evaluate(() => (window as any).fixture.requests[0]?.path),
+    "/api/schedule-items/schedule-item%3Alegacy-meeting/meeting-details",
+  );
+
+  await page.getByRole("button", { name: "编辑会议说明", exact: true }).click();
+  await page.getByRole("textbox", { name: "会议说明", exact: true }).fill("补充旧日程会议说明");
+  await page.getByRole("button", { name: "保存说明", exact: true }).click();
+  const write = await latestWrite(page);
+  assert.equal(write.path, "/api/schedule-items/schedule-item%3Alegacy-meeting/meeting-details");
+  assert.deepEqual(write.body, { details: "补充旧日程会议说明", expectedVersion: 4 });
 });

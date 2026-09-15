@@ -25,15 +25,16 @@ function firstParam(value: string | string[] | undefined): string {
 export function MeetingDetailScreen() {
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
-  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const params = useLocalSearchParams<{ id?: string | string[]; source?: string | string[] }>();
   const appointmentId = firstParam(params.id);
+  const source = firstParam(params.source) === "schedule" ? "schedule" : "appointment";
   const actorId = auth.actorId ?? "";
   const ready = auth.ready && auth.signedIn && server.ready && !!actorId && !!appointmentId;
-  const scopeKey = JSON.stringify([actorId, appointmentId, ready, server.baseUrl]);
-  return <MeetingDetailEditor appointmentId={appointmentId} ready={ready} scopeKey={scopeKey} />;
+  const scopeKey = JSON.stringify([actorId, appointmentId, ready, server.baseUrl, source]);
+  return <MeetingDetailEditor appointmentId={appointmentId} ready={ready} scopeKey={scopeKey} source={source} />;
 }
 
-function MeetingDetailEditor({ appointmentId, ready, scopeKey }: { appointmentId: string; ready: boolean; scopeKey: string }) {
+function MeetingDetailEditor({ appointmentId, ready, scopeKey, source }: { appointmentId: string; ready: boolean; scopeKey: string; source: "appointment" | "schedule" }) {
   const locale = useOrbitLocale();
   const router = useRouter();
   const { colors, styles } = useStyles();
@@ -65,7 +66,7 @@ function MeetingDetailEditor({ appointmentId, ready, scopeKey }: { appointmentId
     if (!ready) { setLoading(false); return; }
     let active = true;
     setLoading(true);
-    void client.get<unknown>(meetingDetailsPath(appointmentId), { signal: requestScope.controller.signal }).then((result) => {
+    void client.get<unknown>(meetingDetailsPath(appointmentId, false, source), { signal: requestScope.controller.signal }).then((result) => {
       if (!active || !requestScope.active || currentScope.current !== requestScope) return;
       const value = result.success ? readMeetingDetails(result.data) : null;
       if (!value || value.appointmentId !== appointmentId) {
@@ -84,7 +85,7 @@ function MeetingDetailEditor({ appointmentId, ready, scopeKey }: { appointmentId
       if (active && requestScope.active) setLoading(false);
     });
     return () => { active = false; };
-  }, [appointmentId, client, locale, ready, requestScope, revision]);
+  }, [appointmentId, client, locale, ready, requestScope, revision, source]);
 
   const loadLatest = () => {
     if (!latest) return;
@@ -104,7 +105,7 @@ function MeetingDetailEditor({ appointmentId, ready, scopeKey }: { appointmentId
   async function save() {
     if (!ready || !baseline || stale || requestScope.busy || !requestScope.active || currentScope.current !== requestScope || !dirty) return;
     const body = { details: draft, expectedVersion: baseline.version };
-    const path = meetingDetailsPath(appointmentId, true);
+    const path = meetingDetailsPath(appointmentId, true, source);
     const fingerprint = JSON.stringify([path, body]);
     const key = requestScope.keys.get(fingerprint) ?? `ios:meeting-details:${Crypto.randomUUID()}`;
     requestScope.keys.set(fingerprint, key);
@@ -154,14 +155,14 @@ function MeetingDetailEditor({ appointmentId, ready, scopeKey }: { appointmentId
       {loading && !baseline ? <LoadingState /> : null}
       {baseline && view ? (
         <>
-          <DataCard detail={view.statusLabel} title={locale.t("meetingDetails.info")}>
+          <DataCard detail={view.statusLabel} title={view.title}>
             <View style={styles.infoRow}><Ionicons color={colors.accent} name="time-outline" size={19} /><Text style={styles.body}>{view.timeLabel}</Text></View>
             <View style={styles.infoRow}><Ionicons color={colors.text3} name="location-outline" size={19} /><Text style={styles.body}>{view.mediumLabel}</Text></View>
           </DataCard>
 
           {view.proposalNote ? <DataCard title={locale.t("meetingDetails.proposal")}><Text style={styles.body}>{view.proposalNote}</Text></DataCard> : null}
 
-          <DataCard detail={locale.t("meetingDetails.sharedHint")} title={locale.t("meetingDetails.details")}>
+          <DataCard detail={locale.t(baseline.visibility === "private" ? "meetingDetails.privateHint" : "meetingDetails.sharedHint")} title={locale.t("meetingDetails.details")}>
             {editing ? (
               <>
                 <TextInput

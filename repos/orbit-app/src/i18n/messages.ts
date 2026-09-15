@@ -965,6 +965,7 @@ export const messageKeys = [
   "meetingDetails.proposal",
   "meetingDetails.details",
   "meetingDetails.sharedHint",
+  "meetingDetails.privateHint",
   "meetingDetails.empty",
   "meetingDetails.edit",
   "meetingDetails.inputLabel",

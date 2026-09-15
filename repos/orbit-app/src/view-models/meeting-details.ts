@@ -46,6 +46,7 @@ export function meetingDetailsToView(value: MeetingDetailsContract, language: Or
     mediumLabel: confirmed ? mediumLabel(confirmed.medium, t) : t("meetingDetails.pendingTime"),
     proposalNote: latestProposal?.note.trim() ?? "",
     statusLabel: statusLabels[value.status],
+    title: value.title,
     timeLabel: confirmed
       ? t("meetingDetails.timeSummary", {
           date: t.literal(dateTimeLabel(confirmed.startsAtUtc, confirmed.timezone, language)),

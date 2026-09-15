@@ -1,12 +1,13 @@
 import { meetingDetailsMutationSchema, meetingDetailsSchema } from "./schema/appointment-details";
 import type { MeetingDetailsContract, MeetingDetailsMutationContract } from "./contract/appointments";
-import { appointmentDetailsPath, appointmentPath } from "./endpoints";
+import { appointmentDetailsPath, appointmentPath, scheduleMeetingDetailsPath } from "./endpoints";
 
 export function normalizeMeetingDetails(value: string): string {
   return value.replace(/\r\n?/gu, "\n").trim();
 }
 
-export function meetingDetailsPath(id: string, edit = false): string {
+export function meetingDetailsPath(id: string, edit = false, source: "appointment" | "schedule" = "appointment"): string {
+  if (source === "schedule") return scheduleMeetingDetailsPath(id);
   return edit ? appointmentDetailsPath(id) : appointmentPath(id);
 }
 

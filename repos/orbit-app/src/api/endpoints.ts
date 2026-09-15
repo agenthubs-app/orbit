@@ -104,6 +104,10 @@ export function appointmentDetailsPath(id: string): string {
   return `${appointmentPath(id)}/details`;
 }
 
+export function scheduleMeetingDetailsPath(id: string): string {
+  return `${detailPath(ORBIT_API_ENDPOINTS.scheduleItems, id)}/meeting-details`;
+}
+
 export function contactStructureDetailPath(
   dimension: string,
   bucketId: string

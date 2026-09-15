@@ -445,7 +445,8 @@ test("calendar rows expose stable detail destinations for every canonical schedu
     now: new Date("2026-09-15T00:00:00.000Z"),
     scheduleItems: {
       scheduleItems: [
-        { category: "meeting", endsAt: "2026-09-15T02:00:00.000Z", id: "schedule:meeting", kind: "meeting", sourceId: "appointment:one", startsAt: "2026-09-15T01:00:00.000Z", state: "upcoming", title: "人脉会面" },
+        { category: "meeting", endsAt: "2026-09-15T02:00:00.000Z", id: "schedule:appointment:one", kind: "meeting", sourceId: "appointment:one", startsAt: "2026-09-15T01:00:00.000Z", state: "upcoming", title: "人脉会面" },
+        { category: "meeting", endsAt: "2026-09-15T02:30:00.000Z", id: "seed:meeting", kind: "meeting", sourceId: "seed:meeting", startsAt: "2026-09-15T01:30:00.000Z", state: "upcoming", title: "客户会面" },
         { category: "event", endsAt: "2026-09-15T04:00:00.000Z", id: "schedule:event", kind: "event", sourceId: "public:event/one", startsAt: "2026-09-15T03:00:00.000Z", state: "upcoming", title: "行业交流会" },
         { category: "personal", endsAt: "2026-09-15T06:00:00.000Z", id: "personal:one", kind: "personal", sourceId: "personal:one", startsAt: "2026-09-15T05:00:00.000Z", state: "upcoming", title: "整理资料" },
       ],
@@ -455,11 +456,12 @@ test("calendar rows expose stable detail destinations for every canonical schedu
     timeZone: "UTC",
   });
 
-  assert.deepEqual(Object.fromEntries(view.items.map((item) => [item.kind, item.href])), {
-    event: "/schedule/events/public%3Aevent%2Fone",
-    followup: "/tasks/task%3Aone",
-    meeting: "/schedule/meetings/appointment%3Aone",
-    personal: "/schedule/personal/personal%3Aone",
+  assert.deepEqual(Object.fromEntries(view.items.map((item) => [item.title, item.href])), {
+    "人脉会面": "/schedule/meetings/appointment%3Aone?source=appointment",
+    "客户会面": "/schedule/meetings/seed%3Ameeting?source=schedule",
+    "行业交流会": "/schedule/events/public%3Aevent%2Fone",
+    "联系伙伴": "/tasks/task%3Aone",
+    "整理资料": "/schedule/personal/personal%3Aone",
   });
   assert.equal(view.items.some((item) => item.href === "/schedule"), false);
 });

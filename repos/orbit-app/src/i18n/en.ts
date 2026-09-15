@@ -962,6 +962,7 @@ export const en = {
   "meetingDetails.proposal": "Appointment note",
   "meetingDetails.details": "Meeting notes",
   "meetingDetails.sharedHint": "Both attendees can see this.",
+  "meetingDetails.privateHint": "This meeting note is private to you.",
   "meetingDetails.empty": "No meeting notes yet.",
   "meetingDetails.edit": "Edit meeting notes",
   "meetingDetails.inputLabel": "Meeting notes",

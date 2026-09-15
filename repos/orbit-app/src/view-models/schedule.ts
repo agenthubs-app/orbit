@@ -431,7 +431,9 @@ function canonicalScheduleTimelineItems(scheduleItems: unknown, timeZone: string
         href: kind === "event"
           ? `/schedule/events/${encodeURIComponent(sourceId)}`
           : kind === "meeting"
-            ? `/schedule/meetings/${encodeURIComponent(sourceId)}`
+            ? id === `schedule:${sourceId}`
+              ? `/schedule/meetings/${encodeURIComponent(sourceId)}?source=appointment`
+              : `/schedule/meetings/${encodeURIComponent(id)}?source=schedule`
             : `/schedule/personal/${encodeURIComponent(id)}`,
         id,
         kind,

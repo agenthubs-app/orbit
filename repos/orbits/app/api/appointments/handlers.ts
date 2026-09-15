@@ -82,8 +82,10 @@ export function publicAppointment(value: AppointmentAggregate, actorId: string) 
     relationshipPairId: value.relationshipPairId,
     proposals: value.proposals.map(({ proposedByActorId, ...proposal }) => ({ ...proposal, proposedBy: roleFor(proposedByActorId) })),
     status: value.status,
+    title: "人脉会面",
     updatedAt: value.updatedAt,
     version: value.version,
+    visibility: "participants" as const,
   };
 }
 
