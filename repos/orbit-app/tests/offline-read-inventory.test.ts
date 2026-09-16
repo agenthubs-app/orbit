@@ -125,6 +125,25 @@ test('a valid direct call cannot hide local delegates or injected transports', a
   assert.ok(audit.unregistered.some(row => row.includes('GET /api/inbox/notifications')));
 });
 
+test('one resolved helper invocation cannot mask another unresolved invocation', async t => {
+  const root = await fixture(t, {
+    'src/screens/Masked.ts': `
+      function mutate(method: 'patch', path: string) { return client[method](path); }
+      mutate('patch', '/api/tasks/t1');
+      mutate(chooseMethod(), computeRemotePath());
+      function injected(get: (path: string) => unknown) { return get('/api/inbox/notifications'); }
+      injected((path: string) => client.get(path));
+      injected(chooseTransport());
+    `,
+  });
+  const extracted = await extractReadCalls(root);
+  assert.ok(extracted.calls.some(row => row.method === 'PATCH' && row.endpointTemplate === '/api/tasks/t1'));
+  assert.ok(extracted.calls.some(row => row.method === 'GET' && row.endpointTemplate === '/api/inbox/notifications'));
+  assert.ok(extracted.invalid.some(row => row.includes('UNRESOLVED_METHOD')));
+  assert.ok(extracted.invalid.some(row => row.includes('UNRESOLVED_PATH')));
+  assert.ok(extracted.invalid.some(row => row.includes('UNRESOLVED_DELEGATE')));
+});
+
 test('reads and mutations on one endpoint remain separate registered surfaces', () => {
   const read = resolveReadSurface('GET', '/api/inbox/delivery/preferences');
   const mutation = resolveReadSurface('POST', '/api/inbox/delivery/preferences');
