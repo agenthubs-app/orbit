@@ -26,13 +26,36 @@ function hasAssessableData(definition: CriterionDefinition, contact: ContactList
     || (definition.dimension === "scenario" && Boolean(contact.primaryIndustryId || contact.secondaryIndustryId));
 }
 
-function criterionMatch(definition: CriterionDefinition, contact: ContactListItemContract): ContactNeedCriterionMatchContract {
+function implementationEvidence(contact: ContactListItemContract, definitions: readonly CriterionDefinition[], aliases: readonly string[]): readonly [string, string] | undefined {
+  const scenarios = definitions.filter(item => item.dimension === "scenario" && !item.weak);
+  // A generic implementation word is not itself proof of the requested business context.
+  const related = scenarios.length ? scenarios : definitions.filter(item => item.dimension === "capability");
+  const completedActions = ["delivered", "deployed", "implemented", "launched", "piloted", "builds", "built", "develops", "developed"];
+  const intentOrNegation = ["hope", "hopes", "want", "wants", "wish", "plan", "plans", "planned", "intend", "will", "would", "can", "could", "offer", "offers", "seeking", "seeks", "looking for", "interested in", "no", "not", "never", "without", "cannot", "can't", "haven't", "hasn't", "didn't"];
+  for (const [field, value] of evidenceSources(contact)) {
+    // Keep an actual source substring; do not borrow an action from another request or field.
+    for (const fragment of value.split(/[。！？.!?；;\n，,、]|(?:并且|并|但)|\b(?:and|but)\b/iu)) {
+      const clause = fragment.trim();
+      if (!related.some(item => containsAlias(clause, item.aliases))) continue;
+      if (/(?:本次关注|关注|希望|计划|打算|想|将要|将负责|拟|未来|可(?:以)?提供|没有|未曾|尚未|未完成|不负责|不提供|未实施|未交付|未上线|未能|无法|讨论|予定|計画|検討|探す|探し|求め|関心|したい|できる|可能|未経験|未実施|未導入|未完了|していない|していません|したことがない)/u.test(clause)
+        || containsAlias(clause, intentOrNegation)
+        || containsAlias(clause, ["税务", "稅務", "税務", "设立", "設立", "tax", "taxation", "accounting", "incorporation"])) continue;
+      const action = containsAlias(clause, aliases) || containsAlias(clause, completedActions) || /上线/u.test(clause);
+      const fact = /(?:曾|已|完成|上线|负责|承担|提供|完了|導入済|導入した|実施した|実証した|担当|担う|提供して)/u.test(clause)
+        || containsAlias(clause, [...completedActions, "completed", "responsible for", "provides"]);
+      if (action && fact) return [field, clause];
+    }
+  }
+  return undefined;
+}
+
+function criterionMatch(definition: CriterionDefinition, contact: ContactListItemContract, definitions: readonly CriterionDefinition[]): ContactNeedCriterionMatchContract {
   const structuredIndustry = definition.id.startsWith("industry:")
     ? [contact.primaryIndustryId, contact.secondaryIndustryId].find(value => value === definition.id.slice("industry:".length)
       || value?.startsWith(`${definition.id.slice("industry:".length)}.`))
     : undefined;
   const candidates = definition.type === "location" ? [["location", contact.location] as const] : evidenceSources(contact);
-  const source = candidates.find(([, value]) => containsAlias(value, definition.aliases))
+  const source = definition.dimension === "collaboration" ? implementationEvidence(contact, definitions, definition.aliases) : candidates.find(([, value]) => containsAlias(value, definition.aliases))
     ?? (structuredIndustry ? ["industry", structuredIndustry] as const : undefined)
     ?? (definition.weak ? contact.tags.filter(tag => containsAlias(tag, definition.aliases)).map(tag => ["tags", tag] as const)[0] : undefined);
   return {
@@ -80,7 +103,7 @@ export function scoreContactsForNeed(goal: string, inputContacts: readonly Conta
   const definitions = criteriaForNeed(goal);
   const criteria = definitions.map(({ id, label, type, dimension }) => ({ id, label, type, dimension }));
   const matches = contacts.map((contact): ContactNeedMatchContract => {
-    const criterionMatches = definitions.map(definition => criterionMatch(definition, contact));
+    const criterionMatches = definitions.map(definition => criterionMatch(definition, contact, definitions));
     const missingFields = [...new Set(definitions.filter(definition => !hasAssessableData(definition, contact)).map(definition => definition.type))];
     const components = componentsFor(definitions, criterionMatches);
     const direct = criterionMatches.filter(item => item.matched && item.strength === "direct");

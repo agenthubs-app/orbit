@@ -58,6 +58,84 @@ const usTechnology = contact({
 });
 const sparse = contact({ id: "contact:c", displayName: "林悦" });
 
+test("ordering aliases preserve the original goal and count one business concept", () => {
+  for (const goal of [
+    "我现在在做餐厅AI点单系统，想认识一些合作方。",
+    "餐廳點單與點餐系統合作", "餐厅点单与点餐系统合作",
+    "レストランの注文システムで協力相手を探す", "Restaurant ordering and order-taking collaboration",
+  ]) {
+    assert.equal(criteriaForNeed(goal).filter(item => item.id === "scenario:ordering").length, 1, goal);
+  }
+});
+
+test("a store operator's own tax landing request is not implementation experience", () => {
+  const result = scoreContactsForNeed("我现在在做餐厅AI点单系统，想认识一些合作方。", [contact({
+    id: "intent", displayName: "Anonymous", role: "门店经营者",
+    profileSnippet: "某机构的门店经营者。本次关注日本落地可信赖的税务与设立顾问，可提供关西合作渠道介绍。",
+  })]);
+  const match = result.matches[0]!;
+  const implementation = match.criteria.find(item => item.id === "collaboration:implementation")!;
+  assert.equal(implementation.matched, false);
+  assert.equal(implementation.strength, "none");
+  assert.equal(implementation.evidenceField, null);
+  assert.equal(implementation.evidenceExcerpt, null);
+  const component = match.components!.find(item => item.dimension === "collaboration")!;
+  assert.equal(component.baseWeight, 20);
+  assert.equal(component.points, 0);
+  assert.equal(component.weight, 100 * 20 / 90);
+  assert.ok(match.score !== null && match.score < 100);
+});
+
+test("future, negated and unrelated implementation claims do not earn collaboration points", () => {
+  for (const profileSnippet of [
+    "希望为餐厅实施点单系统，可提供试点合作。", "计划负责餐厅点单系统交付。", "没有完成餐厅点单系统实施。",
+    "曾为餐厅完成日本税务落地与公司设立。", "门店经营者希望找实施合作方。",
+    "レストランの注文システム導入を希望しています。", "注文システム導入を担当する予定です。", "注文システムを導入していません。",
+    "レストラン向け税務サービスの導入を完了しました。",
+    "Hopes to implement restaurant ordering systems and can offer a pilot.", "Will be responsible for restaurant ordering implementation.",
+    "Has never delivered restaurant ordering implementation.", "Implemented tax incorporation services for restaurants.",
+    "Completed manufacturing procurement implementation; seeks restaurant ordering partners.",
+  ]) {
+    const match = scoreContactsForNeed("AI restaurant ordering collaboration", [contact({ id: "claim", displayName: "Claim", role: "门店经营者", profileSnippet })]).matches[0]!;
+    const criterion = match.criteria.find(item => item.id === "collaboration:implementation")!;
+    assert.equal(criterion.matched, false, profileSnippet);
+    assert.equal(criterion.evidenceField, null, profileSnippet);
+    assert.equal(match.components!.find(item => item.dimension === "collaboration")!.points, 0, profileSnippet);
+  }
+});
+
+test("related completed work and actual duties survive mixed requests with original source excerpts", () => {
+  for (const [profileSnippet, expectedExcerpt] of [
+    ["曾为3家餐厅上线点单系统，完成POS对接交付。希望认识合作方。", "曾为3家餐厅上线点单系统"],
+    ["负责餐厅点餐系统实施，计划寻找新的合作方。", "负责餐厅点餐系统实施"],
+    ["レストランの注文システム導入を完了しました。協業を希望しています。", "レストランの注文システム導入を完了しました"],
+    ["レストランの注文システム導入を担当しています。", "レストランの注文システム導入を担当しています"],
+    ["Delivered restaurant ordering systems. Seeking collaboration partners.", "Delivered restaurant ordering systems"],
+    ["Responsible for restaurant ordering implementation and looking for partners.", "Responsible for restaurant ordering implementation"],
+  ]) {
+    const match = scoreContactsForNeed("AI restaurant ordering collaboration", [contact({ id: "fact", displayName: "Fact", profileSnippet })]).matches[0]!;
+    const criterion = match.criteria.find(item => item.id === "collaboration:implementation")!;
+    assert.equal(criterion.matched, true, profileSnippet);
+    assert.equal(criterion.strength, "direct", profileSnippet);
+    assert.equal(criterion.evidenceField, "profile", profileSnippet);
+    assert.equal(criterion.evidenceExcerpt, expectedExcerpt, profileSnippet);
+    assert.equal(match.components!.find(item => item.dimension === "collaboration")!.points, 100 * 20 / 90, profileSnippet);
+  }
+  const role = "餐厅点餐系统实施负责人";
+  const match = scoreContactsForNeed("餐厅点餐合作", [contact({ id: "role", displayName: "Role", role, profileSnippet: "希望寻找合作方" })]).matches[0]!;
+  assert.equal(match.criteria.find(item => item.id === "collaboration:implementation")?.evidenceField, "role");
+  assert.equal(match.criteria.find(item => item.id === "collaboration:implementation")?.evidenceExcerpt, role);
+});
+
+for (const profileSnippet of [
+  "将负责餐厅点单系统实施。", "レストラン注文システムの導入は未完了です。",
+  "No completed restaurant ordering implementation projects.", "曾讨论餐厅点单系统实施方案。",
+]) test(`unfulfilled or discussed work is not implementation experience: ${profileSnippet}`, () => {
+  const match = scoreContactsForNeed("AI restaurant ordering collaboration", [contact({ id: "unfulfilled", displayName: "Anonymous", profileSnippet })]).matches[0]!;
+  assert.equal(match.criteria.find(item => item.id === "collaboration:implementation")?.matched, false);
+  assert.equal(match.components!.find(item => item.dimension === "collaboration")!.points, 0);
+});
+
 test("restaurant ordering collaboration ranks delivery evidence above generic AI, in three languages", () => {
   const delivery = contact({ id: "delivery", displayName: "Delivery", role: "Software developer", profileSnippet: "Builds restaurant ordering systems; offers implementation and pilot collaboration" });
   const pilot = contact({ id: "pilot", displayName: "Pilot", role: "餐厅店长", profileSnippet: "提供餐饮门店点餐试点合作" });
@@ -133,7 +211,8 @@ test("the same contacts reorder when the user's need changes", () => {
   assert.deepEqual(investment.matches.map((item) => item.contactId), ["contact:b", "contact:a", "contact:c"]);
   // Investment is proven, implementation collaboration is not: its 20 points stay unearned.
   assert.equal(investment.matches[0]?.score, 80);
-  assert.equal(investment.matches[1]?.score, 20);
+  // Manufacturing procurement implementation does not prove technology-investment collaboration.
+  assert.equal(investment.matches[1]?.score, 0);
 });
 
 test("ranking deduplicates contacts, uses stable ties, and ignores old relationship scores", () => {

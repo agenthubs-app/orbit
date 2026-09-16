@@ -40,7 +40,7 @@ const industries = [
   define("industry:education_research", "教育与研究", "industry", "scenario", ["教育", "education", "研究", "research"]),
   define("industry:media_creative", "文化传媒与创意", "industry", "scenario", ["传媒", "メディア", "media", "创意", "クリエイティブ", "creative"]),
   define("scenario:restaurant", "餐饮业务", "industry", "scenario", ["餐厅", "餐飲", "餐饮", "门店", "店舗", "飲食", "レストラン", "restaurant", "restaurants"]),
-  define("scenario:ordering", "点餐业务", "keyword", "scenario", ["点餐", "點餐", "注文", "ordering", "order-taking"]),
+  define("scenario:ordering", "点餐业务", "keyword", "scenario", ["点餐", "點餐", "点单", "點單", "注文", "ordering", "order-taking"]),
 ];
 const capabilities = [
   define("capability:procurement", "采购", "capability", "capability", ["采购", "採購", "調達", "procurement", "purchasing", "buyer"]),
