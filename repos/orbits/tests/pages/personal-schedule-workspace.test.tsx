@@ -4,6 +4,36 @@ import { StrictMode } from "react";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import { PersonalScheduleWorkspace } from "../../app/(app)/app/tasks/personal-schedule-workspace";
 
+for (const [name, allDay, zone, startsAt, endsAt, expected] of [
+  ["Tokyo single day", true, "Asia/Tokyo", "2026-09-16T15:00:00Z", "2026-09-17T15:00:00Z", "2026-09-17 · 全天"],
+  ["Tokyo two days", true, "Asia/Tokyo", "2026-09-16T15:00:00Z", "2026-09-18T15:00:00Z", "2026-09-17 · 全天 → 2026-09-18"],
+  ["New York spring 23-hour day", true, "America/New_York", "2026-03-08T05:00:00Z", "2026-03-09T04:00:00Z", "2026-03-08 · 全天"],
+  ["New York autumn 25-hour day", true, "America/New_York", "2026-11-01T04:00:00Z", "2026-11-02T05:00:00Z", "2026-11-01 · 全天"],
+  ["timed cross-day seconds", false, "Asia/Tokyo", "2026-09-17T14:45:42Z", "2026-09-17T15:16:12Z", "2026-09-17 · 23:45 → 2026-09-18 00:16"],
+  ["missing end", false, "Asia/Tokyo", "2026-09-17T00:00:42Z", undefined, "2026-09-17 · 09:00 → 结束时间未设置"],
+] as const) {
+  test(`web readonly detail projects saved dates without writes: ${name}`, async t => {
+    const item = { id: "personal:dates", sourceId: "personal:dates", accountId: "owner", ownerUserId: "owner", kind: "personal", category: "personal", state: "upcoming", title: "Saved dates", allDay, timeZone: zone, startsAt, ...(endsAt ? { endsAt } : {}), createdAt: "2026-09-01T00:00:00Z", updatedAt: "2026-09-01T00:00:00Z" };
+    const before = structuredClone(item);
+    const requests: { path: string; method: string }[] = [];
+    t.mock.method(globalThis, "fetch", async (input, init) => {
+      const path = String(input);
+      requests.push({ path, method: init?.method ?? "GET" });
+      return Response.json({ success: true, data: path.includes("scope=personal") ? { scheduleItems: [item] } : { scheduleItem: item } });
+    });
+    let root!: ReactTestRenderer;
+    await act(async () => { root = create(<PersonalScheduleWorkspace actorId="owner" />); });
+    t.after(() => act(() => root.unmount()));
+    await act(async () => root.root.findAllByType("button").find(button => button.findAllByType("strong").some(title => title.children.includes("Saved dates")))!.props.onClick());
+    const detail = root.root.findByProps({ "aria-label": "个人日程详情" });
+    assert.equal(detail.findAllByType("p")[1]!.children.join(""), expected);
+    assert.equal(detail.findAllByType("p")[2]!.children.join(""), zone);
+    assert.equal(root.root.findAllByType("input").length, 0);
+    assert.deepEqual(requests, [{ path: "/api/schedule-items?scope=personal", method: "GET" }, { path: "/api/schedule-items/personal%3Adates", method: "GET" }]);
+    assert.deepEqual(item, before);
+  });
+}
+
 test("personal schedule renders through its HTTP client and aborts requests on unmount", async (t) => {
   const signals: AbortSignal[] = [];
   t.mock.method(globalThis, "fetch", async (_input: unknown, init?: RequestInit) => {

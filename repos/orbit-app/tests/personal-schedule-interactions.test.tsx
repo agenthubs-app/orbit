@@ -28,6 +28,18 @@ const state = window.fixture = {
   }
 };
 onSessionExpired(() => state.expiries++);
+// Model only the platform unit-formatting fault; dates, numbers and real translators stay real.
+if (state.unitFormatAsSeconds) {
+  const OriginalNumberFormat = Intl.NumberFormat;
+  Intl.NumberFormat = new Proxy(OriginalNumberFormat, { construct(Target, args, newTarget) {
+    const [language, options] = args;
+    if (options?.style === "unit" && options?.unit === "minute") {
+      const seconds = new OriginalNumberFormat(language, { ...options, unit: "second" });
+      return { format: minutes => seconds.format(minutes * 60) };
+    }
+    return Reflect.construct(Target, args, newTarget);
+  } });
+}
 window.fetch = async (input, init) => { const index = state.requests.length; const url = new URL(String(input));
   state.requests.push({ method: init.method, path: url.pathname, query: url.search, origin: url.origin, body: init.body ? JSON.parse(init.body) : null, signal: init.signal });
   const response = new Promise(resolve => state.pending[index] = resolve);
@@ -122,6 +134,50 @@ test("personal list reads owned collection, opens detail and distinguishes failu
 async function fill(p: Page, label: string, value: string) { await p.getByRole("textbox", { name: label, exact: true }).fill(value); await settle(p); }
 async function press(p: Page, name: string) { await p.getByRole("button", { name, exact: true }).click(); await settle(p); }
 async function writes(p: Page) { return p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method !== "GET" && r.path.startsWith("/api/schedule-items")).map((r: any) => ({ method: r.method, path: r.path, body: r.body }))); }
+
+for (const [language, minutes, endsAt, label] of [
+  ["zh", 30, "2026-09-17T01:00:00Z", "30 分钟"], ["zh", 60, "2026-09-17T01:30:00Z", "60 分钟"], ["zh", 120, "2026-09-17T02:30:00Z", "120 分钟"],
+  ["ja", 30, "2026-09-17T01:00:00Z", "30分"], ["ja", 60, "2026-09-17T01:30:00Z", "60分"], ["ja", 120, "2026-09-17T02:30:00Z", "120分"],
+  ["en", 30, "2026-09-17T01:00:00Z", "30 min"], ["en", 60, "2026-09-17T01:30:00Z", "60 min"], ["en", 120, "2026-09-17T02:30:00Z", "120 min"],
+] as const) {
+  test(`detail keeps ${minutes} minutes in ${language} under platform unit fault`, async t => {
+    const item = { ...initialItem, endsAt, timeZone: "Asia/Tokyo" };
+    for (const unitFormatAsSeconds of [false, true]) {
+      const p = await open(t, { detail: true, language, item, unitFormatAsSeconds });
+      const hint = p.getByText(/^2026-09-17 · .* · Asia\/Tokyo$/);
+      assert.equal(await hint.innerText(), `2026-09-17 · ${label} · Asia/Tokyo`);
+      assert.deepEqual(await writes(p), []);
+      assert.deepEqual(await p.evaluate(() => (window as any).fixture.item), item);
+    }
+  });
+}
+
+for (const [language, label] of [["zh", "结束时间未设置"], ["ja", "終了時刻未設定"], ["en", "End time not set"]] as const) {
+  test(`detail keeps missing end in ${language}`, async t => {
+    const { endsAt: _end, ...item } = { ...initialItem, timeZone: "Asia/Tokyo" };
+    const p = await open(t, { detail: true, language, item, unitFormatAsSeconds: true });
+    assert.equal(await p.getByText(/^2026-09-17 · .* · Asia\/Tokyo$/).innerText(), `2026-09-17 · ${label} · Asia/Tokyo`);
+    assert.deepEqual(await writes(p), []);
+  });
+}
+
+test("detail preserves fractional minutes rather than rounding stored seconds", async t => {
+  const item = { ...initialItem, startsAt: "2026-09-17T00:30:42Z", endsAt: "2026-09-17T01:01:12Z", timeZone: "Asia/Tokyo" };
+  const p = await open(t, { detail: true, item, unitFormatAsSeconds: true });
+  assert.equal(await p.getByText(/^2026-09-17 · .* · Asia\/Tokyo$/).innerText(), "2026-09-17 · 30.5 分钟 · Asia/Tokyo");
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.item), item);
+  assert.deepEqual(await writes(p), []);
+});
+
+for (const [endsAt, expected] of [["2026-09-17T15:00:00Z", "2026-09-17 · 1440 分钟 · Asia/Tokyo"], ["2026-09-18T15:00:00Z", "2026-09-17 · 2026-09-18 · 2880 分钟 · Asia/Tokyo"]] as const) {
+  test(`all-day detail renders only occupied dates through the real route: ${endsAt}`, async t => {
+    const item = { ...initialItem, startsAt: "2026-09-16T15:00:00Z", endsAt, allDay: true, timeZone: "Asia/Tokyo" };
+    const p = await open(t, { detail: true, item, unitFormatAsSeconds: true });
+    assert.equal(await p.getByText(/^2026-09-17 · .* · Asia\/Tokyo$/).innerText(), expected);
+    assert.deepEqual(await writes(p), []);
+    assert.deepEqual(await p.evaluate(() => (window as any).fixture.item), item);
+  });
+}
 async function reply(p: Page, status = 200, override?: object) {
   await p.evaluate(({ status, override }) => { const s = (window as any).fixture; const i = s.requests.findLastIndex((r: any) => r.method !== "GET" && r.path.startsWith("/api/schedule-items")); const r = s.requests[i]; const item = { ...s.item, ...(r.body.patch ?? r.body), updatedAt: "2026-09-15T00:00:00Z" }; delete item.idempotencyKey; for (const key of ["endsAt", "location"]) if (item[key] === null) delete item[key]; if (r.method === "DELETE") item.state = "cancelled"; if (status === 200 && !override) s.item = item; s.reply(i, status, override ?? (status === 200 ? { scheduleItem: item, ...(r.method === "DELETE" ? { deleted: true } : {}) } : undefined)); }, { status, override }); await settle(p);
 }
@@ -176,7 +232,7 @@ test("merged time block shortcuts and both saves share one in-flight mutation", 
   await p.getByRole("button", { name: "调整日期和时间", exact: true }).click(); await settle(p);
   const saveBox = await p.getByRole("button", { name: "保存日程", exact: true }).boundingBox();
   assert.ok(saveBox && saveBox.y >= 0 && saveBox.y + saveBox.height <= 844, "bottom save remains visible at the reference viewport");
-  await p.screenshot({ path: "../../build/harness-state/evidence/sprint-0053/run-01/app-editor.png", fullPage: true });
+  await p.screenshot({ path: "../../build/harness-state/evidence/sprint-0054/run-01/app-editor.png", fullPage: true });
   await press(p, "保存日程");
   assert.equal(await p.getByRole("button", { name: "保存", exact: true }).isDisabled(), true);
   assert.equal((await writes(p)).length, 1);
@@ -187,7 +243,7 @@ test("personal destination reads a standalone detail with edit and reschedule bu
   const p = await open(t, { detail: true });
   assert.equal(await p.getByRole("textbox").count(), 0);
   await p.getByText("个人日程 · 仅自己可见", { exact: true }).waitFor();
-  await p.screenshot({ path: "../../build/harness-state/evidence/sprint-0053/run-01/app-detail.png", fullPage: true });
+  await p.screenshot({ path: "../../build/harness-state/evidence/sprint-0054/run-01/app-detail.png", fullPage: true });
   assert.equal((await writes(p)).length, 0);
   await press(p, "编辑");
   assert.equal(await p.evaluate(() => (window as any).fixture.navigation), "/schedule/personal/personal%3Aedit/edit");
