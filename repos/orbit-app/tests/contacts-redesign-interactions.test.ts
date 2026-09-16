@@ -40,14 +40,18 @@ export const useApiResource = path => {
   return { kind: "success", data, refreshing: false, refresh() {} };
 };
 const client = {
-  async get() { return { success: true, status: 200, data: { notes: [], total: 0 }, meta: {} }; },
+  async get(path) {
+    // Ordinary manual contacts have no authoritative accepted event side.
+    if (path.endsWith("/relationship-initialization")) return { success: false, status: 404, error: { code: "NOT_FOUND", message: "No event relationship initialization" }, meta: {} };
+    return { success: true, status: 200, data: { notes: [], total: 0 }, meta: {} };
+  },
   async post(path, options) { state.requests.push({ method: "POST", path, body: options.body }); return { success: false, error: { message: "暂时无法搜索，请重试" } }; },
   async patch(path, options) { state.requests.push({ method: "PATCH", path, body: options.body }); return state.failure ? { success: false } : { success: true, data: {} }; }
 };
 export const useOrbitApiClient = () => client;
 const authSession = { ready: true, signedIn: true, accountId: "actor:contacts-test", actorId: "actor:contacts-test", cookieHeader: "", user: { id: "actor:contacts-test" } };
 export const useOrbitAuthSession = () => authSession;
-export const useOrbitApiBaseUrl = () => ({ baseUrl: "http://fixture" });
+export const useOrbitApiBaseUrl = () => ({ baseUrl: "http://fixture", ready: true });
 export const SafeAreaView = ({ children, edges, ...props }) => <View {...props}>{children}</View>;
 export const Ionicons = ({ size }) => <span aria-hidden="true" style={{ display: "inline-block", flexShrink: 0, width: size, height: size }} />;
 `;

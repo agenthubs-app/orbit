@@ -53,7 +53,7 @@ export function contactDetailEditorFrom(data: unknown, contactId: string): Conta
   // Display-only support: the legacy editor must not initialize a pending shell.
   if (contact.lifecycleInitialization === "pending" || contact.status === "captured") return null;
   if (contact.primaryIndustryId != null && !isIndustryIdCode(contact.primaryIndustryId)) return null;
-  return { contact, statusOptions: [...new Set(editableStatusOptions)], draft: {
+  return { contact, statusOptions: contact.lifecycleInitialization === "ready" ? [] : [...new Set(editableStatusOptions)], draft: {
     status: contact.status, primaryIndustryId: contact.primaryIndustryId ?? null,
     ...(contact.secondaryIndustryId === undefined ? {} : { secondaryIndustryId: contact.secondaryIndustryId as SecondaryIndustryIdCode | null }),
     tags: [...contact.tags], lastInteraction: { channel: contact.lastInteraction.channel, occurredAt: contact.lastInteraction.occurredAt, summary: contact.lastInteraction.summary }
@@ -67,6 +67,7 @@ export function buildContactDetailEditRequest(original: ContactDetailEditor, dra
     return { success: false, error: "请选择新行业对应的二级行业。" };
   }
   if (draft.status !== original.draft.status) {
+    if (original.contact.lifecycleInitialization === "ready") return { success: false, error: "关系阶段由关系生命周期管理；此处仅编辑私有资料。" };
     if (!original.statusOptions.includes(draft.status)) return { success: false, error: "请选择当前可用的跟进状态。" };
     body.status = draft.status;
   }

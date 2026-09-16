@@ -493,7 +493,8 @@ function contactCard(
   rawContact: UnknownRecord,
   connection?: UnknownRecord
 ): ContactPipelineCardView {
-  const actions = stageActions(contact, rawContact, connection);
+  const actions = rawContact.lifecycleInitialization === "ready" || connection?.lifecycleInitialization === "ready"
+    ? [] : stageActions(contact, rawContact, connection);
 
   return {
     detail: contactDetail(contact),
@@ -722,6 +723,9 @@ export function contactsPipelineToView({
   contacts.forEach((contact, index) => {
     const rawContact = rawContacts[index] ?? {};
     const connection = connectionByContactId.get(contact.id);
+    // Acquisition is not an active/follow-up/archive stage. Keep the contact in
+    // the all-contacts count/list, but never offer canonical pipeline actions.
+    if (contact.lifecycleInitialization === "pending" || rawContact.lifecycleInitialization === "pending" || connection?.lifecycleInitialization === "pending") return;
     const stage = pipelineStageId(contact, rawContact, connection);
 
     grouped.get(stage)?.push(contactCard(contact, rawContact, connection));

@@ -45,7 +45,6 @@ import { contactMessageTemplate, registerAiTemplatePrefill } from "../../data/ai
 import {
   contactDetailHeroToView,
   contactDetailToSummary,
-  contactPendingInitializationCopy,
   type ContactAvatarTone,
   type ContactDetailSummary
 } from "../../view-models/contacts";
@@ -55,6 +54,8 @@ import {
   relationshipValueToView
 } from "../../view-models/relationship-value";
 import { buildContactDetailEditRequest, confirmContactDetailEdit, contactDetailEditorFrom, contactDetailReadSchema as detailReadSchema, type ContactDetailEditor, type ContactDetailEditDraft } from "../../view-models/contact-detail-editor";
+import { applyContactInitializationView } from "../../view-models/relationship-initialization";
+import { ContactRelationshipInitializer, contactInitializationStageText, useContactInitialization, type ContactInitializationBinding } from "./ContactRelationshipInitializer";
 import { isRelationshipEligibility, relationshipCommunicationEligibilityToView } from "../../view-models/contact-communication";
 
 const detailFont = Platform.select({ web: '-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif', ios: "System", default: "sans-serif" });
@@ -98,7 +99,6 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
     { scopeKey: scopeKey ?? actorId }
   );
   const state = validateApiResourceState(rawState, detailReadSchema.refine(value => value.contact.id === contactId));
-  const initializationPending = (state.kind === "success" || state.kind === "empty") && contactDetailToSummary(state.data, locale.language).lifecycleInitialization === "pending";
   const connectionsState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.connections,
     () => false,
@@ -162,6 +162,11 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
   }, [scope]);
 
   function isCurrent() { return mounted.current && latestScope.current === scope && isScopeCurrent?.() !== false; }
+  const initialization = useContactInitialization(contactId, scopeKey, isCurrent, () => {
+    if (!isCurrent()) return;
+    setEditing(null); state.refresh(); connectionsState.refresh();
+  });
+  const canEditContact = initialization.state.view.kind === "hidden" || initialization.state.view.kind === "initialized";
 
   useEffect(() => () => {
     valueController.current?.abort();
@@ -172,6 +177,7 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
 
   function refreshAll() {
     if (!isCurrent()) return;
+    void initialization.controller.refresh();
     setRelationshipValueOverride(null);
     state.refresh();
     connectionsState.refresh();
@@ -209,8 +215,8 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
   }
 
   function openEditor() {
-    if (!isCurrent() || (state.kind !== "success" && state.kind !== "empty")) return;
-    const original = contactDetailEditorFrom(state.data, contactId);
+    if (!isCurrent() || !canEditContact || (state.kind !== "success" && state.kind !== "empty")) return;
+    const original = contactDetailEditorFrom(applyContactInitializationView(state.data, initialization.state.view), contactId);
     setFeedback(null);
     if (!original) { setActionError(locale.t("contacts.editUnavailable")); return; }
     setEditing({ original, draft: original.draft, tagInput: "", scope });
@@ -259,7 +265,7 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
       toolbarLeft={currentEdit ? <Pressable accessibilityRole="button" accessibilityLabel={locale.language === "zh" ? "取消编辑" : locale.t("common.cancel")} disabled={editPending} onPress={cancelEditor} style={styles.cancelHeaderButton}><Text style={styles.cancelHeaderText}>{locale.t("common.cancel")}</Text></Pressable> : undefined}
       toolbarRight={currentEdit
         ? <Pressable accessibilityRole="button" accessibilityLabel={locale.language === "zh" ? "保存人脉" : locale.t("common.save")} disabled={editPending} onPress={saveEditor} style={[styles.editHeaderButton, editPending && styles.disabled]}><Text style={styles.editHeaderText}>{editPending ? locale.t("contacts.saving") : locale.t("common.save")}</Text></Pressable>
-        : !initializationPending && (state.kind === "success" || state.kind === "empty") ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.edit")} onPress={openEditor} style={styles.editHeaderButton}><Text style={styles.editHeaderText}>{locale.t("contacts.edit")}</Text></Pressable> : null}
+        : canEditContact && (state.kind === "success" || state.kind === "empty") ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.edit")} onPress={openEditor} style={styles.editHeaderButton}><Text style={styles.editHeaderText}>{locale.t("contacts.edit")}</Text></Pressable> : null}
       refreshControl={
         <RefreshControl
           onRefresh={refreshAll}
@@ -287,7 +293,8 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
           actorId={actorId}
           client={client}
           contactId={contactId}
-          data={detailData}
+          data={applyContactInitializationView(detailData, initialization.state.view)}
+          initialization={initialization}
           eligibilityState={eligibilityState}
           isScopeCurrent={isCurrent}
           onScrollTo={y => scrollRef.current?.scrollTo({ y: bodyTop.current + y, animated: true })}
@@ -308,6 +315,7 @@ function ContactDetailCard({
   client,
   contactId,
   data,
+  initialization,
   eligibilityState,
   isScopeCurrent,
   onScrollTo,
@@ -321,6 +329,7 @@ function ContactDetailCard({
   client: OrbitApiClient;
   contactId: string;
   data: unknown;
+  initialization: ContactInitializationBinding;
   eligibilityState: ApiResourceState<unknown>;
   isScopeCurrent: () => boolean;
   onScrollTo: (y: number) => void;
@@ -336,7 +345,9 @@ function ContactDetailCard({
   const router = useRouter();
   const { baseUrl } = useOrbitApiBaseUrl();
   const contact = contactDetailToSummary(data, locale.language);
-  const hero = contactDetailHeroToView(contact);
+  const baseHero = contactDetailHeroToView(contact);
+  const initView = initialization.state.view;
+  const hero = { ...baseHero, status: initView.kind === "hidden" ? baseHero.status : contactInitializationStageText(initView.kind === "initialized" ? initView.stage : initView.kind, locale.language) };
   const toneStyle = avatarToneStyles(colors)[hero.avatar.tone];
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [prefillError, setPrefillError] = useState<string | null>(null);
@@ -360,15 +371,13 @@ function ContactDetailCard({
         toneStyle={toneStyle}
       />
       <ContactCommunicationStatus contactId={contactId} state={eligibilityState} />
-      {contact.lifecycleInitialization === "pending" ? <View testID="contact-pending-initialization" style={styles.nextStepCard}>
-        <Text style={styles.bodyText}>{contactPendingInitializationCopy(locale.language).title}</Text>
-        <Text style={styles.bodyText}>{contactPendingInitializationCopy(locale.language).body}</Text>
-      </View> : <NextStepCard
-        action={contact.nextAction}
+      <ContactRelationshipInitializer binding={initialization} />
+      {initView.kind === "hidden" || initView.kind === "initialized" ? <NextStepCard
+        action={initView.kind === "hidden" ? contact.nextAction : ""}
         onPress={openMessageDraft}
         onSchedule={() => { if (isScopeCurrent()) router.push("/schedule"); }}
         onNotes={() => { if (isScopeCurrent()) { setNotesRequest(value => value + 1); onScrollTo(notesTop.current); } }}
-      />}
+      /> : null}
       {prefillError ? <Text style={styles.errorText}>{prefillError}</Text> : null}
       <ContactOverview contact={contact} email={detailReadSchema.safeParse(data).data?.contact.primaryEmail} />
       <View onLayout={event => { notesTop.current = event.nativeEvent.layout.y; }}><ContactNotesSection actorId={actorId} client={client} colors={colors} contactId={contactId} data={data} onRefresh={onNotesRefresh} openRequest={notesRequest} preview isScopeCurrent={isScopeCurrent} /></View>
@@ -720,7 +729,7 @@ function UpdateContactPanel({
         <View><Text style={styles.editLabel}>{locale.t("contacts.filterIndustry")}</Text><IndustryPicker pending={pending} selectedId={draft.primaryIndustryId ?? undefined} selectedLabel={INDUSTRY_CATALOG.find(item => item.id === draft.primaryIndustryId)?.labels[locale.language]} onSelect={primaryIndustryId => onChange({ primaryIndustryId, ...(primaryIndustryId !== draft.primaryIndustryId ? { secondaryIndustryId: null } : {}) })} /></View>
         <View><Text style={styles.editLabel}>{locale.t("contacts.secondaryIndustry")}</Text><SecondaryIndustryPicker pending={pending} primaryIndustryId={draft.primaryIndustryId} selectedId={draft.secondaryIndustryId ?? null} onSelect={secondaryIndustryId => onChange({ secondaryIndustryId })} /></View>
         <EditReadOnlyField label={locale.t("profile.email")} value={contact.primaryEmail ?? ""} />
-        <View><Text style={styles.editLabel}>{locale.t("contacts.followUpStatus")}</Text><View style={styles.editChips}>{original.statusOptions.map(status => <Pressable key={status} accessibilityRole="button" accessibilityLabel={locale.language === "zh" ? `跟进状态：${statusLabels[status]}` : `${locale.t("contacts.followUpStatus")}: ${statusLabels[status]}`} accessibilityState={{ selected: draft.status === status }} aria-selected={draft.status === status} disabled={pending} onPress={() => onChange({ status })} style={[styles.editChip, draft.status === status && styles.editChipSelected]}><Text style={[styles.editChipText, draft.status === status && styles.editChipSelectedText]}>{statusLabels[status]}</Text></Pressable>)}</View></View>
+        {original.statusOptions.length ? <View><Text style={styles.editLabel}>{locale.t("contacts.followUpStatus")}</Text><View style={styles.editChips}>{original.statusOptions.map(status => <Pressable key={status} accessibilityRole="button" accessibilityLabel={locale.language === "zh" ? `跟进状态：${statusLabels[status]}` : `${locale.t("contacts.followUpStatus")}: ${statusLabels[status]}`} accessibilityState={{ selected: draft.status === status }} aria-selected={draft.status === status} disabled={pending} onPress={() => onChange({ status })} style={[styles.editChip, draft.status === status && styles.editChipSelected]}><Text style={[styles.editChipText, draft.status === status && styles.editChipSelectedText]}>{statusLabels[status]}</Text></Pressable>)}</View></View> : <Text style={styles.editReadOnlyHint}>{locale.language === "zh" ? "关系阶段由关系生命周期管理；此处仅编辑私有资料。" : locale.language === "ja" ? "関係段階はライフサイクルで管理します。ここでは個人用情報のみ編集できます。" : "Relationship stage is managed by its lifecycle; edit private details here."}</Text>}
         <View><Text style={styles.editLabel}>{locale.t("contacts.tags")}</Text><View style={styles.editChips}>{draft.tags.map(tag => <Pressable key={tag} accessibilityRole="button" accessibilityLabel={locale.t("contacts.removeTag", { tag: locale.t.literal(tag) })} disabled={pending} onPress={() => onChange({ tags: draft.tags.filter(value => value !== tag) })} style={[styles.editChip, styles.editChipSelected]}><Text style={[styles.editChipText, styles.editChipSelectedText]}>{locale.t.literal(tag)}</Text><Ionicons color={colors.onAccent} name="close" size={14} /></Pressable>)}</View>
           <View style={styles.editTagEntry}><TextInput accessibilityLabel={locale.t("contacts.addTag")} editable={!pending} value={tagInput} onChangeText={onChangeTagInput} placeholder={locale.t("contacts.inputNewTag")} placeholderTextColor={colors.text3} style={[styles.editInput, styles.editTagInput]} /><Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.addThisTag")} disabled={pending || !tagInput.trim()} onPress={() => { if (pending || !tagInput.trim()) return; onChange({ tags: [...new Set([...draft.tags, tagInput.trim()])] }); onChangeTagInput(""); }} style={[styles.editChip, styles.editTagAdd]}><Ionicons color={colors.text3} name="add" size={16} /><Text style={styles.editChipText}>{locale.t("contacts.add")}</Text></Pressable></View>
         </View>

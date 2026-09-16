@@ -36,6 +36,12 @@ window.fetch = async (input, init) => {
   const index = state.requests.length; const path = new URL(String(input)).pathname;
   state.requests.push({ path, url: String(input), method: init.method, body: init.body ? JSON.parse(init.body) : null, signal: init.signal });
   const pending = new Promise(resolve => state.pending[index] = resolve);
+  // This fixture is an ordinary manual contact, not an accepted event side.
+  // Hold detail/analysis reads independently of its authoritative 404 lookup.
+  if (init.method === "GET" && path.endsWith("/relationship-initialization")) {
+    queueMicrotask(() => state.reply(index, state.initializationStatus ?? 404, state.initializationPayload));
+    return pending;
+  }
   if (!(state.holdReads && init.method === "GET") && !(state.holdConnections && path === "/api/connections") && !(state.holdWrites && init.method !== "GET")) queueMicrotask(() => state.reply(index, init.method !== "GET" || state.failure ? 503 : 200));
   return pending;
 };
@@ -96,6 +102,31 @@ async function press(p: Page, name: string) { await p.getByRole("button", { name
 async function update(p: Page, patch: object) { await p.evaluate(patch => (window as any).fixture.update(patch), patch); await settle(p); }
 async function writes(p: Page) { return p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method !== "GET").map((r: any) => ({ method: r.method, path: r.path, body: r.body }))); }
 
+for (const withTask of [false, true]) test("ready contact preserves generic shortcuts without legacy nextAction " + withTask, async t => {
+  const identity = { actorId: "actor-1", contactId: "contact:/1", connectionId: "connection:ready", version: 1, createdAt: "2026-09-17T00:00:00Z", updatedAt: "2026-09-17T00:00:00Z" };
+  const p = await open(t, { initializationStatus: 200, initializationPayload: { state: "initialized", snapshot: {
+    connection: { ...identity, stage: withTask ? "needs_follow_up" : "active", activeGoal: withTask ? null : "Explicit reviewed goal" },
+    tasks: withTask ? [{ ...identity, taskId: "task:ready", title: "Reviewed next step", status: "open", purpose: "follow_up", dueAt: "2026-10-01T00:00:00Z" }] : []
+  } } });
+  for (const name of ["起草消息", "查看日程", "写备注"]) assert.equal(await p.getByRole("button", { name, exact: true }).count(), 1, name);
+  assert.doesNotMatch(await p.getByRole("button", { name: "起草消息", exact: true }).locator("..").evaluate(node => node.outerHTML), /确认产品试点范围/);
+  assert.equal(await p.getByRole("button", { name: "处理关系跟进", exact: true }).count(), withTask ? 1 : 0);
+  await press(p, "起草消息"); await press(p, "查看日程"); await press(p, "写备注");
+  assert.equal((await p.evaluate(() => (window as any).fixture.navigation))[1], "/schedule");
+  assert.equal(await p.getByRole("button", { name: "为此人新建笔记", exact: true }).count(), 1);
+  await press(p, "编辑资料");
+  assert.equal(await p.getByRole("button", { name: /^跟进状态：/ }).count(), 0);
+  assert.deepEqual(await writes(p), []);
+});
+
+for (const response of [{ initializationStatus: 503 }, { initializationStatus: 200, initializationPayload: {} }]) test("initialization failure stays visible and never enables legacy edit " + JSON.stringify(response), async t => {
+  const p = await open(t, response);
+  assert.equal(await p.getByText("关系状态读取失败", { exact: true }).count(), 1);
+  assert.equal(await p.getByRole("button", { name: "编辑资料", exact: true }).count(), 0);
+  assert.equal(await p.getByRole("button", { name: "刷新关系状态", exact: true }).count(), 1);
+  assert.deepEqual(await writes(p), []);
+});
+
 test("detail route presents real identity and basic/cooperation data in the approved open layout", async t => {
   const p = await open(t);
   for (const text of ["人脉详情", "基本资料", "简介与合作信息", "lin.yue@example.test", "关注产品体验与跨团队协作。", "设计研究与原型验证"]) assert.equal(await p.getByText(text, { exact: true }).count(), 1, text);
@@ -137,7 +168,7 @@ for (const canGoBack of [false, true]) test("detail return respects navigation h
 for (const patch of [{ invalid: true }, { wrongId: true }, { failure: true }, { contact: { id: "contact:/1", displayName: "林悦" } }]) test("unavailable detail has retry and never invents a contact " + JSON.stringify(patch), async t => {
   const p = await open(t, patch); assert.equal(await p.getByText("林悦", { exact: true }).count(), 0);
   assert.equal(await p.getByRole("button", { name: "编辑资料", exact: true }).count(), 0);
-  await press(p, "重新读取人脉详情"); assert.ok(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path.startsWith("/api/contacts/")).length > 1));
+  await press(p, "重新读取人脉详情"); assert.ok(await p.evaluate(() => { const s = (window as any).fixture; return s.requests.filter((r: any) => r.path === "/api/contacts/" + encodeURIComponent(s.contactId)).length > 1; }));
   assert.deepEqual(await writes(p), []);
 });
 
@@ -358,7 +389,7 @@ test("resolved connection identity suppresses an old recompute session-expiry re
 for (const outcome of ["new-read-failure", "old-read-expiry"]) test("resolved connection identity clears a refreshed analysis during " + outcome, async t => {
   const p = await open(t, { holdReads: true });
   const valid = { state: "success", summary: "旧关系的分析", nextAction: "核对来源", assessment: { id: "old-value", connectionId: "contact:/1", contactId: "contact:/1", contactDisplayName: "林悦", relationshipValueType: "community_bridge", priorityScore: { value: 91, band: "high", calculation: "来源证据", factors: [] }, rationale: { summary: "旧关系的分析", evidence: [], limitations: [] }, suggestedNextAction: { label: "核对来源", dueWindow: "本周", channel: "manual_note", confidence: "medium", reason: "来源" }, sourceEvidenceIds: [], scoredAt: "2026-09-12", createdBy: "live-relationship-value-scoring-service" } };
-  await p.evaluate(valid => { const s = (window as any).fixture; s.reply(s.requests.findIndex((r: any) => r.path.startsWith("/api/contacts/"))); s.reply(s.requests.findIndex((r: any) => r.path.startsWith("/api/analysis/relationship-value/")), 200, valid); }, valid); await settle(p);
+  await p.evaluate(valid => { const s = (window as any).fixture; s.reply(s.requests.findIndex((r: any) => r.path === "/api/contacts/" + encodeURIComponent(s.contactId))); s.reply(s.requests.findIndex((r: any) => r.path.startsWith("/api/analysis/relationship-value/")), 200, valid); }, valid); await settle(p);
   await p.getByRole("button", { name: /完整资料/ }).click();
   assert.equal(await p.getByText("91 分", { exact: true }).count(), 1);
   await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
