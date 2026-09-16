@@ -41,6 +41,7 @@ import type { OrbitAgentArtifactTaskService } from "./service";
 import { executeOrbitAgentTool } from "./agent-tools/registry";
 import { selfProfileContextForSynthesis } from "./self-profile-artifact-service";
 import { actorQueryReply } from "./data-query/query-reply";
+import { taskWriteAuthorization } from "./task-write-authorization";
 
 export const liveCollectedAt = "2026-06-27T00:00:00.000Z";
 export const liveConversationId = "live-orbit-agent-conversation";
@@ -441,8 +442,8 @@ function isRelationshipStateMutationRequest(message: string): boolean {
 }
 
 function isSupportedNaturalLanguageWriteRequest(message: string): boolean {
-  const createTask =
-    /(?:创建|建立|新增|新建|添加).{0,12}(?:跟进)?任务|(?:create|add).{0,16}(?:follow[ -]?up )?task/i;
+  const taskAuthorization = taskWriteAuthorization(message);
+  const actionRequest = requestedActionText(message);
   const createReminder =
     /(?:提醒我|设置提醒|新增提醒|创建提醒)|(?:remind me|create.{0,12}reminder)/i;
   const saveDraft =
@@ -453,11 +454,12 @@ function isSupportedNaturalLanguageWriteRequest(message: string): boolean {
     /(?:同步|创建|新建|添加).{0,20}(?:Google|Microsoft|谷歌|微软).{0,12}(?:日历|Calendar)|(?:create|add).{0,24}(?:Google|Microsoft).{0,12}calendar/i;
 
   return (
-    createTask.test(message) ||
-    createReminder.test(message) ||
-    saveDraft.test(message) ||
-    saveMemory.test(message) ||
-    syncCalendar.test(message)
+    taskAuthorization.kind === "direct" ||
+    taskAuthorization.kind === "note_suggestion" ||
+    createReminder.test(actionRequest) ||
+    saveDraft.test(actionRequest) ||
+    saveMemory.test(actionRequest) ||
+    syncCalendar.test(actionRequest)
   );
 }
 
@@ -928,7 +930,7 @@ export function createLiveOrbitAgentLocalBoundaryPayload(
 
   if (
     isRelationshipStateMutationRequest(actionRequest) &&
-    !isSupportedNaturalLanguageWriteRequest(actionRequest)
+    !isSupportedNaturalLanguageWriteRequest(message)
   ) {
     return stateChangeBoundaryPayload(message);
   }
