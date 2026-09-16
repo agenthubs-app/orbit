@@ -5,6 +5,7 @@
 ## 权威与隔离
 
 - 主协调：`phoneweb-main`。执行线：`phoneweb-A`、`phoneweb-B`、`phoneweb-C`。
+- 用户明确硬上限：最多三条副执行线，主协调不计入；只复用 A/B/C，不新增 D 或嵌套执行子线。上限不是必须开满，默认最多两个实施 Sprint 并行的约定继续有效。
 - 用户指定所有副执行线默认 `gpt-5.6-sol`，推理强度 `medium`。创建/继续任务时显式传入；不自行切换其他模型或强度。主协调不受此默认值覆盖。
 - 产品基线：根仓库 `f416887dc5c545d799d04c5d2fc166aecb1bc912`。集成分支唯一为 `codex/investor-mobile-web`；主工作树 `.worktrees/phoneweb-main`。
 - 原 A/B/C/D/E 线及 `chat-agent` 继续各自工作。不得重启、清理、切账号或写入它们的数据库/Simulator/端口。
