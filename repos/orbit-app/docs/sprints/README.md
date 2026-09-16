@@ -91,6 +91,13 @@ build/harness-logs/
 | [0039](0039-evidence-based-notification-discovery/GOAL.md) | 让 AI 从允许使用的真实信息中自主发现具体动作，有可信时间才提醒，并展示可核查的原文依据。 | 2026-09-16 已确认的消息/三类通知设计 | 功能4aa21961a/合并131723ddb；云端既有来源的真实 AI provider/费用仍缺；外部 Calendar/Gmail/Microsoft OAuth 来源转后续 TODO，见[REPORT](0039-evidence-based-notification-discovery/REPORT.md) | blocked |
 | [0040](0040-notification-delivery-cutover/GOAL.md) | 让消息和通知按独立偏好可靠送达，减少重复打扰，并安全替换旧通知数据与旧发送链。 | 2026-09-16 已确认的消息/三类通知设计 | 功能eacd7a227/合并0b552649d；偏好/迁移已验，真实Push/AI及原生出站确认未齐，见[REPORT](0040-notification-delivery-cutover/REPORT.md) | blocked |
 | [0041](0041-web-test-baseline-restoration/GOAL.md) | 恢复可信的 Web 测试基线，把确定性测试与显式前置的集成测试分开，并修复当前所有已知基线失败 | 用户批准 B/D 在定向验证与独立审查通过后先合并，并要求把既有 Web 全量失败单独建 Sprint 跟踪 | run-01 running；E 线 Worktree `client-new-thread:f0e13ae9-0bab-4f21-a08c-d85ded831222`，planning SHA `eb7470a1b` | running |
+| [0042](0042-personal-schedule-list-repair/GOAL.md) | 修复个人日程列表读取，并验证增改删后列表、详情与日历一致 | B/C/D报告追加；R-08/R-09，承接0010/0026/0027 | 用户批准；C线run-01，先调查并修复不与0033争用的在线读取范围；共享消费者逐文件移交 | running |
+| [0043](0043-event-read-access-repair/GOAL.md) | 活动参会者与分析入口符合实际资格，合法读取成功、拒绝与服务错误明确 | C主包参会者404/分析500与403；R-04/R-09/R-14 | 适用实施指令、角色/活动样本、活动源与测试锁；建议C，未派发 | planned |
+| [0044](0044-ai-conversation-readback-repair/GOAL.md) | AI新会话发送后可持久回读和续聊，不返回悬空成功会话 | D POST200后GET404；R-00/R-02/R-14 | 用户批准；B线run-01，先会话生命周期调查/TDD；0036共享runtime接线等待逐文件移交，付费证据另协调 | running |
+| [0045](0045-private-note-deletion/GOAL.md) | 确认删除私密笔记并传播到关联入口、镜像及新AI检索，不越权或复活 | D整条笔记无删除入口/API；R-13/R-14追加 | 新增目标实施指令、授权精确记录、0033/34删除接口与0036检索失效；建议D，未派发 | planned |
+| [0046](0046-repeatable-functional-acceptance/GOAL.md) | 用正确主包与隔离有效样本补齐交互矩阵，失效通知来源安全提示 | 用户实际交互要求、B/C错包与C/D样本缺口；R-11/R-14 | 样本目标/权限/清理先核验；最终矩阵依赖0042～45及0033～36必需版本；建议空闲A/E，未派发 | planned |
+
+2026-09-16按用户“总结B/C/D报告后设计sprints”新增[中文汇总与追加计划](SIMULATOR_REMEDIATION_PROGRAM.md)，随后用户明确“42～46开始修复”及“请继续”，五项实施批准已满足。0042/0044登记run-01；0043/0045/0046获准排队，run_count=0，REPORT均未产生。全域离线9/9失败继续映射0033～0036原契约，不另建重复缓存Sprint；不修改其冻结Planner或把规划当作修复完成。
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
 
@@ -466,3 +473,19 @@ build/harness-logs/
 - `createActorQueryInputSchema` 影响集合超过 15 个符号，按项目规则视为 HIGH；已向用户提示并由管理线刷新 stale GitNexus 索引后复核。Task 2 可在不改该符号时继续新文件/测试。AI manifest 仅声明服务端能力，不是客户端离线授权依据。
 
 本轮用户明确要求把可并行开发分到不同线；协调者只放行上述互不重叠的第一批切片，覆盖默认“两条独立 Sprint”并发限制。共享 auth/sync contract、snapshot、i18n、Simulator、Web 服务和集成验证仍严格串行，四个 run 不共享真实账号写入、数据库迁移或服务生命周期。
+
+### 0042 / run-01
+
+- 开始：2026-09-16T17:04:32+09:00；唯一Generator：管理任务内 C 支线 `/root/c_sprint0042`，GPT-5.6 Sol / medium；工作树 `.worktrees/sprint-0042-personal-schedule-list-repair`，分支 `codex/sprint-0042-personal-schedule-list-repair`；产品起始基线 `9b2a9ccc5cbe0db32496424324071b321acf4a11`，计划登记提交作为实际工作树起点另记checkpoint。
+- Planner SHA256：`d0218e9e34f7c5dd5561483978d2111def145a9f78a410b79964b251bbb9f11d`；复用用户“42～46开始修复 / 请继续”的批准。
+- 先独占0042在线 personal-schedule API/schema、Web personal-schedule 服务/集合handler与定向测试；`PersonalScheduleList`、通用hooks/sync、共享生成契约及字典须管理线核实0033持有者后逐路径移交，不能自行重写mirror-first。
+- 先比对0033固定投影修复 `439f7f439` 与消费者 `9ca83b4dd`，它们尚未等于主线验收。只读main3000允许；服务重启、Simulator/账号写入、数据库环境与重套件排期由协调者串行分配。0043等待本项锁释放。
+
+### 0044 / run-01
+
+- 开始：2026-09-16T17:04:32+09:00；唯一Generator：管理任务内 B 支线 `/root/b_sprint0044`，GPT-5.6 Sol / medium；工作树 `.worktrees/sprint-0044-ai-conversation-readback-repair`，分支 `codex/sprint-0044-ai-conversation-readback-repair`；产品起始基线 `9b2a9ccc5cbe0db32496424324071b321acf4a11`，计划登记提交作为实际工作树起点另记checkpoint。
+- Planner SHA256：`67f61b3cd5b10b736211dd30a19804bb3a7137bc6418042c28825b78e9f9bdd9`；同一用户批准。
+- 先独占会话生命周期route、reliable-send/live-conversation/session-storage范围中不与0036冻结切片重叠的文件和定向测试；0036 data-query/manifest不得改，runtime/artifact/service-factory/AiScreen须当前D线交接后明确移交。已向原0036任务请求固定SHA及锁清单，不派其重复实现0044。
+- 不调用付费provider、不改live配置或重启共享进程；先确定性POST→真实store→GET TDD。所需跨端运行身份与隔离对象由协调者分配，真实工具/费用证据缺项不记PASS。
+
+获准排队：0043由C接续、0045由D接续并复用 `codex/sprint-0033-note-delete` 的 `03bfe4aa5` 墓碑能力，0046准备及最终验收由空闲A/E领取；三项尚无Generator run，不提前生成REPORT。
