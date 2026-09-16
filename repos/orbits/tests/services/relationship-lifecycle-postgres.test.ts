@@ -48,6 +48,11 @@ test("SQL mutation checks receipts then locks only actor/workspace-owned records
   assert.match(update?.sql ?? "", /version/);
   assert.ok(update?.values?.includes(3));
   assert.ok(calls.some(({ sql }) => /insert into orbit_records[\s\S]*relationship_lifecycle_audits/i.test(sql)));
+  const insertedTask = calls.find(({ sql }) => /insert into orbit_records[\s\S]*'tasks'/i.test(sql));
+  const taskPayload = insertedTask?.values?.[5] as { evidenceIds: string[] };
+  const evidence = calls.find(({ sql }) => /insert into orbit_records[\s\S]*'evidence'/i.test(sql));
+  assert.ok(evidence, "manual lifecycle confirmation must persist its real evidence, not an invented reference");
+  assert.deepEqual(taskPayload.evidenceIds, [evidence.values?.[1]]);
   assert.match(calls.at(-1)?.sql ?? "", /insert into relationship_lifecycle_command_receipts/i);
 });
 

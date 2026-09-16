@@ -59,6 +59,7 @@ function RelationshipLifecycleTaskRow({
         {stage ? ` · ${stage}` : ""}
       </span>
     </div>
+    {task.connectionId && !task.issue && (task.status === "open" || task.status === "scheduled") ? <a className="btn btn-primary btn-sm" href={preserveHref(`/app/tasks/relationship/${encodeURIComponent(task.connectionId)}`)}>{t({ zh: "处理跟进", en: "Resolve follow-up" })}</a> : null}
     {task.operationHref ? <a className="btn btn-ghost btn-sm relationship-lifecycle-task-link" href={preserveHref(task.operationHref)}>
       {t({ zh: "查看联系人", en: "View contact" })}
     </a> : <span className="relationship-lifecycle-task-unavailable">
@@ -95,8 +96,8 @@ export function RelationshipLifecycleTasksSection({
         <h2>{t({ zh: "人脉跟进", en: "Relationship follow-ups" })}</h2>
         <p className="task-meta">
           {t({
-            zh: "跟进完成操作尚未接入此页面；当前仅查看记录。",
-            en: "Follow-up completion is not available on this page; records are view-only.",
+            zh: "处理跟进时确认关系下一步；普通待办的完成不会改写人脉关系。",
+            en: "Resolve a follow-up with an explicit next step for the relationship.",
           })}
         </p>
       </div>

@@ -1,5 +1,17 @@
 # Web Tasks 中的 legacy 人脉生命周期可见性
 
+## 2026-09-16 R1 完成入口增量
+
+用户批准五项闭环后，在保留原集合与语义的基础上补充：
+
+- 当前有效关联任务新增 `/app/tasks/relationship/:connectionId` 处理入口，历史和孤儿项不提供完成操作。联系人详情仍保留来源展示，不假装已有编辑器。
+- 新 `GET /api/connections/:id/lifecycle` 返回当前 actor 的事务快照；同路径 `POST` 严格验证 task ID、两个 expected version、幂等键及四种显式 outcome，并复用既有 `completeTask` 服务。未知账号/关联拒绝，不接收客户端 owner。
+- App 用 `GET /api/relationship-tasks` 读取同一 actor 的关系任务；契约/schema 经既有 sync 通道。普通 Task API 保持不变。
+- 新跟进任务会在原事务内保存用户确认操作的真实 evidence，再引用该证据，修复旧 source-linked reader 因空 evidenceIds 隐藏新任务的问题。回滚包含 evidence，不补造过去事实。
+- 两端失败保留输入、重试复用原意图、显式刷新云端版本。归档需确认忽略其余未完成跟进；不发外部消息。
+
+当前本地验证：API 四种结果、两版本、重放及权限；隔离 PostgreSQL 并发／回滚和 Web 列表 28/28。线上与原生验收另记，不能由本地测试推定完成。以下初始只读方案保留为历史基线。
+
 ## 目的
 
 解决 canonical generic Task API 无法解码旧 `TaskDTO` 时，关系生命周期任务在 Web Tasks 页面不可见的问题。

@@ -203,7 +203,7 @@ test("relationship task counts keep the expected 66 current and 14 history split
   assert.equal(result.orphanCount, 0);
 });
 
-test("relationship section stays honest and sends the user to contact review", () => {
+test("relationship section offers lifecycle completion only for linked current tasks", () => {
   const model: RelationshipLifecycleTaskReadModel = {
     state: "success",
     sourceLabel: "Test followups",
@@ -259,7 +259,8 @@ test("relationship section stays honest and sends the user to contact review", (
   const rendered = JSON.stringify(root.toJSON());
 
   assert.match(rendered, /人脉跟进/);
-  assert.match(rendered, /跟进完成操作尚未接入此页面；当前仅查看记录。/);
+  assert.match(rendered, /处理跟进时确认关系下一步/);
+  assert.equal(root.root.findAllByProps({ href: "/app/tasks/relationship/connection_for_contact%3Aren" }).length, 1);
   assert.match(rendered, /2026/);
   assert.match(rendered, /当前跟进（1）/);
   assert.match(rendered, /历史跟进（1）/);

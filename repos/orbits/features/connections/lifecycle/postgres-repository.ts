@@ -144,7 +144,13 @@ export function createPostgresRelationshipLifecycleRepository({ client, workspac
             if (result.rows.length !== 1) throw new RelationshipLifecycleError("CONFLICT", "Task version has changed.");
           } else {
             try {
-              await sql.query("insert into orbit_records (workspace_id, collection_name, record_id, user_id, source_type, source_id, payload, created_at, updated_at) values ($1, 'tasks', $2, $3, $4, $5, $6, $7, $8)", [workspaceId, task.taskId, input.actorId, plan.audit.source.type, plan.audit.source.id, { ...payload, source: plan.audit.source, evidenceIds: [] }, task.createdAt, task.updatedAt]);
+              // This is evidence of the explicit lifecycle command, not an AI
+              // inference or an external contact event. Persist it atomically so
+              // source-linked readers can see the newly created obligation.
+              const evidenceId = `evidence:${plan.audit.auditId}:${task.taskId}`;
+              const evidence = { id: evidenceId, sourceType: plan.audit.source.type, sourceId: plan.audit.source.id, summary: `用户确认关系下一步：${task.title}`, occurredAt: plan.audit.occurredAt, confidence: 1, createdBy: input.actorId };
+              await sql.query("insert into orbit_records (workspace_id, collection_name, record_id, user_id, source_type, source_id, payload, created_at, updated_at) values ($1, 'evidence', $2, $3, $4, $5, $6, $7, $7)", [workspaceId, evidenceId, input.actorId, plan.audit.source.type, plan.audit.source.id, evidence, plan.audit.occurredAt]);
+              await sql.query("insert into orbit_records (workspace_id, collection_name, record_id, user_id, source_type, source_id, payload, created_at, updated_at) values ($1, 'tasks', $2, $3, $4, $5, $6, $7, $8)", [workspaceId, task.taskId, input.actorId, plan.audit.source.type, plan.audit.source.id, { ...payload, source: plan.audit.source, evidenceIds: [evidenceId] }, task.createdAt, task.updatedAt]);
             } catch (error) {
               if (errorCode(error) === "23505") throw new RelationshipLifecycleError("INVALID_TASK", "Task identifier already exists.");
               throw error;

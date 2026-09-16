@@ -172,7 +172,7 @@ function hasContactsListQuery(searchParams: URLSearchParams): boolean {
 }
 
 function detailRouteHref(routeKey: string): InitialRoutePath | null {
-  const taskMatch = /^(tasks|schedule\/personal)\/((?:[A-Za-z0-9_.!~*'()-]|%[0-9A-Fa-f]{2})+)$/u.exec(routeKey);
+  const taskMatch = /^(tasks(?:\/relationship)?|schedule\/personal)\/((?:[A-Za-z0-9_.!~*'()-]|%[0-9A-Fa-f]{2})+)$/u.exec(routeKey);
   if (taskMatch) {
     try {
       const id = decodeURIComponent(taskMatch[2]!);

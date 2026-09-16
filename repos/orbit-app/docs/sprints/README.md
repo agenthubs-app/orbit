@@ -79,6 +79,7 @@ build/harness-logs/
 | [0029](0029-data-authority-ai-read-surface/GOAL.md) | 统一数据权威源并让 AI 按认证 actor 查询笔记、待办、跟进和日程 | 用户要求全面数据审查并补齐 AI 盲区，交由 B 线实现 | 固定 B SHA `f5bded060` 已由 `6f5f141ed` 合并；本地源码/回归完成，真实 migration apply、Calendar provider 与同 actor 四域回读仍开放，见 [REPORT](0029-data-authority-ai-read-surface/REPORT.md) | blocked |
 | [0030](0030-inbox-ink-signal-unified-feed/GOAL.md) | 按 3a 设计把活动、待办、人脉和 IORBIT 通知组成真实统一收件箱 | 用户提供 `软件UI设计现代化 (5).zip` 并指定 E 线实现 | E 线固定 SHA `a252220a8`；同账号 live task/read/refresh 已验收，缺失 live 类别见 [REPORT](0030-inbox-ink-signal-unified-feed/REPORT.md) | completed |
 | [0031](0031-cross-platform-performance/GOAL.md) | 以同环境真实性能基线优化 App 与 Web 的最慢关键路径，不改变功能与数据边界 | 用户批准基线驱动方案并指定 B 线执行 | Planner revision 1；基线 `1ed6e091b`；分支 `codex/b-line-sprint-0031`，run-01 进行中 | running |
+| [0032](0032-cloud-relationship-lifecycle/GOAL.md) | 两端完成人脉跟进并确认关系下一步，刷新回读同一云端状态 | 云端计划 R1/R4；用户「这五项闭环」 | run-01，主代理单一 Generator；基线 `f12476d8a`，API 已在本轮提供；原生工具链单列调查 | running |
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
 
