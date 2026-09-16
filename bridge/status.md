@@ -1,5 +1,15 @@
 # 两端当前状态
 
+## 2026-09-16 20:12 JST 主线通知来源修复与运行实测
+
+E46 冻结 `8e3049cea` 已合入 `e660f1d55`；A33 编译参数解析修复 `70d4d2aaf` 已合入 `23500c561`，普通 push 后独立远端 SHA 一致。ROOT 主线受影响完整文件 App 75/75、Web 24/24、两端 types 通过；A33 静态工具另 8/8，不冒充实际加密验收。未重新全量测试，旧基线缺项保持开放。
+
+Web 生产构建 exit0（复用未改动资产流程），BUILD_ID `ktYtulz-wmbDHzQ1-3aL_`，主线 3000/PID44656/live200；原费用保护账本与 DeepSeek Flash/loop3 保持。原生 build/install/launch 均 exit0，依赖警告保留；DA 主包 PID45137，主线 Metro8082/running。实际安装 executable 与构建 artifact SHA256 同为 `a1ef0cdb9e3d8ea9b90528d8485e2232298a99bbd4576b98bb340467604d7623`；Debug JS 来自 Metro，不把相同原生 executable 哈希当成新 JS 哈希。
+
+Simulator 实際首页→收件箱→通知显示 40 条安全失效来源提示（2 已读/38 未读），旧“复核下一步”文案为 0；点击第一条已读、无链接记录保持收件箱与计数。只读真实数据库确认 40 条均 `targetType=notification`、`targetId=recordId`，payload 没有 taskId/followupTaskId/contactId/targetId/targetType 业务字段。安全拒绝已验证，合法来源正例/展示数据修复/全域离线及完整 E46 SC 未验收，不因此 completed。未改旧通知、seed、清库、密钥或发送付费请求；Phone 独立服务不动。
+
+D45 App `446dbd5b7` 与纯域 `4b78b2cb1` 冻结在原支线，后者自报定向 37/37、types0。生产 factory 缺 mutation port，直接合入会拒绝既有笔记写入；ROOT 不合半成品。真实 adapter、锁序批准、迁移/接线与删除传播仍待验证；[中文锁序修订](../docs/superpowers/specs/2026-09-16-sync-lock-order-amendment.zh-CN.md)仍待批准，原规范未修改。
+
 ## 2026-09-16 PW-0010共享聊天候选验收收口
 
 唯一功能`58e484016`已由主线`224fdc1d4`消费。Phone原run的公网Chromium/WebKit390px和MAIN主包Simulator已实际验证同一旧会话的8候选、原消息、详情返回、历史重开与刷新；原request/messages/budget完整摘要不变。Phone固定结束文档交付`da3dd71dc403eabf6dfccc8ba0374ccfca08583b`，ROOT只消费其原样REPORT，不复制Phone全部祖先/旧适配/独立全局台账。详见[REPORT](../docs/phoneweb/sprints/0010-contact-artifact/REPORT.md)。

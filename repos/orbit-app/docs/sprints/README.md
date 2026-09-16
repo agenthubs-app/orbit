@@ -94,9 +94,9 @@ build/harness-logs/
 | [0042](0042-personal-schedule-list-repair/GOAL.md) | 修复个人日程列表读取，并验证增改删后列表、详情与日历一致 | B/C/D报告追加；R-08/R-09，承接0010/0026/0027 | C run-01 SC01～05完成，三功能主线426b188195；报告31e7c665及登记随本次文档整合闭环，旧Web全量失败保留 | completed |
 | [0043](0043-event-read-access-repair/GOAL.md) | 活动参会者与分析入口符合实际资格，合法读取成功、拒绝与服务错误明确 | C主包参会者404/分析500与403；R-04/R-09/R-14 | C唯一run结束failed；产品aa2699已部分合入，报告b971a8e1f。MAIN aggregate仍500，真实registered正例及原生精确请求缺证，旧标题映射撤销，不二次生成 | failed |
 | [0044](0044-ai-conversation-readback-repair/GOAL.md) | AI新会话发送后可持久回读和续聊，不返回悬空成功会话 | D POST200后GET404；R-00/R-02/R-14 | 部分功能已合入；原生实际发送/重开通过，Web历史会话没有composer导致续聊失败，notes实际调用/源版本和原生失败恢复缺证据；REPORT已提交，run关闭 | failed |
-| [0045](0045-private-note-deletion/GOAL.md) | 确认删除私密笔记并传播到关联入口、镜像及新AI检索，不越权或复活 | D整条笔记无删除入口/API；R-13/R-14追加 | D唯一run已分发；先独立App确认/取消/失败保正文切片，真实PG迁移/后端与删除传播缺项单列 | running |
-| [0046](0046-repeatable-functional-acceptance/GOAL.md) | 用正确主包与隔离有效样本补齐交互矩阵，失效通知来源安全提示 | 用户实际交互要求、B/C错包与C/D样本缺口；R-11/R-14 | E run-01先准备运行身份检查和fixture dry-run；真实样本目标/权限/清理另核，最终矩阵依赖0042～45及0033～36必需版本 | running |
-| [0047](0047-web-ai-session-composer/GOAL.md) | Web历史AI会话有唯一续聊输入，追问持久保存在原会话并双端读回 | 0044实际Web输入控件0，关联SC02/03/05；R-00/R-02/R-14 | run_count=0；Phone PW0010功能58已主线精确消费，原生SC5进行中；D/E原run槽位未释放，不复开0044或替代0036源版本接线 | planned |
+| [0045](0045-private-note-deletion/GOAL.md) | 确认删除私密笔记并传播到关联入口、镜像及新AI检索，不越权或复活 | D整条笔记无删除入口/API；R-13/R-14追加 | 原run App446/纯域4b78冻结；ROOT App33/33，纯域自报37/37；生产缺端口会影响旧写入，暂不合入，锁序/adapter/迁移与传播仍待 | running |
+| [0046](0046-repeatable-functional-acceptance/GOAL.md) | 用正确主包与隔离有效样本补齐交互矩阵，失效通知来源安全提示 | 用户实际交互要求、B/C错包与C/D样本缺口；R-11/R-14 | 原run legacy8e304→主线e660；ROOT App75/Web24、types与重编译运行通过；40旧通知自指目标、安全提示/不误跳已实测，合法样本/完整矩阵/离线未齐 | running |
+| [0047](0047-web-ai-session-composer/GOAL.md) | Web历史AI会话有唯一续聊输入，追问持久保存在原会话并双端读回 | 0044实际Web输入控件0，关联SC02/03/05；R-00/R-02/R-14 | run_count=0；Phone PW0010已限定验收关闭，另PW0011新分析生成由Phone父规划；D/E原run槽位未释放，不复开0044或替代0036源版本接线 | planned |
 | [0048](0048-analytics-configuration-preflight/GOAL.md) | 活动分析未配置时先准确拒绝，不因后续缺快照表变通用500 | 0043 SC02/03失败；ROOT只读真PG复现stage2零ROI/stage3缺snapshot表42P01 | 窄范围追加计划已编制，run_count=0；不重开0043，不自动migration，不复刻整个失败Sprint | planned |
 
 2026-09-16按用户“总结B/C/D报告后设计sprints”新增[中文汇总与追加计划](SIMULATOR_REMEDIATION_PROGRAM.md)，随后用户明确“42～46开始修复”及“请继续”，五项实施批准已满足。0042 completed，0043/0044原run以failed收口且报告已合入；0045/0046继续各自唯一run-01，未提前REPORT。0047/0048是实际具体失败的追加计划、run_count=0，不克隆原Sprint或自动第三Generator。全域离线9/9失败仍映射0033～0036原目标；0036原run关闭事实保留，剩余接线不能假作原run恢复，不降低SC。

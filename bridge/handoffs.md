@@ -1,5 +1,12 @@
 # 同步队列
 
+## 0046 — 旧通知来源安全投影（部分运行验证）
+
+- Web/App 源码：`8e3049cea`→主线 `e660f1d55`；当前已推送主线 `23500c561`，独立远端 SHA 一致。严格 workspace/actor/record/lifecycle 与 canonical 目标验证，无旧标题或 href 推断授权；foreign notification 不凭 payload 账号声明进入列表。
+- 主线受影响 5 App 文件 75/75、5 Web 文件 24/24、两端 types0。Web 重新 production build/restart 3000，BUILD_ID `ktYtulz-wmbDHzQ1-3aL_`；Simulator 主包重新 build/install/launch、Metro8082 与原小雨 MAIN scope 保持，依赖警告未隐藏。
+- 实际 40 条历史通知自指 target、没有明确业务目标，安全提示/无错误跳转已验证；合法正例、隔离 fixture apply/cleanup、完整交互矩阵与离线验收未完成。旧记录未修改，不能把这些安全占位当成投资人展示案例或 Sprint completed。
+- D45 删除纯域冻结 `4b78b2cb1` 不合主线：真实原子端口与数据库协议未接通，避免破坏已有写入。锁序中文修订待用户批准；A33 继续独立原生加密配置准备调查，不能用在线首页成功替代离线 SC。
+
 ## PW-0010 — 共享聊天实际候选增量（本轮已验证）
 
 - Phone唯一功能58→MAIN224；公开双引擎与主线原生同旧会话8实际候选/原消息/详情返回/真实历史重开/刷新通过，source/messages/budget完整摘要不变。
