@@ -615,7 +615,7 @@ function detailFor(input: {
           connection: input.connection,
         }),
     status:
-      input.persistedState &&
+      input.contact.lifecycleInitialization !== "ready" && input.persistedState &&
       supportedStatuses.has(
         input.persistedState.status as ContactDetailStatusOption,
       )

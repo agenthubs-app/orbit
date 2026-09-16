@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createLiveContactsListSearchAndFilterService } from "../../features/contacts/live-service";
+import { createLiveContactDetailTagStatusService } from "../../features/contacts/live-detail-service";
 import { createStorageContactGraphProvider } from "../../features/contacts/storage/contact-live-record-provider";
 import {
   createContactsListSearchAndFilterService,
@@ -16,6 +17,34 @@ import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/sto
 import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { contactsPayloadViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
 import { contactsRouteToOrbitContactsViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-view-model-adapter";
+
+test("initialized relationship readers follow canonical transitions, not stale contact or private detail status", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const workspaceId = "test:canonical-contact-stage";
+  const actorId = "owner:one";
+  const base = { source: { type: "event_import", id: "event:qa" }, evidenceIds: ["evidence:qa"], createdAt: "2026-09-17T00:00:00Z", updatedAt: "2026-09-17T00:00:00Z" };
+  for (const marker of ["ready", "pending", undefined]) {
+    const id = `contact:${marker ?? "legacy"}`;
+    for (const [collectionName, payload] of [
+      ["contacts", { ...base, id, displayName: id, stage: "needs_follow_up", lifecycleInitialization: marker }],
+      ["connections", { ...base, id: `connection:${id}`, contactId: id, accountId: actorId, stage: "active", lifecycleInitialization: marker, summary: "Accepted event connection", valueTypes: [], activeGoal: "Explicit test goal" }],
+    ] as const) {
+      await store.upsertRecord({ ...activeRecord({ collectionName, payload, workspaceId, searchText: id, targetType: collectionName === "contacts" ? "contact" : "connection" }), userId: actorId });
+    }
+  }
+  const provider = createStorageContactGraphProvider({ store, workspaceId });
+  await provider.upsertContactDetailState?.({ actorId, contactId: "contact:ready", status: "nurture", tags: ["保留标签"], notes: [], updatedAt: base.updatedAt });
+  const list = await createLiveContactsListSearchAndFilterService({ provider }).listContacts({ actorId });
+  assert.equal(list.success, true);
+  assert.equal(list.data.contacts.find(c => c.id === "contact:ready")?.status, "active");
+  assert.equal(list.data.contacts.find(c => c.id === "contact:legacy")?.status, "needs_follow_up");
+  assert.equal(list.data.contacts.find(c => c.id === "contact:pending")?.lifecycleInitialization, "pending");
+  const detail = await createLiveContactDetailTagStatusService({ provider }).getContactDetail({ actorId, contactId: "contact:ready" });
+  assert.equal(detail.success, true);
+  assert.equal(detail.data.contact.status, "active");
+  assert.deepEqual(detail.data.contact.tags, ["保留标签"]);
+  assert.equal((await provider.readContactGraphForContact?.("contact:ready", "owner:other"))?.contacts.length, 0);
+});
 
 test("stored pending exchange survives live list and Web mapping without entering canonical status filters", async () => {
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();

@@ -381,6 +381,14 @@ function graphFromRecords(input: {
   actorId?: string;
   evidenceRecords: readonly LiveRecord<Record<string, unknown>>[];
 }): LocalRemoteContactGraph {
+  // Once explicitly initialized, Connection is the lifecycle authority. The
+  // acquisition Contact and legacy detail state are not a second stage store.
+  const canonicalConnections = new Map<string, ConnectionDTO>();
+  for (const record of input.connectionRecords) {
+    if (record.payload.lifecycleInitialization !== "ready" || record.userId !== input.actorId || record.payload.accountId !== input.actorId) continue;
+    const connection = connectionFromRecord(record);
+    if (connection) canonicalConnections.set(connection.contactId, connection);
+  }
   const customTagsByContactId = new Map<string, readonly string[]>();
   if (input.actorId) {
     for (const record of input.detailStateRecords ?? []) {
@@ -397,6 +405,9 @@ function graphFromRecords(input: {
       .filter((contact): contact is ContactDTO => contact !== null)
       .map((contact) => ({
         ...contact,
+        ...(contact.lifecycleInitialization === "ready" && canonicalConnections.has(contact.id)
+          ? { stage: canonicalConnections.get(contact.id)!.stage, updatedAt: canonicalConnections.get(contact.id)!.updatedAt }
+          : {}),
         customTags: customTagsByContactId.get(contact.id) ?? [],
       })),
     connections: input.connectionRecords
