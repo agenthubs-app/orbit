@@ -8,11 +8,13 @@ import type { AppointmentAggregate } from '../appointments/contract';
 import { reminderPlanNotification, appointmentChangeNotification, batchResultNotification } from './inbox-business-projections';
 import { createNotificationInteractionService } from './interaction-service';
 import { createConfiguredOrbitIntegrationService } from '../integrations/service-factory';
+import { createPersonalScheduleService } from '../personal-schedule/service';
 
 // Existing business facts project to records. This is not a second delivery
 // executor: explicit reminder scheduling remains in the existing plan service.
 export async function refreshInboxBusinessRecords(input:{actorId:string;principalId?:string;client:TransactionalPostgresClient;workspaceId:string;service:InboxRecordService;since:string;now?:string}) {
   const at=input.now??new Date().toISOString(),store=createPostgresLiveRecordStore({client:input.client});
+  await createPersonalScheduleService({store,client:input.client,workspaceId:input.workspaceId,now:()=>at}).refreshReminderPlans({actorId:input.actorId});
   const interactions=createNotificationInteractionService({store,workspaceId:input.workspaceId});
   let before='';let projected=0;
   while(true) {

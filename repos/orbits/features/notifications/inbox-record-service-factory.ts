@@ -14,6 +14,8 @@ import { createTaskSuggestionRepository } from '../tasks/suggestion-repository';
 import { createReminderPlanRepository } from './reminder-plan-repository';
 import { createReminderPlanService } from './reminder-plan-service';
 import type { AppointmentAggregate } from '../appointments/contract';
+import { createPersonalScheduleService } from '../personal-schedule/service';
+import { AppError } from '../../shared/errors/app-error';
 
 export function isTypedInboxEnabled(actorId:string,env:NodeJS.ProcessEnv=process.env):boolean {
   return (env.ORBIT_TYPED_INBOX_ACTORS??'').split(',').map(s=>s.trim()).includes(actorId);
@@ -52,6 +54,13 @@ export function createInboxRuntime(input:{client:TransactionalPostgresClient;wor
     if(['deleted','cancelled','expired'].includes(String(entity.status)))return 'unavailable';
     if(source.sourceKind==='reminder_plan') {
       const targetType=entity.targetType,targetId=String(entity.targetId??'');
+      if(targetType==='schedule_item'&&/^.*:occurrence:\d{4}-\d{2}-\d{2}$/.test(targetId)) {
+        try {
+          const occurrence=await createPersonalScheduleService({store:storeFor(tx),workspaceId:input.workspaceId,now}).get({actorId,id:targetId});
+          if(occurrence.state==='cancelled')return 'unavailable';
+        } catch(error) {if(error instanceof AppError&&error.code==='NOT_FOUND')return 'unavailable';throw error;}
+        return String(entity.updatedAt??record.updatedAt)===source.sourceRevision?'available':'changed';
+      }
       const target=await storeFor(tx).getRecord({workspaceId:input.workspaceId,collectionName:targetType==='task'?'tasks':'personal_schedule_items',recordId:targetId});
       if(!target||target.userId!==actorId||target.lifecycleState!=='active')return 'unavailable';
       const body=(target.payload.task??target.payload) as Record<string,unknown>;

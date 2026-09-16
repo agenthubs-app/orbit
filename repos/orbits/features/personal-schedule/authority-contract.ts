@@ -21,6 +21,8 @@ export const canonicalScheduleItemSchema = z.object({
   meetingUrl: personalScheduleSchema.shape.meetingUrl,
   contactIds: personalScheduleSchema.shape.contactIds,
   noteIds: personalScheduleSchema.shape.noteIds,
+  recurrence: personalScheduleSchema.shape.recurrence,
+  reminderMinutes: personalScheduleSchema.shape.reminderMinutes,
   meetingMethod: z.enum(["in_person", "phone", "video", "unspecified"]).optional(),
   ownerUserId: text,
   sourceId: text,
