@@ -20,6 +20,8 @@ import { View } from "react-native";
 const state = window.fixture = { requests: [], navigation: [], canGoBack: !location.search.includes("direct") };
 export const useRouter = () => ({ canGoBack: () => state.canGoBack, back() { state.navigation.push("back"); }, replace(path) { state.navigation.push(path); }, push(path) { state.navigation.push(path); } });
 export const usePathname = () => "/settings";
+export const useIsFocused = () => true;
+export const useLocalSearchParams = () => ({});
 export const useOrbitAuthSession = () => ({ signedIn: true, ready: true });
 export const useOrbitApiClient = () => ({ });
 export const useOrbitApiBaseUrl = () => ({ baseUrl: "http://fixture.invalid", ready: true });

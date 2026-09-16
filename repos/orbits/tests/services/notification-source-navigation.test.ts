@@ -1,0 +1,7 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {notificationWebSourceHref,verifiedSourceNote} from '../../app/(app)/app/inbox/notification-source-view-model';
+import type {InboxNotificationDTO} from '../../shared/contract/inbox-notifications';
+const n={revision:1,kind:'reminder',origin:'automation',semanticKey:'s',title:'Title',reason:'Reason',actions:[],occurredAt:'2026-09-16T00:00:00Z',updatedAt:'2026-09-16T00:00:00Z',readAt:null,disposition:'open',id:'inbox:one',actorId:'a',target:{status:'available',href:'/notes/n',kind:'source',id:'n'},sources:[{sourceKind:'note',sourceId:'n',sourceRevision:'2',objectId:'discovery',occurredAt:'2026-09-16T00:00:00Z',readAt:'2026-09-16T00:00:00Z'}]} as InboxNotificationDTO;
+test('discovery sources use an authenticated Web destination; native routes are not blindly prefixed',()=>{assert.equal(notificationWebSourceHref(n),'/app/inbox/sources/inbox%3Aone');assert.equal(notificationWebSourceHref({...n,target:{...n.target,status:'unavailable'}}),null);assert.equal(notificationWebSourceHref({...n,sources:[],target:{kind:'task',id:'t',href:'/tasks/t',status:'available'}}),'/app/tasks/t');});
+test('full original note must match owner, identity and the evidence revision',()=>{const note={id:'n',accountId:'a',ownerUserId:'a',title:'原文',body:'完整笔记',version:2};assert.deepEqual(verifiedSourceNote({note},n),note);for(const patch of [{ownerUserId:'b'},{id:'other'},{version:3},{body:null}])assert.throws(()=>verifiedSourceNote({note:{...note,...patch}},n));});

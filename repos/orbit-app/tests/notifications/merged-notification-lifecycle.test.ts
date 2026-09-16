@@ -114,6 +114,7 @@ function harness(input: { optedIn?: boolean; signedIn?: boolean; lastResponse?: 
       if (id.endsWith("/endpoints")) return { ORBIT_API_ENDPOINTS: { pushTokens: "/api/devices/push-tokens" } };
       if (id.endsWith("/AppScreen")) return { AppScreen: "AppScreen" };
       if (id.endsWith("/DataCard")) return { DataCard: "DataCard" };
+      if (id === "./NotificationDiscoverySettings") return { NotificationDiscoverySettings: "NotificationDiscoverySettings" };
       if (id.endsWith("/design/theme")) return load("src/design/theme.ts");
       if (id.endsWith("/design/tokens") || id === "./tokens") return load("src/design/tokens.ts");
       return require(id);

@@ -62,7 +62,7 @@ export function createInboxRecordService(input:{repository:InboxRecordRepository
         const rows=await input.repository.page({actorId,asOf,limit:50,...(before?{before}:{})});
         for(const row of rows) {
           const n=await present(row,query.language);
-          const active=n.disposition==='open' && (n.kind==='reminder'||Date.parse(n.occurredAt)>=Date.parse(asOf)-30*86400000);
+          const active=n.disposition==='open' && (!n.scheduledFor||Date.parse(n.scheduledFor)<=Date.parse(asOf)) && (n.kind==='reminder'||Date.parse(n.occurredAt)>=Date.parse(asOf)-30*86400000);
           const visible=(query.history || active)&&(!query.kind||n.kind===query.kind);
           if(active && n.target.status==='available' && !n.readAt)unreadCount++;
           const afterCursor=!cursor || row.occurredAt<cursor.at || (row.occurredAt===cursor.at && row.id<cursor.id);

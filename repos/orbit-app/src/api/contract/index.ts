@@ -204,4 +204,5 @@ export type {
   SyncRecord,
 } from "./sync";
 
-export type { InboxNotificationKind, InboxNotificationOrigin, InboxNotificationDisposition, InboxNotificationAction, InboxSourceKind, InboxNotificationSource, InboxNotificationTarget, InboxNotificationDTO, InboxNotificationListDTO, InboxNotificationActionInput, InboxNotificationActionReceipt, InboxNotificationReadBatchInput } from './inbox-notifications';
+export type { InboxNotificationKind, InboxNotificationOrigin, InboxNotificationDisposition, InboxNotificationAction, InboxSourceKind, InboxNotificationSource, InboxNotificationTarget, InboxNotificationDTO, InboxNotificationListDTO, InboxNotificationActionInput, InboxNotificationActionReceipt, InboxNotificationReadBatchInput } from "./inbox-notifications";
+export type { NotificationDiscoveryPreferencesDTO, NotificationDiscoveryPreferencesInput, NotificationDiscoveryStatusDTO } from "./notification-discovery";

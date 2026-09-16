@@ -1,3 +1,5 @@
+import {createDiscoverySourceAdapters} from './discovery/source-adapters';
+import {createDiscoveryRepository} from './discovery/discovery-repository';
 import {hasExplicitAppointmentReminder} from './inbox-reminder-policy';
 import { createConfiguredOrbitIntegrationService } from '../integrations/service-factory';
 import type { InboxNotificationSource } from '../../shared/contract/inbox-notifications';
@@ -22,6 +24,10 @@ export function createInboxRuntime(input:{client:TransactionalPostgresClient;wor
   const collections:Partial<Record<InboxNotificationSource['sourceKind'],string>>={task:'tasks',schedule:'personal_schedule_items',note:'notes',contact:'contacts',goal:'profiles',connection:'integrations',reminder_plan:'reminderPlans',batch:'businessCardBatches'};
   const sourceAccess:InboxSourceAccess=async(actorId,source,tx)=>{
     const client=tx?.executor??input.client;
+    if(source.objectId==='discovery') {
+      const adapters=createDiscoverySourceAdapters({client,store:storeFor(tx),workspaceId:input.workspaceId,now,preferences:actor=>createDiscoveryRepository({...input,client:{...input.client,query:client.query}}).preferences(actor)});
+      return await adapters.read(actorId,{kind:source.sourceKind,id:source.sourceId,revision:source.sourceRevision,at:source.occurredAt,key:source.sourceKind+':'+source.sourceId},false)?'available':'unavailable';
+    }
     if(source.sourceKind==='connection') {
       const integrations=createConfiguredOrbitIntegrationService({actorId:source.authorId??actorId});
       const current=(await integrations?.listAuthorizations(now()))?.find(a=>a.provider===source.sourceId);
