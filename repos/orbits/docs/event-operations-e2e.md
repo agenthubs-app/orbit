@@ -57,7 +57,15 @@ Production 一次性导入已完成：56 张业务表共 9,217 行，其中 `orb
 
 原生 App 当前验证限制：Expo Go 缺少 ExpoAsset；本机原生构建因 Swift 6.2.1 不接受当前 expo-modules-jsi 的 `weak let` 编译失败。未修改依赖或降低生产安全设置；App 浏览器版的跨域限制也未绕过。不能把这些尝试标为原生双端验收通过。
 
-已验证：Preview 主办方登录及后台 64 人目录；本地 live API 连接同一 Neon Demo 时主办方 200、参与者 403。Production 发布后的验证单独记录，不能用 Preview 结果替代。当前 13 个公开活动的时间均已结束，不能宣称已覆盖可报名流程。
+历史 Preview 曾验证主办方登录及后台 64 人目录；本地 live API 连接同一 Neon Demo 时主办方 200、参与者 403。当前 Production 的登录、隔离与新增活动报名证据见上文；原 13 个历史活动仍保持结束状态。
+
+### 人脉 fixture 与新版生命周期
+
+Production 只读 preflight 发现旧生成数据中 66 个联系人对应 450 条关系，微秒时间字符串不符合当前严格运行契约，且缺少版本、积极推进目标和关系待办用途。`scripts/demo-relationship-projection.ts` 只处理精确 demo workspace 的原始 fixture：输入必须与当前生成源 payload 一致，拒绝覆盖用户修改、跨 owner、未知引用或部分应用。保留每个联系人的最小稳定关系 ID，384 条重复关系可恢复停用；旧采集状态转为明确的合成复核/跟进场景，而非伪造真实人工审阅。保留有效关系阶段，积极推进目标来自既有 fixture 的建议动作；66 条当前任务保留真实日期语义，14 条同联系人同意图的旧合成任务标为 dismissed，而不是伪造完成记录。
+
+所有关系输入变化后的连接类 AI 分析都可恢复停用，不把旧分析移接到新输入。原始 evidence 不改写。新数据必须通过正式 lifecycle preflight 和 canonical read projection；整批在一个事务内应用、先备份，重放不覆盖后续用户编辑。生成器原始条数验证只适用于投影前，不再把去重后的条数变化误报成丢数据。
+
+Production 已提交上述 662 条定向更新：66 contacts、66 active connections、80 历史/当前 tasks（66 open/scheduled、14 dismissed）；384 重复 connections 和 66 旧 connection analyses 可恢复停用。事务末 preflight 为 `readyForCutover=true`、issues 0，canonical projection 66；二次规划为空。受限备份为 `/Users/li/.config/orbit/production-test-2026-09-16/pre-relationship-consolidation.json`。正式 Web 列表和联系人详情刷新成功；46 项定向回归、typecheck 通过。没有改变 Web/App API，运行发布仍为上文修复版，后续 seed 投影脚本不需要另行发布才能使已写入的云端数据生效。
 
 ## Organizer path
 

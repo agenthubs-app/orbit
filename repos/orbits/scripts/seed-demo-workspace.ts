@@ -47,6 +47,7 @@ import { MOCK_FIXTURE_COLLECTION_NAMES } from "../shared/mock/fixtures";
 import { loadLocalEnv } from "./load-local-env";
 import { ensureDemoCanonicalMemberships } from "./demo-canonical-memberships";
 import { buildDemoOrganizerProjection } from "./demo-organizer-projection";
+import { buildDemoRelationshipProjection } from "./demo-relationship-projection";
 import {
   createPostgresOrganizerMembershipWriter,
   createPostgresOrganizerOwnershipWriter,
@@ -487,6 +488,8 @@ async function main(): Promise<void> {
       const records = await store.listRecords({ workspaceId, includeDeleted: true });
       const projection = buildDemoOrganizerProjection({ records, workspaceId, now: new Date().toISOString() });
       for (const record of projection) await store.upsertRecord(record);
+      const relationships = buildDemoRelationshipProjection({ records, workspaceId, now: new Date().toISOString() });
+      for (const record of relationships) await store.upsertRecord(record);
       await client.query("COMMIT");
     } catch (error) {
       await client.query("ROLLBACK");
