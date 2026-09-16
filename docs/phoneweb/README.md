@@ -24,8 +24,8 @@
 
 | Sprint | 唯一目标 | Owner | 依赖 | 状态 |
 | --- | --- | --- | --- | --- |
-| [PW-0001](sprints/0001-browser-runtime/PLANNER.md) | 浏览器可构建、同源访问、正确恢复与退出会话 | phoneweb-A | 已批准设计与固定基线 | ready |
-| [PW-0002](sprints/0002-mobile-shell/PLANNER.md) | 手机布局、底栏、键盘与返回行为保留 App 体验 | phoneweb-B | 已批准视觉基线；与 A 文件不重叠 | ready |
+| [PW-0001](sprints/0001-browser-runtime/PLANNER.md) | 浏览器可构建、同源访问、正确恢复与退出会话 | phoneweb-A | 已批准设计与固定基线 | running |
+| [PW-0002](sprints/0002-mobile-shell/PLANNER.md) | 手机布局、底栏、键盘与返回行为保留 App 体验 | phoneweb-B | 已批准视觉基线；与 A 文件不重叠 | running |
 | PW-0003 | 全入口业务清单与真实在线链路验收 | phoneweb-C | PW-0001 固定 SHA、隔离 API 环境 | planned |
 | PW-0004 | 图片/文件/分享等平台差异的必要适配 | phoneweb-A | PW-0003 的实际差异及前序固定 SHA | planned |
 | PW-0005 | 公网发布候选和手机完整体验验收 | phoneweb-main | 所有必需业务证据、发布目标 | planned |
@@ -37,3 +37,13 @@
 主线在 phoneweb 分支创建后继续前进。已发现 `0f9f2194d` 只登记 inbox source route 的基线测试修复；执行线如命中同一已知失败，应报出并由主协调选择固定提交整合，不修改测试期望来绕过失败。
 
 未执行任何远程部署、真实投资人账号创建或生产数据迁移。现有设计资产与用户根规则修改均未带入本分支。
+
+## 2026-09-16 启动记录
+
+- 规划提交 `decd5005c`，首批两线均从该分支创建独立工作树，模型显式指定 `gpt-5.6-sol` / `medium`。
+- phoneweb-A：任务 `01a0a879-e923-7701-8e39-935f36eab448`，工作树 `/Users/xzhao/.codex/worktrees/b941/orbit`，分支 `codex/phoneweb-a-runtime`，PW-0001 run-01 已开始。
+- phoneweb-B：任务 `01a0a879-e8fe-77e3-b748-bd78005aecc8`，工作树 `/Users/xzhao/.codex/worktrees/9dd6/orbit`，PW-0002 run-01 已开始。
+- Planner 路径纠正：AI会话实际位于 `src/screens/ai/AiConversationScreen.tsx`，B在自己的追加记录中说明，不改冻结SC。
+- GitNexus首轮新工作树索引因Napi异常退出；第一次文档提交前detect_changes因未注册失败。已用git差异确认仅6份phoneweb文档，未把图检查记为通过；当前较小worker batch重试中。
+- Homebrew Node22缺少simdjson动态库；独立 `npm exec --yes --package=node@22` 已验证22.23.2，未改系统运行时。
+- phoneweb专属本地数据库 `orbit_phoneweb_20260916`，workspace `workspace:phoneweb-demo`，合成QA账号由既有种子工具创建，认证秘密只在忽略配置与受限临时文件中。首次完整种子在报名配置未发布处失败，已有部分样例记录；不能声称完整样例初始化通过。联系人独立种子及后端生产构建继续。

@@ -167,6 +167,7 @@ const expectedRoutes: readonly ExpectedRoute[] = [
 // Inclusion here does not extend that snapshot's native acceptance evidence.
 const integratedFeatureRoutes = [
   "/inbox/notifications/[id]",
+  "/inbox/sources/[id]",
   "/account/reset-password",
   "/contacts/new/batch/[id]",
   "/contacts/new/batch2",
