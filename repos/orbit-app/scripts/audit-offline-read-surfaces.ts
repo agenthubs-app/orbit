@@ -276,22 +276,22 @@ export async function extractReadCalls(root: string): Promise<{ calls: Call[]; i
     if (name === 'loadSelectedBatchImage') return { kind: 'binary', pathIndex: 1, fixedMethod: 'GET' };
     return null;
   }
-  type SinkFinding = { node: ts.CallExpression; location: string; method: boolean; path: boolean; template: boolean; text: string };
-  type DelegateFinding = { node: ts.CallExpression; message: string; template: boolean };
+  type SinkFinding = { node: ts.CallExpression; location: string; method: boolean; path: boolean; baseline: boolean; text: string };
+  type DelegateFinding = { node: ts.CallExpression; message: string; baseline: boolean };
   const pendingSinks = new Map<string, SinkFinding>();
   const resolvedSinkInvocations = new Set<string>();
   const staticResolvedSinks = new Set<ts.CallExpression>();
-  const expandedResolvedSinks = new Set<ts.CallExpression>();
+  const expandedSinks = new Set<ts.CallExpression>();
   const pendingDelegates = new Map<string, DelegateFinding>();
   const resolvedDelegateInvocations = new Set<string>();
-  const expandedResolvedDelegates = new Set<ts.CallExpression>();
+  const expandedDelegates = new Set<ts.CallExpression>();
   function nodeId(node: ts.Node): string {
     return `${relative(root, node.getSourceFile().fileName)}:${node.getStart()}`;
   }
   function invocationKey(node: ts.Node, context: string): string {
     return `${nodeId(node)}@${context}`;
   }
-  function recordTransport(node: ts.CallExpression, shape: TransportShape, env: Map<ts.Node, Values>, consumerFile: string, expanded: boolean, context: string, template: boolean): void {
+  function recordTransport(node: ts.CallExpression, shape: TransportShape, env: Map<ts.Node, Values>, consumerFile: string, expanded: boolean, context: string, baseline: boolean): void {
     if (expanded && staticResolvedSinks.has(node)) return;
     const key = invocationKey(node, context);
     const source = node.getSourceFile();
@@ -317,13 +317,13 @@ export async function extractReadCalls(root: string): Promise<{ calls: Call[]; i
     const resolvedPaths = unique([...paths, ...inferredPaths]);
     const unresolvedMethod = methods.includes(UNKNOWN);
     if (unresolvedMethod || (!resolvedPaths.length && unresolvedPath)) {
-      const finding = { node, location, method: unresolvedMethod, path: !resolvedPaths.length && unresolvedPath, template, text: node.getText().slice(0, 100) };
+      const finding = { node, location, method: unresolvedMethod, path: !resolvedPaths.length && unresolvedPath, baseline, text: node.getText().slice(0, 100) };
       pendingSinks.set(key, finding);
     }
     if (resolvedPaths.length && methods.some(method => method !== UNKNOWN)) {
       if (expanded) resolvedSinkInvocations.add(key);
       else staticResolvedSinks.add(node);
-      if (expanded) expandedResolvedSinks.add(node);
+      if (expanded) expandedSinks.add(node);
     }
     for (const path of resolvedPaths) {
       for (const method of methods.filter(value => value !== UNKNOWN)) calls.push({ consumerFile, endpointTemplate: path, method });
@@ -340,6 +340,10 @@ export async function extractReadCalls(root: string): Promise<{ calls: Call[]; i
     const signatures = checker.getSignaturesOfType(checker.getTypeAtLocation(node.expression), ts.SignatureKind.Call);
     const apiResult = signatures.some(signature => checker.typeToString(signature.getReturnType()).includes('ApiResult'));
     return apiResult && node.arguments.some(argument => checker.typeToString(checker.getTypeAtLocation(argument)).includes('string'));
+  }
+  function registersCallback(node: ts.CallExpression): boolean {
+    const name = ts.isPropertyAccessExpression(node.expression) ? node.expression.name.text : node.expression.getText();
+    return /(?:register|subscribe|listener|handler|callback)/iu.test(name);
   }
   const reachability = new Map<Callable, boolean>();
   function mayReachTransport(fn: Callable, seen = new Set<Callable>()): boolean {
@@ -379,7 +383,7 @@ export async function extractReadCalls(root: string): Promise<{ calls: Call[]; i
     const parameter = fn.parameters[index];
     return parameter ? new Map([[parameter, [...paths]]]) : new Map();
   }
-  function expandFunction(fn: Callable, arguments_: readonly ts.Expression[], outerEnv: Map<ts.Node, Values>, outerCallableEnv: CallableEnv, originFile: string, stack: Set<Callable>, context: string, template: boolean, directValues = new Map<ts.Node, Values>(), directCallables: CallableEnv = new Map()): void {
+  function expandFunction(fn: Callable, arguments_: readonly ts.Expression[], outerEnv: Map<ts.Node, Values>, outerCallableEnv: CallableEnv, originFile: string, stack: Set<Callable>, context: string, baseline: boolean, directValues = new Map<ts.Node, Values>(), directCallables: CallableEnv = new Map()): void {
     if (stack.has(fn) || stack.size > 30) return;
     const env = new Map(outerEnv);
     const callableEnv = new Map(outerCallableEnv);
@@ -387,7 +391,7 @@ export async function extractReadCalls(root: string): Promise<{ calls: Call[]; i
       const argument = arguments_[index];
       const values = evaluate(argument ?? parameter.initializer, outerEnv);
       const declared = literals(parameter);
-      env.set(parameter, (!argument || template) && values.every(value => value === UNKNOWN) && declared.length ? declared : values);
+      env.set(parameter, !argument && values.every(value => value === UNKNOWN) && declared.length ? declared : values);
       callableEnv.set(parameter, resolveFunctions(argument, outerCallableEnv));
     });
     for (const [node, values] of directValues) env.set(node, values);
@@ -401,7 +405,7 @@ export async function extractReadCalls(root: string): Promise<{ calls: Call[]; i
       }
       if (ts.isCallExpression(node)) {
         const shape = transportShape(node);
-        if (shape) recordTransport(node, shape, env, originFile, true, context, template);
+        if (shape) recordTransport(node, shape, env, originFile, true, context, baseline);
         else {
           const target = declaration(node.expression);
           const functions = resolveFunctions(node.expression, callableEnv).filter(fn => mayReachTransport(fn));
@@ -409,21 +413,26 @@ export async function extractReadCalls(root: string): Promise<{ calls: Call[]; i
           if (functions.length) {
             if (injectedParameter(target)) {
               resolvedDelegateInvocations.add(invocationKey(node, context));
-              expandedResolvedDelegates.add(node);
+              expandedDelegates.add(node);
             }
             const nextOrigin = injectedParameter(target) ? relative(root, node.getSourceFile().fileName) : originFile;
-            functions.forEach(inner => expandFunction(inner, node.arguments, env, callableEnv, nextOrigin, nextStack, nextContext, template, inferredDelegateValues(inner, node)));
+            functions.forEach(inner => expandFunction(inner, node.arguments, env, callableEnv, nextOrigin, nextStack, nextContext, baseline, inferredDelegateValues(inner, node)));
           } else if (injectedParameter(target) && delegateMayTransport(node, env)) {
             pendingDelegates.set(invocationKey(node, context), {
               node,
               message: `${relative(root, node.getSourceFile().fileName)}:${node.getSourceFile().getLineAndCharacterOfPosition(node.getStart()).line + 1} UNRESOLVED_DELEGATE ${node.expression.getText()}`,
-              template,
+              baseline,
             });
+          } else if (registersCallback(node)) {
+            for (const argument of node.arguments) {
+              resolveFunctions(argument, callableEnv).filter(inner => mayReachTransport(inner)).forEach(inner =>
+                expandFunction(inner, [], env, callableEnv, relative(root, inner.getSourceFile().fileName), nextStack, `${nextContext}>callback:${nodeId(argument)}`, baseline));
+            }
           }
         }
       }
       if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
-        expandJsx(node, node.getSourceFile(), env, callableEnv, nextStack, `${context}>jsx:${nodeId(node)}`, template);
+        expandJsx(node, node.getSourceFile(), env, callableEnv, nextStack, `${context}>jsx:${nodeId(node)}`, baseline);
       }
       ts.forEachChild(node, visit);
     }
@@ -435,7 +444,7 @@ export async function extractReadCalls(root: string): Promise<{ calls: Call[]; i
     if (ts.isJsxExpression(attribute.initializer)) return attribute.initializer.expression;
     return undefined;
   }
-  function expandJsx(node: ts.JsxOpeningLikeElement, file: ts.SourceFile, outerEnv = new Map<ts.Node, Values>(), outerCallableEnv: CallableEnv = new Map(), stack = new Set<Callable>(), context = `jsx:${nodeId(node)}`, template = false): void {
+  function expandJsx(node: ts.JsxOpeningLikeElement, file: ts.SourceFile, outerEnv = new Map<ts.Node, Values>(), outerCallableEnv: CallableEnv = new Map(), stack = new Set<Callable>(), context = `jsx:${nodeId(node)}`, baseline = false): void {
     const functions = resolveFunctions(node.tagName, outerCallableEnv).filter(fn => mayReachTransport(fn));
     for (const fn of functions) {
       const parameter = fn.parameters[0];
@@ -449,18 +458,8 @@ export async function extractReadCalls(root: string): Promise<{ calls: Call[]; i
         values.set(binding, evaluate(expression, outerEnv));
         callables.set(binding, resolveFunctions(expression, outerCallableEnv));
       }
-      expandFunction(fn, [], outerEnv, outerCallableEnv, relative(root, fn.getSourceFile().fileName), stack, context, template, values, callables);
+      expandFunction(fn, [], outerEnv, outerCallableEnv, relative(root, fn.getSourceFile().fileName), stack, context, baseline, values, callables);
     }
-  }
-  function parameterReference(node: ts.Node): boolean {
-    let found = false;
-    function visit(current: ts.Node): void {
-      if (found || (current !== node && ts.isFunctionLike(current))) return;
-      if (ts.isIdentifier(current) && injectedParameter(declaration(current))) { found = true; return; }
-      ts.forEachChild(current, visit);
-    }
-    visit(node);
-    return found;
   }
   function insideFunction(node: ts.Node): boolean {
     for (let current = node.parent; current; current = current.parent) if (ts.isFunctionLike(current)) return true;
@@ -479,34 +478,39 @@ export async function extractReadCalls(root: string): Promise<{ calls: Call[]; i
       if (!shape) {
         const target = declaration(node.expression);
         const functions = resolveFunctions(node.expression).filter(fn => mayReachTransport(fn));
-        const template = insideFunction(node) || node.arguments.some(parameterReference);
+        const baseline = insideFunction(node);
         const context = `call:${nodeId(node)}`;
         if (functions.length) {
-          functions.forEach(fn => expandFunction(fn, node.arguments, new Map(), new Map(), relative(root, file.fileName), new Set(), context, template));
+          functions.forEach(fn => expandFunction(fn, node.arguments, new Map(), new Map(), relative(root, file.fileName), new Set(), context, baseline));
         } else if (injectedParameter(target) && delegateMayTransport(node, new Map())) {
           pendingDelegates.set(invocationKey(node, context), {
             node,
             message: `${relative(root, file.fileName)}:${file.getLineAndCharacterOfPosition(node.getStart()).line + 1} UNRESOLVED_DELEGATE ${node.expression.getText()}`,
-            template,
+            baseline,
           });
+        } else if (registersCallback(node)) {
+          for (const argument of node.arguments) {
+            resolveFunctions(argument).filter(fn => mayReachTransport(fn)).forEach(fn =>
+              expandFunction(fn, [], new Map(), new Map(), relative(root, fn.getSourceFile().fileName), new Set(), `${context}>callback:${nodeId(argument)}`, baseline));
+          }
         }
       }
     }
     if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
-      const template = insideFunction(node) || node.attributes.properties.some(parameterReference);
-      expandJsx(node, file, new Map(), new Map(), new Set(), `jsx:${nodeId(node)}`, template);
+      const baseline = insideFunction(node);
+      expandJsx(node, file, new Map(), new Map(), new Set(), `jsx:${nodeId(node)}`, baseline);
     }
     ts.forEachChild(node, child => inspect(file, child));
   }
   for (const file of sources) collectTransport(file);
   for (const file of sources) inspect(file, file);
   for (const [key, finding] of pendingSinks) {
-    if (resolvedSinkInvocations.has(key) || (finding.template && expandedResolvedSinks.has(finding.node))) continue;
+    if (resolvedSinkInvocations.has(key) || (finding.baseline && expandedSinks.has(finding.node))) continue;
     if (finding.method) invalid.push(`${finding.location} UNRESOLVED_METHOD ${finding.text}`);
     if (finding.path) invalid.push(`${finding.location} UNRESOLVED_PATH ${finding.node.arguments[transportShape(finding.node)?.pathIndex ?? 0]?.getText()}`);
   }
   for (const [key, finding] of pendingDelegates) {
-    if (resolvedDelegateInvocations.has(key) || (finding.template && expandedResolvedDelegates.has(finding.node))) continue;
+    if (resolvedDelegateInvocations.has(key) || (finding.baseline && expandedDelegates.has(finding.node))) continue;
     invalid.push(finding.message);
   }
   return { calls: [...new Map(calls.map(row => [JSON.stringify(row), row])).values()], invalid: unique(invalid).sort() };
