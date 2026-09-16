@@ -115,7 +115,9 @@ for (const route of personalHomeRoutes) {
     assert.match(pageSource, /OrbitRealHome/);
     assert.match(pageSource, /await auth\(\)/);
     assert.match(pageSource, /redirect\("\/app\/account\/login/);
-    assert.match(pageSource, /id: session\.user\.id/);
+    assert.match(pageSource, /resolveAuthenticatedApiActorFromSession/);
+    assert.match(pageSource, /userId: session\.user\.id/);
+    assert.match(pageSource, /id: actor\.id/);
     assert.match(pageSource, /loadAppHomeRouteViewModel\(undefined,/);
     assert.doesNotMatch(pageSource, /searchParams/);
     assert.doesNotMatch(pageSource, /getOrbitHomeViewModel/);
@@ -208,19 +210,35 @@ test("shared home navigation keeps Orbit home on the integrated web root", async
 });
 
 test("app home live storage providers reuse the configured postgres record store", () => {
-  const providerSources = [
-    source("features/contacts/storage/contact-live-record-provider.ts"),
-    source("features/profile/storage/profile-signal-live-record-provider.ts"),
-  ];
-  // Profile uses the shared transaction runtime. Its configured providers are
-  // exercised against PostgreSQL in profile-update-conflicts.test.ts.
+  const contactProviderSource = source(
+    "features/contacts/storage/contact-live-record-provider.ts",
+  );
+  const profileSignalProviderSource = source(
+    "features/profile/storage/profile-signal-live-record-provider.ts",
+  );
 
-  for (const providerSource of providerSources) {
-    assert.match(providerSource, /createConfiguredPostgresLiveRecordStore/);
-    assert.doesNotMatch(providerSource, /createPgLiveRecordSqlClient/);
-    assert.doesNotMatch(
-      providerSource,
-      /from "\.\.\/\.\.\/\.\.\/shared\/storage\/postgres-live-record-store"/,
-    );
-  }
+  assert.match(contactProviderSource, /createConfiguredPostgresLiveRecordStore/);
+  assert.doesNotMatch(contactProviderSource, /createPgLiveRecordSqlClient/);
+  assert.doesNotMatch(
+    contactProviderSource,
+    /from "\.\.\/\.\.\/\.\.\/shared\/storage\/postgres-live-record-store"/,
+  );
+
+  // Profile signal writes share the configured transactional runtime, then
+  // bind a record store to the transaction for the serialized decision write.
+  assert.match(
+    profileSignalProviderSource,
+    /createConfiguredTransactionalPostgresRuntime/,
+  );
+  assert.match(profileSignalProviderSource, /client: runtime\.client/);
+  assert.match(profileSignalProviderSource, /workspaceId: runtime\.workspaceId/);
+  assert.match(
+    profileSignalProviderSource,
+    /client\.transaction\(async transaction =>/,
+  );
+  assert.match(
+    profileSignalProviderSource,
+    /createPostgresLiveRecordStore\(\{ client: transaction \}\)/,
+  );
+  assert.doesNotMatch(profileSignalProviderSource, /createPgLiveRecordSqlClient/);
 });
