@@ -1,5 +1,9 @@
 # 两端当前状态
 
+## 2026-09-16 五项闭环执行增量
+
+关系生命周期 Web/App 消费者已提交，Web Production 完成旧任务→明确下一步→刷新与异账号拒绝；App 全量 2869/2869，但当前原生同环境回读仍待兼容工具链。canonical 站内 ReminderPlan 已被真实云端 maintenance 投递，收件箱详情/已读持久化通过；event-operations 云端队列完成全部 79 条待处理投影。新账号资料、普通待办完成/恢复、个人日程已实测。真实生成/发布/匹配与原生双端验收未完成；版本、快照、验证与预算边界见 [BR-026](2026-09-16-cloud-five-item-acceptance.md)。下方只读跟进/未承载 worker 的描述是旧基线，不代表最新源码。
+
 ## 2026-09-16 P0 修复增量
 
 Production 运行源码 `105ebba4d` / `dpl_2FjxtX314B6DRojeZvFbdDF8gTNh` 为 Ready：iOrbit 66 人脉/66 跟进、个人日程保存/刷新、AI 实际查询标题及 open 状态通过。Web Tasks 显示 66 当前/14 历史跟进；另一主办方为 0，保持 owner 隔离。跟进仍为只读可见性，不把旧 task 包一层变成普通待办；完整 lifecycle 完成入口及原生同环境回读仍开放。版本及验收见 [BR-025](2026-09-16-production-p0-fixes.md)，后续只做 [最小必要清单](../docs/designs/2026-09-16-cloud-goal-remaining.md)。

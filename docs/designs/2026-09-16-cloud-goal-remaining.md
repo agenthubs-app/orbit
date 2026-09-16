@@ -2,6 +2,22 @@
 
 更新时间：2026-09-16。范围是本轮已授权的数据整理、Production 合成数据测试和 Web/App 共同使用 Neon，不把全部产品 backlog、视觉重做或高级集成追加为前置条件。
 
+## 五项闭环执行进度（本轮最新）
+
+以下进度覆盖下方历史基线；详细证据见 [BR-026](../../bridge/2026-09-16-cloud-five-item-acceptance.md)。整体仍未关闭，不以自动化替代原生或真实模型流程。
+
+| 项 | 已实际完成 | 仍须完成 |
+| --- | --- | --- |
+| R1 | `c9a511001` Web/App 共用生命周期 HTTP/Schema；Web Production 完成旧跟进并创建明确下一步，刷新、历史/当前列表及异账号拒绝通过；App 2869/2869。`0ed135761` 修复新关系任务归属和证据元数据，真实 AI 查询服务可读。 | 当前原生 App 与同一 Production 记录双向回读，依赖 R4。 |
+| R2 | 一条真实关联 Note、一条纯站内 ReminderPlan；云端 maintenance 已投递唯一 Delivery；真实收件箱点击到正确任务，已读持久化。21:37 自动 heartbeat 再执行后 Delivery 仍唯一、已读不变。四域只读查询服务各有非空样本，另账号不能读取跟进。去重/并发/回滚/中断恢复已有真实隔离 PostgreSQL 测试。 | 真实模型四域总结与原生消费未验，不冒充通过。 |
+| R3 | `560247580` durable queue + worker + 注册 outbox 唤醒 + maintenance 重派；`15c069ba4` 修复 Cron 被登录代理错误拦截。Vercel 控制台启动后云端消费者将 79 条 pending outbox 全部完成。 | 真实生成→发布→参与者读取（需模型预算），不是仅凭 outbox 完成就关闭活动运营链。 |
+| R4 | 已核实本机只有 Xcode 26.1.1，Expo 57/RN 0.86 原生依赖编译失败；无可运行 Orbit 包。未修改 node_modules 或全量降级依赖。 | 选择并配置兼容 Xcode（26.4+）或 EAS 模拟器构建；随后实际原生同记录双向修改、完成/恢复、刷新、换号隔离。 |
+| R5 | Production 新账号创建、100% 基础资料保存刷新；待办创建→完成→恢复→重开；个人日程创建刷新；另一身份不能访问该任务。 | 未来活动报名→匹配→人脉→真实 iOrbit，以及最终原生串行复验。 |
+
+等待决定只阻塞对应动作：原生工具链选项；本轮真实模型验收新增最高 $1 预算。此前累计 $5 的余额无法由缺失的旧私有账本确认，因此没有擅自继续主动生成。打开报名页时发现题目自动生成/预取，已停止；这部分可能计费、金额待核，不能宣称本轮全部零模型调用。Google 登录因未配置且 UI 不展示入口，本轮记不适用，不额外扩建 OAuth。
+
+原记录保留：未重置/清空/重 seed Production。仅为本轮新建关系任务修补两个缺失元数据字段，私有 before-image 已导出；状态、版本、时间和任务 ID 均未改变。未来真实上线前清理仍需单独执行。
+
 ## 已固定的边界
 
 - Neon Production `workspace:orbit-demo-fixtures` 是当前测试事实源；Web/API 访问 Neon，App 只经同一 HTTPS API。fixture 是数据来源标签，不是运行时 mock 服务。
@@ -21,7 +37,7 @@
 
 GitNexus impact 的 HIGH/CRITICAL、partial 与 detect-changes 的 low/零流程相互不一致，且曾 SIGSEGV/UNKNOWN；不认定完整图分析通过。各修复另外进行了源码调用复核、定向测试和线上验收，不用低风险输出覆盖高风险警告。
 
-最终运行源码 `105ebba4d`，部署 `dpl_2FjxtX314B6DRojeZvFbdDF8gTNh` 为 Ready，正式入口仍为 [orbit-puce-kappa.vercel.app](https://orbit-puce-kappa.vercel.app)。从精确已提交 Web 子树发布，没有带入根目录用户改动。Production 待办页保留主账号原有普通任务，显示当前跟进 66 / 历史 14；另一主办方账号显示当前跟进 0，未泄露主账号记录。AI 查询正文已正确显示标题和 open 状态，并持久化到该 canonical actor 的会话。个人日程原记录编辑后成功回执与刷新回读通过。没有批量改写/删除 Neon 数据，没有发送外部消息。
+本轮开始前的运行源码为 `105ebba4d`，部署 `dpl_2FjxtX314B6DRojeZvFbdDF8gTNh`；最新版本以后续 BR-026 为准，正式入口仍为 [orbit-puce-kappa.vercel.app](https://orbit-puce-kappa.vercel.app)。历史基线：主账号 66 当前 / 14 历史；本轮完成一项并明确新增下一步后为 66 当前 / 15 历史。没有批量改写/删除 Neon 数据，没有发送外部消息。
 
 ## 完成当前测试目标仍必须做
 
@@ -35,7 +51,7 @@ GitNexus impact 的 HIGH/CRITICAL、partial 与 detect-changes 的 low/零流程
 
 执行顺序：R1/R2 先补数据消费证据；R3 与 R4 环境准备可并行；最后 R5 串行贯通。R4 受工具链阻塞时，不阻塞 Web、数据或云端 worker 的独立工作。
 
-R1 已核实到的最小缺项：App `/followups` 仅重定向到通用 Tasks 的人脉筛选；Tasks 的完成/恢复只调用 generic `/api/tasks/:id`，联系人详情没有 lifecycle completion UI。现有 `/api/connections/:id/stage` 也只接受轻量 stage 输入，不是 `completeTask` adapter。下一步应复用现有 lifecycle 读取/事务服务，补 actor-scoped HTTP 契约、两个 expected version 与幂等键，再让两端显式选择 `next_task / active / nurture / archived`；覆盖四种 outcome、重复提交、旧版本冲突和异账号拒绝。无需为此迁移 80 条旧记录或复制另一套状态。
+R1 代码缺项已补齐：`GET/POST /api/connections/:id/lifecycle`、`GET /api/relationship-tasks` 及 Web/App 独立关系任务详情。完成必须明确 `next_task / active / nurture / archived`，携带两类 expected version、幂等键及须解除的确切旧任务 ID；不走 generic complete。Web 的处理入口在 Tasks 当前跟进分区，联系人来源资料继续只读。原生运行时验收仍开放。
 
 原生依赖健康检查保留 3 类已发现项（expo-font peer、Hermes 提示、SDK 建议版本偏差）；在准备原生构建时按实际错误逐项核实，不无条件全量升级、降级依赖或修改 node_modules。
 
