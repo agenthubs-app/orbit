@@ -43,6 +43,24 @@ test('ordinary SQLite flags or drift in any compile response fail closed', async
   assert.equal((await inspectNativePreflight(await fixture(t, { pod: '-DSQLITE_ENABLE_FTS5=1' }))).staticPreflight, 'fail');
 });
 
+test('quoted and unquoted Xcode response tokens preserve valid compiler definitions', async t => {
+  for (const compile of [flags, flags.split(' ').map(token => `'${token}'`).join(' '), flags.split(' ').map(token => `"${token}"`).join('\n')]) {
+    const report = await inspectNativePreflight(await fixture(t, { compile }));
+    assert.equal(report.staticPreflight, 'pass');
+    assert.equal(report.exitCode, 2);
+    assert.equal(report.nativeAcceptance, 'unverified');
+  }
+});
+
+test('overridden macros, comments and non-flag tokens cannot masquerade as cipher evidence', async t => {
+  for (const compile of [
+    `${flags} '-DSQLITE_HAS_CODEC=0'`, `${flags} -USQLITE_HAS_CODEC`,
+    `// ${flags}`, `# ${flags}`, `/* ${flags} */`,
+    `"description ${flags}"`, flags.replace('-DSQLITE_HAS_CODEC=1', 'prefix-DSQLITE_HAS_CODEC=1'),
+    `${flags} 'unterminated`,
+  ]) assert.equal((await inspectNativePreflight(await fixture(t, { compile }))).staticPreflight, 'fail', compile);
+});
+
 test('commented config, disabled iOS override and missing compiler evidence cannot pass', async t => {
   for (const config of ['// [["expo-sqlite", { useSQLCipher: true }]]\nexport default {};', 'export default {plugins:[["expo-sqlite",{useSQLCipher:true,ios:{useSQLCipher:false}}]]};']) {
     assert.equal((await inspectNativePreflight(await fixture(t, { config }))).staticPreflight, 'fail');

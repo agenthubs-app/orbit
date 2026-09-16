@@ -34,12 +34,45 @@ function configIntent(source: string): boolean {
 }
 
 function cipherFlags(source: string): boolean {
-  return [
-    /(?:^|\s)-D\s*SQLITE_HAS_CODEC(?:=1)?(?=\s|["']|$)/u,
-    /(?:^|\s)-D\s*SQLCIPHER_CRYPTO_CC(?=\s|["']|$)/u,
-    /(?:^|\s)-D\s*SQLITE_EXTRA_INIT=sqlcipher_extra_init(?=\s|["']|$)/u,
-    /(?:^|\s)-D\s*SQLITE_EXTRA_SHUTDOWN=sqlcipher_extra_shutdown(?=\s|["']|$)/u,
-  ].every(pattern => pattern.test(source));
+  const tokens: string[] = [];
+  let token = '';
+  let quote: string | null = null;
+  for (let index = 0; index < source.length; index++) {
+    const character = source[index]!;
+    if (character === '\\' && quote !== "'") {
+      const next = source[++index];
+      if (next === undefined) return false;
+      if (next !== '\n') token += next;
+    } else if (quote) {
+      if (character === quote) quote = null;
+      else token += character;
+    } else if (character === "'" || character === '"') quote = character;
+    else if (!token && (character === '#' || source.slice(index, index + 2) === '//')) {
+      while (index < source.length && source[index] !== '\n') index++;
+    } else if (!token && source.slice(index, index + 2) === '/*') {
+      const end = source.indexOf('*/', index + 2);
+      if (end < 0) return false;
+      index = end + 1;
+    } else if (/\s/u.test(character)) {
+      if (token) tokens.push(token);
+      token = '';
+    } else token += character;
+  }
+  if (quote) return false;
+  if (token) tokens.push(token);
+  const definitions = new Map<string, string>();
+  for (let index = 0; index < tokens.length; index++) {
+    let flag = tokens[index]!;
+    if (flag === '-D' || flag === '-U') flag += tokens[++index] ?? '';
+    const definition = /^-D([A-Za-z_][A-Za-z0-9_]*)(?:=(.*))?$/u.exec(flag);
+    const removal = /^-U([A-Za-z_][A-Za-z0-9_]*)$/u.exec(flag);
+    if (definition) definitions.set(definition[1]!, definition[2] ?? '1');
+    else if (removal) definitions.delete(removal[1]!);
+  }
+  return definitions.get('SQLITE_HAS_CODEC') === '1'
+    && definitions.get('SQLCIPHER_CRYPTO_CC') === '1'
+    && definitions.get('SQLITE_EXTRA_INIT') === 'sqlcipher_extra_init'
+    && definitions.get('SQLITE_EXTRA_SHUTDOWN') === 'sqlcipher_extra_shutdown';
 }
 
 /** Reads static evidence only; never executes config, builds, opens a database or accepts runtime proof. */
