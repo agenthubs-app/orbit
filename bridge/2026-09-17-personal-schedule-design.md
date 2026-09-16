@@ -3,7 +3,7 @@
 - 日期：2026-09-17；P1；source_ready/consumer_ready，verification blocked（实际业务验收未齐）。ROOT已接单；B唯一0053 run-01已结束，固定功能75151e986f0b91b696dda9d9da1dc0e4a467cc33及报告66b1a4a47300621e0ef2fa57169f275dad1631d5，不重开Generator。
 - 授权：用户提供参考图要求编写并委派Sprint，复用既有提交、精确merge chat-agent、运行验证与push授权。
 - Web：代码及必要0051读取/手机视口依赖精确合入chat-agent 27a45a2bedb19013e2f7f0bba6d3187bec369c74；未merge整Phone祖先。生产build退出0，BUILD_ID TK0eR2gz-zYC78Oh5wYoU，主3000 PID68625/句柄55802，health200/live，原费用ledger/guard不初始化或重置。
-- App：新界面源码已合；Metro127.0.0.1:8082 PID69917/句柄63327 status running；主DA Simulator native build原句柄96099运行中，尚未安装/验收。投资人321xx及冻结322xx保持旧产物，不能当0053部署。
+- App：新界面源码已合；Metro127.0.0.1:8082 PID69917/句柄63327 status running；主DA Simulator原构建96099退出0/BUILD SUCCEEDED，安装退出0、主包运行PID75083，实际RCT_jsLocation为127.0.0.1:8082。投资人321xx及冻结322xx保持旧产物，不能当0053部署；Phone父已持发布锁开始精确源集成。
 
 ## 用户可见变化及契约
 
@@ -17,4 +17,8 @@ ROOT集成树和主线merge前write-tree一致：38b185431349c0e826cc358460de2ff
 
 B原一次I App3128/3125pass/3fail、Web3621/3356pass/59fail/206skip均exit1；App运行期改测试带版本不确定性，后续定向通过不覆盖原失败。Web57名称匹配旧日志仅证明同名曾失败。固定REPORT保留原源SHA/偏差，不宣布全库绿色。
 
-Web写→App回读：未运行；App写→Web/Phone回读：未运行。SC05创建→详情→改期/全天/跨天/线上链接/当前关系、原生键盘字号/视觉、准确自建ID清理及适用push/远端SHA未齐。build/health/Metro不是业务SC通过。ROOT继续原native句柄→安装明确8082→同账号同数据库真实交互→必要合并树全量及远端闭环。尚无真实记录/provider/费用写入，服务及设备锁保持原owner。
+ROOT已实际原生点击新建30分钟日程→POST201→独立GET200×2→详情；改期页1小时快选18:00→19:00→PATCH200→独立GET200×2→详情；再改全天→PATCH200→GET200×2→详情。一次手动日期输入重复追加造成校验失败，纠正输入后保存，未冒产品缺陷。仅本次自建记录随后经编辑→删除→确认，DELETE200、集合GET200、日历0项且标题缺席；原有记录未动。服务脱敏精确记录指纹77fc892a，日志build/harness-state/evidence/sprint-0053/root-runtime/web-production-runtime.log及native-detail-30min.png；未provider调用、未重置预算。
+
+实际原生显示缺陷：30分钟详情显示1,800秒、1小时显示3,600秒、全天显示86,400秒；Detail使用Intl.NumberFormat minute，Hermes差异仍待核因。全天半开结束日期直接显示次日亦待核显示语义。B只做独立只读诊断，不重开原run/第三repair；不能将mock绿色代替实际失败。
+
+Web写→App回读：未运行；App写→Phone同账号同数据库回读：未运行。跨天/链接/关系、原生键盘字号和参考视觉矩阵仍未齐。代码/文档e369903a9已普通push退出0且ls-remote核一致，后续只含文档不改变运行源码27。build/health/Metro不是业务SC通过，Sprint保持blocked，实际进度与只读后续见ROOT checkpoint。
