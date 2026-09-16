@@ -24,8 +24,14 @@ function domainFor(path: string): string {
   if (path.startsWith('/api/search/')) return 'contacts';
   if (path.startsWith('/api/relationship-signals')) return 'relationship-signals';
   if (path.startsWith('/api/relationship-communication/invitations') || path.startsWith('/api/contact-invitations')) return 'connections';
+  if (path.startsWith('/api/relationship-communication/conversations') && path.endsWith('/read')) return 'message-read-state';
   if (path.startsWith('/api/relationship-communication/conversations') && path.endsWith('/messages')) return 'messages';
   if (path.startsWith('/api/relationship-communication') || path.startsWith('/api/chat/conversations')) return 'conversations';
+  if (path.startsWith('/api/chat/privacy')) return 'chat-privacy';
+  if (path.startsWith('/api/chat/')) return 'conversations';
+  if (path.startsWith('/api/inbox/delivery/')) return 'notification-delivery';
+  if (path.startsWith('/api/inbox/discovery/')) return 'notification-discovery';
+  if (path === '/api/inbox/notifications/read' || (path.startsWith('/api/notifications/') && path.endsWith('/state'))) return 'message-read-state';
   if (path.startsWith('/api/notifications') || path.startsWith('/api/inbox/')) return 'notifications';
   if (path.startsWith('/api/devices/')) return 'preferences';
   if (path.startsWith('/api/ai/conversations/groups')) return 'ai-groups';
@@ -61,7 +67,8 @@ function domainFor(path: string): string {
 function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): ReadSurface {
   const domainId = domainFor(endpointTemplate);
   const providerTodo = endpointTemplate.startsWith('/api/relationship-signals/email-calendar');
-  const secret = providerTodo || endpointTemplate.startsWith('/api/auth/') || endpointTemplate.startsWith('/api/devices/');
+  const secret = providerTodo || endpointTemplate.startsWith('/api/account/session/')
+    || endpointTemplate.startsWith('/api/auth/') || endpointTemplate.startsWith('/api/devices/');
   const binary = endpointTemplate.endsWith('/image') || endpointTemplate.endsWith('/content');
   return {
     consumerFile,
@@ -133,6 +140,20 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/chat/RelationshipChatDetailScreen.tsx","GET","/api/relationship-communication/conversations/:id"],
   ["src/screens/chat/RelationshipChatDetailScreen.tsx","POST","/api/relationship-communication/conversations/:id/messages"],
   ["src/screens/chat/RelationshipChatScreen.tsx","GET","/api/relationship-communication/conversations"],
+  ["src/screens/inbox/NotificationDetailScreen.tsx","GET","/api/inbox/notifications/:id"],
+  ["src/screens/inbox/NotificationDetailScreen.tsx","POST","/api/inbox/notifications/:id/actions"],
+  ["src/screens/inbox/RelationshipInboxScreen.tsx","GET","/api/chat/privacy"],
+  ["src/screens/inbox/RelationshipInboxScreen.tsx","GET","/api/notifications/deliveries/:id"],
+  ["src/screens/inbox/RelationshipInboxScreen.tsx","GET","/api/relationship-communication/conversations"],
+  ["src/screens/inbox/RelationshipInboxScreen.tsx","PATCH","/api/agent/signals/:id"],
+  ["src/screens/inbox/RelationshipInboxScreen.tsx","POST","/api/chat/privacy/analysis-toggle"],
+  ["src/screens/inbox/RelationshipInboxScreen.tsx","POST","/api/chat/relationship-inbox"],
+  ["src/screens/inbox/RelationshipInboxScreen.tsx","POST","/api/notifications/:id/state"],
+  ["src/screens/inbox/RelationshipInboxScreen.tsx","POST","/api/relationship-communication/conversations/:id/messages"],
+  ["src/screens/inbox/RelationshipInboxScreen.tsx","POST","/api/relationship-communication/conversations/:id/read"],
+  ["src/screens/inbox/RelationshipInboxScreen.tsx","POST","/api/relationship-signals/:id/confirm"],
+  ["src/screens/inbox/useNotificationInbox.ts","GET","/api/inbox/notifications"],
+  ["src/screens/inbox/useNotificationInbox.ts","POST","/api/inbox/notifications/read"],
   ["src/screens/contacts/BusinessCardBatchScreen.tsx","GET","/api/contact-drafts/business-card/batches/:id:id"],
   ["src/screens/contacts/BusinessCardBatchScreen.tsx","POST","/api/contact-drafts/business-card/batches/:id:id"],
   ["src/screens/contacts/BusinessCardBatchScreen.tsx","GET","/api/contact-drafts/business-card/batches/:id/items/:id:id"],
@@ -303,11 +324,21 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/schedule/PersonalScheduleList.tsx","GET","/api/schedule-items/:id"],
   ["src/screens/schedule/PersonalScheduleScreen.tsx","GET","/api/schedule-items"],
   ["src/screens/schedule/PersonalScheduleScreen.tsx","GET","/api/schedule-items/:id"],
+  ["src/screens/schedule/PersonalScheduleScreen.tsx","DELETE","/api/schedule-items"],
+  ["src/screens/schedule/PersonalScheduleScreen.tsx","DELETE","/api/schedule-items/:id"],
+  ["src/screens/schedule/PersonalScheduleScreen.tsx","PATCH","/api/schedule-items"],
+  ["src/screens/schedule/PersonalScheduleScreen.tsx","PATCH","/api/schedule-items/:id"],
+  ["src/screens/schedule/PersonalScheduleScreen.tsx","POST","/api/schedule-items"],
+  ["src/screens/schedule/PersonalScheduleScreen.tsx","POST","/api/schedule-items/:id"],
   ["src/screens/schedule/ScheduleEventPreviewScreen.tsx","GET","/api/events/public/:id"],
   ["src/screens/schedule/ScheduleScreen.tsx","GET","/api/events/public"],
   ["src/screens/schedule/ScheduleScreen.tsx","GET","/api/schedule-items"],
   ["src/screens/schedule/ScheduleScreen.tsx","GET","/api/tasks"],
   ["src/screens/settings/ApiSettingsScreen.tsx","GET","/api/health"],
+  ["src/screens/settings/NotificationDeliverySettings.tsx","GET","/api/inbox/delivery/preferences"],
+  ["src/screens/settings/NotificationDeliverySettings.tsx","POST","/api/inbox/delivery/preferences"],
+  ["src/screens/settings/NotificationDiscoverySettings.tsx","GET","/api/inbox/discovery/preferences"],
+  ["src/screens/settings/NotificationDiscoverySettings.tsx","POST","/api/inbox/discovery/preferences"],
   ["src/screens/tasks/RelationshipTaskTools.tsx","GET","/api/notifications"],
   ["src/screens/tasks/TaskDetailScreen.tsx","GET","/api/reminders"],
   ["src/screens/tasks/TaskDetailScreen.tsx","GET","/api/tasks/:id"],

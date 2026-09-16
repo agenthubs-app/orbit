@@ -29,6 +29,11 @@ const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
   'src/screens/events/EventAttendeesScreen.tsx:255': ['/api/events/:id/attendees/import'],
   'src/screens/home/HomeDashboardScreen.tsx:112': ['/api/tasks', '/api/schedule-items', '/api/recommendations/events'],
   'src/hooks/useRelationshipInboxBadgeCount.ts:68': ['/api/relationship-communication/conversations', '/api/notifications', '/api/inbox/notifications'],
+  'src/screens/inbox/RelationshipInboxScreen.tsx:510': ['/api/notifications/:id/state', '/api/relationship-communication/conversations/:id/read'],
+  'src/screens/inbox/RelationshipInboxScreen.tsx:1185': ['/api/relationship-signals/:id/confirm'],
+  'src/screens/inbox/RelationshipInboxScreen.tsx:1810': ['/api/chat/privacy/analysis-toggle'],
+  'src/screens/inbox/RelationshipInboxScreen.tsx:1920': ['/api/relationship-communication/conversations/:id/messages'],
+  'src/screens/inbox/RelationshipInboxScreen.tsx:2061': ['/api/chat/relationship-inbox'],
   'src/screens/profile/ProfileMoreScreen.tsx:78': ['/api/profile/extractions/business-card', '/api/profile/extractions/resume'],
   'src/screens/profile/ProfileScreen.tsx:330': ['/api/profile/extractions/business-card', '/api/profile/extractions/resume'],
   'src/screens/profile/ProfileScreen.tsx:1347': ['/api/contacts', '/api/tasks', '/api/schedule-items'],
@@ -187,17 +192,40 @@ export async function extractReadCalls(root: string): Promise<{ calls: Call[]; i
     if (value.endsWith('/')) value += ':id';
     return value;
   }
+  function declaredName(node: ts.Node): string {
+    return symbol(node)?.getName() ?? node.getText();
+  }
+  function fixedMethod(name: string): string | null {
+    const match = /^(?:client)?(get|post|put|patch|delete)$/iu.exec(name);
+    return match?.[1]?.toUpperCase() ?? null;
+  }
+  function parameterDelegate(node: ts.CallExpression, pathNode: ts.Node | undefined): boolean {
+    if (!pathNode) return false;
+    const target = declaration(pathNode);
+    if (!target || !ts.isParameter(target)) return false;
+    for (let current: ts.Node | undefined = node.parent; current; current = current.parent) {
+      if (ts.isFunctionLike(current) && current.parameters.some(parameter => parameter === target)) return true;
+    }
+    return false;
+  }
   function inspect(file: ts.SourceFile, node: ts.Node) {
     if (ts.isCallExpression(node)) {
       const expr = node.expression;
-      const name = ts.isPropertyAccessExpression(expr) ? expr.name.text : expr.getText();
+      const name = ts.isPropertyAccessExpression(expr) ? expr.name.text : declaredName(expr);
       const receiver = ts.isPropertyAccessExpression(expr) ? expr.expression.getText() : '';
       const typedClient = ts.isPropertyAccessExpression(expr) && checker.typeToString(checker.getTypeAtLocation(expr.expression)).includes('OrbitApiClient');
-      const http = /^(get|post|put|patch|delete)$/u.test(name) && (typedClient || /client|api/iu.test(receiver));
+      const directMethod = fixedMethod(name);
+      const namedClientMethod = !ts.isPropertyAccessExpression(expr) && /^client(?:get|post|put|patch|delete)$/iu.test(name);
+      const http = directMethod !== null && (namedClientMethod || (
+        ts.isPropertyAccessExpression(expr) && (typedClient || /client|api/iu.test(receiver))
+      ));
+      const computedClient = ts.isElementAccessExpression(expr)
+        && (checker.typeToString(checker.getTypeAtLocation(expr.expression)).includes('OrbitApiClient') || /client|api/iu.test(expr.expression.getText()));
+      const genericRequest = /^(?:client)?request$/iu.test(name);
       const resource = /^(useApiResource|useValidatedApiResource)$/u.test(name);
       const raw = /^(fetch|fetchImpl|fetcher|fetchStream|expoFetch)$/u.test(name);
       const protectedBinary = name === 'loadSelectedBatchImage';
-      if (http || resource || raw || protectedBinary) {
+      if (http || computedClient || genericRequest || resource || raw || protectedBinary) {
         const consumerFile = relative(root, file.fileName);
         if (transportFiles.has(consumerFile)) {
           ts.forEachChild(node, child => inspect(file, child));
@@ -208,7 +236,17 @@ export async function extractReadCalls(root: string): Promise<{ calls: Call[]; i
           return;
         }
         const location = `${consumerFile}:${file.getLineAndCharacterOfPosition(node.getStart()).line + 1}`;
-        let methods = [http ? name.toUpperCase() : 'GET'];
+        const pathIndex = genericRequest ? 1 : protectedBinary ? 1 : 0;
+        const pathNode = node.arguments[pathIndex];
+        // Delegate bodies are covered at their concrete call sites. Reporting their
+        // parameter placeholders would create false unresolved-path findings.
+        if ((http || computedClient || genericRequest) && parameterDelegate(node, pathNode)) {
+          ts.forEachChild(node, child => inspect(file, child));
+          return;
+        }
+        let methods = [http ? directMethod! : 'GET'];
+        if (computedClient) methods = evaluate(expr.argumentExpression);
+        if (genericRequest) methods = evaluate(node.arguments[0]);
         if (raw && node.arguments[1]) {
           const init = node.arguments[1];
           if (ts.isObjectLiteralExpression(init)) {
@@ -216,13 +254,14 @@ export async function extractReadCalls(root: string): Promise<{ calls: Call[]; i
             if (property && ts.isPropertyAssignment(property)) methods = evaluate(property.initializer);
           } else methods = [UNKNOWN];
         }
-        const evaluatedPaths = evaluate(node.arguments[protectedBinary ? 1 : 0]);
+        methods = unique(methods.map(method => method === UNKNOWN ? UNKNOWN : method.toUpperCase()).map(method => /^(GET|POST|PUT|PATCH|DELETE)$/u.test(method) ? method : UNKNOWN));
+        const evaluatedPaths = evaluate(pathNode);
         const paths = evaluatedPaths.map(normalizePath).filter((value): value is string => value !== null);
         if (methods.includes(UNKNOWN)) invalid.push(`${location} UNRESOLVED_METHOD ${node.getText().slice(0,100)}`);
         const unresolved = !paths.length || evaluatedPaths.every(path => !path.includes('/api/'));
         const inferredPaths = unresolved ? [...(computedPathFamilies[location] ?? [])] : [];
         const resolvedPaths = unique([...paths, ...inferredPaths]);
-        if (unresolved && !resolvedPaths.length) invalid.push(`${location} UNRESOLVED_PATH ${node.arguments[protectedBinary ? 1 : 0]?.getText()}`);
+        if (unresolved && !resolvedPaths.length) invalid.push(`${location} UNRESOLVED_PATH ${pathNode?.getText()}`);
         for (const path of resolvedPaths) {
           for (const method of methods.filter(value => value !== UNKNOWN)) calls.push({ consumerFile, endpointTemplate: path, method });
         }
