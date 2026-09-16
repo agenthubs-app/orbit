@@ -8,6 +8,8 @@ import { runRelationshipLifecycleMigrations } from "../../features/connections/l
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
 import { createConfiguredTransactionalPostgresRuntime, createTransactionalPostgresClient, type TransactionalPostgresClient, type TransactionalSqlExecutor } from "../../shared/storage/transactional-postgres";
 import { createConfiguredRelationshipLifecycleService } from "../../features/connections/lifecycle/service-factory";
+import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
+import { executeActorScopedQuery } from "../../features/orbit-ai/data-query/query-service";
 
 const now = "2026-08-21T01:00:00.000Z";
 const workspaceId = "workspace:lifecycle-test";
@@ -105,6 +107,24 @@ test("PostgreSQL persists lifecycle tasks and audits for cold reads and exact sn
   assert.equal((await cold.read(actorId, connectionId))?.connection.version, 5);
   const audit = await client.query<{ payload: unknown }>("select payload from orbit_records where collection_name='relationship_lifecycle_audits'");
   assert.equal(JSON.stringify(audit.rows).includes("联系 Mina"), false);
+}));
+
+test("new lifecycle obligations retain actor and evidence metadata for AI reads without leaking to another actor", databaseTest, async () => withDatabase(async ({ client, repo }) => {
+  await repo.mutate(mutation, (snapshot) => applyRelationshipStageCommand({ command, current: snapshot.connection, tasks: snapshot.tasks, now }));
+  const store = createPostgresLiveRecordStore({ client });
+  const record = await store.getRecord({ workspaceId, collectionName: "tasks", recordId: "task:1" });
+  assert.equal(record?.payload.accountId, actorId);
+  assert.equal(record?.evidenceIds.length, 1);
+  assert.deepEqual(record?.evidenceIds, record?.payload.evidenceIds);
+  for (const toolName of ["tasks.query", "followups.query"] as const) {
+    const input = { operation: "get" as const, id: "task:1", query: "核对 task:1" };
+    const result = await executeActorScopedQuery({ actorId, workspaceId, store, toolName, input });
+    assert.equal(result.total, 1);
+    assert.deepEqual(result.evidenceIds, record?.evidenceIds);
+    if (toolName === "followups.query") assert.match(String(result.items[0].evidenceSummary), /用户确认关系下一步/);
+    const other = await executeActorScopedQuery({ actorId: "actor:other", workspaceId, store, toolName, input });
+    assert.equal(other.total, 0);
+  }
 }));
 
 test("PostgreSQL rejects wrong actors, missing contact ownership, stale versions and changed hashes without writes", databaseTest, async () => withDatabase(async ({ client, repo }) => {
