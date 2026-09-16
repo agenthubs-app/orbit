@@ -178,19 +178,34 @@ export async function readEventCoreBackfillCandidates(input: {
   const catalogue = readPublicEventCatalogue();
   catalogue.events.forEach((event, index) => {
     const migrationOwner = migrationOwnerFor(event.id);
+    const knownOwnerIds = knownOwners.get(event.id);
+    const publicOrganizerId = optionalText(event.organizerId);
+    const organizerActorId =
+      publicOrganizerId &&
+      (!knownOwnerIds || knownOwnerIds.has(publicOrganizerId))
+        ? publicOrganizerId
+        : migrationOwner.actorId;
     candidates.push({
       aliases: [{ type: "legacy_route_id", value: eventCodeFor(event, index) }],
       description: event.description ?? null,
       endsAt: event.endsAt ?? event.startsAt,
       eventId: event.id,
       lifecycleState: "published",
-      organizerActorId:
-        event.organizerId ?? migrationOwner.actorId,
+      organizerActorId,
       publicCode: eventCodeFor(event, index),
       source: "public_catalogue",
       sourcePayload: {
         evidenceIds: event.evidenceIds,
         generatedAt: catalogue.generatedAt,
+        ...(publicOrganizerId && publicOrganizerId !== organizerActorId
+          ? {
+              organizerActorResolution: {
+                publicOrganizerId,
+                reason: "PUBLIC_CATALOGUE_ORGANIZER_ENTITY_RESOLVED_TO_KNOWN_OWNER",
+                selectedOrganizerActorId: organizerActorId,
+              },
+            }
+          : {}),
         ...(event.organizerId || !migrationOwner.assignment
           ? {}
           : { operatorMigrationAssignment: migrationOwner.assignment }),

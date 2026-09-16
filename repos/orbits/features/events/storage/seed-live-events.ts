@@ -218,6 +218,8 @@ function liveRecordForGeneratedRelationshipEvent(input: {
     endsAt: input.event.endsAt ?? input.event.startsAt,
     evidence,
     nextAction: "Use this source-backed event for live agent workflow tests.",
+    name: input.event.name,
+    organizerId: input.event.organizerId ?? null,
     recommendedPreparation:
       "Review generated relationship fixture evidence before agent event planning.",
     relationshipContext: description,

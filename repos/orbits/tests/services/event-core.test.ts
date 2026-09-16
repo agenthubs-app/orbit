@@ -435,6 +435,40 @@ test("ownerless public sources reuse an existing canonical owner claim", async (
   assert.equal(publicCandidate?.organizerActorId, "actor:existing-owner");
 });
 
+test("public organizer entities do not override a unique canonical owner claim", async () => {
+  let queryIndex = 0;
+  const candidates = await readEventCoreBackfillCandidates({
+    client: {
+      async query<TRow = Record<string, unknown>>() {
+        queryIndex += 1;
+        const rows = queryIndex === 1
+          ? [{
+              event_id: "event_signup_01",
+              organizer_actor_id: "actor:existing-owner",
+              source_payload: {},
+            }]
+          : [];
+        return { rowCount: rows.length, rows: rows as unknown as TRow[] };
+      },
+    },
+    defaultTimezone: "Asia/Tokyo",
+    publicOwnerActorId: "actor:public-migration-owner",
+    workspaceId: "workspace:test",
+  });
+
+  const publicCandidate = candidates.find(
+    (candidate) =>
+      candidate.eventId === "event_signup_01" &&
+      candidate.source === "public_catalogue",
+  );
+  assert.equal(publicCandidate?.organizerActorId, "actor:existing-owner");
+  assert.deepEqual(publicCandidate?.sourcePayload.organizerActorResolution, {
+    publicOrganizerId: "organizer_orbit_naoki_yamamoto",
+    reason: "PUBLIC_CATALOGUE_ORGANIZER_ENTITY_RESOLVED_TO_KNOWN_OWNER",
+    selectedOrganizerActorId: "actor:existing-owner",
+  });
+});
+
 test("three ownerless active records carry explicit operator assignment evidence", async () => {
   const ownerlessIds = ["event:ownerless:a", "event:ownerless:b", "event:ownerless:c"];
   const candidates = await readEventCoreBackfillCandidates({

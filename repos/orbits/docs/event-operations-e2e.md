@@ -22,6 +22,19 @@ npm run dev
 
 The password is supplied only through the environment and is neither embedded nor printed. Re-running the seed resets the exact fixture event's registration and event-operations collections before recreating them. It does not broadly delete other events or accounts. The six cancelled histories exercise cancellation and late-registration state without reducing or contaminating the 64-person matching cohort.
 
+## Isolated Neon demo workspace
+
+The web demo seed uses `npm run db:seed:demo-workspace` with the dedicated
+`workspace:orbit-demo-fixtures` workspace. It creates the reviewed organizer
+account/profile chains, runs the explicit Event Core backfill against the
+fixture sources, and verifies that all 13 public events have canonical
+published rows, aliases, and canonical membership state. The public
+`event_signup_01` event retains exactly 64 active memberships and 6 cancelled
+histories. Stable mock organizer entity IDs are kept for local fixtures; the
+backfill resolves them to the reviewed Neon auth actor IDs when a unique owner
+claim already exists. This seed is development-only and refuses
+`NODE_ENV=production`.
+
 ## Organizer path
 
 1. Open `/app/account/login?next=%2Fapp%2Fevents%2Fevent_signup_01%2Foperations`.
