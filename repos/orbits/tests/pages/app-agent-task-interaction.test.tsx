@@ -289,6 +289,33 @@ test("Web first send uses the reliable protocol and records a controlled origin"
   });
 });
 
+test("new chat keeps a persistent composer and sends its next turn through reliable v2", async (t) => {
+  const { root, conversationRequests } = await mountPage(t);
+  const forms = root.root.findAllByProps({ "data-orbit-agent-chat-composer": true });
+  const inputs = root.root.findAllByProps({ "data-orbit-agent-chat-input": true });
+  assert.equal(forms.length, 2, "desktop and mobile trees share the chat composer contract");
+  assert.equal(inputs.length, 2, "desktop and mobile trees expose the chat textbox");
+
+  const input = inputs[0];
+  act(() => input.props.onChange({ target: { value: "继续确认这个推荐" } }));
+  act(() => forms[0].props.onSubmit({ preventDefault() {} }));
+  assert.ok(
+    root.root.findAllByProps({ "data-orbit-agent-chat-input": true }).every((candidate) => candidate.props.disabled),
+    "the chat composer is disabled while the shared request is in flight",
+  );
+
+  await act(async () => {
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  });
+  assert.equal(conversationRequests.length, 2);
+  assert.equal(conversationRequests[1]?.message, "继续确认这个推荐");
+  assert.equal(conversationRequests[1]?.protocolVersion, 2);
+  assert.ok(
+    root.root.findAllByProps({ "data-orbit-agent-chat-input": true }).every((candidate) => !candidate.props.disabled),
+    "the chat composer reopens after the request settles",
+  );
+});
+
 test("contacts analysis opens as an editable draft and sends its structured origin only after submit", async (t) => {
   const sourceDataVersion = "a".repeat(64);
   const origin = {
@@ -344,9 +371,14 @@ test("opening a restored Web session performs no automatic POST", async (t) => {
     title: "恢复会话",
     updatedAt: "2026-09-14T00:01:00.000Z",
   };
-  const { persisted } = await mountPage(t, false, undefined, session);
+  const { root, persisted } = await mountPage(t, false, undefined, session);
 
   assert.equal(persisted.length, 0);
+  assert.equal(
+    root.root.findAllByProps({ "data-orbit-agent-chat-input": true }).length,
+    2,
+    "restored sessions keep the same persistent chat composer",
+  );
 });
 
 const emptyEvidenceMessage = /No verifiable result|本次没有从你已授权/u;
@@ -439,6 +471,11 @@ test("starting a new conversation during acceptance never writes the old card in
   let request: Promise<void>;
   await act(async () => { request = accept[0].props.onClick(); });
   act(() => root.root.findAllByProps({ className: "orbit-agent-new-chat" })[0].props.onClick());
+  assert.equal(
+    root.root.findAllByProps({ "data-orbit-agent-chat-input": true }).length,
+    2,
+    "starting a new conversation keeps the persistent composer visible",
+  );
   const savedCount = persisted.length;
   await act(async () => { respond(Response.json({ success: true, data: { task } })); await request; });
   assert.equal(root.root.findAllByProps({ href: "/app/tasks/task%3Aone%2Ftwo" }).length, 0);
@@ -466,7 +503,11 @@ test("renaming while a task is accepted preserves both the name and task in save
   act(() => rename.props.onClick());
   const input = root.root.findByProps({ "aria-label": "重命名对话" });
   act(() => input.props.onChange({ target: { value: "会面资料" } }));
-  act(() => root.root.findByType("form").props.onSubmit({ preventDefault() {} }));
+  const renameForm = root.root.findAllByType("form").find((form) =>
+    form.findAll((node) => Boolean(node.props["data-orbit-agent-history-rename-input"])).length > 0,
+  );
+  assert.ok(renameForm, "the history rename form remains distinct from the responsive chat composers");
+  act(() => renameForm!.props.onSubmit({ preventDefault() {} }));
   let request: Promise<void>;
   await act(async () => { request = root.root.findAllByProps({ "aria-label": "加入待办：准备会面" })[0].props.onClick(); });
   await act(async () => { respond(Response.json({ success: true, data: { task } })); await request; });

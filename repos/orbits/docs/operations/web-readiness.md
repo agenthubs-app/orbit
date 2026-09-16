@@ -140,6 +140,14 @@ Agent 活动推荐语言测试不再依赖运行机器的目录配置。通过�
 超时文案现在明确表示“浏览器停止等待、服务器结果尚未确认”，不再声称服务器已经停止。Web 请求已携带 reliable protocol v2 的同一 `requestId`；再次检查会复用同一请求，不会重复生成。此处只验证了本地源码与隔离测试，没有调用模型/Production API、写远程数据库或部署；60 秒仍不是服务端取消截止时间，完整 live latency 需要另行采集 route `Server-Timing` 与 runtime diagnostics。
 
 
+### iOrbit 聊天态 persistent composer（2026-09-16）
+
+`/app/agent` 的 dashboard 继续保留唯一的简报输入；进入新会话或打开既有会话后，工作区底部显示 persistent composer。桌面与移动 responsive tree 复用同一个 controlled draft，提交仍走既有 `ask`/reliable protocol v2；请求进行中由共享 `thinking` 状态禁用输入和发送按钮，完成后恢复。未改变 `/app/agent` 的 global ask 排除，避免 dashboard 产生重复入口。
+
+本次仅补 Web 组件、直接交互测试和该 Web readiness 记录；没有调用模型/Production API、写远程数据库、部署或修改 App、root `AGENTS.md`/`CLAUDE.md`。
+Agent 相关页面直测 71 项全通过，`typecheck` 与 `lint` 通过；这仍是隔离的本地组件/服务边界验证，不替代浏览器真人聊天或 Production 端到端验收。
+
+
 ### 迁移保护与本机数据库版本解耦（2026-09-06）
 
 迁移账本测试不再假设最新版本恒为 13：按正式迁移清单逐项比较版本、名称、校验和，仍要求 v12 仅出现一次。增加写入受控账本证据后的重复迁移验证，确认已有行不变；原不可更新/删除/清空、哈希与 authority 约束、外键和事务回滚检查保留。

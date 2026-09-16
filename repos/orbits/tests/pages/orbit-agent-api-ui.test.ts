@@ -65,6 +65,24 @@ test("Orbit agent uses CSS-gated responsive trees and exposes one shared request
   assert.doesNotMatch(agentSource, /matchMedia\(/);
 });
 
+test("chat composer stays on the Agent page without reopening the global launcher", () => {
+  const agentSource = readProjectFile(
+    "app/(app)/app/agent/orbit-real-agent.tsx",
+  );
+  const globalAskSource = readProjectFile(
+    "app/(app)/app/orbit-global-ask/orbit-global-ask.tsx",
+  );
+
+  assert.match(agentSource, /data-orbit-agent-chat-composer/);
+  assert.match(agentSource, /data-orbit-agent-chat-input/);
+  assert.match(agentSource, /disabled=\{thinking\}/);
+  assert.match(agentSource, /const query = chatDraft\.trim\(\);/);
+  assert.match(agentSource, /void ask\(query\)/);
+  assert.match(agentSource, /className="agent-chat-composer-dock"/);
+  assert.match(agentSource, /border-top: 1px solid var\(--border\)/);
+  assert.match(globalAskSource, /!isOrbitAskHome\(pathname\)/);
+});
+
 
 test("the actual Agent request helper aborts stalled requests and always clears its timer", async () => {
   const source = readProjectFile("app/(app)/app/agent/orbit-real-agent.tsx");

@@ -1578,6 +1578,55 @@ function agentSuggestLabel(label: string, language: "en" | "zh") {
   return labels[label] ?? label;
 }
 
+function AgentChatComposer({
+  busy,
+  onChange,
+  onSubmit,
+  t,
+  value,
+}: {
+  busy: boolean;
+  onChange: (value: string) => void;
+  onSubmit: () => void;
+  t: Translate;
+  value: string;
+}) {
+  return (
+    <form
+      aria-busy={busy}
+      className="agent-chat-composer"
+      data-orbit-agent-chat-composer
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit();
+      }}
+    >
+      <Icon color="var(--text-4)" name="message" size={16} />
+      <input
+        aria-label={t({
+          en: "Ask Orbit about contacts, events, and relationship to-dos",
+          zh: "询问 Orbit 人脉、活动与关系待办",
+        })}
+        data-orbit-agent-chat-input
+        disabled={busy}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={t({ en: "Continue the conversation…", zh: "继续追问…" })}
+        type="text"
+        value={value}
+      />
+      <button
+        aria-label={t({ en: "Send Ask Orbit message", zh: "发送给 Orbit" })}
+        className="agent-chat-composer-submit hit-44"
+        data-orbit-agent-submit="true"
+        disabled={busy || !value.trim()}
+        type="submit"
+      >
+        <Icon name="arrow" size={15} style={{ transform: "rotate(-45deg)" }} />
+      </button>
+    </form>
+  );
+}
+
 function AgentWelcome({ onPick, viewModel }: { onPick: (query: string) => void; viewModel: OrbitAgentViewModel }) {
   const { language, t } = useOrbitLanguage();
 
@@ -2401,6 +2450,15 @@ const CONSOLE_STYLES = `
 [data-orbit-real-page="agent"] .btn-back:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-softer); }
 [data-orbit-real-page="agent"] .thread-bar .title { font-family: var(--console-tight); font-size: 16px; font-weight: 600; color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 [data-orbit-real-page="agent"] .thread-bar .when { font-size: 12px; color: var(--text-4); font-family: var(--ff-mono); margin-left: auto; flex: 0 0 auto; }
+[data-orbit-real-page="agent"] .agent-chat-composer-dock { background: var(--bg-soft); border-top: 1px solid var(--border); flex: 0 0 auto; padding: 12px 32px 16px; }
+[data-orbit-real-page="agent"] .agent-chat-composer { align-items: center; background: var(--surface); border: 1px solid var(--border-2); border-radius: var(--r-md); display: flex; gap: 10px; margin: 0 auto; max-width: 900px; padding: 5px 5px 5px 16px; }
+[data-orbit-real-page="agent"] .agent-chat-composer:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+[data-orbit-real-page="agent"] .agent-chat-composer input { background: none; border: 0; color: var(--text); flex: 1; font: inherit; font-size: 14.5px; min-height: 38px; min-width: 0; outline: none; }
+[data-orbit-real-page="agent"] .agent-chat-composer input::placeholder { color: var(--text-4); }
+[data-orbit-real-page="agent"] .agent-chat-composer-submit { align-items: center; background: var(--accent); border: 0; border-radius: 50%; color: #fff; display: flex; flex: 0 0 auto; height: 36px; justify-content: center; transition: background .15s, transform .08s; width: 36px; }
+[data-orbit-real-page="agent"] .agent-chat-composer-submit:hover:not(:disabled) { background: var(--accent-hover); }
+[data-orbit-real-page="agent"] .agent-chat-composer-submit:active:not(:disabled) { transform: scale(.94); }
+[data-orbit-real-page="agent"] .agent-chat-composer-submit:disabled { background: var(--surface-3); color: var(--text-4); cursor: default; }
 [data-orbit-real-page="agent"] .thread { display: flex; flex-direction: column; gap: 20px; }
 [data-orbit-real-page="agent"] .msg-user-row { align-self: flex-end; max-width: 78%; display: flex; align-items: flex-end; gap: 8px; }
 [data-orbit-real-page="agent"] .msg-user-row .orbit-agent-message-copy { opacity: 0; transition: opacity .15s; }
@@ -2521,6 +2579,7 @@ const CONSOLE_STYLES = `
 }
 @media (max-width: 640px) {
   [data-orbit-real-page="agent"] .ws-inner { padding: 18px 16px calc(20px + var(--orbit-ask-clearance, 0px)); }
+  [data-orbit-real-page="agent"] .agent-chat-composer-dock { padding: 10px 16px calc(14px + env(safe-area-inset-bottom)); }
 }
 @media (prefers-reduced-motion: reduce) {
   [data-orbit-real-page="agent"] *, [data-orbit-real-page="agent"] *::before, [data-orbit-real-page="agent"] *::after { animation: none !important; transition: none !important; }
@@ -2547,6 +2606,7 @@ export function OrbitRealAgent({
   });
   const [panel, setPanel] = useState<AgentPanel | null>(null);
   const [thinking, setThinking] = useState(false);
+  const [chatDraft, setChatDraft] = useState("");
   const [histOpen, setHistOpen] = useState(false);
   const [activeQ, setActiveQ] = useState("");
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -2607,6 +2667,7 @@ export function OrbitRealAgent({
     setPanel(session.panel ?? panelFromMessages(session.messages));
     setChatOpen(true);
     setThinking(false);
+    setChatDraft("");
     setActiveQ("");
     setActiveSessionId(session.id);
     activeSessionIdRef.current = session.id;
@@ -3014,6 +3075,15 @@ export function OrbitRealAgent({
     }
   }, []);
 
+  const submitChatDraft = useCallback(() => {
+    const query = chatDraft.trim();
+
+    if (!query || thinking) return;
+
+    setChatDraft("");
+    void ask(query);
+  }, [ask, chatDraft, thinking]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -3210,6 +3280,7 @@ export function OrbitRealAgent({
     setMessages([]);
     setPanel(null);
     setThinking(false);
+    setChatDraft("");
     setActiveQ("");
     setActiveSessionId(null);
     setChatOpen(openChat);
@@ -3716,6 +3787,17 @@ export function OrbitRealAgent({
           <div ref={scrollRef} className="scroll ws-scroll">
             <div className="ws-inner">{workspaceContent}</div>
           </div>
+          {inChat ? (
+            <div className="agent-chat-composer-dock">
+              <AgentChatComposer
+                busy={thinking}
+                onChange={setChatDraft}
+                onSubmit={submitChatDraft}
+                t={t}
+                value={chatDraft}
+              />
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -3723,6 +3805,17 @@ export function OrbitRealAgent({
         <div ref={scrollRef} className="scroll ws-scroll">
           <div className="ws-inner">{workspaceContent}</div>
         </div>
+        {inChat ? (
+          <div className="agent-chat-composer-dock">
+            <AgentChatComposer
+              busy={thinking}
+              onChange={setChatDraft}
+              onSubmit={submitChatDraft}
+              t={t}
+              value={chatDraft}
+            />
+          </div>
+        ) : null}
       </div>
 
       {histOpen ? (
