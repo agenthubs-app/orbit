@@ -227,6 +227,15 @@ export async function extractReadCalls(root: string): Promise<{ calls: Call[]; i
   function uniqueNodes<T extends ts.Node>(nodes: readonly T[]): T[] {
     return [...new Set(nodes)];
   }
+  function lexicalFunction(node: ts.Node): Callable | undefined {
+    if (!ts.isIdentifier(node)) return undefined;
+    for (let scope = node.parent; scope; scope = scope.parent) {
+      if (!ts.isBlock(scope) && !ts.isSourceFile(scope)) continue;
+      const match = scope.statements.find(statement => ts.isFunctionDeclaration(statement) && statement.name?.text === node.text);
+      if (match && ts.isFunctionDeclaration(match) && match.body) return match;
+    }
+    return undefined;
+  }
   function resolveFunctions(node: ts.Node | undefined, callableEnv: CallableEnv = new Map(), seen = new Set<ts.Node>()): Callable[] {
     if (!node || seen.has(node) || seen.size > 60) return [];
     const next = new Set(seen).add(node);
@@ -236,7 +245,10 @@ export async function extractReadCalls(root: string): Promise<{ calls: Call[]; i
     const direct = callable(node as ts.Declaration);
     if (direct) return [direct];
     const target = declaration(node);
-    if (!target) return [];
+    if (!target) {
+      const lexical = lexicalFunction(node);
+      return lexical ? [lexical] : [];
+    }
     if (injectedParameter(target)) return [...(callableEnv.get(target) ?? [])];
     const targetFunction = callable(target);
     if (targetFunction) return [targetFunction];
@@ -254,7 +266,8 @@ export async function extractReadCalls(root: string): Promise<{ calls: Call[]; i
           .flatMap(fn => returnedFunctions(fn, propertyName, callableEnv, next)));
       }
     }
-    return [];
+    const lexical = lexicalFunction(node);
+    return lexical ? [lexical] : [];
   }
   type TransportShape = { kind: 'computed' | 'fixed' | 'raw' | 'resource' | 'binary'; pathIndex: number; fixedMethod?: string };
   function transportShape(node: ts.CallExpression): TransportShape | null {
@@ -445,6 +458,12 @@ export async function extractReadCalls(root: string): Promise<{ calls: Call[]; i
     return undefined;
   }
   function expandJsx(node: ts.JsxOpeningLikeElement, file: ts.SourceFile, outerEnv = new Map<ts.Node, Values>(), outerCallableEnv: CallableEnv = new Map(), stack = new Set<Callable>(), context = `jsx:${nodeId(node)}`, baseline = false): void {
+    for (const property of node.attributes.properties) {
+      if (!ts.isJsxAttribute(property)) continue;
+      const expression = jsxExpression(property);
+      resolveFunctions(expression, outerCallableEnv).filter(fn => mayReachTransport(fn)).forEach(fn =>
+        expandFunction(fn, [], outerEnv, outerCallableEnv, relative(root, fn.getSourceFile().fileName), stack, `${context}>attribute:${nodeId(property)}`, baseline));
+    }
     const functions = resolveFunctions(node.tagName, outerCallableEnv).filter(fn => mayReachTransport(fn));
     for (const fn of functions) {
       const parameter = fn.parameters[0];
