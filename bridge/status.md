@@ -177,3 +177,7 @@ ROOT真实设置保存并AX确认恢复精确`http://127.0.0.1:3000`及小雨MAI
 2. BR-002 / BR-003：登记 Agent 高级设置和会话历史操作差异，确定移动端覆盖范围。
 3. BR-004 / BR-005：收敛未共享 DTO 和跨端刷新/写入一致性验证。
 4. BR-006：Web 发布门槛解除后再验收同一远程环境下的 App；不以此阻止本地对齐盘点。
+
+## BR-029 — 个人日程设计
+
+source_ready/consumer_ready，verification blocked。主线27a45a2be已精确集成0053与必要读取/viewport依赖，Web生产新build/health200，主8082运行；原生build及同账号双向业务回读未齐。合并树定向检查通过不覆盖原I失败，[当前交接](2026-09-17-personal-schedule-design.md)。

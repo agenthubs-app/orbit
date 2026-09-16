@@ -246,3 +246,7 @@ source_ready / consumer_ready / verification blocked；功能4aa21961a、合并1
 ## BR-028 — 通知投递与旧流切换
 
 source_ready / consumer_ready / verification blocked；功能eacd7a227、合并0b552649d。共同设置/消息入站/迁移对账与主线检查完成；真实Push、AI预算/provider及本轮原生出站确认尚缺；[交接](2026-09-16-notification-delivery-cutover.md)。0037～0040本轮执行结束，未验收项保留开放。
+
+## BR-029 — 个人日程设置与详情
+
+source_ready/consumer_ready，verification blocked；0053功能75151e986f/报告66b1a4a473，ROOT精确集成chat-agent27a45a2be，生产Web新build/health200、主8082运行，原生build中。合并树App179/179、Web55/55、types0；原I失败和真实SC05缺项保留，[中文交接](2026-09-17-personal-schedule-design.md)。
