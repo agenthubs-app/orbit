@@ -38,6 +38,22 @@ export function TasksStyles() {
     .task-read-error { border-left: 2px solid var(--rose, #b03b40); margin: 12px 0; padding: 0 12px; }
     .task-suggestions { margin-top: 28px; }
     .task-suggestions article { border-top: 1px solid var(--border); padding: 16px 0; }
+    .relationship-lifecycle-tasks { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg, 14px); color: var(--text); margin-top: 28px; padding: 20px; }
+    .relationship-lifecycle-task-heading { align-items: flex-start; display: flex; gap: 16px; justify-content: space-between; }
+    .relationship-lifecycle-task-heading h2 { margin-bottom: 8px; }
+    .relationship-lifecycle-task-heading p { max-width: 760px; }
+    .relationship-lifecycle-task-group-heading { color: var(--ink); font-size: 14px; margin: 20px 0 8px; }
+    .relationship-lifecycle-task-rows { border-bottom: 1px solid var(--border); list-style: none; margin: 16px 0 0; padding: 0; }
+    .relationship-lifecycle-task-row { align-items: center; border-top: 1px solid var(--border); display: flex; gap: 16px; justify-content: space-between; min-height: 78px; padding: 12px 0; }
+    .relationship-lifecycle-task-copy { display: grid; gap: 3px; min-width: 0; }
+    .relationship-lifecycle-task-copy strong { color: var(--ink); font-size: 15px; overflow-wrap: anywhere; }
+    .relationship-lifecycle-task-link { flex-shrink: 0; text-align: center; }
+    .relationship-lifecycle-task-unavailable { color: var(--text-2); flex-shrink: 0; font-size: 13px; }
+    .relationship-lifecycle-task-history { border-top: 1px solid var(--border); margin-top: 20px; padding-top: 16px; }
+    .relationship-lifecycle-task-history summary { color: var(--ink); cursor: pointer; font-size: 14px; font-weight: 700; }
+    .relationship-lifecycle-task-history .relationship-lifecycle-task-group-heading { display: none; }
+    .relationship-lifecycle-task-orphans { border-top: 1px solid var(--border); margin-top: 20px; padding-top: 4px; }
+    .relationship-lifecycle-task-orphans .relationship-lifecycle-task-group-heading { color: var(--text-2); }
     .task-detail-grid { align-items: start; display: grid; gap: 40px; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); }
     .task-editor { display: grid; gap: 20px; }
     .task-editor label { color: var(--text-2); display: grid; font-size: 13px; gap: 6px; }
@@ -67,6 +83,9 @@ export function TasksStyles() {
       [data-orbit-real-page] .orbit-tasks .btn { min-height: 44px; }
       .task-search { max-width: none; }
       .orbit-tasks.task-summary { padding: 16px; }
+      .relationship-lifecycle-tasks { padding: 16px; }
+      .relationship-lifecycle-task-heading, .relationship-lifecycle-task-row { align-items: stretch; flex-direction: column; }
+      .relationship-lifecycle-task-link, .relationship-lifecycle-task-unavailable { align-self: flex-start; }
     }
   `}</style>;
 }
