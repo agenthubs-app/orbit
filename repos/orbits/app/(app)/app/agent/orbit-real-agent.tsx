@@ -2181,7 +2181,10 @@ const THINKING_PHASES: readonly Copy[] = [
 ];
 
 const THINKING_PHASE_INTERVAL_MS = 2200;
-const AGENT_REQUEST_TIMEOUT_MS = 30_000;
+// The live route's default loop has one 20s provider budget plus bounded artifact,
+// storage, and run-trace work. Keep a finite browser deadline with enough headroom
+// for the observed 26–31s production turns; this is not a server execution deadline.
+const AGENT_REQUEST_TIMEOUT_MS = 60_000;
 
 class AgentRequestTimeoutError extends Error {
   constructor() {
@@ -2241,7 +2244,7 @@ function ThinkingIndicator({ t }: { t: Translate }) {
     <span aria-live="polite" className="thinking orbit-agent-thinking-indicator" style={{ display: "inline-grid", gap: 4 }}>
       <span><span className="sp" />{t(THINKING_PHASES[phase])}</span>
       <span style={{ color: "var(--text-3)", fontSize: 12 }}>
-        {t({ en: "Usually 10–20 seconds · no external action is being taken", zh: "通常需要 10–20 秒 · 当前不会执行任何外部动作" })}
+        {t({ en: "Usually under a minute · no external action is being taken", zh: "通常不到一分钟 · 当前不会执行任何外部动作" })}
       </span>
     </span>
   );
@@ -2991,8 +2994,8 @@ export function OrbitRealAgent({
       const requestFailureText =
         error instanceof AgentRequestTimeoutError
           ? locale === "zh"
-            ? "等待超过 30 秒，本次请求已停止；当前未执行任何外部动作。你可以重新提交。"
-            : "The request took over 30 seconds and was stopped. No external action was taken. You can retry it."
+            ? "浏览器已停止等待，服务器结果尚未确认。再次检查会复用同一请求，不会重复生成。"
+            : "The browser stopped waiting before the server confirmed a result. Checking again reuses the same request and will not generate it twice."
           : failureText;
       setMessages((current) => [
         ...current,

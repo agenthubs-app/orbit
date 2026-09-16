@@ -50,10 +50,14 @@ test("the global composer collapses after explicit send and suggestion chips onl
 test("Agent waiting, timeout recovery, and trust summaries state their real boundaries", () => {
   const agent = source("app/(app)/app/agent/orbit-real-agent.tsx");
 
-  assert.match(agent, /Usually 10–20 seconds/);
-  assert.match(agent, /AGENT_REQUEST_TIMEOUT_MS = 30_000/);
+  assert.match(agent, /Usually under a minute/);
+  assert.match(agent, /AGENT_REQUEST_TIMEOUT_MS = 60_000/);
   assert.match(agent, /controller\.abort\(\)/);
   assert.match(agent, /retryRequest: query/);
+  assert.match(agent, /服务器结果尚未确认/);
+  assert.match(agent, /不会重复生成/);
+  assert.doesNotMatch(agent, /本次请求已停止/);
+  assert.doesNotMatch(agent, /The request took over .* and was stopped/);
   assert.doesNotMatch(agent, /依据 \$\{totalItems\} 条 · 未执行外部动作/);
   assert.doesNotMatch(agent, /查看完整处理过程/);
   assert.match(agent, /不会把泛化回答展示成真实推荐/);
