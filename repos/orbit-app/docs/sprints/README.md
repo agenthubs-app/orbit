@@ -98,6 +98,7 @@ build/harness-logs/
 | [0046](0046-repeatable-functional-acceptance/GOAL.md) | 用正确主包与隔离有效样本补齐交互矩阵，失效通知来源安全提示 | 用户实际交互要求、B/C错包与C/D样本缺口；R-11/R-14 | 原run legacy8e304→主线e660；ROOT App75/Web24、types与重编译运行通过；40旧通知自指目标、安全提示/不误跳已实测，合法样本/完整矩阵/离线未齐 | running |
 | [0047](0047-web-ai-session-composer/GOAL.md) | Web历史AI会话有唯一续聊输入，追问持久保存在原会话并双端读回 | 0044实际Web输入控件0，关联SC02/03/05；R-00/R-02/R-14 | run_count=0；Phone PW0010已限定验收关闭，另PW0011新分析生成由Phone父规划；D/E原run槽位未释放，不复开0044或替代0036源版本接线 | planned |
 | [0048](0048-analytics-configuration-preflight/GOAL.md) | 活动分析未配置时先准确拒绝，不因后续缺快照表变通用500 | 0043 SC02/03失败；ROOT只读真PG复现stage2零ROI/stage3缺snapshot表42P01 | 窄范围追加计划已编制，run_count=0；不重开0043，不自动migration，不复刻整个失败Sprint | planned |
+| [0049](0049-registration-questionnaire-progression/GOAL.md) | 报名选择题只在其他展开输入，画像保留已答题并显示实际覆盖度和停止建议 | 2026-09-16用户三项新要求，关联R-04/R-09/0014 | 中文契约与计划已编制，run_count=0；先核对ROOT修复槽、Phone PW0012页面锁及真实自有报名对象/恢复/付费窗口，不增加第二实现者 | planned |
 
 2026-09-16按用户“总结B/C/D报告后设计sprints”新增[中文汇总与追加计划](SIMULATOR_REMEDIATION_PROGRAM.md)，随后用户明确“42～46开始修复”及“请继续”，五项实施批准已满足。0042 completed，0043/0044原run以failed收口且报告已合入；0045/0046继续各自唯一run-01，未提前REPORT。0047/0048是实际具体失败的追加计划、run_count=0，不克隆原Sprint或自动第三Generator。全域离线9/9失败仍映射0033～0036原目标；0036原run关闭事实保留，剩余接线不能假作原run恢复，不降低SC。
 
