@@ -18,7 +18,7 @@ import {
   resolveFeatureMode,
   type FeatureMode,
 } from "../../../../shared/config/feature-mode";
-import { AppError } from "../../../../shared/errors/app-error";
+import { AppError, getHttpStatusForAppErrorCode } from "../../../../shared/errors/app-error";
 
 interface RegisteredEventRouteContext<TParams extends { id: string }> {
   params: Promise<TParams>;
@@ -50,22 +50,19 @@ async function loadRegisteredEventMetadata(
   const actorVisibleEvent = await loadEventForRegistration(eventId, actorId);
   if (actorVisibleEvent) return actorVisibleEvent;
 
-  try {
-    const repository = createConfiguredEventOperationsRepository();
-    const configuration = await repository?.getConfiguration(eventId);
-    if (!configuration || configuration.eventId !== eventId) return null;
+  const repository = createConfiguredEventOperationsRepository();
+  if (!repository) throw new AppError("SERVICE_UNAVAILABLE", "Event registration storage is not configured.");
+  const configuration = await repository.getConfiguration(eventId);
+  if (!configuration || configuration.eventId !== eventId) return null;
 
-    // The organizer id is used only inside this exact-event metadata read. The
-    // registered attendee remains the access actor passed to every handler and
-    // receives no owner-scoped mutation capability.
-    const event = await loadEventForRegistration(
-      eventId,
-      configuration.organizerActorId,
-    );
-    return event?.id === eventId ? event : null;
-  } catch {
-    return null;
-  }
+  // The organizer id is used only inside this exact-event metadata read. The
+  // registered attendee remains the access actor passed to every handler and
+  // receives no owner-scoped mutation capability.
+  const event = await loadEventForRegistration(
+    eventId,
+    configuration.organizerActorId,
+  );
+  return event?.id === eventId ? event : null;
 }
 
 async function getCanonicalRegistration(input: {
@@ -73,9 +70,8 @@ async function getCanonicalRegistration(input: {
   userId: string;
 }) {
   const repository = createConfiguredEventOperationsRepository();
-  return repository
-    ? repository.getCanonicalRegistration(input.eventId, input.userId)
-    : null;
+  if (!repository) throw new AppError("SERVICE_UNAVAILABLE", "Event registration storage is not configured.");
+  return repository.getCanonicalRegistration(input.eventId, input.userId);
 }
 
 function accessFailure(
@@ -94,7 +90,7 @@ function accessFailure(
     }),
     {
       headers: runtimeBoundaryHeaders(mode),
-      status: error.code === "NOT_FOUND" ? 404 : 403,
+      status: getHttpStatusForAppErrorCode(error.code),
     },
   );
 }
@@ -128,13 +124,17 @@ export function withRegisteredEventAccess<TParams extends { id: string }>(
 
     const params = await context.params;
     const requestedEventId = params.id.trim();
-    const registration = await (
-      dependencies.getRegistration ??
-      getCanonicalRegistration
-    )({
-      eventId: requestedEventId,
-      userId: actor.id,
-    });
+    let registration: Awaited<ReturnType<EventRegistrationService["get"]>>;
+    try {
+      registration = await (dependencies.getRegistration ?? getCanonicalRegistration)({
+        eventId: requestedEventId,
+        userId: actor.id,
+      });
+    } catch (error) {
+      return accessFailure(mode, error instanceof AppError ? error : new AppError(
+        "SERVICE_UNAVAILABLE", "Event registration is temporarily unavailable.", { cause: error },
+      ), "active-event-registration-unavailable");
+    }
 
     if (
       registration?.status !== "rsvped" ||
@@ -151,9 +151,14 @@ export function withRegisteredEventAccess<TParams extends { id: string }>(
       );
     }
 
-    const event = await (
-      dependencies.loadEvent ?? loadRegisteredEventMetadata
-    )(registration.eventId, actor.id);
+    let event: EventRecord | null;
+    try {
+      event = await (dependencies.loadEvent ?? loadRegisteredEventMetadata)(registration.eventId, actor.id);
+    } catch (error) {
+      return accessFailure(mode, error instanceof AppError ? error : new AppError(
+        "SERVICE_UNAVAILABLE", "Event metadata is temporarily unavailable.", { cause: error },
+      ), "registered-event-metadata-unavailable");
+    }
 
     if (!event || event.id !== registration.eventId) {
       return accessFailure(

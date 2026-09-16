@@ -20,6 +20,7 @@ import {
   eventWantToConnectPath
 } from "../../api/endpoints";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
+import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
@@ -72,14 +73,18 @@ export function EventAttendeesScreen() {
   const router = useRouter();
   const client = useOrbitApiClient();
   const { baseUrl } = useOrbitApiBaseUrl();
-  const eventState = useApiResource<unknown>(eventDetailPath(eventId), () => false);
+  const auth = useOrbitAuthSession();
+  const scopeKey = JSON.stringify([baseUrl, auth.actorId, eventId]);
+  const eventState = useApiResource<unknown>(eventDetailPath(eventId), () => false, { scopeKey: `${scopeKey}:event`, cachePolicy: "network-only" });
   const rosterState = useApiResource<unknown>(
     eventAttendeesPath(eventId),
-    (data) => eventAttendeeRosterToView(data).attendees.length === 0
+    (data) => eventAttendeeRosterToView(data).attendees.length === 0,
+    { scopeKey: `${scopeKey}:roster`, cachePolicy: "network-only" }
   );
   const matchesState = useApiResource<unknown>(
     eventMatchesPath(eventId),
-    (data) => eventMatchesToView(data).matches.length === 0
+    (data) => eventMatchesToView(data).matches.length === 0,
+    { scopeKey: `${scopeKey}:matches`, cachePolicy: "network-only" }
   );
   const [pendingAttendeeId, setPendingAttendeeId] = useState<string | null>(null);
   const [pendingEncounterAttendeeId, setPendingEncounterAttendeeId] = useState<

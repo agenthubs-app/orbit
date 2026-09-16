@@ -17,6 +17,7 @@ import type {
 } from "../../features/events/event-analytics/contract";
 import { mockEventRecords } from "../../features/events/event-crud-and-import/fixtures";
 import type { EventRegistration } from "../../features/events/registration/contract";
+import { EventAnalyticsReadModelError } from "../../features/events/event-analytics/read-model";
 
 const EVENT_ID = "event:analytics:private";
 const ATTENDEE_ID = "actor:attendee-private";
@@ -240,6 +241,74 @@ const visibleEvent = {
     providerRecordId: EVENT_ID,
   },
 };
+
+test("aggregate endpoint identifies absent canonical configuration as unavailable, not an internal failure", async () => {
+  const handler = createEventAnalyticsAggregateGetHandler({
+    aggregateAccess: {
+      createAccessService: () => eventAccessService({ owner: true, role: null, state: null }),
+      resolveActor: async () => ({ id: "actor:organizer" }),
+    },
+    createReadModel: () => ({
+      ...readModel(),
+      async readOrganizerAggregate() { throw new EventAnalyticsReadModelError("EVENT_ANALYTICS_CONFIGURATION_REQUIRED"); },
+    }),
+  });
+  const response = await handler(new Request(`http://localhost/api/events/${EVENT_ID}/analytics/aggregate`), context);
+  assert.equal(response.status, 503);
+  const body = await response.json();
+  assert.equal(body.error.code, "SERVICE_UNAVAILABLE");
+  assert.equal(body.error.context.reason, "event-analytics-configuration-required");
+});
+
+test("attendee endpoint distinguishes registration storage failure from absent qualification", async () => {
+  const handler = createEventAnalyticsAttendeeGetHandler({
+    attendeeAccess: {
+      resolveActor: async () => ({ id: ATTENDEE_ID }),
+      getRegistration: async () => { throw new Error("Private SQL connection detail"); },
+    },
+    createReadModel: () => { assert.fail("Registration failure must not reach the report reader"); },
+  });
+  const response = await handler(new Request(`http://localhost/api/events/${EVENT_ID}/analytics/attendee`), context);
+  assert.equal(response.status, 503);
+  assert.doesNotMatch(JSON.stringify(await response.json()), /Private SQL/);
+});
+
+test("attendee metadata unavailable and missing remain distinct after exact active qualification", async (t) => {
+  for (const unavailable of [false, true]) await t.test(String(unavailable), async () => {
+    const handler = createEventAnalyticsAttendeeGetHandler({
+      attendeeAccess: {
+        resolveActor: async () => ({ id: ATTENDEE_ID }),
+        getRegistration: async () => registration(),
+        loadEvent: async () => { if (unavailable) throw new Error("Private metadata server detail"); return null; },
+      },
+      createReadModel: () => { assert.fail("Metadata failure must not reach the report reader"); },
+    });
+    const response = await handler(new Request("http://localhost"), context);
+    assert.equal(response.status, unavailable ? 503 : 404);
+    assert.doesNotMatch(JSON.stringify(await response.json()), /Private metadata/);
+  });
+});
+
+test("analytics access rejects anonymous actors before resolving either private source", async () => {
+  const handlers = [createEventAnalyticsAggregateGetHandler({
+    aggregateAccess: { resolveActor: async () => null, createAccessService: () => { assert.fail("Anonymous actor must not query roles"); } },
+  }), createEventAnalyticsAttendeeGetHandler({
+    attendeeAccess: { resolveActor: async () => null, getRegistration: async () => { assert.fail("Anonymous actor must not query memberships"); } },
+  })];
+  for (const handler of handlers) assert.equal((await handler(new Request("http://localhost"), context)).status, 401);
+});
+
+test("attendee access rejects a different actor or event even with active status", async () => {
+  for (const patch of [{ eventId: "event:foreign" }, { userId: OTHER_ACTOR_ID }]) {
+    const handler = createEventAnalyticsAttendeeGetHandler({
+      attendeeAccess: {
+        resolveActor: async () => ({ id: ATTENDEE_ID }), getRegistration: async () => ({ ...registration(), ...patch }),
+        loadEvent: async () => { assert.fail("Mismatched qualification must not load metadata"); },
+      },
+    });
+    assert.equal((await handler(new Request("http://localhost"), context)).status, 403);
+  }
+});
 
 test("aggregate endpoint allows only analytics principals and allow-lists aggregate fields", async (t) => {
   const cases: readonly [
