@@ -51,10 +51,24 @@ export interface ReadPage {
   partialReasons: readonly ("text_limit" | "byte_limit" | "source_unavailable" | "known_stale")[];
 }
 
+export interface CanonicalRevisionFence {
+  id: string;
+  revision: string;
+}
+
 export interface ReadAdapter {
   authorize(scope: ReadScope): Promise<boolean>;
   page(scope: ReadScope, input: ReadInput, position?: string, snapshot?: string): Promise<ReadPage>;
   authorizeEvidence(scope: ReadScope, ids: readonly string[]): Promise<readonly string[]>;
+  /**
+   * Atomically reauthorizes source rows and evidence, verifies every expected revision,
+   * and returns the canonical content read inside that same consistency boundary.
+   * Missing, changed, or unauthorized rows must be omitted so the caller fails closed.
+   */
+  readCurrentAtRevision(
+    scope: ReadScope,
+    expected: readonly CanonicalRevisionFence[],
+  ): Promise<readonly CanonicalRow[]>;
 }
 
 export interface AiReadResult {

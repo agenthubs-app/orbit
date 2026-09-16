@@ -34,6 +34,7 @@ function adapter(authorized: boolean): ReadAdapter {
     authorize: async () => authorized,
     page: async () => ({ rows: [], snapshot: "snapshot:1", partialReasons: [] }),
     authorizeEvidence: async () => [],
+    readCurrentAtRevision: async () => [],
   };
 }
 

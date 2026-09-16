@@ -86,25 +86,6 @@ function resultShape(
   };
 }
 
-async function assertRowsStillCanonical(
-  adapter: ReturnType<ReadDependencies["adapter"]>,
-  scope: ReadScope,
-  rows: readonly CanonicalRow[],
-): Promise<void> {
-  for (const row of rows) {
-    const current = await adapter.page(scope, {
-      operation: "get",
-      query: `open ${row.id}`,
-      id: row.id,
-      limit: 1,
-    });
-    const canonical = current.rows.find((candidate) => candidate.id === row.id);
-    if (!canonical || canonical.revision !== row.revision) {
-      throw new Error("CANONICAL_RECORD_UNAVAILABLE");
-    }
-  }
-}
-
 export async function executeAiRead(
   tool: AiReadTool,
   input: ReadInput,
@@ -142,8 +123,27 @@ export async function executeAiRead(
   if (page.partialReasons.includes("source_unavailable") && page.rows.length === 0) throw new Error("SOURCE_UNAVAILABLE");
   if (normalized.operation === "get" && page.rows.length === 0) throw new Error("READ_NOT_FOUND");
 
-  const candidateRows = page.rows.slice(0, limit);
-  for (const row of candidateRows) assertCanonicalRow(row);
+  const snapshotRows = page.rows.slice(0, limit);
+  for (const row of snapshotRows) assertCanonicalRow(row);
+
+  const authorityExpiresAt = await deps.readAuthorityExpiresAt(currentScope);
+  const nowMs = Date.parse(deps.now());
+  const authorityMs = Date.parse(authorityExpiresAt);
+  if (!Number.isFinite(nowMs) || !Number.isFinite(authorityMs) || authorityMs <= nowMs) throw new Error("AI_NOT_AUTHORIZED");
+  const cursorExpiresAt = new Date(Math.min(nowMs + CURSOR_TTL_MS, authorityMs)).toISOString();
+
+  const currentRows = await adapter.readCurrentAtRevision(
+    currentScope,
+    snapshotRows.map((row) => ({ id: row.id, revision: row.revision })),
+  );
+  if (currentRows.length !== snapshotRows.length) throw new Error("CANONICAL_RECORD_UNAVAILABLE");
+  const currentById = new Map(currentRows.map((row) => [row.id, row]));
+  const candidateRows = snapshotRows.map((snapshotRow) => {
+    const current = currentById.get(snapshotRow.id);
+    if (!current || current.revision !== snapshotRow.revision) throw new Error("CANONICAL_RECORD_UNAVAILABLE");
+    assertCanonicalRow(current);
+    return { ...current, position: snapshotRow.position };
+  });
 
   const returnedRows: CanonicalRow[] = [];
   const items: Readonly<Record<string, unknown>>[] = [];
@@ -173,19 +173,9 @@ export async function executeAiRead(
 
   if (byteLimited && !nextPosition) throw new Error("RESULT_TOO_LARGE");
 
-  let cursorExpiresAt: string | undefined;
-  if (nextPosition) {
-    const authorityExpiresAt = await deps.readAuthorityExpiresAt(currentScope);
-    const nowMs = Date.parse(deps.now());
-    const authorityMs = Date.parse(authorityExpiresAt);
-    if (!Number.isFinite(nowMs) || !Number.isFinite(authorityMs) || authorityMs <= nowMs) throw new Error("AI_NOT_AUTHORIZED");
-    cursorExpiresAt = new Date(Math.min(nowMs + CURSOR_TTL_MS, authorityMs)).toISOString();
-  }
-
   const buildResult = (continuation: string | undefined): AiReadResult => {
     const value = resultShape(tool, normalized, deps.now(), returnedRows, items, partialReasons);
     if (continuation) {
-      if (!cursorExpiresAt) throw new Error("AI_NOT_AUTHORIZED");
       value.nextCursor = sealReadCursor({
         ...binding,
         snapshot: page.snapshot,
@@ -215,12 +205,5 @@ export async function executeAiRead(
     if (byteLength(result) > MAX_RESULT_BYTES) throw new Error("RESULT_TOO_LARGE");
   }
 
-  await assertRowsStillCanonical(adapter, currentScope, returnedRows);
-  const requestedEvidence = [...new Set(returnedRows.flatMap((row) => row.evidenceIds))];
-  const authorizedEvidence = new Set(await adapter.authorizeEvidence(currentScope, requestedEvidence));
-  if (requestedEvidence.some((id) => !authorizedEvidence.has(id))) throw new Error("EVIDENCE_NOT_AUTHORIZED");
-  const finalScope = await deps.currentScope();
-  if (!sameScope(finalScope, currentScope)) throw new Error("AUTHORIZATION_CHANGED");
-  await assertAiReadAllowed(finalScope, permission, adapter);
   return result;
 }

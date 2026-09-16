@@ -58,6 +58,10 @@ function fixture(initialRows = Array.from({ length: 11 }, (_, index) => row(inde
         partialReasons: [],
       };
     },
+    readCurrentAtRevision: async (_scope, expected) => expected.flatMap((fence) => {
+      const current = rows.find((item) => item.id === fence.id && item.revision === fence.revision);
+      return current ? [current] : [];
+    }),
   };
   const permission: AiReadPermission = {
     tool: "notes.query",
@@ -153,6 +157,28 @@ test("cursor continuation rejects a row deleted after the snapshot even without 
   );
 });
 
+test("atomic revision fence rejects deletion during canonical consumption", async () => {
+  const f = fixture([row(1, { title: "Secret", body: "must not escape" })]);
+  const source = f.deps.adapter("notes.query");
+  f.deps.adapter = () => ({
+    ...source,
+    page: async (...args: Parameters<ReadAdapter["page"]>) => {
+      const copied = await source.page(...args);
+      if (args[1].operation === "get") f.remove("note:1");
+      return copied;
+    },
+    readCurrentAtRevision: async (readScope, expected) => {
+      await source.readCurrentAtRevision(readScope, expected);
+      f.remove("note:1");
+      return [];
+    },
+  });
+  await assert.rejects(
+    executeAiRead("notes.query", { operation: "list", query: "notes" }, f.deps),
+    /CANONICAL_RECORD_UNAVAILABLE/,
+  );
+});
+
 test("cursor TTL is capped by current read authority and empty pages retain authority metadata", async () => {
   const empty = fixture([]);
   const emptyResult = await executeAiRead("notes.query", { operation: "list", query: "notes" }, empty.deps);
@@ -185,18 +211,22 @@ test("byte truncation resumes after the last returned source position", async ()
 
 test("final serialized result including cursor stays within the byte budget", async () => {
   const f = fixture([
-    row(1, { title: "Boundary", body: "a".repeat(31_000) }),
-    row(2, { title: "b".repeat(300) }),
-    row(3, { title: "c".repeat(300) }),
+    row(1, { title: "Boundary", body: "a".repeat(31_200) }),
+    row(2, { title: "After boundary" }),
+    row(3, { title: "After boundary 3" }),
+    row(4, { title: "After boundary 4" }),
+    row(5, { title: "After boundary 5" }),
+    row(6, { title: "After boundary 6" }),
   ]);
   const first = await executeAiRead("notes.query", { operation: "list", query: "notes" }, f.deps);
   assert.equal(first.records[0]?.id, "note:1");
   assert.ok(first.nextCursor);
-  assert.ok(Buffer.byteLength(JSON.stringify(first), "utf8") <= 32_000);
+  const serializedBytes = Buffer.byteLength(JSON.stringify(first), "utf8");
+  assert.ok(serializedBytes <= 32_000, `serialized result was ${serializedBytes} bytes`);
   const second = await executeAiRead("notes.query", { operation: "list", query: "notes", cursor: first.nextCursor }, f.deps);
   assert.deepEqual(
     [...first.records, ...second.records].map((record) => record.id),
-    ["note:1", "note:2", "note:3"],
+    ["note:1", "note:2", "note:3", "note:4", "note:5", "note:6"],
   );
 });
 
@@ -243,9 +273,13 @@ test("deleted get and revoked evidence never return the former body", async () =
 
   const evidenceRevoked = fixture([row(1, { title: "Secret", body: "former body" })]);
   const source = evidenceRevoked.deps.adapter("notes.query");
-  evidenceRevoked.deps.adapter = () => ({ ...source, authorizeEvidence: async () => [] });
+  evidenceRevoked.deps.adapter = () => ({
+    ...source,
+    authorizeEvidence: async () => [],
+    readCurrentAtRevision: async () => [],
+  });
   await assert.rejects(
     executeAiRead("notes.query", { operation: "get", query: "note:1", id: "note:1" }, evidenceRevoked.deps),
-    /EVIDENCE_NOT_AUTHORIZED/,
+    /CANONICAL_RECORD_UNAVAILABLE/,
   );
 });
