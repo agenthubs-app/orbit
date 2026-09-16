@@ -15,3 +15,11 @@ GitNexus 绑定根仓库 `orbit`（`/Users/li/work/orbit`），索引 `5dbc83d` 
 提高 limit 重查后仍为 CRITICAL，但仅返回 16 条流程，指定身份函数的 impact 又返回 target not found / UNKNOWN。图结果不稳定，不能把较少的流程数当成风险下降或完整覆盖证明；保留未解决的图分析限制，以已核查的源码调用点与回归作当前证据。
 
 修复后两组定向回归分别 92/92、75/75，通过 Web typecheck。第二组包含 Agent action/ledger、活动 encounter、会话可靠发送、模型 planner 输入与只读工具、self profile 和 live 边界；所有真实 provider 凭据和数据库环境在测试子进程中移除。
+
+## Production 回显链路补充
+
+发布 `6f844ea47` 后，正式 iOrbit 已显示 66 联系人/66 跟进；个人日程既有记录可以保存并收到成功回执。AI 查询的持久对话证据包含 `tasks query` / `itemCount: 1`，但用户只看到 planner 的“我来查询”：默认 loop=2 不调用 synthesis，而旧页面只渲染推荐卡，没有渲染 data_query 卡。这不是查询失败，也不能单凭工具命中就通过验收。
+
+因此，当 synthesis 未执行或失败时，服务端直接把已通过 actor 校验的 data_query 结果格式化为有界回复，保留标题、原始状态/日期、空结果、分页和已读/未读领域；不增加模型调用或写入。这样 Web 与 App 的普通消息文本都能看到结果，历史保存也保留事实。三步 synthesis 的输入同时保留状态字段并标记为不可信源数据，查询文本不能成为指令。没有改变对外 DTO 或放宽权限。
+
+新增回归先复现 3 项失败，修复后扩展组合 108/108、Web typecheck 通过，涵盖两步回显、三步失败回退、一步零读取、空结果/分页、异账号隔离和原有 Agent 分支。GitNexus runtime impact HIGH，摘要/回复/提示词 CRITICAL 且 partial；detect-changes 输出 low/0 flows 与 impact 矛盾，不能据此声称图分析完整或风险降低。源码复核限定为 live conversation 与 dev trace 共用的 data_query 分支。

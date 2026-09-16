@@ -40,6 +40,7 @@ import { classifyOutOfServiceScope } from "./service-scope-service";
 import type { OrbitAgentArtifactTaskService } from "./service";
 import { executeOrbitAgentTool } from "./agent-tools/registry";
 import { selfProfileContextForSynthesis } from "./self-profile-artifact-service";
+import { actorQueryReply } from "./data-query/query-reply";
 
 export const liveCollectedAt = "2026-06-27T00:00:00.000Z";
 export const liveConversationId = "live-orbit-agent-conversation";
@@ -1207,6 +1208,16 @@ export async function artifactForRequest(input: {
 export function artifactSummaryForSynthesis(
   artifact: OrbitAgentArtifactPayload,
 ): GeminiOrbitAgentToolResultSummary {
+  if (artifact.task.kind === "data_query") {
+    return {
+      kind: "data_query",
+      preferredSurface: artifact.result.presentation.preferredSurface,
+      title: artifact.result.presentation.title,
+      // Retain status/dates and the bounded/empty read distinction, not just
+      // recommendation titles. Stored text is evidence, never instructions.
+      summary: JSON.stringify({ untrustedQueryData: actorQueryReply([artifact], "en") }),
+    };
+  }
   if (artifact.task.kind === "self_profile") {
     return {
       kind: "self_profile",
@@ -1396,7 +1407,7 @@ export function conversationForRuntimeSuccess(input: {
     domainToolCallsExecuted: input.artifacts.length > 0,
     externalNetworkRequested: input.aiProviderRequested,
     liveDatabaseReadExecuted: input.artifacts.some(artifact =>
-      artifact.task.kind === "self_profile" && artifact.result.safety.liveDatabaseReadExecuted,
+      (artifact.task.kind === "self_profile" || artifact.task.kind === "data_query") && artifact.result.safety.liveDatabaseReadExecuted,
     ),
   });
   const nextAction =
@@ -1672,7 +1683,7 @@ export async function runLiveOrbitAgentRuntime(
   const finalAssistantMessage =
     synthesisResult?.success === true
       ? synthesisResult.data.assistantMessage
-      : assistantMessageForSynthesis;
+      : actorQueryReply(artifacts, locale) ?? assistantMessageForSynthesis;
   const finalResponseStartedAt = nowMs();
   timings.push(timingSpan("final_response", finalResponseStartedAt));
   const conversation = conversationForRuntimeSuccess({
