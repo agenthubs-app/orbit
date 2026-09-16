@@ -25,12 +25,21 @@ export const useFocusEffect = effect => useEffect(effect, []);
 import { View } from "react-native-web";
 import glyphs from "@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/Ionicons.json";
 let revision = 0, nextId = 0; const listeners = new Set();
-const state = window.fixture = { width: 390, fontScale: 1, screen: "list", navigation: [], requests: [], reads: [], refreshes: [], permissionCalls: 0, ...window.initialFixture,
+const state = window.fixture = { width: 390, fontScale: 1, screen: "list", navigation: [], requests: [], reads: [], httpReads: [], refreshes: [], permissionCalls: 0, ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
 export const useFixture = () => { useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision); return state; };
 export const useApiResource = path => { useFixture(); if (!state.reads.includes(path)) state.reads.push(path); return { kind: state.kinds?.[path] || "success", data: path === "/api/schedule-items?scope=personal" ? { scheduleItems: [] } : path === "/api/tasks" ? { tasks: state.tasks } : path.startsWith("/api/tasks?") ? { tasks: state.tasks.filter(t => t.status === new URLSearchParams(path.split("?")[1]).get("status")) } : path.endsWith("/activities") ? { activities: [] } : path.startsWith("/api/reminders") ? { reminders: [] } : { task: state.task }, error: { message: "暂时无法读取，请重试。" }, refreshing: false, refresh() { state.refreshes.push(path); } }; };
 async function request(method, path, options) { state.requests.push({ method, path, ...options }); if (state.hold) await new Promise(resolve => state.release = resolve); if (state.thrown) throw Error("transport"); if (state.failure) return { success: false, error: { message: "保存失败，请重试。" } }; const record = state.tasks.find(task => path === "/api/tasks/" + encodeURIComponent(task.id)) ?? state.task; return { success: true, status: 200, data: { task: { ...record, ...options.body.patch, status: options.body.action === "complete" ? "completed" : options.body.action === "reopen" ? "open" : record.status, updatedAt: "2026-09-11T05:30:00Z" } } }; }
-const client = { patch: (p, o) => request("PATCH", p, o), post: (p, o) => request("POST", p, o), delete: (p, o) => request("DELETE", p, o) };
+const client = { async get(path, options) {
+  const url = new URL(path, "https://orbit.example");
+  if (url.pathname !== "/api/schedule-items" || url.searchParams.get("scope") !== "personal") throw Error("Unsupported task fixture GET");
+  const read = { method: "GET", path, headers: options?.headers, hasSignal: options?.signal instanceof AbortSignal, aborted: options?.signal?.aborted ?? false, body: options?.body };
+  state.httpReads.push(read);
+  options?.signal?.addEventListener("abort", () => { read.aborted = true; }, { once: true });
+  const kind = state.kinds?.["/api/schedule-items?scope=personal"] ?? "success";
+  if (kind === "loading") return new Promise(resolve => options?.signal?.addEventListener("abort", () => resolve({ success: false, status: 0, error: { code: "ABORTED", message: "Aborted" } }), { once: true }));
+  return { success: kind === "success" || kind === "empty", status: kind === "success" || kind === "empty" ? 200 : 503, data: { scheduleItems: [] }, error: { code: "READ_FAILED", message: "暂时无法读取，请重试。" } };
+}, patch: (p, o) => request("PATCH", p, o), post: (p, o) => request("POST", p, o), delete: (p, o) => request("DELETE", p, o) };
 export const useOrbitApiClient = () => client;
 export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, accountId: "test", actorId: "test", user: { id: "test" }, cookieHeader: "" });
 export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.example" });
@@ -76,6 +85,23 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
 async function requests(page: Page) { return page.evaluate(() => (window as any).fixture.requests); }
 async function shot(page: Page, name: string) { if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-ink-signal-tasks-${name}.png`, fullPage: true }); }
 
+test("personal schedule GET is bounded, versioned and abortable without entering task mutation requests", async t => {
+  const page = await open(t);
+  await page.waitForFunction(() => (window as any).fixture.httpReads.some((read: any) => !read.aborted));
+  const reads = await page.evaluate(() => (window as any).fixture.httpReads);
+  for (const read of reads) {
+    assert.equal(read.method, "GET");
+    assert.equal(read.body, undefined);
+    assert.equal(read.hasSignal, true);
+    assert.equal(read.headers["x-orbit-personal-schedule-version"], "3");
+    const query = new URL(read.path, "https://fixture.invalid").searchParams;
+    assert.equal(query.get("scope"), "personal");
+    assert.equal(Date.parse(query.get("to")!) - Date.parse(query.get("from")!), 90 * 86_400_000);
+  }
+  assert.equal(reads.some((read: any) => read.aborted), true, "focus refresh aborts the superseded initial GET");
+  assert.deepEqual(await requests(page), []);
+});
+
 test("task list has truthful counts and due-date groups without completed history in the open view", async t => {
   const page = await open(t);
   const pending = page.getByRole("tab", { name: "未完成 5", exact: true }); await pending.waitFor();
@@ -110,17 +136,20 @@ test("list completion and detail navigation have separate full-size touch areas"
 
 test("list blocks same-turn double completion and keeps the row after a rejected write", async t => {
   const page = await open(t, { hold: true, failure: true });
+  const initialReads = await page.evaluate(() => (window as any).fixture.httpReads);
   const checkbox = page.getByRole("checkbox", { name: "完成：给山田发介绍资料", exact: true });
   await checkbox.evaluate(el => { el.dispatchEvent(new MouseEvent("click", { bubbles: true })); el.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
   assert.equal((await requests(page)).length, 1);
   await page.evaluate(() => (window as any).fixture.release());
   await page.getByRole("alert").filter({ hasText: "保存失败" }).waitFor();
   assert.equal(await checkbox.getAttribute("aria-checked"), "false");
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), ["/api/schedule-items?scope=personal"]);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), []);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.httpReads), initialReads);
 });
 
 test("list transport rejection unlocks actions and visibly preserves the unchanged task", async t => {
   const page = await open(t, { thrown: true });
+  const initialReads = await page.evaluate(() => (window as any).fixture.httpReads);
   const checkbox = page.getByRole("checkbox", { name: "完成：给山田发介绍资料", exact: true });
   await checkbox.click();
   await page.getByRole("alert").filter({ hasText: "操作未完成" }).waitFor();
@@ -128,7 +157,8 @@ test("list transport rejection unlocks actions and visibly preserves the unchang
   assert.equal(await checkbox.getAttribute("aria-checked"), "false");
   await page.evaluate(() => (window as any).fixture.update({ thrown: false }));
   await checkbox.click(); assert.equal((await requests(page)).length, 2);
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), ["/api/schedule-items?scope=personal", "/api/tasks"]);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), ["/api/tasks"]);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.httpReads), initialReads);
 });
 
 test("list retains overdue and undated work, navigates canonical task IDs and existing creation", async t => {

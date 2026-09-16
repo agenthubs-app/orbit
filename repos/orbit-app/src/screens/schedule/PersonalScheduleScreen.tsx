@@ -17,6 +17,8 @@ import { buildPersonalScheduleChange, personalScheduleDraft, type PersonalSchedu
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { PersonalScheduleTimeBlock } from "./PersonalScheduleTimeBlock";
 import { PersonalScheduleAssociations } from "./PersonalScheduleAssociations";
+import { PersonalScheduleRules } from "./PersonalScheduleRules";
+import { localDayStart, resolveLocalDateTime } from "../../time/date-time";
 
 export function PersonalScheduleScreen() {
   const auth = useOrbitAuthSession(); const server = useOrbitApiBaseUrl(); const params = useLocalSearchParams<{ id?: string | string[]; focus?: string | string[] }>();
@@ -40,7 +42,12 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { i
   const [error, setError] = useState(""); const [message, setMessage] = useState(""); const [confirmDelete, setConfirmDelete] = useState(false);
   const [revision, setRevision] = useState(0);
   const [confirmExit, setConfirmExit] = useState(false);
-  const clean = JSON.stringify(draft) === JSON.stringify(personalScheduleDraft(baseline, editZone));
+  const [mutationScope, setMutationScope] = useState<"occurrence" | "series" | null>(null);
+  const originalDraft = personalScheduleDraft(baseline, editZone);
+  const clean = JSON.stringify(draft) === JSON.stringify(originalDraft);
+  const reminderStart = baseline && draft.startDate === originalDraft.startDate && draft.startTime === originalDraft.startTime && draft.allDay === baseline.allDay ? Date.parse(baseline.startsAt)
+    : draft.allDay ? localDayStart(draft.startDate, editZone) : (() => { const value = resolveLocalDateTime(draft.startDate, draft.startTime, editZone); return value ? Date.parse(value) : null; })();
+  const reminderElapsed = typeof draft.reminderMinutes === "number" && reminderStart !== null && reminderStart - draft.reminderMinutes * 60_000 < Date.now();
   const stateRef = useRef({ baseline, draft, clean, editZone }); stateRef.current = { baseline, draft, clean, editZone };
   const stale = !!baseline && !!latest && baseline.updatedAt !== latest.updatedAt;
   useEffect(() => {
@@ -51,7 +58,7 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { i
   useEffect(() => {
     if (!ready || !id) { setLoading(false); return; }
     let active = true; setLoading(true);
-    void client.get<unknown>(personalSchedulePath(id), { headers: { "x-orbit-personal-schedule-version": "2" }, signal: scope.controller.signal }).then(result => {
+    void client.get<unknown>(personalSchedulePath(id), { headers: { "x-orbit-personal-schedule-version": "3" }, signal: scope.controller.signal }).then(result => {
       if (!active || !scope.active || current.current !== scope) return;
       const item = result.success ? readPersonalSchedule(result.data) : null;
       if (!item || item.id !== id || item.ownerUserId !== actorId || item.accountId !== actorId) { setError(result.success ? locale.t("schedule.readUnconfirmed") : result.error.message); return; }
@@ -61,28 +68,35 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { i
     return () => { active = false; };
   }, [ready, id, actorId, client, scope, revision]);
   useEffect(() => { if (!baseline?.timeZone && clean && !saving && editZone !== timeZone) { setEditZone(timeZone); setDraft(personalScheduleDraft(baseline, timeZone)); } }, [timeZone, editZone, clean, saving, baseline]);
-  const discard = () => { setBaseline(latest); setEditZone(timeZone); setDraft(personalScheduleDraft(latest, timeZone)); setError(""); };
+  const discard = () => { const zone = latest?.timeZone ?? timeZone; setBaseline(latest); setEditZone(zone); setDraft(personalScheduleDraft(latest, zone)); setError(""); };
   async function save(remove = false) {
     if (!ready || !scope.active || current.current !== scope || scope.busy || stale || (id && !baseline)) return;
+    if (baseline?.recurrence && !mutationScope) { setError(locale.t("personal60.scopeRequired")); return; }
     if (!remove && !canSave) { setError(locale.t("schedule.timezoneUnavailable")); return; }
     const change = remove ? { kind: "ready" as const, fields: {} } : buildPersonalScheduleChange(baseline, draft, editZone);
-    if (change.kind === "invalid") { setError(change.message); return; } if (change.kind === "unchanged") return;
-    const body = baseline ? { expectedUpdatedAt: baseline.updatedAt, ...(remove ? {} : { patch: change.fields }) } : change.fields;
+    if (change.kind === "invalid") { setError(change.messageKey ? locale.t(change.messageKey) : change.message); return; } if (change.kind === "unchanged") return;
+    const receiptFields = { ...(baseline ? { recurrence: baseline.recurrence ?? null, reminderMinutes: baseline.reminderMinutes ?? null } : {}), ...change.fields };
+    const body = baseline ? { expectedUpdatedAt: baseline.updatedAt, ...(baseline.recurrence ? { scope: mutationScope } : {}), ...(remove ? {} : { patch: change.fields }) } : change.fields;
     const method = remove ? "delete" : baseline ? "patch" : "post";
     const path = personalSchedulePath(id || undefined); const fingerprint = JSON.stringify([method, path, body]);
     const key = scope.keys.get(fingerprint) ?? `ios:personal:${Crypto.randomUUID()}`; scope.keys.set(fingerprint, key);
     scope.busy = true; setSaving(true); setError(""); setMessage("");
     try {
-      const result = await client[method]<unknown>(path, { headers: { "x-orbit-personal-schedule-version": "2" }, body: { ...body, idempotencyKey: key }, signal: scope.controller.signal });
+      const result = await client[method]<unknown>(path, { headers: { "x-orbit-personal-schedule-version": "3" }, body: { ...body, idempotencyKey: key }, signal: scope.controller.signal });
       if (!scope.active || current.current !== scope) return;
       if (!result.success) { setError(result.error.message); return; }
       const item = readPersonalSchedule(result.data);
-      if (result.status < 200 || result.status >= 300 || !item || !personalScheduleReceiptMatches(result.data, actorId, id || undefined, change.fields, remove) || (baseline && Date.parse(item.updatedAt) <= Date.parse(baseline.updatedAt))) { setError(locale.t("schedule.saveUnconfirmed")); return; }
-      if (remove) { scope.keys.delete(fingerprint); router.replace("/schedule" as Href); return; }
-      const readback = await client.get<unknown>(personalSchedulePath(item.id), { headers: { "x-orbit-personal-schedule-version": "2" }, signal: scope.controller.signal });
+      if (result.status < 200 || result.status >= 300 || !item || !personalScheduleReceiptMatches(result.data, actorId, id || undefined, receiptFields, remove) || (baseline && Date.parse(item.updatedAt) <= Date.parse(baseline.updatedAt))) { setError(locale.t("schedule.saveUnconfirmed")); return; }
+      const readback = await client.get<unknown>(personalSchedulePath(item.id), { headers: { "x-orbit-personal-schedule-version": "3" }, signal: scope.controller.signal });
       if (!scope.active || current.current !== scope) return;
       const verified = readback.success ? readPersonalSchedule(readback.data) : null;
-      if (!verified || !readback.success || verified.updatedAt !== item.updatedAt || !personalScheduleReceiptMatches(readback.data, actorId, item.id, change.fields)) { setError(locale.t("schedule.saveUnconfirmed")); return; }
+      if (remove) {
+        const confirmed = baseline?.seriesId ? !readback.success && readback.status === 404 && readback.error.code === "NOT_FOUND"
+          : verified && verified.updatedAt === item.updatedAt && personalScheduleReceiptMatches({ scheduleItem: verified, deleted: true }, actorId, item.id, {}, true);
+        if (!confirmed) { setError(locale.t("schedule.saveUnconfirmed")); return; }
+        scope.keys.delete(fingerprint); router.replace("/schedule" as Href); return;
+      }
+      if (!verified || !readback.success || verified.updatedAt !== item.updatedAt || !personalScheduleReceiptMatches(readback.data, actorId, item.id, receiptFields)) { setError(locale.t("schedule.saveUnconfirmed")); return; }
       scope.keys.delete(fingerprint);
       setBaseline(verified); setLatest(verified); setDraft(personalScheduleDraft(verified, verified.timeZone ?? editZone)); setMessage(locale.t("schedule.saved"));
       router.replace(`/schedule/personal/${encodeURIComponent(verified.id)}?saved=${encodeURIComponent(verified.updatedAt)}` as Href);
@@ -101,8 +115,9 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { i
       <View style={styles.field}><Text style={styles.label}>{locale.t("schedule.fieldLocation")}</Text><View style={styles.modeRow}>{(["video", "in_person"] as const).map(meetingMethod => <Pressable key={meetingMethod} accessibilityRole="button" aria-selected={draft.meetingMethod === meetingMethod} accessibilityState={{ selected: draft.meetingMethod === meetingMethod }} disabled={saving} onPress={() => setDraft(previous => ({ ...previous, meetingMethod, ...(meetingMethod === "video" ? { location: "" } : { meetingUrl: "" }) }))} style={[styles.mode, draft.meetingMethod === meetingMethod && styles.modeSelected]}><Text style={[styles.modeText, draft.meetingMethod === meetingMethod && styles.modeSelectedText]}>{locale.t(meetingMethod === "video" ? "personal53.online" : "personal53.offline")}</Text></Pressable>)}</View>
       <TextInput accessibilityLabel={locale.t(draft.meetingMethod === "video" ? "personal53.url" : "schedule.fieldLocation")} value={draft.meetingMethod === "video" ? draft.meetingUrl : draft.location} placeholder={locale.t(draft.meetingMethod === "video" ? "personal53.url" : "schedule.fieldLocationPlaceholder")} placeholderTextColor={colors.text4} style={styles.input} editable={!saving} autoCapitalize="none" autoCorrect={false} onChangeText={value => { if (!scope.busy) setDraft(previous => ({ ...previous, ...(previous.meetingMethod === "video" ? { meetingUrl: value } : { location: value }) })); }} /></View>
       <PersonalScheduleAssociations actorId={actorId} scopeKey={scopeKey} noteIds={draft.noteIds ?? []} contactIds={draft.contactIds ?? []} disabled={saving} onNotesChange={noteIds => { if (!scope.busy && scope.active) setDraft(previous => ({ ...previous, noteIds })); }} onContactsChange={contactIds => { if (!scope.busy && scope.active) setDraft(previous => ({ ...previous, contactIds })); }} />
-      <View style={styles.settings}>{(["taskDetail.reminder", "personal59.repeat", "taskDetail.notes"] as const).map(label => <View key={label} accessibilityLabel={locale.t(label)} style={styles.settingRow}><Text style={styles.settingLabel}>{locale.t(label)}</Text><Text style={styles.settingValue}>{locale.t("personal59.unsupportedOption")}</Text></View>)}</View>
-      <Text style={styles.hint}>{locale.t("personal53.unsupported")}</Text>
+      <PersonalScheduleRules draft={draft} disabled={saving} reminderElapsed={reminderElapsed} onChange={next => { if (!scope.busy && scope.active) setDraft(next); }} {...(baseline?.recurrence ? { scope: { selected: mutationScope, isOccurrence: !!baseline.seriesId, onSelect: (value: "occurrence" | "series") => { if (scope.busy || !scope.active) return; if (value === "series" && baseline.seriesId) { if (!clean) { setError(locale.t("personal60.chooseBeforeEditing")); return; } router.replace(`/schedule/personal/${encodeURIComponent(baseline.seriesId)}/edit` as Href); } else { setMutationScope(value); setError(""); } } } } : {})} />
+      <View accessibilityLabel={locale.t("taskDetail.notes")} style={styles.settingRow}><Text style={styles.settingLabel}>{locale.t("taskDetail.notes")}</Text><Text style={styles.settingValue}>{locale.t("personal59.unsupportedOption")}</Text></View>
+      <Text style={styles.hint}>{locale.t("personal60.localOnly")}</Text>
       <Text style={styles.hint}>{locale.t("personal53.associations")}</Text>
       {baseline ? <Pressable accessibilityRole="button" disabled={saving || stale} onPress={() => setConfirmDelete(true)} style={styles.secondary}><Text style={styles.error}>{locale.t("schedule.deletePersonal")}</Text></Pressable> : null}
       {confirmDelete ? <View><Text style={styles.hint}>{locale.t("schedule.deleteHint")}</Text><Pressable accessibilityRole="button" disabled={saving || stale} onPress={() => void save(true)} style={styles.secondary}><Text style={styles.error}>{locale.t("schedule.confirmDelete")}</Text></Pressable><Pressable accessibilityRole="button" onPress={() => setConfirmDelete(false)} style={styles.secondary}><Text>{locale.t("schedule.keep")}</Text></Pressable></View> : null}
@@ -114,8 +129,8 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { i
 }
 const useStyles = createThemedStyles(colors => ({
   screen: { flex: 1, position: "relative" as const }, bottom: { position: "absolute" as const, bottom: 0, left: 0, right: 0, backgroundColor: colors.surface, paddingHorizontal: 16, paddingTop: 12, borderTopWidth: 1, borderColor: colors.border },
-  form: { gap: 0 }, titleField: { marginBottom: 12 }, titleLabel: { color: colors.text3, fontSize: 11, fontWeight: "700" as const }, titleInput: { minHeight: 44, borderBottomWidth: 1.5, borderColor: colors.text, color: colors.text, fontSize: 22, fontWeight: "900" as const, letterSpacing: -0.44 }, headerSave: { color: colors.accent, fontSize: 15, fontWeight: "700" as const }, modeRow: { flexDirection: "row" as const, padding: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 10 }, mode: { flex: 1, minHeight: 44, alignItems: "center" as const, justifyContent: "center" as const, borderRadius: 7 }, modeText: { color: colors.text3, fontSize: 13 }, modeSelected: { backgroundColor: colors.text }, modeSelectedText: { color: colors.surface, fontWeight: "600" as const },
-  hint: { color: colors.text2, fontSize: 12, lineHeight: 18, marginBottom: 8 }, field: { gap: 6, marginBottom: 8 }, label: { color: colors.text, fontSize: 15, fontWeight: "800" as const },
+  form: { gap: 0 }, titleField: { marginBottom: 8 }, titleLabel: { color: colors.text3, fontSize: 11, fontWeight: "700" as const }, titleInput: { minHeight: 44, borderBottomWidth: 1.5, borderColor: colors.text, color: colors.text, fontSize: 22, fontWeight: "900" as const, letterSpacing: -0.44 }, headerSave: { color: colors.accent, fontSize: 15, fontWeight: "700" as const }, modeRow: { flexDirection: "row" as const, padding: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 10 }, mode: { flex: 1, minHeight: 44, alignItems: "center" as const, justifyContent: "center" as const, borderRadius: 7 }, modeText: { color: colors.text3, fontSize: 13 }, modeSelected: { backgroundColor: colors.text }, modeSelectedText: { color: colors.surface, fontWeight: "600" as const },
+  hint: { color: colors.text2, fontSize: 12, lineHeight: 18, marginBottom: 8 }, field: { gap: 4, marginBottom: 0 }, label: { color: colors.text, fontSize: 15, fontWeight: "800" as const },
   settings: { marginTop: 0 }, settingRow: { minHeight: 36, flexDirection: "row" as const, alignItems: "center" as const, justifyContent: "space-between" as const, gap: 12, borderBottomWidth: 1, borderColor: colors.border }, settingLabel: { color: colors.text, fontSize: 15, fontWeight: "800" as const }, settingValue: { flexShrink: 1, color: colors.text3, fontSize: 13, textAlign: "right" as const },
   input: { minHeight: 44, borderBottomWidth: 1, borderColor: colors.border, color: colors.text, fontSize: 15 },
   primary: { ...createControlStyles(colors).primaryButton, backgroundColor: colors.text, minHeight: 50, borderRadius: 12 }, primaryText: { color: colors.surface, fontWeight: "700" as const, fontSize: 15 },

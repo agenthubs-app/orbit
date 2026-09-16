@@ -1,11 +1,13 @@
 import type { PersonalScheduleContract } from "../api/contract/tasks";
+import { personalScheduleRecurrenceSchema } from "../api/schema/personal-schedule";
+import type { MessageKey } from "../i18n/messages";
 import { localDayStart, localParts, resolveLocalDateTime, shiftCalendarDate, validTimeZone } from "../time/date-time";
-export interface PersonalScheduleDraft { title: string; startDate: string; startTime: string; endDate: string; endTime: string; location: string; allDay?: boolean | undefined; meetingMethod?: PersonalScheduleContract["meetingMethod"]; meetingUrl?: string; contactIds?: string[]; noteIds?: string[]; }
-export type PersonalScheduleFields = Record<string, string | boolean | string[] | null>;
+export interface PersonalScheduleDraft { title: string; startDate: string; startTime: string; endDate: string; endTime: string; location: string; allDay?: boolean | undefined; meetingMethod?: PersonalScheduleContract["meetingMethod"]; meetingUrl?: string; contactIds?: string[]; noteIds?: string[]; reminderMinutes?: PersonalScheduleContract["reminderMinutes"] | null; recurrence?: PersonalScheduleContract["recurrence"] | null; }
+export type PersonalScheduleFields = Record<string, string | number | boolean | string[] | NonNullable<PersonalScheduleContract["recurrence"]> | null>;
 export function personalScheduleDraft(item: PersonalScheduleContract | null, zone: string): PersonalScheduleDraft {
   const start = item ? localParts(item.startsAt, zone) : { date: "", time: "" };
   const end = item?.endsAt ? localParts(item.endsAt, zone) : { date: "", time: "" };
-  return { title: item?.title ?? "", startDate: start.date, startTime: start.time, endDate: end.date, endTime: end.time, location: item?.location ?? "", allDay: item?.allDay, meetingMethod: item?.meetingMethod, meetingUrl: item?.meetingUrl ?? "", contactIds: [...(item?.contactIds ?? [])], noteIds: [...(item?.noteIds ?? [])] };
+  return { title: item?.title ?? "", startDate: start.date, startTime: start.time, endDate: end.date, endTime: end.time, location: item?.location ?? "", allDay: item?.allDay, meetingMethod: item?.meetingMethod, meetingUrl: item?.meetingUrl ?? "", contactIds: [...(item?.contactIds ?? [])], noteIds: [...(item?.noteIds ?? [])], reminderMinutes: item?.reminderMinutes ?? null, recurrence: item?.recurrence ? { ...item.recurrence } : null };
 }
 export function applyPersonalScheduleDuration(draft: PersonalScheduleDraft, zone: string, minutes: 30 | 60 | 120): { kind: "invalid"; message: string } | { kind: "ready"; draft: PersonalScheduleDraft } {
   const start = resolveLocalDateTime(draft.startDate, draft.startTime, zone);
@@ -13,7 +15,7 @@ export function applyPersonalScheduleDuration(draft: PersonalScheduleDraft, zone
   const end = localParts(Date.parse(start) + minutes * 60_000, zone);
   return { kind: "ready", draft: { ...draft, allDay: false, endDate: end.date, endTime: end.time } };
 }
-export function buildPersonalScheduleChange(item: PersonalScheduleContract | null, draft: PersonalScheduleDraft, zone: string): { kind: "invalid"; message: string } | { kind: "unchanged" } | { kind: "ready"; fields: PersonalScheduleFields } {
+export function buildPersonalScheduleChange(item: PersonalScheduleContract | null, draft: PersonalScheduleDraft, zone: string): { kind: "invalid"; message: string; messageKey?: MessageKey } | { kind: "unchanged" } | { kind: "ready"; fields: PersonalScheduleFields } {
   const invalid = (message: string) => ({ kind: "invalid" as const, message });
   if (!validTimeZone(zone)) return invalid("无法读取设备时区，草稿已保留。");
   if (!draft.title.trim()) return invalid("请填写日程标题。");
@@ -33,6 +35,11 @@ export function buildPersonalScheduleChange(item: PersonalScheduleContract | nul
     if (!end || Date.parse(end) <= Date.parse(start)) return invalid("结束日期和时间需一起填写，并晚于开始时间。");
   }
   const fields: PersonalScheduleFields = {};
+  if (draft.reminderMinutes !== undefined && draft.reminderMinutes !== null && ![0, 5, 15, 30, 60, 1440].includes(draft.reminderMinutes)) return { kind: "invalid", message: "", messageKey: "personal60.invalidReminder" };
+  if (draft.recurrence && (!personalScheduleRecurrenceSchema.safeParse(draft.recurrence).success || (!item?.seriesId && draft.recurrence.until !== undefined && draft.recurrence.until < draft.startDate))) return { kind: "invalid", message: "", messageKey: "personal60.invalidUntil" };
+  if (draft.reminderMinutes !== undefined && draft.reminderMinutes !== (item?.reminderMinutes ?? null)) fields.reminderMinutes = draft.reminderMinutes;
+  if (draft.recurrence !== undefined && (draft.recurrence?.frequency !== item?.recurrence?.frequency || draft.recurrence?.until !== item?.recurrence?.until)) fields.recurrence = draft.recurrence;
+  if (!item?.timeZone && (typeof fields.reminderMinutes === "number" || fields.recurrence)) fields.timeZone = zone;
   if (!item || draft.title.trim() !== item.title) fields.title = draft.title.trim();
   if (!item || start !== item.startsAt) fields.startsAt = start;
   if (end !== (item?.endsAt ?? null)) fields.endsAt = end;

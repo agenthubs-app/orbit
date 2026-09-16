@@ -1,6 +1,22 @@
 import { createHash } from "node:crypto";
 import type { ReminderPlanRepository } from "../notifications/reminder-plan-repository";
 import { validTimeZone } from "../tasks/local-date-time";
+import type { ReminderPlanDTO } from "../notifications/reminder-plan-contract";
+import type { PersonalScheduleContract } from "../../shared/contract/tasks";
+
+// Dispatch authority is the current schedule, not the plan's delivery timestamp.
+// Keep historical plan facts immutable when the series has since changed.
+export function isCurrentPersonalScheduleReminderPlan(plan: ReminderPlanDTO, actorId: string, item: PersonalScheduleContract | null): boolean {
+  if (!plan.id.startsWith("schedule-reminder:")) return true;
+  if (plan.targetType !== "schedule_item" || plan.ownerUserId !== actorId || plan.accountId !== actorId || plan.status === "cancelled" || !item || item.ownerUserId !== actorId || item.accountId !== actorId || item.id !== plan.targetId || item.state === "cancelled" || typeof item.reminderMinutes !== "number" || ![0, 5, 15, 30, 60, 1440].includes(item.reminderMinutes) || !item.timeZone || item.timeZone !== plan.timeZone) return false;
+  const start = Date.parse(item.startsAt);
+  if (!Number.isFinite(start) || !Number.isFinite(Date.parse(item.updatedAt))) return false;
+  const fireAt = new Date(start - item.reminderMinutes * 60_000).toISOString();
+  const scope = createHash("sha256").update(JSON.stringify([actorId, item.seriesId ?? item.id])).digest("hex").slice(0, 24);
+  const revision = createHash("sha256").update(JSON.stringify([item.updatedAt, item.reminderMinutes])).digest("hex").slice(0, 24);
+  const occurrenceKey = createHash("sha256").update(JSON.stringify([item.id, fireAt])).digest("hex").slice(0, 24);
+  return plan.id === `schedule-reminder:${scope}:${revision}:${occurrenceKey}` && plan.fireAt === fireAt;
+}
 
 // The schedule mutation/extension caller must supply a repository bound to its
 // transaction and hold the same actor schedule lock as schedule/exception writes.

@@ -6,6 +6,11 @@ import { createReminderPlanRepository } from "../../features/notifications/remin
 import { createInboxRuntime } from "../../features/notifications/inbox-record-service-factory";
 import { refreshInboxBusinessRecords } from "../../features/notifications/inbox-business-refresh";
 import { assertReminderTargetOwned } from "../../features/notifications/reminder-plan-service-factory";
+import { createTypedDeliverySources } from "../../features/notifications/typed-delivery-source";
+import { createDeliveryPolicyRepository } from "../../features/notifications/delivery-policy-repository";
+import type { NotificationDelivery } from "../../features/notifications/delivery-service";
+import { createStorageNotificationDeliveryService } from "../../features/notifications/delivery-service";
+import { createTypedDeliveryWorker } from "../../features/notifications/typed-delivery-worker";
 
 function fixture() {
   const sql = personalScheduleSqlFixture();
@@ -98,4 +103,85 @@ test("malformed occurrence targets cannot gain authority through an unrelated pa
   const targetId = "personal:example:occurrence:2026-09";
   await f.store.upsertRecord({ workspaceId: f.workspaceId, collectionName: "contacts", recordId: "contact-ref", userId: "owner", sourceType: "manual", sourceId: "contact-ref", evidenceIds: [], lifecycleState: "active", createdAt: f.now(), updatedAt: f.now(), payload: { reference: targetId } });
   await assert.rejects(assertReminderTargetOwned({ store: f.store, workspaceId: f.workspaceId, actorId: "owner", targetId, targetType: "schedule_item" }));
+});
+
+for (const mutation of ["move", "disable", "cancel"] as const) {
+  test(`an elapsed pending managed reminder cannot newly project after ${mutation}`, async () => {
+    const f = fixture();
+    const { scheduleItem } = await f.service.create("owner", f.fields);
+    const old = (await f.repository.listPlans({ actorId: "owner" })).find(plan => plan.targetId.endsWith(":2026-09-18"))!;
+    f.setNow("2026-09-18T08:46:00Z");
+    const command = { expectedUpdatedAt: scheduleItem.updatedAt, idempotencyKey: `stale-${mutation}`, scope: "series" as const };
+    if (mutation === "cancel") await f.service.remove("owner", scheduleItem.id, command);
+    else await f.service.update("owner", scheduleItem.id, { ...command, patch: mutation === "disable" ? { reminderMinutes: null } : { startsAt: "2026-09-18T10:00:00Z" } });
+    assert.deepEqual(await f.repository.getPlan("owner", old.id), old);
+    const inbox = createInboxRuntime(f);
+    const source = { sourceKind: "reminder_plan" as const, sourceId: old.id, sourceRevision: old.updatedAt, occurredAt: old.createdAt, readAt: f.now() };
+    assert.equal(await inbox.sourceAccess("owner", source), "unavailable");
+    await refreshInboxBusinessRecords({ ...f, actorId: "owner", service: inbox.service, since: "2026-09-17T00:00:00Z", now: f.now() });
+    const rows = await f.store.listRecords({ workspaceId: f.workspaceId, collectionName: "inboxNotifications", userId: "owner" });
+    assert.equal(rows.some(row => (row.payload.notification as { legacyId?: string }).legacyId === old.id), false);
+  });
+}
+
+test("delivered managed reminder history remains visible but its stale queued source cannot dispatch", async () => {
+  const f = fixture();
+  const { scheduleItem } = await f.service.create("owner", f.fields);
+  const initial = (await f.repository.listPlans({ actorId: "owner" })).find(plan => plan.targetId.endsWith(":2026-09-18"))!;
+  f.setNow("2026-09-18T08:45:00Z");
+  const delivered = { ...initial, status: "delivered" as const, updatedAt: f.now() };
+  await f.repository.savePlan(delivered);
+  const inbox = createInboxRuntime(f);
+  await refreshInboxBusinessRecords({ ...f, actorId: "owner", service: inbox.service, since: "2026-09-17T00:00:00Z", now: f.now() });
+  const rows = await f.store.listRecords({ workspaceId: f.workspaceId, collectionName: "inboxNotifications", userId: "owner" });
+  const stored = rows[0]!.payload.notification as { id: string; scheduledFor: string };
+  await f.store.upsertRecord({ workspaceId: f.workspaceId, collectionName: "notificationCutover", recordId: "owner", userId: "owner", sourceType: "system", sourceId: "owner", evidenceIds: [], lifecycleState: "active", createdAt: f.now(), updatedAt: f.now(), payload: { enabled: true, generation: 1, since: "2026-09-17T00:00:00Z", batchId: "test" } });
+  const sources = createTypedDeliverySources({ ...f, actorId: "owner", repository: createDeliveryPolicyRepository(f) });
+  const queue = { actorId: "owner", policySource: { kind: "notification", id: stored.id, eventKey: stored.id + ":" + stored.scheduledFor } } as NotificationDelivery;
+  assert.notEqual(await sources.resolve(queue), null);
+  const ledger = createStorageNotificationDeliveryService({ ...f, actorId: "owner", store: f.store as never });
+  const queued = (await ledger.materialize({ signalId: stored.id, signalRevision: "1", phase: "commitment", title: "Reminder", body: "Reminder", scheduledFor: stored.scheduledFor, policySource: queue.policySource })).delivery;
+  f.setNow("2026-09-18T08:46:00Z");
+  await f.service.update("owner", scheduleItem.id, { expectedUpdatedAt: scheduleItem.updatedAt, idempotencyKey: "delivered-reschedule", scope: "series", patch: { startsAt: "2026-09-18T10:00:00Z" } });
+  assert.deepEqual(await f.repository.getPlan("owner", initial.id), delivered);
+  assert.equal((await inbox.service.get("owner", stored.id)).target.status, "available");
+  assert.equal(await sources.resolve(queue), null);
+  let sends = 0;
+  const worker = createTypedDeliveryWorker({ ...f, actorId: "owner", ledger, repository: createDeliveryPolicyRepository(f), sources, devices: { listActive: async () => [{ deviceId: "actor-device", token: "boundary-token" }] } as never, push: { send: async () => { sends++; return { receiptId: "boundary-ticket" }; } } });
+  assert.equal((await worker.run({ workerId: "stale-managed" })).suppressed, 1);
+  assert.equal((await ledger.get(queued.deliveryId))?.status, "suppressed");
+  assert.equal(sends, 0);
+});
+
+test("managed source eligibility rejects altered fire times and moved single-instance rules", async () => {
+  const f = fixture();
+  const { scheduleItem } = await f.service.create("owner", f.fields);
+  const plan = (await f.repository.listPlans({ actorId: "owner" })).find(value => value.targetId.endsWith(":2026-09-18"))!;
+  const source = { sourceKind: "reminder_plan" as const, sourceId: plan.id, sourceRevision: plan.updatedAt, occurredAt: plan.createdAt, readAt: f.now() };
+  const inbox = createInboxRuntime({ ...f, forDispatch: true });
+  assert.equal(await inbox.sourceAccess("owner", source), "available");
+  await f.repository.savePlan({ ...plan, fireAt: "2026-09-18T08:44:00.000Z" });
+  assert.equal(await inbox.sourceAccess("owner", source), "unavailable");
+  await f.repository.savePlan(plan);
+  f.setNow("2026-09-18T08:46:00Z");
+  await f.service.update("owner", plan.targetId, { expectedUpdatedAt: scheduleItem.updatedAt, idempotencyKey: "move-one-due", scope: "occurrence", patch: { startsAt: "2026-09-18T10:00:00Z" } });
+  assert.deepEqual(await f.repository.getPlan("owner", plan.id), plan);
+  assert.equal(await inbox.sourceAccess("owner", source), "unavailable");
+});
+
+test("ordinary task and manually authored schedule reminders retain their original source authority", async () => {
+  const f = fixture();
+  const { scheduleItem } = await f.service.create("owner", { ...f.fields, recurrence: undefined });
+  const managed = (await f.repository.listPlans({ actorId: "owner" }))[0]!;
+  await f.store.upsertRecord({ workspaceId: f.workspaceId, collectionName: "tasks", recordId: "task:ordinary", userId: "owner", sourceType: "manual", sourceId: "task:ordinary", evidenceIds: [], lifecycleState: "active", createdAt: f.now(), updatedAt: f.now(), payload: { task: { id: "task:ordinary", status: "open", updatedAt: f.now() } } });
+  const inbox = createInboxRuntime({ ...f, forDispatch: true });
+  for (const plan of [
+    { ...managed, id: "manual-task", targetType: "task" as const, targetId: "task:ordinary" },
+    { ...managed, id: "manual-schedule", targetId: scheduleItem.id },
+  ]) {
+    await f.repository.savePlan(plan);
+    const source = { sourceKind: "reminder_plan" as const, sourceId: plan.id, sourceRevision: plan.updatedAt, occurredAt: plan.createdAt, readAt: f.now() };
+    assert.equal(await inbox.sourceAccess("owner", source), "available");
+    assert.equal(await inbox.sourceAccess("other", source), "unavailable");
+  }
 });

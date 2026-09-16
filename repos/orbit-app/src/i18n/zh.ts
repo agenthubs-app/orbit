@@ -1,6 +1,11 @@
 import type { MessageDictionary } from "./messages";
 
 export const zh = {
+  "personal60.invalidReminder": "请选择有效的提醒时间。",
+  "personal60.invalidUntil": "重复结束日期需有效，且不能早于开始日期。",
+  "personal60.done": "完成",
+  "personal60.pastReminder": "本次提醒时间已过，不会补发；后续实例仍按规则提醒。",
+  "personal60.none": "不提醒", "personal60.atStart": "开始时", "personal60.beforeMinutes": "提前{count}分钟", "personal60.beforeDay": "提前1天", "personal60.noRepeat": "不重复", "personal60.daily": "每天", "personal60.weekly": "每周", "personal60.monthly": "每月", "personal60.until": "重复结束日期", "personal60.noUntil": "留空表示不设结束日期", "personal60.scope": "修改范围", "personal60.occurrence": "仅本次日程", "personal60.series": "整个重复系列", "personal60.scopeRequired": "请先选择仅本次日程或整个重复系列。", "personal60.seriesRules": "提醒和重复规则属于整个系列。", "personal60.monthlySkip": "每月按开始日期重复；没有该日期的月份会跳过。", "personal60.localOnly": "仅保存在 Orbit，不写入系统日历。", "personal60.chooseBeforeEditing": "请先保留或放弃当前草稿，再打开整个系列。",
   "registration.cancelThisRegistration": "取消本次报名",
   "registration.cancelUnconfirmed": "暂时无法核对取消结果，请重新读取报名状态。",
   "registration.cancelConfirmation": "取消后将不再参加这场活动。报名仍开放时，可以再次报名。",

@@ -67,6 +67,11 @@ const client = Object.fromEntries(["get", "post", "patch", "delete", "put"].map(
     return { success: state.kind === "success" || state.kind === "empty", status: state.kind === "offline" ? 0 : state.kind === "failure" ? 503 : 200, data: dataFor(path), error: { code: "READ_FAILED", message: "连接暂时失败" }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
   }
   state.requests.push({ method, path, body: options?.body });
+  if (method === "get" && path.startsWith("/api/schedule-items?")) {
+    state.requests[state.requests.length - 1].headers = options?.headers;
+    if (state.kind === "loading") return new Promise(() => {});
+    return { success: state.kind === "success" || state.kind === "empty", status: state.kind === "offline" ? 0 : state.kind === "failure" ? 503 : 200, data: dataFor(new URL(path, location.origin).pathname), error: { code: "READ_FAILED", message: "连接暂时失败" } };
+  }
   if (finalInsets) {
     if (method === "get" && path === "/api/ai/runs/ai-run-style") return { success: true, status: 200, meta: { featureMode: null, privacy: null, runtimeBoundary: null }, data: { run: { runId: "ai-run-style", promptTemplateId: "style-review", evidenceIds: ["evidence:style"], output: { text: "可以先核对采购合作资料。" } }, summary: "已核对会话来源", nextAction: "检查依据后继续" } };
     if (method === "post" && path === "/api/relationship-communication/conversations/thread-one/messages") {
@@ -125,7 +130,28 @@ async function open(t: { after: (fn: () => Promise<void>) => void }, screen: str
   await page.goto(`${url}?screen=${screen}`); return page;
 }
 async function fits(action: Locator, height = 44) { const b = (await action.boundingBox())!; assert.ok(b && b.height >= height, `expected ${height}pt target, got ${b?.height}`); assert.ok(b.x >= 0 && b.x + b.width <= 320, "action fits 320pt screen"); }
-async function noWrites(page: Page) { assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []); }
+async function noWrites(page: Page) { assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "get")), []); }
+
+test("personal schedule reads retain v3 audit while every mutation still violates the no-write boundary", async t => {
+  const page = await open(t, "tasks");
+  await page.waitForFunction(() => (window as any).fixture.requests.some((request: any) => request.path.startsWith("/api/schedule-items?")));
+  const reads = await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.path.startsWith("/api/schedule-items?")));
+  for (const read of reads) {
+    assert.equal(read.method, "get");
+    assert.equal(read.body, undefined);
+    assert.equal(read.headers["x-orbit-personal-schedule-version"], "3");
+    const query = new URL(read.path, "https://fixture.invalid").searchParams;
+    assert.equal(query.get("scope"), "personal");
+    assert.equal(Date.parse(query.get("to")!) - Date.parse(query.get("from")!), 90 * 86_400_000);
+  }
+  await noWrites(page);
+  for (const method of ["post", "patch", "delete", "put"]) {
+    await page.evaluate(method => (window as any).fixture.requests.push({ method, path: "/api/schedule-items", body: { title: "unexpected write" } }), method);
+    await assert.rejects(noWrites(page), assert.AssertionError);
+    await page.evaluate(() => (window as any).fixture.requests.pop());
+  }
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.path.startsWith("/api/schedule-items?"))), reads);
+});
 
 for (const scheme of ["light", "dark"] as const) {
   test(`${scheme}: final inset AI artifacts preserve all embedded panels, audit request and navigation`, async t => {
