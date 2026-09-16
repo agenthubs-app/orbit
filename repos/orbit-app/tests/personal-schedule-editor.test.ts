@@ -35,6 +35,16 @@ test("personal list rejects another actor and keeps dates, location and real sta
   assert.equal(personalScheduleList({ scheduleItems: [{ ...item, startsAt: "bad" }] }, "owner"), null);
 });
 
+test("editable personal list never invents ownership or versions and rejects duplicate/source damage", async () => {
+  const { personalScheduleList } = await import("../src/api/personal-schedule");
+  const { accountId, ownerUserId, createdAt, updatedAt, ...displayOnly } = item;
+  assert.equal(personalScheduleList({ scheduleItems: [displayOnly] }, "owner"), null);
+  assert.equal(personalScheduleList({ scheduleItems: [item, item] }, "owner"), null);
+  assert.equal(personalScheduleList({ scheduleItems: [{ ...item, sourceId: "another-source" }] }, "owner"), null);
+  assert.deepEqual(personalScheduleList({ scheduleItems: [] }, "owner"), []);
+  assert.deepEqual(personalScheduleList({ scheduleItems: [{ ...item, state: "cancelled" }] }, "owner"), []);
+});
+
 test("a personal date-only task keeps its location and is not labeled a relationship task in calendar", async () => {
   const { scheduleToCalendarView } = await import("../src/view-models/schedule");
   const task = { id: "task:personal", title: "Personal task", category: "personal", status: "open", priority: "normal", plannedDate: "2026-09-17", location: "Room 123" };

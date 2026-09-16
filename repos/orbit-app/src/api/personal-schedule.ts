@@ -2,6 +2,7 @@ import { personalScheduleSchema } from "./schema/personal-schedule";
 import type { PersonalScheduleContract } from "./contract/tasks";
 
 export const personalSchedulePath = (id?: string) => id ? `/api/schedule-items/${encodeURIComponent(id)}` : "/api/schedule-items";
+export const personalScheduleListPath = "/api/schedule-items?scope=personal";
 export function personalScheduleList(data: unknown, actorId: string): PersonalScheduleContract[] | null {
   if (!actorId || !data || typeof data !== "object" || !("scheduleItems" in data) || !Array.isArray(data.scheduleItems)) return null;
   const items: PersonalScheduleContract[] = [];

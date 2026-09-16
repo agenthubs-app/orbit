@@ -3,7 +3,7 @@ import { Pressable, Text, View } from "react-native";
 import { type Href, useFocusEffect, useRouter } from "expo-router";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
-import { personalScheduleList, personalSchedulePath } from "../../api/personal-schedule";
+import { personalScheduleList, personalScheduleListPath } from "../../api/personal-schedule";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { localParts } from "../../time/date-time";
@@ -16,7 +16,7 @@ export function PersonalScheduleList() {
   const auth = useOrbitAuthSession(); const { baseUrl } = useOrbitApiBaseUrl(); const actor = auth.actorId ?? "";
   const locale = useOrbitLocale();
   const { timeZone } = useOrbitTimeZone(); const router = useRouter(); const { styles } = useStyles();
-  const state = useApiResource<unknown>(personalSchedulePath(), () => false, { scopeKey: JSON.stringify([actor, baseUrl]), cachePolicy: "network-only" });
+  const state = useApiResource<unknown>(personalScheduleListPath, () => false, { scopeKey: JSON.stringify([actor, baseUrl]), cachePolicy: "network-only" });
   useFocusEffect(useCallback(() => { state.refresh(); }, [state.refresh]));
   const ready = state.kind === "success" || state.kind === "empty";
   const items = ready ? personalScheduleList(state.data, actor) : null;
