@@ -129,3 +129,19 @@ ROOT 真实验收准备已交：先核精确 actor／workspace、cutover since�
 唯一 ignored evidence／checkpoint 为 `/Users/xzhao/Projects/orbit/.worktrees/sprint-0060-personal-reminders-recurrence/build/harness-state/evidence/sprint-0060/run-01/`。其中 `checkpoint.md` 保原候选、因果账、错误／所有实际终态；主日志为 `web-backend-direct.log`、`backend-audit-repair-final-direct.log`、`stale-source-final-direct.log`、`app-locale-repair-final-{ui,model}.log`、`final-I-{app,web}.log`、`app-wide-fixture-repair-direct.log`、`ink-tasks-{missing-get-causal-red,fixture-repair-direct,fixture-repair2-direct}.log`、`web-I-baseline-failure-compare-final.log`、`source-manifest-final.log` 及上述截图。
 
 旧 App patch `app-product.diff` SHA256 `958fc466c73749c21fd6bfac4c72f9cfd0915989be14059864c877760f4d11bb`、中间 `app-stale-source-final-product.diff` SHA256 `2f2ad6ba229395388b94ccef176e271dd33e41820f4471486e72a313d761cfd0`、最终 `app-stale-source-final-fixture-product.diff` SHA256 `986ed4ec46d133d75fbc595e5664e1e762871496ad9335898c3a89811183a636` 均保留。临时／ignored 证据可能随本地清理失效，因此本报告保真实结果／失败／skip／guards4／未完成边界，不把日志复制进 public、不另造管理证据接口。
+
+## ROOT 追加：2026-09-17 真实运行验收
+
+本节补充报告冻结后的实际结果，不改写上述原始测试或失败事实。主线报告已合并至 `a69ec50ba8ab9e793a4e1ac9d3a307da4da3b942`，普通 push 后独立远端 SHA 一致；产品版本仍为 5523。
+
+- 原生构建 64805 实际 exit 0／BUILD SUCCEEDED，覆盖安装 92358 exit 0；Simulator `DA432E9E-1204-4EE7-9A20-251CDB48E265` 的 `app.agenthubs.orbit` 已启动，实际 `RCT_jsLocation` 为 `127.0.0.1:8082`。Main Web 3000 与 Metro 8082 均实际健康。
+- 真实“小雨”账号 `account_orbit_generated` 创建一个明确 QA 系列 `personal:c1fdb0042b5aa1293939d5af`：标题 `Orbit QA0060 20260917 rules associations`，东京时间 9 月 17 日 09:15–09:45，提前 15 分钟提醒，每天重复至 9 月 19 日。正常 UI 选择既有笔记和人脉，独立 v3 GET 验证所属账号、规则及关联 ID 均一致；不是 HTTP fixture 或截图推断。
+- 真实底部窗显示既有笔记／人脉，输入 `ZT` 匹配佐藤联系人，选择后显示关联 chip。规则窗七提醒／四重复及结束日期实际可用。
+- 9 月 18 日实例实际打开，显式选择“仅本次日程”并确认取消；后续独立 GET 返回 404／NOT_FOUND，列表保留 17 日和 19 日。19 日实例再从真实日历列表点击打开成功，显示继承规则和原关联。系列及两个保留实例仍是已识别测试资料，未硬删除或修改其他记录。
+- 提醒闭环仍未通过：同账号 `/api/inbox/notifications` 实际 `enabled:false`，delivery owner 实际为 local／cutover false；诊断 deviceId 不是原生权限／token 证据。已询问用户是否仅开启该测试账号新版应用内通知入口，尚未收到批准，不修改其他账号、全局 cutover 或远程 Push。到期通知、实际 PostgreSQL 并发及远程 Push 仍待验，不能把规则保存成功称为提醒送达成功。
+- Phone 固定消费提交 `b3562f4de8936d783cda097e1a30e1e3554208c7`、TREE `c6f2b1a9f4f014df233af3f5140f2a50590e877c`；生产构建／导出实际成功，BUILD `VFCyLoF7jSqlaRsqWLuA3`，entry SHA256 `aed12fe6ee10cf506911e195407363b720dfbc0c9f5ff20dbac3b7409ab850b6`。私有 Chromium／WebKit 390×844 使用真实 Phone actor `user_orbit_primary_qa` 验证新摘要 GET、拼音筛选、内存选择／取消及提醒重复 UI；原资料前后 hash 相同，匿名摘要 401，无业务写入或付费请求。该 actor 与 Main 小雨不同，不当作同账号跨端证据。ROOT 已读取回执并检查真实 WebKit 图片，批准固定产物整体 supervisor 发布；本节写入时公网切换结果尚待回报。
+- Main 独立 Next `/app/tasks/personal` 页面仍使用 v2 编辑器并显示“提醒和重复暂不支持”，没有消费本次 App／Phone UI，须单独跟踪，不能宣称所有 Web 页面均已对齐。
+
+真实原生图片另存 `/tmp/orbit-sprint0060-native.2BBKOw/`，其中 `notes-sheet.png`、`contacts-zt-selected.png`、`editor-before-save.png`、`detail-saved.png`、`occurrence-cancel-scope.png` 已实际查看。先前 A evidence 内六张 `app-editor-reference.png`、`app-rules-{zh,en,ja}.png`、`app-editor-shortcuts.png`、`app-detail.png` 后被 Phone 消费 HTTP fixture 测试写入；没有事前 hash，不能声称原图未变或恢复，当前应标注 Phone fixture 产物而非 A 原始截图，更不是实际设备证据。Phone 新真实账号图片在独立 `release-0060` 私有目录。
+
+本轮累计预算 ledger 原始 SHA256 始终为 `493f2ed72328e543b620c28c6a8a9ab03823a92fd290381b79330dc720d2d4da`；未重跑任一端全量 I。上述进展仅补充部分真实正向验收，SC60-04 与整个 Sprint 仍未 completed。

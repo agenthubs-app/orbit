@@ -559,3 +559,11 @@ build/harness-logs/
 Phone独立32100/PID17635/BUILD_ID`8sXNW8nifgU1rD0IF79lc`、32110/PID21340及新公共tunnel由Phone协调任务持有；MAIN与Phone同邮箱不能证明密码/数据相同。PW-0010原run已结束：公开Chromium/WebKit390px及主线原生同演示账号真实8候选/原消息/详情返回/历史重开/刷新通过，原request/messages/budget摘要不变；ROOT实际恢复精确127.0.0.1:3000与小雨MAIN Appscope，UI归ROOT。固定Phone文档交付`da3dd71d`只消费[原样REPORT](../../../../docs/phoneweb/sprints/0010-contact-artifact/REPORT.md)，不合Phone祖先/旧台账。通过仅本轮功能，原后端全量失败/跳过与完整Phone覆盖保持开放。共享原账本18entries/$0.038611/0reserved，未重置，本轮构建/只读检查无provider调用；旧运行时记录仅保留历史，不代表当前版本。
 
 0047追加计划仅针对0044实测生产Web历史会话无composer，不克隆整个失败Sprint。当前GOAL/AUDIT-DESIGN/PLANNER已编制，建议空闲B后续单run；Phone PW0010同ask函数展示切片先冻结/移交，本轮C0043与E0046保持两个实现槽，不自动派第三线。0036源版本/笔记实际工具接线仍由既有Sprint承接；0044 failed报告与费用/清理事实保留。
+
+### 2026-09-17：0059／0060 主线实际验收补充
+
+此项更新覆盖上表“原生64805构建中／未安装”的旧运行状态，不改写原始 I 失败或 Sprint blocked 判定。Main 产品5523、报告a69ec50已主合并普通push，独立远端核对一致。原生64805构建和92358覆盖安装均实际exit0，主包连接8082；Main Web3000健康。
+
+ROOT 实际使用小雨账号 `account_orbit_generated` 验证已有笔记／人脉底部窗、`ZT` 首字母匹配与关联 chip；正常 UI 新建一个明确 QA 系列，提前15分钟／每天至9月19日规则及关联经独立v3 GET一致。18日实例“仅本次”取消后独立GET404，17日及19日保留，19日实际日历列表点击详情成功。真实到期提醒仍待验：该账号 typed inbox 实际enabled false、owner local／cutover false，尚未获准启用，不宣称保存等于送达；PG并发及远程Push仍未完成。
+
+Phone 固定消费b3562f4／TREEc6f2、BUILD `VFCyLoF7jSqlaRsqWLuA3` 的真实 actor Chromium／WebKit 私有预览通过列表／拼音／选择取消及规则UI，未保存业务资料或调用provider；ROOT已审核并批准整体owned supervisor公网发布，实际切换结果另行登记。Phone actor不同于Main小雨，不代替同账号跨端证据。Main独立Next `/app/tasks/personal` 仍是旧v2／提醒重复unsupported UI，必须单独跟踪，不能宣称全部Web页面对齐。详见[0060 REPORT追加验收](0060-personal-reminders-recurrence/REPORT.md)。
