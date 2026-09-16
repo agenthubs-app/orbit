@@ -360,7 +360,9 @@ async function readGraph(
     record: LiveRecord<Record<string, unknown>>,
   ): boolean =>
     record.userId === actorId || record.payload.accountId === actorId;
-  const actorNotificationRecords = notificationRecords.filter(belongsToActor);
+  const actorNotificationRecords = notificationRecords.filter(
+    (record) => record.workspaceId === workspaceId && record.userId === actorId,
+  );
   const actorConnectionRecords = connectionRecords.filter(belongsToActor);
   const notificationTargetIds = new Set(
     actorNotificationRecords.flatMap((record) =>

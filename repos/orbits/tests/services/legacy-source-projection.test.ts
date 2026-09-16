@@ -66,7 +66,12 @@ test('actual provider and service do not guess tasks or leak stale visible assoc
  const service=createLiveReminderScheduleNotificationService({provider});
  const list=async()=>{const result=await service.listNotifications({actorId:actor});assert.equal(result.success,true);if(!result.success)throw Error('unavailable');return result.data;};
  let data=await list();assert.equal(data.reminders[0]?.href,'/tasks/task%3Aone');assert.equal(data.reminders[0]?.followupTaskId,'task:one');assert.equal(data.reminders[0]?.title,'Current task');assert.equal(JSON.stringify(data).includes('SECRET OLD'),false);
- for(const bad of [{...notice,targetId:'missing'},{...notice,targetId:undefined},{...notice,userId:'other',payload:{...notification,accountId:actor}},{...notice,lifecycleState:'archived' as const},{...notice,payload:{...notification,id:'wrong'}}]) {
+ // Notification ownership is distinct from source availability. A payload
+ // account declaration cannot expose a foreign notification's ID or queue.
+ await store.upsertRecord({...notice,userId:'other',payload:{...notification,accountId:actor}});
+ data=await list();assert.deepEqual(data.reminders,[]);assert.deepEqual(data.notificationQueue,[]);
+ assert.equal(JSON.stringify(data).includes(notification.id),false);
+ for(const bad of [{...notice,targetId:'missing'},{...notice,targetId:undefined},{...notice,lifecycleState:'archived' as const},{...notice,payload:{...notification,id:'wrong'}}]) {
   await store.upsertRecord(bad);data=await list();const reminder=data.reminders[0];assert.ok(reminder);assert.equal(reminder.href,'');assert.equal(reminder.followupTaskId,'');assert.equal(reminder.contactName,'');assert.equal(reminder.organization,'');assert.equal(reminder.connectionId,'');assert.deepEqual(reminder.evidenceIds,[]);assert.deepEqual(data.notificationQueue[0]?.evidenceIds,[]);assert.equal(JSON.stringify(data).includes('SECRET OLD'),false);
  }
  await store.upsertRecord(notice);await store.upsertRecord({...task,userId:'other'});data=await list();assert.equal(data.reminders[0]?.href,'');
