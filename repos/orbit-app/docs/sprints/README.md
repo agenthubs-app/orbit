@@ -96,6 +96,7 @@ build/harness-logs/
 | [0044](0044-ai-conversation-readback-repair/GOAL.md) | AI新会话发送后可持久回读和续聊，不返回悬空成功会话 | D POST200后GET404；R-00/R-02/R-14 | 部分功能已合入；原生实际发送/重开通过，Web历史会话没有composer导致续聊失败，notes实际调用/源版本和原生失败恢复缺证据；REPORT已提交，run关闭 | failed |
 | [0045](0045-private-note-deletion/GOAL.md) | 确认删除私密笔记并传播到关联入口、镜像及新AI检索，不越权或复活 | D整条笔记无删除入口/API；R-13/R-14追加 | 新增目标实施指令、授权精确记录、0033/34删除接口与0036检索失效；建议D，未派发 | planned |
 | [0046](0046-repeatable-functional-acceptance/GOAL.md) | 用正确主包与隔离有效样本补齐交互矩阵，失效通知来源安全提示 | 用户实际交互要求、B/C错包与C/D样本缺口；R-11/R-14 | E run-01先准备运行身份检查和fixture dry-run；真实样本目标/权限/清理另核，最终矩阵依赖0042～45及0033～36必需版本 | running |
+| [0047](0047-web-ai-session-composer/GOAL.md) | Web历史AI会话有唯一续聊输入，追问持久保存在原会话并双端读回 | 0044实际Web输入控件0，关联SC02/03/05；R-00/R-02/R-14 | 追加具体缺口计划；run_count=0，等待Phone PW0010同函数切片固定及C/E实现槽位，不复开0044或替代0036源版本接线 | planned |
 
 2026-09-16按用户“总结B/C/D报告后设计sprints”新增[中文汇总与追加计划](SIMULATOR_REMEDIATION_PROGRAM.md)，随后用户明确“42～46开始修复”及“请继续”，五项实施批准已满足。0042已收口completed，0044已交failed报告并关闭原run，0043及0046继续各自唯一run-01；0045获准排队run_count=0，尚无REPORT。全域离线9/9失败继续映射0033～0036原契约，不另建重复缓存Sprint；不修改其冻结Planner或把规划当作修复完成。
 
@@ -518,3 +519,6 @@ build/harness-logs/
 - 冻结Planner SHA256 `7241cd46081fe55894df4ae5fe543989af000dd6c08dce4f36489fb1f25f2279`。先独占`repos/orbit-app/scripts/verify-simulator-runtime-identity.mjs`、`repos/orbits/scripts/prepare-simulator-acceptance-fixtures.ts`及其直接确定性测试；新增测试路径由E追踪登记SC01/02后实施，脚本默认只读/dry-run，实际样本写入必须明确精确目标和cleanup批准。既有通知失效consumer先只读调查，后续必要产品切片另核与0033/Phone文件锁，不重做活动/AI/笔记产品。
 - 基线Web两个完整notification-source/cutover文件3/3；App完整typed-notification-inbox3/3，均exit0。App首次裸tsx命令未带项目render hook导致依赖JSX转换失败，按既有package test入口补hook后通过，非产品修复，不隐藏历史。
 - 主机18:46重启后ROOT已恢复mainWeb同426产物PID7578/live200及Metro8082PID7582/running；Phone服务暂未恢复，待A固定PW0010统一编译。E不控制共享服务/设备/浏览器/账号或DB写入，不安装新框架、不provider出站、不重置账本。最终SC04矩阵等待0042～45和0033～36必需接口，缺项只阻对应动作；本地准备不冒充最终原生/离线验收。
+- 必要新增测试路径`repos/orbit-app/tests/simulator-runtime-identity.test.mjs`、`repos/orbits/tests/services/simulator-acceptance-fixtures.test.ts`及工具说明`repos/orbit-app/docs/verification/simulator-acceptance-preparation.md`已按SC01/02登记。真实设备无booted/缺loaded-JS与actor实际receipt必须BLOCKED；fixture testadapter验证不能冒真实样本apply成功。
+
+0047追加计划仅针对0044实测生产Web历史会话无composer，不克隆整个失败Sprint。当前GOAL/AUDIT-DESIGN/PLANNER已编制，建议空闲B后续单run；Phone PW0010同ask函数展示切片先冻结/移交，本轮C0043与E0046保持两个实现槽，不自动派第三线。0036源版本/笔记实际工具接线仍由既有Sprint承接；0044 failed报告与费用/清理事实保留。
