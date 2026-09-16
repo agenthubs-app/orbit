@@ -5,12 +5,26 @@ import { createRequire } from "node:module";
 import test from "node:test";
 import { build } from "esbuild";
 import { chromium, type Browser, type Page } from "playwright";
+import { createElement } from "react";
+import { useMobileViewport } from "../src/platform/use-mobile-viewport.web";
 import { isPrivateMobileRoute } from "../src/view-models/mobile-route-access";
 
 const require = createRequire(import.meta.url);
+const { renderToStaticMarkup } = require("react-dom/server") as {
+  renderToStaticMarkup(element: ReturnType<typeof createElement>): string;
+};
 let browser: Browser;
 let server: Server;
 let url: string;
+
+test("mobile viewport has an SSR-safe initial state before browser globals exist", () => {
+  function Probe() {
+    const state = useMobileViewport();
+    return createElement("span", null, `${state.keyboardVisible}:${state.visibleHeight}`);
+  }
+
+  assert.equal(renderToStaticMarkup(createElement(Probe)), "<span>false:null</span>");
+});
 
 // Only OS safe area, keyboard events, icons and router are replaced. AppScreen,
 // controls, theme, SVG geometry, text inputs and press handling stay real.
@@ -184,6 +198,24 @@ test("tabs fit 320pt, stay outside the scroll content and never cover its last a
   if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: "/tmp/orbit-ink-signal-shell-320.png" });
 });
 
+for (const width of [360, 390, 430]) {
+  test(`phoneweb shell stays within the ${width}px viewport`, async t => {
+    const page = await open(t, "/contacts", "", width);
+    const bar = page.getByRole("tablist", { name: "主导航" });
+    await bar.waitFor();
+    const bounds = (await bar.boundingBox())!;
+    assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= width);
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+      true,
+      "the shell must not add horizontal page overflow"
+    );
+    if (process.env.APP_STYLE_SCREENSHOTS) {
+      await page.screenshot({ path: `/tmp/orbit-phoneweb-pw0002-shell-${width}.png` });
+    }
+  });
+}
+
 test("all navigation labels stay inside their targets at doubled text size", async t => {
   const page = await open(t, "/home", "", 320);
   await page.getByRole("tablist").waitFor();
@@ -208,6 +240,62 @@ test("keyboard hides the floating bar and restores it without dropping drafts", 
   await page.evaluate(() => (window as any).fixture.keyboard("keyboardDidHide"));
   await bar.waitFor();
   assert.equal(await page.getByRole("textbox", { name: "备注草稿" }).inputValue(), "下次见面带资料");
+});
+
+test("mobile Web visual viewport keeps editing controls visible without treating desktop resize as a keyboard", async t => {
+  const page = await open(t, "/contacts");
+  const bar = page.getByRole("tablist", { name: "主导航" });
+  await bar.waitFor();
+  await page.getByRole("textbox", { name: "备注草稿" }).fill("浏览器键盘草稿");
+  await page.evaluate(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) throw new Error("VisualViewport is required for the mobile Web scenario");
+    Object.defineProperty(navigator, "maxTouchPoints", { configurable: true, value: 5 });
+    Object.defineProperty(viewport, "height", { configurable: true, value: 500 });
+    viewport.dispatchEvent(new Event("resize"));
+  });
+  await bar.waitFor({ state: "hidden" });
+  assert.equal(await page.getByRole("textbox", { name: "备注草稿" }).inputValue(), "浏览器键盘草稿");
+
+  await page.evaluate(() => {
+    const viewport = window.visualViewport!;
+    Object.defineProperty(viewport, "height", { configurable: true, value: window.innerHeight });
+    Object.defineProperty(navigator, "maxTouchPoints", { configurable: true, value: 0 });
+    viewport.dispatchEvent(new Event("resize"));
+  });
+  await page.setViewportSize({ width: 390, height: 640 });
+  assert.equal(await bar.count(), 1, "a desktop/layout viewport resize must not remain classified as a software keyboard");
+});
+
+test("mobile Web resizes-content still recognizes a focused software keyboard", async t => {
+  const page = await open(t, "/contacts");
+  const bar = page.getByRole("tablist", { name: "主导航" });
+  await bar.waitFor();
+  await page.getByRole("textbox", { name: "备注草稿" }).focus();
+  await page.evaluate(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) throw new Error("VisualViewport is required for the mobile Web scenario");
+    Object.defineProperty(navigator, "maxTouchPoints", { configurable: true, value: 5 });
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 500 });
+    Object.defineProperty(viewport, "height", { configurable: true, value: 500 });
+    viewport.dispatchEvent(new Event("resize"));
+  });
+  await bar.waitFor({ state: "hidden" });
+});
+
+test("mobile Web pinch zoom never masquerades as a software keyboard", async t => {
+  const page = await open(t, "/contacts");
+  const bar = page.getByRole("tablist", { name: "主导航" });
+  await bar.waitFor();
+  await page.evaluate(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) throw new Error("VisualViewport is required for the mobile Web scenario");
+    Object.defineProperty(navigator, "maxTouchPoints", { configurable: true, value: 5 });
+    Object.defineProperty(viewport, "height", { configurable: true, value: 420 });
+    Object.defineProperty(viewport, "scale", { configurable: true, value: 2 });
+    viewport.dispatchEvent(new Event("resize"));
+  });
+  assert.equal(await bar.count(), 1);
 });
 
 test("native keyboard visibility initializes without losing its receiver and respects an already open keyboard", async t => {
