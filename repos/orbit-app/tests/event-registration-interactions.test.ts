@@ -34,7 +34,7 @@ const state = window.fixture = {
   },
   data(path) {
     if (path.endsWith("/registration")) { const eligibilityState = state.eligibilityState ?? (state.registered ? "registered" : "registration_cancelled"); const allowedActions = state.allowedActions ?? (state.registered ? ["update", "cancel"] : ["reactivate"]); return { eligibility: { allowedActions, applicationVersion: state.applicationVersion ?? null, evaluatedAt: "2026-09-15T01:00:00.000Z", policyVersion: state.policyVersion ?? null, reason: eligibilityState, registrationVersion: state.registrationVersion ?? "2026-09-13T00:00:00Z", state: eligibilityState }, registration: state.receipt(), questionSet: { questionSetHash: state.hash, questionSetVersion: state.version,
-      questions: [{ id: "target_attendees", intent: "target_attendees", participantProfileField: "targetAttendees", prompt: state.prompt, options: [], required: true }],
+      questions: state.questions ?? [{ id: "target_attendees", intent: "target_attendees", participantProfileField: "targetAttendees", prompt: state.prompt, options: state.options ?? [], required: true }],
       provenance: { aiProviderRequested: false, externalNetworkRequested: false, fallbackReason: null, generationMethod: "deterministic-fallback", model: null, provider: null } } }; }
     return { event: { id: state.eventId, title: "Networking meeting", startsAt: "2026-09-20T10:00:00+09:00", endsAt: "2026-09-20T12:00:00+09:00", status: "confirmed", venue: "Tokyo", location: "Tokyo", description: "Meet local founders", stats: { rsvpCount: state.registered ? 2 : 1, youRsvped: state.registered } } };
   },
@@ -103,6 +103,80 @@ async function refresh(p: Page) { await p.evaluate(() => (window as any).fixture
 async function writes(p: Page) { return p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method === "POST").map((r: any) => ({ method: r.method, path: r.path, body: r.body }))); }
 async function reply(p: Page, status = 200, patch?: object) { await p.evaluate(({ status, patch }) => { const s = (window as any).fixture; const i = s.requests.findLastIndex((r: any) => r.method === "POST"); s.reply(i, status, patch === undefined ? (status === 200 ? s.receipt() : undefined) : patch); }, { status, patch }); await settle(p); }
 
+test("ordinary selection hides the input and other preserves only its own draft", async t => {
+  const p = await open(t, { options: ["Founder", "Investor", "Other", "その他"], savedAnswer: "Founder" }, false);
+  await p.getByRole("button", { name: "Founder", exact: true }).waitFor();
+  assert.equal(await p.getByPlaceholder("写一句具体的补充。").count(), 0);
+  assert.equal(await p.getByRole("button", { name: "其他", exact: true }).count(), 1);
+  await press(p, "其他"); await fill(p, "Independent advisor");
+  await press(p, "Investor");
+  assert.equal(await p.getByPlaceholder("写一句具体的补充。").count(), 0);
+  await press(p, "更新报名资料");
+  assert.equal((await writes(p))[0]?.body.answers.targetAttendees, "Investor");
+  await reply(p, 503); await press(p, "其他");
+  assert.equal(await p.getByPlaceholder("写一句具体的补充。").inputValue(), "Independent advisor");
+  await press(p, "更新报名资料");
+  assert.equal((await writes(p))[1]?.body.answers.targetAttendees, "Independent advisor");
+});
+
+test("adaptive history keeps real answered prompts once and failure preserves the current draft", async t => {
+  const p = await open(t);
+  const step = (prompt: string, field: string) => ({ done: false, signedQuestion: { question: { field, prompt, options: [], acknowledgment: "" }, questionToken: `signed-${field}` } });
+  await press(p, "下一题"); await reply(p, 200, step("First real question?", "valueOffered"));
+  await p.evaluate(() => { const s = (window as any).fixture; s.retainedNext = s.presses["下一题"]; });
+  await fill(p, "Practical experience", 1); await press(p, "下一题"); await reply(p, 503);
+  assert.equal(await p.getByPlaceholder("写一句具体的补充。").nth(1).inputValue(), "Practical experience");
+  await press(p, "下一题"); await reply(p, 200, step("Second real question?", "industry"));
+  await p.evaluate(() => (window as any).fixture.retainedNext()); await settle(p);
+  assert.equal((await writes(p)).length, 3, "a previous question callback cannot append its answer again");
+  assert.equal(await p.getByText("First real question?", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("Practical experience", { exact: true }).count(), 1);
+  await fill(p, "Climate", 1); await press(p, "下一题"); await reply(p, 200, step("Third real question?", "desiredOutcome"));
+  assert.equal(await p.getByText("First real question?", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("Second real question?", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("核心信息 2/2 · 信息覆盖 3/8", { exact: true }).count(), 1);
+  await fill(p, "Partnership", 1); await press(p, "生成活动画像");
+  await reply(p, 200, { persona: { tagline: "Preview only", tags: [], industryTags: [], openers: [] } });
+  assert.equal(await p.getByText("Third real question?", { exact: true }).count(), 1);
+  await press(p, "下一题"); await reply(p, 200, { done: true, question: null });
+  assert.equal(await p.getByRole("button", { name: "下一题", exact: true }).isDisabled(), true);
+});
+
+test("coverage tracks an empty other draft, two cores and all eight fields without auto requests", async t => {
+  const p = await open(t, { options: ["Founder"], savedAnswer: "" }, false);
+  await p.getByRole("button", { name: "Founder", exact: true }).waitFor();
+  assert.equal(await p.getByText("核心信息 0/2 · 信息覆盖 0/8", { exact: true }).count(), 1);
+  await press(p, "其他"); await fill(p, "  ");
+  assert.equal(await p.getByText("核心信息 0/2 · 信息覆盖 0/8", { exact: true }).count(), 1);
+  await press(p, "Founder");
+  assert.equal(await p.getByText("核心信息 1/2 · 信息覆盖 1/8", { exact: true }).count(), 1);
+  assert.deepEqual(await writes(p), []);
+  const fields = ["positioning", "industry", "targetAttendees", "valueOffered", "desiredOutcome", "energyStyle", "experienceHighlight", "followUpPreference"];
+  await update(p, { questions: fields.map(field => ({ id: field, intent: field, participantProfileField: field, prompt: `Real ${field}?`, options: [], required: false })) });
+  await refresh(p); await press(p, "载入新问题");
+  await p.evaluate(() => (window as any).fixture.alerts.at(-1).buttons[1].onPress()); await settle(p);
+  for (let i = 0; i < fields.length; i++) await fill(p, `Answer ${i}`, i);
+  assert.equal(await p.getByText("核心信息 2/2 · 信息覆盖 8/8", { exact: true }).count(), 1);
+  assert.equal(await p.getByRole("button", { name: "下一题", exact: true }).isDisabled(), true);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("custom answer readback and questionnaire chrome localize without translating the answer or options", async t => {
+  const p = await open(t, { options: ["Founder"], savedAnswer: "独立顾问 / Independent advisor" });
+  for (const [language, other, progress, placeholder] of [
+    ["zh", "其他", "核心信息 1/2 · 信息覆盖 1/8", "写一句具体的补充。"],
+    ["ja", "その他", "基本情報 1/2 · 入力済み 1/8", "具体的な内容を1文で入力してください。"],
+    ["en", "Other", "Core information 1/2 · Information coverage 1/8", "Add a specific answer."],
+  ] as const) {
+    await update(p, { language });
+    assert.equal(await p.getByRole("button", { name: other, exact: true }).count(), 1);
+    assert.equal(await p.getByText(progress, { exact: true }).count(), 1);
+    assert.equal(await p.getByRole("button", { name: "Founder", exact: true }).count(), 1);
+    assert.equal(await p.getByPlaceholder(placeholder, { exact: true }).inputValue(), "独立顾问 / Independent advisor");
+  }
+  assert.deepEqual(await writes(p), []);
+});
+
 test("registration reads canonical public event context without a legacy private detail request", async t => {
   const p = await open(t);
   assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.map((r: any) => ({ method: r.method, path: r.path, query: r.query })).sort((a: any, b: any) => a.path.localeCompare(b.path))), [
@@ -142,6 +216,7 @@ for (const failure of [{ eventStatus: 503 }, { registrationStatus: 500 }]) test(
 test("registration refresh preserves a dirty answer but still adopts clean server changes", async t => {
   const p = await open(t); assert.equal(await p.getByPlaceholder("写一句具体的补充。").inputValue(), "Saved answer");
   await update(p, { savedAnswer: "Remote answer" }); await refresh(p);
+  await p.waitForFunction(() => Array.from(document.querySelectorAll("textarea,input")).some(input => (input as HTMLInputElement).value === "Remote answer"));
   assert.equal(await p.getByPlaceholder("写一句具体的补充。").inputValue(), "Remote answer");
   await fill(p, "Local answer"); await update(p, { savedAnswer: "Another remote answer" }); await refresh(p);
   assert.equal(await p.getByPlaceholder("写一句具体的补充。").inputValue(), "Local answer");
@@ -183,7 +258,7 @@ test("failed registration refresh retains drafts but disables every write until 
   assert.equal(await p.getByPlaceholder("写一句具体的补充。").nth(0).inputValue(), "Unsaved local answer");
   assert.equal(await p.getByPlaceholder("写一句具体的补充。").nth(1).inputValue(), "Unsaved auxiliary answer");
   await press(p, "更新报名资料");
-  assert.deepEqual((await writes(p)).at(-1)?.body, { answers: { targetAttendees: "Unsaved local answer" }, intent: "update", questionSetHash: "a".repeat(64), questionSetVersion: 1 });
+  assert.deepEqual((await writes(p)).at(-1)?.body, { answers: { targetAttendees: "Unsaved local answer" }, intent: "update", expectedRegistrationVersion: "2026-09-13T00:00:00Z", questionSetHash: "a".repeat(64), questionSetVersion: 1 });
 });
 
 test("registration disables stale write callbacks immediately when a refresh starts", async t => {
@@ -210,9 +285,9 @@ test("registration refresh preserves the auxiliary question, answer, transcript 
 test("registration submission is single-flight and refreshes both current resources", async t => {
   const p = await open(t); await fill(p, "  Local answer  ");
   await p.evaluate(() => { const fn = (window as any).fixture.presses["更新报名资料"]; fn(); fn(); }); await settle(p);
-  assert.deepEqual(await writes(p), [{ method: "POST", path: "/api/events/event%3A1/registration", body: { answers: { targetAttendees: "Local answer" }, intent: "update", questionSetHash: "a".repeat(64), questionSetVersion: 1 } }]);
+  assert.deepEqual(await writes(p), [{ method: "POST", path: "/api/events/event%3A1/registration", body: { answers: { targetAttendees: "Local answer" }, intent: "update", expectedRegistrationVersion: "2026-09-13T00:00:00Z", questionSetHash: "a".repeat(64), questionSetVersion: 1 } }]);
   await update(p, { savedAnswer: "Local answer" }); await reply(p);
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.slice(3).map((r: any) => r.path).sort()), ["/api/events/event%3A1/registration", "/api/events/public/event%3A1"]);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.slice(3).map((r: any) => r.path).sort()), ["/api/events/event%3A1/registration", "/api/events/event%3A1/registration", "/api/events/public/event%3A1"]);
   assert.equal(await p.getByText("报名资料已保存。", { exact: true }).count(), 1);
 });
 
@@ -225,11 +300,42 @@ test("registration save acknowledgement and refresh do not overwrite a newer edi
 test("registration cancellation is single-flight and reads status and event again", async t => {
   const p = await open(t); await fill(p, "Keep unsaved answer");
   await p.evaluate(() => { const fn = (window as any).fixture.presses["取消报名"]; fn(); fn(); }); await settle(p);
+  assert.deepEqual(await writes(p), []);
+  await p.evaluate(() => { const fn = (window as any).fixture.alerts.at(-1).buttons.find((b: any) => b.style === "destructive").onPress; fn(); fn(); }); await settle(p);
   assert.deepEqual(await writes(p), [{ method: "POST", path: "/api/events/event%3A1/registration/cancel", body: { expectedRegistrationVersion: "2026-09-13T00:00:00Z", intent: "cancel" } }]);
   await update(p, { registered: false }); await reply(p);
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.slice(3).map((r: any) => r.path).sort()), ["/api/events/event%3A1/registration", "/api/events/public/event%3A1"]);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.slice(3).map((r: any) => r.path).sort()), ["/api/events/event%3A1/registration", "/api/events/event%3A1/registration", "/api/events/public/event%3A1"]);
   assert.equal(await p.getByPlaceholder("写一句具体的补充。").inputValue(), "Keep unsaved answer");
   assert.equal(await p.getByRole("button", { name: "重新报名", exact: true }).count(), 1);
+});
+
+test("cancellation confirmation is revoked when the registration version changes", async t => {
+  const p = await open(t); await press(p, "取消报名");
+  await update(p, { registrationVersion: "2026-09-14T00:00:00Z" }); await refresh(p);
+  await p.evaluate(() => (window as any).fixture.alerts.at(-1).buttons.find((b: any) => b.style === "destructive").onPress()); await settle(p);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("a valid save receipt cannot claim persistence when independent readback fails", async t => {
+  const p = await open(t); await fill(p, "Keep my answer"); await press(p, "更新报名资料");
+  await update(p, { registrationStatus: 503 }); await reply(p);
+  assert.equal(await p.getByText("报名资料已保存。", { exact: true }).count(), 0);
+  assert.equal(await p.getByPlaceholder("写一句具体的补充。").inputValue(), "Keep my answer");
+});
+test("an open cancelled registration explicitly reactivates the same record with its version", async t => {
+  const p = await open(t, { registered: false }); await fill(p, "New answer");
+  await press(p, "重新报名");
+  assert.deepEqual((await writes(p)).at(-1)?.body, { intent: "reactivate", expectedRegistrationVersion: "2026-09-13T00:00:00Z", answers: { targetAttendees: "New answer" }, questionSetHash: "a".repeat(64), questionSetVersion: 1 });
+  await update(p, { registered: true, receiptAction: "reactivate", savedAnswer: "New answer" }); await reply(p);
+  assert.equal(await p.getByText("报名资料已保存。", { exact: true }).count(), 1);
+  assert.equal(await p.getByRole("button", { name: "取消报名", exact: true }).count(), 1);
+});
+test("cancel-only eligibility cannot start an interview or a profile write", async t => {
+  const p = await open(t, { allowedActions: ["cancel"], eligibilityState: "registered" });
+  assert.equal(await p.getByRole("button", { name: "下一题", exact: true }).isDisabled(), true);
+  assert.equal(await p.getByRole("button", { name: "取消报名", exact: true }).isEnabled(), true);
+  await p.evaluate(() => { const s=(window as any).fixture;s.presses["下一题"]();s.presses["生成活动画像"](); }); await settle(p);
+  assert.deepEqual(await writes(p), []);
 });
 
 test("server eligibility revocation disables writes and invalidates retained callbacks", async t => {

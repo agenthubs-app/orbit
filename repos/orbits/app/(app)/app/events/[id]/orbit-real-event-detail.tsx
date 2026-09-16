@@ -15,6 +15,8 @@ import { OrbitEventMatchmaking, type EventMatchmakingSummary } from "./orbit-eve
 import { OrbitPostEventCenter } from "./orbit-post-event-center";
 
 import { eventRegistrationIsOpen, eventRegistrationLabel, type EventRegistrationAvailability } from "../../orbit-event-registration-view-model";
+import { registrationBlockingReasonCopy } from "../../../../../features/events/registration/blocking-reason-copy";
+import type { EventRegistrationBlockingReason } from "../../../../../features/events/registration/contract";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 type RegistrationStatus = "cancelled" | "rsvped" | null;
@@ -682,7 +684,7 @@ function EventDetailPanel({ askAgentHref, event, mini, t, workspaceAvailable, re
   );
 }
 
-export function OrbitRealEventDetail({ event, workspaceAvailable = false, registrationAvailability = "unavailable" }: { event: OrbitLandingEventView; workspaceAvailable?: boolean; registrationAvailability?: EventRegistrationAvailability }) {
+export function OrbitRealEventDetail({ event, workspaceAvailable = false, registrationAvailability = "unavailable", registrationBlockingReason }: { event: OrbitLandingEventView; workspaceAvailable?: boolean; registrationAvailability?: EventRegistrationAvailability; registrationBlockingReason?: EventRegistrationBlockingReason }) {
   const { t, language } = useOrbitLanguage();
   // The approved journey uses one stable product-green fallback. Real event
   // artwork still wins when supplied; source-less events no longer receive a
@@ -736,6 +738,7 @@ export function OrbitRealEventDetail({ event, workspaceAvailable = false, regist
           </aside>
 
           <div className="orbit-detail-main">
+            {registrationAvailability === "unavailable" ? <p role="status" className="orbit-alert">{registrationBlockingReasonCopy(registrationBlockingReason, language === "zh" ? "zh" : "en")}</p> : null}
             <EventDetailPanel askAgentHref={askAgentHref} event={event} registrationAvailability={registrationAvailability} mini={mini} t={t} workspaceAvailable={workspaceAvailable} />
           </div>
         </div>

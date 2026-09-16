@@ -23,7 +23,7 @@ import {
 
 test("registration eligibility maps every server state without using the device clock", () => {
   const rows = [
-    ["not_open", [], "报名尚未开放", false, "等待开放"],
+    ["not_open", [], "报名尚未开放", false, "报名尚未开放"],
     ["registration_closed", [], "报名已截止", false, "报名已截止"],
     ["event_ended", [], "活动已结束", false, "活动已结束"],
     ["event_cancelled", [], "活动已取消", false, "活动已取消"],
@@ -33,7 +33,7 @@ test("registration eligibility maps every server state without using the device 
     ["waitlisted", ["withdraw"], "候补中", true, "当前候补"],
     ["registered", ["cancel"], "已报名", true, "报名资料不可修改"],
     ["registration_cancelled", ["reactivate"], "已取消", false, "重新报名"],
-    ["unavailable", [], "资格暂不可用", false, "暂不可操作"],
+    ["unavailable", [], "报名暂不可用", false, "重新读取状态"],
   ] as const;
 
   for (const [state, allowedActions, label, canCancel, actionLabel] of rows) {

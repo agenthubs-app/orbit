@@ -333,7 +333,23 @@ test("canonical membership remains the read authority when only its write window
     "EVENT_REGISTRATION_CONFIGURATION_REQUIRED",
   );
 
+  const cancelled = await service.cancel({
+    eventId: "event:canonical-without-window",
+    userId: "actor:member",
+  });
+  assert.equal(cancelled?.status, "cancelled");
+  assert.deepEqual(cancelled?.participantProfile, canonical.participantProfile);
+  assert.equal(await service.cancel({
+    eventId: "event:canonical-without-window", userId: "actor:foreign",
+  }), null);
+  assert.equal((await baseService.get({
+    eventId: "event:canonical-without-window", userId: "actor:member",
+  }))?.status, "rsvped", "a stale projection is not the write authority");
+
   state = "legacy_importing";
+  await assertWindowError(() => service.cancel({
+    eventId: "event:canonical-without-window", userId: "actor:member",
+  }), "EVENT_REGISTRATION_CONFIGURATION_REQUIRED");
   assert.equal(
     (await service.get({
       eventId: "event:canonical-without-window",

@@ -10,6 +10,7 @@ import { AppError } from "../../../../../../shared/errors/app-error";
 import { eventRegistrationRuntimeService } from "../../../../../../features/events/registration/runtime";
 import type { EventRegistrationService } from "../../../../../../features/events/registration/service";
 import type { ResolveEventAdmissionRegistrationControl } from "../../../../../../features/events/admission/registration-control";
+import { EventRegistrationWindowError } from "../../../../../../features/events/registration/deadline-gated-service";
 
 interface EventRegistrationCancelRouteContext {
   params: Promise<{ id: string }>;
@@ -122,9 +123,19 @@ export function createEventRegistrationCancelRouteHandler(input: {
         { headers: runtimeBoundaryHeaders(mode), status: 409 },
       );
     }
-    const registration = existing?.status === "cancelled"
-      ? existing
-      : await registrationService.cancel({ eventId: id, userId: actor.id });
+    let registration;
+    try {
+      registration = existing?.status === "cancelled"
+        ? existing
+        : await registrationService.cancel({ eventId: id, userId: actor.id });
+    } catch (error) {
+      if (!(error instanceof EventRegistrationWindowError)) throw error;
+      return NextResponse.json(failure(new AppError(
+        "SERVICE_UNAVAILABLE",
+        "Event registration cancellation is temporarily unavailable; no registration was changed.",
+        { cause: error },
+      )), { headers: runtimeBoundaryHeaders(mode), status: 503 });
+    }
     if (!registration) {
       return NextResponse.json(
         failure(

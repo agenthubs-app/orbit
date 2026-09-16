@@ -213,11 +213,13 @@ for (const scheme of ["light", "dark"] as const) {
 }
 
 test("registration options have full touch targets and failed submission preserves the selected answer", async t => {
-  const page = await open(t, "registration", "dark"); const option = page.getByRole("button", { name: "日本本地 SaaS 买方", exact: true }); await fits(option); await option.click();
-  const input = page.getByPlaceholder("写一句具体的补充。"); assert.equal(await input.inputValue(), "日本本地 SaaS 买方");
+  const page = await open(t, "registration", "dark"); const option = page.getByRole("button", { name: "日本本地 SaaS 买方", exact: true }); await fits(option);
+  const inactive = await option.evaluate(el => getComputedStyle(el).backgroundColor); await option.click();
+  const active = await option.evaluate(el => getComputedStyle(el).backgroundColor); assert.notEqual(active, inactive);
+  const input = page.getByPlaceholder("写一句具体的补充。"); assert.equal(await input.count(), 0);
   const submit = page.getByRole("button", { name: "确认报名", exact: true }); await fits(submit, 50); await capture(page, "registration-dark"); await submit.click();
-  await page.getByText("暂时无法保存，请重试", { exact: true }).waitFor(); assert.equal(await input.inputValue(), "日本本地 SaaS 买方");
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "POST", path: "/api/events/event%3Astyle/registration", body: { answers: { targetAttendees: "日本本地 SaaS 买方" }, intent: "register" } }]);
+  await page.getByText("暂时无法保存，请重试", { exact: true }).waitFor(); assert.equal(await input.count(), 0); assert.equal(await option.evaluate(el => getComputedStyle(el).backgroundColor), active);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "POST", path: "/api/events/event%3Astyle/registration", body: { answers: { targetAttendees: "日本本地 SaaS 买方" }, intent: "register", expectedRegistrationVersion: null } }]);
 });
 
 test("operations uses open sections and a 50pt publication action with unchanged generation identity", async t => {
