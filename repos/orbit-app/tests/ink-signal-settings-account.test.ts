@@ -70,6 +70,7 @@ async function shot(page: Page, name: string) { if (process.env.APP_STYLE_SCREEN
 test("settings uses source section hierarchy, open rows and real notification status", async t => {
   const page = await open(t);
   await page.getByRole("heading", { name: "通用", exact: true }).waitFor();
+  assert.equal(await page.getByText(/本地调试|真机测试/u).count(), 0);
   for (const name of ["通用", "账号", "服务器"]) assert.equal(await page.getByRole("heading", { name, exact: true }).evaluate(el => getComputedStyle(el).fontWeight), "800");
   const account = page.getByRole("button", { name: "打开账号", exact: true });
   assert.equal((await account.boundingBox())!.height, 50); assert.equal((await account.boundingBox())!.x, 16);

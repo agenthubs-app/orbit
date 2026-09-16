@@ -37,7 +37,9 @@ const settingsDestinations = [
   },
   {
     accessibleKey: "settings.server" as MessageKey,
-    detailKey: "settings.serverDetail" as MessageKey,
+    detailKey: (Platform.OS === "web"
+      ? "settings.apiCurrent"
+      : "settings.serverDetail") as MessageKey,
     href: "/settings/api",
     section: "server",
     titleKey: "settings.server" as MessageKey
@@ -234,7 +236,7 @@ export function SettingsScreen() {
               </Pressable> : null}
               {section === "account" && signOutError ? <Text accessibilityRole="alert" style={styles.errorText}>{signOutError}</Text> : null}
             </View>
-            {section === "server" ? <Text style={styles.notificationBody}>{locale.t("settings.serverDetail")}</Text> : null}
+            {section === "server" && Platform.OS !== "web" ? <Text style={styles.notificationBody}>{locale.t("settings.serverDetail")}</Text> : null}
           </View>
         ))}
       </View>

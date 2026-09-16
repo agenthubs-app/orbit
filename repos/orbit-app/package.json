@@ -5,10 +5,12 @@
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
+    "phoneweb:serve": "node scripts/phoneweb-server.cjs",
     "sync:contract": "node scripts/sync-contract.mjs",
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
-    "test": "node --test --import tsx --import ./tests/helpers/register-render-hooks.mjs \"tests/**/*.test.ts\" \"tests/**/*.test.tsx\""
+    "test": "node --test --import tsx --import ./tests/helpers/register-render-hooks.mjs \"tests/**/*.test.ts\" \"tests/**/*.test.tsx\"",
+    "web:export": "expo export --platform web --output-dir dist"
   },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.2",
