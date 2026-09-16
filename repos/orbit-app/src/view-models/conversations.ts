@@ -1,4 +1,5 @@
 import { aiRunPath } from "../api/endpoints";
+import { conversationContactArtifacts, type ConversationContactArtifactView } from "./ai-artifacts";
 import type { OrbitLanguage } from "../api/contract/language";
 import { createTranslator } from "../i18n/messages";
 import type {
@@ -137,6 +138,8 @@ export interface OrbitAiHomeChatWindow extends ConversationChatView {
 }
 
 export interface ConversationThreadView extends ConversationChatView {
+  contactArtifacts?: ConversationContactArtifactView[];
+  contactArtifactNotice?: boolean;
   nextAction: string;
   title: string;
 }
@@ -1037,6 +1040,7 @@ export function conversationPayloadToThreadView(
   return {
     ...chat,
     nextAction: nextActionCopy(stringField(payload, "nextAction"), t),
+    ...(Array.isArray(payload.artifacts) && payload.artifacts.length ? { contactArtifacts: conversationContactArtifacts(payload) } : {}),
     title: conversation?.title ?? t("conversationVm.defaultTitle")
   };
 }

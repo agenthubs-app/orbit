@@ -38,6 +38,7 @@ import {
 import { createOrbitAgentLiveArtifactTaskService } from "./live-artifact-task-service";
 import { classifyOutOfServiceScope } from "./service-scope-service";
 import type { OrbitAgentArtifactTaskService } from "./service";
+import { contactArtifactResponseSummary } from "./artifact-response-summary";
 import { executeOrbitAgentTool } from "./agent-tools/registry";
 import { selfProfileContextForSynthesis } from "./self-profile-artifact-service";
 
@@ -1669,9 +1670,9 @@ export async function runLiveOrbitAgentRuntime(
   );
 
   const finalAssistantMessage =
-    synthesisResult?.success === true
+    synthesisResult?.success === true && synthesisResult.data.assistantMessage.trim()
       ? synthesisResult.data.assistantMessage
-      : assistantMessageForSynthesis;
+      : contactArtifactResponseSummary(artifacts, locale, plan.intent === "contact_recommendations" && !outOfScopeToolRequests) ?? assistantMessageForSynthesis;
   const finalResponseStartedAt = nowMs();
   timings.push(timingSpan("final_response", finalResponseStartedAt));
   const conversation = conversationForRuntimeSuccess({

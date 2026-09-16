@@ -40,6 +40,9 @@ import { aiConversationListSchema, aiSessionReadSchema, aiSessionReceiptMatches,
 import type { AiSessionOriginInputContract, AiSessionReferenceContract } from "../../api/contract/ai-sessions";
 import { updateAiSessionOrganization } from "../../api/ai-session-management";
 import { ContactMentionPicker, type MentionContact } from "./ContactMentionPicker";
+import { AiContactArtifactPanel } from "./AiContactArtifactPanel";
+import { sessionContactArtifacts } from "../../view-models/ai-artifacts";
+import { aiSessionArtifactRecoverySchema } from "../../api/schema/ai-artifacts";
 import {
   aiRunDetailToView,
   buildAiRunDetailRequest,
@@ -145,12 +148,14 @@ function rawConversationThread(payload: AiConversationPayload, fallbackTitle: st
   };
 }
 
-function rawSessionThread(session: AiSession): ConversationThreadView {
+function rawSessionThread(session: AiSession, recovery?: unknown): ConversationThreadView {
+  const parsed = aiSessionArtifactRecoverySchema.safeParse(recovery);
   return {
     activeConversationId: session.id, title: session.customTitle?.trim() || session.title,
     assistantMessage: session.messages.findLast(item => item.role === "assistant")?.text ?? "",
     messages: session.messages.map((item, index) => ({ id: item.id ?? `${session.id}:message:${index}`, role: item.role, content: item.text, createdAt: typeof item.createdAt === "string" ? item.createdAt : session.updatedAt })),
-    nextAction: "", proposedToolIntents: []
+    nextAction: "", proposedToolIntents: [], contactArtifacts: sessionContactArtifacts(session, recovery),
+    contactArtifactNotice: parsed.success && Boolean(parsed.data.truncated || parsed.data.unavailable || parsed.data.oversized)
   };
 }
 
@@ -176,7 +181,8 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const readOptions = scopeKey === undefined ? {} : { scopeKey };
   const path = isDraftConversation ? ORBIT_API_ENDPOINTS.conversations
     : isStoredAgentSession ? aiConversationSessionPath(conversationId) : aiConversationPath(conversationId);
-  const state = useApiResource<unknown>(path, () => false, readOptions);
+  // Private artifact evidence must be reauthorized, not retained after a failed refresh.
+  const state = useApiResource<unknown>(path, () => false, { ...readOptions, cachePolicy: "network-only" });
   const eventsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.events, data => eventsToSummaries(data).length === 0, readOptions);
   const contactsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.contacts, data => contactsToSummaries(data).length === 0, readOptions);
   const tasksState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.tasks, data => followupsToView({ notificationsPayload: {}, tasksPayload: data }, locale.language).tasks.length === 0, readOptions);
@@ -245,13 +251,15 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const submittedMessage = journal.interruptedRequest?.message ?? failedRequest?.message;
   const initialThread: ConversationThreadView | null = !isDraftConversation ? null : submittedMessage ? pendingConversationThreadView(submittedMessage, locale.language)
     : { activeConversationId: null, assistantMessage: "", messages: [], nextAction: "", proposedToolIntents: [], title: locale.t("aiConversation.newChat") };
-  const thread = generatedThread
+  const resolvedThread = generatedThread
     ? previousSession ? { ...generatedThread, title: rawSessionThread(previousSession).title, messages: rawSessionThread(previousSession).messages } : generatedThread
-    : loadedSession ? rawSessionThread(loadedSession)
+    : loadedSession ? rawSessionThread(loadedSession, sessionRead?.success ? sessionRead.data.artifactRecovery : undefined)
     : conversationRead?.success ? rawConversationThread(conversationRead.data, locale.t("aiConversation.sessionTitle"), locale.language)
     : initialThread && failedRequest ? { ...initialThread, title: locale.t("aiConversation.noAnswer"), messages: initialThread.messages.filter(item => item.role === "user") } : initialThread;
+  const resultScopeReady = owns() && (isDraftConversation || (!state.refreshing && (state.kind === "success" || state.kind === "empty") && !readInvalid));
+  const thread = resolvedThread ? { ...resolvedThread, contactArtifacts: resultScopeReady ? resolvedThread.contactArtifacts ?? [] : [] } : null;
   const runReferences = thread ? conversationAiRunReferencesFor(latestData ?? loadedData ?? thread, locale.language) : [];
-  const inlinePanels = thread && (!isDraftConversation || latestData) ? conversationInlinePanelsForThread(thread, locale.language) : [];
+  const inlinePanels = thread && (!isDraftConversation || latestData) ? conversationInlinePanelsForThread(thread, locale.language).filter(panel => panel.kind !== "people" || (resultScopeReady && !thread.contactArtifactNotice && !thread.contactArtifacts?.length)) : [];
 
   function changeDraft(value: string) {
     if (!owns()) return;
@@ -763,6 +771,7 @@ function ConversationThread({
             {thread.messages.map((message, index) => (
               <Fragment key={message.id}>
                 <MessageBubble baseUrl={baseUrl} message={message} onOpenHref={onOpenHref} />
+                {message.role === "assistant" ? thread.contactArtifacts?.filter(artifact => artifact.assistantMessageId === message.id).map((artifact, index) => <AiContactArtifactPanel key={`${artifact.artifactId}:${index}`} artifact={artifact} onOpenHref={onOpenHref} />) : null}
                 {index === inlinePanelAnchorIndex && inlinePanels.length > 0 ? (
                   <ConversationInlinePanels
                     baseUrl={baseUrl}
@@ -788,6 +797,7 @@ function ConversationThread({
           </View>
         )}
       </View>
+      {thread.contactArtifactNotice ? <Text accessibilityRole="alert" style={{ ...textStyles.small, color: colors.ink }}>{locale.t("aiContactArtifact.partial")}</Text> : null}
       {thread.taskInteraction ? (
         <TaskInteractionCard
           busy={taskInteractionBusy}

@@ -124,6 +124,97 @@ const conversationReadPayloads = {
   "/api/events": { events: [] }, "/api/contacts": { contacts: [] }, "/api/tasks": { tasks: [] }, "/api/profile": {}
 };
 
+test("saved contact results render all eight true candidates under their own reply and refresh without writes", async t => {
+  const session = { ...aiSession, messages: [{ id: "user:contact:qa", role: "user", text: "从我的人脉找联系人来讨论点单助手，谁愿意聊聊？" }, { id: "assistant:contact:qa", role: "assistant", text: "我来查找。" }] };
+  const items = Array.from({ length: 8 }, (_, index) => ({ id: `contact-recommendation:contact:qa:${index + 1}`, title: `虚构候选${index + 1}`, subtitle: "餐饮数字化负责人", reason: "参与点单测试项目", body: "在虚构交流会认识。", evidenceIds: [`evidence:qa:${index + 1}`], metadata: [{ label: "组织", value: "虚构组织" }], contactHref: `/contacts/contact%3Aqa%3A${index + 1}` }));
+  const recovery = { turns: [{ sessionId: session.id, requestId: "request:contact:qa", userMessageId: "user:contact:qa", assistantMessageId: "assistant:contact:qa", status: "ready", artifacts: [{ artifactId: "artifact:qa", taskId: "task:qa", kind: "contact_recommendations", status: "ready", title: "匹配结果", summary: "8位测试候选人", sections: [{ title: "已有关系", items }] }] }], truncated: false };
+  const p = await open(t, { params: { id: session.id, source: "session" }, payloads: { ...conversationReadPayloads, "/api/contacts": { contacts: unrelatedContacts }, "/api/ai/conversations/sessions/session%3A1": { session, storage: aiSessionListPayload.storage, artifactRecovery: recovery } } });
+  const candidates = p.getByTestId("ai-contact-candidate");
+  assert.deepEqual(await candidates.evaluateAll(nodes => nodes.map(node => node.getAttribute("aria-label"))), items.map(item => `${item.title} · ${item.subtitle}`));
+  assert.equal(await p.getByText(/^未推荐联系人[123]$/u).count(), 0);
+  assert.doesNotMatch(await p.getByTestId("ai-contact-artifact").innerText(), /evidence:qa|contact-recommendation:|contact:qa/u);
+  assert.equal(await p.getByText("参与点单测试项目", { exact: true }).count(), 8);
+  assert.equal(await p.getByText("在虚构交流会认识。", { exact: true }).count(), 8);
+  await press(p, "打开虚构候选1");
+  assert.equal((await navigation(p)).at(-1), "/contacts/contact%3Aqa%3A1");
+  await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
+  assert.equal(await candidates.count(), 8);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("history recovery truncation is visible and failed refresh or actor change removes old candidates", async t => {
+  const session = { ...aiSession, messages: [{ id: "u:qa", role: "user", text: "点单助手讨论" }, { id: "a:qa", role: "assistant", text: "原始回复保留。" }] };
+  const item = { id: "contact-recommendation:contact:qa:1", title: "虚构候选甲", evidenceIds: ["evidence:qa"], metadata: [], contactHref: "/contacts/contact%3Aqa%3A1" };
+  const artifactRecovery = { turns: [{ sessionId: session.id, requestId: "r:qa", userMessageId: "u:qa", assistantMessageId: "a:qa", status: "ready", artifacts: [{ artifactId: "artifact:qa", taskId: "task:qa", kind: "contact_recommendations", status: "ready", title: "候选结果", summary: "1位候选", sections: [{ title: "已有关系", items: [item] }] }] }], truncated: true };
+  const p = await open(t, { params: { id: session.id, source: "session" }, payloads: { ...conversationReadPayloads, "/api/ai/conversations/sessions/session%3A1": { session, storage: aiSessionListPayload.storage, artifactRecovery } } });
+  assert.equal(await p.getByTestId("ai-contact-candidate").count(), 1);
+  assert.equal(await p.getByText("部分结果无法恢复或超出展示上限，历史回复已保留。", { exact: true }).count(), 1);
+  await update(p, { failPaths: ["/api/ai/conversations/sessions/session%3A1"] });
+  await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
+  assert.equal(await p.getByTestId("ai-contact-candidate").count(), 0);
+  await update(p, { actor: "actor-other", signedIn: false });
+  assert.equal(await p.getByTestId("ai-contact-candidate").count(), 0);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("present malformed history projection keeps the original reply and explicitly marks recovery unavailable, unlike absent legacy projection", async t => {
+  const session = { ...aiSession, messages: [{ id: "u:bad:qa", role: "user", text: "点单助手讨论" }, { id: "a:bad:qa", role: "assistant", text: "历史原文不改写。" }] };
+  for (const present of [true, false]) {
+    const payload = { session, storage: aiSessionListPayload.storage, ...(present ? { artifactRecovery: { turns: "invalid", truncated: false } } : {}) };
+    const p = await open(t, { params: { id: session.id, source: "session" }, payloads: { ...conversationReadPayloads, "/api/ai/conversations/sessions/session%3A1": payload } });
+    assert.equal(await p.getByText("历史原文不改写。", { exact: true }).count(), 1);
+    assert.equal(await p.getByTestId("ai-contact-candidate").count(), 0);
+    assert.equal(await p.getByText("部分结果无法恢复或超出展示上限，历史回复已保留。", { exact: true }).count(), present ? 1 : 0);
+    assert.deepEqual(await writes(p), []);
+  }
+});
+
+const unrelatedContacts = Array.from({ length: 3 }, (_, index) => ({ id: `contact:unrecommended:${index}`, displayName: `未推荐联系人${index + 1}`, organization: "通用列表组织", role: "负责人", status: "active" }));
+const peopleKeywordSession = { ...aiSession, messages: [{ id: "u:people:qa", role: "user", text: "从我的人脉找联系人，并安排下一步跟进。" }, { id: "a:people:qa", role: "assistant", text: "历史原文应保留。" }] };
+
+for (const [name, artifactRecovery] of [
+  ["malformed", { turns: "invalid", truncated: false }],
+  ["unavailable", { turns: [], truncated: false, unavailable: true }]
+] as const) test(`people keyword cannot replace ${name} recovery with unrecommended generic contacts`, async t => {
+  const p = await open(t, { params: { id: aiSession.id, source: "session" }, payloads: { ...conversationReadPayloads,
+    "/api/contacts": { contacts: unrelatedContacts },
+    "/api/ai/conversations/sessions/session%3A1": { session: peopleKeywordSession, storage: aiSessionListPayload.storage, artifactRecovery }
+  } });
+  assert.equal(await p.getByText("历史原文应保留。", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("部分结果无法恢复或超出展示上限，历史回复已保留。", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("未推荐联系人1", { exact: true }).count(), 0);
+  assert.equal(await p.getByText("待办", { exact: true }).count(), 1);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("absent legacy recovery keeps people compatibility", async t => {
+  const p = await open(t, { params: { id: aiSession.id, source: "session" }, payloads: { ...conversationReadPayloads,
+    "/api/contacts": { contacts: unrelatedContacts },
+    "/api/ai/conversations/sessions/session%3A1": { session: peopleKeywordSession, storage: aiSessionListPayload.storage }
+  } });
+  assert.equal(await p.getByText("未推荐联系人1", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("历史原文应保留。", { exact: true }).count(), 1);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("people keyword cannot expose generic candidates while a retained reply refreshes or its read fails", async t => {
+  const p = await open(t, { payloads: { ...conversationReadPayloads, "/api/contacts": { contacts: unrelatedContacts } } });
+  await p.getByRole("textbox").fill("从我的人脉找联系人，并安排下一步跟进。");
+  await press(p, "发送消息");
+  await replyLastWrite(p, replyPayload("从我的人脉找联系人，并安排下一步跟进。", "历史原文应保留。"));
+  assert.equal(await p.getByText("未推荐联系人1", { exact: true }).count(), 1);
+  await update(p, { holdReads: true });
+  await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
+  assert.equal(await p.getByText("历史原文应保留。", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("未推荐联系人1", { exact: true }).count(), 0);
+  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.findLastIndex((r: any) => r.path === "/api/ai/conversations/conversation%3A1"), 503); }); await settle(p);
+  assert.equal(await p.getByText("历史原文应保留。", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("未推荐联系人1", { exact: true }).count(), 0);
+  await update(p, { focused: false });
+  assert.equal(await p.getByText("未推荐联系人1", { exact: true }).count(), 0);
+  assert.equal((await writes(p)).length, 1);
+});
+
 function replyPayload(question = "再想一个方案", answer = "可以先讨论时间安排。") {
   return { ...aiConversationPayload, assistantMessage: answer,
     messages: [{ ...aiConversationPayload.messages[0], messageId: "new-user", content: question }, { ...aiConversationPayload.messages[1], messageId: "new-assistant", content: answer }]
