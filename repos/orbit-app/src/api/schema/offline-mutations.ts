@@ -61,7 +61,7 @@ const base = z.object({
   createdAt: instant,
 }).strict();
 
-const localEntityId = /^local:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+const localEntityId = /^local:[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[1-8][0-9A-Fa-f]{3}-[89AaBb][0-9A-Fa-f]{3}-[0-9A-Fa-f]{12}$/u;
 
 function parsePatch(kind: z.infer<typeof base>["kind"], operation: z.infer<typeof base>["operation"], patch: Record<string, unknown>) {
   if (["delete", "complete", "reopen", "cancel"].includes(operation)) {

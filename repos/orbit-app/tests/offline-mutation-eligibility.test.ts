@@ -87,9 +87,18 @@ test("mutation parser rejects missing revisions, invalid dates, empty patches an
 });
 
 test("create entity IDs require a complete local UUID", () => {
-  for (const entityId of ["local:", "local:x", "local:123e4567-e89b-12d3-a456"]) {
+  for (const entityId of [
+    "local:",
+    "local:x",
+    "local:123e4567-e89b-12d3-a456",
+    "LOCAL:123e4567-e89b-42d3-a456-426614174000",
+  ]) {
     assert.throws(() => parseMutation({ ...command, entityId }));
   }
+  assert.equal(parseMutation({
+    ...command,
+    entityId: "local:123E4567-E89B-42D3-A456-426614174000",
+  }).entityId, "local:123E4567-E89B-42D3-A456-426614174000");
 });
 
 test("note body and task title updates reject whitespace-only text", () => {
