@@ -2,9 +2,47 @@
 
 - 更新：2026-09-17；Web＋Neon＋云端 worker 本轮主流程 verified；总状态 `consumer_ready`，原生范围未关闭。
 - 授权：用户“这五项闭环”，此前允许 Vercel Production、合成数据作测试事实源、luna/max 并行和及时 commit；没有清空数据库或对外消息授权。
-- Web：已部署真实 HTTP、关系任务消费者、云端活动队列和站内提醒 maintenance。App：消费者已提交、自动化通过，当前原生运行时待工具链。
+- Web：已部署真实 HTTP、关系任务消费者、云端活动队列和站内提醒 maintenance。App：Xcode 27 原生运行及部分 Production 验收已完成，精确剩余项见下节；不再受旧工具链阻塞。
 - 数据：Neon `workspace:orbit-demo-fixtures`，Web/API 为唯一写入边界，App 经同一 Production HTTPS API。
 - 入口：https://orbit-puce-kappa.vercel.app；待办、笔记、提醒与账户详情不写任何密钥。
+
+## 2026-09-17 原生 Production 验收增量
+
+用户“xcode也ok了那部分验收也做一下”后实际运行。Web/API 继续使用 `5961cdde` / `dpl_3av2kpWJE4NBbnTA2SdfFLagVJwX`，未重新部署、清库、重 seed 或修改活动日期。App 增量 `3af3eefe`、`5ac0e9fd`；后者收口旧 fixture 的 canonical 编辑入口并移除 preview-only 看板阶段写操作。不能据此宣称所有原生范围通过。
+
+### 已完成的真实运行证据
+
+- Xcode **27.0 (27A266a)**，iOS SDK27.0，iPhone17Pro / iOS26.1 Simulator；实际 `xcodebuild`、安装、启动和原生交互成功。Xcode27 使用 **Device Hub** 控制设备，旧 Simulator 窗口不是有效交互表面。先前无签名包导致 SecureStore 拒绝保存登录，改为正常模拟器 ad-hoc 签名后登录成功；没有弱化认证或改用明文存储。
+- Debug 原生二进制通过本机 Metro8081 加载 App JS；**业务 API 明确为远程 Production HTTPS，业务事实源仍为 Neon**。不是本地 mock API，也不是实体设备或自包含 Release 包验收。原生服务器设置显示正式 URL，检查返回“Orbit 服务响应正常”。杀进程重新启动后安全恢复主办方登录。
+- 普通待办 `task:c658b80463ee1e95769bdcb2`：主办方原生完成于 `2026-09-16T18:13:50.384Z`，Web 新开页读到已完成；Web 恢复于18:15:20.336Z，原生重新进列表为未完成1／已完成0。Neon 保留 completed/reopened 两条操作轨迹，标题/归属不变；不能再声称此任务 payload 与上一轮逐字不变。
+- 日程 `personal:942e3480017ba330998e4b15`：原生创建“测试：原生与 Web 云端日程同步验收”，Shanghai 10月2日10:30–11:00，Neon为02:30–03:00Z。Web读到同记录，修改地点为“Orbit 测试空间（Web 回写已确认）”；原生刷新读到新地点。无外部邀请或日历写入。
+- 原生主账号完成 `task_016`（後藤信也），空下一步先被验证阻止；明确输入“测试：复核後藤信也的门店试点交流提纲”、Shanghai 10月3日14:00，18:26:22.657Z正式 lifecycle 提交成功。原task completed/version2；`connection_0030` needs_follow_up/version2；新 `relationship-task:c794282e-6cbf-44f9-a2b2-3a778d0ae44e` open/version1、dueAt06:00Z。原生刷新保持旧任务历史、新任务当前；Web同记录回读正确时间和联系人，主账号当前66／历史16。没有调用普通任务 complete 代替关系提交。
+- 原生主办方联系人读到前轮 Web 明确设置的 active 目标，编辑界面不提供旧阶段切换；私有资料和消息草稿/日程/笔记快捷键保留。原生关联笔记 `note:a65dfe73143b8cd3c5fd4f01` 于18:22:01.229Z创建，version1，owner和contactIds正确；Neon只读核实正文，冷启动及切回账号后关联列表仍能读取。
+- 原生可读主账号“R2 云端任务提醒”已读状态，点击打开对应真实普通任务详情；这是既有云端 ReminderPlan 产物，不是新造提醒。原生重开 Web 已有的 AI 笔记查询会话，完整读到题目、正文、contact_005与“已读取 notes”；这是历史回读，不冒充新模型调用。
+- 账号切换：主办方→演示主账号→主办方均正常登录；主账号显示66联系人/66当前跟进及自己的日程，切回后仅1位联系人和自己的目标/笔记，没有保留主账号列表。三 actor只读 lifecycle preflight均 readyForCutover:true、issues:[]；主账号82条关系任务为66当前+16历史。
+- 最终版本再次登录主账号，旧 fixture `contact_030` 无 accepted-side 标记，仍经本人 connections 精确解析到 `connection_0030` 的 canonical lifecycle。原生详情正确显示“需要跟进”和新任务10月3日14:00；编辑器仅允许私有资料、不含旧阶段操作；点击“处理关系跟进”打开同一新任务及旧任务已完成历史。没有第二次提交或直接改数据库。
+
+### 代码、回归与证据边界
+
+`3af3eefe` 增加原生初始化表单与 actor/cookie/baseURL/contact 范围控制；无默认阶段/目标/日期，归档须确认，失败重试同 key/同 payload，revision变化刷新，回执核对本人关系和下一步。pending 排除正式看板；已初始化的旧阶段编辑被禁用。新 pending 的 Production 点击提交尚未实测，不能以组件测试代替。
+
+- 初始定向55/55；快捷键和旧测试接口接线修复后的定向60/60，两组有重叠，不能相加成独立115项。最终 App typecheck通过。
+- `5ac0e9fd` 最终冻结后，9个相关文件定向90/90（`TZ=Asia/Tokyo`，工具session24623），typecheck exit0（session54540）。覆盖初始化表单/协议、canonical fallback、看板源码/视图/渲染、详情交互/编辑器；不把重叠55/60/90结果累加。fallback只有同actor精确唯一contact→connection并通过snapshot校验才开放正式操作，失败/重复候选关闭入口。
+- **最终已提交版本全量重验：** 在`repos/orbit-app`运行`TZ=Asia/Tokyo npm test`，**2898/2898，0失败/取消/跳过**，266.623秒，session47517 exit0；`npm run typecheck`再次通过（session82070）。日志`app-final-full-tests.log`与`final-committed-typecheck.log`。本轮源码/测试冻结后执行，与下面早期失败运行分开；明确测试时区不等于已修复全部测试对宿主时区的依赖。实际业务日期另在Shanghai原生/Web/Neon核验。
+- 一次全量 `npm test`：2887项，2843通过/44失败/0跳过；保留原日志。联系人失败涉及新初始化GET的旧mock缺失与通用快捷键隐藏，已补真实404夹具、失败关闭和ready快捷键回归；其余8文件在 `TZ=Asia/Tokyo` 下327/327，证明是其东京时间断言与宿主上海时区差异。没有将此次全量改记为全绿。
+- 执行偏差透明记录：02:18:28 CST一次联系人测试夹具编辑与全量重叠；收到冻结纠正后停止，全量结束后最终60项重新验证相关文件。重叠文件不使用原全量结果证明最终版本。
+- GitNexus旧索引落后，7个现有 App 符号 pre-edit impact均LOW；direct调用覆盖详情路由/编辑器/看板与Intros。新controller UNKNOWN，源码确认 initializer hook→controller→HTTP 与测试；不是零影响。提交前all/staged分析已执行，staged11文件/17符号/0关联流程/LOW；索引限制使其不是完整安全证明。未提交根AGENTS/CLAUDE用户改动。
+- 最后入口修复 pre-edit impact 13次：8 LOW、5 UNKNOWN；已解析调用涉及详情路由、PipelineContent/StagePanel/StageContactRow及阶段action构造，0可解析流程。UNKNOWN补源码调用复核，不视作无影响。最终all14文件/29符号/LOW，App staged8文件/10符号/LOW；旧索引`5e31c59a`未覆盖新controller，仍保留分析限制。
+- 本机证据目录 `/tmp/orbit-native-acceptance.xaiowj/`：`signed-build.log`、`app-full-tests.log`、`timezone-regression.log`、`final-typecheck.log`；普通任务三份快照、`owner-followup-before.json`/`owner-followup-native-completed.json`、`native-writes.json`、`canonical-preflight.jsonl`及原生截图。临时目录可能被清理，以上脱敏结果保留在本记录。
+
+### 仍未通过／不能冒充完成
+
+1. **活动交换通知的原生入口缺失。** Naoki实际点击“收到新的名片交换申请”返回目标暂不支持；真实href为Web参会者query+anchor，App无等价canonical参会者/交换详情。不能删掉query跳活动首页并算通过。原生新用户报名→发布结果→双方交换全链不能关闭。
+2. **新的pending初始化正例缺对象及付费授权范围。** Production现有两个accepted side已被本人初始化；不重置它们、不手工写假pending。若要新增独立活动经正常画像/worker/发布/交换得到新对象，需复用剩余模型预算的范围确认；已异步询问。本轮尚无新活动和模型调用。原$1账本明确不含native，本轮未擅自扩展范围；既有CNY0.11余额差额不是本轮新增费用。
+3. **服务端旧状态投影旁路仍需收口。** 无accepted-side不等于无canonical关系。App入口已由`5ac0e9fd`修复并原生复验，看板不再把preview当保存成功；但服务端旧`PATCH /api/contacts/:id {status}`仍可写未标ready联系人自己的legacy detail投影，不能把本轮App修复说成服务端已禁止旧客户端写入。没有修改Web/API或部署此项。
+4. **活动页面附加失败证据。** 主办方未报名的10月18日活动，顶部“可报名”与服务端“报名已截止”禁用按钮矛盾；查看参会者两次返回页面无法加载/没有对应内容，推荐等模块也未成功回读。未尝试报名或改期；这不是已证明的权限拒绝，更不能算原生参会者主流程通过。
+
+Web既有云端worker证据继续有效；原生构建与双向持久化基础链已验，完整目标仍为consumer_ready，不因Xcode修复就自动关闭全部业务项。
 
 ## 2026-09-17 用户确认后的关系初始化修复
 
