@@ -1,10 +1,16 @@
 # 两端当前状态
 
+## 2026-09-17 关系初始化与Web云端闭环
+
+用户确认交换仅代表认识，双方独立选择本人目标或下一步。`04946189` 实现pending采集、显式初始化与幂等/owner保护；`2c5e8ada` 收口正式关系阶段读取权威，`5961cdde` 修复编码ID路由及详情标记。最终Production `dpl_3av2kpWJE4NBbnTA2SdfFLagVJwX` Ready。两位真实测试账号独立选择后，Naoki完成带日期跟进并明确转active；任务历史、冷刷新、联系人详情/列表一致，双方Neon preflight均0 issues。原7条记录、3条普通任务保留。
+
+此前交换→canonical初始化的Web HIGH缺口已关闭，结合既有证据，Web＋Neon＋云端worker主流程verified。App `db0755a6` 只完成pending显示兼容（103项/typecheck），原生初始化入口/旧编辑器与看板对齐、兼容构建及同Production双向回读仍开放，不把整体目标标完成。本轮没有调用模型、外发消息或清库。精确版本、测试和回执见 [BR-026](2026-09-16-cloud-five-item-acceptance.md)。
+
 ## 2026-09-17 云端现场验收收尾
 
 新建独立纯测试活动、两账号真实报名→云端5/5任务一次成功→发布→签到→活动开始后双方交换→两侧私有人脉回读及越权拒绝均已验。四域真实AI与站内提醒自动投递证据保留。聊天输入框／canonical报名旅程／联系人供需与发布状态文案已上线复验。过程中发现否定句误建待办、误拦内部查询、重复回复ID覆盖历史，分别以`c3039664`、`711e2ffd`、`e880d29f`修复；授权/路由147项、历史/接口62项回归及full typecheck通过，Production已发布`e880d29f`。保留一条误建测试任务作证据，不冒充正常业务记录。最终线上结果见BR-026。
 
-**HIGH未关闭：** accepted exchange仍走legacy关系writer，两个actor均缺明确activeGoal及Contact/Connection版本，正式lifecycle preflight失败。需确定本人选择关系下一步的初始化规则后实现，不能捏造目标或日期。该项不是Xcode阻塞；App原生同Production验收独立保留。详见[BR-026最新记录](2026-09-16-cloud-five-item-acceptance.md)。
+**当时发现的HIGH（现已由顶部记录关闭Web范围）：** accepted exchange走legacy关系writer，两个actor缺明确activeGoal及Contact/Connection版本，正式lifecycle preflight失败。修复须基于本人真实选择，不能捏造目标或日期；App原生同Production验收独立保留。详见[BR-026最新记录](2026-09-16-cloud-five-item-acceptance.md)。
 
 最终浏览器和Neon共同确认：两轮查询、四条持久消息、不同回复ID、刷新重开完整保留；任务2/建议0及任务更新时间不变。DeepSeek本轮余额差额CNY0.11（16:44:18Z截点，包含账号并发用量），低于授权$1；未充值升级、清库或外发消息。
 

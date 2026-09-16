@@ -10,7 +10,7 @@
 
 | ID | 优先级 | 事项 | 当前状态 | 下一责任方 | 关闭条件 |
 | --- | --- | --- | --- | --- | --- |
-| [BR-026](2026-09-16-cloud-five-item-acceptance.md) | P1 | 五项云端闭环：生命周期、提醒、worker、原生、新用户 | consumer_ready | HIGH：确定并实现交换后本人明确关系下一步的canonical初始化；原生工具链另列 | 云端生成／发布／签到／双向交换／人脉回读和四域AI已验；交换writer仍缺goal/version，不能关闭canonical生命周期；最终Web修复复验记录见BR-026 |
+| [BR-026](2026-09-16-cloud-five-item-acceptance.md) | P1 | 五项云端闭环：生命周期、提醒、worker、原生、新用户 | consumer_ready | 原生初始化/操作对齐、兼容构建及同Production双向回读 | Web＋Neon＋worker主流程verified；交换后双方独立初始化、跟进完成转active、冷刷新/列表/详情一致，两个actor preflight0 issues；Production5961cdde；App仅pending显示兼容db0755a6，整体未关闭 |
 | [BR-025](2026-09-16-production-p0-fixes.md) | P1 | Production 身份、AI 查询回显、关系跟进可见性 | source_ready | Web/Bridge；App 生命周期与原生验收仍开放 | Web 最终部署实测、关系下一步语义一致、原生 Production 同记录回读 |
 | BR-001 | P1 | Today 同名但数据与动作集合不同 | identified | Bridge 梳理，Web/App 接口负责人协作 | 逐项映射账本/安排/任务；实现或有依据接受差异；双向验证 |
 | BR-002 | P1 | Agent 高级设置移动缺口 | identified | Bridge + App，Web 提供 HTTP 边界 | memory/feedback/automations/preferences 覆盖方案及逐操作验收 |

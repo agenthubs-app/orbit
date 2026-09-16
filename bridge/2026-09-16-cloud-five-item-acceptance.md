@@ -1,14 +1,43 @@
 # BR-026 — 五项云端闭环执行与精确剩余验收
 
-- 更新：2026-09-16；总状态 `consumer_ready`，整体未关闭。
+- 更新：2026-09-17；Web＋Neon＋云端 worker 本轮主流程 verified；总状态 `consumer_ready`，原生范围未关闭。
 - 授权：用户“这五项闭环”，此前允许 Vercel Production、合成数据作测试事实源、luna/max 并行和及时 commit；没有清空数据库或对外消息授权。
 - Web：已部署真实 HTTP、关系任务消费者、云端活动队列和站内提醒 maintenance。App：消费者已提交、自动化通过，当前原生运行时待工具链。
 - 数据：Neon `workspace:orbit-demo-fixtures`，Web/API 为唯一写入边界，App 经同一 Production HTTPS API。
 - 入口：https://orbit-puce-kappa.vercel.app；待办、笔记、提醒与账户详情不写任何密钥。
 
-## 2026-09-17 收尾：现场交换已验，生命周期接入仍有 HIGH 缺口
+## 2026-09-17 用户确认后的关系初始化修复
 
-本节优先于下方历史记录。没有清空、重 seed 或改期已有活动；没有外发邮件、推送或真实消息。原生 App 本轮不在验收范围。
+本节覆盖下方历史阻塞结论。用户已确认“交换只确认认识，双方各自选择目标或下一步后，再进入正式关系阶段”。Web/API 实现提交 `04946189`，增量修复 `2c5e8ada`、`5961cdde`；两位测试账号已在 Production 正常 UI 中分别确认本人选择，后续任务完成、冷刷新、联系人详情和列表回读通过。此前Web初始化HIGH缺口关闭；不等于原生验收完成。
+
+- accepted writer 的 Contact/Connection 改为现有采集状态 `captured`、`lifecycleInitialization: pending`、version1；不自动生成目标、日期、任务、关系强度或知识交换意图。它不是第五种 canonical 阶段。
+- `GET/POST /api/contacts/:id/relationship-initialization` 校验当前 actor、真实 accepted request 及其本人 side。本人显式选择推进目标、带日期的待联系／维系任务或归档；另一方仍独立选择。内容修订哈希、SERIALIZABLE、幂等回执、版本及事务末回读保证原子提交；损坏回执、越权、陈旧页面、重复不同请求和既存任务均失败关闭。
+- 旧 outbox 只补不存在的记录，不覆盖本人设置、备注或 tombstone。configured store wrapper 同步转发原子 insert-only，并在写前、完成／冲突／失败后清除进行中的读取去重缓存。原 upsert 语义不变。
+- Web 详情无默认选择；错误保留原提交，重试同 key/同任务 ID。权威 GET 识别旧 accepted active/no-goal/no-version 缺陷；读操作不修库。新 pending 标记贯穿实际存储读取→列表契约→独立显示分组，排除四个正式阶段的筛选和计数，不假归档。旧未标记记录不在列表靠缺值猜测状态。
+- 回归：Web 存储／列表／页面 83项、生命周期与真实本地 PostgreSQL 46项、现场及 outbox PostgreSQL 4项，无 skip；主线额外把真实 accepted writer→durable outbox→投影→双方初始化→旧投影重放串为同一 PG 集成测试。full Web typecheck 通过。App 契约／Schema同步与既有生命周期9项、typecheck通过，不等于原生验收。
+- GitNexus 仓库 `/Users/li/work/orbit`，索引 `5e31c59a` 落后7提交；共享存储 impact CRITICAL，深层展开 partial，另做直接调用层检查（25个调用方／59流程），不降级。提交前 all/staged detect-changes 已执行，staged43文件／143符号／133流程，CRITICAL。新增符号 UNKNOWN 以实际路由/导入和测试补查；不宣称全索引安全。原用户 AGENTS/CLAUDE 未提交。
+- 生产修改前快照：`/Users/li/.config/orbit/relationship-initialization-before-20260917.json`，0600、7条本人范围内记录，SHA-256 `394c0e08bef554944ae895e6256c02bc60d03aae1304776fd47b94eda8d38f04`。两个测试 actor 的新服务只读检查均为 pending；没有改既存关系或批量迁移。
+- 本次修复与验收不调用收费模型；沿用此前模型验收证据与预算记录，不新增充值、外发消息或清库。
+
+### 初始化线上证据与增量修复
+
+- `04946189` 发布 `dpl_4qcAV8nJHeSSZU3cX5BFW1ndHCku` 后，QA 于 `2026-09-16T17:42:55.334Z` 选择 active，目标“测试：与山本直樹确认活动产品联调范围”，本人 Connection version1。对方 Naoki 页面冷刷新仍 pending，证明不会代替另一方选择。
+- Naoki 于 `17:45:43.080Z` 选择 needs_follow_up，创建 `task:673e1ae8-e8eb-4458-ae9f-14d08b6da7ea`，标题“测试：整理双方对活动报名与匹配流程的联调需求”；浏览器明确输入 `2026-10-01 10:00`（Asia/Shanghai），Neon 正确保存 `2026-10-01T02:00:00.000Z`。原生 datetime 输入需原生键盘触发 change，首次空值被阻止，没有造成错误写入。
+- 两个 actor 的只读 canonical preflight 均 `readyForCutover:true / issues:[]`；原快照7条记录都存在、owner未变、3条既存普通任务payload完全未改，联系人非生命周期资料保留。QA读取Naoki私有contact为NOT_FOUND。两条initialize receipt分属本人，没使用直接SQL补goal/version。
+- `2c5e8ada` 修复后续生命周期变化的读取权威：ready联系人从同owner/account、ready Connection读取阶段；不再由旧Contact.stage或legacy detail.status覆盖；普通legacy与pending仍保持原语义。真实存储→列表/详情回归先红后绿，26项及full typecheck通过。
+- 线上真实点击“处理关系跟进”发现冒号ID重复编码，页面回执检查报“返回的关系不一致”。`5961cdde` 在页面边界解码一次，同时补详情API可选 lifecycleInitialization 字段给App显示。两个定向用例先红后绿，最终Web页面/列表/详情组合43项、生命周期真实PG/路由46项通过，无skip；full typecheck通过。
+- 增量图分析：graphFromRecords/detailFor直接调用分别为readFocusedContactGraph/payloadFor，LOW；ContactDetail接口18个引用为HIGH，不被最终detect LOW覆盖；页面框架入口UNKNOWN，已源码核查Tasks与联系人两处链接及运行失败证据。索引仍陈旧，最终staged检查已逐提交执行。
+- App `db0755a6` 只补列表/详情 pending 展示：三语“待设置关系”，不显示假目标/下一步，不放入正式阶段筛选，不提供未接通的初始化按钮，明确提示到Web设置；已确认的通信资格不撤销。103项联系人/详情/交互/契约回归及typecheck通过，无skip。它不是原生初始化表单，也不是当前Production原生运行验收；独立关系看板与ready记录旧编辑器的canonical操作对齐仍须在原生后续范围核验。
+- 最终Web源码 `5961cdde`，Production `dpl_3av2kpWJE4NBbnTA2SdfFLagVJwX`，CLI inspect 为Ready并绑定正式域名；唯一部署 `https://orbit-bp568ot2e-liqys-projects-33c8ddec.vercel.app`。只部署已提交Web子树，App提交不影响此Web版本。
+- 最终真实UI完成：Naoki从编码后的正式链接进入跟进详情，选择“转为进行中”、明确目标“测试：推进活动报名与匹配流程联调”，于 `2026-09-16T17:53:10.180Z` 完成上述task。Connection与Task均version2，task completed，receipt `6a29702c-49a9-4718-9096-178314f078da`。页面冷刷新显示没有当前跟进、历史已完成；联系人详情显示新目标/进行中，列表“待联系0／在推进1”。没有用同阶段结果掩盖Contact旧stage问题。
+- 最终只读复核：QA仍active/version1及其原目标，Naoki active/version2及新目标；两actor preflight均0 issues，原7条记录的owner/非生命周期资料、3条原普通任务完全保持；跨owner初始化读取NOT_FOUND。整个初始化与跟进验收只经正常UI/API写入，没有直接SQL补状态或虚构自动任务。
+- 最后从正式 `/app/tasks` 冷开总览，Naoki仍有原普通待办“核对活动场地与设备（云端演示）”，人脉当前跟进0／历史1，历史展示上述测试任务“已完成／进行中”、原到期时间及正确联系人链接；关系任务未混入普通待办完成语义。
+
+**本轮结论：** 结合下方已有报名→模型画像→云端worker→发布→签到→双方交换、AI四域、普通待办/日程和提醒证据，Web＋Neon＋云端worker目标主流程已闭环。本轮新增模型费用0；此前授权验收账户余额差额仍以CNY0.11截点为准。原生初始化入口/操作对齐、兼容构建及同Production双向回读独立开放；真实对外上线前数据清理与凭据/恢复演练不在此次测试闭环内。
+
+## 历史收尾：现场交换已验，初始化设计当时尚未确认
+
+本节为初始化批准前的历史事实，以顶部新结论为准。没有清空、重 seed 或改期已有活动；没有外发邮件、推送或真实消息。原生 App 本轮不在验收范围。
 
 - 为验证现场门禁后的正常交换，新建独立纯测试活动 `event_demo_onsite_20260916` / `DEMO20260916QA`，主办方 Naoki，开始 `2026-09-16T15:10Z`、结束16:10Z。空活动初始化带 dry-run、精确计划 hash、事务和“已存在则拒绝”保护；没有手工写报名、匹配结果或交换同意。10月18日原活动保持不变。
 - QA `user_mu442tb2_nuu75f` 和 Naoki `user_mu3pgfat_cs02v7` 分别经正常报名 UI 提交需求/供给并真实生成画像。主办方配置后，generation `event-operations-generation:e754631956e085aa9afa61918254c060` 由云端 worker `event-operations:vercel:b0526a0b-f04d-483a-b613-d53c74c96fe5` 完成5/5任务，均一次成功（4个模型任务、1个确定性 reducer），完成14:59:51.738Z。
