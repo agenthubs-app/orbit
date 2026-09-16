@@ -567,3 +567,5 @@ Phone独立32100/PID17635/BUILD_ID`8sXNW8nifgU1rD0IF79lc`、32110/PID21340及新
 ROOT 实际使用小雨账号 `account_orbit_generated` 验证已有笔记／人脉底部窗、`ZT` 首字母匹配与关联 chip；正常 UI 新建一个明确 QA 系列，提前15分钟／每天至9月19日规则及关联经独立v3 GET一致。18日实例“仅本次”取消后独立GET404，17日及19日保留，19日实际日历列表点击详情成功。真实到期提醒仍待验：该账号 typed inbox 实际enabled false、owner local／cutover false，尚未获准启用，不宣称保存等于送达；PG并发及远程Push仍未完成。
 
 Phone 固定消费b3562f4／TREEc6f2、BUILD `VFCyLoF7jSqlaRsqWLuA3` 的真实 actor Chromium／WebKit 私有预览通过列表／拼音／选择取消及规则UI，未保存业务资料或调用provider；ROOT已审核并批准整体owned supervisor公网发布，实际切换结果另行登记。Phone actor不同于Main小雨，不代替同账号跨端证据。Main独立Next `/app/tasks/personal` 仍是旧v2／提醒重复unsupported UI，必须单独跟踪，不能宣称全部Web页面对齐。详见[0060 REPORT追加验收](0060-personal-reminders-recurrence/REPORT.md)。
+
+Phone公网0060随后实际发布成功，监督进程98032／backend98035／frontend98036健康，固定ngrok域名未变，ROOT独立核公网entry SHA匹配。公开Chromium／WebKit真实actor新关联窗／首字母／选择取消／规则UI通过，原业务数据不变、无provider调用；私有324预览已正常关闭、0056回退保留。真实提醒送达和Main独立Next旧v2页面仍是未完成项。

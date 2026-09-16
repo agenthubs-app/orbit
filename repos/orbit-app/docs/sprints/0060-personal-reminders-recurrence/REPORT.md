@@ -145,3 +145,5 @@ ROOT 真实验收准备已交：先核精确 actor／workspace、cutover since�
 真实原生图片另存 `/tmp/orbit-sprint0060-native.2BBKOw/`，其中 `notes-sheet.png`、`contacts-zt-selected.png`、`editor-before-save.png`、`detail-saved.png`、`occurrence-cancel-scope.png` 已实际查看。先前 A evidence 内六张 `app-editor-reference.png`、`app-rules-{zh,en,ja}.png`、`app-editor-shortcuts.png`、`app-detail.png` 后被 Phone 消费 HTTP fixture 测试写入；没有事前 hash，不能声称原图未变或恢复，当前应标注 Phone fixture 产物而非 A 原始截图，更不是实际设备证据。Phone 新真实账号图片在独立 `release-0060` 私有目录。
 
 本轮累计预算 ledger 原始 SHA256 始终为 `493f2ed72328e543b620c28c6a8a9ab03823a92fd290381b79330dc720d2d4da`；未重跑任一端全量 I。上述进展仅补充部分真实正向验收，SC60-04 与整个 Sprint 仍未 completed。
+
+随后 Phone 公网发布已完成：原0056监督进程及子进程正常退出、32100／32110空闲后启动0060监督进程98032／backend98035／frontend98036，健康且无重启；固定域名 `blasphemy-unshackle-courier.ngrok-free.dev` 未变。ROOT独立公网GET健康、HTML和entry均200，entry原始SHA与固定产物一致；完整读取 `publication-receipt.json` 并查看新的真实公开WebKit笔记筛选图片。公开Chromium／WebKit真实actor的摘要、拼音筛选、内存选择取消及规则UI实际通过，业务资料hash未变；私有32400／32410预览已正常关闭，0056回退产物保留。首次匿名测试遇ngrok警告HTML200，诊断添加skip header实际JSON401，私有工具局部repair1后通过；原失败保留，不是放宽产品授权。实际guard记录auth POST为3、业务write和model event为0；未启用通知flag或cutover，提醒送达仍未验。
