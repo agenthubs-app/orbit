@@ -10,6 +10,7 @@ import { getConfiguredCardUploadSources } from "../../acquisition/storage/busine
 import { redispatchPendingAgentActions } from "../../agent/runtime/dispatch-scan";
 import { dispatchPasswordResetMail } from "../../auth/password-reset-dispatch";
 import { NotificationDeliveryUnconfigured, runNotificationDeliveryPass } from "../../notifications/delivery-pass";
+import { createConfiguredCanonicalReminderMaintenanceTask } from "../../notifications/configured-canonical-reminder-maintenance";
 import type { MaintenanceTask } from "./pass";
 
 // The production task list. Each task checks its own configuration and reports
@@ -23,6 +24,7 @@ export function createConfiguredMaintenanceTasks({
 }: { env?: NodeJS.ProcessEnv; workerId?: string } = {}): MaintenanceTask[] {
   const queueAvailable = env.VERCEL === "1";
   return [
+    createConfiguredCanonicalReminderMaintenanceTask({ env, workerId }),
     {
       // A queue publish is a wake, not the work ledger. This scan repairs a
       // lost producer publish and also wakes outbox rows created by event

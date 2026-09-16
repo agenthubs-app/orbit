@@ -271,8 +271,24 @@ export function createReminderPlanService({
         if (activeClaims.has(plan.id)) continue;
         activeClaims.add(plan.id);
         try {
-          const existing = (await repository.listDeliveries(plan.ownerUserId)).filter((item) => item.reminderPlanId === plan.id && item.fireAt === plan.fireAt);
-          if (existing.length > 0) continue;
+          const inAppOnly = plan.channels.length === 1 && plan.channels[0] === "in_app";
+          // Pure in-app delivery has no external side effect: its stable record
+          // is sufficient evidence to finish a plan after a previous save failed.
+          // Keep mixed/push replay behavior unchanged; a push claim is not proof
+          // that the provider accepted a send.
+          const existing = inAppOnly
+            ? [await repository.getDelivery(plan.ownerUserId, delivery({ plan, channel: "in_app", now: input.now, status: "delivered" }).id)].filter((item): item is NotificationDeliveryDTO => item !== null)
+            : (await repository.listDeliveries(plan.ownerUserId)).filter((item) => item.reminderPlanId === plan.id && item.fireAt === plan.fireAt);
+          if (existing.length > 0) {
+            const completed = existing.find((item) => item.channel === "in_app" && item.status === "delivered" &&
+              item.ownerUserId === plan.ownerUserId && item.accountId === plan.accountId &&
+              item.reminderPlanId === plan.id && item.fireAt === plan.fireAt);
+            if (inAppOnly && completed) {
+              await repository.savePlan({ ...plan, status: "delivered", deliveredAt: completed.deliveredAt ?? completed.updatedAt, failureCode: undefined, updatedAt: input.now });
+              result.claimed += 1;
+            }
+            continue;
+          }
           result.claimed += 1;
           const preferences = (await repository.getPreferences(plan.ownerUserId)) ?? defaultPreferences(plan.ownerUserId, input.now);
           let delivered = false;
