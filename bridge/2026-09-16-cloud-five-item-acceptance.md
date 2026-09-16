@@ -6,7 +6,39 @@
 - 数据：Neon `workspace:orbit-demo-fixtures`，Web/API 为唯一写入边界，App 经同一 Production HTTPS API。
 - 入口：https://orbit-puce-kappa.vercel.app；待办、笔记、提醒与账户详情不写任何密钥。
 
-## 22:47 增量：Web／Neon／云端 worker 实际验收
+## 2026-09-17 收尾：现场交换已验，生命周期接入仍有 HIGH 缺口
+
+本节优先于下方历史记录。没有清空、重 seed 或改期已有活动；没有外发邮件、推送或真实消息。原生 App 本轮不在验收范围。
+
+- 为验证现场门禁后的正常交换，新建独立纯测试活动 `event_demo_onsite_20260916` / `DEMO20260916QA`，主办方 Naoki，开始 `2026-09-16T15:10Z`、结束16:10Z。空活动初始化带 dry-run、精确计划 hash、事务和“已存在则拒绝”保护；没有手工写报名、匹配结果或交换同意。10月18日原活动保持不变。
+- QA `user_mu442tb2_nuu75f` 和 Naoki `user_mu3pgfat_cs02v7` 分别经正常报名 UI 提交需求/供给并真实生成画像。主办方配置后，generation `event-operations-generation:e754631956e085aa9afa61918254c060` 由云端 worker `event-operations:vercel:b0526a0b-f04d-483a-b613-d53c74c96fe5` 完成5/5任务，均一次成功（4个模型任务、1个确定性 reducer），完成14:59:51.738Z。
+- 主办方15:00:15.487Z正常发布 `event-operations-publication:8fb6a6800a8b2449d5a81c92133423bd`，head revision1。双方实际读到推荐、座位和两轮信息，分别15:00:14Z、15:01:38Z签到。活动开始前交换禁用，15:10Z后正常开放。
+- QA请求、Naoki同意，request `event-contact-request:c2922164bda8c40f12d29cc01fab` 于15:10:57.131Z accepted/revision2。云端持久化双方各自的 Contact、Connection、consent Evidence，浏览器双方回读名称、机构、供需、来源和交换时间；不是把手工联系人冒充交换结果。QA私有contact尾缀 `3f9cf3512ce3470e83422000cdf8`，Naoki侧 `8d1d9c63b18c1ef7ecf3ff114a2e`；QA直达Naoki侧详情得到无可用详情，不返回另一方记录。
+- **HIGH，未通过：交换写入仍使用 legacy_projection。** `onsite-operations-repository.ts` 的 `contactFor/connectionFor` 固定写 active，却未写 lifecycle version / activeGoal。纯只读生产 preflight 对两个 actor 均返回 `readyForCutover:false`、`MISSING_GOAL`、Connection及Contact各一个 `MISSING_VERSION`，relationshipTasks0。普通待办不应被当成关系任务；不能只为计数变1而创建任务。
+- 已批准规范不允许臆造 activeGoal、日期或任务；目前没有已批准的“同意交换后初始阶段”规则。已提出最小选择：双方各自明确关系下一步，再走正式生命周期写入；决定前保留真实缺口，不把交换同意等同于已确认合作目标，不直接修补两条记录掩盖源头问题。
+- Web修复：`b380cb66` 恢复聊天态持续输入框；`5815aeca` 以 raw subject 读取本人 canonical 报名，私有旧活动仍用 canonical account，按正式 Event Core身份去重；其他provider记录ID不冒充 canonical ID。联系人供需仅标为“对方希望获得／对方能提供”，不再把对方需求说成自己的能力。
+- `5815aeca` Production `dpl_4rBRQ9g1Wm9u84VMoR8z7Kd4iMJn` Ready并绑定正式域名后，QA浏览器工作台回读2活动/1人脉，联系人实际显示正确供需标签，会话重开历史仍在且有继续输入框。后续发现活动旅程把报名直接等同“等待匹配发布”，`dc1037af`改为仅陈述“已报名／查看匹配进度”，25/25回归通过；不虚构尚未读取的发布状态。
+- **P0真实失败证据：** QA输入“只查询我自己的联系人 Naoki Sato，告诉我他的机构、职务和信息来源。不要创建任务或发送消息。”，任务后处理误判否定句为明确创建授权，于 `2026-09-16T16:03:47.635Z` 写入 `task:7c310d9af512a7fe681dc3cc`，title“或发送消息”、source ai_confirmed。只读DB核实QA任务由1变2，页面及历史均显示创建。没有把这次结果计为联系人AI验收通过；保留意外测试记录作为证据，不删除掩盖。修复与复验另记下文。
+- **P0源码修复 `c3039664`：** runtime与task后处理共用完整原文授权判断，明确祈使命令+非空标题才允许直接创建；否定/只读/引用/假设/疑问/空标题不调用create或suggest，错误模型任务提议也从后续确认输入移除。模型不匹配的标题及其日期不覆盖用户原始任务，原时间词保留。明确个人行动仍是建议，笔记来源版本验证和accept幂等保留。主组合129/129、真实POST后处理注入测试8/8、full typecheck通过，子代理lint通过；测试没有调用模型或Production DB。impact现有调用LOW，新函数UNKNOWN已用源码确认runtime与后处理两个调用点；all/staged detect LOW/0不作为陈旧索引的完整安全结论。
+- `c3039664` Production `dpl_24kewsbeuotrarQtn19FSptCdrVR` Ready并绑定正式域名，唯一部署 `orbit-ekrskwn38-liqys-projects-33c8ddec.vercel.app`。只部署精确已提交Web子树，未带入根目录AGENTS/CLAUDE的用户改动。浏览器再次确认2场活动、1位联系人，未来活动显示“已报名／查看匹配进度”，现场测试活动按真实结束时间转为“已结束”；不再推断匹配尚未发布。
+- 只读新请求 `request:34559a58-b8d3-4f3b-9893-3967facb4006` 在16:21:36.929Z完成：QA查山本直樹（Naoki测试账号），实际模型选择contacts.recommend，Neon返回匹配的联系人/机构/职务及accepted-event evidence；没有taskInteraction，也没有任务或建议写入。连续第二轮 `request:84be5f8a-0507-4f0e-8e33-90de154ac606` 暴露另一个读取错误：guard把“当前状态”和否定句中的“消息”拼成实时新闻，未调用模型/工具，页面无可核查结果；不是任务不存在。`711e2ffd` 让realtime只读分类复用排除被禁止动作的文本，写入授权仍用完整原文。三条业务查询RED→GREEN，三条真实外部实时查询仍保持本地限制；模型边界/写授权/POST组合147/147、full typecheck通过。
+- 回归：composer相关71/71；最终journey/身份/页面组合73/73；供需文案5/5，均无skip，typecheck、lint通过。`TwoWayCard` impact LOW，调用链为组件→联系人详情；活动旅程 all/staged detect-changes 仍为 **CRITICAL / 19流程**，没有被局部LOW覆盖。索引落后，图结果不代表全仓完整安全证明。
+
+本轮 Web 主流程已有真实证据，但不能宣称“完整通过”：交换→canonical生命周期的接入规则及实现仍开放。该缺口不依赖 Xcode，也不是模型预算不足。
+
+`711e2ffd` / `dpl_4MkiYsKxC1VcNqgbwkepp3PrLFAQ` 发布Ready后，新请求“返回标题和当前状态。不要创建任务或发送消息。”在浏览器实际返回“整理云端联调体验会的合作需求清单”、`status: open`，显示只读取tasks，未读取notes/followups/schedule。没有用本地mock响应替代此次模型＋Neon回读。
+
+连续查询回执 `request:8577dad3-466d-444b-98e5-f621a302ccc7`、`request:8213036a-4fd2-4642-9e51-95c122e79284` 均completed、无taskInteraction；16:31:16Z只读审计tasks仍2、taskSuggestions仍0，两任务updatedAt未变化。刷新重开却发现首轮答案缺失：provider重复固定assistant messageId，session store按session+messageId写入导致后答覆盖前答；route还优先保存规划开场白而不是最终assistantMessage。`e880d29f`把reliable回复ID规范成`assistant:<requestId>`并在响应/持久化两侧一致，保存最终答案，重试沿用同ID。真实POST＋内存正式存储两轮/重试测试先红后绿，历史/reliable/UI组合62/62、full typecheck通过。API入口impact UNKNOWN（框架调用无图边），已源码确认Web/App共同消费；all/staged LOW/0不冒充完整图安全。修复不删除旧验收记录或伪造丢失内容。
+
+最终部署 `e880d29f` / `dpl_BuydQANPYrqdrWLuuxPt3qmouCmU` Ready，正式入口仍为 `https://orbit-puce-kappa.vercel.app`，唯一部署 `orbit-exobqnnbk-liqys-projects-33c8ddec.vercel.app`。原生消费者共享同一API，字段形状未改变；本轮不把API自动化与Web浏览器结果当成原生验收。
+
+最终线上复验：会话 `agent-session-mu4bvja6-kj6oub` 的请求 `request:979f9abc-4d7a-487b-af5a-1c1c31141724`、`request:a62b9b96-b695-4404-9ab3-50270fe6e5c6` 均completed，分别返回正确待办事实和交换所得联系人卡片。16:44:17Z只读确认session revision4、四条消息、两个不同的`assistant:request:...` ID；实际浏览器刷新后从历史重开，两问两答及联系人卡片均保留。任务仍2、建议仍0，两条任务更新时间与修复前相同，否定句没有造成新写入。额外验收标记曾干扰模型检索，最终业务查询不混入测试编号，仍使用新requestId，不靠旧请求重放冒充新验收。
+
+预算结算截点 `2026-09-16T16:44:18.065Z`：DeepSeek余额CNY63.51，对比本轮CNY63.62基线，账户余额差额 **CNY0.11**，USD余额仍0；按分计且包含同账号并发用量，不是逐请求精确发票。未达到CNY5保守停线，更未动用充值/升级。本轮不再调用模型。
+
+可执行的本轮Web修复、Production发布和目标链验收已完成；R1/R2/R3的Web/Neon/worker证据已齐。R5不标完整通过：唯一已确证的业务契约阻塞仍是上述双方交换后的canonical初始化规则，需确认本人目标/下一步的输入方式后才能改writer及相应Web/App契约；不能通过补假值结束。原生R4独立开放。
+
+## 22:47 历史增量：Web／Neon／云端 worker 实际验收
 
 用户已批准先验 Web＋Neon＋云端 worker，并追加本轮最高 **$1** 模型预算；原生验收单列，不再以旧累计账本缺失阻塞本轮。DeepSeek 余额基线为 `2026-09-16T14:18:20.991Z` CNY 63.62；14:44:27 的账户余额差额 CNY 0.04。余额精度为分，且包含同账号并发用量，不冒充逐请求精确账单；采用 CNY 5 的保守停线，未改变 provider 套餐或充值。
 
