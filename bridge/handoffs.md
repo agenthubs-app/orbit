@@ -216,3 +216,7 @@ verified（本地共同环境）；Web/App功能和主线e045651b3，同一记�
 ## BR-027 — 自主发现
 
 source_ready / consumer_ready / verification blocked；功能4aa21961a、合并131723ddb。真实笔记/偏好/队列已验，真实模型/费用仍缺；[交接](2026-09-16-evidence-notification-discovery.md)。
+
+## BR-028 — 通知投递与旧流切换
+
+source_ready / consumer_ready / verification blocked；功能eacd7a227、合并0b552649d。共同设置/消息入站/迁移对账与主线检查完成；真实Push、AI预算/provider及本轮原生出站确认尚缺；[交接](2026-09-16-notification-delivery-cutover.md)。0037～0040本轮执行结束，未验收项保留开放。

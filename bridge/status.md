@@ -1,5 +1,9 @@
 # 两端当前状态
 
+## 2026-09-16 E线0040投递与切换
+
+功能eacd7a227/合并0b552649d；偏好、投递策略、所有权协议、迁移与共同QA对账已交付，合并树Web16/App129及两端typecheck通过。真实Push、AI费用/provider和本轮原生出站回执缺项见[BR-028](2026-09-16-notification-delivery-cutover.md)。0037/38 completed，0039/40 blocked且run关闭；暂停本线跟进，保留Web供查看，不标四项全验收。
+
 ## 2026-09-16 E线0039自主发现
 
 功能4aa21961a/合并131723ddb；两端设置、真实笔记与后台队列可用，真实模型费用/provider缺项保留为blocked。详见[BR-027](2026-09-16-evidence-notification-discovery.md)。继续0040独立实施。
