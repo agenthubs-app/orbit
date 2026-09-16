@@ -35,6 +35,30 @@ backfill resolves them to the reviewed Neon auth actor IDs when a unique owner
 claim already exists. This seed is development-only and refuses
 `NODE_ENV=production`.
 
+## 2026-09-16：Production 测试与激活审计
+
+用户已明确授权把云端 Demo 数据复制到 Neon Production 供测试；正式对外上线前清理测试工作区。Production 使用 live 服务读取 `workspace:orbit-demo-fixtures`，而不是运行本地 mock provider。开发种子的 `NODE_ENV=production` 拒绝保护保持不变；本次采用先验空库、保留身份与版本的事务复制，不在 Production 重跑破坏性 seed。
+
+`scripts/demo-canonical-memberships.ts` 替代直接设置 canonical 标志：调用正式激活入口，为无报名的公开 fixture 记录数量、摘要、截止时间来源及不可变审计；既有基线重放必须保持不变。只修复 allowlist 中无任何历史的 flags-only 状态，已有报名、审计或部分 metadata 一律拒绝。独立 PostgreSQL 测试覆盖回滚、幂等、审计篡改和范围约束；定向组合 27/27、typecheck、production build 通过。
+
+当前云端演示主办方为 `naoki-yamamoto@organizers.orbit.example.test`，参与者为 `attendee01.event-ops@orbit.example.test`。两者测试密码保存在开发机器受限文件 `/Users/li/.config/orbit/demo-fixtures.env`，不入库、不入文档。下面独立 E2E seed 的 `organizer.event-ops` 账号不等于云端现有活动 owner。
+
+为了测试主工作区的联系人/待办，另建 `demo-owner@orbit.example.test` credentials 登录，通过既有 auth-membership 机制关联合成 `account_orbit_generated`；未修改原 Google 身份。该专用测试登录只在当前测试 workspace 有效，正式清理时与 workspace 一并移除。密码同样仅在上述受限文件中。
+
+Production 一次性导入已完成：56 张业务表共 9,217 行，其中 `orbit_records=8,703`。事务内验证空目标、schema/迁移账本相等和逐表内容摘要；仅复制业务数据，未覆盖账本。正式测试入口为 `https://orbit-puce-kappa.vercel.app`。后续不得向已写入用户测试操作的库重跑全量 seed；数据初始化修复与用户测试新增事实必须分开处理。
+
+后续新增 `event_demo_cloud_flow_20261018` / `DEMO20261018`，标题“云端联调体验会（测试活动）”，2026-10-18 14:00–16:00 Asia/Tokyo，明确为无真实会务的合成活动。canonical event/version/alias/空报名激活审计在同一事务创建，主办方仍为已能登录的 Naoki；运营配置通过正式 UI 保存。参与者已完成两题报名，并刷新确认原始回答持久化，AI 画像不冒充原始事实。
+
+实测发现 Web 取消按钮使用空 POST，而线上 Request 有 body stream 时被 JSON 校验拒绝。页面现在发送 `{ intent: "cancel", expectedRegistrationVersion }`，复用现有接口版本检查；准入制撤回不变。组件回归先红后绿，与接口/种子组合 19/19 通过。
+
+修复版 `dpl_5JaVX9ko5phE3T4cdFTGcmmcMFxs` 已在 Production 验证：报名→刷新→取消→刷新→重新报名；membership versions 为 1/rsvped、2/cancelled、3/rsvped，三者 `source_registration_id` 相同，没有重复创建报名记录。
+
+`scripts/demo-organizer-projection.ts` 修复静态 fixture account 与真实 credentials account 的双重主办方投影：仅处理 13 个已知 `.example.test` 身份，补齐登录 profile 缺失的组织/角色字段、重指 organizer account，并对已无外部引用的 26 条旧 account/profile 做带替代 ID 的 soft-delete。保留登录密码、已有 profile 修改和 Google 主账号。规划为纯函数，调用者同一事务读取并应用；二次规划必须为空；未知引用或非 fixture 记录拒绝处理。
+
+原生 App 当前验证限制：Expo Go 缺少 ExpoAsset；本机原生构建因 Swift 6.2.1 不接受当前 expo-modules-jsi 的 `weak let` 编译失败。未修改依赖或降低生产安全设置；App 浏览器版的跨域限制也未绕过。不能把这些尝试标为原生双端验收通过。
+
+已验证：Preview 主办方登录及后台 64 人目录；本地 live API 连接同一 Neon Demo 时主办方 200、参与者 403。Production 发布后的验证单独记录，不能用 Preview 结果替代。当前 13 个公开活动的时间均已结束，不能宣称已覆盖可报名流程。
+
 ## Organizer path
 
 1. Open `/app/account/login?next=%2Fapp%2Fevents%2Fevent_signup_01%2Foperations`.

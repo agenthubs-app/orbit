@@ -45,6 +45,8 @@ import { runOrbitRecordsMigration } from "../shared/storage/migrations";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../shared/storage/seed-generated-fixtures";
 import { MOCK_FIXTURE_COLLECTION_NAMES } from "../shared/mock/fixtures";
 import { loadLocalEnv } from "./load-local-env";
+import { ensureDemoCanonicalMemberships } from "./demo-canonical-memberships";
+import { buildDemoOrganizerProjection } from "./demo-organizer-projection";
 import {
   createPostgresOrganizerMembershipWriter,
   createPostgresOrganizerOwnershipWriter,
@@ -87,23 +89,11 @@ async function seedCanonicalEventCore(input: {
     throw new Error("Demo Event Core backfill verification did not match its plan.");
   }
 
-  const canonicalMembership = await input.client.query<{ event_id: string }>(
-    `
-      update event_ops_events
-         set registration_migration_state = 'canonical',
-             updated_at = $3
-       where workspace_id = $1
-         and event_id = any($2::text[])
-         and lifecycle_state_v2 = 'published'
-       returning event_id
-    `,
-    [input.workspaceId, publicEventIds, FIXTURE_TIMESTAMP],
-  );
-  if (canonicalMembership.rows.length !== publicEventIds.length) {
-    throw new Error(
-      `Expected ${publicEventIds.length} published public events to enter canonical membership state.`,
-    );
-  }
+  const canonicalMembershipEventCount = await ensureDemoCanonicalMemberships({
+    client: input.client,
+    eventIds: publicEventIds,
+    workspaceId: input.workspaceId,
+  });
 
   const publicState = await input.client.query<{
     active_registration_count: string;
@@ -147,7 +137,7 @@ async function seedCanonicalEventCore(input: {
   }
 
   return {
-    canonicalMembershipEventCount: canonicalMembership.rows.length,
+    canonicalMembershipEventCount,
     planCount: plan.count,
     planHash: plan.hash,
     publicEventCount: publicState.rows.length,
@@ -491,6 +481,17 @@ async function main(): Promise<void> {
       client: operationsClient,
       workspaceId,
     });
+
+    await client.query("BEGIN ISOLATION LEVEL SERIALIZABLE");
+    try {
+      const records = await store.listRecords({ workspaceId, includeDeleted: true });
+      const projection = buildDemoOrganizerProjection({ records, workspaceId, now: new Date().toISOString() });
+      for (const record of projection) await store.upsertRecord(record);
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    }
 
     console.log(JSON.stringify({
       workspaceId,

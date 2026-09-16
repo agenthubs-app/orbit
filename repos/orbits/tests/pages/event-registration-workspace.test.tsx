@@ -6,6 +6,48 @@ import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
 import { EventRegistrationWorkspace } from "../../app/(app)/app/events/[id]/register/event-registration-workspace";
 import type { SignedAdaptiveInterviewStep } from "../../features/events/registration/interview-response-contract";
+import { createEventRegistrationService, createMemoryEventRegistrationProvider } from "../../features/events/registration/service";
+
+test("Web cancellation sends the explicit JSON intent and current registration version", async () => {
+  const previousFetch = globalThis.fetch;
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  Object.defineProperty(globalThis, "window", { configurable: true, value: {
+    addEventListener() {}, removeEventListener() {},
+    localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
+  } });
+  const service = createEventRegistrationService({ provider: createMemoryEventRegistrationProvider() });
+  const registration = await service.register({ eventId: "event-cancel-ui", userId: "test-actor" });
+  const requests: RequestInit[] = [];
+  globalThis.fetch = (async (url, init) => {
+    assert.equal(String(url), "/api/events/event-cancel-ui/registration/cancel");
+    requests.push(init!);
+    return Response.json({ success: true, data: { ...registration, status: "cancelled" } });
+  }) as typeof fetch;
+  let renderer: ReactTestRenderer | undefined;
+  try {
+    await act(async () => { renderer = create(<EventRegistrationWorkspace
+      admissionControlled={false}
+      event={{ id: "event-cancel-ui", title: "Cancellation test", venue: "Test venue" }}
+      initialAdmissionApplication={null} initialRegistration={registration}
+      initialSignedQuestion={null} language="en" profile={{ displayName: "Tester" }}
+    />); });
+    const button = (label: string) => renderer!.root.find(node => node.type === "button" && node.children.includes(label));
+    await act(async () => { button("Cancel registration").props.onClick(); });
+    await act(async () => { button("Confirm cancellation").props.onClick(); await Promise.resolve(); });
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0]!.method, "POST");
+    assert.equal(new Headers(requests[0]!.headers).get("content-type"), "application/json");
+    assert.deepEqual(JSON.parse(String(requests[0]!.body)), {
+      expectedRegistrationVersion: registration.updatedAt, intent: "cancel",
+    });
+    assert.equal(renderer!.root.findAll(node => node.props["data-reg-cancelled-registration"] !== undefined).length, 1);
+  } finally {
+    globalThis.fetch = previousFetch;
+    if(renderer) await act(async () => { renderer!.unmount(); });
+    if(previousWindow) Object.defineProperty(globalThis, "window", previousWindow);
+    else Reflect.deleteProperty(globalThis, "window");
+  }
+});
 
 test("an initial AI failure offers an in-place real-model retry without a fallback question", async () => {
   const originalFetch = globalThis.fetch;

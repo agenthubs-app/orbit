@@ -788,7 +788,14 @@ export function EventRegistrationWorkspace({
               headers: { "content-type": "application/json" },
               method: "DELETE",
             }
-          : { method: "POST" },
+          : {
+              body: JSON.stringify({
+                expectedRegistrationVersion: registration?.updatedAt ?? null,
+                intent: "cancel",
+              }),
+              headers: { "content-type": "application/json" },
+              method: "POST",
+            },
       );
       const body = (await response.json()) as
         | AdmissionEnvelope
