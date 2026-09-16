@@ -29,7 +29,7 @@ export function createPersonalScheduleClient(actorId: string, fetcher: typeof fe
   }
   return {
     get: (id: string) => request(path(id), "GET", data => { const item = decode(data?.scheduleItem); if (item.id !== id || item.state === "cancelled") throw new Error("无法确认日程。"); return item; }),
-    list: () => request(path(), "GET", data => {
+    list: () => request(`${path()}?scope=personal`, "GET", data => {
       if (!Array.isArray(data?.scheduleItems)) throw new Error("日程列表读取失败。");
       const ids = new Set<string>();
       return data.scheduleItems.filter((raw: any) => raw?.kind === "personal").map((raw: unknown) => { const item = decode(raw); if (ids.has(item.id)) throw new Error("日程记录重复。"); ids.add(item.id); return item; }).filter((item: PersonalScheduleContract) => item.state !== "cancelled").sort((a: PersonalScheduleContract, b: PersonalScheduleContract) => Date.parse(a.startsAt) - Date.parse(b.startsAt)) as PersonalScheduleContract[];

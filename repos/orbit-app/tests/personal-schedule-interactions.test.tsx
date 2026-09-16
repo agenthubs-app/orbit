@@ -20,9 +20,9 @@ const state = window.fixture = {
   requests: [], pending: [], presses: {}, inputs: {}, expiries: 0, notifications: 0, permissionCalls: 0, holdReads: false,
   ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
-  data(path) { return { scheduleItem: state.item }; },
+  data(path, query) { return state.list ? { scheduleItems: query === "?scope=personal" ? state.listItems ?? [state.item] : [{ id: "legacy:personal", sourceId: "legacy:personal", kind: "personal", category: "personal", title: "Legacy", startsAt: state.item.startsAt, state: "upcoming" }] } : { scheduleItem: state.item }; },
   reply(index, status = 200, data) {
-    const payload = data === undefined && status !== 200 ? { success: false, error: { code: status === 401 ? "UNAUTHORIZED" : status === 409 ? "CONFLICT" : "SERVICE_UNAVAILABLE", message: "Request not accepted" } } : { success: true, data: data === undefined ? state.data(state.requests[index].path) : data };
+    const payload = data === undefined && status !== 200 ? { success: false, error: { code: status === 401 ? "UNAUTHORIZED" : status === 409 ? "CONFLICT" : "SERVICE_UNAVAILABLE", message: "Request not accepted" } } : { success: true, data: data === undefined ? state.data(state.requests[index].path, state.requests[index].query) : data };
     state.pending[index]?.(new Response(JSON.stringify(payload), { status, headers: { "content-type": "application/json" } }));
   }
 };
@@ -49,6 +49,7 @@ export const useOrbitAuthSession = () => { observe(); return { ready: state.read
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
 export const useLocalSearchParams = () => { observe(); return { id: state.taskId }; };
 export const useGlobalSearchParams = useLocalSearchParams;
+export const useFocusEffect = callback => React.useEffect(callback, [callback]);
 export const usePathname = () => "/tasks/" + encodeURIComponent(state.taskId);
 export const useRouter = () => ({ canGoBack: () => false, back() {}, push(path) { state.navigation = path; }, replace(path) { state.navigation = path; } });
 export const Redirect = () => <div role="status">Sign in</div>;
@@ -66,7 +67,7 @@ export const SafeAreaView = ({ edges, style, ...props }) => <View {...props} sty
 
 test.before(async () => {
   const result = await build({
-    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/schedule/personal/[id]"; import { useFixture } from "fixture"; function App() { const s = useFixture(); return s.mounted ? <Route /> : null; } createRoot(document.getElementById("root")).render(window.initialFixture?.strict ? <React.StrictMode><App /></React.StrictMode> : <App />);', resolveDir: process.cwd(), loader: "tsx" },
+    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/schedule/personal/[id]"; import { PersonalScheduleList } from "./src/screens/schedule/PersonalScheduleList"; import { useFixture } from "fixture"; function App() { const s = useFixture(); return s.mounted ? s.list ? <PersonalScheduleList /> : <Route /> : null; } createRoot(document.getElementById("root")).render(window.initialFixture?.strict ? <React.StrictMode><App /></React.StrictMode> : <App />);', resolveDir: process.cwd(), loader: "tsx" },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "task-date-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "task-dates" }));
@@ -93,8 +94,27 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
   const errors: string[] = []; p.on("pageerror", e => errors.push(e.message)); t.after(async () => { await p.close(); assert.deepEqual(errors, []); });
   await p.route("**/*", r => r.abort()); await p.setContent('<div id="root"></div>');
   await p.evaluate(patch => { (window as any).initialFixture = patch; }, { item: initialItem, ...patch }); await p.addScriptTag({ content: script });
-  await p.getByRole("textbox", { name: "日程标题", exact: true }).waitFor(); await settle(p); return p;
+  if (patch.list) await p.getByRole("button", { name: "新建个人日程", exact: true }).waitFor();
+  else await p.getByRole("textbox", { name: "日程标题", exact: true }).waitFor();
+  await settle(p); return p;
 }
+
+test("personal list reads owned collection, opens detail and distinguishes failure, recovery and real empty", async t => {
+  const p = await open(t, { list: true });
+  await p.getByText("Original title", { exact: true }).waitFor();
+  assert.equal(await p.getByText("个人日程加载失败", { exact: true }).count(), 0);
+  await p.getByRole("button", { name: /Original title/ }).click();
+  assert.equal(await p.evaluate(() => (window as any).fixture.navigation), "/schedule/personal/personal%3Aedit");
+  await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
+  await p.getByRole("button", { name: "刷新个人日程", exact: true }).click();
+  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.length - 1, 503); });
+  await p.getByText("个人日程加载失败", { exact: true }).waitFor();
+  assert.equal(await p.getByText("暂无个人日程", { exact: true }).count(), 0);
+  await p.evaluate(() => (window as any).fixture.update({ holdReads: false, listItems: [] }));
+  await p.getByRole("button", { name: "刷新个人日程", exact: true }).click();
+  await p.getByText("暂无个人日程", { exact: true }).waitFor();
+  assert.equal(await p.getByText("个人日程加载失败", { exact: true }).count(), 0);
+});
 async function fill(p: Page, label: string, value: string) { await p.getByRole("textbox", { name: label, exact: true }).fill(value); await settle(p); }
 async function press(p: Page, name: string) { await p.getByRole("button", { name, exact: true }).click(); await settle(p); }
 async function writes(p: Page) { return p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method !== "GET").map((r: any) => ({ method: r.method, path: r.path, body: r.body }))); }

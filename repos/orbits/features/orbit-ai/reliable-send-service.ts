@@ -207,7 +207,10 @@ export function createReliableOrbitAgentSendService(dependencies: {
 
   return {
     async send<TResult>(request: {
-      execute: (prepared?: { trustedOriginVerification?: TrustedOriginVerification | undefined }) => Promise<{
+      execute: (prepared?: {
+        history: readonly { role: "user" | "assistant"; content: string }[];
+        trustedOriginVerification?: TrustedOriginVerification | undefined;
+      }) => Promise<{
         assistantMessage?: { id: string; text: string };
         result: TResult;
       }>;
@@ -407,7 +410,14 @@ export function createReliableOrbitAgentSendService(dependencies: {
 
       let executed: Awaited<ReturnType<typeof request.execute>>;
       try {
-        executed = await request.execute(prepared);
+        const history = (userMessageAlreadyPersisted
+          ? current?.messages.slice(0, -1)
+          : current?.messages
+        ) ?? [];
+        executed = await request.execute({
+          ...prepared,
+          history: history.map(({ role, text }) => ({ role, content: text })),
+        });
       } catch {
         await dependencies.requestStore.markOutcomeUnknown(
           request.input.requestId,

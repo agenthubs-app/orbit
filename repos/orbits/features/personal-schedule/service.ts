@@ -5,6 +5,7 @@ import type { LiveRecordStoreLike } from "../../shared/storage/live-record-store
 import type { TransactionalPostgresClient } from "../../shared/storage/transactional-postgres";
 import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
 import { AppError } from "../../shared/errors/app-error";
+import { canonicalScheduleItemSchema } from "./authority-contract";
 
 const collectionName = "personal_schedule_items";
 const locks = new WeakMap<object, Map<string, Promise<void>>>();
@@ -82,7 +83,18 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
     async get({ actorId, id }: { actorId: string; id: string }) { return publicItem(await read(input.store, actorId, id), now()); },
     async list({ actorId }: { actorId: string }) {
       const records = await input.store.listRecords({ workspaceId: input.workspaceId, collectionName, userId: actorId });
-      return records.map(record => { const item = personalScheduleSchema.parse(record.payload) as PersonalScheduleContract; if (item.ownerUserId !== actorId || item.accountId !== actorId) throw new Error("Personal schedule ownership mismatch"); return publicItem(item, now()); });
+      const ids = new Set<string>();
+      return records.flatMap(record => {
+        const item = canonicalScheduleItemSchema.parse(record.payload);
+        if (!actorId || record.userId !== actorId || item.ownerUserId !== actorId || item.accountId !== actorId || record.workspaceId !== input.workspaceId || record.collectionName !== collectionName || item.id !== record.recordId || item.sourceId !== record.sourceId || Date.parse(item.updatedAt) !== Date.parse(record.updatedAt) || Date.parse(item.createdAt) !== Date.parse(record.createdAt) || ids.has(item.id)) throw new Error("Personal schedule collection integrity mismatch");
+        ids.add(item.id);
+        // The authority collection also owns event/meeting schedules. Validate
+        // them before selecting only the strict, editable personal DTOs.
+        if (item.kind !== "personal") return [];
+        const personal = personalScheduleSchema.parse(record.payload) as PersonalScheduleContract;
+        if (personal.sourceId !== personal.id) throw new Error("Personal schedule source mismatch");
+        return personal.state === "cancelled" ? [] : [publicItem(personal, now())];
+      });
     },
     create: (actorId: string, body: PersonalScheduleCreate) => mutate("create", actorId, `personal:${hash([actorId, body.idempotencyKey]).slice(0, 24)}`, personalScheduleCreateSchema.parse(body)),
     update: (actorId: string, id: string, body: PersonalScheduleUpdate) => mutate("update", actorId, id, personalScheduleUpdateSchema.parse(body)),
