@@ -1,5 +1,11 @@
 # 同步队列
 
+## 0033 — 纯租期 issuer 与原生 SQLCipher 部分证据
+
+- 冻结 `8a822a152`→MAIN `74c60290f` 已普通 push，ROOT 两文件完整审查/7测试零跳过/Web types0。Web 重新 build/restart：`0tIJOrl7k4tVtFNzxZyyG` / PID56918 / live200，Metro8082 保持；可信端口测试不是生产权限或持久 epoch 证据。
+- 原生实际编译 codec 标志与 key/rekey 符号、覆盖安装 executable hash 一致、新同步 DB 非明文 header 已观察。Web 恢复后正常重启 PID57388 回到有数据首页；此前服务重建窗口出现登录页保留，不混为独立冷启动成功。实际 cipher_version/wrong-key/完整迁移/所有域离线仍待验收，未清库或密钥。
+- 真实 authorizer/epoch 与消费者尚缺，D45 原子适配/中文锁序仍待批准；E46 fixture 规格待目标及恢复审批，未 apply。Phone 误触一次报名问题生成已结算 $0.000856，账本累计 $0.039467 / 19 settled / 0 reserved，付费 QA 暂停，后续 `questions=false`。
+
 ## 0046 — 旧通知来源安全投影（部分运行验证）
 
 - Web/App 源码：`8e3049cea`→主线 `e660f1d55`；当前已推送主线 `23500c561`，独立远端 SHA 一致。严格 workspace/actor/record/lifecycle 与 canonical 目标验证，无旧标题或 href 推断授权；foreign notification 不凭 payload 账号声明进入列表。

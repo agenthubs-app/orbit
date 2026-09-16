@@ -1,5 +1,15 @@
 # 两端当前状态
 
+## 2026-09-16 20:35 JST 主线租期基础与原生加密构建
+
+A33 纯租期 issuer `8a822a152` 已合入并推送 `74c60290f`；ROOT 完整两文件审查、7/7 零跳过及 Web typecheck0。新增符号图谱为 UNKNOWN，不把暂存分析的零映射当成零风险。只有可信授权端口与完整域覆盖校验，真实全域 authorizer、持久权限 epoch、HTTP 与离线消费者尚未接通。
+
+该主线 Web 重新生产构建 exit0（未改资产流程复用），BUILD_ID `0tIJOrl7k4tVtFNzxZyyG`；3000/PID56918/live200、Metro8082/running，原数据库、Flash/loop3 与唯一预算保护保持。Phone 32100/32110 未重启。共享账本现 19 settled / $0.039467 / 0 reserved；新增 $0.000856 已查明来自 Phone 诊断报名 GET 默认问题生成，后续固定 `questions=false`，不算验收成功，付费 QA 暂停。
+
+ROOT 保留原 native 环境后，仅 ignored Podfile.properties 启用 SQLCipher；首次 deployment pod install 因 ExpoSQLite checksum 拒绝，随后无 repo update 的 install 仅更新该 checksum，依赖版本不变。主线原生编译/覆盖安装成功，实际编译 codec 标志与 key/rekey 符号存在；构建及已安装 executable SHA256 均 `a0c760b6a0a91d25867c6509e542842249c32994c255b98b965845460ca78354`，同步 DB header 非明文。没有删数据、清密钥或 uninstall。Web 重建期间首次启动出现登录页，不能当成独立冷启动成功；Web 恢复后正常重启 PID57388 已回到中文有数据首页。actual cipher_version、wrong-key、完整迁移、全域离线及精确 loaded-JS 哈希仍未验收。
+
+D45 仍不合未接真实 mutation port 的半成品；中文锁序修订待批准。E46 合法样本与精确恢复中文规格已完成待审，未执行 fixture 写入、共享 worker 或付费 discovery。Phone PW11 分析与 PW12 canonical 活动详情由原独立 B/C 推进；本轮不增加 ROOT 第三个修复 Generator。
+
 ## 2026-09-16 20:12 JST 主线通知来源修复与运行实测
 
 E46 冻结 `8e3049cea` 已合入 `e660f1d55`；A33 编译参数解析修复 `70d4d2aaf` 已合入 `23500c561`，普通 push 后独立远端 SHA 一致。ROOT 主线受影响完整文件 App 75/75、Web 24/24、两端 types 通过；A33 静态工具另 8/8，不冒充实际加密验收。未重新全量测试，旧基线缺项保持开放。
