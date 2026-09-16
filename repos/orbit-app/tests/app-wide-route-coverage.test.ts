@@ -178,6 +178,7 @@ const integratedFeatureRoutes = [
   "/schedule/personal/[id]",
   "/schedule/personal/new",
   "/tasks/personal",
+  "/tasks/relationship/[id]",
   "/notes",
   "/notes/[id]",
   "/notes/[id]/edit",

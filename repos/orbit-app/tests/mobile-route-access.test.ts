@@ -282,6 +282,7 @@ test("every root-level private entry uses the shared render gate", () => {
     "tasks.tsx",
     "tasks/[id].tsx",
     "tasks/personal.tsx",
+    "tasks/relationship/[id].tsx",
     "settings.tsx",
     "settings/api.tsx",
     "today.tsx"

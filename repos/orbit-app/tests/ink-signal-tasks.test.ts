@@ -116,7 +116,7 @@ test("list blocks same-turn double completion and keeps the row after a rejected
   await page.evaluate(() => (window as any).fixture.release());
   await page.getByRole("alert").filter({ hasText: "保存失败" }).waitFor();
   assert.equal(await checkbox.getAttribute("aria-checked"), "false");
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), ["/api/schedule-items"]);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), ["/api/relationship-tasks", "/api/schedule-items"]);
 });
 
 test("list transport rejection unlocks actions and visibly preserves the unchanged task", async t => {
@@ -128,7 +128,7 @@ test("list transport rejection unlocks actions and visibly preserves the unchang
   assert.equal(await checkbox.getAttribute("aria-checked"), "false");
   await page.evaluate(() => (window as any).fixture.update({ thrown: false }));
   await checkbox.click(); assert.equal((await requests(page)).length, 2);
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), ["/api/schedule-items", "/api/tasks"]);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), ["/api/relationship-tasks", "/api/schedule-items", "/api/tasks"]);
 });
 
 test("list retains overdue and undated work, navigates canonical task IDs and existing creation", async t => {
