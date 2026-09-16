@@ -25,3 +25,24 @@ test("personal schedule renders through its HTTP client and aborts requests on u
   act(() => root.unmount());
   assert.ok(signals.every(signal => signal.aborted));
 });
+
+test("personal schedule failed refresh never presents retained empty data as a successful empty list", async (t) => {
+  let failing = false;
+  t.mock.method(globalThis, "fetch", async () => {
+    if (failing) throw new Error("network unavailable");
+    return Response.json({ success: true, data: { scheduleItems: [] } });
+  });
+  let root!: ReactTestRenderer;
+  await act(async () => { root = create(<PersonalScheduleWorkspace actorId="owner" />); });
+  t.after(() => { act(() => root.unmount()); });
+  assert.match(JSON.stringify(root.toJSON()), /暂无个人日程/);
+  const refresh = root.root.findAllByType("button").find(button => button.children.includes("刷新个人日程"))!;
+  failing = true;
+  await act(async () => { refresh.props.onClick(); });
+  assert.equal(root.root.findAllByProps({ role: "alert" }).length, 1);
+  assert.doesNotMatch(JSON.stringify(root.toJSON()), /暂无个人日程/);
+  failing = false;
+  await act(async () => { refresh.props.onClick(); });
+  assert.equal(root.root.findAllByProps({ role: "alert" }).length, 0);
+  assert.match(JSON.stringify(root.toJSON()), /暂无个人日程/);
+});

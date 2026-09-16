@@ -27,7 +27,7 @@ export function PersonalScheduleWorkspace({ actorId }: { actorId: string }) {
     <div className="task-controls"><button className="btn btn-primary" onClick={() => setSelected(null)}>新建个人日程</button><button className="btn btn-secondary" onClick={list.refresh}>刷新个人日程</button></div>
     {list.error ? <p role="alert">个人日程读取失败，请重试。</p> : null}
     {list.loading ? <p role="status">正在读取个人日程…</p> : null}
-    {list.data?.length === 0 ? <p>暂无个人日程</p> : null}
+    {!list.error && list.data?.length === 0 ? <p>暂无个人日程</p> : null}
     <div className="task-list">{list.data?.map(item => { const p = localParts(item.startsAt, zone); return <button key={item.id} className="task-row" onClick={() => setSelected(item.id)} style={{ display: "block", textAlign: "left", width: "100%", padding: 16 }}><strong>{item.title}</strong><span style={{ display: "block" }}>{[p.date + " " + p.time, item.location, item.state === "ended" ? "已结束" : item.state === "ongoing" ? "进行中" : "已安排"].filter(Boolean).join(" · ")}</span></button>; })}</div>
     {selected !== undefined && (selected === null || item) ? <PersonalEditor key={actorId + ":" + (selected ?? "new")} item={item} client={client} onSaved={value => { setLastSaved(value); setSelected(value?.id); list.refresh(); }} /> : null}
   </section>;
