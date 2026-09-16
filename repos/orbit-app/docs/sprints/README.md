@@ -95,9 +95,9 @@ build/harness-logs/
 | [0043](0043-event-read-access-repair/GOAL.md) | 活动参会者与分析入口符合实际资格，合法读取成功、拒绝与服务错误明确 | C主包参会者404/分析500与403；R-04/R-09/R-14 | 已批准；C run-01先在已核验owner/无资格样本调查/TDD；真实attendee正例另核精确fixture，B验收期间不合产品/抢runtime | running |
 | [0044](0044-ai-conversation-readback-repair/GOAL.md) | AI新会话发送后可持久回读和续聊，不返回悬空成功会话 | D POST200后GET404；R-00/R-02/R-14 | 部分功能已合入；原生实际发送/重开通过，Web历史会话没有composer导致续聊失败，notes实际调用/源版本和原生失败恢复缺证据；REPORT已提交，run关闭 | failed |
 | [0045](0045-private-note-deletion/GOAL.md) | 确认删除私密笔记并传播到关联入口、镜像及新AI检索，不越权或复活 | D整条笔记无删除入口/API；R-13/R-14追加 | 新增目标实施指令、授权精确记录、0033/34删除接口与0036检索失效；建议D，未派发 | planned |
-| [0046](0046-repeatable-functional-acceptance/GOAL.md) | 用正确主包与隔离有效样本补齐交互矩阵，失效通知来源安全提示 | 用户实际交互要求、B/C错包与C/D样本缺口；R-11/R-14 | 样本目标/权限/清理先核验；最终矩阵依赖0042～45及0033～36必需版本；建议空闲A/E，未派发 | planned |
+| [0046](0046-repeatable-functional-acceptance/GOAL.md) | 用正确主包与隔离有效样本补齐交互矩阵，失效通知来源安全提示 | 用户实际交互要求、B/C错包与C/D样本缺口；R-11/R-14 | E run-01先准备运行身份检查和fixture dry-run；真实样本目标/权限/清理另核，最终矩阵依赖0042～45及0033～36必需版本 | running |
 
-2026-09-16按用户“总结B/C/D报告后设计sprints”新增[中文汇总与追加计划](SIMULATOR_REMEDIATION_PROGRAM.md)，随后用户明确“42～46开始修复”及“请继续”，五项实施批准已满足。0042已收口completed，0044已交failed报告并关闭原run，0043继续唯一run-01；0045/0046获准排队run_count=0，尚无REPORT。全域离线9/9失败继续映射0033～0036原契约，不另建重复缓存Sprint；不修改其冻结Planner或把规划当作修复完成。
+2026-09-16按用户“总结B/C/D报告后设计sprints”新增[中文汇总与追加计划](SIMULATOR_REMEDIATION_PROGRAM.md)，随后用户明确“42～46开始修复”及“请继续”，五项实施批准已满足。0042已收口completed，0044已交failed报告并关闭原run，0043及0046继续各自唯一run-01；0045获准排队run_count=0，尚无REPORT。全域离线9/9失败继续映射0033～0036原契约，不另建重复缓存Sprint；不修改其冻结Planner或把规划当作修复完成。
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
 
@@ -499,7 +499,7 @@ build/harness-logs/
 
 0042/0044初期集成检查点：功能合入`chat-agent`的`f0d747730037f0f9020297cd47aea37b17c9d489`；Web定向42/42、App27/27。该树Web全量曾失败：3558项、3359通过、23失败、176跳过，20旧失败、3新增名称；本地测试自行加载`.env.local`并实际连接PG，不能记为隔离或全绿。C原run证据保留逐名对照/loader映射/只读审计；两个PG新增失败所涉源码本轮未修改，无before快照不能保证业务未变。B关联旧认证断言第一轮修复后6完整文件41/41，主线补充两完整文件15/15，未重全量。当时两Sprint均running；最新0042收口及0044未满足项见各run条目，旧失败不因局部修复或文档整合改为通过。
 
-获准排队：0045由D接续并复用 `codex/sprint-0033-note-delete` 的 `03bfe4aa5` 墓碑能力，0046准备及最终验收由空闲A/E领取；两项尚无Generator run，不提前生成REPORT。0045原子sharedstore依赖0033尚未合入的sync写锁migration；精确main dev PG只读catalog确认当前函数不存在，不能盲合导致现有upsert失效；UI及其他独立准备与此依赖分开。
+获准排队：0045由D接续并复用 `codex/sprint-0033-note-delete` 的 `03bfe4aa5` 墓碑能力，尚无Generator run；0046现由E领取先准备，最终验收依赖单列，不提前生成REPORT。0045原子sharedstore依赖0033尚未合入的sync写锁migration；精确main dev PG只读catalog确认当前函数不存在，不能盲合导致现有upsert失效；UI及其他独立准备与此依赖分开。
 
 0043关联范围协调：PhoneWeb任务独占PW-0009的EventsScreen历史筛选、专属演示活动日期以及EventDetailScreen仅真正public NOT_FOUND且已登录时的既有auth详情读取接线（已实测auth200/public404）。0043不重复该详情fallback，仍调查参会者/分析资格、权威来源与正确错误态；PhoneWeb固定SHA交接后在主线复验。不修改public_code/alias、不扩权，32110由PhoneWeb任务独占，32100重启仍需串行协调。
 
@@ -511,3 +511,10 @@ build/harness-logs/
 - 先独占Planner内App参会者/分析consumer及Web对应handlers/资格适配器/实际service与直接测试，按根因逐符号impact后TDD。0033活动源及通用sync、0044所有会话/runtime/App AI、PhonePW0010 reader/AI契约/会话UI、i18n和共享contract生成边界不并行改；必要新增文件登记用途/SC后实施，不增加审批循环。
 - B持DA/main actor/共享runtime与付费窗口期间，C仅独立分支源码/定向测试和已批准只读元数据调查；不操控主包/共享浏览器、不API业务写、不自行停启3000/8082/Phone、不合产品到root。需同版本真实验收/fixture时等根明确释放，固定SHA交接后根merge→生产build/restart→实际操作→报告/主线闭环。
 - B0044现已释放全部窗口；C恢复原未结束run而非再生成。统一图实际元数据已更新至`1f2c697ac`/2026-09-16T09:17:08.460Z，原进程句柄消失不等于分析失败；核查无活analyze且命令exit0 Already up to date，驻留MCP列表缓存须与disk元数据区分。新增资格CTA模块`src/screens/events/EventAttendeeRosterLink.tsx`及EventDetailCard最小接线获准，避开Phone public404 fallback。注册wrapper12直接caller/21symbols按技能HIGH已报告，最小503异常保护不改资格并覆盖传递消费者；event_02配置head精确只读count0，不写配置或扩权。
+
+### 0046 / run-01
+
+- 开始登记：2026-09-16T19:06+09:00；唯一Generator管理任务内E支线`/root/e_sprint0046`，GPT-5.6 Sol / medium；工作树`.worktrees/sprint-0046-repeatable-functional-acceptance`，分支`codex/sprint-0046-repeatable-functional-acceptance`，产品基线`434219a8cf3a188a4c43f31b5d06a72d0af7bfc5`，tracked干净，复用现有依赖symlink，不复制.env。
+- 冻结Planner SHA256 `7241cd46081fe55894df4ae5fe543989af000dd6c08dce4f36489fb1f25f2279`。先独占`repos/orbit-app/scripts/verify-simulator-runtime-identity.mjs`、`repos/orbits/scripts/prepare-simulator-acceptance-fixtures.ts`及其直接确定性测试；新增测试路径由E追踪登记SC01/02后实施，脚本默认只读/dry-run，实际样本写入必须明确精确目标和cleanup批准。既有通知失效consumer先只读调查，后续必要产品切片另核与0033/Phone文件锁，不重做活动/AI/笔记产品。
+- 基线Web两个完整notification-source/cutover文件3/3；App完整typed-notification-inbox3/3，均exit0。App首次裸tsx命令未带项目render hook导致依赖JSX转换失败，按既有package test入口补hook后通过，非产品修复，不隐藏历史。
+- 主机18:46重启后ROOT已恢复mainWeb同426产物PID7578/live200及Metro8082PID7582/running；Phone服务暂未恢复，待A固定PW0010统一编译。E不控制共享服务/设备/浏览器/账号或DB写入，不安装新框架、不provider出站、不重置账本。最终SC04矩阵等待0042～45和0033～36必需接口，缺项只阻对应动作；本地准备不冒充最终原生/离线验收。
