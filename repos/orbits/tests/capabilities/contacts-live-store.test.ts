@@ -14,6 +14,46 @@ import {
 } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 import { defaultMockFixtures } from "../../shared/mock/fixtures";
+import { contactsPayloadViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
+import { contactsRouteToOrbitContactsViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-view-model-adapter";
+
+test("stored pending exchange survives live list and Web mapping without entering canonical status filters", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const workspaceId = "test:pending-list";
+  const actorId = "owner:one";
+  const rows = [
+    { id: "pending-captured", stage: "captured", lifecycleInitialization: "pending" },
+    { id: "pending-active", stage: "active", lifecycleInitialization: "pending" },
+    { id: "pending-nurture", stage: "nurture", lifecycleInitialization: "pending" },
+    { id: "ordinary-active", stage: "active" },
+    { id: "ordinary-captured", stage: "captured" },
+    { id: "ready-active", stage: "active", lifecycleInitialization: "ready" },
+    { id: "other-owner", stage: "captured", lifecycleInitialization: "pending" },
+  ];
+  for (const row of rows) {
+    await store.upsertRecord({ ...activeRecord({ collectionName: "contacts", targetType: "contact", workspaceId, searchText: row.id,
+      payload: { ...row, displayName: row.id, source: { type: "event_import", id: "event:qa" }, evidenceIds: ["evidence:qa"], createdAt: "2026-09-17T00:00:00Z", updatedAt: "2026-09-17T00:00:00Z" } }), userId: row.id === "other-owner" ? "owner:other" : actorId });
+  }
+  const provider = createStorageContactGraphProvider({ store, workspaceId });
+  const service = createLiveContactsListSearchAndFilterService({ provider });
+  const result = await service.listContacts({ actorId });
+  assert.equal(result.success, true);
+  assert.equal(result.data.contacts.length, 6);
+  assert.equal(result.data.contacts.find(contact => contact.id === "pending-captured")?.lifecycleInitialization, "pending");
+  const counts = Object.fromEntries(result.data.availableFilters.statuses.map(status => [status.value, status.count]));
+  assert.deepEqual(counts, { active: 2, needs_follow_up: 1, nurture: 0, archived: 0 });
+  for (const status of ["active", "needs_follow_up", "nurture", "archived"] as const) {
+    const filtered = await service.listContacts({ actorId, statusFilters: [status] });
+    assert.equal(filtered.success, true);
+    if (filtered.success) assert.ok(filtered.data.contacts.every(contact => !contact.id.startsWith("pending-")));
+  }
+  const payload = contactsPayloadViewModel({ payload: result.data, reviewActionRequested: false });
+  const web = contactsRouteToOrbitContactsViewModel({ state: "success", payload });
+  assert.equal(web.connections.filter(contact => contact.pipelineStatus === "pending_initialization").length, 3);
+  assert.equal(web.connections.filter(contact => contact.pipelineStatus === "in_progress").length, 2);
+  assert.equal(web.connections.find(contact => contact.id === "ordinary-captured")?.pipelineStatus, "to_contact");
+  assert.equal(payload.ledger.needsAttention, 1);
+});
 
 function activeRecord(input: {
   collectionName: string;

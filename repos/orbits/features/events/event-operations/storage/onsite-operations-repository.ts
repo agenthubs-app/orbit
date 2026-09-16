@@ -1,10 +1,9 @@
 import { createHash } from "node:crypto";
 
 import type {
-  ConnectionDTO,
-  ContactDTO,
   RelationshipEvidenceDTO,
 } from "../../../../shared/domain/contracts";
+import { contactFor, connectionFor } from "../relationship-acquisition";
 import {
   EventOperationsError,
   type EventContactRequest,
@@ -212,77 +211,6 @@ async function readContactRequestForViewer(input: {
   return result.rows[0] ? contactRequestFromSafeRow(result.rows[0]) : null;
 }
 
-function contactFor(input: {
-  evidenceId: string;
-  eventId: string;
-  ownerActorId: string;
-  participant: EventOperationsParticipant;
-  timestamp: string;
-}): ContactDTO {
-  return {
-    createdAt: input.timestamp,
-    displayName: input.participant.displayName,
-    evidenceIds: [input.evidenceId],
-    id: `contact:event-consent:${digest(
-      input.eventId,
-      input.ownerActorId,
-      input.participant.actorId,
-    )}`,
-    organization: input.participant.company ?? undefined,
-    personId: input.participant.actorId,
-    profileSnippet: [
-      ...input.participant.offers.map((value) => `Offers: ${value}`),
-      ...input.participant.needs.map((value) => `Needs: ${value}`),
-    ].join(" · "),
-    publicProfile: {
-      industry: input.participant.industry ?? undefined,
-      offering: input.participant.offers,
-      seeking: input.participant.needs,
-      topics: input.participant.topics,
-    },
-    role: input.participant.role ?? undefined,
-    source: {
-      id: input.eventId,
-      label: "Accepted event business-card request",
-      type: "event_import",
-    },
-    stage: "active",
-    updatedAt: input.timestamp,
-  };
-}
-
-function connectionFor(input: {
-  contact: ContactDTO;
-  evidenceId: string;
-  eventId: string;
-  ownerActorId: string;
-  participant: EventOperationsParticipant;
-  timestamp: string;
-}): ConnectionDTO {
-  return {
-    accountId: input.ownerActorId,
-    contactId: input.contact.id,
-    createdAt: input.timestamp,
-    evidenceIds: [input.evidenceId],
-    id: `connection:event-consent:${digest(
-      input.eventId,
-      input.ownerActorId,
-      input.participant.actorId,
-    )}`,
-    relationshipStrength: 55,
-    sharedTopics: input.participant.topics,
-    source: {
-      id: input.eventId,
-      label: "Mutually accepted event connection",
-      type: "event_import",
-    },
-    stage: "active",
-    suggestedActions: ["Follow up on the mutually accepted event connection."],
-    summary: `Mutual business-card consent at event ${input.eventId}.`,
-    updatedAt: input.timestamp,
-    valueTypes: ["community_context", "knowledge_exchange"],
-  };
-}
 
 async function insertOutbox(input: {
   aggregateId: string;

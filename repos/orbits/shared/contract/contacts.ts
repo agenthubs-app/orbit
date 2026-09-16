@@ -71,6 +71,8 @@ export interface ContactListItemContract {
   tags: readonly ContactTagFilterCode[];
   value: ContactRelationshipValueContract;
   status: ContactStatusFilterCode;
+  /** Acquisition state only; pending is not a canonical relationship stage. */
+  lifecycleInitialization?: "pending" | "ready";
   primaryIndustryId?: IndustryIdCode;
   primaryIndustryLabel?: string;
   secondaryIndustryId?: SecondaryIndustryIdCode;

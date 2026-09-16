@@ -267,6 +267,7 @@ function contactFromRecord(
         }
       : undefined,
     stage: payload.stage,
+    lifecycleInitialization: payload.lifecycleInitialization === "pending" || payload.lifecycleInitialization === "ready" ? payload.lifecycleInitialization : undefined,
     source,
     evidenceIds: ids,
     createdAt: payload.createdAt,

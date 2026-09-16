@@ -114,6 +114,7 @@ function PipelineCard({
 }
 
 const cdotByStatus: Record<OrbitContactPipelineStatus, string> = {
+  pending_initialization: "nc-cdot-pending",
   archived: "nc-cdot-archived",
   to_contact: "nc-cdot-amber",
   in_progress: "nc-cdot-sky",
@@ -121,6 +122,7 @@ const cdotByStatus: Record<OrbitContactPipelineStatus, string> = {
 };
 
 const LOCAL_STYLES = `
+[data-orbit-real-page="contacts-pipeline"] .nc-cdot-pending { background:var(--text-2); }
 [data-orbit-real-page="contacts-pipeline"] .nc-readonly { display:flex; align-items:center; gap:7px; max-width:520px; padding:9px 12px; border-radius:var(--r-md); background:var(--surface-2); border:1px solid var(--hairline); color:var(--text-3); font-size:12.5px; line-height:1.4; }
 [data-orbit-real-page="contacts-pipeline"] .nc-readonly svg { color:var(--accent); flex-shrink:0; }
 [data-orbit-real-page="contacts-pipeline"] .nc-kanban { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; align-items:start; }

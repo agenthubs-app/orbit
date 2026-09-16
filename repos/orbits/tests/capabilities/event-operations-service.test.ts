@@ -593,6 +593,29 @@ test("business-card requests are individual and create bilateral records only af
   );
   assert.ok(requesterRequest?.contactId);
   assert.notEqual(requesterRequest.contactId, accepted.contactId);
+  const sides = await harness.repository.listAcceptedRelationshipSides({ eventId, ownerActorId: "actor:akira" });
+  assert.equal(sides.length, 1);
+  const otherSides = await harness.repository.listAcceptedRelationshipSides({ eventId, ownerActorId: "actor:mei" });
+  assert.equal(otherSides.length, 1);
+  assert.equal(otherSides[0].contact.id, accepted.contactId);
+  assert.equal(sides[0].contact.id, requesterRequest.contactId);
+  for (const side of [...sides, ...otherSides]) {
+    assert.equal(side.contact.stage, "captured");
+    assert.equal(side.connection.stage, "captured");
+    assert.equal(side.contact.version, 1);
+    assert.equal(side.connection.version, 1);
+    assert.equal(side.contact.lifecycleInitialization, "pending");
+    assert.equal(side.connection.lifecycleInitialization, "pending");
+    assert.equal(side.connection.suggestedActions, undefined);
+    assert.equal(side.connection.relationshipStrength, undefined);
+    assert.deepEqual(side.connection.valueTypes, ["community_context"]);
+    assert.equal("activeGoal" in side.connection, false);
+    assert.equal("nextFollowup" in side.connection, false);
+  }
+  sides[0].contact.stage = "active";
+  await harness.service.respondToContactRequest({ accept: true, actorId: "actor:mei", expectedRevision: request.revision, eventId, requestId: request.requestId });
+  assert.equal((await harness.repository.listAcceptedRelationshipSides({ eventId, ownerActorId: "actor:akira" }))[0].contact.stage, "captured");
+  assert.deepEqual(await harness.repository.listAcceptedRelationshipSides({ eventId, ownerActorId: "actor:outsider" }), []);
   assert.deepEqual(Object.keys(accepted).sort(), [
     "acceptedAt",
     "contactId",

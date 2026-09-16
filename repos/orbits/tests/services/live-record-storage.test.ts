@@ -31,6 +31,15 @@ const baseRecord: LiveRecord<{ title: string; startsAt: string }> = {
   },
 };
 
+test("insert-if-absent never overwrites existing records including tombstones", () => {
+  const store = createMemoryLiveRecordStore();
+  assert.deepEqual(store.insertRecordIfAbsent(baseRecord), baseRecord);
+  assert.equal(store.insertRecordIfAbsent({ ...baseRecord, payload: { changed: true } }), null);
+  const deleted = store.deleteRecord({ ...baseRecord, deletedAt: "2026-07-03T00:00:00.000Z" });
+  assert.equal(store.insertRecordIfAbsent(baseRecord), null);
+  assert.deepEqual(store.getRecord({ ...baseRecord, includeDeleted: true }), deleted);
+});
+
 test("memory live record store isolates payloads and filters by workspace collection and record id", () => {
   const store = createMemoryLiveRecordStore([baseRecord]);
 

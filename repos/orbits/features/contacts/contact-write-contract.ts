@@ -133,6 +133,11 @@ export type ContactRecordWriteProvider = BusinessCardContactWriteProvider;
 
 export interface RelationshipRecordWriteProvider
   extends ContactRecordWriteProvider {
+  /** Acquisition projection only: atomically insert missing records, never replace existing data. */
+  initializeAcquiredRelationship?(
+    value: { contact: ContactDTO; connection: ConnectionDTO },
+    actorId: string,
+  ): Promise<void>;
   getConnection(
     connectionId: string,
     actorId: string,

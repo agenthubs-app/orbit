@@ -1,4 +1,5 @@
 import { StateView } from "../../../../../shared/ui/state-view";
+import { hasPendingInitialization } from "../contact-relationship-initialization-view-model";
 import { industryLabel, isIndustryIdCode } from "../../../../../shared/domain/industries";
 import type {
   OrbitContactView,
@@ -165,15 +166,15 @@ function contactToOrbitView(
       : [],
     offering,
     phone: "",
-    pipelineStatus: pipelineStatusForContact(contact),
+    pipelineStatus: hasPendingInitialization(contact) ? "pending_initialization" : pipelineStatusForContact(contact),
     seeking,
     source: sourceKindForContact(contact),
-    stage: contact.statusLabel,
+    stage: hasPendingInitialization(contact) ? "待设置关系" : contact.statusLabel,
     title: contact.role,
     wechat: "",
     strength: strengthForContact(contact),
     valueTags: Array.from(contact.relationshipValueLabels).slice(0, 3),
-    nextAction: nextActionForContact(contact),
+    nextAction: hasPendingInitialization(contact) ? null : nextActionForContact(contact),
     lastInteraction: "",
     dormant: false,
   };
@@ -194,6 +195,7 @@ export function contactsRouteToOrbitContactsViewModel(
     })),
     intros: [],
     pipelineStatuses: [
+      ...(payload.contacts.some(hasPendingInitialization) ? [{ value: "pending_initialization" as const, label: "待设置关系" }] : []),
       { value: "to_contact", label: "待联系" },
       { value: "in_progress", label: "在推进" },
       { value: "partnered", label: "已合作" },

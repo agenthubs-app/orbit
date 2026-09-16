@@ -334,6 +334,23 @@ export function createPostgresLiveRecordStore<
       return result.rows.map((row) => rowToRecord<TPayload>(row));
     },
 
+    async insertRecordIfAbsent(record: LiveRecord<TPayload>): Promise<LiveRecord<TPayload> | null> {
+      const result = await client.query<PostgresLiveRecordRow>(
+        `
+          insert into orbit_records (${recordColumns})
+          values (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+            $11, $12, $13, $14, $15, $16, $17, $18, $19
+          )
+          on conflict (workspace_id, collection_name, record_id)
+          do nothing
+          returning ${recordColumns}
+        `,
+        recordValues(record),
+      );
+      return result.rows[0] ? rowToRecord<TPayload>(result.rows[0]) : null;
+    },
+
     async upsertRecord(record: LiveRecord<TPayload>): Promise<LiveRecord<TPayload>> {
       const result = await client.query<PostgresLiveRecordRow>(
         `

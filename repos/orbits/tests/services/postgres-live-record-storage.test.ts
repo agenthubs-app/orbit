@@ -82,6 +82,18 @@ function createFakeSqlClient(
   };
 }
 
+test("insert-if-absent uses one atomic SQL statement and never updates on conflict", async () => {
+  const client = createFakeSqlClient([[rowFromRecord(baseRecord)], []]);
+  const store = createPostgresLiveRecordStore({ client });
+  assert.deepEqual(await store.insertRecordIfAbsent!(baseRecord), { ...baseRecord, deletedAt: null });
+  assert.equal(await store.insertRecordIfAbsent!(baseRecord), null);
+  assert.equal(client.calls.length, 2);
+  for (const call of client.calls) {
+    assert.match(call.text, /on conflict \(workspace_id, collection_name, record_id\)\s+do nothing/i);
+    assert.doesNotMatch(call.text, /do update|select /i);
+  }
+});
+
 test("orbit records migration can run through an async SQL client", async () => {
   const client = createFakeSqlClient();
 

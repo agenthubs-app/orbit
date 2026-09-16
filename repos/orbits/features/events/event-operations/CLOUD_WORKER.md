@@ -21,3 +21,10 @@ Queue 的 retention 为 7 天，发送使用唯一 idempotency key；数据库 l
 - <https://vercel.com/docs/queues/sdk>
 
 正式验收仍需在部署后由主办方执行“生成→等待进度→原子发布”，再由参与者刷新读取；本文件和单元测试不替代线上执行证据。
+# 交换接受后的采集投影边界
+
+- 交换仅确认双方认识。Postgres 与 memory/mock 接受路径共用 `relationship-acquisition.ts`，生成双方独立的 `captured` Contact/Connection，`version: 1`、`lifecycleInitialization: 'pending'`，不生成目标、下一步、截止日期、任务或关系强度；`valueTypes` 仅保留来源事实 `community_context`，不推断知识交换价值。`captured` 是既有采集态，不是第五个 canonical 关系阶段。
+- `event_ops_relationship_sides` 和 outbox 保留不可变接受快照。用户后续按 contactId 各自显式初始化，只修改自己的 `orbit_records`，不反写接受快照。
+- `event.relationship_side.project` 将旧排队的 `active` payload 也归一化为 pending，并移除 lifecycle 目标/下一步字段。共享 provider 的可选 `initializeAcquiredRelationship` 通过 `insertRecordIfAbsent` 原子插入（Postgres `ON CONFLICT DO NOTHING`），没有普通 upsert 回退。
+- 同 owner 已有记录（包括 ready、用户编辑、归档、软删除）全部保留；冲突后核验存储 `userId`，异 owner 或不匹配 connection 必须失败，不能将投影标成成功。部分失败允许重放补齐缺失一侧记录，但不会覆盖已存在的记录。两种 store 的普通 upsert 行为不变。
+- 已经落库的旧 active/无版本数据不会由重放偷偷修复，需独立、精确的初始化/数据修复流程；pending 不因此绕过严格 preflight。旧 matchmaking 写路由继续 410，不恢复旧的默认进入 active 行为。

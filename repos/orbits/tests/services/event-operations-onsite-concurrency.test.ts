@@ -13,6 +13,16 @@ import { runEventOperationsMigrations } from "../../features/events/event-operat
 import { createEventOperationsPostgresClient } from "../../features/events/event-operations/storage/postgres-client";
 import { createPostgresEventOperationsRepository } from "../../features/events/event-operations/storage/postgres-repository";
 import type { EventRegistration } from "../../features/events/registration/contract";
+import { createEventOperationsOutboxProjector } from "../../features/events/event-operations/outbox-projector";
+import type { EventOperationsOutboxMessage } from "../../features/events/event-operations/storage/postgres-outbox-repository";
+import { createStorageBusinessCardContactWriteProvider } from "../../features/contacts/storage/contact-write-live-record-provider";
+import { createEventRegistrationLiveRecordProvider } from "../../features/events/registration/storage/live-record-provider";
+import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
+import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
+import { createTransactionalPostgresClient } from "../../shared/storage/transactional-postgres";
+import { runRelationshipLifecycleMigrations } from "../../features/connections/lifecycle/migrations";
+import { createRelationshipInitializationService } from "../../features/connections/lifecycle/initialization";
+import { assessRelationshipLifecycleMigration } from "../../features/connections/lifecycle/migration-preflight";
 
 const databaseUrl = process.env.ORBIT_EVENT_DATABASE_URL;
 
@@ -828,6 +838,67 @@ test(
         projection_outbox_count: "2",
         side_count: "2",
       });
+      const pendingSides = await scopedPool.query<{ side_payload: Record<string, Record<string, unknown>> }>(
+        `select side_payload from event_ops_relationship_sides side
+         join event_ops_relationship_pairs pair
+           on pair.relationship_pair_id = side.relationship_pair_id
+          and pair.workspace_id = side.workspace_id
+         where pair.request_id = $1`,
+        [acceptedRequest.requestId],
+      );
+      assert.equal(pendingSides.rows.length, 2);
+      for (const { side_payload: side } of pendingSides.rows) {
+        for (const shell of [side.contact, side.connection]) {
+          assert.equal(shell.stage, "captured");
+          assert.equal(shell.version, 1);
+          assert.equal(shell.lifecycleInitialization, "pending");
+          assert.equal(shell.activeGoal, undefined);
+          assert.equal(shell.nextFollowup, undefined);
+          assert.equal(shell.suggestedActions, undefined);
+          assert.equal(shell.relationshipStrength, undefined);
+        }
+        assert.deepEqual(side.connection.valueTypes, ["community_context"]);
+      }
+
+      // One real PostgreSQL chain: accepted writer -> durable outbox -> private
+      // acquisition projections -> explicit owner choice -> late outbox replay.
+      await scopedPool.query(ORBIT_RECORDS_SCHEMA_SQL);
+      await runRelationshipLifecycleMigrations(scopedPool);
+      const store = createPostgresLiveRecordStore({ client });
+      const projector = createEventOperationsOutboxProjector({
+        contactRequestNotifications: null,
+        relationshipProvider: createStorageBusinessCardContactWriteProvider({ store, workspaceId }),
+        registrationProvider: createEventRegistrationLiveRecordProvider({ store, workspaceId }),
+      });
+      const messages = await scopedPool.query<{ outbox_id: string; aggregate_id: string; payload: Record<string, unknown> }>(
+        "select outbox_id, aggregate_id, payload from event_ops_outbox where workspace_id=$1 and event_type='event.relationship_side.project' and payload ->> 'requestId'=$2 order by outbox_id", [workspaceId, acceptedRequest.requestId]);
+      const projectionMessages: EventOperationsOutboxMessage[] = messages.rows.map(row => ({
+        outboxId: row.outbox_id, aggregateId: row.aggregate_id, aggregateType: "event_relationship_side", eventId,
+        eventType: "event.relationship_side.project", payload: row.payload, attempts: 1, leaseEpoch: 1,
+        leaseToken: "test:projection", leaseExpiresAt: at(base, 10), workerId: "worker:integration",
+      }));
+      for (const message of projectionMessages) await projector.project(message);
+      const transactional = createTransactionalPostgresClient({ connectionString: databaseUrl, pool: scopedPool });
+      const initialization = createRelationshipInitializationService({ client: transactional, workspaceId });
+      const ownerChoices = [
+        { actor: "actor:a", contactId: requesterAccepted.contactId!, choice: { stage: "active" as const, activeGoal: "确认产品联调合作范围" } },
+        { actor: "actor:c", contactId: targetAccepted.contactId!, choice: { stage: "needs_follow_up" as const, nextTask: { taskId: "relationship-task:integration", title: "梳理双方的合作需求", dueAt: at(base, 1440) } } },
+      ];
+      for (const [index, owner] of ownerChoices.entries()) {
+        const pending = await initialization.read(owner.actor, owner.contactId);
+        assert.equal(pending.state, "pending");
+        if (pending.state !== "pending") throw new Error("Expected pending exchange");
+        const input = { expectedRevision: pending.revision, idempotencyKey: `integration:${owner.actor}`, choice: owner.choice };
+        const initialized = await initialization.initialize(owner.actor, owner.contactId, input);
+        assert.equal(initialized.snapshot.connection.version, 2);
+        if (index === 0) assert.equal((await initialization.read(ownerChoices[1].actor, ownerChoices[1].contactId)).state, "pending");
+        for (const message of projectionMessages) await projector.project(message);
+        assert.deepEqual(await initialization.read(owner.actor, owner.contactId), { state: "initialized", snapshot: initialized.snapshot });
+        assert.deepEqual(await initialization.initialize(owner.actor, owner.contactId, input), { ...initialized, replayed: true });
+        const records = (await Promise.all(["contacts", "connections", "tasks"].map(collectionName => store.listRecords({ workspaceId, collectionName, userId: owner.actor })))).flat();
+        assert.deepEqual(assessRelationshipLifecycleMigration({ actorId: owner.actor, workspaceId, records }).issues, []);
+      }
+      assert.equal((await store.listRecords({ workspaceId, collectionName: "tasks" })).length, 1);
 
       const rollbackRequest = await repository.createContactRequestAtomically({
         expectedRevision: null,

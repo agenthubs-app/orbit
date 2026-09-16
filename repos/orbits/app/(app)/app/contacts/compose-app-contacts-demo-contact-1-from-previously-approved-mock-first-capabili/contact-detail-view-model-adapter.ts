@@ -1,4 +1,5 @@
 import { industryLabel, isIndustryIdCode, secondaryIndustryLabel } from "../../../../../shared/domain/industries";
+import { hasPendingInitialization } from "../contact-relationship-initialization-view-model";
 import { CONTACT_DETAIL_TAG_OPTIONS } from "../../../../../features/contacts/detail-contract";
 import type {
   ContactDetailSourceReference,
@@ -416,6 +417,7 @@ export function contactDetailRouteToOrbitContactsViewModel(
   model: AppContactDetailSuccessModel,
   language: OrbitLanguage = "zh",
 ): OrbitContactsViewModel {
+  const pending = hasPendingInitialization(model.contact) || (model.connection !== null && model.connection !== undefined && hasPendingInitialization(model.connection));
   const eventId = eventIdFor(model);
   const eventName = displayText(eventNameFor(model, eventId), language);
   const notes = noteViews(model, language);
@@ -451,10 +453,10 @@ export function contactDetailRouteToOrbitContactsViewModel(
     notes,
     offering: displayTexts(model.contact.publicProfile.offering, language).join(", "),
     phone: model.contact.primaryPhone ?? "",
-    pipelineStatus: pipelineStatusFor(model.contact.status),
+    pipelineStatus: pending ? "pending_initialization" : pipelineStatusFor(model.contact.status),
     seeking: displayTexts(model.contact.publicProfile.seeking, language).join(", "),
     source: sourceFor(model.contact.source),
-    stage: model.contact.status,
+    stage: pending ? (language === "zh" ? "待设置关系" : "Pending initialization") : model.contact.status,
     title: displayText(model.contact.role, language),
     wechat: model.contact.wechatId ?? "",
     strength:
@@ -467,7 +469,7 @@ export function contactDetailRouteToOrbitContactsViewModel(
         : "unscored",
     valueTags: model.contact.tags.map((tag) => tagLabel(tag, language)),
     editableTags: model.contact.tags.map((tag) => ({ value: tag, label: tagLabel(tag, language) })),
-    nextAction: model.contact.nextAction
+    nextAction: !pending && model.contact.nextAction
       ? {
           text: displayText(model.contact.nextAction, language),
           reason: displayText(
@@ -502,6 +504,7 @@ export function contactDetailRouteToOrbitContactsViewModel(
       : [],
     intros: [],
     pipelineStatuses: [
+      ...(pending ? [{ value: "pending_initialization" as const, label: language === "zh" ? "待设置关系" : "Pending initialization" }] : []),
       { value: "to_contact", label: "待联系" },
       { value: "in_progress", label: "在推进" },
       { value: "partnered", label: "已合作" },

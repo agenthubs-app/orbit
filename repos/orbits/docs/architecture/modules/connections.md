@@ -18,6 +18,18 @@ Mock 服务基于 fixture 返回连接、证据、阶段和画像，并模拟添
 
 ## 四阶段生命周期基础
 
+### 2026-09-17：交换与本人关系初始化分离
+
+用户已确认：交换只确认认识，双方各自选择目标或下一步后，再进入正式关系阶段。`captured` 继续只表示采集／待本人设置，不是第五个 canonical 阶段。活动交换两侧投影携带 `lifecycleInitialization: pending` 与初始版本，不自动创建目标、日期或关系任务。旧 outbox 只补缺失记录，不覆盖已经编辑或初始化的记录。
+
+`GET/POST /api/contacts/:id/relationship-initialization` 根据当前登录 actor、已接受的活动交换及其本人侧记录鉴权；不把 ID 前缀、联系人来源文案或另一方的选择当作授权。GET 返回 pending + 内容修订哈希，或已初始化的 canonical 快照。POST 必须提供本人明确选择：推进需要非空目标；待联系／维系需要任务标题及 ISO 日期；归档不创建义务。没有默认选择或模型推断。
+
+初始化采用独立的 SERIALIZABLE 事务，校验页面读到的修订哈希，原子更新本人 Contact/Connection 版本、关系任务、来源证据、审计和幂等回执。并发只能一项成功，同键同请求重放首次快照，改请求冲突；失败全部回滚。完成后继续使用现有生命周期 API，不另建一套任务状态。不会发送消息、通知另一方或调用模型。
+
+兼容旧交换缺陷的范围仅限可验证 accepted side、无版本／无目标／无任务的旧 active 记录；GET 不改库，POST 仍要求本人显式选择。已版本化、已产生任务或身份不一致的异常记录不会被自动重置。全量 canonical 迁移预检保持严格：pending 采集关系并非已通过 canonical 初始化；完成选择后再验证正式阶段约束。
+
+共享类型与 Schema 已通过 `sync:contract` 同步到 App；本轮新增产品操作入口为 Web 联系人详情，App 原生初始化表单与真实同环境验收不冒充已完成。当前 Production 验收和部署版本见 Bridge BR-026。
+
 共享契约新增 `ConnectionStageCode`，domain 提供对应的 `ConnectionStage`、常量和校验函数，只接受 `needs_follow_up | active | nurture | archived`（待联系、推进中、维系中、已归档）。编译期断言检查契约与 domain 枚举一致，App 通过 `sync:contract` 同步类型。
 
 旧 `RelationshipStage` 六值类型及校验器保持不变，供现有读取路径和后续迁移解析使用。本阶段建立新类型、任务约束和原子持久化基础，不切换 Web/App 页面、Contacts 读取或阶段预览接口；这些路径仍须等待迁移与后续接入。

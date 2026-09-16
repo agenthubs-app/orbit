@@ -64,6 +64,7 @@ function createReadDedupedLiveRecordStore<
   TPayload extends Record<string, unknown>,
 >(store: LiveRecordStoreLike<TPayload>): LiveRecordStoreLike<TPayload> {
   const inflightReads = new Map<string, Promise<unknown>>();
+  const insertRecordIfAbsent = store.insertRecordIfAbsent?.bind(store);
 
   function once<TValue>(key: string, read: () => TValue | Promise<TValue>) {
     const existingRead = inflightReads.get(key) as Promise<TValue> | undefined;
@@ -84,6 +85,18 @@ function createReadDedupedLiveRecordStore<
   }
 
   return {
+    ...(insertRecordIfAbsent ? {
+      async insertRecordIfAbsent(record) {
+        inflightReads.clear();
+        try {
+          return await insertRecordIfAbsent(record);
+        } finally {
+          // Reads started while the insert was in flight must not be reused
+          // after completion, including a conflict or uncertain write failure.
+          inflightReads.clear();
+        }
+      },
+    } satisfies Pick<LiveRecordStoreLike<TPayload>, "insertRecordIfAbsent"> : {}),
     deleteRecord(input) {
       inflightReads.clear();
 

@@ -23,3 +23,17 @@ export interface RelationshipTaskSummary {
   status: "open" | "scheduled" | "completed" | "dismissed";
   dueAt: string | null;
 }
+
+/** Acquisition is not a fifth canonical relationship stage. */
+export type RelationshipInitializationRead =
+  | { state: "pending"; revision: string; connectionId: string }
+  | { state: "initialized"; snapshot: RelationshipLifecycleSnapshotDTO };
+export type RelationshipInitializationChoice =
+  | { stage: "active"; activeGoal: string }
+  | { stage: "needs_follow_up" | "nurture"; nextTask: { taskId: string; title: string; dueAt: string } }
+  | { stage: "archived" };
+export interface RelationshipInitializationInput {
+  expectedRevision: string;
+  idempotencyKey: string;
+  choice: RelationshipInitializationChoice;
+}

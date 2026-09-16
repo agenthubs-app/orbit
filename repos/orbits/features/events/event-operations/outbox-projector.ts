@@ -90,6 +90,16 @@ function relationshipPayload(message: EventOperationsOutboxMessage): {
   };
 }
 
+function pendingAcquisition<T extends ContactDTO | ConnectionDTO>(value: T): T {
+  const pending = { ...value } as Record<string, unknown>;
+  // An acceptance snapshot can carry acquisition facts, never an owner's
+  // lifecycle goal or next-step/date authorization (including older messages).
+  for (const key of ["activeGoal", "goal", "nextFollowup", "nextAction", "suggestedActions", "relationshipStrength"]) {
+    delete pending[key];
+  }
+  return { ...pending, stage: "captured", version: 1, lifecycleInitialization: "pending" } as T;
+}
+
 function registrationPayload(message: EventOperationsOutboxMessage): EventRegistration {
   const payload = record(message.payload, "registration");
   requiredString(payload, "id");
@@ -249,16 +259,20 @@ export function createEventOperationsOutboxProjector({
 
         if (message.eventType === "event.relationship_side.project") {
           const value = relationshipPayload(message);
-          // Each upsert uses a deterministic canonical id. This order makes a
-          // partial provider failure replay-safe: evidence and contact can be
-          // overwritten with the same value before connection is retried.
+          if (!relationshipProvider.initializeAcquiredRelationship) {
+            throw new Error("Atomic relationship initialization is unavailable in this provider.");
+          }
+          // Consent is not a lifecycle choice. Normalize even old queued active
+          // snapshots, while insert-only persistence preserves subsequent choices.
+          // The authoritative side/outbox payload itself remains immutable.
+          const contact = pendingAcquisition(value.contact);
+          const connection: ConnectionDTO = { ...pendingAcquisition(value.connection), valueTypes: ["community_context"] };
           await relationshipProvider.saveEvidence(
             value.evidence,
             value.ownerActorId,
           );
-          await relationshipProvider.saveContact(value.contact, value.ownerActorId);
-          await relationshipProvider.saveConnection(
-            value.connection,
+          await relationshipProvider.initializeAcquiredRelationship(
+            { contact, connection },
             value.ownerActorId,
           );
           return {
