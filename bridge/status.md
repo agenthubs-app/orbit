@@ -1,5 +1,9 @@
 # 两端当前状态
 
+## 2026-09-16 P0 修复增量
+
+Production 运行源码 `105ebba4d` / `dpl_2FjxtX314B6DRojeZvFbdDF8gTNh` 为 Ready：iOrbit 66 人脉/66 跟进、个人日程保存/刷新、AI 实际查询标题及 open 状态通过。Web Tasks 显示 66 当前/14 历史跟进；另一主办方为 0，保持 owner 隔离。跟进仍为只读可见性，不把旧 task 包一层变成普通待办；完整 lifecycle 完成入口及原生同环境回读仍开放。版本及验收见 [BR-025](2026-09-16-production-p0-fixes.md)，后续只做 [最小必要清单](../docs/designs/2026-09-16-cloud-goal-remaining.md)。
+
 ## 2026-09-16 Production 测试数据增量
 
 用户授权将合成 fixture 用于 Production 测试；正式 Web 已连接 Neon Production 的 `workspace:orbit-demo-fixtures`，完成空库事务导入、逐表校验、主办方登录与参与者权限隔离。App 本机 API 地址已指向正式网址，但原生构建受当前 Swift/Expo 依赖兼容性阻塞，不能记为跨端 verified。主办方身份去重、可报名测试活动及精确证据见 [本次交接](2026-09-16-production-fixture-testing.md)。此前 schema-only / 未部署状态为历史，不能替代此记录。

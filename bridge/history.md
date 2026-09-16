@@ -1,5 +1,13 @@
 # Bridge 历史记录
 
+## 2026-09-16 — Production P0 修复与必要项收敛
+
+- `6f844ea47` 修复 Web/Agent raw subject 与 canonical 账号混用及 query 搜索参数；Production iOrbit 数量与原有个人日程保存回读通过。
+- `6597d8de8` 修正测试时区和旧 provider 结构断言；`40b63d218` 补 AI 查询事实回显，不增加业务写入或模型调用预算。
+- 旧人脉任务保留 lifecycle outcome 语义，Web 可见性与两端实际处理分别验收。原生工具链、云端 event worker、笔记/提醒样本和新账号流程仍为具体开放项，不再要求不存在的历史源库。
+- 最新证据和部署边界统一记入 [BR-025](2026-09-16-production-p0-fixes.md)，不把本地测试或一次发布当作整体目标完成。
+- 收尾：`105ebba4d` / `dpl_2FjxtX314B6DRojeZvFbdDF8gTNh` 已发布为 Ready；正式站当前 66/历史 14、另一账号 0、AI 实际标题/状态回显与云端会话保存、个人日程回读通过。测试合成数据保留，没有清库或外发消息。
+
 ## 2026-09-15 — Sprint 0029 数据权威与 AI 只读面
 
 - authority registry、push device identity、canonical schedule service 与四个 actor-scoped AI query tool 已按 A–E 轨提交；Web/App contract 同步。

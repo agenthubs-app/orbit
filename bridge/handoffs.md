@@ -10,6 +10,7 @@
 
 | ID | 优先级 | 事项 | 当前状态 | 下一责任方 | 关闭条件 |
 | --- | --- | --- | --- | --- | --- |
+| [BR-025](2026-09-16-production-p0-fixes.md) | P1 | Production 身份、AI 查询回显、关系跟进可见性 | source_ready | Web/Bridge；App 生命周期与原生验收仍开放 | Web 最终部署实测、关系下一步语义一致、原生 Production 同记录回读 |
 | BR-001 | P1 | Today 同名但数据与动作集合不同 | identified | Bridge 梳理，Web/App 接口负责人协作 | 逐项映射账本/安排/任务；实现或有依据接受差异；双向验证 |
 | BR-002 | P1 | Agent 高级设置移动缺口 | identified | Bridge + App，Web 提供 HTTP 边界 | memory/feedback/automations/preferences 覆盖方案及逐操作验收 |
 | BR-003 | P1 | 会话历史操作与持久化确认 | verified | 已完成；0005/0006 可消费 | 同账号 Web/App 组织、删除、刷新及 iOS 失败反馈证据齐全 |

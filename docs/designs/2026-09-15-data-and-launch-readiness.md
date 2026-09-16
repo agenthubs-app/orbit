@@ -1,5 +1,7 @@
 # Orbit 数据整理与上线准备
 
+> 最新执行入口：[修复与最小剩余清单（2026-09-16）](2026-09-16-cloud-goal-remaining.md)。以下保留阶段证据，不以旧状态覆盖新验收。当前 66 条关系跟进仍属于要求 outcome 的生命周期事实，不直接转换成普通待办；列表可见性与跨端操作闭环分别验收。
+
 ## 当前执行计划（2026-09-16 用户确认后修订）
 
 用户已明确：没有真实历史业务数据，只有可重建的 mock/fixture。2026-09-16 最新授权是先把现有云端 Demo 数据复制到 Neon Production，供正式网址和 App 测试，正式对外上线前再清理全部测试数据。运行时使用 live 服务和云端持久化；数据来源仍标为 fixture，不冒充真实用户历史。旧源库连接、历史备份恢复、历史迁移 manifest 和源库迁移 dry-run 全部不适用，不再作为前置条件。本文后面的旧迁移方案仅保留为历史讨论；执行以本节为准。
@@ -7,18 +9,18 @@
 | 顺序 | 必须完成的工作 | 当前状态与验收标准 |
 | --- | --- | --- |
 | P0-0 | 固定共同环境 | 当前切换目标为 Neon Production `br-shy-rain-b3281a9u`，保留测试 workspace `workspace:orbit-demo-fixtures`；正式网址 `https://orbit-puce-kappa.vercel.app`；App 仅经同一 HTTP API，不直连 Neon。 |
-| P0-1 | 校验并整理 mock 的身份、引用和时间 | 13 个主办方重复身份已对齐，26 条旧 account/profile 可恢复停用；主账号 66 contacts/66 有效 connections/66 当前 tasks，14 重复任务撤销、384 重复关系和 66 旧分析可恢复停用。正式 lifecycle preflight 为 0 issues、canonical projection 66；保留历史 evidence 和原日期语义，不覆盖用户修改。未来测试活动独立新增。 |
+| P0-1 | 校验并整理 mock 的身份、引用和时间 | 13 个主办方重复身份已对齐，26 条旧 account/profile 可恢复停用；主账号 66 contacts/66 有效 connections/66 当前关系任务（仍为 lifecycle 旧格式），14 重复任务撤销、384 重复关系和 66 旧分析可恢复停用。正式 lifecycle preflight 为 0 issues、canonical projection 66；不等于 generic tasks API 已接收旧关系任务。保留历史 evidence 和原日期语义，未来测试活动独立新增。 |
 | P0-2 | 可重复初始化并回读 | 13 个公开活动激活审计已补齐，重复激活保留基线不变；64 个活跃报名、6 条取消历史。Production 已完成 56 张业务表原子复制与逐表 SHA-256 回读：共 9,217 行（其中 orbit_records 8,703），迁移账本未覆盖。8,365 仅为旧生成 fixture 子集。 |
 | P0-3 | 登录及主办方/参与者流程 | Production 主办方登录/后台 64 人、独立参与者账号拒绝进入后台通过。新增活动报名→取消→重新报名复用同一报名 ID；刷新保留原始回答。主测试登录 `demo-owner@orbit.example.test` 经 auth-membership 使用既有主账号，浏览器读到 66 位联系人。 |
-| P0-4 | Web ↔ App 双向回读 | App `.env.local` 已固定 Production API；Web 已读到迁入的 App client 测试任务。当前原生验收受本机 Swift 6.2.1 与 expo-modules-jsi 的 `weak let` 编译错误阻塞（15 errors）；Expo Go 缺少 ExpoAsset；App 浏览器版受跨域限制。没有降低生产保护，也不声称原生双向已通过。 |
+| P0-4 | Web ↔ App 双向回读 | App `.env.local` 已固定 Production API；Web 已读到迁入的 App client 测试任务。当前原生验收受本机 Xcode 26.1.1 / Swift 6.2.1 与 expo-modules-jsi 的 `weak let` 编译错误阻塞（旧日志 16 条诊断）；Expo Go 缺少 ExpoAsset；App 浏览器版受跨域限制。没有降低生产保护，也不声称原生双向已通过。 |
 
 只保留上述必要工作。AI 派生结果不能冒充人工事实；测试数据通过独立 workspace 和原 provenance 保持可辨识。已结束活动保留结束语义，可报名场景应另有明确的测试活动和时间窗口。正式接收真实用户数据之前必须清理测试 workspace（包含测试时新增数据）、确认业务空库并配置正式 workspace 与备份；本次不提前执行清理。
 
-当前 Production：`dpl_5JaVX9ko5phE3T4cdFTGcmmcMFxs`，[正式测试站](https://orbit-puce-kappa.vercel.app)。运行源码对应 `b7e1f43e6` 的激活审计、主办方身份对齐和 Web 取消修复；构建、typecheck 与该轮 19 项组合通过。以前的 Preview 仅保留为历史，不是当前统一测试入口。测试账号密码仅在本机受限文件 `/Users/li/.config/orbit/demo-fixtures.env`，主登录、主办方及参与者账号都使用该测试密码。
+当前 Production：`dpl_2FjxtX314B6DRojeZvFbdDF8gTNh` / 运行源码 `105ebba4d`，[正式测试站](https://orbit-puce-kappa.vercel.app)。在既有激活审计、主办方身份和取消修复基础上，已补 canonical 身份、AI 查询事实回显和关系跟进只读可见性；精确提交、回归和线上证据见 [最新清单](2026-09-16-cloud-goal-remaining.md)。以前的 Preview 和 `dpl_5JaVX9ko5phE3T4cdFTGcmmcMFxs` 保留为历史，不是当前统一测试入口。测试密码仅在本机受限文件 `/Users/li/.config/orbit/demo-fixtures.env`。
 
 本轮追加完成：关系投影代码 `1f9cca960`，662 条更新先备份后事务提交、回读零问题，正式 Web 列表/详情复验通过；46 项定向回归和 typecheck 通过。备份：`/Users/li/.config/orbit/production-test-2026-09-16/pre-relationship-consolidation.json`。此次仅追加 seed/验证脚本和云端测试数据整理，Web 运行源码未变，无需为该数据更新重新发布。GitNexus query/impact/detect-changes 仍 SIGSEGV，已补源码和定向测试，不能声称图分析通过。
 
-并行测试增量（2026-09-16）：Luna max 子代理分别核查活动 worker、App 与 Production 数据，主代理执行 Web 实操。发现 iOrbit/个人日程页使用 raw 登录主体而非 canonical 账号；个人日程已写入但 UI 回执报错；66 条关系待办仍是 legacy 数据格式，被当前 tasks reader 过滤。它们均是当前 P0 未完成项，先修身份入口与任务投影，再验收 AI 只读查询。此前 lifecycle preflight 0 issues 不代表 tasks API 可读；笔记与任务提醒链路还缺有效测试实例。新建 canonical 任务的保存、完成、恢复、刷新与跨账号隔离已通过。详细结果和证据见 [并行测试报告](2026-09-16-production-parallel-test-report.md)。
+并行测试增量（2026-09-16）：Luna max 子代理分别核查活动 worker、App 与 Production 数据，主代理执行 Web 实操。发现的身份入口、个人日程回执、AI 查询/回显已修复并发布；旧跟进以独立只读分区显示 66 当前/14 历史，没有强行转换为普通待办。关系完成+下一步的 Web/App UI 与 HTTP adapter 仍未接通，不能把可见性修复当作完整处理闭环。笔记、提醒有效实例、云端 worker 和原生双向验收仍开放。修复前证据见 [并行测试报告](2026-09-16-production-parallel-test-report.md)，后续以 [最小必要清单](2026-09-16-cloud-goal-remaining.md)为准。
 
 后续队列：上述 Web/数据缺口可以独立处理；原生 App 同环境验收需要兼容当前 Expo 依赖的原生构建环境；活动后台生成验收需要持久云端 worker。当前 Vercel 队列清单与 maintenance task 清单均未包含 event-operations worker，不能把 Web 发布成功视为后台匹配生成已可持续运行，也不以开发机器长驻冒充云服务。Web 已可测试但不代表主流程全部通过。清空测试数据、正式 workspace、备份策略与凭据轮换留到真实上线前，不提前执行。
 

@@ -2,6 +2,8 @@
 
 日期：2026-09-16。范围：当前 P0 数据、登录归属、云端后台及 Web/App 共同环境，不代表整个产品全量验收。
 
+> 修复增量：身份/searchTerms `6f844ea47`、测试确定性 `6597d8de8`、AI 事实回显 `40b63d218`、跟进只读分区 `105ebba4d` 已提交；最终 Production 已发布并完成实际标题/状态回复、66 当前/14 历史与异账号隔离验收，见 [最小剩余清单](2026-09-16-cloud-goal-remaining.md)。本文下面的失败为修复前基线，保留追溯。旧任务不能简单原地转 canonical：关系任务还参与 stage/version/outcome 事务，故采用独立只读可见性入口而非改写生命周期事实。完整处理入口仍未关闭。
+
 ## 基线与边界
 
 - 本地源码：`chat-agent` / `f564a0c12`；Production 运行源码 `b7e1f43e6`，部署 `dpl_5JaVX9ko5phE3T4cdFTGcmmcMFxs`；关系 fixture 投影 `1f9cca960` 已应用。

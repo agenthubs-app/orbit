@@ -1,5 +1,7 @@
 # 功能对齐表
 
+2026-09-16 修复增量：Web Agent/日程入口统一 canonical actor；AI query 普通回复包含真实结果而非仅 planner 承诺，App 无 DTO 变更。Web 待办单独展示人脉跟进，仍由 lifecycle 操作选择下一步；普通 tasks API 不把旧跟进伪装成可直接完成的待办。该分区不自动出现在 App，原生 Production 同记录联验仍开放。见 [BR-025](2026-09-16-production-p0-fixes.md)。
+
 基线日期：2026-09-07。Web 文件路径从 `repos/orbits` 起，App 文件路径从 `repos/orbit-app` 起。Web 页面路径统一在 `app/(app)/app/` 下。这里按行为比较，允许不同的导航和布局。
 
 状态含义：`已接入·待联验` = 源码存在消费/写入链路，未完成本轮双端业务验收；`存在差异` = 源码确认覆盖或语义不同；`平台特有` = 平台实现不同，不自动列为缺陷。**当前没有任何一行被本轮认定为完整业务 verified。**
