@@ -87,7 +87,7 @@ build/harness-logs/
 | [0035](0035-sync-invalidation-recovery/GOAL.md) | 用提供商无关的轻量状态检测加速刷新，并以启动／前台／cursor 修复漏提示 | 同上；兼容本地 PostgreSQL、Supabase、Neon 或其他 PostgreSQL provider | 依赖 0034 completed/merged；供应商选型不阻塞 portable core；planned，run_count=0 | planned |
 | [0036](0036-ai-sync-visibility-acceptance/GOAL.md) | 让 AI 报告四域云端数据新鲜度，完成跨端验收并更新私有 Data Atlas | 数据审查、AI 盲区与同步方案最终收口 | 依赖 0035 completed/merged、同账号 runtime 与已授权 AI provider；planned，run_count=0 | planned |
 | [0037](0037-contact-message-inbox/GOAL.md) | 把联系人消息从通知中独立出来，让用户看到真实对话并可靠收发、回复和同步已读。 | 2026-09-16 已确认的消息/三类通知设计 | 功能及主线 a591494b0；共同环境双账号通信/原生回读已验收，见 [REPORT](0037-contact-message-inbox/REPORT.md) | completed |
-| [0038](0038-typed-notification-inbox/GOAL.md) | 让每条通知明确属于提醒、建议或动态，显示原因和可追溯来源，并让 Web 与 App 操作同一条记录。 | 2026-09-16 已确认的消息/三类通知设计 | 依赖 0037 固定SHA合并及相关验证；本次仅规划，run_count=0 | planned |
+| [0038](0038-typed-notification-inbox/GOAL.md) | 让每条通知明确属于提醒、建议或动态，显示原因和可追溯来源，并让 Web 与 App 操作同一条记录。 | 2026-09-16 已确认的消息/三类通知设计 | 功能及主线e045651b3；同账号三类通知与双向动作验收，[REPORT](0038-typed-notification-inbox/REPORT.md)保留失败历史 | completed |
 | [0039](0039-evidence-based-notification-discovery/GOAL.md) | 让 AI 从允许使用的真实信息中自主发现具体动作，有可信时间才提醒，并展示可核查的原文依据。 | 2026-09-16 已确认的消息/三类通知设计 | 依赖 0038 固定SHA合并及相关验证；本次仅规划，run_count=0 | planned |
 | [0040](0040-notification-delivery-cutover/GOAL.md) | 让消息和通知按独立偏好可靠送达，减少重复打扰，并安全替换旧通知数据与旧发送链。 | 2026-09-16 已确认的消息/三类通知设计 | 依赖 0039 固定SHA合并及相关验证；真实Push需有效provider/设备；本次仅规划，run_count=0 | planned |
 
@@ -409,3 +409,12 @@ build/harness-logs/
 - 本run尚未做真实双账号/远程Push验收；按实际结果继续更新，不预填通过。
 
 - 0037收口：功能/主线 a591494b0；两端同版本运行证据及失败历史见REPORT；下一步0038，未改0033～0036文件。
+
+### 0038 / run-01
+
+- 开始：2026-09-15T23:21:42.686Z；owner：E线当前session，唯一Generator；分支codex/e-line-sprint-0038；基线f2ab646dc。
+- Planner SHA256：58bbe969bdb65567e5dfa07920e85a438ef75175c234fb787a35cd0a0078b548。复用已批准通知设计与本session连续实施授权。
+- 独占通知记录/API、消费者及语言接线；沿用0037独立QA数据库/31037/Simulator bundle。根AGENTS/CLAUDE和旧设计/GitNexus生成目录保持原状、不提交。
+- 0033～0036未进入本线：采用现有云端业务服务，不改sync/outbox/AI visibility。共享台账由本协调者串行集成。
+
+- 0038收口：功能/主线e045651b3；真实跨端记录、时间修正及显式提醒优先策略已验收，完整失败历史见REPORT/BR-026。继续0039。

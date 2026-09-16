@@ -1,5 +1,9 @@
 # Bridge 历史记录
 
+## 2026-09-16 — Sprint0038
+
+e045651b3已进入chat-agent；三类通知、来源权限和独立状态已在本地共同环境验证。保留全量失败历史，见[BR-026](2026-09-16-typed-notification-inbox.md)。
+
 ## 2026-09-16 — Sprint0037
 
 联系人消息独立，真实QA共同环境完成Web↔原生收发、重试去重和已读隔离；a591494b0已进入chat-agent，详见[BR-025](2026-09-16-contact-message-inbox.md)。保留全量失败与局部回归历史，不宣称远程发布或Push通过。
