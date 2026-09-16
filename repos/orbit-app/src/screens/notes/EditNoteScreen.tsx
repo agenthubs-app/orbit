@@ -53,6 +53,7 @@ export function EditNoteScreen({ actorId, draftServer = "local", noteId, scopeKe
   const [draftStatus, setDraftStatus] = useState("");
   const [showExitPrompt, setShowExitPrompt] = useState(false);
   const mounted = useRef(true);
+  const autosaveAllowed = useRef(true);
   const controller = useRef<AbortController | null>(null);
   const mutationKey = useRef(`ios:note:update:${noteId}:${++updateSequence}`);
   const initializedVersion = useRef(0);
@@ -77,14 +78,16 @@ export function EditNoteScreen({ actorId, draftServer = "local", noteId, scopeKe
   useEffect(() => {
     if (!current || restored.current) return;
     restored.current = true;
+    const requestedMutationKey = mutationKey.current;
     void noteDraftStorage.load({ accountId: actorId, server: draftServer, noteId }).then((stored) => {
-      if (!stored || !mounted.current) return;
+      if (!stored || !mounted.current || !autosaveAllowed.current || !isScopeCurrent() || mutationKey.current !== requestedMutationKey) return;
       setTitle(stored.title); setDraft(stored.body); setSelectedIds([...stored.manualContactIds]); setMentions([...stored.mentions]); setEventIds([...stored.eventIds]); setDirty(true); setDraftStatus(locale.t("notes.restoredDraft"));
     });
   }, [actorId, current, draftServer, locale, noteId]);
   useEffect(() => {
     if (!dirty) return;
     const timer = setTimeout(() => {
+      if (!autosaveAllowed.current || !mounted.current || !isScopeCurrent()) return;
       setDraftStatus(locale.t("notes.autosaving"));
       void noteDraftStorage.save({ accountId: actorId, server: draftServer, noteId }, { title, body: draft, manualContactIds: selectedIds, mentions, eventIds, savedAt: new Date().toISOString() })
         .then(() => { if (mounted.current) setDraftStatus(locale.t("notes.autosaved")); })
@@ -93,7 +96,7 @@ export function EditNoteScreen({ actorId, draftServer = "local", noteId, scopeKe
     return () => clearTimeout(timer);
   }, [actorId, dirty, draft, draftServer, eventIds, locale, mentions, noteId, selectedIds, title]);
   const owns = () => mounted.current && isScopeCurrent();
-  const markChanged = () => { setDirty(true); setSaved(false); setError(""); mutationKey.current = `ios:note:update:${noteId}:${++updateSequence}`; };
+  const markChanged = () => { autosaveAllowed.current = true; setDirty(true); setSaved(false); setError(""); mutationKey.current = `ios:note:update:${noteId}:${++updateSequence}`; };
   const toggle = (id: string, contact?: ContactSummary) => {
     setSelectedIds((items) => items.includes(id) ? items.filter((item) => item !== id) : [...items, id]);
     if (contact) setSelectedContacts((items) => items.some((item) => item.id === contact.id) ? items : [...items, contact]);
@@ -111,14 +114,20 @@ export function EditNoteScreen({ actorId, draftServer = "local", noteId, scopeKe
   async function preserveAndExit() {
     try {
       await noteDraftStorage.save(draftScope, { title, body: draft, manualContactIds: selectedIds, mentions, eventIds, savedAt: new Date().toISOString() });
-      if (owns()) router.back();
+      if (owns()) { autosaveAllowed.current = false; router.back(); }
     } catch {
       if (owns()) { setShowExitPrompt(false); setError(locale.t("notes.draftSaveFailed")); }
     }
   }
   async function discardAndExit() {
-    await noteDraftStorage.clear(draftScope);
-    if (owns()) router.back();
+    autosaveAllowed.current = false;
+    try {
+      await noteDraftStorage.clear(draftScope);
+      if (owns()) router.back();
+    } catch {
+      autosaveAllowed.current = true;
+      if (owns()) { setShowExitPrompt(false); setError(locale.t("notes.draftSaveFailed")); }
+    }
   }
 
   async function save() {
@@ -131,7 +140,9 @@ export function EditNoteScreen({ actorId, draftServer = "local", noteId, scopeKe
     const note = result.success && result.status >= 200 && result.status < 300
       ? confirmedNote(result.data, { actorId, title: request.body.title, body: request.body.body, manualContactIds: request.body.manualContactIds, mentions: request.body.mentions, contactIds: [...request.body.manualContactIds, ...request.body.mentions.map((item) => item.contactId)], eventIds: request.body.eventIds, noteId }, locale.language) : null;
     if (note) {
+      autosaveAllowed.current = false;
       await noteDraftStorage.clear(draftScope);
+      if (!owns()) return;
       initializedVersion.current = note.version; setConfirmed(note); setTitle(note.title); setDraft(note.body); setMentions([...note.mentions]); setSelectedIds([...note.manualContactIds]); setEventIds([...note.eventIds]); setDirty(false); setDraftStatus(""); setSaved(true); state.refresh();
     } else setError(result.success ? locale.t("notes.updateUnconfirmed") : result.error.message);
     if (owns()) setPending(false);
@@ -139,7 +150,7 @@ export function EditNoteScreen({ actorId, draftServer = "local", noteId, scopeKe
   }
 
   const saveDisabled = pending || !dirty || !title.trim() || !draft.trim();
-  return <AppScreen title={locale.t("notes.edit")} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")} refreshControl={<RefreshControl refreshing={state.refreshing} onRefresh={state.refresh} />} headerActions={<View style={styles.headerActions}><Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.cancelEdit")} disabled={pending} onPress={() => dirty ? setShowExitPrompt(true) : router.back()} style={styles.cancel}><Text style={styles.cancelText}>{locale.t("common.cancel")}</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={locale.t(pending ? "notes.saving" : "notes.saveChanges")} accessibilityState={{ disabled: saveDisabled }} disabled={saveDisabled} onPress={() => { void save(); }} style={styles.cancel}><Text style={[styles.headerSaveText, saveDisabled && styles.headerSaveDisabled]}>{locale.t(pending ? "notes.saving" : "notes.save")}</Text></Pressable></View>}>
+  return <AppScreen title={locale.t("notes.edit")} onBack={() => { if (!pending && owns()) dirty ? setShowExitPrompt(true) : router.back(); }} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")} refreshControl={<RefreshControl refreshing={state.refreshing} onRefresh={state.refresh} />} headerActions={<View style={styles.headerActions}><Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.cancelEdit")} disabled={pending} onPress={() => dirty ? setShowExitPrompt(true) : router.back()} style={styles.cancel}><Text style={styles.cancelText}>{locale.t("common.cancel")}</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={locale.t(pending ? "notes.saving" : "notes.saveChanges")} accessibilityState={{ disabled: saveDisabled }} disabled={saveDisabled} onPress={() => { void save(); }} style={styles.cancel}><Text style={[styles.headerSaveText, saveDisabled && styles.headerSaveDisabled]}>{locale.t(pending ? "notes.saving" : "notes.save")}</Text></Pressable></View>}>
     {showExitPrompt ? <View accessibilityRole="alert" style={styles.exitPrompt}>
       <Text style={styles.exitTitle}>{locale.t("notes.keepChangesTitle")}</Text><Text style={styles.notice}>{locale.t("notes.keepDraftBody")}</Text>
       <View style={styles.exitActions}>

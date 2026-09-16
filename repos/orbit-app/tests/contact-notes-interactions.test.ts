@@ -13,7 +13,7 @@ const literal = "strategic_fit / CRM mock 案例\n刚刚聊到日本市场。";
 const fixture = `
 import React from "react";
 import { View } from "react-native";
-const state = window.fixture = { navigation: [], requests: [] };
+const state = window.fixture = { navigation: [], requests: [], defer: new URLSearchParams(location.search).get("defer") === "true" };
 export const useRouter = () => ({ push(href) { state.navigation.push(href); } });
 export const Ionicons = ({ size }) => <span aria-hidden="true" style={{ display: "inline-block", width: size, height: size }} />;
 export const data = { state: "success", contact: {
@@ -33,8 +33,14 @@ export const linkedNotes = [
   { id: "note:linked:1", accountId: "account:one", ownerUserId: "account:one", title: "客户提案跟进", body: "明天确认预算与交付时间。", manualContactIds: ["contact:/notes"], mentions: [], contactIds: ["contact:/notes"], eventIds: [], version: 2, createdAt: "2026-09-12T01:00:00.000Z", updatedAt: "2026-09-12T02:00:00.000Z" }
 ];
 export const client = {
-  async get(path) {
+  async get(path, options) {
     state.requests.push({ method: "GET", path });
+    if (state.defer && path.includes("cursor=")) {
+      state.abortable = !!options?.signal;
+      await new Promise(resolve => { state.release = resolve; });
+      return { success: true, status: 200, data: { notes: [{ ...linkedNotes[0], id: "note:late", title: "迟到旧笔记" }], total: 2 }, meta: {} };
+    }
+    if (state.defer) return { success: true, status: 200, data: { notes: linkedNotes, total: 2, nextCursor: "page:2" }, meta: {} };
     return { success: true, status: 200, data: { notes: linkedNotes, total: 1 }, meta: {} };
   },
   patch() { throw new Error("legacy write called"); }
@@ -86,10 +92,10 @@ test.after(async () => {
   if (server) await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
 });
 
-async function open(t: { after(fn: () => Promise<void>): void }, language = "zh"): Promise<Page> {
+async function open(t: { after(fn: () => Promise<void>): void }, language = "zh", defer = false): Promise<Page> {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   t.after(() => page.close());
-  await page.goto(`${url}?language=${language}`);
+  await page.goto(`${url}?language=${language}&defer=${defer}`);
   await page.getByRole("button", { name: language === "en" ? "Notes" : "笔记", exact: true }).click();
   return page;
 }
@@ -135,4 +141,20 @@ test("an English contact detail translates note chrome and preserves legacy text
   await page.getByText("Legacy contact notes (read only)", { exact: true }).waitFor();
   await page.getByText(literal, { exact: true }).waitFor();
   await page.getByText("客户提案跟进", { exact: true }).waitFor();
+});
+
+test("contact notes link global history and reject a delayed page after search changes", async t => {
+  const page = await open(t, "zh", true);
+  await page.getByText("客户提案跟进", { exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "所有笔记", exact: true }).count(), 1);
+  await page.getByRole("button", { name: "所有笔记", exact: true }).click();
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/notes"]);
+  await page.getByRole("button", { name: "加载更多关联笔记" }).click();
+  await page.waitForFunction(() => !!(window as any).fixture.release);
+  await page.getByRole("textbox", { name: "搜索关联笔记" }).fill("新搜索");
+  await page.waitForFunction(() => (window as any).fixture.requests.some((request: any) => request.path.includes("q=")));
+  await page.evaluate(() => (window as any).fixture.release());
+  await page.waitForTimeout(50);
+  assert.equal(await page.getByText("迟到旧笔记", { exact: true }).count(), 0);
+  assert.equal(await page.evaluate(() => (window as any).fixture.abortable), true);
 });

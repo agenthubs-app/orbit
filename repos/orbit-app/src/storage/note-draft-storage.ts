@@ -45,6 +45,13 @@ export function createNoteDraftStorage(adapter: NoteDraftAdapter = {
   removeItem: (draftKey) => AsyncStorage.removeItem(draftKey),
   setItem: (draftKey, value) => AsyncStorage.setItem(draftKey, value),
 }) {
+  const writes = new Map<string, Promise<void>>();
+  const enqueue = (draftKey: string, operation: () => Promise<void>): Promise<void> => {
+    const next = (writes.get(draftKey) ?? Promise.resolve()).catch(() => {}).then(operation);
+    writes.set(draftKey, next);
+    void next.finally(() => { if (writes.get(draftKey) === next) writes.delete(draftKey); }).catch(() => {});
+    return next;
+  };
   return {
     async load(scope: { accountId: string; server: string; noteId?: string }): Promise<NoteDraft | null> {
       const raw = await adapter.getItem(key(scope));
@@ -54,10 +61,11 @@ export function createNoteDraftStorage(adapter: NoteDraftAdapter = {
     },
     async save(scope: { accountId: string; server: string; noteId?: string }, draft: NoteDraft): Promise<void> {
       if (!isDraft(draft)) throw new Error("Note draft is invalid");
-      await adapter.setItem(key(scope), JSON.stringify(draft));
+      const serialized = JSON.stringify(draft);
+      await enqueue(key(scope), () => adapter.setItem(key(scope), serialized));
     },
     async clear(scope: { accountId: string; server: string; noteId?: string }): Promise<void> {
-      await adapter.removeItem(key(scope));
+      await enqueue(key(scope), () => adapter.removeItem(key(scope)));
     },
   };
 }

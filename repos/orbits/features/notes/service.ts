@@ -211,8 +211,6 @@ export function createNoteService(input: { repository: NoteRepository; associati
       return (await this.search(query)).notes;
     },
     async search(query) {
-      const scope = cursorScope(query);
-      const offset = decodeCursor(query.cursor, scope);
       const limit = Math.min(50, Math.max(1, query.limit ?? 20));
       const search = query.q?.trim().toLocaleLowerCase() ?? "";
       const matchedContactIds = search
@@ -231,6 +229,11 @@ export function createNoteService(input: { repository: NoteRepository; associati
         })
         .filter((note) => !search || `${note.title}\n${note.body}`.toLocaleLowerCase().includes(search) || note.contactIds.some((id) => matchedContactIds.has(id)))
         .sort((left, right) => (query.sort === "updated_asc" ? left.updatedAt.localeCompare(right.updatedAt) : right.updatedAt.localeCompare(left.updatedAt)) || left.id.localeCompare(right.id));
+      // An offset is valid only for this exact authorized source collection.
+      // Until the canonical source exposes snapshots, reject changed history
+      // rather than silently skipping records that moved between pages.
+      const scope = fingerprint({ query: cursorScope(query), notes });
+      const offset = decodeCursor(query.cursor, scope);
       const page = notes.slice(offset, offset + limit);
       const nextOffset = offset + page.length;
       return {

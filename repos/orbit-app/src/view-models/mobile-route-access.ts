@@ -57,7 +57,7 @@ function pathParamKeysForMobileRoute(pathname: string): ReadonlySet<string> {
   const [root, detail, leaf] = segments;
 
   if ((root === "tasks" && detail !== undefined && detail !== "personal" && segments.length === 2) ||
-    (root === "schedule" && detail === "personal" && leaf !== undefined && leaf !== "new" && segments.length === 3)) return ID_PATH_PARAM_KEYS;
+    (root === "schedule" && detail === "personal" && leaf !== undefined && leaf !== "new" && (segments.length === 3 || (segments.length === 4 && segments[3] === "edit")))) return ID_PATH_PARAM_KEYS;
 
   if (root === "contacts" && detail === "new" && (leaf === "batch" || leaf === "batch2" || leaf === "import") && segments.length === 4) {
     return ID_PATH_PARAM_KEYS;

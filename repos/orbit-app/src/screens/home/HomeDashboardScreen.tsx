@@ -33,6 +33,7 @@ const quickActions = [
   { labelKey: "home.viewSchedule", href: "/schedule", icon: "calendar" },
   { labelKey: "home.newTask", href: "/today", icon: "task" },
   { labelKey: "home.newNote", href: "/notes/new", icon: "notes" },
+  { labelKey: "notes.allNotes", href: "/notes", icon: "notes" },
 ] as const satisfies readonly { labelKey: MessageKey; href: string; icon: "scan" | "calendar" | "task" | "notes" }[];
 
 export function HomeDashboardScreen() {

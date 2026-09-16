@@ -196,6 +196,14 @@ test("search, shortcuts, inbox and real record destinations work without implici
   assert.deepEqual(await writes(p), []);
 });
 
+test("home keeps quick create and opens global saved-note history without filters or writes", async t => {
+  const p = await open(t); await hydrate(p);
+  assert.equal(await p.getByRole("button", { name: "所有笔记", exact: true }).count(), 1);
+  await press(p, "所有笔记"); await press(p, "记笔记");
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/notes", "/notes/new"]);
+  assert.deepEqual(await writes(p), []);
+});
+
 for (const count of [0, 1, 5, 6]) {
   test("home displays at most five of " + count + " ordered incomplete tasks without changing the real count", async t => {
     const tasks = Array.from({ length: count }, (_, index) => inputTask({ id: "task:" + index, title: "待办 " + index }));

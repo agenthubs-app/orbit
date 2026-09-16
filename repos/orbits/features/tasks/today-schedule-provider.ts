@@ -1,4 +1,5 @@
 import { createConfiguredPersonalScheduleService } from "../personal-schedule/service-factory";
+import { personalScheduleAggregateRepresentation } from "../personal-schedule/representation";
 import { createConfiguredAppointmentService } from "../appointments/runtime";
 import { listConfiguredOrbitScheduleItems } from "../events/orbit-schedule-reader";
 import type { ScheduleItemDTO } from "./today-contract";
@@ -30,7 +31,7 @@ export function createConfiguredTodayScheduleProvider(): TodayScheduleProvider {
         createConfiguredPersonalScheduleService().list({ actorId }),
       ]);
       return [
-        ...personalItems,
+        ...personalItems.map(personalScheduleAggregateRepresentation),
         ...eventItems.map(
           (item): ScheduleItemDTO => ({
             id: item.id,

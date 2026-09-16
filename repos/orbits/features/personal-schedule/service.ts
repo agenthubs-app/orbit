@@ -6,6 +6,8 @@ import type { TransactionalPostgresClient } from "../../shared/storage/transacti
 import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
 import { AppError } from "../../shared/errors/app-error";
 import { canonicalScheduleItemSchema } from "./authority-contract";
+import { localParts } from "../tasks/local-date-time";
+import type { PersonalScheduleAssociationReader } from "./association-reader";
 
 const collectionName = "personal_schedule_items";
 const locks = new WeakMap<object, Map<string, Promise<void>>>();
@@ -20,7 +22,7 @@ function publicItem(item: PersonalScheduleContract, now: string): PersonalSchedu
   return { ...item, state: item.state === "cancelled" ? "cancelled" : time < Date.parse(item.startsAt) ? "upcoming" : item.endsAt && time < Date.parse(item.endsAt) ? "ongoing" : "ended" };
 }
 
-export function createPersonalScheduleService(input: { store: LiveRecordStoreLike<Record<string, unknown>>; workspaceId: string; client?: TransactionalPostgresClient; now?: () => string }) {
+export function createPersonalScheduleService(input: { store: LiveRecordStoreLike<Record<string, unknown>>; workspaceId: string; client?: TransactionalPostgresClient; now?: () => string; associationReader?: PersonalScheduleAssociationReader }) {
   const now = input.now ?? (() => new Date().toISOString());
   async function read(store: typeof input.store, actorId: string, id: string) {
     const record = await store.getRecord({ workspaceId: input.workspaceId, collectionName, recordId: id });
@@ -44,7 +46,8 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
       if (action === "create") {
         const fields = personalScheduleCreateSchema.parse(body);
         item = { id, sourceId: id, ownerUserId: actorId, accountId: actorId, kind: "personal", category: "personal", state: "upcoming", title: fields.title, startsAt: fields.startsAt,
-          ...(fields.endsAt ? { endsAt: fields.endsAt } : {}), ...(fields.location ? { location: fields.location } : {}), createdAt: at, updatedAt: at };
+          ...(fields.endsAt ? { endsAt: fields.endsAt } : {}), ...(fields.location ? { location: fields.location } : {}),
+          ...Object.fromEntries(Object.entries(fields).filter(([key]) => ["allDay", "timeZone", "meetingMethod", "meetingUrl", "contactIds", "noteIds"].includes(key))), createdAt: at, updatedAt: at };
       } else {
         item = await read(store, actorId, id);
         const command = action === "update" ? personalScheduleUpdateSchema.parse(body) : personalScheduleDeleteSchema.parse(body);
@@ -52,11 +55,26 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
         if (action === "update") {
           const patch = (command as PersonalScheduleUpdate).patch;
           item = { ...item, ...Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== null)) };
-          for (const key of ["location", "endsAt"] as const) if (patch[key] === null) delete item[key];
+          for (const key of ["location", "endsAt", "allDay", "timeZone", "meetingMethod", "meetingUrl", "contactIds", "noteIds"] as const) if (patch[key] === null) delete item[key];
         }
         item.updatedAt = new Date(Math.max(Date.parse(at), Date.parse(item.updatedAt) + 1)).toISOString();
       }
       if (item.endsAt && Date.parse(item.endsAt) <= Date.parse(item.startsAt)) throw new AppError("VALIDATION_ERROR", "End time must be after start time.");
+      if (action !== "delete") {
+        for (const [kind, ids] of [["contact", item.contactIds], ["note", item.noteIds]] as const) {
+          if (!ids?.length) continue;
+          const accessible = input.associationReader ? await input.associationReader.accessibleIds({ actorId, kind, ids }) : [];
+          if (accessible.length !== ids.length || ids.some(id => !accessible.includes(id))) throw new AppError("VALIDATION_ERROR", "A schedule association is unavailable. Remove it before saving.");
+        }
+      }
+      if (item.allDay) {
+        if (!item.timeZone || !item.endsAt) throw new AppError("VALIDATION_ERROR", "All-day schedules require a time zone and end date.");
+        const start = localParts(item.startsAt, item.timeZone);
+        const end = localParts(item.endsAt, item.timeZone);
+        const beforeStart = localParts(Date.parse(item.startsAt) - 1, item.timeZone);
+        const beforeEnd = localParts(Date.parse(item.endsAt) - 1, item.timeZone);
+        if (beforeStart.date === start.date || beforeEnd.date === end.date || start.date >= end.date) throw new AppError("VALIDATION_ERROR", "All-day schedules require local day boundaries.");
+      }
       item = publicItem({ ...item, ...(action === "delete" ? { state: "cancelled" as const } : {}) }, at);
       personalScheduleSchema.parse(item);
       await store.upsertRecord({ workspaceId: input.workspaceId, collectionName, recordId: id, userId: actorId, sourceType: "manual", sourceId: id, evidenceIds: [],

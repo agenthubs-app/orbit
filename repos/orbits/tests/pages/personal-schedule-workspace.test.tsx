@@ -46,3 +46,91 @@ test("personal schedule failed refresh never presents retained empty data as a s
   assert.equal(root.root.findAllByProps({ role: "alert" }).length, 0);
   assert.match(JSON.stringify(root.toJSON()), /暂无个人日程/);
 });
+
+test("web personal list opens independent readonly detail before entering the editor", async t => {
+  const item = { id: "personal:one", sourceId: "personal:one", accountId: "owner", ownerUserId: "owner", kind: "personal", category: "personal", state: "upcoming", title: "Readonly personal", startsAt: "2026-09-17T00:00:00Z", endsAt: "2026-09-17T00:30:00Z", timeZone: "Asia/Tokyo", createdAt: "2026-09-15T00:00:00Z", updatedAt: "2026-09-15T00:00:00Z" };
+  const paths: string[] = [];
+  t.mock.method(globalThis, "fetch", async input => { paths.push(String(input)); return Response.json({ success: true, data: String(input).includes("scope=personal") ? { scheduleItems: [item] } : { scheduleItem: item } }); });
+  let root!: ReactTestRenderer; await act(async () => { root = create(<PersonalScheduleWorkspace actorId="owner" />); }); t.after(() => act(() => root.unmount()));
+  const row = root.root.findAllByType("button").find(button => button.findAllByType("strong").some(title => title.children.includes("Readonly personal")))!;
+  await act(async () => row.props.onClick());
+  assert.equal(root.root.findAllByType("input").length, 0); assert.ok(paths.includes("/api/schedule-items/personal%3Aone"));
+  const edit = root.root.findAllByType("button").find(button => button.children.includes("编辑"))!;
+  await act(async () => edit.props.onClick()); assert.ok(root.root.findAllByType("input").length > 0);
+});
+
+test("web new personal merged time controls apply a cross-day duration and clear online location", async t => {
+  t.mock.method(globalThis, "fetch", async () => Response.json({ success: true, data: { scheduleItems: [] } }));
+  let root!: ReactTestRenderer; await act(async () => { root = create(<PersonalScheduleWorkspace actorId="owner" />); }); t.after(() => act(() => root.unmount()));
+  const button = (label: string) => root.root.findAllByType("button").find(item => item.children.includes(label))!;
+  await act(async () => button("新建个人日程").props.onClick());
+  await act(async () => { root.root.findByProps({ "aria-label": "开始日期" }).props.onChange({ target: { value: "2026-09-17" } }); root.root.findByProps({ "aria-label": "开始时间" }).props.onChange({ target: { value: "23:45" } }); });
+  assert.ok(button("30分钟"), "duration choice is available");
+  await act(async () => button("30分钟").props.onClick());
+  assert.equal(root.root.findByProps({ "aria-label": "结束日期" }).props.value, "2026-09-18"); assert.equal(root.root.findByProps({ "aria-label": "结束时间" }).props.value, "00:15");
+  await act(async () => button("线上").props.onClick()); assert.ok(root.root.findByProps({ "aria-label": "会议链接（选填）" }));
+});
+
+test("web personal note selector saves exact IDs and readonly detail rechecks ownership", async t => {
+  const note = { id: "note:owned", accountId: "owner", ownerUserId: "owner", title: "Owned note", body: "Never display this body", contactIds: [], version: 1, createdAt: "2026-09-17T00:00:00Z", updatedAt: "2026-09-17T00:00:00Z" };
+  let saved: any; const writes: any[] = []; let revoked = false;
+  t.mock.method(globalThis, "fetch", async (input, init) => {
+    const path = String(input);
+    if (path.startsWith("/api/notes")) return Response.json({ success: true, data: path.startsWith("/api/notes?") ? { notes: [note], total: 1 } : { note: { ...note, ownerUserId: revoked ? "other" : "owner" } } });
+    if (init?.method === "POST") {
+      const fields = JSON.parse(String(init.body)); writes.push(fields);
+      saved = { ...fields, id: "personal:new", sourceId: "personal:new", accountId: "owner", ownerUserId: "owner", kind: "personal", category: "personal", state: "upcoming", createdAt: "2026-09-17T00:00:00Z", updatedAt: "2026-09-17T00:00:00Z" }; delete saved.idempotencyKey;
+      return Response.json({ success: true, data: { scheduleItem: saved } });
+    }
+    return Response.json({ success: true, data: path.includes("scope=personal") ? { scheduleItems: saved ? [saved] : [] } : { scheduleItem: saved } });
+  });
+  let root!: ReactTestRenderer; await act(async () => { root = create(<PersonalScheduleWorkspace actorId="owner" />); }); t.after(() => act(() => root.unmount()));
+  const button = (label: string) => root.root.findAllByType("button").find(item => item.children.includes(label))!;
+  await act(async () => button("新建个人日程").props.onClick());
+  await act(async () => { for (const [label, value] of [["日程标题", "Associated web"], ["开始日期", "2026-09-17"], ["开始时间", "09:00"]]) root.root.findByProps({ "aria-label": label }).props.onChange({ target: { value } }); });
+  await act(async () => button("关联笔记").props.onClick());
+  await act(async () => { root.root.findByProps({ "aria-label": "搜索笔记" }).props.onChange({ target: { value: "Owned" } }); });
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 300)); });
+  await act(async () => root.root.findByProps({ role: "checkbox", "aria-label": "Owned note" }).props.onClick());
+  revoked = true;
+  await act(async () => root.root.findByType("form").props.onSubmit({ preventDefault() {} }));
+  assert.deepEqual(writes[0].noteIds, ["note:owned"]);
+  assert.match(JSON.stringify(root.toJSON()), /个人日程已保存/);
+  const viewNote = root.root.findAllByType("button").find(button => button.children.includes("查看关联笔记"))!;
+  await act(async () => viewNote.props.onClick());
+  assert.match(JSON.stringify(root.toJSON()), /关联对象不可用，请移除或重试/); assert.doesNotMatch(JSON.stringify(root.toJSON()), /Never display this body/);
+});
+
+test("web readonly note panel fetches the exact linked ID only on click and clears revoked contents", async t => {
+  const item = { id: "personal:one", sourceId: "personal:one", accountId: "owner", ownerUserId: "owner", kind: "personal", category: "personal", state: "upcoming", title: "Owned personal", noteIds: ["note:owned"], startsAt: "2026-09-17T00:00:00Z", createdAt: "2026-09-17T00:00:00Z", updatedAt: "2026-09-17T00:00:00Z" };
+  let revoked = false; const reads: string[] = [];
+  t.mock.method(globalThis, "fetch", async input => {
+    if (String(input).startsWith("/api/notes/")) reads.push(String(input));
+    return Response.json({ success: true, data: String(input).startsWith("/api/notes/") ? { note: { id: "note:owned", title: "Owned note", body: "Current private body", version: 1, createdAt: "2026-09-17T00:00:00Z", updatedAt: "2026-09-17T00:00:00Z", ownerUserId: revoked ? "other" : "owner", accountId: "owner" } } : String(input).includes("scope=personal") ? { scheduleItems: [item] } : { scheduleItem: item } });
+  });
+  let root!: ReactTestRenderer; await act(async () => { root = create(<PersonalScheduleWorkspace actorId="owner" />); }); t.after(() => act(() => root.unmount()));
+  await act(async () => root.root.findAllByType("button").find(button => button.findAllByType("strong").some(title => title.children.includes("Owned personal")))!.props.onClick());
+  assert.equal(root.root.findAllByType("a").filter(link => String(link.props.href).startsWith("/app/notes/")).length, 0);
+  assert.deepEqual(reads, []);
+  const button = (label: string) => root.root.findAllByType("button").find(button => button.children.includes(label))!;
+  await act(async () => button("查看关联笔记").props.onClick());
+  assert.deepEqual(reads, ["/api/notes/note%3Aowned"]); assert.match(JSON.stringify(root.toJSON()), /Current private body/);
+  await act(async () => button("关闭笔记").props.onClick()); assert.doesNotMatch(JSON.stringify(root.toJSON()), /Current private body/);
+  revoked = true; await act(async () => button("查看关联笔记").props.onClick());
+  assert.match(JSON.stringify(root.toJSON()), /关联对象不可用，请移除或重试/); assert.doesNotMatch(JSON.stringify(root.toJSON()), /Current private body/);
+});
+
+test("web pending linked-note response cannot publish after panel close or account scope change", async t => {
+  let actor = "owner"; const held: ((response: Response) => void)[] = [];
+  const item = () => ({ id: "personal:one", sourceId: "personal:one", accountId: actor, ownerUserId: actor, kind: "personal", category: "personal", state: "upcoming", title: "Scoped personal", noteIds: ["note:owned"], startsAt: "2026-09-17T00:00:00Z", createdAt: "2026-09-17T00:00:00Z", updatedAt: "2026-09-17T00:00:00Z" });
+  t.mock.method(globalThis, "fetch", async input => String(input).startsWith("/api/notes/") ? new Promise<Response>(resolve => held.push(resolve)) : Response.json({ success: true, data: String(input).includes("scope=personal") ? { scheduleItems: [item()] } : { scheduleItem: item() } }));
+  let root!: ReactTestRenderer; await act(async () => { root = create(<PersonalScheduleWorkspace key={actor} actorId={actor} />); }); t.after(() => act(() => root.unmount()));
+  const button = (label: string) => root.root.findAllByType("button").find(button => button.children.includes(label))!;
+  await act(async () => root.root.findAllByType("button").find(button => button.findAllByType("strong").some(title => title.children.includes("Scoped personal")))!.props.onClick());
+  await act(async () => button("查看关联笔记").props.onClick()); await act(async () => button("关闭笔记").props.onClick());
+  const old = () => Response.json({ success: true, data: { note: { id: "note:owned", title: "Old note", body: "Old private contents", ownerUserId: "owner", accountId: "owner", version: 1, createdAt: "2026-09-17T00:00:00Z", updatedAt: "2026-09-17T00:00:00Z" } } });
+  await act(async () => held[0]!(old())); assert.doesNotMatch(JSON.stringify(root.toJSON()), /Old private contents/);
+  await act(async () => button("查看关联笔记").props.onClick()); actor = "other";
+  await act(async () => root.update(<PersonalScheduleWorkspace key={actor} actorId={actor} />)); await act(async () => held[1]!(old()));
+  assert.doesNotMatch(JSON.stringify(root.toJSON()), /Old private contents/); assert.equal(root.root.findAllByProps({ "aria-label": "关联笔记详情" }).length, 0);
+});

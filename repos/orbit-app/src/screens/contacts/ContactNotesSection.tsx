@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import type { OrbitApiClient } from "../../api/client";
@@ -9,6 +9,7 @@ import { radius, spacing, typography, type OrbitColors } from "../../design/toke
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { contactNotesToView } from "../../view-models/contact-notes";
 import { notesPageFromPayload, type NoteView } from "../../view-models/notes";
+import { mergeNotePages } from "../../view-models/note-history-pagination";
 
 export function ContactNotesSection({ actorId, client, colors, contactId, data, openRequest = 0, preview = false, isScopeCurrent }: {
   actorId: string | null;
@@ -33,12 +34,22 @@ export function ContactNotesSection({ actorId, client, colors, contactId, data, 
   const [linkedState, setLinkedState] = useState<"idle" | "loading" | "ready" | "failure">("idle");
   const [linkedError, setLinkedError] = useState("");
   const [loadingMore, setLoadingMore] = useState(false);
+  const source = JSON.stringify([actorId, contactId, debouncedQuery, expanded]);
+  const activeSource = useRef(source);
+  activeSource.current = source;
+  const pageFlight = useRef<AbortController | null>(null);
   useEffect(() => { if (openRequest > 0) setExpanded(true); }, [openRequest]);
   useEffect(() => {
+    pageFlight.current?.abort();
+    pageFlight.current = null;
+    setLoadingMore(false);
     const timer = setTimeout(() => setDebouncedQuery(query.trim()), 250);
     return () => clearTimeout(timer);
   }, [query]);
   useEffect(() => {
+    pageFlight.current?.abort();
+    pageFlight.current = null;
+    setLoadingMore(false);
     if (!expanded) return;
     if (!actorId) {
       setLinkedState("failure");
@@ -73,26 +84,35 @@ export function ContactNotesSection({ actorId, client, colors, contactId, data, 
         setLinkedError(locale.t("notes.linkedReadFailed"));
       }
     });
-    return () => controller.abort();
+    return () => { controller.abort(); pageFlight.current?.abort(); pageFlight.current = null; };
   }, [actorId, client, contactId, debouncedQuery, expanded, isScopeCurrent, locale]);
   const view = contactNotesToView(data, contactId);
   const notes = view.state === "ready" ? view.notes : [];
   const navigate = (href: string) => { if (isScopeCurrent?.() !== false) router.push(href as Href); };
 
   async function loadMore() {
-    if (!actorId || !nextCursor || loadingMore) return;
+    if (!actorId || !nextCursor || pageFlight.current || isScopeCurrent?.() === false) return;
+    const operation = new AbortController();
+    pageFlight.current = operation;
+    const requestedSource = source;
+    const owns = () => !operation.signal.aborted && pageFlight.current === operation && activeSource.current === requestedSource && isScopeCurrent?.() !== false;
     setLoadingMore(true);
     setLinkedError("");
-    const result = await client.get<unknown>(notesSearchPath({ contactId, q: debouncedQuery, limit: 20, cursor: nextCursor }));
-    if (isScopeCurrent?.() === false) return;
+    try {
+    const result = await client.get<unknown>(notesSearchPath({ contactId, q: debouncedQuery, limit: 20, cursor: nextCursor }), { signal: operation.signal });
+    if (!owns()) return;
     if (result.success && result.status >= 200 && result.status < 300) {
       const page = notesPageFromPayload(result.data, actorId, locale.language);
-      if (page) {
-        setLinkedNotes((items) => [...new Map([...items, ...page.notes].map((note) => [note.id, note])).values()]);
+      if (page && page.total === linkedTotal) {
+        setLinkedNotes((items) => mergeNotePages(items, page.notes));
         setNextCursor(page.nextCursor);
       } else setLinkedError(locale.t("notes.nextLinkedInvalid"));
     } else setLinkedError(result.success ? locale.t("notes.nextLinkedFailed") : result.error.message);
-    setLoadingMore(false);
+    } catch {
+      if (owns()) setLinkedError(locale.t("notes.nextLinkedFailed"));
+    } finally {
+      if (owns()) { pageFlight.current = null; setLoadingMore(false); }
+    }
   }
 
   return <View style={styles.section}>
@@ -128,6 +148,9 @@ export function ContactNotesSection({ actorId, client, colors, contactId, data, 
       {nextCursor ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.loadMoreLinked")} disabled={loadingMore} onPress={() => { void loadMore(); }} style={styles.loadMore}><Text style={styles.secondaryText}>{locale.t(loadingMore ? "notes.loadingMore" : "notes.loadMore")}</Text></Pressable> : null}
       {linkedError && linkedState === "ready" ? <Text accessibilityRole="alert" style={styles.error}>{linkedError}</Text> : null}
       <View style={styles.actions}>
+        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.allNotes")} onPress={() => navigate("/notes")} style={styles.secondary}>
+          <Text style={styles.secondaryText}>{locale.t("notes.allNotes")}</Text>
+        </Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.viewAllLinked")} onPress={() => navigate(`/notes?contactId=${encodeURIComponent(contactId)}`)} style={styles.secondary}>
           <Text style={styles.secondaryText}>{locale.t("notes.viewAll")}</Text>
         </Pressable>

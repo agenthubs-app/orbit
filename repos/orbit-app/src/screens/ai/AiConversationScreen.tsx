@@ -39,6 +39,7 @@ import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { aiConversationListSchema, aiSessionReadSchema, aiSessionReceiptMatches, aiReplyPayload, aiReliableSendReceipt, aiReliableSendRecovery, aiTaskReceipt, type AiConversationPayload, type AiSession } from "../../api/ai-history-contract";
 import type { AiSessionOriginInputContract, AiSessionReferenceContract } from "../../api/contract/ai-sessions";
 import { updateAiSessionOrganization } from "../../api/ai-session-management";
+import { useMobileViewport } from "../../platform/use-mobile-viewport";
 import { ContactMentionPicker, type MentionContact } from "./ContactMentionPicker";
 import { AiContactArtifactPanel } from "./AiContactArtifactPanel";
 import { sessionContactArtifacts } from "../../view-models/ai-artifacts";
@@ -165,6 +166,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const insets = useSafeAreaInsets();
+  const viewport = useMobileViewport();
   const { id, initialMessage, initialMessageConsumed, source, sourceNoteId, sourceNoteVersion } = useLocalSearchParams<{
     id?: string | string[]; initialMessage?: string | string[]; initialMessageConsumed?: string | string[]; source?: string | string[]; sourceNoteId?: string | string[]; sourceNoteVersion?: string | string[];
   }>();
@@ -540,8 +542,16 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     : null;
 
   return (
-    <SafeAreaView edges={["top", "bottom"]} style={styles.readingSafeArea}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={insets.top} style={[styles.readingRoot, !thread ? styles.readingFallback : null]}>
+    <SafeAreaView
+      edges={["top", "bottom"]}
+      style={[
+        styles.readingSafeArea,
+        viewport.visibleHeight === null
+          ? null
+          : { height: viewport.visibleHeight, maxHeight: viewport.visibleHeight }
+      ]}
+    >
+      <KeyboardAvoidingView behavior={Platform.OS === "web" ? undefined : Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={insets.top} style={[styles.readingRoot, !thread ? styles.readingFallback : null]}>
       {!thread ? <Pressable accessibilityLabel={locale.t("aiConversation.back")} accessibilityRole="button" onPress={() => { if (owns()) router.back(); }} style={styles.backButton}>
         <Ionicons color={colors.ink} name="arrow-back-outline" size={24} />
       </Pressable> : null}

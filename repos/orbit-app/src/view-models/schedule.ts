@@ -407,7 +407,10 @@ function canonicalScheduleTimelineItems(scheduleItems: unknown, timeZone: string
         kindValue === "meeting" || kindValue === "personal" ? kindValue : "event";
       const rawStartsAt = stringField(item, "startsAt");
       const startsAt = timestamp(rawStartsAt);
-      const formatted = rawStartsAt ? dateParts(rawStartsAt, timeZone, language) : null;
+      const allDay = kind === "personal" && item.allDay === true;
+      const savedZone = allDay ? stringField(item, "timeZone", timeZone) : timeZone;
+      try { new Intl.DateTimeFormat("en", { timeZone: savedZone }); } catch { return []; }
+      const formatted = rawStartsAt ? dateParts(rawStartsAt, savedZone, language) : null;
       const rawEndsAt = stringField(item, "endsAt");
       const endsAt = timestamp(rawEndsAt);
       if (startsAt === null || !formatted) return [];
@@ -422,12 +425,12 @@ function canonicalScheduleTimelineItems(scheduleItems: unknown, timeZone: string
       return [{
         actionLabel: labels.action,
         dateKey: formatted.dateKey,
-        ...(endsAt !== null && endsAt > startsAt ? { endDateKey: localParts(endsAt - 1, timeZone).date } : {}),
+        ...(endsAt !== null && endsAt > startsAt ? { endDateKey: localParts(endsAt - 1, savedZone).date } : {}),
         dayLabel: formatted.dayLabel,
-        detail: [formatted.timeLabel, location].filter(Boolean).join(" · "),
+        detail: [allDay ? t("schedule.allDay") : formatted.timeLabel, location].filter(Boolean).join(" · "),
         durationMinutes: endsAt !== null && endsAt > startsAt
-          ? Math.max(30, Math.min(240, Math.round((endsAt - startsAt) / 60_000)))
-          : 60,
+          ? kind === "personal" ? Math.round((endsAt - startsAt) / 60_000) : Math.max(30, Math.min(240, Math.round((endsAt - startsAt) / 60_000)))
+          : kind === "personal" ? 0 : 60,
         href: kind === "event"
           ? `/schedule/events/${encodeURIComponent(sourceId)}`
           : kind === "meeting"
@@ -443,7 +446,7 @@ function canonicalScheduleTimelineItems(scheduleItems: unknown, timeZone: string
         sortAt: startsAt,
         statusLabel: stringField(item, "state") === "ongoing" ? t("todayVm.ongoing") : t("scheduleVm.scheduled"),
         subtitle: labels.subtitle,
-        timeLabel: formatted.timeLabel,
+        timeLabel: allDay ? "" : formatted.timeLabel,
         title: stringField(item, "title", t("scheduleVm.schedule")),
       }];
     });
