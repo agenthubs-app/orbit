@@ -43,6 +43,10 @@ test("initialized relationship readers follow canonical transitions, not stale c
   assert.equal(detail.success, true);
   assert.equal(detail.data.contact.status, "active");
   assert.deepEqual(detail.data.contact.tags, ["保留标签"]);
+  assert.equal((detail.data.contact as unknown as Record<string, unknown>).lifecycleInitialization, "ready");
+  const pendingDetail = await createLiveContactDetailTagStatusService({ provider }).getContactDetail({ actorId, contactId: "contact:pending" });
+  assert.equal(pendingDetail.success, true);
+  assert.equal((pendingDetail.data.contact as unknown as Record<string, unknown>).lifecycleInitialization, "pending");
   assert.equal((await provider.readContactGraphForContact?.("contact:ready", "owner:other"))?.contacts.length, 0);
 });
 

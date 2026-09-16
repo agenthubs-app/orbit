@@ -234,6 +234,7 @@ export interface ContactDetailPublicProfile {
 // 末尾的 executed/requested 布尔字段是安全审计，不是 UI 装饰字段。
 export interface ContactDetail {
   id: string;
+  lifecycleInitialization?: "pending" | "ready";
   contentLanguage: OrbitLanguage;
   displayName: string;
   role: string;

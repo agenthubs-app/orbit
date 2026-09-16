@@ -562,6 +562,7 @@ function detailFor(input: {
 
   return {
     id: input.contact.id,
+    lifecycleInitialization: input.contact.lifecycleInitialization,
     displayName: input.contact.displayName,
     contentLanguage: input.language,
     // 缺失字段保持为空，由展示层条件渲染省略，而不是显示成虚构值。

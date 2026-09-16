@@ -8,6 +8,15 @@ import {
 } from "../../app/(app)/app/tasks/relationship-lifecycle-tasks";
 import { RelationshipLifecycleTasksSection } from "../../app/(app)/app/tasks/relationship-lifecycle-tasks-section";
 import type { LiveFollowupGraph } from "../../features/followups/storage/followup-live-record-provider";
+import RelationshipLifecyclePage from "../../app/(app)/app/tasks/relationship/[id]/page";
+
+test("relationship route decodes URL identity once before editor receipt comparison", async () => {
+  const id = "connection:event-consent:one";
+  for (const routeId of [id, encodeURIComponent(id)]) {
+    const page = await RelationshipLifecyclePage({ params: Promise.resolve({ id: routeId }) });
+    assert.equal(page.props.connectionId, id);
+  }
+});
 
 const source = { type: "manual" as const, id: "source:relationship" };
 const evidenceIds = ["evidence:relationship"] as const;
