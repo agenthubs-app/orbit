@@ -59,6 +59,17 @@ test('the actual native consumers all have explicit versioned policies', async (
     'src/screens/inbox/RelationshipInboxScreen.tsx GET /api/chat/privacy',
     'src/screens/inbox/RelationshipInboxScreen.tsx PATCH /api/agent/signals/:id',
     'src/screens/inbox/RelationshipInboxScreen.tsx POST /api/notifications/:id/state',
+    'src/screens/inbox/RelationshipInboxScreen.tsx POST /api/chat/privacy/analysis-toggle',
+    'src/screens/inbox/RelationshipInboxScreen.tsx POST /api/chat/relationship-inbox',
+    'src/screens/inbox/RelationshipInboxScreen.tsx POST /api/relationship-communication/conversations/:id/messages',
+    'src/screens/inbox/RelationshipInboxScreen.tsx POST /api/relationship-signals/:id/confirm',
+    'src/screens/inbox/useNotificationInbox.ts GET /api/inbox/notifications',
+    'src/screens/inbox/useNotificationInbox.ts POST /api/inbox/notifications/read',
+    'src/hooks/useRelationshipInboxBadgeCount.ts GET /api/inbox/notifications',
+    'src/screens/tasks/TaskDetailScreen.tsx PATCH /api/tasks/:id',
+    'src/screens/tasks/TaskDetailScreen.tsx DELETE /api/tasks/:id',
+    'src/screens/tasks/TaskDetailScreen.tsx POST /api/reminders',
+    'src/screens/tasks/TaskDetailScreen.tsx PATCH /api/reminders/:id',
   ]) assert.ok(actual.has(expected), expected);
   assert.deepEqual(await auditReadSurfaces(root), { unregistered: [], invalid: [] });
   assert.ok(surfaces.some(row => row.readPersistence === 'device_only' && row.mutationPolicy === 'local_only'));
@@ -84,11 +95,34 @@ test('wrapper aliases, generic requests and computed client methods are audited 
 
 test('computed clients and generic requests reject unresolved methods and paths', async t => {
   const root = await fixture(t, {
-    'src/screens/Hidden.tsx': 'client[chooseMethod()]("/api/computed"); request("get", computeRemotePath());',
+    'src/screens/Hidden.tsx': 'function request(method: "get", path: string) { return client[method](path); } function injected(get: (path: string) => unknown) { return get("/api/inbox/notifications"); } client[chooseMethod()]("/api/computed"); request("get", computeRemotePath()); injected(chooseTransport());',
   });
   const result = await auditReadSurfaces(root);
   assert.ok(result.invalid.some(row => row.includes('UNRESOLVED_METHOD')));
   assert.ok(result.invalid.some(row => row.includes('UNRESOLVED_PATH')));
+  assert.ok(result.invalid.some(row => row.includes('UNRESOLVED_DELEGATE')));
+});
+
+test('a valid direct call cannot hide local delegates or injected transports', async t => {
+  const root = await fixture(t, {
+    'src/screens/Mixed.ts': `
+      client.get('/api/notes');
+      function mutate(method: 'patch', path: string) { return client[method](path); }
+      function injected(get: (path: string) => unknown) { return get('/api/inbox/notifications'); }
+      mutate('patch', '/api/tasks/t1');
+      injected((path: string) => client.get(path));
+    `,
+  });
+  const extracted = await extractReadCalls(root);
+  assert.deepEqual(extracted.invalid, []);
+  assert.deepEqual(extracted.calls.map(row => [row.method, row.endpointTemplate]).sort(), [
+    ['GET', '/api/inbox/notifications'],
+    ['GET', '/api/notes'],
+    ['PATCH', '/api/tasks/t1'],
+  ]);
+  const audit = await auditReadSurfaces(root);
+  assert.ok(audit.unregistered.some(row => row.includes('PATCH /api/tasks/t1')));
+  assert.ok(audit.unregistered.some(row => row.includes('GET /api/inbox/notifications')));
 });
 
 test('reads and mutations on one endpoint remain separate registered surfaces', () => {

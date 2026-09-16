@@ -1,4 +1,4 @@
-import { readdir, readFile } from 'node:fs/promises';
+import { readdir } from 'node:fs/promises';
 import { resolve, relative, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
@@ -6,6 +6,8 @@ import { surfaces } from '../src/data/offline-read/route-domain-inventory';
 
 type Call = { consumerFile: string; endpointTemplate: string; method: string };
 type Values = string[];
+type Callable = ts.FunctionDeclaration | ts.FunctionExpression | ts.ArrowFunction | ts.MethodDeclaration;
+type CallableEnv = Map<ts.Node, readonly Callable[]>;
 const UNKNOWN = '<unresolved>';
 const unique = (values: string[]) => [...new Set(values)];
 const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
@@ -192,84 +194,263 @@ export async function extractReadCalls(root: string): Promise<{ calls: Call[]; i
     if (value.endsWith('/')) value += ':id';
     return value;
   }
-  function declaredName(node: ts.Node): string {
-    return symbol(node)?.getName() ?? node.getText();
+  function callable(declaration: ts.Declaration | undefined): Callable | undefined {
+    if (declaration && (ts.isFunctionDeclaration(declaration) || ts.isFunctionExpression(declaration)
+      || ts.isArrowFunction(declaration) || ts.isMethodDeclaration(declaration)) && declaration.body) return declaration;
+    return undefined;
   }
-  function fixedMethod(name: string): string | null {
-    const match = /^(?:client)?(get|post|put|patch|delete)$/iu.exec(name);
-    return match?.[1]?.toUpperCase() ?? null;
+  function injectedParameter(declaration: ts.Declaration | undefined): boolean {
+    return Boolean(declaration && (ts.isParameter(declaration)
+      || (ts.isBindingElement(declaration) && ts.isObjectBindingPattern(declaration.parent) && ts.isParameter(declaration.parent.parent))));
   }
-  function parameterDelegate(node: ts.CallExpression, pathNode: ts.Node | undefined): boolean {
-    if (!pathNode) return false;
-    const target = declaration(pathNode);
-    if (!target || !ts.isParameter(target)) return false;
-    for (let current: ts.Node | undefined = node.parent; current; current = current.parent) {
-      if (ts.isFunctionLike(current) && current.parameters.some(parameter => parameter === target)) return true;
+  function returnedFunctions(fn: Callable, propertyName: string, callableEnv: CallableEnv, seen: Set<ts.Node>): Callable[] {
+    const found: Callable[] = [];
+    function visit(node: ts.Node): void {
+      if (node !== fn.body && ts.isFunctionLike(node)) return;
+      if (ts.isReturnStatement(node) && node.expression && ts.isObjectLiteralExpression(node.expression)) {
+        for (const property of node.expression.properties) {
+          const name = property.name?.getText().replace(/["']/gu, '');
+          if (name !== propertyName) continue;
+          if (ts.isShorthandPropertyAssignment(property)) {
+            const value = checker.getShorthandAssignmentValueSymbol(property);
+            const target = value?.valueDeclaration ?? value?.declarations?.[0];
+            if (target && ts.isVariableDeclaration(target) && ts.isIdentifier(target.name)) found.push(...resolveFunctions(target.name, callableEnv, seen));
+            else found.push(...resolveFunctions(property.name, callableEnv, seen));
+          }
+          else if (ts.isPropertyAssignment(property)) found.push(...resolveFunctions(property.initializer, callableEnv, seen));
+        }
+      } else ts.forEachChild(node, visit);
     }
-    return false;
+    visit(fn.body!);
+    return uniqueNodes(found);
   }
-  function inspect(file: ts.SourceFile, node: ts.Node) {
+  function uniqueNodes<T extends ts.Node>(nodes: readonly T[]): T[] {
+    return [...new Set(nodes)];
+  }
+  function resolveFunctions(node: ts.Node | undefined, callableEnv: CallableEnv = new Map(), seen = new Set<ts.Node>()): Callable[] {
+    if (!node || seen.has(node) || seen.size > 60) return [];
+    const next = new Set(seen).add(node);
+    if (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isNonNullExpression(node) || ts.isSatisfiesExpression(node)) {
+      return resolveFunctions(node.expression, callableEnv, next);
+    }
+    const direct = callable(node as ts.Declaration);
+    if (direct) return [direct];
+    const target = declaration(node);
+    if (!target) return [];
+    if (injectedParameter(target)) return [...(callableEnv.get(target) ?? [])];
+    const targetFunction = callable(target);
+    if (targetFunction) return [targetFunction];
+    if (ts.isVariableDeclaration(target) && target.initializer) {
+      if (ts.isCallExpression(target.initializer) && /^(?:useCallback|useMemo)$/u.test(target.initializer.expression.getText())) {
+        return resolveFunctions(target.initializer.arguments[0], callableEnv, next);
+      }
+      return resolveFunctions(target.initializer, callableEnv, next);
+    }
+    if (ts.isBindingElement(target) && ts.isObjectBindingPattern(target.parent)) {
+      const variable = target.parent.parent;
+      const propertyName = (target.propertyName ?? target.name).getText().replace(/["']/gu, '');
+      if (ts.isVariableDeclaration(variable) && variable.initializer && ts.isCallExpression(variable.initializer)) {
+        return uniqueNodes(resolveFunctions(variable.initializer.expression, callableEnv, next)
+          .flatMap(fn => returnedFunctions(fn, propertyName, callableEnv, next)));
+      }
+    }
+    return [];
+  }
+  type TransportShape = { kind: 'computed' | 'fixed' | 'raw' | 'resource' | 'binary'; pathIndex: number; fixedMethod?: string };
+  function transportShape(node: ts.CallExpression): TransportShape | null {
+    const expr = node.expression;
+    const name = ts.isPropertyAccessExpression(expr) ? expr.name.text : expr.getText();
+    if (ts.isPropertyAccessExpression(expr)) {
+      const receiver = expr.expression.getText();
+      const typedClient = checker.typeToString(checker.getTypeAtLocation(expr.expression)).includes('OrbitApiClient');
+      if (/^(get|post|put|patch|delete)$/u.test(name) && (typedClient || /client|api/iu.test(receiver))) {
+        return { kind: 'fixed', pathIndex: 0, fixedMethod: name.toUpperCase() };
+      }
+    }
+    if (ts.isElementAccessExpression(expr)
+      && (checker.typeToString(checker.getTypeAtLocation(expr.expression)).includes('OrbitApiClient') || /client|api/iu.test(expr.expression.getText()))) {
+      return { kind: 'computed', pathIndex: 0 };
+    }
+    if (/^(useApiResource|useValidatedApiResource)$/u.test(name)) return { kind: 'resource', pathIndex: 0, fixedMethod: 'GET' };
+    if (/^(fetch|fetchImpl|fetcher|fetchStream|expoFetch)$/u.test(name)) return { kind: 'raw', pathIndex: 0, fixedMethod: 'GET' };
+    if (name === 'loadSelectedBatchImage') return { kind: 'binary', pathIndex: 1, fixedMethod: 'GET' };
+    return null;
+  }
+  const pendingSinks = new Map<ts.CallExpression, { location: string; method: boolean; path: boolean; text: string }>();
+  const resolvedSinks = new Set<ts.CallExpression>();
+  const pendingDelegates = new Map<ts.CallExpression, string>();
+  const resolvedDelegates = new Set<ts.CallExpression>();
+  function recordTransport(node: ts.CallExpression, shape: TransportShape, env: Map<ts.Node, Values>, consumerFile: string, expanded: boolean): void {
+    if (expanded && resolvedSinks.has(node) && !pendingSinks.has(node)) return;
+    const source = node.getSourceFile();
+    const sourceFile = relative(root, source.fileName);
+    if (transportFiles.has(sourceFile) || (shape.kind === 'raw' && sourceFile === 'src/api/business-card-import.ts')) return;
+    const location = `${sourceFile}:${source.getLineAndCharacterOfPosition(node.getStart()).line + 1}`;
+    let methods = shape.fixedMethod ? [shape.fixedMethod] : [UNKNOWN];
+    if (shape.kind === 'computed' && ts.isElementAccessExpression(node.expression)) methods = evaluate(node.expression.argumentExpression, env);
+    if (shape.kind === 'raw' && node.arguments[1]) {
+      const init = node.arguments[1];
+      if (ts.isObjectLiteralExpression(init)) {
+        const property = init.properties.find(p => ts.isPropertyAssignment(p) && p.name.getText() === 'method');
+        if (property && ts.isPropertyAssignment(property)) methods = evaluate(property.initializer, env);
+      } else methods = [UNKNOWN];
+    }
+    methods = unique(methods.map(method => method === UNKNOWN ? UNKNOWN : method.toUpperCase())
+      .map(method => /^(GET|POST|PUT|PATCH|DELETE)$/u.test(method) ? method : UNKNOWN));
+    const pathNode = node.arguments[shape.pathIndex];
+    const evaluatedPaths = evaluate(pathNode, env);
+    const paths = evaluatedPaths.map(normalizePath).filter((value): value is string => value !== null);
+    const unresolvedPath = !paths.length || evaluatedPaths.every(path => !path.includes('/api/'));
+    const inferredPaths = unresolvedPath ? [...(computedPathFamilies[location] ?? [])] : [];
+    const resolvedPaths = unique([...paths, ...inferredPaths]);
+    const unresolvedMethod = methods.includes(UNKNOWN);
+    if (unresolvedMethod || (!resolvedPaths.length && unresolvedPath)) {
+      const finding = { location, method: unresolvedMethod, path: !resolvedPaths.length && unresolvedPath, text: node.getText().slice(0, 100) };
+      pendingSinks.set(node, finding);
+    }
+    if (resolvedPaths.length && methods.some(method => method !== UNKNOWN)) resolvedSinks.add(node);
+    for (const path of resolvedPaths) {
+      for (const method of methods.filter(value => value !== UNKNOWN)) calls.push({ consumerFile, endpointTemplate: path, method });
+    }
+  }
+  function pathLikeArgument(node: ts.Node | undefined, env: Map<ts.Node, Values>): boolean {
+    if (!node) return false;
+    if (evaluate(node, env).some(value => value.includes('/api/'))) return true;
+    const target = declaration(node);
+    return Boolean(target && ts.isParameter(target) && /(?:path|endpoint|url)/iu.test(target.name.getText()));
+  }
+  function delegateMayTransport(node: ts.CallExpression, env: Map<ts.Node, Values>): boolean {
+    if (node.arguments.some(argument => pathLikeArgument(argument, env))) return true;
+    const signatures = checker.getSignaturesOfType(checker.getTypeAtLocation(node.expression), ts.SignatureKind.Call);
+    const apiResult = signatures.some(signature => checker.typeToString(signature.getReturnType()).includes('ApiResult'));
+    return apiResult && node.arguments.some(argument => checker.typeToString(checker.getTypeAtLocation(argument)).includes('string'));
+  }
+  const reachability = new Map<Callable, boolean>();
+  function mayReachTransport(fn: Callable, seen = new Set<Callable>()): boolean {
+    const cached = reachability.get(fn);
+    if (cached !== undefined) return cached;
+    if (seen.has(fn)) return false;
+    const next = new Set(seen).add(fn);
+    let reaches = false;
+    function visit(node: ts.Node): void {
+      if (reaches) return;
+      if (node !== fn.body && ts.isFunctionLike(node)) {
+        const nested = callable(node as ts.Declaration);
+        if (nested && mayReachTransport(nested, next)) reaches = true;
+        return;
+      }
+      if (ts.isCallExpression(node)) {
+        if (transportShape(node)) { reaches = true; return; }
+        const target = declaration(node.expression);
+        if (injectedParameter(target) && delegateMayTransport(node, new Map())) { reaches = true; return; }
+        if (resolveFunctions(node.expression).some(inner => mayReachTransport(inner, next))) { reaches = true; return; }
+      }
+      if ((ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node))
+        && resolveFunctions(node.tagName).some(inner => mayReachTransport(inner, next))) { reaches = true; return; }
+      ts.forEachChild(node, visit);
+    }
+    visit(fn.body!);
+    reachability.set(fn, reaches);
+    return reaches;
+  }
+  function inferredDelegateValues(fn: Callable, node: ts.CallExpression): Map<ts.Node, Values> {
+    const source = node.getSourceFile();
+    const location = `${relative(root, source.fileName)}:${source.getLineAndCharacterOfPosition(node.getStart()).line + 1}`;
+    const paths = computedPathFamilies[location];
+    if (!paths?.length) return new Map();
+    let index = node.arguments.findIndex(argument => checker.typeToString(checker.getTypeAtLocation(argument)).includes('string'));
+    if (index < 0) index = 0;
+    const parameter = fn.parameters[index];
+    return parameter ? new Map([[parameter, [...paths]]]) : new Map();
+  }
+  function expandFunction(fn: Callable, arguments_: readonly ts.Expression[], outerEnv: Map<ts.Node, Values>, outerCallableEnv: CallableEnv, originFile: string, stack: Set<Callable>, directValues = new Map<ts.Node, Values>(), directCallables: CallableEnv = new Map()): void {
+    if (stack.has(fn) || stack.size > 30) return;
+    const env = new Map(outerEnv);
+    const callableEnv = new Map(outerCallableEnv);
+    fn.parameters.forEach((parameter, index) => {
+      const values = evaluate(arguments_[index] ?? parameter.initializer, outerEnv);
+      const declared = literals(parameter);
+      env.set(parameter, values.every(value => value === UNKNOWN) && declared.length ? declared : values);
+      callableEnv.set(parameter, resolveFunctions(arguments_[index], outerCallableEnv));
+    });
+    for (const [node, values] of directValues) env.set(node, values);
+    for (const [node, functions] of directCallables) callableEnv.set(node, functions);
+    const nextStack = new Set(stack).add(fn);
+    function visit(node: ts.Node): void {
+      if (node !== fn.body && ts.isFunctionLike(node)) {
+        const nested = callable(node as ts.Declaration);
+        if (nested && mayReachTransport(nested)) expandFunction(nested, [], env, callableEnv, originFile, nextStack);
+        return;
+      }
+      if (ts.isCallExpression(node)) {
+        const shape = transportShape(node);
+        if (shape) recordTransport(node, shape, env, originFile, true);
+        else {
+          const target = declaration(node.expression);
+          const functions = resolveFunctions(node.expression, callableEnv).filter(fn => mayReachTransport(fn));
+          if (functions.length) {
+            if (injectedParameter(target)) resolvedDelegates.add(node);
+            const nextOrigin = injectedParameter(target) ? relative(root, node.getSourceFile().fileName) : originFile;
+            functions.forEach(inner => expandFunction(inner, node.arguments, env, callableEnv, nextOrigin, nextStack, inferredDelegateValues(inner, node)));
+          } else if (injectedParameter(target) && delegateMayTransport(node, env)) {
+            pendingDelegates.set(node, `${relative(root, node.getSourceFile().fileName)}:${node.getSourceFile().getLineAndCharacterOfPosition(node.getStart()).line + 1} UNRESOLVED_DELEGATE ${node.expression.getText()}`);
+          }
+        }
+      }
+      if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+        expandJsx(node, node.getSourceFile(), env, callableEnv, nextStack);
+      }
+      ts.forEachChild(node, visit);
+    }
+    visit(fn.body!);
+  }
+  function jsxExpression(attribute: ts.JsxAttribute | undefined): ts.Expression | undefined {
+    if (!attribute?.initializer) return undefined;
+    if (ts.isStringLiteral(attribute.initializer)) return attribute.initializer;
+    if (ts.isJsxExpression(attribute.initializer)) return attribute.initializer.expression;
+    return undefined;
+  }
+  function expandJsx(node: ts.JsxOpeningLikeElement, file: ts.SourceFile, outerEnv = new Map<ts.Node, Values>(), outerCallableEnv: CallableEnv = new Map(), stack = new Set<Callable>()): void {
+    const functions = resolveFunctions(node.tagName, outerCallableEnv).filter(fn => mayReachTransport(fn));
+    for (const fn of functions) {
+      const parameter = fn.parameters[0];
+      if (!parameter || !ts.isObjectBindingPattern(parameter.name)) continue;
+      const values = new Map<ts.Node, Values>();
+      const callables: CallableEnv = new Map();
+      for (const binding of parameter.name.elements) {
+        const propertyName = (binding.propertyName ?? binding.name).getText().replace(/["']/gu, '');
+        const attribute = node.attributes.properties.find(property => ts.isJsxAttribute(property) && property.name.getText() === propertyName);
+        const expression = jsxExpression(attribute && ts.isJsxAttribute(attribute) ? attribute : undefined);
+        values.set(binding, evaluate(expression, outerEnv));
+        callables.set(binding, resolveFunctions(expression, outerCallableEnv));
+      }
+      expandFunction(fn, [], outerEnv, outerCallableEnv, relative(root, fn.getSourceFile().fileName), stack, values, callables);
+    }
+  }
+  function inspect(file: ts.SourceFile, node: ts.Node): void {
     if (ts.isCallExpression(node)) {
-      const expr = node.expression;
-      const name = ts.isPropertyAccessExpression(expr) ? expr.name.text : declaredName(expr);
-      const receiver = ts.isPropertyAccessExpression(expr) ? expr.expression.getText() : '';
-      const typedClient = ts.isPropertyAccessExpression(expr) && checker.typeToString(checker.getTypeAtLocation(expr.expression)).includes('OrbitApiClient');
-      const directMethod = fixedMethod(name);
-      const namedClientMethod = !ts.isPropertyAccessExpression(expr) && /^client(?:get|post|put|patch|delete)$/iu.test(name);
-      const http = directMethod !== null && (namedClientMethod || (
-        ts.isPropertyAccessExpression(expr) && (typedClient || /client|api/iu.test(receiver))
-      ));
-      const computedClient = ts.isElementAccessExpression(expr)
-        && (checker.typeToString(checker.getTypeAtLocation(expr.expression)).includes('OrbitApiClient') || /client|api/iu.test(expr.expression.getText()));
-      const genericRequest = /^(?:client)?request$/iu.test(name);
-      const resource = /^(useApiResource|useValidatedApiResource)$/u.test(name);
-      const raw = /^(fetch|fetchImpl|fetcher|fetchStream|expoFetch)$/u.test(name);
-      const protectedBinary = name === 'loadSelectedBatchImage';
-      if (http || computedClient || genericRequest || resource || raw || protectedBinary) {
-        const consumerFile = relative(root, file.fileName);
-        if (transportFiles.has(consumerFile)) {
-          ts.forEachChild(node, child => inspect(file, child));
-          return;
-        }
-        if (raw && consumerFile === 'src/api/business-card-import.ts') {
-          ts.forEachChild(node, child => inspect(file, child));
-          return;
-        }
-        const location = `${consumerFile}:${file.getLineAndCharacterOfPosition(node.getStart()).line + 1}`;
-        const pathIndex = genericRequest ? 1 : protectedBinary ? 1 : 0;
-        const pathNode = node.arguments[pathIndex];
-        // Delegate bodies are covered at their concrete call sites. Reporting their
-        // parameter placeholders would create false unresolved-path findings.
-        if ((http || computedClient || genericRequest) && parameterDelegate(node, pathNode)) {
-          ts.forEachChild(node, child => inspect(file, child));
-          return;
-        }
-        let methods = [http ? directMethod! : 'GET'];
-        if (computedClient) methods = evaluate(expr.argumentExpression);
-        if (genericRequest) methods = evaluate(node.arguments[0]);
-        if (raw && node.arguments[1]) {
-          const init = node.arguments[1];
-          if (ts.isObjectLiteralExpression(init)) {
-            const property = init.properties.find(p => ts.isPropertyAssignment(p) && p.name.getText() === 'method');
-            if (property && ts.isPropertyAssignment(property)) methods = evaluate(property.initializer);
-          } else methods = [UNKNOWN];
-        }
-        methods = unique(methods.map(method => method === UNKNOWN ? UNKNOWN : method.toUpperCase()).map(method => /^(GET|POST|PUT|PATCH|DELETE)$/u.test(method) ? method : UNKNOWN));
-        const evaluatedPaths = evaluate(pathNode);
-        const paths = evaluatedPaths.map(normalizePath).filter((value): value is string => value !== null);
-        if (methods.includes(UNKNOWN)) invalid.push(`${location} UNRESOLVED_METHOD ${node.getText().slice(0,100)}`);
-        const unresolved = !paths.length || evaluatedPaths.every(path => !path.includes('/api/'));
-        const inferredPaths = unresolved ? [...(computedPathFamilies[location] ?? [])] : [];
-        const resolvedPaths = unique([...paths, ...inferredPaths]);
-        if (unresolved && !resolvedPaths.length) invalid.push(`${location} UNRESOLVED_PATH ${pathNode?.getText()}`);
-        for (const path of resolvedPaths) {
-          for (const method of methods.filter(value => value !== UNKNOWN)) calls.push({ consumerFile, endpointTemplate: path, method });
+      const shape = transportShape(node);
+      if (shape) recordTransport(node, shape, new Map(), relative(root, file.fileName), false);
+      else {
+        const target = declaration(node.expression);
+        const functions = resolveFunctions(node.expression).filter(fn => mayReachTransport(fn));
+        if (functions.length) {
+          functions.forEach(fn => expandFunction(fn, node.arguments, new Map(), new Map(), relative(root, file.fileName), new Set()));
+        } else if (injectedParameter(target) && delegateMayTransport(node, new Map())) {
+          pendingDelegates.set(node, `${relative(root, file.fileName)}:${file.getLineAndCharacterOfPosition(node.getStart()).line + 1} UNRESOLVED_DELEGATE ${node.expression.getText()}`);
         }
       }
     }
+    if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) expandJsx(node, file);
     ts.forEachChild(node, child => inspect(file, child));
   }
   for (const file of sources) inspect(file, file);
+  for (const [node, finding] of pendingSinks) {
+    if (resolvedSinks.has(node)) continue;
+    if (finding.method) invalid.push(`${finding.location} UNRESOLVED_METHOD ${finding.text}`);
+    if (finding.path) invalid.push(`${finding.location} UNRESOLVED_PATH ${node.arguments[transportShape(node)?.pathIndex ?? 0]?.getText()}`);
+  }
+  for (const [node, finding] of pendingDelegates) if (!resolvedDelegates.has(node)) invalid.push(finding);
   return { calls: [...new Map(calls.map(row => [JSON.stringify(row), row])).values()], invalid: unique(invalid).sort() };
 }
 
@@ -278,7 +459,12 @@ export async function auditReadSurfaces(root: string): Promise<{ unregistered: s
   if (!calls.length) invalid.push('NO_READ_CONSUMERS');
   const key = (row: Call) => `${row.consumerFile} ${row.method} ${row.endpointTemplate.replace(/:[^/]+/gu, ':id')}`;
   const registered = new Set(surfaces.map(key));
+  const discovered = new Set(calls.map(key));
   const unregistered = calls.filter(row => !registered.has(key(row))).map(key);
+  for (const surface of surfaces) {
+    if (surface.endpointTemplate.startsWith('/device/') || surface.consumerFile === 'src/api/endpoints.ts') continue;
+    if (!discovered.has(key(surface))) invalid.push(`ORPHAN_SURFACE ${key(surface)}`);
+  }
   return { unregistered: unique(unregistered).sort(), invalid: unique(invalid).sort() };
 }
 
