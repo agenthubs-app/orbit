@@ -118,7 +118,7 @@ test("only a server-trusted analysis execution marker is persisted with the orig
   const sending = service.send({
     execute: async () => {
       await executionGate;
-      return { assistantMessage: { id: "assistant:analysis", text: "可信报告" }, result: { answer: "可信报告" } };
+      return { assistantMessage: { id: "assistant:analysis", text: "可信报告", originVerification: verification }, result: { answer: "可信报告" } };
     },
     input,
     prepareExecution: async () => ({ trustedOriginVerification: verification }),
@@ -210,7 +210,7 @@ test("analysis verification survives outcome-unknown assistant recovery without 
   let preparations = 0;
   let executions = 0;
   const request = {
-    execute: async () => { executions += 1; return { assistantMessage: { id: "assistant:analysis-recovery", text: "恢复后的报告" }, result: { answer: "恢复后的报告" } }; },
+    execute: async () => { executions += 1; return { assistantMessage: { id: "assistant:analysis-recovery", text: "恢复后的报告", originVerification: verification }, result: { answer: "恢复后的报告" } }; },
     input,
     prepareExecution: async () => { preparations += 1; return { trustedOriginVerification: verification }; },
   };

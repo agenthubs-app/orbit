@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import type { MobileContactsDashboardPayload } from "../../shared/api-schema/mobile-contacts-dashboard";
 import type { OrbitAgentChatSessionProvider } from "../orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
+import { isContactsAnalysisReportBody } from "../orbit-ai/contacts-analysis-execution";
 
 export const CONTACTS_ANALYSIS_VERSION = "contacts.analysis@1" as const;
 
@@ -133,9 +134,11 @@ function persistedReport(
     ? session.messages[firstUserMessageIndex + 1]
     : undefined;
   if (
+    session?.messages[firstUserMessageIndex]?.text !== session?.origin?.firstSentText ||
     assistant?.role !== "assistant" ||
     !nonEmptyString(assistant.id) ||
     !nonEmptyString(assistant.text) ||
+    !isContactsAnalysisReportBody(assistant.text) ||
     !nonEmptyString(assistant.createdAt) ||
     !Number.isFinite(new Date(assistant.createdAt).getTime())
   ) {

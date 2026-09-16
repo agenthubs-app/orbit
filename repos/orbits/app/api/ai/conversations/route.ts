@@ -56,6 +56,7 @@ import { createOrbitAgentChatSessionProvider } from "../../../../features/orbit-
 import { createContactDetailTagStatusService } from "../../../../features/contacts/service-factory";
 import { createConfiguredMobileContactsDashboardService } from "../../../../features/mobile/contacts-dashboard-service";
 import { verifyContactsAnalysisSourceVersion } from "../../../../features/mobile/contacts-analysis-report-provider";
+import { isSuccessfulContactsAnalysisExecution } from "../../../../features/orbit-ai/contacts-analysis-execution";
 import {
   AiSessionReferenceAuthorizationError,
   authorizeAiSessionContactReferences,
@@ -647,6 +648,7 @@ export async function POST(request: Request): Promise<Response> {
     ? createOrbitAgentConversationServiceForActor(agentContext.actorId)
     : createOrbitAgentConversationService();
   async function executeConversation(conversationInput = trustedInput): Promise<OrbitAgentConversationResult> {
+    if (conversationInput.contactsAnalysis) return service.sendMessage(conversationInput);
     if (mode === "mock" && !conversationInput.sourceNote && isChatKnownWorkflowInput(conversationInput)) {
     // 已知工作流必须在 bounded planner/provider 之前命中。listConversations
     // 只读取会话基态，用来保留 activeConversationId；它不会生成模型回复。
@@ -698,6 +700,7 @@ export async function POST(request: Request): Promise<Response> {
       );
     }
     try {
+      let contactsAnalysis: OrbitAgentSendMessageInput["contactsAnalysis"];
       await authorizeAiSessionContactReferences({
         actorId,
         references: reliableInput.data.references,
@@ -715,9 +718,7 @@ export async function POST(request: Request): Promise<Response> {
           if (!dashboard.success) {
             throw new AppError("SERVICE_UNAVAILABLE", "The current contacts analysis source could not be verified.");
           }
-          const trustedOriginVerification = verifyContactsAnalysisSourceVersion({
-            claimed: origin.sourceDataVersion ?? "",
-            source: {
+          const source = {
               aggregate: dashboard.data.aggregate,
               contacts: dashboard.data.contacts,
               distributions: dashboard.data.distributions,
@@ -725,11 +726,15 @@ export async function POST(request: Request): Promise<Response> {
               opportunities: dashboard.data.opportunities,
               profile: dashboard.data.profile,
               summary: dashboard.data.summary,
-            },
+          };
+          const trustedOriginVerification = verifyContactsAnalysisSourceVersion({
+            claimed: origin.sourceDataVersion ?? "",
+            source,
           });
           if (!trustedOriginVerification) {
             throw new AppError("CONFLICT", "The contacts analysis source changed. Refresh the analysis before sending.");
           }
+          contactsAnalysis = { source, sourceDataVersion: trustedOriginVerification.sourceDataVersion, liveDatabaseReadExecuted: mode === "live" };
           return { trustedOriginVerification };
         },
         execute: async (prepared) => {
@@ -737,12 +742,7 @@ export async function POST(request: Request): Promise<Response> {
             ? {
                 ...trustedInput,
                 history: prepared.history,
-                message: [
-                  "Execute the registered contacts.analysis@1 task using the current actor-scoped relationship data.",
-                  "Return a relationship analysis report; do not switch to an unrelated task.",
-                  `Verified source version: ${prepared.trustedOriginVerification.sourceDataVersion}`,
-                  `User's editable focus: ${input.message ?? ""}`,
-                ].join("\n"),
+                contactsAnalysis,
               }
             : { ...trustedInput, history: prepared?.history };
           const executed = await persistConversationRunTrace(
@@ -750,16 +750,20 @@ export async function POST(request: Request): Promise<Response> {
             agentContext.runtime,
           );
           if (executed.success === false) return { result: executed };
+          const originVerification = prepared?.trustedOriginVerification && contactsAnalysis &&
+            isSuccessfulContactsAnalysisExecution(executed, contactsAnalysis, input.message ?? "")
+            ? prepared.trustedOriginVerification : undefined;
           const assistant = [...executed.data.messages]
             .reverse()
             .find((message) => message.role === "assistant" && message.content.trim());
           return {
             assistantMessage: assistant
-              ? { id: assistant.messageId, text: assistant.content }
+              ? { id: assistant.messageId, text: assistant.content, originVerification }
               : executed.data.assistantMessage.trim()
                 ? {
                     id: `assistant:${reliableInput.data.requestId}`,
                     text: executed.data.assistantMessage,
+                    originVerification,
                   }
                 : undefined,
             result: executed,

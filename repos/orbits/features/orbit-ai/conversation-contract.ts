@@ -75,6 +75,8 @@ export interface OrbitAgentConversationLookupInput
 }
 
 export interface OrbitAgentSendMessageInput extends OrbitAgentConversationInput {
+  /** Authenticated server-only task context; never accepted from an API body. */
+  contactsAnalysis?: import("./contacts-analysis-execution").ContactsAnalysisExecutionContext | undefined;
   conversationId?: string | null;
   history?: readonly OrbitAgentConversationHistoryTurn[];
   /**
