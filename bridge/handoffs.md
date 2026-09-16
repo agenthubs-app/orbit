@@ -212,3 +212,7 @@ verified（本地共同环境）；Web/App功能及主线a591494b0，实际双�
 ## BR-026 — 三类通知
 
 verified（本地共同环境）；Web/App功能和主线e045651b3，同一记录读/处理与源任务分离。模型发现/实际Push交接0039/0040；[交接及限制](2026-09-16-typed-notification-inbox.md)。
+
+## BR-027 — 自主发现
+
+source_ready / consumer_ready / verification blocked；功能4aa21961a、合并131723ddb。真实笔记/偏好/队列已验，真实模型/费用仍缺；[交接](2026-09-16-evidence-notification-discovery.md)。
