@@ -18,7 +18,9 @@
 
 本轮追加完成：关系投影代码 `1f9cca960`，662 条更新先备份后事务提交、回读零问题，正式 Web 列表/详情复验通过；46 项定向回归和 typecheck 通过。备份：`/Users/li/.config/orbit/production-test-2026-09-16/pre-relationship-consolidation.json`。此次仅追加 seed/验证脚本和云端测试数据整理，Web 运行源码未变，无需为该数据更新重新发布。GitNexus query/impact/detect-changes 仍 SIGSEGV，已补源码和定向测试，不能声称图分析通过。
 
-后续队列：原生 App 同环境验收依赖兼容当前 Expo 依赖的原生构建环境；活动后台生成验收依赖持久云端 worker。当前 Vercel 队列清单与 maintenance task 清单均未包含 event-operations worker，不能把 Web 发布成功视为后台匹配生成已可持续运行，也不以开发机器长驻冒充云服务。其余跨域真实操作继续按业务链路补证；上述环境缺口不影响用户现在进行 Web 测试。清空测试数据、正式 workspace 和备份策略留到真实上线前，不提前执行。
+并行测试增量（2026-09-16）：Luna max 子代理分别核查活动 worker、App 与 Production 数据，主代理执行 Web 实操。发现 iOrbit/个人日程页使用 raw 登录主体而非 canonical 账号；个人日程已写入但 UI 回执报错；66 条关系待办仍是 legacy 数据格式，被当前 tasks reader 过滤。它们均是当前 P0 未完成项，先修身份入口与任务投影，再验收 AI 只读查询。此前 lifecycle preflight 0 issues 不代表 tasks API 可读；笔记与任务提醒链路还缺有效测试实例。新建 canonical 任务的保存、完成、恢复、刷新与跨账号隔离已通过。详细结果和证据见 [并行测试报告](2026-09-16-production-parallel-test-report.md)。
+
+后续队列：上述 Web/数据缺口可以独立处理；原生 App 同环境验收需要兼容当前 Expo 依赖的原生构建环境；活动后台生成验收需要持久云端 worker。当前 Vercel 队列清单与 maintenance task 清单均未包含 event-operations worker，不能把 Web 发布成功视为后台匹配生成已可持续运行，也不以开发机器长驻冒充云服务。Web 已可测试但不代表主流程全部通过。清空测试数据、正式 workspace、备份策略与凭据轮换留到真实上线前，不提前执行。
 
 ## 历史方案与执行记录（以下前置条件已由上述计划取代）
 
