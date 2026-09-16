@@ -89,7 +89,7 @@ build/harness-logs/
 | [0037](0037-contact-message-inbox/GOAL.md) | 把联系人消息从通知中独立出来，让用户看到真实对话并可靠收发、回复和同步已读。 | 2026-09-16 已确认的消息/三类通知设计 | 功能及主线 a591494b0；共同环境双账号通信/原生回读已验收，见 [REPORT](0037-contact-message-inbox/REPORT.md) | completed |
 | [0038](0038-typed-notification-inbox/GOAL.md) | 让每条通知明确属于提醒、建议或动态，显示原因和可追溯来源，并让 Web 与 App 操作同一条记录。 | 2026-09-16 已确认的消息/三类通知设计 | 功能及主线e045651b3；同账号三类通知与双向动作验收，[REPORT](0038-typed-notification-inbox/REPORT.md)保留失败历史 | completed |
 | [0039](0039-evidence-based-notification-discovery/GOAL.md) | 让 AI 从允许使用的真实信息中自主发现具体动作，有可信时间才提醒，并展示可核查的原文依据。 | 2026-09-16 已确认的消息/三类通知设计 | 功能4aa21961a/合并131723ddb；设置与队列已验，真实provider/费用仍缺，见[REPORT](0039-evidence-based-notification-discovery/REPORT.md) | blocked |
-| [0040](0040-notification-delivery-cutover/GOAL.md) | 让消息和通知按独立偏好可靠送达，减少重复打扰，并安全替换旧通知数据与旧发送链。 | 2026-09-16 已确认的消息/三类通知设计 | 依赖 0039 固定SHA合并及相关验证；真实Push需有效provider/设备；本次仅规划，run_count=0 | planned |
+| [0040](0040-notification-delivery-cutover/GOAL.md) | 让消息和通知按独立偏好可靠送达，减少重复打扰，并安全替换旧通知数据与旧发送链。 | 2026-09-16 已确认的消息/三类通知设计 | 0037/0038 completed；0039固定代码已合并，真实模型SC独立等待；E线run-01 | running |
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
 
@@ -427,3 +427,10 @@ build/harness-logs/
 - 真实provider前核对0020未结算费用；离线代码/队列不依赖这项缺口。
 
 - 0039收口：run-01 blocked，功能4aa21961a/合并131723ddb；合并树Web16/16、App22/22、两端typecheck通过。真实模型链及历史费用缺项见REPORT，独立工作继续0040。
+
+### 0040 / run-01
+
+- 开始：2026-09-16T01:31:46.940Z；owner：当前session唯一Generator；分支codex/e-line-sprint-0040；基线562373393。
+- Planner SHA256 de08d8ed7560c0321afa9a2bf4b2e5b950db9218c83fd6f268ba7f8bcdd665ee。0037/0038已完成；0039固定协议已合并，真实AI链等待费用/provider，仅暂停0040相应依赖场景，其余按根自主执行规则继续。
+- 0033实际9174工作树1c8b442e1，tracked clean；0035尚未改通知协调器。本线持有notifications/delivery及通知响应有限接线；不改sync提示、outbox或root layout。0035后续须复验组合。独立QA31037、原Simulator/bundle继续。
+- 可执行：策略/偏好、事务投递身份、迁移dry-run/QA apply及独立UI；可调查：精确Push配置存在性；等待外部：未结算费用、真实模型/远程设备证据。

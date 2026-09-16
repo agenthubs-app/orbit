@@ -10,6 +10,7 @@ import { createNotificationDeliveryService, createNotificationDeliveryWorker } f
 import { createConfiguredExpoPushAdapter } from "./push-adapter";
 import { createConfiguredPushDeviceActorEnumerator, createPushDeviceService } from "./push-device-service";
 import { materializeCommitmentSignals } from "./signal-materializer";
+import { createTypedDeliveryRuntime } from './typed-delivery-factory';
 
 // One bounded delivery pass over every opted-in actor. The long-running
 // `scripts/run-notification-delivery-worker.ts` loop and the scheduled
@@ -21,6 +22,7 @@ export interface NotificationDeliveryPassCounts {
   deferred: number;
   deadLettered: number;
   receiptPending: number;
+  receiptUnknown: number;
   retried: number;
   sent: number;
   suppressed: number;
@@ -69,7 +71,7 @@ export async function runNotificationDeliveryPass(
   const { refreshSignals, workerId } = options;
   const actorIds = await actors.listOptedInActorIds();
   const total: NotificationDeliveryPassCounts = {
-    claimed: 0, deferred: 0, deadLettered: 0, receiptPending: 0, retried: 0, sent: 0, suppressed: 0,
+    claimed: 0, deferred: 0, deadLettered: 0, receiptPending: 0, receiptUnknown: 0, retried: 0, sent: 0, suppressed: 0,
   };
   const signalMaterialization = { created: 0, skipped: 0 };
   const postEventMaterialization = { created: 0, skipped: 0 };
@@ -78,6 +80,14 @@ export async function runNotificationDeliveryPass(
   for (const [index, actorId] of actorIds.entries()) {
     if (options.deadline !== undefined && Date.now() >= options.deadline) {
       deferredActors += 1;
+      continue;
+    }
+    const typed = createTypedDeliveryRuntime({ ...eventRuntime, actorId, now: () => now, push });
+    const cutover = await typed.repository.cutover(actorId);
+    if (cutover?.enabled || cutover?.legacyBlocked) {
+      await typed.materialize();
+      const result = await typed.worker.run({ limit: options.limit ?? 25, workerId: `${workerId}:${index}` });
+      for (const key of Object.keys(total) as (keyof NotificationDeliveryPassCounts)[]) total[key] += result[key];
       continue;
     }
     const delivery = createNotificationDeliveryService({ actorId });

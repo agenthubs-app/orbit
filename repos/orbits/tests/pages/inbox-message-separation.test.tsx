@@ -65,8 +65,10 @@ test('refreshing an open thread retries an interrupted read cursor request', asy
   const { create, act } = await import('react-test-renderer');
   const { ContactMessagesTab } = await import('../../app/(app)/app/inbox/contact-messages-tab');
   const oldFetch = globalThis.fetch, oldDocument = (globalThis as any).document;
-  let refresh: (() => Promise<void>) | undefined, reads = 0;
-  (globalThis as any).document = { visibilityState: 'visible', addEventListener(_event: string, listener: any) { refresh = listener; }, removeEventListener() {} };
+  const refreshListeners = new Set<() => unknown>();
+  const refresh = async () => { for (const listener of [...refreshListeners]) await listener(); };
+  let reads = 0;
+  (globalThis as any).document = { visibilityState: 'visible', addEventListener(_event: string, listener: () => unknown) { refreshListeners.add(listener); }, removeEventListener(_event: string, listener: () => unknown) { refreshListeners.delete(listener); } };
   globalThis.fetch = (async (url, init) => {
     if (String(url) === '/api/account/me') return Response.json({ success: true, data: { account: { id: 'a' } } });
     if (String(url).endsWith('/read')) {

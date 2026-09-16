@@ -22,6 +22,7 @@ export type NotificationDeliveryStatus =
   | "scheduled"
   | "processing"
   | "receipt_pending"
+  | "receipt_unknown"
   | "sent"
   | "retry_scheduled"
   | "suppressed"
@@ -34,6 +35,7 @@ export interface NotificationDeliveryTarget {
 }
 
 export interface NotificationDelivery {
+  policySource?: { kind: "notification" | "message"; id: string; eventKey: string; conversationId?: string };
   deviceId: string;
   deliveryId: string;
   actorId: string;
@@ -77,6 +79,7 @@ export interface NotificationDeliveryService {
     limit?: number;
   }) => Promise<readonly NotificationDelivery[]>;
   materialize: (input: {
+    policySource?: NotificationDelivery["policySource"];
     signalId: string;
     signalRevision: string;
     phase: NotificationDeliveryPhase;
@@ -91,10 +94,12 @@ export interface NotificationDeliveryService {
     deliveries: readonly NotificationDelivery[];
   }>;
   claimReady: (input: {
+    lane?: "legacy" | "typed";
     now: string;
     limit: number;
     workerId: string;
   }) => Promise<readonly NotificationDelivery[]>;
+  markUnknown?: (input: { deliveryId: string; workerId: string; error: string; now: string }) => Promise<NotificationDelivery>;
   markSent: (input: {
     deliveryId: string;
     workerId: string;
@@ -292,7 +297,8 @@ export function createStorageNotificationDeliveryService({
       recordId: required(deliveryId, "Delivery"),
       workspaceId: scopedWorkspaceId,
     });
-    return record ? deliveryFromRecord(record) : null;
+    const delivery = record?.userId === normalizedActorId ? deliveryFromRecord(record) : null;
+    return delivery?.actorId === normalizedActorId ? delivery : null;
   }
 
   async function save(delivery: NotificationDelivery): Promise<NotificationDelivery> {
@@ -310,11 +316,24 @@ export function createStorageNotificationDeliveryService({
       if (existing.status !== "processing" || existing.leaseOwner !== input.workerId) {
         throw new Error("Notification delivery lease is no longer owned by this worker.");
       }
-      return save(update(existing));
+      const changed = update(existing);
+      if (sqlClient) {
+        const result = await sqlClient.query<{ payload: unknown }>(
+          `update orbit_records set payload=jsonb_set(payload,'{delivery}',$1::jsonb),updated_at=$2::timestamptz
+           where workspace_id=$3 and collection_name=$4 and record_id=$5 and user_id=$6
+           and payload->'delivery'->>'status'='processing' and payload->'delivery'->>'leaseOwner'=$7
+           returning payload`,
+          [JSON.stringify(changed), input.now, scopedWorkspaceId, NOTIFICATION_DELIVERY_COLLECTION, existing.deliveryId, normalizedActorId, input.workerId],
+        );
+        if (!result.rows.length) throw new Error("Notification delivery lease is no longer owned by this worker.");
+        return changed;
+      }
+      return save(changed);
     });
   }
 
   async function claimWithStore(input: {
+    lane?: "legacy" | "typed";
     now: string;
     limit: number;
     workerId: string;
@@ -336,6 +355,7 @@ export function createStorageNotificationDeliveryService({
       .filter(
         (delivery) =>
           delivery.channel === "push" &&
+          Boolean(delivery.policySource) === (input.lane === "typed") &&
           delivery.availableAt <= input.now &&
           ((delivery.status === "scheduled" || delivery.status === "retry_scheduled") ||
             (delivery.status === "processing" &&
@@ -409,6 +429,7 @@ export function createStorageNotificationDeliveryService({
           }
           const createdAt = now();
           const delivery: NotificationDelivery = {
+            ...(input.policySource ? { policySource: input.policySource } : {}),
             actorId: normalizedActorId,
             attempt: 0,
             availableAt: scheduledFor,
@@ -535,7 +556,13 @@ export function createStorageNotificationDeliveryService({
                     and user_id = $3
                     and lifecycle_state <> 'deleted'
                     and payload->'delivery'->>'channel' = 'push'
-                    and payload->'delivery'->>'availableAt' <= $4::timestamptz
+                    and (payload->'delivery'->'policySource' is not null) = $8::boolean
+                    and ($8::boolean or not exists (
+                      select 1 from orbit_records cutover where cutover.workspace_id=$1 and cutover.user_id=$3
+                      and cutover.collection_name='notificationCutover' and cutover.record_id=$3
+                      and (cutover.payload->>'enabled'='true' or cutover.payload->>'legacyBlocked'='true')
+                    ))
+                    and (payload->'delivery'->>'availableAt')::timestamptz <= $4::timestamptz
                     and (
                       payload->'delivery'->>'status' in ('scheduled', 'retry_scheduled')
                       or (
@@ -574,6 +601,7 @@ export function createStorageNotificationDeliveryService({
                 leaseExpiredBefore,
                 Math.max(0, input.limit),
                 input.workerId,
+                input.lane === "typed",
               ],
             );
             return result.rows.flatMap((row) => {
@@ -680,6 +708,7 @@ export function createStorageNotificationDeliveryService({
       }
       return updateOwned(input, (delivery) => ({
         ...delivery,
+        attempt: delivery.policySource ? Math.max(0, delivery.attempt - 1) : delivery.attempt,
         availableAt,
         lastError: undefined,
         leaseOwner: undefined,
@@ -688,6 +717,10 @@ export function createStorageNotificationDeliveryService({
         suppressionReason: undefined,
         updatedAt: input.now,
       }));
+    },
+    async markUnknown(input) {
+      return updateOwned(input, (delivery) => ({ ...delivery, status: "receipt_unknown", lastError: input.error,
+        leaseOwner: undefined, leasedAt: undefined, updatedAt: input.now }));
     },
     async markSuppressed(input) {
       return updateOwned(input, (delivery) => ({

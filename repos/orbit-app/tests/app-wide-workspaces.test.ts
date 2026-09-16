@@ -60,6 +60,7 @@ function dataFor(path) {
 }
 export const useApiResource = path => { rerender(); return { kind: state.kind, data: dataFor(path), error: { message: "连接暂时失败" }, refreshing: false, refresh() { state.refreshes.push(path); } }; };
 const client = Object.fromEntries(["get", "post", "patch", "delete", "put"].map(method => [method, async (path, options) => {
+  if (method === "get" && path === "/api/inbox/delivery/preferences") return {success:false,status:404};
   if (method === "get" && path.startsWith("/api/inbox/notifications")) return { success: true, status: 200, data: { enabled: false, items: [], unreadCount: 0, nextCursor: null, asOf: '2026-09-16T00:00:00.000Z' }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
   if ((screen === "inbox" || screen === "inboxThread") && method === "get" && (path.startsWith("/api/relationship-communication/conversations") || path.includes("relationship-inbox") || path === "/api/notifications" || path.includes("relationship-signals"))) {
     if (state.kind === "loading") return new Promise(() => {});
