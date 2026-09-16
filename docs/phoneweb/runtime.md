@@ -51,3 +51,11 @@ OPENAI_API_KEY= DEEPSEEK_API_KEY= GOOGLE_API_KEY= GEMINI_API_KEY= ANTHROPIC_API_
 环境修正：首次启动继承了宿主shell的DeepSeek/Google key（只检查存在性，未打印值）；已停止本线进程并以显式空变量重启，避免.env.local空值无法覆盖继承值。此前只执行健康、登录及已列读取，没有发起AI/OCR生成请求；不据此推断或重置历史费用账本。
 
 压力样例在运营E2E seed成功后重跑仍因已发布报名配置缺项失败；停止该全量seed循环，保留部分数据事实。现有bootstrap真实读取有13项upcomingEvents、80项pendingTasks，联系人接口有78条记录，events接口25条；这些只是当前合成数据数量，不证明报名写入可用。
+
+## 本地活动数据修复
+
+只读调查确认旧运营种子只创建一条 `event_ops_events`（event_signup_01），其 `registration_migration_state=canonical`，但 `lifecycle_state_v2` 为空；当前报名仓储要求 published，因此正确拒绝写入。没有修改或放宽业务 gate。
+
+既有 `scripts/backfill-event-core.ts --dry-run` 使用历史 event-canonical-v2 冲突清单时失败：本地新库没有这些历史冲突，清单含未消费项。随后直接调用已有 `readEventCoreBackfillCandidates` / `buildEventCoreBackfillPlan`，使用本地专属 manifest `phoneweb-demo-20260916`（schemaVersion 1、resolutions 空）、明确 Asia/Tokyo 时区及合成 QA owner，生成29条、0冲突计划。
+
+核对目标数据库/workspace、29条数量及完整 hash `59eb038abfdb3488bef54a2f9bbb240d8236e497ffbceb98c4fdfe1661106f7c` 后，通过既有 `applyEventCoreBackfillPlan` 应用并核验一致。SQL复查29条 published。计划保存在受限临时目录，不改产品源码、不复制他线数据；这只补齐活动读取前置，报名仍需逐活动配置/截止时间/权限的真实验收，不能把全部压力种子或报名写入标为成功。
