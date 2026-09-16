@@ -9,6 +9,18 @@ import {
 const now = "2026-09-15T12:00:00.000Z";
 const actorId = "actor:a";
 
+test("feed never recreates an unavailable task link or its stale content", () => {
+  const input = sources();
+  input.notificationsData.reminders = [{ reminderId: "gone", title: "SECRET OLD TITLE", organization: "SECRET OLD ORG", followupTaskId: "task:gone", href: "", priority: "normal", occurredAt: now }];
+  const feed = inboxFeedFromSources(input);
+  const item = feed.items.find(item => item.id === "notification:gone");
+  assert.ok(item);
+  assert.equal(item.targetHref, undefined);
+  assert.equal(item.title, "来源已不可用");
+  assert.equal(item.subtitle, "");
+  assert.equal(JSON.stringify(feed).includes("SECRET OLD"), false);
+});
+
 interface FeedFixture {
   actorId: string;
   conversationsData: { conversations: Record<string, unknown>[]; refreshedAt: string };
@@ -225,7 +237,7 @@ test("missing or invalid occurrence times remain visible but make 30-day coverag
   assert.equal(view.coverageConfirmed, false);
 });
 
-test("legacy task reminders use their canonical followup id without inventing an occurrence time", () => {
+test("unproven legacy task reminders have no navigation or invented occurrence time", () => {
   const input = sources();
   input.conversationsData.conversations = [];
   input.notificationsData.reminders = [{
@@ -241,7 +253,8 @@ test("legacy task reminders use their canonical followup id without inventing an
   const view = inboxFeedFromSources(input);
   assert.equal(view.items.length, 1);
   assert.equal(view.items[0]?.category, "task");
-  assert.equal(view.items[0]?.targetHref, "/tasks/task%3Alegacy");
+  assert.equal(view.items[0]?.targetHref, undefined);
+  assert.equal(view.items[0]?.title, "来源已不可用");
   assert.equal(view.items[0]?.occurredAt, "");
   assert.equal(view.coverageConfirmed, false);
 });

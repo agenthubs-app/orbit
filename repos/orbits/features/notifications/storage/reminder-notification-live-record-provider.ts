@@ -24,6 +24,7 @@ import type {
   LiveReminderNotificationGraph,
   LiveReminderScheduleNotificationProvider,
 } from "../live-service";
+import {projectLegacyNotification,verifyLegacyTarget} from '../legacy-source-projection';
 
 export const REMINDER_NOTIFICATION_LIVE_RECORD_COLLECTIONS = {
   connections: "connections",
@@ -422,8 +423,12 @@ async function readGraph(
     ]),
     notifications: actorNotificationRecords.flatMap((record) => {
       const notification = notificationFromRecord(record);
-
-      return notification ? [notification] : [];
+      if (!notification) return [];
+      const kind=record.targetType==='task'?'task':record.targetType==='contact'?'contact':null;
+      const records=kind==='task'?taskRecords:contactRecords;
+      const target=kind && record.workspaceId===workspaceId && record.userId===actorId && record.lifecycleState==='active' && record.payload.id===record.recordId && typeof record.targetId==='string'
+        ? verifyLegacyTarget({actorId,workspaceId,kind,id:record.targetId,record:records.find(r=>r.recordId===record.targetId)??null}) : null;
+      return [projectLegacyNotification(notification,target)];
     }),
     tasks: actorTaskRecords.flatMap((record) => {
       const task = taskFromRecord(record);

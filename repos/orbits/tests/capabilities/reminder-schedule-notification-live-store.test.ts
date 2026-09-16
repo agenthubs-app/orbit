@@ -93,11 +93,15 @@ test("live reminder notification service reads generated notifications without d
   const firstQueueEntry = listed.data.notificationQueue[0];
 
   assert.equal(firstReminder?.reminderId, expectedNotification.id);
-  assert.equal(firstReminder?.followupTaskId, expectedTask.id);
-  assert.equal(firstReminder?.connectionId, expectedConnection.id);
-  assert.equal(firstReminder?.contactName, expectedContact.displayName);
-  assert.equal(firstReminder?.organization, expectedContact.organization);
-  assert.equal(firstReminder?.title, expectedTask.title);
+  // Generated flat fixtures do not prove a canonical actor-owned source.
+  assert.equal(firstReminder?.followupTaskId, "");
+  assert.equal(firstReminder?.connectionId, "");
+  assert.equal(firstReminder?.contactName, "");
+  assert.equal(firstReminder?.organization, "");
+  assert.equal(firstReminder?.title, "来源已不可用");
+  assert.equal(firstReminder?.href, "");
+  assert.deepEqual(firstReminder?.evidenceIds, []);
+  assert.deepEqual(firstQueueEntry?.evidenceIds, []);
   assert.equal(firstReminder?.source.generatedBy, "live-store-query");
   assert.equal(firstReminder?.generatedBy, "live-store-query");
   assert.equal(firstReminder?.pushNotificationRequested, false);
@@ -200,7 +204,7 @@ test("live reminder notification service reads generated notifications without d
   );
 });
 
-test("live notification pipeline preserves an internal appointment action href", async () => {
+test("an internal appointment href without a provable source is unavailable", async () => {
   const actorId = "actor:appointment-reminder";
   const workspaceId = "workspace:appointment-reminder-href";
   const href = "/app/contacts/contact%3Aren?capture=meeting-memo&appointmentId=appointment%3A1&eventId=event%3Alaunch";
@@ -239,7 +243,9 @@ test("live notification pipeline preserves an internal appointment action href",
   }).listNotifications({ actorId });
   assert.equal(result.success, true);
   if (!result.success) return;
-  assert.equal(result.data.reminders[0]?.href, href);
+  assert.equal(result.data.reminders[0]?.href, "");
+  assert.equal(result.data.reminders[0]?.title, "来源已不可用");
+  assert.deepEqual(result.data.reminders[0]?.evidenceIds, []);
 });
 
 test("reminder notification factory registers live mode and fails closed without database config", async () => {
