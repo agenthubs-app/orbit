@@ -47,7 +47,7 @@ function domainFor(path: string): string {
   if (path.startsWith('/api/recommendations/')) return 'event-recommendations';
   if (path.includes('/registration') || path.includes('/admission/application')) return 'registrations';
   if (path.includes('/access/') || path.includes('/admission/reviews')) return 'event-roles';
-  if (path.includes('/operations/')) return 'event-operations';
+  if (path.endsWith('/operations') || path.includes('/operations/')) return 'event-operations';
   if (path.includes('/analytics/')) return 'event-analytics';
   if (path.includes('/experience')) return 'event-experience';
   if (path.includes('/goal') || path.includes('/readiness') || path.includes('/encounters') || path.includes('/post-event')) return 'event-goals';
@@ -243,6 +243,10 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/events/EventCheckInScreen.tsx","GET","/api/events/:id/operations/admin/check-ins"],
   ["src/screens/events/EventCheckInScreen.tsx","POST","/api/events/:id/operations/admin/check-ins"],
   ["src/screens/events/EventDetailScreen.tsx","PUT","/api/events/:id/goal"],
+  ["src/screens/events/CanonicalEventDetailModules.tsx","GET","/api/events/:id/registration"],
+  ["src/screens/events/CanonicalEventDetailModules.tsx","GET","/api/events/:id/operations"],
+  ["src/screens/events/CanonicalEventDetailModules.tsx","GET","/api/events/:id/post-event/artifact"],
+  ["src/screens/events/CanonicalEventDetailModules.tsx","POST","/api/events/:id/registration/cancel"],
   ["src/screens/events/EventDetailScreen.tsx","GET","/api/events/:id/post-event"],
   ["src/screens/events/EventDetailScreen.tsx","POST","/api/events/:id/post-event/confirm"],
   ["src/screens/events/EventDetailScreen.tsx","GET","/api/events/:id/readiness"],
@@ -325,7 +329,12 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/schedule/MeetingDetailScreen.tsx","GET","/api/schedule-items/:id/meeting-details"],
   ["src/screens/schedule/MeetingDetailScreen.tsx","PATCH","/api/schedule-items/:id/meeting-details"],
   ["src/screens/schedule/PersonalScheduleList.tsx","GET","/api/schedule-items"],
-  ["src/screens/schedule/PersonalScheduleList.tsx","GET","/api/schedule-items/:id"],
+  ["src/screens/schedule/PersonalScheduleDetailScreen.tsx","GET","/api/schedule-items"],
+  ["src/screens/schedule/PersonalScheduleDetailScreen.tsx","GET","/api/schedule-items/:id"],
+  ["src/screens/schedule/PersonalScheduleAssociations.tsx","GET","/api/contacts/:id"],
+  ["src/screens/schedule/PersonalScheduleAssociations.tsx","GET","/api/notes"],
+  ["src/screens/schedule/PersonalScheduleAssociations.tsx","GET","/api/notes/:id"],
+  ["src/screens/schedule/PersonalScheduleAssociations.tsx","POST","/api/contacts/search"],
   ["src/screens/schedule/PersonalScheduleScreen.tsx","GET","/api/schedule-items"],
   ["src/screens/schedule/PersonalScheduleScreen.tsx","GET","/api/schedule-items/:id"],
   ["src/screens/schedule/PersonalScheduleScreen.tsx","DELETE","/api/schedule-items"],
