@@ -1,18 +1,11 @@
-# Sprint 0036 — AI 同步可见性与全链验收
+# Sprint 0036 — AI 全域读取与跨端验收
 
-## 要实现什么
+让用户已授权给 AI 的每个数据域都有可追溯的云端查询入口，并能明确分辨 AI 已看到的版本和仍留在本机的变化。
 
-让 Orbit AI 在读取笔记、待办、已确认跟进和日程时明确说明数据来自云端权威记录及其新鲜度，并用完整跨端验收和数据地图证明：哪些数据能被 AI 看到、哪些正在本机等待同步、哪些永远不可见。
+- AI 能按授权读取历史 AI 对话、联系人、人脉证据、消息、通知、笔记、任务、跟进、日程、会议、活动、目标和用户可见的 Agent 数据；未开启 AI 能力的离线数据仍不可读。
+- 每次查询有字段白名单、有界分页、云端 revision、读取时间和证据引用；局部结果不会被表述成完整历史，删除或撤权后不能继续读旧正文。
+- App 按领域和数量提示 pending、conflict、failed 变化尚未被 AI 看到；服务端确认并取得相应 canonical revision 后才消除提示。本地正文和设备草稿不进入 AI 请求。
+- 数据审查文档和私有 Data Atlas 逐域说明权威来源、存储、离线读写、AI 读、同步状态和剩余限制。
+- 在同版本 production Web/API、连接主线 Metro 的 iOS Simulator 和已授权 AI provider 上，证明各业务族新增、修改、删除、撤权、离线冷启动与恢复后的数据边界一致。
 
-## 做完能看到什么
-
-- AI 查询四个领域时返回来源、读取时间、record revision、截断/续页状态；不能把旧 revision 或局部结果说成“全部最新数据”。
-- App 有本地待同步内容时，在 AI 输入区/结果附近明确提示“仅本机，AI 暂不可见”；同步完成后提示消失，AI 可读到新 revision。
-- 换账号、清 App、重装、丢失效提示、制造冲突后，Web/App/AI 的权威边界仍一致且没有跨账号泄漏。
-- 数据审查文档和私有交互式 Data Atlas 更新为当前实现，展示数据原型、存储、外部接口、同步状态、AI 函数覆盖和剩余问题。
-
-## 怎么验收
-
-以 AI query/manifest/artifact 测试覆盖四域 freshness、actor isolation、field allowlist、截断与 prompt injection，再以同账号 production Web/API、iOS Simulator 和真实可用 AI provider 做同步前后回读。最后执行受影响端全量验证，更新并发布私有 Data Atlas；实现、报告和站点来源提交并合并回 `chat-agent`。
-
-完整范围见 [DESIGN.md](DESIGN.md) 与 [PLANNER.md](PLANNER.md)。本页不表示已经实现；状态以执行后的 `REPORT.md` 和主线合并验证为准。
+验收以 [PLANNER.md](PLANNER.md) 的五项 SC 为准，逐步执行计划见 [实施计划](../../../../../docs/superpowers/plans/2026-09-16-sprint-0036-ai-coverage-acceptance.md)。本页说明预期结果，不代表已经实现或通过验收。
