@@ -93,11 +93,11 @@ build/harness-logs/
 | [0041](0041-web-test-baseline-restoration/GOAL.md) | 恢复可信的 Web 测试基线，把确定性测试与显式前置的集成测试分开，并修复当前所有已知基线失败 | 用户批准 B/D 在定向验证与独立审查通过后先合并，并要求把既有 Web 全量失败单独建 Sprint 跟踪 | 原run已交blocked报告30a032849；固定532c29dcd确定性3183/3183，隔离集成前置/两次integration+all及审查/主线整合未齐，不重开Generator | blocked |
 | [0042](0042-personal-schedule-list-repair/GOAL.md) | 修复个人日程列表读取，并验证增改删后列表、详情与日历一致 | B/C/D报告追加；R-08/R-09，承接0010/0026/0027 | C run-01 SC01～05完成，三功能主线426b188195；报告31e7c665及登记随本次文档整合闭环，旧Web全量失败保留 | completed |
 | [0043](0043-event-read-access-repair/GOAL.md) | 活动参会者与分析入口符合实际资格，合法读取成功、拒绝与服务错误明确 | C主包参会者404/分析500与403；R-04/R-09/R-14 | 已批准；C run-01先在已核验owner/无资格样本调查/TDD；真实attendee正例另核精确fixture，B验收期间不合产品/抢runtime | running |
-| [0044](0044-ai-conversation-readback-repair/GOAL.md) | AI新会话发送后可持久回读和续聊，不返回悬空成功会话 | D POST200后GET404；R-00/R-02/R-14 | 用户批准；B线run-01，先会话生命周期调查/TDD；0036共享runtime接线等待逐文件移交，付费证据另协调 | running |
+| [0044](0044-ai-conversation-readback-repair/GOAL.md) | AI新会话发送后可持久回读和续聊，不返回悬空成功会话 | D POST200后GET404；R-00/R-02/R-14 | 部分功能已合入；原生实际发送/重开通过，Web历史会话没有composer导致续聊失败，notes实际调用/源版本和原生失败恢复缺证据；REPORT已提交，run关闭 | failed |
 | [0045](0045-private-note-deletion/GOAL.md) | 确认删除私密笔记并传播到关联入口、镜像及新AI检索，不越权或复活 | D整条笔记无删除入口/API；R-13/R-14追加 | 新增目标实施指令、授权精确记录、0033/34删除接口与0036检索失效；建议D，未派发 | planned |
 | [0046](0046-repeatable-functional-acceptance/GOAL.md) | 用正确主包与隔离有效样本补齐交互矩阵，失效通知来源安全提示 | 用户实际交互要求、B/C错包与C/D样本缺口；R-11/R-14 | 样本目标/权限/清理先核验；最终矩阵依赖0042～45及0033～36必需版本；建议空闲A/E，未派发 | planned |
 
-2026-09-16按用户“总结B/C/D报告后设计sprints”新增[中文汇总与追加计划](SIMULATOR_REMEDIATION_PROGRAM.md)，随后用户明确“42～46开始修复”及“请继续”，五项实施批准已满足。0042已收口completed，0044与接续0043各登记唯一run-01；0045/0046获准排队run_count=0，尚无REPORT。全域离线9/9失败继续映射0033～0036原契约，不另建重复缓存Sprint；不修改其冻结Planner或把规划当作修复完成。
+2026-09-16按用户“总结B/C/D报告后设计sprints”新增[中文汇总与追加计划](SIMULATOR_REMEDIATION_PROGRAM.md)，随后用户明确“42～46开始修复”及“请继续”，五项实施批准已满足。0042已收口completed，0044已交failed报告并关闭原run，0043继续唯一run-01；0045/0046获准排队run_count=0，尚无REPORT。全域离线9/9失败继续映射0033～0036原契约，不另建重复缓存Sprint；不修改其冻结Planner或把规划当作修复完成。
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
 
@@ -494,7 +494,8 @@ build/harness-logs/
 - 原0036 D任务已明确释放所有活动锁：固定`9b0fd19176661b18ef137b5eb672de4eb48257a7`，工作树无未提交；必要会话runtime/service-factory/AiScreen及route/test范围移交B，不改0036冻结data-query/manifest契约。路径补充：`repos/orbits/app/api/ai/conversations/request-context.ts`（局部canonical身份适配，SC01/02/04）、`repos/orbits/tests/capabilities/orbit-agent-conversation-readback.test.ts`（POST→真实store→正式session GET/list，SC01～04）。不扩大到共用agent-request-context。
 - 同一run补充受影响认证测试：`repos/orbits/tests/capabilities/agent-actor-brief-boundaries.test.ts`追踪精确local canonical adapter；readback完整测试增加恶意body/header身份隔离。功能提交`e40bf223ca2ad642ecd013487f39bb021e1cd1c0`后补充测试提交`2eb91b677b80be39e070cc5d36a55543815d8a31`，不改生产身份行为或冻结SC。
 - 最新运行授权覆盖上述初期“不付费”限制：C0042释放后，B复用DA主包/原3000 canonical QA/主8082和主线426 production artifact，至多两个实际只读发送、现有loop3最多六provider出站，原共享累计硬预算$5不重置；任何unknown/未确认usage/保留预留即停止追加。付费前账本15entries/$0.032249/0reserved；Phone服务独立、根产品merge与服务生命周期冻结，临时独立浏览器只用已有库、凭据仅RAM。
-- 同run真实PG只读元数据：tasks open54/followups open27/notes1，取样ID/owner/source时间匹配，但笔记真实entity v3被legacy query丢弃、tasks/followups无独立revision，结果无authority/readAt/records.revision；0036冻结契约虽已合入仍未接actualruntime。SC04源版本缺口保持未满足，不用schema version/timestamp充数、不在0044重写0036；REPORT尚未产生。
+- 同run真实PG只读元数据：tasks open54/followups open27/notes1，取样ID/owner/source时间匹配，但笔记真实entity v3被legacy query丢弃、tasks/followups无独立revision，结果无authority/readAt/records.revision；0036冻结契约虽已合入仍未接actualruntime。SC04源版本缺口保持未满足，不用schema version/timestamp充数、不在0044重写0036。
+- 原run已结束，报告固定 `78cecfa59`，功能/测试已合入。原生实际一次发送→正式GET200 revision2→历史重开成功；实际tasks/followups各10条且truncated，未调用notes。3笔provider全部settled共$0.006362，共享账本18entries/$0.038611/0reserved；没有第二POST。生产Web历史会话渲染没有任何输入控件，global ask排除agent而chat分支未渲染composer，真实跨Web续聊失败；原生真实失败恢复缺项保留。精确自建会话UI删除后正式GET404/history缺席，request/revision审计保留，所有窗口释放。状态failed不因部分合入改为completed，不复开Generator；Web composer需要另冻结追加方案，0036实际source fence接线仍按原任务推进。
 
 0042/0044初期集成检查点：功能合入`chat-agent`的`f0d747730037f0f9020297cd47aea37b17c9d489`；Web定向42/42、App27/27。该树Web全量曾失败：3558项、3359通过、23失败、176跳过，20旧失败、3新增名称；本地测试自行加载`.env.local`并实际连接PG，不能记为隔离或全绿。C原run证据保留逐名对照/loader映射/只读审计；两个PG新增失败所涉源码本轮未修改，无before快照不能保证业务未变。B关联旧认证断言第一轮修复后6完整文件41/41，主线补充两完整文件15/15，未重全量。当时两Sprint均running；最新0042收口及0044未满足项见各run条目，旧失败不因局部修复或文档整合改为通过。
 
@@ -509,3 +510,4 @@ build/harness-logs/
 - 进入条件已核：精确main `orbit_events/workspace:orbit-dev/account_orbit_generated`只读PG事务确认`event_02`已Event Core cutover且QA为organizer；`event_signup_03`已cutover但QA非owner、无role assignment，两活动均无该QA canonical membership head。有权/无权角色可核验；真实registered attendee正例单列待合法精确fixture及清理方式，不给旧活动/账号扩权，不把旧取消投影当active registration。
 - 先独占Planner内App参会者/分析consumer及Web对应handlers/资格适配器/实际service与直接测试，按根因逐符号impact后TDD。0033活动源及通用sync、0044所有会话/runtime/App AI、PhonePW0010 reader/AI契约/会话UI、i18n和共享contract生成边界不并行改；必要新增文件登记用途/SC后实施，不增加审批循环。
 - B持DA/main actor/共享runtime与付费窗口期间，C仅独立分支源码/定向测试和已批准只读元数据调查；不操控主包/共享浏览器、不API业务写、不自行停启3000/8082/Phone、不合产品到root。需同版本真实验收/fixture时等根明确释放，固定SHA交接后根merge→生产build/restart→实际操作→报告/主线闭环。
+- B0044现已释放全部窗口；C恢复原未结束run而非再生成。统一图实际元数据已更新至`1f2c697ac`/2026-09-16T09:17:08.460Z，原进程句柄消失不等于分析失败；核查无活analyze且命令exit0 Already up to date，驻留MCP列表缓存须与disk元数据区分。新增资格CTA模块`src/screens/events/EventAttendeeRosterLink.tsx`及EventDetailCard最小接线获准，避开Phone public404 fallback。注册wrapper12直接caller/21symbols按技能HIGH已报告，最小503异常保护不改资格并覆盖传递消费者；event_02配置head精确只读count0，不写配置或扩权。
