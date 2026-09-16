@@ -13,8 +13,27 @@ import { signAdaptiveInterviewQuestion } from "../../features/events/registratio
 import type { EventParticipantProfileField } from "../../features/events/registration/contract";
 import type { EventRecord } from "../../features/events/event-crud-and-import/contract";
 import { loadLocalEnv } from "../../scripts/load-local-env";
+import { createDeadlineGatedEventRegistrationService } from "../../features/events/registration/deadline-gated-service";
 
 loadLocalEnv();
+
+test("cancellation returns a readable configuration failure without changing an importing membership", async () => {
+  const base = createEventRegistrationService({ provider: createMemoryEventRegistrationProvider() });
+  const canonical = createEventRegistrationService({ provider: createMemoryEventRegistrationProvider() });
+  const active = await base.register({ eventId: "event:importing", userId: "actor:owner" });
+  const handler = createEventRegistrationCancelRouteHandler({
+    registrationService: createDeadlineGatedEventRegistrationService({
+      baseService: base, canonicalService: canonical,
+      windowProvider: { async getEnrollment() { return { state: "legacy_importing" }; } },
+    }),
+    resolveActor: async () => ({ id: "actor:owner" }),
+  });
+  const response = await handler(new Request("http://orbit.local/cancel", { method: "POST" }),
+    { params: Promise.resolve({ id: "event:importing" }) });
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error.code, "SERVICE_UNAVAILABLE");
+  assert.deepEqual(await base.get({ eventId: "event:importing", userId: "actor:owner" }), active);
+});
 
 const actor = { id: "user:registration-route-test", name: "Route Tester" };
 const eventId = "event_signup_02";
@@ -73,6 +92,20 @@ const cancelRegistration = createEventRegistrationCancelRouteHandler({
 const context = {
   params: Promise.resolve({ id: eventId }),
 };
+
+test("explicit reactivation rejects a stale registration version and preserves the cancelled record", async () => {
+  const service = createEventRegistrationService({ provider: createMemoryEventRegistrationProvider() });
+  await service.register({ eventId, userId: actor.id, answers: { targetAttendees: "Partners", valueOffered: "Experience" } });
+  const cancelled = await service.cancel({ eventId, userId: actor.id });
+  assert.ok(cancelled);
+  const { POST } = createEventRegistrationRouteHandlers({ loadEvent: loadRegistrationEvent, getPublishedQuestionSet: noPublishedQuestionSet,
+    registrationService: service, resolveActor: async () => actor });
+  const response = await POST(new Request("http://orbit.local/registration", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({
+    intent: "reactivate", expectedRegistrationVersion: "2000-01-01T00:00:00Z", answers: { targetAttendees: "Partners", valueOffered: "Experience" }
+  }) }), context);
+  assert.equal(response.status, 409);
+  assert.deepEqual(await service.get({ eventId, userId: actor.id }), cancelled);
+});
 
 test("event registration routes create cancel and reactivate the same record", async () => {
   const firstResponse = await register(

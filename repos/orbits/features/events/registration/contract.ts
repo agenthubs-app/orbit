@@ -133,6 +133,7 @@ export type EventRegistrationEligibilityState =
  * underlying event, admission policy, capacity and registration versions.
  */
 export interface EventRegistrationEligibility {
+  blockingReason?: EventRegistrationBlockingReason;
   allowedActions: readonly EventRegistrationAction[];
   applicationVersion: number | null;
   evaluatedAt: string;
@@ -141,6 +142,12 @@ export interface EventRegistrationEligibility {
   registrationVersion: string | null;
   state: EventRegistrationEligibilityState;
 }
+
+export type EventRegistrationBlockingReason =
+  | "configuration_required"
+  | "migration_in_progress"
+  | "invalid_window"
+  | "temporarily_unavailable";
 
 export interface EventRegistrationMutationReceipt {
   action: EventRegistrationAction;

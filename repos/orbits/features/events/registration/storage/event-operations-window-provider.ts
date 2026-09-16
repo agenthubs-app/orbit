@@ -75,7 +75,11 @@ export function createEventOperationsRegistrationWindowProvider(
         Date.parse(profileEditDeadlineAt) > Date.parse(registrationCutoffAt) ||
         !statementTimestamp
       ) {
-        return { state: "canonical_misconfigured" };
+        return {
+          state: "canonical_misconfigured",
+          blockingReason: row.profile_edit_deadline_at === null || row.registration_closes_at === null
+            ? "configuration_required" : "invalid_window",
+        };
       }
       return {
         state: "enrolled",
