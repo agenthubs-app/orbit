@@ -145,6 +145,8 @@ export async function executeAiRead(
     return { ...current, position: snapshotRow.position };
   });
 
+  deps.assertCurrentAuthorization(scope, tool);
+
   const returnedRows: CanonicalRow[] = [];
   const items: Readonly<Record<string, unknown>>[] = [];
   const partialReasons = [...page.partialReasons];

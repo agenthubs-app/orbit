@@ -98,6 +98,13 @@ export interface ReadDependencies {
   adapter(tool: AiReadTool): ReadAdapter;
   currentScope(): Promise<ReadScope>;
   readAuthorityExpiresAt(scope: ReadScope): Promise<string>;
+  /**
+   * Last synchronous outbound gate. It must re-read the current actor/workspace/epoch,
+   * AI capability, and source authorization from a monotonically updated auth snapshot.
+   * Revocation and scope changes must be published by transaction/CAS before an adapter's
+   * revision fence releases, so this check cannot accept an older authorization generation.
+   */
+  assertCurrentAuthorization(scope: ReadScope, tool: AiReadTool): void;
   cursorKey: Uint8Array;
   now(): string;
 }

@@ -34,6 +34,7 @@ function row(index: number, fields: Readonly<Record<string, unknown>> = { title:
 function fixture(initialRows = Array.from({ length: 11 }, (_, index) => row(index + 1))) {
   let activeScope = scope;
   let authorized = true;
+  let capabilityEnabled = true;
   let rows = [...initialRows];
   const snapshots = new Map<string, readonly CanonicalRow[]>();
   const adapter: ReadAdapter = {
@@ -69,13 +70,21 @@ function fixture(initialRows = Array.from({ length: 11 }, (_, index) => row(inde
     schemaVersion: 1,
     fields: ["title", "body"],
     maxItems: 10,
-    enabled: async () => true,
+    enabled: async () => capabilityEnabled,
   };
   const deps: ReadDependencies = {
     adapter: () => adapter,
     permission: () => permission,
     currentScope: async () => activeScope,
     readAuthorityExpiresAt: async () => "2026-09-16T01:00:00.000Z",
+    assertCurrentAuthorization: (expectedScope, expectedTool) => {
+      if (expectedTool !== "notes.query" || !capabilityEnabled || !authorized) throw new Error("AI_NOT_AUTHORIZED");
+      if (
+        activeScope.actorId !== expectedScope.actorId ||
+        activeScope.workspaceId !== expectedScope.workspaceId ||
+        activeScope.authorizationEpoch !== expectedScope.authorizationEpoch
+      ) throw new Error("AUTHORIZATION_CHANGED");
+    },
     cursorKey: key,
     now: () => now,
   };
@@ -84,6 +93,7 @@ function fixture(initialRows = Array.from({ length: 11 }, (_, index) => row(inde
     insert(value: CanonicalRow) { rows = [value, ...rows]; },
     remove(id: string) { rows = rows.filter((item) => item.id !== id); },
     revoke() { authorized = false; },
+    disableCapability() { capabilityEnabled = false; },
     setScope(value: ReadScope) { activeScope = value; },
   };
 }
@@ -179,6 +189,60 @@ test("atomic revision fence rejects deletion during canonical consumption", asyn
   );
 });
 
+test("final outbound guard rejects capability revoked inside the revision fence", async () => {
+  const f = fixture([row(1, { title: "Secret", body: "must not escape" })]);
+  const source = f.deps.adapter("notes.query");
+  f.deps.adapter = () => ({
+    ...source,
+    readCurrentAtRevision: async (readScope, expected) => {
+      const current = await source.readCurrentAtRevision(readScope, expected);
+      f.disableCapability();
+      return current;
+    },
+  });
+
+  await assert.rejects(
+    executeAiRead("notes.query", { operation: "get", query: "note:1", id: "note:1" }, f.deps),
+    /AI_NOT_AUTHORIZED/,
+  );
+});
+
+test("final outbound guard rejects source permission revoked inside the revision fence", async () => {
+  const f = fixture([row(1, { title: "Secret", body: "must not escape" })]);
+  const source = f.deps.adapter("notes.query");
+  f.deps.adapter = () => ({
+    ...source,
+    readCurrentAtRevision: async (readScope, expected) => {
+      const current = await source.readCurrentAtRevision(readScope, expected);
+      f.revoke();
+      return current;
+    },
+  });
+
+  await assert.rejects(
+    executeAiRead("notes.query", { operation: "get", query: "note:1", id: "note:1" }, f.deps),
+    /AI_NOT_AUTHORIZED/,
+  );
+});
+
+test("final outbound guard rejects scope epoch changed inside the revision fence", async () => {
+  const f = fixture([row(1, { title: "Secret", body: "must not escape" })]);
+  const source = f.deps.adapter("notes.query");
+  f.deps.adapter = () => ({
+    ...source,
+    readCurrentAtRevision: async (readScope, expected) => {
+      const current = await source.readCurrentAtRevision(readScope, expected);
+      f.setScope({ ...scope, authorizationEpoch: "e2" });
+      return current;
+    },
+  });
+
+  await assert.rejects(
+    executeAiRead("notes.query", { operation: "get", query: "note:1", id: "note:1" }, f.deps),
+    /AUTHORIZATION_CHANGED/,
+  );
+});
+
 test("cursor TTL is capped by current read authority and empty pages retain authority metadata", async () => {
   const empty = fixture([]);
   const emptyResult = await executeAiRead("notes.query", { operation: "list", query: "notes" }, empty.deps);
@@ -210,8 +274,9 @@ test("byte truncation resumes after the last returned source position", async ()
 });
 
 test("final serialized result including cursor stays within the byte budget", async () => {
+  const boundaryBody = "a".repeat(31_400);
   const f = fixture([
-    row(1, { title: "Boundary", body: "a".repeat(31_200) }),
+    row(1, { title: "Boundary", body: boundaryBody }),
     row(2, { title: "After boundary" }),
     row(3, { title: "After boundary 3" }),
     row(4, { title: "After boundary 4" }),
@@ -221,9 +286,14 @@ test("final serialized result including cursor stays within the byte budget", as
   const first = await executeAiRead("notes.query", { operation: "list", query: "notes" }, f.deps);
   assert.equal(first.records[0]?.id, "note:1");
   assert.ok(first.nextCursor);
+  const legacyResult = { ...first, items: [{ title: "Boundary", body: boundaryBody }] };
+  const legacySerializedBytes = Buffer.byteLength(JSON.stringify(legacyResult), "utf8");
+  assert.ok(legacySerializedBytes > 32_000, `legacy result was only ${legacySerializedBytes} bytes`);
   const serializedBytes = Buffer.byteLength(JSON.stringify(first), "utf8");
   assert.ok(serializedBytes <= 32_000, `serialized result was ${serializedBytes} bytes`);
   const second = await executeAiRead("notes.query", { operation: "list", query: "notes", cursor: first.nextCursor }, f.deps);
+  const secondSerializedBytes = Buffer.byteLength(JSON.stringify(second), "utf8");
+  assert.ok(secondSerializedBytes <= 32_000, `second serialized result was ${secondSerializedBytes} bytes`);
   assert.deepEqual(
     [...first.records, ...second.records].map((record) => record.id),
     ["note:1", "note:2", "note:3", "note:4", "note:5", "note:6"],

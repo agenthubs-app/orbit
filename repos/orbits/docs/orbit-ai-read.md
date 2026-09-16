@@ -8,4 +8,6 @@ Orbit AI 的读取权限由 `features/orbit-ai/data-query/permission-registry.ts
 
 AI visibility manifest 从这份 permission registry 派生声明，仅用于 provider 出站审查和审计。它不是客户端离线权限来源，也不会携带本机 pending change、设备草稿、身份 scope、provider token、隐藏提示词或原始 provider payload。
 
-分页 cursor 使用服务端 key 做 HMAC-SHA256，并绑定 actor、workspace、authorization epoch、工具、schema/registry 版本、规范化过滤条件和源 snapshot。有效期最多 15 分钟，且不会超过当前读取授权的到期时间。源 adapter 为每行提供不透明 continuation position；发生条数或字节裁剪时，cursor 从最后实际返回行继续，避免跳过已经读取但没有返回的记录。每页读取后再次检查 scope 与领域授权；返回前通过 adapter 的原子 revision fence 在同一一致性边界内复核资源/evidence 授权和版本，并只输出该边界实际读取的 canonical 内容。
+分页 cursor 使用服务端 key 做 HMAC-SHA256，并绑定 actor、workspace、authorization epoch、工具、schema/registry 版本、规范化过滤条件和源 snapshot。有效期最多 15 分钟，且不会超过当前读取授权的到期时间。源 adapter 为每行提供不透明 continuation position；发生条数或字节裁剪时，cursor 从最后实际返回行继续，避免跳过已经读取但没有返回的记录。每页读取后再次检查 scope 与领域授权；返回前通过 adapter 的原子 revision fence 在同一一致性边界内复核资源/evidence 授权和版本，并只输出该边界实际读取的 canonical 内容。fence 返回后必须以同步出站 gate 最后复核 actor、workspace、authorization epoch、AI capability 和源权限，此后到 DTO/return 之间不得再有 await。
+
+后续真实 adapter 必须用事务或 CAS 把 revision/evidence fence 与单调递增的授权 generation 对齐，并测试 fence 释放前发生撤权或 scope epoch 变化时同步出站 gate 必定拒绝。仅依赖调用顺序、缓存 TTL 或逐行查询不满足该契约。
