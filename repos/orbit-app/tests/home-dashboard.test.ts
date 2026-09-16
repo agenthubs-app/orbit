@@ -6,6 +6,12 @@ import test from "node:test";
 const require = createRequire(import.meta.url);
 const model = existsSync("src/view-models/home-dashboard.ts") ? require("../src/view-models/home-dashboard") : {};
 const now = new Date("2026-09-11T05:00:00.000Z");
+test("personal all-day home rows retain saved calendar dates across device zones and do not invent timed duration", () => {
+  const payload = { scheduleItems: [{ id: "personal:day", sourceId: "personal:day", title: "Personal day", kind: "personal", state: "upcoming", allDay: true, timeZone: "Asia/Tokyo", startsAt: "2026-09-10T15:00:00Z", endsAt: "2026-09-11T15:00:00Z" }] };
+  const rows = model.homeScheduleToView(payload, "2026-09-11", now, "America/Los_Angeles");
+  assert.equal(rows[0].timeLabel, "全天"); assert.equal(rows[0].detail, "");
+  assert.deepEqual(model.homeScheduleToView(payload, "2026-09-10", now, "America/Los_Angeles"), []);
+});
 function subject(name: string) {
   assert.equal(typeof model[name], "function", name + " is not implemented");
   return model[name];

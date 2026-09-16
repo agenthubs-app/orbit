@@ -11,6 +11,25 @@ function fixture() {
   return { repository, service: createNoteService({ repository }), store };
 }
 
+test("53 saved notes traverse completely and a source edit invalidates an old offset cursor", async () => {
+  const { service } = fixture();
+  const saved = [];
+  for (let i = 0; i < 53; i++) saved.push(await service.create({ actorId: "account:one", body: `历史 ${i}`, idempotencyKey: `history:${i}`, now: "2026-09-15T00:00:00.000Z" }));
+  const ids: string[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await service.search({ actorId: "account:one", limit: 20, ...(cursor ? { cursor } : {}) });
+    assert.equal(page.total, 53);
+    ids.push(...page.notes.map(note => note.id));
+    cursor = page.nextCursor;
+  } while (cursor);
+  assert.equal(ids.length, 53);
+  assert.deepEqual([...ids].sort(), saved.map(note => note.id).sort());
+  const first = await service.search({ actorId: "account:one", limit: 20 });
+  await service.update({ actorId: "account:one", noteId: saved[52]!.id, body: "更新后的历史", expectedVersion: 1, idempotencyKey: "history:edit", now: "2026-09-15T00:01:00.000Z" });
+  await assert.rejects(service.search({ actorId: "account:one", limit: 20, cursor: first.nextCursor }), error => error instanceof NoteServiceError && error.code === "NOTE_INVALID_INPUT");
+});
+
 test("one private note is shared by multiple contact views and updates as one version", async () => {
   const { service } = fixture();
   const created = await service.create({

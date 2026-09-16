@@ -3,6 +3,12 @@ import test from "node:test";
 
 import * as schedule from "../src/view-models/schedule";
 
+test("personal all-day calendar uses saved local dates and exact DST duration without timed placement", () => {
+  const view = schedule.scheduleToCalendarView({ events: [], tasks: [], selectedDateKey: "2026-03-08", timeZone: "Asia/Tokyo", scheduleItems: { scheduleItems: [{ id: "personal:dst", sourceId: "personal:dst", kind: "personal", category: "personal", state: "upcoming", title: "DST day", startsAt: "2026-03-08T05:00:00Z", endsAt: "2026-03-09T04:00:00Z", allDay: true, timeZone: "America/New_York" }] } });
+  assert.deepEqual(view.allDayItems.map(item => [item.id, item.dateKey, item.endDateKey, item.durationMinutes, item.href]), [["personal:dst", "2026-03-08", "2026-03-08", 1380, "/schedule/personal/personal%3Adst"]]);
+  assert.equal(view.timedItems.length, 0);
+});
+
 type ScheduleTimelineModule = typeof schedule & {
   japanCalendarDateInfo?: (dateKey: string) => {
     holidayName?: string;

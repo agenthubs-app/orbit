@@ -6,6 +6,7 @@ import { AppError } from "../../../shared/errors/app-error";
 import { authenticatedApiActorRequiredResponse, resolveAuthenticatedApiActor, type ResolveAuthenticatedApiActor } from "../_shared/authenticated-actor";
 import { resolveFeatureMode } from "../../../shared/config/feature-mode";
 import { readTaskJsonObject, taskErrorResponse, taskSuccessResponse } from "../tasks/route-support";
+import { personalScheduleRepresentation } from "../../../features/personal-schedule/representation";
 
 type Context = { params: Promise<{ id: string }> };
 export function createPersonalScheduleHandlers(dependencies?: { service?: PersonalScheduleService; resolveActor?: ResolveAuthenticatedApiActor }) {
@@ -19,7 +20,7 @@ export function createPersonalScheduleHandlers(dependencies?: { service?: Person
         : action === "POST" ? await service.create(actor.id, personalScheduleCreateSchema.parse(await readTaskJsonObject(request)))
         : action === "PATCH" ? await service.update(actor.id, id, personalScheduleUpdateSchema.parse(await readTaskJsonObject(request)))
         : await service.remove(actor.id, id, personalScheduleDeleteSchema.parse(await readTaskJsonObject(request)));
-      return taskSuccessResponse(result, action === "POST" ? 201 : 200);
+      return taskSuccessResponse({ ...result, scheduleItem: personalScheduleRepresentation(result.scheduleItem, request) }, action === "POST" ? 201 : 200);
     } catch (error) { return taskErrorResponse(error instanceof ZodError ? new AppError("VALIDATION_ERROR", "Invalid personal schedule fields.") : error); }
   }
   return { GET: (request: Request, context: Context) => handle(request, context, "GET"), POST: (request: Request) => handle(request, undefined, "POST"), PATCH: (request: Request, context: Context) => handle(request, context, "PATCH"), DELETE: (request: Request, context: Context) => handle(request, context, "DELETE") };

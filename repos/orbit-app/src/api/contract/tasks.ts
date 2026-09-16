@@ -52,6 +52,8 @@ export interface TaskSuggestionContract {
 }
 
 export interface ScheduleItemContract {
+  allDay?: boolean;
+  timeZone?: string;
   id: string;
   kind: "meeting" | "event" | "personal";
   category: TaskCategory;
@@ -64,6 +66,12 @@ export interface ScheduleItemContract {
 }
 
 export interface PersonalScheduleContract extends ScheduleItemContract {
+  allDay?: boolean;
+  timeZone?: string;
+  meetingMethod?: "video" | "in_person" | "phone" | "unspecified";
+  meetingUrl?: string;
+  contactIds?: string[];
+  noteIds?: string[];
   kind: "personal";
   category: "personal";
   accountId: string;

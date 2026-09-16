@@ -1,12 +1,12 @@
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { Keyboard, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { createThemedStyles } from "../design/theme";
 import type { MainTab } from "../view-models/app-navigation";
 import { OrbitNavigationIcon } from "./OrbitNavigationIcon";
 import { useOrbitLocale } from "../i18n/OrbitLocaleContext";
 import type { MessageKey } from "../i18n/messages";
+import { useMobileViewport } from "../platform/use-mobile-viewport";
 
 const tabs = [
   { id: "home", labelKey: "nav.home", href: "/home" },
@@ -20,12 +20,7 @@ export function OrbitTabBar({ active }: { active: MainTab }) {
   const { colors, styles } = useStyles();
   const router = useRouter();
   const locale = useOrbitLocale();
-  const [keyboardVisible, setKeyboardVisible] = useState(() => Keyboard.isVisible());
-  useEffect(() => {
-    const show = Keyboard.addListener("keyboardDidShow", () => setKeyboardVisible(true));
-    const hide = Keyboard.addListener("keyboardDidHide", () => setKeyboardVisible(false));
-    return () => { show.remove(); hide.remove(); };
-  }, []);
+  const { keyboardVisible } = useMobileViewport();
 
   if (keyboardVisible) return null;
   return (

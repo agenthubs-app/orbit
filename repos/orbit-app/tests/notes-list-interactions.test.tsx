@@ -25,10 +25,20 @@ export const usePathname = () => "/notes";
 export const useRouter = () => ({ canGoBack: () => false, back() { state.navigation.push("back"); }, push(href) { state.navigation.push(href); } });
 export const useApiResource = path => {
   state.latestPath = path;
+  if (state.history53) return { kind: "success", data: { notes: Array.from({ length: 20 }, (_, i) => note("history:" + i, "历史笔记 " + i, 1)), total: 53, nextCursor: "history:20" }, refreshing: false, refresh() {} };
   const filtered = path.includes("q=%E9%A2%84%E7%AE%97") ? [second] : [first];
   return { kind: "success", data: { notes: filtered, total: path.includes("q=") ? 1 : 2, ...(path.includes("q=") ? {} : { nextCursor: "page:2" }) }, refreshing: false, refresh() {} };
 };
-export const useOrbitApiClient = () => ({ async get(path) { state.requests.push(path); return { success: true, status: 200, data: { notes: [second], total: 2 }, meta: {} }; } });
+export const useOrbitApiClient = () => ({ async get(path, options) {
+  state.requests.push(path); state.signals ||= []; state.signals.push(!!options?.signal);
+  if (state.history53) {
+    if (state.failNextPage) { state.failNextPage = false; return { success: false, status: 503, error: { message: "后页暂不可读" }, meta: {} }; }
+    const offset = path.includes("history%3A40") ? 40 : 20;
+    return { success: true, status: 200, data: { notes: Array.from({ length: Math.min(20, 53 - offset) }, (_, i) => note("history:" + (offset + i), "历史笔记 " + (offset + i), 1)), total: 53, ...(offset === 20 ? { nextCursor: "history:40" } : {}) }, meta: {} };
+  }
+  if (state.deferPage) await new Promise(resolve => { state.releasePage = resolve; });
+  return { success: true, status: 200, data: { notes: state.duplicatePage ? [first, second] : [second], total: 2 }, meta: {} };
+} });
 export const SafeAreaView = ({ children, ...props }) => <View {...props}>{children}</View>;
 `;
 
@@ -125,4 +135,40 @@ test("an English account translates note-list chrome without changing note conte
   await page.getByText("发布会准备", { exact: true }).waitFor();
   await page.getByText("发布会准备 正文摘要", { exact: true }).waitFor();
   assert.equal(await page.getByText("搜索笔记", { exact: true }).count(), 0);
+});
+
+test("a late history page cannot enter a changed search and uses an abortable request", async (t) => {
+  const page = await open(t, { deferPage: true });
+  await page.getByRole("button", { name: "加载更多笔记" }).click();
+  await page.waitForFunction(() => !!(window as any).fixture.releasePage);
+  await page.getByRole("textbox", { name: "搜索笔记" }).fill("预算");
+  await page.waitForFunction(() => (window as any).fixture.latestPath.includes("q=%E9%A2%84%E7%AE%97"));
+  await page.evaluate(() => (window as any).fixture.releasePage());
+  await page.waitForTimeout(50);
+  assert.equal(await page.getByText("预算确认", { exact: true }).count(), 1);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.signals), [true]);
+});
+
+test("duplicates between first and later history pages render only once", async (t) => {
+  const page = await open(t, { duplicatePage: true });
+  await page.getByRole("button", { name: "加载更多笔记" }).click();
+  await page.getByText("预算确认", { exact: true }).waitFor();
+  assert.equal(await page.getByText("发布会准备", { exact: true }).count(), 1);
+});
+
+test("53 saved notes fully load and failed later pages preserve loaded history for retry", async (t) => {
+  const page = await open(t, { history53: true, failNextPage: true });
+  await page.getByText("历史笔记 0", { exact: true }).waitFor();
+  assert.equal(await page.getByText("已加载 20 / 共 53 篇", { exact: true }).count(), 1);
+  await page.getByRole("button", { name: "加载更多笔记" }).click();
+  await page.getByText("后页暂不可读", { exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: /^查看笔记 历史笔记 / }).count(), 20);
+  await page.getByRole("button", { name: "加载更多笔记" }).click();
+  await page.getByText("历史笔记 39", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "加载更多笔记" }).click();
+  await page.getByText("历史笔记 52", { exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: /^查看笔记 历史笔记 / }).count(), 53);
+  assert.equal(await page.getByText("已加载 53 / 共 53 篇", { exact: true }).count(), 1);
+  assert.equal(await page.getByText("已加载全部笔记", { exact: true }).count(), 1);
+  assert.equal(await page.getByRole("button", { name: "加载更多笔记" }).count(), 0);
 });

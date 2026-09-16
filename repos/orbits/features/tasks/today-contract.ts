@@ -11,6 +11,8 @@ export type ScheduleItemState =
   | "cancelled";
 
 export interface ScheduleItemDTO {
+  allDay?: boolean;
+  timeZone?: string;
   id: string;
   kind: "meeting" | "event" | "personal";
   category: TaskCategory;

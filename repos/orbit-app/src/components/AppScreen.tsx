@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { layout, spacing, textStyles } from "../design/tokens";
 import { createThemedStyles } from "../design/theme";
+import { useMobileViewport } from "../platform/use-mobile-viewport";
 import { mainTabForPath, parentForPath } from "../view-models/app-navigation";
 import { OrbitTabBar } from "./OrbitTabBar";
 
@@ -22,6 +23,7 @@ interface AppScreenProps extends PropsWithChildren {
   header?: ReactNode;
   headerActions?: ReactNode;
   headerVariant?: "large" | "compact";
+  onBack?: () => void;
   refreshControl?: ReactElement<RefreshControlProps>;
   showBack?: boolean;
   title: string;
@@ -36,6 +38,7 @@ export function AppScreen({
   header,
   headerActions,
   headerVariant = "large",
+  onBack,
   refreshControl,
   showBack,
   title,
@@ -44,17 +47,26 @@ export function AppScreen({
   const { colors, styles } = useStyles();
   const router = useRouter();
   const pathname = usePathname();
+  const viewport = useMobileViewport();
   const canGoBack = router.canGoBack();
   const mainTab = mainTabForPath(pathname);
   const parent = parentForPath(pathname);
   const navVisible = showBack ?? (!mainTab && pathname !== "/ai");
 
   return (
-    <SafeAreaView edges={["top"]} style={styles.safeArea}>
+    <SafeAreaView
+      edges={["top"]}
+      style={[
+        styles.safeArea,
+        viewport.visibleHeight === null
+          ? null
+          : { height: viewport.visibleHeight, maxHeight: viewport.visibleHeight }
+      ]}
+    >
       {navVisible ? (
         <View style={styles.navigation}>
           <Pressable accessibilityLabel={backAccessibilityLabel ?? (canGoBack ? "返回" : "返回" + parent.label)} accessibilityRole="button"
-            onPress={() => canGoBack ? router.back() : router.replace(parent.href as Href)}
+            onPress={onBack ?? (() => canGoBack ? router.back() : router.replace(parent.href as Href))}
             style={({ pressed }) => [styles.backButton, pressed && styles.backButtonPressed]}>
             <Ionicons color={colors.accent} name="chevron-back" size={20} />
             <Text style={styles.backLabel}>{backLabel ?? (canGoBack ? "返回" : parent.label)}</Text>

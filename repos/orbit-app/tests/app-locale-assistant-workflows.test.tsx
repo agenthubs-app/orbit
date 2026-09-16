@@ -44,7 +44,7 @@ const appScreenWorkflowScreens = [
   "src/screens/ai/AgentActionsScreen.tsx",
   "src/screens/tasks/TaskDetailScreen.tsx",
   "src/screens/tasks/TasksScreen.tsx",
-  "src/screens/schedule/PersonalScheduleScreen.tsx",
+  // The personal editor uses the approved Cancel action, covered by browser interaction tests.
   "src/screens/schedule/ScheduleEventPreviewScreen.tsx",
   "src/screens/schedule/ScheduleScreen.tsx",
 ] as const;

@@ -20,7 +20,8 @@ export function personalScheduleList(data: unknown, actorId: string): PersonalSc
 export function readPersonalSchedule(data: unknown): PersonalScheduleContract | null {
   if (!data || typeof data !== "object" || !("scheduleItem" in data)) return null;
   const result = personalScheduleSchema.safeParse(data.scheduleItem);
-  return result.success ? result.data as PersonalScheduleContract : null;
+  if (!result.success || (result.data.endsAt && Date.parse(result.data.endsAt) <= Date.parse(result.data.startsAt))) return null;
+  return result.data as PersonalScheduleContract;
 }
 export function personalScheduleReceiptMatches(data: unknown, actorId: string, id: string | undefined, fields: Record<string, unknown>, deleted = false): boolean {
   const item = readPersonalSchedule(data);
@@ -30,7 +31,7 @@ export function personalScheduleReceiptMatches(data: unknown, actorId: string, i
   for (const [field, value] of Object.entries(fields)) {
     if (value === undefined) continue;
     const actual = (item as unknown as Record<string, unknown>)[field];
-    if (value === null ? actual !== undefined : field === "startsAt" || field === "endsAt" ? typeof actual !== "string" || Date.parse(actual) !== Date.parse(String(value)) : actual !== value) return false;
+    if (value === null ? actual !== undefined : Array.isArray(value) ? !Array.isArray(actual) || actual.length !== value.length || value.some((entry, index) => actual[index] !== entry) : field === "startsAt" || field === "endsAt" ? typeof actual !== "string" || Date.parse(actual) !== Date.parse(String(value)) : actual !== value) return false;
   }
   return true;
 }
