@@ -82,10 +82,10 @@ build/harness-logs/
 | [0030](0030-inbox-ink-signal-unified-feed/GOAL.md) | 按 3a 设计把活动、待办、人脉和 IORBIT 通知组成真实统一收件箱 | 用户提供 `软件UI设计现代化 (5).zip` 并指定 E 线实现 | E 线固定 SHA `a252220a8`；同账号 live task/read/refresh 已验收，缺失 live 类别见 [REPORT](0030-inbox-ink-signal-unified-feed/REPORT.md) | completed |
 | [0031](0031-cross-platform-performance/GOAL.md) | 以同环境真实性能基线优化 App 与 Web 的最慢关键路径，不改变功能与数据边界 | 用户批准基线驱动方案并指定 B 线执行 | run-01 failed；固定 B SHA `d71e40839`，安全测量与 Agent 拆包由 `7a48c3bc6` 合并；App 30% 与跨页 p95 门槛未通过，见 [REPORT](0031-cross-platform-performance/REPORT.md) | failed |
 | [0032](0032-hybrid-sync-foundation/GOAL.md) | 建立云端权威、加密且按账号隔离的 App 本地实体镜像 | 用户批准“云端权威＋本地持久镜像＋增量同步”方案 | run-01 最终 HEAD `1e40ee915`，merge `00b81ab18`；App 主集 94/94、消费者 49/49、全量 2934/2934，Web 19/19、两端 typecheck、production build 48/48、3108 live/ok，重建 SQLCipher 与 native 8＋5＋48 项通过，见 [REPORT](0032-hybrid-sync-foundation/REPORT.md) | completed |
-| [0033](0033-incremental-read-sync/GOAL.md) | 首次分页同步，之后只拉取笔记、待办、跟进和个人日程的变化与删除 | 同上；减少重复上传下载的读取阶段 | 0032 已 completed/merged；ready，run_count=0 | ready |
-| [0034](0034-offline-personal-mutations/GOAL.md) | 四类个人数据可离线确认保存、幂等上传并由用户解决冲突 | 同上；AI 只读取已同步云端版本 | 依赖 0033 completed/merged；planned，run_count=0 | planned |
-| [0035](0035-sync-invalidation-recovery/GOAL.md) | 用提供商无关的轻量状态检测加速刷新，并以启动／前台／cursor 修复漏提示 | 同上；兼容本地 PostgreSQL、Supabase、Neon 或其他 PostgreSQL provider | 依赖 0034 completed/merged；供应商选型不阻塞 portable core；planned，run_count=0 | planned |
-| [0036](0036-ai-sync-visibility-acceptance/GOAL.md) | 让 AI 报告四域云端数据新鲜度，完成跨端验收并更新私有 Data Atlas | 数据审查、AI 盲区与同步方案最终收口 | 依赖 0035 completed/merged、同账号 runtime 与已授权 AI provider；planned，run_count=0 | planned |
+| [0033](0033-incremental-read-sync/GOAL.md) | 所有已授权、用户可见的结构化账号数据在同步后均可离线读取，并明确部分／未下载／撤权状态 | 0032 已 completed/merged；全域规范与实施计划已批准、合并 | run-01 running；A 线先执行 Task 1 域清单与共享读取契约 | running |
+| [0034](0034-offline-personal-mutations/GOAL.md) | 在全域离线只读基础上，对低风险个人域提供显式、幂等、可冲突处理的离线写入 | 0033 共享接口固定后才能接线；独立 policy 规则可先执行 | run-01 running；B 线只执行独立 Task 1，不修改 0033 核心 | running |
+| [0035](0035-sync-invalidation-recovery/GOAL.md) | 以 registry 驱动的水位、轮询和恢复队列修复所有授权域的漏提示、断网、重启与撤权变化 | A/B 真实恢复绑定串行等待；portable 调度核心可先执行 | run-01 running；C 线只执行独立 Task 2 polling/coalescer | running |
+| [0036](0036-ai-sync-visibility-acceptance/GOAL.md) | 让 AI 按当前授权查询笔记、任务、跟进、联系人、消息、会议、通知与历史 AI 对话等用户可见数据，并完成全域验收 | App pending 与总验收等待 0033～0035；服务端权限/分页可先执行 | run-01 running；D 线先执行独立 Task 1～2 | running |
 | [0037](0037-contact-message-inbox/GOAL.md) | 把联系人消息从通知中独立出来，让用户看到真实对话并可靠收发、回复和同步已读。 | 2026-09-16 已确认的消息/三类通知设计 | 功能及主线 a591494b0；共同环境双账号通信/原生回读已验收，见 [REPORT](0037-contact-message-inbox/REPORT.md) | completed |
 | [0038](0038-typed-notification-inbox/GOAL.md) | 让每条通知明确属于提醒、建议或动态，显示原因和可追溯来源，并让 Web 与 App 操作同一条记录。 | 2026-09-16 已确认的消息/三类通知设计 | 功能及主线e045651b3；同账号三类通知与双向动作验收，[REPORT](0038-typed-notification-inbox/REPORT.md)保留失败历史 | completed |
 | [0039](0039-evidence-based-notification-discovery/GOAL.md) | 让 AI 从允许使用的真实信息中自主发现具体动作，有可信时间才提醒，并展示可核查的原文依据。 | 2026-09-16 已确认的消息/三类通知设计 | 功能4aa21961a/合并131723ddb；设置与队列已验，真实provider/费用仍缺，见[REPORT](0039-evidence-based-notification-discovery/REPORT.md) | blocked |
@@ -435,3 +435,33 @@ build/harness-logs/
 - 0033实际9174工作树1c8b442e1，tracked clean；0035尚未改通知协调器。本线持有notifications/delivery及通知响应有限接线；不改sync提示、outbox或root layout。0035后续须复验组合。独立QA31037、原Simulator/bundle继续。
 - 0040收口：run-01关闭为blocked；功能eacd7a227/合并0b552649d，主线Web16/16、App129/129及两端typecheck通过。共同设置、真实入站、QA迁移/回退保留业务已验证；远程Push、历史AI费用/provider与本轮原生出站确认缺项见REPORT/BR-028。0037/38 completed，0039/40代码交付但未全验收；暂停20分钟跟进和本线发现watch，Web保留。
 - 可执行：策略/偏好、事务投递身份、迁移dry-run/QA apply及独立UI；可调查：精确Push配置存在性；等待外部：未结算费用、真实模型/远程设备证据。
+
+### 0033 / run-01（全域离线读取升级）
+
+- 开始：2026-09-16T12:19:17+09:00；owner：A 线任务 `client-new-thread:fc2240dc-8f65-4da4-bb9c-0e1c12a686e3`，唯一 Generator；基线 `3a9b9696737289df12bb382cf77266c0b51ecd8f`，启动时 tracked 工作树干净。
+- Planner SHA256：`a9190990bacab2fd3d2b659c912f3fa8cb0359d1dc2f193d663b5fd519532fe3`；批准中文规范与详细计划均已合并到 `chat-agent` 并推送。
+- 本切片文件锁：`repos/orbit-app/src/data/offline-read/route-domain-inventory.ts`、`scripts/audit-offline-read-surfaces.ts`、`tests/offline-read-inventory.test.ts`、Web `shared/contract/universal-read.ts`、`shared/api-schema/universal-read.ts` 及由既有同步命令生成的 App 副本；仅执行详细计划 Task 1。
+- A 线持有域 ID、route inventory 与 universal-read contract 的定义权；B/C/D 只能消费已固定接口，不得并行重定义。认证、数据库、manifest/cursor 等后续高风险 Task 尚未放行。
+
+### 0034 / run-01（风险分级离线写入升级）
+
+- 开始：2026-09-16T12:19:17+09:00；owner：B 线任务 `01a0a838-4972-7183-a138-d8dd5e96f5c7`，唯一 Generator；worktree `/Users/xzhao/.codex/worktrees/b70b/orbit`；基线 `3a9b9696737289df12bb382cf77266c0b51ecd8f`，启动时 tracked 工作树干净。
+- Planner SHA256：`c53a516f17ed339d845d0caf1142665b98f8f4a73d43a21f2b847fe64a6309f0`。
+- 本切片文件锁：Web `shared/contract/offline-policy.ts`、`shared/contract/offline-mutations.ts`、`tests/architecture/offline-policy.test.ts`；App 对应生成副本、`src/data/offline/ports.ts`、`policy-registry.ts`、`src/data/sync/mutation-adapters.ts`、`tests/offline-mutation-eligibility.test.ts`；仅执行详细计划 Task 1。
+- 不修改 0033 共享核心、snapshot、outbox、cursor 或认证；真实绑定等待 A 线固定 SHA。未知 route/domain 默认拒绝，`local-read` 不授予在线写权限。
+
+### 0035 / run-01（全域失效恢复升级）
+
+- 开始：2026-09-16T12:19:17+09:00；owner：C 线任务 `client-new-thread:6fe77f03-aa9f-4595-adc6-158ef8746add`，唯一 Generator；基线 `3a9b9696737289df12bb382cf77266c0b51ecd8f`，启动时 tracked 工作树干净。
+- Planner SHA256：`e5b8a3b7b870cc1ad8aace5f88a73f1fc492ef671f63da4b05457e571ebe9158`。
+- 本切片文件锁：App `src/data/sync/invalidation-transport.ts`、`polling-invalidation-transport.ts`、`sync-trigger-coordinator.ts` 及两个同名直接测试；仅执行详细计划 Task 2。
+- 不实现服务端 status、不保存或推进 A 线 cursor、不接管 B 线 outbox；真实 recovery binding 等 A/B 固定 SHA。本切片只证明单飞、dirty 保留、abort、退避与无重叠。
+
+### 0036 / run-01（AI 全域数据访问升级）
+
+- 开始：2026-09-16T12:19:17+09:00；owner：D 线任务 `01a0a838-4974-7ea2-bc4f-8eab26470a14`，唯一 Generator；worktree `/Users/xzhao/.codex/worktrees/b66b/orbit`；基线 `3a9b9696737289df12bb382cf77266c0b51ecd8f`，启动时 tracked 工作树干净。
+- Planner SHA256：`b6db74a23d47f3af15276db25640fe1794648200c0b24518461f6571a0347b91`。
+- 本切片文件锁：Web `features/orbit-ai/data-query/read-contract.ts`、`permission-registry.ts`、`query-cursor.ts`、`query-result.ts`、现有 `query-schema.ts`、`data-visibility/manifest.ts`，对应 Task 1～2 测试以及其直接受影响的 manifest 架构测试与 `docs/orbit-ai-read.md` 说明。
+- `createActorQueryInputSchema` 影响集合超过 15 个符号，按项目规则视为 HIGH；已向用户提示并由管理线刷新 stale GitNexus 索引后复核。Task 2 可在不改该符号时继续新文件/测试。AI manifest 仅声明服务端能力，不是客户端离线授权依据。
+
+本轮用户明确要求把可并行开发分到不同线；协调者只放行上述互不重叠的第一批切片，覆盖默认“两条独立 Sprint”并发限制。共享 auth/sync contract、snapshot、i18n、Simulator、Web 服务和集成验证仍严格串行，四个 run 不共享真实账号写入、数据库迁移或服务生命周期。
