@@ -49,13 +49,43 @@ function implementationEvidence(contact: ContactListItemContract, definitions: r
   return undefined;
 }
 
+function deliveryEvidence(contact: ContactListItemContract, aliases: readonly string[]): readonly [string, string] | undefined {
+  const careers = ["开发者", "工程师", "店长", "開発者", "エンジニア", "店長", "developer", "developers", "engineer", "store manager"];
+  const actions = ["builds", "built", "develops", "developed", "delivered", "deployed", "implemented", "launched", "piloted"];
+  const intentOrNegation = ["looking for", "seeking", "seeks", "want", "wants", "hope", "hopes", "plan", "plans", "will", "would", "learning", "no", "not", "never", "without", "cannot", "can't", "haven't", "hasn't", "didn't"];
+  for (const [field, value] of evidenceSources(contact)) {
+    for (const fragment of value.split(/[。！？.!?；;\n，,、]|(?:并且|并|但)|\b(?:and|but)\b/iu)) {
+      const clause = fragment.trim();
+      if (/(?:本次关注|关注|寻找|寻求|希望|计划|打算|想|未来|将要|将负责|学习|没有|不是|未曾|尚未|未完成|未交付|未实施|不负责|不提供|无法|讨论|予定|計画|検討|探す|探し|求め|したい|なりたい|未経験|未実施|未導入|未完了|していない|していません)/u.test(clause)
+        || containsAlias(clause, intentOrNegation)) continue;
+      const deliveryWork = containsAlias(clause, ["开发", "開発", "系统", "システム", "点单", "點單", "点餐", "點餐", "实施", "実装", "试点", "実証", "development", "implementation", "pilot", "software", "system", "systems", "ordering", "order-taking"]);
+      const duty = deliveryWork && (/(?:负责|承担)[^。；;]*?(?:开发|交付|实施|试点)|(?:开发|交付|实施|试点)(?:负责人|职责)|(?:已|曾|完成)[^。；;]*?(?:开发|交付|上线|实施)|(?:開発|実装|実証)[^。；;]*?(?:担当|完了|した)/u.test(clause)
+        || containsAlias(clause, actions)
+        || (containsAlias(clause, ["responsible for"]) && containsAlias(clause, aliases)));
+      // Supply statements are capability claims, not proof of completed collaboration.
+      const service = deliveryWork && containsAlias(clause, aliases)
+        && (/(?:可(?:以)?提供|提供|提供可能)/u.test(clause) || containsAlias(clause, ["provide", "provides", "offer", "offers"]))
+        && !/(?:介绍|介紹|紹介|招聘)/u.test(clause)
+        && !containsAlias(clause, ["introduction", "introductions", "introduce", "referral", "referrals", "recruit", "recruiting"]);
+      // A profession mentioned in a company brand, client or referral is not the contact's job.
+      const career = containsAlias(clause, careers)
+        && !/(?:市场|市場|营销|行銷|介绍|介紹|紹介|客户|客戶|朋友)/u.test(clause)
+        && !containsAlias(clause, ["marketing", "company", "client", "customer", "friend", "introduction", "referral"]);
+      if (duty || service || career) return [field, clause];
+    }
+  }
+  return undefined;
+}
+
 function criterionMatch(definition: CriterionDefinition, contact: ContactListItemContract, definitions: readonly CriterionDefinition[]): ContactNeedCriterionMatchContract {
   const structuredIndustry = definition.id.startsWith("industry:")
     ? [contact.primaryIndustryId, contact.secondaryIndustryId].find(value => value === definition.id.slice("industry:".length)
       || value?.startsWith(`${definition.id.slice("industry:".length)}.`))
     : undefined;
   const candidates = definition.type === "location" ? [["location", contact.location] as const] : evidenceSources(contact);
-  const source = definition.dimension === "collaboration" ? implementationEvidence(contact, definitions, definition.aliases) : candidates.find(([, value]) => containsAlias(value, definition.aliases))
+  const source = definition.dimension === "collaboration" ? implementationEvidence(contact, definitions, definition.aliases)
+    : definition.id === "capability:delivery" ? deliveryEvidence(contact, definition.aliases)
+    : candidates.find(([, value]) => containsAlias(value, definition.aliases))
     ?? (structuredIndustry ? ["industry", structuredIndustry] as const : undefined)
     ?? (definition.weak ? contact.tags.filter(tag => containsAlias(tag, definition.aliases)).map(tag => ["tags", tag] as const)[0] : undefined);
   return {

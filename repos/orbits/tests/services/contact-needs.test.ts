@@ -86,6 +86,102 @@ test("a store operator's own tax landing request is not implementation experienc
   assert.ok(match.score !== null && match.score < 100);
 });
 
+test("a pilot-client request does not prove the contact's delivery capability", () => {
+  const match = scoreContactsForNeed("我现在在做餐厅AI点单系统，想认识一些合作方。", [contact({
+    id: "delivery-intent", displayName: "Anonymous", role: "市场负责人",
+    profileSnippet: "某餐饮机构的市场负责人。本次关注「餐饮预约 CRM 集成试点客户」，可提供「种子投资人视角的筛选与创业者反馈」。",
+  })]).matches[0]!;
+  const criterion = match.criteria.find(item => item.id === "capability:delivery")!;
+  assert.equal(criterion.matched, false);
+  assert.equal(criterion.strength, "none");
+  assert.equal(criterion.evidenceField, null);
+  assert.equal(criterion.evidenceExcerpt, null);
+  const component = match.components!.find(item => item.dimension === "capability")!;
+  assert.equal(component.baseWeight, 35);
+  assert.equal(component.weight, 100 * 35 / 90);
+  assert.equal(component.points, 0);
+  assert.ok(!match.summary!.criterionIds.includes("capability:delivery"));
+});
+
+for (const [field, text] of [
+  ["profileSnippet", "寻找点单系统开发者。"],
+  ["profileSnippet", "本次关注餐饮试点客户。"],
+  ["profileSnippet", "某软件开发公司的市场负责人。"],
+  ["profileSnippet", "可提供开发工程师介绍。"],
+  ["profileSnippet", "Built a marketing campaign for restaurants."],
+  ["profileSnippet", "为餐饮门店提供投资人视角的筛选与创业者反馈。"],
+  ["role", "未来软件工程师"],
+  ["role", "不是软件开发工程师"],
+  ["profileSnippet", "レストランの開発者を探しています。"],
+  ["profileSnippet", "エンジニアになりたいです。"],
+  ["profileSnippet", "注文システムを開発していません。"],
+  ["relationshipContext", "Looking for restaurant pilot customers."],
+  ["profileSnippet", "Wants to become a software engineer."],
+  ["profileSnippet", "No delivery or implementation experience."],
+  ["role", "Developer Company Marketing Director"],
+] as const) test(`requests, future roles and brand words are not delivery capability: ${text}`, () => {
+  const match = scoreContactsForNeed("AI restaurant ordering collaboration", [contact({
+    id: "delivery-negative", displayName: "Anonymous", [field]: text,
+  })]).matches[0]!;
+  const criterion = match.criteria.find(item => item.id === "capability:delivery")!;
+  assert.equal(criterion.matched, false);
+  assert.equal(criterion.evidenceField, null);
+  assert.equal(criterion.evidenceExcerpt, null);
+  assert.equal(match.components!.find(item => item.dimension === "capability")!.points, 0);
+});
+
+for (const [field, text, excerpt] of [
+  ["role", "Software developer", "Software developer"],
+  ["role", "软件工程师", "软件工程师"],
+  ["role", "Store manager", "Store manager"],
+  ["role", "店長", "店長"],
+  ["profileSnippet", "负责餐厅点单系统开发。", "负责餐厅点单系统开发"],
+  ["profileSnippet", "已交付餐厅点单系统。正在寻找新的试点客户。", "已交付餐厅点单系统"],
+  ["relationshipContext", "Delivered restaurant ordering systems. Looking for pilot customers.", "Delivered restaurant ordering systems"],
+  ["profileSnippet", "注文システムの開発を担当しています。", "注文システムの開発を担当しています"],
+] as const) test(`actual delivery careers and duties retain original evidence: ${text}`, () => {
+  const match = scoreContactsForNeed("AI restaurant ordering collaboration", [contact({
+    id: "delivery-positive", displayName: "Anonymous", [field]: text,
+  })]).matches[0]!;
+  const criterion = match.criteria.find(item => item.id === "capability:delivery")!;
+  assert.equal(criterion.matched, true);
+  assert.equal(criterion.strength, "direct");
+  assert.equal(criterion.evidenceField, field === "profileSnippet" ? "profile" : field === "relationshipContext" ? "relationship" : "role");
+  assert.equal(criterion.evidenceExcerpt, excerpt);
+});
+
+for (const [text, excerpt] of [
+  ["可提供餐饮门店试点场地。", "可提供餐饮门店试点场地"],
+  ["可提供点单系统开发服务。", "可提供点单系统开发服务"],
+  ["Can offer a restaurant pilot venue.", "Can offer a restaurant pilot venue"],
+  ["店舗実証の場所を提供可能です。", "店舗実証の場所を提供可能です"],
+] as const) test(`own service availability is capability, not completed collaboration: ${text}`, () => {
+  const match = scoreContactsForNeed("AI restaurant ordering collaboration", [contact({
+    id: "delivery-service", displayName: "Anonymous", profileSnippet: text,
+  })]).matches[0]!;
+  const criterion = match.criteria.find(item => item.id === "capability:delivery")!;
+  assert.equal(criterion.matched, true);
+  assert.equal(criterion.evidenceField, "profile");
+  assert.equal(criterion.evidenceExcerpt, excerpt);
+  assert.equal(match.criteria.find(item => item.id === "collaboration:implementation")!.matched, false);
+});
+
+test("delivery evidence can use an original evidence excerpt without borrowing a client request", () => {
+  const match = scoreContactsForNeed("AI restaurant ordering collaboration", [contact({
+    id: "delivery-evidence", displayName: "Anonymous", profileSnippet: "希望找试点客户。",
+    evidence: [{
+      evidenceId: "delivery-source",
+      source: { type: "manual", id: "delivery-source", label: "手动", evidenceId: "delivery-source" },
+      excerpt: "负责餐厅点单系统开发。正在寻找合作方。",
+      capturedAt: "2026-09-01T00:00:00.000Z", createdBy: "synthetic-test",
+    }],
+  })]).matches[0]!;
+  const criterion = match.criteria.find(item => item.id === "capability:delivery")!;
+  assert.equal(criterion.matched, true);
+  assert.equal(criterion.evidenceField, "evidence:delivery-source");
+  assert.equal(criterion.evidenceExcerpt, "负责餐厅点单系统开发");
+});
+
 test("future, negated and unrelated implementation claims do not earn collaboration points", () => {
   for (const profileSnippet of [
     "希望为餐厅实施点单系统，可提供试点合作。", "计划负责餐厅点单系统交付。", "没有完成餐厅点单系统实施。",
