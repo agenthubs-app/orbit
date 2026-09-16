@@ -36,10 +36,14 @@ const config: ExpoConfig = {
         "选择名片图片，用于生成待确认联系人候选。"
     }
   },
+  web: {
+    output: "static"
+  },
   extra: {
     easProjectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID,
-    orbitApiBaseUrl:
-      process.env.EXPO_PUBLIC_ORBIT_API_BASE_URL ?? "http://localhost:3000"
+    ...(process.env.EXPO_PUBLIC_ORBIT_API_BASE_URL
+      ? { orbitApiBaseUrl: process.env.EXPO_PUBLIC_ORBIT_API_BASE_URL }
+      : {})
   }
 };
 

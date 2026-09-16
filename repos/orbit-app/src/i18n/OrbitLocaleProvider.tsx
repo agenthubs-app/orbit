@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
 
 import { useOrbitApiBaseUrl } from "../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../api/AuthSessionProvider";
@@ -73,7 +73,12 @@ export function OrbitLocaleProvider({ children }: { children: ReactNode }) {
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
   const client = useOrbitApiClient();
-  const initialDevice = useMemo(() => readDeviceLanguage(), []);
+  const initialDevice = useMemo(
+    () => Platform.OS === "web"
+      ? { error: null, language: "zh" as const }
+      : readDeviceLanguage(),
+    [],
+  );
   const [deviceLanguage, setDeviceLanguage] = useState(initialDevice.language);
   const [deviceError, setDeviceError] = useState(initialDevice.error);
   const [preference, setPreference] = useState<OrbitLanguagePreferenceContract>(systemPreference);
@@ -215,6 +220,13 @@ export function OrbitLocaleProvider({ children }: { children: ReactNode }) {
     setSyncState("error");
     setSyncError(result.success ? "LANGUAGE_PREFERENCE_HTTP_FAILURE" : result.error.code);
   }, [client, readPreference]);
+
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    const nextDevice = readDeviceLanguage();
+    setDeviceLanguage(nextDevice.language);
+    setDeviceError(nextDevice.error);
+  }, []);
 
   useEffect(() => {
     const revision = scopeRevision.current + 1;

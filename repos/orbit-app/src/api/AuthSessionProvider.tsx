@@ -31,6 +31,7 @@ import {
 } from "./mobile-auth";
 import { nativeAuthSessionStorage } from "./native-auth-session-storage";
 import { createOrbitApiClient } from "./client";
+import { signInWithBrowserCredentials } from "./browser-auth";
 import { ORBIT_API_ENDPOINTS } from "./endpoints";
 import {
   canonicalAccountIdentityFromPayload,
@@ -204,6 +205,10 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
     };
 
     const loadProviders = async () => {
+      if (usesBrowserManagedSession) {
+        setProviders([]);
+        return;
+      }
       const result = await fetchMobileAuthProviders({ baseUrl });
 
       if (active && result.success) {
@@ -345,11 +350,17 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
   const signIn = useCallback(
     async (input: SignInInput): Promise<AuthActionResult> => {
       const requestRevision = ++authEnvironment.current.revision;
-      const result = await signInWithMobileCredentials({
-        baseUrl,
-        email: input.email,
-        password: input.password
-      });
+      const result = usesBrowserManagedSession
+        ? await signInWithBrowserCredentials({
+            baseUrl,
+            email: input.email,
+            password: input.password
+          })
+        : await signInWithMobileCredentials({
+            baseUrl,
+            email: input.email,
+            password: input.password
+          });
 
       if (!result.success) {
         return { message: result.error.message, success: false };
