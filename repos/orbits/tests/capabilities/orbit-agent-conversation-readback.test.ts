@@ -88,8 +88,11 @@ const input = {
   protocolVersion: 2, sessionId: "session:readback", clientMessageId: "message:first", requestId: "request:first",
   expectedMessageRevision: 0, locale: "zh", message: "我们聊聊协作方式", references: [],
 };
-const request = (body = input) => new Request("https://orbit.local/api/ai/conversations", {
-  method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
+const request = (
+  body: typeof input & { actorId?: string; workspaceId?: string } = input,
+  identityHeaders: Record<string, string> = {},
+) => new Request("https://orbit.local/api/ai/conversations", {
+  method: "POST", headers: { "content-type": "application/json", ...identityHeaders }, body: JSON.stringify(body),
 });
 
 test("reliable continuation supplies persisted prior turns even when the client omits history", async () => {
@@ -114,7 +117,10 @@ test("conversation POST receipt opens through the canonical actor session GET an
   process.env.ORBIT_MODULE_MODE = "live";
   try {
     const h = await harness();
-    const sent = await h.POST(request());
+    const sent = await h.POST(request(
+      { ...input, actorId: "account:b", workspaceId: "workspace:foreign" },
+      { "x-orbit-actor-id": "account:b", "x-orbit-workspace-id": "workspace:foreign" },
+    ));
     const receipt = await sent.json();
     assert.equal(sent.status, 200);
     assert.equal(receipt.data.reliableSend.state, "completed");
@@ -146,7 +152,10 @@ test("conversation POST rejects an authenticated subject without account members
   try {
     const h = await harness();
     h.fixture.subject = "profile:unknown";
-    const sent = await h.POST(request());
+    const sent = await h.POST(request(
+      { ...input, actorId: "account:a", workspaceId: "workspace:readback" },
+      { "x-orbit-actor-id": "account:a", "x-orbit-workspace-id": "workspace:readback" },
+    ));
     assert.equal(sent.status, 401);
     assert.equal(h.fixture.calls, 0);
     assert.deepEqual(await h.fixture.provider("profile:unknown").listSessions(), []);
