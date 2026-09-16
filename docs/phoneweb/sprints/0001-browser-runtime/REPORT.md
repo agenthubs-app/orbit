@@ -59,3 +59,13 @@ npm run phoneweb:serve
 - 实机 iPhone Safari、Android Chrome、软键盘和地址栏变化由 B/主线组合 QA 完成，本线没有把桌面 Chromium 当作实机证据。
 - GitNexus 已在修改前完成符号 impact：共享 URL normalize 为 CRITICAL，因此未修改；原生推送撤销链为 HIGH，因此只增加 `.web.ts`；实际修改的认证 Provider、设置和语言 Provider为 LOW。临时 Codex worktree无法注册到 `detect_changes`，主线须在已注册整合树运行最终 `detect_changes` 后再提交整合结果。
 - QA 账号窗口已释放；临时凭据没有写入仓库、命令输出或本报告。
+
+## WebKit 会话复验
+
+主线集成后曾收到一次“WebKit 登录后访问 `/home` 回到登录页”的观测。A 与 C 随后分别使用独立 WebKit context、真实 UI 凭据登录重新取证，均无法复现会话丢失：
+
+- 登录后的 `/api/auth/session` 和 `/api/account/me` 均为 200；`authjs.session-token` 是 `127.0.0.1` host-only、Path `/`、持久、HttpOnly、SameSite=Lax 的 Cookie。
+- 同一 context 内刷新、直接访问 `/home`、真实联系人动态详情刷新和退出均成功；Chromium 与 WebKit 的 mobile credential 请求数为 0，pageerror 均为 0。
+- C 的原失败运行在登录跳转后直接等待固定时间，没有在进入 `/home` 前检查 session 或 Cookie；完整复验显示登录 settled 后状态正常。因此该观测的根因是验收时序证据不足，不是可重复的认证产品缺陷，本线没有据此修改认证代码。
+
+console 仍需如实区分：WebKit 会报告 `Viewport argument key "interactive-widget" not recognized and ignored.`；Chromium/WebKit 都会看到 expo-notifications 的 Web warning，部分现有可选业务接口 404 也会产生资源加载错误。它们没有导致 pageerror 或会话失败，但不能记作 console 全净。`interactive-widget` 属于移动 viewport 兼容提示，由移动壳层/旅程验收继续记录，不通过过滤或降低断言隐藏。
