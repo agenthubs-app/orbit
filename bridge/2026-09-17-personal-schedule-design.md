@@ -3,7 +3,8 @@
 - 日期：2026-09-17；P1；source_ready/consumer_ready，verification blocked（实际业务验收未齐）。ROOT已接单；B唯一0053 run-01已结束，固定功能75151e986f0b91b696dda9d9da1dc0e4a467cc33及报告66b1a4a47300621e0ef2fa57169f275dad1631d5，不重开Generator。
 - 授权：用户提供参考图要求编写并委派Sprint，复用既有提交、精确merge chat-agent、运行验证与push授权。
 - Web：代码及必要0051读取/手机视口依赖精确合入chat-agent 27a45a2bedb19013e2f7f0bba6d3187bec369c74；未merge整Phone祖先。生产build退出0，BUILD_ID TK0eR2gz-zYC78Oh5wYoU，主3000 PID68625/句柄55802，health200/live，原费用ledger/guard不初始化或重置。
-- App：新界面源码已合；Metro127.0.0.1:8082 PID69917/句柄63327 status running；主DA Simulator原构建96099退出0/BUILD SUCCEEDED，安装退出0、主包运行PID75083，实际RCT_jsLocation为127.0.0.1:8082。投资人321xx及冻结322xx保持旧产物，不能当0053部署；Phone父已持发布锁开始精确源集成。
+- App：新界面源码已合；Metro127.0.0.1:8082 PID69917/句柄63327 status running；主DA Simulator原构建96099退出0/BUILD SUCCEEDED，安装退出0、主包运行PID75083，实际RCT_jsLocation为127.0.0.1:8082。
+- Phone：原父协调精确组合f4e1059a596ec18305c13490e240e2440e81a604已发布32100/32110，Backend BUILD WbjgA-0punhZpxu677_5j、supervisor80755/backend80766/front80768，dist-unset-origin指纹f50abcbc384735be15553b12cc7690791fbd2d6edde7f9fca5e2c66d915abd74。固定ngrok域名及冻结322xx未动；源非主线整祖先，保留Phone原报名/问卷/视口功能。
 
 ## 用户可见变化及契约
 
@@ -22,3 +23,9 @@ ROOT已实际原生点击新建30分钟日程→POST201→独立GET200×2→详�
 实际原生显示缺陷：30分钟详情显示1,800秒、1小时显示3,600秒、全天显示86,400秒；Detail使用Intl.NumberFormat minute，Hermes差异仍待核因。全天半开结束日期直接显示次日亦待核显示语义。B只做独立只读诊断，不重开原run/第三repair；不能将mock绿色代替实际失败。
 
 Web写→App回读：未运行；App写→Phone同账号同数据库回读：未运行。跨天/链接/关系、原生键盘字号和参考视觉矩阵仍未齐。代码/文档e369903a9已普通push退出0且ls-remote核一致，后续只含文档不改变运行源码27。build/health/Metro不是业务SC通过，Sprint保持blocked，实际进度与只读后续见ROOT checkpoint。
+
+## Phone最终发布与失败保留
+
+Phone App组合16完整文件196/196、两端types0；Web最初37/41四失败保留，固定成功消费者补齐后受影响完整17/17。原默认Turbopack跨root链接失败及错误导出保留；后端改用既有webpack成功，不重复成功build。第一发布前端残留127.0.0.1:32110导致公网同源错误边界；清缓存后的空字符串又被Provider判无效，第二产物QA本地失败、公网未跑。两次均回退既有确证可用前端，旧版公开登录恢复实证保留。最终仅unset API变量、独立TMPDIR/clear导出，compiled Provider只传browserOrigin并省略configuredBaseUrl；配置解析为导出后佐证，不伪记前置。先独立32410真实登录/读取通过并关闭preview，才IPC发布最终前端，不放宽安全校验/改产品。
+
+最终原QA44559退出0：本地Chromium、公开Chromium、公开WebKit均登录到首页、account/history/v2个人集合200(count1)、新建页和已有同一详情200、JSerror0、非导航取消networkfailure0。原raw分别记录9/6/13次导航取消读取，不冒零请求失败；业务写0/model0，因此不证明保存或同actor跨端回读。ROOT完整实际读取final-release-receipt.json及原raw；证据在/Volumes/ORICO/Dev/phoneweb-runtime-20260916/private/release-0053-f4e1059a5/final-release-receipt.json与其private父目录phoneweb-0053-final-runtime-check-browser-receipt.json。当前产物复用Phone node_modules链接，非自足npm-ci包；prepareRelease工具空串配置错误另TODO，不动未提交工具或已验322xx。原生显示及同账号写回读仍缺，Sprint不completed。
