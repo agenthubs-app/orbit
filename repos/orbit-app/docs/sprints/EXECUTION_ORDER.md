@@ -133,3 +133,9 @@
 0033～0036同步计划维持原范围与顺序；0037无需等待该组全局完成，0039只读已提交云端事实。共享契约、语言文件、worker、Web进程、浏览器账号与Simulator争用时由协调者排他分配；不并行写同一文件或重启别人使用的服务。
 
 本增量已复用用户“按照这个设定”的产品方向确认，启动只核实实际依赖、基线与环境。实际生命周期仅见README；本次没有启动run，不因文档完成声称实现或验收完成。
+
+## 0041 Web 测试基线恢复（2026-09-16）
+
+[0041](0041-web-test-baseline-restoration/PLANNER.md) 是独立的测试门禁恢复 Sprint，不属于 0033～0036 产品依赖链，也不实现 Calendar、Gmail 或 Microsoft Graph OAuth adapter。它承接用户对 B/0034 与 D/0036 的一次性合并例外：两条线的定向测试、typecheck 与独立审查已经通过，但 Web 全量测试在它们合并前已存在失败。
+
+0041 可与 0033 的 inventory 修复并行，因为前者只拥有 Web 测试 runner、失败测试/fixture、PostgreSQL 测试隔离和自身文档；不得修改 0033 的 App read inventory、共享同步契约或 AI query 实现。执行顺序固定为：冻结完整失败账本 → 恢复确定性 audit/fixture → 隔离并前置检查 PostgreSQL 集成档 → 在具备前置的环境运行 `test:all` → 独立审查、合并并推送。任何失败都必须继续留在账本中，不能通过 skip、遗漏 profile 或降低断言消失。
