@@ -57,7 +57,8 @@ test.before(async () => {
   const result = await build({
     stdin: { contents: `import React from "react"; import { createRoot } from "react-dom/client";
 import { SettingsScreen } from "./src/screens/settings/SettingsScreen";
-import { ApiSettingsScreen } from "./src/screens/settings/ApiSettingsScreen";
+import { ApiSettingsScreen as NativeApiSettingsScreen } from "./src/screens/settings/ApiSettingsScreen.tsx";
+import { ApiSettingsScreen as WebApiSettingsScreen } from "./src/screens/settings/ApiSettingsScreen.web.tsx";
 import { AccountScreen } from "./src/screens/profile/AccountScreen";
 import { AccountAuthScreen } from "./src/screens/profile/AccountAuthScreen";
 import { AccountPermissionsScreen } from "./src/screens/profile/AccountPermissionsScreen";
@@ -66,7 +67,7 @@ import { AdminScreen } from "./src/screens/admin/AdminScreen";
 import { AdminLoginScreen } from "./src/screens/admin/AdminLoginScreen";
 import { PlatformScreen } from "./src/screens/platform/PlatformScreen";
 const params = new URLSearchParams(location.search);
-const screens = { settings: SettingsScreen, api: ApiSettingsScreen, account: AccountScreen, auth: AccountAuthScreen, permissions: AccountPermissionsScreen, profile: ProfileScreen, admin: AdminScreen, adminLogin: AdminLoginScreen, platform: PlatformScreen };
+const screens = { settings: SettingsScreen, api: NativeApiSettingsScreen, apiWeb: WebApiSettingsScreen, account: AccountScreen, auth: AccountAuthScreen, permissions: AccountPermissionsScreen, profile: ProfileScreen, admin: AdminScreen, adminLogin: AdminLoginScreen, platform: PlatformScreen };
 const Screen = screens[params.get("screen")];
 createRoot(document.getElementById("root")).render(<Screen mode={params.get("mode") || "login"} surface={params.get("surface") || "dashboard"} />);`, resolveDir: process.cwd(), loader: "tsx" },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
@@ -267,6 +268,11 @@ test("server draft and account navigation retain actions without configuration o
   await inflate(page);
   for (const name of ["保存", "检查", "重置"]) await fits(page.getByRole("button", { name, exact: true }), name === "保存" ? 50 : 44);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
+  const web = await open(t, "apiWeb", "dark");
+  await web.getByText("http://fixture.invalid", { exact: true }).waitFor();
+  assert.equal(await web.getByRole("textbox").count(), 0);
+  assert.equal(await web.getByRole("button", { name: /保存|检查|重置/ }).count(), 0);
+  assert.deepEqual(await web.evaluate(() => (window as any).fixture.requests), []);
   const account = await open(t, "account"); await fits(account.getByRole("button", { name: "退出登录", exact: true }));
   await account.getByRole("button", { name: /权限中心/ }).click();
   assert.deepEqual(await account.evaluate(() => (window as any).fixture.navigation), ["/account/permissions"]);
