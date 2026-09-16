@@ -63,6 +63,12 @@ export function createTriggerCoordinator(input: {
     retryTimer = undefined;
   };
 
+  const clearDebounce = () => {
+    if (debounceTimer === undefined) return;
+    input.clock.clear(debounceTimer);
+    debounceTimer = undefined;
+  };
+
   const queueFullRefresh = () => {
     dirtyAll = true;
     dirty.clear();
@@ -71,7 +77,7 @@ export function createTriggerCoordinator(input: {
   const scheduleRetry = (reason: Trigger) => {
     clearRetry();
     const cap = BACKOFF_CAPS[Math.min(attempt - 1, BACKOFF_CAPS.length - 1)]!;
-    const delay = Math.max(1, input.clock.random() * cap);
+    const delay = input.clock.random() * cap;
     retryTimer = input.clock.set(() => {
       retryTimer = undefined;
       void pump(reason);
@@ -110,7 +116,9 @@ export function createTriggerCoordinator(input: {
       activeFull = false;
       activeAbort = undefined;
       running = false;
-      if (!disposed && !failed && (dirtyAll || dirty.size > 0)) void pump(pendingReason);
+      if (!disposed && !failed && debounceTimer === undefined && (dirtyAll || dirty.size > 0)) {
+        void pump(pendingReason);
+      }
     }
   };
 
@@ -126,6 +134,7 @@ export function createTriggerCoordinator(input: {
   return {
     request(reason, domains) {
       if (disposed) return Promise.reject(abortError());
+      clearDebounce();
       const unique = new Set(domains);
       const waiter = {} as Waiter;
       const result = new Promise<void>((resolve, reject) => {
@@ -175,6 +184,20 @@ export function createTriggerCoordinator(input: {
           queueFullRefresh();
           continue;
         }
+        if (domain.reason === "not-authorized") {
+          if (!previous || watermark > previous.watermark) {
+            accepted.set(domain.domainId, { epoch: domain.authorizationEpoch, watermark });
+          }
+          queueFullRefresh();
+          continue;
+        }
+        if (domain.reason === "reset-required") {
+          if (!previous || watermark > previous.watermark) {
+            accepted.set(domain.domainId, { epoch: domain.authorizationEpoch, watermark });
+          }
+          if (!dirtyAll) dirty.add(domain.domainId);
+          continue;
+        }
         if (previous && watermark <= previous.watermark) continue;
         accepted.set(domain.domainId, { epoch: domain.authorizationEpoch, watermark });
         if (domain.reason !== "unchanged" && !dirtyAll) dirty.add(domain.domainId);
@@ -185,7 +208,7 @@ export function createTriggerCoordinator(input: {
     dispose() {
       if (disposed) return;
       disposed = true;
-      if (debounceTimer !== undefined) input.clock.clear(debounceTimer);
+      clearDebounce();
       clearRetry();
       activeAbort?.abort();
       const error = abortError();
