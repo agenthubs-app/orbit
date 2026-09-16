@@ -19,7 +19,7 @@ export function createTypedDeliverySources(input:{actorId:string;client:Transact
    const cutover=await input.repository.cutover(input.actorId);if(!cutover?.enabled)return null;
    const p=await createDiscoveryRepository(input).preferences(input.actorId),source=d.policySource;
    if(source.kind==='notification'){
-    let n;try{n=await createInboxRuntime(input).service.get(input.actorId,source.id,p.language);}catch(error){if(error instanceof InboxRecordError&&error.code==='NOT_FOUND')return null;throw error;}
+    let n;try{n=await createInboxRuntime({...input,forDispatch:true}).service.get(input.actorId,source.id,p.language);}catch(error){if(error instanceof InboxRecordError&&error.code==='NOT_FOUND')return null;throw error;}
     const scheduled=n.scheduledFor??n.occurredAt,eventKey=n.id+':'+scheduled;
     if(n.target.status!=='available'||n.disposition!=='open'||eventKey!==source.eventKey||scheduled<cutover.since)return null;
     if(n.sources.some(s=>s.objectId==='discovery')&&!p.enabled)return null;

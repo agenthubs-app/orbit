@@ -4,6 +4,10 @@ import { ja } from "./ja";
 import { zh } from "./zh";
 
 export const messageKeys = [
+  "personal60.invalidReminder", "personal60.invalidUntil",
+  "personal60.done",
+  "personal60.pastReminder",
+  "personal60.none", "personal60.atStart", "personal60.beforeMinutes", "personal60.beforeDay", "personal60.noRepeat", "personal60.daily", "personal60.weekly", "personal60.monthly", "personal60.until", "personal60.noUntil", "personal60.scope", "personal60.occurrence", "personal60.series", "personal60.scopeRequired", "personal60.seriesRules", "personal60.monthlySkip", "personal60.localOnly", "personal60.chooseBeforeEditing",
   "personal53.time",
   "personal53.adjustTime",
   "personal53.date",

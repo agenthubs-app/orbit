@@ -3,8 +3,12 @@ import { personalScheduleSchema } from "../../shared/api-schema/personal-schedul
 
 export function personalScheduleRepresentation(item: PersonalScheduleContract, request: Request): PersonalScheduleContract {
   const checked = personalScheduleSchema.parse(item);
-  if (request.headers.get("x-orbit-personal-schedule-version") === "2") return checked;
-  const { allDay, timeZone, meetingMethod, meetingUrl, contactIds, noteIds, ...legacy } = checked;
+  const version = request.headers.get("x-orbit-personal-schedule-version");
+  if (version === "3") return checked;
+  const { recurrence, reminderMinutes, seriesId, occurrenceDate, ...old } = checked;
+  const compatible = { ...old, sourceId: old.id };
+  if (version === "2") return compatible;
+  const { allDay, timeZone, meetingMethod, meetingUrl, contactIds, noteIds, ...legacy } = compatible;
   return legacy;
 }
 

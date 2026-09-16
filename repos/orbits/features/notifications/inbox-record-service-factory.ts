@@ -14,11 +14,15 @@ import { createTaskSuggestionRepository } from '../tasks/suggestion-repository';
 import { createReminderPlanRepository } from './reminder-plan-repository';
 import { createReminderPlanService } from './reminder-plan-service';
 import type { AppointmentAggregate } from '../appointments/contract';
+import { createPersonalScheduleService } from '../personal-schedule/service';
+import { AppError } from '../../shared/errors/app-error';
+import { isCurrentPersonalScheduleReminderPlan } from '../personal-schedule/reminder-plans';
+import type { ReminderPlanDTO } from './reminder-plan-contract';
 
 export function isTypedInboxEnabled(actorId:string,env:NodeJS.ProcessEnv=process.env):boolean {
   return (env.ORBIT_TYPED_INBOX_ACTORS??'').split(',').map(s=>s.trim()).includes(actorId);
 }
-export function createInboxRuntime(input:{client:TransactionalPostgresClient;workspaceId:string;now?:()=>string}) {
+export function createInboxRuntime(input:{client:TransactionalPostgresClient;workspaceId:string;now?:()=>string;forDispatch?:boolean}) {
   const now=input.now??(()=>new Date().toISOString());
   const storeFor=(tx?:InboxRecordTransaction)=>createPostgresLiveRecordStore({client:tx?.executor??input.client});
   const collections:Partial<Record<InboxNotificationSource['sourceKind'],string>>={task:'tasks',schedule:'personal_schedule_items',note:'notes',contact:'contacts',goal:'profiles',connection:'integrations',reminder_plan:'reminderPlans',batch:'businessCardBatches'};
@@ -52,6 +56,21 @@ export function createInboxRuntime(input:{client:TransactionalPostgresClient;wor
     if(['deleted','cancelled','expired'].includes(String(entity.status)))return 'unavailable';
     if(source.sourceKind==='reminder_plan') {
       const targetType=entity.targetType,targetId=String(entity.targetId??'');
+      if(source.sourceId.startsWith('schedule-reminder:')&&(input.forDispatch||entity.status==='scheduled')) {
+        if(entity.id!==source.sourceId)return 'unavailable';
+        let current;
+        try {current=await createPersonalScheduleService({store:storeFor(tx),workspaceId:input.workspaceId,now}).get({actorId,id:targetId});}
+        catch(error) {if(error instanceof AppError&&error.code==='NOT_FOUND')return 'unavailable';throw error;}
+        if(!isCurrentPersonalScheduleReminderPlan(entity as unknown as ReminderPlanDTO,actorId,current))return 'unavailable';
+        return String(entity.updatedAt??record.updatedAt)===source.sourceRevision?'available':'changed';
+      }
+      if(targetType==='schedule_item'&&/^.*:occurrence:\d{4}-\d{2}-\d{2}$/.test(targetId)) {
+        try {
+          const occurrence=await createPersonalScheduleService({store:storeFor(tx),workspaceId:input.workspaceId,now}).get({actorId,id:targetId});
+          if(occurrence.state==='cancelled')return 'unavailable';
+        } catch(error) {if(error instanceof AppError&&error.code==='NOT_FOUND')return 'unavailable';throw error;}
+        return String(entity.updatedAt??record.updatedAt)===source.sourceRevision?'available':'changed';
+      }
       const target=await storeFor(tx).getRecord({workspaceId:input.workspaceId,collectionName:targetType==='task'?'tasks':'personal_schedule_items',recordId:targetId});
       if(!target||target.userId!==actorId||target.lifecycleState!=='active')return 'unavailable';
       const body=(target.payload.task??target.payload) as Record<string,unknown>;

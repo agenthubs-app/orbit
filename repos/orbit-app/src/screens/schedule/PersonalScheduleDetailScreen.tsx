@@ -12,6 +12,8 @@ import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { createThemedStyles } from "../../design/theme";
 import { personalScheduleDetail } from "../../view-models/personal-schedule-detail";
 import { PersonalScheduleAssociations } from "./PersonalScheduleAssociations";
+import { PersonalScheduleRules } from "./PersonalScheduleRules";
+import { personalScheduleDraft } from "../../view-models/personal-schedule-editor";
 
 export function PersonalScheduleDetailScreen() {
   const auth = useOrbitAuthSession(); const server = useOrbitApiBaseUrl(); const params = useLocalSearchParams<{ id?: string | string[]; saved?: string | string[] }>();
@@ -23,16 +25,17 @@ export function PersonalScheduleDetailScreen() {
 function Detail({ actorId, id, ready, scopeKey, savedVersion }: { actorId: string; id: string; ready: boolean; scopeKey: string; savedVersion: string }) {
   const client = useOrbitApiClient({ scopeKey }); const { timeZone } = useOrbitTimeZone(); const locale = useOrbitLocale(); const router = useRouter(); const { styles } = useStyles();
   const [view, setView] = useState<ReturnType<typeof personalScheduleDetail>>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState(""); const [revision, setRevision] = useState(0);
+  const [rules, setRules] = useState<ReturnType<typeof personalScheduleDraft> | null>(null);
   useEffect(() => {
-    const controller = new AbortController(); setView(null); setError("");
+    const controller = new AbortController(); setView(null); setRules(null); setError("");
     if (!ready || !id) { setLoading(false); return () => controller.abort(); }
     setLoading(true);
-    void client.get<unknown>(personalSchedulePath(id), { headers: { "x-orbit-personal-schedule-version": "2" }, signal: controller.signal }).then(result => {
+    void client.get<unknown>(personalSchedulePath(id), { headers: { "x-orbit-personal-schedule-version": "3" }, signal: controller.signal }).then(result => {
       if (controller.signal.aborted) return;
       const item = result.success ? readPersonalSchedule(result.data) : null;
-      if (!item || item.id !== id || item.sourceId !== id || item.accountId !== actorId || item.ownerUserId !== actorId || item.state === "cancelled") { setError(result.success ? locale.t("schedule.readUnconfirmed") : result.error.message); return; }
+      if (!item || item.id !== id || item.accountId !== actorId || item.ownerUserId !== actorId || item.state === "cancelled") { setError(result.success ? locale.t("schedule.readUnconfirmed") : result.error.message); return; }
       const next = personalScheduleDetail(item, timeZone);
-      if (!next) setError(locale.t("schedule.timezoneUnavailable")); else setView(next);
+      if (!next) setError(locale.t("schedule.timezoneUnavailable")); else { setView(next); setRules(personalScheduleDraft(item, next.zone)); }
     }).catch(() => { if (!controller.signal.aborted) setError(locale.t("schedule.readFailed")); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [actorId, id, ready, client, revision, timeZone, locale]);
@@ -43,7 +46,8 @@ function Detail({ actorId, id, ready, scopeKey, savedVersion }: { actorId: strin
       <Text style={styles.hint}>{[view.date, view.endDate && view.endDate !== view.date ? view.endDate : null, view.durationMinutes !== null ? locale.t("home.durationMinutes", { count: view.durationMinutes }) : locale.t("personal53.noEnd"), view.zone].filter(Boolean).join(" · ")}</Text>
       {view.location ? <View style={styles.row}><Text style={styles.hint}>{locale.t("schedule.fieldLocation")}</Text><Text style={styles.body}>{view.location}</Text></View> : null}
       <PersonalScheduleAssociations actorId={actorId} scopeKey={scopeKey} noteIds={view.noteIds} contactIds={view.contactIds} />
-      <Text style={styles.hint}>{locale.t("personal53.unsupported")}</Text>
+      {rules ? <PersonalScheduleRules draft={rules} readOnly /> : null}
+      <Text style={styles.hint}>{locale.t("personal60.localOnly")}</Text>
       {view.meetingUrl ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("personal53.join")} onPress={() => { void Linking.openURL(view.meetingUrl!).catch(() => setError(locale.t("schedule.operationFailed"))); }} style={styles.primary}><Text style={styles.primaryText}>{locale.t("personal53.join")}</Text></Pressable> : null}
       <Pressable accessibilityRole="button" accessibilityLabel={locale.t("personal53.reschedule")} onPress={() => router.push(`${view.editHref}?focus=time` as Href)} style={styles.secondary}><Text style={styles.body}>{locale.t("personal53.reschedule")}</Text></Pressable>
     </> : null}

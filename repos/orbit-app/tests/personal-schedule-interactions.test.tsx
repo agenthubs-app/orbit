@@ -23,7 +23,7 @@ const state = window.fixture = {
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
   data(path, query) { if (path.startsWith("/api/schedule-items/association-options/")) { const kind = path.endsWith("/notes") ? "note" : "contact"; const item = kind === "note" ? state.note : state.contact; return { actorId: state.actor, kind, options: item ? [{ id: item.id, title: kind === "note" ? item.title : item.displayName }] : [], sourceVersion: "v1", partial: false }; } if (path.startsWith("/api/contacts")) return path.endsWith("/search") ? { contacts: state.contact ? [state.contact] : [] } : { contact: state.contact }; if (path.startsWith("/api/notes")) return path === "/api/notes" ? { notes: state.note ? [state.note] : [], total: state.note ? 1 : 0 } : { note: state.note }; return state.list ? { scheduleItems: query === "?scope=personal" ? state.listItems ?? [state.item] : [{ id: "legacy:personal", sourceId: "legacy:personal", kind: "personal", category: "personal", title: "Legacy", startsAt: state.item.startsAt, state: "upcoming" }] } : { scheduleItem: state.item }; },
   reply(index, status = 200, data) {
-    const payload = data === undefined && status !== 200 ? { success: false, error: { code: status === 401 ? "UNAUTHORIZED" : status === 409 ? "CONFLICT" : "SERVICE_UNAVAILABLE", message: "Request not accepted" } } : { success: true, data: data === undefined ? state.data(state.requests[index].path, state.requests[index].query) : data };
+    const payload = data === undefined && status !== 200 ? { success: false, error: { code: status === 401 ? "UNAUTHORIZED" : status === 404 ? "NOT_FOUND" : status === 409 ? "CONFLICT" : "SERVICE_UNAVAILABLE", message: "Request not accepted" } } : { success: true, data: data === undefined ? state.data(state.requests[index].path, new URLSearchParams(state.requests[index].query).get("scope") === "personal" ? "?scope=personal" : state.requests[index].query) : data };
     state.pending[index]?.(new Response(JSON.stringify(payload), { status, headers: { "content-type": "application/json" } }));
   }
 };
@@ -41,9 +41,9 @@ if (state.unitFormatAsSeconds) {
   } });
 }
 window.fetch = async (input, init) => { const index = state.requests.length; const url = new URL(String(input));
-  state.requests.push({ method: init.method, path: url.pathname, query: url.search, origin: url.origin, body: init.body ? JSON.parse(init.body) : null, signal: init.signal });
+  state.requests.push({ method: init.method, path: url.pathname, query: url.search, origin: url.origin, headers: Object.fromEntries(new Headers(init.headers)), body: init.body ? JSON.parse(init.body) : null, signal: init.signal });
   const response = new Promise(resolve => state.pending[index] = resolve);
-  if ((init.method === "GET" || url.pathname === "/api/contacts/search") && !state.holdReads) queueMicrotask(() => state.reply(index));
+  if ((init.method === "GET" || url.pathname === "/api/contacts/search") && !state.holdReads) queueMicrotask(() => state.reply(index, state.item?.seriesId && state.item?.state === "cancelled" && url.pathname === "/api/schedule-items/" + encodeURIComponent(state.item.id) ? 404 : 200));
   return response;
 };
 const foregroundListeners = new Set();
@@ -176,7 +176,7 @@ test("editor reference date is localized without changing its saved date or time
   const remark = await p.getByLabel("备注", { exact: true }).boundingBox();
   const save = await p.getByRole("button", { name: "保存日程", exact: true }).boundingBox();
   assert.ok(remark && save && remark.y + remark.height <= save.y - 12, `reference rows remain above the save panel: ${JSON.stringify({ remark, save })}`);
-  await p.screenshot({ path: "/Users/xzhao/Projects/orbit/.worktrees/sprint-0059-personal-editor-sheets/build/harness-state/evidence/sprint-0059/run-01/app-editor-reference.png" });
+  await p.screenshot({ path: "/Users/xzhao/Projects/orbit/.worktrees/sprint-0060-personal-reminders-recurrence/build/harness-state/evidence/sprint-0060/run-01/app-editor-reference.png" });
 });
 
 test("association checkbox exposes selected state, supports deselection and cancels without writes", async t => {
@@ -285,17 +285,189 @@ test("selected contact chip uses the verified identity avatar and removes it aft
   assert.deepEqual(await writes(p), []);
 });
 
-test("editor settings are compact truthful rows without fake reminder, repeat or remark actions", async t => {
+test("editor rule settings are real compact actions while unsupported remarks remain noninteractive", async t => {
   const p = await open(t);
-  for (const label of ["提醒", "重复", "备注"]) {
-    const row = p.getByLabel(label, { exact: true });
-    assert.equal(await row.count(), 1, label);
-    assert.equal(await row.getByText("暂不支持", { exact: true }).count(), 1, label);
-    assert.equal(await row.getByRole("button").count(), 0, label);
-  }
-  assert.equal(await p.getByText("提醒和重复暂不支持", { exact: true }).count(), 1);
+  for (const label of ["提醒", "重复"]) assert.equal(await p.getByRole("button", { name: label, exact: true }).count(), 1);
+  const remark = p.getByLabel("备注", { exact: true });
+  assert.equal(await remark.getByText("暂不支持", { exact: true }).count(), 1);
+  assert.equal(await remark.getByRole("button").count(), 0);
+  assert.equal(await p.getByText("提醒和重复暂不支持", { exact: true }).count(), 0);
   assert.deepEqual(await writes(p), []);
 });
+
+test("rule selection sends v3 persisted values and waits for independent exact-rule readback", async t => {
+  const p = await open(t);
+  await p.getByRole("button", { name: "提醒", exact: true }).click();
+  await p.getByRole("radio", { name: "提前5分钟", exact: true }).click();
+  await p.getByRole("button", { name: "重复", exact: true }).click();
+  await p.getByRole("radio", { name: "每天", exact: true }).click();
+  await fill(p, "重复结束日期", "2026-09-20");
+  await p.getByRole("dialog", { name: "重复", exact: true }).getByRole("button", { name: "完成", exact: true }).click();
+  await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
+  await press(p, "保存日程");
+  const w = (await writes(p))[0];
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.find((r: any) => r.method === "PATCH").headers["x-orbit-personal-schedule-version"]), "3");
+  assert.deepEqual(w.body.patch, { reminderMinutes: 5, recurrence: { frequency: "daily", until: "2026-09-20" }, timeZone: "Asia/Tokyo" });
+  await reply(p);
+  assert.equal(await p.evaluate(() => (window as any).fixture.navigation), undefined);
+  await p.evaluate(() => { const s = (window as any).fixture; const i = s.requests.length - 1; s.reply(i, 200, { scheduleItem: { ...s.item, recurrence: { frequency: "weekly", until: "2026-09-20" } } }); }); await settle(p);
+  assert.equal(await p.evaluate(() => (window as any).fixture.navigation), undefined);
+  assert.equal(await p.getByRole("alert").count(), 1);
+});
+
+test("an occurrence requires explicit scope and preserves inherited rules on a single-instance write", async t => {
+  const item = { ...initialItem, id: "personal:edit:occurrence:2026-09-17", seriesId: initialItem.id, occurrenceDate: "2026-09-17", recurrence: { frequency: "daily", until: "2026-09-20" }, reminderMinutes: 15, timeZone: "Asia/Tokyo" };
+  const p = await open(t, { item, taskId: item.id });
+  await fill(p, "日程标题", "One occurrence"); await press(p, "保存日程");
+  assert.deepEqual(await writes(p), []);
+  await p.getByRole("button", { name: "修改范围", exact: true }).click();
+  await p.getByRole("radio", { name: "仅本次日程", exact: true }).click();
+  await press(p, "保存日程");
+  const write = (await writes(p))[0];
+  assert.equal(write.path, "/api/schedule-items/personal%3Aedit%3Aoccurrence%3A2026-09-17");
+  assert.equal(write.body.scope, "occurrence");
+  assert.equal(write.body.expectedUpdatedAt, item.updatedAt);
+  assert.deepEqual(write.body.patch, { title: "One occurrence" });
+  await reply(p);
+  assert.ok(await p.evaluate(() => (window as any).fixture.navigation));
+});
+
+test("choosing a full series opens its base identity without implicitly writing the instance", async t => {
+  const item = { ...initialItem, id: "personal:edit:occurrence:2026-09-17", seriesId: initialItem.id, occurrenceDate: "2026-09-17", recurrence: { frequency: "daily" }, timeZone: "Asia/Tokyo" };
+  const p = await open(t, { item, taskId: item.id });
+  await p.getByRole("button", { name: "修改范围", exact: true }).click();
+  await p.getByRole("radio", { name: "整个重复系列", exact: true }).click();
+  assert.equal(await p.evaluate(() => (window as any).fixture.navigation), "/schedule/personal/personal%3Aedit/edit");
+  assert.deepEqual(await writes(p), []);
+});
+
+test("series rule saves use explicit scope and reopening or discarding a conflict retains saved rules", async t => {
+  const item = { ...initialItem, reminderMinutes: 30, recurrence: { frequency: "weekly", until: "2026-10-17" }, timeZone: "Asia/Tokyo" };
+  const p = await open(t, { item });
+  await p.getByRole("button", { name: "修改范围", exact: true }).click();
+  await p.getByRole("radio", { name: "整个重复系列", exact: true }).click();
+  await p.getByRole("button", { name: "提醒", exact: true }).click();
+  await p.getByRole("radio", { name: "不提醒", exact: true }).click();
+  await press(p, "保存日程");
+  assert.deepEqual((await writes(p))[0].body.patch, { reminderMinutes: null });
+  assert.equal((await writes(p))[0].body.scope, "series");
+  await reply(p, 409);
+  await p.evaluate(() => { const s = (window as any).fixture; s.item = { ...s.item, reminderMinutes: 60, updatedAt: "2026-09-16T00:00:00Z" }; s.refresh(); }); await settle(p);
+  assert.equal(await p.getByText("不提醒", { exact: true }).count(), 1);
+  await press(p, "放弃草稿并载入最新内容");
+  assert.equal(await p.getByText("提前60分钟", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("每周 · 2026-10-17", { exact: true }).count(), 1);
+  assert.equal((await writes(p)).length, 1);
+});
+
+test("v3 detail and bounded local-day list keep an occurrence identity and expose its inherited rules", async t => {
+  const item = { ...initialItem, id: "personal:edit:occurrence:2026-09-17", seriesId: initialItem.id, occurrenceDate: "2026-09-17", recurrence: { frequency: "daily", until: "2026-09-20" }, reminderMinutes: 15, timeZone: "Asia/Tokyo" };
+  const p = await open(t, { item, taskId: item.id, detail: true });
+  assert.equal(await p.getByText("提前15分钟", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("每天 · 2026-09-20", { exact: true }).count(), 1);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests[0].headers["x-orbit-personal-schedule-version"]), "3");
+  const list = await open(t, { list: true, item });
+  await list.getByRole("button", { name: /Original title/ }).waitFor();
+  const request = await list.evaluate(() => (window as any).fixture.requests[0]);
+  assert.equal(request.headers["x-orbit-personal-schedule-version"], "3");
+  const query = new URLSearchParams(request.query);
+  assert.equal(query.get("scope"), "personal");
+  assert.ok(query.get("from") && query.get("to"));
+  assert.ok(Date.parse(query.get("to")!) - Date.parse(query.get("from")!) <= 92 * 86400000);
+  await list.getByRole("button", { name: /Original title/ }).click();
+  assert.equal(await list.evaluate(() => (window as any).fixture.navigation), "/schedule/personal/personal%3Aedit%3Aoccurrence%3A2026-09-17");
+  assert.deepEqual(await writes(list), []);
+});
+
+test("delete requires an independent current-state read and preserves the draft when that read fails", async t => {
+  const p = await open(t);
+  await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
+  await press(p, "删除个人日程"); await press(p, "确认删除个人日程");
+  await reply(p, 200, { scheduleItem: { ...initialItem, state: "cancelled", updatedAt: "2026-09-17T00:00:00Z" }, deleted: true });
+  assert.equal(await p.evaluate(() => (window as any).fixture.navigation), undefined);
+  const last = await p.evaluate(() => (window as any).fixture.requests.at(-1));
+  assert.equal(last.method, "GET");
+  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.length - 1, 503); }); await settle(p);
+  assert.equal(await p.evaluate(() => (window as any).fixture.navigation), undefined);
+  assert.equal(await p.getByRole("textbox", { name: "日程标题", exact: true }).inputValue(), "Original title");
+});
+
+test("an unrelated series edit cannot accept ACK and GET that erase omitted rules", async t => {
+  const item = { ...initialItem, reminderMinutes: 30, recurrence: { frequency: "weekly" }, timeZone: "Asia/Tokyo" };
+  const p = await open(t, { item });
+  await p.getByRole("button", { name: "修改范围", exact: true }).click();
+  await p.getByRole("radio", { name: "整个重复系列", exact: true }).click();
+  await fill(p, "日程标题", "Only title"); await press(p, "保存日程");
+  const { recurrence, reminderMinutes, ...withoutRules } = item;
+  await p.evaluate(item => { (window as any).fixture.item = item; }, { ...withoutRules, title: "Only title", updatedAt: "2026-09-15T00:00:00Z" });
+  await reply(p, 200, { scheduleItem: { ...withoutRules, title: "Only title", updatedAt: "2026-09-15T00:00:00Z" } });
+  assert.equal(await p.evaluate(() => (window as any).fixture.navigation), undefined);
+  assert.equal(await p.getByRole("alert").count(), 1);
+});
+
+test("clearing a series repeat rule persists the omission and a reopened draft does not resurrect it", async t => {
+  const item = { ...initialItem, reminderMinutes: 15, recurrence: { frequency: "weekly", until: "2026-10-17" }, timeZone: "Asia/Tokyo" };
+  const p = await open(t, { item });
+  await p.getByRole("button", { name: "修改范围", exact: true }).click(); await p.getByRole("radio", { name: "整个重复系列", exact: true }).click();
+  await p.getByRole("button", { name: "重复", exact: true }).click(); await p.getByRole("radio", { name: "不重复", exact: true }).click();
+  await p.getByRole("dialog", { name: "重复", exact: true }).getByRole("button", { name: "完成", exact: true }).click();
+  await press(p, "保存日程");
+  assert.deepEqual((await writes(p))[0].body.patch, { recurrence: null });
+  await reply(p);
+  assert.ok(await p.evaluate(() => (window as any).fixture.navigation));
+  assert.equal(await p.getByText("不重复", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("提前15分钟", { exact: true }).count(), 1);
+});
+
+test("an actor replacement cannot accept late series-rule saves or restore the old draft", async t => {
+  const p = await open(t);
+  await p.getByRole("button", { name: "提醒", exact: true }).click(); await p.getByRole("radio", { name: "提前5分钟", exact: true }).click();
+  await press(p, "保存日程");
+  await p.evaluate(() => { const s = (window as any).fixture; s.update({ actor: "actor-2", item: { ...s.item, accountId: "actor-2", ownerUserId: "actor-2", title: "New rule owner", reminderMinutes: 60, timeZone: "Asia/Tokyo" } }); }); await settle(p);
+  await reply(p, 200, { scheduleItem: { ...initialItem, reminderMinutes: 5, timeZone: "Asia/Tokyo", updatedAt: "2026-09-15T00:00:00Z" } });
+  assert.equal(await p.getByRole("textbox", { name: "日程标题", exact: true }).inputValue(), "New rule owner");
+  assert.equal(await p.getByText("提前60分钟", { exact: true }).count(), 1);
+  assert.equal(await p.evaluate(() => (window as any).fixture.navigation), undefined);
+});
+
+test("localized repeat options remain usable with enlarged text and closing makes no request", async t => {
+  for (const [language, entry, monthly, until, done] of [["zh", "重复", "每月", "重复结束日期", "完成"], ["en", "Repeat", "Monthly", "Repeat end date", "Done"], ["ja", "繰り返し", "毎月", "繰り返しの終了日", "完了"]] as const) {
+    const p = await open(t, { language, fontScale: 1.8 });
+    await p.setViewportSize({ width: 390, height: 520 });
+    await p.getByRole("button", { name: entry, exact: true }).click();
+    await p.getByRole("radio", { name: monthly, exact: true }).click();
+    await p.getByRole("textbox", { name: until, exact: true }).fill("2026-10-17");
+    await p.screenshot({ path: `/Users/xzhao/Projects/orbit/.worktrees/sprint-0060-personal-reminders-recurrence/build/harness-state/evidence/sprint-0060/run-01/app-rules-${language}.png` });
+    await p.getByRole("dialog", { name: entry, exact: true }).getByRole("button", { name: done, exact: true }).click();
+    assert.deepEqual(await writes(p), []);
+  }
+});
+
+test("a past instance with a reminder shows the no-backfill boundary without scheduling another executor", async t => {
+  const p = await open(t, { item: { ...initialItem, startsAt: "2020-09-17T00:30:42Z", endsAt: "2020-09-17T01:30:42Z", timeZone: "Asia/Tokyo", reminderMinutes: 0 } });
+  assert.equal(await p.getByText("本次提醒时间已过，不会补发；后续实例仍按规则提醒。", { exact: true }).count(), 1);
+  assert.deepEqual(await writes(p), []);
+  assert.equal(await p.evaluate(() => (window as any).fixture.permissionCalls), 0);
+});
+
+for (const [language, entry, daily, until, done, save, message] of [
+  ["en", "Repeat", "Daily", "Repeat end date", "Done", "Save schedule", "Enter a valid repeat end date on or after the start date."],
+  ["ja", "繰り返し", "毎日", "繰り返しの終了日", "完了", "予定を保存", "繰り返しの終了日は、開始日以降の有効な日付を入力してください。"],
+] as const) {
+  test(`invalid repeat end date retains the draft and blocks writes with a ${language} alert`, async t => {
+    const p = await open(t, { language });
+    await press(p, entry);
+    await p.getByRole("radio", { name: daily, exact: true }).click();
+    await fill(p, until, "2026-09-16");
+    await p.getByRole("dialog", { name: entry, exact: true }).getByRole("button", { name: done, exact: true }).click();
+    await press(p, save);
+    assert.deepEqual(await writes(p), []);
+    assert.equal(await p.getByRole("alert").textContent(), message);
+    assert.equal(await p.evaluate(() => (window as any).fixture.navigation), undefined);
+    await press(p, entry);
+    assert.equal(await p.getByRole("textbox", { name: until, exact: true }).inputValue(), "2026-09-16");
+  });
+}
 
 test("association sheet closes through platform back and a real downward pointer gesture", async t => {
   const p = await open(t);
@@ -393,7 +565,7 @@ for (const [endsAt, expected] of [["2026-09-17T15:00:00Z", "2026-09-17 · 1440 �
   });
 }
 async function reply(p: Page, status = 200, override?: object) {
-  await p.evaluate(({ status, override }) => { const s = (window as any).fixture; const i = s.requests.findLastIndex((r: any) => r.method !== "GET" && r.path.startsWith("/api/schedule-items")); const r = s.requests[i]; const item = { ...s.item, ...(r.body.patch ?? r.body), updatedAt: "2026-09-15T00:00:00Z" }; delete item.idempotencyKey; for (const key of ["endsAt", "location"]) if (item[key] === null) delete item[key]; if (r.method === "DELETE") item.state = "cancelled"; if (status === 200 && !override) s.item = item; s.reply(i, status, override ?? (status === 200 ? { scheduleItem: item, ...(r.method === "DELETE" ? { deleted: true } : {}) } : undefined)); }, { status, override }); await settle(p);
+  await p.evaluate(({ status, override }) => { const s = (window as any).fixture; const i = s.requests.findLastIndex((r: any) => r.method !== "GET" && r.path.startsWith("/api/schedule-items")); const r = s.requests[i]; const item = { ...s.item, ...(r.body.patch ?? r.body), updatedAt: "2026-09-15T00:00:00Z" }; delete item.idempotencyKey; for (const key of ["endsAt", "location", "reminderMinutes", "recurrence"]) if (item[key] === null) delete item[key]; if (r.method === "DELETE") item.state = "cancelled"; if (status === 200 && !override) s.item = item; else if (status === 200 && r.method === "DELETE" && override && "scheduleItem" in override) s.item = override.scheduleItem; s.reply(i, status, override ?? (status === 200 ? { scheduleItem: item, ...(r.method === "DELETE" ? { deleted: true } : {}) } : undefined)); }, { status, override }); await settle(p);
 }
 
 test("create without a contact, failure retry and reopen use one server record", async t => {
@@ -446,7 +618,7 @@ test("merged time block shortcuts and both saves share one in-flight mutation", 
   await p.getByRole("button", { name: "调整日期和时间", exact: true }).click(); await settle(p);
   const saveBox = await p.getByRole("button", { name: "保存日程", exact: true }).boundingBox();
   assert.ok(saveBox && saveBox.y >= 0 && saveBox.y + saveBox.height <= 844, "bottom save remains visible at the reference viewport");
-  await p.screenshot({ path: "/Users/xzhao/Projects/orbit/.worktrees/sprint-0059-personal-editor-sheets/build/harness-state/evidence/sprint-0059/run-01/app-editor-shortcuts.png", fullPage: true });
+  await p.screenshot({ path: "/Users/xzhao/Projects/orbit/.worktrees/sprint-0060-personal-reminders-recurrence/build/harness-state/evidence/sprint-0060/run-01/app-editor-shortcuts.png", fullPage: true });
   await press(p, "保存日程");
   assert.equal(await p.getByRole("button", { name: "保存", exact: true }).isDisabled(), true);
   assert.equal((await writes(p)).length, 1);
@@ -457,7 +629,7 @@ test("personal destination reads a standalone detail with edit and reschedule bu
   const p = await open(t, { detail: true });
   assert.equal(await p.getByRole("textbox").count(), 0);
   await p.getByText("个人日程 · 仅自己可见", { exact: true }).waitFor();
-  await p.screenshot({ path: "/Users/xzhao/Projects/orbit/.worktrees/sprint-0059-personal-editor-sheets/build/harness-state/evidence/sprint-0059/run-01/app-detail.png", fullPage: true });
+  await p.screenshot({ path: "/Users/xzhao/Projects/orbit/.worktrees/sprint-0060-personal-reminders-recurrence/build/harness-state/evidence/sprint-0060/run-01/app-detail.png", fullPage: true });
   assert.equal((await writes(p)).length, 0);
   await press(p, "编辑");
   assert.equal(await p.evaluate(() => (window as any).fixture.navigation), "/schedule/personal/personal%3Aedit/edit");

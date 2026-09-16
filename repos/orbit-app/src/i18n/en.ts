@@ -1,6 +1,11 @@
 import type { MessageDictionary } from "./messages";
 
 export const en = {
+  "personal60.invalidReminder": "Choose a valid reminder time.",
+  "personal60.invalidUntil": "Enter a valid repeat end date on or after the start date.",
+  "personal60.done": "Done",
+  "personal60.pastReminder": "This reminder time has passed and will not be sent retroactively. Future occurrences still follow the rule.",
+  "personal60.none": "No reminder", "personal60.atStart": "At start", "personal60.beforeMinutes": "{count} minutes before", "personal60.beforeDay": "1 day before", "personal60.noRepeat": "Does not repeat", "personal60.daily": "Daily", "personal60.weekly": "Weekly", "personal60.monthly": "Monthly", "personal60.until": "Repeat end date", "personal60.noUntil": "Leave blank for no end date", "personal60.scope": "Change scope", "personal60.occurrence": "This occurrence only", "personal60.series": "Entire recurring series", "personal60.scopeRequired": "Choose this occurrence or the entire recurring series first.", "personal60.seriesRules": "Reminder and repeat rules apply to the entire series.", "personal60.monthlySkip": "Repeats on the start day of the month; months without that day are skipped.", "personal60.localOnly": "Saved in Orbit only, not in your system calendar.", "personal60.chooseBeforeEditing": "Keep or discard your draft before opening the entire series.",
   "registration.cancelThisRegistration": "Cancel this registration",
   "registration.cancelUnconfirmed": "The cancellation could not be verified. Reload registration status.",
   "registration.cancelConfirmation": "Cancelling removes your registration. You can register again while registration is open.",

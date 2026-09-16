@@ -30,17 +30,19 @@ export function createScheduleItemsGetHandler(dependencies?: ScheduleItemsRouteD
 
     try {
       const personalScope = request && new URL(request.url).searchParams.get("scope") === "personal";
+      const params = request ? new URL(request.url).searchParams : undefined;
+      const window = personalScope && params && (params.has("from") || params.has("to")) ? { from: params.get("from") ?? "", to: params.get("to") ?? "" } : {};
       const scheduleItems = await (personalScope
         ? dependencies?.personalService ?? createConfiguredPersonalScheduleService()
         : dependencies?.scheduleProvider ?? createConfiguredTodayScheduleProvider()
-      ).list({ actorId: actor.id });
+      ).list({ actorId: actor.id, ...window });
       const represented = personalScope && request ? scheduleItems.map(item => personalScheduleRepresentation(item as Awaited<ReturnType<PersonalScheduleService["get"]>>, request)) : scheduleItems.map(item => item.kind === "personal" ? personalScheduleAggregateRepresentation(item) : item);
       return NextResponse.json(success({ scheduleItems: represented }), {
         headers: runtimeBoundaryHeaders(mode),
         status: 200,
       });
     } catch (error) {
-      const appError = new AppError(
+      const appError = error instanceof AppError && error.code === "VALIDATION_ERROR" ? error : new AppError(
         "SERVICE_UNAVAILABLE",
         "Schedule items are temporarily unavailable.",
         { cause: error },
@@ -52,7 +54,7 @@ export function createScheduleItemsGetHandler(dependencies?: ScheduleItemsRouteD
           privacy: "actor-scoped-schedule-data",
           service: "schedule-items",
         }),
-        { headers: runtimeBoundaryHeaders(mode), status: 503 },
+        { headers: runtimeBoundaryHeaders(mode), status: appError.code === "VALIDATION_ERROR" ? 400 : 503 },
       );
     }
   };

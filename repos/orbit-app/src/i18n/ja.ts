@@ -1,6 +1,11 @@
 import type { MessageDictionary } from "./messages";
 
 export const ja = {
+  "personal60.invalidReminder": "有効な通知時刻を選択してください。",
+  "personal60.invalidUntil": "繰り返しの終了日は、開始日以降の有効な日付を入力してください。",
+  "personal60.done": "完了",
+  "personal60.pastReminder": "今回の通知時刻は過ぎているため、後から通知しません。今後の予定は設定に従って通知します。",
+  "personal60.none": "通知なし", "personal60.atStart": "開始時", "personal60.beforeMinutes": "{count}分前", "personal60.beforeDay": "1日前", "personal60.noRepeat": "繰り返しなし", "personal60.daily": "毎日", "personal60.weekly": "毎週", "personal60.monthly": "毎月", "personal60.until": "繰り返しの終了日", "personal60.noUntil": "空欄の場合は終了日なし", "personal60.scope": "変更範囲", "personal60.occurrence": "今回の予定のみ", "personal60.series": "繰り返し予定全体", "personal60.scopeRequired": "今回のみ、または繰り返し予定全体を選んでください。", "personal60.seriesRules": "通知と繰り返しの設定は予定全体に適用されます。", "personal60.monthlySkip": "開始日と同じ日に繰り返します。その日がない月はスキップします。", "personal60.localOnly": "Orbitにのみ保存され、システムのカレンダーには追加されません。", "personal60.chooseBeforeEditing": "下書きを保持または破棄してから予定全体を開いてください。",
   "registration.cancelThisRegistration": "今回の申込を取り消す",
   "registration.cancelUnconfirmed": "取消結果を確認できません。申込状況を再読み込みしてください。",
   "registration.cancelConfirmation": "取消後はこのイベントに参加しません。申込期間中は再申込できます。",

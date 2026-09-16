@@ -8,11 +8,15 @@ import type { AppointmentAggregate } from '../appointments/contract';
 import { reminderPlanNotification, appointmentChangeNotification, batchResultNotification } from './inbox-business-projections';
 import { createNotificationInteractionService } from './interaction-service';
 import { createConfiguredOrbitIntegrationService } from '../integrations/service-factory';
+import { createPersonalScheduleService } from '../personal-schedule/service';
+import { isCurrentPersonalScheduleReminderPlan } from '../personal-schedule/reminder-plans';
+import { AppError } from '../../shared/errors/app-error';
 
 // Existing business facts project to records. This is not a second delivery
 // executor: explicit reminder scheduling remains in the existing plan service.
 export async function refreshInboxBusinessRecords(input:{actorId:string;principalId?:string;client:TransactionalPostgresClient;workspaceId:string;service:InboxRecordService;since:string;now?:string}) {
   const at=input.now??new Date().toISOString(),store=createPostgresLiveRecordStore({client:input.client});
+  await createPersonalScheduleService({store,client:input.client,workspaceId:input.workspaceId,now:()=>at}).refreshReminderPlans({actorId:input.actorId});
   const interactions=createNotificationInteractionService({store,workspaceId:input.workspaceId});
   let before='';let projected=0;
   while(true) {
@@ -23,6 +27,12 @@ export async function refreshInboxBusinessRecords(input:{actorId:string;principa
         const plan=row.payload.entity as ReminderPlanDTO;
         if(!plan||plan.ownerUserId!==input.actorId)continue;
         const n=reminderPlanNotification(plan,at);if(!n)continue;
+        if(plan.status==='scheduled'&&plan.id.startsWith('schedule-reminder:')) {
+          let current;
+          try {current=await createPersonalScheduleService({store,workspaceId:input.workspaceId,now:()=>at}).get({actorId:input.actorId,id:plan.targetId});}
+          catch(error) {if(error instanceof AppError&&error.code==='NOT_FOUND')continue;throw error;}
+          if(!isCurrentPersonalScheduleReminderPlan(plan,input.actorId,current))continue;
+        }
         const state=(await interactions.list(input.actorId,[plan.id]))[plan.id];
         await input.service.upsert({...n,...(state?{readAt:at,disposition:state==='ignored'?'dismissed' as const:'open' as const}:{})});projected++;
       } else {

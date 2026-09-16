@@ -4,6 +4,25 @@ import { createReminderPlanService, type ReminderTargetAuthorizer } from "./remi
 import { createReminderPushDeviceGateway } from "./push-device-reminder-adapter";
 import { createPushDeviceService } from "./push-device-service";
 import {createConfiguredTransactionalPostgresRuntime} from '../../shared/storage/transactional-postgres';
+import type { LiveRecordStoreLike } from '../../shared/storage/live-record-store';
+import type { ReminderTargetType } from './reminder-plan-contract';
+import { createPersonalScheduleService } from '../personal-schedule/service';
+
+export async function assertReminderTargetOwned(input: { store: LiveRecordStoreLike; workspaceId: string; actorId: string; targetId: string; targetType: ReminderTargetType }) {
+  if(input.targetType==='schedule_item'&&input.targetId.includes(':occurrence:')) {
+    if(!/^.+:occurrence:\d{4}-\d{2}-\d{2}$/.test(input.targetId))throw new Error('target not owned');
+    // Authority reads only: no configured runtime/new connection, lock, plan
+    // refresh or mutation is entered while checking ownership.
+    const item=await createPersonalScheduleService({store:input.store,workspaceId:input.workspaceId}).get({actorId:input.actorId,id:input.targetId});
+    if(item.state==='cancelled')throw new Error('target not owned');
+    return;
+  }
+  const candidates = new Set([input.targetId]);
+  if (input.targetType === "schedule_item" && input.targetId.startsWith("schedule:")) candidates.add(input.targetId.slice("schedule:".length));
+  const records = await input.store.listRecords({ userId: input.actorId, workspaceId: input.workspaceId });
+  const owned = records.some((record) => [...candidates].some((id) => record.recordId === id || record.sourceId === id || record.targetId === id || containsId(record.payload, id)));
+  if (!owned) throw new Error("target not owned");
+}
 
 function containsId(value: unknown, id: string, depth = 0): boolean {
   if (depth > 4) return false;
@@ -17,16 +36,7 @@ export function createConfiguredReminderPlanService() {
   const configured = createConfiguredPostgresLiveRecordStore();
   if (!configured) throw new Error("Reminder plan storage is not configured");
   const targetAuthorizer: ReminderTargetAuthorizer = {
-    async assertOwned({ actorId, targetId, targetType }) {
-      const candidates = new Set([targetId]);
-      if (targetType === "schedule_item" && targetId.startsWith("schedule:")) {
-        candidates.add(targetId.slice("schedule:".length));
-      }
-      const records = await configured.store.listRecords({ userId: actorId, workspaceId: configured.workspaceId });
-      const owned = records.some((record) =>
-        [...candidates].some((id) => record.recordId === id || record.sourceId === id || record.targetId === id || containsId(record.payload, id)));
-      if (!owned) throw new Error("target not owned");
-    },
+    assertOwned: command => assertReminderTargetOwned({ ...configured, ...command }),
   };
   return createReminderPlanService({
     withDeliveryGate: async (actorId, operation) => {

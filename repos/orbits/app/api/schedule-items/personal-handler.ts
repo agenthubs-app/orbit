@@ -16,10 +16,15 @@ export function createPersonalScheduleHandlers(dependencies?: { service?: Person
     try {
       const service = dependencies?.service ?? createConfiguredPersonalScheduleService();
       const id = context ? (await context.params).id : "";
+      const body = action === "GET" ? undefined : await readTaskJsonObject(request);
+      if (body && request.headers.get("x-orbit-personal-schedule-version") !== "3") {
+        const fields = action === "PATCH" ? body.patch : body;
+        if (body.scope !== undefined || (fields && typeof fields === "object" && (Object.hasOwn(fields, "recurrence") || Object.hasOwn(fields, "reminderMinutes")))) throw new AppError("VALIDATION_ERROR", "Reminder/repeat changes require personal schedule version 3.");
+      }
       const result = action === "GET" ? { scheduleItem: await service.get({ actorId: actor.id, id }) }
-        : action === "POST" ? await service.create(actor.id, personalScheduleCreateSchema.parse(await readTaskJsonObject(request)))
-        : action === "PATCH" ? await service.update(actor.id, id, personalScheduleUpdateSchema.parse(await readTaskJsonObject(request)))
-        : await service.remove(actor.id, id, personalScheduleDeleteSchema.parse(await readTaskJsonObject(request)));
+        : action === "POST" ? await service.create(actor.id, personalScheduleCreateSchema.parse(body))
+        : action === "PATCH" ? await service.update(actor.id, id, personalScheduleUpdateSchema.parse(body))
+        : await service.remove(actor.id, id, personalScheduleDeleteSchema.parse(body));
       return taskSuccessResponse({ ...result, scheduleItem: personalScheduleRepresentation(result.scheduleItem, request) }, action === "POST" ? 201 : 200);
     } catch (error) { return taskErrorResponse(error instanceof ZodError ? new AppError("VALIDATION_ERROR", "Invalid personal schedule fields.") : error); }
   }
