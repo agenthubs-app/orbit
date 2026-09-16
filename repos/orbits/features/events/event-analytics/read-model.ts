@@ -23,13 +23,16 @@ import { readEventAnalyticsRoiSnapshot } from "./snapshot";
 type Row = Record<string, unknown>;
 
 export type EventAnalyticsReadModelErrorCode =
+  | "EVENT_ANALYTICS_CONFIGURATION_REQUIRED"
   | "EVENT_ANALYTICS_ACTIVE_REGISTRATION_REQUIRED"
   | "EVENT_ANALYTICS_INVALID_SCOPE";
 
 export class EventAnalyticsReadModelError extends Error {
   constructor(readonly code: EventAnalyticsReadModelErrorCode) {
     super(
-      code === "EVENT_ANALYTICS_ACTIVE_REGISTRATION_REQUIRED"
+      code === "EVENT_ANALYTICS_CONFIGURATION_REQUIRED"
+        ? "Event analytics requires a canonical event configuration."
+        : code === "EVENT_ANALYTICS_ACTIVE_REGISTRATION_REQUIRED"
         ? "An active registration is required for this attendee report."
         : "The event analytics read scope is invalid.",
     );
@@ -623,9 +626,7 @@ export function createEventAnalyticsReadModel(input: {
           throw new Error("Event analytics aggregate query returned no row.");
         }
         if (!roiRow) {
-          throw new Error(
-            "Event analytics ROI requires a canonical event configuration.",
-          );
+          throw new EventAnalyticsReadModelError("EVENT_ANALYTICS_CONFIGURATION_REQUIRED");
         }
         return { liveRoi: eventAnalyticsLiveRoiFromRow(roiRow), row, storedRoi };
       }, { isolation: "repeatable read" });

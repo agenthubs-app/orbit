@@ -1,10 +1,28 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { eventAnalyticsToView } from "../src/view-models/event-analytics";
+import { eventAnalyticsToView, eventAnalyticsFailureToMessage } from "../src/view-models/event-analytics";
 
 const appointments = { awaitingResponse: 1, cancelled: 0, completed: 2, confirmed: 1, draft: 1, negotiating: 0, reschedulePending: 0 };
 const contacts = { accepted: 3, awaitingTargetConsent: 1, declined: 0, withdrawn: 0 };
+
+test("analytics view rejects a successful report for a different event", () => {
+  const payload = {
+    appointments, checkIns: { checkedIn: 0 }, contactRequests: contacts, encounters: { captured: 0, projected: 0 },
+    eventId: "event:foreign", grouping: { published: false, roundOne: { assignedParticipants: 0, tables: 0 }, roundTwo: { assignedParticipants: 0, tables: 0 } },
+    kind: "organizer_aggregate", registrations: { active: 0, cancelled: 0 },
+  };
+  assert.equal(eventAnalyticsToView(payload, "event:expected"), null);
+  assert.equal(eventAnalyticsToView(payload, "event:foreign")?.eventId, "event:foreign");
+});
+
+test("analytics configuration failure stays distinct from forbidden qualification", () => {
+  const configuration = eventAnalyticsFailureToMessage({ code: "SERVICE_UNAVAILABLE", message: "服务错误", context: { reason: "event-analytics-configuration-required" } }, 503);
+  assert.match(configuration, /尚未配置/u);
+  const forbidden = eventAnalyticsFailureToMessage({ code: "FORBIDDEN", message: "没有权限", context: { reason: "event-analytics-configuration-required" } }, 403);
+  assert.match(forbidden, /资格/u);
+  assert.doesNotMatch(forbidden, /服务|配置/u);
+});
 
 test("organizer event analytics map aggregate-only evidence and explained rates", () => {
   const view = eventAnalyticsToView({

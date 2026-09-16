@@ -205,8 +205,9 @@ for (const scheme of ["light", "dark"] as const) {
     const register = page.getByRole("button", { name: "报名参加", exact: true }); await fits(register, 50);
     assert.equal(await register.locator("..").evaluate(el => getComputedStyle(el).borderTopWidth), "0px", "registration summary is open");
     assert.ok(await page.locator('img[src*="meeting.jpg"]').count() > 0);
-    await register.click(); await page.getByRole("button", { name: "查看参会者", exact: true }).click(); await page.getByRole("button", { name: "打开活动现场", exact: true }).click();
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/events/event%3Astyle/register", "/events/event%3Astyle/attendees", "/party?eventId=event%3Astyle"]);
+    assert.equal(await page.getByRole("button", { name: "查看参会者", exact: true }).count(), 0, "public signed-out detail does not authorize the private roster");
+    await register.click(); await page.getByRole("button", { name: "打开活动现场", exact: true }).click();
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/events/event%3Astyle/register", "/party?eventId=event%3Astyle"]);
     await capture(page, `detail-${scheme}`);
   });
 }

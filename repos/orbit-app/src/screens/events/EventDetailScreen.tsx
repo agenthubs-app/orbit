@@ -28,6 +28,7 @@ import {
   eventRecommendationsPath
 } from "../../api/endpoints";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
+import { EventAttendeeRosterLink } from "./EventAttendeeRosterLink";
 import {
   eventDetailGoalReceiptSchema, eventDetailOpeningLineReceiptSchema, eventDetailReadinessSchema,
   eventDetailRecommendationsSchema, eventDetailReviewReceiptSchema, eventDetailReviewSchema,
@@ -160,6 +161,7 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
         </View> : null}
         {shareError ? <Text accessibilityRole="alert" style={styles.errorText}>{shareError}</Text> : null}
         {data && event ? <EventDetailCard baseUrl={baseUrl} data={data} onNavigate={navigate}
+          rosterScopeKey={JSON.stringify([scopeKey, personalizedRefreshKey])} isScopeCurrent={isCurrent}
           personalizedModules={signedIn ? <AuthenticatedEventDetailModules eventId={event.id} key={event.id}
             refreshKey={personalizedRefreshKey} scopeKey={scopeKey ?? "event-detail"} isScopeCurrent={isCurrent} /> : null} /> : null}
       </ScrollView>
@@ -287,11 +289,15 @@ function EventDetailCard({
   baseUrl,
   data,
   onNavigate,
+  rosterScopeKey,
+  isScopeCurrent,
   personalizedModules
 }: {
   baseUrl: string;
   data: PublicEventDetail;
   onNavigate: (href: Href) => void;
+  rosterScopeKey: string;
+  isScopeCurrent: () => boolean;
   personalizedModules: ReactNode;
 }) {
   const { colors, styles } = useStyles();
@@ -302,7 +308,6 @@ function EventDetailCard({
   const hero = eventDetailHeroToView(event);
   const heroStatus = publicEventDetailStatus(hero.status);
   const heroSummary = publicEventDetailSummary(hero.summary);
-  const attendeesHref = `/events/${encodeURIComponent(event.id)}/attendees` as Href;
   const partyHref = `/party?eventId=${encodeURIComponent(event.id)}` as Href;
   const timing = eventDetailTiming(data.event.startsAt, data.event.endsAt, timeZone);
   const narrow = width < 360 || fontScale >= 1.4;
@@ -353,11 +358,8 @@ function EventDetailCard({
       <EventAboutModule sections={data.event.about?.length ? event.aboutSections : []} />
       <EventAgendaModule agenda={data.event.agenda?.length ? event.agenda : event.agenda.map(item => ({ ...item, time: timing.start }))} />
       <View style={styles.attendeesSection}>
-        <Pressable accessibilityRole="button" accessibilityLabel="查看参会者" onPress={() => onNavigate(attendeesHref)}
-          style={({ pressed }) => [styles.attendeesLink, pressed && styles.actionButtonPressed]}>
-          <Text style={styles.attendeesTitle}>参会者</Text>
-          <View style={styles.attendeesCount}><Text style={styles.attendeesCountText}>{attendeeCount === undefined ? event.attendeeCountLabel : `${attendeeCount} 人`}</Text><Ionicons name="chevron-forward" size={14} color={colors.text3} /></View>
-        </Pressable>
+        <EventAttendeeRosterLink eventId={event.id} countLabel={attendeeCount === undefined ? event.attendeeCountLabel : `${attendeeCount} 人`}
+          onNavigate={onNavigate} scopeKey={rosterScopeKey} isScopeCurrent={isScopeCurrent} />
         {event.attendeePreview.length > 0 ? <View style={styles.attendeePreviewRow}>{event.attendeePreview.map(attendee => <EventAttendeePreviewPill attendee={attendee} key={attendee.id} />)}</View> : null}
       </View>
       <View style={styles.additionalDetails}>

@@ -230,6 +230,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/events/EventAdmissionReviewScreen.tsx","POST","/api/events/:id/admission/reviews/:id/decision"],
   ["src/screens/events/EventAnalyticsScreen.tsx","GET","/api/events/:id/analytics/aggregate"],
   ["src/screens/events/EventAnalyticsScreen.tsx","GET","/api/events/:id/analytics/attendee"],
+  ["src/screens/events/EventAttendeeRosterLink.tsx","GET","/api/events/:id"],
   ["src/screens/events/EventAttendeesScreen.tsx","POST","/api/contact-drafts/event-attendees/import"],
   ["src/screens/events/EventAttendeesScreen.tsx","GET","/api/events/:id"],
   ["src/screens/events/EventAttendeesScreen.tsx","GET","/api/events/:id/attendees"],
