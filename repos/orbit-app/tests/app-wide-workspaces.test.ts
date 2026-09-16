@@ -60,6 +60,7 @@ function dataFor(path) {
 }
 export const useApiResource = path => { rerender(); return { kind: state.kind, data: dataFor(path), error: { message: "连接暂时失败" }, refreshing: false, refresh() { state.refreshes.push(path); } }; };
 const client = Object.fromEntries(["get", "post", "patch", "delete", "put"].map(method => [method, async (path, options) => {
+  if (method === "get" && path.startsWith("/api/inbox/notifications")) return { success: true, status: 200, data: { enabled: false, items: [], unreadCount: 0, nextCursor: null, asOf: '2026-09-16T00:00:00.000Z' }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
   if ((screen === "inbox" || screen === "inboxThread") && method === "get" && (path.startsWith("/api/relationship-communication/conversations") || path.includes("relationship-inbox") || path === "/api/notifications" || path.includes("relationship-signals"))) {
     if (state.kind === "loading") return new Promise(() => {});
     return { success: state.kind === "success" || state.kind === "empty", status: state.kind === "offline" ? 0 : state.kind === "failure" ? 503 : 200, data: dataFor(path), error: { code: "READ_FAILED", message: "连接暂时失败" }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
@@ -176,7 +177,7 @@ for (const scheme of ["light", "dark"] as const) {
     const bounds = await empty.boundingBox(); assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 320);
     await noWrites(page);
   });
-  test(`${scheme}: final inset inbox privacy, IORBIT handoff and local preview preserve the reply`, async t => {
+  test(`${scheme}: final inset inbox privacy and IORBIT handoff preserve the reply until explicit send`, async t => {
     const page = await open(t, "inboxThread&insets=true", scheme);
     const reply = page.getByRole("textbox", { name: "回复正文", exact: true }); await reply.fill("周四可以");
     await page.getByRole("button", { name: "隐私设置", exact: true }).click();
@@ -188,13 +189,12 @@ for (const scheme of ["light", "dark"] as const) {
     assert.equal(navigation[0].pathname, "/ai/[id]"); assert.match(navigation[0].params.prefillIntent, /^ai-prefill-/);
     assert.doesNotMatch(JSON.stringify(navigation[0]), /周四可以|person-one|林悦/);
     assert.equal(await reply.inputValue(), "周四可以");
-    await page.getByRole("button", { name: "预览回复", exact: true }).click();
-    const staged = page.getByText("回复预览", { exact: true }).locator(".."); await staged.waitFor();
-    radii.push(await staged.evaluate(el => getComputedStyle(el).borderRadius));
-    await page.getByRole("button", { name: "继续编辑", exact: true }).click();
-    assert.equal(await reply.inputValue(), "周四可以");
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "get", path: "/api/chat/privacy?conversationId=thread-one", body: undefined }]);
-    assert.deepEqual(radii, ["12px", "12px"], "privacyBox, stagedBox");
+    assert.deepEqual(radii, ["12px"], "privacyBox");
+    await page.getByRole("button", { name: "发送消息", exact: true }).click();
+    await page.waitForFunction(() => (window as any).fixture.requests.some((r:any)=>r.method === "post"));
+    assert.equal((await page.evaluate(() => (window as any).fixture.requests)).filter((r:any)=>r.method === "post").length,1);
+
   });
 }
 

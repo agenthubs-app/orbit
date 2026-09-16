@@ -19,3 +19,13 @@
 ## 验证原则
 
 每项以 [PLANNER](PLANNER.md) 的5项SC为准，先行为反例再最小实现。新功能的真实业务证据必须来自当次构建的Web/API与原生App，权限/身份/状态不能用截图或mock证明。
+
+## run-01 实施接线（2026-09-16）
+
+新增 inbox-record-service-factory、inbox-business-projections、inbox-business-refresh、API handler 与 Web typed-notifications-tab / notification-inbox-view-model；App新增 useNotificationInbox、typed DTO解码器、详情私有路由，复用既有前台请求生命周期。首页/AI共用未读hook接新计数，直接消费者测试随账号级开关增加明确 disabled 响应。各路径对应SC-01～05，不改0033同步模块。
+
+持久化复用orbit_records的独立inboxNotifications集合，事务和账号锁覆盖通知、动作回执与既有任务采纳/提醒计划；未建进程内生产仓库或另一发送器。业务投影在新API读取时从持久业务事实补齐，显式提醒保留稳定legacyId；约谈历史按对方实际动作生成、名片按批次聚合、未连接外部服务不伪造连接事件。先由ORBIT_TYPED_INBOX_ACTORS精确启用QA账号，ORBIT_TYPED_INBOX_SINCE限制业务变化回放。0039再负责发现队列，0040负责投递和迁移。
+
+收口补充：App的route inventory/private gate、首页和AI入口、badge lifecycle及workspace直接消费者测试同步新路由和账号开关；对应SC-04/05。CONTEXT增加联系人消息/通知记录定义并澄清系统通知是投递渠道。自动会前提醒依据personal_schedule_items.meetingId关联显式计划，避免猜测schedule ID。分类/历史筛选只影响条目，不改变全局未读计数。
+
+运行验收修正：用户提醒只标scheduledFor，不把fireAt当业务截止时间；约谈确认按该提议时区展示，不把提议第一个候选当已确认时间，也不把新版确认时间写进旧历史。投影文案纠正保持同ID/read/disposition。新增inbox-reminder-policy.ts和inbox-meeting-precedence-postgres.test.ts，共用显式计划优先规则；用户在自动提醒已生成后另设计划也抑制自动条目，真实PG反例已复现并修复。

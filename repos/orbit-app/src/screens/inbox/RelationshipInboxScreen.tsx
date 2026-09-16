@@ -1,3 +1,5 @@
+import {NotificationInboxList} from './NotificationInboxList';
+import {useNotificationInbox} from './useNotificationInbox';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MessageInboxList } from "./MessageInboxList";
 import { Ionicons } from "@expo/vector-icons";
@@ -109,7 +111,7 @@ function useInboxIdentity(routeKey: string) {
   return { actorId, ready, scopeKey };
 }
 
-function useInboxRequests(scopeKey: string) {
+export function useInboxRequests(scopeKey: string) {
   const locale = useOrbitLocale();
   const focused = useIsFocused();
   const [foreground, setForeground] = useState(AppState.currentState === "active");
@@ -311,6 +313,8 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
   const router = useRouter();
   const { clientGet, clientPost, clientPatch, isCurrent } = useInboxRequests(scopeKey);
   const server = useOrbitApiBaseUrl();
+  const typedInbox = useNotificationInbox(actorId, clientGet, clientPost, isCurrent);
+  const typedEnabled = typedInbox.enabled !== false;
   const [activeSection, setActiveSection] = useState<InboxSection>(deliveryId ? "alerts" : "threads");
   const selectionChanged = useRef(false);
   const preferenceKey = JSON.stringify(["orbit.inbox.tab", server.baseUrl, actorId]);
@@ -523,7 +527,7 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
     <InboxLayout
       refreshControl={
         <RefreshControl
-          onRefresh={refreshAll}
+          onRefresh={() => { refreshAll(); typedInbox.refresh(); }}
           refreshing={
             state.refreshing || deliveryState.kind === "loading" ||
             notificationsState.refreshing ||
@@ -533,8 +537,8 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
         />
       }
       title={locale.t(contentReady && composing ? "inbox.compose" : contentReady && createdThread ? "inbox.draftPreview" : "inbox.title")}
-      onMarkAllRead={!composing && !createdThread ? () => void markAllRead() : undefined}
-      markAllReadDisabled={batchPending || confirmableUnread === 0}
+      onMarkAllRead={!composing && !createdThread ? () => void (activeSection === "alerts" && typedEnabled ? typedInbox.markRead() : markAllRead()) : undefined}
+      markAllReadDisabled={activeSection === "alerts" && typedEnabled ? typedInbox.busy || !typedInbox.data?.unreadCount : batchPending || confirmableUnread === 0}
       hideBack={contentReady && composing}
       onBack={createdThread ? () => setCreatedThread(null) : undefined}
     >
@@ -554,8 +558,8 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
       {activeSection === "threads" && state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
-      {!composing && !createdThread ? <InboxSegmentedControl activeSection={activeSection} alertCount={feed.unreadCount} messageCount={Number.isSafeInteger(messagePage?.unreadTotal) && messagePage!.unreadTotal! >= 0 ? messagePage!.unreadTotal! : relationshipConversationListToInbox(conversationsData, actorId)?.conversations.reduce((sum, item) => sum + item.unreadCount, 0) ?? 0} onChange={selectSection} /> : null}
-      {retainedContent.current || activeSection === "alerts" ? (
+      {!composing && !createdThread ? <InboxSegmentedControl activeSection={activeSection} alertCount={typedEnabled ? typedInbox.data?.unreadCount ?? 0 : feed.unreadCount} messageCount={Number.isSafeInteger(messagePage?.unreadTotal) && messagePage!.unreadTotal! >= 0 ? messagePage!.unreadTotal! : relationshipConversationListToInbox(conversationsData, actorId)?.conversations.reduce((sum, item) => sum + item.unreadCount, 0) ?? 0} onChange={selectSection} /> : null}
+      {activeSection === "alerts" && typedEnabled ? (typedInbox.data ? <NotificationInboxList data={typedInbox.data} filter={typedInbox.filter} onFilter={typedInbox.setFilter} busy={typedInbox.busy} error={typedInbox.error} onRefresh={typedInbox.refresh} onMore={() => void typedInbox.more()} onOpen={id => router.push(`/inbox/notifications/${encodeURIComponent(id)}` as Href)} /> : typedInbox.error ? <View><ErrorState message={typedInbox.error}/><Pressable accessibilityRole="button" onPress={typedInbox.refresh}><Text>{locale.t("common.retry")}</Text></Pressable></View> : <LoadingState />) : retainedContent.current || activeSection === "alerts" ? (
         <View style={activeSection === "threads" && !contentReady ? { display: "none" } : undefined}>
         <InboxContent
           activeSection={activeSection}

@@ -29,6 +29,8 @@ const state = window.fixture = {
   ] }; },
   thread(body = "已有消息") { return state.conversation(state.detailUnread, body); },
   data(path) {
+    if (state.typedDetail && path === "/api/inbox/notifications/inbox%3Aone") return state.typedInbox.items[0];
+    if (path.startsWith("/api/inbox/notifications")) return state.typedInbox ?? { enabled: false, items: [], unreadCount: 0, nextCursor: null, asOf: '2026-09-16T00:00:00.000Z' };
     if (path.endsWith("/read")) return { conversationId: state.conversationId, lastReadMessageId: state.detailUnread > 1 ? "message:two" : "message:one", readAt: "2026-09-15T00:02:00Z" };
     if (path.includes("/notifications/deliveries/") && state.delivery !== undefined) return state.delivery;
     if (path.includes("/notifications/deliveries/")) return { deliveryId: state.seed.deliveryId, signalId: "signal:one", signalRevision: "one", phase: "pre_event", channel: "in_app", status: "scheduled", title: "当前提醒", body: "确认提醒内容", target: { kind: "inbox", deliveryId: state.seed.deliveryId }, data: { deliveryId: state.seed.deliveryId }, scheduledFor: "2026-09-13T00:00:00Z", availableAt: "2026-09-13T00:00:00Z", attempt: 0, maxAttempts: 3, createdAt: "2026-09-13T00:00:00Z", updatedAt: "2026-09-13T00:00:00Z" };
@@ -49,7 +51,7 @@ export const useIsFocused = () => { observe(); return state.focused; };
 export const AppState = { get currentState() { return state.appState; }, addEventListener(_event, fn) { nativeListeners.add(fn); return { remove() { nativeListeners.delete(fn); } }; } };
 export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.actor || null, actorId: state.actor || null, user: state.actor ? { id: state.actor } : null, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
-export const useLocalSearchParams = () => { observe(); return state.detail ? { id: state.conversationId } : state.seed; };
+export const useLocalSearchParams = () => { observe(); return state.typedDetail ? {id:"inbox:one"} : state.detail ? { id: state.conversationId } : state.seed; };
 export const useGlobalSearchParams = useLocalSearchParams;
 export const usePathname = () => state.detail ? "/inbox/" + encodeURIComponent(state.conversationId) : "/inbox";
 export const useRouter = () => ({ canGoBack: () => true, back() { state.navigation.push("back"); }, push(href) { state.navigation.push(href); }, replace(href) { state.navigation.push(href); } });
@@ -69,7 +71,7 @@ export const SafeAreaView = ({ edges, ...props }) => <View {...props} />;
 
 test.before(async () => {
   const result = await build({
-    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Inbox from "./app/(app)/inbox"; import Thread from "./app/inbox/[id]"; import { useFixture } from "fixture"; function App() { const s = useFixture(); return s.mounted ? s.detail ? <Thread /> : <Inbox /> : null; } createRoot(document.getElementById("root")).render(window.initialFixture?.strict ? <React.StrictMode><App /></React.StrictMode> : <App />);', loader: "tsx", resolveDir: process.cwd() },
+    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Inbox from "./app/(app)/inbox"; import Thread from "./app/inbox/[id]"; import Notification from "./app/inbox/notifications/[id]"; import { useFixture } from "fixture"; function App() { const s = useFixture(); return s.mounted ? s.typedDetail ? <Notification /> : s.detail ? <Thread /> : <Inbox /> : null; } createRoot(document.getElementById("root")).render(window.initialFixture?.strict ? <React.StrictMode><App /></React.StrictMode> : <App />);', loader: "tsx", resolveDir: process.cwd() },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
     define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "inbox-lifecycle-boundaries", setup(plugin) {
@@ -139,7 +141,7 @@ for (const detail of [false, true]) {
   test(`inbox ${detail ? "thread" : "list"} never coalesces a new empty-cookie actor with old pending reads`, async t => {
     const p = await open(t, { detail, holdReads: true });
     const oldCount = await p.evaluate(() => (window as any).fixture.requests.length);
-    assert.equal(oldCount, detail ? 1 : 3);
+    assert.equal(oldCount, detail ? 1 : 4);
     await update(p, { actor: "actor:two" });
     assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), oldCount * 2);
     await p.evaluate(oldCount => { const s = (window as any).fixture; for (let i = 0; i < oldCount; i++) s.reply(i, 401); }, oldCount); await settle(p);
@@ -472,7 +474,7 @@ for (const detail of [false, true]) {
     await p.evaluate(() => { const s = (window as any).fixture; s.holdReads = true; s.emit("background"); }); await settle(p);
     assert.doesNotMatch(await p.locator("body").innerText(), /已有消息|actor:one/u);
     await p.evaluate(() => (window as any).fixture.emit("active")); await settle(p);
-    const count = detail ? 1 : 3;
+    const count = detail ? 1 : 4;
     assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), count * 2);
     assert.doesNotMatch(await p.locator("body").innerText(), /已有消息|actor:one/u);
     await p.evaluate(count => { const s = (window as any).fixture; for (let i = count; i < s.requests.length; i++) s.reply(i); }, count); await settle(p);
@@ -483,9 +485,9 @@ for (const detail of [false, true]) {
   test(`inbox foreground catches batched inactive-active once for ${detail ? "thread" : "list"}`, async t => {
     const p = await open(t, { detail });
     await p.evaluate(() => { const s = (window as any).fixture; s.emit("inactive"); s.emit("active"); }); await settle(p);
-    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 2 : 6);
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 2 : 8);
     await p.evaluate(() => { const s = (window as any).fixture; s.emit("active"); s.emit("active"); }); await settle(p);
-    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 2 : 6);
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 2 : 8);
   });
 
   test(`inbox foreground rereads ${detail ? "thread" : "list"} on focus restoration and does not read while blurred`, async t => {
@@ -493,9 +495,9 @@ for (const detail of [false, true]) {
     await update(p, { focused: false });
     assert.doesNotMatch(await p.locator("body").innerText(), /已有消息/u);
     await p.evaluate(() => { const s = (window as any).fixture; s.emit("background"); s.emit("active"); s.refresh(); }); await settle(p);
-    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 1 : 3);
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 1 : 4);
     await update(p, { focused: true });
-    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 2 : 6);
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 2 : 8);
     assert.match(await p.locator("body").innerText(), /已有消息/u);
   });
 }
@@ -677,4 +679,30 @@ test("a reply receipt from the previous account cannot update the next account's
   assert.equal(await p.getByRole("textbox", { name: "回复正文" }).inputValue(), "");
   assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0);
   assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path.endsWith("/messages")).length), 1);
+});
+
+const typedAt = '2026-09-16T02:00:00.000Z';
+const typedRecord = { id:'inbox:one',actorId:'actor:one',revision:1,kind:'reminder',origin:'user',semanticKey:'source-reminder',title:'发送报价资料',reason:'你答应在会议后发送报价',scheduledFor:typedAt,sources:[{sourceKind:'note',sourceId:'note:one',sourceRevision:'1',occurredAt:typedAt,readAt:typedAt,excerpt:'原文承诺'}],target:{kind:'source',id:'note:one',href:'/notes/note%3Aone',status:'available'},actions:['read','dismiss'],occurredAt:typedAt,updatedAt:typedAt,readAt:null,disposition:'open' };
+const typedPage = {enabled:true,items:[typedRecord],unreadCount:1,nextCursor:null,asOf:typedAt};
+test('typed inbox reads an explicit visible snapshot and leaves a new arrival unread', async t => {
+ const p=await open(t,{typedInbox:typedPage});await p.getByRole('tab',{name:/^通知/}).click();await settle(p);
+ await p.getByRole('button',{name:'全部已读',exact:true}).click();await settle(p);
+ const request=(await writes(p))[0]!;assert.equal(request.path,'/api/inbox/notifications/read');assert.deepEqual(request.body.items,[{id:'inbox:one',expectedRevision:1}]);
+ await p.evaluate(({record,page,at})=>{const s=(window as any).fixture;const read={...record,revision:2,readAt:at};s.typedInbox={...page,items:[read,{...record,id:'inbox:new',title:'新到达提醒'}]};s.reply(s.requests.findLastIndex((r:any)=>r.method==='POST'),200,{results:[{id:record.id,notification:read}]});},{record:typedRecord,page:typedPage,at:typedAt});await settle(p);
+ assert.match(await p.locator('body').innerText(),/新到达提醒/);assert.equal((await writes(p)).length,1);
+});
+test('typed inbox source-only navigation never manufactures a task and account changes hide old content',async t=>{
+ const p=await open(t,{typedInbox:typedPage});await p.getByRole('tab',{name:/^通知/}).click();await settle(p);
+ await p.getByRole('button',{name:/发送报价资料/}).click();assert.deepEqual(await p.evaluate(()=>(window as any).fixture.navigation),['/inbox/notifications/inbox%3Aone']);
+ await p.evaluate(()=>{(window as any).fixture.holdReads=true;});await update(p,{actor:'actor:two'});
+ assert.doesNotMatch(await p.locator('body').innerText(),/发送报价资料|原文承诺/);
+});
+test('typed detail retries an uncertain action with the same key and rejects an old-account receipt',async t=>{
+ const p=await open(t,{typedInbox:typedPage,typedDetail:true});
+ await p.getByRole('button',{name:'标为已读',exact:true}).click();await settle(p);
+ const first=(await writes(p))[0]!;
+ await p.evaluate(()=>{const s=(window as any).fixture;s.reply(s.requests.findLastIndex((r:any)=>r.method==='POST'),503);});await settle(p);
+ await p.getByRole('button',{name:'重试操作',exact:true}).click();await settle(p);assert.deepEqual((await writes(p))[1]?.body,first.body);
+ await update(p,{actor:'actor:two'});await p.evaluate(record=>{const s=(window as any).fixture;s.reply(s.requests.findLastIndex((r:any)=>r.method==='POST'),200,{notification:{...record,revision:2,readAt:record.occurredAt}});},typedRecord);await settle(p);
+ assert.doesNotMatch(await p.locator('body').innerText(),/原文承诺|发送报价资料/);assert.deepEqual(await p.evaluate(()=>(window as any).fixture.navigation),[]);
 });

@@ -52,6 +52,7 @@ export const useApiResource = path => {
 // The same presentation fixture now feeds the screen's real network resource.
 // Keep auxiliary/action requests separate from its initial content reads.
 const client = { async get(path) {
+    if (path.startsWith("/api/inbox/notifications")) return { success: true, status: 200, data: { enabled: false, items: [], unreadCount: 0, nextCursor: null, asOf: '2026-09-16T00:00:00.000Z' }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
  if (path.startsWith("/api/relationship-communication/conversations") || path.includes("relationship-inbox") || path === "/api/notifications" || path.includes("relationship-signals")) {
   state.resourceReads.push(path);
   const resource = useApiResource(path); if (resource.kind === "loading") return new Promise(() => {});

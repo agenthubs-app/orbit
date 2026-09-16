@@ -203,3 +203,5 @@ export type {
   SyncEntityKind,
   SyncRecord,
 } from "./sync";
+
+export type { InboxNotificationKind, InboxNotificationOrigin, InboxNotificationDisposition, InboxNotificationAction, InboxSourceKind, InboxNotificationSource, InboxNotificationTarget, InboxNotificationDTO, InboxNotificationListDTO, InboxNotificationActionInput, InboxNotificationActionReceipt, InboxNotificationReadBatchInput } from './inbox-notifications';

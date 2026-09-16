@@ -1,4 +1,6 @@
 "use client";
+import {TypedNotificationsTab} from './typed-notifications-tab';
+import {notificationInboxView} from './notification-inbox-view-model';
 
 import {
   useCallback,
@@ -129,7 +131,11 @@ export async function readInboxUnreadCounts(language: OrbitLanguage, expectedAct
   const actor = await readContactMessageActor();
   if (expectedActor && actor !== expectedActor) throw new Error("Account changed");
   const [messages, reminders] = await Promise.allSettled([
-    communicationRequest("/api/relationship-communication/conversations"), fetchReminderAlerts(language),
+    communicationRequest("/api/relationship-communication/conversations"), (async () => {
+      const raw = await communicationRequest("/api/inbox/notifications?language=" + language);
+      const typed = notificationInboxView(raw, actor);
+      return typed.enabled ? typed.unreadCount : (await fetchReminderAlerts(language)).length;
+    })(),
   ]);
   if (await readContactMessageActor() !== actor) throw new Error("Account changed");
   let threads = 0;
@@ -138,7 +144,7 @@ export async function readInboxUnreadCounts(language: OrbitLanguage, expectedAct
     const total = (messages.value as { unreadTotal?: number }).unreadTotal;
     threads = Number.isSafeInteger(total) && total! >= 0 ? total! : rows.reduce((sum, row) => sum + row.unreadCount, 0);
   }
-  return { threads, alerts: reminders.status === "fulfilled" ? reminders.value.length : 0 };
+  return { threads, alerts: reminders.status === "fulfilled" ? reminders.value : 0 };
 }
 
 // The outer indicator is a dot; each inbox tab owns its own unread count.
@@ -1326,7 +1332,7 @@ function RelationshipInboxPanel({
           {tab === "threads" ? (
             seed ? <ThreadsTab newThreadSeed={seed} onNewThreadConsumed={() => setSeed(null)} /> : actorId ? <ContactMessagesTab key={actorId} actorId={actorId} onIdentityChanged={() => { setActorId(null); setIdentityError(true); }} /> : <p role="status">{identityError ? t({ zh: "登录状态已变化，请重新打开收件箱。", en: "Your session changed. Please reopen the inbox.", ja: "ログイン状態が変わりました。受信トレイを開き直してください。" }) : t({ zh: "正在读取消息…", en: "Loading messages…", ja: "メッセージを読み込み中…" })}</p>
           ) : (
-            <AlertsTab />
+            actorId ? <TypedNotificationsTab key={actorId} actorId={actorId} onIdentityChanged={() => { setActorId(null); setIdentityError(true); }} fallback={<AlertsTab />} /> : <p role="status">{t({zh:"正在读取通知…",en:"Loading notifications…",ja:"通知を読み込み中…"})}</p>
           )}
         </div>
       </div>

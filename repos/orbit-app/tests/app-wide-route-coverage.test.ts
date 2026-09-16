@@ -166,6 +166,7 @@ const expectedRoutes: readonly ExpectedRoute[] = [
 // These functional routes were integrated after the 58-route visual snapshot.
 // Inclusion here does not extend that snapshot's native acceptance evidence.
 const integratedFeatureRoutes = [
+  "/inbox/notifications/[id]",
   "/account/reset-password",
   "/contacts/new/batch/[id]",
   "/contacts/new/batch2",
