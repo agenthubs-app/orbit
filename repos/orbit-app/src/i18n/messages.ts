@@ -1771,6 +1771,18 @@ export const messageKeys = [
   "notes.bodyRequired",
   "notes.versionInvalid",
   "notes.aiTaskPrompt",
+  "discovery.title",
+  "discovery.hint",
+  "discovery.enabled",
+  "discovery.messages",
+  "discovery.on",
+  "discovery.off",
+  "discovery.sources",
+  "discovery.unavailable",
+  "discovery.queued",
+  "discovery.failed",
+  "discovery.refresh",
+  "discovery.error",
 ] as const;
 
 export type MessageKey = (typeof messageKeys)[number];

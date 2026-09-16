@@ -1,4 +1,5 @@
 'use client';
+import {notificationWebSourceHref} from './notification-source-view-model';
 import {useEffect,useRef,useState,type ReactNode} from 'react';
 import {useOrbitLanguage} from '../orbit-language-context';
 import {formatOrbitDateTime} from '../orbit-datetime';
@@ -58,7 +59,7 @@ export function TypedNotificationsTab({actorId,onIdentityChanged,fallback}:{acto
     <p>{t(dispositions[detail.disposition])} · {detail.readAt?t({zh:'已读',en:'Read',ja:'既読'}):t({zh:'未读',en:'Unread',ja:'未読'})}</p>
     <div style={{fontSize:13,opacity:.75}}>{detail.dueAt?<p>{t({zh:'截止时间',en:'Due',ja:'期限'})} · {formatOrbitDateTime(detail.dueAt,language)}</p>:null}{detail.scheduledFor?<p>{t({zh:'提醒时间',en:'Reminder time',ja:'通知時刻'})} · {formatOrbitDateTime(detail.scheduledFor,language)}</p>:null}<p>{t({zh:'发生时间',en:'Occurred',ja:'発生日時'})} · {formatOrbitDateTime(detail.occurredAt,language)}</p></div>
     <div style={{border:'1px solid var(--border)',borderRadius:14,padding:18}}><strong>{t({zh:'来源',en:'Source',ja:'参照元'})}</strong>{detail.sources.map((s,i)=><div key={i}>{s.excerpt?<p style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{s.excerpt}</p>:null}<time style={{fontSize:12}}>{formatOrbitDateTime(s.occurredAt,language)}</time></div>)}</div>
-    {detail.target.href&&detail.target.status==='available'?<a className="btn btn-primary" href={'/app'+detail.target.href}>{t({zh:'查看来源',en:'View source',ja:'参照元を開く'})}</a>:null}
+    {notificationWebSourceHref(detail)?<a className="btn btn-primary" href={notificationWebSourceHref(detail)!}>{t({zh:'查看来源',en:'View source',ja:'参照元を開く'})}</a>:null}
     <div style={{display:'flex',flexWrap:'wrap',gap:8}}>{detail.actions.filter(a=>a!=='read'||!detail.readAt).map(action=><button type="button" className="btn btn-ghost" key={action} disabled={busy||!!pending.current} onClick={()=>void act(action)}>{t(actions[action])}</button>)}</div>
   </section>:data?<>
     <div role="tablist" style={{display:'flex',flexWrap:'wrap',gap:4}}>{(Object.keys(categories) as (keyof typeof categories)[]).map(k=><button type="button" className={'btn '+(filter===k?'btn-primary':'btn-ghost')} role="tab" aria-selected={filter===k} key={k} onClick={()=>setFilter(k)}>{t(categories[k])}</button>)}</div>

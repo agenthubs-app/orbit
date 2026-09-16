@@ -1,5 +1,7 @@
 "use client";
 
+import { NotificationDiscoverySettings } from "./notification-discovery-settings";
+
 import { useEffect, useState } from "react";
 
 interface Preferences {
@@ -257,6 +259,7 @@ export function OrbitAgentExecutionSettings() {
       data-orbit-agent-execution-settings
       style={{ marginTop: 28 }}
     >
+      <NotificationDiscoverySettings />
       <div className="eyebrow" style={{ marginBottom: 4 }}>
         Agent 执行与通知
       </div>

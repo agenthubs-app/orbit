@@ -19,3 +19,19 @@
 ## 验证原则
 
 每项以 [PLANNER](PLANNER.md) 的5项SC为准，先行为反例再最小实现。新功能的真实业务证据必须来自当次构建的Web/API与原生App，权限/身份/状态不能用截图或mock证明。
+
+## run-01 接线范围
+
+采用独立已提交云端适配器，复用notes/task/schema与既有provider，不修改0036的query-service/manifest。新增discovery/{contract,preferences-service,service-factory}.ts、共享notification-discovery contract/schema、/api/inbox/discovery/preferences handler/route及两端设置组件；必要接线覆盖SC-01/02/05。默认消息分析关闭，单独显式开启；原通信发送/阅读不依赖该开关。
+
+队列/游标/租约/语义映射/日配额及预算沿用orbit_records独立集合和事务，不建立进程内生产状态。来源包只取actor已提交数据、正文上限2000字符、明确关联对象/目标；每次调用前和入箱前重验。模型输出只提供引用和候选，服务端验证摘录/真实关联/日期，推断独立标识。无可信绑定或时间时记录不合格原因，不猜同名人或截止日期。消息使用权威会话+binding参与者授权，不借旧chat预览的默认分析状态当授权。
+
+真实模型链因历史未知费用暂不能调用；该限制只影响付费运行证据，代码、离线反例、真实PG队列及设置仍继续。
+
+run-01补充必要路径：discovery/README.md记录worker启动/限额/预算与恢复；App DiscoverySettingsContent.tsx拆出纯呈现供行为验证，NotificationDiscoverySettings.tsx负责授权网络生命周期；Web notification-discovery-settings.tsx同样只消费认证API。shared/contract与api-schema新增notification-discovery.ts，App仅同步。对应SC-01/04/05。
+
+确定性日程补充：inbox-record-service.ts及其测试让未来scheduledFor不提前计入活动通知/未读。仅日期承诺用账号时区09:00提醒，晚发现则当日立即提醒，不把09:00写成截止时间；到该日结束失效。账号时区/手动语言复用当前profile与account-language存储。source-only事实与AI判断明确分栏文案，不把推断混入原文。
+
+追加行为测试：notification-discovery-worker-postgres、extractor、prefilter、API preferences及App直接settings/account consumers，验证实际事务/第三次重试/费用拦截/旧账号迟到回执。0038晚加的inbox-meeting-precedence-postgres夹具targetType字面量在0039类型检查中发现，已改为现有schedule_item；不修改实际提醒协议。
+
+运行中直接消费者补充：`repos/orbit-app/tests/app-wide-primitives.test.ts` 和 `tests/notifications/merged-notification-lifecycle.test.ts` 补全新增消费者所需的导航/组件测试边界；不降低断言。Web 新增 `app/(app)/app/inbox/{notification-source-view-model.ts,notification-source-page.tsx,sources/[id]/page.tsx}` 及 `tests/services/notification-source-navigation.test.ts`，修改 `typed-notifications-tab.tsx`：发现通知的 Web 来源入口重新授权后显示原文，笔记必须额外核对本人身份/笔记ID/证据版本；不把原生专用路由直接加 `/app`。App 消息来源使用已有 `/inbox/[id]`。归属 SC-01/02/05。

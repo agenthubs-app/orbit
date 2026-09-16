@@ -88,7 +88,7 @@ build/harness-logs/
 | [0036](0036-ai-sync-visibility-acceptance/GOAL.md) | 让 AI 报告四域云端数据新鲜度，完成跨端验收并更新私有 Data Atlas | 数据审查、AI 盲区与同步方案最终收口 | 依赖 0035 completed/merged、同账号 runtime 与已授权 AI provider；planned，run_count=0 | planned |
 | [0037](0037-contact-message-inbox/GOAL.md) | 把联系人消息从通知中独立出来，让用户看到真实对话并可靠收发、回复和同步已读。 | 2026-09-16 已确认的消息/三类通知设计 | 功能及主线 a591494b0；共同环境双账号通信/原生回读已验收，见 [REPORT](0037-contact-message-inbox/REPORT.md) | completed |
 | [0038](0038-typed-notification-inbox/GOAL.md) | 让每条通知明确属于提醒、建议或动态，显示原因和可追溯来源，并让 Web 与 App 操作同一条记录。 | 2026-09-16 已确认的消息/三类通知设计 | 功能及主线e045651b3；同账号三类通知与双向动作验收，[REPORT](0038-typed-notification-inbox/REPORT.md)保留失败历史 | completed |
-| [0039](0039-evidence-based-notification-discovery/GOAL.md) | 让 AI 从允许使用的真实信息中自主发现具体动作，有可信时间才提醒，并展示可核查的原文依据。 | 2026-09-16 已确认的消息/三类通知设计 | 依赖 0038 固定SHA合并及相关验证；本次仅规划，run_count=0 | planned |
+| [0039](0039-evidence-based-notification-discovery/GOAL.md) | 让 AI 从允许使用的真实信息中自主发现具体动作，有可信时间才提醒，并展示可核查的原文依据。 | 2026-09-16 已确认的消息/三类通知设计 | 0038功能e045651b3/报告0ed78f065已合并；E线run-01 | running |
 | [0040](0040-notification-delivery-cutover/GOAL.md) | 让消息和通知按独立偏好可靠送达，减少重复打扰，并安全替换旧通知数据与旧发送链。 | 2026-09-16 已确认的消息/三类通知设计 | 依赖 0039 固定SHA合并及相关验证；真实Push需有效provider/设备；本次仅规划，run_count=0 | planned |
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
@@ -418,3 +418,10 @@ build/harness-logs/
 - 0033～0036未进入本线：采用现有云端业务服务，不改sync/outbox/AI visibility。共享台账由本协调者串行集成。
 
 - 0038收口：功能/主线e045651b3；真实跨端记录、时间修正及显式提醒优先策略已验收，完整失败历史见REPORT/BR-026。继续0039。
+
+### 0039 / run-01
+
+- 开始：2026-09-16T00:27:40.473Z；owner：E线当前session，唯一Generator；分支codex/e-line-sprint-0039；基线0ed78f065。
+- Planner SHA256：424d1194cc4072b1f1b6b617e9065940ede951af2a85a6f583a8a53a9449dd3d。复用已批准规格与本session连续实施授权。
+- 独占notifications/discovery、新设置API/UI及对应契约/测试；使用云端独立适配器，不改0036 query-service/manifest，不写0033 sync/0035 outbox。继承独立QA环境；保留用户AGENTS/CLAUDE和旧设计目录。
+- 真实provider前核对0020未结算费用；离线代码/队列不依赖这项缺口。

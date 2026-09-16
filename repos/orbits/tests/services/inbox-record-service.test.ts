@@ -100,3 +100,4 @@ test('wording corrections preserve reading, disposition and the original semanti
  const f=fixture(),n=await f.service.upsert(f.input);await f.service.action('a',n.id,{action:'read',expectedRevision:1,idempotencyKey:'read'});
  const updated=await f.service.upsert({...f.input,reason:'修正为清晰的来源说明'});assert.equal(updated.id,n.id);assert.equal(updated.reason,'修正为清晰的来源说明');assert.equal(updated.readAt,now);assert.equal(updated.disposition,'open');
 });
+test('a future scheduled reminder waits before appearing in the active inbox or unread badge',async()=>{const f=fixture();await f.service.upsert({...f.input,scheduledFor:'2026-09-17T00:00:00.000Z'});const active=await f.service.list('a',{});assert.equal(active.items.length,0);assert.equal(active.unreadCount,0);assert.equal((await f.service.list('a',{history:true})).items.length,1);});
