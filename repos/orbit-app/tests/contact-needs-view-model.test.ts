@@ -85,6 +85,20 @@ test("contact needs view keeps unconfigured and clarification states explicit", 
   assert.equal(clarification.state, "needs_clarification");
 });
 
+test("v2 preserves actual components and original evidence; v1 never invents a v2 breakdown", () => {
+  const old = payload();
+  const criterion = { id: "scenario:restaurant", label: "餐饮业务", type: "industry" as const, dimension: "scenario" as const, matched: true, strength: "direct" as const, evidenceField: "profile", evidenceExcerpt: "Builds restaurant ordering systems" };
+  const components = [{ dimension: "scenario" as const, baseWeight: 35, weight: 100, points: 100, criterionIds: [criterion.id] }];
+  const summary = { code: "evidence" as const, criterionIds: [criterion.id] };
+  const view = contactNeedsToView({ ...old, scoringVersion: "needs-evidence-v2", matches: [{ ...old.matches[0]!, criteria: [criterion], components, summary }] } as any);
+  assert.deepEqual((view.scored[0] as any).components, components);
+  assert.deepEqual((view.scored[0] as any).summary, summary);
+  assert.equal(view.scored[0]?.evidence[0]?.excerpt, criterion.evidenceExcerpt);
+  const legacy = contactNeedsToView({ ...old, matches: [{ ...old.matches[0]!, components, summary }] } as any);
+  assert.deepEqual((legacy.scored[0] as any).components, []);
+  assert.equal((legacy.scored[0] as any).summary, null);
+});
+
 test("saved analysis exposes stable action codes for empty, current, stale, and unavailable states", () => {
   const current = {
     analysisVersion: "contacts.analysis@1" as const,

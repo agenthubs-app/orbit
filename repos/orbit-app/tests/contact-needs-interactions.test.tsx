@@ -58,7 +58,7 @@ const view = {
   ],
   insufficient: [],
 };
-function App() { const state = useFixture(); return state.mode === "matches" ? <ContactNeedsMatchesContent error={null} onEdit={() => state.navigation.push("edit")} onOpenContact={id => state.navigation.push(id)} onRetry={() => undefined} refreshing={false} view={view} /> : <ContactNeedsHomeEntry />; }
+function App() { const state = useFixture(); return state.mode === "matches" ? <ContactNeedsMatchesContent error={null} onEdit={() => state.navigation.push("edit")} onOpenContact={id => state.navigation.push(id)} onRetry={() => undefined} refreshing={false} view={state.matchView ?? view} /> : <ContactNeedsHomeEntry />; }
 createRoot(document.getElementById("root")).render(<App />);`,
       loader: "tsx",
       resolveDir: process.cwd(),
@@ -209,6 +209,30 @@ test("matches page labels the score as need relevance and groups insufficient da
   assert.match(text, /资料不足/);
   assert.match(text, /待补充/);
   assert.match(text, /查看匹配依据/);
+});
+
+test("v2 summary explains the supported capability in each language rather than repeating AI", () => {
+  const view = { ...matchesView, scoringVersion: "needs-evidence-v2", insufficient: [], scored: [{ ...matchesView.scored[0]!, matchedCriteria: [{ id: "scenario:restaurant", label: "餐饮业务" }, { id: "capability:delivery", label: "交付或门店试点" }], summary: { code: "evidence", criterionIds: ["scenario:restaurant", "capability:delivery"] }, components: [] }] } as any;
+  for (const [language, expected] of [["zh", /餐饮业务.*交付或门店试点/u], ["ja", /飲食.*開発・店舗実証/u], ["en", /restaurant.*delivery or store pilots/iu]] as const) {
+    const text = renderedText(inLanguage(language, <ContactNeedsMatchesContent error={null} onEdit={() => undefined} onOpenContact={() => undefined} onRetry={() => undefined} refreshing={false} view={view} />));
+    assert.match(text, expected);
+    assert.doesNotMatch(text, /一致：ai|匹配：ai|Matches: ai/iu);
+  }
+  const weak = { ...view, scored: [{ ...view.scored[0], summary: { code: "weak_ai", criterionIds: [] }, score: 0 }] };
+  const text = renderedText(<ContactNeedsMatchesContent error={null} onEdit={() => undefined} onOpenContact={() => undefined} onRetry={() => undefined} refreshing={false} view={weak} />);
+  assert.match(text, /仅有泛 AI 关联.*待核实/u);
+});
+
+test("v2 expanded evidence identifies original fields and actual weighted components without navigating", async (t) => {
+  const view = { ...matchesView, scoringVersion: "needs-evidence-v2", insufficient: [], scored: [{ ...matchesView.scored[0]!, summary: { code: "evidence", criterionIds: ["capability:delivery"] }, matchedCriteria: [{ id: "capability:delivery", label: "交付或门店试点" }], components: [{ dimension: "capability", baseWeight: 35, weight: 100, points: 100, criterionIds: ["capability:delivery"] }], evidence: [{ id: "capability:delivery", label: "交付或门店试点", excerpt: "Builds restaurant ordering systems", field: "profile", strength: "direct" }] }] };
+  const page = await openContactNeeds(t, { mode: "matches", matchView: view });
+  assert.equal(await page.getByText("Builds restaurant ordering systems", { exact: false }).count(), 0);
+  await page.getByRole("button", { name: "查看田中健的匹配依据" }).click();
+  assert.equal(await page.getByText("具体能力：100 / 100 分", { exact: true }).count(), 1);
+  assert.equal(await page.getByText(/资料原文.*Builds restaurant ordering systems/u).count(), 1);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), []);
+  await page.getByRole("button", { name: "查看田中健的匹配依据" }).click();
+  assert.equal(await page.getByText("Builds restaurant ordering systems", { exact: false }).count(), 0);
 });
 
 test("a ready response with no contacts has its own three-language empty state without hiding zero scores or incomplete contacts", () => {

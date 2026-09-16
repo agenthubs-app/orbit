@@ -1,130 +1,58 @@
 import { createHash } from "node:crypto";
 
 import type {
-  ContactNeedCriterionContract,
-  ContactNeedCriterionMatchContract,
-  ContactNeedCriterionTypeCode,
-  ContactNeedMatchContract,
+  ContactNeedCriterionContract, ContactNeedCriterionMatchContract, ContactNeedDimensionCode,
+  ContactNeedMatchContract, ContactNeedScoreComponentContract,
 } from "../../shared/contract/contact-needs";
 import type { ContactListItemContract } from "../../shared/contract/contacts";
+import { containsAlias, criteriaForNeed, type CriterionDefinition } from "./criteria";
 
-export const CONTACT_NEEDS_SCORING_VERSION = "needs-lexical-v1" as const;
+export { criteriaForNeed } from "./criteria";
+export const CONTACT_NEEDS_SCORING_VERSION = "needs-evidence-v2" as const;
 
-type CriterionDefinition = ContactNeedCriterionContract & { aliases: readonly string[] };
+const baseWeights: Readonly<Record<ContactNeedDimensionCode, number>> = { scenario: 35, capability: 35, collaboration: 20, location: 10 };
 
-const locations: readonly CriterionDefinition[] = [
-  { id: "location:japan", label: "日本", type: "location", aliases: ["日本", "japan", "日本国"] },
-  { id: "location:united-states", label: "美国", type: "location", aliases: ["美国", "美國", "united states", "usa", "u.s."] },
-  { id: "location:china", label: "中国", type: "location", aliases: ["中国", "中國", "china"] },
-  { id: "location:tokyo", label: "东京", type: "location", aliases: ["东京", "東京", "tokyo"] },
-];
-
-const industries: readonly CriterionDefinition[] = [
-  { id: "industry:manufacturing_supply_chain", label: "制造与供应链", type: "industry", aliases: ["制造业", "製造業", "制造", "製造", "manufacturing", "供应链", "サプライチェーン", "supply chain"] },
-  { id: "industry:technology_internet", label: "科技与互联网", type: "industry", aliases: ["科技", "技术", "テクノロジー", "technology", "互联网", "インターネット", "software", "软件", "軟件"] },
-  { id: "industry:finance_investment", label: "金融与投资", type: "industry", aliases: ["金融", "finance", "投资", "投資", "investment", "venture", "风投", "ベンチャー"] },
-  { id: "industry:trade_logistics", label: "贸易与物流", type: "industry", aliases: ["贸易", "貿易", "trade", "物流", "ロジスティクス", "logistics"] },
-  { id: "industry:professional_services", label: "专业服务", type: "industry", aliases: ["专业服务", "専門サービス", "professional services", "咨询", "コンサル", "consulting"] },
-  { id: "industry:retail_consumer", label: "零售与消费", type: "industry", aliases: ["零售", "小売", "retail", "消费", "消費財", "consumer"] },
-  { id: "industry:healthcare_life_sciences", label: "医疗与健康", type: "industry", aliases: ["医疗", "医療", "healthcare", "健康", "life sciences"] },
-  { id: "industry:education_research", label: "教育与研究", type: "industry", aliases: ["教育", "education", "研究", "research"] },
-  { id: "industry:media_creative", label: "文化传媒与创意", type: "industry", aliases: ["传媒", "メディア", "media", "创意", "クリエイティブ", "creative"] },
-];
-
-const capabilities: readonly CriterionDefinition[] = [
-  { id: "capability:procurement", label: "采购", type: "capability", aliases: ["采购", "採購", "調達", "procurement", "purchasing", "buyer"] },
-  { id: "capability:investment", label: "投资", type: "capability", aliases: ["投资", "投資", "investment", "investor", "venture", "融资", "資金調達", "fundraising"] },
-  { id: "capability:sales", label: "销售", type: "capability", aliases: ["销售", "銷售", "営業", "sales", "business development"] },
-  { id: "capability:partnership", label: "合作拓展", type: "capability", aliases: ["合作拓展", "提携", "partnerships", "alliances"] },
-];
-
-const stopWords = new Set([
-  "寻找", "尋找", "希望", "想", "认识", "認識", "联系", "聯繫", "合作", "伙伴", "夥伴", "合作伙伴",
-  "探す", "求める", "知り合う", "パートナー", "協力", "人", "方",
-  "find", "looking", "for", "seeking", "want", "meet", "partner", "partners", "partnership", "collaboration", "a", "an", "the", "in", "with", "and",
-]);
-
-function normalize(value: string): string {
-  return value.normalize("NFKC").toLocaleLowerCase();
-}
-
-function containsAlias(text: string, aliases: readonly string[]): boolean {
-  return aliases.some((alias) => text.includes(normalize(alias)));
-}
-
-function uniqueDefinitions(definitions: readonly CriterionDefinition[], need: string): CriterionDefinition[] {
-  return definitions.filter((definition) => containsAlias(need, definition.aliases));
-}
-
-function extractKeywords(need: string, known: readonly CriterionDefinition[]): CriterionDefinition[] {
-  let remainder = need;
-  for (const definition of known) {
-    for (const alias of definition.aliases) remainder = remainder.split(normalize(alias)).join(" ");
-  }
-  const words = [...new Intl.Segmenter("zh", { granularity: "word" }).segment(remainder)]
-    .filter((segment) => segment.isWordLike)
-    .map((segment) => segment.segment.trim())
-    .filter((word) => word.length > 1 && !stopWords.has(word));
-  return [...new Set(words)].map((word) => ({
-    id: `keyword:${word}`,
-    label: word,
-    type: "keyword" as const,
-    aliases: [word],
-  }));
-}
-
-export function criteriaForNeed(goal: string): CriterionDefinition[] {
-  const need = normalize(goal.trim());
-  if (!need || /(?:不要|不需要|排除|除外|除く|以外|without|excluding|except)/u.test(need)) return [];
-  const known = [
-    ...uniqueDefinitions(locations, need),
-    ...uniqueDefinitions(industries, need),
-    ...uniqueDefinitions(capabilities, need),
+function evidenceSources(contact: ContactListItemContract): readonly (readonly [string, string])[] {
+  // Names and company brands never establish capability. Preserve exact source text.
+  return [
+    ["role", contact.role], ["profile", contact.profileSnippet], ["relationship", contact.relationshipContext],
+    ...contact.evidence.map(item => [`evidence:${item.evidenceId}`, item.excerpt] as const),
   ];
-  return [...known, ...extractKeywords(need, known)];
 }
 
-function evidenceText(contact: ContactListItemContract): string {
-  return normalize([
-    contact.role,
-    contact.organization,
-    contact.location,
-    contact.profileSnippet,
-    contact.relationshipContext,
-    ...contact.evidence.map((item) => item.excerpt),
-    ...contact.tags,
-  ].filter(Boolean).join(" "));
-}
-
-function hasAssessableData(type: ContactNeedCriterionTypeCode, contact: ContactListItemContract): boolean {
-  if (type === "location") return contact.location.trim().length > 0;
-  if (type === "industry") {
-    return Boolean(contact.primaryIndustryId || contact.secondaryIndustryId || contact.organization.trim() || contact.profileSnippet.trim());
-  }
-  return Boolean(contact.role.trim() || contact.organization.trim() || contact.profileSnippet.trim() || contact.relationshipContext.trim() || contact.evidence.some((item) => item.excerpt.trim()));
+function hasAssessableData(definition: CriterionDefinition, contact: ContactListItemContract): boolean {
+  if (definition.type === "location") return Boolean(contact.location.trim());
+  return evidenceSources(contact).some(([, value]) => value.trim())
+    || (definition.dimension === "scenario" && Boolean(contact.primaryIndustryId || contact.secondaryIndustryId));
 }
 
 function criterionMatch(definition: CriterionDefinition, contact: ContactListItemContract): ContactNeedCriterionMatchContract {
-  const text = evidenceText(contact);
-  const structuredIndustry = definition.type === "industry"
-    && (contact.primaryIndustryId === definition.id.slice("industry:".length)
-      || contact.secondaryIndustryId?.startsWith(`${definition.id.slice("industry:".length)}.`));
-  const matched = Boolean(structuredIndustry || containsAlias(text, definition.aliases));
-  let evidenceField: string | null = null;
-  let evidenceExcerpt: string | null = null;
-  if (matched) {
-    const candidates: readonly (readonly [string, string])[] = [
-      ["location", contact.location], ["industry", contact.primaryIndustryId ?? contact.secondaryIndustryId ?? ""],
-      ["role", contact.role], ["organization", contact.organization], ["profile", contact.profileSnippet],
-      ["relationship", contact.relationshipContext],
-      ...contact.evidence.map((item) => ["evidence", item.excerpt] as const),
-    ];
-    const source = candidates.find(([, value]) => containsAlias(normalize(value), definition.aliases))
-      ?? (structuredIndustry ? candidates[1] : undefined);
-    evidenceField = source?.[0] ?? null;
-    evidenceExcerpt = source?.[1] ?? null;
-  }
-  return { id: definition.id, label: definition.label, type: definition.type, matched, evidenceField, evidenceExcerpt };
+  const structuredIndustry = definition.id.startsWith("industry:")
+    ? [contact.primaryIndustryId, contact.secondaryIndustryId].find(value => value === definition.id.slice("industry:".length)
+      || value?.startsWith(`${definition.id.slice("industry:".length)}.`))
+    : undefined;
+  const candidates = definition.type === "location" ? [["location", contact.location] as const] : evidenceSources(contact);
+  const source = candidates.find(([, value]) => containsAlias(value, definition.aliases))
+    ?? (structuredIndustry ? ["industry", structuredIndustry] as const : undefined)
+    ?? (definition.weak ? contact.tags.filter(tag => containsAlias(tag, definition.aliases)).map(tag => ["tags", tag] as const)[0] : undefined);
+  return {
+    id: definition.id, label: definition.label, type: definition.type, dimension: definition.dimension,
+    matched: Boolean(source), strength: source ? definition.weak ? "weak" : "direct" : "none",
+    evidenceField: source?.[0] ?? null, evidenceExcerpt: source?.[1] ?? null,
+  };
+}
+
+function componentsFor(definitions: readonly CriterionDefinition[], criteria: readonly ContactNeedCriterionMatchContract[]): ContactNeedScoreComponentContract[] {
+  const dimensions = (Object.keys(baseWeights) as ContactNeedDimensionCode[]).filter(dimension => definitions.some(item => item.dimension === dimension));
+  const totalWeight = dimensions.reduce((sum, dimension) => sum + baseWeights[dimension], 0);
+  return dimensions.map(dimension => {
+    const items = criteria.filter(item => item.dimension === dimension);
+    const direct = items.filter(item => item.id !== "keyword:ai");
+    // AI cannot dilute or inflate specific scenario evidence.
+    const fraction = direct.length ? direct.filter(item => item.matched).length / direct.length : items.some(item => item.matched) ? 0.15 : 0;
+    const weight = 100 * baseWeights[dimension] / totalWeight;
+    return { dimension, baseWeight: baseWeights[dimension], weight, points: weight * fraction, criterionIds: items.map(item => item.id) };
+  });
 }
 
 function canonicalData(contacts: readonly ContactListItemContract[]): string {
@@ -148,33 +76,40 @@ export function scoreContactsForNeed(goal: string, inputContacts: readonly Conta
   dataVersion: string;
   matches: readonly ContactNeedMatchContract[];
 } {
-  const contacts = [...new Map(inputContacts.map((contact) => [contact.id, contact])).values()];
+  const contacts = [...new Map(inputContacts.map(contact => [contact.id, contact])).values()];
   const definitions = criteriaForNeed(goal);
-  const criteria = definitions.map(({ id, label, type }) => ({ id, label, type }));
+  const criteria = definitions.map(({ id, label, type, dimension }) => ({ id, label, type, dimension }));
   const matches = contacts.map((contact): ContactNeedMatchContract => {
-    const criterionMatches = definitions.map((definition) => criterionMatch(definition, contact));
-    const missingFields = definitions
-      .filter((definition) => !hasAssessableData(definition.type, contact))
-      .map((definition) => definition.type)
-      .filter((value, index, all) => all.indexOf(value) === index);
-    if (missingFields.length > 0 || definitions.length === 0) {
-      return {
-        contactId: contact.id, displayName: contact.displayName, role: contact.role, organization: contact.organization,
-        location: contact.location, ...(contact.primaryIndustryId ? { primaryIndustryId: contact.primaryIndustryId } : {}),
-        ...(contact.secondaryIndustryId ? { secondaryIndustryId: contact.secondaryIndustryId } : {}),
-        score: null, status: "insufficient_data", reason: "缺少评估当前需求所需的联系人资料。",
-        criteria: criterionMatches, missingFields,
-      };
+    const criterionMatches = definitions.map(definition => criterionMatch(definition, contact));
+    const missingFields = [...new Set(definitions.filter(definition => !hasAssessableData(definition, contact)).map(definition => definition.type))];
+    const components = componentsFor(definitions, criterionMatches);
+    const direct = criterionMatches.filter(item => item.matched && item.strength === "direct");
+    const weakOnly = direct.length === 0 && criterionMatches.some(item => item.matched && item.strength === "weak");
+    if (weakOnly) {
+      const earned = components.reduce((sum, item) => sum + item.points, 0);
+      if (earned > 15) for (const component of components) component.points *= 15 / earned;
     }
-    const score = Math.round(100 * criterionMatches.filter((item) => item.matched).length / definitions.length);
-    const matchedLabels = criterionMatches.filter((item) => item.matched).map((item) => item.label);
+    const pending = missingFields.length > 0 || definitions.length === 0;
+    const score = pending ? null : Math.round(components.reduce((sum, item) => sum + item.points, 0));
+    const summaryPriority: Readonly<Record<ContactNeedDimensionCode, number>> = { capability: 0, scenario: 1, collaboration: 2, location: 3 };
+    const seenDimensions = new Set<ContactNeedDimensionCode>();
+    const grounds = [...direct].sort((left, right) => {
+      const points = (id: string) => components.find(item => item.criterionIds.includes(id))?.points ?? 0;
+      return points(right.id) - points(left.id)
+        || summaryPriority[left.dimension!] - summaryPriority[right.dimension!];
+    }).filter(item => {
+      if (seenDimensions.has(item.dimension!)) return false;
+      seenDimensions.add(item.dimension!);
+      return true;
+    }).slice(0, 2).map(item => item.id);
     return {
       contactId: contact.id, displayName: contact.displayName, role: contact.role, organization: contact.organization,
       location: contact.location, ...(contact.primaryIndustryId ? { primaryIndustryId: contact.primaryIndustryId } : {}),
       ...(contact.secondaryIndustryId ? { secondaryIndustryId: contact.secondaryIndustryId } : {}),
-      score, status: score > 0 ? "matched" : "no_match",
-      reason: matchedLabels.length > 0 ? `匹配：${matchedLabels.join("、")}` : "现有资料未命中当前需求条件。",
-      criteria: criterionMatches, missingFields: [],
+      score, status: pending ? "insufficient_data" : score! > 0 ? "matched" : "no_match",
+      reason: weakOnly ? "仅有泛 AI 关联，具体业务与合作能力尚待核实。" : pending ? "资料不足，当前需求的具体能力仍待核实。" : grounds.length ? `现有资料支持：${direct.filter(item => grounds.includes(item.id)).map(item => item.label).join("、")}。` : "现有资料未证明符合当前需求。",
+      criteria: criterionMatches, missingFields, components,
+      summary: { code: weakOnly ? "weak_ai" : pending ? "missing_data" : grounds.length ? "evidence" : "no_match", criterionIds: grounds },
     };
   }).sort((left, right) => {
     if (left.score === null && right.score !== null) return 1;
