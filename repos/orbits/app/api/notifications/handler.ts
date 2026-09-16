@@ -12,6 +12,9 @@ import { createReminderScheduleNotificationService } from "../../../features/not
 import { createConfiguredNotificationInteractionService, type NotificationInteractionService } from "../../../features/notifications/interaction-service";
 import type { ReminderPlanService } from "../../../features/notifications/reminder-plan-service";
 import { createConfiguredReminderPlanService } from "../../../features/notifications/reminder-plan-service-factory";
+import {resolveLegacyReminderTarget} from '../../../features/notifications/legacy-source-projection';
+import {createConfiguredPostgresLiveRecordStore} from '../../../shared/storage/configured-live-record-store';
+import type {LiveRecordStoreLike} from '../../../shared/storage/live-record-store';
 import {
   reminderScheduleNotificationFailureContext,
   reminderScheduleNotificationFailureToAppError,
@@ -49,6 +52,7 @@ export function createNotificationsGetHandler(
   resolveActor: ResolveAuthenticatedApiActor = resolveAuthenticatedApiActor,
   interactions?: NotificationInteractionService | null,
   reminderPlans?: ReminderPlanService | null,
+  targetReader?: {store:Pick<LiveRecordStoreLike<Record<string,unknown>>,'getRecord'>;workspaceId:string}|null,
 ) {
   return async function GET(request: Request): Promise<Response> {
     const mode = resolveFeatureMode();
@@ -76,17 +80,21 @@ export function createNotificationsGetHandler(
     const canonicalService = reminderPlans === undefined
       ? mode === "live" ? createConfiguredReminderPlanService() : null
       : reminderPlans;
+    const reader = canonicalService ? targetReader === undefined ? createConfiguredPostgresLiveRecordStore() : targetReader : null;
     const canonicalReminders = canonicalService
-      ? (await canonicalService.list({ actorId: actor.id, includeCancelled: true }))
+      ? await Promise.all((await canonicalService.list({ actorId: actor.id, includeCancelled: true }))
           .filter((plan) => plan.status === "delivered" || plan.status === "failed")
-          .map((plan) => ({
+          .map(async (plan) => {
+            const target=reader && plan.accountId===actor.id && plan.ownerUserId===actor.id
+              ? await resolveLegacyReminderTarget({...reader,actorId:actor.id,targetType:plan.targetType,targetId:plan.targetId}) : null;
+            return ({
             reminderId: plan.id,
-            followupTaskId: plan.targetType === "task" ? plan.targetId : "",
+            followupTaskId: target?.kind === "task" ? target.id : "",
             connectionId: "",
-            contactName: "待办提醒",
-            organization: "Orbit",
-            title: plan.title,
-            href: plan.deepLink,
+            contactName: "",
+            organization: "",
+            title: target?.title ?? "来源已不可用",
+            href: target?.href ?? "",
             dueAt: plan.fireAt,
             dueInDays: 0,
             frequency: "once" as const,
@@ -96,7 +104,7 @@ export function createNotificationsGetHandler(
             source: {
               id: `source:${plan.id}`,
               type: "system" as const,
-              label: "Orbit 提醒",
+              label: target ? "Orbit 提醒" : "来源已不可用",
               provider: "orbit",
               providerRecordId: plan.id,
               capturedAt: plan.updatedAt,
@@ -118,7 +126,7 @@ export function createNotificationsGetHandler(
             productionAuditLogWriteExecuted: false as const,
             externalNetworkRequested: false as const,
             deviceRequested: false as const,
-          }))
+          });}))
       : [];
     const candidateReminders = [...result.data.reminders, ...canonicalReminders];
     const interactionService = interactions === undefined

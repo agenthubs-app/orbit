@@ -1443,6 +1443,7 @@ export function relationshipAlertsToView(
       const action = actions.get(alert.id);
       return action?.ignored ? [] : [{
         ...alert,
+        ...(action?.unavailable ? { title: t("typedInbox.unavailable"), detail: "" } : {}),
         ...(action?.href ? { href: action.href } : {}),
         ...(action?.canPersist ? { canPersistState: true, read: action.read } : {}),
       }];

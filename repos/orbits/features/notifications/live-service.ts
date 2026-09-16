@@ -24,13 +24,14 @@ import type {
   TaskDTO,
 } from "../../shared/domain/contracts";
 import type { ReminderScheduleNotificationService } from "./service";
+import {projectLegacyNotification,type LegacyProjectedNotification} from './legacy-source-projection';
 
 export interface LiveReminderNotificationGraph {
   connections: readonly ConnectionDTO[];
   contacts: readonly ContactDTO[];
   evidence: readonly RelationshipEvidenceDTO[];
   generatedAt: string;
-  notifications: readonly (NotificationDTO & { actionHref?: string })[];
+  notifications: readonly LegacyProjectedNotification[];
   tasks: readonly TaskDTO[];
 }
 
@@ -228,7 +229,7 @@ function connectionForTask(
 }
 
 function sourceForNotification(
-  notification: NotificationDTO,
+  notification: LegacyProjectedNotification,
 ): ReminderScheduleNotificationSourceReference {
   const supportedTypes = new Set<ReminderScheduleNotificationSourceReference["type"]>([
     "calendar_signal",
@@ -317,23 +318,22 @@ function evidenceIdsForReminder(
 }
 
 function toReminder(
-  notification: NotificationDTO & { actionHref?: string },
+  notification: LegacyProjectedNotification,
   graph: LiveReminderNotificationGraph,
 ): ScheduledReminder {
-  const task = taskForNotification(notification, graph);
-  const contact = contactForTask(task, graph, notification);
-  const connection = connectionForTask(task, graph);
-  const dueAt = dueAtFor(notification, task);
+  const target=notification.verifiedTarget??null;
+  notification=projectLegacyNotification(notification,target);
+  const dueAt = notification.scheduledFor ?? target?.dueAt ?? notification.createdAt;
   const dueInDays = daysUntil(dueAt, graph.generatedAt);
   const priority = priorityFor(dueInDays);
   const source = sourceForNotification(notification);
 
   return {
     reminderId: notification.id,
-    followupTaskId: task?.id ?? notification.id,
-    connectionId: task?.connectionId ?? connection?.id ?? "",
-    contactName: contact?.displayName ?? "",
-    organization: contact?.organization ?? "",
+    followupTaskId: target?.kind==='task'?target.id:'',
+    connectionId: "",
+    contactName: "",
+    organization: "",
     title: notification.title,
     href: notification.actionHref,
     dueAt,
@@ -343,7 +343,7 @@ function toReminder(
     groupedLowPriority: priority === "low",
     recommendedWindow: recommendedWindowFor(priority),
     source,
-    evidenceIds: evidenceIdsForReminder(notification, task),
+    evidenceIds: [],
     audit: {
       sourceLabel: source.label,
       providerBoundary:
@@ -363,7 +363,7 @@ function toReminder(
   };
 }
 
-function channelFor(notification: NotificationDTO): NotificationQueueChannel {
+function channelFor(notification: LegacyProjectedNotification): NotificationQueueChannel {
   switch (notification.channel) {
     case "email":
       return "email";
@@ -376,7 +376,7 @@ function channelFor(notification: NotificationDTO): NotificationQueueChannel {
   }
 }
 
-function queueReason(notification: NotificationDTO): string {
+function queueReason(notification: LegacyProjectedNotification): string {
   if (notification.channel === "calendar" || notification.channel === "system") {
     return `${notification.channel} notification is represented as an in-app review queue entry; no provider received a job.`;
   }
@@ -385,7 +385,7 @@ function queueReason(notification: NotificationDTO): string {
 }
 
 function toQueueEntry(input: {
-  notification: NotificationDTO;
+  notification: LegacyProjectedNotification;
   reminder: ScheduledReminder;
 }): NotificationQueueEntry {
   return {

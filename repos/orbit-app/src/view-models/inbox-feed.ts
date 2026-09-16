@@ -104,10 +104,11 @@ function notificationItems(value: unknown, language: OrbitLanguage): { complete:
     const action = actions.get(id);
     if (action?.ignored) continue;
     const followupTaskId = exactText(item.followupTaskId);
-    const targetHref = action?.href || (followupTaskId ? encodedPath("/tasks", followupTaskId) : undefined);
-    const category = notificationCategory(item, targetHref);
+    const targetHref = action?.href;
+    const unavailable = action?.unavailable === true;
+    const category = notificationCategory(item, targetHref) ?? (unavailable ? followupTaskId ? "task" : "assistant" : null);
     const sourceTitle = exactText(item.title);
-    const title = /^review follow-up for /iu.test(sourceTitle)
+    const title = unavailable ? t("typedInbox.unavailable") : /^review follow-up for /iu.test(sourceTitle)
       ? t("inboxVm.contactTitle", {
           name: exactText(item.contactName) || t("inboxVm.contactFallback"),
         })
@@ -130,7 +131,7 @@ function notificationItems(value: unknown, language: OrbitLanguage): { complete:
           expected: { notificationId: id, state: "read" },
         },
       } : {}),
-      subtitle: exactText(item.organization) || exactText(item.sourceLabel) || (category === "assistant" ? "IORBIT" : ""),
+      subtitle: unavailable ? "" : exactText(item.organization) || exactText(item.sourceLabel) || (category === "assistant" ? "IORBIT" : ""),
       ...(targetHref ? { targetHref } : {}),
       title,
     });
