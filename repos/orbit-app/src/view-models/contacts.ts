@@ -14,6 +14,7 @@ export interface ContactSummary {
   relationship: string;
   role: string;
   status: string;
+  lifecycleInitialization?: "pending";
   valueLabels: string[];
   valueScore: number | null;
 }
@@ -250,6 +251,18 @@ function contactField(
   return stringField(record, fieldName, fallback);
 }
 
+export function isContactInitializationPending(contact: unknown): boolean {
+  return isRecord(contact) && contactField(contact, "lifecycleInitialization") === "pending";
+}
+
+export function contactPendingInitializationCopy(language: OrbitLanguage = "zh") {
+  return {
+    zh: { title: "待设置关系", body: "交换仅确认已认识。请在 Web 联系人详情中设置你自己的关系目标或有日期的下一步；当前 App 尚不支持此设置。" },
+    en: { title: "Pending initialization", body: "An exchange only confirms you know each other. Set your own relationship goal or dated next step in the Web contact detail. This setting is not yet available in the app." },
+    ja: { title: "関係設定待ち", body: "交換は知り合ったことの確認のみです。Web の連絡先詳細で、自分の関係目標または日付付きの次のステップを設定してください。現在、この設定はアプリでは利用できません。" },
+  }[language];
+}
+
 function numberField(
   record: Record<string, unknown>,
   fieldName: string
@@ -484,7 +497,7 @@ export function contactDimensionFilterOptions(
     ? countedStatuses.reduce(
         (total, status) => total + (counts.get(status) ?? 0),
         0
-      )
+      ) + listFromPayload(data, "contacts").filter(isContactInitializationPending).length
     : listFromPayload(data, "contacts").length;
   const activeCount =
     (counts.get("active") ?? 0) + (counts.get("needs_follow_up") ?? 0);
@@ -551,7 +564,7 @@ export function filterContactListPayloadByDimensions(
   }
 
   const contacts = data.contacts.filter((contact) => {
-    if (!isRecord(contact)) {
+    if (!isRecord(contact) || isContactInitializationPending(contact)) {
       return false;
     }
 
@@ -1403,14 +1416,15 @@ export function contactsToSummaries(
           : contactField(contact, "organization", "Independent"),
         relationship: relationshipTextForLanguage(contact, language),
         role: language === "zh" ? roleLabel(contactField(contact, "role")) : contactField(contact, "role"),
-        status: statusLabelForLanguage(contactField(contact, "status"), language),
+        status: isContactInitializationPending(contact) ? contactPendingInitializationCopy(language).title : statusLabelForLanguage(contactField(contact, "status"), language),
+        ...(isContactInitializationPending(contact) ? { lifecycleInitialization: "pending" as const } : {}),
         valueLabels: valueLabelsForLanguage(contact, language),
         valueScore: valueScore(contact)
       };
     })
     .map((contact) => ({
       ...contact,
-      nextAction: nextActionTextForLanguage(
+      nextAction: contact.lifecycleInitialization === "pending" ? "" : nextActionTextForLanguage(
         listFromPayload(data, "contacts")
           .filter(isRecord)
           .find((rawContact) => stringField(rawContact, "id", "contact") === contact.id) ??
@@ -1635,7 +1649,8 @@ export function contactDetailToSummary(
   const imageUrl = contactImageUrl(contact);
 
   return {
-    archiveAction: archiveActionForLanguage(stringField(contact, "status"), name, language),
+    archiveAction: isContactInitializationPending(contact) ? null : archiveActionForLanguage(stringField(contact, "status"), name, language),
+    ...(isContactInitializationPending(contact) ? { lifecycleInitialization: "pending" as const } : {}),
     detailTags: language === "zh" ? detailTags(contact) : uniqueStrings(stringListField(contact, "tags")),
     evidenceExcerpts: language === "zh" ? evidenceExcerpts(contact) : uniqueStrings(listFromPayload(contact, "evidence").filter(isRecord).map(item => stringField(item, "excerpt")).filter(value => value && !containsImplementationLabel(value))).slice(0, 3),
     id: stringField(contact, "id", "contact"),
@@ -1648,7 +1663,7 @@ export function contactDetailToSummary(
       : {}),
     location: language === "zh" ? locationLabel(stringField(contact, "location")) : stringField(contact, "location", t("contacts.locationPending")),
     name,
-    nextAction: nextActionTextForLanguage(contact, name, language),
+    nextAction: isContactInitializationPending(contact) ? "" : nextActionTextForLanguage(contact, name, language),
     noteSummaries: language === "zh" ? noteSummaries(contact) : uniqueStrings(listFromPayload(contact, "notes").filter(isRecord).filter(note => note.privacy !== "private").map(note => stringField(note, "body")).filter(value => value && !containsImplementationLabel(value))).slice(0, 2),
     organization: language === "zh" ? organizationLabel(stringField(contact, "organization")) : stringField(contact, "organization"),
     publicBio: publicProfileBio(contact),
@@ -1670,8 +1685,8 @@ export function contactDetailToSummary(
     relationship: relationshipTextForLanguage(contact, language),
     role: language === "zh" ? roleLabel(stringField(contact, "role")) : stringField(contact, "role"),
     sourceLabel: language === "zh" ? sourceLabel(contact) : stringField(nestedRecord(contact, "source"), "label") || stringField(nestedRecord(nestedRecord(contact, "publicProfile"), "source"), "label"),
-    status: statusLabelForLanguage(stringField(contact, "status"), language),
-    statusAction: statusActionForLanguage(stringField(contact, "status"), name, language),
+    status: isContactInitializationPending(contact) ? contactPendingInitializationCopy(language).title : statusLabelForLanguage(stringField(contact, "status"), language),
+    statusAction: isContactInitializationPending(contact) ? null : statusActionForLanguage(stringField(contact, "status"), name, language),
     valueLabels: valueLabelsForLanguage(contact, language),
     valueScore: valueScore(contact)
   };

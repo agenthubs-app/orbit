@@ -45,6 +45,7 @@ import { contactMessageTemplate, registerAiTemplatePrefill } from "../../data/ai
 import {
   contactDetailHeroToView,
   contactDetailToSummary,
+  contactPendingInitializationCopy,
   type ContactAvatarTone,
   type ContactDetailSummary
 } from "../../view-models/contacts";
@@ -97,6 +98,7 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
     { scopeKey: scopeKey ?? actorId }
   );
   const state = validateApiResourceState(rawState, detailReadSchema.refine(value => value.contact.id === contactId));
+  const initializationPending = (state.kind === "success" || state.kind === "empty") && contactDetailToSummary(state.data, locale.language).lifecycleInitialization === "pending";
   const connectionsState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.connections,
     () => false,
@@ -257,7 +259,7 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
       toolbarLeft={currentEdit ? <Pressable accessibilityRole="button" accessibilityLabel={locale.language === "zh" ? "取消编辑" : locale.t("common.cancel")} disabled={editPending} onPress={cancelEditor} style={styles.cancelHeaderButton}><Text style={styles.cancelHeaderText}>{locale.t("common.cancel")}</Text></Pressable> : undefined}
       toolbarRight={currentEdit
         ? <Pressable accessibilityRole="button" accessibilityLabel={locale.language === "zh" ? "保存人脉" : locale.t("common.save")} disabled={editPending} onPress={saveEditor} style={[styles.editHeaderButton, editPending && styles.disabled]}><Text style={styles.editHeaderText}>{editPending ? locale.t("contacts.saving") : locale.t("common.save")}</Text></Pressable>
-        : state.kind === "success" || state.kind === "empty" ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.edit")} onPress={openEditor} style={styles.editHeaderButton}><Text style={styles.editHeaderText}>{locale.t("contacts.edit")}</Text></Pressable> : null}
+        : !initializationPending && (state.kind === "success" || state.kind === "empty") ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.edit")} onPress={openEditor} style={styles.editHeaderButton}><Text style={styles.editHeaderText}>{locale.t("contacts.edit")}</Text></Pressable> : null}
       refreshControl={
         <RefreshControl
           onRefresh={refreshAll}
@@ -358,12 +360,15 @@ function ContactDetailCard({
         toneStyle={toneStyle}
       />
       <ContactCommunicationStatus contactId={contactId} state={eligibilityState} />
-      <NextStepCard
+      {contact.lifecycleInitialization === "pending" ? <View testID="contact-pending-initialization" style={styles.nextStepCard}>
+        <Text style={styles.bodyText}>{contactPendingInitializationCopy(locale.language).title}</Text>
+        <Text style={styles.bodyText}>{contactPendingInitializationCopy(locale.language).body}</Text>
+      </View> : <NextStepCard
         action={contact.nextAction}
         onPress={openMessageDraft}
         onSchedule={() => { if (isScopeCurrent()) router.push("/schedule"); }}
         onNotes={() => { if (isScopeCurrent()) { setNotesRequest(value => value + 1); onScrollTo(notesTop.current); } }}
-      />
+      />}
       {prefillError ? <Text style={styles.errorText}>{prefillError}</Text> : null}
       <ContactOverview contact={contact} email={detailReadSchema.safeParse(data).data?.contact.primaryEmail} />
       <View onLayout={event => { notesTop.current = event.nativeEvent.layout.y; }}><ContactNotesSection actorId={actorId} client={client} colors={colors} contactId={contactId} data={data} onRefresh={onNotesRefresh} openRequest={notesRequest} preview isScopeCurrent={isScopeCurrent} /></View>

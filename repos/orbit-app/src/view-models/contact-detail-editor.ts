@@ -16,13 +16,15 @@ export const contactDetailReadSchema = z.object({
     secondaryIndustryId: z.string().nullable().optional(), secondaryIndustryLabel: z.string().optional(),
     relationshipContext: z.string(), nextAction: z.string(),
     source: z.object({ type: z.string(), label: z.string() }).passthrough(),
-    status: z.enum(["active", "needs_follow_up", "nurture", "archived"]),
+    status: z.enum(["active", "needs_follow_up", "nurture", "archived", "captured"]),
+    lifecycleInitialization: z.enum(["pending", "ready"]).optional(),
     tags: z.array(z.string()),
     publicProfile: z.object({ bio: z.string(), offering: z.array(z.string()), seeking: z.array(z.string()), topics: z.array(z.string()), conversationPrompts: z.array(z.string()) }).passthrough(),
     evidence: z.array(z.object({ excerpt: z.string() }).passthrough()),
     notes: z.array(z.object({ noteId: z.string(), body: z.string(), createdAt: z.string(), authorLabel: z.string(), privacy: z.enum(["private", "relationship_shared"]).optional() }).passthrough()),
     lastInteraction: z.object({ channel: z.string(), occurredAt: z.string(), summary: z.string() }).passthrough()
   }).passthrough().refine(contact => validateIndustrySelection(contact).valid)
+    .refine(contact => contact.status !== "captured" || contact.lifecycleInitialization === "pending")
 }).passthrough();
 
 export interface ContactDetailEditDraft {
@@ -48,6 +50,8 @@ export function contactDetailEditorFrom(data: unknown, contactId: string): Conta
   const parsed = editorSchema.safeParse(data);
   if (!parsed.success || parsed.data.contact.id !== contactId) return null;
   const { contact, editableStatusOptions } = parsed.data;
+  // Display-only support: the legacy editor must not initialize a pending shell.
+  if (contact.lifecycleInitialization === "pending" || contact.status === "captured") return null;
   if (contact.primaryIndustryId != null && !isIndustryIdCode(contact.primaryIndustryId)) return null;
   return { contact, statusOptions: [...new Set(editableStatusOptions)], draft: {
     status: contact.status, primaryIndustryId: contact.primaryIndustryId ?? null,
