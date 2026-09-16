@@ -46,6 +46,34 @@ test('unknown and secret endpoints never default to persistence', () => {
   }
 });
 
+test('canonical event and personal schedule consumers register exact domains without offline write authority', () => {
+  for (const [consumerFile, method, endpointTemplate, domainId] of [
+    ['src/screens/events/CanonicalEventDetailModules.tsx', 'GET', '/api/events/:id/registration', 'registrations'],
+    ['src/screens/events/CanonicalEventDetailModules.tsx', 'GET', '/api/events/:id/operations', 'event-operations'],
+    ['src/screens/events/CanonicalEventDetailModules.tsx', 'GET', '/api/events/:id/post-event/artifact', 'event-goals'],
+    ['src/screens/events/CanonicalEventDetailModules.tsx', 'POST', '/api/events/:id/registration/cancel', 'registrations'],
+    ['src/screens/schedule/PersonalScheduleAssociations.tsx', 'GET', '/api/contacts/:id', 'contacts'],
+    ['src/screens/schedule/PersonalScheduleAssociations.tsx', 'GET', '/api/notes', 'notes'],
+    ['src/screens/schedule/PersonalScheduleAssociations.tsx', 'GET', '/api/notes/:id', 'notes'],
+    ['src/screens/schedule/PersonalScheduleAssociations.tsx', 'POST', '/api/contacts/search', 'contacts'],
+    ['src/screens/schedule/PersonalScheduleDetailScreen.tsx', 'GET', '/api/schedule-items', 'personal-schedule'],
+    ['src/screens/schedule/PersonalScheduleDetailScreen.tsx', 'GET', '/api/schedule-items/:id', 'personal-schedule'],
+  ] as const) {
+    const surface = surfaces.find(row => row.consumerFile === consumerFile && row.method === method && row.endpointTemplate === endpointTemplate);
+    assert.ok(surface, `${consumerFile} ${method} ${endpointTemplate}`);
+    assert.equal(surface.domainId, domainId);
+    assert.equal(surface.selector, `${domainId}:${method}:${endpointTemplate}`);
+    assert.equal(surface.schemaVersion, 1);
+    assert.equal(surface.readPersistence, 'durable_normalized');
+    assert.equal(surface.binaryPolicy, 'metadata_only');
+    assert.equal(surface.mutationPolicy, 'online_only');
+    assert.equal(resolveReadSurface(method, endpointTemplate.replace(':id', 'example')).domainId, domainId);
+  }
+  assert.equal(resolveReadSurface('GET', '/api/events/example/operations/admin').domainId, 'event-operations');
+  assert.throws(() => resolveReadSurface('GET', '/api/events/example/operations/unknown'), /UNREGISTERED_READ/);
+  assert.throws(() => resolveReadSurface('POST', '/api/events/example/operations'), /UNREGISTERED_READ/);
+});
+
 test('path matching rejects malformed paths and never widens literal or segment boundaries', () => {
   for (const path of ['/api/notes/', '/api/notes/a/extra', '/api/notes//', '/api/notes/%2f', '/api/notes/%2e%2e', '/api/notes/%ZZ', 'https://other.test/api/notes/a', '//api/notes/a', '/api/notes/../a']) {
     assert.equal(matchTemplate('/api/notes/:id', path), false, path);
@@ -103,6 +131,38 @@ test('wrapper aliases, generic requests and computed client methods are audited 
     ['src/screens/Computed.ts', 'PATCH', '/api/computed'],
     ['src/screens/Generic.ts', 'POST', '/api/generic-write'],
   ]);
+});
+
+test('AST resolves section-indexed endpoint maps and nested returned request paths', async t => {
+  const root = await fixture(t, {
+    'src/screens/Dynamic.ts': `
+      const paths: Record<'schedule' | 'tasks', string> = { schedule: '/api/schedule-items', tasks: '/api/tasks' };
+      function load(section: 'schedule' | 'tasks') { return client.get(paths[section]); }
+      function detail(id: string) { return { request: { path: \`/api/ai/runs/\${encodeURIComponent(id)}\` } }; }
+      const request = detail('run1');
+      client.get(request.request.path);
+      load('schedule');
+      load('tasks');
+    `,
+  });
+  const extracted = await extractReadCalls(root);
+  assert.deepEqual(extracted.invalid, []);
+  assert.deepEqual([...new Set(extracted.calls.map(row => row.endpointTemplate))].sort(), ['/api/ai/runs/:id', '/api/schedule-items', '/api/tasks']);
+});
+
+test('a finite endpoint map cannot conceal an unknown key or an unknown mapped branch', async t => {
+  const root = await fixture(t, {
+    'src/screens/MixedMap.ts': `
+      const paths = { known: '/api/notes', hidden: computeRemotePath() };
+      client.get(paths.known);
+      client.get(paths[chooseSection()]);
+      const section: 'known' | 'hidden' = chooseSection();
+      client.get(paths[section]);
+    `,
+  });
+  const extracted = await extractReadCalls(root);
+  assert.ok(extracted.calls.some(row => row.endpointTemplate === '/api/notes'));
+  assert.ok(extracted.invalid.filter(row => row.includes('UNRESOLVED_PATH')).length >= 2);
 });
 
 test('computed clients and generic requests reject unresolved methods and paths', async t => {
