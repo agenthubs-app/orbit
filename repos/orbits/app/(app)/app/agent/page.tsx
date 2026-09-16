@@ -134,6 +134,7 @@ export default async function AppAgentPage({
       "Orbit member",
     email: session?.user?.email,
     id: actorId,
+    rawSubject: session.user.id,
   });
   const registrationEventIds =
     homeModel.state === "success"
@@ -147,7 +148,7 @@ export default async function AppAgentPage({
     eventIds: registrationEventIds.map(
       (routeId) => canonicalEventIdsByRouteId[routeId] ?? routeId,
     ),
-    userId: actorId,
+    userId: session.user.id,
   });
   const registrationStates = Object.fromEntries(
     registrationEventIds.map((routeId) => {

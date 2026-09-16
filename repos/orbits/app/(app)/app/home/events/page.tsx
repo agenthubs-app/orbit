@@ -37,6 +37,7 @@ export default async function AppPersonalHomeEventsPage() {
       "Orbit member",
     email: session.user.email,
     id: actor.id,
+    rawSubject: session.user.id,
   });
   const language =
     routeModel.state === "success" ? await getOrbitServerLanguage() : null;

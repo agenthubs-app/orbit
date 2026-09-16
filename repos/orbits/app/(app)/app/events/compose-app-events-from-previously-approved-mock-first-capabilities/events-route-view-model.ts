@@ -80,6 +80,7 @@ export interface AppEventsCurrentPriorityViewModel {
 
 export interface AppEventsEventChoiceViewModel {
   attendeeName: string;
+  canonicalEventId?: string;
   detailHref: string;
   endsAt: string;
   evidence: readonly AppEventsEvidenceViewModel[];
@@ -384,6 +385,10 @@ function eventChoiceViewModel(input: {
 }): AppEventsEventChoiceViewModel {
   return {
     attendeeName: input.attendeeName,
+    canonicalEventId:
+      input.event.sourceMetadata.provider === "event-core-postgres"
+        ? input.event.sourceMetadata.providerRecordId
+        : undefined,
     detailHref: eventDetailHref(input.event),
     evidence: evidenceViewModels(input.event.evidence.map((item) => item.evidenceId)),
     endsAt: input.event.endsAt,

@@ -66,6 +66,30 @@ function render(viewModel: OrbitContactsViewModel, language: "zh" | "en"): strin
   );
 }
 
+test("contact seeking is labelled as their need, not as the viewer's verified ability", async () => {
+  const viewModel = await legacyBusinessCardViewModel();
+  const contact = viewModel.connections[0];
+  const encounter = contact.encounters[0];
+  assert.ok(encounter);
+  const scoped = { ...viewModel, connections: [{ ...contact, encounters: [{
+    ...encounter,
+    context: { ...encounter.context, publicProfile: {
+      ...encounter.context.publicProfile,
+      offering: ["项目落地与运营经验"],
+      seeking: ["创业者"],
+    } },
+  }] }] };
+  const zh = render(scoped, "zh");
+  assert.match(zh, /对方希望获得/);
+  assert.match(zh, /对方能提供/);
+  assert.match(zh, /创业者/);
+  assert.match(zh, /项目落地与运营经验/);
+  assert.doesNotMatch(zh, /我能为对方提供/);
+  const en = render(scoped, "en");
+  assert.match(en, /is looking for/);
+  assert.doesNotMatch(en, /You →/);
+});
+
 test("metLabel keys the source label on the stable source code, never on the stored actor sentence", () => {
   const zh = (copy: { en: string; zh: string }) => copy.zh;
   const en = (copy: { en: string; zh: string }) => copy.en;

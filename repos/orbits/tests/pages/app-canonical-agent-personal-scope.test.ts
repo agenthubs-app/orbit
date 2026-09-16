@@ -60,10 +60,12 @@ for (const route of ["agent", "tasks/personal", "home/events"] as const) {
     if (route === "agent") {
       assert.equal(calls.find(call => call.operation === "chat")?.input[1].actorId, "account:canonical");
       assert.equal(calls.find(call => call.operation === "home")?.input[1].id, "account:canonical");
+      assert.equal(calls.find(call => call.operation === "home")?.input[1].rawSubject, "subject:external");
       assert.equal(calls.find(call => call.operation === "events")?.input[0].actorId, "account:canonical");
-      assert.equal(calls.find(call => call.operation === "registrations")?.input[0].userId, "account:canonical");
+      assert.equal(calls.find(call => call.operation === "registrations")?.input[0].userId, "subject:external");
     } else if (route === "home/events") {
       assert.equal(calls.find(call => call.operation === "home")?.input[1].id, "account:canonical");
+      assert.equal(calls.find(call => call.operation === "home")?.input[1].rawSubject, "subject:external");
     } else {
       const nodes: any[] = [tree];
       const owners: string[] = [];

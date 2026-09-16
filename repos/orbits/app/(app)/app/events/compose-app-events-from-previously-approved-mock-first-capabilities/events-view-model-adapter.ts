@@ -74,6 +74,7 @@ export function eventChoiceToLandingEvent(
     ],
     brandColor: "#6359E9",
     cap: 20,
+    canonicalEventId: event.canonicalEventId,
     code: event.id,
     descriptionZh: description,
     detailLogoUrl: sceneAsset?.src ?? "",

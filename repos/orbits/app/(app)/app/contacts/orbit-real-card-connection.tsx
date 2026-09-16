@@ -230,7 +230,7 @@ function TagsCard({ contact, t, onEdit }: { contact: OrbitContactView; t: Transl
 function TwoWayCard({ contact, t }: { contact: OrbitContactView; t: Translate }) {
   const name = contact.displayName || t({ en: "them", zh: "对方" });
   const profile = contact.encounters[0]?.context.publicProfile;
-  // 对方的 offering = 对方能给我的；对方的 seeking = 对方想要的（即我能给对方的）。
+  // 展示对方自述的供需；对方的需求不代表当前用户具备对应能力。
   const theyOffer = (profile?.offering ?? []).filter(Boolean);
   const theySeek = (profile?.seeking ?? []).filter(Boolean);
   const hasReal = theyOffer.length > 0 || theySeek.length > 0;
@@ -251,7 +251,7 @@ function TwoWayCard({ contact, t }: { contact: OrbitContactView; t: Translate })
         ) : null}
       </div>
       <div className="nc-vblock nc-give">
-        <div className="nc-vhead"><Icon name="arrow" size={14} />{t({ en: `You → ${name}`, zh: "我能为对方提供" })}</div>
+        <div className="nc-vhead"><Icon name="arrow" size={14} />{t({ en: `${name} is looking for`, zh: "对方希望获得" })}</div>
         <div className="nc-vlist">
           {give.length ? give.map((item, index) => (
             <div className="nc-vitem" key={`give-${index}`}><Icon name="check" size={16} />{item}</div>
@@ -259,7 +259,7 @@ function TwoWayCard({ contact, t }: { contact: OrbitContactView; t: Translate })
         </div>
       </div>
       <div className="nc-vblock nc-get">
-        <div className="nc-vhead"><Icon name="arrow" size={14} />{t({ en: `${name} → You`, zh: "对方能为我提供" })}</div>
+        <div className="nc-vhead"><Icon name="arrow" size={14} />{t({ en: `${name} offers`, zh: "对方能提供" })}</div>
         <div className="nc-vlist">
           {get.length ? get.map((item, index) => (
             <div className="nc-vitem" key={`get-${index}`}><Icon name="check" size={16} />{item}</div>
