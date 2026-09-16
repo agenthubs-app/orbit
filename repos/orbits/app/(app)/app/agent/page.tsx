@@ -10,6 +10,7 @@ import { OrbitReferenceStyles } from "../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
 import { StateView } from "../../../../shared/ui/state-view";
 import { auth } from "../../../../auth";
+import { resolveAuthenticatedApiActorFromSession } from "../../../api/_shared/authenticated-actor";
 import { redirect } from "next/navigation";
 import {
   loadAppChatRouteViewModel,
@@ -107,10 +108,18 @@ export default async function AppAgentPage({
   searchParams?: Promise<AppAgentSearchParams>;
 } = {}) {
   const session = await auth();
-  const actorId = session?.user?.id;
-  if (!actorId) {
+  if (!session?.user?.id) {
     redirect("/app/account/login?next=%2Fapp%2Fagent");
   }
+  const actor = await resolveAuthenticatedApiActorFromSession({
+    email: session.user.email,
+    name: session.user.name,
+    userId: session.user.id,
+  });
+  if (!actor) {
+    throw new Error("Authenticated Orbit account membership is unavailable.");
+  }
+  const actorId = actor.id;
 
   const resolvedSearchParams = await searchParams;
   const requestedLanguage = languageSearchParam(resolvedSearchParams);

@@ -6,6 +6,7 @@
 import { getOrbitServerLanguage, localizeOrbitTree } from "../../orbit-language-server";
 import { presentOrbitEvents } from "../../orbit-event-presentation";
 import { auth } from "../../../../../auth";
+import { resolveAuthenticatedApiActorFromSession } from "../../../../api/_shared/authenticated-actor";
 import { redirect } from "next/navigation";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
@@ -20,6 +21,14 @@ export default async function AppPersonalHomeEventsPage() {
   if (!session?.user?.id) {
     redirect("/app/account/login?next=%2Fapp%2Fhome%2Fevents");
   }
+  const actor = await resolveAuthenticatedApiActorFromSession({
+    email: session.user.email,
+    name: session.user.name,
+    userId: session.user.id,
+  });
+  if (!actor) {
+    throw new Error("Authenticated Orbit account membership is unavailable.");
+  }
 
   const routeModel = await loadAppHomeRouteViewModel(undefined, {
     displayName:
@@ -27,7 +36,7 @@ export default async function AppPersonalHomeEventsPage() {
       session.user.email?.trim() ||
       "Orbit member",
     email: session.user.email,
-    id: session.user.id,
+    id: actor.id,
   });
   const language =
     routeModel.state === "success" ? await getOrbitServerLanguage() : null;

@@ -179,7 +179,11 @@ test("live request context rejects missing auth and keeps ledger actions actor-s
 
   async function contextFor(actorId: string) {
     return resolveAgentRequestContext("live", {
-      authenticate: async () => ({ user: { id: actorId } }),
+      authenticate: async () => ({ user: { id: `subject:${actorId}` } }),
+      resolveActorFromSession: async (session) => {
+        assert.equal(session.userId, `subject:${actorId}`);
+        return { id: actorId };
+      },
       runtimeForActor(_mode, resolvedActorId) {
         assert.equal(resolvedActorId, actorId);
         return createOrbitAgentRuntimeService("mock", { actorId });
@@ -225,14 +229,29 @@ test("server-rendered ledger pages resolve the authenticated actor without build
   let resolvedActorId = "";
   const ledger = await resolveAgentLedgerForServerPage("live", {
     authenticate: async () => ({ user: { id: "user:page-reader" } }),
+    resolveActorFromSession: async (session) => {
+      assert.equal(session.userId, "user:page-reader");
+      return { id: "account:page-reader" };
+    },
     ledgerForActor(actorId) {
       resolvedActorId = actorId;
       return createAgentLedgerService("mock");
     },
   });
-  assert.equal(resolvedActorId, "user:page-reader");
+  assert.equal(resolvedActorId, "account:page-reader");
   assert.ok(ledger);
   assert.equal((await ledger.listEntries()).success, true);
+});
+
+test("Agent API and ledger pages reject a signed-in subject without canonical membership", async () => {
+  const dependencies = {
+    authenticate: async () => ({ user: { id: "unbound:subject" } }),
+    resolveActorFromSession: async () => null,
+    runtimeForActor() { throw new Error("runtime must not run for an unbound identity"); },
+    ledgerForActor() { throw new Error("ledger must not run for an unbound identity"); },
+  };
+  assert.equal(await resolveAgentRequestContext("live", dependencies), null);
+  assert.equal(await resolveAgentLedgerForServerPage("live", dependencies), null);
 });
 
 test("Agent ledger and queue routes resolve server auth instead of request identity fields", () => {

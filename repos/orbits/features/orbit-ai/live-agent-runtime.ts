@@ -1169,6 +1169,7 @@ export async function artifactForRequest(input: {
             } : toolName.endsWith(".query") ? {
               queryToolName: toolName,
               query: validatedInput.query,
+              searchTerms: validatedInput.searchTerms,
               locale: validatedInput.locale,
               operation: validatedInput.operation,
               id: validatedInput.id,

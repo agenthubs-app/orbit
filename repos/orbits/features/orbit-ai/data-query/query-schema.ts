@@ -5,7 +5,7 @@ export interface ActorQueryToolInput extends ActorScopedQueryInput {
   locale?: "zh" | "en";
 }
 
-const commonFields = ["operation", "query", "locale", "id", "cursor", "limit"] as const;
+const commonFields = ["operation", "query", "searchTerms", "locale", "id", "cursor", "limit"] as const;
 const fieldsByTool: Record<ActorQueryToolName, readonly string[]> = {
   "notes.query": [...commonFields, "contactId", "eventId"],
   "tasks.query": [...commonFields, "status", "from", "to", "contactId", "eventId"],
@@ -30,6 +30,7 @@ export function createActorQueryInputSchema(toolName: ActorQueryToolName): Valid
   const properties: Record<string, unknown> = {
     operation: { type: "string", enum: ["list", "search", "get"] },
     query: { type: "string", minLength: 1, maxLength: 2_000 },
+    searchTerms: { type: "string", minLength: 1, maxLength: 500, description: "Required for search only: the title/text fragment to match, not the whole user instruction." },
     locale: { type: "string", enum: ["zh", "en"] },
     id: { type: "string", minLength: 1, maxLength: 512 },
     cursor: { type: "string", minLength: 1, maxLength: 2_048 },
@@ -57,6 +58,11 @@ export function createActorQueryInputSchema(toolName: ActorQueryToolName): Valid
       if (typeof value.query !== "string" || !value.query.trim() || value.query.length > 2_000) {
         return { success: false, error: "query must contain 1-2000 characters" };
       }
+      if (value.operation === "search"
+        ? !optionalText(value.searchTerms, 500) || value.searchTerms === undefined
+        : value.searchTerms !== undefined) {
+        return { success: false, error: "searchTerms is required only for search and must contain 1-500 characters" };
+      }
       if (value.locale !== undefined && value.locale !== "zh" && value.locale !== "en") return { success: false, error: "locale must be zh or en" };
       if (!optionalText(value.id, 512) || !optionalText(value.cursor, 2_048) || !optionalText(value.contactId, 512) || !optionalText(value.eventId, 512)) return { success: false, error: "identifier or cursor is invalid" };
       if (value.limit !== undefined && (!Number.isSafeInteger(value.limit) || Number(value.limit) < 1 || Number(value.limit) > 10)) return { success: false, error: "limit must be an integer from 1 to 10" };
@@ -68,6 +74,7 @@ export function createActorQueryInputSchema(toolName: ActorQueryToolName): Valid
         data: {
           operation: value.operation as ActorQueryToolInput["operation"],
           query: value.query.trim(),
+          ...(typeof value.searchTerms === "string" ? { searchTerms: value.searchTerms.trim() } : {}),
           ...(value.locale ? { locale: value.locale as "zh" | "en" } : {}),
           ...(value.id ? { id: String(value.id).trim() } : {}),
           ...(value.cursor ? { cursor: String(value.cursor).trim() } : {}),

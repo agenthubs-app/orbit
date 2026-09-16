@@ -19,10 +19,40 @@ test("query schemas deny model-supplied identity, unknown domain fields, and ove
   assert.equal(notes.parse({ operation: "list", query: "My notes", status: "open" }).success, false);
   assert.equal(notes.parse({ operation: "list", query: "My notes", limit: 11 }).success, false);
   assert.equal(notes.parse({ operation: "get", query: "Open note:a" }).success, false);
+  assert.equal(notes.parse({ operation: "search", query: "Find my Ada notes", searchTerms: "Ada" }).success, true);
+  assert.equal(notes.parse({ operation: "search", query: "Find my notes", searchTerms: " " }).success, false);
+  assert.equal(notes.parse({ operation: "search", query: "Find my notes" }).success, false);
   assert.equal(
     createActorQueryInputSchema("schedule.query").parse({ operation: "list", query: "My schedule", status: "open" }).success,
     false,
   );
+});
+
+test("live task search keeps the user's instruction separate from the search terms", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  for (const actorId of ["actor:a", "actor:b"]) {
+    await store.upsertRecord(taskLiveRecordFromPayload({ workspaceId: WORKSPACE, payload: {
+      version: 1, activities: [], task: {
+        id: `task:${actorId}`, accountId: actorId, ownerUserId: actorId,
+        title: "[并行验收] 云端待办持久化 2026-09-16", status: "open", category: "work",
+        priority: "normal", source: "manual", createdAt: NOW, updatedAt: NOW,
+      },
+    } }));
+  }
+  const service = createActorScopedQueryArtifactService({ actorId: "actor:a", store, workspaceId: WORKSPACE, now: () => NOW });
+  const message = "请只读查询标题包含“云端待办持久化”的待办，告诉我完成状态，不要修改数据。";
+  const artifact = await artifactForRequest({ artifactTaskService: service, message, request: {
+    toolName: "tasks.query", requiresUserConfirmation: true,
+    arguments: { operation: "search", searchTerms: "云端待办持久化" },
+  } });
+  assert.ok(artifact);
+  const items = artifact.result.generatedView?.sections[0]?.items;
+  assert.equal(items?.length, 1);
+  assert.equal(items?.[0]?.id, "task:actor:a");
+  assert.ok(items?.[0]?.metadata?.some(field => field.label === "status" && field.value === "open"));
+  assert.equal(artifact.task.query, message);
+  assert.equal(artifact.result.safety.domainWritesExecuted, false);
+  assert.doesNotMatch(JSON.stringify(artifact), /task:actor:b/);
 });
 
 test("notes.query lists bounded actor-owned summaries and gates detail by current-turn id", async () => {

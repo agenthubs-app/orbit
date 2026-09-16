@@ -18,6 +18,8 @@ export type ActorQueryDomain = "notes" | "tasks" | "followups" | "schedule";
 export interface ActorScopedQueryInput {
   operation: "list" | "search" | "get";
   query: string;
+  /** Search needle; query remains the original instruction for get authorization. */
+  searchTerms?: string;
   id?: string;
   cursor?: string;
   limit?: number;
@@ -141,7 +143,7 @@ async function queryNotes(input: {
       total: 1,
     });
   }
-  const search = input.query.operation === "search" ? input.query.query.trim().toLocaleLowerCase() : "";
+  const search = input.query.operation === "search" ? (input.query.searchTerms ?? input.query.query).trim().toLocaleLowerCase() : "";
   const matched = notes.filter((note) =>
     (!input.query.contactId || note.contactIds.includes(input.query.contactId)) &&
     (!input.query.eventId || note.eventIds.includes(input.query.eventId)) &&
@@ -244,7 +246,7 @@ async function queryTasks(input: {
     const found = tasks.find(({ task }) => task.id === id);
     return result({ domain: "tasks", operation: "get", items: found ? [taskView(found.task, found.evidenceIds)] : [], total: found ? 1 : 0 });
   }
-  const search = input.query.operation === "search" ? input.query.query.trim().toLocaleLowerCase() : "";
+  const search = input.query.operation === "search" ? (input.query.searchTerms ?? input.query.query).trim().toLocaleLowerCase() : "";
   const matched = tasks.filter(({ task }) =>
     (!input.query.status || task.status === input.query.status) &&
     (!input.query.contactId || task.relatedContactId === input.query.contactId) &&
@@ -323,7 +325,7 @@ async function queryFollowups(input: {
     const found = candidates.find((candidate) => candidate.id === id);
     return result({ domain: "followups", operation: "get", items: found ? [found] : [], total: found ? 1 : 0 });
   }
-  const search = input.query.operation === "search" ? input.query.query.trim().toLocaleLowerCase() : "";
+  const search = input.query.operation === "search" ? (input.query.searchTerms ?? input.query.query).trim().toLocaleLowerCase() : "";
   const matched = candidates.filter((candidate) =>
     (!input.query.status || candidate.status === input.query.status) &&
     (!input.query.contactId || candidate.contactId === input.query.contactId) &&
@@ -392,7 +394,7 @@ async function querySchedule(input: {
     const found = items.find((item) => item.id === id);
     return result({ domain: "schedule", operation: "get", items: found ? [scheduleView(found)] : [], total: found ? 1 : 0 });
   }
-  const search = input.query.operation === "search" ? input.query.query.trim().toLocaleLowerCase() : "";
+  const search = input.query.operation === "search" ? (input.query.searchTerms ?? input.query.query).trim().toLocaleLowerCase() : "";
   const matched = items.filter((item) =>
     (!input.query.contactId || item.contactId === input.query.contactId) &&
     (!input.query.eventId || item.eventId === input.query.eventId) &&

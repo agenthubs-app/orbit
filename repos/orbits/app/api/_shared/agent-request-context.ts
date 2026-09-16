@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "../../../auth";
+import { resolveAuthenticatedApiActorFromSession } from "./authenticated-actor";
 import { createLedgerAgentActionQueueAdapter } from "../../../features/agent/ledger/queue-adapter";
 import { createLiveAgentLedgerService } from "../../../features/agent/ledger/live-service";
 import type { AgentLedgerService } from "../../../features/agent/ledger/service";
@@ -23,7 +24,8 @@ export interface AgentRequestContext {
 }
 
 export interface AgentRequestContextDependencies {
-  authenticate?: () => Promise<{ user?: { id?: string | null } } | null>;
+  authenticate?: () => Promise<{ user?: { id?: string | null; email?: string | null; name?: string | null } } | null>;
+  resolveActorFromSession?: typeof resolveAuthenticatedApiActorFromSession;
   runtimeForActor?: (
     mode: ModuleMode,
     actorId: string | null,
@@ -31,8 +33,8 @@ export interface AgentRequestContextDependencies {
 }
 
 /**
- * Resolves identity only on the server. Live mode requires Auth.js to provide
- * the actor; request bodies, query parameters, and client headers are never
+ * Resolves identity only on the server. Live mode maps the Auth.js subject to
+ * persisted canonical account membership; request bodies, query parameters, and client headers are never
  * considered identity sources. Mock/hybrid retain the shared deterministic
  * runtime used by existing local fixtures.
  */
@@ -43,7 +45,16 @@ export async function resolveAgentRequestContext(
   const mode = resolveModuleMode(requestedMode);
   const authenticate = dependencies.authenticate ?? auth;
   const session = mode === "live" ? await authenticate() : null;
-  const actorId = session?.user?.id?.trim() || null;
+  const userId = session?.user?.id?.trim();
+  if (mode === "live" && !userId) return null;
+  const actor = userId
+    ? await (dependencies.resolveActorFromSession ?? resolveAuthenticatedApiActorFromSession)({
+        userId,
+        email: session?.user?.email,
+        name: session?.user?.name,
+      })
+    : null;
+  const actorId = actor?.id ?? null;
   if (mode === "live" && !actorId) return null;
 
   const runtimeForActor =
@@ -82,6 +93,7 @@ export function createAgentLedgerForRequest(
 
 export interface AgentLedgerServerPageDependencies {
   authenticate?: AgentRequestContextDependencies["authenticate"];
+  resolveActorFromSession?: AgentRequestContextDependencies["resolveActorFromSession"];
   ledgerForActor?: (actorId: string) => AgentLedgerService;
 }
 
@@ -100,11 +112,17 @@ export async function resolveAgentLedgerForServerPage(
 
   const authenticate = dependencies.authenticate ?? auth;
   const session = await authenticate();
-  const actorId = session?.user?.id?.trim() || null;
-  if (!actorId) return null;
+  const userId = session?.user?.id?.trim();
+  if (!userId) return null;
+  const actor = await (dependencies.resolveActorFromSession ?? resolveAuthenticatedApiActorFromSession)({
+    userId,
+    email: session?.user?.email,
+    name: session?.user?.name,
+  });
+  if (!actor) return null;
 
   return (dependencies.ledgerForActor ?? ((id) =>
-    createLiveAgentLedgerService({ actorId: id })))(actorId);
+    createLiveAgentLedgerService({ actorId: id })))(actor.id);
 }
 
 export function createAgentActionQueueForRequest(
