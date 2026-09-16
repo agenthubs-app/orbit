@@ -1861,4 +1861,9 @@ export const zh = {
   "personal53.notes": "关联笔记",
   "personal53.unavailable": "关联对象不可用，请移除或重试",
   "personal53.unsaved": "有未保存的修改，确认放弃？",
+  "personal59.selectedCount": "已选 {count}/50",
+  "personal59.associationLimit": "最多关联 50 项，先移除一项再添加",
+  "personal59.partialSearch": "还有未检查的记录，请加载更多",
+  "personal59.repeat": "重复",
+  "personal59.unsupportedOption": "暂不支持",
 } as const satisfies MessageDictionary;

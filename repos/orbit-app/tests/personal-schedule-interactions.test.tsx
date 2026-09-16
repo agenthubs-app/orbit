@@ -21,7 +21,7 @@ const state = window.fixture = {
   requests: [], pending: [], presses: {}, inputs: {}, expiries: 0, notifications: 0, permissionCalls: 0, holdReads: false, openedUrls: [],
   ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
-  data(path, query) { if (path.startsWith("/api/contacts")) return path.endsWith("/search") ? { contacts: state.contact ? [state.contact] : [] } : { contact: state.contact }; if (path.startsWith("/api/notes")) return path === "/api/notes" ? { notes: state.note ? [state.note] : [], total: state.note ? 1 : 0 } : { note: state.note }; return state.list ? { scheduleItems: query === "?scope=personal" ? state.listItems ?? [state.item] : [{ id: "legacy:personal", sourceId: "legacy:personal", kind: "personal", category: "personal", title: "Legacy", startsAt: state.item.startsAt, state: "upcoming" }] } : { scheduleItem: state.item }; },
+  data(path, query) { if (path.startsWith("/api/schedule-items/association-options/")) { const kind = path.endsWith("/notes") ? "note" : "contact"; const item = kind === "note" ? state.note : state.contact; return { actorId: state.actor, kind, options: item ? [{ id: item.id, title: kind === "note" ? item.title : item.displayName }] : [], sourceVersion: "v1", partial: false }; } if (path.startsWith("/api/contacts")) return path.endsWith("/search") ? { contacts: state.contact ? [state.contact] : [] } : { contact: state.contact }; if (path.startsWith("/api/notes")) return path === "/api/notes" ? { notes: state.note ? [state.note] : [], total: state.note ? 1 : 0 } : { note: state.note }; return state.list ? { scheduleItems: query === "?scope=personal" ? state.listItems ?? [state.item] : [{ id: "legacy:personal", sourceId: "legacy:personal", kind: "personal", category: "personal", title: "Legacy", startsAt: state.item.startsAt, state: "upcoming" }] } : { scheduleItem: state.item }; },
   reply(index, status = 200, data) {
     const payload = data === undefined && status !== 200 ? { success: false, error: { code: status === 401 ? "UNAUTHORIZED" : status === 409 ? "CONFLICT" : "SERVICE_UNAVAILABLE", message: "Request not accepted" } } : { success: true, data: data === undefined ? state.data(state.requests[index].path, state.requests[index].query) : data };
     state.pending[index]?.(new Response(JSON.stringify(payload), { status, headers: { "content-type": "application/json" } }));
@@ -135,6 +135,220 @@ async function fill(p: Page, label: string, value: string) { await p.getByRole("
 async function press(p: Page, name: string) { await p.getByRole("button", { name, exact: true }).click(); await settle(p); }
 async function writes(p: Page) { return p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method !== "GET" && r.path.startsWith("/api/schedule-items")).map((r: any) => ({ method: r.method, path: r.path, body: r.body }))); }
 
+for (const [entry, searchLabel] of [["关联笔记", "搜索笔记"], ["关联人脉", "搜索相关人脉"]] as const) {
+  test(`association entry ${entry} opens a bottom dialog before searching`, async t => {
+    const p = await open(t);
+    await press(p, entry);
+    await p.getByRole("textbox", { name: searchLabel, exact: true }).waitFor();
+    assert.equal(await p.getByRole("dialog").count(), 1);
+    assert.deepEqual(await writes(p), []);
+  });
+  test(`association empty query ${entry} loads existing choices without a write`, async t => {
+    const p = await open(t);
+    await press(p, entry);
+    await p.getByRole("textbox", { name: searchLabel, exact: true }).waitFor();
+    await p.waitForTimeout(350);
+    const requests = await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path.startsWith("/api/schedule-items/association-options/")).map((r: any) => [r.method, r.path, r.query]));
+    assert.deepEqual(requests, [["GET", `/api/schedule-items/association-options/${entry === "关联笔记" ? "notes" : "contacts"}`, "?q=&limit=20"]]);
+    assert.deepEqual(await writes(p), []);
+  });
+}
+
+test("editor duration shortcuts expose the selected duration after changing the time", async t => {
+  const p = await open(t);
+  await press(p, "30分钟");
+  assert.equal(await p.getByRole("button", { name: "30分钟", exact: true }).getAttribute("aria-selected"), "true");
+  assert.notEqual(await p.getByRole("button", { name: "1小时", exact: true }).getAttribute("aria-selected"), "true");
+  assert.deepEqual(await writes(p), []);
+});
+
+test("editor reference date is localized without changing its saved date or time", async t => {
+  const item = { ...initialItem, title: "产品体验演练", startsAt: "2026-09-16T09:00:00Z", endsAt: "2026-09-16T09:30:00Z", timeZone: "Asia/Tokyo", meetingMethod: "video", contactIds: ["contact:reference"] };
+  const p = await open(t, { item, contact: { id: "contact:reference", displayName: "林悦" } });
+  assert.equal(await p.getByText("9月16日周三", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("18:00", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("18:30", { exact: true }).count(), 1);
+  const target = await p.getByRole("button", { name: "30分钟", exact: true }).boundingBox();
+  assert.ok(target && target.height >= 44);
+  assert.deepEqual(await writes(p), []);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.item), item);
+  await p.getByRole("button", { name: "林悦", exact: true }).waitFor();
+  const remark = await p.getByLabel("备注", { exact: true }).boundingBox();
+  const save = await p.getByRole("button", { name: "保存日程", exact: true }).boundingBox();
+  assert.ok(remark && save && remark.y + remark.height <= save.y - 12, `reference rows remain above the save panel: ${JSON.stringify({ remark, save })}`);
+  await p.screenshot({ path: "/Users/xzhao/Projects/orbit/.worktrees/sprint-0059-personal-editor-sheets/build/harness-state/evidence/sprint-0059/run-01/app-editor-reference.png" });
+});
+
+test("association checkbox exposes selected state, supports deselection and cancels without writes", async t => {
+  const p = await open(t, { contact: { id: "contact:owned", displayName: "林悦" } });
+  await press(p, "关联人脉");
+  const choice = p.getByRole("checkbox", { name: "林悦", exact: true });
+  await choice.click(); await settle(p);
+  assert.equal(await choice.getAttribute("aria-checked"), "true");
+  await choice.click(); await settle(p);
+  assert.equal(await choice.getAttribute("aria-checked"), "false");
+  await p.getByRole("dialog", { name: "关联人脉", exact: true }).getByRole("button", { name: "关闭", exact: true }).click(); await settle(p);
+  await press(p, "取消");
+  assert.deepEqual(await writes(p), []);
+});
+
+test("association close aborts pending search and ignores its late response", async t => {
+  const p = await open(t);
+  await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
+  await press(p, "关联笔记"); await p.waitForTimeout(50);
+  const index = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => r.path === "/api/schedule-items/association-options/notes"));
+  assert.ok(index >= 0);
+  await p.getByRole("dialog", { name: "关联笔记", exact: true }).getByRole("button", { name: "关闭", exact: true }).click(); await settle(p);
+  assert.equal(await p.evaluate(i => (window as any).fixture.requests[i].signal.aborted, index), true);
+  await p.evaluate(i => (window as any).fixture.reply(i, 200, { actorId: "actor-1", kind: "note", options: [{ id: "late", title: "Late private title" }], sourceVersion: "v1", partial: false }), index);
+  await settle(p);
+  assert.equal(await p.getByText("Late private title", { exact: true }).count(), 0);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("association actor change closes the sheet and rejects the old scope response", async t => {
+  const p = await open(t);
+  await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
+  await press(p, "关联人脉"); await p.waitForTimeout(50);
+  const index = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => r.path === "/api/schedule-items/association-options/contacts"));
+  assert.ok(index >= 0);
+  await p.evaluate(() => (window as any).fixture.update({ actor: "actor-2" })); await settle(p);
+  assert.equal(await p.getByRole("dialog", { name: "关联人脉", exact: true }).count(), 0);
+  assert.equal(await p.evaluate(i => (window as any).fixture.requests[i].signal.aborted, index), true);
+  await p.evaluate(i => (window as any).fixture.reply(i, 200, { actorId: "actor-1", kind: "contact", options: [{ id: "old", title: "Old actor title" }], sourceVersion: "v1", partial: false }), index);
+  await settle(p);
+  assert.equal(await p.getByText("Old actor title", { exact: true }).count(), 0);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("association partial empty page continues, appends choices and preserves selected IDs", async t => {
+  const p = await open(t);
+  await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
+  await press(p, "关联笔记"); await p.waitForTimeout(50);
+  await p.evaluate(() => { const s = (window as any).fixture; const i = s.requests.findLastIndex((r: any) => r.path === "/api/schedule-items/association-options/notes"); s.reply(i, 200, { actorId: "actor-1", kind: "note", options: [], sourceVersion: "v1", partial: true, nextCursor: "scan-200" }); });
+  await p.getByRole("button", { name: "加载更多笔记", exact: true }).waitFor();
+  assert.equal(await p.getByText("还有未检查的记录，请加载更多", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("还没有笔记", { exact: true }).count(), 0);
+  await press(p, "加载更多笔记");
+  await p.evaluate(() => { const s = (window as any).fixture; const i = s.requests.length - 1; s.reply(i, 200, { actorId: "actor-1", kind: "note", options: [{ id: "note:one", title: "First choice" }], sourceVersion: "v1", partial: false, nextCursor: "page-2" }); });
+  await p.getByRole("checkbox", { name: "First choice", exact: true }).click(); await settle(p);
+  await press(p, "加载更多笔记");
+  await p.evaluate(() => { const s = (window as any).fixture; const i = s.requests.length - 1; s.reply(i, 200, { actorId: "actor-1", kind: "note", options: [{ id: "note:two", title: "Second choice" }], sourceVersion: "v1", partial: false }); });
+  await p.getByRole("checkbox", { name: "Second choice", exact: true }).click(); await settle(p);
+  assert.equal(await p.getByRole("checkbox", { name: "First choice", exact: true }).getAttribute("aria-checked"), "true");
+  assert.equal(await p.getByRole("checkbox", { name: "Second choice", exact: true }).getAttribute("aria-checked"), "true");
+  const cursors = await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path === "/api/schedule-items/association-options/notes").map((r: any) => new URLSearchParams(r.query).get("cursor")));
+  assert.deepEqual(cursors, [null, "scan-200", "page-2"]);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("association read failure offers retry and refuses foreign summary scope", async t => {
+  const p = await open(t);
+  await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
+  await press(p, "关联人脉"); await p.waitForTimeout(50);
+  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.length - 1, 503); });
+  await p.getByRole("button", { name: "重试", exact: true }).waitFor();
+  await press(p, "重试"); await p.waitForTimeout(50);
+  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.length - 1, 200, { actorId: "foreign", kind: "contact", options: [{ id: "foreign", title: "Foreign title" }], sourceVersion: "v1", partial: false }); });
+  await p.getByRole("button", { name: "重试", exact: true }).waitFor();
+  assert.equal(await p.getByText("Foreign title", { exact: true }).count(), 0);
+  await press(p, "重试"); await p.waitForTimeout(50);
+  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.length - 1, 200, { actorId: "actor-1", kind: "contact", options: [{ id: "good", title: "Recovered choice" }], sourceVersion: "v1", partial: false }); });
+  await p.getByRole("checkbox", { name: "Recovered choice", exact: true }).waitFor();
+  assert.deepEqual(await writes(p), []);
+});
+
+test("association limit explains fifty selections and still permits removal", async t => {
+  const ids = Array.from({ length: 50 }, (_, i) => `contact:${i}`);
+  const p = await open(t, { item: { ...initialItem, contactIds: ids } });
+  await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
+  await press(p, "关联人脉"); await p.waitForTimeout(50);
+  await p.evaluate(() => { const s = (window as any).fixture; const i = s.requests.findLastIndex((r: any) => r.path === "/api/schedule-items/association-options/contacts"); s.reply(i, 200, { actorId: "actor-1", kind: "contact", options: [{ id: "contact:0", title: "Selected choice" }, { id: "contact:new", title: "New choice" }], sourceVersion: "v1", partial: false }); });
+  await p.getByRole("checkbox", { name: "New choice", exact: true }).waitFor();
+  assert.equal(await p.getByText("已选 50/50", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("最多关联 50 项，先移除一项再添加", { exact: true }).count(), 1);
+  assert.equal(await p.getByRole("checkbox", { name: "New choice", exact: true }).isDisabled(), true);
+  await p.getByRole("checkbox", { name: "Selected choice", exact: true }).click(); await settle(p);
+  assert.equal(await p.getByText("已选 49/50", { exact: true }).count(), 1);
+  assert.equal(await p.getByRole("checkbox", { name: "New choice", exact: true }).isDisabled(), false);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("selected contact chip uses the verified identity avatar and removes it after revocation", async t => {
+  const p = await open(t, { item: { ...initialItem, contactIds: ["contact:owned"] }, contact: { id: "contact:owned", displayName: "林悦", imageUrl: "/assets/owned-avatar.png" } });
+  await p.getByRole("button", { name: "林悦", exact: true }).waitFor();
+  assert.equal(await p.getByRole("img", { name: "林悦 的头像", exact: true }).count(), 1);
+  assert.equal(await p.getByRole("button", { name: "添加相关人脉", exact: true }).count(), 1);
+  await p.evaluate(() => (window as any).fixture.update({ contact: null, language: "en" }));
+  await p.getByText("Association unavailable. Remove it or retry.", { exact: true }).waitFor();
+  assert.equal(await p.getByRole("img", { name: "林悦 的头像", exact: true }).count(), 0);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("editor settings are compact truthful rows without fake reminder, repeat or remark actions", async t => {
+  const p = await open(t);
+  for (const label of ["提醒", "重复", "备注"]) {
+    const row = p.getByLabel(label, { exact: true });
+    assert.equal(await row.count(), 1, label);
+    assert.equal(await row.getByText("暂不支持", { exact: true }).count(), 1, label);
+    assert.equal(await row.getByRole("button").count(), 0, label);
+  }
+  assert.equal(await p.getByText("提醒和重复暂不支持", { exact: true }).count(), 1);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("association sheet closes through platform back and a real downward pointer gesture", async t => {
+  const p = await open(t);
+  await press(p, "关联笔记");
+  await p.getByRole("dialog", { name: "关联笔记", exact: true }).waitFor();
+  await p.waitForTimeout(350);
+  await p.keyboard.press("Escape"); await p.waitForTimeout(350);
+  assert.equal(await p.getByRole("dialog", { name: "关联笔记", exact: true }).count(), 0);
+  await press(p, "关联人脉");
+  await p.waitForTimeout(350);
+  const handle = await p.getByRole("dialog", { name: "关联人脉", exact: true }).locator(":scope > div").first().boundingBox();
+  assert.ok(handle);
+  await p.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
+  await p.mouse.down();
+  await p.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2 + 100, { steps: 10 });
+  await p.mouse.up(); await p.waitForTimeout(350);
+  assert.equal(await p.getByRole("dialog", { name: "关联人脉", exact: true }).count(), 0);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("localized sheet remains reachable with enlarged text and a reduced visible viewport", async t => {
+  for (const [language, entry, title, search] of [
+    ["zh", "关联人脉", "日程标题", "搜索相关人脉"],
+    ["ja", "関連する連絡先", "予定名", "関連する人を検索"],
+    ["en", "Related contacts", "Schedule title", "Search related people"],
+  ] as const) {
+    const p = await open(t, { language, fontScale: 1.8 });
+    assert.equal(await p.getByRole("textbox", { name: title, exact: true }).inputValue(), "Original title");
+    await p.setViewportSize({ width: 390, height: 520 }); await settle(p);
+    await press(p, entry);
+    await p.getByRole("textbox", { name: search, exact: true }).waitFor();
+    await p.waitForTimeout(350);
+    const input = await p.getByRole("textbox", { name: search, exact: true }).boundingBox();
+    assert.ok(input && input.x >= 0 && input.x + input.width <= 390 && input.y >= 0 && input.y + input.height <= 520, `${language}: ${JSON.stringify(input)}`);
+    assert.deepEqual(await writes(p), []);
+  }
+});
+
+test("association query replacement aborts old work and does not display its late summaries", async t => {
+  const p = await open(t);
+  await p.evaluate(() => (window as any).fixture.update({ holdReads: true }));
+  await press(p, "关联人脉"); await p.waitForTimeout(350);
+  const first = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => r.path === "/api/schedule-items/association-options/contacts"));
+  await fill(p, "搜索相关人脉", "LY"); await p.waitForTimeout(300);
+  const next = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => r.path === "/api/schedule-items/association-options/contacts"));
+  assert.ok(next > first);
+  assert.equal(await p.evaluate(i => (window as any).fixture.requests[i].signal.aborted, first), true);
+  await p.evaluate(({ first, next }) => { const s = (window as any).fixture; s.reply(next, 200, { actorId: "actor-1", kind: "contact", options: [{ id: "new", title: "林悦" }], sourceVersion: "v1", partial: false }); s.reply(first, 200, { actorId: "actor-1", kind: "contact", options: [{ id: "old", title: "Old query title" }], sourceVersion: "v1", partial: false }); }, { first, next });
+  await p.getByRole("checkbox", { name: "林悦", exact: true }).waitFor();
+  assert.equal(await p.getByText("Old query title", { exact: true }).count(), 0);
+  assert.deepEqual(await writes(p), []);
+});
+
 for (const [language, minutes, endsAt, label] of [
   ["zh", 30, "2026-09-17T01:00:00Z", "30 分钟"], ["zh", 60, "2026-09-17T01:30:00Z", "60 分钟"], ["zh", 120, "2026-09-17T02:30:00Z", "120 分钟"],
   ["ja", 30, "2026-09-17T01:00:00Z", "30分"], ["ja", 60, "2026-09-17T01:30:00Z", "60分"], ["ja", 120, "2026-09-17T02:30:00Z", "120分"],
@@ -232,7 +446,7 @@ test("merged time block shortcuts and both saves share one in-flight mutation", 
   await p.getByRole("button", { name: "调整日期和时间", exact: true }).click(); await settle(p);
   const saveBox = await p.getByRole("button", { name: "保存日程", exact: true }).boundingBox();
   assert.ok(saveBox && saveBox.y >= 0 && saveBox.y + saveBox.height <= 844, "bottom save remains visible at the reference viewport");
-  await p.screenshot({ path: "../../build/harness-state/evidence/sprint-0054/run-01/app-editor.png", fullPage: true });
+  await p.screenshot({ path: "/Users/xzhao/Projects/orbit/.worktrees/sprint-0059-personal-editor-sheets/build/harness-state/evidence/sprint-0059/run-01/app-editor-shortcuts.png", fullPage: true });
   await press(p, "保存日程");
   assert.equal(await p.getByRole("button", { name: "保存", exact: true }).isDisabled(), true);
   assert.equal((await writes(p)).length, 1);
@@ -243,7 +457,7 @@ test("personal destination reads a standalone detail with edit and reschedule bu
   const p = await open(t, { detail: true });
   assert.equal(await p.getByRole("textbox").count(), 0);
   await p.getByText("个人日程 · 仅自己可见", { exact: true }).waitFor();
-  await p.screenshot({ path: "../../build/harness-state/evidence/sprint-0054/run-01/app-detail.png", fullPage: true });
+  await p.screenshot({ path: "/Users/xzhao/Projects/orbit/.worktrees/sprint-0059-personal-editor-sheets/build/harness-state/evidence/sprint-0059/run-01/app-detail.png", fullPage: true });
   assert.equal((await writes(p)).length, 0);
   await press(p, "编辑");
   assert.equal(await p.evaluate(() => (window as any).fixture.navigation), "/schedule/personal/personal%3Aedit/edit");
@@ -270,6 +484,7 @@ test("private note selection saves exact IDs and details refuse revoked note con
   await press(p, "关联笔记");
   await p.getByRole("textbox", { name: "搜索笔记", exact: true }).fill("Saved");
   await p.getByRole("checkbox", { name: "Saved note", exact: true }).click(); await settle(p);
+  await p.getByRole("dialog", { name: "关联笔记", exact: true }).getByRole("button", { name: "关闭", exact: true }).click(); await settle(p);
   await press(p, "保存日程");
   assert.deepEqual((await writes(p))[0].body.patch.noteIds, ["note:owned"]);
   await reply(p);
@@ -283,8 +498,10 @@ test("personal contact selection uses bounded formal search and refuses unavaila
   const p = await open(t, { contact });
   await press(p, "关联人脉"); await p.getByRole("textbox", { name: "搜索相关人脉", exact: true }).fill("Owned");
   await p.getByRole("checkbox", { name: "Owned contact", exact: true }).click(); await settle(p);
-  const search = await p.evaluate(() => (window as any).fixture.requests.find((r: any) => r.path === "/api/contacts/search"));
-  assert.deepEqual(search.body, { query: "Owned", limit: 20 });
+  const search = await p.evaluate(() => (window as any).fixture.requests.find((r: any) => r.path === "/api/schedule-items/association-options/contacts" && new URLSearchParams(r.query).get("q") === "Owned"));
+  assert.equal(search.method, "GET");
+  assert.equal(search.query, "?q=Owned&limit=20");
+  await p.getByRole("dialog", { name: "关联人脉", exact: true }).getByRole("button", { name: "关闭", exact: true }).click(); await settle(p);
   await press(p, "保存日程"); assert.deepEqual((await writes(p))[0].body.patch.contactIds, ["contact:owned"]); await reply(p);
   await p.evaluate(() => (window as any).fixture.update({ detail: true, contact: null }));
   await p.getByText("关联对象不可用，请移除或重试", { exact: true }).waitFor();

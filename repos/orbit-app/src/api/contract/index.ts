@@ -46,6 +46,12 @@ export type {
 export type { PasswordResetResponse } from "./password-reset";
 
 export type {
+  PersonalScheduleAssociationKind,
+  PersonalScheduleAssociationOption,
+  PersonalScheduleAssociationOptionsPage
+} from "./personal-schedule-associations";
+
+export type {
   FollowupAuditContract,
   FollowupPriorityCode,
   FollowupSourceReferenceContract,

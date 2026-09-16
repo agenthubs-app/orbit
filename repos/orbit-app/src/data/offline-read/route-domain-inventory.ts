@@ -15,6 +15,8 @@ function domainFor(path: string): string {
   if (path.startsWith('/api/reminders')) return 'followups';
   if (path.includes('/meeting-details')) return 'meetings';
   if (path.startsWith('/api/appointments')) return 'appointments';
+  if (path === '/api/schedule-items/association-options/notes') return 'notes';
+  if (path === '/api/schedule-items/association-options/contacts') return 'contacts';
   if (path.startsWith('/api/schedule-items')) return 'personal-schedule';
   if (path.startsWith('/api/contact-drafts')) return 'acquisition';
   if (path.startsWith('/api/contacts/needs-matches')) return 'contact-needs';
@@ -326,6 +328,10 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/schedule/MeetingDetailScreen.tsx","PATCH","/api/schedule-items/:id/meeting-details"],
   ["src/screens/schedule/PersonalScheduleList.tsx","GET","/api/schedule-items"],
   ["src/screens/schedule/PersonalScheduleList.tsx","GET","/api/schedule-items/:id"],
+  ["src/screens/schedule/PersonalScheduleAssociations.tsx","GET","/api/contacts/:id"],
+  ["src/screens/schedule/PersonalScheduleAssociations.tsx","GET","/api/notes/:id"],
+  ["src/screens/schedule/PersonalScheduleAssociations.tsx","GET","/api/schedule-items/association-options/notes"],
+  ["src/screens/schedule/PersonalScheduleAssociations.tsx","GET","/api/schedule-items/association-options/contacts"],
   ["src/screens/schedule/PersonalScheduleScreen.tsx","GET","/api/schedule-items"],
   ["src/screens/schedule/PersonalScheduleScreen.tsx","GET","/api/schedule-items/:id"],
   ["src/screens/schedule/PersonalScheduleScreen.tsx","DELETE","/api/schedule-items"],
