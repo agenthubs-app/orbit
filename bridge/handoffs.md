@@ -1,5 +1,11 @@
 # 同步队列
 
+## PW-0010 — 共享聊天实际候选增量（本轮已验证）
+
+- Phone唯一功能58→MAIN224；公开双引擎与主线原生同旧会话8实际候选/原消息/详情返回/真实历史重开/刷新通过，source/messages/budget完整摘要不变。
+- 原run结束文档固定`da3dd71dc403eabf6dfccc8ba0374ccfca08583b`，MAIN只原样消费[REPORT](../docs/phoneweb/sprints/0010-contact-artifact/REPORT.md)；不合并Phone整条祖先或其独立README/bridge旧基线。
+- ROOT已实际恢复精确原127.0.0.1:3000与小雨MAIN Appscope，设备独占归ROOT。该范围verified；整体Phone其他能力、后端全量失败/跳过、原生loaded-JS精确哈希/独立HTTP归因及离线读取仍分别记录。
+
 2026-09-10 保存与集成更新见 [集成交接](2026-09-10-chat-agent-integration.md)。BR-004/005/008 的源码与验证进度已有变化，但未完成的跨端运行时和原生验收仍未关闭；以下初始盘点保留追溯。
 
 初始盘点：2026-09-07。下方责任方是建议接手角色，不表示已联系开发者、已领取或已批准实现。当前任务只建立基线与管理目录；业务修复尚未启动。

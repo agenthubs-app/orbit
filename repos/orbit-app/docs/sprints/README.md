@@ -454,6 +454,7 @@ build/harness-logs/
 - A 线持有域 ID、route inventory 与 universal-read contract 的定义权；B/C/D 只能消费已固定接口，不得并行重定义。认证、数据库、manifest/cursor 等后续高风险 Task 尚未放行。
 - 2026-09-16继续授权：复用原run、Task1固定`edba0ebfeb635f684fe193cd88f4f4e428211ec6`与干净工作树，先释放Task2A两个新增文件`src/api/offline-read-session.ts`、`tests/offline-read-session.test.ts`（均在App）：纯租期解码、时间/域scope断言与online-only写入能力的TDD切片，消费既有strict wire契约，不改identity/provider/transport、契约/清单、SQLCipher、Web或DB。全域读资格不受0034首批四域写集限制；无可读存储不伪造localRead成功。Task2B真实server-grants和2C共享认证/transport锁仍等待具体依赖与放行；中间能力提交不标Task2或Sprint完成，不加Generator/Reviewer。当前主线本地初始化告警单列；Task5锁顺序冲突在migration放行前必须统一。
 - Task2A固定`9994150c041e4cea91aef4bfe8dd37795b982f08`已合入`bbe0060007d1c4b1245ad0db06af944aa46d2aee`并push/独立ls-remote一致；ROOT完整8/8零跳过/typecheck exit0。仅新pure模块和测试，无生产消费者，不能把pure local-read返回值当存储ready/真实签发grant；2B服务器全域grant枚举与持久authorizationEpoch来源仍缺，2C认证/transport仍未放行。
+- Task3/18独立native-preflight工具准备已放行同一A原run：仅既定`repos/orbit-app/scripts/verify-offline-read-native.ts`及必要新增`tests/sqlcipher-native-config.test.ts`，TDD验证config-plugin→Pod properties/实际编译标志漂移；static通过不当真实cipher/coldstartPASS，缺原生结果明确未验证/非零。当前配置意图true但生成properties缺key/实际编译无codec，根因历史未定；不prebuild/pod/改node_modules/清钥清库。Task5锁序[中文修订待审](../../../../docs/superpowers/specs/2026-09-16-sync-lock-order-amendment.zh-CN.md)，未批准前不改既定规范或迁移。
 
 ### 0034 / run-01（风险分级离线写入升级）
 
@@ -526,6 +527,7 @@ build/harness-logs/
 - 冻结Planner SHA256 `82f1e09a68e4379c2e2b9c8bf71e401c7aa0cd0030f6f7dc605701771714d6f2`，保留五SC及旧notes原子能力`03bfe4aa5793e4107658cb856d76be641c479340`为只读参考，不能盲合共享store/DB依赖。基线三个App完整notes interaction/list/view-model文件13/13零跳过 exit0，复用现有node_modules symlink不安装。
 - 首切片仅独占App `src/screens/notes/NoteDetailScreen.tsx`、`src/view-models/notes.ts`与上述完整直接测试、必要中/日/英四字典；必要新增局部delete helper/test先按原SC01/02登记。实现确认/取消、防重复、失败保正文、版本冲突、精确actor/note/version/scope晚ACK保护；消费真实DELETE形状，不虚构成功回执或离线删除资格。不改Web/server/SQLCipher、共享生成契约、auth/client/hooks、AI/事件/通知/全局台账，不运行设备、服务、DB写或provider。
 - 当前MAIN notes主DELETE未接，真正PG sync-write-lock迁移/事务和全域mirror/AI实际删除传播仍缺；UI定向测试不冒SC04/05。独立切片可路径限定commit交接，但在API/迁移验收前不发布未有后端能力的成功声明；原run按checkpoint保留待依赖，不提前成功REPORT。Phone原A独占DA/Phone账号原生只读，D仅独立源码/测试，不改ROOT当前Metro源或抢设备。
+- App切片已冻结`446dbd5b791588dd3d137b0379be6f17a9ff7646`（8App路径）；ROOT机械核对并独立完成实际6完整受影响文件33/33零跳过及typecheck exit0。首ROOT命令误给不存在的contact `.tsx`导致只执行5文件29/29，已单独补真实`.test.ts`4/4，不以exit0掩盖漏文件。暂未合入MAIN；SC03/04/05与正确后端原子事务/migration依赖仍未齐，原run保持checkpoint待精确放行。
 
 ### 0046 / run-01
 
@@ -535,11 +537,12 @@ build/harness-logs/
 - 主机18:46重启后ROOT已恢复mainWeb同426产物PID7578/live200及Metro8082PID7582/running；Phone服务暂未恢复，待A固定PW0010统一编译。E不控制共享服务/设备/浏览器/账号或DB写入，不安装新框架、不provider出站、不重置账本。最终SC04矩阵等待0042～45和0033～36必需接口，缺项只阻对应动作；本地准备不冒充最终原生/离线验收。
 - 必要新增测试路径`repos/orbit-app/tests/simulator-runtime-identity.test.mjs`、`repos/orbits/tests/services/simulator-acceptance-fixtures.test.ts`及工具说明`repos/orbit-app/docs/verification/simulator-acceptance-preparation.md`已按SC01/02登记。真实设备无booted/缺loaded-JS与actor实际receipt必须BLOCKED；fixture testadapter验证不能冒真实样本apply成功。
 - 五文件工具切片固定`cb62638da83c82e34145f502814e19ed227e60e7`，已合入`f2a25a55c4f1e11f773ac6f29eb4099ad59ce547`；ROOT精确暂存/合并树App7/7、Web5/5 exit0，source/diff检查仅上述新增路径，新增工具未收录图谱不记零风险。identity仅产出evidence-consistent且actualAcceptancePassed=false，真实loaded-JS/actor缺项仍BLOCKED；fixture纯Map/dry-run不冒真实apply/cleanup。最终SC矩阵与真实样本仍依赖0045和0033～36，不创建成功REPORT。
+- 同一原run legacy SC03最小修复已经来源/DTO核对后放行：App3个notification VMs删除两处猜任务链接fallback并安全隐藏失效旧正文；Web原provider/live-service/canonical通知GET与新增本域legacy-source-projection/helper测试，仅精确workspace/正式task或schedule wrapper/actor/lifecycle可导航。`inboxNotificationActions` HIGH/3直接caller已披露。不改字典/shared/auth/其他产品域，不用假evidence sentinel顶替业务证据，不跑实际业务API/DB写/设备/服务；局部TDD进行中，不提前声明runtime SC03/整Sprint通过。
 
 2026-09-16主线统一运行时：C43、Phone PW0010单功能（仅`58e4840169625460e06a2d69769e95552878ebb6`，没有整合Phone全部祖先）及E46工具切片已整合并普通push到`f2a25a55c4f1e11f773ac6f29eb4099ad59ce547`，独立ls-remote一致。PW0010主线提交`224fdc1d4`另包含原Phone A对App audit两个existing AI行号键的必要校正；完整offline audit仍仅旧日程孤项失败，没有新增AI findings，不记全量通过。
 
 该产品树Web Next production build exit0，BUILD_ID`EEQm5wm0AApGsD3hvfqSh`，main3000/PID22612/live200、原orbit_events/workspace:orbit-dev；Metro8082/PID7582/running。DA`DA432E9E-1204-4EE7-9A20-251CDB48E265`重新编译、安装、启动主包app.agenthubs.orbit/PID23068均exit0，built与installed executable SHA256一致`a1ef0cdb9e3d8ea9b90528d8485e2232298a99bbd4576b98bb340467604d7623`；Metro实际为该主包加载1985modules，但loaded-JS精确hash/原生HTTP尚未由observer取得，不把expected元数据复制成observed证据。iOS依赖警告保留；`SYNC_INIT_FAILED 44ce35fbe92cb862`未关闭（后缀为scope摘要，不是底层错误码），在线首页成功不等于SQLCipher/全域离线PASS。本地初始化失败与服务端缺sync-write-lock function是独立缺项；不删库/密钥重置/空function绕过。
 
-Phone独立32100/PID17635/BUILD_ID`8sXNW8nifgU1rD0IF79lc`、32110/PID21340及新公共tunnel由Phone协调任务持有；MAIN与Phone同邮箱不能证明密码/数据相同。Phone Chromium已实际通过8联系人历史恢复/刷新重开/目标读取与匿名拒绝，WebKit异常仍复核，主线原生同演示账号验证pending。共享原账本18entries/$0.038611/0reserved，未重置，本轮构建/只读检查无provider调用；旧运行时记录仅保留历史，不代表当前版本。
+Phone独立32100/PID17635/BUILD_ID`8sXNW8nifgU1rD0IF79lc`、32110/PID21340及新公共tunnel由Phone协调任务持有；MAIN与Phone同邮箱不能证明密码/数据相同。PW-0010原run已结束：公开Chromium/WebKit390px及主线原生同演示账号真实8候选/原消息/详情返回/历史重开/刷新通过，原request/messages/budget摘要不变；ROOT实际恢复精确127.0.0.1:3000与小雨MAIN Appscope，UI归ROOT。固定Phone文档交付`da3dd71d`只消费[原样REPORT](../../../../docs/phoneweb/sprints/0010-contact-artifact/REPORT.md)，不合Phone祖先/旧台账。通过仅本轮功能，原后端全量失败/跳过与完整Phone覆盖保持开放。共享原账本18entries/$0.038611/0reserved，未重置，本轮构建/只读检查无provider调用；旧运行时记录仅保留历史，不代表当前版本。
 
 0047追加计划仅针对0044实测生产Web历史会话无composer，不克隆整个失败Sprint。当前GOAL/AUDIT-DESIGN/PLANNER已编制，建议空闲B后续单run；Phone PW0010同ask函数展示切片先冻结/移交，本轮C0043与E0046保持两个实现槽，不自动派第三线。0036源版本/笔记实际工具接线仍由既有Sprint承接；0044 failed报告与费用/清理事实保留。

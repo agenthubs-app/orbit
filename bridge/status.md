@@ -1,5 +1,11 @@
 # 两端当前状态
 
+## 2026-09-16 PW-0010共享聊天候选验收收口
+
+唯一功能`58e484016`已由主线`224fdc1d4`消费。Phone原run的公网Chromium/WebKit390px和MAIN主包Simulator已实际验证同一旧会话的8候选、原消息、详情返回、历史重开与刷新；原request/messages/budget完整摘要不变。Phone固定结束文档交付`da3dd71dc403eabf6dfccc8ba0374ccfca08583b`，ROOT只消费其原样REPORT，不复制Phone全部祖先/旧适配/独立全局台账。详见[REPORT](../docs/phoneweb/sprints/0010-contact-artifact/REPORT.md)。
+
+ROOT真实设置保存并AX确认恢复精确`http://127.0.0.1:3000`及小雨MAIN Appscope已登录，设备UI归ROOT；Metro8082、MAIN Web3000及独立Phone服务保持运行。通过范围仅PW-0010：原后端全量失败/跳过、全域离线、真实Push/OAuth等缺项不会因此关闭。既有服务日志的原路径200只作时间/路径关联，不宣称独立设备归因。
+
 ## 2026-09-16 E线0040投递与切换
 
 功能eacd7a227/合并0b552649d；偏好、投递策略、所有权协议、迁移与共同QA对账已交付，合并树Web16/App129及两端typecheck通过。真实Push、AI费用/provider和本轮原生出站回执缺项见[BR-028](2026-09-16-notification-delivery-cutover.md)。0037/38 completed，0039/40 blocked且run关闭；暂停本线跟进，保留Web供查看，不标四项全验收。
