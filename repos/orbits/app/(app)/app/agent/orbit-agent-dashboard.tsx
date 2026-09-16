@@ -74,7 +74,8 @@ function journeyStageBadge(
 ): { label: string; tone: "act" | "done" | "wait" } {
   if (event.status === "ended") return { label: t({ en: "Ended", zh: "已结束" }), tone: "done" };
   if (event.status === "active") return { label: t({ en: "Live now", zh: "进行中" }), tone: "act" };
-  if (event.youRsvped || event.stats.youRsvped) return { label: t({ en: "Waiting for matches", zh: "等待匹配发布" }), tone: "wait" };
+  // Registration alone does not say whether the organizer has published matches.
+  if (event.youRsvped || event.stats.youRsvped) return { label: t({ en: "Registered", zh: "已报名" }), tone: "done" };
   return { label: t(eventRegistrationLabel(registrationAvailability)), tone: eventRegistrationIsOpen(registrationAvailability) ? "act" : "wait" };
 }
 
@@ -405,7 +406,7 @@ export function OrbitAgentDashboard({
                 <span className="s-dot">{t({ en: "Event profile", zh: "完成活动画像" })}</span>
               </span>
               <span className="stage"><span className="s-link" /></span>
-              <span className="stage"><span className="s-dot">{t({ en: "Waiting for matches", zh: "等待匹配发布" })}</span></span>
+              <span className="stage"><span className="s-dot">{t({ en: "Check match status", zh: "查看匹配进度" })}</span></span>
               <span className="stage"><span className="s-link" /></span>
               <span className="stage"><span className="s-dot">{t({ en: "Event day", zh: "活动当天" })}</span></span>
             </div>
