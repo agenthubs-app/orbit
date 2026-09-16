@@ -1,5 +1,13 @@
 # 两端当前状态
 
+## 2026-09-16 20:56 JST 人脉分析修复与两端生产服务恢复
+
+原 Phone B 的分析实现和两个针对性报告修复已在主线 `7e9e902f2c67584f4685ce6617a0e2ccfe5e1fd3`，独立核对远端 `chat-agent` 同 SHA。空标题无正文、外部 ID 前缀冒充锚点、代码围栏伪报告均拒绝。ROOT 完整 20 个后端测试文件 186/186 零跳过、Web types0；既有 App 消费者 95/95，不冒充 Phone 的 98/98 或全量基线通过。新符号暂存图谱未映射，仍为 UNKNOWN，不认为零风险。
+
+两端直接 Next 生产编译均 exit0，复用未改动资产流程，不算重新执行全量资产 build。MAIN 3000/PID72621，BUILD `CWqHojftfUNV5f3agekjJ`；Phone 冻结后台 `81cad21615f0f52dfa8ca86bf81bb92f69fc7002`，32100/PID72623，BUILD `RQg512Ds8xdL0Dst1ZjQI`。两端 budget guard ready、health200，原各自数据库/workspace、Flash/loop3 与唯一 $5 账本保持；Phone 认证入口32110/live/typed actor 保留。Metro8082/PID7582、Phone 展示32110/PID21340 未改。
+
+新真实模型分析、精确费用对账与公网报告回读仍 OPEN；目前只释放零付费只读验证，禁止重放旧失败会话或把历史/stub 当成新分析成功。11:56:23Z 账本25 settled/$0.048375/0 reserved，六笔未知调用者仍待查。D45 真实 mutation port/journal/删除传播、E46 合法通知样本审批以及中文锁序批准仍待完成；不合入会阻断既有笔记写入的半成品。
+
 ## 2026-09-16 20:35 JST 主线租期基础与原生加密构建
 
 A33 纯租期 issuer `8a822a152` 已合入并推送 `74c60290f`；ROOT 完整两文件审查、7/7 零跳过及 Web typecheck0。新增符号图谱为 UNKNOWN，不把暂存分析的零映射当成零风险。只有可信授权端口与完整域覆盖校验，真实全域 authorizer、持久权限 epoch、HTTP 与离线消费者尚未接通。

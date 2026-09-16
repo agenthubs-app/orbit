@@ -1,5 +1,11 @@
 # 同步队列
 
+## PW-0011 — 分析报告修复与当前生产基线（尚未完整验收）
+
+- 原 B 两次具体反例修复合入并推送主线 `7e9e902f2c67584f4685ce6617a0e2ccfe5e1fd3`；远端独立核对同 SHA。ROOT 完整后端20文件186/186零跳过、Web types0、既有 App 消费者95/95。暂存新符号 UNKNOWN，未重跑全量旧基线。
+- 两端生产编译 exit0 后已恢复：MAIN3000/PID72621/BUILD `CWqHojftfUNV5f3agekjJ`；Phone32100/PID72623/冻结后台81cad216/BUILD `RQg512Ds8xdL0Dst1ZjQI`。两端health200、guard ready，原 Flash/loop3/$5唯一账本保持，Metro8082及Phone32110展示入口不动。
+- 原消息保留、可信 source context/四节实质正文/完整实体锚点及成功来源保护的自动验证通过；新实际 provider、独立请求费用对账、公网回读尚 OPEN。只读 QA 可继续，真实分析 POST 仍待精确放行，不重放旧失败请求。D45/E46/全域离线与未批准数据库锁序缺项不会因本次推送关闭。
+
 ## 0033 — 纯租期 issuer 与原生 SQLCipher 部分证据
 
 - 冻结 `8a822a152`→MAIN `74c60290f` 已普通 push，ROOT 两文件完整审查/7测试零跳过/Web types0。Web 重新 build/restart：`0tIJOrl7k4tVtFNzxZyyG` / PID56918 / live200，Metro8082 保持；可信端口测试不是生产权限或持久 epoch 证据。
