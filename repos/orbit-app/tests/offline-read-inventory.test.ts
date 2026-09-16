@@ -7,6 +7,18 @@ import { auditReadSurfaces, extractReadCalls } from '../scripts/audit-offline-re
 import { resolveReadSurface, matchTemplate, surfaces } from '../src/data/offline-read/route-domain-inventory';
 
 // Each assertion protects a persistence boundary, or exercises the audit on real AST inputs.
+test('roster qualification registers the same durable event read policy as the owner detail consumer', () => {
+  const owner = surfaces.find(row => row.consumerFile === 'src/screens/events/EventAttendeesScreen.tsx' && row.method === 'GET' && row.endpointTemplate === '/api/events/:id');
+  const qualification = surfaces.find(row => row.consumerFile === 'src/screens/events/EventAttendeeRosterLink.tsx' && row.method === 'GET' && row.endpointTemplate === '/api/events/:id');
+  assert.ok(owner);
+  assert.ok(qualification);
+  assert.deepEqual({ ...qualification, consumerFile: owner.consumerFile }, owner);
+  assert.equal(qualification.domainId, 'events');
+  assert.equal(qualification.selector, 'events:GET:/api/events/:id');
+  assert.equal(qualification.readPersistence, 'durable_normalized');
+  assert.equal(qualification.schemaVersion, 1);
+});
+
 test('unknown and secret endpoints never default to persistence', () => {
   assert.throws(() => resolveReadSurface('GET', '/api/new-private-domain'), /UNREGISTERED_READ/);
   assert.equal(resolveReadSurface('GET', '/api/auth/session').readPersistence, 'online_only_secret');
