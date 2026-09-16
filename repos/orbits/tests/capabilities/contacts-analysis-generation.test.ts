@@ -8,6 +8,7 @@ import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-st
 import { createLiveOrbitAgentConversationService } from "../../features/orbit-ai/live-conversation-service";
 import { createGeminiOrbitAgentPlanner } from "../../features/orbit-ai/gemini-provider";
 import { createLiveOrbitAgentTrace } from "../../features/orbit-ai/live-conversation-trace";
+import { contactsAnalysisReplyMatchesSource, isContactsAnalysisReportBody } from "../../features/orbit-ai/contacts-analysis-execution";
 
 const question = "请根据当前已保存的人脉资料，分析关系结构、目标覆盖和下一步建议。";
 const body = "**关系结构**：目前有两位联系人，依据 contact:alpha。\n**目标覆盖**：合作目标缺少行业介绍人。\n**下一步建议**：先复核与甲的会面记录，再决定是否联系。\n**判断依据**：contact:alpha 与 evidence:alpha，未执行任何写入。";
@@ -18,6 +19,39 @@ const source = {
   gaps: { missing: ["行业介绍人"] }, opportunities: { next: "复核会面记录" },
   profile: { relationshipGoal: "寻找合作伙伴" }, summary: { text: "需补齐引荐关系" },
 };
+
+test("analysis report sections require their own non-heading body instead of borrowing the next heading", () => {
+  for (const report of [
+    "**关系结构**\n**目标覆盖**\n**下一步建议**\n**判断依据**\ncontact_actual",
+    "**Relationship structure**\n**Goal coverage**\n**Next steps**\n**Evidence**\ncontact_actual",
+    "**关系结构**：\n**目标覆盖**：\n**下一步建议**：\n**判断依据**：contact_actual",
+    body.replace("合作目标缺少行业介绍人。", ""),
+    body.replace("先复核与甲的会面记录，再决定是否联系。", "### 仅有另一个标题"),
+    "**关系结构**\n**目标覆盖**\n**下一步建议**\n**判断依据**",
+  ]) assert.equal(isContactsAnalysisReportBody(report), false, report);
+  for (const report of [
+    body,
+    "**关系结构**\n目前有两位联系人。\n\n**目标覆盖**：\n合作目标缺少行业介绍人。\n**下一步建议**\n- 先复核会面记录。\n**判断依据**\n`contact:alpha` 与 evidence:alpha。",
+    "## **Relationship structure**\nTwo contacts are present.\n## **Goal coverage**:\nAn industry introduction is missing.\n## **Next steps**\n- Review meeting evidence first.\n## **Evidence**\ncontact:alpha and evidence:alpha.",
+  ]) assert.equal(isContactsAnalysisReportBody(report), true, report);
+});
+
+test("source evidence must match a complete identifier rather than a foreign identifier prefix", () => {
+  const context = { source, sourceDataVersion: createContactsAnalysisSourceDataVersion(source) } as unknown as Parameters<typeof contactsAnalysisReplyMatchesSource>[1];
+  for (const suffix of ["beta", "-foreign", "_foreign", "/foreign", ":foreign", ".foreign"]) {
+    assert.equal(contactsAnalysisReplyMatchesSource(body.replaceAll("contact:alpha", `contact:alpha${suffix}`).replaceAll("evidence:alpha", `evidence:alpha${suffix}`), context), false, suffix);
+  }
+  for (const evidence of ["（contact:alpha）", "contact:alpha，evidence:alpha。", "[甲](https://example.test/contact:alpha)", "`contact:alpha`", "contact:alpha."]) {
+    assert.equal(contactsAnalysisReplyMatchesSource(body.replaceAll("contact:alpha", evidence).replaceAll("evidence:alpha", "无其他引用"), context), true, evidence);
+  }
+});
+
+test("code-fenced or JSON candidates are not natural-language contacts analysis reports", () => {
+  for (const candidate of ["```markdown\n" + body + "\n```", "~~~\n" + body + "\n~~~", JSON.stringify({ report: body }), "{\n" + body + "\n}"]) {
+    assert.equal(isContactsAnalysisReportBody(candidate), false, candidate);
+  }
+  assert.equal(isContactsAnalysisReportBody(body), true);
+});
 
 test("an arbitrary artifact kind or source instruction cannot switch the provider's trusted task", async () => {
   let calls = 0;

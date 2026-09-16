@@ -21,8 +21,20 @@ const reportLabels = [
 ];
 
 export function isContactsAnalysisReportBody(body: string): boolean {
-  const labels = reportLabels.map((label) => new RegExp(`(?:^|\\n)\\s*\\*\\*(?:${label})\\*\\*\\s*[:：]?\\s*([^\\n]+)`, "i").exec(body));
-  return labels.every((match) => Boolean(match?.[1]?.trim())) &&
+  const text = body.trim();
+  if (/^[ \t]*(?:`{3,}|~{3,})/m.test(body) || (/^[{[]/.test(text) && /[}\]]$/.test(text))) return false;
+  const headings = [...body.matchAll(new RegExp(`^[ \\t]*(?:#{1,6}[ \\t]+)?\\*\\*(${reportLabels.join("|")})\\*\\*[ \\t]*[:：]?[ \\t]*`, "gim"))];
+  if (headings.length !== reportLabels.length || !reportLabels.every((label) =>
+    headings.some((heading) => new RegExp(`^(?:${label})$`, "i").test(heading[1]!)),
+  )) return false;
+  const completeSections = headings.every((heading, index) => {
+    const section = body.slice(heading.index! + heading[0].length, headings[index + 1]?.index ?? body.length);
+    return section.split(/\r?\n/).some((line) => {
+      const text = line.trim();
+      return !/^(?:#{1,6}\s|\*\*[^*]+\*\*\s*[:：]?$)/.test(text) && /[\p{L}\p{N}]/u.test(text);
+    });
+  });
+  return completeSections &&
     !/(?:我|Orbit)\s*(?:已|已经|已經)(?:保存|修改|删除|添加|发送|创建)|\bI (?:have )?(?:saved|updated|deleted|sent|created)\b/i.test(body);
 }
 
@@ -60,7 +72,10 @@ export function contactsAnalysisSynthesisInput(input: {
 
 export function contactsAnalysisReplyMatchesSource(body: string, context: ContactsAnalysisExecutionContext): boolean {
   const anchors = evidenceAnchors(context.source);
-  return isContactsAnalysisReportBody(body) && anchors.length > 0 && anchors.some((anchor) => body.includes(anchor));
+  return isContactsAnalysisReportBody(body) && anchors.length > 0 && anchors.some((anchor) => {
+    const escaped = anchor.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`(?<![\\p{L}\\p{N}_:.-])${escaped}(?![\\p{L}\\p{N}_:/-]|\\.[\\p{L}\\p{N}_])`, "u").test(body);
+  });
 }
 
 export function isSuccessfulContactsAnalysisExecution(result: OrbitAgentConversationResult, context: ContactsAnalysisExecutionContext, message: string): boolean {
