@@ -16,6 +16,7 @@ import { eventOperationsParticipantFromRegistration } from "./participant";
 import type { EventOperationsRepository } from "./repository";
 import type { EventOperationsLimitedCheckInRoster } from "./check-in-roster";
 import type { EventAccessCapability } from "../event-access/contract";
+import type { EventOperationsQueueWakeReason } from "./queue";
 
 export interface EventOperationsAccessPolicy {
   requireCapability(input: {
@@ -148,6 +149,11 @@ export interface EventOperationsServiceOptions {
     } | null>;
   };
   now?: () => string;
+  /**
+   * Best-effort cloud wake after a durable generation mutation. The database
+   * rows are already committed; maintenance remains the lost-wake fallback.
+   */
+  notifyWorker?: (input: { reason: EventOperationsQueueWakeReason }) => Promise<void>;
   registrationService: Pick<EventRegistrationService, "list">;
   repository: EventOperationsRepository;
 }
@@ -222,9 +228,22 @@ export function createEventOperationsService({
   engine,
   eventSchedule,
   now = () => new Date().toISOString(),
+  notifyWorker,
   registrationService,
   repository,
 }: EventOperationsServiceOptions): EventOperationsService {
+  async function wakeWorker(reason: EventOperationsQueueWakeReason): Promise<void> {
+    if (!notifyWorker) return;
+    try {
+      await notifyWorker({ reason });
+    } catch {
+      // The durable rows are committed before the wake. Maintenance scans the
+      // same rows and repairs a lost queue publish, so a provider outage must
+      // not turn a successful organizer command into a false HTTP failure.
+      console.error(JSON.stringify({ event: "event_operations_worker_wake_failed", reason }));
+    }
+  }
+
   async function requireCanonicalScheduleAlignment(
     configuration: Pick<
       EventOperationsConfiguration,
@@ -669,7 +688,9 @@ export function createEventOperationsService({
         eventId,
         generationId,
       });
-      return engine.retryGeneration({ actorId, generationId });
+      const generation = await engine.retryGeneration({ actorId, generationId });
+      await wakeWorker("retry");
+      return generation;
     },
 
     async runGeneration({
@@ -710,11 +731,13 @@ export function createEventOperationsService({
           eventId,
           ownerOrganizerActorId: configuration.organizerActorId,
         });
-      return engine.createGeneration({
+      const generation = await engine.createGeneration({
         actorId,
         capturedSnapshot,
         idempotencyKey,
       });
+      await wakeWorker("generation");
+      return generation;
     },
   };
 }

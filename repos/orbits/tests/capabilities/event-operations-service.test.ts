@@ -70,6 +70,7 @@ async function createHarness() {
     now: () => timestamp,
   });
   const repositoryCalls: string[] = [];
+  const workerWakeReasons: string[] = [];
   const observedRepository = new Proxy(repository, {
     get(target, property, receiver) {
       const value = Reflect.get(target, property, receiver);
@@ -190,6 +191,9 @@ async function createHarness() {
       },
     },
     now: () => timestamp,
+    notifyWorker: async ({ reason }) => {
+      workerWakeReasons.push(reason);
+    },
     registrationService,
     repository: observedRepository,
   });
@@ -237,6 +241,9 @@ async function createHarness() {
     repository,
     repositoryCallCount() {
       return repositoryCalls.length;
+    },
+    workerWakeReasons() {
+      return [...workerWakeReasons];
     },
     revokeLimitedRosterOnNextRepositoryRead(actorId: string) {
       revokeLimitedRosterAfterServiceCheck.add(actorId);
@@ -343,6 +350,7 @@ test("generation start preserves the owner and fails closed when delegated capab
     idempotencyKey: "delegate-generation",
   });
   assert.equal(generated.organizerActorId, organizerActorId);
+  assert.deepEqual(harness.workerWakeReasons(), ["generation"]);
 
   harness.revokeGenerationOnNextRepositoryOperation(delegate);
   await assert.rejects(

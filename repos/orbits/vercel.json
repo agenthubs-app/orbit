@@ -37,6 +37,15 @@
           "retryAfterSeconds": 60
         }
       ]
+    },
+    "app/api/queues/event-operations/route.ts": {
+      "experimentalTriggers": [
+        {
+          "type": "queue/v2beta",
+          "topic": "event-operations",
+          "retryAfterSeconds": 60
+        }
+      ]
     }
   },
   "crons": [

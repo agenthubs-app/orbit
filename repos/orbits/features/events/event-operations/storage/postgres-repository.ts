@@ -36,6 +36,10 @@ import type {
   EventOperationsPostgresRuntime,
   EventOperationsSqlExecutor,
 } from "./postgres-client";
+import {
+  withEventOperationsOutboxWake,
+} from "./worker-wake";
+import type { EventOperationsWorkerWakeNotifier } from "../queue";
 import { createPostgresCanonicalRegistrationMethods } from "./canonical-registration-repository";
 import {
   createPostgresFrozenSnapshotMethods,
@@ -426,10 +430,13 @@ function assertGenerationTopology(
 }
 
 export interface CreatePostgresEventOperationsRepositoryOptions
-  extends EventOperationsPostgresRuntime {}
+  extends EventOperationsPostgresRuntime {
+  notifyWorker?: EventOperationsWorkerWakeNotifier;
+}
 
 export function createPostgresEventOperationsRepository({
   client,
+  notifyWorker,
   workspaceId,
 }: CreatePostgresEventOperationsRepositoryOptions): EventOperationsRepository {
   const canonicalRegistration = createPostgresCanonicalRegistrationMethods({
@@ -2267,7 +2274,10 @@ export function createPostgresEventOperationsRepository({
 
   };
 
-  return repository;
+  return withEventOperationsOutboxWake(repository, {
+    notifyWorker,
+    workspaceId,
+  });
 }
 
 export const __eventOperationsPostgresRepositoryTestExports = {
