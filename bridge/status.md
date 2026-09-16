@@ -1,5 +1,11 @@
 # 两端当前状态
 
+## 2026-09-16 Production 测试数据增量
+
+用户授权将合成 fixture 用于 Production 测试；正式 Web 已连接 Neon Production 的 `workspace:orbit-demo-fixtures`，完成空库事务导入、逐表校验、主办方登录与参与者权限隔离。App 本机 API 地址已指向正式网址，但原生构建受当前 Swift/Expo 依赖兼容性阻塞，不能记为跨端 verified。主办方身份去重、可报名测试活动及精确证据见 [本次交接](2026-09-16-production-fixture-testing.md)。此前 schema-only / 未部署状态为历史，不能替代此记录。
+
+增量：主测试账号凭据登录可读 66 联系人；新增活动报名/取消/重报复用同一记录。关系 fixture 已整理为每联系人一条有效关系、一个当前任务，旧重复记录可恢复停用，正式生命周期核验 0 issues；46 项定向回归通过。后台 event-operations worker 的云端承载与原生 App 同环境验证仍为精确未完成项。
+
 ## 2026-09-15 E 线 0030 统一收件箱增量
 
 - App `4d351f0a0` 按批准的 3a 设计把 conversation、notification 和 relationship signal 聚合为全部／活动／待办／人脉四筛选时间流；“全部已读”固定并发 4，并在逐项精确回执后刷新，不乐观清空。
