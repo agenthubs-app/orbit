@@ -382,6 +382,9 @@ function isExternalPermissionRequest(message: string): boolean {
 }
 
 function isUnsupportedRealtimeLookupRequest(message: string): boolean {
+  // A prohibited message send is not a request to look up current news.
+  // Keep write authorization on the complete original text; this only routes reads.
+  const requestedMessage = requestedActionText(message);
   const realtimeQualifier =
     /(?:今天|现在|現在|当前|目前|刚刚|最新|实时|即時|latest|today|current|now|right now|real[ -]?time)/i;
   const realtimeObject =
@@ -390,9 +393,9 @@ function isUnsupportedRealtimeLookupRequest(message: string): boolean {
     /(?:查一下|查询|查找|搜索|搜一下|看看|告诉我|告訴我|look up|search|find|check|tell me)/i;
 
   return (
-    realtimeQualifier.test(message) &&
-    realtimeObject.test(message) &&
-    (lookupVerb.test(message) || /(?:新闻|新聞|news|weather|天气|天氣)/i.test(message))
+    realtimeQualifier.test(requestedMessage) &&
+    realtimeObject.test(requestedMessage) &&
+    (lookupVerb.test(requestedMessage) || /(?:新闻|新聞|news|weather|天气|天氣)/i.test(requestedMessage))
   );
 }
 
