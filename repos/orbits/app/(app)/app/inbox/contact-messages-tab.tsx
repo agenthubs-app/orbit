@@ -1,4 +1,5 @@
 'use client';
+import {NotificationDeliverySettings} from '../settings/notification-delivery-settings';
 import { useEffect, useRef, useState } from 'react';
 import { useOrbitLanguage } from '../orbit-language-context';
 import { formatOrbitDateTime } from '../orbit-datetime';
@@ -139,6 +140,7 @@ export function ContactMessagesTab({ actorId, onIdentityChanged }: { actorId: st
     </div></aside>
     <section className="ri-thread-main" style={{ gridColumn: '2 / -1' }}>
       {detail ? <div className="ri-detail"><div className="ri-detail-head"><button type="button" className="btn btn-ghost" onClick={() => setSelected(null)} disabled={sending || !!pending.current}>{t({ zh: '返回消息', en: 'Back to messages', ja: 'メッセージに戻る' })}</button><h3 className="ri-detail-subject">{detail.name}</h3></div>
+        <NotificationDeliverySettings key={detail.id} conversationId={detail.id}/>
         {readError ? <p role="alert">{t({ zh: '已读状态尚未保存，下次刷新会重试。', en: 'Read state was not saved. Refresh to retry.', ja: '既読状態を保存できませんでした。更新して再試行してください。' })}</p> : null}
         <div className="ri-msgs">{detail.conversation.messages.map(message => <article className={`ri-msg${message.senderAccountId === actorId ? ' is-me' : ''}`} key={message.messageId}><div className="ri-msg-meta"><strong className="ri-msg-sender">{message.senderDisplayName}</strong><time className="ri-msg-time">{formatOrbitDateTime(message.sentAt, language)}</time></div><p className="ri-msg-body" style={{ overflowWrap: 'anywhere' }}>{message.body}</p>{message.senderAccountId === actorId ? <span className="ri-msg-time">{t({ zh: '已送达', en: 'Delivered', ja: '送信済み' })}</span> : null}</article>)}</div>
         <div className="ri-composer"><label className="ri-composer-label">{t({ zh: '回复消息', en: 'Reply', ja: '返信' })}</label>

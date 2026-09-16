@@ -1,3 +1,5 @@
+import {authorizedDeliveryHref} from '../../notifications/delivery-navigation';
+import {NotificationDeliverySettings} from '../settings/NotificationDeliverySettings';
 import {NotificationInboxList} from './NotificationInboxList';
 import {useNotificationInbox} from './useNotificationInbox';
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -449,6 +451,9 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
         });
         return;
       }
+      const href = authorizedDeliveryHref(result.data, deliveryId);
+      if (href) { router.replace(href as Href); setDeliveryState({kind:'idle'}); return; }
+      if ((result.data as {target?:{status?:string}})?.target?.status === 'unavailable') { setDeliveryState({kind:'failure',message:locale.t('inbox.alertUnavailable')}); return; }
       const view = notificationDeliveryToView(result.data, deliveryId, locale.t("inbox.fallbackAlertTitle"), locale.t("inbox.fallbackAlertBody"));
       currentDelivery.current = view;
       setDeliveryState(
@@ -703,6 +708,7 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
       {conversationId && state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
+      {conversationId && detail ? <NotificationDeliverySettings conversationId={conversationId}/> : null}
       {conversationId && readError ? <Text accessibilityRole="alert">{readError}</Text> : null}
       {conversationId && retainedDetail.current ? (
         <View style={!detail ? { display: "none" } : undefined}>

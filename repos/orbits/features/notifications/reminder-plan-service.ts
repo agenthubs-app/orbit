@@ -130,11 +130,15 @@ function delivery(input: { plan: ReminderPlanDTO; channel: ReminderChannel; devi
 }
 
 export function createReminderPlanService({
+  deliveryManagedExternally,
+  withDeliveryGate = async (_actorId, operation) => operation(),
   now,
   pushDevices,
   repository,
   targetAuthorizer,
 }: {
+  deliveryManagedExternally?: (actorId: string) => Promise<boolean>;
+  withDeliveryGate?: (actorId: string, operation: () => Promise<void>) => Promise<void>;
   now: () => string;
   pushDevices?: ReminderPushDeviceGateway;
   repository: ReminderPlanRepository;
@@ -271,8 +275,10 @@ export function createReminderPlanService({
         if (activeClaims.has(plan.id)) continue;
         activeClaims.add(plan.id);
         try {
+          await withDeliveryGate(plan.ownerUserId, async () => {
+          if (await deliveryManagedExternally?.(plan.ownerUserId)) return;
           const existing = (await repository.listDeliveries(plan.ownerUserId)).filter((item) => item.reminderPlanId === plan.id && item.fireAt === plan.fireAt);
-          if (existing.length > 0) continue;
+          if (existing.length > 0) return;
           result.claimed += 1;
           const preferences = (await repository.getPreferences(plan.ownerUserId)) ?? defaultPreferences(plan.ownerUserId, input.now);
           let delivered = false;
@@ -305,6 +311,7 @@ export function createReminderPlanService({
             }
           }
           await repository.savePlan({ ...plan, ...(delivered ? { deliveredAt: input.now } : { failureCode: "NO_DELIVERY_CHANNEL_AVAILABLE" }), status: delivered ? "delivered" : "failed", updatedAt: input.now });
+          });
         } finally {
           activeClaims.delete(plan.id);
         }

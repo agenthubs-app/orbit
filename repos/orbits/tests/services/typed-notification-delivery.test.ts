@@ -1,0 +1,20 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {createTypedDeliveryWorker} from '../../features/notifications/typed-delivery-worker';
+import {createStorageNotificationDeliveryService} from '../../features/notifications/delivery-service';import {createMemoryLiveRecordStore} from '../../shared/storage/live-record-store';
+import {defaultDeliveryPreferences} from '../../features/notifications/delivery-policy';
+test('source cancellation and provider timeout cannot leak body or retry an uncertain send',async()=>{
+ const at='2026-09-16T01:00:00.000Z',ledger=createStorageNotificationDeliveryService({actorId:'a',workspaceId:'w',store:createMemoryLiveRecordStore() as never,now:()=>at});
+ const ids=[];for(const id of ['cancelled','revoked','timeout'])ids.push((await ledger.materialize({signalId:id,signalRevision:'1',phase:'commitment',title:'PRIVATE',body:'PRIVATE BODY',scheduledFor:at,policySource:{kind:'notification',id,eventKey:id}})).delivery.deliveryId);
+ let sends=0;const states:string[]=[];const repo={preferences:async()=>defaultDeliveryPreferences('a'),reserve:async()=>({allowed:true,sound:false,preferences:defaultDeliveryPreferences('a')}),settle:async(_a:string,_id:string,state:string)=>{states.push(state);}};
+ const worker=createTypedDeliveryWorker({actorId:'a',ledger,repository:repo as never,now:()=>at,devices:{listActive:async()=>[{deviceId:'actor-device',token:'token'}]} as never,push:{send:async m=>{sends++;assert.equal(m.title,'Orbit');assert.notEqual(m.body,'PRIVATE BODY');assert.deepEqual(Object.keys(m.data),['deliveryId']);throw Error('timeout');}},sources:{resolve:async d=>d.signalId==='cancelled'?null:{subject:{channel:'reminder',origin:'automation',active:true,read:false,explicitNight:false,scheduledFor:at},title:'PRIVATE',body:'PRIVATE BODY',href:'/inbox/notifications/n',language:'zh'}}});
+ await worker.run({workerId:'one',limit:10});assert.equal(sends,2);assert.equal(states.filter(s=>s==='unknown').length,2);assert.equal((await ledger.get(ids[0]))?.status,'suppressed');assert.equal((await ledger.get(ids[2]))?.status,'receipt_unknown');await worker.run({workerId:'two',limit:10});assert.equal(sends,2);
+});
+test('a persisted provider ticket recovers a failed ledger write without sending again',async()=>{
+ let at='2026-09-16T01:00:00.000Z',calls=0,record:{state:string;receiptId?:string}|null=null;
+ const ledger=createStorageNotificationDeliveryService({actorId:'a',workspaceId:'w',store:createMemoryLiveRecordStore() as never,now:()=>at});
+ const d=(await ledger.materialize({signalId:'n',signalRevision:'1',phase:'commitment',title:'N',body:'B',scheduledFor:at,policySource:{kind:'notification',id:'n',eventKey:'n'}})).delivery;
+ const original=ledger.markReceiptPending;let fail=true;ledger.markReceiptPending=async value=>{if(fail){fail=false;throw Error('database temporary failure');}return original(value);};
+ const p=defaultDeliveryPreferences('a'),repository={preferences:async()=>p,reserve:async()=>record?{allowed:false,reason:'dispatch_already_started',receiptId:record.receiptId,receiptVerified:record.state==='sent'}:{allowed:true,sound:true,preferences:p},settle:async(_a:string,_id:string,state:string,receiptId?:string)=>{record={state,receiptId};}};
+ const worker=createTypedDeliveryWorker({actorId:'a',ledger,repository:repository as never,devices:{listActive:async()=>[{deviceId:'actor-device',token:'token'}]} as never,push:{send:async()=>{calls++;return {receiptId:'real-ticket-boundary'};}},now:()=>at,sources:{resolve:async()=>({subject:{channel:'reminder',origin:'automation',active:true,read:false,explicitNight:false,scheduledFor:'2026-09-16T01:00:00Z'},title:'N',body:'B',href:'/inbox/notifications/n',language:'zh'})}});
+ await assert.rejects(worker.run({workerId:'first'}));at='2026-09-16T01:16:00.000Z';await worker.run({workerId:'recovery'});assert.equal(calls,1);assert.equal((await ledger.get(d.deliveryId))?.providerReceiptId,'real-ticket-boundary');assert.equal((await ledger.get(d.deliveryId))?.status,'receipt_pending');
+});

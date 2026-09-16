@@ -19,3 +19,12 @@
 ## 验证原则
 
 每项以 [PLANNER](PLANNER.md) 的5项SC为准，先行为反例再最小实现。新功能的真实业务证据必须来自当次构建的Web/API与原生App，权限/身份/状态不能用截图或mock证明。
+
+## run-01 必要接线补充
+
+- 复用 `notificationDeliveries`、pushDevices 和现有 provider；既有ledger新增可选policy source及typed领取lane，旧worker默认只领legacy。新 `features/notifications/{delivery-policy-repository,typed-delivery-worker,typed-delivery-source,typed-delivery-factory}.ts` 负责原子配额/声音窗口、发送前验证、既有账本执行，不建微服务。超时未知保持独立回执待对账，不盲目重发。
+- 偏好扩展以 `notificationChannelPreferences` 保存类别/消息开关与CAS；锁屏/安静时段读取并原子更新既有 `notificationPreferences.entity`，避免两套隐私开关。新增 `shared/{contract,api-schema}/notification-delivery-policy.ts`、`app/api/inbox/delivery/{preferences,owner}` 及Web/App设置消费者；副本只走sync:contract。会话免打扰写入必须核对真实成员资格。
+- `native-notifications.ts` 在新owner协议启用时先取消本机旧计划，成功才确认server owner；取消失败不确认。新worker仅对已完成交接的设备发送。`reminder-plan-service-factory.ts`/repository需让已切换actor的旧显式派发停止，计划/业务对象保留。`push-adapter.ts` 支持明确静音；通知响应仍只携带opaque deliveryId，经认证解析目的地。
+- 必要直接消费者为 `RelationshipInboxScreen.tsx`、`NotificationLifecycle.tsx`、`OrbitNotificationsCoordinator.tsx` 及既有投递详情API。保持0035提示回调可组合，不改sync协调器/outbox/root layout。所有新增运行测试、migration CLI及路由/生命周期测试属于原SC-01～05。
+- 全量回归发现0039 Web来源入口缺少原生同路径：新增 `app/inbox/sources/[id].tsx`，复用已有认证通知详情和来源动作；不复制另一套来源权限或页面状态。旧测试夹具需支持新增偏好只读请求/多个visibility监听器，保留原消息发送和切号断言。
+- 迁移脚本 `scripts/migrate-notification-inbox.ts` 默认零写入，显式workspace/actor/batch/hash限定apply；每actor事务最多5000条，超限明确拒绝并要求分区方案。回退恢复未被用户改动的归档映射，保留所有发送回执和已抑制自动意图，legacy producer保持围栏，设备恢复local owner。新批次重新启用才交接server owner。

@@ -3,6 +3,7 @@ import { createReminderPlanRepository } from "./reminder-plan-repository";
 import { createReminderPlanService, type ReminderTargetAuthorizer } from "./reminder-plan-service";
 import { createReminderPushDeviceGateway } from "./push-device-reminder-adapter";
 import { createPushDeviceService } from "./push-device-service";
+import {createConfiguredTransactionalPostgresRuntime} from '../../shared/storage/transactional-postgres';
 
 function containsId(value: unknown, id: string, depth = 0): boolean {
   if (depth > 4) return false;
@@ -28,6 +29,18 @@ export function createConfiguredReminderPlanService() {
     },
   };
   return createReminderPlanService({
+    withDeliveryGate: async (actorId, operation) => {
+      const runtime = createConfiguredTransactionalPostgresRuntime();
+      if (!runtime || runtime.workspaceId !== configured.workspaceId) throw new Error('Delivery gate unavailable');
+      await runtime.client.transaction(async db => {
+        await db.query('select pg_advisory_xact_lock(hashtextextended($1,0))', [JSON.stringify(['notification-delivery-policy', configured.workspaceId, actorId])]);
+        await operation();
+      });
+    },
+    deliveryManagedExternally: async (actorId) => {
+      const state = await configured.store.getRecord({ workspaceId: configured.workspaceId, collectionName: 'notificationCutover', recordId: actorId });
+      return state?.userId === actorId && (state.payload.enabled === true || state.payload.legacyBlocked === true);
+    },
     now: () => new Date().toISOString(),
     pushDevices: createReminderPushDeviceGateway({
       serviceForActor: (actorId) => createPushDeviceService({ actorId }),
