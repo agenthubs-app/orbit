@@ -1,55 +1,45 @@
-# Sprint 0036 — AI 同步可见性与全链验收设计
+# Sprint 0036 — AI 覆盖与全链验收设计
 
-## AI 所见数据
+依据已批准的 [全域离线读取规范](../../../../../docs/superpowers/specs/2026-09-16-universal-offline-read-design.zh-CN.md) §3、§5、§7～9。规范中的“等待书面审查”是历史文字；本任务收到的管理线指令明确记录设计已批准。本次仅形成待管理线审查的执行计划。
 
-Orbit AI 运行在服务器，只读取认证 actor 的 Cloud Canonical Records。App 的 Local Durable Mirror 不直接上传给模型；Pending Local Change 和 Device-only Draft 也不进入 provider prompt。
+## 两套权限
 
-四个已有只读工具继续是唯一入口：`notes.query`、`tasks.query`、`followups.query`、`schedule.query`。每个结果增加统一 freshness：
+0033 的 offline registry 决定客户端哪些数据可以落地，0036 的 AI permission registry 决定服务器哪些记录和字段可以交给模型。两者通过 domainId 对照，但互不授权。工具声明、模型选择、App manifest、客户端 workspace 都不提供服务器权限。
 
-```ts
-export interface AiQueryFreshness {
-  authority: "cloud_canonical";
-  readAt: string;
-  records: readonly { id: string; revision: string; updatedAt: string }[];
-  truncated: boolean;
-  nextCursor?: string;
-}
-```
+服务器每次执行工具和发送 provider payload 前，以会话注入的 actor、workspace、authorization epoch 检查能力与资源授权。未知域、版本、字段、过期 epoch 和未启用 AI 能力默认拒绝。撤权后游标、artifact、会话结果缓存及 evidence 引用不能继续泄漏旧记录。
 
-`revision` 由对应 canonical record 产生，不使用 App cursor、客户端时间或模型推断。无结果仍返回 `readAt` 和 `authority`；`truncated=true` 时回答必须称为“当前返回范围”，不能称为完整清单。
+## 查询能力
 
-## App 真实性提示
+保留 notes.query、tasks.query、followups.query、schedule.query；新增 aiHistory.query、contacts.query、relationshipEvidence.query、messages.query、notifications.query、meetings.query、events.query、goals.query、agentData.query。profile.getSelf 及推荐/上下文等旧入口也经过统一出站检查，不能成为绕过路径。
 
-App 在打开/发送 AI 请求时读取本地 outbox 汇总，只传递或展示域级状态，不传业务正文：
+各查询支持 list/search/get，使用领域权威 service/repository 的 read adapter，不将所有域塞入 orbit_records 查询，也不从 AI 会话结果复制第二份权威业务记录。详情 id 必须来自当前用户请求或本轮已授权证据。AI 历史查询逐页读可见消息/输出，禁止隐藏 prompt、raw provider context。会议、活动与人脉证据按参与者/角色和来源权限读取；通知来源不可用时不返回旧摘要。
 
-- `pendingDomains`: 仅用于客户端 UI，默认不发送 provider。
-- 存在 pending/conflict/failed 时显示域名、数量和“Orbit AI 只看云端已同步版本”。
-- 用户仍可发问，但回答区域保持提示，不能把提示包装为工具已经读取本机内容。
-- acknowledgment 后由 delta 更新 mirror，再移除提示；仅清 outbox 但未取得 canonical revision 不算完成。
+精确函数、文件与各域字段见实施计划。默认每页最多 10 项，单项文本最多 4000 字符，单次序列化结果最多 64 KiB；正文裁剪与分页分别记录，不把裁剪后的结果声称完整。64 KiB 是本线实现预算，不是用户费用预算。
 
-## 安全和注入
+游标由服务器签名，绑定 actor、workspace、epoch、工具、schema/registry 版本、过滤条件、快照位置和到期时间，不使用裸 offset 作为可跨 scope 重放的凭据。读完本页后、出站前再次检查授权；变更则拒绝该次输出。
 
-- actor/workspace 继续由服务器注入；模型 schema 不出现 actorId/userId/accountId/profileId。
-- notes/body、task description、follow-up evidence、schedule details 都是不可信文本，不能改变系统指令、工具权限或确认边界。
-- manifest 新增 freshness 字段但不放宽 denied fields、maxItems、retention 或审计正文策略。
-- audit artifact 记录 tool、status、revision 摘要和 evidence IDs，不记录正文。
+## 新鲜度与证据
 
-## 端到端验收矩阵
+结果携带 authority=cloud_canonical、服务器 readAt、每项稳定 id、canonical revision、updatedAt、evidenceIds、partialReasons 和 nextCursor。revision 从权威记录读取，不用客户端时钟或同步游标代替；缺少可靠 revision 的适配器显式失败。空集仍带读取时间。分页未结束、文本裁剪、源不可用、已知版本落后都只能报告当前范围。
 
-| 场景 | Web | App | AI |
-| --- | --- | --- | --- |
-| 在线写入 | canonical revision 可读 | hint/delta 后相同 revision | query 返回相同 revision |
-| App 离线写 | 仍是旧 canonical | 显示 pending overlay | 旧 revision + App pending 提示 |
-| 同步完成 | 新 canonical | pending 消失 | 新 revision |
-| 冲突 | server 版本保留 | 双版本等待选择 | 只读 server revision |
-| 删除 | tombstone/不可读 | delta 后移除 | get 不返回已删正文 |
-| 重装/设备丢失 | canonical 保留 | bootstrap 重建；未同步草稿不可恢复 | canonical 不变 |
-| 换账号 | actor A/B 隔离 | mirror/outbox/channel 全隔离 | 工具结果全隔离 |
+Evidence 引用绑定来源版本和服务器 scope，解析时重新授权。审计只记录 tool/status、revision 摘要、证据 ID 和错误码，不记录业务正文或模型上下文。文档站点使用脱敏引用，不公开业务 ID。
 
-## Data Atlas
+## Provider 与 prompt injection 边界
 
-更新 `docs/audits/2026-09-15-data-flow/README.md` 的过时基线和“AI 盲区”结论，保留历史问题与解决状态。私有交互站至少包含：领域/原型、云端与本地存储、外部 provider→Web/API→App 路径、同步状态机、AI 工具字段矩阵、离线支持矩阵、失败/冲突、仍未完成项和证据时间。站点不嵌入真实记录、token、数据库 URL 或账号标识。
+按工具的严格 DTO schema 投影，嵌套对象逐层校验，不能使用 object spread 搬运原始记录。token、Cookie、凭据、隐藏 prompt、后台审计正文、邀请密钥、raw/base64 附件和未知字段不得进入结果。模型 schema 不接受 actorId/userId/accountId/profileId/workspace/epoch。
 
-## 完成定义
+出站边界验证每个 tool outcome、artifact、history/context 项的来源与权限；不合格数据拒绝发送。允许的业务文字标记为不可信数据，不能升格为 system 指令、工具定义、授权或副作用确认。通过真实 provider 请求序列化拦截测试验证这一点，不以提示词包含安全文案作为安全证据。
 
-四个工具返回可验证 freshness；pending/ack/conflict 在 App 和 AI 中不混淆；完整矩阵在当前合并树和真实运行环境通过；数据审查文档与私有站点一致；所有更改提交并合并回 `chat-agent`，最后对合并树执行一次受影响端全量验证。
+## 本机 pending 提示
+
+0034 输出内容无关的状态摘要；0036 只消费，不改 receipt、cursor 或冲突语义。按规范化 Base URL、actor、workspace、epoch 过滤后统计 domainId 和数量。pending/conflicted/failed、已收到 receipt 但尚未在镜像观察到该 canonical revision 的记录都保持提示；delete 必须观察到 tombstone。版本是 opaque 字符串，不作大小比较。
+
+设备草稿不进入 provider。AI 请求/响应附近的提示在错误、重启和离线只读期间保留；scope 切换立即清空旧摘要并重新读取。提示中文为“{领域}有 {数量} 项变化仅在本机，AI 暂不可见”；英文/日文提供等义文案。未启用 AI 的域明确标为“AI 未获授权”，不能承诺同步后自动可见。
+
+## 依赖和完成条件
+
+服务端能力/查询/出站保护可在 0033～0035 合入前独立执行。pending 消费器依赖其最终契约；全链验收依赖三个 Sprint 的固定已验收合并 SHA。0037～0041 的领域源按实际合并版本接入，不能假定其旧报告已证明全域离线。
+
+最终矩阵覆盖规范 §3 全部业务族及所有列表/详情/子资源/搜索/聚合入口；AI 逐个授权域验证、未授权域验证拒绝。至少包含分页完整性、磁盘不足、二进制缺失、租期、401/403、跨账号/Base URL/workspace/角色、删除撤权、冲突、重装、重复重放、提示丢失/乱序/后台/杀进程恢复。
+
+Data Atlas 与 audit JSON 从 offline registry、AI registry、路由覆盖表和真实证据生成，历史问题保留 open/partially_resolved/resolved。站点保持私有、脱敏；发布前使用 Sites 工作流。实现线交固定 SHA；管理线负责审查、合并、精确合并树验证及获准后的 push，所有证据一致后才能完成。当前规划任务不发布、不合并、不 push。
