@@ -40,13 +40,20 @@ function fixture(initialRows = Array.from({ length: 11 }, (_, index) => row(inde
     authorize: async () => authorized,
     authorizeEvidence: async (_scope, ids) => authorized ? ids : [],
     page: async (_scope, input, position, snapshot) => {
+      if (input.operation === "get") {
+        return {
+          rows: rows.filter((item) => item.id === input.id),
+          snapshot: "canonical:current",
+          partialReasons: [],
+        };
+      }
       const snapshotId = snapshot ?? "snapshot:1";
       if (!snapshots.has(snapshotId)) snapshots.set(snapshotId, [...rows]);
       const stableRows = snapshots.get(snapshotId)!;
       const start = position ? stableRows.findIndex((item) => item.position === position) + 1 : 0;
       const pageRows = stableRows.slice(start, start + 11);
       return {
-        rows: input.operation === "get" ? pageRows.filter((item) => item.id === input.id) : pageRows,
+        rows: pageRows,
         snapshot: snapshotId,
         partialReasons: [],
       };
@@ -133,6 +140,19 @@ test("executeAiRead returns one canonical page without duplicates or snapshot dr
   assert.equal(new Set([...first.records, ...second.records].map((record) => record.id)).size, 11);
 });
 
+test("cursor continuation rejects a row deleted after the snapshot even without evidence ids", async () => {
+  const rows = Array.from({ length: 11 }, (_, index) => row(index + 1));
+  rows[10] = { ...rows[10], fields: { title: "Deleted secret" }, evidenceIds: [] };
+  const f = fixture(rows);
+  const first = await executeAiRead("notes.query", { operation: "list", query: "notes" }, f.deps);
+  assert.ok(first.nextCursor);
+  f.remove("note:11");
+  await assert.rejects(
+    executeAiRead("notes.query", { operation: "list", query: "notes", cursor: first.nextCursor }, f.deps),
+    /CANONICAL_RECORD_UNAVAILABLE/,
+  );
+});
+
 test("cursor TTL is capped by current read authority and empty pages retain authority metadata", async () => {
   const empty = fixture([]);
   const emptyResult = await executeAiRead("notes.query", { operation: "list", query: "notes" }, empty.deps);
@@ -161,6 +181,23 @@ test("byte truncation resumes after the last returned source position", async ()
   assert.ok(first.nextCursor);
   const second = await executeAiRead("notes.query", { operation: "list", query: "notes", cursor: first.nextCursor }, f.deps);
   assert.equal(second.records[0]?.id, "note:2");
+});
+
+test("final serialized result including cursor stays within the byte budget", async () => {
+  const f = fixture([
+    row(1, { title: "Boundary", body: "a".repeat(31_000) }),
+    row(2, { title: "b".repeat(300) }),
+    row(3, { title: "c".repeat(300) }),
+  ]);
+  const first = await executeAiRead("notes.query", { operation: "list", query: "notes" }, f.deps);
+  assert.equal(first.records[0]?.id, "note:1");
+  assert.ok(first.nextCursor);
+  assert.ok(Buffer.byteLength(JSON.stringify(first), "utf8") <= 32_000);
+  const second = await executeAiRead("notes.query", { operation: "list", query: "notes", cursor: first.nextCursor }, f.deps);
+  assert.deepEqual(
+    [...first.records, ...second.records].map((record) => record.id),
+    ["note:1", "note:2", "note:3"],
+  );
 });
 
 test("missing canonical revision and authorization changes fail instead of returning stale text", async () => {
