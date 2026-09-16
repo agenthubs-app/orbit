@@ -4,12 +4,12 @@ import {
   resolveConfiguredEventAdmissionRegistrationControl,
   resolveConfiguredEventAdmissionRegistrationState,
 } from "../../../../../features/events/admission/registration-control";
-import { readRuntimeEventRegistrationAvailability } from "../../../../../features/events/registration/runtime";
+import { readRuntimeEventRegistrationWindow } from "../../../../../features/events/registration/runtime";
 
 export const dynamic = "force-dynamic";
 
 const handlers = createEventRegistrationRouteHandlers({
-  readRegistrationAvailability: readRuntimeEventRegistrationAvailability,
+  readRegistrationWindow: readRuntimeEventRegistrationWindow,
   resolveAdmissionControl: resolveConfiguredEventAdmissionRegistrationControl,
   resolveAdmissionState: resolveConfiguredEventAdmissionRegistrationState,
   async resolveActor() {

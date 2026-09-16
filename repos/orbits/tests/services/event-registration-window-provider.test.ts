@@ -53,6 +53,7 @@ test("an enrolled event without published operations and admission windows fails
   );
   assert.deepEqual(await provider.getEnrollment("event:enrolled"), {
     state: "canonical_misconfigured",
+    blockingReason: "configuration_required",
   });
 });
 
@@ -110,6 +111,7 @@ test("an enrolled event fails closed when profile edits outlive registration", a
   );
   assert.deepEqual(await provider.getEnrollment("event:enrolled"), {
     state: "canonical_misconfigured",
+    blockingReason: "invalid_window",
   });
 });
 

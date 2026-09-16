@@ -20,7 +20,9 @@ export interface AppendCanonicalMembershipVersionInput {
   observedAt?: string;
   origin: CanonicalMembershipOrigin;
   profileChanged: boolean;
-  profileEditDeadlineAt: string;
+  /** Membership-only transitions retain the originally committed late flag. */
+  lateRegistration?: boolean;
+  profileEditDeadlineAt: string | null;
   profileEffectiveAt?: string;
   profileVersion: number;
   registration: EventRegistration;
@@ -75,10 +77,19 @@ export async function appendCanonicalMembershipVersion(
   }
   const effectiveAt = input.effectiveAt ?? input.registration.updatedAt;
   const observedAt = input.observedAt ?? input.registration.updatedAt;
+  if (input.profileEditDeadlineAt === null &&
+      (input.profileChanged || typeof input.lateRegistration !== "boolean")) {
+    throw new Error("A profile write requires its deadline; membership-only transitions require the committed late flag.");
+  }
   const participant = eventOperationsParticipantFromRegistration(
     input.registration,
-    { profileEditDeadlineAt: input.profileEditDeadlineAt },
+    input.profileEditDeadlineAt === null
+      ? { profileEditDeadlineAt: null, lateRegistration: input.lateRegistration! }
+      : { profileEditDeadlineAt: input.profileEditDeadlineAt },
   );
+  if (!input.profileChanged && input.lateRegistration !== undefined) {
+    participant.lateRegistration = input.lateRegistration;
+  }
   const profilePayload = {
     participant,
     registrationProfile: clone(input.registration.participantProfile),

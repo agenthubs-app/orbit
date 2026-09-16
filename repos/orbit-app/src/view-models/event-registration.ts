@@ -1,5 +1,6 @@
 import type { OrbitLanguage } from "../api/contract/language";
 import { createTranslator } from "../i18n/messages";
+import { eventRegistrationStatusCopy, EVENT_REGISTRATION_BLOCKING_REASONS, type EventRegistrationBlockingReasonView } from "./event-registration-status";
 
 export interface EventRegistrationQuestionView {
   answer: string;
@@ -304,6 +305,7 @@ function confirmLabel(status: string, language: OrbitLanguage): string {
 }
 
 function eligibilityView(data: Record<string, unknown>): {
+  blockingReason?: EventRegistrationBlockingReasonView;
   allowedActions: EventRegistrationActionView[];
   applicationVersion: number | null;
   evaluatedAt: string;
@@ -335,6 +337,8 @@ function eligibilityView(data: Record<string, unknown>): {
   const applicationVersion = raw.applicationVersion;
   return {
     allowedActions: [...new Set(allowedActions)],
+    ...(EVENT_REGISTRATION_BLOCKING_REASONS.includes(raw.blockingReason as EventRegistrationBlockingReasonView)
+      ? { blockingReason: raw.blockingReason as EventRegistrationBlockingReasonView } : {}),
     applicationVersion:
       typeof applicationVersion === "number" &&
       Number.isSafeInteger(applicationVersion) &&
@@ -348,6 +352,7 @@ function eligibilityView(data: Record<string, unknown>): {
 }
 
 function eligibilityCopy(input: {
+  blockingReason?: EventRegistrationBlockingReasonView;
   actions: readonly EventRegistrationActionView[];
   state: EventRegistrationEligibilityStateView;
 }, language: OrbitLanguage): {
@@ -356,22 +361,29 @@ function eligibilityCopy(input: {
   detail: string;
   label: string;
 } {
-  if (input.state === "not_open") return { cancelLabel: "", confirmLabel: "等待开放", detail: "报名尚未开放，请稍后再看。", label: "报名尚未开放" };
-  if (input.state === "registration_closed") return { cancelLabel: "", confirmLabel: "报名已截止", detail: "服务端已关闭报名。当前答案会保留，但不能提交。", label: "报名已截止" };
-  if (input.state === "event_ended") return { cancelLabel: "", confirmLabel: "活动已结束", detail: "活动已经结束，报名操作不可用。", label: "活动已结束" };
-  if (input.state === "event_cancelled") return { cancelLabel: "", confirmLabel: "活动已取消", detail: "活动已由主办方取消，报名操作不可用。", label: "活动已取消" };
-  if (input.state === "full") return { cancelLabel: "", confirmLabel: "名额已满", detail: "当前名额已满，服务端未开放候补。", label: "名额已满" };
+  const t = createTranslator(language);
+  const restricted = {
+    not_open: ["registration.stateNotOpen", "registration.detailNotOpen"],
+    registration_closed: ["registration.stateClosed", "registration.detailClosed"],
+    event_ended: ["registration.stateEnded", "registration.detailEnded"],
+    event_cancelled: ["registration.stateEventCancelled", "registration.detailEventCancelled"],
+    full: ["registration.stateFull", "registration.detailFull"]
+  } as const;
+  if (input.state in restricted) {
+    const [label, detail] = restricted[input.state as keyof typeof restricted];
+    return { cancelLabel: "", confirmLabel: t(label), detail: t(detail), label: t(label) };
+  }
   if (input.state === "pending_review") return { cancelLabel: "撤回申请", confirmLabel: "等待审核", detail: "申请已提交，正在等待主办方审核。", label: "待审核" };
   if (input.state === "waitlisted") return { cancelLabel: "撤回申请", confirmLabel: "当前候补", detail: "当前处于候补名单，可撤回申请。", label: "候补中" };
   if (input.state === "rejected") return { cancelLabel: "", confirmLabel: "未通过审核", detail: "本次申请未通过审核。", label: "未通过" };
   if (input.state === "withdrawn") return { cancelLabel: "", confirmLabel: "申请已撤回", detail: "申请已经撤回。", label: "已撤回" };
-  if (input.state === "unavailable") return { cancelLabel: "", confirmLabel: "暂不可操作", detail: "暂时无法确认服务端资格，刷新成功前不会提交。", label: "资格暂不可用" };
+  if (input.state === "unavailable") return { cancelLabel: "", confirmLabel: t("registration.actionReadAgain"), detail: eventRegistrationStatusCopy(input.blockingReason, language), label: t("registration.stateUnavailable") };
   if (input.state === "registered") {
     const t = createTranslator(language);
     return {
       cancelLabel: input.actions.includes("withdraw") ? t("registration.actionWithdraw") : t("registration.actionCancel"),
       confirmLabel: input.actions.includes("update") ? t("registration.actionUpdate") : t("registration.actionUnmodifiable"),
-      detail: t("registration.detailRegisteredServer"),
+      detail: input.blockingReason ? eventRegistrationStatusCopy(input.blockingReason, language) : t("registration.detailRegisteredServer"),
       label: t("registration.statusRegistered")
     };
   }
@@ -421,7 +433,7 @@ export function eventRegistrationToView(data: unknown, language: OrbitLanguage =
   const questionSetVersionValue = nestedRecord(payload, "questionSet").questionSetVersion;
   const eligibility = eligibilityView(payload);
   const copy = eligibility
-    ? eligibilityCopy({ actions: eligibility.allowedActions, state: eligibility.state }, language)
+    ? eligibilityCopy({ actions: eligibility.allowedActions, state: eligibility.state, ...(eligibility.blockingReason ? { blockingReason: eligibility.blockingReason } : {}) }, language)
     : null;
 
   return {
@@ -452,7 +464,9 @@ export function eventRegistrationToView(data: unknown, language: OrbitLanguage =
         : null,
     questions: questionsFromPayload(payload, answers),
     statusDetail: copy?.detail ?? statusDetail(status, language),
-    statusLabel: copy?.label ?? statusLabel(status, language)
+    statusLabel: status === "cancelled" && copy && eligibility?.state !== "registration_cancelled"
+      ? `${statusLabel(status, language)} · ${copy.label}`
+      : copy?.label ?? statusLabel(status, language)
   };
 }
 

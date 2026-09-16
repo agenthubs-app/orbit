@@ -15,6 +15,8 @@ import {
 import { bilingualSegment } from "../../../../../../features/orbit-ai/event-recommendation-artifact-service";
 import { generateEventRegistrationQuestions } from "../../../../../../features/events/registration/question-generator";
 import { eventRegistrationRuntimeService } from "../../../../../../features/events/registration/runtime";
+import { readRuntimeEventRegistrationWindow } from "../../../../../../features/events/registration/runtime";
+import { resolveEventRegistrationEligibility } from "../../../../../../features/events/registration/eligibility";
 import { createConfiguredEventAdmissionJourneyService } from "../../../../../../features/events/admission/journey-runtime";
 import { signAdaptiveInterviewQuestion } from "../../../../../../features/events/registration/interview-question-token.server";
 import { createProfileService } from "../../../../../../features/profile/service-factory";
@@ -174,8 +176,11 @@ export default async function AppEventRegistrationGuidePage({
           eventReference: event.id,
         })
       : null;
+    const registrationWindow = actor?.id && !admissionState?.admissionControlled
+      ? await readRuntimeEventRegistrationWindow(event.id)
+      : null;
     const [questionSet, registration, profileResult] = await Promise.all([
-      admissionState?.application
+      admissionState?.application || (registrationWindow && registrationWindow.availability !== "open")
         ? Promise.resolve({
             provenance: {
               aiProviderRequested: false,
@@ -205,6 +210,13 @@ export default async function AppEventRegistrationGuidePage({
     ]);
     const actorProfile =
       profileResult?.success === true ? profileResult.data.profile : null;
+    const initialEligibility = registrationWindow ? resolveEventRegistrationEligibility({
+      event,
+      evaluatedAt: new Date().toISOString(),
+      legacyAvailability: registrationWindow.availability,
+      blockingReason: registrationWindow.blockingReason,
+      registration,
+    }) : undefined;
     const displayName =
       actorProfile?.displayName.trim() ||
       actor?.name?.trim() ||
@@ -256,6 +268,8 @@ export default async function AppEventRegistrationGuidePage({
       <>
         <OrbitReferenceStyles />
         <EventRegistrationWorkspace
+          actorId={actor?.id}
+          initialEligibility={initialEligibility}
           event={{
             id: localizedEvent.id,
             title: localizedEvent.title,

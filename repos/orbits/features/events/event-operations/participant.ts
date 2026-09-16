@@ -62,7 +62,8 @@ function splitPositioning(value?: string): {
 
 export function eventOperationsParticipantFromRegistration(
   registration: EventRegistration,
-  configuration: Pick<EventOperationsConfiguration, "profileEditDeadlineAt">,
+  configuration: Pick<EventOperationsConfiguration, "profileEditDeadlineAt"> |
+    { profileEditDeadlineAt: null; lateRegistration: boolean },
 ): EventOperationsParticipant {
   const interviewResponses = registration.participantProfile.interviewResponses;
   const answers = normalizeEventParticipantAnswers(
@@ -97,8 +98,10 @@ export function eventOperationsParticipantFromRegistration(
     industry: answers.industry?.trim() || null,
     languages,
     lateRegistration:
-      Date.parse(registration.registeredAt) >=
-      Date.parse(configuration.profileEditDeadlineAt),
+      "lateRegistration" in configuration
+        ? configuration.lateRegistration
+        : Date.parse(registration.registeredAt) >=
+          Date.parse(configuration.profileEditDeadlineAt),
     needs: values(answers.targetAttendees, answers.desiredOutcome),
     offers: values(answers.valueOffered, answers.experienceHighlight),
     participantId: registration.participantProfileId,

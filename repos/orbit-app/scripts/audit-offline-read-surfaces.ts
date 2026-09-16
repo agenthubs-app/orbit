@@ -14,8 +14,8 @@ const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
   'src/api/business-card-import.ts:114': ['/api/contact-drafts/business-card/imports/:id/cancel'],
   'src/api/business-card-import.ts:115': ['/api/contact-drafts/business-card/imports/:id'],
   'src/api/mobile-auth.ts:172': ['/api/auth/mobile/credentials', '/api/auth/mobile/google/exchange'],
-  'src/screens/ai/AiConversationScreen.tsx:343': ['/api/ai/conversations', '/api/ai/conversations/:id'],
-  'src/screens/ai/AiConversationScreen.tsx:496': ['/api/ai/runs/:id'],
+  'src/screens/ai/AiConversationScreen.tsx:345': ['/api/ai/conversations', '/api/ai/conversations/:id'],
+  'src/screens/ai/AiConversationScreen.tsx:498': ['/api/ai/runs/:id'],
   'src/screens/chat/RelationshipChatDetailScreen.tsx:176': ['/api/relationship-communication/conversations/:id/messages'],
   'src/screens/contacts/ContactAcquisitionScreen.tsx:401': ['/api/contact-drafts/:id'],
   'src/screens/contacts/ContactAcquisitionScreen.tsx:440': ['/api/contact-drafts/manual', '/api/contact-drafts/qr/scan', '/api/contact-drafts/business-card/scan'],
@@ -29,7 +29,6 @@ const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
   'src/screens/contacts/ContactsGraphScreen.tsx:169': ['/api/connections/:id/profile'],
   'src/screens/contacts/ContactsScreen.tsx:1724': ['/api/contacts'],
   'src/screens/events/EventAttendeesScreen.tsx:260': ['/api/events/:id/attendees/import'],
-  'src/screens/home/HomeDashboardScreen.tsx:112': ['/api/tasks', '/api/schedule-items', '/api/recommendations/events'],
   'src/hooks/useRelationshipInboxBadgeCount.ts:68': ['/api/relationship-communication/conversations', '/api/notifications', '/api/inbox/notifications'],
   'src/screens/inbox/RelationshipInboxScreen.tsx:510': ['/api/notifications/:id/state', '/api/relationship-communication/conversations/:id/read'],
   'src/screens/inbox/RelationshipInboxScreen.tsx:1185': ['/api/relationship-signals/:id/confirm'],
@@ -134,6 +133,9 @@ export async function extractReadCalls(root: string): Promise<{ calls: Call[]; i
     if (ts.isPropertyAccessExpression(node)) {
       const property = objectProperty(node.expression, node.name.text, env, next);
       if (!property.every(value => value === UNKNOWN)) return property;
+    }
+    if (ts.isElementAccessExpression(node)) {
+      return unique(ev(node.argumentExpression).flatMap(key => key === UNKNOWN ? [UNKNOWN] : objectProperty(node.expression, key, env, next)));
     }
     if (ts.isBinaryExpression(node)) {
       if (node.operatorToken.kind === ts.SyntaxKind.PlusToken) return product(ev(node.left), ev(node.right));
@@ -325,12 +327,13 @@ export async function extractReadCalls(root: string): Promise<{ calls: Call[]; i
     const pathNode = node.arguments[shape.pathIndex];
     const evaluatedPaths = evaluate(pathNode, env);
     const paths = evaluatedPaths.map(normalizePath).filter((value): value is string => value !== null);
-    const unresolvedPath = !paths.length || evaluatedPaths.every(path => !path.includes('/api/'));
+    const unknownPath = evaluatedPaths.includes(UNKNOWN);
+    const unresolvedPath = unknownPath || !paths.length || evaluatedPaths.every(path => !path.includes('/api/'));
     const inferredPaths = unresolvedPath ? [...(computedPathFamilies[location] ?? [])] : [];
     const resolvedPaths = unique([...paths, ...inferredPaths]);
     const unresolvedMethod = methods.includes(UNKNOWN);
-    if (unresolvedMethod || (!resolvedPaths.length && unresolvedPath)) {
-      const finding = { node, location, method: unresolvedMethod, path: !resolvedPaths.length && unresolvedPath, baseline, text: node.getText().slice(0, 100) };
+    if (unresolvedMethod || (unresolvedPath && (!resolvedPaths.length || (unknownPath && !inferredPaths.length)))) {
+      const finding = { node, location, method: unresolvedMethod, path: unresolvedPath && (!resolvedPaths.length || (unknownPath && !inferredPaths.length)), baseline, text: node.getText().slice(0, 100) };
       pendingSinks.set(key, finding);
     }
     if (resolvedPaths.length && methods.some(method => method !== UNKNOWN)) {
