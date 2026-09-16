@@ -42,8 +42,8 @@ import {
 import { createConfiguredOrbitAiTaskInteractionService } from "../../../../features/orbit-ai/task-interaction-service-factory";
 import {
   agentRequestUnauthorizedResponse,
-  resolveAgentRequestContext,
 } from "../../_shared/agent-request-context";
+import { resolveOrbitAgentConversationRequestContext } from "./request-context";
 import {
   ReliableSendError,
   createReliableOrbitAgentSendService,
@@ -579,7 +579,7 @@ export async function GET(request: Request): Promise<Response> {
   // GET 只读取会话列表/状态，不触发模型 provider。
   const timing = createRouteTiming();
   const mode = resolveFeatureMode();
-  const agentContext = await resolveAgentRequestContext(mode);
+  const agentContext = await resolveOrbitAgentConversationRequestContext(mode);
   if (!agentContext) return agentRequestUnauthorizedResponse();
   const serviceStartedAt = timing.now();
   const service = createOrbitAgentConversationService();
@@ -596,7 +596,7 @@ export async function POST(request: Request): Promise<Response> {
   // POST 是用户发消息入口；mock/live 的选择由 service factory 和环境变量决定。
   const timing = createRouteTiming();
   const mode = resolveFeatureMode();
-  const agentContext = await resolveAgentRequestContext(mode);
+  const agentContext = await resolveOrbitAgentConversationRequestContext(mode);
   if (!agentContext) return agentRequestUnauthorizedResponse();
   const readBodyStartedAt = timing.now();
   const body = await readJsonBody(request);
@@ -736,6 +736,7 @@ export async function POST(request: Request): Promise<Response> {
           const executionInput = prepared?.trustedOriginVerification
             ? {
                 ...trustedInput,
+                history: prepared.history,
                 message: [
                   "Execute the registered contacts.analysis@1 task using the current actor-scoped relationship data.",
                   "Return a relationship analysis report; do not switch to an unrelated task.",
@@ -743,7 +744,7 @@ export async function POST(request: Request): Promise<Response> {
                   `User's editable focus: ${input.message ?? ""}`,
                 ].join("\n"),
               }
-            : trustedInput;
+            : { ...trustedInput, history: prepared?.history };
           const executed = await persistConversationRunTrace(
             await executeConversation(executionInput),
             agentContext.runtime,
