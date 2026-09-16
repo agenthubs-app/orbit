@@ -90,14 +90,14 @@ build/harness-logs/
 | [0038](0038-typed-notification-inbox/GOAL.md) | 让每条通知明确属于提醒、建议或动态，显示原因和可追溯来源，并让 Web 与 App 操作同一条记录。 | 2026-09-16 已确认的消息/三类通知设计 | 功能及主线e045651b3；同账号三类通知与双向动作验收，[REPORT](0038-typed-notification-inbox/REPORT.md)保留失败历史 | completed |
 | [0039](0039-evidence-based-notification-discovery/GOAL.md) | 让 AI 从允许使用的真实信息中自主发现具体动作，有可信时间才提醒，并展示可核查的原文依据。 | 2026-09-16 已确认的消息/三类通知设计 | 功能4aa21961a/合并131723ddb；云端既有来源的真实 AI provider/费用仍缺；外部 Calendar/Gmail/Microsoft OAuth 来源转后续 TODO，见[REPORT](0039-evidence-based-notification-discovery/REPORT.md) | blocked |
 | [0040](0040-notification-delivery-cutover/GOAL.md) | 让消息和通知按独立偏好可靠送达，减少重复打扰，并安全替换旧通知数据与旧发送链。 | 2026-09-16 已确认的消息/三类通知设计 | 功能eacd7a227/合并0b552649d；偏好/迁移已验，真实Push/AI及原生出站确认未齐，见[REPORT](0040-notification-delivery-cutover/REPORT.md) | blocked |
-| [0041](0041-web-test-baseline-restoration/GOAL.md) | 恢复可信的 Web 测试基线，把确定性测试与显式前置的集成测试分开，并修复当前所有已知基线失败 | 用户批准 B/D 在定向验证与独立审查通过后先合并，并要求把既有 Web 全量失败单独建 Sprint 跟踪 | run-01 running；E 线 Worktree `client-new-thread:f0e13ae9-0bab-4f21-a08c-d85ded831222`，planning SHA `eb7470a1b` | running |
+| [0041](0041-web-test-baseline-restoration/GOAL.md) | 恢复可信的 Web 测试基线，把确定性测试与显式前置的集成测试分开，并修复当前所有已知基线失败 | 用户批准 B/D 在定向验证与独立审查通过后先合并，并要求把既有 Web 全量失败单独建 Sprint 跟踪 | 原run已交blocked报告30a032849；固定532c29dcd确定性3183/3183，隔离集成前置/两次integration+all及审查/主线整合未齐，不重开Generator | blocked |
 | [0042](0042-personal-schedule-list-repair/GOAL.md) | 修复个人日程列表读取，并验证增改删后列表、详情与日历一致 | B/C/D报告追加；R-08/R-09，承接0010/0026/0027 | C run-01 SC01～05完成，三功能主线426b188195；报告31e7c665及登记随本次文档整合闭环，旧Web全量失败保留 | completed |
-| [0043](0043-event-read-access-repair/GOAL.md) | 活动参会者与分析入口符合实际资格，合法读取成功、拒绝与服务错误明确 | C主包参会者404/分析500与403；R-04/R-09/R-14 | 已批准；C接续独立worktree已建，进入条件核验中，尚未启动Generator | planned |
+| [0043](0043-event-read-access-repair/GOAL.md) | 活动参会者与分析入口符合实际资格，合法读取成功、拒绝与服务错误明确 | C主包参会者404/分析500与403；R-04/R-09/R-14 | 已批准；C run-01先在已核验owner/无资格样本调查/TDD；真实attendee正例另核精确fixture，B验收期间不合产品/抢runtime | running |
 | [0044](0044-ai-conversation-readback-repair/GOAL.md) | AI新会话发送后可持久回读和续聊，不返回悬空成功会话 | D POST200后GET404；R-00/R-02/R-14 | 用户批准；B线run-01，先会话生命周期调查/TDD；0036共享runtime接线等待逐文件移交，付费证据另协调 | running |
 | [0045](0045-private-note-deletion/GOAL.md) | 确认删除私密笔记并传播到关联入口、镜像及新AI检索，不越权或复活 | D整条笔记无删除入口/API；R-13/R-14追加 | 新增目标实施指令、授权精确记录、0033/34删除接口与0036检索失效；建议D，未派发 | planned |
 | [0046](0046-repeatable-functional-acceptance/GOAL.md) | 用正确主包与隔离有效样本补齐交互矩阵，失效通知来源安全提示 | 用户实际交互要求、B/C错包与C/D样本缺口；R-11/R-14 | 样本目标/权限/清理先核验；最终矩阵依赖0042～45及0033～36必需版本；建议空闲A/E，未派发 | planned |
 
-2026-09-16按用户“总结B/C/D报告后设计sprints”新增[中文汇总与追加计划](SIMULATOR_REMEDIATION_PROGRAM.md)，随后用户明确“42～46开始修复”及“请继续”，五项实施批准已满足。0042/0044登记run-01；0043/0045/0046获准排队，run_count=0，REPORT均未产生。全域离线9/9失败继续映射0033～0036原契约，不另建重复缓存Sprint；不修改其冻结Planner或把规划当作修复完成。
+2026-09-16按用户“总结B/C/D报告后设计sprints”新增[中文汇总与追加计划](SIMULATOR_REMEDIATION_PROGRAM.md)，随后用户明确“42～46开始修复”及“请继续”，五项实施批准已满足。0042已收口completed，0044与接续0043各登记唯一run-01；0045/0046获准排队run_count=0，尚无REPORT。全域离线9/9失败继续映射0033～0036原契约，不另建重复缓存Sprint；不修改其冻结Planner或把规划当作修复完成。
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
 
@@ -498,6 +498,14 @@ build/harness-logs/
 
 0042/0044初期集成检查点：功能合入`chat-agent`的`f0d747730037f0f9020297cd47aea37b17c9d489`；Web定向42/42、App27/27。该树Web全量曾失败：3558项、3359通过、23失败、176跳过，20旧失败、3新增名称；本地测试自行加载`.env.local`并实际连接PG，不能记为隔离或全绿。C原run证据保留逐名对照/loader映射/只读审计；两个PG新增失败所涉源码本轮未修改，无before快照不能保证业务未变。B关联旧认证断言第一轮修复后6完整文件41/41，主线补充两完整文件15/15，未重全量。当时两Sprint均running；最新0042收口及0044未满足项见各run条目，旧失败不因局部修复或文档整合改为通过。
 
-获准排队：0043由C接续、0045由D接续并复用 `codex/sprint-0033-note-delete` 的 `03bfe4aa5` 墓碑能力，0046准备及最终验收由空闲A/E领取；三项尚无Generator run，不提前生成REPORT。
+获准排队：0045由D接续并复用 `codex/sprint-0033-note-delete` 的 `03bfe4aa5` 墓碑能力，0046准备及最终验收由空闲A/E领取；两项尚无Generator run，不提前生成REPORT。0045原子sharedstore依赖0033尚未合入的sync写锁migration；精确main dev PG只读catalog确认当前函数不存在，不能盲合导致现有upsert失效；UI及其他独立准备与此依赖分开。
 
 0043关联范围协调：PhoneWeb任务独占PW-0009的EventsScreen历史筛选、专属演示活动日期以及EventDetailScreen仅真正public NOT_FOUND且已登录时的既有auth详情读取接线（已实测auth200/public404）。0043不重复该详情fallback，仍调查参会者/分析资格、权威来源与正确错误态；PhoneWeb固定SHA交接后在主线复验。不修改public_code/alias、不扩权，32110由PhoneWeb任务独占，32100重启仍需串行协调。
+
+### 0043 / run-01
+
+- 开始登记：2026-09-16T18:08:49+09:00；唯一Generator管理任务内C支线`/root/c_sprint0043`，GPT-5.6 Sol / medium；独立worktree `.worktrees/sprint-0043-event-read-access-repair`，分支`codex/sprint-0043-event-read-access-repair`，产品基线`426b18819523c0b05dd30365b5a02669850841ac`，tracked干净、两端锁文件一致，复用现有依赖symlink不安装。
+- 冻结Planner SHA256 `424fd770cceceb81a6c0eb4987f6eaab39f02a45dd1ce95ab678417649e188cc`；复用已批准五SC，不改契约。基线直接Web18/18及App15/15 exit0，不能冒充live资格通过。
+- 进入条件已核：精确main `orbit_events/workspace:orbit-dev/account_orbit_generated`只读PG事务确认`event_02`已Event Core cutover且QA为organizer；`event_signup_03`已cutover但QA非owner、无role assignment，两活动均无该QA canonical membership head。有权/无权角色可核验；真实registered attendee正例单列待合法精确fixture及清理方式，不给旧活动/账号扩权，不把旧取消投影当active registration。
+- 先独占Planner内App参会者/分析consumer及Web对应handlers/资格适配器/实际service与直接测试，按根因逐符号impact后TDD。0033活动源及通用sync、0044所有会话/runtime/App AI、PhonePW0010 reader/AI契约/会话UI、i18n和共享contract生成边界不并行改；必要新增文件登记用途/SC后实施，不增加审批循环。
+- B持DA/main actor/共享runtime与付费窗口期间，C仅独立分支源码/定向测试和已批准只读元数据调查；不操控主包/共享浏览器、不API业务写、不自行停启3000/8082/Phone、不合产品到root。需同版本真实验收/fixture时等根明确释放，固定SHA交接后根merge→生产build/restart→实际操作→报告/主线闭环。
