@@ -92,7 +92,7 @@ build/harness-logs/
 | [0040](0040-notification-delivery-cutover/GOAL.md) | 让消息和通知按独立偏好可靠送达，减少重复打扰，并安全替换旧通知数据与旧发送链。 | 2026-09-16 已确认的消息/三类通知设计 | 功能eacd7a227/合并0b552649d；偏好/迁移已验，真实Push/AI及原生出站确认未齐，见[REPORT](0040-notification-delivery-cutover/REPORT.md) | blocked |
 | [0041](0041-web-test-baseline-restoration/GOAL.md) | 恢复可信的 Web 测试基线，把确定性测试与显式前置的集成测试分开，并修复当前所有已知基线失败 | 用户批准 B/D 在定向验证与独立审查通过后先合并，并要求把既有 Web 全量失败单独建 Sprint 跟踪 | 原run已交blocked报告30a032849；固定532c29dcd确定性3183/3183，隔离集成前置/两次integration+all及审查/主线整合未齐，不重开Generator | blocked |
 | [0042](0042-personal-schedule-list-repair/GOAL.md) | 修复个人日程列表读取，并验证增改删后列表、详情与日历一致 | B/C/D报告追加；R-08/R-09，承接0010/0026/0027 | C run-01 SC01～05完成，三功能主线426b188195；报告31e7c665及登记随本次文档整合闭环，旧Web全量失败保留 | completed |
-| [0043](0043-event-read-access-repair/GOAL.md) | 活动参会者与分析入口符合实际资格，合法读取成功、拒绝与服务错误明确 | C主包参会者404/分析500与403；R-04/R-09/R-14 | 已批准；C run-01先在已核验owner/无资格样本调查/TDD；真实attendee正例另核精确fixture，B验收期间不合产品/抢runtime | running |
+| [0043](0043-event-read-access-repair/GOAL.md) | 活动参会者与分析入口符合实际资格，合法读取成功、拒绝与服务错误明确 | C主包参会者404/分析500与403；R-04/R-09/R-14 | C唯一run结束failed；产品aa2699已部分合入，报告b971a8e1f。MAIN aggregate仍500，真实registered正例及原生精确请求缺证，旧标题映射撤销，不二次生成 | failed |
 | [0044](0044-ai-conversation-readback-repair/GOAL.md) | AI新会话发送后可持久回读和续聊，不返回悬空成功会话 | D POST200后GET404；R-00/R-02/R-14 | 部分功能已合入；原生实际发送/重开通过，Web历史会话没有composer导致续聊失败，notes实际调用/源版本和原生失败恢复缺证据；REPORT已提交，run关闭 | failed |
 | [0045](0045-private-note-deletion/GOAL.md) | 确认删除私密笔记并传播到关联入口、镜像及新AI检索，不越权或复活 | D整条笔记无删除入口/API；R-13/R-14追加 | 新增目标实施指令、授权精确记录、0033/34删除接口与0036检索失效；建议D，未派发 | planned |
 | [0046](0046-repeatable-functional-acceptance/GOAL.md) | 用正确主包与隔离有效样本补齐交互矩阵，失效通知来源安全提示 | 用户实际交互要求、B/C错包与C/D样本缺口；R-11/R-14 | E run-01先准备运行身份检查和fixture dry-run；真实样本目标/权限/清理另核，最终矩阵依赖0042～45及0033～36必需版本 | running |
@@ -452,6 +452,7 @@ build/harness-logs/
 - 本切片文件锁：`repos/orbit-app/src/data/offline-read/route-domain-inventory.ts`、`scripts/audit-offline-read-surfaces.ts`、`tests/offline-read-inventory.test.ts`、Web `shared/contract/universal-read.ts`、`shared/api-schema/universal-read.ts` 及由既有同步命令生成的 App 副本；仅执行详细计划 Task 1。
 - A 线持有域 ID、route inventory 与 universal-read contract 的定义权；B/C/D 只能消费已固定接口，不得并行重定义。认证、数据库、manifest/cursor 等后续高风险 Task 尚未放行。
 - 2026-09-16继续授权：复用原run、Task1固定`edba0ebfeb635f684fe193cd88f4f4e428211ec6`与干净工作树，先释放Task2A两个新增文件`src/api/offline-read-session.ts`、`tests/offline-read-session.test.ts`（均在App）：纯租期解码、时间/域scope断言与online-only写入能力的TDD切片，消费既有strict wire契约，不改identity/provider/transport、契约/清单、SQLCipher、Web或DB。全域读资格不受0034首批四域写集限制；无可读存储不伪造localRead成功。Task2B真实server-grants和2C共享认证/transport锁仍等待具体依赖与放行；中间能力提交不标Task2或Sprint完成，不加Generator/Reviewer。当前主线本地初始化告警单列；Task5锁顺序冲突在migration放行前必须统一。
+- Task2A固定`9994150c041e4cea91aef4bfe8dd37795b982f08`已合入`bbe0060007d1c4b1245ad0db06af944aa46d2aee`并push/独立ls-remote一致；ROOT完整8/8零跳过/typecheck exit0。仅新pure模块和测试，无生产消费者，不能把pure local-read返回值当存储ready/真实签发grant；2B服务器全域grant枚举与持久authorizationEpoch来源仍缺，2C认证/transport仍未放行。
 
 ### 0034 / run-01（风险分级离线写入升级）
 
@@ -515,6 +516,14 @@ build/harness-logs/
 - B0044现已释放全部窗口；C恢复原未结束run而非再生成。统一图实际元数据已更新至`1f2c697ac`/2026-09-16T09:17:08.460Z，原进程句柄消失不等于分析失败；核查无活analyze且命令exit0 Already up to date，驻留MCP列表缓存须与disk元数据区分。新增资格CTA模块`src/screens/events/EventAttendeeRosterLink.tsx`及EventDetailCard最小接线获准，避开Phone public404 fallback。注册wrapper12直接caller/21symbols按技能HIGH已报告，最小503异常保护不改资格并覆盖传递消费者；event_02配置head精确只读count0，不写配置或扩权。
 - 固定产品`f2a0066df0a27d4447eb4c09e7342b6c57305cb0`/最终`aa2699e474a862aea40c46bab6f399b342db3d9f`已机械合入`4378c964c`，不是验收完成。精确合并树App5完整文件221项/220通过/1失败/0跳过，唯一失败为此前PersonalScheduleList旧detail GET清单孤项；Web2文件22/22与两端typecheck exit0。原全量App3019/3016通过/3失败/0跳过、Web3571/3312通过/53失败/206跳过均保留，两个局部修复轮次已用尽，不再重跑Generator或全量。
 - 新主线Web生产构建与主包安装后，C实际点击“沉睡关系重新激活会”详情名单CTA→名单屏空名单；两活动运营分析均出现通用服务错误，没有预期配置说明/合法拒绝，另一活动详情无名单CTA但为unconfirmed重试。活动标题与冻结metadata分别对应event_02/signup03，不是已捕获的原生pathparam。匿名formal account/me及两活动四私有GET共8次均401。原生HTTP、请求ID与canonical actor未正式观测，不能推断实际500/503；MAIN QA凭据来源和真实registered正例缺项保持未满足。C已释放DA与共享browser窗口、产品冻结，无fixture/config写入或第三修复；run尚未REPORT收口。
+- 收口更正：上条原生标题到event_02/signup03的推断已撤销；正式Web两目标标题与截图不同，不能用其满足冻结原生SC。原MAIN登录从B44实际脚本AST查实使用ROOT `.env.local` 的ORBIT_XIAOYU_TEST_EMAIL/PASSWORD（非qa@标签），仅RAM正式登录后account/me200确认account_orbit_generated。精确8GET：event02 owner/attendees200（名单0）、aggregate500 INTERNAL_ERROR无配置reason、attendee403；signup03 owner/attendees安全404、aggregate/attendee403。两个精确public GET200但status cancelled，与只读Core published冲突。C原run已结束failed，报告固定`b971a8e1f6ce48796e00591ae83f6e7726dfdcd8`；五SC均fail/missing，独立browser已关闭、所有锁释放、无第三修复。产品部分合入不改变失败事实。
+
+### 0045 / run-01
+
+- 开始登记：2026-09-16T19:44+09:00；C43原run已结束释放后，唯一Generator管理任务内D支线`/root/d_sprint0045`，GPT-5.6 Sol / medium；独立`.worktrees/sprint-0045-private-note-deletion`、`codex/sprint-0045-private-note-deletion`，产品基线`bbe0060007d1c4b1245ad0db06af944aa46d2aee`，工作树clean；worktree创建中提前status曾显示尚未checkout文件的D状态，创建33237明确exit0后重新检查clean，非用户删除/改动。
+- 冻结Planner SHA256 `82f1e09a68e4379c2e2b9c8bf71e401c7aa0cd0030f6f7dc605701771714d6f2`，保留五SC及旧notes原子能力`03bfe4aa5793e4107658cb856d76be641c479340`为只读参考，不能盲合共享store/DB依赖。基线三个App完整notes interaction/list/view-model文件13/13零跳过 exit0，复用现有node_modules symlink不安装。
+- 首切片仅独占App `src/screens/notes/NoteDetailScreen.tsx`、`src/view-models/notes.ts`与上述完整直接测试、必要中/日/英四字典；必要新增局部delete helper/test先按原SC01/02登记。实现确认/取消、防重复、失败保正文、版本冲突、精确actor/note/version/scope晚ACK保护；消费真实DELETE形状，不虚构成功回执或离线删除资格。不改Web/server/SQLCipher、共享生成契约、auth/client/hooks、AI/事件/通知/全局台账，不运行设备、服务、DB写或provider。
+- 当前MAIN notes主DELETE未接，真正PG sync-write-lock迁移/事务和全域mirror/AI实际删除传播仍缺；UI定向测试不冒SC04/05。独立切片可路径限定commit交接，但在API/迁移验收前不发布未有后端能力的成功声明；原run按checkpoint保留待依赖，不提前成功REPORT。Phone原A独占DA/Phone账号原生只读，D仅独立源码/测试，不改ROOT当前Metro源或抢设备。
 
 ### 0046 / run-01
 
