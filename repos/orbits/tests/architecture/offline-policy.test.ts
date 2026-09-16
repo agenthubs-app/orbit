@@ -8,17 +8,61 @@ import {
 
 const registry = new OfflineDataPolicyRegistry(OFFLINE_POLICY_REGISTRATIONS);
 
-test("every declared Task 1 route and action resolves to three independent policies", () => {
-  for (const registration of OFFLINE_POLICY_REGISTRATIONS) {
-    const policy = registry.resolve(
+const APPROVED_POLICY_MATRIX = [
+  ["GET", "/api/notes", "read", "note", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/notes/:id", "read", "note", "durable_normalized", "online_only", "metadata_only"],
+  ["POST", "/api/notes", "create", "note", "durable_normalized", "offline_queue", "metadata_only"],
+  ["PATCH", "/api/notes/:id", "update", "note", "durable_normalized", "offline_queue", "metadata_only"],
+  ["DELETE", "/api/notes/:id", "delete", "note", "durable_normalized", "offline_queue", "metadata_only"],
+  ["GET", "/api/tasks", "read", "task", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/tasks/:id", "read", "task", "durable_normalized", "online_only", "metadata_only"],
+  ["POST", "/api/tasks", "create", "task", "durable_normalized", "offline_queue", "metadata_only"],
+  ["PATCH", "/api/tasks/:id", "update", "task", "durable_normalized", "offline_queue", "metadata_only"],
+  ["PATCH", "/api/tasks/:id", "complete", "task", "durable_normalized", "offline_queue", "metadata_only"],
+  ["PATCH", "/api/tasks/:id", "reopen", "task", "durable_normalized", "offline_queue", "metadata_only"],
+  ["PATCH", "/api/tasks/:id", "cancel", "task", "durable_normalized", "offline_queue", "metadata_only"],
+  ["DELETE", "/api/tasks/:id", "delete", "task", "durable_normalized", "offline_queue", "metadata_only"],
+  ["PATCH", "/api/tasks/:id", "relationship_followup.update", "relationship_followup", "durable_normalized", "offline_queue", "metadata_only"],
+  ["PATCH", "/api/tasks/:id", "relationship_followup.complete", "relationship_followup", "durable_normalized", "offline_queue", "metadata_only"],
+  ["PATCH", "/api/tasks/:id", "relationship_followup.reopen", "relationship_followup", "durable_normalized", "offline_queue", "metadata_only"],
+  ["PATCH", "/api/tasks/:id", "relationship_followup.cancel", "relationship_followup", "durable_normalized", "offline_queue", "metadata_only"],
+  ["DELETE", "/api/tasks/:id", "relationship_followup.delete", "relationship_followup", "durable_normalized", "offline_queue", "metadata_only"],
+  ["GET", "/api/schedule-items", "read", "personal_schedule", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/schedule-items/:id", "read", "personal_schedule", "durable_normalized", "online_only", "metadata_only"],
+  ["POST", "/api/schedule-items", "create", "personal_schedule", "durable_normalized", "offline_queue", "metadata_only"],
+  ["PATCH", "/api/schedule-items/:id", "update", "personal_schedule", "durable_normalized", "offline_queue", "metadata_only"],
+  ["DELETE", "/api/schedule-items/:id", "delete", "personal_schedule", "durable_normalized", "offline_queue", "metadata_only"],
+  ["GET", "/api/relationship-communication/conversations/:id/messages", "read", "message", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/events/public", "read", "public_event", "encrypted_ttl_snapshot", "online_only", "on_demand_encrypted"],
+  ["POST", "/api/auth/mobile/credentials", "authenticate", "account_secret", "online_only_secret", "online_only", "never_local"],
+] as const;
+
+test("Task 1 policy registrations exactly match the independently approved matrix", () => {
+  assert.deepEqual(
+    OFFLINE_POLICY_REGISTRATIONS.map((registration) => [
       registration.method,
       registration.pathname,
       registration.action,
+      registration.policy.domainId,
+      registration.policy.readPersistence,
+      registration.policy.mutationPolicy,
+      registration.policy.binaryPolicy,
+    ]),
+    APPROVED_POLICY_MATRIX,
+  );
+  assert.equal(OFFLINE_POLICY_REGISTRATIONS.every((entry) =>
+    entry.policy.schemaVersion === 1 && entry.policy.registryVersion === 1), true);
+
+  for (const [method, pathname, action, domainId, readPersistence, mutationPolicy, binaryPolicy] of APPROVED_POLICY_MATRIX) {
+    const policy = registry.resolve(
+      method,
+      pathname,
+      action,
     );
-    assert.equal(policy.domainId, registration.policy.domainId);
-    assert.equal(policy.readPersistence, registration.policy.readPersistence);
-    assert.equal(policy.mutationPolicy, registration.policy.mutationPolicy);
-    assert.equal(policy.binaryPolicy, registration.policy.binaryPolicy);
+    assert.equal(policy.domainId, domainId);
+    assert.equal(policy.readPersistence, readPersistence);
+    assert.equal(policy.mutationPolicy, mutationPolicy);
+    assert.equal(policy.binaryPolicy, binaryPolicy);
   }
 });
 

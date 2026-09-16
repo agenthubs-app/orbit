@@ -2,7 +2,8 @@ import { z } from "zod";
 
 const nonEmpty = z.string().refine((value) => value.trim().length > 0);
 const instant = z.string().datetime({ offset: true });
-const optionalText = z.string().max(10_000).optional();
+const optionalText = z.string().max(10_000)
+  .refine((value) => value.trim().length > 0).optional();
 const nullableText = z.string().max(10_000).nullable().optional();
 const idList = z.array(nonEmpty).max(100);
 const mention = z.object({
@@ -14,7 +15,8 @@ const mention = z.object({
 
 const notePatch = z.object({
   title: z.string().max(200).optional(),
-  body: z.string().max(100_000).optional(),
+  body: z.string().max(100_000)
+    .refine((value) => value.trim().length > 0).optional(),
   manualContactIds: idList.optional(),
   mentions: z.array(mention).max(100).optional(),
   eventIds: idList.optional(),
@@ -58,6 +60,8 @@ const base = z.object({
   patch: z.record(z.string(), z.unknown()),
   createdAt: instant,
 }).strict();
+
+const localEntityId = /^local:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
 function parsePatch(kind: z.infer<typeof base>["kind"], operation: z.infer<typeof base>["operation"], patch: Record<string, unknown>) {
   if (["delete", "complete", "reopen", "cancel"].includes(operation)) {
@@ -114,7 +118,7 @@ export function parseOfflineMutation(input: unknown) {
   };
   if (!allowed[mutation.kind].includes(mutation.operation)) throw new Error("mutation-operation-denied");
   if (mutation.operation === "create") {
-    if (mutation.baseRevision !== null || !mutation.entityId.startsWith("local:")) throw new Error("mutation-create-identity-invalid");
+    if (mutation.baseRevision !== null || !localEntityId.test(mutation.entityId)) throw new Error("mutation-create-identity-invalid");
   } else if (mutation.baseRevision === null || mutation.baseRevision.trim().length === 0) {
     throw new Error("mutation-base-revision-required");
   }

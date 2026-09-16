@@ -5,7 +5,7 @@ import { OfflineDataPolicyRegistry } from "../src/data/offline/policy-registry";
 import type { ScopePort } from "../src/data/offline/ports";
 
 const facts = { actorPrivate: true, confirmed: true, connectionActive: true };
-const command = { mutationId: "m1", kind: "note", entityId: "local:m1", operation: "create",
+const command = { mutationId: "m1", kind: "note", entityId: "local:123e4567-e89b-42d3-a456-426614174000", operation: "create",
   baseRevision: null, patch: { body: "Hello" }, createdAt: "2026-09-16T00:00:00Z" };
 
 test("only confirmed private operations from the four approved domains are eligible", () => {
@@ -41,7 +41,7 @@ test("strict mutation parsing accepts domain patches and retains opaque revision
     ["personal_schedule", "update", { endsAt: null, location: null }],
   ] as const;
   for (const [kind, operation, patch] of cases) {
-    const input = { ...command, kind, operation, entityId: operation === "create" ? "local:m1" : "canonical:one",
+    const input = { ...command, kind, operation, entityId: operation === "create" ? command.entityId : "canonical:one",
       baseRevision: operation === "create" ? null : "  opaque revision/v2  ", patch };
     assert.deepEqual(parseMutation(input), input);
   }
@@ -84,6 +84,30 @@ test("mutation parser rejects missing revisions, invalid dates, empty patches an
     { ...command, kind: "task", patch: { title: "x", category: "personal", plannedDate: "2026-02-30" } },
     { ...command, kind: "personal_schedule", patch: { title: "x", startsAt: "2026-09-17T09:00:00Z", endsAt: "2026-09-17T08:00:00Z" } },
   ]) assert.throws(() => parseMutation(input));
+});
+
+test("create entity IDs require a complete local UUID", () => {
+  for (const entityId of ["local:", "local:x", "local:123e4567-e89b-12d3-a456"]) {
+    assert.throws(() => parseMutation({ ...command, entityId }));
+  }
+});
+
+test("note body and task title updates reject whitespace-only text", () => {
+  assert.throws(() => parseMutation({
+    ...command,
+    operation: "update",
+    baseRevision: "r1",
+    entityId: "n1",
+    patch: { body: "   \n" },
+  }));
+  assert.throws(() => parseMutation({
+    ...command,
+    kind: "task",
+    operation: "update",
+    baseRevision: "r1",
+    entityId: "t1",
+    patch: { title: "   \t" },
+  }));
 });
 
 test("local-read capability never supplies online authority and an unbound registry denies reads", async () => {
