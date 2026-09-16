@@ -82,10 +82,10 @@ build/harness-logs/
 | [0030](0030-inbox-ink-signal-unified-feed/GOAL.md) | 按 3a 设计把活动、待办、人脉和 IORBIT 通知组成真实统一收件箱 | 用户提供 `软件UI设计现代化 (5).zip` 并指定 E 线实现 | E 线固定 SHA `a252220a8`；同账号 live task/read/refresh 已验收，缺失 live 类别见 [REPORT](0030-inbox-ink-signal-unified-feed/REPORT.md) | completed |
 | [0031](0031-cross-platform-performance/GOAL.md) | 以同环境真实性能基线优化 App 与 Web 的最慢关键路径，不改变功能与数据边界 | 用户批准基线驱动方案并指定 B 线执行 | run-01 failed；固定 B SHA `d71e40839`，安全测量与 Agent 拆包由 `7a48c3bc6` 合并；App 30% 与跨页 p95 门槛未通过，见 [REPORT](0031-cross-platform-performance/REPORT.md) | failed |
 | [0032](0032-hybrid-sync-foundation/GOAL.md) | 建立云端权威、加密且按账号隔离的 App 本地实体镜像 | 用户批准“云端权威＋本地持久镜像＋增量同步”方案 | run-01 最终 HEAD `1e40ee915`，merge `00b81ab18`；App 主集 94/94、消费者 49/49、全量 2934/2934，Web 19/19、两端 typecheck、production build 48/48、3108 live/ok，重建 SQLCipher 与 native 8＋5＋48 项通过，见 [REPORT](0032-hybrid-sync-foundation/REPORT.md) | completed |
-| [0033](0033-incremental-read-sync/GOAL.md) | 所有已授权、用户可见的结构化账号数据在同步后均可离线读取，并明确部分／未下载／撤权状态 | 0032 已 completed/merged；全域规范与实施计划已批准、合并 | run-01 running；A 线先执行 Task 1 域清单与共享读取契约 | running |
+| [0033](0033-incremental-read-sync/GOAL.md) | 所有已授权、用户可见的结构化账号数据在同步后均可离线读取，并明确部分／未下载／撤权状态 | 0032 已 completed/merged；全域规范与实施计划已批准、合并 | A原run；Task1/2A纯租期规则已合入，真实server grants/epoch与存储初始化/认证绑定尚未齐，不宣称全域离线 | running |
 | [0034](0034-offline-personal-mutations/GOAL.md) | 在全域离线只读基础上，对低风险个人域提供显式、幂等、可冲突处理的离线写入 | 0033 共享接口固定后才能接线；独立 policy 规则可先执行 | run-01 running；B 线只执行独立 Task 1，不修改 0033 核心 | running |
 | [0035](0035-sync-invalidation-recovery/GOAL.md) | 以 registry 驱动的水位、轮询和恢复队列修复所有授权域的漏提示、断网、重启与撤权变化 | A/B 真实恢复绑定串行等待；portable 调度核心可先执行 | run-01 running；C 线只执行独立 Task 2 polling/coalescer | running |
-| [0036](0036-ai-sync-visibility-acceptance/GOAL.md) | 让 AI 按当前授权查询笔记、任务、跟进、联系人、消息、会议、通知与历史 AI 对话等用户可见数据，并完成全域验收 | App pending 与总验收等待 0033～0035；服务端权限/分页可先执行 | run-01 running；D 线先执行独立 Task 1～2 | running |
+| [0036](0036-ai-sync-visibility-acceptance/GOAL.md) | 让 AI 按当前授权查询笔记、任务、跟进、联系人、消息、会议、通知与历史 AI 对话等用户可见数据，并完成全域验收 | App pending 与总验收等待 0033～0035；服务端权限/分页可先执行 | D原任务明确原run已关闭/9b0fd固定且锁释放；契约已合入，实际runtime/源版本与最终REPORT缺项，不重开Generator | blocked |
 | [0037](0037-contact-message-inbox/GOAL.md) | 把联系人消息从通知中独立出来，让用户看到真实对话并可靠收发、回复和同步已读。 | 2026-09-16 已确认的消息/三类通知设计 | 功能及主线 a591494b0；共同环境双账号通信/原生回读已验收，见 [REPORT](0037-contact-message-inbox/REPORT.md) | completed |
 | [0038](0038-typed-notification-inbox/GOAL.md) | 让每条通知明确属于提醒、建议或动态，显示原因和可追溯来源，并让 Web 与 App 操作同一条记录。 | 2026-09-16 已确认的消息/三类通知设计 | 功能及主线e045651b3；同账号三类通知与双向动作验收，[REPORT](0038-typed-notification-inbox/REPORT.md)保留失败历史 | completed |
 | [0039](0039-evidence-based-notification-discovery/GOAL.md) | 让 AI 从允许使用的真实信息中自主发现具体动作，有可信时间才提醒，并展示可核查的原文依据。 | 2026-09-16 已确认的消息/三类通知设计 | 功能4aa21961a/合并131723ddb；云端既有来源的真实 AI provider/费用仍缺；外部 Calendar/Gmail/Microsoft OAuth 来源转后续 TODO，见[REPORT](0039-evidence-based-notification-discovery/REPORT.md) | blocked |
@@ -94,11 +94,12 @@ build/harness-logs/
 | [0042](0042-personal-schedule-list-repair/GOAL.md) | 修复个人日程列表读取，并验证增改删后列表、详情与日历一致 | B/C/D报告追加；R-08/R-09，承接0010/0026/0027 | C run-01 SC01～05完成，三功能主线426b188195；报告31e7c665及登记随本次文档整合闭环，旧Web全量失败保留 | completed |
 | [0043](0043-event-read-access-repair/GOAL.md) | 活动参会者与分析入口符合实际资格，合法读取成功、拒绝与服务错误明确 | C主包参会者404/分析500与403；R-04/R-09/R-14 | C唯一run结束failed；产品aa2699已部分合入，报告b971a8e1f。MAIN aggregate仍500，真实registered正例及原生精确请求缺证，旧标题映射撤销，不二次生成 | failed |
 | [0044](0044-ai-conversation-readback-repair/GOAL.md) | AI新会话发送后可持久回读和续聊，不返回悬空成功会话 | D POST200后GET404；R-00/R-02/R-14 | 部分功能已合入；原生实际发送/重开通过，Web历史会话没有composer导致续聊失败，notes实际调用/源版本和原生失败恢复缺证据；REPORT已提交，run关闭 | failed |
-| [0045](0045-private-note-deletion/GOAL.md) | 确认删除私密笔记并传播到关联入口、镜像及新AI检索，不越权或复活 | D整条笔记无删除入口/API；R-13/R-14追加 | 新增目标实施指令、授权精确记录、0033/34删除接口与0036检索失效；建议D，未派发 | planned |
+| [0045](0045-private-note-deletion/GOAL.md) | 确认删除私密笔记并传播到关联入口、镜像及新AI检索，不越权或复活 | D整条笔记无删除入口/API；R-13/R-14追加 | D唯一run已分发；先独立App确认/取消/失败保正文切片，真实PG迁移/后端与删除传播缺项单列 | running |
 | [0046](0046-repeatable-functional-acceptance/GOAL.md) | 用正确主包与隔离有效样本补齐交互矩阵，失效通知来源安全提示 | 用户实际交互要求、B/C错包与C/D样本缺口；R-11/R-14 | E run-01先准备运行身份检查和fixture dry-run；真实样本目标/权限/清理另核，最终矩阵依赖0042～45及0033～36必需版本 | running |
-| [0047](0047-web-ai-session-composer/GOAL.md) | Web历史AI会话有唯一续聊输入，追问持久保存在原会话并双端读回 | 0044实际Web输入控件0，关联SC02/03/05；R-00/R-02/R-14 | 追加具体缺口计划；run_count=0，等待Phone PW0010同函数切片固定及C/E实现槽位，不复开0044或替代0036源版本接线 | planned |
+| [0047](0047-web-ai-session-composer/GOAL.md) | Web历史AI会话有唯一续聊输入，追问持久保存在原会话并双端读回 | 0044实际Web输入控件0，关联SC02/03/05；R-00/R-02/R-14 | run_count=0；Phone PW0010功能58已主线精确消费，原生SC5进行中；D/E原run槽位未释放，不复开0044或替代0036源版本接线 | planned |
+| [0048](0048-analytics-configuration-preflight/GOAL.md) | 活动分析未配置时先准确拒绝，不因后续缺快照表变通用500 | 0043 SC02/03失败；ROOT只读真PG复现stage2零ROI/stage3缺snapshot表42P01 | 窄范围追加计划已编制，run_count=0；不重开0043，不自动migration，不复刻整个失败Sprint | planned |
 
-2026-09-16按用户“总结B/C/D报告后设计sprints”新增[中文汇总与追加计划](SIMULATOR_REMEDIATION_PROGRAM.md)，随后用户明确“42～46开始修复”及“请继续”，五项实施批准已满足。0042已收口completed，0044已交failed报告并关闭原run，0043及0046继续各自唯一run-01；0045获准排队run_count=0，尚无REPORT。全域离线9/9失败继续映射0033～0036原契约，不另建重复缓存Sprint；不修改其冻结Planner或把规划当作修复完成。
+2026-09-16按用户“总结B/C/D报告后设计sprints”新增[中文汇总与追加计划](SIMULATOR_REMEDIATION_PROGRAM.md)，随后用户明确“42～46开始修复”及“请继续”，五项实施批准已满足。0042 completed，0043/0044原run以failed收口且报告已合入；0045/0046继续各自唯一run-01，未提前REPORT。0047/0048是实际具体失败的追加计划、run_count=0，不克隆原Sprint或自动第三Generator。全域离线9/9失败仍映射0033～0036原目标；0036原run关闭事实保留，剩余接线不能假作原run恢复，不降低SC。
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
 
@@ -474,6 +475,7 @@ build/harness-logs/
 - Planner SHA256：`b6db74a23d47f3af15276db25640fe1794648200c0b24518461f6571a0347b91`。
 - 本切片文件锁：Web `features/orbit-ai/data-query/read-contract.ts`、`permission-registry.ts`、`query-cursor.ts`、`query-result.ts`、现有 `query-schema.ts`、`data-visibility/manifest.ts`，对应 Task 1～2 测试以及其直接受影响的 manifest 架构测试与 `docs/orbit-ai-read.md` 说明。
 - `createActorQueryInputSchema` 影响集合超过 15 个符号，按项目规则视为 HIGH；已向用户提示并由管理线刷新 stale GitNexus 索引后复核。Task 2 可在不改该符号时继续新文件/测试。AI manifest 仅声明服务端能力，不是客户端离线授权依据。
+- 后续D原任务明确固定`9b0fd19176661b18ef137b5eb672de4eb48257a7`、working tree clean、全部runtime/artifact/query锁释放且原run已关闭；本轮API核对实际任务`01a0a838-4974-7ea2-bc4f-8eab26470a14`原交接，再次确认不能恢复为第二Generator。剩余真实AI工具runtime接线、源版本和综合验收并未完成，完整REPORT仍缺；登记blocked不冒completed，也不将原数据读取目标删除。
 
 本轮用户明确要求把可并行开发分到不同线；协调者只放行上述互不重叠的第一批切片，覆盖默认“两条独立 Sprint”并发限制。共享 auth/sync contract、snapshot、i18n、Simulator、Web 服务和集成验证仍严格串行，四个 run 不共享真实账号写入、数据库迁移或服务生命周期。
 
