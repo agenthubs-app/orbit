@@ -480,6 +480,7 @@ build/harness-logs/
 - Planner SHA256：`d0218e9e34f7c5dd5561483978d2111def145a9f78a410b79964b251bbb9f11d`；复用用户“42～46开始修复 / 请继续”的批准。
 - 先独占0042在线 personal-schedule API/schema、Web personal-schedule 服务/集合handler与定向测试；`PersonalScheduleList`、通用hooks/sync、共享生成契约及字典须管理线核实0033持有者后逐路径移交，不能自行重写mirror-first。
 - 先比对0033固定投影修复 `439f7f439` 与消费者 `9ca83b4dd`，它们尚未等于主线验收。只读main3000允许；服务重启、Simulator/账号写入、数据库环境与重套件排期由协调者串行分配。0043等待本项锁释放。
+- run内路径补充：`repos/orbits/tests/api/personal-schedule-collection.test.ts`（真实store/authority/集合读取，SC01/03/04）；`repos/orbits/app/(app)/app/tasks/personal-schedule-client.ts`（Web列表接线，SC02/05）。已核实0033消费者固定提交且无产品未提交，当前`PersonalScheduleList.tsx`在线入口锁移交C；本轮修主线在线owned读取，后续0033集成保留mirror-first，不倒退消费者。无query聚合保持既有日历/首页与legacy日程语义，不猜补owner/version。
 
 ### 0044 / run-01
 
@@ -487,5 +488,11 @@ build/harness-logs/
 - Planner SHA256：`67f61b3cd5b10b736211dd30a19804bb3a7137bc6418042c28825b78e9f9bdd9`；同一用户批准。
 - 先独占会话生命周期route、reliable-send/live-conversation/session-storage范围中不与0036冻结切片重叠的文件和定向测试；0036 data-query/manifest不得改，runtime/artifact/service-factory/AiScreen须当前D线交接后明确移交。已向原0036任务请求固定SHA及锁清单，不派其重复实现0044。
 - 不调用付费provider、不改live配置或重启共享进程；先确定性POST→真实store→GET TDD。所需跨端运行身份与隔离对象由协调者分配，真实工具/费用证据缺项不记PASS。
+- 原0036 D任务已明确释放所有活动锁：固定`9b0fd19176661b18ef137b5eb672de4eb48257a7`，工作树无未提交；必要会话runtime/service-factory/AiScreen及route/test范围移交B，不改0036冻结data-query/manifest契约。路径补充：`repos/orbits/app/api/ai/conversations/request-context.ts`（局部canonical身份适配，SC01/02/04）、`repos/orbits/tests/capabilities/orbit-agent-conversation-readback.test.ts`（POST→真实store→正式session GET/list，SC01～04）。不扩大到共用agent-request-context。
+- 同一run补充受影响认证测试：`repos/orbits/tests/capabilities/agent-actor-brief-boundaries.test.ts`追踪精确local canonical adapter；readback完整测试增加恶意body/header身份隔离。功能提交`e40bf223ca2ad642ecd013487f39bb021e1cd1c0`后补充测试提交`2eb91b677b80be39e070cc5d36a55543815d8a31`，不改生产身份行为或冻结SC。
+
+0042/0044集成检查点：功能已合入`chat-agent`的`f0d747730037f0f9020297cd47aea37b17c9d489`；Web定向42/42、App27/27。该树Web全量曾失败：3558项、3359通过、23失败、176跳过，20旧失败、3新增名称；本地测试自行加载`.env.local`并实际连接PG，不能记为隔离或全绿。C原run证据保留逐名对照/loader映射/只读审计；两个PG新增失败所涉源码本轮未修改，无before快照不能保证业务未变。B关联旧认证断言第一轮修复后6完整文件41/41，主线补充两完整文件15/15，未重全量。两Sprint仍为running；生产Web重建、同账号Simulator/双向回读及精确清理未完成，不提前写REPORT/completed。
 
 获准排队：0043由C接续、0045由D接续并复用 `codex/sprint-0033-note-delete` 的 `03bfe4aa5` 墓碑能力，0046准备及最终验收由空闲A/E领取；三项尚无Generator run，不提前生成REPORT。
+
+0043关联范围协调：PhoneWeb任务独占PW-0009的EventsScreen历史筛选、专属演示活动日期以及EventDetailScreen仅真正public NOT_FOUND且已登录时的既有auth详情读取接线（已实测auth200/public404）。0043不重复该详情fallback，仍调查参会者/分析资格、权威来源与正确错误态；PhoneWeb固定SHA交接后在主线复验。不修改public_code/alias、不扩权，32110由PhoneWeb任务独占，32100重启仍需串行协调。
