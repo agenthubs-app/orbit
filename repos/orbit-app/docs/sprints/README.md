@@ -91,8 +91,8 @@ build/harness-logs/
 | [0039](0039-evidence-based-notification-discovery/GOAL.md) | 让 AI 从允许使用的真实信息中自主发现具体动作，有可信时间才提醒，并展示可核查的原文依据。 | 2026-09-16 已确认的消息/三类通知设计 | 功能4aa21961a/合并131723ddb；云端既有来源的真实 AI provider/费用仍缺；外部 Calendar/Gmail/Microsoft OAuth 来源转后续 TODO，见[REPORT](0039-evidence-based-notification-discovery/REPORT.md) | blocked |
 | [0040](0040-notification-delivery-cutover/GOAL.md) | 让消息和通知按独立偏好可靠送达，减少重复打扰，并安全替换旧通知数据与旧发送链。 | 2026-09-16 已确认的消息/三类通知设计 | 功能eacd7a227/合并0b552649d；偏好/迁移已验，真实Push/AI及原生出站确认未齐，见[REPORT](0040-notification-delivery-cutover/REPORT.md) | blocked |
 | [0041](0041-web-test-baseline-restoration/GOAL.md) | 恢复可信的 Web 测试基线，把确定性测试与显式前置的集成测试分开，并修复当前所有已知基线失败 | 用户批准 B/D 在定向验证与独立审查通过后先合并，并要求把既有 Web 全量失败单独建 Sprint 跟踪 | run-01 running；E 线 Worktree `client-new-thread:f0e13ae9-0bab-4f21-a08c-d85ded831222`，planning SHA `eb7470a1b` | running |
-| [0042](0042-personal-schedule-list-repair/GOAL.md) | 修复个人日程列表读取，并验证增改删后列表、详情与日历一致 | B/C/D报告追加；R-08/R-09，承接0010/0026/0027 | 用户批准；C线run-01，先调查并修复不与0033争用的在线读取范围；共享消费者逐文件移交 | running |
-| [0043](0043-event-read-access-repair/GOAL.md) | 活动参会者与分析入口符合实际资格，合法读取成功、拒绝与服务错误明确 | C主包参会者404/分析500与403；R-04/R-09/R-14 | 适用实施指令、角色/活动样本、活动源与测试锁；建议C，未派发 | planned |
+| [0042](0042-personal-schedule-list-repair/GOAL.md) | 修复个人日程列表读取，并验证增改删后列表、详情与日历一致 | B/C/D报告追加；R-08/R-09，承接0010/0026/0027 | C run-01 SC01～05完成，三功能主线426b188195；报告31e7c665及登记随本次文档整合闭环，旧Web全量失败保留 | completed |
+| [0043](0043-event-read-access-repair/GOAL.md) | 活动参会者与分析入口符合实际资格，合法读取成功、拒绝与服务错误明确 | C主包参会者404/分析500与403；R-04/R-09/R-14 | 已批准；C接续独立worktree已建，进入条件核验中，尚未启动Generator | planned |
 | [0044](0044-ai-conversation-readback-repair/GOAL.md) | AI新会话发送后可持久回读和续聊，不返回悬空成功会话 | D POST200后GET404；R-00/R-02/R-14 | 用户批准；B线run-01，先会话生命周期调查/TDD；0036共享runtime接线等待逐文件移交，付费证据另协调 | running |
 | [0045](0045-private-note-deletion/GOAL.md) | 确认删除私密笔记并传播到关联入口、镜像及新AI检索，不越权或复活 | D整条笔记无删除入口/API；R-13/R-14追加 | 新增目标实施指令、授权精确记录、0033/34删除接口与0036检索失效；建议D，未派发 | planned |
 | [0046](0046-repeatable-functional-acceptance/GOAL.md) | 用正确主包与隔离有效样本补齐交互矩阵，失效通知来源安全提示 | 用户实际交互要求、B/C错包与C/D样本缺口；R-11/R-14 | 样本目标/权限/清理先核验；最终矩阵依赖0042～45及0033～36必需版本；建议空闲A/E，未派发 | planned |
@@ -481,6 +481,9 @@ build/harness-logs/
 - 先独占0042在线 personal-schedule API/schema、Web personal-schedule 服务/集合handler与定向测试；`PersonalScheduleList`、通用hooks/sync、共享生成契约及字典须管理线核实0033持有者后逐路径移交，不能自行重写mirror-first。
 - 先比对0033固定投影修复 `439f7f439` 与消费者 `9ca83b4dd`，它们尚未等于主线验收。只读main3000允许；服务重启、Simulator/账号写入、数据库环境与重套件排期由协调者串行分配。0043等待本项锁释放。
 - run内路径补充：`repos/orbits/tests/api/personal-schedule-collection.test.ts`（真实store/authority/集合读取，SC01/03/04）；`repos/orbits/app/(app)/app/tasks/personal-schedule-client.ts`（Web列表接线，SC02/05）。已核实0033消费者固定提交且无产品未提交，当前`PersonalScheduleList.tsx`在线入口锁移交C；本轮修主线在线owned读取，后续0033集成保留mirror-first，不倒退消费者。无query聚合保持既有日历/首页与legacy日程语义，不猜补owner/version。
+- 原run两轮必要Web补修追加：`app/(app)/app/tasks/personal-schedule-workspace.tsx`及完整测试（错误不混显空态）、`app/(app)/app/tasks/personal/page.tsx`及`tests/pages/personal-schedule-page-account-scope.test.ts`（既有canonical helper接线、anonymous/null redirect）；没有削弱owner校验、改通用auth、sync、字典或数据库。固定三功能94268e757/04be65cbc/6a92629e9均已合入`426b18819523c0b05dd30365b5a02669850841ac`，报告`31e7c665d23985184e7831e5233c71720ab0dab4`随本次文档整合。
+- 收口：最终production Web BUILD_ID `ffPa-FLfCgMTBiMrUVaAu`、PID90050/3000与主包DA设备/main8082完成同记录App A→B、Web C→App列表/详情/日历回读，精确删除后GET404、owned0、聚合35且exactID0；最终Web离线刷新错误1/空0→恢复错误0/空1，原生同源TERM/恢复实测。Web分支24/24、最终合并树直接6/6及typecheck0；原生build/install0，实际native脚本Node25、Web/tests Node22如实区分。全量23失败及env重载事故仍保留在REPORT，不称全库绿色；0033未来mirror集成须复验，不等于已完成全域离线。
+- 文件/设备/main actor/API写锁全部释放，认证浏览器已关闭，唯一个人测试记录已准确清理；B接手当前runtime窗口。报告与本次登记文档检查/主线整合闭环后completed。
 
 ### 0044 / run-01
 
@@ -490,8 +493,10 @@ build/harness-logs/
 - 不调用付费provider、不改live配置或重启共享进程；先确定性POST→真实store→GET TDD。所需跨端运行身份与隔离对象由协调者分配，真实工具/费用证据缺项不记PASS。
 - 原0036 D任务已明确释放所有活动锁：固定`9b0fd19176661b18ef137b5eb672de4eb48257a7`，工作树无未提交；必要会话runtime/service-factory/AiScreen及route/test范围移交B，不改0036冻结data-query/manifest契约。路径补充：`repos/orbits/app/api/ai/conversations/request-context.ts`（局部canonical身份适配，SC01/02/04）、`repos/orbits/tests/capabilities/orbit-agent-conversation-readback.test.ts`（POST→真实store→正式session GET/list，SC01～04）。不扩大到共用agent-request-context。
 - 同一run补充受影响认证测试：`repos/orbits/tests/capabilities/agent-actor-brief-boundaries.test.ts`追踪精确local canonical adapter；readback完整测试增加恶意body/header身份隔离。功能提交`e40bf223ca2ad642ecd013487f39bb021e1cd1c0`后补充测试提交`2eb91b677b80be39e070cc5d36a55543815d8a31`，不改生产身份行为或冻结SC。
+- 最新运行授权覆盖上述初期“不付费”限制：C0042释放后，B复用DA主包/原3000 canonical QA/主8082和主线426 production artifact，至多两个实际只读发送、现有loop3最多六provider出站，原共享累计硬预算$5不重置；任何unknown/未确认usage/保留预留即停止追加。付费前账本15entries/$0.032249/0reserved；Phone服务独立、根产品merge与服务生命周期冻结，临时独立浏览器只用已有库、凭据仅RAM。
+- 同run真实PG只读元数据：tasks open54/followups open27/notes1，取样ID/owner/source时间匹配，但笔记真实entity v3被legacy query丢弃、tasks/followups无独立revision，结果无authority/readAt/records.revision；0036冻结契约虽已合入仍未接actualruntime。SC04源版本缺口保持未满足，不用schema version/timestamp充数、不在0044重写0036；REPORT尚未产生。
 
-0042/0044集成检查点：功能已合入`chat-agent`的`f0d747730037f0f9020297cd47aea37b17c9d489`；Web定向42/42、App27/27。该树Web全量曾失败：3558项、3359通过、23失败、176跳过，20旧失败、3新增名称；本地测试自行加载`.env.local`并实际连接PG，不能记为隔离或全绿。C原run证据保留逐名对照/loader映射/只读审计；两个PG新增失败所涉源码本轮未修改，无before快照不能保证业务未变。B关联旧认证断言第一轮修复后6完整文件41/41，主线补充两完整文件15/15，未重全量。两Sprint仍为running；生产Web重建、同账号Simulator/双向回读及精确清理未完成，不提前写REPORT/completed。
+0042/0044初期集成检查点：功能合入`chat-agent`的`f0d747730037f0f9020297cd47aea37b17c9d489`；Web定向42/42、App27/27。该树Web全量曾失败：3558项、3359通过、23失败、176跳过，20旧失败、3新增名称；本地测试自行加载`.env.local`并实际连接PG，不能记为隔离或全绿。C原run证据保留逐名对照/loader映射/只读审计；两个PG新增失败所涉源码本轮未修改，无before快照不能保证业务未变。B关联旧认证断言第一轮修复后6完整文件41/41，主线补充两完整文件15/15，未重全量。当时两Sprint均running；最新0042收口及0044未满足项见各run条目，旧失败不因局部修复或文档整合改为通过。
 
 获准排队：0043由C接续、0045由D接续并复用 `codex/sprint-0033-note-delete` 的 `03bfe4aa5` 墓碑能力，0046准备及最终验收由空闲A/E领取；三项尚无Generator run，不提前生成REPORT。
 
