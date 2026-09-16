@@ -447,10 +447,11 @@ build/harness-logs/
 
 ### 0033 / run-01（全域离线读取升级）
 
-- 开始：2026-09-16T12:19:17+09:00；owner：A 线任务 `client-new-thread:fc2240dc-8f65-4da4-bb9c-0e1c12a686e3`，唯一 Generator；基线 `3a9b9696737289df12bb382cf77266c0b51ecd8f`，启动时 tracked 工作树干净。
+- 开始：2026-09-16T12:19:17+09:00；owner：A 线任务 `01a0a838-4974-7ea2-bc4f-8ecce28b2af2`（A线｜0033 全域读取第一阶段），唯一 Generator；原登记的 `client-new-thread:fc2240dc-8f65-4da4-bb9c-0e1c12a686e3` 是创建句柄，不能作实际任务 ID。基线 `3a9b9696737289df12bb382cf77266c0b51ecd8f`，启动时 tracked 工作树干净。
 - Planner SHA256：`a9190990bacab2fd3d2b659c912f3fa8cb0359d1dc2f193d663b5fd519532fe3`；批准中文规范与详细计划均已合并到 `chat-agent` 并推送。
 - 本切片文件锁：`repos/orbit-app/src/data/offline-read/route-domain-inventory.ts`、`scripts/audit-offline-read-surfaces.ts`、`tests/offline-read-inventory.test.ts`、Web `shared/contract/universal-read.ts`、`shared/api-schema/universal-read.ts` 及由既有同步命令生成的 App 副本；仅执行详细计划 Task 1。
 - A 线持有域 ID、route inventory 与 universal-read contract 的定义权；B/C/D 只能消费已固定接口，不得并行重定义。认证、数据库、manifest/cursor 等后续高风险 Task 尚未放行。
+- 2026-09-16继续授权：复用原run、Task1固定`edba0ebfeb635f684fe193cd88f4f4e428211ec6`与干净工作树，先释放Task2A两个新增文件`src/api/offline-read-session.ts`、`tests/offline-read-session.test.ts`（均在App）：纯租期解码、时间/域scope断言与online-only写入能力的TDD切片，消费既有strict wire契约，不改identity/provider/transport、契约/清单、SQLCipher、Web或DB。全域读资格不受0034首批四域写集限制；无可读存储不伪造localRead成功。Task2B真实server-grants和2C共享认证/transport锁仍等待具体依赖与放行；中间能力提交不标Task2或Sprint完成，不加Generator/Reviewer。当前主线本地初始化告警单列；Task5锁顺序冲突在migration放行前必须统一。
 
 ### 0034 / run-01（风险分级离线写入升级）
 
@@ -512,6 +513,8 @@ build/harness-logs/
 - 先独占Planner内App参会者/分析consumer及Web对应handlers/资格适配器/实际service与直接测试，按根因逐符号impact后TDD。0033活动源及通用sync、0044所有会话/runtime/App AI、PhonePW0010 reader/AI契约/会话UI、i18n和共享contract生成边界不并行改；必要新增文件登记用途/SC后实施，不增加审批循环。
 - B持DA/main actor/共享runtime与付费窗口期间，C仅独立分支源码/定向测试和已批准只读元数据调查；不操控主包/共享浏览器、不API业务写、不自行停启3000/8082/Phone、不合产品到root。需同版本真实验收/fixture时等根明确释放，固定SHA交接后根merge→生产build/restart→实际操作→报告/主线闭环。
 - B0044现已释放全部窗口；C恢复原未结束run而非再生成。统一图实际元数据已更新至`1f2c697ac`/2026-09-16T09:17:08.460Z，原进程句柄消失不等于分析失败；核查无活analyze且命令exit0 Already up to date，驻留MCP列表缓存须与disk元数据区分。新增资格CTA模块`src/screens/events/EventAttendeeRosterLink.tsx`及EventDetailCard最小接线获准，避开Phone public404 fallback。注册wrapper12直接caller/21symbols按技能HIGH已报告，最小503异常保护不改资格并覆盖传递消费者；event_02配置head精确只读count0，不写配置或扩权。
+- 固定产品`f2a0066df0a27d4447eb4c09e7342b6c57305cb0`/最终`aa2699e474a862aea40c46bab6f399b342db3d9f`已机械合入`4378c964c`，不是验收完成。精确合并树App5完整文件221项/220通过/1失败/0跳过，唯一失败为此前PersonalScheduleList旧detail GET清单孤项；Web2文件22/22与两端typecheck exit0。原全量App3019/3016通过/3失败/0跳过、Web3571/3312通过/53失败/206跳过均保留，两个局部修复轮次已用尽，不再重跑Generator或全量。
+- 新主线Web生产构建与主包安装后，C实际点击“沉睡关系重新激活会”详情名单CTA→名单屏空名单；两活动运营分析均出现通用服务错误，没有预期配置说明/合法拒绝，另一活动详情无名单CTA但为unconfirmed重试。活动标题与冻结metadata分别对应event_02/signup03，不是已捕获的原生pathparam。匿名formal account/me及两活动四私有GET共8次均401。原生HTTP、请求ID与canonical actor未正式观测，不能推断实际500/503；MAIN QA凭据来源和真实registered正例缺项保持未满足。C已释放DA与共享browser窗口、产品冻结，无fixture/config写入或第三修复；run尚未REPORT收口。
 
 ### 0046 / run-01
 
@@ -520,5 +523,12 @@ build/harness-logs/
 - 基线Web两个完整notification-source/cutover文件3/3；App完整typed-notification-inbox3/3，均exit0。App首次裸tsx命令未带项目render hook导致依赖JSX转换失败，按既有package test入口补hook后通过，非产品修复，不隐藏历史。
 - 主机18:46重启后ROOT已恢复mainWeb同426产物PID7578/live200及Metro8082PID7582/running；Phone服务暂未恢复，待A固定PW0010统一编译。E不控制共享服务/设备/浏览器/账号或DB写入，不安装新框架、不provider出站、不重置账本。最终SC04矩阵等待0042～45和0033～36必需接口，缺项只阻对应动作；本地准备不冒充最终原生/离线验收。
 - 必要新增测试路径`repos/orbit-app/tests/simulator-runtime-identity.test.mjs`、`repos/orbits/tests/services/simulator-acceptance-fixtures.test.ts`及工具说明`repos/orbit-app/docs/verification/simulator-acceptance-preparation.md`已按SC01/02登记。真实设备无booted/缺loaded-JS与actor实际receipt必须BLOCKED；fixture testadapter验证不能冒真实样本apply成功。
+- 五文件工具切片固定`cb62638da83c82e34145f502814e19ed227e60e7`，已合入`f2a25a55c4f1e11f773ac6f29eb4099ad59ce547`；ROOT精确暂存/合并树App7/7、Web5/5 exit0，source/diff检查仅上述新增路径，新增工具未收录图谱不记零风险。identity仅产出evidence-consistent且actualAcceptancePassed=false，真实loaded-JS/actor缺项仍BLOCKED；fixture纯Map/dry-run不冒真实apply/cleanup。最终SC矩阵与真实样本仍依赖0045和0033～36，不创建成功REPORT。
+
+2026-09-16主线统一运行时：C43、Phone PW0010单功能（仅`58e4840169625460e06a2d69769e95552878ebb6`，没有整合Phone全部祖先）及E46工具切片已整合并普通push到`f2a25a55c4f1e11f773ac6f29eb4099ad59ce547`，独立ls-remote一致。PW0010主线提交`224fdc1d4`另包含原Phone A对App audit两个existing AI行号键的必要校正；完整offline audit仍仅旧日程孤项失败，没有新增AI findings，不记全量通过。
+
+该产品树Web Next production build exit0，BUILD_ID`EEQm5wm0AApGsD3hvfqSh`，main3000/PID22612/live200、原orbit_events/workspace:orbit-dev；Metro8082/PID7582/running。DA`DA432E9E-1204-4EE7-9A20-251CDB48E265`重新编译、安装、启动主包app.agenthubs.orbit/PID23068均exit0，built与installed executable SHA256一致`a1ef0cdb9e3d8ea9b90528d8485e2232298a99bbd4576b98bb340467604d7623`；Metro实际为该主包加载1985modules，但loaded-JS精确hash/原生HTTP尚未由observer取得，不把expected元数据复制成observed证据。iOS依赖警告保留；`SYNC_INIT_FAILED 44ce35fbe92cb862`未关闭（后缀为scope摘要，不是底层错误码），在线首页成功不等于SQLCipher/全域离线PASS。本地初始化失败与服务端缺sync-write-lock function是独立缺项；不删库/密钥重置/空function绕过。
+
+Phone独立32100/PID17635/BUILD_ID`8sXNW8nifgU1rD0IF79lc`、32110/PID21340及新公共tunnel由Phone协调任务持有；MAIN与Phone同邮箱不能证明密码/数据相同。Phone Chromium已实际通过8联系人历史恢复/刷新重开/目标读取与匿名拒绝，WebKit异常仍复核，主线原生同演示账号验证pending。共享原账本18entries/$0.038611/0reserved，未重置，本轮构建/只读检查无provider调用；旧运行时记录仅保留历史，不代表当前版本。
 
 0047追加计划仅针对0044实测生产Web历史会话无composer，不克隆整个失败Sprint。当前GOAL/AUDIT-DESIGN/PLANNER已编制，建议空闲B后续单run；Phone PW0010同ask函数展示切片先冻结/移交，本轮C0043与E0046保持两个实现槽，不自动派第三线。0036源版本/笔记实际工具接线仍由既有Sprint承接；0044 failed报告与费用/清理事实保留。
