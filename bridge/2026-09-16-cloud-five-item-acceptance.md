@@ -6,6 +6,21 @@
 - 数据：Neon `workspace:orbit-demo-fixtures`，Web/API 为唯一写入边界，App 经同一 Production HTTPS API。
 - 入口：https://orbit-puce-kappa.vercel.app；待办、笔记、提醒与账户详情不写任何密钥。
 
+## 22:47 增量：Web／Neon／云端 worker 实际验收
+
+用户已批准先验 Web＋Neon＋云端 worker，并追加本轮最高 **$1** 模型预算；原生验收单列，不再以旧累计账本缺失阻塞本轮。DeepSeek 余额基线为 `2026-09-16T14:18:20.991Z` CNY 63.62；14:44:27 的账户余额差额 CNY 0.04。余额精度为分，且包含同账号并发用量，不冒充逐请求精确账单；采用 CNY 5 的保守停线，未改变 provider 套餐或充值。
+
+- 新账号 `user_mu442tb2_nuu75f` 于14:25:11Z正常报名 `event_demo_cloud_flow_20261018`，选择“业务运营者／把运营需求转成产品原型”，真实模型生成画像成功。刷新后原始答案与 rsvped/profile v1 持久化；AI 画像是派生预览，刷新不自动再次生成，不把此行为误报为原始报名丢失。
+- 主办方显式保存画像截止14:27Z、报名截止14:28Z、签到开放14:28Z、结果开放14:29Z，推荐数1、每桌2、shard8、每任务最多2次。主活动仍为10月18日05:00–07:00Z，未直接改库改期。
+- 主办方页面启动 generation `event-operations-generation:bc373a540fd9e4932b8d8425916c4c57`；两位真实报名主体为 Aiko Mori `user_mu3pjzb3_zkt96u` 与上述新账号。5/5 task 一次完成、0失败；4个模型任务＋1个确定性 reducer，均由 `event-operations:vercel:f2ef6519-8f02-4691-9367-a19169c86d8b` 执行，不是本机 worker。14:36:40.459Z完成。
+- 14:37:28.403Z经主办方按钮原子发布 `event-operations-publication:8a14b8735027ec4558261b533a36b48f`，publication head revision1。新账号浏览器实际读到 Aiko 推荐、85匹配分、R1-T1-S2座位、两轮话题和破冰问题；离开再进入仍可读。14:38:46Z正常自助签到，页面显示已签到；outbox累计81条completed。
+- 四域真实 iOrbit 查询均完成：Note标题／正文／contact_005；主账号普通待办标题与open；新跟进标题、open、2026-10-01T07:00Z及用户确认来源；个人日程标题、2026-09-18T07:00–07:30Z。新账号自己的任务也返回正确标题/open；查询主账号的上述跟进明确“没有找到匹配记录”，没有泄露内容。这里是实际模型规划＋授权工具读取＋事实回显，不仅是直接工具单测。
+- 发现并修复 Web 30秒等待边界：`7ac870ed5` 改为有界60秒，并准确说明浏览器停止等待不等于服务器停止；reliable v2重查沿用requestId。目标59/59、typecheck、lint通过。Production `dpl_AQWCw7xTUFmsFR1JwfNdQsEKaTFN` Ready，正式域名已绑定；唯一域名 `orbit-ldxfd6m28-liqys-projects-33c8ddec.vercel.app`。修复后跟进请求 `request:aaa36314-056a-4db7-ac5a-4d1b5c686ac5` 的Neon reserve→completed为34.651秒，UI正常收到结果。旧30秒超时请求其实稍后completed，不能把旧提示当服务器取消证据。
+- 当前仍有两个新发现的Web修复在进行：聊天态没有composer；已报名新账号的工作台活动旅程错误为空。未把尚未发布的修复记作线上通过。
+- **现场名片交换尚未验正例**：推荐卡正确禁用并显示“活动开始后可申请交换联系”。当前没有正常主办方改期UI/API；Event Core backfill虽技术上可写已有日期，但不联动配置／已发布快照、无完整改期审计，不可拿它绕过门禁。没有修改数据库日期、伪造同意或将手工联系人冒充交换结果。此项不依赖Xcode，但需安全的测试档期／正式改期写入路径。
+
+本节覆盖下方早期“模型预算待批、未报名、未生成”的历史状态。R3云端生成→发布→参与者回读已通过；R1/R2的Web与云端证据已补齐；R5仍不可整体关闭，原生仍单列。
+
 ## 版本与发布
 
 | SHA | 内容 |
