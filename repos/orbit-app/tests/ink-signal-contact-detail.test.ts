@@ -23,8 +23,10 @@ const contact = { id: "contact:/1", displayName: "林悦", role: "产品设计�
 const state = window.fixture = { requests: [], pending: [], navigation: [], presses: {}, expiries: 0, contactId: contact.id, actor: "actor-1", cookieHeader: "", baseUrl: "https://orbit.example", ready: true, baseReady: true, signedIn: true, focused: true, mounted: true, canGoBack: false, width: 390, fontScale: 1, language: "zh", contact, ...window.initialFixture,
   update(patch) { Object.assign(state, patch); version++; listeners.forEach(fn => fn()); },
   data(path) {
+    if (path === "/api/contacts") return { contacts: state.contacts ?? [state.contact] };
     if (path.startsWith("/api/contacts/")) return state.invalid ? {} : { state: "success", contact: { ...state.contact, id: state.wrongId ? "wrong" : state.contactId, ...(state.longText ? { displayName: "林悦跨团队合作负责人", role: "产品体验与跨团队协作及服务设计负责人", primaryEmail: "long-contact-identity-without-shortening@example.test", publicProfile: { ...state.contact.publicProfile, offering: ["从用户访谈到交互原型验证及跨团队协作流程的完整研究与设计支持，保留全部合作信息。", "本地社区资源", "补充的第三项合作资源"] } } : {}) }, editableStatusOptions: ["active", "needs_follow_up", "nurture", "archived"], editableTagOptions: [], summary: "", nextAction: "" };
-    if (path === "/api/connections") return { connections: [] };
+    if (path === "/api/connections") return { connections: state.connections ?? [] };
+    if (path === "/api/tasks") return { tasks: [] };
     return {};
   },
   reply(index, status = 200, payload) { const r = state.requests[index];
@@ -40,6 +42,10 @@ window.fetch = async (input, init) => {
   // Hold detail/analysis reads independently of its authoritative 404 lookup.
   if (init.method === "GET" && path.endsWith("/relationship-initialization")) {
     queueMicrotask(() => state.reply(index, state.initializationStatus ?? 404, state.initializationPayload));
+    return pending;
+  }
+  if (init.method === "GET" && path.endsWith("/lifecycle")) {
+    queueMicrotask(() => state.reply(index, state.lifecycleStatus ?? 404, state.lifecyclePayload));
     return pending;
   }
   if (!(state.holdReads && init.method === "GET") && !(state.holdConnections && path === "/api/connections") && !(state.holdWrites && init.method !== "GET")) queueMicrotask(() => state.reply(index, init.method !== "GET" || state.failure ? 503 : 200));
@@ -64,7 +70,7 @@ export const writeSnapshot = async () => {};
 
 test.before(async () => {
   const result = await build({
-    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/contacts/[id]"; import { useFixture } from "fixture"; function App() { const s = useFixture(); return s.mounted ? <Route /> : null; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() },
+    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/contacts/[id]"; import { ContactPipelineScreen } from "./src/screens/contacts/ContactPipelineScreen"; import { useFixture } from "fixture"; function App() { const s = useFixture(); return s.mounted ? s.pipeline ? <ContactPipelineScreen /> : <Route /> : null; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
     define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "ink-detail-boundaries", setup(plugin) {
@@ -101,6 +107,40 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
 async function press(p: Page, name: string) { await p.getByRole("button", { name, exact: true }).click(); await settle(p); }
 async function update(p: Page, patch: object) { await p.evaluate(patch => (window as any).fixture.update(patch), patch); await settle(p); }
 async function writes(p: Page) { return p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method !== "GET").map((r: any) => ({ method: r.method, path: r.path, body: r.body }))); }
+
+test("unmarked canonical fixture resolves after init404, displays authoritative task and keeps private-only editor", async t => {
+  const identity = { actorId: "actor-1", contactId: "contact:/1", connectionId: "connection_0030", version: 2, createdAt: "2026-09-17T00:00:00Z", updatedAt: "2026-09-17T00:00:00Z" };
+  const p = await open(t, { connections: [{ id: identity.connectionId, contactId: identity.contactId, relationshipStage: "needs_follow_up" }], lifecycleStatus: 200, lifecyclePayload: { snapshot: {
+    connection: { ...identity, stage: "needs_follow_up", activeGoal: null }, tasks: [{ ...identity, taskId: "task_030", title: "Canonical fixture next step", status: "open", purpose: "follow_up", dueAt: "2026-10-01T00:00:00Z" }]
+  } } });
+  await p.getByText(/Canonical fixture next step/).waitFor();
+  assert.equal(await p.getByText("当前阶段：需要跟进", { exact: true }).count(), 1);
+  await press(p, "处理关系跟进");
+  assert.equal(await p.evaluate(() => (window as any).fixture.navigation[0]), "/tasks/relationship/connection_0030");
+  await press(p, "编辑资料");
+  assert.equal(await p.getByRole("button", { name: /^跟进状态：/ }).count(), 0);
+  assert.equal(await p.getByRole("textbox", { name: "添加标签", exact: true }).count(), 1);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("candidate lifecycle failure never falls open to legacy status editor", async t => {
+  const p = await open(t, { connections: [{ id: "canonical", contactId: "contact:/1" }], lifecycleStatus: 503 });
+  await p.getByText("关系状态读取失败", { exact: true }).waitFor();
+  assert.equal(await p.getByRole("button", { name: "编辑资料", exact: true }).count(), 0);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("pipeline keeps read-only distribution and tasks route without stage PATCH or per-contact lifecycle fanout", async t => {
+  const contacts = Array.from({ length: 66 }, (_, index) => ({ id: `contact_${index}`, displayName: `Contact ${index}`, status: "needs_follow_up" }));
+  const p = await open(t, { pipeline: true, contacts, connections: contacts.map((contact, index) => ({ id: `connection_${index}`, contactId: contact.id, relationshipStage: "needs_follow_up" })) });
+  await press(p, "查看全部待办");
+  assert.equal(await p.evaluate(() => (window as any).fixture.navigation[0]), "/tasks?scope=relationship");
+  await p.getByRole("tab", { name: "按阶段", exact: true }).click(); await settle(p);
+  assert.equal(await p.getByRole("button", { name: /调整.*关系阶段/ }).count(), 0);
+  assert.equal(await p.getByText("Contact 0", { exact: true }).count(), 1);
+  assert.deepEqual(await writes(p), []);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path.includes("/lifecycle") || r.path.includes("relationship-initialization")).length), 0);
+});
 
 for (const withTask of [false, true]) test("ready contact preserves generic shortcuts without legacy nextAction " + withTask, async t => {
   const identity = { actorId: "actor-1", contactId: "contact:/1", connectionId: "connection:ready", version: 1, createdAt: "2026-09-17T00:00:00Z", updatedAt: "2026-09-17T00:00:00Z" };

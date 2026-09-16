@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
 import { useState } from "react";
 import {
-  ActionSheetIOS,
   Image,
   Pressable,
   RefreshControl,
@@ -11,7 +10,7 @@ import {
   View
 } from "react-native";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
-import { connectionStagePath, ORBIT_API_ENDPOINTS } from "../../api/endpoints";
+import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
@@ -20,13 +19,11 @@ import { textStyles, radius, spacing, type OrbitColors } from "../../design/toke
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
-import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
   contactsPipelineToView,
   type ContactPipelineActionDueTone,
   type ContactPipelineActionItemView,
   type ContactPipelineCardView,
-  type ContactPipelineStageActionView,
   type ContactPipelineStageId,
   type ContactPipelineStageView
 } from "../../view-models/contact-pipeline";
@@ -107,7 +104,6 @@ export function ContactPipelineScreen() {
         <PipelineContent
           connectionsPayload={connectionsState.data}
           contactsPayload={contactsState.data}
-          onConnectionsRefresh={connectionsState.refresh}
           tasksLoading={tasksState.kind === "loading"}
           tasksPayload={tasksState.kind === "success" ? tasksState.data : undefined}
           tasksUnavailable={
@@ -119,37 +115,25 @@ export function ContactPipelineScreen() {
   );
 }
 
-function stageActionKey(action: ContactPipelineStageActionView) {
-  return `${action.connectionId}:${action.nextRelationshipStage}`;
-}
-
 function PipelineContent({
   connectionsPayload,
   contactsPayload,
-  onConnectionsRefresh,
   tasksLoading,
   tasksPayload,
   tasksUnavailable
 }: {
   connectionsPayload: unknown;
   contactsPayload: unknown;
-  onConnectionsRefresh: () => void;
   tasksLoading: boolean;
   tasksPayload: unknown;
   tasksUnavailable: boolean;
 }) {
   const { styles } = useStyles();
   const router = useRouter();
-  const client = useOrbitApiClient();
   const { baseUrl } = useOrbitApiBaseUrl();
   const [mode, setMode] = useState<RelationshipProgressMode>("actions");
   const [selectedStageId, setSelectedStageId] =
     useState<ContactPipelineStageId>("to_contact");
-  const [pendingStageActionKey, setPendingStageActionKey] = useState<
-    string | null
-  >(null);
-  const [feedback, setFeedback] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
   const view = contactsPipelineToView({
     connectionsPayload,
     contactsPayload,
@@ -157,46 +141,6 @@ function PipelineContent({
   });
   const selectedStage =
     view.stages.find((stage) => stage.id === selectedStageId) ?? view.stages[0];
-
-  async function updateStage(action: ContactPipelineStageActionView) {
-    setPendingStageActionKey(stageActionKey(action));
-    setFeedback(null);
-    setActionError(null);
-
-    try {
-      const result = await client.patch<unknown>(
-        connectionStagePath(action.connectionId),
-        { body: { relationshipStage: action.nextRelationshipStage } }
-      );
-
-      if (result.success) {
-        setFeedback(action.successMessage);
-        onConnectionsRefresh();
-      } else {
-        setActionError("关系进展暂时改不了。请刷新后再试一次。");
-      }
-    } catch {
-      setActionError("关系进展暂时改不了。请刷新后再试一次。");
-    } finally {
-      setPendingStageActionKey(null);
-    }
-  }
-
-  function openStageActions(contact: ContactPipelineCardView) {
-    const options = [...contact.stageActions.map((action) => action.label), "取消"];
-
-    ActionSheetIOS.showActionSheetWithOptions(
-      {
-        cancelButtonIndex: options.length - 1,
-        options,
-        title: `调整 ${contact.name} 的关系阶段`
-      },
-      (buttonIndex) => {
-        const action = contact.stageActions[buttonIndex];
-        if (action) void updateStage(action);
-      }
-    );
-  }
 
   function selectStage(stageId: ContactPipelineStageId) {
     setSelectedStageId(stageId);
@@ -238,8 +182,6 @@ function PipelineContent({
           onContactPress={(contactId) =>
             router.push(`/contacts/${encodeURIComponent(contactId)}` as Href)
           }
-          onOpenStageActions={openStageActions}
-          pending={pendingStageActionKey !== null}
           selectedStage={selectedStage}
           selectedStageId={selectedStageId}
           setSelectedStageId={setSelectedStageId}
@@ -247,8 +189,6 @@ function PipelineContent({
         />
       ) : null}
 
-      {feedback ? <Text style={styles.feedbackText}>{feedback}</Text> : null}
-      {actionError ? <Text style={styles.errorText}>{actionError}</Text> : null}
     </>
   );
 }
@@ -441,8 +381,6 @@ function StageSnapshot({ onSelect, stages }: {
 function StagePanel({
   baseUrl,
   onContactPress,
-  onOpenStageActions,
-  pending,
   selectedStage,
   selectedStageId,
   setSelectedStageId,
@@ -450,8 +388,6 @@ function StagePanel({
 }: {
   baseUrl: string;
   onContactPress: (contactId: string) => void;
-  onOpenStageActions: (contact: ContactPipelineCardView) => void;
-  pending: boolean;
   selectedStage: ContactPipelineStageView;
   selectedStageId: ContactPipelineStageId;
   setSelectedStageId: (stageId: ContactPipelineStageId) => void;
@@ -513,9 +449,7 @@ function StagePanel({
             contact={contact}
             isFirst={index === 0}
             key={contact.id}
-            onOpenActions={() => onOpenStageActions(contact)}
             onPress={() => onContactPress(contact.id)}
-            pending={pending}
           />
         ))}
       </View>
@@ -527,16 +461,12 @@ function StageContactRow({
   baseUrl,
   contact,
   isFirst,
-  onOpenActions,
-  onPress,
-  pending
+  onPress
 }: {
   baseUrl: string;
   contact: ContactPipelineCardView;
   isFirst: boolean;
-  onOpenActions: () => void;
   onPress: () => void;
-  pending: boolean;
 }) {
   const { colors, styles } = useStyles();
   return (
@@ -561,22 +491,6 @@ function StageContactRow({
           </Text>
         </View>
       </Pressable>
-      {contact.stageActions.length > 0 ? (
-        <Pressable
-          accessibilityLabel={`调整 ${contact.name} 的关系阶段`}
-          accessibilityRole="button"
-          disabled={pending}
-          hitSlop={8}
-          onPress={onOpenActions}
-          style={({ pressed }) => [
-            styles.moreButton,
-            pending ? styles.disabled : null,
-            pressed ? styles.pressed : null
-          ]}
-        >
-          <Ionicons color={colors.text3} name="ellipsis-horizontal" size={20} />
-        </Pressable>
-      ) : null}
     </View>
   );
 }

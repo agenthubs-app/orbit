@@ -493,8 +493,8 @@ function contactCard(
   rawContact: UnknownRecord,
   connection?: UnknownRecord
 ): ContactPipelineCardView {
-  const actions = rawContact.lifecycleInitialization === "ready" || connection?.lifecycleInitialization === "ready"
-    ? [] : stageActions(contact, rawContact, connection);
+  // The legacy /stage endpoint is preview-only, not a persisted mutation.
+  const actions: ContactPipelineStageActionView[] = [];
 
   return {
     detail: contactDetail(contact),
@@ -510,111 +510,6 @@ function contactCard(
   };
 }
 
-function buildStageAction({
-  connectionId,
-  label,
-  name,
-  nextRelationshipStage,
-  pendingLabel,
-  successMessage
-}: {
-  connectionId: string;
-  label: string;
-  name: string;
-  nextRelationshipStage: ContactPipelineRelationshipStage;
-  pendingLabel: string;
-  successMessage: (name: string) => string;
-}): ContactPipelineStageActionView {
-  return {
-    connectionId,
-    label,
-    nextRelationshipStage,
-    pendingLabel,
-    successMessage: successMessage(name)
-  };
-}
-
-function stageActions(
-  contact: ContactSummary,
-  rawContact: UnknownRecord,
-  connection?: UnknownRecord
-): ContactPipelineStageActionView[] {
-  const connectionId = connection ? stringField(connection, "id") : "";
-
-  if (!connectionId) {
-    return [];
-  }
-
-  const stage = pipelineStageId(contact, rawContact, connection);
-  const action = (
-    label: string,
-    nextRelationshipStage: ContactPipelineRelationshipStage,
-    pendingLabel: string,
-    successMessage: (name: string) => string
-  ) =>
-    buildStageAction({
-      connectionId,
-      label,
-      name: contact.name,
-      nextRelationshipStage,
-      pendingLabel,
-      successMessage
-    });
-
-  if (stage === "to_contact") {
-    return [
-      action("开始推进", "active", "推进中", (name) => `已把 ${name} 放入推进中。`),
-      action(
-        "暂不推进",
-        "archived",
-        "归档中",
-        (name) => `已把 ${name} 标记为暂不推进。`
-      )
-    ];
-  }
-
-  if (stage === "in_progress") {
-    return [
-      action(
-        "转为待联系",
-        "needs_follow_up",
-        "更新中",
-        (name) => `已把 ${name} 转为待联系。`
-      ),
-      action(
-        "转长期维护",
-        "nurture",
-        "转入中",
-        (name) => `已把 ${name} 转入长期维护。`
-      )
-    ];
-  }
-
-  if (stage === "nurture") {
-    return [
-      action("开始推进", "active", "推进中", (name) => `已把 ${name} 放入推进中。`),
-      action(
-        "暂不推进",
-        "archived",
-        "归档中",
-        (name) => `已把 ${name} 标记为暂不推进。`
-      )
-    ];
-  }
-
-  if (stage === "archived") {
-    return [
-      action(
-        "恢复待联系",
-        "needs_follow_up",
-        "恢复中",
-        (name) => `已把 ${name} 恢复到待联系。`
-      )
-    ];
-  }
-
-  return [];
-}
 
 function actionDueView(
   dueAt: string,

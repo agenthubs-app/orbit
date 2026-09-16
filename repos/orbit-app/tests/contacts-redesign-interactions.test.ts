@@ -43,6 +43,7 @@ const client = {
   async get(path) {
     // Ordinary manual contacts have no authoritative accepted event side.
     if (path.endsWith("/relationship-initialization")) return { success: false, status: 404, error: { code: "NOT_FOUND", message: "No event relationship initialization" }, meta: {} };
+    if (path === "/api/connections") return { success: true, status: 200, data: { connections: [] }, meta: {} };
     return { success: true, status: 200, data: { notes: [], total: 0 }, meta: {} };
   },
   async post(path, options) { state.requests.push({ method: "POST", path, body: options.body }); return { success: false, error: { message: "暂时无法搜索，请重试" } }; },

@@ -54,14 +54,52 @@ test("lost ACK locks intent; retries identical body/key/task, duplicate submits 
   assert.equal(c.getSnapshot().notice, "replayed");
   await c.refresh(); assert.equal(c.getSnapshot().view.kind, "initialized");
 });
-test("GET 404 hides only ordinary contacts; other errors remain visible; POST 404 does not hide", async () => {
+test("GET 404 hides only verified unconnected contacts; other errors remain visible; POST 404 does not hide", async () => {
   for (const status of [404, 403, 500]) {
-    const c = controller({ get: async () => error(status, "READ_ERROR") }); await c.start();
+    const c = controller({ get: async (path: string) => path === "/api/connections" ? ok({ connections: [] }) : error(status, "READ_ERROR") }); await c.start();
     assert.equal(c.getSnapshot().view.kind, status === 404 ? "hidden" : "error");
   }
   const c = controller({ get: async () => ok(pending), post: async () => error(404, "WRITE_NOT_FOUND") });
   await c.start(); c.change({ stage: "active", goal: "A real goal" }); await c.save("Asia/Shanghai", true);
   assert.equal(c.getSnapshot().view.kind, "pending"); assert.match(c.getSnapshot().error, /WRITE_NOT_FOUND/);
+});
+
+test("init 404 resolves exact scoped connection then canonical snapshot without marker or contactId fallback", async () => {
+  const paths: string[] = [];
+  const c = controller({ get: async (path: string) => {
+    paths.push(path);
+    if (path.endsWith("relationship-initialization")) return error(404, "NOT_EVENT");
+    if (path === "/api/connections") return ok({ connections: [{ id: "unrelated", contactId: "other" }, { id: connectionId, contactId }] });
+    return ok({ snapshot });
+  } });
+  await c.start();
+  assert.equal(c.getSnapshot().view.kind, "initialized");
+  assert.deepEqual(paths, ["/api/contacts/contact%3A%2Fone/relationship-initialization", "/api/connections", "/api/connections/connection%3Aone/lifecycle"]);
+  assert.equal(c.getSnapshot().draft.stage, "");
+});
+
+test("canonical candidate missing, malformed, foreign, ambiguous or failed never falls open to legacy editing", async () => {
+  for (const candidate of [error(404, "NOT_FOUND"), error(503, "UNAVAILABLE"), ok({}), ok({ snapshot: { ...snapshot, connection: { ...snapshot.connection, actorId: "other" } } }), ok({ snapshot: { ...snapshot, connection: { ...snapshot.connection, contactId: "other" } } })]) {
+    const c = controller({ get: async (path: string) => path.endsWith("relationship-initialization") ? error(404, "NOT_EVENT") : path === "/api/connections" ? ok({ connections: [{ id: connectionId, contactId }] }) : candidate });
+    await c.start(); assert.equal(c.getSnapshot().view.kind, "error"); assert.ok(c.getSnapshot().error);
+  }
+  for (const list of [error(503, "UNAVAILABLE"), ok({}), ok({ connections: [{}] }), ok({ connections: [{ id: connectionId, contactId }, { id: "second", contactId }] })]) {
+    const c = controller({ get: async (path: string) => path.endsWith("relationship-initialization") ? error(404, "NOT_EVENT") : list });
+    await c.start(); assert.equal(c.getSnapshot().view.kind, "error");
+  }
+});
+
+test("late canonical lookup after owner departure cannot publish or dispatch a further read", async () => {
+  let finish!: (value: unknown) => void; const paths: string[] = [];
+  const c = controller({ get: async (path: string) => { paths.push(path); return path.endsWith("relationship-initialization") ? error(404, "NOT_EVENT") : new Promise(resolve => { finish = resolve; }); } });
+  const loading = c.start(); await new Promise(resolve => setImmediate(resolve));
+  c.dispose(); finish(ok({ connections: [{ id: connectionId, contactId }] })); await loading;
+  assert.equal(paths.length, 2); assert.equal(c.getSnapshot().view.kind, "loading");
+});
+
+test("pipeline emits no preview stage mutations for unmarked canonical or ordinary legacy connections", () => {
+  const view = contactsPipelineToView({ contactsPayload: { contacts: [{ id: contactId, displayName: "QA", status: "needs_follow_up" }] }, connectionsPayload: { connections: [{ id: connectionId, contactId, relationshipStage: "needs_follow_up" }] } });
+  assert.deepEqual(view.stages.flatMap(stage => stage.contacts).map(contact => contact.stageActions), [[]]);
 });
 test("409 refresh new revision clears old intent and requires a new explicit choice", async () => {
   let rev = revision;

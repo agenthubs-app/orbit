@@ -1,4 +1,6 @@
 import type { OrbitApiClient } from "../api/client";
+import { z } from "zod";
+import { readRelationshipSnapshot, relationshipLifecyclePath } from "../api/relationship-lifecycle";
 import type { RelationshipInitializationInput, RelationshipInitializationRead } from "../api/contract/relationship-lifecycle";
 import { buildContactInitialization, contactInitializationPath, contactInitializationReceipt, readContactInitialization, type ContactInitializationDraft } from "../api/relationship-initialization";
 
@@ -7,6 +9,8 @@ export type ContactInitializationView = { kind: "loading" | "hidden" | "error" }
   | { kind: "initialized"; stage: "active" | "needs_follow_up" | "nurture" | "archived"; goal: string | null; connectionId: string; tasks: { id: string; title: string; dueAt: string }[] };
 export interface ContactInitializationState { view: ContactInitializationView; draft: ContactInitializationDraft; busy: boolean; locked: boolean; error: string; notice: "saved" | "replayed" | null }
 const blank = (): ContactInitializationDraft => ({ stage: "", goal: "", title: "", date: "", time: "", archiveConfirmed: false });
+const connectionIdentity = z.string().min(1).max(256).refine(value => value.trim() === value && !value.includes("\0"));
+const connectionCandidates = z.object({ connections: z.array(z.object({ id: connectionIdentity, contactId: connectionIdentity })) });
 function viewOf(read: RelationshipInitializationRead): ContactInitializationView {
   if (read.state === "pending") return { kind: "pending" };
   return { kind: "initialized", stage: read.snapshot.connection.stage, goal: read.snapshot.connection.activeGoal, connectionId: read.snapshot.connection.connectionId,
@@ -38,9 +42,31 @@ export function createContactInitializationController(options: {
     try {
       const result = await options.client.get<unknown>(contactInitializationPath(options.contactId), { signal: controller.signal });
       if (!current(token) || controller.signal.aborted) return;
-      if (!result.success && result.status === 404) { read = null; intent = null; publish({ view: { kind: "hidden" }, locked: false }); return; }
-      if (!result.success) throw new Error(`${result.error.code}: ${result.error.message}`);
-      const next = result.status >= 200 && result.status < 300 ? readContactInitialization(result.data, options.actorId, options.contactId) : null;
+      let next: RelationshipInitializationRead | null = null;
+      if (!result.success && result.status === 404) {
+        // No accepted exchange side does not imply no canonical relationship.
+        // Resolve only this contact through the same actor/cookie/server client.
+        const listed = await options.client.get<unknown>("/api/connections", { signal: controller.signal });
+        if (!current(token) || controller.signal.aborted) return;
+        if (!listed.success) throw new Error(`${listed.error.code}: ${listed.error.message}`);
+        const parsed = connectionCandidates.safeParse(listed.data);
+        if (listed.status < 200 || listed.status >= 300 || !parsed.success) throw new Error(invalidResponse);
+        const candidates = parsed.data.connections.filter(connection => connection.contactId === options.contactId);
+        if (candidates.length === 0 && read === null) {
+          intent = null; publish({ view: { kind: "hidden" }, draft: blank(), locked: false }); return;
+        }
+        if (candidates.length !== 1) throw new Error(invalidResponse);
+        const candidate = candidates[0]!;
+        const canonical = await options.client.get<unknown>(relationshipLifecyclePath(candidate.id), { signal: controller.signal });
+        if (!current(token) || controller.signal.aborted) return;
+        if (!canonical.success) throw new Error(`${canonical.error.code}: ${canonical.error.message}`);
+        const snapshot = canonical.status >= 200 && canonical.status < 300 ? readRelationshipSnapshot(canonical.data, options.actorId, candidate.id) : null;
+        if (!snapshot || snapshot.connection.contactId !== options.contactId) throw new Error(invalidResponse);
+        next = { state: "initialized", snapshot };
+      } else {
+        if (!result.success) throw new Error(`${result.error.code}: ${result.error.message}`);
+        next = result.status >= 200 && result.status < 300 ? readContactInitialization(result.data, options.actorId, options.contactId) : null;
+      }
       if (!next) throw new Error(invalidResponse);
       const clear = next.state === "initialized" || (intent !== null && next.state === "pending" && next.revision !== intent.expectedRevision);
       read = next;
