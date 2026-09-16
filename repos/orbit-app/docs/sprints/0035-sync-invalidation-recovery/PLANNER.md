@@ -1,113 +1,42 @@
-# Sprint 0035 Provider-Neutral Invalidation and Recovery Implementation Plan
+# Sprint 0035 — 全域失效检测与恢复契约
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+## 原需求、基线与批准
 
-**Goal:** Detect server changes through a provider-neutral PostgreSQL status boundary and reliable cursor recovery, while leaving realtime/push delivery as replaceable latency adapters.
+原需求：减少重复上传下载，保持云端／Web／App 一致；承接 R-11 消息恢复及全域离线读取规范第 5 节 0035 分工。固定规划基线 `2f862c9f84167408df09914acca521f528ae4185`。用户已批准 `docs/superpowers/specs/2026-09-16-universal-offline-read-design.zh-CN.md` 并要求分线规划；本次只修改规划文档、提交本线分支、等待管理线审查，不开始生产实现、不 merge/push。
 
-**Architecture:** Query the Sprint 0033 monotonic `sync_revision` through one content-free actor-scoped status endpoint, poll it at a bounded foreground interval, accept optional hints through an injected transport interface, and always repair through outbox-then-delta on launch, foreground, reconnect and manual refresh.
+[GOAL](GOAL.md)描述用户结果，[DESIGN](DESIGN.md)定义 C 线边界，[逐步实施计划](../../../../../docs/superpowers/plans/2026-09-16-sprint-0035-universal-recovery.md)提供文件、接口、RED/GREEN 和阶段提交。本文件是唯一 SC 契约；详细计划不能降低 SC。
 
-**Tech Stack:** Portable PostgreSQL SQL, Next.js route handlers, Expo React Native AppState/Notifications, TypeScript, Node tests, production Web/API, iOS Simulator; optional provider adapter selected after deployment choice.
+## 进入条件与依赖
 
-**Spec:** `repos/orbit-app/docs/sprints/0035-sync-invalidation-recovery/DESIGN.md`
+- 管理线审查本次计划，分配唯一 C 线 Generator、文件锁与 run-01，记录本 Planner SHA256、真实起始 HEAD；运行状态只由 Sprint README 登记。
+- 0033 提供通过验收的 registry/manifest、各权威源 journal、域水位读取、认证 refresh 与撤权清理、分域 reset/分页/checkpoint API；0034 提供批准的 uploader 与 failure/conflict 状态。依赖固定 SHA 和合并树证据由管理线交接。
+- 接口未就绪时可执行不依赖生产绑定的调度和 transport 测试；不得合并依赖未验收的 A 线接口，不得把测试 port 当作完成集成。
+- 0037/38 的消息、通知权威记录经 0033 adapter 接入；0039/40 的真实 provider/push 缺口不能由 C 线关闭，也不阻塞无 optional transport 的正确性测试。
 
-## Global Constraints
+## 文件白名单
 
-- **原需求：** 减少每次上传下载并保持 Web/App 一致；半本地方案不能因 iOS 后台限制丢数据，且不能预设一定使用 Supabase，部署也可能采用 Neon 或其他 PostgreSQL provider。
-- **依赖：** 0034 completed/merged；sync cursor、outbox、conflict 与 scope lifecycle 均有通过证据。
-- 必需 status endpoint 与 polling adapter 只返回 content-free watermark/kinds；不能下发业务 payload、作为完成 receipt 或代替 cursor。
-- Supabase、Neon、独立 relay 和 push 均属于可选适配器。没有可选 realtime 时，15 秒前台 status check、启动、foreground 和手动刷新仍须满足全部正确性 SC。
-- iOS 后台执行是 best-effort；完成声明必须依赖启动/foreground/manual 的确定性恢复。
-- Web/API/shared 改动后 production build/restart；同一数据库/账号进行 Web→App runtime 验收。
-- 单 Generator、impact、TDD、detect_changes、commit、merge `chat-agent`、合并树验证。
+本轮只写本目录 `GOAL.md`、`DESIGN.md`、`PLANNER.md` 与根 `docs/superpowers/plans/2026-09-16-sprint-0035-universal-recovery.md`。
 
----
+后续实施精确白名单以执行计划每个 Task 的 Files 为准：独立 `sync-invalidation` contract/schema、status service/route/tests、App recovery ports/bindings/transport/coordinator/budget/observability/tests；有限修改 `app/_layout.tsx` 与 `OrbitNotificationsCoordinator.tsx`。共享 contract 副本只能由 `npm run sync:contract` 生成。禁止修改 0033 cursor/registry 定义、加密表迁移、AuthSessionProvider 身份语义，以及 0034 outbox/receipt/alias/conflict 实现；绑定需求冲突交回拥有者。
 
-### Task 1: Implement the provider-neutral invalidation status boundary
+排除：新增 provider SDK、部署、浏览器离线、AI 工具扩权、离线发送消息、外部副作用、把高频提示当数据、把聚合收件箱当权威源。根 Bridge/README 台账由管理线更新，执行线只交接内容。
 
-**Files:**
-- Modify: `repos/orbits/shared/contract/sync.ts`
-- Generated: `repos/orbit-app/src/api/contract/sync.ts`
-- Create: `repos/orbits/features/sync/invalidation-status-service.ts`
-- Create: `repos/orbits/app/api/sync/status/handler.ts`
-- Create: `repos/orbits/app/api/sync/status/route.ts`
-- Create: `repos/orbits/tests/services/sync-invalidation-status.test.ts`
-- Create: `repos/orbits/tests/api/sync-status-route.test.ts`
+## 验收契约（五项）
 
-- [ ] Write RED tests for `afterRevision`, latest watermark, deduplicated changed kinds, no-change response, 100-change collapse, actor/workspace isolation, invalid/negative/future revision, and absence of IDs/payload/secrets.
-- [ ] Implement one portable query over `orbit_records.sync_revision`, restricted to the four collections and server-injected actor/workspace. Return only `latestRevision`, `changedKinds`, `emittedAt` and contract metadata.
-- [ ] Expose the authenticated route with conditional response/ETag support; client-provided actor/workspace fields are rejected and status reads never mutate business data.
-- [ ] Run both new server tests, 0033 incremental-sync tests and Web typecheck against local PostgreSQL; keep the SQL free of provider-specific extensions.
-
-### Task 2: Implement the App subscription and coalescer
-
-**Files:**
-- Create: `repos/orbit-app/src/data/sync/invalidation-transport.ts`
-- Create: `repos/orbit-app/src/data/sync/polling-invalidation-transport.ts`
-- Create: `repos/orbit-app/src/data/sync/sync-trigger-coordinator.ts`
-- Create: `repos/orbit-app/tests/sync-trigger-coordinator.test.ts`
-- Create: `repos/orbit-app/tests/polling-invalidation-transport.test.ts`
-
-- [ ] Write RED tests for immediate foreground check, 15-second upper-bound interval, background stop, 250ms optional-hint coalescing, single-flight/rerun-once, duplicate/older watermark, malformed kind, disconnect/reconnect, unsubscribe-before-account-switch and manual refresh bypass.
-- [ ] Implement the transport interface, authenticated polling adapter and coordinator using the existing Orbit client. The interface must allow a later Supabase, Neon-compatible relay or push adapter without changing coordinator/outbox/cursor code.
-- [ ] Do not write hint payloads into entity tables. Mark only the scope dirty and invoke 0034 uploader followed by 0033 delta.
-- [ ] Run polling/coordinator tests, auth lifecycle tests and App typecheck.
-
-### Task 3: Connect launch, foreground, network and notification recovery
-
-**Files:**
-- Create: `repos/orbit-app/src/components/OrbitSyncCoordinator.tsx`
-- Modify: `repos/orbit-app/app/_layout.tsx`
-- Modify: `repos/orbit-app/src/components/OrbitNotificationsCoordinator.tsx`
-- Modify: `repos/orbit-app/src/api/AuthSessionProvider.tsx`
-- Create: `repos/orbit-app/tests/orbit-sync-lifecycle.test.tsx`
-
-- [ ] Write RED lifecycle tests for authenticated launch, 15-second foreground ticks, <60s and >60s background, killed/relaunched App, network recovery ordering, optional notification response, logout race and stale callback suppression.
-- [ ] Mount one coordinator at the authenticated root. Run outbox before delta; surface conflicts/failures but keep independent entities progressing.
-- [ ] Use existing notification response only as a hint plus allowlisted navigation; never trust notification data as a record or receipt.
-- [ ] Run lifecycle/auth/notification tests and App typecheck.
-
-### Task 4: Add redacted observability and storm budgets
-
-**Files:**
-- Create: `repos/orbit-app/src/data/sync/sync-observability.ts`
-- Create: `repos/orbit-app/tests/sync-observability.test.ts`
-- Modify: `repos/orbits/features/sync/read-service.ts`
-- Modify: `repos/orbits/tests/services/incremental-sync.test.ts`
-
-- [ ] Write RED tests that reject secret/content-shaped fields and assert one delta for 100 server changes collapsed into one status response, one sync for 100 optional hints in 250ms, bounded retry sequence, one rerun during in-flight work and cursor-lag reporting.
-- [ ] Implement numeric/status-only observations. Preserve failed attempts and never normalize away delay/error rows.
-- [ ] Run observability/coordinator/server sync tests; compare request count and p95 against Sprint 0031 baseline, requiring no >10% regression on unchanged scenarios.
-
-### Task 5: Runtime acceptance and delivery
-
-**Files:**
-- Create after execution: `repos/orbit-app/docs/sprints/0035-sync-invalidation-recovery/REPORT.md`
-- Modify: `repos/orbit-app/docs/sprints/README.md`
-- Modify: `bridge/status.md`, `bridge/handoffs.md`
-- Create: `bridge/requests/BR-0035-sync-invalidation-recovery.md`
-
-- [ ] Build/restart production Web/API and current App against local PostgreSQL or the configured PostgreSQL provider; record only a redacted provider/environment identifier.
-- [ ] Web-update each of four domains and prove foreground App detects the new watermark within 15 seconds and performs one delta; create 100 changes and prove the status endpoint collapses them without full payload transfer.
-- [ ] Background/kill App, change and delete records while no transport runs, relaunch/foreground and prove cursor repair. Repeat with network loss and account switch.
-- [ ] Run the same status/service conformance test against the selected remote provider if one is configured. Absence of a provider decision does not block the portable core; any optional adapter is a separately recorded addendum.
-- [ ] Run affected suites/typechecks/builds, `gitnexus_detect_changes(scope="staged")`, path-limited commits, REPORT and merge-tree verification.
-
-## 验收契约（最多五项）
-
-| SC | 可观察行为 | 必需证据 |
+| SC | 必须可观察的结果 | 主要证据／实施映射 |
 | --- | --- | --- |
-| SC-0035-01 | 认证 status 只返回 watermark/kinds，跨账号或 payload/ID 请求被拒绝 | service/route negative tests |
-| SC-0035-02 | 前台 Web 写入在 15 秒内触发一次 delta，100 次变化不造成 payload 下载或请求风暴 | production Web/App + coordinator budget |
-| SC-0035-03 | 丢提示、杀进程、后台和断网后由 cursor 补齐增删改 | lifecycle tests + Simulator recovery |
-| SC-0035-04 | logout/account switch 取消旧 transport/timer，旧 callback 不污染新 scope | auth/lifecycle race tests |
-| SC-0035-05 | 核心在普通 PostgreSQL 上通过，同一接口可在已选远端 provider 复用且不依赖供应商 SDK | provider-conformance suite + dependency audit |
+| SC-0035-01 | registry 中每个已授权域有 content-free watermark 摘要，含授权新增／撤销、物理删除；未知域/版本与跨账号读取拒绝 | Task 1 PostgreSQL conformance + route 负例；遍历真实 registry，不限旧四域 |
+| SC-0035-02 | 前台默认 15 秒检查，高频可 5 秒；100 次变更/提示合并，无变化不拉 delta，乱序不回退，运行中 dirty 必须补跑且同 scope 单飞 | Task 2 fake-clock storm/race 测试 + Task 6 同账号 Web→App |
+| SC-0035-03 | 启动、长/短后台、断网恢复、manual、通知点击与杀进程后均能恢复；先鉴权清理再上传拉取；AI 历史预算停止为 partial，续传无重复页且不饿死消息 | Task 3/4/5 生命周期、预算与 Task 6 原生恢复 |
+| SC-0035-04 | cursor/epoch reset 只清目标域，保留 drafts/outbox/conflict；auth revoke、账号/Base URL/workspace/角色切换使旧 timer/promise/callback 失效，无跨 scope 污染 | Task 3/4 races + 0033 真实加密数据库回归、Task 6 双账号/角色验收 |
+| SC-0035-05 | 无 realtime SDK 仍在普通 PostgreSQL 通过完整链路；可选 transport 故障不影响 HTTP 恢复；观测不含隐私且性能未退化超过基线 10% | Task 1 provider conformance、Task 2 fallback、Task 5 redaction、Task 6 对比 0031 同场景 p95/请求数 |
 
-## 最小测试与检查
+## 验证、失败与提交
 
-- 档位 H/I：认证同步状态、共享 revision 查询、App 根生命周期。
-- 定向集为 status service/route、polling/coordinator/lifecycle/observability；收口加四域 mutation/sync 回归、两端 typecheck、Web production build 与 iOS build。
-- 不安装或配置 Supabase/Neon SDK，不创建供应商 migration。未来选定 provider 时只在 transport interface 后增加适配器并复用本 Sprint conformance tests。
+当前文档 D 档：链接/路径、自审、`git diff --check`、staged GitNexus detect_changes；不跑产品测试、不预写 REPORT。
 
-## 失败与交接
+后续实现 H/I 档：每 Task RED→最小 GREEN→直接消费者；每阶段路径限定 commit 前做 impact/detect_changes。收口两端全量与 typecheck 各一次、contract/schema 同步检查、Web production build/restart、iOS build 与同版本 Simulator 业务链；不以单测代替真实恢复证据。Python 一律 uv；费用继承 RULES 累计 $5 上限与既有账本，不重置预算；本线不需要模型付费调用。
 
-跨账号状态读取、status/hint 含正文、请求风暴、供应商特有 SQL 渗入核心或恢复漏数据均为硬失败。交接明确实际 PostgreSQL provider、可选 transport 是否配置、无 transport 路径、丢提示恢复、请求预算、本线最终 SHA 和 `chat-agent` merge SHA。
+权限泄漏、提示含正文、漏掉 rerun、丢页、误清 outbox、local-read 上传、跨 scope 回调均硬失败。单个域失败保留错误与 partial，不冒充完整；具体阻塞只限制其依赖。非预期测试失败按 RULES 5.3 最多两个修复轮次，不开启第二 Generator。无法获得真实环境时记录未验 SC，不能标 completed。
+
+后续执行结束才写 REPORT，列固定功能 SHA、各 SC 证据、App/Web 版本、脱敏账号/数据库、transport、各域完整性、失败/未验、费用和剩余工作。管理线接收 Bridge 交接并按固定 SHA 合并验证；本次仅规划提交与暂停审查。
