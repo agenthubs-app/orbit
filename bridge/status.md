@@ -4,6 +4,8 @@
 
 BR-027 新 Neon 独立库完成既有迁移与小型 seed：4 个可登录合成账号、2 个 canonical 活动、3 条关系、1 个跟进任务，通用记录共28条；主办方权限/参与者拒绝与关系生命周期预检通过。种子42.6KB、初始化返回JSON约46.6KB，未调用模型，旧Production和本地大型fixtures未删改。独立Vercel项目使用显式Preview及无cron/队列订阅配置；Web登录验证与App切换状态按[BR-027](2026-09-17-read-budget-staging.md)最新记录，不将初始化当作完整业务闭环。后续云端操作必须遵守[免费套餐操作规程](../repos/orbits/docs/operations/free-staging-budget.md)。
 
+Preview现已Ready并通过主办方实际登录/后台配置读取；空报名canonical基线已激活，最终19/19本地回归。正式域名`www.orbitailink.com`与根域名绑定原`orbit`项目；本轮不改正式入口。Preview仍有Vercel访问保护，App未切换；公开详情旧20席/匿名主办方占位、完整读取治理及AI/worker/原生验收仍未关闭。
+
 ## 2026-09-17 读取成本与独立 Neon 测试环境
 
 联系人详情/行业授权精确读取、bootstrap/dashboard 字段投影与同 actor 在途查询合并、可选隐私安全 PG 用量诊断已进入本地验证；GET contacts 接通显式分页参数，未强行截断旧消费者。不是全面 SQL 聚合/分页已完成。

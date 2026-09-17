@@ -7,6 +7,8 @@
 - Neon：`orbit-staging-20260917` / `orange-forest-30108072`，独立项目，Free、PG16、新加坡。默认分支名 `production` 不表示原正式环境。
 - Workspace：`workspace:orbit-small-staging-20260917`。
 - Vercel：独立项目 `orbit-staging-20260917`，只发 Preview。旧 `orbit` Production 的数据库、数据和配置不动。
+- 正式域名是 `https://www.orbitailink.com`（另有 `orbitailink.com`），只读核实绑定 `orbit` Production；不要将该域名指向本测试项目。
+- 测试入口：[Preview 登录](https://orbit-staging-20260917-ktlfo1sjb-liqys-projects-33c8ddec.vercel.app/app/account/login)；[主办方后台](https://orbit-staging-20260917-ktlfo1sjb-liqys-projects-33c8ddec.vercel.app/app/events/10000000-0000-4000-8000-000000000001/operations)。账号 `organizer@orbit.example.test`；另外有 `participant.a@orbit.example.test`、`participant.b@orbit.example.test`、`empty@orbit.example.test`。密码读取私有配置的 `password` 字段，不能从正式账号复用。
 - 新环境只配置自己的数据库、Auth secret、workspace、live 模式及读取诊断。**不复制正式模型、邮件、Blob 凭据**。
 - 用 `vercel.staging.json` 发布，配置不包含 cron 或 Queue 订阅。当前是人工触发的低流量验收环境，不宣称云端 worker / AI 全流程已启用。
 
@@ -36,6 +38,10 @@ node --import tsx scripts/setup-minimal-staging.ts --config=/absolute/private/cr
 硬限额：最多 80 条通用 seed 记录、128 KiB 序列化种子包、800 次初始化 SQL 调用、2 MiB 驱动解码后的返回 JSON；超过预算抛错并回滚。返回字节检查发生在该次查询返回后，不能撤销已发生的流量。此预算**只保护初始化命令**，不等于全站、账期或 Neon wire/billing 的硬限额。
 
 本次实际：42,644 bytes seed、141 次 SQL 调用、46,567 bytes 返回 JSON估计。0 模型请求、0 外部通知、0 自动后台任务。
+
+补查后通过既有 canonical activation 函数初始化已发布活动的空报名基线：另外7次SQL调用、434 bytes返回；不是伪造历史报名。初始化脚本已包含该步骤。Preview 实际登录、主办方后台加载运营配置、目录只显示1个已发布活动（草稿不公开）通过；19/19本地定向回归、build typecheck通过。运行时版本仍为 `cc26744d`，后续提交仅修改初始化/测试/操作文档，不需重复消耗构建额度。
+
+已知边界：公开活动详情仍有旧展示占位（20席、匿名 Organizer 昵称），实际本次报名 policy 为8席；这是现有 Web 展示映射未接完整 canonical/policy，不是要增加12个假参与者或改数据库容量来迁就页面。该展示缺口需单独按契约修复后再标记详情全量验收。本次只验证登录、目录、主办方运营后台，不把公开详情占位、AI、worker或原生标记闭环。
 
 ## 后续操作必须遵守
 

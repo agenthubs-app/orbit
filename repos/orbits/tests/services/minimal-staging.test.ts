@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { assertSmallSeed, buildMinimalStagingSeed, STAGING_HOST, STAGING_LIMITS, STAGING_WORKSPACE, validateStagingTarget } from "../../scripts/lib/minimal-staging";
+
+test("free staging deployment has no cron or automatic queue subscribers", () => {
+  const config = JSON.parse(readFileSync(new URL("../../vercel.staging.json",import.meta.url),"utf8"));
+  assert.deepEqual(config.crons,[]);
+  assert.equal(config.functions,undefined);
+  assert.deepEqual(config.regions,["sin1"]);
+});
 
 test("staging target guard rejects production, URL overrides and existing local databases", () => {
   validateStagingTarget(`postgresql://owner:synthetic@${STAGING_HOST}/neondb?sslmode=require`,true);

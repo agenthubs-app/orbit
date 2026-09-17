@@ -14,6 +14,7 @@ import { requireEventCapability } from "../features/events/event-access/guard";
 import { createPostgresEventAdmissionRepository } from "../features/events/admission/storage/postgres-repository";
 import { createEventAdmissionService } from "../features/events/admission/service";
 import { createPostgresEventOperationsRepository } from "../features/events/event-operations/storage/postgres-repository";
+import { activateCanonicalRegistrationsWithExecutor } from "../features/events/event-operations/storage/canonical-registration-repository";
 import { buildMinimalStagingSeed, validateStagingTarget, STAGING_LIMITS, STAGING_WORKSPACE } from "./lib/minimal-staging";
 
 async function main() {
@@ -69,6 +70,7 @@ async function main() {
     if (!denied) throw Error("STAGING_OWNER_ISOLATION_FAILED");
     await ops.saveConfigurationAsOperator({actorId:seed.accounts.organizer!.id,capability:"operations.configure",configuration:{eventId:published.eventId,organizerActorId:seed.accounts.organizer!.id,checkInOpensAt:at(-1),eventStartsAt:published.startsAt,eventEndsAt:published.endsAt,profileEditDeadlineAt:at(-2),registrationCutoffAt:at(-2),resultsAvailableAt:at(0),roundOneStartsAt:at(0),roundTwoStartsAt:at(1),recommendationCount:1,tableSize:2,shardSize:4,maxAttemptsPerTask:1,updatedAt:seed.now}});
     await admission.configurePolicy(seed.accounts.organizer!.id,{eventId:published.eventId,admissionMode:"instant",capacity:8,waitlistEnabled:true,registrationOpensAt:seed.now,registrationClosesAt:at(-2),profileEditDeadlineAt:at(-2)});
+    await activateCanonicalRegistrationsWithExecutor({executor:client,workspaceId:STAGING_WORKSPACE,eventId:published.eventId,registrations:[]});
     const counts = await client.query("select collection_name,count(*)::int as records from orbit_records group by collection_name order by collection_name");
     const totals = await client.query("select (select count(*) from event_ops_events)::int as events, (select count(*) from event_ops_generations)::int as generations");
     await pg.query("commit");

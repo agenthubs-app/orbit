@@ -37,6 +37,10 @@
 - 独立 Vercel 项目 `orbit-staging-20260917` / `prj_PFJXRat2a7ADxz6tWVLQU7rNTaIt`；仅 Preview 配置新库、独立 Auth、workspace/live/读取诊断，无旧 Production 模型、邮件、Blob密钥。`vercel.staging.json` 不含定时/队列订阅，region sin1。模型与worker全流程不在本次启用范围。
 - Vercel 初次默认 deploy 意外自动标记为本测试项目 Production，且未使用仅 Preview 的配置；已改为显式 `--target preview`，撤除首次不可用部署。旧 `orbit` Production 从未变更。后续不得只依赖省略 `--prod` 来保证 Preview。
 - 本地小种子/生命周期/PostgreSQL投影回归18/18，零失败/跳过；Web build typecheck通过。新增脚本图影响 LOW（只影响新 CLI），不修改现有 Web/App 业务函数。全站读取治理未完成，不能用“小样本运行成功”替代规模上限验证。
+- 最终补充回归19/19：增加测试部署无cron/Queue订阅的保护检查。空报名 canonical 基线已由既有activation函数激活，额外7次SQL/434 bytes返回；脚本已包含该步骤，不手工改状态。
+- Preview `dpl_6E9ZMP1XPjjVa6Kwzo9YHV6wXtsg` Ready，sin1；[登录入口](https://orbit-staging-20260917-ktlfo1sjb-liqys-projects-33c8ddec.vercel.app/app/account/login)。主办方实际登录成功，后台显示真实配置、0报名、0生成；活动目录只有1个发布活动，草稿不公开。验收后关闭浏览器测试页，避免后台刷新。没有新增模型调用、队列任务或对外通知。
+- 用户确认正式域名 `https://www.orbitailink.com`；Vercel只读核实其与根域名均绑定 `orbit` Production `dpl_A4xBsfn51Jv37SZaepSuMWQ6DCU3`。这是本轮期间观察到的新正式部署，本轮没有修改、替换或验收其数据库；不要将“本轮未修改”误写为“期间无人更新”。
+- Preview 启用了Vercel SSO（`all_except_custom_domains`），没有擅自关闭访问保护或修改App；原生连接仍需处理测试入口授权。公开详情另发现旧20席/匿名主办方展示占位，实际policy8席，不用篡改seed来掩盖映射问题，后续单独修复。AI/worker/原生/公开详情全量验收仍开放。
 
 下列列表保留完整后续范围；第1项小型 seed 已完成，其余以实际验证记录为准。
 
