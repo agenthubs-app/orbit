@@ -3,6 +3,10 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { normalizeOrbitAuthReturnPath } from "../../../../features/auth/app-auth-routing";
+import {
+  normalizeProfileAuthReturnPath,
+  profileContinuationPath,
+} from "../profile/profile-onboarding-navigation";
 import type { OrbitAccountAuthViewModel } from "../orbit-account-auth-route-view-model";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { useOrbitModalA11y } from "../orbit-modal-a11y";
@@ -30,13 +34,20 @@ type AccountAuthQuery = { created: boolean; email: string; next: string };
 // the client would immediately compute the real `next` from the URL),
 // producing a hydration mismatch on every `?next=` href in this form.
 function accountAuthQueryFallback(defaultNext: string): AccountAuthQuery {
-  return { created: false, email: "", next: defaultNext };
+  return {
+    created: false,
+    email: "",
+    next: normalizeProfileAuthReturnPath(defaultNext),
+  };
 }
 
 function readAccountAuthQueryFromLocation(defaultNext: string): AccountAuthQuery {
   const searchParams = new URLSearchParams(window.location.search);
   const rawNext = searchParams.get("next") ?? "";
-  const next = normalizeOrbitAuthReturnPath(rawNext, defaultNext);
+  const next = normalizeProfileAuthReturnPath(
+    normalizeOrbitAuthReturnPath(rawNext, defaultNext),
+    defaultNext,
+  );
 
   return {
     created: searchParams.get("created") === "1",
@@ -89,8 +100,8 @@ export function OrbitRealAccountAuth({
 
   const isSignup = viewModel.mode === "signup";
   const isForgot = viewModel.mode === "forgot";
-  // 只在注册成功但自动登录未建立会话时出现。登录后没有强制的档案
-  // 引导步骤（/app/profile 可从账号菜单进入），所以这里不承诺那一步。
+  // 注册成功但自动登录未建立会话时，回到登录页继续完成登录；建立会话
+  // 后由 profile continuation 读取权威资料状态，再决定是否需要补全档案。
   const message = query.created
     ? t({
         en: "Account created, but automatic sign-in did not complete. Sign in with the password you just set.",
@@ -147,7 +158,7 @@ export function OrbitRealAccountAuth({
         }).catch(() => null);
 
         if (autoSignIn && !autoSignIn.error) {
-          navigate(query.next);
+          navigate(profileContinuationPath(query.next));
           return;
         }
 
@@ -176,12 +187,12 @@ export function OrbitRealAccountAuth({
         redirect: false,
       });
 
-      if (result?.error) {
+      if (!result || result.error) {
         setError(t({ en: "Email or password is incorrect.", zh: "邮箱或密码不正确。" }));
         return;
       }
 
-      navigate(query.next);
+      navigate(profileContinuationPath(query.next));
     } catch {
       setError(t({ en: "Something went wrong. Please try again.", zh: "网络异常,请稍后再试。" }));
     } finally {
@@ -191,7 +202,9 @@ export function OrbitRealAccountAuth({
 
   function onGoogleSignIn() {
     setError("");
-    void signIn("google", { callbackUrl: productHref(query.next) });
+    void signIn("google", {
+      callbackUrl: productHref(profileContinuationPath(query.next)),
+    });
   }
 
   return (

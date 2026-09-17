@@ -13,6 +13,7 @@ import type {
   ProfileSignalProfileField,
   ProfileSignalReviewQueueResult,
 } from "../../../../../features/profile/signal-contract";
+import type { ProfileOnboardingContract } from "../../../../../shared/contract/profile";
 import { createAppProfileRouteServices } from "./profile-service-factory";
 
 export interface AppProfileActor {
@@ -76,10 +77,14 @@ export interface AppProfileSuggestionViewModel {
 export interface AppProfileSuccessViewModel {
   completenessScore: number;
   documentSummary: string;
+  expectedUpdatedAt: string | null;
+  hasPersistedProfile: boolean;
   nextProfileFieldLabel: string;
+  onboarding: ProfileOnboardingContract;
   profile: Pick<
     ManualProfile,
     | "bio"
+    | "birthDate"
     | "displayName"
     | "headline"
     | "handles"
@@ -390,8 +395,11 @@ function actorOnboardingProfile(
 function successViewModel(input: {
   actor?: AppProfileActor | null;
   profileState: Extract<ProfileResult, { success: true }>;
-  resumeState: Extract<ProfileDocumentExtractionResult, { success: true }>;
-  suggestionState: Extract<ProfileSignalReviewQueueResult, { success: true }>;
+  resumeState?: Extract<ProfileDocumentExtractionResult, { success: true }>;
+  suggestionState?: Extract<ProfileSignalReviewQueueResult, { success: true }>;
+  expectedUpdatedAt: string | null;
+  hasPersistedProfile: boolean;
+  onboarding: ProfileOnboardingContract;
 }): AppProfileSuccessViewModel {
   const profile = input.profileState.data.profile;
 
@@ -399,7 +407,7 @@ function successViewModel(input: {
     throw new Error("profile success state requires a profile payload");
   }
 
-  const resumeDraft = input.resumeState.data.draft;
+  const resumeDraft = input.resumeState?.data.draft ?? null;
   const actorEmail = input.actor?.email?.trim() || undefined;
   const handles =
     profile.handles || actorEmail
@@ -413,8 +421,12 @@ function successViewModel(input: {
     completenessScore: input.profileState.data.completeness.score,
     documentSummary: resumeDraft
       ? bilingualText("简历草稿已准备", "Resume draft ready")
-      : input.resumeState.data.nextAction,
-    firstSuggestion: input.suggestionState.data.suggestions[0]
+      : bilingualText(
+          "可选资料提取暂不可用，仍可手动填写。",
+          "Optional document extraction is unavailable; manual entry is still available.",
+        ),
+    expectedUpdatedAt: input.expectedUpdatedAt,
+    firstSuggestion: input.suggestionState?.data.suggestions[0]
       ? {
           evidenceExcerpt:
             input.suggestionState.data.suggestions[0].evidence[0]?.excerpt ??
@@ -427,11 +439,14 @@ function successViewModel(input: {
           ),
         }
       : null,
+    hasPersistedProfile: input.hasPersistedProfile,
     nextProfileFieldLabel: profileFieldLabel(
       input.profileState.data.completeness.nextBestField,
     ),
+    onboarding: input.onboarding,
     profile: {
       bio: profile.bio,
+      birthDate: profile.birthDate ?? null,
       displayName: profile.displayName,
       handles,
       headline: profile.headline,
@@ -455,16 +470,28 @@ function successViewModel(input: {
       evidenceExcerpt:
         resumeDraft?.evidence[0]?.excerpt ??
         bilingualText("没有加载摘录。", "No excerpt loaded."),
-      evidenceIds: input.resumeState.data.provenance.evidenceIds,
+      evidenceIds: input.resumeState?.data.provenance.evidenceIds ?? [
+        "evidence:profile-document-extraction-optional-unavailable",
+      ],
       headline: resumeDraft?.headline ?? "",
-      nextAction: input.resumeState.data.nextAction,
+      nextAction:
+        input.resumeState?.data.nextAction ??
+        bilingualText(
+          "可以跳过可选提取，直接手动填写。",
+          "Skip optional extraction and enter the profile manually.",
+        ),
       ready: Boolean(resumeDraft),
     },
-    reviewSummary: personalizeReviewSummary(
-      input.suggestionState.data.summary,
-      profile.displayName,
-    ),
-    suggestionCount: input.suggestionState.data.suggestions.length,
+    reviewSummary: input.suggestionState
+      ? personalizeReviewSummary(
+          input.suggestionState.data.summary,
+          profile.displayName,
+        )
+      : bilingualText(
+          "可选资料建议暂不可用，手动资料仍可继续。",
+          "Optional profile suggestions are unavailable; manual profile editing can continue.",
+        ),
+    suggestionCount: input.suggestionState?.data.suggestions.length ?? 0,
   };
 }
 
@@ -481,37 +508,79 @@ export async function loadAppProfileRouteViewModel(
     };
   }
 
-  const services = createAppProfileRouteServices();
-  const [profileState, resumeState, suggestionState] = await Promise.all([
-    services.profileService.getProfile({ actorId: actor?.id }),
-    services.extractionService.extractResumeDraft(),
-    services.signalService.listUpdateSuggestions({ actorId: actor?.id }),
-  ]);
-  const serviceFailure = firstRouteFailure([
-    profileState,
-    resumeState,
-    suggestionState,
-  ]);
+  let services: ReturnType<typeof createAppProfileRouteServices>;
+  try {
+    services = createAppProfileRouteServices();
+  } catch {
+    return {
+      state: "route-state",
+      routeState: await routeStateViewModel("failure", {
+        code: "PROFILE_ROUTE_FAILURE",
+        evidenceIds: ["evidence:profile-route-service-resolution-failure"],
+        message: "The manual profile service could not be resolved.",
+        recovery: "Reload the profile page after the service is available.",
+      }),
+    };
+  }
+  let profileState: ProfileResult;
 
-  if (
-    serviceFailure ||
-    profileState.success === false ||
-    resumeState.success === false ||
-    suggestionState.success === false
-  ) {
+  try {
+    profileState = await services.profileService.getProfile({
+      actorId: actor?.id,
+    });
+  } catch {
+    return {
+      state: "route-state",
+      routeState: await routeStateViewModel("failure", {
+        code: "PROFILE_ROUTE_FAILURE",
+        evidenceIds: ["evidence:profile-route-unexpected-failure"],
+        message: "The manual profile could not be loaded.",
+        recovery: "Reload the profile page after the service is available.",
+      }),
+    };
+  }
+
+  if (profileState.success === false) {
     return {
       state: "route-state",
       routeState: await routeStateViewModel(
         "failure",
-        serviceFailure ?? {
+        routeFailureFromResult(profileState) ?? {
           code: "PROFILE_ROUTE_FAILURE",
           evidenceIds: ["evidence:profile-route-unexpected-failure"],
-          message: "A profile page service returned an unexpected failure.",
+          message: "The manual profile could not be loaded.",
           recovery: "Reload the profile page after the service is available.",
         },
       ),
     };
   }
+
+  const serverOnboarding = profileState.data.onboarding;
+  if (
+    !serverOnboarding ||
+    serverOnboarding.policyVersion !== 1 ||
+    (serverOnboarding.status !== "complete" &&
+      serverOnboarding.status !== "incomplete") ||
+    !Array.isArray(serverOnboarding.missingFields)
+  ) {
+    return {
+      state: "route-state",
+      routeState: await routeStateViewModel("failure", {
+        code: "PROFILE_ONBOARDING_UNAVAILABLE",
+        evidenceIds: ["evidence:profile-onboarding-unavailable"],
+        message: "The profile onboarding policy could not be read.",
+        recovery: "Reload the profile page and try again.",
+      }),
+    };
+  }
+
+  // Extraction is user-triggered from the editor. Suggestions are optional and
+  // must never turn an otherwise readable manual profile into a route failure.
+  const suggestionState = await Promise.resolve()
+    .then(() =>
+      services.signalService.listUpdateSuggestions({ actorId: actor?.id }),
+    )
+    .catch(() => null);
 
   if (!profileState.data.profile) {
     if (!actor) {
@@ -535,6 +604,9 @@ export async function loadAppProfileRouteViewModel(
       data: {
         ...profileState.data,
         completeness: services.profileService.scoreCompleteness(profile),
+        // The actor name is only a local form seed. Keep the server's empty
+        // policy result so it cannot masquerade as a persisted completion.
+        onboarding: serverOnboarding,
         editor: {
           ...profileState.data.editor,
           canSave: true,
@@ -548,8 +620,11 @@ export async function loadAppProfileRouteViewModel(
       profile: successViewModel({
         actor,
         profileState: onboardingState,
-        resumeState,
-        suggestionState,
+        suggestionState:
+          suggestionState?.success === true ? suggestionState : undefined,
+        expectedUpdatedAt: null,
+        hasPersistedProfile: false,
+        onboarding: serverOnboarding,
       }),
     };
   }
@@ -559,8 +634,11 @@ export async function loadAppProfileRouteViewModel(
     profile: successViewModel({
       actor,
       profileState,
-      resumeState,
-      suggestionState,
+      suggestionState:
+        suggestionState?.success === true ? suggestionState : undefined,
+      expectedUpdatedAt: profileState.data.profile.updatedAt,
+      hasPersistedProfile: true,
+      onboarding: serverOnboarding,
     }),
   };
 }

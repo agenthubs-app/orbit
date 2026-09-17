@@ -111,6 +111,7 @@ test("app profile route loader returns a controlled live failure when storage is
 test("/app/profile page renders the real Orbit profile editor", () => {
   const pageSource = source("app/(app)/app/profile/page.tsx");
   const profileSource = source("app/(app)/app/profile/orbit-real-profile.tsx");
+  const editorAdapterSource = source("app/(app)/app/profile/profile-editor-adapter.ts");
   const profileModelSource = source(
     "app/(app)/app/orbit-profile-route-view-model.ts",
   );
@@ -119,12 +120,13 @@ test("/app/profile page renders the real Orbit profile editor", () => {
   );
 
   assert.match(pageSource, /loadAppProfileRouteViewModel/);
-  assert.match(pageSource, /profileRouteToOrbitProfileViewModel/);
+  assert.match(pageSource, /profileRouteToOrbitProfileEditorViewModel/);
   assert.match(pageSource, /OrbitRealProfile/);
   assert.match(pageSource, /StateView/);
   assert.doesNotMatch(pageSource, /AppProfileCommandCenter/);
   assert.match(profileSource, /data-orbit-real-page="profile"/);
-  assert.doesNotMatch(pageSource, /searchParams/);
+  assert.match(pageSource, /searchParams/);
+  assert.match(pageSource, /onboardingNext/);
   assert.doesNotMatch(routeSource, /readSearchParam/);
   assert.doesNotMatch(routeSource, /complete-profile-field/);
   assert.doesNotMatch(routeSource, /AppProfileActionViewModel/);
@@ -147,13 +149,14 @@ test("app profile route scenarios are available only through explicit internal c
 
 test("profile editor uses API extraction and save readback instead of timed success", () => {
   const profileSource = source("app/(app)/app/profile/orbit-real-profile.tsx");
+  const editorAdapterSource = source("app/(app)/app/profile/profile-editor-adapter.ts");
 
   assert.match(profileSource, /fetch\("\/api\/profile"/);
   assert.match(profileSource, /method: "PUT"/);
   assert.match(profileSource, /cache: "no-store"/);
   assert.match(profileSource, /profileReadbackMatches/);
-  assert.match(profileSource, /saved\.handles\?\.wechatId/);
-  assert.match(profileSource, /sameList\(saved\.offering/);
+  assert.match(editorAdapterSource, /sameHandles/);
+  assert.match(editorAdapterSource, /sameList\(saved\.offering/);
   assert.match(profileSource, /\/api\/profile\/extractions\/resume/);
   assert.match(profileSource, /Structured text extract/);
   assert.match(profileSource, /href="\/app\/contacts\/new"/);
@@ -164,10 +167,13 @@ test("profile editor uses API extraction and save readback instead of timed succ
   assert.doesNotMatch(profileSource, /setMessage\(t\(\{ en: "Saved\."/);
 });
 
-test("profile editor exposes free-text industry and custom tag entry", () => {
+test("profile editor exposes structured industries and custom tag entry", () => {
   const profileSource = source("app/(app)/app/profile/orbit-real-profile.tsx");
 
-  assert.match(profileSource, /<FieldInput label=\{t\(\{ en: "Industry", zh: "行业" \}\)\}/);
+  assert.match(profileSource, /Primary industry/);
+  assert.match(profileSource, /Secondary industry/);
+  assert.match(profileSource, /Existing industry text is preserved/);
+  assert.doesNotMatch(profileSource, /en: "Industry", zh: "行业"/);
   assert.match(profileSource, /listSecondaryIndustries/);
   assert.match(profileSource, /Enter a specific item/);
   assert.match(profileSource, /添加\$\{label\}项目/);
@@ -240,7 +246,7 @@ test("/app/profile maps actor-scoped profile data without hardcoded founder iden
     "app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-view-model-adapter.ts",
   );
 
-  assert.match(pageSource, /profileRouteToOrbitProfileViewModel/);
+  assert.match(pageSource, /profileRouteToOrbitProfileEditorViewModel/);
   assert.match(adapterSource, /fullName: profile\.displayName/);
   assert.match(adapterSource, /const offering = \[\.\.\.\(profile\.offering/);
   assert.match(adapterSource, /const seeking = \[\.\.\.\(profile\.seeking/);
