@@ -1,5 +1,7 @@
 # 同步队列
 
+BR-027 数据增量（2026-09-17）：独立测试库主账号 organizer@orbit.example.test 已扩充30联系人／10活动（9发布1草稿），15条有日期关系任务；密码单独交付，不写台账。Web页面和新主办方后台已回读，原数据与辅助账号隔离保留；不改App连接、正式域名或启用模型/worker。[数据集与预算](../repos/orbits/docs/operations/main-test-dataset.md)。原生同测试API访问保护与完整业务验收仍按BR-027原边界开放。
+
 ## BR-030 — 活动报名配置与Web取消确认
 
 13Phone活动配置与两入口真实取消/重报链verified；64固定8daf/65固定d0e已合Main并push独立远端7b1b3de289eba6e550a4702954df6056eddc664e。新Phone519/f082/freshentry875 raw1afd，公网实际health/servedbytes/正常登录及逐页动作通过；原资料保护、预算493f和旧63回退保持，临时服务正常停保数据。不是Native/真实AI/全I或全部活动功能通过，推荐schema和legacy差异仍TODO；[中文交接](2026-09-17-phoneweb-registration-repair.md)。
