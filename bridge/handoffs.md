@@ -1,5 +1,9 @@
 # 同步队列
 
+## BR-030 — 活动报名配置与Web取消确认
+
+13Phone活动配置与两入口真实取消/重报链verified；64固定8daf/65固定d0e已合Main并push独立远端7b1b3de289eba6e550a4702954df6056eddc664e。新Phone519/f082/freshentry875 raw1afd，公网实际health/servedbytes/正常登录及逐页动作通过；原资料保护、预算493f和旧63回退保持，临时服务正常停保数据。不是Native/真实AI/全I或全部活动功能通过，推荐schema和legacy差异仍TODO；[中文交接](2026-09-17-phoneweb-registration-repair.md)。
+
 ## PW-0011 — 分析报告修复与当前生产基线（尚未完整验收）
 
 - 原 B 两次具体反例修复合入并推送主线 `7e9e902f2c67584f4685ce6617a0e2ccfe5e1fd3`；远端独立核对同 SHA。ROOT 完整后端20文件186/186零跳过、Web types0、既有 App 消费者95/95。暂存新符号 UNKNOWN，未重跑全量旧基线。

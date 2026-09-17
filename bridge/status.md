@@ -1,5 +1,11 @@
 # 两端当前状态
 
+## 2026-09-17 活动报名修复与Phone发布
+
+0064固定8daf与0065固定d0e已合chat-agent并普通push，独立远端7b1b3de289eba6e550a4702954df6056eddc664e一致。真实13配置修复/all13正式GET及公网逐页enabled通过；正常UI单新QAcase双入口拒绝/确认取消、重新报名与正式回读通过，原记录摘要保全。新Phone519/f082、freshentry875实际公网SHA1afd；后台明确复用64真实BUILD6cy，原ngrok同地址/PUBLIC87138/9/40健康200，old63回退完整。owned previews与35434PG正常停保数据资产。
+
+ROOT主线完整受影响81pass；唯一I失败/跳过保留，不冒称全绿。未真实Native取消/AI provider，推荐schema与Phone旧legacy差异仍TODO；0033生产协议/OAuth/Push缺项未关闭。范围与失败见[BR-030](2026-09-17-phoneweb-registration-repair.md)，最终管理文档push事实见ROOT运行checkpoint。
+
 ## 2026-09-16 20:56 JST 人脉分析修复与两端生产服务恢复
 
 原 Phone B 的分析实现和两个针对性报告修复已在主线 `7e9e902f2c67584f4685ce6617a0e2ccfe5e1fd3`，独立核对远端 `chat-agent` 同 SHA。空标题无正文、外部 ID 前缀冒充锚点、代码围栏伪报告均拒绝。ROOT 完整 20 个后端测试文件 186/186 零跳过、Web types0；既有 App 消费者 95/95，不冒充 Phone 的 98/98 或全量基线通过。新符号暂存图谱未映射，仍为 UNKNOWN，不认为零风险。

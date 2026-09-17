@@ -64,3 +64,13 @@ Node22 `/Volumes/ORICO/Dev/cache/npm/_npx/52027bd8fc0022aa/node_modules/node/bin
 ROOT 官方固定 BASE..TREE 比较：10files、17mapped、0flows、LOW、no-stale。源码逐文件审阅后 conditional gate 要求等待唯一 I 终态及异常收口，已满足后正常精确10path提交；cached check0、write-tree 与冻结TREE一致，未夹带其他线/Main用户改动。
 
 本线只交付固定源与本报告，不 merge/push Main、不触公网或数据库。ROOT 继续同一原 run 的集成和合法真实 QA；旧 recommendations schema failure 与其他活动完整功能仍不能由本次确认修复关闭。本线测试/类型/I/局部复查进程均结束，功能锁释放。回退以 ROOT 固定产品 SHA/Phone 发布产物执行，不删除旧记录或证据。
+
+## ROOT 集成与真实终验追加
+
+2026-09-17：原上文pending为本线交付时历史事实；现在SC65-04/05已通过，0065 completed/run_count1，无第二Generator或I。正常UI新signup02 QAcase真实六步报名→详情拒绝/确认取消→重新报名→资料页拒绝/确认取消，两入口真实confirm/拒绝0写/批准singleCAS/receipt独立GET一致，原ID/profile/两答案保留，最终cancelled/member4/profile1。仅新case产生4membership历史/1head/1profile/1head/2responses；排除其后原六受保护表count/digest全原。原Native、AI、全项目缺项不因本次关闭。
+
+Root Main精确合d0e与94c报告，完整受影响81/81、零跳过/guards0；Web整体subtree等64固定8daf、App类型相关源等d0e仅Markdown不同，完整types复用同源事实。普通push及独立远端同7b1b3de289eba6e550a4702954df6056eddc664e；最终管理文档push/remote事实在Root当前checkpoint收口。
+
+Phone519230b7/TREEf082d977，前台freshentry875实际公网SHA1afd800644e786cc255f5438ca49748a6f7c21f7b7556a7cfe42bb9ed8db1399；后台相同subtree明确复用64真实BUILD6cy/旧后台b957/54。实际PUBLIC原43205/6/7正常停→87138/9/40健康零restart，原ngrok地址与old63完整回退保；Root独立公网HTML/asset/health200live、13页正确可按/业务0与正常UI登录→已取消页通过。PUBLIC只原budget无preview nopaid；账本493f字节原，未关闭投资人AI。owned previews及35434PG已正常停保所有数据资产，Main3000/8082/Native不动。
+
+根证据：build/harness-state/evidence/sprint-0064/run-01/registration-lifecycle-final.json、original-data-after-final-cancellation.json、public65-served-verification.json、all13-public65-page-check.json、public65-normal-ui-login.json及实际PNG。Root反复纠正纯QA定位器中‘取消本次报名’与资料页icon名称匹配/初loading等待，原失败保留，不修改产品迁就脚本。[BR-030](../../../../../bridge/2026-09-17-phoneweb-registration-repair.md)列完整跨端范围；原I18失败与31局部复查仍分列，不冒称全绿。
