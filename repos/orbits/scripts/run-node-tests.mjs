@@ -1,4 +1,12 @@
 import { spawnSync } from "node:child_process";
+import { assertLocalTestDatabases } from "./assert-local-test-databases.mjs";
+
+try {
+  assertLocalTestDatabases();
+} catch (error) {
+  console.error(error.message);
+  process.exit(1);
+}
 
 const defaultTestPatterns = ["tests/**/*.test.{ts,tsx}"];
 const testTargets = process.argv.slice(2);

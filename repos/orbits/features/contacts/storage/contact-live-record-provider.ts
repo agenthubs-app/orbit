@@ -48,6 +48,20 @@ export const CONTACTS_LIVE_RECORD_COLLECTIONS = {
 
 const AMBIGUOUS_CONNECTION_ERROR = "CONTACT_DETAIL_AMBIGUOUS_CONNECTION";
 
+// The list DTO does not consume private notes, raw captures, handles or full
+// detail-state history. Keep those in the explicit contact-detail read path.
+const contactListPayloadFields = [
+  "id", "version", "displayName", "organization", "role", "location",
+  "profileSnippet", "primaryIndustryId", "secondaryIndustryId", "nextAction",
+  "stage", "lifecycleInitialization", "source", "evidenceIds", "createdAt", "updatedAt",
+] as const;
+const connectionListPayloadFields = [
+  "id", "version", "lifecycleInitialization", "accountId", "contactId", "stage",
+  "valueTypes", "summary", "source", "evidenceIds", "createdAt", "updatedAt",
+] as const;
+const detailStateListPayloadFields = ["actorId", "contactId", "tags", "status", "updatedAt"] as const;
+const evidenceListPayloadFields = ["id", "sourceType", "sourceId", "summary", "occurredAt", "confidence", "createdBy"] as const;
+
 export interface StorageContactGraphProviderOptions {
   contactRecordPageReader?: ContactRecordPageReader;
   contactScopeRecordReader?: ContactScopeRecordReader;
@@ -509,16 +523,19 @@ async function readFocusedContactGraph(input: {
       ...(input.contactId ? { recordIds: [input.contactId] } : {}),
       ...(boundedPage ? { recordIds: boundedPage.recordIds } : {}),
       ...(scope?.contactIds ? { recordIds: scope.contactIds } : {}),
+      ...(input.listInput ? { payloadFields: contactListPayloadFields, omitSearchText: !query } : {}),
     }),
     input.store.listRecords({
       workspaceId: input.workspaceId,
       collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.connections,
       ...(scope ? { recordIds: scope.connectionIds } : boundedPage ? { userId: actorId } : {}),
+      ...(input.listInput ? { payloadFields: connectionListPayloadFields, omitSearchText: true } : {}),
     }),
     input.store.listRecords({
       workspaceId: input.workspaceId,
       collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.detailStates,
       ...(scope ? { recordIds: scope.detailStateIds } : boundedPage ? { userId: actorId } : {}),
+      ...(input.listInput ? { payloadFields: detailStateListPayloadFields, omitSearchText: true } : {}),
     }),
   ]);
   const actorConnectionRecords = allConnectionRecords.filter(
@@ -574,6 +591,7 @@ async function readFocusedContactGraph(input: {
           workspaceId: input.workspaceId,
           collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.evidence,
           recordIds: evidenceRecordIds,
+          ...(input.listInput ? { payloadFields: evidenceListPayloadFields, omitSearchText: true } : {}),
         })
       : [];
 
@@ -849,7 +867,7 @@ export function createStorageContactGraphProvider({
       } else {
         delete nextPayload.secondaryIndustryId;
       }
-      const updatedAt = new Date().toISOString();
+      const updatedAt = new Date(Math.max(Date.now(), Date.parse(contactRecord.updatedAt) + 1)).toISOString();
       nextPayload.updatedAt = updatedAt;
       const nextRecord = {
         ...contactRecord,

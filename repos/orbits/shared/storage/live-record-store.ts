@@ -32,6 +32,9 @@ export interface LiveRecordListQuery {
   /** Exact persisted identity, filtered before payloads leave storage. */
   payloadId?: string;
   payloadAccountId?: string;
+  /** Internal read-model projection. Does not alter the persisted record. */
+  payloadFields?: readonly string[];
+  omitSearchText?: boolean;
   collectionName?: string;
   includeDeleted?: boolean;
   lifecycleState?: LiveRecordLifecycleState;
@@ -167,7 +170,8 @@ export function createMemoryLiveRecordStore<
   return {
     updateRecordIfCurrent(record, expected) {
       const current = records.get(recordKey(record));
-      if (!current || current.lifecycleState === "deleted" ||
+      if (!(Date.parse(record.updatedAt) > Date.parse(expected.updatedAt)) ||
+          !current || current.lifecycleState === "deleted" ||
           (current.userId ?? null) !== expected.userId ||
           (record.userId ?? null) !== expected.userId ||
           current.updatedAt !== expected.updatedAt) return null;
@@ -213,7 +217,13 @@ export function createMemoryLiveRecordStore<
     listRecords(query) {
       return Array.from(records.values())
         .filter((record) => matchesListQuery(record, query))
-        .map((record) => cloneJson(record));
+        .map((record) => cloneJson({
+          ...record,
+          ...(query.payloadFields ? {
+            payload: Object.fromEntries(Object.entries(record.payload).filter(([key]) => query.payloadFields!.includes(key))) as TPayload,
+          } : {}),
+          ...(query.omitSearchText ? { searchText: "" } : {}),
+        }));
     },
     upsertRecord(record) {
       const nextRecord = cloneJson(record);

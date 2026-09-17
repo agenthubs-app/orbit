@@ -68,6 +68,77 @@ safe. Registration/provisioning use insert-only semantics. Legacy list clients
 remain complete; per-user list pagination and dashboard SQL aggregation still
 need acceptance before claiming all four workstreams are finished.
 
-Not yet completed: final deployment, domain transfer, old project pause,
-end-to-end production smoke, complete four-workstream acceptance.
+## Cutover completed
+
+- Source commit `732a017f`, pushed to the isolated remote branch.
+- Production deployment `dpl_7SnhZuB3xhmuffFB9eCt2eKcfBsr`, READY, runtime `sin1`.
+- Both `www.orbitailink.com` and `orbitailink.com` transferred and verified on
+  `prj_PFJXRat2a7ADxz6tWVLQU7rNTaIt`.
+- Old Vercel project API confirms `paused=true`; browser shows
+  `503 DEPLOYMENT_PAUSED` on its old default domain.
+- Browser sign-in on the formal `www` domain succeeded; the contact page shows
+  the expected 30 contacts. No model prompt, email or external message was sent.
+- App base URL remains unchanged. New auth secret intentionally invalidates old
+  sessions; users must sign in to the new workspace. No old accounts/data were copied.
+- Direct browser navigation to `/api/account/me` was blocked by the browser
+  automation client, so it is not claimed as an independent API smoke pass.
+  The live browser sign-in exercises the authentication HTTP flow.
+- Original Neon SQL connections and writes by this task: zero. Pausing Vercel
+  is an application configuration change, not a database change. Historical
+  preview URLs/external local workers are not claimed to be globally revoked.
+
+Still in progress: complete four-workstream acceptance, full pagination and
+server-side aggregate redesign, comprehensive Web/App cross-write smoke. Legacy
+generic upsert paths still require domain-by-domain adoption of conditional writes.
 No capacity claim is justified by a connection limit or these fixture measurements.
+
+## Follow-up read-model hardening
+
+- Contact list queries now explicitly project only fields consumed by the list
+  DTO. Private notes, raw captures, handles and detail history remain available
+  on detail reads, but do not travel through list queries.
+- A real PostgreSQL regression compares complete API responses for ordinary
+  lists, search, custom tags, value filters and page input. Responses are identical
+  while returned JSON is less than 1/20 of the full-payload fixture. This ratio is
+  fixture-specific, not a promise about every production request or Neon billing.
+- Conditional updates require a strictly advancing timestamp; the contact writer
+  advances by at least one millisecond, avoiding a same-timestamp CAS race.
+- `ORBIT_PG_READ_METRICS=1` is configured for the next production deployment.
+  Logs contain only query kind, count, row count, approximate bytes, duration and
+  failure state, never SQL arguments, passwords or payload text. This is
+  observability, not an automatic monthly quota guard or a paid monitoring service.
+- The standard `npm test` entry refuses nonlocal database URLs/hosts before
+  loading tests. Dedicated local PostgreSQL and reserved `.invalid` mock targets
+  remain allowed. Direct `node --test`, external scripts and historical deployments
+  are outside this guard; it is not a network firewall. Guard regressions and the
+  existing scaffold test pass (3/3).
+
+## Remaining design / acceptance work
+
+1. Preserve **both** current search contracts before introducing UI pagination:
+   Web uses NFKC + Chinese word segmentation + aliases + presentation labels;
+   the existing contacts API uses substring filters over a different field set.
+   Reusing its narrow `search_text` SQL page reader unchanged would lose results.
+2. Move facets/counts and dashboard aggregates into database read models, with
+   full-response parity tests for canonical lifecycle, custom tags and evidence.
+   Do not count only the current page. Existing full list responses are retained.
+3. Adopt scoped/conditional mutations per domain, preserving idempotency receipts
+   and existing transactional repositories. The generic privileged upsert remains
+   available for internal projection/administration and is not a public API.
+4. Plan idle/due-only scheduling with durable wakeups on every producer before
+   reducing the existing heartbeat. Simply increasing the polling interval would
+   delay reminders and is not an acceptable cost optimization.
+
+No existing Preview URL is a safe disposable test environment after promotion:
+historical staging deployments reference this same database. Do not run cloud
+regression, fixture reset or seeds through them. Use the dedicated local database;
+a future separate staging environment requires separately scoped configuration.
+
+## Capacity interpretation
+
+Neon's current [Free plan](https://neon.com/pricing) includes 100 CU-hours,
+0.5 GB storage and 5 GB public transfer per project/month. A 10,000-connection
+pooler ceiling is not a supported-user count. Monthly capacity depends on measured
+bytes and compute per active user plus background work. The existing ten-minute
+maintenance cadence is preserved to avoid delaying reminders; it is not free and
+has not been replaced with an idle/due-only scheduler. No paid upgrade was made.

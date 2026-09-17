@@ -242,9 +242,17 @@ function listQuery(input: LiveRecordListQuery): {
     );
   }
 
+  let columns = recordColumns;
+  if (input.payloadFields) {
+    values.push([...input.payloadFields]);
+    columns = columns.replace("  payload,", `  (select coalesce(jsonb_object_agg(field.key, field.value), '{}'::jsonb)
+      from jsonb_each(payload) field where field.key = any($${values.length}::text[])) as payload,`);
+  }
+  if (input.omitSearchText) columns = columns.replace("  search_text,", "  ''::text as search_text,");
+
   return {
     text: `
-      select ${recordColumns}
+      select ${columns}
       from orbit_records
       where ${where.join(" and ")}
       order by coalesce(occurred_at, updated_at) desc, updated_at desc
@@ -296,7 +304,8 @@ export function createPostgresLiveRecordStore<
 >({ client }: PostgresLiveRecordStoreOptions): LiveRecordStoreLike<TPayload> {
   return {
     async updateRecordIfCurrent(record, expected) {
-      if ((record.userId ?? null) !== expected.userId) return null;
+      if ((record.userId ?? null) !== expected.userId ||
+          !(Date.parse(record.updatedAt) > Date.parse(expected.updatedAt))) return null;
       const result = await client.query<PostgresLiveRecordRow>(`
         update orbit_records set
           source_type=$5, source_id=$6, source_label=$7, provider=$8,
