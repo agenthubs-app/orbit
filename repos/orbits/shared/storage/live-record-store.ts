@@ -63,6 +63,10 @@ export interface LiveRecordDeleteInput {
 export type LiveRecordStoreResult<TValue> = TValue | Promise<TValue>;
 
 export interface LiveRecordStoreLike<TPayload extends Record<string, unknown> = Record<string, unknown>> {
+  /** Atomic insert only; conflicts (including tombstones) return null, never update. */
+  insertRecordIfAbsent?: (
+    record: LiveRecord<TPayload>,
+  ) => LiveRecordStoreResult<LiveRecord<TPayload> | null>;
   deleteRecord: (
     input: LiveRecordDeleteInput,
   ) => LiveRecordStoreResult<LiveRecord<TPayload> | null>;
@@ -78,6 +82,7 @@ export interface LiveRecordStoreLike<TPayload extends Record<string, unknown> = 
 }
 
 export interface LiveRecordStore<TPayload extends Record<string, unknown> = Record<string, unknown>> {
+  insertRecordIfAbsent?: (record: LiveRecord<TPayload>) => LiveRecord<TPayload> | null;
   deleteRecord: (
     input: LiveRecordDeleteInput,
   ) => LiveRecord<TPayload> | null;
@@ -136,7 +141,7 @@ export function createMemoryLiveRecordStore<
   TPayload extends Record<string, unknown> = Record<string, unknown>,
 >(
   seed: readonly LiveRecord<TPayload>[] = [],
-): LiveRecordStore<TPayload> {
+): LiveRecordStore<TPayload> & Required<Pick<LiveRecordStore<TPayload>, "insertRecordIfAbsent">> {
   const records = new Map<string, LiveRecord<TPayload>>();
 
   for (const record of seed) {
@@ -144,6 +149,12 @@ export function createMemoryLiveRecordStore<
   }
 
   return {
+    insertRecordIfAbsent(record) {
+      const key = recordKey(record);
+      if (records.has(key)) return null;
+      records.set(key, cloneJson(record));
+      return cloneJson(record);
+    },
     deleteRecord(input) {
       const key = recordKey(input);
       const record = records.get(key);

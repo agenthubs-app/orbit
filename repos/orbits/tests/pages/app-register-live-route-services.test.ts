@@ -6,14 +6,14 @@ import test, { before, after } from "node:test";
 import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
-import { useRegistrationCatalogueFixture } from "../support/registration-catalogue-fixture";
 
 let isolatedRuntime: Awaited<ReturnType<typeof createIsolatedRegistrationRuntime>>;
 before(async () => { isolatedRuntime = await createIsolatedRegistrationRuntime(); });
 after(async () => { await isolatedRuntime?.close(); });
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
-useRegistrationCatalogueFixture();
+// One fixture owns both Event Core and operations. A second catalogue fixture
+// would replace the workspace after operations was initialized in the first.
 
 function source(path: string): string {
   return readFileSync(join(projectRoot, path), "utf8");

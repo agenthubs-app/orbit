@@ -18,6 +18,7 @@ const fixture = `
 import React, { useSyncExternalStore } from "react";
 import { View } from "react-native";
 import { readinessPayload, peoplePayload, reviewPayload } from "./tests/helpers/event-detail-fixtures";
+import { attendeeFixture } from "./tests/helpers/attendee-operations-fixtures";
 const listeners = new Set(); let revision = 0;
 export const state = window.fixture = { requests: [], navigation: [], kind: "success", busy: false, update(patch) { Object.assign(state, patch); revision++; listeners.forEach(f => f()); } };
 export const useFixture = () => { useSyncExternalStore(f => { listeners.add(f); return () => listeners.delete(f); }, () => revision); return state; };
@@ -28,7 +29,9 @@ const events = recommendationMode ? [event, { ...event, id: "event:second", titl
 const recommendations = { state: "success", profile: { calendarFit: "open", goal: "拓展合作", industryPreference: "technology", location: "Tokyo" }, summary: "根据合作目标推荐活动", nextAction: "先看活动再确认安排", recommendations: events.map(e => ({ eventId: e.id, title: e.title, startsAt: e.startsAt, valueScore: 94, scoreBand: "high", venue: e.venue, location: "Tokyo", recommendedAction: "先看活动再确认安排", signals: [{ label: "目标一致", detail: "可以找到日本合作伙伴", weight: 1 }] })) };
 const homeHub = new URLSearchParams(location.search).get("screen") === "homeHub";
 const finalInsets = new URLSearchParams(location.search).get("insets") === "true";
-const signedIn = recommendationMode || finalInsets || new URLSearchParams(location.search).get("screen") === "registration";
+const portraitRegistration = { ...registration, questionSet: { questions: [ ...registration.questionSet.questions.map(question => ({ ...question, portraitQuestionToken: "synthetic-formal:target" })), ...(finalInsets ? [{ id: "value_offered", intent: "value_offered", required: true, options: ["采购渠道引荐"], participantProfileField: "valueOffered", prompt: "你能提供什么帮助？", portraitQuestionToken: "synthetic-formal:value" }] : []) ] } };
+const attendeeMode = new URLSearchParams(location.search).get("screen") === "attendees";
+const signedIn = recommendationMode || finalInsets || attendeeMode || new URLSearchParams(location.search).get("screen") === "registration";
 const profile = { profile: { displayName: "林悦", relationshipGoal: "认识日本零售伙伴", ...(homeHub ? { bio: "负责日本零售市场的合作伙伴拓展。", headline: "跨境合作负责人", role: "日本市场合作伙伴拓展负责人", industry: "跨境零售与企业软件合作", timezone: "Asia/Tokyo", organization: "东京伙伴社区", offering: ["日本渠道资源"], seeking: ["零售采购伙伴"], topics: ["企业软件合作"] } : {}) } };
 const contacts = { contacts: homeHub ? [{ id: "contact:sato", displayName: "佐藤 葵", organization: "东京零售协会", role: "合作负责人", status: "active" }, { id: "contact:li", displayName: "李 明", organization: "合作伙伴社区", role: "顾问", status: "dormant" }] : [] };
 const attendees = { event: { ...event, name: event.title }, attendees: [{ attendeeId: "participant:sato", displayName: "佐藤 葵", checkInStatus: "registered", organization: "东京零售协会", role: "合作负责人", relationshipContext: "共同关注日本市场", suggestedNextAction: "先当面确认合作时间", attendeeTags: [{ label: "零售合作" }], eligibleRecommendation: { isEligible: true, reasons: ["同样关注零售合作"], recommendationCandidateId: "recommendation:1", blockedByKnownContact: false } }] };
@@ -47,18 +50,24 @@ function insetData(path) {
   if (path.includes("matches")) return insetMatches;
   if (path.includes("attendees")) return attendees;
 }
-export const useApiResource = path => { useFixture(); return { kind: state.kind, data: (finalInsets ? insetData(path) : undefined) ?? (path.includes("recommendations/events") ? recommendations : path.endsWith("/center") ? center : path.endsWith("/access/roles") ? rolePayload : path.includes("registration") ? registration : path.includes("attendees") ? attendees : path.includes("matches") ? { matches: [] } : path.includes("contacts") ? contacts : path.includes("profile") ? profile : path.endsWith("/events/public") || path.endsWith("/events") ? { events } : { event }), error: { message: "当前账号没有权限" }, refreshing: false, refresh() {} }; };
+export const useApiResource = path => { useFixture(); return { kind: state.kind, data: (finalInsets ? insetData(path) : undefined) ?? (path.includes("recommendations/events") ? recommendations : path.endsWith("/center") ? center : path.endsWith("/access/roles") ? rolePayload : path.endsWith("/registration/portrait") ? { portrait: null, registrationSource: null } : path.includes("registration") ? portraitRegistration : path.includes("attendees") ? attendees : path.includes("matches") ? { matches: [] } : path.includes("contacts") ? contacts : path.includes("profile") ? profile : path.endsWith("/events/public") || path.endsWith("/events") ? { events } : { event }), error: { message: "当前账号没有权限" }, refreshing: false, refresh() {} }; };
 export const useLocalSearchParams = () => ({ id: "event:style", eventId: "event:style", code: "event:style", slug: "event:style" });
-export const usePathname = () => "/events";
+export const usePathname = () => attendeeMode ? "/events/event%3Astyle/attendees" : "/events";
+export const useIsFocused = () => true;
 export const useRouter = () => ({ canGoBack: () => false, back() { state.navigation.push("back"); }, replace(path) { state.navigation.push(path); }, push(path) { state.navigation.push(path); } });
-export const useOrbitAuthSession = () => ({ ready: true, signedIn, user: signedIn ? { id: "actor:style" } : null, cookieHeader: "" });
+export const useOrbitAuthSession = () => ({ ready: true, signedIn, actorId: signedIn ? "account:style" : null, user: signedIn ? { id: "actor:style" } : null, cookieHeader: "" });
 export const useOrbitApiBaseUrl = () => ({ baseUrl: "http://fixture", ready: true });
 const record = method => async (path, options) => {
   state.requests.push({ method, path, body: options?.body });
+  if (method === "GET" && path.endsWith("/operations")) {
+    const workspace = attendeeFixture(); workspace.eventId = "event:style"; workspace.configuration.eventId = "event:style";
+    workspace.directory[1].displayName = "佐藤 葵";
+    return { success: true, status: 200, data: workspace };
+  }
   if (finalInsets && method === "POST") {
     if (path.endsWith("/encounters")) return { success: true, status: 200, data: { participant: { displayName: "佐藤 葵" }, encounter: { encounterId: "encounter:style" }, note: { text: "现场确认采购需求" }, evidenceDraft: {}, nextAction: "先复核现场记录" } };
-    if (path.endsWith("/interview")) return { success: true, status: 200, data: { done: false, question: { field: "targetAttendees", prompt: "你想认识哪类采购伙伴？", options: [] } } };
-    if (path.endsWith("/persona")) return { success: true, status: 200, data: { persona: { tagline: "连接东京采购合作伙伴", tags: ["零售合作"], industryTags: ["零售"], seeking: "采购负责人", offering: "本地渠道经验", openers: [], energyStyle: "先倾听对方需求" } } };
+    if (path.endsWith("/interview")) return { success: true, status: 200, data: { done: false, signedQuestion: { questionToken: "synthetic-signed:target", portraitAdaptiveToken: "synthetic-workspace:target", question: { field: "targetAttendees", prompt: "你想认识哪类采购伙伴？", options: [] } } } };
+    if (path.endsWith("/persona")) return { success: true, status: 200, data: { generationToken: "synthetic-generation", answersVersion: "a".repeat(64), sourceRegistrationVersion: null, persona: { tagline: "连接东京采购合作伙伴", tags: ["零售合作"], industryTags: ["零售"], seeking: "采购负责人", offering: "本地渠道经验", openers: ["你正在寻找哪类渠道？"], energyStyle: "先倾听对方需求", provenance: { generationMethod: "orbit-agent-model-adaptive", fallbackReason: null, model: "synthetic", provider: "synthetic" } } } };
   }
   return { success: false, status: 503, error: { code: "SERVICE_UNAVAILABLE", message: "暂时无法保存，请重试" } };
 };
@@ -150,30 +159,28 @@ for (const scheme of ["light", "dark"] as const) {
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
     assert.deepEqual(radii, ["12px", "12px", "12px", "12px"], "readinessGoal, goalSuggestionCard, openingLineBox, postEventDraftBox");
   });
-  test(`${scheme}: final inset attendee note, saved evidence and match render through real handlers`, async t => {
+  test(`${scheme}: canonical attendee search and identity render without preview encounter writes`, async t => {
     const page = await open(t, "attendees&insets=true", scheme);
-    const note = page.getByText("现场记录", { exact: true }).locator("..");
-    const match = page.getByText("可以一起讨论零售合作", { exact: true }).locator("..");
-    const radii = [await note.evaluate(el => getComputedStyle(el).borderRadius), await match.evaluate(el => getComputedStyle(el).borderRadius)];
-    const input = page.getByPlaceholder("聊到了什么、对方想找什么、下一步怎么跟。");
-    await input.fill("现场确认采购需求"); await page.getByRole("button", { name: "保存现场记录", exact: true }).click();
-    const evidence = page.getByText("记录已保存", { exact: true }).locator(".."); await evidence.waitFor();
-    radii.push(await evidence.evaluate(el => getComputedStyle(el).borderRadius));
-    assert.equal(await input.inputValue(), "");
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "POST", path: "/api/events/event%3Astyle/encounters", body: { contactId: "contact:generated:participant:sato", noteText: "现场确认采购需求" } }]);
-    assert.deepEqual(radii, ["12px", "12px", "12px"], "encounterBox, matchBlock, evidenceBox");
+    const input = page.getByRole("textbox", { name: "搜索参会者", exact: true });
+    await input.fill("佐藤"); await fits(input);
+    await page.getByRole("button", { name: "佐藤 葵", exact: true }).last().click();
+    assert.equal(await page.getByRole("button", { name: "保存现场记录", exact: true }).count(), 0);
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "GET", path: "/api/events/event%3Astyle/operations", body: undefined }]);
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/events/event%3Astyle/participants/p_other"]);
   });
-  test(`${scheme}: final inset persona preview follows the controlled interview without registering`, async t => {
+  test(`${scheme}: 7a persona preview follows the controlled interview without registering`, async t => {
     const page = await open(t, "registration&insets=true", scheme);
+    await page.getByRole("button", { name: "采购渠道引荐", exact: true }).click();
+    await page.getByRole("button", { name: "补充画像", exact: true }).click();
     await page.getByRole("button", { name: "下一题", exact: true }).click();
     await page.getByText("你想认识哪类采购伙伴？", { exact: true }).waitFor();
     await page.getByPlaceholder("写一句具体的补充。").last().fill("希望认识东京采购负责人");
-    await page.getByRole("button", { name: "生成活动画像", exact: true }).click();
+    await page.getByRole("button", { name: "生成画像", exact: true }).click();
     const persona = page.getByText("连接东京采购合作伙伴", { exact: true }).locator(".."); await persona.waitFor();
     const requests = await page.evaluate(() => (window as any).fixture.requests);
     assert.deepEqual(requests.map((r: any) => [r.method, r.path]), [["POST", "/api/events/event%3Astyle/registration/interview"], ["POST", "/api/events/event%3Astyle/registration/persona"]]);
-    assert.deepEqual(requests[1].body.transcript, [{ answer: "希望认识东京采购负责人", field: "targetAttendees", prompt: "你想认识哪类采购伙伴？" }]);
-    assert.equal(await persona.evaluate(el => getComputedStyle(el).borderRadius), "12px", "personaPreview");
+    assert.deepEqual(requests[1].body, { mode: "portrait-preview", language: "zh", responses: [{ kind: "registration_question", portraitQuestionToken: "synthetic-formal:value", answer: "采购渠道引荐" }, { kind: "signed_question", questionToken: "synthetic-signed:target", portraitAdaptiveToken: "synthetic-workspace:target", answer: "希望认识东京采购负责人" }] });
+    assert.equal(await persona.evaluate(el => getComputedStyle(el).borderRadius), "0px", "7a uses an open result header, not an inset card");
   });
   test(`${scheme}: final inset party match and unavailable ticket keep their semantic boundaries`, async t => {
     const page = await open(t, "party&insets=true", scheme);
@@ -354,9 +361,9 @@ test("organizer public cover and invite preparation preserve destinations withou
 
 test("party variants and attendee content preserve real identity, routes and read-only arrival status", async t => {
   for (const screen of ["party", "partyGraph", "partyCheckIn", "attendees"]) {
-    const page = await open(t, screen, "dark"); await page.getByText(title, { exact: true }).first().waitFor();
+    const page = await open(t, screen, "dark"); await page.getByText(screen === "attendees" ? "参会者与名片交换" : title, { exact: true }).first().waitFor();
     for (const action of await page.getByRole("button").all()) await fits(action);
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), screen === "attendees" ? [{ method: "GET", path: "/api/events/event%3Astyle/operations", body: undefined }] : []);
     if (screen === "partyGraph") await page.getByText("佐藤 葵", { exact: true }).first().waitFor();
     await capture(page, screen);
   }

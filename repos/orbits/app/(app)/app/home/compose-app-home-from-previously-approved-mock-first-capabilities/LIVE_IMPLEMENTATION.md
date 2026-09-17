@@ -14,6 +14,8 @@ existing live-capable route loaders:
 - `loadAppEventsRouteViewModel()` for source-backed events.
 - `loadAppContactsRouteViewModel()` for relationship/contact counts.
 - `loadAppProfileRouteViewModel()` for the account name and headline.
+- `readConfiguredCanonicalParticipantEventJourneys()` for published canonical
+  events where the authenticated raw subject has an active `rsvped` membership.
 
 `ORBIT_MODULE_MODE=live` is resolved by those child route services through their
 own module-mode factories. Home does not branch on provider env vars and does
@@ -28,7 +30,15 @@ real Home routes.
 
 The adapter is intentionally thin:
 
-- Events are adapted from the events route `eventChoices`.
+- Owner events are adapted from the events route `eventChoices`; participant
+  journeys are adapted through the existing canonical Event Core landing view
+  adapter and merged with owner records first.
+- Home keeps the canonical account id (`actor.id`) for owner/private legacy
+  event reads and passes the raw Auth.js subject (`rawSubject`) only to the
+  canonical membership reader. A cancelled membership or another subject's
+  membership is not a journey.
+- De-duplication uses the route id, route code, and canonical Event Core id,
+  so an owned legacy alias wins over the same canonical participant event.
 - Contact stats are adapted from the contacts route ledger.
 - Account display fields are adapted from the profile route payload.
 - Empty, pending, and failure child states become one shared Home route state.
@@ -55,9 +65,10 @@ the rail to `clamp(180px, 28vw, 220px)` instead of switching to a stacked
 
 Home is read-only. Page render must not create contacts, update events, save
 profile fields, send messages, deliver notifications, call AI providers, or
-contact outside networks. If any child route is unavailable, Home renders a
-visible `StateView` failure with recovery links instead of falling back to mock
-data.
+contact outside networks. Participant membership read failures propagate from
+the Home loader instead of becoming a false zero-event state. Only an
+unconfigured canonical runtime returns an explicit empty participant set; the
+existing owner-scoped Events Live Store query is never widened.
 
 ## Replacement Tests
 
@@ -75,6 +86,11 @@ data.
   `"rail" "events"` collapse rule.
 - Remote smoke verification should call `loadAppHomeRouteViewModel()` with
   `ORBIT_MODULE_MODE=live` and configured Postgres env vars. The loader should
-  return `state: "success"` with source-backed event and contact counts.
+  return `state: "success"` with source-backed owner and canonical participant
+  journeys plus contact counts.
+- Regression coverage should keep a current subject's `rsvped` membership
+  visible, while excluding `cancelled` and other-subject memberships and
+  preserving owner events. A membership/Core read error must remain visible as
+  an error rather than an empty activity list.
 - Browser screenshot verification should cover 641px, 760px, and 1440px widths
   and confirm `overflowX=false` with the hub rail still beside the event list.

@@ -1,5 +1,7 @@
 # 同步队列
 
+BR-027 数据增量（2026-09-17）：独立测试库主账号 organizer@orbit.example.test 已扩充30联系人／10活动（9发布1草稿），15条有日期关系任务；密码单独交付，不写台账。Web页面和新主办方后台已回读，原数据与辅助账号隔离保留；不改App连接、正式域名或启用模型/worker。[数据集与预算](../repos/orbits/docs/operations/main-test-dataset.md)。原生同测试API访问保护与完整业务验收仍按BR-027原边界开放。
+
 ## BR-030 — 活动报名配置与Web取消确认
 
 13Phone活动配置与两入口真实取消/重报链verified；64固定8daf/65固定d0e已合Main并push独立远端7b1b3de289eba6e550a4702954df6056eddc664e。新Phone519/f082/freshentry875 raw1afd，公网实际health/servedbytes/正常登录及逐页动作通过；原资料保护、预算493f和旧63回退保持，临时服务正常停保数据。不是Native/真实AI/全I或全部活动功能通过，推荐schema和legacy差异仍TODO；[中文交接](2026-09-17-phoneweb-registration-repair.md)。
@@ -40,6 +42,9 @@
 
 | ID | 优先级 | 事项 | 当前状态 | 下一责任方 | 关闭条件 |
 | --- | --- | --- | --- | --- | --- |
+| [BR-027](2026-09-17-read-budget-staging.md) | P0 | 读取成本与独立免费测试环境 | 第一批读取优化已提交；小型seed及Preview主办方登录/后台读取已验证 | Web/Bridge | 4账号/2活动/3关系/1任务入独立Neon，空报名基线已激活；19/19本地回归。剩余公开详情占位、Preview原生授权、完整分页/聚合/有界worker及跨端验收；正式域名www.orbitailink.com仍归原orbit项目，本轮未修改 |
+| [BR-026](2026-09-16-cloud-five-item-acceptance.md) | P1 | 五项云端闭环：生命周期、提醒、worker、原生、新用户 | consumer_ready；验证blocked | 恢复现有Neon额度后继续原生新活动正例 | App5ee62479活动/交换/通知消费者及Webd0999d5f旧状态保护已提交，2945＋297回归/typecheck通过；首轮真实双向读写证据保留。Neon Free传输超额，待新活动生成/发布→原生交换/通知→pending本人初始化→双端回读；原$1剩余预算可用，不含Neon升级 |
+| [BR-025](2026-09-16-production-p0-fixes.md) | P1 | Production 身份、AI 查询回显、关系跟进可见性 | source_ready | Web/Bridge；App 生命周期与原生验收仍开放 | Web 最终部署实测、关系下一步语义一致、原生 Production 同记录回读 |
 | BR-001 | P1 | Today 同名但数据与动作集合不同 | identified | Bridge 梳理，Web/App 接口负责人协作 | 逐项映射账本/安排/任务；实现或有依据接受差异；双向验证 |
 | BR-002 | P1 | Agent 高级设置移动缺口 | identified | Bridge + App，Web 提供 HTTP 边界 | memory/feedback/automations/preferences 覆盖方案及逐操作验收 |
 | BR-003 | P1 | 会话历史操作与持久化确认 | verified | 已完成；0005/0006 可消费 | 同账号 Web/App 组织、删除、刷新及 iOS 失败反馈证据齐全 |
@@ -202,6 +207,8 @@
 - 下一步：把 AI 会话子域视为已验收，不重复执行；其他业务模块继续按 [数据交接验收](contracts.md) 逐项补证。
 
 ## BR-006 — 发布
+
+2026-09-16 更新：Production 已按用户授权导入合成测试数据并完成主办方/参与者角色验证；取消请求修复已发布并在正式浏览器完成取消与刷新。App 的共同 API 已配置，但当前原生构建兼容性未解决，仍不标为跨端 verified。精确版本、未完成项和正式上线前清理范围见 [Production 测试交接](2026-09-16-production-fixture-testing.md)。下列旧发布状态保留作历史。
 
 - web_status：2026-09-06 发布记录仍有 21 个全量测试失败、1 个跳过；远程部署未完成。
 - app_status：源码默认 localhost，可配置 API 地址；本轮未核实设备运行地址或公网构建。

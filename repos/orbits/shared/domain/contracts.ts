@@ -136,6 +136,8 @@ export interface NextActionDTO {
 
 export interface ContactDTO {
   id: OrbitId;
+  version?: number;
+  lifecycleInitialization?: "pending" | "ready";
   personId?: OrbitId;
   displayName: string;
   organization?: string;
@@ -163,6 +165,8 @@ export interface ContactDTO {
 
 export interface ConnectionDTO {
   id: OrbitId;
+  version?: number;
+  lifecycleInitialization?: "pending" | "ready";
   accountId: OrbitId;
   contactId: OrbitId;
   stage: RelationshipStage;

@@ -55,7 +55,7 @@ for (const [href, expected] of [
   ["/contacts/new", undefined],
   ["/events/center", undefined],
   ["/account/login", undefined],
-  ["/app/events/event%3Aone?participant=one#event-matchmaking-title", undefined],
+  ["/app/events/event%3Aone?participant=one#event-matchmaking-title", "/events/event%3Aone/participants/one"],
   ["/tasks/task%3Aone?next=https://outside.example", undefined],
   [undefined, undefined],
 ] as const) test(`reminder target maps only an exact supported destination: ${href}`, () => {

@@ -1,6 +1,11 @@
 import type { MessageDictionary } from "./messages";
 
 export const ja = {
+  "portrait66.restartQuestions": "未保存の質問を聞き直す", "portrait66.unverifiedDrafts": "下書きは残っています。新しい質問に答えてから、ポートレートを生成してください。",
+  "portrait66.reloadSources": "プロフィールの元情報を再取得",
+  "portrait66.recommendationsFailed": "おすすめを取得できませんでした。再試行してください。", "portrait66.viewContact": "連絡先を見る",
+  "portrait66.readFailed": "ページを読み込めませんでした", "portrait66.requiredOpen": "必須",
+  "portrait66.progress": "入力済み {count}/8 項目", "portrait66.requiredCount": "必須 {count} 問", "portrait66.required": "必須 · 単一選択", "portrait66.optional": "任意", "portrait66.entry": "イベントでのプロフィール", "portrait66.completed": "イベントプロフィール入力完了", "portrait66.draft": "イベントプロフィールの下書き", "portrait66.entryDetail": "参加目的を主催者に伝えるため、回答を補足できます。", "portrait66.view": "見る", "portrait66.start": "プロフィールを補足", "portrait66.skip": "スキップ", "portrait66.all": "すべて", "portrait66.edit": "変更", "portrait66.editAnswer": "回答を編集", "portrait66.applyEdit": "変更を反映", "portrait66.next": "次の質問", "portrait66.generate": "プロフィールを生成", "portrait66.generating": "生成中", "portrait66.save": "プロフィールを保存", "portrait66.saved": "保存済み", "portrait66.pending": "保存結果を確認できていません。再試行してください。", "portrait66.privacy": "本人と権限のある主催者に公開", "portrait66.saveHint": "保存しても参加登録状況は変わりません", "portrait66.stale": "回答が変更されました。再生成してください。", "portrait66.noQuestion": "元の質問は保存されていません。保存済みの項目と回答を表示します。", "portrait66.ask": "イベントプロフィールを補足", "portrait66.review": "回答を確認", "portrait66.points": "プロフィールの要点", "portrait66.recommendations": "会ってみたい人", "portrait66.noRecommendations": "表示できるおすすめはありません。", "portrait66.loadNew": "新しい質問を読み込む", "portrait66.noQuestions": "このイベントにはまだ回答する質問がありません。", "portrait66.retryRead": "参加登録情報を再取得", "portrait66.placeholder": "具体的な内容を1文で入力してください。", "portrait66.field.positioning": "現在の立場", "portrait66.field.industry": "業界", "portrait66.field.targetAttendees": "会いたい人", "portrait66.field.valueOffered": "提供できること", "portrait66.field.desiredOutcome": "参加目的", "portrait66.field.energyStyle": "交流のペース", "portrait66.field.experienceHighlight": "経験", "portrait66.field.followUpPreference": "会後の連絡",
   "personal63.hour": "時", "personal63.minute": "分", "personal63.clearEnd": "終了時刻をクリア", "personal63.lastDay": "最終日",
   "personal60.invalidReminder": "有効な通知時刻を選択してください。",
   "personal60.invalidUntil": "繰り返しの終了日は、開始日以降の有効な日付を入力してください。",

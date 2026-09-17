@@ -102,6 +102,10 @@ function responseFailure(
   fallbackCode: string,
   fallbackMessage: string
 ): MobileAuthFailure {
+  // HTTP availability and response verification precede credential rejection.
+  // In particular a gateway/Neon 5xx may have no JSON body at all.
+  if (response.status >= 500) return failure("ORBIT_APP_AUTH_SERVICE_UNAVAILABLE", "登录服务暂时不可用，请稍后再试。", response.status);
+  if (response.ok || (!payload && response.status !== 401)) return failure("ORBIT_APP_AUTH_INVALID_RESPONSE", "暂时无法验证登录结果，请稍后重试。", response.status);
   const error = isRecord(payload?.error) ? payload.error : null;
   const context = isRecord(error?.context) ? error.context : null;
   const detailedCode =
@@ -109,6 +113,9 @@ function responseFailure(
     stringField(error, "code") ||
     fallbackCode;
 
+  if (response.status !== 401 && (detailedCode === "MOBILE_AUTH_UNAUTHORIZED" || detailedCode === "ORBIT_APP_AUTH_INVALID_CREDENTIALS")) {
+    return failure("ORBIT_APP_AUTH_INVALID_RESPONSE", "暂时无法验证登录结果，请稍后重试。", response.status);
+  }
   return failure(
     detailedCode,
     mobileAuthMessages[detailedCode] ?? fallbackMessage,

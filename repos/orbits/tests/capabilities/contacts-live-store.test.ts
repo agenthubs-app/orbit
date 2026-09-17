@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createLiveContactsListSearchAndFilterService } from "../../features/contacts/live-service";
+import { createLiveContactDetailTagStatusService } from "../../features/contacts/live-detail-service";
 import { createStorageContactGraphProvider } from "../../features/contacts/storage/contact-live-record-provider";
 import {
   createContactsListSearchAndFilterService,
@@ -14,6 +15,80 @@ import {
 } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 import { defaultMockFixtures } from "../../shared/mock/fixtures";
+import { contactsPayloadViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
+import { contactsRouteToOrbitContactsViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-view-model-adapter";
+
+test("initialized relationship readers follow canonical transitions, not stale contact or private detail status", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const workspaceId = "test:canonical-contact-stage";
+  const actorId = "owner:one";
+  const base = { source: { type: "event_import", id: "event:qa" }, evidenceIds: ["evidence:qa"], createdAt: "2026-09-17T00:00:00Z", updatedAt: "2026-09-17T00:00:00Z" };
+  for (const marker of ["ready", "pending", undefined]) {
+    const id = `contact:${marker ?? "legacy"}`;
+    for (const [collectionName, payload] of [
+      ["contacts", { ...base, id, displayName: id, stage: "needs_follow_up", lifecycleInitialization: marker }],
+      ["connections", { ...base, version: 1, id: `connection:${id}`, contactId: id, accountId: actorId, stage: "active", lifecycleInitialization: marker, summary: "Accepted event connection", valueTypes: [], activeGoal: "Explicit test goal" }],
+    ] as const) {
+      await store.upsertRecord({ ...activeRecord({ collectionName, payload, workspaceId, searchText: id, targetType: collectionName === "contacts" ? "contact" : "connection" }), userId: actorId });
+    }
+  }
+  const provider = createStorageContactGraphProvider({ store, workspaceId });
+  await provider.upsertContactDetailState?.({ actorId, contactId: "contact:ready", status: "nurture", tags: ["保留标签"], notes: [], updatedAt: base.updatedAt });
+  const list = await createLiveContactsListSearchAndFilterService({ provider }).listContacts({ actorId });
+  assert.equal(list.success, true);
+  assert.equal(list.data.contacts.find(c => c.id === "contact:ready")?.status, "active");
+  assert.equal(list.data.contacts.find(c => c.id === "contact:legacy")?.status, "active");
+  assert.equal(list.data.contacts.find(c => c.id === "contact:pending")?.status, "needs_follow_up");
+  assert.equal(list.data.contacts.find(c => c.id === "contact:pending")?.lifecycleInitialization, "pending");
+  const detail = await createLiveContactDetailTagStatusService({ provider }).getContactDetail({ actorId, contactId: "contact:ready" });
+  assert.equal(detail.success, true);
+  assert.equal(detail.data.contact.status, "active");
+  assert.deepEqual(detail.data.contact.tags, ["保留标签"]);
+  assert.equal((detail.data.contact as unknown as Record<string, unknown>).lifecycleInitialization, "ready");
+  const pendingDetail = await createLiveContactDetailTagStatusService({ provider }).getContactDetail({ actorId, contactId: "contact:pending" });
+  assert.equal(pendingDetail.success, true);
+  assert.equal(pendingDetail.data.contact.status, "needs_follow_up");
+  assert.equal((pendingDetail.data.contact as unknown as Record<string, unknown>).lifecycleInitialization, "pending");
+  assert.equal((await provider.readContactGraphForContact?.("contact:ready", "owner:other"))?.contacts.length, 0);
+});
+
+test("stored pending exchange survives live list and Web mapping without entering canonical status filters", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const workspaceId = "test:pending-list";
+  const actorId = "owner:one";
+  const rows = [
+    { id: "pending-captured", stage: "captured", lifecycleInitialization: "pending" },
+    { id: "pending-active", stage: "active", lifecycleInitialization: "pending" },
+    { id: "pending-nurture", stage: "nurture", lifecycleInitialization: "pending" },
+    { id: "ordinary-active", stage: "active" },
+    { id: "ordinary-captured", stage: "captured" },
+    { id: "ready-active", stage: "active", lifecycleInitialization: "ready" },
+    { id: "other-owner", stage: "captured", lifecycleInitialization: "pending" },
+  ];
+  for (const row of rows) {
+    await store.upsertRecord({ ...activeRecord({ collectionName: "contacts", targetType: "contact", workspaceId, searchText: row.id,
+      payload: { ...row, displayName: row.id, source: { type: "event_import", id: "event:qa" }, evidenceIds: ["evidence:qa"], createdAt: "2026-09-17T00:00:00Z", updatedAt: "2026-09-17T00:00:00Z" } }), userId: row.id === "other-owner" ? "owner:other" : actorId });
+  }
+  const provider = createStorageContactGraphProvider({ store, workspaceId });
+  const service = createLiveContactsListSearchAndFilterService({ provider });
+  const result = await service.listContacts({ actorId });
+  assert.equal(result.success, true);
+  assert.equal(result.data.contacts.length, 6);
+  assert.equal(result.data.contacts.find(contact => contact.id === "pending-captured")?.lifecycleInitialization, "pending");
+  const counts = Object.fromEntries(result.data.availableFilters.statuses.map(status => [status.value, status.count]));
+  assert.deepEqual(counts, { active: 2, needs_follow_up: 1, nurture: 0, archived: 0 });
+  for (const status of ["active", "needs_follow_up", "nurture", "archived"] as const) {
+    const filtered = await service.listContacts({ actorId, statusFilters: [status] });
+    assert.equal(filtered.success, true);
+    if (filtered.success) assert.ok(filtered.data.contacts.every(contact => !contact.id.startsWith("pending-")));
+  }
+  const payload = contactsPayloadViewModel({ payload: result.data, reviewActionRequested: false });
+  const web = contactsRouteToOrbitContactsViewModel({ state: "success", payload });
+  assert.equal(web.connections.filter(contact => contact.pipelineStatus === "pending_initialization").length, 3);
+  assert.equal(web.connections.filter(contact => contact.pipelineStatus === "in_progress").length, 2);
+  assert.equal(web.connections.find(contact => contact.id === "ordinary-captured")?.pipelineStatus, "to_contact");
+  assert.equal(payload.ledger.needsAttention, 1);
+});
 
 function activeRecord(input: {
   collectionName: string;

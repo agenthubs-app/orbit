@@ -16,6 +16,7 @@ export interface GeneratedFixtureLiveSeedCollection {
 }
 
 export interface SeedGeneratedRelationshipFixturesIntoLiveStoreOptions {
+  collectionNames?: readonly MockFixtureCollectionName[];
   now?: () => string;
   onCollectionSeeded?: (collection: GeneratedFixtureLiveSeedCollection) => void;
   store: LiveRecordStoreLike<Record<string, unknown>>;
@@ -53,6 +54,11 @@ const fixtureGeneratedAt = defaultMockFixtures.generatedAt;
 const fixtureAccountId = defaultMockFixtures.accounts[0]?.id ?? null;
 const evidenceById = new Map(
   defaultMockFixtures.evidence.map((evidence) => [evidence.id, evidence]),
+);
+const organizerAccountIds = new Set(
+  defaultMockFixtures.organizers
+    .map((organizer) => organizer.accountId)
+    .filter((accountId): accountId is string => typeof accountId === "string"),
 );
 
 export const GENERATED_FIXTURE_LIVE_SEED_EXPECTED_COLLECTIONS =
@@ -292,6 +298,7 @@ function liveRecordForFixture(input: {
 }
 
 export async function seedGeneratedRelationshipFixturesIntoLiveStore({
+  collectionNames = MOCK_FIXTURE_COLLECTION_NAMES,
   now = () => new Date().toISOString(),
   onCollectionSeeded,
   store,
@@ -300,7 +307,7 @@ export async function seedGeneratedRelationshipFixturesIntoLiveStore({
   const seededAt = now();
   const collections: GeneratedFixtureLiveSeedCollection[] = [];
 
-  for (const collectionName of MOCK_FIXTURE_COLLECTION_NAMES) {
+  for (const collectionName of collectionNames) {
     const recordIds: string[] = [];
 
     for (const record of fixtureRecordsFor(collectionName)) {
@@ -342,6 +349,11 @@ export async function verifyGeneratedRelationshipFixturesInLiveStore({
 }: VerifyGeneratedRelationshipFixturesInLiveStoreOptions): Promise<VerifyGeneratedRelationshipFixturesInLiveStoreResult> {
   const collections: GeneratedFixtureLiveSeedCollection[] = [];
   const failures: string[] = [];
+  const activeAccountRecords = await store.listRecords({
+    collectionName: "accounts",
+    workspaceId,
+  });
+  const liveAccountIds = new Set(activeAccountRecords.map((record) => record.recordId));
 
   for (const expected of GENERATED_FIXTURE_LIVE_SEED_EXPECTED_COLLECTIONS) {
     const records = await store.listRecords({
@@ -354,10 +366,14 @@ export async function verifyGeneratedRelationshipFixturesInLiveStore({
     const missingIds = expectedIds.filter((recordId) => !recordIds.includes(recordId));
     const ownershipMismatches = records.filter((record) => {
       const expectedUserId =
-        stringField(record.payload, "accountId") ??
-        (expected.collectionName === "accounts"
-          ? record.recordId
-          : fixtureAccountId);
+        expected.collectionName === "events" &&
+        typeof record.userId === "string" &&
+        (organizerAccountIds.has(record.userId) || liveAccountIds.has(record.userId))
+          ? record.userId
+          : stringField(record.payload, "accountId") ??
+            (expected.collectionName === "accounts"
+              ? record.recordId
+              : fixtureAccountId);
 
       return !expectedUserId || record.userId !== expectedUserId;
     });

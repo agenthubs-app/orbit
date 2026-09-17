@@ -9,6 +9,7 @@ import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../shared/co
 import { isIndustryIdCode, mergeIndustrySelection, validateIndustrySelection } from "../../../shared/domain/industries";
 import {
   isNetworkCategory,
+  isConnectionStage,
   isRelationshipStage,
   isRelationshipTrustLevel,
   isRelationshipValueType,
@@ -34,6 +35,7 @@ import type {
   LiveContactsGraphProvider,
 } from "../live-service";
 import type { LocalRemoteContactGraph } from "../contact-graph-provider";
+import { createPostgresContactScopeRecordReader, type ContactScopeRecordReader } from "./contact-scope-postgres-reader";
 import { CONTACT_ACTOR_AUTHORIZATION_SQL } from "./contact-read-authorization";
 
 export const CONTACTS_LIVE_RECORD_COLLECTIONS = {
@@ -43,8 +45,11 @@ export const CONTACTS_LIVE_RECORD_COLLECTIONS = {
   evidence: "evidence",
 } as const;
 
+const AMBIGUOUS_CONNECTION_ERROR = "CONTACT_DETAIL_AMBIGUOUS_CONNECTION";
+
 export interface StorageContactGraphProviderOptions {
   contactRecordPageReader?: ContactRecordPageReader;
+  contactScopeRecordReader?: ContactScopeRecordReader;
   source?: string;
   sourceLabel?: string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
@@ -201,6 +206,9 @@ function contactFromRecord(
   record: LiveRecord<Record<string, unknown>>,
 ): ContactDTO | null {
   const payload = record.payload;
+  if (payload.version !== undefined && (!Number.isSafeInteger(payload.version) || (payload.version as number) < 1)) {
+    throw new Error("Invalid contact lifecycle version");
+  }
   const source = sourceReference(payload.source);
   const ids = evidenceIds(payload.evidenceIds);
 
@@ -218,6 +226,7 @@ function contactFromRecord(
 
   return {
     id: payload.id,
+    version: payload.version as number | undefined,
     personId: optionalString(payload.personId),
     displayName: payload.displayName,
     organization: optionalString(payload.organization),
@@ -268,6 +277,7 @@ function contactFromRecord(
         }
       : undefined,
     stage: payload.stage,
+    lifecycleInitialization: payload.lifecycleInitialization === "pending" || payload.lifecycleInitialization === "ready" ? payload.lifecycleInitialization : undefined,
     source,
     evidenceIds: ids,
     createdAt: payload.createdAt,
@@ -279,6 +289,9 @@ function connectionFromRecord(
   record: LiveRecord<Record<string, unknown>>,
 ): ConnectionDTO | null {
   const payload = record.payload;
+  if (payload.version !== undefined && (!Number.isSafeInteger(payload.version) || (payload.version as number) < 1)) {
+    throw new Error("Invalid connection lifecycle version");
+  }
   const source = sourceReference(payload.source);
   const ids = evidenceIds(payload.evidenceIds);
   const valueTypes = stringArray(payload.valueTypes).filter(isRelationshipValueType);
@@ -299,6 +312,8 @@ function connectionFromRecord(
 
   return {
     id: payload.id,
+    version: payload.version as number | undefined,
+    lifecycleInitialization: payload.lifecycleInitialization === "pending" || payload.lifecycleInitialization === "ready" ? payload.lifecycleInitialization : undefined,
     accountId: payload.accountId,
     contactId: payload.contactId,
     stage: payload.stage,
@@ -381,6 +396,50 @@ function graphFromRecords(input: {
   actorId?: string;
   evidenceRecords: readonly LiveRecord<Record<string, unknown>>[];
 }): LocalRemoteContactGraph {
+  // Once explicitly initialized, Connection is the lifecycle authority. The
+  // acquisition Contact and legacy detail state are not a second stage store.
+  const parsedConnections = input.connectionRecords
+    .map(connectionFromRecord)
+    .filter((connection): connection is ConnectionDTO => connection !== null);
+  const ownedConnections = input.actorId
+    ? input.connectionRecords
+        .filter(
+          (record) =>
+            record.userId === input.actorId ||
+            record.payload.accountId === input.actorId,
+        )
+        .map(connectionFromRecord)
+        .filter((connection): connection is ConnectionDTO => connection !== null)
+    : [];
+  const connectionCandidatesByContactId = new Map<string, ConnectionDTO[]>();
+  for (const connection of ownedConnections) {
+    const candidates = connectionCandidatesByContactId.get(connection.contactId) ?? [];
+    candidates.push(connection);
+    connectionCandidatesByContactId.set(connection.contactId, candidates);
+  }
+  for (const candidates of connectionCandidatesByContactId.values()) {
+    if (candidates.length > 1 && candidates.some((connection) => connection.version !== undefined || connection.lifecycleInitialization !== undefined)) {
+      throw new Error(AMBIGUOUS_CONNECTION_ERROR);
+    }
+  }
+  const canonicalConnections = new Map<string, ConnectionDTO>();
+  const contacts = input.contactRecords
+    .map(contactFromRecord)
+    .filter((contact): contact is ContactDTO => contact !== null);
+  const contactsById = new Map(contacts.map((contact) => [contact.id, contact]));
+  for (const [contactId, candidates] of connectionCandidatesByContactId) {
+    const connection = candidates[0];
+    const contact = contactsById.get(contactId);
+    if (
+      connection &&
+      (connection.version !== undefined || connection.lifecycleInitialization === "ready") &&
+      contact?.lifecycleInitialization !== "pending" &&
+      connection.lifecycleInitialization !== "pending" &&
+      isConnectionStage(connection.stage)
+    ) {
+      canonicalConnections.set(contactId, connection);
+    }
+  }
   const customTagsByContactId = new Map<string, readonly string[]>();
   if (input.actorId) {
     for (const record of input.detailStateRecords ?? []) {
@@ -392,16 +451,15 @@ function graphFromRecords(input: {
   }
 
   return {
-    contacts: input.contactRecords
-      .map(contactFromRecord)
-      .filter((contact): contact is ContactDTO => contact !== null)
+    contacts: contacts
       .map((contact) => ({
         ...contact,
+        ...(canonicalConnections.has(contact.id)
+          ? { stage: canonicalConnections.get(contact.id)!.stage, updatedAt: canonicalConnections.get(contact.id)!.updatedAt }
+          : {}),
         customTags: customTagsByContactId.get(contact.id) ?? [],
       })),
-    connections: input.connectionRecords
-      .map(connectionFromRecord)
-      .filter((connection): connection is ConnectionDTO => connection !== null),
+    connections: parsedConnections,
     evidence: input.evidenceRecords
       .map(evidenceFromRecord)
       .filter(
@@ -419,6 +477,7 @@ function graphFromRecords(input: {
 async function readFocusedContactGraph(input: {
   actorId?: string;
   contactRecordPageReader?: ContactRecordPageReader;
+  contactScopeRecordReader?: ContactScopeRecordReader;
   contactId?: string;
   listInput?: ContactsListSearchFilterInput;
   store: LiveRecordStoreLike<Record<string, unknown>>;
@@ -438,6 +497,10 @@ async function readFocusedContactGraph(input: {
   const boundedPage = input.listInput && input.contactRecordPageReader
     ? await input.contactRecordPageReader(input.listInput, actorId)
     : null;
+  const focusedIds = input.contactId ? [input.contactId] : boundedPage?.recordIds;
+  const scope = focusedIds && input.contactScopeRecordReader
+    ? await input.contactScopeRecordReader(actorId, focusedIds)
+    : null;
   const [contactRecords, allConnectionRecords, detailStateRecords] = await Promise.all([
     input.store.listRecords({
       workspaceId: input.workspaceId,
@@ -448,12 +511,12 @@ async function readFocusedContactGraph(input: {
     input.store.listRecords({
       workspaceId: input.workspaceId,
       collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.connections,
-      ...(boundedPage ? { userId: actorId } : {}),
+      ...(scope ? { recordIds: scope.connectionIds } : boundedPage ? { userId: actorId } : {}),
     }),
     input.store.listRecords({
       workspaceId: input.workspaceId,
       collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.detailStates,
-      ...(boundedPage ? { userId: actorId } : {}),
+      ...(scope ? { recordIds: scope.detailStateIds } : boundedPage ? { userId: actorId } : {}),
     }),
   ]);
   const actorConnectionRecords = allConnectionRecords.filter(
@@ -614,6 +677,7 @@ export function createPostgresContactRecordPageReader(input: {
 
 export function createStorageContactGraphProvider({
   contactRecordPageReader,
+  contactScopeRecordReader,
   source,
   sourceLabel = "Contacts shared live storage",
   store,
@@ -633,6 +697,7 @@ export function createStorageContactGraphProvider({
       return readFocusedContactGraph({
         actorId,
         contactRecordPageReader,
+        contactScopeRecordReader,
         listInput: input,
         store,
         workspaceId,
@@ -642,6 +707,7 @@ export function createStorageContactGraphProvider({
       return readFocusedContactGraph({
         actorId,
         contactId: contactId.trim(),
+        contactScopeRecordReader,
         store,
         workspaceId,
       });
@@ -736,6 +802,9 @@ export function createStorageContactGraphProvider({
       if (!normalizedActorId || !normalizedContactId) {
         throw new Error("Contact industry update requires actor and contact identifiers.");
       }
+      const scope = contactScopeRecordReader
+        ? await contactScopeRecordReader(normalizedActorId, [normalizedContactId])
+        : null;
       const [contactRecord, connectionRecords] = await Promise.all([
         store.getRecord({
           workspaceId,
@@ -745,6 +814,7 @@ export function createStorageContactGraphProvider({
         store.listRecords({
           workspaceId,
           collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.connections,
+          ...(scope ? { recordIds: scope.connectionIds } : {}),
         }),
       ]);
       const actorCanEdit =
@@ -823,6 +893,10 @@ export function createConfiguredStorageContactGraphProvider({
   }
 
   const provider = createStorageContactGraphProvider({
+    contactScopeRecordReader: createPostgresContactScopeRecordReader({
+      client: configuredStore.client,
+      workspaceId: configuredStore.workspaceId,
+    }),
     contactRecordPageReader: createPostgresContactRecordPageReader({
       client: configuredStore.client,
       workspaceId: configuredStore.workspaceId,

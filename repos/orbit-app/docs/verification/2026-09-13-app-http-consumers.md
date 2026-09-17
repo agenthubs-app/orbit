@@ -2,6 +2,14 @@
 
 状态：源码盘点检查点；不是连通性通过报告。R-01 整项仍开放。
 
+2026-09-17 BR-026 增量：本页以下表格是 09-13 固定源码快照，不再代表当前
+参会者入口。`EventAttendeesScreen` 已接 canonical operations；新增 private
+`/events/[id]/participants/[participantId]`，精确 HTTP／身份／回执边界见
+[api-gaps 最新节](../api-gaps.md#2026-09-17--br-026-canonical-attendee-consumer-local-verification)。
+新增路由已纳入 `app-wide-route-coverage.test.ts` 的后续 feature 清单及
+`mobile-route-access.test.ts` 的鉴权清单；不修改早期 58 路由视觉快照数量或
+冒充其原生证据。当前仅本地 consumer 验证，真实原生／Production 由主线验收。
+
 采集：2026-09-13 09:16–09:21 JST；源码 HEAD `f194d7b3cdfe3dd39f4c20a67656613bc1749ca2`，生产代码与 `1efc95508` 相同。关联[执行记录](2026-09-13-app-connectivity.md)及[剩余计划](../superpowers/plans/2026-09-13-app-remaining-functionality-and-connectivity.md)。
 
 ## 1. 范围、计数与限制

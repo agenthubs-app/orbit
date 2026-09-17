@@ -26,6 +26,10 @@ import {
   verifyInterviewResponseSubmissions,
 } from "../../../../../features/events/registration/interview-question-token.server";
 import { EventRegistrationWindowError } from "../../../../../features/events/registration/deadline-gated-service";
+import { PortraitError, type PortraitSnapshot } from "../../../../../features/events/registration/portrait/contract";
+import { createEventRegistrationPortraitRuntime } from "../../../../../features/events/registration/portrait/runtime";
+import { attachPortraitQuestionProofs } from "../../../../../features/events/registration/portrait/question-proofs";
+import { portraitErrorResponse } from "./portrait/route-handlers";
 import { loadEventForRegistration } from "../../../../../features/events/registration/event-loader";
 import { generateEventRegistrationQuestions } from "../../../../../features/events/registration/question-generator";
 import { eventRegistrationRuntimeService } from "../../../../../features/events/registration/runtime";
@@ -244,6 +248,7 @@ function errorResponse(error: AppError, status: number): Response {
 }
 
 export function createEventRegistrationRouteHandlers(input: {
+  getPortraitProofSource?: (eventId: string, actorId: string) => Promise<{ workspaceId: string; snapshot: PortraitSnapshot }>;
   readRegistrationWindow?: (eventId: string) => Promise<import("../../../../../features/events/registration/deadline-gated-service").EventRegistrationWindowState>;
   getPublishedQuestionSet?: (
     eventId: string,
@@ -337,7 +342,7 @@ export function createEventRegistrationRouteHandlers(input: {
       const shouldGenerateQuestions = questionsRequested && eligibility.allowedActions.some(action =>
         action === "register" || action === "reactivate" || action === "update" || action === "apply");
       const publishedQuestionSet = shouldGenerateQuestions ? await getPublishedQuestionSet(event.id) : null;
-      const questionSet = shouldGenerateQuestions
+      let questionSet = shouldGenerateQuestions
         ? await generateEventRegistrationQuestions({
             event,
             language: searchParams.get("language") === "en" ? "en" : "zh",
@@ -355,11 +360,24 @@ export function createEventRegistrationRouteHandlers(input: {
             questions: [],
           };
 
+      if (shouldGenerateQuestions && searchParams.get("portraitProofs") === "true") {
+        const source = input.getPortraitProofSource
+          ? await input.getPortraitProofSource(event.id, actor.id)
+          : await (async () => {
+              const runtime = createEventRegistrationPortraitRuntime();
+              if (!runtime) throw new PortraitError(503, "PORTRAIT_STORAGE_UNAVAILABLE", "Durable portrait proof storage is unavailable.");
+              const { snapshot } = await runtime.repository.readSources({ actorId: actor.id, eventId: event.id });
+              return { workspaceId: runtime.workspaceId, snapshot };
+            })();
+        questionSet = attachPortraitQuestionProofs({ ...source, actorId: actor.id, eventId: event.id, registrationVersion: registration?.updatedAt ?? null, questionSet, language: searchParams.get("language") === "en" ? "en" : "zh", now: () => Date.parse(evaluatedAt) });
+      }
+
       return NextResponse.json(
         success({ eligibility, questionSet, registration }),
         { headers: runtimeBoundaryHeaders(mode), status: 200 },
       );
     } catch (error) {
+      if (error instanceof PortraitError) return portraitErrorResponse(error, mode);
       if (error instanceof AppError) {
         return errorResponse(error, error.code === "NOT_FOUND" ? 404 : 503);
       }

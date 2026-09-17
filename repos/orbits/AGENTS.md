@@ -19,6 +19,13 @@ workspace root for implementation work.
   must explain what changed and why so the work is traceable. Do not include
   unrelated user or generated changes in that commit.
 
+## Free-Plan Cloud Budget
+
+- Cloud validation must follow `docs/operations/free-staging-budget.md`: inspect current project quota first, use a small explicit operation budget, and run bulk/pressure/regression tests on local PostgreSQL.
+- Do not run bulk demo/pressure seeds, full payload exports, keep-alive polling, or unbounded workers on a Free cloud database. Use the guarded minimal staging initializer for the approved isolated environment; never overwrite a nonempty database.
+- Keep staging database, Auth, model/email/storage credentials and workers isolated from Production. Deploy staging with an explicit `--target preview` and `vercel.staging.json` (the first Vercel deployment can otherwise auto-promote).
+- Quota thresholds and script budgets are not provider billing meters. Do not claim an automatic monthly spending cap exists unless it is actually enforced. No paid upgrade or deletion of unrelated data without authorization.
+
 ## Cross-Client Contract
 
 - `shared/contract/` 是网页版和 iOS App 共用的响应形状，改它等于同时改两个客户端。

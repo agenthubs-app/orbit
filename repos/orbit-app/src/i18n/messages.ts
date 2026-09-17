@@ -4,6 +4,11 @@ import { ja } from "./ja";
 import { zh } from "./zh";
 
 export const messageKeys = [
+  "portrait66.restartQuestions", "portrait66.unverifiedDrafts",
+  "portrait66.readFailed", "portrait66.requiredOpen",
+  "portrait66.reloadSources",
+  "portrait66.recommendationsFailed", "portrait66.viewContact",
+  "portrait66.progress", "portrait66.requiredCount", "portrait66.required", "portrait66.optional", "portrait66.entry", "portrait66.completed", "portrait66.draft", "portrait66.entryDetail", "portrait66.view", "portrait66.start", "portrait66.skip", "portrait66.all", "portrait66.edit", "portrait66.editAnswer", "portrait66.applyEdit", "portrait66.next", "portrait66.generate", "portrait66.generating", "portrait66.save", "portrait66.saved", "portrait66.pending", "portrait66.privacy", "portrait66.saveHint", "portrait66.stale", "portrait66.noQuestion", "portrait66.ask", "portrait66.review", "portrait66.points", "portrait66.recommendations", "portrait66.noRecommendations", "portrait66.loadNew", "portrait66.noQuestions", "portrait66.retryRead", "portrait66.placeholder", "portrait66.field.positioning", "portrait66.field.industry", "portrait66.field.targetAttendees", "portrait66.field.valueOffered", "portrait66.field.desiredOutcome", "portrait66.field.energyStyle", "portrait66.field.experienceHighlight", "portrait66.field.followUpPreference",
   "personal63.hour", "personal63.minute", "personal63.clearEnd", "personal63.lastDay",
   "personal60.invalidReminder", "personal60.invalidUntil",
   "personal60.done",

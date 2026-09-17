@@ -24,6 +24,8 @@ import { ContactIndustryEditor } from "./contact-industry-editor";
 import { ContactTagEditor } from "./contact-tag-editor";
 import { ContactInteractionEditor } from "./contact-interaction-editor";
 import { ContactNotesEditor } from "./contact-notes-editor";
+import { ContactRelationshipInitializationPanel, useContactRelationshipInitialization } from "./contact-relationship-initialization";
+import { initializationStageLabels } from "./contact-relationship-initialization-view-model";
 import { displayText, tagLabel } from "./compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter";
 
 type Copy = { en: string; zh: string };
@@ -93,8 +95,8 @@ function StrengthTag({ strength, t }: { strength: OrbitContactView["strength"]; 
   return <span className={`nc-strength ${meta.cls}`}><span className="nc-dot" />{t(meta.label)}</span>;
 }
 
-function StatusPill({ status, viewModel, t }: { status: OrbitContactPipelineStatus; viewModel: OrbitContactsViewModel; t: Translate }) {
-  const label = viewModel.pipelineStatuses.find((item) => item.value === status)?.label ?? status;
+function StatusPill({ status, viewModel, t, labelOverride }: { status: OrbitContactPipelineStatus; viewModel: OrbitContactsViewModel; t: Translate; labelOverride?: string }) {
+  const label = labelOverride ?? viewModel.pipelineStatuses.find((item) => item.value === status)?.label ?? status;
   const archived = status === "archived";
   return (
     <span className={`nc-status nc-ps-${status}`} style={archived ? { background: "var(--surface-3)", color: "var(--text-3)" } : undefined}>
@@ -103,11 +105,11 @@ function StatusPill({ status, viewModel, t }: { status: OrbitContactPipelineStat
   );
 }
 
-function StatusPicker({ status, viewModel, t }: { status: OrbitContactPipelineStatus; viewModel: OrbitContactsViewModel; t: Translate }) {
+function StatusPicker({ status, viewModel, t, labelOverride }: { status: OrbitContactPipelineStatus; viewModel: OrbitContactsViewModel; t: Translate; labelOverride?: string }) {
   return (
     <span className="nc-status-pick">
       <span className="nc-sp-lbl">{t({ en: "Stage", zh: "关系阶段" })}</span>
-      <StatusPill status={status} t={t} viewModel={viewModel} />
+      <StatusPill status={status} t={t} viewModel={viewModel} labelOverride={labelOverride} />
       <span className="nc-sp-readonly">{t({ en: "Source-backed · read only", zh: "来源数据 · 只读" })}</span>
     </span>
   );
@@ -230,7 +232,7 @@ function TagsCard({ contact, t, onEdit }: { contact: OrbitContactView; t: Transl
 function TwoWayCard({ contact, t }: { contact: OrbitContactView; t: Translate }) {
   const name = contact.displayName || t({ en: "them", zh: "对方" });
   const profile = contact.encounters[0]?.context.publicProfile;
-  // 对方的 offering = 对方能给我的；对方的 seeking = 对方想要的（即我能给对方的）。
+  // 展示对方自述的供需；对方的需求不代表当前用户具备对应能力。
   const theyOffer = (profile?.offering ?? []).filter(Boolean);
   const theySeek = (profile?.seeking ?? []).filter(Boolean);
   const hasReal = theyOffer.length > 0 || theySeek.length > 0;
@@ -251,7 +253,7 @@ function TwoWayCard({ contact, t }: { contact: OrbitContactView; t: Translate })
         ) : null}
       </div>
       <div className="nc-vblock nc-give">
-        <div className="nc-vhead"><Icon name="arrow" size={14} />{t({ en: `You → ${name}`, zh: "我能为对方提供" })}</div>
+        <div className="nc-vhead"><Icon name="arrow" size={14} />{t({ en: `${name} is looking for`, zh: "对方希望获得" })}</div>
         <div className="nc-vlist">
           {give.length ? give.map((item, index) => (
             <div className="nc-vitem" key={`give-${index}`}><Icon name="check" size={16} />{item}</div>
@@ -259,7 +261,7 @@ function TwoWayCard({ contact, t }: { contact: OrbitContactView; t: Translate })
         </div>
       </div>
       <div className="nc-vblock nc-get">
-        <div className="nc-vhead"><Icon name="arrow" size={14} />{t({ en: `${name} → You`, zh: "对方能为我提供" })}</div>
+        <div className="nc-vhead"><Icon name="arrow" size={14} />{t({ en: `${name} offers`, zh: "对方能提供" })}</div>
         <div className="nc-vlist">
           {get.length ? get.map((item, index) => (
             <div className="nc-vitem" key={`get-${index}`}><Icon name="check" size={16} />{item}</div>
@@ -397,7 +399,18 @@ function NextStepCard({ contact, t, compact }: { contact: OrbitContactView; t: T
 
 export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: string; viewModel: OrbitContactsViewModel }) {
   const { language, t } = useOrbitLanguage();
+  const initialization = useContactRelationshipInitialization(contactId);
+  const initView = initialization.view;
+  // The endpoint alone can recognize malformed historical accepted exchanges.
+  // Never guess from an ordinary contact's legacy active status or missing goal.
+  const stageLabel = initView.state === "pending" ? t({ en: "Pending initialization", zh: "待设置关系" })
+    : initView.state === "initialized" ? initializationStageLabels[initView.stage][language === "zh" ? "zh" : "en"]
+      : initView.state === "hidden" ? undefined
+        : t({ en: "Relationship state unavailable", zh: "关系状态尚未确认" });
   const sourceContact = viewModel.connections.find((item) => item.id === contactId) ?? viewModel.connections[0];
+  const displayPipelineStatus: OrbitContactPipelineStatus = initView.state === "hidden" ? sourceContact.pipelineStatus
+    : initView.state === "initialized" ? (initView.stage === "archived" ? "archived" : initView.stage === "needs_follow_up" ? "to_contact" : "in_progress")
+      : "pending_initialization";
   const [industryEditContactId, setIndustryEditContactId] = useState<string | null>(null);
   const [industryUpdate, setIndustryUpdate] = useState<{ source: OrbitContactView; value: string | null; secondaryValue: string | null } | null>(null);
   const [tagEditContactId, setTagEditContactId] = useState<string | null>(null);
@@ -468,7 +481,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
                 </div>
                 <div style={{ color: "var(--text-2)", fontSize: 14, marginTop: 10 }}>{crmRole(contact, t)}</div>
                 <div className="nc-hero-meta">
-                  <StatusPicker status={contact.pipelineStatus} viewModel={viewModel} t={t} />
+                  <StatusPicker status={displayPipelineStatus} viewModel={viewModel} t={t} labelOverride={stageLabel} />
                   <StrengthTag strength={contact.strength} t={t} />
                   <span style={{ color: "var(--text-3)", fontSize: 13 }}>· {t({ en: "Met via", zh: "认识于" })} {metLabel(contact, t)}</span>
                 </div>
@@ -479,6 +492,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
               </div>
             </div>
 
+            <ContactRelationshipInitializationPanel controller={initialization} language={language === "zh" ? "zh" : "en"} />
             <div className="nc-cols">
               <div className="nc-stack">
                 <AboutCard contact={contact} t={t} />
@@ -489,7 +503,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
               <div className="nc-stack">
                 <ContactNotesCard contact={contact} language={language} onAdd={() => setNoteEditContactId(contact.id)} />
                 <TimelineCard contact={contact} t={t} />
-                <NextStepCard contact={contact} t={t} />
+                {initView.state === "hidden" ? <NextStepCard contact={contact} t={t} /> : null}
               </div>
             </div>
           </div>
@@ -517,7 +531,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
               </div>
               <div style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 3 }}>{crmRole(contact, t)}</div>
               <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
-                <StatusPicker status={contact.pipelineStatus} viewModel={viewModel} t={t} />
+                <StatusPicker status={displayPipelineStatus} viewModel={viewModel} t={t} labelOverride={stageLabel} />
                 <StrengthTag strength={contact.strength} t={t} />
               </div>
             </div>
@@ -529,13 +543,14 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <ContactRelationshipInitializationPanel controller={initialization} language={language === "zh" ? "zh" : "en"} />
             <AboutCard contact={contact} t={t} />
             <ContactCard contact={contact} t={t} onEditIndustry={() => setIndustryEditContactId(contact.id)} onEditInteraction={() => setInteractionEditContactId(contact.id)} />
             <TagsCard contact={contact} t={t} onEdit={() => setTagEditContactId(contact.id)} />
             <TwoWayCard contact={contact} t={t} />
             <ContactNotesCard contact={contact} language={language} onAdd={() => setNoteEditContactId(contact.id)} />
             <TimelineCard contact={contact} t={t} />
-            <NextStepCard compact contact={contact} t={t} />
+            {initView.state === "hidden" ? <NextStepCard compact contact={contact} t={t} /> : null}
           </div>
         </div>
       </div>

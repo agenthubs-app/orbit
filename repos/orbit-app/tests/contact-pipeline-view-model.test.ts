@@ -171,29 +171,8 @@ test("contactsPipelineToView maps contacts and connections into a Chinese pipeli
     name: "Maya Chen",
     nextAction: "查看来源证据后再联系 Maya Chen。",
     relationship: "正在找日本市场合作伙伴，也能介绍税务顾问。",
-    stageAction: {
-      connectionId: "connection_001",
-      label: "开始推进",
-      nextRelationshipStage: "active",
-      pendingLabel: "推进中",
-      successMessage: "已把 Maya Chen 放入推进中。"
-    },
-    stageActions: [
-      {
-        connectionId: "connection_001",
-        label: "开始推进",
-        nextRelationshipStage: "active",
-        pendingLabel: "推进中",
-        successMessage: "已把 Maya Chen 放入推进中。"
-      },
-      {
-        connectionId: "connection_001",
-        label: "暂不推进",
-        nextRelationshipStage: "archived",
-        pendingLabel: "归档中",
-        successMessage: "已把 Maya Chen 标记为暂不推进。"
-      }
-    ],
+    stageAction: null,
+    stageActions: [],
     valueLabels: ["战略契合", "引荐路径"],
     valueScoreLabel: "91分"
   });
@@ -215,7 +194,7 @@ test("contactsPipelineToView maps contacts and connections into a Chinese pipeli
   );
 });
 
-test("contactsPipelineToView exposes backend-safe actions across pipeline stages", () => {
+test("contactsPipelineToView keeps all stages read-only rather than offering preview mutations", () => {
   const view = contactsPipelineToView({
     connectionsPayload: {
       connections: [
@@ -301,45 +280,13 @@ test("contactsPipelineToView exposes backend-safe actions across pipeline stages
       { count: 1, id: "archived", label: "已归档" }
     ]
   );
-  assert.deepEqual(view.stages[0]?.contacts[0]?.stageAction, {
-    connectionId: "connection_001",
-    label: "开始推进",
-    nextRelationshipStage: "active",
-    pendingLabel: "推进中",
-    successMessage: "已把 Maya Chen 放入推进中。"
-  });
-  assert.deepEqual(
-    view.stages[1]?.contacts[0]?.stageActions.map((action) => ({
-      label: action.label,
-      nextRelationshipStage: action.nextRelationshipStage
-    })),
-    [
-      { label: "转为待联系", nextRelationshipStage: "needs_follow_up" },
-      { label: "转长期维护", nextRelationshipStage: "nurture" }
-    ]
-  );
-  assert.deepEqual(
-    view.stages[2]?.contacts[0]?.stageActions.map((action) => ({
-      label: action.label,
-      nextRelationshipStage: action.nextRelationshipStage
-    })),
-    [
-      { label: "开始推进", nextRelationshipStage: "active" },
-      { label: "暂不推进", nextRelationshipStage: "archived" }
-    ]
-  );
-  assert.deepEqual(view.stages[3]?.contacts[0]?.stageActions, [
-    {
-      connectionId: "connection_004",
-      label: "恢复待联系",
-      nextRelationshipStage: "needs_follow_up",
-      pendingLabel: "恢复中",
-      successMessage: "已把 Hana Sato 恢复到待联系。"
-    }
-  ]);
+  for (const contact of view.stages.flatMap(stage => stage.contacts)) {
+    assert.equal(contact.stageAction, null);
+    assert.deepEqual(contact.stageActions, []);
+  }
 });
 
-test("legacy follow-up stages remain actionable under the contact label", () => {
+test("legacy follow-up stages remain visible but do not offer preview mutations", () => {
   for (const token of ["needs_follow_up", "to_contact", "待跟进", "待联系"]) {
     const view = contactsPipelineToView({
       contactsPayload: { contacts: [{ id: "legacy", displayName: "Hana", pipelineStatus: token }] },
@@ -348,7 +295,7 @@ test("legacy follow-up stages remain actionable under the contact label", () => 
     });
     assert.equal(view.stages[0]?.label, "待联系");
     assert.equal(view.stages[0]?.contacts[0]?.id, "legacy", token);
-    assert.equal(view.stages[0]?.contacts[0]?.stageAction?.nextRelationshipStage, "active");
+    assert.equal(view.stages[0]?.contacts[0]?.stageAction, null);
     assert.equal(view.metrics[1]?.value, "1");
   }
 });

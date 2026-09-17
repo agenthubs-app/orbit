@@ -79,6 +79,8 @@ function contactFromRecord(
     primaryPhone: optionalString(payload.primaryPhone),
     profileSnippet: optionalString(payload.profileSnippet),
     stage: payload.stage,
+    ...(typeof payload.version === "number" && Number.isSafeInteger(payload.version) && payload.version >= 1 ? { version: payload.version } : {}),
+    ...(payload.lifecycleInitialization === "pending" || payload.lifecycleInitialization === "ready" ? { lifecycleInitialization: payload.lifecycleInitialization } : {}),
     source: {
       id: source.id,
       label: optionalString(source.label),
@@ -136,6 +138,8 @@ function connectionFromRecord(
     accountId: payload.accountId,
     contactId: payload.contactId,
     stage: payload.stage,
+    ...(typeof payload.version === "number" && Number.isSafeInteger(payload.version) && payload.version >= 1 ? { version: payload.version } : {}),
+    ...(payload.lifecycleInitialization === "pending" || payload.lifecycleInitialization === "ready" ? { lifecycleInitialization: payload.lifecycleInitialization } : {}),
     valueTypes,
     summary: payload.summary,
     relationshipStrength:
@@ -207,6 +211,44 @@ export function createStorageBusinessCardContactWriteProvider({
   workspaceId,
 }: StorageBusinessCardContactWriteProviderOptions): RelationshipRecordWriteProvider {
   return {
+    async initializeAcquiredRelationship(value, actorId) {
+      const insertRecordIfAbsent = store.insertRecordIfAbsent?.bind(store);
+      if (!insertRecordIfAbsent) {
+        throw new Error("Atomic relationship initialization is unavailable in this record store.");
+      }
+      if (value.connection.accountId !== actorId || value.connection.contactId !== value.contact.id) {
+        throw new Error("Relationship initialization owner or contact does not match.");
+      }
+      // Reuse the same record encoders, but replace persistence with a strictly
+      // insert-only capability. No read/check/save window and no upsert fallback.
+      const insertOnly = createStorageBusinessCardContactWriteProvider({
+        recordProvider,
+        workspaceId,
+        store: {
+          ...store,
+          upsertRecord: async (record) => {
+            const inserted = await insertRecordIfAbsent(record);
+            if (inserted) return inserted;
+            // Inspect conflicts only after the atomic insert. Never update a
+            // conflicting row, even if it is tombstoned or malformed.
+            const existing = await store.getRecord({
+              collectionName: record.collectionName,
+              recordId: record.recordId,
+              workspaceId,
+              includeDeleted: true,
+            });
+            if (!existing || existing.userId !== actorId ||
+                (existing.collectionName === "connections" &&
+                 (existing.payload.accountId !== actorId || existing.payload.contactId !== value.contact.id))) {
+              throw new Error("Relationship initialization owner conflict.");
+            }
+            return existing;
+          },
+        },
+      });
+      await insertOnly.saveContact(value.contact, actorId);
+      await insertOnly.saveConnection(value.connection, actorId);
+    },
     async getContact(contactId, actorId) {
       const record = await store.getRecord({
         collectionName: "contacts",

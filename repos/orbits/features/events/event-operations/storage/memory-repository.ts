@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import type { ContactDTO, ConnectionDTO } from "../../../../shared/domain/contracts";
+import { contactFor, connectionFor } from "../relationship-acquisition";
 
 import {
   EventOperationsError,
@@ -177,12 +179,21 @@ function assertTopology(input: InitializeEventOperationsGenerationInput): void {
 
 export interface MemoryEventOperationsRepository
   extends EventOperationsRepository {
+  listAcceptedRelationshipSides(input: { eventId: string; ownerActorId: string }): Promise<readonly MemoryAcceptedRelationshipSide[]>;
   replaceGenerationForTest(
     value: EventOperationsGeneration,
   ): Promise<EventOperationsGeneration>;
   replaceTaskForTest(
     value: EventOperationsGenerationTask,
   ): Promise<EventOperationsGenerationTask>;
+}
+
+interface MemoryAcceptedRelationshipSide {
+  eventId: string;
+  ownerActorId: string;
+  requestId: string;
+  contact: ContactDTO;
+  connection: ConnectionDTO;
 }
 
 export interface CreateMemoryEventOperationsRepositoryOptions {
@@ -249,6 +260,7 @@ export function createMemoryEventOperationsRepository(
   const configurations = new Map<string, EventOperationsConfiguration>();
   const configurationVersions = new Map<string, number>();
   const contactRequests = new Map<string, MemoryContactRequestRecord>();
+  const relationshipSides = new Map<string, MemoryAcceptedRelationshipSide>();
   const registrationMigrationStates = new Map<
     string,
     { count: number; hash: string; state: "canonical" | "importing" }
@@ -1274,6 +1286,9 @@ export function createMemoryEventOperationsRepository(
     },
 
     async resetEventForSeed(eventId) {
+      for (const [key, side] of relationshipSides) {
+        if (side.eventId === eventId) relationshipSides.delete(key);
+      }
       configurations.delete(eventId);
       configurationVersions.delete(eventId);
       legacyActiveConfigurationEventIds.delete(eventId);
@@ -1310,6 +1325,10 @@ export function createMemoryEventOperationsRepository(
 
     registerCanonicalParticipant(input) {
       return canonicalRegistrationService.register(input);
+    },
+
+    async listAcceptedRelationshipSides({ eventId, ownerActorId }) {
+      return clone([...relationshipSides.values()].filter((side) => side.eventId === eventId && side.ownerActorId === ownerActorId));
     },
 
     async respondToContactRequestAtomically(
@@ -1405,6 +1424,29 @@ export function createMemoryEventOperationsRepository(
             revision: latest.revision + 1,
             updatedAt: respondedAt,
           };
+      if (input.accept) {
+        const configuration = configurations.get(input.eventId);
+        for (const [owner, other] of [[requester, target], [target, requester]]) {
+          const participant = eventOperationsParticipantFromRegistration(other, {
+            profileEditDeadlineAt: configuration?.profileEditDeadlineAt ?? respondedAt,
+          });
+          const fields = {
+            evidenceId: `evidence:event-contact-consent:${digest(input.eventId, input.requestId, owner.userId)}`,
+            eventId: input.eventId,
+            ownerActorId: owner.userId,
+            participant,
+            timestamp: respondedAt,
+          };
+          const contact = contactFor(fields);
+          relationshipSides.set(contact.id, clone({
+            eventId: input.eventId,
+            ownerActorId: owner.userId,
+            requestId: input.requestId,
+            contact,
+            connection: connectionFor({ ...fields, contact }),
+          }));
+        }
+      }
       contactRequests.set(input.requestId, clone(next));
       return contactRequestForViewer(next, input.targetActorId);
     },

@@ -53,6 +53,11 @@ import {
 } from "../../view-models/event-registration";
 import { eventDetailToSummary } from "../../view-models/events";
 import { registrationQuestionDraft, registrationQuestionAnswer, registrationQuestionOptions, registrationQuestionnaireProgress, type ChoiceDraft, type Progress } from "../../view-models/event-registration-questionnaire";
+import { Registration7aViews } from "./Registration7aViews";
+import { Registration7aRecommendations } from "./Registration7aRecommendationsResource";
+import { appendPortraitAnswer, createPortraitSession, editPortraitHistory, restartUnstoredPortraitQuestions, portraitPreviewBody, portraitReceiptMatches, portraitToView, seedPortraitHistory, type PortraitSession } from "../../view-models/event-registration-portrait";
+import { portraitPersonaSchema, portraitReadResultSchema } from "../../api/schema/event-registration-portrait";
+import type { PortraitField, PortraitPreviewResult, PortraitRegistrationSource, PortraitSaveBody } from "../../api/contract/event-registration-portrait";
 
 function firstParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
@@ -89,10 +94,28 @@ export function EventRegistrationScreen() {
   const editRevision = useRef(0);
   const eventState = useApiResource<unknown>(publicEventDetailPath(eventId), () => false, { scopeKey });
   const registrationState = useApiResource<unknown>(
-    `${eventRegistrationPath(eventId)}?language=${encodeURIComponent(locale.language)}`,
+    `${eventRegistrationPath(eventId)}?language=${encodeURIComponent(locale.language)}&portraitProofs=true`,
     () => false,
     { scopeKey, cachePolicy: "network-only" }
   );
+  const portraitState = useApiResource<unknown>(`${eventRegistrationPath(eventId)}/portrait`, () => false, { scopeKey, cachePolicy: "network-only" });
+  const portraitData = portraitState.kind === "success" || portraitState.kind === "empty" ? portraitState.data : null;
+  let loadedPortrait = null;
+  let registrationSource: PortraitRegistrationSource | null = null;
+  let portraitReadConfirmed = false;
+  let portraitReadError: string | null = null;
+  if (portraitState.kind === "success" || portraitState.kind === "empty") {
+    try {
+      const read = portraitReadResultSchema.parse(portraitState.data);
+      loadedPortrait = portraitToView(portraitState.data);
+      registrationSource = read.registrationSource ?? null;
+      if (registrationSource && (registrationSource.actorId !== actorId || registrationSource.eventId !== eventId)) throw new Error("The registration reference belongs to another scope.");
+      const registration = registrationState.kind === "success" || registrationState.kind === "empty" ? (registrationState.data as { registration?: { participantProfile?: unknown } } | null)?.registration : null;
+      if (registration?.participantProfile && !registrationSource && !loadedPortrait) throw new Error("The canonical registration reference is unavailable.");
+      if (loadedPortrait && (loadedPortrait.actorId !== actorId || loadedPortrait.eventId !== eventId)) throw new Error("The portrait belongs to another scope.");
+      portraitReadConfirmed = true;
+    } catch { portraitReadError = locale.t("registration.reasonTemporary"); }
+  } else if (portraitState.kind === "failure" || portraitState.kind === "offline") portraitReadError = portraitState.error.message;
   const loadedRegistrationView =
     registrationState.kind === "success" || registrationState.kind === "empty"
       ? eventRegistrationToView(registrationState.data, locale.language)
@@ -109,6 +132,8 @@ export function EventRegistrationScreen() {
       ? eventDetailToSummary(eventState.data)
       : null;
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [portraitSession, setPortraitSession] = useState(() => createPortraitSession(scopeKey));
+  const pendingPortraitSave = useRef<PortraitSaveBody | null>(null);
   const [adaptiveAnswer, setAdaptiveAnswer] = useState("");
   const [adaptiveDone, setAdaptiveDone] = useState(false);
   const doneRef = useRef(adaptiveDone); doneRef.current = adaptiveDone;
@@ -148,6 +173,8 @@ export function EventRegistrationScreen() {
     setPersona(null);
     setFeedback(null);
     setSubmitError(null);
+    setPortraitSession(createPortraitSession(scopeKey));
+    pendingPortraitSave.current = null;
   }
 
   useEffect(() => {
@@ -168,6 +195,12 @@ export function EventRegistrationScreen() {
     setRegistrationView(received);
     if (!dirty.current) setAnswers(answersFromView(received));
   }, [registrationData, scope, locale.language]);
+
+  useEffect(() => {
+    if (!ready || !portraitReadConfirmed || !loadedPortrait || currentScope.current !== scope || portraitSession.preview || portraitSession.editRevision > 0) return;
+    setPortraitSession(current => current.scopeKey !== scopeKey || current.preview || current.editRevision > 0 ? current : { ...current, savedPortrait: loadedPortrait, saveState: "saved", history: current.history.length ? current.history : seedPortraitHistory({ registrationData, questions: [], answers: {}, savedPortrait: loadedPortrait }) });
+    setPersona(current => current ?? eventRegistrationPersonaToView({ persona: loadedPortrait!.persona }));
+  }, [portraitData, scope]);
 
   if (previousScope.current !== scope) {
     previousScope.current = scope;
@@ -237,15 +270,25 @@ export function EventRegistrationScreen() {
     latestView.current = null;
     eventState.refresh();
     registrationState.refresh();
+    portraitState.refresh();
   }
 
   function setAnswer(question: EventRegistrationQuestionView, value: string) {
     if (!isScopeCurrent()) return;
+    if ((answers[question.field] ?? question.answer) === value) return;
     dirty.current = true; editRevision.current++;
     setAnswers((current) => ({
       ...current,
       [question.field]: value
     }));
+    const index = portraitSession.history.findIndex(entry => entry.field === question.field);
+    if (index >= 0) {
+      const changed = value.trim() ? editPortraitHistory(portraitSession, index, value) : { ...portraitSession, history: portraitSession.history.slice(0, index), editRevision: portraitSession.editRevision + 1, preview: null, saveState: "idle" as const };
+      setPortraitSession(changed);
+      setAdaptiveTurns(adaptiveTurns.filter(turn => changed.history.some(entry => entry.field === turn.field && entry.answer === turn.answer)));
+    } else if (portraitSession.preview || portraitSession.savedPortrait) setPortraitSession(current => ({ ...current, preview: null, editRevision: current.editRevision + 1, saveState: "idle" }));
+    pendingPortraitSave.current = null;
+    setPersona(null); setAdaptiveQuestion(null); setAdaptiveAnswer(""); setAdaptiveDone(false);
   }
 
   function changeAdaptiveAnswer(value: string) {
@@ -265,7 +308,8 @@ export function EventRegistrationScreen() {
               prompt: adaptiveQuestion.prompt,
               ...(adaptiveQuestion.questionToken
                 ? { questionToken: adaptiveQuestion.questionToken }
-                : {})
+                : {}),
+              ...(adaptiveQuestion.portraitAdaptiveToken ? { portraitAdaptiveToken: adaptiveQuestion.portraitAdaptiveToken } : {})
             }
           ]
         : adaptiveTurns;
@@ -283,16 +327,18 @@ export function EventRegistrationScreen() {
   }
 
   async function requestAdaptiveQuestion() {
-    if (!registrationView || doneRef.current || registrationQuestionnaireProgress([
-      ...Object.entries(answers).map(([field, answer]) => ({ field, answer })),
-      ...adaptiveTurns,
+    if (!registrationView || !portraitReadConfirmed || questionsChanged || doneRef.current || registrationQuestionnaireProgress([
+      ...portraitSession.history,
       ...(adaptiveQuestion ? [{ field: adaptiveQuestion.field, answer: adaptiveAnswer }] : [])
     ]).answeredCount === 8) {
       return;
     }
 
-    const { body, turns } = adaptiveBody();
-    const controller = beginRequest();
+    let nextSession: PortraitSession;
+    try { nextSession = portraitDraft(); } catch { setAdaptiveError(locale.t("portrait66.stale")); return; }
+    const { body: admissionBody, turns } = adaptiveBody();
+    const body = { mode: "portrait-interview", language: locale.language === "en" ? "en" : "zh", transcript: registrationView.allowedActions?.includes("apply") ? admissionBody.transcript : nextSession.history.map(entry => ({ field: entry.field, answer: entry.answer, prompt: entry.prompt ?? locale.t(`portrait66.field.${entry.field}`) })) };
+    const controller = beginRequest(false);
     if (!controller) return;
     const revision = editRevision.current;
 
@@ -309,7 +355,9 @@ export function EventRegistrationScreen() {
     if (result.success && result.status >= 200 && result.status < 300) {
       if (editRevision.current !== revision) { finishRequest(controller); return; }
       const nextStep = eventRegistrationAdaptiveStepToView(result.data);
+      if ((!nextStep.done && !nextStep.question) || (nextStep.question && (!nextStep.question.questionToken || !nextStep.question.portraitAdaptiveToken || nextSession.history.some(entry => entry.field === nextStep.question!.field)))) { setAdaptiveError(locale.t("registration.reasonTemporary")); finishRequest(controller); return; }
       editRevision.current++;
+      setPortraitSession(nextSession);
       setAdaptiveTurns(turns);
       setAdaptiveAnswer("");
       setAdaptiveDone(nextStep.done);
@@ -327,13 +375,13 @@ export function EventRegistrationScreen() {
       return;
     }
 
-    const { body, turns } = adaptiveBody();
-
-    if (body.transcript.length === 0) {
-      setAdaptiveError("先回答一题，再生成活动画像。");
-      return;
-    }
-    const controller = beginRequest();
+    let nextSession: PortraitSession;
+    let body: ReturnType<typeof portraitPreviewBody>;
+    try { nextSession = portraitDraft(); body = portraitPreviewBody(nextSession, locale.language === "en" ? "en" : "zh"); }
+    catch { setAdaptiveError(locale.t("registration.questionnaireHint")); return; }
+    if (!portraitReadConfirmed || questionsChanged) return;
+    const { turns } = adaptiveBody();
+    const controller = beginRequest(false);
     if (!controller) return;
     const revision = editRevision.current;
 
@@ -349,16 +397,101 @@ export function EventRegistrationScreen() {
 
     if (result.success && result.status >= 200 && result.status < 300) {
       if (editRevision.current !== revision) { finishRequest(controller); return; }
+      const preview = result.data as PortraitPreviewResult;
+      const validatedPersona = portraitPersonaSchema.safeParse(preview?.persona);
+      if (!validatedPersona.success || typeof preview?.generationToken !== "string" || !preview.generationToken || typeof preview.answersVersion !== "string" || !/^[a-f0-9]{64}$/.test(preview.answersVersion)) { setAdaptiveError(locale.t("registration.reasonTemporary")); finishRequest(controller); return; }
       editRevision.current++;
+      pendingPortraitSave.current = null;
+      setPortraitSession({ ...nextSession, view: "result", preview: { ...preview, persona: validatedPersona.data }, saveState: "idle" });
       setAdaptiveTurns(turns);
       setAdaptiveAnswer("");
       setAdaptiveQuestion(null);
       setPersona(eventRegistrationPersonaToView(result.data));
     } else {
       setAdaptiveError(result.success ? "暂时无法生成活动画像，请重试。" : result.error.message);
+      if (!result.success && [409, 422].includes(result.status) && editRevision.current === revision) setPortraitSession({ ...nextSession, preview: null, saveState: "rejected" });
     }
 
     finishRequest(controller);
+  }
+
+  function portraitDraft(): PortraitSession {
+    if (!adaptiveQuestion || !adaptiveAnswer.trim()) return portraitSession;
+    if (!adaptiveQuestion.questionToken || !adaptiveQuestion.portraitAdaptiveToken) throw new Error("A workspace-bound question proof is required.");
+    return appendPortraitAnswer(portraitSession, { id: adaptiveQuestion.questionToken, field: adaptiveQuestion.field as PortraitField, prompt: adaptiveQuestion.prompt, options: adaptiveQuestion.options, answer: adaptiveAnswer.trim(), proof: { kind: "signed_question", questionToken: adaptiveQuestion.questionToken, portraitAdaptiveToken: adaptiveQuestion.portraitAdaptiveToken, answer: adaptiveAnswer.trim() } });
+  }
+
+  async function savePortrait() {
+    if (!portraitSession.preview || !portraitReadConfirmed || questionsChanged || portraitSession.saveState === "saved") return;
+    const controller = beginRequest(false);
+    if (!controller) return;
+    const revision = editRevision.current;
+    const mutation = pendingPortraitSave.current ?? { mutationId: `portrait:${Date.now()}:${Math.random().toString(36).slice(2)}`, expectedPortraitVersion: portraitSession.savedPortrait?.version ?? null, generationToken: portraitSession.preview.generationToken };
+    pendingPortraitSave.current = mutation;
+    setAdaptivePending("persona"); setAdaptiveError(null);
+    setPortraitSession(current => ({ ...current, saveState: "saving" }));
+    const saved = await client.post<unknown>(`${eventRegistrationPath(eventId)}/portrait`, { body: mutation, signal: controller.signal });
+    if (!isScopeCurrent() || request.current !== controller) return;
+    if (!saved.success || saved.status < 200 || saved.status >= 300) {
+      setAdaptiveError(saved.success ? locale.t("portrait66.pending") : saved.error.message);
+      const rejected = !saved.success && [400, 401, 403, 404, 409, 422].includes(saved.status);
+      if (rejected) pendingPortraitSave.current = null;
+      setPortraitSession(current => ({ ...current, preview: rejected ? null : current.preview, saveState: rejected ? "rejected" : "pending-confirmation" }));
+      finishRequest(controller); return;
+    }
+    const readback = await client.get<unknown>(`${eventRegistrationPath(eventId)}/portrait`, { signal: controller.signal });
+    if (!isScopeCurrent() || request.current !== controller) return;
+    if (!readback.success || readback.status < 200 || readback.status >= 300 || !portraitReceiptMatches(saved.data, readback.data, actorId, eventId, mutation.mutationId)) {
+      setPortraitSession(current => ({ ...current, saveState: "pending-confirmation" }));
+      setAdaptiveError(locale.t("portrait66.pending")); finishRequest(controller); return;
+    }
+    const confirmed = portraitToView(readback.data)!;
+    pendingPortraitSave.current = null;
+    setPortraitSession(current => ({ ...current, savedPortrait: confirmed, saveState: editRevision.current === revision ? "saved" : "idle" }));
+    finishRequest(controller);
+  }
+
+  async function recoverPortraitSources() {
+    if (portraitSession.saveState !== "rejected") return;
+    const controller = beginRequest(false);
+    if (!controller) return;
+    const revision = editRevision.current;
+    setAdaptivePending("persona");
+    const [registrationRead, portraitRead] = await Promise.all([
+      client.get<unknown>(`${eventRegistrationPath(eventId)}?language=${encodeURIComponent(locale.language)}&portraitProofs=true`, { signal: controller.signal }),
+      client.get<unknown>(`${eventRegistrationPath(eventId)}/portrait`, { signal: controller.signal })
+    ]);
+    if (!isScopeCurrent() || request.current !== controller) return;
+    try {
+      if (!registrationRead.success || !portraitRead.success) throw new Error(locale.t("registration.reasonTemporary"));
+      const sourceRead = portraitReadResultSchema.parse(portraitRead.data);
+      const savedPortrait = portraitToView(portraitRead.data);
+      if (sourceRead.registrationSource && (sourceRead.registrationSource.actorId !== actorId || sourceRead.registrationSource.eventId !== eventId)) throw new Error(locale.t("registration.reasonTemporary"));
+      if (savedPortrait && (savedPortrait.actorId !== actorId || savedPortrait.eventId !== eventId)) throw new Error(locale.t("registration.reasonTemporary"));
+      const latest = eventRegistrationToView(registrationRead.data, locale.language);
+      const draftAnswers = Object.fromEntries(portraitSession.history.map(entry => [entry.field, entry.answer]));
+      const currentSources = seedPortraitHistory({ registrationData: registrationRead.data, questions: latest.questions, answers: draftAnswers, savedPortrait, registrationSource: sourceRead.registrationSource ?? null });
+      const history = portraitSession.history.map(entry => {
+        if (entry.proof.kind === "signed_question") return entry;
+        const source = currentSources.find(item => item.field === entry.field);
+        if (!source) throw new Error(locale.t("portrait66.stale"));
+        return { ...source, answer: entry.answer, proof: { ...source.proof, answer: entry.answer } };
+      });
+      if (editRevision.current !== revision) return;
+      editRevision.current++;
+      pendingPortraitSave.current = null;
+      setPortraitSession(current => ({ ...current, history, savedPortrait, preview: null, view: "interview", saveState: "idle", editRevision: current.editRevision + 1 }));
+      setPersona(null); setAdaptiveError(null);
+    } catch (error) { setAdaptiveError(error instanceof Error ? error.message : locale.t("registration.reasonTemporary")); }
+    finally { finishRequest(controller); }
+  }
+  function restartPortraitQuestions() {
+    if (!isScopeCurrent() || !portraitReadConfirmed || questionsChanged || request.current || portraitSession.saveState !== "rejected") return;
+    const restarted = restartUnstoredPortraitQuestions(portraitSession);
+    if (restarted === portraitSession) return;
+    editRevision.current++; pendingPortraitSave.current = null;
+    setPortraitSession(restarted); setAdaptiveQuestion(null); setAdaptiveAnswer(""); setAdaptiveDone(false); setAdaptiveError(null); setPersona(null);
+    setAdaptiveTurns(adaptiveTurns.filter(turn => restarted.history.some(entry => entry.field === turn.field && entry.answer === turn.answer)));
   }
 
   async function verifyRegistrationReadback(receipt: unknown, status: "rsvped" | "cancelled", controller: AbortController) {
@@ -528,6 +661,38 @@ export function EventRegistrationScreen() {
       }
     });
   }
+
+  function showPortraitView(view: PortraitSession["view"]) {
+    if (!isScopeCurrent() || (view !== "registration" && !portraitReadConfirmed)) return;
+    setPortraitSession(current => ({ ...current, view, history: current.history.length ? current.history : seedPortraitHistory({ registrationData, questions: registrationView?.questions ?? [], answers, savedPortrait: current.saveState === "saved" ? current.savedPortrait : null, registrationSource }) }));
+  }
+
+  function editPortraitAnswer(index: number, answer: string) {
+    if (!isScopeCurrent() || request.current || !portraitReadConfirmed || !latestView.current || questionsChanged) return;
+    try {
+      const edited = editPortraitHistory(portraitSession, index, answer);
+      if (edited === portraitSession) return;
+      editRevision.current++;
+      pendingPortraitSave.current = null;
+      setPortraitSession(edited);
+      setPersona(null); setAdaptiveQuestion(null); setAdaptiveAnswer(""); setAdaptiveDone(false);
+      setAdaptiveTurns(adaptiveTurns.filter(turn => edited.history.some(entry => entry.field === turn.field && entry.answer === turn.answer)));
+    } catch { setAdaptiveError(locale.t("portrait66.stale")); }
+  }
+
+  if (ready && event && registrationView) return <Registration7aViews
+    recommendations={<Registration7aRecommendations eventId={eventId} scopeKey={scopeKey} onContact={id => { if (isScopeCurrent()) router.push({ pathname: "/contacts/[id]", params: { id } }); }} />}
+    onReloadPortraitSources={recoverPortraitSources}
+    onRestartUnstoredQuestions={restartPortraitQuestions}
+    session={portraitSession} eventTitle={event.title} eventMeta={[event.startsAt, event.location].filter(Boolean).join(" · ")}
+    registration={registrationView} answers={answers} question={adaptiveQuestion} answer={adaptiveAnswer} done={adaptiveDone} persona={persona}
+    pending={pendingAction !== null} portraitPending={adaptivePending !== null} readConfirmed={loadedRegistrationView !== null}
+    portraitReadConfirmed={portraitReadConfirmed} readFailure={registrationState.kind === "failure" || registrationState.kind === "offline" || eventState.kind === "failure" || eventState.kind === "offline" || portraitReadError !== null} onRetryRead={refresh}
+    questionsChanged={questionsChanged} error={submitError ?? adaptiveError ?? portraitReadError ?? (registrationState.kind === "failure" || registrationState.kind === "offline" ? registrationState.error.message : eventState.kind === "failure" || eventState.kind === "offline" ? eventState.error.message : null)} feedback={feedback}
+    refreshControl={<RefreshControl onRefresh={refresh} refreshing={eventState.refreshing || registrationState.refreshing} tintColor="#0A5CFF" />}
+    onBack={() => router.push({ params: { id: eventId }, pathname: "/events/[id]" })} onView={showPortraitView} onSetAnswer={setAnswer} onAnswer={changeAdaptiveAnswer}
+    onNext={requestAdaptiveQuestion} onGenerate={generateAdaptivePersona} onSave={savePortrait} onSubmit={submitRegistration} onCancel={confirmCancellation} onLoadNew={loadNewQuestions} onEdit={editPortraitAnswer}
+  />;
 
   return (
     <AppScreen

@@ -12,6 +12,7 @@ function domainFor(path: string): string {
   if (path.startsWith('/api/notes')) return 'notes';
   if (path.startsWith('/api/task-suggestions')) return 'task-suggestions';
   if (path.startsWith('/api/tasks')) return 'tasks';
+  if (path === '/api/relationship-tasks') return 'tasks';
   if (path.startsWith('/api/reminders')) return 'followups';
   if (path.includes('/meeting-details')) return 'meetings';
   if (path.startsWith('/api/appointments')) return 'appointments';
@@ -70,7 +71,9 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
   const domainId = domainFor(endpointTemplate);
   const providerTodo = endpointTemplate.startsWith('/api/relationship-signals/email-calendar');
   const secret = providerTodo || endpointTemplate.startsWith('/api/account/session/')
-    || endpointTemplate.startsWith('/api/auth/') || endpointTemplate.startsWith('/api/devices/');
+    || endpointTemplate.startsWith('/api/auth/') || endpointTemplate.startsWith('/api/devices/')
+    // Private portraits remain network-only until trusted grant/epoch invalidation is available.
+    || endpointTemplate === '/api/events/:id/registration/portrait';
   const binary = endpointTemplate.endsWith('/image') || endpointTemplate.endsWith('/content');
   return {
     consumerFile,
@@ -92,7 +95,11 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/api/ai-session-management.ts","PATCH","/api/ai/conversations/sessions/:id"],
   ["src/api/auth-session.ts","POST","/api/account/session/sign-out"],
   ["src/api/auth-session.ts","POST","/api/auth/register"],
+  ["src/api/auth-session.ts","POST","/api/auth/mobile/credentials"],
+  ["src/api/auth-session.ts","POST","/api/auth/mobile/google/exchange"],
   ["src/api/AuthSessionProvider.tsx","GET","/api/account/me"],
+  ["src/api/AuthSessionProvider.tsx","POST","/api/auth/mobile/credentials"],
+  ["src/api/AuthSessionProvider.tsx","POST","/api/auth/mobile/google/exchange"],
   ["src/api/business-card-import.ts","GET","/api/contact-drafts/business-card/imports/:id"],
   ["src/api/business-card-import.ts","POST","/api/contact-drafts/business-card/imports/:id/cancel"],
   ["src/api/mobile-auth.ts","POST","/api/auth/mobile/credentials"],
@@ -203,7 +210,6 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/contacts/ContactNeedsMatchesScreen.tsx","GET","/api/contacts/needs-matches"],
   ["src/screens/contacts/ContactNotesSection.tsx","GET","/api/notes"],
   ["src/screens/contacts/ContactPipelineScreen.tsx","GET","/api/connections"],
-  ["src/screens/contacts/ContactPipelineScreen.tsx","PATCH","/api/connections/:id/stage"],
   ["src/screens/contacts/ContactPipelineScreen.tsx","GET","/api/contacts"],
   ["src/screens/contacts/ContactPipelineScreen.tsx","GET","/api/tasks"],
   ["src/screens/contacts/ContactsDashboardScreen.tsx","POST","/api/dashboard/opportunities/recompute"],
@@ -233,14 +239,18 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/events/EventAnalyticsScreen.tsx","GET","/api/events/:id/analytics/aggregate"],
   ["src/screens/events/EventAnalyticsScreen.tsx","GET","/api/events/:id/analytics/attendee"],
   ["src/screens/events/EventAttendeeRosterLink.tsx","GET","/api/events/:id"],
-  ["src/screens/events/EventAttendeesScreen.tsx","POST","/api/contact-drafts/event-attendees/import"],
-  ["src/screens/events/EventAttendeesScreen.tsx","GET","/api/events/:id"],
-  ["src/screens/events/EventAttendeesScreen.tsx","GET","/api/events/:id/attendees"],
-  ["src/screens/events/EventAttendeesScreen.tsx","POST","/api/events/:id/attendees/import"],
-  ["src/screens/events/EventAttendeesScreen.tsx","POST","/api/events/:id/encounters"],
-  ["src/screens/events/EventAttendeesScreen.tsx","POST","/api/events/:id/encounters/:id/evidence"],
-  ["src/screens/events/EventAttendeesScreen.tsx","GET","/api/events/:id/matches"],
-  ["src/screens/events/EventAttendeesScreen.tsx","POST","/api/events/:id/want-to-connect"],
+  ["src/view-models/event-attendee-controller.ts","GET","/api/events/:id/operations"],
+  ["src/view-models/event-attendee-controller.ts","GET","/api/events/:id/operations/participants/:id"],
+  ["src/view-models/event-attendee-controller.ts","POST","/api/events/:id/operations/check-in"],
+  ["src/view-models/event-attendee-controller.ts","POST","/api/events/:id/operations/contact-requests"],
+  ["src/view-models/event-attendee-controller.ts","POST","/api/events/:id/operations/contact-requests/:id/:id"],
+  ["src/screens/tasks/RelationshipLifecycleList.tsx","GET","/api/relationship-tasks"],
+  ["src/screens/tasks/RelationshipLifecycleScreen.tsx","GET","/api/connections/:id/lifecycle"],
+  ["src/screens/tasks/RelationshipLifecycleScreen.tsx","POST","/api/connections/:id/lifecycle"],
+  ["src/view-models/relationship-initialization.ts","GET","/api/connections"],
+  ["src/view-models/relationship-initialization.ts","GET","/api/connections/:id/lifecycle"],
+  ["src/view-models/relationship-initialization.ts","GET","/api/contacts/:id/relationship-initialization"],
+  ["src/view-models/relationship-initialization.ts","POST","/api/contacts/:id/relationship-initialization"],
   ["src/screens/events/EventCenterScreen.tsx","GET","/api/events/center"],
   ["src/screens/events/EventCheckInScreen.tsx","GET","/api/events/:id/operations/admin/check-ins"],
   ["src/screens/events/EventCheckInScreen.tsx","POST","/api/events/:id/operations/admin/check-ins"],
@@ -269,6 +279,9 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/events/EventRegistrationScreen.tsx","POST","/api/events/:id/registration/cancel"],
   ["src/screens/events/EventRegistrationScreen.tsx","POST","/api/events/:id/registration/interview"],
   ["src/screens/events/EventRegistrationScreen.tsx","POST","/api/events/:id/registration/persona"],
+  ["src/screens/events/EventRegistrationScreen.tsx","GET","/api/events/:id/registration/portrait"],
+  ["src/screens/events/EventRegistrationScreen.tsx","POST","/api/events/:id/registration/portrait"],
+  ["src/screens/events/Registration7aRecommendationsResource.tsx","GET","/api/recommendations/event/:id"],
   ["src/screens/events/EventRegistrationScreen.tsx","GET","/api/events/public/:id"],
   ["src/screens/events/EventRolesScreen.tsx","DELETE","/api/events/:id/access/assignments/:id"],
   ["src/screens/events/EventRolesScreen.tsx","GET","/api/events/:id/access/assignments/:id"],

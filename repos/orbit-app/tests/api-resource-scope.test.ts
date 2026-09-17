@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { createServer, type Server } from "node:http";
 import { createRequire } from "node:module";
-import { readFileSync } from "node:fs";
 import test from "node:test";
 import { build } from "esbuild";
 import { chromium, type Browser } from "playwright";
@@ -31,15 +30,10 @@ export const writeSnapshot = async (baseUrl, actorId, path, result) => { state.w
 `;
 
 test.before(async () => {
-  const attendeesSource = readFileSync(new URL("../src/screens/events/EventAttendeesScreen.tsx", import.meta.url), "utf8");
-  const attendeeReads = attendeesSource.slice(attendeesSource.indexOf("  const { baseUrl } = useOrbitApiBaseUrl();"), attendeesSource.indexOf("  const [pendingAttendeeId"));
   const result = await build({
-    stdin: { contents: `import React from "react"; import { createRoot } from "react-dom/client"; import { useApiResource } from "./src/hooks/useApiResource"; import { useOrbitAuthSession } from "./src/api/AuthSessionProvider"; import { useOrbitApiBaseUrl } from "./src/api/ApiBaseUrlProvider"; import { eventDetailPath, eventAttendeesPath, eventMatchesPath } from "./src/api/endpoints";
-      const eventAttendeeRosterToView = data => ({ attendees: data.value ? [{}] : [] }); const eventMatchesToView = data => ({ matches: data.value ? [{}] : [] });
-      function AttendeeReads() { useOrbitAuthSession(); const eventId = window.fixture.eventId; ${attendeeReads}
-        return <>{[eventState, rosterState, matchesState].map((state, index) => <output key={index}>{state.kind === "success" ? state.data.value : state.kind}</output>)}</>; }
+    stdin: { contents: `import React from "react"; import { createRoot } from "react-dom/client"; import { useApiResource } from "./src/hooks/useApiResource"; import { useOrbitAuthSession } from "./src/api/AuthSessionProvider";
       function Screen() { const auth = useOrbitAuthSession(); const state = useApiResource("/api/contacts/same-contact", () => false, { ...(location.search.includes("scoped") ? { scopeKey: auth.actorId } : {}), ...(location.search.includes("network-only") ? { cachePolicy: "network-only" } : {}) }); return <><output>{state.kind === "success" ? state.data.value : state.kind}</output><button onClick={state.refresh}>刷新</button></>; }
-      createRoot(document.getElementById("root")).render(location.search.includes("attendees") ? <AttendeeReads /> : <Screen />);`, resolveDir: process.cwd(), loader: "tsx" },
+      createRoot(document.getElementById("root")).render(<Screen />);`, resolveDir: process.cwd(), loader: "tsx" },
     bundle: true, write: false, format: "iife", jsx: "automatic", define: { "process.env.NODE_ENV": '"test"', "process.env": "{}" },
     plugins: [{ name: "resource-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /\/(AuthSessionProvider|ApiBaseUrlProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "resource-test" }));
@@ -52,30 +46,9 @@ test.before(async () => {
   browser = await chromium.launch({ headless: true, timeout: 15000, ...(process.env.ORBIT_TEST_CHROME_PATH ? { executablePath: process.env.ORBIT_TEST_CHROME_PATH } : {}) });
 });
 
-for (const status of [401, 403, 404, 503]) test(`actual attendee read declarations reject cached content on ${status}`, async t => {
-  const page = await browser.newPage(); t.after(() => page.close()); page.setDefaultTimeout(2000);
-  await page.goto(url + "?attendees&cached");
-  await page.waitForFunction(() => (window as any).fixture.requests.length === 3);
-  await page.evaluate(status => { for (let i = 0; i < 3; i++) (window as any).fixture.reply(i, null, status); }, status);
-  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-  assert.deepEqual(await page.locator("output").allTextContents(), ["failure", "failure", "failure"]);
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.snapshotReads), []);
-});
-
-for (const [key, value] of [["accountId", "account:B"], ["baseUrl", "http://fixture-b"], ["eventId", "event:B"]]) test(`actual attendee read declarations suppress ${key} late ACK`, async t => {
-  const page = await browser.newPage(); t.after(() => page.close()); page.setDefaultTimeout(2000);
-  await page.goto(url + "?attendees");
-  await page.waitForFunction(() => (window as any).fixture.requests.length === 3);
-  await page.evaluate(([key, value]) => (window as any).fixture.switchScope(key, value), [key, value]);
-  await page.waitForFunction(() => (window as any).fixture.requests.length === 6);
-  assert.equal(await page.getByText("旧账号私有名单", { exact: true }).count(), 0);
-  await page.evaluate(() => { for (let i = 3; i < 6; i++) (window as any).fixture.reply(i, { value: "当前名单" }); });
-  await page.getByText("当前名单", { exact: true }).first().waitFor();
-  await page.evaluate(() => { for (let i = 0; i < 3; i++) (window as any).fixture.reply(i, { value: "旧账号迟到私有名单" }); });
-  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-  assert.equal(await page.getByText("旧账号迟到私有名单", { exact: true }).count(), 0);
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.writes), []);
-});
+// The seven attendee denial / late-owner cases now live in
+// event-attendee-interactions.test.ts against the mounted canonical route.
+// Slicing retired hook declarations out of the old screen exercised no route.
 
 test.after(async () => {
   await browser?.close();

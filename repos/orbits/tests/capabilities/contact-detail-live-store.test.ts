@@ -84,6 +84,11 @@ test("live contact detail persists actor-scoped tag status note and interaction 
       });
     }
   }
+  for (const record of await store.listRecords({ collectionName: "connections", workspaceId })) {
+    if (record.payload.contactId === "contact_078") {
+      await store.deleteRecord({ collectionName: "connections", deletedAt: "2026-07-02T02:01:00.000Z", recordId: record.recordId, workspaceId });
+    }
+  }
 
   const provider = createStorageContactGraphProvider({
     sourceLabel: "Contact detail memory live storage",
@@ -254,6 +259,371 @@ test("live contact detail persists actor-scoped tag status note and interaction 
       "actor:contact-detail-isolation",
     ),
     null,
+  );
+});
+
+test("canonical connection stages are authoritative even without markers and reject detail status writes", async () => {
+  const actorId = "actor:canonical-contact-detail";
+  const workspaceId = "workspace:canonical-contact-detail";
+  const contactId = "contact:legacy-canonical";
+  const source = { type: "manual", id: "source:canonical-contact-detail" };
+  const base = {
+    createdAt: "2026-09-17T00:00:00Z",
+    evidenceIds: ["evidence:canonical-contact-detail"],
+    source,
+    updatedAt: "2026-09-17T01:00:00Z",
+  };
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  await store.upsertRecord({
+    ...activeRecord({
+      collectionName: "contacts",
+      payload: {
+        ...base,
+        displayName: "Legacy canonical contact",
+        id: contactId,
+        stage: "needs_follow_up",
+      },
+      searchText: "Legacy canonical contact",
+      targetType: "contact",
+      workspaceId,
+    }),
+    userId: actorId,
+  });
+  await store.upsertRecord({
+    ...activeRecord({
+      collectionName: "connections",
+      payload: {
+        ...base,
+        accountId: actorId,
+        contactId,
+        id: "connection:legacy-canonical",
+        version: 1,
+        stage: "active",
+        summary: "Canonical relationship without a lifecycle marker",
+        valueTypes: [],
+      },
+      searchText: "Canonical relationship without a lifecycle marker",
+      targetType: "connection",
+      workspaceId,
+    }),
+    userId: actorId,
+  });
+  const provider = createStorageContactGraphProvider({ store, workspaceId });
+  await provider.upsertContactDetailState?.({
+    actorId,
+    contactId,
+    notes: [],
+    status: "nurture",
+    tags: ["legacy-detail-state"],
+    updatedAt: "2026-09-17T00:30:00Z",
+  });
+  const service = createLiveContactDetailTagStatusService({
+    now: () => "2026-09-17T02:00:00Z",
+    provider,
+  });
+
+  const before = await service.getContactDetail({ actorId, contactId });
+  assert.equal(before.success, true);
+  if (!before.success || !before.data.contact) throw new Error("Missing canonical contact");
+  assert.equal(before.data.contact.status, "active");
+  assert.equal(before.data.contact.updatedAt, base.updatedAt);
+
+  const rejected = await service.updateContactDetail({
+    actorId,
+    contactId,
+    status: "archived",
+  });
+  assert.equal(rejected.success, false);
+  if (!rejected.success) {
+    assert.equal(rejected.error.code, "CONTACT_DETAIL_CANONICAL_STATUS_LIFECYCLE_ONLY");
+    assert.equal(rejected.error.provenance.databaseReadExecuted, true);
+    assert.equal(rejected.error.provenance.databaseWriteExecuted, false);
+  }
+  assert.equal(
+    (await provider.readContactDetailState?.(contactId, actorId))?.status,
+    "nurture",
+  );
+  const after = await service.getContactDetail({ actorId, contactId });
+  assert.equal(after.success, true);
+  if (!after.success || !after.data.contact) throw new Error("Missing canonical readback");
+  assert.equal(after.data.contact.status, "active");
+
+  const legacyContactId = "contact:ordinary-legacy";
+  await store.upsertRecord({
+    ...activeRecord({
+      collectionName: "contacts",
+      payload: {
+        ...base,
+        displayName: "Ordinary legacy contact",
+        id: legacyContactId,
+        stage: "captured",
+      },
+      searchText: "Ordinary legacy contact",
+      targetType: "contact",
+      workspaceId,
+    }),
+    userId: actorId,
+  });
+  await provider.upsertContactDetailState?.({
+    actorId,
+    contactId: legacyContactId,
+    notes: [],
+    status: "needs_follow_up",
+    tags: [],
+    updatedAt: "2026-09-17T00:30:00Z",
+  });
+  const legacyUpdate = await service.updateContactDetail({
+    actorId,
+    contactId: legacyContactId,
+    status: "archived",
+  });
+  assert.equal(legacyUpdate.success, true);
+  if (!legacyUpdate.success || !legacyUpdate.data.contact) throw new Error("Missing legacy contact update");
+  assert.equal(legacyUpdate.data.contact.status, "archived");
+  assert.equal(
+    (await provider.readContactDetailState?.(legacyContactId, actorId))?.status,
+    "archived",
+  );
+});
+
+test("pending and ready lifecycle markers block status bypass but retain private field updates", async () => {
+  const actorId = "actor:contact-detail-lifecycle-markers";
+  const workspaceId = "workspace:contact-detail-lifecycle-markers";
+  const source = { type: "manual", id: "source:contact-detail-lifecycle-markers" };
+  const base = {
+    createdAt: "2026-09-17T00:00:00Z",
+    evidenceIds: ["evidence:contact-detail-lifecycle-markers"],
+    source,
+    updatedAt: "2026-09-17T01:00:00Z",
+  };
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const pendingContactId = "contact:pending-marker";
+  const readyContactId = "contact:ready-marker";
+  for (const row of [
+    {
+      contactId: pendingContactId,
+      contactStage: "captured",
+      connectionStage: "captured",
+      marker: "pending",
+    },
+    {
+      contactId: readyContactId,
+      contactStage: "active",
+      connectionStage: "active",
+      marker: "ready",
+    },
+  ] as const) {
+    await store.upsertRecord({
+      ...activeRecord({
+        collectionName: "contacts",
+        payload: {
+          ...base,
+          displayName: row.contactId,
+          id: row.contactId,
+          lifecycleInitialization: row.marker,
+          stage: row.contactStage,
+        },
+        searchText: row.contactId,
+        targetType: "contact",
+        workspaceId,
+      }),
+      userId: actorId,
+    });
+    await store.upsertRecord({
+      ...activeRecord({
+        collectionName: "connections",
+        payload: {
+          ...base,
+          accountId: actorId,
+          contactId: row.contactId,
+          id: `connection:${row.contactId}`,
+          lifecycleInitialization: row.marker,
+          stage: row.connectionStage,
+          summary: `${row.marker} relationship candidate`,
+          valueTypes: [],
+        },
+        searchText: row.contactId,
+        targetType: "connection",
+        workspaceId,
+      }),
+      userId: actorId,
+    });
+  }
+  const provider = createStorageContactGraphProvider({ store, workspaceId });
+  await provider.upsertContactDetailState?.({
+    actorId,
+    contactId: pendingContactId,
+    notes: [],
+    status: "archived",
+    tags: [],
+    updatedAt: "2026-09-17T01:30:00Z",
+  });
+  await provider.upsertContactDetailState?.({
+    actorId,
+    contactId: readyContactId,
+    notes: [],
+    status: "nurture",
+    tags: [],
+    updatedAt: "2026-09-17T01:30:00Z",
+  });
+  const service = createLiveContactDetailTagStatusService({
+    now: () => "2026-09-17T02:00:00Z",
+    provider,
+  });
+
+  const pendingRead = await service.getContactDetail({
+    actorId,
+    contactId: pendingContactId,
+  });
+  assert.equal(pendingRead.success, true);
+  if (!pendingRead.success || !pendingRead.data.contact) {
+    throw new Error("Missing pending contact detail");
+  }
+  assert.equal(pendingRead.data.contact.status, "needs_follow_up");
+
+  const pendingStatus = await service.updateContactDetail({
+    actorId,
+    contactId: pendingContactId,
+    status: "active",
+  });
+  assert.equal(pendingStatus.success, false);
+  if (!pendingStatus.success) {
+    assert.equal(
+      pendingStatus.error.code,
+      "CONTACT_DETAIL_CANONICAL_STATUS_LIFECYCLE_ONLY",
+    );
+  }
+  assert.equal(
+    (await provider.readContactDetailState?.(pendingContactId, actorId))?.status,
+    "archived",
+  );
+
+  const pendingPrivateUpdate = await service.updateContactDetail({
+    actorId,
+    addTags: ["priority:warm-follow-up"],
+    contactId: pendingContactId,
+    note: { authorLabel: "Orbit operator", body: "Private pending note" },
+  });
+  assert.equal(pendingPrivateUpdate.success, true);
+  assert.equal(
+    (await provider.readContactDetailState?.(pendingContactId, actorId))?.status,
+    "archived",
+  );
+  const pendingState = await provider.readContactDetailState?.(
+    pendingContactId,
+    actorId,
+  );
+  assert.ok(pendingState?.tags.includes("priority:warm-follow-up"));
+  assert.ok(pendingState?.notes.some((note) => note.body === "Private pending note"));
+
+  const readyRead = await service.getContactDetail({
+    actorId,
+    contactId: readyContactId,
+  });
+  assert.equal(readyRead.success, true);
+  if (!readyRead.success || !readyRead.data.contact) {
+    throw new Error("Missing ready contact detail");
+  }
+  assert.equal(readyRead.data.contact.status, "active");
+  const readyStatus = await service.updateContactDetail({
+    actorId,
+    contactId: readyContactId,
+    status: "archived",
+  });
+  assert.equal(readyStatus.success, false);
+  if (!readyStatus.success) {
+    assert.equal(
+      readyStatus.error.code,
+      "CONTACT_DETAIL_CANONICAL_STATUS_LIFECYCLE_ONLY",
+    );
+  }
+  assert.equal(
+    (await provider.readContactDetailState?.(readyContactId, actorId))?.status,
+    "nurture",
+  );
+});
+
+test("duplicate owned connection candidates fail closed instead of selecting first or last", async () => {
+  const actorId = "actor:contact-detail-duplicate";
+  const workspaceId = "workspace:contact-detail-duplicate";
+  const contactId = "contact:duplicate-candidate";
+  const source = { type: "manual", id: "source:contact-detail-duplicate" };
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  await store.upsertRecord({
+    ...activeRecord({
+      collectionName: "contacts",
+      payload: {
+        createdAt: "2026-09-17T00:00:00Z",
+        displayName: "Duplicate candidate",
+        evidenceIds: ["evidence:contact-detail-duplicate"],
+        id: contactId,
+        source,
+        stage: "captured",
+        updatedAt: "2026-09-17T01:00:00Z",
+      },
+      searchText: "Duplicate candidate",
+      targetType: "contact",
+      workspaceId,
+    }),
+    userId: actorId,
+  });
+  for (const [id, stage] of [
+    ["connection:duplicate:first", "active"],
+    ["connection:duplicate:last", "nurture"],
+  ] as const) {
+    await store.upsertRecord({
+      ...activeRecord({
+        collectionName: "connections",
+        payload: {
+          accountId: actorId,
+          contactId,
+          createdAt: "2026-09-17T00:00:00Z",
+          evidenceIds: ["evidence:contact-detail-duplicate"],
+          id,
+          source,
+          stage,
+          summary: `Duplicate ${stage} relationship candidate`,
+          version: 1,
+          updatedAt: "2026-09-17T01:00:00Z",
+          valueTypes: [],
+        },
+        searchText: id,
+        targetType: "connection",
+        workspaceId,
+      }),
+      userId: actorId,
+    });
+  }
+  const provider = createStorageContactGraphProvider({ store, workspaceId });
+  await provider.upsertContactDetailState?.({
+    actorId,
+    contactId,
+    notes: [],
+    status: "nurture",
+    tags: [],
+    updatedAt: "2026-09-17T01:30:00Z",
+  });
+  const service = createLiveContactDetailTagStatusService({ provider });
+
+  const read = await service.getContactDetail({ actorId, contactId });
+  assert.equal(read.success, false);
+  if (!read.success) {
+    assert.equal(read.error.code, "CONTACT_DETAIL_AMBIGUOUS_CONNECTION");
+    assert.equal(read.error.provenance.databaseReadExecuted, true);
+    assert.equal(read.error.provenance.databaseWriteExecuted, false);
+  }
+  const update = await service.updateContactDetail({
+    actorId,
+    contactId,
+    status: "archived",
+  });
+  assert.equal(update.success, false);
+  if (!update.success) {
+    assert.equal(update.error.code, "CONTACT_DETAIL_AMBIGUOUS_CONNECTION");
+  }
+  assert.equal(
+    (await provider.readContactDetailState?.(contactId, actorId))?.status,
+    "nurture",
   );
 });
 

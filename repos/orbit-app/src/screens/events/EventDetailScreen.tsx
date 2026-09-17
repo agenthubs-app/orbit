@@ -110,6 +110,9 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
     setCanonicalFooter({ key: canonicalFooterKey, state });
   }, [canonicalFooterKey]);
   const footerState = canonicalFooter?.key === canonicalFooterKey ? canonicalFooter.state : null;
+  const registrationStatus = signedIn && canonical
+    ? footerState?.registration.statusLabel ?? (locale.language === "ja" ? "参加登録を確認中" : locale.language === "en" ? "Checking registration" : "正在确认报名状态")
+    : undefined;
   const sharing = useRef(false);
   const [sharePending, setSharePending] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
@@ -168,13 +171,32 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
           <Pressable accessibilityRole="button" onPress={refreshAll} style={styles.inlineButton}><Text style={styles.inlineButtonText}>重新读取活动</Text></Pressable>
         </View> : null}
         {shareError ? <Text accessibilityRole="alert" style={styles.errorText}>{shareError}</Text> : null}
-        {data && event ? <EventDetailCard baseUrl={baseUrl} data={data} onNavigate={navigate}
-          rosterScopeKey={JSON.stringify([scopeKey, personalizedRefreshKey])} isScopeCurrent={isCurrent}
-          personalizedModules={signedIn ? canonical ? <CanonicalEventDetailModules key={canonicalFooterKey}
-            eventId={event.id} endsAt={data.event.endsAt} scopeKey={canonicalFooterKey}
-            onRegistrationMutationConfirmed={refreshAll}
-            onRegistrationChange={onCanonicalRegistrationChange} /> : <AuthenticatedEventDetailModules eventId={event.id} key={event.id}
-            refreshKey={personalizedRefreshKey} scopeKey={scopeKey ?? "event-detail"} isScopeCurrent={isCurrent} /> : null} /> : null}
+        {data && event ? <EventDetailCard
+          baseUrl={baseUrl}
+          data={data}
+          onNavigate={navigate}
+          registrationStatus={registrationStatus}
+          rosterScopeKey={JSON.stringify([scopeKey, personalizedRefreshKey])}
+          isScopeCurrent={isCurrent}
+          personalizedModules={signedIn
+            ? canonical
+              ? <CanonicalEventDetailModules
+                  key={canonicalFooterKey}
+                  eventId={event.id}
+                  endsAt={data.event.endsAt}
+                  scopeKey={canonicalFooterKey}
+                  onRegistrationMutationConfirmed={refreshAll}
+                  onRegistrationChange={onCanonicalRegistrationChange}
+                />
+              : <AuthenticatedEventDetailModules
+                  eventId={event.id}
+                  key={event.id}
+                  refreshKey={personalizedRefreshKey}
+                  scopeKey={scopeKey ?? "event-detail"}
+                  isScopeCurrent={isCurrent}
+                />
+            : null}
+        /> : null}
       </ScrollView>
       {event ? signedIn ? canonical ? (
         <EventRegistrationModule event={event}
@@ -305,6 +327,7 @@ function EventDetailCard({
   baseUrl,
   data,
   onNavigate,
+  registrationStatus,
   rosterScopeKey,
   isScopeCurrent,
   personalizedModules
@@ -312,6 +335,7 @@ function EventDetailCard({
   baseUrl: string;
   data: PublicEventDetail;
   onNavigate: (href: Href) => void;
+  registrationStatus?: string | undefined;
   rosterScopeKey: string;
   isScopeCurrent: () => boolean;
   personalizedModules: ReactNode;
@@ -322,9 +346,10 @@ function EventDetailCard({
   const { timeZone } = useOrbitTimeZone();
   const event = publicEventDetailToSummary(data, timeZone);
   const hero = eventDetailHeroToView(event);
-  const heroStatus = publicEventDetailStatus(hero.status);
+  const heroStatus = registrationStatus ?? publicEventDetailStatus(hero.status);
   const heroSummary = publicEventDetailSummary(hero.summary);
-  const partyHref = `/party?eventId=${encodeURIComponent(event.id)}` as Href;
+  const attendeesHref = `/events/${encodeURIComponent(event.id)}/attendees` as Href;
+  const partyHref = data.event.sourceMetadata?.label === "event-core-postgres" ? attendeesHref : `/party?eventId=${encodeURIComponent(event.id)}` as Href;
   const timing = eventDetailTiming(data.event.startsAt, data.event.endsAt, timeZone);
   const narrow = width < 360 || fontScale >= 1.4;
   const attendeeCount = data.event.stats?.count ?? data.event.participantCount;
@@ -341,7 +366,7 @@ function EventDetailCard({
           style={styles.eventHeroFrame}
         >
           <View style={styles.eventHeroTopRow}>
-            <Text style={styles.eventStatusBadge}>{heroStatus}</Text>
+            <Text testID="event-registration-status" style={styles.eventStatusBadge}>{heroStatus}</Text>
           </View>
         </ImageBackground>
         <Text accessibilityRole="header" style={styles.eventHeroTitle}>{hero.title}</Text>

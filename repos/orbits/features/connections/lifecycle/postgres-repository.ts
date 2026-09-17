@@ -137,14 +137,20 @@ export function createPostgresRelationshipLifecycleRepository({ client, workspac
         const updated = await sql.query("update orbit_records set payload = payload || $4::jsonb, updated_at = $5 where workspace_id = $1 and collection_name = 'connections' and record_id = $2 and user_id = $3 and coalesce((payload ->> 'version')::bigint, 1) = $6 returning record_id", [workspaceId, input.connectionId, input.actorId, { stage: connection.stage, activeGoal: connection.activeGoal, version: connection.version, updatedAt: connection.updatedAt }, connection.updatedAt, input.expectedVersion]);
         if (updated.rows.length !== 1) throw new RelationshipLifecycleError("CONFLICT", "Connection version has changed.");
         for (const task of [...plan.upsertTasks, ...plan.dismissTasks]) {
-          const payload = { id: task.taskId, connectionId: task.connectionId, contactId: task.contactId, title: task.title, status: task.status, dueAt: task.dueAt, relationshipPurpose: task.purpose, version: task.version, createdAt: task.createdAt, updatedAt: task.updatedAt };
+          const payload = { id: task.taskId, accountId: input.actorId, connectionId: task.connectionId, contactId: task.contactId, title: task.title, status: task.status, dueAt: task.dueAt, relationshipPurpose: task.purpose, version: task.version, createdAt: task.createdAt, updatedAt: task.updatedAt };
           const previous = before.tasks.find(({ taskId }) => taskId === task.taskId);
           if (previous) {
             const result = await sql.query("update orbit_records set payload = payload || $4::jsonb, updated_at = $5 where workspace_id = $1 and collection_name = 'tasks' and record_id = $2 and user_id = $3 and payload ->> 'connectionId' = $6 and coalesce((payload ->> 'version')::bigint, 1) = $7 returning record_id", [workspaceId, task.taskId, input.actorId, payload, task.updatedAt, input.connectionId, previous.version]);
             if (result.rows.length !== 1) throw new RelationshipLifecycleError("CONFLICT", "Task version has changed.");
           } else {
             try {
-              await sql.query("insert into orbit_records (workspace_id, collection_name, record_id, user_id, source_type, source_id, payload, created_at, updated_at) values ($1, 'tasks', $2, $3, $4, $5, $6, $7, $8)", [workspaceId, task.taskId, input.actorId, plan.audit.source.type, plan.audit.source.id, { ...payload, source: plan.audit.source, evidenceIds: [] }, task.createdAt, task.updatedAt]);
+              // This is evidence of the explicit lifecycle command, not an AI
+              // inference or an external contact event. Persist it atomically so
+              // source-linked readers can see the newly created obligation.
+              const evidenceId = `evidence:${plan.audit.auditId}:${task.taskId}`;
+              const evidence = { id: evidenceId, sourceType: plan.audit.source.type, sourceId: plan.audit.source.id, summary: `用户确认关系下一步：${task.title}`, occurredAt: plan.audit.occurredAt, confidence: 1, createdBy: input.actorId };
+              await sql.query("insert into orbit_records (workspace_id, collection_name, record_id, user_id, source_type, source_id, payload, created_at, updated_at) values ($1, 'evidence', $2, $3, $4, $5, $6, $7, $7)", [workspaceId, evidenceId, input.actorId, plan.audit.source.type, plan.audit.source.id, evidence, plan.audit.occurredAt]);
+              await sql.query("insert into orbit_records (workspace_id, collection_name, record_id, user_id, source_type, source_id, payload, created_at, updated_at, evidence_ids) values ($1, 'tasks', $2, $3, $4, $5, $6, $7, $8, $9)", [workspaceId, task.taskId, input.actorId, plan.audit.source.type, plan.audit.source.id, { ...payload, source: plan.audit.source, evidenceIds: [evidenceId] }, task.createdAt, task.updatedAt, [evidenceId]]);
             } catch (error) {
               if (errorCode(error) === "23505") throw new RelationshipLifecycleError("INVALID_TASK", "Task identifier already exists.");
               throw error;

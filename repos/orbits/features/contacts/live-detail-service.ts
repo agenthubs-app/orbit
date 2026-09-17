@@ -5,7 +5,10 @@ import type {
   ContactDTO,
   RelationshipEvidenceDTO,
 } from "../../shared/domain/contracts";
-import type { SourceType } from "../../shared/domain/source-types";
+import {
+  isConnectionStage,
+  type SourceType,
+} from "../../shared/domain/source-types";
 import type { OrbitLanguage } from "../../shared/contract/language";
 import type { IndustrySelectionContract } from "../../shared/contract/industries";
 import {
@@ -214,9 +217,26 @@ function connectionFor(
   contact: ContactDTO,
   connections: readonly ConnectionDTO[],
 ): ConnectionDTO | null {
-  return (
-    connections.find((connection) => connection.contactId === contact.id) ?? null
+  const candidates = connections.filter(
+    (connection) => connection.contactId === contact.id,
   );
+  if (candidates.length > 1 && candidates.some((connection) => connection.version !== undefined || connection.lifecycleInitialization !== undefined)) {
+    throw new Error("CONTACT_DETAIL_AMBIGUOUS_CONNECTION");
+  }
+
+  return candidates[0] ?? null;
+}
+
+function canonicalConnectionFor(
+  connection: ConnectionDTO | null,
+): (ConnectionDTO & { stage: ContactDetailStatusOption }) | null {
+  if (!connection || connection.lifecycleInitialization === "pending" ||
+      (connection.version === undefined && connection.lifecycleInitialization !== "ready") ||
+      !isConnectionStage(connection.stage)) {
+    return null;
+  }
+
+  return connection as ConnectionDTO & { stage: ContactDetailStatusOption };
 }
 
 function evidenceFor(
@@ -511,6 +531,11 @@ function detailFor(input: {
   language: OrbitLanguage;
   persistedState?: LiveContactDetailState | null;
 }): ContactDetail {
+  const canonicalConnection = input.contact.lifecycleInitialization === "pending"
+    ? null : canonicalConnectionFor(input.connection);
+  const pureLegacyContact =
+    input.connection === null &&
+    input.contact.lifecycleInitialization === undefined;
   const evidenceIds = uniqueStrings([
     ...input.contact.evidenceIds,
     ...(input.connection?.evidenceIds ?? []),
@@ -562,6 +587,7 @@ function detailFor(input: {
 
   return {
     id: input.contact.id,
+    lifecycleInitialization: input.contact.lifecycleInitialization,
     displayName: input.contact.displayName,
     contentLanguage: input.language,
     // 缺失字段保持为空，由展示层条件渲染省略，而不是显示成虚构值。
@@ -615,12 +641,13 @@ function detailFor(input: {
           connection: input.connection,
         }),
     status:
-      input.persistedState &&
+      canonicalConnection?.stage ??
+      (pureLegacyContact && input.persistedState &&
       supportedStatuses.has(
         input.persistedState.status as ContactDetailStatusOption,
       )
         ? (input.persistedState.status as ContactDetailStatusOption)
-        : statusFor(input.contact),
+        : statusFor(input.contact)),
     notes: [...baseNotes, ...persistedNotes],
     lastInteraction: persistedLastInteraction
       ? {
@@ -633,10 +660,13 @@ function detailFor(input: {
         }
       : baseLastInteraction,
     nextAction: labelRelationshipText(
-      input.connection?.suggestedActions[0] ?? "",
+      input.connection?.suggestedActions?.[0] ?? "",
       input.language,
     ),
-    updatedAt: input.persistedState?.updatedAt ?? input.contact.updatedAt,
+    updatedAt:
+      canonicalConnection?.updatedAt ??
+      (pureLegacyContact ? input.persistedState?.updatedAt : undefined) ??
+      input.contact.updatedAt,
     tagWriteExecuted: false,
     statusWriteExecuted: false,
     noteWriteExecuted: false,
@@ -965,6 +995,7 @@ function persistedStateFor(input: {
   collectedAt: string;
   contact: ContactDetail;
   persistedState: LiveContactDetailState | null;
+  statusRequested: boolean;
 }): LiveContactDetailState {
   const storedNoteIds = new Set(
     input.persistedState?.notes.map((note) => note.noteId),
@@ -973,7 +1004,7 @@ function persistedStateFor(input: {
     actorId: input.actorId,
     contactId: input.contact.id,
     tags: [...input.contact.tags],
-    status: input.contact.status,
+    status: input.statusRequested ? input.contact.status : input.persistedState?.status ?? input.contact.status,
     notes: input.contact.notes
       .filter(
         (note) =>
@@ -1052,11 +1083,13 @@ export function createLiveContactDetailTagStatusService({
     language?: OrbitLanguage;
   }): Promise<{
     result: ContactDetailTagStatusResult;
+    connection: ConnectionDTO | null;
     persistedState: LiveContactDetailState | null;
   }> {
     const actorId = input.actorId?.trim();
     if (!actorId) {
       return {
+        connection: null,
         persistedState: null,
         result: failure("CONTACT_DETAIL_ACTOR_REQUIRED", {
           collectedAt: input.collectedAt,
@@ -1067,6 +1100,7 @@ export function createLiveContactDetailTagStatusService({
 
     if (!provider) {
       return {
+        connection: null,
         persistedState: null,
         result: failure("CONTACT_DETAIL_LIVE_STORE_UNCONFIGURED", {
           collectedAt: input.collectedAt,
@@ -1075,45 +1109,67 @@ export function createLiveContactDetailTagStatusService({
       };
     }
 
-    const [graph, persistedState] = await Promise.all([
-      provider.readContactGraphForContact
-        ? provider.readContactGraphForContact(input.contactId.trim(), actorId)
-        : provider.readContactGraph(actorId),
-      provider.readContactDetailState
-        ? provider.readContactDetailState(input.contactId.trim(), actorId)
-        : null,
-    ]);
-    const contact =
-      graph.contacts.find((item) => item.id === input.contactId.trim()) ?? null;
+    try {
+      const [graph, persistedState] = await Promise.all([
+        provider.readContactGraphForContact
+          ? provider.readContactGraphForContact(input.contactId.trim(), actorId)
+          : provider.readContactGraph(actorId),
+        provider.readContactDetailState
+          ? provider.readContactDetailState(input.contactId.trim(), actorId)
+          : null,
+      ]);
+      const contact =
+        graph.contacts.find((item) => item.id === input.contactId.trim()) ?? null;
 
-    if (!contact) {
-      return {
-        persistedState: null,
-        result: failure("CONTACT_DETAIL_NOT_FOUND", {
-          collectedAt: input.collectedAt,
-          databaseReadExecuted: true,
-          provider,
-        }),
-      };
-    }
-
-    return {
-      persistedState,
-      result: {
-        success: true,
-        data: clonePayload(
-          payloadFor({
+      if (!contact) {
+        return {
+          connection: null,
+          persistedState: null,
+          result: failure("CONTACT_DETAIL_NOT_FOUND", {
             collectedAt: input.collectedAt,
-            contact,
-            connection: connectionFor(contact, graph.connections),
-            evidence: graph.evidence,
-            language: resolveOrbitLanguage({ requestLanguage: input.language }),
-            persistedState,
+            databaseReadExecuted: true,
             provider,
           }),
-        ),
-      },
-    };
+        };
+      }
+
+      const connection = connectionFor(contact, graph.connections);
+      return {
+        connection,
+        persistedState,
+        result: {
+          success: true,
+          data: clonePayload(
+            payloadFor({
+              collectedAt: input.collectedAt,
+              contact,
+              connection,
+              evidence: graph.evidence,
+              language: resolveOrbitLanguage({ requestLanguage: input.language }),
+              persistedState,
+              provider,
+            }),
+          ),
+        },
+      };
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message === "CONTACT_DETAIL_AMBIGUOUS_CONNECTION"
+      ) {
+        return {
+          connection: null,
+          persistedState: null,
+          result: failure("CONTACT_DETAIL_AMBIGUOUS_CONNECTION", {
+            collectedAt: input.collectedAt,
+            databaseReadExecuted: true,
+            provider,
+          }),
+        };
+      }
+
+      throw error;
+    }
   }
 
   return {
@@ -1166,7 +1222,7 @@ export function createLiveContactDetailTagStatusService({
         });
       }
 
-      const { result: loaded, persistedState } = await loadPayload({
+      const { connection, result: loaded, persistedState } = await loadPayload({
         actorId: input.actorId,
         contactId: input.contactId,
         collectedAt,
@@ -1175,6 +1231,17 @@ export function createLiveContactDetailTagStatusService({
 
       if (loaded.success === false) {
         return loaded;
+      }
+
+      if (
+        input.status !== undefined &&
+        (connection !== null || loaded.data.contact?.lifecycleInitialization !== undefined)
+      ) {
+        return failure("CONTACT_DETAIL_CANONICAL_STATUS_LIFECYCLE_ONLY", {
+          collectedAt,
+          databaseReadExecuted: true,
+          provider,
+        });
       }
 
       const writesDetailState =
@@ -1236,6 +1303,7 @@ export function createLiveContactDetailTagStatusService({
               collectedAt,
               contact: preview.contact,
               persistedState,
+              statusRequested: input.status !== undefined,
             }),
           );
         }

@@ -20,6 +20,7 @@ import type {
   LiveRecord,
   LiveRecordStoreLike,
 } from "../../../shared/storage/live-record-store";
+import type { LiveRecordSqlClient } from "../../../shared/storage/postgres-live-record-store";
 import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
 import type { LiveDashboardAggregateProvider } from "../live-service";
 
@@ -42,6 +43,7 @@ export const DASHBOARD_LIVE_RECORD_COLLECTIONS = {
 } as const;
 
 export interface StorageDashboardAggregateProviderOptions {
+  sqlClient?: LiveRecordSqlClient;
   source?: string;
   sourceLabel?: string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
@@ -298,53 +300,267 @@ function latestTimestamp(records: readonly LiveRecord<Record<string, unknown>>[]
   );
 }
 
+interface ProjectedDashboardRow {
+  collection_name: string;
+  record_id: string;
+  evidence_ids: readonly string[] | null;
+  occurred_at: Date | string | null;
+  lifecycle_state: string;
+  created_at: Date | string;
+  updated_at: Date | string;
+  payload: Record<string, unknown> | string | null;
+}
+
+interface DashboardRecordCollections {
+  connections: readonly LiveRecord<Record<string, unknown>>[];
+  contacts: readonly LiveRecord<Record<string, unknown>>[];
+  detailStates: readonly LiveRecord<Record<string, unknown>>[];
+  events: readonly LiveRecord<Record<string, unknown>>[];
+  evidence: readonly LiveRecord<Record<string, unknown>>[];
+  tasks: readonly LiveRecord<Record<string, unknown>>[];
+}
+
+const dashboardProjectionCollections = Object.values(
+  DASHBOARD_LIVE_RECORD_COLLECTIONS,
+);
+
+const dashboardProjectionSql = `
+  select
+    collection_name,
+    record_id,
+    evidence_ids,
+    occurred_at,
+    lifecycle_state,
+    created_at,
+    updated_at,
+    case collection_name
+      when 'contacts' then jsonb_build_object(
+        'id', payload -> 'id',
+        'personId', payload -> 'personId',
+        'displayName', payload -> 'displayName',
+        'organization', payload -> 'organization',
+        'role', payload -> 'role',
+        'location', payload -> 'location',
+        'primaryEmail', payload -> 'primaryEmail',
+        'primaryPhone', payload -> 'primaryPhone',
+        'profileSnippet', payload -> 'profileSnippet',
+        'primaryIndustryId', payload -> 'primaryIndustryId',
+        'customTags', payload -> 'customTags',
+        'stage', payload -> 'stage',
+        'source', payload -> 'source',
+        'evidenceIds', payload -> 'evidenceIds',
+        'createdAt', payload -> 'createdAt',
+        'updatedAt', payload -> 'updatedAt'
+      )
+      when 'connections' then jsonb_build_object(
+        'id', payload -> 'id',
+        'accountId', payload -> 'accountId',
+        'contactId', payload -> 'contactId',
+        'stage', payload -> 'stage',
+        'valueTypes', payload -> 'valueTypes',
+        'summary', payload -> 'summary',
+        'relationshipStrength', payload -> 'relationshipStrength',
+        'trustLevel', payload -> 'trustLevel',
+        'businessRelevanceScore', payload -> 'businessRelevanceScore',
+        'sharedTopics', payload -> 'sharedTopics',
+        'suggestedActions', payload -> 'suggestedActions',
+        'source', payload -> 'source',
+        'evidenceIds', payload -> 'evidenceIds',
+        'createdAt', payload -> 'createdAt',
+        'updatedAt', payload -> 'updatedAt'
+      )
+      when 'events' then jsonb_build_object(
+        'id', payload -> 'id',
+        'name', payload -> 'name',
+        'location', payload -> 'location',
+        'startsAt', payload -> 'startsAt',
+        'endsAt', payload -> 'endsAt',
+        'source', payload -> 'source',
+        'evidenceIds', payload -> 'evidenceIds'
+      )
+      when 'tasks' then jsonb_build_object(
+        'id', payload -> 'id',
+        'title', payload -> 'title',
+        'status', payload -> 'status',
+        'contactId', payload -> 'contactId',
+        'connectionId', payload -> 'connectionId',
+        'dueAt', payload -> 'dueAt',
+        'source', payload -> 'source',
+        'evidenceIds', payload -> 'evidenceIds',
+        'createdAt', payload -> 'createdAt',
+        'updatedAt', payload -> 'updatedAt'
+      )
+      when 'evidence' then jsonb_build_object(
+        'id', payload -> 'id',
+        'sourceType', payload -> 'sourceType',
+        'sourceId', payload -> 'sourceId',
+        'summary', payload -> 'summary',
+        'occurredAt', payload -> 'occurredAt',
+        'confidence', payload -> 'confidence',
+        'createdBy', payload -> 'createdBy'
+      )
+      when 'contact_detail_states' then jsonb_build_object(
+        'contactId', payload -> 'contactId',
+        'tags', payload -> 'tags'
+      )
+    end as payload
+  from orbit_records
+  where workspace_id = $1
+    and collection_name = any(__COLLECTIONS__::text[])
+    and lifecycle_state <> 'deleted'
+    __OWNER_FILTER__
+  order by collection_name, coalesce(occurred_at, updated_at) desc, updated_at desc
+`;
+
+function projectedDashboardRecord(
+  row: ProjectedDashboardRow,
+  workspaceId: string,
+): LiveRecord<Record<string, unknown>> {
+  const payload =
+    typeof row.payload === "string"
+      ? (JSON.parse(row.payload) as Record<string, unknown>)
+      : row.payload && typeof row.payload === "object"
+        ? row.payload
+        : {};
+
+  return {
+    workspaceId,
+    collectionName: row.collection_name,
+    recordId: row.record_id,
+    sourceType: "system",
+    sourceId: row.record_id,
+    evidenceIds: row.evidence_ids ? [...row.evidence_ids] : [],
+    occurredAt: row.occurred_at instanceof Date
+      ? row.occurred_at.toISOString()
+      : row.occurred_at ?? null,
+    createdAt: timestampString(row.created_at, "created_at"),
+    updatedAt: timestampString(row.updated_at, "updated_at"),
+    lifecycleState:
+      row.lifecycle_state === "archived" ? "archived" : "active",
+    payload,
+  };
+}
+
+function timestampString(
+  value: Date | string | null | undefined,
+  fieldName: string,
+): string {
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "string" && value.trim()) return value;
+  throw new Error(`orbit_records.${fieldName} is required`);
+}
+
+async function readProjectedDashboardCollections(
+  client: LiveRecordSqlClient,
+  workspaceId: string,
+  accountId?: string,
+): Promise<DashboardRecordCollections> {
+  const hasOwnerFilter = accountId !== undefined;
+  const collectionParameter = hasOwnerFilter ? 3 : 2;
+  const values = hasOwnerFilter
+    ? [workspaceId, accountId, dashboardProjectionCollections]
+    : [workspaceId, dashboardProjectionCollections];
+  const result = await client.query<ProjectedDashboardRow>(
+    dashboardProjectionSql
+      .replace("__COLLECTIONS__", `$${collectionParameter}`)
+      .replace("__OWNER_FILTER__", hasOwnerFilter ? "and user_id = $2" : ""),
+    values,
+  );
+  const collections = new Map<string, LiveRecord<Record<string, unknown>>[]>();
+
+  for (const row of result.rows) {
+    const records = collections.get(row.collection_name) ?? [];
+    records.push(projectedDashboardRecord(row, workspaceId));
+    collections.set(row.collection_name, records);
+  }
+
+  return {
+    connections: collections.get(DASHBOARD_LIVE_RECORD_COLLECTIONS.connections) ?? [],
+    contacts: collections.get(DASHBOARD_LIVE_RECORD_COLLECTIONS.contacts) ?? [],
+    detailStates: collections.get(DASHBOARD_LIVE_RECORD_COLLECTIONS.detailStates) ?? [],
+    events: collections.get(DASHBOARD_LIVE_RECORD_COLLECTIONS.events) ?? [],
+    evidence: collections.get(DASHBOARD_LIVE_RECORD_COLLECTIONS.evidence) ?? [],
+    tasks: collections.get(DASHBOARD_LIVE_RECORD_COLLECTIONS.tasks) ?? [],
+  };
+}
+
 export function createStorageDashboardAggregateProvider({
+  sqlClient,
   source,
   sourceLabel = "Dashboard shared live storage",
   store,
   workspaceId,
 }: StorageDashboardAggregateProviderOptions): LiveDashboardAggregateProvider {
+  const inFlightReads = new Map<string, Promise<LiveDashboardGraph>>();
+
   async function readGraph(accountId?: string): Promise<LiveDashboardGraph> {
-    const ownerQuery = accountId ? { userId: accountId } : {};
-    const [
-      contactRecords,
-      connectionRecords,
-      detailStateRecords,
-      eventRecords,
-      taskRecords,
-      evidenceRecords,
-    ] = await Promise.all([
-      store.listRecords({
-        workspaceId,
-        collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.contacts,
-        ...ownerQuery,
-      }),
-      store.listRecords({
-        workspaceId,
-        collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.connections,
-        ...ownerQuery,
-      }),
-      store.listRecords({
-        workspaceId,
-        collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.detailStates,
-        ...ownerQuery,
-      }),
-      store.listRecords({
-        workspaceId,
-        collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.events,
-        ...ownerQuery,
-      }),
-      store.listRecords({
-        workspaceId,
-        collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.tasks,
-        ...ownerQuery,
-      }),
-      store.listRecords({
-        workspaceId,
-        collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.evidence,
-        ...ownerQuery,
-      }),
-    ]);
+    if (sqlClient) {
+      const existing = inFlightReads.get(accountId);
+      if (existing) return existing;
+    }
+
+    const read = (async () => {
+      const ownerQuery = accountId === undefined ? {} : { userId: accountId };
+      const collections = sqlClient
+        ? await readProjectedDashboardCollections(sqlClient, workspaceId, accountId)
+        : await (async (): Promise<DashboardRecordCollections> => {
+            const [
+              contactRecords,
+              connectionRecords,
+              detailStateRecords,
+              eventRecords,
+              taskRecords,
+              evidenceRecords,
+            ] = await Promise.all([
+              store.listRecords({
+                workspaceId,
+                collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.contacts,
+                ...ownerQuery,
+              }),
+              store.listRecords({
+                workspaceId,
+                collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.connections,
+                ...ownerQuery,
+              }),
+              store.listRecords({
+                workspaceId,
+                collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.detailStates,
+                ...ownerQuery,
+              }),
+              store.listRecords({
+                workspaceId,
+                collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.events,
+                ...ownerQuery,
+              }),
+              store.listRecords({
+                workspaceId,
+                collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.tasks,
+                ...ownerQuery,
+              }),
+              store.listRecords({
+                workspaceId,
+                collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.evidence,
+                ...ownerQuery,
+              }),
+            ]);
+
+            return {
+              connections: connectionRecords,
+              contacts: contactRecords,
+              detailStates: detailStateRecords,
+              events: eventRecords,
+              evidence: evidenceRecords,
+              tasks: taskRecords,
+            };
+          })();
+      const {
+        contacts: contactRecords,
+        connections: connectionRecords,
+        detailStates: detailStateRecords,
+        events: eventRecords,
+        tasks: taskRecords,
+        evidence: evidenceRecords,
+      } = collections;
 
     const customTagsByContactId = new Map<string, readonly string[]>();
     for (const record of detailStateRecords) {
@@ -352,7 +568,7 @@ export function createStorageDashboardAggregateProvider({
       if (contactId) customTagsByContactId.set(contactId, stringArray(record.payload.tags));
     }
 
-    return {
+      return {
       connections: connectionRecords
         .map(connectionFromRecord)
         .filter((connection): connection is ConnectionDTO => connection !== null),
@@ -382,7 +598,17 @@ export function createStorageDashboardAggregateProvider({
       tasks: taskRecords
         .map(taskFromRecord)
         .filter((task): task is TaskDTO => task !== null),
+      };
+    })();
+
+    if (!sqlClient) return read;
+
+    inFlightReads.set(accountId, read);
+    const cleanup = () => {
+      if (inFlightReads.get(accountId) === read) inFlightReads.delete(accountId);
     };
+    void read.then(cleanup, cleanup);
+    return read;
   }
 
   return {
@@ -424,6 +650,7 @@ export function createConfiguredStorageDashboardAggregateProvider({
   }
 
   const provider = createStorageDashboardAggregateProvider({
+    sqlClient: configuredStore.client,
     source: `postgres-live-record-store:dashboard:${config.workspaceId}`,
     sourceLabel,
     store: configuredStore.store,

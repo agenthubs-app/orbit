@@ -756,17 +756,23 @@ export async function POST(request: Request): Promise<Response> {
           const assistant = [...executed.data.messages]
             .reverse()
             .find((message) => message.role === "assistant" && message.content.trim());
+          // Provider-local IDs may be reused on every turn. The reliable request
+          // owns message identity so subsequent replies cannot overwrite history.
+          const assistantId = `assistant:${reliableInput.data.requestId}`;
+          const assistantText = executed.data.assistantMessage.trim() || assistant?.content.trim();
           return {
-            assistantMessage: assistant
-              ? { id: assistant.messageId, text: assistant.content, originVerification }
-              : executed.data.assistantMessage.trim()
-                ? {
-                    id: `assistant:${reliableInput.data.requestId}`,
-                    text: executed.data.assistantMessage,
-                    originVerification,
-                  }
-                : undefined,
-            result: executed,
+            assistantMessage: assistantText
+              ? { id: assistantId, text: assistantText, originVerification }
+              : undefined,
+            result: {
+              ...executed,
+              data: {
+                ...executed.data,
+                messages: executed.data.messages.map((message) => message === assistant
+                  ? { ...message, messageId: assistantId, content: assistantText || message.content }
+                  : message),
+              },
+            },
           };
         },
         input: reliableInput.data,

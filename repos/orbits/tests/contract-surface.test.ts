@@ -2,12 +2,22 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import ts from "typescript";
 
 // shared/contract 是网页版和 iOS App 共用的响应形状。
 // iOS App 会把这个目录原样拷贝进自己的仓库，所以这里的文件必须自包含：
 // 带上任何外部 import，拷过去就编译不了。
 
 const contractDir = join(process.cwd(), "shared", "contract");
+
+test("portrait public contract exports every portrait DTO as type-only", () => {
+  const parse = (name: string) => ts.createSourceFile(name, readFileSync(join(contractDir, name), "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const expected = parse("event-registration-portrait.ts").statements.filter(statement => (ts.isInterfaceDeclaration(statement) || ts.isTypeAliasDeclaration(statement)) && statement.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword)).map(statement => (statement as ts.InterfaceDeclaration | ts.TypeAliasDeclaration).name.text).sort();
+  const exports = parse("index.ts").statements.filter(ts.isExportDeclaration).filter(statement => statement.moduleSpecifier && ts.isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === "./event-registration-portrait");
+  assert.ok(exports.every(statement => statement.isTypeOnly), "Portrait DTO exports must not introduce runtime code.");
+  const actual = exports.flatMap(statement => statement.exportClause && ts.isNamedExports(statement.exportClause) ? statement.exportClause.elements.map(element => element.name.text) : []).sort();
+  assert.deepEqual(actual, expected);
+});
 
 function contractFiles(): string[] {
   return readdirSync(contractDir).filter((name) => name.endsWith(".ts"));

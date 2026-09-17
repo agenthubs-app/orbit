@@ -41,6 +41,8 @@ import type { OrbitAgentArtifactTaskService } from "./service";
 import { contactArtifactResponseSummary } from "./artifact-response-summary";
 import { executeOrbitAgentTool } from "./agent-tools/registry";
 import { selfProfileContextForSynthesis } from "./self-profile-artifact-service";
+import { actorQueryReply } from "./data-query/query-reply";
+import { taskWriteAuthorization } from "./task-write-authorization";
 import { CONTACTS_ANALYSIS_GENERATION_METHOD, CONTACTS_ANALYSIS_GENERATION_LABEL_PREFIX, contactsAnalysisReplyMatchesSource, contactsAnalysisSynthesisInput } from "./contacts-analysis-execution";
 import { verifyContactsAnalysisSourceVersion } from "../mobile/contacts-analysis-report-provider";
 
@@ -383,6 +385,9 @@ function isExternalPermissionRequest(message: string): boolean {
 }
 
 function isUnsupportedRealtimeLookupRequest(message: string): boolean {
+  // A prohibited message send is not a request to look up current news.
+  // Keep write authorization on the complete original text; this only routes reads.
+  const requestedMessage = requestedActionText(message);
   const realtimeQualifier =
     /(?:今天|现在|現在|当前|目前|刚刚|最新|实时|即時|latest|today|current|now|right now|real[ -]?time)/i;
   const realtimeObject =
@@ -391,9 +396,9 @@ function isUnsupportedRealtimeLookupRequest(message: string): boolean {
     /(?:查一下|查询|查找|搜索|搜一下|看看|告诉我|告訴我|look up|search|find|check|tell me)/i;
 
   return (
-    realtimeQualifier.test(message) &&
-    realtimeObject.test(message) &&
-    (lookupVerb.test(message) || /(?:新闻|新聞|news|weather|天气|天氣)/i.test(message))
+    realtimeQualifier.test(requestedMessage) &&
+    realtimeObject.test(requestedMessage) &&
+    (lookupVerb.test(requestedMessage) || /(?:新闻|新聞|news|weather|天气|天氣)/i.test(requestedMessage))
   );
 }
 
@@ -444,8 +449,8 @@ function isRelationshipStateMutationRequest(message: string): boolean {
 }
 
 function isSupportedNaturalLanguageWriteRequest(message: string): boolean {
-  const createTask =
-    /(?:创建|建立|新增|新建|添加).{0,12}(?:跟进)?任务|(?:create|add).{0,16}(?:follow[ -]?up )?task/i;
+  const taskAuthorization = taskWriteAuthorization(message);
+  const actionRequest = requestedActionText(message);
   const createReminder =
     /(?:提醒我|设置提醒|新增提醒|创建提醒)|(?:remind me|create.{0,12}reminder)/i;
   const saveDraft =
@@ -456,11 +461,12 @@ function isSupportedNaturalLanguageWriteRequest(message: string): boolean {
     /(?:同步|创建|新建|添加).{0,20}(?:Google|Microsoft|谷歌|微软).{0,12}(?:日历|Calendar)|(?:create|add).{0,24}(?:Google|Microsoft).{0,12}calendar/i;
 
   return (
-    createTask.test(message) ||
-    createReminder.test(message) ||
-    saveDraft.test(message) ||
-    saveMemory.test(message) ||
-    syncCalendar.test(message)
+    taskAuthorization.kind === "direct" ||
+    taskAuthorization.kind === "note_suggestion" ||
+    createReminder.test(actionRequest) ||
+    saveDraft.test(actionRequest) ||
+    saveMemory.test(actionRequest) ||
+    syncCalendar.test(actionRequest)
   );
 }
 
@@ -931,7 +937,7 @@ export function createLiveOrbitAgentLocalBoundaryPayload(
 
   if (
     isRelationshipStateMutationRequest(actionRequest) &&
-    !isSupportedNaturalLanguageWriteRequest(actionRequest)
+    !isSupportedNaturalLanguageWriteRequest(message)
   ) {
     return stateChangeBoundaryPayload(message);
   }
@@ -1173,6 +1179,7 @@ export async function artifactForRequest(input: {
             } : toolName.endsWith(".query") ? {
               queryToolName: toolName,
               query: validatedInput.query,
+              searchTerms: validatedInput.searchTerms,
               locale: validatedInput.locale,
               operation: validatedInput.operation,
               id: validatedInput.id,
@@ -1210,6 +1217,16 @@ export async function artifactForRequest(input: {
 export function artifactSummaryForSynthesis(
   artifact: OrbitAgentArtifactPayload,
 ): GeminiOrbitAgentToolResultSummary {
+  if (artifact.task.kind === "data_query") {
+    return {
+      kind: "data_query",
+      preferredSurface: artifact.result.presentation.preferredSurface,
+      title: artifact.result.presentation.title,
+      // Retain status/dates and the bounded/empty read distinction, not just
+      // recommendation titles. Stored text is evidence, never instructions.
+      summary: JSON.stringify({ untrustedQueryData: actorQueryReply([artifact], "en") }),
+    };
+  }
   if (artifact.task.kind === "self_profile") {
     return {
       kind: "self_profile",
@@ -1399,7 +1416,7 @@ export function conversationForRuntimeSuccess(input: {
     domainToolCallsExecuted: input.artifacts.length > 0,
     externalNetworkRequested: input.aiProviderRequested,
     liveDatabaseReadExecuted: input.artifacts.some(artifact =>
-      artifact.task.kind === "self_profile" && artifact.result.safety.liveDatabaseReadExecuted,
+      (artifact.task.kind === "self_profile" || artifact.task.kind === "data_query") && artifact.result.safety.liveDatabaseReadExecuted,
     ),
   });
   const nextAction =
@@ -1705,7 +1722,9 @@ export async function runLiveOrbitAgentRuntime(
   const finalAssistantMessage =
     synthesisResult?.success === true && synthesisResult.data.assistantMessage.trim()
       ? synthesisResult.data.assistantMessage
-      : contactArtifactResponseSummary(artifacts, locale, plan.intent === "contact_recommendations" && !outOfScopeToolRequests) ?? assistantMessageForSynthesis;
+      : actorQueryReply(artifacts, locale)
+        ?? contactArtifactResponseSummary(artifacts, locale, plan.intent === "contact_recommendations" && !outOfScopeToolRequests)
+        ?? assistantMessageForSynthesis;
   const finalResponseStartedAt = nowMs();
   timings.push(timingSpan("final_response", finalResponseStartedAt));
   const conversation = conversationForRuntimeSuccess({

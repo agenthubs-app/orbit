@@ -14,6 +14,7 @@ import type {
   OrbitContactsViewModel,
   OrbitContactView,
 } from "../../app/(app)/app/orbit-contacts-route-view-model";
+import { mountOrbitRealCardConnection } from "./contact-relationship-initialization-mount-helper";
 
 // 存量联系人（名片确认时写入的英文句子 + 服务层旧占位值）的真实形状。
 const ACCOUNT_EMAIL = "chrome-journey-1788954155@example.invalid";
@@ -66,6 +67,30 @@ function render(viewModel: OrbitContactsViewModel, language: "zh" | "en"): strin
   );
 }
 
+test("contact seeking is labelled as their need, not as the viewer's verified ability", async () => {
+  const viewModel = await legacyBusinessCardViewModel();
+  const contact = viewModel.connections[0];
+  const encounter = contact.encounters[0];
+  assert.ok(encounter);
+  const scoped = { ...viewModel, connections: [{ ...contact, encounters: [{
+    ...encounter,
+    context: { ...encounter.context, publicProfile: {
+      ...encounter.context.publicProfile,
+      offering: ["项目落地与运营经验"],
+      seeking: ["创业者"],
+    } },
+  }] }] };
+  const zh = render(scoped, "zh");
+  assert.match(zh, /对方希望获得/);
+  assert.match(zh, /对方能提供/);
+  assert.match(zh, /创业者/);
+  assert.match(zh, /项目落地与运营经验/);
+  assert.doesNotMatch(zh, /我能为对方提供/);
+  const en = render(scoped, "en");
+  assert.match(en, /is looking for/);
+  assert.doesNotMatch(en, /You →/);
+});
+
 test("metLabel keys the source label on the stable source code, never on the stored actor sentence", () => {
   const zh = (copy: { en: string; zh: string }) => copy.zh;
   const en = (copy: { en: string; zh: string }) => copy.en;
@@ -106,9 +131,9 @@ test("contact detail renders a business-card contact without the account email o
   assert.match(html, /<span class="nc-fk">最近互动<\/span>/);
   assert.match(html, /<span>暂无互动记录<\/span>/);
   assert.match(html, /aria-label="编辑最近互动"/);
-  assert.match(html, /暂无来源明确的下一步建议。/);
-  // 占位建议被视为空，因此下一步卡片不再渲染「依据：<占位句>」。
-  assert.doesNotMatch(html, /依据：Live relationship context/);
+  // SSR cannot infer the relationship state before the client readback.
+  assert.match(html, /关系状态尚未确认/);
+  assert.doesNotMatch(html, /暂无来源明确的下一步建议。/);
 
   // 时间线：名片备注正文原样保留，标签本地化，证据 id 作为等宽标识展示。
   assert.match(html, /罗马字姓名: Ruoxi Lin 地址: 上海市浦东新区张江高科技园区 88 号/);
@@ -120,10 +145,40 @@ test("contact detail renders the same legacy contact in English without leaking 
 
   assert.doesNotMatch(html, new RegExp(ACCOUNT_EMAIL.replace(/[.@]/g, "\\$&")));
   assert.doesNotMatch(html, /confirmed by/i);
+  assert.match(html, /Relationship state unavailable/);
+  assert.doesNotMatch(html, /No sourced next step is available\./);
   assert.match(html, /Met via Business card scan/);
-  assert.match(html, /No sourced next step is available\./);
   assert.doesNotMatch(html, />relationship context</i);
   assert.match(html, /<span class="nc-fk">Industry<\/span>/);
   assert.match(html, /<span>Unclassified<\/span>/);
   assert.match(html, /aria-label="Edit primary industry"/);
 });
+
+for (const [language, emptyCopy] of [
+  ["zh", "暂无来源明确的下一步建议。"],
+  ["en", "No sourced next step is available."],
+] as const) {
+  test(`mounted legacy readback keeps the sourced next-step privacy guard (${language})`, async (t) => {
+    const viewModel = await legacyBusinessCardViewModel();
+    let reads = 0;
+    const root = await mountOrbitRealCardConnection(t, {
+      contactId: viewModel.connections[0].id,
+      language,
+      viewModel,
+      fetcher: (async (input, init) => {
+        reads += 1;
+        assert.equal(String(input), `/api/contacts/${encodeURIComponent(viewModel.connections[0].id)}/relationship-initialization`);
+        assert.equal(init?.cache, "no-store");
+        assert.equal(init?.credentials, "same-origin");
+        assert.equal(init?.method, undefined);
+        return new Response(null, { status: 404 });
+      }) as typeof fetch,
+    });
+    assert.equal(reads, 1);
+    const rendered = JSON.stringify(root.toJSON());
+    assert.match(rendered, new RegExp(emptyCopy.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")));
+    assert.doesNotMatch(rendered, /chrome-journey-1788954155@example\.invalid/);
+    assert.doesNotMatch(rendered, /confirmed by|before taking action|Live relationship context is available|>relationship context</iu);
+    assert.doesNotMatch(rendered, /依据：Live relationship context/);
+  });
+}

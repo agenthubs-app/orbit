@@ -1,4 +1,8 @@
 import type { LiveDatabaseEnv } from "../../../shared/storage/live-database-config";
+import {
+  publishEventOperationsWake,
+  type EventOperationsWorkerWakeNotifier,
+} from "./queue";
 import type {
   CancelEventRegistrationInput,
   EventRegistration,
@@ -319,14 +323,30 @@ export interface EventOperationsRepository {
 export interface ConfiguredEventOperationsRepositoryOptions {
   env?: LiveDatabaseEnv;
   max?: number;
+  notifyWorker?: EventOperationsWorkerWakeNotifier;
 }
 
 export function createConfiguredEventOperationsRepository({
   env,
   max,
+  notifyWorker,
 }: ConfiguredEventOperationsRepositoryOptions = {}): EventOperationsRepository | null {
   const runtime = createConfiguredEventOperationsPostgresRuntime({ env, max });
   if (!runtime) return null;
 
-  return createPostgresEventOperationsRepository(runtime);
+  const configuredEnv = env ?? process.env;
+  const defaultNotifier: EventOperationsWorkerWakeNotifier | undefined =
+    configuredEnv.VERCEL === "1"
+      ? async ({ reason, workspaceId }) => {
+          await publishEventOperationsWake({
+            enabled: true,
+            reason,
+            workspaceId,
+          });
+        }
+      : undefined;
+  return createPostgresEventOperationsRepository({
+    ...runtime,
+    notifyWorker: notifyWorker ?? defaultNotifier,
+  });
 }

@@ -44,6 +44,8 @@ export const CONTACT_DETAIL_TAG_STATUS_ERROR_CODES = [
   "CONTACT_DETAIL_TAG_NOT_SUPPORTED",
   "CONTACT_DETAIL_INDUSTRY_NOT_SUPPORTED",
   "CONTACT_DETAIL_STATUS_NOT_SUPPORTED",
+  "CONTACT_DETAIL_CANONICAL_STATUS_LIFECYCLE_ONLY",
+  "CONTACT_DETAIL_AMBIGUOUS_CONNECTION",
   "CONTACT_DETAIL_UPDATE_PENDING",
   "CONTACT_DETAIL_TAG_STATUS_MOCK_FAILED",
   "CONTACT_DETAIL_LIVE_STORE_UNCONFIGURED",
@@ -110,6 +112,21 @@ export const CONTACT_DETAIL_TAG_STATUS_ERROR_DEFINITIONS = {
     message: "That contact status is not supported.",
     recovery:
       "Use active, needs_follow_up, nurture, or archived for the mock contact detail status.",
+  },
+  CONTACT_DETAIL_CANONICAL_STATUS_LIFECYCLE_ONLY: {
+    code: "CONTACT_DETAIL_CANONICAL_STATUS_LIFECYCLE_ONLY",
+    appCode: "CONFLICT",
+    message:
+      "Canonical relationship stages can only be changed through the relationship lifecycle.",
+    recovery:
+      "Use the relationship lifecycle action with the current connection version; contact detail PATCH can update tags, notes, interactions, and industry only.",
+  },
+  CONTACT_DETAIL_AMBIGUOUS_CONNECTION: {
+    code: "CONTACT_DETAIL_AMBIGUOUS_CONNECTION",
+    appCode: "CONFLICT",
+    message: "That contact has more than one owned relationship candidate.",
+    recovery:
+      "Resolve the duplicate owned connections before reading or updating this contact detail.",
   },
   CONTACT_DETAIL_UPDATE_PENDING: {
     code: "CONTACT_DETAIL_UPDATE_PENDING",
@@ -234,6 +251,7 @@ export interface ContactDetailPublicProfile {
 // 末尾的 executed/requested 布尔字段是安全审计，不是 UI 装饰字段。
 export interface ContactDetail {
   id: string;
+  lifecycleInitialization?: "pending" | "ready";
   contentLanguage: OrbitLanguage;
   displayName: string;
   role: string;

@@ -43,6 +43,8 @@ test("confirmed cancellation is single-flight, versioned and independently read 
     let pending!: Promise<void>;
     await act(async () => { const fn = button("Confirm cancellation").props.onClick; pending = fn(); void fn(); });
     assert.equal(requests.length, 1);
+    assert.equal(requests[0].init?.method, "POST");
+    assert.equal(new Headers(requests[0].init?.headers).get("content-type"), "application/json");
     assert.deepEqual(JSON.parse(String(requests[0].init?.body)), { intent: "cancel", expectedRegistrationVersion: active.updatedAt });
     await act(async () => { requests[0].resolve(Response.json({ success: true, data: cancelled })); });
     assert.equal(requests.length, 2);
@@ -95,8 +97,8 @@ test("an old cancellation acknowledgement cannot start a readback under a new ac
   const originalFetch = globalThis.fetch; const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
   Object.defineProperty(globalThis, "window", { configurable: true, value: { addEventListener() {}, removeEventListener() {}, localStorage: { getItem: () => null, removeItem() {}, setItem() {} } } });
   const active = { id: "record", eventId: "event", userId: "first", status: "rsvped", updatedAt: "2026-09-16T00:00:00Z", participantProfileId: "profile", participantProfile: { id: "profile", eventId: "event", userId: "first", answers: {} } } as EventRegistration;
-  const requests: ((response: Response) => void)[] = [];
-  globalThis.fetch = (() => new Promise<Response>(resolve => { requests.push(resolve); if(requests.length>1)queueMicrotask(()=>resolve(Response.json({success:false},{status:503}))); })) as typeof fetch;
+  const requests: { path: string; method: string; resolve: (response: Response) => void }[] = [];
+  globalThis.fetch = ((input, init) => new Promise<Response>(resolve => { const method = init?.method ?? "GET"; requests.push({ path: String(input), method, resolve }); if (method === "GET") queueMicrotask(() => resolve(Response.json({ success: false }, { status: 503 }))); })) as typeof fetch;
   const screen = (actorId: string) => <EventRegistrationWorkspace actorId={actorId} admissionControlled={false} event={{ id: "event", title: "Night", venue: "Tokyo" }} initialAdmissionApplication={null} initialRegistration={active} initialSignedQuestion={null} language="en" profile={{ displayName: "Aiko" }} />;
   let renderer!: ReactTestRenderer;
   try {
@@ -105,8 +107,9 @@ test("an old cancellation acknowledgement cannot start a readback under a new ac
     await act(async()=>{ button("Cancel registration").props.onClick(); });
     let pending!: Promise<void>; await act(async()=>{pending=button("Confirm cancellation").props.onClick();});
     await act(async()=>{renderer.update(screen("second"));});
-    await act(async()=>{requests[0](Response.json({success:true,data:{...active,status:"cancelled",mutationReceipt:{action:"cancel",actorId:"first",eventId:"event",recordId:"record",registrationVersion:active.updatedAt}}}));await pending;});
-    assert.equal(requests.length,1);
+    await act(async()=>{requests.find(request => request.method === "POST")!.resolve(Response.json({success:true,data:{...active,status:"cancelled",mutationReceipt:{action:"cancel",actorId:"first",eventId:"event",recordId:"record",registrationVersion:active.updatedAt}}}));await pending;});
+    assert.equal(requests.filter(request => request.method === "POST").length, 1);
+    assert.equal(requests.filter(request => request.path.endsWith("registration?questions=false")).length, 0, "the old POST acknowledgement must not read a registration under the new actor");
     assert.equal(renderer.root.findByType("main").props["data-registration-stage"],"registered");
   } finally { globalThis.fetch=originalFetch;if(renderer)await act(async()=>{renderer.unmount();});if(originalWindow)Object.defineProperty(globalThis,"window",originalWindow);else Reflect.deleteProperty(globalThis,"window"); }
 });
@@ -308,7 +311,7 @@ test("an initial AI failure offers an in-place real-model retry without a fallba
   }
 });
 
-test("two quick answers offer an explicit save and persona action without automatic registration", async () => {
+test("two quick answers seed formal drafts and privately generate without automatic registration", async () => {
   const originalFetch = globalThis.fetch;
   const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
   const eventId = "event-two-question-finish";
@@ -345,9 +348,12 @@ test("two quick answers offer an explicit save and persona action without automa
       body: typeof init?.body === "string" ? JSON.parse(init.body) : null,
       url,
     });
+    if (url.endsWith("/registration/portrait")) return Response.json({ success: true, data: { portrait: null } });
+    if (url.includes("portraitProofs=true")) return Response.json({ success: true, data: { registration: null, questionSet: { questions: ["positioning", "targetAttendees", "valueOffered"].map(field => ({ id: field, participantProfileField: field, prompt: `Formal ${field}?`, options: [], required: field !== "positioning", portraitQuestionToken: `formal:${field}` })) } } });
     if (url.endsWith("/registration/persona")) {
       return Response.json({
         data: {
+          generationToken: "synthetic-private-result", answersVersion: "a".repeat(64), sourceRegistrationVersion: null,
           persona: {
             energyStyle: "Focused",
             industryTags: ["Technology"],
@@ -421,34 +427,22 @@ test("two quick answers offer an explicit save and persona action without automa
       false,
       "the registration flow must not request an optional third question",
     );
-    assert.deepEqual(requests, [], "core coverage must not automatically save or call the model");
-    const save = renderer.root.find((node) => node.type === "button" && node.children.includes("保存报名并生成画像"));
-    await act(async () => { await save.props.onClick(); });
-    const registrationRequest = requests.find((request) =>
-      request.url.endsWith("/registration"),
-    );
-    assert.deepEqual(registrationRequest?.body, {
-      intent: "register",
-      expectedRegistrationVersion: null,
-      answers: {
-        positioning: "创始人 @ Orbit",
-        targetAttendees: "硬件供应链的创始人",
-        valueOffered: "海外渠道资源",
-      },
-    });
-    assert.equal(
-      renderer.root.findAll(
-        (node) => node.props["data-registration-stage"] === "persona",
-      ).length,
-      1,
-    );
+    assert.deepEqual(requests.filter(request => request.body !== null), [], "core coverage must not automatically save or call the model; online source reads are independent");
+    assert.deepEqual(renderer.root.findAllByType("textarea").map(input => input.props.value), ["创始人 @ Orbit", "硬件供应链的创始人", "海外渠道资源"]);
+    const entry = renderer.root.find((node) => node.type === "button" && node.children.includes("补充画像"));
+    await act(async () => { entry.props.onClick(); });
+    const generate = renderer.root.find((node) => node.type === "button" && node.children.includes("生成画像"));
+    await act(async () => { await generate.props.onClick(); });
+    assert.deepEqual(requests.filter(request => request.body !== null).map(request => request.body), [{ mode: "portrait-preview", language: "zh", responses: [{ kind: "registration_question", portraitQuestionToken: "formal:positioning", answer: "创始人 @ Orbit" }, { kind: "registration_question", portraitQuestionToken: "formal:targetAttendees", answer: "硬件供应链的创始人" }, { kind: "registration_question", portraitQuestionToken: "formal:valueOffered", answer: "海外渠道资源" }] }]);
+    assert.equal(requests.some(request => request.url.endsWith("/registration") && request.body !== null), false);
+    assert.match(JSON.stringify(renderer.toJSON()), /连接硬件与海外市场/);
   } finally {
-    globalThis.fetch = originalFetch;
     if (renderer) {
       await act(async () => {
         renderer.unmount();
       });
     }
+    globalThis.fetch = originalFetch;
     if (originalWindow) {
       Object.defineProperty(globalThis, "window", originalWindow);
     } else {

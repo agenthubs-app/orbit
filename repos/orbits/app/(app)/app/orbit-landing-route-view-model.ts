@@ -17,6 +17,8 @@ export interface OrbitLandingEventView {
   agenda: OrbitEventAgendaItem[];
   brandColor: string;
   cap: number;
+  /** Canonical Event Core id used only for cross-source journey de-duplication. */
+  canonicalEventId?: string;
   code: string;
   descriptionZh: string;
   detailLogoUrl: string;

@@ -1,6 +1,7 @@
 import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { PersonalScheduleList } from "../schedule/PersonalScheduleList";
 import { RelationshipTaskTools } from "./RelationshipTaskTools";
+import { RelationshipLifecycleList } from "./RelationshipLifecycleList";
 import { Ionicons } from "@expo/vector-icons";
 import * as Crypto from "expo-crypto";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
@@ -182,8 +183,9 @@ export function TasksScreen() {
       ))}
       </View>
       {mutationError ? <Text accessibilityRole="alert" style={styles.errorText}>{mutationError}</Text> : null}
+      <RelationshipLifecycleList key={`lifecycle:${scopeKey}`} scopeKey={scopeKey} ready={ready} mode={mode} />
       {selection.scope === "all" && mode === "open" ? <PersonalScheduleList /> : null}
-      {selection.scope === "relationship" && canonical ? <RelationshipTaskTools key={scopeKey} tasks={canonical} contacts={[...contacts.values()]} tasksPayload={state.kind === "success" || state.kind === "empty" ? state.data : {}} /> : null}
+      {selection.scope === "relationship" && canonical ? <RelationshipTaskTools key={`tools:${scopeKey}`} tasks={canonical} contacts={[...contacts.values()]} tasksPayload={state.kind === "success" || state.kind === "empty" ? state.data : {}} /> : null}
     </AppScreen>
   );
 }

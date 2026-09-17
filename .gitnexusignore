@@ -1,0 +1,12 @@
+# Generated native/dependency outputs are not Orbit application source.
+# GitNexus root scanning must not depend on nested .gitignore handling.
+repos/orbit-app/ios/
+repos/orbit-app/android/
+repos/orbit-app/node_modules/
+repos/orbit-app/.expo/
+repos/orbit-app/build/
+repos/orbit-app/dist/
+repos/orbits/node_modules/
+repos/orbits/.next/
+repos/orbits/build/
+repos/orbits/dist/

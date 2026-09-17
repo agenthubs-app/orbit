@@ -19,11 +19,17 @@ Service factory 提供 list/search/filter 和 detail/tag/status services。
 
 ## Mock 行为
 
-Mock 使用本地联系人 fixture。搜索和筛选是本地确定性规则，不访问真实搜索索引、数据库、邮箱或日历。更新状态、标签或备注只能返回 preview 或 mock result，不写真实联系人库。
+Mock 使用本地联系人 fixture。搜索和筛选是本地确定性规则，不访问真实搜索索引、数据库、邮箱或日历。Live 更新通过 actor-scoped provider 持久化标签、备注、最近互动和行业字段；状态仅在没有任何 owned Connection 且没有初始化标记时才写入 legacy detail state。
 
 ## Live 替换方案
 
 Live 可以接联系人数据库、CRM、搜索服务和标签系统。搜索 provider 返回值必须映射为 contact summary。CRM 字段不能直接进入页面；需要先转成 Orbit 的 source、status、value 和 next action。
+
+## 生命周期权威边界
+
+- 带合法 version 或 ready 标记的唯一 owned `Connection` 是正式阶段读取权威，即使没有 ready marker 也不能被旧 detail state 覆盖。Contact 或 Connection 为 pending 时不得提升为正式阶段。读取保留 version/初始化标记，非法 version 失败关闭。
+- 任意 owned Connection（包括 captured/旧无版本关系），或 Contact 的 pending/ready 标记，都会使 `PATCH /api/contacts/:id` 的显式 `status` 返回 conflict；混合请求在任何写入前拒绝。正常标签、备注、最近互动和行业编辑仍可用；不包含 status 的编辑保留原 private status，不顺带迁移状态。
+- 只有无 Connection、无初始化标记的纯 legacy contact 保留 status 兼容写入。涉及正式生命周期元数据的重复 Connection 拒绝读取/写入，不任选其一；全无版本/标记的旧 fixture 多条关系保留历史上下文读取，但不作为正式阶段权威。`PATCH /api/connections/:id/stage` 仍是现有 no-write preview，不冒充正式阶段变更。
 
 联系人详情 live mapper 还必须把来源和关系值转成人能读懂的标签。`qr_scan` 要显示成 QR scan 来源，`community_context` 要显示成 community context，`venture_capital` 等生成式主题要先映射为业务标签后再进入 `/app/contacts/[id]`。页面不能展示 `source:*` ID、snake_case 价值类型或 provider payload 字段。
 

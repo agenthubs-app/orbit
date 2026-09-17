@@ -7,6 +7,10 @@ import type {
   LiveRecordListQuery,
   LiveRecordStoreLike,
 } from "./live-record-store";
+import {
+  createPostgresReadMetricsRunner,
+  type PostgresReadMetricsConfig,
+} from "./postgres-read-metrics";
 
 export interface LiveRecordSqlResult<TRow = Record<string, unknown>> {
   rows: readonly TRow[];
@@ -31,6 +35,7 @@ export interface PgLiveRecordSqlClientOptions {
   connectionString: string;
   max?: number;
   ssl?: PoolConfig["ssl"];
+  readMetrics?: PostgresReadMetricsConfig;
 }
 
 type PostgresLiveRecordRow = {
@@ -245,20 +250,30 @@ export function createPgLiveRecordSqlClient({
   connectionString,
   max,
   ssl,
+  readMetrics,
 }: PgLiveRecordSqlClientOptions): ClosableLiveRecordSqlClient {
   const pool = new Pool({
     connectionString,
     max,
     ssl,
   });
+  const measureRead = createPostgresReadMetricsRunner(readMetrics);
 
   return {
     close: () => pool.end(),
     async query<TRow = Record<string, unknown>>(text, values) {
-      const result = await pool.query(
-        text,
-        values === undefined ? undefined : [...values],
-      );
+      const result = measureRead
+        ? await measureRead(
+            text,
+            () => pool.query(
+              text,
+              values === undefined ? undefined : [...values],
+            ),
+          )
+        : await pool.query(
+            text,
+            values === undefined ? undefined : [...values],
+          );
 
       return {
         rows: result.rows as TRow[],
@@ -332,6 +347,23 @@ export function createPostgresLiveRecordStore<
       );
 
       return result.rows.map((row) => rowToRecord<TPayload>(row));
+    },
+
+    async insertRecordIfAbsent(record: LiveRecord<TPayload>): Promise<LiveRecord<TPayload> | null> {
+      const result = await client.query<PostgresLiveRecordRow>(
+        `
+          insert into orbit_records (${recordColumns})
+          values (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+            $11, $12, $13, $14, $15, $16, $17, $18, $19
+          )
+          on conflict (workspace_id, collection_name, record_id)
+          do nothing
+          returning ${recordColumns}
+        `,
+        recordValues(record),
+      );
+      return result.rows[0] ? rowToRecord<TPayload>(result.rows[0]) : null;
     },
 
     async upsertRecord(record: LiveRecord<TPayload>): Promise<LiveRecord<TPayload>> {

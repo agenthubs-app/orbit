@@ -133,6 +133,125 @@ test("relationship projection can be replayed ten times without duplicate legacy
   );
 });
 
+test("old active exchange snapshots project only pending acquisition shells and preserve later owner choices", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const projector = createEventOperationsOutboxProjector({
+    contactRequestNotifications: null,
+    registrationProvider: createEventRegistrationLiveRecordProvider({ store, workspaceId: WORKSPACE_ID }),
+    relationshipProvider: createStorageBusinessCardContactWriteProvider({ store, workspaceId: WORKSPACE_ID }),
+  });
+  const message = relationshipMessage();
+  const snapshot = JSON.stringify(message.payload);
+  await projector.project(message);
+  const records = store.listRecords({ workspaceId: WORKSPACE_ID });
+  for (const collectionName of ["contacts", "connections"]) {
+    const record = records.find((record) => record.collectionName === collectionName)!;
+    assert.equal(record.payload.stage, "captured");
+    assert.equal(record.payload.version, 1);
+    assert.equal(record.payload.lifecycleInitialization, "pending");
+    assert.equal(record.payload.activeGoal, undefined);
+    assert.equal(record.payload.nextFollowup, undefined);
+    store.upsertRecord({ ...record, payload: { ...record.payload, stage: "active", version: 2, lifecycleInitialization: "ready", activeGoal: "Owner's explicit goal" } });
+  }
+  const chosen = store.listRecords({ workspaceId: WORKSPACE_ID });
+  await Promise.all([projector.project(message), projector.project(message)]);
+  assert.deepEqual(store.listRecords({ workspaceId: WORKSPACE_ID }), chosen);
+  assert.equal(JSON.stringify(message.payload), snapshot, "authoritative acceptance snapshot stays immutable");
+  assert.equal(records.filter((record) => record.collectionName === "tasks").length, 0);
+});
+
+test("exchange projection refuses a provider without atomic initialization support", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const provider = createStorageBusinessCardContactWriteProvider({ store, workspaceId: WORKSPACE_ID });
+  const projector = createEventOperationsOutboxProjector({
+    contactRequestNotifications: null,
+    registrationProvider: createEventRegistrationLiveRecordProvider({ store, workspaceId: WORKSPACE_ID }),
+    relationshipProvider: { ...provider, initializeAcquiredRelationship: undefined },
+  });
+  await assert.rejects(projector.project(relationshipMessage()), /atomic.*initialization/i);
+  assert.equal(store.listRecords({ workspaceId: WORKSPACE_ID }).length, 0);
+});
+
+test("pending projection drops lifecycle choices from queued snapshots and round-trips its marker", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const provider = createStorageBusinessCardContactWriteProvider({ store, workspaceId: WORKSPACE_ID });
+  const projector = createEventOperationsOutboxProjector({
+    contactRequestNotifications: null,
+    registrationProvider: createEventRegistrationLiveRecordProvider({ store, workspaceId: WORKSPACE_ID }),
+    relationshipProvider: provider,
+  });
+  const message = relationshipMessage();
+  const staleChoice = { activeGoal: "not owner-authorized", nextFollowup: "2026-09-18", nextAction: { title: "not chosen" }, suggestedActions: ["Follow up automatically"], relationshipStrength: 55 };
+  message.payload = { ...message.payload, contact: { ...message.payload.contact as ContactDTO, ...staleChoice }, connection: { ...message.payload.connection as ConnectionDTO, ...staleChoice } };
+  await projector.project(message);
+  for (const record of store.listRecords({ workspaceId: WORKSPACE_ID }).filter((record) => record.collectionName !== "evidence")) {
+    for (const field of Object.keys(staleChoice)) assert.equal(record.payload[field], undefined);
+  }
+  const contact = await provider.getContact((message.payload.contact as ContactDTO).id, "actor:owner");
+  const connection = await provider.getConnection((message.payload.connection as ConnectionDTO).id, "actor:owner");
+  assert.equal(contact?.lifecycleInitialization, "pending");
+  assert.equal(connection?.lifecycleInitialization, "pending");
+  assert.equal(contact?.version, 1);
+  assert.equal(connection?.version, 1);
+  assert.deepEqual(connection?.valueTypes, ["community_context"]);
+});
+
+test("exchange projection fails closed on stored foreign-owner collisions", async () => {
+  for (const collectionName of ["contacts", "connections"]) {
+    const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+    const provider = createStorageBusinessCardContactWriteProvider({ store, workspaceId: WORKSPACE_ID });
+    const message = relationshipMessage();
+    const payload = message.payload[collectionName === "contacts" ? "contact" : "connection"] as ContactDTO | ConnectionDTO;
+    store.upsertRecord({
+      collectionName, workspaceId: WORKSPACE_ID, recordId: payload.id, userId: "actor:foreign",
+      sourceType: "event_import", sourceId: "event:outbox-test", lifecycleState: "active",
+      createdAt: payload.createdAt, updatedAt: payload.updatedAt, evidenceIds: payload.evidenceIds,
+      payload: { ...payload, accountId: "actor:owner", lifecycleInitialization: "ready", version: 7 },
+    });
+    const before = store.getRecord({ collectionName, workspaceId: WORKSPACE_ID, recordId: payload.id });
+    const projector = createEventOperationsOutboxProjector({
+      contactRequestNotifications: null,
+      registrationProvider: createEventRegistrationLiveRecordProvider({ store, workspaceId: WORKSPACE_ID }),
+      relationshipProvider: provider,
+    });
+    await assert.rejects(projector.project(message), /owner conflict/i);
+    assert.deepEqual(store.getRecord({ collectionName, workspaceId: WORKSPACE_ID, recordId: payload.id }), before);
+  }
+});
+
+test("partial projection retry fills the missing connection without overwriting edited or deleted contact", async () => {
+  for (const deleted of [false, true]) {
+    const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+    let failConnection = true;
+    const projector = createEventOperationsOutboxProjector({
+      contactRequestNotifications: null,
+      registrationProvider: createEventRegistrationLiveRecordProvider({ store, workspaceId: WORKSPACE_ID }),
+      relationshipProvider: createStorageBusinessCardContactWriteProvider({
+        workspaceId: WORKSPACE_ID,
+        store: {
+          ...store,
+          insertRecordIfAbsent(record) {
+            if (record.collectionName === "connections" && failConnection) throw new Error("planned connection failure");
+            return store.insertRecordIfAbsent(record);
+          },
+        },
+      }),
+    });
+    const message = relationshipMessage();
+    await assert.rejects(projector.project(message), /planned connection failure/);
+    const contact = store.listRecords({ workspaceId: WORKSPACE_ID, collectionName: "contacts" })[0];
+    store.upsertRecord({ ...contact, payload: { ...contact.payload, displayName: "Owner edit", stage: "archived", version: 3, lifecycleInitialization: "ready" } });
+    if (deleted) store.deleteRecord({ ...contact, deletedAt: "2026-09-17T00:00:00.000Z" });
+    const preserved = store.getRecord({ ...contact, includeDeleted: true });
+    failConnection = false;
+    await projector.project(message);
+    assert.deepEqual(store.getRecord({ ...contact, includeDeleted: true }), preserved);
+    const connections = store.listRecords({ workspaceId: WORKSPACE_ID, collectionName: "connections" });
+    assert.equal(connections.length, 1);
+    assert.equal(connections[0].payload.lifecycleInitialization, "pending");
+  }
+});
+
 test("contact-request lifecycle projects actor-scoped in-app notifications with internal deep links", async () => {
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   const projector = createEventOperationsOutboxProjector({

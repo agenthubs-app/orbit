@@ -1,10 +1,16 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import { build } from "esbuild";
 import { chromium, type Browser, type Page } from "playwright";
 
 const require = createRequire(import.meta.url);
+// Each run owns its evidence directory; screenshots must not depend on another
+// developer's checkout or write into that developer's historical evidence.
+const evidenceDirectory = mkdtempSync(join(tmpdir(), "orbit-personal-schedule-test-"));
 let browser: Browser, script: string;
 const initialItem = { id: "personal:edit", sourceId: "personal:edit", accountId: "actor-1", ownerUserId: "actor-1", title: "Original title", kind: "personal", category: "personal", state: "upcoming", startsAt: "2026-09-17T00:30:00Z", endsAt: "2026-09-17T01:30:00Z", location: "Tokyo", createdAt: "2026-09-07T00:00:00Z", updatedAt: "2026-09-07T00:00:00Z" };
 // Real route, Screen, theme, hooks, HTTP client and task/date decoders.
@@ -342,7 +348,7 @@ test("editor reference date is localized without changing its saved date or time
   const remark = await p.getByLabel("备注", { exact: true }).boundingBox();
   const save = await p.getByRole("button", { name: "保存日程", exact: true }).boundingBox();
   assert.ok(remark && save && remark.y + remark.height <= save.y - 12, `reference rows remain above the save panel: ${JSON.stringify({ remark, save })}`);
-  await p.screenshot({ path: "/Users/xzhao/Projects/orbit/.worktrees/sprint-0063-date-time-picker/build/harness-state/evidence/sprint-0063/run-01/app-editor-reference.png" });
+  await p.screenshot({ path: join(evidenceDirectory, "app-editor-reference.png") });
 });
 
 test("association checkbox exposes selected state, supports deselection and cancels without writes", async t => {
@@ -603,7 +609,7 @@ test("localized repeat options remain usable with enlarged text and closing make
     await p.getByRole("button", { name: entry, exact: true }).click();
     await p.getByRole("radio", { name: monthly, exact: true }).click();
     await fill(p, until, "2026-10-17");
-    await p.screenshot({ path: `/Users/xzhao/Projects/orbit/.worktrees/sprint-0063-date-time-picker/build/harness-state/evidence/sprint-0063/run-01/app-rules-${language}.png` });
+    await p.screenshot({ path: join(evidenceDirectory, `app-rules-${language}.png`) });
     await p.getByRole("dialog", { name: entry, exact: true }).getByRole("button", { name: done, exact: true }).click();
     assert.deepEqual(await writes(p), []);
   }
@@ -784,7 +790,7 @@ test("merged time block shortcuts and both saves share one in-flight mutation", 
   await settle(p);
   const saveBox = await p.getByRole("button", { name: "保存日程", exact: true }).boundingBox();
   assert.ok(saveBox && saveBox.y >= 0 && saveBox.y + saveBox.height <= 844, "bottom save remains visible at the reference viewport");
-  await p.screenshot({ path: "/Users/xzhao/Projects/orbit/.worktrees/sprint-0063-date-time-picker/build/harness-state/evidence/sprint-0063/run-01/app-editor-shortcuts.png", fullPage: true });
+  await p.screenshot({ path: join(evidenceDirectory, "app-editor-shortcuts.png"), fullPage: true });
   await press(p, "保存日程");
   assert.equal(await p.getByRole("button", { name: "保存", exact: true }).isDisabled(), true);
   assert.equal((await writes(p)).length, 1);
@@ -795,7 +801,7 @@ test("personal destination reads a standalone detail with edit and reschedule bu
   const p = await open(t, { detail: true });
   assert.equal(await p.getByRole("textbox").count(), 0);
   await p.getByText("个人日程 · 仅自己可见", { exact: true }).waitFor();
-  await p.screenshot({ path: "/Users/xzhao/Projects/orbit/.worktrees/sprint-0063-date-time-picker/build/harness-state/evidence/sprint-0063/run-01/app-detail.png", fullPage: true });
+  await p.screenshot({ path: join(evidenceDirectory, "app-detail.png"), fullPage: true });
   assert.equal((await writes(p)).length, 0);
   await press(p, "编辑");
   assert.equal(await p.evaluate(() => (window as any).fixture.navigation), "/schedule/personal/personal%3Aedit/edit");

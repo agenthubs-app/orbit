@@ -7,8 +7,21 @@ import { auditReadSurfaces, extractReadCalls } from '../scripts/audit-offline-re
 import { resolveReadSurface, matchTemplate, surfaces } from '../src/data/offline-read/route-domain-inventory';
 
 // Each assertion protects a persistence boundary, or exercises the audit on real AST inputs.
-test('roster qualification registers the same durable event read policy as the owner detail consumer', () => {
-  const owner = surfaces.find(row => row.consumerFile === 'src/screens/events/EventAttendeesScreen.tsx' && row.method === 'GET' && row.endpointTemplate === '/api/events/:id');
+test('private portrait reads and saves never inherit ordinary registration persistence', () => {
+  for (const method of ['GET', 'POST']) {
+    const surface = resolveReadSurface(method, '/api/events/event%3A1/registration/portrait');
+    assert.equal(surface.consumerFile, 'src/screens/events/EventRegistrationScreen.tsx');
+    assert.equal(surface.domainId, 'registrations');
+    assert.equal(surface.readPersistence, 'online_only_secret');
+    assert.equal(surface.binaryPolicy, 'never_local');
+    assert.equal(surface.mutationPolicy, 'online_only');
+  }
+  assert.equal(resolveReadSurface('GET', '/api/events/event%3A1/registration').readPersistence, 'durable_normalized');
+  assert.throws(() => resolveReadSurface('GET', '/api/events/event%3A1/registration/portrait/other'), /UNREGISTERED_READ/);
+});
+
+test('roster qualification registers the same durable event read policy as the party detail consumer', () => {
+  const owner = surfaces.find(row => row.consumerFile === 'src/screens/party/PartyModeScreen.tsx' && row.method === 'GET' && row.endpointTemplate === '/api/events/:id');
   const qualification = surfaces.find(row => row.consumerFile === 'src/screens/events/EventAttendeeRosterLink.tsx' && row.method === 'GET' && row.endpointTemplate === '/api/events/:id');
   assert.ok(owner);
   assert.ok(qualification);
@@ -19,7 +32,43 @@ test('roster qualification registers the same durable event read policy as the o
   assert.equal(qualification.schemaVersion, 1);
 });
 
+test('canonical lifecycle and participant consumers are registered without offline mutation authority', () => {
+  const expected = [
+    ['src/screens/tasks/RelationshipLifecycleList.tsx', 'GET', '/api/relationship-tasks', 'tasks'],
+    ['src/screens/tasks/RelationshipLifecycleScreen.tsx', 'GET', '/api/connections/:id/lifecycle', 'connections'],
+    ['src/screens/tasks/RelationshipLifecycleScreen.tsx', 'POST', '/api/connections/:id/lifecycle', 'connections'],
+    ['src/view-models/relationship-initialization.ts', 'GET', '/api/connections', 'connections'],
+    ['src/view-models/relationship-initialization.ts', 'GET', '/api/connections/:id/lifecycle', 'connections'],
+    ['src/view-models/relationship-initialization.ts', 'GET', '/api/contacts/:id/relationship-initialization', 'contacts'],
+    ['src/view-models/relationship-initialization.ts', 'POST', '/api/contacts/:id/relationship-initialization', 'contacts'],
+    ['src/view-models/event-attendee-controller.ts', 'GET', '/api/events/:id/operations', 'event-operations'],
+    ['src/view-models/event-attendee-controller.ts', 'GET', '/api/events/:id/operations/participants/:id', 'event-operations'],
+    ['src/view-models/event-attendee-controller.ts', 'POST', '/api/events/:id/operations/check-in', 'event-operations'],
+    ['src/view-models/event-attendee-controller.ts', 'POST', '/api/events/:id/operations/contact-requests', 'event-operations'],
+    ['src/view-models/event-attendee-controller.ts', 'POST', '/api/events/:id/operations/contact-requests/:id/:id', 'event-operations'],
+  ];
+  for (const [file, method, path, domain] of expected) {
+    const surface = surfaces.find(row => row.consumerFile === file && row.method === method && row.endpointTemplate === path);
+    assert.ok(surface, `${file} ${method} ${path}`);
+    assert.equal(surface.domainId, domain);
+    assert.equal(surface.schemaVersion, 1);
+    assert.equal(surface.mutationPolicy, 'online_only');
+    assert.equal(resolveReadSurface(method!, path!.replaceAll(':id', 'example')).domainId, domain);
+  }
+  assert.equal(surfaces.some(row => row.consumerFile === 'src/screens/events/EventAttendeesScreen.tsx'), false);
+  assert.throws(() => resolveReadSurface('POST', '/api/events/example/operations/unknown'), /UNREGISTERED_READ/);
+});
+
 test('unknown and secret endpoints never default to persistence', () => {
+  for (const consumerFile of ['src/api/auth-session.ts', 'src/api/AuthSessionProvider.tsx']) {
+    for (const endpointTemplate of ['/api/auth/mobile/credentials', '/api/auth/mobile/google/exchange']) {
+      const surface = surfaces.find(row => row.consumerFile === consumerFile && row.method === 'POST' && row.endpointTemplate === endpointTemplate);
+      assert.ok(surface, `${consumerFile} ${endpointTemplate}`);
+      assert.equal(surface.readPersistence, 'online_only_secret');
+      assert.equal(surface.binaryPolicy, 'never_local');
+      assert.equal(surface.mutationPolicy, 'online_only');
+    }
+  }
   assert.throws(() => resolveReadSurface('GET', '/api/new-private-domain'), /UNREGISTERED_READ/);
   assert.equal(resolveReadSurface('GET', '/api/auth/session').readPersistence, 'online_only_secret');
   assert.equal(resolveReadSurface('GET', '/api/notes/n1').domainId, 'notes');
@@ -131,6 +180,34 @@ test('wrapper aliases, generic requests and computed client methods are audited 
     ['src/screens/Computed.ts', 'PATCH', '/api/computed'],
     ['src/screens/Generic.ts', 'POST', '/api/generic-write'],
   ]);
+});
+
+test('destructured transport paths resolve from callers regardless of source line shifts', async t => {
+  const root = await fixture(t, {
+    'src/api/mobile-auth.ts': `${'// unrelated error handling\n'.repeat(180)}
+      function postForSession({ path: requestPath }: { path: string }) { return fetchImpl(requestPath, { method: 'POST' }); }
+      postForSession({ path: '/api/auth/mobile/credentials' });
+      postForSession({ path: '/api/auth/mobile/google/exchange' });
+    `,
+  });
+  const result = await extractReadCalls(root);
+  assert.deepEqual(result.invalid, []);
+  assert.deepEqual(result.calls.map(row => [row.method, row.endpointTemplate]).sort(), [
+    ['POST', '/api/auth/mobile/credentials'], ['POST', '/api/auth/mobile/google/exchange'],
+  ]);
+});
+
+test('one known destructured path cannot conceal an unknown caller of the same transport', async t => {
+  const root = await fixture(t, {
+    'src/api/mobile-auth.ts': `
+      function postForSession({ path }: { path: string }) { return fetchImpl(path, { method: 'POST' }); }
+      postForSession({ path: '/api/auth/mobile/credentials' });
+      postForSession({ path: unknownPath() });
+    `,
+  });
+  const result = await extractReadCalls(root);
+  assert.ok(result.calls.some(row => row.endpointTemplate === '/api/auth/mobile/credentials'));
+  assert.ok(result.invalid.some(row => row.includes('UNRESOLVED_PATH')));
 });
 
 test('AST resolves section-indexed endpoint maps and nested returned request paths', async t => {

@@ -2,8 +2,6 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
 import { Pool } from "pg";
-import { loadLocalEnv } from "../../scripts/load-local-env";
-import { resolveLiveDatabaseConnectionConfig } from "../../shared/storage/live-database-config";
 import {
   ensureMaintenanceHeartbeat,
   ensureMaintenanceHeartbeatSchema,
@@ -38,15 +36,16 @@ const pass = (): MaintenancePassResult => ({
 });
 
 test("Postgres heartbeat keeps exactly one live chain per workspace across duplicates, lost sends and restarts", { timeout: 60_000 }, async (t) => {
-  loadLocalEnv();
-  const config = resolveLiveDatabaseConnectionConfig();
-  if (!config) {
-    t.skip("live database not configured");
+  const databaseUrl = process.env.ORBIT_MAINTENANCE_TEST_DATABASE_URL;
+  if (!databaseUrl) {
+    t.skip("explicit local maintenance test database not configured");
     return;
   }
+  const url = new URL(databaseUrl);
+  assert.ok(["localhost", "127.0.0.1", "[::1]"].includes(url.hostname), "maintenance tests require a local database");
+  assert.equal(url.pathname, "/orbit_reminder_test", "maintenance tests require the dedicated orbit_reminder_test database");
   const schema = `maintenance_${randomUUID().replaceAll("-", "")}`;
-  const admin = new Pool({ connectionString: config.connectionString, max: 1 });
-  const url = new URL(config.connectionString);
+  const admin = new Pool({ connectionString: databaseUrl, max: 1 });
   url.searchParams.set("options", `-c search_path=${schema}`);
   const pool = new Pool({ connectionString: url.toString(), max: 3 });
   const workspaceId = "workspace:maintenance%_";

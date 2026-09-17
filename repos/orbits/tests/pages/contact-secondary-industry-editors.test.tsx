@@ -38,7 +38,12 @@ test("contact detail saves a complete pair through HTTP, reopens it, and preserv
   let rejectSave = false;
   const writes: Record<string, unknown>[] = [];
   t.mock.method(globalThis, "fetch", (async (path, init) => {
+    if (path === `/api/contacts/${contactId}/relationship-initialization` && !init?.method) {
+      // This legacy editor fixture has no accepted-exchange initialization.
+      return Response.json({ success: false }, { status: 404 });
+    }
     assert.equal(path, `/api/contacts/${contactId}`);
+    assert.equal(init?.method, "PATCH");
     writes.push(JSON.parse(String(init?.body)));
     if (rejectSave) return Response.json({ success: false }, { status: 503 });
     return patch(new Request(`http://localhost${path}`, init), { params: Promise.resolve({ id: contactId }) });

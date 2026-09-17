@@ -49,6 +49,21 @@ artifact 可以带：
 
 ## Web 对话待办卡片（2026-09-08）
 
+2026-09-17 写入授权修复：runtime 与 conversation 的 task 后处理共用
+`task-write-authorization.ts`，依据完整用户原文判定授权。直接创建仅接受开头明确
+祈使命令及可抽取的非空标题（中文任务名后用冒号或空格分隔）；否定、只读、引用、
+假设、疑问和无法识别的复合表达不授予创建权限，后句否定不会被预先删除。
+planner 的 `followups.createTask` 计划本身不授予权限，也不能用计划标题补齐无标题命令。
+被拒绝时不调用 task create / suggestion suggest，并从后续确认账本输入中移除任务提议，
+保留原查询答案。直接创建时，仅允许计划使用用户标题中的原有文本进行归一化；
+不匹配的计划标题及其日期被丢弃。既有日期解析机制保持不变。
+
+明确的个人行动仍只产生待确认建议；明确从笔记整理待办仍需校验来源笔记版本，
+仅产生建议，再通过既有 accept API 创建任务。附带 `sourceNote` 不授予额外写入权限。
+验证覆盖实际 POST 后处理、原始误建输入、中英文负例、错误 planner 提议、空标题、
+笔记来源以及肯定创建和建议接受的幂等性；使用本地内存服务和注入的对话结果，
+不调用模型或业务数据库。Production 意外任务保留为验收证据，本修复不删除历史记录。
+
 `/app/agent` 读取既有 conversation 响应的 `taskInteraction`，先经页面 view-model 解码，再展示紧凑卡片。`created` 使用服务端 task ID 打开 `/app/tasks/:id`；`suggested` 提供「加入待办 / 暂不需要」，复用 task suggestions accept/dismiss API；`failed` 或字段无效时显示错误和全部待办入口，不伪造创建成功。
 
 接受成功后以 API 返回的任务替换卡片，并随消息保存到既有 sessions API；重开 Web 历史保留结果。忽略后的 `dismissed` 和无法解析的 `unavailable` 只是页面状态，不扩展共享 AI 响应契约。旧的纯文本 assistant 消息仍可读取。桌面/移动两棵渲染树共用操作锁；网络失败保留操作入口和当前页面内的幂等重试键；切换会话后旧操作不能更新新会话。

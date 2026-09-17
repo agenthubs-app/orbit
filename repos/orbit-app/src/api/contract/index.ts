@@ -3,6 +3,21 @@
 // 新增领域时在这里补一行 export，并同步 repos/orbit-app 的契约副本。
 
 export type { OrbitLanguage } from "./language";
+export type {
+  PortraitAnswerProof,
+  PortraitField,
+  PortraitGeneration,
+  PortraitPersona,
+  PortraitPreviewResult,
+  PortraitQuestionSnapshot,
+  PortraitReadResult,
+  PortraitReceipt,
+  PortraitRegistrationSource,
+  PortraitSaveBody,
+  PortraitSaveResult,
+  PortraitSourceAnswer,
+  SavedPortrait
+} from "./event-registration-portrait";
 export type { AiContactArtifactContract, AiContactArtifactItemContract, AiContactArtifactStatus, AiSessionArtifactRecoveryContract, AiSessionArtifactTurnContract } from "./ai-artifacts";
 
 export type {

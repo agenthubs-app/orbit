@@ -1,5 +1,70 @@
 # 两端当前状态
 
+## 2026-09-17 主测试账号30联系人／10活动
+
+独立Neon测试环境已围绕 organizer@orbit.example.test（测试主办方·林）扩充成功：主账号30位私有联系人、15条有日期的跟进／维护任务、10个真实归属活动（9发布＋1草稿）。原4账号、原28条通用记录及2活动保持不变；新增数据按人工确认、canonical生命周期、活动配置与报名政策链落库，没有伪造AI、报名、出席或交换成功。
+
+本地6/6及Web完整typecheck通过；云端718次SQL／923,576字节返回JSON估计、225通用记录、生命周期0问题；页面实见30联系人、9公开活动，新活动后台真实配置可读。账号密码私下交付用户，不入Git。预算、重复运行与验证范围见[主测试数据集](../repos/orbits/docs/operations/main-test-dataset.md)。只改独立测试库，不改www.orbitailink.com或App环境，未消耗模型额度。
+
+## 2026-09-17 读取成本分支远程集成（验证中）
+
+已正常推送 `d459c801` 到远程 `chat-agent` 并独立回读 SHA，保留双方提交及远程文档 `157ae860`。App 冻结全量 3,398 项 / 3,397 通过 / 1 失败 / 0 跳过；唯一读取审计行号锚点问题随后独立修复，20/20 定向通过，不冒称已重新跑全量。已修复稀疏关系动作读取、任务页重复 React key 及失效测试 fixture。Web 既有失败和专用数据库环境缺项仍保留，不能标全部闭环；具体版本和检查见[合并验证记录](2026-09-17-cloud-read-remote-integration.md)。本轮不使用 Neon/模型额度、不主动发布 Production；以下为各工作流的历史状态，不代表当前合并版全部已验收。
+
+## 2026-09-17 小型免费测试库已初始化
+
+BR-027 新 Neon 独立库完成既有迁移与小型 seed：4 个可登录合成账号、2 个 canonical 活动、3 条关系、1 个跟进任务，通用记录共28条；主办方权限/参与者拒绝与关系生命周期预检通过。种子42.6KB、初始化返回JSON约46.6KB，未调用模型，旧Production和本地大型fixtures未删改。独立Vercel项目使用显式Preview及无cron/队列订阅配置；Web登录验证与App切换状态按[BR-027](2026-09-17-read-budget-staging.md)最新记录，不将初始化当作完整业务闭环。后续云端操作必须遵守[免费套餐操作规程](../repos/orbits/docs/operations/free-staging-budget.md)。
+
+Preview现已Ready并通过主办方实际登录/后台配置读取；空报名canonical基线已激活，最终19/19本地回归。正式域名`www.orbitailink.com`与根域名绑定原`orbit`项目；本轮不改正式入口。Preview仍有Vercel访问保护，App未切换；公开详情旧20席/匿名主办方占位、完整读取治理及AI/worker/原生验收仍未关闭。
+
+## 2026-09-17 读取成本与独立 Neon 测试环境
+
+联系人详情/行业授权精确读取、bootstrap/dashboard 字段投影与同 actor 在途查询合并、可选隐私安全 PG 用量诊断已进入本地验证；GET contacts 接通显式分页参数，未强行截断旧消费者。不是全面 SQL 聚合/分页已完成。
+
+用户批准同账号独立 Neon 测试项目后，已创建 `orbit-staging-20260917`（`orange-forest-30108072`，Free、新加坡、PG16），最小 SQL 实测成功，public 表数0。旧 Production 与连接未动；新库迁移/seed/API及App联调尚未执行，不把空库创建当业务闭环。后续必要项及精确验证边界见 [BR-027](2026-09-17-read-budget-staging.md)。原项目额度限制仅继续阻塞原 Production 验收，不阻塞本地开发或新测试环境准备。
+
+## 2026-09-17 原生入口与服务端状态保护收尾
+
+App `5ee62479` 已接入 canonical 活动目录、推荐、本人轮次/座位/签到、交换动作及通知参会者直达；作用域和回执检查覆盖 actor/cookie/baseURL/焦点切换。`c5e7b124` 修复服务端5xx被误报密码错误，真实原生负例已验。Web `d0999d5f` 阻止旧联系人 PATCH 绕过生命周期，保留私有字段和纯legacy兼容；已发布为Production `dpl_AYtJfqdDkAPfQiGoANYzKJ9k2e5t`，正式别名Ready。App2945/2945、Web相关297/297、两端typecheck、iOS导出、Web mapper→App decoder6/6均通过；不是新Production原生正例。
+
+唯一外部阻塞：现有Neon Free本月7.59GB传输超额，SQL与Vercel登录日志一致，尚未升级。新活动正常报名→云端生成/发布→原生交换/通知→新pending本人初始化→Web/Neon回读仍需恢复额度后验收。原$1剩余模型预算已可沿用，Neon按量账单未获授权；未重置关系/密码、清库、重seed或另建项目。发布ID及精确边界见[BR-026](2026-09-16-cloud-five-item-acceptance.md)，以下为历史。
+
+## 2026-09-17 Xcode 27 原生 Production 验收
+
+Xcode27.0签名构建、iOS26.1 Simulator安装/登录/冷启动已通过；旧工具链阻塞解除。原生和Web共享Production5961cdde＋Neon，完成普通待办完成/恢复双向回读、个人日程双向修改、关系跟进完成→明确日期下一步→Web回读、笔记持久化、任务提醒详情与云端AI历史读取；主办方和主账号切换隔离通过。App初始化`3af3eefe`及旧canonical入口修复`5ac0e9fd`已提交，后者实际详情/私有编辑/正式跟进入口已验，最终定向90/90及typecheck通过；新pending原生提交正例尚缺。详情及证据见[BR-026](2026-09-16-cloud-five-item-acceptance.md)。
+
+仍不标整体完成：活动交换通知指向Web参会者抽屉，App缺等价页面，参会者入口亦实际失败；新的活动/模型验收须确认剩余预算可用于native。服务端legacy状态投影旁路仍在，App收口不等于旧API已修复。没有新增模型费、外部消息、清库或改期。早期全量44失败保留，最终冻结提交在`TZ=Asia/Tokyo`全量2898/2898、零跳过，typecheck通过；测试全绿不替代缺失的业务正例。下节为此前Web收尾历史，原生工具链/回读待办以本节为准。
+
+## 2026-09-17 关系初始化与Web云端闭环
+
+用户确认交换仅代表认识，双方独立选择本人目标或下一步。`04946189` 实现pending采集、显式初始化与幂等/owner保护；`2c5e8ada` 收口正式关系阶段读取权威，`5961cdde` 修复编码ID路由及详情标记。最终Production `dpl_3av2kpWJE4NBbnTA2SdfFLagVJwX` Ready。两位真实测试账号独立选择后，Naoki完成带日期跟进并明确转active；任务历史、冷刷新、联系人详情/列表一致，双方Neon preflight均0 issues。原7条记录、3条普通任务保留。
+
+此前交换→canonical初始化的Web HIGH缺口已关闭，结合既有证据，Web＋Neon＋云端worker主流程verified。App `db0755a6` 只完成pending显示兼容（103项/typecheck），原生初始化入口/旧编辑器与看板对齐、兼容构建及同Production双向回读仍开放，不把整体目标标完成。本轮没有调用模型、外发消息或清库。精确版本、测试和回执见 [BR-026](2026-09-16-cloud-five-item-acceptance.md)。
+
+## 2026-09-17 云端现场验收收尾
+
+新建独立纯测试活动、两账号真实报名→云端5/5任务一次成功→发布→签到→活动开始后双方交换→两侧私有人脉回读及越权拒绝均已验。四域真实AI与站内提醒自动投递证据保留。聊天输入框／canonical报名旅程／联系人供需与发布状态文案已上线复验。过程中发现否定句误建待办、误拦内部查询、重复回复ID覆盖历史，分别以`c3039664`、`711e2ffd`、`e880d29f`修复；授权/路由147项、历史/接口62项回归及full typecheck通过，Production已发布`e880d29f`。保留一条误建测试任务作证据，不冒充正常业务记录。最终线上结果见BR-026。
+
+**当时发现的HIGH（现已由顶部记录关闭Web范围）：** accepted exchange走legacy关系writer，两个actor缺明确activeGoal及Contact/Connection版本，正式lifecycle preflight失败。修复须基于本人真实选择，不能捏造目标或日期；App原生同Production验收独立保留。详见[BR-026最新记录](2026-09-16-cloud-five-item-acceptance.md)。
+
+最终浏览器和Neon共同确认：两轮查询、四条持久消息、不同回复ID、刷新重开完整保留；任务2/建议0及任务更新时间不变。DeepSeek本轮余额差额CNY0.11（16:44:18Z截点，包含账号并发用量），低于授权$1；未充值升级、清库或外发消息。
+
+## 2026-09-16 五项闭环执行增量
+
+22:47增量：用户新增$1预算已批准；真实新报名→Vercel worker 5/5一次成功→主办方原子发布→参会者推荐／座位回读→签到已验。iOrbit四域实际查询与新账号隔离通过，`7ac870ed5`有界等待修复已部署；Neon累计81条outbox completed。聊天态composer及新报名旅程展示正在修复。现场名片交换因未来档期且缺安全改期入口保持开放，原生验收单列；精确证据见[BR-026最新增量](2026-09-16-cloud-five-item-acceptance.md)。
+
+以下为本日较早基线：
+
+关系生命周期 Web/App 消费者已提交，Web Production 完成旧任务→明确下一步→刷新与异账号拒绝；App 全量 2869/2869，但当前原生同环境回读仍待兼容工具链。canonical 站内 ReminderPlan 已被真实云端 maintenance 投递，收件箱详情/已读持久化通过；event-operations 云端队列完成全部 79 条待处理投影。新账号资料、普通待办完成/恢复、个人日程已实测。真实生成/发布/匹配与原生双端验收未完成；版本、快照、验证与预算边界见 [BR-026](2026-09-16-cloud-five-item-acceptance.md)。下方只读跟进/未承载 worker 的描述是旧基线，不代表最新源码。
+
+## 2026-09-16 P0 修复增量
+
+Production 运行源码 `105ebba4d` / `dpl_2FjxtX314B6DRojeZvFbdDF8gTNh` 为 Ready：iOrbit 66 人脉/66 跟进、个人日程保存/刷新、AI 实际查询标题及 open 状态通过。Web Tasks 显示 66 当前/14 历史跟进；另一主办方为 0，保持 owner 隔离。跟进仍为只读可见性，不把旧 task 包一层变成普通待办；完整 lifecycle 完成入口及原生同环境回读仍开放。版本及验收见 [BR-025](2026-09-16-production-p0-fixes.md)，后续只做 [最小必要清单](../docs/designs/2026-09-16-cloud-goal-remaining.md)。
+
+## 2026-09-16 Production 测试数据增量
+
+用户授权将合成 fixture 用于 Production 测试；正式 Web 已连接 Neon Production 的 `workspace:orbit-demo-fixtures`，完成空库事务导入、逐表校验、主办方登录与参与者权限隔离。App 本机 API 地址已指向正式网址，但原生构建受当前 Swift/Expo 依赖兼容性阻塞，不能记为跨端 verified。主办方身份去重、可报名测试活动及精确证据见 [本次交接](2026-09-16-production-fixture-testing.md)。此前 schema-only / 未部署状态为历史，不能替代此记录。
+
+增量：主测试账号凭据登录可读 66 联系人；新增活动报名/取消/重报复用同一记录。关系 fixture 已整理为每联系人一条有效关系、一个当前任务，旧重复记录可恢复停用，正式生命周期核验 0 issues；46 项定向回归通过。后台 event-operations worker 的云端承载与原生 App 同环境验证仍为精确未完成项。
 ## 2026-09-17 活动报名修复与Phone发布
 
 用户随后要求重建两端：Phone已真正fresh后台Next BUILD `Mh8CRhvDjpNWmXZo4wex1`及fresh Expo export并重新部署，同域PUBLIC93152/93153/93154健康、逐13页正常UI登录0业务写验证通过。Main Simulator实际重新编译/覆盖安装，当前92537已显示有数据首页与历史笔记列表；实际8082连接和Hermes主bundle URL已观察，不把原生binary hash当JS证明。原账号/本地数据/预算/回退保留，临时preview正常停止；详见[本轮重建交接](2026-09-17-phoneweb-registration-repair.md)。下方是首次发布的历史记录，不是当前PID。

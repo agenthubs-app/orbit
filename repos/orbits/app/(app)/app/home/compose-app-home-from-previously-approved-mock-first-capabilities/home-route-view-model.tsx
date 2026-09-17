@@ -1,9 +1,18 @@
 import { StateView } from "../../../../../shared/ui/state-view";
+import {
+  publishedCanonicalEventToEventDTO,
+} from "../../../../../features/events/core/public-catalogue";
+import type { PublishedCanonicalEvent } from "../../../../../features/events/core/contract";
+import { readConfiguredCanonicalParticipantEventJourneys } from "../../../../../features/events/canonical-participant-event-journeys";
 import type { AppContactsRouteViewModel } from "../../contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
 import { loadAppContactsRouteViewModel } from "../../contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
 import type { AppEventsRouteViewModel } from "../../events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model";
 import { loadAppEventsRouteViewModel } from "../../events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model";
 import { eventChoiceToLandingEvent } from "../../events/compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter";
+import {
+  getOrbitLandingEventView,
+  type OrbitLandingEventView,
+} from "../../orbit-landing-route-view-model";
 import type { OrbitHomeViewModel } from "../../orbit-home-route-view-model";
 import type { AppProfileRouteViewModel } from "../../profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model";
 import { loadAppProfileRouteViewModel } from "../../profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model";
@@ -17,6 +26,14 @@ export interface AppHomeActor {
   displayName: string;
   email?: string | null;
   id: string;
+  /** Auth.js subject used by canonical Event Core membership reads. */
+  rawSubject?: string | null;
+}
+
+export interface AppHomeRouteDependencies {
+  readCanonicalParticipantEventJourneys?: (
+    rawSubject: string,
+  ) => Promise<readonly PublishedCanonicalEvent[]>;
 }
 
 export interface AppHomeRouteStateViewModel {
@@ -59,17 +76,64 @@ function inProgressCount(contacts: AppContactsRouteViewModel): number {
   ).length;
 }
 
+function canonicalEventToLandingEvent(
+  event: PublishedCanonicalEvent,
+): OrbitLandingEventView {
+  const eventView = getOrbitLandingEventView({
+    event: publishedCanonicalEventToEventDTO(event),
+    evidenceSummary:
+      event.description?.trim() ||
+      "Source-backed event loaded from canonical Event Core.",
+    generatedAt: new Date().toISOString(),
+    participantCount: 0,
+    routeCode: event.publicCode?.trim() || event.eventId,
+  });
+
+  return {
+    ...eventView,
+    canonicalEventId: event.eventId,
+  };
+}
+
+export function mergeHomeEventJourneys(
+  ownedEvents: readonly OrbitLandingEventView[],
+  participantEvents: readonly OrbitLandingEventView[],
+): OrbitLandingEventView[] {
+  const seen = new Set<string>();
+  const merged: OrbitLandingEventView[] = [];
+
+  for (const event of [...ownedEvents, ...participantEvents]) {
+    const identityKeys = [
+      event.id,
+      event.code,
+      event.canonicalEventId,
+    ]
+      .map((value) => value?.trim())
+      .filter((value): value is string => Boolean(value));
+    if (identityKeys.some((key) => seen.has(key))) continue;
+    identityKeys.forEach((key) => seen.add(key));
+    merged.push(event);
+  }
+
+  return merged;
+}
+
 function homeViewModel(input: {
   contacts: Extract<AppContactsRouteViewModel, { state: "success" }>;
   events: AppEventsRouteViewModel;
+  participantEvents: readonly PublishedCanonicalEvent[];
   profile: Extract<AppProfileRouteViewModel, { state: "success" }>;
 }): OrbitHomeViewModel {
   const profile = input.profile.profile.profile;
   const fullName = profile.displayName || "Orbit operator";
-  const events =
+  const ownedEvents =
     input.events.state === "success"
       ? input.events.workspace.eventChoices.map(eventChoiceToLandingEvent)
       : [];
+  const participantEvents = input.participantEvents.map(
+    canonicalEventToLandingEvent,
+  );
+  const events = mergeHomeEventJourneys(ownedEvents, participantEvents);
 
   return {
     account: {
@@ -180,11 +244,20 @@ function firstRouteState(input: {
 export async function loadAppHomeRouteViewModel(
   searchParams?: AppHomeSearchParams,
   actor?: AppHomeActor | null,
+  dependencies: AppHomeRouteDependencies = {},
 ): Promise<AppHomeRouteViewModel> {
-  const [events, contacts, profile] = await Promise.all([
+  const rawSubject = actor?.rawSubject?.trim() || null;
+  const readCanonicalParticipantEventJourneys =
+    dependencies.readCanonicalParticipantEventJourneys ??
+    readConfiguredCanonicalParticipantEventJourneys;
+  const participantEventsPromise = rawSubject
+    ? readCanonicalParticipantEventJourneys(rawSubject)
+    : Promise.resolve([] as readonly PublishedCanonicalEvent[]);
+  const [events, contacts, profile, participantEvents] = await Promise.all([
     loadAppEventsRouteViewModel(actor?.id),
     loadAppContactsRouteViewModel(searchParams, actor?.id),
     loadAppProfileRouteViewModel(actor),
+    participantEventsPromise,
   ]);
   const routeState = firstRouteState({ contacts, events, profile });
 
@@ -229,6 +302,7 @@ export async function loadAppHomeRouteViewModel(
     home: homeViewModel({
       contacts,
       events,
+      participantEvents,
       profile,
     }),
   };

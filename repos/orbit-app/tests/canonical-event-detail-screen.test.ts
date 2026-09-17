@@ -99,7 +99,7 @@ test("canonical to legacy requires owner lookup while returning canonical never 
   await page.evaluate(() => { const s=(window as any).fixture;s.update({event:{...s.event,sourceMetadata:{label:"organizer-import"}}});s.refresh(); });
   await page.getByRole("button", { name: "查看参会者", exact: true }).waitFor();
   await page.evaluate(() => { const s=(window as any).fixture;s.update({event:{...s.event,sourceMetadata:{label:"event-core-postgres"}}});s.refresh(); });
-  await page.getByText("报名暂不可用", { exact: true }).waitFor();
+  await page.getByTestId("event-registration-status").filter({ hasText: "报名暂不可用" }).waitFor();
   await settle(page);
   assert.equal(await page.getByRole("button", { name: "查看参会者", exact: true }).count(), 0);
   // The first refresh starts while the last validated DTO is still legacy.
@@ -119,7 +119,7 @@ test("late legacy owner response is aborted and cannot publish after canonical s
   await page.getByText("正在确认名单查看权限。", { exact: true }).waitFor();
   const ownerIndex = await page.evaluate(() => (window as any).fixture.requests.findLastIndex((r:any)=>new URL(r.url).pathname==="/api/events/event_signup_03"));
   await page.evaluate(() => { const s=(window as any).fixture;s.update({event:{...s.event,sourceMetadata:{label:"event-core-postgres"}}});s.refresh(); });
-  await page.getByText("报名暂不可用", { exact: true }).waitFor();
+  await page.getByTestId("event-registration-status").filter({ hasText: "报名暂不可用" }).waitFor();
   assert.equal(await page.evaluate(index => (window as any).fixture.requests[index].signal.aborted, ownerIndex), true);
   await page.evaluate(index => (window as any).fixture.reply(index), ownerIndex);
   await settle(page);

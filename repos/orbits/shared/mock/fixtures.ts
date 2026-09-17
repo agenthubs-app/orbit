@@ -35,6 +35,11 @@ import type {
 } from "../domain/contracts";
 import type { RsvpStatus, SourceReferenceDTO } from "../domain/source-types";
 import { generatedRelationshipFixtures } from "./generated-relationship-fixtures";
+import {
+  MOCK_EVENT_ORGANIZER_ACCOUNT_FIXTURES,
+  MOCK_EVENT_ORGANIZER_ASSIGNMENTS,
+  validateMockEventOrganizerFixtures,
+} from "./event-organizer-fixtures";
 
 export const MOCK_FIXTURE_COLLECTION_NAMES = [
   // collection 名称同时用于 reset/registry 展示和 state store 的统一遍历。
@@ -891,6 +896,84 @@ export const legacyDefaultMockFixtures: MockRuntimeFixtures = {
   ],
 };
 
+function withGeneratedOrganizerFixtures(
+  fixtures: MockRuntimeFixtures,
+): MockRuntimeFixtures {
+  const validationErrors = validateMockEventOrganizerFixtures();
+  if (validationErrors.length > 0) {
+    throw new Error(`Invalid mock event organizer fixtures: ${validationErrors.join("; ")}`);
+  }
+
+  const organizersByKey = new Map<string, (typeof MOCK_EVENT_ORGANIZER_ACCOUNT_FIXTURES)[number]>(
+    MOCK_EVENT_ORGANIZER_ACCOUNT_FIXTURES.map((organizer) => [organizer.key, organizer]),
+  );
+  const assignmentByEventId = new Map<string, string>(
+    MOCK_EVENT_ORGANIZER_ASSIGNMENTS.map((assignment) => [assignment.eventId, assignment.organizerKey]),
+  );
+  const organizerSource = (event: EventDTO): SourceReferenceDTO => ({
+    type: "event_import",
+    id: `organizer:${event.id}`,
+    label: `Reviewed organizer assignment for ${event.name}`,
+  });
+
+  const organizers: OrganizerDTO[] = MOCK_EVENT_ORGANIZER_ACCOUNT_FIXTURES.map((organizer) => {
+    const hostedEvent = fixtures.events.find(
+      (event) => assignmentByEventId.get(event.id) === organizer.key,
+    );
+    const source = hostedEvent ? organizerSource(hostedEvent) : systemSource;
+    const evidenceId = hostedEvent?.evidenceIds[0] ?? "evidence:generated-relationship-fixtures";
+    return {
+      id: organizer.organizerId,
+      slug: organizer.key,
+      name: organizer.displayName,
+      accountId: organizer.accountId,
+      handle: `@${organizer.key}`,
+      bio: `${organizer.role} at ${organizer.organization}.`,
+      verified: true,
+      eventsHostedCount: [...assignmentByEventId.values()].filter((key) => key === organizer.key).length,
+      source,
+      evidenceIds: [evidenceId],
+      createdAt: fixtures.generatedAt,
+      updatedAt: fixtures.generatedAt,
+    };
+  });
+
+  const accounts: AccountDTO[] = MOCK_EVENT_ORGANIZER_ACCOUNT_FIXTURES
+    .filter((organizer) => !fixtures.accounts.some((account) => account.id === organizer.accountId))
+    .map((organizer) => ({
+      id: organizer.accountId,
+      name: `${organizer.displayName} 的 Orbit 主办方账号`,
+      createdAt: fixtures.generatedAt,
+      updatedAt: fixtures.generatedAt,
+    }));
+
+  const profiles: UserProfileDTO[] = MOCK_EVENT_ORGANIZER_ACCOUNT_FIXTURES
+    .filter((organizer) => !fixtures.profiles.some((profile) => profile.accountId === organizer.accountId))
+    .map((organizer) => ({
+      id: `profile:${organizer.accountId}`,
+      accountId: organizer.accountId,
+      displayName: organizer.displayName,
+      role: organizer.role,
+      timezone: "Asia/Tokyo",
+      organization: organizer.organization,
+      handles: { email: organizer.email },
+      createdAt: fixtures.generatedAt,
+      updatedAt: fixtures.generatedAt,
+    }));
+
+  return {
+    ...fixtures,
+    accounts: [...fixtures.accounts, ...accounts],
+    profiles: [...fixtures.profiles, ...profiles],
+    events: fixtures.events.map((event) => {
+      const organizerKey = assignmentByEventId.get(event.id);
+      const organizer = organizerKey ? organizersByKey.get(organizerKey) : undefined;
+      return organizer ? { ...event, organizerId: organizer.organizerId } : event;
+    }),
+    organizers,
+  };
+}
+
 function withGeneratedTaskConnectionIds(
   fixtures: MockRuntimeFixtures,
 ): MockRuntimeFixtures {
@@ -956,4 +1039,6 @@ function withGeneratedTaskConnectionIds(
 }
 
 export const defaultMockFixtures: MockRuntimeFixtures =
-  withGeneratedTaskConnectionIds(generatedRelationshipFixtures);
+  withGeneratedTaskConnectionIds(
+    withGeneratedOrganizerFixtures(generatedRelationshipFixtures),
+  );

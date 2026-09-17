@@ -293,6 +293,7 @@ export async function seedEventOperationsE2E({
       relationshipContext: event.description,
       startsAt,
       status: "confirmed",
+      name: event.title,
       title: event.title,
       venue: event.venue,
     },

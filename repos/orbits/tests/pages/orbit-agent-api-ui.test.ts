@@ -65,9 +65,32 @@ test("Orbit agent uses CSS-gated responsive trees and exposes one shared request
   assert.doesNotMatch(agentSource, /matchMedia\(/);
 });
 
+test("chat composer stays on the Agent page without reopening the global launcher", () => {
+  const agentSource = readProjectFile(
+    "app/(app)/app/agent/orbit-real-agent.tsx",
+  );
+  const globalAskSource = readProjectFile(
+    "app/(app)/app/orbit-global-ask/orbit-global-ask.tsx",
+  );
+
+  assert.match(agentSource, /data-orbit-agent-chat-composer/);
+  assert.match(agentSource, /data-orbit-agent-chat-input/);
+  assert.match(agentSource, /disabled=\{thinking\}/);
+  assert.match(agentSource, /const query = chatDraft\.trim\(\);/);
+  assert.match(agentSource, /void ask\(query\)/);
+  assert.match(agentSource, /className="agent-chat-composer-dock"/);
+  assert.match(agentSource, /border-top: 1px solid var\(--border\)/);
+  assert.match(globalAskSource, /!isOrbitAskHome\(pathname\)/);
+});
+
 
 test("the actual Agent request helper aborts stalled requests and always clears its timer", async () => {
   const source = readProjectFile("app/(app)/app/agent/orbit-real-agent.tsx");
+  assert.match(source, /浏览器已停止等待/);
+  assert.match(source, /服务器结果尚未确认/);
+  assert.match(source, /不会重复生成/);
+  assert.doesNotMatch(source, /本次请求已停止/);
+  assert.doesNotMatch(source, /The request took over .* and was stopped/);
   const parsed = ts.createSourceFile("orbit-real-agent.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const names = new Set(["AGENT_REQUEST_TIMEOUT_MS", "AgentRequestTimeoutError", "fetchAgentConversation"]);
   const declarations = parsed.statements.filter((statement) => {
@@ -87,7 +110,7 @@ test("the actual Agent request helper aborts stalled requests and always clears 
     const helper = runInNewContext(`${compiled}; fetchAgentConversation`, {
       AbortController,
       window: {
-        setTimeout(callback: () => void, delay: number) { assert.equal(delay, 30_000); expire = callback; return 7; },
+        setTimeout(callback: () => void, delay: number) { assert.equal(delay, 60_000); expire = callback; return 7; },
         clearTimeout(id: number) { cleared.push(id); },
       },
       fetch(url: string, init: RequestInit) {

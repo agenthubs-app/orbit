@@ -6,6 +6,7 @@ import type { TaskService } from "../tasks/service";
 import type { TaskSuggestionService } from "../tasks/suggestion-service";
 import type { AgentNaturalLanguageActionRequest } from "../agent/natural-language-actions/contract";
 import type { NoteService } from "../notes/service";
+import { taskWriteAuthorization } from "./task-write-authorization";
 
 const PROACTIVE_SUGGESTION_WINDOW_MS = 6 * 60 * 60 * 1000;
 
@@ -39,48 +40,6 @@ function withoutTaskRequests(
   return requests.filter((request) => request.capabilityId !== "followups.createTask");
 }
 
-function isExplicitTaskRequest(message: string): boolean {
-  return /(?:创建|新建|添加|加到|加入|记(?:下|一个)?|设(?:置)?)(?:一个|一条|个|条)?(?:待办|任务)|(?:create|add|make)\s+(?:a\s+)?(?:task|todo)/iu.test(
-    message,
-  );
-}
-
-function inferredTaskTitle(message: string): string | null {
-  const normalized = message.trim().replace(/[。！？!?]+$/u, "");
-  const hasCommitment =
-    /(?:我|我们)(?:之后|稍后|今天|明天|后天|下周|本周|晚上|下午|上午)?(?:还)?(?:要|需要|得|打算|准备|计划)|\b(?:i|we)\s+(?:need|plan|intend|have)\s+to\b/iu.test(
-      normalized,
-    );
-  const hasAction =
-    /(?:联系|跟进|确认|整理|提交|发送|发|准备|预约|购买|完成|更新|安排|回复)/u.test(
-      normalized,
-    );
-  if (
-    !normalized ||
-    /[？?]|(?:谁|什么|怎么|如何|有没有|是否)/u.test(normalized) ||
-    !hasCommitment ||
-    !hasAction
-  ) {
-    return null;
-  }
-
-  return normalized
-    .replace(/^(?:我|我们)(?:之后|稍后)?(?:还)?(?:要|需要|得|打算|准备|计划)(?:去)?/u, "")
-    .trim()
-    .slice(0, 180);
-}
-
-function explicitTaskTitle(message: string): string {
-  return message
-    .replace(
-      /^.*?(?:创建|新建|添加|加到|加入|记(?:下|一个)?|设(?:置)?)(?:一个|一条|个|条)?(?:待办|任务)[：:\s]*/u,
-      "",
-    )
-    .replace(/[。！？!?]+$/u, "")
-    .trim()
-    .slice(0, 180);
-}
-
 function taskCategory(title: string): TaskCategory {
   if (/(?:联系|跟进|回复|引荐|介绍|人脉)/u.test(title)) return "relationship";
   if (/(?:会面|见面|会议|拜访|面谈)/u.test(title)) return "meeting";
@@ -100,6 +59,11 @@ export function createOrbitAiTaskInteractionService(input: {
 }): OrbitAiTaskInteractionService {
   return {
     async handle(request) {
+      const authorization = taskWriteAuthorization(request.message);
+      const remainingActionRequests = withoutTaskRequests(request.proposedActionRequests);
+      if (authorization.kind === "none" || (authorization.kind === "note_suggestion" && !request.sourceNote)) {
+        return { remainingActionRequests };
+      }
       let sourceNote = null;
       try {
         sourceNote = request.sourceNote
@@ -118,25 +82,25 @@ export function createOrbitAiTaskInteractionService(input: {
             state: "failed",
             title: "从笔记整理待办",
           },
-          remainingActionRequests: request.proposedActionRequests,
+          remainingActionRequests,
         };
       }
-      const plannedTask = taskRequest(request.proposedActionRequests);
-      const explicit = isExplicitTaskRequest(request.message);
+      const candidate = taskRequest(request.proposedActionRequests);
+      // A model can refine an authorized title, but cannot substitute another
+      // task (or that task's date) for the user's explicit command.
+      const plannedTask = authorization.kind !== "direct" ||
+        (candidate?.arguments.title.trim() && authorization.title.includes(candidate.arguments.title.trim()))
+        ? candidate : undefined;
+      const explicit = authorization.kind === "direct";
       const title =
         plannedTask?.arguments.title ??
         (sourceNote?.body.split(/\r?\n/u).map((line) => line.trim()).find(Boolean)?.slice(0, 180)) ??
-        (explicit
-          ? explicitTaskTitle(request.message)
-          : inferredTaskTitle(request.message));
+        (authorization.kind === "note_suggestion" ? null : authorization.title);
 
       if (!title) {
-        return { remainingActionRequests: request.proposedActionRequests };
+        return { remainingActionRequests };
       }
 
-      const remainingActionRequests = withoutTaskRequests(
-        request.proposedActionRequests,
-      );
       const category = taskCategory(title);
       const dueAt = plannedTask?.arguments.dueAt;
 

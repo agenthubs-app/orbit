@@ -124,7 +124,7 @@ test.before(async () => {
 });
 test.after(async () => { await browser?.close(); if (server) await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())); });
 async function open(t: { after: (fn: () => Promise<void>) => void }, screen: string, colorScheme: "light" | "dark" = "light"): Promise<Page> {
-  const page = await browser.newPage({ viewport: { width: 320, height: 874 }, colorScheme }); page.setDefaultTimeout(2500); t.after(() => page.close());
+  const page = await browser.newPage({ viewport: { width: 320, height: 874 }, colorScheme, timezoneId: "Asia/Tokyo" }); page.setDefaultTimeout(2500); t.after(() => page.close());
   await page.clock.install({ time: new Date("2026-09-08T03:00:00Z") });
   await page.route("**/*", route => route.request().url().startsWith(url) ? route.continue() : route.abort());
   await page.goto(`${url}?screen=${screen}`); return page;

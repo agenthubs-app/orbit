@@ -123,11 +123,13 @@ test("explicit task language creates one canonical task immediately", async () =
 
   assert.equal(first.interaction?.state, "created");
   assert.equal(first.interaction?.title, "联系佐藤确认合同范围");
+  assert.equal(first.interaction?.dueAt, "2026-08-30T06:00:00.000Z");
   assert.equal(first.remainingActionRequests.length, 0);
   assert.equal(replay.interaction?.taskId, first.interaction?.taskId);
   assert.equal(tasks.length, 1);
   assert.equal(tasks[0]?.source, "ai_confirmed");
   assert.equal(tasks[0]?.relatedConversationId, conversationId);
+  assert.equal(tasks[0]?.dueAt, "2026-08-30T06:00:00.000Z");
 });
 
 test("inferred commitment becomes a suggestion instead of a task", async () => {
@@ -189,4 +191,167 @@ test("questions and vague discussion do not create task suggestions", async () =
   });
 
   assert.equal(result.interaction, undefined);
+});
+
+const unauthorizedMessages = [
+  "只查询我自己的联系人 Naoki Sato，告诉我他的机构、职务和信息来源。不要创建任务或发送消息。",
+  "不要创建任务：联系佐藤",
+  "请别帮我添加一个待办：发送资料",
+  "我不需要创建任务：联系佐藤",
+  "先创建任务：联系佐藤，但暂时不要执行",
+  "只读分析：创建任务：联系佐藤",
+  "只查询标题包含创建任务的记录",
+  "他说创建任务：联系佐藤",
+  "“创建任务：联系佐藤”",
+  "> 创建任务：联系佐藤",
+  "```\n创建任务：联系佐藤\n```",
+  "解释一下‘创建任务：联系佐藤’的含义",
+  "创建任务：联系佐藤？",
+  "创建任务会发送通知吗",
+  "能不能创建任务联系佐藤",
+  "如果创建任务联系佐藤会怎样",
+  "我明天要联系佐藤吗？",
+  "我不打算联系佐藤，但系统建议创建任务",
+  "Do not create a task: contact Sato",
+  "Please don't add a todo: send the files",
+  "Create a task: contact Sato?",
+  "Can you create a task: contact Sato?",
+  "He said create a task: contact Sato",
+  '"Create a task: contact Sato"',
+  "Only query my contacts; create a task is an example",
+  "Create a task: contact Sato, but do not execute this yet",
+  "只查询我的联系人 Naoki Sato 的机构和职务",
+  "创建任务：",
+  "创建任务：   ",
+  "创建任务的方法",
+  "创建任务：联系佐藤（这是引用的例子）",
+  "我需要联系谁",
+  "我需要解释‘创建任务：联系佐藤’这段引用",
+  "Create a task: ",
+  "Create a task",
+  "创建任务",
+  "Create a task is an example",
+];
+
+for (const message of unauthorizedMessages) {
+  for (const withProposal of [false, true]) {
+    test(`no task write authorization, even with planner proposal=${withProposal}: ${message}`, async (t) => {
+      const { interactionService, taskService, suggestionService } = services();
+      const create = t.mock.method(taskService, "create");
+      const suggest = t.mock.method(suggestionService, "suggest");
+      const now = "2026-09-17T01:00:00.000Z";
+      const result = await interactionService.handle({
+        actorId, conversationId, message, now,
+        proposedActionRequests: withProposal ? [{
+          capabilityId: "followups.createTask",
+          arguments: { title: "或发送消息" },
+          requiresUserConfirmation: true,
+        }] : [],
+      });
+      assert.equal(result.interaction, undefined);
+      assert.deepEqual(result.remainingActionRequests, []);
+      assert.deepEqual(await taskService.list({ actorId }), []);
+      assert.deepEqual(await suggestionService.list({ actorId, now }), []);
+      assert.equal(create.mock.callCount(), 0);
+      assert.equal(suggest.mock.callCount(), 0);
+    });
+  }
+}
+
+test("read-only or negated requests with a valid source note cannot persist suggestions", async (t) => {
+  const { interactionService, noteService, taskService, suggestionService } = services();
+  const now = "2026-09-17T01:00:00.000Z";
+  const note = await noteService.create({ actorId, body: "联系佐藤", idempotencyKey: "readonly-note", now });
+  const create = t.mock.method(taskService, "create");
+  const suggest = t.mock.method(suggestionService, "suggest");
+  for (const message of ["只查询这篇笔记，不创建待办", "不要从这篇笔记创建任务", "这篇笔记是否值得创建任务？"]) {
+    const result = await interactionService.handle({
+      actorId, conversationId, message, now, sourceNote: { id: note.id, version: note.version },
+      proposedActionRequests: [{ capabilityId: "followups.createTask", arguments: { title: "联系佐藤" }, requiresUserConfirmation: true }],
+    });
+    assert.equal(result.interaction, undefined);
+    assert.deepEqual(result.remainingActionRequests, []);
+  }
+  assert.equal(create.mock.callCount(), 0);
+  assert.equal(suggest.mock.callCount(), 0);
+});
+
+for (const [message, title] of [
+  ["请创建一个任务：联系佐藤", "联系佐藤"],
+  ["帮我新建待办：整理资料。", "整理资料"],
+  ["添加一条任务：准备会议", "准备会议"],
+  ["Please create a task: contact Sato", "contact Sato"],
+  ["Add a todo: prepare the meeting", "prepare the meeting"],
+]) {
+  test(`affirmative command with no planner proposal creates exactly once: ${message}`, async () => {
+    const { interactionService, taskService } = services();
+    const input = { actorId, conversationId, message, now: "2026-09-17T01:00:00.000Z", proposedActionRequests: [] };
+    const first = await interactionService.handle(input);
+    const replay = await interactionService.handle(input);
+    assert.equal(first.interaction?.state, "created");
+    assert.equal(first.interaction?.title, title);
+    assert.equal(replay.interaction?.taskId, first.interaction?.taskId);
+    assert.equal((await taskService.list({ actorId })).length, 1);
+  });
+}
+
+test("a conversational suggestion still requires explicit acceptance and replays once", async () => {
+  const { interactionService, taskService, suggestionService } = services();
+  const now = "2026-09-17T01:00:00.000Z";
+  const result = await interactionService.handle({
+    actorId, conversationId, now, message: "我明天要联系佐藤", proposedActionRequests: [],
+  });
+  assert.equal(result.interaction?.state, "suggested");
+  assert.deepEqual(await taskService.list({ actorId }), []);
+  assert.ok(result.interaction?.suggestionId);
+  const accept = { actorId, now, suggestionId: result.interaction.suggestionId, idempotencyKey: "explicit-accept" };
+  const first = await suggestionService.accept(accept);
+  const replay = await suggestionService.accept(accept);
+  assert.equal(first.task.id, replay.task.id);
+  assert.equal((await taskService.list({ actorId })).length, 1);
+});
+
+test("a planner cannot replace the authorized task title or attach its unrelated deadline", async () => {
+  const { interactionService, taskService } = services();
+  const result = await interactionService.handle({
+    actorId, conversationId, now: "2026-09-17T01:00:00.000Z", message: "创建任务：联系佐藤",
+    proposedActionRequests: [{ capabilityId: "followups.createTask", requiresUserConfirmation: true,
+      arguments: { title: "发送机密资料", dueAt: "2026-09-18T01:00:00.000Z" } }],
+  });
+  assert.equal(result.interaction?.title, "联系佐藤");
+  const [task] = await taskService.list({ actorId });
+  assert.equal(task.title, "联系佐藤");
+  assert.equal(task.dueAt, undefined);
+});
+
+test("rejecting an unrelated plan preserves the user's original time words", async () => {
+  const { interactionService, taskService } = services();
+  const result = await interactionService.handle({
+    actorId, conversationId, now: "2026-09-17T01:00:00.000Z",
+    message: "创建任务：明天下午联系佐藤",
+    proposedActionRequests: [{ capabilityId: "followups.createTask", requiresUserConfirmation: true,
+      arguments: { title: "发送机密资料", dueAt: "2026-10-01T01:00:00.000Z" } }],
+  });
+  assert.equal(result.interaction?.title, "明天下午联系佐藤");
+  assert.equal(result.interaction?.dueAt, undefined);
+  const [task] = await taskService.list({ actorId });
+  assert.equal(task.title, "明天下午联系佐藤");
+  assert.equal(task.dueAt, undefined);
+});
+
+test("authorized note extraction still rejects a changed source version before any write", async (t) => {
+  const { interactionService, noteService, taskService, suggestionService } = services();
+  const now = "2026-09-17T01:00:00.000Z";
+  const note = await noteService.create({ actorId, body: "联系佐藤", idempotencyKey: "stale-note", now });
+  const create = t.mock.method(taskService, "create");
+  const suggest = t.mock.method(suggestionService, "suggest");
+  const result = await interactionService.handle({
+    actorId, conversationId, now, message: "请从这篇笔记整理待办",
+    sourceNote: { id: note.id, version: note.version + 1 },
+    proposedActionRequests: [{ capabilityId: "followups.createTask", requiresUserConfirmation: true, arguments: { title: "联系佐藤" } }],
+  });
+  assert.equal(result.interaction?.state, "failed");
+  assert.deepEqual(result.remainingActionRequests, []);
+  assert.equal(create.mock.callCount(), 0);
+  assert.equal(suggest.mock.callCount(), 0);
 });

@@ -1,5 +1,10 @@
 import { Pool, type PoolConfig } from "pg";
 import { resolveLiveDatabaseConnectionConfig, type LiveDatabaseEnv } from "./live-database-config";
+import {
+  createPostgresReadMetricsRunner,
+  type PostgresReadMetricsConfig,
+  type PostgresReadMetricsRunner,
+} from "./postgres-read-metrics";
 
 export interface TransactionalSqlExecutor {
   query<TRow = Record<string, unknown>>(text: string, values?: readonly unknown[]): Promise<{ rows: readonly TRow[] }>;
@@ -24,23 +29,33 @@ interface TransactionalPostgresOptions {
   max?: number;
   ssl?: PoolConfig["ssl"];
   pool?: TransactionalPostgresPool;
+  readMetrics?: PostgresReadMetricsConfig;
 }
 
-function executor(connection: PoolQuery): TransactionalSqlExecutor {
+function executor(
+  connection: PoolQuery,
+  measureRead: PostgresReadMetricsRunner | undefined,
+): TransactionalSqlExecutor {
   return {
     async query<TRow = Record<string, unknown>>(text: string, values?: readonly unknown[]) {
-      const result = await connection.query(text, values === undefined ? undefined : [...values]);
+      const result = measureRead
+        ? await measureRead(
+            text,
+            () => connection.query(text, values === undefined ? undefined : [...values]),
+          )
+        : await connection.query(text, values === undefined ? undefined : [...values]);
       return { rows: result.rows as TRow[] };
     },
   };
 }
 
-export function createTransactionalPostgresClient({ connectionString, max = 2, ssl, pool: providedPool }: TransactionalPostgresOptions): TransactionalPostgresClient {
+export function createTransactionalPostgresClient({ connectionString, max = 2, ssl, pool: providedPool, readMetrics }: TransactionalPostgresOptions): TransactionalPostgresClient {
   if (!connectionString?.trim()) throw new Error("A database connection string is required.");
   if (!Number.isSafeInteger(max) || max < 1) throw new Error("Pool size must be a positive integer.");
   const pool = providedPool ?? new Pool({ connectionString, max, ssl });
+  const measureRead = createPostgresReadMetricsRunner(readMetrics);
   return {
-    ...executor(pool),
+    ...executor(pool, measureRead),
     close: () => pool.end(),
     async transaction<T>(operation: (client: TransactionalSqlExecutor) => Promise<T>): Promise<T> {
       const connection = await pool.connect();
@@ -48,7 +63,7 @@ export function createTransactionalPostgresClient({ connectionString, max = 2, s
       let destroy = false;
       try {
         await connection.query("begin isolation level serializable");
-        const result = await operation(executor(connection));
+        const result = await operation(executor(connection, measureRead));
         await connection.query("commit");
         return result;
       } catch (error) {

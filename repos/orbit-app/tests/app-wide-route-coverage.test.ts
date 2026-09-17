@@ -175,12 +175,14 @@ const integratedFeatureRoutes = [
   "/contacts/new/import/[id]",
   "/contacts/matches",
   "/events/[id]/operations/experience",
+  "/events/[id]/participants/[participantId]",
   "/invitations/[token]",
   "/schedule/meetings/[id]",
   "/schedule/personal/[id]",
   "/schedule/personal/[id]/edit",
   "/schedule/personal/new",
   "/tasks/personal",
+  "/tasks/relationship/[id]",
   "/notes",
   "/notes/[id]",
   "/notes/[id]/edit",
@@ -204,7 +206,8 @@ function scanAppRouteEntries(directory: string): string[] {
         continue;
       }
 
-      if (!/\.(j|t)sx?$/u.test(entry.name) || /^_layout\.(j|t)sx?$/u.test(entry.name)) {
+      if (!/\.(j|t)sx?$/u.test(entry.name) || /^_layout\.(j|t)sx?$/u.test(entry.name) ||
+          (currentDirectory === appRoot && /^\+html\.(j|t)sx?$/u.test(entry.name))) {
         continue;
       }
 

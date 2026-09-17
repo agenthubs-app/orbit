@@ -4,7 +4,9 @@ import { createConfiguredEventCoreService } from "../core/runtime";
 import { eventRegistrationRuntimeService } from "../registration/runtime";
 import { createConfiguredEventOperationsAiProvider } from "./ai-provider";
 import { createEventOperationsEngine } from "./engine";
+import { publishEventOperationsWake } from "./queue";
 import { createConfiguredEventOperationsRepository } from "./repository";
+import { createConfiguredEventOperationsPostgresRuntime } from "./storage/postgres-client";
 import {
   createEventOperationsService,
   type EventOperationsService,
@@ -53,6 +55,16 @@ export function createConfiguredEventOperationsService(): EventOperationsService
           : null;
       },
     },
+    notifyWorker: process.env.VERCEL === "1"
+      ? async ({ reason }) => {
+          const configuredRuntime = createConfiguredEventOperationsPostgresRuntime();
+          if (!configuredRuntime) return;
+          await publishEventOperationsWake({
+            reason,
+            workspaceId: configuredRuntime.workspaceId,
+          });
+        }
+      : undefined,
     registrationService: eventRegistrationRuntimeService,
     repository,
   });

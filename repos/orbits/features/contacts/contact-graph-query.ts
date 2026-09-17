@@ -300,6 +300,7 @@ function toContactListItems(graph: LocalRemoteContactGraph): ContactListItem[] {
         evidenceIds: contact.evidenceIds,
       },
       status: toContactStatus(contact),
+      lifecycleInitialization: contact.lifecycleInitialization,
       databaseQueryExecuted: true,
       searchIndexReadExecuted: false,
       externalNetworkRequested: false,
@@ -367,7 +368,7 @@ function contactMatchesFilters(
       contact.value.valueTypes.includes(value),
     ) &&
     (appliedFilters.statusFilters.length === 0 ||
-      appliedFilters.statusFilters.includes(contact.status))
+      (contact.lifecycleInitialization !== "pending" && appliedFilters.statusFilters.includes(contact.status)))
   );
 }
 
@@ -454,7 +455,7 @@ function buildAvailableFilters(
       filterOption(
         status,
         statusLabels[status],
-        contacts.filter((contact) => contact.status === status).length,
+        contacts.filter((contact) => contact.lifecycleInitialization !== "pending" && contact.status === status).length,
         appliedFilters.statusFilters,
       ),
     ),

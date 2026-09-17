@@ -1,4 +1,5 @@
-export type OrbitContactPipelineStatus = "to_contact" | "in_progress" | "partnered" | "archived";
+// pending_initialization is display-only, not a canonical lifecycle stage.
+export type OrbitContactPipelineStatus = "to_contact" | "in_progress" | "partnered" | "archived" | "pending_initialization";
 export type OrbitIntroStatus = "draft" | "sent";
 
 export interface OrbitContactView {

@@ -220,6 +220,24 @@ test("detail and dashboard agree on canonical registration availability before e
   assert.match(unavailable, /class="btn is-disabled" disabled=""/);
 });
 
+test("registered dashboard does not infer unpublished matches from registration alone", async () => {
+  const route = await loadAppEventDetailRoute({ eventId: "demo-event-1", mode: "mock" });
+  assert.equal(route.routeState, "success");
+  if (route.routeState !== "success") return;
+  const base = eventDetailRouteToOrbitLandingEventView(route);
+  const event = { ...base, status: "upcoming" as const, youRsvped: true, stats: { ...base.stats, youRsvped: true } };
+  for (const language of ["zh", "en"] as const) {
+    const dashboard = renderToStaticMarkup(<OrbitAgentDashboard
+      home={{ account: { fullName: "Test", headline: "", initial: "T" }, events: [event], stats: { events: 1, people: 1, inProgress: 0 } }}
+      language={language} navigate={() => undefined} onAsk={() => undefined}
+      registrationAvailabilityByEventId={{ [event.id]: "registration_closed" }} t={(copy) => copy[language]}
+    />);
+    assert.doesNotMatch(dashboard, /等待匹配发布|Waiting for matches/);
+    assert.match(dashboard, language === "zh" ? /已报名/ : /Registered/);
+    assert.match(dashboard, language === "zh" ? /查看匹配进度/ : /Check match status/);
+  }
+});
+
 test("detail consumes one server registration snapshot for its sidebar and primary action", () => {
   const page = source("app/(app)/app/events/[id]/page.tsx");
   const detail = source("app/(app)/app/events/[id]/orbit-real-event-detail.tsx");

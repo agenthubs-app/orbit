@@ -54,6 +54,11 @@ export const proxy = auth((request) => {
   if (
     request.nextUrl.pathname.startsWith("/api/") &&
     !isPublicApiPath(request.nextUrl.pathname) &&
+    // Cron is a service identity, not an Auth.js user. Only this exact GET
+    // delegates authentication to handleMaintenanceRequest's constant-time
+    // CRON_SECRET guard. Queue consumers remain private Vercel triggers and
+    // are not made public here; other internal APIs still require a session.
+    !(request.method === "GET" && request.nextUrl.pathname === "/api/internal/maintenance") &&
     !request.auth?.user?.id
   ) {
     return NextResponse.json(

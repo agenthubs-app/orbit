@@ -26,6 +26,12 @@ App Bootstrap 已经有 live 实现：
 
 provider 只负责把 `record.payload` 映射回已有领域 DTO。不要把这些业务字段加进 `shared/storage/live-record-store.ts`；storage 只负责通用 record envelope。
 
+配置了 Postgres live store 时，provider 使用一条带 `workspace_id`、`user_id` 和
+`lifecycle_state <> 'deleted'` 约束的 SQL 投影读取这些 collections，并只返回各
+mapper 实际需要的 JSON 字段。它不使用 `LIMIT`，因此不会改变有效记录的数量、
+pending/canonical 状态或 DTO 过滤语义；memory/injected store 仍保留原有的通用
+`listRecords` fallback。
+
 ## 切换机制
 
 使用统一模块模式：
@@ -75,3 +81,7 @@ empty、pending 和 failure 必须继续作为明确 envelope 返回，不能藏
 - partial recovery。
 - 每个区块的 source refs/evidence ids。
 - no-write/no-provider/no-notification 副作用边界。
+
+本次投影只限制每行返回的字段和 SQL round trip；匹配记录总数仍然没有上限，
+因此大数据集的总 egress 仍可能增长。生成 fixture corpus 的逐 DTO parity 尚未
+完成，当前只由 focused synthetic/real-local-PG tests 覆盖。

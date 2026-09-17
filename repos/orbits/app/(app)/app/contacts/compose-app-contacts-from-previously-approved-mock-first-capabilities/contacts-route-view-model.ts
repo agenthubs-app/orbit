@@ -63,6 +63,7 @@ export interface AppContactListItemViewModel {
   sourceLabel: string;
   sourceType: SourceType;
   status: StatusType;
+  lifecycleInitialization?: "pending";
   statusLabel: string;
   tags: readonly string[];
   valueRationale: string;
@@ -301,7 +302,7 @@ function contactViewModel(contact: ContactListItem): AppContactListItemViewModel
     externalServicesContacted: externalServicesContacted(contact),
     id: contact.id,
     location: contact.location,
-    needsAttention: contact.status === "needs_follow_up",
+    needsAttention: contact.lifecycleInitialization !== "pending" && contact.status === "needs_follow_up",
     nextAction: contact.nextAction,
     organization: contact.organization,
     primaryIndustryId: contact.primaryIndustryId,
@@ -316,6 +317,7 @@ function contactViewModel(contact: ContactListItem): AppContactListItemViewModel
     searchIndexReadExecuted: contact.searchIndexReadExecuted,
     sourceLabel: sourceLabel(contact.source.type),
     sourceType: contact.source.type,
+    lifecycleInitialization: contact.lifecycleInitialization === "pending" ? "pending" : undefined,
     status: contact.status,
     statusLabel: statusLabel(contact.status),
     tags: contact.tags,
@@ -323,7 +325,7 @@ function contactViewModel(contact: ContactListItem): AppContactListItemViewModel
   };
 }
 
-function contactsPayloadViewModel(input: {
+export function contactsPayloadViewModel(input: {
   payload: ContactsListSearchPayload;
   reviewActionRequested: boolean;
 }): AppContactsPayloadViewModel {

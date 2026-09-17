@@ -41,6 +41,7 @@ function readListParam(
 
 function readContactsListInput(request: Request): ContactsListSearchFilterInput {
   const searchParams = new URL(request.url).searchParams;
+  const limit = searchParams.get("limit");
 
   return {
     query: searchParams.get("query"),
@@ -49,6 +50,9 @@ function readContactsListInput(request: Request): ContactsListSearchFilterInput 
     statusFilters: readListParam(searchParams, "status", "statuses"),
     tagFilters: readListParam(searchParams, "tag", "tags"),
     valueFilters: readListParam(searchParams, "value", "values"),
+    // Preserve unpaged legacy clients; paged clients must receive their cursor.
+    ...(limit !== null ? { limit: Number(limit) } : {}),
+    cursor: searchParams.get("cursor"),
   };
 }
 

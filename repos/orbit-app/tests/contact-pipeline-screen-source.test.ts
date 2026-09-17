@@ -16,11 +16,9 @@ test("relationship progress defaults to a compact task-first view", () => {
   assert.match(source, /router\.push\("\/tasks\?scope=relationship" as Href\)/);
 });
 
-test("relationship progress keeps stage changes available without filling every row", () => {
-  assert.match(source, /ActionSheetIOS\.showActionSheetWithOptions/);
-  assert.match(source, /relationshipStage: action\.nextRelationshipStage/);
-  assert.match(source, /function stageActionKey/);
-  assert.match(source, /pendingStageActionKey/);
+test("relationship progress has no legacy preview write path and retains task navigation", () => {
+  assert.doesNotMatch(source, /ActionSheetIOS|connectionStagePath|client\.patch|pendingStageActionKey/);
+  assert.match(source, /\/tasks\?scope=relationship/);
   assert.doesNotMatch(source, /styles\.stageActionsRow/);
 });
 

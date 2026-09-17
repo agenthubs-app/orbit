@@ -1,4 +1,5 @@
 import { notificationHrefFromDeepLink } from "../notifications/notification-model";
+import { eventParticipantHref } from "./event-participant-route";
 
 // The existing notification interaction HTTP response is not in the shared
 // contract yet. Decode only this consumer's fields; do not copy Web features.
@@ -21,6 +22,8 @@ function notificationId(value: unknown): value is string {
 }
 
 function inboxNotificationHref(value: unknown): string | undefined {
+  const participant = eventParticipantHref(value);
+  if (participant) return participant;
   if (typeof value !== "string" || !value || /[?#\\\s]/u.test(value)) return undefined;
   let path = value.startsWith("orbit://") ? `/${value.slice(8)}` : value;
   if (path.startsWith("/app/")) path = path.slice(4);

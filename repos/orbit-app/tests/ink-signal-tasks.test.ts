@@ -72,7 +72,7 @@ export const TextInput = React.forwardRef((props, ref) => <RealInput {...props} 
 });
 test.after(async () => { await browser?.close(); });
 async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<string, unknown> = {}) {
-  const page = await browser.newPage({ viewport: { width: Number(patch.width ?? 390), height: 844 }, deviceScaleFactor: 2, colorScheme: patch.dark ? "dark" : "light" });
+  const page = await browser.newPage({ viewport: { width: Number(patch.width ?? 390), height: 844 }, deviceScaleFactor: 2, colorScheme: patch.dark ? "dark" : "light", timezoneId: String(patch.timezoneId ?? "Asia/Tokyo") });
   page.setDefaultTimeout(1500); const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
   t.after(async () => { await page.close(); assert.deepEqual(errors, []); });
   await page.clock.install({ time: new Date("2026-09-11T05:20:00Z") });
@@ -143,7 +143,7 @@ test("list blocks same-turn double completion and keeps the row after a rejected
   await page.evaluate(() => (window as any).fixture.release());
   await page.getByRole("alert").filter({ hasText: "保存失败" }).waitFor();
   assert.equal(await checkbox.getAttribute("aria-checked"), "false");
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), []);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), ["/api/relationship-tasks"]);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.httpReads), initialReads);
 });
 
@@ -157,7 +157,7 @@ test("list transport rejection unlocks actions and visibly preserves the unchang
   assert.equal(await checkbox.getAttribute("aria-checked"), "false");
   await page.evaluate(() => (window as any).fixture.update({ thrown: false }));
   await checkbox.click(); assert.equal((await requests(page)).length, 2);
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), ["/api/tasks"]);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), ["/api/relationship-tasks", "/api/tasks"]);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.httpReads), initialReads);
 });
 

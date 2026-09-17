@@ -9,6 +9,7 @@
     "db:migrate:event-organizer-owners": "tsx scripts/migrate-event-organizer-owners.ts",
     "db:seed:live-events": "tsx scripts/seed-live-events.ts",
     "db:seed:live-generated-fixtures": "tsx scripts/seed-live-generated-fixtures.ts",
+    "db:seed:demo-workspace": "tsx scripts/seed-demo-workspace.ts",
     "db:seed:xiaoyu-planner": "tsx scripts/seed-xiaoyu-three-month-planner.ts",
     "contacts:migrate-primary-industries": "tsx scripts/migrate-contact-primary-industries.ts",
     "db:seed:primary-test-account": "tsx scripts/seed-primary-test-account.ts",

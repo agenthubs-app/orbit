@@ -63,12 +63,14 @@ const stageSoft = ["var(--amber-soft)", "var(--sky-soft)", "var(--live-soft)"];
 const graphWidth = 720;
 const graphHeight = 560;
 const graphStatusColor: Record<OrbitContactPipelineStatus, string> = {
+  pending_initialization: "var(--text-2)",
   archived: "var(--text-3)",
   in_progress: "var(--sky)",
   partnered: "var(--live)",
   to_contact: "var(--amber)",
 };
 const graphStatusSoft: Record<OrbitContactPipelineStatus, string> = {
+  pending_initialization: "var(--surface-2)",
   archived: "var(--surface-3)",
   in_progress: "var(--sky-soft)",
   partnered: "var(--live-soft)",
@@ -393,7 +395,8 @@ export function filterConnections(
       item.nextAction?.text,
       item.nextAction?.reason,
       item.pipelineStatus,
-      item.pipelineStatus === "to_contact"
+      item.pipelineStatus === "pending_initialization" ? "待设置关系"
+        : item.pipelineStatus === "to_contact"
         ? "待联系 待跟进"
         : item.pipelineStatus === "in_progress"
           ? "在推进"

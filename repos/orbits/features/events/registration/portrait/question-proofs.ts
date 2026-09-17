@@ -1,0 +1,9 @@
+import type { EventRegistrationQuestionSet } from "../contract";
+import { PortraitError, type PortraitSnapshot } from "./contract";
+import { signPortraitRegistrationQuestion } from "./generation-token.server";
+
+export function attachPortraitQuestionProofs(input: { actorId: string; eventId: string; workspaceId: string; snapshot: PortraitSnapshot; registrationVersion: string | null; questionSet: EventRegistrationQuestionSet; language: "en" | "zh"; now?: () => number; secret?: string }): EventRegistrationQuestionSet {
+  if (!input.snapshot.eventExists) throw new PortraitError(404, "PORTRAIT_EVENT_NOT_FOUND", "A current Event Core source is required.");
+  if (!input.snapshot.eventSourceVersion || input.registrationVersion !== input.snapshot.sourceRegistrationVersion || (input.questionSet.questionSetHash ?? null) !== (input.snapshot.questionSetHash ?? null) || (input.questionSet.questionSetVersion ?? null) !== (input.snapshot.questionSetVersion ?? null)) throw new PortraitError(409, "PORTRAIT_SOURCE_CHANGED", "The registration question source changed. Fetch the current questions.");
+  return { ...input.questionSet, questions: input.questionSet.questions.map((question) => ({ ...question, portraitQuestionToken: signPortraitRegistrationQuestion({ workspaceId: input.workspaceId, actorId: input.actorId, eventId: input.eventId, question, provenance: input.questionSet.provenance, questionSetHash: input.questionSet.questionSetHash ?? null, questionSetVersion: input.questionSet.questionSetVersion ?? null, eventSourceVersion: input.snapshot.eventSourceVersion, sourceRegistrationVersion: input.snapshot.sourceRegistrationVersion, sourceRegistrationFingerprint: input.snapshot.sourceRegistrationFingerprint ?? null, language: input.language, now: input.now, secret: input.secret }) })) };
+}
