@@ -347,6 +347,7 @@ export function createEventRegistrationRouteHandlers(input: {
             event,
             language: searchParams.get("language") === "en" ? "en" : "zh",
             publishedQuestionSet,
+            allowModelGeneration: searchParams.get("portraitProofs") !== "true",
           })
         : {
             provenance: {
