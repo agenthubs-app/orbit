@@ -7,5 +7,5 @@ export function createConfiguredPersonalScheduleService() {
   const runtime = createConfiguredTransactionalPostgresRuntime();
   if (!runtime) throw new Error("Personal schedule storage is not configured");
   const store = createPostgresLiveRecordStore({ client: runtime.client });
-  return createPersonalScheduleService({ client: runtime.client, workspaceId: runtime.workspaceId, store, associationReader: createPersonalScheduleAssociationReader({ store, workspaceId: runtime.workspaceId }) });
+  return createPersonalScheduleService({ client: runtime.client, workspaceId: runtime.workspaceId, store, associationReaderForStore: transactionStore => createPersonalScheduleAssociationReader({ store: transactionStore, workspaceId: runtime.workspaceId }) });
 }

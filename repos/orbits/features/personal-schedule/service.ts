@@ -26,7 +26,7 @@ function publicItem(item: PersonalScheduleContract, now: string): PersonalSchedu
   return { ...item, state: item.state === "cancelled" ? "cancelled" : time < Date.parse(item.startsAt) ? "upcoming" : item.endsAt && time < Date.parse(item.endsAt) ? "ongoing" : "ended" };
 }
 
-export function createPersonalScheduleService(input: { store: LiveRecordStoreLike<Record<string, unknown>>; workspaceId: string; client?: TransactionalPostgresClient; now?: () => string; associationReader?: PersonalScheduleAssociationReader }) {
+export function createPersonalScheduleService(input: { store: LiveRecordStoreLike<Record<string, unknown>>; workspaceId: string; client?: TransactionalPostgresClient; now?: () => string; associationReader?: PersonalScheduleAssociationReader; associationReaderForStore?: (store: LiveRecordStoreLike<Record<string, unknown>>) => PersonalScheduleAssociationReader }) {
   const now = input.now ?? (() => new Date().toISOString());
   async function read(store: typeof input.store, actorId: string, id: string) {
     const record = await store.getRecord({ workspaceId: input.workspaceId, collectionName, recordId: id });
@@ -142,9 +142,10 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
       if (item.endsAt && Date.parse(item.endsAt) <= Date.parse(item.startsAt)) throw new AppError("VALIDATION_ERROR", "End time must be after start time.");
       if ((item.recurrence || item.reminderMinutes !== undefined) && !item.timeZone) throw new AppError("VALIDATION_ERROR", "Reminder and repeat settings require a time zone.");
       if (action !== "delete") {
+        const associationReader = input.associationReaderForStore?.(store) ?? input.associationReader;
         for (const [kind, ids] of [["contact", item.contactIds], ["note", item.noteIds]] as const) {
           if (!ids?.length) continue;
-          const accessible = input.associationReader ? await input.associationReader.accessibleIds({ actorId, kind, ids }) : [];
+          const accessible = associationReader ? await associationReader.accessibleIds({ actorId, kind, ids }) : [];
           if (accessible.length !== ids.length || ids.some(id => !accessible.includes(id))) throw new AppError("VALIDATION_ERROR", "A schedule association is unavailable. Remove it before saving.");
         }
       }
