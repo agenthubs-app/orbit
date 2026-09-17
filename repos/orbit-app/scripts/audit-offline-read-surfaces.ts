@@ -13,7 +13,6 @@ const unique = (values: string[]) => [...new Set(values)];
 const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
   'src/api/business-card-import.ts:114': ['/api/contact-drafts/business-card/imports/:id/cancel'],
   'src/api/business-card-import.ts:115': ['/api/contact-drafts/business-card/imports/:id'],
-  'src/api/mobile-auth.ts:172': ['/api/auth/mobile/credentials', '/api/auth/mobile/google/exchange'],
   'src/screens/ai/AiConversationScreen.tsx:345': ['/api/ai/conversations', '/api/ai/conversations/:id'],
   'src/screens/ai/AiConversationScreen.tsx:498': ['/api/ai/runs/:id'],
   'src/screens/chat/RelationshipChatDetailScreen.tsx:176': ['/api/relationship-communication/conversations/:id/messages'],
@@ -409,6 +408,16 @@ export async function extractReadCalls(root: string): Promise<{ calls: Call[]; i
       const declared = literals(parameter);
       env.set(parameter, !argument && values.every(value => value === UNKNOWN) && declared.length ? declared : values);
       callableEnv.set(parameter, resolveFunctions(argument, outerCallableEnv));
+      // Resolve destructured paths from this invocation, not a source-line allowlist.
+      // Unknown properties stay unknown so a known caller cannot conceal another caller.
+      if (ts.isObjectBindingPattern(parameter.name)) {
+        for (const binding of parameter.name.elements) {
+          if (!ts.isIdentifier(binding.name) || binding.dotDotDotToken) continue;
+          const property = binding.propertyName ?? binding.name;
+          if (!ts.isIdentifier(property) && !ts.isStringLiteralLike(property)) continue;
+          env.set(binding, argument ? objectProperty(argument, property.text, outerEnv, new Set()) : [UNKNOWN]);
+        }
+      }
     });
     for (const [node, values] of directValues) env.set(node, values);
     for (const [node, functions] of directCallables) callableEnv.set(node, functions);

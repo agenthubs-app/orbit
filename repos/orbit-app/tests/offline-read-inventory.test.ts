@@ -47,6 +47,15 @@ test('canonical lifecycle and participant consumers are registered without offli
 });
 
 test('unknown and secret endpoints never default to persistence', () => {
+  for (const consumerFile of ['src/api/auth-session.ts', 'src/api/AuthSessionProvider.tsx']) {
+    for (const endpointTemplate of ['/api/auth/mobile/credentials', '/api/auth/mobile/google/exchange']) {
+      const surface = surfaces.find(row => row.consumerFile === consumerFile && row.method === 'POST' && row.endpointTemplate === endpointTemplate);
+      assert.ok(surface, `${consumerFile} ${endpointTemplate}`);
+      assert.equal(surface.readPersistence, 'online_only_secret');
+      assert.equal(surface.binaryPolicy, 'never_local');
+      assert.equal(surface.mutationPolicy, 'online_only');
+    }
+  }
   assert.throws(() => resolveReadSurface('GET', '/api/new-private-domain'), /UNREGISTERED_READ/);
   assert.equal(resolveReadSurface('GET', '/api/auth/session').readPersistence, 'online_only_secret');
   assert.equal(resolveReadSurface('GET', '/api/notes/n1').domainId, 'notes');
@@ -158,6 +167,34 @@ test('wrapper aliases, generic requests and computed client methods are audited 
     ['src/screens/Computed.ts', 'PATCH', '/api/computed'],
     ['src/screens/Generic.ts', 'POST', '/api/generic-write'],
   ]);
+});
+
+test('destructured transport paths resolve from callers regardless of source line shifts', async t => {
+  const root = await fixture(t, {
+    'src/api/mobile-auth.ts': `${'// unrelated error handling\n'.repeat(180)}
+      function postForSession({ path: requestPath }: { path: string }) { return fetchImpl(requestPath, { method: 'POST' }); }
+      postForSession({ path: '/api/auth/mobile/credentials' });
+      postForSession({ path: '/api/auth/mobile/google/exchange' });
+    `,
+  });
+  const result = await extractReadCalls(root);
+  assert.deepEqual(result.invalid, []);
+  assert.deepEqual(result.calls.map(row => [row.method, row.endpointTemplate]).sort(), [
+    ['POST', '/api/auth/mobile/credentials'], ['POST', '/api/auth/mobile/google/exchange'],
+  ]);
+});
+
+test('one known destructured path cannot conceal an unknown caller of the same transport', async t => {
+  const root = await fixture(t, {
+    'src/api/mobile-auth.ts': `
+      function postForSession({ path }: { path: string }) { return fetchImpl(path, { method: 'POST' }); }
+      postForSession({ path: '/api/auth/mobile/credentials' });
+      postForSession({ path: unknownPath() });
+    `,
+  });
+  const result = await extractReadCalls(root);
+  assert.ok(result.calls.some(row => row.endpointTemplate === '/api/auth/mobile/credentials'));
+  assert.ok(result.invalid.some(row => row.includes('UNRESOLVED_PATH')));
 });
 
 test('AST resolves section-indexed endpoint maps and nested returned request paths', async t => {
