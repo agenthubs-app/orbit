@@ -214,6 +214,7 @@ export async function generateEventRegistrationQuestions(input: {
   language?: "en" | "zh";
   modelConfig?: GeminiOrbitAgentProviderConfig;
   modelRunner?: EventRegistrationModelRunner;
+  allowModelGeneration?: boolean;
 }): Promise<EventRegistrationQuestionSet> {
   if (!["confirmed", "imported"].includes(input.event.status)) {
     return {
@@ -247,6 +248,9 @@ export async function generateEventRegistrationQuestions(input: {
     };
   }
   const candidates = candidatesFor(input.event, language);
+  if (input.allowModelGeneration === false) {
+    return deterministicQuestionSet({ candidates, fallbackReason: null, model: null, provider: null, requested: false });
+  }
   const modelRunner = input.modelRunner ?? runOrbitAgentModelText;
   const modelResult = await modelRunner({
     config: input.modelConfig,

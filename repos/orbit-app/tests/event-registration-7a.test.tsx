@@ -5,9 +5,26 @@ import { Registration7aViews, type Registration7aViewsProps } from "../src/scree
 import { createPortraitSession } from "../src/view-models/event-registration-portrait";
 import { Registration7aRecommendationsView } from "../src/screens/events/Registration7aRecommendations";
 import { renderToHtml } from "./helpers/render";
+import type { SavedPortrait } from "../src/api/contract/event-registration-portrait";
 
 const noop = () => {};
 const base: Registration7aViewsProps = { session: createPortraitSession("scope"), eventTitle: "Robotics evening", eventMeta: "Tokyo", registration: { canCancel: false, canSubmit: true, confirmLabel: "确认报名", questionSetHash: null, questionSetVersion: null, questions: [{ id: "target", field: "targetAttendees", prompt: "Who do you want to meet?", options: ["Builders", "Operators"], answer: "", required: true }], statusDetail: "报名开放中", statusLabel: "尚未报名" }, answers: { targetAttendees: "Builders" }, question: null, answer: "", done: false, persona: null, pending: false, portraitPending: false, readConfirmed: true, questionsChanged: false, error: null, feedback: null, onBack: noop, onView: noop, onSetAnswer: noop, onAnswer: noop, onNext: noop, onGenerate: noop, onSave: noop, onSubmit: noop, onCancel: noop, onLoadNew: noop, onEdit: noop };
+
+test("saved portrait entry counts its durable answers, not the two formal answers or an invalidated saved head", () => {
+  const sourceAnswers: SavedPortrait["sourceAnswers"] = (["targetAttendees", "valueOffered", "positioning"] as const).map(field => ({ field, responseId: field, label: { en: field, zh: field }, answer: field, question: null, questionSource: "legacy_unknown", generation: null, source: "registration", sourceVersion: "c".repeat(64) }));
+  const saved: SavedPortrait = { id: "portrait:self", actorId: "self", eventId: "event", version: 1, updatedAt: "2026-09-17T10:00:00.000Z", generatedAt: "2026-09-17T09:59:00.000Z", sourceEventVersion: "event:v1", sourceQuestionSetHash: null, sourceQuestionSetVersion: null, sourceRegistrationVersion: null, answersVersion: "a".repeat(64), sourceAnswers, persona: { energyStyle: "Listening", industryTags: ["Robotics"], offering: "Reviews", openers: [], seeking: "Builders", tagline: "Robotics builder", tags: [], provenance: { generationMethod: "orbit-agent-model-adaptive", fallbackReason: null, model: "synthetic", provider: "synthetic" } } };
+  const history = sourceAnswers.slice(0, 2).map(entry => ({ id: entry.responseId, field: entry.field, answer: entry.answer, prompt: null, options: [], proof: { kind: "stored_response" as const, source: "portrait" as const, responseId: entry.responseId, sourceVersion: "1", answer: entry.answer } }));
+  const answers = { targetAttendees: "Builders", valueOffered: "Reviews" };
+  for (const seeded of [[], history]) {
+    const html = renderToHtml(<Registration7aViews {...base} answers={answers} session={createPortraitSession("scope", seeded, saved)} />);
+    assert.match(html, /活动画像已完成/);
+    assert.match(html, /已补充 3\/8 项/);
+    assert.doesNotMatch(html, /已补充 2\/8 项/);
+  }
+  const invalidated = renderToHtml(<Registration7aViews {...base} answers={answers} session={{ ...createPortraitSession("scope", history, saved), saveState: "idle" }} />);
+  assert.match(invalidated, /已补充 2\/8 项/);
+  assert.doesNotMatch(invalidated, /活动画像已完成|已补充 3\/8 项/);
+});
 
 test("registration renders original question/options with no input for ordinary selection and a portrait entry, not inline interview", () => {
   const html = renderToHtml(<Registration7aViews {...base} />);

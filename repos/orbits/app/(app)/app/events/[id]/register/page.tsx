@@ -195,6 +195,7 @@ export default async function AppEventRegistrationGuidePage({
         : generateEventRegistrationQuestions({
             event: localizedEvent,
             language,
+            allowModelGeneration: false,
           }),
       actor?.id
         ? eventRegistrationRuntimeService.get({

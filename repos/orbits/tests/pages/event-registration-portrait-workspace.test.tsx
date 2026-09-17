@@ -326,6 +326,7 @@ test("the actual Web registration entry mounts the private session without chang
     await act(async () => { renderer = create(<EventRegistrationWorkspace actorId="actor" admissionControlled={false} event={{ id: "event", title: "Night", venue: "Tokyo" }} initialRegistration={registration} initialAdmissionApplication={null} initialSignedQuestion={null} language="en" profile={{ displayName: "Aiko" }} />); });
     assert.equal(calls.length, 2);
     assert.ok(calls.every(call => call.method === "GET"));
+    assert.ok(calls.some(call => call.path === "/api/events/event/registration?language=en&portraitProofs=true"), "The real Web entry must opt into the read-only, signed portrait source route.");
     await act(async () => { renderer.root.find(node => node.type === "button" && node.children.includes("Build portrait")).props.onClick(); });
     assert.equal(renderer.root.findByProps({ "data-portrait-view": "interview" }).type, "section");
     assert.equal(calls.length, 2);

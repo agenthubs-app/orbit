@@ -8,6 +8,29 @@ import { createEventRegistrationService, createMemoryEventRegistrationProvider }
 import { verifyPortraitRegistrationQuestion } from "../../features/events/registration/portrait/generation-token.server";
 
 const context = { params: Promise.resolve({ id: "event" }) };
+test("read-only portrait source GET retains signed required questions for unregistered and cancelled actors", async () => {
+  const previousSecret = process.env.ORBIT_INTERVIEW_SIGNING_SECRET;
+  process.env.ORBIT_INTERVIEW_SIGNING_SECRET = "synthetic-readonly-secret";
+  try {
+    const service = createEventRegistrationService({ provider: createMemoryEventRegistrationProvider() });
+    const { GET, POST } = createEventRegistrationRouteHandlers({ registrationService: service, resolveActor: async () => ({ id: "self" }), loadEvent: async () => ({ ...mockEventRecords[0], id: "event", startsAt: "2030-01-01T09:00:00.000Z", endsAt: "2030-01-01T12:00:00.000Z", status: "confirmed" }), getPublishedQuestionSet: async () => null, getPortraitProofSource: async () => ({ workspaceId: "test", snapshot: { eventExists: true, access: { owner: false, role: null, state: null }, sourceRegistrationVersion: (await service.get({ eventId: "event", userId: "self" }))?.updatedAt ?? null, sourceRegistrationFingerprint: "c".repeat(64), eventSourceVersion: "2026-09-17T09:00:00.000Z", questionSetHash: null, questionSetVersion: null } }) });
+    for (const state of ["unregistered", "cancelled"] as const) {
+      if (state === "cancelled") { await service.register({ eventId: "event", userId: "self", answers: { targetAttendees: "Builders", valueOffered: "Reviews" } }); await service.cancel({ eventId: "event", userId: "self" }); }
+      const response = await GET(new Request("https://orbit.test/api/events/event/registration?portraitProofs=true"), context);
+      assert.equal(response.status, 200);
+      const data = (await response.json()).data;
+      assert.equal(data.questionSet.provenance.aiProviderRequested, false);
+      assert.equal(data.questionSet.provenance.externalNetworkRequested, false);
+      assert.equal(data.questionSet.provenance.generationMethod, "deterministic-not-requested");
+      assert.deepEqual(data.questionSet.questions.map((question: { participantProfileField: string; required: boolean }) => [question.participantProfileField, question.required]), [["targetAttendees", true], ["valueOffered", true]]);
+      assert.equal(data.questionSet.questionSetHash, undefined);
+      for (const question of data.questionSet.questions) assert.equal(verifyPortraitRegistrationQuestion({ workspaceId: "test", actorId: "self", eventId: "event", portraitQuestionToken: question.portraitQuestionToken, secret: "synthetic-readonly-secret" }).question.prompt, question.prompt);
+      const rejected = await POST(new Request("https://orbit.test/api/events/event/registration", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ intent: state === "cancelled" ? "reactivate" : "register", expectedRegistrationVersion: data.registration?.updatedAt ?? null, answers: { targetAttendees: "Builders" } }) }), context);
+      assert.equal(rejected.status, 422);
+      assert.equal((await service.get({ eventId: "event", userId: "self" }))?.status ?? null, state === "cancelled" ? "cancelled" : null);
+    }
+  } finally { if (previousSecret === undefined) delete process.env.ORBIT_INTERVIEW_SIGNING_SECRET; else process.env.ORBIT_INTERVIEW_SIGNING_SECRET = previousSecret; }
+});
 test("portrait API denies anonymous requests before acquiring a storage runtime", async () => {
   const noRuntime = () => { throw new Error("Anonymous request must not allocate storage."); };
   const get = createPortraitGetHandler(async () => null, noRuntime);
