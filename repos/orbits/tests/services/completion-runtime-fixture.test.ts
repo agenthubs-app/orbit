@@ -1,4 +1,8 @@
 import assert from "node:assert/strict";
+import { access, cp, mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import test, { before } from "node:test";
 import { EventEmitter } from "node:events";
 import { spawnSync } from "node:child_process";
@@ -17,6 +21,91 @@ http = await import("../support/completion-runtime-http").catch((error) => {
   throw error;
 });
 });
+
+const testRequire = createRequire(import.meta.url);
+const TSX_LOADER = testRequire.resolve("tsx");
+const PG_MODULE = testRequire.resolve("pg");
+
+function offlineGuardSource(logPath: string): string {
+  const log = JSON.stringify(logPath);
+  const pg = JSON.stringify(PG_MODULE);
+  return `
+const fs = require("node:fs");
+const net = require("node:net");
+const tls = require("node:tls");
+const http = require("node:http");
+const https = require("node:https");
+const dgram = require("node:dgram");
+const childProcess = require("node:child_process");
+const moduleApi = require("node:module");
+const fsPromises = require("node:fs/promises");
+const logPath = ${log};
+function summarize(value) {
+  if (typeof value === "string" || typeof value === "number") return value;
+  if (!value || typeof value !== "object") return typeof value;
+  return { path: value.path, host: value.host, port: value.port };
+}
+function deny(kind, args) {
+  const stack = new Error().stack || "";
+  fs.appendFileSync(logPath, JSON.stringify({ kind, args: args.map(summarize), stack }) + "\\n");
+  throw new Error("OFFLINE_GUARD_" + kind);
+}
+const realAccess = fsPromises.access;
+fsPromises.access = async function (target, ...args) {
+  fs.appendFileSync(logPath, JSON.stringify({ kind: "fs.access", path: String(target) }) + "\\n");
+  return realAccess.call(this, target, ...args);
+};
+net.Socket.prototype.connect = function (...args) { return deny("net.connect", args); };
+net.Server.prototype.listen = function (...args) { return deny("net.listen", args); };
+tls.connect = function (...args) { return deny("tls.connect", args); };
+http.request = function (...args) { return deny("http.request", args); };
+http.get = function (...args) { return deny("http.get", args); };
+https.request = function (...args) { return deny("https.request", args); };
+https.get = function (...args) { return deny("https.get", args); };
+dgram.Socket.prototype.send = function (...args) { return deny("dgram.send", args); };
+globalThis.fetch = function (...args) { return deny("fetch", args); };
+for (const name of ["fork", "spawn", "spawnSync", "exec", "execFile", "execSync", "execFileSync"]) {
+  childProcess[name] = function (...args) { return deny("child." + name, args); };
+}
+const pg = require(${pg});
+pg.Pool.prototype.connect = function (...args) { return deny("pg.pool.connect", args); };
+pg.Client.prototype.connect = function (...args) { return deny("pg.client.connect", args); };
+moduleApi.syncBuiltinESMExports();
+`;
+}
+
+function offlineEnvironment(): NodeJS.ProcessEnv {
+  return {
+    PATH: process.env.PATH ?? "/usr/bin:/bin",
+    HOME: process.env.HOME ?? tmpdir(),
+    USER: process.env.USER ?? "orbit-test",
+    TMPDIR: process.env.TMPDIR ?? "/tmp",
+    LANG: process.env.LANG ?? "C",
+    NODE_ENV: "test",
+  };
+}
+
+async function assertOfflineAttempts(logPath: string): Promise<void> {
+  const text = await readFile(logPath, "utf8");
+  const attempts = text.trim()
+    ? text.trim().split("\n").map((line) => JSON.parse(line) as { kind: string; path?: string; args?: Array<{ path?: string; host?: string; port?: number }>; stack?: string })
+    : [];
+  for (const attempt of attempts) {
+    if (attempt.kind === "fs.access") continue;
+    const isTsxClientIpc =
+      attempt.kind === "net.connect" &&
+      /at Object\.connect \(node:net:[^\n]+\)\n\s+at [^\n]*[\\/]node_modules[\\/]tsx[\\/]dist[\\/]client-[^\\/]+\.(?:cjs|mjs):/u.test(attempt.stack ?? "");
+    assert.equal(isTsxClientIpc, true, `non-tsx offline attempt: ${JSON.stringify(attempt)}`);
+  }
+}
+
+async function assertAppScriptAccess(logPath: string, expectedPath: string): Promise<void> {
+  const text = await readFile(logPath, "utf8");
+  const accesses = text.trim()
+    ? text.trim().split("\n").map((line) => JSON.parse(line) as { kind: string; path?: string }).filter((entry) => entry.kind === "fs.access")
+    : [];
+  assert.ok(accesses.some((entry) => entry.path === expectedPath), `missing App consumer access: ${JSON.stringify(accesses)}`);
+}
 
 test("rejects non-loopback origins including URL normalization tricks", () => {
   assert.equal(typeof fixture.runtimeOrigin, "function");
@@ -98,15 +187,66 @@ test("IPC enforces one outstanding phase and removes listeners on timeout and ma
   await assert.rejects(closed, /IPC_CHILD_EXIT/);
 });
 
-test("entry import is offline and default full run visibly fails for absent App consumer", () => {
-  const env: NodeJS.ProcessEnv = { PATH: fixture.NODE_PATH, HOME: "/Users/xzhao", USER: "xzhao", TMPDIR: "/tmp", LANG: "en_US.UTF-8", NODE_ENV: "test" };
-  const imported = spawnSync(process.execPath, ["--import", "tsx", "-e", "require('./scripts/verify-completion-runtime.ts')"], { cwd: fixture.WEB_CWD, env, timeout: 5000, encoding: "utf8" });
-  assert.equal(imported.status, 0);
-  assert.equal(imported.stdout, "");
-  const missing = spawnSync(process.execPath, ["--import", "tsx", "scripts/verify-completion-runtime.ts"], { cwd: fixture.WEB_CWD, env, timeout: 5000, encoding: "utf8" });
-  assert.equal(missing.status, 1);
-  assert.match(missing.stderr, /MISSING_APP_CONSUMER_TASK1_INCOMPLETE/);
-  assert.equal(missing.stdout, "");
+test("entry import stays offline under the portable child environment", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "orbit-completion-offline-"));
+  try {
+    const guardPath = join(temp, "offline-guard.cjs");
+    const logPath = join(temp, "offline-attempts.ndjson");
+    await writeFile(guardPath, offlineGuardSource(logPath), { mode: 0o600 });
+    await writeFile(logPath, "", "utf8");
+    const env = offlineEnvironment();
+    const imported = spawnSync(process.execPath, ["--require", guardPath, "--import", TSX_LOADER, "-e", "require('./scripts/verify-completion-runtime.ts')"], { cwd: fixture.WEB_CWD, env, timeout: 5000, encoding: "utf8" });
+    assert.equal(imported.error, undefined, imported.error?.message);
+    assert.equal(imported.signal, null);
+    assert.equal(imported.status, 0);
+    assert.equal(imported.stdout, "");
+    await assertOfflineAttempts(logPath);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test("portable copied entry reports the absent sibling App consumer without changing source bytes", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "orbit-completion-portable-"));
+  try {
+    const copiedWeb = join(temp, "repos", "orbits");
+    await mkdir(join(copiedWeb, "scripts"), { recursive: true });
+    await mkdir(join(copiedWeb, "tests", "support"), { recursive: true });
+    for (const relativePath of [
+      "scripts/verify-completion-runtime.ts",
+      "tests/support/completion-runtime-fixture.ts",
+      "package.json",
+    ]) {
+      const sourcePath = join(fixture.WEB_CWD, relativePath);
+      const copiedPath = join(copiedWeb, relativePath);
+      await cp(sourcePath, copiedPath);
+      assert.equal(await readFile(copiedPath, "utf8"), await readFile(sourcePath, "utf8"), relativePath);
+    }
+    await symlink(join(fixture.WEB_CWD, "node_modules"), join(copiedWeb, "node_modules"), "dir");
+    const realTemp = await realpath(temp);
+    await assert.rejects(
+      access(join(temp, "repos", "orbit-app", "scripts", "verify-completion-runtime.ts")),
+      (error: unknown) => (error as NodeJS.ErrnoException).code === "ENOENT",
+    );
+
+    const guardPath = join(temp, "offline-guard.cjs");
+    const logPath = join(temp, "offline-attempts.ndjson");
+    await writeFile(guardPath, offlineGuardSource(logPath), { mode: 0o600 });
+    await writeFile(logPath, "", "utf8");
+    const missing = spawnSync(process.execPath, ["--require", guardPath, "--import", TSX_LOADER, "scripts/verify-completion-runtime.ts"], { cwd: copiedWeb, env: offlineEnvironment(), timeout: 5000, encoding: "utf8" });
+    assert.equal(missing.error, undefined, missing.error?.message);
+    assert.equal(missing.signal, null);
+    assert.equal(missing.status, 1);
+    assert.match(missing.stderr, /MISSING_APP_CONSUMER_TASK1_INCOMPLETE/);
+    assert.equal(missing.stdout, "");
+    await assertOfflineAttempts(logPath);
+    await assertAppScriptAccess(
+      logPath,
+      join(realTemp, "repos", "orbit-app", "scripts", "verify-completion-runtime.ts"),
+    );
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
 });
 
 test("Auth.js 200 JSON Location is not navigated, while cross-origin redirect status is rejected", () => {
