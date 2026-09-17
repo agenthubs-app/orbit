@@ -14,7 +14,7 @@ function fixture() {
   const files = new Map<string, DatabaseSync>();
   const logs: unknown[][] = [];
   const options: unknown[] = [];
-  const state = { keyDeleteFails: false, fileDeleteFails: false, corrupt: false, cipher: true, keyWriteFails: false };
+  const state = { keyDeleteFails: false, fileDeleteFails: false, corrupt: false, cipher: true, keyWriteFails: false, closeFails: false };
   const native = {
     crypto: {
       CryptoDigestAlgorithm: { SHA256: "SHA-256" },
@@ -65,7 +65,7 @@ function fixture() {
           },
           async getAllAsync(sql: string, params: any[] = []) { return database.prepare(sql).all(...params); },
           async runAsync(sql: string, params: any[] = []) { return database.prepare(sql).run(...params); },
-          async closeAsync() { events.push("close"); },
+          async closeAsync() { events.push("close"); if (state.closeFails) throw Error("injected close failure"); },
         };
       },
     },
@@ -123,7 +123,7 @@ test("legacy plaintext is deleted unopened and cannot migrate unverifiable paylo
 test("logout closes the handle and purges all mirror, outbox, cursor, snapshot data and key", async t => {
   const f = await lifecycle(t);
   await f.coordinator.setScope(scope);
-  await f.coordinator.withDatabase(scope, db => db.run("INSERT INTO sync_cursors VALUES (?, ?, ?, ?)", ["workspace", "cursor", "2026-09-16T00:00:00Z", "complete"]));
+  await f.coordinator.withDatabase(scope, db => db.run("INSERT INTO sync_cursors VALUES (?, ?, ?, ?, ?, ?, ?, ?)", ["workspace", "notes", "fixture-e1", "cursor", "2026-09-16T00:00:00Z", "complete", "complete", "g1"]));
   const name = [...f.files.keys()][0]!;
   assert.equal(await f.coordinator.setScope(null), true);
   assert.equal(f.files.size, 0);
@@ -198,16 +198,51 @@ test("file deletion failure after crypto erasure permits a separate scope but ne
   assert.ok(!JSON.stringify(f.logs).includes("secret-shaped"));
 });
 
-test("corruption resets the scope and stays online-only", async t => {
+test("corruption locks the scope without erasing recovery evidence and stays online-only", async t => {
   const f = await lifecycle(t);
   f.state.corrupt = true;
   assert.equal(await f.coordinator.setScope(scope), true);
   assert.equal(await f.coordinator.withDatabase(scope, () => Promise.resolve("private")), null);
-  assert.equal(f.keys.size, 0);
-  assert.equal(f.files.size, 0);
+  assert.equal(f.keys.size, 1);
+  assert.equal(f.files.size, 1);
+  assert.equal(f.coordinator.isScopeReadable(scope), false);
   assert.equal(f.events.filter(event => event.startsWith("open:")).length, 1);
   assert.ok(!JSON.stringify(f.logs).includes(scope.actorId));
   assert.ok(!JSON.stringify(f.logs).includes("secret-shaped"));
+});
+
+test("initialization failure locks storage while preserving the keyed database for recovery", async t => {
+  const f = await lifecycle(t);
+  await f.coordinator.setScope(scope);
+  await f.coordinator.withDatabase(scope, db => db.run("INSERT INTO legacy_api_snapshots VALUES(?,?,?,?)", ["/device/note-drafts", ' { "ink": [1,2] } ', 200, "2026-09-16T00:00:00Z"]));
+  const name = [...f.files.keys()][0]!;
+  const key = [...f.keys.values()][0]!;
+  f.state.corrupt = true;
+  const second = (await import("../src/data/sync/sync-lifecycle")).createSyncLifecycle({ platform: "ios", loadNative: async () => f.native as any, report: (...args) => f.logs.push(args) });
+  await second.setScope(scope);
+  assert.equal(f.files.has(name), true, "failed migration must not delete local evidence");
+  assert.equal([...f.keys.values()][0], key);
+  assert.equal(await second.withDatabase(scope, async () => "private"), null);
+  assert.equal(typeof (second as any).isScopeReadable, "function");
+  assert.equal((second as any).isScopeReadable(scope), false);
+  f.state.corrupt = false;
+  const third = (await import("../src/data/sync/sync-lifecycle")).createSyncLifecycle({ platform: "ios", loadNative: async () => f.native as any, report: (...args) => f.logs.push(args) });
+  await third.setScope(scope);
+  assert.equal((third as any).isScopeReadable(scope), true);
+  assert.equal((await third.withDatabase(scope, db => db.get<{ payload: string }>("SELECT payload FROM legacy_api_snapshots")))?.payload, ' { "ink": [1,2] } ');
+});
+
+test("close failure during initialization cannot turn a same-identity retry into data erasure", async t => {
+  const f = await lifecycle(t); await f.coordinator.setScope(scope);
+  await f.coordinator.withDatabase(scope, db => db.run("INSERT INTO legacy_api_snapshots VALUES(?,?,?,?)", ["/device/note-drafts", "draft bytes", 200, "2026-09-16T00:00:00Z"]));
+  const name = [...f.files.keys()][0]!;
+  f.state.corrupt = true; f.state.closeFails = true;
+  const second = (await import("../src/data/sync/sync-lifecycle")).createSyncLifecycle({ platform: "ios", loadNative: async () => f.native as any, report: (...args) => f.logs.push(args) });
+  assert.equal(await second.setScope(scope), false);
+  f.state.corrupt = false; f.state.closeFails = false;
+  await second.setScope(scope);
+  assert.equal(f.files.has(name), true);
+  assert.equal(f.files.get(name)!.prepare("SELECT payload FROM legacy_api_snapshots").get()?.payload, "draft bytes");
 });
 
 test("a missing key removes orphan payloads before creating the replacement database", async t => {
@@ -244,6 +279,19 @@ test("server and workspace switches reject stale scopes; only server/actor chang
   await f.coordinator.setScope({ ...scope, baseUrl: "https://second.example" });
   assert.equal(f.events.filter(event => event === "random").length, 2);
   assert.equal(await f.coordinator.withDatabase(scope, async () => "private"), null);
+});
+
+test("storage readiness invalidates immediately on transition and normalized server aliases share one key", async t => {
+  const f = await lifecycle(t);
+  assert.equal(f.coordinator.isScopeReadable(scope), false);
+  await f.coordinator.setScope(scope);
+  assert.equal(f.coordinator.isScopeReadable(scope), true);
+  const change = f.coordinator.setScope({ ...scope, baseUrl: ` ${scope.baseUrl}/ ` });
+  assert.equal(f.coordinator.isScopeReadable(scope), false);
+  await change;
+  assert.equal(f.events.filter(event => event === "random").length, 1);
+  assert.equal(f.coordinator.isScopeReadable(scope), true);
+  assert.equal(f.coordinator.isScopeReadable({ ...scope, actorId: "other" }), false);
 });
 
 test("SQLCipher absence and key storage failures perform no schema writes or plaintext fallback", async t => {
@@ -371,7 +419,7 @@ test("clearing snapshots affects only the active workspace, including the defaul
     await f.coordinator.setScope(workspace);
     await writeSnapshot(scope.baseUrl, scope.actorId, "/api/notes", result);
   }
-  await f.coordinator.withDatabase(workspaces[2]!, db => db.run("INSERT INTO sync_cursors VALUES (?, ?, ?, ?)", ["first|_%", "cursor", "2026-09-16T00:00:00Z", "complete"]));
+  await f.coordinator.withDatabase(workspaces[2]!, db => db.run("INSERT INTO sync_cursors VALUES (?, ?, ?, ?, ?, ?, ?, ?)", ["first|_%", "notes", "fixture-e1", "cursor", "2026-09-16T00:00:00Z", "complete", "complete", "g1"]));
   for (let index = 0; index < workspaces.length; index++) {
     await f.coordinator.setScope(workspaces[index]!);
     assert.deepEqual((await readSnapshot(scope.baseUrl, scope.actorId, "/api/notes"))?.result, result);

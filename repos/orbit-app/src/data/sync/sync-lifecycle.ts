@@ -1,4 +1,5 @@
 import { Platform } from "react-native";
+import { normalizeOrbitApiBaseUrl } from "../../api/base-url";
 import { initializeLocalSyncDatabase, type LocalSyncDatabase, type LocalSyncSqlValue } from "./local-sync-database";
 import {
   deleteSyncDatabaseKey,
@@ -26,7 +27,7 @@ interface OpenScope {
 }
 
 function sameScope(left: SyncSessionScope, right: SyncSessionScope): boolean {
-  return left.baseUrl === right.baseUrl && left.actorId === right.actorId;
+  return normalizeOrbitApiBaseUrl(left.baseUrl) === normalizeOrbitApiBaseUrl(right.baseUrl) && left.actorId === right.actorId;
 }
 
 function nativeParameters(parameters: readonly LocalSyncSqlValue[]) {
@@ -69,6 +70,7 @@ export function createSyncLifecycle(input: {
   let queue: Promise<unknown> = Promise.resolve();
   let legacyRemoved = false;
   let cleanupRecovered = false;
+  let readyToken = -1;
 
   function enqueue<T>(operation: () => Promise<T>): Promise<T> {
     const result = queue.then(operation);
@@ -125,7 +127,13 @@ export function createSyncLifecycle(input: {
   }
 
   return {
+    // setScope accepts an identity transition; only this reports initialized storage.
+    isScopeReadable(scope: SyncSessionScope | null): boolean {
+      return input.platform !== "web" && readyToken === token && Boolean(scope && current?.database && !current.blocked &&
+        sameScope(current.scope, scope) && (scope.workspaceId === undefined || scope.workspaceId === current.scope.workspaceId));
+    },
     setScope(scope: SyncSessionScope | null): Promise<boolean> {
+      scope = scope ? { ...scope, baseUrl: normalizeOrbitApiBaseUrl(scope.baseUrl) } : null;
       const requestToken = ++token;
       return enqueue(async () => {
         if (input.platform === "web") return true;
@@ -160,6 +168,7 @@ export function createSyncLifecycle(input: {
           if (!scope) return true;
           if (current) {
             current.scope = scope;
+            if (current.database) readyToken = requestToken;
             return true;
           }
           const digest = await syncScopeDigest(scope, native);
@@ -176,13 +185,17 @@ export function createSyncLifecycle(input: {
             return false;
           }
           current.database = database;
+          readyToken = requestToken;
           return true;
         } catch {
           input.report("SYNC_INIT_FAILED", current?.digest);
-          const failed = current;
-          if (!(await purge())) return false;
-          // Avoid repeatedly reopening a corrupt/unavailable scope in this session.
-          if (failed) current = { ...failed, handle: null, database: null, blocked: false };
+          // Failure is not logout. Retain key and old schema/drafts/outbox for
+          // recovery instead of converting a rolled-back migration into erasure.
+          if (current) {
+            current.database = null;
+            try { await current.handle?.closeAsync(); current.handle = null; }
+            catch { input.report("SYNC_CLOSE_FAILED", current.digest); return false; }
+          }
           return true;
         }
       });
@@ -198,7 +211,7 @@ export function createSyncLifecycle(input: {
           return requestToken === token ? result : null;
         } catch {
           input.report("SYNC_OPERATION_FAILED", current.digest);
-          await purge();
+          // A storage operation failure must not erase unrelated local evidence.
           return null;
         }
       });

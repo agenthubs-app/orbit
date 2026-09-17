@@ -102,11 +102,11 @@ async function repository(
   await initializeLocalSyncDatabase(database);
   return {
     database,
-    repository: createLocalSyncRepository({ actorId, database }),
+    repository: createLocalSyncRepository({ actorId, database, baseUrl: "https://fixture.example", registeredDomainIds: ["notes"], activeReadScopes: () => ["workspace-a", "workspace-b", "  workspace-a  "].map(workspaceId => ({ baseUrl: "https://fixture.example", actorId, workspaceId, domainId: "notes", authorizationEpoch: "fixture-e1" })) }),
   };
 }
 
-test("schema v1 creates the sync tables and records encrypted metadata", async (t) => {
+test("schema v2 creates the sync tables and records encrypted metadata", async (t) => {
   const database = new NodeTestDatabase();
   t.after(() => database.close());
 
@@ -127,8 +127,8 @@ test("schema v1 creates the sync tables and records encrypted metadata", async (
     metadata.map(({ key, value }) => ({ key, value })),
     [
       { key: "encryption_state", value: "encrypted" },
-      { key: "migration_checkpoint", value: "1" },
-      { key: "schema_version", value: "1" },
+      { key: "migration_checkpoint", value: "2" },
+      { key: "schema_version", value: "2" },
     ],
   );
 });
