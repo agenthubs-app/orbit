@@ -113,7 +113,7 @@ test("aggregate boundary retains calendar truth but excludes private association
   assert.deepEqual(Object.keys(items[0]).sort(), ["id", "sourceId", "kind", "category", "state", "title", "startsAt", "endsAt", "allDay", "timeZone", "accountId", "ownerUserId", "createdAt", "updatedAt"].sort());
 });
 
-test("web v2 save verifies array receipt and independent GET and retains retry key after readback failure", async () => {
+test("current web v3 save verifies array receipt and independent GET and retains retry key after readback failure", async () => {
   const { createPersonalScheduleClient } = await import("../../app/(app)/app/tasks/personal-schedule-client");
   const f = fixture({ async accessibleIds({ ids }) { return ids; } }); const requests: { method: string; body: any; version: string | null }[] = []; let failRead = true;
   const client = createPersonalScheduleClient(owner, async (url, init) => {
@@ -127,7 +127,7 @@ test("web v2 save verifies array receipt and independent GET and retains retry k
   await assert.rejects(client.save(null, fields), /Read unavailable/);
   failRead = false; const saved = await client.save(null, fields);
   assert.deepEqual(saved.noteIds, ["note:owned"]);
-  assert.deepEqual(requests.map(request => [request.method, request.version]), [["POST", "2"], ["GET", "2"], ["POST", "2"], ["GET", "2"]]);
+  assert.deepEqual(requests.map(request => [request.method, request.version]), [["POST", "3"], ["GET", "3"], ["POST", "3"], ["GET", "3"]]);
   assert.equal(requests[0].body.idempotencyKey, requests[2].body.idempotencyKey);
 });
 
