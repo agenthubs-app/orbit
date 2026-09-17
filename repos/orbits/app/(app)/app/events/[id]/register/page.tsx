@@ -1,5 +1,6 @@
 import { StateView } from "../../../../../../shared/ui/state-view";
 import { auth } from "../../../../../../auth";
+import { resolveAuthenticatedApiActorFromSession } from "../../../../../../app/api/_shared/authenticated-actor";
 import { normalizeOrbitLanguage } from "../../../orbit-language-core";
 import {
   getOrbitServerLanguage,
@@ -63,10 +64,19 @@ async function getEventRegistrationPageLanguage(
 
 async function currentRegistrationActor() {
   try {
-    return {
-      actor: (await auth())?.user ?? null,
-      requestScoped: true,
-    };
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { actor: null, requestScoped: true };
+    }
+    const actor = await resolveAuthenticatedApiActorFromSession({
+      email: session.user.email,
+      name: session.user.name,
+      userId: session.user.id,
+    });
+    if (!actor) {
+      throw new Error("Authenticated Orbit account membership is unavailable.");
+    }
+    return { actor, requestScoped: true };
   } catch (error) {
     if (
       error instanceof Error &&

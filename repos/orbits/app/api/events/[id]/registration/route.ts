@@ -1,4 +1,4 @@
-import { auth } from "../../../../../auth";
+import { resolveAuthenticatedApiActor } from "../../../../../app/api/_shared/authenticated-actor";
 import { createEventRegistrationRouteHandlers } from "./route-handlers";
 import {
   resolveConfiguredEventAdmissionRegistrationControl,
@@ -13,10 +13,7 @@ const handlers = createEventRegistrationRouteHandlers({
   resolveAdmissionControl: resolveConfiguredEventAdmissionRegistrationControl,
   resolveAdmissionState: resolveConfiguredEventAdmissionRegistrationState,
   async resolveActor() {
-    const session = await auth();
-    return session?.user?.id
-      ? { id: session.user.id, name: session.user.name }
-      : null;
+    return resolveAuthenticatedApiActor();
   },
 });
 
