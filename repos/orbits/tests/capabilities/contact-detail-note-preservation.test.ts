@@ -16,6 +16,11 @@ test("metadata updates preserve all persisted note kinds, privacy and source wit
       await store.upsertRecord({ ...record, userId: actorId, payload: { ...record.payload, accountId: actorId } });
     }
   }
+  for (const record of await store.listRecords({ collectionName: "connections", workspaceId })) {
+    if (record.payload.contactId === contactId) {
+      await store.deleteRecord({ collectionName: "connections", deletedAt: "2026-09-07T03:01:00Z", recordId: record.recordId, workspaceId });
+    }
+  }
   const provider = createStorageContactGraphProvider({ store, workspaceId });
   const notes = [
     { noteId: "note:encounter:one", body: "只给自己看的交流记录", authorLabel: "You", createdAt: "2026-09-07T01:00:00Z", privacy: "private" as const, sourceLabel: "Human encounter" },

@@ -27,7 +27,7 @@ test("initialized relationship readers follow canonical transitions, not stale c
     const id = `contact:${marker ?? "legacy"}`;
     for (const [collectionName, payload] of [
       ["contacts", { ...base, id, displayName: id, stage: "needs_follow_up", lifecycleInitialization: marker }],
-      ["connections", { ...base, id: `connection:${id}`, contactId: id, accountId: actorId, stage: "active", lifecycleInitialization: marker, summary: "Accepted event connection", valueTypes: [], activeGoal: "Explicit test goal" }],
+      ["connections", { ...base, version: 1, id: `connection:${id}`, contactId: id, accountId: actorId, stage: "active", lifecycleInitialization: marker, summary: "Accepted event connection", valueTypes: [], activeGoal: "Explicit test goal" }],
     ] as const) {
       await store.upsertRecord({ ...activeRecord({ collectionName, payload, workspaceId, searchText: id, targetType: collectionName === "contacts" ? "contact" : "connection" }), userId: actorId });
     }
@@ -37,7 +37,8 @@ test("initialized relationship readers follow canonical transitions, not stale c
   const list = await createLiveContactsListSearchAndFilterService({ provider }).listContacts({ actorId });
   assert.equal(list.success, true);
   assert.equal(list.data.contacts.find(c => c.id === "contact:ready")?.status, "active");
-  assert.equal(list.data.contacts.find(c => c.id === "contact:legacy")?.status, "needs_follow_up");
+  assert.equal(list.data.contacts.find(c => c.id === "contact:legacy")?.status, "active");
+  assert.equal(list.data.contacts.find(c => c.id === "contact:pending")?.status, "needs_follow_up");
   assert.equal(list.data.contacts.find(c => c.id === "contact:pending")?.lifecycleInitialization, "pending");
   const detail = await createLiveContactDetailTagStatusService({ provider }).getContactDetail({ actorId, contactId: "contact:ready" });
   assert.equal(detail.success, true);
@@ -46,6 +47,7 @@ test("initialized relationship readers follow canonical transitions, not stale c
   assert.equal((detail.data.contact as unknown as Record<string, unknown>).lifecycleInitialization, "ready");
   const pendingDetail = await createLiveContactDetailTagStatusService({ provider }).getContactDetail({ actorId, contactId: "contact:pending" });
   assert.equal(pendingDetail.success, true);
+  assert.equal(pendingDetail.data.contact.status, "needs_follow_up");
   assert.equal((pendingDetail.data.contact as unknown as Record<string, unknown>).lifecycleInitialization, "pending");
   assert.equal((await provider.readContactGraphForContact?.("contact:ready", "owner:other"))?.contacts.length, 0);
 });

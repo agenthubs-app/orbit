@@ -9,6 +9,7 @@ import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../shared/co
 import { isIndustryIdCode, mergeIndustrySelection, validateIndustrySelection } from "../../../shared/domain/industries";
 import {
   isNetworkCategory,
+  isConnectionStage,
   isRelationshipStage,
   isRelationshipTrustLevel,
   isRelationshipValueType,
@@ -41,6 +42,8 @@ export const CONTACTS_LIVE_RECORD_COLLECTIONS = {
   detailStates: "contact_detail_states",
   evidence: "evidence",
 } as const;
+
+const AMBIGUOUS_CONNECTION_ERROR = "CONTACT_DETAIL_AMBIGUOUS_CONNECTION";
 
 export interface StorageContactGraphProviderOptions {
   contactRecordPageReader?: ContactRecordPageReader;
@@ -200,6 +203,9 @@ function contactFromRecord(
   record: LiveRecord<Record<string, unknown>>,
 ): ContactDTO | null {
   const payload = record.payload;
+  if (payload.version !== undefined && (!Number.isSafeInteger(payload.version) || (payload.version as number) < 1)) {
+    throw new Error("Invalid contact lifecycle version");
+  }
   const source = sourceReference(payload.source);
   const ids = evidenceIds(payload.evidenceIds);
 
@@ -217,6 +223,7 @@ function contactFromRecord(
 
   return {
     id: payload.id,
+    version: payload.version as number | undefined,
     personId: optionalString(payload.personId),
     displayName: payload.displayName,
     organization: optionalString(payload.organization),
@@ -279,6 +286,9 @@ function connectionFromRecord(
   record: LiveRecord<Record<string, unknown>>,
 ): ConnectionDTO | null {
   const payload = record.payload;
+  if (payload.version !== undefined && (!Number.isSafeInteger(payload.version) || (payload.version as number) < 1)) {
+    throw new Error("Invalid connection lifecycle version");
+  }
   const source = sourceReference(payload.source);
   const ids = evidenceIds(payload.evidenceIds);
   const valueTypes = stringArray(payload.valueTypes).filter(isRelationshipValueType);
@@ -299,6 +309,8 @@ function connectionFromRecord(
 
   return {
     id: payload.id,
+    version: payload.version as number | undefined,
+    lifecycleInitialization: payload.lifecycleInitialization === "pending" || payload.lifecycleInitialization === "ready" ? payload.lifecycleInitialization : undefined,
     accountId: payload.accountId,
     contactId: payload.contactId,
     stage: payload.stage,
@@ -383,11 +395,47 @@ function graphFromRecords(input: {
 }): LocalRemoteContactGraph {
   // Once explicitly initialized, Connection is the lifecycle authority. The
   // acquisition Contact and legacy detail state are not a second stage store.
+  const parsedConnections = input.connectionRecords
+    .map(connectionFromRecord)
+    .filter((connection): connection is ConnectionDTO => connection !== null);
+  const ownedConnections = input.actorId
+    ? input.connectionRecords
+        .filter(
+          (record) =>
+            record.userId === input.actorId ||
+            record.payload.accountId === input.actorId,
+        )
+        .map(connectionFromRecord)
+        .filter((connection): connection is ConnectionDTO => connection !== null)
+    : [];
+  const connectionCandidatesByContactId = new Map<string, ConnectionDTO[]>();
+  for (const connection of ownedConnections) {
+    const candidates = connectionCandidatesByContactId.get(connection.contactId) ?? [];
+    candidates.push(connection);
+    connectionCandidatesByContactId.set(connection.contactId, candidates);
+  }
+  for (const candidates of connectionCandidatesByContactId.values()) {
+    if (candidates.length > 1 && candidates.some((connection) => connection.version !== undefined || connection.lifecycleInitialization !== undefined)) {
+      throw new Error(AMBIGUOUS_CONNECTION_ERROR);
+    }
+  }
   const canonicalConnections = new Map<string, ConnectionDTO>();
-  for (const record of input.connectionRecords) {
-    if (record.payload.lifecycleInitialization !== "ready" || record.userId !== input.actorId || record.payload.accountId !== input.actorId) continue;
-    const connection = connectionFromRecord(record);
-    if (connection) canonicalConnections.set(connection.contactId, connection);
+  const contacts = input.contactRecords
+    .map(contactFromRecord)
+    .filter((contact): contact is ContactDTO => contact !== null);
+  const contactsById = new Map(contacts.map((contact) => [contact.id, contact]));
+  for (const [contactId, candidates] of connectionCandidatesByContactId) {
+    const connection = candidates[0];
+    const contact = contactsById.get(contactId);
+    if (
+      connection &&
+      (connection.version !== undefined || connection.lifecycleInitialization === "ready") &&
+      contact?.lifecycleInitialization !== "pending" &&
+      connection.lifecycleInitialization !== "pending" &&
+      isConnectionStage(connection.stage)
+    ) {
+      canonicalConnections.set(contactId, connection);
+    }
   }
   const customTagsByContactId = new Map<string, readonly string[]>();
   if (input.actorId) {
@@ -400,19 +448,15 @@ function graphFromRecords(input: {
   }
 
   return {
-    contacts: input.contactRecords
-      .map(contactFromRecord)
-      .filter((contact): contact is ContactDTO => contact !== null)
+    contacts: contacts
       .map((contact) => ({
         ...contact,
-        ...(contact.lifecycleInitialization === "ready" && canonicalConnections.has(contact.id)
+        ...(canonicalConnections.has(contact.id)
           ? { stage: canonicalConnections.get(contact.id)!.stage, updatedAt: canonicalConnections.get(contact.id)!.updatedAt }
           : {}),
         customTags: customTagsByContactId.get(contact.id) ?? [],
       })),
-    connections: input.connectionRecords
-      .map(connectionFromRecord)
-      .filter((connection): connection is ConnectionDTO => connection !== null),
+    connections: parsedConnections,
     evidence: input.evidenceRecords
       .map(evidenceFromRecord)
       .filter(
