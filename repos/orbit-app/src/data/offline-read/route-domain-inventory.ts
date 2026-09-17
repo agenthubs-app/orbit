@@ -12,6 +12,7 @@ function domainFor(path: string): string {
   if (path.startsWith('/api/notes')) return 'notes';
   if (path.startsWith('/api/task-suggestions')) return 'task-suggestions';
   if (path.startsWith('/api/tasks')) return 'tasks';
+  if (path === '/api/relationship-tasks') return 'tasks';
   if (path.startsWith('/api/reminders')) return 'followups';
   if (path.includes('/meeting-details')) return 'meetings';
   if (path.startsWith('/api/appointments')) return 'appointments';
@@ -203,7 +204,6 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/contacts/ContactNeedsMatchesScreen.tsx","GET","/api/contacts/needs-matches"],
   ["src/screens/contacts/ContactNotesSection.tsx","GET","/api/notes"],
   ["src/screens/contacts/ContactPipelineScreen.tsx","GET","/api/connections"],
-  ["src/screens/contacts/ContactPipelineScreen.tsx","PATCH","/api/connections/:id/stage"],
   ["src/screens/contacts/ContactPipelineScreen.tsx","GET","/api/contacts"],
   ["src/screens/contacts/ContactPipelineScreen.tsx","GET","/api/tasks"],
   ["src/screens/contacts/ContactsDashboardScreen.tsx","POST","/api/dashboard/opportunities/recompute"],
@@ -233,14 +233,18 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/events/EventAnalyticsScreen.tsx","GET","/api/events/:id/analytics/aggregate"],
   ["src/screens/events/EventAnalyticsScreen.tsx","GET","/api/events/:id/analytics/attendee"],
   ["src/screens/events/EventAttendeeRosterLink.tsx","GET","/api/events/:id"],
-  ["src/screens/events/EventAttendeesScreen.tsx","POST","/api/contact-drafts/event-attendees/import"],
-  ["src/screens/events/EventAttendeesScreen.tsx","GET","/api/events/:id"],
-  ["src/screens/events/EventAttendeesScreen.tsx","GET","/api/events/:id/attendees"],
-  ["src/screens/events/EventAttendeesScreen.tsx","POST","/api/events/:id/attendees/import"],
-  ["src/screens/events/EventAttendeesScreen.tsx","POST","/api/events/:id/encounters"],
-  ["src/screens/events/EventAttendeesScreen.tsx","POST","/api/events/:id/encounters/:id/evidence"],
-  ["src/screens/events/EventAttendeesScreen.tsx","GET","/api/events/:id/matches"],
-  ["src/screens/events/EventAttendeesScreen.tsx","POST","/api/events/:id/want-to-connect"],
+  ["src/view-models/event-attendee-controller.ts","GET","/api/events/:id/operations"],
+  ["src/view-models/event-attendee-controller.ts","GET","/api/events/:id/operations/participants/:id"],
+  ["src/view-models/event-attendee-controller.ts","POST","/api/events/:id/operations/check-in"],
+  ["src/view-models/event-attendee-controller.ts","POST","/api/events/:id/operations/contact-requests"],
+  ["src/view-models/event-attendee-controller.ts","POST","/api/events/:id/operations/contact-requests/:id/:id"],
+  ["src/screens/tasks/RelationshipLifecycleList.tsx","GET","/api/relationship-tasks"],
+  ["src/screens/tasks/RelationshipLifecycleScreen.tsx","GET","/api/connections/:id/lifecycle"],
+  ["src/screens/tasks/RelationshipLifecycleScreen.tsx","POST","/api/connections/:id/lifecycle"],
+  ["src/view-models/relationship-initialization.ts","GET","/api/connections"],
+  ["src/view-models/relationship-initialization.ts","GET","/api/connections/:id/lifecycle"],
+  ["src/view-models/relationship-initialization.ts","GET","/api/contacts/:id/relationship-initialization"],
+  ["src/view-models/relationship-initialization.ts","POST","/api/contacts/:id/relationship-initialization"],
   ["src/screens/events/EventCenterScreen.tsx","GET","/api/events/center"],
   ["src/screens/events/EventCheckInScreen.tsx","GET","/api/events/:id/operations/admin/check-ins"],
   ["src/screens/events/EventCheckInScreen.tsx","POST","/api/events/:id/operations/admin/check-ins"],

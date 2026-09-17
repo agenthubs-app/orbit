@@ -10,8 +10,9 @@ const require = createRequire(import.meta.url);
 
 test("canonical event uses operations entry and authoritative registration header without legacy personalized GETs", async t => {
   const p = await open(t, { signedIn: true, eventPatch: { sourceMetadata: { label: "event-core-postgres" } }, registration: {
-    eligibility: { state: "registered", allowedActions: ["update", "cancel"], evaluatedAt: "2026-09-12T00:00:00Z", registrationVersion: "1", applicationVersion: null, policyVersion: null, reason: "registered" },
-    registration: { eventId: "event:1", userId: "actor-1", status: "rsvped" }, questionSet: { questions: [] },
+    eligibility: { state: "registered", allowedActions: ["update", "cancel"], evaluatedAt: "2026-09-12T00:00:00Z", registrationVersion: "2026-09-12T00:00:00Z", applicationVersion: null, policyVersion: null, reason: "registered" },
+    registration: { id: "registration:1", eventId: "event:1", userId: "actor-1", status: "rsvped", participantProfileId: "profile:1", participantProfile: { id: "profile:1", eventId: "event:1", userId: "actor-1", answers: { desiredOutcome: "Find collaborators", targetAttendees: "Founders", valueOffered: "Engineering" } }, updatedAt: "2026-09-12T00:00:00Z" },
+    questionSet: { questions: [], provenance: { aiProviderRequested: false, externalNetworkRequested: false, fallbackReason: "QUESTIONS_NOT_REQUESTED", generationMethod: "deterministic-not-requested", model: null, provider: null } },
   } });
   await p.getByTestId("event-registration-status").filter({ hasText: "已报名" }).waitFor();
   const paths = await p.evaluate(() => (window as any).fixture.requests.map((r: any) => r.path));

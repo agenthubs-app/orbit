@@ -151,6 +151,18 @@ build/harness-logs/
 
 ## 运行记录
 
+### 0065 / run-01（2026-09-17）
+
+ROOT在0064验收准备中只读确认真实React Native Web Alert空实现、两活动取消入口直接调用原生Alert，新增[GOAL](0065-web-event-cancel-confirmation/GOAL.md)／[PLANNER](0065-web-event-cancel-confirmation/PLANNER.md)承接已批准取消目标及SC64-04。不称已实际点击复现，真实页面仍待合法配置。唯一A任务 `01a0a838-4974-7ea2-bc4f-8ecce28b2af2` Sol medium，新独立Sprint树／run_count1，基线104ff7988（产品9dc）；0033 PhaseB生产依赖保持未批准/暂停、旧run不关闭或重开。本Sprint与B0064 Web工具文件不重叠，最多两个唯一Generator，ROOT握全部真实QA/Git/index。状态running；Planner冻结hash/实际启动记录在ROOT当前checkpoint，未实施公共版本切换或宣称SC通过。
+
+终验追加：状态completed/run_count1，原running为历史启动状态。固定功能d0e141cc与本线报告94c212已合Main；Root正常UI单新QAcase详情及资料页两处真实confirm拒绝0写/确认singleCAS/独立回读与重新报名通过，原资料摘要保全。新Phone519/f082 freshentry875实际PUBLIC同SHA1afd、health200live及正常UI登录后逐13页正确enabled/业务0，普通push远端7b1b3de289eba6e550a4702954df6056eddc664e一致；管理文档最终push事实见Root checkpoint。[REPORT](0065-web-event-cancel-confirmation/REPORT.md)保留唯一I18fail与完整局部31pass，不冒称全绿/真实Native/AI或全项目完成。
+
+### 0064 / run-01（2026-09-17）
+
+用户在十三场活动配置及旧Phone发布诊断后明确要求“去做吧”。新增[GOAL](0064-phoneweb-registration-window-repair/GOAL.md)／[PLANNER](0064-phoneweb-registration-window-repair/PLANNER.md)，仅修复已识别的Phone展示域配置并消费已交付0050发布，不重开closed0050/0063。唯一Generator为既有B任务 `01a0a879-e8fe-77e3-b748-bd78005aecc8`，GPT-5.6 Sol / medium，run_count=1，基线 `9dc41bd1e80d1129206b001ae6640907b3e41b9a`；ROOT独占真实DB/账号/主Git/索引，Phone协调任务只机械消费与构建交接。状态running，Planner冻结哈希及工作树启动证据由ROOT当前checkpoint登记；尚未执行真实配置写入、切服务或声明SC通过。
+
+终验追加：状态completed/run_count1，SC64-01～05已通过，原running为历史启动状态。fixed796d+8daf已合Main并普通push/远端7b1b3de289eba6e550a4702954df6056eddc664e同SHA；原B同run一次中文[REPORT](0064-phoneweb-registration-window-repair/REPORT.md)提交4a1cb131已合Main376b05d4，管理文档最终push事实见Root checkpoint。真实13版本化配置/audit、同plan幂等与freshchanges0，原六表count/hash配置前后全原；旧主办方映射错误dryrun失败保留后严格修正，不改原owner。0065依赖真实双入口取消/重报闭环及新PhonePUBLIC发布验证完成；正常QA仅新case新增4member/1head/1profile/1head/2response、最终cancelled，排除此新case后原数据摘要全原。唯一WebI64fail213skip保留，环境局部5pass/新工具38pass/types0，非全绿；推荐schema/legacy差异、Native/AI/Push/OAuth等缺项不关闭。详见[BR-030](../../../../bridge/2026-09-17-phoneweb-registration-repair.md)。
+
 ### 0027 / run-01
 
 - owner：C 线任务 `01a0a041-c352-7022-98de-1783b8b1adb8`；run_count：1；开始 2026-09-15 16:34 JST。用户已批准 0027 目标、推荐方案与实施；Planner revision 1／SHA256 `01635159a35495b325ed401aaff09a3224940578d321c8eec2ff4de542efba84`。

@@ -7,8 +7,8 @@ import { auditReadSurfaces, extractReadCalls } from '../scripts/audit-offline-re
 import { resolveReadSurface, matchTemplate, surfaces } from '../src/data/offline-read/route-domain-inventory';
 
 // Each assertion protects a persistence boundary, or exercises the audit on real AST inputs.
-test('roster qualification registers the same durable event read policy as the owner detail consumer', () => {
-  const owner = surfaces.find(row => row.consumerFile === 'src/screens/events/EventAttendeesScreen.tsx' && row.method === 'GET' && row.endpointTemplate === '/api/events/:id');
+test('roster qualification registers the same durable event read policy as the party detail consumer', () => {
+  const owner = surfaces.find(row => row.consumerFile === 'src/screens/party/PartyModeScreen.tsx' && row.method === 'GET' && row.endpointTemplate === '/api/events/:id');
   const qualification = surfaces.find(row => row.consumerFile === 'src/screens/events/EventAttendeeRosterLink.tsx' && row.method === 'GET' && row.endpointTemplate === '/api/events/:id');
   assert.ok(owner);
   assert.ok(qualification);
@@ -17,6 +17,33 @@ test('roster qualification registers the same durable event read policy as the o
   assert.equal(qualification.selector, 'events:GET:/api/events/:id');
   assert.equal(qualification.readPersistence, 'durable_normalized');
   assert.equal(qualification.schemaVersion, 1);
+});
+
+test('canonical lifecycle and participant consumers are registered without offline mutation authority', () => {
+  const expected = [
+    ['src/screens/tasks/RelationshipLifecycleList.tsx', 'GET', '/api/relationship-tasks', 'tasks'],
+    ['src/screens/tasks/RelationshipLifecycleScreen.tsx', 'GET', '/api/connections/:id/lifecycle', 'connections'],
+    ['src/screens/tasks/RelationshipLifecycleScreen.tsx', 'POST', '/api/connections/:id/lifecycle', 'connections'],
+    ['src/view-models/relationship-initialization.ts', 'GET', '/api/connections', 'connections'],
+    ['src/view-models/relationship-initialization.ts', 'GET', '/api/connections/:id/lifecycle', 'connections'],
+    ['src/view-models/relationship-initialization.ts', 'GET', '/api/contacts/:id/relationship-initialization', 'contacts'],
+    ['src/view-models/relationship-initialization.ts', 'POST', '/api/contacts/:id/relationship-initialization', 'contacts'],
+    ['src/view-models/event-attendee-controller.ts', 'GET', '/api/events/:id/operations', 'event-operations'],
+    ['src/view-models/event-attendee-controller.ts', 'GET', '/api/events/:id/operations/participants/:id', 'event-operations'],
+    ['src/view-models/event-attendee-controller.ts', 'POST', '/api/events/:id/operations/check-in', 'event-operations'],
+    ['src/view-models/event-attendee-controller.ts', 'POST', '/api/events/:id/operations/contact-requests', 'event-operations'],
+    ['src/view-models/event-attendee-controller.ts', 'POST', '/api/events/:id/operations/contact-requests/:id/:id', 'event-operations'],
+  ];
+  for (const [file, method, path, domain] of expected) {
+    const surface = surfaces.find(row => row.consumerFile === file && row.method === method && row.endpointTemplate === path);
+    assert.ok(surface, `${file} ${method} ${path}`);
+    assert.equal(surface.domainId, domain);
+    assert.equal(surface.schemaVersion, 1);
+    assert.equal(surface.mutationPolicy, 'online_only');
+    assert.equal(resolveReadSurface(method!, path!.replaceAll(':id', 'example')).domainId, domain);
+  }
+  assert.equal(surfaces.some(row => row.consumerFile === 'src/screens/events/EventAttendeesScreen.tsx'), false);
+  assert.throws(() => resolveReadSurface('POST', '/api/events/example/operations/unknown'), /UNREGISTERED_READ/);
 });
 
 test('unknown and secret endpoints never default to persistence', () => {

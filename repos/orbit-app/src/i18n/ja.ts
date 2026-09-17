@@ -10,6 +10,7 @@ export const ja = {
   "registration.cancelThisRegistration": "今回の申込を取り消す",
   "registration.cancelUnconfirmed": "取消結果を確認できません。申込状況を再読み込みしてください。",
   "registration.cancelConfirmation": "取消後はこのイベントに参加しません。申込期間中は再申込できます。",
+  "registration.cancelConfirmationUnavailable": "取消の確認を開けませんでした。申込は取り消していません。もう一度お試しください。",
   "registration.cancelKeep": "申込を維持",
   "registration.reasonConfiguration": "主催者の申込情報が未完成のため、申込・資料変更はできません。",
   "registration.reasonMigration": "申込記録を更新中のため、送信できません。",

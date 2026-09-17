@@ -206,7 +206,8 @@ function scanAppRouteEntries(directory: string): string[] {
         continue;
       }
 
-      if (!/\.(j|t)sx?$/u.test(entry.name) || /^_layout\.(j|t)sx?$/u.test(entry.name)) {
+      if (!/\.(j|t)sx?$/u.test(entry.name) || /^_layout\.(j|t)sx?$/u.test(entry.name) ||
+          (currentDirectory === appRoot && /^\+html\.(j|t)sx?$/u.test(entry.name))) {
         continue;
       }
 

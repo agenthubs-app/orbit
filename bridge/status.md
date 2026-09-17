@@ -59,6 +59,11 @@ Production 运行源码 `105ebba4d` / `dpl_2FjxtX314B6DRojeZvFbdDF8gTNh` 为 Rea
 用户授权将合成 fixture 用于 Production 测试；正式 Web 已连接 Neon Production 的 `workspace:orbit-demo-fixtures`，完成空库事务导入、逐表校验、主办方登录与参与者权限隔离。App 本机 API 地址已指向正式网址，但原生构建受当前 Swift/Expo 依赖兼容性阻塞，不能记为跨端 verified。主办方身份去重、可报名测试活动及精确证据见 [本次交接](2026-09-16-production-fixture-testing.md)。此前 schema-only / 未部署状态为历史，不能替代此记录。
 
 增量：主测试账号凭据登录可读 66 联系人；新增活动报名/取消/重报复用同一记录。关系 fixture 已整理为每联系人一条有效关系、一个当前任务，旧重复记录可恢复停用，正式生命周期核验 0 issues；46 项定向回归通过。后台 event-operations worker 的云端承载与原生 App 同环境验证仍为精确未完成项。
+## 2026-09-17 活动报名修复与Phone发布
+
+0064固定8daf与0065固定d0e已合chat-agent并普通push，独立远端7b1b3de289eba6e550a4702954df6056eddc664e一致。真实13配置修复/all13正式GET及公网逐页enabled通过；正常UI单新QAcase双入口拒绝/确认取消、重新报名与正式回读通过，原记录摘要保全。新Phone519/f082、freshentry875实际公网SHA1afd；后台明确复用64真实BUILD6cy，原ngrok同地址/PUBLIC87138/9/40健康200，old63回退完整。owned previews与35434PG正常停保数据资产。
+
+ROOT主线完整受影响81pass；唯一I失败/跳过保留，不冒称全绿。未真实Native取消/AI provider，推荐schema与Phone旧legacy差异仍TODO；0033生产协议/OAuth/Push缺项未关闭。范围与失败见[BR-030](2026-09-17-phoneweb-registration-repair.md)，最终管理文档push事实见ROOT运行checkpoint。
 
 ## 2026-09-16 20:56 JST 人脉分析修复与两端生产服务恢复
 
