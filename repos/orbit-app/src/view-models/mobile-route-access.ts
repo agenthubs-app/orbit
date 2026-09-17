@@ -55,6 +55,7 @@ function matchesPrefix(pathname: string, prefix: string): boolean {
 function pathParamKeysForMobileRoute(pathname: string): ReadonlySet<string> {
   const segments = appRelativePath(pathname).split("/").filter(Boolean);
   const [root, detail, leaf] = segments;
+  if (root === "events" && detail && leaf === "participants" && segments.length === 4) return new Set(["id", "participantId"]);
 
   if ((root === "tasks" && detail !== undefined && detail !== "personal" && segments.length === 2) ||
     (root === "tasks" && detail === "relationship" && leaf !== undefined && segments.length === 3) ||

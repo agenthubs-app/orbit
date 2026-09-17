@@ -3,6 +3,52 @@
 This file tracks places where the iOS app should stay thin and wait for clearer
 API support instead of copying backend business logic locally.
 
+## 2026-09-17 — BR-026 canonical attendee consumer (local verification)
+
+`/events/:id/attendees` now uses `GET /api/events/:id/operations`, not the
+legacy roster/matches previews listed in the historical section below. The new
+private `/events/:id/participants/:participantId` reads
+`GET /api/events/:id/operations/participants/:participantId`. The consumer shows
+the public directory, published recommendations, both own round/seat assignments,
+event profile responses and the current request state. Explicit buttons alone
+call `POST /operations/check-in`, `/operations/contact-requests`, or
+`/operations/contact-requests/:requestId/respond|withdraw`. Requests carry the
+read revision (including explicit null for a new request); consent is never
+defaulted, optimistic, or automatically retried. Each receipt validates event,
+participant pair, request, revision and status, then rereads authoritative state.
+Lost acknowledgements/conflicts reread rather than silently resending a decision.
+Accepted navigation uses only the current owner's returned contact ID; the
+existing native relationship initializer remains the next step.
+
+Identity distinction: operations' `withRegisteredEventAccess` resolves canonical
+account `actor.id`; the check-in receipt must match `auth.actorId`, not the raw
+Auth.js subject used by the registration API. Both identities, cookie, base URL,
+event, participant and focus are included in native request/callback scope.
+No participant ID is constructed from either actor identity. `workspace.me` is
+authoritative. Inconsistent workspace/detail request snapshots fail closed.
+
+The exact Web notification
+`/app/events/:id?participant=:encodedParticipantId#event-matchmaking-title` maps
+to the new private route. Extra query keys, duplicate participant keys, wrong
+anchors and unsafe path IDs are rejected; existing unrelated route semantics
+remain intact. Canonical event detail bypasses legacy readiness/recommendation/
+post-event preview reads and routes onsite access to this consumer. Its signed-in
+header reuses the one actual registration read, showing pending/error state
+rather than assuming eligibility. Noncanonical detail behavior is preserved.
+
+Login HTTP 5xx/non-verifiable responses no longer claim incorrect credentials;
+real HTTP 401 still does. No AuthSession architecture changes were made.
+
+Verification: decoder, controller, RNW render, real-hooks HTTP/focus/session and
+strict route tests live in `tests/event-attendee-*` and
+`tests/event-participant-route.test.ts`; existing event detail, inbox, auth and
+route inventory regressions are included in the scoped handoff. This is
+consumer implementation/local verification, **not native/Production acceptance**.
+Production acceptance is separately blocked by Neon's transfer quota; no paid
+upgrade, production data mutation, simulator action, model call, deployment or
+new numbered Sprint was performed by this task. The main coordinator owns final
+cross-end smoke, full suite, iOS export and real native acceptance.
+
 ## Profile
 
 `GET /api/profile` is the current signed-in actor's profile boundary. Mobile no
@@ -459,9 +505,10 @@ App 随后为报名问卷启用只走网络的读取策略，失败时保留本�
 匿名同路径明确返回 401 JSON，不是所有访问都在路由编译阶段失败，
 真实登录态 500 的内部原因仍未确认。
 
-## Event Attendees And Want Connect
+## Event Attendees And Want Connect — historical preview, superseded 2026-09-17
 
-Mobile now opens an event attendee workspace backed by:
+The former attendee screen used the following preview APIs. These are no longer
+called by `EventAttendeesScreen`; retained adapters alone do not imply current UI support:
 
 - `GET /api/events/:id/attendees`
 - `POST /api/events/:id/attendees/import`

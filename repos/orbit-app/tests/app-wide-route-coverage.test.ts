@@ -173,6 +173,7 @@ const integratedFeatureRoutes = [
   "/contacts/new/import/[id]",
   "/contacts/matches",
   "/events/[id]/operations/experience",
+  "/events/[id]/participants/[participantId]",
   "/invitations/[token]",
   "/schedule/meetings/[id]",
   "/schedule/personal/[id]",

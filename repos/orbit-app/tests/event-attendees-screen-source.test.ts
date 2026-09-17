@@ -1,65 +1,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import test from "node:test";
-
-const repoRoot = new URL("..", import.meta.url).pathname;
-const screenSource = readFileSync(
-  join(repoRoot, "src", "screens", "events", "EventAttendeesScreen.tsx"),
-  "utf8"
-);
-
-test("event attendees screen can save encounter notes through the web API", () => {
-  assert.match(screenSource, /TextInput/u);
-  assert.match(screenSource, /ORBIT_API_ENDPOINTS\.contactDraftEventAttendeesImport/u);
-  assert.match(screenSource, /buildEventAttendeeContactDraftImportRequest/u);
-  assert.match(screenSource, /buildEventAttendeeRosterImportRequest/u);
-  assert.match(screenSource, /eventEncountersPath/u);
-  assert.match(screenSource, /eventEncounterEvidencePath/u);
-  assert.match(screenSource, /buildEncounterNoteRequest/u);
-  assert.match(screenSource, /eventAttendeeContactDraftImportToView/u);
-  assert.match(screenSource, /eventAttendeeRosterImportToView/u);
-  assert.match(screenSource, /eventEncounterNoteToView/u);
-  assert.match(screenSource, /eventEncounterEvidenceToView/u);
-  assert.match(screenSource, /importEventAttendeesIntoRoster/u);
-  assert.match(screenSource, /importEventAttendeesAsDrafts/u);
-  assert.match(screenSource, /EventAttendeeRosterImportResultCard/u);
-  assert.match(screenSource, /EventAttendeeDraftImportResultCard/u);
-  assert.match(screenSource, /"导入名册"/u);
-  assert.match(screenSource, /"导入为候选"/u);
-  assert.match(screenSource, /"去复核候选"/u);
-  assert.match(screenSource, /client\.post<unknown>\(\s*request\.request\.endpoint/u);
-  assert.match(screenSource, /client\.post<unknown>\(\s*eventEncountersPath/u);
-  assert.match(screenSource, /client\.post<unknown>\(\s*eventEncounterEvidencePath/u);
-  assert.match(screenSource, /client\.post<unknown>\(\s*ORBIT_API_ENDPOINTS\.contactDraftEventAttendeesImport/u);
-  assert.match(screenSource, /pendingEvidenceEncounterId/u);
-  assert.match(screenSource, /"保存现场记录"/u);
-  assert.match(screenSource, /"生成关系证据"/u);
-});
-
-test("event attendee cards include an avatar identity marker", () => {
-  assert.match(screenSource, /Image,/u);
-  assert.match(screenSource, /useOrbitApiBaseUrl/u);
-  assert.match(screenSource, /assetUrl/u);
-  assert.match(screenSource, /function AttendeeAvatar/u);
-  assert.match(screenSource, /styles\.attendeeAvatar/u);
-  assert.match(screenSource, /attendee\.name\.slice\(0,\s*1\)/u);
-  assert.match(screenSource, /attendee\.imageUrl/u);
-  assert.match(
-    screenSource,
-    /source=\{\{ uri: assetUrl\(baseUrl, imageUrl\) \}\}/u
-  );
-  assert.match(screenSource, /styles\.attendeeAvatarImage/u);
-  assert.match(screenSource, /<AttendeeAvatar/u);
-});
-
-test("event attendees distinguish a valid event from an unconnected roster", () => {
-  assert.match(screenSource, /eventDetailPath/u);
-  assert.match(screenSource, /eventDetailToSummary/u);
-  assert.match(screenSource, /rosterSourceMissing/u);
-  assert.match(screenSource, /参会者来源尚未连接/u);
-  assert.match(
-    screenSource,
-    /未连接时不会导入名单、生成候选或写入联系人/u
-  );
+// Route wiring only; actual behavior has render and interaction coverage.
+test("attendees route uses canonical operations, not legacy roster previews", () => {
+  const source = readFileSync(new URL("../src/screens/events/EventAttendeesScreen.tsx", import.meta.url), "utf8");
+  assert.match(source, /AttendeeOperationsScreen as EventAttendeesScreen/);
+  assert.doesNotMatch(source, /eventMatchesPath|eventAttendeesPath|client\.post/);
+  const route = readFileSync(new URL("../app/events/[id]/participants/[participantId].tsx", import.meta.url), "utf8");
+  assert.match(route, /withOrbitPrivateRoute\(AttendeeOperationsScreen\)/);
 });

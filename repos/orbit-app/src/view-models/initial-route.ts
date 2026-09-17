@@ -1,4 +1,5 @@
 import { taskListHref } from "./task-list-scope";
+import { eventParticipantHref } from "./event-participant-route";
 
 type InitialRoutePath =
   | "/account"
@@ -265,6 +266,8 @@ function hrefWithQuery(
 export function resolveSupportedInitialRouteHref(
   configuredRoute: string | undefined,
 ): InitialRouteHref | null {
+  const participant = eventParticipantHref(configuredRoute);
+  if (participant) return participant as InitialRouteHref;
   const parsedRoute = parsedConfiguredRoute(configuredRoute);
 
   if (!parsedRoute) {
@@ -272,6 +275,7 @@ export function resolveSupportedInitialRouteHref(
   }
 
   const routeKey = webShellRouteKey(parsedRoute.routeKey);
+  if (routeKey.startsWith("events/") && (routeKey.includes("/participants/") || parsedRoute.searchParams.has("participant") || parsedRoute.rawHash.startsWith("event-matchmaking-title"))) return null;
 
   if (routeKey === "tasks" || routeKey === "followups") {
     return taskListHref({ scope: routeKey === "followups" ? "relationship" : parsedRoute.searchParams.get("scope"), view: parsedRoute.searchParams.get("view") }) as InitialRouteHref;

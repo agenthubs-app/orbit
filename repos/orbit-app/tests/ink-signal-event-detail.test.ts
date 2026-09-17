@@ -7,6 +7,19 @@ import { chromium, type Browser, type Page } from "playwright";
 import { goalPayload, openingLinePayload, peoplePayload, personalPayloads, readinessPayload, reviewConfirmationPayload, reviewPayload } from "./helpers/event-detail-fixtures";
 
 const require = createRequire(import.meta.url);
+
+test("canonical event uses operations entry and authoritative registration header without legacy personalized GETs", async t => {
+  const p = await open(t, { signedIn: true, eventPatch: { sourceMetadata: { label: "event-core-postgres" } }, registration: {
+    eligibility: { state: "registered", allowedActions: ["update", "cancel"], evaluatedAt: "2026-09-12T00:00:00Z", registrationVersion: "1", applicationVersion: null, policyVersion: null, reason: "registered" },
+    registration: { eventId: "event:1", userId: "actor-1", status: "rsvped" }, questionSet: { questions: [] },
+  } });
+  await p.getByTestId("event-registration-status").filter({ hasText: "已报名" }).waitFor();
+  const paths = await p.evaluate(() => (window as any).fixture.requests.map((r: any) => r.path));
+  assert.equal(paths.filter((path: string) => path.endsWith("/registration")).length, 1);
+  assert.ok(!paths.some((path: string) => /readiness|recommendations|post-event/.test(path)));
+  await p.getByRole("button", { name: "打开活动现场", exact: true }).click();
+  assert.equal(await p.evaluate(() => (window as any).fixture.navigation.at(-1)), "/events/event%3A1/attendees");
+});
 const iconFont = readFileSync("node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf").toString("base64");
 let browser: Browser;
 let script: string;

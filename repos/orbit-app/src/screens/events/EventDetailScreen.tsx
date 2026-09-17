@@ -1,7 +1,7 @@
 import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ImageBackground,
   Platform,
@@ -101,6 +101,15 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
   const { timeZone } = useOrbitTimeZone();
   const event = data ? publicEventDetailToSummary(data, timeZone) : null;
   const [personalizedRefreshKey, setPersonalizedRefreshKey] = useState(0);
+  const canonical = data?.event.sourceMetadata?.label === "event-core-postgres";
+  const registrationKey = JSON.stringify([scopeKey, event?.id, personalizedRefreshKey]);
+  const [registrationBadge, setRegistrationBadge] = useState<{ key: string; label: string } | null>(null);
+  const onRegistrationStatus = useCallback((label: string) => {
+    if (isCurrent()) setRegistrationBadge({ key: registrationKey, label });
+  }, [registrationKey]);
+  const registrationStatus = signedIn && canonical
+    ? registrationBadge?.key === registrationKey ? registrationBadge.label : locale.language === "ja" ? "参加登録を確認中" : locale.language === "en" ? "Checking registration" : "正在确认报名状态"
+    : undefined;
   const sharing = useRef(false);
   const [sharePending, setSharePending] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
@@ -160,7 +169,8 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
         </View> : null}
         {shareError ? <Text accessibilityRole="alert" style={styles.errorText}>{shareError}</Text> : null}
         {data && event ? <EventDetailCard baseUrl={baseUrl} data={data} onNavigate={navigate}
-          personalizedModules={signedIn ? <AuthenticatedEventDetailModules eventId={event.id} key={event.id}
+          registrationStatus={registrationStatus}
+          personalizedModules={signedIn && !canonical ? <AuthenticatedEventDetailModules eventId={event.id} key={event.id}
             refreshKey={personalizedRefreshKey} scopeKey={scopeKey ?? "event-detail"} isScopeCurrent={isCurrent} /> : null} /> : null}
       </ScrollView>
       {event ? signedIn ? (
@@ -169,6 +179,7 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
           onRegister={() => navigate(`/events/${encodeURIComponent(event.id)}/register` as Href)}
           refreshKey={personalizedRefreshKey}
           scopeKey={scopeKey ?? "event-detail"}
+          onStatus={onRegistrationStatus}
         />
       ) : (
         <EventRegistrationModule event={event} onRegister={() => {
@@ -287,11 +298,13 @@ function EventDetailCard({
   baseUrl,
   data,
   onNavigate,
+  registrationStatus,
   personalizedModules
 }: {
   baseUrl: string;
   data: PublicEventDetail;
   onNavigate: (href: Href) => void;
+  registrationStatus?: string | undefined;
   personalizedModules: ReactNode;
 }) {
   const { colors, styles } = useStyles();
@@ -300,10 +313,10 @@ function EventDetailCard({
   const { timeZone } = useOrbitTimeZone();
   const event = publicEventDetailToSummary(data, timeZone);
   const hero = eventDetailHeroToView(event);
-  const heroStatus = publicEventDetailStatus(hero.status);
+  const heroStatus = registrationStatus ?? publicEventDetailStatus(hero.status);
   const heroSummary = publicEventDetailSummary(hero.summary);
   const attendeesHref = `/events/${encodeURIComponent(event.id)}/attendees` as Href;
-  const partyHref = `/party?eventId=${encodeURIComponent(event.id)}` as Href;
+  const partyHref = data.event.sourceMetadata?.label === "event-core-postgres" ? attendeesHref : `/party?eventId=${encodeURIComponent(event.id)}` as Href;
   const timing = eventDetailTiming(data.event.startsAt, data.event.endsAt, timeZone);
   const narrow = width < 360 || fontScale >= 1.4;
   const attendeeCount = data.event.stats?.count ?? data.event.participantCount;
@@ -320,7 +333,7 @@ function EventDetailCard({
           style={styles.eventHeroFrame}
         >
           <View style={styles.eventHeroTopRow}>
-            <Text style={styles.eventStatusBadge}>{heroStatus}</Text>
+            <Text testID="event-registration-status" style={styles.eventStatusBadge}>{heroStatus}</Text>
           </View>
         </ImageBackground>
         <Text accessibilityRole="header" style={styles.eventHeroTitle}>{hero.title}</Text>
@@ -543,13 +556,16 @@ function AuthenticatedEventRegistrationModule({
   event,
   onRegister,
   refreshKey,
-  scopeKey
+  scopeKey,
+  onStatus
 }: {
   event: EventDetailSummary;
   onRegister: () => void;
   refreshKey: number;
   scopeKey: string;
+  onStatus: (label: string) => void;
 }) {
+  const locale = useOrbitLocale();
   const state = useApiResource<unknown>(
     `${eventRegistrationPath(event.id)}?questions=false`,
     () => false,
@@ -573,6 +589,11 @@ function AuthenticatedEventRegistrationModule({
           }
         })
       : null;
+  const rawRegistration = (state.kind === "success" || state.kind === "empty") && state.data && typeof state.data === "object"
+    ? (state.data as { registration?: { status?: string } }).registration : null;
+  const label = state.kind === "loading" ? (locale.language === "ja" ? "参加登録を確認中" : locale.language === "en" ? "Checking registration" : "正在确认报名状态")
+    : rawRegistration?.status === "rsvped" ? locale.t("registration.statusRegistered") : registration?.statusLabel ?? locale.t("registration.statusUnregistered");
+  useEffect(() => { onStatus(label); }, [onStatus, label]);
   return (
     <EventRegistrationModule
       event={event}

@@ -1,4 +1,5 @@
 import type { NotificationPermission, ReminderPlanContract } from "../api/contract/reminders";
+import { eventParticipantHref } from "../view-models/event-participant-route";
 
 interface NativePermissionInput {
   granted: boolean;
@@ -33,6 +34,8 @@ const allowedPaths = [
 ];
 
 export function notificationHrefFromDeepLink(value: unknown): string | null {
+  const participant = eventParticipantHref(value);
+  if (participant) return participant;
   if (typeof value !== "string" || !value.trim()) return null;
   let path = value.trim();
 
