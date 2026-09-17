@@ -104,6 +104,32 @@ test("app profile route loader returns a controlled live failure when storage is
         viewModel.routeState.evidenceIds.join(" "),
         /PROFILE_LIVE_STORE_UNCONFIGURED|evidence:profile_live_store_unconfigured/,
       );
+      assert.equal(
+        viewModel.routeState.copy.description,
+        "资料暂时无法加载，请稍后重试。 / Your profile is temporarily unavailable. Please try again later.",
+      );
+      assert.equal(
+        viewModel.routeState.copy.guardrail,
+        "返回会重新读取资料，不会提交资料修改或接受建议。 / Returning reloads the profile without submitting edits or accepting suggestions.",
+      );
+      assert.equal(
+        viewModel.routeState.copy.nextStep,
+        "请重新打开资料页重试；若需要登录，请先登录。 / Reopen your profile to try again. Sign in if prompted.",
+      );
+      assert.equal(
+        viewModel.routeState.copy.purpose,
+        "显示资料加载的恢复方式。 / Show how to retry loading the profile.",
+      );
+      assert.equal(viewModel.routeState.recoveryActions[0]?.id, "profile-failure-return");
+      assert.equal(viewModel.routeState.recoveryActions[0]?.href, "/app/profile");
+      assert.equal(
+        viewModel.routeState.recoveryActions[0]?.label,
+        "重试加载资料 / Retry loading profile",
+      );
+      assert.equal(
+        viewModel.routeState.recoveryActions[0]?.recoveryCopy,
+        "重新打开资料页，重试读取；此操作不会保存修改。 / Reopen the profile page to retry loading it. This action does not save edits.",
+      );
     }
   });
 });
@@ -144,6 +170,30 @@ test("app profile route scenarios are available only through explicit internal c
   assert.equal(viewModel.state, "route-state");
   if (viewModel.state === "route-state") {
     assert.equal(viewModel.routeState.scenario, "empty");
+  }
+});
+
+test("internal failure route copy stays owner neutral", async () => {
+  const viewModel = await loadAppProfileRouteViewModel(undefined, {
+    scenario: "failure",
+  });
+
+  assert.equal(viewModel.state, "route-state");
+  if (viewModel.state === "route-state") {
+    const visibleCopy = [
+      viewModel.routeState.copy.description,
+      viewModel.routeState.copy.guardrail,
+      viewModel.routeState.copy.nextStep,
+      viewModel.routeState.copy.purpose,
+      ...viewModel.routeState.recoveryActions.flatMap((action) => [
+        action.label,
+        action.recoveryCopy,
+      ]),
+    ].join(" ");
+
+    assert.match(visibleCopy, /Your profile is temporarily unavailable/);
+    assert.doesNotMatch(visibleCopy, /Ari/);
+    assert.equal(viewModel.routeState.errorCode, "PROFILE_SIGNAL_REVIEW_QUEUE_FAILED");
   }
 });
 

@@ -713,6 +713,65 @@ test("profile page renders a controlled route failure when the live store throws
     );
     const stateView = stateBoundary.props.children as ReactElement<any>;
     assert.match(stateView.props.title, /资料准备度无法加载|Profile readiness could not load/);
+    assert.equal(
+      stateView.props.description,
+      "资料暂时无法加载，请稍后重试。 / Your profile is temporarily unavailable. Please try again later.",
+    );
+    assert.equal(
+      stateView.props.nextStep,
+      "请重新打开资料页重试；若需要登录，请先登录。 / Reopen your profile to try again. Sign in if prompted.",
+    );
+    assert.equal(stateView.props.recoveryActions[0].id, "profile-failure-return");
+    assert.equal(
+      stateView.props.recoveryActions[0].label,
+      "重试加载资料 / Retry loading profile",
+    );
+    assert.equal(
+      stateView.props.recoveryActions[0].recoveryCopy,
+      "重新打开资料页，重试读取；此操作不会保存修改。 / Reopen the profile page to retry loading it. This action does not save edits.",
+    );
+    assert.doesNotMatch(
+      `${stateView.props.description} ${stateView.props.nextStep} ${stateView.props.recoveryActions[0].label} ${stateView.props.recoveryActions[0].recoveryCopy}`,
+      /Ari/,
+    );
+  }, "live");
+});
+
+test("profile page renders owner-neutral failure copy for an unknown onboarding policy without an editor", async (t) => {
+  const { page } = loadProfilePage(t, {
+    actualRouteLoader: true,
+    profileService: {
+      getProfile: async () => ({
+        success: true,
+        data: {
+          onboarding: {
+            policyVersion: 99,
+            status: "incomplete",
+            missingFields: ["birthDate"],
+          },
+        },
+      }),
+    },
+  });
+
+  await withProfileEnvironment(async () => {
+    const rendered = await page();
+    const children = rendered.props.children as readonly ReactElement[];
+    const routeBoundary = children[2] as ReactElement<any>;
+    assert.equal(routeBoundary.type.toString().includes("ProfileRouteStateBoundary"), true);
+    assert.equal(routeBoundary.props.routeState.errorCode, "PROFILE_ONBOARDING_UNAVAILABLE");
+
+    const stateBoundary = (routeBoundary.type as (props: any) => ReactElement)(
+      routeBoundary.props,
+    );
+    const stateView = stateBoundary.props.children as ReactElement<any>;
+    assert.equal(
+      stateView.props.description,
+      "资料暂时无法加载，请稍后重试。 / Your profile is temporarily unavailable. Please try again later.",
+    );
+    assert.equal(stateView.props.recoveryActions[0].id, "profile-failure-return");
+    assert.equal(stateView.props.recoveryActions[0].href, "/app/profile");
+    assert.equal(stateView.props.children, undefined);
   }, "live");
 });
 

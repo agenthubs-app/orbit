@@ -141,3 +141,22 @@ A 初版冻结后重新执行真实冲突：浏览器修改 bio 草稿，另一�
 - 已读取全部 489 个符号；changed ID 非空且唯一、filePath 非空，summary 与数组一致，diff 与映射集合没有额外路径。完整读取 5 条流程的全部 26 步精确 UID：3 条实际 next 规范化链、2 条既有 crypto update/digest 同名误连，与前次复核相同。增量 0 流程不表示 React 回调没有消费者，实际依赖已由修改前精确 impact 和挂载测试核实。完整 detect 无 error/partial/truncated；全仓索引仍跳过 14 个大文件，9543/9743 入口未枚举、8766 callees 丢弃、61 次遍历预算限制，保留覆盖边界。
 - 未裁剪原始结果 `/tmp/orbit-w1-reload-fix-detect-incremental.json`、`/tmp/orbit-w1-reload-fix-detect-combined.json`；完整流程步骤 `/tmp/orbit-w1-reload-fix-processes.json`、缺项节点证据 `/tmp/orbit-w1-reload-fix-file-coverage.json`。报告收尾后再次核对 detect 与暂存差异；不重复 force，不为图谱改变测试形状，不往 raw 补造节点。
 - 本轮仅提交主任务授权的上述三个文件，依赖 `6ff3db6164c2089cae46c39d67c23d89acf389b7`；此前两提交顺序不变。本轮没有新增浏览器/云端验收，临时专用 Unix socket PostgreSQL 已停止，没有影响共享 5432 服务。
+
+## 独立后续批次：资料失败提示去除示例身份
+
+主任务已验收并集成前述 W1，再单独审阅 `/tmp/orbit-w1-failure-copy-proposal.md` 与精确候选补丁，批准此批四文件：`profile-route-view-model.ts`、原 `app-profile-live-route-services.test.ts`、原 `app-profile-onboarding-navigation.test.ts` 和本 REPORT。原 Luna/max 编码、Astra 独立复核；提交依赖 `394c4e70`。正式词表仍待审，不包含在此批。
+
+根因是共享 failure 返回对象把资料读取/政策失败统一描述为来源建议复核失败，且 nextStep/recoveryCopy 写死 Ari。实际错误包括服务构造或 getProfile 抛错的 `PROFILE_ROUTE_FAILURE`，live 读取的 `PROFILE_LIVE_STORE_UNCONFIGURED`/`PROFILE_ACTOR_REQUIRED`，未知 onboarding 的 `PROFILE_ONBOARDING_UNAVAILABLE`；显式内部 failure scenario 才使用 `PROFILE_SIGNAL_REVIEW_QUEUE_FAILED`。可选建议失败不会阻止正常手填资料，PUT/CAS 错误不属于这个读取入口。
+
+批准补丁仅替换 failure 对象中的 12 个中英文 string literal（description、guardrail、nextStep、purpose、action label/recoveryCopy），提供不带示例人名的资料加载恢复提示。保留 title/eyebrow/emptyState、code/evidence、action id/href、服务构造、控制流、失败判断和原中英拼接机制。此处并未接入 locale 切换；没有增加日语或修改共享 StateView。
+
+精确影响分析已提前警告 **CRITICAL**：当前提交强制索引后，`routeStateViewModel` 为 1 个直接消费者/9 个总影响，`loadAppProfileRouteViewModel` 为 3 个直接消费者/8 个总影响。profile 页原样传递这些字段；admin 只继承 code/evidence/scenario 后重建文案，home 只继承状态/evidence 后重建文案，Agent 在 home failure 时传 home=null。已读取相关 12 条流程的全部 55 步；这些是调用者关联流程，不能冒称是失败提示实际经过的路径，含既有 test invoke 误连。原始 context/impact 与流程证据在 `/tmp/orbit-w1-failure-copy-*.json`，全仓图谱覆盖限制继续保留。
+
+实际可见性复核：StateView 存在恢复按钮时只显示 action label/recoveryCopy，不单独显示 nextStep；因此只改隐藏 nextStep 不足以修正用户看到的 Ari。Astra 独立只读探针使用真实 live loader 的未配置存储失败和真实 StateView 静态渲染，旧代码在可见 retry link 断言处 RED（0/1）；code/evidence/action id/href 断言先通过。证据 `/tmp/orbit-w1-failure-copy-visible-red.log`，探针 `/tmp/orbit-w1-failure-copy-proof/visible.test.ts`；清空环境并显式 live，没有连接数据库或外部服务。
+
+- Luna 持久回归先 RED：两个测试文件 33 项中 29 pass / 4 fail，失败均为旧文案与新期望不符；应用已审 patch 后 33/33 GREEN。日志 `/tmp/orbit-w1-failure-copy-red.log`、`/tmp/orbit-w1-failure-copy-green.log`。覆盖未配置存储的真实 loader、内部 failure scenario、实际 store throw → 服务端 page → StateView props、未知 onboarding policy 受控失败且不挂编辑器；保留原错误码、证据及恢复动作路径。
+- Astra 独立核对生产差异与候选补丁逐项相同，仅 12 删/12 增 string literal。原真实 StateView 可见性探针改后 **1/1 GREEN**，日志 `/tmp/orbit-w1-failure-copy-visible-green.log`；确认按钮和关联说明已更新、Ari/错误来源复核归因不再显示，原 code/evidence/id/href 保留。此为静态渲染检查，不冒称浏览器验收。
+- Astra 在最终冻结文件执行 8 个相关文件 **83 passed / 0 failed / 0 skipped**：profile live route、navigation、onboarding editor、editor failure paths、secondary industry、admin platform、home、StateView。日志 `/tmp/orbit-w1-failure-copy-final-tests.log`。完整 `npm run typecheck` 通过，日志 `/tmp/orbit-w1-failure-copy-final-typecheck.log`；`git diff --check` 通过。仅改文案，未重启 PostgreSQL/Next、未新增数据库或外部服务验收，不把此前真实 CAS 测试算成本轮重复执行。
+- 最终一次 force 索引 108,911 nodes / 244,983 edges / 2,085 clusters / 789 flows。完整 raw 增量 **4 差异文件 / 7 符号 / 0 流程 / LOW**，映射 3 个文件；完整 W1 compare（相对 `161e9e6c`）**16 差异文件 / 494 符号 / 5 流程 / MEDIUM**，映射 15 个文件。两个集合唯一缺项均为 `app-profile-live-route-services.test.ts`；不是漏索引，精确查询仍为 File（null range）+ 22 实体，实体 0-based 行范围更新为 15–74、235–255。本批增量 hunk 新行 107–132、174–197（1-based）；全 W1 hunk 新行 107–132、140、149、154–155、176–199、202、208–209、220、223–226、299，均不与实体范围重叠。未为覆盖率修改匿名测试或补造节点。
+- 全部 494 个符号及 5 条流程的 26 个步骤已读取；ID 非空唯一，路径非空且无额外文件，数组数量与 summary 相符，raw 无 error/partial/truncated。5 流程仍为三条实际 next 规范化链及两条既有 crypto 同名误连。增量 LOW/0 流程不覆盖修改前共享函数 CRITICAL 警告；依赖与可见性结论另经精确 context/impact、源码投影和真实页面/渲染检查。全仓仍有 14 大文件跳过、9543/9743 入口未枚举、8766 callees 丢弃与 61 遍历预算限制。
+- 原始结果 `/tmp/orbit-w1-failure-copy-detect-incremental.json`、`/tmp/orbit-w1-failure-copy-detect-combined.json`；步骤 `/tmp/orbit-w1-failure-copy-final-processes.json`，缺项 `/tmp/orbit-w1-failure-copy-final-file-coverage.json`。报告收尾后再次完整 detect/集合核对，不重复 force。只提交本批独立批准的四文件，依赖 `394c4e70ded90d776338cf5f533b8096e3feb73b`。

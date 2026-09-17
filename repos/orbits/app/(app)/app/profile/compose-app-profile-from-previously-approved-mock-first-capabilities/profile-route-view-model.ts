@@ -319,8 +319,8 @@ async function routeStateViewModel(
   return {
     copy: {
       description: bilingualText(
-        "资料来源复核无法加载，因此建议修改暂不可用。",
-        "Suggested profile changes are unavailable because profile-source review could not load.",
+        "资料暂时无法加载，请稍后重试。",
+        "Your profile is temporarily unavailable. Please try again later.",
       ),
       emptyState: bilingualText(
         "没有接受任何建议修改，没有保存资料记录，也没有联系外部工具。",
@@ -328,16 +328,16 @@ async function routeStateViewModel(
       ),
       eyebrow: bilingualText("需要处理", "Needs attention"),
       guardrail: bilingualText(
-        "返回只会读取资料来源复核；不会接受建议，也不会联系外部工具。",
-        "Returning only reads the profile source review; it does not accept suggestions or contact any outside tool.",
+        "返回会重新读取资料，不会提交资料修改或接受建议。",
+        "Returning reloads the profile without submitting edits or accepting suggestions.",
       ),
       nextStep: bilingualText(
-        "来源详情会说明为什么在来源复核可用前，Ari 当前资料保持不变。",
-        "Source details explain why Ari's current profile stays unchanged until source review is available.",
+        "请重新打开资料页重试；若需要登录，请先登录。",
+        "Reopen your profile to try again. Sign in if prompted.",
       ),
       purpose: bilingualText(
-        "展示无副作用的资料来源恢复路径。",
-        "Show a profile-source recovery path without side effects.",
+        "显示资料加载的恢复方式。",
+        "Show how to retry loading the profile.",
       ),
       title: bilingualText(
         "资料准备度无法加载",
@@ -353,12 +353,12 @@ async function routeStateViewModel(
         id: "profile-failure-return",
         href: "/app/profile",
         label: bilingualText(
-          "返回资料来源复核",
-          "Return to profile source review",
+          "重试加载资料",
+          "Retry loading profile",
         ),
         recoveryCopy: bilingualText(
-          "返回资料来源复核，不接受建议，也不更改 Ari 的个人资料。",
-          "Return to profile source review without accepting suggestions or changing Ari's profile.",
+          "重新打开资料页，重试读取；此操作不会保存修改。",
+          "Reopen the profile page to retry loading it. This action does not save edits.",
         ),
       },
     ],
