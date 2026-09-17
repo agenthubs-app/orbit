@@ -13,3 +13,27 @@
 验收结论：本地同账号规则、关联、实例范围与事务CAS链已验证；真实到期提醒、远程Push、实体设备、远程共同部署及全域离线不在该结论内。通知actorwide派生刷新还等待明确批准。Phone公网0060为独立actor与冻结产物，不冒称与Main同账号；0063选择器另批准另run。
 
 正式中文报告见0061、0062 REPORT；原失败、helper错误201期待、59/206/denied4保留。ROOT提交该文档集后正常push并独立核对最终文档SHA；确切终态按Git/ROOT检查点登记。
+
+## 0063 追加：月历及精确分钟选择（02:17Z）
+
+上述47/L8/15582是0061、0062历史版本，不是当前运行时。0063功能649994fe713fa88662db5dbd11ec8c6e6b9490eb已精确合入chat-agent26f74a55c7f9458788bf59625a8a6dede6892756，普通push实际0且独立远端同SHA。无服务API/schema变更，App和独立Next分别使用本端控件、共享原v3保存语义；源码未通过生成契约旁路同步。
+
+当前Main production build实际0，BUILD taZi5Ng0EztLjlmYGnGbA，Next36058/3000健康200；App新xcodebuild、Simulator安装/启动均实际0。新Orbit37204与主Metro69917/8082实际TCP已连接，不只检查编译变量。原生构建沿用已有Node配置，测试和Web构建使用Node22，不宣称整个原生链都Node22。
+
+同原小雨测试系列：Web真实月历选择20后取消保草稿、minute15→37完成并正常保存09:37→10:07；独立GET确认30分钟及原提醒/重复/笔记/人脉不变、18取消仍404。新原生详情实际读37/10:07；正常选择整个系列、小时09及分钟37回显，滑动分钟列选15、完成/保存，显示保存成功09:15→09:45。Web after-native实际0（02:14:43.160Z），正式独立GET与真实重开picker均回读15、规则关联及18取消保持。原生额外calendar20取消回17及清结束草稿/放弃编辑已实际操作；清结束草稿不冒称正式持久化。
+
+直接完整App119/119、Web71/71及两端types0。唯一Main I两端均结束非绿：Web3826tests/3561pass/59旧fail/206skip、PWdenied4；App3273tests/3272pass/唯一旧58-route视觉fail、0skip、guards0。完整失败名称无新增；14此前局部fixture修复未再失败，不归功本选择器。原失败与被阻外呼保留，不再重跑求绿。六B原fixture截图已冻结并恢复原字节，Main I产图与真实原生图独立，不混作账号验收。
+
+Phone消费是独立账号域：consumer6d1c771aee07f9a704863f11c3548354aea0b4d5/TREE6ed9ac4341077856db4eb1269d28ffd2374f0016，仅15批准路径，保Phone字典差量、scripts及私有offline政策。37/37与两端types0，固定串行build/export实际0，私有BUILD IemxmhFeX5ZE1DvJDjF5x、entry-32fa82c8423dfb63cf5e91858e3e94ff.js，rawSHA05b38715858bc27be6e6cf2b3c843288300c55a74bca034ab016c2ad97f4c200；preview32400/32410健康。两browser各一新QA/独立GET/精确ID清理已释放，实际结果与公网发布仍待，不冒称Phone与Main同actor、PUBLIC0060暂保持回退。
+
+管理helper原route遗漏timeZone、启动漏ledger env及Phone unnamed outerdialog匹配失败均保原证据，未发送多余业务写或更改guard。累计ledger原493f保持，无provider/OCR费用，本次不启用actorwide派生刷新或远程Push。到期提醒、共同远程部署、全域离线等原缺项仍开放。正式63REPORT及台账文档提交/远端闭环尚待Phone终验。
+
+## 0063 Phone 公网终验（02:31Z）
+
+前段“待Phone终验”是当时状态，已被以下实际结果解除。固定域名的Chromium与WebKit实际登录、正常点击ngrok首次Visit Site、月历选择取消、小时09/分钟37确认和默认结束10:07可见均通过。52919实际0；PUBLIC supervisor43205/backend43206/frontend43207健康零重启，冻结source6d1c771aee07f9a704863f11c3548354aea0b4d5/TREE6ed9、BUILD IemxmhFeX5ZE1DvJDjF5x及served entry rawSHA05b38715858bc27be6e6cf2b3c843288300c55a74bca034ab016c2ad97f4c200与私有验收相同。ROOT完整读取public receipt2c47d04a及publication receipt83204c49、独立hash相等并目检公共实际图。
+
+公共验收仅只读草稿，无业务保存；私有两个真实新建/回读/精确删除QA的证据另保，不混计为公共保存。原对象/偏好hash与账本493f未变、公共authPOST2/modelEvents0/business0。每engine15个实际ngrok静态GET从最终18成员exact allowlist通过并单列，不称全链没有外部请求；各2inboxbadgeGET刻意excluded，不能作为通知验收。
+
+原首PUBLIC验证因helper阻ngrok首访静态依赖失败，两次均auth0/business0，按批准策略真实正常回退0060且health200/原aed12 entry恢复。定点源码闭包与匿名firstdocument复核后，最后repair2只精确18个HTTPS静态GET/无query/无外部POST，未改API/provider/budget guard；第三次正常切换22582实际0，第二公共helper失败及所有原图保留，无第三repair/第四release。当前回退脚本仅准备未运行，前两次实际回退证明路径有效，不虚构第三回退。
+
+验收结束后owned privatepreview37928/37937/37938正常IPC停止、32400/32410无listener，PUBLIC43205/43206/43207和原ngrok26690/27063保留。完整0060回退产物、源和launcher保存，未删除。Phone是独立actor，真实实体投资人手机手测/机器重启持久化未覆盖。本功能运行时验收通过，正式63报告/文档Git闭环由ROOT收口；旧全量失败/到期通知等限制不据此消失。

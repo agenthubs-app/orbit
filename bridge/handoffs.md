@@ -250,3 +250,7 @@ source_ready / consumer_ready / verification blocked；功能eacd7a227、合并0
 ## BR-029 — 个人日程设置与详情
 
 本地规则／关联／实例范围／CAS链verified；0053／0059／0060消费者已安装，0061与0062精确集成chat-agent47f12034且远端同SHA。新生产Web PID15582健康200，同小雨QA跨端保存回读、真实PG200+409／receipt重试，以及Web自建QA单次删除／清除规则通过。共享I59失败／206跳过／denied4、到期通知／远程Push等未验保留，不将部分链验证等同整项目完成；[最新中文交接](2026-09-17-personal-schedule-v3-runtime.md)。
+
+0063最新Main26f74a55远端已独立一致，新Web36058与原生37204/主8082实跑，精确分钟Web37→原生15→Web15同账号正式保存/GET闭环通过。119/119、71/71及types0；唯一I保留Web59/206/PW4与App旧视觉1fail。Phone consumer6d1c771仅15白名单路径保私有政策，privatebuild/export与preview健康；真实两browser/公网/正式REPORT待终验，由Phone父任务与ROOT集成负责，不另开产品run。详见交接追加，历史47版本结论保留而非当前运行时。
+
+Phone终验现已实际通过：private两browser真实保存/独立GET/重开及仅自建QA清理；公共两browser只读控件操作与entry05b/health核对，PUBLIC43205/6/7零重启，原ngrok保持。原helperngrok依赖失败与两次真实0060回退不抹；finalrepair2 exact18静态GET闭包/原业务与budgetguard不变，公共业务0/私有2创建2删除分列。preview37928/37/38已正常停，旧回退完整；ROOT接收receipt83204c49/2c47d04a并目检，正式63中文报告/文档提交正在收口。

@@ -595,3 +595,25 @@ ROOT在唯一小雨QA日程真实并发保存时确证事务外关联reader耗�
 0061/0062功能SC实际验收通过，正式中文报告／台账随本次ROOT正常文档提交并push闭环；准确最终交付SHA由实际Git／ROOT检查点登记，不预填未来成功。0060真正到期通知SC60-04仍未满足；actorwide派生刷新批准尚未到、远程Push／全域离线不通过。Phone公网已0060且固定入口健康，独立actor证据不等同Main同账号。最新[Bridge运行时交接](../../../../bridge/2026-09-17-personal-schedule-v3-runtime.md)。
 
 下一项0063月历／小时分钟选择器设计已明确获准，Phone父任务中文Planner冻结SHA89822f57996134f77a4ea6ba64bc96708c7d05451f4ccd83d4a31c45c495176c；原B结束后由ROOT释放最新Main基线，唯一Sol medium Generator接续，不复开0061或0062。
+
+### 0063 / run-01（2026-09-17）
+
+用户已在Phone父任务明确批准日期／时间点选设计，ROOT已完整阅读并复用该批准。中文[GOAL](0063-date-time-picker/GOAL.md)／[DESIGN](0063-date-time-picker/DESIGN.md)／[PLANNER](0063-date-time-picker/PLANNER.md)逐字同步冻结稿；Planner SHA89822f57996134f77a4ea6ba64bc96708c7d05451f4ccd83d4a31c45c495176c不变。唯一Generator既有B任务01a0a879-e8fe-77e3-b748-bd78005aecc8、phoneweb-0063-date-time-picker标签、GPT-5.6 Sol / medium；新worktree .worktrees/sprint-0063-date-time-picker／branch codex/sprint-0063-date-time-picker实际创建exit0，HEAD/BASE b16b49d87a27415bd561df61b11cecd7df46ed3f、初始clean、证据ignored。状态running、唯一run01，不复开已结束0061/0062。
+
+ROOT唯一索引44084实际exit0/234.7s，disk lastCommit精确b16、indexedAt01:03:41.094Z／402977nodes580660edges300flows后，已正式放行B逐symbolimpact／TDD。App TimeBlock/Rules/必要Screen/editor、本域新PersonalScheduleDateTimePicker/picker纯model、四locale/必要直接tests；Next workspace/rules/editor-model/本域picker组件与纯model、直接tests独占归B；其新组件/model/tests精确manifest已ROOT核读本run checkpoint并登记。既有六图只迁当前输出新63ignored目录，不覆盖旧证据。Backend/shared契约/全局time/auth/offline/通知排除，真实DB/小雨actor/DA/服务生命周期/账本/index/生产构建归ROOT，Phone父负责源冻结后精确消费/preview/public窗口，无第二Generator/Reviewer/Evaluator。ROOT该启动文档自有dirty待最终提交，不再制造Main HEAD索引过期循环。
+
+ROOT实际集成追加：功能649994fe713fa88662db5dbd11ec8c6e6b9490eb/TREEf099ba7293c3fb0502e65af2bbd587b13a20eb86，官方22文件70mapped/0flows/LOW（保AppDraft8直接调用HIGH及新UNKNOWN）。最终完整App119/119、Web71/71、各types0，完整原RED/fullfail与两次限定布局修复保留。精确noff合chat-agent26f74a55c7f9458788bf59625a8a6dede6892756，普通push21614实际0且独立远端同SHA；正式中文报告/台账文档收口仍待，状态尚running。
+
+唯一Main I两端结束非绿：Web3826tests/3561pass/59旧fail/206skip/实际PWdenied4；App3273tests/3272pass/唯一旧58-route视觉fail/0skip/guards0。完整NAME无新增；14此前局部fixture修复未再失败不归功选择器。新I六图在ROOT独立目录，六B旧图已恢复原SHA/regularfile，不混为真实账号验证。原baseline失败保留给0041，不重I求绿。
+
+新Main production build0/BUILD taZi5Ng0EztLjlmYGnGbA/Next36058健康3000；原生新编译安装启动0/Orbit37204实际TCP连主Metro69917/8082。同小雨原QA真实Web picker15→37保存09:37/10:07、原生读37→原生picker15保存09:15/09:45→Web95738正式独立GET及实际picker15回读0。原30分钟、rem15/daily19/笔记人脉不变，18取消GET404。原生calendar选20取消仍17、清结束仅草稿并确认放弃回详情已实测；不冒称清结束持久化或真实纽约DST证据。DST/闰日/跨年/全天/until等边界由完整模型及直接组件测试覆盖。
+
+Phone精确15路径consumer6d1c771aee07f9a704863f11c3548354aea0b4d5/TREE6ed9ac4341077856db4eb1269d28ffd2374f0016，保Phone字典/script/私有政策；37/37及两端types0、串行build/export0，privatepreview healthy32400/32410。真实Chromium/WebKit各一次新建精确37分钟/默认30分钟/正式前后端独立GET及重开成功，两个returned-ID仅各精确删除200→404/listabsence，原记录偏好ledger493f保持；ROOT完整读取receipt6543a4f9及目检实际图。首helper外层dialog strictmode fail/0业务写、修namedinner selector1后实际成功，原失败保留，无产品/guard变动。ROOT已批准该固定artifact PUBLIC切换；实际公网/回退证据仍待，不能提前写发布完成。
+
+公网终验已解除前述待验：22582最后第三次正常owned切换actual0，新PUBLIC43205/backend43206/frontend43207健康零重启，固定BUILD IemxmhFeX5ZE1DvJDjF5x/servedentry rawSHA05b38715858bc27be6e6cf2b3c843288300c55a74bca034ab016c2ad97f4c200与私有冻结一致。52919 PUBLIC Chromium/WebKit真实正常VisitSite/登录/原对象读取/日历选择取消/精确37分确认及默认10:07草稿actual0，原对象偏好ledger493f保持，公共authPOST2/modelEvents0/business0，各2inboxGETexcluded不验收，each15实际ngrok静态GET单列不是全链无外呼。ROOT完整读取publication83204c49及public2browser2c47d04a、独立SHA与实际图目检确认。
+
+保留首公共helper两次auth前失败/0业务写和两次真实normalrollback0060健康/原entryaed12恢复。最终repair2只exact18静态GET闭包+首次VisitSite/login readiness，源码依赖及匿名firstdoc42007实际0后最后切换，API/provider/budgetguard未变，无第三repair/第四release。完整旧0060源/产物/launcher保留；当前回退脚本仅准备不伪称已执行。成功后ownedprivatepreview37928/37/38正常退出，32400/10无listener，PUBLIC与既有ngrok保留。中文最终REPORT/正式8文档gate/提交和最终远端核对正在ROOT收口，完成后才能登记本run交付，不能因此抹59旧Webfail/1旧Appfail、到期通知/全域离线缺项。
+
+0063最终中文[REPORT](0063-date-time-picker/REPORT.md)已按Generator冻结稿原字节落地（SHA256 3de0ccf170dee42c10486324a29f2764ba9631cdbea0dcd6c2154e3f9e8deeaa）。唯一Generator run-01已结束并释放源码锁，SC63-01至05的产品、主线运行及Phone真实交互证据见该报告；ROOT仅以这8份正式文档的官方gate、普通提交/push和独立远端一致闭环登记交付，实际最终SHA记录在Git及ROOT检查点，不预填未来成功。上述早期running/待验条目保留为时间顺序记录，不再重开0063或重复全量I；本轮Web旧59失败/App旧1失败、真正到期通知、远程Push及全域离线仍不是通过。
+
+后续执行：0033原A工作树已正常ff到产品Main26f74a55，继续原run的Task3本地schema/repository迁移，不创建第二Generator。采用单一v2 canonical真实事务迁移、已授权ReadScope/domain注入、未验证legacy隔离及初始化失败保库；Node fixture不替代原生SQLCipher/磁盘故障实测。新增server授权/epoch/锁顺序设计另设中文审阅门，Calendar等外部OAuth adapter继续TODO，不阻塞独立本地Task3。

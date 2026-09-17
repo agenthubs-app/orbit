@@ -181,3 +181,7 @@ ROOT真实设置保存并AX确认恢复精确`http://127.0.0.1:3000`及小雨MAI
 ## BR-029 — 个人日程设计
 
 本地规则／关联／实例范围／CAS链verified；主线47f12034已push并独立核对，新生产Web BUILD L8fbGtRZ_QJku0p8citoB／PID15582健康200，主包Api3000／Metro8082。同账号Web30→原生30→原生15→Web15已实测，另自建QA仅本次删除及规则清除已实测。共享I仍59失败／206跳过／denied4；实际到期提醒、远程Push、全域离线及共同远程部署保持未验，[当前运行时交接](2026-09-17-personal-schedule-v3-runtime.md)。
+
+0063追加：当前主线26f74a55已push且独立远端一致，生产BUILD taZi5Ng0EztLjlmYGnGbA/Next36058；新App编译安装0并实际连接主Metro8082。同小雨Web精确分钟15→37保存/原生回读37→原生picker保存15→Web独立GET及picker回读15实际通过，原规则关联与18取消不变。Main全I仍Web59旧fail/206skip/PW4、App唯一旧视觉fail，无新增，不宣称全绿。Phone精确consumer6d1c771/TREE6ed9私有编译与preview健康，两browser正式保存/公网发布待验，PUBLIC0060暂保回退；正式63报告/文档提交待终验，不关闭到期通知等旧缺项。
+
+0063终验追加：Phone private两browser真实新建/正式GET/重开/精确清理通过，公共52919两browser真实月历/精确37分草稿通过，固定PUBLIC43205/6/7健康/served entry05b与冻结产物相同，ROOT完整receipt读取与目检确认；原ngrok静态helper失败两次及两次真实0060回退保留，repair2闭包只exact18静态GET、不改provider预算/业务fence，公共业务0。privatepreview已正常停止、旧回退完整。旧“待验”解除，仅正式63报告/台账文档Git收口仍待，不冒称通知/全域离线/全I绿。
