@@ -3,6 +3,18 @@ import test from "node:test";
 import { createMemoryLiveRecordStore, type LiveRecord } from "../../shared/storage/live-record-store";
 import { createStorageAccountSessionProvider } from "../../features/account/storage/account-live-record-provider";
 
+test("identity-required providers do not fall back to workspace scans", async () => {
+  let reads = 0;
+  const store = createMemoryLiveRecordStore();
+  const provider = createStorageAccountSessionProvider({
+    workspaceId: "w", requireIdentity: true,
+    store: { ...store, listRecords(query) { reads += 1; return store.listRecords(query); } },
+  });
+  assert.equal((await provider.readAccountSessionGraph()).accounts.length, 0);
+  assert.equal((await provider.readAccountSessionGraph({ userId: " " })).accounts.length, 0);
+  assert.equal(reads, 0);
+});
+
 test("identity reads transfer only the persisted member and account, independent of workspace size", async () => {
   const timestamp = "2026-09-17T00:00:00.000Z";
   const records: LiveRecord[] = [];

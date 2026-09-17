@@ -34,7 +34,7 @@ async function main(): Promise<void> {
   }
   const accountId = resolveCanonicalAccountOwnerId({
     authUserId: authUser.id,
-    graph: await accountProvider.readAccountSessionGraph(),
+    graph: await accountProvider.readAccountSessionGraph({ userId: authUser.id }),
   });
 
   const key = actorKey(accountId);

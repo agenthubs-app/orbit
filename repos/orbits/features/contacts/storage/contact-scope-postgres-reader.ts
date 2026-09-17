@@ -13,8 +13,8 @@ export function createPostgresContactScopeRecordReader(input: {
 }): ContactScopeRecordReader {
   return async (actorId, contactIds) => {
     if (!actorId.trim() || contactIds?.length === 0) return { contactIds: [], connectionIds: [], detailStateIds: [] };
-    const accessible = await input.client.query<{ record_id: string }>(`
-      select c.record_id from orbit_records c
+    const accessible = await input.client.query<{ record_id: string; contact_id: string | null }>(`
+      select c.record_id, c.payload->>'id' as contact_id from orbit_records c
       where c.workspace_id = $1 and c.collection_name = 'contacts'
         and c.lifecycle_state <> 'deleted'
         and ($3::text[] is null or c.record_id = any($3::text[]))
@@ -27,6 +27,7 @@ export function createPostgresContactScopeRecordReader(input: {
         ))
     `, [input.workspaceId, actorId, contactIds ?? null]);
     const allowedIds = accessible.rows.map(row => row.record_id);
+    const domainIds = accessible.rows.map(row => row.contact_id).filter((id): id is string => typeof id === "string" && id.length > 0);
     if (allowedIds.length === 0) return { contactIds: [], connectionIds: [], detailStateIds: [] };
     const result = await input.client.query<{ collection_name: string; record_id: string }>(`
       select collection_name, record_id from orbit_records
@@ -34,7 +35,7 @@ export function createPostgresContactScopeRecordReader(input: {
         and payload->>'contactId' = any($3::text[])
         and ((collection_name = 'connections' and (user_id = $2 or payload->>'accountId' = $2))
           or (collection_name = 'contact_detail_states' and user_id = $2))
-    `, [input.workspaceId, actorId, allowedIds]);
+    `, [input.workspaceId, actorId, domainIds]);
     return {
       contactIds: allowedIds,
       connectionIds: result.rows.filter(row => row.collection_name === "connections").map(row => row.record_id),

@@ -115,6 +115,20 @@ No capacity claim is justified by a connection limit or these fixture measuremen
 
 ## Remaining design / acceptance work
 
+Latest deployed projection/guard build: source `cfa4b17a`, deployment
+`dpl_JAoiu8S99KqWX59Za9Qwvbsefun6`, READY. Both formal domains remain on the
+new project. The Preview-only database URL binding was removed from that project;
+production binding is retained. This protects future preview builds, not immutable
+historical deployments. No database or records were deleted.
+
+Additional hardening in this branch: configured account providers require an
+explicit identity and return no rows without one; three maintenance scripts now
+pass their resolved user. Identity/account/actor isolation tests pass (13/13).
+Contact scope distinguishes storage record keys from payload domain IDs when
+selecting relationships. Local PostgreSQL scope/projection regressions pass (3/3),
+with detail response JSON 2,471 bytes / six rows independent of unrelated growth.
+This small key-field increase replaces the earlier 2,441-byte measurement.
+
 1. Preserve **both** current search contracts before introducing UI pagination:
    Web uses NFKC + Chinese word segmentation + aliases + presentation labels;
    the existing contacts API uses substring filters over a different field set.

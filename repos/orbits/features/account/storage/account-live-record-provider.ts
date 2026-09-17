@@ -39,6 +39,7 @@ export const ACCOUNT_SESSION_LIVE_RECORD_COLLECTIONS = {
 } as const;
 
 export interface StorageAccountSessionProviderOptions {
+  requireIdentity?: boolean;
   source?: string;
   sourceLabel?: string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
@@ -136,6 +137,7 @@ function evidenceIdsFor(
 }
 
 export function createStorageAccountSessionProvider({
+  requireIdentity = false,
   source,
   sourceLabel = "Account shared live storage",
   store,
@@ -145,7 +147,10 @@ export function createStorageAccountSessionProvider({
     source: source ?? `live-record-store:account-session:${workspaceId}`,
     sourceLabel,
     async readAccountSessionGraph(identity): Promise<LiveAccountSessionGraph> {
-      const subject = identity?.profileId ?? identity?.userId ?? identity?.accountId;
+      const subject = (identity?.profileId ?? identity?.userId ?? identity?.accountId)?.trim();
+      if (!subject && requireIdentity) {
+        return { accounts: [], profiles: [], evidenceIds: ["evidence:account-identity-required"], generatedAt: new Date(0).toISOString() };
+      }
       if (subject) {
         let profileRecords = await store.listRecords({
           workspaceId,
@@ -214,6 +219,7 @@ export function createConfiguredStorageAccountSessionProvider({
   }
 
   return createStorageAccountSessionProvider({
+    requireIdentity: true,
     source: `postgres-live-record-store:account-session:${configuredStore.workspaceId}`,
     sourceLabel,
     store: configuredStore.store,

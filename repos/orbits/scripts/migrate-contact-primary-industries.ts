@@ -177,7 +177,7 @@ async function main(): Promise<void> {
   if (!authUser) throw new Error(`No account exists for ${email}.`);
   const actorId = resolveCanonicalAccountOwnerId({
     authUserId: authUser.id,
-    graph: await accountProvider.readAccountSessionGraph(),
+    graph: await accountProvider.readAccountSessionGraph({ userId: authUser.id }),
   });
   const report = await migrateContactPrimaryIndustries({
     actorId,
