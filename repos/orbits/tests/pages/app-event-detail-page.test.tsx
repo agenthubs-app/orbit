@@ -150,6 +150,58 @@ test("an upcoming event without a window never implies that registration is open
   assert.doesNotMatch(html, /查看其他可报名活动|View other events accepting registration/);
 });
 
+test("event detail renders independent nullable count and capacity facts", async () => {
+  const routeModel = await loadAppEventDetailRoute({
+    eventId: "demo-event-1",
+    mode: "mock",
+  });
+  assert.equal(routeModel.routeState, "success");
+  if (routeModel.routeState !== "success") return;
+  const base = eventDetailRouteToOrbitLandingEventView(routeModel);
+  const render = (
+    participantCount: number | null,
+    cap: number | null | undefined,
+  ) =>
+    renderToStaticMarkup(
+      <OrbitRealEventDetail
+        event={{
+          ...base,
+          cap,
+          participantCount,
+          stats: { ...base.stats, count: participantCount, youRsvped: false },
+          status: "upcoming",
+          youRsvped: false,
+        }}
+        registrationAvailability="open"
+      />,
+    );
+
+  const unknownCount = render(null, 8);
+  assert.match(unknownCount, /报名人数暂不可用/);
+  assert.match(unknownCount, /限 8 人/);
+  assert.match(unknownCount, /报名中/);
+  assert.doesNotMatch(unknownCount, /null|剩 8 席/);
+
+  const realZero = render(0, 8);
+  assert.match(realZero, /已报名 0 \/ 8 人/);
+  assert.match(realZero, /报名中 · 剩 8 席/);
+
+  const unlimited = render(3, null);
+  assert.match(unlimited, /已报名 3 人/);
+  assert.match(unlimited, /不设人数上限/);
+  assert.doesNotMatch(unlimited, /null|剩/);
+
+  const zeroCapacity = render(0, 0);
+  assert.match(zeroCapacity, /已报名 0 \/ 0 人/);
+  assert.match(zeroCapacity, /限 0 人/);
+  assert.match(zeroCapacity, /报名中 · 剩 0 席/);
+
+  const unknownCapacity = render(0, undefined);
+  assert.match(unknownCapacity, /已报名 0 人/);
+  assert.match(unknownCapacity, /报名中/);
+  assert.doesNotMatch(unknownCapacity, /限 \d+ 人|不设人数上限|剩 \d+ 席/);
+});
+
 test("/app/events/[id] resolves public and authorized private details through canonical Event Core", () => {
   const pageSource = source("app/(app)/app/events/[id]/page.tsx");
   const detailSource = source("app/(app)/app/events/[id]/orbit-real-event-detail.tsx");

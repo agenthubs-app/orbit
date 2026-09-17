@@ -55,26 +55,35 @@ test("registered catalogue attendee access follows persisted registration lifecy
     userId: actorId,
   });
 
+  const refreshedEvent = await resolveCanonicalPublicEventView(eventId);
+  assert.ok(refreshedEvent);
+  assert.equal(refreshedEvent.participantCount, 1);
+  assert.equal(refreshedEvent.stats.count, 1);
+
   const registered = await getOrbitRegisteredEventViewModel({
     actorId,
-    event,
+    event: refreshedEvent,
   });
 
   assert.ok(registered);
   assert.equal(registered.stats.authed, true);
   assert.equal(registered.stats.youRsvped, true);
   assert.equal(registered.youRsvped, true);
-  assert.equal(registered.stats.attendees.length, registered.participantCount);
-  assert.ok(registered.stats.attendees.length > 0);
+  assert.equal(registered.participantCount, refreshedEvent.participantCount);
+  assert.equal(registered.stats.count, refreshedEvent.stats.count);
+  assert.equal(registered.stats.attendees.length, 1);
 
   await eventRegistrationRuntimeService.cancel({
     eventId,
     userId: actorId,
   });
 
+  const refreshedAfterCancel = await resolveCanonicalPublicEventView(eventId);
+  assert.ok(refreshedAfterCancel);
+  assert.equal(refreshedAfterCancel.participantCount, 0);
+  assert.equal(refreshedAfterCancel.stats.count, 0);
   assert.equal(
-    await getOrbitRegisteredEventViewModel({ actorId, event }),
+    await getOrbitRegisteredEventViewModel({ actorId, event: refreshedAfterCancel }),
     null,
   );
 });
-

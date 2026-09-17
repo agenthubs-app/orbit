@@ -90,7 +90,6 @@ export function eventDetailRouteToOrbitLandingEventView(
     address: event.venue,
     agenda: agendaFor(model),
     brandColor: "#6359E9",
-    cap: Math.max(attendeeCount, attendeeCount + 20, 20),
     code,
     descriptionZh: event.description || summary,
     detailLogoUrl: sceneAsset?.src ?? "",

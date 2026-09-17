@@ -58,7 +58,7 @@ interface MappedEvent {
   imageUrl: string;
   month: string;
   name: string;
-  people: number;
+  people: number | null;
   place: string;
   pos: { x: number; y: number };
   status: OrbitLandingEventView["status"];
@@ -288,7 +288,7 @@ function EventModuleCard({
           <div className="orbit-event-module-meta">
             <span><Icon color="var(--text-3)" name="clock" size={15} />{cardTime}</span>
             <span><Icon color="var(--text-3)" name="pin" size={15} />{mapped.place}</span>
-            {mapped.people >= 5 ? (
+            {mapped.people !== null && mapped.people >= 5 ? (
               <span><Icon color="var(--text-3)" name="users" size={15} />{t({ en: `${mapped.people} registered`, zh: `${mapped.people} 人已报名` })}</span>
             ) : null}
           </div>
@@ -369,7 +369,7 @@ function MapEventCard({
         <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 2 }}>{item.day ? `${item.month}${language === "zh" ? `${item.day}日` : ` ${item.day}`} · ${item.time}` : item.time}</div>
         <div style={{ alignItems: "center", color: "var(--text-2)", display: "flex", fontSize: 12, gap: 8, marginTop: 6 }}>
           <span style={{ alignItems: "center", display: "flex", gap: 4 }}><Icon color="var(--text-3)" name="pin" size={13} />{item.place}</span>
-          {item.people >= 5 ? (
+          {item.people !== null && item.people >= 5 ? (
             <>
               <span style={{ background: "var(--border-strong)", borderRadius: "var(--r-pill)", height: 3, width: 3 }} />
               <span>{t({ en: `${item.people} people`, zh: `${item.people} 人` })}</span>
@@ -417,7 +417,7 @@ function MobileExploreCard({ item }: { item: MappedEvent }) {
           <span style={{ alignItems: "center", display: "flex", gap: 6 }}><Icon color="var(--text-3)" name="pin" size={14} />{item.place}</span>
         </div>
         <div style={{ alignItems: "center", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "space-between", marginTop: 12, paddingTop: 12 }}>
-          <span style={{ alignItems: "center", color: "var(--text-2)", display: "flex", fontSize: 13, gap: 6 }}><Icon color="var(--text-3)" name="users" size={14} />{t({ en: `${item.people} people`, zh: `${item.people} 人` })}</span>
+          {item.people !== null ? <span style={{ alignItems: "center", color: "var(--text-2)", display: "flex", fontSize: 13, gap: 6 }}><Icon color="var(--text-3)" name="users" size={14} />{t({ en: `${item.people} people`, zh: `${item.people} 人` })}</span> : null}
           <a href={preserveHref(action.href)} style={{ alignItems: "center", color: "var(--accent)", display: "flex", fontSize: 13, fontWeight: 600, gap: 2, position: "relative", textDecoration: "none", zIndex: ORBIT_Z.raised + 1 }}>{action.badgeLabel ? `${action.badgeLabel} · ` : ""}{action.label}<Icon name="chevR" size={13} /></a>
         </div>
       </div>

@@ -291,7 +291,7 @@ function AccountEventCard({ event, language, t }: { event: OrbitLandingEventView
         <span className="orbit-account-event-module-meta">
           <span><Icon color="var(--text-3)" name="clock" size={15} />{date.time}</span>
           {place ? <span><Icon color="var(--text-3)" name="pin" size={15} />{place}</span> : null}
-          <span><Icon color="var(--text-3)" name="users" size={15} />{event.participantCount} 人已报名</span>
+          {event.participantCount !== null ? <span><Icon color="var(--text-3)" name="users" size={15} />{event.participantCount} 人已报名</span> : null}
         </span>
         <span className="orbit-account-event-module-foot">
           <span>{event.status === "ended" ? t({ en: "Tap to revisit details", zh: "点击回看活动详情" }) : t({ en: "Tap to view details", zh: "点击查看活动详情" })}</span>
