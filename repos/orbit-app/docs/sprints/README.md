@@ -150,6 +150,10 @@ build/harness-logs/
 
 ## 运行记录
 
+### 0065 / run-01（2026-09-17）
+
+ROOT在0064验收准备中只读确认真实React Native Web Alert空实现、两活动取消入口直接调用原生Alert，新增[GOAL](0065-web-event-cancel-confirmation/GOAL.md)／[PLANNER](0065-web-event-cancel-confirmation/PLANNER.md)承接已批准取消目标及SC64-04。不称已实际点击复现，真实页面仍待合法配置。唯一A任务 `01a0a838-4974-7ea2-bc4f-8ecce28b2af2` Sol medium，新独立Sprint树／run_count1，基线104ff7988（产品9dc）；0033 PhaseB生产依赖保持未批准/暂停、旧run不关闭或重开。本Sprint与B0064 Web工具文件不重叠，最多两个唯一Generator，ROOT握全部真实QA/Git/index。状态running；Planner冻结hash/实际启动记录在ROOT当前checkpoint，未实施公共版本切换或宣称SC通过。
+
 ### 0064 / run-01（2026-09-17）
 
 用户在十三场活动配置及旧Phone发布诊断后明确要求“去做吧”。新增[GOAL](0064-phoneweb-registration-window-repair/GOAL.md)／[PLANNER](0064-phoneweb-registration-window-repair/PLANNER.md)，仅修复已识别的Phone展示域配置并消费已交付0050发布，不重开closed0050/0063。唯一Generator为既有B任务 `01a0a879-e8fe-77e3-b748-bd78005aecc8`，GPT-5.6 Sol / medium，run_count=1，基线 `9dc41bd1e80d1129206b001ae6640907b3e41b9a`；ROOT独占真实DB/账号/主Git/索引，Phone协调任务只机械消费与构建交接。状态running，Planner冻结哈希及工作树启动证据由ROOT当前checkpoint登记；尚未执行真实配置写入、切服务或声明SC通过。
