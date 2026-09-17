@@ -2,13 +2,18 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  createCloudReminderTargetAuthorizer,
+  createConfiguredCloudReminderChainServices,
   parseCloudReminderChainCommand,
   runCloudReminderChain,
   type CloudReminderChainServices,
 } from "../../scripts/verify-cloud-reminder-chain";
+import { createReminderPlanRepository } from "../../features/notifications/reminder-plan-repository";
+import { createReminderPlanService, ReminderPlanServiceError } from "../../features/notifications/reminder-plan-service";
 import type { NotificationDeliveryDTO, ReminderPlanDTO } from "../../features/notifications/reminder-plan-contract";
 import type { NoteDTO } from "../../features/notes/contract";
 import type { TaskItemDTO } from "../../features/tasks/contract";
+import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 
 const ACTOR = "account:synthetic-r2";
 const CONTACT = "contact:synthetic-r2";
@@ -188,6 +193,79 @@ test("defaults to a bounded dry-run and never enables push", () => {
     ]),
     /Unknown option/u,
   );
+});
+
+test("configured verifier refuses without an explicitly configured database", () => {
+  const keys = ["ORBIT_EVENT_DATABASE_URL", "ORBIT_LIVE_DATABASE_URL", "ORBIT_DATABASE_URL", "VERCEL_ENV", "ORBIT_EXPECTED_DATABASE_HOST", "ORBIT_EXPECTED_WORKSPACE_ID"] as const;
+  const previous = new Map(keys.map((key) => [key, process.env[key]]));
+  try {
+    for (const key of keys) delete process.env[key];
+    assert.throws(
+      () => createConfiguredCloudReminderChainServices(ACTOR),
+      /Set ORBIT_EVENT_DATABASE_URL, ORBIT_LIVE_DATABASE_URL, or ORBIT_DATABASE_URL first/u,
+    );
+  } finally {
+    for (const key of keys) {
+      const value = previous.get(key);
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+  }
+});
+
+test("cloud target authorizer uses only the local task-list dependency and preserves raw failures", async () => {
+  const input = (targetType: "task" | "schedule_item", targetId: string, idempotencyKey: string) => ({
+    actorId: ACTOR,
+    body: "authorizer contract",
+    channels: ["in_app"] as const,
+    createdBy: "user" as const,
+    deepLink: "/authorizer-contract",
+    fireAt: "2026-09-16T01:00:00.000Z",
+    idempotencyKey,
+    targetId,
+    targetType,
+    timeZone: "UTC",
+    title: "authorizer contract",
+  });
+  const createLocalService = (listTask: (actorId: string) => Promise<readonly TaskItemDTO[]>) => {
+    const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+    const repository = createReminderPlanRepository({ store, workspaceId: "workspace:cloud-authorizer-test" });
+    const service = createReminderPlanService({ now: () => NOW, repository, targetAuthorizer: createCloudReminderTargetAuthorizer(listTask) });
+    return { service, store };
+  };
+
+  let listCalls = 0;
+  const nonTask = createLocalService(async () => { listCalls += 1; return [task()]; });
+  await assert.rejects(
+    nonTask.service.create(input("schedule_item", "schedule:not-accepted", "non-task")),
+    (error: unknown) => error instanceof ReminderPlanServiceError && error.code === "TARGET_NOT_OWNED",
+  );
+  assert.equal(listCalls, 0, "non-task input is rejected before task lookup");
+  assert.equal((await nonTask.store.listRecords({ workspaceId: "workspace:cloud-authorizer-test", collectionName: "reminderPlans" })).length, 0);
+
+  const missing = createLocalService(async () => []);
+  await assert.rejects(
+    missing.service.create(input("task", TASK, "missing")),
+    (error: unknown) => error instanceof ReminderPlanServiceError && error.code === "TARGET_NOT_OWNED",
+  );
+  assert.equal((await missing.store.listRecords({ workspaceId: "workspace:cloud-authorizer-test", collectionName: "reminderPlans" })).length, 0);
+
+  const successful = createLocalService(async (actorId) => actorId === ACTOR ? [task()] : []);
+  const created = await successful.service.create(input("task", TASK, "success"));
+  assert.equal(created.status, "scheduled");
+  assert.equal((await successful.store.listRecords({ workspaceId: "workspace:cloud-authorizer-test", collectionName: "reminderPlans" })).length, 1);
+
+  for (const [label, failure] of [
+    ["ordinary", new Error("ordinary task-list failure")],
+    ["serialization", Object.assign(new Error("task-list serialization failure"), { code: "40001" })],
+    ["deadlock", Object.assign(new Error("task-list deadlock failure"), { code: "40P01" })],
+  ] as const) {
+    const raw = createLocalService(async () => { throw failure; });
+    await assert.rejects(
+      raw.service.create(input("task", TASK, `raw-${label}`)),
+      (error: unknown) => error === failure,
+    );
+    assert.equal((await raw.store.listRecords({ workspaceId: "workspace:cloud-authorizer-test", collectionName: "reminderPlans" })).length, 0, `${label} authorizer failure must not write`);
+  }
 });
 
 test("dry-run reads ownership and existing state without calling a write service", async () => {

@@ -13,6 +13,14 @@ import { createCanonicalReminderMaintenanceTask } from "./canonical-reminder-mai
 import type { ReminderPlanDTO } from "./reminder-plan-contract";
 import { createReminderPlanRepository } from "./reminder-plan-repository";
 import { createReminderPlanService } from "./reminder-plan-service";
+import {
+  canonicalReminderActorLockKey,
+  repairCanonicalReminderWakes,
+  type RepairCanonicalReminderWakesResult,
+  type CanonicalReminderWakePublisher,
+} from "./canonical-reminder-wake";
+
+export { canonicalReminderActorLockKey } from "./canonical-reminder-wake";
 
 // Mixed-channel plans must remain pending for their original worker. Dropping
 // ios_push from a plan would falsely complete work that we have not performed.
@@ -40,10 +48,6 @@ export const CANONICAL_IN_APP_DUE_PLANS_SQL = `
   limit 10 for update
 `;
 
-export function canonicalReminderActorLockKey(workspaceId: string, actorId: string): string {
-  return JSON.stringify(["canonical-reminder-in-app", workspaceId, actorId]);
-}
-
 async function boundTransaction(tx: TransactionalSqlExecutor): Promise<void> {
   await tx.query("set local statement_timeout = '5s'");
   await tx.query("set local lock_timeout = '1s'");
@@ -54,6 +58,8 @@ async function boundTransaction(tx: TransactionalSqlExecutor): Promise<void> {
 export interface CanonicalReminderMaintenanceRuntime {
   client: TransactionalPostgresClient;
   workspaceId: string;
+  now?: () => string;
+  publisher?: CanonicalReminderWakePublisher;
 }
 
 function ownedStore(tx: TransactionalSqlExecutor, workspaceId: string, actorId: string): LiveRecordStoreLike<Record<string, unknown>> {
@@ -87,7 +93,7 @@ function ownedStore(tx: TransactionalSqlExecutor, workspaceId: string, actorId: 
   };
 }
 
-async function dispatchActor(runtime: CanonicalReminderMaintenanceRuntime, actorId: string, now: string) {
+export async function dispatchActor(runtime: CanonicalReminderMaintenanceRuntime, actorId: string, now: string) {
   return runtime.client.transaction(async (tx) => {
     await boundTransaction(tx);
     const lock = await tx.query<{ acquired: boolean }>(
@@ -152,10 +158,39 @@ export function createConfiguredCanonicalReminderMaintenanceTask({
     name: "canonical_reminder_dispatch",
     async run(context) {
       if (context.now().getTime() >= context.deadline) return { skipped: "budget_exhausted" };
-      const configured = runtime ?? createConfiguredTransactionalPostgresRuntime({ env, max: 2 });
+      const configured: CanonicalReminderMaintenanceRuntime | null = runtime ?? (() => {
+        const value = createConfiguredTransactionalPostgresRuntime({ env, max: 2 });
+        return value ? { client: value.client, workspaceId: value.workspaceId } : null;
+      })();
       if (!configured) return { skipped: "database_unconfigured" };
       if (!configured.workspaceId.trim()) throw new Error("Reminder workspace is required");
-      return createCanonicalReminderMaintenanceTask({
+      const wakeRuntime = {
+        client: configured.client,
+        workspaceId: configured.workspaceId,
+        now: configured.now ?? (() => context.now().toISOString()),
+        publisher: configured.publisher,
+      };
+      const wakeResult: RepairCanonicalReminderWakesResult = await repairCanonicalReminderWakes({
+        runtime: wakeRuntime,
+        workerId,
+        now: wakeRuntime.now(),
+        maxActors: 25,
+        maxPlansPerActor: 10,
+        deadline: context.deadline,
+        clock: context.now,
+      }).catch(() => ({
+        claimed: 0,
+        inAppDelivered: 0,
+        failed: 1,
+        publishFailed: 0,
+        deferred: 0,
+        wakeClaimed: 0,
+        wakeDelivered: 0,
+        wakeFailed: 1,
+        wakePublishFailed: 0,
+        wakeContinuation: 1,
+      }));
+      const legacyResult = await createCanonicalReminderMaintenanceTask({
         workerId, maxActors: 25, maxPlansPerActor: 10, now: context.now,
         actorScanner: {
           async listDueActorIds({ now }) {
@@ -168,6 +203,19 @@ export function createConfiguredCanonicalReminderMaintenanceTask({
         },
         dispatcher: { dispatchDueForActor: ({ actorId, now }) => dispatchActor(configured, actorId, now) },
       }).run(context);
+      const wakeSummary: Record<string, number> = { ...wakeResult };
+      if ("skipped" in legacyResult) return wakeSummary;
+      return {
+        ...legacyResult,
+        claimed: legacyResult.claimed + wakeResult.claimed,
+        inAppDelivered: legacyResult.inAppDelivered + wakeResult.inAppDelivered,
+        failed: legacyResult.failed + wakeResult.failed,
+        wakeClaimed: wakeResult.wakeClaimed,
+        wakeDelivered: wakeResult.wakeDelivered,
+        wakeFailed: wakeResult.wakeFailed,
+        wakePublishFailed: wakeResult.wakePublishFailed,
+        wakeContinuation: wakeResult.wakeContinuation,
+      };
     },
   };
 }

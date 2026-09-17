@@ -25,6 +25,12 @@ export class ReminderPlanServiceError extends Error {
   }
 }
 
+/**
+ * Target authorizers report only domain ownership rejection as
+ * ReminderPlanServiceError(TARGET_NOT_OWNED). Infrastructure and ordinary
+ * errors must cross this boundary unchanged so transaction retry and failure
+ * handling can observe their real cause.
+ */
 export interface ReminderTargetAuthorizer {
   assertOwned(input: { actorId: string; targetId: string; targetType: ReminderTargetType }): Promise<void>;
 }
@@ -192,8 +198,11 @@ export function createReminderPlanService({
       if (replay) return replay;
       try {
         await targetAuthorizer?.assertOwned({ actorId: input.actorId, targetId: input.targetId, targetType: input.targetType });
-      } catch {
-        throw new ReminderPlanServiceError("TARGET_NOT_OWNED", "Reminder target is not owned by this actor");
+      } catch (error) {
+        if (error instanceof ReminderPlanServiceError && error.code === "TARGET_NOT_OWNED") {
+          throw new ReminderPlanServiceError("TARGET_NOT_OWNED", "Reminder target is not owned by this actor");
+        }
+        throw error;
       }
       const createdAt = now();
       const plan: ReminderPlanDTO = {
