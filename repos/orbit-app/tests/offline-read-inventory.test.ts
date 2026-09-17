@@ -7,6 +7,19 @@ import { auditReadSurfaces, extractReadCalls } from '../scripts/audit-offline-re
 import { resolveReadSurface, matchTemplate, surfaces } from '../src/data/offline-read/route-domain-inventory';
 
 // Each assertion protects a persistence boundary, or exercises the audit on real AST inputs.
+test('private portrait reads and saves never inherit ordinary registration persistence', () => {
+  for (const method of ['GET', 'POST']) {
+    const surface = resolveReadSurface(method, '/api/events/event%3A1/registration/portrait');
+    assert.equal(surface.consumerFile, 'src/screens/events/EventRegistrationScreen.tsx');
+    assert.equal(surface.domainId, 'registrations');
+    assert.equal(surface.readPersistence, 'online_only_secret');
+    assert.equal(surface.binaryPolicy, 'never_local');
+    assert.equal(surface.mutationPolicy, 'online_only');
+  }
+  assert.equal(resolveReadSurface('GET', '/api/events/event%3A1/registration').readPersistence, 'durable_normalized');
+  assert.throws(() => resolveReadSurface('GET', '/api/events/event%3A1/registration/portrait/other'), /UNREGISTERED_READ/);
+});
+
 test('roster qualification registers the same durable event read policy as the party detail consumer', () => {
   const owner = surfaces.find(row => row.consumerFile === 'src/screens/party/PartyModeScreen.tsx' && row.method === 'GET' && row.endpointTemplate === '/api/events/:id');
   const qualification = surfaces.find(row => row.consumerFile === 'src/screens/events/EventAttendeeRosterLink.tsx' && row.method === 'GET' && row.endpointTemplate === '/api/events/:id');

@@ -71,7 +71,9 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
   const domainId = domainFor(endpointTemplate);
   const providerTodo = endpointTemplate.startsWith('/api/relationship-signals/email-calendar');
   const secret = providerTodo || endpointTemplate.startsWith('/api/account/session/')
-    || endpointTemplate.startsWith('/api/auth/') || endpointTemplate.startsWith('/api/devices/');
+    || endpointTemplate.startsWith('/api/auth/') || endpointTemplate.startsWith('/api/devices/')
+    // Private portraits remain network-only until trusted grant/epoch invalidation is available.
+    || endpointTemplate === '/api/events/:id/registration/portrait';
   const binary = endpointTemplate.endsWith('/image') || endpointTemplate.endsWith('/content');
   return {
     consumerFile,
@@ -277,6 +279,9 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/events/EventRegistrationScreen.tsx","POST","/api/events/:id/registration/cancel"],
   ["src/screens/events/EventRegistrationScreen.tsx","POST","/api/events/:id/registration/interview"],
   ["src/screens/events/EventRegistrationScreen.tsx","POST","/api/events/:id/registration/persona"],
+  ["src/screens/events/EventRegistrationScreen.tsx","GET","/api/events/:id/registration/portrait"],
+  ["src/screens/events/EventRegistrationScreen.tsx","POST","/api/events/:id/registration/portrait"],
+  ["src/screens/events/Registration7aRecommendationsResource.tsx","GET","/api/recommendations/event/:id"],
   ["src/screens/events/EventRegistrationScreen.tsx","GET","/api/events/public/:id"],
   ["src/screens/events/EventRolesScreen.tsx","DELETE","/api/events/:id/access/assignments/:id"],
   ["src/screens/events/EventRolesScreen.tsx","GET","/api/events/:id/access/assignments/:id"],

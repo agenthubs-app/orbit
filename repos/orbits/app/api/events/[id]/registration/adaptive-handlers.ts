@@ -7,6 +7,11 @@ import {
   readInterviewTranscript,
 } from "../../../../../features/events/registration/adaptive-interview-service";
 import { signAdaptiveInterviewQuestion } from "../../../../../features/events/registration/interview-question-token.server";
+import { createEventRegistrationPortraitRuntime } from "../../../../../features/events/registration/portrait/runtime";
+import { PortraitError } from "../../../../../features/events/registration/portrait/contract";
+import { portraitPreviewInputSchema, portraitRenewInputSchema } from "../../../../../shared/api-schema/event-registration-portrait";
+import type { PortraitAnswerProof } from "../../../../../shared/contract/event-registration-portrait";
+import { portraitErrorResponse, type PortraitService } from "./portrait/route-handlers";
 import {
   loadEventForRegistration,
   localizedEventTitle,
@@ -34,6 +39,7 @@ type LoadEventForRegistration = typeof loadEventForRegistration;
 export function createRegistrationInterviewPostHandler(
   resolveActor: ResolveAuthenticatedApiActor = resolveAuthenticatedApiActor,
   loadEvent: LoadEventForRegistration = loadEventForRegistration,
+  getPortraitService: () => PortraitService | null = () => createEventRegistrationPortraitRuntime()?.service ?? null,
 ) {
   return async function POST(
     request: Request,
@@ -63,10 +69,28 @@ export function createRegistrationInterviewPostHandler(
     }
 
     const body = (await request.json().catch(() => ({}))) as {
+      mode?: unknown;
       language?: unknown;
       transcript?: unknown;
     };
+    if (body.mode === "renew-stored-question") {
+      try {
+        const parsed = portraitRenewInputSchema.safeParse(body);
+        if (!parsed.success) throw new PortraitError(422, "PORTRAIT_INPUT_INVALID", "A trusted stored response reference is required.");
+        const service = getPortraitService();
+        if (!service) throw new PortraitError(503, "PORTRAIT_STORAGE_UNAVAILABLE", "Durable portrait storage is unavailable.");
+        return NextResponse.json(success(await service.renew({ actorId: actor.id, eventId: event.id, source: parsed.data.source, responseId: parsed.data.responseId, sourceVersion: parsed.data.sourceVersion })), { headers: runtimeBoundaryHeaders(mode) });
+      } catch (error) { return portraitErrorResponse(error, mode); }
+    }
     const language = body.language === "en" ? ("en" as const) : ("zh" as const);
+    let portraitService: PortraitService | null = null;
+    if (body.mode === "portrait-interview") {
+      try {
+        portraitService = getPortraitService();
+        if (!portraitService) throw new PortraitError(503, "PORTRAIT_STORAGE_UNAVAILABLE", "Durable portrait storage is unavailable.");
+        await portraitService.prepareInterview({ actorId: actor.id, event });
+      } catch (error) { return portraitErrorResponse(error, mode); }
+    }
     let step;
     try {
       step = await nextAdaptiveInterviewQuestion({
@@ -93,7 +117,7 @@ export function createRegistrationInterviewPostHandler(
       throw error;
     }
 
-    const signedQuestion = step.question
+    let signedQuestion: { question: NonNullable<typeof step.question>; questionToken: string; portraitAdaptiveToken?: string } | null = step.question
       ? {
           question: step.question,
           questionToken: signAdaptiveInterviewQuestion({
@@ -104,6 +128,12 @@ export function createRegistrationInterviewPostHandler(
           }),
         }
       : null;
+
+    if (portraitService && signedQuestion) {
+      try {
+        signedQuestion = { ...signedQuestion, portraitAdaptiveToken: await portraitService.bindAdaptiveQuestion({ actorId: actor.id, event, questionToken: signedQuestion.questionToken }) };
+      } catch (error) { return portraitErrorResponse(error, mode); }
+    }
 
     return NextResponse.json(
       success({ done: step.done, signedQuestion }),
@@ -118,6 +148,7 @@ export function createRegistrationInterviewPostHandler(
 export function createRegistrationPersonaPostHandler(
   resolveActor: ResolveAuthenticatedApiActor = resolveAuthenticatedApiActor,
   loadEvent: LoadEventForRegistration = loadEventForRegistration,
+  getPortraitService: () => PortraitService | null = () => createEventRegistrationPortraitRuntime()?.service ?? null,
 ) {
   return async function POST(
     request: Request,
@@ -138,9 +169,19 @@ export function createRegistrationPersonaPostHandler(
     }
 
     const body = (await request.json().catch(() => ({}))) as {
+      mode?: unknown;
       language?: unknown;
       transcript?: unknown;
     };
+    if (body.mode === "portrait-preview") {
+      try {
+        const parsed = portraitPreviewInputSchema.safeParse(body);
+        if (!parsed.success) throw new PortraitError(422, "PORTRAIT_INPUT_INVALID", "Trusted portrait answer proofs are required.");
+        const service = getPortraitService();
+        if (!service) throw new PortraitError(503, "PORTRAIT_STORAGE_UNAVAILABLE", "Durable portrait storage is unavailable.");
+        return NextResponse.json(success(await service.preview({ actorId: actor.id, event, language: parsed.data.language, responses: parsed.data.responses as readonly PortraitAnswerProof[] })), { headers: runtimeBoundaryHeaders(mode) });
+      } catch (error) { return portraitErrorResponse(error, mode); }
+    }
     const transcript = readInterviewTranscript(body.transcript);
 
     if (transcript.length === 0) {
