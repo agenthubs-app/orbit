@@ -9,6 +9,13 @@ import type {
   LocalSyncSqlValue,
 } from "./local-sync-database";
 import { z } from "zod";
+import type { DomainPage, ReadScope } from "../../api/contract/universal-read";
+import { domainPageSchema, readScopeSchema } from "../../api/schema/universal-read";
+
+const LEGACY_DOMAINS: Record<SyncEntityKind, string> = {
+  contact: "contacts", note: "notes", task: "tasks", relationship_followup: "followups",
+  personal_schedule: "personal-schedule", inbox_item: "notifications",
+};
 
 const SYNC_ENTITY_KINDS = new Set<SyncEntityKind>([
   "contact",
@@ -125,6 +132,8 @@ interface SerializedRecord {
 
 const UPSERT_RECORD = `INSERT INTO sync_records (
   workspace_id,
+  domain_id,
+  authorization_epoch,
   kind,
   record_id,
   revision,
@@ -133,8 +142,8 @@ const UPSERT_RECORD = `INSERT INTO sync_records (
   payload_json,
   sync_state,
   ai_visibility
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-ON CONFLICT(workspace_id, kind, record_id) DO UPDATE SET
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(workspace_id, domain_id, authorization_epoch, record_id) DO UPDATE SET
   revision = excluded.revision,
   updated_at = excluded.updated_at,
   deleted_at = excluded.deleted_at,
@@ -149,14 +158,48 @@ WHERE sync_records.sync_state NOT IN ('pending', 'conflicted')
 export function createLocalSyncRepository(input: {
   actorId: string;
   database: LocalSyncDatabase;
+  baseUrl?: string;
+  registeredDomainIds?: readonly string[];
+  /** Trusted scope binding supplied by the caller, not a server authorizer. */
+  activeReadScopes?: () => readonly ReadScope[];
+  hashPayload?: (serialized: string) => Promise<string>;
 }) {
   assertNonEmptyString(input.actorId, "actorId");
   const { actorId, database } = input;
+  const registered = new Set(input.registeredDomainIds ?? []);
+
+  function assertScope(value: ReadScope): ReadScope {
+    readScopeSchema.parse(value);
+    const scope = { ...value };
+    if (scope.actorId !== actorId || scope.baseUrl !== input.baseUrl || !registered.has(scope.domainId)) {
+      throw new TypeError("read scope does not match the authenticated database or registry");
+    }
+    const bound = input.activeReadScopes?.().some(candidate =>
+      candidate.baseUrl === scope.baseUrl && candidate.actorId === scope.actorId &&
+      candidate.workspaceId === scope.workspaceId && candidate.domainId === scope.domainId &&
+      candidate.authorizationEpoch === scope.authorizationEpoch);
+    if (!bound) throw new TypeError("read scope epoch is not bound");
+    return scope;
+  }
+
+  function legacyScope(workspaceId: string, kind?: SyncEntityKind): ReadScope {
+    const candidates = input.activeReadScopes?.().filter(scope => scope.workspaceId === workspaceId &&
+      (kind === undefined || scope.domainId === LEGACY_DOMAINS[kind])) ?? [];
+    if (candidates.length !== 1) throw new TypeError("legacy operation requires one explicit read scope");
+    return assertScope(candidates[0]!);
+  }
+
+  const scopeParameters = (scope: ReadScope) => [scope.workspaceId, scope.domainId, scope.authorizationEpoch];
+  async function isReadable(scope: ReadScope): Promise<boolean> {
+    const row = await database.get<{ readable: number }>("SELECT readable FROM local_read_scope_state WHERE workspace_id=? AND domain_id=? AND authorization_epoch=?", scopeParameters(scope));
+    return row?.readable !== 0;
+  }
 
   return {
     async putRecord(record: SyncRecord): Promise<void> {
       const serialized = validateAndSerializeRecord(record, actorId);
-      await database.run(UPSERT_RECORD, recordParameters(serialized));
+      const scope = legacyScope(record.workspaceId, record.kind);
+      await database.run(UPSERT_RECORD, [...scopeParameters(scope), ...recordParameters(serialized).slice(1)]);
     },
 
     async applyPage(page: ApplyLocalSyncPageInput): Promise<void> {
@@ -180,33 +223,38 @@ export function createLocalSyncRepository(input: {
         }
         return serialized;
       });
+      const scope = legacyScope(page.workspaceId, records[0]?.record.kind);
+      if (records.some(({ record }) => LEGACY_DOMAINS[record.kind] !== scope.domainId)) throw new TypeError("legacy page spans domains");
 
       await database.transaction(async () => {
         for (const record of records) {
-          await database.run(APPLY_CANONICAL_RECORD, recordParameters(record));
+          await database.run(APPLY_CANONICAL_RECORD, [...scopeParameters(scope), ...recordParameters(record).slice(1)]);
         }
         await database.run(
           `INSERT INTO sync_cursors (
-            workspace_id, cursor, last_successful_sync_at, bootstrap_state
-          ) VALUES (?, ?, ?, ?)
-          ON CONFLICT(workspace_id) DO UPDATE SET
+            workspace_id, domain_id, authorization_epoch, cursor, last_successful_sync_at, bootstrap_state, completeness, generation
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(workspace_id, domain_id, authorization_epoch) DO UPDATE SET
             cursor = excluded.cursor,
             last_successful_sync_at = excluded.last_successful_sync_at,
             bootstrap_state = excluded.bootstrap_state`,
-          [page.workspaceId, page.cursor, page.syncedAt, page.bootstrapState],
+          [...scopeParameters(scope), page.cursor, page.syncedAt, page.bootstrapState, page.bootstrapState === "complete" ? "complete" : "partial", "legacy-api"],
         );
       });
     },
 
     async getRecord(key: LocalSyncRecordKey): Promise<SyncRecord | null> {
       validateRecordKey(key);
+      const scope = legacyScope(key.workspaceId, key.kind);
+      if (!(await isReadable(scope))) return null;
       const row = await database.get<SyncRecordRow>(
         `SELECT workspace_id, kind, record_id, revision, updated_at, deleted_at,
                 payload_json, sync_state, ai_visibility
          FROM sync_records
-         WHERE workspace_id = ? AND kind = ? AND record_id = ?`,
-        [key.workspaceId, key.kind, key.id],
+         WHERE workspace_id = ? AND domain_id = ? AND authorization_epoch = ? AND kind = ? AND record_id = ? AND visible=1`,
+        [...scopeParameters(scope), key.kind, key.id],
       );
+      assertScope(scope);
       return row ? recordFromRow(row, actorId) : null;
     },
 
@@ -215,6 +263,8 @@ export function createLocalSyncRepository(input: {
     ): Promise<SyncRecord[]> {
       assertNonEmptyString(query.workspaceId, "workspaceId");
       assertSyncEntityKind(query.kind);
+      const scope = legacyScope(query.workspaceId, query.kind);
+      if (!(await isReadable(scope))) return [];
       const deletedPredicate = query.includeDeleted
         ? ""
         : " AND deleted_at IS NULL";
@@ -222,9 +272,10 @@ export function createLocalSyncRepository(input: {
         `SELECT workspace_id, kind, record_id, revision, updated_at, deleted_at,
                 payload_json, sync_state, ai_visibility
          FROM sync_records
-         WHERE workspace_id = ? AND kind = ?${deletedPredicate}`,
-        [query.workspaceId, query.kind],
+         WHERE workspace_id = ? AND domain_id = ? AND authorization_epoch = ? AND kind = ? AND visible=1${deletedPredicate}`,
+        [...scopeParameters(scope), query.kind],
       );
+      assertScope(scope);
       return rows
         .map((row) => recordFromRow(row, actorId))
         .sort(
@@ -236,11 +287,13 @@ export function createLocalSyncRepository(input: {
 
     async getCursor(workspaceId: string): Promise<LocalSyncCursor | null> {
       assertNonEmptyString(workspaceId, "workspaceId");
+      const scope = legacyScope(workspaceId);
       const row = await database.get<SyncCursorRow>(
         `SELECT workspace_id, cursor, last_successful_sync_at, bootstrap_state
-         FROM sync_cursors WHERE workspace_id = ?`,
-        [workspaceId],
+         FROM sync_cursors WHERE workspace_id = ? AND domain_id = ? AND authorization_epoch = ?`,
+        scopeParameters(scope),
       );
+      assertScope(scope);
       return row
         ? {
             workspaceId: row.workspace_id,
@@ -249,6 +302,57 @@ export function createLocalSyncRepository(input: {
             bootstrapState: row.bootstrap_state,
           }
         : null;
+    },
+
+    async resetDomain(value: ReadScope): Promise<void> {
+      const scope = assertScope(value);
+      await database.transaction(async () => {
+        for (const table of ["sync_records", "sync_cursors", "local_read_assets", "local_read_index"]) {
+          const canonical = table === "sync_records" ? " AND sync_state='synced'" : "";
+          await database.run(`DELETE FROM ${table} WHERE workspace_id=? AND domain_id=? AND authorization_epoch=?${canonical}`, scopeParameters(scope));
+        }
+        await database.run(`INSERT INTO local_read_scope_state VALUES(?,?,?,0) ON CONFLICT(workspace_id,domain_id,authorization_epoch) DO UPDATE SET readable=0`, scopeParameters(scope));
+      });
+    },
+
+    async applyDomainPage(value: ReadScope, inputPage: DomainPage): Promise<void> {
+      const scope = assertScope(value);
+      const page = domainPageSchema.parse(inputPage);
+      if (page.domainId !== scope.domainId || page.authorizationEpoch !== scope.authorizationEpoch) throw new TypeError("page scope mismatch");
+      const changes = await Promise.all(page.changes.map(async change => {
+        if ((change.operation === "upsert") !== (change.payload !== null)) throw new TypeError("change payload does not match operation");
+        const json = change.payload === null ? null : JSON.stringify(PLAIN_JSON.parse(change.payload));
+        const hash = json === null ? null : await input.hashPayload?.(json);
+        if (json !== null && (!hash || !/^[a-f0-9]{64}$/u.test(hash))) throw new TypeError("payload SHA256 is unavailable");
+        return { ...change, json, hash };
+      }));
+      assertScope(scope); // Hashing may await while the caller revokes a scope.
+      await database.transaction(async () => {
+        for (const change of changes) {
+          if (change.operation !== "upsert") {
+            // Preserve pending/conflict evidence while removing its readable overlay.
+            await database.run(`UPDATE sync_records SET visible=0 WHERE workspace_id=? AND domain_id=? AND authorization_epoch=? AND record_id=?`, [...scopeParameters(scope), change.id]);
+            await database.run(`DELETE FROM sync_records WHERE workspace_id=? AND domain_id=? AND authorization_epoch=? AND record_id=? AND sync_state='synced'`, [...scopeParameters(scope), change.id]);
+            await database.run(`DELETE FROM local_read_index WHERE workspace_id=? AND domain_id=? AND authorization_epoch=? AND record_id=?`, [...scopeParameters(scope), change.id]);
+            await database.run(`DELETE FROM local_read_assets WHERE workspace_id=? AND domain_id=? AND authorization_epoch=? AND record_id=?`, [...scopeParameters(scope), change.id]);
+          } else {
+            const kind = Object.entries(LEGACY_DOMAINS).find(([, domain]) => domain === scope.domainId)?.[0] ?? scope.domainId;
+            await database.run(`INSERT INTO sync_records(workspace_id,domain_id,authorization_epoch,kind,record_id,revision,updated_at,payload_json,sync_state,ai_visibility,schema_version,payload_hash,generation)
+              VALUES(?,?,?,?,?,?,?,?,'synced','excluded',?,?,?)
+              ON CONFLICT(workspace_id,domain_id,authorization_epoch,record_id) DO UPDATE SET
+              revision=excluded.revision,updated_at=excluded.updated_at,payload_json=excluded.payload_json,schema_version=excluded.schema_version,payload_hash=excluded.payload_hash,generation=excluded.generation,deleted_at=NULL,visible=1
+              WHERE sync_records.sync_state NOT IN ('pending','conflicted') AND sync_records.revision<>excluded.revision`,
+            [...scopeParameters(scope), kind, change.id, change.revision, page.serverTime, change.json, page.schemaVersion, change.hash!, page.generation]);
+            await database.run(`UPDATE sync_records SET generation=? WHERE workspace_id=? AND domain_id=? AND authorization_epoch=? AND record_id=? AND revision=? AND sync_state='synced'`,
+              [page.generation, ...scopeParameters(scope), change.id, change.revision]);
+          }
+        }
+        await database.run(`INSERT INTO sync_cursors(workspace_id,domain_id,authorization_epoch,cursor,last_successful_sync_at,bootstrap_state,completeness,generation)
+          VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(workspace_id,domain_id,authorization_epoch) DO UPDATE SET cursor=excluded.cursor,last_successful_sync_at=excluded.last_successful_sync_at,bootstrap_state=excluded.bootstrap_state,completeness=excluded.completeness,generation=excluded.generation`,
+        [...scopeParameters(scope), page.nextCursor, page.serverTime, page.hasMore ? "pending" : "complete", page.hasMore ? "partial" : "complete", page.generation]);
+        await database.run(`INSERT INTO local_read_scope_state VALUES(?,?,?,1) ON CONFLICT(workspace_id,domain_id,authorization_epoch) DO UPDATE SET readable=1`, scopeParameters(scope));
+        assertScope(scope); // Roll back if revocation races the transaction.
+      });
     },
 
     async enqueueOutboxMutation(
