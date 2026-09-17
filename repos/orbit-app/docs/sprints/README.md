@@ -569,3 +569,7 @@ ROOT 实际使用小雨账号 `account_orbit_generated` 验证已有笔记／人
 Phone 固定消费b3562f4／TREEc6f2、BUILD `VFCyLoF7jSqlaRsqWLuA3` 的真实 actor Chromium／WebKit 私有预览通过列表／拼音／选择取消及规则UI，未保存业务资料或调用provider；ROOT已审核并批准整体owned supervisor公网发布，实际切换结果另行登记。Phone actor不同于Main小雨，不代替同账号跨端证据。Main独立Next `/app/tasks/personal` 仍是旧v2／提醒重复unsupported UI，必须单独跟踪，不能宣称全部Web页面对齐。详见[0060 REPORT追加验收](0060-personal-reminders-recurrence/REPORT.md)。
 
 Phone公网0060随后实际发布成功，监督进程98032／backend98035／frontend98036健康，固定ngrok域名未变，ROOT独立核公网entry SHA匹配。公开Chromium／WebKit真实actor新关联窗／首字母／选择取消／规则UI通过，原业务数据不变、无provider调用；私有324预览已正常关闭、0056回退保留。真实提醒送达和Main独立Next旧v2页面仍是未完成项。
+
+### 2026-09-17：0061 就绪与提醒剩余调查
+
+用户要求“继续完成未完成的”，复用原设计与实施批准。新增[0061目标](0061-next-personal-schedule-v3/GOAL.md)／[中文计划](0061-next-personal-schedule-v3/PLANNER.md)，仅修复确证独立Next `/app/tasks/personal` v2规则／关联UI缺口，既有空闲B、Sol medium、一个run-01，状态ready／run_count=0，待隔离树固定基线与Planner哈希实际登记后启动；不重开0059／0060。ROOT独占真实服务／Simulator／测试对象，A仅有界只读查提醒配置及现有到期入口，不做第二Generator或改通知flag。通知测试账号启用动作按已有明确授权范围核实，其他账号、globalcutover和远程Push保持不变。
