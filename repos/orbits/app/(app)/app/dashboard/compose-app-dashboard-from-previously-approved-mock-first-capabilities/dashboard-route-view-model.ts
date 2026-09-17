@@ -36,6 +36,7 @@ import {
   createActorScopedAppDashboardRouteServices,
   createAppDashboardRouteServices,
 } from "./dashboard-service-factory";
+import { withDashboardLiveReadScope } from "../../../../../features/dashboard/storage/dashboard-live-record-provider";
 
 export type AppDashboardRouteScenario = "empty" | "pending" | "failure";
 
@@ -315,7 +316,7 @@ export async function loadAppDashboardRouteViewModel(
       gapsResult,
       opportunityResult,
       auditResult,
-    ] = await Promise.all([
+    ] = await withDashboardLiveReadScope(() => Promise.all([
       resolveDashboardAggregateResult(
         services.dashboardService.getDashboardAggregate({
           actorId,
@@ -346,7 +347,7 @@ export async function loadAppDashboardRouteViewModel(
       services.auditService.getAuditSnapshot({
         scenario: requestedScenario,
       }),
-    ]);
+    ]));
 
     return {
       routeState: routeStateViewModel({
@@ -371,7 +372,7 @@ export async function loadAppDashboardRouteViewModel(
     gapsResult,
     opportunityResult,
     auditResult,
-  ] = await Promise.all([
+  ] = await withDashboardLiveReadScope(() => Promise.all([
     resolveDashboardAggregateResult(
       services.dashboardService.getDashboardAggregate({
         activityLimit: 4,
@@ -389,7 +390,7 @@ export async function loadAppDashboardRouteViewModel(
       services.opportunityService.getOpportunityReminderAnalytics(),
     ),
     services.auditService.getAuditSnapshot(),
-  ]);
+  ]));
   const results = [
     aggregateResult,
     summaryResult,

@@ -35,6 +35,11 @@ export interface LiveDashboardAggregateProvider {
   readDashboardGraphForAccount?: (
     accountId: string,
   ) => LiveDashboardAggregateProviderResult<LiveDashboardGraph>;
+  /** Internal read-model capability; it must not widen the public dashboard DTO. */
+  readDashboardSummaryForAccount?: (
+    accountId: string,
+    scenario?: DashboardAggregateScenario,
+  ) => LiveDashboardAggregateProviderResult<DashboardAggregateSummaryResult>;
 }
 
 export interface LiveDashboardAggregateServiceOptions {
@@ -494,6 +499,29 @@ async function summaryFor(
   provider: LiveDashboardAggregateProvider | null,
   input: DashboardAggregateSummaryInput = {},
 ): Promise<DashboardAggregateSummaryResult> {
+  if (!provider) {
+    return failure(
+      "DASHBOARD_AGGREGATE_LIVE_STORE_UNCONFIGURED",
+      unconfiguredProvenance(),
+    );
+  }
+
+  const actorId = input.actorId?.trim();
+
+  if (!actorId) {
+    return failure(
+      "DASHBOARD_AGGREGATE_ACTOR_REQUIRED",
+      unconfiguredProvenance(),
+    );
+  }
+
+  if (provider.readDashboardSummaryForAccount) {
+    return provider.readDashboardSummaryForAccount(
+      actorId,
+      normalizeScenario(input.scenario),
+    );
+  }
+
   const aggregate = await aggregateFor(provider, input);
 
   if (aggregate.success === false) {
