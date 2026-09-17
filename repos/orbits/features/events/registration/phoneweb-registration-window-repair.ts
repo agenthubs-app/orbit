@@ -105,7 +105,8 @@ function validateRepairSource(source: RepairSource): void {
     const hour = index < 11 ? 1 : index === 11 ? 5 : 9;
     const startsAt = `2026-10-${day}T${String(hour).padStart(2, "0")}:00:00.000Z`;
     const endsAt = `2026-10-${day}T${String(hour + 2).padStart(2, "0")}:00:00.000Z`;
-    if (index < 0 || event.workspace_id !== REPAIR_WORKSPACE || event.organizer_actor_id !== "user_orbit_primary_qa" ||
+    const expectedOwner = event.event_id === "event_signup_01" ? "user_mu3lykrb_sv4h84" : "user_orbit_primary_qa";
+    if (index < 0 || event.workspace_id !== REPAIR_WORKSPACE || event.organizer_actor_id !== expectedOwner ||
         event.registration_migration_state !== "canonical" || event.lifecycle_v2 !== "published" ||
         event.starts_at !== startsAt || event.ends_at !== endsAt || !/^[1-9]\d*$/u.test(event.event_version)) {
       throw new Error("Repair catalogue target, dates, owner, or version do not match.");

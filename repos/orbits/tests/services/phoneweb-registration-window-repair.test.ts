@@ -75,3 +75,21 @@ test("preview carries a deterministic review hash sensitive to precondition chan
   changed.heads[0]!.revision = "2";
   assert.notEqual(plan.planHash, buildPhonewebRegistrationWindowRepairPlan(changed).planHash);
 });
+
+test("preview preserves the distinct signup01 owner rather than requiring or changing the QA owner", () => {
+  const plan = buildPhonewebRegistrationWindowRepairPlan(repairFixture);
+  assert.equal(plan.source.events.find((event) => event.event_id === "event_signup_01")!.organizer_actor_id, "user_mu3lykrb_sv4h84");
+  assert.equal(plan.source.events.filter((event) => event.organizer_actor_id === "user_orbit_primary_qa").length, 12);
+});
+
+test("preview rejects the incorrect QA owner for signup01", () => {
+  const source = structuredClone(repairFixture);
+  source.events.find((event) => event.event_id === "event_signup_01")!.organizer_actor_id = "user_orbit_primary_qa";
+  assert.throws(() => buildPhonewebRegistrationWindowRepairPlan(source), /owner/u);
+});
+
+test("preview still rejects a changed organizer on the other twelve targets", () => {
+  const source = structuredClone(repairFixture);
+  source.events[0]!.organizer_actor_id = "user_mu3lykrb_sv4h84";
+  assert.throws(() => buildPhonewebRegistrationWindowRepairPlan(source), /owner/u);
+});

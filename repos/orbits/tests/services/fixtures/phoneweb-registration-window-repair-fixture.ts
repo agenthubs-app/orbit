@@ -11,7 +11,7 @@ export const repairFixture: RepairSource = {
     { event_id: "event_signup_01", starts_at: "2026-10-25T01:00:00.000Z", ends_at: "2026-10-25T03:00:00.000Z" },
     { event_id: "event_signup_02", starts_at: "2026-10-26T05:00:00.000Z", ends_at: "2026-10-26T07:00:00.000Z" },
     { event_id: "event_signup_03", starts_at: "2026-10-27T09:00:00.000Z", ends_at: "2026-10-27T11:00:00.000Z" },
-  ].map((event) => ({ ...event, workspace_id: "workspace:phoneweb-demo", organizer_actor_id: "user_orbit_primary_qa", event_version: "2", registration_migration_state: "canonical", lifecycle_v2: "published" })),
+  ].map((event) => ({ ...event, workspace_id: "workspace:phoneweb-demo", organizer_actor_id: event.event_id === "event_signup_01" ? "user_mu3lykrb_sv4h84" : "user_orbit_primary_qa", event_version: "2", registration_migration_state: "canonical", lifecycle_v2: "published" })),
   configurations: [{
     workspace_id: "workspace:phoneweb-demo", event_id: "event_signup_01", configuration_version: "1",
     check_in_opens_at: "2026-08-18T00:00:00.000Z", event_starts_at: "2026-08-18T01:00:00.000Z", event_ends_at: "2026-08-18T03:00:00.000Z",
