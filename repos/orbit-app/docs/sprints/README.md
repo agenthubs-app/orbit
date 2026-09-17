@@ -12,9 +12,13 @@
 
 | Sprint | 目标 | 进入条件与当前事实 | 状态 |
 | --- | --- | --- | --- |
-| [0066](0066-registration-portrait-7a/GOAL.md) | 按7a三张稿重做报名资料、画像追问和结果，补齐真实编辑、独立保存与权限 | 用户2026-09-17回复“确认”批准完整中文[契约](0066-registration-portrait-7a/PLANNER.md)。唯一owner B任务01a0a879-e8fe-77e3-b748-bd78005aecc8/Sol medium；隔离树基于远程29efb4c9，run_count=1/run-01，Planner SHA a11c7312。App唯一I为3432项3428pass/4fail/0skip；本轮四项失败修复后，四个完整文件补验37/37。Web唯一I为4144项3838pass/63fail/243skip；本轮按钮规范回归修复后，四个完整文件补验31/31及两端types通过。原I非绿、Web子guard denied4、同BASE复现的旧契约2fail、报名夹具缺安全DB的12项before-hook失败与未独立分类48项均保留，不声称全绿。最终55文件实际B/staged门禁已通过并释放功能commit；ROOT继续固定SHA集成、真实两端构建与交互。无最终REPORT，不表示Simulator已更新或必需SC已完成 | running |
+| [0066](0066-registration-portrait-7a/GOAL.md) | 按7a三张稿重做报名资料、画像追问和结果，补齐真实编辑、独立保存与权限 | 用户已确认中文[契约](0066-registration-portrait-7a/PLANNER.md)。唯一B／Sol medium／run-01，Planner SHA a11c7312。功能7a87＋修复17da已合Main e73并push独立远端；精确Main App101/101、Web62/62。Phone固定修复8d87 fresh Next＋Expo完成，公网仍旧0065。原全量失败／skip／子guard4保持，不宣称全绿；[REPORT](0066-registration-portrait-7a/REPORT.md)仅checkpoint，完整真实SC仍缺 | running |
 
-下方既有目录与运行历史保留；0066不是0049／0050的第二次Generator，也不表示远程同事更新已合入本机。
+0066 最新运行事实（2026-09-17 23:23 JST）：功能 `7a87b89aa`＋必要修复 `17da84fa6` 已正常合Main `e73e6fb26`，普通push及独立远端一致，保留同事29ef基线。修复后的精确合并树App101/101、Web62/62／guard0。Main Web fresh BUILD `SVEnCJOV4jKN2V14iYf4b`／3000已重启；Simulator fresh编译／覆盖安装重试／启动PID73396，真实主8082已加载修复后JS。Main正常UI认证仍受既有数据库SQL53000传输额度阻挡，未升级／切库／改API origin，不声称原生报名业务SC通过。
+
+Phone44文件消费e2a＋六文件必要修复 `8d87be6ff`／TREE `d09c602bb` 已普通提交，fresh Next BUILD `qvLcDXi4dMYJS8RLgBWDS`＋Expo entry1b9b完成／NO_PAID guard0／账本hash不变。旧源真实私有画像version1／3项来源回答、正式回执及独立GET成立，九份保护摘要及报名cancelled/version4不变，仅新增画像／回执两条。旧源实际发现入口2/8及fresh重开2次模型尝试（拒绝2次），原唯一B已修复并完整受影响文件验证；新源实际3/8／0attempts重开尚缺。当前Browser连接列表为空、任务交接工具未返回，ROOT仅接管已批准机械同步commit／build，不做第二实现。原4次provider调用结算$0.006760／无reservation，窗口已关闭；公网保持旧0065，完整SC未通过、不标completed。
+
+下方既有目录与运行历史保留；0066不是0049／0050的第二次Generator，较早状态以本节最新实测事实为准。
 
 1. [执行规则](RULES.md)：一次执行、边界、状态、最小测试、提交与失败处理。
 2. 本表选择 Sprint，先读 `GOAL.md` 了解要实现的结果；执行前再读 `PLANNER.md` 及它明确引用的前序 `REPORT.md`。不要载入整个历史对话或所有 Sprint。

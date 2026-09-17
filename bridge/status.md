@@ -1,5 +1,9 @@
 # 两端当前状态
 
+## 2026-09-17 7a 报名／独立画像集成（验收开放）
+
+0066功能与运行修复已合并push chat-agent `e73e6fb26`并独立核对远端。Main Web fresh重建重启、Simulator fresh安装及真实Main8082 loaded-JS已核对，App101/101、Web62/62。Phone修复消费 `8d87be6ff` fresh Next＋Expo完成，公网仍旧0065；旧源真实画像保存与数据不变成立，新源3/8／零自动AI调用尚未实际复测。Main认证受SQL53000数据库额度阻挡，当前Browser／任务连接也不可用；未切库／升级或伪造通过。见[交接](2026-09-17-registration-portrait-7a.md)与[未完成验收报告](../repos/orbit-app/docs/sprints/0066-registration-portrait-7a/REPORT.md)，不据此关闭缺项。
+
 ## 2026-09-17 主测试账号30联系人／10活动
 
 独立Neon测试环境已围绕 organizer@orbit.example.test（测试主办方·林）扩充成功：主账号30位私有联系人、15条有日期的跟进／维护任务、10个真实归属活动（9发布＋1草稿）。原4账号、原28条通用记录及2活动保持不变；新增数据按人工确认、canonical生命周期、活动配置与报名政策链落库，没有伪造AI、报名、出席或交换成功。
