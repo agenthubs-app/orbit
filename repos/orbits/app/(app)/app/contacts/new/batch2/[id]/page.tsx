@@ -4,6 +4,8 @@ import { auth } from "../../../../../../../auth";
 import { AccountTopNav } from "../../../../orbit-account-shell";
 import { OrbitReferenceStyles } from "../../../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../../../orbit-visual-freeze-runtime";
+import { makeOrbitServerT, getOrbitServerLanguage } from "../../../../orbit-language-server";
+import { normalizeOrbitLanguage, withOrbitLanguageHref } from "../../../../orbit-language-core";
 import { BusinessCardIngestV2View } from "./business-card-ingest-v2-view";
 
 export const dynamic = "force-dynamic";
@@ -15,11 +17,18 @@ export const dynamic = "force-dynamic";
  */
 export default async function BusinessCardIngestV2BatchPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ lang?: string | string[] }>;
 }) {
   const session = await auth();
   const { id: rawId } = await params;
+  const query = await searchParams;
+  const language = typeof query?.lang === "string"
+    ? normalizeOrbitLanguage(query.lang)
+    : await getOrbitServerLanguage();
+  const t = makeOrbitServerT(language);
   // batch id 含冒号，动态路由参数是 URL 编码形态；统一 decode 后再进客户端
   //（内存文件暂存按原始 id 作键，编码不一致会让续传落空）。
   const id = decodeURIComponent(rawId);
@@ -44,10 +53,10 @@ export default async function BusinessCardIngestV2BatchPage({
           >
             <div style={{ margin: "0 auto", maxWidth: 980 }}>
               <a
-                href="/app/contacts/new"
+                href={withOrbitLanguageHref("/app/contacts/new", language)}
                 style={{ color: "var(--text-3)", fontSize: 13, textDecoration: "none" }}
               >
-                ← 导入中心
+                ← {t({ en: "Import center", zh: "导入中心", ja: "インポートセンター" })}
               </a>
               <div style={{ marginTop: 14 }}>
                 <BusinessCardIngestV2View batchId={id} />
