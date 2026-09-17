@@ -8,6 +8,14 @@
 
 ## 先读哪里
 
+### 2026-09-17 新增 7a 报名与画像设计
+
+| Sprint | 目标 | 进入条件与当前事实 | 状态 |
+| --- | --- | --- | --- |
+| [0066](0066-registration-portrait-7a/GOAL.md) | 按7a三张稿重做报名资料、画像追问和结果，补齐真实编辑、独立保存与权限 | 用户2026-09-17回复“确认”批准完整中文[契约](0066-registration-portrait-7a/PLANNER.md)。唯一owner B任务01a0a879-e8fe-77e3-b748-bd78005aecc8/Sol medium；隔离树基于远程29efb4c9，run_count=1/run-01，Planner SHA a11c7312。App唯一I为3432项3428pass/4fail/0skip；本轮四项失败修复后，四个完整文件补验37/37。Web唯一I为4144项3838pass/63fail/243skip；本轮按钮规范回归修复后，四个完整文件补验31/31及两端types通过。原I非绿、Web子guard denied4、同BASE复现的旧契约2fail、报名夹具缺安全DB的12项before-hook失败与未独立分类48项均保留，不声称全绿。最终55文件实际B/staged门禁已通过并释放功能commit；ROOT继续固定SHA集成、真实两端构建与交互。无最终REPORT，不表示Simulator已更新或必需SC已完成 | running |
+
+下方既有目录与运行历史保留；0066不是0049／0050的第二次Generator，也不表示远程同事更新已合入本机。
+
 1. [执行规则](RULES.md)：一次执行、边界、状态、最小测试、提交与失败处理。
 2. 本表选择 Sprint，先读 `GOAL.md` 了解要实现的结果；执行前再读 `PLANNER.md` 及它明确引用的前序 `REPORT.md`。不要载入整个历史对话或所有 Sprint。
 3. [目标模板](templates/GOAL.md)、[Planner 模板](templates/PLANNER.md)、[总结模板](templates/REPORT.md)用于后续新增 Sprint；只有执行过才创建实际 `REPORT.md`。
