@@ -60,3 +60,31 @@ CLI formatter 固定只显示 15 个符号，`--limit 5000` 仍不展开完整�
 API/schema 无变动，App 无源码改动；Web 开始发送已有 `cardId/side` 及确认元数据。跨端共享同一真实环境的写后读、实体手机相机、真实 OCR 质量和图片过期云清理未在本轮执行。邀请通信权限保持现状，自动发现明确延期。
 
 编码由显式 Luna max 完成：w2_luna 负责 A 文件集，w2_long_values 负责 B 的组件与测试，w2_final_fixes 在前述编码者停止后串行完成最终局部修正（来源快照校验、逐槽布局、语言保留、实际图片 sizes）；没有并行写同一文件。Astra 独立设计、diff review、运行验证与最终提交。
+
+## 集成回归追加：批量选图审计适配
+
+本追加批基于冻结提交 `482f337fa41398fa214aa7bd5131da94302462d6`，独立于 P1-14 待决设计。主协调明确批准原 Luna max 仅调整 `tests/audits/full-product-functional-audit.test.ts` 的 `hidden batch file inputs retain handler records and accessible picker triggers` 一个测试，Astra 更新本报告、独立验证并提交这两个文件。没有修改生产代码、audit generator、既有二维码文案断言、App 或共享协议；另行批准落盘的 P1-14 设计文档不混入此提交。
+
+**原因与精确范围：** start 页旧断言仍要求一个无名称隐藏输入；新配对流程已有首次选择 `inputRef`（`readPhotos(files,false)`）与追加照片 `addInputRef`（`readPhotos(files,true)`）两个入口。它们位于 `app/(app)/app/contacts/new/batch2/business-card-ingest-v2-start.tsx:341–342`，均为 hidden、有 onchange 的 multiple file input。正反面槽位另有三个静态 JSX 输入节点（298、312、318；back 条件两支运行时二选一），带 label、role=button、Enter/Space、capture=environment；因继承 label 名称，不属于本断言的 visibleName=null 集合。不能把数字2解释成正反面数量。
+
+start 的两个选择按钮（343–344）使用 `ingest-v2-copy.ts` 中真实 en/zh/ja 文案，inventory 如实分类为 `dynamic-static-expression`。review 页仍有两个无名称隐藏输入（`[id]/business-card-ingest-v2-view.tsx:530、541`，重挂/替换处理），其直接重挂按钮（712）使用内联三语文案，分类仍是 `present-static`。逐面替换按钮（958）通过 onReplace(item)→设置目标→replaceRef.click 间接触发；本条 `.click()` 静态筛选不覆盖整条间接运行链，不能将静态通过当作全部浏览器可访问性验证。
+
+测试仅将 start 数量改为2，并在原 tuple 增加逐页面精确的 pickerNameEvidence：start=`dynamic-static-expression`、review=`present-static`。原有名称非空、隐藏分类、onchange、picker 非空检查均保留，没有全局放宽为任意名称类型。只改数量时，原 callback 仍会在名称证据断言失败；审阅候选同时修正两项后，两页面断言通过。Luna 应用的文件与审阅候选逐字一致。
+
+**正式 RED / GREEN 与类型验证：** Web 根使用隔离环境 `env -i PATH="$PATH" SHARP_IGNORE_GLOBAL_LIBVIPS=1`，执行：
+
+```sh
+node --test --import tsx --test-name-pattern='^hidden batch file inputs retain handler records and accessible picker triggers$' tests/audits/full-product-functional-audit.test.ts
+npm run typecheck
+```
+
+- RED 在改动前正式运行：1项、0 pass、1 fail，654行 `2 !== 1`；日志 `/tmp/orbit-w2-batch-audit-red.log`。
+- GREEN 在补丁后运行相同正式命令：1项、1 pass、0 fail、0 skip；日志 `/tmp/orbit-w2-batch-audit-green.log`。
+- 完整 `npm run typecheck` 通过，exit 0；日志 `/tmp/orbit-w2-batch-audit-typecheck.log`。`git diff --check` 通过。
+- 这不是全 audit 文件通过。主协调已逐项归类旧基线失败：本文件12项，另 manifest 1项，基线组合167项/154 pass/13 fail。当前仅关闭本轮新增的一条断言不一致，不重跑整个组合或改期望掩盖旧失败。旧 `app-agent-contact-recommendations.test.tsx` 的二维码/关系背景文案差异仍按基线问题保留。
+
+**提交前图谱及匿名回调边界：** 绑定本树 `orbit-web-w2-20260917`，索引 HEAD 482f337f，与修改前基线一致。精确 File UID upstream depth3/limit5000 返回 UNKNOWN、0解析调用；按实际测试标题/file 检索回调也返回 notfound/UNKNOWN，范围查询未找到该匿名回调的独立 Function 节点。已补查顶层 `test(...)` 注册、package.json 的 `test:audit-full-product`、`scripts/run-node-tests.mjs` 入口，以及实际生成 inventory/执行 callback 证据；没有把0解释为 unused/LOW，也不为凑图谱节点重构测试。
+
+同版本 LocalBackend 原始 detect_changes 用于完整输出；该匿名回调的两处代码 hunk 起于647、663行，均位于测试块646–665行，已与 Git raw diff 逐行对照。加入报告后的完整输出为 changed_files=2、changed_count=2、affected_processes=[]、原始 risk_level=low，无 error/partial/truncated；2条完整列表等于2个映射计数。**映射的2条均为 REPORT Markdown Section，测试匿名回调没有映射条目**；仅测试改动时工具曾报告0符号。两文件计数完整不代表代码符号映射完整，不能将原始 low 当作已解析的业务影响证明。主已明确批准按实际匿名范围与源码补证的例外；保留原始 risk/计数，不伪造符号映射。证据包括 `/tmp/orbit-w2-batch-audit-file-impact.json`、`-callback-impact.json`、`-callback-nodes.json`、`-code-hunks.diff`；提交前 staged 范围最终完整原始输出以 `-detect-final-full.json` 保存。
+
+相关合成 inventory 与三阶段 callback 对照保存在 `/tmp/orbit-w2-batch-input-inventory.json`、`-assertions.json`；它们没有恢复历史 runtime fixture、没有改 generator，也不替代上述正式 RED/GREEN。当前批准范围完成后冻结两文件增量供主协调验收；未部署。
