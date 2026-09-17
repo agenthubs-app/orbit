@@ -1,6 +1,7 @@
 import type { MessageDictionary } from "./messages";
 
 export const ja = {
+  "personal63.hour": "時", "personal63.minute": "分", "personal63.clearEnd": "終了時刻をクリア", "personal63.lastDay": "最終日",
   "personal60.invalidReminder": "有効な通知時刻を選択してください。",
   "personal60.invalidUntil": "繰り返しの終了日は、開始日以降の有効な日付を入力してください。",
   "personal60.done": "完了",

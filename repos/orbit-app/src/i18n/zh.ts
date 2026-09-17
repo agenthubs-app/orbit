@@ -1,6 +1,7 @@
 import type { MessageDictionary } from "./messages";
 
 export const zh = {
+  "personal63.hour": "小时", "personal63.minute": "分钟", "personal63.clearEnd": "清除结束时间", "personal63.lastDay": "最后占用日",
   "personal60.invalidReminder": "请选择有效的提醒时间。",
   "personal60.invalidUntil": "重复结束日期需有效，且不能早于开始日期。",
   "personal60.done": "完成",

@@ -27,6 +27,7 @@ const state = window.fixture = {
     state.pending[index]?.(new Response(JSON.stringify(payload), { status, headers: { "content-type": "application/json" } }));
   }
 };
+if (state.now) Date.now = () => new Date(state.now).getTime();
 onSessionExpired(() => state.expiries++);
 // Model only the platform unit-formatting fault; dates, numbers and real translators stay real.
 if (state.unitFormatAsSeconds) {
@@ -57,6 +58,7 @@ state.setDeviceZone = zone => {
   };
   foregroundListeners.forEach(fn => fn("active"));
 };
+if (state.deviceZone) state.setDeviceZone(state.deviceZone);
 export const useFixture = () => { observe(); return state; };
 export const useOrbitLocale = () => { observe(); const language = state.language ?? "zh"; return React.useMemo(() => ({ language, t: createTranslator(language) }), [language]); };
 export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.signedIn ? state.actor : null, actorId: state.signedIn ? state.actor : null, user: state.signedIn ? { id: state.rawUserId } : null, cookieHeader: state.cookieHeader }; };
@@ -131,9 +133,168 @@ test("personal list reads owned collection, opens detail and distinguishes failu
   await p.getByText("暂无个人日程", { exact: true }).waitFor();
   assert.equal(await p.getByText("个人日程加载失败", { exact: true }).count(), 0);
 });
-async function fill(p: Page, label: string, value: string) { await p.getByRole("textbox", { name: label, exact: true }).fill(value); await settle(p); }
+async function fill(p: Page, label: string, value: string) {
+  const date = ["开始日期", "结束日期", "重复结束日期", "Repeat end date", "繰り返しの終了日"].includes(label);
+  const time = ["开始时间", "结束时间"].includes(label);
+  if (!date && !time) { await p.getByRole("textbox", { name: label, exact: true }).fill(value); await settle(p); return; }
+  const language = await p.evaluate(() => (window as any).fixture.language ?? "zh");
+  const done = language === "en" ? "Done" : language === "ja" ? "完了" : "完成";
+  const cancel = language === "en" ? "Cancel" : language === "ja" ? "キャンセル" : "取消";
+  const calendar = p.getByRole("dialog").filter({ has: p.getByRole("button", { name: /^\d{4}-\d{2}-\d{2}$/ }) });
+  if (label !== "开始日期" && await calendar.count()) { await calendar.getByRole("button", { name: cancel, exact: true }).click(); await settle(p); }
+  if (label === "结束时间" && value === "") { await press(p, "清除结束时间"); return; }
+  if (!(label === "开始日期" && await calendar.count())) await press(p, label === "开始日期" ? "调整日期和时间" : label);
+  if (date) {
+    for (let n = 0; n < 36; n++) {
+      const first = await calendar.getByRole("button", { name: /^\d{4}-\d{2}-\d{2}$/ }).first().getAttribute("aria-label");
+      if (first!.slice(0, 7) === value.slice(0, 7)) break;
+      await calendar.getByRole("button").filter({ hasText: first!.slice(0, 7) < value.slice(0, 7) ? "›" : "‹" }).click();
+    }
+    await calendar.getByRole("button", { name: value, exact: true }).click();
+  } else {
+    const [hour, minute] = value.split(":");
+    await p.getByRole("radio", { name: `HH ${hour}`, exact: true }).click();
+    await p.getByRole("radio", { name: `mm ${minute}`, exact: true }).click();
+  }
+  await p.getByRole("dialog").getByRole("button", { name: done, exact: true }).click(); await settle(p);
+}
 async function press(p: Page, name: string) { await p.getByRole("button", { name, exact: true }).click(); await settle(p); }
 async function writes(p: Page) { return p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method !== "GET" && r.path.startsWith("/api/schedule-items")).map((r: any) => ({ method: r.method, path: r.path, body: r.body }))); }
+
+test("empty creation date opens a calendar directly and cancellation leaves the draft empty", async t => {
+  const p = await open(t, { taskId: "" });
+  await press(p, "调整日期和时间");
+  assert.equal(await p.getByRole("dialog").count(), 1);
+  assert.equal(await p.getByRole("textbox", { name: "开始日期", exact: true }).count(), 0);
+  await p.getByRole("dialog").getByRole("button", { name: "取消", exact: true }).click();
+  await settle(p);
+  assert.equal(await p.getByRole("dialog").count(), 0);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("time field opens exact minutes and Escape cancels without rounding", async t => {
+  const item = { ...initialItem, startsAt: "2026-09-17T00:37:00Z", endsAt: "2026-09-17T01:07:00Z", timeZone: "Asia/Tokyo" };
+  const p = await open(t, { item });
+  await press(p, "开始时间");
+  assert.equal(await p.getByRole("radio", { name: "HH 09", exact: true }).getAttribute("aria-checked"), "true");
+  assert.equal(await p.getByRole("radio", { name: "mm 37", exact: true }).getAttribute("aria-checked"), "true");
+  await p.getByRole("radio", { name: "mm 38", exact: true }).click();
+  await p.keyboard.press("Escape"); await settle(p);
+  assert.equal(await p.getByRole("dialog").count(), 0);
+  assert.equal(await p.getByText("09:37", { exact: true }).count(), 1);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("new confirmed 23:45 start defaults to thirty minutes across midnight", async t => {
+  const p = await open(t, { taskId: "" });
+  await fill(p, "日程标题", "Picker midnight");
+  await press(p, "调整日期和时间");
+  await p.getByRole("button", { name: "2026-09-17", exact: true }).click();
+  await p.getByRole("dialog").getByRole("button", { name: "完成", exact: true }).click(); await settle(p);
+  await press(p, "开始时间");
+  await p.getByRole("radio", { name: "HH 23", exact: true }).click();
+  await p.getByRole("radio", { name: "mm 45", exact: true }).click();
+  await p.getByRole("dialog").getByRole("button", { name: "完成", exact: true }).click(); await settle(p);
+  assert.equal(await p.getByText("00:15", { exact: true }).count(), 1);
+  await press(p, "保存日程");
+  const write = (await writes(p))[0];
+  assert.equal(write.body.startsAt, "2026-09-17T14:45:00.000Z");
+  assert.equal(write.body.endsAt, "2026-09-17T15:15:00.000Z");
+});
+
+test("moving an existing start preserves its actual duration including stored seconds", async t => {
+  const item = { ...initialItem, startsAt: "2026-09-17T00:30:42Z", endsAt: "2026-09-17T01:01:12Z", timeZone: "Asia/Tokyo" };
+  const p = await open(t, { item });
+  await press(p, "开始时间");
+  await p.getByRole("radio", { name: "HH 10", exact: true }).click();
+  await p.getByRole("radio", { name: "mm 30", exact: true }).click();
+  await p.getByRole("dialog").getByRole("button", { name: "完成", exact: true }).click(); await settle(p);
+  await press(p, "保存日程");
+  const write = (await writes(p))[0];
+  assert.ok(write, "a valid moved start can be saved");
+  assert.equal(write.body.patch.startsAt, "2026-09-17T01:30:00.000Z");
+  assert.equal(write.body.patch.endsAt, "2026-09-17T02:00:30.000Z");
+});
+
+test("repeat end opens the same calendar and cancelling a candidate preserves the saved until", async t => {
+  const p = await open(t, { item: { ...initialItem, recurrence: { frequency: "daily", until: "2026-09-20" }, timeZone: "Asia/Tokyo" } });
+  await press(p, "修改范围");
+  await p.getByRole("radio", { name: "整个重复系列", exact: true }).click();
+  await press(p, "重复");
+  await press(p, "重复结束日期");
+  await p.getByRole("button", { name: "2026-09-21", exact: true }).click();
+  await p.getByRole("dialog", { name: "日期", exact: true }).getByRole("button", { name: "取消", exact: true }).click(); await settle(p);
+  assert.equal(await p.getByRole("button", { name: "重复结束日期", exact: true }).innerText(), "2026-09-20");
+  assert.deepEqual(await writes(p), []);
+});
+
+test("end date and clearing its time are directly accessible without a numeric keyboard", async t => {
+  const p = await open(t);
+  await press(p, "结束日期");
+  await p.getByRole("button", { name: "2026-09-18", exact: true }).click();
+  await p.getByRole("dialog").getByRole("button", { name: "完成", exact: true }).click(); await settle(p);
+  await press(p, "清除结束时间");
+  await press(p, "保存日程");
+  assert.deepEqual((await writes(p))[0].body.patch, { endsAt: null });
+});
+
+test("calendar navigates leap February and the year boundary without changing the candidate", async t => {
+  const p = await open(t, { item: { ...initialItem, startsAt: "2028-02-29T00:37:00Z", endsAt: "2028-02-29T01:07:00Z", timeZone: "Asia/Tokyo" } });
+  await press(p, "调整日期和时间");
+  assert.equal(await p.getByRole("button", { name: "2028-02-29", exact: true }).count(), 1);
+  await press(p, "下个月");
+  assert.equal(await p.getByRole("button", { name: "2028-03-31", exact: true }).count(), 1);
+  await press(p, "上个月");
+  await p.getByRole("dialog").getByRole("button", { name: "完成", exact: true }).click(); await settle(p);
+  assert.deepEqual(await writes(p), []);
+  await press(p, "调整日期和时间");
+  for (let n = 0; n < 2; n++) await press(p, "上个月");
+  assert.equal(await p.getByRole("button", { name: "2027-12-31", exact: true }).count(), 1);
+  await press(p, "下个月");
+  assert.equal(await p.getByRole("button", { name: "2028-01-01", exact: true }).count(), 1);
+});
+
+test("today and tomorrow use the schedule zone rather than the browser calendar day", async t => {
+  const p = await open(t, { taskId: "", deviceZone: "Pacific/Honolulu", now: "2026-09-17T00:30:00Z" });
+  await press(p, "调整日期和时间"); await press(p, "今天");
+  assert.equal(await p.getByRole("button", { name: "2026-09-16", exact: true }).getAttribute("aria-selected"), "true");
+  await press(p, "明天");
+  assert.equal(await p.getByRole("button", { name: "2026-09-17", exact: true }).getAttribute("aria-selected"), "true");
+});
+
+test("picker focus is trapped and Escape returns to its time trigger", async t => {
+  const p = await open(t);
+  await press(p, "开始时间"); await p.waitForTimeout(350);
+  for (const key of ["Tab", "Tab", "Shift+Tab", "Shift+Tab"]) {
+    await p.keyboard.press(key);
+    assert.equal(await p.evaluate(() => !!document.activeElement?.closest('[role="dialog"]')), true);
+  }
+  await p.keyboard.press("Escape"); await p.waitForTimeout(350);
+  assert.equal(await p.evaluate(() => document.activeElement?.getAttribute("aria-label")), "开始时间");
+});
+
+test("old picker confirmation cannot change a replacement actor's draft", async t => {
+  const p = await open(t);
+  await press(p, "开始时间");
+  await p.getByRole("radio", { name: "mm 37", exact: true }).click();
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldConfirm = s.presses["完成"]; s.update({ actor: "actor-2", item: { ...s.item, accountId: "actor-2", ownerUserId: "actor-2", title: "New picker owner", startsAt: "2026-09-17T02:15:00Z", endsAt: "2026-09-17T02:45:00Z" } }); }); await settle(p);
+  await p.evaluate(() => (window as any).fixture.oldConfirm()); await settle(p);
+  assert.equal(await p.getByRole("dialog").count(), 0);
+  assert.equal(await p.getByText("11:15", { exact: true }).count(), 1);
+  assert.equal(await p.getByRole("textbox", { name: "日程标题", exact: true }).inputValue(), "New picker owner");
+  assert.deepEqual(await writes(p), []);
+});
+
+test("saving disables a staged picker and rejects its earlier confirmation callback", async t => {
+  const p = await open(t);
+  await fill(p, "日程标题", "Only title"); await press(p, "开始时间");
+  await p.getByRole("radio", { name: "mm 37", exact: true }).click();
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldConfirm = s.presses["完成"]; s.presses["保存日程"](); }); await settle(p);
+  assert.equal(await p.getByRole("dialog").getByRole("button", { name: "完成", exact: true }).isDisabled(), true);
+  await p.evaluate(() => (window as any).fixture.oldConfirm()); await settle(p);
+  assert.equal((await writes(p)).length, 1);
+  assert.deepEqual((await writes(p))[0].body.patch, { title: "Only title" });
+});
 
 for (const [entry, searchLabel] of [["关联笔记", "搜索笔记"], ["关联人脉", "搜索相关人脉"]] as const) {
   test(`association entry ${entry} opens a bottom dialog before searching`, async t => {
@@ -162,6 +323,11 @@ test("editor duration shortcuts expose the selected duration after changing the 
   assert.deepEqual(await writes(p), []);
 });
 
+test("duration selection does not call fractional stored durations thirty minutes", async t => {
+  const p = await open(t, { item: { ...initialItem, startsAt: "2026-09-17T00:37:42Z", endsAt: "2026-09-17T01:07:00Z", timeZone: "Asia/Tokyo" } });
+  assert.notEqual(await p.getByRole("button", { name: "30分钟", exact: true }).getAttribute("aria-selected"), "true");
+});
+
 test("editor reference date is localized without changing its saved date or time", async t => {
   const item = { ...initialItem, title: "产品体验演练", startsAt: "2026-09-16T09:00:00Z", endsAt: "2026-09-16T09:30:00Z", timeZone: "Asia/Tokyo", meetingMethod: "video", contactIds: ["contact:reference"] };
   const p = await open(t, { item, contact: { id: "contact:reference", displayName: "林悦" } });
@@ -176,7 +342,7 @@ test("editor reference date is localized without changing its saved date or time
   const remark = await p.getByLabel("备注", { exact: true }).boundingBox();
   const save = await p.getByRole("button", { name: "保存日程", exact: true }).boundingBox();
   assert.ok(remark && save && remark.y + remark.height <= save.y - 12, `reference rows remain above the save panel: ${JSON.stringify({ remark, save })}`);
-  await p.screenshot({ path: "/Users/xzhao/Projects/orbit/.worktrees/sprint-0060-personal-reminders-recurrence/build/harness-state/evidence/sprint-0060/run-01/app-editor-reference.png" });
+  await p.screenshot({ path: "/Users/xzhao/Projects/orbit/.worktrees/sprint-0063-date-time-picker/build/harness-state/evidence/sprint-0063/run-01/app-editor-reference.png" });
 });
 
 test("association checkbox exposes selected state, supports deselection and cancels without writes", async t => {
@@ -436,8 +602,8 @@ test("localized repeat options remain usable with enlarged text and closing make
     await p.setViewportSize({ width: 390, height: 520 });
     await p.getByRole("button", { name: entry, exact: true }).click();
     await p.getByRole("radio", { name: monthly, exact: true }).click();
-    await p.getByRole("textbox", { name: until, exact: true }).fill("2026-10-17");
-    await p.screenshot({ path: `/Users/xzhao/Projects/orbit/.worktrees/sprint-0060-personal-reminders-recurrence/build/harness-state/evidence/sprint-0060/run-01/app-rules-${language}.png` });
+    await fill(p, until, "2026-10-17");
+    await p.screenshot({ path: `/Users/xzhao/Projects/orbit/.worktrees/sprint-0063-date-time-picker/build/harness-state/evidence/sprint-0063/run-01/app-rules-${language}.png` });
     await p.getByRole("dialog", { name: entry, exact: true }).getByRole("button", { name: done, exact: true }).click();
     assert.deepEqual(await writes(p), []);
   }
@@ -465,7 +631,7 @@ for (const [language, entry, daily, until, done, save, message] of [
     assert.equal(await p.getByRole("alert").textContent(), message);
     assert.equal(await p.evaluate(() => (window as any).fixture.navigation), undefined);
     await press(p, entry);
-    assert.equal(await p.getByRole("textbox", { name: until, exact: true }).inputValue(), "2026-09-16");
+    assert.equal(await p.getByRole("button", { name: until, exact: true }).innerText(), "2026-09-16");
   });
 }
 
@@ -615,10 +781,10 @@ test("merged time block shortcuts and both saves share one in-flight mutation", 
   await fill(p, "开始日期", "2026-09-17"); await fill(p, "开始时间", "23:45");
   await press(p, "30分钟");
   await p.getByText("00:15", { exact: true }).waitFor();
-  await p.getByRole("button", { name: "调整日期和时间", exact: true }).click(); await settle(p);
+  await settle(p);
   const saveBox = await p.getByRole("button", { name: "保存日程", exact: true }).boundingBox();
   assert.ok(saveBox && saveBox.y >= 0 && saveBox.y + saveBox.height <= 844, "bottom save remains visible at the reference viewport");
-  await p.screenshot({ path: "/Users/xzhao/Projects/orbit/.worktrees/sprint-0060-personal-reminders-recurrence/build/harness-state/evidence/sprint-0060/run-01/app-editor-shortcuts.png", fullPage: true });
+  await p.screenshot({ path: "/Users/xzhao/Projects/orbit/.worktrees/sprint-0063-date-time-picker/build/harness-state/evidence/sprint-0063/run-01/app-editor-shortcuts.png", fullPage: true });
   await press(p, "保存日程");
   assert.equal(await p.getByRole("button", { name: "保存", exact: true }).isDisabled(), true);
   assert.equal((await writes(p)).length, 1);
@@ -629,7 +795,7 @@ test("personal destination reads a standalone detail with edit and reschedule bu
   const p = await open(t, { detail: true });
   assert.equal(await p.getByRole("textbox").count(), 0);
   await p.getByText("个人日程 · 仅自己可见", { exact: true }).waitFor();
-  await p.screenshot({ path: "/Users/xzhao/Projects/orbit/.worktrees/sprint-0060-personal-reminders-recurrence/build/harness-state/evidence/sprint-0060/run-01/app-detail.png", fullPage: true });
+  await p.screenshot({ path: "/Users/xzhao/Projects/orbit/.worktrees/sprint-0063-date-time-picker/build/harness-state/evidence/sprint-0063/run-01/app-detail.png", fullPage: true });
   assert.equal((await writes(p)).length, 0);
   await press(p, "编辑");
   assert.equal(await p.evaluate(() => (window as any).fixture.navigation), "/schedule/personal/personal%3Aedit/edit");

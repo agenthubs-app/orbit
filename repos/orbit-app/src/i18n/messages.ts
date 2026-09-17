@@ -4,6 +4,7 @@ import { ja } from "./ja";
 import { zh } from "./zh";
 
 export const messageKeys = [
+  "personal63.hour", "personal63.minute", "personal63.clearEnd", "personal63.lastDay",
   "personal60.invalidReminder", "personal60.invalidUntil",
   "personal60.done",
   "personal60.pastReminder",

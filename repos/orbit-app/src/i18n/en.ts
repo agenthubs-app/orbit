@@ -1,6 +1,7 @@
 import type { MessageDictionary } from "./messages";
 
 export const en = {
+  "personal63.hour": "Hour", "personal63.minute": "Minute", "personal63.clearEnd": "Clear end time", "personal63.lastDay": "Last occupied day",
   "personal60.invalidReminder": "Choose a valid reminder time.",
   "personal60.invalidUntil": "Enter a valid repeat end date on or after the start date.",
   "personal60.done": "Done",
