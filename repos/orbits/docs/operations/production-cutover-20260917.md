@@ -156,3 +156,24 @@ pooler ceiling is not a supported-user count. Monthly capacity depends on measur
 bytes and compute per active user plus background work. The existing ten-minute
 maintenance cadence is preserved to avoid delaying reminders; it is not free and
 has not been replaced with an idle/due-only scheduler. No paid upgrade was made.
+
+## Latest deployed handoff
+
+- Application source: `02ec26f0`, pushed to the isolated branch above.
+- Deployment: `dpl_5YSXNR4mGzsb1xWuZt6FfY4jUimV`, CLI deployment completed,
+  `sin1` runtime; both formal domains remain on the new project.
+- Final browser reload on `https://www.orbitailink.com/app/contacts` shows
+  30 contacts / 30 results with the existing stage counts and list intact.
+- Management read-back confirms old project still paused. New project has no Git
+  repository link, so these pushed branch commits do not imply automatic future
+  production deployment. Future releases must explicitly target the new project.
+- Production database and target pins are production-only env bindings. Preview
+  has no database URL binding; historical deployments remain the caveat above.
+- Final focused suite: 27 tests, 26 passed, one skipped because an existing test
+  accepts only its separate approved local database. The new conditional-write,
+  contact scope and projection PostgreSQL tests did run on the dedicated local DB.
+- Both `npm run typecheck` and `npm run typecheck:app` pass. The prior 506-test
+  baseline failure and four skips remain disclosed above, not counted as green.
+- No native App runtime test or all-domain mutation acceptance is claimed.
+- Four-workstream completion is **not** claimed; the remaining design/acceptance
+  list above is still open. No user-capacity or monthly cost guarantee is made.
