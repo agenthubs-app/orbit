@@ -360,7 +360,6 @@ function contactMatchesFilters(
   appliedFilters: ContactsAppliedFilters,
 ): boolean {
   return (
-    includesText(contact, appliedFilters.query) &&
     appliedFilters.tagFilters.every((tag) => contact.tags.includes(tag)) &&
     (appliedFilters.sourceFilters.length === 0 ||
       appliedFilters.sourceFilters.includes(contact.source.type)) &&
@@ -399,6 +398,122 @@ function nextPageCursor(offset: number, input: ContactsListSearchFilterInput): s
   return Buffer.from(JSON.stringify({ offset, scope: paginationScope(input) }), "utf8").toString("base64url");
 }
 
+interface ContactListFallbackSortKey {
+  occurredAt: string;
+  recordId: string;
+  storageOrder: number;
+  updatedAt: string;
+  storageAfter?: boolean;
+}
+
+interface ContactListFallbackMetadata {
+  cursorScope: string;
+  sortKeys: readonly ContactListFallbackSortKey[];
+}
+
+interface ContactListKeysetCursor {
+  last: {
+    occurredAt: string;
+    prefixRank: number;
+    recordId: string;
+    updatedAt: string;
+  };
+  scope: string;
+  version: 1;
+}
+
+const CONTACT_LIST_CURSOR_TIMESTAMP_PATTERN =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?(Z|[+-]\d{2}:\d{2})$/;
+
+function validContactListCursorTimestamp(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const match = CONTACT_LIST_CURSOR_TIMESTAMP_PATTERN.exec(value);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  const zone = match[8];
+  const offsetHour = zone === "Z" ? 0 : Number(zone.slice(1, 3));
+  const offsetMinute = zone === "Z" ? 0 : Number(zone.slice(4, 6));
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
+  return month >= 1 && month <= 12 &&
+    day >= 1 && day <= (daysInMonth ?? 0) &&
+    hour >= 0 && hour <= 23 &&
+    minute >= 0 && minute <= 59 &&
+    second >= 0 && second <= 59 &&
+    year >= 1 &&
+    offsetHour >= 0 && offsetHour <= 15 &&
+    offsetMinute >= 0 && offsetMinute <= 59
+    ? value
+    : null;
+}
+
+function decodeContactListKeysetCursor(
+  cursor: string | null | undefined,
+  scope: string,
+): ContactListKeysetCursor["last"] | null {
+  if (!cursor || !scope) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")) as Partial<ContactListKeysetCursor>;
+    if (
+      parsed.version !== 1 ||
+      parsed.scope !== scope ||
+      !parsed.last ||
+      typeof parsed.last !== "object" ||
+      Array.isArray(parsed.last)
+    ) {
+      return null;
+    }
+    const last = parsed.last;
+    const prefixRank = Number(last.prefixRank);
+    const occurredAt = validContactListCursorTimestamp(last.occurredAt);
+    const updatedAt = validContactListCursorTimestamp(last.updatedAt);
+    if (
+      !Number.isSafeInteger(prefixRank) ||
+      prefixRank < 0 ||
+      prefixRank > 1 ||
+      !occurredAt ||
+      !updatedAt ||
+      typeof last.recordId !== "string" ||
+      last.recordId.trim().length === 0
+    ) {
+      return null;
+    }
+    return { occurredAt, prefixRank, recordId: last.recordId, updatedAt };
+  } catch {
+    return null;
+  }
+}
+
+function nextContactListKeysetCursor(
+  last: ContactListKeysetCursor["last"],
+  scope: string,
+): string {
+  return Buffer.from(JSON.stringify({ version: 1, scope, last }), "utf8").toString("base64url");
+}
+
+function fallbackContactListMetadata(
+  graph: LocalRemoteContactGraph,
+): ContactListFallbackMetadata | null {
+  const metadata = (graph as LocalRemoteContactGraph & {
+    contactListFallback?: ContactListFallbackMetadata;
+  }).contactListFallback;
+  return metadata && metadata.cursorScope && metadata.sortKeys.length === graph.contacts.length
+    ? metadata
+    : null;
+}
+
+function fallbackPrefixRank(
+  contact: ContactListItem,
+  query: string,
+): 0 | 1 {
+  return contact.displayName.toLowerCase().startsWith(query) ? 0 : 1;
+}
+
 // 计算 filter option 的 count 和 selected 状态，供 UI 直接渲染筛选器。
 function filterOption<TValue extends string>(
   value: TValue,
@@ -414,22 +529,33 @@ function filterOption<TValue extends string>(
   };
 }
 
-// availableFilters 基于“全量本地 contacts”计算，便于用户看到每个筛选项的总体数量。
-function buildAvailableFilters(
-  contacts: readonly ContactListItem[],
+export interface ContactsFacetCounts {
+  tags: readonly { value: string; count: number }[];
+  sources: Readonly<Record<string, number>>;
+  values: Readonly<Record<string, number>>;
+  statuses: Readonly<Record<string, number>>;
+}
+
+// SQL readers return counts over the complete authorized graph. Keep the
+// contract labels/order in this mapper so storage never invents a second DTO.
+export function buildAvailableFiltersFromFacetCounts(
+  counts: ContactsFacetCounts,
   appliedFilters: ContactsAppliedFilters,
 ): ContactsAvailableFilters {
+  const tagCounts = new Map(counts.tags.map((item) => [item.value, item.count]));
+  const tags = [
+    ...CONTACT_TAG_FILTERS,
+    ...counts.tags
+      .map((item) => item.value)
+      .filter((value) => !CONTACT_TAG_FILTERS.includes(value as never)),
+  ];
+
   return {
-    tags: Array.from(
-      new Set([
-        ...CONTACT_TAG_FILTERS,
-        ...contacts.flatMap((contact) => contact.tags),
-      ]),
-    ).map((tag) =>
+    tags: Array.from(new Set(tags)).map((tag) =>
       filterOption(
         tag,
         tagLabels[tag] ?? tag,
-        contacts.filter((contact) => contact.tags.includes(tag)).length,
+        tagCounts.get(tag) ?? 0,
         appliedFilters.tagFilters,
       ),
     ),
@@ -437,7 +563,7 @@ function buildAvailableFilters(
       filterOption(
         source,
         sourceLabels[source],
-        contacts.filter((contact) => contact.source.type === source).length,
+        counts.sources[source] ?? 0,
         appliedFilters.sourceFilters,
       ),
     ),
@@ -445,9 +571,7 @@ function buildAvailableFilters(
       filterOption(
         value,
         valueLabels[value],
-        contacts.filter((contact) =>
-          contact.value.valueTypes.includes(value),
-        ).length,
+        counts.values[value] ?? 0,
         appliedFilters.valueFilters,
       ),
     ),
@@ -455,11 +579,42 @@ function buildAvailableFilters(
       filterOption(
         status,
         statusLabels[status],
-        contacts.filter((contact) => contact.lifecycleInitialization !== "pending" && contact.status === status).length,
+        counts.statuses[status] ?? 0,
         appliedFilters.statusFilters,
       ),
     ),
   };
+}
+
+// availableFilters 基于“全量本地 contacts”计算，便于用户看到每个筛选项的总体数量。
+function buildAvailableFilters(
+  contacts: readonly ContactListItem[],
+  appliedFilters: ContactsAppliedFilters,
+): ContactsAvailableFilters {
+  const tagCounts = new Map<string, number>();
+  const sourceCounts: Record<string, number> = {};
+  const valueCounts: Record<string, number> = {};
+  const statusCounts: Record<string, number> = {};
+
+  for (const contact of contacts) {
+    for (const tag of new Set(contact.tags)) {
+      tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
+    }
+    sourceCounts[contact.source.type] = (sourceCounts[contact.source.type] ?? 0) + 1;
+    for (const value of new Set(contact.value.valueTypes)) {
+      valueCounts[value] = (valueCounts[value] ?? 0) + 1;
+    }
+    if (contact.lifecycleInitialization !== "pending") {
+      statusCounts[contact.status] = (statusCounts[contact.status] ?? 0) + 1;
+    }
+  }
+
+  return buildAvailableFiltersFromFacetCounts({
+    tags: Array.from(tagCounts, ([value, count]) => ({ value, count })),
+    sources: sourceCounts,
+    values: valueCounts,
+    statuses: statusCounts,
+  }, appliedFilters);
 }
 
 // provenance 至少需要一个 evidenceId；空结果用稳定 evidence id 表示“查询确实执行过”。
@@ -507,14 +662,82 @@ function buildPayload(
 ): ContactsListSearchPayload {
   const allContacts = toContactListItems(graph);
   const appliedFilters = appliedFiltersFromInput(input);
-  const matchedContacts = allContacts.filter((contact) =>
+  const ambiguousContactIds = (graph as LocalRemoteContactGraph & {
+    ambiguousContactIds?: readonly string[];
+  }).ambiguousContactIds ?? [];
+  const ambiguousContactIdSet = new Set(ambiguousContactIds);
+  const paged = input.limit !== undefined && input.limit !== null;
+  const queryMatchedContacts = allContacts.filter((contact) =>
+    includesText(contact, appliedFilters.query),
+  );
+  if (
+    !paged &&
+    queryMatchedContacts.some((contact) => ambiguousContactIdSet.has(contact.id))
+  ) {
+    throw new Error("CONTACT_DETAIL_AMBIGUOUS_CONNECTION");
+  }
+  const matchedContacts = queryMatchedContacts.filter((contact) =>
     contactMatchesFilters(contact, appliedFilters),
   );
-  const paged = input.limit !== undefined && input.limit !== null;
+  const matchedContactSet = new Set(matchedContacts);
   const limit = paged ? Math.min(50, Math.max(1, Math.floor(input.limit!))) : matchedContacts.length;
-  const offset = paged ? pageOffset(input) : 0;
-  const contacts = matchedContacts.slice(offset, offset + limit);
+  const fallbackMetadata = paged ? fallbackContactListMetadata(graph) : null;
+  const fallbackEntries = fallbackMetadata
+    ? allContacts.map((contact, index) => ({
+        contact,
+        sortKey: fallbackMetadata.sortKeys[index]!,
+      }))
+    : null;
+  const contactsWithFallbackOrder = fallbackEntries
+    ? fallbackEntries.filter(({ contact }) => matchedContactSet.has(contact))
+    : null;
+  const orderedFallbackEntries = contactsWithFallbackOrder
+    ? [...contactsWithFallbackOrder].sort((left, right) => {
+        const leftPrefixRank = fallbackPrefixRank(left.contact, appliedFilters.query);
+        const rightPrefixRank = fallbackPrefixRank(right.contact, appliedFilters.query);
+        return leftPrefixRank - rightPrefixRank ||
+          left.sortKey.storageOrder - right.sortKey.storageOrder;
+      })
+    : null;
+  const fallbackCursor = fallbackMetadata
+    ? decodeContactListKeysetCursor(input.cursor, fallbackMetadata.cursorScope)
+    : null;
+  const fallbackCursorHasStorageBoundary = Boolean(
+    fallbackCursor &&
+    orderedFallbackEntries?.every(({ sortKey }) => typeof sortKey.storageAfter === "boolean"),
+  );
+  const fallbackPageEntries = orderedFallbackEntries
+    ? orderedFallbackEntries.filter(({ contact, sortKey }) => {
+        if (!fallbackCursor || !fallbackCursorHasStorageBoundary) return true;
+        const prefixRank = fallbackPrefixRank(contact, appliedFilters.query);
+        return prefixRank > fallbackCursor.prefixRank ||
+          (prefixRank === fallbackCursor.prefixRank && sortKey.storageAfter === true);
+      })
+    : null;
+  const offset = paged && !fallbackPageEntries ? pageOffset(input) : 0;
+  const contacts = fallbackPageEntries
+    ? fallbackPageEntries.slice(0, limit).map(({ contact }) => contact)
+    : matchedContacts.slice(offset, offset + limit);
+  if (contacts.some((contact) => ambiguousContactIdSet.has(contact.id))) {
+    throw new Error("CONTACT_DETAIL_AMBIGUOUS_CONNECTION");
+  }
   const nextOffset = offset + contacts.length;
+  const hasMoreFallback = fallbackPageEntries
+    ? fallbackPageEntries.length > limit
+    : false;
+  const nextFallbackEntry = fallbackPageEntries?.[limit - 1];
+  const nextCursor = fallbackPageEntries
+    ? nextFallbackEntry && hasMoreFallback
+      ? nextContactListKeysetCursor({
+          occurredAt: nextFallbackEntry.sortKey.occurredAt,
+          prefixRank: fallbackPrefixRank(nextFallbackEntry.contact, appliedFilters.query),
+          recordId: nextFallbackEntry.sortKey.recordId,
+          updatedAt: nextFallbackEntry.sortKey.updatedAt,
+        }, fallbackMetadata!.cursorScope)
+      : undefined
+    : paged && nextOffset < matchedContacts.length
+      ? nextPageCursor(nextOffset, input)
+      : undefined;
 
   return {
     state: contacts.length > 0 ? "success" : "empty",
@@ -523,7 +746,7 @@ function buildPayload(
     availableFilters: buildAvailableFilters(allContacts, appliedFilters),
     contacts,
     total: matchedContacts.length,
-    ...(paged && nextOffset < matchedContacts.length ? { nextCursor: nextPageCursor(nextOffset, input) } : {}),
+    ...(nextCursor ? { nextCursor } : {}),
     summary:
       matchedContacts.length > 0
         ? `${matchedContacts.length} contacts matched the hybrid local remote database query.`

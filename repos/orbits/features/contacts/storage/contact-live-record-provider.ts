@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { AppError } from "../../../shared/errors/app-error";
 
 import type {
@@ -36,8 +35,14 @@ import type {
   LiveContactsGraphProvider,
 } from "../live-service";
 import type { LocalRemoteContactGraph } from "../contact-graph-provider";
+import type { ContactsFacetCounts } from "../contact-graph-query";
 import { createPostgresContactScopeRecordReader, type ContactScopeRecordReader } from "./contact-scope-postgres-reader";
-import { CONTACT_ACTOR_AUTHORIZATION_SQL } from "./contact-read-authorization";
+import {
+  createPostgresContactListPageReader,
+  type ContactListSortKey,
+  type ContactRecordPage,
+  type ContactRecordPageReader,
+} from "./contact-list-postgres-reader";
 
 export const CONTACTS_LIVE_RECORD_COLLECTIONS = {
   connections: "connections",
@@ -45,8 +50,6 @@ export const CONTACTS_LIVE_RECORD_COLLECTIONS = {
   detailStates: "contact_detail_states",
   evidence: "evidence",
 } as const;
-
-const AMBIGUOUS_CONNECTION_ERROR = "CONTACT_DETAIL_AMBIGUOUS_CONNECTION";
 
 // The list DTO does not consume private notes, raw captures, handles or full
 // detail-state history. Keep those in the explicit contact-detail read path.
@@ -71,17 +74,13 @@ export interface StorageContactGraphProviderOptions {
   workspaceId: string;
 }
 
-interface ContactRecordPage {
-  nextCursor?: string;
-  recordIds: readonly string[];
-  total: number;
-}
-
-type ContactRecordSqlClient = Pick<ConfiguredPostgresLiveRecordStore["client"], "query">;
-type ContactRecordPageReader = (input: ContactsListSearchFilterInput, actorId: string) => Promise<ContactRecordPage | null>;
-
 interface BoundedContactGraph extends LocalRemoteContactGraph {
+  contactListFallback?: {
+    cursorScope: string;
+    sortKeys: readonly ContactListSortKey[];
+  };
   boundedPage?: {
+    facetCounts?: ContactsFacetCounts;
     nextCursor?: string;
     total: number;
   };
@@ -404,12 +403,51 @@ function uniqueEvidenceIds(
   );
 }
 
+async function readEvidenceRecordsByDomainId(input: {
+  evidenceIds: readonly string[];
+  evidenceRecordIds?: readonly string[];
+  listInput?: ContactsListSearchFilterInput;
+  store: LiveRecordStoreLike<Record<string, unknown>>;
+  workspaceId: string;
+}): Promise<readonly LiveRecord<Record<string, unknown>>[]> {
+  if (input.evidenceRecordIds !== undefined) {
+    if (input.evidenceRecordIds.length === 0) return [];
+    const expectedIds = new Set(input.evidenceIds);
+    const records = await input.store.listRecords({
+      workspaceId: input.workspaceId,
+      collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.evidence,
+      recordIds: input.evidenceRecordIds,
+      ...(input.listInput ? { payloadFields: evidenceListPayloadFields, omitSearchText: true } : {}),
+    });
+    return records.filter((record) =>
+      nonEmptyString(record.payload.id) && expectedIds.has(record.payload.id),
+    );
+  }
+
+  // Compatibility fallback for injected scope readers that predate the batch
+  // evidence keys. Preserve the old targeted record-id batch; never fan out by
+  // payload id and never widen this path to a workspace evidence scan.
+  const expectedIds = new Set(input.evidenceIds);
+  const records = input.evidenceIds.length > 0
+    ? await input.store.listRecords({
+        workspaceId: input.workspaceId,
+        collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.evidence,
+        recordIds: input.evidenceIds,
+        ...(input.listInput ? { payloadFields: evidenceListPayloadFields, omitSearchText: true } : {}),
+      })
+    : [];
+  return records.filter((record) =>
+    nonEmptyString(record.payload.id) && expectedIds.has(record.payload.id),
+  );
+}
+
 function graphFromRecords(input: {
   contactRecords: readonly LiveRecord<Record<string, unknown>>[];
   connectionRecords: readonly LiveRecord<Record<string, unknown>>[];
   detailStateRecords?: readonly LiveRecord<Record<string, unknown>>[];
   actorId?: string;
   evidenceRecords: readonly LiveRecord<Record<string, unknown>>[];
+  deferAmbiguity?: boolean;
 }): LocalRemoteContactGraph {
   // Once explicitly initialized, Connection is the lifecycle authority. The
   // acquisition Contact and legacy detail state are not a second stage store.
@@ -427,6 +465,7 @@ function graphFromRecords(input: {
         .filter((connection): connection is ConnectionDTO => connection !== null)
     : [];
   const connectionCandidatesByContactId = new Map<string, ConnectionDTO[]>();
+  const ambiguousContactIds: string[] = [];
   for (const connection of ownedConnections) {
     const candidates = connectionCandidatesByContactId.get(connection.contactId) ?? [];
     candidates.push(connection);
@@ -434,10 +473,14 @@ function graphFromRecords(input: {
   }
   for (const candidates of connectionCandidatesByContactId.values()) {
     if (candidates.length > 1 && candidates.some((connection) => connection.version !== undefined || connection.lifecycleInitialization !== undefined)) {
-      throw new Error(AMBIGUOUS_CONNECTION_ERROR);
+      ambiguousContactIds.push(candidates[0]!.contactId);
     }
   }
+  if (ambiguousContactIds.length > 0 && !input.deferAmbiguity) {
+    throw new Error("CONTACT_DETAIL_AMBIGUOUS_CONNECTION");
+  }
   const canonicalConnections = new Map<string, ConnectionDTO>();
+  const ambiguousContactIdSet = new Set(ambiguousContactIds);
   const contacts = input.contactRecords
     .map(contactFromRecord)
     .filter((contact): contact is ContactDTO => contact !== null);
@@ -447,6 +490,7 @@ function graphFromRecords(input: {
     const contact = contactsById.get(contactId);
     if (
       connection &&
+      !ambiguousContactIdSet.has(contactId) &&
       (connection.version !== undefined || connection.lifecycleInitialization === "ready") &&
       contact?.lifecycleInitialization !== "pending" &&
       connection.lifecycleInitialization !== "pending" &&
@@ -486,6 +530,7 @@ function graphFromRecords(input: {
       ...(input.detailStateRecords ?? []),
       ...input.evidenceRecords,
     ]),
+    ...(ambiguousContactIds.length > 0 ? { ambiguousContactIds } : {}),
   };
 }
 
@@ -508,36 +553,58 @@ async function readFocusedContactGraph(input: {
     });
   }
 
-  const query = input.listInput?.query?.trim().toLocaleLowerCase();
   const boundedPage = input.listInput && input.contactRecordPageReader
     ? await input.contactRecordPageReader(input.listInput, actorId)
     : null;
+  const usesFastBoundedPage = boundedPage !== null && boundedPage.mode !== "fallback";
+  const snapshotPage = boundedPage?.contactRecords ? boundedPage : null;
   const focusedIds = input.contactId ? [input.contactId] : boundedPage?.recordIds;
-  const scope = input.contactScopeRecordReader
+  const scope = snapshotPage
+    ? null
+    : input.contactScopeRecordReader
     ? await input.contactScopeRecordReader(actorId, focusedIds)
     : null;
-  const [contactRecords, allConnectionRecords, detailStateRecords] = await Promise.all([
-    input.store.listRecords({
-      workspaceId: input.workspaceId,
-      collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.contacts,
-      ...(input.contactId ? { recordIds: [input.contactId] } : {}),
-      ...(boundedPage ? { recordIds: boundedPage.recordIds } : {}),
-      ...(scope?.contactIds ? { recordIds: scope.contactIds } : {}),
-      ...(input.listInput ? { payloadFields: contactListPayloadFields, omitSearchText: !query } : {}),
-    }),
-    input.store.listRecords({
-      workspaceId: input.workspaceId,
-      collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.connections,
-      ...(scope ? { recordIds: scope.connectionIds } : boundedPage ? { userId: actorId } : {}),
-      ...(input.listInput ? { payloadFields: connectionListPayloadFields, omitSearchText: true } : {}),
-    }),
-    input.store.listRecords({
-      workspaceId: input.workspaceId,
-      collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.detailStates,
-      ...(scope ? { recordIds: scope.detailStateIds } : boundedPage ? { userId: actorId } : {}),
-      ...(input.listInput ? { payloadFields: detailStateListPayloadFields, omitSearchText: true } : {}),
-    }),
-  ]);
+  const legacyListQuery = input.listInput?.query?.trim().toLocaleLowerCase();
+  const useLegacyListPrefilter =
+    legacyListQuery !== undefined &&
+    !snapshotPage &&
+    scope === null;
+  let contactRecords: readonly LiveRecord<Record<string, unknown>>[];
+  let allConnectionRecords: readonly LiveRecord<Record<string, unknown>>[];
+  let detailStateRecords: readonly LiveRecord<Record<string, unknown>>[];
+  if (snapshotPage) {
+    contactRecords = snapshotPage.contactRecords;
+    allConnectionRecords = snapshotPage.connectionRecords;
+    detailStateRecords = snapshotPage.detailStateRecords;
+  } else {
+    [contactRecords, allConnectionRecords, detailStateRecords] = await Promise.all([
+      input.store.listRecords({
+        workspaceId: input.workspaceId,
+        collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.contacts,
+        ...(input.contactId ? { recordIds: [input.contactId] } : {}),
+        ...(boundedPage ? { recordIds: boundedPage.recordIds } : {}),
+        ...(scope?.contactIds ? { recordIds: scope.contactIds } : {}),
+        ...(input.listInput
+          ? {
+              payloadFields: contactListPayloadFields,
+              omitSearchText: !useLegacyListPrefilter,
+            }
+          : {}),
+      }),
+      input.store.listRecords({
+        workspaceId: input.workspaceId,
+        collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.connections,
+        ...(scope ? { recordIds: scope.connectionIds } : boundedPage ? { userId: actorId } : {}),
+        ...(input.listInput ? { payloadFields: connectionListPayloadFields, omitSearchText: true } : {}),
+      }),
+      input.store.listRecords({
+        workspaceId: input.workspaceId,
+        collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.detailStates,
+        ...(scope ? { recordIds: scope.detailStateIds } : boundedPage ? { userId: actorId } : {}),
+        ...(input.listInput ? { payloadFields: detailStateListPayloadFields, omitSearchText: true } : {}),
+      }),
+    ]);
+  }
   const actorConnectionRecords = allConnectionRecords.filter(
     (record) =>
       record.userId === actorId ||
@@ -551,61 +618,101 @@ async function readFocusedContactGraph(input: {
   const actorDetailStateRecords = detailStateRecords.filter(
     (record) => record.userId === actorId,
   );
-  const customTagQueryContactIds = new Set(
-    actorDetailStateRecords
-      .filter((record) =>
-        stringArray(record.payload.tags).some((tag) =>
-          tag.toLocaleLowerCase().includes(query ?? ""),
-        ),
-      )
-      .map((record) => record.payload.contactId)
-      .filter(nonEmptyString),
+  const legacyCustomTagContactIds = new Set(
+    legacyListQuery
+      ? actorDetailStateRecords
+          .filter((record) =>
+            stringArray(record.payload.tags).some((tag) =>
+              tag.toLocaleLowerCase().includes(legacyListQuery),
+            ),
+          )
+          .map((record) => record.payload.contactId)
+          .filter(nonEmptyString)
+      : [],
   );
-  const actorContactRecords = contactRecords.filter(
-    (record) =>
-      (boundedPage !== null ||
+  const legacyRelationshipContactIds = new Set(
+    legacyListQuery
+      ? actorConnectionRecords
+          .filter((record) =>
+            (record.searchText ?? "").toLocaleLowerCase().includes(legacyListQuery),
+          )
+          .map((record) => record.payload.contactId)
+          .filter(nonEmptyString)
+      : [],
+  );
+  const orderedContactRecords = usesFastBoundedPage
+    ? boundedPage.recordIds
+        .map((recordId) => contactRecords.find((record) => record.recordId === recordId))
+        .filter((record): record is LiveRecord<Record<string, unknown>> => record !== undefined)
+    : contactRecords;
+  const allActorContactRecords = orderedContactRecords.filter(
+    (record) => {
+      const actorCanSeeContact =
+        boundedPage !== null ||
         record.userId === actorId ||
         (nonEmptyString(record.payload.id) &&
-          actorContactIds.has(record.payload.id))) &&
-      (!query ||
-        record.searchText.toLocaleLowerCase().includes(query) ||
-        (nonEmptyString(record.payload.id) &&
-          customTagQueryContactIds.has(record.payload.id))),
+          actorContactIds.has(record.payload.id));
+      if (!actorCanSeeContact || !useLegacyListPrefilter) return actorCanSeeContact;
+      const contactId = optionalString(record.payload.id);
+      return (
+        (record.searchText ?? "").toLocaleLowerCase().includes(legacyListQuery) ||
+        (contactId !== undefined &&
+          (legacyCustomTagContactIds.has(contactId) ||
+            legacyRelationshipContactIds.has(contactId)))
+      );
+    },
   );
-  const contacts = actorContactRecords
+  const allContacts = allActorContactRecords
     .map(contactFromRecord)
     .filter((contact): contact is ContactDTO => contact !== null);
-  const contactIds = new Set(contacts.map((contact) => contact.id));
-  const connectionRecords = actorConnectionRecords.filter((record) => {
+  const allContactIds = new Set(allContacts.map((contact) => contact.id));
+  const contactConnectionRecords = actorConnectionRecords.filter((record) => {
     const connection = connectionFromRecord(record);
 
-    return connection ? contactIds.has(connection.contactId) : false;
+    return connection ? allContactIds.has(connection.contactId) : false;
   });
-  const connections = connectionRecords
+  const allConnections = contactConnectionRecords
     .map(connectionFromRecord)
     .filter((connection): connection is ConnectionDTO => connection !== null);
-  const evidenceRecordIds = uniqueEvidenceIds(contacts, connections);
-  const evidenceRecords =
-    evidenceRecordIds.length > 0
-      ? await input.store.listRecords({
+  const allEvidenceIds = uniqueEvidenceIds(allContacts, allConnections);
+  const allEvidenceRecords = snapshotPage
+    ? snapshotPage.evidenceRecords
+    : allEvidenceIds.length > 0
+      ? await readEvidenceRecordsByDomainId({
+          evidenceIds: allEvidenceIds,
+          ...(scope?.evidenceRecordIds !== undefined
+            ? { evidenceRecordIds: scope.evidenceRecordIds }
+            : {}),
+          listInput: input.listInput,
+          store: input.store,
           workspaceId: input.workspaceId,
-          collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.evidence,
-          recordIds: evidenceRecordIds,
-          ...(input.listInput ? { payloadFields: evidenceListPayloadFields, omitSearchText: true } : {}),
         })
       : [];
 
   const graph = graphFromRecords({
     actorId,
-    contactRecords: actorContactRecords,
-    connectionRecords,
+    contactRecords: allActorContactRecords,
+    connectionRecords: contactConnectionRecords,
     detailStateRecords: actorDetailStateRecords,
-    evidenceRecords,
+    evidenceRecords: allEvidenceRecords,
+    deferAmbiguity:
+      Boolean(input.listInput?.query?.trim()) ||
+      (input.listInput?.limit !== undefined && input.listInput.limit !== null),
   });
-  return boundedPage
+  if (boundedPage?.mode === "fallback") {
+    return {
+      ...graph,
+      contactListFallback: {
+        cursorScope: boundedPage.cursorScope ?? "",
+        sortKeys: boundedPage.sortKeys ?? [],
+      },
+    };
+  }
+  return usesFastBoundedPage
     ? {
         ...graph,
         boundedPage: {
+          ...(boundedPage.facetCounts ? { facetCounts: boundedPage.facetCounts } : {}),
           total: boundedPage.total,
           ...(boundedPage.nextCursor ? { nextCursor: boundedPage.nextCursor } : {}),
         },
@@ -613,87 +720,9 @@ async function readFocusedContactGraph(input: {
     : graph;
 }
 
-function supportsBoundedContactPage(input: ContactsListSearchFilterInput): boolean {
-  return Boolean(input.query?.trim())
-    && input.limit !== undefined
-    && input.limit !== null
-    && !(input.sourceFilters?.length)
-    && !(input.statusFilters?.length)
-    && !(input.tagFilters?.length)
-    && !(input.valueFilters?.length)
-    && !input.contextEventId?.trim();
-}
-
-function contactPageScope(input: ContactsListSearchFilterInput, actorId: string): string {
-  return createHash("sha256")
-    .update(JSON.stringify({ actorId, query: input.query?.trim().toLocaleLowerCase() ?? "" }))
-    .digest("base64url")
-    .slice(0, 24);
-}
-
-function contactPageOffset(input: ContactsListSearchFilterInput, actorId: string): number {
-  if (!input.cursor) return 0;
-  try {
-    const parsed = JSON.parse(Buffer.from(input.cursor, "base64url").toString("utf8")) as { offset?: unknown; scope?: unknown };
-    return Number.isSafeInteger(parsed.offset) && Number(parsed.offset) >= 0 && parsed.scope === contactPageScope(input, actorId)
-      ? Number(parsed.offset)
-      : 0;
-  } catch {
-    return 0;
-  }
-}
-
-function contactPageCursor(offset: number, input: ContactsListSearchFilterInput, actorId: string): string {
-  return Buffer.from(JSON.stringify({ offset, scope: contactPageScope(input, actorId) }), "utf8").toString("base64url");
-}
-
-export function createPostgresContactRecordPageReader(input: {
-  client: ContactRecordSqlClient;
-  workspaceId: string;
-}): ContactRecordPageReader {
-  return async (query, actorId) => {
-    if (!supportsBoundedContactPage(query)) return null;
-    const search = query.query!.trim();
-    const limit = Math.min(50, Math.max(1, Math.floor(query.limit!)));
-    const offset = contactPageOffset(query, actorId);
-    const where = `
-      c.workspace_id = $1
-      and c.collection_name = $2
-      and c.lifecycle_state <> 'deleted'
-      and c.search_text ilike $3
-      and ${CONTACT_ACTOR_AUTHORIZATION_SQL}
-    `;
-    const values = [
-      input.workspaceId,
-      CONTACTS_LIVE_RECORD_COLLECTIONS.contacts,
-      `%${search}%`,
-      actorId,
-      CONTACTS_LIVE_RECORD_COLLECTIONS.connections,
-    ] as const;
-    const [countResult, pageResult] = await Promise.all([
-      input.client.query<{ total: string | number }>(`select count(*) as total from orbit_records c where ${where}`, values),
-      input.client.query<{ record_id: string }>(`
-        select c.record_id
-        from orbit_records c
-        where ${where}
-        order by
-          case when coalesce(c.payload->>'displayName', '') ilike $6 then 0 else 1 end,
-          coalesce(c.occurred_at, c.updated_at) desc,
-          c.updated_at desc,
-          c.record_id asc
-        limit $7 offset $8
-      `, [...values, `${search}%`, limit, offset]),
-    ]);
-    const total = Number(countResult.rows[0]?.total ?? 0);
-    const recordIds = pageResult.rows.map((row) => row.record_id);
-    const nextOffset = offset + recordIds.length;
-    return {
-      recordIds,
-      total,
-      ...(nextOffset < total ? { nextCursor: contactPageCursor(nextOffset, query, actorId) } : {}),
-    };
-  };
-}
+// Preserve the graph-resolved export used by existing callers while the
+// implementation lives in its own single-snapshot reader module.
+export const createPostgresContactRecordPageReader = createPostgresContactListPageReader;
 
 export function createStorageContactGraphProvider({
   contactRecordPageReader,
