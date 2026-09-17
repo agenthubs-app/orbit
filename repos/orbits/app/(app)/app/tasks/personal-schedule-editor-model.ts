@@ -1,7 +1,7 @@
 import type { PersonalScheduleContract } from "../../../../shared/contract/tasks";
 import { calendarDate, localDateTimeCandidates, localParts, resolveLocalDateTime, validTimeZone } from "../../../../features/tasks/local-date-time";
-export interface PersonalScheduleDraft { title: string; startDate: string; startTime: string; endDate: string; endTime: string; location: string; allDay?: boolean | undefined; meetingMethod?: PersonalScheduleContract["meetingMethod"]; meetingUrl?: string; contactIds?: string[]; noteIds?: string[]; }
-export type PersonalScheduleFields = Record<string, string | boolean | string[] | null>;
+export interface PersonalScheduleDraft { title: string; startDate: string; startTime: string; endDate: string; endTime: string; location: string; allDay?: boolean | undefined; meetingMethod?: PersonalScheduleContract["meetingMethod"]; meetingUrl?: string; contactIds?: string[]; noteIds?: string[]; reminderMinutes?: PersonalScheduleContract["reminderMinutes"] | null; recurrence?: PersonalScheduleContract["recurrence"] | null; }
+export type PersonalScheduleFields = Record<string, string | boolean | string[] | number | NonNullable<PersonalScheduleContract["recurrence"]> | null>;
 function personalScheduleDayStart(date: string, zone: string): string | null {
   if (!calendarDate(date) || !validTimeZone(zone)) return null;
   const midnight = localDateTimeCandidates(date, "00:00", zone);
@@ -13,7 +13,7 @@ function personalScheduleDayStart(date: string, zone: string): string | null {
 export function personalScheduleDraft(item: PersonalScheduleContract | null, zone: string): PersonalScheduleDraft {
   const start = item ? localParts(item.startsAt, zone) : { date: "", time: "" };
   const end = item?.endsAt ? localParts(item.endsAt, zone) : { date: "", time: "" };
-  return { title: item?.title ?? "", startDate: start.date, startTime: start.time, endDate: end.date, endTime: end.time, location: item?.location ?? "", allDay: item?.allDay, meetingMethod: item?.meetingMethod, meetingUrl: item?.meetingUrl ?? "", contactIds: [...(item?.contactIds ?? [])], noteIds: [...(item?.noteIds ?? [])] };
+  return { title: item?.title ?? "", startDate: start.date, startTime: start.time, endDate: end.date, endTime: end.time, location: item?.location ?? "", allDay: item?.allDay, meetingMethod: item?.meetingMethod, meetingUrl: item?.meetingUrl ?? "", contactIds: [...(item?.contactIds ?? [])], noteIds: [...(item?.noteIds ?? [])], reminderMinutes: item?.reminderMinutes ?? null, recurrence: item?.recurrence ? { ...item.recurrence } : null };
 }
 export function applyPersonalScheduleDuration(draft: PersonalScheduleDraft, zone: string, minutes: 30 | 60 | 120) {
   const start = resolveLocalDateTime(draft.startDate, draft.startTime, zone);
@@ -50,5 +50,21 @@ export function buildPersonalScheduleChange(item: PersonalScheduleContract | nul
   if (url) { try { const parsed = new URL(url); if (!["http:", "https:"].includes(parsed.protocol) || !parsed.hostname || parsed.username || parsed.password) return invalid("请填写完整的 http 或 https 会议链接。"); } catch { return invalid("请填写完整的会议链接。"); } }
   if (url !== (item?.meetingUrl ?? "")) fields.meetingUrl = url || null;
   for (const key of ["contactIds", "noteIds"] as const) { const values = draft[key] ?? []; if (values.length > 50 || new Set(values).size !== values.length || values.some(value => !value.trim())) return invalid("关联对象无效或过多。"); if (JSON.stringify(values) !== JSON.stringify(item?.[key] ?? [])) fields[key] = [...values]; }
+  if (draft.reminderMinutes != null && ![0, 5, 15, 30, 60, 1440].includes(draft.reminderMinutes)) return invalid("提醒设置无效。");
+  if (draft.recurrence) {
+    if (!["daily", "weekly", "monthly"].includes(draft.recurrence.frequency) || (draft.recurrence.until !== undefined && (!calendarDate(draft.recurrence.until) || draft.recurrence.until < draft.startDate))) return invalid("重复结束日期不能早于开始日期。");
+  }
+  if (draft.reminderMinutes !== undefined && (draft.reminderMinutes ?? null) !== (item?.reminderMinutes ?? null)) fields.reminderMinutes = draft.reminderMinutes;
+  if (draft.recurrence !== undefined && (draft.recurrence?.frequency !== item?.recurrence?.frequency || draft.recurrence?.until !== item?.recurrence?.until)) fields.recurrence = draft.recurrence;
   return Object.keys(fields).length ? { kind: "ready", fields } : { kind: "unchanged" };
+}
+
+export function personalScheduleWindow(zone: string, now = new Date()) {
+  const day = calendarDate(localParts(now, zone).date)!;
+  const fromDay = new Date(day); fromDay.setUTCDate(fromDay.getUTCDate() - 31);
+  const toDay = new Date(day); toDay.setUTCDate(toDay.getUTCDate() + 93);
+  const from = personalScheduleDayStart(fromDay.toISOString().slice(0, 10), zone);
+  const to = personalScheduleDayStart(toDay.toISOString().slice(0, 10), zone);
+  if (!from || !to) throw new Error("无法读取日程日期范围。");
+  return { from, to };
 }

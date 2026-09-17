@@ -29,7 +29,13 @@ for (const [name, allDay, zone, startsAt, endsAt, expected] of [
     assert.equal(detail.findAllByType("p")[1]!.children.join(""), expected);
     assert.equal(detail.findAllByType("p")[2]!.children.join(""), zone);
     assert.equal(root.root.findAllByType("input").length, 0);
-    assert.deepEqual(requests, [{ path: "/api/schedule-items?scope=personal", method: "GET" }, { path: "/api/schedule-items/personal%3Adates", method: "GET" }]);
+    assert.equal(requests[0]?.method, "GET");
+    const collection = new URL(requests[0]!.path, "https://orbit.test");
+    assert.equal(collection.pathname, "/api/schedule-items");
+    assert.equal(collection.searchParams.get("scope"), "personal");
+    assert.ok(Number.isFinite(Date.parse(collection.searchParams.get("from") ?? "")));
+    assert.ok(Number.isFinite(Date.parse(collection.searchParams.get("to") ?? "")));
+    assert.deepEqual(requests.slice(1), [{ path: "/api/schedule-items/personal%3Adates", method: "GET" }]);
     assert.deepEqual(item, before);
   });
 }
@@ -106,6 +112,7 @@ test("web personal note selector saves exact IDs and readonly detail rechecks ow
   let saved: any; const writes: any[] = []; let revoked = false;
   t.mock.method(globalThis, "fetch", async (input, init) => {
     const path = String(input);
+    if (path.startsWith("/api/schedule-items/association-options/notes?")) return Response.json({ success: true, data: { actorId: "owner", kind: "note", options: [{ id: note.id, title: note.title }], sourceVersion: "v1", partial: false } });
     if (path.startsWith("/api/notes")) return Response.json({ success: true, data: path.startsWith("/api/notes?") ? { notes: [note], total: 1 } : { note: { ...note, ownerUserId: revoked ? "other" : "owner" } } });
     if (init?.method === "POST") {
       const fields = JSON.parse(String(init.body)); writes.push(fields);
@@ -122,6 +129,8 @@ test("web personal note selector saves exact IDs and readonly detail rechecks ow
   await act(async () => { root.root.findByProps({ "aria-label": "搜索笔记" }).props.onChange({ target: { value: "Owned" } }); });
   await act(async () => { await new Promise(resolve => setTimeout(resolve, 300)); });
   await act(async () => root.root.findByProps({ role: "checkbox", "aria-label": "Owned note" }).props.onClick());
+  await act(async () => button("关闭关联窗").props.onClick());
+  assert.match(JSON.stringify(root.toJSON()), /Owned note/, "selected chip retains its verified title outside the sheet");
   revoked = true;
   await act(async () => root.root.findByType("form").props.onSubmit({ preventDefault() {} }));
   assert.deepEqual(writes[0].noteIds, ["note:owned"]);
