@@ -335,7 +335,7 @@ function MapCanvas({ items, selected, onSelect }: { items: MappedEvent[]; select
           </button>
         );
       })}
-      <div style={{ background: "rgba(255,255,255,0.7)", borderRadius: 6, bottom: 14, color: "var(--text-3)", fontSize: 11, left: 14, padding: "3px 8px", position: "absolute" }}>{t({ en: "Tokyo", zh: "东京 · Tokyo" })}</div>
+      <div style={{ background: "rgba(255,255,255,0.7)", borderRadius: 6, color: "var(--text-3)", fontSize: 11, left: 14, maxWidth: "calc(100% - 28px)", padding: "3px 8px", pointerEvents: "none", position: "absolute", right: 14, top: 14, whiteSpace: "normal" }}>{t({ en: "Activity distribution schematic (not actual locations)", zh: "活动分布示意（非实际位置）", ja: "活動分布の模式図（実際の場所ではありません）" })}</div>
     </div>
   );
 }
@@ -529,10 +529,16 @@ export function OrbitRealExploreClient({
       (status === "registered"
         ? Boolean(event.stats.youRsvped)
         : event.status === status);
-    const matchesTopic = topic === "all" || eventTopics(event).includes(topic);
-    const matchesQuery = !query || event.name.includes(query) || event.code.includes(query) || event.theme.includes(query);
+    const topics = eventTopics(event);
+    const matchesTopic = topic === "all" || topics.includes(topic);
+    const matchesQuery =
+      !query ||
+      event.name.includes(query) ||
+      event.code.includes(query) ||
+      event.theme.includes(query) ||
+      topics.some((item) => item.includes(query) || topicLabel(item, language).includes(query));
     return matchesStatus && matchesTopic && matchesQuery;
-  }), [events, query, status, topic]);
+  }), [events, language, query, status, topic]);
   const mapItems = useMemo(
     () => filtered.map((event) => mapEvent(
       event,
@@ -609,9 +615,11 @@ export function OrbitRealExploreClient({
               </div>
             </div>
           </div>
-          <div className="orbit-filters">
-            <div style={{ display: "flex", gap: 8 }}>{statusFilters.map((key) => <button key={key} className={`chip${status === key ? " is-active" : ""}`} onClick={() => setEventScope(key)} type="button">{statusLabels[key]}</button>)}</div>
-            {topicFilters.length ? <><span style={{ background: "var(--border-2)", height: 22, width: 1 }} /><div style={{ display: "flex", gap: 8 }}>{topicFilters.map((item) => <button key={item} className={`chip${topic === item ? " is-active" : ""}`} onClick={() => setTopic(topic === item ? "all" : item)} type="button">{topicLabel(item, language)}</button>)}</div></> : null}
+          <div className="orbit-filters" style={{ minWidth: 0 }}>
+            <div aria-label={t({ en: "Event status", zh: "活动状态", ja: "イベントの状態" })} role="group" style={{ display: "flex", gap: 8, minWidth: 0 }}>
+              {statusFilters.map((key) => <button aria-pressed={status === key} key={key} className={`chip${status === key ? " is-active" : ""}`} onClick={() => setEventScope(key)} type="button">{statusLabels[key]}</button>)}
+            </div>
+            {topicFilters.length ? <><span style={{ background: "var(--border-2)", height: 22, width: 1 }} /><div aria-label={t({ en: "Event topics", zh: "活动话题", ja: "イベントのトピック" })} role="group" style={{ display: "flex", gap: 8, minWidth: 0 }}>{topicFilters.map((item) => <button aria-pressed={topic === item} key={item} className={`chip${topic === item ? " is-active" : ""}`} onClick={() => setTopic(topic === item ? "all" : item)} type="button">{topicLabel(item, language)}</button>)}</div></> : null}
           </div>
           <div style={{ color: "var(--text-3)", fontSize: 13, marginBottom: 16, marginTop: 20 }}>{resultLabel}</div>
           {effMode === "modules" && filtered.length > 0 ? <EventModuleGrid events={filtered} registrationAvailabilityByEventId={registrationAvailabilityByEventId} /> : null}
@@ -625,7 +633,7 @@ export function OrbitRealExploreClient({
           {effMode === "map" && located.length > 0 ? (
             <section className="orbit-map-shell" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", boxShadow: "var(--sh-sm)", display: "grid", gridTemplateColumns: "380px 1fr", height: "min(680px, calc(100dvh - 220px))", minHeight: 520, overflow: "hidden" }}>
               <div className="orbit-map-rail scroll" style={{ borderRight: "1px solid var(--border)", overflowY: "auto", padding: "20px 18px" }}>
-                <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", marginBottom: 14 }}><h2 className="h-title" style={{ margin: 0 }}>{t({ en: "Discover events", zh: "发现活动" })}</h2><span style={{ color: "var(--text-3)", fontSize: 13 }}>{t({ en: `${located.length} locations`, zh: `${located.length} 个位置` })}</span></div>
+                <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", marginBottom: 14 }}><h2 className="h-title" style={{ margin: 0 }}>{t({ en: "Discover events", zh: "发现活动" })}</h2><span style={{ color: "var(--text-3)", fontSize: 13 }}>{t({ en: `${located.length} events`, zh: `${located.length} 场活动`, ja: `${located.length} 件のイベント` })}</span></div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {located.map((item) => {
                     const on = selectedItem?.id === item.id;
@@ -653,18 +661,30 @@ export function OrbitRealExploreClient({
       <div className="orbit-mobile-only" style={{ background: "var(--bg)", flexDirection: "column", height: "100dvh", minHeight: "100dvh", overflow: "hidden", position: "relative" }}>
         <PublicTopNav active="events" />
         <div style={{ flexShrink: 0, padding: "16px 18px 0" }}>
-          <div style={{ alignItems: "center", display: "flex", gap: 12, justifyContent: "space-between", marginBottom: 14 }}>
-            <div><div className="eyebrow" style={{ marginBottom: 4 }}>EXPLORE</div><h1 className="h-display" style={{ margin: 0 }}>{t({ en: "Discover events", zh: "发现活动" })}</h1></div>
-            <button className={`btn btn-sm ${mode === "map" && canShowMap ? "btn-dark" : "btn-ghost"}`} disabled={!canShowMap} onClick={() => canShowMap && setMode(mode === "map" ? "modules" : "map")} type="button"><Icon name="pin" size={15} />{t({ en: "Map", zh: "地图" })}</button>
+          <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between", marginBottom: 14, minWidth: 0 }}>
+            <div style={{ minWidth: 0 }}><div className="eyebrow" style={{ marginBottom: 4 }}>EXPLORE</div><h1 className="h-display" style={{ margin: 0 }}>{t({ en: "Discover events", zh: "发现活动" })}</h1></div>
+            <div aria-label={t({ en: "Event view", zh: "活动视图", ja: "イベント表示" })} className="orbit-event-view-switcher" role="group" style={{ flexShrink: 0, minWidth: 0 }}>
+              <button aria-pressed={effMode === "modules"} className={`btn btn-sm orbit-event-view-option ${effMode === "modules" ? "btn-dark" : "btn-quiet"}`} onClick={() => setMode("modules")} style={{ minHeight: "var(--tap-min, 44px)", minWidth: "var(--tap-min, 44px)" }} type="button"><Icon color={effMode === "modules" ? "var(--on-dark)" : undefined} name="grid" size={15} />{t({ en: "Events", zh: "内容", ja: "イベント" })}</button>
+              <button aria-pressed={effMode === "map"} className={`btn btn-sm orbit-event-view-option ${effMode === "map" ? "btn-dark" : "btn-quiet"}`} disabled={!canShowMap} onClick={() => canShowMap && setMode("map")} style={{ minHeight: "var(--tap-min, 44px)", minWidth: "var(--tap-min, 44px)" }} type="button"><Icon color={effMode === "map" ? "var(--on-dark)" : undefined} name="pin" size={15} />{t({ en: "Map", zh: "地图", ja: "地図" })}</button>
+            </div>
           </div>
           <div style={{ position: "relative" }}>
             <Icon color="var(--text-3)" name="search" size={17} style={{ left: 13, position: "absolute", top: 14 }} />
             <input aria-label={t({ en: "Search event name, code, or topic", zh: "搜索活动名称、编号或主题" })} className="field" onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search event name, code, or topic", zh: "搜索活动名称、编号或主题" })} style={{ height: 44, paddingLeft: 40 }} type="search" value={query} />
           </div>
-          <div className="scroll noscroll" style={{ display: "flex", gap: 8, margin: "0 -18px", overflowX: "auto", padding: "14px 18px 4px" }}>
-            {statusFilters.map((key) => <button key={key} className={`chip${status === key ? " is-active" : ""}`} onClick={() => setEventScope(key)} style={{ flexShrink: 0 }} type="button">{statusLabels[key]}</button>)}
-            {topicFilters.length ? <span style={{ background: "var(--border-2)", flexShrink: 0, margin: "4px 2px", width: 1 }} /> : null}
-            {topicFilters.map((item) => <button key={item} className={`chip${topic === item ? " is-active" : ""}`} onClick={() => setTopic(topic === item ? "all" : item)} style={{ flexShrink: 0 }} type="button">{topicLabel(item, language)}</button>)}
+          <div style={{ display: "grid", gap: 8, minWidth: 0, marginTop: 14 }}>
+            <div aria-label={t({ en: "Event status", zh: "活动状态", ja: "イベントの状態" })} role="group" style={{ minWidth: 0 }}>
+              <span style={{ color: "var(--text-3)", display: "block", fontSize: 12, marginBottom: 4 }}>{t({ en: "Status", zh: "状态", ja: "状態" })}</span>
+              <div className="scroll noscroll orbit-chip-scroller" style={{ display: "flex", gap: 8, margin: "0 -18px", minWidth: 0, overflowX: "auto", padding: "0 18px 4px" }}>
+                {statusFilters.map((key) => <button aria-pressed={status === key} key={key} className={`chip${status === key ? " is-active" : ""}`} onClick={() => setEventScope(key)} style={{ flexShrink: 0, minHeight: "var(--tap-min, 44px)", minWidth: "var(--tap-min, 44px)" }} type="button">{statusLabels[key]}</button>)}
+              </div>
+            </div>
+            {topicFilters.length ? <div aria-label={t({ en: "Event topics", zh: "活动话题", ja: "イベントのトピック" })} role="group" style={{ minWidth: 0 }}>
+              <span style={{ color: "var(--text-3)", display: "block", fontSize: 12, marginBottom: 4 }}>{t({ en: "Topics", zh: "话题", ja: "トピック" })}</span>
+              <div className="scroll noscroll orbit-chip-scroller" style={{ display: "flex", gap: 8, margin: "0 -18px", minWidth: 0, overflowX: "auto", padding: "0 18px 4px" }}>
+                {topicFilters.map((item) => <button aria-pressed={topic === item} key={item} className={`chip${topic === item ? " is-active" : ""}`} onClick={() => setTopic(topic === item ? "all" : item)} style={{ flexShrink: 0, minHeight: "var(--tap-min, 44px)", minWidth: "var(--tap-min, 44px)" }} type="button">{topicLabel(item, language)}</button>)}
+              </div>
+            </div> : null}
           </div>
         </div>
         <div className="scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "8px 18px 36px" }}>
