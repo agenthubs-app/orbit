@@ -21,6 +21,10 @@ import {
 import type { AppointmentService } from "../../../../features/appointments/service";
 import type { AppointmentAggregate } from "../../../../features/appointments/contract";
 import {
+  createConfiguredRelationshipLifecycleFactsReader,
+  type RelationshipLifecycleFactsReader,
+} from "../../../../features/followups/storage/relationship-lifecycle-facts-reader";
+import {
   loadRelationshipLifecycleTasks,
   type RelationshipLifecycleTaskReadModel,
   type RelationshipLifecycleTaskView,
@@ -193,6 +197,7 @@ export interface HomeFactsRouteDependencies {
   appointmentService?: AppointmentReader | null;
   appointmentServiceFactory?: () => AppointmentReader | null;
   followupLoader?: FollowupLoader | null;
+  followupReaderFactory?: () => RelationshipLifecycleFactsReader | null;
   personalScheduleService?: PersonalScheduleReader | null;
   personalScheduleServiceFactory?: () => PersonalScheduleReader | null;
   taskService?: TaskReader | null;
@@ -672,7 +677,14 @@ function followupLoaderFrom(
   dependencies: HomeFactsRouteDependencies,
 ): FollowupLoader | null {
   if (dependencies.followupLoader !== undefined) return dependencies.followupLoader;
-  return loadRelationshipLifecycleTasks;
+  const readerFactory =
+    dependencies.followupReaderFactory ??
+    createConfiguredRelationshipLifecycleFactsReader;
+  return ({ actorId }) =>
+    loadRelationshipLifecycleTasks({
+      actorId,
+      reader: readerFactory(),
+    });
 }
 
 async function loadFollowups(
