@@ -42,7 +42,7 @@ test.before(async () => {
     plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "canonical" }));
     plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
     plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|OrbitLocaleContext|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "canonical" }));
-    plugin.onLoad({ filter: /.*/, namespace: "canonical" }, args => ({ contents: args.path === "native" ? 'import React from "react";import {Pressable as RealPressable,RefreshControl as RealRefreshControl} from "react-native-web";export * from "react-native-web";export {Alert} from "fixture";export const Pressable=props=>{const label=props.accessibilityLabel;if(label)window.fixture.presses[label]=props.onPress;return <RealPressable {...props}/>};export const RefreshControl=props=>{window.fixture.refresh=props.onRefresh;return <RealRefreshControl {...props}/>};export const Share={share:async()=>({})};' : boundaries, loader: "jsx", resolveDir: process.cwd() }));
+    plugin.onLoad({ filter: /.*/, namespace: "canonical" }, args => ({ contents: args.path === "native" ? 'import React from "react";import {Platform as RealPlatform,Alert as RealAlert,Pressable as RealPressable,RefreshControl as RealRefreshControl} from "react-native-web";export * from "react-native-web";import {Alert as FixtureAlert} from "fixture";export const Platform={...RealPlatform,get OS(){return window.fixture.platform??"ios"}};export const Alert={alert(...args){return window.fixture.platform==="web"?RealAlert.alert(...args):FixtureAlert.alert(...args)}};export const Pressable=props=>{const label=props.accessibilityLabel;if(label)window.fixture.presses[label]=props.onPress;return <RealPressable {...props}/>};export const RefreshControl=props=>{window.fixture.refresh=props.onRefresh;return <RealRefreshControl {...props}/>};export const Share={share:async()=>({})};' : boundaries, loader: "jsx", resolveDir: process.cwd() }));
     plugin.onResolve({ filter: /^react-native-web$/ }, () => ({ path: require.resolve("react-native-web") }));
   } }] });
   script = result.outputFiles[0]!.text;
@@ -233,4 +233,34 @@ for (const [code, message] of [["SOURCE_HASH_CHANGED", "会后记录已更新"],
   const page=await open(t);
   await page.evaluate(code=>{const s=(window as any).fixture;s.update({artifact:{...s.artifact,status:"failed",artifact:null,failureCode:code}});},code);await register(page,true);
   const text=await page.locator("body").innerText();assert.match(text,new RegExp(message));assert.doesNotMatch(text,/SOURCE_HASH_CHANGED|UNRECOGNIZED_INTERNAL_CODE/);
+});
+
+test("canonical Web cancellation opens real confirmation instead of the empty Web Alert", async t => {
+  const page = await open(t, { platform: "web" }); await register(page);
+  await page.evaluate(() => { const s=(window as any).fixture;const r=structuredClone(s.registration);r.eligibility.allowedActions=["cancel"];r.eligibility.registrationVersion=r.registration.updatedAt;s.update({registration:r});s.refresh(); }); await settle(page);
+  let dialogs=0; page.on("dialog",async dialog=>{dialogs++;assert.equal(dialog.type(),"confirm");await dialog.dismiss();});
+  await page.getByRole("button",{name:"取消本次报名",exact:true}).click();await settle(page);
+  assert.equal(dialogs,1);assert.equal((await requests(page)).some(r=>r.method==="POST"),false);
+});
+
+for(const mode of ["missing","throws"] as const)test(`canonical Web confirmation ${mode} reports no cancellation`,async t=>{
+  const page=await open(t,{platform:"web"});await register(page);
+  await page.evaluate(mode=>{const s=(window as any).fixture;const r=structuredClone(s.registration);r.eligibility.allowedActions=["cancel"];r.eligibility.registrationVersion=r.registration.updatedAt;s.update({registration:r});s.refresh();(window as any).confirm=mode==="missing"?undefined:()=>{throw new Error("Unavailable");};},mode);await settle(page);
+  await page.getByRole("button",{name:"取消本次报名",exact:true}).click();await settle(page);
+  await page.getByText("无法打开取消确认，尚未取消报名。请重试。",{exact:true}).waitFor();
+  assert.equal((await requests(page)).some(r=>r.method==="POST"),false);
+  assert.match(await page.locator("body").innerText(),/寻找投资合作/);
+});
+
+test("canonical Web approval writes once and verifies the same registration independently",async t=>{
+  const page=await open(t,{platform:"web"});await register(page);
+  await page.evaluate(()=>{const s=(window as any).fixture;const r=structuredClone(s.registration);r.eligibility.allowedActions=["cancel"];r.eligibility.registrationVersion=r.registration.updatedAt;s.update({registration:r});s.refresh();const readback=structuredClone(r);readback.registration.status="cancelled";readback.registration.updatedAt="2026-09-16T01:00:00Z";readback.eligibility={...readback.eligibility,state:"unavailable",reason:"unavailable",allowedActions:[],registrationVersion:readback.registration.updatedAt};s.cancelReadback=readback;s.cancelReceipt={...readback.registration,mutationReceipt:{action:"cancel",actorId:s.actor,eventId:s.id,recordId:r.registration.id,registrationVersion:readback.registration.updatedAt}};});await settle(page);
+  let dialogs=0;page.on("dialog",async d=>{dialogs++;await d.accept();});
+  // Activate the readback only when the write crosses the HTTP boundary.
+  await page.evaluate(()=>{const s=(window as any).fixture;const fetch=window.fetch;window.fetch=(input,init)=>{if(init?.method==="POST")s.readback=s.cancelReadback;return fetch(input,init);};});
+  await page.getByRole("button",{name:"取消本次报名",exact:true}).click();await settle(page);
+  assert.equal(dialogs,1);
+  assert.deepEqual(await page.evaluate(()=>(window as any).fixture.requests.filter((r:any)=>r.method==="POST").map((r:any)=>r.body)),[{intent:"cancel",expectedRegistrationVersion:"2026-09-16T00:00:00Z"}]);
+  assert.ok((await requests(page)).filter(r=>r.path.includes("registration?questions=false")).length>=3);
+  assert.equal(await page.getByText("暂时无法核对取消结果，请重新读取报名状态。",{exact:true}).count(),0);
 });

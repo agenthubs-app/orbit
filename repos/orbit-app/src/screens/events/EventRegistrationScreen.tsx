@@ -1,3 +1,4 @@
+import { confirmEventCancellation } from "../../platform/confirm-event-cancellation";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -517,13 +518,15 @@ export function EventRegistrationScreen() {
     if (registrationView?.allowedActions?.includes("withdraw")) { void cancelRegistration(); return; }
     if (!isScopeCurrent() || request.current || !registrationView?.canCancel) return;
     const intendedAuthority = eventRegistrationAuthorityKey(registrationView);
-    Alert.alert(locale.t("registration.actionCancel"), locale.t("registration.cancelConfirmation"), [
-      { text: locale.t("registration.cancelKeep"), style: "cancel" },
-      { text: locale.t("registration.actionCancel"), style: "destructive", onPress: () => {
+    confirmEventCancellation({
+      title: locale.t("registration.actionCancel"), message: locale.t("registration.cancelConfirmation"),
+      keepLabel: locale.t("registration.cancelKeep"), cancelLabel: locale.t("registration.actionCancel"),
+      onUnavailable: () => { if (isScopeCurrent()) setSubmitError(locale.t("registration.cancelConfirmationUnavailable")); },
+      onConfirm: () => {
         if (!latestView.current || intendedAuthority !== eventRegistrationAuthorityKey(latestView.current)) return;
         void cancelRegistration();
-      } }
-    ]);
+      }
+    });
   }
 
   return (

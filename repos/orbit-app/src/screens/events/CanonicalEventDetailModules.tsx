@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { createCanonicalArtifactSchema, createCanonicalOperationsSchema, createCanonicalRegistrationSchema } from "../../api/canonical-event-detail-contract";
@@ -14,6 +14,8 @@ import { canonicalArtifactToView, canonicalRecommendationsToView, canonicalRegis
 import { eventRegistrationToView, eventRegistrationReceiptMatches, eventRegistrationAuthorityKey, type EventRegistrationView } from "../../view-models/event-registration";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+
+import { confirmEventCancellation } from "../../platform/confirm-event-cancellation";
 
 export type CanonicalRegistrationFooterState = { registration: EventRegistrationView; verifying: boolean };
 
@@ -62,9 +64,11 @@ export function CanonicalEventDetailModules({ eventId, endsAt, scopeKey, onRegis
     const authority = eventRegistrationAuthorityKey(view.footer);
     const current = () => mounted.current && latestScope.current === resourceScope && latestData.current &&
       latestData.current.registration?.id === record.id && eventRegistrationAuthorityKey(eventRegistrationToView(latestData.current)) === authority;
-    Alert.alert(locale.t("registration.actionCancel"), locale.t("registration.cancelConfirmation"), [
-      { text: locale.t("registration.cancelKeep"), style: "cancel" },
-      { text: locale.t("registration.actionCancel"), style: "destructive", onPress: () => { void (async () => {
+    confirmEventCancellation({
+      title: locale.t("registration.actionCancel"), message: locale.t("registration.cancelConfirmation"),
+      keepLabel: locale.t("registration.cancelKeep"), cancelLabel: locale.t("registration.actionCancel"),
+      onUnavailable: () => { if (current()) setCancelError(locale.t("registration.cancelConfirmationUnavailable")); },
+      onConfirm: () => { void (async () => {
         if (!current() || cancellation.current) return;
         const controller = new AbortController(); cancellation.current = controller; setCancelling(true); setCancelError(null);
         const scoped = () => mounted.current && latestScope.current === resourceScope && cancellation.current === controller;
@@ -82,8 +86,8 @@ export function CanonicalEventDetailModules({ eventId, endsAt, scopeKey, onRegis
           onRegistrationMutationConfirmed?.();
         } catch (error) { if (scoped()) setCancelError(error instanceof Error ? error.message : locale.t("registration.cancelUnconfirmed")); }
         finally { if (scoped()) { cancellation.current = null; setCancelling(false); } }
-      })(); } }
-    ]);
+      })(); }
+    });
   }
 
   return <View>

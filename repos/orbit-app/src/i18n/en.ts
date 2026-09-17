@@ -10,6 +10,7 @@ export const en = {
   "registration.cancelThisRegistration": "Cancel this registration",
   "registration.cancelUnconfirmed": "The cancellation could not be verified. Reload registration status.",
   "registration.cancelConfirmation": "Cancelling removes your registration. You can register again while registration is open.",
+  "registration.cancelConfirmationUnavailable": "Could not open cancellation confirmation. Your registration has not been cancelled. Please try again.",
   "registration.cancelKeep": "Keep registration",
   "registration.reasonConfiguration": "The organizer has not completed the registration information. Registration and edits are unavailable.",
   "registration.reasonMigration": "The server is updating registration records. Submission is unavailable.",
