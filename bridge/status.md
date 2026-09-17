@@ -2,6 +2,8 @@
 
 ## 2026-09-17 活动报名修复与Phone发布
 
+用户随后要求重建两端：Phone已真正fresh后台Next BUILD `Mh8CRhvDjpNWmXZo4wex1`及fresh Expo export并重新部署，同域PUBLIC93152/93153/93154健康、逐13页正常UI登录0业务写验证通过。Main Simulator实际重新编译/覆盖安装，当前92537已显示有数据首页与历史笔记列表；实际8082连接和Hermes主bundle URL已观察，不把原生binary hash当JS证明。原账号/本地数据/预算/回退保留，临时preview正常停止；详见[本轮重建交接](2026-09-17-phoneweb-registration-repair.md)。下方是首次发布的历史记录，不是当前PID。
+
 0064固定8daf与0065固定d0e已合chat-agent并普通push，独立远端7b1b3de289eba6e550a4702954df6056eddc664e一致。真实13配置修复/all13正式GET及公网逐页enabled通过；正常UI单新QAcase双入口拒绝/确认取消、重新报名与正式回读通过，原记录摘要保全。新Phone519/f082、freshentry875实际公网SHA1afd；后台明确复用64真实BUILD6cy，原ngrok同地址/PUBLIC87138/9/40健康200，old63回退完整。owned previews与35434PG正常停保数据资产。
 
 ROOT主线完整受影响81pass；唯一I失败/跳过保留，不冒称全绿。未真实Native取消/AI provider，推荐schema与Phone旧legacy差异仍TODO；0033生产协议/OAuth/Push缺项未关闭。范围与失败见[BR-030](2026-09-17-phoneweb-registration-repair.md)，最终管理文档push事实见ROOT运行checkpoint。
