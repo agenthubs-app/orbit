@@ -3,6 +3,12 @@ import test from "node:test";
 import { StrictMode } from "react";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import { PersonalScheduleWorkspace } from "../../app/(app)/app/tasks/personal-schedule-workspace";
+import { PersonalScheduleDateTimePicker } from "../../app/(app)/app/tasks/personal-schedule-date-time-picker";
+
+async function pick(root: ReactTestRenderer, label: string, value: string) {
+  await act(async () => root.root.findByProps({ "aria-label": label }).props.onClick());
+  await act(async () => root.root.findByType(PersonalScheduleDateTimePicker).props.onConfirm(value));
+}
 
 for (const [name, allDay, zone, startsAt, endsAt, expected] of [
   ["Tokyo single day", true, "Asia/Tokyo", "2026-09-16T15:00:00Z", "2026-09-17T15:00:00Z", "2026-09-17 · 全天"],
@@ -100,10 +106,10 @@ test("web new personal merged time controls apply a cross-day duration and clear
   let root!: ReactTestRenderer; await act(async () => { root = create(<PersonalScheduleWorkspace actorId="owner" />); }); t.after(() => act(() => root.unmount()));
   const button = (label: string) => root.root.findAllByType("button").find(item => item.children.includes(label))!;
   await act(async () => button("新建个人日程").props.onClick());
-  await act(async () => { root.root.findByProps({ "aria-label": "开始日期" }).props.onChange({ target: { value: "2026-09-17" } }); root.root.findByProps({ "aria-label": "开始时间" }).props.onChange({ target: { value: "23:45" } }); });
+  await pick(root, "开始日期", "2026-09-17"); await pick(root, "开始时间", "23:45");
   assert.ok(button("30分钟"), "duration choice is available");
   await act(async () => button("30分钟").props.onClick());
-  assert.equal(root.root.findByProps({ "aria-label": "结束日期" }).props.value, "2026-09-18"); assert.equal(root.root.findByProps({ "aria-label": "结束时间" }).props.value, "00:15");
+  assert.match(root.root.findByProps({ "aria-label": "结束日期" }).children.join(""), /2026-09-18/); assert.match(root.root.findByProps({ "aria-label": "结束时间" }).children.join(""), /00:15/);
   await act(async () => button("线上").props.onClick()); assert.ok(root.root.findByProps({ "aria-label": "会议链接（选填）" }));
 });
 
@@ -124,7 +130,8 @@ test("web personal note selector saves exact IDs and readonly detail rechecks ow
   let root!: ReactTestRenderer; await act(async () => { root = create(<PersonalScheduleWorkspace actorId="owner" />); }); t.after(() => act(() => root.unmount()));
   const button = (label: string) => root.root.findAllByType("button").find(item => item.children.includes(label))!;
   await act(async () => button("新建个人日程").props.onClick());
-  await act(async () => { for (const [label, value] of [["日程标题", "Associated web"], ["开始日期", "2026-09-17"], ["开始时间", "09:00"]]) root.root.findByProps({ "aria-label": label }).props.onChange({ target: { value } }); });
+  await act(async () => root.root.findByProps({ "aria-label": "日程标题" }).props.onChange({ target: { value: "Associated web" } }));
+  await pick(root, "开始日期", "2026-09-17"); await pick(root, "开始时间", "09:00");
   await act(async () => button("关联笔记").props.onClick());
   await act(async () => { root.root.findByProps({ "aria-label": "搜索笔记" }).props.onChange({ target: { value: "Owned" } }); });
   await act(async () => { await new Promise(resolve => setTimeout(resolve, 300)); });

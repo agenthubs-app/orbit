@@ -5,8 +5,53 @@ import { PersonalScheduleWorkspace } from "../../app/(app)/app/tasks/personal-sc
 import { personalScheduleDraft, buildPersonalScheduleChange } from "../../app/(app)/app/tasks/personal-schedule-editor-model";
 import { PersonalScheduleAssociationSheet } from "../../app/(app)/app/tasks/personal-schedule-association-sheet";
 import { createPersonalScheduleClient } from "../../app/(app)/app/tasks/personal-schedule-client";
+import { PersonalScheduleDateTimePicker } from "../../app/(app)/app/tasks/personal-schedule-date-time-picker";
 
 const base = { id: "personal:series", sourceId: "personal:series", accountId: "owner", ownerUserId: "owner", kind: "personal", category: "personal", state: "upcoming", title: "Rules", startsAt: "2026-09-17T00:15:42Z", endsAt: "2026-09-17T00:45:12Z", timeZone: "Asia/Tokyo", reminderMinutes: 15, recurrence: { frequency: "daily", until: "2026-09-19" }, createdAt: "2026-09-01T00:00:00Z", updatedAt: "2026-09-01T00:00:00Z" } as const;
+
+test("Next creation date is a direct calendar trigger, not a typed input", async t => {
+  t.mock.method(globalThis, "fetch", async () => Response.json({ success: true, data: { scheduleItems: [] } }));
+  let root!: ReactTestRenderer;
+  await act(async () => { root = create(<PersonalScheduleWorkspace actorId="owner" />); });
+  t.after(() => act(() => root.unmount()));
+  await act(async () => root.root.findAllByType("button").find(button => button.children.includes("新建个人日程"))!.props.onClick());
+  const trigger = root.root.findByProps({ "aria-label": "开始日期" });
+  assert.equal(trigger.type, "button");
+  await act(async () => trigger.props.onClick());
+  assert.equal(root.root.findAllByProps({ role: "dialog" }).length, 1);
+});
+
+test("Next confirmed new start supplies an exact thirty-minute cross-day end", async t => {
+  t.mock.method(globalThis, "fetch", async () => Response.json({ success: true, data: { scheduleItems: [] } }));
+  let root!: ReactTestRenderer;
+  await act(async () => { root = create(<PersonalScheduleWorkspace actorId="owner" />); });
+  t.after(() => act(() => root.unmount()));
+  await act(async () => root.root.findAllByType("button").find(button => button.children.includes("新建个人日程"))!.props.onClick());
+  for (const [label, value] of [["开始日期", "2026-09-17"], ["开始时间", "23:45"]]) {
+    await act(async () => root.root.findByProps({ "aria-label": label }).props.onClick());
+    await act(async () => root.root.findByType(PersonalScheduleDateTimePicker).props.onConfirm(value));
+  }
+  assert.match(root.root.findByProps({ "aria-label": "结束日期" }).children.join(""), /2026-09-18/);
+  assert.match(root.root.findByProps({ "aria-label": "结束时间" }).children.join(""), /00:15/);
+  await act(async () => root.root.findByProps({ "aria-label": "清除结束时间" }).props.onClick());
+  assert.match(root.root.findByProps({ "aria-label": "结束时间" }).children.join(""), /—/);
+});
+
+test("Next repeat end is staged in the calendar and can be cleared", async t => {
+  t.mock.method(globalThis, "fetch", async () => Response.json({ success: true, data: { scheduleItems: [] } }));
+  let root!: ReactTestRenderer;
+  await act(async () => { root = create(<PersonalScheduleWorkspace actorId="owner" />); });
+  t.after(() => act(() => root.unmount()));
+  await act(async () => root.root.findAllByType("button").find(button => button.children.includes("新建个人日程"))!.props.onClick());
+  await act(async () => root.root.findByProps({ "aria-label": "重复" }).props.onChange({ target: { value: "daily" } }));
+  const trigger = root.root.findByProps({ "aria-label": "重复结束日期（选填）" });
+  assert.equal(trigger.type, "button");
+  await act(async () => trigger.props.onClick());
+  await act(async () => root.root.findByType(PersonalScheduleDateTimePicker).props.onConfirm("2026-09-19"));
+  assert.match(root.root.findByProps({ "aria-label": "重复结束日期（选填）" }).children.join(""), /2026-09-19/);
+  await act(async () => root.root.findByProps({ "aria-label": "不设结束日期" }).props.onClick());
+  assert.doesNotMatch(root.root.findByProps({ "aria-label": "重复结束日期（选填）" }).children.join(""), /2026-09-19/);
+});
 
 test("draft preserves inherited rules and seconds; explicit rule clears emit null", () => {
   const draft = personalScheduleDraft(base, "Asia/Tokyo");
@@ -52,7 +97,7 @@ test("actual stable occurrence editor blocks unspecific writes and preserves dir
   await act(async () => button("放弃草稿并载入最新内容").props.onClick());
   await act(async () => button("整个系列").props.onClick());
   assert.ok(calls.some(call => call.path === "/api/schedule-items/personal%3Aseries"));
-  assert.equal(root.root.findByProps({ "aria-label": "开始日期" }).props.value, "2026-09-17");
+  assert.match(root.root.findByProps({ "aria-label": "开始日期" }).children.join(""), /2026-09-17/);
   assert.equal(root.root.findByProps({ "aria-label": "提醒" }).props.disabled, false);
 });
 
@@ -66,7 +111,7 @@ test("new editor exposes all seven reminders and four recurrence choices without
   assert.equal(reminder.length, 1, "actual editor must provide a reminder control");
   assert.equal(reminder[0]!.findAllByType("option").length, 7);
   assert.equal(root.root.findByProps({ "aria-label": "重复" }).findAllByType("option").length, 4);
-  assert.equal(root.root.findByProps({ "aria-label": "开始日期" }).props.value, "");
+  assert.match(root.root.findByProps({ "aria-label": "开始日期" }).children.join(""), /—/);
   assert.doesNotMatch(JSON.stringify(root.toJSON()), /暂不支持/);
 });
 
@@ -106,7 +151,12 @@ test("real editor saves rules then reopens and clears them through ACK and indep
   });
   let root!: ReactTestRenderer; await act(async () => { root = create(<PersonalScheduleWorkspace actorId="owner" />); }); t.after(() => act(() => root.unmount()));
   const button = (label: string) => root.root.findAllByType("button").find(button => button.children.includes(label))!;
-  const change = async (label: string, value: string) => act(async () => root.root.findByProps({ "aria-label": label }).props.onChange({ target: { value } }));
+  const change = async (label: string, value: string) => {
+    if (["开始日期", "开始时间", "重复结束日期（选填）"].includes(label)) {
+      await act(async () => root.root.findByProps({ "aria-label": label }).props.onClick());
+      await act(async () => root.root.findByType(PersonalScheduleDateTimePicker).props.onConfirm(value));
+    } else await act(async () => root.root.findByProps({ "aria-label": label }).props.onChange({ target: { value } }));
+  };
   await act(async () => button("新建个人日程").props.onClick());
   await change("日程标题", "Rule save"); await change("开始日期", "2026-09-17"); await change("开始时间", "09:15");
   await change("提醒", "15"); await change("重复", "daily"); await change("重复结束日期（选填）", "2026-09-19");
@@ -115,7 +165,7 @@ test("real editor saves rules then reopens and clears them through ACK and indep
   assert.match(JSON.stringify(root.toJSON()), /提前15分钟 · 每天 · 至2026-09-19/); assert.ok(reads >= 1);
   await act(async () => button("编辑").props.onClick()); await act(async () => button("整个系列").props.onClick());
   assert.equal(root.root.findByProps({ "aria-label": "提醒" }).props.value, 15);
-  assert.equal(root.root.findByProps({ "aria-label": "重复结束日期（选填）" }).props.value, "2026-09-19");
+  assert.match(root.root.findByProps({ "aria-label": "重复结束日期（选填）" }).children.join(""), /2026-09-19/);
   await change("提醒", ""); await change("重复", "");
   await act(async () => root.root.findByType("form").props.onSubmit({ preventDefault() {} }));
   assert.equal(writes[1].scope, "series"); assert.deepEqual(writes[1].patch, { reminderMinutes: null, recurrence: null });

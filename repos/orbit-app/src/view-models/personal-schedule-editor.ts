@@ -2,18 +2,22 @@ import type { PersonalScheduleContract } from "../api/contract/tasks";
 import { personalScheduleRecurrenceSchema } from "../api/schema/personal-schedule";
 import type { MessageKey } from "../i18n/messages";
 import { localDayStart, localParts, resolveLocalDateTime, shiftCalendarDate, validTimeZone } from "../time/date-time";
-export interface PersonalScheduleDraft { title: string; startDate: string; startTime: string; endDate: string; endTime: string; location: string; allDay?: boolean | undefined; meetingMethod?: PersonalScheduleContract["meetingMethod"]; meetingUrl?: string; contactIds?: string[]; noteIds?: string[]; reminderMinutes?: PersonalScheduleContract["reminderMinutes"] | null; recurrence?: PersonalScheduleContract["recurrence"] | null; }
+export interface PersonalScheduleDraft { title: string; startDate: string; startTime: string; endDate: string; endTime: string; location: string; allDay?: boolean | undefined; meetingMethod?: PersonalScheduleContract["meetingMethod"]; meetingUrl?: string; contactIds?: string[]; noteIds?: string[]; reminderMinutes?: PersonalScheduleContract["reminderMinutes"] | null; recurrence?: PersonalScheduleContract["recurrence"] | null; pickerEndInstant?: string; }
 export type PersonalScheduleFields = Record<string, string | number | boolean | string[] | NonNullable<PersonalScheduleContract["recurrence"]> | null>;
 export function personalScheduleDraft(item: PersonalScheduleContract | null, zone: string): PersonalScheduleDraft {
   const start = item ? localParts(item.startsAt, zone) : { date: "", time: "" };
-  const end = item?.endsAt ? localParts(item.endsAt, zone) : { date: "", time: "" };
+  const end = item?.endsAt ? localParts(item.allDay ? Date.parse(item.endsAt) - 1 : item.endsAt, zone) : { date: "", time: "" };
   return { title: item?.title ?? "", startDate: start.date, startTime: start.time, endDate: end.date, endTime: end.time, location: item?.location ?? "", allDay: item?.allDay, meetingMethod: item?.meetingMethod, meetingUrl: item?.meetingUrl ?? "", contactIds: [...(item?.contactIds ?? [])], noteIds: [...(item?.noteIds ?? [])], reminderMinutes: item?.reminderMinutes ?? null, recurrence: item?.recurrence ? { ...item.recurrence } : null };
 }
-export function applyPersonalScheduleDuration(draft: PersonalScheduleDraft, zone: string, minutes: 30 | 60 | 120): { kind: "invalid"; message: string } | { kind: "ready"; draft: PersonalScheduleDraft } {
-  const start = resolveLocalDateTime(draft.startDate, draft.startTime, zone);
+export function applyPersonalScheduleDuration(draft: PersonalScheduleDraft, zone: string, minutes: 30 | 60 | 120, baseline: PersonalScheduleContract | null = null): { kind: "invalid"; message: string } | { kind: "ready"; draft: PersonalScheduleDraft } {
+  if (!validTimeZone(zone)) return { kind: "invalid" as const, message: "请先填写明确的开始日期和时间。" };
+  const previous = personalScheduleDraft(baseline, zone);
+  const start = baseline && !baseline.allDay && draft.startDate === previous.startDate && draft.startTime === previous.startTime ? baseline.startsAt : resolveLocalDateTime(draft.startDate, draft.startTime, zone);
   if (!start) return { kind: "invalid", message: "请先填写明确的开始日期和时间。" };
-  const end = localParts(Date.parse(start) + minutes * 60_000, zone);
-  return { kind: "ready", draft: { ...draft, allDay: false, endDate: end.date, endTime: end.time } };
+  const pickerEndInstant = new Date(Date.parse(start) + minutes * 60_000).toISOString();
+  const end = localParts(pickerEndInstant, zone);
+  const next = { ...draft, allDay: false, endDate: end.date, endTime: end.time, pickerEndInstant };
+  return { kind: "ready", draft: next };
 }
 export function buildPersonalScheduleChange(item: PersonalScheduleContract | null, draft: PersonalScheduleDraft, zone: string): { kind: "invalid"; message: string; messageKey?: MessageKey } | { kind: "unchanged" } | { kind: "ready"; fields: PersonalScheduleFields } {
   const invalid = (message: string) => ({ kind: "invalid" as const, message });
@@ -26,12 +30,14 @@ export function buildPersonalScheduleChange(item: PersonalScheduleContract | nul
   if (!start) return invalid("请填写明确的开始日期和时间；此当地时间可能不存在或重复。");
   let end: string | null = null;
   if (draft.allDay) {
-    const endDate = draft.endDate && draft.endDate > draft.startDate ? draft.endDate : shiftCalendarDate(draft.startDate, 1);
+    if (draft.endDate && draft.endDate < draft.startDate) return invalid("全天结束日期无效。");
+    const endDate = shiftCalendarDate(draft.endDate || draft.startDate, 1);
     const endStart = localDayStart(endDate, zone);
     if (endStart === null || localParts(endStart, zone).date !== endDate || endStart <= Date.parse(start)) return invalid("全天结束日期无效。");
     end = new Date(endStart).toISOString();
   } else if (draft.endDate || draft.endTime) {
-    end = item?.endsAt && draft.endDate === previous.endDate && draft.endTime === previous.endTime ? item.endsAt : resolveLocalDateTime(draft.endDate, draft.endTime, zone);
+    const pickedEnd = draft.pickerEndInstant && Number.isFinite(Date.parse(draft.pickerEndInstant)) ? localParts(draft.pickerEndInstant, zone) : null;
+    end = pickedEnd?.date === draft.endDate && pickedEnd.time === draft.endTime ? draft.pickerEndInstant! : item?.endsAt && draft.endDate === previous.endDate && draft.endTime === previous.endTime ? item.endsAt : resolveLocalDateTime(draft.endDate, draft.endTime, zone);
     if (!end || Date.parse(end) <= Date.parse(start)) return invalid("结束日期和时间需一起填写，并晚于开始时间。");
   }
   const fields: PersonalScheduleFields = {};
