@@ -43,6 +43,22 @@ create index if not exists orbit_records_updated_at_idx
 
 create index if not exists orbit_records_search_text_idx
   on orbit_records using gin (to_tsvector('simple', search_text));
+
+create index if not exists orbit_records_identity_payload_idx
+  on orbit_records (workspace_id, collection_name, (payload->>'id'))
+  where lifecycle_state <> 'deleted' and collection_name in ('accounts', 'profiles');
+
+create index if not exists orbit_records_profile_account_idx
+  on orbit_records (workspace_id, (payload->>'accountId'))
+  where lifecycle_state <> 'deleted' and collection_name = 'profiles';
+
+create index if not exists orbit_records_private_owner_idx
+  on orbit_records (workspace_id, collection_name, user_id, updated_at desc)
+  where lifecycle_state <> 'deleted';
+
+create index if not exists orbit_records_connection_contact_owner_idx
+  on orbit_records (workspace_id, (payload->>'contactId'), user_id, (payload->>'accountId'))
+  where lifecycle_state <> 'deleted' and collection_name = 'connections';
 `;
 
 export interface OrbitRecordsMigrationClient {

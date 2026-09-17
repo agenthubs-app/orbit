@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { AppError } from "../../../shared/errors/app-error";
 
 import type {
   ConnectionDTO,
@@ -498,7 +499,7 @@ async function readFocusedContactGraph(input: {
     ? await input.contactRecordPageReader(input.listInput, actorId)
     : null;
   const focusedIds = input.contactId ? [input.contactId] : boundedPage?.recordIds;
-  const scope = focusedIds && input.contactScopeRecordReader
+  const scope = input.contactScopeRecordReader
     ? await input.contactScopeRecordReader(actorId, focusedIds)
     : null;
   const [contactRecords, allConnectionRecords, detailStateRecords] = await Promise.all([
@@ -507,6 +508,7 @@ async function readFocusedContactGraph(input: {
       collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.contacts,
       ...(input.contactId ? { recordIds: [input.contactId] } : {}),
       ...(boundedPage ? { recordIds: boundedPage.recordIds } : {}),
+      ...(scope?.contactIds ? { recordIds: scope.contactIds } : {}),
     }),
     input.store.listRecords({
       workspaceId: input.workspaceId,
@@ -689,6 +691,7 @@ export function createStorageContactGraphProvider({
     readContactGraph(actorId): Promise<LocalRemoteContactGraph> {
       return readFocusedContactGraph({
         actorId,
+        contactScopeRecordReader,
         store,
         workspaceId,
       });
@@ -848,14 +851,22 @@ export function createStorageContactGraphProvider({
       }
       const updatedAt = new Date().toISOString();
       nextPayload.updatedAt = updatedAt;
-      const record = await store.upsertRecord({
+      const nextRecord = {
         ...contactRecord,
         updatedAt,
         searchText: [contactRecord.searchText, primaryIndustryId ?? ""]
           .filter(Boolean)
           .join(" "),
         payload: nextPayload,
+      };
+      if (!store.updateRecordIfCurrent) {
+        throw new AppError("SERVICE_UNAVAILABLE", "Contact storage requires conditional update support.");
+      }
+      const record = await store.updateRecordIfCurrent(nextRecord, {
+        userId: contactRecord.userId ?? null,
+        updatedAt: contactRecord.updatedAt,
       });
+      if (!record) throw new AppError("CONFLICT", "Contact changed. Refresh and retry your edit.");
       const contact = contactFromRecord(record);
       if (!contact) {
         throw new Error("Persisted contact industry failed validation.");
