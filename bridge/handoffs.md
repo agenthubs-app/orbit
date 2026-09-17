@@ -10,6 +10,7 @@
 
 | ID | 优先级 | 事项 | 当前状态 | 下一责任方 | 关闭条件 |
 | --- | --- | --- | --- | --- | --- |
+| [BR-027](2026-09-17-read-budget-staging.md) | P0 | 读取成本与独立免费测试环境 | 第一批本地验证；新库SQL可用 | Web/Bridge | 新测试项目迁移/seed与双端同API联调；联系人完整分页消费、bootstrap最小化和dashboard聚合；按查询预算与实际Neon增量验收。旧Production未修改 |
 | [BR-026](2026-09-16-cloud-five-item-acceptance.md) | P1 | 五项云端闭环：生命周期、提醒、worker、原生、新用户 | consumer_ready；验证blocked | 恢复现有Neon额度后继续原生新活动正例 | App5ee62479活动/交换/通知消费者及Webd0999d5f旧状态保护已提交，2945＋297回归/typecheck通过；首轮真实双向读写证据保留。Neon Free传输超额，待新活动生成/发布→原生交换/通知→pending本人初始化→双端回读；原$1剩余预算可用，不含Neon升级 |
 | [BR-025](2026-09-16-production-p0-fixes.md) | P1 | Production 身份、AI 查询回显、关系跟进可见性 | source_ready | Web/Bridge；App 生命周期与原生验收仍开放 | Web 最终部署实测、关系下一步语义一致、原生 Production 同记录回读 |
 | BR-001 | P1 | Today 同名但数据与动作集合不同 | identified | Bridge 梳理，Web/App 接口负责人协作 | 逐项映射账本/安排/任务；实现或有依据接受差异；双向验证 |

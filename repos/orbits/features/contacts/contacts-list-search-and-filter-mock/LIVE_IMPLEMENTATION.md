@@ -1,5 +1,7 @@
 # Contacts List Search and Filter Live Implementation
 
+2026-09-17 增量：`GET /api/contacts` 已透传显式 limit/cursor，无 limit 的旧调用保持完整结果。分页接线与验证边界见 [读取预算](../READ_BUDGET.md)；以下早期 provider 规划不代表云端新版本验收已完成。
+
 ## Live service and provider files
 
 - Keep `features/contacts/contract.ts` as the DTO, filter, provenance, state, and error-code boundary for contact list, search, tag filters, source filters, value filters, and status filters.

@@ -24,6 +24,7 @@ import type {
   LiveRecord,
   LiveRecordStoreLike,
 } from "../../../shared/storage/live-record-store";
+import type { LiveRecordSqlClient } from "../../../shared/storage/postgres-live-record-store";
 
 export interface LiveAppBootstrapProfileRecord extends UserProfileDTO {
   headline?: string;
@@ -71,6 +72,7 @@ export const APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS = {
 } as const;
 
 export interface StorageAppBootstrapProviderOptions {
+  sqlClient?: LiveRecordSqlClient;
   source?: string;
   sourceLabel?: string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
@@ -487,36 +489,303 @@ async function listCollection(
   });
 }
 
+interface ProjectedBootstrapRow {
+  collection_name: string;
+  record_id: string;
+  evidence_ids: readonly string[] | null;
+  occurred_at: Date | string | null;
+  lifecycle_state: string;
+  created_at: Date | string;
+  updated_at: Date | string;
+  payload: Record<string, unknown> | string | null;
+}
+
+interface BootstrapRecordCollections {
+  accounts: readonly LiveRecord<Record<string, unknown>>[];
+  actions: readonly LiveRecord<Record<string, unknown>>[];
+  connections: readonly LiveRecord<Record<string, unknown>>[];
+  contacts: readonly LiveRecord<Record<string, unknown>>[];
+  events: readonly LiveRecord<Record<string, unknown>>[];
+  evidence: readonly LiveRecord<Record<string, unknown>>[];
+  notifications: readonly LiveRecord<Record<string, unknown>>[];
+  permissions: readonly LiveRecord<Record<string, unknown>>[];
+  profiles: readonly LiveRecord<Record<string, unknown>>[];
+  tasks: readonly LiveRecord<Record<string, unknown>>[];
+}
+
+const bootstrapProjectionCollections = Object.values(
+  APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS,
+);
+
+const bootstrapProjectionSql = `
+  select
+    collection_name,
+    record_id,
+    evidence_ids,
+    occurred_at,
+    lifecycle_state,
+    created_at,
+    updated_at,
+    case collection_name
+      when 'accounts' then jsonb_build_object(
+        'id', payload -> 'id',
+        'name', payload -> 'name',
+        'createdAt', payload -> 'createdAt',
+        'updatedAt', payload -> 'updatedAt'
+      )
+      when 'profiles' then jsonb_build_object(
+        'id', payload -> 'id',
+        'accountId', payload -> 'accountId',
+        'displayName', payload -> 'displayName',
+        'role', payload -> 'role',
+        'timezone', payload -> 'timezone',
+        'headline', payload -> 'headline',
+        'homeMarket', payload -> 'homeMarket',
+        'preferredFollowUpWindow', payload -> 'preferredFollowUpWindow',
+        'relationshipGoal', payload -> 'relationshipGoal',
+        'createdAt', payload -> 'createdAt',
+        'updatedAt', payload -> 'updatedAt'
+      )
+      when 'contacts' then jsonb_build_object(
+        'id', payload -> 'id',
+        'personId', payload -> 'personId',
+        'displayName', payload -> 'displayName',
+        'organization', payload -> 'organization',
+        'role', payload -> 'role',
+        'location', payload -> 'location',
+        'primaryEmail', payload -> 'primaryEmail',
+        'primaryPhone', payload -> 'primaryPhone',
+        'profileSnippet', payload -> 'profileSnippet',
+        'stage', payload -> 'stage',
+        'source', payload -> 'source',
+        'evidenceIds', payload -> 'evidenceIds',
+        'createdAt', payload -> 'createdAt',
+        'updatedAt', payload -> 'updatedAt'
+      )
+      when 'connections' then jsonb_build_object(
+        'id', payload -> 'id',
+        'accountId', payload -> 'accountId',
+        'contactId', payload -> 'contactId',
+        'stage', payload -> 'stage',
+        'valueTypes', payload -> 'valueTypes',
+        'summary', payload -> 'summary',
+        'relationshipStrength', payload -> 'relationshipStrength',
+        'trustLevel', payload -> 'trustLevel',
+        'businessRelevanceScore', payload -> 'businessRelevanceScore',
+        'sharedTopics', payload -> 'sharedTopics',
+        'suggestedActions', payload -> 'suggestedActions',
+        'source', payload -> 'source',
+        'evidenceIds', payload -> 'evidenceIds',
+        'createdAt', payload -> 'createdAt',
+        'updatedAt', payload -> 'updatedAt'
+      )
+      when 'events' then jsonb_build_object(
+        'id', payload -> 'id',
+        'name', payload -> 'name',
+        'location', payload -> 'location',
+        'startsAt', payload -> 'startsAt',
+        'endsAt', payload -> 'endsAt',
+        'source', payload -> 'source',
+        'evidenceIds', payload -> 'evidenceIds'
+      )
+      when 'tasks' then jsonb_build_object(
+        'id', payload -> 'id',
+        'title', payload -> 'title',
+        'status', payload -> 'status',
+        'contactId', payload -> 'contactId',
+        'connectionId', payload -> 'connectionId',
+        'dueAt', payload -> 'dueAt',
+        'source', payload -> 'source',
+        'evidenceIds', payload -> 'evidenceIds',
+        'createdAt', payload -> 'createdAt',
+        'updatedAt', payload -> 'updatedAt'
+      )
+      when 'agentActions' then jsonb_build_object(
+        'id', payload -> 'id',
+        'type', payload -> 'type',
+        'status', payload -> 'status',
+        'confirmationRequired', payload -> 'confirmationRequired',
+        'source', payload -> 'source',
+        'evidenceIds', payload -> 'evidenceIds',
+        'createdAt', payload -> 'createdAt',
+        'updatedAt', payload -> 'updatedAt'
+      )
+      when 'permissions' then jsonb_build_object(
+        'id', payload -> 'id',
+        'capability', payload -> 'capability',
+        'state', payload -> 'state',
+        'updatedAt', payload -> 'updatedAt',
+        'source', payload -> 'source',
+        'evidenceIds', payload -> 'evidenceIds'
+      )
+      when 'notifications' then jsonb_build_object(
+        'id', payload -> 'id',
+        'channel', payload -> 'channel',
+        'title', payload -> 'title',
+        'body', payload -> 'body',
+        'status', payload -> 'status',
+        'scheduledFor', payload -> 'scheduledFor',
+        'source', payload -> 'source',
+        'evidenceIds', payload -> 'evidenceIds',
+        'createdAt', payload -> 'createdAt'
+      )
+      when 'evidence' then jsonb_build_object('id', payload -> 'id')
+    end as payload
+  from orbit_records
+  where workspace_id = $1
+    and collection_name = any(__COLLECTIONS__::text[])
+    and lifecycle_state <> 'deleted'
+    __OWNER_FILTER__
+  order by collection_name, coalesce(occurred_at, updated_at) desc, updated_at desc
+`;
+
+function timestampString(
+  value: Date | string | null | undefined,
+  fieldName: string,
+): string {
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "string" && value.trim()) return value;
+  throw new Error(`orbit_records.${fieldName} is required`);
+}
+
+function projectedBootstrapRecord(
+  row: ProjectedBootstrapRow,
+  workspaceId: string,
+): LiveRecord<Record<string, unknown>> {
+  const payload =
+    typeof row.payload === "string"
+      ? (JSON.parse(row.payload) as Record<string, unknown>)
+      : row.payload && typeof row.payload === "object"
+        ? row.payload
+        : {};
+
+  return {
+    workspaceId,
+    collectionName: row.collection_name,
+    recordId: row.record_id,
+    sourceType: "system",
+    sourceId: row.record_id,
+    evidenceIds: row.evidence_ids ? [...row.evidence_ids] : [],
+    occurredAt: row.occurred_at instanceof Date
+      ? row.occurred_at.toISOString()
+      : row.occurred_at ?? null,
+    createdAt: timestampString(row.created_at, "created_at"),
+    updatedAt: timestampString(row.updated_at, "updated_at"),
+    lifecycleState:
+      row.lifecycle_state === "archived" ? "archived" : "active",
+    payload,
+  };
+}
+
+async function readProjectedBootstrapCollections(
+  client: LiveRecordSqlClient,
+  workspaceId: string,
+  accountId?: string,
+): Promise<BootstrapRecordCollections> {
+  const hasOwnerFilter = accountId !== undefined;
+  const collectionParameter = hasOwnerFilter ? 3 : 2;
+  const values = hasOwnerFilter
+    ? [workspaceId, accountId, bootstrapProjectionCollections]
+    : [workspaceId, bootstrapProjectionCollections];
+  const result = await client.query<ProjectedBootstrapRow>(
+    bootstrapProjectionSql
+      .replace("__COLLECTIONS__", `$${collectionParameter}`)
+      .replace("__OWNER_FILTER__", hasOwnerFilter ? "and user_id = $2" : ""),
+    values,
+  );
+  const collections = new Map<string, LiveRecord<Record<string, unknown>>[]>();
+
+  for (const row of result.rows) {
+    const records = collections.get(row.collection_name) ?? [];
+    records.push(projectedBootstrapRecord(row, workspaceId));
+    collections.set(row.collection_name, records);
+  }
+
+  return {
+    accounts: collections.get(APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.accounts) ?? [],
+    actions: collections.get(APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.actions) ?? [],
+    connections: collections.get(APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.connections) ?? [],
+    contacts: collections.get(APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.contacts) ?? [],
+    events: collections.get(APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.events) ?? [],
+    evidence: collections.get(APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.evidence) ?? [],
+    notifications: collections.get(APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.notifications) ?? [],
+    permissions: collections.get(APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.permissions) ?? [],
+    profiles: collections.get(APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.profiles) ?? [],
+    tasks: collections.get(APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.tasks) ?? [],
+  };
+}
+
 export function createStorageAppBootstrapProvider({
+  sqlClient,
   source,
   sourceLabel = "Bootstrap shared live storage",
   store,
   workspaceId,
 }: StorageAppBootstrapProviderOptions): LiveAppBootstrapProvider {
+  const inFlightReads = new Map<
+    string | undefined,
+    Promise<LiveAppBootstrapGraph>
+  >();
+
   async function readGraph(accountId?: string): Promise<LiveAppBootstrapGraph> {
-      const [
-        accountRecords,
-        profileRecords,
-        contactRecords,
-        connectionRecords,
-        eventRecords,
-        taskRecords,
-        actionRecords,
-        permissionRecords,
-        notificationRecords,
-        evidenceRecords,
-      ] = await Promise.all([
-        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.accounts, accountId),
-        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.profiles, accountId),
-        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.contacts, accountId),
-        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.connections, accountId),
-        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.events, accountId),
-        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.tasks, accountId),
-        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.actions, accountId),
-        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.permissions, accountId),
-        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.notifications, accountId),
-        listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.evidence, accountId),
-      ]);
+    if (sqlClient) {
+      const existing = inFlightReads.get(accountId);
+      if (existing) return existing;
+    }
+
+    const read = (async () => {
+      const collections = sqlClient
+        ? await readProjectedBootstrapCollections(sqlClient, workspaceId, accountId)
+        : await (async (): Promise<BootstrapRecordCollections> => {
+            const [
+              accountRecords,
+              profileRecords,
+              contactRecords,
+              connectionRecords,
+              eventRecords,
+              taskRecords,
+              actionRecords,
+              permissionRecords,
+              notificationRecords,
+              evidenceRecords,
+            ] = await Promise.all([
+              listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.accounts, accountId),
+              listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.profiles, accountId),
+              listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.contacts, accountId),
+              listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.connections, accountId),
+              listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.events, accountId),
+              listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.tasks, accountId),
+              listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.actions, accountId),
+              listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.permissions, accountId),
+              listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.notifications, accountId),
+              listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.evidence, accountId),
+            ]);
+
+            return {
+              accounts: accountRecords,
+              actions: actionRecords,
+              connections: connectionRecords,
+              contacts: contactRecords,
+              events: eventRecords,
+              evidence: evidenceRecords,
+              notifications: notificationRecords,
+              permissions: permissionRecords,
+              profiles: profileRecords,
+              tasks: taskRecords,
+            };
+          })();
+      const {
+        accounts: accountRecords,
+        profiles: profileRecords,
+        contacts: contactRecords,
+        connections: connectionRecords,
+        events: eventRecords,
+        tasks: taskRecords,
+        actions: actionRecords,
+        permissions: permissionRecords,
+        notifications: notificationRecords,
+        evidence: evidenceRecords,
+      } = collections;
       const records = [
         ...accountRecords,
         ...profileRecords,
@@ -570,6 +839,16 @@ export function createStorageAppBootstrapProvider({
           .map(taskFromRecord)
           .filter((task): task is TaskDTO => task !== null),
       };
+    })();
+
+    if (!sqlClient) return read;
+
+    inFlightReads.set(accountId, read);
+    const cleanup = () => {
+      if (inFlightReads.get(accountId) === read) inFlightReads.delete(accountId);
+    };
+    void read.then(cleanup, cleanup);
+    return read;
   }
 
   return {
@@ -593,6 +872,7 @@ export function createConfiguredStorageAppBootstrapProvider({
   }
 
   return createStorageAppBootstrapProvider({
+    sqlClient: configuredStore.client,
     source: `postgres-live-record-store:app-bootstrap:${configuredStore.workspaceId}`,
     sourceLabel,
     store: configuredStore.store,

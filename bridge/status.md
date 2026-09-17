@@ -1,5 +1,11 @@
 # 两端当前状态
 
+## 2026-09-17 读取成本与独立 Neon 测试环境
+
+联系人详情/行业授权精确读取、bootstrap/dashboard 字段投影与同 actor 在途查询合并、可选隐私安全 PG 用量诊断已进入本地验证；GET contacts 接通显式分页参数，未强行截断旧消费者。不是全面 SQL 聚合/分页已完成。
+
+用户批准同账号独立 Neon 测试项目后，已创建 `orbit-staging-20260917`（`orange-forest-30108072`，Free、新加坡、PG16），最小 SQL 实测成功，public 表数0。旧 Production 与连接未动；新库迁移/seed/API及App联调尚未执行，不把空库创建当业务闭环。后续必要项及精确验证边界见 [BR-027](2026-09-17-read-budget-staging.md)。原项目额度限制仅继续阻塞原 Production 验收，不阻塞本地开发或新测试环境准备。
+
 ## 2026-09-17 原生入口与服务端状态保护收尾
 
 App `5ee62479` 已接入 canonical 活动目录、推荐、本人轮次/座位/签到、交换动作及通知参会者直达；作用域和回执检查覆盖 actor/cookie/baseURL/焦点切换。`c5e7b124` 修复服务端5xx被误报密码错误，真实原生负例已验。Web `d0999d5f` 阻止旧联系人 PATCH 绕过生命周期，保留私有字段和纯legacy兼容；已发布为Production `dpl_AYtJfqdDkAPfQiGoANYzKJ9k2e5t`，正式别名Ready。App2945/2945、Web相关297/297、两端typecheck、iOS导出、Web mapper→App decoder6/6均通过；不是新Production原生正例。

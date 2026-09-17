@@ -1,5 +1,7 @@
 # Contact Detail Tag and Status Mock Live Implementation
 
+2026-09-17 增量：配置化 PostgreSQL 的详情与行业授权读取已按 actor/contactId 在 SQL 侧限定关系和私有详情记录；不再读取整个关系/备注集合。兼容边界与本地流量回归见 [读取预算](../READ_BUDGET.md)。
+
 ## Live service and provider files
 
 - Keep `features/contacts/detail-contract.ts` as the DTO, editable tag, status, note, last interaction metadata, provenance, state, service interface, and error-code boundary.

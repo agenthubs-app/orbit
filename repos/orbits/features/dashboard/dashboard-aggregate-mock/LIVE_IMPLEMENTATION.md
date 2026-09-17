@@ -13,6 +13,20 @@ Current mock files:
 - `app/api/dashboard/summary/route.ts`
 - `features/dashboard/dashboard-aggregate-mock/debug-view.tsx`
 
+## Current Bounded Storage Read Slice
+
+The configured Postgres storage aggregate provider now reads the six dashboard
+collections with one explicit JSON projection. Account-scoped calls keep the
+`workspace_id` plus `user_id` ownership filter and exclude only deleted rows;
+there is no row limit, so counts, DTO validation, detail-state tags, and
+pending/canonical semantics are unchanged. The provider keeps the existing
+memory/injected-store fallback, which still uses generic full-payload reads.
+
+This bounds per-row returned fields and query round trips, not the total number
+of matching rows. The focused tests measure the reduction on a synthetic local
+fixture; generated-fixture-corpus DTO parity remains a follow-up for the main
+integration owner.
+
 ## Live Service And Provider Files
 
 - Keep `features/dashboard/contract.ts` as the stable DTO and error contract

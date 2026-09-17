@@ -35,6 +35,7 @@ import type {
   LiveContactsGraphProvider,
 } from "../live-service";
 import type { LocalRemoteContactGraph } from "../contact-graph-provider";
+import { createPostgresContactScopeRecordReader, type ContactScopeRecordReader } from "./contact-scope-postgres-reader";
 
 export const CONTACTS_LIVE_RECORD_COLLECTIONS = {
   connections: "connections",
@@ -47,6 +48,7 @@ const AMBIGUOUS_CONNECTION_ERROR = "CONTACT_DETAIL_AMBIGUOUS_CONNECTION";
 
 export interface StorageContactGraphProviderOptions {
   contactRecordPageReader?: ContactRecordPageReader;
+  contactScopeRecordReader?: ContactScopeRecordReader;
   source?: string;
   sourceLabel?: string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
@@ -474,6 +476,7 @@ function graphFromRecords(input: {
 async function readFocusedContactGraph(input: {
   actorId?: string;
   contactRecordPageReader?: ContactRecordPageReader;
+  contactScopeRecordReader?: ContactScopeRecordReader;
   contactId?: string;
   listInput?: ContactsListSearchFilterInput;
   store: LiveRecordStoreLike<Record<string, unknown>>;
@@ -493,6 +496,10 @@ async function readFocusedContactGraph(input: {
   const boundedPage = input.listInput && input.contactRecordPageReader
     ? await input.contactRecordPageReader(input.listInput, actorId)
     : null;
+  const focusedIds = input.contactId ? [input.contactId] : boundedPage?.recordIds;
+  const scope = focusedIds && input.contactScopeRecordReader
+    ? await input.contactScopeRecordReader(actorId, focusedIds)
+    : null;
   const [contactRecords, allConnectionRecords, detailStateRecords] = await Promise.all([
     input.store.listRecords({
       workspaceId: input.workspaceId,
@@ -503,12 +510,12 @@ async function readFocusedContactGraph(input: {
     input.store.listRecords({
       workspaceId: input.workspaceId,
       collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.connections,
-      ...(boundedPage ? { userId: actorId } : {}),
+      ...(scope ? { recordIds: scope.connectionIds } : boundedPage ? { userId: actorId } : {}),
     }),
     input.store.listRecords({
       workspaceId: input.workspaceId,
       collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.detailStates,
-      ...(boundedPage ? { userId: actorId } : {}),
+      ...(scope ? { recordIds: scope.detailStateIds } : boundedPage ? { userId: actorId } : {}),
     }),
   ]);
   const actorConnectionRecords = allConnectionRecords.filter(
@@ -679,6 +686,7 @@ export function createPostgresContactRecordPageReader(input: {
 
 export function createStorageContactGraphProvider({
   contactRecordPageReader,
+  contactScopeRecordReader,
   source,
   sourceLabel = "Contacts shared live storage",
   store,
@@ -698,6 +706,7 @@ export function createStorageContactGraphProvider({
       return readFocusedContactGraph({
         actorId,
         contactRecordPageReader,
+        contactScopeRecordReader,
         listInput: input,
         store,
         workspaceId,
@@ -707,6 +716,7 @@ export function createStorageContactGraphProvider({
       return readFocusedContactGraph({
         actorId,
         contactId: contactId.trim(),
+        contactScopeRecordReader,
         store,
         workspaceId,
       });
@@ -801,6 +811,9 @@ export function createStorageContactGraphProvider({
       if (!normalizedActorId || !normalizedContactId) {
         throw new Error("Contact industry update requires actor and contact identifiers.");
       }
+      const scope = contactScopeRecordReader
+        ? await contactScopeRecordReader(normalizedActorId, [normalizedContactId])
+        : null;
       const [contactRecord, connectionRecords] = await Promise.all([
         store.getRecord({
           workspaceId,
@@ -810,6 +823,7 @@ export function createStorageContactGraphProvider({
         store.listRecords({
           workspaceId,
           collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.connections,
+          ...(scope ? { recordIds: scope.connectionIds } : {}),
         }),
       ]);
       const actorCanEdit =
@@ -888,6 +902,10 @@ export function createConfiguredStorageContactGraphProvider({
   }
 
   const provider = createStorageContactGraphProvider({
+    contactScopeRecordReader: createPostgresContactScopeRecordReader({
+      client: configuredStore.client,
+      workspaceId: configuredStore.workspaceId,
+    }),
     contactRecordPageReader: createPostgresContactRecordPageReader({
       client: configuredStore.client,
       workspaceId: configuredStore.workspaceId,
