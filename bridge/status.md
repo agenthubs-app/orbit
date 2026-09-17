@@ -2,7 +2,7 @@
 
 ## 2026-09-17 读取成本分支远程集成（验证中）
 
-已按用户批准在独立 worktree 合并本地与远程 `chat-agent`；保留精确读取、生命周期、AI 任务授权与远程报名/通知通道变更。修复可选下一步建议导致的详情读取异常，并补交界回归。尚未推送，最终两端复验与远程后续 12 个提交的集成正在进行；全量失败、环境缺项及具体版本见[合并验证记录](2026-09-17-cloud-read-remote-integration.md)。本轮不使用 Neon/模型额度、不修改 Production；以下为各工作流的历史状态，不代表当前合并版全部已验收。
+已按用户批准在独立 worktree 合并本地与远程 `chat-agent`；代码检查点 `ae6598b2` 保留精确读取、生命周期、AI 任务授权与远程报名/通知通道变更，远程文档 `157ae860` 也已纳入。用户要求先交付推送、剩余 bug 后续修复：App 最终全量仍在运行，认证审计行号锚点失效仍待修，不能标全绿。已修复稀疏关系动作读取、任务页重复 React key 及失效测试 fixture。失败、环境缺项及具体版本见[合并验证记录](2026-09-17-cloud-read-remote-integration.md)。本轮不使用 Neon/模型额度、不主动发布 Production；以下为各工作流的历史状态，不代表当前合并版全部已验收。
 
 ## 2026-09-17 小型免费测试库已初始化
 
@@ -60,6 +60,8 @@ Production 运行源码 `105ebba4d` / `dpl_2FjxtX314B6DRojeZvFbdDF8gTNh` 为 Rea
 
 增量：主测试账号凭据登录可读 66 联系人；新增活动报名/取消/重报复用同一记录。关系 fixture 已整理为每联系人一条有效关系、一个当前任务，旧重复记录可恢复停用，正式生命周期核验 0 issues；46 项定向回归通过。后台 event-operations worker 的云端承载与原生 App 同环境验证仍为精确未完成项。
 ## 2026-09-17 活动报名修复与Phone发布
+
+用户随后要求重建两端：Phone已真正fresh后台Next BUILD `Mh8CRhvDjpNWmXZo4wex1`及fresh Expo export并重新部署，同域PUBLIC93152/93153/93154健康、逐13页正常UI登录0业务写验证通过。Main Simulator实际重新编译/覆盖安装，当前92537已显示有数据首页与历史笔记列表；实际8082连接和Hermes主bundle URL已观察，不把原生binary hash当JS证明。原账号/本地数据/预算/回退保留，临时preview正常停止；详见[本轮重建交接](2026-09-17-phoneweb-registration-repair.md)。下方是首次发布的历史记录，不是当前PID。
 
 0064固定8daf与0065固定d0e已合chat-agent并普通push，独立远端7b1b3de289eba6e550a4702954df6056eddc664e一致。真实13配置修复/all13正式GET及公网逐页enabled通过；正常UI单新QAcase双入口拒绝/确认取消、重新报名与正式回读通过，原记录摘要保全。新Phone519/f082、freshentry875实际公网SHA1afd；后台明确复用64真实BUILD6cy，原ngrok同地址/PUBLIC87138/9/40健康200，old63回退完整。owned previews与35434PG正常停保数据资产。
 
