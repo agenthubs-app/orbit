@@ -32,6 +32,20 @@ const session = {
   }
 };
 
+for (const status of [500, 502, 503, 200]) test(`credentials unverifiable HTTP ${status} is not a password rejection`, async () => {
+  const result = await signInWithMobileCredentials({ baseUrl: "https://orbit.example", email: "person@example.com", password: "secret", fetchImpl: async () => new Response("<html>unavailable</html>", { status }) });
+  assert.equal(result.success, false);
+  if (!result.success) { assert.doesNotMatch(result.error.message, /邮箱或密码/); assert.notEqual(result.error.code, "ORBIT_APP_AUTH_INVALID_CREDENTIALS"); assert.equal(result.error.status, status); }
+});
+test("even a misleading unauthorized envelope cannot make a 5xx a password rejection", async () => {
+  const result = await signInWithMobileCredentials({ baseUrl: "https://orbit.example", email: "person@example.com", password: "secret", fetchImpl: async () => jsonResponse({ success: false, error: { code: "MOBILE_AUTH_UNAUTHORIZED" } }, 500) });
+  if (result.success) assert.fail("must fail"); else assert.doesNotMatch(result.error.message, /邮箱或密码/);
+});
+test("credentials true HTTP401 retains invalid credential guidance", async () => {
+  const result = await signInWithMobileCredentials({ baseUrl: "https://orbit.example", email: "person@example.com", password: "secret", fetchImpl: async () => new Response("", { status: 401 }) });
+  if (result.success) assert.fail("must fail"); else assert.match(result.error.message, /邮箱或密码/);
+});
+
 test("mobile providers returns only supported provider ids", async () => {
   const fetchImpl: MobileAuthFetchLike = async (input, init) => {
     assert.equal(
