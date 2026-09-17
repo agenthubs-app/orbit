@@ -30,7 +30,17 @@
 
 ## 后续必要步骤（不要求购买套餐或历史真实数据）
 
-1. 新项目独立连接配置 → 既有迁移 → 经校验的完整合成测试数据/可登录账号 → 数据一致性检查；不覆盖旧 Production，不把缺历史真实数据当阻塞。
+### 2026-09-17 小数据环境进展
+
+- 新 Neon 空库已用既有迁移链和新小型 initializer 一次事务导入成功：4 个真实可登录的合成账号、2 个 canonical 活动、3 个联系人/关系、1 个带日期的跟进任务、6 条证据；orbit_records 共 28 条，不导入压力/聊天/AI历史。主办方所有权与普通参与者拒绝反例通过，关系符合最新生命周期 preflight。
+- 种子42,644 bytes、141次 SQL调用、返回JSON估计46,567 bytes；不等于 Neon 计费字节。本地重复初始化拒绝覆盖；云端没有执行删除、全库导出或全量测试。初始化硬限额与后续人工免费额度阈值见[小型测试环境操作规程](../repos/orbits/docs/operations/free-staging-budget.md)。
+- 独立 Vercel 项目 `orbit-staging-20260917` / `prj_PFJXRat2a7ADxz6tWVLQU7rNTaIt`；仅 Preview 配置新库、独立 Auth、workspace/live/读取诊断，无旧 Production 模型、邮件、Blob密钥。`vercel.staging.json` 不含定时/队列订阅，region sin1。模型与worker全流程不在本次启用范围。
+- Vercel 初次默认 deploy 意外自动标记为本测试项目 Production，且未使用仅 Preview 的配置；已改为显式 `--target preview`，撤除首次不可用部署。旧 `orbit` Production 从未变更。后续不得只依赖省略 `--prod` 来保证 Preview。
+- 本地小种子/生命周期/PostgreSQL投影回归18/18，零失败/跳过；Web build typecheck通过。新增脚本图影响 LOW（只影响新 CLI），不修改现有 Web/App 业务函数。全站读取治理未完成，不能用“小样本运行成功”替代规模上限验证。
+
+下列列表保留完整后续范围；第1项小型 seed 已完成，其余以实际验证记录为准。
+
+1. 已完成：新项目独立连接配置 → 既有迁移 → 最小合成测试数据/可登录账号 → 关系一致性与主办方权限检查；不覆盖旧 Production，不把缺历史真实数据当阻塞。
 2. 优化版本接独立 Web/API 测试部署，App 使用同一测试 API；不要只换其中一个进程的数据库，后台 worker 也必须环境隔离。之后补报名/匹配/发布/交换/初始化跨端验收，模型费仅沿用此前剩余额度。
 3. 联系人列表：先统一搜索语义，再实现 SQL 过滤/计数/全局筛选项及稳定分页，连同 Web/App 下一页消费一起改。旧 `search_text` 预过滤和 mapper 的关系摘要/下一步/证据搜索不等价；不能单用 search_text 冒充完全一致，也不能默认20条却没有下一页。
 4. Bootstrap 拆最小身份/配置与业务懒加载；dashboard 改 SQL 聚合＋有界明细。保留现有统计、权限和 provenance，不以截断记录制造低流量。
