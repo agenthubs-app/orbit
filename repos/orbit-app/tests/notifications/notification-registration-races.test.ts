@@ -32,7 +32,7 @@ type Frame = { slots: any[]; cursor: number; effects: Array<() => void> };
 function notificationAction(tree: any): any {
   if (!tree) return undefined;
   if (Array.isArray(tree)) return tree.map(notificationAction).find(Boolean);
-  if (tree.type === "Pressable" && tree.props.accessibilityRole === "button" && /关键提醒|正在准备/.test(tree.props.accessibilityLabel ?? "")) return tree;
+  if (tree.type === "Pressable" && tree.props.accessibilityRole === "button" && /系统推送|正在准备/.test(tree.props.accessibilityLabel ?? "")) return tree;
   return notificationAction(tree.props?.children);
 }
 
@@ -82,7 +82,7 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
   };
   const api = {
     baseUrl: "http://localhost",
-    async get(_path: string): Promise<any> { return { success: true, data: { reminders: [] } }; },
+    async get(_path: string): Promise<any> { if (_path.startsWith("/api/inbox/delivery/owner")) return { success:false,status:404 }; return { success: true, data: { reminders: [] } }; },
     async post(path: string, options: { body: { deviceId: string; token: string } }) {
       assert.equal(path, durablePath);
       assert.equal(options.body.deviceId, "durable-device");
@@ -245,7 +245,7 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
         calls.push("logout");
         return input.failLogout ? { success: false, error: { message: "logout unavailable" } } : { success: true };
       } };
-      if (id.endsWith("/snapshot-store")) return { clearSnapshots: async () => { calls.push("clear-snapshots"); } };
+      if (id.endsWith("/sync-lifecycle")) return { syncLifecycle: { setScope: async () => { calls.push("sync-scope-change"); return true; } } };
       if (id.endsWith("/OrbitLocaleContext")) return {
         useOrbitLocale: () => ({
           choice: "system",
@@ -363,7 +363,8 @@ test("foreground retries the canonical registration after token acquisition reco
 test("failed logout preserves auth and restores the canonical push registry and local reminders on foreground", { timeout: 5000 }, async () => {
   const app = harness({ failLogout: true });
   let reminderReads = 0;
-  app.api.get = async () => {
+  app.api.get = async (path: string) => {
+    if (path.startsWith("/api/inbox/delivery/owner")) return {success:false,status:404};
     reminderReads++;
     return { success: true, data: { reminders: [{ id: "current-plan", status: "scheduled", fireAt: "2099-01-01T00:00:00Z", deepLink: "/tasks/current", title: "Current account", body: "Reminder" }] } };
   };
@@ -471,7 +472,7 @@ for (const failedDelete of [localPath, durablePath]) {
       assert.ok(app.calls.includes(`DELETE:${durablePath}`));
       assert.equal(app.calls.includes("logout"), true);
       assert.equal(app.calls.includes("clear-auth"), true);
-      assert.equal(app.calls.includes("clear-snapshots"), true);
+      assert.equal(app.calls.includes("sync-scope-change"), true);
       assert.ok(app.warnings.length >= 1);
       assert.match(JSON.stringify(app.warnings), /通知.*未|未.*通知/);
       assert.doesNotMatch(JSON.stringify(app.warnings), /test-cookie|ExponentPushToken|durable-device|local-device/);
@@ -510,7 +511,7 @@ test("account switch warns on unlink failure but still clears old reminders and 
     assert.ok(app.calls.includes(`DELETE:${localPath}`));
     assert.ok(app.calls.includes(`DELETE:${durablePath}`));
     assert.ok(app.calls.includes("write-auth"));
-    assert.ok(app.calls.includes("clear-snapshots"));
+    assert.ok(app.calls.includes("sync-scope-change"));
     assert.equal(app.scheduled.size, 0);
     assert.equal(app.warnings.length, 1);
     assert.doesNotMatch(JSON.stringify(app.warnings), /test-cookie|ExponentPushToken|durable-device|local-device/);
@@ -537,7 +538,7 @@ test("account switch drains the old reminder sync and revokes with the old auth 
     assert.deepEqual(app.clientScopes, ["test-cookie", "next-cookie", "test-cookie"]);
     assert.deepEqual(app.registry, { [durablePath]: false, [localPath]: false });
     assert.ok(app.calls.indexOf("write-auth") > app.calls.indexOf(`DELETE:${durablePath}`));
-    app.api.get = async () => ({ success: true, data: { reminders: [] } });
+    app.api.get = async (path: string) => path.startsWith("/api/inbox/delivery/owner") ? {success:false,status:404} : ({ success: true, data: { reminders: [] } });
     app.refreshAuth();
     await settle();
     assert.equal(app.scheduled.size, 0);
@@ -554,7 +555,8 @@ for (const action of ["logout", "account-switch"] as const) {
     try {
       await app.mount();
       await app.postEntered.promise;
-      app.api.get = async () => {
+      app.api.get = async (path: string) => {
+        if (path.startsWith("/api/inbox/delivery/owner")) return {success:false,status:404};
         reads++;
         getEntered.resolve();
         return reads === 1 ? oldPlans.promise : result;

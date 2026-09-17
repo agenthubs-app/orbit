@@ -1,3 +1,9 @@
+import {authorizedDeliveryHref} from '../../notifications/delivery-navigation';
+import {NotificationDeliverySettings} from '../settings/NotificationDeliverySettings';
+import {NotificationInboxList} from './NotificationInboxList';
+import {useNotificationInbox} from './useNotificationInbox';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { MessageInboxList } from "./MessageInboxList";
 import { Ionicons } from "@expo/vector-icons";
 import { randomUUID } from "expo-crypto";
 import { type Href, useIsFocused, useLocalSearchParams, useRouter } from "expo-router";
@@ -38,6 +44,7 @@ import {
   subscribeMessageStateInvalidation,
 } from "../../api/message-state";
 import { DataCard } from "../../components/DataCard";
+import { buildRelationshipMessageDeliveryRequest, relationshipDeliveryReceiptMatches } from "../../api/contact-communication";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
@@ -52,6 +59,7 @@ import { inboxNotificationActions, inboxNotificationReceiptMatches, inboxNotific
 import {
   filterInboxFeed,
   inboxFeedFromSources,
+  inboxMessageReadItems,
   type InboxFeedFilter,
   type InboxFeedItem,
   type InboxFeedView,
@@ -77,6 +85,13 @@ import {
   type RelationshipThreadDetailView
 } from "../../view-models/relationship-inbox";
 import { inboxPolishTemplate, registerAiTemplatePrefill } from "../../data/ai-template-prefill";
+import {
+  appPerformanceInput,
+  appPerformanceScenarioForPath,
+  isAppPerformanceEnabled,
+  markAppPerformance,
+  measureAppPerformance,
+} from "../../performance/app-performance";
 
 type InboxSection = "alerts" | "threads";
 type ClientGet = (endpoint: string, options?: { signal?: AbortSignal }) => Promise<ApiResult<unknown>>;
@@ -98,7 +113,7 @@ function useInboxIdentity(routeKey: string) {
   return { actorId, ready, scopeKey };
 }
 
-function useInboxRequests(scopeKey: string) {
+export function useInboxRequests(scopeKey: string) {
   const locale = useOrbitLocale();
   const focused = useIsFocused();
   const [foreground, setForeground] = useState(AppState.currentState === "active");
@@ -137,7 +152,16 @@ function useInboxRequests(scopeKey: string) {
     signal?.addEventListener("abort", abort, { once: true });
     scope.controller.signal.addEventListener("abort", abort, { once: true });
     try {
-      const result = await client[method]<unknown>(endpoint, { body, signal: controller.signal });
+      const performanceScenario = method === "get" && isAppPerformanceEnabled()
+        ? appPerformanceScenarioForPath(endpoint)
+        : null;
+      const execute = () => client[method]<unknown>(endpoint, { body, signal: controller.signal });
+      const result = performanceScenario
+        ? await measureAppPerformance(
+            appPerformanceInput("app.resource", performanceScenario),
+            execute,
+          )
+        : await execute();
       return isCurrent() && !controller.signal.aborted ? result : inactive;
     } finally {
       signal?.removeEventListener("abort", abort);
@@ -275,10 +299,40 @@ export function RelationshipInboxScreen() {
 function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliveryId, seedName, seedOrganization }: {
   actorId: string; scopeKey: string; seedContactId: string; deliveryId: string; seedName: string; seedOrganization: string;
 }) {
+  const renderStartedAt = isAppPerformanceEnabled()
+    ? globalThis.performance.now()
+    : 0;
+  useEffect(() => {
+    if (!isAppPerformanceEnabled()) return;
+    markAppPerformance({
+      ...appPerformanceInput("app.react_commit", "app.inbox"),
+      durationMs: globalThis.performance.now() - renderStartedAt,
+      failed: false,
+    });
+  });
   const locale = useOrbitLocale();
   const { colors } = useOrbitTheme();
   const router = useRouter();
   const { clientGet, clientPost, clientPatch, isCurrent } = useInboxRequests(scopeKey);
+  const server = useOrbitApiBaseUrl();
+  const typedInbox = useNotificationInbox(actorId, clientGet, clientPost, isCurrent);
+  const typedEnabled = typedInbox.enabled !== false;
+  const [activeSection, setActiveSection] = useState<InboxSection>(deliveryId ? "alerts" : "threads");
+  const selectionChanged = useRef(false);
+  const preferenceKey = JSON.stringify(["orbit.inbox.tab", server.baseUrl, actorId]);
+  useEffect(() => {
+    let current = true;
+    void AsyncStorage.getItem(preferenceKey).then(value => {
+      if (current && !selectionChanged.current && !deliveryId && (value === "alerts" || value === "threads")) setActiveSection(value);
+    }).catch(() => {});
+    return () => { current = false; };
+  }, [preferenceKey, deliveryId]);
+  function selectSection(section: InboxSection) {
+    if (!isCurrent()) return;
+    selectionChanged.current = true;
+    setActiveSection(section);
+    void AsyncStorage.setItem(preferenceKey, section).catch(() => {});
+  }
   const [deliveryAttempt, setDeliveryAttempt] = useState(0);
   const currentDelivery = useRef<DeliveryView | null>(null);
   const deliveryController = useRef<AbortController | null>(null);
@@ -318,7 +372,30 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
     (data) => relationshipSignalsToView(data, locale.language).signals.length === 0,
     clientGet, isCurrent
   );
-  const conversationsData = state.kind === "success" || state.kind === "empty" ? state.data : null;
+  const firstPage = state.kind === "success" || state.kind === "empty" ? state.data : null;
+  type MessagePage = import("../../api/contract/relationship-communication").RelationshipConversationListDTO;
+  const [more, setMore] = useState<{ source: unknown; page: MessagePage } | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [pageError, setPageError] = useState("");
+  const firstPageRef = useRef(firstPage); firstPageRef.current = firstPage;
+  const conversationsData = more && more.source === firstPage ? more.page : firstPage;
+  const messagePage = conversationsData as MessagePage | null;
+  const nextCursor = typeof messagePage?.nextCursor === "string" ? messagePage.nextCursor : null;
+  async function loadMoreMessages() {
+    if (!nextCursor || loadingMore || !isCurrent()) return;
+    const source = firstPage;
+    setLoadingMore(true); setPageError("");
+    try {
+      const result = await clientGet(relationshipCommunicationConversationsPath() + "?cursor=" + encodeURIComponent(nextCursor));
+      if (!isCurrent() || firstPageRef.current !== source) return;
+      if (!result.success || !relationshipConversationListToInbox(result.data, actorId)) throw new Error();
+      const incoming = result.data as MessagePage;
+      const byId = new Map(messagePage?.conversations.map(item => [item.conversationId, item]));
+      incoming.conversations.forEach(item => byId.set(item.conversationId, item));
+      setMore({ source, page: { ...incoming, conversations: [...byId.values()] } });
+    } catch { if (isCurrent()) setPageError(locale.t("inbox.requestFailed")); }
+    finally { if (isCurrent()) setLoadingMore(false); }
+  }
   const signalsData = signalsState.kind === "success" || signalsState.kind === "empty" ? signalsState.data : null;
   const feed = useMemo(() => inboxFeedFromSources({
     actorId,
@@ -329,14 +406,15 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
     signalsData,
   }), [actorId, conversationsData, locale.language, notificationsData, signalsData]);
   const batchScope = useMemo(
-    () => ({ actorId, conversationsData, notificationsData, signalsData }),
-    [actorId, conversationsData, notificationsData, signalsData]
+    () => ({ actorId, conversationsData, notificationsData, signalsData, activeSection }),
+    [actorId, conversationsData, notificationsData, signalsData, activeSection]
   );
   const currentBatchScope = useRef(batchScope);
   currentBatchScope.current = batchScope;
   const [batchPending, setBatchPending] = useState(false);
   const [batchError, setBatchError] = useState("");
-  const confirmableUnread = feed.items.filter(item => !item.read && item.readAction).length;
+  const readItems = activeSection === "threads" ? inboxMessageReadItems(conversationsData, actorId) : feed.items;
+  const confirmableUnread = readItems.filter(item => !item.read && item.readAction).length;
   const [composing, setComposing] = useState(
     Boolean(!seedContactId && (seedName || seedOrganization))
   );
@@ -344,7 +422,7 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
     useState<RelationshipCreatedThreadView | null>(null);
   const contentReady = state.kind === "success" || state.kind === "empty";
   const retainedContent = useRef<{ data: unknown } | null>(null);
-  if (contentReady) retainedContent.current = { data: state.data };
+  if (contentReady) retainedContent.current = { data: conversationsData };
   const currentContent = useRef(contentReady);
   currentContent.current = contentReady;
   const isContentCurrent = useCallback(() => isCurrent() && currentContent.current, [isCurrent, contentReady]);
@@ -373,6 +451,9 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
         });
         return;
       }
+      const href = authorizedDeliveryHref(result.data, deliveryId);
+      if (href) { router.replace(href as Href); setDeliveryState({kind:'idle'}); return; }
+      if ((result.data as {target?:{status?:string}})?.target?.status === 'unavailable') { setDeliveryState({kind:'failure',message:locale.t('inbox.alertUnavailable')}); return; }
       const view = notificationDeliveryToView(result.data, deliveryId, locale.t("inbox.fallbackAlertTitle"), locale.t("inbox.fallbackAlertBody"));
       currentDelivery.current = view;
       setDeliveryState(
@@ -428,7 +509,7 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
       const result = await runInboxReadBatch({
         execute: action => clientPost(action.endpoint, action.body),
         isCurrent: () => isCurrent() && currentBatchScope.current === scope,
-        items: feed.items,
+        items: readItems,
       });
       if (result.stale || !isCurrent() || currentBatchScope.current !== scope) return;
       if (result.failedIds.length > 0) {
@@ -451,7 +532,7 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
     <InboxLayout
       refreshControl={
         <RefreshControl
-          onRefresh={refreshAll}
+          onRefresh={() => { refreshAll(); typedInbox.refresh(); }}
           refreshing={
             state.refreshing || deliveryState.kind === "loading" ||
             notificationsState.refreshing ||
@@ -461,8 +542,8 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
         />
       }
       title={locale.t(contentReady && composing ? "inbox.compose" : contentReady && createdThread ? "inbox.draftPreview" : "inbox.title")}
-      onMarkAllRead={contentReady && !composing && !createdThread ? () => void markAllRead() : undefined}
-      markAllReadDisabled={batchPending || confirmableUnread === 0}
+      onMarkAllRead={!composing && !createdThread ? () => void (activeSection === "alerts" && typedEnabled ? typedInbox.markRead() : markAllRead()) : undefined}
+      markAllReadDisabled={activeSection === "alerts" && typedEnabled ? typedInbox.busy || !typedInbox.data?.unreadCount : batchPending || confirmableUnread === 0}
       hideBack={contentReady && composing}
       onBack={createdThread ? () => setCreatedThread(null) : undefined}
     >
@@ -475,24 +556,29 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
       {isCurrent() && deliveryState.kind === "success" ? (
         <NotificationDeliveryCard clientPatch={clientPatch} getCurrentDelivery={getCurrentDelivery} signal={deliveryState.signal} view={deliveryState.data} />
       ) : null}
-      {state.kind === "loading" ? <LoadingState /> : null}
-      {state.kind === "offline" ? (
+      {activeSection === "threads" && state.kind === "loading" ? <LoadingState /> : null}
+      {activeSection === "threads" && state.kind === "offline" ? (
         <ErrorState message={state.error.message} title={locale.t("inbox.serverUnavailable")} />
       ) : null}
-      {state.kind === "failure" ? (
+      {activeSection === "threads" && state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
-      {retainedContent.current ? (
-        <View style={!contentReady ? { display: "none" } : undefined}>
+      {!composing && !createdThread ? <InboxSegmentedControl activeSection={activeSection} alertCount={typedEnabled ? typedInbox.data?.unreadCount ?? 0 : feed.unreadCount} messageCount={Number.isSafeInteger(messagePage?.unreadTotal) && messagePage!.unreadTotal! >= 0 ? messagePage!.unreadTotal! : relationshipConversationListToInbox(conversationsData, actorId)?.conversations.reduce((sum, item) => sum + item.unreadCount, 0) ?? 0} onChange={selectSection} /> : null}
+      {activeSection === "alerts" && typedEnabled ? (typedInbox.data ? <NotificationInboxList data={typedInbox.data} filter={typedInbox.filter} onFilter={typedInbox.setFilter} busy={typedInbox.busy} error={typedInbox.error} onRefresh={typedInbox.refresh} onMore={() => void typedInbox.more()} onOpen={id => router.push(`/inbox/notifications/${encodeURIComponent(id)}` as Href)} /> : typedInbox.error ? <View><ErrorState message={typedInbox.error}/><Pressable accessibilityRole="button" onPress={typedInbox.refresh}><Text>{locale.t("common.retry")}</Text></Pressable></View> : <LoadingState />) : retainedContent.current || activeSection === "alerts" ? (
+        <View style={activeSection === "threads" && !contentReady ? { display: "none" } : undefined}>
         <InboxContent
+          activeSection={activeSection}
+          onLoadMoreMessages={nextCursor ? () => void loadMoreMessages() : undefined}
+          loadingMore={loadingMore}
+          pageError={pageError}
           clientGet={clientGet}
           clientPost={clientPost}
-          isCurrent={isContentCurrent}
-          contentReady={contentReady}
+          isCurrent={activeSection === "alerts" ? isCurrent : isContentCurrent}
+          contentReady={activeSection === "alerts" || contentReady}
           actorId={actorId}
           getCurrentNotifications={getCurrentNotifications}
           createdThread={createdThread}
-          data={retainedContent.current.data}
+          data={retainedContent.current?.data}
           feed={feed}
           batchError={batchError}
           notificationsData={notificationsData}
@@ -622,6 +708,7 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
       {conversationId && state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
+      {conversationId && detail ? <NotificationDeliverySettings conversationId={conversationId}/> : null}
       {conversationId && readError ? <Text accessibilityRole="alert">{readError}</Text> : null}
       {conversationId && retainedDetail.current ? (
         <View style={!detail ? { display: "none" } : undefined}>
@@ -631,6 +718,7 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
           contactId={retainedContactId.current}
           isCurrent={isContentCurrent}
           detail={retainedDetail.current}
+          delivery={stateData ? { actorId, qualificationVersion: (stateData as { qualificationVersion: string }).qualificationVersion } : undefined}
         />
         </View>
       ) : null}
@@ -816,6 +904,10 @@ function NotificationDeliveryCard({
 }
 
 function InboxContent({
+  onLoadMoreMessages,
+  loadingMore,
+  pageError,
+  activeSection,
   actorId,
   batchError,
   clientGet,
@@ -841,6 +933,10 @@ function InboxContent({
   signalsLoading,
   setComposing
 }: {
+  onLoadMoreMessages: (() => void) | undefined;
+  loadingMore: boolean;
+  pageError: string;
+  activeSection: InboxSection;
   actorId: string;
   batchError: string;
   clientGet: ClientGet;
@@ -978,6 +1074,12 @@ function InboxContent({
   }
 
   if (!contentReady) return null;
+
+  if (activeSection === "threads") return <>
+    <MessageInboxList conversations={view.conversations} onOpen={onOpenConversation} />
+    {batchError || pageError ? <Text accessibilityRole="alert">{batchError || pageError}</Text> : null}
+    {onLoadMoreMessages ? <ActionButton icon="chevron-down-outline" disabled={loadingMore} label={locale.t("inbox.loadMoreMessages")} onPress={onLoadMoreMessages} variant="secondary" /> : null}
+  </>;
 
   const visibleFeed = filterInboxFeed(feed, activeFilter);
 
@@ -1314,10 +1416,12 @@ function UnifiedFeedList({
 function InboxSegmentedControl({
   activeSection,
   alertCount,
+  messageCount,
   onChange
 }: {
   activeSection: InboxSection;
   alertCount: number;
+  messageCount: number;
   onChange: (section: InboxSection) => void;
 }) {
   const locale = useOrbitLocale();
@@ -1326,6 +1430,7 @@ function InboxSegmentedControl({
     <View accessibilityRole="tablist" style={styles.segmentedControl}>
       <SegmentButton
         active={activeSection === "threads"}
+        count={messageCount}
         label={locale.t("inbox.messagesTab")}
         onPress={() => onChange("threads")}
       />
@@ -1356,6 +1461,7 @@ function SegmentButton({
       accessibilityRole="tab"
       accessibilityLabel={count ? `${label} ${count}` : label}
       accessibilityState={{ selected: active }}
+      aria-selected={active}
       onPress={onPress}
       style={({ pressed }) => [
         styles.segmentButton,
@@ -1560,7 +1666,8 @@ function ThreadDetail({
   contactId,
   isCurrent,
   detail,
-  previewOnly = false
+  previewOnly = false,
+  delivery,
 }: {
   clientGet: ClientGet;
   clientPost: ClientPost;
@@ -1568,6 +1675,7 @@ function ThreadDetail({
   isCurrent: () => boolean;
   detail: RelationshipThreadDetailView;
   previewOnly?: boolean;
+  delivery?: { actorId: string; qualificationVersion: string } | undefined;
 }) {
   const locale = useOrbitLocale();
   const { styles } = useStyles();
@@ -1579,7 +1687,7 @@ function ThreadDetail({
     : detail.messages.filter(message => message.body !== "暂无消息正文");
   return (
     <View style={styles.readingPane}>
-      <Text accessibilityRole="header" style={styles.readingSubject}>{detail.subject}</Text>
+      <Text accessibilityRole="header" style={styles.readingSubject}>{delivery ? locale.t("inbox.verifiedSubject", { name: detail.participantName }) : detail.subject}</Text>
       {!previewOnly ? <Text style={styles.bodyText}>{locale.t("inbox.contactNamed", { name: detail.participantName })}</Text> : null}
       {emptyCount > 0 ? (
         <View>
@@ -1601,7 +1709,7 @@ function ThreadDetail({
             style={styles.mailMessage}
           >
             <View style={styles.messageMeta}>
-              <Text style={styles.messageSender}>{message.sender}</Text>
+              <Text style={styles.messageSender}>{delivery && message.fromMe ? locale.t("inbox.me") : message.sender}</Text>
               <Text style={styles.messageTime}>{message.time}</Text>
             </View>
             <Text style={styles.messageBody}>{message.body}</Text>
@@ -1612,7 +1720,7 @@ function ThreadDetail({
         <Text style={styles.safetyText}>{locale.t("inbox.previewOnly")}</Text>
       ) : (
         <>
-          <ReplyComposer contactId={contactId ?? ""} isCurrent={isCurrent} detail={detail} />
+          <ReplyComposer contactId={contactId ?? ""} isCurrent={isCurrent} detail={detail} clientPost={clientPost} delivery={delivery} />
           <Pressable accessibilityRole="button" accessibilityLabel={locale.t("inbox.privacy")} accessibilityState={{ expanded: showPrivacy }} onPress={() => setShowPrivacy(value => !value)} style={styles.privacyDisclosure}>
             <Text style={styles.threadPreview}>{locale.t(showPrivacy ? "inbox.collapsePrivacy" : "inbox.privacy")}</Text>
           </Pressable>
@@ -1775,11 +1883,15 @@ function PrivacyControlsPanel({
 function ReplyComposer({
   contactId,
   isCurrent,
-  detail
+  detail,
+  clientPost,
+  delivery,
 }: {
   contactId: string;
   isCurrent: () => boolean;
   detail: RelationshipThreadDetailView;
+  clientPost: ClientPost;
+  delivery?: { actorId: string; qualificationVersion: string } | undefined;
 }) {
   const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
@@ -1790,7 +1902,30 @@ function ReplyComposer({
   const draftEdited = useRef(false);
   const [rewriteError, setRewriteError] = useState<string | null>(null);
   const [staged, setStaged] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendFailed, setSendFailed] = useState(false);
+  const attempt = useRef<{ body: string; requestId: string; qualificationVersion: string } | null>(null);
+  const sendRequest = useRef<object | null>(null);
+  useEffect(() => { sendRequest.current = null; setSending(false); }, [isCurrent]);
   useEffect(() => { setRewriteError(null); }, [isCurrent]);
+
+  async function sendReply() {
+    if (!delivery || !isCurrent() || sendRequest.current || (!body.trim() && !attempt.current)) return;
+    const currentAttempt = attempt.current ?? { body: body.trim(), requestId: randomUUID(), qualificationVersion: delivery.qualificationVersion };
+    const built = buildRelationshipMessageDeliveryRequest({ ...currentAttempt, conversationId: detail.conversationId });
+    if (!built.success) { setSendFailed(true); return; }
+    attempt.current = currentAttempt;
+    const request = {}; sendRequest.current = request; setSending(true); setSendFailed(false);
+    try {
+      const result = await clientPost(built.request.endpoint, { ...built.request.body, requestId: currentAttempt.requestId });
+      if (!isCurrent() || sendRequest.current !== request) return;
+      if (!result.success || result.status < 200 || result.status >= 300 || !relationshipDeliveryReceiptMatches(result.data, { ...currentAttempt, conversationId: detail.conversationId, senderAccountId: delivery.actorId })) {
+        setSendFailed(true); return;
+      }
+      attempt.current = null; draftEdited.current = true; setBody(""); emitMessageStateInvalidation();
+    } catch { if (isCurrent() && sendRequest.current === request) setSendFailed(true); }
+    finally { if (sendRequest.current === request) { sendRequest.current = null; setSending(false); } }
+  }
 
   useEffect(() => {
     if (draftEdited.current) return;
@@ -1835,6 +1970,7 @@ function ReplyComposer({
       <Text style={styles.fieldLabel}>{locale.t("inbox.replyDraft")}</Text>
       <TextInput
         accessibilityLabel={locale.t("inbox.replyBody")}
+        editable={!sending && !attempt.current}
         multiline
         onChangeText={(value) => {
           draftEdited.current = true;
@@ -1846,20 +1982,21 @@ function ReplyComposer({
         value={body}
       />
       {rewriteError ? <Text style={styles.errorText}>{rewriteError}</Text> : null}
-      <Text style={styles.safetyText}>{detail.safetyText}</Text>
+      {sendFailed ? <Text accessibilityRole="alert" style={styles.errorText}>{locale.t("inbox.sendUnconfirmed")}</Text> : null}
+      <Text style={styles.safetyText}>{delivery ? locale.t("inbox.verifiedSafety") : detail.safetyText}</Text>
       <View style={styles.buttonRow}>
         <ActionButton
-          disabled={!body.trim()}
+          disabled={!body.trim() || sending || !!attempt.current}
           icon="sparkles-outline"
           label={locale.t("inbox.polishDraft")}
           onPress={rewriteDraft}
           variant="secondary"
         />
         <ActionButton
-          disabled={!body.trim()}
+          disabled={sending || (!body.trim() && !attempt.current)}
           icon="mail-unread-outline"
-          label={locale.t("inbox.previewReply")}
-          onPress={() => { draftEdited.current = true; setStaged(body.trim()); }}
+          label={locale.t(delivery ? sending ? "inbox.sendingMessage" : sendFailed ? "inbox.retrySend" : "inbox.sendMessage" : "inbox.previewReply")}
+          onPress={delivery ? sendReply : () => { draftEdited.current = true; setStaged(body.trim()); }}
         />
       </View>
     </View>

@@ -19,7 +19,10 @@ export function createNoteRepository(input: {
         collectionName: NOTE_COLLECTION,
         recordId: noteId,
       });
-      return record?.userId === actorId ? noteRecordFromLiveRecord(record, actorId) : null;
+      if (!record || record.userId !== actorId || record.workspaceId !== input.workspaceId || record.collectionName !== NOTE_COLLECTION || record.lifecycleState === "deleted") return null;
+      const decoded = noteRecordFromLiveRecord(record, actorId);
+      if (!decoded || decoded.note.id !== record.recordId) throw new Error("Note history contains 1 unreadable record");
+      return decoded;
     },
     async list(actorId) {
       const records = await input.store.listRecords({
@@ -27,9 +30,14 @@ export function createNoteRepository(input: {
         collectionName: NOTE_COLLECTION,
         userId: actorId,
       });
-      return records
-        .map((record) => noteRecordFromLiveRecord(record, actorId))
-        .filter((record): record is NoteRecordPayload => record !== null);
+      const authorized = records.filter(record => record.userId === actorId && record.workspaceId === input.workspaceId && record.collectionName === NOTE_COLLECTION && record.lifecycleState !== "deleted");
+      const decoded = authorized.map(record => {
+        const payload = noteRecordFromLiveRecord(record, actorId);
+        return payload?.note.id === record.recordId ? payload : null;
+      });
+      const unreadable = decoded.filter(record => record === null).length;
+      if (unreadable) throw new Error(`Note history contains ${unreadable} unreadable records`);
+      return decoded as NoteRecordPayload[];
     },
     async save(payload) {
       const saved = await input.store.upsertRecord(noteLiveRecordFromPayload({

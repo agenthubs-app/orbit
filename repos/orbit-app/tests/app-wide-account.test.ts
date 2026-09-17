@@ -30,6 +30,7 @@ const record = action => async payload => {
   return failure;
 };
 export const useOrbitAuthSession = () => { rerender(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.signedIn ? "user:1" : null, actorId: state.signedIn ? "user:1" : null, googleEnabled: true, user: { id: "user:1", email: "lin@example.com", name: ${JSON.stringify(person)} }, signIn: record("signIn"), register: record("register"), startGoogleSignIn: record("google"), signOut: record("signOut") }; };
+export const useIsFocused = () => true;
 export const useRouter = () => ({ canGoBack: () => false, back() {}, push(path) { state.navigation.push(path); }, replace(path) { state.navigation.push(path); } });
 export const usePathname = () => "/account";
 export const useLocalSearchParams = () => ({ next: "/profile", created: new URLSearchParams(location.search).get("created") || undefined });
@@ -38,7 +39,7 @@ const events = { events: [{ id: "event:1", title: ${JSON.stringify(eventTitle)},
 const permissions = { state: "success", permissions: [{ capability: "calendar", label: "Calendar", status: "pending", authorizationStage: "staged-review", requiredFor: "活动准备与后续安排", rationale: "等待用户复核", evidence: [], actionLabel: "Review calendar request" }, { capability: "contacts", label: "Contacts", status: "authorized", authorizationStage: "ready", requiredFor: "关系搜索", rationale: "已可读取", evidence: [], actionLabel: "Use contact context" }] };
 const suggestions = { ...readyProfileSuggestionsPayload, suggestions: [{ ...profileSuggestion, id: "suggestion:1", confidence: "high", currentValue: "市场负责人", suggestedValue: "关注长期零售伙伴合作的市场负责人", sourceKind: "chat", sourceLabel: "会话记录", status: "pending", targetProfileField: "headline", rationale: "建议来自最近的交流记录，需本人确认。", evidence: [{ ...profileSuggestion.evidence[0], evidenceId: "evidence:1", excerpt: "希望认识日本市场的合作伙伴。", sourceKind: "chat", sourceLabel: "会话记录" }] }, { ...profileSuggestion, id: "suggestion:2", confidence: "high", currentValue: "Tokyo", suggestedValue: "Tokyo and Singapore", sourceKind: "activity", status: "accepted", targetProfileField: "homeMarket" }] };
 export const useApiResource = path => { rerender(); return { kind: state.kind, error: { message: "连接暂时失败" }, refreshing: false, refresh() {}, data: path.includes("suggestions") ? suggestions : path.includes("permissions") ? permissions : path.includes("profile") ? profile : path.includes("events") ? events : path.includes("aggregate") ? { relationshipAssetTotals: { contacts: 66 } } : { user: { displayName: ${JSON.stringify(person)}, email: "lin@example.com" }, workspace: { name: "亚太合作工作区", role: "owner" } } }; };
-const client = { post: async (path, options) => record("POST")({ path, body: options?.body }), put: async (path, options) => record("PUT")({ path, body: options?.body }) };
+const client = { get: async () => ({success:false,status:404}), post: async (path, options) => record("POST")({ path, body: options?.body }), put: async (path, options) => record("PUT")({ path, body: options?.body }) };
 export const useOrbitApiClient = () => client;
 export const useOrbitApiBaseUrl = () => ({ baseUrl: "http://fixture.invalid", ready: true, error: null, setBaseUrl: record("setBaseUrl"), resetBaseUrl: record("resetBaseUrl") });
 export const createOrbitApiClient = () => ({ get: path => record("GET")({ path }) });

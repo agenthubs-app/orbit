@@ -3,6 +3,7 @@ import {
   relationshipConversationListToInbox,
   relationshipReadTarget,
 } from "../api/message-state";
+import { createTranslator } from "../i18n/messages";
 import { relationshipSignalsToView } from "./relationship-inbox";
 import { inboxNotificationActions } from "./inbox-notification-actions";
 
@@ -84,9 +85,10 @@ function notificationCategory(record: UnknownRecord, href: string | undefined): 
     : null;
 }
 
-function notificationItems(value: unknown): { complete: boolean; items: InboxFeedItem[] } {
+function notificationItems(value: unknown, language: OrbitLanguage): { complete: boolean; items: InboxFeedItem[] } {
   const payload = record(value);
   if (!payload || !Array.isArray(payload.reminders)) return { complete: false, items: [] };
+  const t = createTranslator(language);
   const actions = inboxNotificationActions(value);
   const seen = new Set<string>();
   let complete = true;
@@ -102,9 +104,15 @@ function notificationItems(value: unknown): { complete: boolean; items: InboxFee
     const action = actions.get(id);
     if (action?.ignored) continue;
     const followupTaskId = exactText(item.followupTaskId);
-    const targetHref = action?.href || (followupTaskId ? encodedPath("/tasks", followupTaskId) : undefined);
-    const category = notificationCategory(item, targetHref);
-    const title = exactText(item.title);
+    const targetHref = action?.href;
+    const unavailable = action?.unavailable === true;
+    const category = notificationCategory(item, targetHref) ?? (unavailable ? followupTaskId ? "task" : "assistant" : null);
+    const sourceTitle = exactText(item.title);
+    const title = unavailable ? t("typedInbox.unavailable") : /^review follow-up for /iu.test(sourceTitle)
+      ? t("inboxVm.contactTitle", {
+          name: exactText(item.contactName) || t("inboxVm.contactFallback"),
+        })
+      : sourceTitle;
     if (!category || !title) {
       complete = false;
       continue;
@@ -123,7 +131,7 @@ function notificationItems(value: unknown): { complete: boolean; items: InboxFee
           expected: { notificationId: id, state: "read" },
         },
       } : {}),
-      subtitle: exactText(item.organization) || exactText(item.sourceLabel) || (category === "assistant" ? "IORBIT" : ""),
+      subtitle: unavailable ? "" : exactText(item.organization) || exactText(item.sourceLabel) || (category === "assistant" ? "IORBIT" : ""),
       ...(targetHref ? { targetHref } : {}),
       title,
     });
@@ -216,12 +224,12 @@ export function inboxFeedFromSources(input: {
 }): InboxFeedView {
   const now = trustedTimestamp(input.now);
   const actorId = exactText(input.actorId);
-  const conversations = actorId ? conversationItems(input.conversationsData, actorId) : { complete: false, items: [] };
-  const notifications = notificationItems(input.notificationsData);
+
+  const notifications = notificationItems(input.notificationsData, input.language);
   const signals = signalItems(input.signalsData, input.language);
   const end = now ? Date.parse(now) : Number.NaN;
   const start = end - THIRTY_DAYS_MS;
-  const sourceItems = [...notifications.items, ...conversations.items, ...signals.items];
+  const sourceItems = actorId ? [...notifications.items, ...signals.items] : [];
   const items = sourceItems
     .filter(item => !item.occurredAt || (Number.isFinite(end) && inWindow(item.occurredAt, start, end)))
     .sort((left, right) => {
@@ -230,7 +238,7 @@ export function inboxFeedFromSources(input: {
       return timeDifference || `${left.category}:${left.id}`.localeCompare(`${right.category}:${right.id}`);
     });
   return {
-    coverageConfirmed: Boolean(now) && conversations.complete && notifications.complete && signals.complete
+    coverageConfirmed: Boolean(now) && Boolean(actorId) && notifications.complete && signals.complete
       && items.every(item => Boolean(item.occurredAt)),
     items,
     unreadCount: items.filter(item => !item.read).length,
@@ -244,4 +252,9 @@ export function filterInboxFeed(view: InboxFeedView, filter: InboxFeedFilter): I
     items,
     unreadCount: items.filter(item => !item.read).length,
   };
+}
+
+// Message history has no notification age window and cannot share read actions.
+export function inboxMessageReadItems(value: unknown, actorId: string): readonly InboxFeedItem[] {
+  return conversationItems(value, actorId).items;
 }

@@ -1,0 +1,7 @@
+import {z} from 'zod';
+import type {InboxDeliveryPreferencesInput,InboxDeliveryPreferencesDTO,InboxDeliveryOwnerDTO} from '../contract/notification-delivery-policy';
+const id=z.string().trim().min(1).max(256),revision=z.number().int().nonnegative();
+export const inboxDeliveryPreferencesInputSchema=z.object({expectedRevision:revision,messageEnabled:z.boolean().optional(),reminderEnabled:z.boolean().optional(),suggestionEnabled:z.boolean().optional(),updateEnabled:z.boolean().optional(),lockScreenContent:z.enum(['private','full']).optional(),quietHoursEnabled:z.boolean().optional(),muteConversation:z.object({conversationId:id,muted:z.boolean()}).strict().optional()}).strict() as z.ZodType<InboxDeliveryPreferencesInput>;
+export const inboxDeliveryPreferencesSchema=z.object({actorId:id,revision,messageEnabled:z.boolean(),reminderEnabled:z.boolean(),suggestionEnabled:z.boolean(),updateEnabled:z.boolean(),lockScreenContent:z.enum(['private','full']),quietHoursEnabled:z.boolean(),timeZone:id,mutedConversationIds:z.array(id).max(1000)}).strict() as z.ZodType<InboxDeliveryPreferencesDTO>;
+export const inboxDeliveryOwnerInputSchema=z.object({deviceId:id,generation:revision,localCancelled:z.literal(true)}).strict();
+export const inboxDeliveryOwnerSchema=z.object({actorId:id,deviceId:id,owner:z.enum(['local','server']),generation:revision,cutover:z.boolean()}).strict() as z.ZodType<InboxDeliveryOwnerDTO>;

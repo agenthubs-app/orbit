@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { personalScheduleSchema } from "../../shared/api-schema/personal-schedule";
 
 const text = z.string().trim().min(1);
 const instant = z.string().datetime({ offset: true });
@@ -17,6 +18,11 @@ export const canonicalScheduleItemSchema = z.object({
   kind: z.enum(["meeting", "event", "personal"]),
   location: text.max(500).optional(),
   meetingId: text.optional(),
+  meetingUrl: personalScheduleSchema.shape.meetingUrl,
+  contactIds: personalScheduleSchema.shape.contactIds,
+  noteIds: personalScheduleSchema.shape.noteIds,
+  recurrence: personalScheduleSchema.shape.recurrence,
+  reminderMinutes: personalScheduleSchema.shape.reminderMinutes,
   meetingMethod: z.enum(["in_person", "phone", "video", "unspecified"]).optional(),
   ownerUserId: text,
   sourceId: text,

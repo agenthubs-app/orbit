@@ -152,11 +152,44 @@ test(
         userId: "actor-ari",
       });
       assert.equal(edited.participantProfile.answers.valueOffered, "Market design");
+      await scopedPool.query(
+        `update event_ops_membership_versions set late_registration = true
+         where workspace_id = $1 and event_id = $2 and actor_id = $3`,
+        ["workspace-registration-test", "event-canonical-registration", "actor-ari"],
+      );
+      const removedConfiguration = await scopedPool.query(
+        `delete from event_ops_configuration_heads
+         where workspace_id = $1 and event_id = $2 returning *`,
+        ["workspace-registration-test", "event-canonical-registration"],
+      );
+      await assert.rejects(
+        repository.registerCanonicalParticipant({
+          eventId: "event-canonical-registration", userId: "actor-no-window",
+        }),
+        (error: unknown) => error instanceof EventRegistrationWindowError &&
+          error.code === "EVENT_REGISTRATION_CONFIGURATION_REQUIRED",
+      );
       const cancelled = await repository.cancelCanonicalRegistration({
         eventId: "event-canonical-registration",
         userId: "actor-ari",
       });
       assert.equal(cancelled?.status, "cancelled");
+      assert.deepEqual(cancelled?.participantProfile, edited.participantProfile);
+      const cancelledHead = await scopedPool.query(
+        `select version.late_registration from event_ops_membership_heads head
+         join event_ops_membership_versions version using (workspace_id, event_id, actor_id, membership_version)
+         where head.workspace_id = $1 and head.event_id = $2 and head.actor_id = $3`,
+        ["workspace-registration-test", "event-canonical-registration", "actor-ari"],
+      );
+      assert.equal(cancelledHead.rows[0]?.late_registration, true);
+      assert.equal(await repository.cancelCanonicalRegistration({
+        eventId: "event-canonical-registration", userId: "actor-foreign",
+      }), null);
+      await scopedPool.query(
+        `insert into event_ops_configuration_heads
+         select * from json_populate_record(null::event_ops_configuration_heads, $1::json)`,
+        [JSON.stringify(removedConfiguration.rows[0])],
+      );
       assert.deepEqual(
         await repository.listCatalogueSummaries([
           "event-canonical-registration",

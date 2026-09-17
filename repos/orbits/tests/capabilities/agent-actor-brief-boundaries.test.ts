@@ -263,7 +263,16 @@ test("Agent ledger and queue routes resolve server auth instead of request ident
     ["app/api/agent/actions/[id]/accept/route.ts"],
     ["app/api/agent/actions/[id]/dismiss/route.ts"],
     ["app/api/agent/actions/[id]/view/route.ts"],
-    ["app/api/ai/conversations/route.ts"],
+    [
+      "app/api/ai/conversations/route.ts",
+      "app/api/ai/conversations/request-context.ts",
+      "resolveOrbitAgentConversationRequestContext",
+    ],
+    [
+      "app/api/ai/conversations/[id]/route.ts",
+      "app/api/ai/conversations/request-context.ts",
+      "resolveOrbitAgentConversationRequestContext",
+    ],
     [
       "app/api/ai/runs/[id]/route.ts",
       "app/api/ai/runs/[id]/handler.ts",
@@ -279,7 +288,7 @@ test("Agent ledger and queue routes resolve server auth instead of request ident
     ],
   ] as const;
 
-  for (const [route, boundary = route] of authBoundaries) {
+  for (const [route, boundary = route, resolver = "resolveAgentRequestContext"] of authBoundaries) {
     const routeSource = readFileSync(join(process.cwd(), route), "utf8");
     const boundarySource = readFileSync(
       join(process.cwd(), boundary),
@@ -289,7 +298,13 @@ test("Agent ledger and queue routes resolve server auth instead of request ident
     assert.doesNotMatch(routeSource, /body\.(actorId|workspaceId)/);
     assert.doesNotMatch(boundarySource, /body\.(actorId|workspaceId)/);
     if (boundary !== route) {
-      assert.match(routeSource, /create[A-Za-z]+Handler/);
+      if (resolver === "resolveOrbitAgentConversationRequestContext") {
+        assert.match(routeSource, /resolveOrbitAgentConversationRequestContext\(mode\)/);
+        assert.match(boundarySource, /const actor = await resolveAuthenticatedApiActor\(\)/);
+        assert.match(boundarySource, /actor \? \{ user: \{ id: actor\.id \} \} : null/);
+      } else {
+        assert.match(routeSource, /create[A-Za-z]+Handler/);
+      }
     }
   }
 });

@@ -19,3 +19,19 @@ test("note drafts are isolated by server, account and note", async () => {
   await storage.clear(scope);
   assert.equal(await storage.load(scope), null);
 });
+
+test("a delayed autosave finishes before clearing the same draft and cannot resurrect it", async () => {
+  const values = new Map<string, string>();
+  let release!: () => void;
+  const delayed = new Promise<void>(resolve => { release = resolve; });
+  const storage = createNoteDraftStorage({
+    async getItem(key) { return values.get(key) ?? null; },
+    async removeItem(key) { values.delete(key); },
+    async setItem(key, value) { await delayed; values.set(key, value); },
+  });
+  const scope = { accountId: "account:one", server: "https://one.example" };
+  const save = storage.save(scope, { title: "草稿", body: "正文", manualContactIds: [], mentions: [], eventIds: [], savedAt: "2026-09-15T00:00:00Z" });
+  const clear = storage.clear(scope);
+  release(); await Promise.all([save, clear]);
+  assert.equal(await storage.load(scope), null);
+});

@@ -60,11 +60,18 @@ function dataFor(path) {
 }
 export const useApiResource = path => { rerender(); return { kind: state.kind, data: dataFor(path), error: { message: "连接暂时失败" }, refreshing: false, refresh() { state.refreshes.push(path); } }; };
 const client = Object.fromEntries(["get", "post", "patch", "delete", "put"].map(method => [method, async (path, options) => {
+  if (method === "get" && path === "/api/inbox/delivery/preferences") return {success:false,status:404};
+  if (method === "get" && path.startsWith("/api/inbox/notifications")) return { success: true, status: 200, data: { enabled: false, items: [], unreadCount: 0, nextCursor: null, asOf: '2026-09-16T00:00:00.000Z' }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
   if ((screen === "inbox" || screen === "inboxThread") && method === "get" && (path.startsWith("/api/relationship-communication/conversations") || path.includes("relationship-inbox") || path === "/api/notifications" || path.includes("relationship-signals"))) {
     if (state.kind === "loading") return new Promise(() => {});
     return { success: state.kind === "success" || state.kind === "empty", status: state.kind === "offline" ? 0 : state.kind === "failure" ? 503 : 200, data: dataFor(path), error: { code: "READ_FAILED", message: "连接暂时失败" }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
   }
   state.requests.push({ method, path, body: options?.body });
+  if (method === "get" && path.startsWith("/api/schedule-items?")) {
+    state.requests[state.requests.length - 1].headers = options?.headers;
+    if (state.kind === "loading") return new Promise(() => {});
+    return { success: state.kind === "success" || state.kind === "empty", status: state.kind === "offline" ? 0 : state.kind === "failure" ? 503 : 200, data: dataFor(new URL(path, location.origin).pathname), error: { code: "READ_FAILED", message: "连接暂时失败" } };
+  }
   if (finalInsets) {
     if (method === "get" && path === "/api/ai/runs/ai-run-style") return { success: true, status: 200, meta: { featureMode: null, privacy: null, runtimeBoundary: null }, data: { run: { runId: "ai-run-style", promptTemplateId: "style-review", evidenceIds: ["evidence:style"], output: { text: "可以先核对采购合作资料。" } }, summary: "已核对会话来源", nextAction: "检查依据后继续" } };
     if (method === "post" && path === "/api/relationship-communication/conversations/thread-one/messages") {
@@ -123,7 +130,28 @@ async function open(t: { after: (fn: () => Promise<void>) => void }, screen: str
   await page.goto(`${url}?screen=${screen}`); return page;
 }
 async function fits(action: Locator, height = 44) { const b = (await action.boundingBox())!; assert.ok(b && b.height >= height, `expected ${height}pt target, got ${b?.height}`); assert.ok(b.x >= 0 && b.x + b.width <= 320, "action fits 320pt screen"); }
-async function noWrites(page: Page) { assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []); }
+async function noWrites(page: Page) { assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "get")), []); }
+
+test("personal schedule reads retain v3 audit while every mutation still violates the no-write boundary", async t => {
+  const page = await open(t, "tasks");
+  await page.waitForFunction(() => (window as any).fixture.requests.some((request: any) => request.path.startsWith("/api/schedule-items?")));
+  const reads = await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.path.startsWith("/api/schedule-items?")));
+  for (const read of reads) {
+    assert.equal(read.method, "get");
+    assert.equal(read.body, undefined);
+    assert.equal(read.headers["x-orbit-personal-schedule-version"], "3");
+    const query = new URL(read.path, "https://fixture.invalid").searchParams;
+    assert.equal(query.get("scope"), "personal");
+    assert.equal(Date.parse(query.get("to")!) - Date.parse(query.get("from")!), 90 * 86_400_000);
+  }
+  await noWrites(page);
+  for (const method of ["post", "patch", "delete", "put"]) {
+    await page.evaluate(method => (window as any).fixture.requests.push({ method, path: "/api/schedule-items", body: { title: "unexpected write" } }), method);
+    await assert.rejects(noWrites(page), assert.AssertionError);
+    await page.evaluate(() => (window as any).fixture.requests.pop());
+  }
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.path.startsWith("/api/schedule-items?"))), reads);
+});
 
 for (const scheme of ["light", "dark"] as const) {
   test(`${scheme}: final inset AI artifacts preserve all embedded panels, audit request and navigation`, async t => {
@@ -161,6 +189,7 @@ for (const scheme of ["light", "dark"] as const) {
   });
   test(`${scheme}: inbox empty filter keeps the compact no-compose boundary`, async t => {
     const page = await open(t, "inbox", scheme);
+    await page.getByRole("tab", { name: "通知", exact: true }).click();
     await page.getByRole("tab", { name: "活动", exact: true }).click();
     const empty = page.getByText("暂无消息", { exact: true }).locator("..").locator("..");
     assert.equal(await empty.evaluate(el => getComputedStyle(el).borderRadius), "0px", "emptyInboxSection");
@@ -175,7 +204,7 @@ for (const scheme of ["light", "dark"] as const) {
     const bounds = await empty.boundingBox(); assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 320);
     await noWrites(page);
   });
-  test(`${scheme}: final inset inbox privacy, IORBIT handoff and local preview preserve the reply`, async t => {
+  test(`${scheme}: final inset inbox privacy and IORBIT handoff preserve the reply until explicit send`, async t => {
     const page = await open(t, "inboxThread&insets=true", scheme);
     const reply = page.getByRole("textbox", { name: "回复正文", exact: true }); await reply.fill("周四可以");
     await page.getByRole("button", { name: "隐私设置", exact: true }).click();
@@ -187,13 +216,12 @@ for (const scheme of ["light", "dark"] as const) {
     assert.equal(navigation[0].pathname, "/ai/[id]"); assert.match(navigation[0].params.prefillIntent, /^ai-prefill-/);
     assert.doesNotMatch(JSON.stringify(navigation[0]), /周四可以|person-one|林悦/);
     assert.equal(await reply.inputValue(), "周四可以");
-    await page.getByRole("button", { name: "预览回复", exact: true }).click();
-    const staged = page.getByText("回复预览", { exact: true }).locator(".."); await staged.waitFor();
-    radii.push(await staged.evaluate(el => getComputedStyle(el).borderRadius));
-    await page.getByRole("button", { name: "继续编辑", exact: true }).click();
-    assert.equal(await reply.inputValue(), "周四可以");
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "get", path: "/api/chat/privacy?conversationId=thread-one", body: undefined }]);
-    assert.deepEqual(radii, ["12px", "12px"], "privacyBox, stagedBox");
+    assert.deepEqual(radii, ["12px"], "privacyBox");
+    await page.getByRole("button", { name: "发送消息", exact: true }).click();
+    await page.waitForFunction(() => (window as any).fixture.requests.some((r:any)=>r.method === "post"));
+    assert.equal((await page.evaluate(() => (window as any).fixture.requests)).filter((r:any)=>r.method === "post").length,1);
+
   });
 }
 

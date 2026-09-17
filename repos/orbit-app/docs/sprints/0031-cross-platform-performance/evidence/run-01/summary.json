@@ -1,0 +1,2503 @@
+{
+  "status": "failed",
+  "protocol": {
+    "warmupsPerScenario": 3,
+    "formalSamplesPerCohort": 10,
+    "p50": "median of sorted positions 5 and 6",
+    "p95": "nearest rank position 10"
+  },
+  "totals": {
+    "baselineSamples": 900,
+    "baselineFailedSamples": 0,
+    "optimizedSamples": 900,
+    "optimizedFailedSamples": 0
+  },
+  "selected": [
+    {
+      "environment": "app-release-simulator",
+      "scenario": "app.inbox",
+      "metric": "app.react_commit",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "app.react_commit",
+        "p50": 33.21766698360443,
+        "p95": 40.1912499666214,
+        "scenario": "app.inbox",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "app.react_commit",
+        "p50": 33.11675000190735,
+        "p95": 34.86820888519287,
+        "scenario": "app.inbox",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.0030380514605945416,
+      "p95DeltaRatio": -0.132442785080068,
+      "selectedId": "APP_RENDER_INBOX_LIST_WINDOW",
+      "gatePassed": false
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.agent",
+      "metric": "html_rsc_decoded_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "html_rsc_decoded_bytes",
+        "p50": 319606,
+        "p95": 319606,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "html_rsc_decoded_bytes",
+        "p50": 88046,
+        "p95": 88046,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.7245170616321346,
+      "p95DeltaRatio": -0.7245170616321346,
+      "selectedId": "WEB_INLINE_CSS_RSC",
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.agent",
+      "metric": "closed_panel_eager_js_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "closed_panel_eager_js_bytes",
+        "p50": 144388,
+        "p95": 144388,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "closed_panel_eager_js_bytes",
+        "p50": 0,
+        "p95": 0,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -1,
+      "p95DeltaRatio": -1,
+      "selectedId": "WEB_AGENT_MARKDOWN_SPLIT",
+      "gatePassed": true
+    }
+  ],
+  "aiBusy": {
+    "p95Milliseconds": 0.7999999523162842,
+    "passed": true
+  },
+  "failedGates": [
+    {
+      "environment": "app-release-simulator",
+      "scenario": "app.inbox",
+      "metric": "app.react_commit",
+      "baselineP95": 40.1912499666214,
+      "optimizedP95": 34.86820888519287,
+      "deltaRatio": -0.0030380514605945416,
+      "p95DeltaRatio": -0.132442785080068,
+      "selectedId": "APP_RENDER_INBOX_LIST_WINDOW"
+    },
+    {
+      "environment": "app-release-simulator",
+      "scenario": "app.schedule",
+      "metric": "app.resource",
+      "baselineP95": 46.59650003910065,
+      "optimizedP95": 61.56495809555054,
+      "deltaRatio": -0.2632614896462825,
+      "p95DeltaRatio": 0.32123567314904267,
+      "selectedId": null
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.contacts",
+      "metric": "cls_ratio",
+      "baselineP95": 0.00028016153971354167,
+      "optimizedP95": 0.0005675786336263021,
+      "deltaRatio": 1.2765352381271016,
+      "p95DeltaRatio": 1.0258977524418142,
+      "selectedId": null
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.contacts",
+      "metric": "navigation_ms",
+      "baselineP95": 192.20000004768372,
+      "optimizedP95": 212.20000004768372,
+      "deltaRatio": 0.2039337475278336,
+      "p95DeltaRatio": 0.10405827260685804,
+      "selectedId": null
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.followups",
+      "metric": "cls_ratio",
+      "baselineP95": 0.0006309611002604167,
+      "optimizedP95": 0.0026056857638888887,
+      "deltaRatio": 0.5861092512808571,
+      "p95DeltaRatio": 3.1297090467438387,
+      "selectedId": null
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.profile",
+      "metric": "navigation_ms",
+      "baselineP95": 140.70000004768372,
+      "optimizedP95": 156.89999997615814,
+      "deltaRatio": 0.12619138357091056,
+      "p95DeltaRatio": 0.115138592203157,
+      "selectedId": null
+    }
+  ],
+  "comparisons": [
+    {
+      "environment": "app-release-simulator",
+      "scenario": "app.auth_restore",
+      "metric": "app.auth_restore",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "app.auth_restore",
+        "p50": 117.69460445642471,
+        "p95": 170.8967089653015,
+        "scenario": "app.auth_restore",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "app.auth_restore",
+        "p50": 95.11779153347015,
+        "p95": 139.073832988739,
+        "scenario": "app.auth_restore",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.19182538594038442,
+      "p95DeltaRatio": -0.18621116912803595,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "app-release-simulator",
+      "scenario": "app.inbox",
+      "metric": "app.react_commit",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "app.react_commit",
+        "p50": 33.21766698360443,
+        "p95": 40.1912499666214,
+        "scenario": "app.inbox",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "app.react_commit",
+        "p50": 33.11675000190735,
+        "p95": 34.86820888519287,
+        "scenario": "app.inbox",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.0030380514605945416,
+      "p95DeltaRatio": -0.132442785080068,
+      "selectedId": "APP_RENDER_INBOX_LIST_WINDOW",
+      "gatePassed": false
+    },
+    {
+      "environment": "app-release-simulator",
+      "scenario": "app.inbox",
+      "metric": "app.resource",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "app.resource",
+        "p50": 43.10745805501938,
+        "p95": 158.5390830039978,
+        "scenario": "app.inbox",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "app.resource",
+        "p50": 22.362833499908447,
+        "p95": 83.17974996566772,
+        "scenario": "app.inbox",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.48123052230623126,
+      "p95DeltaRatio": -0.4753359967171614,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "app-release-simulator",
+      "scenario": "app.notes",
+      "metric": "app.resource",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "app.resource",
+        "p50": 22.200104534626007,
+        "p95": 31.31908404827118,
+        "scenario": "app.notes",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "app.resource",
+        "p50": 18.34452098608017,
+        "p95": 20.6458340883255,
+        "scenario": "app.notes",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.1736741168282427,
+      "p95DeltaRatio": -0.3407906164655171,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "app-release-simulator",
+      "scenario": "app.profile",
+      "metric": "app.resource",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "app.resource",
+        "p50": 46.82697904109955,
+        "p95": 65.90812504291534,
+        "scenario": "app.profile",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "app.resource",
+        "p50": 27.165187537670135,
+        "p95": 40.76949989795685,
+        "scenario": "app.profile",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.41988169867145314,
+      "p95DeltaRatio": -0.38141921240499194,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "app-release-simulator",
+      "scenario": "app.profile",
+      "metric": "app.snapshot",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "app.snapshot",
+        "p50": 4.539645433425903,
+        "p95": 7.918958902359009,
+        "scenario": "app.profile",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "app.snapshot",
+        "p50": 1.995438039302826,
+        "p95": 2.713249921798706,
+        "scenario": "app.profile",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.5604418740260642,
+      "p95DeltaRatio": -0.6573729002444443,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "app-release-simulator",
+      "scenario": "app.schedule",
+      "metric": "app.resource",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "app.resource",
+        "p50": 39.21481251716614,
+        "p95": 46.59650003910065,
+        "scenario": "app.schedule",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "app.resource",
+        "p50": 28.891062557697296,
+        "p95": 61.56495809555054,
+        "scenario": "app.schedule",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.2632614896462825,
+      "p95DeltaRatio": 0.32123567314904267,
+      "selectedId": null,
+      "gatePassed": false
+    },
+    {
+      "environment": "app-release-simulator",
+      "scenario": "app.schedule",
+      "metric": "app.snapshot",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "app.snapshot",
+        "p50": 4.76752096414566,
+        "p95": 6.674208998680115,
+        "scenario": "app.schedule",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "app.snapshot",
+        "p50": 2.8766044974327087,
+        "p95": 4.19825005531311,
+        "scenario": "app.schedule",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.39662467788472616,
+      "p95DeltaRatio": -0.3709741399852249,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "app-release-simulator",
+      "scenario": "app.startup",
+      "metric": "app.startup",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "app.startup",
+        "p50": 23.077187538146973,
+        "p95": 27.553084015846252,
+        "scenario": "app.startup",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "app.startup",
+        "p50": 16.409270524978638,
+        "p95": 17.07870900630951,
+        "scenario": "app.startup",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.28893975932492455,
+      "p95DeltaRatio": -0.38015254493880796,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.agent.local_boundary",
+      "metric": "feedback_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "feedback_ms",
+        "p50": 0.6000000238418579,
+        "p95": 0.7999999523162842,
+        "scenario": "web.agent.local_boundary",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "feedback_ms",
+        "p50": 0.7000000476837158,
+        "p95": 0.7999999523162842,
+        "scenario": "web.agent.local_boundary",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0.1666666997803569,
+      "p95DeltaRatio": 0,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.agent.local_boundary",
+      "metric": "local_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "local_ms",
+        "p50": 14.25,
+        "p95": 16.399999976158142,
+        "scenario": "web.agent.local_boundary",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "local_ms",
+        "p50": 14.649999976158142,
+        "p95": 17.100000023841858,
+        "scenario": "web.agent.local_boundary",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0.028070173765483656,
+      "p95DeltaRatio": 0.04268292979886318,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.agent",
+      "metric": "closed_panel_eager_js_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "closed_panel_eager_js_bytes",
+        "p50": 144388,
+        "p95": 144388,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "closed_panel_eager_js_bytes",
+        "p50": 0,
+        "p95": 0,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -1,
+      "p95DeltaRatio": -1,
+      "selectedId": "WEB_AGENT_MARKDOWN_SPLIT",
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.agent",
+      "metric": "cls_ratio",
+      "unit": "ratio",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "cls_ratio",
+        "p50": 0.04879994710286459,
+        "p95": 0.04880626932779948,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "cls_ratio",
+        "p50": 0.04880626932779948,
+        "p95": 0.04880626932779948,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0.0001295539300804301,
+      "p95DeltaRatio": 0,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.agent",
+      "metric": "decoded_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "decoded_bytes",
+        "p50": 4284513,
+        "p95": 4284513,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "decoded_bytes",
+        "p50": 4008442,
+        "p95": 4008442,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.06443462769280896,
+      "p95DeltaRatio": -0.06443462769280896,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.agent",
+      "metric": "fcp_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "fcp_ms",
+        "p50": 224,
+        "p95": 232,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "fcp_ms",
+        "p50": 218,
+        "p95": 224,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.026785714285714284,
+      "p95DeltaRatio": -0.034482758620689655,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.agent",
+      "metric": "html_rsc_decoded_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "html_rsc_decoded_bytes",
+        "p50": 319606,
+        "p95": 319606,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "html_rsc_decoded_bytes",
+        "p50": 88046,
+        "p95": 88046,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.7245170616321346,
+      "p95DeltaRatio": -0.7245170616321346,
+      "selectedId": "WEB_INLINE_CSS_RSC",
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.agent",
+      "metric": "html_rsc_transfer_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "html_rsc_transfer_bytes",
+        "p50": 65792,
+        "p95": 65792,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "html_rsc_transfer_bytes",
+        "p50": 15865,
+        "p95": 15865,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.7588612597276264,
+      "p95DeltaRatio": -0.7588612597276264,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.agent",
+      "metric": "inp_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "inp_ms",
+        "p50": 0,
+        "p95": 0,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "inp_ms",
+        "p50": 0,
+        "p95": 0,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0,
+      "p95DeltaRatio": 0,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.agent",
+      "metric": "js_decoded_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "js_decoded_bytes",
+        "p50": 964023,
+        "p95": 964023,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "js_decoded_bytes",
+        "p50": 788803,
+        "p95": 788803,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.18175914889997438,
+      "p95DeltaRatio": -0.18175914889997438,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.agent",
+      "metric": "js_transfer_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "js_transfer_bytes",
+        "p50": 0,
+        "p95": 0,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "js_transfer_bytes",
+        "p50": 0,
+        "p95": 0,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0,
+      "p95DeltaRatio": 0,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.agent",
+      "metric": "lcp_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "lcp_ms",
+        "p50": 224,
+        "p95": 232,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "lcp_ms",
+        "p50": 218,
+        "p95": 224,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.026785714285714284,
+      "p95DeltaRatio": -0.034482758620689655,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.agent",
+      "metric": "navigation_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "navigation_ms",
+        "p50": 232.04999995231628,
+        "p95": 240.29999995231628,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "navigation_ms",
+        "p50": 221.25,
+        "p95": 248.39999997615814,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.046541693404591966,
+      "p95DeltaRatio": 0.03370786527444517,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.agent",
+      "metric": "request_count",
+      "unit": "count",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "request_count",
+        "p50": 58,
+        "p95": 58,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "request_count",
+        "p50": 59,
+        "p95": 59,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0.017241379310344827,
+      "p95DeltaRatio": 0.017241379310344827,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.agent",
+      "metric": "transfer_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "transfer_bytes",
+        "p50": 210367,
+        "p95": 210367,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "transfer_bytes",
+        "p50": 161040,
+        "p95": 161040,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.234480693264628,
+      "p95DeltaRatio": -0.234480693264628,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.agent",
+      "metric": "ttfb_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "ttfb_ms",
+        "p50": 139.95000004768372,
+        "p95": 144.70000004768372,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "ttfb_ms",
+        "p50": 139.29999995231628,
+        "p95": 141.79999995231628,
+        "scenario": "web.agent",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.004644516578392025,
+      "p95DeltaRatio": -0.02004146575267298,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.contacts",
+      "metric": "cls_ratio",
+      "unit": "ratio",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "cls_ratio",
+        "p50": 0.0001520258585611979,
+        "p95": 0.00028016153971354167,
+        "scenario": "web.contacts",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "cls_ratio",
+        "p50": 0.00034609222412109375,
+        "p95": 0.0005675786336263021,
+        "scenario": "web.contacts",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 1.2765352381271016,
+      "p95DeltaRatio": 1.0258977524418142,
+      "selectedId": null,
+      "gatePassed": false
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.contacts",
+      "metric": "decoded_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "decoded_bytes",
+        "p50": 7413415,
+        "p95": 7413415,
+        "scenario": "web.contacts",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "decoded_bytes",
+        "p50": 7312533,
+        "p95": 7312533,
+        "scenario": "web.contacts",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.013608033544594495,
+      "p95DeltaRatio": -0.013608033544594495,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.contacts",
+      "metric": "fcp_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "fcp_ms",
+        "p50": 142,
+        "p95": 152,
+        "scenario": "web.contacts",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "fcp_ms",
+        "p50": 142,
+        "p95": 148,
+        "scenario": "web.contacts",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0,
+      "p95DeltaRatio": -0.02631578947368421,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.contacts",
+      "metric": "html_rsc_decoded_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "html_rsc_decoded_bytes",
+        "p50": 918538,
+        "p95": 918538,
+        "scenario": "web.contacts",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "html_rsc_decoded_bytes",
+        "p50": 719982,
+        "p95": 719982,
+        "scenario": "web.contacts",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.21616525391437263,
+      "p95DeltaRatio": -0.21616525391437263,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.contacts",
+      "metric": "html_rsc_transfer_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "html_rsc_transfer_bytes",
+        "p50": 91520,
+        "p95": 91521,
+        "scenario": "web.contacts",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "html_rsc_transfer_bytes",
+        "p50": 47917,
+        "p95": 47917,
+        "scenario": "web.contacts",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.4764313811188811,
+      "p95DeltaRatio": -0.476437101867331,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.contacts",
+      "metric": "inp_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "inp_ms",
+        "p50": 0,
+        "p95": 0,
+        "scenario": "web.contacts",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "inp_ms",
+        "p50": 0,
+        "p95": 0,
+        "scenario": "web.contacts",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0,
+      "p95DeltaRatio": 0,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.contacts",
+      "metric": "js_decoded_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "js_decoded_bytes",
+        "p50": 629775,
+        "p95": 629775,
+        "scenario": "web.contacts",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "js_decoded_bytes",
+        "p50": 629906,
+        "p95": 629906,
+        "scenario": "web.contacts",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0.00020801079750704617,
+      "p95DeltaRatio": 0.00020801079750704617,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.contacts",
+      "metric": "js_transfer_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "js_transfer_bytes",
+        "p50": 0,
+        "p95": 0,
+        "scenario": "web.contacts",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "js_transfer_bytes",
+        "p50": 0,
+        "p95": 0,
+        "scenario": "web.contacts",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0,
+      "p95DeltaRatio": 0,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.contacts",
+      "metric": "lcp_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "lcp_ms",
+        "p50": 142,
+        "p95": 152,
+        "scenario": "web.contacts",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "lcp_ms",
+        "p50": 142,
+        "p95": 148,
+        "scenario": "web.contacts",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0,
+      "p95DeltaRatio": -0.02631578947368421,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.contacts",
+      "metric": "navigation_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "navigation_ms",
+        "p50": 144.89999997615814,
+        "p95": 192.20000004768372,
+        "scenario": "web.contacts",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "navigation_ms",
+        "p50": 174.44999998807907,
+        "p95": 212.20000004768372,
+        "scenario": "web.contacts",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0.2039337475278336,
+      "p95DeltaRatio": 0.10405827260685804,
+      "selectedId": null,
+      "gatePassed": false
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.contacts",
+      "metric": "request_count",
+      "unit": "count",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "request_count",
+        "p50": 96,
+        "p95": 96,
+        "scenario": "web.contacts",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "request_count",
+        "p50": 97,
+        "p95": 97,
+        "scenario": "web.contacts",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0.010416666666666666,
+      "p95DeltaRatio": 0.010416666666666666,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.contacts",
+      "metric": "transfer_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "transfer_bytes",
+        "p50": 225409,
+        "p95": 225410,
+        "scenario": "web.contacts",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "transfer_bytes",
+        "p50": 182106,
+        "p95": 182106,
+        "scenario": "web.contacts",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.1921085670935943,
+      "p95DeltaRatio": -0.19211215119116276,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.contacts",
+      "metric": "ttfb_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "ttfb_ms",
+        "p50": 49.750000059604645,
+        "p95": 52,
+        "scenario": "web.contacts",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "ttfb_ms",
+        "p50": 48.85000002384186,
+        "p95": 51.699999928474426,
+        "scenario": "web.contacts",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.01809045295848265,
+      "p95DeltaRatio": -0.005769232144722572,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.followups",
+      "metric": "cls_ratio",
+      "unit": "ratio",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "cls_ratio",
+        "p50": 0.00007280137803819444,
+        "p95": 0.0006309611002604167,
+        "scenario": "web.followups",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "cls_ratio",
+        "p50": 0.00011547093921237522,
+        "p95": 0.0026056857638888887,
+        "scenario": "web.followups",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0.5861092512808571,
+      "p95DeltaRatio": 3.1297090467438387,
+      "selectedId": null,
+      "gatePassed": false
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.followups",
+      "metric": "decoded_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "decoded_bytes",
+        "p50": 3280286,
+        "p95": 3280286,
+        "scenario": "web.followups",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "decoded_bytes",
+        "p50": 3179427,
+        "p95": 3179427,
+        "scenario": "web.followups",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.030747014132304316,
+      "p95DeltaRatio": -0.030747014132304316,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.followups",
+      "metric": "fcp_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "fcp_ms",
+        "p50": 116,
+        "p95": 124,
+        "scenario": "web.followups",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "fcp_ms",
+        "p50": 120,
+        "p95": 120,
+        "scenario": "web.followups",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0.034482758620689655,
+      "p95DeltaRatio": -0.03225806451612903,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.followups",
+      "metric": "html_rsc_decoded_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "html_rsc_decoded_bytes",
+        "p50": 292271,
+        "p95": 292271,
+        "scenario": "web.followups",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "html_rsc_decoded_bytes",
+        "p50": 93733,
+        "p95": 93733,
+        "scenario": "web.followups",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.6792942166687765,
+      "p95DeltaRatio": -0.6792942166687765,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.followups",
+      "metric": "html_rsc_transfer_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "html_rsc_transfer_bytes",
+        "p50": 64800,
+        "p95": 64800,
+        "scenario": "web.followups",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "html_rsc_transfer_bytes",
+        "p50": 20712,
+        "p95": 20712,
+        "scenario": "web.followups",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.6803703703703704,
+      "p95DeltaRatio": -0.6803703703703704,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.followups",
+      "metric": "inp_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "inp_ms",
+        "p50": 0,
+        "p95": 0,
+        "scenario": "web.followups",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "inp_ms",
+        "p50": 0,
+        "p95": 0,
+        "scenario": "web.followups",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0,
+      "p95DeltaRatio": 0,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.followups",
+      "metric": "js_decoded_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "js_decoded_bytes",
+        "p50": 683164,
+        "p95": 683164,
+        "scenario": "web.followups",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "js_decoded_bytes",
+        "p50": 683300,
+        "p95": 683300,
+        "scenario": "web.followups",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0.00019907372168322687,
+      "p95DeltaRatio": 0.00019907372168322687,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.followups",
+      "metric": "js_transfer_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "js_transfer_bytes",
+        "p50": 0,
+        "p95": 0,
+        "scenario": "web.followups",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "js_transfer_bytes",
+        "p50": 0,
+        "p95": 0,
+        "scenario": "web.followups",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0,
+      "p95DeltaRatio": 0,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.followups",
+      "metric": "lcp_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "lcp_ms",
+        "p50": 116,
+        "p95": 124,
+        "scenario": "web.followups",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "lcp_ms",
+        "p50": 120,
+        "p95": 120,
+        "scenario": "web.followups",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0.034482758620689655,
+      "p95DeltaRatio": -0.03225806451612903,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.followups",
+      "metric": "navigation_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "navigation_ms",
+        "p50": 125.60000002384186,
+        "p95": 136.30000007152557,
+        "scenario": "web.followups",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "navigation_ms",
+        "p50": 125.15000003576279,
+        "p95": 129.10000002384186,
+        "scenario": "web.followups",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.003582802452178745,
+      "p95DeltaRatio": -0.05282465182615849,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.followups",
+      "metric": "request_count",
+      "unit": "count",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "request_count",
+        "p50": 40,
+        "p95": 40,
+        "scenario": "web.followups",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "request_count",
+        "p50": 41,
+        "p95": 41,
+        "scenario": "web.followups",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0.025,
+      "p95DeltaRatio": 0.025,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.followups",
+      "metric": "transfer_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "transfer_bytes",
+        "p50": 182406,
+        "p95": 182406,
+        "scenario": "web.followups",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "transfer_bytes",
+        "p50": 138618,
+        "p95": 138618,
+        "scenario": "web.followups",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.2400578928324726,
+      "p95DeltaRatio": -0.2400578928324726,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.followups",
+      "metric": "ttfb_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "ttfb_ms",
+        "p50": 47.55000001192093,
+        "p95": 51,
+        "scenario": "web.followups",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "ttfb_ms",
+        "p50": 49.05000001192093,
+        "p95": 52.10000002384186,
+        "scenario": "web.followups",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0.03154574131701252,
+      "p95DeltaRatio": 0.021568627918467802,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.home",
+      "metric": "cls_ratio",
+      "unit": "ratio",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "cls_ratio",
+        "p50": 0.04879994710286459,
+        "p95": 0.04880626932779948,
+        "scenario": "web.home",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "cls_ratio",
+        "p50": 0.04880626932779948,
+        "p95": 0.04880626932779948,
+        "scenario": "web.home",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0.0001295539300804301,
+      "p95DeltaRatio": 0,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.home",
+      "metric": "decoded_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "decoded_bytes",
+        "p50": 4284513,
+        "p95": 4284513,
+        "scenario": "web.home",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "decoded_bytes",
+        "p50": 4008442,
+        "p95": 4008442,
+        "scenario": "web.home",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.06443462769280896,
+      "p95DeltaRatio": -0.06443462769280896,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.home",
+      "metric": "fcp_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "fcp_ms",
+        "p50": 234,
+        "p95": 248,
+        "scenario": "web.home",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "fcp_ms",
+        "p50": 228,
+        "p95": 244,
+        "scenario": "web.home",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.02564102564102564,
+      "p95DeltaRatio": -0.016129032258064516,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.home",
+      "metric": "html_rsc_decoded_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "html_rsc_decoded_bytes",
+        "p50": 319606,
+        "p95": 319606,
+        "scenario": "web.home",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "html_rsc_decoded_bytes",
+        "p50": 88046,
+        "p95": 88046,
+        "scenario": "web.home",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.7245170616321346,
+      "p95DeltaRatio": -0.7245170616321346,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.home",
+      "metric": "html_rsc_transfer_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "html_rsc_transfer_bytes",
+        "p50": 65791,
+        "p95": 65792,
+        "scenario": "web.home",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "html_rsc_transfer_bytes",
+        "p50": 15865,
+        "p95": 15865,
+        "scenario": "web.home",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.7588575945038075,
+      "p95DeltaRatio": -0.7588612597276264,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.home",
+      "metric": "inp_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "inp_ms",
+        "p50": 0,
+        "p95": 0,
+        "scenario": "web.home",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "inp_ms",
+        "p50": 0,
+        "p95": 0,
+        "scenario": "web.home",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0,
+      "p95DeltaRatio": 0,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.home",
+      "metric": "js_decoded_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "js_decoded_bytes",
+        "p50": 964023,
+        "p95": 964023,
+        "scenario": "web.home",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "js_decoded_bytes",
+        "p50": 788803,
+        "p95": 788803,
+        "scenario": "web.home",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.18175914889997438,
+      "p95DeltaRatio": -0.18175914889997438,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.home",
+      "metric": "js_transfer_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "js_transfer_bytes",
+        "p50": 0,
+        "p95": 0,
+        "scenario": "web.home",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "js_transfer_bytes",
+        "p50": 0,
+        "p95": 0,
+        "scenario": "web.home",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0,
+      "p95DeltaRatio": 0,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.home",
+      "metric": "lcp_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "lcp_ms",
+        "p50": 234,
+        "p95": 248,
+        "scenario": "web.home",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "lcp_ms",
+        "p50": 228,
+        "p95": 244,
+        "scenario": "web.home",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.02564102564102564,
+      "p95DeltaRatio": -0.016129032258064516,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.home",
+      "metric": "navigation_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "navigation_ms",
+        "p50": 240.8499999642372,
+        "p95": 260,
+        "scenario": "web.home",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "navigation_ms",
+        "p50": 231.95000004768372,
+        "p95": 248.70000004768372,
+        "scenario": "web.home",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.03695245969638788,
+      "p95DeltaRatio": -0.043461538278139554,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.home",
+      "metric": "request_count",
+      "unit": "count",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "request_count",
+        "p50": 58,
+        "p95": 58,
+        "scenario": "web.home",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "request_count",
+        "p50": 59,
+        "p95": 59,
+        "scenario": "web.home",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0.017241379310344827,
+      "p95DeltaRatio": 0.017241379310344827,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.home",
+      "metric": "transfer_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "transfer_bytes",
+        "p50": 210366,
+        "p95": 210367,
+        "scenario": "web.home",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "transfer_bytes",
+        "p50": 161040,
+        "p95": 161040,
+        "scenario": "web.home",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.2344770542768318,
+      "p95DeltaRatio": -0.234480693264628,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.home",
+      "metric": "ttfb_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "ttfb_ms",
+        "p50": 151.80000001192093,
+        "p95": 163.10000002384186,
+        "scenario": "web.home",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "ttfb_ms",
+        "p50": 146.45000004768372,
+        "p95": 164.20000004768372,
+        "scenario": "web.home",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.03524374152712171,
+      "p95DeltaRatio": 0.0067443287779341545,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.profile",
+      "metric": "cls_ratio",
+      "unit": "ratio",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "cls_ratio",
+        "p50": 0,
+        "p95": 0.0013813273111979167,
+        "scenario": "web.profile",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "cls_ratio",
+        "p50": 0.0013813273111979167,
+        "p95": 0.0013813273111979167,
+        "scenario": "web.profile",
+        "successfulRuns": 10
+      },
+      "deltaRatio": null,
+      "p95DeltaRatio": 0,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.profile",
+      "metric": "decoded_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "decoded_bytes",
+        "p50": 3808319,
+        "p95": 3808319,
+        "scenario": "web.profile",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "decoded_bytes",
+        "p50": 3707428,
+        "p95": 3707428,
+        "scenario": "web.profile",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.026492266010279077,
+      "p95DeltaRatio": -0.026492266010279077,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.profile",
+      "metric": "fcp_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "fcp_ms",
+        "p50": 152,
+        "p95": 160,
+        "scenario": "web.profile",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "fcp_ms",
+        "p50": 134,
+        "p95": 144,
+        "scenario": "web.profile",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.11842105263157894,
+      "p95DeltaRatio": -0.1,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.profile",
+      "metric": "html_rsc_decoded_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "html_rsc_decoded_bytes",
+        "p50": 275245,
+        "p95": 275245,
+        "scenario": "web.profile",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "html_rsc_decoded_bytes",
+        "p50": 76688,
+        "p95": 76688,
+        "scenario": "web.profile",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.7213827680793475,
+      "p95DeltaRatio": -0.7213827680793475,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.profile",
+      "metric": "html_rsc_transfer_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "html_rsc_transfer_bytes",
+        "p50": 61500,
+        "p95": 61502,
+        "scenario": "web.profile",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "html_rsc_transfer_bytes",
+        "p50": 17456,
+        "p95": 17456,
+        "scenario": "web.profile",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.7161626016260163,
+      "p95DeltaRatio": -0.7161718318103476,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.profile",
+      "metric": "inp_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "inp_ms",
+        "p50": 0,
+        "p95": 0,
+        "scenario": "web.profile",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "inp_ms",
+        "p50": 0,
+        "p95": 0,
+        "scenario": "web.profile",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0,
+      "p95DeltaRatio": 0,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.profile",
+      "metric": "js_decoded_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "js_decoded_bytes",
+        "p50": 586461,
+        "p95": 586461,
+        "scenario": "web.profile",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "js_decoded_bytes",
+        "p50": 586584,
+        "p95": 586584,
+        "scenario": "web.profile",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0.00020973261649112217,
+      "p95DeltaRatio": 0.00020973261649112217,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.profile",
+      "metric": "js_transfer_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "js_transfer_bytes",
+        "p50": 0,
+        "p95": 0,
+        "scenario": "web.profile",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "js_transfer_bytes",
+        "p50": 0,
+        "p95": 0,
+        "scenario": "web.profile",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0,
+      "p95DeltaRatio": 0,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.profile",
+      "metric": "lcp_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "lcp_ms",
+        "p50": 152,
+        "p95": 160,
+        "scenario": "web.profile",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "lcp_ms",
+        "p50": 134,
+        "p95": 144,
+        "scenario": "web.profile",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.11842105263157894,
+      "p95DeltaRatio": -0.1,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.profile",
+      "metric": "navigation_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "navigation_ms",
+        "p50": 131.14999997615814,
+        "p95": 140.70000004768372,
+        "scenario": "web.profile",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "navigation_ms",
+        "p50": 147.69999992847443,
+        "p95": 156.89999997615814,
+        "scenario": "web.profile",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0.12619138357091056,
+      "p95DeltaRatio": 0.115138592203157,
+      "selectedId": null,
+      "gatePassed": false
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.profile",
+      "metric": "request_count",
+      "unit": "count",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "request_count",
+        "p50": 49,
+        "p95": 49,
+        "scenario": "web.profile",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "request_count",
+        "p50": 50,
+        "p95": 50,
+        "scenario": "web.profile",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0.02040816326530612,
+      "p95DeltaRatio": 0.02040816326530612,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.profile",
+      "metric": "transfer_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "transfer_bytes",
+        "p50": 183096,
+        "p95": 183098,
+        "scenario": "web.profile",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "transfer_bytes",
+        "p50": 139352,
+        "p95": 139352,
+        "scenario": "web.profile",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.2389129199982523,
+      "p95DeltaRatio": -0.23892123343783112,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.profile",
+      "metric": "ttfb_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "ttfb_ms",
+        "p50": 69.10000002384186,
+        "p95": 77.80000007152557,
+        "scenario": "web.profile",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "ttfb_ms",
+        "p50": 67.94999998807907,
+        "p95": 77.29999995231628,
+        "scenario": "web.profile",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.016642547545094033,
+      "p95DeltaRatio": -0.006426736744853644,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.schedule",
+      "metric": "cls_ratio",
+      "unit": "ratio",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "cls_ratio",
+        "p50": 0,
+        "p95": 0.000001910421583387587,
+        "scenario": "web.schedule",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "cls_ratio",
+        "p50": 0.000001910421583387587,
+        "p95": 0.000001980940500895182,
+        "scenario": "web.schedule",
+        "successfulRuns": 10
+      },
+      "deltaRatio": null,
+      "p95DeltaRatio": 0.03691275167785209,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.schedule",
+      "metric": "decoded_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "decoded_bytes",
+        "p50": 3280241,
+        "p95": 3280241,
+        "scenario": "web.schedule",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "decoded_bytes",
+        "p50": 3179382,
+        "p95": 3179382,
+        "scenario": "web.schedule",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.030747435935347435,
+      "p95DeltaRatio": -0.030747435935347435,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.schedule",
+      "metric": "fcp_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "fcp_ms",
+        "p50": 132,
+        "p95": 148,
+        "scenario": "web.schedule",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "fcp_ms",
+        "p50": 116,
+        "p95": 124,
+        "scenario": "web.schedule",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.12121212121212122,
+      "p95DeltaRatio": -0.16216216216216217,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.schedule",
+      "metric": "html_rsc_decoded_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "html_rsc_decoded_bytes",
+        "p50": 292226,
+        "p95": 292226,
+        "scenario": "web.schedule",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "html_rsc_decoded_bytes",
+        "p50": 93688,
+        "p95": 93688,
+        "scenario": "web.schedule",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.6793988214601028,
+      "p95DeltaRatio": -0.6793988214601028,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.schedule",
+      "metric": "html_rsc_transfer_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "html_rsc_transfer_bytes",
+        "p50": 64773,
+        "p95": 64774,
+        "scenario": "web.schedule",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "html_rsc_transfer_bytes",
+        "p50": 20687,
+        "p95": 20687,
+        "scenario": "web.schedule",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.6806230991308106,
+      "p95DeltaRatio": -0.6806280297650292,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.schedule",
+      "metric": "inp_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "inp_ms",
+        "p50": 0,
+        "p95": 0,
+        "scenario": "web.schedule",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "inp_ms",
+        "p50": 0,
+        "p95": 0,
+        "scenario": "web.schedule",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0,
+      "p95DeltaRatio": 0,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.schedule",
+      "metric": "js_decoded_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "js_decoded_bytes",
+        "p50": 683164,
+        "p95": 683164,
+        "scenario": "web.schedule",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "js_decoded_bytes",
+        "p50": 683300,
+        "p95": 683300,
+        "scenario": "web.schedule",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0.00019907372168322687,
+      "p95DeltaRatio": 0.00019907372168322687,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.schedule",
+      "metric": "js_transfer_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "js_transfer_bytes",
+        "p50": 0,
+        "p95": 0,
+        "scenario": "web.schedule",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "js_transfer_bytes",
+        "p50": 0,
+        "p95": 0,
+        "scenario": "web.schedule",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0,
+      "p95DeltaRatio": 0,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.schedule",
+      "metric": "lcp_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "lcp_ms",
+        "p50": 132,
+        "p95": 148,
+        "scenario": "web.schedule",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "lcp_ms",
+        "p50": 116,
+        "p95": 124,
+        "scenario": "web.schedule",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.12121212121212122,
+      "p95DeltaRatio": -0.16216216216216217,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.schedule",
+      "metric": "navigation_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "navigation_ms",
+        "p50": 113.80000001192093,
+        "p95": 126.09999990463257,
+        "scenario": "web.schedule",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "navigation_ms",
+        "p50": 128.85000002384186,
+        "p95": 134.5,
+        "scenario": "web.schedule",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0.13224956072358868,
+      "p95DeltaRatio": 0.06661379937922457,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.schedule",
+      "metric": "request_count",
+      "unit": "count",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "request_count",
+        "p50": 40,
+        "p95": 40,
+        "scenario": "web.schedule",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "request_count",
+        "p50": 41,
+        "p95": 41,
+        "scenario": "web.schedule",
+        "successfulRuns": 10
+      },
+      "deltaRatio": 0.025,
+      "p95DeltaRatio": 0.025,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.schedule",
+      "metric": "transfer_bytes",
+      "unit": "bytes",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "transfer_bytes",
+        "p50": 182379,
+        "p95": 182380,
+        "scenario": "web.schedule",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "transfer_bytes",
+        "p50": 138593,
+        "p95": 138593,
+        "scenario": "web.schedule",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.2400824656347496,
+      "p95DeltaRatio": -0.2400866323061739,
+      "selectedId": null,
+      "gatePassed": true
+    },
+    {
+      "environment": "web-production-local",
+      "scenario": "web.schedule",
+      "metric": "ttfb_ms",
+      "unit": "milliseconds",
+      "baseline": {
+        "failedRuns": 0,
+        "metric": "ttfb_ms",
+        "p50": 48.55000001192093,
+        "p95": 53.39999997615814,
+        "scenario": "web.schedule",
+        "successfulRuns": 10
+      },
+      "optimized": {
+        "failedRuns": 0,
+        "metric": "ttfb_ms",
+        "p50": 47.69999998807907,
+        "p95": 53.39999997615814,
+        "scenario": "web.schedule",
+        "successfulRuns": 10
+      },
+      "deltaRatio": -0.017507724482660136,
+      "p95DeltaRatio": 0,
+      "selectedId": null,
+      "gatePassed": true
+    }
+  ]
+}

@@ -173,6 +173,11 @@ function hasContactsListQuery(searchParams: URLSearchParams): boolean {
 }
 
 function detailRouteHref(routeKey: string): InitialRoutePath | null {
+  const personalEditMatch = /^schedule\/personal\/((?:[A-Za-z0-9_.!~*'()-]|%[0-9A-Fa-f]{2})+)\/edit$/u.exec(routeKey);
+  if (personalEditMatch) {
+    try { const id = decodeURIComponent(personalEditMatch[1]!); if (id === "." || id === ".." || !id.trim()) return null; return `/schedule/personal/${encodeURIComponent(id)}/edit` as InitialRoutePath; }
+    catch { return null; }
+  }
   const taskMatch = /^(tasks(?:\/relationship)?|schedule\/personal)\/((?:[A-Za-z0-9_.!~*'()-]|%[0-9A-Fa-f]{2})+)$/u.exec(routeKey);
   if (taskMatch) {
     try {

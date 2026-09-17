@@ -173,7 +173,13 @@ export function createConversationsGetHandler(
   dependencies: RelationshipCommunicationHandlerDependencies = {},
 ) {
   return (request: Request) =>
-    withService(request, dependencies, async (service) => service.listConversations());
+    withService(request, dependencies, async (service) => {
+      const query = new URL(request.url).searchParams;
+      return service.listConversations({
+        ...(query.has("limit") ? { limit: Number(query.get("limit")) } : {}),
+        ...(query.has("cursor") ? { cursor: query.get("cursor")! } : {}),
+      });
+    });
 }
 
 export function createConversationGetHandler(

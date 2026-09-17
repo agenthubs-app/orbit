@@ -33,6 +33,7 @@ const quickActions = [
   { labelKey: "home.viewSchedule", href: "/schedule", icon: "calendar" },
   { labelKey: "home.newTask", href: "/today", icon: "task" },
   { labelKey: "home.newNote", href: "/notes/new", icon: "notes" },
+  { labelKey: "notes.allNotes", href: "/notes", icon: "notes" },
 ] as const satisfies readonly { labelKey: MessageKey; href: string; icon: "scan" | "calendar" | "task" | "notes" }[];
 
 export function HomeDashboardScreen() {
@@ -294,7 +295,7 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
 function HomeInboxBadge({ scopeKey }: { scopeKey: string }) {
   const { styles } = useStyles();
   const count = useRelationshipInboxBadgeCount(scopeKey);
-  return count === undefined ? null : <View testID="home-inbox-badge" style={styles.badge}><Text style={styles.badgeText}>{count}</Text></View>;
+  return count === undefined ? null : <View testID="home-inbox-badge" style={[styles.badge, { minWidth: 8, minHeight: 8, width: 8, height: 8, paddingHorizontal: 0 }]} />;
 }
 
 function HomeIcon({ name, size, color }: { name: "search" | "inbox" | "scan" | "calendar" | "task" | "notes"; size: number; color: string }) {

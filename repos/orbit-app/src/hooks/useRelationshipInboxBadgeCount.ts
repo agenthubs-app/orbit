@@ -1,3 +1,4 @@
+import {notificationInboxData,INBOX_NOTIFICATIONS_PATH} from '../api/inbox-notifications';
 import { useIsFocused } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppState } from "react-native";
@@ -61,7 +62,7 @@ export function useRelationshipInboxBadgeCount(scopeKey?: string): number | unde
     const current = () => latest.current === scope && !controller.signal.aborted;
     // Each source can contribute independently, but never from an old scope or
     // a cached content preview while the current unread state is unknown.
-    const data: { inbox?: unknown; notifications?: unknown } = {};
+    const data: { inbox?: unknown; notifications?: unknown; typed?: unknown } = {};
     async function read(path: string, source: keyof typeof data) {
       try {
         const result = await client.get<unknown>(path, { signal: controller.signal });
@@ -73,13 +74,15 @@ export function useRelationshipInboxBadgeCount(scopeKey?: string): number | unde
       }
       const inbox = relationshipConversationListToInbox(data.inbox, actorId);
       const alerts = relationshipAlertsToView(data.notifications);
-      const count = relationshipInboxBadgeCount(inbox ?? {
+      const typed=notificationInboxData(data.typed,actorId);
+      const count = (typed?.enabled ? typed.unreadCount : 0) + relationshipInboxBadgeCount(inbox ?? {
         conversations: [], selected: null, summary: "暂无对话", title: "收件箱"
-      }, alerts);
+      }, typed?.enabled === false ? alerts : relationshipAlertsToView(null));
       setSnapshot({ scope, signal: controller.signal, count: count > 0 ? Math.min(count, 99) : undefined });
     }
     void read(relationshipCommunicationConversationsPath(), "inbox");
     void read(ORBIT_API_ENDPOINTS.notifications, "notifications");
+    void read(INBOX_NOTIFICATIONS_PATH, "typed");
     return () => {
       controller.abort();
       if (pending.current === controller) pending.current = null;

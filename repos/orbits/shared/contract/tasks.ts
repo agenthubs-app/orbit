@@ -52,6 +52,8 @@ export interface TaskSuggestionContract {
 }
 
 export interface ScheduleItemContract {
+  allDay?: boolean;
+  timeZone?: string;
   id: string;
   kind: "meeting" | "event" | "personal";
   category: TaskCategory;
@@ -64,6 +66,16 @@ export interface ScheduleItemContract {
 }
 
 export interface PersonalScheduleContract extends ScheduleItemContract {
+  recurrence?: { frequency: "daily" | "weekly" | "monthly"; until?: string };
+  reminderMinutes?: 0 | 5 | 15 | 30 | 60 | 1440;
+  seriesId?: string;
+  occurrenceDate?: string;
+  allDay?: boolean;
+  timeZone?: string;
+  meetingMethod?: "video" | "in_person" | "phone" | "unspecified";
+  meetingUrl?: string;
+  contactIds?: string[];
+  noteIds?: string[];
   kind: "personal";
   category: "personal";
   accountId: string;

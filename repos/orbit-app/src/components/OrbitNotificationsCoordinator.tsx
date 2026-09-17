@@ -24,7 +24,7 @@ if (Platform.OS !== "web") {
       const deliveryId = notification.request.content.data?.deliveryId;
       const durableDelivery = typeof deliveryId === "string" && Boolean(deliveryId.trim());
       return {
-        shouldPlaySound: !durableDelivery,
+        shouldPlaySound: !durableDelivery || notification.request.content.sound === 'default',
         shouldSetBadge: durableDelivery,
         shouldShowBanner: true,
         shouldShowList: true,
@@ -53,7 +53,9 @@ export function OrbitNotificationsCoordinator() {
 
   const synchronize = useCallback(async (generation: number) => {
     if (!ready || !signedIn || Platform.OS !== "ios") return;
-    await syncReminderNotifications(client, generation);
+    await syncReminderNotifications(client, generation).catch(() => {
+      console.warn('Orbit 提醒交接未完成，将在下次回到前台时重试');
+    });
   }, [client, ready, signedIn]);
 
   useEffect(() => {
@@ -71,7 +73,7 @@ export function OrbitNotificationsCoordinator() {
       active = false;
       responseSubscription.remove();
     };
-  }, [ready, signedIn]);
+  }, [notificationSessionRevision, ready, signedIn]);
 
   useEffect(() => {
     if (ready && !signedIn && Platform.OS === "ios") {

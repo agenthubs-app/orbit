@@ -8,6 +8,7 @@ import type {
   EventRegistrationAction,
   EventRegistrationEligibility,
   EventRegistrationEligibilityState,
+  EventRegistrationBlockingReason,
 } from "./contract";
 import type { EventRegistrationAvailability } from "./deadline-gated-service";
 
@@ -24,6 +25,7 @@ interface AdmissionEligibilityInput {
 }
 
 interface ResolveEventRegistrationEligibilityInput {
+  blockingReason?: EventRegistrationBlockingReason;
   admission?: AdmissionEligibilityInput | null;
   evaluatedAt: string;
   event: EligibilityEvent;
@@ -37,6 +39,9 @@ function snapshot(
   allowedActions: readonly EventRegistrationAction[] = [],
 ): EventRegistrationEligibility {
   return {
+    ...((state === "unavailable" || (state === "registered" && input.legacyAvailability === "unavailable")) && input.blockingReason
+      ? { blockingReason: input.blockingReason }
+      : {}),
     allowedActions,
     applicationVersion: input.admission?.application?.applicationVersion ?? null,
     evaluatedAt: input.evaluatedAt,
@@ -121,6 +126,7 @@ export function resolveEventRegistrationEligibility(
 
   if (input.registration?.status === "rsvped") {
     if (nowMs >= startsAtMs) return snapshot(input, "registered");
+    if (input.blockingReason === "migration_in_progress") return snapshot(input, "registered");
     return snapshot(
       input,
       "registered",

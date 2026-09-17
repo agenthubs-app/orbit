@@ -5,6 +5,7 @@ import {
   Alert,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -50,6 +51,7 @@ import {
   type EventRegistrationView
 } from "../../view-models/event-registration";
 import { eventDetailToSummary } from "../../view-models/events";
+import { registrationQuestionDraft, registrationQuestionAnswer, registrationQuestionOptions, registrationQuestionnaireProgress, type ChoiceDraft, type Progress } from "../../view-models/event-registration-questionnaire";
 
 function firstParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
@@ -107,6 +109,8 @@ export function EventRegistrationScreen() {
       : null;
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [adaptiveAnswer, setAdaptiveAnswer] = useState("");
+  const [adaptiveDone, setAdaptiveDone] = useState(false);
+  const doneRef = useRef(adaptiveDone); doneRef.current = adaptiveDone;
   const [adaptiveError, setAdaptiveError] = useState<string | null>(null);
   const [adaptivePending, setAdaptivePending] = useState<
     "interview" | "persona" | null
@@ -135,6 +139,7 @@ export function EventRegistrationScreen() {
     const initialAnswers = answersFromView(view);
     setAnswers(clearAnswers ? Object.fromEntries(Object.keys(initialAnswers).map(field => [field, ""])) : initialAnswers);
     setAdaptiveAnswer("");
+    setAdaptiveDone(false);
     setAdaptiveError(null);
     setAdaptiveQuestion(null);
     setAdaptiveStatusText("继续补充画像");
@@ -161,7 +166,7 @@ export function EventRegistrationScreen() {
     }
     setRegistrationView(received);
     if (!dirty.current) setAnswers(answersFromView(received));
-  }, [registrationData, scope]);
+  }, [registrationData, scope, locale.language]);
 
   if (previousScope.current !== scope) {
     previousScope.current = scope;
@@ -181,6 +186,7 @@ export function EventRegistrationScreen() {
 
   function beginRequest(requireCurrentQuestions = true) {
     if (!isScopeCurrent() || request.current || renderedRevision !== editRevision.current || !formView.current || !latestView.current ||
+      (requireCurrentQuestions && latestView.current.canSubmit === false) ||
       (requireCurrentQuestions && eventRegistrationQuestionKey(formView.current) !== eventRegistrationQuestionKey(latestView.current))) return null;
     const controller = new AbortController(); request.current = controller;
     return controller;
@@ -276,7 +282,11 @@ export function EventRegistrationScreen() {
   }
 
   async function requestAdaptiveQuestion() {
-    if (!registrationView) {
+    if (!registrationView || doneRef.current || registrationQuestionnaireProgress([
+      ...Object.entries(answers).map(([field, answer]) => ({ field, answer })),
+      ...adaptiveTurns,
+      ...(adaptiveQuestion ? [{ field: adaptiveQuestion.field, answer: adaptiveAnswer }] : [])
+    ]).answeredCount === 8) {
       return;
     }
 
@@ -298,8 +308,10 @@ export function EventRegistrationScreen() {
     if (result.success && result.status >= 200 && result.status < 300) {
       if (editRevision.current !== revision) { finishRequest(controller); return; }
       const nextStep = eventRegistrationAdaptiveStepToView(result.data);
+      editRevision.current++;
       setAdaptiveTurns(turns);
       setAdaptiveAnswer("");
+      setAdaptiveDone(nextStep.done);
       setAdaptiveQuestion(nextStep.question);
       setAdaptiveStatusText(nextStep.statusText);
     } else {
@@ -336,14 +348,27 @@ export function EventRegistrationScreen() {
 
     if (result.success && result.status >= 200 && result.status < 300) {
       if (editRevision.current !== revision) { finishRequest(controller); return; }
+      editRevision.current++;
       setAdaptiveTurns(turns);
       setAdaptiveAnswer("");
+      setAdaptiveQuestion(null);
       setPersona(eventRegistrationPersonaToView(result.data));
     } else {
       setAdaptiveError(result.success ? "暂时无法生成活动画像，请重试。" : result.error.message);
     }
 
     finishRequest(controller);
+  }
+
+  async function verifyRegistrationReadback(receipt: unknown, status: "rsvped" | "cancelled", controller: AbortController) {
+    const readback = await client.get<unknown>(`${eventRegistrationPath(eventId)}?questions=false`, { signal: controller.signal });
+    if (!isScopeCurrent() || request.current !== controller || !readback.success || readback.status < 200 || readback.status >= 300) return false;
+    const record = readback.data && typeof readback.data === "object" ? (readback.data as { registration?: unknown }).registration : null;
+    if (!eventRegistrationReceiptMatches(record, eventId, actorId, status) || !receipt || typeof receipt !== "object" || !record || typeof record !== "object") return false;
+    const expected = receipt as { id?: unknown; updatedAt?: unknown };
+    const actual = record as { id?: unknown; updatedAt?: unknown };
+    const previous = registrationData && typeof registrationData === "object" ? (registrationData as { registration?: { id?: unknown } }).registration : null;
+    return (!previous || expected.id === previous.id) && actual.id === expected.id && actual.updatedAt === expected.updatedAt;
   }
 
   async function submitRegistration() {
@@ -378,6 +403,8 @@ export function EventRegistrationScreen() {
           body: {
             answers: buildEventRegistrationAnswers(registrationView.questions, answers),
             intent: action,
+            expectedRegistrationVersion: registrationView.registrationVersion ?? null,
+            ...(admissionResponses.length ? { responses: admissionResponses } : {}),
             ...(registrationView.questionSetHash &&
             registrationView.questionSetVersion !== null
               ? {
@@ -403,7 +430,9 @@ export function EventRegistrationScreen() {
           "rsvped",
           action
         );
-    if (result.success && result.status >= 200 && result.status < 300 && receiptMatches) {
+    const readbackMatches = result.success && result.status >= 200 && result.status < 300 && receiptMatches && (action === "apply" || await verifyRegistrationReadback(result.data, "rsvped", controller));
+    if (!isScopeCurrent() || request.current !== controller) return;
+    if (result.success && result.status >= 200 && result.status < 300 && readbackMatches) {
       if (editRevision.current === revision) dirty.current = false;
       const applicationStatus = result.success && typeof result.data === "object" && result.data
         ? (result.data as { status?: unknown }).status
@@ -471,7 +500,9 @@ export function EventRegistrationScreen() {
           "cancelled",
           "cancel"
         );
-    if (result.success && result.status >= 200 && result.status < 300 && receiptMatches) {
+    const readbackMatches = result.success && result.status >= 200 && result.status < 300 && receiptMatches && (action === "withdraw" || await verifyRegistrationReadback(result.data, "cancelled", controller));
+    if (!isScopeCurrent() || request.current !== controller) return;
+    if (result.success && result.status >= 200 && result.status < 300 && readbackMatches) {
       setFeedback(action === "withdraw" ? "已撤回申请。" : "已取消报名。");
       eventState.refresh();
       registrationState.refresh();
@@ -480,6 +511,19 @@ export function EventRegistrationScreen() {
     }
 
     finishRequest(controller);
+  }
+
+  function confirmCancellation() {
+    if (registrationView?.allowedActions?.includes("withdraw")) { void cancelRegistration(); return; }
+    if (!isScopeCurrent() || request.current || !registrationView?.canCancel) return;
+    const intendedAuthority = eventRegistrationAuthorityKey(registrationView);
+    Alert.alert(locale.t("registration.actionCancel"), locale.t("registration.cancelConfirmation"), [
+      { text: locale.t("registration.cancelKeep"), style: "cancel" },
+      { text: locale.t("registration.actionCancel"), style: "destructive", onPress: () => {
+        if (!latestView.current || intendedAuthority !== eventRegistrationAuthorityKey(latestView.current)) return;
+        void cancelRegistration();
+      } }
+    ]);
   }
 
   return (
@@ -525,7 +569,10 @@ export function EventRegistrationScreen() {
       ) : null}
       {ready && event && registrationView ? (
         <RegistrationForm
+          key={JSON.stringify([scopeKey, eventRegistrationQuestionKey(registrationView)])}
           adaptiveAnswer={adaptiveAnswer}
+          adaptiveDone={adaptiveDone}
+          adaptiveTurns={adaptiveTurns}
           adaptiveError={adaptiveError}
           adaptivePending={adaptivePending}
           adaptiveQuestion={adaptiveQuestion}
@@ -541,7 +588,7 @@ export function EventRegistrationScreen() {
               pathname: "/events/[id]"
             })
           }
-          onCancel={cancelRegistration}
+          onCancel={confirmCancellation}
           onGenerateAdaptivePersona={generateAdaptivePersona}
           onRequestAdaptiveQuestion={requestAdaptiveQuestion}
           onLoadNewQuestions={loadNewQuestions}
@@ -561,6 +608,8 @@ export function EventRegistrationScreen() {
 
 function RegistrationForm({
   adaptiveAnswer,
+  adaptiveDone,
+  adaptiveTurns,
   adaptiveError,
   adaptivePending,
   adaptiveQuestion,
@@ -585,6 +634,8 @@ function RegistrationForm({
   submitError
 }: {
   adaptiveAnswer: string;
+  adaptiveDone: boolean;
+  adaptiveTurns: EventRegistrationInterviewTurn[];
   adaptiveError: string | null;
   adaptivePending: "interview" | "persona" | null;
   adaptiveQuestion: EventRegistrationAdaptiveQuestionView | null;
@@ -689,7 +740,14 @@ function RegistrationForm({
       </DataCard>
       <AdaptiveRegistrationCard
         answer={adaptiveAnswer}
-        disabled={pendingAction !== null || questionsChanged || !readConfirmed}
+        done={adaptiveDone}
+        turns={adaptiveTurns}
+        progress={registrationQuestionnaireProgress([
+          ...Object.entries(answers).map(([field, answer]) => ({ field, answer })),
+          ...adaptiveTurns,
+          ...(adaptiveQuestion ? [{ field: adaptiveQuestion.field, answer: adaptiveAnswer }] : [])
+        ])}
+        disabled={pendingAction !== null || questionsChanged || !readConfirmed || registration.canSubmit === false}
         error={adaptiveError}
         onAnswerChange={onAdaptiveAnswerChange}
         onGeneratePersona={onGenerateAdaptivePersona}
@@ -705,6 +763,9 @@ function RegistrationForm({
 
 function AdaptiveRegistrationCard({
   answer,
+  done,
+  turns,
+  progress,
   disabled,
   error,
   onAnswerChange,
@@ -716,6 +777,9 @@ function AdaptiveRegistrationCard({
   statusText
 }: {
   answer: string;
+  done: boolean;
+  turns: EventRegistrationInterviewTurn[];
+  progress: Progress;
   disabled: boolean;
   error: string | null;
   onAnswerChange: (value: string) => void;
@@ -727,17 +791,35 @@ function AdaptiveRegistrationCard({
   statusText: string;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
+  const scroll = useRef<ScrollView>(null);
+  const previousQuestion = useRef(question);
+  const scrollPending = useRef(false);
+  if (previousQuestion.current !== question) { previousQuestion.current = question; scrollPending.current = Boolean(question); }
   return (
-    <DataCard variant="inset" detail={statusText} title="活动画像">
-      <Text style={styles.bodyText}>
-        用几轮问答，把你在这场活动里的介绍写清楚。
-      </Text>
+    <DataCard variant="inset" detail={statusText} title={locale.t("registration.questionnaireTitle")}>
+      <Text style={styles.bodyText}>{locale.t("registration.questionnaireHint")}</Text>
+      <Text style={styles.bodyText}>{locale.t("registration.questionnaireProgress", { core: progress.coreAnsweredCount, count: progress.answeredCount })}</Text>
+      <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 8, now: progress.answeredCount }} style={{ height: 4, backgroundColor: colors.border }}>
+        <View style={{ height: 4, width: `${progress.answeredCount / 8 * 100}%`, backgroundColor: colors.accent }} />
+      </View>
+      {done || progress.answeredCount === 8 ? <Text style={styles.feedbackText}>{locale.t("registration.questionnaireComplete")}</Text> : progress.canSuggestStop ? <Text style={styles.feedbackText}>{locale.t("registration.questionnaireStop")}</Text> : null}
+      <Text style={styles.evidenceText}>{locale.t("registration.questionnaireUnsaved")}</Text>
+      <ScrollView ref={scroll} nestedScrollEnabled keyboardShouldPersistTaps="handled" style={{ maxHeight: 480 }} onContentSizeChange={() => {
+        if (scrollPending.current) { scrollPending.current = false; scroll.current?.scrollToEnd({ animated: true }); }
+      }}>
+      {turns.map((turn, index) => <View key={turn.questionToken ?? `${index}:${turn.field}`} style={styles.questionBlock}>
+        <Text style={styles.evidenceText}>{locale.t("registration.questionnaireAnswered")}</Text>
+        <Text style={styles.questionText}>{turn.prompt}</Text>
+        <Text style={styles.bodyText}>{turn.answer}</Text>
+      </View>)}
       {question ? (
         <View style={styles.adaptiveQuestionBlock}>
           {question.acknowledgment ? (
             <Text style={styles.feedbackText}>{question.acknowledgment}</Text>
           ) : null}
           <RegistrationQuestion
+            key={question.questionToken ?? `${turns.length}:${question.field}:${question.prompt}`}
             answer={answer}
             onChange={onAnswerChange}
             question={{
@@ -750,12 +832,13 @@ function AdaptiveRegistrationCard({
           />
         </View>
       ) : null}
+      </ScrollView>
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
       {persona ? <PersonaPreview persona={persona} /> : null}
       <View style={styles.adaptiveActionsRow}>
         <Pressable
           accessibilityRole="button"
-          disabled={disabled || pending !== null}
+          disabled={disabled || pending !== null || done || progress.answeredCount === 8}
           onPress={onRequestQuestion}
           style={({ pressed }) => [
             styles.secondaryButton,
@@ -842,17 +925,31 @@ function RegistrationQuestion({
 }) {
   const { colors, styles } = useStyles();
   const locale = useOrbitLocale();
+  const [draft, setDraft] = useState(() => registrationQuestionDraft(question.options, answer));
+  const previousAnswer = useRef(answer);
+  useEffect(() => {
+    if (previousAnswer.current !== answer) {
+      previousAnswer.current = answer;
+      setDraft(registrationQuestionDraft(question.options, answer));
+    }
+  }, [answer, question.options]);
+  function changeDraft(next: ChoiceDraft) {
+    const value = registrationQuestionAnswer(next);
+    previousAnswer.current = value;
+    setDraft(next);
+    onChange(value);
+  }
   return (
     <View style={styles.questionBlock}>
       <Text style={styles.questionText}>{question.prompt}</Text>
       <Text style={styles.evidenceText}>{locale.t(question.required ? "registration.required" : "registration.optional")}</Text>
       {question.options.length > 0 ? (
         <View style={styles.optionsRow}>
-          {question.options.map((option) => (
+          {registrationQuestionOptions(question.options).map((option) => (
             <Pressable
               accessibilityRole="button"
               key={option}
-              onPress={() => onChange(option)}
+              onPress={() => changeDraft({ ...draft, mode: "option", option })}
               style={({ pressed }) => [
                 styles.optionPill,
                 answer === option ? styles.optionPillActive : null,
@@ -869,17 +966,20 @@ function RegistrationQuestion({
               </Text>
             </Pressable>
           ))}
+          <Pressable accessibilityRole="button" accessibilityState={{ selected: draft.mode === "other" }} onPress={() => changeDraft({ ...draft, mode: "other", option: null })} style={[styles.optionPill, draft.mode === "other" ? styles.optionPillActive : null]}>
+            <Text style={[styles.optionText, draft.mode === "other" ? styles.optionTextActive : null]}>{locale.t("registration.questionnaireOther")}</Text>
+          </Pressable>
         </View>
       ) : null}
-      <TextInput
+      {question.options.length === 0 || draft.mode === "other" ? <TextInput
         multiline
-        onChangeText={onChange}
+        onChangeText={(customText) => changeDraft({ mode: "other", option: null, customText })}
         placeholder={locale.t("registration.answerPlaceholder")}
         placeholderTextColor={colors.text4}
         style={styles.answerInput}
         textAlignVertical="top"
-        value={answer}
-      />
+        value={draft.customText}
+      /> : null}
     </View>
   );
 }

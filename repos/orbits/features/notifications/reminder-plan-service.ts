@@ -130,11 +130,15 @@ function delivery(input: { plan: ReminderPlanDTO; channel: ReminderChannel; devi
 }
 
 export function createReminderPlanService({
+  deliveryManagedExternally,
+  withDeliveryGate = async (_actorId, operation) => operation(),
   now,
   pushDevices,
   repository,
   targetAuthorizer,
 }: {
+  deliveryManagedExternally?: (actorId: string) => Promise<boolean>;
+  withDeliveryGate?: (actorId: string, operation: () => Promise<void>) => Promise<void>;
   now: () => string;
   pushDevices?: ReminderPushDeviceGateway;
   repository: ReminderPlanRepository;
@@ -271,6 +275,8 @@ export function createReminderPlanService({
         if (activeClaims.has(plan.id)) continue;
         activeClaims.add(plan.id);
         try {
+          await withDeliveryGate(plan.ownerUserId, async () => {
+          if (await deliveryManagedExternally?.(plan.ownerUserId)) return;
           const inAppOnly = plan.channels.length === 1 && plan.channels[0] === "in_app";
           // Pure in-app delivery has no external side effect: its stable record
           // is sufficient evidence to finish a plan after a previous save failed.
@@ -287,7 +293,7 @@ export function createReminderPlanService({
               await repository.savePlan({ ...plan, status: "delivered", deliveredAt: completed.deliveredAt ?? completed.updatedAt, failureCode: undefined, updatedAt: input.now });
               result.claimed += 1;
             }
-            continue;
+            return;
           }
           result.claimed += 1;
           const preferences = (await repository.getPreferences(plan.ownerUserId)) ?? defaultPreferences(plan.ownerUserId, input.now);
@@ -321,6 +327,7 @@ export function createReminderPlanService({
             }
           }
           await repository.savePlan({ ...plan, ...(delivered ? { deliveredAt: input.now } : { failureCode: "NO_DELIVERY_CHANNEL_AVAILABLE" }), status: delivered ? "delivered" : "failed", updatedAt: input.now });
+          });
         } finally {
           activeClaims.delete(plan.id);
         }

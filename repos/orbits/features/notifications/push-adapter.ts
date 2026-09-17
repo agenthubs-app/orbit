@@ -1,4 +1,5 @@
 export interface OrbitPushMessage {
+  sound?: "default" | null;
   token: string;
   title: string;
   body: string;
@@ -34,6 +35,7 @@ export function createConfiguredExpoPushAdapter(
   const adapter: OrbitPushAdapter = {
     async send(message) {
       const response = await fetch(endpoint, {
+        signal: AbortSignal.timeout(20_000),
         method: "POST",
         headers: {
           authorization: `Bearer ${accessToken}`,
@@ -44,18 +46,22 @@ export function createConfiguredExpoPushAdapter(
           title: message.title,
           body: message.body,
           data: message.data,
-          sound: "default",
+          sound: message.sound === undefined ? "default" : message.sound,
         }),
       });
       const result = (await response.json().catch(() => ({}))) as {
-        data?: { id?: unknown; status?: unknown };
+        data?: { id?: unknown; status?: unknown; details?: { error?: unknown } };
       };
       if (
         !response.ok ||
         result.data?.status !== "ok" ||
         typeof result.data.id !== "string"
       ) {
-        throw new Error(`Expo push adapter returned HTTP ${response.status}.`);
+        const error = new Error(`Expo push adapter returned HTTP ${response.status}: ${typeof result.data?.details?.error === "string" ? result.data.details.error : "request rejected"}`);
+        // Network errors and malformed successful responses remain unknown;
+        // only explicit provider rejection is safe to retry.
+        Object.assign(error, { notAccepted: response.status === 429 || (response.status >= 400 && response.status < 500) || result.data?.status === "error" });
+        throw error;
       }
       return { receiptId: result.data.id };
     },
@@ -63,6 +69,7 @@ export function createConfiguredExpoPushAdapter(
   if (receiptEndpoint) {
     adapter.getReceipt = async (receiptId) => {
       const response = await fetch(receiptEndpoint, {
+        signal: AbortSignal.timeout(20_000),
         method: "POST",
         headers: {
           authorization: `Bearer ${accessToken}`,

@@ -47,6 +47,7 @@ function harness(input: { optedIn?: boolean; signedIn?: boolean; lastResponse?: 
     async getExpoPushTokenAsync(options?: { projectId?: string }) { calls.push(`project:${options?.projectId}`); return { data: "test-push-token" }; },
   };
   const native = {
+    notifyReminderPlansChanged() {},
     getReminderNotificationGeneration: () => 0,
     async syncReminderNotifications() { calls.push("sync-local-reminders"); },
     async registerNotificationDevice() { calls.push("register-legacy-device"); return true; },
@@ -80,6 +81,7 @@ function harness(input: { optedIn?: boolean; signedIn?: boolean; lastResponse?: 
     const code = transformSync(source, { format: "cjs", jsx: "automatic", loader: "tsx", target: "es2015", supported: { "dynamic-import": false } }).code;
     const module = { exports: {} as any };
     const nativeRequire = (id: string): any => {
+      if (id === "./NotificationDeliverySettings") return { NotificationDeliverySettings: () => null };
       if (id === "react") return react;
       if (id === "react/jsx-runtime") return { jsx: (type: unknown, props: unknown) => ({ type, props }), jsxs: (type: unknown, props: unknown) => ({ type, props }) };
       if (id === "react-native") return { Platform: { OS: "ios" }, AppState: { addEventListener() { return { remove() {} }; } }, StyleSheet: { create: (value: unknown) => value }, Pressable: "Pressable", Text: "Text", View: "View", useColorScheme: () => "light" };
@@ -114,6 +116,7 @@ function harness(input: { optedIn?: boolean; signedIn?: boolean; lastResponse?: 
       if (id.endsWith("/endpoints")) return { ORBIT_API_ENDPOINTS: { pushTokens: "/api/devices/push-tokens" } };
       if (id.endsWith("/AppScreen")) return { AppScreen: "AppScreen" };
       if (id.endsWith("/DataCard")) return { DataCard: "DataCard" };
+      if (id === "./NotificationDiscoverySettings") return { NotificationDiscoverySettings: "NotificationDiscoverySettings" };
       if (id.endsWith("/design/theme")) return load("src/design/theme.ts");
       if (id.endsWith("/design/tokens") || id === "./tokens") return load("src/design/tokens.ts");
       return require(id);
@@ -138,7 +141,7 @@ const settle = () => new Promise<void>(resolve => setImmediate(resolve));
 function notificationAction(tree: any): any {
   if (!tree) return undefined;
   if (Array.isArray(tree)) return tree.map(notificationAction).find(Boolean);
-  if (tree.type === "Pressable" && tree.props.accessibilityRole === "button" && /关键提醒|正在准备/.test(tree.props.accessibilityLabel ?? "")) return tree;
+  if (tree.type === "Pressable" && tree.props.accessibilityRole === "button" && /系统推送|正在准备/.test(tree.props.accessibilityLabel ?? "")) return tree;
   return notificationAction(tree.props?.children);
 }
 

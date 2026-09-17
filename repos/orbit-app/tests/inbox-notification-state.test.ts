@@ -22,14 +22,18 @@ test("a legacy reminder remains unpersisted and retains the existing badge count
   assert.equal(relationshipInboxBadgeCount(inbox, view), 3);
 });
 
-test("a legacy task reminder without href opens its canonical followup task", () => {
+test("a legacy followup id alone is not proof of an accessible task", () => {
   const actions = inboxNotificationActions({
     state: "success",
     reminders: [{ ...reminder, href: undefined, followupTaskId: "task:canonical one" }],
     notificationInteractions: {},
   });
 
-  assert.equal(actions.get("notice:one")?.href, "/tasks/task%3Acanonical%20one");
+  assert.equal(actions.get("notice:one")?.href, undefined);
+  const view = relationshipAlertsToView({ state: "success", reminders: [{ ...reminder, href: undefined, followupTaskId: "task:missing" }], notificationInteractions: {} });
+  assert.equal(view.alerts[0]?.title, "来源已不可用");
+  assert.equal(view.alerts[0]?.detail, "");
+  assert.equal(view.alerts[0]?.canPersistState, true);
 });
 
 for (const [href, expected] of [

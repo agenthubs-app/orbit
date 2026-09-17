@@ -6,6 +6,7 @@ import {
   getAiVisibilitySource,
   validateAiVisibilityManifest,
 } from "../../features/orbit-ai/data-visibility/manifest";
+import { AI_READ_PERMISSIONS } from "../../features/orbit-ai/data-query/permission-registry";
 
 const requiredSources = [
   "tool:events.recommend",
@@ -13,10 +14,7 @@ const requiredSources = [
   "tool:followups.reviewQueue",
   "tool:chat.context",
   "tool:profile.getSelf",
-  "tool:notes.query",
-  "tool:tasks.query",
-  "tool:followups.query",
-  "tool:schedule.query",
+  ...AI_READ_PERMISSIONS.map((permission) => `tool:${permission.tool}` as const),
   "context:message",
   "context:history",
   "context:memory",
@@ -43,6 +41,19 @@ test("unregistered visibility sources and fields are denied by default", () => {
   assert.equal(notes.allowedFields.includes("body"), true);
   assert.equal(notes.allowedFields.includes("providerToken"), false);
   assert.equal(notes.allowedFields.includes("rawAttachment"), false);
+});
+
+test("AI read visibility declarations are derived from the independent permission registry", () => {
+  for (const permission of AI_READ_PERMISSIONS) {
+    const source = getAiVisibilitySource(`tool:${permission.tool}`);
+    assert.ok(source);
+    assert.equal(source.maxItems, permission.maxItems);
+    assert.equal(source.confirmation, "none_for_read");
+    assert.deepEqual(
+      source.allowedFields,
+      ["id", "revision", "updatedAt", "evidenceIds", ...permission.fields],
+    );
+  }
 });
 
 test("manifest validator rejects duplicate ids, empty allowlists, and content audit", () => {

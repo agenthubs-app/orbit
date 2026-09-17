@@ -11,6 +11,7 @@ import { contactDetailRouteToOrbitContactsViewModel } from "../../app/(app)/app/
 import { filterConnections, OrbitRealCardsList } from "../../app/(app)/app/contacts/orbit-real-contacts";
 import { OrbitRealCardsPipelineView } from "../../app/(app)/app/contacts/orbit-real-cards-pipeline-view";
 import { OrbitRealCardConnection } from "../../app/(app)/app/contacts/orbit-real-card-connection";
+import { mountOrbitRealCardConnection } from "./contact-relationship-initialization-mount-helper";
 
 function contact(status: AppContactListItemViewModel["status"], statusLabel: string): AppContactListItemViewModel {
   return {
@@ -81,7 +82,7 @@ test("list and pipeline render the archive group without dropping its contact or
   assert.match(pipeline, /已归档<\/span><span class="nc-ccount">1<\/span>/);
 });
 
-test("detail displays archived instead of partnered for an archived contact", async () => {
+test("detail displays archived instead of partnered for an archived contact", async (t) => {
   const route = await loadAppContactDetailRoute({ contactId: "demo-contact-1", mode: "mock" });
   assert.equal(route.routeState, "success");
   if (route.routeState !== "success") throw new Error("Expected mock contact detail");
@@ -92,8 +93,50 @@ test("detail displays archived instead of partnered for an archived contact", as
   const html = renderToStaticMarkup(createElement(OrbitRealCardConnection, {
     contactId: route.contact.id, viewModel: model,
   }));
-  assert.match(html, /已归档/);
+  // The SSR shell must not claim a canonical stage before the relationship readback.
+  assert.match(html, /关系状态尚未确认/);
+  assert.match(html, /nc-ps-pending_initialization/);
+  assert.doesNotMatch(html, /nc-ps-archived/);
   assert.doesNotMatch(html, /nc-ps-partnered/);
-  assert.match(html, /nc-ps-archived" style="[^"]*background:/);
-  assert.match(html, /class="nc-dot" style="background:currentColor"/);
+
+  let reads = 0;
+  const root = await mountOrbitRealCardConnection(t, {
+    contactId: route.contact.id,
+    language: "zh",
+    viewModel: model,
+    fetcher: (async (input, init) => {
+      reads += 1;
+      assert.equal(String(input), `/api/contacts/${encodeURIComponent(route.contact.id)}/relationship-initialization`);
+      assert.equal(init?.cache, "no-store");
+      assert.equal(init?.credentials, "same-origin");
+      assert.equal(init?.method, undefined);
+      return Response.json({
+        success: true,
+        data: {
+          state: "initialized",
+          snapshot: {
+            connection: {
+              actorId: "owner:archived",
+              contactId: route.contact.id,
+              connectionId: "connection:archived",
+              stage: "archived",
+              activeGoal: null,
+              version: 1,
+              createdAt: "2026-09-17T00:00:00.000Z",
+              updatedAt: "2026-09-17T00:00:00.000Z",
+            },
+            tasks: [],
+          },
+        },
+      });
+    }) as typeof fetch,
+  });
+  assert.equal(reads, 1);
+  const pills = root.root.findAll((node) => node.type === "span" && String(node.props.className).startsWith("nc-status nc-ps-"));
+  assert.equal(pills.length, 2);
+  for (const pill of pills) {
+    assert.match(pill.props.className, /nc-ps-archived/);
+    assert.equal(pill.children.at(-1), "已归档");
+  }
+  assert.doesNotMatch(JSON.stringify(root.toJSON()), /nc-ps-partnered/);
 });

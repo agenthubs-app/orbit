@@ -8,6 +8,14 @@
 - 最新证据和部署边界统一记入 [BR-025](2026-09-16-production-p0-fixes.md)，不把本地测试或一次发布当作整体目标完成。
 - 收尾：`105ebba4d` / `dpl_2FjxtX314B6DRojeZvFbdDF8gTNh` 已发布为 Ready；正式站当前 66/历史 14、另一账号 0、AI 实际标题/状态回显与云端会话保存、个人日程回读通过。测试合成数据保留，没有清库或外发消息。
 
+## 2026-09-16 — Sprint0038
+
+e045651b3已进入chat-agent；三类通知、来源权限和独立状态已在本地共同环境验证。保留全量失败历史，见[BR-026](2026-09-16-typed-notification-inbox.md)。
+
+## 2026-09-16 — Sprint0037
+
+联系人消息独立，真实QA共同环境完成Web↔原生收发、重试去重和已读隔离；a591494b0已进入chat-agent，详见[BR-025](2026-09-16-contact-message-inbox.md)。保留全量失败与局部回归历史，不宣称远程发布或Push通过。
+
 ## 2026-09-15 — Sprint 0029 数据权威与 AI 只读面
 
 - authority registry、push device identity、canonical schedule service 与四个 actor-scoped AI query tool 已按 A–E 轨提交；Web/App contract 同步。

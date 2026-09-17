@@ -576,6 +576,7 @@ test("AI provider API routes fail closed in live mode instead of returning NOT_I
       const runRoute = await importProjectModule<{
         createAiProviderRunGetHandler: (dependencies?: {
           agentContext?: {
+            resolveActorFromSession?: (input: { userId: string }) => Promise<{ id: string }>;
             authenticate?: () => Promise<{
               user?: { id?: string | null };
             } | null>;
@@ -593,6 +594,10 @@ test("AI provider API routes fail closed in live mode instead of returning NOT_I
           authenticate: async () => ({
             user: { id: "account:ai-provider-live-test" },
           }),
+          resolveActorFromSession: async ({ userId }) => {
+            assert.equal(userId, "account:ai-provider-live-test");
+            return { id: "account:canonical-ai-provider-live-test" };
+          },
           runtimeForActor: () => createOrbitAgentRuntimeService("mock"),
         },
       });

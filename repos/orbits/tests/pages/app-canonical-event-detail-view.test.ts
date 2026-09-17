@@ -9,6 +9,15 @@ import type { PublishedCanonicalEvent } from "../../features/events/core/contrac
 
 const now = new Date("2030-01-01T00:00:00.000Z");
 
+test("canonical details carry a real configuration restriction separately from successful event access", async () => {
+  const deps = { ...dependencies({ event: canonicalEvent("CLIMATE") }), readRegistrationWindow: async () => ({ availability: "unavailable" as const, blockingReason: "configuration_required" as const }) };
+  const result = await resolveCanonicalEventDetailView({ routeId: "CLIMATE" }, deps);
+  assert.equal(result.state, "success");
+  if (result.state !== "success") return;
+  assert.equal(result.registrationAvailability, "unavailable");
+  assert.equal((result as typeof result & { registrationBlockingReason?: string }).registrationBlockingReason, "configuration_required");
+});
+
 function canonicalEvent(publicCode: string | null): PublishedCanonicalEvent {
   return {
     archivedAt: null,

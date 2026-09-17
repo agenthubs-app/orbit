@@ -1,6 +1,8 @@
 import {
   createDeadlineGatedEventRegistrationService,
   resolveEventRegistrationAvailability,
+  resolveEventRegistrationWindowState,
+  type EventRegistrationWindowState,
   type EventRegistrationAvailability,
 } from "./deadline-gated-service";
 import { createConfiguredEventCoreService } from "../core/runtime";
@@ -51,6 +53,17 @@ export async function readRuntimeEventRegistrationAvailability(
   } catch {
     return "unavailable";
   }
+}
+
+// Unlike the legacy availability reader, read failures must reach the GET
+// boundary as 503 rather than becoming a successful configuration diagnosis.
+export async function readRuntimeEventRegistrationWindow(
+  eventId: string,
+): Promise<EventRegistrationWindowState> {
+  const event = await createConfiguredEventCoreService()?.getPublishedEvent(eventId);
+  if (!event) return { availability: "unavailable", blockingReason: "temporarily_unavailable" };
+  if (event.phase !== "upcoming") return { availability: "registration_closed" };
+  return resolveEventRegistrationWindowState(await runtimeWindowProvider.getEnrollment(event.eventId));
 }
 
 export async function listRuntimeEventRegistrationsForUser(input: {

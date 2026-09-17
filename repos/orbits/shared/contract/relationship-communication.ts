@@ -68,6 +68,8 @@ export interface RelationshipConversationDTO {
 }
 
 export interface RelationshipConversationListDTO {
+  nextCursor?: string | null;
+  unreadTotal?: number;
   conversations: readonly RelationshipConversationDTO[];
   refreshedAt: string;
 }

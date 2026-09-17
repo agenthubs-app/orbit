@@ -54,6 +54,9 @@ function readModelFor(
 
 function analyticsError(error: unknown): AppError {
   if (error instanceof AppError) return error;
+  if (error instanceof EventAnalyticsReadModelError && error.code === "EVENT_ANALYTICS_CONFIGURATION_REQUIRED") {
+    return new AppError("SERVICE_UNAVAILABLE", "Event analytics requires an event operations configuration.", { cause: error });
+  }
   if (
     error instanceof EventAnalyticsReadModelError &&
     error.code === "EVENT_ANALYTICS_ACTIVE_REGISTRATION_REQUIRED"
@@ -85,6 +88,8 @@ function analyticsErrorResponse(
       boundary: "runtime",
       privacy,
       service: "event-analytics-read-model",
+      ...(error instanceof EventAnalyticsReadModelError && error.code === "EVENT_ANALYTICS_CONFIGURATION_REQUIRED"
+        ? { reason: "event-analytics-configuration-required" } : {}),
     }),
     {
       headers: runtimeBoundaryHeaders(mode),

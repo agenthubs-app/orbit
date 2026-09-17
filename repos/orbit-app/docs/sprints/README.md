@@ -40,6 +40,8 @@ build/harness-logs/
 
 原始日志和截图使用已有被忽略的 `build/` 子目录，不改 `.gitignore`、不进产品源码或 Git。运行目录只在对应 Sprint 启动时创建。用户要求的 Planner／报告是可提交文档，集中在 `docs/sprints/`。证据只读留存，不自动清空 `build/` 或迁移旧日志。
 
+2026-09-16 新增[收件箱与自主通知项目计划](NOTIFICATION_PROGRAM.md)：0037 → 0038 → 0039 → 0040，分别交付联系人消息、三类通知、AI有依据的发现、推送与旧流切换。2026-09-16用户已授权本session按重叠检查结果顺序实施；真实run见下方记录。
+
 ## Sprint 登记表
 
 未列入下方运行记录的 Sprint 均为 `run_count = 0`、`report = 未产生`。表中的依赖是进入条件，不声称已满足。0001 接续既有四文件；0002 不依赖0001的功能结果。其余按依赖就绪执行，不以编号大小证明就绪。
@@ -76,12 +78,46 @@ build/harness-logs/
 | [0026](0026-canonical-app-account-identity/GOAL.md) | 统一 App 登录主体与业务账号身份，让待办、个人日程和笔记正确读取 canonical owner | 用户批准追加 C 线 Sprint；承接现有 `/api/account/me` | run-01 completed；功能 `f5f595df4`、邀请补漏 `3385369dd`；见 [REPORT](0026-canonical-app-account-identity/REPORT.md) | completed |
 | [0027](0027-open-schedule-meeting-details/GOAL.md) | 让四类日程进入对应详情，并按来源安全添加、编辑或清空会议说明 | 用户批准追加 C 线 Sprint；承接 appointment 聚合与 0026 canonical actor | run-01 completed；功能 `3ca1f5936`、旧日程兼容 `0cbc45ffa`；见 [REPORT](0027-open-schedule-meeting-details/REPORT.md) | completed |
 | [0028](0028-profile-page-group-redesign/GOAL.md) | 按最新八屏设计重做“我的”、设置、账号与完整资料编辑流程，保持真实数据、隐私和跨端一致 | 用户提供 `软件UI设计现代化 (5).zip` 并指定 D 线实现 | 固定最终 SHA `d37d6545d` 已由 `314aedd7c` 合并；主线目标 237/237、全量 2860/2860、typecheck、iOS build、Web live health 与 Simulator 安装启动通过，见 [REPORT](0028-profile-page-group-redesign/REPORT.md) | completed |
-| [0029](0029-data-authority-ai-read-surface/GOAL.md) | 统一数据权威源并让 AI 按认证 actor 查询笔记、待办、跟进和日程 | 用户要求全面数据审查并补齐 AI 盲区，交由 B 线实现 | 固定 B SHA `f5bded060` 已由 `6f5f141ed` 合并；本地源码/回归完成，真实 migration apply、Calendar provider 与同 actor 四域回读仍开放，见 [REPORT](0029-data-authority-ai-read-surface/REPORT.md) | blocked |
+| [0029](0029-data-authority-ai-read-surface/GOAL.md) | 统一数据权威源并让 AI 按认证 actor 查询笔记、待办、跟进和日程 | 用户要求全面数据审查并补齐 AI 盲区，交由 B 线实现 | 固定 B SHA `f5bded060` 已由 `6f5f141ed` 合并；真实 migration apply 与同 actor 四域回读仍开放；Calendar/Gmail/Microsoft OAuth adapter 按 2026-09-16 用户决定转后续 TODO | blocked |
 | [0030](0030-inbox-ink-signal-unified-feed/GOAL.md) | 按 3a 设计把活动、待办、人脉和 IORBIT 通知组成真实统一收件箱 | 用户提供 `软件UI设计现代化 (5).zip` 并指定 E 线实现 | E 线固定 SHA `a252220a8`；同账号 live task/read/refresh 已验收，缺失 live 类别见 [REPORT](0030-inbox-ink-signal-unified-feed/REPORT.md) | completed |
-| [0031](0031-cross-platform-performance/GOAL.md) | 以同环境真实性能基线优化 App 与 Web 的最慢关键路径，不改变功能与数据边界 | 用户批准基线驱动方案并指定 B 线执行 | Planner revision 1；基线 `1ed6e091b`；分支 `codex/b-line-sprint-0031`，run-01 进行中 | running |
-| [0032](0032-cloud-relationship-lifecycle/GOAL.md) | 两端完成人脉跟进并确认关系下一步，刷新回读同一云端状态 | 云端计划 R1/R4；用户「这五项闭环」 | run-01，主代理单一 Generator；基线 `f12476d8a`，API 已在本轮提供；原生工具链单列调查 | running |
+| [0032-cloud](0032-cloud-relationship-lifecycle/GOAL.md) | 两端完成人脉跟进并确认关系下一步，刷新回读同一云端状态 | 云端计划 R1/R4；用户「这五项闭环」 | 与下方 0032-hybrid 是并行分支各自登记的独立目标，保留目录和历史；原生/云端最新证据见根目录 bridge 的 cloud-five-item 与 read-budget-staging 交接，不以代码合并标完成 | running |
+| [0031](0031-cross-platform-performance/GOAL.md) | 以同环境真实性能基线优化 App 与 Web 的最慢关键路径，不改变功能与数据边界 | 用户批准基线驱动方案并指定 B 线执行 | run-01 failed；固定 B SHA `d71e40839`，安全测量与 Agent 拆包由 `7a48c3bc6` 合并；App 30% 与跨页 p95 门槛未通过，见 [REPORT](0031-cross-platform-performance/REPORT.md) | failed |
+| [0032](0032-hybrid-sync-foundation/GOAL.md) | 建立云端权威、加密且按账号隔离的 App 本地实体镜像 | 用户批准“云端权威＋本地持久镜像＋增量同步”方案 | run-01 最终 HEAD `1e40ee915`，merge `00b81ab18`；App 主集 94/94、消费者 49/49、全量 2934/2934，Web 19/19、两端 typecheck、production build 48/48、3108 live/ok，重建 SQLCipher 与 native 8＋5＋48 项通过，见 [REPORT](0032-hybrid-sync-foundation/REPORT.md) | completed |
+| [0033](0033-incremental-read-sync/GOAL.md) | 所有已授权、用户可见的结构化账号数据在同步后均可离线读取，并明确部分／未下载／撤权状态 | 0032 已 completed/merged；全域规范与实施计划已批准、合并 | A原run；Task1/2A纯租期规则已合入，真实server grants/epoch与存储初始化/认证绑定尚未齐，不宣称全域离线 | running |
+| [0034](0034-offline-personal-mutations/GOAL.md) | 在全域离线只读基础上，对低风险个人域提供显式、幂等、可冲突处理的离线写入 | 0033 共享接口固定后才能接线；独立 policy 规则可先执行 | run-01 running；B 线只执行独立 Task 1，不修改 0033 核心 | running |
+| [0035](0035-sync-invalidation-recovery/GOAL.md) | 以 registry 驱动的水位、轮询和恢复队列修复所有授权域的漏提示、断网、重启与撤权变化 | A/B 真实恢复绑定串行等待；portable 调度核心可先执行 | run-01 running；C 线只执行独立 Task 2 polling/coalescer | running |
+| [0036](0036-ai-sync-visibility-acceptance/GOAL.md) | 让 AI 按当前授权查询笔记、任务、跟进、联系人、消息、会议、通知与历史 AI 对话等用户可见数据，并完成全域验收 | App pending 与总验收等待 0033～0035；服务端权限/分页可先执行 | D原任务明确原run已关闭/9b0fd固定且锁释放；契约已合入，实际runtime/源版本与最终REPORT缺项，不重开Generator | blocked |
+| [0037](0037-contact-message-inbox/GOAL.md) | 把联系人消息从通知中独立出来，让用户看到真实对话并可靠收发、回复和同步已读。 | 2026-09-16 已确认的消息/三类通知设计 | 功能及主线 a591494b0；共同环境双账号通信/原生回读已验收，见 [REPORT](0037-contact-message-inbox/REPORT.md) | completed |
+| [0038](0038-typed-notification-inbox/GOAL.md) | 让每条通知明确属于提醒、建议或动态，显示原因和可追溯来源，并让 Web 与 App 操作同一条记录。 | 2026-09-16 已确认的消息/三类通知设计 | 功能及主线e045651b3；同账号三类通知与双向动作验收，[REPORT](0038-typed-notification-inbox/REPORT.md)保留失败历史 | completed |
+| [0039](0039-evidence-based-notification-discovery/GOAL.md) | 让 AI 从允许使用的真实信息中自主发现具体动作，有可信时间才提醒，并展示可核查的原文依据。 | 2026-09-16 已确认的消息/三类通知设计 | 功能4aa21961a/合并131723ddb；云端既有来源的真实 AI provider/费用仍缺；外部 Calendar/Gmail/Microsoft OAuth 来源转后续 TODO，见[REPORT](0039-evidence-based-notification-discovery/REPORT.md) | blocked |
+| [0040](0040-notification-delivery-cutover/GOAL.md) | 让消息和通知按独立偏好可靠送达，减少重复打扰，并安全替换旧通知数据与旧发送链。 | 2026-09-16 已确认的消息/三类通知设计 | 功能eacd7a227/合并0b552649d；偏好/迁移已验，真实Push/AI及原生出站确认未齐，见[REPORT](0040-notification-delivery-cutover/REPORT.md) | blocked |
+| [0041](0041-web-test-baseline-restoration/GOAL.md) | 恢复可信的 Web 测试基线，把确定性测试与显式前置的集成测试分开，并修复当前所有已知基线失败 | 用户批准 B/D 在定向验证与独立审查通过后先合并，并要求把既有 Web 全量失败单独建 Sprint 跟踪 | 原run已交blocked报告30a032849；固定532c29dcd确定性3183/3183，隔离集成前置/两次integration+all及审查/主线整合未齐，不重开Generator | blocked |
+| [0042](0042-personal-schedule-list-repair/GOAL.md) | 修复个人日程列表读取，并验证增改删后列表、详情与日历一致 | B/C/D报告追加；R-08/R-09，承接0010/0026/0027 | C run-01 SC01～05完成，三功能主线426b188195；报告31e7c665及登记随本次文档整合闭环，旧Web全量失败保留 | completed |
+| [0043](0043-event-read-access-repair/GOAL.md) | 活动参会者与分析入口符合实际资格，合法读取成功、拒绝与服务错误明确 | C主包参会者404/分析500与403；R-04/R-09/R-14 | C唯一run结束failed；产品aa2699已部分合入，报告b971a8e1f。MAIN aggregate仍500，真实registered正例及原生精确请求缺证，旧标题映射撤销，不二次生成 | failed |
+| [0044](0044-ai-conversation-readback-repair/GOAL.md) | AI新会话发送后可持久回读和续聊，不返回悬空成功会话 | D POST200后GET404；R-00/R-02/R-14 | 部分功能已合入；原生实际发送/重开通过，Web历史会话没有composer导致续聊失败，notes实际调用/源版本和原生失败恢复缺证据；REPORT已提交，run关闭 | failed |
+| [0045](0045-private-note-deletion/GOAL.md) | 确认删除私密笔记并传播到关联入口、镜像及新AI检索，不越权或复活 | D整条笔记无删除入口/API；R-13/R-14追加 | 原run661c015冻结、tracked clean且无活代理/测试；生产端口/锁序/adapter/迁移/传播仍待，不直接发布半成品；用户要求启动0051，ROOT暂挂后续执行槽并移交历史UI/读取锁，保留原Planner/SC/run/commit | paused |
+| [0046](0046-repeatable-functional-acceptance/GOAL.md) | 用正确主包与隔离有效样本补齐交互矩阵，失效通知来源安全提示 | 用户实际交互要求、B/C错包与C/D样本缺口；R-11/R-14 | 原run legacy8e304→主线e660；40旧通知失效负例已实测，合法样本/完整矩阵/离线未齐；用户要求启动0049，ROOT暂挂本run释放执行槽，保留SC/冻结源码，不关闭或重开 | paused |
+| [0047](0047-web-ai-session-composer/GOAL.md) | Web历史AI会话有唯一续聊输入，追问持久保存在原会话并双端读回 | 0044实际Web输入控件0，关联SC02/03/05；R-00/R-02/R-14 | run_count=0；Phone PW0010已限定验收关闭，另PW0011新分析生成由Phone父规划；D/E原run槽位未释放，不复开0044或替代0036源版本接线 | planned |
+| [0048](0048-analytics-configuration-preflight/GOAL.md) | 活动分析未配置时先准确拒绝，不因后续缺快照表变通用500 | 0043 SC02/03失败；ROOT只读真PG复现stage2零ROI/stage3缺snapshot表42P01 | 窄范围追加计划已编制，run_count=0；不重开0043，不自动migration，不复刻整个失败Sprint | planned |
+| [0049](0049-registration-questionnaire-progression/GOAL.md) | 报名选择题只在其他展开输入，画像保留已答题并显示实际覆盖度和停止建议 | 2026-09-16用户三项新要求，关联R-04/R-09/0014 | 原run源码固定bb2bc9bd510a3358180a8a38a564a08bd7aec266，Phone已消费dd2；定向与types回执通过，全量仍有失败/skip，SC05与主线集成未齐；新0050暂挂本run后续执行槽，保留原Planner/SC/commit，不重开或completed | paused |
+| [0050](0050-registration-status-cancel-reactivate/GOAL.md) | 看懂报名限制，在合法窗口完成取消与再次报名 | 2026-09-16用户截图两项新要求，关联R-04/0004/0049及Phone取消修复 | 原唯一run-01已结束，最终464a1ff6c1169e93337219fe24d527635dad3b98，功能fe41cb49及字典e285b9c9固定；clean/锁释放/原Planner不改。ROOT必要固定依赖已精确消费到chat-agent34b4a65364d552e1d70fd241ad2e1d0d65d7b2fc，代码与被测A58完整版本相同，旧全量失败/取消/skip保留；主Web新生产build31066实际exit0、PID52170/BUILDsFvXXnpt2erv0ZL3ngLVH/live健康，Metro8082保持。SC05仍缺合法QA窗口、同actor Phone/主8082真实取消→再次报名，PUBLIC0056未升级，代码主合不算完成，不重开Generator | blocked |
+| [0051](0051-notes-history-lifecycle/GOAL.md) | 从写笔记入口查看所有已保存历史，并验证笔记创建至删除、离线和AI读取的完整生命周期 | 2026-09-16用户新增并要求支线执行，关联R-13/R-14及0018/0025/0033～36/0045 | 原唯一run-01部分交付后结束，功能094d82e245→66de9ac5f3、最终报告42fcd36208b1291b00371bc2e8777f02ff301e41；clean、全部源锁和进程释放，保留原Planner哈希。App一次3103/3103、最后草稿18/18；Web定向17/17、全量57既有失败/206skip。SC03/04正式v3/AI统一读取、删除port/事务/授权source fence/离线及SC05 ROOT真实集成未齐，不重开Generator | blocked |
+| [0052](0052-needs-evidence-ranking/GOAL.md) | 需求匹配显示简短可核对的真实依据，评分体现业务场景和实际能力而非泛AI词 | 2026-09-16用户匹配短句和分数改进要求，Phone父只读诊断/冻结契约222ab259 | 唯一A原run已closed，193e源码/f124报告固定，clean/源锁及句柄释放；ROOT精确集成005494并push，新主3000build/live200，组合17/25及types0。原I3130/3129pass/1fail与3621/3358pass/57fail/206skip、guard拒绝4保留。Phone独立83232f5a新build/6场预览真实v2数据一致，但实际原点单需求漏ordering、自身落地诉求误计实施经历导致四个100分，原SC02/03实际失败；新增窄0055纠偏。公网publication暂停保留f4，ja/en受控展示非持久三语PASS，SC05未齐，原run/报告不重开或改写 | failed |
+| [0053](0053-personal-schedule-design/GOAL.md) | 按参考重做个人日程时间块、编辑和独立详情，并保存真实线上地点/全天/私有关联 | 2026-09-16用户参考图并要求交支线，关联0010/0027/0042/0051 | B唯一run-01结束，功能75151e986f/报告66b1a4a473固定，Planner0976aa58不变、锁释放。ROOT精确合chat-agent27a45a2be并push；合并树App179/179、Web55/55、types0，原I失败/206skip及版本不确定性保留。主3000新生产build/health200、IPv48082运行；原生build/install0且实读8082，真实新建30分→详情、改期1小时→详情、全天及仅自建记录删除/日历0项已验证。Phone精确组合f4e1059a5发布321xx，本地Chromium/公开Chromium及WebKit实际登录/v2集合/新建页/已有详情读取通过，业务写0；错误缓存/空串两产物及回退保留。原生秒单位显示缺陷与全天日期语义待修，同actor/同数据库双向写回读和视觉矩阵未齐，见BR029，不重开原Generator、不completed | blocked |
+| [0054](0054-personal-schedule-display-correctness/GOAL.md) | 修正个人日程原生分钟单位和全天占用日期，UTC/编辑语义不变 | 0053真实Hermes显示秒及全天多一天；承接SC01/02/05，窄范围不重开旧run | 唯一B run-01已closed；功能1ab65fbb42e909307963ff342da714a5d13e92e3、中文报告b35667cf9e83e5dd4b6dda47cd5e945475e46ce6固定，Planner f593452f不变、clean/六源锁及句柄释放。B App42/42、Web13/13/types0；ROOT当前精确集成树同42/13/types0及实际cached审计，UTC秒/endTime/duration/editor/字典/契约不变。SC04真实Hermes三语言/同actorWeb回读及SC05主线新产物/Phone交接仍待ROOT，browser非原生证明，不重开Generator或completed | blocked |
+| [0055](0055-needs-intent-evidence-correctness/GOAL.md) | 识别原点单需求，避免自身诉求/意愿被误计相关实施经历 | 0052真实新预览SC02/03失败，原话及分项private证据；只承接两具体缺陷，不克隆整0052 | 唯一A run-01 closed/clean/锁及句柄释放，功能56e0c19d1f4875540f277dca46360aded124f88a/中文报告e6707dd14abe0195897ab081feab43d266a127e3固定，Planner458c4f不变。ROOT精确合main d9cbf4918976f5b009d04a4af618cff7563f52e5/treeadaf一致及push/remote同SHA，25/25/types0/guard0，初loader误require失败保留；prod审计42mapped/4pathsLOW/newhelperUNKNOWN。新Webbuild83645实际0、45001/PID9654/BUILD3u94p/livehealth；Phone精确54+55至a272/tree d916，原账号78联系人及需求/版本/本体/预算固定，六场真实zh/受控非持久ja/en读取ordering与旧四实施0、已有personal30min真实通过，ROOT实际raw及entryhash核。但新未改delivery能力仍从试点客户诉求误得39分，公网放行立即撤回且父确认尚未切321；关联0056窄纠偏。SC55-04/05原生/公共完整证据未齐、f4/ngrok/322原样，原52全量及能力失败不抹，不重开Generator或completed | blocked |
+| [0056](0056-delivery-capability-evidence/GOAL.md) | 交付能力及摘要只从本人能力陈述取证，不借其寻找试点客户的诉求 | 0052能力/摘要SC02/03及0055真实新预览未改capacity失败，原匿名raw和暂停receipt；复用原准确取证批准 | 唯一A run-01 closed/clean/三锁及句柄释放，固定功能85c17690c106cbef887215763a5588427b3578d8/treecc05、中文报告ad6aeb572d1e6ff68a45b59e0f02898f99a248fd；首46项24fail、types夹具失败及修复、ROOT48项2fail保留。ROOT精确MAIN5332e16499f754fe77e59177fda1ee63219c409e/treec97及普通push/远端一致，合并树54/54/0skip/guard0/types43666实际0，官方5files37mapped0flowsLOW/newhelperUNKNOWN。新主Web生产build83394实际0/BUILDicDh/17007 livehealth；Phone固定6788f4f95cc139f7b7c53fd26bd780b8bd32d5bf/tree3e08精确消费、BUILDl2Ei、原域321xx IPC已发布18042/18043/18044，原ngrok/冻结322未动，完整f4保留可回退。六场本地原zh/受控非持久ja/en及两场公网真实zh登录读取通过，ROOT独立原profile/78contacts/goal及版本深比较、全部roundsum/API-direct、market能力0/摘要无delivery、服务cwd与实际公网HTML/entry200/SHAe53/API200live核；public原字节预算before=after493f。六登录POST匿名分类初失败/ENOENT保留，精确guard路径映射后auth分列/0业务与模型事件。仍无真实全天、同actor原生写往返和持久ja/en跨端证据；只读通过不等于所有SC/旧52/54/55完成，source/wire/权重与真实资料保持 | blocked |
+
+| [0057](0057-canonical-mainline-read-boundary/GOAL.md) | canonical活动主线集成不触发旧导入名单私有资格查询，legacy仍保持原owner检查 | 0050/PW0012精确集成树实际App171项170pass1fail，额外私有owner GET；不是重做报名或重开C | 唯一B run-01已结束，固定部分功能ca77035729bffae1c977ed30b6697921c02decfb/TREEd510、实际报告df372d8e54b6d484afbf67ec61268f70d18d06ae，clean/锁释放。两文件55+/4-，完整canonical27/27/App types0；原唯一I3200/3198pass/2fail/0skip0cancel/542guard非零0保留。新增canonical4登记缺项经0058真实完整审计修正，不豁免；/+html及全域runtime缺项仍保留。ROOT主合chat-agent34b4a65364d552e1d70fd241ad2e1d0d65d7b2fc，总官方57files165mapped2语言流程MEDIUM/newcanonical与AST UNKNOWN；主Web实际新build31066exit0/PID52170/BUILDsFvXXnpt2erv0ZL3ngLVH/live健康、主8082保持，PUBLIC0056不动。SC04真实原生/Phone消费未补齐，不重开run或completed | blocked |
+| [0058](0058-offline-surface-alignment/GOAL.md) | 补齐活动/日程真实消费接口的离线域及策略登记，审计识别动态调用但未知请求仍拒绝 | 原全域离线0033～0036及0050/0053/0057实际I缺项；新增canonical4和MAIN实际personal6/10invalid，不克隆原Sprint | A唯一run-01closed，固定源137f6f2ea0d85a0f604a436b74ca12e53f54494c/TREEe20ae9bb2a854b4f83c96b08d9ea1fd3652c12b3、报告8b5182601f8ba3cbba7fb4a2537e66309c29e156/TREEc171，clean/锁释放。十项登记及真实审计完整17/17/types0，原唯一App I3203/3202pass/1fail/+html/0skip0cancel/542guards非零0，不报全量green。ROOT已精确主合chat-agent34b4a65364d552e1d70fd241ad2e1d0d65d7b2fc，新生产Webbuild31066exit0/PID52170/BUILDsFvXXnpt2erv0ZL3ngLVH/live健康；代码与原完整被测版本相同复用证据，不再full。SC03全域runtime/可信grant/epoch/selector未接，SC05主8082实际设备与Phone消费未验/PUBLIC0056保持，不重开run或completed | blocked |
+| [0059](0059-personal-editor-sheets/GOAL.md) | 按ZIP6a还原个人日程编辑设计，关联笔记/人脉点击即打开有列表及首字母搜索的底部选择窗 | 用户2026-09-17三项追加要求；旧0053/0057原run不重开，提醒重复真实执行另0060 | B唯一run01/Sol medium本地源码及中文REPORT7b883已主合push。官方32files40mapped0flowsLOW，原readNote HIGH/新UNKNOWN保留；consumer/policy20/20审计空、UI50/50、types0。唯一App I3140/3138pass2旧fail、Web I3715/3450pass59fail206skip与旧contract2fail保留。ROOT当前Simulator主8082实测既有笔记/人脉列表、选择取消和中文首字母ZT匹配通过，仅SmallRain正向，不代替真实ACL负例/同actor跨端/离线SC。Main现已消费0060产品5523，Web BUILD XP4aMyTN2G7sgMA121zm9/PID83786/3000实际健康；新原生64805构建中。PUBLIC0056尚未升级，隔离消费进行中；锁已释放，不标completed | blocked |
+| [0060](0060-personal-reminders-recurrence/GOAL.md) | 真实支持提醒和日/周/月重复，保存回读、实例编辑取消与到期投递形成闭环 | 用户明确升级0053unsupported边界；App最终消费0059设计，复用既有通知所有权避免双发 | A唯一run01/Sol medium本地源码/中文REPORT交接结束为partial，Planner SHA937055不变；backend57bf、安全基线80d2、最终product64157ae33852851b2b71bcbb3f8190df76cf3c50/REPORTf4bb5e0e83f761dab36372a9265f3563cdf655c5固定。提醒/日周月系列与例外/v3独立回读/旧pending权威派发gate已接线，HIGH/UNKNOWN保留。轻链backend42/42、UI63/63、model36/36/types0；唯一App I3243/3228pass15fail，其中14新增fixture失败仅完整47/14局部修复通过、旧/+html保留；唯一Web I3770/3505pass59旧fail206skip，真实PWdenied4同B原组、非整Webguard0，不称fullgreen。ROOT产品主合5523且push/独立remote同SHA，production45530实际0→runtime7071/PID83786/BUILD XP4aMyTN2G7sgMA121zm9/3000健康；原生64805尚构建/未安装。真实同对象到期SC60-04、PG并发/同actorWeb原生/Phone与远程Push仍未验；PUBLIC0056未升级，隔离集成中。全部源码/字典/sync/H锁释放，由ROOT继续真实验收，不标completed | blocked |
+
+2026-09-16按用户“总结B/C/D报告后设计sprints”新增[中文汇总与追加计划](SIMULATOR_REMEDIATION_PROGRAM.md)，随后用户明确“42～46开始修复”及“请继续”，五项实施批准已满足。0042 completed，0043/0044原run以failed收口且报告已合入；0045/0046继续各自唯一run-01，未提前REPORT。0047/0048是实际具体失败的追加计划、run_count=0，不克隆原Sprint或自动第三Generator。全域离线9/9失败仍映射0033～0036原目标；0036原run关闭事实保留，剩余接线不能假作原run恢复，不降低SC。
 
 采用较小 Sprint，而不是把几套子系统放进一次 Generator。0001～0017覆盖当前主链路；0018～0019是后期笔记，未完成仍保留原需求，不把后期排队算作整个项目完成。
+
+0032～0036 是 2026-09-15 用户批准的本地持久化／云端同步多步方案，固定串行关系为 `0031 → 0032 → 0033 → 0034 → 0035 → 0036`。每一步只在前一步固定 SHA 已提交、合并到 `chat-agent` 并通过合并树验证后启动；不同时修改共享 sync contract、App 本地数据库或 Web sync route。0032～0035 分别只负责基础、读同步、写同步和失效恢复，0036 才执行全量跨端／AI／Data Atlas 收口，因此不能用后一步的测试替代前一步的必需证据。
 
 这是当前已知范围的首批拆分，不是对未知接口的实现承诺。缺协议的 Planner 必须在启动前补入实际契约并审阅；原生补丁、公开活动集合等调查若发现本表未覆盖的必要实现，由 Planner 明确补计划／新编号，不留到最终验收时假定已完成，也不借新编号自动重跑失败 Generator。
 
@@ -387,3 +423,198 @@ build/harness-logs/
 - 批准设计：`0030-inbox-ink-signal-unified-feed/assets/3a-inbox.png`，源自 `软件UI设计现代化 (5).zip` 的 `design_handoff_orbit_ink_signal/screenshots/3a-收件箱.png`，780×1688 px，SHA-256 `a2f576c474780cd451c10eb7a2b3fe339130a18974c0f6436f9a1494e2522702`。
 - 运行目标：以真实 conversation、notification、relationship signal 聚合四类收件箱，逐条确认“全部已读”，保留既有详情／定向写信能力，并在同账号、同数据库的 live Web/API 与 iOS Simulator 上验收。
 - 结果：产品/测试固定 HEAD `4d351f0a0eddc1479eebb3a6b6852a466cad322d`；inbox matrix 231/231、App 全量 2828/2828、typecheck、原生 0 error／0 warning和同账号 40/40 read 持久通过。当前 QA 数据缺 activity/contact/IORBIT/conversation，历史 reminder task 与 canonical task 交集为 0；这些运行限制登记在 [REPORT](0030-inbox-ink-signal-unified-feed/REPORT.md) 和 BR-024，不伪造记录。
+
+### 0037 / run-01
+
+- 开始：2026-09-15T22:12:36.030Z；owner：E线当前session主代理，唯一Generator；分支 codex/e-line-sprint-0037，工作树 /Volumes/ORICO/Dev/MacMovedData/dot-codex/worktrees/798d/orbit。
+- 基线：53c44973f；Planner SHA256：`111b90cae89d5bce491b3c2dd31b3ca6b948730b6b78b70b6d73d0b5f92cc9ed`；用户已明确要求本session实现0037～0040，复用适用批准。
+- 范围锁：0037 Planner的消息/收件箱消费者、必要语言文案及行为测试；不修改0033～0036的sync、outbox、AI freshness和未提交文件。共同Simulator/Web进程先核实使用者再接管。
+- 重叠检查：0033实际在codex/sprint-0033-runtime-acceptance等工作树推进，主线ready标签滞后；0037与已查文件无直接代码重叠。0039接入query-service/manifest前等0036写入结束或使用不修改这些文件的独立适配器；0040与0035通知协调器接线须集成后复验。语言文件与根台账只能串行合并。
+- 本run尚未做真实双账号/远程Push验收；按实际结果继续更新，不预填通过。
+
+- 0037收口：功能/主线 a591494b0；两端同版本运行证据及失败历史见REPORT；下一步0038，未改0033～0036文件。
+
+### 0038 / run-01
+
+- 开始：2026-09-15T23:21:42.686Z；owner：E线当前session，唯一Generator；分支codex/e-line-sprint-0038；基线f2ab646dc。
+- Planner SHA256：58bbe969bdb65567e5dfa07920e85a438ef75175c234fb787a35cd0a0078b548。复用已批准通知设计与本session连续实施授权。
+- 独占通知记录/API、消费者及语言接线；沿用0037独立QA数据库/31037/Simulator bundle。根AGENTS/CLAUDE和旧设计/GitNexus生成目录保持原状、不提交。
+- 0033～0036未进入本线：采用现有云端业务服务，不改sync/outbox/AI visibility。共享台账由本协调者串行集成。
+
+- 0038收口：功能/主线e045651b3；真实跨端记录、时间修正及显式提醒优先策略已验收，完整失败历史见REPORT/BR-026。继续0039。
+
+### 0039 / run-01
+
+- 开始：2026-09-16T00:27:40.473Z；owner：E线当前session，唯一Generator；分支codex/e-line-sprint-0039；基线0ed78f065。
+- Planner SHA256：424d1194cc4072b1f1b6b617e9065940ede951af2a85a6f583a8a53a9449dd3d。复用已批准规格与本session连续实施授权。
+- 独占notifications/discovery、新设置API/UI及对应契约/测试；使用云端独立适配器，不改0036 query-service/manifest，不写0033 sync/0035 outbox。继承独立QA环境；保留用户AGENTS/CLAUDE和旧设计目录。
+- 真实provider前核对0020未结算费用；离线代码/队列不依赖这项缺口。
+
+- 0039收口：run-01 blocked，功能4aa21961a/合并131723ddb；合并树Web16/16、App22/22、两端typecheck通过。真实模型链及历史费用缺项见REPORT，独立工作继续0040。
+
+### 0040 / run-01
+
+- 开始：2026-09-16T01:31:46.940Z；owner：当前session唯一Generator；分支codex/e-line-sprint-0040；基线562373393。
+- Planner SHA256 de08d8ed7560c0321afa9a2bf4b2e5b950db9218c83fd6f268ba7f8bcdd665ee。0037/0038已完成；0039固定协议已合并，真实AI链等待费用/provider，仅暂停0040相应依赖场景，其余按根自主执行规则继续。
+- 0033实际9174工作树1c8b442e1，tracked clean；0035尚未改通知协调器。本线持有notifications/delivery及通知响应有限接线；不改sync提示、outbox或root layout。0035后续须复验组合。独立QA31037、原Simulator/bundle继续。
+- 0040收口：run-01关闭为blocked；功能eacd7a227/合并0b552649d，主线Web16/16、App129/129及两端typecheck通过。共同设置、真实入站、QA迁移/回退保留业务已验证；远程Push、历史AI费用/provider与本轮原生出站确认缺项见REPORT/BR-028。0037/38 completed，0039/40代码交付但未全验收；暂停20分钟跟进和本线发现watch，Web保留。
+- 可执行：策略/偏好、事务投递身份、迁移dry-run/QA apply及独立UI；可调查：精确Push配置存在性；等待外部：未结算费用、真实模型/远程设备证据。
+
+### 0033 / run-01（全域离线读取升级）
+
+- 开始：2026-09-16T12:19:17+09:00；owner：A 线任务 `01a0a838-4974-7ea2-bc4f-8ecce28b2af2`（A线｜0033 全域读取第一阶段），唯一 Generator；原登记的 `client-new-thread:fc2240dc-8f65-4da4-bb9c-0e1c12a686e3` 是创建句柄，不能作实际任务 ID。基线 `3a9b9696737289df12bb382cf77266c0b51ecd8f`，启动时 tracked 工作树干净。
+- Planner SHA256：`a9190990bacab2fd3d2b659c912f3fa8cb0359d1dc2f193d663b5fd519532fe3`；批准中文规范与详细计划均已合并到 `chat-agent` 并推送。
+- 本切片文件锁：`repos/orbit-app/src/data/offline-read/route-domain-inventory.ts`、`scripts/audit-offline-read-surfaces.ts`、`tests/offline-read-inventory.test.ts`、Web `shared/contract/universal-read.ts`、`shared/api-schema/universal-read.ts` 及由既有同步命令生成的 App 副本；仅执行详细计划 Task 1。
+- A 线持有域 ID、route inventory 与 universal-read contract 的定义权；B/C/D 只能消费已固定接口，不得并行重定义。认证、数据库、manifest/cursor 等后续高风险 Task 尚未放行。
+- 2026-09-16继续授权：复用原run、Task1固定`edba0ebfeb635f684fe193cd88f4f4e428211ec6`与干净工作树，先释放Task2A两个新增文件`src/api/offline-read-session.ts`、`tests/offline-read-session.test.ts`（均在App）：纯租期解码、时间/域scope断言与online-only写入能力的TDD切片，消费既有strict wire契约，不改identity/provider/transport、契约/清单、SQLCipher、Web或DB。全域读资格不受0034首批四域写集限制；无可读存储不伪造localRead成功。Task2B真实server-grants和2C共享认证/transport锁仍等待具体依赖与放行；中间能力提交不标Task2或Sprint完成，不加Generator/Reviewer。当前主线本地初始化告警单列；Task5锁顺序冲突在migration放行前必须统一。
+- Task2A固定`9994150c041e4cea91aef4bfe8dd37795b982f08`已合入`bbe0060007d1c4b1245ad0db06af944aa46d2aee`并push/独立ls-remote一致；ROOT完整8/8零跳过/typecheck exit0。仅新pure模块和测试，无生产消费者，不能把pure local-read返回值当存储ready/真实签发grant；2B服务器全域grant枚举与持久authorizationEpoch来源仍缺，2C认证/transport仍未放行。
+- Task3/18独立native-preflight工具准备已放行同一A原run：仅既定`repos/orbit-app/scripts/verify-offline-read-native.ts`及必要新增`tests/sqlcipher-native-config.test.ts`，TDD验证config-plugin→Pod properties/实际编译标志漂移；static通过不当真实cipher/coldstartPASS，缺原生结果明确未验证/非零。当前配置意图true但生成properties缺key/实际编译无codec，根因历史未定；不prebuild/pod/改node_modules/清钥清库。Task5锁序[中文修订待审](../../../../docs/superpowers/specs/2026-09-16-sync-lock-order-amendment.zh-CN.md)，未批准前不改既定规范或迁移。
+
+### 0034 / run-01（风险分级离线写入升级）
+
+- 开始：2026-09-16T12:19:17+09:00；owner：B 线任务 `01a0a838-4972-7183-a138-d8dd5e96f5c7`，唯一 Generator；worktree `/Users/xzhao/.codex/worktrees/b70b/orbit`；基线 `3a9b9696737289df12bb382cf77266c0b51ecd8f`，启动时 tracked 工作树干净。
+- Planner SHA256：`c53a516f17ed339d845d0caf1142665b98f8f4a73d43a21f2b847fe64a6309f0`。
+- 本切片文件锁：Web `shared/contract/offline-policy.ts`、`shared/contract/offline-mutations.ts`、`tests/architecture/offline-policy.test.ts`；App 对应生成副本、`src/data/offline/ports.ts`、`policy-registry.ts`、`src/data/sync/mutation-adapters.ts`、`tests/offline-mutation-eligibility.test.ts`；仅执行详细计划 Task 1。
+- 不修改 0033 共享核心、snapshot、outbox、cursor 或认证；真实绑定等待 A 线固定 SHA。未知 route/domain 默认拒绝，`local-read` 不授予在线写权限。
+
+### 0035 / run-01（全域失效恢复升级）
+
+- 开始：2026-09-16T12:19:17+09:00；owner：C 线任务 `client-new-thread:6fe77f03-aa9f-4595-adc6-158ef8746add`，唯一 Generator；基线 `3a9b9696737289df12bb382cf77266c0b51ecd8f`，启动时 tracked 工作树干净。
+- Planner SHA256：`e5b8a3b7b870cc1ad8aace5f88a73f1fc492ef671f63da4b05457e571ebe9158`。
+- 本切片文件锁：App `src/data/sync/invalidation-transport.ts`、`polling-invalidation-transport.ts`、`sync-trigger-coordinator.ts` 及两个同名直接测试；仅执行详细计划 Task 2。
+- 不实现服务端 status、不保存或推进 A 线 cursor、不接管 B 线 outbox；真实 recovery binding 等 A/B 固定 SHA。本切片只证明单飞、dirty 保留、abort、退避与无重叠。
+
+### 0036 / run-01（AI 全域数据访问升级）
+
+- 开始：2026-09-16T12:19:17+09:00；owner：D 线任务 `01a0a838-4974-7ea2-bc4f-8eab26470a14`，唯一 Generator；worktree `/Users/xzhao/.codex/worktrees/b66b/orbit`；基线 `3a9b9696737289df12bb382cf77266c0b51ecd8f`，启动时 tracked 工作树干净。
+- Planner SHA256：`b6db74a23d47f3af15276db25640fe1794648200c0b24518461f6571a0347b91`。
+- 本切片文件锁：Web `features/orbit-ai/data-query/read-contract.ts`、`permission-registry.ts`、`query-cursor.ts`、`query-result.ts`、现有 `query-schema.ts`、`data-visibility/manifest.ts`，对应 Task 1～2 测试以及其直接受影响的 manifest 架构测试与 `docs/orbit-ai-read.md` 说明。
+- `createActorQueryInputSchema` 影响集合超过 15 个符号，按项目规则视为 HIGH；已向用户提示并由管理线刷新 stale GitNexus 索引后复核。Task 2 可在不改该符号时继续新文件/测试。AI manifest 仅声明服务端能力，不是客户端离线授权依据。
+- 后续D原任务明确固定`9b0fd19176661b18ef137b5eb672de4eb48257a7`、working tree clean、全部runtime/artifact/query锁释放且原run已关闭；本轮API核对实际任务`01a0a838-4974-7ea2-bc4f-8eab26470a14`原交接，再次确认不能恢复为第二Generator。剩余真实AI工具runtime接线、源版本和综合验收并未完成，完整REPORT仍缺；登记blocked不冒completed，也不将原数据读取目标删除。
+
+本轮用户明确要求把可并行开发分到不同线；协调者只放行上述互不重叠的第一批切片，覆盖默认“两条独立 Sprint”并发限制。共享 auth/sync contract、snapshot、i18n、Simulator、Web 服务和集成验证仍严格串行，四个 run 不共享真实账号写入、数据库迁移或服务生命周期。
+
+### 0042 / run-01
+
+- 开始：2026-09-16T17:04:32+09:00；唯一Generator：管理任务内 C 支线 `/root/c_sprint0042`，GPT-5.6 Sol / medium；工作树 `.worktrees/sprint-0042-personal-schedule-list-repair`，分支 `codex/sprint-0042-personal-schedule-list-repair`；产品起始基线 `9b2a9ccc5cbe0db32496424324071b321acf4a11`，计划登记提交作为实际工作树起点另记checkpoint。
+- Planner SHA256：`d0218e9e34f7c5dd5561483978d2111def145a9f78a410b79964b251bbb9f11d`；复用用户“42～46开始修复 / 请继续”的批准。
+- 先独占0042在线 personal-schedule API/schema、Web personal-schedule 服务/集合handler与定向测试；`PersonalScheduleList`、通用hooks/sync、共享生成契约及字典须管理线核实0033持有者后逐路径移交，不能自行重写mirror-first。
+- 先比对0033固定投影修复 `439f7f439` 与消费者 `9ca83b4dd`，它们尚未等于主线验收。只读main3000允许；服务重启、Simulator/账号写入、数据库环境与重套件排期由协调者串行分配。0043等待本项锁释放。
+- run内路径补充：`repos/orbits/tests/api/personal-schedule-collection.test.ts`（真实store/authority/集合读取，SC01/03/04）；`repos/orbits/app/(app)/app/tasks/personal-schedule-client.ts`（Web列表接线，SC02/05）。已核实0033消费者固定提交且无产品未提交，当前`PersonalScheduleList.tsx`在线入口锁移交C；本轮修主线在线owned读取，后续0033集成保留mirror-first，不倒退消费者。无query聚合保持既有日历/首页与legacy日程语义，不猜补owner/version。
+- 原run两轮必要Web补修追加：`app/(app)/app/tasks/personal-schedule-workspace.tsx`及完整测试（错误不混显空态）、`app/(app)/app/tasks/personal/page.tsx`及`tests/pages/personal-schedule-page-account-scope.test.ts`（既有canonical helper接线、anonymous/null redirect）；没有削弱owner校验、改通用auth、sync、字典或数据库。固定三功能94268e757/04be65cbc/6a92629e9均已合入`426b18819523c0b05dd30365b5a02669850841ac`，报告`31e7c665d23985184e7831e5233c71720ab0dab4`随本次文档整合。
+- 收口：最终production Web BUILD_ID `ffPa-FLfCgMTBiMrUVaAu`、PID90050/3000与主包DA设备/main8082完成同记录App A→B、Web C→App列表/详情/日历回读，精确删除后GET404、owned0、聚合35且exactID0；最终Web离线刷新错误1/空0→恢复错误0/空1，原生同源TERM/恢复实测。Web分支24/24、最终合并树直接6/6及typecheck0；原生build/install0，实际native脚本Node25、Web/tests Node22如实区分。全量23失败及env重载事故仍保留在REPORT，不称全库绿色；0033未来mirror集成须复验，不等于已完成全域离线。
+- 文件/设备/main actor/API写锁全部释放，认证浏览器已关闭，唯一个人测试记录已准确清理；B接手当前runtime窗口。报告与本次登记文档检查/主线整合闭环后completed。
+
+### 0044 / run-01
+
+- 开始：2026-09-16T17:04:32+09:00；唯一Generator：管理任务内 B 支线 `/root/b_sprint0044`，GPT-5.6 Sol / medium；工作树 `.worktrees/sprint-0044-ai-conversation-readback-repair`，分支 `codex/sprint-0044-ai-conversation-readback-repair`；产品起始基线 `9b2a9ccc5cbe0db32496424324071b321acf4a11`，计划登记提交作为实际工作树起点另记checkpoint。
+- Planner SHA256：`67f61b3cd5b10b736211dd30a19804bb3a7137bc6418042c28825b78e9f9bdd9`；同一用户批准。
+- 先独占会话生命周期route、reliable-send/live-conversation/session-storage范围中不与0036冻结切片重叠的文件和定向测试；0036 data-query/manifest不得改，runtime/artifact/service-factory/AiScreen须当前D线交接后明确移交。已向原0036任务请求固定SHA及锁清单，不派其重复实现0044。
+- 不调用付费provider、不改live配置或重启共享进程；先确定性POST→真实store→GET TDD。所需跨端运行身份与隔离对象由协调者分配，真实工具/费用证据缺项不记PASS。
+- 原0036 D任务已明确释放所有活动锁：固定`9b0fd19176661b18ef137b5eb672de4eb48257a7`，工作树无未提交；必要会话runtime/service-factory/AiScreen及route/test范围移交B，不改0036冻结data-query/manifest契约。路径补充：`repos/orbits/app/api/ai/conversations/request-context.ts`（局部canonical身份适配，SC01/02/04）、`repos/orbits/tests/capabilities/orbit-agent-conversation-readback.test.ts`（POST→真实store→正式session GET/list，SC01～04）。不扩大到共用agent-request-context。
+- 同一run补充受影响认证测试：`repos/orbits/tests/capabilities/agent-actor-brief-boundaries.test.ts`追踪精确local canonical adapter；readback完整测试增加恶意body/header身份隔离。功能提交`e40bf223ca2ad642ecd013487f39bb021e1cd1c0`后补充测试提交`2eb91b677b80be39e070cc5d36a55543815d8a31`，不改生产身份行为或冻结SC。
+- 最新运行授权覆盖上述初期“不付费”限制：C0042释放后，B复用DA主包/原3000 canonical QA/主8082和主线426 production artifact，至多两个实际只读发送、现有loop3最多六provider出站，原共享累计硬预算$5不重置；任何unknown/未确认usage/保留预留即停止追加。付费前账本15entries/$0.032249/0reserved；Phone服务独立、根产品merge与服务生命周期冻结，临时独立浏览器只用已有库、凭据仅RAM。
+- 同run真实PG只读元数据：tasks open54/followups open27/notes1，取样ID/owner/source时间匹配，但笔记真实entity v3被legacy query丢弃、tasks/followups无独立revision，结果无authority/readAt/records.revision；0036冻结契约虽已合入仍未接actualruntime。SC04源版本缺口保持未满足，不用schema version/timestamp充数、不在0044重写0036。
+- 原run已结束，报告固定 `78cecfa59`，功能/测试已合入。原生实际一次发送→正式GET200 revision2→历史重开成功；实际tasks/followups各10条且truncated，未调用notes。3笔provider全部settled共$0.006362，共享账本18entries/$0.038611/0reserved；没有第二POST。生产Web历史会话渲染没有任何输入控件，global ask排除agent而chat分支未渲染composer，真实跨Web续聊失败；原生真实失败恢复缺项保留。精确自建会话UI删除后正式GET404/history缺席，request/revision审计保留，所有窗口释放。状态failed不因部分合入改为completed，不复开Generator；Web composer需要另冻结追加方案，0036实际source fence接线仍按原任务推进。
+
+0042/0044初期集成检查点：功能合入`chat-agent`的`f0d747730037f0f9020297cd47aea37b17c9d489`；Web定向42/42、App27/27。该树Web全量曾失败：3558项、3359通过、23失败、176跳过，20旧失败、3新增名称；本地测试自行加载`.env.local`并实际连接PG，不能记为隔离或全绿。C原run证据保留逐名对照/loader映射/只读审计；两个PG新增失败所涉源码本轮未修改，无before快照不能保证业务未变。B关联旧认证断言第一轮修复后6完整文件41/41，主线补充两完整文件15/15，未重全量。当时两Sprint均running；最新0042收口及0044未满足项见各run条目，旧失败不因局部修复或文档整合改为通过。
+
+获准排队：0045由D接续并复用 `codex/sprint-0033-note-delete` 的 `03bfe4aa5` 墓碑能力，尚无Generator run；0046现由E领取先准备，最终验收依赖单列，不提前生成REPORT。0045原子sharedstore依赖0033尚未合入的sync写锁migration；精确main dev PG只读catalog确认当前函数不存在，不能盲合导致现有upsert失效；UI及其他独立准备与此依赖分开。
+
+0043关联范围协调：PhoneWeb任务独占PW-0009的EventsScreen历史筛选、专属演示活动日期以及EventDetailScreen仅真正public NOT_FOUND且已登录时的既有auth详情读取接线（已实测auth200/public404）。0043不重复该详情fallback，仍调查参会者/分析资格、权威来源与正确错误态；PhoneWeb固定SHA交接后在主线复验。不修改public_code/alias、不扩权，32110由PhoneWeb任务独占，32100重启仍需串行协调。
+
+### 0043 / run-01
+
+- 开始登记：2026-09-16T18:08:49+09:00；唯一Generator管理任务内C支线`/root/c_sprint0043`，GPT-5.6 Sol / medium；独立worktree `.worktrees/sprint-0043-event-read-access-repair`，分支`codex/sprint-0043-event-read-access-repair`，产品基线`426b18819523c0b05dd30365b5a02669850841ac`，tracked干净、两端锁文件一致，复用现有依赖symlink不安装。
+- 冻结Planner SHA256 `424fd770cceceb81a6c0eb4987f6eaab39f02a45dd1ce95ab678417649e188cc`；复用已批准五SC，不改契约。基线直接Web18/18及App15/15 exit0，不能冒充live资格通过。
+- 进入条件已核：精确main `orbit_events/workspace:orbit-dev/account_orbit_generated`只读PG事务确认`event_02`已Event Core cutover且QA为organizer；`event_signup_03`已cutover但QA非owner、无role assignment，两活动均无该QA canonical membership head。有权/无权角色可核验；真实registered attendee正例单列待合法精确fixture及清理方式，不给旧活动/账号扩权，不把旧取消投影当active registration。
+- 先独占Planner内App参会者/分析consumer及Web对应handlers/资格适配器/实际service与直接测试，按根因逐符号impact后TDD。0033活动源及通用sync、0044所有会话/runtime/App AI、PhonePW0010 reader/AI契约/会话UI、i18n和共享contract生成边界不并行改；必要新增文件登记用途/SC后实施，不增加审批循环。
+- B持DA/main actor/共享runtime与付费窗口期间，C仅独立分支源码/定向测试和已批准只读元数据调查；不操控主包/共享浏览器、不API业务写、不自行停启3000/8082/Phone、不合产品到root。需同版本真实验收/fixture时等根明确释放，固定SHA交接后根merge→生产build/restart→实际操作→报告/主线闭环。
+- B0044现已释放全部窗口；C恢复原未结束run而非再生成。统一图实际元数据已更新至`1f2c697ac`/2026-09-16T09:17:08.460Z，原进程句柄消失不等于分析失败；核查无活analyze且命令exit0 Already up to date，驻留MCP列表缓存须与disk元数据区分。新增资格CTA模块`src/screens/events/EventAttendeeRosterLink.tsx`及EventDetailCard最小接线获准，避开Phone public404 fallback。注册wrapper12直接caller/21symbols按技能HIGH已报告，最小503异常保护不改资格并覆盖传递消费者；event_02配置head精确只读count0，不写配置或扩权。
+- 固定产品`f2a0066df0a27d4447eb4c09e7342b6c57305cb0`/最终`aa2699e474a862aea40c46bab6f399b342db3d9f`已机械合入`4378c964c`，不是验收完成。精确合并树App5完整文件221项/220通过/1失败/0跳过，唯一失败为此前PersonalScheduleList旧detail GET清单孤项；Web2文件22/22与两端typecheck exit0。原全量App3019/3016通过/3失败/0跳过、Web3571/3312通过/53失败/206跳过均保留，两个局部修复轮次已用尽，不再重跑Generator或全量。
+- 新主线Web生产构建与主包安装后，C实际点击“沉睡关系重新激活会”详情名单CTA→名单屏空名单；两活动运营分析均出现通用服务错误，没有预期配置说明/合法拒绝，另一活动详情无名单CTA但为unconfirmed重试。活动标题与冻结metadata分别对应event_02/signup03，不是已捕获的原生pathparam。匿名formal account/me及两活动四私有GET共8次均401。原生HTTP、请求ID与canonical actor未正式观测，不能推断实际500/503；MAIN QA凭据来源和真实registered正例缺项保持未满足。C已释放DA与共享browser窗口、产品冻结，无fixture/config写入或第三修复；run尚未REPORT收口。
+- 收口更正：上条原生标题到event_02/signup03的推断已撤销；正式Web两目标标题与截图不同，不能用其满足冻结原生SC。原MAIN登录从B44实际脚本AST查实使用ROOT `.env.local` 的ORBIT_XIAOYU_TEST_EMAIL/PASSWORD（非qa@标签），仅RAM正式登录后account/me200确认account_orbit_generated。精确8GET：event02 owner/attendees200（名单0）、aggregate500 INTERNAL_ERROR无配置reason、attendee403；signup03 owner/attendees安全404、aggregate/attendee403。两个精确public GET200但status cancelled，与只读Core published冲突。C原run已结束failed，报告固定`b971a8e1f6ce48796e00591ae83f6e7726dfdcd8`；五SC均fail/missing，独立browser已关闭、所有锁释放、无第三修复。产品部分合入不改变失败事实。
+
+### 0045 / run-01
+
+- 开始登记：2026-09-16T19:44+09:00；C43原run已结束释放后，唯一Generator管理任务内D支线`/root/d_sprint0045`，GPT-5.6 Sol / medium；独立`.worktrees/sprint-0045-private-note-deletion`、`codex/sprint-0045-private-note-deletion`，产品基线`bbe0060007d1c4b1245ad0db06af944aa46d2aee`，工作树clean；worktree创建中提前status曾显示尚未checkout文件的D状态，创建33237明确exit0后重新检查clean，非用户删除/改动。
+- 冻结Planner SHA256 `82f1e09a68e4379c2e2b9c8bf71e401c7aa0cd0030f6f7dc605701771714d6f2`，保留五SC及旧notes原子能力`03bfe4aa5793e4107658cb856d76be641c479340`为只读参考，不能盲合共享store/DB依赖。基线三个App完整notes interaction/list/view-model文件13/13零跳过 exit0，复用现有node_modules symlink不安装。
+- 首切片仅独占App `src/screens/notes/NoteDetailScreen.tsx`、`src/view-models/notes.ts`与上述完整直接测试、必要中/日/英四字典；必要新增局部delete helper/test先按原SC01/02登记。实现确认/取消、防重复、失败保正文、版本冲突、精确actor/note/version/scope晚ACK保护；消费真实DELETE形状，不虚构成功回执或离线删除资格。不改Web/server/SQLCipher、共享生成契约、auth/client/hooks、AI/事件/通知/全局台账，不运行设备、服务、DB写或provider。
+- 当前MAIN notes主DELETE未接，真正PG sync-write-lock迁移/事务和全域mirror/AI实际删除传播仍缺；UI定向测试不冒SC04/05。独立切片可路径限定commit交接，但在API/迁移验收前不发布未有后端能力的成功声明；原run按checkpoint保留待依赖，不提前成功REPORT。Phone原A独占DA/Phone账号原生只读，D仅独立源码/测试，不改ROOT当前Metro源或抢设备。
+- App切片已冻结`446dbd5b791588dd3d137b0379be6f17a9ff7646`（8App路径）；ROOT机械核对并独立完成实际6完整受影响文件33/33零跳过及typecheck exit0。首ROOT命令误给不存在的contact `.tsx`导致只执行5文件29/29，已单独补真实`.test.ts`4/4，不以exit0掩盖漏文件。暂未合入MAIN；SC03/04/05与正确后端原子事务/migration依赖仍未齐，原run保持checkpoint待精确放行。
+
+### 0046 / run-01
+
+- 开始登记：2026-09-16T19:06+09:00；唯一Generator管理任务内E支线`/root/e_sprint0046`，GPT-5.6 Sol / medium；工作树`.worktrees/sprint-0046-repeatable-functional-acceptance`，分支`codex/sprint-0046-repeatable-functional-acceptance`，产品基线`434219a8cf3a188a4c43f31b5d06a72d0af7bfc5`，tracked干净，复用现有依赖symlink，不复制.env。
+- 冻结Planner SHA256 `7241cd46081fe55894df4ae5fe543989af000dd6c08dce4f36489fb1f25f2279`。先独占`repos/orbit-app/scripts/verify-simulator-runtime-identity.mjs`、`repos/orbits/scripts/prepare-simulator-acceptance-fixtures.ts`及其直接确定性测试；新增测试路径由E追踪登记SC01/02后实施，脚本默认只读/dry-run，实际样本写入必须明确精确目标和cleanup批准。既有通知失效consumer先只读调查，后续必要产品切片另核与0033/Phone文件锁，不重做活动/AI/笔记产品。
+- 基线Web两个完整notification-source/cutover文件3/3；App完整typed-notification-inbox3/3，均exit0。App首次裸tsx命令未带项目render hook导致依赖JSX转换失败，按既有package test入口补hook后通过，非产品修复，不隐藏历史。
+- 主机18:46重启后ROOT已恢复mainWeb同426产物PID7578/live200及Metro8082PID7582/running；Phone服务暂未恢复，待A固定PW0010统一编译。E不控制共享服务/设备/浏览器/账号或DB写入，不安装新框架、不provider出站、不重置账本。最终SC04矩阵等待0042～45和0033～36必需接口，缺项只阻对应动作；本地准备不冒充最终原生/离线验收。
+- 必要新增测试路径`repos/orbit-app/tests/simulator-runtime-identity.test.mjs`、`repos/orbits/tests/services/simulator-acceptance-fixtures.test.ts`及工具说明`repos/orbit-app/docs/verification/simulator-acceptance-preparation.md`已按SC01/02登记。真实设备无booted/缺loaded-JS与actor实际receipt必须BLOCKED；fixture testadapter验证不能冒真实样本apply成功。
+- 五文件工具切片固定`cb62638da83c82e34145f502814e19ed227e60e7`，已合入`f2a25a55c4f1e11f773ac6f29eb4099ad59ce547`；ROOT精确暂存/合并树App7/7、Web5/5 exit0，source/diff检查仅上述新增路径，新增工具未收录图谱不记零风险。identity仅产出evidence-consistent且actualAcceptancePassed=false，真实loaded-JS/actor缺项仍BLOCKED；fixture纯Map/dry-run不冒真实apply/cleanup。最终SC矩阵与真实样本仍依赖0045和0033～36，不创建成功REPORT。
+- 同一原run legacy SC03最小修复已经来源/DTO核对后放行：App3个notification VMs删除两处猜任务链接fallback并安全隐藏失效旧正文；Web原provider/live-service/canonical通知GET与新增本域legacy-source-projection/helper测试，仅精确workspace/正式task或schedule wrapper/actor/lifecycle可导航。`inboxNotificationActions` HIGH/3直接caller已披露。不改字典/shared/auth/其他产品域，不用假evidence sentinel顶替业务证据，不跑实际业务API/DB写/设备/服务；局部TDD进行中，不提前声明runtime SC03/整Sprint通过。
+
+2026-09-16主线统一运行时：C43、Phone PW0010单功能（仅`58e4840169625460e06a2d69769e95552878ebb6`，没有整合Phone全部祖先）及E46工具切片已整合并普通push到`f2a25a55c4f1e11f773ac6f29eb4099ad59ce547`，独立ls-remote一致。PW0010主线提交`224fdc1d4`另包含原Phone A对App audit两个existing AI行号键的必要校正；完整offline audit仍仅旧日程孤项失败，没有新增AI findings，不记全量通过。
+
+该产品树Web Next production build exit0，BUILD_ID`EEQm5wm0AApGsD3hvfqSh`，main3000/PID22612/live200、原orbit_events/workspace:orbit-dev；Metro8082/PID7582/running。DA`DA432E9E-1204-4EE7-9A20-251CDB48E265`重新编译、安装、启动主包app.agenthubs.orbit/PID23068均exit0，built与installed executable SHA256一致`a1ef0cdb9e3d8ea9b90528d8485e2232298a99bbd4576b98bb340467604d7623`；Metro实际为该主包加载1985modules，但loaded-JS精确hash/原生HTTP尚未由observer取得，不把expected元数据复制成observed证据。iOS依赖警告保留；`SYNC_INIT_FAILED 44ce35fbe92cb862`未关闭（后缀为scope摘要，不是底层错误码），在线首页成功不等于SQLCipher/全域离线PASS。本地初始化失败与服务端缺sync-write-lock function是独立缺项；不删库/密钥重置/空function绕过。
+
+Phone独立32100/PID17635/BUILD_ID`8sXNW8nifgU1rD0IF79lc`、32110/PID21340及新公共tunnel由Phone协调任务持有；MAIN与Phone同邮箱不能证明密码/数据相同。PW-0010原run已结束：公开Chromium/WebKit390px及主线原生同演示账号真实8候选/原消息/详情返回/历史重开/刷新通过，原request/messages/budget摘要不变；ROOT实际恢复精确127.0.0.1:3000与小雨MAIN Appscope，UI归ROOT。固定Phone文档交付`da3dd71d`只消费[原样REPORT](../../../../docs/phoneweb/sprints/0010-contact-artifact/REPORT.md)，不合Phone祖先/旧台账。通过仅本轮功能，原后端全量失败/跳过与完整Phone覆盖保持开放。共享原账本18entries/$0.038611/0reserved，未重置，本轮构建/只读检查无provider调用；旧运行时记录仅保留历史，不代表当前版本。
+
+0047追加计划仅针对0044实测生产Web历史会话无composer，不克隆整个失败Sprint。当前GOAL/AUDIT-DESIGN/PLANNER已编制，建议空闲B后续单run；Phone PW0010同ask函数展示切片先冻结/移交，本轮C0043与E0046保持两个实现槽，不自动派第三线。0036源版本/笔记实际工具接线仍由既有Sprint承接；0044 failed报告与费用/清理事实保留。
+
+### 2026-09-17：0059／0060 主线实际验收补充
+
+此项更新覆盖上表“原生64805构建中／未安装”的旧运行状态，不改写原始 I 失败或 Sprint blocked 判定。Main 产品5523、报告a69ec50已主合并普通push，独立远端核对一致。原生64805构建和92358覆盖安装均实际exit0，主包连接8082；Main Web3000健康。
+
+ROOT 实际使用小雨账号 `account_orbit_generated` 验证已有笔记／人脉底部窗、`ZT` 首字母匹配与关联 chip；正常 UI 新建一个明确 QA 系列，提前15分钟／每天至9月19日规则及关联经独立v3 GET一致。18日实例“仅本次”取消后独立GET404，17日及19日保留，19日实际日历列表点击详情成功。真实到期提醒仍待验：该账号 typed inbox 实际enabled false、owner local／cutover false，尚未获准启用，不宣称保存等于送达；PG并发及远程Push仍未完成。
+
+Phone 固定消费b3562f4／TREEc6f2、BUILD `VFCyLoF7jSqlaRsqWLuA3` 的真实 actor Chromium／WebKit 私有预览通过列表／拼音／选择取消及规则UI，未保存业务资料或调用provider；ROOT已审核并批准整体owned supervisor公网发布，实际切换结果另行登记。Phone actor不同于Main小雨，不代替同账号跨端证据。Main独立Next `/app/tasks/personal` 仍是旧v2／提醒重复unsupported UI，必须单独跟踪，不能宣称全部Web页面对齐。详见[0060 REPORT追加验收](0060-personal-reminders-recurrence/REPORT.md)。
+
+Phone公网0060随后实际发布成功，监督进程98032／backend98035／frontend98036健康，固定ngrok域名未变，ROOT独立核公网entry SHA匹配。公开Chromium／WebKit真实actor新关联窗／首字母／选择取消／规则UI通过，原业务数据不变、无provider调用；私有324预览已正常关闭、0056回退保留。真实提醒送达和Main独立Next旧v2页面仍是未完成项。
+
+### 2026-09-17：0061 就绪与提醒剩余调查
+
+用户要求“继续完成未完成的”，复用原设计与实施批准。新增[0061目标](0061-next-personal-schedule-v3/GOAL.md)／[中文计划](0061-next-personal-schedule-v3/PLANNER.md)，仅修复确证独立Next `/app/tasks/personal` v2规则／关联UI缺口，既有空闲B、Sol medium、一个run-01，状态ready／run_count=0，待隔离树固定基线与Planner哈希实际登记后启动；不重开0059／0060。ROOT独占真实服务／Simulator／测试对象，A仅有界只读查提醒配置及现有到期入口，不做第二Generator或改通知flag。通知测试账号启用动作按已有明确授权范围核实，其他账号、globalcutover和远程Push保持不变。
+
+0061启动就绪实际确认：B创建独立 `.worktrees/sprint-0061-next-personal-schedule-v3`／`codex/sprint-0061-next-personal-schedule-v3` exit0，HEAD精确 `0d5a57f340863d9596afe6f7637c35dcac68f81e`、工作树clean，Planner SHA256 `8fea9e4493a06e876522a7b4a6a81a8e1f2136e60a7aeaac590561e40a767063`。唯一run-01领取，状态running；Web局部文件锁归B，真实环境归ROOT。ROOT刷新后新增计划提交造成实际Main索引behind1告警，第二次唯一索引刷新期间暂停graph／产品修改，独立源码读取与测试设计继续，不消耗新run或重测试。
+
+A的独立只读调查已结束：精确actor通知入口 `ORBIT_TYPED_INBOX_ACTORS` 可仅启用小雨，但现有inbox GET会刷新该actor全部派生提醒计划／业务通知，无法收窄单QA；不会据此调用全局worker／discovery／cutover migration／Push。ROOT已明确询问该测试账号派生刷新写范围，未收到批准前不执行。原QA今天fireAt09:00已过，不能补发历史或改系统时钟；v3真实有界只读列表GET200确认9/17及9/19两个实例和取消事实保持。
+
+### 2026-09-17：0062 就绪与共享集成窗口登记
+
+ROOT在唯一小雨QA日程真实并发保存时确证事务外关联reader耗尽max2池，两PATCH与随后GET超时，原并发结果不通过。已owned恢复同一生产产物，Main3000新PID7579／管理句柄2001，正式登录后health/QA GET200，原updatedAt、标题、规则及关联完全未变；不在旧产物上再次并发复现。新增[0062目标](0062-personal-schedule-transaction-associations/GOAL.md)／[中文计划](0062-personal-schedule-transaction-associations/PLANNER.md)，基线0d5a57f，Planner SHA256 `b037a213bdafe01667051211f82dc10f034880a32ab0d0ff21900006fe52205f`，状态ready／run_count=0，待既有A隔离树clean核对后领取run-01。只改本域事务与关联接线，独立于B0061页面；不重开closed0060，不改连接池／授权语义／通知配置。
+
+按RULES5.2/8补充0061/0062集成执行登记：不改任何冻结Planner或SC，两线必要定向与各实际源码types通过、官方固定树gate后，可以提交标明“集成待验”的独立功能版本；所有相关产品写者冻结后，ROOT在精确组合源码树只运行一次受影响Web I，该同版本检查同时支持两份SC集成项。原失败/skip/denied保留，真实QA与生产重编重启仍必需；共享I不是completed豁免或新增运行。0061 B最终一行展示修复使原types未覆盖最终树，允许仅相关端最终types必要复核，不是全量重复。
+
+0062实际启动核对：既有A新树创建exit0，HEAD精确0d5a57f、porcelain空、Planner哈希匹配、build证据ignored，唯一run-01领取，状态running。服务upstream HIGH直接4/展开15/0索引flows，涉及factory、提醒目标授权、通知sourceAccess与refresh；已告警，按获准H本域修复和直接消费者验证继续。factory LOW直接3/展开8/0flows，新增symbol仍源码补查，不把0flows当零风险。
+
+### 2026-09-17：0061／0062 最终实际验收与交付
+
+两唯一run-01已结束，工作树clean、产品锁释放。0061 B功能12bb54ad／中文[REPORT](0061-next-personal-schedule-v3/REPORT.md)，0062 A功能021451c5／中文[REPORT](0062-personal-schedule-transaction-associations/REPORT.md)，精确合入Main47f12034并普通push、独立远端同SHA。官方组合gate13files40mapped0flowsLOW。B66/66、A43/43与必要types0；唯一共享Web I3808/3543pass/59fail/206skip actual1，旧59失败名称完全一致，真实PWdenied4／protected0保留，非fullgreen。
+
+新production BUILD L8fbGtRZ_QJku0p8citoB／NextPID15582健康200，旧7579已owned退出；当前管理句柄51509。主包DA设备安装成功且Api3000／主8082。原QA真实PG并发200+409及exact receipt重试、恢复原字段；Web15→30→原生读30／保存15→Web读15完成。另实际UI自建QA仅本次删除20日404、21日200，规则null清除及详情／独立GET吻合，最后只软删除自建QA404。201被helper错期待200的原失败、旧CAStimeout和其他失败如实保留，未重复创建或重全量。
+
+0061/0062功能SC实际验收通过，正式中文报告／台账随本次ROOT正常文档提交并push闭环；准确最终交付SHA由实际Git／ROOT检查点登记，不预填未来成功。0060真正到期通知SC60-04仍未满足；actorwide派生刷新批准尚未到、远程Push／全域离线不通过。Phone公网已0060且固定入口健康，独立actor证据不等同Main同账号。最新[Bridge运行时交接](../../../../bridge/2026-09-17-personal-schedule-v3-runtime.md)。
+
+下一项0063月历／小时分钟选择器设计已明确获准，Phone父任务中文Planner冻结SHA89822f57996134f77a4ea6ba64bc96708c7d05451f4ccd83d4a31c45c495176c；原B结束后由ROOT释放最新Main基线，唯一Sol medium Generator接续，不复开0061或0062。
+
+### 0063 / run-01（2026-09-17）
+
+用户已在Phone父任务明确批准日期／时间点选设计，ROOT已完整阅读并复用该批准。中文[GOAL](0063-date-time-picker/GOAL.md)／[DESIGN](0063-date-time-picker/DESIGN.md)／[PLANNER](0063-date-time-picker/PLANNER.md)逐字同步冻结稿；Planner SHA89822f57996134f77a4ea6ba64bc96708c7d05451f4ccd83d4a31c45c495176c不变。唯一Generator既有B任务01a0a879-e8fe-77e3-b748-bd78005aecc8、phoneweb-0063-date-time-picker标签、GPT-5.6 Sol / medium；新worktree .worktrees/sprint-0063-date-time-picker／branch codex/sprint-0063-date-time-picker实际创建exit0，HEAD/BASE b16b49d87a27415bd561df61b11cecd7df46ed3f、初始clean、证据ignored。状态running、唯一run01，不复开已结束0061/0062。
+
+ROOT唯一索引44084实际exit0/234.7s，disk lastCommit精确b16、indexedAt01:03:41.094Z／402977nodes580660edges300flows后，已正式放行B逐symbolimpact／TDD。App TimeBlock/Rules/必要Screen/editor、本域新PersonalScheduleDateTimePicker/picker纯model、四locale/必要直接tests；Next workspace/rules/editor-model/本域picker组件与纯model、直接tests独占归B；其新组件/model/tests精确manifest已ROOT核读本run checkpoint并登记。既有六图只迁当前输出新63ignored目录，不覆盖旧证据。Backend/shared契约/全局time/auth/offline/通知排除，真实DB/小雨actor/DA/服务生命周期/账本/index/生产构建归ROOT，Phone父负责源冻结后精确消费/preview/public窗口，无第二Generator/Reviewer/Evaluator。ROOT该启动文档自有dirty待最终提交，不再制造Main HEAD索引过期循环。
+
+ROOT实际集成追加：功能649994fe713fa88662db5dbd11ec8c6e6b9490eb/TREEf099ba7293c3fb0502e65af2bbd587b13a20eb86，官方22文件70mapped/0flows/LOW（保AppDraft8直接调用HIGH及新UNKNOWN）。最终完整App119/119、Web71/71、各types0，完整原RED/fullfail与两次限定布局修复保留。精确noff合chat-agent26f74a55c7f9458788bf59625a8a6dede6892756，普通push21614实际0且独立远端同SHA；正式中文报告/台账文档收口仍待，状态尚running。
+
+唯一Main I两端结束非绿：Web3826tests/3561pass/59旧fail/206skip/实际PWdenied4；App3273tests/3272pass/唯一旧58-route视觉fail/0skip/guards0。完整NAME无新增；14此前局部fixture修复未再失败不归功选择器。新I六图在ROOT独立目录，六B旧图已恢复原SHA/regularfile，不混为真实账号验证。原baseline失败保留给0041，不重I求绿。
+
+新Main production build0/BUILD taZi5Ng0EztLjlmYGnGbA/Next36058健康3000；原生新编译安装启动0/Orbit37204实际TCP连主Metro69917/8082。同小雨原QA真实Web picker15→37保存09:37/10:07、原生读37→原生picker15保存09:15/09:45→Web95738正式独立GET及实际picker15回读0。原30分钟、rem15/daily19/笔记人脉不变，18取消GET404。原生calendar选20取消仍17、清结束仅草稿并确认放弃回详情已实测；不冒称清结束持久化或真实纽约DST证据。DST/闰日/跨年/全天/until等边界由完整模型及直接组件测试覆盖。
+
+Phone精确15路径consumer6d1c771aee07f9a704863f11c3548354aea0b4d5/TREE6ed9ac4341077856db4eb1269d28ffd2374f0016，保Phone字典/script/私有政策；37/37及两端types0、串行build/export0，privatepreview healthy32400/32410。真实Chromium/WebKit各一次新建精确37分钟/默认30分钟/正式前后端独立GET及重开成功，两个returned-ID仅各精确删除200→404/listabsence，原记录偏好ledger493f保持；ROOT完整读取receipt6543a4f9及目检实际图。首helper外层dialog strictmode fail/0业务写、修namedinner selector1后实际成功，原失败保留，无产品/guard变动。ROOT已批准该固定artifact PUBLIC切换；实际公网/回退证据仍待，不能提前写发布完成。
+
+公网终验已解除前述待验：22582最后第三次正常owned切换actual0，新PUBLIC43205/backend43206/frontend43207健康零重启，固定BUILD IemxmhFeX5ZE1DvJDjF5x/servedentry rawSHA05b38715858bc27be6e6cf2b3c843288300c55a74bca034ab016c2ad97f4c200与私有冻结一致。52919 PUBLIC Chromium/WebKit真实正常VisitSite/登录/原对象读取/日历选择取消/精确37分确认及默认10:07草稿actual0，原对象偏好ledger493f保持，公共authPOST2/modelEvents0/business0，各2inboxGETexcluded不验收，each15实际ngrok静态GET单列不是全链无外呼。ROOT完整读取publication83204c49及public2browser2c47d04a、独立SHA与实际图目检确认。
+
+保留首公共helper两次auth前失败/0业务写和两次真实normalrollback0060健康/原entryaed12恢复。最终repair2只exact18静态GET闭包+首次VisitSite/login readiness，源码依赖及匿名firstdoc42007实际0后最后切换，API/provider/budgetguard未变，无第三repair/第四release。完整旧0060源/产物/launcher保留；当前回退脚本仅准备不伪称已执行。成功后ownedprivatepreview37928/37/38正常退出，32400/10无listener，PUBLIC与既有ngrok保留。中文最终REPORT/正式8文档gate/提交和最终远端核对正在ROOT收口，完成后才能登记本run交付，不能因此抹59旧Webfail/1旧Appfail、到期通知/全域离线缺项。
+
+0063最终中文[REPORT](0063-date-time-picker/REPORT.md)已按Generator冻结稿原字节落地（SHA256 3de0ccf170dee42c10486324a29f2764ba9631cdbea0dcd6c2154e3f9e8deeaa）。唯一Generator run-01已结束并释放源码锁，SC63-01至05的产品、主线运行及Phone真实交互证据见该报告；ROOT仅以这8份正式文档的官方gate、普通提交/push和独立远端一致闭环登记交付，实际最终SHA记录在Git及ROOT检查点，不预填未来成功。上述早期running/待验条目保留为时间顺序记录，不再重开0063或重复全量I；本轮Web旧59失败/App旧1失败、真正到期通知、远程Push及全域离线仍不是通过。
+
+后续执行：0033原A工作树已正常ff到产品Main26f74a55，继续原run的Task3本地schema/repository迁移，不创建第二Generator。采用单一v2 canonical真实事务迁移、已授权ReadScope/domain注入、未验证legacy隔离及初始化失败保库；Node fixture不替代原生SQLCipher/磁盘故障实测。新增server授权/epoch/锁顺序设计另设中文审阅门，Calendar等外部OAuth adapter继续TODO，不阻塞独立本地Task3。

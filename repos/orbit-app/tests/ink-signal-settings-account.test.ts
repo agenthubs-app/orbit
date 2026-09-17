@@ -23,10 +23,13 @@ const state = window.fixture = { screen: "settings", width: 390, fontScale: 1, s
   ...window.initialFixture, update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
 export const useFixture = () => { useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision); return state; };
 export const useOrbitAuthSession = () => { useFixture(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.signedIn ? state.user?.id ?? null : null, actorId: state.signedIn ? state.user?.id ?? null : null, user: state.user, cookieHeader: "test-cookie", signOut: async () => { state.calls.push("sign-out"); return state.logoutFailure ? { success: false, message: "退出未完成，请重试。" } : { success: true }; } }; };
-const client = {};
+const discoveryData = () => { const at="2026-09-16T00:00:00.000Z";return {preferences:{actorId:state.user.id,enabled:state.discoveryEnabled??false,messageAnalysisEnabled:state.discoveryMessages??false,timeZone:"Asia/Tokyo",language:"zh",revision:state.discoveryRevision??1,generation:1,enabledSince:at,messageEnabledSince:at,updatedAt:at},lastRoundAt:at,lastError:null,counts:{},sources:{email:"unavailable",calendar:"unavailable"}}; };
+const client = {get:async()=>state.discovery?{success:true,status:200,data:discoveryData()}:{success:false,status:404},post:async(path,options)=>{state.discoveryRequests??=[];state.discoveryRequests.push(options.body);const captured=discoveryData();const body=options.body;const result={...captured,preferences:{...captured.preferences,...(body.enabled===undefined?{}:{enabled:body.enabled}),...(body.messageAnalysisEnabled===undefined?{}:{messageAnalysisEnabled:body.messageAnalysisEnabled}),revision:captured.preferences.revision+1}};if(state.holdDiscovery)return new Promise(resolve=>state.discoveryReply=()=>resolve({success:true,status:200,data:result}));state.discoveryEnabled=result.preferences.enabled;state.discoveryMessages=result.preferences.messageAnalysisEnabled;state.discoveryRevision=result.preferences.revision;return {success:true,status:200,data:result};}};
 export const useOrbitApiClient = () => client;
 export const useOrbitApiBaseUrl = () => ({ baseUrl: "https://orbit.test", ready: true });
 export const useApiResource = () => { useFixture(); return { kind: state.kind, data: state.data, error: { message: "账号读取失败，请重试。" }, refreshing: false, refresh() { state.refreshes++; } }; };
+export const useIsFocused = () => true;
+export const randomUUID = () => "scope-" + Math.random();
 export const useRouter = () => ({ canGoBack: () => false, push(href) { state.navigation.push(href); }, replace(href) { state.navigation.push(href); }, back() { state.navigation.push("back"); } });
 export const usePathname = () => state.screen === "account" ? "/account" : "/settings";
 export const useLocalSearchParams = () => ({});
@@ -40,7 +43,7 @@ export const revokeRegisteredPushDevice = async input => { state.calls.push("rev
 test.before(async () => {
   const result = await build({ stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import { useFixture } from "fixture"; import { SettingsScreen } from "./src/screens/settings/SettingsScreen"; import { AccountScreen } from "./src/screens/profile/AccountScreen"; function App() { const s = useFixture(); return s.screen === "account" ? <AccountScreen /> : <SettingsScreen />; } createRoot(document.getElementById("root")).render(<App />);', loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" }, plugins: [{ name: "settings-account-boundaries", setup(plugin) {
     plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "ink-settings" }));
-    plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(AuthSessionProvider|useOrbitApiClient|ApiBaseUrlProvider|useApiResource|native-notifications|push-device-session)$/ }, () => ({ path: "fixture", namespace: "ink-settings" }));
+    plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(AuthSessionProvider|useOrbitApiClient|ApiBaseUrlProvider|useApiResource|native-notifications|push-device-session)$/ }, () => ({ path: "fixture", namespace: "ink-settings" }));
     plugin.onLoad({ filter: /.*/, namespace: "ink-settings" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Text as RealText, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web"; import { useFixture } from "fixture"; export * from "react-native-web";
 export const useWindowDimensions = () => { const s = useFixture(); return { ...realDimensions(), width: s.width, fontScale: s.fontScale }; };
@@ -70,7 +73,7 @@ test("settings uses source section hierarchy, open rows and real notification st
   for (const name of ["通用", "账号", "服务器"]) assert.equal(await page.getByRole("heading", { name, exact: true }).evaluate(el => getComputedStyle(el).fontWeight), "800");
   const account = page.getByRole("button", { name: "打开账号", exact: true });
   assert.equal((await account.boundingBox())!.height, 50); assert.equal((await account.boundingBox())!.x, 16);
-  const toggle = page.getByRole("button", { name: "关闭关键提醒", exact: true });
+  const toggle = page.getByRole("button", { name: "关闭系统推送", exact: true });
   assert.equal((await toggle.boundingBox())!.height, 50);
   assert.equal(await toggle.evaluate(el => getComputedStyle(el).borderRadius), "0px");
   assert.equal(await page.getByText("开启", { exact: true }).count(), 1, "show actual opt-in without claiming OS delivery");
@@ -82,7 +85,7 @@ test("settings navigation and guest filtering preserve the existing routes", asy
   for (const name of ["账号", "权限中心", "服务器"]) await page.getByRole("button", { name: `打开${name}`, exact: true }).click();
   assert.deepEqual(await navigation(page), ["/account", "/account/permissions", "/settings/api"]);
   await page.evaluate(() => (window as any).fixture.update({ signedIn: false }));
-  assert.equal(await page.getByRole("button", { name: /关键提醒|权限中心/ }).count(), 0);
+  assert.equal(await page.getByRole("button", { name: /系统推送|权限中心/ }).count(), 0);
   for (const name of ["账号", "服务器"]) assert.equal(await page.getByRole("button", { name: `打开${name}`, exact: true }).count(), 1);
   assert.equal(await page.getByRole("button", { name: /数据导出|导出我的数据|外观|语言|文字大小/ }).count(), 0);
   assert.deepEqual(await calls(page), []); await shot(page, "settings-guest");
@@ -92,12 +95,12 @@ test("notification status stays unknown until the stored preference is read", as
   const page = await open(t, { holdRead: true });
   await page.getByText("读取中…", { exact: true }).waitFor();
   assert.equal(await page.getByText("关闭", { exact: true }).count(), 0);
-  const reading = page.getByRole("button", { name: "正在读取关键提醒状态", exact: true });
+  const reading = page.getByRole("button", { name: "正在读取系统推送状态", exact: true });
   assert.equal(await reading.isDisabled(), true);
   await reading.dispatchEvent("click");
   assert.deepEqual(await calls(page), []);
   await page.evaluate(() => { (window as any).fixture.releaseRead(); });
-  const ready = page.getByRole("button", { name: "关闭关键提醒", exact: true });
+  const ready = page.getByRole("button", { name: "关闭系统推送", exact: true });
   await ready.waitFor();
   assert.equal(await ready.isEnabled(), true);
 });
@@ -105,18 +108,18 @@ test("notification status stays unknown until the stored preference is read", as
 test("notification opt-in requires a click and opt-out keeps canonical revocation and retry", async t => {
   const page = await open(t, { optedIn: false });
   assert.deepEqual(await calls(page), []);
-  await page.getByRole("button", { name: "开启关键提醒", exact: true }).click();
+  await page.getByRole("button", { name: "开启系统推送", exact: true }).click();
   assert.deepEqual(await calls(page), ["opt-in:true"]);
   await page.evaluate(() => (window as any).fixture.update({ hold: true, revokeFailure: true }));
-  await page.getByRole("button", { name: "关闭关键提醒", exact: true }).click();
+  await page.getByRole("button", { name: "关闭系统推送", exact: true }).click();
   assert.equal(await page.getByRole("button", { name: "正在准备…", exact: true }).isDisabled(), true);
   assert.deepEqual(await calls(page), ["opt-in:true", "opt-in:false", "revoke-device"]);
   assert.equal(await page.evaluate(() => (window as any).fixture.revocationUsesClient), true);
   await page.evaluate(() => { (window as any).fixture.update({ hold: false }); (window as any).fixture.release(); });
   await page.getByRole("alert").waitFor(); await shot(page, "settings-error");
   await page.evaluate(() => (window as any).fixture.update({ revokeFailure: false }));
-  await page.getByRole("button", { name: "重试关闭关键提醒", exact: true }).click();
-  await page.getByRole("button", { name: "开启关键提醒", exact: true }).waitFor();
+  await page.getByRole("button", { name: "重试关闭系统推送", exact: true }).click();
+  await page.getByRole("button", { name: "开启系统推送", exact: true }).waitFor();
   assert.equal(await page.getByRole("alert").count(), 0);
   assert.deepEqual(await calls(page), ["opt-in:true", "opt-in:false", "revoke-device", "opt-in:false", "revoke-device"]);
 });
@@ -221,3 +224,5 @@ for (const variant of [{ name: "narrow-large", width: 320, fontScale: 1.6 }, { n
     }
   });
 }
+
+test("discovery toggles are persisted independently and a late old-account receipt cannot overwrite the new account",async t=>{const page=await open(t,{discovery:true});const ai=page.getByRole('switch',{name:'自主发现',exact:true}),messages=page.getByRole('switch',{name:'分析联系人消息',exact:true});await ai.waitFor();assert.equal(await ai.getAttribute('aria-checked'),'false');await ai.click();await page.waitForFunction(()=>(window as any).fixture.discoveryRequests?.length===1);assert.equal(await ai.getAttribute('aria-checked'),'true');assert.equal(await messages.getAttribute('aria-checked'),'false');await page.evaluate(()=>(window as any).fixture.holdDiscovery=true);await messages.click();await page.waitForFunction(()=>!!(window as any).fixture.discoveryReply);await page.evaluate(()=>(window as any).fixture.update({user:{id:'actor:2',name:'新账号',email:'two@example.test'},discoveryEnabled:false,discoveryMessages:false}));await ai.waitFor();await page.evaluate(()=>(window as any).fixture.discoveryReply());assert.equal(await ai.getAttribute('aria-checked'),'false');assert.equal(await messages.getAttribute('aria-checked'),'false');});

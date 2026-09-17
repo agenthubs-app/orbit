@@ -1017,7 +1017,9 @@ export function createLiveOrbitAgentTrace(
       }
 
       if (runtimeResult.state === "planner_failure") {
-        return traceFailureForPlannerResult(runtimeResult.plannerResult);
+        return runtimeResult.plannerResult
+          ? traceFailureForPlannerResult(runtimeResult.plannerResult)
+          : runtimeResult.failureResult;
       }
 
       const {

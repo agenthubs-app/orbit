@@ -3,6 +3,7 @@ import {
   type EventParticipantProfileAnswers,
   type EventRegistration,
   type RegisterForEventInput,
+  type EventRegistrationBlockingReason,
 } from "./contract";
 import type {
   EventRegistrationProvider,
@@ -23,7 +24,7 @@ export type EventRegistrationWindowEnrollment =
       statementTimestamp: string;
       window: EventRegistrationWindow;
     }
-  | { state: "canonical_misconfigured" };
+  | { state: "canonical_misconfigured"; blockingReason?: "configuration_required" | "invalid_window" };
 
 export interface EventRegistrationWindowProvider {
   getEnrollment(eventId: string): Promise<EventRegistrationWindowEnrollment>;
@@ -165,6 +166,26 @@ export function resolveEventRegistrationAvailability(
   }
 }
 
+export interface EventRegistrationWindowState {
+  availability: EventRegistrationAvailability;
+  blockingReason?: EventRegistrationBlockingReason;
+}
+
+export function resolveEventRegistrationWindowState(
+  enrollment: EventRegistrationWindowEnrollment,
+): EventRegistrationWindowState {
+  const availability = resolveEventRegistrationAvailability(enrollment);
+  if (availability !== "unavailable") return { availability };
+  return {
+    availability,
+    blockingReason: enrollment.state === "legacy_importing"
+      ? "migration_in_progress"
+      : enrollment.state === "canonical_misconfigured"
+        ? enrollment.blockingReason ?? "configuration_required"
+        : "invalid_window",
+  };
+}
+
 export function createDeadlineGatedEventRegistrationService(input: {
   baseService: EventRegistrationService;
   canonicalService?: EventRegistrationService | null;
@@ -192,10 +213,7 @@ export function createDeadlineGatedEventRegistrationService(input: {
       if (enrollment.state === "legacy_unenrolled") {
         return input.baseService.cancel(registration);
       }
-      if (
-        enrollment.state === "legacy_importing" ||
-        enrollment.state === "canonical_misconfigured"
-      ) {
+      if (enrollment.state === "legacy_importing") {
         throw new EventRegistrationWindowError(
           "EVENT_REGISTRATION_CONFIGURATION_REQUIRED",
           "The enrolled event registration window is not configured; registration writes are unavailable.",

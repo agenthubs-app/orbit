@@ -6,6 +6,8 @@ import type { NotificationPermission, ReminderPlanContract } from "../api/contra
 import { remindersPath } from "../api/endpoints";
 import { notificationPermissionFromNative } from "./notification-model";
 import { syncLocalReminderNotifications, type LocalNotificationAdapter } from "./notification-sync";
+import {handoffLocalDelivery} from './delivery-ownership';
+import {readOrCreatePushDeviceId} from './push-device-session';
 
 let pendingReminderOperation: Promise<unknown> = Promise.resolve();
 let reminderGeneration = 0;
@@ -67,6 +69,8 @@ export async function syncReminderNotifications(
   if (Platform.OS !== "ios") return null;
   return enqueueReminderOperation(async () => {
     if (generation !== reminderGeneration) return null;
+    const owner = await handoffLocalDelivery({ client, adapter: expoLocalNotificationAdapter, deviceId: await readOrCreatePushDeviceId(), isCurrent: () => generation === reminderGeneration });
+    if (owner !== 'legacy') return owner;
     const result = await client.get<{ reminders: ReminderPlanContract[] }>(remindersPath());
     if (generation !== reminderGeneration || !result.success) return null;
     return syncLocalReminderNotifications({

@@ -24,6 +24,7 @@ export type NotificationDeliveryStatusCode =
   | "scheduled"
   | "processing"
   | "receipt_pending"
+  | "receipt_unknown"
   | "sent"
   | "retry_scheduled"
   | "suppressed"

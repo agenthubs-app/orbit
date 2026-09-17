@@ -8,6 +8,7 @@ interface InboxNotificationAction {
   href: string | undefined;
   ignored: boolean;
   read: boolean;
+  unavailable: boolean;
 }
 
 function notificationRecord(value: unknown): Record<string, unknown> | null {
@@ -74,9 +75,8 @@ export function inboxNotificationActions(value: unknown): Map<string, InboxNotif
     const href = inboxNotificationHref(reminder.href);
     actions.set(id, {
       canPersist,
-      href: href ?? (reminder.href === undefined && followupTaskId
-        ? `/tasks/${encodeURIComponent(followupTaskId)}`
-        : undefined),
+      href,
+      unavailable: reminder.href === "" || (!href && Boolean(followupTaskId)),
       ignored: canPersist && state === "ignored",
       read: canPersist && state === "read",
     });

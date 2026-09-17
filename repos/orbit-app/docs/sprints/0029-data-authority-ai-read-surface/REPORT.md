@@ -83,3 +83,7 @@ Visibility manifest 共登记 13 个 source：原有 5 个读取工具、4 个�
 - 旧 push endpoint/device ID 只保留迁移与撤销能力；canonical 注册失败时不把旧状态冒充成功。
 - 四个新 AI tool 可在 capability registry 独立关闭，不影响原有 5 个读取工具。
 - 任一 owner/parity 校验失败时对应查询 fail closed，不回退到另一 actor 或 workspace-wide 私有记录。
+
+## 2026-09-16 后续范围决定
+
+用户决定本轮先不处理需要真实 OAuth 的 Calendar/Gmail/Microsoft Graph adapter。上文第 2 项保留为明确 TODO，不再作为当前 0029 补证动作；不得用 mock、live-store 元数据或 Orbit 登录 OAuth 冒充外部数据授权。当前只继续补两项：真实 schedule migration dry-run／审阅后 apply，以及同一真实 actor 在 Web 与 App 对 notes/tasks/followups/schedule 的双向回读和 artifact evidence。OAuth adapter 后续必须单独登记 Sprint，包含 provider 控制台配置、最小 read-only scope、token vault、撤权/刷新、隐私与真实 provider 健康检查。

@@ -52,6 +52,8 @@ export const useApiResource = path => {
 // The same presentation fixture now feeds the screen's real network resource.
 // Keep auxiliary/action requests separate from its initial content reads.
 const client = { async get(path) {
+    if (path.startsWith("/api/inbox/notifications")) return { success: true, status: 200, data: { enabled: false, items: [], unreadCount: 0, nextCursor: null, asOf: '2026-09-16T00:00:00.000Z' }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
+ if (path === "/api/inbox/delivery/preferences") return {success:false,status:404};
  if (path.startsWith("/api/relationship-communication/conversations") || path.includes("relationship-inbox") || path === "/api/notifications" || path.includes("relationship-signals")) {
   state.resourceReads.push(path);
   const resource = useApiResource(path); if (resource.kind === "loading") return new Promise(() => {});
@@ -94,6 +96,7 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
   await page.setContent('<style>@font-face{font-family:OrbitTestIonicons;src:url(data:font/ttf;base64,' + font + ')}html,body,#root{margin:0;height:100%}#root{display:flex;flex-direction:column}</style><div id="root"></div>');
   await page.evaluate(patch => { (window as any).initialFixture = patch; }, patch);
   await page.addScriptTag({ content: script }); await page.getByRole("heading").first().waitFor(); await page.evaluate(() => document.fonts.ready);
+  if (!patch.messagesFirst && !patch.conversations && patch.kind !== "empty" && !patch.detail && !patch.seed) await page.getByRole("tab", { name: /^通知/ }).click();
   return page;
 }
 async function shot(page: Page, name: string) { if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-ink-signal-inbox-${name}.png`, fullPage: true }); }
@@ -114,7 +117,7 @@ test("inbox matches the approved compact header, four feed tabs and default acti
   assert.ok((await title.boundingBox())!.y < 96);
   assert.equal(await page.getByRole("button", { name: "首页", exact: true }).count(), 1);
   assert.equal(await page.getByRole("button", { name: "全部已读", exact: true }).count(), 1);
-  assert.deepEqual(await page.getByRole("tab").allTextContents(), ["全部 2", "活动", "待办", "人脉"]);
+  assert.deepEqual(await page.getByRole("tab").allTextContents(), ["消息", "通知2", "全部 2", "活动", "待办", "人脉"]);
   const tab = page.getByRole("tab", { name: "全部 2", exact: true });
   assert.equal(await tab.evaluate(el => getComputedStyle(el).borderBottomColor), "rgb(11, 18, 32)");
   assert.equal(await tab.getByText("全部", { exact: true }).evaluate(el => getComputedStyle(el).fontSize), "15px");
@@ -204,7 +207,7 @@ test("mark all read writes only the two confirmable unread notifications and ref
 
 test("real conversation rows remain encoded deep links when the notification feed is empty", async t => {
   const page = await open(t, { conversations: true, notificationsKind: "empty" });
-  await page.getByRole("button", { name: /^与林悦的对话，/ }).click();
+  await page.getByRole("button", { name: /^林悦,/ }).click();
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/inbox/thread%3A0"]);
 });
 
@@ -249,3 +252,16 @@ for (const variant of [{ name: "narrow-large", width: 320, fontScale: 1.6 }, { n
     assert.deepEqual(await requests(page), []);
   });
 }
+
+test('messages are the default independent inbox and notifications cannot mark them read', async t => {
+  const page = await open(t, { conversations: true });
+  const messages = page.getByRole('tab', { name: '消息 2', exact: true });
+  await messages.waitFor();
+  assert.equal(await messages.getAttribute('aria-selected'), 'true');
+  assert.equal(await page.getByText('林悦', { exact: true }).count(), 1);
+  assert.equal(await page.getByText('待办「给林悦发送项目介绍」今天 18:00 到期', { exact: true }).count(), 0);
+  await page.getByRole('tab', { name: '通知 2', exact: true }).click();
+  await page.getByRole('button', { name: '全部已读', exact: true }).click();
+  await page.waitForTimeout(30);
+  assert.ok((await requests(page)).every((r: { path: string }) => !r.path.endsWith('/read')));
+});

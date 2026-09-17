@@ -660,7 +660,7 @@ function detailFor(input: {
         }
       : baseLastInteraction,
     nextAction: labelRelationshipText(
-      input.connection?.suggestedActions[0] ?? "",
+      input.connection?.suggestedActions?.[0] ?? "",
       input.language,
     ),
     updatedAt:

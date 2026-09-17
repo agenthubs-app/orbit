@@ -876,12 +876,27 @@ export function createPostgresCanonicalRegistrationMethods({
 
     async cancelCanonicalRegistration({ eventId, userId }) {
       return client.transaction(async (transaction) => {
-        const window = await lockRegistrationScope(
-          transaction,
-          workspaceId,
-          eventId,
-          userId,
+        await transaction.query(
+          `select pg_advisory_xact_lock(hashtextextended($1, 0))`,
+          [`event-operations-registration:${workspaceId}:${eventId}:${userId}`],
         );
+        // Cancelling existing membership does not write a profile or enroll a
+        // new participant. Lock its canonical event without requiring a new
+        // registration window; retain lifecycle and migration restrictions.
+        const scope = await transaction.query<{ db_now: Date | string }>(
+          `select statement_timestamp() as db_now from event_ops_events
+           where workspace_id = $1 and event_id = $2
+             and lifecycle_state_v2 = 'published'
+             and registration_migration_state = 'canonical'
+           for share`,
+          [workspaceId, eventId],
+        );
+        if (!scope.rows[0]) {
+          throw new EventRegistrationWindowError(
+            "EVENT_REGISTRATION_CONFIGURATION_REQUIRED",
+            "The published canonical event is unavailable; no registration was changed.",
+          );
+        }
         const existing = await getRegistrationWith(
           transaction,
           workspaceId,
@@ -895,11 +910,25 @@ export function createPostgresCanonicalRegistrationMethods({
           eventId,
           userId,
         );
-        const updatedAt = timestamp(window.db_now, "db_now");
-        return appendRegistrationVersion({
-          eventId,
+        const committed = await transaction.query<SqlRow>(
+          `select membership.late_registration
+           from event_ops_membership_versions membership
+           where membership.workspace_id = $1 and membership.event_id = $2
+             and membership.actor_id = $3 and membership.membership_version = $4`,
+          [workspaceId, eventId, userId, versions.membershipVersion],
+        );
+        if (typeof committed.rows[0]?.late_registration !== "boolean") {
+          throw new Error("Canonical cancellation requires its committed membership late flag.");
+        }
+        const updatedAt = timestamp(scope.rows[0].db_now, "db_now");
+        return appendCanonicalMembershipVersion({
+          admissionApplicationVersion: null,
+          executor: transaction,
+          origin: "legacy_registration",
           membershipVersion: versions.membershipVersion + 1,
           profileChanged: false,
+          lateRegistration: committed.rows[0].late_registration,
+          profileEditDeadlineAt: null,
           profileVersion: versions.profileVersion,
           registration: {
             ...existing,
@@ -908,8 +937,6 @@ export function createPostgresCanonicalRegistrationMethods({
             status: "cancelled",
             updatedAt,
           },
-          transaction,
-          window,
           workspaceId,
         });
       });

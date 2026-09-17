@@ -207,8 +207,11 @@ export function createReliableOrbitAgentSendService(dependencies: {
 
   return {
     async send<TResult>(request: {
-      execute: (prepared?: { trustedOriginVerification?: TrustedOriginVerification | undefined }) => Promise<{
-        assistantMessage?: { id: string; text: string };
+      execute: (prepared?: {
+        history: readonly { role: "user" | "assistant"; content: string }[];
+        trustedOriginVerification?: TrustedOriginVerification | undefined;
+      }) => Promise<{
+        assistantMessage?: ReliableAssistantMessage;
         result: TResult;
       }>;
       input: ReliableSendInput;
@@ -407,7 +410,14 @@ export function createReliableOrbitAgentSendService(dependencies: {
 
       let executed: Awaited<ReturnType<typeof request.execute>>;
       try {
-        executed = await request.execute(prepared);
+        const history = (userMessageAlreadyPersisted
+          ? current?.messages.slice(0, -1)
+          : current?.messages
+        ) ?? [];
+        executed = await request.execute({
+          ...prepared,
+          history: history.map(({ role, text }) => ({ role, content: text })),
+        });
       } catch {
         await dependencies.requestStore.markOutcomeUnknown(
           request.input.requestId,
@@ -425,6 +435,13 @@ export function createReliableOrbitAgentSendService(dependencies: {
         return { replayed: false, result: executed.result, state: "completed" };
       }
 
+      const verified = prepared?.trustedOriginVerification;
+      const executionVerification = executed.assistantMessage.originVerification;
+      const originVerification = verified && executionVerification &&
+        verified.analysisVersion === executionVerification.analysisVersion &&
+        verified.kind === executionVerification.kind &&
+        verified.sourceDataVersion === executionVerification.sourceDataVersion
+        ? verified : undefined;
       const assistantCreatedAt = dependencies.now();
       const withUser = await dependencies.sessionProvider.getSession(
         request.input.sessionId,
@@ -436,7 +453,7 @@ export function createReliableOrbitAgentSendService(dependencies: {
           {
             assistantMessage: {
               ...executed.assistantMessage,
-              originVerification: prepared?.trustedOriginVerification,
+              originVerification,
             },
             result: executed.result,
           },
@@ -457,7 +474,7 @@ export function createReliableOrbitAgentSendService(dependencies: {
             },
           ],
           updatedAt: assistantCreatedAt,
-        }, prepared?.trustedOriginVerification);
+        }, originVerification);
         await dependencies.requestStore.complete(
           request.input.requestId,
           fingerprint,
@@ -470,7 +487,7 @@ export function createReliableOrbitAgentSendService(dependencies: {
           {
             assistantMessage: {
               ...executed.assistantMessage,
-              originVerification: prepared?.trustedOriginVerification,
+              originVerification,
             },
             result: executed.result,
           },
