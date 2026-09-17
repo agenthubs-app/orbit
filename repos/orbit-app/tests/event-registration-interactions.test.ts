@@ -73,10 +73,11 @@ test.before(async () => {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "registration" }));
       plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|OrbitLocaleContext|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "registration" }));
       plugin.onLoad({ filter: /.*/, namespace: "registration" }, args => ({ contents: args.path === "native" ? `
-import React from "react"; import { Pressable as RealPressable, RefreshControl as RealRefreshControl } from "react-native-web"; export * from "react-native-web";
+import React from "react"; import { Platform as RealPlatform, Alert as RealAlert, Pressable as RealPressable, RefreshControl as RealRefreshControl } from "react-native-web"; export * from "react-native-web";
 export const Pressable = props => { const text = React.Children.toArray(props.children).find(child => React.isValidElement(child) && typeof child.props.children === "string"); const label = props.accessibilityLabel || text?.props.children; if (label) window.fixture.presses[label] = props.onPress; return <RealPressable {...props} />; };
 export const RefreshControl = props => { window.fixture.refresh = props.onRefresh; return <RealRefreshControl {...props} />; };
-export const Alert = { alert(title, message, buttons) { window.fixture.alerts.push({ title, message, buttons: buttons.slice(0, 3) }); } };
+export const Platform = { ...RealPlatform, get OS() { return window.fixture.platform ?? "ios"; } };
+export const Alert = { alert(title, message, buttons) { if(window.fixture.platform==="web")return RealAlert.alert(title,message,buttons); window.fixture.alerts.push({ title, message, buttons: buttons.slice(0, 3) }); } };
 ` : fixture, loader: "jsx", resolveDir: process.cwd() }));
       plugin.onResolve({ filter: /^react-native-web$/ }, () => ({ path: require.resolve("react-native-web") }));
     } }],
@@ -499,4 +500,37 @@ for (const patch of [{ actor: "actor-2" }, { baseUrl: "https://second.example" }
   assert.equal((await writes(p)).length, 1);
   assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0);
   assert.equal(await p.evaluate(() => (window as any).fixture.requests[2].signal?.aborted), true);
+});
+
+// Catches direct use of the real Web Alert (an empty implementation).
+test("Web cancellation opens a real browser confirmation and rejection preserves the draft", async t => {
+  const p = await open(t, { platform: "web" }); await fill(p, "Keep my draft");
+  let dialogs = 0; p.on("dialog", async dialog => { dialogs++; assert.equal(dialog.type(), "confirm"); await dialog.dismiss(); });
+  await press(p, "取消报名");
+  assert.equal(dialogs, 1); assert.deepEqual(await writes(p), []);
+  assert.equal(await p.getByPlaceholder("写一句具体的补充。").inputValue(), "Keep my draft");
+});
+
+for (const mode of ["missing", "throws"] as const) test(`Web confirmation ${mode} fails visibly without cancellation or draft loss`, async t => {
+  const p=await open(t,{platform:"web"});await fill(p,"Keep my draft");
+  await p.evaluate(mode=>{(window as any).confirm=mode==="missing"?undefined:()=>{throw new Error("Unavailable");};},mode);
+  await press(p,"取消报名");assert.deepEqual(await writes(p),[]);
+  await p.getByText("无法打开取消确认，尚未取消报名。请重试。",{exact:true}).waitFor();
+  assert.equal(await p.getByPlaceholder("写一句具体的补充。").inputValue(),"Keep my draft");
+});
+test("Web confirmed cancellation writes once and requires independent readback",async t=>{
+  const p=await open(t,{platform:"web"});await fill(p,"Keep my draft");let dialogs=0;
+  p.on("dialog",async d=>{dialogs++;await d.accept();});
+  await press(p,"取消报名");assert.equal(dialogs,1);
+  assert.deepEqual(await writes(p),[{method:"POST",path:"/api/events/event%3A1/registration/cancel",body:{expectedRegistrationVersion:"2026-09-13T00:00:00Z",intent:"cancel"}}]);
+  await update(p,{registered:false,registrationStatus:503});await reply(p);
+  assert.equal(await p.getByRole("button",{name:"重新报名",exact:true}).count(),0);
+  assert.equal(await p.getByPlaceholder("写一句具体的补充。").inputValue(),"Keep my draft");
+});
+for(const change of ["actor","origin","event","allowedActions"] as const)test(`native cancellation confirmation rejects stale ${change}`,async t=>{
+  const p=await open(t);await press(p,"取消报名");
+  await update(p,change==="actor"?{actor:"actor-2"}:change==="origin"?{baseUrl:"https://other.example"}:change==="event"?{eventId:"event:2"}:{allowedActions:["update"]});
+  if(change==="allowedActions")await refresh(p);
+  await p.evaluate(()=>{const s=(window as any).fixture;s.alerts[0].buttons.find((b:any)=>b.style==="destructive").onPress();});await settle(p);
+  assert.deepEqual(await writes(p),[]);
 });

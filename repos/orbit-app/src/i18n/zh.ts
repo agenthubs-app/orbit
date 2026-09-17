@@ -10,6 +10,7 @@ export const zh = {
   "registration.cancelThisRegistration": "取消本次报名",
   "registration.cancelUnconfirmed": "暂时无法核对取消结果，请重新读取报名状态。",
   "registration.cancelConfirmation": "取消后将不再参加这场活动。报名仍开放时，可以再次报名。",
+  "registration.cancelConfirmationUnavailable": "无法打开取消确认，尚未取消报名。请重试。",
   "registration.cancelKeep": "保留报名",
   "registration.reasonConfiguration": "主办方尚未补全报名信息，暂不能报名或修改资料。",
   "registration.reasonMigration": "正在更新报名记录，暂不能提交。",

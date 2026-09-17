@@ -41,6 +41,7 @@ export const messageKeys = [
   "registration.cancelThisRegistration",
   "registration.cancelUnconfirmed",
   "registration.cancelConfirmation",
+  "registration.cancelConfirmationUnavailable",
   "registration.cancelKeep",
   "registration.reasonConfiguration",
   "registration.reasonMigration",
