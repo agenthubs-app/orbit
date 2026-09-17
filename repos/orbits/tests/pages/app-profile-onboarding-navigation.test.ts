@@ -4,6 +4,7 @@ import Module, { createRequire } from "node:module";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { transformSync } from "esbuild";
 import type { ReactElement } from "react";
 
 import {
@@ -289,6 +290,10 @@ function loadProfileContinuePage(
 ) {
   const calls: Array<{ operation: string; input?: unknown }> = [];
   const redirected = new Error("Test redirect");
+  const onboardingAccessPath = join(
+    projectRoot,
+    "app/(app)/app/profile/profile-onboarding-access.server.ts",
+  );
   const modules: Record<string, unknown> = {
     "next/navigation": {
       redirect: (href: string) => {
@@ -334,7 +339,7 @@ function loadProfileContinuePage(
     },
   };
   const pagePath = join(projectRoot, "app/(app)/app/profile/continue/page.tsx");
-  const ids = [...Object.keys(modules), pagePath].map((id) => testRequire.resolve(id));
+  const ids = [...Object.keys(modules), pagePath, onboardingAccessPath].map((id) => testRequire.resolve(id));
   const previous = new Map(ids.map((id) => [id, testRequire.cache[id]]));
 
   t.after(() => {
@@ -352,6 +357,26 @@ function loadProfileContinuePage(
     replacement.exports = exports;
     testRequire.cache[resolved] = replacement;
   }
+  const onboardingAccessResolved = testRequire.resolve(onboardingAccessPath);
+  const onboardingAccessCompiled = transformSync(
+    readFileSync(onboardingAccessPath, "utf8"),
+    {
+      format: "cjs",
+      loader: "ts",
+      platform: "node",
+      supported: { "dynamic-import": false },
+    },
+  );
+  const onboardingAccessModule = new Module(onboardingAccessResolved);
+  onboardingAccessModule.filename = onboardingAccessResolved;
+  onboardingAccessModule.loaded = true;
+  onboardingAccessModule.exports = {};
+  new Function("require", "module", "exports", onboardingAccessCompiled.code)(
+    createRequire(onboardingAccessResolved),
+    onboardingAccessModule,
+    onboardingAccessModule.exports,
+  );
+  testRequire.cache[onboardingAccessResolved] = onboardingAccessModule;
   delete testRequire.cache[testRequire.resolve(pagePath)];
 
   const page = testRequire(pagePath).default as (input?: {
@@ -419,11 +444,9 @@ test("profile continuation reads authoritative profile onboarding without option
   );
 
   assert.match(continuationSource, /const session = await auth\(\)/);
-  assert.match(continuationSource, /resolveAuthenticatedApiActorFromSession/);
-  assert.match(continuationSource, /resolveFeatureMode\(\) !== "live"/);
-  assert.match(continuationSource, /createProfileService\("live"\)/);
-  assert.match(continuationSource, /getProfile\(\{ actorId: actor\.id \}\)/);
-  assert.match(continuationSource, /result\.data\.onboarding\.status === "complete"/);
+  assert.match(continuationSource, /readProfileOnboardingAccess/);
+  assert.doesNotMatch(continuationSource, /resolveAuthenticatedApiActorFromSession/);
+  assert.doesNotMatch(continuationSource, /createProfileService\("live"\)/);
   assert.doesNotMatch(continuationSource, /createProfileDocumentExtractionService/);
   assert.doesNotMatch(continuationSource, /createProfileSignalReviewQueueService/);
   assert.doesNotMatch(continuationSource, /extractResume|listUpdateSuggestions/);

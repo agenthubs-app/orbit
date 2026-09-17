@@ -12,6 +12,10 @@ import {
   isOrbitPrivateAppPath,
   normalizeOrbitAuthReturnPath,
 } from "./features/auth/app-auth-routing";
+import {
+  profileOnboardingRedirectPath,
+  shouldGateProfileOnboardingRequest,
+} from "./app/(app)/app/profile/profile-onboarding-route-policy";
 
 function isPublicApiPath(pathname: string): boolean {
   return (
@@ -26,7 +30,7 @@ function isPublicApiPath(pathname: string): boolean {
   );
 }
 
-export const proxy = auth((request) => {
+export const proxy = auth(async (request) => {
   // Next proxy 不能直接改原 request，因此复制 headers 后交给 NextResponse.next。
   // 复用产品语言命名空间，但保留 null 语义，避免非法 query 污染 header/cookie。
   const language = parseOrbitLanguage(request.nextUrl.searchParams.get("lang"));
@@ -96,6 +100,51 @@ export const proxy = auth((request) => {
       });
     }
     return redirectResponse;
+  }
+
+  if (
+    shouldGateProfileOnboardingRequest({
+      authenticated: Boolean(request.auth?.user?.id),
+      method: request.method,
+      pathname: request.nextUrl.pathname,
+    })
+  ) {
+    let access: { status: "complete" | "incomplete" | "unavailable" } = {
+      status: "unavailable",
+    };
+    try {
+      const onboardingAccess = await import(
+        "./app/(app)/app/profile/profile-onboarding-access.server"
+      );
+      access = await onboardingAccess.readProfileOnboardingAccess({
+        email: request.auth?.user?.email,
+        name: request.auth?.user?.name,
+        userId: request.auth!.user!.id,
+      });
+    } catch {
+      // A gate dependency failure must not turn into an accidental pass.
+    }
+
+    if (access.status !== "complete") {
+      const redirectResponse = NextResponse.redirect(
+        new URL(
+          profileOnboardingRedirectPath({
+            pathname: request.nextUrl.pathname,
+            search: request.nextUrl.search,
+          }),
+          request.url,
+        ),
+      );
+      redirectResponse.headers.set("cache-control", "no-store");
+      if (language) {
+        redirectResponse.cookies.set("orbit-lang", language, {
+          maxAge: 31536000,
+          path: "/",
+          sameSite: "lax",
+        });
+      }
+      return redirectResponse;
+    }
   }
 
   const response = NextResponse.next({
