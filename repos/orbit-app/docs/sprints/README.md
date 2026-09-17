@@ -573,3 +573,25 @@ Phone公网0060随后实际发布成功，监督进程98032／backend98035／fro
 ### 2026-09-17：0061 就绪与提醒剩余调查
 
 用户要求“继续完成未完成的”，复用原设计与实施批准。新增[0061目标](0061-next-personal-schedule-v3/GOAL.md)／[中文计划](0061-next-personal-schedule-v3/PLANNER.md)，仅修复确证独立Next `/app/tasks/personal` v2规则／关联UI缺口，既有空闲B、Sol medium、一个run-01，状态ready／run_count=0，待隔离树固定基线与Planner哈希实际登记后启动；不重开0059／0060。ROOT独占真实服务／Simulator／测试对象，A仅有界只读查提醒配置及现有到期入口，不做第二Generator或改通知flag。通知测试账号启用动作按已有明确授权范围核实，其他账号、globalcutover和远程Push保持不变。
+
+0061启动就绪实际确认：B创建独立 `.worktrees/sprint-0061-next-personal-schedule-v3`／`codex/sprint-0061-next-personal-schedule-v3` exit0，HEAD精确 `0d5a57f340863d9596afe6f7637c35dcac68f81e`、工作树clean，Planner SHA256 `8fea9e4493a06e876522a7b4a6a81a8e1f2136e60a7aeaac590561e40a767063`。唯一run-01领取，状态running；Web局部文件锁归B，真实环境归ROOT。ROOT刷新后新增计划提交造成实际Main索引behind1告警，第二次唯一索引刷新期间暂停graph／产品修改，独立源码读取与测试设计继续，不消耗新run或重测试。
+
+A的独立只读调查已结束：精确actor通知入口 `ORBIT_TYPED_INBOX_ACTORS` 可仅启用小雨，但现有inbox GET会刷新该actor全部派生提醒计划／业务通知，无法收窄单QA；不会据此调用全局worker／discovery／cutover migration／Push。ROOT已明确询问该测试账号派生刷新写范围，未收到批准前不执行。原QA今天fireAt09:00已过，不能补发历史或改系统时钟；v3真实有界只读列表GET200确认9/17及9/19两个实例和取消事实保持。
+
+### 2026-09-17：0062 就绪与共享集成窗口登记
+
+ROOT在唯一小雨QA日程真实并发保存时确证事务外关联reader耗尽max2池，两PATCH与随后GET超时，原并发结果不通过。已owned恢复同一生产产物，Main3000新PID7579／管理句柄2001，正式登录后health/QA GET200，原updatedAt、标题、规则及关联完全未变；不在旧产物上再次并发复现。新增[0062目标](0062-personal-schedule-transaction-associations/GOAL.md)／[中文计划](0062-personal-schedule-transaction-associations/PLANNER.md)，基线0d5a57f，Planner SHA256 `b037a213bdafe01667051211f82dc10f034880a32ab0d0ff21900006fe52205f`，状态ready／run_count=0，待既有A隔离树clean核对后领取run-01。只改本域事务与关联接线，独立于B0061页面；不重开closed0060，不改连接池／授权语义／通知配置。
+
+按RULES5.2/8补充0061/0062集成执行登记：不改任何冻结Planner或SC，两线必要定向与各实际源码types通过、官方固定树gate后，可以提交标明“集成待验”的独立功能版本；所有相关产品写者冻结后，ROOT在精确组合源码树只运行一次受影响Web I，该同版本检查同时支持两份SC集成项。原失败/skip/denied保留，真实QA与生产重编重启仍必需；共享I不是completed豁免或新增运行。0061 B最终一行展示修复使原types未覆盖最终树，允许仅相关端最终types必要复核，不是全量重复。
+
+0062实际启动核对：既有A新树创建exit0，HEAD精确0d5a57f、porcelain空、Planner哈希匹配、build证据ignored，唯一run-01领取，状态running。服务upstream HIGH直接4/展开15/0索引flows，涉及factory、提醒目标授权、通知sourceAccess与refresh；已告警，按获准H本域修复和直接消费者验证继续。factory LOW直接3/展开8/0flows，新增symbol仍源码补查，不把0flows当零风险。
+
+### 2026-09-17：0061／0062 最终实际验收与交付
+
+两唯一run-01已结束，工作树clean、产品锁释放。0061 B功能12bb54ad／中文[REPORT](0061-next-personal-schedule-v3/REPORT.md)，0062 A功能021451c5／中文[REPORT](0062-personal-schedule-transaction-associations/REPORT.md)，精确合入Main47f12034并普通push、独立远端同SHA。官方组合gate13files40mapped0flowsLOW。B66/66、A43/43与必要types0；唯一共享Web I3808/3543pass/59fail/206skip actual1，旧59失败名称完全一致，真实PWdenied4／protected0保留，非fullgreen。
+
+新production BUILD L8fbGtRZ_QJku0p8citoB／NextPID15582健康200，旧7579已owned退出；当前管理句柄51509。主包DA设备安装成功且Api3000／主8082。原QA真实PG并发200+409及exact receipt重试、恢复原字段；Web15→30→原生读30／保存15→Web读15完成。另实际UI自建QA仅本次删除20日404、21日200，规则null清除及详情／独立GET吻合，最后只软删除自建QA404。201被helper错期待200的原失败、旧CAStimeout和其他失败如实保留，未重复创建或重全量。
+
+0061/0062功能SC实际验收通过，正式中文报告／台账随本次ROOT正常文档提交并push闭环；准确最终交付SHA由实际Git／ROOT检查点登记，不预填未来成功。0060真正到期通知SC60-04仍未满足；actorwide派生刷新批准尚未到、远程Push／全域离线不通过。Phone公网已0060且固定入口健康，独立actor证据不等同Main同账号。最新[Bridge运行时交接](../../../../bridge/2026-09-17-personal-schedule-v3-runtime.md)。
+
+下一项0063月历／小时分钟选择器设计已明确获准，Phone父任务中文Planner冻结SHA89822f57996134f77a4ea6ba64bc96708c7d05451f4ccd83d4a31c45c495176c；原B结束后由ROOT释放最新Main基线，唯一Sol medium Generator接续，不复开0061或0062。

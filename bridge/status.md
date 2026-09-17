@@ -180,4 +180,4 @@ ROOT真实设置保存并AX确认恢复精确`http://127.0.0.1:3000`及小雨MAI
 
 ## BR-029 — 个人日程设计
 
-source_ready/consumer_ready，verification blocked。主线27a45a2be已精确集成0053与必要读取/viewport依赖，Web生产新build/health200，主8082运行；原生build及同账号双向业务回读未齐。合并树定向检查通过不覆盖原I失败，[当前交接](2026-09-17-personal-schedule-design.md)。
+本地规则／关联／实例范围／CAS链verified；主线47f12034已push并独立核对，新生产Web BUILD L8fbGtRZ_QJku0p8citoB／PID15582健康200，主包Api3000／Metro8082。同账号Web30→原生30→原生15→Web15已实测，另自建QA仅本次删除及规则清除已实测。共享I仍59失败／206跳过／denied4；实际到期提醒、远程Push、全域离线及共同远程部署保持未验，[当前运行时交接](2026-09-17-personal-schedule-v3-runtime.md)。

@@ -249,4 +249,4 @@ source_ready / consumer_ready / verification blocked；功能eacd7a227、合并0
 
 ## BR-029 — 个人日程设置与详情
 
-source_ready/consumer_ready，verification blocked；0053功能75151e986f/报告66b1a4a473，ROOT精确集成chat-agent27a45a2be，生产Web新build/health200、主8082运行，原生build中。合并树App179/179、Web55/55、types0；原I失败和真实SC05缺项保留，[中文交接](2026-09-17-personal-schedule-design.md)。
+本地规则／关联／实例范围／CAS链verified；0053／0059／0060消费者已安装，0061与0062精确集成chat-agent47f12034且远端同SHA。新生产Web PID15582健康200，同小雨QA跨端保存回读、真实PG200+409／receipt重试，以及Web自建QA单次删除／清除规则通过。共享I59失败／206跳过／denied4、到期通知／远程Push等未验保留，不将部分链验证等同整项目完成；[最新中文交接](2026-09-17-personal-schedule-v3-runtime.md)。
