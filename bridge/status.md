@@ -1,5 +1,11 @@
 # 两端当前状态
 
+## 2026-09-17 原生入口与服务端状态保护收尾
+
+App `5ee62479` 已接入 canonical 活动目录、推荐、本人轮次/座位/签到、交换动作及通知参会者直达；作用域和回执检查覆盖 actor/cookie/baseURL/焦点切换。`c5e7b124` 修复服务端5xx被误报密码错误，真实原生负例已验。Web `d0999d5f` 阻止旧联系人 PATCH 绕过生命周期，保留私有字段和纯legacy兼容；已发布为Production `dpl_AYtJfqdDkAPfQiGoANYzKJ9k2e5t`，正式别名Ready。App2945/2945、Web相关297/297、两端typecheck、iOS导出、Web mapper→App decoder6/6均通过；不是新Production原生正例。
+
+唯一外部阻塞：现有Neon Free本月7.59GB传输超额，SQL与Vercel登录日志一致，尚未升级。新活动正常报名→云端生成/发布→原生交换/通知→新pending本人初始化→Web/Neon回读仍需恢复额度后验收。原$1剩余模型预算已可沿用，Neon按量账单未获授权；未重置关系/密码、清库、重seed或另建项目。发布ID及精确边界见[BR-026](2026-09-16-cloud-five-item-acceptance.md)，以下为历史。
+
 ## 2026-09-17 Xcode 27 原生 Production 验收
 
 Xcode27.0签名构建、iOS26.1 Simulator安装/登录/冷启动已通过；旧工具链阻塞解除。原生和Web共享Production5961cdde＋Neon，完成普通待办完成/恢复双向回读、个人日程双向修改、关系跟进完成→明确日期下一步→Web回读、笔记持久化、任务提醒详情与云端AI历史读取；主办方和主账号切换隔离通过。App初始化`3af3eefe`及旧canonical入口修复`5ac0e9fd`已提交，后者实际详情/私有编辑/正式跟进入口已验，最终定向90/90及typecheck通过；新pending原生提交正例尚缺。详情及证据见[BR-026](2026-09-16-cloud-five-item-acceptance.md)。

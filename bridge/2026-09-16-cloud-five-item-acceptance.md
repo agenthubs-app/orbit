@@ -6,7 +6,31 @@
 - 数据：Neon `workspace:orbit-demo-fixtures`，Web/API 为唯一写入边界，App 经同一 Production HTTPS API。
 - 入口：https://orbit-puce-kappa.vercel.app；待办、笔记、提醒与账户详情不写任何密钥。
 
-## 2026-09-17 原生 Production 验收增量
+## 2026-09-17 “全部做完”收尾增量（最新）
+
+`web_status=source_ready`（本次修复已发布，远程业务复验待Neon恢复），`app_status=consumer_ready`，`verification_status=blocked:Neon transfer quota`；此前Web主流程真实验收证据保留，整体目标未关闭。
+
+Web精确提交 `d0999d5f` 的 `repos/orbits` 子树独立归档发布，没有携带未提交修改或本地env文件。Production `dpl_AYtJfqdDkAPfQiGoANYzKJ9k2e5t`，CLI检查 **Ready / production**，正式别名 https://orbit-puce-kappa.vercel.app 指向 https://orbit-7tece9hc3-liqys-projects-33c8ddec.vercel.app 。构建、TypeScript和49静态页面均通过；Ready不代表数据库已恢复。
+
+- App `5ee62479`：canonical活动参会者目录/推荐、本人轮次/座位/签到、私有参会者详情、request/accept/decline/withdraw及通知精确路径直达。操作使用canonical actor，revision与回执身份校验；超时/冲突重新读取，不自动重发。actor、cookie、baseURL、event/participant及focus切换隔离；不是仅有路由壳。
+- App `c5e7b124`：5xx/non-JSON服务故障不误报INVALID_CREDENTIALS。16/16回归，真实DeviceHub一次Production登录负例显示“登录服务暂时不可用，请稍后再试。”，没有继续反复登录/改密码。
+- Web `d0999d5f`：任何owned Connection或pending/ready联系人禁止旧detail PATCH显式status，包括混合请求零写入；私有字段仍可编辑，备注不顺带改private status。合法version/ready的唯一Connection为阶段权威，pending不提升；异常version失败关闭，正式关系重复候选冲突，未版本化旧fixture上下文兼容。只有无关系/无标记的纯legacy联系人保留旧status写入。
+- 最终本地验收：App完整2945/2945、Web相关297/297，零失败/跳过；两端typecheck通过。Web包括真实隔离PostgreSQL＋真实PATCH handler（认证actor注入，不冒充远程认证）验证冲突409/混合零写入、越权404、备注冷读与纯legacy兼容；生命周期、活动outbox事务和页面编辑同跑。生产库未被这组测试访问。
+- Web行业测试旧失败在未修改HEAD归档上复现（全页alert为3而非1）；缺少新增初始化GET的夹具响应，补明确404未适用响应后重新297/297。早期26项8失败及后续270项1失败日志保留，没有隐去失败或把跳过计为通过。
+- 真实Web mapper/detail service→App decoder六种状态6/6；iOS export成功，Hermes产物SHA256 `541438c73ea0ec18c0098744251d7c87881ef0eed58b42775669d0be58404326`。App仍使用已有签名Debug二进制＋Metro8081，不冒充新的签名Release/实体设备验收。
+- GitNexus `5819b953`排除生成的Pods/build；最终Web索引刷新后all/staged图检查73/59 symbols、14/11 files，无partial/truncated。图未解析到affected流程不表示无影响，保留索引9034入口及callee截断警告，以实际路由/服务调用与上述回归补证。App此前staged181 symbols/68流程风险CRITICAL已披露并验证，不以Web低风险覆盖。
+- 增量索引的Property全文索引曾失败，`--repair-fts`仍失败；按工具恢复建议`--force --index-only`重建后成功（35.8s，100926 nodes/219100 edges），未改用户AGENTS/CLAUDE。全过程日志保留；入口/动态调用覆盖限制依然存在，不能因FTS恢复而消除。
+- 证据目录 `/tmp/orbit-native-closure.c0cCG7`；App全量、Web回归、类型检查、PG/HTTP、跨端和图分析日志均在此。用户自己的根AGENTS/CLAUDE改动未纳入提交。
+
+### 唯一外部阻塞与恢复动作
+
+Neon项目 `wispy-smoke-15186904` / Production `br-shy-rain-b3281a9u` Free月传输7.59GB，SQL明确data transfer quota；Vercel mobile credentials日志同因，登录500。Billing仍Free，未购买Launch，也未另建库绕额度。新原生QA注册请求失败，账号是否创建未知：恢复后按确切测试邮箱先查，禁止假定不存在后重复创建或改密码。
+
+用户“全部做完”沿用原$1剩余模型费，01:19:53Z余额63.51CNY/基线63.62，账户差额0.11（包含并发使用），保守停线5CNY；本次无新增模型调用。Neon独立按量账单未获同意，不能从模型预算或发布许可推导购买权限。
+
+恢复现有库额度后：只读确认数据/账号→新建独立空测试活动（dry-run/hash/事务，拒绝覆盖）→两账号正常报名/画像→有界云端生成/发布→原生目录/推荐/轮次/座位/签到→双方交换、通知直达→新pending本人选择→Web/Neon同记录回读、异账号隔离及余额结算。未实施上述新活动链，不能记已完成；不重置已初始化关系、不编造目标或日期。无依赖的代码/自动化/文档工作完成后，仅这一真实Production正例依赖额度恢复。
+
+## 2026-09-17 原生 Production 首轮验收增量（历史）
 
 用户“xcode也ok了那部分验收也做一下”后实际运行。Web/API 继续使用 `5961cdde` / `dpl_3av2kpWJE4NBbnTA2SdfFLagVJwX`，未重新部署、清库、重 seed 或修改活动日期。App 增量 `3af3eefe`、`5ac0e9fd`；后者收口旧 fixture 的 canonical 编辑入口并移除 preview-only 看板阶段写操作。不能据此宣称所有原生范围通过。
 
