@@ -12,7 +12,7 @@
 
 用户已批准[读取成本治理设计案 Rev 4]，要求逐个 Phase 执行，三次归位统一用 `merge` 不用 rebase。
 Phase 0 共三项：0067 生产源码归位（**completed**）→ 0068 phoneweb 基座归位（**completed**）→ 0069 增量同步存量归位（**blocked**，核心已落地、接线待 0075/0076）。
-后续 Phase A 量尺（0070，completed）、B 止血（0071 completed，0072 running，0073–0074）、C 收口扩面（0075–0076）、D Web 本地优先（0077–0078）、
+后续 Phase A 量尺（0070，completed）、B 止血（0071 completed，0072 completed，0073–0074）、C 收口扩面（0075–0076）、D Web 本地优先（0077–0078）、
 E 结构（0079–0080，需单独批准）依次领取，不并行。
 
 | Sprint | 目标 | 进入条件与当前事实 | 状态 |
@@ -22,7 +22,7 @@ E 结构（0079–0080，需单独批准）依次领取，不并行。
 | [0069](0069-incremental-sync-baseline/GOAL.md) | sprint-0033 增量同步存量归位主线，主线 v2 本地 schema 不倒退 | run-01 结束。merge `ca8c50b15`（父 `daa4be352`+`d0333d2f0`）已进 `chat-agent`，落地 29 文件：服务端 `/api/sync` + cursor/read-service/migrations，App sync-client/coordinator/freshness/hook + v2 仓库移植。**屏幕接线全部退回**：分支 coordinator 无 epoch 来源（v2 要求 activeReadScopes，来源是 0075 的 lease）；分支把 sync 写锁触发器打进基础 schema 砸掉 0060–0062 共 26 项，store/lifecycle/notes 全部退回。App 3461/0fail、orbits 86fail=0067 基线、typecheck 0/0；`/api/sync` 认证 200。SC-05 按构造不可达；6 个测试文件延后 0045/0075/0076。0033 状态不变 | blocked |
 | [0070](0070-flow-topology-and-read-baseline/GOAL.md) | 三层数据流测试拓扑（本机 PG 扮演云端 · 客户端镜像只装本人数据）+ 读取成本基线闸门 | 依赖 0067（completed）；不依赖 0069 延后项，只用其已落地的 read-service。基线 `59f33a9ec`，Planner SHA 221eb101。合并 `dd9dd5a88`；基线冻结：contacts.list 6 SQL/1548 行/1.37 MB，dashboard 1 SQL/5068 行/3.57 MB。档位 L + 一次 App 全量（test glob 变更）。只用本机 PG | completed |
 | [0071](0071-read-budget-guardrails/GOAL.md) | 读取预算护栏：`listRecords.limit` 必填（`number \| "unbounded"`）+ Postgres LIMIT 下推 + 无上限读取棘轮 + 笔记列表投影 | 依赖 0070（completed）。基线 `4507b3e66`，Planner SHA b25f78a1。176 处调用/77 文件机械补 `"unbounded"`，零行为变化；档位 H，orbits 全量前后对照。只用本机 PG。合并 `deda00f89`；棘轮冻结 76 文件/174 处；notes.list 14 134 → 12 116 B；暴露并修复 0067 遗留的注册测试写 dev 库问题 | completed |
-| [0072](0072-domain-watermark-conditional-reads/GOAL.md) | 域水位线 + 条件请求：6 条 GET 路由（tasks/notes/schedule-items/contacts/connections/events）未变即 304、零业务读；App client 带 If-None-Match 并内存回放 | 依赖 0071（completed）。基线 `d45474da8`，Planner SHA c2d8e12a。授权纪元用 accounts/auth_users/permissions 水位替代（lease 属 0075）；dashboard/profile 不接。档位 H，两端全量对照。只用本机 PG | running |
+| [0072](0072-domain-watermark-conditional-reads/GOAL.md) | 域水位线 + 条件请求：6 条 GET 路由（tasks/notes/schedule-items/contacts/connections/events）未变即 304、零业务读；App client 带 If-None-Match 并内存回放 | 依赖 0071（completed）。基线 `d45474da8`，Planner SHA c2d8e12a。授权纪元用 accounts/auth_users/permissions 水位替代（lease 属 0075）；dashboard/profile 不接。档位 H，两端全量对照。只用本机 PG。合并后 Simulator/phoneweb 二次拉取 304 实证；App 全量 3489/3489、orbits 零新增失败 | completed |
 
 已查清的前置事实：生产切库已于 2026-09-17 完成并正在服务（`www.orbitailink.com` 200、`/api/health` mode=live，
 新 Neon `orange-forest-30108072` 用量 34.6 MB／386.75 kB），旧 Vercel 项目 `paused=true`。
