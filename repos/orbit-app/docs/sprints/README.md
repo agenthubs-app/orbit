@@ -29,6 +29,11 @@ E 结构（0079–0080，需单独批准）依次领取，不并行。
 | [0076](0076-app-consumer-expansion-batch-1/GOAL.md) | App 消费者扩面第一批：原生待办页镜像优先（租约→域页），Web 保持网络读；棘轮 174→173 | 依赖 0071、0075（completed）。基线 `cadbb2e10`，Planner SHA 9283afe9。服务端 tasks 读路径不改（canonical payload 嵌套，payloadAccountId 不可用）。档位 App H / orbits L。Simulator 第二次进入待办 0 请求、勾选后镜像确认 52/12；修掉 v2 域页下发旧格式行的问题 | completed |
 | [0077](0077-web-local-mirror-storage/GOAL.md) | Web 本地镜像存储层：expo-sqlite web（wa-sqlite+OPFS）分库 + Web Crypto 不可导出密钥 + 正文 AES-GCM 落盘 + 白名单 tasks/personal-schedule + 威胁模型文档；不可用时静默 online-only | 依赖 0068、0069、0075（completed）。基线 `73b1b7c8b`，Planner SHA c475686b。先 spike 证明引擎可用，不过则 blocked；屏幕接入留 0078。档位 App H。真实 Chromium：OPFS 开库、AES-GCM 密文落盘、密钥不可导出、换账号／登出 purge、三种退化态；phoneweb 设置页安全／非安全源截图；修掉 Web 入口缺 initialize、Expo __common 抽走 Worker 模块、OPFS 64 字节路径名三个问题 | completed |
 | [0078](0078-web-consumer-incremental-sync/GOAL.md) | Web 消费者接入增量同步：协调器 manifest 水位线门控（两端共享）+ 服务端 manifest 304；Web `/tasks` 镜像优先 + 后台增量、能力不可用走网络；离线 stale／空镜像失败显错／登出清库／SSR 不依赖镜像 | 依赖 0077（completed）。基线 `bc39eeb24`，Planner SHA 435ed9c4。本地 schema v2→v3（游标加水位线列）；个人日程 Web 列表消费者留第二批。档位 App H / orbits M。phoneweb `/tasks` 第一次 lease→manifest→域页、第二次 0 同步请求；manifest 304 真实 PG 与本机 Next 验证；修掉协调器"未绑定授权逼同步""无镜像先要租约"两个问题 | completed |
+| [0081](0081-portrait-generation-422/GOAL.md) | 活动画像：答满 8 题后 persona 预览 422，抓 `portraitCode` 后修复，拒绝时界面透出原因 | TODO 第 1 条。已定位到 `answer-proofs.ts` 校验分支；首要怀疑预填题 responseId 与服务端不一致。档位 App L / orbits M。基线 `12a9f9653`，Planner SHA 726a8b6a | planned |
+| [0082](0082-event-title-cover-authority/GOAL.md) | 活动标题与封面唯一来源：首页推荐活动中文标题 + 封面；删列表页挑中文段与硬编码封面表 | TODO 第 5 条。默认权威 = canonical 头表标题 + 封面入数据；先服务端后前端。档位 orbits M / App M。基线 `12a9f9653`，Planner SHA 4cda728a | planned |
+| [0083](0083-profile-suggestions-localization/GOAL.md) | 资料更新建议全部中文：服务端规则文案三语字典按账号语言输出；摘录按用户决定处理 | TODO 第 3 条。进入条件：用户决定是否连种子英文对话／记忆一起中文化（默认不改种子）。档位 orbits M / App L。基线 `12a9f9653`，Planner SHA db35473f | planned |
+| [0084](0084-profile-page-hierarchy-audit/GOAL.md) | 资料类页面层级：全面截图审核 → 设计案 → 统一 `ProfilePagePrimitives` 四类元素规格 | TODO 第 2 条。含用户批准门（设计案）；审核范围含设置／账号／活动详情等同结构页面。档位 App H。基线 `12a9f9653`，Planner SHA 81db145c | planned |
+| [0085](0085-iorbit-entity-read-show-write/GOAL.md) | IORBIT 五实体读／展示／写：实体小卡片、草稿卡确认状态机、五种创建、去掉"AI 运行依据" | TODO 第 4 条。含用户批准门（设计案须回答卡片规格／状态机／写入接口／prompt vs workflow）；设计案若超一个 Sprint 则拆 0086。档位 orbits H / App H。基线 `12a9f9653`，Planner SHA f45ef0b8 | planned |
 
 已查清的前置事实：生产切库已于 2026-09-17 完成并正在服务（`www.orbitailink.com` 200、`/api/health` mode=live，
 新 Neon `orange-forest-30108072` 用量 34.6 MB／386.75 kB），旧 Vercel 项目 `paused=true`。
@@ -51,6 +56,10 @@ Phone44文件消费e2a＋六文件必要修复 `8d87be6ff`／TREE `d09c602bb` �
 3. [目标模板](templates/GOAL.md)、[Planner 模板](templates/PLANNER.md)、[总结模板](templates/REPORT.md)用于后续新增 Sprint；只有执行过才创建实际 `REPORT.md`。
 4. 需求和历史证据仍见[原剩余计划](../superpowers/plans/2026-09-13-app-remaining-functionality-and-connectivity.md)与[连通性记录](../verification/2026-09-13-app-connectivity.md)。它们不再决定本目录的执行角色／频率。
 5. [实施顺序](EXECUTION_ORDER.md)：2026-09-14 用户要求按依赖减少重复修改；离线期间继续无需新决定的工作，不再提问，不越过独立审批。
+
+### 2026-09-18 新增 TODO 收口 Sprint（0081–0085）
+
+用户在 `TODO.md` 记录了 5 个问题，拆成 5 个 Sprint，基线 `chat-agent` = `12a9f9653`，全部 planned、run_count = 0，未领取。建议顺序：0081（小修复）→ 0082 → 0083（等用户答一个边界问题）→ 0084（截图审核 + 设计案批准门）→ 0085（设计案批准门，改 agent 行动方式）。0084／0085 按"先出设计案再实现"规则，设计案未批准不进实现步。编号跳过为 Phase E 保留的 0079／0080。
 
 ## 目录契约
 
