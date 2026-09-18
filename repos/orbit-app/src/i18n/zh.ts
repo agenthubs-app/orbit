@@ -240,6 +240,7 @@ export const zh = {
   "profile.suggestionsUnavailable": "资料建议未能读取",
   "profile.suggestionsPending": "资料建议正在准备",
   "profile.suggestionsEmpty": "暂无资料建议",
+  "profile.suggestionEvidenceSource": "来源原文",
   "profile.retrySuggestions": "重试资料建议",
   "profile.currentValue": "当前",
   "profile.suggestedValue": "建议",

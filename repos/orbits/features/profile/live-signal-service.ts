@@ -197,12 +197,107 @@ function createSuggestion(input: {
   };
 }
 
+/**
+ * Rule copy is composed here, so it must exist in every account language.
+ * Evidence excerpts are source data and stay in their original wording; the
+ * UI labels them as such rather than translating a quotation.
+ */
+export type ProfileSignalLanguage = "zh" | "ja" | "en";
+
+export function profileSignalLanguage(value: unknown): ProfileSignalLanguage {
+  return value === "ja" || value === "en" ? value : "zh";
+}
+
+const SIGNAL_COPY = {
+  chat: {
+    rationale: {
+      zh: "最近的沟通记录反复围绕具体的跟进决定，适合写进你想寻找的对象。",
+      ja: "最近のやり取りは具体的なフォローアップの判断を繰り返し話題にしています。",
+      en: "Recent chat notes repeatedly frame Orbit's value around concrete follow-up decisions.",
+    },
+    sourceLabel: { zh: "沟通信号", ja: "コミュニケーション信号", en: "Chat signal" },
+    value: { zh: "能一起推进跟进的伙伴", ja: "フォローアップを一緒に進める相手", en: "follow-up collaborators" },
+  },
+  activity: {
+    rationale: {
+      zh: "最近的互动记忆里出现多次跟进请求，建议复核更短的跟进周期。",
+      ja: "最近のやり取りの記録にフォローアップ依頼が複数あり、より短い間隔の見直しを提案します。",
+      en: "Recent interaction memory includes follow-up requests, so the operator should review a shorter follow-up window.",
+    },
+    sourceLabel: { zh: "活动信号", ja: "アクティビティ信号", en: "Activity signal" },
+    value: {
+      zh: "搭建有据可查的关系跟进流程。",
+      ja: "根拠の残る関係フォローアップの仕組みづくり。",
+      en: "Building sourced relationship follow-up workflows.",
+    },
+  },
+  contact: {
+    rationale: {
+      zh: "关系最强的几条连接集中在运营者、创业者和社群引荐路径上。",
+      ja: "つながりの強い相手は運営者・創業者・コミュニティ紹介の経路に集中しています。",
+      en: "The strongest generated relationship graph edges cluster around operators, founders, and community introduction paths.",
+    },
+    sourceLabel: { zh: "人脉信号", ja: "人脈信号", en: "Contact signal" },
+    value: { zh: "以活动为由的引荐", ja: "イベントを起点とした紹介", en: "event-grounded introductions" },
+  },
+  empty: {
+    summary: {
+      zh: "暂时没有可复核的资料建议。",
+      ja: "確認できるプロフィール提案はまだありません。",
+      en: "No sourced profile suggestions are ready for review.",
+    },
+    nextAction: {
+      zh: "在出现有来源的信号之前，资料保持不变。",
+      ja: "根拠のある信号が出るまで、プロフィールは変更しません。",
+      en: "Keep the profile unchanged until a sourced signal creates a suggestion.",
+    },
+  },
+  ready: {
+    summary: {
+      zh: "有 {count} 条有来源的资料建议待你复核。",
+      ja: "根拠のあるプロフィール提案が {count} 件、確認待ちです。",
+      en: "{count} sourced profile suggestions are waiting for operator review.",
+    },
+    nextAction: {
+      zh: "逐条复核后再决定是否写入资料。",
+      ja: "1 件ずつ確認してからプロフィールに反映してください。",
+      en: "Review each suggestion before applying any change to the profile.",
+    },
+  },
+  accepted: {
+    nextAction: {
+      zh: "确认保存资料后，这条修改才会生效。",
+      ja: "プロフィールの保存を確認してから反映されます。",
+      en: "Apply this patch only after the operator confirms the profile save.",
+    },
+  },
+  dismissed: {
+    nextAction: {
+      zh: "资料保持不变，继续复核其余建议。",
+      ja: "プロフィールは変更せず、残りの提案を確認します。",
+      en: "Keep the profile unchanged and continue reviewing pending suggestions.",
+    },
+  },
+} as const;
+
+function copy(
+  group: keyof typeof SIGNAL_COPY,
+  key: string,
+  language: ProfileSignalLanguage,
+): string {
+  const entry = (SIGNAL_COPY[group] as Record<string, Record<ProfileSignalLanguage, string>>)[key];
+  if (!entry) throw new Error(`Missing profile signal copy for ${group}.${key}`);
+  return entry[language];
+}
+
 function buildSuggestions(input: {
   graph: LiveProfileSignalGraph;
   now: string;
   profile: LiveProfileSignalProfileRecord | null;
   provider: LiveProfileSignalProvider;
+  language: ProfileSignalLanguage;
 }): readonly ProfileUpdateSuggestion[] {
+  const language = input.language;
   const latestMessage = [...input.graph.messages].sort((left, right) =>
     right.occurredAt.localeCompare(left.occurredAt),
   )[0];
@@ -244,11 +339,10 @@ function buildSuggestions(input: {
         }),
         id: `live-profile-suggestion-chat-${latestMessage.id}`,
         provenance: suggestionProvenance,
-        rationale:
-          "Recent chat notes repeatedly frame Orbit's value around concrete follow-up decisions.",
+        rationale: copy("chat", "rationale", language),
         sourceKind: "chat",
-        sourceLabel: "Chat signal",
-        suggestedValue: ["follow-up collaborators"],
+        sourceLabel: copy("chat", "sourceLabel", language),
+        suggestedValue: [copy("chat", "value", language)],
         targetProfileField: "seeking",
       }),
     );
@@ -284,11 +378,10 @@ function buildSuggestions(input: {
         }),
         id: `live-profile-suggestion-activity-${latestFollowUpMemory.id}`,
         provenance: suggestionProvenance,
-        rationale:
-          "Recent interaction memory includes follow-up requests, so the operator should review a shorter follow-up window.",
+        rationale: copy("activity", "rationale", language),
         sourceKind: "activity",
-        sourceLabel: "Activity signal",
-        suggestedValue: "Building sourced relationship follow-up workflows.",
+        sourceLabel: copy("activity", "sourceLabel", language),
+        suggestedValue: copy("activity", "value", language),
         targetProfileField: "bio",
       }),
     );
@@ -326,11 +419,10 @@ function buildSuggestions(input: {
         }),
         id: `live-profile-suggestion-contact-${strongestConnection.id}`,
         provenance: suggestionProvenance,
-        rationale:
-          "The strongest generated relationship graph edges cluster around operators, founders, and community introduction paths.",
+        rationale: copy("contact", "rationale", language),
         sourceKind: "contact",
-        sourceLabel: "Contact signal",
-        suggestedValue: ["event-grounded introductions"],
+        sourceLabel: copy("contact", "sourceLabel", language),
+        suggestedValue: [copy("contact", "value", language)],
         targetProfileField: "offering",
       }),
     );
@@ -346,6 +438,7 @@ function payload(input: {
   now: string;
   provider: LiveProfileSignalProvider;
   state?: ProfileSignalReviewQueueState;
+  language: ProfileSignalLanguage;
 }): ProfileSignalReviewQueuePayload {
   const profile = stableProfile(input.graph, input.actorId);
   const generatedSuggestions = buildSuggestions({
@@ -353,6 +446,7 @@ function payload(input: {
     now: input.now,
     profile,
     provider: input.provider,
+    language: input.language,
   });
   const decisions = new Map(
     (input.graph.suggestionDecisions ?? []).map(decision => [decision.suggestionId, decision]),
@@ -379,19 +473,18 @@ function payload(input: {
     return {
       state: "empty",
       suggestions: [],
-      summary: "No sourced profile suggestions are ready for review.",
+      summary: copy("empty", "summary", input.language),
       provenance: signalProvenance,
-      nextAction:
-        "Keep the profile unchanged until a sourced signal creates a suggestion.",
+      nextAction: copy("empty", "nextAction", input.language),
     };
   }
 
   return {
     state: input.state ?? "success",
     suggestions: visibleSuggestions,
-    summary: `${visibleSuggestions.length} sourced profile suggestions are waiting for operator review.`,
+    summary: copy("ready", "summary", input.language).replace("{count}", String(visibleSuggestions.length)),
     provenance: signalProvenance,
-    nextAction: "Review each suggestion before applying any change to the profile.",
+    nextAction: copy("ready", "nextAction", input.language),
   };
 }
 
@@ -402,6 +495,7 @@ function acceptSuggestion(input: {
   provider: LiveProfileSignalProvider;
   mutationId?: string;
   acceptedAt?: string;
+  language: ProfileSignalLanguage;
 }): ProfileSignalSuggestionAcceptResult {
   const suggestion = input.payload.suggestions.find(
     (candidate) => candidate.id === input.id,
@@ -438,8 +532,7 @@ function acceptSuggestion(input: {
     acceptedAt: input.acceptedAt ?? input.now,
     ...(input.mutationId ? { mutationId: input.mutationId } : {}),
     provenance: suggestion.provenance,
-    nextAction:
-      "Apply this patch only after the operator confirms the profile save.",
+    nextAction: copy("accepted", "nextAction", input.language),
   });
 }
 
@@ -447,6 +540,7 @@ function dismissedSuggestion(input: {
   suggestion: ProfileUpdateSuggestion;
   dismissedAt: string;
   mutationId: string;
+  language: ProfileSignalLanguage;
 }): { success: true; data: ProfileSignalSuggestionDismissedPayload } {
   return {
     success: true,
@@ -456,7 +550,7 @@ function dismissedSuggestion(input: {
       dismissedAt: input.dismissedAt,
       mutationId: input.mutationId,
       provenance: input.suggestion.provenance,
-      nextAction: "Keep the profile unchanged and continue reviewing pending suggestions.",
+      nextAction: copy("dismissed", "nextAction", input.language),
     },
   };
 }
@@ -475,6 +569,7 @@ export function createLiveProfileSignalReviewQueueService({
 }: LiveProfileSignalReviewQueueServiceOptions): ProfileSignalReviewQueueService {
   async function readPayload(
     actorId: string,
+    language: ProfileSignalLanguage,
     state?: ProfileSignalReviewQueueState,
   ): Promise<ProfileSignalReviewQueueResult> {
     const capturedNow = now();
@@ -497,6 +592,7 @@ export function createLiveProfileSignalReviewQueueService({
         now: capturedNow,
         provider,
         state: state === "empty" ? undefined : state,
+        language,
       }),
     );
   }
@@ -504,6 +600,7 @@ export function createLiveProfileSignalReviewQueueService({
   return {
     async listUpdateSuggestions(input = {}) {
       const actorId = input.actorId?.trim();
+      const language = profileSignalLanguage(input.language);
 
       if (!actorId) {
         return failure("PROFILE_SIGNAL_ACTOR_REQUIRED", {
@@ -514,9 +611,9 @@ export function createLiveProfileSignalReviewQueueService({
 
       switch (input.scenario) {
         case "empty":
-          return readPayload(actorId, "empty");
+          return readPayload(actorId, language, "empty");
         case "pending":
-          return readPayload(actorId, "pending");
+          return readPayload(actorId, language, "pending");
         case "failure":
           return failure("PROFILE_SIGNAL_REVIEW_QUEUE_FAILED", {
             now: now(),
@@ -524,13 +621,14 @@ export function createLiveProfileSignalReviewQueueService({
           });
         case "success":
         default:
-          return readPayload(actorId);
+          return readPayload(actorId, language);
       }
     },
 
     async acceptUpdateSuggestion(id, options = {}) {
       const capturedNow = now();
       const actorId = options.actorId?.trim();
+      const language = profileSignalLanguage(options.language);
 
       if (!actorId) {
         return failure("PROFILE_SIGNAL_ACTOR_REQUIRED", {
@@ -554,6 +652,7 @@ export function createLiveProfileSignalReviewQueueService({
         graph,
         now: capturedNow,
         provider,
+        language,
       });
       const mutationId = decisionMutationId(id, "accepted", options.mutationId);
       const responseMutationId = options.mutationId?.trim() || undefined;
@@ -570,6 +669,7 @@ export function createLiveProfileSignalReviewQueueService({
         if (existing.status === "accepted" && existing.mutationId === mutationId) {
           return acceptSuggestion({
             id,
+            language,
             now: capturedNow,
             acceptedAt: existing.decidedAt,
             mutationId: responseMutationId,
@@ -600,6 +700,7 @@ export function createLiveProfileSignalReviewQueueService({
       }
       return acceptSuggestion({
         id,
+        language,
         now: capturedNow,
         acceptedAt: savedDecision.decidedAt,
         mutationId: responseMutationId,
@@ -611,13 +712,14 @@ export function createLiveProfileSignalReviewQueueService({
     async dismissUpdateSuggestion(id, options = {}): Promise<ProfileSignalSuggestionDismissResult> {
       const capturedNow = now();
       const actorId = options.actorId?.trim();
+      const language = profileSignalLanguage(options.language);
       if (!actorId) return failure("PROFILE_SIGNAL_ACTOR_REQUIRED", { now: capturedNow, provider });
       if (!provider) return failure("PROFILE_SIGNAL_LIVE_STORE_UNCONFIGURED", {
         evidenceIds: [unconfiguredEvidenceId], now: capturedNow, provider,
       });
       const graphResult = provider.readSignalGraph(actorId);
       const graph = isThenable(graphResult) ? await graphResult : graphResult;
-      const queuePayload = payload({ actorId, graph, now: capturedNow, provider });
+      const queuePayload = payload({ actorId, graph, now: capturedNow, provider, language });
       const suggestion = queuePayload.suggestions.find(candidate => candidate.id === id);
       if (!suggestion) return failure("PROFILE_SIGNAL_SUGGESTION_NOT_FOUND", {
         evidenceIds: [`evidence:profile-signal-suggestion-not-found:${id}`], now: capturedNow, provider,
@@ -626,7 +728,7 @@ export function createLiveProfileSignalReviewQueueService({
       const existing = graph.suggestionDecisions?.find(decision => decision.suggestionId === id);
       if (existing) {
         if (existing.status === "dismissed" && existing.mutationId === mutationId) {
-          return dismissedSuggestion({ suggestion, dismissedAt: existing.decidedAt, mutationId });
+          return dismissedSuggestion({ suggestion, dismissedAt: existing.decidedAt, mutationId, language });
         }
         return failure("PROFILE_SIGNAL_SUGGESTION_ALREADY_RESOLVED", {
           evidenceIds: [`evidence:profile-signal-suggestion-already-resolved:${id}`], now: capturedNow, provider,
@@ -640,7 +742,7 @@ export function createLiveProfileSignalReviewQueueService({
           evidenceIds: [`evidence:profile-signal-suggestion-already-resolved:${id}`], now: capturedNow, provider,
         });
       }
-      return dismissedSuggestion({ suggestion, dismissedAt: savedDecision.decidedAt, mutationId });
+      return dismissedSuggestion({ suggestion, dismissedAt: savedDecision.decidedAt, mutationId, language });
     },
   };
 }

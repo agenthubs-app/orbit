@@ -293,6 +293,7 @@ export const messageKeys = [
   "profile.suggestionsUnavailable",
   "profile.suggestionsPending",
   "profile.suggestionsEmpty",
+  "profile.suggestionEvidenceSource",
   "profile.retrySuggestions",
   "profile.currentValue",
   "profile.suggestedValue",
