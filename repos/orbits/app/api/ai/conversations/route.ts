@@ -536,6 +536,12 @@ async function applyEntityDraft(
     return proposedEntityDraft ? { data: publicData, success: true } : result;
   }
 
+  // Build nothing for an ordinary turn. Constructing the draft service builds a
+  // Postgres runtime and five domain services, and most turns neither propose a
+  // record nor answer a card.
+  const intent = readEntityDraftIntent(input.message ?? "");
+  if (!proposedEntityDraft && !intent) return result;
+
   const service = createConfiguredEntityDraftService(actorId);
   if (!service) {
     return proposedEntityDraft ? { data: publicData, success: true } : result;
@@ -559,9 +565,7 @@ async function applyEntityDraft(
     };
   }
 
-  // No new proposal: the user may be answering the card that is already open.
-  const intent = readEntityDraftIntent(input.message ?? "");
-  if (!intent) return result;
+  // No new proposal: the user is answering the card that is already open.
   const pending = await service.pending({ actorId, conversationId });
   if (!pending) return result;
 
