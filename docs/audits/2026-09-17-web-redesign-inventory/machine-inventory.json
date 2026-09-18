@@ -1,0 +1,5599 @@
+{
+  "evidence": "static-source-only; no runtime verdicts inherited",
+  "stats": {
+    "commit": "e64357214a3bad99029a629558b7099d23819e5f",
+    "pages": 64,
+    "productRoutes": 56,
+    "devRoutes": 8,
+    "scopedModules": 694,
+    "detailModules": 228,
+    "uniqueControls": 1220,
+    "copyFragments": 10525,
+    "overlayRoots": 12,
+    "apiHandlers": 268,
+    "groups": [
+      {
+        "group": "01-entry-shell",
+        "files": 57,
+        "controls": 308
+      },
+      {
+        "group": "02-ai",
+        "files": 12,
+        "controls": 113
+      },
+      {
+        "group": "03-contacts",
+        "files": 32,
+        "controls": 159
+      },
+      {
+        "group": "04-acquisition",
+        "files": 15,
+        "controls": 91
+      },
+      {
+        "group": "05-events",
+        "files": 38,
+        "controls": 244
+      },
+      {
+        "group": "06-operations",
+        "files": 12,
+        "controls": 78
+      },
+      {
+        "group": "07-schedule-tasks-chat",
+        "files": 31,
+        "controls": 107
+      },
+      {
+        "group": "08-profile-settings-admin",
+        "files": 20,
+        "controls": 71
+      },
+      {
+        "group": "09-dev",
+        "files": 11,
+        "controls": 49
+      }
+    ]
+  },
+  "routeEntries": [
+    {
+      "route": "/",
+      "file": "repos/orbits/app/page.tsx",
+      "group": "01-entry-shell",
+      "redirects": [],
+      "params": {
+        "queryParameters": [
+          "lang"
+        ],
+        "hashEvidenceFiles": [
+          "repos/orbits/app/(app)/app/orbit-language-context.tsx",
+          "repos/orbits/app/(app)/app/orbit-language-core.ts",
+          "repos/orbits/app/(app)/app/orbit-starfield-language.ts"
+        ],
+        "deepLinkEvidenceFiles": []
+      }
+    },
+    {
+      "route": "/app",
+      "file": "repos/orbits/app/(app)/app/page.tsx",
+      "group": "01-entry-shell",
+      "redirects": [
+        "\"/app/home\""
+      ],
+      "params": {
+        "queryParameters": [
+          "lang"
+        ],
+        "hashEvidenceFiles": [
+          "repos/orbits/app/(app)/app/orbit-language-core.ts",
+          "repos/orbits/app/(app)/app/orbit-starfield-language.ts"
+        ],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/account/forgot-password",
+      "file": "repos/orbits/app/(app)/app/account/forgot-password/page.tsx",
+      "group": "01-entry-shell",
+      "redirects": [
+        "normalizeOrbitAuthReturnPath(resolvedSearchParams?.next)"
+      ],
+      "params": {
+        "queryParameters": [
+          "created",
+          "email",
+          "next",
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [
+          "repos/orbits/features/auth/app-auth-routing.ts"
+        ],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/account/forgot-password/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/account/login",
+      "file": "repos/orbits/app/(app)/app/account/login/page.tsx",
+      "group": "01-entry-shell",
+      "redirects": [
+        "normalizeOrbitAuthReturnPath(resolvedSearchParams?.next)"
+      ],
+      "params": {
+        "queryParameters": [
+          "created",
+          "email",
+          "next",
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [
+          "repos/orbits/features/auth/app-auth-routing.ts"
+        ],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/account/login/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/account/mobile-google",
+      "file": "repos/orbits/app/(app)/app/account/mobile-google/page.tsx",
+      "group": "01-entry-shell",
+      "redirects": [],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": []
+      }
+    },
+    {
+      "route": "/app/account/reset-password",
+      "file": "repos/orbits/app/(app)/app/account/reset-password/page.tsx",
+      "group": "01-entry-shell",
+      "redirects": [],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [
+          "repos/orbits/app/(app)/app/account/reset-password/reset-password-form.tsx"
+        ],
+        "deepLinkEvidenceFiles": []
+      }
+    },
+    {
+      "route": "/app/account/signup",
+      "file": "repos/orbits/app/(app)/app/account/signup/page.tsx",
+      "group": "01-entry-shell",
+      "redirects": [
+        "normalizeOrbitAuthReturnPath(resolvedSearchParams?.next)"
+      ],
+      "params": {
+        "queryParameters": [
+          "created",
+          "email",
+          "next",
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [
+          "repos/orbits/features/auth/app-auth-routing.ts"
+        ],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/account/signup/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/admin",
+      "file": "repos/orbits/app/(app)/app/admin/page.tsx",
+      "group": "08-profile-settings-admin",
+      "redirects": [
+        "\"/app/account/login?next=%2Fapp%2Fadmin\""
+      ],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/admin/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/admin/access",
+      "file": "repos/orbits/app/(app)/app/admin/access/page.tsx",
+      "group": "08-profile-settings-admin",
+      "redirects": [],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": []
+      }
+    },
+    {
+      "route": "/app/admin/events",
+      "file": "repos/orbits/app/(app)/app/admin/events/page.tsx",
+      "group": "05-events",
+      "redirects": [
+        "\"/app/account/login?next=%2Fapp%2Fadmin%2Fevents\""
+      ],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/admin/events/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/agent",
+      "file": "repos/orbits/app/(app)/app/agent/page.tsx",
+      "group": "02-ai",
+      "redirects": [
+        "\"/app/account/login?next=%2Fapp%2Fagent\""
+      ],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed",
+          "q",
+          "session"
+        ],
+        "hashEvidenceFiles": [
+          "repos/orbits/features/events/event-operations/storage/postgres-repository.ts",
+          "repos/orbits/features/events/registration/canonical-migration/activation-audit-contract.ts"
+        ],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/agent/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/chat",
+      "file": "repos/orbits/app/(app)/app/chat/page.tsx",
+      "group": "07-schedule-tasks-chat",
+      "redirects": [
+        "`/app/agent${suffix}`"
+      ],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/chat/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/contacts",
+      "file": "repos/orbits/app/(app)/app/contacts/page.tsx",
+      "group": "03-contacts",
+      "redirects": [
+        "\"/app/account/login?next=%2Fapp%2Fcontacts\""
+      ],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed",
+          "query"
+        ],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/contacts/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/contacts/[id]",
+      "file": "repos/orbits/app/(app)/app/contacts/[id]/page.tsx",
+      "group": "03-contacts",
+      "redirects": [
+        "`/app/account/login?next=${encodeURIComponent(`/app/contacts/${contactId}`)}`,"
+      ],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/contacts/[id]/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/contacts/all-actions",
+      "file": "repos/orbits/app/(app)/app/contacts/all-actions/page.tsx",
+      "group": "03-contacts",
+      "redirects": [],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": []
+      }
+    },
+    {
+      "route": "/app/contacts/analysis/[dimension]/[bucketId]",
+      "file": "repos/orbits/app/(app)/app/contacts/analysis/[dimension]/[bucketId]/page.tsx",
+      "group": "03-contacts",
+      "redirects": [
+        "`/app/account/login?next=${encodeURIComponent(next)}`"
+      ],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/contacts/analysis/[dimension]/[bucketId]/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/contacts/dashboard",
+      "file": "repos/orbits/app/(app)/app/contacts/dashboard/page.tsx",
+      "group": "03-contacts",
+      "redirects": [
+        "\"/app/account/login?next=%2Fapp%2Fcontacts%2Fdashboard\""
+      ],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/contacts/dashboard/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/contacts/graph",
+      "file": "repos/orbits/app/(app)/app/contacts/graph/page.tsx",
+      "group": "03-contacts",
+      "redirects": [
+        "withOrbitLanguageHref(\"/app/contacts/dashboard?tab=structure\", language)"
+      ],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [
+          "repos/orbits/app/(app)/app/orbit-language-core.ts"
+        ],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/contacts/graph/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/contacts/intros",
+      "file": "repos/orbits/app/(app)/app/contacts/intros/page.tsx",
+      "group": "03-contacts",
+      "redirects": [
+        "\"/app/account/login?next=%2Fapp%2Fcontacts%2Fintros\""
+      ],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed",
+          "query"
+        ],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/contacts/intros/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/contacts/new",
+      "file": "repos/orbits/app/(app)/app/contacts/new/page.tsx",
+      "group": "04-acquisition",
+      "redirects": [
+        "\"/app/account/login?next=%2Fapp%2Fcontacts%2Fnew\""
+      ],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/contacts/new/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/contacts/new/batch/[id]",
+      "file": "repos/orbits/app/(app)/app/contacts/new/batch/[id]/page.tsx",
+      "group": "04-acquisition",
+      "redirects": [
+        "`/app/account/login?next=${encodeURIComponent(`/app/contacts/new/batch/${id}`)}`"
+      ],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/contacts/new/batch/[id]/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/contacts/new/batch2",
+      "file": "repos/orbits/app/(app)/app/contacts/new/batch2/page.tsx",
+      "group": "04-acquisition",
+      "redirects": [
+        "`/app/account/login?next=${encodeURIComponent(\"/app/contacts/new/batch2\")}`"
+      ],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/contacts/new/batch2/business-card-ingest-v2-start.tsx",
+          "repos/orbits/app/(app)/app/contacts/new/batch2/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/contacts/new/batch2/[id]",
+      "file": "repos/orbits/app/(app)/app/contacts/new/batch2/[id]/page.tsx",
+      "group": "04-acquisition",
+      "redirects": [
+        "`/app/account/login?next=${encodeURIComponent(`/app/contacts/new/batch2/${id}`)}`,"
+      ],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/contacts/new/batch2/[id]/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/contacts/new/import/[id]",
+      "file": "repos/orbits/app/(app)/app/contacts/new/import/[id]/page.tsx",
+      "group": "04-acquisition",
+      "redirects": [
+        "`/app/account/login?next=${encodeURIComponent(`/app/contacts/new/import/${id}`)}`"
+      ],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/contacts/new/import/[id]/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/contacts/pipeline",
+      "file": "repos/orbits/app/(app)/app/contacts/pipeline/page.tsx",
+      "group": "03-contacts",
+      "redirects": [
+        "\"/app/account/login?next=%2Fapp%2Fcontacts%2Fpipeline\""
+      ],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed",
+          "query"
+        ],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/contacts/pipeline/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/dashboard",
+      "file": "repos/orbits/app/(app)/app/dashboard/page.tsx",
+      "group": "05-events",
+      "redirects": [
+        "\"/app/account/login?next=%2Fapp%2Fdashboard\""
+      ],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/dashboard/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/events",
+      "file": "repos/orbits/app/(app)/app/events/page.tsx",
+      "group": "05-events",
+      "redirects": [],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [
+          "repos/orbits/features/events/event-operations/storage/postgres-repository.ts",
+          "repos/orbits/features/events/registration/canonical-migration/activation-audit-contract.ts"
+        ],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/events/[id]",
+      "file": "repos/orbits/app/(app)/app/events/[id]/page.tsx",
+      "group": "05-events",
+      "redirects": [
+        "`/app/account/login?next=${encodeURIComponent(`/app/events/${id}`)}`,"
+      ],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed",
+          "participant"
+        ],
+        "hashEvidenceFiles": [
+          "repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
+          "repos/orbits/features/events/event-operations/storage/postgres-repository.ts",
+          "repos/orbits/features/events/registration/canonical-migration/activation-audit-contract.ts"
+        ],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/events/[id]/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/events/[id]/analytics",
+      "file": "repos/orbits/app/(app)/app/events/[id]/analytics/page.tsx",
+      "group": "06-operations",
+      "redirects": [
+        "`/app/account/login?next=${encodeURIComponent( `/app/events/${eventId}/analytics`, )}`,"
+      ],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/events/[id]/analytics/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/events/[id]/operations",
+      "file": "repos/orbits/app/(app)/app/events/[id]/operations/page.tsx",
+      "group": "06-operations",
+      "redirects": [
+        "`/app/account/login?next=${encodeURIComponent(`/app/events/${eventId}/operations`)}`"
+      ],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [
+          "repos/orbits/app/(app)/app/events/[id]/operations/event-operations-admin-workspace.tsx"
+        ],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/events/[id]/operations/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/events/[id]/operations/admission",
+      "file": "repos/orbits/app/(app)/app/events/[id]/operations/admission/page.tsx",
+      "group": "06-operations",
+      "redirects": [
+        "`/app/account/login?next=${encodeURIComponent(pathname)}`"
+      ],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/events/[id]/operations/admission/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/events/[id]/operations/check-in",
+      "file": "repos/orbits/app/(app)/app/events/[id]/operations/check-in/page.tsx",
+      "group": "06-operations",
+      "redirects": [
+        "`/app/account/login?next=${encodeURIComponent(pathname)}`"
+      ],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/events/[id]/operations/check-in/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/events/[id]/operations/experience",
+      "file": "repos/orbits/app/(app)/app/events/[id]/operations/experience/page.tsx",
+      "group": "06-operations",
+      "redirects": [],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [
+          "repos/orbits/app/(app)/app/events/[id]/operations/experience/event-experience-editor.tsx"
+        ],
+        "deepLinkEvidenceFiles": []
+      }
+    },
+    {
+      "route": "/app/events/[id]/operations/roles",
+      "file": "repos/orbits/app/(app)/app/events/[id]/operations/roles/page.tsx",
+      "group": "06-operations",
+      "redirects": [
+        "`/app/account/login?next=${encodeURIComponent(`/app/events/${eventId}/operations/roles`)}`,"
+      ],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/events/[id]/operations/roles/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/events/[id]/register",
+      "file": "repos/orbits/app/(app)/app/events/[id]/register/page.tsx",
+      "group": "05-events",
+      "redirects": [
+        "`/app/account/login?next=${encodeURIComponent( eventRegistrationReturnPath(id, preferredLanguage), )}`,"
+      ],
+      "params": {
+        "queryParameters": [
+          "language",
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [
+          "repos/orbits/features/events/event-operations/storage/postgres-repository.ts",
+          "repos/orbits/features/events/registration/canonical-migration/activation-audit-contract.ts",
+          "repos/orbits/features/events/registration/question-generator.ts"
+        ],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/events/[id]/register/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/events/center",
+      "file": "repos/orbits/app/(app)/app/events/center/page.tsx",
+      "group": "06-operations",
+      "redirects": [
+        "\"/app/account/login?next=%2Fapp%2Fevents%2Fcenter\""
+      ],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/events/center/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/followups",
+      "file": "repos/orbits/app/(app)/app/followups/page.tsx",
+      "group": "01-entry-shell",
+      "redirects": [
+        "\"/app/today?view=day\""
+      ],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/followups/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/home",
+      "file": "repos/orbits/app/(app)/app/home/page.tsx",
+      "group": "01-entry-shell",
+      "redirects": [
+        "\"/app/agent\""
+      ],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/home/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/home/events",
+      "file": "repos/orbits/app/(app)/app/home/events/page.tsx",
+      "group": "05-events",
+      "redirects": [
+        "\"/app/account/login?next=%2Fapp%2Fhome%2Fevents\""
+      ],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [
+          "repos/orbits/features/events/event-operations/storage/postgres-repository.ts",
+          "repos/orbits/features/events/registration/canonical-migration/activation-audit-contract.ts"
+        ],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/home/events/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/invitations/[token]",
+      "file": "repos/orbits/app/(app)/app/invitations/[token]/page.tsx",
+      "group": "01-entry-shell",
+      "redirects": [
+        "`/app/account/login?${new URLSearchParams({ next: invitationPath })}`"
+      ],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/invitations/[token]/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/login-admin",
+      "file": "repos/orbits/app/(app)/app/login-admin/page.tsx",
+      "group": "08-profile-settings-admin",
+      "redirects": [],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": []
+      }
+    },
+    {
+      "route": "/app/o/[slug]",
+      "file": "repos/orbits/app/(app)/app/o/[slug]/page.tsx",
+      "group": "05-events",
+      "redirects": [],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [
+          "repos/orbits/features/events/event-operations/storage/postgres-repository.ts",
+          "repos/orbits/features/events/registration/canonical-migration/activation-audit-contract.ts"
+        ],
+        "deepLinkEvidenceFiles": []
+      }
+    },
+    {
+      "route": "/app/party",
+      "file": "repos/orbits/app/(app)/app/party/page.tsx",
+      "group": "05-events",
+      "redirects": [
+        "partyLoginHref(\"/app/party\", resolvedSearchParams)"
+      ],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [
+          "repos/orbits/features/events/event-operations/engine.ts",
+          "repos/orbits/features/events/event-operations/storage/postgres-repository.ts",
+          "repos/orbits/features/events/registration/canonical-migration/activation-audit-contract.ts"
+        ],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/party/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/party/checkin",
+      "file": "repos/orbits/app/(app)/app/party/checkin/page.tsx",
+      "group": "05-events",
+      "redirects": [
+        "partyLoginHref(\"/app/party/checkin\", resolvedSearchParams)"
+      ],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [
+          "repos/orbits/features/events/event-operations/engine.ts",
+          "repos/orbits/features/events/event-operations/storage/postgres-repository.ts",
+          "repos/orbits/features/events/registration/canonical-migration/activation-audit-contract.ts"
+        ],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/party/checkin/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/party/graph",
+      "file": "repos/orbits/app/(app)/app/party/graph/page.tsx",
+      "group": "05-events",
+      "redirects": [
+        "partyLoginHref(\"/app/party/graph\", resolvedSearchParams)"
+      ],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [
+          "repos/orbits/features/events/event-operations/engine.ts",
+          "repos/orbits/features/events/event-operations/storage/postgres-repository.ts",
+          "repos/orbits/features/events/registration/canonical-migration/activation-audit-contract.ts"
+        ],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/party/graph/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/platform",
+      "file": "repos/orbits/app/(app)/app/platform/page.tsx",
+      "group": "08-profile-settings-admin",
+      "redirects": [
+        "\"/app/account/login?next=%2Fapp%2Fplatform\""
+      ],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/platform/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/profile",
+      "file": "repos/orbits/app/(app)/app/profile/page.tsx",
+      "group": "08-profile-settings-admin",
+      "redirects": [
+        "\"/app/account/login?next=%2Fapp%2Fprofile\""
+      ],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/profile/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/register",
+      "file": "repos/orbits/app/(app)/app/register/page.tsx",
+      "group": "05-events",
+      "redirects": [
+        "`/app/events/${encodeURIComponent(routeModel.register.event.id)}/register${suffix}#`,"
+      ],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [
+          "repos/orbits/features/events/event-operations/storage/postgres-repository.ts",
+          "repos/orbits/features/events/registration/canonical-migration/activation-audit-contract.ts"
+        ],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/register/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/schedule",
+      "file": "repos/orbits/app/(app)/app/schedule/page.tsx",
+      "group": "07-schedule-tasks-chat",
+      "redirects": [
+        "\"/app/today#arrangements\""
+      ],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/schedule/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/schedule/events/[id]",
+      "file": "repos/orbits/app/(app)/app/schedule/events/[id]/page.tsx",
+      "group": "05-events",
+      "redirects": [
+        "`/app/account/login?next=${encodeURIComponent(`/app/schedule/events/${id}`)}`,"
+      ],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/schedule/events/[id]/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/settings",
+      "file": "repos/orbits/app/(app)/app/settings/page.tsx",
+      "group": "08-profile-settings-admin",
+      "redirects": [],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": []
+      }
+    },
+    {
+      "route": "/app/tasks",
+      "file": "repos/orbits/app/(app)/app/tasks/page.tsx",
+      "group": "07-schedule-tasks-chat",
+      "redirects": [
+        "`/app/account/login?${new URLSearchParams({ next })}`"
+      ],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/tasks/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/tasks/[id]",
+      "file": "repos/orbits/app/(app)/app/tasks/[id]/page.tsx",
+      "group": "07-schedule-tasks-chat",
+      "redirects": [
+        "`/app/account/login?${new URLSearchParams({ next: `/app/tasks/${encodeURIComponent(taskId)}` })}`"
+      ],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/tasks/[id]/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/tasks/personal",
+      "file": "repos/orbits/app/(app)/app/tasks/personal/page.tsx",
+      "group": "07-schedule-tasks-chat",
+      "redirects": [
+        "\"/app/account/login?next=%2Fapp%2Ftasks%2Fpersonal\""
+      ],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/tasks/personal/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/app/tasks/relationship/[id]",
+      "file": "repos/orbits/app/(app)/app/tasks/relationship/[id]/page.tsx",
+      "group": "07-schedule-tasks-chat",
+      "redirects": [],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": []
+      }
+    },
+    {
+      "route": "/app/today",
+      "file": "repos/orbits/app/(app)/app/today/page.tsx",
+      "group": "07-schedule-tasks-chat",
+      "redirects": [
+        "\"/app/account/login?next=%2Fapp%2Ftoday\""
+      ],
+      "params": {
+        "queryParameters": [
+          "orbitVisualSeed"
+        ],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": [
+          "repos/orbits/app/(app)/app/today/page.tsx"
+        ]
+      }
+    },
+    {
+      "route": "/dev/agent-test-report",
+      "file": "repos/orbits/app/dev/agent-test-report/page.tsx",
+      "group": "09-dev",
+      "redirects": [],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": []
+      }
+    },
+    {
+      "route": "/dev/capabilities",
+      "file": "repos/orbits/app/dev/capabilities/page.tsx",
+      "group": "09-dev",
+      "redirects": [],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": []
+      }
+    },
+    {
+      "route": "/dev/capabilities/[slug]",
+      "file": "repos/orbits/app/dev/capabilities/[slug]/page.tsx",
+      "group": "09-dev",
+      "redirects": [],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [
+          "repos/orbits/shared/ui/api-probe-form.tsx"
+        ],
+        "deepLinkEvidenceFiles": []
+      }
+    },
+    {
+      "route": "/dev/foundation/domain",
+      "file": "repos/orbits/app/dev/foundation/domain/page.tsx",
+      "group": "09-dev",
+      "redirects": [],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": []
+      }
+    },
+    {
+      "route": "/dev/foundation/mock-registry",
+      "file": "repos/orbits/app/dev/foundation/mock-registry/page.tsx",
+      "group": "09-dev",
+      "redirects": [],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": []
+      }
+    },
+    {
+      "route": "/dev/foundation/style",
+      "file": "repos/orbits/app/dev/foundation/style/page.tsx",
+      "group": "09-dev",
+      "redirects": [],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": []
+      }
+    },
+    {
+      "route": "/dev/knowledge",
+      "file": "repos/orbits/app/dev/knowledge/page.tsx",
+      "group": "09-dev",
+      "redirects": [],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": []
+      }
+    },
+    {
+      "route": "/dev/orbit-ai/trace",
+      "file": "repos/orbits/app/dev/orbit-ai/trace/page.tsx",
+      "group": "09-dev",
+      "redirects": [],
+      "params": {
+        "queryParameters": [],
+        "hashEvidenceFiles": [],
+        "deepLinkEvidenceFiles": []
+      }
+    }
+  ],
+  "sourceIndex": [
+    {
+      "file": "repos/orbits/app/(app)/app/account/forgot-password/page.tsx",
+      "routes": [
+        "/app/account/forgot-password"
+      ],
+      "group": "01-entry-shell",
+      "controls": 0,
+      "copy": 1,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/account/login/page.tsx",
+      "routes": [
+        "/app/account/login"
+      ],
+      "group": "01-entry-shell",
+      "controls": 0,
+      "copy": 1,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/account/mobile-google/mobile-google-auth.tsx",
+      "routes": [
+        "/app/account/mobile-google"
+      ],
+      "group": "01-entry-shell",
+      "controls": 1,
+      "copy": 4,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/account/mobile-google/page.tsx",
+      "routes": [
+        "/app/account/mobile-google"
+      ],
+      "group": "01-entry-shell",
+      "controls": 1,
+      "copy": 4,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/account/orbit-real-account-auth.tsx",
+      "routes": [
+        "/app/account/forgot-password",
+        "/app/account/login",
+        "/app/account/signup"
+      ],
+      "group": "01-entry-shell",
+      "controls": 11,
+      "copy": 49,
+      "overlays": 1
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/account/reset-password/reset-password-form.tsx",
+      "routes": [
+        "/app/account/reset-password"
+      ],
+      "group": "01-entry-shell",
+      "controls": 6,
+      "copy": 26,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/account/signup/page.tsx",
+      "routes": [
+        "/app/account/signup"
+      ],
+      "group": "01-entry-shell",
+      "controls": 0,
+      "copy": 1,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/admin/compose-app-admin-platform-from-previously-approved-mock-first-capabilities/admin-platform-route-view-model.ts",
+      "routes": [
+        "/app/admin",
+        "/app/admin/events",
+        "/app/platform"
+      ],
+      "group": "08-profile-settings-admin",
+      "controls": 0,
+      "copy": 40,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/admin/events/page.tsx",
+      "routes": [
+        "/app/admin/events"
+      ],
+      "group": "05-events",
+      "controls": 0,
+      "copy": 1,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/admin/orbit-real-admin-events.tsx",
+      "routes": [
+        "/app/admin/events"
+      ],
+      "group": "08-profile-settings-admin",
+      "controls": 0,
+      "copy": 21,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/admin/orbit-real-admin-login.tsx",
+      "routes": [
+        "/app/admin/access",
+        "/app/login-admin"
+      ],
+      "group": "08-profile-settings-admin",
+      "controls": 1,
+      "copy": 13,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/admin/orbit-real-admin-shell.tsx",
+      "routes": [
+        "/app/admin",
+        "/app/admin/events"
+      ],
+      "group": "08-profile-settings-admin",
+      "controls": 3,
+      "copy": 8,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/admin/orbit-real-admin-workspace.tsx",
+      "routes": [
+        "/app/admin"
+      ],
+      "group": "08-profile-settings-admin",
+      "controls": 0,
+      "copy": 19,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/admin/page.tsx",
+      "routes": [
+        "/app/admin"
+      ],
+      "group": "08-profile-settings-admin",
+      "controls": 0,
+      "copy": 1,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx",
+      "routes": [
+        "/app/agent"
+      ],
+      "group": "02-ai",
+      "controls": 7,
+      "copy": 52,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/agent/agent-chat-history-organization.tsx",
+      "routes": [
+        "/app/agent"
+      ],
+      "group": "02-ai",
+      "controls": 11,
+      "copy": 3,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/agent/agent-task-interaction-card.tsx",
+      "routes": [
+        "/app/agent"
+      ],
+      "group": "02-ai",
+      "controls": 4,
+      "copy": 4,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/agent/orbit-agent-dashboard.tsx",
+      "routes": [
+        "/app/agent"
+      ],
+      "group": "02-ai",
+      "controls": 14,
+      "copy": 153,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/agent/orbit-agent-today-workspace.tsx",
+      "routes": [
+        "/app/agent"
+      ],
+      "group": "02-ai",
+      "controls": 5,
+      "copy": 18,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx",
+      "routes": [
+        "/app/agent"
+      ],
+      "group": "02-ai",
+      "controls": 53,
+      "copy": 223,
+      "overlays": 2
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/agent/page.tsx",
+      "routes": [
+        "/app/agent"
+      ],
+      "group": "02-ai",
+      "controls": 0,
+      "copy": 4,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model.ts",
+      "routes": [
+        "/app/agent"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 0,
+      "copy": 24,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-service-factory.ts",
+      "routes": [
+        "/app/agent"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 0,
+      "copy": 1,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-view-model-adapter.ts",
+      "routes": [
+        "/app/agent"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 0,
+      "copy": 3,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/[id]/appointment-memo-capture.tsx",
+      "routes": [
+        "/app/contacts/[id]"
+      ],
+      "group": "03-contacts",
+      "controls": 5,
+      "copy": 8,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/[id]/page.tsx",
+      "routes": [
+        "/app/contacts/[id]"
+      ],
+      "group": "03-contacts",
+      "controls": 0,
+      "copy": 8,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/all-actions/orbit-all-actions-controls.tsx",
+      "routes": [
+        "/app/contacts/all-actions"
+      ],
+      "group": "03-contacts",
+      "controls": 3,
+      "copy": 3,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/all-actions/orbit-copy-draft-button.tsx",
+      "routes": [
+        "/app/contacts/all-actions"
+      ],
+      "group": "03-contacts",
+      "controls": 1,
+      "copy": 0,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/all-actions/orbit-edit-draft-button.tsx",
+      "routes": [
+        "/app/contacts/all-actions"
+      ],
+      "group": "03-contacts",
+      "controls": 1,
+      "copy": 1,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/all-actions/orbit-real-all-actions.tsx",
+      "routes": [
+        "/app/contacts/all-actions"
+      ],
+      "group": "03-contacts",
+      "controls": 4,
+      "copy": 27,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/all-actions/page.tsx",
+      "routes": [
+        "/app/contacts/all-actions"
+      ],
+      "group": "03-contacts",
+      "controls": 5,
+      "copy": 4,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/analysis/analysis-goal-editor.tsx",
+      "routes": [
+        "/app/contacts/dashboard"
+      ],
+      "group": "03-contacts",
+      "controls": 3,
+      "copy": 23,
+      "overlays": 1
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/analysis/contacts-analysis-view-model.ts",
+      "routes": [
+        "/app/contacts/dashboard"
+      ],
+      "group": "03-contacts",
+      "controls": 0,
+      "copy": 3,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/analysis/contacts-analysis-workspace.tsx",
+      "routes": [
+        "/app/contacts/analysis/[dimension]/[bucketId]",
+        "/app/contacts/dashboard"
+      ],
+      "group": "03-contacts",
+      "controls": 21,
+      "copy": 194,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/analysis/contacts-structure-detail.tsx",
+      "routes": [
+        "/app/contacts/analysis/[dimension]/[bucketId]"
+      ],
+      "group": "03-contacts",
+      "controls": 3,
+      "copy": 43,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/business-card-batch-entry.tsx",
+      "routes": [
+        "/app/contacts/new"
+      ],
+      "group": "04-acquisition",
+      "controls": 8,
+      "copy": 46,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/business-card-capture-workspace.tsx",
+      "routes": [
+        "/app/contacts/new"
+      ],
+      "group": "04-acquisition",
+      "controls": 25,
+      "copy": 113,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/business-card-import-client.ts",
+      "routes": [
+        "/app/contacts/new",
+        "/app/contacts/new/import/[id]"
+      ],
+      "group": "04-acquisition",
+      "controls": 0,
+      "copy": 0,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/business-card-import-progress.tsx",
+      "routes": [
+        "/app/contacts/new",
+        "/app/contacts/new/import/[id]"
+      ],
+      "group": "04-acquisition",
+      "controls": 7,
+      "copy": 60,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service.ts",
+      "routes": [
+        "/app/contacts/[id]"
+      ],
+      "group": "03-contacts",
+      "controls": 0,
+      "copy": 48,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter.ts",
+      "routes": [
+        "/app/contacts/[id]"
+      ],
+      "group": "03-contacts",
+      "controls": 0,
+      "copy": 38,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model.ts",
+      "routes": [
+        "/app/agent",
+        "/app/contacts",
+        "/app/contacts/intros",
+        "/app/contacts/pipeline",
+        "/app/home/events"
+      ],
+      "group": "03-contacts",
+      "controls": 0,
+      "copy": 32,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-subroute-route-adapter.tsx",
+      "routes": [
+        "/app/contacts/intros",
+        "/app/contacts/pipeline"
+      ],
+      "group": "03-contacts",
+      "controls": 0,
+      "copy": 8,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-view-model-adapter.ts",
+      "routes": [
+        "/app/contacts"
+      ],
+      "group": "03-contacts",
+      "controls": 0,
+      "copy": 5,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/contact-industry-editor.tsx",
+      "routes": [
+        "/app/contacts/[id]"
+      ],
+      "group": "03-contacts",
+      "controls": 4,
+      "copy": 30,
+      "overlays": 1
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/contact-interaction-editor.tsx",
+      "routes": [
+        "/app/contacts/[id]"
+      ],
+      "group": "03-contacts",
+      "controls": 5,
+      "copy": 34,
+      "overlays": 1
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/contact-notes-editor.tsx",
+      "routes": [
+        "/app/contacts/[id]"
+      ],
+      "group": "03-contacts",
+      "controls": 3,
+      "copy": 27,
+      "overlays": 1
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/contact-relationship-initialization-view-model.ts",
+      "routes": [
+        "/app/contacts",
+        "/app/contacts/[id]",
+        "/app/contacts/intros",
+        "/app/contacts/pipeline"
+      ],
+      "group": "03-contacts",
+      "controls": 0,
+      "copy": 8,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/contact-relationship-initialization.tsx",
+      "routes": [
+        "/app/contacts/[id]"
+      ],
+      "group": "03-contacts",
+      "controls": 8,
+      "copy": 5,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/contact-tag-editor.tsx",
+      "routes": [
+        "/app/contacts/[id]"
+      ],
+      "group": "03-contacts",
+      "controls": 5,
+      "copy": 36,
+      "overlays": 1
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/new/batch/[id]/business-card-batch-view.tsx",
+      "routes": [
+        "/app/contacts/new/batch/[id]",
+        "/app/contacts/new/batch2/[id]"
+      ],
+      "group": "04-acquisition",
+      "controls": 19,
+      "copy": 135,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/new/batch/[id]/page.tsx",
+      "routes": [
+        "/app/contacts/new/batch/[id]"
+      ],
+      "group": "04-acquisition",
+      "controls": 1,
+      "copy": 1,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/new/batch2/[id]/business-card-ingest-v2-view.tsx",
+      "routes": [
+        "/app/contacts/new/batch2/[id]"
+      ],
+      "group": "04-acquisition",
+      "controls": 23,
+      "copy": 159,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/new/batch2/[id]/page.tsx",
+      "routes": [
+        "/app/contacts/new/batch2/[id]"
+      ],
+      "group": "04-acquisition",
+      "controls": 1,
+      "copy": 1,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/new/batch2/business-card-ingest-v2-start.tsx",
+      "routes": [
+        "/app/contacts/new/batch2"
+      ],
+      "group": "04-acquisition",
+      "controls": 2,
+      "copy": 32,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/new/batch2/ingest-v2-client.ts",
+      "routes": [
+        "/app/contacts/new/batch2",
+        "/app/contacts/new/batch2/[id]"
+      ],
+      "group": "04-acquisition",
+      "controls": 0,
+      "copy": 0,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/new/batch2/ingest-v2-content-transport.ts",
+      "routes": [
+        "/app/contacts/new/batch2/[id]"
+      ],
+      "group": "04-acquisition",
+      "controls": 0,
+      "copy": 0,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/new/batch2/ingest-v2-upload-feedback.ts",
+      "routes": [
+        "/app/contacts/new/batch2/[id]"
+      ],
+      "group": "04-acquisition",
+      "controls": 0,
+      "copy": 10,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/new/batch2/page.tsx",
+      "routes": [
+        "/app/contacts/new/batch2"
+      ],
+      "group": "04-acquisition",
+      "controls": 1,
+      "copy": 1,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/new/import/[id]/page.tsx",
+      "routes": [
+        "/app/contacts/new/import/[id]"
+      ],
+      "group": "04-acquisition",
+      "controls": 1,
+      "copy": 1,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/orbit-contact-avatar.tsx",
+      "routes": [
+        "/app/contacts",
+        "/app/contacts/[id]"
+      ],
+      "group": "03-contacts",
+      "controls": 0,
+      "copy": 3,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/orbit-crm-sidebar.tsx",
+      "routes": [
+        "/app/contacts",
+        "/app/contacts/[id]",
+        "/app/contacts/all-actions",
+        "/app/contacts/analysis/[dimension]/[bucketId]",
+        "/app/contacts/dashboard",
+        "/app/contacts/intros",
+        "/app/contacts/new",
+        "/app/contacts/pipeline"
+      ],
+      "group": "03-contacts",
+      "controls": 2,
+      "copy": 22,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/orbit-real-card-connection.tsx",
+      "routes": [
+        "/app/contacts/[id]"
+      ],
+      "group": "03-contacts",
+      "controls": 19,
+      "copy": 159,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/orbit-real-cards-import.tsx",
+      "routes": [
+        "/app/contacts/new"
+      ],
+      "group": "04-acquisition",
+      "controls": 3,
+      "copy": 63,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/orbit-real-cards-pipeline-view.tsx",
+      "routes": [
+        "/app/contacts/pipeline"
+      ],
+      "group": "03-contacts",
+      "controls": 1,
+      "copy": 18,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/orbit-real-contacts.tsx",
+      "routes": [
+        "/app/contacts",
+        "/app/contacts/[id]",
+        "/app/contacts/intros",
+        "/app/contacts/pipeline"
+      ],
+      "group": "03-contacts",
+      "controls": 40,
+      "copy": 222,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/contacts/page.tsx",
+      "routes": [
+        "/app/contacts"
+      ],
+      "group": "03-contacts",
+      "controls": 0,
+      "copy": 1,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities/dashboard-service-factory.ts",
+      "routes": [
+        "/app/dashboard"
+      ],
+      "group": "05-events",
+      "controls": 0,
+      "copy": 1,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/dashboard/orbit-real-dashboard.tsx",
+      "routes": [
+        "/app/dashboard"
+      ],
+      "group": "05-events",
+      "controls": 0,
+      "copy": 92,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/dashboard/orbit-real-party.tsx",
+      "routes": [
+        "/app/party",
+        "/app/party/checkin",
+        "/app/party/graph"
+      ],
+      "group": "05-events",
+      "controls": 31,
+      "copy": 299,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/dashboard/page.tsx",
+      "routes": [
+        "/app/dashboard"
+      ],
+      "group": "05-events",
+      "controls": 0,
+      "copy": 1,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/events/[id]/analytics/event-analytics-route.tsx",
+      "routes": [
+        "/app/events/[id]/analytics"
+      ],
+      "group": "06-operations",
+      "controls": 4,
+      "copy": 8,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/events/[id]/operations/admission/event-admission-policy-panel.tsx",
+      "routes": [
+        "/app/events/[id]/operations/admission"
+      ],
+      "group": "06-operations",
+      "controls": 10,
+      "copy": 23,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/events/[id]/operations/admission/event-admission-review-workspace.tsx",
+      "routes": [
+        "/app/events/[id]/operations/admission"
+      ],
+      "group": "06-operations",
+      "controls": 11,
+      "copy": 23,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/events/[id]/operations/admission/page.tsx",
+      "routes": [
+        "/app/events/[id]/operations/admission"
+      ],
+      "group": "06-operations",
+      "controls": 2,
+      "copy": 6,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/events/[id]/operations/check-in/limited-check-in-roster.tsx",
+      "routes": [
+        "/app/events/[id]/operations/check-in"
+      ],
+      "group": "06-operations",
+      "controls": 6,
+      "copy": 22,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/events/[id]/operations/event-operations-admin-workspace.tsx",
+      "routes": [
+        "/app/events/[id]/operations"
+      ],
+      "group": "06-operations",
+      "controls": 19,
+      "copy": 61,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/events/[id]/operations/experience/event-experience-editor.tsx",
+      "routes": [
+        "/app/events/[id]/operations/experience"
+      ],
+      "group": "06-operations",
+      "controls": 11,
+      "copy": 28,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/events/[id]/operations/page.tsx",
+      "routes": [
+        "/app/events/[id]/operations"
+      ],
+      "group": "06-operations",
+      "controls": 1,
+      "copy": 4,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/events/[id]/operations/roles/event-role-management-workspace.tsx",
+      "routes": [
+        "/app/events/[id]/operations/roles"
+      ],
+      "group": "06-operations",
+      "controls": 11,
+      "copy": 39,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/events/[id]/operations/roles/page.tsx",
+      "routes": [
+        "/app/events/[id]/operations/roles"
+      ],
+      "group": "06-operations",
+      "controls": 1,
+      "copy": 4,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/events/[id]/orbit-appointment-negotiation.tsx",
+      "routes": [
+        "/app/contacts/[id]",
+        "/app/events/[id]",
+        "/app/party",
+        "/app/party/graph"
+      ],
+      "group": "05-events",
+      "controls": 15,
+      "copy": 90,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/events/[id]/orbit-encounter-capture.tsx",
+      "routes": [
+        "/app/events/[id]",
+        "/app/party",
+        "/app/party/graph"
+      ],
+      "group": "05-events",
+      "controls": 7,
+      "copy": 45,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/events/[id]/orbit-event-matchmaking.tsx",
+      "routes": [
+        "/app/events/[id]"
+      ],
+      "group": "05-events",
+      "controls": 21,
+      "copy": 142,
+      "overlays": 1
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/events/[id]/orbit-post-event-center.tsx",
+      "routes": [
+        "/app/events/[id]"
+      ],
+      "group": "05-events",
+      "controls": 10,
+      "copy": 120,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
+      "routes": [
+        "/app/events/[id]"
+      ],
+      "group": "05-events",
+      "controls": 7,
+      "copy": 219,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/events/[id]/page.tsx",
+      "routes": [
+        "/app/events/[id]"
+      ],
+      "group": "05-events",
+      "controls": 0,
+      "copy": 9,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/events/[id]/register/event-admission-status-card.tsx",
+      "routes": [
+        "/app/events/[id]/register"
+      ],
+      "group": "05-events",
+      "controls": 3,
+      "copy": 24,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
+      "routes": [
+        "/app/events/[id]/register"
+      ],
+      "group": "05-events",
+      "controls": 22,
+      "copy": 187,
+      "overlays": 1
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/events/[id]/register/page.tsx",
+      "routes": [
+        "/app/events/[id]/register"
+      ],
+      "group": "05-events",
+      "controls": 0,
+      "copy": 2,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/events/center/event-center-workspace.tsx",
+      "routes": [
+        "/app/events/center"
+      ],
+      "group": "06-operations",
+      "controls": 2,
+      "copy": 21,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter.ts",
+      "routes": [
+        "/app/agent",
+        "/app/home/events"
+      ],
+      "group": "05-events",
+      "controls": 0,
+      "copy": 3,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/events/orbit-event-cover.tsx",
+      "routes": [
+        "/app/admin",
+        "/app/admin/events",
+        "/app/agent",
+        "/app/events",
+        "/app/events/[id]",
+        "/app/home/events",
+        "/app/o/[slug]"
+      ],
+      "group": "05-events",
+      "controls": 0,
+      "copy": 1,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
+      "routes": [
+        "/app/events"
+      ],
+      "group": "05-events",
+      "controls": 19,
+      "copy": 91,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model.tsx",
+      "routes": [
+        "/app/agent",
+        "/app/home/events"
+      ],
+      "group": "01-entry-shell",
+      "controls": 0,
+      "copy": 19,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/home/orbit-real-home.tsx",
+      "routes": [
+        "/app/home/events"
+      ],
+      "group": "01-entry-shell",
+      "controls": 23,
+      "copy": 188,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/inbox/inbox-demo-localization.ts",
+      "routes": [
+        "/app/agent",
+        "/app/contacts",
+        "/app/contacts/[id]",
+        "/app/contacts/all-actions",
+        "/app/contacts/analysis/[dimension]/[bucketId]",
+        "/app/contacts/dashboard",
+        "/app/contacts/intros",
+        "/app/contacts/new",
+        "/app/contacts/new/batch/[id]",
+        "/app/contacts/new/batch2",
+        "/app/contacts/new/batch2/[id]",
+        "/app/contacts/new/import/[id]",
+        "/app/contacts/pipeline",
+        "/app/dashboard",
+        "/app/home/events",
+        "/app/profile",
+        "/app/schedule/events/[id]",
+        "/app/settings",
+        "/app/tasks",
+        "/app/tasks/[id]",
+        "/app/tasks/personal",
+        "/app/today"
+      ],
+      "group": "01-entry-shell",
+      "controls": 0,
+      "copy": 2,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
+      "routes": [
+        "/app/agent",
+        "/app/contacts",
+        "/app/contacts/[id]",
+        "/app/contacts/all-actions",
+        "/app/contacts/analysis/[dimension]/[bucketId]",
+        "/app/contacts/dashboard",
+        "/app/contacts/intros",
+        "/app/contacts/new",
+        "/app/contacts/new/batch/[id]",
+        "/app/contacts/new/batch2",
+        "/app/contacts/new/batch2/[id]",
+        "/app/contacts/new/import/[id]",
+        "/app/contacts/pipeline",
+        "/app/dashboard",
+        "/app/home/events",
+        "/app/profile",
+        "/app/schedule/events/[id]",
+        "/app/settings",
+        "/app/tasks",
+        "/app/tasks/[id]",
+        "/app/tasks/personal",
+        "/app/today"
+      ],
+      "group": "01-entry-shell",
+      "controls": 27,
+      "copy": 154,
+      "overlays": 1
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/invitations/[token]/relationship-invitation-client.tsx",
+      "routes": [
+        "/app/invitations/[token]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 2,
+      "copy": 13,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/o/[slug]/page.tsx",
+      "routes": [
+        "/app/o/[slug]"
+      ],
+      "group": "05-events",
+      "controls": 0,
+      "copy": 1,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/o/compose-app-organizer-public-from-previously-approved-mock-first-capabilities/organizer-public-route-view-model.ts",
+      "routes": [
+        "/app/o/[slug]"
+      ],
+      "group": "05-events",
+      "controls": 0,
+      "copy": 46,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/o/orbit-real-organizer-public.tsx",
+      "routes": [
+        "/app/o/[slug]"
+      ],
+      "group": "05-events",
+      "controls": 2,
+      "copy": 23,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/orbit-account-auth-route-view-model.ts",
+      "routes": [
+        "/app/account/forgot-password",
+        "/app/account/login",
+        "/app/account/signup"
+      ],
+      "group": "01-entry-shell",
+      "controls": 0,
+      "copy": 6,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
+      "routes": [
+        "/app/agent",
+        "/app/contacts",
+        "/app/contacts/[id]",
+        "/app/contacts/all-actions",
+        "/app/contacts/analysis/[dimension]/[bucketId]",
+        "/app/contacts/dashboard",
+        "/app/contacts/intros",
+        "/app/contacts/new",
+        "/app/contacts/new/batch/[id]",
+        "/app/contacts/new/batch2",
+        "/app/contacts/new/batch2/[id]",
+        "/app/contacts/new/import/[id]",
+        "/app/contacts/pipeline",
+        "/app/dashboard",
+        "/app/home/events",
+        "/app/party",
+        "/app/party/graph",
+        "/app/profile",
+        "/app/schedule/events/[id]",
+        "/app/settings",
+        "/app/tasks",
+        "/app/tasks/[id]",
+        "/app/tasks/personal",
+        "/app/today"
+      ],
+      "group": "01-entry-shell",
+      "controls": 3,
+      "copy": 10,
+      "overlays": 1
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/orbit-agent-route-view-model.ts",
+      "routes": [
+        "/app/agent"
+      ],
+      "group": "01-entry-shell",
+      "controls": 0,
+      "copy": 3,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/orbit-contacts-presentation.ts",
+      "routes": [
+        "/app/contacts",
+        "/app/contacts/[id]"
+      ],
+      "group": "03-contacts",
+      "controls": 0,
+      "copy": 105,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/orbit-event-content.ts",
+      "routes": [
+        "/app/agent",
+        "/app/events",
+        "/app/events/[id]",
+        "/app/events/[id]/register",
+        "/app/home/events",
+        "/app/o/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 0,
+      "copy": 246,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/orbit-event-presentation.ts",
+      "routes": [
+        "/app/agent",
+        "/app/events",
+        "/app/events/[id]",
+        "/app/events/[id]/register",
+        "/app/home/events",
+        "/app/o/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 0,
+      "copy": 33,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/orbit-event-registration-view-model.ts",
+      "routes": [
+        "/app/agent",
+        "/app/events",
+        "/app/events/[id]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 0,
+      "copy": 8,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/orbit-event-temporal.ts",
+      "routes": [
+        "/app/agent",
+        "/app/events",
+        "/app/events/[id]",
+        "/app/home/events",
+        "/app/o/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 0,
+      "copy": 3,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/orbit-global-ask/orbit-ask-routes.ts",
+      "routes": [
+        "layout:repos/orbits/app/(app)/app/layout.tsx"
+      ],
+      "group": "02-ai",
+      "controls": 0,
+      "copy": 14,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/orbit-global-ask/orbit-global-ask.tsx",
+      "routes": [
+        "layout:repos/orbits/app/(app)/app/layout.tsx"
+      ],
+      "group": "02-ai",
+      "controls": 7,
+      "copy": 39,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts",
+      "routes": [
+        "/app/agent",
+        "/app/events",
+        "/app/events/[id]",
+        "/app/home/events",
+        "/app/o/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 0,
+      "copy": 8,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
+      "routes": [
+        "/",
+        "/app",
+        "/app/agent",
+        "/app/contacts",
+        "/app/contacts/[id]",
+        "/app/contacts/all-actions",
+        "/app/contacts/analysis/[dimension]/[bucketId]",
+        "/app/contacts/dashboard",
+        "/app/contacts/intros",
+        "/app/contacts/new",
+        "/app/contacts/new/batch/[id]",
+        "/app/contacts/new/batch2",
+        "/app/contacts/new/batch2/[id]",
+        "/app/contacts/new/import/[id]",
+        "/app/contacts/pipeline",
+        "/app/dashboard",
+        "/app/events",
+        "/app/events/[id]",
+        "/app/events/[id]/analytics",
+        "/app/events/[id]/operations",
+        "/app/events/[id]/operations/admission",
+        "/app/events/[id]/operations/check-in",
+        "/app/events/[id]/operations/experience",
+        "/app/events/[id]/operations/roles",
+        "/app/events/center",
+        "/app/home/events",
+        "/app/invitations/[token]",
+        "/app/o/[slug]",
+        "/app/party",
+        "/app/profile",
+        "/app/schedule/events/[id]",
+        "/app/settings",
+        "/app/tasks",
+        "/app/tasks/[id]",
+        "/app/tasks/personal",
+        "/app/today"
+      ],
+      "group": "01-entry-shell",
+      "controls": 21,
+      "copy": 91,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
+      "routes": [
+        "/",
+        "/app",
+        "/app/account/forgot-password",
+        "/app/account/login",
+        "/app/account/signup",
+        "/app/admin",
+        "/app/admin/access",
+        "/app/admin/events",
+        "/app/agent",
+        "/app/contacts",
+        "/app/contacts/[id]",
+        "/app/contacts/all-actions",
+        "/app/contacts/analysis/[dimension]/[bucketId]",
+        "/app/contacts/dashboard",
+        "/app/contacts/intros",
+        "/app/contacts/new",
+        "/app/contacts/new/batch/[id]",
+        "/app/contacts/new/batch2",
+        "/app/contacts/new/batch2/[id]",
+        "/app/contacts/new/import/[id]",
+        "/app/contacts/pipeline",
+        "/app/dashboard",
+        "/app/events",
+        "/app/events/[id]",
+        "/app/events/[id]/analytics",
+        "/app/events/[id]/operations",
+        "/app/events/[id]/operations/admission",
+        "/app/events/[id]/operations/check-in",
+        "/app/events/[id]/operations/experience",
+        "/app/events/[id]/operations/roles",
+        "/app/events/[id]/register",
+        "/app/events/center",
+        "/app/home/events",
+        "/app/invitations/[token]",
+        "/app/login-admin",
+        "/app/o/[slug]",
+        "/app/party",
+        "/app/party/checkin",
+        "/app/party/graph",
+        "/app/profile",
+        "/app/schedule/events/[id]",
+        "/app/settings",
+        "/app/tasks",
+        "/app/tasks/[id]",
+        "/app/tasks/personal",
+        "/app/today",
+        "layout:repos/orbits/app/(app)/app/layout.tsx"
+      ],
+      "group": "01-entry-shell",
+      "controls": 1,
+      "copy": 5,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/orbit-route-boundary-frame.tsx",
+      "routes": [
+        "/app/contacts/[id]",
+        "/app/invitations/[token]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 0,
+      "copy": 0,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/orbit-starfield-desktop-logic.ts",
+      "routes": [
+        "/",
+        "/app"
+      ],
+      "group": "01-entry-shell",
+      "controls": 0,
+      "copy": 70,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/orbit-starfield-desktop.tsx",
+      "routes": [
+        "/",
+        "/app"
+      ],
+      "group": "01-entry-shell",
+      "controls": 8,
+      "copy": 3,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/orbit-starfield-home.tsx",
+      "routes": [
+        "/",
+        "/app"
+      ],
+      "group": "01-entry-shell",
+      "controls": 0,
+      "copy": 0,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/orbit-starfield-mobile-logic.ts",
+      "routes": [
+        "/",
+        "/app"
+      ],
+      "group": "01-entry-shell",
+      "controls": 0,
+      "copy": 70,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/orbit-starfield-mobile.tsx",
+      "routes": [
+        "/",
+        "/app"
+      ],
+      "group": "01-entry-shell",
+      "controls": 8,
+      "copy": 3,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/party/checkin/page.tsx",
+      "routes": [
+        "/app/party/checkin"
+      ],
+      "group": "05-events",
+      "controls": 0,
+      "copy": 1,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model.ts",
+      "routes": [
+        "/app/party",
+        "/app/party/checkin",
+        "/app/party/graph"
+      ],
+      "group": "05-events",
+      "controls": 0,
+      "copy": 61,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/party/event-operations-controls.tsx",
+      "routes": [
+        "/app/party",
+        "/app/party/checkin",
+        "/app/party/graph"
+      ],
+      "group": "05-events",
+      "controls": 8,
+      "copy": 50,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/party/graph/page.tsx",
+      "routes": [
+        "/app/party/graph"
+      ],
+      "group": "05-events",
+      "controls": 0,
+      "copy": 1,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/party/page.tsx",
+      "routes": [
+        "/app/party"
+      ],
+      "group": "05-events",
+      "controls": 0,
+      "copy": 1,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/platform/page.tsx",
+      "routes": [
+        "/app/platform"
+      ],
+      "group": "08-profile-settings-admin",
+      "controls": 0,
+      "copy": 1,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model.ts",
+      "routes": [
+        "/app/admin",
+        "/app/admin/events",
+        "/app/agent",
+        "/app/home/events",
+        "/app/platform",
+        "/app/profile"
+      ],
+      "group": "08-profile-settings-admin",
+      "controls": 0,
+      "copy": 2,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx",
+      "routes": [
+        "/app/profile"
+      ],
+      "group": "08-profile-settings-admin",
+      "controls": 20,
+      "copy": 192,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/profile/page.tsx",
+      "routes": [
+        "/app/profile"
+      ],
+      "group": "08-profile-settings-admin",
+      "controls": 0,
+      "copy": 1,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/register/compose-app-register-from-previously-approved-mock-first-capabilities/register-route-view-model.ts",
+      "routes": [
+        "/app/register"
+      ],
+      "group": "05-events",
+      "controls": 0,
+      "copy": 25,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/register/page.tsx",
+      "routes": [
+        "/app/register"
+      ],
+      "group": "05-events",
+      "controls": 0,
+      "copy": 1,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/schedule/events/[id]/event-preview-route-view-model.ts",
+      "routes": [
+        "/app/schedule/events/[id]"
+      ],
+      "group": "05-events",
+      "controls": 0,
+      "copy": 10,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/schedule/events/[id]/orbit-real-schedule-event.tsx",
+      "routes": [
+        "/app/schedule/events/[id]"
+      ],
+      "group": "05-events",
+      "controls": 1,
+      "copy": 4,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/settings/orbit-agent-automation-settings.tsx",
+      "routes": [
+        "/app/settings"
+      ],
+      "group": "08-profile-settings-admin",
+      "controls": 20,
+      "copy": 182,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/settings/orbit-agent-execution-settings.tsx",
+      "routes": [
+        "/app/settings"
+      ],
+      "group": "08-profile-settings-admin",
+      "controls": 13,
+      "copy": 22,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/settings/orbit-agent-feedback-settings.tsx",
+      "routes": [
+        "/app/settings"
+      ],
+      "group": "08-profile-settings-admin",
+      "controls": 1,
+      "copy": 34,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx",
+      "routes": [
+        "/app/settings"
+      ],
+      "group": "08-profile-settings-admin",
+      "controls": 11,
+      "copy": 97,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/settings/orbit-appearance-settings.tsx",
+      "routes": [
+        "/app/settings"
+      ],
+      "group": "08-profile-settings-admin",
+      "controls": 2,
+      "copy": 11,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/settings/orbit-settings-content.tsx",
+      "routes": [
+        "/app/settings"
+      ],
+      "group": "08-profile-settings-admin",
+      "controls": 0,
+      "copy": 5,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/settings/page.tsx",
+      "routes": [
+        "/app/settings"
+      ],
+      "group": "08-profile-settings-admin",
+      "controls": 0,
+      "copy": 0,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/tasks/personal-schedule-client.ts",
+      "routes": [
+        "/app/tasks/personal"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 0,
+      "copy": 0,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/tasks/personal-schedule-workspace.tsx",
+      "routes": [
+        "/app/tasks/personal"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 11,
+      "copy": 16,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/tasks/personal/page.tsx",
+      "routes": [
+        "/app/tasks/personal"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 1,
+      "copy": 2,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/tasks/relationship-lifecycle-tasks-section.tsx",
+      "routes": [
+        "/app/tasks",
+        "/app/tasks/[id]"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 3,
+      "copy": 31,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/tasks/relationship/[id]/relationship-lifecycle-editor.tsx",
+      "routes": [
+        "/app/tasks/relationship/[id]"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 11,
+      "copy": 21,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/tasks/task-detail-workspace.tsx",
+      "routes": [
+        "/app/tasks",
+        "/app/tasks/[id]"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 17,
+      "copy": 95,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/tasks/task-schedule-editor.tsx",
+      "routes": [
+        "/app/tasks",
+        "/app/tasks/[id]"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 4,
+      "copy": 7,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/tasks/tasks-client.ts",
+      "routes": [
+        "/app/agent",
+        "/app/tasks",
+        "/app/tasks/[id]",
+        "/app/today"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 0,
+      "copy": 1,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/tasks/tasks-controls.tsx",
+      "routes": [
+        "/app/tasks",
+        "/app/tasks/[id]",
+        "/app/today"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 8,
+      "copy": 26,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/tasks/tasks-page-content.tsx",
+      "routes": [
+        "/app/tasks",
+        "/app/tasks/[id]"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 0,
+      "copy": 0,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/tasks/tasks-page-heading.tsx",
+      "routes": [
+        "/app/tasks",
+        "/app/tasks/[id]"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 2,
+      "copy": 8,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/tasks/tasks-workspace.tsx",
+      "routes": [
+        "/app/tasks",
+        "/app/tasks/[id]"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 8,
+      "copy": 38,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/tasks/today-tasks-summary.tsx",
+      "routes": [
+        "/app/today"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 4,
+      "copy": 19,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/today/compose-app-today-from-agent-ledger/today-appointment-schedule.ts",
+      "routes": [
+        "/app/today"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 0,
+      "copy": 1,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/today/compose-app-today-from-agent-ledger/today-merged-view-model.ts",
+      "routes": [
+        "/app/today"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 0,
+      "copy": 3,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/today/orbit-real-today.tsx",
+      "routes": [
+        "/app/today"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 3,
+      "copy": 35,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/today/orbit-today-decision-form.tsx",
+      "routes": [
+        "/app/today"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 7,
+      "copy": 7,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/today/orbit-today-decision-panel.tsx",
+      "routes": [
+        "/app/today"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 0,
+      "copy": 4,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/today/orbit-today-header-actions.tsx",
+      "routes": [
+        "/app/today"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 4,
+      "copy": 5,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/today/orbit-today-item-opened.tsx",
+      "routes": [
+        "/app/today"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 0,
+      "copy": 0,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/today/orbit-today-pre-event-brief.tsx",
+      "routes": [
+        "/app/today"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 0,
+      "copy": 8,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/today/orbit-today-time-spine.tsx",
+      "routes": [
+        "/app/today"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 19,
+      "copy": 53,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/today/today-page-content.tsx",
+      "routes": [
+        "/app/today"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 1,
+      "copy": 2,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/(app)/app/today/today-section-presentation.ts",
+      "routes": [
+        "/app/today"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 0,
+      "copy": 21,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/dev/agent-test-report/page.tsx",
+      "routes": [
+        "/dev/agent-test-report"
+      ],
+      "group": "09-dev",
+      "controls": 5,
+      "copy": 51,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/dev/capabilities/capability-debug-dashboard/error-codes.ts",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "09-dev",
+      "controls": 0,
+      "copy": 1,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/dev/capabilities/capability-debug-dashboard/fixtures.ts",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "09-dev",
+      "controls": 0,
+      "copy": 21,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/dev/capabilities/debug-dashboard.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "09-dev",
+      "controls": 3,
+      "copy": 95,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/dev/capabilities/page.tsx",
+      "routes": [
+        "/dev/capabilities"
+      ],
+      "group": "09-dev",
+      "controls": 1,
+      "copy": 46,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/dev/foundation/domain/page.tsx",
+      "routes": [
+        "/dev/foundation/domain"
+      ],
+      "group": "09-dev",
+      "controls": 0,
+      "copy": 14,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/dev/foundation/mock-registry/page.tsx",
+      "routes": [
+        "/dev/foundation/mock-registry"
+      ],
+      "group": "09-dev",
+      "controls": 0,
+      "copy": 33,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/dev/foundation/style/page.tsx",
+      "routes": [
+        "/dev/foundation/style"
+      ],
+      "group": "09-dev",
+      "controls": 6,
+      "copy": 62,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/dev/knowledge/knowledge-wiki.tsx",
+      "routes": [
+        "/dev/knowledge"
+      ],
+      "group": "09-dev",
+      "controls": 22,
+      "copy": 79,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/app/dev/orbit-ai/trace/orbit-ai-trace-debugger.tsx",
+      "routes": [
+        "/dev/orbit-ai/trace"
+      ],
+      "group": "09-dev",
+      "controls": 12,
+      "copy": 165,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/account/mock-account-session/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 0,
+      "copy": 46,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/acquisition/business-card-review-and-confirm-flow/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 3,
+      "copy": 73,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/acquisition/business-card-scan-ocr-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 10,
+      "copy": 64,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/acquisition/contact-acquisition-draft-pipeline/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 2,
+      "copy": 84,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/acquisition/duplicate-detection-and-merge-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 15,
+      "copy": 107,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/acquisition/email-and-calendar-relationship-signal-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 17,
+      "copy": 94,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/acquisition/event-attendee-import-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 12,
+      "copy": 93,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/acquisition/external-contacts-import-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 11,
+      "copy": 95,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/acquisition/manual-contact-creation-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 16,
+      "copy": 105,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/acquisition/qr-scan-connect-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 12,
+      "copy": 72,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/acquisition/referral-and-recommended-contact-confirm-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 17,
+      "copy": 124,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/agent/agent-action-queue-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "02-ai",
+      "controls": 4,
+      "copy": 35,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/agent/agent-autonomy-settings-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "02-ai",
+      "controls": 4,
+      "copy": 39,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/agent/external-action-sandbox-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "02-ai",
+      "controls": 4,
+      "copy": 45,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/analysis/relationship-value-scoring-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 14,
+      "copy": 94,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/audit/source-consistency-and-provenance-audit/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 4,
+      "copy": 47,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/bootstrap/app-bootstrap-mock-aggregator/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 2,
+      "copy": 104,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/chat/chat-conversation-and-message-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 0,
+      "copy": 66,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/chat/chat-privacy-controls-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 2,
+      "copy": 68,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/chat/chat-summary-and-extraction-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 2,
+      "copy": 71,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/chat/chat-writing-assist-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "07-schedule-tasks-chat",
+      "controls": 0,
+      "copy": 64,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/connections/connection-and-evidence-service-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 15,
+      "copy": 101,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/connections/relationship-stage-and-profile-mock/api-probe-controls.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 8,
+      "copy": 8,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/connections/relationship-stage-and-profile-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 0,
+      "copy": 71,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/api-probe-controls.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "03-contacts",
+      "controls": 13,
+      "copy": 20,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/contacts/contact-detail-tag-and-status-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "03-contacts",
+      "controls": 0,
+      "copy": 84,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/contacts/contacts-list-search-and-filter-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "03-contacts",
+      "controls": 13,
+      "copy": 113,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/dashboard/dashboard-aggregate-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "05-events",
+      "controls": 0,
+      "copy": 90,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/dashboard/network-distribution-analytics-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "05-events",
+      "controls": 0,
+      "copy": 87,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/dashboard/opportunity-reminder-analytics-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "05-events",
+      "controls": 3,
+      "copy": 90,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/events/attendee-roster/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "05-events",
+      "controls": 14,
+      "copy": 87,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/events/encounter-note/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "05-events",
+      "controls": 21,
+      "copy": 107,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/events/event-analytics/report.tsx",
+      "routes": [
+        "/app/events/[id]/analytics"
+      ],
+      "group": "06-operations",
+      "controls": 0,
+      "copy": 61,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/events/event-crud-and-import/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "05-events",
+      "controls": 17,
+      "copy": 87,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/events/goal-readiness/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "05-events",
+      "controls": 15,
+      "copy": 98,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/events/post-event-review/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "05-events",
+      "controls": 14,
+      "copy": 98,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/events/want-connect/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "05-events",
+      "controls": 14,
+      "copy": 90,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/followups/followup-task-generation-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 0,
+      "copy": 61,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/followups/message-draft-generator-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 0,
+      "copy": 63,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/notifications/reminder-schedule-and-notification-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 0,
+      "copy": 67,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/permissions/permission-state-and-staged-authorization-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 2,
+      "copy": 58,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/permissions/sensitive-action-confirmation-guard/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 4,
+      "copy": 68,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/profile/profile-document-extraction-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "08-profile-settings-admin",
+      "controls": 0,
+      "copy": 54,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/profile/profile-onboarding-and-manual-profile-editor/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "08-profile-settings-admin",
+      "controls": 0,
+      "copy": 68,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/profile/profile-signal-review-queue/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "08-profile-settings-admin",
+      "controls": 0,
+      "copy": 70,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/recommendations/event-recommendation-and-opening-line-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 17,
+      "copy": 104,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/recommendations/event-value-recommendation-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 0,
+      "copy": 57,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/features/search/relationship-natural-search-mock/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 11,
+      "copy": 74,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/shared/ai/ai-provider-mock-and-provenance-boundary/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 0,
+      "copy": 65,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/shared/dev/app-scaffold/capability-demo-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "09-dev",
+      "controls": 0,
+      "copy": 42,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/shared/mock/mock-data-mutation-reset-and-scenario-switcher/debug-view.tsx",
+      "routes": [
+        "/dev/capabilities/[slug]"
+      ],
+      "group": "01-entry-shell",
+      "controls": 0,
+      "copy": 77,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/shared/ui/primitives.tsx",
+      "routes": [
+        "/app/account/forgot-password",
+        "/app/account/login",
+        "/app/account/signup",
+        "/app/admin",
+        "/app/admin/events",
+        "/app/agent",
+        "/app/contacts",
+        "/app/contacts/[id]",
+        "/app/contacts/intros",
+        "/app/contacts/pipeline",
+        "/app/dashboard",
+        "/app/events/[id]",
+        "/app/events/[id]/register",
+        "/app/home/events",
+        "/app/o/[slug]",
+        "/app/party",
+        "/app/party/checkin",
+        "/app/party/graph",
+        "/app/platform",
+        "/app/profile",
+        "/app/register",
+        "/dev/capabilities",
+        "/dev/capabilities/[slug]",
+        "/dev/foundation/domain",
+        "/dev/foundation/mock-registry",
+        "/dev/foundation/style",
+        "/dev/orbit-ai/trace"
+      ],
+      "group": "01-entry-shell",
+      "controls": 2,
+      "copy": 0,
+      "overlays": 0
+    },
+    {
+      "file": "repos/orbits/shared/ui/state-view.tsx",
+      "routes": [
+        "/app/account/forgot-password",
+        "/app/account/login",
+        "/app/account/signup",
+        "/app/admin",
+        "/app/admin/events",
+        "/app/agent",
+        "/app/contacts",
+        "/app/contacts/[id]",
+        "/app/contacts/intros",
+        "/app/contacts/pipeline",
+        "/app/dashboard",
+        "/app/events/[id]",
+        "/app/events/[id]/register",
+        "/app/home/events",
+        "/app/o/[slug]",
+        "/app/party",
+        "/app/party/checkin",
+        "/app/party/graph",
+        "/app/platform",
+        "/app/profile",
+        "/app/register"
+      ],
+      "group": "01-entry-shell",
+      "controls": 2,
+      "copy": 10,
+      "overlays": 0
+    }
+  ],
+  "apiHandlers": [
+    {
+      "route": "/api/account/language-preference",
+      "file": "repos/orbits/app/api/account/language-preference/route.ts",
+      "methods": [
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/account/me",
+      "file": "repos/orbits/app/api/account/me/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/account/session/sign-out",
+      "file": "repos/orbits/app/api/account/session/sign-out/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/agent/actions",
+      "file": "repos/orbits/app/api/agent/actions/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/agent/actions/[id]/accept",
+      "file": "repos/orbits/app/api/agent/actions/[id]/accept/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/agent/actions/[id]/dismiss",
+      "file": "repos/orbits/app/api/agent/actions/[id]/dismiss/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/agent/actions/[id]/view",
+      "file": "repos/orbits/app/api/agent/actions/[id]/view/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/agent/automations",
+      "file": "repos/orbits/app/api/agent/automations/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/agent/automations/[id]",
+      "file": "repos/orbits/app/api/agent/automations/[id]/route.ts",
+      "methods": [
+        "PATCH",
+        "DELETE"
+      ]
+    },
+    {
+      "route": "/api/agent/automations/[id]/run",
+      "file": "repos/orbits/app/api/agent/automations/[id]/run/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/agent/automations/compile",
+      "file": "repos/orbits/app/api/agent/automations/compile/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/agent/automations/dry-run",
+      "file": "repos/orbits/app/api/agent/automations/dry-run/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/agent/feedback",
+      "file": "repos/orbits/app/api/agent/feedback/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/agent/feedback/[runId]",
+      "file": "repos/orbits/app/api/agent/feedback/[runId]/route.ts",
+      "methods": [
+        "GET",
+        "DELETE"
+      ]
+    },
+    {
+      "route": "/api/agent/ledger",
+      "file": "repos/orbits/app/api/agent/ledger/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/agent/ledger/[id]/draft",
+      "file": "repos/orbits/app/api/agent/ledger/[id]/draft/route.ts",
+      "methods": [
+        "PATCH"
+      ]
+    },
+    {
+      "route": "/api/agent/ledger/[id]/transition",
+      "file": "repos/orbits/app/api/agent/ledger/[id]/transition/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/agent/matchmaking/organizer-metrics",
+      "file": "repos/orbits/app/api/agent/matchmaking/organizer-metrics/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/agent/matchmaking/requests/[id]/outcome",
+      "file": "repos/orbits/app/api/agent/matchmaking/requests/[id]/outcome/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/agent/matchmaking/requests/[id]/respond",
+      "file": "repos/orbits/app/api/agent/matchmaking/requests/[id]/respond/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/agent/matchmaking/requests/[id]/slots",
+      "file": "repos/orbits/app/api/agent/matchmaking/requests/[id]/slots/route.ts",
+      "methods": [
+        "POST",
+        "PATCH"
+      ]
+    },
+    {
+      "route": "/api/agent/memory",
+      "file": "repos/orbits/app/api/agent/memory/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/agent/memory/[id]",
+      "file": "repos/orbits/app/api/agent/memory/[id]/route.ts",
+      "methods": [
+        "PATCH",
+        "DELETE"
+      ]
+    },
+    {
+      "route": "/api/agent/memory/settings",
+      "file": "repos/orbits/app/api/agent/memory/settings/route.ts",
+      "methods": [
+        "PATCH"
+      ]
+    },
+    {
+      "route": "/api/agent/operations/health",
+      "file": "repos/orbits/app/api/agent/operations/health/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/agent/preferences",
+      "file": "repos/orbits/app/api/agent/preferences/route.ts",
+      "methods": [
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/agent/settings",
+      "file": "repos/orbits/app/api/agent/settings/route.ts",
+      "methods": [
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/agent/signals",
+      "file": "repos/orbits/app/api/agent/signals/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/agent/signals/[id]",
+      "file": "repos/orbits/app/api/agent/signals/[id]/route.ts",
+      "methods": [
+        "PATCH"
+      ]
+    },
+    {
+      "route": "/api/agent/voice-memos/transcribe",
+      "file": "repos/orbits/app/api/agent/voice-memos/transcribe/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/ai/conversations",
+      "file": "repos/orbits/app/api/ai/conversations/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/ai/conversations/[id]",
+      "file": "repos/orbits/app/api/ai/conversations/[id]/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/ai/conversations/groups",
+      "file": "repos/orbits/app/api/ai/conversations/groups/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/ai/conversations/groups/[id]",
+      "file": "repos/orbits/app/api/ai/conversations/groups/[id]/route.ts",
+      "methods": [
+        "DELETE",
+        "PATCH"
+      ]
+    },
+    {
+      "route": "/api/ai/conversations/sessions",
+      "file": "repos/orbits/app/api/ai/conversations/sessions/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/ai/conversations/sessions/[id]",
+      "file": "repos/orbits/app/api/ai/conversations/sessions/[id]/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "PATCH"
+      ]
+    },
+    {
+      "route": "/api/ai/mock/message-draft",
+      "file": "repos/orbits/app/api/ai/mock/message-draft/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/ai/proactive-turns",
+      "file": "repos/orbits/app/api/ai/proactive-turns/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/ai/runs/[id]",
+      "file": "repos/orbits/app/api/ai/runs/[id]/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/ai/runs/[id]/transition",
+      "file": "repos/orbits/app/api/ai/runs/[id]/transition/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/ai/today",
+      "file": "repos/orbits/app/api/ai/today/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/analysis/relationship-value/[id]",
+      "file": "repos/orbits/app/api/analysis/relationship-value/[id]/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/analysis/relationship-value/recompute",
+      "file": "repos/orbits/app/api/analysis/relationship-value/recompute/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/app/bootstrap",
+      "file": "repos/orbits/app/api/app/bootstrap/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/appointments",
+      "file": "repos/orbits/app/api/appointments/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/appointments/[id]",
+      "file": "repos/orbits/app/api/appointments/[id]/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/appointments/[id]/commands",
+      "file": "repos/orbits/app/api/appointments/[id]/commands/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/appointments/[id]/details",
+      "file": "repos/orbits/app/api/appointments/[id]/details/route.ts",
+      "methods": [
+        "PATCH"
+      ]
+    },
+    {
+      "route": "/api/appointments/[id]/memo",
+      "file": "repos/orbits/app/api/appointments/[id]/memo/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/audit/provenance",
+      "file": "repos/orbits/app/api/audit/provenance/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/audit/provenance/run",
+      "file": "repos/orbits/app/api/audit/provenance/run/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/auth/[...nextauth]",
+      "file": "repos/orbits/app/api/auth/[...nextauth]/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/auth/mobile/credentials",
+      "file": "repos/orbits/app/api/auth/mobile/credentials/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/auth/mobile/google/complete",
+      "file": "repos/orbits/app/api/auth/mobile/google/complete/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/auth/mobile/google/exchange",
+      "file": "repos/orbits/app/api/auth/mobile/google/exchange/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/auth/mobile/google/start",
+      "file": "repos/orbits/app/api/auth/mobile/google/start/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/auth/mobile/providers",
+      "file": "repos/orbits/app/api/auth/mobile/providers/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/auth/password-reset/confirm",
+      "file": "repos/orbits/app/api/auth/password-reset/confirm/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/auth/password-reset/request",
+      "file": "repos/orbits/app/api/auth/password-reset/request/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/auth/password-reset/worker",
+      "file": "repos/orbits/app/api/auth/password-reset/worker/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/auth/register",
+      "file": "repos/orbits/app/api/auth/register/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/chat/assist/email-draft",
+      "file": "repos/orbits/app/api/chat/assist/email-draft/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/chat/assist/followup-draft",
+      "file": "repos/orbits/app/api/chat/assist/followup-draft/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/chat/assist/rewrite",
+      "file": "repos/orbits/app/api/chat/assist/rewrite/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/chat/conversations",
+      "file": "repos/orbits/app/api/chat/conversations/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/chat/conversations/[id]",
+      "file": "repos/orbits/app/api/chat/conversations/[id]/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/chat/conversations/[id]/extractions",
+      "file": "repos/orbits/app/api/chat/conversations/[id]/extractions/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/chat/conversations/[id]/messages",
+      "file": "repos/orbits/app/api/chat/conversations/[id]/messages/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/chat/conversations/[id]/summary",
+      "file": "repos/orbits/app/api/chat/conversations/[id]/summary/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/chat/privacy",
+      "file": "repos/orbits/app/api/chat/privacy/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/chat/privacy/analysis-toggle",
+      "file": "repos/orbits/app/api/chat/privacy/analysis-toggle/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/chat/relationship-inbox",
+      "file": "repos/orbits/app/api/chat/relationship-inbox/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/confirmations/[id]/approve",
+      "file": "repos/orbits/app/api/confirmations/[id]/approve/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/confirmations/[id]/reject",
+      "file": "repos/orbits/app/api/confirmations/[id]/reject/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/connections",
+      "file": "repos/orbits/app/api/connections/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/connections/[id]",
+      "file": "repos/orbits/app/api/connections/[id]/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/connections/[id]/evidence",
+      "file": "repos/orbits/app/api/connections/[id]/evidence/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/connections/[id]/lifecycle",
+      "file": "repos/orbits/app/api/connections/[id]/lifecycle/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/connections/[id]/profile",
+      "file": "repos/orbits/app/api/connections/[id]/profile/route.ts",
+      "methods": [
+        "PATCH"
+      ]
+    },
+    {
+      "route": "/api/connections/[id]/stage",
+      "file": "repos/orbits/app/api/connections/[id]/stage/route.ts",
+      "methods": [
+        "PATCH"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts",
+      "file": "repos/orbits/app/api/contact-drafts/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/[id]",
+      "file": "repos/orbits/app/api/contact-drafts/[id]/route.ts",
+      "methods": [
+        "GET",
+        "PATCH"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/[id]/confirm",
+      "file": "repos/orbits/app/api/contact-drafts/[id]/confirm/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/batches",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/batches/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/batches/[id]",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/batches/[id]/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/batches/[id]/cancel",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/batches/[id]/cancel/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/batches/[id]/finish",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/batches/[id]/finish/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/batches/[id]/items/[itemId]/confirm",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/batches/[id]/items/[itemId]/confirm/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/batches/[id]/items/[itemId]/image",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/batches/[id]/items/[itemId]/image/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/batches/[id]/items/[itemId]/manual-entry",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/batches/[id]/items/[itemId]/manual-entry/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/batches/[id]/items/[itemId]/retry",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/batches/[id]/items/[itemId]/retry/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/batches/[id]/items/[itemId]/skip",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/batches/[id]/items/[itemId]/skip/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/batches/v2",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/batches/v2/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/batches/v2/[id]",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/batches/v2/[id]/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/batches/v2/[id]/cancel",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/batches/v2/[id]/cancel/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/batches/v2/[id]/finalize",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/batches/v2/[id]/finalize/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/batches/v2/[id]/items/[itemId]/confirm",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/batches/v2/[id]/items/[itemId]/confirm/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/batches/v2/[id]/items/[itemId]/content",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/batches/v2/[id]/items/[itemId]/content/route.ts",
+      "methods": [
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/batches/v2/[id]/items/[itemId]/exclude",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/batches/v2/[id]/items/[itemId]/exclude/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/batches/v2/[id]/items/[itemId]/image",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/batches/v2/[id]/items/[itemId]/image/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/batches/v2/[id]/items/[itemId]/manual-entry",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/batches/v2/[id]/items/[itemId]/manual-entry/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/batches/v2/[id]/items/[itemId]/replace",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/batches/v2/[id]/items/[itemId]/replace/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/batches/v2/[id]/items/[itemId]/retry",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/batches/v2/[id]/items/[itemId]/retry/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/batches/v2/[id]/items/[itemId]/skip",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/batches/v2/[id]/items/[itemId]/skip/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/imports",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/imports/route.ts",
+      "methods": [
+        "POST",
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/imports/[id]",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/imports/[id]/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/imports/[id]/cancel",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/imports/[id]/cancel/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/imports/verify-source",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/imports/verify-source/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/scan",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/scan/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/uploads",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/uploads/route.ts",
+      "methods": [
+        "POST",
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/uploads/consume-v2",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/uploads/consume-v2/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/business-card/uploads/token",
+      "file": "repos/orbits/app/api/contact-drafts/business-card/uploads/token/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/event-attendees/import",
+      "file": "repos/orbits/app/api/contact-drafts/event-attendees/import/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/external/candidates",
+      "file": "repos/orbits/app/api/contact-drafts/external/candidates/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/external/import",
+      "file": "repos/orbits/app/api/contact-drafts/external/import/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/manual",
+      "file": "repos/orbits/app/api/contact-drafts/manual/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/merge-suggestions",
+      "file": "repos/orbits/app/api/contact-drafts/merge-suggestions/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/merge-suggestions/[id]/apply",
+      "file": "repos/orbits/app/api/contact-drafts/merge-suggestions/[id]/apply/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/qr/scan",
+      "file": "repos/orbits/app/api/contact-drafts/qr/scan/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/recommended/[id]/confirm",
+      "file": "repos/orbits/app/api/contact-drafts/recommended/[id]/confirm/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-drafts/referral",
+      "file": "repos/orbits/app/api/contact-drafts/referral/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contact-invitations",
+      "file": "repos/orbits/app/api/contact-invitations/route.ts",
+      "methods": [
+        "GET",
+        "POST",
+        "PATCH"
+      ]
+    },
+    {
+      "route": "/api/contacts",
+      "file": "repos/orbits/app/api/contacts/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/contacts/[id]",
+      "file": "repos/orbits/app/api/contacts/[id]/route.ts",
+      "methods": [
+        "GET",
+        "PATCH"
+      ]
+    },
+    {
+      "route": "/api/contacts/[id]/relationship-initialization",
+      "file": "repos/orbits/app/api/contacts/[id]/relationship-initialization/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contacts/business-card/confirm",
+      "file": "repos/orbits/app/api/contacts/business-card/confirm/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contacts/introductions",
+      "file": "repos/orbits/app/api/contacts/introductions/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/contacts/needs-matches",
+      "file": "repos/orbits/app/api/contacts/needs-matches/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/contacts/search",
+      "file": "repos/orbits/app/api/contacts/search/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/dashboard",
+      "file": "repos/orbits/app/api/dashboard/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/dashboard/distributions",
+      "file": "repos/orbits/app/api/dashboard/distributions/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/dashboard/network-gaps",
+      "file": "repos/orbits/app/api/dashboard/network-gaps/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/dashboard/opportunities",
+      "file": "repos/orbits/app/api/dashboard/opportunities/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/dashboard/opportunities/recompute",
+      "file": "repos/orbits/app/api/dashboard/opportunities/recompute/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/dashboard/structure/[dimension]/[bucketId]",
+      "file": "repos/orbits/app/api/dashboard/structure/[dimension]/[bucketId]/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/dashboard/summary",
+      "file": "repos/orbits/app/api/dashboard/summary/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/dev/knowledge/documents/[id]",
+      "file": "repos/orbits/app/api/dev/knowledge/documents/[id]/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/dev/orbit-agent/trace",
+      "file": "repos/orbits/app/api/dev/orbit-agent/trace/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/dev/orbit-ai/trace",
+      "file": "repos/orbits/app/api/dev/orbit-ai/trace/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/devices/push-token",
+      "file": "repos/orbits/app/api/devices/push-token/route.ts",
+      "methods": [
+        "DELETE",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/devices/push-tokens",
+      "file": "repos/orbits/app/api/devices/push-tokens/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/devices/push-tokens/[id]",
+      "file": "repos/orbits/app/api/devices/push-tokens/[id]/route.ts",
+      "methods": [
+        "DELETE"
+      ]
+    },
+    {
+      "route": "/api/encounters",
+      "file": "repos/orbits/app/api/encounters/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events",
+      "file": "repos/orbits/app/api/events/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/[id]",
+      "file": "repos/orbits/app/api/events/[id]/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/access/assignments/[subjectActorId]",
+      "file": "repos/orbits/app/api/events/[id]/access/assignments/[subjectActorId]/route.ts",
+      "methods": [
+        "GET",
+        "PUT",
+        "DELETE"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/access/roles",
+      "file": "repos/orbits/app/api/events/[id]/access/roles/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/admission/application",
+      "file": "repos/orbits/app/api/events/[id]/admission/application/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/admission/policy",
+      "file": "repos/orbits/app/api/events/[id]/admission/policy/route.ts",
+      "methods": [
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/admission/reviews",
+      "file": "repos/orbits/app/api/events/[id]/admission/reviews/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/admission/reviews/[actorId]",
+      "file": "repos/orbits/app/api/events/[id]/admission/reviews/[actorId]/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/admission/reviews/[actorId]/decision",
+      "file": "repos/orbits/app/api/events/[id]/admission/reviews/[actorId]/decision/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/analytics/aggregate",
+      "file": "repos/orbits/app/api/events/[id]/analytics/aggregate/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/analytics/attendee",
+      "file": "repos/orbits/app/api/events/[id]/analytics/attendee/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/attendees",
+      "file": "repos/orbits/app/api/events/[id]/attendees/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/attendees/import",
+      "file": "repos/orbits/app/api/events/[id]/attendees/import/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/encounters",
+      "file": "repos/orbits/app/api/events/[id]/encounters/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/encounters/[encounterId]/evidence",
+      "file": "repos/orbits/app/api/events/[id]/encounters/[encounterId]/evidence/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/experience",
+      "file": "repos/orbits/app/api/events/[id]/experience/route.ts",
+      "methods": [
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/experience/draft",
+      "file": "repos/orbits/app/api/events/[id]/experience/draft/route.ts",
+      "methods": [
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/experience/preview",
+      "file": "repos/orbits/app/api/events/[id]/experience/preview/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/experience/publish",
+      "file": "repos/orbits/app/api/events/[id]/experience/publish/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/goal",
+      "file": "repos/orbits/app/api/events/[id]/goal/route.ts",
+      "methods": [
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/matches",
+      "file": "repos/orbits/app/api/events/[id]/matches/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/matchmaking",
+      "file": "repos/orbits/app/api/events/[id]/matchmaking/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/operations",
+      "file": "repos/orbits/app/api/events/[id]/operations/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/operations/admin",
+      "file": "repos/orbits/app/api/events/[id]/operations/admin/route.ts",
+      "methods": [
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/operations/admin/check-ins",
+      "file": "repos/orbits/app/api/events/[id]/operations/admin/check-ins/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/operations/admin/export",
+      "file": "repos/orbits/app/api/events/[id]/operations/admin/export/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/operations/admin/generations",
+      "file": "repos/orbits/app/api/events/[id]/operations/admin/generations/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/operations/admin/generations/[generationId]/publish",
+      "file": "repos/orbits/app/api/events/[id]/operations/admin/generations/[generationId]/publish/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/operations/admin/generations/[generationId]/retry",
+      "file": "repos/orbits/app/api/events/[id]/operations/admin/generations/[generationId]/retry/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/operations/admin/generations/[generationId]/run",
+      "file": "repos/orbits/app/api/events/[id]/operations/admin/generations/[generationId]/run/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/operations/check-in",
+      "file": "repos/orbits/app/api/events/[id]/operations/check-in/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/operations/contact-requests",
+      "file": "repos/orbits/app/api/events/[id]/operations/contact-requests/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/operations/contact-requests/[requestId]/respond",
+      "file": "repos/orbits/app/api/events/[id]/operations/contact-requests/[requestId]/respond/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/operations/contact-requests/[requestId]/withdraw",
+      "file": "repos/orbits/app/api/events/[id]/operations/contact-requests/[requestId]/withdraw/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/operations/participants/[participantId]",
+      "file": "repos/orbits/app/api/events/[id]/operations/participants/[participantId]/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/post-event",
+      "file": "repos/orbits/app/api/events/[id]/post-event/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/post-event/artifact",
+      "file": "repos/orbits/app/api/events/[id]/post-event/artifact/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/post-event/confirm",
+      "file": "repos/orbits/app/api/events/[id]/post-event/confirm/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/post-event/followup",
+      "file": "repos/orbits/app/api/events/[id]/post-event/followup/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/post-event/followups",
+      "file": "repos/orbits/app/api/events/[id]/post-event/followups/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/readiness",
+      "file": "repos/orbits/app/api/events/[id]/readiness/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/registration",
+      "file": "repos/orbits/app/api/events/[id]/registration/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/registration/cancel",
+      "file": "repos/orbits/app/api/events/[id]/registration/cancel/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/registration/interview",
+      "file": "repos/orbits/app/api/events/[id]/registration/interview/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/registration/persona",
+      "file": "repos/orbits/app/api/events/[id]/registration/persona/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/registration/preview",
+      "file": "repos/orbits/app/api/events/[id]/registration/preview/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/events/[id]/want-to-connect",
+      "file": "repos/orbits/app/api/events/[id]/want-to-connect/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/events/center",
+      "file": "repos/orbits/app/api/events/center/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/events/public",
+      "file": "repos/orbits/app/api/events/public/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/events/public/[id]",
+      "file": "repos/orbits/app/api/events/public/[id]/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/health",
+      "file": "repos/orbits/app/api/health/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/health/error",
+      "file": "repos/orbits/app/api/health/error/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/integrations",
+      "file": "repos/orbits/app/api/integrations/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/integrations/[provider]",
+      "file": "repos/orbits/app/api/integrations/[provider]/route.ts",
+      "methods": [
+        "DELETE"
+      ]
+    },
+    {
+      "route": "/api/integrations/[provider]/authorize",
+      "file": "repos/orbits/app/api/integrations/[provider]/authorize/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/integrations/[provider]/callback",
+      "file": "repos/orbits/app/api/integrations/[provider]/callback/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/integrations/[provider]/health",
+      "file": "repos/orbits/app/api/integrations/[provider]/health/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/internal/agent/automations",
+      "file": "repos/orbits/app/api/internal/agent/automations/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/internal/agent/dispatch",
+      "file": "repos/orbits/app/api/internal/agent/dispatch/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/internal/agent/scheduler",
+      "file": "repos/orbits/app/api/internal/agent/scheduler/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/internal/agent/worker",
+      "file": "repos/orbits/app/api/internal/agent/worker/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/internal/business-card/dispatch",
+      "file": "repos/orbits/app/api/internal/business-card/dispatch/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/internal/maintenance",
+      "file": "repos/orbits/app/api/internal/maintenance/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/message-drafts",
+      "file": "repos/orbits/app/api/message-drafts/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/message-drafts/[id]",
+      "file": "repos/orbits/app/api/message-drafts/[id]/route.ts",
+      "methods": [
+        "PATCH"
+      ]
+    },
+    {
+      "route": "/api/mobile/contacts-dashboard",
+      "file": "repos/orbits/app/api/mobile/contacts-dashboard/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/mock/reset",
+      "file": "repos/orbits/app/api/mock/reset/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/mock/scenarios",
+      "file": "repos/orbits/app/api/mock/scenarios/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/mock/scenarios/[id]/activate",
+      "file": "repos/orbits/app/api/mock/scenarios/[id]/activate/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/notes",
+      "file": "repos/orbits/app/api/notes/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/notes/[id]",
+      "file": "repos/orbits/app/api/notes/[id]/route.ts",
+      "methods": [
+        "GET",
+        "PATCH"
+      ]
+    },
+    {
+      "route": "/api/notes/[id]/contacts/[contactId]",
+      "file": "repos/orbits/app/api/notes/[id]/contacts/[contactId]/route.ts",
+      "methods": [
+        "DELETE"
+      ]
+    },
+    {
+      "route": "/api/notification-preferences",
+      "file": "repos/orbits/app/api/notification-preferences/route.ts",
+      "methods": [
+        "GET",
+        "PATCH"
+      ]
+    },
+    {
+      "route": "/api/notifications",
+      "file": "repos/orbits/app/api/notifications/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/notifications/[id]/state",
+      "file": "repos/orbits/app/api/notifications/[id]/state/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/notifications/deliveries/[id]",
+      "file": "repos/orbits/app/api/notifications/deliveries/[id]/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/notifications/reminders/generate",
+      "file": "repos/orbits/app/api/notifications/reminders/generate/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/permissions",
+      "file": "repos/orbits/app/api/permissions/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/permissions/calendar/request",
+      "file": "repos/orbits/app/api/permissions/calendar/request/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/profile",
+      "file": "repos/orbits/app/api/profile/route.ts",
+      "methods": [
+        "GET",
+        "PUT"
+      ]
+    },
+    {
+      "route": "/api/profile/extractions/business-card",
+      "file": "repos/orbits/app/api/profile/extractions/business-card/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/profile/extractions/resume",
+      "file": "repos/orbits/app/api/profile/extractions/resume/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/profile/update-suggestions",
+      "file": "repos/orbits/app/api/profile/update-suggestions/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/profile/update-suggestions/[id]/accept",
+      "file": "repos/orbits/app/api/profile/update-suggestions/[id]/accept/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/profile/update-suggestions/[id]/dismiss",
+      "file": "repos/orbits/app/api/profile/update-suggestions/[id]/dismiss/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/queues/agent-action",
+      "file": "repos/orbits/app/api/queues/agent-action/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/queues/business-card",
+      "file": "repos/orbits/app/api/queues/business-card/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/queues/event-operations",
+      "file": "repos/orbits/app/api/queues/event-operations/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/queues/maintenance",
+      "file": "repos/orbits/app/api/queues/maintenance/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/queues/password-reset",
+      "file": "repos/orbits/app/api/queues/password-reset/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/recommendations/event/[id]",
+      "file": "repos/orbits/app/api/recommendations/event/[id]/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/recommendations/event/[id]/opening-line",
+      "file": "repos/orbits/app/api/recommendations/event/[id]/opening-line/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/recommendations/events",
+      "file": "repos/orbits/app/api/recommendations/events/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/recommendations/events/[id]/accept",
+      "file": "repos/orbits/app/api/recommendations/events/[id]/accept/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/relationship-communication/bindings/[contactId]",
+      "file": "repos/orbits/app/api/relationship-communication/bindings/[contactId]/route.ts",
+      "methods": [
+        "DELETE"
+      ]
+    },
+    {
+      "route": "/api/relationship-communication/conversations",
+      "file": "repos/orbits/app/api/relationship-communication/conversations/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/relationship-communication/conversations/[id]",
+      "file": "repos/orbits/app/api/relationship-communication/conversations/[id]/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/relationship-communication/conversations/[id]/messages",
+      "file": "repos/orbits/app/api/relationship-communication/conversations/[id]/messages/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/relationship-communication/conversations/[id]/read",
+      "file": "repos/orbits/app/api/relationship-communication/conversations/[id]/read/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/relationship-communication/eligibility",
+      "file": "repos/orbits/app/api/relationship-communication/eligibility/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/relationship-communication/invitations",
+      "file": "repos/orbits/app/api/relationship-communication/invitations/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/relationship-communication/invitations/[token]",
+      "file": "repos/orbits/app/api/relationship-communication/invitations/[token]/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/relationship-communication/invitations/[token]/accept",
+      "file": "repos/orbits/app/api/relationship-communication/invitations/[token]/accept/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/relationship-signals/[id]/confirm",
+      "file": "repos/orbits/app/api/relationship-signals/[id]/confirm/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/relationship-signals/email-calendar",
+      "file": "repos/orbits/app/api/relationship-signals/email-calendar/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/relationship-tasks",
+      "file": "repos/orbits/app/api/relationship-tasks/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/reminders",
+      "file": "repos/orbits/app/api/reminders/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/reminders/[id]",
+      "file": "repos/orbits/app/api/reminders/[id]/route.ts",
+      "methods": [
+        "PATCH"
+      ]
+    },
+    {
+      "route": "/api/sandbox/external-actions/audit",
+      "file": "repos/orbits/app/api/sandbox/external-actions/audit/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/sandbox/external-actions/send-message",
+      "file": "repos/orbits/app/api/sandbox/external-actions/send-message/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/schedule-items",
+      "file": "repos/orbits/app/api/schedule-items/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/schedule-items/[id]",
+      "file": "repos/orbits/app/api/schedule-items/[id]/route.ts",
+      "methods": []
+    },
+    {
+      "route": "/api/schedule-items/[id]/meeting-details",
+      "file": "repos/orbits/app/api/schedule-items/[id]/meeting-details/route.ts",
+      "methods": []
+    },
+    {
+      "route": "/api/search/relationships",
+      "file": "repos/orbits/app/api/search/relationships/route.ts",
+      "methods": [
+        "POST",
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/search/suggestions",
+      "file": "repos/orbits/app/api/search/suggestions/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/task-suggestions",
+      "file": "repos/orbits/app/api/task-suggestions/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/task-suggestions/[id]/accept",
+      "file": "repos/orbits/app/api/task-suggestions/[id]/accept/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/task-suggestions/[id]/dismiss",
+      "file": "repos/orbits/app/api/task-suggestions/[id]/dismiss/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/task-suggestions/[id]/snooze",
+      "file": "repos/orbits/app/api/task-suggestions/[id]/snooze/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/tasks",
+      "file": "repos/orbits/app/api/tasks/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/tasks/[id]",
+      "file": "repos/orbits/app/api/tasks/[id]/route.ts",
+      "methods": [
+        "GET",
+        "PATCH",
+        "DELETE"
+      ]
+    },
+    {
+      "route": "/api/tasks/[id]/activities",
+      "file": "repos/orbits/app/api/tasks/[id]/activities/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/tasks/generate",
+      "file": "repos/orbits/app/api/tasks/generate/route.ts",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
+      "route": "/api/tasks/history",
+      "file": "repos/orbits/app/api/tasks/history/route.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
+      "route": "/api/today",
+      "file": "repos/orbits/app/api/today/route.ts",
+      "methods": [
+        "GET"
+      ]
+    }
+  ]
+}

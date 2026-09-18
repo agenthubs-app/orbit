@@ -1,5 +1,9 @@
 # 两端当前状态
 
+## 2026-09-17 Web 报名候选的跨端发布门
+
+主集成`66087fff`已本地验收报名回执/独立GET及规范账号接线（84/84与全typecheck）。尚未发布：历史raw报名未审计/迁移，App报名屏仍可能拒绝规范accountId回执，跨端联验未执行。详见[BR-031](2026-09-17-web-registration-identity-candidate.md)；本条不改变已完成的生产数据切换，也不把此前跨端其他子项重新判失败。
+
 ## 2026-09-17 小型免费测试库已初始化
 
 BR-027 新 Neon 独立库完成既有迁移与小型 seed：4 个可登录合成账号、2 个 canonical 活动、3 条关系、1 个跟进任务，通用记录共28条；主办方权限/参与者拒绝与关系生命周期预检通过。种子42.6KB、初始化返回JSON约46.6KB，未调用模型，旧Production和本地大型fixtures未删改。独立Vercel项目使用显式Preview及无cron/队列订阅配置；Web登录验证与App切换状态按[BR-027](2026-09-17-read-budget-staging.md)最新记录，不将初始化当作完整业务闭环。后续云端操作必须遵守[免费套餐操作规程](../repos/orbits/docs/operations/free-staging-budget.md)。

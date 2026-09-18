@@ -6,6 +6,8 @@
 
 ## 主要入口
 
+- [Web待办与并行开发总表](../docs/development/2026-09-17-web/README.md)：2026-09-17的30项需求核对、已解决子项、领域任务、证据基线与冲突管理。
+
 - [文档库目录](docs/catalog.zh.md)（`knowledge/docs/catalog.zh.md`）：单独的文档查询入口，链接权威文档地址、中文简介、状态和来源路径。
 - [开发历史](history/development-log.zh.md)（`knowledge/history/development-log.zh.md`）：记录重要修改做了什么、为什么做、关联提交和验证方式。
 - [排障与经验](learnings/index.zh.md)（`knowledge/learnings/index.zh.md`）：整合 `.learnings/` 和 `repos/orbits/.learnings/` 的 troubleshooting、errors 和 recurring patterns。
