@@ -156,7 +156,7 @@ export interface EventCreatePort {
     title: string;
     startsAt: string;
     endsAt?: string;
-    location?: string;
+    venue?: string;
     description?: string;
   }) => Promise<
     | { success: true; data: { event: { id: string } } }
@@ -175,7 +175,7 @@ export function createEventDraftAdapter(port: EventCreatePort): EntityDraftWrite
         startsAt,
         title: required(draft, "title"),
         ...(instant(draft, "endsAt") ? { endsAt: instant(draft, "endsAt") } : {}),
-        ...(optional(draft, "location") ? { location: optional(draft, "location") } : {}),
+        ...(optional(draft, "location") ? { venue: optional(draft, "location") } : {}),
         ...(optional(draft, "description") ? { description: optional(draft, "description") } : {}),
       });
       if (result.success !== true) {
