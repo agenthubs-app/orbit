@@ -10,7 +10,8 @@ import { contactsAnalysisToView, type AnalysisDimension, type ContactsAnalysisVi
 import { stashAgentPrefill } from "../../orbit-global-ask/orbit-ask-draft";
 
 export type AnalysisTab = "overview" | "structure" | "opportunities";
-const colors = ["var(--accent)", "var(--sky)", "var(--live)", "#a790ce", "#d49b64", "#809b96"];
+// Orbit_0918 批次 3d：环形图与图例配色换成 0918 调色板。
+const colors = ["#4B4FC7", "#7C80E8", "#2E3270", "#B9BCEB", "#9A6B22", "#2F6B4F"];
 
 export function ContactsAnalysisShell({ children, count }: { children: ReactNode; count?: number }) {
   const { t, preserveHref } = useOrbitLanguage();
@@ -41,6 +42,19 @@ export function ContactsAnalysisShell({ children, count }: { children: ReactNode
       .analysis-bucket{display:flex;align-items:center;gap:8px;text-align:left;background:transparent;border:1px solid transparent;border-radius:10px;padding:10px;color:var(--text-2);font:inherit;font-size:13px;cursor:pointer}
       .analysis-bucket[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent)}.analysis-bucket span:nth-child(2){flex:1;min-width:0;overflow-wrap:anywhere}
       .analysis-notice{padding:14px 18px;border:1px solid var(--border);border-radius:12px;margin:14px 0}.analysis-main a{overflow-wrap:anywhere}.analysis-main button:focus-visible,.analysis-main a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+      /* Orbit_0918 批次 3d：人脉分析 */
+      [data-orbit-real-page=contacts-analysis]{background:#FBFBFE}
+      [data-orbit-real-page=contacts-analysis] .analysis-main h1{font-family:'Noto Serif SC','Songti SC','SimSun',serif;font-weight:900;letter-spacing:-0.02em;color:#0E1225}
+      [data-orbit-real-page=contacts-analysis] .analysis-card{background:#FFFFFF;border:1px solid #E8E9F6;border-radius:18px;box-shadow:none;padding:26px}
+      [data-orbit-real-page=contacts-analysis] .analysis-card h2{font-family:'Noto Serif SC','Songti SC','SimSun',serif;font-weight:900;font-size:22px;letter-spacing:-0.02em;color:#0E1225}
+      [data-orbit-real-page=contacts-analysis] .analysis-metrics .analysis-card div:last-child{font-family:'Noto Serif SC','Songti SC','SimSun',serif;font-weight:900;color:#0E1225}
+      [data-orbit-real-page=contacts-analysis] .analysis-notice{border-color:#E8E9F6;background:#F7F7FD}
+      [data-orbit-real-page=contacts-analysis] .analysis-tabs{border-bottom:1px solid #E8E9F6;padding-bottom:0;gap:8px}
+      [data-orbit-real-page=contacts-analysis] .analysis-tabs button.btn{flex:initial;max-width:none;background:transparent;border:0;border-bottom:2px solid transparent;border-radius:0;margin-bottom:-1px;padding:12px 16px;color:#3B3F7A;font-weight:400}
+      [data-orbit-real-page=contacts-analysis] .analysis-tabs button.btn.btn-primary{background:transparent;color:#0E1225;border-bottom-color:#0E1225;font-weight:600}
+      [data-orbit-real-page=contacts-analysis] .analysis-bucket[aria-pressed=true]{background:#ECEEFB;border-color:#4B4FC7}
+      [data-orbit-real-page=contacts-analysis] .analysis-chart svg text{font-family:'Noto Serif SC','Songti SC','SimSun',serif}
+      [data-orbit-real-page=contacts-analysis] .analysis-mobile-nav .chip.is-active{background:#0E1225;border-color:#0E1225;color:#FFFFFF}
       @media(max-width:900px){.analysis-layout{grid-template-columns:1fr;height:auto;min-height:calc(100dvh - 64px)}.analysis-sidebar{display:none}.analysis-mobile-nav{display:flex}.analysis-main{padding:22px 16px 90px;overflow:visible}.analysis-grid{grid-template-columns:1fr}.analysis-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.analysis-chart{grid-template-columns:1fr}.analysis-chart svg{max-width:240px;margin:auto}.analysis-card{padding:18px}}
     `}</style>
   </main>;
