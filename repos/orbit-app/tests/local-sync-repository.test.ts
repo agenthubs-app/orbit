@@ -830,9 +830,58 @@ test("workspace reset rolls its row deletion back when cursor deletion fails", a
   );
 });
 
-test("Web explicitly reports online-only without opening a database", async () => {
-  assert.deepEqual(await getLocalSyncDatabaseCapability(), {
-    mode: "online-only",
-    reason: "web-has-no-local-sync-database",
+test("Web reports online-only with the missing capability, and local-mirror with its whitelist", async () => {
+  assert.deepEqual(await getLocalSyncDatabaseCapability(), { mode: "online-only", reason: "insecure-context" });
+  const capable = { isSecureContext: true, storage: { getDirectory: async () => ({}) as FileSystemDirectoryHandle }, indexedDB: {} as IDBFactory, subtle: {} as SubtleCrypto, hasWorker: true };
+  assert.deepEqual(await getLocalSyncDatabaseCapability(capable), { mode: "local-mirror", domains: ["tasks", "personal-schedule"] });
+  assert.deepEqual(await getLocalSyncDatabaseCapability({ ...capable, storage: undefined }), { mode: "online-only", reason: "no-opfs" });
+});
+
+// ---------------------------------------------------------------------------
+// payloadCodec: the browser mirror encrypts payload_json at rest. The codec is
+// applied at the repository boundary only; SQL, hashes and reads are unchanged.
+// ---------------------------------------------------------------------------
+const tracingCodec = { encode: async (s: string) => `enc:${Buffer.from(s, "utf8").toString("base64")}`, decode: async (s: string) => {
+  if (!s.startsWith("enc:")) throw new Error("PAYLOAD_CODEC_UNRECOGNIZED");
+  return Buffer.from(s.slice(4), "base64").toString("utf8");
+} };
+const codecScope = { baseUrl: "https://host.example", actorId: "actor-a", workspaceId: "workspace-a", domainId: "tasks", authorizationEpoch: "epoch-a" };
+const sha256 = async (json: string) => (await import("node:crypto")).createHash("sha256").update(json).digest("hex");
+
+test("payloadCodec encodes every stored payload_json and decodes it on read; hashes cover the plaintext", async (t) => {
+  const database = new NodeTestDatabase();
+  t.after(() => database.close());
+  await initializeLocalSyncDatabase(database);
+  const repo = createLocalSyncRepository({
+    actorId: "actor-a", database, baseUrl: codecScope.baseUrl, registeredDomainIds: ["tasks"],
+    activeReadScopes: () => [codecScope], hashPayload: sha256, payloadCodec: tracingCodec,
   });
+  await repo.putRecord(record({ kind: "task", id: "legacy-task", payload: { title: "legacy secret" } }));
+  await repo.applyPage({ workspaceId: "workspace-a", records: [record({ kind: "task", id: "page-task", payload: { title: "page secret" } })], cursor: "c1", syncedAt: "2026-09-16T00:06:00.000Z", bootstrapState: "complete" });
+  await repo.applyDomainPage(codecScope, {
+    domainId: "tasks", authorizationEpoch: "epoch-a", schemaVersion: 1, registryVersion: 1,
+    changes: [{ id: "domain-task", revision: "r1", operation: "upsert", payload: { id: "domain-task", title: "domain secret" } }],
+    nextCursor: "cursor:tasks", highWatermark: "hw1", hasMore: false, generation: "g1", serverTime: "2026-09-18T01:00:00Z",
+  });
+
+  const rows = await database.all<{ record_id: string; payload_json: string; payload_hash: string | null }>(
+    "SELECT record_id, payload_json, payload_hash FROM sync_records ORDER BY record_id",
+  );
+  assert.deepEqual(rows.map((row) => row.record_id), ["domain-task", "legacy-task", "page-task"]);
+  for (const row of rows) {
+    assert.ok(row.payload_json.startsWith("enc:"), `${row.record_id} stored plaintext`);
+    assert.ok(!row.payload_json.includes("secret"), `${row.record_id} leaked plaintext`);
+  }
+  const domainRow = rows.find((row) => row.record_id === "domain-task")!;
+  assert.equal(domainRow.payload_hash, await sha256(JSON.stringify({ id: "domain-task", title: "domain secret" })));
+
+  const listed = await repo.listRecords({ workspaceId: "workspace-a", kind: "task" });
+  assert.deepEqual(listed.map((r) => [r.id, (r.payload as { title: string }).title]).sort(), [
+    ["domain-task", "domain secret"], ["legacy-task", "legacy secret"], ["page-task", "page secret"],
+  ]);
+  assert.equal(((await repo.getRecord({ workspaceId: "workspace-a", kind: "task", id: "legacy-task" }))?.payload as { title: string }).title, "legacy secret");
+
+  // A repository without the codec cannot read the rows: encryption is not optional once applied.
+  const plain = createLocalSyncRepository({ actorId: "actor-a", database, baseUrl: codecScope.baseUrl, registeredDomainIds: ["tasks"], activeReadScopes: () => [codecScope] });
+  await assert.rejects(plain.listRecords({ workspaceId: "workspace-a", kind: "task" }));
 });

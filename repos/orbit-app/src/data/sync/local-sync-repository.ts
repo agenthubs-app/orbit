@@ -11,6 +11,7 @@ import type {
 import { z } from "zod";
 import type { DomainPage, ReadScope } from "../../api/contract/universal-read";
 import { domainPageSchema, readScopeSchema } from "../../api/schema/universal-read";
+import { IDENTITY_PAYLOAD_CODEC, type PayloadCodec } from "./payload-codec";
 
 const LEGACY_DOMAINS: Record<SyncEntityKind, string> = {
   contact: "contacts", note: "notes", task: "tasks", relationship_followup: "followups",
@@ -168,10 +169,21 @@ export function createLocalSyncRepository(input: {
   /** Trusted scope binding supplied by the caller, not a server authorizer. */
   activeReadScopes?: () => readonly ReadScope[];
   hashPayload?: (serialized: string) => Promise<string>;
+  /** At-rest encoding of payload_json; native mirrors rely on SQLCipher and keep the identity default. */
+  payloadCodec?: PayloadCodec;
 }) {
   assertNonEmptyString(input.actorId, "actorId");
   const { actorId, database } = input;
+  const codec = input.payloadCodec ?? IDENTITY_PAYLOAD_CODEC;
   const registered = new Set(input.registeredDomainIds ?? []);
+
+  async function encoded(serialized: SerializedRecord): Promise<SerializedRecord> {
+    return serialized.payloadJson === null ? serialized : { ...serialized, payloadJson: await codec.encode(serialized.payloadJson) };
+  }
+
+  async function recordFromStoredRow(row: SyncRecordRow): Promise<SyncRecord> {
+    return recordFromRow({ ...row, payload_json: row.payload_json === null ? null : await codec.decode(row.payload_json) }, actorId);
+  }
 
   function assertScope(value: ReadScope): ReadScope {
     readScopeSchema.parse(value);
@@ -202,7 +214,7 @@ export function createLocalSyncRepository(input: {
 
   return {
     async putRecord(record: SyncRecord): Promise<void> {
-      const serialized = validateAndSerializeRecord(record, actorId);
+      const serialized = await encoded(validateAndSerializeRecord(record, actorId));
       const scope = legacyScope(record.workspaceId, record.kind);
       await database.run(UPSERT_RECORD, [...scopeParameters(scope), ...recordParameters(serialized).slice(1)]);
     },
@@ -217,7 +229,7 @@ export function createLocalSyncRepository(input: {
       if (!Array.isArray(page.records)) {
         throw new TypeError("records must be an array");
       }
-      const records = page.records.map((record) => {
+      const records = await Promise.all(page.records.map((record) => {
         const serialized = validateAndSerializeRecord(
           record,
           actorId,
@@ -226,8 +238,8 @@ export function createLocalSyncRepository(input: {
         if (serialized.record.syncState !== "synced") {
           throw new TypeError("canonical page records must be synced");
         }
-        return serialized;
-      });
+        return encoded(serialized);
+      }));
       const scope = legacyScope(page.workspaceId, records[0]?.record.kind);
       if (records.some(({ record }) => LEGACY_DOMAINS[record.kind] !== scope.domainId)) throw new TypeError("legacy page spans domains");
 
@@ -362,7 +374,7 @@ export function createLocalSyncRepository(input: {
         [...scopeParameters(scope), key.kind, key.id],
       );
       assertScope(scope);
-      return row ? recordFromRow(row, actorId) : null;
+      return row ? recordFromStoredRow(row) : null;
     },
 
     async listRecords(
@@ -383,8 +395,7 @@ export function createLocalSyncRepository(input: {
         [...scopeParameters(scope), query.kind],
       );
       assertScope(scope);
-      return rows
-        .map((row) => recordFromRow(row, actorId))
+      return (await Promise.all(rows.map((row) => recordFromStoredRow(row))))
         .sort(
           (left, right) =>
             compareSyncTimestamps(right.updatedAt, left.updatedAt) ||
@@ -455,7 +466,8 @@ export function createLocalSyncRepository(input: {
         const json = change.payload === null ? null : JSON.stringify(PLAIN_JSON.parse(change.payload));
         const hash = json === null ? null : await input.hashPayload?.(json);
         if (json !== null && (!hash || !/^[a-f0-9]{64}$/u.test(hash))) throw new TypeError("payload SHA256 is unavailable");
-        return { ...change, json, hash };
+        // The hash covers the plaintext; only the stored column is encoded.
+        return { ...change, json: json === null ? null : await codec.encode(json), hash };
       }));
       assertScope(scope); // Hashing may await while the caller revokes a scope.
       await database.transaction(async () => {
