@@ -12,7 +12,7 @@ export function OrbitSettingsContent() {
 
   return (
     <>
-      <header style={{ marginBottom: 24 }}>
+      <header className="settings-head" style={{ marginBottom: 24 }}>
         <div className="eyebrow">Orbit</div>
         <h1
           style={{
