@@ -64,6 +64,9 @@ function domainFor(path: string): string {
   if (path.startsWith('/api/today')) return 'today';
   if (path.startsWith('/api/permissions')) return 'preferences';
   if (path.startsWith('/api/health')) return 'account';
+  // /api/sync 是喂养所有域镜像的传输通道，本身不是业务域；登记为独立 id 以便审计完整，
+  // 其 durable_normalized 语义准确——响应就是要落成 canonical 镜像行的数据。
+  if (path === '/api/sync' || path.startsWith('/api/sync/')) return 'sync';
   throw new Error(`UNREGISTERED_DOMAIN:${path}`);
 }
 
@@ -94,6 +97,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/api/ai-session-management.ts","PATCH","/api/ai/conversations/groups/:id"],
   ["src/api/ai-session-management.ts","PATCH","/api/ai/conversations/sessions/:id"],
   ["src/api/auth-session.ts","POST","/api/account/session/sign-out"],
+  ["src/data/sync/sync-client.ts","GET","/api/sync"],
   ["src/api/browser-auth.ts","GET","/api/auth/csrf"],
   ["src/api/browser-auth.ts","POST","/api/auth/callback/credentials"],
   ["src/api/auth-session.ts","POST","/api/auth/register"],

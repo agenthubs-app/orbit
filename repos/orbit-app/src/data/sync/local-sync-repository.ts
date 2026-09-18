@@ -46,6 +46,7 @@ const OUTBOX_OPERATIONS = new Set<LocalSyncOutboxOperation>([
 ]);
 const SYNC_TIMESTAMP = z.iso.datetime({ offset: true });
 const PLAIN_JSON = z.json();
+const LAST_SUCCESSFUL_WORKSPACE_KEY = "last_successful_workspace_id";
 
 export type LocalSyncBootstrapState = "pending" | "complete";
 export type LocalSyncOutboxOperation = "create" | "update" | "delete";
@@ -78,6 +79,7 @@ export interface ApplyLocalSyncPageInput {
   cursor: string;
   syncedAt: string;
   bootstrapState: LocalSyncBootstrapState;
+  canCommit?: () => boolean;
 }
 
 export interface ListLocalSyncRecordsInput {
@@ -129,6 +131,8 @@ interface SerializedRecord {
   record: SyncRecord;
   payloadJson: string | null;
 }
+
+class LocalSyncPageSupersededError extends Error {}
 
 const UPSERT_RECORD = `INSERT INTO sync_records (
   workspace_id,
@@ -202,7 +206,7 @@ export function createLocalSyncRepository(input: {
       await database.run(UPSERT_RECORD, [...scopeParameters(scope), ...recordParameters(serialized).slice(1)]);
     },
 
-    async applyPage(page: ApplyLocalSyncPageInput): Promise<void> {
+    async applyPage(page: ApplyLocalSyncPageInput): Promise<boolean> {
       assertNonEmptyString(page.workspaceId, "workspaceId");
       assertNonEmptyString(page.cursor, "cursor");
       assertTimestamp(page.syncedAt, "syncedAt");
@@ -226,21 +230,84 @@ export function createLocalSyncRepository(input: {
       const scope = legacyScope(page.workspaceId, records[0]?.record.kind);
       if (records.some(({ record }) => LEGACY_DOMAINS[record.kind] !== scope.domainId)) throw new TypeError("legacy page spans domains");
 
-      await database.transaction(async () => {
-        for (const record of records) {
-          await database.run(APPLY_CANONICAL_RECORD, [...scopeParameters(scope), ...recordParameters(record).slice(1)]);
-        }
-        await database.run(
-          `INSERT INTO sync_cursors (
-            workspace_id, domain_id, authorization_epoch, cursor, last_successful_sync_at, bootstrap_state, completeness, generation
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-          ON CONFLICT(workspace_id, domain_id, authorization_epoch) DO UPDATE SET
-            cursor = excluded.cursor,
-            last_successful_sync_at = excluded.last_successful_sync_at,
-            bootstrap_state = excluded.bootstrap_state`,
-          [...scopeParameters(scope), page.cursor, page.syncedAt, page.bootstrapState, page.bootstrapState === "complete" ? "complete" : "partial", "legacy-api"],
-        );
-      });
+      if (page.canCommit && !page.canCommit()) return false;
+      try {
+        await database.transaction(async () => {
+          for (const record of records) {
+            await database.run(APPLY_CANONICAL_RECORD, [...scopeParameters(scope), ...recordParameters(record).slice(1)]);
+          }
+          await database.run(
+            `INSERT INTO sync_cursors (
+              workspace_id, domain_id, authorization_epoch, cursor, last_successful_sync_at, bootstrap_state, completeness, generation
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(workspace_id, domain_id, authorization_epoch) DO UPDATE SET
+              cursor = excluded.cursor,
+              last_successful_sync_at = excluded.last_successful_sync_at,
+              bootstrap_state = excluded.bootstrap_state`,
+            [...scopeParameters(scope), page.cursor, page.syncedAt, page.bootstrapState, page.bootstrapState === "complete" ? "complete" : "partial", "legacy-api"],
+          );
+          await database.run(
+            `INSERT INTO sync_meta (key, value) VALUES (?, ?)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+            [LAST_SUCCESSFUL_WORKSPACE_KEY, page.workspaceId],
+          );
+          // 取消检查放在事务最后：整页要么带着游标一起提交，要么整体回滚。
+          if (page.canCommit && !page.canCommit()) {
+            throw new LocalSyncPageSupersededError();
+          }
+        });
+        return true;
+      } catch (error) {
+        if (error instanceof LocalSyncPageSupersededError) return false;
+        throw error;
+      }
+    },
+
+    async getLastWorkspaceId(): Promise<string | null> {
+      const row = await database.get<{ value: string }>(
+        "SELECT value FROM sync_meta WHERE key = ?",
+        [LAST_SUCCESSFUL_WORKSPACE_KEY],
+      );
+      return row && row.value.trim().length > 0 ? row.value : null;
+    },
+
+    // 整个 workspace 重新 bootstrap（不是撤权）：清掉已同步的 canonical 行、游标和
+    // v2 的派生索引/资源清单，保留 pending/conflict 与 outbox；不改 local_read_scope_state，
+    // 下一次 applyPage 会重新把作用域标为可读。
+    async resetWorkspace(
+      workspaceId: string,
+      canCommit?: () => boolean,
+    ): Promise<boolean> {
+      assertNonEmptyString(workspaceId, "workspaceId");
+      if (canCommit && !canCommit()) return false;
+      try {
+        await database.transaction(async () => {
+          await database.run(
+            `DELETE FROM sync_records
+             WHERE workspace_id = ? AND sync_state = 'synced'`,
+            [workspaceId],
+          );
+          await database.run(
+            "DELETE FROM sync_cursors WHERE workspace_id = ?",
+            [workspaceId],
+          );
+          await database.run(
+            "DELETE FROM local_read_index WHERE workspace_id = ?",
+            [workspaceId],
+          );
+          await database.run(
+            "DELETE FROM local_read_assets WHERE workspace_id = ?",
+            [workspaceId],
+          );
+          if (canCommit && !canCommit()) {
+            throw new LocalSyncPageSupersededError();
+          }
+        });
+        return true;
+      } catch (error) {
+        if (error instanceof LocalSyncPageSupersededError) return false;
+        throw error;
+      }
     },
 
     async getRecord(key: LocalSyncRecordKey): Promise<SyncRecord | null> {

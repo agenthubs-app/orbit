@@ -18,4 +18,10 @@ export async function writeSnapshot<TData>(
   _result: ApiResult<TData>
 ): Promise<void> {}
 
+export async function retireSnapshot(
+  _baseUrl: string,
+  _actorId: string,
+  _path: string,
+): Promise<void> {}
+
 export async function clearSnapshots(): Promise<void> {}

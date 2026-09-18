@@ -102,7 +102,7 @@ async function repository(
   await initializeLocalSyncDatabase(database);
   return {
     database,
-    repository: createLocalSyncRepository({ actorId, database, baseUrl: "https://fixture.example", registeredDomainIds: ["notes"], activeReadScopes: () => ["workspace-a", "workspace-b", "  workspace-a  "].map(workspaceId => ({ baseUrl: "https://fixture.example", actorId, workspaceId, domainId: "notes", authorizationEpoch: "fixture-e1" })) }),
+    repository: createLocalSyncRepository({ actorId, database, baseUrl: "https://fixture.example", registeredDomainIds: ["notes"], activeReadScopes: () => ["workspace-a", "workspace-b", "  workspace-a  ", "workspace-server"].map(workspaceId => ({ baseUrl: "https://fixture.example", actorId, workspaceId, domainId: "notes", authorizationEpoch: "fixture-e1" })) }),
   };
 }
 
@@ -726,6 +726,169 @@ test("outbox storage is stable, ordered, and workspace-isolated", async (t) => {
   assert.deepEqual(await setup.repository.listOutboxMutations("workspace-b"), [
     mutations[2],
   ]);
+});
+
+test("a page stores its server workspace with records and cursor in one transaction", async (t) => {
+  const setup = await repository();
+  t.after(() => setup.database.close());
+
+  await setup.repository.applyPage({
+    workspaceId: "workspace-server",
+    records: [record({ workspaceId: "workspace-server" })],
+    cursor: "cursor-server",
+    syncedAt: "2026-09-16T00:06:00.000Z",
+    bootstrapState: "complete",
+  });
+  assert.equal(
+    await setup.repository.getLastWorkspaceId(),
+    "workspace-server",
+  );
+
+  const rollback = await repository();
+  t.after(() => rollback.database.close());
+  rollback.database.failWhenSqlIncludes = "INSERT INTO sync_meta";
+  await assert.rejects(
+    rollback.repository.applyPage({
+      workspaceId: "workspace-server",
+      records: [record({ workspaceId: "workspace-server" })],
+      cursor: "cursor-server",
+      syncedAt: "2026-09-16T00:06:00.000Z",
+      bootstrapState: "complete",
+    }),
+    /injected SQL failure/,
+  );
+  assert.equal(await rollback.repository.getLastWorkspaceId(), null);
+  assert.equal(await rollback.repository.getCursor("workspace-server"), null);
+  assert.deepEqual(
+    await rollback.repository.listRecords({
+      workspaceId: "workspace-server",
+      kind: "note",
+    }),
+    [],
+  );
+});
+
+test("workspace reset removes only synced rows and cursor", async (t) => {
+  const setup = await repository();
+  t.after(() => setup.database.close());
+  const preservedStates = ["pending", "conflicted", "failed"] as const;
+
+  await setup.repository.applyPage({
+    workspaceId: "workspace-a",
+    records: [record({ id: "synced-a" })],
+    cursor: "cursor-a",
+    syncedAt: "2026-09-16T00:06:00.000Z",
+    bootstrapState: "complete",
+  });
+  await setup.repository.applyPage({
+    workspaceId: "workspace-b",
+    records: [record({ workspaceId: "workspace-b", id: "synced-b" })],
+    cursor: "cursor-b",
+    syncedAt: "2026-09-16T00:06:00.000Z",
+    bootstrapState: "complete",
+  });
+  for (const syncState of preservedStates) {
+    await setup.repository.putRecord(
+      record({
+        id: `${syncState}-a`,
+        syncState,
+        aiVisibility: "excluded",
+      }),
+    );
+  }
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a",
+    workspaceId: "workspace-a",
+    mutationId: "mutation-a",
+    kind: "note",
+    id: "pending-a",
+    operation: "update",
+    patch: { title: "device draft stays external too" },
+    baseRevision: "revision-1",
+    createdAt: "2026-09-16T00:07:00.000Z",
+    retryCount: 0,
+    nextRetryAt: null,
+    lastErrorCode: null,
+  });
+  await setup.database.run(
+    "INSERT INTO legacy_api_snapshots (path, payload, status, synced_at) VALUES (?, ?, ?, ?)",
+    ["/api/notes", "{}", 200, "2026-09-16T00:07:00.000Z"],
+  );
+
+  await setup.repository.resetWorkspace("workspace-a");
+
+  assert.deepEqual(
+    (
+      await setup.repository.listRecords({
+        workspaceId: "workspace-a",
+        kind: "note",
+        includeDeleted: true,
+      })
+    ).map(({ id, syncState }) => ({ id, syncState })),
+    [
+      { id: "conflicted-a", syncState: "conflicted" },
+      { id: "failed-a", syncState: "failed" },
+      { id: "pending-a", syncState: "pending" },
+    ],
+  );
+  assert.equal(await setup.repository.getCursor("workspace-a"), null);
+  assert.equal(
+    (
+      await setup.repository.listRecords({
+        workspaceId: "workspace-b",
+        kind: "note",
+      })
+    )[0]?.id,
+    "synced-b",
+  );
+  assert.equal(
+    (await setup.repository.getCursor("workspace-b"))?.cursor,
+    "cursor-b",
+  );
+  assert.equal(
+    (await setup.repository.listOutboxMutations("workspace-a"))[0]?.mutationId,
+    "mutation-a",
+  );
+  assert.equal(
+    (
+      await setup.database.all<{ path: string }>(
+        "SELECT path FROM legacy_api_snapshots",
+      )
+    )[0]?.path,
+    "/api/notes",
+  );
+});
+
+test("workspace reset rolls its row deletion back when cursor deletion fails", async (t) => {
+  const setup = await repository();
+  t.after(() => setup.database.close());
+  await setup.repository.applyPage({
+    workspaceId: "workspace-a",
+    records: [record({ id: "synced-a" })],
+    cursor: "cursor-a",
+    syncedAt: "2026-09-16T00:06:00.000Z",
+    bootstrapState: "complete",
+  });
+  setup.database.failWhenSqlIncludes = "DELETE FROM sync_cursors";
+
+  await assert.rejects(
+    setup.repository.resetWorkspace("workspace-a"),
+    /injected SQL failure/,
+  );
+
+  assert.equal(
+    (
+      await setup.repository.listRecords({
+        workspaceId: "workspace-a",
+        kind: "note",
+      })
+    )[0]?.id,
+    "synced-a",
+  );
+  assert.equal(
+    (await setup.repository.getCursor("workspace-a"))?.cursor,
+    "cursor-a",
+  );
 });
 
 test("Web explicitly reports online-only without opening a database", async () => {
