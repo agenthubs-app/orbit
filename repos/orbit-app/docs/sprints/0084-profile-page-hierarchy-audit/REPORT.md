@@ -1,6 +1,6 @@
 # Sprint 0084 报告 — 资料与设置页的四角色排版
 
-**状态:** completed（Simulator 抽查见「与 PLANNER 的偏差」）。**run-01，唯一一次 Generator。**
+**状态:** completed。**run-01，唯一一次 Generator。**
 
 ## 先用人话说
 
@@ -26,7 +26,7 @@
 | SC-0084-02 设计案获批 | pass | artifact 链接 + 登记表 2026-09-19 批准记录 |
 | SC-0084-03 前后对照 | pass | 后：`docs/audits/2026-09-19-page-hierarchy/after/`（phoneweb 真实账号 390×844 四页）。前：资料两页用既有 `docs/todo-evidence/2026-09-18-profile-*.png`；设置与账号页的"前"以审核文档里逐行实测的字号字重记录（该两页此前无截图） |
 | SC-0084-04 屏幕测试更新 | pass | 既有 44pt 触摸目标与字号缩放断言未放宽；新增两组断言（见下） |
-| SC-0084-05 typecheck + 真机 | 部分 | 两端 typecheck 0；phoneweb 四页实测通过；**Simulator 抽查未完成**，原因见偏差 |
+| SC-0084-05 typecheck + 真机 | pass | 两端 typecheck 0；phoneweb 四页实测通过；Simulator 抽查两页（`docs/audits/2026-09-19-page-hierarchy/simulator/`） |
 
 ### 实测值（phoneweb，真实账号，zh-CN）
 
@@ -72,5 +72,5 @@
 
 ## 下一步
 
-- **Simulator 抽查未做。** 之前装有 App 的那台模拟器（`DA432E9E…`）在本次磁盘清理中被删除，现存五台都没有装 App，原生抽查需要一次完整 `expo run:ios` 重建。已在后台启动重建（`iPhone 17 Pro` / `9BF990F2…`），完成后补两页截图；本项在补齐前记作部分完成，不冒称通过。
+- **Simulator 抽查已补齐。** 之前装有 App 的那台模拟器（`DA432E9E…`）在本次磁盘清理中被删除，重建 `iPhone 17 Pro`（`9BF990F2…`）后抽查两页：设置页「通用」与编辑资料页「基本资料／名字／Orbit 演示账号」，四角色在原生端同样分开。截图在 `docs/audits/2026-09-19-page-hierarchy/simulator/`。
 - 设计案那句"与跳转页面标题一致"是否也要改 `ApiSettingsScreen` 的标题，待用户一句话确认。
