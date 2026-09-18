@@ -27,6 +27,10 @@ const REDIRECTS = new Map([
   [
     "react-native-svg",
     join(helpersDir, "stubs", "react-native-svg.js")
+  ],
+  [
+    "expo-sqlite",
+    join(helpersDir, "stubs", "expo-sqlite.js")
   ]
 ]);
 

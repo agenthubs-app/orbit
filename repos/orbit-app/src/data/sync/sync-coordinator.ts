@@ -3,6 +3,7 @@ import type { OfflineReadEnvelope, ReadScope } from "../../api/contract/universa
 import { evaluateOfflineRead } from "../../api/offline-read-session";
 import { offlineReadEnvelopeSchema } from "../../api/schema/universal-read";
 import type { LocalSyncDatabase } from "./local-sync-database";
+import type { PayloadCodec } from "./payload-codec";
 import {
   createLocalSyncRepository,
   type LocalSyncCursor,
@@ -31,6 +32,10 @@ const DOMAIN_OF_KIND: Partial<Record<SyncChangeKind, string>> = {
 const REVOKED_EPOCH = "__revoked__";
 
 export interface SyncCoordinatorLifecycle {
+  /** Domains this platform may mirror; defaults to the full registry. The browser lists a narrower set. */
+  registeredDomainIds?: readonly string[];
+  /** At-rest codec for payload_json; the browser mirror encrypts per record, native relies on SQLCipher. */
+  payloadCodec?: PayloadCodec;
   setScope(scope: SyncSessionScope | null): Promise<boolean>;
   withDatabase<T>(
     scope: SyncSessionScope | null,
@@ -138,9 +143,12 @@ export function createSyncCoordinator(input: {
     return active === scope && !scope.superseded;
   }
 
+  const registeredDomainIds: readonly string[] = input.lifecycle.registeredDomainIds ?? REGISTERED_DOMAIN_IDS;
+
   function readScopesOf(scope: ActiveScope): ReadScope[] {
     if (!scope.lease) return [];
-    return scope.lease.grants.map((grant) => ({
+    // Grants outside this platform's whitelist are never bound: they are neither stored nor pulled.
+    return scope.lease.grants.filter((grant) => registeredDomainIds.includes(grant.domainId)).map((grant) => ({
       baseUrl: scope.baseUrl,
       actorId: scope.actorId,
       workspaceId: grant.workspaceId,
@@ -176,9 +184,10 @@ export function createSyncCoordinator(input: {
             actorId: scope.actorId,
             database,
             baseUrl: scope.baseUrl,
-            registeredDomainIds: REGISTERED_DOMAIN_IDS,
+            registeredDomainIds,
             activeReadScopes: () => readScopesOf(scope),
             ...(input.hashPayload ? { hashPayload: input.hashPayload } : {}),
+            ...(input.lifecycle.payloadCodec ? { payloadCodec: input.lifecycle.payloadCodec } : {}),
           }),
         ),
       }),
@@ -354,7 +363,7 @@ export function createSyncCoordinator(input: {
         if (!workspaceId) return { error: null };
 
         // Revocation drops every epoch of the domain; rotation keeps only the granted one.
-        for (const domainId of REGISTERED_DOMAIN_IDS) {
+        for (const domainId of registeredDomainIds) {
           const grant = accepted.grants.find((candidate) => candidate.domainId === domainId);
           const previous = previousGrants.find((candidate) => candidate.domainId === domainId);
           if (!grant && !previous) continue;

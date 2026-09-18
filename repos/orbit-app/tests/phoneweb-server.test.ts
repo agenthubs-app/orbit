@@ -98,6 +98,7 @@ test("phoneweb server handles SPA, static, API, browser cookies, and asset proxy
   await writeFile(join(staticDir, "contacts", "[id].html"), "<!doctype html><main>orbit-contact-detail</main>");
   await writeFile(join(staticDir, "[...legacy].html"), "<!doctype html><main>orbit-legacy</main>");
   await writeFile(join(staticDir, "assets", "app.js"), "globalThis.orbitLoaded=true;");
+  await writeFile(join(staticDir, "assets", "wa-sqlite-test.wasm"), Buffer.from([0x00, 0x61, 0x73, 0x6d]));
   await writeFile(join(tempRoot, "secret.txt"), "must-not-leak");
 
   const observed: Array<{
@@ -160,6 +161,11 @@ test("phoneweb server handles SPA, static, API, browser cookies, and asset proxy
   const asset = await fetch(`${phoneweb.baseUrl}/assets/app.js`);
   assert.match(asset.headers.get("content-type") ?? "", /javascript/u);
   assert.match(await asset.text(), /orbitLoaded/u);
+
+  // expo-sqlite's web worker streams its wasm; the file must be served as application/wasm.
+  const wasm: Response = await fetch(`${phoneweb.baseUrl}/assets/wa-sqlite-test.wasm`);
+  assert.equal(wasm.status, 200);
+  assert.equal(wasm.headers.get("content-type"), "application/wasm");
 
   const apiFailure = await fetch(`${phoneweb.baseUrl}/api/missing`);
   assert.equal(apiFailure.status, 418);
