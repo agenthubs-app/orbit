@@ -240,6 +240,7 @@ export const en = {
   "profile.suggestionsUnavailable": "Profile suggestions unavailable",
   "profile.suggestionsPending": "Profile suggestions are being prepared",
   "profile.suggestionsEmpty": "No profile suggestions",
+  "profile.suggestionEvidenceSource": "Source excerpt",
   "profile.retrySuggestions": "Retry profile suggestions",
   "profile.currentValue": "Current",
   "profile.suggestedValue": "Suggested",

@@ -28,10 +28,14 @@ export function createProfileSuggestionGetHandler(
     if (!actor) return authenticatedApiActorRequiredResponse(mode);
 
     const signalService = createProfileSignalReviewQueueService();
-    const scenario = new URL(request.url).searchParams.get("scenario");
+    const url = new URL(request.url);
+    const scenario = url.searchParams.get("scenario");
+    // Composed rule copy follows the caller's account language; unknown values fall back to zh.
+    const language = url.searchParams.get("language");
     const result = await signalService.listUpdateSuggestions({
       actorId: actor.id,
       scenario,
+      language,
     });
 
     if (result.success === false) {

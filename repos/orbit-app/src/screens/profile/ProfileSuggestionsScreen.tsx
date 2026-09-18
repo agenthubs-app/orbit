@@ -37,7 +37,9 @@ export function ProfileSuggestionsScreen() {
   const sessionState = useProfileEditSessionScreen();
   const client = useOrbitApiClient();
   const scopeKey = sessionState.scope ? JSON.stringify([sessionState.scope.apiOrigin, sessionState.scope.actorId, "profile-suggestions"]) : null;
-  const resource = validateApiResourceState(useApiResource<unknown>(ORBIT_API_ENDPOINTS.profileUpdateSuggestions, () => false, { cachePolicy: "network-only", scopeKey }), profileSuggestionsSchema);
+  // Rule copy is composed server-side; ask for it in the account language.
+  const suggestionsPath = `${ORBIT_API_ENDPOINTS.profileUpdateSuggestions}?language=${encodeURIComponent(locale.language)}`;
+  const resource = validateApiResourceState(useApiResource<unknown>(suggestionsPath, () => false, { cachePolicy: "network-only", scopeKey }), profileSuggestionsSchema);
   const [busyIds, setBusyIds] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [batchBusy, setBatchBusy] = useState(false);
@@ -79,7 +81,9 @@ export function ProfileSuggestionsScreen() {
     setBusyIds(current => [...current, suggestion.id]);
     setErrors(current => { const next = { ...current }; delete next[suggestion.id]; return next; });
     try {
-      const result = await client.post<unknown>(decision === "accepted" ? profileUpdateSuggestionAcceptPath(suggestion.id) : profileUpdateSuggestionDismissPath(suggestion.id), { body: { mutationId } });
+      // The accepted patch value is composed copy too, so the decision carries the language.
+      const decisionPath = `${decision === "accepted" ? profileUpdateSuggestionAcceptPath(suggestion.id) : profileUpdateSuggestionDismissPath(suggestion.id)}?language=${encodeURIComponent(locale.language)}`;
+      const result = await client.post<unknown>(decisionPath, { body: { mutationId } });
       if (!result.success || result.status < 200 || result.status >= 300) throw new Error("decision failed");
       if (decision === "accepted") {
         const receipt = profileSuggestionReceiptSchema(suggestion, mutationId).safeParse(result.data);
@@ -136,6 +140,7 @@ export function ProfileSuggestionsScreen() {
           <Text style={styles.diffLabel}>{locale.t("profile.suggestedValue")}</Text><Text style={styles.strongValue}>{locale.t.literal(display(suggestion.suggestedValue))}</Text>
         </View>
         <Text style={styles.rationale}>{locale.t.literal(suggestion.rationale)}</Text>
+        {suggestion.evidence.length ? <Text style={styles.evidenceLabel}>{locale.t("profile.suggestionEvidenceSource")}</Text> : null}
         {suggestion.evidence.map(item => <Text key={item.evidenceId} style={styles.evidence}>{locale.t.literal(item.excerpt)}</Text>)}
         {errors[suggestion.id] ? <ProfileNotice error>{errors[suggestion.id]}</ProfileNotice> : null}
         {pending ? <View style={styles.actions}>
@@ -159,6 +164,7 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   strongValue: { color: colors.ink, fontSize: 14, fontWeight: "700" },
   rationale: { color: colors.text, fontSize: 13 },
   evidence: { color: colors.text4, fontSize: 12 },
+  evidenceLabel: { color: colors.text4, fontSize: 11, fontWeight: "600", letterSpacing: 0.4, marginTop: 2 },
   actions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   accept: { alignItems: "center", backgroundColor: colors.ink, borderRadius: 8, flexGrow: 1, justifyContent: "center", minHeight: 44, paddingHorizontal: 14 },
   acceptText: { color: colors.onAccent, fontSize: 13, fontWeight: "800" },

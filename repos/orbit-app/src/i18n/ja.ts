@@ -240,6 +240,7 @@ export const ja = {
   "profile.suggestionsUnavailable": "プロフィールの提案を読み込めませんでした",
   "profile.suggestionsPending": "プロフィールの提案を準備中",
   "profile.suggestionsEmpty": "プロフィールの提案はありません",
+  "profile.suggestionEvidenceSource": "参照元の原文",
   "profile.retrySuggestions": "プロフィールの提案を再読み込み",
   "profile.currentValue": "現在",
   "profile.suggestedValue": "提案",

@@ -60,6 +60,7 @@ export function createProfileSuggestionAcceptPostHandler(
     const result = await signalService.acceptUpdateSuggestion(id, {
       actorId: actor.id,
       mutationId,
+      language: new URL(request.url).searchParams.get("language"),
     });
 
     if (result.success === false) {

@@ -41,7 +41,7 @@ export function createProfileSuggestionDismissPostHandler(
       });
     }
     const { id } = await context.params;
-    const result = await createProfileSignalReviewQueueService().dismissUpdateSuggestion(id, { actorId: actor.id, mutationId });
+    const result = await createProfileSignalReviewQueueService().dismissUpdateSuggestion(id, { actorId: actor.id, mutationId, language: new URL(request.url).searchParams.get("language") });
     if (result.success === false) {
       const appError = profileSignalReviewQueueFailureToAppError(result);
       return NextResponse.json(failure(appError, profileSignalReviewQueueFailureContext(result, mode)), {

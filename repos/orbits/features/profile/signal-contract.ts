@@ -49,6 +49,8 @@ export type ProfileSignalProfilePatch = Partial<
 export interface ProfileSignalReviewQueueInput {
   actorId?: string | null;
   scenario?: ProfileSignalReviewQueueScenario | string | null;
+  /** Account language for composed rule copy; evidence excerpts stay in their source wording. */
+  language?: "zh" | "ja" | "en" | string | null;
 }
 
 export interface ProfileSignalReviewQueueErrorDefinition {
@@ -202,6 +204,7 @@ export type ProfileSignalSuggestionDismissResult =
 export interface ProfileSignalDecisionOptions {
   actorId?: string | null;
   mutationId?: string | null;
+  language?: "zh" | "ja" | "en" | string | null;
 }
 
 export type ProfileSignalReviewQueueServiceResult<TResult> =
