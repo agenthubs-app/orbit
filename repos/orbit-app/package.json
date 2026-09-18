@@ -9,7 +9,7 @@
     "sync:contract": "node scripts/sync-contract.mjs",
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
-    "test": "node --test --import tsx --import ./tests/helpers/register-render-hooks.mjs \"tests/**/*.test.ts\" \"tests/**/*.test.tsx\"",
+    "test": "node --test --import tsx --import ./tests/helpers/register-render-hooks.mjs \"tests/**/*.test.ts\" \"tests/**/*.test.tsx\" \"tests/**/*.test.mjs\"",
     "web:export": "expo export --platform web --output-dir dist"
   },
   "dependencies": {

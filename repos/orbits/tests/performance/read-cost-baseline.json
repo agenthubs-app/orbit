@@ -1,0 +1,13 @@
+{
+  "seed": "generated-relationship-fixtures + 12 notes + 12 canonical tasks created for the measured actor",
+  "actorId": "account_orbit_generated",
+  "frozenAt": "2026-09-18",
+  "frozenBy": "sprint-0070",
+  "chains": {
+    "contacts.list": { "queries": 6, "rows": 1548, "bytes": 1374261 },
+    "tasks.list": { "queries": 1, "rows": 92, "bytes": 125682 },
+    "notes.list": { "queries": 1, "rows": 12, "bytes": 14134 },
+    "dashboard": { "queries": 1, "rows": 5068, "bytes": 3570222 },
+    "events.list": { "queries": 1, "rows": 13, "bytes": 21268 }
+  }
+}
