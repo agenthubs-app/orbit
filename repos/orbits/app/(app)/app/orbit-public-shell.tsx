@@ -165,7 +165,7 @@ function OrbitNavAccountControl({
           <a
             href={preserveHref("/app/profile")}
             role="menuitem"
-            style={{ alignItems: "center", borderRadius: 8, color: "var(--text)", display: "flex", fontSize: 13.5, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
+            style={{ alignItems: "center", borderRadius: 8, color: "var(--text)", display: "flex", fontSize: 14, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
           >
             <Icon name="users" size={15} />
             {t({ en: "Profile", zh: "个人资料" })}
@@ -173,7 +173,7 @@ function OrbitNavAccountControl({
           <a
             href={preserveHref("/app/events?scope=registered")}
             role="menuitem"
-            style={{ alignItems: "center", borderRadius: 8, color: "var(--text)", display: "flex", fontSize: 13.5, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
+            style={{ alignItems: "center", borderRadius: 8, color: "var(--text)", display: "flex", fontSize: 14, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
           >
             <Icon name="calendar" size={15} />
             {t({ en: "My events", zh: "我的活动" })}
@@ -181,7 +181,7 @@ function OrbitNavAccountControl({
           <a
             href={preserveHref("/app/events/center")}
             role="menuitem"
-            style={{ alignItems: "center", borderRadius: 8, color: "var(--text)", display: "flex", fontSize: 13.5, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
+            style={{ alignItems: "center", borderRadius: 8, color: "var(--text)", display: "flex", fontSize: 14, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
           >
             <Icon name="settings" size={15} />
             {t({ en: "Event operations", zh: "活动运营中心" })}
@@ -189,7 +189,7 @@ function OrbitNavAccountControl({
           <a
             href={preserveHref("/app/settings")}
             role="menuitem"
-            style={{ alignItems: "center", borderRadius: 8, color: "var(--text)", display: "flex", fontSize: 13.5, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
+            style={{ alignItems: "center", borderRadius: 8, color: "var(--text)", display: "flex", fontSize: 14, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
           >
             <Icon name="settings" size={15} />
             {t({ en: "Settings", zh: "设置" })}
@@ -201,7 +201,7 @@ function OrbitNavAccountControl({
             }}
             role="menuitem"
             type="button"
-            style={{ alignItems: "center", background: "transparent", border: 0, borderRadius: 8, color: "var(--danger, #C2410C)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 13.5, fontWeight: 600, gap: 8, padding: "9px 10px", textAlign: "left", width: "100%" }}
+            style={{ alignItems: "center", background: "transparent", border: 0, borderRadius: 8, color: "var(--danger, #C2410C)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 14, fontWeight: 600, gap: 8, padding: "9px 10px", textAlign: "left", width: "100%" }}
           >
             <Icon name="x" size={15} />
             {t({ en: "Sign out", zh: "退出登录" })}

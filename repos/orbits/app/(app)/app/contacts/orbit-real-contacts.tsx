@@ -19,6 +19,7 @@ import { productHref } from "../orbit-public-shell";
 import { Avatar, Cover, Icon, IconButton } from "../orbit-reference-primitives";
 import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
 import { ORBIT_Z } from "../orbit-z";
+import { ORBIT_0918_COLORS as C0918, ORBIT_0918_FONTS as F0918 } from "../orbit-0918-tokens";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 
@@ -333,28 +334,23 @@ function PersonCard({
 }) {
   return (
     <a className="card card-hover nc-pcard" href={`/app/contacts/${item.id}`}>
-      <OrbitContactAvatar contact={item} size={56} />
-      <div style={{ minWidth: 0 }}>
-        <div style={{ alignItems: "center", display: "flex", gap: 8 }}>
-          {/* Mobile audit P2: single-line ellipsis truncated names hard
-              ("Kenji Wat…") at 390px because the fixed-width chip cluster on
-              the right squeezes this column. Allow up to 2 lines instead of
-              cutting the name — smaller diff than reshaping the chip
-              cluster's width, and it shows full names in the common case. */}
-          <h2 className="h-section" style={{ color: "var(--ink)", display: "-webkit-box", margin: 0, overflow: "hidden", WebkitBoxOrient: "vertical", WebkitLineClamp: 2 }}>{item.displayName || t({ en: "Unnamed contact", zh: "未命名联系人" })}</h2>
-          <SourceBadge source={item.source} t={t} />
-        </div>
-        <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{crmRole(item, t)}{item.industry ? ` · ${item.industry}` : ""}</div>
+      <OrbitContactAvatar contact={item} size={44} />
+      <div className="nc-id" style={{ minWidth: 0 }}>
+        <h2 className="nc-name">{item.displayName || t({ en: "Unnamed contact", zh: "未命名联系人" })}</h2>
+        <div className="nc-role">{crmRole(item, t)}{item.industry ? ` · ${item.industry}` : ""}</div>
         {item.valueTags.length ? (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+          <div className="nc-tags">
             {item.valueTags.map((tag) => <span className="nc-tag nc-tag-value" key={tag}>{tag}</span>)}
           </div>
         ) : null}
       </div>
-      <div className="nc-right" style={{ alignItems: "flex-end", display: "flex", flexDirection: "column", flexShrink: 0, gap: 8 }}>
+      <div className="nc-cell"><SourceBadge source={item.source} t={t} /></div>
+      <div className="nc-cell nc-stagecell">
         <StageDot status={item.pipelineStatus} viewModel={viewModel} withLabel />
         <StrengthTag strength={item.strength} t={t} />
       </div>
+      <div className="nc-cell nc-last">{item.lastInteraction ?? "—"}</div>
+      <span className="nc-chevron"><Icon name="chevR" size={16} /></span>
       {item.nextAction ? (
         <div className="nc-foot">
           <span className="nc-act"><Icon name={item.dormant ? "bell" : "arrow"} size={16} />{t({ en: "Suggested", zh: "建议" })}：{item.nextAction.text}</span>
@@ -488,6 +484,11 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
     .filter(Boolean)
     .slice(0, 3);
   const filtered = filterConnections(items, query, stage, valueTag);
+  // Orbit_0918 批次 3a：来源统计卡（真实计数，仅展示；设计稿的来源下拉筛选
+  // 在现有视图模型中没有对应过滤维度，不伪造交互）。
+  const sourceStats = (Object.keys(sourceMeta) as OrbitContactView["source"][])
+    .map((key) => ({ count: items.filter((item) => item.source === key).length, key, meta: sourceMeta[key] }))
+    .filter((entry) => entry.count > 0);
   const filters: ["all" | OrbitContactPipelineStatus, string][] = [["all", t({ en: "All", zh: "全部" })], ...viewModel.pipelineStatuses.map((status) => [status.value, status.label] as ["all" | OrbitContactPipelineStatus, string])];
   const searchSuggestions = [
     {
@@ -519,17 +520,19 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
   return (
     <main className="orbit-page" data-orbit-real-page="contacts">
       <OrbitCardsInteractions />
+      <style>{CONTACTS_LIST_0918_CSS}</style>
       <div className="orbit-desktop-only" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
         <AccountTopNav active="cards" />
         <div style={{ display: "grid", gridTemplateColumns: `${ORBIT_LEFT_SIDEBAR_WIDTH}px 1fr`, height: "calc(100dvh - 64px)", minHeight: 0 }}>
           <CrmSidebar active="list" counts={{ list: items.length }} />
           <div className="scroll" data-appscroll style={{ overflowY: "auto", padding: "28px 32px 60px" }}>
-            <div style={{ alignItems: "flex-end", display: "flex", justifyContent: "space-between", gap: 16, marginBottom: 22 }}>
+            <section className="nc0918-panel">
+            <div className="nc0918-head">
               <div>
-                <h1 className="h-display" style={{ margin: 0 }}>{t({ en: "All contacts", zh: "全部人脉" })}</h1>
-                <div style={{ color: "var(--text-3)", fontSize: 14, marginTop: 6 }}>{subtitle}</div>
+                <h1 className="nc0918-title">{t({ en: "All contacts", zh: "全部人脉" })}</h1>
+                <div className="nc0918-sub">{subtitle}</div>
               </div>
-              <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+              <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap" }}>
                 <a className="btn btn-ghost btn-sm" href="#contact-results-desktop">
                   {t({ en: "Skip to results", zh: "跳到联系人结果" })}
                 </a>
@@ -544,12 +547,25 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
                 {t({ en: `${filtered.length} results`, zh: `${filtered.length} 条` })}
               </span>
             </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {searchSuggestions.map((suggestion) => (
                 <button className="chip" key={suggestion.label} onClick={() => applySearchSuggestion(suggestion)} type="button">{suggestion.label}</button>
               ))}
             </div>
-            <div style={{ alignItems: "center", display: "flex", gap: 8, flexWrap: "wrap", margin: "20px 0 16px" }}>
+            {sourceStats.length ? (
+              <div className="nc0918-srcs">
+                {sourceStats.map((entry) => (
+                  <div className="nc0918-src" key={entry.key}>
+                    <span className="nc0918-src-icon"><Icon name={entry.meta.icon} size={16} /></span>
+                    <span className="nc0918-src-text">
+                      <span className="nc0918-src-label">{t(entry.meta.label)}</span>
+                      <strong className="nc0918-src-n">{entry.count}</strong>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            <div style={{ alignItems: "center", display: "flex", gap: 8, flexWrap: "wrap" }}>
               {filters.map(([key, label]) => (
                 <button className={`chip${stage === key ? " is-active" : ""}`} key={key} onClick={() => setStage(key)} type="button">
                   {label}<span className="mono" style={{ marginLeft: 5 }}>{counts[key] || 0}</span>
@@ -591,6 +607,7 @@ export function OrbitRealCardsList({ viewModel }: { viewModel: OrbitContactsView
             <div aria-label={t({ en: `${filtered.length} contact results`, zh: `${filtered.length} 条联系人结果` })} id="contact-results-desktop" role="list" style={{ display: "flex", flexDirection: "column", gap: 12 }} tabIndex={-1}>
               {filtered.map((item) => <div key={item.id} role="listitem"><PersonCard item={item} t={t} viewModel={viewModel} /></div>)}
             </div>
+            </section>
           </div>
         </div>
       </div>
@@ -1442,3 +1459,42 @@ export function OrbitRealCardsIntros({ viewModel }: { viewModel: OrbitContactsVi
     </main>
   );
 }
+
+/**
+ * Orbit_0918 批次 3a：人脉主列表（所有人脉视图）作用域样式。
+ * 仅作用于 data-orbit-real-page="contacts"；属性选择器不带引号
+ * （React 静态渲染会把双引号转义成 &quot; 导致选择器失效）。
+ */
+const CONTACTS_LIST_0918_CSS = `
+[data-orbit-real-page=contacts] { background:${C0918.pageBg}; }
+[data-orbit-real-page=contacts] .nc0918-panel { background:#FFFFFF; border:1px solid ${C0918.border}; border-radius:18px; padding:26px; display:flex; flex-direction:column; gap:20px; max-width:1240px; margin:0 auto; width:100%; box-sizing:border-box; }
+[data-orbit-real-page=contacts] .nc0918-head { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:16px; }
+[data-orbit-real-page=contacts] .nc0918-title { margin:0; font-family:${F0918.serif}; font-weight:900; font-size:26px; line-height:1.15; letter-spacing:-0.02em; color:${C0918.ink}; }
+[data-orbit-real-page=contacts] .nc0918-sub { margin-top:6px; font-size:14px; color:${C0918.text3}; }
+[data-orbit-real-page=contacts] .nc0918-panel .btn-primary { background:${C0918.ink}; border-color:${C0918.ink}; }
+[data-orbit-real-page=contacts] .nc0918-panel .btn-primary:hover { background:${C0918.accentDeep}; border-color:${C0918.accentDeep}; }
+[data-orbit-real-page=contacts] .nc0918-panel .chip { border:1px solid ${C0918.borderStrong}; background:#FFFFFF; color:${C0918.text2}; }
+[data-orbit-real-page=contacts] .nc0918-panel .chip.is-active { background:${C0918.ink}; border-color:${C0918.ink}; color:#FFFFFF; }
+[data-orbit-real-page=contacts] .nc0918-srcs { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr)); gap:12px; }
+[data-orbit-real-page=contacts] .nc0918-src { display:flex; align-items:center; gap:12px; padding:14px; border:1px solid ${C0918.border}; border-radius:14px; background:#FFFFFF; }
+[data-orbit-real-page=contacts] .nc0918-src-icon { width:40px; height:40px; border-radius:10px; background:${C0918.panel}; color:${C0918.accent}; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+[data-orbit-real-page=contacts] .nc0918-src-text { display:flex; flex-direction:column; gap:2px; min-width:0; }
+[data-orbit-real-page=contacts] .nc0918-src-label { font-size:12px; color:${C0918.text3}; white-space:nowrap; }
+[data-orbit-real-page=contacts] .nc0918-src-n { font-family:${F0918.serif}; font-weight:900; font-size:22px; letter-spacing:-0.02em; color:${C0918.ink}; }
+[data-orbit-real-page=contacts] .nc-pcard { display:grid; grid-template-columns:44px minmax(110px,.9fr) minmax(0,1.7fr) auto auto minmax(64px,auto) 20px; align-items:center; gap:16px; padding:14px 16px; border-radius:14px; background:#FFFFFF; border:1px solid ${C0918.border}; box-shadow:none; color:inherit; text-decoration:none; }
+[data-orbit-real-page=contacts] .nc-pcard:hover { background:${C0918.panelSoft}; }
+[data-orbit-real-page=contacts] .nc-pcard .nc-name { margin:0; font-size:15px; font-weight:600; color:${C0918.ink}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+[data-orbit-real-page=contacts] .nc-pcard .nc-role { margin-top:4px; font-size:13px; color:${C0918.text3}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+[data-orbit-real-page=contacts] .nc-pcard .nc-tags { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+[data-orbit-real-page=contacts] .nc-pcard .nc-cell { min-width:0; display:flex; align-items:center; }
+[data-orbit-real-page=contacts] .nc-pcard .nc-stagecell { flex-direction:column; align-items:flex-start; gap:4px; }
+[data-orbit-real-page=contacts] .nc-pcard .nc-last { font-size:13px; color:${C0918.text3}; white-space:nowrap; }
+[data-orbit-real-page=contacts] .nc-pcard .nc-chevron { color:${C0918.text4}; display:flex; align-items:center; }
+[data-orbit-real-page=contacts] .nc-pcard .nc-foot { grid-column:1 / -1; border-top:1px solid #EEEFF8; }
+@media (max-width:760px) {
+  [data-orbit-real-page=contacts] .nc0918-panel { padding:18px; }
+  [data-orbit-real-page=contacts] .nc-pcard { grid-template-columns:44px minmax(0,1fr) 20px; align-items:start; }
+  [data-orbit-real-page=contacts] .nc-pcard .nc-cell { grid-column:2 / -1; flex-wrap:wrap; gap:8px; }
+  [data-orbit-real-page=contacts] .nc-pcard .nc-chevron { grid-column:3; grid-row:1; }
+}
+`;

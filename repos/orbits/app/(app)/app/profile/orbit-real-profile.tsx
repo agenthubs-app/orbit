@@ -129,14 +129,14 @@ function BusinessCardPreview({
           <Logo color="rgba(255,255,255,0.55)" size={20} withText={false} />
         </div>
         <div>
-          <div style={{ color: "#fff", fontFamily: ORBIT_0918_FONTS.serif, fontSize: 24, fontWeight: 900, letterSpacing: "-0.02em", lineHeight: 1.15 }}>
+          <div style={{ color: "#fff", fontFamily: ORBIT_0918_FONTS.serif, fontSize: 22, fontWeight: 900, letterSpacing: "-0.02em", lineHeight: 1.15 }}>
             {profile.fullName.trim() || t({ en: "Your name", zh: "你的名字" })}
           </div>
           {(profile.bio.trim() || profile.headline.trim()) ? (
-            <div style={{ color: "rgba(255,255,255,0.72)", fontSize: 13.5, lineHeight: 1.55, marginTop: 7 }}>{profile.bio.trim() || profile.headline}</div>
+            <div style={{ color: "rgba(255,255,255,0.72)", fontSize: 14, lineHeight: 1.55, marginTop: 7 }}>{profile.bio.trim() || profile.headline}</div>
           ) : null}
           {meta ? (
-            <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 12.5, letterSpacing: "0.01em", marginTop: 9 }}>{meta}</div>
+            <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, letterSpacing: "0.01em", marginTop: 9 }}>{meta}</div>
           ) : null}
         </div>
         {profile.offering.length || profile.seeking.length ? (
@@ -153,7 +153,7 @@ function BusinessCardPreview({
             {divider}
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {contacts.map((contact) => (
-                <div key={contact.label} style={{ display: "flex", fontSize: 12.5, gap: 10 }}>
+                <div key={contact.label} style={{ display: "flex", fontSize: 12, gap: 10 }}>
                   <span style={{ color: "rgba(255,255,255,0.45)", flexShrink: 0, width: 44 }}>{contact.label}</span>
                   <span style={{ color: "rgba(255,255,255,0.8)", minWidth: 0, overflowWrap: "anywhere" }}>{contact.value}</span>
                 </div>
@@ -531,7 +531,7 @@ function EditSections({
           <FieldInput disabled={editorDisabled} label={t({ en: "Birthday (private)", zh: "生日（仅本人可见）" })} onValue={onBirthDateChange} type="date" value={profile.birthDate ?? ""} />
         </div>
         {profile.industry.trim() ? (
-          <p style={{ color: C.text3, fontSize: 12.5, lineHeight: 1.5, margin: "12px 0 0" }}>
+          <p style={{ color: C.text3, fontSize: 12, lineHeight: 1.5, margin: "12px 0 0" }}>
             {t({ en: "Existing industry text is preserved; choose the structured categories above for new edits:", zh: "已有行业文字会保留；新的修改请使用上面的结构化分类：" })} {profile.industry}
           </p>
         ) : null}
@@ -547,7 +547,7 @@ function EditSections({
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <FieldTextarea disabled={editorDisabled} label={t({ en: "One-line intro (up to 80 visible characters)", zh: "一句话介绍（最多 80 个可见字符）" })} onValue={(value) => update("bio", value)} rows={3} value={profile.bio} />
           {profile.headline.trim() || profile.intro.trim() ? (
-            <p style={{ color: C.text3, fontSize: 12.5, lineHeight: 1.5, margin: 0 }}>
+            <p style={{ color: C.text3, fontSize: 12, lineHeight: 1.5, margin: 0 }}>
               {t({ en: "Existing values are preserved:", zh: "已有内容会保留：" })} {profile.headline.trim() ? `${t({ en: "headline", zh: "标题" })}: ${profile.headline}` : null}{profile.headline.trim() && profile.intro.trim() ? " · " : null}{profile.intro.trim() ? `${t({ en: "relationship goal", zh: "关系目标" })}: ${profile.intro}` : null}
             </p>
           ) : null}
