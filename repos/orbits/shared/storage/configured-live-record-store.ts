@@ -1,7 +1,13 @@
 import {
+  createReadBudgetGatedLiveRecordStore,
+  resolveSharedReadBudgetGate,
+} from "../../features/sync/read-budget-gate";
+import { poolTimeoutOptions, resolveDatabaseRuntimeProfile } from "./database-runtime-profile";
+import {
   resolveLiveDatabaseConnectionConfig,
   type LiveDatabaseEnv,
 } from "./live-database-config";
+import { configuredReadMetrics } from "./transactional-postgres";
 import type {
   LiveRecordGetQuery,
   LiveRecordListQuery,
@@ -37,7 +43,6 @@ interface CachedConfiguredPostgresLiveRecordStore {
 }
 
 const cachedStores = new Map<string, CachedConfiguredPostgresLiveRecordStore>();
-const DEFAULT_POOL_MAX = 1;
 
 function normalizeReadQuery(
   query: LiveRecordGetQuery | LiveRecordListQuery,
@@ -141,7 +146,7 @@ export function createConfiguredPostgresLiveRecordStore<
 >({
   createClient = createPgLiveRecordSqlClient,
   env,
-  max = DEFAULT_POOL_MAX,
+  max,
 }: CreateConfiguredPostgresLiveRecordStoreOptions = {}): ConfiguredPostgresLiveRecordStore<TPayload> | null {
   const config = resolveLiveDatabaseConnectionConfig(env);
 
@@ -149,7 +154,10 @@ export function createConfiguredPostgresLiveRecordStore<
     return null;
   }
 
-  const cacheKey = `${config.connectionString}\u0000${config.workspaceId}\u0000${max}`;
+  // Pool width and timeouts follow the runtime (serverless / worker / local), not a global constant.
+  const profile = resolveDatabaseRuntimeProfile(env);
+  const poolMax = max ?? profile.poolMax;
+  const cacheKey = `${config.connectionString}\u0000${config.workspaceId}\u0000${poolMax}`;
   const cachedStore = cachedStores.get(cacheKey);
 
   if (cachedStore) {
@@ -158,12 +166,18 @@ export function createConfiguredPostgresLiveRecordStore<
 
   const client = createClient({
     connectionString: config.connectionString,
-    max,
+    max: poolMax,
+    timeouts: poolTimeoutOptions(profile),
+    readMetrics: configuredReadMetrics(env),
   });
-  const store = createReadDedupedLiveRecordStore(
-    createPostgresLiveRecordStore<Record<string, unknown>>({
-      client,
-    }),
+  // Reads pass the process read-budget gate (absent unless configured); writes never do.
+  const store = createReadBudgetGatedLiveRecordStore(
+    createReadDedupedLiveRecordStore(
+      createPostgresLiveRecordStore<Record<string, unknown>>({
+        client,
+      }),
+    ),
+    resolveSharedReadBudgetGate(env),
   );
   const configuredStore = {
     client,

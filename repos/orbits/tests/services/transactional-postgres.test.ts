@@ -1,3 +1,4 @@
+import { resolveDatabaseRuntimeProfile } from "../../shared/storage/database-runtime-profile";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
@@ -80,7 +81,7 @@ test("configuration fails closed and validates connection strings and pool limit
   }
 });
 
-test("configured runtimes cache by connection, workspace and pool limit with default 2", async () => {
+test("configured runtimes cache by connection, workspace and pool limit with the runtime profile default", async () => {
   const configs: { connectionString: string; max?: number }[] = [];
   const createClient = (options: { connectionString: string; max?: number }) => {
     configs.push(options);
@@ -90,7 +91,7 @@ test("configured runtimes cache by connection, workspace and pool limit with def
   const first = createConfiguredTransactionalPostgresRuntime({ env, createClient })!;
   assert.equal(createConfiguredTransactionalPostgresRuntime({ env, createClient }), first);
   assert.equal(first.workspaceId, "workspace:one");
-  assert.equal(configs[0].max, 2);
+  assert.equal(configs[0].max, resolveDatabaseRuntimeProfile(env).transactionalPoolMax);
   const otherWorkspace = createConfiguredTransactionalPostgresRuntime({ env: { ...env, ORBIT_WORKSPACE_ID: "workspace:two" }, createClient })!;
   const otherPool = createConfiguredTransactionalPostgresRuntime({ env, max: 3, createClient })!;
   const otherUrl = createConfiguredTransactionalPostgresRuntime({ env: { ...env, ORBIT_LIVE_DATABASE_URL: "postgres://cache-test.invalid/other" }, createClient })!;

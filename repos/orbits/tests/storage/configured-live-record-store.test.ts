@@ -1,3 +1,4 @@
+import { resolveDatabaseRuntimeProfile } from "../../shared/storage/database-runtime-profile";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -117,7 +118,9 @@ test("configured postgres live record store reuses one sql client for the same d
         query: async () => ({ rows: [] }),
       };
 
-      assert.equal(options.max, 1);
+      // Pool width follows the runtime profile (local here), not a global constant.
+      assert.equal(options.max, resolveDatabaseRuntimeProfile(env).poolMax);
+      assert.equal(options.timeouts?.query_timeout, resolveDatabaseRuntimeProfile(env).queryTimeoutMillis);
       createdClients.push(client);
 
       return client;

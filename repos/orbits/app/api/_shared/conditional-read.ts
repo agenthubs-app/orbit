@@ -1,4 +1,7 @@
 import { createHash } from "node:crypto";
+import { NextResponse } from "next/server";
+import { failure, runtimeBoundaryHeaders } from "../../../shared/api/envelope";
+import { AppError, getHttpStatusForAppErrorCode } from "../../../shared/errors/app-error";
 import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
 import {
   READ_AUTHORIZATION_COLLECTIONS,
@@ -62,7 +65,7 @@ export async function conditionalJsonRead(
   produce: () => Promise<Response>,
 ): Promise<Response> {
   const workspaceId = scope.workspaceId ?? dependencies.workspaceId;
-  if (!dependencies.client || !workspaceId) return produce();
+  if (!dependencies.client || !workspaceId) return produceOrFail(scope, produce);
   let etag: string;
   try {
     const url = new URL(scope.request.url);
@@ -82,13 +85,30 @@ export async function conditionalJsonRead(
     etag = `W/"${digest}"`;
   } catch {
     // The watermark is an optimisation; a failure there must not fail the read.
-    return produce();
+    return produceOrFail(scope, produce);
   }
   if (etagMatches(scope.request.headers.get("If-None-Match"), etag)) {
     return new Response(null, { status: 304, headers: { ETag: etag, ...CONDITIONAL_READ_HEADERS } });
   }
-  const response = await produce();
+  const response = await produceOrFail(scope, produce);
   return response.status === 200 ? withHeaders(response, etag) : response;
+}
+
+/**
+ * A read that fails closed (e.g. the process read budget) must answer with its
+ * reason in the envelope, not surface as an anonymous 500 from the framework.
+ */
+async function produceOrFail(scope: ConditionalReadScope, produce: () => Promise<Response>): Promise<Response> {
+  try {
+    return await produce();
+  } catch (error) {
+    if (!(error instanceof AppError)) throw error;
+    const mode = resolveFeatureMode();
+    return NextResponse.json(
+      failure(error, { boundary: "runtime", mode, privacy: "actor-scoped-read", service: scope.routeKey }),
+      { headers: runtimeBoundaryHeaders(mode), status: getHttpStatusForAppErrorCode(error.code) },
+    );
+  }
 }
 
 /** Live-mode default: the configured Postgres client; null in mock mode or without a database. */
