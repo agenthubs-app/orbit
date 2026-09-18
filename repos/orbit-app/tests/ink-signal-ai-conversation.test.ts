@@ -910,3 +910,101 @@ for (const failure of [
   assert.deepEqual(await writes(p), submitted, "focus changes must not retry generation or save a failed answer");
   assert.deepEqual(await navigation(p), []);
 });
+
+// Sprint 0085: the entity draft card. The session this replaces had the model
+// narrate a confirmation flow three times and write nothing, so what these tests
+// hold down is the boundary: a card appears, and nothing is created until the
+// user presses the button.
+const taskDraft = {
+  createdAt: "2026-09-12T01:00:00Z",
+  draftId: "entity-draft:1",
+  fields: { dueAt: "2026-09-18T18:00", title: "整理 Note full flow 笔记的后续行动" },
+  kind: "task",
+  revision: 1,
+  sourceRefs: [{ id: "note:1", kind: "note" }, { id: "contact:2", kind: "contact" }],
+  state: "pending_confirmation",
+  updatedAt: "2026-09-12T01:00:00Z",
+};
+
+async function openWithDraft(t: { after(fn: () => Promise<void>): void }, draft: object = taskDraft) {
+  return open(t, {
+    payloads: {
+      ...conversationReadPayloads,
+      "/api/ai/conversations/conversation%3A1": { ...aiConversationPayload, entityDraft: draft },
+    },
+  });
+}
+
+test("a drafted task shows a card with its own fields and writes nothing on its own", async t => {
+  const p = await openWithDraft(t);
+
+  await p.getByText("整理 Note full flow 笔记的后续行动", { exact: true }).waitFor();
+  assert.equal(await p.getByText("待确认 · 待办", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("笔记 1 · 人脉 1", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("确认前不会写入任何数据。", { exact: true }).count(), 1);
+  assert.deepEqual(await writes(p), [], "rendering a card must not write");
+
+  // The panel that used to sit under every reply is gone.
+  assert.equal(await p.getByText("AI 运行依据", { exact: true }).count(), 0);
+});
+
+test("confirming the card is the one action that creates the record", async t => {
+  const p = await openWithDraft(t);
+  await press(p, "确认创建整理 Note full flow 笔记的后续行动");
+
+  assert.deepEqual(await writes(p), [
+    { method: "POST", path: "/api/ai/entity-drafts/entity-draft%3A1", body: { action: "confirm" } },
+  ]);
+});
+
+test("an edited field is sent as a revision before the write, so the record matches the card", async t => {
+  const p = await openWithDraft(t);
+  await p.getByRole("textbox", { name: "截止", exact: true }).fill("2026-09-19T09:00");
+  await press(p, "确认创建整理 Note full flow 笔记的后续行动");
+
+  assert.deepEqual(await writes(p), [
+    { method: "POST", path: "/api/ai/entity-drafts/entity-draft%3A1", body: { action: "revise", fields: { dueAt: "2026-09-19T09:00" } } },
+  ], "the revision must land before the confirm, and the confirm waits for it");
+});
+
+test("cancelling writes nothing beyond the cancel itself", async t => {
+  const p = await openWithDraft(t);
+  await press(p, "取消整理 Note full flow 笔记的后续行动");
+
+  assert.deepEqual(await writes(p), [
+    { method: "POST", path: "/api/ai/entity-drafts/entity-draft%3A1", body: { action: "cancel" } },
+  ]);
+});
+
+test("a created card stops offering confirmation and opens the record instead", async t => {
+  const p = await openWithDraft(t, {
+    ...taskDraft, createdRecordId: "task:9", state: "created",
+  });
+
+  await p.getByText("已创建 · 待办", { exact: true }).waitFor();
+  assert.equal(await p.getByRole("button", { name: /^确认创建/ }).count(), 0, "a created record cannot be created again");
+  assert.equal(await p.getByText("已写入并回读成功。", { exact: true }).count(), 1);
+  await press(p, "打开记录");
+  assert.deepEqual(await navigation(p), ["/tasks/task%3A9"]);
+});
+
+test("each entity kind renders its own card", async t => {
+  for (const [draft, heading, label] of [
+    [{ ...taskDraft, fields: { name: "林玫", organization: "港湾创投" }, kind: "contact" }, "林玫", "待确认 · 人脉"],
+    [{ ...taskDraft, fields: { startsAt: "2026-09-21T14:00", title: "视觉质检试点" }, kind: "schedule" }, "视觉质检试点", "待确认 · 日程"],
+    [{ ...taskDraft, fields: { startsAt: "2026-09-22T10:00", title: "关西跨境商务对接会" }, kind: "event" }, "关西跨境商务对接会", "待确认 · 活动"],
+    [{ ...taskDraft, fields: { body: "要点", title: "对接会要点" }, kind: "note" }, "对接会要点", "待确认 · 笔记"],
+  ] as const) {
+    const p = await openWithDraft(t, draft);
+    await p.getByText(heading, { exact: true }).waitFor();
+    assert.equal(await p.getByText(label, { exact: true }).count(), 1, label);
+    assert.deepEqual(await writes(p), [], label);
+  }
+});
+
+test("a draft the client cannot parse shows no card at all", async t => {
+  // A half-understood card is worse than none: someone might confirm it.
+  const p = await openWithDraft(t, { ...taskDraft, kind: "invoice" });
+  assert.equal(await p.getByText(/待确认 ·/).count(), 0);
+  assert.equal(await p.getByText("整理 Note full flow 笔记的后续行动", { exact: true }).count(), 0);
+});

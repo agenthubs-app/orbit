@@ -166,20 +166,19 @@ for (const scheme of ["light", "dark"] as const) {
     const followup = page.getByRole("button", { name: "打开待办详情：联系 林悦", exact: true }).first();
     const schedule = page.getByRole("button", { name: "打开待办详情：确认合作时间", exact: true });
     await followup.waitFor();
-    const auditReference = page.getByRole("button", { name: /ai-run-style/ });
+    // Sprint 0085: the run-evidence panel, its reference row and its result block
+    // are gone with the panel itself, so the shared radius now covers the panels
+    // that remain.
+    assert.equal(await page.getByText("AI 运行依据", { exact: true }).count(), 0);
     const panels = [contact, event, followup, profile, schedule,
       page.getByText("核对合作信息", { exact: true }).locator(".."),
-      page.getByText("待确认的采购讨论", { exact: true }).locator("..").locator("..").locator(".."),
-      page.getByText("AI 运行依据", { exact: true }).locator("..").locator("..").locator(".."), auditReference];
+      page.getByText("待确认的采购讨论", { exact: true }).locator("..").locator("..").locator("..")];
     const radii = []; for (const panel of panels) { await panel.waitFor(); radii.push(await panel.evaluate(el => getComputedStyle(el).borderRadius)); }
-    await auditReference.click();
-    const auditResult = page.getByText("可以先核对采购合作资料。", { exact: true }).locator(".."); await auditResult.waitFor();
-    radii.push(await auditResult.evaluate(el => getComputedStyle(el).borderRadius));
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "get", path: "/api/ai/runs/ai-run-style", body: undefined }]);
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [], "no reply fetches a run record on its own");
     for (const panel of [contact, event, followup, profile, schedule]) await panel.click();
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/contacts/person-one", "/events/event-one", "/tasks/task-one", "/profile", "/tasks/task-one"]);
     assert.equal(await reply.inputValue(), "仍需核对的草稿");
-    assert.deepEqual(radii, ["12px", "12px", "12px", "12px", "12px", "12px", "12px", "12px", "12px", "12px"], "contact/event/followup/profile/schedule suggestions, intentBlock, taskInteractionCard, aiRunPanel, aiRunReference, aiRunResult");
+    assert.deepEqual(radii, ["12px", "12px", "12px", "12px", "12px", "12px", "12px"], "contact/event/followup/profile/schedule suggestions, intentBlock, taskInteractionCard");
   });
   test(`${scheme}: final inset chat extraction and delivered message keep the exact request boundary`, async t => {
     const page = await open(t, "thread&insets=true", scheme);
