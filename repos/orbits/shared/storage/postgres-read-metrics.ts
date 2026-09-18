@@ -136,6 +136,13 @@ function safeConsoleObserver(metric: PostgresReadMetric): void {
   }
 }
 
+/** The env-driven console observer, exported so callers can compose it with their own instead of replacing it. */
+export function createEnvReadMetricsObserver(
+  env: PostgresReadMetricsEnv = process.env,
+): PostgresReadMetricsObserver | undefined {
+  return enabledByEnv(env) ? safeConsoleObserver : undefined;
+}
+
 function observeSafely(
   observer: PostgresReadMetricsObserver,
   metric: PostgresReadMetric,

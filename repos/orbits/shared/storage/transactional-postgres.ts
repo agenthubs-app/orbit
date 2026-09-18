@@ -1,6 +1,10 @@
 import { Pool, type PoolConfig } from "pg";
+import { resolveSharedReadBudgetGate } from "../../features/sync/read-budget-gate";
+import { poolTimeoutOptions, resolveDatabaseRuntimeProfile } from "./database-runtime-profile";
 import { resolveLiveDatabaseConnectionConfig, type LiveDatabaseEnv } from "./live-database-config";
+import type { PgPoolTimeoutOptions } from "./postgres-live-record-store";
 import {
+  createEnvReadMetricsObserver,
   createPostgresReadMetricsRunner,
   type PostgresReadMetricsConfig,
   type PostgresReadMetricsRunner,
@@ -30,6 +34,7 @@ interface TransactionalPostgresOptions {
   ssl?: PoolConfig["ssl"];
   pool?: TransactionalPostgresPool;
   readMetrics?: PostgresReadMetricsConfig;
+  timeouts?: PgPoolTimeoutOptions;
 }
 
 function executor(
@@ -49,10 +54,10 @@ function executor(
   };
 }
 
-export function createTransactionalPostgresClient({ connectionString, max = 2, ssl, pool: providedPool, readMetrics }: TransactionalPostgresOptions): TransactionalPostgresClient {
+export function createTransactionalPostgresClient({ connectionString, max = 2, ssl, pool: providedPool, readMetrics, timeouts }: TransactionalPostgresOptions): TransactionalPostgresClient {
   if (!connectionString?.trim()) throw new Error("A database connection string is required.");
   if (!Number.isSafeInteger(max) || max < 1) throw new Error("Pool size must be a positive integer.");
-  const pool = providedPool ?? new Pool({ connectionString, max, ssl });
+  const pool = providedPool ?? new Pool({ connectionString, max, ssl, ...(timeouts ?? {}) });
   const measureRead = createPostgresReadMetricsRunner(readMetrics);
   return {
     ...executor(pool, measureRead),
@@ -93,9 +98,17 @@ interface ConfiguredTransactionalPostgresRuntime {
 
 const cachedRuntimes = new Map<string, ConfiguredTransactionalPostgresRuntime>();
 
+/** Gate accounting plus the env console line, composed so neither replaces the other. */
+export function configuredReadMetrics(env: LiveDatabaseEnv = process.env): PostgresReadMetricsConfig | undefined {
+  const gate = resolveSharedReadBudgetGate(env);
+  const console = createEnvReadMetricsObserver(env);
+  if (!gate) return console;
+  return { observer: (metric) => { gate.observe(metric); console?.(metric); } };
+}
+
 export function createConfiguredTransactionalPostgresRuntime({
   env,
-  max = 2,
+  max,
   createClient = createTransactionalPostgresClient,
 }: {
   env?: LiveDatabaseEnv;
@@ -104,10 +117,17 @@ export function createConfiguredTransactionalPostgresRuntime({
 } = {}): ConfiguredTransactionalPostgresRuntime | null {
   const config = resolveLiveDatabaseConnectionConfig(env);
   if (!config) return null;
-  const cacheKey = JSON.stringify([config.connectionString, config.workspaceId, max]);
+  const profile = resolveDatabaseRuntimeProfile(env);
+  const poolMax = max ?? profile.transactionalPoolMax;
+  const cacheKey = JSON.stringify([config.connectionString, config.workspaceId, poolMax]);
   const cached = cachedRuntimes.get(cacheKey);
   if (cached) return cached;
-  const original = createClient({ connectionString: config.connectionString, max });
+  const original = createClient({
+    connectionString: config.connectionString,
+    max: poolMax,
+    timeouts: poolTimeoutOptions(profile),
+    readMetrics: configuredReadMetrics(env),
+  });
   const runtime = {
     workspaceId: config.workspaceId,
     client: {

@@ -32,11 +32,22 @@ export interface PostgresLiveRecordStoreOptions {
   client: LiveRecordSqlClient;
 }
 
+export interface PgPoolTimeoutOptions {
+  connectionTimeoutMillis: number;
+  idleTimeoutMillis: number;
+  /** Client-side wait limit; frees the pool slot even if the server keeps going. */
+  query_timeout: number;
+  /** Server-side cancel for direct connections; omitted through a pooler. */
+  statement_timeout?: number;
+}
+
 export interface PgLiveRecordSqlClientOptions {
   connectionString: string;
   max?: number;
   ssl?: PoolConfig["ssl"];
   readMetrics?: PostgresReadMetricsConfig;
+  /** Defaults keep the historical 10 s connect/idle limits and no query timeout. */
+  timeouts?: PgPoolTimeoutOptions;
 }
 
 type PostgresLiveRecordRow = {
@@ -271,13 +282,13 @@ export function createPgLiveRecordSqlClient({
   max,
   ssl,
   readMetrics,
+  timeouts,
 }: PgLiveRecordSqlClientOptions): ClosableLiveRecordSqlClient {
   const pool = new Pool({
     connectionString,
     max,
     ssl,
-    connectionTimeoutMillis: 10_000,
-    idleTimeoutMillis: 10_000,
+    ...(timeouts ?? { connectionTimeoutMillis: 10_000, idleTimeoutMillis: 10_000 }),
   });
   const measureRead = createPostgresReadMetricsRunner(readMetrics);
 
