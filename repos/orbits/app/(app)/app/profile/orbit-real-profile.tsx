@@ -4,14 +4,13 @@ import { FormEvent, KeyboardEvent, ReactNode, useEffect, useRef, useState } from
 
 import type { ProfileDocumentExtractionPayload } from "../../../../features/profile/extraction-contract";
 import type { IndustrySelectionContract, IndustryIdCode, SecondaryIndustryIdCode } from "../../../../shared/contract/industries";
-import { INDUSTRY_CATALOG, industryLabel, listSecondaryIndustries, secondaryIndustryLabel, validateIndustrySelection } from "../../../../shared/domain/industries";
+import { INDUSTRY_CATALOG, industryLabel, listSecondaryIndustries, secondaryIndustryLabel } from "../../../../shared/domain/industries";
 import type {
   ManualProfileUpdateInput,
   ProfilePayload,
 } from "../../../../features/profile/contract";
 import {
   profileEditorReadbackMatches,
-  profileEditorHandlesWithVisibleDraft,
   profileEditorUpdateInput,
   profileEditorViewFromPayload,
   type OrbitProfileEditorView,
@@ -26,6 +25,13 @@ import type { OrbitProfileView, OrbitProfileViewModel } from "../orbit-profile-r
 import { Avatar, gradientFromString, Icon, Logo } from "../orbit-reference-primitives";
 import { ORBIT_Z } from "../orbit-z";
 import { profileContinuationPath } from "./profile-onboarding-navigation";
+import {
+  emptyProfileAfterReload,
+  mergeProfilePreservingDraft,
+  profileSaveFailureKind,
+  profileSaveScopeFields,
+  validateProfileSaveDraft,
+} from "./profile-save-model";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 
@@ -843,9 +849,7 @@ export function OrbitRealProfile({
 
   async function saveProfile(scope: ProfileEditorSaveScope) {
     if (editorDisabled || reloadInFlight.current !== null || saveInFlight.current !== null) return;
-    const scopeFields = scope === "basic"
-      ? new Set<ProfileEditorField>(["bio", "birthDate", "displayName", "handles", "organization", "primaryIndustryId", "role", "secondaryIndustryId"])
-      : new Set<ProfileEditorField>(["offering", "seeking", "topics"]);
+    const scopeFields = profileSaveScopeFields(scope);
     const scopeDirty = new Set([...dirtyFields].filter(field => scopeFields.has(field)));
     if (scopeDirty.size === 0) {
       setMessageKind("info");
@@ -853,29 +857,11 @@ export function OrbitRealProfile({
       return;
     }
     const dirtyHandleFieldsAtSave = new Set(dirtyHandleFields);
-    if (scope === "basic") {
-      if (!profile.fullName.trim()) {
-        setMessageKind("error");
-        setMessage(t({ en: "Add your name before saving the profile.", zh: "请填写姓名后再保存档案。" }));
-        return;
-      }
-      if (!profile.primaryIndustryId || !profile.secondaryIndustryId || !validateIndustrySelection(profile).valid) {
-        setMessageKind("error");
-        setMessage(t({ en: "Choose both industry levels before saving the basic profile.", zh: "保存基础资料前，请选择完整的一级和二级行业。" }));
-        return;
-      }
-      if (scopeDirty.has("bio")) {
-        const Segmenter = (Intl as unknown as { Segmenter?: new (locale?: string, options?: { granularity: "grapheme" }) => { segment(input: string): Iterable<unknown> } }).Segmenter;
-        const normalizedBio = profile.bio.trim();
-        const visibleCharacters = Segmenter
-          ? Array.from(new Segmenter(undefined, { granularity: "grapheme" }).segment(normalizedBio)).length
-          : Array.from(normalizedBio).length;
-        if (visibleCharacters > 80) {
-          setMessageKind("error");
-          setMessage(t({ en: "Keep the introduction within 80 visible characters.", zh: "一句话介绍不能超过 80 个可见字符。" }));
-          return;
-        }
-      }
+    const validation = validateProfileSaveDraft({ profile, scope, scopeDirty });
+    if (validation.ok === false) {
+      setMessageKind("error");
+      setMessage(t(validation.message));
+      return;
     }
 
     const newInput = profileEditorUpdateInput({
@@ -906,7 +892,7 @@ export function OrbitRealProfile({
       if (!mountedRef.current || operationEpoch.current !== saveEpoch) return;
 
       if (!response.ok || envelope.success !== true || !envelope.data) {
-        if (response.status === 409 || envelope.error?.code === "PROFILE_VERSION_CONFLICT") {
+        if (profileSaveFailureKind(response.status, envelope.error?.code) === "conflict") {
           setRequiresReconcile(true);
           throw new Error(t({ en: "This profile changed elsewhere. Reload the latest profile before saving this draft.", zh: "资料已在其他位置发生变化，请先刷新最新资料，再处理当前草稿。" }));
         }
@@ -934,34 +920,12 @@ export function OrbitRealProfile({
         readback.data.onboarding.status === "complete" &&
         !matchingDraftAtSave;
 
-      setProfile(current => {
-        const serverProfile = profileEditorViewFromPayload(current, readback.data!);
-        const preserve = new Set([...dirtyFields].filter(field => !scopeFields.has(field)));
-        const mergedHandles = preserve.has("handles")
-          ? profileEditorHandlesWithVisibleDraft(serverProfile, current, dirtyHandleFieldsAtSave)
-          : serverProfile.handles;
-        return {
-          ...serverProfile,
-          bio: preserve.has("bio") ? current.bio : serverProfile.bio,
-          birthDate: preserve.has("birthDate") ? current.birthDate : serverProfile.birthDate,
-          company: preserve.has("organization") ? current.company : serverProfile.company,
-          fullName: preserve.has("displayName") ? current.fullName : serverProfile.fullName,
-          handles: mergedHandles,
-          offering: preserve.has("offering") ? current.offering : serverProfile.offering,
-          primaryIndustryId: preserve.has("primaryIndustryId") ? current.primaryIndustryId : serverProfile.primaryIndustryId,
-          secondaryIndustryId: preserve.has("secondaryIndustryId") ? current.secondaryIndustryId : serverProfile.secondaryIndustryId,
-          seeking: preserve.has("seeking") ? current.seeking : serverProfile.seeking,
-          title: preserve.has("role") ? current.title : serverProfile.title,
-          topics: preserve.has("topics") ? current.topics : serverProfile.topics,
-          wechatName: preserve.has("handles")
-            ? mergedHandles?.wechatId ?? ""
-            : serverProfile.wechatName,
-          lineId: preserve.has("handles")
-            ? mergedHandles?.lineId ?? ""
-            : serverProfile.lineId,
-          email: serverProfile.email,
-        };
-      });
+      setProfile(current => mergeProfilePreservingDraft({
+        current,
+        dirtyHandleFields: dirtyHandleFieldsAtSave,
+        latest: profileEditorViewFromPayload(current, readback.data!),
+        preserve: new Set([...dirtyFields].filter(field => !scopeFields.has(field))),
+      }));
       setDirtyFields(current => {
         const next = new Set(current);
         for (const field of scopeFields) next.delete(field);
@@ -1027,56 +991,14 @@ export function OrbitRealProfile({
       const envelope = await response.json() as ApiEnvelope<ProfilePayload>;
       if (!response.ok || envelope.success !== true || !envelope.data || !knownOnboarding(envelope.data.onboarding)) throw new Error("Profile reload failed");
       if (!mountedRef.current || operationEpoch.current !== reloadEpoch) return;
-      setProfile(current => {
-        const latest = envelope.data!.profile
+      setProfile(current => mergeProfilePreservingDraft({
+        current,
+        dirtyHandleFields: dirtyHandleFieldsAtReload,
+        latest: envelope.data!.profile
           ? profileEditorViewFromPayload(current, envelope.data!)
-          : {
-              ...current,
-              bio: "",
-              birthDate: null,
-              company: "",
-              email: current.email,
-              expectedUpdatedAt: null,
-              handles: undefined,
-              hasPersistedProfile: false,
-              headline: "",
-              industry: "",
-              intro: "",
-              lineId: "",
-              offering: [],
-              onboarding: envelope.data!.onboarding!,
-              primaryIndustryId: undefined,
-              secondaryIndustryId: undefined,
-              seeking: [],
-              title: "",
-              topics: [],
-              wechatName: "",
-            };
-        const mergedHandles = dirtyAtReload.has("handles")
-          ? profileEditorHandlesWithVisibleDraft(latest, current, dirtyHandleFieldsAtReload)
-          : latest.handles;
-        return {
-          ...latest,
-          bio: dirtyAtReload.has("bio") ? current.bio : latest.bio,
-          birthDate: dirtyAtReload.has("birthDate") ? current.birthDate : latest.birthDate,
-          company: dirtyAtReload.has("organization") ? current.company : latest.company,
-          fullName: dirtyAtReload.has("displayName") ? current.fullName : latest.fullName,
-          handles: mergedHandles,
-          offering: dirtyAtReload.has("offering") ? current.offering : latest.offering,
-          primaryIndustryId: dirtyAtReload.has("primaryIndustryId") ? current.primaryIndustryId : latest.primaryIndustryId,
-          secondaryIndustryId: dirtyAtReload.has("secondaryIndustryId") ? current.secondaryIndustryId : latest.secondaryIndustryId,
-          seeking: dirtyAtReload.has("seeking") ? current.seeking : latest.seeking,
-          title: dirtyAtReload.has("role") ? current.title : latest.title,
-          topics: dirtyAtReload.has("topics") ? current.topics : latest.topics,
-          wechatName: dirtyAtReload.has("handles")
-            ? mergedHandles?.wechatId ?? ""
-            : latest.wechatName,
-          lineId: dirtyAtReload.has("handles")
-            ? mergedHandles?.lineId ?? ""
-            : latest.lineId,
-          email: latest.email,
-        };
-      });
+          : emptyProfileAfterReload(current, envelope.data!.onboarding!),
+        preserve: dirtyAtReload,
+      }));
       setDirtyFields(dirtyAtReload);
       setDirtyHandleFields(dirtyHandleFieldsAtReload);
       pendingSave.current = null;
