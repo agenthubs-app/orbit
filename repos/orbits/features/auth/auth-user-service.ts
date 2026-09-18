@@ -82,7 +82,11 @@ export function createAuthUserService({
         updatedAt: timestamp,
       };
 
-      await provider.saveUser(user);
+      if (provider.insertUserIfAbsent) {
+        if (!await provider.insertUserIfAbsent(user)) return authUserFailure("AUTH_EMAIL_TAKEN");
+      } else {
+        await provider.saveUser(user);
+      }
       await provisionAccount(user);
 
       return { data: { user: toAuthUserDTO(user) }, state: "success" };
@@ -147,9 +151,15 @@ export function createAuthUserService({
         updatedAt: timestamp,
       };
 
+      if (provider.insertUserIfAbsent) {
+        const inserted = await provider.insertUserIfAbsent(user);
+        const canonical = inserted ?? await provider.getUserByEmail(email);
+        if (!canonical) return authUserFailure("AUTH_EMAIL_TAKEN");
+        await provisionAccount(canonical);
+        return { data: { user: toAuthUserDTO(canonical) }, state: "success" };
+      }
       await provider.saveUser(user);
       await provisionAccount(user);
-
       return { data: { user: toAuthUserDTO(user) }, state: "success" };
     },
   };

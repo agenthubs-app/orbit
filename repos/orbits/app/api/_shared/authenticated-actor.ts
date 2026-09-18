@@ -123,7 +123,7 @@ export async function resolveAuthenticatedApiActorFromSession(
   const config = resolveLiveDatabaseConnectionConfig();
   const workspaceId = config?.workspaceId ?? "workspace:mock-auth";
   const provider = createConfiguredStorageAccountSessionProvider();
-  const graph = provider ? await provider.readAccountSessionGraph() : null;
+  const graph = provider ? await provider.readAccountSessionGraph({ userId: session.userId }) : null;
 
   return resolveAuthenticatedApiActorIdentity({
     graph,

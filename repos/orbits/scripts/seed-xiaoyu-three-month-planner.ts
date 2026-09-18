@@ -224,7 +224,7 @@ export async function runXiaoyuThreeMonthSeed(command: Command): Promise<Record<
   if (!authUser) throw new Error(`No account exists for ${command.email}.`);
   const actorId = resolveXiaoyuSeedAccountId({
     authUserId: authUser.id,
-    graph: await accountProvider.readAccountSessionGraph(),
+    graph: await accountProvider.readAccountSessionGraph({ userId: authUser.id }),
   });
   const contacts = await contactsByName({ actorId, store: configured.store, workspaceId: configured.workspaceId });
   const allTaskKeys = [...seed.openTasks, ...seed.completedTasks].map((item) => item.key);

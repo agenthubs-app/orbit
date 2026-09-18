@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { AppError } from "../../../shared/errors/app-error";
 
 import type {
   ConnectionDTO,
@@ -46,6 +47,20 @@ export const CONTACTS_LIVE_RECORD_COLLECTIONS = {
 } as const;
 
 const AMBIGUOUS_CONNECTION_ERROR = "CONTACT_DETAIL_AMBIGUOUS_CONNECTION";
+
+// The list DTO does not consume private notes, raw captures, handles or full
+// detail-state history. Keep those in the explicit contact-detail read path.
+const contactListPayloadFields = [
+  "id", "version", "displayName", "organization", "role", "location",
+  "profileSnippet", "primaryIndustryId", "secondaryIndustryId", "nextAction",
+  "stage", "lifecycleInitialization", "source", "evidenceIds", "createdAt", "updatedAt",
+] as const;
+const connectionListPayloadFields = [
+  "id", "version", "lifecycleInitialization", "accountId", "contactId", "stage",
+  "valueTypes", "summary", "source", "evidenceIds", "createdAt", "updatedAt",
+] as const;
+const detailStateListPayloadFields = ["actorId", "contactId", "tags", "status", "updatedAt"] as const;
+const evidenceListPayloadFields = ["id", "sourceType", "sourceId", "summary", "occurredAt", "confidence", "createdBy"] as const;
 
 export interface StorageContactGraphProviderOptions {
   contactRecordPageReader?: ContactRecordPageReader;
@@ -498,7 +513,7 @@ async function readFocusedContactGraph(input: {
     ? await input.contactRecordPageReader(input.listInput, actorId)
     : null;
   const focusedIds = input.contactId ? [input.contactId] : boundedPage?.recordIds;
-  const scope = focusedIds && input.contactScopeRecordReader
+  const scope = input.contactScopeRecordReader
     ? await input.contactScopeRecordReader(actorId, focusedIds)
     : null;
   const [contactRecords, allConnectionRecords, detailStateRecords] = await Promise.all([
@@ -507,16 +522,20 @@ async function readFocusedContactGraph(input: {
       collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.contacts,
       ...(input.contactId ? { recordIds: [input.contactId] } : {}),
       ...(boundedPage ? { recordIds: boundedPage.recordIds } : {}),
+      ...(scope?.contactIds ? { recordIds: scope.contactIds } : {}),
+      ...(input.listInput ? { payloadFields: contactListPayloadFields, omitSearchText: !query } : {}),
     }),
     input.store.listRecords({
       workspaceId: input.workspaceId,
       collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.connections,
       ...(scope ? { recordIds: scope.connectionIds } : boundedPage ? { userId: actorId } : {}),
+      ...(input.listInput ? { payloadFields: connectionListPayloadFields, omitSearchText: true } : {}),
     }),
     input.store.listRecords({
       workspaceId: input.workspaceId,
       collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.detailStates,
       ...(scope ? { recordIds: scope.detailStateIds } : boundedPage ? { userId: actorId } : {}),
+      ...(input.listInput ? { payloadFields: detailStateListPayloadFields, omitSearchText: true } : {}),
     }),
   ]);
   const actorConnectionRecords = allConnectionRecords.filter(
@@ -572,6 +591,7 @@ async function readFocusedContactGraph(input: {
           workspaceId: input.workspaceId,
           collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.evidence,
           recordIds: evidenceRecordIds,
+          ...(input.listInput ? { payloadFields: evidenceListPayloadFields, omitSearchText: true } : {}),
         })
       : [];
 
@@ -689,6 +709,7 @@ export function createStorageContactGraphProvider({
     readContactGraph(actorId): Promise<LocalRemoteContactGraph> {
       return readFocusedContactGraph({
         actorId,
+        contactScopeRecordReader,
         store,
         workspaceId,
       });
@@ -846,16 +867,24 @@ export function createStorageContactGraphProvider({
       } else {
         delete nextPayload.secondaryIndustryId;
       }
-      const updatedAt = new Date().toISOString();
+      const updatedAt = new Date(Math.max(Date.now(), Date.parse(contactRecord.updatedAt) + 1)).toISOString();
       nextPayload.updatedAt = updatedAt;
-      const record = await store.upsertRecord({
+      const nextRecord = {
         ...contactRecord,
         updatedAt,
         searchText: [contactRecord.searchText, primaryIndustryId ?? ""]
           .filter(Boolean)
           .join(" "),
         payload: nextPayload,
+      };
+      if (!store.updateRecordIfCurrent) {
+        throw new AppError("SERVICE_UNAVAILABLE", "Contact storage requires conditional update support.");
+      }
+      const record = await store.updateRecordIfCurrent(nextRecord, {
+        userId: contactRecord.userId ?? null,
+        updatedAt: contactRecord.updatedAt,
       });
+      if (!record) throw new AppError("CONFLICT", "Contact changed. Refresh and retry your edit.");
       const contact = contactFromRecord(record);
       if (!contact) {
         throw new Error("Persisted contact industry failed validation.");

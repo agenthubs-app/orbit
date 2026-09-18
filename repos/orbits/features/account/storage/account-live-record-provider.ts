@@ -30,7 +30,7 @@ export type LiveAccountSessionProviderResult<TResult> = TResult | Promise<TResul
 export interface LiveAccountSessionProvider {
   source: string;
   sourceLabel: string;
-  readAccountSessionGraph: () => LiveAccountSessionProviderResult<LiveAccountSessionGraph>;
+  readAccountSessionGraph: (identity?: { userId?: string | null; accountId?: string | null; profileId?: string | null }) => LiveAccountSessionProviderResult<LiveAccountSessionGraph>;
 }
 
 export const ACCOUNT_SESSION_LIVE_RECORD_COLLECTIONS = {
@@ -39,6 +39,7 @@ export const ACCOUNT_SESSION_LIVE_RECORD_COLLECTIONS = {
 } as const;
 
 export interface StorageAccountSessionProviderOptions {
+  requireIdentity?: boolean;
   source?: string;
   sourceLabel?: string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
@@ -136,6 +137,7 @@ function evidenceIdsFor(
 }
 
 export function createStorageAccountSessionProvider({
+  requireIdentity = false,
   source,
   sourceLabel = "Account shared live storage",
   store,
@@ -144,7 +146,38 @@ export function createStorageAccountSessionProvider({
   return {
     source: source ?? `live-record-store:account-session:${workspaceId}`,
     sourceLabel,
-    async readAccountSessionGraph(): Promise<LiveAccountSessionGraph> {
+    async readAccountSessionGraph(identity): Promise<LiveAccountSessionGraph> {
+      const subject = (identity?.profileId ?? identity?.userId ?? identity?.accountId)?.trim();
+      if (!subject && requireIdentity) {
+        return { accounts: [], profiles: [], evidenceIds: ["evidence:account-identity-required"], generatedAt: new Date(0).toISOString() };
+      }
+      if (subject) {
+        let profileRecords = await store.listRecords({
+          workspaceId,
+          collectionName: ACCOUNT_SESSION_LIVE_RECORD_COLLECTIONS.profiles,
+          payloadId: subject,
+        });
+        if (profileRecords.length === 0) {
+          profileRecords = await store.listRecords({
+            workspaceId,
+            collectionName: ACCOUNT_SESSION_LIVE_RECORD_COLLECTIONS.profiles,
+            payloadAccountId: identity?.accountId ?? subject,
+          });
+        }
+        const ids = [...new Set(profileRecords.map(record => record.payload.accountId).filter(nonEmptyString))];
+        const accountRecords = (await Promise.all(ids.map(payloadId => store.listRecords({
+          workspaceId,
+          collectionName: ACCOUNT_SESSION_LIVE_RECORD_COLLECTIONS.accounts,
+          payloadId,
+        })))).flat();
+        const records = [...accountRecords, ...profileRecords];
+        return {
+          accounts: accountRecords.map(accountFromRecord).filter((item): item is AccountDTO => item !== null),
+          profiles: profileRecords.map(profileFromRecord).filter((item): item is LiveAccountProfileRecord => item !== null),
+          evidenceIds: evidenceIdsFor(records),
+          generatedAt: latestTimestamp(records),
+        };
+      }
       const [accountRecords, profileRecords] = await Promise.all([
         store.listRecords({
           workspaceId,
@@ -186,6 +219,7 @@ export function createConfiguredStorageAccountSessionProvider({
   }
 
   return createStorageAccountSessionProvider({
+    requireIdentity: true,
     source: `postgres-live-record-store:account-session:${configuredStore.workspaceId}`,
     sourceLabel,
     store: configuredStore.store,

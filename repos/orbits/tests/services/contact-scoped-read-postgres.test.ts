@@ -9,6 +9,20 @@ import { createTransactionalPostgresClient } from "../../shared/storage/transact
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
 
 const databaseUrl = process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL;
+test("contact scope keeps storage keys distinct from domain contact IDs", async () => {
+  const calls: (readonly unknown[] | undefined)[] = [];
+  const client: LiveRecordSqlClient = {
+    async query<T>(_sql: string, values?: readonly unknown[]) {
+      calls.push(values);
+      return { rows: (calls.length === 1
+        ? [{ record_id: "storage:contact", contact_id: "domain:contact" }]
+        : [{ collection_name: "connections", record_id: "storage:connection" }]) as T[] };
+    },
+  };
+  const result = await createPostgresContactScopeRecordReader({ client, workspaceId: "w" })("a");
+  assert.deepEqual(result.contactIds, ["storage:contact"]);
+  assert.deepEqual(calls[1]?.[2], ["domain:contact"], "Relationship foreign keys refer to payload.id, not record_id");
+});
 test("contact detail SQL transfer stays fixed as unrelated relationships and private notes grow", {
   skip: databaseUrl ? false : "Explicit isolated PostgreSQL URL required",
 }, async () => {

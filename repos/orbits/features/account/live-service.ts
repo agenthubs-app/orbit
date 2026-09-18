@@ -274,7 +274,7 @@ async function currentSession(
 
   return success(
     sessionPayload(
-      await provider.readAccountSessionGraph(),
+      await provider.readAccountSessionGraph(identity),
       provider,
       identity,
     ),

@@ -28,9 +28,16 @@ export function resolveLiveDatabaseTarget(
 export function resolveLiveDatabaseConnectionConfig(
   env: LiveDatabaseEnv = process.env,
 ): LiveDatabaseConnectionConfig | null {
+  // 围栏最外层：生产环境必须显式钉死目标库和 workspace，先于任何目标选择。
+  // 放在最前面，是为了让"切换开关"无法把未钉死的生产蒙混过去。
+  if (env.VERCEL_ENV === "production" &&
+      (!readEnv(env, "ORBIT_EXPECTED_DATABASE_HOST") || !readEnv(env, "ORBIT_EXPECTED_WORKSPACE_ID"))) {
+    throw new Error("Production database target must be explicitly pinned.");
+  }
+
   const target = resolveLiveDatabaseTarget(env);
 
-  // 本地目标只认 ORBIT_LOCAL_DATABASE_URL：缺配置时返回 null 走既有的
+  // 本地目标只认 ORBIT_LOCAL_DATABASE_URL：缺配置时走下面的
   // "未配置 live 数据库" 分支，而不是悄悄回退到云端连接串。
   const connectionString =
     target === "local"
@@ -40,6 +47,9 @@ export function resolveLiveDatabaseConnectionConfig(
         readEnv(env, "ORBIT_DATABASE_URL");
 
   if (!connectionString) {
+    if (readEnv(env, "ORBIT_EXPECTED_DATABASE_HOST")) {
+      throw new Error("Production database connection is missing.");
+    }
     return null;
   }
 
@@ -47,6 +57,24 @@ export function resolveLiveDatabaseConnectionConfig(
     (target === "local" ? readEnv(env, "ORBIT_LOCAL_WORKSPACE_ID") : null) ??
     readEnv(env, "ORBIT_WORKSPACE_ID") ??
     "workspace:default";
+
+  // 钉死校验作用在解析结果上，不是原始 env：这样 target=local 与
+  // ORBIT_LOCAL_WORKSPACE_ID 都无法绕过一个已经钉死的生产目标。
+  const expectedHost = readEnv(env, "ORBIT_EXPECTED_DATABASE_HOST");
+  const expectedWorkspace = readEnv(env, "ORBIT_EXPECTED_WORKSPACE_ID");
+  if (expectedHost || expectedWorkspace) {
+    let actualHost: string;
+    try {
+      actualHost = new URL(connectionString).hostname;
+    } catch {
+      throw new Error("Database connection configuration is invalid.");
+    }
+    if ((expectedHost && actualHost !== expectedHost) ||
+        (expectedWorkspace && workspaceId !== expectedWorkspace)) {
+      // Never include connection strings or credentials in diagnostics.
+      throw new Error("Database target does not match the approved environment.");
+    }
+  }
 
   return { connectionString, workspaceId, target };
 }

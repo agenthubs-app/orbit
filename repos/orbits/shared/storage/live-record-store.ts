@@ -29,6 +29,12 @@ export interface LiveRecord<TPayload extends Record<string, unknown> = Record<st
 
 export interface LiveRecordListQuery {
   workspaceId: string;
+  /** Exact persisted identity, filtered before payloads leave storage. */
+  payloadId?: string;
+  payloadAccountId?: string;
+  /** Internal read-model projection. Does not alter the persisted record. */
+  payloadFields?: readonly string[];
+  omitSearchText?: boolean;
   collectionName?: string;
   includeDeleted?: boolean;
   lifecycleState?: LiveRecordLifecycleState;
@@ -51,6 +57,7 @@ export interface LiveRecordGetQuery {
   collectionName: string;
   recordId: string;
   includeDeleted?: boolean;
+  userId?: string;
 }
 
 export interface LiveRecordDeleteInput {
@@ -58,11 +65,20 @@ export interface LiveRecordDeleteInput {
   collectionName: string;
   recordId: string;
   deletedAt: string;
+  userId?: string;
+  expectedUpdatedAt?: string;
+}
+
+export interface LiveRecordWritePrecondition {
+  userId: string | null;
+  updatedAt: string;
 }
 
 export type LiveRecordStoreResult<TValue> = TValue | Promise<TValue>;
 
 export interface LiveRecordStoreLike<TPayload extends Record<string, unknown> = Record<string, unknown>> {
+  /** Compare-and-swap: never inserts, transfers ownership, or revives a tombstone. */
+  updateRecordIfCurrent?: (record: LiveRecord<TPayload>, expected: LiveRecordWritePrecondition) => LiveRecordStoreResult<LiveRecord<TPayload> | null>;
   /** Atomic insert only; conflicts (including tombstones) return null, never update. */
   insertRecordIfAbsent?: (
     record: LiveRecord<TPayload>,
@@ -82,6 +98,7 @@ export interface LiveRecordStoreLike<TPayload extends Record<string, unknown> = 
 }
 
 export interface LiveRecordStore<TPayload extends Record<string, unknown> = Record<string, unknown>> {
+  updateRecordIfCurrent?: (record: LiveRecord<TPayload>, expected: LiveRecordWritePrecondition) => LiveRecord<TPayload> | null;
   insertRecordIfAbsent?: (record: LiveRecord<TPayload>) => LiveRecord<TPayload> | null;
   deleteRecord: (
     input: LiveRecordDeleteInput,
@@ -122,6 +139,8 @@ function matchesListQuery(record: LiveRecord, query: LiveRecordListQuery): boole
 
   return (
     record.workspaceId === query.workspaceId &&
+    (query.payloadId === undefined || record.payload.id === query.payloadId) &&
+    (query.payloadAccountId === undefined || record.payload.accountId === query.payloadAccountId) &&
     (query.collectionName === undefined ||
       record.collectionName === query.collectionName) &&
     (query.lifecycleState === undefined ||
@@ -149,6 +168,16 @@ export function createMemoryLiveRecordStore<
   }
 
   return {
+    updateRecordIfCurrent(record, expected) {
+      const current = records.get(recordKey(record));
+      if (!(Date.parse(record.updatedAt) > Date.parse(expected.updatedAt)) ||
+          !current || current.lifecycleState === "deleted" ||
+          (current.userId ?? null) !== expected.userId ||
+          (record.userId ?? null) !== expected.userId ||
+          current.updatedAt !== expected.updatedAt) return null;
+      records.set(recordKey(record), cloneJson(record));
+      return cloneJson(record);
+    },
     insertRecordIfAbsent(record) {
       const key = recordKey(record);
       if (records.has(key)) return null;
@@ -159,7 +188,8 @@ export function createMemoryLiveRecordStore<
       const key = recordKey(input);
       const record = records.get(key);
 
-      if (!record) {
+      if (!record || (input.userId !== undefined && record.userId !== input.userId) ||
+          (input.expectedUpdatedAt !== undefined && record.updatedAt !== input.expectedUpdatedAt)) {
         return null;
       }
 
@@ -177,7 +207,8 @@ export function createMemoryLiveRecordStore<
     getRecord(query) {
       const record = records.get(recordKey(query));
 
-      if (!record || !isVisible(record, query.includeDeleted)) {
+      if (!record || !isVisible(record, query.includeDeleted) ||
+          (query.userId !== undefined && record.userId !== query.userId)) {
         return null;
       }
 
@@ -186,7 +217,13 @@ export function createMemoryLiveRecordStore<
     listRecords(query) {
       return Array.from(records.values())
         .filter((record) => matchesListQuery(record, query))
-        .map((record) => cloneJson(record));
+        .map((record) => cloneJson({
+          ...record,
+          ...(query.payloadFields ? {
+            payload: Object.fromEntries(Object.entries(record.payload).filter(([key]) => query.payloadFields!.includes(key))) as TPayload,
+          } : {}),
+          ...(query.omitSearchText ? { searchText: "" } : {}),
+        }));
     },
     upsertRecord(record) {
       const nextRecord = cloneJson(record);
