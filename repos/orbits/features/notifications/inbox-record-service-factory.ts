@@ -19,8 +19,19 @@ import { AppError } from '../../shared/errors/app-error';
 import { isCurrentPersonalScheduleReminderPlan } from '../personal-schedule/reminder-plans';
 import type { ReminderPlanDTO } from './reminder-plan-contract';
 
+/**
+ * Typed notifications (reminder / suggestion / update) are the inbox. The rollout
+ * allowlist this used to read (`ORBIT_TYPED_INBOX_ACTORS`) was never configured
+ * outside one QA account, so every other account silently fell back to the legacy
+ * feed and to a 404 on the notification settings — Sprint 0086.
+ *
+ * `ORBIT_TYPED_INBOX_DISABLED_ACTORS` remains as an emergency opt-out for a single
+ * account; it is empty in every environment and exists only so a bad record can be
+ * contained without a deploy.
+ */
 export function isTypedInboxEnabled(actorId:string,env:NodeJS.ProcessEnv=process.env):boolean {
-  return (env.ORBIT_TYPED_INBOX_ACTORS??'').split(',').map(s=>s.trim()).includes(actorId);
+  const disabled=(env.ORBIT_TYPED_INBOX_DISABLED_ACTORS??'').split(',').map(s=>s.trim()).filter(Boolean);
+  return actorId.trim().length>0 && !disabled.includes(actorId);
 }
 export function createInboxRuntime(input:{client:TransactionalPostgresClient;workspaceId:string;now?:()=>string;forDispatch?:boolean}) {
   const now=input.now??(()=>new Date().toISOString());

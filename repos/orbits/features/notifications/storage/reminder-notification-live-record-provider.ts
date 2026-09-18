@@ -311,11 +311,16 @@ async function listCollection(
   workspaceId: string,
   collectionName: string,
 ): Promise<readonly LiveRecord<Record<string, unknown>>[]> {
-  return store.listRecords({
+  const records = await store.listRecords({
     limit: "unbounded",
     collectionName,
     workspaceId,
   });
+  // Sprint 0086: a quarantined record is one the notification design says must
+  // never become an inbox row (generated fixtures below the content threshold).
+  // The store returns archived rows, so the feed filters them here rather than
+  // projecting them as "来源已不可用".
+  return records.filter((record) => record.lifecycleState !== "archived");
 }
 
 async function readGraph(

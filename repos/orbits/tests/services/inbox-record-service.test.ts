@@ -101,3 +101,46 @@ test('wording corrections preserve reading, disposition and the original semanti
  const updated=await f.service.upsert({...f.input,reason:'修正为清晰的来源说明'});assert.equal(updated.id,n.id);assert.equal(updated.reason,'修正为清晰的来源说明');assert.equal(updated.readAt,now);assert.equal(updated.disposition,'open');
 });
 test('a future scheduled reminder waits before appearing in the active inbox or unread badge',async()=>{const f=fixture();await f.service.upsert({...f.input,scheduledFor:'2026-09-17T00:00:00.000Z'});const active=await f.service.list('a',{});assert.equal(active.items.length,0);assert.equal(active.unreadCount,0);assert.equal((await f.service.list('a',{history:true})).items.length,1);});
+
+// Sprint 0086: the inbox is exactly reminder / suggestion / update. A row that
+// cannot be placed in one of the three, or that carries no title, reason or
+// source, must not exist — reading one fails closed instead of rendering a
+// meaningless placeholder. A row whose source later disappeared is a different
+// case: it keeps its history entry but leaves the default list.
+test('an unclassifiable record fails the read closed and names the offending id', async () => {
+  const f = fixture();
+  const created = await f.service.upsert(f.input);
+  const stored = [...f.rows.values()][0]!;
+  f.rows.set('a' + created.id, { ...stored, notification: { ...stored.notification, kind: 'digest' as never } });
+
+  await assert.rejects(f.service.list('a', {}), (error: unknown) =>
+    error instanceof InboxRecordError && error.code === 'INTEGRITY_VIOLATION' && error.message.includes(created.id));
+  await assert.rejects(f.service.get('a', created.id), (error: unknown) =>
+    error instanceof InboxRecordError && error.code === 'INTEGRITY_VIOLATION');
+});
+
+test('a record with no title, no reason or no source is refused the same way', async () => {
+  for (const patch of [{ title: '' }, { reason: '' }, { sources: [] }] as const) {
+    const f = fixture();
+    const created = await f.service.upsert(f.input);
+    const stored = [...f.rows.values()][0]!;
+    f.rows.set('a' + created.id, { ...stored, notification: { ...stored.notification, ...patch } });
+    await assert.rejects(f.service.list('a', {}), (error: unknown) =>
+      error instanceof InboxRecordError && error.code === 'INTEGRITY_VIOLATION', JSON.stringify(patch));
+  }
+});
+
+test('a notification whose source disappeared leaves the default list but stays in history', async () => {
+  const f = fixture();
+  await f.service.upsert(f.input);
+  assert.equal((await f.service.list('a', {})).items.length, 1);
+
+  f.setAccess();
+  const active = await f.service.list('a', {});
+  assert.deepEqual(active.items, [], 'a dead-source row is not shown as 来源已不可用 in the list');
+  assert.equal(active.unreadCount, 0, 'and it cannot keep the unread badge lit');
+
+  const history = await f.service.list('a', { history: true });
+  assert.equal(history.items.length, 1, 'history still records that it existed');
+  assert.equal(history.items[0]?.target.status, 'unavailable');
+});

@@ -4,7 +4,7 @@ import { inboxNotificationSchema, inboxNotificationActionSchema, inboxNotificati
 import type { InboxRecordRepository, InboxRecordTransaction } from './storage/inbox-record-repository';
 
 export class InboxRecordError extends Error {
-  constructor(readonly code:'NOT_FOUND'|'CONFLICT'|'SOURCE_UNAVAILABLE'|'VALIDATION_ERROR',message:string){super(message);}
+  constructor(readonly code:'NOT_FOUND'|'CONFLICT'|'SOURCE_UNAVAILABLE'|'VALIDATION_ERROR'|'INTEGRITY_VIOLATION',message:string){super(message);}
 }
 export type InboxNotificationUpsert = Omit<InboxNotificationDTO,'id'|'revision'|'readAt'|'disposition'|'updatedAt'> & {readAt?:string|null;disposition?:InboxNotificationDTO['disposition']};
 export interface InboxSourceAccess { (actorId:string,source:InboxNotificationSource,transaction?:InboxRecordTransaction):Promise<'available'|'changed'|'unavailable'>; }
@@ -15,6 +15,27 @@ export interface InboxBusinessEffects {
 export interface InboxListQuery {cursor?:string;limit?:number;kind?:InboxNotificationKind;history?:boolean;language?:'zh'|'en'|'ja'}
 const digest=(value:unknown)=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const unavailable={zh:{title:'来源已不可用',reason:'来源已变更、不可访问，或此通知已不再适用。'},en:{title:'Source unavailable',reason:'The source changed, access is unavailable, or this notification no longer applies.'},ja:{title:'参照元を利用できません',reason:'参照元が変更されたか、アクセスできないか、この通知が対象外になりました。'}};
+const KINDS=new Set<InboxNotificationKind>(['reminder','suggestion','update']);
+
+/**
+ * A notification that cannot be placed in one of the three categories, or that
+ * carries no title, no reason or no source, is not something a reader can act on
+ * — it is the "来源已不可用" row with nothing behind it. The product rule is that
+ * such a record must not exist, so a read that meets one fails closed instead of
+ * rendering a placeholder. The thrown error names the offending ids and nothing
+ * from their content.
+ */
+export function assertInboxRecordsIntact(notifications:readonly InboxNotificationDTO[]):void {
+  const offenders:string[]=[];
+  for(const n of notifications) {
+    const bad=!KINDS.has(n.kind) || !n.title?.trim() || !n.reason?.trim()
+      || !Array.isArray(n.sources) || n.sources.length===0
+      || n.sources.some(s=>!s?.sourceKind?.trim() || !s?.sourceId?.trim());
+    if(bad)offenders.push(n.id);
+  }
+  if(offenders.length)throw new InboxRecordError('INTEGRITY_VIOLATION',`Inbox records are not classifiable: ${offenders.slice(0,20).join(', ')}`);
+}
+
 export function createInboxRecordService(input:{repository:InboxRecordRepository;sourceAccess:InboxSourceAccess;effects:InboxBusinessEffects;now?:()=>string}) {
   const now=input.now??(()=>new Date().toISOString());
   async function present(n:InboxNotificationDTO,language:'zh'|'en'|'ja'='zh',transaction?:InboxRecordTransaction):Promise<InboxNotificationDTO> {
@@ -47,7 +68,7 @@ export function createInboxRecordService(input:{repository:InboxRecordRepository
       });
     },
     async get(actorId:string,id:string,language:'zh'|'en'|'ja'='zh') {
-      return input.repository.transaction(actorId,async tx=>{const row=await tx.get(id);if(!row)throw new InboxRecordError('NOT_FOUND','Notification not found');return present(row.notification,language,tx);});
+      return input.repository.transaction(actorId,async tx=>{const row=await tx.get(id);if(!row)throw new InboxRecordError('NOT_FOUND','Notification not found');assertInboxRecordsIntact([row.notification]);return present(row.notification,language,tx);});
     },
     async list(actorId:string,query:InboxListQuery):Promise<InboxNotificationListDTO> {
       const limit=query.limit??50;if(!Number.isSafeInteger(limit)||limit<1||limit>50)throw new InboxRecordError('VALIDATION_ERROR','Invalid page limit');
@@ -60,8 +81,13 @@ export function createInboxRecordService(input:{repository:InboxRecordRepository
       let before:{at:string;id:string}|undefined,unreadCount=0,hasMore=false;
       while(true) {
         const rows=await input.repository.page({actorId,asOf,limit:50,...(before?{before}:{})});
+        assertInboxRecordsIntact(rows);
         for(const row of rows) {
           const n=await present(row,query.language);
+          // A row whose sources all vanished says nothing a reader can act on.
+          // It keeps its history entry but leaves the default list and the unread
+          // count; the detail view still explains the change when opened directly.
+          if(n.target.status==='unavailable' && !query.history)continue;
           const active=n.disposition==='open' && (!n.scheduledFor||Date.parse(n.scheduledFor)<=Date.parse(asOf)) && (n.kind==='reminder'||Date.parse(n.occurredAt)>=Date.parse(asOf)-30*86400000);
           const visible=(query.history || active)&&(!query.kind||n.kind===query.kind);
           if(active && n.target.status==='available' && !n.readAt)unreadCount++;
