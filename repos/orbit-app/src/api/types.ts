@@ -22,6 +22,8 @@ export interface OrbitApiMeta {
   featureMode: string | null;
   privacy: string | null;
   runtimeBoundary: string | null;
+  /** true when a 304 replayed the previously remembered body. */
+  fromCache?: boolean;
 }
 
 export type ApiResult<TData> =

@@ -1,3 +1,4 @@
+import { conditionalJsonRead, defaultConditionalReadDependencies } from "../_shared/conditional-read";
 import { authenticatedApiActorRequiredResponse } from "../_shared/authenticated-actor";
 import { resolveFeatureMode } from "../../../shared/config/feature-mode";
 import { AppError } from "../../../shared/errors/app-error";
@@ -33,16 +34,23 @@ export function createNoteCollectionHandlers(dependencies?: NoteRouteDependencie
         const limitValue = params.get("limit");
         const limit = limitValue === null ? undefined : Number(limitValue);
         if (limit !== undefined && (!Number.isSafeInteger(limit) || limit < 1 || limit > 50)) throw new AppError("VALIDATION_ERROR", "Invalid note limit");
-        const result = await noteService(dependencies).search({
-          actorId: actor.id,
-          ...(contactId ? { contactId } : {}),
-          ...(q ? { q } : {}),
-          ...(association ? { association: association as "all" | "contacts" | "events" | "unlinked" } : {}),
-          ...(sort ? { sort: sort as "updated_desc" | "updated_asc" } : {}),
-          ...(cursor ? { cursor } : {}),
-          ...(limit === undefined ? {} : { limit }),
-        });
-        return noteSuccess(result);
+        return await conditionalJsonRead(
+          // A note search also consults contacts (mentions / name matches), a workspace-wide domain.
+          { routeKey: "notes.search", request, actorId: actor.id, workspaceId: actor.workspaceId, collections: ["notes"], userScoped: true, sharedCollections: ["contacts"] },
+          dependencies?.conditionalRead ?? defaultConditionalReadDependencies(),
+          async () => {
+            const result = await noteService(dependencies).search({
+              actorId: actor.id,
+              ...(contactId ? { contactId } : {}),
+              ...(q ? { q } : {}),
+              ...(association ? { association: association as "all" | "contacts" | "events" | "unlinked" } : {}),
+              ...(sort ? { sort: sort as "updated_desc" | "updated_asc" } : {}),
+              ...(cursor ? { cursor } : {}),
+              ...(limit === undefined ? {} : { limit }),
+            });
+            return noteSuccess(result);
+          },
+        );
       } catch (error) { return noteError(error); }
     },
     async POST(request: Request): Promise<Response> {

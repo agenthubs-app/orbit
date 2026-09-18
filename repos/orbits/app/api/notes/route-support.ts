@@ -1,3 +1,4 @@
+import type { ConditionalReadDependencies } from "../_shared/conditional-read";
 import { NextResponse } from "next/server";
 
 import type { NoteService } from "../../../features/notes/service";
@@ -13,6 +14,7 @@ export interface NoteRouteDependencies {
   now?: () => string;
   resolveActor?: ResolveAuthenticatedApiActor;
   service?: NoteService;
+  conditionalRead?: ConditionalReadDependencies;
 }
 
 export type NoteRouteContext = { params: Promise<{ id: string }> };
