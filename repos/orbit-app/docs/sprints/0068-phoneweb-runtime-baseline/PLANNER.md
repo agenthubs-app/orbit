@@ -1,6 +1,6 @@
 # Sprint 0068 — phoneweb 运行时基座归位
 
-**Plan revision:** 1。**模式:** existing-codebase / single-generator。运行状态只在登记表。
+**Plan revision:** 2（用户在 0067 收口后新增常设要求「每个 Sprint 完成后都要起 Simulator 或 phoneweb 做一次测试」，据此把原 SC-05 的流程项并入执行顺序，空出的名额改为运行时验收。只加强不削弱，原 revision 1 哈希 `fa387ab1...` 作废并记录原因）。**模式:** existing-codebase / single-generator。运行状态只在登记表。
 **原需求:** 读取成本治理设计案 Rev 4 第 02 节（未合并存量）与第 11 节 Phase 0；用户明确"phoneweb 是要进主线的"。
 **单一目标:** 把 Phone Web 运行时基座合并进主线，原生行为不变。
 **易读目标:** [GOAL.md](GOAL.md)。
@@ -54,7 +54,7 @@
 | SC-0068-02 | 原生不被 Web 实现污染：`repos/orbit-app` 全量测试相对合并前**零新增失败**（同环境前后对照，不引用历史环境数字） | 前后两份全量摘要 + 失败集合 diff |
 | SC-0068-03 | 基座自带测试在主线可跑：7 个新增测试文件全部通过；`npm run typecheck` 0 error | 命令、退出码、通过数 |
 | SC-0068-04 | 合并未夹带 orbits 改动：本次两个 merge commit 的 `repos/orbits` 变更文件数为 0 | `git diff --name-only` 统计 |
-| SC-0068-05 | 集成方式合规：两次 `--no-ff` merge，提交信息 `merge(sprint-0068): ...`；staged `detect_changes` 范围已核对 | detect_changes 摘要与 commit SHA |
+| SC-0068-05 | **运行时验收**：以 phoneweb 方式把合并后的 App 在浏览器真实跑起来（这批文件本就是 Web 运行时基座，用 phoneweb 验比 Simulator 更对症），完成一次登录并读到真实数据；同时 Simulator 冷启动确认原生未被 Web 实现污染 | phoneweb 启动记录与页面实际结果、Simulator 截图、服务端观察到的真实请求 |
 
 ## 一次 Generator 的执行顺序
 
@@ -63,8 +63,9 @@
 3. 对被修改的共享符号（`AppScreen`、`OrbitTabBar`、`AuthSessionProvider`）做 GitNexus upstream impact，HIGH/CRITICAL 先报告。
 4. 在 `codex/sprint-0068-phoneweb-baseline` 分支依次 merge 两条源分支，逐个解冲突。
 5. 跑 SC-03 定向集与 typecheck；跑合并后全量做 SC-02 对照。
-6. 路径限定暂存 → staged `detect_changes` → commit → 合并回 `chat-agent` 并验证合并树。
-7. 写 `REPORT.md`，更新登记表。
+6. 路径限定暂存 → staged `detect_changes`（范围核对是提交门槛，不再单列为 SC）→ 两次 `--no-ff` merge commit → 合并回 `chat-agent` 并验证合并树。
+7. 执行 SC-0068-05 的 phoneweb 与 Simulator 运行时验收。
+8. 写 `REPORT.md`，更新登记表。
 
 ## 最小测试与检查
 
@@ -73,8 +74,7 @@
   `auth-session-provider-races`、`ink-signal-shell`、`app-locale-account-sync`、`mobile-route-access`）。
 - 操作链收口集：`repos/orbit-app` 全量 + `npm run typecheck`。
 - 集成触发：含 H，本地代码收口时对 App 端跑一次全量；`repos/orbits` 若 diff 为空则复用 0067 证据并说明。
-- 不运行：orbits 全量（本 Sprint 不改 orbits）、iOS Simulator 真机验收（不改原生业务行为，
-  平台分流由断言覆盖；真实设备 Web 行为留给 0078）、任何部署。
+- 不运行：orbits 全量（本 Sprint 不改 orbits）、真实物理设备验收（留给 0078）、任何部署与公网发布。
 
 ## 失败与交接
 
