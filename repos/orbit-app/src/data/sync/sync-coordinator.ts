@@ -1,4 +1,7 @@
 import type { SyncChangeKind, SyncRecord } from "../../api/contract/sync";
+import type { OfflineReadEnvelope, ReadScope } from "../../api/contract/universal-read";
+import { evaluateOfflineRead } from "../../api/offline-read-session";
+import { offlineReadEnvelopeSchema } from "../../api/schema/universal-read";
 import type { LocalSyncDatabase } from "./local-sync-database";
 import {
   createLocalSyncRepository,
@@ -16,6 +19,16 @@ import {
 
 const PAGE_LIMIT = 100;
 const MAX_PAGES_PER_RUN = 100;
+
+// Registry v1 mirrors the server's SYNC_DOMAINS; a lease grant per domain binds the read scope.
+const REGISTERED_DOMAIN_IDS = ["notes", "tasks", "personal-schedule"] as const;
+const DOMAIN_OF_KIND: Partial<Record<SyncChangeKind, string>> = {
+  note: "notes",
+  task: "tasks",
+  personal_schedule: "personal-schedule",
+};
+/** An epoch value no server ever issues: retiring against it drops every epoch of a domain. */
+const REVOKED_EPOCH = "__revoked__";
 
 export interface SyncCoordinatorLifecycle {
   setScope(scope: SyncSessionScope | null): Promise<boolean>;
@@ -75,6 +88,8 @@ export interface SyncCoordinatorSession {
 }
 
 interface ActiveScope extends SyncScopeInput {
+  /** The last accepted server lease; read scopes derive from its grants. */
+  lease: OfflineReadEnvelope | null;
   abortController: AbortController | null;
   databaseAvailable: boolean;
   flight: SyncFlight | null;
@@ -112,6 +127,8 @@ class LocalMirrorUnavailableError extends Error {
 export function createSyncCoordinator(input: {
   lifecycle: SyncCoordinatorLifecycle;
   now?: () => number;
+  /** SHA-256 hex of a serialized payload; required by the v2 mirror for every applied record. */
+  hashPayload?: (serialized: string) => Promise<string>;
 }) {
   const now = input.now ?? Date.now;
   let generation = 0;
@@ -119,6 +136,30 @@ export function createSyncCoordinator(input: {
 
   function isCurrent(scope: ActiveScope): boolean {
     return active === scope && !scope.superseded;
+  }
+
+  function readScopesOf(scope: ActiveScope): ReadScope[] {
+    if (!scope.lease) return [];
+    return scope.lease.grants.map((grant) => ({
+      baseUrl: scope.baseUrl,
+      actorId: scope.actorId,
+      workspaceId: grant.workspaceId,
+      domainId: grant.domainId,
+      authorizationEpoch: grant.authorizationEpoch,
+    }));
+  }
+
+  function readScopeFor(scope: ActiveScope, kind: SyncChangeKind): ReadScope | null {
+    const domainId = DOMAIN_OF_KIND[kind];
+    return readScopesOf(scope).find((candidate) => candidate.domainId === domainId) ?? null;
+  }
+
+  /** A stored lease is only trusted while its own rules hold for this actor and base URL. */
+  function acceptedLease(scope: ActiveScope, value: unknown): OfflineReadEnvelope | null {
+    const parsed = offlineReadEnvelopeSchema.safeParse(value);
+    if (!parsed.success) return null;
+    const state = evaluateOfflineRead(parsed.data, scope.baseUrl, now(), { actorId: scope.actorId, subject: parsed.data.subject });
+    return state === "local-read" ? parsed.data : null;
   }
 
   async function withRepository<T>(
@@ -131,7 +172,14 @@ export function createSyncCoordinator(input: {
       { baseUrl: scope.baseUrl, actorId: scope.actorId },
       async (database) => ({
         value: await operation(
-          createLocalSyncRepository({ actorId: scope.actorId, database }),
+          createLocalSyncRepository({
+            actorId: scope.actorId,
+            database,
+            baseUrl: scope.baseUrl,
+            registeredDomainIds: REGISTERED_DOMAIN_IDS,
+            activeReadScopes: () => readScopesOf(scope),
+            ...(input.hashPayload ? { hashPayload: input.hashPayload } : {}),
+          }),
         ),
       }),
     );
@@ -150,11 +198,13 @@ export function createSyncCoordinator(input: {
       return;
     }
     try {
-      const workspaceId = await withRepository(scope, (repository) =>
-        repository.getLastWorkspaceId(),
-      );
+      const { workspaceId, storedLease } = await withRepository(scope, async (repository) => ({
+        workspaceId: await repository.getLastWorkspaceId(),
+        storedLease: await repository.getLease(),
+      }));
       if (!isCurrent(scope)) return;
-      scope.workspaceId = workspaceId;
+      scope.lease = acceptedLease(scope, storedLease);
+      scope.workspaceId = scope.lease?.grants[0]?.workspaceId ?? workspaceId;
       if (
         workspaceId !== null &&
         !(await input.lifecycle.setScope({ ...baseScope, workspaceId }))
@@ -166,11 +216,24 @@ export function createSyncCoordinator(input: {
     }
   }
 
+  async function readDomainCursor(scope: ActiveScope, kind: SyncChangeKind): Promise<LocalSyncCursor | null> {
+    const readScope = readScopeFor(scope, kind);
+    if (!readScope) return null;
+    return withRepository(scope, (repository) => repository.getScopeCursor(readScope));
+  }
+
+  /** The oldest domain cursor drives the refresh decision; a domain without one forces a sync. */
   async function readCursor(scope: ActiveScope): Promise<LocalSyncCursor | null> {
-    if (scope.workspaceId === null) return null;
-    return withRepository(scope, (repository) =>
-      repository.getCursor(scope.workspaceId!),
-    );
+    if (scope.workspaceId === null || !scope.lease) return null;
+    let oldest: LocalSyncCursor | null = null;
+    for (const grant of scope.lease.grants) {
+      const kind = (Object.keys(DOMAIN_OF_KIND) as SyncChangeKind[]).find((candidate) => DOMAIN_OF_KIND[candidate] === grant.domainId);
+      if (!kind) continue;
+      const cursor = await readDomainCursor(scope, kind);
+      if (!cursor) return null;
+      if (!oldest || cursor.lastSyncedAt < oldest.lastSyncedAt) oldest = cursor;
+    }
+    return oldest;
   }
 
   async function readCollection<TPayload>(
@@ -179,18 +242,19 @@ export function createSyncCoordinator(input: {
   ): Promise<SyncedCollectionSnapshot<TPayload> | null> {
     await scope.ready;
     if (!isCurrent(scope)) return null;
-    if (scope.workspaceId === null) {
+    const readScope = readScopeFor(scope, kind);
+    if (scope.workspaceId === null || !readScope) {
       return {
         error: null,
         lastSyncedAt: null,
         records: [],
         status: "local-ready",
-        workspaceId: null,
+        workspaceId: scope.workspaceId,
       };
     }
     try {
       const value = await withRepository(scope, async (repository) => ({
-        cursor: await repository.getCursor(scope.workspaceId!),
+        cursor: await repository.getScopeCursor(readScope),
         records: await repository.listRecords({
           workspaceId: scope.workspaceId!,
           kind,
@@ -230,7 +294,7 @@ export function createSyncCoordinator(input: {
         status: mirror.records.length > 0 ? "stale" : "failure",
       };
     }
-    const cursor = scope.workspaceId === null ? null : await readCursor(scope);
+    const cursor = scope.workspaceId === null ? null : await readDomainCursor(scope, kind);
     if (!isCurrent(scope)) return null;
     return {
       ...mirror,
@@ -239,54 +303,10 @@ export function createSyncCoordinator(input: {
     };
   }
 
-  async function resetKnownWorkspace(
-    scope: ActiveScope,
-    flight: SyncFlight,
-    cursor: LocalSyncCursor | null,
-  ): Promise<void> {
-    if (!cursor) {
-      throw new Error("同步游标缺失，不能执行 reset。");
-    }
-    await withRepository(scope, (repository) =>
-      repository.resetWorkspace(
-        cursor.workspaceId,
-        () => isCurrent(scope) && !flight.abandoned,
-      ),
-    );
-  }
-
-  async function applyPage(
-    scope: ActiveScope,
-    flight: SyncFlight,
-    response: Awaited<ReturnType<SyncClient["getPage"]>>,
-  ): Promise<void> {
-    const applied = await withRepository(scope, (repository) =>
-      repository.applyPage({
-        workspaceId: response.workspaceId,
-        records: response.records,
-        cursor: response.nextCursor,
-        syncedAt: new Date(now()).toISOString(),
-        bootstrapState: response.hasMore ? "pending" : "complete",
-        canCommit: () => isCurrent(scope) && !flight.abandoned,
-      }),
-    );
-    if (!applied || !isCurrent(scope) || flight.abandoned) return;
-    const serverScope = {
-      baseUrl: scope.baseUrl,
-      actorId: scope.actorId,
-      workspaceId: response.workspaceId,
-    };
-    if (
-      flight.abandoned ||
-      !(await input.lifecycle.setScope(serverScope)) ||
-      !isCurrent(scope) ||
-      flight.abandoned
-    ) {
-      throw new LocalMirrorUnavailableError();
-    }
-    scope.workspaceId = response.workspaceId;
-  }
-
+  /**
+   * Lease first, then every granted domain: retire other epochs (rotation) or
+   * every epoch (revocation), then walk the domain's pages under its bound scope.
+   */
   async function runSync(
     scope: ActiveScope,
     flight: SyncFlight,
@@ -294,7 +314,7 @@ export function createSyncCoordinator(input: {
     try {
       await scope.ready;
       if (!isCurrent(scope) || flight.abandoned) return null;
-      let cursor = await readCursor(scope);
+      const cursor = await readCursor(scope);
       if (!isCurrent(scope) || flight.abandoned) return null;
       const reason = scope.invalidated ? "invalidated" : flight.reason;
       if (
@@ -311,56 +331,83 @@ export function createSyncCoordinator(input: {
       if (flight.stopAfterCurrent) return { error: null };
 
       flight.resolveStarted(true);
-      let resetAttempted = false;
-      let pageCount = 0;
-      let requestCursor = cursor?.cursor;
-      while (pageCount < MAX_PAGES_PER_RUN) {
-        pageCount += 1;
-        const controller = new AbortController();
-        scope.abortController = controller;
-        let response;
-        try {
-          response = await scope.client.getPage({
-            actorId: scope.actorId,
-            ...(requestCursor === undefined ? {} : { cursor: requestCursor }),
-            limit: PAGE_LIMIT,
-            signal: controller.signal,
-          });
-        } catch (error) {
+      const controller = new AbortController();
+      scope.abortController = controller;
+      try {
+        const lease = await scope.client.getLease({ baseUrl: scope.baseUrl, signal: controller.signal });
+        if (!isCurrent(scope) || flight.abandoned) return null;
+        const accepted = acceptedLease(scope, lease);
+        if (!accepted) throw new Error("服务器签发的离线读取租约无效。");
+        const previousGrants = scope.lease?.grants ?? [];
+        scope.lease = accepted;
+        const workspaceId = accepted.grants[0]?.workspaceId ?? scope.workspaceId;
+        await withRepository(scope, async (repository) => {
+          await repository.setLease(accepted);
+          if (workspaceId) await repository.rememberWorkspace(workspaceId);
+        });
+        if (workspaceId && workspaceId !== scope.workspaceId) {
+          if (!(await input.lifecycle.setScope({ baseUrl: scope.baseUrl, actorId: scope.actorId, workspaceId })) || !isCurrent(scope)) {
+            throw new LocalMirrorUnavailableError();
+          }
+          scope.workspaceId = workspaceId;
+        }
+        if (!workspaceId) return { error: null };
+
+        // Revocation drops every epoch of the domain; rotation keeps only the granted one.
+        for (const domainId of REGISTERED_DOMAIN_IDS) {
+          const grant = accepted.grants.find((candidate) => candidate.domainId === domainId);
+          const previous = previousGrants.find((candidate) => candidate.domainId === domainId);
+          if (!grant && !previous) continue;
+          await withRepository(scope, (repository) =>
+            repository.retireEpochs(workspaceId, domainId, grant?.authorizationEpoch ?? REVOKED_EPOCH),
+          );
           if (!isCurrent(scope) || flight.abandoned) return null;
-          if (error instanceof SyncResetRequiredError && !resetAttempted) {
-            await resetKnownWorkspace(scope, flight, cursor);
+        }
+
+        let pageCount = 0;
+        for (const readScope of readScopesOf(scope)) {
+          const stored = await withRepository(scope, (repository) => repository.getScopeCursor(readScope));
+          let requestCursor = stored?.cursor;
+          let resetAttempted = false;
+          for (;;) {
+            if (pageCount >= MAX_PAGES_PER_RUN) throw new Error("单次同步页数超过安全上限。");
+            pageCount += 1;
+            let page;
+            try {
+              page = await scope.client.getDomainPage({
+                domainId: readScope.domainId,
+                ...(requestCursor === undefined ? {} : { cursor: requestCursor }),
+                limit: PAGE_LIMIT,
+                signal: controller.signal,
+              });
+            } catch (error) {
+              if (!isCurrent(scope) || flight.abandoned) return null;
+              if (error instanceof SyncResetRequiredError && !resetAttempted) {
+                await withRepository(scope, (repository) => repository.resetDomain(readScope));
+                resetAttempted = true;
+                requestCursor = undefined;
+                continue;
+              }
+              throw error;
+            }
             if (!isCurrent(scope) || flight.abandoned) return null;
-            resetAttempted = true;
-            cursor = null;
-            requestCursor = undefined;
-            continue;
+            if (page.authorizationEpoch !== readScope.authorizationEpoch) {
+              scope.invalidated = true;
+              throw new Error("授权纪元已变化，下次同步将重建该域。");
+            }
+            if (page.hasMore && page.nextCursor === requestCursor) throw new Error("同步游标没有前进。");
+            await withRepository(scope, (repository) => repository.applyDomainPage(readScope, page));
+            if (!isCurrent(scope) || flight.abandoned) return null;
+            requestCursor = page.nextCursor;
+            if (!page.hasMore || flight.stopAfterCurrent) break;
           }
-          throw error;
-        } finally {
-          if (scope.abortController === controller) {
-            scope.abortController = null;
-          }
+          if (flight.stopAfterCurrent) return { error: null };
         }
-        if (!isCurrent(scope) || flight.abandoned) return null;
-        if (response.hasMore && response.nextCursor === requestCursor) {
-          throw new Error("同步游标没有前进。");
-        }
-        await applyPage(scope, flight, response);
-        if (!isCurrent(scope) || flight.abandoned) return null;
-        cursor = {
-          workspaceId: response.workspaceId,
-          cursor: response.nextCursor,
-          lastSyncedAt: new Date(now()).toISOString(),
-          bootstrapState: response.hasMore ? "pending" : "complete",
-        };
-        requestCursor = response.nextCursor;
-        if (!response.hasMore || flight.stopAfterCurrent) {
-          if (!response.hasMore) scope.invalidated = false;
-          return { error: null };
-        }
+        scope.invalidated = false;
+        return { error: null };
+      } finally {
+        if (scope.abortController === controller) scope.abortController = null;
       }
-      throw new Error("单次同步页数超过安全上限。");
     } catch (error) {
       if (!isCurrent(scope) || flight.abandoned) return null;
       return { error: errorMessage(error) };
@@ -389,6 +436,7 @@ export function createSyncCoordinator(input: {
       if (active) supersede(active);
       const next = {
         ...scopeInput,
+        lease: null,
         abortController: null,
         databaseAvailable: true,
         flight: null,

@@ -358,7 +358,7 @@ function kindFor(collectionName: SyncReadRow["collection_name"]): SyncChangeKind
   return "personal_schedule";
 }
 
-function changeFromRow(row: SyncReadRow, actorId: string): SyncChange {
+export function changeFromRow(row: SyncReadRow, actorId: string): SyncChange {
   const common = {
     aiVisibility: "available_when_synced" as const,
     id: row.record_id,

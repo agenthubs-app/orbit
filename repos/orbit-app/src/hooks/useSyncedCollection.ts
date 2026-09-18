@@ -1,3 +1,4 @@
+import * as Crypto from "expo-crypto";
 import {
   useCallback,
   useEffect,
@@ -21,7 +22,10 @@ import { subscribeToSyncAppState } from "../data/sync/sync-freshness";
 import { syncLifecycle } from "../data/sync/sync-lifecycle";
 import { useOrbitApiClient } from "./useOrbitApiClient";
 
-const appSyncCoordinator = createSyncCoordinator({ lifecycle: syncLifecycle });
+const appSyncCoordinator = createSyncCoordinator({
+  lifecycle: syncLifecycle,
+  hashPayload: (serialized) => Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, serialized),
+});
 const authSessionGenerations = new WeakMap<object, number>();
 let nextAuthSessionGeneration = 0;
 const DEFAULT_INVALIDATION_TIMEOUT_MS = 8_000;
