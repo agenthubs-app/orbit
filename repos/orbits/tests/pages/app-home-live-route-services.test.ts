@@ -36,10 +36,10 @@ test("app-home-route redirects into the iOrbit workspace which composes home dat
   assert.match(agentUiSource, /OrbitAgentDashboard/);
 });
 
-test("web root owns the responsive starfield journey", () => {
+test("web root renders the Orbit_0918 landing with a session-aware entry", () => {
   const pageSource = source("app/page.tsx");
 
-  assert.match(pageSource, /OrbitStarfieldHome/);
+  assert.match(pageSource, /OrbitLanding0918/);
   assert.match(pageSource, /auth\(\)/);
   assert.match(pageSource, /SessionProvider/);
   assert.match(pageSource, /OrbitLanguageProvider/);
@@ -59,16 +59,18 @@ test("starfield journey mounts dedicated desktop and mobile trees", () => {
   assert.match(shellSource, /mq\.addEventListener\("change", apply\)/);
 });
 
-test("starfield navigation links to concrete product routes", () => {
+test("landing navigation links to concrete product routes", () => {
   const shellSource = source("app/(app)/app/orbit-public-shell.tsx");
-  const starfieldHome = source("app/(app)/app/orbit-starfield-home.tsx");
+  const landing = source("app/(app)/app/orbit-landing-0918.tsx");
 
-  assert.match(starfieldHome, /<OrbitTopNav/);
-  assert.match(starfieldHome, /tone="starfield"/);
+  assert.match(landing, /<OrbitTopNav/);
+  assert.match(landing, /authenticatedFallback=\{authenticated\}/);
   assert.match(shellSource, /href=\{preserveHref\("\/app\/agent"\)\}/);
   assert.match(shellSource, /\["\/events"/);
-  assert.match(shellSource, /\["\/today"/);
   assert.match(shellSource, /\["\/contacts"/);
+  // Calendar 独立 tab 已合入 iOrbit：导航不再暴露 /today 与 /schedule 入口。
+  assert.doesNotMatch(shellSource, /\["\/today"/);
+  assert.doesNotMatch(shellSource, /\["\/schedule"/);
 });
 
 test("starfield account actions branch only on server-owned authentication", () => {
@@ -84,12 +86,12 @@ test("starfield account actions branch only on server-owned authentication", () 
   assert.match(shellSource, /\/app\/account\/signup\?next=/);
 });
 
-test("/app mirrors the authenticated starfield entry", () => {
+test("/app mirrors the anonymous landing entry and redirects members", () => {
   const appPageSource = source("app/(app)/app/page.tsx");
 
-  assert.match(appPageSource, /OrbitStarfieldHome/);
+  assert.match(appPageSource, /OrbitLanding0918/);
   assert.match(appPageSource, /await auth\(\)/);
-  // Signed-in members are redirected to the personal console; the starfield
+  // Signed-in members are redirected to the personal console; the landing
   // stays the anonymous-only entry.
   assert.match(appPageSource, /redirect\("\/app\/home"\)/);
   assert.match(appPageSource, /authenticated=\{false\}/);

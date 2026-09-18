@@ -19,11 +19,11 @@ import {
   type ProfileEditorSaveScope,
   type ProfileEditorVisibleHandleKey,
 } from "./profile-editor-adapter";
-import { AccountTopNav, MobileBar, orbitNavigate, StatusBar } from "../orbit-account-shell";
 import { useOrbitLanguage } from "../orbit-language-context";
 import type { OrbitProfileView, OrbitProfileViewModel } from "../orbit-profile-route-view-model";
 import { Avatar, gradientFromString, Icon, Logo } from "../orbit-reference-primitives";
-import { ORBIT_Z } from "../orbit-z";
+import { PublicTopNav } from "../orbit-public-shell";
+import { ORBIT_0918_COLORS as C, ORBIT_0918_FONTS } from "../orbit-0918-tokens";
 import { profileContinuationPath } from "./profile-onboarding-navigation";
 import {
   emptyProfileAfterReload,
@@ -39,6 +39,7 @@ type TagField = "offering" | "seeking" | "topics";
 type Method = "text" | "manual";
 type NoticeKind = "error" | "info" | "success";
 type EditableProfile = OrbitProfileEditorView;
+type ProfileTab = "edit" | "overview";
 
 interface ApiEnvelope<TData> {
   success?: boolean;
@@ -120,7 +121,7 @@ function BusinessCardPreview({
   const divider = <div aria-hidden style={{ background: "rgba(255,255,255,0.10)", height: 1 }} />;
 
   return (
-    <div style={{ background: CARD_BG, borderRadius: "var(--r-lg)", boxShadow: "var(--sh-lg)", overflow: "hidden", position: "relative" }}>
+    <div style={{ background: CARD_BG, borderRadius: 16, boxShadow: "0 18px 44px rgba(14,18,37,0.18)", overflow: "hidden", position: "relative" }}>
       <div aria-hidden style={{ background: CARD_GLOW, inset: 0, pointerEvents: "none", position: "absolute" }} />
       <div style={{ display: "flex", flexDirection: "column", gap: 18, padding: "24px 24px 22px", position: "relative" }}>
         <div style={{ alignItems: "flex-start", display: "flex", justifyContent: "space-between" }}>
@@ -128,7 +129,7 @@ function BusinessCardPreview({
           <Logo color="rgba(255,255,255,0.55)" size={20} withText={false} />
         </div>
         <div>
-          <div style={{ color: "#fff", fontFamily: "var(--ff-display)", fontSize: 24, fontWeight: 650, letterSpacing: "-0.02em", lineHeight: 1.15 }}>
+          <div style={{ color: "#fff", fontFamily: ORBIT_0918_FONTS.serif, fontSize: 24, fontWeight: 900, letterSpacing: "-0.02em", lineHeight: 1.15 }}>
             {profile.fullName.trim() || t({ en: "Your name", zh: "你的名字" })}
           </div>
           {(profile.bio.trim() || profile.headline.trim()) ? (
@@ -186,24 +187,15 @@ function OnboardingStatus({
   return (
     <div
       aria-label={t({ en: "Private onboarding status", zh: "仅本人可见的引导状态" })}
-      style={{
-        background: "var(--surface-2)",
-        border: "1px solid var(--border)",
-        borderRadius: "var(--r-sm)",
-        color: "var(--text-2)",
-        fontSize: 12.5,
-        lineHeight: 1.5,
-        marginTop: 12,
-        padding: "10px 12px",
-      }}
+      className="pf-onboarding"
     >
-      <strong style={{ color: complete ? "var(--live-text)" : "var(--ink)" }}>
+      <strong style={{ color: complete ? "#2F6B4F" : C.ink }}>
         {complete
           ? t({ en: "Basic profile complete", zh: "基础资料已完成" })
           : t({ en: "Still needed", zh: "还需填写" })}
       </strong>
       {!complete ? `: ${missing.join(t({ en: ", ", zh: "、" }))}` : null}
-      <div style={{ color: "var(--text-3)", marginTop: 4 }}>
+      <div style={{ color: C.text3, marginTop: 4 }}>
         {t({ en: "Only you can see this status. Birthday is private.", zh: "此状态仅本人可见，生日属于私密资料。" })}
       </div>
       {complete && continueHref ? (
@@ -229,13 +221,10 @@ function Section({
   title: string;
 }) {
   return (
-    <section style={{ padding: "24px 26px 26px" }}>
-      <header style={{ marginBottom: 18 }}>
-        <h2 style={{ alignItems: "center", color: "var(--ink)", display: "flex", fontFamily: "var(--ff-display)", fontSize: 16, fontWeight: 650, gap: 9, letterSpacing: "-0.01em", margin: 0 }}>
-          <span aria-hidden style={{ background: "var(--accent)", borderRadius: 2, flexShrink: 0, height: 14, width: 3 }} />
-          {title}
-        </h2>
-        {desc ? <p style={{ color: "var(--text-3)", fontSize: 13, lineHeight: 1.5, margin: "5px 0 0", paddingLeft: 12 }}>{desc}</p> : null}
+    <section className="pf-section">
+      <header className="pf-section-head">
+        <h2 className="pf-section-title">{title}</h2>
+        {desc ? <p className="pf-section-desc">{desc}</p> : null}
       </header>
       {children}
     </section>
@@ -279,25 +268,10 @@ function ProfileMethods({
           return (
             <button
               aria-pressed={on}
+              className={`pf-method${on ? " is-active" : ""}`}
               disabled={disabled}
               key={key}
               onClick={() => setMethod(key)}
-              style={{
-                alignItems: "center",
-                background: on ? "var(--accent-soft)" : "var(--surface)",
-                border: `1px solid ${on ? "var(--accent)" : "var(--border-2)"}`,
-                borderRadius: "var(--r-pill)",
-                color: on ? "var(--accent)" : "var(--text-2)",
-                cursor: "pointer",
-                display: "inline-flex",
-                fontFamily: "var(--ff)",
-                fontSize: 13.5,
-                fontWeight: 600,
-                gap: 7,
-                height: 36,
-                padding: "0 14px",
-                transition: "background .14s, color .14s, border-color .14s",
-              }}
               type="button"
             >
               <Icon name={icon} size={15} />
@@ -314,7 +288,7 @@ function ProfileMethods({
           {t({ en: "Scan/import in Import hub", zh: "到导入中心扫描/导入" })}
         </a>
       </div>
-      <p style={{ color: "var(--text-3)", fontSize: 13, lineHeight: 1.5, margin: "10px 0 0" }}>{helper}</p>
+      <p style={{ color: C.text3, fontSize: 13, lineHeight: 1.5, margin: "10px 0 0" }}>{helper}</p>
       {method === "text" ? (
         <div style={{ marginTop: 12 }}>
           <textarea className="field" disabled={disabled} onChange={(event) => setExtractText(event.target.value)} placeholder={t({ en: "Paste your business, experience, focus areas, or who you want to meet", zh: "粘贴业务、经历、关注方向或希望认识的人" })} style={{ fontFamily: "var(--ff)", height: 88, lineHeight: 1.5, padding: 12, resize: "none" }} value={extractText} />
@@ -351,7 +325,7 @@ function FieldInput({
         disabled={disabled}
         onChange={onValue ? (event) => onValue(event.target.value) : undefined}
         readOnly={readOnly}
-        style={readOnly ? { background: "var(--surface-2)", color: "var(--text-2)" } : undefined}
+        style={readOnly ? { background: "#F7F7FD", color: C.text2 } : undefined}
         type={type}
         value={value}
       />
@@ -439,7 +413,7 @@ function ChipGroup({
     <div role="group" aria-label={label}>
       <div style={{ alignItems: "baseline", display: "flex", gap: 8, marginBottom: 8 }}>
         <span className="field-label" style={{ marginBottom: 0 }}>{label}</span>
-        <span style={{ color: "var(--text-4)", fontSize: 12 }}>{t({ en: `${values.length} selected`, zh: `已选 ${values.length}` })}</span>
+        <span style={{ color: C.text4, fontSize: 12 }}>{t({ en: `${values.length} selected`, zh: `已选 ${values.length}` })}</span>
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {allOptions.map((option) => {
@@ -533,7 +507,7 @@ function EditSections({
   const grid: React.CSSProperties = { display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))" };
 
   return (
-    <div className="card orbit-profile-edit" style={{ overflow: "hidden" }}>
+    <div className="pf-card pf-edit-card">
       <Section desc={t({ en: "Auto-fill the form from a pasted bio or a business card photo.", zh: "粘贴简介或拍张名片，几秒填好档案。" })} title={t({ en: "Quick fill", zh: "快速填充" })}>
         <ProfileMethods disabled={editorDisabled} {...extractProps} />
       </Section>
@@ -557,7 +531,7 @@ function EditSections({
           <FieldInput disabled={editorDisabled} label={t({ en: "Birthday (private)", zh: "生日（仅本人可见）" })} onValue={onBirthDateChange} type="date" value={profile.birthDate ?? ""} />
         </div>
         {profile.industry.trim() ? (
-          <p style={{ color: "var(--text-3)", fontSize: 12.5, lineHeight: 1.5, margin: "12px 0 0" }}>
+          <p style={{ color: C.text3, fontSize: 12.5, lineHeight: 1.5, margin: "12px 0 0" }}>
             {t({ en: "Existing industry text is preserved; choose the structured categories above for new edits:", zh: "已有行业文字会保留；新的修改请使用上面的结构化分类：" })} {profile.industry}
           </p>
         ) : null}
@@ -573,7 +547,7 @@ function EditSections({
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <FieldTextarea disabled={editorDisabled} label={t({ en: "One-line intro (up to 80 visible characters)", zh: "一句话介绍（最多 80 个可见字符）" })} onValue={(value) => update("bio", value)} rows={3} value={profile.bio} />
           {profile.headline.trim() || profile.intro.trim() ? (
-            <p style={{ color: "var(--text-3)", fontSize: 12.5, lineHeight: 1.5, margin: 0 }}>
+            <p style={{ color: C.text3, fontSize: 12.5, lineHeight: 1.5, margin: 0 }}>
               {t({ en: "Existing values are preserved:", zh: "已有内容会保留：" })} {profile.headline.trim() ? `${t({ en: "headline", zh: "标题" })}: ${profile.headline}` : null}{profile.headline.trim() && profile.intro.trim() ? " · " : null}{profile.intro.trim() ? `${t({ en: "relationship goal", zh: "关系目标" })}: ${profile.intro}` : null}
             </p>
           ) : null}
@@ -593,27 +567,275 @@ function EditSections({
   );
 }
 
-const PROFILE_LAYOUT_CSS = `
-[data-orbit-real-page="profile"] .orbit-profile-layout {
-  align-items: start;
-  display: grid;
-  gap: 22px;
-  grid-template-columns: 330px minmax(0, 1fr);
+/* ===================== 总览（个人资料 tab） ===================== */
+
+function OverviewRow({ label, value }: { label: string; value: string }) {
+  return (
+    <>
+      <span className="pf-ov-label">{label}</span>
+      <span className={value ? "pf-ov-value" : "pf-ov-value is-empty"}>{value || "—"}</span>
+    </>
+  );
 }
-[data-orbit-real-page="profile"] .orbit-profile-preview {
-  position: sticky;
-  top: 20px;
+
+function PersonaGroupCard({ icon, title, values, emptyText }: { icon: string; title: string; values: string[]; emptyText: string }) {
+  return (
+    <span className="pf-persona-card">
+      <span className="pf-persona-head">
+        <span className="pf-icon-box"><Icon name={icon} size={14} /></span>
+        <strong>{title}</strong>
+      </span>
+      {values.length ? (
+        <span className="pf-pill-row">
+          {values.map((value) => <span className="pf-pill" key={value}>{value}</span>)}
+        </span>
+      ) : (
+        <span className="pf-persona-empty">{emptyText}</span>
+      )}
+    </span>
+  );
 }
-@media (max-width: 1080px) {
-  [data-orbit-real-page="profile"] .orbit-profile-layout {
-    grid-template-columns: 1fr;
-  }
-  [data-orbit-real-page="profile"] .orbit-profile-preview {
-    position: static;
-  }
+
+function OverviewPanel({
+  completeness,
+  onEdit,
+  profile,
+  t,
+}: {
+  completeness: number;
+  onEdit: () => void;
+  profile: EditableProfile;
+  t: Translate;
+}) {
+  const { language } = useOrbitLanguage();
+  const primaryLabel = profile.primaryIndustryId ? industryLabel(profile.primaryIndustryId, language) : "";
+  const secondaryLabel = profile.secondaryIndustryId ? secondaryIndustryLabel(profile.secondaryIndustryId, language) : "";
+  const headline = profile.headline.trim();
+  const notSet = t({ en: "Not set", zh: "未填写" });
+  const previewTags = [...profile.offering, ...profile.seeking].slice(0, 4);
+  const previewMeta = [profile.title.trim() || headline, profile.company.trim(), secondaryLabel || primaryLabel].filter(Boolean).join(" · ");
+  const suggestions = [
+    !profile.bio.trim() ? { icon: "edit", title: t({ en: "Complete your bio", zh: "完善个人简介" }), desc: t({ en: "A clear one-line intro helps people understand you quickly.", zh: "一段清晰的简介能帮助他人更好地了解你。" }) } : null,
+    profile.topics.length === 0 ? { icon: "sparkle", title: t({ en: "Add topics you care about", zh: "添加更多兴趣话题" }), desc: t({ en: "Topics let like-minded people find you more easily.", zh: "选择你关注的话题，让志同道合的人更容易找到你。" }) } : null,
+    !profile.wechatName.trim() && !profile.lineId.trim() ? { icon: "handshake", title: t({ en: "Add exchange contact details", zh: "完善名片交换联系方式" }), desc: t({ en: "After a card exchange at an event, people can reach you here.", zh: "在活动中交换名片后，他人可通过这里的信息联系你。" }) } : null,
+  ].filter(Boolean) as { icon: string; title: string; desc: string }[];
+
+  return (
+    <div className="pf-overview-grid">
+      <div className="pf-col">
+        <section className="pf-card pf-id-card">
+          <span className="pf-id-avatar">{profileInitial(profile)}</span>
+          <span className="pf-id-copy">
+            <strong className="pf-id-name">{profile.fullName.trim() || t({ en: "Your name", zh: "你的名字" })}</strong>
+            {headline || profile.title.trim() ? <span className="pf-id-line">{[profile.title.trim(), headline].filter(Boolean).join(" · ")}</span> : null}
+            {profile.company.trim() ? <span className="pf-id-line">{profile.company}</span> : null}
+          </span>
+          <span className="pf-id-side">
+            <span className="pf-complete">
+              <span className="pf-complete-label">{t({ en: "Profile completeness", zh: "资料完整度" })} <strong>{completeness}%</strong></span>
+              <span className="pf-complete-track"><span className="pf-complete-bar" style={{ width: `${completeness}%` }} /></span>
+            </span>
+            <span className="pf-id-actions">
+              <button className="pf-btn-dark" onClick={onEdit} type="button">{t({ en: "Edit profile", zh: "编辑资料" })}</button>
+              <a className="pf-btn-ghost" href="#pf-preview">{t({ en: "Preview public profile", zh: "预览公开资料" })}</a>
+            </span>
+          </span>
+        </section>
+
+        <section className="pf-card">
+          <span className="pf-card-head">
+            <strong className="pf-card-title">{t({ en: "Basic information", zh: "基础资料" })}</strong>
+            <button className="pf-btn-ghost pf-btn-sm" onClick={onEdit} type="button">{t({ en: "Edit basics", zh: "编辑基础资料" })}</button>
+          </span>
+          <div className="pf-ov-grid">
+            <OverviewRow label={t({ en: "Name", zh: "姓名" })} value={profile.fullName.trim()} />
+            <OverviewRow label="Headline" value={headline} />
+            <OverviewRow label={t({ en: "Company", zh: "公司" })} value={profile.company.trim()} />
+            <OverviewRow label={t({ en: "Title", zh: "职位" })} value={profile.title.trim()} />
+            <OverviewRow label={t({ en: "Primary industry", zh: "主行业" })} value={primaryLabel || profile.industry.trim()} />
+            <OverviewRow label={t({ en: "Secondary industry", zh: "次行业" })} value={secondaryLabel} />
+            <OverviewRow label={t({ en: "Bio", zh: "简介" })} value={profile.bio.trim()} />
+          </div>
+        </section>
+
+        <section className="pf-card">
+          <span className="pf-card-head">
+            <strong className="pf-card-title">{t({ en: "Business persona", zh: "商务画像" })}</strong>
+            <button className="pf-btn-ghost pf-btn-sm" onClick={onEdit} type="button">{t({ en: "Edit persona", zh: "编辑商务画像" })}</button>
+          </span>
+          <div className="pf-persona-grid">
+            <PersonaGroupCard icon="handshake" title={t({ en: "I can offer", zh: "我能提供" })} values={profile.offering} emptyText={notSet} />
+            <PersonaGroupCard icon="target" title={t({ en: "I'm seeking", zh: "我想寻求" })} values={profile.seeking} emptyText={notSet} />
+            <PersonaGroupCard icon="message" title={t({ en: "Topics to chat about", zh: "想聊的话题" })} values={profile.topics} emptyText={notSet} />
+          </div>
+        </section>
+      </div>
+
+      <div className="pf-col">
+        <section className="pf-card">
+          <span className="pf-card-head">
+            <strong className="pf-card-title">{t({ en: "Contact info", zh: "联系信息" })}</strong>
+            <button className="pf-btn-ghost pf-btn-sm" onClick={onEdit} type="button">{t({ en: "Edit", zh: "编辑" })}</button>
+          </span>
+          <div className="pf-contact-list">
+            <span className="pf-contact-row">
+              <span className="pf-icon-box"><Icon name="message" size={12} /></span>
+              <span className="pf-contact-copy"><span className="pf-contact-label">{t({ en: "WeChat", zh: "微信" })}</span><span className="pf-contact-value">{profile.wechatName.trim() || notSet}</span></span>
+              <span className="pf-scope">{t({ en: "Shared after card exchange", zh: "交换名片后可见" })}</span>
+            </span>
+            <span className="pf-contact-row">
+              <span className="pf-icon-box"><Icon name="phone" size={12} /></span>
+              <span className="pf-contact-copy"><span className="pf-contact-label">LINE</span><span className="pf-contact-value">{profile.lineId.trim() || notSet}</span></span>
+              <span className="pf-scope">{t({ en: "Shared after card exchange", zh: "交换名片后可见" })}</span>
+            </span>
+            <span className="pf-contact-row">
+              <span className="pf-icon-box"><Icon name="mail" size={12} /></span>
+              <span className="pf-contact-copy"><span className="pf-contact-label">Email</span><span className="pf-contact-value">{profile.email.trim() || notSet}</span></span>
+              <span className="pf-scope">{t({ en: "Sign-in email · only you", zh: "登录邮箱 · 仅本人" })}</span>
+            </span>
+          </div>
+        </section>
+
+        <section className="pf-card">
+          <strong className="pf-card-title">{t({ en: "Profile suggestions", zh: "资料建议" })}</strong>
+          {suggestions.length ? suggestions.map((item) => (
+            <button className="pf-suggestion" key={item.title} onClick={onEdit} type="button">
+              <span className="pf-icon-box pf-suggestion-icon"><Icon name={item.icon} size={15} /></span>
+              <span className="pf-suggestion-copy"><strong>{item.title}</strong><span>{item.desc}</span></span>
+              <span className="pf-suggestion-chev"><Icon name="chevR" size={15} /></span>
+            </button>
+          )) : (
+            <p className="pf-persona-empty" style={{ margin: 0 }}>{t({ en: "Your profile looks complete. Nice work.", zh: "资料已完善，保持更新即可。" })}</p>
+          )}
+        </section>
+
+        <section className="pf-card" id="pf-preview">
+          <span className="pf-card-head">
+            <strong className="pf-card-title">{t({ en: "Public preview", zh: "公开预览" })}</strong>
+          </span>
+          <span className="pf-preview-head">
+            <span className="pf-preview-avatar">{profileInitial(profile)}</span>
+            <span className="pf-preview-copy">
+              <strong>{profile.fullName.trim() || t({ en: "Your name", zh: "你的名字" })}</strong>
+              {previewMeta ? <span>{previewMeta}</span> : null}
+            </span>
+          </span>
+          {profile.bio.trim() ? <span className="pf-preview-bio">{profile.bio.trim()}</span> : null}
+          {previewTags.length ? (
+            <span className="pf-pill-row">
+              {previewTags.map((value) => <span className="pf-pill" key={value}>{value}</span>)}
+            </span>
+          ) : null}
+          {!profile.bio.trim() && !previewTags.length && !previewMeta ? (
+            <span className="pf-persona-empty">{t({ en: "Public preview fills in as you complete your profile.", zh: "完善资料后，这里会展示你的公开形象。" })}</span>
+          ) : null}
+        </section>
+      </div>
+    </div>
+  );
 }
-[data-orbit-real-page="profile"] .orbit-profile-edit > section + section {
-  border-top: 1px solid var(--border);
+
+/* ===================== 作用域样式 =====================
+   React 静态渲染会把 <style> 内容里的双引号转义成 &quot;，
+   因此属性选择器一律不加引号。 */
+const PROFILE_0918_CSS = `
+[data-orbit-real-page=profile] { background: #FBFBFE; min-height: 100dvh; }
+[data-orbit-real-page=profile] .pf-main { max-width: 1120px; margin: 0 auto; padding: 14px 24px 96px; display: flex; flex-direction: column; gap: 20px; }
+[data-orbit-real-page=profile] .pf-crumb { font-size: 13px; color: #9FA3C4; }
+[data-orbit-real-page=profile] .pf-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 20px; }
+[data-orbit-real-page=profile] .pf-title { margin: 0; color: #0E1225; font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif; font-weight: 900; font-size: clamp(30px, 3.6vw, 40px); letter-spacing: -0.03em; }
+[data-orbit-real-page=profile] .pf-sub { margin: 8px 0 0; font-size: 15px; color: #3B3F7A; }
+[data-orbit-real-page=profile] .pf-head-actions { display: flex; gap: 12px; }
+[data-orbit-real-page=profile] .pf-tabs { display: flex; gap: 32px; flex-wrap: wrap; border-bottom: 1px solid #E8E9F6; }
+[data-orbit-real-page=profile] .pf-tab { padding: 0 0 14px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: transparent; color: #6B6F99; font-size: 15px; cursor: pointer; }
+[data-orbit-real-page=profile] .pf-tab[data-active=true] { border-bottom-color: #4B4FC7; color: #0E1225; font-weight: 600; }
+[data-orbit-real-page=profile] .pf-panel[hidden] { display: none; }
+[data-orbit-real-page=profile] .pf-col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+[data-orbit-real-page=profile] .pf-overview-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); gap: 20px; align-items: start; }
+[data-orbit-real-page=profile] .pf-edit-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); gap: 20px; align-items: start; }
+[data-orbit-real-page=profile] .pf-card { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 26px; display: flex; flex-direction: column; gap: 16px; }
+[data-orbit-real-page=profile] .pf-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+[data-orbit-real-page=profile] .pf-card-title { color: #0E1225; font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif; font-weight: 900; font-size: 20px; letter-spacing: -0.02em; }
+[data-orbit-real-page=profile] .pf-btn-dark { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 13px 22px; border: 0; border-radius: 10px; background: #0E1225; color: #FFFFFF; font-size: 14px; font-weight: 500; cursor: pointer; text-decoration: none; }
+[data-orbit-real-page=profile] .pf-btn-dark:hover { background: #2E3270; }
+[data-orbit-real-page=profile] .pf-btn-dark:disabled { background: #ECEEFB; color: #9FA3C4; cursor: not-allowed; }
+[data-orbit-real-page=profile] .pf-btn-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 13px 22px; border: 1px solid #DDDEFA; border-radius: 10px; background: #FFFFFF; color: #3B3F7A; font-size: 14px; cursor: pointer; text-decoration: none; }
+[data-orbit-real-page=profile] .pf-btn-ghost:hover { border-color: #B9BCEB; color: #2E3270; }
+[data-orbit-real-page=profile] .pf-btn-ghost.pf-btn-sm { padding: 9px 16px; border-radius: 9px; font-size: 13px; }
+[data-orbit-real-page=profile] .pf-icon-box { width: 28px; height: 28px; border-radius: 9px; background: #ECEEFB; color: #4B4FC7; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+[data-orbit-real-page=profile] .pf-id-card { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 24px; }
+[data-orbit-real-page=profile] .pf-id-avatar { width: 92px; height: 92px; flex: none; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: inline-flex; align-items: center; justify-content: center; font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif; font-weight: 900; font-size: 34px; }
+[data-orbit-real-page=profile] .pf-id-copy { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 6px; }
+[data-orbit-real-page=profile] .pf-id-name { color: #0E1225; font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif; font-weight: 900; font-size: 26px; letter-spacing: -0.02em; }
+[data-orbit-real-page=profile] .pf-id-line { font-size: 14px; color: #3B3F7A; }
+[data-orbit-real-page=profile] .pf-id-side { display: flex; flex-direction: column; gap: 14px; min-width: 240px; }
+[data-orbit-real-page=profile] .pf-complete { display: flex; flex-direction: column; gap: 8px; }
+[data-orbit-real-page=profile] .pf-complete-label { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #3B3F7A; }
+[data-orbit-real-page=profile] .pf-complete-label strong { font-weight: 700; color: #0E1225; }
+[data-orbit-real-page=profile] .pf-complete-track { display: block; height: 7px; border-radius: 999px; background: #ECEEFB; overflow: hidden; }
+[data-orbit-real-page=profile] .pf-complete-bar { display: block; height: 7px; border-radius: 999px; background: #4B4FC7; }
+[data-orbit-real-page=profile] .pf-id-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+[data-orbit-real-page=profile] .pf-ov-grid { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 14px 20px; align-items: start; font-size: 14px; }
+[data-orbit-real-page=profile] .pf-ov-label { color: #6B6F99; }
+[data-orbit-real-page=profile] .pf-ov-value { color: #0E1225; line-height: 1.7; overflow-wrap: anywhere; }
+[data-orbit-real-page=profile] .pf-ov-value.is-empty { color: #9FA3C4; }
+[data-orbit-real-page=profile] .pf-persona-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 14px; }
+[data-orbit-real-page=profile] .pf-persona-card { padding: 18px; border-radius: 14px; background: #F7F7FD; display: flex; flex-direction: column; gap: 12px; }
+[data-orbit-real-page=profile] .pf-persona-head { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 500; color: #0E1225; }
+[data-orbit-real-page=profile] .pf-persona-empty { font-size: 13px; color: #9FA3C4; }
+[data-orbit-real-page=profile] .pf-pill-row { display: flex; flex-wrap: wrap; gap: 8px; }
+[data-orbit-real-page=profile] .pf-pill { padding: 6px 12px; border-radius: 999px; background: #ECEEFB; color: #2E3270; font-size: 12px; }
+[data-orbit-real-page=profile] .pf-contact-list { display: flex; flex-direction: column; gap: 14px; }
+[data-orbit-real-page=profile] .pf-contact-row { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 4px 10px; align-items: center; }
+[data-orbit-real-page=profile] .pf-contact-copy { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; min-width: 0; }
+[data-orbit-real-page=profile] .pf-contact-label { font-size: 13px; color: #3B3F7A; }
+[data-orbit-real-page=profile] .pf-contact-value { font-size: 13px; color: #4B4FC7; word-break: break-all; }
+[data-orbit-real-page=profile] .pf-scope { grid-column: 2; justify-self: start; padding: 5px 10px; border-radius: 999px; background: #F7F7FD; color: #6B6F99; font-size: 11px; }
+[data-orbit-real-page=profile] .pf-suggestion { display: flex; align-items: center; gap: 12px; padding: 14px 4px; border: 0; border-top: 1px solid #F1F1FA; background: transparent; text-align: left; cursor: pointer; }
+[data-orbit-real-page=profile] .pf-suggestion-icon { width: 32px; height: 32px; border-radius: 10px; }
+[data-orbit-real-page=profile] .pf-suggestion-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+[data-orbit-real-page=profile] .pf-suggestion-copy strong { font-size: 14px; font-weight: 500; color: #0E1225; }
+[data-orbit-real-page=profile] .pf-suggestion-copy span { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page=profile] .pf-suggestion-chev { color: #9FA3C4; }
+[data-orbit-real-page=profile] .pf-preview-head { display: flex; gap: 16px; align-items: center; }
+[data-orbit-real-page=profile] .pf-preview-avatar { width: 66px; height: 66px; flex: none; border-radius: 50%; background: #ECEEFB; color: #2E3270; display: inline-flex; align-items: center; justify-content: center; font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif; font-weight: 900; font-size: 24px; }
+[data-orbit-real-page=profile] .pf-preview-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+[data-orbit-real-page=profile] .pf-preview-copy strong { font-size: 17px; color: #0E1225; }
+[data-orbit-real-page=profile] .pf-preview-copy span { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page=profile] .pf-preview-bio { font-size: 13px; line-height: 1.8; color: #3B3F7A; }
+[data-orbit-real-page=profile] .pf-edit-card { padding: 0; overflow: hidden; gap: 0; }
+[data-orbit-real-page=profile] .pf-section { padding: 24px 26px 26px; }
+[data-orbit-real-page=profile] .pf-section + .pf-section { border-top: 1px solid #E8E9F6; }
+[data-orbit-real-page=profile] .pf-section-head { margin-bottom: 18px; }
+[data-orbit-real-page=profile] .pf-section-title { margin: 0; color: #0E1225; font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif; font-size: 18px; font-weight: 900; letter-spacing: -0.01em; }
+[data-orbit-real-page=profile] .pf-section-desc { color: #6B6F99; font-size: 13px; line-height: 1.5; margin: 5px 0 0; }
+[data-orbit-real-page=profile] .pf-method { align-items: center; background: #FFFFFF; border: 1px solid #DDDEFA; border-radius: 999px; color: #3B3F7A; cursor: pointer; display: inline-flex; font-size: 13.5px; font-weight: 600; gap: 7px; height: 36px; padding: 0 14px; }
+[data-orbit-real-page=profile] .pf-method.is-active { background: #ECEEFB; border-color: #4B4FC7; color: #4B4FC7; }
+[data-orbit-real-page=profile] .pf-method:disabled { opacity: 0.55; cursor: not-allowed; }
+[data-orbit-real-page=profile] .pf-onboarding { background: #F7F7FD; border: 1px solid #E8E9F6; border-radius: 12px; color: #3B3F7A; font-size: 12.5px; line-height: 1.5; padding: 10px 12px; }
+[data-orbit-real-page=profile] .pf-side-note { color: #6B6F99; font-size: 12.5px; line-height: 1.5; margin: 0; text-align: center; }
+[data-orbit-real-page=profile] .pf-tips { display: flex; flex-direction: column; gap: 16px; }
+[data-orbit-real-page=profile] .pf-tip { display: flex; gap: 14px; align-items: flex-start; }
+[data-orbit-real-page=profile] .pf-tip-n { width: 28px; height: 28px; flex: none; border-radius: 9px; background: #ECEEFB; color: #4B4FC7; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+[data-orbit-real-page=profile] .pf-tip-copy { display: flex; flex-direction: column; gap: 4px; }
+[data-orbit-real-page=profile] .pf-tip-copy strong { font-size: 14px; font-weight: 500; color: #0E1225; }
+[data-orbit-real-page=profile] .pf-tip-copy span { font-size: 12px; color: #6B6F99; line-height: 1.6; }
+[data-orbit-real-page=profile] .chip { border-radius: 999px; }
+[data-orbit-real-page=profile] .chip.chip-accent { background: #ECEEFB; border-color: #B9BCEB; color: #2E3270; }
+[data-orbit-real-page=profile] .btn.btn-primary { background: #0E1225; border-color: #0E1225; }
+[data-orbit-real-page=profile] .btn.btn-primary:hover { background: #2E3270; border-color: #2E3270; }
+[data-orbit-real-page=profile] .field:focus { border-color: #4B4FC7; }
+[data-orbit-real-page=profile] .pf-tab:focus-visible, [data-orbit-real-page=profile] .pf-btn-dark:focus-visible, [data-orbit-real-page=profile] .pf-btn-ghost:focus-visible, [data-orbit-real-page=profile] .pf-suggestion:focus-visible { outline: 2px solid #4B4FC7; outline-offset: 2px; }
+@media (max-width: 960px) {
+  [data-orbit-real-page=profile] .pf-overview-grid, [data-orbit-real-page=profile] .pf-edit-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  [data-orbit-real-page=profile] .pf-main { padding: 12px 16px 88px; }
+  [data-orbit-real-page=profile] .pf-card { padding: 20px; }
+  [data-orbit-real-page=profile] .pf-id-side { min-width: 0; width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-orbit-real-page=profile] .pf-card { transition: none; }
 }
 `;
 
@@ -642,6 +864,7 @@ export function OrbitRealProfile({
     topics: [...initialView.profile.topics],
   };
   const [profile, setProfile] = useState<EditableProfile>(initialProfile);
+  const [tab, setTab] = useState<ProfileTab>("overview");
   const [dirtyFields, setDirtyFields] = useState<Set<ProfileEditorField>>(() =>
     initialProfile.hasPersistedProfile
       ? new Set<ProfileEditorField>()
@@ -721,7 +944,6 @@ export function OrbitRealProfile({
       mountedRef.current = false;
     };
   }, []);
-  const letter = profileInitial(profile);
   const subText = t({ en: "Fill it once, auto-reused when registering for every event.", zh: "填一次，报名各场活动自动复用。" });
 
   function markDirty(field: ProfileEditorField) {
@@ -1047,58 +1269,77 @@ export function OrbitRealProfile({
     viewModel: initialView,
   };
   const alert = message ? (
-    <div role={messageKind === "error" ? "alert" : "status"} style={{ background: messageKind === "error" ? "var(--danger-soft, #fff1f2)" : messageKind === "success" ? "var(--live-soft)" : "var(--surface-2)", borderRadius: "var(--r-sm)", color: messageKind === "error" ? "var(--danger, #C2410C)" : messageKind === "success" ? "var(--live-text)" : "var(--text-2)", fontSize: 13, marginBottom: 14, padding: "10px 14px" }}>
+    <div role={messageKind === "error" ? "alert" : "status"} style={{ background: messageKind === "error" ? "#FBEAEA" : messageKind === "success" ? "#E6F1EC" : "#F7F7FD", borderRadius: 12, color: messageKind === "error" ? "#B5473A" : messageKind === "success" ? "#2F6B4F" : C.text2, fontSize: 13, padding: "10px 14px" }}>
       {message}
       {requiresReconcile ? <button aria-busy={reloading} className="btn btn-ghost btn-sm" disabled={reloading} onClick={() => void reloadLatestProfile()} style={{ marginLeft: 10 }} type="button">{reloading ? t({ en: "Reloading latest…", zh: "正在刷新最新资料…" }) : t({ en: "Reload latest", zh: "刷新最新资料" })}</button> : null}
     </div>
   ) : null;
+  const ONBOARDING_FIELD_TOTAL = 4;
+  const completeness = profile.onboarding.status === "complete"
+    ? 100
+    : Math.max(0, Math.min(100, Math.round(((ONBOARDING_FIELD_TOTAL - profile.onboarding.missingFields.length) / ONBOARDING_FIELD_TOTAL) * 100)));
+  const tabMeta: Record<ProfileTab, { crumb: string; title: string }> = {
+    overview: { crumb: t({ en: "Profile", zh: "个人资料" }), title: t({ en: "Profile", zh: "个人资料" }) },
+    edit: { crumb: t({ en: "Edit profile", zh: "编辑资料" }), title: t({ en: "Edit profile", zh: "编辑资料" }) },
+  };
 
   return (
     <main data-orbit-real-page="profile">
-      <style dangerouslySetInnerHTML={{ __html: PROFILE_LAYOUT_CSS }} />
-      <div className="orbit-desktop-only scroll" data-appscroll style={{ background: "var(--bg)", minHeight: "100dvh", overflowY: "auto", position: "relative" }}>
-        <AccountTopNav accountInitial={letter} active="me" />
-        <form onSubmit={onSubmit}>
-          <div style={{ margin: "0 auto", maxWidth: 1024, padding: "24px 40px 36px" }}>
-            <div style={{ alignItems: "center", display: "flex", gap: 10, marginBottom: 16 }}>
-              <button aria-label={t({ en: "Back", zh: "返回" })} className="btn btn-quiet btn-sm hit-44" onClick={() => orbitNavigate("/home")} style={{ paddingLeft: 8 }} type="button"><Icon name="chevL" size={16} />{t({ en: "Back", zh: "返回" })}</button>
-              <span aria-hidden style={{ background: "var(--border-2)", height: 16, width: 1 }} />
-              <h1 style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 16, fontWeight: 650, letterSpacing: "-0.01em", margin: 0 }}>{t({ en: "Universal profile", zh: "通用档案" })}</h1>
-              <span style={{ color: "var(--text-3)", fontSize: 13 }}>{subText}</span>
+      <style>{PROFILE_0918_CSS}</style>
+      <PublicTopNav active="me" />
+      <form onSubmit={onSubmit}>
+        <div className="pf-main">
+          <span className="pf-crumb">{t({ en: "Account", zh: "个人中心" })} / {tabMeta[tab].crumb}</span>
+          <div className="pf-head">
+            <div>
+              <h1 className="pf-title">{tabMeta[tab].title}</h1>
+              <p className="pf-sub">{subText}</p>
             </div>
-            {alert}
-            <div className="orbit-profile-layout">
-              <aside className="orbit-profile-preview">
-                <BusinessCardPreview profile={profile} t={t} />
+            <span className="pf-head-actions">
+              {tab === "edit" ? (
+                <button className="pf-btn-ghost" onClick={() => setTab("overview")} type="button">{t({ en: "Cancel", zh: "取消" })}</button>
+              ) : null}
+              <button className="pf-btn-dark" disabled={editorDisabled} type="submit">
+                <Icon color="var(--on-dark)" name="check" size={16} />{saving ? t({ en: "Saving…", zh: "保存中…" }) : t({ en: "Save basic profile", zh: "保存基础资料" })}
+              </button>
+            </span>
+          </div>
+          {alert}
+          <nav aria-label={t({ en: "Profile sections", zh: "个人中心栏目" })} className="pf-tabs">
+            <button className="pf-tab" data-active={tab === "overview" ? "true" : undefined} onClick={() => setTab("overview")} type="button">{t({ en: "Profile", zh: "个人资料" })}</button>
+            <button className="pf-tab" data-active={tab === "edit" ? "true" : undefined} onClick={() => setTab("edit")} type="button">{t({ en: "Edit profile", zh: "编辑资料" })}</button>
+          </nav>
+
+          <div className="pf-panel" hidden={tab !== "overview"}>
+            <OverviewPanel completeness={completeness} onEdit={() => setTab("edit")} profile={profile} t={t} />
+          </div>
+          <div className="pf-panel" hidden={tab !== "edit"}>
+            <div className="pf-edit-grid">
+              <EditSections {...editProps} />
+              <div className="pf-col">
+                <section className="pf-card">
+                  <span className="pf-card-head">
+                    <strong className="pf-card-title">{t({ en: "Live preview", zh: "预览效果" })}</strong>
+                  </span>
+                  <BusinessCardPreview profile={profile} t={t} />
+                  <p className="pf-side-note">
+                    {t({ en: "This is how you appear to matches — updates as you type.", zh: "这是别人看到的你，边填边更新。" })}
+                  </p>
+                </section>
+                <section className="pf-card">
+                  <strong className="pf-card-title">{t({ en: "Writing tips", zh: "填写建议" })}</strong>
+                  <div className="pf-tips">
+                    <span className="pf-tip"><span className="pf-tip-n">1</span><span className="pf-tip-copy"><strong>{t({ en: "Lead with your core value", zh: "突出你的核心价值" })}</strong><span>{t({ en: "Use specific, clear keywords so people understand you at a glance.", zh: "使用具体、清晰的关键词，让他人快速了解你。" })}</span></span></span>
+                    <span className="pf-tip"><span className="pf-tip-n">2</span><span className="pf-tip-copy"><strong>{t({ en: "Match your real intent", zh: "结合你的真实意图" })}</strong><span>{t({ en: "Pick what is most relevant to your current stage and interests.", zh: "基于你当前的阶段和兴趣，选择最相关的内容。" })}</span></span></span>
+                    <span className="pf-tip"><span className="pf-tip-n">3</span><span className="pf-tip-copy"><strong>{t({ en: "Keep it concise and professional", zh: "保持简洁与专业" })}</strong><span>{t({ en: "Three to five keywords per section work best.", zh: "建议每个部分选择 3–5 个关键词，便于他人快速理解。" })}</span></span></span>
+                  </div>
+                </section>
                 <OnboardingStatus continueHref={onboardingNext ? profileContinuationPath(onboardingNext) : undefined} onboarding={profile.onboarding} t={t} />
-                <p style={{ color: "var(--text-3)", fontSize: 12.5, lineHeight: 1.5, margin: "12px 4px 0", textAlign: "center" }}>
-                  {t({ en: "This is how you appear to matches — updates as you type.", zh: "这是别人看到的你，边填边更新。" })}
-                </p>
-              </aside>
-              <EditSections {...editProps} />
+              </div>
             </div>
           </div>
-          <div style={{ backdropFilter: "blur(14px)", background: "var(--glass-bar)", borderTop: "1px solid var(--border)", bottom: 0, display: "flex", gap: 12, justifyContent: "flex-end", padding: "14px 40px", position: "sticky", zIndex: ORBIT_Z.sticky }}>
-            <button className="btn btn-ghost" onClick={() => orbitNavigate("/home")} type="button">{t({ en: "Cancel", zh: "取消" })}</button>
-            <button className="btn btn-primary" disabled={editorDisabled} type="submit"><Icon color="var(--on-dark)" name="check" size={16} />{saving ? t({ en: "Saving…", zh: "保存中…" }) : t({ en: "Save basic profile", zh: "保存基础资料" })}</button>
-          </div>
-        </form>
-      </div>
-      <div className="orbit-mobile-only" style={{ background: "var(--bg)", display: "flex", flexDirection: "column", minHeight: "100dvh", position: "relative" }}>
-        <StatusBar />
-        <form onSubmit={onSubmit} style={{ display: "flex", flex: 1, flexDirection: "column", minHeight: 0 }}>
-          <MobileBar onBack={() => orbitNavigate("/home")} right={<button className="btn btn-primary btn-sm" disabled={editorDisabled} type="submit">{saving ? t({ en: "Saving…", zh: "保存中…" }) : t({ en: "Save basic", zh: "保存基础资料" })}</button>} title={t({ en: "Universal profile", zh: "通用档案" })} />
-          <div className="scroll" data-appscroll style={{ flex: 1, overflowY: "auto", padding: "14px 16px 100px" }}>
-            <p style={{ color: "var(--text-3)", fontSize: 13, margin: "0 0 12px" }}>{subText}</p>
-            {alert}
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <BusinessCardPreview profile={profile} t={t} />
-              <OnboardingStatus continueHref={onboardingNext ? profileContinuationPath(onboardingNext) : undefined} onboarding={profile.onboarding} t={t} />
-              <EditSections {...editProps} />
-            </div>
-          </div>
-        </form>
-      </div>
+        </div>
+      </form>
     </main>
   );
 }
