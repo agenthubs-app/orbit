@@ -9,8 +9,8 @@ import type {
   EventOperationsTable,
 } from "../../../../../../features/events/event-operations/contract";
 import type { EventOperationsAdminWorkspace } from "../../../../../../features/events/event-operations/service";
+import { ORBIT_0918_COLORS as C, ORBIT_0918_FONTS } from "../../../orbit-0918-tokens";
 import { PublicTopNav } from "../../../orbit-public-shell";
-import { Icon } from "../../../orbit-reference-primitives";
 
 interface ApiEnvelope<T> {
   data?: T;
@@ -178,34 +178,153 @@ function PublishedRoundPreview({
   title: string;
 }) {
   return (
-    <div style={{ display: "grid", gap: 10 }}>
-      <h3 style={{ fontSize: 16, margin: 0 }}>{title}</h3>
-      {tables.length === 0 ? <div style={{ color: "var(--text-3)" }}>尚无已发布的分桌。</div> : null}
+    <div className="ops-round">
+      <h3 className="ops-round-title">{title}</h3>
+      {tables.length === 0 ? <div className="ops-empty">尚无已发布的分桌。</div> : null}
       {tables.map((table) => (
-        <article key={table.tableNumber} style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 14 }}>
-          <div style={{ alignItems: "start", display: "flex", gap: 10, justifyContent: "space-between" }}>
-            <div><strong>{table.tableNumber} 号桌 · {table.theme}</strong><div style={{ color: "var(--text-3)", fontSize: 12, lineHeight: 1.5, marginTop: 5 }}>{table.rationale}</div></div>
-            <span className="badge">{table.members.length} 席</span>
+        <article className="ops-table" key={table.tableNumber}>
+          <div className="ops-table-head">
+            <span className="ops-table-name">
+              <span className="ops-table-icon">⚇</span>
+              <strong>桌 {table.tableNumber} · {table.theme}</strong>
+            </span>
+            <span className="ops-table-count">{table.members.length} 人</span>
           </div>
-          <div style={{ display: "grid", gap: 6, marginTop: 12 }}>
-            {table.members.map((member) => (
-              <div key={member.participantId} style={{ display: "flex", fontSize: 13, gap: 8, justifyContent: "space-between" }}>
-                <span>{participantNames.get(member.participantId) ?? member.participantId}</span>
-                <span className="mono" style={{ color: "var(--text-3)" }}>{member.seat}</span>
-              </div>
-            ))}
+          <div className="ops-table-rationale">{table.rationale}</div>
+          <div className="ops-members">
+            {table.members.map((member) => {
+              const name = participantNames.get(member.participantId) ?? member.participantId;
+              return (
+                <span className="ops-member" key={member.participantId}>
+                  <span className="ops-member-ava">{name.slice(0, 1)}</span>
+                  <span className="ops-member-meta">
+                    <strong>{name}</strong>
+                    <span className="ops-member-seat">{member.seat}</span>
+                  </span>
+                </span>
+              );
+            })}
           </div>
-          <div style={{ borderTop: "1px solid var(--border)", marginTop: 12, paddingTop: 10 }}>
-            <div className="mono" style={{ color: "var(--text-3)", fontSize: 10 }}>TABLE ICEBREAKERS</div>
-            <ol style={{ color: "var(--text-2)", fontSize: 12, lineHeight: 1.55, margin: "7px 0 0", paddingLeft: 18 }}>
+          <details className="ops-ice">
+            <summary>桌级破冰问题（{table.icebreakers.length}）</summary>
+            <ol>
               {table.icebreakers.map((icebreaker) => <li key={icebreaker}>{icebreaker}</li>)}
             </ol>
-          </div>
+          </details>
         </article>
       ))}
     </div>
   );
 }
+
+/**
+ * Orbit_0918 运营台作用域样式。属性选择器一律不写引号（React 静态渲染会把
+ * 双引号转义成 &quot; 导致选择器失效）。
+ */
+const OPS_0918_CSS = `
+[data-orbit-real-page=event-operations-admin] a { color: #3B3F7A; text-decoration: none; }
+[data-orbit-real-page=event-operations-admin] .ops-main { margin: 0 auto; max-width: 1240px; padding: 14px clamp(16px,4vw,40px) 72px; display: flex; flex-direction: column; gap: 24px; }
+[data-orbit-real-page=event-operations-admin] .ops-crumb { font-size: 13px; color: #9FA3C4; }
+[data-orbit-real-page=event-operations-admin] .ops-crumb a { color: #6B6F99; }
+[data-orbit-real-page=event-operations-admin] .ops-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 20px; }
+[data-orbit-real-page=event-operations-admin] .ops-head h1 { margin: 0; font-family: 'Noto Serif SC','Songti SC','SimSun',serif; font-weight: 900; font-size: clamp(28px,3.4vw,40px); letter-spacing: -0.03em; }
+[data-orbit-real-page=event-operations-admin] .ops-head p { margin: 10px 0 0; font-size: 15px; color: #3B3F7A; }
+[data-orbit-real-page=event-operations-admin] .ops-head-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+[data-orbit-real-page=event-operations-admin] .ops-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 13px 20px; border-radius: 10px; font-size: 14px; font-family: inherit; cursor: pointer; border: 1px solid transparent; background: transparent; color: #3B3F7A; }
+[data-orbit-real-page=event-operations-admin] .ops-btn:disabled { opacity: .55; cursor: default; }
+[data-orbit-real-page=event-operations-admin] .ops-btn-dark { background: #0E1225; border-color: #0E1225; color: #FFFFFF; font-weight: 500; }
+[data-orbit-real-page=event-operations-admin] .ops-btn-dark:hover:not(:disabled) { background: #2E3270; border-color: #2E3270; }
+[data-orbit-real-page=event-operations-admin] .ops-btn-ghost { background: #FFFFFF; border-color: #DDDEFA; color: #3B3F7A; }
+[data-orbit-real-page=event-operations-admin] .ops-btn-ghost:hover:not(:disabled) { border-color: #B9BCEB; color: #2E3270; }
+[data-orbit-real-page=event-operations-admin] .ops-btn-sm { padding: 10px 14px; font-size: 13px; border-radius: 9px; }
+[data-orbit-real-page=event-operations-admin] .ops-alert { border: 1px solid #FBECEA; background: #FBECEA; color: #B5473A; border-radius: 14px; padding: 14px 16px; font-size: 14px; }
+[data-orbit-real-page=event-operations-admin] .ops-notice { border: 1px solid #DDDEFA; background: #ECEEFB; color: #2E3270; border-radius: 14px; padding: 14px 16px; font-size: 14px; }
+[data-orbit-real-page=event-operations-admin] .ops-card { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; }
+[data-orbit-real-page=event-operations-admin] .ops-section { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+[data-orbit-real-page=event-operations-admin] .ops-section-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; }
+[data-orbit-real-page=event-operations-admin] .ops-section-head > div { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+[data-orbit-real-page=event-operations-admin] .ops-eyebrow { font-size: 10px; letter-spacing: .14em; color: #9FA3C4; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+[data-orbit-real-page=event-operations-admin] .ops-section-title { font-family: 'Noto Serif SC','Songti SC','SimSun',serif; font-weight: 900; font-size: 20px; letter-spacing: -0.02em; }
+[data-orbit-real-page=event-operations-admin] .ops-section-sub { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page=event-operations-admin] .ops-note { margin: 0; font-size: 13px; color: #6B6F99; line-height: 1.6; }
+[data-orbit-real-page=event-operations-admin] .ops-empty { font-size: 13px; color: #9FA3C4; }
+[data-orbit-real-page=event-operations-admin] .ops-empty-dashed { border: 1px dashed #DDDEFA; border-radius: 12px; padding: 16px; }
+[data-orbit-real-page=event-operations-admin] .ops-link { font-size: 13px; color: #4B4FC7; }
+[data-orbit-real-page=event-operations-admin] .ops-metrics { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,220px),1fr)); gap: 16px; }
+[data-orbit-real-page=event-operations-admin] .ops-metric { display: flex; align-items: center; gap: 16px; padding: 22px; border: 1px solid #E8E9F6; border-radius: 16px; background: #FFFFFF; }
+[data-orbit-real-page=event-operations-admin] .ops-metric-soft { background: #F7F7FD; }
+[data-orbit-real-page=event-operations-admin] .ops-metric-icon { width: 46px; height: 46px; flex: none; border-radius: 12px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+[data-orbit-real-page=event-operations-admin] .ops-metric-green { background: #E6F1EC; color: #2F6B4F; }
+[data-orbit-real-page=event-operations-admin] .ops-metric-meta { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+[data-orbit-real-page=event-operations-admin] .ops-metric-meta > span { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page=event-operations-admin] .ops-metric-meta > strong { font-family: 'Noto Serif SC','Songti SC','SimSun',serif; font-weight: 900; font-size: 30px; letter-spacing: -0.02em; }
+[data-orbit-real-page=event-operations-admin] .ops-metric-meta > strong.ops-metric-status { font-size: 22px; }
+[data-orbit-real-page=event-operations-admin] .ops-steps { display: grid; grid-template-columns: repeat(5,1fr); align-items: start; }
+@media (max-width: 720px) { [data-orbit-real-page=event-operations-admin] .ops-steps { grid-template-columns: repeat(2,1fr); row-gap: 18px; } }
+[data-orbit-real-page=event-operations-admin] .ops-step { display: flex; flex-direction: column; align-items: center; gap: 12px; position: relative; }
+[data-orbit-real-page=event-operations-admin] .ops-step-rail { position: relative; width: 100%; display: flex; align-items: center; justify-content: center; height: 26px; }
+[data-orbit-real-page=event-operations-admin] .ops-step-line { position: absolute; top: 12px; height: 2px; }
+[data-orbit-real-page=event-operations-admin] .ops-step-dot { position: relative; width: 26px; height: 26px; border-radius: 50%; border: 2px solid; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+[data-orbit-real-page=event-operations-admin] .ops-step-label { font-size: 14px; text-align: center; }
+[data-orbit-real-page=event-operations-admin] .ops-step-meta { font-size: 12px; text-align: center; }
+[data-orbit-real-page=event-operations-admin] .ops-confirm { border: 1px solid #DDDEFA; border-radius: 14px; background: #F7F7FD; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+[data-orbit-real-page=event-operations-admin] .ops-gen { border: 1px solid #E8E9F6; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+[data-orbit-real-page=event-operations-admin] .ops-gen-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; }
+[data-orbit-real-page=event-operations-admin] .ops-gen-snapshot { font-size: 11px; color: #9FA3C4; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; margin-top: 5px; }
+[data-orbit-real-page=event-operations-admin] .ops-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; background: #F1F1FA; color: #6B6F99; font-size: 12px; white-space: nowrap; }
+[data-orbit-real-page=event-operations-admin] .ops-pill-green { background: #E6F1EC; color: #2F6B4F; }
+[data-orbit-real-page=event-operations-admin] .ops-pill-red { background: #FBECEA; color: #B5473A; }
+[data-orbit-real-page=event-operations-admin] .ops-pill-purple { background: #ECEEFB; color: #4B4FC7; }
+[data-orbit-real-page=event-operations-admin] .ops-progress-track { background: #ECEEFB; border-radius: 999px; height: 6px; overflow: hidden; }
+[data-orbit-real-page=event-operations-admin] .ops-progress-bar { background: linear-gradient(90deg,#4B4FC7,#8A8EE0); border-radius: 999px; height: 100%; transition: width .6s ease; }
+[data-orbit-real-page=event-operations-admin] .ops-rounds { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit,minmax(min(100%,340px),1fr)); }
+[data-orbit-real-page=event-operations-admin] .ops-round { display: flex; flex-direction: column; gap: 12px; }
+[data-orbit-real-page=event-operations-admin] .ops-round-title { margin: 0; font-size: 15px; font-weight: 700; }
+[data-orbit-real-page=event-operations-admin] .ops-table { border: 1px solid #E8E9F6; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+[data-orbit-real-page=event-operations-admin] .ops-table-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+[data-orbit-real-page=event-operations-admin] .ops-table-name { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 15px; }
+[data-orbit-real-page=event-operations-admin] .ops-table-icon { color: #4B4FC7; }
+[data-orbit-real-page=event-operations-admin] .ops-table-count { font-size: 13px; color: #6B6F99; white-space: nowrap; }
+[data-orbit-real-page=event-operations-admin] .ops-table-rationale { font-size: 12px; color: #6B6F99; line-height: 1.55; }
+[data-orbit-real-page=event-operations-admin] .ops-members { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,170px),1fr)); gap: 8px; }
+[data-orbit-real-page=event-operations-admin] .ops-member { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 10px; background: #F7F7FD; min-width: 0; }
+[data-orbit-real-page=event-operations-admin] .ops-member-ava { width: 28px; height: 28px; flex: none; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+[data-orbit-real-page=event-operations-admin] .ops-member-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+[data-orbit-real-page=event-operations-admin] .ops-member-meta strong { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-orbit-real-page=event-operations-admin] .ops-member-seat { font-size: 11px; color: #9FA3C4; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+[data-orbit-real-page=event-operations-admin] .ops-ice summary { cursor: pointer; font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page=event-operations-admin] .ops-ice ol { margin: 8px 0 0; padding-left: 18px; font-size: 12px; color: #3B3F7A; line-height: 1.6; }
+[data-orbit-real-page=event-operations-admin] .ops-form-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit,minmax(min(100%,210px),1fr)); }
+[data-orbit-real-page=event-operations-admin] .ops-field-label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #3B3F7A; }
+[data-orbit-real-page=event-operations-admin] .ops-field-label .ops-field-key { margin-left: 6px; color: #9FA3C4; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; }
+[data-orbit-real-page=event-operations-admin] .ops-field { padding: 12px 14px; border: 1px solid #DDDEFA; border-radius: 10px; background: #FFFFFF; font-size: 14px; font-family: inherit; color: #0E1225; outline: none; }
+[data-orbit-real-page=event-operations-admin] .ops-field:focus { border-color: #4B4FC7; }
+[data-orbit-real-page=event-operations-admin] .ops-field[readonly] { background: #F7F7FD; color: #6B6F99; }
+[data-orbit-real-page=event-operations-admin] .ops-advanced summary { cursor: pointer; font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page=event-operations-admin] .ops-advanced > div { margin-top: 12px; }
+[data-orbit-real-page=event-operations-admin] .ops-timeline { border-top: 1px solid #E8E9F6; padding-top: 18px; display: flex; flex-direction: column; gap: 10px; }
+[data-orbit-real-page=event-operations-admin] .ops-timeline-grid { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit,minmax(min(100%,220px),1fr)); }
+[data-orbit-real-page=event-operations-admin] .ops-gate { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid #E8E9F6; border-radius: 10px; padding: 11px; }
+[data-orbit-real-page=event-operations-admin] .ops-gate-name { font-size: 12px; font-weight: 700; }
+[data-orbit-real-page=event-operations-admin] .ops-gate-at { font-size: 11px; color: #9FA3C4; margin-top: 3px; }
+[data-orbit-real-page=event-operations-admin] .ops-checkin-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+[data-orbit-real-page=event-operations-admin] .ops-code { background: #F7F7FD; border-radius: 8px; flex: 1 1 320px; overflow-wrap: anywhere; padding: 10px 12px; font-size: 12px; }
+[data-orbit-real-page=event-operations-admin] .ops-dir { display: flex; flex-direction: column; }
+[data-orbit-real-page=event-operations-admin] .ops-dir-head, [data-orbit-real-page=event-operations-admin] .ops-dir-row { display: grid; grid-template-columns: minmax(0,1.7fr) minmax(0,1.2fr) minmax(0,.8fr) minmax(0,.7fr) minmax(0,.7fr) minmax(0,1fr); gap: 14px; align-items: center; }
+[data-orbit-real-page=event-operations-admin] .ops-dir-head { padding: 0 4px 12px; border-bottom: 1px solid #E8E9F6; font-size: 12px; color: #9FA3C4; }
+[data-orbit-real-page=event-operations-admin] .ops-dir-row { padding: 14px 4px; border-bottom: 1px solid #F1F1FA; }
+[data-orbit-real-page=event-operations-admin] .ops-dir-person { display: flex; align-items: center; gap: 12px; min-width: 0; }
+[data-orbit-real-page=event-operations-admin] .ops-ava { width: 36px; height: 36px; flex: none; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+[data-orbit-real-page=event-operations-admin] .ops-dir-name { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+[data-orbit-real-page=event-operations-admin] .ops-dir-name strong { font-size: 14px; font-weight: 500; }
+[data-orbit-real-page=event-operations-admin] .ops-dir-id { font-size: 10px; color: #9FA3C4; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow: hidden; text-overflow: ellipsis; }
+[data-orbit-real-page=event-operations-admin] .ops-dir-cell { font-size: 13px; color: #3B3F7A; min-width: 0; }
+[data-orbit-real-page=event-operations-admin] .ops-audit-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid #F1F1FA; padding: 12px 0; font-size: 13px; }
+@media (max-width: 860px) {
+  [data-orbit-real-page=event-operations-admin] .ops-dir-head { display: none; }
+  [data-orbit-real-page=event-operations-admin] .ops-dir-row { grid-template-columns: 1fr 1fr; row-gap: 10px; }
+}
+`;
 
 export function EventOperationsAdminWorkspace({
   canManageRoles = false,
@@ -434,137 +553,208 @@ export function EventOperationsAdminWorkspace({
       ].sort((left, right) => Date.parse(left.at) - Date.parse(right.at))
     : [];
 
+  const publishedMatchStatus = !workspace
+    ? "—"
+    : workspace.publishedResult
+      ? "已发布"
+      : workspace.generations.some(({ generation }) => generation.status === "completed")
+        ? "待发布"
+        : "未发布";
+
+  // 运营进度步进条：全部从真实配置时间门禁、生成状态与发布结果推导，无伪造阶段。
+  const progressSteps = workspace && configuration
+    ? (() => {
+        const ws = workspace;
+        const cfg = configuration;
+        const generated = ws.generations.some(
+          ({ generation }) => generation.status === "completed" || generation.status === "published",
+        );
+        const defs = [
+          { done: currentTimeMs >= Date.parse(cfg.registrationCutoffAt), label: "报名截止", meta: formatTimestamp(cfg.registrationCutoffAt) },
+          { done: generated, label: "生成匹配", meta: "" },
+          { done: Boolean(ws.publishedResult), label: "发布结果", meta: "" },
+          { done: currentTimeMs >= Date.parse(cfg.checkInOpensAt), label: "签到开放", meta: formatTimestamp(cfg.checkInOpensAt) },
+          { done: currentTimeMs >= Date.parse(cfg.eventStartsAt), label: "活动现场", meta: formatTimestamp(cfg.eventStartsAt) },
+        ];
+        const currentIndex = defs.findIndex((def) => !def.done);
+        return defs.map((def, index) => ({ ...def, current: index === currentIndex }));
+      })()
+    : [];
+
   return (
-    <div data-orbit-real-page="event-operations-admin" style={{ minHeight: "100dvh" }}>
+    <div data-orbit-real-page="event-operations-admin" style={{ background: C.pageBg, color: C.ink, fontFamily: ORBIT_0918_FONTS.sans, minHeight: "100dvh" }}>
+      <style>{OPS_0918_CSS}</style>
       <PublicTopNav active="events" />
-      <main style={{ margin: "0 auto", maxWidth: 1180, padding: "28px clamp(16px,4vw,42px) 80px" }}>
-        <a href={`/app/events/${encodeURIComponent(event.id)}`} style={{ alignItems: "center", color: "var(--text-2)", display: "inline-flex", gap: 6, textDecoration: "none" }}>
-          <Icon name="chevL" size={16} /> 返回活动
-        </a>
-        <div style={{ alignItems: "end", display: "flex", flexWrap: "wrap", gap: 18, justifyContent: "space-between", marginTop: 18 }}>
+      <main className="ops-main">
+        <nav className="ops-crumb">
+          <a href="/app/events/center">活动中心</a>
+          {" / "}
+          <a href={`/app/events/${encodeURIComponent(event.id)}`}>{event.title}</a>
+          {" / "}
+          <span>运营台</span>
+        </nav>
+
+        <div className="ops-head">
           <div>
-            <div className="eyebrow">ORGANIZER · EVENT OPERATIONS</div>
-            <h1 className="h-display" style={{ margin: "8px 0 0" }}>{event.title}</h1>
-            <p style={{ color: "var(--text-2)", margin: "8px 0 0" }}>配置时间门禁、查看真实报名、运行严格 AI 分片，并发布完整结果。</p>
+            <h1>{event.title} · 运营台</h1>
+            <p>管理活动准备、匹配分组、现场签到与数据查看。</p>
           </div>
           {workspace ? (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              <a className="btn btn-ghost" href="/app/events/center">
-                <Icon name="grid" size={16} />运营活动中心
-              </a>
-              <a className="btn btn-ghost" href={operationsCheckInHref}>
-                <Icon name="check" size={16} />打开签到台
-              </a>
-              <a className="btn btn-ghost" href={`/app/events/${encodeURIComponent(event.id)}/operations/experience`}>
-                <Icon name="sparkle" size={16} />报名体验
-              </a>
-              <a className="btn btn-ghost" href={`/app/events/${encodeURIComponent(event.id)}/analytics`}>
-                <Icon name="target" size={16} />查看活动分析
-              </a>
+            <div className="ops-head-actions">
+              <a className="ops-btn ops-btn-dark" href={`/app/events/${encodeURIComponent(event.id)}`}>查看活动页面 →</a>
+              <a className="ops-btn ops-btn-ghost" href="/app/events/center">运营活动中心</a>
+              <a className="ops-btn ops-btn-ghost" href={operationsCheckInHref}>打开签到台</a>
+              <a className="ops-btn ops-btn-ghost" href={`/app/events/${encodeURIComponent(event.id)}/operations/experience`}>报名体验</a>
+              <a className="ops-btn ops-btn-ghost" href={`/app/events/${encodeURIComponent(event.id)}/analytics`}>活动分析</a>
               {canManageRoles ? (
-                <a className="btn btn-ghost" data-event-roles-entry href={`/app/events/${encodeURIComponent(event.id)}/operations/roles`}>
-                  <Icon name="users" size={16} />管理角色
-                </a>
+                <a className="ops-btn ops-btn-ghost" data-event-roles-entry href={`/app/events/${encodeURIComponent(event.id)}/operations/roles`}>管理角色</a>
               ) : null}
-              <a className="btn btn-ghost" href={`${baseUrl}/export`}>
-                <Icon name="download" size={16} />导出 CSV
-              </a>
+              <a className="ops-btn ops-btn-ghost" href={`${baseUrl}/export`}>导出 CSV</a>
             </div>
           ) : null}
         </div>
 
-        {error ? <div className="card" role="alert" style={{ borderColor: "var(--rose)", color: "var(--rose)", marginTop: 18, padding: 14 }}>{error}</div> : null}
-        {notice ? <div className="card" role="status" style={{ color: "var(--accent)", marginTop: 18, padding: 14 }}>{notice}</div> : null}
-        {loading ? <div className="card" style={{ marginTop: 18, padding: 18 }}>正在读取运营状态…</div> : null}
+        {error ? <div className="ops-alert" role="alert">{error}</div> : null}
+        {notice ? <div className="ops-notice" role="status">{notice}</div> : null}
+        {loading ? <div className="ops-card ops-section">正在读取运营状态…</div> : null}
 
         {workspace ? (
           <>
-            <section style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", marginTop: 18 }}>
-              {[
-                ["已报名", workspace.metrics.participantCount],
-                ["已签到", workspace.metrics.checkedIn],
-                ["名片申请", workspace.metrics.contactRequests],
-                ["已同意", workspace.metrics.acceptedContactRequests],
-              ].map(([label, value]) => <div className="card" key={label} style={{ padding: 18 }}><div className="h-title">{value}</div><div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 6 }}>{label}</div></div>)}
+            <section className="ops-metrics">
+              <div className="ops-metric">
+                <span className="ops-metric-icon">⚇</span>
+                <span className="ops-metric-meta"><span>已报名</span><strong>{workspace.metrics.participantCount}</strong></span>
+              </div>
+              <div className="ops-metric">
+                <span className="ops-metric-icon ops-metric-green">✓</span>
+                <span className="ops-metric-meta"><span>已签到</span><strong>{workspace.metrics.checkedIn}</strong></span>
+              </div>
+              <div className="ops-metric">
+                <span className="ops-metric-icon">⇄</span>
+                <span className="ops-metric-meta"><span>名片申请 · 已同意 {workspace.metrics.acceptedContactRequests}</span><strong>{workspace.metrics.contactRequests}</strong></span>
+              </div>
+              <div className="ops-metric ops-metric-soft">
+                <span className="ops-metric-icon">▤</span>
+                <span className="ops-metric-meta"><span>匹配结果</span><strong className="ops-metric-status">{publishedMatchStatus}</strong></span>
+              </div>
             </section>
 
-            <section className="card" style={{ marginTop: 18, padding: 20 }}>
-              <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between" }}>
-                <div><div className="eyebrow">STRICT AI PIPELINE</div><h2 className="h-title" style={{ margin: "8px 0 0" }}>AI 生成与发布</h2></div>
-                <div style={{ alignItems: "center", display: "flex", gap: 8 }}>
-                  {confirmingStart ? null : (
-                    <button className="btn btn-primary" disabled={busy === "start" || hasActiveGeneration} onClick={() => setConfirmingStart(true)} type="button"><Icon color="var(--on-dark)" name="sparkle" size={16} />{hasActiveGeneration ? "生成进行中…" : "生成匹配"}</button>
-                  )}
+            {progressSteps.length > 0 ? (
+              <section className="ops-card ops-section">
+                <div className="ops-section-head">
+                  <div>
+                    <strong className="ops-section-title">运营进度</strong>
+                    <span className="ops-section-sub">完成各阶段的准备工作，确保活动顺利进行。</span>
+                  </div>
+                  {newestGeneration?.status === "completed" ? <a className="ops-link" href="#ops-generation">前往发布 →</a> : null}
                 </div>
+                <div className="ops-steps">
+                  {progressSteps.map((step, index) => (
+                    <span className="ops-step" key={step.label}>
+                      <span className="ops-step-rail">
+                        <span className="ops-step-line" style={{ background: index === 0 ? "transparent" : progressSteps[index - 1]?.done ? "#4B4FC7" : "#E8E9F6", left: 0, right: "50%" }} />
+                        <span className="ops-step-line" style={{ background: index === progressSteps.length - 1 ? "transparent" : step.done ? "#4B4FC7" : "#E8E9F6", left: "50%", right: 0 }} />
+                        <span className="ops-step-dot" style={{ background: step.done ? "#4B4FC7" : "#FFFFFF", borderColor: step.done || step.current ? "#4B4FC7" : "#DDDEFA", color: step.done ? "#FFFFFF" : "#4B4FC7" }}>{step.done ? "✓" : step.current ? "●" : ""}</span>
+                      </span>
+                      <span className="ops-step-label" style={{ color: step.done || step.current ? "#0E1225" : "#9FA3C4", fontWeight: step.current ? 700 : 400 }}>{step.label}</span>
+                      <span className="ops-step-meta" style={{ color: step.current ? "#4B4FC7" : "#9FA3C4" }}>{step.current ? "当前阶段" : step.meta || (step.done ? "已完成" : "")}</span>
+                    </span>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            <section className="ops-card ops-section" id="ops-generation">
+              <div className="ops-section-head">
+                <div>
+                  <span className="ops-eyebrow">STRICT AI PIPELINE</span>
+                  <strong className="ops-section-title">AI 生成与发布</strong>
+                </div>
+                {confirmingStart ? null : (
+                  <button className="ops-btn ops-btn-dark" disabled={busy === "start" || hasActiveGeneration} onClick={() => setConfirmingStart(true)} type="button">{hasActiveGeneration ? "生成进行中…" : "生成匹配"}</button>
+                )}
               </div>
               {confirmingStart ? (
-                <div className="card-flat" data-generation-start-confirm style={{ display: "grid", gap: 10, marginTop: 12, padding: 14 }}>
+                <div className="ops-confirm" data-generation-start-confirm>
                   <strong>将为 {workspace.metrics.participantCount} 位已报名参会者生成推荐与两轮分桌</strong>
-                  <p style={{ color: "var(--text-2)", fontSize: 13, margin: 0 }}>预计 8–12 分钟；失败的片段会自动重试。生成完成后由你预览并确认发布，不会自动对参会者公开。</p>
+                  <p className="ops-note">预计 8–12 分钟；失败的片段会自动重试。生成完成后由你预览并确认发布，不会自动对参会者公开。</p>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button className="btn btn-primary btn-sm" disabled={busy === "start"} onClick={startGeneration} type="button">{busy === "start" ? "正在开始…" : "开始生成"}</button>
-                    <button className="btn btn-ghost btn-sm" onClick={() => setConfirmingStart(false)} type="button">取消</button>
+                    <button className="ops-btn ops-btn-dark ops-btn-sm" disabled={busy === "start"} onClick={startGeneration} type="button">{busy === "start" ? "正在开始…" : "开始生成"}</button>
+                    <button className="ops-btn ops-btn-ghost ops-btn-sm" onClick={() => setConfirmingStart(false)} type="button">取消</button>
                   </div>
                 </div>
               ) : null}
-              <p style={{ color: "var(--text-3)", fontSize: 13 }}>所有任务完成并由你发布后，参会者才能看到生成结果；无效、缺失或超时的 AI 输出会保持失败状态，不会被替代内容掩盖。</p>
-              <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
-                {workspace.generations.length === 0 ? <div>尚未创建任何生成。</div> : null}
-                {workspace.generations.map(({ generation, progress }) => (
-                  <article key={generation.generationId} style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 16 }}>
-                    <div style={{ alignItems: "start", display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between" }}>
-                      <div><strong title={generation.generationId}>{shortGenerationId(generation.generationId)}</strong><div className="mono" style={{ color: "var(--text-3)", fontSize: 11, marginTop: 5 }}>快照 {generation.snapshot.hash.slice(0, 12)}… · {generation.snapshot.participants.length} 位参会者</div></div>
-                      <span className={generation.status === "failed" ? "badge badge-ended" : generation.status === "published" ? "badge badge-live" : "badge"}>{generationStatusLabels[generation.status] ?? generation.status}</span>
+              <p className="ops-note">所有任务完成并由你发布后，参会者才能看到生成结果；无效、缺失或超时的 AI 输出会保持失败状态，不会被替代内容掩盖。</p>
+              {workspace.generations.length === 0 ? <div className="ops-empty">尚未创建任何生成。</div> : null}
+              {workspace.generations.map(({ generation, progress }) => (
+                <article className="ops-gen" key={generation.generationId}>
+                  <div className="ops-gen-head">
+                    <div>
+                      <strong title={generation.generationId}>{shortGenerationId(generation.generationId)}</strong>
+                      <div className="ops-gen-snapshot">快照 {generation.snapshot.hash.slice(0, 12)}… · {generation.snapshot.participants.length} 位参会者</div>
                     </div>
-                    <div style={{ color: "var(--text-2)", fontSize: 13, marginTop: 12 }}>{progress.completedTasks}/{progress.totalTasks} 已完成 · {progress.failedTasks} 失败 · {progress.percent}%</div>
-                    {generation.status === "queued" || generation.status === "running" ? (
-                      <div data-generation-progress style={{ display: "grid", gap: 7, marginTop: 10 }}>
-                        <div aria-hidden style={{ background: "var(--surface-3)", borderRadius: 999, height: 6, overflow: "hidden" }}>
-                          <div style={{ background: "var(--accent-grad-bar, var(--accent))", borderRadius: 999, height: "100%", transition: "width .6s ease", width: `${Math.max(3, progress.percent)}%` }} />
-                        </div>
-                        <div style={{ color: "var(--text-3)", fontSize: 12 }}>
-                          {generationEtaLabel(generation.createdAt, progress.percent)}
-                          {(autoRetries[generation.generationId] ?? 0) > 0 ? ` · 自动重试中（第 ${autoRetries[generation.generationId]}/${AUTO_RETRY_LIMIT} 次）` : ""}
-                          {" · 可离开此页，完成后回来确认发布"}
-                        </div>
+                    <span className={generation.status === "failed" ? "ops-pill ops-pill-red" : generation.status === "published" ? "ops-pill ops-pill-green" : "ops-pill ops-pill-purple"}>{generationStatusLabels[generation.status] ?? generation.status}</span>
+                  </div>
+                  <div className="ops-note">{progress.completedTasks}/{progress.totalTasks} 已完成 · {progress.failedTasks} 失败 · {progress.percent}%</div>
+                  {generation.status === "queued" || generation.status === "running" ? (
+                    <div data-generation-progress style={{ display: "grid", gap: 7 }}>
+                      <div aria-hidden className="ops-progress-track">
+                        <div className="ops-progress-bar" style={{ width: `${Math.max(3, progress.percent)}%` }} />
                       </div>
-                    ) : null}
-                    {generation.status === "failed" && (autoRetries[generation.generationId] ?? 0) >= AUTO_RETRY_LIMIT ? (
-                      <div data-generation-needs-attention style={{ color: "var(--amber)", fontSize: 12, marginTop: 8 }}>自动重试 {AUTO_RETRY_LIMIT} 次后仍有片段未通过，需要你手动处理。</div>
-                    ) : null}
-                    {generation.errorMessage ? <div style={{ color: "var(--rose)", fontSize: 12, marginTop: 8 }}>{generationErrorLabel(generation.errorCode ?? "")}<span className="mono" style={{ marginLeft: 6 }}>{generation.errorCode}</span><div style={{ color: "var(--text-3)", marginTop: 3 }}>{generation.errorMessage}</div></div> : null}
-                    <button className={generation.status === "completed" ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"} disabled={generation.status === "published" || generation.status === "queued" || generation.status === "running" || busy?.startsWith(generation.generationId)} onClick={() => generationAction(generation)} style={{ marginTop: 12 }} type="button">{generationActionLabel(generation)}</button>
-                  </article>
-                ))}
-              </div>
+                      <div className="ops-step-meta" style={{ textAlign: "left" }}>
+                        {generationEtaLabel(generation.createdAt, progress.percent)}
+                        {(autoRetries[generation.generationId] ?? 0) > 0 ? ` · 自动重试中（第 ${autoRetries[generation.generationId]}/${AUTO_RETRY_LIMIT} 次）` : ""}
+                        {" · 可离开此页，完成后回来确认发布"}
+                      </div>
+                    </div>
+                  ) : null}
+                  {generation.status === "failed" && (autoRetries[generation.generationId] ?? 0) >= AUTO_RETRY_LIMIT ? (
+                    <div data-generation-needs-attention style={{ color: "#9A6B22", fontSize: 12 }}>自动重试 {AUTO_RETRY_LIMIT} 次后仍有片段未通过，需要你手动处理。</div>
+                  ) : null}
+                  {generation.errorMessage ? (
+                    <div style={{ color: "#B5473A", fontSize: 12 }}>
+                      {generationErrorLabel(generation.errorCode ?? "")}
+                      <span className="ops-gen-snapshot" style={{ marginLeft: 6 }}>{generation.errorCode}</span>
+                      <div style={{ color: "#6B6F99", marginTop: 3 }}>{generation.errorMessage}</div>
+                    </div>
+                  ) : null}
+                  <div>
+                    <button className={generation.status === "completed" ? "ops-btn ops-btn-dark ops-btn-sm" : "ops-btn ops-btn-ghost ops-btn-sm"} disabled={generation.status === "published" || generation.status === "queued" || generation.status === "running" || busy?.startsWith(generation.generationId)} onClick={() => generationAction(generation)} type="button">{generationActionLabel(generation)}</button>
+                  </div>
+                </article>
+              ))}
             </section>
 
-            <section className="card" style={{ marginTop: 18, padding: 20 }}>
-              <div className="eyebrow">PUBLISHED SEATING PREVIEW</div>
-              <h2 className="h-title" style={{ margin: "8px 0 0" }}>两轮分桌预览</h2>
-              <p style={{ color: "var(--text-3)", fontSize: 13, lineHeight: 1.6 }}>此预览只读取已原子发布的结果：真实桌号、座位、话题、桌级归因与桌级破冰问题。</p>
+            <section className="ops-card ops-section">
+              <div>
+                <span className="ops-eyebrow">PUBLISHED SEATING PREVIEW</span>
+                <div style={{ marginTop: 8 }}><strong className="ops-section-title">两轮分桌预览</strong></div>
+              </div>
+              <p className="ops-note">此预览只读取已原子发布的结果：真实桌号、座位、话题、桌级归因与桌级破冰问题。</p>
               {workspace.publishedResult ? (
-                <div style={{ display: "grid", gap: 18, gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))", marginTop: 16 }}>
+                <div className="ops-rounds">
                   <PublishedRoundPreview participantNames={participantNames} tables={workspace.publishedResult.grouping.roundOne} title="第一轮 · 互补分桌" />
                   <PublishedRoundPreview participantNames={participantNames} tables={workspace.publishedResult.grouping.roundTwo} title="第二轮 · 话题桌" />
                 </div>
               ) : (
-                <div style={{ border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text-3)", marginTop: 14, padding: 16 }}>尚无已发布的分桌结果；已完成的生成在主办方原子发布前不会出现在这里。</div>
+                <div className="ops-empty ops-empty-dashed">尚无已发布的分桌结果；已完成的生成在主办方原子发布前不会出现在这里。</div>
               )}
             </section>
           </>
         ) : null}
 
-        <section className="card" style={{ marginTop: 18, padding: 20 }}>
-          <div className="eyebrow">TIME GATES & SHARD POLICY</div>
-          <h2 className="h-title" style={{ margin: "8px 0 0" }}>运营配置</h2>
-          <p style={{ color: "var(--text-3)", fontSize: 13, lineHeight: 1.6 }}>活动开始与结束时间锁定为主活动档期；其余规则均需主办方显式设定。</p>
-          <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", marginTop: 18 }}>
+        <section className="ops-card ops-section">
+          <div>
+            <span className="ops-eyebrow">TIME GATES & SHARD POLICY</span>
+            <div style={{ marginTop: 8 }}><strong className="ops-section-title">运营配置</strong></div>
+          </div>
+          <p className="ops-note">活动开始与结束时间锁定为主活动档期；其余规则均需主办方显式设定。</p>
+          <div className="ops-form-grid">
             {dateFields.map((field) => (
-              <label key={field} style={{ display: "grid", gap: 6, fontSize: 12 }}>
-                <span>{fieldLabels[field]}<span className="mono" style={{ color: "var(--text-3)", marginLeft: 6 }}>{field}</span></span>
+              <label className="ops-field-label" key={field}>
+                <span>{fieldLabels[field]}<span className="ops-field-key">{field}</span></span>
                 <input
-                  className="field"
+                  className="ops-field"
                   onInput={(input) => {
                     const nextValue = input.currentTarget.value;
                     setForm((value) => ({ ...value, [field]: nextValue }));
@@ -576,22 +766,22 @@ export function EventOperationsAdminWorkspace({
               </label>
             ))}
             {basicNumberFields.map((field) => (
-              <label key={field} style={{ display: "grid", gap: 6, fontSize: 12 }}>
-                <span>{fieldLabels[field]}<span className="mono" style={{ color: "var(--text-3)", marginLeft: 6 }}>{field}</span></span>
-                <input className="field" min={1} onInput={(input) => {
+              <label className="ops-field-label" key={field}>
+                <span>{fieldLabels[field]}<span className="ops-field-key">{field}</span></span>
+                <input className="ops-field" min={1} onInput={(input) => {
                   const nextValue = input.currentTarget.value;
                   setForm((value) => ({ ...value, [field]: nextValue }));
                 }} type="number" value={form[field]} />
               </label>
             ))}
           </div>
-          <details style={{ marginTop: 14 }}>
-            <summary style={{ color: "var(--text-3)", cursor: "pointer", fontSize: 13 }}>高级引擎参数（一般无需调整）</summary>
-            <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", marginTop: 12 }}>
+          <details className="ops-advanced">
+            <summary>高级引擎参数（一般无需调整）</summary>
+            <div className="ops-form-grid">
               {advancedNumberFields.map((field) => (
-                <label key={field} style={{ display: "grid", gap: 6, fontSize: 12 }}>
-                  <span>{fieldLabels[field]}<span className="mono" style={{ color: "var(--text-3)", marginLeft: 6 }}>{field}</span></span>
-                  <input className="field" min={1} onInput={(input) => {
+                <label className="ops-field-label" key={field}>
+                  <span>{fieldLabels[field]}<span className="ops-field-key">{field}</span></span>
+                  <input className="ops-field" min={1} onInput={(input) => {
                     const nextValue = input.currentTarget.value;
                     setForm((value) => ({ ...value, [field]: nextValue }));
                   }} type="number" value={form[field]} />
@@ -599,17 +789,20 @@ export function EventOperationsAdminWorkspace({
               ))}
             </div>
           </details>
-          <button className="btn btn-primary" disabled={busy === "configuration"} onClick={saveConfiguration} style={{ marginTop: 18 }} type="button">
-            <Icon color="var(--on-dark)" name="check" size={16} />{busy === "configuration" ? "保存中…" : "保存配置"}
-          </button>
+          <div>
+            <button className="ops-btn ops-btn-dark" disabled={busy === "configuration"} onClick={saveConfiguration} type="button">{busy === "configuration" ? "保存中…" : "保存配置"}</button>
+          </div>
           {timeline.length > 0 ? (
-            <div style={{ borderTop: "1px solid var(--border)", marginTop: 20, paddingTop: 18 }}>
-              <div className="mono" style={{ color: "var(--text-3)", fontSize: 10 }}>CONFIGURED TIMELINE · LIVE STATUS</div>
-              <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", marginTop: 10 }}>
+            <div className="ops-timeline">
+              <span className="ops-eyebrow">CONFIGURED TIMELINE · LIVE STATUS</span>
+              <div className="ops-timeline-grid">
                 {timeline.map((gate) => (
-                  <div key={gate.label} style={{ alignItems: "center", border: "1px solid var(--border)", borderRadius: 10, display: "flex", gap: 10, justifyContent: "space-between", padding: 11 }}>
-                    <div><strong style={{ fontSize: 12 }}>{gate.label}</strong><div style={{ color: "var(--text-3)", fontSize: 11, marginTop: 3 }}>{formatTimestamp(gate.at)}</div></div>
-                    <span className={gate.state === "open" || gate.state === "open now" || gate.state === "available" || gate.state === "live" ? "badge badge-live" : "badge"}>{gate.state}</span>
+                  <div className="ops-gate" key={gate.label}>
+                    <div>
+                      <div className="ops-gate-name">{gate.label}</div>
+                      <div className="ops-gate-at">{formatTimestamp(gate.at)}</div>
+                    </div>
+                    <span className={gate.state === "open" || gate.state === "open now" || gate.state === "available" || gate.state === "live" ? "ops-pill ops-pill-green" : "ops-pill"}>{gate.state}</span>
                   </div>
                 ))}
               </div>
@@ -619,34 +812,79 @@ export function EventOperationsAdminWorkspace({
 
         {workspace ? (
           <>
-            <section className="card" style={{ marginTop: 18, padding: 20 }}>
-              <div className="eyebrow">VENUE CHECK-IN ENTRY</div>
-              <h2 className="h-title" style={{ margin: "8px 0 0" }}>展示或分享参会者签到链接</h2>
-              <p style={{ color: "var(--text-3)", fontSize: 13, lineHeight: 1.6 }}>这是真实的已报名参会者签到路由。没有经过验证的本地二维码编码器时不会生成二维码图片；请直接复制或投屏此链接。</p>
-              <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 10, marginTop: 12 }}>
-                <a className="btn btn-ghost" href={checkInHref} rel="noreferrer" target="_blank"><Icon name="arrowUR" size={16} />打开签到页</a>
-                <button className="btn btn-primary" onClick={copyCheckInLink} type="button"><Icon color="var(--on-dark)" name="copy" size={16} />复制链接</button>
-                <code style={{ background: "var(--surface-2)", borderRadius: 8, flex: "1 1 360px", overflowWrap: "anywhere", padding: "10px 12px" }}>{checkInHref}</code>
+            <section className="ops-card ops-section">
+              <div>
+                <span className="ops-eyebrow">VENUE CHECK-IN ENTRY</span>
+                <div style={{ marginTop: 8 }}><strong className="ops-section-title">展示或分享参会者签到链接</strong></div>
               </div>
-              <div style={{ color: checkInOpen ? "var(--accent)" : "var(--text-3)", fontSize: 12, marginTop: 10 }}>签到窗口：{checkInOpen ? "当前开放" : "已关闭或尚未开放"}</div>
+              <p className="ops-note">这是真实的已报名参会者签到路由。没有经过验证的本地二维码编码器时不会生成二维码图片；请直接复制或投屏此链接。</p>
+              <div className="ops-checkin-row">
+                <a className="ops-btn ops-btn-ghost" href={checkInHref} rel="noreferrer" target="_blank">打开签到页</a>
+                <button className="ops-btn ops-btn-dark" onClick={copyCheckInLink} type="button">复制链接</button>
+                <code className="ops-code">{checkInHref}</code>
+              </div>
+              <div className="ops-note" style={{ color: checkInOpen ? "#2F6B4F" : "#9FA3C4" }}>签到窗口：{checkInOpen ? "当前开放" : "已关闭或尚未开放"}</div>
             </section>
 
-            <section className="card" style={{ marginTop: 18, overflowX: "auto", padding: 20 }}>
-              <div className="eyebrow">REAL REGISTRATION DIRECTORY</div>
-              <h2 className="h-title" style={{ margin: "8px 0 4px" }}>参会者与到场状态</h2>
-              <p style={{ color: "var(--text-3)", fontSize: 13, margin: "0 0 14px" }}>{workspace.participants.length - workspace.checkIns.length} 人未到场 · 通过主办方专用接口逐一标记到场。</p>
-              <table style={{ borderCollapse: "collapse", minWidth: 820, width: "100%" }}>
-                <thead><tr>{["参会者", "公司 / 角色", "行业", "画像", "迟到报名", "签到"].map((label) => <th key={label} style={{ borderBottom: "1px solid var(--border)", padding: 10, textAlign: "left" }}>{label}</th>)}</tr></thead>
-                <tbody>{workspace.participants.map((participant) => {
+            <section className="ops-card ops-section">
+              <div className="ops-section-head">
+                <div>
+                  <span className="ops-eyebrow">REAL REGISTRATION DIRECTORY</span>
+                  <strong className="ops-section-title">参会者与到场状态</strong>
+                  <span className="ops-section-sub">{workspace.participants.length - workspace.checkIns.length} 人未到场 · 通过主办方专用接口逐一标记到场。</span>
+                </div>
+              </div>
+              {workspace.participants.length === 0 ? <div className="ops-empty">尚无报名。</div> : null}
+              <div className="ops-dir">
+                {workspace.participants.length > 0 ? (
+                  <div className="ops-dir-head">
+                    <span>参会者</span><span>公司 / 角色</span><span>行业</span><span>画像</span><span>迟到报名</span><span>签到</span>
+                  </div>
+                ) : null}
+                {workspace.participants.map((participant) => {
                   const checkIn = checkInsByParticipant.get(participant.participantId);
-                  return <tr key={participant.participantId}><td style={{ borderBottom: "1px solid var(--border)", padding: 10 }}><strong>{participant.displayName}</strong><div className="mono" style={{ color: "var(--text-3)", fontSize: 10 }}>{participant.participantId}</div></td><td style={{ borderBottom: "1px solid var(--border)", padding: 10 }}>{[participant.role, participant.company].filter(Boolean).join(" · ") || "—"}</td><td style={{ borderBottom: "1px solid var(--border)", padding: 10 }}>{participant.industry ?? "—"}</td><td style={{ borderBottom: "1px solid var(--border)", padding: 10 }}>{participant.profileCompleteness}</td><td style={{ borderBottom: "1px solid var(--border)", padding: 10 }}>{participant.lateRegistration ? "是" : "否"}</td><td style={{ borderBottom: "1px solid var(--border)", padding: 10 }}>{checkIn ? <div><span className="badge badge-live">已签到</span><div style={{ color: "var(--text-3)", fontSize: 10, marginTop: 4 }}>{formatTimestamp(checkIn.checkedInAt)}</div></div> : <button className="btn btn-ghost btn-sm" disabled={!checkInOpen || busy !== null} onClick={() => markParticipantArrived(participant.participantId)} type="button">{busy === `checkin:${participant.participantId}` ? "记录中…" : checkInOpen ? "标记到场" : "签到未开放"}</button>}</td></tr>;
-                })}</tbody>
-              </table>
+                  return (
+                    <div className="ops-dir-row" key={participant.participantId}>
+                      <span className="ops-dir-person">
+                        <span className="ops-ava">{participant.displayName.slice(0, 1)}</span>
+                        <span className="ops-dir-name">
+                          <strong>{participant.displayName}</strong>
+                          <span className="ops-dir-id">{participant.participantId}</span>
+                        </span>
+                      </span>
+                      <span className="ops-dir-cell">{[participant.role, participant.company].filter(Boolean).join(" · ") || "—"}</span>
+                      <span className="ops-dir-cell">{participant.industry ?? "—"}</span>
+                      <span className="ops-dir-cell">{participant.profileCompleteness}</span>
+                      <span className="ops-dir-cell">{participant.lateRegistration ? "是" : "否"}</span>
+                      <span className="ops-dir-cell">
+                        {checkIn ? (
+                          <span style={{ display: "inline-flex", flexDirection: "column", gap: 4 }}>
+                            <span className="ops-pill ops-pill-green">● 已签到</span>
+                            <span className="ops-gate-at">{formatTimestamp(checkIn.checkedInAt)}</span>
+                          </span>
+                        ) : (
+                          <button className="ops-btn ops-btn-ghost ops-btn-sm" disabled={!checkInOpen || busy !== null} onClick={() => markParticipantArrived(participant.participantId)} type="button">
+                            {busy === `checkin:${participant.participantId}` ? "记录中…" : checkInOpen ? "标记到场" : "签到未开放"}
+                          </button>
+                        )}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </section>
 
-            <section className="card" style={{ marginTop: 18, padding: 20 }}>
-              <div className="eyebrow">CONSENT AUDIT</div><h2 className="h-title" style={{ margin: "8px 0 14px" }}>名片交换审计</h2>
-              {workspace.contactRequests.length === 0 ? <div>尚无名片交换申请。</div> : workspace.contactRequests.map((request) => <div key={request.requestId} style={{ borderTop: "1px solid var(--border)", display: "grid", gap: 5, padding: "12px 0" }}><strong>{request.requesterParticipantId} → {request.targetParticipantId}</strong><span>{request.status}</span></div>)}
+            <section className="ops-card ops-section">
+              <div>
+                <span className="ops-eyebrow">CONSENT AUDIT</span>
+                <div style={{ marginTop: 8 }}><strong className="ops-section-title">名片交换审计</strong></div>
+              </div>
+              {workspace.contactRequests.length === 0 ? <div className="ops-empty">尚无名片交换申请。</div> : workspace.contactRequests.map((request) => (
+                <div className="ops-audit-row" key={request.requestId}>
+                  <strong>{request.requesterParticipantId} → {request.targetParticipantId}</strong>
+                  <span className="ops-pill">{request.status}</span>
+                </div>
+              ))}
             </section>
           </>
         ) : null}
