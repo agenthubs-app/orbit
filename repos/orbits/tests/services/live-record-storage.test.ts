@@ -157,5 +157,7 @@ test("orbit records migration exposes indexed JSONB live record shape", () => {
   assert.match(ORBIT_RECORDS_SCHEMA_SQL, /orbit_records_workspace_collection_idx/i);
   assert.match(ORBIT_RECORDS_SCHEMA_SQL, /orbit_records_source_idx/i);
   assert.match(ORBIT_RECORDS_SCHEMA_SQL, /orbit_records_target_idx/i);
-  assert.match(ORBIT_RECORDS_SCHEMA_SQL, /orbit_records_search_text_idx/i);
+  assert.match(ORBIT_RECORDS_SCHEMA_SQL, /orbit_records_search_text_trgm_idx[\s\S]*gin \(search_text public\.gin_trgm_ops\)/i);
+  assert.match(ORBIT_RECORDS_SCHEMA_SQL, /create extension pg_trgm with schema public/i);
+  assert.match(ORBIT_RECORDS_SCHEMA_SQL, /drop index if exists orbit_records_search_text_idx/i);
 });

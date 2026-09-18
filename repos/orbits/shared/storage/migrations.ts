@@ -41,8 +41,33 @@ create index if not exists orbit_records_occurred_at_idx
 create index if not exists orbit_records_updated_at_idx
   on orbit_records (workspace_id, updated_at desc);
 
-create index if not exists orbit_records_search_text_idx
-  on orbit_records using gin (to_tsvector('simple', search_text));
+-- Substring search (search_text ilike '%x%') is accelerated by trigrams. The
+-- former to_tsvector index was never queried by any code path and is retired.
+-- Patterns shorter than three characters produce no trigram and fall back to a
+-- filter; results are identical either way.
+-- Installed into public and referenced schema-qualified, so a session whose
+-- search_path is a private schema (tests, tenants) still resolves the operator
+-- class. "if not exists" is not race-safe across parallel migrators, so a
+-- concurrent creator's unique violation is treated as benign.
+do $$
+begin
+  if not exists (select 1 from pg_extension where extname = 'pg_trgm') then
+    begin
+      create extension pg_trgm with schema public;
+    exception
+      when unique_violation then null;
+    end;
+  end if;
+  if (select n.nspname from pg_extension e join pg_namespace n on n.oid = e.extnamespace where e.extname = 'pg_trgm') <> 'public' then
+    alter extension pg_trgm set schema public;
+  end if;
+end
+$$;
+
+create index if not exists orbit_records_search_text_trgm_idx
+  on orbit_records using gin (search_text public.gin_trgm_ops);
+
+drop index if exists orbit_records_search_text_idx;
 
 create index if not exists orbit_records_identity_payload_idx
   on orbit_records (workspace_id, collection_name, (payload->>'id'))
