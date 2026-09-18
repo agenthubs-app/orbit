@@ -93,3 +93,24 @@ test("revocation clears one domain's mirror and leaves the others readable", asy
   await repoA.applyDomainPage(scopesA[0]!, page("tasks", "epoch-a", ["task:a:1"]));
   assert.deepEqual((await repoA.listRecords({ workspaceId: WORKSPACE, kind: "task" })).map((record) => record.id), ["task:a:1"]);
 });
+
+test("epoch rotation retires every row, cursor and readable flag of the old epoch so the next pull is a full rebuild", async (t) => {
+  const { database, scopesA, repoA } = await device(t);
+  const rotated = scopesFor(A, "epoch-a2");
+  const repoRotated = createLocalSyncRepository({
+    actorId: A, database, baseUrl, registeredDomainIds: ["tasks", "notes"], activeReadScopes: () => rotated, hashPayload,
+  });
+  assert.deepEqual(await repoRotated.listRecords({ workspaceId: WORKSPACE, kind: "task" }), [], "nothing is readable under the new epoch yet");
+  assert.equal(await repoRotated.retireEpochs(WORKSPACE, "tasks", "epoch-a2"), 3, "three old-epoch task rows retired");
+  const leftovers = await database.all<{ table: string; n: number }>(
+    `SELECT 'records' AS "table", COUNT(*) AS n FROM sync_records WHERE domain_id='tasks' AND authorization_epoch='epoch-a'
+     UNION ALL SELECT 'cursors', COUNT(*) FROM sync_cursors WHERE domain_id='tasks' AND authorization_epoch='epoch-a'
+     UNION ALL SELECT 'scope', COUNT(*) FROM local_read_scope_state WHERE domain_id='tasks' AND authorization_epoch='epoch-a'`,
+  );
+  assert.deepEqual(leftovers.map((row) => row.n), [0, 0, 0]);
+  assert.deepEqual((await repoA.listRecords({ workspaceId: WORKSPACE, kind: "note" })).map((record) => record.id), ["note:a:1"], "other domains keep their old-epoch rows");
+  await repoRotated.applyDomainPage(rotated[0]!, page("tasks", "epoch-a2", ["task:a:1", "task:a:9"]));
+  assert.deepEqual((await repoRotated.listRecords({ workspaceId: WORKSPACE, kind: "task" })).map((record) => record.id).sort(), ["task:a:1", "task:a:9"]);
+  await assert.rejects(repoRotated.retireEpochs(WORKSPACE, "unknown", "epoch-a2"), /not registered/);
+  void scopesA;
+});

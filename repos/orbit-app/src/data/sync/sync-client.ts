@@ -6,6 +6,8 @@ import type {
   SyncRecord,
 } from "../../api/contract/sync";
 import type { OrbitApiClient } from "../../api/client";
+import type { DomainManifest, DomainPage, OfflineReadEnvelope } from "../../api/contract/universal-read";
+import { domainManifestSchema, domainPageSchema, offlineReadEnvelopeSchema } from "../../api/schema/universal-read";
 
 const NONEMPTY = z.string().refine((value) => value.trim().length > 0);
 const TIMESTAMP = z.iso.datetime({ offset: true });
@@ -51,7 +53,25 @@ export interface SyncClientPage extends SyncPage {
   records: readonly SyncRecord[];
 }
 
+export interface SyncLeaseInput {
+  /** The base URL this lease will be replayed against (proxy-aware). */
+  baseUrl: string;
+  signal?: AbortSignal;
+}
+
+export interface SyncDomainPageInput {
+  domainId: string;
+  cursor?: string;
+  limit?: number;
+  signal?: AbortSignal;
+}
+
 export interface SyncClient {
+  /** Server-issued offline read lease: grants with authorization epochs per registered domain. */
+  getLease(input: SyncLeaseInput): Promise<OfflineReadEnvelope>;
+  getManifest(input?: { signal?: AbortSignal }): Promise<DomainManifest>;
+  /** One page of one domain; the cursor is bound to actor / workspace / domain / epoch. */
+  getDomainPage(input: SyncDomainPageInput): Promise<DomainPage>;
   getPage(input: {
     actorId: string;
     cursor?: string;
@@ -97,7 +117,43 @@ export class SyncResetRequiredError extends SyncRequestError {
 export function createSyncClient(
   client: Pick<OrbitApiClient, "get">,
 ): SyncClient {
+  function failed(result: { status: number; error: { code: string; message: string; context?: Readonly<Record<string, string>> } }): never {
+    const errorInput = { code: result.error.code, context: result.error.context, message: result.error.message, status: result.status };
+    if (result.status === 409 && result.error.code === "CONFLICT" && result.error.context?.syncErrorCode === "SYNC_RESET_REQUIRED") {
+      throw new SyncResetRequiredError(errorInput);
+    }
+    throw new SyncRequestError(errorInput);
+  }
   return {
+    async getLease(input) {
+      assertNonempty(input.baseUrl, "baseUrl");
+      const result = await client.get<unknown>(`/api/sync/lease?baseUrl=${encodeURIComponent(input.baseUrl)}`, input.signal ? { signal: input.signal } : undefined);
+      if (!result.success) failed(result);
+      const parsed = offlineReadEnvelopeSchema.safeParse(result.data);
+      if (!parsed.success) throw new TypeError("invalid offline read lease");
+      return parsed.data;
+    },
+    async getManifest(input = {}) {
+      const result = await client.get<unknown>("/api/sync/manifest", input.signal ? { signal: input.signal } : undefined);
+      if (!result.success) failed(result);
+      const parsed = domainManifestSchema.safeParse(result.data);
+      if (!parsed.success) throw new TypeError("invalid sync manifest");
+      return parsed.data;
+    },
+    async getDomainPage(input) {
+      assertNonempty(input.domainId, "domainId");
+      const limit = input.limit ?? 100;
+      if (!Number.isSafeInteger(limit) || limit < 1 || limit > 200) throw new TypeError("sync limit is invalid");
+      const query = new URLSearchParams();
+      if (input.cursor !== undefined) { assertNonempty(input.cursor, "cursor"); query.set("cursor", input.cursor); }
+      query.set("limit", String(limit));
+      const result = await client.get<unknown>(`/api/sync/domains/${encodeURIComponent(input.domainId)}?${query.toString()}`, input.signal ? { signal: input.signal } : undefined);
+      if (!result.success) failed(result);
+      const parsed = domainPageSchema.safeParse(result.data);
+      if (!parsed.success) throw new TypeError("invalid sync domain page");
+      if (parsed.data.domainId !== input.domainId) throw new TypeError("sync domain page mismatch");
+      return parsed.data;
+    },
     async getPage(input): Promise<SyncClientPage> {
       assertNonempty(input.actorId, "actorId");
       if (input.cursor !== undefined) {

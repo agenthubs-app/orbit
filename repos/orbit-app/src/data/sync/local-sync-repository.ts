@@ -47,6 +47,7 @@ const OUTBOX_OPERATIONS = new Set<LocalSyncOutboxOperation>([
 const SYNC_TIMESTAMP = z.iso.datetime({ offset: true });
 const PLAIN_JSON = z.json();
 const LAST_SUCCESSFUL_WORKSPACE_KEY = "last_successful_workspace_id";
+const OFFLINE_READ_LEASE_KEY = "offline_read_lease";
 
 export type LocalSyncBootstrapState = "pending" | "complete";
 export type LocalSyncOutboxOperation = "create" | "update" | "delete";
@@ -263,6 +264,45 @@ export function createLocalSyncRepository(input: {
       }
     },
 
+    /** Domain-scoped cursor (v2): read directly under an explicit, bound scope. */
+    async getScopeCursor(value: ReadScope): Promise<LocalSyncCursor | null> {
+      const scope = assertScope(value);
+      const row = await database.get<SyncCursorRow>(
+        `SELECT workspace_id, cursor, last_successful_sync_at, bootstrap_state
+         FROM sync_cursors WHERE workspace_id = ? AND domain_id = ? AND authorization_epoch = ?`,
+        scopeParameters(scope),
+      );
+      return row
+        ? { workspaceId: row.workspace_id, cursor: row.cursor, lastSyncedAt: row.last_successful_sync_at, bootstrapState: row.bootstrap_state }
+        : null;
+    },
+
+    async rememberWorkspace(workspaceId: string): Promise<void> {
+      assertNonEmptyString(workspaceId, "workspaceId");
+      await database.run(
+        `INSERT INTO sync_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+        [LAST_SUCCESSFUL_WORKSPACE_KEY, workspaceId],
+      );
+    },
+
+    /** The last server-issued lease, kept with the mirror so an offline cold start can rebind its scopes. */
+    async getLease(): Promise<unknown | null> {
+      const row = await database.get<{ value: string }>("SELECT value FROM sync_meta WHERE key = ?", [OFFLINE_READ_LEASE_KEY]);
+      if (!row) return null;
+      try { return JSON.parse(row.value) as unknown; } catch { return null; }
+    },
+
+    async setLease(envelope: unknown | null): Promise<void> {
+      if (envelope === null) {
+        await database.run("DELETE FROM sync_meta WHERE key = ?", [OFFLINE_READ_LEASE_KEY]);
+        return;
+      }
+      await database.run(
+        `INSERT INTO sync_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+        [OFFLINE_READ_LEASE_KEY, JSON.stringify(envelope)],
+      );
+    },
+
     async getLastWorkspaceId(): Promise<string | null> {
       const row = await database.get<{ value: string }>(
         "SELECT value FROM sync_meta WHERE key = ?",
@@ -369,6 +409,30 @@ export function createLocalSyncRepository(input: {
             bootstrapState: row.bootstrap_state,
           }
         : null;
+    },
+
+    /**
+     * Epoch rotation: every mirror row, cursor, index and readable flag issued under
+     * another authorization epoch of this domain is dropped so the next pull is a
+     * full rebuild. Local pending/conflicted evidence is kept, as in resetDomain.
+     */
+    async retireEpochs(workspaceId: string, domainId: string, keepAuthorizationEpoch: string): Promise<number> {
+      assertNonEmptyString(workspaceId, "workspaceId");
+      assertNonEmptyString(domainId, "domainId");
+      assertNonEmptyString(keepAuthorizationEpoch, "authorizationEpoch");
+      if (!registered.has(domainId)) throw new TypeError("domain is not registered");
+      let retired = 0;
+      await database.transaction(async () => {
+        for (const table of ["sync_records", "sync_cursors", "local_read_assets", "local_read_index", "local_read_scope_state"]) {
+          const canonical = table === "sync_records" ? " AND sync_state='synced'" : "";
+          const result = await database.run(
+            `DELETE FROM ${table} WHERE workspace_id=? AND domain_id=? AND authorization_epoch<>?${canonical}`,
+            [workspaceId, domainId, keepAuthorizationEpoch],
+          );
+          if (table === "sync_records") retired = result.changes;
+        }
+      });
+      return retired;
     },
 
     async resetDomain(value: ReadScope): Promise<void> {
