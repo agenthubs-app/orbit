@@ -53,8 +53,10 @@ function navHrefs(): readonly string[] {
   return hrefs;
 }
 
-test("the nav order is always iOrbit, events, schedule, contacts", () => {
-  assert.deepEqual(navHrefs(), ["/events", "/today", "/contacts"]);
+test("the nav order is always iOrbit, events, contacts", () => {
+  // 2026-09-18 用户决定：Calendar/日程 tab 从导航移除，日历能力合入 iOrbit；
+  // /today 路由保留但不再出现在主导航。
+  assert.deepEqual(navHrefs(), ["/events", "/contacts"]);
 });
 
 test("starfield desktop and mobile trees delegate navigation to the shared product order", () => {
@@ -97,10 +99,12 @@ test("the retired /schedule and /followups routes still have a page.tsx (redirec
   }
 });
 
-test("the nav label for the merged entry is 日程/Schedule, not the old Today wording", () => {
-  assert.match(
-    shellSource,
-    /const links = \[\s*\["\/events", t\(\{ en: "Events", zh: "活动" \}\), "events"\],\s*\["\/today", t\(\{ en: "Schedule", zh: "日程" \}\), "today"\]/,
+test("the retired schedule/日程 entry stays out of the nav links", () => {
+  // 2026-09-18 用户决定：Calendar/日程 tab 从导航移除（日历合入 iOrbit），
+  // 取代此前 T3「today-schedule 合并」后保留日程入口的决定；/today 路由保留。
+  assert.ok(
+    !navHrefs().includes("/today"),
+    "/today must not return to the nav — calendar is merged into iOrbit",
   );
 });
 

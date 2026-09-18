@@ -63,32 +63,27 @@ test("the mobile hamburger and compact menu layer are present", () => {
   const menuIdx = shell.indexOf("const menuItems");
   const menuBlock = shell.slice(menuIdx, shell.indexOf("];", menuIdx));
   assert.ok(menuBlock.includes('"agent"'), "iOrbit present in the mobile menu");
-  assert.ok(menuBlock.includes('"today"'), "Today present in the mobile menu");
+  assert.ok(!menuBlock.includes('"today"'), "Today/日程 removed from the mobile menu (merged into iOrbit, 2026-09-18)");
   assert.ok(!menuBlock.includes("icon:"), "mobile destinations are text-only");
   assert.ok(shell.includes("OrbitNavMobileAccountLinks"), "session-aware account group present");
   assert.ok(shell.includes("orbit-nav-menu-divider"), "primary and account groups are separated");
 });
 
-// T3 (today-schedule merge): the hamburger used to carry a standalone
-// "schedule" entry (clock icon) alongside "today". Schedule folded into
-// Today (now labeled 日程/Schedule, calendar icon) — the standalone entry
-// must be gone.
-test("the standalone schedule item is gone and the primary order stays canonical", () => {
+// 2026-09-18 用户决定：Calendar/日程 tab 从导航移除，日历能力合入 iOrbit；
+// /today 路由保留但从 iOrbit 内进入，主导航与汉堡菜单都不再出现日程项。
+test("the calendar entry is gone and the primary order stays canonical", () => {
   const menuIdx = shell.indexOf("const menuItems");
   const menuBlock = shell.slice(menuIdx, shell.indexOf("];", menuIdx));
 
   assert.ok(!/key: "schedule"/.test(menuBlock), "no standalone schedule entry in the mobile menu");
+  assert.ok(!/key: "today"/.test(menuBlock), "no today/日程 entry in the mobile menu");
   assert.ok(
     menuBlock.indexOf('key: "agent"') < menuBlock.indexOf('key: "events"'),
     "mobile menu starts with iOrbit",
   );
   assert.ok(
-    menuBlock.indexOf('key: "events"') < menuBlock.indexOf('key: "today"'),
-    "mobile menu keeps 活动/Events before 日程/Schedule",
-  );
-  assert.ok(
-    menuBlock.indexOf('key: "today"') < menuBlock.indexOf('key: "cards"'),
-    "mobile menu keeps 日程/Schedule before 人脉/Contacts",
+    menuBlock.indexOf('key: "events"') < menuBlock.indexOf('key: "cards"'),
+    "mobile menu keeps 活动/Events before 人脉/Contacts",
   );
 });
 

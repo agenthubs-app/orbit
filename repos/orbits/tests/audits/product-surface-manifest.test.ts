@@ -192,35 +192,19 @@ test("redirect aliases do not require route loading and error surfaces", () => {
   }
 });
 
-test("imperative starfield controls retain their static runtime evidence", () => {
+test("starfield is retired from routes after the Orbit_0918 landing cutover", () => {
+  // 2026-09-18 批次 0：`/` 与 `/app` 改渲染 OrbitLanding0918，starfield 组件
+  // 保留在仓库（其组件级测试仍有效）但不再出现在任何路由的表面清单中。
   const starfieldActions = manifest.surfaces
     .filter((surface) => surface.route === "/" || surface.route === "/app")
     .flatMap((surface) => surface.actions)
     .filter((action) => action.sourceFile.includes("orbit-starfield-"));
 
-  for (const label of [
-    "发送给 iOrbit",
-    "我要创业",
-    "看看谁能帮我",
-    "找金融 AI 方向的人脉",
-    "推荐 AI / 出海活动",
-  ]) {
-    const matching = starfieldActions.filter((action) => action.label === label);
-    assert.equal(matching.length, 4, `two routes by two layouts: ${label}`);
-    assert.equal(
-      matching.every(
-        (action) =>
-          action.behaviorEvidence === "present-imperative-static" &&
-          action.imperativeBehaviorEvidence.some((evidence) =>
-            evidence.sourceFile === "repos/orbits/app/(app)/app/orbit-starfield-agent-prompt.ts" &&
-            evidence.event === "click" &&
-            evidence.selector === (label === "发送给 iOrbit" ? "#skEnter" : ".sk-chip") &&
-            evidence.line > 0),
-      ),
-      true,
-      `missing imperative evidence: ${label}`,
-    );
-  }
+  assert.equal(
+    starfieldActions.length,
+    0,
+    "starfield actions must not appear on / or /app after the Orbit_0918 cutover",
+  );
 });
 
 test("starfield navigation belongs to shared React OrbitTopNav and its language toggle", () => {

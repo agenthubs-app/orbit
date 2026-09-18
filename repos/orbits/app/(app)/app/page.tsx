@@ -1,12 +1,11 @@
 import { redirect } from "next/navigation";
 
-import { OrbitStarfieldHome } from "./orbit-starfield-home";
+import { OrbitLanding0918 } from "./orbit-landing-0918";
 import { OrbitReferenceStyles } from "./orbit-reference-styles";
 import { auth } from "../../../auth";
 
-// The starfield journey stays the anonymous homepage; a signed-in member's
-// home is the personal console at /app/home, so every login lands on the
-// unified "what should I do now" surface instead of the marketing journey.
+// Orbit_0918 新 UI 落地页（批次 0）：匿名访客看到营销落地页；已登录会员的
+// 首页仍是 /app/home 个人控制台。旧 starfield 组件保留但不再由路由渲染。
 export default async function AppHomePage() {
   const session = await auth();
   if (session?.user?.id) {
@@ -16,7 +15,7 @@ export default async function AppHomePage() {
   return (
     <>
       <OrbitReferenceStyles />
-      <OrbitStarfieldHome authenticated={false} />
+      <OrbitLanding0918 authenticated={false} />
     </>
   );
 }

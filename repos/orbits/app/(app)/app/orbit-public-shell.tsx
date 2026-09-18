@@ -381,13 +381,13 @@ export function OrbitTopNav({
   };
   const links = [
     ["/events", t({ en: "Events", zh: "活动" }), "events"],
-    ["/today", t({ en: "Schedule", zh: "日程" }), "today"],
     ["/contacts", t({ en: "Contacts", zh: "人脉" }), "cards"],
   ] as const;
+  // 2026-09-18 用户决定：导航不再有 Calendar/日程 tab——日历能力合入 iOrbit。
+  // /today 与 /schedule 路由保留，从 iOrbit 内进入；menuItems 同步移除日程项。
   const menuItems = [
     { active: isAgent, href: "/app/agent", key: "agent", label: "iOrbit" },
     { active: active === "events", href: productHref("/events"), key: "events", label: t({ en: "Events", zh: "活动" }) },
-    { active: active === "today", href: productHref("/today"), key: "today", label: t({ en: "Schedule", zh: "日程" }) },
     { active: active === "cards", href: productHref("/contacts"), key: "cards", label: t({ en: "Contacts", zh: "人脉" }) },
   ];
 

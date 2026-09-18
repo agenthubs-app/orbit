@@ -5,6 +5,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
 import { OrbitStarfieldHome } from "../app/(app)/app/orbit-starfield-home";
+import { OrbitLanding0918 } from "../app/(app)/app/orbit-landing-0918";
 
 const liveDatabaseEnvKeys = [
   "ORBIT_EVENT_DATABASE_URL",
@@ -120,9 +121,10 @@ test("scaffold exposes the runnable Next.js App Router contract", async () => {
   assert.match(pageSource, /auth\(\)/);
   assert.match(pageSource, /SessionProvider/);
   assert.match(pageSource, /OrbitLanguageProvider/);
+  // Orbit_0918 批次 0：`/` 与 `/app` 改渲染新 UI 落地页（纯视觉）。
   assert.match(
     pageSource,
-    /<OrbitStarfieldHome authenticated=\{Boolean\(session\?\.user\?\.id\)\} \/>/,
+    /<OrbitLanding0918 authenticated=\{Boolean\(session\?\.user\?\.id\)\} \/>/,
   );
 
   // `app/page.tsx` now authenticates through Auth.js, so invoking the route
@@ -155,4 +157,22 @@ test("scaffold exposes the runnable Next.js App Router contract", async () => {
   assert.doesNotMatch(html, /Mika Tanaka|Tokyo Founder Demo Night|Kenji Sato/);
   assert.doesNotMatch(html, /data-state-boundary="shared-ui-state-view"/);
   assert.doesNotMatch(html, /ready for your review|follow-up draft/i);
+
+  // Orbit_0918 批次 0：新 UI 落地页（当前 `/` 与 `/app` 的实际路由组件）。
+  let landingHtml = "";
+  await withUnconfiguredLiveStorage(async () => {
+    await assert.doesNotReject(async () => {
+      landingHtml = renderToStaticMarkup(
+        <OrbitLanding0918 authenticated={false} />,
+      );
+    });
+  });
+
+  assert.match(landingHtml, /<main/);
+  assert.match(landingHtml, /data-orbit-real-page="landing-0918"/);
+  assert.match(landingHtml, /href="\/app\/events/);
+  assert.match(landingHtml, /href="\/app\/contacts/);
+  assert.match(landingHtml, /href="\/app\/agent/);
+  assert.match(landingHtml, /href="\/app\/account\/signup\?next=%2Fapp%2Fhome/);
+  assert.doesNotMatch(landingHtml, /JA:|ZH:|EN:/);
 });
