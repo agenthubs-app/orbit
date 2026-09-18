@@ -346,6 +346,7 @@ function recommendationForEvent(
   return {
     eventId: event.id,
     title: event.title,
+    ...(event.coverPath ? { coverPath: event.coverPath } : {}),
     startsAt: event.startsAt,
     endsAt: event.endsAt,
     location: event.location,

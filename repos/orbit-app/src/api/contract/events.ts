@@ -41,6 +41,8 @@ export interface EventEvidenceContract {
 export interface EventRecordContract {
   id: string;
   title: string;
+  /** Cover image path served by the app origin; absent when the event has no artwork. */
+  coverPath?: string;
   description: string;
   venue: string;
   startsAt: string;

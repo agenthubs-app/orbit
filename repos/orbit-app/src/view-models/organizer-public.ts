@@ -223,59 +223,19 @@ function eventLocation(event: UnknownRecord): string {
   );
 }
 
-const eventCoverById: Record<string, string> = {
-  event_01: "/orbit-covers/restaurant.jpg",
-  event_02: "/orbit-covers/events/ai-workflow-poc-roundtable.jpg",
-  event_03: "/orbit-covers/events/cross-border-ecommerce-meetup.jpg",
-  event_04: "/orbit-covers/events/investor-founder-salon.jpg",
-  event_05: "/orbit-covers/events/chinese-business-community-salon.jpg",
-  event_06: "/orbit-covers/chip.jpg",
-  event_07: "/orbit-covers/finance.jpg",
-  event_08: "/orbit-covers/ai.jpg",
-  event_09: "/orbit-covers/fashion.jpg",
-  event_10: "/orbit-covers/fashion.jpg",
-  event_signup_01: "/orbit-covers/events/kansai-business-connect.jpg",
-  event_signup_02: "/orbit-covers/events/tokyo-ai-partner-meetup.jpg",
-  event_signup_03: "/orbit-covers/events/investor-founder-salon.jpg"
-};
+// Covers come from the event record; this view model no longer keeps its own
+// copy of the id lookup table. See features/events/storage/event-cover-catalogue.ts.
+const EVENT_COVER_PLACEHOLDER = "/orbit-covers/meeting.jpg";
 
-function eventCoverPath(event: UnknownRecord, title: string): string {
-  const explicitCover =
+function eventCoverPath(event: UnknownRecord): string {
+  return (
     stringField(event, "coverPath") ||
     stringField(event, "coverUrl") ||
     stringField(event, "imageUrl") ||
-    stringField(event, "logoUrl") ||
-    stringField(event, "detailLogoUrl");
-
-  if (explicitCover) {
-    return explicitCover;
-  }
-
-  const id = stringField(event, "id");
-
-  if (eventCoverById[id]) {
-    return eventCoverById[id];
-  }
-
-  const normalized = title.toLowerCase();
-
-  if (normalized.includes("关西") || normalized.includes("kansai")) {
-    return "/orbit-covers/events/kansai-business-connect.jpg";
-  }
-
-  if (normalized.includes("ai")) {
-    return "/orbit-covers/events/tokyo-ai-partner-meetup.jpg";
-  }
-
-  if (normalized.includes("投资") || normalized.includes("创始")) {
-    return "/orbit-covers/events/investor-founder-salon.jpg";
-  }
-
-  if (normalized.includes("电商") || normalized.includes("跨境")) {
-    return "/orbit-covers/events/cross-border-ecommerce-meetup.jpg";
-  }
-
-  return "/orbit-covers/meeting.jpg";
+    stringField(nestedRecord(event, "sourceMetadata"), "coverPath") ||
+    stringField(nestedRecord(event, "sourceMetadata"), "coverUrl") ||
+    EVENT_COVER_PLACEHOLDER
+  );
 }
 
 function participantCount(event: UnknownRecord): number {
@@ -300,7 +260,7 @@ function eventToView(
   const participants = participantCount(event);
 
   return {
-    coverPath: eventCoverPath(event, title),
+    coverPath: eventCoverPath(event),
     detailLine: [startsAt, location].filter(Boolean).join(" · "),
     href: `/events/${encodeURIComponent(id)}`,
     id,

@@ -123,6 +123,7 @@ test("scheduleToTimelineView combines followups and upcoming events into a Chine
     events: {
       events: [
         {
+          coverPath: "/orbit-covers/events/investor-founder-salon.jpg",
           id: "event_signup_03",
           sourceMetadata: {
             label:
@@ -280,6 +281,7 @@ test("scheduleToTimelineView keeps stale today followups from hiding upcoming ev
     events: {
       events: [
         {
+          coverPath: "/orbit-covers/events/tokyo-ai-partner-meetup.jpg",
           id: "event_signup_02",
           sourceMetadata: {
             label:

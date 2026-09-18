@@ -27,6 +27,7 @@ export interface LiveEventValueStoreSource {
 
 export interface LiveEventValueStoreRecord {
   attendeeDensity: number;
+  coverPath?: string;
   description: string;
   endsAt: string;
   evidenceIds: readonly string[];
@@ -209,8 +210,16 @@ function eventValueRecordFromLiveRecord(input: {
     readText(input.record.payload.industry) ??
     deriveIndustry(`${title} ${description} ${source.label}`);
 
+  // `payload.title` is the canonical display title written back by the event-core
+  // backfill; `payload.name` is the multilingual import原文 and is only a fallback.
+  const coverPath =
+    readText(input.record.payload.coverPath) ??
+    readText(input.record.payload.coverUrl) ??
+    undefined;
+
   return {
     attendeeDensity: input.attendeeCounts.get(input.record.recordId) ?? 0,
+    ...(coverPath ? { coverPath } : {}),
     description,
     endsAt:
       readText(input.record.payload.endsAt) ??

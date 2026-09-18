@@ -1,4 +1,5 @@
 import type { EventDTO } from "../../../shared/domain/contracts";
+import { eventCoverPathFor } from "../storage/event-cover-catalogue";
 import type { EventRecord } from "../event-crud-and-import/contract";
 import type { EventOperationsCatalogueSummary } from "../event-operations/repository";
 import {
@@ -215,6 +216,9 @@ export function publishedCanonicalEventToEventRecord(
     startsAt,
     status: event.phase === "ended" ? "cancelled" : "imported",
     title: event.title,
+    // Cover artwork travels with the event so the list, the detail page and the
+    // home recommendation feed all show the same image.
+    ...(eventCoverPathFor(event.eventId) ? { coverPath: eventCoverPathFor(event.eventId)! } : {}),
     venue,
   };
 }
