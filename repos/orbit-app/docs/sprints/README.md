@@ -12,7 +12,7 @@
 
 用户已批准[读取成本治理设计案 Rev 4]，要求逐个 Phase 执行，三次归位统一用 `merge` 不用 rebase。
 Phase 0 共三项：0067 生产源码归位（**completed**）→ 0068 phoneweb 基座归位（**completed**）→ 0069 增量同步存量归位（**blocked**，核心已落地、接线待 0075/0076）。
-后续 Phase A 量尺（0070，completed）、B 止血（0071–0074）、C 收口扩面（0075–0076）、D Web 本地优先（0077–0078）、
+后续 Phase A 量尺（0070，completed）、B 止血（0071 running，0072–0074）、C 收口扩面（0075–0076）、D Web 本地优先（0077–0078）、
 E 结构（0079–0080，需单独批准）依次领取，不并行。
 
 | Sprint | 目标 | 进入条件与当前事实 | 状态 |
@@ -21,6 +21,7 @@ E 结构（0079–0080，需单独批准）依次领取，不并行。
 | [0068](0068-phoneweb-runtime-baseline/GOAL.md) | phoneweb 运行时基座归位主线，作为 Web 本地优先的地基 | 五项 SC 全部 pass。两次 merge `708a50095` + `3fa710ee8` 及归位必需修复 `3730ddb2f` 已 fast-forward 进 `chat-agent`。App 全量 3433 → 3452 全绿零新增失败；phoneweb 真实 Chromium 登录读 78 联系人；Simulator 冷启动正常。3 个部署助手文件明确延后。发现 `npm test` glob 不含 `.mjs`，留 0070 处理 | completed |
 | [0069](0069-incremental-sync-baseline/GOAL.md) | sprint-0033 增量同步存量归位主线，主线 v2 本地 schema 不倒退 | run-01 结束。merge `ca8c50b15`（父 `daa4be352`+`d0333d2f0`）已进 `chat-agent`，落地 29 文件：服务端 `/api/sync` + cursor/read-service/migrations，App sync-client/coordinator/freshness/hook + v2 仓库移植。**屏幕接线全部退回**：分支 coordinator 无 epoch 来源（v2 要求 activeReadScopes，来源是 0075 的 lease）；分支把 sync 写锁触发器打进基础 schema 砸掉 0060–0062 共 26 项，store/lifecycle/notes 全部退回。App 3461/0fail、orbits 86fail=0067 基线、typecheck 0/0；`/api/sync` 认证 200。SC-05 按构造不可达；6 个测试文件延后 0045/0075/0076。0033 状态不变 | blocked |
 | [0070](0070-flow-topology-and-read-baseline/GOAL.md) | 三层数据流测试拓扑（本机 PG 扮演云端 · 客户端镜像只装本人数据）+ 读取成本基线闸门 | 依赖 0067（completed）；不依赖 0069 延后项，只用其已落地的 read-service。基线 `59f33a9ec`，Planner SHA 221eb101。合并 `dd9dd5a88`；基线冻结：contacts.list 6 SQL/1548 行/1.37 MB，dashboard 1 SQL/5068 行/3.57 MB。档位 L + 一次 App 全量（test glob 变更）。只用本机 PG | completed |
+| [0071](0071-read-budget-guardrails/GOAL.md) | 读取预算护栏：`listRecords.limit` 必填（`number \| "unbounded"`）+ Postgres LIMIT 下推 + 无上限读取棘轮 + 笔记列表投影 | 依赖 0070（completed）。基线 `4507b3e66`，Planner SHA b25f78a1。176 处调用/77 文件机械补 `"unbounded"`，零行为变化；档位 H，orbits 全量前后对照。只用本机 PG | running |
 
 已查清的前置事实：生产切库已于 2026-09-17 完成并正在服务（`www.orbitailink.com` 200、`/api/health` mode=live，
 新 Neon `orange-forest-30108072` 用量 34.6 MB／386.75 kB），旧 Vercel 项目 `paused=true`。
