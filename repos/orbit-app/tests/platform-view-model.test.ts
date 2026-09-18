@@ -11,6 +11,7 @@ const eventsPayload = {
   events: [
     {
       endsAt: "2026-08-04T16:00:00.000+09:00",
+      coverPath: "/orbit-covers/events/tokyo-ai-partner-meetup.jpg",
       id: "event_signup_02",
       relationshipValue: "为中国企业在日本落地找到可信合作方",
       sourceMetadata: {

@@ -36,6 +36,8 @@ test("detail endpoint helpers URL-encode ids", () => {
 test("eventDetailToSummary maps event detail payloads", () => {
   const summary = eventDetailToSummary({
     event: {
+      // Sprint 0082: covers come from the record, not from guessing at the title.
+      coverPath: "/orbit-covers/events/investor-founder-salon.jpg",
       description:
         "event_signup_03 source:event_signup_03 JA: 投資家向け。 ZH: 让投资人与创业者登记融资阶段、希望介绍对象和会谈主题。 EN: Investor founder intake.",
       evidence: [
@@ -141,6 +143,7 @@ test("eventDetailToSummary carries web event detail modules for mobile rendering
       ],
       description: "关西创业者和跨境业务负责人做一轮高质量对接。",
       feeLabel: "免费",
+      coverPath: "/orbit-covers/events/kansai-business-connect.jpg",
       id: "event_signup_01",
       organizer: "Orbit 关西商务社区",
       sourceMetadata: {
@@ -201,6 +204,7 @@ test("eventDetailHeroToView prepares an image-led mobile detail hero", () => {
     eventDetailToSummary({
       event: {
         description: "关西创业者和跨境业务负责人做一轮高质量对接。",
+        coverPath: "/orbit-covers/events/kansai-business-connect.jpg",
         id: "event_signup_01",
         sourceMetadata: {
           label:

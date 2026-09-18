@@ -1,4 +1,5 @@
 import { mockEventRecords } from "../event-crud-and-import/fixtures";
+import { eventCoverPathFor } from "./event-cover-catalogue";
 import type { EventRecord } from "../event-crud-and-import/contract";
 import type {
   StorageEventEvidencePayload,
@@ -228,6 +229,8 @@ function liveRecordForGeneratedRelationshipEvent(input: {
     title: input.event.name,
     venue: input.event.location ?? null,
   };
+  const coverPath = eventCoverPathFor(input.event.id);
+  if (coverPath) payload.coverPath = coverPath;
 
   return {
     workspaceId: input.workspaceId,

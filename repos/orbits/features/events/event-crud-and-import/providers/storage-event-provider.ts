@@ -28,6 +28,8 @@ export interface StorageEventEvidencePayload extends Record<string, unknown> {
 }
 
 export interface StorageEventPayload extends Record<string, unknown> {
+  coverPath?: string | null;
+  coverUrl?: string | null;
   description?: string | null;
   endsAt?: string | null;
   evidence?: readonly StorageEventEvidencePayload[] | null;
@@ -143,10 +145,13 @@ function toLiveEventStoreRecord(
 ): LiveEventStoreRecord {
   const title = titleFor(record);
   const description = descriptionFor(record, title);
+  // Cover artwork is event data, not a client-side lookup table.
+  const coverPath = readText(record.payload.coverPath) ?? readText(record.payload.coverUrl) ?? null;
 
   return {
     id: record.recordId,
     title,
+    ...(coverPath ? { coverPath } : {}),
     description,
     venue: venueFor(record),
     startsAt: readText(record.payload.startsAt) ?? record.occurredAt,

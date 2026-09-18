@@ -48,6 +48,7 @@ export interface LiveEventStoreEvidence {
 export interface LiveEventStoreRecord {
   id: string;
   title: string;
+  coverPath?: string | null;
   description?: string | null;
   venue?: string | null;
   startsAt?: string | null;
@@ -189,6 +190,7 @@ function toEventRecord(
   return {
     id: record.id,
     title: record.title,
+    ...(record.coverPath?.trim() ? { coverPath: record.coverPath.trim() } : {}),
     description:
       record.description?.trim() ||
       "Event loaded from the Events live store.",

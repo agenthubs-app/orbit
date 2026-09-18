@@ -1,6 +1,7 @@
 import type { EventDTO } from "../../shared/domain/contracts";
 import { createOrbitLocalRemoteDatabase } from "../../shared/local-remote-store/orbit-database";
 import type { EventRecord } from "./event-crud-and-import/contract";
+import { eventCoverPathFor } from "./storage/event-cover-catalogue";
 
 export interface PublicEventCatalogueSnapshot {
   events: readonly EventDTO[];
@@ -68,9 +69,13 @@ export function publicEventCatalogueRecord(
     externalNetworkRequested: false as const,
   };
 
+  // Cover artwork travels with the event so every surface shows the same image.
+  const coverPath = eventCoverPathFor(event.id);
+
   return {
     id: event.id,
     title: event.name,
+    ...(coverPath ? { coverPath } : {}),
     description: event.description ?? "",
     venue: event.location ?? "",
     startsAt: event.startsAt,

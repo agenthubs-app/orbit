@@ -398,59 +398,21 @@ function eventTitle(event: Record<string, unknown>): string {
   );
 }
 
-const eventCoverById: Record<string, string> = {
-  event_01: "/orbit-covers/restaurant.jpg",
-  event_02: "/orbit-covers/events/ai-workflow-poc-roundtable.jpg",
-  event_03: "/orbit-covers/events/cross-border-ecommerce-meetup.jpg",
-  event_04: "/orbit-covers/events/investor-founder-salon.jpg",
-  event_05: "/orbit-covers/events/chinese-business-community-salon.jpg",
-  event_06: "/orbit-covers/chip.jpg",
-  event_07: "/orbit-covers/finance.jpg",
-  event_08: "/orbit-covers/ai.jpg",
-  event_09: "/orbit-covers/fashion.jpg",
-  event_10: "/orbit-covers/fashion.jpg",
-  event_signup_01: "/orbit-covers/events/kansai-business-connect.jpg",
-  event_signup_02: "/orbit-covers/events/tokyo-ai-partner-meetup.jpg",
-  event_signup_03: "/orbit-covers/events/investor-founder-salon.jpg"
-};
+// Cover artwork comes from the event record (`coverPath`, written by the seed and
+// the event-display backfill). The App keeps only a neutral placeholder for
+// events that genuinely have no artwork yet — no id lookup table, no guessing
+// a cover from words in the title.
+const EVENT_COVER_PLACEHOLDER = "/orbit-covers/meeting.jpg";
 
-function eventCoverPath(event: Record<string, unknown>, title: string): string {
-  const explicitCover =
+function eventCoverPath(event: Record<string, unknown>): string {
+  return (
     stringField(event, "coverPath") ||
     stringField(event, "coverUrl") ||
     stringField(event, "imageUrl") ||
     nestedStringField(event, "sourceMetadata", "coverPath") ||
-    nestedStringField(event, "sourceMetadata", "coverUrl");
-
-  if (explicitCover) {
-    return explicitCover;
-  }
-
-  const id = eventField(event, "id");
-
-  if (eventCoverById[id]) {
-    return eventCoverById[id];
-  }
-
-  const normalized = title.toLowerCase();
-
-  if (normalized.includes("关西") || normalized.includes("kansai")) {
-    return "/orbit-covers/events/kansai-business-connect.jpg";
-  }
-
-  if (normalized.includes("ai")) {
-    return "/orbit-covers/events/tokyo-ai-partner-meetup.jpg";
-  }
-
-  if (normalized.includes("投资") || normalized.includes("创始")) {
-    return "/orbit-covers/events/investor-founder-salon.jpg";
-  }
-
-  if (normalized.includes("电商") || normalized.includes("跨境")) {
-    return "/orbit-covers/events/cross-border-ecommerce-meetup.jpg";
-  }
-
-  return "/orbit-covers/meeting.jpg";
+    nestedStringField(event, "sourceMetadata", "coverUrl") ||
+    EVENT_COVER_PLACEHOLDER
+  );
 }
 
 function formatDateTime(value: string, timeZone = "Asia/Tokyo"): string {
@@ -753,7 +715,7 @@ export function eventsToSummaries(data: unknown, timeZone = "Asia/Tokyo"): Event
 
       return {
         actionLabel: eventActionLabel(rawStatus),
-        coverPath: eventCoverPath(event, title),
+        coverPath: eventCoverPath(event),
         id: eventField(event, "id", "event"),
         location:
           eventField(event, "venue") ||
@@ -860,7 +822,7 @@ export function eventDetailToSummary(data: unknown, timeZone = "Asia/Tokyo"): Ev
     agenda: eventAgenda(event, { location, startsAt }),
     attendeeCountLabel: attendeeCountLabel(event, attendees),
     attendeePreview: attendees,
-    coverPath: eventCoverPath(event, title),
+    coverPath: eventCoverPath(event),
     description,
     evidenceExcerpts: evidenceExcerpts(event),
     feeLabel: userFacingText(stringField(event, "feeLabel"), "现场确认"),

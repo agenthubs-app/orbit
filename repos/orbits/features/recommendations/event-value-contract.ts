@@ -144,6 +144,8 @@ export interface EventValueRecommendationSignal {
 export interface EventValueRecommendation {
   eventId: string;
   title: string;
+  /** Cover image path served by the app origin; absent when the event has no artwork. */
+  coverPath?: string;
   startsAt: string;
   endsAt: string;
   location: string;

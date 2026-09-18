@@ -94,6 +94,8 @@ test("eventsToSummaries maps Orbit event list payloads", () => {
   const summaries = eventsToSummaries({
     events: [
       {
+        // Sprint 0082: the cover is part of the event record.
+        coverPath: "/orbit-covers/events/tokyo-ai-partner-meetup.jpg",
         id: "event-1",
         sourceMetadata: {
           label:
@@ -128,6 +130,8 @@ test("eventsToSummaries exposes image-list metadata for event lists", () => {
   const summaries = eventsToSummaries({
     events: [
       {
+        // Sprint 0082: the cover is part of the event record.
+        coverPath: "/orbit-covers/events/kansai-business-connect.jpg",
         host: "Orbit",
         id: "event-module-1",
         industry: "企业 AI",
@@ -266,6 +270,7 @@ test("eventsToSummaries attaches web event cover paths", () => {
   const summaries = eventsToSummaries({
     events: [
       {
+        coverPath: "/orbit-covers/events/kansai-business-connect.jpg",
         id: "event_signup_01",
         sourceMetadata: {
           label:

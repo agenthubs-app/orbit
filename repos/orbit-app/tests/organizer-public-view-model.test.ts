@@ -13,6 +13,9 @@ function flattenedText(value: unknown): string {
 const eventsPayload = {
   events: [
     {
+      // Sprint 0082: the cover travels with the event record; the App no longer
+      // keeps an id → image lookup table.
+      coverPath: "/orbit-covers/events/investor-founder-salon.jpg",
       endsAt: "2026-08-04T16:00:00.000+09:00",
       id: "event_signup_03",
       location: "Tokyo",
