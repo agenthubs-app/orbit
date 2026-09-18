@@ -31,6 +31,7 @@ export function useOrbitApiBaseUrl() { useFixture(); return { baseUrl: state.bas
 export function useOrbitAuthSession() { useFixture(); return { accountId: state.signedIn ? state.actorId : null, actorId: state.signedIn ? state.actorId : null, cookieHeader: state.cookieHeader, ready: state.ready, signedIn: state.signedIn, user: state.signedIn ? { id: state.actorId } : null }; }
 export function useOrbitApiClient() { useFixture(); return state.client; }
 export function getLocales() { return state.locales; }
+export const Platform = { OS: "web" };
 export const AppState = { addEventListener(_name, listener) { foregroundListeners.add(listener); return { remove() { foregroundListeners.delete(listener); } }; } };
 state.client = {
   get(path, options) { return new Promise(resolve => state.requests.push({ kind: "get", path, options, resolve })); },

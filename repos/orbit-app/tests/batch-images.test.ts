@@ -85,6 +85,17 @@ test("allows exactly 10 MiB, rejects oversized metadata before reading and reche
   assert.equal(reads, 0);
   fake.openFile = async () => ({ exists: true, size: 10, bytes: async () => new Uint8Array(10485761) });
   await assert.rejects(prepareBatchImage(input, { native: fake }), errorCode("FILE_TOO_LARGE"));
+  let metadataReads = 0;
+  const metadataNative = native();
+  metadataNative.openFile = async () => {
+    metadataReads++;
+    return { exists: true, size: JPEG.length, bytes: async () => JPEG };
+  };
+  await assert.rejects(
+    prepareBatchImage({ ...input, fileSize: 10485761 }, { native: metadataNative }),
+    errorCode("FILE_TOO_LARGE")
+  );
+  assert.equal(metadataReads, 0);
 });
 
 test("missing, unreadable, nonlocal and changed URI never produces upload bytes", async () => {

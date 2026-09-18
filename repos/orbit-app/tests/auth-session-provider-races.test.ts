@@ -36,7 +36,7 @@ export function useOrbitApiBaseUrl() {
   useFixture();
   return { baseUrl: state.baseUrl, ready: state.baseUrlReady };
 }
-export async function fetchMobileAuthProviders() { return { success: true, data: { providers: [] } }; }
+export async function fetchMobileAuthProviders() { return { success: true, data: { providers: state.providerValues ?? [] } }; }
 export async function signInWithMobileCredentials(input) {
   state.requests.push(input);
   return await new Promise(resolve => {
@@ -115,7 +115,7 @@ const root = createRoot(document.getElementById("root")); window.fixture.unmount
           if (args.path === "crypto") return { contents: "export const CryptoDigestAlgorithm = { SHA256: 'SHA256' }; export async function digest(_, value) { return value; } export async function getRandomBytesAsync() { return new Uint8Array(32); }", loader: "js" };
           if (args.path === "router") return { contents: "export const router = { replace() {} };", loader: "js" };
           if (args.path === "browser") return { contents: "export async function openAuthSessionAsync() { return { type: 'cancel' }; }", loader: "js" };
-          if (args.path === "native") return { contents: "export const Platform = { OS: 'ios' };", loader: "js" };
+          if (args.path === "native") return { contents: "export const Platform = { get OS() { return window.initialFixture?.platform ?? 'ios'; } };", loader: "js" };
           if (args.path.endsWith("/auth-session")) return { contents: "export { registerOrbitAccount, signOutOrbitSession } from 'fixture';", loader: "js", resolveDir: process.cwd() };
           if (args.path.endsWith("/session-expiry")) return { contents: "export { onSessionExpired } from 'fixture';", loader: "js", resolveDir: process.cwd() };
           if (args.path.endsWith("/client")) return { contents: "export { createOrbitApiClient } from 'fixture';", loader: "js", resolveDir: process.cwd() };
@@ -140,6 +140,7 @@ async function open(t: { after(fn: () => Promise<void>): void }, initial: Record
   await page.setContent('<div id="root"></div>');
   await page.evaluate(value => { (window as any).initialFixture = value; }, initial);
   await page.addScriptTag({ content: script });
+  if (errors.length > 0) throw new Error(errors.join("\n"));
   await page.getByRole("button", { name: "sign in" }).waitFor();
   await page.waitForFunction(() => (window as any).fixture.auth?.ready === true);
   return page;
@@ -163,6 +164,13 @@ test("a login completed for an obsolete server cannot replace or persist the cur
     cookieHeader: "session=first"
   }]);
   assert.equal(await page.evaluate(() => (window as any).fixture.auth.user), null);
+});
+
+test("the browser does not offer the native Google broker", async t => {
+  const page = await open(t, { platform: "web", providerValues: ["google"] });
+
+  assert.equal(await page.evaluate(() => (window as any).fixture.auth.googleEnabled), false);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.auth.providers), []);
 });
 
 test("a validated cookie cannot accept a different actor than the login envelope", async t => {

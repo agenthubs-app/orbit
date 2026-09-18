@@ -2,12 +2,19 @@ import { fromByteArray } from "base64-js";
 import { filetypeinfo } from "magic-bytes.js";
 import { MAX_ORBIT_BINARY_BYTES, type OrbitApiBytes, type OrbitApiClient } from "./client";
 import type { ApiResult } from "./types";
+import {
+  isSupportedBatchImageSource,
+  openBatchImageSource,
+  type BrowserBatchImageFile
+} from "./batch-image-source";
 
 export type BatchImageMimeType = "image/jpeg" | "image/png" | "image/webp" | "image/heic" | "image/heif";
 export interface BatchImageInput {
   uri: string;
   fileName?: string | null;
   mimeType?: string | null;
+  fileSize?: number | null;
+  file?: BrowserBatchImageFile | null;
 }
 export interface PreparedBatchImage {
   uri: string;
@@ -17,7 +24,7 @@ export interface PreparedBatchImage {
   clientDigest: string;
 }
 export interface BatchImageNative {
-  openFile(uri: string): Promise<{
+  openFile(uri: string, input?: BatchImageInput): Promise<{
     exists: boolean;
     size: number;
     bytes(): Promise<Uint8Array<ArrayBuffer>>;
@@ -49,9 +56,8 @@ export class BatchImageError extends Error {
 }
 
 const nativeBoundary: BatchImageNative = {
-  async openFile(uri) {
-    const { File } = await import("expo-file-system");
-    return new File(uri);
+  async openFile(_uri, input) {
+    return openBatchImageSource(input ?? { uri: _uri });
   },
   async sha256(bytes) {
     const { digest, CryptoDigestAlgorithm } = await import("expo-crypto");
@@ -88,13 +94,14 @@ function imageMime(bytes: Uint8Array): BatchImageMimeType {
   return mime;
 }
 
-async function readOriginal(uri: string, options: BatchImageOptions): Promise<Uint8Array<ArrayBuffer>> {
+async function readOriginal(input: BatchImageInput, options: BatchImageOptions): Promise<Uint8Array<ArrayBuffer>> {
   checkCancellation(options.signal);
-  if (!uri.startsWith("file://") && !uri.startsWith("content://")) {
+  if (!isSupportedBatchImageSource(input.uri)) {
     throw new BatchImageError("INVALID_URI", "请选择本机图片文件。");
   }
+  if (input.fileSize !== undefined && input.fileSize !== null) validateSize(input.fileSize);
   try {
-    const file = await (options.native ?? nativeBoundary).openFile(uri);
+    const file = await (options.native ?? nativeBoundary).openFile(input.uri, input);
     checkCancellation(options.signal);
     if (!file.exists) throw new BatchImageError("FILE_UNREADABLE", "无法读取图片，请重新选择。");
     const size = file.size;
@@ -127,7 +134,7 @@ async function clientDigest(bytes: Uint8Array<ArrayBuffer>, options: BatchImageO
 
 export async function prepareBatchImage(input: BatchImageInput, options: BatchImageOptions = {}): Promise<PreparedBatchImage> {
   const { uri, fileName } = input;
-  const bytes = await readOriginal(uri, options);
+  const bytes = await readOriginal(input, options);
   const mimeType = imageMime(bytes);
   const digest = await clientDigest(bytes, options);
   return {
@@ -148,7 +155,7 @@ export async function prepareBatchImages(inputs: readonly BatchImageInput[], opt
 }
 export async function readPreparedBatchImage(prepared: PreparedBatchImage, options: BatchImageOptions = {}): Promise<Uint8Array<ArrayBuffer>> {
   const expected = { ...prepared };
-  const bytes = await readOriginal(expected.uri, options);
+  const bytes = await readOriginal(expected, options);
   const mimeType = imageMime(bytes);
   const digest = await clientDigest(bytes, options);
   if (bytes.byteLength !== expected.rawSize || mimeType !== expected.mimeType || digest !== expected.clientDigest) {

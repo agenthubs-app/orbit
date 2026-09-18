@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join, relative, sep } from "node:path";
 import test from "node:test";
 
@@ -206,12 +207,17 @@ function scanAppRouteEntries(directory: string): string[] {
         continue;
       }
 
-      if (!/\.(j|t)sx?$/u.test(entry.name) || /^_layout\.(j|t)sx?$/u.test(entry.name) ||
-          (currentDirectory === appRoot && /^\+html\.(j|t)sx?$/u.test(entry.name))) {
+      const rootHtmlDocument = currentDirectory === directory
+        && /^\+html\.(j|t)sx?$/u.test(entry.name);
+      if (
+        !/\.(j|t)sx?$/u.test(entry.name)
+        || /^_layout\.(j|t)sx?$/u.test(entry.name)
+        || rootHtmlDocument
+      ) {
         continue;
       }
 
-      const routePath = relative(appRoot, entryPath)
+      const routePath = relative(directory, entryPath)
         .split(sep)
         .join("/")
         .replace(/\.(j|t)sx?$/u, "")
@@ -302,6 +308,17 @@ test("route coverage rejects a duplicate normalized app entry", () => {
     unexpected: [],
     duplicates: ["/ai"]
   });
+});
+
+test("route scanning excludes only Expo's root HTML document", t => {
+  const temporaryApp = mkdtempSync(join(tmpdir(), "orbit-route-scan-"));
+  t.after(() => rmSync(temporaryApp, { force: true, recursive: true }));
+  mkdirSync(join(temporaryApp, "nested"));
+  writeFileSync(join(temporaryApp, "+html.tsx"), "export default function Html() {};");
+  writeFileSync(join(temporaryApp, "future.tsx"), "export default function Future() {};");
+  writeFileSync(join(temporaryApp, "nested", "+html.tsx"), "export default function NestedHtml() {};");
+
+  assert.deepEqual(scanAppRouteEntries(temporaryApp), ["/future", "/nested/+html"]);
 });
 
 test("the final README records canonical status and concrete evidence for all 58 routes", () => {
