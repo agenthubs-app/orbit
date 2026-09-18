@@ -462,7 +462,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
     setToast(t({ en: "Draft started in inbox", zh: "已在收件箱开始起草" }));
   };
   return (
-    <main className="orbit-page" data-orbit-real-page="contacts">
+    <main className="orbit-page" data-orbit-real-page="contacts" data-orbit-0918="contact-detail">
       <OrbitCardsInteractions />
       {/* ============ DESKTOP ============ */}
       <div className="orbit-desktop-only" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
@@ -684,6 +684,31 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
 [data-orbit-real-page] .nc-about-prompt svg { color:var(--accent); margin-top:2px; flex-shrink:0; }
 [data-orbit-real-page] .nc-vitem.nc-vitem-empty { display:block; color:var(--text-3); font-size:13px; }
 [data-orbit-real-page] .nc-empty-copy { color:var(--text-3); font-size:13px; line-height:1.55; margin:0; }
+
+/* Orbit_0918 批次 3e：联系人详情。页作用域重定义 token（默认 real-page 为暗色组），
+   nc-* 结构与逻辑零改动；选择器带 [data-orbit-0918=contact-detail] 不影响列表页。 */
+[data-orbit-real-page=contacts][data-orbit-0918=contact-detail]{
+  color-scheme:light;
+  --ink:#0E1225;--text:#0E1225;--text-2:#3B3F7A;--text-3:#6B6F99;--text-4:#9FA3C4;
+  --bg:#FBFBFE;--bg-soft:#F7F7FD;--bg-sunken:#F1F1FA;
+  --surface:#FFFFFF;--surface-2:#F7F7FD;--surface-3:#ECEEFB;
+  --border:#E8E9F6;--border-2:#DDDEFA;--border-strong:#B9BCEB;--hairline:#F1F1FA;
+  --accent:#4B4FC7;--accent-hover:#2E3270;--accent-soft:#ECEEFB;--accent-softer:#F1F2FC;--accent-ring:#B9BCEB;
+  --on-accent:#FFFFFF;
+  background:#FBFBFE;color:#0E1225;
+}
+[data-orbit-real-page=contacts][data-orbit-0918=contact-detail] .card{background:#FFFFFF;border:1px solid #E8E9F6;border-radius:18px;box-shadow:none}
+[data-orbit-real-page=contacts][data-orbit-0918=contact-detail] .nc-card-pad{padding:22px}
+[data-orbit-real-page=contacts][data-orbit-0918=contact-detail] .nc-hero h1.h-display{font-family:'Noto Serif SC','Songti SC','SimSun',serif;font-weight:900;letter-spacing:-0.02em;color:#0E1225}
+[data-orbit-real-page=contacts][data-orbit-0918=contact-detail] .nc-cardtitle .h-section{font-family:'Noto Serif SC','Songti SC','SimSun',serif;font-weight:900;letter-spacing:-0.02em;color:#0E1225}
+[data-orbit-real-page=contacts][data-orbit-0918=contact-detail] .nc-back{color:#6B6F99}
+[data-orbit-real-page=contacts][data-orbit-0918=contact-detail] .nc-back:hover{color:#0E1225}
+[data-orbit-real-page=contacts][data-orbit-0918=contact-detail] .btn-primary{background:#0E1225;border-color:#0E1225;box-shadow:none;color:#FFFFFF}
+[data-orbit-real-page=contacts][data-orbit-0918=contact-detail] .btn-primary:hover{background:#2E3270;border-color:#2E3270}
+[data-orbit-real-page=contacts][data-orbit-0918=contact-detail] .btn-soft{background:#FFFFFF;border:1px solid #DDDEFA;color:#3B3F7A;box-shadow:none}
+[data-orbit-real-page=contacts][data-orbit-0918=contact-detail] .btn-soft:hover{border-color:#B9BCEB;color:#2E3270}
+[data-orbit-real-page=contacts][data-orbit-0918=contact-detail] .btn-quiet{color:#4B4FC7}
+[data-orbit-real-page=contacts][data-orbit-0918=contact-detail] .nc-tag{background:#ECEEFB;color:#2E3270}
 ` }} />
     </main>
   );
