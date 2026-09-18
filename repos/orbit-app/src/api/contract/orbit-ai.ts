@@ -65,3 +65,41 @@ export interface OrbitAiTaskInteractionContract {
   sourceNoteVersion?: number;
   relatedContactIds?: readonly string[];
 }
+
+// Sprint 0085：对话里的实体草稿卡。
+// 模型只能提出草稿；确认按钮是用户动作，写入由服务端确定性代码完成。
+// 同一会话同时只有一张 pending_confirmation 的卡，否则"确认"指代不清。
+export type OrbitAiEntityDraftKindCode =
+  | "task"
+  | "note"
+  | "schedule"
+  | "event"
+  | "contact";
+
+export type OrbitAiEntityDraftStateCode =
+  | "pending_confirmation"
+  | "created"
+  | "cancelled"
+  | "superseded"
+  | "failed";
+
+export interface OrbitAiEntityDraftSourceRefContract {
+  kind: "note" | "contact" | "event" | "task" | "schedule";
+  id: string;
+}
+
+export interface OrbitAiEntityDraftCardContract {
+  draftId: string;
+  kind: OrbitAiEntityDraftKindCode;
+  state: OrbitAiEntityDraftStateCode;
+  revision: number;
+  /** 每种实体的字段名不同，值一律是文本；卡片按 kind 决定显示哪几行。 */
+  fields: Readonly<Record<string, string>>;
+  sourceRefs: readonly OrbitAiEntityDraftSourceRefContract[];
+  /** 写入成功后才有：可点开的真实记录 id。 */
+  createdRecordId?: string;
+  /** 上一次确认失败的原因；卡片仍可重试。 */
+  failureReason?: string;
+  createdAt: string;
+  updatedAt: string;
+}

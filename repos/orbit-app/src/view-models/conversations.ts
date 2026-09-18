@@ -1,5 +1,6 @@
 import { aiRunPath } from "../api/endpoints";
 import { conversationContactArtifacts, type ConversationContactArtifactView } from "./ai-artifacts";
+import { readAiEntityDraft, type AiEntityDraft } from "./ai-entity-draft";
 import type { OrbitLanguage } from "../api/contract/language";
 import { createTranslator } from "../i18n/messages";
 import type {
@@ -131,6 +132,8 @@ export interface ConversationChatView {
   messages: ChatMessageView[];
   proposedToolIntents: ProposedToolIntentView[];
   taskInteraction?: TaskInteractionView | null;
+  /** Sprint 0085: the record the reply is offering to create, if any. */
+  entityDraft?: AiEntityDraft | null;
 }
 
 export interface OrbitAiHomeChatWindow extends ConversationChatView {
@@ -589,7 +592,9 @@ export function conversationPayloadToChatView(
               : {}),
             title: stringField(taskInteraction, "title")
           }
-        : null
+        : null,
+    // A payload that does not parse yields no card rather than a partial one.
+    entityDraft: readAiEntityDraft(payload.entityDraft)
   };
 }
 

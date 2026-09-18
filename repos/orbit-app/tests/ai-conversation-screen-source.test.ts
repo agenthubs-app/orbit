@@ -54,14 +54,24 @@ test("AI conversation screen renders markdown markers and quotes distinctly", ()
   assert.match(screenSource, /styles\.markdownQuoteText/u);
 });
 
-test("AI conversation screen can inspect web AI run details", () => {
-  assert.match(screenSource, /buildAiRunDetailRequest/u);
+// Sprint 0085: the "AI 运行依据" panel is gone. It sat under every reply, took
+// half a screen, and said the same thing each time. What replaces it is the
+// entity card, which shows the record itself rather than a note about the run.
+test("AI conversation screen no longer renders a run-evidence panel under every reply", () => {
+  assert.doesNotMatch(screenSource, /locale\.t\("aiConversation\.runBasis"\)/u);
+  assert.doesNotMatch(screenSource, /AiRunAuditPanel/u);
+  assert.doesNotMatch(screenSource, /runReferences\.map/u);
+  // The run id is still captured for the session record; only the panel is gone.
   assert.match(screenSource, /conversationAiRunReferencesFor/u);
-  assert.match(screenSource, /aiRunDetailToView/u);
-  assert.match(screenSource, /inspectAiRun/u);
-  assert.match(screenSource, /client\.get<unknown>\(\s*request\.request\.path/u);
-  assert.match(screenSource, /locale\.t\("aiConversation\.runBasis"\)/u);
-  assert.match(screenSource, /runReferences\.map/u);
+});
+
+test("AI conversation screen renders the entity draft card and confirms it explicitly", () => {
+  assert.match(screenSource, /AiEntityDraftCard/u);
+  assert.match(screenSource, /aiEntityDraftCardView/u);
+  assert.match(screenSource, /resolveEntityDraft/u);
+  assert.match(screenSource, /aiEntityDraftActionPath/u);
+  // Confirming is a POST the screen makes, never something a reply body triggers.
+  assert.match(screenSource, /body: \{ action \}/u);
 });
 
 test("AI conversation event panel renders related events as compact content modules", () => {

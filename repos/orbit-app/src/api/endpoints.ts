@@ -85,7 +85,8 @@ export const ORBIT_API_ENDPOINTS = {
   taskGeneration: "/api/tasks/generate",
   taskSuggestions: "/api/task-suggestions",
   reminders: "/api/reminders",
-  today: "/api/today"
+  today: "/api/today",
+  aiEntityDrafts: "/api/ai/entity-drafts"
 } as const;
 
 function detailPath(collectionPath: string, id: string): string {
@@ -181,6 +182,16 @@ export function remindersPath(
 
 export function reminderPath(id: string): string {
   return detailPath(ORBIT_API_ENDPOINTS.reminders, id);
+}
+
+// Sprint 0085: the draft card's two calls. Confirming is a user action, so it
+// is a POST the screen makes — never something a reply body can trigger.
+export function aiEntityDraftsPath(conversationId: string): string {
+  return `${ORBIT_API_ENDPOINTS.aiEntityDrafts}?${new URLSearchParams({ conversationId }).toString()}`;
+}
+
+export function aiEntityDraftActionPath(draftId: string): string {
+  return detailPath(ORBIT_API_ENDPOINTS.aiEntityDrafts, draftId);
 }
 
 export function taskSuggestionsPath(category?: string): string {

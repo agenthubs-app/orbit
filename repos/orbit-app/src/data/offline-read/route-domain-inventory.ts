@@ -40,6 +40,7 @@ function domainFor(path: string): string {
   if (path.startsWith('/api/ai/conversations/groups')) return 'ai-groups';
   if (path.startsWith('/api/ai/conversations/sessions')) return 'ai-sessions';
   if (path.startsWith('/api/ai/conversations')) return 'ai-messages';
+  if (path.startsWith('/api/ai/entity-drafts')) return 'ai-entity-drafts';
   if (path.startsWith('/api/ai/runs')) return 'ai-runs';
   if (path.startsWith('/api/ai/proactive-turns')) return 'agent-turns';
   if (path.startsWith('/api/agent/preferences')) return 'agent-preferences';
@@ -142,7 +143,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/ai/AiConversationScreen.tsx","POST","/api/ai/conversations/:id"],
   ["src/screens/ai/AiConversationScreen.tsx","POST","/api/ai/conversations/sessions"],
   ["src/screens/ai/AiConversationScreen.tsx","GET","/api/ai/conversations/sessions/:id"],
-  ["src/screens/ai/AiConversationScreen.tsx","GET","/api/ai/runs/:id"],
+  ["src/screens/ai/AiConversationScreen.tsx","POST","/api/ai/entity-drafts/:id"],
   ["src/screens/ai/AiConversationScreen.tsx","GET","/api/contacts"],
   ["src/screens/ai/AiConversationScreen.tsx","GET","/api/events"],
   ["src/screens/ai/AiConversationScreen.tsx","GET","/api/profile"],

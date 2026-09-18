@@ -153,6 +153,7 @@ test("conversationPayloadToChatView maps assistant reply messages and proposed t
         requiresUserConfirmation: true
       }
     ],
+    entityDraft: null,
     taskInteraction: null
   });
   assert.doesNotMatch(JSON.stringify(view), /Suggested action/u);
@@ -164,6 +165,7 @@ test("conversationPayloadToChatView uses safe defaults for empty payloads", () =
     assistantMessage: "",
     messages: [],
     proposedToolIntents: [],
+    entityDraft: null,
     taskInteraction: null
   });
 });

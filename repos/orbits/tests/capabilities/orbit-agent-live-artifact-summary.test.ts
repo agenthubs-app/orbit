@@ -34,6 +34,9 @@ function fixtureRuntime(maxLoopSteps: number, synthesisReply: string | null = "�
     artifactTaskService: { createArtifactTask: () => ({ success: true, data: structuredClone(value) }), getArtifactTask: () => ({ success: true, data: structuredClone(value) }) },
     planner: {
       async plan() { return { success: true, data: { intent, assistantMessage: "我来查找可能感兴趣的人。", actionRequests: [], toolRequests: [{ toolName: intent === "self_profile" ? "profile.getSelf" : "contacts.recommend", arguments: {}, requiresUserConfirmation: true }], model: "synthetic", provider: "gemini", source: "provider:gemini-interactions-api", rawOutputText: "" } }; },
+      // Sprint 0085: this fixture never asks to create anything, so the draft
+      // call must not be reached.
+      async draftEntity() { return { reason: "api_key_missing" as const, success: false as const }; },
       async synthesize() {
         synthesisCalls++;
         if (synthesisReply === null) return { success: false, error: { code: "MODEL_REQUEST_FAILED", message: "synthetic failure", provider: "gemini", source: "provider:gemini-interactions-api" } };

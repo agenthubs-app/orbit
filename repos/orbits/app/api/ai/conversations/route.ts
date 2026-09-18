@@ -40,6 +40,9 @@ import {
   isChatKnownWorkflowInput,
 } from "../../../../features/orbit-ai/chat-known-workflow";
 import { createConfiguredOrbitAiTaskInteractionService } from "../../../../features/orbit-ai/task-interaction-service-factory";
+import { readEntityDraftIntent } from "../../../../features/orbit-ai/entity-drafts/contract";
+import { createConfiguredEntityDraftService } from "../../../../features/orbit-ai/entity-drafts/service-factory";
+import { entityDraftView } from "../entity-drafts/handler";
 import {
   agentRequestUnauthorizedResponse,
 } from "../../_shared/agent-request-context";
@@ -514,6 +517,96 @@ async function applyTaskInteraction(
   };
 }
 
+/**
+ * Sprint 0085: persist what the model proposed, and act on a typed confirmation.
+ *
+ * Both halves matter. Turning the proposal into a stored draft is what gives the
+ * card something to confirm; reading "确认" here is what stops the model from
+ * claiming a confirmation happened by writing the word itself.
+ */
+async function applyEntityDraft(
+  result: OrbitAgentConversationResult,
+  input: OrbitAgentSendMessageInput,
+  actorId: string | null,
+): Promise<OrbitAgentConversationResult> {
+  if (result.success === false || !actorId) return result;
+  const conversationId = result.data.activeConversationId?.trim() ?? "";
+  const { proposedEntityDraft, ...publicData } = result.data;
+  if (!conversationId) {
+    return proposedEntityDraft ? { data: publicData, success: true } : result;
+  }
+
+  // Build nothing for an ordinary turn. Constructing the draft service builds a
+  // Postgres runtime and five domain services, and most turns neither propose a
+  // record nor answer a card.
+  const intent = readEntityDraftIntent(input.message ?? "");
+  if (!proposedEntityDraft && !intent) return result;
+
+  const service = createConfiguredEntityDraftService(actorId);
+  if (!service) {
+    return proposedEntityDraft ? { data: publicData, success: true } : result;
+  }
+  const now = new Date().toISOString();
+
+  if (proposedEntityDraft) {
+    const draft = await service.propose({
+      actorId,
+      conversationId,
+      draftId: `entity-draft:${crypto.randomUUID()}`,
+      now,
+      proposal: proposedEntityDraft,
+    });
+    return {
+      data: {
+        ...publicData,
+        ...(draft ? { entityDraft: entityDraftView(draft) } : {}),
+      },
+      success: true,
+    };
+  }
+
+  // No new proposal: the user is answering the card that is already open.
+  const pending = await service.pending({ actorId, conversationId });
+  if (!pending) return result;
+
+  if (intent === "cancel") {
+    const cancelled = await service.cancel({ actorId, draftId: pending.draftId, now });
+    return cancelled
+      ? {
+          data: {
+            ...publicData,
+            assistantMessage: "已取消，没有创建任何记录。",
+            entityDraft: entityDraftView(cancelled),
+          },
+          success: true,
+        }
+      : result;
+  }
+
+  const outcome = await service.confirm({ actorId, draftId: pending.draftId, now });
+  const assistantMessage =
+    outcome.kind === "created"
+      ? `已创建${entityDraftKindLabel(pending.kind)}：${pending.fields.title ?? pending.fields.name ?? ""}`
+      : outcome.kind === "failed"
+        ? `没有创建成功：${outcome.reason}。卡片还在，可以改完再确认一次。`
+        : outcome.kind === "unsupported"
+          ? `现在还不能直接创建${entityDraftKindLabel(pending.kind)}。`
+          : publicData.assistantMessage;
+
+  return {
+    data: {
+      ...publicData,
+      assistantMessage,
+      ...(outcome.draft ? { entityDraft: entityDraftView(outcome.draft) } : {}),
+    },
+    success: true,
+  };
+}
+
+function entityDraftKindLabel(kind: string): string {
+  return { contact: "人脉", event: "活动", note: "笔记", schedule: "日程", task: "待办" }[kind] ?? "记录";
+}
+
 async function persistConversationRunTrace(
   result: OrbitAgentConversationResult,
   runtime: AgentRuntimeService,
@@ -671,8 +764,12 @@ export async function POST(request: Request): Promise<Response> {
     // 这里不能按 conversationId 回查“最近一次”历史 run，否则本轮无动作或
     // 权限拒绝时会错误挂上前一轮卡片。
     return persistNaturalLanguageActionProposals(
-      await applyTaskInteraction(
-        await service.sendMessage(conversationInput),
+      await applyEntityDraft(
+        await applyTaskInteraction(
+          await service.sendMessage(conversationInput),
+          conversationInput,
+          agentContext.actorId,
+        ),
         conversationInput,
         agentContext.actorId,
       ),

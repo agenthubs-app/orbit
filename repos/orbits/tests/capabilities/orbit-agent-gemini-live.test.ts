@@ -2194,15 +2194,19 @@ test("live Orbit Agent defaults interactive turns to artifact generation without
       "tool_mapping",
       "artifact_generation",
       "synthesis",
+      // Sprint 0085: the draft is asked for after the tools return, because that
+      // is the first point the model knows what the record should say.
+      "entity_draft",
       "final_response",
     ],
   );
-  assert.equal(
-    result.data?.diagnostics?.timings.find(
-      (timing) => timing.phase === "synthesis",
-    )?.skipped,
-    true,
-  );
+  for (const phase of ["synthesis", "entity_draft"] as const) {
+    assert.equal(
+      result.data?.diagnostics?.timings.find((timing) => timing.phase === phase)?.skipped,
+      true,
+      `${phase} is skipped for a turn that neither synthesises nor asks to create anything`,
+    );
+  }
   assert.equal(
     result.data?.diagnostics?.timings.every(
       (timing) => Number.isFinite(timing.durationMs) && timing.durationMs >= 0,

@@ -23,9 +23,16 @@ import {
   ORBIT_API_ENDPOINTS,
   aiConversationPath,
   aiConversationSessionPath,
+  aiEntityDraftActionPath,
   taskSuggestionAcceptPath,
   taskSuggestionDismissPath
 } from "../../api/endpoints";
+import { AiEntityDraftCard } from "./cards/AiEntityDraftCard";
+import {
+  aiEntityDraftCardView,
+  readAiEntityDraft,
+  type AiEntityDraft
+} from "../../view-models/ai-entity-draft";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
@@ -45,8 +52,6 @@ import { AiContactArtifactPanel } from "./AiContactArtifactPanel";
 import { sessionContactArtifacts } from "../../view-models/ai-artifacts";
 import { aiSessionArtifactRecoverySchema } from "../../api/schema/ai-artifacts";
 import {
-  aiRunDetailToView,
-  buildAiRunDetailRequest,
   conversationAiRunReferencesFor,
   conversationInlinePanelsForThread,
   conversationPayloadToThreadView,
@@ -58,8 +63,6 @@ import {
   prioritizeConversationContacts,
   prioritizeConversationEvents,
   type ChatMessageView,
-  type AiRunDetailView,
-  type ConversationAiRunReferenceView,
   type ConversationInlinePanelView,
   type ConversationQuickRouteView,
   type ConversationThreadView,
@@ -205,12 +208,14 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const [failedRequest, setFailedRequest] = useJournalState(journal, "failedRequest", null);
   const [actionError, setActionError] = useJournalState(journal, "actionError", null);
   const [selectedReferences, setSelectedReferences] = useJournalState(journal, "selectedReferences", initialReferences.map(reference => ({ ...reference })));
-  const [aiRunError, setAiRunError] = useState<string | null>(null);
-  const [aiRunDetailView, setAiRunDetailView] = useState<AiRunDetailView | null>(null);
-  const [pendingAiRunId, setPendingAiRunId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [saving, setSaving] = useState(false);
   const [taskInteractionBusy, setTaskInteractionBusy] = useState(false);
+  // Sprint 0085: the card the user is being asked to confirm. Edits live here
+  // until they confirm, so a correction never writes on its own.
+  const [entityDraftBusy, setEntityDraftBusy] = useState(false);
+  const [entityDraftOverride, setEntityDraftOverride] = useState<AiEntityDraft | null>(null);
+  const [entityDraftEdits, setEntityDraftEdits] = useState<Record<string, string>>({});
   const [acceptedTaskId, setAcceptedTaskId] = useJournalState(journal, "acceptedTaskId", null);
   const [taskInteractionResolution, setTaskInteractionResolution] = useJournalState(journal, "taskInteractionResolution", null);
   const submittedInitialPrompt = useRef<string | null>(null);
@@ -219,7 +224,6 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const sendOperation = useRef<AbortController | null>(null);
   const saveOperation = useRef<AbortController | null>(null);
   const taskOperation = useRef<AbortController | null>(null);
-  const runOperation = useRef<AbortController | null>(null);
   const refreshOverlay = useRef<unknown>(undefined);
   const owns = () => mounted.current && isScopeCurrent();
   const ownsRequest = (controller: AbortController) => owns() && !controller.signal.aborted;
@@ -260,7 +264,6 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     : initialThread && failedRequest ? { ...initialThread, title: locale.t("aiConversation.noAnswer"), messages: initialThread.messages.filter(item => item.role === "user") } : initialThread;
   const resultScopeReady = owns() && (isDraftConversation || (!state.refreshing && (state.kind === "success" || state.kind === "empty") && !readInvalid));
   const thread = resolvedThread ? { ...resolvedThread, contactArtifacts: resultScopeReady ? resolvedThread.contactArtifacts ?? [] : [] } : null;
-  const runReferences = thread ? conversationAiRunReferencesFor(latestData ?? loadedData ?? thread, locale.language) : [];
   const inlinePanels = thread && (!isDraftConversation || latestData) ? conversationInlinePanelsForThread(thread, locale.language).filter(panel => panel.kind !== "people" || (resultScopeReady && !thread.contactArtifactNotice && !thread.contactArtifacts?.length)) : [];
 
   function changeDraft(value: string) {
@@ -341,7 +344,9 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     refreshOverlay.current = undefined;
     journal.interruptedRequest = request;
     setSending(true); setSendError(null); setSendCode(null); setFailedRequest(null);
-    setAiRunError(null); setAiRunDetailView(null); setActionError(null);
+    setActionError(null);
+    // Sprint 0085: a new question clears the card the previous reply offered.
+    setEntityDraftOverride(null); setEntityDraftEdits({});
     const result = await client.post<unknown>(request.path, {
       body: {
         locale: locale.language,
@@ -488,20 +493,6 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     setSendCode(recovery?.receipt.state ?? (result.success ? "OUTCOME_UNKNOWN" : result.error.code));
   }
 
-  async function inspectAiRun(reference: ConversationAiRunReferenceView) {
-    if (!owns()) return;
-    const request = buildAiRunDetailRequest(reference.id, locale.language);
-    if (!request.success) { setAiRunError(request.error); return; }
-    runOperation.current?.abort();
-    const controller = new AbortController(); runOperation.current = controller; requests.current.add(controller);
-    setPendingAiRunId(reference.id); setAiRunError(null);
-    const result = await client.get<unknown>(request.request.path, { signal: controller.signal });
-    if (!ownsRequest(controller)) return;
-    if (result.success && result.status >= 200 && result.status < 300) setAiRunDetailView(aiRunDetailToView(result.data, locale.language));
-    else setAiRunError(result.success ? locale.t("aiConversation.runUnreadable") : result.error.message);
-    requests.current.delete(controller); runOperation.current = null; setPendingAiRunId(null);
-  }
-
   async function resolveTaskSuggestion(action: "accept" | "dismiss") {
     const suggestionId = thread?.taskInteraction?.suggestionId;
     if (!owns() || !suggestionId || taskOperation.current || sendOperation.current || saveOperation.current || pendingSaveRef.current) return;
@@ -520,6 +511,56 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       if (savedSessionId && !saveNotice && !draftValue.current.trim()) router.replace({ params: { id: savedSessionId, source: "session" }, pathname: "/ai/[id]" });
     } else setActionError(result.success ? locale.t("aiConversation.operationUnconfirmed") : result.error.message);
     requests.current.delete(controller); taskOperation.current = null; setTaskInteractionBusy(false);
+  }
+
+  /**
+   * The only path from a card to a record. Field edits are sent as a revision
+   * first, so the write carries what the user sees rather than what the model
+   * first proposed.
+   */
+  async function resolveEntityDraft(action: "confirm" | "cancel") {
+    const draft = entityDraftOverride ?? thread?.entityDraft ?? null;
+    if (!owns() || !draft || entityDraftBusy || taskOperation.current || sendOperation.current) return;
+    const controller = new AbortController(); taskOperation.current = controller; requests.current.add(controller);
+    setEntityDraftBusy(true); setActionError(null);
+
+    const edits = Object.entries(entityDraftEdits).filter(([, value]) => value.trim());
+    let current = draft;
+    if (action === "confirm" && edits.length > 0) {
+      const revised = await client.post<unknown>(aiEntityDraftActionPath(draft.draftId), {
+        body: { action: "revise", fields: Object.fromEntries(edits.map(([k, v]) => [k, v.trim()])) },
+        signal: controller.signal,
+      });
+      if (!ownsRequest(controller)) return;
+      const next = revised.success && revised.status >= 200 && revised.status < 300
+        ? readAiEntityDraft((revised.data as { draft?: unknown } | null)?.draft)
+        : null;
+      if (!next) {
+        setActionError(revised.success ? locale.t("aiConversation.operationUnconfirmed") : revised.error.message);
+        requests.current.delete(controller); taskOperation.current = null; setEntityDraftBusy(false);
+        return;
+      }
+      current = next;
+      setEntityDraftOverride(next);
+      setEntityDraftEdits({});
+    }
+
+    const result = await client.post<unknown>(aiEntityDraftActionPath(current.draftId), {
+      body: { action }, signal: controller.signal,
+    });
+    if (!ownsRequest(controller)) return;
+    const settled = result.success && result.status >= 200 && result.status < 300
+      ? readAiEntityDraft((result.data as { draft?: unknown } | null)?.draft)
+      : null;
+    if (settled) {
+      setEntityDraftOverride(settled);
+      if (settled.state === "created" && settled.kind === "task") tasksState.refresh();
+    } else {
+      // A refused write keeps the card confirmable; show the server's reason
+      // rather than a generic failure the user cannot act on.
+      setActionError(result.success ? locale.t("aiConversation.operationUnconfirmed") : result.error.message);
+    }
+    requests.current.delete(controller); taskOperation.current = null; setEntityDraftBusy(false);
   }
 
   function openHref(href: string) {
@@ -579,13 +620,10 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
           followupTasks={followupTasks}
           followupsStateKind={tasksState.kind}
           inlinePanels={inlinePanels}
-          aiRunDetailView={aiRunDetailView}
-          aiRunError={aiRunError}
           onBack={() => openHref("/ai")}
           onChangeDraft={changeDraft}
           onAddMention={addMention}
           onRemoveReference={removeReference}
-          onInspectAiRun={inspectAiRun}
           onOpenContact={(contactId) =>
             openHref(`/contacts/${encodeURIComponent(contactId)}`)
           }
@@ -596,10 +634,8 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
           onResolveTaskSuggestion={resolveTaskSuggestion}
           profile={profile}
           profileStateKind={profileState.kind}
-          pendingAiRunId={pendingAiRunId}
           onRefresh={refresh}
           refreshing={state.refreshing}
-          runReferences={runReferences}
           scheduleItems={scheduleItems}
           scheduleStateKind={tasksState.kind}
           onSend={sendMessage}
@@ -617,6 +653,12 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
           sending={sending}
           taskInteractionBusy={taskInteractionBusy}
           taskInteractionResolution={taskInteractionResolution}
+          entityDraftBusy={entityDraftBusy}
+          entityDraftEdits={entityDraftEdits}
+          entityDraftOverride={entityDraftOverride}
+          onEditEntityDraftField={(field, value) =>
+            setEntityDraftEdits((previous) => ({ ...previous, [field]: value }))}
+          onResolveEntityDraft={resolveEntityDraft}
           thread={acceptedTaskId && thread.taskInteraction ? { ...thread, taskInteraction: { ...thread.taskInteraction, taskId: acceptedTaskId } } : thread}
         />
       ) : null}
@@ -626,8 +668,6 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
 }
 
 function ConversationThread({
-  aiRunDetailView,
-  aiRunError,
   baseUrl,
   contactCards,
   contactsStateKind,
@@ -642,17 +682,14 @@ function ConversationThread({
   onChangeDraft,
   onAddMention,
   onRemoveReference,
-  onInspectAiRun,
   onOpenContact,
   onOpenEvent,
   onOpenHref,
   onResolveTaskSuggestion,
   profile,
   profileStateKind,
-  pendingAiRunId,
   onRefresh,
   refreshing,
-  runReferences,
   scheduleItems,
   scheduleStateKind,
   onSend,
@@ -670,10 +707,13 @@ function ConversationThread({
   sending,
   taskInteractionBusy,
   taskInteractionResolution,
+  entityDraftBusy,
+  entityDraftEdits,
+  entityDraftOverride,
+  onEditEntityDraftField,
+  onResolveEntityDraft,
   thread
 }: {
-  aiRunDetailView: AiRunDetailView | null;
-  aiRunError: string | null;
   baseUrl: string;
   contactCards: ContactSummary[];
   contactsStateKind: ResourceKind;
@@ -688,17 +728,14 @@ function ConversationThread({
   onChangeDraft: (value: string) => void;
   onAddMention: (contact: MentionContact) => void;
   onRemoveReference: (reference: AiSessionReferenceContract) => void;
-  onInspectAiRun: (reference: ConversationAiRunReferenceView) => void;
   onOpenContact: (contactId: string) => void;
   onOpenEvent: (eventId: string) => void;
   onOpenHref: (href: string) => void;
   onResolveTaskSuggestion: (action: "accept" | "dismiss") => void;
   profile: ProfileSummary | null;
   profileStateKind: ResourceKind;
-  pendingAiRunId: string | null;
   onRefresh: () => void;
   refreshing: boolean;
-  runReferences: ConversationAiRunReferenceView[];
   scheduleItems: ScheduleItem[];
   scheduleStateKind: ResourceKind;
   onSend: () => void;
@@ -716,6 +753,11 @@ function ConversationThread({
   sending: boolean;
   taskInteractionBusy: boolean;
   taskInteractionResolution: "accepted" | "dismissed" | null;
+  entityDraftBusy: boolean;
+  entityDraftEdits: Record<string, string>;
+  entityDraftOverride: AiEntityDraft | null;
+  onEditEntityDraftField: (field: string, value: string) => void;
+  onResolveEntityDraft: (action: "confirm" | "cancel") => void;
   thread: ConversationThreadView;
 }) {
   const locale = useOrbitLocale();
@@ -731,6 +773,18 @@ function ConversationThread({
     (lastIndex, message, index) => (message.role === "assistant" ? index : lastIndex),
     -1
   );
+  // The override is what the user has been acting on; the thread value is what
+  // the latest reply carried. A settled card stays visible so the transcript
+  // still reads as a sequence of decisions.
+  const draft = entityDraftOverride ?? thread.entityDraft ?? null;
+  const draftCardView = draft
+    ? aiEntityDraftCardView(
+        Object.keys(entityDraftEdits).length > 0
+          ? { ...draft, fields: { ...draft.fields, ...entityDraftEdits } }
+          : draft,
+        locale.t,
+      )
+    : null;
 
   return (
     <View style={styles.threadSurface}>
@@ -817,6 +871,16 @@ function ConversationThread({
           resolution={taskInteractionResolution}
         />
       ) : null}
+      {draftCardView ? (
+        <AiEntityDraftCard
+          busy={entityDraftBusy}
+          onCancel={() => onResolveEntityDraft("cancel")}
+          onConfirm={() => onResolveEntityDraft("confirm")}
+          onEditField={onEditEntityDraftField}
+          onOpenRecord={onOpenHref}
+          view={draftCardView}
+        />
+      ) : null}
       {thread.proposedToolIntents.length > 0 ? (
         <View style={styles.intentPanel}>
           <Text style={styles.panelTitle}>{locale.t("aiConversation.suggestedActions")}</Text>
@@ -828,15 +892,10 @@ function ConversationThread({
           ))}
         </View>
       ) : null}
-      {runReferences.length > 0 || aiRunDetailView || aiRunError ? (
-        <AiRunAuditPanel
-          detailView={aiRunDetailView}
-          error={aiRunError}
-          onInspectAiRun={onInspectAiRun}
-          pendingAiRunId={pendingAiRunId}
-          runReferences={runReferences}
-        />
-      ) : null}
+      {/* Sprint 0085: the "AI 运行依据" panel is gone. It appeared under every
+          single reply, took half a screen, and said the same thing each time.
+          Where a reply came from now rides on the entity card's source line and
+          on the record's own detail page. */}
       {sendError ? <View accessibilityLiveRegion="polite" style={styles.failureStack}>
         <Text style={[styles.messageLabel, styles.assistantLabel]}>IORBIT</Text>
         <View style={styles.failureCard}>
@@ -991,85 +1050,6 @@ function TaskInteractionCard({
           <Text style={styles.recordLinkText}>{locale.t("aiConversation.viewTask")}</Text><Ionicons color={colors.accent} name="arrow-up-right-box-outline" size={18} />
         </Pressable>
       ) : null}
-    </View>
-  );
-}
-
-function AiRunAuditPanel({
-  detailView,
-  error,
-  onInspectAiRun,
-  pendingAiRunId,
-  runReferences
-}: {
-  detailView: AiRunDetailView | null;
-  error: string | null;
-  onInspectAiRun: (reference: ConversationAiRunReferenceView) => void;
-  pendingAiRunId: string | null;
-  runReferences: ConversationAiRunReferenceView[];
-}) {
-  const locale = useOrbitLocale();
-  const { colors, styles } = useStyles();
-  return (
-    <View style={styles.aiRunPanel}>
-      <View style={styles.aiRunHeader}>
-        <View style={styles.inlinePanelTitleBlock}>
-          <Text style={styles.panelTitle}>{locale.t("aiConversation.runBasis")}</Text>
-          <Text style={styles.inlinePanelDetail}>
-            {locale.t("aiConversation.runBasisDetail")}
-          </Text>
-        </View>
-        <Ionicons color={colors.accent} name="shield-checkmark-outline" size={18} />
-      </View>
-      {runReferences.length > 0 ? (
-        <View style={styles.aiRunReferenceStack}>
-          {runReferences.map((reference) => {
-            const pending = pendingAiRunId === reference.id;
-
-            return (
-              <Pressable
-                accessibilityRole="button"
-                disabled={Boolean(pendingAiRunId)}
-                key={reference.id}
-                onPress={() => onInspectAiRun(reference)}
-                style={({ pressed }) => [
-                  styles.aiRunReference,
-                  pending ? styles.disabled : null,
-                  pressed ? styles.pressed : null
-                ]}
-              >
-                <View style={styles.aiRunReferenceText}>
-                  <Text numberOfLines={1} style={styles.eventSuggestionTitle}>
-                    {reference.id}
-                  </Text>
-                  <Text numberOfLines={2} style={styles.inlinePanelDetail}>
-                    {reference.detail}
-                  </Text>
-                </View>
-                <Text style={styles.aiRunActionText}>
-                  {pending ? locale.t("aiConversation.reading") : reference.actionLabel}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      ) : null}
-      {detailView ? (
-        <View style={styles.aiRunResult}>
-          <View style={styles.aiRunMetricRow}>
-            {detailView.metrics.map((metric) => (
-              <Text key={metric} numberOfLines={1} style={styles.aiRunMetric}>
-                {metric}
-              </Text>
-            ))}
-          </View>
-          <Text style={styles.bodyText}>{detailView.summary}</Text>
-          <Text style={styles.aiRunOutput}>{detailView.outputPreview}</Text>
-          <Text style={styles.inlinePanelDetail}>{detailView.nextAction}</Text>
-          <Text style={styles.aiRunSafetyText}>{detailView.safetyText}</Text>
-        </View>
-      ) : null}
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
   );
 }

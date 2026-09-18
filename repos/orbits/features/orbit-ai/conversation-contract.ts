@@ -12,6 +12,8 @@ import type {
 } from "../../shared/contract/orbit-ai";
 import type { ReliableAiSendReceiptContract } from "../../shared/contract/ai-sessions";
 import type { AgentNaturalLanguageActionRequest } from "../agent/natural-language-actions/contract";
+import type { EntityDraftProposal } from "./entity-drafts/contract";
+import type { OrbitAiEntityDraftCardContract } from "../../shared/contract/orbit-ai";
 
 // Conversation contract 是 Chat Agent 的对外数据协议。
 // API route、UI 组件、mock service 和 live service 都必须通过这里的类型交互。
@@ -201,6 +203,13 @@ export interface OrbitAgentConversationPayload {
    * removes these after persisting runtime actions; clients never execute them.
    */
   proposedActionRequests?: readonly AgentNaturalLanguageActionRequest[];
+  /**
+   * Sprint 0085: what the model proposed creating, before it exists. The API
+   * turns this into a persisted draft and replaces it with `entityDraft`.
+   */
+  proposedEntityDraft?: EntityDraftProposal;
+  /** The card: a draft awaiting confirmation, or the record it just became. */
+  entityDraft?: OrbitAiEntityDraftCardContract;
   provenance: OrbitAgentConversationProvenance;
   routingDecision?: OrbitAgentRoutingDecision;
   nextAction: string;

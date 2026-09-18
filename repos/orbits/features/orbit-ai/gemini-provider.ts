@@ -11,6 +11,11 @@ import {
   type AgentNaturalLanguageActionRequest,
 } from "../agent/natural-language-actions/contract";
 import { AGENT_MEMORY_CATEGORIES } from "../agent/memory/contract";
+import {
+  ENTITY_DRAFT_KINDS,
+  parseEntityDraftProposal,
+  type EntityDraftProposal,
+} from "./entity-drafts/contract";
 export const DEFAULT_GEMINI_ORBIT_AGENT_MODEL = "gemini-3.5-flash" as const;
 export const DEFAULT_DEEPSEEK_ORBIT_AGENT_MODEL = "deepseek-v4-flash" as const;
 export const DEFAULT_OPENAI_ORBIT_AGENT_MODEL = "gpt-4.1" as const;
@@ -131,6 +136,12 @@ export interface GeminiOrbitAgentToolRequest {
 export interface GeminiOrbitAgentPlannerOutput {
   actionRequests: readonly AgentNaturalLanguageActionRequest[];
   assistantMessage: string;
+  /**
+   * Sprint 0085: the structured record the user is being offered. It is the only
+   * way the model can propose creating one of the five entities; describing a
+   * confirmation in `assistantMessage` does nothing.
+   */
+  entityDraft?: EntityDraftProposal;
   intent: GeminiOrbitAgentIntent;
   toolRequests: readonly GeminiOrbitAgentToolRequest[];
 }
@@ -660,6 +671,16 @@ export function validateGeminiOrbitAgentPlannerOutput(
   if (actionRequests === null) {
     return null;
   }
+  // A draft that does not parse rejects the whole plan. Dropping the field would
+  // leave the assistant message promising a card that never appears — which is
+  // the exact failure this sprint exists to remove.
+  const entityDraft =
+    value.entityDraft === undefined || value.entityDraft === null
+      ? undefined
+      : parseEntityDraftProposal(value.entityDraft);
+  if (entityDraft === null) {
+    return null;
+  }
 
   const toolRequests: GeminiOrbitAgentToolRequest[] = [];
 
@@ -703,14 +724,15 @@ export function validateGeminiOrbitAgentPlannerOutput(
 
   if (
     typedIntent === "action_proposal" &&
-    actionRequests.length === 0
+    actionRequests.length === 0 &&
+    !entityDraft
   ) {
     return null;
   }
 
   if (
     typedIntent !== "action_proposal" &&
-    actionRequests.length > 0
+    (actionRequests.length > 0 || entityDraft)
   ) {
     return null;
   }
@@ -734,6 +756,7 @@ export function validateGeminiOrbitAgentPlannerOutput(
     assistantMessage,
     intent: typedIntent,
     toolRequests,
+    ...(entityDraft ? { entityDraft } : {}),
   };
 }
 
@@ -759,7 +782,7 @@ function systemInstruction(): string {
 
   return [
     "You are Orbit Agent, a relationship-work orchestration planner.",
-    "Return only a JSON object with assistantMessage, intent, toolRequests, and actionRequests.",
+    "Return only a JSON object with assistantMessage, intent, toolRequests, actionRequests, and optionally entityDraft.",
     "Allowed intents: general_chat, event_recommendations, contact_recommendations, followup_queue, relationship_chat_context, self_profile, notes_query, tasks_query, followups_query, schedule_query, action_proposal.",
     `Allowed tool names: ${ORBIT_AGENT_TOOL_NAMES.join(", ")}.`,
     `Allowed action capability ids: ${AGENT_NATURAL_LANGUAGE_ACTION_CAPABILITY_IDS.join(", ")}.`,
@@ -767,6 +790,12 @@ function systemInstruction(): string {
     ...toolDescriptions,
     "Each non-general intent must use exactly one matching tool, except action_proposal, which must use an empty toolRequests array and one or more actionRequests. general_chat must use both arrays empty.",
     "Only action_proposal may contain actionRequests. Every other intent must return an empty actionRequests array.",
+    // Sprint 0085：模型只能交出草稿对象，不能用文字代替确认。
+    `Creating a record: to offer to create one of ${ENTITY_DRAFT_KINDS.join(", ")}, use intent action_proposal and return entityDraft = {kind, fields, sourceRefs}. Required fields per kind: task needs title; note needs title; schedule needs title and ISO startsAt; event needs title and ISO startsAt; contact needs name. Other useful fields: task dueAt/notes, note body, schedule endsAt/location, event endsAt/location/description, contact organization/role/note. All field values are strings.`,
+    "sourceRefs lists the records the draft came from, each {kind, id} with kind one of note, contact, event, task, schedule. Copy ids only from the current message or tool results; never invent one.",
+    "entityDraft alone is enough for action_proposal — you do not also need an actionRequest for it. Only one entityDraft per reply.",
+    "You cannot create records and you cannot confirm anything. Returning entityDraft shows the user a card with a confirm button; the record appears only after they press it. Never write that you have created something, never say you will create it once the user replies, and never ask the user to reply a word in order to confirm. Describe what the card contains and stop.",
+    "A request to turn something you just read into a new record — 根据这篇笔记整理一个待办 / 把这个联系人加进来 / 帮我建一个日程 — is action_proposal with entityDraft, even though it also mentions a note, contact or event. Put that source in sourceRefs instead of switching to a query intent.",
     "Every action request must set requiresUserConfirmation=true. Planning an action never means it was executed.",
     "For relative dates such as 今天/明天/today/tomorrow, use currentLocalDate in defaultTimeZone from the planner input. Do not derive the user's calendar date from the UTC date portion of currentTimeIso.",
     "Supported natural-language writes:",
@@ -791,6 +820,7 @@ function systemInstruction(): string {
     "For notes.query, tasks.query, followups.query, and schedule.query, set arguments.operation to list, search, or get. For get, copy the exact entity id from the current user message into arguments.id. Never provide actorId, userId, accountId, or profileId.",
     "For operation=search, arguments.searchTerms is required: extract only the title/text fragment the user wants to find, not the whole instruction. For example 查找标题包含云端待办的任务 -> tasks.query operation=search searchTerms=云端待办. Omit searchTerms for list/get. The server keeps the original user message in query for authorization; never replace it to fabricate get permission.",
     "- explicit create-task / remind-me / save-this-draft / remember-this request -> action_proposal with the matching actionRequest.",
+    "- create a task, note, schedule item, event or contact from what the user said or from a record just read -> action_proposal with entityDraft.",
     "- privacy control / delete / do not analyze / sensitive share -> general_chat unless current chat context review is explicitly needed.",
     // 服务范围分类：Orbit 是商务关系工作助手，不是通用问答。与商业/职业/人脉
     // 无关的生活类问题不直接作答，而是转化为"你的人脉里谁懂这个"，一轮内既守住
@@ -1409,6 +1439,72 @@ export async function runOrbitAgentModelText(input: {
 // 对外提供两个阶段：
 // plan = 结构化路由/工具计划；synthesize = 基于 artifact 摘要写最终回复。
 // 这两个阶段都会 fail closed：缺 key、请求失败、输出不合规都返回结构化失败。
+/**
+ * Sprint 0085: whether this turn is asking for a record to be created.
+ *
+ * The planner picks one intent per turn, so "根据这篇笔记整理一个待办" spends it on
+ * reading the note and never reaches action_proposal — which is exactly how the
+ * failing session produced three replies and no task. The draft therefore has to
+ * be asked for after the read, and only when the user actually asked to create
+ * something. This trigger is deterministic on purpose: an extra model call is
+ * not something a model gets to decide to make.
+ */
+const ENTITY_DRAFT_NOUNS = "待办|任务|笔记|备忘|日程|安排|活动|联系人|人脉";
+// 安排 is deliberately not a verb here: 查一下我的日程安排 is a query, and a
+// spurious card costs a model call and offers to create something nobody asked
+// for. Missing an unusual phrasing only costs the card.
+const ENTITY_DRAFT_VERBS = "整理|建立|创建|新建|生成|添加|加入|记录|记|建";
+
+const ENTITY_DRAFT_REQUEST_PATTERNS = [
+  // The verb always leads: 整理一个待办 / 建一个日程 / 把林玫添加为联系人.
+  new RegExp(`(${ENTITY_DRAFT_VERBS})(一个|一条|一项|个|条)?[^。.,，!！?？]{0,6}?(${ENTITY_DRAFT_NOUNS})`, "u"),
+  /\b(create|add|make|draft|log)\s+(a|an|one)?\s*(new\s+)?(task|todo|to-do|note|schedule|event|contact)\b/iu,
+];
+
+export function requestsEntityDraft(message: string): boolean {
+  const text = message.trim();
+  return text.length > 0 && ENTITY_DRAFT_REQUEST_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+function entityDraftInstruction(): string {
+  return [
+    "You are Orbit Agent, turning what the user asked for into ONE structured record draft.",
+    "Return only a JSON object: {kind, fields, sourceRefs}. No prose, no markdown, no code fence.",
+    `kind is one of ${ENTITY_DRAFT_KINDS.join(", ")}.`,
+    "Required fields: task needs title; note needs title; schedule needs title and startsAt; event needs title and startsAt; contact needs name.",
+    "Optional fields: task dueAt/notes/category, note body, schedule endsAt/location, event endsAt/location/description, contact organization/role/note.",
+    "Every field value is a string. Dates and times must be full ISO-8601 instants; if the user gave a relative time, resolve it against currentTimeIso in the input.",
+    "sourceRefs is a list of {kind, id} naming the records this draft came from, kind one of note, contact, event, task, schedule. Copy ids only from toolResults; never invent one. Use [] when there is no source.",
+    "Use the user's own words for the title where possible. Do not invent a deadline the user did not ask for and the source does not imply.",
+    "You are not creating anything. This draft is shown to the user with a confirm button and is written only if they press it.",
+    "If the request cannot be turned into one of these records, return {} and nothing else.",
+  ].join("\n");
+}
+
+function entityDraftRequestInput(input: GeminiOrbitAgentEntityDraftInput): string {
+  return JSON.stringify({
+    conversationHistory: (input.history ?? []).slice(-8),
+    currentTimeIso: input.currentTimeIso,
+    locale: input.locale ?? "zh",
+    toolResults: input.artifacts,
+    userMessage: input.message,
+  });
+}
+
+export interface GeminiOrbitAgentEntityDraftInput {
+  artifacts: readonly unknown[];
+  currentTimeIso: string;
+  history?: readonly GeminiOrbitAgentConversationTurn[];
+  locale?: string | null;
+  message: string;
+}
+
+export type GeminiOrbitAgentEntityDraftResult =
+  | { success: true; data: { draft: EntityDraftProposal | null; model: string; provider: OrbitAgentModelProvider } }
+  // Carries a reason even though the turn survives without a draft: a card that
+  // silently never appears is the hardest kind of absence to diagnose.
+  | { success: false; reason: "api_key_missing" | "request_failed" | "no_output" | "unparsable" };
+
 export function createGeminiOrbitAgentPlanner(
   config: GeminiOrbitAgentProviderConfig = {},
 ) {
@@ -1522,6 +1618,52 @@ export function createGeminiOrbitAgentPlanner(
         },
         success: true,
       };
+    },
+
+    /**
+     * One bounded call that returns a draft or nothing. It never throws a
+     * failure upward: a turn that cannot produce a draft simply has no card,
+     * which reads as "I could not turn that into something to confirm".
+     */
+    async draftEntity(
+      input: GeminiOrbitAgentEntityDraftInput,
+    ): Promise<GeminiOrbitAgentEntityDraftResult> {
+      const provider = resolveProvider(config);
+      if (!provider.apiKey) return { reason: "api_key_missing", success: false };
+      try {
+        const { response, responseBody } = await fetchProviderResponse({
+          fetchImplementation: config.fetchImplementation ?? fetch,
+          init: {
+            body: JSON.stringify(
+              providerRequestBody({
+                inputText: entityDraftRequestInput(input),
+                model: provider.model,
+                provider: provider.provider,
+                systemInstructionText: entityDraftInstruction(),
+              }),
+            ),
+            headers: providerHeaders(provider),
+            method: "POST",
+          },
+          provider: provider.provider,
+          timeoutMs: readRequestTimeoutMs(config.requestTimeoutMs),
+          url: provider.endpoint,
+        });
+        if (!response.ok) return { reason: "request_failed", success: false };
+        const outputText = readProviderOutputText(provider.provider, responseBody);
+        if (!outputText) return { reason: "no_output", success: false };
+        const parsed = parseJsonFromText(outputText);
+        return {
+          data: {
+            draft: parsed === null ? null : parseEntityDraftProposal(parsed),
+            model: provider.model,
+            provider: provider.provider,
+          },
+          success: true,
+        };
+      } catch {
+        return { reason: "request_failed", success: false };
+      }
     },
 
     async synthesize(
