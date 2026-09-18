@@ -168,28 +168,44 @@ function SourceCard({
       title={available ? undefined : unavailableTitle}
       type="button"
     >
-      <span className={`nc-src-tile ${source.tile}`}><Icon name={source.icon} size={20} /></span>
-      <span className="nc-source-body">
-        <span className="nc-source-title-row">
-          <span className="h-section nc-source-title">{t(source.title)}</span>
-          {source.badge && available ? <span className="nc-src nc-src-scan">{t(source.badge)}</span> : null}
-          {!available ? (
-            <span className="nc-src nc-src-contact">
-              {scanUnavailable
-                ? t({ en: "Unavailable", zh: "不可用" })
-                : t({ en: "Not connected", zh: "未连接" })}
-            </span>
-          ) : null}
-        </span>
-        <span className="nc-source-desc">{t(source.desc)}</span>
-        <span className="nc-source-hint">
-          <span className={`nc-trust nc-trust-${source.trust}`}><span className="nc-trust-dot" />{t(source.trustLabel)}</span>
-        </span>
+      <span className={`nc-src-tile ${source.tile}`}><Icon name={source.icon} size={22} /></span>
+      <span className="nc-source-title-row">
+        <span className="h-section nc-source-title">{t(source.title)}</span>
+        {source.badge && available ? <span className="nc-src nc-src-scan">{t(source.badge)}</span> : null}
+        {!available ? (
+          <span className="nc-src nc-src-contact">
+            {scanUnavailable
+              ? t({ en: "Unavailable", zh: "不可用" })
+              : t({ en: "Not connected", zh: "未连接" })}
+          </span>
+        ) : null}
       </span>
-      <Icon name="chevR" size={20} color={selected ? "var(--accent)" : "var(--text-4)"} />
+      <span className="nc-source-desc">{t(source.desc)}</span>
+      <span className="nc-source-hint">
+        <span className={`nc-trust nc-trust-${source.trust}`}><span className="nc-trust-dot" />{t(source.trustLabel)}</span>
+      </span>
     </button>
   );
 }
+
+/** Orbit_0918 批次 3c：导入说明（静态说明文案，均为真实产品行为描述）。 */
+const IMPORT_NOTES: { icon: string; title: Copy; desc: Copy }[] = [
+  {
+    icon: "lock",
+    title: { en: "Draft first, confirm later", zh: "草稿先行，确认后入库" },
+    desc: { en: "Every source creates a draft first; nothing is written to your contacts until you confirm.", zh: "所有来源都先生成待确认草稿，确认前不会写入联系人库。" },
+  },
+  {
+    icon: "sparkle",
+    title: { en: "Trust levels", zh: "可信度标注" },
+    desc: { en: "Each source carries a trust level; OCR-extracted fields need a field-by-field review.", zh: "每个来源都标了可信度等级；OCR 识别结果需要逐字段复核。" },
+  },
+  {
+    icon: "users",
+    title: { en: "Batch scanning", zh: "名片批量导入" },
+    desc: { en: "Batch card entry lives with the source list; each card is confirmed individually.", zh: "批量名片从左侧入口进入，每张名片单独确认后入库。" },
+  },
+];
 
 export function OrbitRealCardsImport({
   businessCardAvailability,
@@ -211,48 +227,54 @@ export function OrbitRealCardsImport({
           <SharedCrmSidebar active="import" />
           <div className="scroll" data-appscroll style={{ overflowY: "auto", padding: "28px 32px 60px" }}>
             <div style={{ marginBottom: 22 }}>
-              <h1 className="h-display" style={{ margin: "0" }}>{t({ en: "Import hub", zh: "导入中心" })}</h1>
-              <div style={{ color: "var(--text-3)", fontSize: 14, marginTop: 6 }}>
+              <h1 className="nc0918i-title">{t({ en: "Import hub", zh: "导入中心" })}</h1>
+              <div className="nc0918i-sub">
                 {t({ en: "Pick a source, or review the scanned card draft", zh: "选择来源，或复核右侧名片扫描草稿" })}
               </div>
             </div>
 
             <div className="nc-imp-grid">
-              {/* LEFT · source entries */}
-              <section>
-                <div className="nc-imp-h">
+              {/* LEFT · import methods + real capture flow */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 20, minWidth: 0 }}>
+                <section className="nc0918i-panel">
                   <div>
-                    <div className="eyebrow">{t({ en: "Add contacts", zh: "来源入口" })}</div>
-                    <div className="h-section" style={{ marginTop: 4 }}>{t({ en: "Where from?", zh: "从哪里导入？" })}</div>
+                    <h2 className="nc0918i-h2">{t({ en: "Choose an import method", zh: "选择导入方式" })}</h2>
+                    <p className="nc0918i-desc">{t({ en: "Import contacts from different sources and grow your network faster.", zh: "从不同来源导入联系人，快速扩充你的人脉网络。" })}</p>
                   </div>
-                </div>
+                  <div className="nc0918i-methods">
+                    {SOURCES.map((source) => (
+                      <SourceCard
+                        businessCardAvailability={businessCardAvailability}
+                        key={source.key}
+                        onSelect={() => setSelectedSource(source.key)}
+                        selected={selectedSource === source.key}
+                        source={source}
+                        t={t}
+                      />
+                    ))}
+                  </div>
+                  {businessCardAvailability.available ? <BusinessCardBatchEntry /> : null}
+                </section>
 
-                {SOURCES.map((source) => (
-                  <SourceCard
-                    businessCardAvailability={businessCardAvailability}
-                    key={source.key}
-                    onSelect={() => setSelectedSource(source.key)}
-                    selected={selectedSource === source.key}
-                    source={source}
-                    t={t}
-                  />
+                {/* real business-card capture and confirmation flow */}
+                <BusinessCardCaptureWorkspace
+                  availability={businessCardAvailability}
+                />
+              </div>
+
+              {/* RIGHT · import notes */}
+              <aside className="nc0918i-panel">
+                <h2 className="nc0918i-h2">{t({ en: "Import notes", zh: "导入说明" })}</h2>
+                {IMPORT_NOTES.map((note) => (
+                  <div className="nc0918i-note" key={note.title.en}>
+                    <span className="nc0918i-note-icon"><Icon name={note.icon} size={15} /></span>
+                    <span className="nc0918i-note-body">
+                      <strong>{t(note.title)}</strong>
+                      <span>{t(note.desc)}</span>
+                    </span>
+                  </div>
                 ))}
-
-                <div className="nc-note" style={{ marginTop: 16 }}>
-                  <Icon name="lock" size={16} color="var(--accent)" />
-                  <span>{t({
-                    en: "Every source creates a draft first; nothing is written to your contacts until you confirm.",
-                    zh: "所有来源都先生成待确认草稿，确认前不写入联系人库。",
-                  })}</span>
-                </div>
-
-                {businessCardAvailability.available ? <BusinessCardBatchEntry /> : null}
-              </section>
-
-              {/* RIGHT · real business-card capture and confirmation flow */}
-              <BusinessCardCaptureWorkspace
-                availability={businessCardAvailability}
-              />
+              </aside>
             </div>
           </div>
         </div>
@@ -308,7 +330,7 @@ export function OrbitRealCardsImport({
 }
 
 const LOCAL_STYLE = `
-[data-orbit-real-page] .nc-imp-grid { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 24px; align-items: start; }
+[data-orbit-real-page] .nc-imp-grid { display: grid; grid-template-columns: minmax(0,2.5fr) minmax(260px,1fr); gap: 24px; align-items: start; }
 /* With the 212px sidebar the two-column hub starves the source column on
    tablet-width desktops; stack it before titles get squeezed. */
 @media (max-width: 1024px) { [data-orbit-real-page] .nc-imp-grid { grid-template-columns: 1fr; } }
@@ -331,6 +353,27 @@ const LOCAL_STYLE = `
 [data-orbit-real-page] .nc-tl-referral { background: var(--rose-soft); color: var(--rose); }
 [data-orbit-real-page] .nc-source-desc { display: block; font-size: 12.5px; color: var(--text-3); margin-top: 3px; }
 [data-orbit-real-page] .nc-source-hint { display: block; margin-top: 8px; }
+
+/* Orbit_0918 批次 3c：导入中心 */
+[data-orbit-real-page=contacts] .nc0918i-panel { background:#FFFFFF; border:1px solid #E8E9F6; border-radius:18px; padding:26px; display:flex; flex-direction:column; gap:14px; min-width:0; }
+[data-orbit-real-page=contacts] .nc0918i-title { margin:0; font-family:'Noto Serif SC','Songti SC','SimSun',serif; font-weight:900; font-size:26px; line-height:1.15; letter-spacing:-0.02em; color:#0E1225; }
+[data-orbit-real-page=contacts] .nc0918i-h2 { margin:0; font-family:'Noto Serif SC','Songti SC','SimSun',serif; font-weight:900; font-size:22px; letter-spacing:-0.02em; color:#0E1225; }
+[data-orbit-real-page=contacts] .nc0918i-sub { margin-top:6px; font-size:14px; color:#6B6F99; }
+[data-orbit-real-page=contacts] .nc0918i-desc { margin:6px 0 0; font-size:14px; color:#6B6F99; }
+[data-orbit-real-page=contacts] .nc0918i-methods { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr)); gap:14px; }
+[data-orbit-real-page=contacts] .nc0918i-methods .nc-source-card { display:flex; flex-direction:column; align-items:center; gap:10px; padding:24px 16px 18px; text-align:center; border:1.5px solid #E8E9F6; border-radius:16px; background:#FFFFFF; }
+[data-orbit-real-page=contacts] .nc0918i-methods .nc-source-card + .nc-source-card { margin-top:0; }
+[data-orbit-real-page=contacts] .nc0918i-methods .nc-source-card.is-selected { border-color:#4B4FC7; box-shadow:0 0 0 3px #ECEEFB; }
+[data-orbit-real-page=contacts] .nc0918i-methods .nc-src-tile { width:52px; height:52px; border-radius:14px; }
+[data-orbit-real-page=contacts] .nc0918i-methods .nc-source-title-row { justify-content:center; }
+[data-orbit-real-page=contacts] .nc0918i-methods .nc-source-title { font-size:16px; }
+[data-orbit-real-page=contacts] .nc0918i-methods .nc-source-desc { font-size:13px; line-height:1.6; margin-top:0; }
+[data-orbit-real-page=contacts] .nc0918i-methods .nc-source-hint { margin-top:4px; }
+[data-orbit-real-page=contacts] .nc0918i-note { display:flex; gap:12px; padding:14px; border:1px solid #E8E9F6; border-radius:12px; }
+[data-orbit-real-page=contacts] .nc0918i-note-icon { width:36px; height:36px; border-radius:10px; background:#ECEEFB; color:#4B4FC7; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+[data-orbit-real-page=contacts] .nc0918i-note-body { display:flex; flex-direction:column; gap:4px; min-width:0; }
+[data-orbit-real-page=contacts] .nc0918i-note-body strong { font-size:14px; color:#0E1225; }
+[data-orbit-real-page=contacts] .nc0918i-note-body span { font-size:13px; color:#6B6F99; line-height:1.6; }
 
 [data-orbit-real-page] .nc-trust { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px; border-radius: var(--r-pill); font-size: 11.5px; font-weight: 600; }
 [data-orbit-real-page] .nc-trust .nc-trust-dot { width: 6px; height: 6px; border-radius: 50%; }
