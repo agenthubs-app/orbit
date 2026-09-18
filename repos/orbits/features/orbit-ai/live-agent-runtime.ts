@@ -25,6 +25,7 @@ import {
 } from "./conversation-contract";
 import {
   createGeminiOrbitAgentPlanner,
+  requestsEntityDraft,
   type GeminiOrbitAgentIntent,
   type GeminiOrbitAgentPlannerOutput,
   type GeminiOrbitAgentPlannerResult,
@@ -1728,6 +1729,33 @@ export async function runLiveOrbitAgentRuntime(
       : actorQueryReply(artifacts, locale)
         ?? contactArtifactResponseSummary(artifacts, locale, plan.intent === "contact_recommendations" && !outOfScopeToolRequests)
         ?? assistantMessageForSynthesis;
+  /**
+   * Sprint 0085: ask for the draft after the read, not before it.
+   *
+   * The planner spends its single intent on reading, so a request like
+   * "根据这篇笔记整理一个待办" arrives here as a notes query with the note already
+   * in hand. Only now does the model know what the record should say. The
+   * trigger is deterministic and the call is skipped unless the user actually
+   * asked to create something, so an ordinary query costs nothing extra.
+   */
+  const entityDraftStartedAt = nowMs();
+  const wantsDraft = !plan.entityDraft && requestsEntityDraft(message);
+  const draftResult = wantsDraft
+    ? await runtime.planner.draftEntity({
+        artifacts: artifacts.map(artifactSummaryForSynthesis),
+        currentTimeIso: new Date().toISOString(),
+        history: historyTurns,
+        locale: input.locale,
+        message,
+      })
+    : null;
+  timings.push(timingSpan("entity_draft", entityDraftStartedAt, !wantsDraft));
+  const entityDraft =
+    plan.entityDraft ??
+    (draftResult?.success === true ? draftResult.data.draft ?? undefined : undefined);
+  const planWithDraft: GeminiOrbitAgentPlannerOutput =
+    entityDraft && !plan.entityDraft ? { ...plan, entityDraft } : plan;
+
   const finalResponseStartedAt = nowMs();
   timings.push(timingSpan("final_response", finalResponseStartedAt));
   const conversation = conversationForRuntimeSuccess({
@@ -1737,7 +1765,7 @@ export async function runLiveOrbitAgentRuntime(
     locale,
     maxLoopSteps: runtime.maxLoopSteps,
     message,
-    plan,
+    plan: planWithDraft,
     plannerResult,
     routingDecision,
     shouldSynthesizeAfterTools,

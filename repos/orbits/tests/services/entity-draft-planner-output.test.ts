@@ -69,3 +69,42 @@ test("a plan with no draft field keeps working exactly as before", () => {
   assert.equal(parsed?.intent, "general_chat");
   assert.equal(parsed?.entityDraft, undefined);
 });
+
+import { requestsEntityDraft } from "../../features/orbit-ai/gemini-provider";
+
+// Sprint 0085: the planner spends its single intent on reading, so a request
+// that needs a read first never reaches action_proposal. The draft is asked for
+// after the read instead — but only when the user actually asked to create
+// something, so an ordinary query costs no extra model call.
+test("a create request is recognised even when it also names something to read", () => {
+  for (const message of [
+    "请根据这篇笔记整理一个待办，并明确标题和日期。",
+    "根据我的笔记整理一个待办",
+    "帮我建一个日程",
+    "把林玫添加为联系人",
+    "记一条笔记",
+    "新建一个活动",
+    "create a task from this note",
+    "Add a contact for Lin Mei",
+  ]) {
+    assert.equal(requestsEntityDraft(message), true, message);
+  }
+});
+
+test("an ordinary query does not trigger the extra draft call", () => {
+  for (const message of [
+    "我这周有哪些待办？",
+    "查一下我的日程",
+    "打开标题包含云端的笔记",
+    "谁可以帮我引荐餐饮行业的人",
+    "show me my tasks",
+    "",
+    // 安排 is both a verb and a noun in the trigger, so this one is the risk case.
+    "查一下我的日程安排",
+    "这周的活动有哪些",
+    "我的联系人里谁在餐饮行业",
+    "list my notes",
+  ]) {
+    assert.equal(requestsEntityDraft(message), false, message);
+  }
+});

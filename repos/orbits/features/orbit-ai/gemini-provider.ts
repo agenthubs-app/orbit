@@ -1439,6 +1439,72 @@ export async function runOrbitAgentModelText(input: {
 // 对外提供两个阶段：
 // plan = 结构化路由/工具计划；synthesize = 基于 artifact 摘要写最终回复。
 // 这两个阶段都会 fail closed：缺 key、请求失败、输出不合规都返回结构化失败。
+/**
+ * Sprint 0085: whether this turn is asking for a record to be created.
+ *
+ * The planner picks one intent per turn, so "根据这篇笔记整理一个待办" spends it on
+ * reading the note and never reaches action_proposal — which is exactly how the
+ * failing session produced three replies and no task. The draft therefore has to
+ * be asked for after the read, and only when the user actually asked to create
+ * something. This trigger is deterministic on purpose: an extra model call is
+ * not something a model gets to decide to make.
+ */
+const ENTITY_DRAFT_NOUNS = "待办|任务|笔记|备忘|日程|安排|活动|联系人|人脉";
+// 安排 is deliberately not a verb here: 查一下我的日程安排 is a query, and a
+// spurious card costs a model call and offers to create something nobody asked
+// for. Missing an unusual phrasing only costs the card.
+const ENTITY_DRAFT_VERBS = "整理|建立|创建|新建|生成|添加|加入|记录|记|建";
+
+const ENTITY_DRAFT_REQUEST_PATTERNS = [
+  // The verb always leads: 整理一个待办 / 建一个日程 / 把林玫添加为联系人.
+  new RegExp(`(${ENTITY_DRAFT_VERBS})(一个|一条|一项|个|条)?[^。.,，!！?？]{0,6}?(${ENTITY_DRAFT_NOUNS})`, "u"),
+  /\b(create|add|make|draft|log)\s+(a|an|one)?\s*(new\s+)?(task|todo|to-do|note|schedule|event|contact)\b/iu,
+];
+
+export function requestsEntityDraft(message: string): boolean {
+  const text = message.trim();
+  return text.length > 0 && ENTITY_DRAFT_REQUEST_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+function entityDraftInstruction(): string {
+  return [
+    "You are Orbit Agent, turning what the user asked for into ONE structured record draft.",
+    "Return only a JSON object: {kind, fields, sourceRefs}. No prose, no markdown, no code fence.",
+    `kind is one of ${ENTITY_DRAFT_KINDS.join(", ")}.`,
+    "Required fields: task needs title; note needs title; schedule needs title and startsAt; event needs title and startsAt; contact needs name.",
+    "Optional fields: task dueAt/notes/category, note body, schedule endsAt/location, event endsAt/location/description, contact organization/role/note.",
+    "Every field value is a string. Dates and times must be full ISO-8601 instants; if the user gave a relative time, resolve it against currentTimeIso in the input.",
+    "sourceRefs is a list of {kind, id} naming the records this draft came from, kind one of note, contact, event, task, schedule. Copy ids only from toolResults; never invent one. Use [] when there is no source.",
+    "Use the user's own words for the title where possible. Do not invent a deadline the user did not ask for and the source does not imply.",
+    "You are not creating anything. This draft is shown to the user with a confirm button and is written only if they press it.",
+    "If the request cannot be turned into one of these records, return {} and nothing else.",
+  ].join("\n");
+}
+
+function entityDraftRequestInput(input: GeminiOrbitAgentEntityDraftInput): string {
+  return JSON.stringify({
+    conversationHistory: (input.history ?? []).slice(-8),
+    currentTimeIso: input.currentTimeIso,
+    locale: input.locale ?? "zh",
+    toolResults: input.artifacts,
+    userMessage: input.message,
+  });
+}
+
+export interface GeminiOrbitAgentEntityDraftInput {
+  artifacts: readonly unknown[];
+  currentTimeIso: string;
+  history?: readonly GeminiOrbitAgentConversationTurn[];
+  locale?: string | null;
+  message: string;
+}
+
+export type GeminiOrbitAgentEntityDraftResult =
+  | { success: true; data: { draft: EntityDraftProposal | null; model: string; provider: OrbitAgentModelProvider } }
+  // Carries a reason even though the turn survives without a draft: a card that
+  // silently never appears is the hardest kind of absence to diagnose.
+  | { success: false; reason: "api_key_missing" | "request_failed" | "no_output" | "unparsable" };
+
 export function createGeminiOrbitAgentPlanner(
   config: GeminiOrbitAgentProviderConfig = {},
 ) {
@@ -1552,6 +1618,52 @@ export function createGeminiOrbitAgentPlanner(
         },
         success: true,
       };
+    },
+
+    /**
+     * One bounded call that returns a draft or nothing. It never throws a
+     * failure upward: a turn that cannot produce a draft simply has no card,
+     * which reads as "I could not turn that into something to confirm".
+     */
+    async draftEntity(
+      input: GeminiOrbitAgentEntityDraftInput,
+    ): Promise<GeminiOrbitAgentEntityDraftResult> {
+      const provider = resolveProvider(config);
+      if (!provider.apiKey) return { reason: "api_key_missing", success: false };
+      try {
+        const { response, responseBody } = await fetchProviderResponse({
+          fetchImplementation: config.fetchImplementation ?? fetch,
+          init: {
+            body: JSON.stringify(
+              providerRequestBody({
+                inputText: entityDraftRequestInput(input),
+                model: provider.model,
+                provider: provider.provider,
+                systemInstructionText: entityDraftInstruction(),
+              }),
+            ),
+            headers: providerHeaders(provider),
+            method: "POST",
+          },
+          provider: provider.provider,
+          timeoutMs: readRequestTimeoutMs(config.requestTimeoutMs),
+          url: provider.endpoint,
+        });
+        if (!response.ok) return { reason: "request_failed", success: false };
+        const outputText = readProviderOutputText(provider.provider, responseBody);
+        if (!outputText) return { reason: "no_output", success: false };
+        const parsed = parseJsonFromText(outputText);
+        return {
+          data: {
+            draft: parsed === null ? null : parseEntityDraftProposal(parsed),
+            model: provider.model,
+            provider: provider.provider,
+          },
+          success: true,
+        };
+      } catch {
+        return { reason: "request_failed", success: false };
+      }
     },
 
     async synthesize(
