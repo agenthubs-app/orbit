@@ -82,3 +82,62 @@ test("unregistered core formal proofs generate trusted answers without saving re
     assert.throws(() => readPortraitAnswerProofs({ ...scope, responses, snapshot: { ...snapshot, ...change }, portrait: null, secret, now: () => now }), (error: unknown) => error instanceof PortraitError && error.status === 409);
   }
 });
+
+// Sprint 0081: the real "答完第八题生成不了画像" shape — two answers prefilled from the
+// registration plus six signed interview answers. This mixed request is what the
+// screen sends once a participant has already answered the formal questions, and
+// it must be accepted. The one rejection that does apply is a repeated field: the
+// adaptive interview must never re-ask something the registration already covered.
+function mixedPortraitRequest(extra: readonly PortraitAnswerProof[] = []) {
+  const registrationProfile = {
+    id: `event-participant-profile:${scope.eventId}:${scope.actorId}`,
+    createdAt: "2026-09-17T08:00:00.000Z",
+    userId: scope.actorId,
+    eventId: scope.eventId,
+    updatedAt: "2026-09-17T09:00:00.000Z",
+    answers: { targetAttendees: "餐饮连锁的运营负责人", valueOffered: "入境客数据与渠道资源" },
+    interviewResponses: [],
+  };
+  const snapshot = {
+    eventExists: true,
+    access: { owner: false, role: null, state: null },
+    sourceRegistrationVersion: "1",
+    sourceRegistrationFingerprint: "fingerprint:1",
+    registrationProfile,
+  };
+  const prefilled: PortraitAnswerProof[] = (["targetAttendees", "valueOffered"] as const).map((field) => ({
+    kind: "stored_response",
+    source: "registration",
+    responseId: `legacy:${field}`,
+    sourceVersion: "fingerprint:1",
+    answer: registrationProfile.answers[field],
+  }));
+  const interviewed: PortraitAnswerProof[] = (["desiredOutcome", "positioning", "industry", "energyStyle", "followUpPreference", "experienceHighlight"] as const).map((field) => {
+    const questionToken = signAdaptiveInterviewQuestion({ ...scope, language: "zh", question: { acknowledgment: "", field, prompt: `关于${field}，请具体说明你的情况。`, options: ["选项一", "选项二"], provenance: { generationMethod: "orbit-agent-model-adaptive", fallbackReason: null, model: "deepseek-v4-flash", provider: "deepseek" } }, secret, now: () => now });
+    return { kind: "signed_question", answer: `${field} 的具体回答`, questionToken, portraitAdaptiveToken: signPortraitAdaptiveQuestion({ ...scope, questionToken, secret, now: () => now }) };
+  });
+  return { snapshot, responses: [...prefilled, ...interviewed, ...extra] };
+}
+
+test("eight answers mixing prefilled registration proofs with signed interview proofs are accepted", () => {
+  const { snapshot, responses } = mixedPortraitRequest();
+  const trusted = readPortraitAnswerProofs({ ...scope, responses, snapshot, portrait: null, secret, now: () => now });
+  assert.equal(trusted.length, 8, "all eight answers survive verification");
+  assert.deepEqual(
+    trusted.filter((answer) => answer.source === "registration").map((answer) => answer.field).sort(),
+    ["targetAttendees", "valueOffered"],
+    "the two prefilled core answers keep their registration provenance",
+  );
+  assert.equal(new Set(trusted.map((answer) => answer.field)).size, 8, "every field appears once");
+});
+
+test("a field the registration already answered cannot be asked again by the interview", () => {
+  const questionToken = signAdaptiveInterviewQuestion({ ...scope, language: "zh", question: { acknowledgment: "", field: "valueOffered", prompt: "你能为对方提供什么？", options: ["选项一", "选项二"], provenance: { generationMethod: "orbit-agent-model-adaptive", fallbackReason: null, model: "deepseek-v4-flash", provider: "deepseek" } }, secret, now: () => now });
+  const duplicate: PortraitAnswerProof = { kind: "signed_question", answer: "重复字段的回答", questionToken, portraitAdaptiveToken: signPortraitAdaptiveQuestion({ ...scope, questionToken, secret, now: () => now }) };
+  const { snapshot, responses } = mixedPortraitRequest([duplicate]);
+  assert.throws(
+    () => readPortraitAnswerProofs({ ...scope, responses, snapshot, portrait: null, secret, now: () => now }),
+    (error: unknown) => error instanceof PortraitError && error.status === 422 && error.code === "PORTRAIT_INPUT_INVALID",
+    "a duplicate field is refused with the code the client now shows",
+  );
+});

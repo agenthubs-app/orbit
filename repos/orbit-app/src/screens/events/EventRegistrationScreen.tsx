@@ -408,7 +408,13 @@ export function EventRegistrationScreen() {
       setAdaptiveQuestion(null);
       setPersona(eventRegistrationPersonaToView(result.data));
     } else {
-      setAdaptiveError(result.success ? "暂时无法生成活动画像，请重试。" : result.error.message);
+      // Sprint 0081: a rejected portrait preview used to read the same either way,
+      // so a data fault and a transient outage looked identical. Carry the server's
+      // portraitCode into the message; it is the only thing that tells them apart.
+      const portraitCode = !result.success ? String(result.error.context?.portraitCode ?? "").trim() : "";
+      setAdaptiveError(result.success
+        ? "暂时无法生成活动画像，请重试。"
+        : portraitCode ? `${result.error.message}（${portraitCode}）` : result.error.message);
       if (!result.success && [409, 422].includes(result.status) && editRevision.current === revision) setPortraitSession({ ...nextSession, preview: null, saveState: "rejected" });
     }
 
