@@ -61,6 +61,16 @@ const organizerAccountIds = new Set(
     .filter((accountId): accountId is string => typeof accountId === "string"),
 );
 
+/**
+ * A generated notification that only says "review the next step with X" has no
+ * object, no reason and no verifiable target. The 2026-09-16 notification design
+ * keeps such records out of the inbox rather than translating them.
+ */
+export function belowNotificationContentThreshold(record: { readonly [key: string]: unknown }): boolean {
+  const title = typeof record.title === "string" ? record.title.trim() : "";
+  return /^复核与.+的下一步$/u.test(title);
+}
+
 export const GENERATED_FIXTURE_LIVE_SEED_EXPECTED_COLLECTIONS =
   MOCK_FIXTURE_COLLECTION_NAMES.map((collectionName) => ({
     collectionName,
@@ -311,6 +321,11 @@ export async function seedGeneratedRelationshipFixturesIntoLiveStore({
     const recordIds: string[] = [];
 
     for (const record of fixtureRecordsFor(collectionName)) {
+      // Sprint 0086: the notification design refuses generated "复核与 X 的下一步"
+      // rows — they carry no verifiable target, so every reader saw them as
+      // "来源已不可用". Seeding them again would recreate the exact data fault the
+      // quarantine removed, so the seed skips them at the source.
+      if (collectionName === "notifications" && belowNotificationContentThreshold(record)) continue;
       await store.upsertRecord(
         liveRecordForFixture({
           collectionName,

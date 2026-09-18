@@ -33,8 +33,12 @@ export function createInboxNotificationHandler(options:{resolveActor?:ResolveAut
       return send({...receipt,notification:await runtime.service.get(actor.id,id,lang)});
     } catch(error) {
       const code=error instanceof InboxRecordError?error.code:'SERVICE_UNAVAILABLE';
-      const status=code==='NOT_FOUND'?404:code==='CONFLICT'?409:code==='SOURCE_UNAVAILABLE'?410:code==='VALIDATION_ERROR'?400:503;
-      return NextResponse.json(failure(new AppError(code==='SOURCE_UNAVAILABLE'?'NOT_FOUND':code,error instanceof InboxRecordError?error.message:'Notifications are temporarily unavailable')),{status,headers:{'Cache-Control':'no-store'}});
+      // An unclassifiable record is a data fault, not a transient outage: answer a
+      // named 409 so the client shows "收件箱数据异常" with the code instead of an
+      // empty list or a placeholder row.
+      const status=code==='NOT_FOUND'?404:code==='CONFLICT'||code==='INTEGRITY_VIOLATION'?409:code==='SOURCE_UNAVAILABLE'?410:code==='VALIDATION_ERROR'?400:503;
+      const appCode=code==='SOURCE_UNAVAILABLE'?'NOT_FOUND':code==='INTEGRITY_VIOLATION'?'CONFLICT':code;
+      return NextResponse.json(failure(new AppError(appCode,error instanceof InboxRecordError?error.message:'Notifications are temporarily unavailable'),{inboxErrorCode:code}),{status,headers:{'Cache-Control':'no-store'}});
     }
   };
 }
