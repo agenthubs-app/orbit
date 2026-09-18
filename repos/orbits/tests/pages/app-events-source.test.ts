@@ -10,7 +10,7 @@ function source(path: string): string {
   return readFileSync(join(projectRoot, path), "utf8");
 }
 
-test("/app/events defaults to event content modules with image media", () => {
+test("/app/events renders Orbit_0918 event module cards with image media", () => {
   const exploreSource = source("app/(app)/app/events/orbit-real-explore-client.tsx");
 
   assert.match(exploreSource, /function EventModuleGrid/u);
@@ -24,10 +24,9 @@ test("/app/events defaults to event content modules with image media", () => {
   assert.match(exploreSource, /import \{ EventCover \} from "\.\/orbit-event-cover"/u);
   assert.doesNotMatch(exploreSource, /function EventImageList/u);
   assert.doesNotMatch(exploreSource, /orbit-event-poster-list/u);
-  assert.match(exploreSource, /const \[mode, setMode\] = useState\("modules"\)/u);
-  assert.match(exploreSource, /effMode === "modules"/u);
-  assert.doesNotMatch(exploreSource, /const \[mode, setMode\] = useState\("list"\)/u);
-  assert.doesNotMatch(exploreSource, />\{t\(\{ en: "Images", zh: "图片" \}\)\}<\/button>/u);
+  // Orbit_0918 设计替换：地图视图与 modules/map 切换器退役（2026-09-18）。
+  assert.doesNotMatch(exploreSource, /MapCanvas/u);
+  assert.doesNotMatch(exploreSource, /orbit-event-view-switcher/u);
 });
 
 test("every active event image surface uses the progressive event cover", () => {
@@ -64,14 +63,11 @@ test("progressive product imagery is responsive, LQIP-backed, and decode-gated",
   assert.match(generatedLqipSource, /data:image\/webp;base64,/u);
 });
 
-test("registered empty state and map variants keep one coherent event action", () => {
+test("registered empty state and card overlays keep one coherent event action", () => {
   const exploreSource = source("app/(app)/app/events/orbit-real-explore-client.tsx");
 
   assert.match(exploreSource, /还没有已报名活动/u);
   assert.match(exploreSource, /No registered events yet/u);
-  assert.match(exploreSource, /\{located\.map\(\(item\)/u);
-  assert.doesNotMatch(exploreSource, /\{mapItems\.map\(\(item\)/u);
-  assert.match(exploreSource, /<MapEventCard compact item=\{selectedItem\}/u);
   assert.match(exploreSource, /zIndex: ORBIT_Z\.raised/u);
   assert.doesNotMatch(exploreSource, /zIndex:\s*[0-9]/u);
 });

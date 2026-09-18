@@ -1,3 +1,14 @@
+/**
+ * /app/events（Orbit_0918 discover + 我的活动）行为契约测试。
+ *
+ * 前身为 app-events-view-switcher.test.ts。2026-09-18 设计替换（对照
+ * docs/designs/Orbit_0918/Events.dc.html isList/isDiscover/isMine）后：
+ * - 地图视图与 modules/map 切换器退役（设计无地图屏）；
+ * - 话题 chips 退役，话题匹配由搜索框承担（matchesExploreFilters 不变）；
+ * - 桌面/移动双树合并为单一响应式树，断言直接打在根树上；
+ * - 我的活动 = scope=registered，渲染时间线横卡（报名成功→活动现场→会后回顾）。
+ * 人数未知≠0、搜索语义、清除筛选恢复目录、语言切换重算等旧契约全部保留。
+ */
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -14,17 +25,30 @@ import { getOrbitLandingEventView, type OrbitLandingEventView } from "../../app/
 
 const appRoot = path.join(process.cwd(), "app/(app)/app/events");
 
-test("event view switcher owns one outline and exposes its selected state", () => {
+test("the map view and view switcher are retired by the Orbit_0918 design", () => {
   const component = fs.readFileSync(
     path.join(appRoot, "orbit-real-explore-client.tsx"),
     "utf8",
   );
 
-  assert.match(component, /className="orbit-event-view-switcher"/u);
-  assert.match(component, /aria-pressed=\{effMode === "modules"\}/u);
-  assert.match(component, /aria-pressed=\{effMode === "map"\}/u);
-  assert.match(component, /\.orbit-event-view-switcher > \.orbit-event-view-option\s*\{[\s\S]*?border-color: transparent;/u);
-  assert.match(component, /\.orbit-event-view-switcher > \.orbit-event-view-option:focus-visible\s*\{[\s\S]*?outline-offset: -3px;/u);
+  assert.doesNotMatch(component, /MapCanvas/u);
+  assert.doesNotMatch(component, /orbit-event-view-switcher/u);
+  assert.doesNotMatch(component, /orbit-mobile-only/u);
+  assert.doesNotMatch(component, /orbit-desktop-only/u);
+});
+
+test("the Orbit_0918 discover header, tabs, and stats are present", () => {
+  const component = fs.readFileSync(
+    path.join(appRoot, "orbit-real-explore-client.tsx"),
+    "utf8",
+  );
+
+  assert.match(component, /发现活动/u);
+  assert.match(component, /我的活动/u);
+  assert.match(component, /主办管理/u);
+  assert.match(component, /创建活动/u);
+  assert.match(component, /orbit-explore-stats/u);
+  assert.match(component, /orbit-event-mine-timeline/u);
 });
 
 function exploreEvent(participantCount: number | null): OrbitLandingEventView {
@@ -90,7 +114,7 @@ function textContent(value: unknown): string {
   return "";
 }
 
-test("event cards omit unknown participant counts in modules, map, and mobile views", () => {
+test("event cards omit unknown participant counts and show known counts", () => {
   const unknownRenderer = createRenderer(exploreTree(exploreEvent(null)));
   try {
     assert.match(textContent(unknownRenderer.toJSON()), /Unknown count explore fixture/u);
@@ -98,20 +122,6 @@ test("event cards omit unknown participant counts in modules, map, and mobile vi
       textContent(unknownRenderer.root.findByProps({ className: "card card-hover orbit-event-module-card" })),
       /null\s+(registered|people|人)|undefined/u,
     );
-    assert.doesNotMatch(
-      textContent(unknownRenderer.root.findByProps({ className: "card card-hover" })),
-      /null\s+(registered|people|人)|undefined/u,
-    );
-    const unknownMapButton = unknownRenderer.root.findAllByProps({ "aria-pressed": false }).find(
-      (button) => textContent(button).includes("地图"),
-    );
-    assert.ok(unknownMapButton, "the fixture should expose the map view");
-    act(() => unknownMapButton.props.onClick());
-    const unknownMapCards = unknownRenderer.root.findAllByProps({ "data-orbit-map-event-card": true });
-    assert.ok(unknownMapCards.length > 0, "the map view should render event cards");
-    for (const mapCard of unknownMapCards) {
-      assert.doesNotMatch(textContent(mapCard), /null\s+(people|人)|undefined/u);
-    }
   } finally {
     act(() => unknownRenderer.unmount());
   }
@@ -122,20 +132,6 @@ test("event cards omit unknown participant counts in modules, map, and mobile vi
       textContent(knownRenderer.root.findByProps({ className: "card card-hover orbit-event-module-card" })),
       /7 人已报名/u,
     );
-    assert.match(
-      textContent(knownRenderer.root.findByProps({ className: "card card-hover" })),
-      /7 人/u,
-    );
-    const knownMapButton = knownRenderer.root.findAllByProps({ "aria-pressed": false }).find(
-      (button) => textContent(button).includes("地图"),
-    );
-    assert.ok(knownMapButton, "the fixture should expose the map view");
-    act(() => knownMapButton.props.onClick());
-    const knownMapCards = knownRenderer.root.findAllByProps({ "data-orbit-map-event-card": true });
-    assert.ok(knownMapCards.length > 0, "the map view should render event cards");
-    for (const mapCard of knownMapCards) {
-      assert.match(textContent(mapCard), /7 人/u);
-    }
   } finally {
     act(() => knownRenderer.unmount());
   }
@@ -220,10 +216,6 @@ function moduleCardNames(renderer: ReturnType<typeof createRenderer>): string[] 
     .map((card) => textContent(card.findByType("h2")));
 }
 
-function mobileExplore(renderer: ReturnType<typeof createRenderer>) {
-  return renderer.root.findByProps({ className: "orbit-mobile-only" });
-}
-
 test("event search matches the visible topic label while retaining name, code, and theme includes", () => {
   const topic = interactiveEvent({
     id: "event:topic-search",
@@ -267,9 +259,6 @@ test("event search matches the visible topic label while retaining name, code, a
     try {
       const input = renderer.root.findAllByType("input")[0];
       assert.ok(input);
-      if (query === "人脉拓展") {
-        assert.ok(renderer.root.findAllByType("button").some((button) => textContent(button) === query));
-      }
       act(() => input.props.onChange({ target: { value: query } }));
       assert.deepEqual(moduleCardNames(renderer), [expectedName], query);
     } finally {
@@ -288,99 +277,22 @@ test("event search matches the visible topic label while retaining name, code, a
   }
 });
 
-test("mobile status and topic filters have separate labeled scrollers and pressed state", () => {
+test("status filters expose a labeled segmented group with pressed state", () => {
   let renderer!: ReturnType<typeof createRenderer>;
   act(() => {
-    renderer = createRenderer(interactiveTree([{
-      ...interactiveEvent({ id: "event:filter-topic", name: "Filter fixture" }),
-      industry: "Relationship building",
-      tags: [],
-    }]));
+    renderer = createRenderer(interactiveTree([interactiveEvent({ id: "event:filter", name: "Filter fixture" })]));
   });
   try {
-    const mobile = mobileExplore(renderer);
-    const statusGroup = mobile.findByProps({ role: "group", "aria-label": "活动状态" });
-    const topicGroup = mobile.findByProps({ role: "group", "aria-label": "活动话题" });
-    const statusScroller = statusGroup.findByProps({ className: "scroll noscroll orbit-chip-scroller" });
-    const topicScroller = topicGroup.findByProps({ className: "scroll noscroll orbit-chip-scroller" });
-    assert.match(textContent(statusGroup), /状态/u);
-    assert.match(textContent(topicGroup), /话题/u);
-    assert.doesNotMatch(textContent(statusScroller), /状态/u);
-    assert.doesNotMatch(textContent(topicScroller), /话题/u);
-    const allStatus = statusGroup.findAllByType("button").find(
-      (button) => textContent(button) === "全部",
-    );
-    const upcoming = statusGroup.findAllByType("button").find(
-      (button) => textContent(button) === "即将开始",
-    );
-    const topic = topicGroup.findAllByType("button").find(
-      (button) => textContent(button) === "人脉拓展",
-    );
-    assert.ok(allStatus);
-    assert.ok(upcoming);
-    assert.ok(topic);
-    assert.equal(allStatus.props["aria-pressed"], true);
-    assert.equal(upcoming.props["aria-pressed"], false);
-    assert.equal(topic.props["aria-pressed"], false);
-    for (const button of [allStatus, upcoming, topic]) {
-      assert.equal(button.props.style.minHeight, "var(--tap-min, 44px)");
-      assert.equal(button.props.style.minWidth, "var(--tap-min, 44px)");
-    }
-
-    act(() => upcoming.props.onClick());
-    assert.equal(
-      mobileExplore(renderer)
-        .findByProps({ role: "group", "aria-label": "活动状态" })
-        .findAllByType("button")
-        .find((button) => textContent(button) === "即将开始")?.props["aria-pressed"],
-      true,
-    );
-    assert.equal(
-      mobileExplore(renderer)
-        .findByProps({ role: "group", "aria-label": "活动状态" })
-        .findAllByType("button")
-        .find((button) => textContent(button) === "全部")?.props["aria-pressed"],
-      false,
-    );
-    act(() => topic.props.onClick());
-    assert.equal(
-      mobileExplore(renderer)
-        .findByProps({ role: "group", "aria-label": "活动话题" })
-        .findAllByType("button")
-        .find((button) => textContent(button) === "人脉拓展")?.props["aria-pressed"],
-      true,
-    );
-  } finally {
-    act(() => renderer.unmount());
-  }
-});
-
-test("desktop status and topic filters expose independent groups and pressed state", () => {
-  let renderer!: ReturnType<typeof createRenderer>;
-  act(() => {
-    renderer = createRenderer(interactiveTree([{
-      ...interactiveEvent({ id: "event:desktop-filter", name: "Desktop filter fixture" }),
-      industry: "Relationship building",
-      tags: [],
-    }]));
-  });
-  try {
-    const desktop = renderer.root.findByProps({ className: "orbit-desktop-only" });
-    const statusGroup = desktop.findByProps({ role: "group", "aria-label": "活动状态" });
-    const topicGroup = desktop.findByProps({ role: "group", "aria-label": "活动话题" });
+    const statusGroup = renderer.root.findByProps({ role: "group", "aria-label": "活动状态" });
     const allStatus = statusGroup.findAllByType("button").find((button) => textContent(button) === "全部");
     const upcoming = statusGroup.findAllByType("button").find((button) => textContent(button) === "即将开始");
-    const topic = topicGroup.findAllByType("button").find((button) => textContent(button) === "人脉拓展");
     assert.ok(allStatus);
     assert.ok(upcoming);
-    assert.ok(topic);
     assert.equal(allStatus.props["aria-pressed"], true);
     assert.equal(upcoming.props["aria-pressed"], false);
-    assert.equal(topic.props["aria-pressed"], false);
     act(() => upcoming.props.onClick());
     assert.equal(
       renderer.root
-        .findByProps({ className: "orbit-desktop-only" })
         .findByProps({ role: "group", "aria-label": "活动状态" })
         .findAllByType("button")
         .find((button) => textContent(button) === "即将开始")?.props["aria-pressed"],
@@ -388,20 +300,10 @@ test("desktop status and topic filters expose independent groups and pressed sta
     );
     assert.equal(
       renderer.root
-        .findByProps({ className: "orbit-desktop-only" })
         .findByProps({ role: "group", "aria-label": "活动状态" })
         .findAllByType("button")
         .find((button) => textContent(button) === "全部")?.props["aria-pressed"],
       false,
-    );
-    act(() => topic.props.onClick());
-    assert.equal(
-      renderer.root
-        .findByProps({ className: "orbit-desktop-only" })
-        .findByProps({ role: "group", "aria-label": "活动话题" })
-        .findAllByType("button")
-        .find((button) => textContent(button) === "人脉拓展")?.props["aria-pressed"],
-      true,
     );
   } finally {
     act(() => renderer.unmount());
@@ -440,49 +342,55 @@ test("clearing a no-result search restores the full event catalogue", () => {
   }
 });
 
-test("mobile view controls expose content and map selection and map copy states its schematic nature", () => {
-  const first = interactiveEvent({ id: "event:map-first", name: "Map First" });
-  const second = interactiveEvent({ id: "event:map-second", name: "Map Second" });
-  const renderer = createRenderer(interactiveTree([first, second]));
+test("scope=registered renders the 我的活动 timeline layout", () => {
+  const renderer = createRenderer(
+    createElement(
+      AppRouterContext.Provider,
+      {
+        value: {
+          back: () => undefined,
+          forward: () => undefined,
+          prefetch: async () => undefined,
+          push: () => undefined,
+          refresh: () => undefined,
+          replace: () => undefined,
+        },
+      },
+      createElement(
+        PathnameContext.Provider,
+        { value: "/app/events" },
+        createElement(
+          SearchParamsContext.Provider,
+          { value: new URLSearchParams("scope=registered") },
+          createElement(OrbitRealExploreClient, {
+            initialScope: "registered",
+            registrationAvailabilityByEventId: {},
+            viewModel: {
+              account: { fullName: "Orbit" },
+              connections: [],
+              events: [
+                {
+                  ...interactiveEvent({ id: "event:mine", name: "Mine fixture" }),
+                  stats: { attendees: [], authed: true, count: 7, youRsvped: true },
+                  youRsvped: true,
+                },
+              ],
+            },
+          }),
+        ),
+      ),
+    ),
+  );
   try {
-    const mobile = mobileExplore(renderer);
-    const viewGroup = mobile.findByProps({ role: "group", "aria-label": "活动视图" });
-    const content = viewGroup.findAllByType("button").find(
-      (button) => textContent(button) === "内容",
-    );
-    const map = viewGroup.findAllByType("button").find(
-      (button) => textContent(button) === "地图",
-    );
-    assert.ok(content);
-    assert.ok(map);
-    assert.equal(content.props["aria-pressed"], true);
-    assert.equal(map.props["aria-pressed"], false);
-
-    act(() => map.props.onClick());
-    assert.equal(content.props["aria-pressed"], false);
-    assert.equal(map.props["aria-pressed"], true);
-    assert.equal(content.props.style.minHeight, "var(--tap-min, 44px)");
-    assert.equal(content.props.style.minWidth, "var(--tap-min, 44px)");
-    assert.equal(map.props.style.minHeight, "var(--tap-min, 44px)");
-    assert.equal(map.props.style.minWidth, "var(--tap-min, 44px)");
-    assert.match(textContent(mobile), /活动分布示意（非实际位置）/u);
-    assert.match(textContent(renderer.root), /2 场活动/u);
-
-    const marker = mobile.findAllByType("button").find(
-      (button) => button.props["aria-label"] === "查看活动：Map Second",
-    );
-    assert.ok(marker);
-    act(() => marker.props.onClick());
-    assert.ok(
-      mobile
-        .findAllByProps({ "data-orbit-map-event-card": true })
-        .some((card) => textContent(card).includes("Map Second")),
-    );
-    assert.ok(
-      mobile
-        .findAllByProps({ "data-orbit-map-event-card": true })
-        .some((card) => card.findAllByType("a").length > 0),
-    );
+    assert.match(textContent(renderer.toJSON()), /我的活动/u);
+    const mineCards = renderer.root.findAllByProps({ className: "card card-hover orbit-event-mine-card" });
+    assert.equal(mineCards.length, 1);
+    assert.match(textContent(mineCards[0]), /Mine fixture/u);
+    assert.match(textContent(mineCards[0]), /报名成功/u);
+    assert.match(textContent(mineCards[0]), /活动现场/u);
+    assert.match(textContent(mineCards[0]), /会后回顾/u);
+    // 发现网格不出现，时间线横卡取而代之。
+    assert.equal(renderer.root.findAllByProps({ className: "card card-hover orbit-event-module-card" }).length, 0);
   } finally {
     act(() => renderer.unmount());
   }

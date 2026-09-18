@@ -7,9 +7,10 @@ import type { OrbitLandingEventView, OrbitLandingViewModel } from "../orbit-land
 import { useOrbitLanguage } from "../orbit-language-context";
 import { partyHrefForEvent } from "../orbit-product-href";
 import { productHref, PublicTopNav } from "../orbit-public-shell";
-import { gradientFromString, Icon, StatusBadge } from "../orbit-reference-primitives";
+import { gradientFromString } from "../orbit-reference-primitives";
 import { getDemoEventSceneAsset } from "../../../../shared/demo-visual-assets";
 import { ORBIT_Z } from "../orbit-z";
+import { ORBIT_0918_COLORS as C, ORBIT_0918_FONTS } from "../orbit-0918-tokens";
 import { EventCover } from "./orbit-event-cover";
 import type { EventRegistrationAvailability } from "../orbit-event-registration-view-model";
 import {
@@ -26,6 +27,21 @@ import {
 
 export { eventCardActionKind, eventScopeFromValues, eventScopeSearchString } from "./explore-model";
 
+/**
+ * Orbit_0918 Events（参与者侧）discover + 我的活动两屏。
+ * 设计来源：docs/designs/Orbit_0918/Events.dc.html 的 isList/isDiscover/isMine。
+ *
+ * 设计驱动的取舍（2026-09-18，对照 ui-mapping-2026-09-18.md 第二节）：
+ * - 设计无地图视图：原内容/地图切换器与示意图画布退役（git 历史可恢复）。
+ * - 设计无话题筛选行：话题筛选收起，搜索框覆盖名称/编号/话题/主题词。
+ * - 桌面/移动双树合并为单一响应式树（设计稿即响应式 flex/grid）。
+ * - 状态统计卡只展示可从目录真实计算的四项（即将开始/我已报名/进行中/
+ *   本月活动）；设计 mock 的「本周推荐 12」无真实数据源，不伪造。
+ * - 我的活动 = scope=registered（既有 URL 语义不变，账号菜单深链不变），
+ *   渲染为设计的时间线横卡；时间线步骤从活动状态推导（报名成功→活动现场
+ *   →会后回顾），不伪造报名日期。
+ */
+
 const tz = { timeZone: "Asia/Tokyo" };
 interface MappedEvent {
   code: string;
@@ -37,7 +53,6 @@ interface MappedEvent {
   name: string;
   people: number | null;
   place: string;
-  pos: { x: number; y: number };
   status: OrbitLandingEventView["status"];
   registered: boolean;
   registrationAvailability: EventRegistrationAvailability;
@@ -64,6 +79,12 @@ function formatEventDate(event: OrbitLandingEventView, language: "en" | "zh") {
   };
 }
 
+function formatEventDateFull(event: OrbitLandingEventView, language: "en" | "zh") {
+  const date = new Date(event.startsAt);
+  if (!Number.isFinite(date.getTime())) return language === "en" ? "Time TBD" : "时间待定";
+  return new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", { month: "2-digit", day: "2-digit", weekday: "short", hour: "2-digit", minute: "2-digit", ...tz }).format(date);
+}
+
 function mapEvent(
   event: OrbitLandingEventView,
   language: "en" | "zh",
@@ -82,7 +103,6 @@ function mapEvent(
     name,
     people: event.participantCount,
     place: event.place,
-    pos: { x: event.mapX, y: event.mapY },
     status: event.status,
     registered: Boolean(event.stats.youRsvped),
     registrationAvailability,
@@ -107,27 +127,66 @@ function eventCardAction(
     return {
       badgeLabel: null,
       href: productHref(`/events/${event.code}`),
+      kind,
       label:
         kind === "view"
           ? t({ en: "View event", zh: "查看活动" })
-          : t({ en: "Register", zh: "报名" }),
+          : t({ en: "Register now", zh: "立即报名" }),
     };
   }
   if (kind === "enter") {
     return {
       badgeLabel: t({ en: "Registered", zh: "已报名" }),
       href: partyHrefForEvent(event.id),
+      kind,
       label: t({ en: "Enter event", zh: "进入现场" }),
     };
   }
   return {
     badgeLabel: t({ en: "Registered", zh: "已报名" }),
     href: productHref(`/events/${event.code}`),
+    kind,
     label:
       kind === "manage"
         ? t({ en: "Manage registration", zh: "管理报名" })
         : t({ en: "View event", zh: "查看活动" }),
   };
+}
+
+/** 设计稿状态 pill（卡片封面右上角）：软底深字，按状态取色。 */
+function statusPillColors(status: OrbitLandingEventView["status"]) {
+  if (status === "active") return { background: "#E6F1EC", color: "#2F6B4F" };
+  if (status === "ended") return { background: C.panelSoft, color: C.text3 };
+  return { background: C.panel, color: C.text2 };
+}
+
+function EventStatusPill({
+  language,
+  status,
+}: {
+  language: "en" | "zh";
+  status: OrbitLandingEventView["status"];
+}) {
+  const label =
+    status === "active"
+      ? language === "en" ? "Live" : "进行中"
+      : status === "ended"
+        ? language === "en" ? "Ended" : "已结束"
+        : language === "en" ? "Upcoming" : "即将开始";
+  return (
+    <span
+      className="orbit-explore-status-pill"
+      style={{
+        borderRadius: 999,
+        fontSize: 12,
+        fontWeight: 500,
+        padding: "5px 12px",
+        ...statusPillColors(status),
+      }}
+    >
+      {label}
+    </span>
+  );
 }
 
 function EventModuleGrid({
@@ -161,14 +220,16 @@ function EventModuleCard({
   registrationAvailability: EventRegistrationAvailability;
 }) {
   const { language, preserveHref, t } = useOrbitLanguage();
-  const mapped = mapEvent(event, language === "ja" ? "en" : language, registrationAvailability);
+  const lang = language === "ja" ? "en" : language;
+  const mapped = mapEvent(event, lang, registrationAvailability);
   const action = eventCardAction(event, t, registrationAvailability);
-  const cardTime = new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", ...tz }).format(new Date(event.startsAt));
   const sceneAsset = getDemoEventSceneAsset(event.id) ?? getDemoEventSceneAsset(event.code);
   // 行业已作为卡片眉行展示，标签行不再重复同一个词。
   const topics = eventTopics(event)
     .filter((item) => item !== event.industry)
     .slice(0, 3);
+  const dateLabel = formatEventDateFull(event, lang);
+  const primaryCta = action.kind === "register" || action.kind === "enter";
   return (
     <div className="orbit-card-link">
       <article
@@ -176,7 +237,16 @@ function EventModuleCard({
         data-demo-visual-asset-id={sceneAsset?.assetId}
         data-demo-visual-source={sceneAsset?.sourceLabel}
         data-demo-visual-source-label={sceneAsset?.sourceLabel}
-        style={{ position: "relative" }}
+        style={{
+          background: "#FFFFFF",
+          border: `1px solid ${C.border}`,
+          borderRadius: 18,
+          display: "flex",
+          flexDirection: "column",
+          gap: 14,
+          padding: "14px 14px 18px",
+          position: "relative",
+        }}
       >
         <a
           aria-label={t({ en: `View ${mapped.name} details`, zh: `查看${mapped.name}详情` })}
@@ -188,46 +258,61 @@ function EventModuleCard({
           g={mapped.g}
           imageAlt={mapped.name}
           imageLoading={imagePriority ? "eager" : "lazy"}
-          imageSizes="(max-width: 720px) calc(100vw - 36px), (max-width: 1280px) 50vw, 736px"
+          imageSizes="(max-width: 720px) calc(100vw - 36px), (max-width: 1280px) 50vw, 400px"
           imageUrl={mapped.imageUrl}
           monogram={mapped.imageUrl ? null : { text: mapped.name.slice(0, 1), size: 46 }}
-          style={{ opacity: event.status === "ended" ? 0.74 : 1 }}
+          style={{ borderRadius: 12, height: 150, opacity: event.status === "ended" ? 0.74 : 1 }}
         >
-          <div className="orbit-event-module-cover-top">
-            <StatusBadge language={language} status={event.status} />
-            <div className="orbit-card-date">
-              <div style={{ color: "var(--rose-text)", fontSize: 11, fontWeight: 600, letterSpacing: "0.02em" }}>{mapped.month}</div>
-              <div style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 19, fontWeight: 600, lineHeight: 1 }}>{mapped.day}</div>
-            </div>
+          <div style={{ position: "absolute", right: 12, top: 12 }}>
+            <EventStatusPill language={lang} status={event.status} />
           </div>
         </EventCover>
-        <div className="orbit-event-module-body">
-          <div className="orbit-event-module-copy">
-            <span>{topicLabel(event.industry, language)}</span>
-            <h2>{mapped.name}</h2>
+        <div className="orbit-event-module-body" style={{ display: "flex", flexDirection: "column", gap: 10, padding: "0 4px" }}>
+          <h2 style={{ color: C.ink, fontSize: 17, fontWeight: 700, lineHeight: 1.4, margin: 0 }}>{mapped.name}</h2>
+          <div className="orbit-event-module-meta" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <span style={{ alignItems: "center", color: C.text2, display: "flex", fontSize: 14, gap: 10 }}>
+              <span aria-hidden="true" style={{ color: C.text4 }}>▦</span>
+              {dateLabel}
+            </span>
+            <span style={{ alignItems: "center", color: C.text2, display: "flex", fontSize: 14, gap: 10 }}>
+              <span aria-hidden="true" style={{ color: C.text4 }}>◎</span>
+              {mapped.place}
+            </span>
           </div>
           {topics.length > 0 ? (
-            <div className="orbit-event-module-topic-row">
+            <span style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {topics.map((topicItem) => (
-                <span key={topicItem}>{topicLabel(topicItem, language)}</span>
+                <span key={topicItem} style={{ background: C.panel, borderRadius: 999, color: C.text2, fontSize: 12, padding: "4px 10px" }}>
+                  {topicLabel(topicItem, lang)}
+                </span>
               ))}
-            </div>
+            </span>
           ) : null}
-          <div className="orbit-event-module-meta">
-            <span><Icon color="var(--text-3)" name="clock" size={15} />{cardTime}</span>
-            <span><Icon color="var(--text-3)" name="pin" size={15} />{mapped.place}</span>
-            {mapped.people !== null && mapped.people >= 5 ? (
-              <span><Icon color="var(--text-3)" name="users" size={15} />{t({ en: `${mapped.people} registered`, zh: `${mapped.people} 人已报名` })}</span>
-            ) : null}
-          </div>
-          <div className="orbit-event-module-foot">
-            <span>{event.status === "ended" ? t({ en: "Tap to revisit details", zh: "点击回看活动详情" }) : t({ en: "Tap to view details", zh: "点击查看活动详情" })}</span>
-            <strong style={{ position: "relative", zIndex: ORBIT_Z.raised + 1 }}>
-              <a href={preserveHref(action.href)} style={{ alignItems: "center", color: "inherit", display: "inline-flex", textDecoration: "none" }}>
-                {action.badgeLabel ? <small>{action.badgeLabel} · </small> : null}
-                {action.label}<Icon name="chevR" size={14} />
-              </a>
-            </strong>
+          <div className="orbit-event-module-foot" style={{ alignItems: "center", display: "flex", justifyContent: "space-between", gap: 10, paddingTop: 6 }}>
+            <span style={{ color: C.text3, fontSize: 13, whiteSpace: "nowrap" }}>
+              {mapped.people !== null && mapped.people >= 5
+                ? t({ en: `${mapped.people} registered`, zh: `${mapped.people} 人已报名` })
+                : ""}
+            </span>
+            <a
+              href={preserveHref(action.href)}
+              style={{
+                background: primaryCta ? C.ink : "#FFFFFF",
+                border: primaryCta ? `1px solid ${C.ink}` : `1px solid ${C.borderStrong}`,
+                borderRadius: 10,
+                color: primaryCta ? "#FFFFFF" : C.accentDeep,
+                fontSize: 14,
+                fontWeight: 500,
+                padding: "10px 18px",
+                position: "relative",
+                textDecoration: "none",
+                whiteSpace: "nowrap",
+                zIndex: ORBIT_Z.raised + 1,
+              }}
+            >
+              {action.badgeLabel ? `${action.badgeLabel} · ` : ""}
+              {action.label}
+            </a>
           </div>
         </div>
       </article>
@@ -235,119 +320,152 @@ function EventModuleCard({
   );
 }
 
-function MapCanvas({ items, selected, onSelect }: { items: MappedEvent[]; selected: MappedEvent | null; onSelect: (item: MappedEvent) => void }) {
-  const { t } = useOrbitLanguage();
-  return (
-    <div className="orbit-map-canvas-inner" style={{ background: "#EAEDE6", inset: 0, overflow: "hidden", position: "absolute" }}>
-      <svg aria-hidden preserveAspectRatio="xMidYMid slice" style={{ height: "100%", inset: 0, maxWidth: "none", position: "absolute", width: "100%" }} viewBox="0 0 100 100" height="100%" width="100%">
-        <defs><linearGradient id="orbit-water" x1="0" x2="1" y1="0" y2="1"><stop offset="0%" stopColor="#AED4E6" /><stop offset="100%" stopColor="#9AC7DD" /></linearGradient></defs>
-        <path d="M 100 60 Q 80 64 78 78 Q 76 92 90 100 L 100 100 Z" fill="url(#orbit-water)" />
-        <path d="M 0 92 Q 30 86 42 92 L 44 100 L 0 100 Z" fill="url(#orbit-water)" />
-        <ellipse cx="38" cy="42" fill="#CADEB8" rx="7" ry="5.5" /><ellipse cx="66" cy="30" fill="#CADEB8" rx="5" ry="4" /><ellipse cx="22" cy="58" fill="#CADEB8" rx="6" ry="5" />
-        <g fill="none" opacity="0.95" stroke="#FFFFFF" strokeLinecap="round" strokeWidth="2.4"><path d="M -5 50 Q 30 46 55 52 T 105 48" /><path d="M 50 -5 Q 46 30 52 55 T 48 105" /><path d="M 10 10 Q 45 40 90 90" /><path d="M 90 12 Q 60 45 18 88" /></g>
-        <g fill="none" opacity="0.9" stroke="#F3D98B" strokeLinecap="round" strokeWidth="3"><path d="M -5 64 Q 40 58 70 66 T 105 62" /><path d="M 64 -5 Q 60 40 66 80" /></g>
-        <g fill="none" opacity="0.7" stroke="#FFFFFF" strokeWidth="0.8"><path d="M 20 0 L 24 100" /><path d="M 36 0 L 40 100" /><path d="M 76 0 L 80 100" /><path d="M 0 28 L 100 24" /><path d="M 0 76 L 100 80" /></g>
-      </svg>
-      {items.map((item) => {
-        const on = selected?.id === item.id;
-        return (
-          <button aria-label={t({ en: `Show ${item.name} event`, zh: `查看活动：${item.name}` })} key={item.id} type="button" onClick={() => onSelect(item)} style={{ background: "none", border: "none", cursor: "pointer", left: `${item.pos.x}%`, padding: 0, position: "absolute", top: `${item.pos.y}%`, transform: "translate(-50%,-100%)", zIndex: on ? ORBIT_Z.raised + 10 : ORBIT_Z.raised }}>
-            <div style={{ position: "relative", transform: on ? "scale(1.15)" : "scale(1)", transition: "transform .15s" }}>
-              <svg aria-hidden height={on ? 56 : 46} style={{ filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.22))", height: on ? 56 : 46, maxWidth: "none", width: on ? 44 : 36 }} viewBox="0 0 36 46" width={on ? 44 : 36}>
-                <path d="M18 1C9 1 2 8 2 17c0 11 16 27 16 27s16-16 16-27c0-9-7-16-16-16Z" fill={on ? "var(--accent)" : "#fff"} stroke={on ? "var(--accent)" : "var(--border-2)"} strokeWidth="1" />
-              </svg>
-              <div style={{ alignItems: "center", background: on ? "#fff" : undefined, borderRadius: "var(--r-pill)", color: on ? "var(--accent)" : "#fff", display: "flex", fontFamily: "var(--ff-display)", fontSize: on ? 13 : 11, fontWeight: 600, height: on ? 26 : 22, justifyContent: "center", left: "50%", position: "absolute", top: on ? 7 : 6, transform: "translateX(-50%)", width: on ? 26 : 22 }}>
-                {on ? item.name.slice(0, 1) : <span className={`avatar ${item.g}`} style={{ fontSize: 11, height: "100%", width: "100%" }}>{item.name.slice(0, 1)}</span>}
-              </div>
-            </div>
-          </button>
-        );
-      })}
-      <div style={{ background: "rgba(255,255,255,0.7)", borderRadius: 6, color: "var(--text-3)", fontSize: 11, left: 14, maxWidth: "calc(100% - 28px)", padding: "3px 8px", pointerEvents: "none", position: "absolute", right: 14, top: 14, whiteSpace: "normal" }}>{t({ en: "Activity distribution schematic (not actual locations)", zh: "活动分布示意（非实际位置）", ja: "活動分布の模式図（実際の場所ではありません）" })}</div>
-    </div>
-  );
+/** 我的活动：时间线步骤（从活动状态推导，不伪造报名日期）。 */
+function mineTimelineSteps(
+  status: OrbitLandingEventView["status"],
+  language: "en" | "zh",
+) {
+  const steps = [
+    { done: true, label: language === "en" ? "Registered" : "报名成功" },
+    { done: status === "active" || status === "ended", label: language === "en" ? "Attended" : "活动现场" },
+    { done: status === "ended", label: language === "en" ? "Recap" : "会后回顾" },
+  ];
+  return steps;
 }
 
-function MapEventCard({
-  compact = false,
-  item,
+function MineEventCard({
+  event,
+  imagePriority = false,
+  registrationAvailability,
 }: {
-  compact?: boolean;
-  item: MappedEvent;
+  event: OrbitLandingEventView;
+  imagePriority?: boolean;
+  registrationAvailability: EventRegistrationAvailability;
 }) {
   const { language, preserveHref, t } = useOrbitLanguage();
-  const action = eventCardAction(
-    {
-      id: item.id,
-      code: item.code,
-      stats: { youRsvped: item.registered } as OrbitLandingEventView["stats"],
-      status: item.status,
-    },
-    t,
-    item.registrationAvailability,
-  );
-
+  const lang = language === "ja" ? "en" : language;
+  const mapped = mapEvent(event, lang, registrationAvailability);
+  const action = eventCardAction(event, t, registrationAvailability);
+  const sceneAsset = getDemoEventSceneAsset(event.id) ?? getDemoEventSceneAsset(event.code);
+  const topics = eventTopics(event)
+    .filter((item) => item !== event.industry)
+    .slice(0, 3);
+  const steps = mineTimelineSteps(event.status, lang);
   return (
-    <div className="card" data-orbit-map-event-card style={{ alignItems: "center", boxShadow: "var(--sh-lg)", display: "flex", flexWrap: compact ? "wrap" : "nowrap", gap: 14, padding: 14 }}>
-      <EventCover g={item.g} imageAlt={item.name} imageLoading="eager" imageSizes="64px" imageUrl={item.imageUrl} monogram={item.imageUrl ? null : { text: item.name.slice(0, 1), size: 26 }} style={{ borderRadius: 13, flexShrink: 0, height: 64, width: 64 }}>
-        <div style={{ left: 6, position: "absolute", top: 6 }}><StatusBadge language={language} status={item.status} /></div>
-      </EventCover>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <h3 className="h-section" style={{ color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</h3>
-        <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 2 }}>{item.day ? `${item.month}${language === "zh" ? `${item.day}日` : ` ${item.day}`} · ${item.time}` : item.time}</div>
-        <div style={{ alignItems: "center", color: "var(--text-2)", display: "flex", fontSize: 12, gap: 8, marginTop: 6 }}>
-          <span style={{ alignItems: "center", display: "flex", gap: 4 }}><Icon color="var(--text-3)" name="pin" size={13} />{item.place}</span>
-          {item.people !== null && item.people >= 5 ? (
-            <>
-              <span style={{ background: "var(--border-strong)", borderRadius: "var(--r-pill)", height: 3, width: 3 }} />
-              <span>{t({ en: `${item.people} people`, zh: `${item.people} 人` })}</span>
-            </>
-          ) : null}
-        </div>
-      </div>
-      <a className="btn btn-primary btn-sm" href={preserveHref(action.href)} style={{ flexShrink: 0, justifyContent: "center", textDecoration: "none", width: compact ? "100%" : undefined }}>{action.badgeLabel ? `${action.badgeLabel} · ` : ""}{action.label}<Icon color="var(--on-dark)" name="chevR" size={15} /></a>
-    </div>
-  );
-}
-
-function MobileExploreCard({ item }: { item: MappedEvent }) {
-  const { language, preserveHref, t } = useOrbitLanguage();
-  const action = eventCardAction(
-    {
-      id: item.id,
-      code: item.code,
-      stats: { youRsvped: item.registered } as OrbitLandingEventView["stats"],
-      status: item.status,
-    },
-    t,
-    item.registrationAvailability,
-  );
-
-  return (
-    <article className="card card-hover" style={{ display: "block", overflow: "hidden", position: "relative" }}>
+    <article
+      className="card card-hover orbit-event-mine-card"
+      data-demo-visual-asset-id={sceneAsset?.assetId}
+      data-demo-visual-source={sceneAsset?.sourceLabel}
+      data-demo-visual-source-label={sceneAsset?.sourceLabel}
+      style={{
+        background: "#FFFFFF",
+        border: `1px solid ${C.border}`,
+        borderRadius: 18,
+        display: "grid",
+        gap: 24,
+        gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))",
+        padding: 18,
+        position: "relative",
+      }}
+    >
       <a
-        aria-label={t({ en: `View ${item.name} details`, zh: `查看${item.name}详情` })}
-        href={preserveHref(productHref(`/events/${item.code}`))}
+        aria-label={t({ en: `View ${mapped.name} details`, zh: `查看${mapped.name}详情` })}
+        href={preserveHref(productHref(`/events/${event.code}`))}
         style={{ inset: 0, position: "absolute", zIndex: ORBIT_Z.raised }}
       />
-      <EventCover g={item.g} imageAlt={item.name} imageSizes="(max-width: 720px) calc(100vw - 36px), 360px" imageUrl={item.imageUrl} monogram={item.imageUrl ? null : { text: item.name.slice(0, 1), size: 40 }} style={{ height: 128, opacity: item.status === "ended" ? 0.72 : 1 }}>
-        <div style={{ left: 11, position: "absolute", top: 11 }}><StatusBadge language={language} status={item.status} /></div>
-        <div style={{ background: "var(--glass-chip)", borderRadius: 9, minWidth: 42, padding: "4px 8px", position: "absolute", right: 11, textAlign: "center", top: 11 }}>
-          <div style={{ color: "var(--rose-text)", fontSize: 11, fontWeight: 600 }}>{item.month}</div>
-          {item.day ? <div style={{ color: "var(--ink)", fontFamily: "var(--ff-display)", fontSize: 18, fontWeight: 600, lineHeight: 1 }}>{item.day}</div> : null}
-        </div>
-      </EventCover>
-      <div style={{ padding: "14px 14px 13px" }}>
-        <h3 className="h-section" style={{ color: "var(--ink)", margin: 0 }}>{item.name}</h3>
-        {item.sub ? <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 2 }}>{item.sub}</div> : null}
-        <div style={{ color: "var(--text-2)", display: "flex", flexWrap: "wrap", fontSize: 13, gap: 14, marginTop: 10 }}>
-          <span style={{ alignItems: "center", display: "flex", gap: 6 }}><Icon color="var(--text-3)" name="clock" size={14} />{item.time}</span>
-          <span style={{ alignItems: "center", display: "flex", gap: 6 }}><Icon color="var(--text-3)" name="pin" size={14} />{item.place}</span>
-        </div>
-        <div style={{ alignItems: "center", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "space-between", marginTop: 12, paddingTop: 12 }}>
-          {item.people !== null ? <span style={{ alignItems: "center", color: "var(--text-2)", display: "flex", fontSize: 13, gap: 6 }}><Icon color="var(--text-3)" name="users" size={14} />{t({ en: `${item.people} people`, zh: `${item.people} 人` })}</span> : null}
-          <a href={preserveHref(action.href)} style={{ alignItems: "center", color: "var(--accent)", display: "flex", fontSize: 13, fontWeight: 600, gap: 2, position: "relative", textDecoration: "none", zIndex: ORBIT_Z.raised + 1 }}>{action.badgeLabel ? `${action.badgeLabel} · ` : ""}{action.label}<Icon name="chevR" size={13} /></a>
-        </div>
+      <EventCover
+        g={mapped.g}
+        imageAlt={mapped.name}
+        imageLoading={imagePriority ? "eager" : "lazy"}
+        imageSizes="(max-width: 720px) calc(100vw - 36px), 300px"
+        imageUrl={mapped.imageUrl}
+        monogram={mapped.imageUrl ? null : { text: mapped.name.slice(0, 1), size: 40 }}
+        style={{ borderRadius: 12, height: 140, opacity: event.status === "ended" ? 0.72 : 1 }}
+      />
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
+        <h2 style={{ color: C.ink, fontSize: 17, fontWeight: 700, margin: 0 }}>{mapped.name}</h2>
+        <span style={{ alignItems: "center", color: C.text2, display: "flex", fontSize: 14, gap: 10 }}>
+          <span aria-hidden="true" style={{ color: C.text4 }}>▦</span>
+          {formatEventDateFull(event, lang)}
+        </span>
+        <span style={{ alignItems: "center", color: C.text2, display: "flex", fontSize: 14, gap: 10 }}>
+          <span aria-hidden="true" style={{ color: C.text4 }}>◎</span>
+          {mapped.place}
+        </span>
+        {topics.length > 0 ? (
+          <span style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {topics.map((topicItem) => (
+              <span key={topicItem} style={{ background: C.panel, borderRadius: 999, color: C.text2, fontSize: 12, padding: "4px 10px" }}>
+                {topicLabel(topicItem, lang)}
+              </span>
+            ))}
+          </span>
+        ) : null}
+        <span style={{ color: C.text3, fontSize: 13 }}>
+          {mapped.people !== null && mapped.people >= 5
+            ? t({ en: `${mapped.people} registered`, zh: `${mapped.people} 人已报名` })
+            : ""}
+        </span>
+      </div>
+      <div className="orbit-event-mine-timeline" style={{ alignItems: "start", display: "grid", gridTemplateColumns: "repeat(3, 1fr)" }}>
+        {steps.map((step, index) => (
+          <div key={step.label} style={{ alignItems: "center", display: "flex", flexDirection: "column", gap: 8, position: "relative" }}>
+            {index > 0 ? (
+              <span
+                aria-hidden="true"
+                style={{
+                  background: step.done ? C.accent : C.border,
+                  height: 2,
+                  left: "-50%",
+                  position: "absolute",
+                  right: "50%",
+                  top: 11,
+                }}
+              />
+            ) : null}
+            <span
+              style={{
+                alignItems: "center",
+                background: step.done ? C.accent : "#FFFFFF",
+                border: `2px solid ${step.done ? C.accent : C.borderStrong}`,
+                borderRadius: "50%",
+                color: step.done ? "#FFFFFF" : C.text4,
+                display: "flex",
+                fontSize: 12,
+                fontWeight: 700,
+                height: 24,
+                justifyContent: "center",
+                position: "relative",
+                width: 24,
+              }}
+            >
+              {step.done ? "✓" : index + 1}
+            </span>
+            <span style={{ color: C.text2, fontSize: 13, textAlign: "center" }}>{step.label}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{ alignItems: "flex-end", alignSelf: "stretch", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 24 }}>
+        <EventStatusPill language={lang} status={event.status} />
+        <a
+          href={preserveHref(action.href)}
+          style={{
+            background: action.kind === "enter" ? C.ink : "#FFFFFF",
+            border: action.kind === "enter" ? `1px solid ${C.ink}` : `1px solid ${C.borderStrong}`,
+            borderRadius: 10,
+            color: action.kind === "enter" ? "#FFFFFF" : C.accentDeep,
+            fontSize: 14,
+            fontWeight: 500,
+            padding: "12px 20px",
+            position: "relative",
+            textDecoration: "none",
+            whiteSpace: "nowrap",
+            zIndex: ORBIT_Z.raised + 1,
+          }}
+        >
+          {action.badgeLabel ? `${action.badgeLabel} · ` : ""}
+          {action.label} →
+        </a>
       </div>
     </article>
   );
@@ -370,6 +488,9 @@ function EventsEmptyState({
       data-orbit-events-empty
       style={{
         alignItems: "center",
+        background: "#FFFFFF",
+        border: `1px solid ${C.border}`,
+        borderRadius: 18,
         display: "grid",
         justifyItems: "center",
         minHeight: 280,
@@ -378,28 +499,30 @@ function EventsEmptyState({
       }}
     >
       <span
+        aria-hidden="true"
         style={{
           alignItems: "center",
-          background: "var(--accent-soft)",
-          borderRadius: "var(--r-pill)",
-          color: "var(--accent)",
+          background: C.panel,
+          borderRadius: 999,
+          color: C.accent,
           display: "flex",
+          fontSize: 22,
           height: 52,
           justifyContent: "center",
           width: 52,
         }}
       >
-        <Icon name="calendar" size={24} />
+        ✦
       </span>
       <div style={{ marginTop: 16, maxWidth: 460 }}>
-        <h2 className="h-title" style={{ margin: 0 }}>
+        <h2 style={{ color: C.ink, fontSize: 20, fontWeight: 700, margin: 0 }}>
           {registeredView
             ? t({ en: "No registered events yet", zh: "还没有已报名活动" })
             : filteredView
             ? t({ en: "No events match these filters", zh: "没有符合当前筛选的活动" })
             : t({ en: "New events are on the way", zh: "新的活动正在筹备中" })}
         </h2>
-        <p style={{ color: "var(--text-3)", lineHeight: 1.65, margin: "10px 0 0" }}>
+        <p style={{ color: C.text3, lineHeight: 1.65, margin: "10px 0 0" }}>
           {registeredView
             ? t({
                 en: "Events you register for will appear here. Browse the full catalogue to find your next gathering.",
@@ -417,7 +540,21 @@ function EventsEmptyState({
         </p>
       </div>
       {filteredView ? (
-        <button className="btn btn-primary" onClick={onReset} style={{ marginTop: 18 }} type="button">
+        <button
+          onClick={onReset}
+          style={{
+            background: C.ink,
+            border: 0,
+            borderRadius: 10,
+            color: "#FFFFFF",
+            cursor: "pointer",
+            fontSize: 14,
+            fontWeight: 500,
+            marginTop: 18,
+            padding: "12px 22px",
+          }}
+          type="button"
+        >
           {registeredView
             ? t({ en: "Browse all events", zh: "浏览全部活动" })
             : t({ en: "Clear filters", zh: "清除筛选" })}
@@ -426,6 +563,18 @@ function EventsEmptyState({
     </section>
   );
 }
+
+const scopeLabel = (
+  key: EventScope,
+  t: ReturnType<typeof useOrbitLanguage>["t"],
+) =>
+  ({
+    active: t({ en: "Live", zh: "进行中" }),
+    all: t({ en: "All", zh: "全部" }),
+    ended: t({ en: "Ended", zh: "已结束" }),
+    registered: t({ en: "Registered", zh: "已报名" }),
+    upcoming: t({ en: "Upcoming", zh: "即将开始" }),
+  })[key];
 
 export function OrbitRealExploreClient({
   initialScope = "all",
@@ -436,45 +585,56 @@ export function OrbitRealExploreClient({
   registrationAvailabilityByEventId: Readonly<Record<string, EventRegistrationAvailability>>;
   viewModel: OrbitLandingViewModel;
 }) {
-  const { language, t } = useOrbitLanguage();
+  const { language, preserveHref, t } = useOrbitLanguage();
+  const lang = language === "ja" ? "en" : language;
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<EventScope>(initialScope);
-  const [topic, setTopic] = useState("all");
-  const [mode, setMode] = useState("modules");
-  const [selectedId, setSelectedId] = useState("");
+  // 我的活动屏的本地子筛选（设计：全部/即将开始/进行中/已结束），不进 URL。
+  const [mineFilter, setMineFilter] = useState<"all" | "upcoming" | "active" | "ended">("all");
   const scopeInUrl = eventScopeFromValues(searchParams.getAll("scope"));
   useEffect(() => {
     setStatus(scopeInUrl);
   }, [scopeInUrl]);
   const events = viewModel.events;
   const topicFilters = useMemo(() => exploreTopicFilters(events), [events]);
+  // 话题词典仍用于标签展示与搜索匹配（matchesExploreFilters 的 topic 维度固定 all）。
+  void topicFilters;
   const filtered = useMemo(
-    () => events.filter((event) => matchesExploreFilters(event, { language, query, status, topic })),
-    [events, language, query, status, topic],
+    () => events.filter((event) => matchesExploreFilters(event, { language, query, status, topic: "all" })),
+    [events, language, query, status],
   );
-  const mapItems = useMemo(
-    () => filtered.map((event) => mapEvent(
-      event,
-      language === "ja" ? "en" : language,
-      registrationAvailabilityByEventId[event.id] ?? "unavailable",
-    )),
-    [filtered, language, registrationAvailabilityByEventId],
+  const mineEvents = useMemo(
+    () =>
+      events.filter((event) =>
+        matchesExploreFilters(event, {
+          language,
+          query,
+          status: "registered",
+          topic: "all",
+        }),
+      ).filter((event) => mineFilter === "all" || event.status === mineFilter),
+    [events, language, query, mineFilter],
   );
-  const located = mapItems.filter((item) => Number.isFinite(item.pos.x) && Number.isFinite(item.pos.y));
-  const canShowMap = located.length > 0;
-  const effMode = mode === "map" && canShowMap ? "map" : "modules";
-  const selectedItem = located.find((item) => item.id === selectedId) ?? located[0] ?? null;
-  const resultLabel = filtered.length === 0 ? t({ en: "No matching open events.", zh: "没有匹配的开放活动。" }) : t({ en: `${filtered.length} events`, zh: `${filtered.length} 场活动` });
-  const statusLabels = {
-    active: t({ en: "Live", zh: "进行中" }),
-    all: t({ en: "All", zh: "全部" }),
-    ended: t({ en: "Ended", zh: "已结束" }),
-    registered: t({ en: "Registered", zh: "已报名" }),
-    upcoming: t({ en: "Upcoming", zh: "即将开始" }),
-  };
+  const isMine = status === "registered";
+  const stats = useMemo(() => {
+    const monthKey = new Intl.DateTimeFormat("en-US", { month: "2-digit", year: "numeric", ...tz });
+    const nowKey = monthKey.format(new Date());
+    return {
+      active: events.filter((event) => event.status === "active").length,
+      registered: events.filter((event) => Boolean(event.stats.youRsvped)).length,
+      thisMonth: events.filter((event) => {
+        const startsAt = new Date(event.startsAt);
+        return Number.isFinite(startsAt.getTime()) && monthKey.format(startsAt) === nowKey;
+      }).length,
+      upcoming: events.filter((event) => event.status === "upcoming").length,
+    };
+  }, [events]);
+  const resultLabel = filtered.length === 0
+    ? t({ en: "No matching open events.", zh: "没有匹配的开放活动。" })
+    : t({ en: `${filtered.length} events`, zh: `${filtered.length} 场活动` });
   const setEventScope = (nextStatus: EventScope) => {
     setStatus(nextStatus);
     const queryString = eventScopeSearchString(
@@ -487,153 +647,261 @@ export function OrbitRealExploreClient({
   };
   const resetFilters = () => {
     setQuery("");
+    setMineFilter("all");
     setEventScope("all");
-    setTopic("all");
   };
-  const filteredView = Boolean(query || status !== "all" || topic !== "all");
+  const filteredView = Boolean(query || status !== "all");
+
+  const discoverScopes = statusFilters.filter((key) => key !== "registered");
+  const mineScopes = ["all", "upcoming", "active", "ended"] as const;
 
   return (
-    <div className="orbit-shell" data-orbit-real-page="explore">
+    <div className="orbit-shell" data-orbit-real-page="explore" style={{ background: C.pageBg, minHeight: "100dvh" }}>
       <style>{`
-        [data-orbit-real-page="explore"] .orbit-event-view-switcher {
-          align-items: center;
-          background: var(--surface-2);
-          border: 1px solid var(--border);
-          border-radius: var(--r-pill);
-          display: inline-flex;
-          gap: 2px;
-          padding: 3px;
+        [data-orbit-real-page=explore] .orbit-event-module-grid {
+          display: grid;
+          gap: 20px;
+          grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
         }
-
-        [data-orbit-real-page="explore"] .orbit-event-view-switcher > .orbit-event-view-option {
-          border-color: transparent;
-          border-radius: var(--r-pill);
-          box-shadow: none;
+        [data-orbit-real-page=explore] .orbit-event-module-card {
+          transition: box-shadow 0.2s, transform 0.2s;
         }
-
-        [data-orbit-real-page="explore"] .orbit-event-view-switcher > .orbit-event-view-option:focus-visible {
-          outline-offset: -3px;
+        [data-orbit-real-page=explore] .orbit-event-module-card:hover {
+          box-shadow: 0 12px 32px rgba(59, 63, 122, 0.10);
+          transform: translateY(-2px);
+        }
+        [data-orbit-real-page=explore] .orbit-explore-seg-button:focus-visible {
+          outline: 2px solid ${C.accent};
+          outline-offset: -2px;
+        }
+        [data-orbit-real-page=explore] .orbit-explore-tab:focus-visible {
+          outline: 2px solid ${C.accent};
+          outline-offset: 2px;
+        }
+        @media (pointer: coarse) {
+          [data-orbit-real-page=explore] .orbit-explore-seg-button {
+            min-height: 44px;
+          }
+        }
+        @media (max-width: 640px) {
+          [data-orbit-real-page=explore] .orbit-explore-main {
+            padding: 20px 16px 72px !important;
+          }
+          [data-orbit-real-page=explore] .orbit-explore-title {
+            font-size: 30px !important;
+          }
+          [data-orbit-real-page=explore] .orbit-explore-stats {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+        }
+        @keyframes orbit-fade {
+          from { opacity: 0; transform: translateY(6px); }
+          to { opacity: 1; transform: none; }
         }
       `}</style>
-      <div className="orbit-desktop-only" style={{ background: "var(--bg)", minHeight: "100dvh" }}>
-        <PublicTopNav />
-        <main className="orbit-main" data-appscroll>
-          <div className="orbit-browse-head">
-            <div><div className="eyebrow" style={{ marginBottom: 8 }}>{t({ en: "EXPLORE · Tokyo", zh: "EXPLORE · 东京" })}</div><h1 className="h-display" style={{ margin: 0 }}>{t({ en: "Discover events", zh: "发现活动" })}</h1></div>
-            <div className="orbit-browse-tools">
-              <div aria-label={t({ en: "Event view", zh: "活动视图" })} className="orbit-event-view-switcher" role="group">
-                <button aria-pressed={effMode === "modules"} className={`btn btn-sm orbit-event-view-option ${effMode === "modules" ? "btn-dark" : "btn-quiet"}`} onClick={() => setMode("modules")} type="button"><Icon color={effMode === "modules" ? "var(--on-dark)" : undefined} name="grid" size={15} />{t({ en: "Events", zh: "内容" })}</button>
-                {canShowMap ? <button aria-pressed={effMode === "map"} className={`btn btn-sm orbit-event-view-option ${effMode === "map" ? "btn-dark" : "btn-quiet"}`} onClick={() => setMode("map")} type="button"><Icon color={effMode === "map" ? "var(--on-dark)" : undefined} name="pin" size={15} />{t({ en: "Map", zh: "地图" })}</button> : null}
-              </div>
-              <div className="orbit-search-box">
-                <Icon color="var(--text-3)" name="search" size={18} style={{ left: 14, position: "absolute", top: 15 }} />
-                <input aria-label={t({ en: "Search event name, code, or topic", zh: "搜索活动名称、编号或主题" })} className="field" onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search event name, code, or topic", zh: "搜索活动名称、编号或主题" })} style={{ paddingLeft: 42 }} type="search" value={query} />
-              </div>
-            </div>
+      <PublicTopNav active="events" />
+      <main className="orbit-explore-main" data-appscroll style={{ display: "flex", flexDirection: "column", gap: 22, margin: "0 auto", maxWidth: 1240, padding: "28px 40px 96px" }}>
+        <div style={{ alignItems: "flex-start", animation: "orbit-fade .3s ease", display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "space-between" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <h1
+              className="orbit-explore-title"
+              style={{ color: C.ink, fontFamily: ORBIT_0918_FONTS.serif, fontSize: 40, fontWeight: 900, letterSpacing: "-0.03em", lineHeight: 1.1, margin: 0 }}
+            >
+              {isMine ? t({ en: "My events", zh: "我的活动" }) : t({ en: "Discover events", zh: "发现活动" })}
+            </h1>
+            <p style={{ color: C.text2, fontSize: 15, margin: 0 }}>
+              {isMine
+                ? t({ en: "Track the events you have registered for and never miss a moment.", zh: "查看你已报名的活动，掌握活动进展，不错过任何精彩时刻。" })
+                : t({ en: "Explore events that interest you, meet remarkable people, and expand what is possible.", zh: "探索你感兴趣的活动，连接更多优秀的人，拓展你的可能性。" })}
+            </p>
           </div>
-          <div className="orbit-filters" style={{ minWidth: 0 }}>
-            <div aria-label={t({ en: "Event status", zh: "活动状态", ja: "イベントの状態" })} role="group" style={{ display: "flex", gap: 8, minWidth: 0 }}>
-              {statusFilters.map((key) => <button aria-pressed={status === key} key={key} className={`chip${status === key ? " is-active" : ""}`} onClick={() => setEventScope(key)} type="button">{statusLabels[key]}</button>)}
-            </div>
-            {topicFilters.length ? <><span style={{ background: "var(--border-2)", height: 22, width: 1 }} /><div aria-label={t({ en: "Event topics", zh: "活动话题", ja: "イベントのトピック" })} role="group" style={{ display: "flex", gap: 8, minWidth: 0 }}>{topicFilters.map((item) => <button aria-pressed={topic === item} key={item} className={`chip${topic === item ? " is-active" : ""}`} onClick={() => setTopic(topic === item ? "all" : item)} type="button">{topicLabel(item, language)}</button>)}</div></> : null}
-          </div>
-          <div style={{ color: "var(--text-3)", fontSize: 13, marginBottom: 16, marginTop: 20 }}>{resultLabel}</div>
-          {effMode === "modules" && filtered.length > 0 ? <EventModuleGrid events={filtered} registrationAvailabilityByEventId={registrationAvailabilityByEventId} /> : null}
-          {filtered.length === 0 ? (
-            <EventsEmptyState
-              filteredView={filteredView}
-              onReset={resetFilters}
-              registeredView={status === "registered"}
+          <a
+            href={preserveHref(productHref("/events/center"))}
+            style={{ background: C.ink, borderRadius: 12, color: "#FFFFFF", fontSize: 15, fontWeight: 500, padding: "13px 22px", textDecoration: "none", whiteSpace: "nowrap" }}
+          >
+            {t({ en: "+ Create event", zh: "＋ 创建活动" })}
+          </a>
+        </div>
+
+        <div role="tablist" style={{ borderBottom: `1px solid ${C.border}`, display: "flex", fontSize: 15, gap: 8 }}>
+          <button
+            aria-selected={!isMine}
+            className="orbit-explore-tab"
+            onClick={() => setEventScope("all")}
+            role="tab"
+            style={{
+              background: "transparent",
+              border: 0,
+              borderBottom: `2px solid ${isMine ? "transparent" : C.ink}`,
+              color: isMine ? C.text2 : C.ink,
+              cursor: "pointer",
+              fontWeight: isMine ? 400 : 500,
+              marginBottom: -1,
+              padding: "12px 16px",
+            }}
+            type="button"
+          >
+            {t({ en: "Discover", zh: "发现活动" })}
+          </button>
+          <button
+            aria-selected={isMine}
+            className="orbit-explore-tab"
+            onClick={() => setEventScope("registered")}
+            role="tab"
+            style={{
+              background: "transparent",
+              border: 0,
+              borderBottom: `2px solid ${isMine ? C.ink : "transparent"}`,
+              color: isMine ? C.ink : C.text2,
+              cursor: "pointer",
+              fontWeight: isMine ? 500 : 400,
+              marginBottom: -1,
+              padding: "12px 16px",
+            }}
+            type="button"
+          >
+            {t({ en: "My events", zh: "我的活动" })}
+          </button>
+          <a
+            className="orbit-explore-tab"
+            href={preserveHref(productHref("/events/center"))}
+            role="tab"
+            style={{
+              borderBottom: "2px solid transparent",
+              color: C.text2,
+              marginBottom: -1,
+              padding: "12px 16px",
+              textDecoration: "none",
+            }}
+          >
+            {t({ en: "Host dashboard", zh: "主办管理" })}
+          </a>
+        </div>
+
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
+          <div style={{ alignItems: "center", background: "#FFFFFF", border: `1px solid ${C.border}`, borderRadius: 12, display: "flex", flex: 1, gap: 10, minWidth: 280, padding: "0 16px" }}>
+            <span aria-hidden="true" style={{ color: C.text4 }}>⌕</span>
+            <input
+              aria-label={t({ en: "Search event name, keyword, or organizer", zh: "搜索活动名称、关键词或主办方" })}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={t({ en: "Search event name, keyword, or organizer…", zh: "搜索活动名称、关键词或主办方…" })}
+              style={{ background: "transparent", border: 0, flex: 1, fontSize: 14, outline: "none", padding: "14px 0" }}
+              type="search"
+              value={query}
             />
-          ) : null}
-          {effMode === "map" && located.length > 0 ? (
-            <section className="orbit-map-shell" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", boxShadow: "var(--sh-sm)", display: "grid", gridTemplateColumns: "380px 1fr", height: "min(680px, calc(100dvh - 220px))", minHeight: 520, overflow: "hidden" }}>
-              <div className="orbit-map-rail scroll" style={{ borderRight: "1px solid var(--border)", overflowY: "auto", padding: "20px 18px" }}>
-                <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", marginBottom: 14 }}><h2 className="h-title" style={{ margin: 0 }}>{t({ en: "Discover events", zh: "发现活动" })}</h2><span style={{ color: "var(--text-3)", fontSize: 13 }}>{t({ en: `${located.length} events`, zh: `${located.length} 场活动`, ja: `${located.length} 件のイベント` })}</span></div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {located.map((item) => {
-                    const on = selectedItem?.id === item.id;
-                    return (
-                      <button key={item.id} className="card-hover" onClick={() => setSelectedId(item.id)} style={{ background: on ? "var(--accent-softer)" : "var(--surface)", border: `1px solid ${on ? "var(--accent)" : "var(--border)"}`, borderRadius: 13, cursor: "pointer", display: "flex", gap: 12, padding: 11, textAlign: "left" }} type="button">
-                        <EventCover g={item.g} imageAlt={item.name} imageSizes="54px" imageUrl={item.imageUrl} monogram={item.imageUrl ? null : { text: item.name.slice(0, 1), size: 22 }} style={{ borderRadius: 11, flexShrink: 0, height: 54, width: 54 }} />
-                        <span style={{ flex: 1, minWidth: 0 }}>
-                          <span className="h-section" style={{ color: "var(--ink)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span>
-                          <span style={{ color: "var(--text-3)", display: "block", fontSize: 12, marginTop: 2 }}>{[item.day ? `${item.month}${language === "zh" ? `${item.day}日` : ` ${item.day}`}` : item.time, item.place].filter(Boolean).join(" · ")}</span>
-                          <span style={{ display: "block", marginTop: 6 }}><StatusBadge language={language} status={item.status} /></span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className="orbit-map-canvas" style={{ position: "relative" }}>
-                <MapCanvas items={located} onSelect={(item) => setSelectedId(item.id)} selected={selectedItem} />
-                {selectedItem ? <div style={{ bottom: 20, left: 20, maxWidth: 420, position: "absolute", right: 20 }}><MapEventCard item={selectedItem} /></div> : null}
-              </div>
-            </section>
-          ) : null}
-        </main>
-      </div>
-      <div className="orbit-mobile-only" style={{ background: "var(--bg)", flexDirection: "column", height: "100dvh", minHeight: "100dvh", overflow: "hidden", position: "relative" }}>
-        <PublicTopNav active="events" />
-        <div style={{ flexShrink: 0, padding: "16px 18px 0" }}>
-          <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between", marginBottom: 14, minWidth: 0 }}>
-            <div style={{ minWidth: 0 }}><div className="eyebrow" style={{ marginBottom: 4 }}>EXPLORE</div><h1 className="h-display" style={{ margin: 0 }}>{t({ en: "Discover events", zh: "发现活动" })}</h1></div>
-            <div aria-label={t({ en: "Event view", zh: "活动视图", ja: "イベント表示" })} className="orbit-event-view-switcher" role="group" style={{ flexShrink: 0, minWidth: 0 }}>
-              <button aria-pressed={effMode === "modules"} className={`btn btn-sm orbit-event-view-option ${effMode === "modules" ? "btn-dark" : "btn-quiet"}`} onClick={() => setMode("modules")} style={{ minHeight: "var(--tap-min, 44px)", minWidth: "var(--tap-min, 44px)" }} type="button"><Icon color={effMode === "modules" ? "var(--on-dark)" : undefined} name="grid" size={15} />{t({ en: "Events", zh: "内容", ja: "イベント" })}</button>
-              <button aria-pressed={effMode === "map"} className={`btn btn-sm orbit-event-view-option ${effMode === "map" ? "btn-dark" : "btn-quiet"}`} disabled={!canShowMap} onClick={() => canShowMap && setMode("map")} style={{ minHeight: "var(--tap-min, 44px)", minWidth: "var(--tap-min, 44px)" }} type="button"><Icon color={effMode === "map" ? "var(--on-dark)" : undefined} name="pin" size={15} />{t({ en: "Map", zh: "地图", ja: "地図" })}</button>
-            </div>
           </div>
-          <div style={{ position: "relative" }}>
-            <Icon color="var(--text-3)" name="search" size={17} style={{ left: 13, position: "absolute", top: 14 }} />
-            <input aria-label={t({ en: "Search event name, code, or topic", zh: "搜索活动名称、编号或主题" })} className="field" onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search event name, code, or topic", zh: "搜索活动名称、编号或主题" })} style={{ height: 44, paddingLeft: 40 }} type="search" value={query} />
-          </div>
-          <div style={{ display: "grid", gap: 8, minWidth: 0, marginTop: 14 }}>
-            <div aria-label={t({ en: "Event status", zh: "活动状态", ja: "イベントの状態" })} role="group" style={{ minWidth: 0 }}>
-              <span style={{ color: "var(--text-3)", display: "block", fontSize: 12, marginBottom: 4 }}>{t({ en: "Status", zh: "状态", ja: "状態" })}</span>
-              <div className="scroll noscroll orbit-chip-scroller" style={{ display: "flex", gap: 8, margin: "0 -18px", minWidth: 0, overflowX: "auto", padding: "0 18px 4px" }}>
-                {statusFilters.map((key) => <button aria-pressed={status === key} key={key} className={`chip${status === key ? " is-active" : ""}`} onClick={() => setEventScope(key)} style={{ flexShrink: 0, minHeight: "var(--tap-min, 44px)", minWidth: "var(--tap-min, 44px)" }} type="button">{statusLabels[key]}</button>)}
-              </div>
-            </div>
-            {topicFilters.length ? <div aria-label={t({ en: "Event topics", zh: "活动话题", ja: "イベントのトピック" })} role="group" style={{ minWidth: 0 }}>
-              <span style={{ color: "var(--text-3)", display: "block", fontSize: 12, marginBottom: 4 }}>{t({ en: "Topics", zh: "话题", ja: "トピック" })}</span>
-              <div className="scroll noscroll orbit-chip-scroller" style={{ display: "flex", gap: 8, margin: "0 -18px", minWidth: 0, overflowX: "auto", padding: "0 18px 4px" }}>
-                {topicFilters.map((item) => <button aria-pressed={topic === item} key={item} className={`chip${topic === item ? " is-active" : ""}`} onClick={() => setTopic(topic === item ? "all" : item)} style={{ flexShrink: 0, minHeight: "var(--tap-min, 44px)", minWidth: "var(--tap-min, 44px)" }} type="button">{topicLabel(item, language)}</button>)}
-              </div>
-            </div> : null}
+          <div
+            aria-label={isMine ? t({ en: "My event status", zh: "我的活动状态" }) : t({ en: "Event status", zh: "活动状态" })}
+            role="group"
+            style={{ background: C.panelSoft, border: `1px solid ${C.border}`, borderRadius: 12, display: "flex", padding: 4 }}
+          >
+            {isMine
+              ? mineScopes.map((key) => (
+                  <button
+                    aria-pressed={mineFilter === key}
+                    className="orbit-explore-seg-button"
+                    key={key}
+                    onClick={() => setMineFilter(key)}
+                    style={{
+                      background: mineFilter === key ? "#FFFFFF" : "transparent",
+                      border: 0,
+                      borderRadius: 9,
+                      boxShadow: mineFilter === key ? "0 1px 4px rgba(14, 18, 37, 0.08)" : "none",
+                      color: mineFilter === key ? C.ink : C.text3,
+                      cursor: "pointer",
+                      fontSize: 14,
+                      padding: "10px 22px",
+                      transition: "all .2s",
+                      whiteSpace: "nowrap",
+                    }}
+                    type="button"
+                  >
+                    {scopeLabel(key, t)}
+                  </button>
+                ))
+              : discoverScopes.map((key) => (
+                  <button
+                    aria-pressed={status === key}
+                    className="orbit-explore-seg-button"
+                    key={key}
+                    onClick={() => setEventScope(key)}
+                    style={{
+                      background: status === key ? "#FFFFFF" : "transparent",
+                      border: 0,
+                      borderRadius: 9,
+                      boxShadow: status === key ? "0 1px 4px rgba(14, 18, 37, 0.08)" : "none",
+                      color: status === key ? C.ink : C.text3,
+                      cursor: "pointer",
+                      fontSize: 14,
+                      padding: "10px 22px",
+                      transition: "all .2s",
+                      whiteSpace: "nowrap",
+                    }}
+                    type="button"
+                  >
+                    {scopeLabel(key, t)}
+                  </button>
+                ))}
           </div>
         </div>
-        <div className="scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "8px 18px 36px" }}>
-          <div style={{ color: "var(--text-3)", fontSize: 13, margin: "0 0 14px" }}>{resultLabel}</div>
-          {effMode === "map" ? (
-            <>
-              <section className="card" style={{ height: 300, marginBottom: 12, overflow: "hidden" }}><div style={{ height: "100%", position: "relative", width: "100%" }}><MapCanvas items={located} onSelect={(item) => setSelectedId(item.id)} selected={selectedItem} /></div></section>
-              {selectedItem ? <div style={{ marginBottom: 14 }}><MapEventCard compact item={selectedItem} /></div> : null}
-            </>
-          ) : null}
-          {effMode === "modules" && filtered.length > 0 ? (
-            <div style={{ display: "grid", gap: 12 }}>
-              {filtered.map((event) => (
-                <MobileExploreCard
-                  item={mapEvent(
-                    event,
-                    language === "ja" ? "en" : language,
-                    registrationAvailabilityByEventId[event.id] ?? "unavailable",
-                  )}
+
+        {!isMine ? (
+          <div className="orbit-explore-stats" style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))" }}>
+            {[
+              { desc: t({ en: "Open for registration", zh: "正在开放报名" }), icon: "◎", label: t({ en: "Upcoming", zh: "即将开始" }), n: stats.upcoming },
+              { desc: t({ en: "In your calendar", zh: "在你的日程里" }), icon: "✦", label: t({ en: "Registered", zh: "我已报名" }), n: stats.registered },
+              { desc: t({ en: "Join right now", zh: "现在可以参加" }), icon: "▶", label: t({ en: "Live", zh: "进行中" }), n: stats.active },
+              { desc: t({ en: "Across the community", zh: "本月社区活动" }), icon: "▦", label: t({ en: "This month", zh: "本月活动" }), n: stats.thisMonth },
+            ].map((stat) => (
+              <div key={stat.label} style={{ background: "#FFFFFF", border: `1px solid ${C.border}`, borderRadius: 16, display: "flex", gap: 16, padding: 22 }}>
+                <span aria-hidden="true" style={{ alignItems: "center", background: stat.label === (lang === "en" ? "Live" : "进行中") ? "#E6F1EC" : C.panel, borderRadius: 12, color: stat.label === (lang === "en" ? "Live" : "进行中") ? "#2F6B4F" : C.accent, display: "flex", flexShrink: 0, fontSize: 20, height: 48, justifyContent: "center", width: 48 }}>
+                  {stat.icon}
+                </span>
+                <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  <span style={{ color: C.text2, fontSize: 14 }}>{stat.label}</span>
+                  <strong style={{ color: C.ink, fontFamily: ORBIT_0918_FONTS.serif, fontSize: 28, fontWeight: 900, letterSpacing: "-0.02em", lineHeight: 1.1 }}>{stat.n}</strong>
+                  <span style={{ color: C.text3, fontSize: 13 }}>{stat.desc}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        {isMine ? (
+          mineEvents.length > 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {mineEvents.map((event, index) => (
+                <MineEventCard
+                  event={event}
+                  imagePriority={index < 2}
                   key={event.id}
+                  registrationAvailability={registrationAvailabilityByEventId[event.id] ?? "unavailable"}
                 />
               ))}
+              <span style={{ alignSelf: "center", color: C.text4, fontSize: 13, paddingTop: 10 }}>
+                {t({ en: "✦ Keep joining great events to unlock more possibilities.", zh: "✦ 持续参与优质活动，连接更多可能性。" })}
+              </span>
             </div>
-          ) : null}
-          {filtered.length === 0 ? (
+          ) : (
             <EventsEmptyState
-              filteredView={filteredView}
+              filteredView={Boolean(query || mineFilter !== "all")}
               onReset={resetFilters}
-              registeredView={status === "registered"}
+              registeredView
             />
-          ) : null}
-        </div>
-      </div>
+          )
+        ) : filtered.length > 0 ? (
+          <>
+            <div style={{ color: C.text3, fontSize: 13 }}>{resultLabel}</div>
+            <EventModuleGrid events={filtered} registrationAvailabilityByEventId={registrationAvailabilityByEventId} />
+          </>
+        ) : (
+          <EventsEmptyState
+            filteredView={filteredView}
+            onReset={resetFilters}
+            registeredView={false}
+          />
+        )}
+      </main>
     </div>
   );
 }

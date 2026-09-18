@@ -353,6 +353,9 @@ export function OrbitTopNav({
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
+    // react-test-renderer / 非浏览器环境没有完整 window：跳过滚动监听，
+    // 保持未滚动初始态（pill 展开），浏览器挂载后正常接管。
+    if (typeof window === "undefined" || typeof window.addEventListener !== "function") return undefined;
     function onScroll() {
       const next = window.scrollY > 40;
       setScrolled((current) => (current === next ? current : next));
