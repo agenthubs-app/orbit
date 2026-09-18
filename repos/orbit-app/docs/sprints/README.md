@@ -11,7 +11,7 @@
 ### 2026-09-18 新增读取成本治理（Phase 0 主线对齐）
 
 用户已批准[读取成本治理设计案 Rev 4]，要求逐个 Phase 执行，三次归位统一用 `merge` 不用 rebase。
-Phase 0 共三项：0067 生产源码归位（**completed**）→ 0068 phoneweb 基座归位（**completed**）→ 0069 增量同步存量归位。
+Phase 0 共三项：0067 生产源码归位（**completed**）→ 0068 phoneweb 基座归位（**completed**）→ 0069 增量同步存量归位（running）。
 后续 Phase A 量尺（0070）、B 止血（0071–0074）、C 收口扩面（0075–0076）、D Web 本地优先（0077–0078）、
 E 结构（0079–0080，需单独批准）依次领取，不并行。
 
@@ -19,7 +19,7 @@ E 结构（0079–0080，需单独批准）依次领取，不并行。
 | --- | --- | --- | --- |
 | [0067](0067-mainline-production-alignment/GOAL.md) | 主线重新包含生产正在运行的源码，并把本地／云端切换开关嵌进生产库围栏内部 | 五项 SC 全部 pass。功能 merge `e2a0d6a37`（父 `53e0640e5` + `161e9e6c4`）已 fast-forward 进 `chat-agent`，`git merge-base --is-ancestor 161e9e6c4 chat-agent` 退出码 0。同环境前后对照：4154/88fail → 4173/86fail，失败集合零新增、两项消失。两端 typecheck 0。本机 target=local 实际登录读到 78 联系人/64 待办。原 86 项失败保持披露，不宣称全绿 | completed |
 | [0068](0068-phoneweb-runtime-baseline/GOAL.md) | phoneweb 运行时基座归位主线，作为 Web 本地优先的地基 | 五项 SC 全部 pass。两次 merge `708a50095` + `3fa710ee8` 及归位必需修复 `3730ddb2f` 已 fast-forward 进 `chat-agent`。App 全量 3433 → 3452 全绿零新增失败；phoneweb 真实 Chromium 登录读 78 联系人；Simulator 冷启动正常。3 个部署助手文件明确延后。发现 `npm test` glob 不含 `.mjs`，留 0070 处理 | completed |
-| [0069](0069-incremental-sync-baseline/GOAL.md) | sprint-0033 增量同步存量（22 文件、8 已接线屏幕）归位主线 | 依赖 0067/0068（均 completed）。27 文件冲突面，含 `shared/storage/*`（0067 刚合过） | planned |
+| [0069](0069-incremental-sync-baseline/GOAL.md) | sprint-0033 增量同步存量（22 文件、8 已接线屏幕）归位主线，主线 v2 本地 schema 不倒退 | 依赖 0067/0068（completed）。基线 `86e2471ce`，待集成 `d0333d2f0`，merge-base `a8ac3f761`。已查明主线 schema v2 领先分支 v1，合并策略固定为"主线 v2 为基 + 移植分支加法 API"。Planner SHA 83050279 | running |
 
 已查清的前置事实：生产切库已于 2026-09-17 完成并正在服务（`www.orbitailink.com` 200、`/api/health` mode=live，
 新 Neon `orange-forest-30108072` 用量 34.6 MB／386.75 kB），旧 Vercel 项目 `paused=true`。
