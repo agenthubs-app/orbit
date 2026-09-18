@@ -34,6 +34,7 @@ E 结构（0079–0080，需单独批准）依次领取，不并行。
 | [0083](0083-profile-suggestions-localization/GOAL.md) | 资料更新建议全部中文：服务端规则文案三语字典按账号语言输出；摘录按用户决定处理 | TODO 第 3 条。进入条件：用户决定是否连种子英文对话／记忆一起中文化（默认不改种子）。档位 orbits M / App L。基线 `12a9f9653`，Planner SHA db35473f | planned |
 | [0084](0084-profile-page-hierarchy-audit/GOAL.md) | 资料类页面层级：全面截图审核 → 设计案 → 统一 `ProfilePagePrimitives` 四类元素规格 | TODO 第 2 条。含用户批准门（设计案）；审核范围含设置／账号／活动详情等同结构页面。档位 App H。基线 `12a9f9653`，Planner SHA 81db145c | planned |
 | [0085](0085-iorbit-entity-read-show-write/GOAL.md) | IORBIT 五实体读／展示／写：实体小卡片、草稿卡确认状态机、五种创建、去掉"AI 运行依据" | TODO 第 4 条。含用户批准门（设计案须回答卡片规格／状态机／写入接口／prompt vs workflow）；设计案若超一个 Sprint 则拆 0086。档位 orbits H / App H。基线 `12a9f9653`，Planner SHA f45ef0b8 | planned |
+| [0086](0086-inbox-typed-only-fail-closed/GOAL.md) | 收件箱只认三类通知：去 `ORBIT_TYPED_INBOX_ACTORS` 白名单默认启用、App 只读 `/api/inbox/notifications`、0040 迁移隔离 40 条生成记录与失效 reminderPlans、读取路径对无法归类记录 fail closed | 用户 2026-09-18 反馈"来源已不可用"。调查：0037–0040 均已合并；未启用（白名单未配置）+ 迁移从未执行 = 旧链直出。严格按 2026-09-16 通知设计。档位 orbits H / App H。基线 `1e2cbe555`，Planner SHA 8a4003dd | planned |
 
 已查清的前置事实：生产切库已于 2026-09-17 完成并正在服务（`www.orbitailink.com` 200、`/api/health` mode=live，
 新 Neon `orange-forest-30108072` 用量 34.6 MB／386.75 kB），旧 Vercel 项目 `paused=true`。
@@ -59,7 +60,7 @@ Phone44文件消费e2a＋六文件必要修复 `8d87be6ff`／TREE `d09c602bb` �
 
 ### 2026-09-18 新增 TODO 收口 Sprint（0081–0085）
 
-用户在 `TODO.md` 记录了 5 个问题，拆成 5 个 Sprint，基线 `chat-agent` = `12a9f9653`，全部 planned、run_count = 0，未领取。建议顺序：0081（小修复）→ 0082 → 0083（等用户答一个边界问题）→ 0084（截图审核 + 设计案批准门）→ 0085（设计案批准门，改 agent 行动方式）。0084／0085 按"先出设计案再实现"规则，设计案未批准不进实现步。编号跳过为 Phase E 保留的 0079／0080。
+用户在 `TODO.md` 记录了 5 个问题，拆成 5 个 Sprint，基线 `chat-agent` = `12a9f9653`，全部 planned、run_count = 0，未领取。建议顺序：0081（小修复）→ 0086（收件箱三类通知默认启用 + 旧记录迁移隔离 + 读取 fail closed）→ 0082 → 0083（等用户答一个边界问题）→ 0084（截图审核 + 设计案批准门）→ 0085（设计案批准门，改 agent 行动方式）。0084／0085 按"先出设计案再实现"规则，设计案未批准不进实现步。编号跳过为 Phase E 保留的 0079／0080。
 
 ## 目录契约
 
