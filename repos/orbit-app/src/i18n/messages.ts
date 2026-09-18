@@ -130,6 +130,7 @@ export const messageKeys = [
   "settings.general",
   "settings.account",
   "settings.server",
+  "settings.serverCurrent",
   "settings.language",
   "settings.languageHint",
   "settings.languageSystem",

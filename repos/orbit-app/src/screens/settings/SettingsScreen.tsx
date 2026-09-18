@@ -9,6 +9,7 @@ import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { AppScreen } from "../../components/AppScreen";
 import { createThemedStyles } from "../../design/theme";
+import { rowRoleStyles } from "../../design/tokens";
 import { revokePushDeviceRegistrations } from "../../notifications/push-registration-queue";
 import {
   isPushNotificationsOptedIn,
@@ -42,7 +43,9 @@ const settingsDestinations = [
       : "settings.serverDetail") as MessageKey,
     href: "/settings/api",
     section: "server",
-    titleKey: "settings.server" as MessageKey
+    // Sprint 0084: the group heading above this row is already "服务器"; the row
+    // says which server, so the two stop reading as the same thing twice.
+    titleKey: "settings.serverCurrent" as MessageKey
   }
 ] as const;
 
@@ -225,10 +228,10 @@ export function SettingsScreen() {
                     accessibilityRole="button"
                     key={destination.href}
                     onPress={() => router.push(destination.href as Href)}
-                    style={({ pressed }) => [styles.destination, webScrollMargin, pressed ? styles.pressed : null]}
+                    style={({ pressed }) => [styles.destination, webScrollMargin, pressed ? styles.rowPressed : null]}
                   >
                     <Text style={styles.destinationText}>{locale.t(destination.titleKey)}</Text>
-                    <Ionicons color={colors.text3} name="chevron-forward" size={16} />
+                    <Ionicons color={colors.accent} name="chevron-forward" size={16} />
                   </Pressable>
                 ))}
               {section === "account" && auth.signedIn ? <Pressable accessibilityLabel={locale.t("account.signOut")} accessibilityRole="button" disabled={signOutBusy} onPress={() => void signOut()} style={({ pressed }) => [styles.destination, signOutBusy && styles.actionDisabled, pressed && styles.pressed]}>
@@ -247,7 +250,7 @@ export function SettingsScreen() {
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   sections: { gap: 22, paddingBottom: 1, paddingTop: 8 },
   section: { gap: 6 },
-  sectionTitle: { color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: "800" },
+  sectionTitle: { ...rowRoleStyles.groupHeading, color: colors.text3 },
   sectionRows: { borderTopColor: colors.border, borderTopWidth: 1 },
   languageBlock: { borderBottomColor: colors.border, borderBottomWidth: 1, gap: 8, paddingVertical: 13.5 },
   languageOptions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
@@ -264,14 +267,13 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     flexDirection: "row",
     gap: 12,
     minHeight: 50,
-    paddingVertical: 13.25
+    // Sprint 0084: retuned with the 16px/23 row label so the row still lands on 50.
+    paddingVertical: 13
   },
   destinationText: {
+    ...rowRoleStyles.navLabel,
     color: colors.text,
-    flex: 1,
-    fontSize: 15,
-    fontWeight: "600",
-    lineHeight: 22
+    flex: 1
   },
   notificationBody: {
     color: colors.text3,
@@ -284,8 +286,15 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   valueText: { color: colors.muted, flexShrink: 1, fontSize: 14, lineHeight: 20, textAlign: "right" },
   errorText: { color: colors.rose, fontSize: 13, lineHeight: 20, paddingVertical: 8 },
-  signOutText: { color: colors.rose, flex: 1, fontSize: 15, fontWeight: "600", lineHeight: 22 },
+  signOutText: { ...rowRoleStyles.navLabel, color: colors.rose, flex: 1 },
   pressed: {
+    opacity: 0.82
+  },
+  // Sprint 0084: an openable row also changes its background, so it reads as
+  // openable without relying on the chevron alone. The dim stays: existing tests
+  // treat it as the proof that a press was registered at once.
+  rowPressed: {
+    backgroundColor: colors.accentSofter,
     opacity: 0.82
   }
 }));

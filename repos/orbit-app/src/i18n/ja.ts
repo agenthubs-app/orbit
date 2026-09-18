@@ -77,6 +77,7 @@ export const ja = {
   "settings.general": "一般",
   "settings.account": "アカウント",
   "settings.server": "サーバー",
+  "settings.serverCurrent": "現在のサーバー",
   "settings.language": "表示言語",
   "settings.languageHint": "初期設定では端末の言語を使用します。手動で選ぶと、このアカウントに保存され他の端末にも同期されます。",
   "settings.languageSystem": "端末の言語を使用",

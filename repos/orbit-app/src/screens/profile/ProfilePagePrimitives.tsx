@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { createThemedStyles } from "../../design/theme";
+import { rowRoleStyles } from "../../design/tokens";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 
 export function ProfilePageFrame({
@@ -93,9 +94,9 @@ export function ProfileNavRow({ detail, disabled = false, icon, label, onPress, 
       {detail ? <Text style={styles.rowDetail}>{detail}</Text> : null}
     </View>
     {value ? <Text style={[styles.rowValue, largeText && styles.rowValueLarge]}>{value}</Text> : null}
-    {onPress && !disabled ? <Ionicons color={colors.text4} name="chevron-forward" size={16} /> : null}
+    {onPress && !disabled ? <Ionicons color={colors.accent} name="chevron-forward" size={16} /> : null}
   </>;
-  return onPress ? <Pressable accessibilityLabel={label} accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.row, largeText && styles.rowLarge, disabled && styles.disabled, pressed && styles.pressed]}>{content}</Pressable>
+  return onPress ? <Pressable accessibilityLabel={label} accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.row, largeText && styles.rowLarge, disabled && styles.disabled, pressed && styles.rowPressed]}>{content}</Pressable>
     : <View style={[styles.row, largeText && styles.rowLarge]}>{content}</View>;
 }
 
@@ -134,21 +135,21 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   section: { alignSelf: "stretch", gap: 8 },
   sectionHeading: { alignItems: "baseline", flexDirection: "row", gap: 8, justifyContent: "space-between" },
   sectionHeadingLarge: { alignItems: "flex-start", flexDirection: "column" },
-  sectionTitle: { color: colors.ink, flexShrink: 1, fontSize: 15, fontWeight: "800" },
+  sectionTitle: { ...rowRoleStyles.groupHeading, color: colors.text3, flexShrink: 1 },
   sectionTitleLarge: { alignSelf: "stretch", flexShrink: 0 },
   sectionDetail: { color: colors.text4, flexShrink: 1, fontSize: 12 },
   sectionDetailLarge: { alignSelf: "stretch", flexShrink: 0 },
   sectionBody: { alignSelf: "stretch", borderTopColor: colors.border, borderTopWidth: 1 },
   field: { borderBottomColor: colors.border, borderBottomWidth: 1, gap: 7, paddingVertical: 12 },
   fieldHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
-  fieldLabel: { color: colors.text3, fontSize: 12, fontWeight: "700" },
+  fieldLabel: { ...rowRoleStyles.fieldLabel, color: colors.text3 },
   fieldHelper: { color: colors.text4, fontSize: 12 },
-  input: { backgroundColor: colors.surface, borderWidth: 0, color: colors.ink, fontSize: 15, minHeight: 48, paddingHorizontal: 0, paddingVertical: 11 },
+  input: { ...rowRoleStyles.fieldValue, backgroundColor: colors.surface, borderWidth: 0, color: colors.ink, minHeight: 48, paddingHorizontal: 0, paddingVertical: 11 },
   multiline: { minHeight: 96, textAlignVertical: "top" },
   row: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: "row", gap: 10, minHeight: 52, paddingVertical: 10 },
   rowLarge: { alignItems: "flex-start", flexWrap: "wrap" },
   rowCopy: { flex: 1, minWidth: 0 },
-  rowLabel: { color: colors.ink, fontSize: 15, fontWeight: "600" },
+  rowLabel: { ...rowRoleStyles.navLabel, color: colors.ink },
   rowDetail: { color: colors.text4, fontSize: 12, marginTop: 2 },
   rowValue: { color: colors.text3, flexShrink: 1, fontSize: 13, maxWidth: "45%", textAlign: "right" },
   rowValueLarge: { maxWidth: "100%", textAlign: "left", width: "100%" },
@@ -163,4 +164,5 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   noticeError: { color: colors.rose },
   disabled: { opacity: 0.48 },
   pressed: { opacity: 0.68 },
+  rowPressed: { backgroundColor: colors.accentSofter, opacity: 0.68 },
 }));
