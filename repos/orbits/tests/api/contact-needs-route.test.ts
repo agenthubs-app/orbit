@@ -5,6 +5,8 @@ import {
   createContactNeedsGetHandler,
   type ContactNeedsRouteDependencies,
 } from "../../app/api/contacts/needs-matches/handler";
+import { scoreContactsForNeed } from "../../features/contact-needs/scoring";
+import type { ContactListItemContract } from "../../shared/contract/contacts";
 
 const payload = {
   schemaVersion: 1 as const,
@@ -94,4 +96,24 @@ test("contact needs route does not return a malformed success payload", async ()
   assert.equal(response.status, 500);
   assert.equal(body.success, false);
   assert.equal(body.error.code, "INTERNAL_ERROR");
+});
+
+test("route returns actual v2 components and rejects a tampered score or missing evidence contract", async () => {
+  const goal = "AI restaurant ordering collaboration";
+  const ranked = scoreContactsForNeed(goal, [{
+    id: "contact:delivery", displayName: "Delivery", role: "Software developer", organization: "Fixture", location: "",
+    profileSnippet: "Builds restaurant ordering systems and offers pilot implementation", relationshipContext: "", tags: [], evidence: [],
+  } as unknown as ContactListItemContract]);
+  const valid = { ...payload, goal, ...ranked, scoringVersion: "needs-evidence-v2" as const };
+  const responseFor = (data: typeof valid) => createContactNeedsGetHandler(dependencies({ createService: () => ({ getMatches: async () => ({ success: true, data }) }) }))(new Request("http://localhost/api/contacts/needs-matches"));
+  const response = await responseFor(valid);
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.deepEqual(result.data.matches[0].components, valid.matches[0]?.components);
+  assert.deepEqual(result.data.matches[0].summary, valid.matches[0]?.summary);
+  for (const match of [
+    { ...valid.matches[0]!, score: 99 },
+    { ...valid.matches[0]!, components: undefined },
+    { ...valid.matches[0]!, criteria: valid.matches[0]!.criteria.map(item => ({ ...item, evidenceExcerpt: null })) },
+  ]) assert.equal((await responseFor({ ...valid, matches: [match] })).status, 500);
 });

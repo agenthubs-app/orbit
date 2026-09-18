@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createReminderPlanRepository } from "../../features/notifications/reminder-plan-repository";
-import { createReminderPlanService } from "../../features/notifications/reminder-plan-service";
+import { createReminderPlanService, ReminderPlanServiceError } from "../../features/notifications/reminder-plan-service";
 import type { PushProvider } from "../../features/notifications/push-provider";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 
@@ -19,6 +19,33 @@ function harness() {
     } },
   });
   return { repository, service, store };
+}
+
+function createAuthorizerFailureHarness(failure: unknown) {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const repository = createReminderPlanRepository({ store, workspaceId: "workspace:authorizer-failure" });
+  const service = createReminderPlanService({
+    now: () => NOW,
+    repository,
+    targetAuthorizer: { async assertOwned() { throw failure; } },
+  });
+  return { service, store };
+}
+
+function createInput(idempotencyKey: string) {
+  return {
+    actorId: "actor:authorizer-failure",
+    body: "authorizer failure",
+    channels: ["in_app"] as const,
+    createdBy: "user" as const,
+    deepLink: "/authorizer-failure",
+    fireAt: "2026-08-29T05:00:00.000Z",
+    idempotencyKey,
+    targetId: "task:authorizer-failure",
+    targetType: "task" as const,
+    timeZone: "UTC",
+    title: "authorizer failure",
+  };
 }
 
 test("reminder plans create, list, reschedule, and cancel within one actor", async () => {
@@ -56,6 +83,31 @@ test("reminder plans create, list, reschedule, and cancel within one actor", asy
   });
   assert.equal(cancelled.status, "cancelled");
   assert.equal(cancelled.cancelledAt, NOW);
+});
+
+test("create maps only the typed target-domain error and preserves all other authorizer failures without writes", async () => {
+  const typed = new ReminderPlanServiceError("TARGET_NOT_OWNED", "fixture target is not owned");
+  const typedHarness = createAuthorizerFailureHarness(typed);
+  await assert.rejects(
+    typedHarness.service.create(createInput("typed-domain")),
+    (error: unknown) => error instanceof ReminderPlanServiceError && error.code === "TARGET_NOT_OWNED" && error !== typed,
+  );
+  assert.equal((await typedHarness.store.listRecords({ workspaceId: "workspace:authorizer-failure", collectionName: "reminderPlans" })).length, 0);
+
+  for (const [label, failure] of [
+    ["ordinary", new Error("ordinary authorizer failure")],
+    ["spoofed-domain-code", Object.assign(new Error("spoofed domain code"), { code: "TARGET_NOT_OWNED" })],
+    ["real-conflict", new ReminderPlanServiceError("CONFLICT", "real authorizer conflict")],
+    ["serialization", Object.assign(new Error("serialization authorizer failure"), { code: "40001" })],
+    ["deadlock", Object.assign(new Error("deadlock authorizer failure"), { code: "40P01" })],
+  ] as const) {
+    const failedHarness = createAuthorizerFailureHarness(failure);
+    await assert.rejects(
+      failedHarness.service.create(createInput(`raw-${label}`)),
+      (error: unknown) => error === failure,
+    );
+    assert.equal((await failedHarness.store.listRecords({ workspaceId: "workspace:authorizer-failure", collectionName: "reminderPlans" })).length, 0, `${label} failure must not write a plan`);
+  }
 });
 
 test("completing a target cancels all future plans without deleting its history", async () => {

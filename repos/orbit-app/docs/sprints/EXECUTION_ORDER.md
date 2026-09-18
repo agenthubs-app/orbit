@@ -36,6 +36,18 @@
 
 这是优先队列，不是让就绪工作等待无关阻塞：0020 未批准时，0009 的无副作用技术盘点可先做；0007 缺 OCR 样本时，0008 的文档／就绪核查不必停下。实际 Generator 只领取依赖和批准均齐全者，不用代码 stub 绕过依赖。
 
+## 0032～0036 云端权威／本地镜像实施链（2026-09-15）
+
+用户已批准采用“云端权威记录＋加密本地持久镜像＋增量同步”，并要求拆成多步 Sprint。该链在 0031 性能 Sprint 合并并释放 `snapshot-store.ts`／`useApiResource.ts` 等共享范围后串行执行：
+
+1. [0032](0032-hybrid-sync-foundation/PLANNER.md)：冻结 authority/sync/AI visibility 契约，建立 SQLCipher SQLite、scope、cursor/outbox 表与安全生命周期；不切页面。
+2. [0033](0033-incremental-read-sync/PLANNER.md)：提供稳定高水位 cursor 与四域镜像优先读取；写操作仍在线。
+3. [0034](0034-offline-personal-mutations/PLANNER.md)：仅为笔记、确认待办、确认跟进和个人日程开放离线 outbox、幂等 receipt 和显式冲突处理。
+4. [0035](0035-sync-invalidation-recovery/PLANNER.md)：以 PostgreSQL `sync_revision` 和认证 status endpoint 实现 provider-neutral invalidation；Supabase、Neon relay、push 等只作为可替换 transport，启动、前台、网络恢复和手动刷新始终由 cursor 补偿。
+5. [0036](0036-ai-sync-visibility-acceptance/PLANNER.md)：四个 AI query 工具增加 canonical freshness，执行 Web/App/AI 数据真值矩阵，更新并发布私有 Data Atlas，最后在合并树做一次全量收口。
+
+每个 Sprint 一个 Generator、一个 run-01；功能完成即路径限定 commit 并由协调者合并到 `chat-agent`，不是等五个 Sprint 全做完才一起合并。前一步失败或 blocked 只阻止依赖它的后一步，不改变已有线上读写行为。
+
 ## 只改一次的共享边界
 
 | 共享位置 | 生产者 → 消费者 | 执行约束 |
@@ -111,3 +123,19 @@
 | 0018／0019 | 原后期前置、旧内容分类与迁移／笔记权限及建议接受协议未批准 | 新建入口／AI 模板规则已记录；无分类方案时不盘点或迁移真实私密正文，不生成空实现。 |
 
 下一次推进优先复用对 0020 当前版本的明确审阅结果，开始唯一 Generator；不会要求重新批准行业目录、原地 chat-agent、逐功能 commit 或已确认产品选择。其他提案的审阅可分开进行，不要求先一次性批准全部 Sprint。
+
+## 2026-09-16 消息与通知重设计的执行增量
+
+新增顺序为 **0037 → 0038 → 0039 → 0040**，对应[项目计划](NOTIFICATION_PROGRAM.md)。这是新的产品改造范围，不修改历史Sprint验收或报告，也不复用其run。
+
+先保住联系人真实通信和阅读状态，再收口三类通知协议/业务投影，随后接入有来源的AI自主发现，最后完成频控、真实推送、历史归档及可回退切换。各Sprint交接固定SHA，合并并通过相关验证后进入下一项。
+
+0033～0036同步计划维持原范围与顺序；0037无需等待该组全局完成，0039只读已提交云端事实。共享契约、语言文件、worker、Web进程、浏览器账号与Simulator争用时由协调者排他分配；不并行写同一文件或重启别人使用的服务。
+
+本增量已复用用户“按照这个设定”的产品方向确认，启动只核实实际依赖、基线与环境。实际生命周期仅见README；本次没有启动run，不因文档完成声称实现或验收完成。
+
+## 0041 Web 测试基线恢复（2026-09-16）
+
+[0041](0041-web-test-baseline-restoration/PLANNER.md) 是独立的测试门禁恢复 Sprint，不属于 0033～0036 产品依赖链，也不实现 Calendar、Gmail 或 Microsoft Graph OAuth adapter。它承接用户对 B/0034 与 D/0036 的一次性合并例外：两条线的定向测试、typecheck 与独立审查已经通过，但 Web 全量测试在它们合并前已存在失败。
+
+0041 可与 0033 的 inventory 修复并行，因为前者只拥有 Web 测试 runner、失败测试/fixture、PostgreSQL 测试隔离和自身文档；不得修改 0033 的 App read inventory、共享同步契约或 AI query 实现。执行顺序固定为：冻结完整失败账本 → 恢复确定性 audit/fixture → 隔离并前置检查 PostgreSQL 集成档 → 在具备前置的环境运行 `test:all` → 独立审查、合并并推送。任何失败都必须继续留在账本中，不能通过 skip、遗漏 profile 或降低断言消失。

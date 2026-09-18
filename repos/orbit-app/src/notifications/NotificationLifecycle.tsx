@@ -8,6 +8,7 @@ import { ORBIT_API_ENDPOINTS } from "../api/endpoints";
 import { useOrbitAuthSession } from "../api/AuthSessionProvider";
 import { useOrbitApiClient } from "../hooks/useOrbitApiClient";
 import { createPushRegistrationSession } from "./push-registration-queue";
+import {notifyReminderPlansChanged} from './native-notifications';
 import {
   isPushNotificationsOptedIn,
   migrateLegacyPushDeviceRegistration,
@@ -118,6 +119,8 @@ export function OrbitNotificationLifecycle() {
       }).catch(() => ({ success: false }));
       if (!durableRegistration.success) {
         console.warn("Orbit 收件箱推送注册未完成，将在下次回到前台时重试");
+      } else if (isCurrent()) {
+        notifyReminderPlansChanged();
       }
     };
 

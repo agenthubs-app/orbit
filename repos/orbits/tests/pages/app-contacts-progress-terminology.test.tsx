@@ -13,6 +13,7 @@ import { OrbitRealCardConnection } from "../../app/(app)/app/contacts/orbit-real
 import { createMockAgentLedgerService } from "../../features/agent/ledger/mock-service";
 import { loadAppContactDetailRoute } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service";
 import { contactDetailRouteToOrbitContactsViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter";
+import { mountOrbitRealCardConnection, relationshipProgressLinkLabels } from "./contact-relationship-initialization-mount-helper";
 
 let model: OrbitContactsViewModel;
 let contactId: string;
@@ -73,9 +74,29 @@ for (const [language, label, openLabel] of [
     assert.deepEqual(progressLinks(html), [`${label}1`], "the sidebar keeps the one-contact count");
   });
 
-  test(`${language} contact next step opens the same relationship progress destination`, () => {
+  test(`${language} SSR waits for relationship readback before rendering the legacy next-step card`, () => {
     const links = progressLinks(render(createElement(OrbitRealCardConnection, { contactId, viewModel: model })));
-    assert.deepEqual(links, [label, openLabel, openLabel]);
+    assert.deepEqual(links, [label]);
+    assert.match(render(createElement(OrbitRealCardConnection, { contactId, viewModel: model })), language === "zh" ? /关系状态尚未确认/ : /Relationship state unavailable/);
+  });
+
+  test(`${language} mounted legacy readback keeps all three relationship progress links`, async (t) => {
+    let reads = 0;
+    const root = await mountOrbitRealCardConnection(t, {
+      contactId,
+      language,
+      viewModel: model,
+      fetcher: (async (input, init) => {
+        reads += 1;
+        assert.equal(String(input), `/api/contacts/${encodeURIComponent(contactId)}/relationship-initialization`);
+        assert.equal(init?.cache, "no-store");
+        assert.equal(init?.credentials, "same-origin");
+        assert.equal(init?.method, undefined);
+        return new Response(null, { status: 404 });
+      }) as typeof fetch,
+    });
+    assert.equal(reads, 1);
+    assert.deepEqual(relationshipProgressLinkLabels(root), [label, openLabel, openLabel]);
   });
 
   test(`${language} all-actions page keeps desktop and narrow relationship links aligned`, async () => {

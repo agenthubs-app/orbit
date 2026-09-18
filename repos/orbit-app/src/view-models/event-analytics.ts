@@ -1,3 +1,5 @@
+import type { ApiErrorBody } from "../api/types";
+
 export type EventAnalyticsKind = "organizer_aggregate" | "attendee_report";
 
 export interface EventAnalyticsMetricView {
@@ -117,9 +119,16 @@ function attendeeView(payload: Record<string, unknown>): EventAnalyticsView | nu
   };
 }
 
-export function eventAnalyticsToView(payload: unknown): EventAnalyticsView | null {
+export function eventAnalyticsToView(payload: unknown, expectedEventId?: string): EventAnalyticsView | null {
   if (!isRecord(payload)) return null;
+  if (expectedEventId !== undefined && payload.eventId !== expectedEventId) return null;
   if (payload.kind === "organizer_aggregate") return organizerView(payload);
   if (payload.kind === "attendee_report") return attendeeView(payload);
   return null;
+}
+
+export function eventAnalyticsFailureToMessage(error: ApiErrorBody, status: number): string {
+  if (status === 403) return "当前账号没有可查看的活动汇总或个人报告资格。";
+  if (status === 503 && error.context?.reason === "event-analytics-configuration-required") return "这场活动尚未配置运营分析，暂时无法读取汇总。";
+  return error.message;
 }

@@ -23,6 +23,7 @@ export interface StoredAuthUser extends AuthUserDTO {
 
 export interface AuthUserStorageProvider {
   source: string;
+  insertUserIfAbsent?: (user: StoredAuthUser) => Promise<StoredAuthUser | null>;
   getUserByEmail: (email: string) => Promise<StoredAuthUser | null>;
   saveUser: (user: StoredAuthUser) => Promise<StoredAuthUser>;
 }
@@ -91,8 +92,33 @@ export function createStorageAuthUserProvider({
   store,
   workspaceId,
 }: StorageAuthUserProviderOptions): AuthUserStorageProvider {
+  function recordFor(user: StoredAuthUser): LiveRecord<Record<string, unknown>> {
+    return {
+      workspaceId,
+      collectionName: AUTH_USER_LIVE_RECORD_COLLECTION,
+      recordId: authUserRecordId(user.email),
+      userId: user.id,
+      sourceType: "manual",
+      sourceId: `auth:${user.provider}`,
+      sourceLabel: "Orbit account sign-up",
+      provider: user.provider,
+      providerRecordId: user.providerAccountId,
+      evidenceIds: [`evidence:auth:${user.id}`],
+      occurredAt: user.createdAt,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      lifecycleState: "active",
+      searchText: user.email,
+      payload: { ...user },
+    };
+  }
   return {
     source: `live-record-store:auth-users:${workspaceId}`,
+    async insertUserIfAbsent(user) {
+      if (!store.insertRecordIfAbsent) throw new Error("Auth storage requires atomic insert support.");
+      const inserted = await store.insertRecordIfAbsent(recordFor(user));
+      return inserted ? storedUserFromRecord(inserted) : null;
+    },
     async getUserByEmail(email) {
       const record = await store.getRecord({
         workspaceId,

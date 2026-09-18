@@ -4,6 +4,16 @@
 
 主集成`66087fff`已本地验收报名回执/独立GET及规范账号接线（84/84与全typecheck）。尚未发布：历史raw报名未审计/迁移，App报名屏仍可能拒绝规范accountId回执，跨端联验未执行。详见[BR-031](2026-09-17-web-registration-identity-candidate.md)；本条不改变已完成的生产数据切换，也不把此前跨端其他子项重新判失败。
 
+## 2026-09-17 主测试账号30联系人／10活动
+
+独立Neon测试环境已围绕 organizer@orbit.example.test（测试主办方·林）扩充成功：主账号30位私有联系人、15条有日期的跟进／维护任务、10个真实归属活动（9发布＋1草稿）。原4账号、原28条通用记录及2活动保持不变；新增数据按人工确认、canonical生命周期、活动配置与报名政策链落库，没有伪造AI、报名、出席或交换成功。
+
+本地6/6及Web完整typecheck通过；云端718次SQL／923,576字节返回JSON估计、225通用记录、生命周期0问题；页面实见30联系人、9公开活动，新活动后台真实配置可读。账号密码私下交付用户，不入Git。预算、重复运行与验证范围见[主测试数据集](../repos/orbits/docs/operations/main-test-dataset.md)。只改独立测试库，不改www.orbitailink.com或App环境，未消耗模型额度。
+
+## 2026-09-17 读取成本分支远程集成（验证中）
+
+已正常推送 `d459c801` 到远程 `chat-agent` 并独立回读 SHA，保留双方提交及远程文档 `157ae860`。App 冻结全量 3,398 项 / 3,397 通过 / 1 失败 / 0 跳过；唯一读取审计行号锚点问题随后独立修复，20/20 定向通过，不冒称已重新跑全量。已修复稀疏关系动作读取、任务页重复 React key 及失效测试 fixture。Web 既有失败和专用数据库环境缺项仍保留，不能标全部闭环；具体版本和检查见[合并验证记录](2026-09-17-cloud-read-remote-integration.md)。本轮不使用 Neon/模型额度、不主动发布 Production；以下为各工作流的历史状态，不代表当前合并版全部已验收。
+
 ## 2026-09-17 小型免费测试库已初始化
 
 BR-027 新 Neon 独立库完成既有迁移与小型 seed：4 个可登录合成账号、2 个 canonical 活动、3 条关系、1 个跟进任务，通用记录共28条；主办方权限/参与者拒绝与关系生命周期预检通过。种子42.6KB、初始化返回JSON约46.6KB，未调用模型，旧Production和本地大型fixtures未删改。独立Vercel项目使用显式Preview及无cron/队列订阅配置；Web登录验证与App切换状态按[BR-027](2026-09-17-read-budget-staging.md)最新记录，不将初始化当作完整业务闭环。后续云端操作必须遵守[免费套餐操作规程](../repos/orbits/docs/operations/free-staging-budget.md)。
@@ -59,6 +69,65 @@ Production 运行源码 `105ebba4d` / `dpl_2FjxtX314B6DRojeZvFbdDF8gTNh` 为 Rea
 用户授权将合成 fixture 用于 Production 测试；正式 Web 已连接 Neon Production 的 `workspace:orbit-demo-fixtures`，完成空库事务导入、逐表校验、主办方登录与参与者权限隔离。App 本机 API 地址已指向正式网址，但原生构建受当前 Swift/Expo 依赖兼容性阻塞，不能记为跨端 verified。主办方身份去重、可报名测试活动及精确证据见 [本次交接](2026-09-16-production-fixture-testing.md)。此前 schema-only / 未部署状态为历史，不能替代此记录。
 
 增量：主测试账号凭据登录可读 66 联系人；新增活动报名/取消/重报复用同一记录。关系 fixture 已整理为每联系人一条有效关系、一个当前任务，旧重复记录可恢复停用，正式生命周期核验 0 issues；46 项定向回归通过。后台 event-operations worker 的云端承载与原生 App 同环境验证仍为精确未完成项。
+## 2026-09-17 活动报名修复与Phone发布
+
+用户随后要求重建两端：Phone已真正fresh后台Next BUILD `Mh8CRhvDjpNWmXZo4wex1`及fresh Expo export并重新部署，同域PUBLIC93152/93153/93154健康、逐13页正常UI登录0业务写验证通过。Main Simulator实际重新编译/覆盖安装，当前92537已显示有数据首页与历史笔记列表；实际8082连接和Hermes主bundle URL已观察，不把原生binary hash当JS证明。原账号/本地数据/预算/回退保留，临时preview正常停止；详见[本轮重建交接](2026-09-17-phoneweb-registration-repair.md)。下方是首次发布的历史记录，不是当前PID。
+
+0064固定8daf与0065固定d0e已合chat-agent并普通push，独立远端7b1b3de289eba6e550a4702954df6056eddc664e一致。真实13配置修复/all13正式GET及公网逐页enabled通过；正常UI单新QAcase双入口拒绝/确认取消、重新报名与正式回读通过，原记录摘要保全。新Phone519/f082、freshentry875实际公网SHA1afd；后台明确复用64真实BUILD6cy，原ngrok同地址/PUBLIC87138/9/40健康200，old63回退完整。owned previews与35434PG正常停保数据资产。
+
+ROOT主线完整受影响81pass；唯一I失败/跳过保留，不冒称全绿。未真实Native取消/AI provider，推荐schema与Phone旧legacy差异仍TODO；0033生产协议/OAuth/Push缺项未关闭。范围与失败见[BR-030](2026-09-17-phoneweb-registration-repair.md)，最终管理文档push事实见ROOT运行checkpoint。
+
+## 2026-09-16 20:56 JST 人脉分析修复与两端生产服务恢复
+
+原 Phone B 的分析实现和两个针对性报告修复已在主线 `7e9e902f2c67584f4685ce6617a0e2ccfe5e1fd3`，独立核对远端 `chat-agent` 同 SHA。空标题无正文、外部 ID 前缀冒充锚点、代码围栏伪报告均拒绝。ROOT 完整 20 个后端测试文件 186/186 零跳过、Web types0；既有 App 消费者 95/95，不冒充 Phone 的 98/98 或全量基线通过。新符号暂存图谱未映射，仍为 UNKNOWN，不认为零风险。
+
+两端直接 Next 生产编译均 exit0，复用未改动资产流程，不算重新执行全量资产 build。MAIN 3000/PID72621，BUILD `CWqHojftfUNV5f3agekjJ`；Phone 冻结后台 `81cad21615f0f52dfa8ca86bf81bb92f69fc7002`，32100/PID72623，BUILD `RQg512Ds8xdL0Dst1ZjQI`。两端 budget guard ready、health200，原各自数据库/workspace、Flash/loop3 与唯一 $5 账本保持；Phone 认证入口32110/live/typed actor 保留。Metro8082/PID7582、Phone 展示32110/PID21340 未改。
+
+新真实模型分析、精确费用对账与公网报告回读仍 OPEN；目前只释放零付费只读验证，禁止重放旧失败会话或把历史/stub 当成新分析成功。11:56:23Z 账本25 settled/$0.048375/0 reserved，六笔未知调用者仍待查。D45 真实 mutation port/journal/删除传播、E46 合法通知样本审批以及中文锁序批准仍待完成；不合入会阻断既有笔记写入的半成品。
+
+## 2026-09-16 20:35 JST 主线租期基础与原生加密构建
+
+A33 纯租期 issuer `8a822a152` 已合入并推送 `74c60290f`；ROOT 完整两文件审查、7/7 零跳过及 Web typecheck0。新增符号图谱为 UNKNOWN，不把暂存分析的零映射当成零风险。只有可信授权端口与完整域覆盖校验，真实全域 authorizer、持久权限 epoch、HTTP 与离线消费者尚未接通。
+
+该主线 Web 重新生产构建 exit0（未改资产流程复用），BUILD_ID `0tIJOrl7k4tVtFNzxZyyG`；3000/PID56918/live200、Metro8082/running，原数据库、Flash/loop3 与唯一预算保护保持。Phone 32100/32110 未重启。账本早先快照为 19 settled / $0.039467 / 0 reserved，其中 $0.000856 已查明来自 Phone 诊断报名 GET 默认问题生成；11:34:42Z 最新快照为 25 settled / $0.048375 / 0 reserved，后来六笔的调用端归属尚未确定，不能归入该诊断。后续固定 `questions=false`，不算验收成功，付费 QA 暂停。
+
+ROOT 保留原 native 环境后，仅 ignored Podfile.properties 启用 SQLCipher；首次 deployment pod install 因 ExpoSQLite checksum 拒绝，随后无 repo update 的 install 仅更新该 checksum，依赖版本不变。主线原生编译/覆盖安装成功，实际编译 codec 标志与 key/rekey 符号存在；构建及已安装 executable SHA256 均 `a0c760b6a0a91d25867c6509e542842249c32994c255b98b965845460ca78354`，同步 DB header 非明文。没有删数据、清密钥或 uninstall。Web 重建期间首次启动出现登录页，不能当成独立冷启动成功；Web 恢复后正常重启 PID57388 已回到中文有数据首页。actual cipher_version、wrong-key、完整迁移、全域离线及精确 loaded-JS 哈希仍未验收。
+
+D45 仍不合未接真实 mutation port 的半成品；中文锁序修订待批准。E46 合法样本与精确恢复中文规格已完成待审，未执行 fixture 写入、共享 worker 或付费 discovery。Phone PW11 分析与 PW12 canonical 活动详情由原独立 B/C 推进；本轮不增加 ROOT 第三个修复 Generator。
+
+20:35 JST 原生运行补证：ROOT 在实际已安装主包 PID61392 中仅打开 `:memory:` 临时数据库，`PRAGMA cipher_version` 实际返回 `4.7.0 community`；open/prepare/finalize/close均0、step100、调试器已detach。首次调试类型缺失后正常重启释放临时内存，一次针对性修复成功。没有打开用户库或读取密钥；因此关闭“已安装 SQLCipher 运行版本未知”这一项，不关闭实际同步库解密、wrong-key、迁移或全域离线验收。上段版本未知描述保留为此前历史状态。
+
+## 2026-09-16 20:12 JST 主线通知来源修复与运行实测
+
+E46 冻结 `8e3049cea` 已合入 `e660f1d55`；A33 编译参数解析修复 `70d4d2aaf` 已合入 `23500c561`，普通 push 后独立远端 SHA 一致。ROOT 主线受影响完整文件 App 75/75、Web 24/24、两端 types 通过；A33 静态工具另 8/8，不冒充实际加密验收。未重新全量测试，旧基线缺项保持开放。
+
+Web 生产构建 exit0（复用未改动资产流程），BUILD_ID `ktYtulz-wmbDHzQ1-3aL_`，主线 3000/PID44656/live200；原费用保护账本与 DeepSeek Flash/loop3 保持。原生 build/install/launch 均 exit0，依赖警告保留；DA 主包 PID45137，主线 Metro8082/running。实际安装 executable 与构建 artifact SHA256 同为 `a1ef0cdb9e3d8ea9b90528d8485e2232298a99bbd4576b98bb340467604d7623`；Debug JS 来自 Metro，不把相同原生 executable 哈希当成新 JS 哈希。
+
+Simulator 实際首页→收件箱→通知显示 40 条安全失效来源提示（2 已读/38 未读），旧“复核下一步”文案为 0；点击第一条已读、无链接记录保持收件箱与计数。只读真实数据库确认 40 条均 `targetType=notification`、`targetId=recordId`，payload 没有 taskId/followupTaskId/contactId/targetId/targetType 业务字段。安全拒绝已验证，合法来源正例/展示数据修复/全域离线及完整 E46 SC 未验收，不因此 completed。未改旧通知、seed、清库、密钥或发送付费请求；Phone 独立服务不动。
+
+D45 App `446dbd5b7` 与纯域 `4b78b2cb1` 冻结在原支线，后者自报定向 37/37、types0。生产 factory 缺 mutation port，直接合入会拒绝既有笔记写入；ROOT 不合半成品。真实 adapter、锁序批准、迁移/接线与删除传播仍待验证；[中文锁序修订](../docs/superpowers/specs/2026-09-16-sync-lock-order-amendment.zh-CN.md)仍待批准，原规范未修改。
+
+## 2026-09-16 PW-0010共享聊天候选验收收口
+
+唯一功能`58e484016`已由主线`224fdc1d4`消费。Phone原run的公网Chromium/WebKit390px和MAIN主包Simulator已实际验证同一旧会话的8候选、原消息、详情返回、历史重开与刷新；原request/messages/budget完整摘要不变。Phone固定结束文档交付`da3dd71dc403eabf6dfccc8ba0374ccfca08583b`，ROOT只消费其原样REPORT，不复制Phone全部祖先/旧适配/独立全局台账。详见[REPORT](../docs/phoneweb/sprints/0010-contact-artifact/REPORT.md)。
+
+ROOT真实设置保存并AX确认恢复精确`http://127.0.0.1:3000`及小雨MAIN Appscope已登录，设备UI归ROOT；Metro8082、MAIN Web3000及独立Phone服务保持运行。通过范围仅PW-0010：原后端全量失败/跳过、全域离线、真实Push/OAuth等缺项不会因此关闭。既有服务日志的原路径200只作时间/路径关联，不宣称独立设备归因。
+
+## 2026-09-16 E线0040投递与切换
+
+功能eacd7a227/合并0b552649d；偏好、投递策略、所有权协议、迁移与共同QA对账已交付，合并树Web16/App129及两端typecheck通过。真实Push、AI费用/provider和本轮原生出站回执缺项见[BR-028](2026-09-16-notification-delivery-cutover.md)。0037/38 completed，0039/40 blocked且run关闭；暂停本线跟进，保留Web供查看，不标四项全验收。
+
+## 2026-09-16 E线0039自主发现
+
+功能4aa21961a/合并131723ddb；两端设置、真实笔记与后台队列可用，真实模型费用/provider缺项保留为blocked。详见[BR-027](2026-09-16-evidence-notification-discovery.md)。继续0040独立实施。
+
+## 2026-09-16 E线0038三类通知
+
+功能/主线e045651b3；三类持久记录和同账号双向动作已验证，详见[BR-026](2026-09-16-typed-notification-inbox.md)。0039继续有依据的发现；0040接工作器、投递与旧流切换。
+
+## 2026-09-16 E线0037联系人消息
+
+功能/主线 a591494b0；Web/App真实消息独立、双账号收发及同账号回读已验证，详见[BR-025](2026-09-16-contact-message-inbox.md)。新三类通知继续由0038实施；真实Push未验收。
 
 ## 2026-09-15 E 线 0030 统一收件箱增量
 
@@ -185,3 +254,11 @@ Production 运行源码 `105ebba4d` / `dpl_2FjxtX314B6DRojeZvFbdDF8gTNh` 为 Rea
 2. BR-002 / BR-003：登记 Agent 高级设置和会话历史操作差异，确定移动端覆盖范围。
 3. BR-004 / BR-005：收敛未共享 DTO 和跨端刷新/写入一致性验证。
 4. BR-006：Web 发布门槛解除后再验收同一远程环境下的 App；不以此阻止本地对齐盘点。
+
+## BR-029 — 个人日程设计
+
+本地规则／关联／实例范围／CAS链verified；主线47f12034已push并独立核对，新生产Web BUILD L8fbGtRZ_QJku0p8citoB／PID15582健康200，主包Api3000／Metro8082。同账号Web30→原生30→原生15→Web15已实测，另自建QA仅本次删除及规则清除已实测。共享I仍59失败／206跳过／denied4；实际到期提醒、远程Push、全域离线及共同远程部署保持未验，[当前运行时交接](2026-09-17-personal-schedule-v3-runtime.md)。
+
+0063追加：当前主线26f74a55已push且独立远端一致，生产BUILD taZi5Ng0EztLjlmYGnGbA/Next36058；新App编译安装0并实际连接主Metro8082。同小雨Web精确分钟15→37保存/原生回读37→原生picker保存15→Web独立GET及picker回读15实际通过，原规则关联与18取消不变。Main全I仍Web59旧fail/206skip/PW4、App唯一旧视觉fail，无新增，不宣称全绿。Phone精确consumer6d1c771/TREE6ed9私有编译与preview健康，两browser正式保存/公网发布待验，PUBLIC0060暂保回退；正式63报告/文档提交待终验，不关闭到期通知等旧缺项。
+
+0063终验追加：Phone private两browser真实新建/正式GET/重开/精确清理通过，公共52919两browser真实月历/精确37分草稿通过，固定PUBLIC43205/6/7健康/served entry05b与冻结产物相同，ROOT完整receipt读取与目检确认；原ngrok静态helper失败两次及两次真实0060回退保留，repair2闭包只exact18静态GET、不改provider预算/业务fence，公共业务0。privatepreview已正常停止、旧回退完整。旧“待验”解除，仅正式63报告/台账文档Git收口仍待，不冒称通知/全域离线/全I绿。

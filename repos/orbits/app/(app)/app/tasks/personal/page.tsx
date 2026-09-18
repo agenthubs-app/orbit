@@ -14,8 +14,6 @@ export default async function PersonalSchedulePage() {
     name: session.user.name,
     userId: session.user.id,
   });
-  if (!actor) {
-    throw new Error("Authenticated Orbit account membership is unavailable.");
-  }
+  if (!actor) redirect("/app/account/login?next=%2Fapp%2Ftasks%2Fpersonal");
   return <><OrbitReferenceStyles /><TasksStyles /><main data-orbit-real-page="tasks"><AccountTopNav active="today" /><div className="orbit-task-page"><a href="/app/tasks">返回待办</a><h1>个人日程</h1><PersonalScheduleWorkspace key={actor.id} actorId={actor.id} /></div></main></>;
 }

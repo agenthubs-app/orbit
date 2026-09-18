@@ -183,9 +183,9 @@ export function TasksScreen() {
       ))}
       </View>
       {mutationError ? <Text accessibilityRole="alert" style={styles.errorText}>{mutationError}</Text> : null}
-      <RelationshipLifecycleList key={scopeKey} scopeKey={scopeKey} ready={ready} mode={mode} />
+      <RelationshipLifecycleList key={`lifecycle:${scopeKey}`} scopeKey={scopeKey} ready={ready} mode={mode} />
       {selection.scope === "all" && mode === "open" ? <PersonalScheduleList /> : null}
-      {selection.scope === "relationship" && canonical ? <RelationshipTaskTools key={scopeKey} tasks={canonical} contacts={[...contacts.values()]} tasksPayload={state.kind === "success" || state.kind === "empty" ? state.data : {}} /> : null}
+      {selection.scope === "relationship" && canonical ? <RelationshipTaskTools key={`tools:${scopeKey}`} tasks={canonical} contacts={[...contacts.values()]} tasksPayload={state.kind === "success" || state.kind === "empty" ? state.data : {}} /> : null}
     </AppScreen>
   );
 }

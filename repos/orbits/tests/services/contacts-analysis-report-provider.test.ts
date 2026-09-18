@@ -15,6 +15,20 @@ import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-st
 
 const VERSION_A = "a".repeat(64);
 const VERSION_B = "b".repeat(64);
+const OLD_REPORT = "**关系结构**：旧报告，只有已知关系记录。\n**目标覆盖**：目标覆盖仍有资料缺口。\n**下一步建议**：先复核关系记录再决定联系。\n**判断依据**：依据当时保存的关系记录，不代表后续解释。";
+
+test("historical false analysis markers never turn a local confirmation into a dashboard report", async () => {
+  const sessions = createStorageOrbitAgentChatSessionProvider({ actorId: "account:false-marker", workspaceId: "workspace:analysis", store: createMemoryLiveRecordStore<Record<string, unknown>>() });
+  await persistFixtureSession(sessions, {
+    createdAt: "2026-09-16T00:00:00Z", updatedAt: "2026-09-16T00:00:01Z", id: "session:false-marker", title: "人脉分析",
+    messages: [{ createdAt: "2026-09-16T00:00:00Z", id: "user:false-marker", role: "user", text: "分析人脉" }, { createdAt: "2026-09-16T00:00:01Z", id: "assistant:false-marker", role: "assistant", text: "当前请求涉及修改联系人资料，没有写入；请先确认。" }],
+    origin: analysisOrigin(VERSION_A, "user:false-marker", "2026-09-16T00:00:00Z"),
+  });
+  const result = await createContactsAnalysisReportProvider({ sessionProvider: sessions }).getAnalysis({ source: emptySource });
+  assert.equal(result.success, true);
+  if (result.success) assert.equal(result.data.report, null);
+  assert.equal((await sessions.getSession("session:false-marker"))?.messages[1]?.text, "当前请求涉及修改联系人资料，没有写入；请先确认。", "history is not rewritten");
+});
 
 const emptySource = {
   aggregate: {
@@ -143,7 +157,7 @@ test("analysis provider finds the newest trusted persisted report beyond the def
     id: "session:analysis:old",
     messages: [
       { createdAt: "2026-09-15T01:00:00.000Z", id: "message:user:old", role: "user", text: "分析人脉" },
-      { createdAt: "2026-09-15T01:00:01.000Z", id: "message:assistant:old", role: "assistant", text: "旧报告" },
+      { createdAt: "2026-09-15T01:00:01.000Z", id: "message:assistant:old", role: "assistant", text: OLD_REPORT },
       { createdAt: "2026-09-15T01:01:00.000Z", id: "message:user:followup", role: "user", text: "解释第二段" },
       { createdAt: "2026-09-15T01:01:01.000Z", id: "message:assistant:followup", role: "assistant", text: "后续解释，不是报告" },
     ],
@@ -191,7 +205,7 @@ test("analysis provider finds the newest trusted persisted report beyond the def
   if (!result.success) return;
   assert.deepEqual(result.data.report, {
     analysisVersion: "contacts.analysis@1",
-    body: "旧报告",
+    body: OLD_REPORT,
     generatedAt: "2026-09-15T01:00:01.000Z",
     messageId: "message:assistant:old",
     sessionId: "session:analysis:old",

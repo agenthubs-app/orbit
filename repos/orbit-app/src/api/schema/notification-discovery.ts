@@ -1,0 +1,6 @@
+import {z} from 'zod';
+import type {NotificationDiscoveryPreferencesInput,NotificationDiscoveryStatusDTO} from '../contract/notification-discovery';
+const instant=z.string().datetime({offset:true});
+const preferences=z.object({actorId:z.string().min(1),enabled:z.boolean(),messageAnalysisEnabled:z.boolean(),timeZone:z.string().min(1),language:z.enum(['zh','en','ja']),revision:z.number().int().nonnegative(),generation:z.number().int().nonnegative(),enabledSince:instant,messageEnabledSince:instant,updatedAt:instant}).strict();
+export const notificationDiscoveryPreferencesInputSchema=z.object({expectedRevision:z.number().int().nonnegative(),enabled:z.boolean().optional(),messageAnalysisEnabled:z.boolean().optional(),timeZone:z.string().min(1).max(100).refine(v=>{try{new Intl.DateTimeFormat('en',{timeZone:v}).format();return true;}catch{return false;}}).optional(),language:z.enum(['zh','en','ja']).optional()}).strict() as z.ZodType<NotificationDiscoveryPreferencesInput>;
+export const notificationDiscoveryStatusSchema=z.object({preferences,lastRoundAt:instant.nullable(),lastError:z.string().nullable(),counts:z.record(z.string(),z.number().int().nonnegative()),sources:z.object({email:z.literal('unavailable'),calendar:z.literal('unavailable')})}).strict() as z.ZodType<NotificationDiscoveryStatusDTO>;

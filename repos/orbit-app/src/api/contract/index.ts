@@ -3,6 +3,7 @@
 // 新增领域时在这里补一行 export，并同步 repos/orbit-app 的契约副本。
 
 export type { OrbitLanguage } from "./language";
+export type { AiContactArtifactContract, AiContactArtifactItemContract, AiContactArtifactStatus, AiSessionArtifactRecoveryContract, AiSessionArtifactTurnContract } from "./ai-artifacts";
 
 export type {
   IndustryDefinitionContract,
@@ -43,6 +44,12 @@ export type {
 } from "./event-experience";
 
 export type { PasswordResetResponse } from "./password-reset";
+
+export type {
+  PersonalScheduleAssociationKind,
+  PersonalScheduleAssociationOption,
+  PersonalScheduleAssociationOptionsPage
+} from "./personal-schedule-associations";
 
 export type {
   FollowupAuditContract,
@@ -197,3 +204,13 @@ export type {
   RelationshipReadReceiptDTO,
   RelationshipRemoteAccountDTO,
 } from "./relationship-communication";
+export type {
+  AiSyncVisibility,
+  LocalSyncState,
+  SyncEntityKind,
+  SyncRecord,
+} from "./sync";
+
+export type { InboxNotificationKind, InboxNotificationOrigin, InboxNotificationDisposition, InboxNotificationAction, InboxSourceKind, InboxNotificationSource, InboxNotificationTarget, InboxNotificationDTO, InboxNotificationListDTO, InboxNotificationActionInput, InboxNotificationActionReceipt, InboxNotificationReadBatchInput } from "./inbox-notifications";
+export type { NotificationDiscoveryPreferencesDTO, NotificationDiscoveryPreferencesInput, NotificationDiscoveryStatusDTO } from "./notification-discovery";
+export type { InboxDeliveryPreferencesDTO, InboxDeliveryPreferencesInput, InboxDeliveryOwnerDTO } from "./notification-delivery-policy";

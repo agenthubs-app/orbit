@@ -104,6 +104,32 @@ test("app profile route loader returns a controlled live failure when storage is
         viewModel.routeState.evidenceIds.join(" "),
         /PROFILE_LIVE_STORE_UNCONFIGURED|evidence:profile_live_store_unconfigured/,
       );
+      assert.equal(
+        viewModel.routeState.copy.description,
+        "资料暂时无法加载，请稍后重试。 / Your profile is temporarily unavailable. Please try again later.",
+      );
+      assert.equal(
+        viewModel.routeState.copy.guardrail,
+        "返回会重新读取资料，不会提交资料修改或接受建议。 / Returning reloads the profile without submitting edits or accepting suggestions.",
+      );
+      assert.equal(
+        viewModel.routeState.copy.nextStep,
+        "请重新打开资料页重试；若需要登录，请先登录。 / Reopen your profile to try again. Sign in if prompted.",
+      );
+      assert.equal(
+        viewModel.routeState.copy.purpose,
+        "显示资料加载的恢复方式。 / Show how to retry loading the profile.",
+      );
+      assert.equal(viewModel.routeState.recoveryActions[0]?.id, "profile-failure-return");
+      assert.equal(viewModel.routeState.recoveryActions[0]?.href, "/app/profile");
+      assert.equal(
+        viewModel.routeState.recoveryActions[0]?.label,
+        "重试加载资料 / Retry loading profile",
+      );
+      assert.equal(
+        viewModel.routeState.recoveryActions[0]?.recoveryCopy,
+        "重新打开资料页，重试读取；此操作不会保存修改。 / Reopen the profile page to retry loading it. This action does not save edits.",
+      );
     }
   });
 });
@@ -111,6 +137,7 @@ test("app profile route loader returns a controlled live failure when storage is
 test("/app/profile page renders the real Orbit profile editor", () => {
   const pageSource = source("app/(app)/app/profile/page.tsx");
   const profileSource = source("app/(app)/app/profile/orbit-real-profile.tsx");
+  const editorAdapterSource = source("app/(app)/app/profile/profile-editor-adapter.ts");
   const profileModelSource = source(
     "app/(app)/app/orbit-profile-route-view-model.ts",
   );
@@ -119,12 +146,13 @@ test("/app/profile page renders the real Orbit profile editor", () => {
   );
 
   assert.match(pageSource, /loadAppProfileRouteViewModel/);
-  assert.match(pageSource, /profileRouteToOrbitProfileViewModel/);
+  assert.match(pageSource, /profileRouteToOrbitProfileEditorViewModel/);
   assert.match(pageSource, /OrbitRealProfile/);
   assert.match(pageSource, /StateView/);
   assert.doesNotMatch(pageSource, /AppProfileCommandCenter/);
   assert.match(profileSource, /data-orbit-real-page="profile"/);
-  assert.doesNotMatch(pageSource, /searchParams/);
+  assert.match(pageSource, /searchParams/);
+  assert.match(pageSource, /onboardingNext/);
   assert.doesNotMatch(routeSource, /readSearchParam/);
   assert.doesNotMatch(routeSource, /complete-profile-field/);
   assert.doesNotMatch(routeSource, /AppProfileActionViewModel/);
@@ -145,15 +173,40 @@ test("app profile route scenarios are available only through explicit internal c
   }
 });
 
+test("internal failure route copy stays owner neutral", async () => {
+  const viewModel = await loadAppProfileRouteViewModel(undefined, {
+    scenario: "failure",
+  });
+
+  assert.equal(viewModel.state, "route-state");
+  if (viewModel.state === "route-state") {
+    const visibleCopy = [
+      viewModel.routeState.copy.description,
+      viewModel.routeState.copy.guardrail,
+      viewModel.routeState.copy.nextStep,
+      viewModel.routeState.copy.purpose,
+      ...viewModel.routeState.recoveryActions.flatMap((action) => [
+        action.label,
+        action.recoveryCopy,
+      ]),
+    ].join(" ");
+
+    assert.match(visibleCopy, /Your profile is temporarily unavailable/);
+    assert.doesNotMatch(visibleCopy, /Ari/);
+    assert.equal(viewModel.routeState.errorCode, "PROFILE_SIGNAL_REVIEW_QUEUE_FAILED");
+  }
+});
+
 test("profile editor uses API extraction and save readback instead of timed success", () => {
   const profileSource = source("app/(app)/app/profile/orbit-real-profile.tsx");
+  const editorAdapterSource = source("app/(app)/app/profile/profile-editor-adapter.ts");
 
   assert.match(profileSource, /fetch\("\/api\/profile"/);
   assert.match(profileSource, /method: "PUT"/);
   assert.match(profileSource, /cache: "no-store"/);
   assert.match(profileSource, /profileReadbackMatches/);
-  assert.match(profileSource, /saved\.handles\?\.wechatId/);
-  assert.match(profileSource, /sameList\(saved\.offering/);
+  assert.match(editorAdapterSource, /sameHandles/);
+  assert.match(editorAdapterSource, /sameList\(saved\.offering/);
   assert.match(profileSource, /\/api\/profile\/extractions\/resume/);
   assert.match(profileSource, /Structured text extract/);
   assert.match(profileSource, /href="\/app\/contacts\/new"/);
@@ -164,10 +217,13 @@ test("profile editor uses API extraction and save readback instead of timed succ
   assert.doesNotMatch(profileSource, /setMessage\(t\(\{ en: "Saved\."/);
 });
 
-test("profile editor exposes free-text industry and custom tag entry", () => {
+test("profile editor exposes structured industries and custom tag entry", () => {
   const profileSource = source("app/(app)/app/profile/orbit-real-profile.tsx");
 
-  assert.match(profileSource, /<FieldInput label=\{t\(\{ en: "Industry", zh: "行业" \}\)\}/);
+  assert.match(profileSource, /Primary industry/);
+  assert.match(profileSource, /Secondary industry/);
+  assert.match(profileSource, /Existing industry text is preserved/);
+  assert.doesNotMatch(profileSource, /en: "Industry", zh: "行业"/);
   assert.match(profileSource, /listSecondaryIndustries/);
   assert.match(profileSource, /Enter a specific item/);
   assert.match(profileSource, /添加\$\{label\}项目/);
@@ -240,7 +296,7 @@ test("/app/profile maps actor-scoped profile data without hardcoded founder iden
     "app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-view-model-adapter.ts",
   );
 
-  assert.match(pageSource, /profileRouteToOrbitProfileViewModel/);
+  assert.match(pageSource, /profileRouteToOrbitProfileEditorViewModel/);
   assert.match(adapterSource, /fullName: profile\.displayName/);
   assert.match(adapterSource, /const offering = \[\.\.\.\(profile\.offering/);
   assert.match(adapterSource, /const seeking = \[\.\.\.\(profile\.seeking/);

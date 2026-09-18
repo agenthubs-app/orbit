@@ -185,6 +185,13 @@ function listQuery(input: LiveRecordListQuery): {
   const where = ["workspace_id = $1"];
   const searchText = input.searchText?.trim();
 
+  if (input.payloadId !== undefined) {
+    addWhere(where, values, (index) => `payload ->> 'id' = $${index}`, input.payloadId);
+  }
+  if (input.payloadAccountId !== undefined) {
+    addWhere(where, values, (index) => `payload ->> 'accountId' = $${index}`, input.payloadAccountId);
+  }
+
   if (input.collectionName !== undefined) {
     addWhere(where, values, (index) => `collection_name = $${index}`, input.collectionName);
   }
@@ -235,9 +242,17 @@ function listQuery(input: LiveRecordListQuery): {
     );
   }
 
+  let columns = recordColumns;
+  if (input.payloadFields) {
+    values.push([...input.payloadFields]);
+    columns = columns.replace("  payload,", `  (select coalesce(jsonb_object_agg(field.key, field.value), '{}'::jsonb)
+      from jsonb_each(payload) field where field.key = any($${values.length}::text[])) as payload,`);
+  }
+  if (input.omitSearchText) columns = columns.replace("  search_text,", "  ''::text as search_text,");
+
   return {
     text: `
-      select ${recordColumns}
+      select ${columns}
       from orbit_records
       where ${where.join(" and ")}
       order by coalesce(occurred_at, updated_at) desc, updated_at desc
@@ -256,6 +271,8 @@ export function createPgLiveRecordSqlClient({
     connectionString,
     max,
     ssl,
+    connectionTimeoutMillis: 10_000,
+    idleTimeoutMillis: 10_000,
   });
   const measureRead = createPostgresReadMetricsRunner(readMetrics);
 
@@ -286,6 +303,23 @@ export function createPostgresLiveRecordStore<
   TPayload extends Record<string, unknown> = Record<string, unknown>,
 >({ client }: PostgresLiveRecordStoreOptions): LiveRecordStoreLike<TPayload> {
   return {
+    async updateRecordIfCurrent(record, expected) {
+      if ((record.userId ?? null) !== expected.userId ||
+          !(Date.parse(record.updatedAt) > Date.parse(expected.updatedAt))) return null;
+      const result = await client.query<PostgresLiveRecordRow>(`
+        update orbit_records set
+          source_type=$5, source_id=$6, source_label=$7, provider=$8,
+          provider_record_id=$9, evidence_ids=$10, target_type=$11,
+          target_id=$12, occurred_at=$13, lifecycle_state=$14,
+          search_text=$15, payload=$16, updated_at=$18, deleted_at=$19
+        where workspace_id=$1 and collection_name=$2 and record_id=$3
+          and user_id is not distinct from $4::text
+          and updated_at=$20::timestamptz and lifecycle_state <> 'deleted'
+          and created_at=$17::timestamptz
+        returning ${recordColumns}
+      `, [...recordValues(record), expected.updatedAt]);
+      return result.rows[0] ? rowToRecord<TPayload>(result.rows[0]) : null;
+    },
     async deleteRecord(
       input: LiveRecordDeleteInput,
     ): Promise<LiveRecord<TPayload> | null> {
@@ -298,6 +332,8 @@ export function createPostgresLiveRecordStore<
           where workspace_id = $1
             and collection_name = $2
             and record_id = $3
+            and ($5::text is null or user_id = $5)
+            and ($6::timestamptz is null or updated_at = $6)
           returning ${recordColumns}
         `,
         [
@@ -305,6 +341,8 @@ export function createPostgresLiveRecordStore<
           input.collectionName,
           input.recordId,
           input.deletedAt,
+          input.userId ?? null,
+          input.expectedUpdatedAt ?? null,
         ],
       );
 
@@ -323,6 +361,7 @@ export function createPostgresLiveRecordStore<
       if (query.includeDeleted !== true) {
         where.push("lifecycle_state <> 'deleted'");
       }
+      if (query.userId !== undefined) where.push("user_id = $4");
 
       const result = await client.query<PostgresLiveRecordRow>(
         `
@@ -331,7 +370,7 @@ export function createPostgresLiveRecordStore<
           where ${where.join(" and ")}
           limit 1
         `,
-        [query.workspaceId, query.collectionName, query.recordId],
+        [query.workspaceId, query.collectionName, query.recordId, ...(query.userId !== undefined ? [query.userId] : [])],
       );
 
       return result.rows[0] ? rowToRecord<TPayload>(result.rows[0]) : null;

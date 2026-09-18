@@ -515,6 +515,14 @@ export function eventRegistrationPath(id: string): string {
   return `${eventDetailPath(id)}/registration`;
 }
 
+export function eventOperationsPath(id: string): string {
+  return `${eventDetailPath(id)}/operations`;
+}
+
+export function eventPostEventArtifactPath(id: string): string {
+  return `${eventDetailPath(id)}/post-event/artifact`;
+}
+
 export function eventRegistrationCancelPath(id: string): string {
   return `${eventRegistrationPath(id)}/cancel`;
 }

@@ -1,22 +1,19 @@
-import { auth } from "../../../../../auth";
+import { resolveAuthenticatedApiActor } from "../../../../../app/api/_shared/authenticated-actor";
 import { createEventRegistrationRouteHandlers } from "./route-handlers";
 import {
   resolveConfiguredEventAdmissionRegistrationControl,
   resolveConfiguredEventAdmissionRegistrationState,
 } from "../../../../../features/events/admission/registration-control";
-import { readRuntimeEventRegistrationAvailability } from "../../../../../features/events/registration/runtime";
+import { readRuntimeEventRegistrationWindow } from "../../../../../features/events/registration/runtime";
 
 export const dynamic = "force-dynamic";
 
 const handlers = createEventRegistrationRouteHandlers({
-  readRegistrationAvailability: readRuntimeEventRegistrationAvailability,
+  readRegistrationWindow: readRuntimeEventRegistrationWindow,
   resolveAdmissionControl: resolveConfiguredEventAdmissionRegistrationControl,
   resolveAdmissionState: resolveConfiguredEventAdmissionRegistrationState,
   async resolveActor() {
-    const session = await auth();
-    return session?.user?.id
-      ? { id: session.user.id, name: session.user.name }
-      : null;
+    return resolveAuthenticatedApiActor();
   },
 });
 

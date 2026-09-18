@@ -95,6 +95,7 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
       response = Response.json({ success: true, data: { ...aiConversationPayload, assistantMessage: "待复核的联系草稿", messages: [{ ...aiConversationPayload.messages[0], content: input.message }, { ...aiConversationPayload.messages[1], content: "待复核的联系草稿" }] } });
     }
     else if (url.pathname === "/api/ai/conversations/sessions") response = Response.json({ success: true, data: method === "GET" ? emptyAiSessionListPayload : { session: JSON.parse(body!).session, storage: emptyAiSessionListPayload.storage } });
+    else if (url.pathname === "/api/relationship-tasks") response = Response.json({ success: true, data: { tasks: [] } });
     else if (url.pathname === "/api/tasks") response = await createTaskCollectionHandlers(dependencies).GET(nativeRequest);
     else if (url.pathname.startsWith("/api/tasks/") && method === "PATCH") response = await createTaskDetailHandlers(dependencies).PATCH(nativeRequest, { params: Promise.resolve({ id: decodeURIComponent(url.pathname.slice("/api/tasks/".length)) }) });
     else response = Response.json({ success: true, data: url.pathname === "/api/contacts" ? { contacts: [{ id: "contact:22", name: "真实联系人", organization: "真实机构", role: "负责人" }] } : { scheduleItems: [] } });

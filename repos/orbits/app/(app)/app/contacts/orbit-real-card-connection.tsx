@@ -479,7 +479,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
                   <h1 className="h-display">{contact.displayName || t({ en: "Unnamed contact", zh: "未命名联系人" })}</h1>
                   <SourceBadge source={contact.source} t={t} />
                 </div>
-                <div style={{ color: "var(--text-2)", fontSize: 14, marginTop: 10 }}>{crmRole(contact, t)}</div>
+                <div className="nc-hero-role" style={{ color: "var(--text-2)", fontSize: 14, marginTop: 10 }}>{crmRole(contact, t)}</div>
                 <div className="nc-hero-meta">
                   <StatusPicker status={displayPipelineStatus} viewModel={viewModel} t={t} labelOverride={stageLabel} />
                   <StrengthTag strength={contact.strength} t={t} />
@@ -529,7 +529,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
                 <span className="h-section" style={{ fontSize: 16 }}>{contact.displayName || t({ en: "Unnamed contact", zh: "未命名联系人" })}</span>
                 <SourceBadge source={contact.source} t={t} />
               </div>
-              <div style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 3 }}>{crmRole(contact, t)}</div>
+              <div className="nc-hero-role" style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 3 }}>{crmRole(contact, t)}</div>
               <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
                 <StatusPicker status={displayPipelineStatus} viewModel={viewModel} t={t} labelOverride={stageLabel} />
                 <StrengthTag strength={contact.strength} t={t} />
@@ -612,6 +612,7 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
 
 [data-orbit-real-page] .nc-hero { display:grid; grid-template-columns:72px 1fr auto; gap:18px; align-items:start; margin-bottom:24px; }
 [data-orbit-real-page] .nc-hero-id { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+[data-orbit-real-page] .nc-hero-role { min-width:0; overflow-wrap:anywhere; }
 [data-orbit-real-page] .nc-hero-meta { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px; }
 [data-orbit-real-page] .nc-hero-cta { display:flex; align-items:center; gap:10px; padding-top:4px; }
 
@@ -630,8 +631,12 @@ export function OrbitRealCardConnection({ contactId, viewModel }: { contactId: s
 [data-orbit-real-page] .nc-frow:first-of-type { border-top:0; }
 [data-orbit-real-page] .nc-ic { color:var(--text-3); display:inline-flex; }
 [data-orbit-real-page] .nc-fk { font-size:12.5px; color:var(--text-3); }
-[data-orbit-real-page] .nc-fv { font-size:14px; color:var(--text); min-width:0; overflow:hidden; text-overflow:ellipsis; }
+[data-orbit-real-page] .nc-fv { font-size:14px; color:var(--text); min-width:0; overflow-wrap:anywhere; }
 [data-orbit-real-page] .nc-fv .mono { font-size:13px; }
+
+@media (max-width:900px) {
+  [data-orbit-real-page] .nc-frow { grid-template-columns:20px minmax(0, max-content) minmax(0, 1fr); }
+}
 
 [data-orbit-real-page] .nc-vblock + .nc-vblock { margin-top:14px; padding-top:14px; border-top:1px solid var(--hairline); }
 [data-orbit-real-page] .nc-vhead { display:flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600; margin-bottom:9px; }

@@ -166,6 +166,8 @@ const expectedRoutes: readonly ExpectedRoute[] = [
 // These functional routes were integrated after the 58-route visual snapshot.
 // Inclusion here does not extend that snapshot's native acceptance evidence.
 const integratedFeatureRoutes = [
+  "/inbox/notifications/[id]",
+  "/inbox/sources/[id]",
   "/account/reset-password",
   "/contacts/new/batch/[id]",
   "/contacts/new/batch2",
@@ -177,6 +179,7 @@ const integratedFeatureRoutes = [
   "/invitations/[token]",
   "/schedule/meetings/[id]",
   "/schedule/personal/[id]",
+  "/schedule/personal/[id]/edit",
   "/schedule/personal/new",
   "/tasks/personal",
   "/tasks/relationship/[id]",
@@ -203,7 +206,8 @@ function scanAppRouteEntries(directory: string): string[] {
         continue;
       }
 
-      if (!/\.(j|t)sx?$/u.test(entry.name) || /^_layout\.(j|t)sx?$/u.test(entry.name)) {
+      if (!/\.(j|t)sx?$/u.test(entry.name) || /^_layout\.(j|t)sx?$/u.test(entry.name) ||
+          (currentDirectory === appRoot && /^\+html\.(j|t)sx?$/u.test(entry.name))) {
         continue;
       }
 

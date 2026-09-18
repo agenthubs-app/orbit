@@ -1,113 +1,60 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import { FormEvent, KeyboardEvent, ReactNode, useEffect, useRef, useState } from "react";
 
 import type { ProfileDocumentExtractionPayload } from "../../../../features/profile/extraction-contract";
 import type { IndustrySelectionContract, IndustryIdCode, SecondaryIndustryIdCode } from "../../../../shared/contract/industries";
-import { INDUSTRY_CATALOG, industryLabel, listSecondaryIndustries, secondaryIndustryLabel, validateIndustrySelection } from "../../../../shared/domain/industries";
+import { INDUSTRY_CATALOG, industryLabel, listSecondaryIndustries, secondaryIndustryLabel } from "../../../../shared/domain/industries";
 import type {
   ManualProfileUpdateInput,
   ProfilePayload,
 } from "../../../../features/profile/contract";
+import {
+  profileEditorReadbackMatches,
+  profileEditorUpdateInput,
+  profileEditorViewFromPayload,
+  type OrbitProfileEditorView,
+  type OrbitProfileEditorViewModel,
+  type ProfileEditorField,
+  type ProfileEditorSaveScope,
+  type ProfileEditorVisibleHandleKey,
+} from "./profile-editor-adapter";
 import { AccountTopNav, MobileBar, orbitNavigate, StatusBar } from "../orbit-account-shell";
 import { useOrbitLanguage } from "../orbit-language-context";
 import type { OrbitProfileView, OrbitProfileViewModel } from "../orbit-profile-route-view-model";
 import { Avatar, gradientFromString, Icon, Logo } from "../orbit-reference-primitives";
 import { ORBIT_Z } from "../orbit-z";
+import { profileContinuationPath } from "./profile-onboarding-navigation";
+import {
+  emptyProfileAfterReload,
+  mergeProfilePreservingDraft,
+  profileSaveFailureKind,
+  profileSaveScopeFields,
+  validateProfileSaveDraft,
+} from "./profile-save-model";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 
 type TagField = "offering" | "seeking" | "topics";
 type Method = "text" | "manual";
 type NoticeKind = "error" | "info" | "success";
-type EditableProfile = OrbitProfileView & IndustrySelectionContract;
+type EditableProfile = OrbitProfileEditorView;
 
 interface ApiEnvelope<TData> {
   success?: boolean;
   data?: TData;
   error?: {
+    code?: string;
     message?: string;
   };
 }
-
-const PROFILE_FIELD_TOTAL = 10;
 
 /* 名片预览是深色的实体名片隐喻,明暗两套主题下都保持同一张卡,
    所以这里用固定色而不是主题 token。 */
 const CARD_BG = "linear-gradient(158deg, #22312d 0%, #17211f 52%, #131b19 100%)";
 const CARD_GLOW = "radial-gradient(420px 260px at 88% -10%, rgba(94, 234, 212, 0.16), transparent 68%)";
 
-function profileUpdateInput(profile: EditableProfile): ManualProfileUpdateInput {
-  return {
-    ...(profile.primaryIndustryId === undefined ? {} : { primaryIndustryId: profile.primaryIndustryId }),
-    ...(profile.secondaryIndustryId === undefined ? {} : { secondaryIndustryId: profile.secondaryIndustryId }),
-    bio: profile.bio,
-    displayName: profile.fullName,
-    handles: {
-      email: profile.email || undefined,
-      lineId: profile.lineId || undefined,
-      wechatId: profile.wechatName || undefined,
-    },
-    headline: profile.headline,
-    homeMarket: profile.industry,
-    industry: profile.industry,
-    offering: profile.offering,
-    organization: profile.company,
-    preferredIntroChannels: profile.offering,
-    relationshipGoal: profile.intro,
-    role: profile.title,
-    seeking: profile.seeking,
-    targetRelationshipTypes: profile.seeking,
-    topics: profile.topics,
-  };
-}
-
-export function profileReadbackMatches(
-  expected: ManualProfileUpdateInput,
-  payload: ProfilePayload,
-): boolean {
-  const saved = payload.profile;
-  const normalize = (value: string | undefined) => value?.trim() ?? "";
-  const sameList = (
-    left: readonly string[] | undefined,
-    right: readonly string[] | undefined,
-  ) =>
-    JSON.stringify((left ?? []).map((item) => item.trim())) ===
-    JSON.stringify((right ?? []).map((item) => item.trim()));
-
-  return Boolean(
-    saved &&
-      saved.displayName === normalize(expected.displayName) &&
-      saved.headline === normalize(expected.headline) &&
-      saved.organization === normalize(expected.organization) &&
-      saved.role === normalize(expected.role) &&
-      saved.homeMarket === normalize(expected.homeMarket) &&
-      saved.relationshipGoal === normalize(expected.relationshipGoal) &&
-      saved.preferredFollowUpWindow ===
-        normalize(expected.preferredFollowUpWindow) &&
-      normalize(saved.industry) === normalize(expected.industry) &&
-      (expected.primaryIndustryId === undefined || (saved.primaryIndustryId ?? null) === expected.primaryIndustryId) &&
-      (expected.secondaryIndustryId === undefined || (saved.secondaryIndustryId ?? null) === expected.secondaryIndustryId) &&
-      normalize(saved.bio) === normalize(expected.bio) &&
-      saved.seniorityLevel === expected.seniorityLevel &&
-      normalize(saved.handles?.email) === normalize(expected.handles?.email) &&
-      normalize(saved.handles?.phone) === normalize(expected.handles?.phone) &&
-      normalize(saved.handles?.wechatId) ===
-        normalize(expected.handles?.wechatId) &&
-      normalize(saved.handles?.lineId) ===
-        normalize(expected.handles?.lineId) &&
-      normalize(saved.handles?.website) ===
-        normalize(expected.handles?.website) &&
-      sameList(
-        saved.targetRelationshipTypes,
-        expected.targetRelationshipTypes,
-      ) &&
-      sameList(saved.preferredIntroChannels, expected.preferredIntroChannels) &&
-      sameList(saved.offering, expected.offering) &&
-      sameList(saved.seeking, expected.seeking) &&
-      sameList(saved.topics, expected.topics),
-  );
-}
+export const profileReadbackMatches = profileEditorReadbackMatches;
 
 function applyExtractionDraft(
   profile: EditableProfile,
@@ -120,17 +67,6 @@ function applyExtractionDraft(
     ...profile,
     company: draft.organization || profile.company,
     fullName: draft.displayName || profile.fullName,
-    headline: draft.headline || profile.headline,
-    industry: draft.homeMarket || profile.industry,
-    intro: draft.relationshipGoal || profile.intro,
-    offering:
-      draft.preferredIntroChannels.length > 0
-        ? [...draft.preferredIntroChannels]
-        : profile.offering,
-    seeking:
-      draft.targetRelationshipTypes.length > 0
-        ? [...draft.targetRelationshipTypes]
-        : profile.seeking,
     title: draft.role || profile.title,
   };
 }
@@ -160,20 +96,13 @@ function PreviewTagRow({ label, values }: { label: string; values: string[] }) {
 }
 
 function BusinessCardPreview({
-  missing,
-  missingSeparator,
   profile,
   t,
 }: {
-  missing: string[];
-  missingSeparator: string;
   profile: EditableProfile;
   t: Translate;
 }) {
   const { language } = useOrbitLanguage();
-  const done = PROFILE_FIELD_TOTAL - missing.length;
-  const pct = Math.round((done / PROFILE_FIELD_TOTAL) * 100);
-  const complete = missing.length === 0;
   const selectedIndustry = profile.secondaryIndustryId
     ? secondaryIndustryLabel(profile.secondaryIndustryId, language)
     : profile.primaryIndustryId
@@ -202,8 +131,8 @@ function BusinessCardPreview({
           <div style={{ color: "#fff", fontFamily: "var(--ff-display)", fontSize: 24, fontWeight: 650, letterSpacing: "-0.02em", lineHeight: 1.15 }}>
             {profile.fullName.trim() || t({ en: "Your name", zh: "你的名字" })}
           </div>
-          {profile.headline.trim() ? (
-            <div style={{ color: "rgba(255,255,255,0.72)", fontSize: 13.5, lineHeight: 1.55, marginTop: 7 }}>{profile.headline}</div>
+          {(profile.bio.trim() || profile.headline.trim()) ? (
+            <div style={{ color: "rgba(255,255,255,0.72)", fontSize: 13.5, lineHeight: 1.55, marginTop: 7 }}>{profile.bio.trim() || profile.headline}</div>
           ) : null}
           {meta ? (
             <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 12.5, letterSpacing: "0.01em", marginTop: 9 }}>{meta}</div>
@@ -231,21 +160,61 @@ function BusinessCardPreview({
             </div>
           </>
         ) : null}
-        {divider}
-        <div>
-          <div style={{ alignItems: "baseline", display: "flex", gap: 10, justifyContent: "space-between", marginBottom: 8 }}>
-            <span style={{ color: "rgba(255,255,255,0.65)", fontSize: 12.5, fontWeight: 600 }}>
-              {t({ en: "Completeness", zh: "档案完成度" })} {pct}%
-            </span>
-            <span style={{ color: complete ? "#7ee2c9" : "#f4c67f", fontSize: 12.5, textAlign: "right" }}>
-              {complete ? t({ en: "Ready to be matched", zh: "可被匹配 ✓" }) : `${t({ en: "Missing: ", zh: "还差：" })}${missing.join(missingSeparator)}`}
-            </span>
-          </div>
-          <div aria-hidden style={{ background: "rgba(255,255,255,0.14)", borderRadius: "var(--r-pill)", height: 4, overflow: "hidden" }}>
-            <div style={{ background: complete ? "#4ade80" : "#5eead4", borderRadius: "var(--r-pill)", height: "100%", transition: "width .3s ease", width: `${pct}%` }} />
-          </div>
-        </div>
       </div>
+    </div>
+  );
+}
+
+function OnboardingStatus({
+  continueHref,
+  onboarding,
+  t,
+}: {
+  continueHref?: string;
+  onboarding: OrbitProfileEditorView["onboarding"];
+  t: Translate;
+}) {
+  const labels: Record<string, string> = {
+    birthDate: t({ en: "Birthday", zh: "生日" }),
+    displayName: t({ en: "Name", zh: "姓名" }),
+    primaryIndustryId: t({ en: "Primary industry", zh: "一级行业" }),
+    secondaryIndustryId: t({ en: "Secondary industry", zh: "二级行业" }),
+  };
+  const missing = onboarding.missingFields.map((field) => labels[field] ?? field);
+  const complete = onboarding.status === "complete";
+
+  return (
+    <div
+      aria-label={t({ en: "Private onboarding status", zh: "仅本人可见的引导状态" })}
+      style={{
+        background: "var(--surface-2)",
+        border: "1px solid var(--border)",
+        borderRadius: "var(--r-sm)",
+        color: "var(--text-2)",
+        fontSize: 12.5,
+        lineHeight: 1.5,
+        marginTop: 12,
+        padding: "10px 12px",
+      }}
+    >
+      <strong style={{ color: complete ? "var(--live-text)" : "var(--ink)" }}>
+        {complete
+          ? t({ en: "Basic profile complete", zh: "基础资料已完成" })
+          : t({ en: "Still needed", zh: "还需填写" })}
+      </strong>
+      {!complete ? `: ${missing.join(t({ en: ", ", zh: "、" }))}` : null}
+      <div style={{ color: "var(--text-3)", marginTop: 4 }}>
+        {t({ en: "Only you can see this status. Birthday is private.", zh: "此状态仅本人可见，生日属于私密资料。" })}
+      </div>
+      {complete && continueHref ? (
+        <a
+          className="btn btn-ghost btn-sm"
+          href={continueHref}
+          style={{ marginTop: 8, textDecoration: "none" }}
+        >
+          {t({ en: "Continue", zh: "继续" })}
+        </a>
+      ) : null}
     </div>
   );
 }
@@ -274,6 +243,7 @@ function Section({
 }
 
 function ProfileMethods({
+  disabled,
   extractText,
   extracting,
   method,
@@ -282,6 +252,7 @@ function ProfileMethods({
   setMethod,
   t,
 }: {
+  disabled: boolean;
   extractText: string;
   extracting: boolean;
   method: Method;
@@ -308,6 +279,7 @@ function ProfileMethods({
           return (
             <button
               aria-pressed={on}
+              disabled={disabled}
               key={key}
               onClick={() => setMethod(key)}
               style={{
@@ -345,8 +317,8 @@ function ProfileMethods({
       <p style={{ color: "var(--text-3)", fontSize: 13, lineHeight: 1.5, margin: "10px 0 0" }}>{helper}</p>
       {method === "text" ? (
         <div style={{ marginTop: 12 }}>
-          <textarea className="field" onChange={(event) => setExtractText(event.target.value)} placeholder={t({ en: "Paste your business, experience, focus areas, or who you want to meet", zh: "粘贴业务、经历、关注方向或希望认识的人" })} style={{ fontFamily: "var(--ff)", height: 88, lineHeight: 1.5, padding: 12, resize: "none" }} value={extractText} />
-          <button className="btn btn-dark btn-sm" disabled={extracting} onClick={onTextExtract} style={{ marginTop: 10 }} type="button">
+          <textarea className="field" disabled={disabled} onChange={(event) => setExtractText(event.target.value)} placeholder={t({ en: "Paste your business, experience, focus areas, or who you want to meet", zh: "粘贴业务、经历、关注方向或希望认识的人" })} style={{ fontFamily: "var(--ff)", height: 88, lineHeight: 1.5, padding: 12, resize: "none" }} value={extractText} />
+          <button className="btn btn-dark btn-sm" disabled={disabled || extracting} onClick={onTextExtract} style={{ marginTop: 10 }} type="button">
             <Icon name="sparkle" size={15} />
             {extracting ? t({ en: "Extracting…", zh: "提取中…" }) : t({ en: "Extract to form", zh: "提取到表单" })}
           </button>
@@ -357,12 +329,14 @@ function ProfileMethods({
 }
 
 function FieldInput({
+  disabled,
   label,
   onValue,
   readOnly,
   type = "text",
   value,
 }: {
+  disabled?: boolean;
   label: string;
   onValue?: (value: string) => void;
   readOnly?: boolean;
@@ -374,6 +348,7 @@ function FieldInput({
       <span className="field-label">{label}</span>
       <input
         className="field"
+        disabled={disabled}
         onChange={onValue ? (event) => onValue(event.target.value) : undefined}
         readOnly={readOnly}
         style={readOnly ? { background: "var(--surface-2)", color: "var(--text-2)" } : undefined}
@@ -385,11 +360,13 @@ function FieldInput({
 }
 
 function FieldTextarea({
+  disabled,
   label,
   onValue,
   rows,
   value,
 }: {
+  disabled?: boolean;
   label: string;
   onValue: (value: string) => void;
   rows: number;
@@ -410,21 +387,27 @@ function FieldTextarea({
   return (
     <label style={{ display: "block", minWidth: 0 }}>
       <span className="field-label">{label}</span>
-      <textarea className="field" onChange={(event) => onValue(event.target.value)} rows={rows} style={style} value={value} />
+      <textarea className="field" disabled={disabled} onChange={(event) => onValue(event.target.value)} rows={rows} style={style} value={value} />
     </label>
   );
 }
 
 function ChipGroup({
+  disabled,
   label,
+  maxSelected,
   onToggle,
+  onLimitReached,
   options,
   section,
   t,
   values,
 }: {
+  disabled?: boolean;
   label: string;
+  maxSelected?: number;
   onToggle: (section: TagField, option: string) => void;
+  onLimitReached?: () => void;
   options: string[];
   section: TagField;
   t: Translate;
@@ -436,6 +419,10 @@ function ChipGroup({
   function addDraft() {
     const tag = draft.trim();
     if (!tag || values.includes(tag)) return;
+    if (maxSelected !== undefined && values.length >= maxSelected) {
+      onLimitReached?.();
+      return;
+    }
 
     onToggle(section, tag);
     setDraft("");
@@ -459,7 +446,13 @@ function ChipGroup({
           const active = values.includes(option);
 
           return (
-            <button aria-pressed={active} className={`chip${active ? " chip-accent" : ""}`} key={option} onClick={() => onToggle(section, option)} type="button">
+            <button aria-pressed={active} className={`chip${active ? " chip-accent" : ""}`} disabled={disabled} key={option} onClick={() => {
+              if (!active && maxSelected !== undefined && values.length >= maxSelected) {
+                onLimitReached?.();
+                return;
+              }
+              onToggle(section, option);
+            }} type="button">
               {active ? <Icon name="check" size={13} /> : null}
               {option}
             </button>
@@ -474,6 +467,7 @@ function ChipGroup({
           })}
           className="field"
           maxLength={80}
+          disabled={disabled}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={onDraftKeyDown}
           placeholder={t({
@@ -485,7 +479,7 @@ function ChipGroup({
         />
         <button
           className="btn btn-ghost btn-sm"
-          disabled={!draft.trim() || values.includes(draft.trim())}
+          disabled={disabled || !draft.trim() || values.includes(draft.trim()) || (maxSelected !== undefined && values.length >= maxSelected)}
           onClick={addDraft}
           type="button"
         >
@@ -497,8 +491,14 @@ function ChipGroup({
 }
 
 function EditSections({
+  editorDisabled,
   extractProps,
   industryDisabled,
+  matchingDirty,
+  matchingSaving,
+  onLimitReached,
+  onSaveMatching,
+  onBirthDateChange,
   profile,
   t,
   toggleTag,
@@ -506,6 +506,7 @@ function EditSections({
   updateIndustry,
   viewModel,
 }: {
+  editorDisabled: boolean;
   extractProps: {
     extractText: string;
     extracting: boolean;
@@ -516,6 +517,11 @@ function EditSections({
     t: Translate;
   };
   industryDisabled: boolean;
+  matchingDirty: boolean;
+  matchingSaving: boolean;
+  onLimitReached: () => void;
+  onSaveMatching: () => void;
+  onBirthDateChange: (value: string) => void;
   profile: EditableProfile;
   t: Translate;
   toggleTag: (field: TagField, tag: string) => void;
@@ -529,14 +535,11 @@ function EditSections({
   return (
     <div className="card orbit-profile-edit" style={{ overflow: "hidden" }}>
       <Section desc={t({ en: "Auto-fill the form from a pasted bio or a business card photo.", zh: "粘贴简介或拍张名片，几秒填好档案。" })} title={t({ en: "Quick fill", zh: "快速填充" })}>
-        <ProfileMethods {...extractProps} />
+        <ProfileMethods disabled={editorDisabled} {...extractProps} />
       </Section>
       <Section title={t({ en: "Basics", zh: "基本信息" })}>
         <div style={grid}>
-          <FieldInput label={t({ en: "Name", zh: "姓名" })} onValue={(value) => update("fullName", value)} value={profile.fullName} />
-          <FieldInput label={t({ en: "Company", zh: "公司" })} onValue={(value) => update("company", value)} value={profile.company} />
-          <FieldInput label={t({ en: "Title", zh: "职位" })} onValue={(value) => update("title", value)} value={profile.title} />
-          <FieldInput label={t({ en: "Industry", zh: "行业" })} onValue={(value) => update("industry", value)} value={profile.industry} />
+          <FieldInput disabled={editorDisabled} label={t({ en: "Name", zh: "姓名" })} onValue={(value) => update("fullName", value)} value={profile.fullName} />
           <label>{t({ en: "Primary industry", zh: "一级行业" })}
             <select className="field" aria-label={t({ en: "Primary industry", zh: "一级行业" })} disabled={industryDisabled} value={profile.primaryIndustryId ?? ""} onChange={event => updateIndustry({ primaryIndustryId: (event.target.value || null) as IndustryIdCode | null, secondaryIndustryId: null })}>
               <option value="">{t({ en: "Not selected", zh: "未选择" })}</option>
@@ -549,27 +552,41 @@ function EditSections({
               {(profile.primaryIndustryId ? listSecondaryIndustries(profile.primaryIndustryId) : []).map(item => <option key={item.id} value={item.id}>{secondaryIndustryLabel(item.id, language)}</option>)}
             </select>
           </label>
+          <FieldInput disabled={editorDisabled} label={t({ en: "Title", zh: "职位" })} onValue={(value) => update("title", value)} value={profile.title} />
+          <FieldInput disabled={editorDisabled} label={t({ en: "Company", zh: "公司" })} onValue={(value) => update("company", value)} value={profile.company} />
+          <FieldInput disabled={editorDisabled} label={t({ en: "Birthday (private)", zh: "生日（仅本人可见）" })} onValue={onBirthDateChange} type="date" value={profile.birthDate ?? ""} />
         </div>
+        {profile.industry.trim() ? (
+          <p style={{ color: "var(--text-3)", fontSize: 12.5, lineHeight: 1.5, margin: "12px 0 0" }}>
+            {t({ en: "Existing industry text is preserved; choose the structured categories above for new edits:", zh: "已有行业文字会保留；新的修改请使用上面的结构化分类：" })} {profile.industry}
+          </p>
+        ) : null}
       </Section>
-      <Section desc={t({ en: "Fill in WeChat or LINE (at least one) so matches can reach you.", zh: "微信或 LINE 至少填一个，匹配后对方才能联系到你。" })} title={t({ en: "Contact", zh: "联系方式" })}>
+      <Section desc={t({ en: "Contact details are optional and are saved independently from matching preferences.", zh: "联系方式可选，与匹配偏好分开保存。" })} title={t({ en: "Contact", zh: "联系方式" })}>
         <div style={grid}>
-          <FieldInput label={t({ en: "WeChat ID", zh: "微信号" })} onValue={(value) => update("wechatName", value)} value={profile.wechatName} />
-          <FieldInput label={t({ en: "LINE ID", zh: "LINE ID" })} onValue={(value) => update("lineId", value)} value={profile.lineId} />
-          <FieldInput label={t({ en: "Email", zh: "邮箱" })} readOnly type="email" value={profile.email} />
+          <FieldInput disabled={editorDisabled} label={t({ en: "WeChat ID", zh: "微信号" })} onValue={(value) => update("wechatName", value)} value={profile.wechatName} />
+          <FieldInput disabled={editorDisabled} label={t({ en: "LINE ID", zh: "LINE ID" })} onValue={(value) => update("lineId", value)} value={profile.lineId} />
+          <FieldInput disabled={editorDisabled} label={t({ en: "Email", zh: "邮箱" })} readOnly type="email" value={profile.email} />
         </div>
       </Section>
-      <Section desc={t({ en: "Shown to people you match with.", zh: "这些内容会展示给和你匹配到的人。" })} title={t({ en: "About you", zh: "自我介绍" })}>
+      <Section desc={t({ en: "Use one short introduction. Existing headline and relationship goal are preserved.", zh: "只填写一句简短介绍，已有标题和关系目标会保留。" })} title={t({ en: "About you", zh: "自我介绍" })}>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <FieldInput label={t({ en: "One-line intro", zh: "一句话介绍" })} onValue={(value) => update("headline", value)} value={profile.headline} />
-          <FieldTextarea label={t({ en: "Bio", zh: "简介" })} onValue={(value) => update("bio", value)} rows={4} value={profile.bio} />
-          <FieldTextarea label={t({ en: "Opener", zh: "开场白" })} onValue={(value) => update("intro", value)} rows={3} value={profile.intro} />
+          <FieldTextarea disabled={editorDisabled} label={t({ en: "One-line intro (up to 80 visible characters)", zh: "一句话介绍（最多 80 个可见字符）" })} onValue={(value) => update("bio", value)} rows={3} value={profile.bio} />
+          {profile.headline.trim() || profile.intro.trim() ? (
+            <p style={{ color: "var(--text-3)", fontSize: 12.5, lineHeight: 1.5, margin: 0 }}>
+              {t({ en: "Existing values are preserved:", zh: "已有内容会保留：" })} {profile.headline.trim() ? `${t({ en: "headline", zh: "标题" })}: ${profile.headline}` : null}{profile.headline.trim() && profile.intro.trim() ? " · " : null}{profile.intro.trim() ? `${t({ en: "relationship goal", zh: "关系目标" })}: ${profile.intro}` : null}
+            </p>
+          ) : null}
         </div>
       </Section>
-      <Section desc={t({ en: "Tags drive who we match you with — pick what fits.", zh: "标签决定我们帮你匹配谁，选贴合的就好。" })} title={t({ en: "Matching preferences", zh: "匹配偏好" })}>
+      <Section desc={t({ en: "Optional preferences are saved separately from basic profile fields.", zh: "可选偏好与基础资料分开保存。" })} title={t({ en: "Matching preferences", zh: "匹配偏好" })}>
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          <ChipGroup label={t({ en: "I can offer", zh: "我能提供" })} onToggle={toggleTag} options={viewModel.offeringTags} section="offering" t={t} values={profile.offering} />
-          <ChipGroup label={t({ en: "I'm seeking", zh: "我想寻求" })} onToggle={toggleTag} options={viewModel.seekingTags} section="seeking" t={t} values={profile.seeking} />
-          <ChipGroup label={t({ en: "Topics to chat about", zh: "想聊的话题" })} onToggle={toggleTag} options={viewModel.topics} section="topics" t={t} values={profile.topics} />
+          <ChipGroup disabled={editorDisabled} label={t({ en: "I can offer", zh: "我能提供" })} maxSelected={5} onLimitReached={onLimitReached} onToggle={toggleTag} options={viewModel.offeringTags} section="offering" t={t} values={profile.offering} />
+          <ChipGroup disabled={editorDisabled} label={t({ en: "I'm seeking", zh: "我想寻求" })} maxSelected={5} onLimitReached={onLimitReached} onToggle={toggleTag} options={viewModel.seekingTags} section="seeking" t={t} values={profile.seeking} />
+          <ChipGroup disabled={editorDisabled} label={t({ en: "Topics to chat about", zh: "想聊的话题" })} onToggle={toggleTag} options={viewModel.topics} section="topics" t={t} values={profile.topics} />
+          <button className="btn btn-ghost btn-sm" disabled={editorDisabled || !matchingDirty || matchingSaving} onClick={onSaveMatching} type="button">
+            {matchingSaving ? t({ en: "Saving preferences…", zh: "保存偏好中…" }) : t({ en: "Save matching preferences", zh: "保存匹配偏好" })}
+          </button>
         </div>
       </Section>
     </div>
@@ -600,82 +617,161 @@ const PROFILE_LAYOUT_CSS = `
 }
 `;
 
-export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewModel }) {
+export function OrbitRealProfile({
+  onboardingNext,
+  viewModel,
+}: {
+  onboardingNext?: string;
+  viewModel: OrbitProfileViewModel | OrbitProfileEditorViewModel;
+}) {
   const { t } = useOrbitLanguage();
-  const [profile, setProfile] = useState<EditableProfile>(() => ({ ...viewModel.profile, offering: [...viewModel.profile.offering], seeking: [...viewModel.profile.seeking], topics: [...viewModel.profile.topics] }));
-  const [industryEdited, setIndustryEdited] = useState(false);
+  const initialView = viewModel as OrbitProfileEditorViewModel;
+  const initialProfile: EditableProfile = {
+    ...initialView.profile,
+    birthDate: initialView.profile.birthDate ?? null,
+    expectedUpdatedAt: initialView.profile.expectedUpdatedAt ?? null,
+    handles: initialView.profile.handles ? { ...initialView.profile.handles } : undefined,
+    hasPersistedProfile: initialView.profile.hasPersistedProfile ?? false,
+    onboarding: initialView.profile.onboarding ?? {
+      policyVersion: 1,
+      status: "incomplete",
+      missingFields: ["displayName", "primaryIndustryId", "secondaryIndustryId", "birthDate"],
+    },
+    offering: [...initialView.profile.offering],
+    seeking: [...initialView.profile.seeking],
+    topics: [...initialView.profile.topics],
+  };
+  const [profile, setProfile] = useState<EditableProfile>(initialProfile);
+  const [dirtyFields, setDirtyFields] = useState<Set<ProfileEditorField>>(() =>
+    initialProfile.hasPersistedProfile
+      ? new Set<ProfileEditorField>()
+      : new Set<ProfileEditorField>(["displayName"]),
+  );
+  const [dirtyHandleFields, setDirtyHandleFields] = useState<Set<ProfileEditorVisibleHandleKey>>(new Set());
   const [industryReady, setIndustryReady] = useState(false);
   const [method, setMethod] = useState<Method>("manual");
   const [extractText, setExtractText] = useState("");
   const [extracting, setExtracting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [matchingSaving, setMatchingSaving] = useState(false);
+  const [reloading, setReloading] = useState(false);
+  const [requiresReconcile, setRequiresReconcile] = useState(false);
   const [message, setMessage] = useState("");
   const [messageKind, setMessageKind] = useState<NoticeKind>("info");
+  const mountedRef = useRef(true);
+  const operationEpoch = useRef(0);
+  const reloadInFlight = useRef<number | null>(null);
+  const saveInFlight = useRef<number | null>(null);
+  const pendingSave = useRef<{
+    fingerprint: string;
+    input: ManualProfileUpdateInput;
+    scope: ProfileEditorSaveScope;
+  } | null>(null);
+  const editorDisabled = !industryReady || extracting || saving || matchingSaving || reloading || requiresReconcile;
+
+  function knownOnboarding(value: ProfilePayload["onboarding"]): value is NonNullable<ProfilePayload["onboarding"]> {
+    return Boolean(
+      value &&
+        value.policyVersion === 1 &&
+        (value.status === "complete" || value.status === "incomplete") &&
+        Array.isArray(value.missingFields),
+    );
+  }
+
   useEffect(() => {
     let active = true;
-    // The server page's legacy projection has no structured industry fields.
-    // Read the authenticated profile endpoint before allowing a new selection.
+    mountedRef.current = true;
+    const loadEpoch = ++operationEpoch.current;
+    // Re-read the actor-scoped profile so the editor starts from the real
+    // revision, private birthday, and complete hidden handle object.
     void (async () => {
       try {
         const response = await fetch("/api/profile", { cache: "no-store", headers: { accept: "application/json" } });
         const envelope = await response.json() as ApiEnvelope<ProfilePayload>;
-        if (!response.ok || envelope.success !== true || !envelope.data || !validateIndustrySelection(envelope.data.profile ?? {}).valid) {
-          throw new Error("Profile industry read failed");
+        if (!response.ok || envelope.success !== true || !envelope.data || !knownOnboarding(envelope.data.onboarding)) {
+          throw new Error("Profile read failed");
         }
-        if (!active) return;
-        const selection = envelope.data.profile;
-        setProfile(current => ({ ...current, primaryIndustryId: selection?.primaryIndustryId, secondaryIndustryId: selection?.secondaryIndustryId }));
+        if (!active || !mountedRef.current || operationEpoch.current !== loadEpoch) return;
+        if (envelope.data.profile) {
+          setProfile(current => profileEditorViewFromPayload(current, envelope.data!));
+          setDirtyFields(new Set());
+          setDirtyHandleFields(new Set());
+        } else {
+          setProfile(current => ({
+            ...current,
+            birthDate: null,
+            expectedUpdatedAt: null,
+            hasPersistedProfile: false,
+            onboarding: envelope.data!.onboarding!,
+            primaryIndustryId: undefined,
+            secondaryIndustryId: undefined,
+          }));
+          setDirtyFields(current => new Set(current).add("displayName"));
+          setDirtyHandleFields(new Set());
+        }
         setIndustryReady(true);
       } catch {
-        if (!active) return;
+        if (!active || !mountedRef.current || operationEpoch.current !== loadEpoch) return;
         setMessageKind("error");
-        setMessage(t({ en: "Could not load your industry. Reload the page before saving.", zh: "行业信息读取失败，请刷新页面后再保存。" }));
+        setMessage(t({ en: "Could not load your profile policy. Reload before saving.", zh: "资料政策读取失败，请刷新后再保存。" }));
       }
     })();
-    return () => { active = false; };
+    return () => {
+      active = false;
+      mountedRef.current = false;
+    };
   }, []);
   const letter = profileInitial(profile);
   const subText = t({ en: "Fill it once, auto-reused when registering for every event.", zh: "填一次，报名各场活动自动复用。" });
 
-  const missing = useMemo(() => {
-    const fields: string[] = [];
-
-    if (!profile.fullName.trim()) fields.push(t({ en: "Name", zh: "姓名" }));
-    if (!profile.wechatName.trim() && !profile.lineId.trim()) fields.push(t({ en: "WeChat or LINE", zh: "微信或 LINE" }));
-    if (!profile.company.trim()) fields.push(t({ en: "Company", zh: "公司" }));
-    if (!profile.title.trim()) fields.push(t({ en: "Title", zh: "职位" }));
-    if (!profile.industry.trim()) fields.push(t({ en: "Industry", zh: "行业" }));
-    if (!profile.bio.trim()) fields.push(t({ en: "Bio", zh: "简介" }));
-    if (!profile.intro.trim()) fields.push(t({ en: "Opener", zh: "开场白" }));
-    if (!profile.offering.length) fields.push(t({ en: "Offering", zh: "能提供" }));
-    if (!profile.seeking.length) fields.push(t({ en: "Seeking", zh: "想寻求" }));
-    if (!profile.topics.length) fields.push(t({ en: "Topics", zh: "话题" }));
-
-    return fields;
-  }, [profile, t]);
-  const missingSeparator = t({ en: ", ", zh: "、" });
+  function markDirty(field: ProfileEditorField) {
+    setDirtyFields(current => new Set(current).add(field));
+  }
 
   function update<K extends keyof OrbitProfileView>(field: K, value: OrbitProfileView[K]) {
+    if (editorDisabled) return;
+    const editorField: Partial<Record<keyof OrbitProfileView, ProfileEditorField>> = {
+      bio: "bio",
+      company: "organization",
+      fullName: "displayName",
+      title: "role",
+      wechatName: "handles",
+      lineId: "handles",
+    };
+    const dirty = editorField[field];
     setProfile((current) => ({ ...current, [field]: value }));
+    if (dirty) markDirty(dirty);
+    if (field === "lineId" || field === "wechatName") {
+      setDirtyHandleFields(current => new Set(current).add(field === "lineId" ? "lineId" : "wechatId"));
+    }
+  }
+
+  function updateBirthDate(value: string) {
+    if (editorDisabled) return;
+    setProfile(current => ({ ...current, birthDate: value || null }));
+    markDirty("birthDate");
   }
 
   function updateIndustry(selection: IndustrySelectionContract) {
-    if (saving || !industryReady) return;
-    setIndustryEdited(true);
+    if (editorDisabled) return;
     setProfile(current => ({ ...current, ...selection }));
+    if (selection.primaryIndustryId !== undefined) markDirty("primaryIndustryId");
+    if (selection.secondaryIndustryId !== undefined) markDirty("secondaryIndustryId");
   }
 
   function toggleTag(field: TagField, tag: string) {
+    if (editorDisabled) return;
     setProfile((current) => {
       const values = current[field];
       return { ...current, [field]: values.includes(tag) ? values.filter((value) => value !== tag) : [...values, tag] };
     });
+    markDirty(field);
   }
 
   async function extractProfile(
     input: { fileName: string; mimeType: string; text?: string },
   ) {
-    if (extracting) return;
+    if (editorDisabled || extracting) return;
     setExtracting(true);
     setMessage("");
 
@@ -706,7 +802,11 @@ export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewMod
         return;
       }
 
+      const draft = envelope.data.draft;
       setProfile((current) => applyExtractionDraft(current, envelope.data!));
+      if (draft?.displayName) markDirty("displayName");
+      if (draft?.organization) markDirty("organization");
+      if (draft?.role) markDirty("role");
       setMessageKind("info");
       setMessage(
         t({
@@ -727,6 +827,7 @@ export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewMod
   }
 
   async function onTextExtract() {
+    if (editorDisabled) return;
     const text = extractText.trim();
     if (!text) {
       setMessageKind("error");
@@ -746,28 +847,39 @@ export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewMod
     });
   }
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (saving || !industryReady) return;
-
-    const updateInput = profileUpdateInput(profile);
-    if (!validateIndustrySelection(profile).valid || (industryEdited && profile.primaryIndustryId && !profile.secondaryIndustryId)) {
-      setMessageKind("error");
-      setMessage(t({ en: "Choose a secondary industry for the selected primary industry.", zh: "请为所选一级行业选择二级行业。" }));
+  async function saveProfile(scope: ProfileEditorSaveScope) {
+    if (editorDisabled || reloadInFlight.current !== null || saveInFlight.current !== null) return;
+    const scopeFields = profileSaveScopeFields(scope);
+    const scopeDirty = new Set([...dirtyFields].filter(field => scopeFields.has(field)));
+    if (scopeDirty.size === 0) {
+      setMessageKind("info");
+      setMessage(t({ en: "There are no changes in this section.", zh: "此区块没有待保存的修改。" }));
       return;
     }
-    if (!updateInput.displayName?.trim()) {
+    const dirtyHandleFieldsAtSave = new Set(dirtyHandleFields);
+    const validation = validateProfileSaveDraft({ profile, scope, scopeDirty });
+    if (validation.ok === false) {
       setMessageKind("error");
-      setMessage(
-        t({
-          en: "Add your name before saving the profile.",
-          zh: "请填写姓名后再保存档案。",
-        }),
-      );
+      setMessage(t(validation.message));
       return;
     }
 
-    setSaving(true);
+    const newInput = profileEditorUpdateInput({
+      dirtyFields: scopeDirty,
+      expectedUpdatedAt: profile.expectedUpdatedAt,
+      mutationId: globalThis.crypto?.randomUUID?.() ?? `profile-${Date.now()}`,
+      profile,
+      scope,
+    });
+    const inputFingerprint = JSON.stringify({ ...newInput, mutationId: undefined });
+    const pending = pendingSave.current;
+    const updateInput = pending?.scope === scope && pending.fingerprint === inputFingerprint
+      ? pending.input
+      : newInput;
+    const saveEpoch = ++operationEpoch.current;
+    saveInFlight.current = saveEpoch;
+    pendingSave.current = { fingerprint: inputFingerprint, input: updateInput, scope };
+    if (scope === "basic") setSaving(true); else setMatchingSaving(true);
     setMessage("");
 
     try {
@@ -777,58 +889,168 @@ export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewMod
         method: "PUT",
       });
       const envelope = (await response.json()) as ApiEnvelope<ProfilePayload>;
+      if (!mountedRef.current || operationEpoch.current !== saveEpoch) return;
 
       if (!response.ok || envelope.success !== true || !envelope.data) {
-        throw new Error(
-          envelope.error?.message ||
-            t({ en: "Profile save failed.", zh: "档案保存失败。" }),
-        );
+        if (profileSaveFailureKind(response.status, envelope.error?.code) === "conflict") {
+          setRequiresReconcile(true);
+          throw new Error(t({ en: "This profile changed elsewhere. Reload the latest profile before saving this draft.", zh: "资料已在其他位置发生变化，请先刷新最新资料，再处理当前草稿。" }));
+        }
+        throw new Error(envelope.error?.message || t({ en: "Profile save failed.", zh: "档案保存失败。" }));
+      }
+      if (envelope.data.mutationId !== updateInput.mutationId) {
+        throw new Error(t({ en: "The save receipt could not be verified. Retry the same draft.", zh: "保存回执无法核验，请使用相同草稿重试。" }));
       }
 
       const readbackResponse = await fetch("/api/profile", {
         cache: "no-store",
         headers: { accept: "application/json" },
       });
-      const readback =
-        (await readbackResponse.json()) as ApiEnvelope<ProfilePayload>;
-
-      if (
-        !readbackResponse.ok ||
-        readback.success !== true ||
-        !readback.data ||
-        !profileReadbackMatches(updateInput, readback.data)
-      ) {
-        throw new Error(
-          t({
-            en: "The save response could not be verified by reading the profile back.",
-            zh: "保存响应无法通过重新读取档案完成核验。",
-          }),
-        );
+      const readback = (await readbackResponse.json()) as ApiEnvelope<ProfilePayload>;
+      if (!mountedRef.current || operationEpoch.current !== saveEpoch) return;
+      if (!readbackResponse.ok || readback.success !== true || !readback.data || !knownOnboarding(readback.data.onboarding) || !profileEditorReadbackMatches(updateInput, readback.data)) {
+        throw new Error(t({ en: "The save could not be verified by reading the profile back.", zh: "保存结果无法通过重新读取资料完成核验。" }));
       }
+      const matchingDraftAtSave = [...dirtyFields].some((field) =>
+        field === "offering" || field === "seeking" || field === "topics",
+      );
+      const shouldContinue =
+        scope === "basic" &&
+        Boolean(onboardingNext) &&
+        readback.data.onboarding.status === "complete" &&
+        !matchingDraftAtSave;
 
+      setProfile(current => mergeProfilePreservingDraft({
+        current,
+        dirtyHandleFields: dirtyHandleFieldsAtSave,
+        latest: profileEditorViewFromPayload(current, readback.data!),
+        preserve: new Set([...dirtyFields].filter(field => !scopeFields.has(field))),
+      }));
+      setDirtyFields(current => {
+        const next = new Set(current);
+        for (const field of scopeFields) next.delete(field);
+        return next;
+      });
+      if (scope === "basic") setDirtyHandleFields(new Set());
+      pendingSave.current = null;
+      setRequiresReconcile(false);
       setMessageKind("success");
       setMessage(
-        t({
-          en: "Profile saved and verified.",
-          zh: "档案已保存并完成复读核验。",
-        }),
+        t(
+          onboardingNext &&
+            scope === "basic" &&
+            readback.data.onboarding.status === "complete" &&
+            matchingDraftAtSave
+            ? {
+                en: "Basic profile saved and verified. Matching preferences still have unsaved changes.",
+                zh: "基础资料已保存并完成复读核验；匹配偏好还有未保存的修改。",
+              }
+            : {
+                en: scope === "basic"
+                  ? "Basic profile saved and verified."
+                  : "Matching preferences saved and verified.",
+                zh: scope === "basic"
+                  ? "基础资料已保存并完成复读核验。"
+                  : "匹配偏好已保存并完成复读核验。",
+              },
+        ),
       );
+      if (shouldContinue) {
+        window.location.assign(profileContinuationPath(onboardingNext!));
+      }
     } catch (error) {
+      if (!mountedRef.current || operationEpoch.current !== saveEpoch) return;
       setMessageKind("error");
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : t({ en: "Profile save failed.", zh: "档案保存失败。" }),
-      );
+      setMessage(error instanceof Error ? error.message : t({ en: "Profile save failed.", zh: "档案保存失败。" }));
     } finally {
-      setSaving(false);
+      if (saveInFlight.current === saveEpoch) {
+        saveInFlight.current = null;
+        if (mountedRef.current && operationEpoch.current === saveEpoch) {
+          if (scope === "basic") setSaving(false); else setMatchingSaving(false);
+        }
+      }
     }
   }
 
+  async function reloadLatestProfile() {
+    if (
+      saving ||
+      matchingSaving ||
+      extracting ||
+      reloadInFlight.current !== null ||
+      saveInFlight.current !== null
+    ) return;
+    const reloadEpoch = ++operationEpoch.current;
+    reloadInFlight.current = reloadEpoch;
+    const dirtyAtReload = new Set(dirtyFields);
+    const dirtyHandleFieldsAtReload = new Set(dirtyHandleFields);
+    setReloading(true);
+    setRequiresReconcile(true);
+    try {
+      const response = await fetch("/api/profile", { cache: "no-store", headers: { accept: "application/json" } });
+      const envelope = await response.json() as ApiEnvelope<ProfilePayload>;
+      if (!response.ok || envelope.success !== true || !envelope.data || !knownOnboarding(envelope.data.onboarding)) throw new Error("Profile reload failed");
+      if (!mountedRef.current || operationEpoch.current !== reloadEpoch) return;
+      setProfile(current => mergeProfilePreservingDraft({
+        current,
+        dirtyHandleFields: dirtyHandleFieldsAtReload,
+        latest: envelope.data!.profile
+          ? profileEditorViewFromPayload(current, envelope.data!)
+          : emptyProfileAfterReload(current, envelope.data!.onboarding!),
+        preserve: dirtyAtReload,
+      }));
+      setDirtyFields(dirtyAtReload);
+      setDirtyHandleFields(dirtyHandleFieldsAtReload);
+      pendingSave.current = null;
+      setRequiresReconcile(false);
+      setMessageKind("info");
+      setMessage(t({ en: "Latest profile loaded. Your unsaved fields remain in the draft; save again to reconcile them.", zh: "最新资料已加载，未保存字段仍保留在草稿中；请再次保存以完成合并。" }));
+    } catch (error) {
+      if (!mountedRef.current || operationEpoch.current !== reloadEpoch) return;
+      setMessageKind("error");
+      setMessage(error instanceof Error ? error.message : t({ en: "Profile reload failed.", zh: "资料刷新失败。" }));
+    } finally {
+      if (reloadInFlight.current === reloadEpoch) {
+        reloadInFlight.current = null;
+        if (mountedRef.current && operationEpoch.current === reloadEpoch) {
+          setReloading(false);
+        }
+      }
+    }
+  }
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await saveProfile("basic");
+  }
+
   const extractProps = { extractText, extracting, method, onTextExtract, setExtractText, setMethod, t };
-  const editProps = { extractProps, industryDisabled: saving || !industryReady, profile, t, toggleTag, update, updateIndustry, viewModel };
+  const matchingDirty = ["offering", "seeking", "topics"].some(field => dirtyFields.has(field as ProfileEditorField));
+  const onLimitReached = () => {
+    setMessageKind("error");
+    setMessage(t({ en: "You can select up to five offerings or five things you are seeking.", zh: "能提供和想寻求各最多选择 5 项。" }));
+  };
+  const editProps = {
+    editorDisabled,
+    extractProps,
+    industryDisabled: saving || matchingSaving || !industryReady || requiresReconcile,
+    matchingDirty,
+    matchingSaving,
+    onBirthDateChange: updateBirthDate,
+    onLimitReached,
+    onSaveMatching: () => void saveProfile("matching"),
+    profile,
+    t,
+    toggleTag,
+    update,
+    updateIndustry,
+    viewModel: initialView,
+  };
   const alert = message ? (
-    <div role={messageKind === "error" ? "alert" : "status"} style={{ background: messageKind === "error" ? "var(--danger-soft, #fff1f2)" : messageKind === "success" ? "var(--live-soft)" : "var(--surface-2)", borderRadius: "var(--r-sm)", color: messageKind === "error" ? "var(--danger, #C2410C)" : messageKind === "success" ? "var(--live-text)" : "var(--text-2)", fontSize: 13, marginBottom: 14, padding: "10px 14px" }}>{message}</div>
+    <div role={messageKind === "error" ? "alert" : "status"} style={{ background: messageKind === "error" ? "var(--danger-soft, #fff1f2)" : messageKind === "success" ? "var(--live-soft)" : "var(--surface-2)", borderRadius: "var(--r-sm)", color: messageKind === "error" ? "var(--danger, #C2410C)" : messageKind === "success" ? "var(--live-text)" : "var(--text-2)", fontSize: 13, marginBottom: 14, padding: "10px 14px" }}>
+      {message}
+      {requiresReconcile ? <button aria-busy={reloading} className="btn btn-ghost btn-sm" disabled={reloading} onClick={() => void reloadLatestProfile()} style={{ marginLeft: 10 }} type="button">{reloading ? t({ en: "Reloading latest…", zh: "正在刷新最新资料…" }) : t({ en: "Reload latest", zh: "刷新最新资料" })}</button> : null}
+    </div>
   ) : null;
 
   return (
@@ -847,7 +1069,8 @@ export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewMod
             {alert}
             <div className="orbit-profile-layout">
               <aside className="orbit-profile-preview">
-                <BusinessCardPreview missing={missing} missingSeparator={missingSeparator} profile={profile} t={t} />
+                <BusinessCardPreview profile={profile} t={t} />
+                <OnboardingStatus continueHref={onboardingNext ? profileContinuationPath(onboardingNext) : undefined} onboarding={profile.onboarding} t={t} />
                 <p style={{ color: "var(--text-3)", fontSize: 12.5, lineHeight: 1.5, margin: "12px 4px 0", textAlign: "center" }}>
                   {t({ en: "This is how you appear to matches — updates as you type.", zh: "这是别人看到的你，边填边更新。" })}
                 </p>
@@ -857,19 +1080,20 @@ export function OrbitRealProfile({ viewModel }: { viewModel: OrbitProfileViewMod
           </div>
           <div style={{ backdropFilter: "blur(14px)", background: "var(--glass-bar)", borderTop: "1px solid var(--border)", bottom: 0, display: "flex", gap: 12, justifyContent: "flex-end", padding: "14px 40px", position: "sticky", zIndex: ORBIT_Z.sticky }}>
             <button className="btn btn-ghost" onClick={() => orbitNavigate("/home")} type="button">{t({ en: "Cancel", zh: "取消" })}</button>
-            <button className="btn btn-primary" disabled={saving || !industryReady} type="submit"><Icon color="var(--on-dark)" name="check" size={16} />{saving ? t({ en: "Saving…", zh: "保存中…" }) : t({ en: "Save profile", zh: "保存档案" })}</button>
+            <button className="btn btn-primary" disabled={editorDisabled} type="submit"><Icon color="var(--on-dark)" name="check" size={16} />{saving ? t({ en: "Saving…", zh: "保存中…" }) : t({ en: "Save basic profile", zh: "保存基础资料" })}</button>
           </div>
         </form>
       </div>
       <div className="orbit-mobile-only" style={{ background: "var(--bg)", display: "flex", flexDirection: "column", minHeight: "100dvh", position: "relative" }}>
         <StatusBar />
         <form onSubmit={onSubmit} style={{ display: "flex", flex: 1, flexDirection: "column", minHeight: 0 }}>
-          <MobileBar onBack={() => orbitNavigate("/home")} right={<button className="btn btn-primary btn-sm" disabled={saving || !industryReady} type="submit">{saving ? t({ en: "Saving…", zh: "保存中…" }) : t({ en: "Save", zh: "保存" })}</button>} title={t({ en: "Universal profile", zh: "通用档案" })} />
+          <MobileBar onBack={() => orbitNavigate("/home")} right={<button className="btn btn-primary btn-sm" disabled={editorDisabled} type="submit">{saving ? t({ en: "Saving…", zh: "保存中…" }) : t({ en: "Save basic", zh: "保存基础资料" })}</button>} title={t({ en: "Universal profile", zh: "通用档案" })} />
           <div className="scroll" data-appscroll style={{ flex: 1, overflowY: "auto", padding: "14px 16px 100px" }}>
             <p style={{ color: "var(--text-3)", fontSize: 13, margin: "0 0 12px" }}>{subText}</p>
             {alert}
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <BusinessCardPreview missing={missing} missingSeparator={missingSeparator} profile={profile} t={t} />
+              <BusinessCardPreview profile={profile} t={t} />
+              <OnboardingStatus continueHref={onboardingNext ? profileContinuationPath(onboardingNext) : undefined} onboarding={profile.onboarding} t={t} />
               <EditSections {...editProps} />
             </div>
           </div>

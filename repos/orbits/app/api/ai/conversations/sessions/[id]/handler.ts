@@ -22,6 +22,7 @@ import {
 import type { OrbitAgentChatSessionProvider } from "../../../../../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
 import type { OrbitAgentChatRequestStore } from "../../../../../../features/orbit-ai/reliable-send-service";
 import { createOrbitAgentChatRequestStore } from "../../../../../../features/orbit-ai/storage/orbit-agent-chat-request-store";
+import { createOrbitAgentChatSessionArtifactReader, type OrbitAgentChatSessionArtifactReader } from "../../../../../../features/orbit-ai/storage/orbit-agent-chat-session-artifact-reader";
 import { createOrbitAgentChatSessionProvider } from "../../../../../../features/orbit-ai/storage/orbit-agent-chat-session-provider-factory";
 import {
   authenticatedApiActorRequiredResponse,
@@ -36,6 +37,7 @@ export interface OrbitAgentChatSessionRouteContext {
 }
 
 export interface OrbitAgentChatSessionHandlerDependencies {
+  artifactReaderForActor?: (mode: FeatureMode, actorId: string) => OrbitAgentChatSessionArtifactReader | null;
   providerForActor?: (
     mode: FeatureMode,
     actorId: string,
@@ -82,6 +84,7 @@ export function createOrbitAgentChatSessionHandlers(
     dependencies.organizationStoreForActor ?? createOrbitAgentChatOrganizationStore;
   const requestStoreForActor =
     dependencies.requestStoreForActor ?? createOrbitAgentChatRequestStore;
+  const artifactReaderForActor = dependencies.artifactReaderForActor ?? createOrbitAgentChatSessionArtifactReader;
 
   async function providerForRequest(mode: FeatureMode) {
     const actor = await resolveActor();
@@ -187,6 +190,11 @@ export function createOrbitAgentChatSessionHandlers(
         };
 
         const requestId = new URL(request.url).searchParams.get("requestId")?.trim();
+        const artifactReader = artifactReaderForActor(mode, resolved.actor.id);
+        // A failed recovery must not erase the already authorized text history.
+        const artifactRecovery = artifactReader
+          ? await artifactReader.read(session).catch(() => ({ turns: [], truncated: false, unavailable: true }))
+          : { turns: [], truncated: false };
         const requestRecord = requestId
           ? await requestStoreForActor(mode, resolved.actor.id)?.get(requestId)
           : null;
@@ -205,6 +213,7 @@ export function createOrbitAgentChatSessionHandlers(
         return NextResponse.json(
           success({
             ...(reliableSend ? { reliableSend } : {}),
+            artifactRecovery,
             session,
             storage: {
               configured: true,

@@ -4,7 +4,10 @@ import { Pool } from "pg";
 import test from "node:test";
 
 import { createStorageAppBootstrapProvider } from "../../features/bootstrap/storage/bootstrap-live-record-provider";
-import { createStorageDashboardAggregateProvider } from "../../features/dashboard/storage/dashboard-live-record-provider";
+import {
+  createStorageDashboardAggregateProvider,
+  withDashboardLiveReadScope,
+} from "../../features/dashboard/storage/dashboard-live-record-provider";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import type {
@@ -260,10 +263,10 @@ test("dashboard Postgres projection preserves counts, detail tags, and concurren
     workspaceId: WORKSPACE_ID,
   });
 
-  const [first, second] = await Promise.all([
+  const [first, second] = await withDashboardLiveReadScope(() => Promise.all([
     provider.readDashboardGraphForAccount!(ACTOR_ID),
     provider.readDashboardGraphForAccount!(ACTOR_ID),
-  ]);
+  ]));
 
   assert.deepEqual(first, second);
   assert.equal(client.calls.length, 1);
@@ -336,10 +339,10 @@ test("projected reads coalesce concurrent rejection and permit a retry", async (
     workspaceId: WORKSPACE_ID,
   });
 
-  const dashboardRejected = await Promise.allSettled([
+  const dashboardRejected = await withDashboardLiveReadScope(() => Promise.allSettled([
     dashboard.readDashboardGraphForAccount!(ACTOR_ID),
     dashboard.readDashboardGraphForAccount!(ACTOR_ID),
-  ]);
+  ]));
   assert.deepEqual(
     dashboardRejected.map((result) => result.status),
     ["rejected", "rejected"],
@@ -349,6 +352,244 @@ test("projected reads coalesce concurrent rejection and permit a retry", async (
   const dashboardRetry = await dashboard.readDashboardGraphForAccount!(ACTOR_ID);
   assert.equal(dashboardRetry.contacts.length, 1);
   assert.equal(dashboardClient.calls.length, 2);
+});
+
+interface PendingSqlResult {
+  resolve: () => void;
+  reject: (error: Error) => void;
+}
+
+interface ControlledDashboardSqlClient extends LiveRecordSqlClient {
+  calls: SqlCall[];
+  graphPending: PendingSqlResult[];
+  summaryPending: PendingSqlResult[];
+  failNextGraph: boolean;
+  resolveGraphAt: (index: number) => void;
+  resolveNextGraph: () => void;
+  resolveNextSummary: () => void;
+}
+
+function summaryReaderRow(): Record<string, unknown> {
+  return {
+    generated_at: NOW,
+    contacts_count: 1,
+    contacts_evidence_ids: ["e:dashboard:contact"],
+    connections_evidence_ids: ["e:dashboard:connection"],
+    events_evidence_ids: ["e:dashboard:event"],
+    tasks_evidence_ids: ["e:dashboard:task"],
+    high_value_count: 1,
+    high_value_evidence_ids: ["e:dashboard:connection"],
+    pending_followup_count: 1,
+    pending_followup_evidence_ids: ["e:dashboard:task"],
+    dormant_contact_count: 1,
+    dormant_contact_evidence_ids: ["e:dashboard:contact"],
+    recent_activity: [],
+    activity_order_safe: true,
+  };
+}
+
+function controlledDashboardSqlClient(): ControlledDashboardSqlClient {
+  const calls: SqlCall[] = [];
+  const graphPending: PendingSqlResult[] = [];
+  const summaryPending: PendingSqlResult[] = [];
+  const client: ControlledDashboardSqlClient = {
+    calls,
+    graphPending,
+    summaryPending,
+    failNextGraph: false,
+    resolveGraphAt(index) {
+      const [pending] = graphPending.splice(index, 1);
+      assert.ok(pending, `graph read ${index} should be pending`);
+      pending?.resolve();
+    },
+    async query<TRow = Record<string, unknown>>(
+      text: string,
+      values?: readonly unknown[],
+    ): Promise<LiveRecordSqlResult<TRow>> {
+      calls.push({ text, values });
+      const isSummary = /dashboard summary read model/i.test(text);
+      if (!isSummary && client.failNextGraph) {
+        client.failNextGraph = false;
+        throw new Error("synthetic early graph rejection");
+      }
+      return new Promise<LiveRecordSqlResult<TRow>>((resolve, reject) => {
+        const pending = {
+          resolve: () => resolve({
+            rows: (isSummary ? [summaryReaderRow()] : dashboardRows()) as readonly TRow[],
+          }),
+          reject,
+        };
+        (isSummary ? summaryPending : graphPending).push(pending);
+      });
+    },
+    resolveNextGraph() {
+      client.resolveGraphAt(0);
+    },
+    resolveNextSummary() {
+      const pending = summaryPending.shift();
+      assert.ok(pending, "a summary read should be pending");
+      pending?.resolve();
+    },
+  };
+  return client;
+}
+
+async function waitForCondition(condition: () => boolean): Promise<void> {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    if (condition()) return;
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  }
+  assert.fail("timed out waiting for a controlled SQL read");
+}
+
+test("dashboard graph coalescing is request-scoped and never reuses an unscoped promise", async () => {
+  const client = controlledDashboardSqlClient();
+  const provider = createStorageDashboardAggregateProvider({
+    sqlClient: client,
+    store: createMemoryLiveRecordStore<Record<string, unknown>>(),
+    workspaceId: WORKSPACE_ID,
+    source: "test:dashboard-scope",
+    sourceLabel: "Dashboard scope test storage",
+  });
+
+  const aggregateFirst = await withDashboardLiveReadScope(async () => {
+    const aggregate = provider.readDashboardGraphForAccount!(ACTOR_ID);
+    await waitForCondition(() => client.calls.length === 1);
+    const summary = provider.readDashboardSummaryForAccount!(ACTOR_ID);
+    assert.equal(client.calls.length, 1, "same actor uses the in-flight graph");
+    client.resolveNextGraph();
+    return Promise.all([aggregate, summary]);
+  });
+  assert.equal(aggregateFirst[0].contacts.length, 1);
+  assert.equal(aggregateFirst[1].success, true);
+
+  const summaryOutsideScope = provider.readDashboardSummaryForAccount!(ACTOR_ID);
+  await waitForCondition(() => client.calls.length === 2);
+  assert.equal(client.summaryPending.length, 1);
+  client.resolveNextSummary();
+  await summaryOutsideScope;
+
+  const nestedClient = controlledDashboardSqlClient();
+  const nestedProvider = createStorageDashboardAggregateProvider({
+    sqlClient: nestedClient,
+    store: createMemoryLiveRecordStore<Record<string, unknown>>(),
+    workspaceId: WORKSPACE_ID,
+  });
+  await withDashboardLiveReadScope(async () => {
+    const outer = nestedProvider.readDashboardGraphForAccount!(ACTOR_ID);
+    await waitForCondition(() => nestedClient.calls.length === 1);
+    await withDashboardLiveReadScope(async () => {
+      const inner = nestedProvider.readDashboardGraphForAccount!(ACTOR_ID);
+      await waitForCondition(() => nestedClient.calls.length === 2);
+      nestedClient.resolveGraphAt(1);
+      await inner;
+    });
+    assert.equal(nestedClient.calls.length, 2, "inner scope owns an independent map");
+    const outerDuplicate = nestedProvider.readDashboardGraphForAccount!(ACTOR_ID);
+    assert.equal(nestedClient.calls.length, 2, "inner cleanup does not clear the outer scope");
+    nestedClient.resolveGraphAt(0);
+    await Promise.all([outer, outerDuplicate]);
+  });
+
+  const requestIsolationClient = controlledDashboardSqlClient();
+  const requestIsolationProvider = createStorageDashboardAggregateProvider({
+    sqlClient: requestIsolationClient,
+    store: createMemoryLiveRecordStore<Record<string, unknown>>(),
+    workspaceId: WORKSPACE_ID,
+  });
+  let releaseOldRequest: (() => void) | undefined;
+  const oldRequest = withDashboardLiveReadScope(async () => {
+    const oldRead = requestIsolationProvider.readDashboardGraphForAccount!(ACTOR_ID);
+    await waitForCondition(() => requestIsolationClient.calls.length === 1);
+    await new Promise<void>((resolve) => { releaseOldRequest = resolve; });
+    return oldRead;
+  });
+  await waitForCondition(() => requestIsolationClient.calls.length === 1);
+  const newRequest = await withDashboardLiveReadScope(async () => {
+    const freshRead = requestIsolationProvider.readDashboardGraphForAccount!(ACTOR_ID);
+    await waitForCondition(() => requestIsolationClient.calls.length === 2);
+    requestIsolationClient.resolveGraphAt(1);
+    return freshRead;
+  });
+  assert.equal(newRequest.contacts.length, 1);
+  releaseOldRequest?.();
+  requestIsolationClient.resolveGraphAt(0);
+  await oldRequest;
+  assert.equal(requestIsolationClient.calls.length, 2, "a pending read cannot cross request scopes");
+
+  const summaryFirstClient = controlledDashboardSqlClient();
+  const summaryFirstProvider = createStorageDashboardAggregateProvider({
+    sqlClient: summaryFirstClient,
+    store: createMemoryLiveRecordStore<Record<string, unknown>>(),
+    workspaceId: WORKSPACE_ID,
+  });
+  await withDashboardLiveReadScope(async () => {
+    const summary = summaryFirstProvider.readDashboardSummaryForAccount!(ACTOR_ID);
+    await waitForCondition(() => summaryFirstClient.calls.length === 1);
+    const aggregate = summaryFirstProvider.readDashboardGraphForAccount!(ACTOR_ID);
+    assert.equal(summaryFirstClient.calls.length, 2, "summary-first cannot cancel its SQL read");
+    summaryFirstClient.resolveNextSummary();
+    summaryFirstClient.resolveNextGraph();
+    await Promise.all([summary, aggregate]);
+  });
+
+  const differentActorClient = controlledDashboardSqlClient();
+  const differentActorProvider = createStorageDashboardAggregateProvider({
+    sqlClient: differentActorClient,
+    store: createMemoryLiveRecordStore<Record<string, unknown>>(),
+    workspaceId: WORKSPACE_ID,
+  });
+  await withDashboardLiveReadScope(async () => {
+    const aggregate = differentActorProvider.readDashboardGraphForAccount!(ACTOR_ID);
+    await waitForCondition(() => differentActorClient.calls.length === 1);
+    const summary = differentActorProvider.readDashboardSummaryForAccount!("account:other");
+    await waitForCondition(() => differentActorClient.calls.length === 2);
+    assert.equal(differentActorClient.graphPending.length, 1);
+    assert.equal(differentActorClient.summaryPending.length, 1);
+    differentActorClient.resolveNextGraph();
+    differentActorClient.resolveNextSummary();
+    await Promise.all([aggregate, summary]);
+  });
+
+  const undefinedActorClient = controlledDashboardSqlClient();
+  const undefinedActorProvider = createStorageDashboardAggregateProvider({
+    sqlClient: undefinedActorClient,
+    store: createMemoryLiveRecordStore<Record<string, unknown>>(),
+    workspaceId: WORKSPACE_ID,
+  });
+  await withDashboardLiveReadScope(async () => {
+    const unscoped = undefinedActorProvider.readDashboardGraph();
+    const literalActor = undefinedActorProvider.readDashboardGraphForAccount!("\u0000unscoped");
+    await waitForCondition(() => undefinedActorClient.calls.length === 2);
+    undefinedActorClient.resolveNextGraph();
+    undefinedActorClient.resolveNextGraph();
+    await Promise.all([unscoped, literalActor]);
+  });
+
+  const earlyRejectClient = controlledDashboardSqlClient();
+  earlyRejectClient.failNextGraph = true;
+  const earlyRejectProvider = createStorageDashboardAggregateProvider({
+    sqlClient: earlyRejectClient,
+    store: createMemoryLiveRecordStore<Record<string, unknown>>(),
+    workspaceId: WORKSPACE_ID,
+  });
+  await assert.rejects(
+    withDashboardLiveReadScope(async () => {
+      const rejected = earlyRejectProvider.readDashboardGraphForAccount!(ACTOR_ID);
+      const remaining = earlyRejectProvider.readDashboardGraphForAccount!("account:remaining");
+      await waitForCondition(() => earlyRejectClient.calls.length === 2);
+      await assert.rejects(Promise.resolve(rejected));
+      void remaining;
+      throw new Error("close scope before remaining read settles");
+    }),
+    /close scope/,
+  );
+  earlyRejectClient.resolveNextGraph();
+  const retry = earlyRejectProvider.readDashboardGraphForAccount!("account:remaining");
+  await waitForCondition(() => earlyRejectClient.calls.length === 3);
+  earlyRejectClient.resolveNextGraph();
+  await retry;
+  assert.equal(earlyRejectClient.calls.length, 3, "closed scope did not reinsert the remaining promise");
 });
 
 interface LocalRecordInput {

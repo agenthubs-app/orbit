@@ -85,7 +85,7 @@ function canonicalEventToLandingEvent(
       event.description?.trim() ||
       "Source-backed event loaded from canonical Event Core.",
     generatedAt: new Date().toISOString(),
-    participantCount: 0,
+    participantCount: null,
     routeCode: event.publicCode?.trim() || event.eventId,
   });
 

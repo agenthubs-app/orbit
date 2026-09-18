@@ -114,3 +114,10 @@ test("foreground refresh is bounded and state invalidation carries no private pa
   emitMessageStateInvalidation();
   assert.equal(calls, 1);
 });
+
+test('paged message responses retain the global unread count without inventing messages', () => {
+  const view = relationshipConversationListToInbox({ conversations: [conversation({ unreadCount: 0 })], refreshedAt: at, unreadTotal: 7, nextCursor: 'page-two' }, 'actor:one');
+  assert.equal((view as any)?.unreadTotal, 7);
+  assert.equal(view?.conversations[0]?.unreadCount, 0);
+  assert.equal(relationshipConversationListToInbox({ conversations: [conversation()], refreshedAt: at, unreadTotal: -1 }, 'actor:one'), null);
+});

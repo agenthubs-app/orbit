@@ -167,7 +167,7 @@ function mutualValueFor(input: {
 }): RelationshipMutualValue {
   const fallback: RelationshipMutualValue = {
     contactReceives:
-      input.connection.suggestedActions[0] ??
+      input.connection.suggestedActions?.[0] ??
       "A concrete follow-up path from live relationship context.",
     orbitUserReceives: input.connection.summary,
     valueTypes: input.connection.valueTypes,
@@ -194,7 +194,7 @@ function nextActionFor(input: {
   update?: RelationshipProfileUpdateInput;
 }): RelationshipNextAction {
   const label =
-    input.connection.suggestedActions[0] ??
+    input.connection.suggestedActions?.[0] ??
     "Review live relationship profile evidence";
 
   return {

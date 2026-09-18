@@ -28,6 +28,7 @@ import {
   eventRecommendationsPath
 } from "../../api/endpoints";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
+import { EventAttendeeRosterLink } from "./EventAttendeeRosterLink";
 import {
   eventDetailGoalReceiptSchema, eventDetailOpeningLineReceiptSchema, eventDetailReadinessSchema,
   eventDetailRecommendationsSchema, eventDetailReviewReceiptSchema, eventDetailReviewSchema,
@@ -68,6 +69,7 @@ import {
   eventRegistrationToView,
   type EventRegistrationView
 } from "../../view-models/event-registration";
+import { CanonicalEventDetailModules, unavailableCanonicalRegistration, type CanonicalRegistrationFooterState } from "./CanonicalEventDetailModules";
 
 const detailFont = Platform.select({ web: '-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif', ios: "System", default: "sans-serif" });
 
@@ -102,13 +104,14 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
   const event = data ? publicEventDetailToSummary(data, timeZone) : null;
   const [personalizedRefreshKey, setPersonalizedRefreshKey] = useState(0);
   const canonical = data?.event.sourceMetadata?.label === "event-core-postgres";
-  const registrationKey = JSON.stringify([scopeKey, event?.id, personalizedRefreshKey]);
-  const [registrationBadge, setRegistrationBadge] = useState<{ key: string; label: string } | null>(null);
-  const onRegistrationStatus = useCallback((label: string) => {
-    if (isCurrent()) setRegistrationBadge({ key: registrationKey, label });
-  }, [registrationKey]);
+  const canonicalFooterKey = JSON.stringify([scopeKey, event?.id, personalizedRefreshKey]);
+  const [canonicalFooter, setCanonicalFooter] = useState<{ key: string; state: CanonicalRegistrationFooterState } | null>(null);
+  const onCanonicalRegistrationChange = useCallback((state: CanonicalRegistrationFooterState) => {
+    setCanonicalFooter({ key: canonicalFooterKey, state });
+  }, [canonicalFooterKey]);
+  const footerState = canonicalFooter?.key === canonicalFooterKey ? canonicalFooter.state : null;
   const registrationStatus = signedIn && canonical
-    ? registrationBadge?.key === registrationKey ? registrationBadge.label : locale.language === "ja" ? "参加登録を確認中" : locale.language === "en" ? "Checking registration" : "正在确认报名状态"
+    ? footerState?.registration.statusLabel ?? (locale.language === "ja" ? "参加登録を確認中" : locale.language === "en" ? "Checking registration" : "正在确认报名状态")
     : undefined;
   const sharing = useRef(false);
   const [sharePending, setSharePending] = useState(false);
@@ -168,18 +171,44 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
           <Pressable accessibilityRole="button" onPress={refreshAll} style={styles.inlineButton}><Text style={styles.inlineButtonText}>重新读取活动</Text></Pressable>
         </View> : null}
         {shareError ? <Text accessibilityRole="alert" style={styles.errorText}>{shareError}</Text> : null}
-        {data && event ? <EventDetailCard baseUrl={baseUrl} data={data} onNavigate={navigate}
+        {data && event ? <EventDetailCard
+          baseUrl={baseUrl}
+          data={data}
+          onNavigate={navigate}
           registrationStatus={registrationStatus}
-          personalizedModules={signedIn && !canonical ? <AuthenticatedEventDetailModules eventId={event.id} key={event.id}
-            refreshKey={personalizedRefreshKey} scopeKey={scopeKey ?? "event-detail"} isScopeCurrent={isCurrent} /> : null} /> : null}
+          rosterScopeKey={JSON.stringify([scopeKey, personalizedRefreshKey])}
+          isScopeCurrent={isCurrent}
+          personalizedModules={signedIn
+            ? canonical
+              ? <CanonicalEventDetailModules
+                  key={canonicalFooterKey}
+                  eventId={event.id}
+                  endsAt={data.event.endsAt}
+                  scopeKey={canonicalFooterKey}
+                  onRegistrationMutationConfirmed={refreshAll}
+                  onRegistrationChange={onCanonicalRegistrationChange}
+                />
+              : <AuthenticatedEventDetailModules
+                  eventId={event.id}
+                  key={event.id}
+                  refreshKey={personalizedRefreshKey}
+                  scopeKey={scopeKey ?? "event-detail"}
+                  isScopeCurrent={isCurrent}
+                />
+            : null}
+        /> : null}
       </ScrollView>
-      {event ? signedIn ? (
+      {event ? signedIn ? canonical ? (
+        <EventRegistrationModule event={event}
+          registration={footerState?.registration ?? unavailableCanonicalRegistration}
+          verifying={footerState?.verifying ?? true} requireAllowedAction
+          onRegister={() => navigate(`/events/${encodeURIComponent(event.id)}/register` as Href)} />
+      ) : (
         <AuthenticatedEventRegistrationModule
           event={event}
           onRegister={() => navigate(`/events/${encodeURIComponent(event.id)}/register` as Href)}
           refreshKey={personalizedRefreshKey}
           scopeKey={scopeKey ?? "event-detail"}
-          onStatus={onRegistrationStatus}
         />
       ) : (
         <EventRegistrationModule event={event} onRegister={() => {
@@ -299,12 +328,16 @@ function EventDetailCard({
   data,
   onNavigate,
   registrationStatus,
+  rosterScopeKey,
+  isScopeCurrent,
   personalizedModules
 }: {
   baseUrl: string;
   data: PublicEventDetail;
   onNavigate: (href: Href) => void;
   registrationStatus?: string | undefined;
+  rosterScopeKey: string;
+  isScopeCurrent: () => boolean;
   personalizedModules: ReactNode;
 }) {
   const { colors, styles } = useStyles();
@@ -366,11 +399,8 @@ function EventDetailCard({
       <EventAboutModule sections={data.event.about?.length ? event.aboutSections : []} />
       <EventAgendaModule agenda={data.event.agenda?.length ? event.agenda : event.agenda.map(item => ({ ...item, time: timing.start }))} />
       <View style={styles.attendeesSection}>
-        <Pressable accessibilityRole="button" accessibilityLabel="查看参会者" onPress={() => onNavigate(attendeesHref)}
-          style={({ pressed }) => [styles.attendeesLink, pressed && styles.actionButtonPressed]}>
-          <Text style={styles.attendeesTitle}>参会者</Text>
-          <View style={styles.attendeesCount}><Text style={styles.attendeesCountText}>{attendeeCount === undefined ? event.attendeeCountLabel : `${attendeeCount} 人`}</Text><Ionicons name="chevron-forward" size={14} color={colors.text3} /></View>
-        </Pressable>
+        {data.event.sourceMetadata?.label !== "event-core-postgres" ? <EventAttendeeRosterLink eventId={event.id} countLabel={attendeeCount === undefined ? event.attendeeCountLabel : `${attendeeCount} 人`}
+          onNavigate={onNavigate} scopeKey={rosterScopeKey} isScopeCurrent={isScopeCurrent} /> : null}
         {event.attendeePreview.length > 0 ? <View style={styles.attendeePreviewRow}>{event.attendeePreview.map(attendee => <EventAttendeePreviewPill attendee={attendee} key={attendee.id} />)}</View> : null}
       </View>
       <View style={styles.additionalDetails}>
@@ -494,12 +524,14 @@ function EventRegistrationModule({
   event,
   onRegister,
   registration,
-  verifying = false
+  verifying = false,
+  requireAllowedAction = false
 }: {
   event: EventDetailSummary;
   onRegister: () => void;
   registration?: EventRegistrationView | null;
   verifying?: boolean;
+  requireAllowedAction?: boolean;
 }) {
   const { styles } = useStyles();
   const publicClosed = event.status === "已结束" || event.status === "已取消";
@@ -507,7 +539,9 @@ function EventRegistrationModule({
   const canOpenRegistration = Boolean(
     !verifying &&
     !publicClosed &&
-    (registration === undefined ||
+    (requireAllowedAction ? registration?.allowedActions?.some(action =>
+      action === "apply" || action === "register" || action === "reactivate" || action === "update" || action === "cancel" || action === "withdraw"
+    ) : (registration === undefined ||
       registration === null ||
       registration.allowedActions === undefined ||
       registration.allowedActions.some((action) =>
@@ -515,14 +549,14 @@ function EventRegistrationModule({
       ) ||
       state === "pending_review" ||
       state === "registered" ||
-      state === "waitlisted")
+      state === "waitlisted"))
   );
   const actionLabel = verifying
     ? "正在确认报名资格"
     : state === "pending_review" || state === "waitlisted"
       ? "查看申请"
       : state === "registered"
-        ? "查看报名"
+        ? registration?.canCancel && registration.canSubmit === false ? registration.cancelLabel ?? "取消报名" : "查看报名"
         : state === "open"
           ? event.registrationActionLabel
           : registration?.confirmLabel ?? event.registrationActionLabel;
@@ -556,16 +590,13 @@ function AuthenticatedEventRegistrationModule({
   event,
   onRegister,
   refreshKey,
-  scopeKey,
-  onStatus
+  scopeKey
 }: {
   event: EventDetailSummary;
   onRegister: () => void;
   refreshKey: number;
   scopeKey: string;
-  onStatus: (label: string) => void;
 }) {
-  const locale = useOrbitLocale();
   const state = useApiResource<unknown>(
     `${eventRegistrationPath(event.id)}?questions=false`,
     () => false,
@@ -589,11 +620,6 @@ function AuthenticatedEventRegistrationModule({
           }
         })
       : null;
-  const rawRegistration = (state.kind === "success" || state.kind === "empty") && state.data && typeof state.data === "object"
-    ? (state.data as { registration?: { status?: string } }).registration : null;
-  const label = state.kind === "loading" ? (locale.language === "ja" ? "参加登録を確認中" : locale.language === "en" ? "Checking registration" : "正在确认报名状态")
-    : rawRegistration?.status === "rsvped" ? locale.t("registration.statusRegistered") : registration?.statusLabel ?? locale.t("registration.statusUnregistered");
-  useEffect(() => { onStatus(label); }, [onStatus, label]);
   return (
     <EventRegistrationModule
       event={event}

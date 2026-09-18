@@ -2,8 +2,8 @@
 // 对应 GET/POST /api/ai/conversations 与 /api/ai/conversations/:id 的 data 字段里
 // 客户端会渲染的那几块：会话列表、消息、建议动作。
 //
-// artifacts、routingDecision、diagnostics 暂不跨端——它们仍在
-// features/orbit-ai/conversation-contract.ts 里，形状还在动。
+// 人脉结果的只读展示投影见 ai-artifacts.ts；原始 runtime、routingDecision、
+// diagnostics 仍留在 features/orbit-ai/conversation-contract.ts，不跨端复制。
 
 export type OrbitAiMessageRoleCode = "user" | "assistant" | "system";
 

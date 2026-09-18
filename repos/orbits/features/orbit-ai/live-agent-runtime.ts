@@ -38,10 +38,13 @@ import {
 import { createOrbitAgentLiveArtifactTaskService } from "./live-artifact-task-service";
 import { classifyOutOfServiceScope } from "./service-scope-service";
 import type { OrbitAgentArtifactTaskService } from "./service";
+import { contactArtifactResponseSummary } from "./artifact-response-summary";
 import { executeOrbitAgentTool } from "./agent-tools/registry";
 import { selfProfileContextForSynthesis } from "./self-profile-artifact-service";
 import { actorQueryReply } from "./data-query/query-reply";
 import { taskWriteAuthorization } from "./task-write-authorization";
+import { CONTACTS_ANALYSIS_GENERATION_METHOD, CONTACTS_ANALYSIS_GENERATION_LABEL_PREFIX, contactsAnalysisReplyMatchesSource, contactsAnalysisSynthesisInput } from "./contacts-analysis-execution";
+import { verifyContactsAnalysisSourceVersion } from "../mobile/contacts-analysis-report-provider";
 
 export const liveCollectedAt = "2026-06-27T00:00:00.000Z";
 export const liveConversationId = "live-orbit-agent-conversation";
@@ -80,7 +83,7 @@ export type LiveOrbitAgentRuntimeResult =
       failureResult: OrbitAgentConversationFailure;
       locale: OrbitAgentLocale;
       message: string;
-      plannerResult: Extract<GeminiOrbitAgentPlannerResult, { success: false }>;
+      plannerResult?: Extract<GeminiOrbitAgentPlannerResult, { success: false }>;
       state: "planner_failure";
       timings: readonly OrbitAgentConversationTimingSpan[];
     }
@@ -431,6 +434,7 @@ function isAmbiguousRecipientDraftRequest(message: string): boolean {
 }
 
 function isRelationshipStateMutationRequest(message: string): boolean {
+  const action = message.replace(/(?:已|已经|已經)保存(?=的?(?:人脉|联系人|关系|资料|資料))/g, "");
   const mutationVerb =
     /(?:更新|修改|改成|改为|保存|記住|记住|添加|新增|新建|创建|建立|加入|加到|导入|匯入|提醒|通知|刪除|删除|移除|忘记|\b(?:update|change|save|remember|add|create|import|remind|notify|delete|remove|forget)\b)/i;
   const recordMutationVerb =
@@ -439,8 +443,8 @@ function isRelationshipStateMutationRequest(message: string): boolean {
     /(?:联系人|关系|资料|資料|公司|职位|职务|标签|备注|画像|联系|联络|聯絡|跟进|跟進|contact|relationship|profile|company|title|tag|note|call|message|email|follow[ -]?up)/i;
 
   return (
-    (mutationVerb.test(message) || recordMutationVerb.test(message)) &&
-    relationshipObject.test(message)
+    (mutationVerb.test(action) || recordMutationVerb.test(action)) &&
+    relationshipObject.test(action)
   );
 }
 
@@ -1504,7 +1508,9 @@ export async function runLiveOrbitAgentRuntime(
   const timings: OrbitAgentConversationTimingSpan[] = [];
   const locale = normalizeLocale(input.locale);
   const localBoundaryStartedAt = nowMs();
-  const boundaryPayload = createLiveOrbitAgentLocalBoundaryPayload(message);
+  const boundaryPayload = createLiveOrbitAgentLocalBoundaryPayload(message) ??
+    (input.contactsAnalysis && isSupportedNaturalLanguageWriteRequest(requestedActionText(message))
+      ? stateChangeBoundaryPayload(message) : null);
   timings.push(timingSpan("local_boundary", localBoundaryStartedAt));
 
   if (boundaryPayload) {
@@ -1522,6 +1528,34 @@ export async function runLiveOrbitAgentRuntime(
   const historyTurns = (input.history ?? [])
     .filter((turn) => readText(turn.content))
     .slice(-8);
+  if (input.contactsAnalysis) {
+    const context = input.contactsAnalysis;
+    if (runtime.maxLoopSteps < 3 || !verifyContactsAnalysisSourceVersion({ claimed: context.sourceDataVersion, source: context.source }) ||
+      !(context.source.aggregate.relationshipAssetTotals.contacts > 0)) {
+      return { state: "planner_failure", locale, message, timings,
+        failureResult: failure("ORBIT_AGENT_PROVIDER_SCHEMA_INVALID", safetyLedger({ aiProviderRequested: false, externalNetworkRequested: false }), "Contacts analysis requires a current nonempty actor source and a synthesis loop budget of at least three.") };
+    }
+    const synthesisStartedAt = nowMs();
+    const synthesisResult = await runtime.planner.synthesize(contactsAnalysisSynthesisInput({ context, history: historyTurns, locale: input.locale, message }));
+    timings.push(timingSpan("synthesis", synthesisStartedAt));
+    if (synthesisResult.success === false) {
+      return { state: "planner_failure", locale, message, timings, plannerResult: synthesisResult,
+        failureResult: failureForPlannerResult(synthesisResult) };
+    }
+    const finalAssistantMessage = synthesisResult.data.assistantMessage;
+    if (!contactsAnalysisReplyMatchesSource(finalAssistantMessage, context)) {
+      return { state: "planner_failure", locale, message, timings,
+        failureResult: failure("ORBIT_AGENT_PROVIDER_SCHEMA_INVALID", safetyLedger({ aiProviderRequested: true, externalNetworkRequested: true }), "The provider did not return a complete source-grounded contacts analysis report.", synthesisResult.data.source) };
+    }
+    const plan: GeminiOrbitAgentPlannerOutput = { intent: "general_chat", actionRequests: [], toolRequests: [], assistantMessage: finalAssistantMessage };
+    const conversation = conversationForRuntimeSuccess({ aiProviderRequested: true, artifacts: [], finalAssistantMessage, locale, maxLoopSteps: runtime.maxLoopSteps, message, plan, shouldSynthesizeAfterTools: true, timings, toolRequests: [] });
+    conversation.provenance = { ...conversation.provenance, generationMethod: CONTACTS_ANALYSIS_GENERATION_METHOD,
+      sourceLabel: `${CONTACTS_ANALYSIS_GENERATION_LABEL_PREFIX}${synthesisResult.data.provider}:${synthesisResult.data.model}`, source: synthesisResult.data.source,
+      safety: { ...conversation.provenance.safety, liveDatabaseReadExecuted: Boolean(context.liveDatabaseReadExecuted) } };
+    conversation.diagnostics = { ...conversation.diagnostics, provider: synthesisResult.data.provider, model: synthesisResult.data.model };
+    return { state: "completed", artifacts: [], conversation, finalAssistantMessage, locale, message, plan,
+      plannerSkippedByGuardrail: false, shouldExecuteDomainTools: false, shouldSynthesizeAfterTools: true, synthesisResult, timings, toolRequests: [] };
+  }
   const outOfScopeToolRequests = toolRequestsForOutOfScopeMessage(message);
   let plannerResult:
     | Extract<GeminiOrbitAgentPlannerResult, { success: true }>
@@ -1686,9 +1720,11 @@ export async function runLiveOrbitAgentRuntime(
   );
 
   const finalAssistantMessage =
-    synthesisResult?.success === true
+    synthesisResult?.success === true && synthesisResult.data.assistantMessage.trim()
       ? synthesisResult.data.assistantMessage
-      : actorQueryReply(artifacts, locale) ?? assistantMessageForSynthesis;
+      : actorQueryReply(artifacts, locale)
+        ?? contactArtifactResponseSummary(artifacts, locale, plan.intent === "contact_recommendations" && !outOfScopeToolRequests)
+        ?? assistantMessageForSynthesis;
   const finalResponseStartedAt = nowMs();
   timings.push(timingSpan("final_response", finalResponseStartedAt));
   const conversation = conversationForRuntimeSuccess({

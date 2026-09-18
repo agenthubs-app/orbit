@@ -8,6 +8,8 @@ const require = createRequire(import.meta.url);
 let browser: Browser;
 let script: string;
 const inboxPath = "/api/relationship-communication/conversations";
+const typedPath = "/api/inbox/notifications";
+const disabledTyped = {enabled:false,items:[],unreadCount:0,nextCursor:null,asOf:"2026-09-16T00:00:00.000Z"};
 const notificationsPath = "/api/notifications";
 const inbox = (count: number, actor = "actor:one") => {
   const remote = actor === "actor:two" ? "actor:one" : "actor:two";
@@ -92,11 +94,12 @@ async function reply(p: Page, index: number, data: unknown, status = 200, succes
 async function hydrate(p: Page, amount = 2, notices: unknown = notifications) {
   const current = await p.evaluate(() => { const s = (window as any).fixture; return { actor: s.actor, indices: [s.requests.findLastIndex((r: any) => r.path.includes("relationship-communication")), s.requests.findLastIndex((r: any) => r.path === "/api/notifications")] }; });
   await reply(p, current.indices[0], inbox(amount, current.actor)); await reply(p, current.indices[1], notices);
+  const typed = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r:any)=>r.path === "/api/inbox/notifications"));await reply(p,typed,disabledTyped);
 }
 
-test("badge reads the two durable sources and excludes persisted read and ignored reminders", async t => {
+test("badge reads authoritative and legacy sources and excludes persisted read and ignored reminders", async t => {
   const p = await open(t); assert.equal(await count(p), "unknown");
-  assert.deepEqual((await reads(p)).map(({ path, method }) => ({ path, method })), [{ path: inboxPath, method: "GET" }, { path: notificationsPath, method: "GET" }]);
+  assert.deepEqual((await reads(p)).map(({ path, method }) => ({ path, method })), [{ path: inboxPath, method: "GET" }, { path: notificationsPath, method: "GET" }, {path:typedPath,method:"GET"}]);
   await hydrate(p); assert.equal(await count(p), "3");
 });
 
@@ -105,7 +108,7 @@ test("foreground polling refreshes within fifteen seconds without clearing the v
   await hydrate(p, 2); assert.equal(await count(p), "3");
   await p.getByLabel("草稿").fill("正在写的内容");
   await p.clock.fastForward(15_001); await settle(p);
-  assert.equal((await reads(p)).length, 4);
+  assert.equal((await reads(p)).length, 6);
   assert.equal(await count(p), "3");
   await hydrate(p, 5);
   assert.equal(await count(p), "6");
@@ -116,7 +119,7 @@ test("a confirmed message or reminder state invalidates the badge immediately", 
   const p = await open(t);
   await hydrate(p, 2); assert.equal(await count(p), "3");
   await p.evaluate(() => (window as any).invalidateMessageState()); await settle(p);
-  assert.equal((await reads(p)).length, 4);
+  assert.equal((await reads(p)).length, 6);
   assert.equal(await count(p), "3");
   await hydrate(p, 0, { state: "empty", reminders: [], notificationInteractions: {} });
   assert.equal(await count(p), "unknown");
@@ -137,7 +140,7 @@ test("cached counts are never presented as the current unread state", async t =>
 for (const patch of [{ actor: "actor:two" }, { cookieHeader: "session=changed" }, { baseUrl: "https://other.example" }, { scopeKey: "refreshed" }]) {
   test("identity and explicit refresh revoke old badge responses even with an empty cookie " + JSON.stringify(patch), async t => {
     const p = await open(t); await update(p, patch);
-    const requests = await reads(p); assert.equal(requests.length, 4); assert.ok(requests.slice(0, 2).every(r => r.aborted));
+    const requests = await reads(p); assert.equal(requests.length, 6); assert.ok(requests.slice(0, 3).every(r => r.aborted));
     await hydrate(p, 5); assert.equal(await count(p), "6");
     await reply(p, 0, inbox(90)); await reply(p, 1, {}, 401);
     assert.equal(await count(p), "6"); assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0);
@@ -148,8 +151,8 @@ for (const [pause, resume] of [[{ focused: false }, { focused: true }], [{ appSt
   test("pause hides the old count and resume requires a new network read " + JSON.stringify(pause), async t => {
     const p = await open(t); await hydrate(p); assert.equal(await count(p), "3");
     await p.getByLabel("草稿").fill("未发送的问题");
-    await update(p, pause); assert.equal(await count(p), "unknown"); assert.equal((await reads(p)).length, 2);
-    await update(p, resume); assert.equal(await count(p), "unknown"); assert.equal((await reads(p)).length, 4);
+    await update(p, pause); assert.equal(await count(p), "unknown"); assert.equal((await reads(p)).length, 3);
+    await update(p, resume); assert.equal(await count(p), "unknown"); assert.equal((await reads(p)).length, 6);
     await hydrate(p, 7); assert.equal(await count(p), "8"); assert.equal(await p.getByLabel("草稿").inputValue(), "未发送的问题");
   });
 }
@@ -164,29 +167,29 @@ test("background abort happens synchronously before a stale 401 can expire the s
 test("batched inactive-active events still invalidate the read while repeated active events do not refetch", async t => {
   const p = await open(t); await hydrate(p);
   await p.evaluate(() => { const s = (window as any).fixture; s.update({ appState: "inactive" }); s.update({ appState: "active" }); }); await settle(p);
-  assert.equal(await count(p), "unknown"); assert.equal((await reads(p)).length, 4);
+  assert.equal(await count(p), "unknown"); assert.equal((await reads(p)).length, 6);
   await hydrate(p, 4); await update(p, { appState: "active" });
-  assert.equal((await reads(p)).length, 4); assert.equal(await count(p), "5");
+  assert.equal((await reads(p)).length, 6); assert.equal(await count(p), "5");
 });
 
 test("returning to foreground while unfocused does not read until the page is focused", async t => {
   const p = await open(t); await update(p, { focused: false }); await update(p, { appState: "background" }); await update(p, { appState: "active" });
-  assert.equal((await reads(p)).length, 2); assert.equal(await count(p), "unknown");
-  await update(p, { focused: true }); assert.equal((await reads(p)).length, 4); await hydrate(p); assert.equal(await count(p), "3");
+  assert.equal((await reads(p)).length, 3); assert.equal(await count(p), "unknown");
+  await update(p, { focused: true }); assert.equal((await reads(p)).length, 6); await hydrate(p); assert.equal(await count(p), "3");
 });
 
 test("failed resumed reads never restore the previous count", async t => {
   const p = await open(t); await hydrate(p);
   await update(p, { appState: "background" }); await update(p, { appState: "active" });
-  assert.equal((await reads(p)).length, 4);
-  await reply(p, 2, inbox(80), 503, true); await reply(p, 3, notifications, 503, true);
+  assert.equal((await reads(p)).length, 6);
+  await reply(p, 3, inbox(80), 503, true); await reply(p, 4, notifications, 503, true);await reply(p,5,disabledTyped,503,true);
   assert.equal(await count(p), "unknown");
 });
 
 test("a failed source does not add its previous count to a freshly read other source", async t => {
   const p = await open(t); await hydrate(p, 8);
   await update(p, { scopeKey: "refreshed" });
-  await reply(p, 2, {}, 403); await reply(p, 3, notifications);
+  await reply(p, 3, {}, 403); await reply(p, 4, notifications);await reply(p,5,disabledTyped);
   assert.equal(await count(p), "1");
 });
 
@@ -202,3 +205,11 @@ for (const [amount, expected] of [[0, "unknown"], [105, "99"]] as const) {
     const p = await open(t); await hydrate(p, amount, { reminders: [] }); assert.equal(await count(p), expected);
   });
 }
+test('enabled typed count replaces legacy reminders and remains independent of real messages',async t=>{
+ const p=await open(t);await hydrate(p,2);
+ const index=await p.evaluate(()=>(window as any).fixture.requests.findLastIndex((r:any)=>r.path==='/api/inbox/notifications'));
+ // Refresh creates a new authoritative read; an already-resolved fixture cannot change it.
+ await p.evaluate(()=>(window as any).invalidateMessageState());await settle(p);
+ await reply(p,index+1,inbox(2));await reply(p,index+2,notifications);
+ await reply(p,index+3,{...disabledTyped,enabled:true,unreadCount:4});assert.equal(await count(p),'6');
+});

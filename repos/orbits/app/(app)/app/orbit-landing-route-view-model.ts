@@ -16,7 +16,8 @@ export interface OrbitLandingEventView {
   address: string;
   agenda: OrbitEventAgendaItem[];
   brandColor: string;
-  cap: number;
+  /** Finite policy capacity; null means no limit and undefined means unknown. */
+  cap?: number | null;
   /** Canonical Event Core id used only for cross-source journey de-duplication. */
   canonicalEventId?: string;
   code: string;
@@ -32,7 +33,8 @@ export interface OrbitLandingEventView {
   mapY: number;
   name: string;
   organizer: string;
-  participantCount: number;
+  /** Canonical registration summary; null means the count is unavailable. */
+  participantCount: number | null;
   place: string;
   startsAt: string;
   stats: OrbitEventStatsView;
@@ -68,7 +70,7 @@ export interface OrbitEventAttendeeView {
 export interface OrbitEventStatsView {
   attendees: OrbitEventAttendeeView[];
   authed: boolean;
-  count: number;
+  count: number | null;
   youRsvped: boolean;
 }
 
@@ -90,7 +92,7 @@ type OrbitLandingCatalogueSnapshot = {
   events: readonly EventDTO[];
   evidenceSummaries: Readonly<Record<string, string>>;
   generatedAt: string;
-  participantCounts: Readonly<Record<string, number>>;
+  participantCounts: Readonly<Record<string, number | null>>;
   publicCodes?: Readonly<Record<string, string>>;
 };
 
@@ -157,8 +159,9 @@ function eventView(
   catalogue: OrbitLandingCatalogueSnapshot,
   event: EventDTO,
   index: number,
+  capacity?: number | null,
 ): OrbitLandingEventView {
-  const attendeeCount = catalogue.participantCounts[event.id] ?? 0;
+  const attendeeCount = catalogue.participantCounts[event.id] ?? null;
   const status = eventStatusFor(event, catalogue.generatedAt);
   const theme = eventThemeFor(event);
   const color = colorForEvent(event, index);
@@ -173,7 +176,7 @@ function eventView(
     address: event.location ?? "",
     agenda: agendaFor(event),
     brandColor: color,
-    cap: Math.max(20, attendeeCount + 20),
+    ...(capacity !== undefined ? { cap: capacity } : {}),
     code: catalogue.publicCodes?.[event.id] ?? eventCodeFor(event, index),
     descriptionZh: description,
     detailLogoUrl: logoUrl,
@@ -212,10 +215,11 @@ function eventView(
  * private, authenticated detail page.
  */
 export function getOrbitLandingEventView(input: {
+  capacity?: number | null;
   event: EventDTO;
   evidenceSummary: string;
   generatedAt: string;
-  participantCount: number;
+  participantCount: number | null;
   routeCode: string;
 }): OrbitLandingEventView {
   return eventView(
@@ -228,6 +232,7 @@ export function getOrbitLandingEventView(input: {
     },
     input.event,
     0,
+    input.capacity,
   );
 }
 

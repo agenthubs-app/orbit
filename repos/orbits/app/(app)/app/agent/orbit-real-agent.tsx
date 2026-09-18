@@ -1,8 +1,7 @@
 "use client";
 
 import { type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import dynamic from "next/dynamic";
 import { aiSessionOrganizationSchema, aiSessionOriginSchema, reliableAiSendInputSchema, reliableAiSendReceiptSchema } from "../../../../shared/api-schema/ai-sessions";
 import type {
   AiSessionOriginInputContract,
@@ -80,6 +79,10 @@ type AgentMessage =
       taskInteraction?: AgentTaskInteractionView;
       text: string;
     };
+
+const AgentMarkdown = dynamic(() => import("./agent-markdown"), {
+  loading: () => <div aria-hidden="true" className="orbit-agent-markdown" />,
+});
 
 export function agentRetryRequestForAssistant(
   messages: readonly AgentMessage[],
@@ -985,33 +988,6 @@ export async function copyAgentMessageText(text: string): Promise<boolean> {
   }
 }
 
-// assistant 回复按轻量 markdown 渲染（加粗、列表、行内代码、链接）。
-// 组件级内联样式，保持和气泡文本一致的字号与行高。
-function AgentMarkdown({ text }: { text: string }) {
-  return (
-    <div className="orbit-agent-markdown" style={{ marginBottom: -6 }}>
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          a: ({ children, href }) => (
-            <a href={href} rel="noreferrer" style={{ color: "var(--accent)" }} target="_blank">{children}</a>
-          ),
-          code: ({ children }) => (
-            <code className="mono" style={{ background: "var(--surface-2)", borderRadius: "var(--r-xs)", fontSize: 13, padding: "1px 5px" }}>{children}</code>
-          ),
-          li: ({ children }) => <li style={{ margin: "3px 0" }}>{children}</li>,
-          ol: ({ children }) => <ol style={{ margin: "6px 0", paddingLeft: 20 }}>{children}</ol>,
-          p: ({ children }) => <p style={{ margin: "0 0 6px" }}>{children}</p>,
-          strong: ({ children }) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
-          ul: ({ children }) => <ul style={{ margin: "6px 0", paddingLeft: 20 }}>{children}</ul>,
-        }}
-      >
-        {text}
-      </ReactMarkdown>
-    </div>
-  );
-}
-
 function AgentMessageCopyButton({ text }: { text: string }) {
   const { t } = useOrbitLanguage();
   const [copied, setCopied] = useState(false);
@@ -1616,7 +1592,7 @@ function AgentChatComposer({
       />
       <button
         aria-label={t({ en: "Send Ask Orbit message", zh: "发送给 Orbit" })}
-        className="agent-chat-composer-submit hit-44"
+        className="btn agent-chat-composer-submit hit-44"
         data-orbit-agent-submit="true"
         disabled={busy || !value.trim()}
         type="submit"

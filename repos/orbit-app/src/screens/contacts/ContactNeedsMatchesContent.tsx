@@ -27,6 +27,22 @@ const criterionMessageKeys = {
   "capability:investment": "contacts.needCriterion.investment",
   "capability:sales": "contacts.needCriterion.sales",
   "capability:partnership": "contacts.needCriterion.partnership",
+  "scenario:restaurant": "contacts.needCriterion.restaurant",
+  "scenario:ordering": "contacts.needCriterion.ordering",
+  "capability:delivery": "contacts.needCriterion.delivery",
+  "collaboration:implementation": "contacts.needCriterion.implementation",
+} as const;
+
+const dimensionMessageKeys = {
+  scenario: "contacts.needDimension.scenario",
+  capability: "contacts.needDimension.capability",
+  collaboration: "contacts.needDimension.collaboration",
+  location: "contacts.needDimension.location",
+} as const;
+
+const evidenceFieldMessageKeys = {
+  role: "contacts.needSourceRole", profile: "contacts.needSourceProfile", relationship: "contacts.needSourceRelationship",
+  industry: "contacts.needSourceIndustry", location: "contacts.needSourceLocation", tags: "contacts.needSourceTags",
 } as const;
 
 const missingFieldMessageKeys = {
@@ -65,6 +81,15 @@ export function ContactNeedsMatchesContent({ error, onEdit, onOpenContact, onRet
   }
 
   function matchReason(item: ContactNeedMatchView): string {
+    if (view.scoringVersion === "needs-evidence-v2" && item.summary) {
+      const labels = item.summary.criterionIds.map(id => item.matchedCriteria.find(criterion => criterion.id === id))
+        .filter((criterion): criterion is { id: string; label: string } => Boolean(criterion))
+        .map(criterionLabel).join(locale.t("contacts.needCriterionSeparator"));
+      return locale.t({
+        evidence: "contacts.needSummaryEvidence", weak_ai: "contacts.needSummaryWeakAI",
+        missing_data: "contacts.needSummaryMissing", no_match: "contacts.needSummaryNoMatch",
+      }[item.summary.code] as "contacts.needSummaryEvidence", { labels });
+    }
     if (item.status === "insufficient_data") {
       const fields = item.missingFields
         .map((field) => missingFieldMessageKeys[field as keyof typeof missingFieldMessageKeys])
@@ -113,8 +138,14 @@ export function ContactNeedsMatchesContent({ error, onEdit, onOpenContact, onRet
       </Pressable>
       {expanded === item.contactId ? (
         <View style={[styles.evidence, { backgroundColor: colors.surface2 }]}>
+          {view.scoringVersion === "needs-evidence-v2" ? item.components?.map(component => (
+            <Text key={component.dimension} style={[styles.evidenceText, { color: colors.text2 }]}>
+              {locale.t("contacts.needComponentLine", { dimension: locale.t(dimensionMessageKeys[component.dimension]), points: Number(component.points.toFixed(2)), weight: Number(component.weight.toFixed(2)) })}
+            </Text>
+          )) : null}
           {item.evidence.length ? item.evidence.map((evidence) => (
             <Text key={evidence.id} style={[styles.evidenceText, { color: colors.text2 }]}>
+              {evidence.field ? `${locale.t(evidenceFieldMessageKeys[evidence.field as keyof typeof evidenceFieldMessageKeys] ?? "contacts.needSourceRecord")} · ` : ""}
               {locale.t("contacts.needEvidenceLine", { label: criterionLabel(evidence), excerpt: evidence.excerpt })}
             </Text>
           )) : <Text style={[styles.evidenceText, { color: colors.text2 }]}>{matchReason(item)}</Text>}
@@ -151,7 +182,8 @@ export function ContactNeedsMatchesContent({ error, onEdit, onOpenContact, onRet
         <><Text accessibilityRole="header" style={[styles.sectionLabel, { backgroundColor: colors.surface2, color: colors.text3 }]}>{locale.t("contacts.needInsufficient")}</Text><View>{view.insufficient.map(row)}</View></>
       ) : null}
       {error ? <Pressable accessibilityLabel={locale.t("common.retry")} accessibilityRole="button" onPress={onRetry} style={styles.editAction}><Text style={[styles.edit, { color: colors.accent }]}>{locale.t("common.retry")}</Text></Pressable> : null}
-      <Text style={[styles.footnote, { color: colors.text3 }]}>{locale.t("contacts.needScoreFootnote")}</Text>
+      <Text style={[styles.footnote, { color: colors.text3 }]}>{locale.t(view.scoringVersion === "needs-evidence-v2" ? "contacts.needEvidenceScoreFootnote" : "contacts.needScoreFootnote")}</Text>
+      {view.scoringVersion === "needs-lexical-v1" ? <Text style={[styles.footnote, { color: colors.text3 }]}>{locale.t("contacts.needLegacyScore")}</Text> : null}
     </>
   );
 }

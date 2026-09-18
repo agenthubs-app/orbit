@@ -10,8 +10,9 @@ const require = createRequire(import.meta.url);
 
 test("canonical event uses operations entry and authoritative registration header without legacy personalized GETs", async t => {
   const p = await open(t, { signedIn: true, eventPatch: { sourceMetadata: { label: "event-core-postgres" } }, registration: {
-    eligibility: { state: "registered", allowedActions: ["update", "cancel"], evaluatedAt: "2026-09-12T00:00:00Z", registrationVersion: "1", applicationVersion: null, policyVersion: null, reason: "registered" },
-    registration: { eventId: "event:1", userId: "actor-1", status: "rsvped" }, questionSet: { questions: [] },
+    eligibility: { state: "registered", allowedActions: ["update", "cancel"], evaluatedAt: "2026-09-12T00:00:00Z", registrationVersion: "2026-09-12T00:00:00Z", applicationVersion: null, policyVersion: null, reason: "registered" },
+    registration: { id: "registration:1", eventId: "event:1", userId: "actor-1", status: "rsvped", participantProfileId: "profile:1", participantProfile: { id: "profile:1", eventId: "event:1", userId: "actor-1", answers: { desiredOutcome: "Find collaborators", targetAttendees: "Founders", valueOffered: "Engineering" } }, updatedAt: "2026-09-12T00:00:00Z" },
+    questionSet: { questions: [], provenance: { aiProviderRequested: false, externalNetworkRequested: false, fallbackReason: "QUESTIONS_NOT_REQUESTED", generationMethod: "deterministic-not-requested", model: null, provider: null } },
   } });
   await p.getByTestId("event-registration-status").filter({ hasText: "已报名" }).waitFor();
   const paths = await p.evaluate(() => (window as any).fixture.requests.map((r: any) => r.path));
@@ -48,11 +49,15 @@ window.fetch = async (input, init) => {
   const index = state.requests.length; const path = new URL(String(input)).pathname;
   state.requests.push({ path, url: String(input), method: init.method, body: init.body ? JSON.parse(init.body) : null, signal: init.signal });
   const pending = new Promise(resolve => state.pending[index] = resolve);
-  if (!(state.holdReads && init.method === "GET") && !(state.holdWrites && init.method !== "GET")) queueMicrotask(() => state.reply(index, init.method !== "GET" || state.failure ? 503 : 200));
+  if (!(state.holdReads && init.method === "GET") && !(state.holdWrites && init.method !== "GET")) queueMicrotask(() => {
+    const ownerRead = path === "/api/events/event%3A1";
+    state.reply(index, init.method !== "GET" || state.failure ? 503 : ownerRead ? state.ownerStatus ?? 200 : 200,
+      ownerRead && (state.ownerStatus === undefined || state.ownerStatus === 200) ? state.ownerDetail ?? { event: { ...state.event, ...state.eventPatch } } : undefined);
+  });
   return pending;
 };
 export const useFixture = () => { observe(); return state; };
-export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, user: state.signedIn ? { id: state.actor } : null, cookieHeader: state.cookieHeader }; };
+export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, actorId: state.signedIn ? state.actor : null, user: state.signedIn ? { id: "subject-" + state.actor } : null, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
 export const useOrbitLocale = () => { observe(); return { language: state.language, t: createTranslator(state.language) }; };
 export const useIsFocused = () => { observe(); return state.focused; };
@@ -119,6 +124,25 @@ async function replyWrite(p: Page, payload: unknown, status = 200) {
   await settle(p);
 }
 
+test("public detail does not advertise an owner-only attendee roster to a signed-out viewer", async t => {
+  const p = await open(t);
+  assert.equal(await p.getByRole("button", { name: "查看参会者", exact: true }).count(), 0);
+  assert.deepEqual(await writes(p), []);
+});
+
+for (const ownerStatus of [401, 403, 404, 503]) test("public detail with denied or unavailable owner access does not offer attendee navigation " + ownerStatus, async t => {
+  const p = await open(t, { signedIn: true, ownerStatus });
+  assert.equal(await p.getByRole("button", { name: "查看参会者", exact: true }).count(), 0);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("public detail only enables the exact canonical event roster after an owner lookup", async t => {
+  const p = await open(t, { signedIn: true });
+  await press(p, "查看参会者");
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/events/event%3A1/attendees"]);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path === "/api/events/event%3A1").length), 1);
+});
+
 test("native weekday segmentation does not corrupt the event date or share text", async t => {
   const p = await open(t, { mounted: false, eventPatch: { startsAt: "2026-08-29T02:30:00Z", endsAt: "2026-08-29T04:00:00Z" } });
   await p.evaluate(() => {
@@ -165,8 +189,7 @@ test("ended canonical detail says ended and never sends the footer into registra
   assert.equal(await p.getByText("已取消", { exact: true }).count(), 0);
   await p.evaluate(() => (window as any).fixture.presses["活动已结束"]?.()); await settle(p);
   assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), []);
-  await press(p, "查看参会者");
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/events/event%3A1/attendees"]);
+  assert.equal(await p.getByRole("button", { name: "查看参会者", exact: true }).count(), 0);
   assert.deepEqual(await writes(p), []);
 });
 
@@ -250,7 +273,7 @@ test("personal modules read canonical event IDs without writing and expose the g
   assert.equal(await p.getByText("会前准备度", { exact: true }).count(), 1);
   assert.equal(await p.getByText("推荐认识的人", { exact: true }).count(), 1);
   assert.equal(await p.getByText("会后复核", { exact: true }).count(), 1);
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.map((r: any) => r.path).sort()), ["/api/events/public/public-product", "/api/events/event%3A1/registration", ...Object.keys(personalPayloads)].sort());
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.map((r: any) => r.path).sort()), ["/api/events/public/public-product", "/api/events/event%3A1", "/api/events/event%3A1/registration", ...Object.keys(personalPayloads)].sort());
   assert.deepEqual(await writes(p), []);
   if (process.env.APP_STYLE_SCREENSHOTS) { await p.getByText("会前准备度", { exact: true }).scrollIntoViewIfNeeded(); await p.screenshot({ path: "/tmp/orbit-ink-signal-event-detail-private-390.png" }); }
 });
@@ -632,9 +655,9 @@ for (const action of ["确认目标", "换一句", "确认这些候选"]) for (c
 for (const patch of [{ actor: "actor-2" }, { cookieHeader: "fixture-2" }, { baseUrl: "https://second.example" }, { id: "event:2" }, { focused: false }, { signedIn: false }, { mounted: false }, { refresh: true }]) test("obsolete private reads cannot expire the new scope " + JSON.stringify(patch), async t => {
   const p = await open(t, { signedIn: true, holdReads: true });
   await p.evaluate(() => (window as any).fixture.reply(0)); await settle(p);
-  assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), 5);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), 6);
   if ("refresh" in patch) { await p.evaluate(() => (window as any).fixture.refresh()); await settle(p); } else await update(p, patch);
-  for (const index of [1, 2, 3, 4]) {
+  for (const index of [1, 2, 3, 4, 5]) {
     assert.equal(await p.evaluate(index => (window as any).fixture.requests[index].signal?.aborted, index), true);
     await p.evaluate(index => (window as any).fixture.reply(index, 401), index); await settle(p);
   }
@@ -677,9 +700,23 @@ test("detail uses actual Tokyo date, time range, organizer and agenda with four-
 });
 
 test("public-code reads navigate to canonical event IDs without registering", async t => {
-  const p = await open(t); await press(p, "报名参加"); await press(p, "查看参会者"); await press(p, "打开活动现场");
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/events/event%3A1/register", "/events/event%3A1/attendees", "/party?eventId=event%3A1"]);
+  const p = await open(t); await press(p, "报名参加"); await press(p, "打开活动现场");
+  assert.equal(await p.getByRole("button", { name: "查看参会者", exact: true }).count(), 0);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/events/event%3A1/register", "/party?eventId=event%3A1"]);
   assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.map((r: any) => r.path)), ["/api/events/public/public-product"]);
+  assert.deepEqual(await writes(p), []);
+});
+
+for (const patch of [{ actor: "actor-2" }, { baseUrl: "https://second.example" }, { id: "event:2" }, { signedIn: false }]) test("late owner qualification cannot enable the obsolete detail roster " + JSON.stringify(patch), async t => {
+  const p = await open(t, { signedIn: true, holdReads: true });
+  await p.evaluate(() => (window as any).fixture.reply(0)); await settle(p);
+  assert.equal(await p.getByRole("button", { name: "查看参会者", exact: true }).count(), 0);
+  const index = await p.evaluate(() => (window as any).fixture.requests.findIndex((r: any) => r.path === "/api/events/event%3A1"));
+  assert.ok(index > 0);
+  await update(p, patch);
+  assert.equal(await p.evaluate(index => (window as any).fixture.requests[index].signal.aborted, index), true);
+  await p.evaluate(index => { const s = (window as any).fixture; s.reply(index, 200, { event: s.event }); }, index); await settle(p);
+  assert.equal(await p.getByRole("button", { name: "查看参会者", exact: true }).count(), 0);
   assert.deepEqual(await writes(p), []);
 });
 

@@ -50,7 +50,7 @@ export function NoteDetailScreen({ actorId, noteId, scopeKey }: { actorId: strin
   const eventNames = new Map(events.map((event) => [event.id, event.title]));
   const { styles, colors } = useStyles();
   const dateLocale = locale.language === "en" ? "en-US" : locale.language === "ja" ? "ja-JP" : "zh-CN";
-  return <AppScreen title={locale.t("notes.title")} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")} refreshControl={<RefreshControl refreshing={state.refreshing} onRefresh={state.refresh} />}>
+  return <AppScreen title={locale.t("notes.title")} onBack={() => router.replace("/notes")} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")} refreshControl={<RefreshControl refreshing={state.refreshing} onRefresh={state.refresh} />}>
     {state.kind === "loading" ? <LoadingState /> : null}
     {state.kind === "failure" || state.kind === "offline" ? <ErrorState message={state.error.message} /> : null}
     {(state.kind === "success" || state.kind === "empty") && !note ? <ErrorState message={locale.t("notes.missing")} /> : null}

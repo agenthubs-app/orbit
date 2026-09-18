@@ -4,13 +4,24 @@ import { auth } from "../../../../../../auth";
 import { AccountTopNav } from "../../../orbit-account-shell";
 import { OrbitReferenceStyles } from "../../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../../orbit-visual-freeze-runtime";
+import { makeOrbitServerT, getOrbitServerLanguage } from "../../../orbit-language-server";
+import { normalizeOrbitLanguage, withOrbitLanguageHref } from "../../../orbit-language-core";
 import { BusinessCardIngestV2Start } from "./business-card-ingest-v2-start";
 
 export const dynamic = "force-dynamic";
 
 /** V2 批量导入起点：拍摄引导 + 选片；manifest 先建、文件在批次页逐张上传。 */
-export default async function BusinessCardIngestV2StartPage() {
+export default async function BusinessCardIngestV2StartPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ lang?: string | string[] }>;
+} = {}) {
   const session = await auth();
+  const params = await searchParams;
+  const language = typeof params?.lang === "string"
+    ? normalizeOrbitLanguage(params.lang)
+    : await getOrbitServerLanguage();
+  const t = makeOrbitServerT(language);
 
   if (!session?.user?.id) {
     redirect(`/app/account/login?next=${encodeURIComponent("/app/contacts/new/batch2")}`);
@@ -30,10 +41,10 @@ export default async function BusinessCardIngestV2StartPage() {
           >
             <div style={{ margin: "0 auto", maxWidth: 980 }}>
               <a
-                href="/app/contacts/new"
+                href={withOrbitLanguageHref("/app/contacts/new", language)}
                 style={{ color: "var(--text-3)", fontSize: 13, textDecoration: "none" }}
               >
-                ← 导入中心
+                ← {t({ en: "Import center", zh: "导入中心", ja: "インポートセンター" })}
               </a>
               <div style={{ marginTop: 14 }}>
                 <BusinessCardIngestV2Start />

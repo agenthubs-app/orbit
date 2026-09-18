@@ -4,6 +4,38 @@
 
 Web源`23646028`已由主独立集成为`66087fff`，本地PG84/84与全typecheck通过。历史raw/account报名兼容和App严格回执身份仍为发布门，未部署、未迁移、未改App；详见[版本、消费点与关闭条件](2026-09-17-web-registration-identity-candidate.md)。其他已批准本地开发继续。
 
+BR-027 数据增量（2026-09-17）：独立测试库主账号 organizer@orbit.example.test 已扩充30联系人／10活动（9发布1草稿），15条有日期关系任务；密码单独交付，不写台账。Web页面和新主办方后台已回读，原数据与辅助账号隔离保留；不改App连接、正式域名或启用模型/worker。[数据集与预算](../repos/orbits/docs/operations/main-test-dataset.md)。原生同测试API访问保护与完整业务验收仍按BR-027原边界开放。
+
+## BR-030 — 活动报名配置与Web取消确认
+
+13Phone活动配置与两入口真实取消/重报链verified；64固定8daf/65固定d0e已合Main并push独立远端7b1b3de289eba6e550a4702954df6056eddc664e。新Phone519/f082/freshentry875 raw1afd，公网实际health/servedbytes/正常登录及逐页动作通过；原资料保护、预算493f和旧63回退保持，临时服务正常停保数据。不是Native/真实AI/全I或全部活动功能通过，推荐schema和legacy差异仍TODO；[中文交接](2026-09-17-phoneweb-registration-repair.md)。
+
+## PW-0011 — 分析报告修复与当前生产基线（尚未完整验收）
+
+- 原 B 两次具体反例修复合入并推送主线 `7e9e902f2c67584f4685ce6617a0e2ccfe5e1fd3`；远端独立核对同 SHA。ROOT 完整后端20文件186/186零跳过、Web types0、既有 App 消费者95/95。暂存新符号 UNKNOWN，未重跑全量旧基线。
+- 两端生产编译 exit0 后已恢复：MAIN3000/PID72621/BUILD `CWqHojftfUNV5f3agekjJ`；Phone32100/PID72623/冻结后台81cad216/BUILD `RQg512Ds8xdL0Dst1ZjQI`。两端health200、guard ready，原 Flash/loop3/$5唯一账本保持，Metro8082及Phone32110展示入口不动。
+- 原消息保留、可信 source context/四节实质正文/完整实体锚点及成功来源保护的自动验证通过；新实际 provider、独立请求费用对账、公网回读尚 OPEN。只读 QA 可继续，真实分析 POST 仍待精确放行，不重放旧失败请求。D45/E46/全域离线与未批准数据库锁序缺项不会因本次推送关闭。
+
+## 0033 — 纯租期 issuer 与原生 SQLCipher 部分证据
+
+- 冻结 `8a822a152`→MAIN `74c60290f` 已普通 push，ROOT 两文件完整审查/7测试零跳过/Web types0。Web 重新 build/restart：`0tIJOrl7k4tVtFNzxZyyG` / PID56918 / live200，Metro8082 保持；可信端口测试不是生产权限或持久 epoch 证据。
+- 原生实际编译 codec 标志与 key/rekey 符号、覆盖安装 executable hash 一致、新同步 DB 非明文 header 已观察。Web 恢复后正常重启 PID57388 回到有数据首页；此前服务重建窗口出现登录页保留，不混为独立冷启动成功。实际 cipher_version/wrong-key/完整迁移/所有域离线仍待验收，未清库或密钥。
+- 真实 authorizer/epoch 与消费者尚缺，D45 原子适配/中文锁序仍待批准；E46 fixture 规格待目标及恢复审批，未 apply。Phone 误触一次报名问题生成已结算 $0.000856，账本累计 $0.039467 / 19 settled / 0 reserved，付费 QA 暂停，后续 `questions=false`。
+- 20:35 JST 补证/更正：已安装主包 PID61392 内临时 `:memory:` 的 cipher_version 实际 `4.7.0 community`，SQL资源正常关闭/调试器detach；不是用户同步库 decrypt/wrong-key 或全域验收。账本最新25 settled/$0.048375/0 reserved，后来六筆归属尚未确定，不计入父线已确证的856microUSD诊断。
+
+## 0046 — 旧通知来源安全投影（部分运行验证）
+
+- Web/App 源码：`8e3049cea`→主线 `e660f1d55`；当前已推送主线 `23500c561`，独立远端 SHA 一致。严格 workspace/actor/record/lifecycle 与 canonical 目标验证，无旧标题或 href 推断授权；foreign notification 不凭 payload 账号声明进入列表。
+- 主线受影响 5 App 文件 75/75、5 Web 文件 24/24、两端 types0。Web 重新 production build/restart 3000，BUILD_ID `ktYtulz-wmbDHzQ1-3aL_`；Simulator 主包重新 build/install/launch、Metro8082 与原小雨 MAIN scope 保持，依赖警告未隐藏。
+- 实际 40 条历史通知自指 target、没有明确业务目标，安全提示/无错误跳转已验证；合法正例、隔离 fixture apply/cleanup、完整交互矩阵与离线验收未完成。旧记录未修改，不能把这些安全占位当成投资人展示案例或 Sprint completed。
+- D45 删除纯域冻结 `4b78b2cb1` 不合主线：真实原子端口与数据库协议未接通，避免破坏已有写入。锁序中文修订待用户批准；A33 继续独立原生加密配置准备调查，不能用在线首页成功替代离线 SC。
+
+## PW-0010 — 共享聊天实际候选增量（本轮已验证）
+
+- Phone唯一功能58→MAIN224；公开双引擎与主线原生同旧会话8实际候选/原消息/详情返回/真实历史重开/刷新通过，source/messages/budget完整摘要不变。
+- 原run结束文档固定`da3dd71dc403eabf6dfccc8ba0374ccfca08583b`，MAIN只原样消费[REPORT](../docs/phoneweb/sprints/0010-contact-artifact/REPORT.md)；不合并Phone整条祖先或其独立README/bridge旧基线。
+- ROOT已实际恢复精确原127.0.0.1:3000与小雨MAIN Appscope，设备独占归ROOT。该范围verified；整体Phone其他能力、后端全量失败/跳过、原生loaded-JS精确哈希/独立HTTP归因及离线读取仍分别记录。
+
 2026-09-10 保存与集成更新见 [集成交接](2026-09-10-chat-agent-integration.md)。BR-004/005/008 的源码与验证进度已有变化，但未完成的跨端运行时和原生验收仍未关闭；以下初始盘点保留追溯。
 
 初始盘点：2026-09-07。下方责任方是建议接手角色，不表示已联系开发者、已领取或已批准实现。当前任务只建立基线与管理目录；业务修复尚未启动。
@@ -213,3 +245,27 @@ Web源`23646028`已由主独立集成为`66087fff`，本地PG84/84与全typechec
 - app_status：E 线原功能 `218fb3d4b`、主线集成 `8c9bf60cc` 已实现15秒前台刷新、已读回执、角标失效和合法通知跳转。
 - verification_status：blocked。App全量2589/2589、E定向411/411、主线组合260/260、两端typecheck及PostgreSQL 通过，但没有 Expo project ID、`ORBIT_PUSH_TOKEN_KEY`、可登录双用户原生账号和实体推送环境。
 - 恢复条件：提供上述环境后验证持续前台到达、真实已读角标同步、无权限目标及实体推送；完成前不把0012标为completed。详情见 `repos/orbit-app/docs/sprints/0012-message-state/REPORT.md`。
+
+## BR-025 — 联系人消息独立收件箱
+
+verified（本地共同环境）；Web/App功能及主线a591494b0，实际双账号收发/原生回复/重试与已读已验收；[交接](2026-09-16-contact-message-inbox.md)。后续0038消费；Push仍由0040验证。
+
+## BR-026 — 三类通知
+
+verified（本地共同环境）；Web/App功能和主线e045651b3，同一记录读/处理与源任务分离。模型发现/实际Push交接0039/0040；[交接及限制](2026-09-16-typed-notification-inbox.md)。
+
+## BR-027 — 自主发现
+
+source_ready / consumer_ready / verification blocked；功能4aa21961a、合并131723ddb。真实笔记/偏好/队列已验，真实模型/费用仍缺；[交接](2026-09-16-evidence-notification-discovery.md)。
+
+## BR-028 — 通知投递与旧流切换
+
+source_ready / consumer_ready / verification blocked；功能eacd7a227、合并0b552649d。共同设置/消息入站/迁移对账与主线检查完成；真实Push、AI预算/provider及本轮原生出站确认尚缺；[交接](2026-09-16-notification-delivery-cutover.md)。0037～0040本轮执行结束，未验收项保留开放。
+
+## BR-029 — 个人日程设置与详情
+
+本地规则／关联／实例范围／CAS链verified；0053／0059／0060消费者已安装，0061与0062精确集成chat-agent47f12034且远端同SHA。新生产Web PID15582健康200，同小雨QA跨端保存回读、真实PG200+409／receipt重试，以及Web自建QA单次删除／清除规则通过。共享I59失败／206跳过／denied4、到期通知／远程Push等未验保留，不将部分链验证等同整项目完成；[最新中文交接](2026-09-17-personal-schedule-v3-runtime.md)。
+
+0063最新Main26f74a55远端已独立一致，新Web36058与原生37204/主8082实跑，精确分钟Web37→原生15→Web15同账号正式保存/GET闭环通过。119/119、71/71及types0；唯一I保留Web59/206/PW4与App旧视觉1fail。Phone consumer6d1c771仅15白名单路径保私有政策，privatebuild/export与preview健康；真实两browser/公网/正式REPORT待终验，由Phone父任务与ROOT集成负责，不另开产品run。详见交接追加，历史47版本结论保留而非当前运行时。
+
+Phone终验现已实际通过：private两browser真实保存/独立GET/重开及仅自建QA清理；公共两browser只读控件操作与entry05b/health核对，PUBLIC43205/6/7零重启，原ngrok保持。原helperngrok依赖失败与两次真实0060回退不抹；finalrepair2 exact18静态GET闭包/原业务与budgetguard不变，公共业务0/私有2创建2删除分列。preview37928/37/38已正常停，旧回退完整；ROOT接收receipt83204c49/2c47d04a并目检，正式63中文报告/文档提交正在收口。

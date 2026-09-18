@@ -15,6 +15,8 @@ import { OrbitEventMatchmaking, type EventMatchmakingSummary } from "./orbit-eve
 import { OrbitPostEventCenter } from "./orbit-post-event-center";
 
 import { eventRegistrationIsOpen, eventRegistrationLabel, type EventRegistrationAvailability } from "../../orbit-event-registration-view-model";
+import { registrationBlockingReasonCopy } from "../../../../../features/events/registration/blocking-reason-copy";
+import type { EventRegistrationBlockingReason } from "../../../../../features/events/registration/contract";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 type RegistrationStatus = "cancelled" | "rsvped" | null;
@@ -467,7 +469,17 @@ function EventInfoCard({
 }) {
   const [open, setOpen] = useState(stage === "pre");
   useEffect(() => setOpen(stage === "pre"), [stage]);
-  const remainingSeats = Math.max(0, event.cap - event.stats.count);
+  const remainingSeats =
+    typeof event.cap === "number" &&
+    Number.isFinite(event.cap) &&
+    typeof event.stats.count === "number" &&
+    Number.isFinite(event.stats.count)
+      ? Math.max(0, event.cap - event.stats.count)
+      : null;
+  const registeredCount =
+    typeof event.stats.count === "number" && Number.isFinite(event.stats.count)
+      ? `${t({ en: "Registered", zh: "已报名" })} ${event.stats.count}${typeof event.cap === "number" && Number.isFinite(event.cap) ? ` / ${event.cap}` : ""} ${t({ en: "people", zh: "人" })}`
+      : t({ en: "Registration count unavailable", zh: "报名人数暂不可用" });
   const full = stage === "pre" || open;
   // One badge slot for all three stages. Before this the seat count lived above
   // the display title and the registered/ended pill lived on the collapsed
@@ -478,7 +490,9 @@ function EventInfoCard({
       ? { label: t({ en: "Registered", zh: "已报名" }), tone: "badge-success" }
       : event.status === "upcoming"
         ? eventRegistrationIsOpen(registrationAvailability)
-          ? { label: t({ en: `Registration open · ${remainingSeats} seats left`, zh: `报名中 · 剩 ${remainingSeats} 席` }), tone: "badge-success" }
+          ? { label: remainingSeats === null
+            ? t({ en: "Registration open", zh: "报名中" })
+            : t({ en: `Registration open · ${remainingSeats} seats left`, zh: `报名中 · 剩 ${remainingSeats} 席` }), tone: "badge-success" }
           : { label: t(eventRegistrationLabel(registrationAvailability)), tone: "badge-muted" }
         : { label: t({ en: "Registration closed", zh: "报名已结束" }), tone: "badge-muted" };
 
@@ -513,14 +527,15 @@ function EventInfoCard({
             {event.organizer ? <p className="a-sub">Orbit × {event.organizer} {t({ en: "co-hosted", zh: "联合主办" })}</p> : null}
             <div className="a-tags">
               {event.tags.map((tag) => <span className="a-tag" key={tag}>{eventTagLabel(tag, t)}</span>)}
-              {event.cap ? <span className="a-tag">{t({ en: `Capacity ${event.cap}`, zh: `限 ${event.cap} 人` })}</span> : null}
+              {event.cap === null ? <span className="a-tag">{t({ en: "No capacity limit", zh: "不设人数上限" })}</span> : null}
+              {typeof event.cap === "number" && Number.isFinite(event.cap) ? <span className="a-tag">{t({ en: `Capacity ${event.cap}`, zh: `限 ${event.cap} 人` })}</span> : null}
             </div>
           </div>
 
           <div className="orbit-info-grid">
             <InfoTile icon="clock" sub={event.agenda[0] ? `${event.agenda[0].time} ${event.agenda[0].label}` : null} title={`${mini.timeDate} ${mini.timeTime}`} />
             <InfoTile icon="pin" sub={event.address || t({ en: "Address to be announced", zh: "详细地址待主办方公布" })} title={mini.venue} />
-            <InfoTile icon="users" sub={event.industry || event.theme} title={`${t({ en: "Registered", zh: "已报名" })} ${event.stats.count}${event.cap ? ` / ${event.cap}` : ""} ${t({ en: "people", zh: "人" })}`} />
+            <InfoTile icon="users" sub={event.industry || event.theme} title={registeredCount} />
             <InfoTile icon="sparkle" sub={event.theme || t({ en: "Matched and seated by Orbit", zh: "由 Orbit 匹配与分桌" })} title={event.feeLabel} />
           </div>
 
@@ -682,7 +697,7 @@ function EventDetailPanel({ askAgentHref, event, mini, t, workspaceAvailable, re
   );
 }
 
-export function OrbitRealEventDetail({ event, workspaceAvailable = false, registrationAvailability = "unavailable" }: { event: OrbitLandingEventView; workspaceAvailable?: boolean; registrationAvailability?: EventRegistrationAvailability }) {
+export function OrbitRealEventDetail({ event, workspaceAvailable = false, registrationAvailability = "unavailable", registrationBlockingReason }: { event: OrbitLandingEventView; workspaceAvailable?: boolean; registrationAvailability?: EventRegistrationAvailability; registrationBlockingReason?: EventRegistrationBlockingReason }) {
   const { t, language } = useOrbitLanguage();
   // The approved journey uses one stable product-green fallback. Real event
   // artwork still wins when supplied; source-less events no longer receive a
@@ -736,6 +751,7 @@ export function OrbitRealEventDetail({ event, workspaceAvailable = false, regist
           </aside>
 
           <div className="orbit-detail-main">
+            {registrationAvailability === "unavailable" ? <p role="status" className="orbit-alert">{registrationBlockingReasonCopy(registrationBlockingReason, language === "zh" ? "zh" : "en")}</p> : null}
             <EventDetailPanel askAgentHref={askAgentHref} event={event} registrationAvailability={registrationAvailability} mini={mini} t={t} workspaceAvailable={workspaceAvailable} />
           </div>
         </div>

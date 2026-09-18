@@ -187,6 +187,7 @@ export default async function AppEventDetailPage({
         <OrbitRealEventDetail
           event={localizeOrbitTree(accessibleEvent, language)}
           registrationAvailability={resolution.registrationAvailability}
+          registrationBlockingReason={resolution.registrationBlockingReason}
           workspaceAvailable={resolution.workspaceAvailable}
         />
         <OrbitVisualFreezeRuntime />

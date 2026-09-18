@@ -17,6 +17,15 @@ const expectedDomains = [
   "tasks",
 ] as const;
 
+const expectedSyncPolicies = {
+  ai_provider_context: ["server_only", "excluded"],
+  notes: ["durable_mirror", "available_when_synced"],
+  push_devices: ["device_only", "excluded"],
+  relationship_followups: ["durable_mirror", "available_when_synced"],
+  schedule: ["durable_mirror", "available_when_synced"],
+  tasks: ["durable_mirror", "available_when_synced"],
+} as const;
+
 test("data authority registry covers Sprint 0029 domains with one canonical source", () => {
   assert.deepEqual(
     DATA_AUTHORITY_REGISTRY.map((entry) => entry.domain).sort(),
@@ -29,6 +38,10 @@ test("data authority registry covers Sprint 0029 domains with one canonical sour
     assert.ok(entry.ownerKey.trim());
     assert.ok(entry.apiContract.trim());
     assert.ok(entry.aiPolicy.trim());
+    assert.deepEqual(
+      [entry.localPersistenceClass, entry.aiVisibility],
+      expectedSyncPolicies[entry.domain as keyof typeof expectedSyncPolicies],
+    );
     assert.ok(entry.migration.status);
     assert.equal(entry.projections.every((projection) => projection.source === entry.canonicalStore), true);
   }

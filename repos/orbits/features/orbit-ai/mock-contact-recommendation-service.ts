@@ -115,7 +115,7 @@ export function createMockOrbitAiContactRecommendationCandidates(): readonly Orb
         .join(" "),
       snippet: [
         primaryConnection?.summary,
-        primaryConnection?.suggestedActions[0],
+        primaryConnection?.suggestedActions?.[0],
       ]
         .filter(Boolean)
         .join(" 下一步："),
@@ -172,7 +172,7 @@ export function createMockOrbitAiContactRecommendationCandidates(): readonly Orb
         Math.round((primaryConnection?.businessRelevanceScore ?? 0) / 12),
       ),
       recommendedAction:
-        primaryConnection?.suggestedActions[0] ??
+        primaryConnection?.suggestedActions?.[0] ??
         "先复核已有互动证据，再决定是否继续跟进。",
       relationStrength:
         relationshipStrength >= 70

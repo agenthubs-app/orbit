@@ -5,6 +5,7 @@ import {
   createRelationshipInboxGetHandler,
   createRelationshipInboxPostHandler,
 } from "./handler";
+import { withTotalServerTiming } from "../../../../shared/performance/server-timing";
 
 // 关系收件箱面板的数据入口：返回 async correspondence workspace（inbox + 选中线程 +
 // 草稿回复 + 上下文）。传 conversationId 选中某条线程。
@@ -50,7 +51,7 @@ const authenticatedPOST = auth(async (request) => {
   })(request);
 }) as unknown as RequestScopedHandler;
 
-export async function GET(
+async function getRelationshipInbox(
   request: Request,
   context?: unknown,
 ): Promise<Response> {
@@ -58,6 +59,8 @@ export async function GET(
     ? mockGET(request)
     : authenticatedGET(request, context);
 }
+
+export const GET = withTotalServerTiming(getRelationshipInbox);
 
 export async function POST(
   request: Request,

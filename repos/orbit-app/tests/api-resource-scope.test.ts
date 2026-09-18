@@ -16,14 +16,15 @@ const boundaries = `
 import { useSyncExternalStore } from "react";
 let revision = 0; const listeners = new Set();
 const state = window.fixture = {
-  rawUserId: "user:raw-login", accountId: "account:A", requests: [], writes: [], snapshotReads: [],
+  rawUserId: "user:raw-login", accountId: "account:A", baseUrl: "http://fixture", eventId: "event:A", requests: [], writes: [], snapshotReads: [],
   switchActor(accountId) { state.accountId = accountId; revision++; listeners.forEach(listener => listener()); },
+  switchScope(key, value) { state[key] = value; revision++; listeners.forEach(listener => listener()); },
   reply(index, data, status = 200) { state.requests[index].resolve(new Response(JSON.stringify({ success: status === 200, data, error: { code: "INTERNAL_ERROR", message: "失败" } }), { status, headers: { "content-type": "application/json" } })); },
   fail(index, mode) { if (mode === "offline") state.requests[index].reject(new TypeError("Network unavailable")); else state.requests[index].resolve(new Response("upstream unavailable", { status: 500 })); }
 };
 window.fetch = (path, options) => new Promise((resolve, reject) => state.requests.push({ path: String(path), actorId: state.accountId, resolve, reject }));
 export const useOrbitAuthSession = () => { useSyncExternalStore(listener => { listeners.add(listener); return () => listeners.delete(listener); }, () => revision); return { ready: true, cookieHeader: "", accountId: state.accountId, actorId: state.accountId, user: { id: state.rawUserId } }; };
-export const useOrbitApiBaseUrl = () => ({ baseUrl: "http://fixture" });
+export const useOrbitApiBaseUrl = () => ({ baseUrl: state.baseUrl });
 export const readSnapshot = async (baseUrl, actorId, path) => { state.snapshotReads.push({ baseUrl, actorId, path }); return location.search.includes("cached") ? { result: { success: true, status: 200, data: { value: "上次缓存内容" }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } }, syncedAt: "2026-09-12T00:00:00Z" } : null; };
 export const writeSnapshot = async (baseUrl, actorId, path, result) => { state.writes.push({ actorId, data: result.data }); };
 `;
@@ -44,6 +45,10 @@ test.before(async () => {
   const address = server.address(); assert.ok(address && typeof address !== "string"); url = `http://127.0.0.1:${address.port}`;
   browser = await chromium.launch({ headless: true, timeout: 15000, ...(process.env.ORBIT_TEST_CHROME_PATH ? { executablePath: process.env.ORBIT_TEST_CHROME_PATH } : {}) });
 });
+
+// The seven attendee denial / late-owner cases now live in
+// event-attendee-interactions.test.ts against the mounted canonical route.
+// Slicing retired hook declarations out of the old screen exercised no route.
 
 test.after(async () => {
   await browser?.close();

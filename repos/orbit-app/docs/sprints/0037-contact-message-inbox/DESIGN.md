@@ -1,0 +1,33 @@
+# Sprint 0037 — 联系人消息独立入口设计
+
+本页落实[已确认产品规格](../../../../../docs/superpowers/specs/2026-09-16-notification-system-design.md)与[跨Sprint接口/策略](../NOTIFICATION_PROGRAM.md)。不另设运行状态或替代 Planner 验收。
+
+消息页一会话一行，头像与真实称呼在左，时间与未读数在右，原文摘要最多两行；点击进入既有会话。消息/通知顶层使用标签与入口图标，首访默认消息，后续选择按 canonical actor 保存。列表保留分页、加载、空态、重试和无权限状态，不预加载几万联系人。
+
+0037 的通知页继续使用旧通知数据，先去掉重复的会话行；0038 再替换三类读面，不把旧内容提前伪装成新类别。外层只显示未读点。会话原文与历史不采用通知30天窗口，未知发送结果先用 client message ID 查询/幂等重试，不将失败气泡显示为已送达。名字缺失显示联系人不可用，不显示技术代号。
+
+双方消息持久化与阅读游标由现有通信服务管理。账号 A 同时登录 Web/App，账号 B 是通信对方；换号必须取消 A 在途请求，禁止迟到响应污染 B。AI分析授权与真实消息接收独立，关闭主动发现仍照常显示消息。推送频控/免打扰的最终执行归 0040，不能宣称本 Sprint 已证明远程推送。
+
+## 依赖和边界
+
+复用 0008、0012、0026、0030 已合并代码；0012 未完成的真实 Push 验收留至 0040，不据此声称 0012 完成。无需等待 0033～0036。
+
+不改联系人绑定协议、不增加外部聊天平台、不重写同步存储、不生成 AI 通知、不执行旧数据迁移或宣称 Push 送达。
+
+## 验证原则
+
+每项以 [PLANNER](PLANNER.md) 的5项SC为准，先行为反例再最小实现。新功能的真实业务证据必须来自当次构建的Web/API与原生App，权限/身份/状态不能用截图或mock证明。
+
+## run-01 实施范围补充（2026-09-16）
+
+依 RULES §0 追加必要接线，不改变 Planner 验收契约：
+
+- Web `app/(app)/app/inbox/contact-messages-tab.tsx`：原收件箱为草稿会话，新组件消费权威 relationship-communication API，承担 SC-01/02/03/04。
+- Web `shared/contract/relationship-communication.ts` 与同步生成的 App 副本：可选 `nextCursor`、`unreadTotal`，老客户端兼容；列表分页与独立消息计数对应 SC-01/03。沿用现有存储，不触碰 0033 的同步协议。
+- App `src/screens/home/HomeDashboardScreen.tsx`：外层未读点，去掉消息与通知混合数字，对应 SC-03。
+- App 既有 `app-wide-workspaces`、`home-dashboard-interactions`、`ink-signal-inbox`、`relationship-inbox-{interactions,lifecycle}` 与 Web 既有 `app-relationship-inbox-panel` 测试：保留原行为/样式检查，通知相关检查显式打开通知页签；首访消息与真实通信由新增行为测试覆盖。
+- 本轮独立 QA：本工作树 Web 31037、独立本地数据库/工作区、两个新建测试账号；iPhone 17 Pro 使用独立 QA bundle ID，保留原 App 数据。0033 使用自己的模拟器和 Web 3113，本轮不接管这些进程。
+
+上述为实现范围与环境登记，不代表验收完成。执行状态以 README 和最终实际 REPORT 为准。
+
+真实原生验收发现 `/inbox/[id]` 仍复用仅预览的 ReplyComposer，而 `/chat` 已具备发送 API。0037 在原 `RelationshipInboxScreen.tsx` 的已验证消息详情中接通现有 delivery request/receipt 校验，保留显式草稿流程的预览行为；增加三语会话文案及超时重试、迟到跨账号回执测试。此项属于 SC-02/04 的必要消费接线，未改变联系人绑定或 AI 自动发送边界。

@@ -644,9 +644,9 @@ for (const [props, hidden] of [
 }
 
 test("hidden batch file inputs retain handler records and accessible picker triggers", () => {
-  for (const [surfaceId, inputCount] of [
-    ["web:/app/contacts/new/batch2", 1],
-    ["web:/app/contacts/new/batch2/[id]", 2],
+  for (const [surfaceId, inputCount, pickerNameEvidence] of [
+    ["web:/app/contacts/new/batch2", 2, "dynamic-static-expression"],
+    ["web:/app/contacts/new/batch2/[id]", 2, "present-static"],
   ] as const) {
     const surface = inventory.surfaces.find((surface) => surface.surfaceId === surfaceId);
     assert.ok(surface);
@@ -660,7 +660,7 @@ test("hidden batch file inputs retain handler records and accessible picker trig
       interaction.tag === "button" && interaction.handlers.some((handler) => handler.expression.includes(".click()")),
     );
     assert.ok(pickers.length > 0);
-    assert.equal(pickers.every((picker) => picker.visibleName && picker.accessibleNameEvidence === "present-static"), true);
+    assert.equal(pickers.every((picker) => picker.visibleName && picker.accessibleNameEvidence === pickerNameEvidence), true);
   }
 });
 

@@ -1,0 +1,1663 @@
+{
+  "summary": {
+    "changed_count": 236,
+    "affected_count": 0,
+    "changed_files": 7,
+    "risk_level": "low"
+  },
+  "changed_symbols": [
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/RECOMMENDATION-REPORT.md:L1:W3 本人目标与公开活动匹配：服务层交付记录",
+      "name": "W3 本人目标与公开活动匹配：服务层交付记录",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/RECOMMENDATION-REPORT.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/RECOMMENDATION-REPORT.md:L7:冻结范围与事实边界",
+      "name": "冻结范围与事实边界",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/RECOMMENDATION-REPORT.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/RECOMMENDATION-REPORT.md:L15:CRITICAL 影响披露与消费者核对",
+      "name": "CRITICAL 影响披露与消费者核对",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/RECOMMENDATION-REPORT.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/RECOMMENDATION-REPORT.md:L31:实施前基线验证",
+      "name": "实施前基线验证",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/RECOMMENDATION-REPORT.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/RECOMMENDATION-REPORT.md:L46:新服务实证与复验",
+      "name": "新服务实证与复验",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/RECOMMENDATION-REPORT.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/RECOMMENDATION-REPORT.md:L62:接线约定与限制",
+      "name": "接线约定与限制",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/RECOMMENDATION-REPORT.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/features/events/event-recommendation-tool.ts:matchedTokensForText",
+      "name": "matchedTokensForText",
+      "type": "Function",
+      "filePath": "repos/orbits/features/events/event-recommendation-tool.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Interface:repos/orbits/features/events/public-goal-recommendations-runtime.ts:ConfiguredPublicGoalRecommendationsRuntimeOptions",
+      "name": "ConfiguredPublicGoalRecommendationsRuntimeOptions",
+      "type": "Interface",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations-runtime.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations-runtime.ts:ConfiguredPublicGoalRecommendationsRuntimeOptions.now",
+      "name": "now",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations-runtime.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/features/events/public-goal-recommendations-runtime.ts:createConfiguredPublicGoalRecommendationsRuntime",
+      "name": "createConfiguredPublicGoalRecommendationsRuntime",
+      "type": "Function",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations-runtime.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/features/events/public-goal-recommendations-runtime.ts:createConfiguredPublicGoalRecommendationsRuntime.listMemberships@16:4",
+      "name": "listMemberships",
+      "type": "Function",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations-runtime.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/features/events/public-goal-recommendations-runtime.ts:createConfiguredPublicGoalRecommendationsRuntime.readPublicCatalogue@24:4",
+      "name": "readPublicCatalogue",
+      "type": "Function",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations-runtime.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/features/events/public-goal-recommendations-runtime.ts:createConfiguredPublicGoalRecommendationsRuntime.readRelationshipGoal@31:4",
+      "name": "readRelationshipGoal",
+      "type": "Function",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations-runtime.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "TypeAlias:repos/orbits/features/events/public-goal-recommendations.ts:PublicGoalRecommendationsState",
+      "name": "PublicGoalRecommendationsState",
+      "type": "TypeAlias",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Interface:repos/orbits/features/events/public-goal-recommendations.ts:PublicGoalRecommendationItem",
+      "name": "PublicGoalRecommendationItem",
+      "type": "Interface",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:PublicGoalRecommendationItem.description",
+      "name": "description",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:PublicGoalRecommendationItem.eventId",
+      "name": "eventId",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:PublicGoalRecommendationItem.matchedTokens",
+      "name": "matchedTokens",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:PublicGoalRecommendationItem.publicCode",
+      "name": "publicCode",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:PublicGoalRecommendationItem.sourceEvidenceIds",
+      "name": "sourceEvidenceIds",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:PublicGoalRecommendationItem.startsAt",
+      "name": "startsAt",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:PublicGoalRecommendationItem.title",
+      "name": "title",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:PublicGoalRecommendationItem.venue",
+      "name": "venue",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Interface:repos/orbits/features/events/public-goal-recommendations.ts:PublicGoalRecommendationsResult",
+      "name": "PublicGoalRecommendationsResult",
+      "type": "Interface",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:PublicGoalRecommendationsResult.items",
+      "name": "items",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:PublicGoalRecommendationsResult.state",
+      "name": "state",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Interface:repos/orbits/features/events/public-goal-recommendations.ts:PublicGoalRecommendationsInput",
+      "name": "PublicGoalRecommendationsInput",
+      "type": "Interface",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:PublicGoalRecommendationsInput.accountId",
+      "name": "accountId",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "TypeAlias:repos/orbits/features/events/public-goal-recommendations.ts:PublicGoalRecommendationMembership",
+      "name": "PublicGoalRecommendationMembership",
+      "type": "TypeAlias",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Interface:repos/orbits/features/events/public-goal-recommendations.ts:PublicGoalRecommendationsDependencies",
+      "name": "PublicGoalRecommendationsDependencies",
+      "type": "Interface",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:PublicGoalRecommendationsDependencies.listMemberships",
+      "name": "listMemberships",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:PublicGoalRecommendationsDependencies.now",
+      "name": "now",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:PublicGoalRecommendationsDependencies.readPublicCatalogue",
+      "name": "readPublicCatalogue",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:PublicGoalRecommendationsDependencies.readRelationshipGoal",
+      "name": "readRelationshipGoal",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Interface:repos/orbits/features/events/public-goal-recommendations.ts:PublicGoalRecommendationsService",
+      "name": "PublicGoalRecommendationsService",
+      "type": "Interface",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:PublicGoalRecommendationsService.recommend",
+      "name": "recommend",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Interface:repos/orbits/features/events/public-goal-recommendations.ts:ValidatedCandidate",
+      "name": "ValidatedCandidate",
+      "type": "Interface",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:ValidatedCandidate.endsAtMs",
+      "name": "endsAtMs",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:ValidatedCandidate.eventId",
+      "name": "eventId",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:ValidatedCandidate.evidenceIds",
+      "name": "evidenceIds",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:ValidatedCandidate.organizerId",
+      "name": "organizerId",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:ValidatedCandidate.publicCode",
+      "name": "publicCode",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:ValidatedCandidate.record",
+      "name": "record",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:ValidatedCandidate.startsAtMs",
+      "name": "startsAtMs",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Interface:repos/orbits/features/events/public-goal-recommendations.ts:CandidateFacts",
+      "name": "CandidateFacts",
+      "type": "Interface",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:CandidateFacts.duplicateKey",
+      "name": "duplicateKey",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/features/events/public-goal-recommendations.ts:emptyItems",
+      "name": "emptyItems",
+      "type": "Const",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/features/events/public-goal-recommendations.ts:preferredRecordStatuses",
+      "name": "preferredRecordStatuses",
+      "type": "Const",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/features/events/public-goal-recommendations.ts:registrationStatuses",
+      "name": "registrationStatuses",
+      "type": "Const",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/features/events/public-goal-recommendations.ts:unavailable",
+      "name": "unavailable",
+      "type": "Function",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:unavailable.items@75:11",
+      "name": "items",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:unavailable.state@75:30",
+      "name": "state",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/features/events/public-goal-recommendations.ts:emptyState",
+      "name": "emptyState",
+      "type": "Function",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:emptyState.items@81:11",
+      "name": "items",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:emptyState.state@81:30",
+      "name": "state",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/features/events/public-goal-recommendations.ts:isObject",
+      "name": "isObject",
+      "type": "Function",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/features/events/public-goal-recommendations.ts:requiredText",
+      "name": "requiredText",
+      "type": "Function",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/features/events/public-goal-recommendations.ts:requiredIdentifier",
+      "name": "requiredIdentifier",
+      "type": "Function",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/features/events/public-goal-recommendations.ts:validTimestamp",
+      "name": "validTimestamp",
+      "type": "Function",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:validTimestamp.milliseconds@114:11",
+      "name": "milliseconds",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:validTimestamp.value@114:25",
+      "name": "value",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/features/events/public-goal-recommendations.ts:mapValue",
+      "name": "mapValue",
+      "type": "Function",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/features/events/public-goal-recommendations.ts:hasOwn",
+      "name": "hasOwn",
+      "type": "Function",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/features/events/public-goal-recommendations.ts:evidenceIdsFor",
+      "name": "evidenceIdsFor",
+      "type": "Function",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/features/events/public-goal-recommendations.ts:candidateFactsFor",
+      "name": "candidateFactsFor",
+      "type": "Function",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:candidateFactsFor.duplicateKey@209:4",
+      "name": "duplicateKey",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:candidateFactsFor.endsAtMs@210:4",
+      "name": "endsAtMs",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:candidateFactsFor.eventId@211:4",
+      "name": "eventId",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:candidateFactsFor.evidenceIds@212:4",
+      "name": "evidenceIds",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:candidateFactsFor.organizerId@213:4",
+      "name": "organizerId",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:candidateFactsFor.publicCode@214:4",
+      "name": "publicCode",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:candidateFactsFor.record@215:4",
+      "name": "record",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:candidateFactsFor.startsAtMs@222:4",
+      "name": "startsAtMs",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/features/events/public-goal-recommendations.ts:candidatesFromCatalogue",
+      "name": "candidatesFromCatalogue",
+      "type": "Function",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/features/events/public-goal-recommendations.ts:registeredEventIds",
+      "name": "registeredEventIds",
+      "type": "Function",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/features/events/public-goal-recommendations.ts:recommendWithDependencies",
+      "name": "recommendWithDependencies",
+      "type": "Function",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:recommendWithDependencies.fn@366:9.candidate@371:15",
+      "name": "candidate",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:recommendWithDependencies.fn@366:9.matchedTokens@371:26",
+      "name": "matchedTokens",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:recommendWithDependencies.items@387:4",
+      "name": "items",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/features/events/public-goal-recommendations.ts:recommendWithDependencies.state@397:4",
+      "name": "state",
+      "type": "Property",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/features/events/public-goal-recommendations.ts:createPublicGoalRecommendationsService",
+      "name": "createPublicGoalRecommendationsService",
+      "type": "Function",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/features/events/public-goal-recommendations.ts:createPublicGoalRecommendationsService.recommend@405:4",
+      "name": "recommend",
+      "type": "Function",
+      "filePath": "repos/orbits/features/events/public-goal-recommendations.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:projectRoot",
+      "name": "projectRoot",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:testRequire",
+      "name": "testRequire",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:runtimePath",
+      "name": "runtimePath",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:profileFactoryPath",
+      "name": "profileFactoryPath",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:catalogueRuntimePath",
+      "name": "catalogueRuntimePath",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:operationsRepositoryPath",
+      "name": "operationsRepositoryPath",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:NOW",
+      "name": "NOW",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:ACCOUNT_ID",
+      "name": "ACCOUNT_ID",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event",
+      "name": "event",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.calendarSyncRequested@30:4",
+      "name": "calendarSyncRequested",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.captureMethod@31:4",
+      "name": "captureMethod",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.externalNetworkRequested@32:4",
+      "name": "externalNetworkRequested",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.id@33:4",
+      "name": "id",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.importedAt@34:4",
+      "name": "importedAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.label@35:4",
+      "name": "label",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.liveDatabaseWriteExecuted@36:4",
+      "name": "liveDatabaseWriteExecuted",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.organizerFeedRequested@37:4",
+      "name": "organizerFeedRequested",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.provider@38:4",
+      "name": "provider",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.providerRecordId@39:4",
+      "name": "providerRecordId",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.type@40:4",
+      "name": "type",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.aiProviderRequested@43:4",
+      "name": "aiProviderRequested",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.calendarProviderRequested@44:4",
+      "name": "calendarProviderRequested",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.calendarSyncRequested@45:4",
+      "name": "calendarSyncRequested",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.description@46:4",
+      "name": "description",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.emailProviderRequested@47:4",
+      "name": "emailProviderRequested",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.endsAt@48:4",
+      "name": "endsAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.evidence@49:4",
+      "name": "evidence",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.externalNetworkRequested@58:4",
+      "name": "externalNetworkRequested",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.id@59:4",
+      "name": "id",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.liveDatabaseWriteExecuted@60:4",
+      "name": "liveDatabaseWriteExecuted",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.nextAction@61:4",
+      "name": "nextAction",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.notificationDelivered@62:4",
+      "name": "notificationDelivered",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.organizerFeedRequested@63:4",
+      "name": "organizerFeedRequested",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.recommendedPreparation@64:4",
+      "name": "recommendedPreparation",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.relationshipContext@65:4",
+      "name": "relationshipContext",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.sourceMetadata@66:4",
+      "name": "sourceMetadata",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.startsAt@67:4",
+      "name": "startsAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.status@68:4",
+      "name": "status",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.title@69:4",
+      "name": "title",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:event.venue@70:4",
+      "name": "venue",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:snapshot",
+      "name": "snapshot",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:snapshot.generatedAt@76:4",
+      "name": "generatedAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:snapshot.organizerIds@77:4",
+      "name": "organizerIds",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:snapshot.participantCounts@80:4",
+      "name": "participantCounts",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:snapshot.publicCodes@83:4",
+      "name": "publicCodes",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:snapshot.records@86:4",
+      "name": "records",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Interface:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:RuntimeOptions",
+      "name": "RuntimeOptions",
+      "type": "Interface",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:RuntimeOptions.catalogueError",
+      "name": "catalogueError",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:RuntimeOptions.catalogueNull",
+      "name": "catalogueNull",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:RuntimeOptions.catalogueSnapshot",
+      "name": "catalogueSnapshot",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:RuntimeOptions.factoryError",
+      "name": "factoryError",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:RuntimeOptions.goal",
+      "name": "goal",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:RuntimeOptions.membershipError",
+      "name": "membershipError",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:RuntimeOptions.memberships",
+      "name": "memberships",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:RuntimeOptions.operationsNull",
+      "name": "operationsNull",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:RuntimeOptions.profileError",
+      "name": "profileError",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:RuntimeOptions.profileFailure",
+      "name": "profileFailure",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:loadRuntime",
+      "name": "loadRuntime",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:loadRuntime.catalogue@118:4",
+      "name": "catalogue",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:loadRuntime.membership@119:4",
+      "name": "membership",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:loadRuntime.operations@120:4",
+      "name": "operations",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:loadRuntime.profile@121:4",
+      "name": "profile",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:loadRuntime.createProfileService@125:6",
+      "name": "createProfileService",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:loadRuntime.createProfileService@125:28.getProfile@129:10",
+      "name": "getProfile",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:loadRuntime.createProfileService@125:28.getProfile@129:22.error@133:39",
+      "name": "error",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:loadRuntime.createProfileService@125:28.getProfile@129:22.success@133:23",
+      "name": "success",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:loadRuntime.createProfileService@125:28.getProfile@129:22.success@136:14",
+      "name": "success",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:loadRuntime.createProfileService@125:28.getProfile@129:22.data@137:14",
+      "name": "data",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:loadRuntime.createConfiguredCanonicalPublicEventCatalogue@146:6",
+      "name": "createConfiguredCanonicalPublicEventCatalogue",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:loadRuntime.createConfiguredCanonicalPublicEventCatalogue@146:53.readRecords@150:10",
+      "name": "readRecords",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:loadRuntime.createConfiguredEventOperationsRepository@158:6",
+      "name": "createConfiguredEventOperationsRepository",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:loadRuntime.createConfiguredEventOperationsRepository@158:49.listCanonicalRegistrationsForUser@162:10",
+      "name": "listCanonicalRegistrationsForUser",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:loadRuntime.calls@192:4",
+      "name": "calls",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:loadRuntime.runtime@193:4",
+      "name": "runtime",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts:loadRuntime.now@194:6",
+      "name": "now",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations-runtime.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/services/public-goal-recommendations.test.ts:NOW",
+      "name": "NOW",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/services/public-goal-recommendations.test.ts:ACCOUNT_ID",
+      "name": "ACCOUNT_ID",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/services/public-goal-recommendations.test.ts:OTHER_ACCOUNT_ID",
+      "name": "OTHER_ACCOUNT_ID",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "TypeAlias:repos/orbits/tests/services/public-goal-recommendations.test.ts:Membership",
+      "name": "Membership",
+      "type": "TypeAlias",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/services/public-goal-recommendations.test.ts:event",
+      "name": "event",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.calendarSyncRequested@27:4",
+      "name": "calendarSyncRequested",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.captureMethod@28:4",
+      "name": "captureMethod",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.externalNetworkRequested@29:4",
+      "name": "externalNetworkRequested",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.id@30:4",
+      "name": "id",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.importedAt@31:4",
+      "name": "importedAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.label@32:4",
+      "name": "label",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.liveDatabaseWriteExecuted@33:4",
+      "name": "liveDatabaseWriteExecuted",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.organizerFeedRequested@34:4",
+      "name": "organizerFeedRequested",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.provider@35:4",
+      "name": "provider",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.providerRecordId@36:4",
+      "name": "providerRecordId",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.type@37:4",
+      "name": "type",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.aiProviderRequested@40:4",
+      "name": "aiProviderRequested",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.calendarProviderRequested@41:4",
+      "name": "calendarProviderRequested",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.calendarSyncRequested@42:4",
+      "name": "calendarSyncRequested",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.description@43:4",
+      "name": "description",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.emailProviderRequested@44:4",
+      "name": "emailProviderRequested",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.endsAt@45:4",
+      "name": "endsAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.evidence@46:4",
+      "name": "evidence",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.externalNetworkRequested@55:4",
+      "name": "externalNetworkRequested",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.id@56:4",
+      "name": "id",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.liveDatabaseWriteExecuted@57:4",
+      "name": "liveDatabaseWriteExecuted",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.nextAction@58:4",
+      "name": "nextAction",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.notificationDelivered@59:4",
+      "name": "notificationDelivered",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.organizerFeedRequested@60:4",
+      "name": "organizerFeedRequested",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.recommendedPreparation@61:4",
+      "name": "recommendedPreparation",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.relationshipContext@62:4",
+      "name": "relationshipContext",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.sourceMetadata@63:4",
+      "name": "sourceMetadata",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.startsAt@64:4",
+      "name": "startsAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.status@65:4",
+      "name": "status",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.title@66:4",
+      "name": "title",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:event.venue@67:4",
+      "name": "venue",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/services/public-goal-recommendations.test.ts:snapshot",
+      "name": "snapshot",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:snapshot.generatedAt@77:4",
+      "name": "generatedAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:snapshot.organizerIds@78:4",
+      "name": "organizerIds",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:snapshot.participantCounts@81:4",
+      "name": "participantCounts",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:snapshot.publicCodes@84:4",
+      "name": "publicCodes",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:snapshot.records@87:4",
+      "name": "records",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/services/public-goal-recommendations.test.ts:membership",
+      "name": "membership",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:membership.eventId@97:11",
+      "name": "eventId",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:membership.status@97:20",
+      "name": "status",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:membership.userId@97:28",
+      "name": "userId",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/services/public-goal-recommendations.test.ts:publishedEvent",
+      "name": "publishedEvent",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:publishedEvent.archivedAt@106:4",
+      "name": "archivedAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:publishedEvent.cancelledAt@107:4",
+      "name": "cancelledAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:publishedEvent.description@108:4",
+      "name": "description",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:publishedEvent.endsAt@109:4",
+      "name": "endsAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:publishedEvent.eventId@110:4",
+      "name": "eventId",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:publishedEvent.eventVersion@111:4",
+      "name": "eventVersion",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:publishedEvent.lifecycleState@112:4",
+      "name": "lifecycleState",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:publishedEvent.organizerActorId@113:4",
+      "name": "organizerActorId",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:publishedEvent.phase@114:4",
+      "name": "phase",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:publishedEvent.publicCode@115:4",
+      "name": "publicCode",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:publishedEvent.sourcePayload@116:4",
+      "name": "sourcePayload",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:publishedEvent.startsAt@117:4",
+      "name": "startsAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:publishedEvent.timezone@118:4",
+      "name": "timezone",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:publishedEvent.title@119:4",
+      "name": "title",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:publishedEvent.venue@120:4",
+      "name": "venue",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:publishedEvent.workspaceId@121:4",
+      "name": "workspaceId",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/services/public-goal-recommendations.test.ts:upstreamCatalogueFor",
+      "name": "upstreamCatalogueFor",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/services/public-goal-recommendations.test.ts:upstreamCatalogueFor.getEvent@138:6",
+      "name": "getEvent",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/services/public-goal-recommendations.test.ts:upstreamCatalogueFor.getPublishedEvent@139:6",
+      "name": "getPublishedEvent",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/services/public-goal-recommendations.test.ts:upstreamCatalogueFor.listEvents@140:6",
+      "name": "listEvents",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/services/public-goal-recommendations.test.ts:upstreamCatalogueFor.listPublishedEvents@141:6",
+      "name": "listPublishedEvents",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/services/public-goal-recommendations.test.ts:upstreamCatalogueFor.readParticipantSummaries@144:4",
+      "name": "readParticipantSummaries",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/services/public-goal-recommendations.test.ts:serviceFor",
+      "name": "serviceFor",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:serviceFor.catalogue@161:4",
+      "name": "catalogue",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:serviceFor.goal@162:4",
+      "name": "goal",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:serviceFor.memberships@163:4",
+      "name": "memberships",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/services/public-goal-recommendations.test.ts:serviceFor.now@166:4",
+      "name": "now",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/services/public-goal-recommendations.test.ts:serviceFor.readRelationshipGoal@167:4",
+      "name": "readRelationshipGoal",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/services/public-goal-recommendations.test.ts:serviceFor.readPublicCatalogue@172:4",
+      "name": "readPublicCatalogue",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/services/public-goal-recommendations.test.ts:serviceFor.listMemberships@177:4",
+      "name": "listMemberships",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:serviceFor.calls@183:11",
+      "name": "calls",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/services/public-goal-recommendations.test.ts:serviceFor.service@183:18",
+      "name": "service",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/services/public-goal-recommendations.test.ts",
+      "change_type": "touched"
+    }
+  ],
+  "affected_processes": []
+}

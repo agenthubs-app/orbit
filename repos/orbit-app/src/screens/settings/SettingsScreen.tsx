@@ -1,3 +1,5 @@
+import { NotificationDeliverySettings } from './NotificationDeliverySettings';
+import { NotificationDiscoverySettings } from './NotificationDiscoverySettings';
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
 import { Platform, Pressable, Text, View, StyleSheet } from "react-native";
@@ -127,6 +129,8 @@ export function SettingsScreen() {
             <Text accessibilityRole="header" style={styles.sectionTitle}>{locale.t(`settings.${section}` as MessageKey)}</Text>
             <View style={styles.sectionRows}>
               {section === "general" && auth.signedIn ? <>
+                <NotificationDeliverySettings />
+                <NotificationDiscoverySettings />
                 <View style={styles.languageBlock}>
                   <Text style={styles.destinationText}>{locale.t("settings.language")}</Text>
                   <Text style={styles.notificationBody}>{locale.t("settings.languageHint")}</Text>

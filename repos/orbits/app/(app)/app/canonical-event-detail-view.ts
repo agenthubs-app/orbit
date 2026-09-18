@@ -1,5 +1,7 @@
 import type { EventAccessService } from "../../../features/events/event-access/service";
 import { createConfiguredEventAccessService } from "../../../features/events/event-access/runtime";
+import { createConfiguredEventAdmissionService } from "../../../features/events/admission/runtime";
+import type { EventAdmissionPolicy } from "../../../features/events/admission/contract";
 import type { EventOperationsCatalogueSummary } from "../../../features/events/event-operations/repository";
 import { readEventOperationsCatalogueSummary } from "../../../features/events/event-operations/catalogue-summary";
 import {
@@ -14,6 +16,9 @@ import {
 } from "../../../features/events/registered-catalogue-attendees";
 import type { EventRegistrationAvailability } from "../../../features/events/registration/deadline-gated-service";
 import { readRuntimeEventRegistrationAvailability } from "../../../features/events/registration/runtime";
+import { readRuntimeEventRegistrationWindow } from "../../../features/events/registration/runtime";
+import type { EventRegistrationWindowState } from "../../../features/events/registration/deadline-gated-service";
+import type { EventRegistrationBlockingReason } from "../../../features/events/registration/contract";
 import { getOrbitLandingEventView, type OrbitLandingEventView } from "./orbit-landing-route-view-model";
 import { getOrbitRegisteredEventViewModel } from "./orbit-registered-event-route-view-model";
 
@@ -26,18 +31,23 @@ export type CanonicalEventDetailResolution =
       canOpenOperations: boolean;
       event: OrbitLandingEventView;
       registrationAvailability: EventRegistrationAvailability;
+      registrationBlockingReason?: EventRegistrationBlockingReason;
       registered: boolean;
       state: "success";
       workspaceAvailable: boolean;
     };
 
 export interface CanonicalEventDetailDependencies {
+  readRegistrationWindow?: (eventId: string) => Promise<EventRegistrationWindowState>;
   accessService: EventAccessService | null;
   coreService: EventCoreService;
   now: Date;
   readOperationsSummary: (
     eventId: string,
   ) => Promise<EventOperationsCatalogueSummary | null>;
+  readAdmissionPolicy?: (
+    eventId: string,
+  ) => Promise<Pick<EventAdmissionPolicy, "capacity"> | null | undefined>;
   readRegistrationAvailability: (
     eventId: string,
   ) => Promise<EventRegistrationAvailability>;
@@ -123,8 +133,10 @@ export async function resolveCanonicalEventDetailView(
   const operationSummaryPromise = dependencies.readOperationsSummary(
     canonicalEvent.eventId,
   );
-  const registrationAvailabilityPromise =
-    dependencies.readRegistrationAvailability(canonicalEvent.eventId);
+  const registrationAvailabilityPromise: Promise<EventRegistrationWindowState> =
+    dependencies.readRegistrationWindow
+      ? dependencies.readRegistrationWindow(canonicalEvent.eventId)
+      : dependencies.readRegistrationAvailability(canonicalEvent.eventId).then(availability => ({ availability }));
   const registeredContextPromise = actorId
     ? dependencies.readRegisteredContext({
         actorId,
@@ -137,7 +149,7 @@ export async function resolveCanonicalEventDetailView(
         subjectActorId: actorId,
       })
     : Promise.resolve(null);
-  const [operationSummary, registrationAvailability, registeredContext, access] = await Promise.all([
+  const [operationSummary, registrationWindow, registeredContext, access] = await Promise.all([
     operationSummaryPromise,
     registrationAvailabilityPromise,
     registeredContextPromise,
@@ -154,8 +166,18 @@ export async function resolveCanonicalEventDetailView(
     return { state: "forbidden" };
   }
 
-  const participantCount = operationSummary?.activeRegistrationCount ?? 0;
+  const participantCount =
+    operationSummary &&
+    operationSummary.eventId === canonicalEvent.eventId &&
+    Number.isSafeInteger(operationSummary.activeRegistrationCount) &&
+    operationSummary.activeRegistrationCount >= 0
+      ? operationSummary.activeRegistrationCount
+      : null;
+  const admissionPolicy = dependencies.readAdmissionPolicy
+    ? await dependencies.readAdmissionPolicy(canonicalEvent.eventId)
+    : null;
   const event = getOrbitLandingEventView({
+    capacity: admissionPolicy?.capacity,
     event: publishedCanonicalEventToEventDTO(canonicalEvent),
     evidenceSummary:
       canonicalEvent.description?.trim() ||
@@ -181,7 +203,8 @@ export async function resolveCanonicalEventDetailView(
         authed: Boolean(actorId),
       },
     },
-    registrationAvailability,
+    registrationAvailability: registrationWindow.availability,
+    ...(registrationWindow.blockingReason ? { registrationBlockingReason: registrationWindow.blockingReason } : {}),
     registered,
     state: "success",
     workspaceAvailable: operationSummary !== null,
@@ -194,12 +217,17 @@ export async function resolveConfiguredCanonicalEventDetailView(input: {
 }): Promise<CanonicalEventDetailResolution> {
   const coreService = createConfiguredEventCoreService();
   if (!coreService) return { state: "unavailable" };
+  const admissionService = createConfiguredEventAdmissionService();
   return resolveCanonicalEventDetailView(input, {
     accessService: createConfiguredEventAccessService(),
     coreService,
     now: new Date(),
+    readAdmissionPolicy: admissionService
+      ? (eventId) => admissionService.getPolicy(eventId)
+      : undefined,
     readOperationsSummary: readEventOperationsCatalogueSummary,
     readRegistrationAvailability: readRuntimeEventRegistrationAvailability,
+    readRegistrationWindow: readRuntimeEventRegistrationWindow,
     readRegisteredContext: readRegisteredCatalogueAttendees,
     resolveActorEventCanonicalId: resolveConfiguredActorEventCanonicalId,
   });

@@ -24,6 +24,7 @@ import {
 import type {
   EventParticipantProfileAnswers,
   EventRegistration,
+  EventRegistrationEligibility,
 } from "../../../../../../features/events/registration/contract";
 import type { EventAdmissionApplication } from "../../../../../../features/events/admission/contract";
 import {
@@ -39,10 +40,22 @@ import {
   readQuickSignupAnswers,
 } from "../orbit-event-quick-signup";
 import { EventAdmissionStatusCard } from "./event-admission-status-card";
+import {
+  answersFromTranscript as answersFrom,
+  isStatusCardApplication,
+  matchesAdmissionApplicationReceipt,
+  registrationCopy as copy,
+  registrationFieldLabel as fieldLabel,
+  transcriptFromAnswers,
+} from "./registration-workspace-model";
+import { registrationQuestionnaireProgress } from "../../../../../../features/mobile/registration-questionnaire-progress";
+import { registrationBlockingReasonCopy } from "../../../../../../features/events/registration/blocking-reason-copy";
 
 type Language = "en" | "zh";
 
 interface RegistrationWorkspaceProps {
+  actorId?: string;
+  initialEligibility?: EventRegistrationEligibility;
   admissionControlled: boolean;
   event: {
     id: string;
@@ -69,7 +82,7 @@ type RegistrationEnvelope = {
 };
 
 type AdmissionEnvelope = {
-  data?: EventAdmissionApplication;
+  data?: unknown;
   error?: { message?: string };
   success: boolean;
 };
@@ -90,63 +103,9 @@ const GENERATING_MIN_MS = 2700;
 const GENERATING_STAGE_MS = 900;
 const OPTION_KEYS = ["A", "B", "C", "D"] as const;
 
-function copy(language: Language, value: { en: string; zh: string }): string {
-  return language === "en" ? value.en : value.zh;
-}
-
-function fieldLabel(
-  language: Language,
-  field: AdaptiveInterviewTurn["field"],
-): string {
-  const labels: Record<AdaptiveInterviewTurn["field"], { en: string; zh: string }> = {
-    desiredOutcome: { en: "Outcome", zh: "期待结果" },
-    energyStyle: { en: "Social energy", zh: "社交能量" },
-    experienceHighlight: { en: "Experience", zh: "经验亮点" },
-    followUpPreference: { en: "Follow-up", zh: "后续方式" },
-    industry: { en: "Industry", zh: "行业" },
-    positioning: { en: "Positioning", zh: "定位" },
-    targetAttendees: { en: "Who to meet", zh: "想认识" },
-    valueOffered: { en: "What you offer", zh: "能提供" },
-  };
-
-  return copy(language, labels[field]);
-}
-
-function answersFrom(
-  transcript: readonly AdaptiveInterviewTurn[],
-): EventParticipantProfileAnswers {
-  return Object.fromEntries(
-    transcript.map((turn) => [turn.field, turn.answer]),
-  ) as EventParticipantProfileAnswers;
-}
-
-function transcriptFromAnswers(
-  answers: EventParticipantProfileAnswers,
-): AdaptiveInterviewTurn[] {
-  return Object.entries(answers)
-    .filter(
-      (entry): entry is [AdaptiveInterviewTurn["field"], string] =>
-        typeof entry[1] === "string" && entry[1].trim().length > 0,
-    )
-    .map(([field, answer]) => ({ answer, field, prompt: field }));
-}
-
-type StatusCardApplication = EventAdmissionApplication & {
-  status: "pending_review" | "rejected" | "waitlisted" | "withdrawn";
-};
-
-function isStatusCardApplication(
-  application: EventAdmissionApplication | null,
-): application is StatusCardApplication {
-  return Boolean(
-    application &&
-      ["pending_review", "rejected", "waitlisted", "withdrawn"].includes(
-        application.status,
-      ),
-  );
-}
-
 export function EventRegistrationWorkspace({
+  actorId,
+  initialEligibility,
   admissionControlled,
   event,
   initialAdmissionApplication,
@@ -175,6 +134,7 @@ export function EventRegistrationWorkspace({
     initialAdmissionApplication,
   );
   const [registration, setRegistration] = useState(initialRegistration);
+  const [eligibility, setEligibility] = useState(initialEligibility);
   // 全局画像预填只为 AI 提供本人的语境，不计入报名进度；报名固定只问
   // 「想认识谁 / 能提供什么」两题。准入审核活动仍要求报名回答走签名问答，
   // 因此不会把未经签名的定位写入审核申请。
@@ -207,9 +167,9 @@ export function EventRegistrationWorkspace({
     () => (initialQuestionUsable ? initialSignedQuestion.questionToken : null),
   );
   const [questionHistory, setQuestionHistory] = useState<AdaptiveNextQuestion[]>([]);
-  const [questionTokenHistory, setQuestionTokenHistory] = useState<string[]>([]);
   const [responses, setResponses] = useState<EventInterviewResponseSubmission[]>([]);
   const [thinking, setThinking] = useState(false);
+  const [interviewDone, setInterviewDone] = useState(false);
   const [freeTextOpen, setFreeTextOpen] = useState(false);
   const [freeText, setFreeText] = useState("");
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
@@ -228,15 +188,67 @@ export function EventRegistrationWorkspace({
   // 重新回答的世代号：让一次性种入 effect 在 restart 后必定重新运行。
   const [interviewEpoch, setInterviewEpoch] = useState(0);
   const generationRunId = useRef(0);
-  // 选项预取:题目一出现就为每个选项并行预生成下一题,用户点击时通常已就绪,
-  // 把 ~10s 的模型延迟藏进读题决策时间里。key=选项文本。
-  const prefetchRef = useRef<
-    Map<string, Promise<SignedAdaptiveInterviewStep>>
-  >(new Map());
-  const prefetchAbortRef = useRef<AbortController | null>(null);
-  // 首次客户端 effect 读取详情页速答之前禁止预取，否则两项速答已经齐全时，
-  // 初始题卡仍会抢跑一次“下一题”请求，产生实际不存在的第三题流量。
-  const questionPrefetchReadyRef = useRef(false);
+  const interviewRequest = useRef<AbortController | null>(null);
+  const editRevision = useRef(0);
+  const renderedRevision = editRevision.current;
+  const registrationActorId = actorId ?? initialRegistration?.userId ?? "";
+  const scopeKey = JSON.stringify([event.id, registrationActorId, admissionControlled, initialSignedQuestion?.questionToken ?? null]);
+  const currentScope = useRef(scopeKey); currentScope.current = scopeKey;
+  const previousScope = useRef(scopeKey);
+  const mounted = useRef(true);
+  const generationPending = useRef(false);
+  const cancelPending = useRef(false);
+  const cancelAuthority = useRef<string | null>(null);
+  const authority = JSON.stringify([scopeKey, registration?.updatedAt ?? null, admissionApplication?.applicationVersion ?? null, eligibility?.allowedActions ?? null]);
+  const latestAuthority = useRef(authority); latestAuthority.current = authority;
+  const currentQuestionNode = useRef<HTMLDivElement>(null);
+
+  async function readAdmissionApplicationReadback(
+    receipt: EventAdmissionApplication,
+    isCurrent: () => boolean,
+  ): Promise<EventAdmissionApplication | null> {
+    if (!isCurrent()) return null;
+    let response: Response;
+    try {
+      response = await fetch(
+        `/api/events/${encodeURIComponent(event.id)}/admission/application`,
+        { cache: "no-store", method: "GET" },
+      );
+    } catch {
+      if (!isCurrent()) return null;
+      throw new Error(
+        copy(language, {
+          en: "The saved admission application could not be read back. Your answers were kept; reload its status.",
+          zh: "暂时无法回读准入申请，答案已保留，请重新读取状态。",
+        }),
+      );
+    }
+    const body = (await response.json().catch(() => null)) as {
+      data?: unknown;
+      error?: { message?: string };
+      success?: boolean;
+    } | null;
+    if (!isCurrent()) return null;
+    if (
+      !response.ok ||
+      body?.success !== true ||
+      !matchesAdmissionApplicationReceipt(body?.data, {
+        actorId: registrationActorId,
+        applicationVersion: receipt.applicationVersion,
+        eventId: event.id,
+        status: receipt.status,
+      })
+    ) {
+      throw new Error(
+        body?.error?.message ??
+          copy(language, {
+            en: "The saved admission application could not be read back. Your answers were kept; reload its status.",
+            zh: "暂时无法回读准入申请，答案已保留，请重新读取状态。",
+          }),
+      );
+    }
+    return body.data;
+  }
 
   const status =
     admissionApplication?.status ?? registration?.status ?? "unregistered";
@@ -247,7 +259,7 @@ export function EventRegistrationWorkspace({
         admissionApplication.status,
       ),
   );
-  const canCancelEnrollment = canWithdrawAdmission || status === "rsvped";
+  const canCancelEnrollment = canWithdrawAdmission || (status === "rsvped" && (!eligibility || eligibility.allowedActions.includes("cancel")));
   const eventHref = `/app/events/${encodeURIComponent(event.id)}?language=${language}`;
   const missingCoreFields = EVENT_PROFILE_CORE_FIELDS.filter(
     (field) => !transcript.some((turn) => turn.field === field),
@@ -259,14 +271,47 @@ export function EventRegistrationWorkspace({
     completedRequiredQuestions + 1,
     TOTAL_REQUIRED_QUESTIONS,
   );
+  const ordinaryOptions = question?.options.filter(option => !["其他", "Other", "その他"].includes(option)) ?? [];
+  const currentAnswer = question ? (freeTextOpen || question.options.length === 0 ? freeText : selectedOption ?? "") : "";
+  const progress = registrationQuestionnaireProgress([
+    ...transcript.filter((turn, index) => !(positioningSeeded && index === 0 && turn.field === "positioning")),
+    ...(question ? [{ field: question.field, answer: currentAnswer }] : []),
+  ]);
 
-  // 挂载时一次性种入：1) 详情页匿名速答（本机 localStorage）作为已答轮带入，
-  // 避免登录后重复回答；2) 预填弃用了服务端首题时，按已种入的 transcript 自动
-  // 取真正的第一道意图题。localStorage 只在客户端可读，因此放在 effect 而非
-  // 初始 state，避免 SSR 水合不一致。
+  useEffect(() => {
+    mounted.current = true;
+    if (previousScope.current !== scopeKey) {
+      previousScope.current = scopeKey;
+      editRevision.current++;
+      setTranscript(seededTranscript);
+      setResponses([]); setQuestionHistory([]);
+      setQuestion(initialQuestionUsable ? initialSignedQuestion.question : null);
+      setQuestionToken(initialQuestionUsable ? initialSignedQuestion.questionToken : null);
+      setFreeText(""); setFreeTextOpen(false); setSelectedOption(null);
+      setInterviewDone(false); setThinking(false); setPersona(null);
+      setRegistration(initialRegistration); setAdmissionApplication(initialAdmissionApplication);
+      setEligibility(initialEligibility); setPendingCancel(false); setConfirmingCancel(false); cancelPending.current = false; cancelAuthority.current = null;
+      setStage(initialAdmissionApplication?.status === "admitted" ? "registered" : initialAdmissionApplication?.status ?? (initialRegistration?.status === "rsvped" ? "registered" : initialRegistration?.status === "cancelled" ? "cancelled" : "interview"));
+      autoFetchedFirstQuestion.current = false;
+    }
+    return () => {
+      mounted.current = false;
+      interviewRequest.current?.abort(); interviewRequest.current = null;
+      generationRunId.current++; generationPending.current = false;
+    };
+    // Scope is the event and immutable initial signed question, not language.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scopeKey]);
+
+  useEffect(() => {
+    if (questionHistory.length > 0 && question) currentQuestionNode.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
+  }, [question]);
+
+  // 挂载时一次性带入详情页速答；只有明确继续才请求下一题。
+  // localStorage 只在客户端可读，放在 effect 中避免 SSR 水合不一致。
   const autoFetchedFirstQuestion = useRef(false);
   useEffect(() => {
-    if (autoFetchedFirstQuestion.current || stage !== "interview" || thinking) {
+    if (renderedRevision !== editRevision.current || autoFetchedFirstQuestion.current || stage !== "interview" || thinking || (eligibility && eligibility.allowedActions.length === 0)) {
       return;
     }
     autoFetchedFirstQuestion.current = true;
@@ -307,7 +352,6 @@ export function EventRegistrationWorkspace({
       if (requiredAnswersReady) {
         setQuestion(null);
         setQuestionToken(null);
-        void runGeneration(nextTranscript, responses);
         return;
       }
       // 当前题若恰好是速答已覆盖的字段则弃用；其余题目仍然有效，保留继续答。
@@ -319,37 +363,11 @@ export function EventRegistrationWorkspace({
       }
       setQuestion(null);
       setQuestionToken(null);
-      void (async () => {
-        setThinking(true);
-        setError(null);
-        try {
-          const step = await fetchNextQuestion(nextTranscript);
-          if (!step.done && step.signedQuestion) {
-            setQuestion(step.signedQuestion.question);
-            setQuestionToken(step.signedQuestion.questionToken);
-          }
-        } catch (caught) {
-          setError(
-            caught instanceof Error
-              ? caught.message
-              : copy(language, {
-                  en: "The AI interview could not start. Please retry.",
-                  zh: "AI 访谈暂时无法开始，请重试。",
-                }),
-          );
-        } finally {
-          setThinking(false);
-        }
-      })();
       return;
     }
 
-    questionPrefetchReadyRef.current = true;
-    if (question === null && positioningSeeded) {
-      void retryInterviewStart();
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, question, thinking, positioningSeeded, interviewEpoch]);
+  }, [stage, question, thinking, positioningSeeded, interviewEpoch, scopeKey, renderedRevision]);
 
   const fetchNextQuestion = useCallback(
     async (
@@ -387,13 +405,17 @@ export function EventRegistrationWorkspace({
   );
 
   async function retryInterviewStart() {
-    if (thinking) return;
+    if (!mounted.current || currentScope.current !== scopeKey || interviewRequest.current || generationPending.current || renderedRevision !== editRevision.current || thinking || interviewDone || progress.answeredCount === 8) return;
+    const controller = new AbortController(); interviewRequest.current = controller;
+    const revision = editRevision.current;
 
     setThinking(true);
     setError(null);
     try {
-      const step = await fetchNextQuestion(transcript);
-      if (step.done || !step.signedQuestion) {
+      const step = await fetchNextQuestion(transcript, controller.signal);
+      if (!mounted.current || currentScope.current !== scopeKey || interviewRequest.current !== controller || revision !== editRevision.current) return;
+      if (step.done) { editRevision.current++; setInterviewDone(true); setQuestion(null); setQuestionToken(null); return; }
+      if (!step.signedQuestion) {
         throw new Error(
           copy(language, {
             en: "The AI interview returned no verified question. Please retry.",
@@ -403,7 +425,9 @@ export function EventRegistrationWorkspace({
       }
       setQuestion(step.signedQuestion.question);
       setQuestionToken(step.signedQuestion.questionToken);
+      editRevision.current++;
     } catch (caught) {
+      if (!mounted.current || currentScope.current !== scopeKey || interviewRequest.current !== controller) return;
       setError(
         caught instanceof Error
           ? caught.message
@@ -413,7 +437,7 @@ export function EventRegistrationWorkspace({
             }),
       );
     } finally {
-      setThinking(false);
+      if (mounted.current && currentScope.current === scopeKey && interviewRequest.current === controller) { interviewRequest.current = null; setThinking(false); }
     }
   }
 
@@ -424,6 +448,9 @@ export function EventRegistrationWorkspace({
       finalTranscript: readonly AdaptiveInterviewTurn[],
       finalResponses: readonly EventInterviewResponseSubmission[],
     ) => {
+      if (!mounted.current || currentScope.current !== scopeKey || cancelPending.current || generationPending.current || interviewRequest.current || renderedRevision !== editRevision.current) return;
+      if (!admissionControlled && registration?.status !== "rsvped" && eligibility && !eligibility.allowedActions.includes(registration?.status === "cancelled" ? "reactivate" : "register")) return;
+      generationPending.current = true;
       const runId = ++generationRunId.current;
       let savedRegistration: EventRegistration | null = null;
       let savedApplication: EventAdmissionApplication | null = null;
@@ -442,6 +469,9 @@ export function EventRegistrationWorkspace({
           // The application is already immutable and persisted. Regenerating
           // its derived persona must not create another application version.
           savedApplication = admissionApplication;
+        } else if (registration?.status === "rsvped") {
+          // Already saved registrations are immutable; this action is only a derived preview.
+          savedRegistration = registration;
         } else {
           const registrationResponse = await fetch(
             admissionControlled
@@ -449,16 +479,16 @@ export function EventRegistrationWorkspace({
               : `/api/events/${encodeURIComponent(event.id)}/registration`,
             {
               body: JSON.stringify(
-                finalResponses.length === 0
-                  ? { answers: answersFrom(finalTranscript) }
-                  : admissionControlled
-                    ? { responses: finalResponses }
-                    : {
+                admissionControlled
+                  ? { responses: finalResponses }
+                  : {
+                        intent: registration?.status === "cancelled" ? "reactivate" : "register",
+                        expectedRegistrationVersion: registration?.updatedAt ?? null,
                         // 签名回答之外，附上整份 transcript 的 answers：服务端
                         // 只用它补齐种入轮（定位预填/详情页速答）未覆盖的字段。
                         // 准入审核活动只接受纯签名回答，因此不附带。
                         answers: answersFrom(finalTranscript),
-                        responses: finalResponses,
+                        ...(finalResponses.length ? { responses: finalResponses } : {}),
                       },
               ),
               headers: { "content-type": "application/json" },
@@ -482,12 +512,42 @@ export function EventRegistrationWorkspace({
                 }),
             );
           }
+          if (!mounted.current || currentScope.current !== scopeKey || generationRunId.current !== runId) return;
 
           if (admissionControlled) {
-            savedApplication = registrationBody.data as EventAdmissionApplication;
-            setAdmissionApplication(savedApplication);
+            if (
+              !matchesAdmissionApplicationReceipt(registrationBody.data, {
+                actorId: registrationActorId,
+                eventId: event.id,
+              })
+            ) {
+              throw new Error(
+                copy(language, {
+                  en: "The admission response could not be verified. Your answers were kept; reload its status.",
+                  zh: "未能核对准入回执，答案已保留，请重新读取准入状态。",
+                }),
+              );
+            }
+            const readback = await readAdmissionApplicationReadback(
+              registrationBody.data,
+              () =>
+                mounted.current &&
+                currentScope.current === scopeKey &&
+                generationRunId.current === runId,
+            );
+            if (
+              !mounted.current ||
+              currentScope.current !== scopeKey ||
+              generationRunId.current !== runId
+            ) {
+              return;
+            }
+            if (!readback) return;
+            savedApplication = readback;
+            setAdmissionApplication(readback);
           } else {
-            savedRegistration = registrationBody.data as EventRegistration;
+            savedRegistration = await readRegistrationReadback(registrationBody.data as EventRegistration, registration?.status === "cancelled" ? "reactivate" : "register");
+            if (!mounted.current || currentScope.current !== scopeKey || generationRunId.current !== runId) return;
             setRegistration(savedRegistration);
           }
           // 报名已持久化，详情页速答的本机暂存完成使命，清掉避免下次误带入。
@@ -557,13 +617,14 @@ export function EventRegistrationWorkspace({
         }
       } finally {
         window.clearInterval(stageTimer);
+        if (generationRunId.current === runId) generationPending.current = false;
       }
     },
-    [admissionApplication, admissionControlled, event.id, language, registration],
+    [admissionApplication, admissionControlled, event.id, language, registration, scopeKey, renderedRevision, eligibility],
   );
 
   async function submitAnswer(answer: string) {
-    if (!question || !questionToken || thinking) {
+    if (!mounted.current || currentScope.current !== scopeKey || renderedRevision !== editRevision.current || interviewRequest.current || generationPending.current || !question || !questionToken || thinking || interviewDone) {
       return;
     }
 
@@ -572,6 +633,8 @@ export function EventRegistrationWorkspace({
     if (!trimmed) {
       return;
     }
+    const controller = new AbortController(); interviewRequest.current = controller;
+    const revision = editRevision.current;
 
     const turn: AdaptiveInterviewTurn = {
       answer: trimmed.slice(0, 1000),
@@ -590,103 +653,44 @@ export function EventRegistrationWorkspace({
     setSelectedOption(answer);
     setError(null);
     setThinking(true);
-    // 已答内容先落地：下一题请求成败都不回滚这轮回答；两项必答齐全后
-    // 直接提交报名，不再请求参加活动前的第三道题。
-    setTranscript(nextTranscript);
-    setResponses(nextResponses);
-    setQuestionHistory((history) => [...history, question]);
-    setQuestionTokenHistory((history) => [...history, questionToken]);
-    setFreeText("");
-    setFreeTextOpen(false);
-
     try {
-      // 命中预取则近乎即时;预取失败/被中止/自由输入时退回实时请求。
-      let step: SignedAdaptiveInterviewStep;
-
+      let step: SignedAdaptiveInterviewStep | null = null;
       const requiredAnswersReady = EVENT_PROFILE_CORE_FIELDS.every((field) =>
         nextTranscript.some((candidate) => candidate.field === field),
       );
-      if (requiredAnswersReady) {
-        await runGeneration(nextTranscript, nextResponses);
-        return;
-      } else {
-        const prefetched = prefetchRef.current.get(trimmed);
-
-        if (prefetched) {
-          try {
-            step = await prefetched;
-          } catch {
-            step = await fetchNextQuestion(nextTranscript);
-          }
-        } else {
-          step = await fetchNextQuestion(nextTranscript);
-        }
+      if (!requiredAnswersReady && progress.answeredCount < 8) {
+        step = await fetchNextQuestion(nextTranscript, controller.signal);
       }
-
+      if (!mounted.current || currentScope.current !== scopeKey || interviewRequest.current !== controller || revision !== editRevision.current) return;
+      if (step && !step.done && !step.signedQuestion) {
+        throw new Error(copy(language, { en: "The next question could not be verified. Please retry.", zh: "下一题未通过验证，请重试。" }));
+      }
+      editRevision.current++;
+      setTranscript(nextTranscript);
+      setResponses(nextResponses);
+      setQuestionHistory((history) => [...history, question]);
+      setFreeText(""); setFreeTextOpen(false);
       setSelectedOption(null);
-
-      if (step.done || !step.signedQuestion) {
-        await runGeneration(nextTranscript, nextResponses);
+      if (!step || step.done || !step.signedQuestion) {
+        setQuestion(null); setQuestionToken(null);
+        setInterviewDone(step?.done === true || progress.answeredCount === 8);
         return;
       }
 
       setQuestion(step.signedQuestion.question);
       setQuestionToken(step.signedQuestion.questionToken);
     } catch (caught) {
+      if (!mounted.current || currentScope.current !== scopeKey || interviewRequest.current !== controller) return;
       setError(
         caught instanceof Error
           ? caught.message
           : copy(language, { en: "Something went wrong.", zh: "出错了,请重试。" }),
       );
-      setSelectedOption(null);
-      // 当前题的字段已被这轮回答覆盖，不能留在屏幕上被重复作答；转入
-      // 恢复面板。若两项回答已齐，恢复动作直接重试报名提交。
-      setQuestion(null);
-      setQuestionToken(null);
+      // Keep the current choice/custom draft and all confirmed turns for retry.
     } finally {
-      setThinking(false);
+      if (mounted.current && currentScope.current === scopeKey && interviewRequest.current === controller) { interviewRequest.current = null; setThinking(false); }
     }
   }
-
-  // 选项预取:当前题渲染后立即为每个选项预生成下一题;换题/回退/卸载时中止。
-  useEffect(() => {
-    prefetchAbortRef.current?.abort();
-    prefetchRef.current = new Map();
-
-    if (
-      stage !== "interview" ||
-      !question ||
-      thinking ||
-      !questionPrefetchReadyRef.current ||
-      missingCoreFields.length <= 1
-    ) {
-      return undefined;
-    }
-
-    const controller = new AbortController();
-
-    prefetchAbortRef.current = controller;
-
-    for (const option of question.options) {
-      const hypotheticalTranscript = [
-        ...transcript,
-        { answer: option, field: question.field, prompt: question.prompt },
-      ];
-
-      const prefetchPromise = fetchNextQuestion(
-        hypotheticalTranscript,
-        controller.signal,
-      );
-
-      // 未被消费而中止的预取会 reject;挂空 catch 防 unhandled rejection,
-      // 消费方 await 原 promise 仍能拿到真实结果/错误。
-      prefetchPromise.catch(() => undefined);
-      prefetchRef.current.set(option, prefetchPromise);
-    }
-
-    return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, question, missingCoreFields.length]);
 
   // Typeform 式键盘选择:A/B/C/D 直接选中对应选项(输入框聚焦时不劫持)。
   useEffect(() => {
@@ -705,9 +709,10 @@ export function EventRegistrationWorkspace({
         keyEvent.key.toUpperCase() as (typeof OPTION_KEYS)[number],
       );
 
-      if (index >= 0 && index < question.options.length) {
+      if (index >= 0 && index < ordinaryOptions.length) {
         keyEvent.preventDefault();
-        void submitAnswer(question.options[index]);
+        editRevision.current++;
+        setSelectedOption(ordinaryOptions[index]); setFreeTextOpen(false);
       }
     };
 
@@ -717,32 +722,13 @@ export function EventRegistrationWorkspace({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, thinking, freeTextOpen, question, transcript]);
 
-  function goBack() {
-    if (questionHistory.length === 0 || thinking) {
-      return;
-    }
-
-    const previousQuestion = questionHistory[questionHistory.length - 1];
-    const previousQuestionToken =
-      questionTokenHistory[questionTokenHistory.length - 1];
-
-    if (!previousQuestion || !previousQuestionToken) {
-      return;
-    }
-
-    setTranscript((current) => current.slice(0, -1));
-    setResponses((current) => current.slice(0, -1));
-    setQuestionHistory((history) => history.slice(0, -1));
-    setQuestionTokenHistory((history) => history.slice(0, -1));
-    setQuestion(previousQuestion);
-    setQuestionToken(previousQuestionToken);
-    setFreeText("");
-    setFreeTextOpen(false);
-    setError(null);
-  }
-
   function restartInterview() {
+    if (!mounted.current || currentScope.current !== scopeKey || cancelPending.current || generationPending.current) return;
+    if (!admissionControlled && registration?.status === "cancelled" && eligibility && !eligibility.allowedActions.includes("reactivate")) return;
     generationRunId.current += 1;
+    interviewRequest.current?.abort(); interviewRequest.current = null;
+    editRevision.current++; generationPending.current = false;
+    setThinking(false); setInterviewDone(false); setSelectedOption(null);
     setStage("interview");
     // 重来时回到与首次进入一致的种子状态：定位预填仍然生效，挂载 effect
     // 重新武装，速答等种入轮也按同一规则重新带入并取下一题。
@@ -751,7 +737,6 @@ export function EventRegistrationWorkspace({
     setTranscript(seededTranscript);
     setResponses([]);
     setQuestionHistory([]);
-    setQuestionTokenHistory([]);
     setPersona(null);
     setQuestion(initialQuestionUsable ? initialSignedQuestion.question : null);
     setQuestionToken(
@@ -770,7 +755,32 @@ export function EventRegistrationWorkspace({
     setConfirmingCancel(false);
   }
 
+  async function readRegistrationReadback(receipt: EventRegistration, action: "cancel" | "reactivate" | "register") {
+    const raw = receipt as EventRegistration & { mutationReceipt?: { action?: string; actorId?: string; eventId?: string; recordId?: string; registrationVersion?: string } };
+    const status = action === "cancel" ? "cancelled" : "rsvped";
+    const matches = (record: EventRegistration | undefined) => record && record.id && record.eventId === event.id && record.userId === registrationActorId && record.status === status &&
+      record.participantProfileId === record.participantProfile?.id && record.participantProfile.eventId === event.id && record.participantProfile.userId === registrationActorId;
+    if (!matches(raw) || !raw.updatedAt || raw.mutationReceipt?.action !== action || raw.mutationReceipt.actorId !== registrationActorId || raw.mutationReceipt.eventId !== event.id || raw.mutationReceipt.recordId !== raw.id || raw.mutationReceipt.registrationVersion !== raw.updatedAt || (registration && raw.id !== registration.id)) throw new Error(copy(language, { en: "The registration receipt could not be verified. Reload its status.", zh: "未能核对报名回执，请重新读取报名状态。" }));
+    const response = await fetch(`/api/events/${encodeURIComponent(event.id)}/registration?questions=false`, { method: "GET", cache: "no-store" });
+    const body = await response.json().catch(() => null) as { success?: boolean; data?: { registration?: EventRegistration; eligibility?: EventRegistrationEligibility } } | null;
+    const record = body?.data?.registration;
+    if (!response.ok || body?.success !== true || !matches(record) || record?.id !== raw.id || record.updatedAt !== raw.updatedAt) throw new Error(copy(language, { en: "The saved registration could not be read back. Keep your answers and reload its status.", zh: "暂时无法回读报名结果，答案已保留，请重新读取报名状态。" }));
+    if (mounted.current && currentScope.current === scopeKey) setEligibility(body?.data?.eligibility);
+    return record;
+  }
+
+  function confirmCancellation() {
+    if (!mounted.current || currentScope.current !== scopeKey || cancelPending.current || generationPending.current || !canCancelEnrollment) return;
+    cancelAuthority.current = authority;
+    setConfirmingCancel(true);
+  }
+
   async function cancelRegistration() {
+    if (!mounted.current || currentScope.current !== scopeKey || cancelPending.current || generationPending.current || !canCancelEnrollment || cancelAuthority.current !== latestAuthority.current) return;
+    const operationScope = scopeKey;
+    const operationEpoch = generationRunId.current;
+    const expectedApplicationVersion = admissionApplication?.applicationVersion;
+    cancelPending.current = true;
     setError(null);
     setPendingCancel(true);
 
@@ -782,8 +792,7 @@ export function EventRegistrationWorkspace({
         admissionControlled
           ? {
               body: JSON.stringify({
-                expectedApplicationVersion:
-                  admissionApplication?.applicationVersion,
+                expectedApplicationVersion,
               }),
               headers: { "content-type": "application/json" },
               method: "DELETE",
@@ -800,6 +809,13 @@ export function EventRegistrationWorkspace({
       const body = (await response.json()) as
         | AdmissionEnvelope
         | RegistrationEnvelope;
+      if (
+        !mounted.current ||
+        currentScope.current !== operationScope ||
+        generationRunId.current !== operationEpoch
+      ) {
+        return;
+      }
 
       if (!response.ok || body.success !== true || !body.data) {
         throw new Error(
@@ -809,21 +825,79 @@ export function EventRegistrationWorkspace({
       }
 
       if (admissionControlled) {
-        setAdmissionApplication(body.data as EventAdmissionApplication);
+        if (
+          typeof expectedApplicationVersion !== "number" ||
+          !Number.isSafeInteger(expectedApplicationVersion) ||
+          expectedApplicationVersion < 1 ||
+          expectedApplicationVersion >= Number.MAX_SAFE_INTEGER ||
+          !matchesAdmissionApplicationReceipt(body.data, {
+            actorId: registrationActorId,
+            applicationVersion: expectedApplicationVersion + 1,
+            eventId: event.id,
+            status: "withdrawn",
+          })
+        ) {
+          throw new Error(
+            copy(language, {
+              en: "The withdrawal response could not be verified. Reload the application status.",
+              zh: "未能核对撤回回执，请重新读取申请状态。",
+            }),
+          );
+        }
+        const readback = await readAdmissionApplicationReadback(
+          body.data,
+          () =>
+            mounted.current &&
+            currentScope.current === operationScope &&
+            generationRunId.current === operationEpoch &&
+            cancelPending.current,
+        );
+        if (
+          !mounted.current ||
+          currentScope.current !== operationScope ||
+          generationRunId.current !== operationEpoch ||
+          !cancelPending.current
+        ) {
+          return;
+        }
+        if (!readback) return;
+        setAdmissionApplication(readback);
       } else {
-        setRegistration(body.data as EventRegistration);
+        const readback = await readRegistrationReadback(body.data as EventRegistration, "cancel");
+        if (
+          !mounted.current ||
+          currentScope.current !== operationScope ||
+          generationRunId.current !== operationEpoch
+        ) {
+          return;
+        }
+        setRegistration(readback);
       }
       setPersona(null);
       setConfirmingCancel(false);
       setStage(admissionControlled ? "withdrawn" : "cancelled");
     } catch (caught) {
+      if (
+        !mounted.current ||
+        currentScope.current !== operationScope ||
+        generationRunId.current !== operationEpoch
+      ) {
+        return;
+      }
       setError(
         caught instanceof Error
           ? caught.message
           : copy(language, { en: "Registration could not be cancelled.", zh: "暂时无法取消预约。" }),
       );
     } finally {
-      setPendingCancel(false);
+      if (
+        mounted.current &&
+        currentScope.current === operationScope &&
+        generationRunId.current === operationEpoch
+      ) {
+        cancelPending.current = false;
+        setPendingCancel(false);
+      }
     }
   }
 
@@ -832,6 +906,14 @@ export function EventRegistrationWorkspace({
     copy(language, { en: "Aligning with the event", zh: "正在对齐活动语境" }),
     copy(language, { en: "Composing your persona", zh: "正在生成你的活动画像" }),
   ];
+
+  if (!admissionControlled && !registration && eligibility && !eligibility.allowedActions.includes("register")) {
+    return <main data-registration-stage="unavailable" style={{ padding: 24 }}>
+      <h1>{event.title}</h1>
+      <p role="status">{eligibility.state === "unavailable" ? registrationBlockingReasonCopy(eligibility.blockingReason, language) : copy(language, { en: "Registration is not open for this event.", zh: "这场活动目前未开放报名。" })}</p>
+      <a href={eventHref}>{copy(language, { en: "Back to event", zh: "返回活动页" })}</a>
+    </main>;
+  }
 
   return (
     <main
@@ -934,6 +1016,29 @@ export function EventRegistrationWorkspace({
           ) : null}
         </header>
 
+        <p style={{ color: "var(--text-2)", lineHeight: 1.6 }}>
+          {copy(language, { en: "A few more answers can clarify your role at this event. Once the core information is complete, generate your persona or keep answering.", zh: "多回答几题，能让你在这场活动中的定位更清楚。核心信息填完后，可以先生成画像，也可以继续补充。" })}
+        </p>
+        <p data-registration-progress-label={`${progress.answeredCount}/8`}>
+          {copy(language, { en: `Core information ${progress.coreAnsweredCount}/2 · Information coverage ${progress.answeredCount}/8`, zh: `核心信息 ${progress.coreAnsweredCount}/2 · 信息覆盖 ${progress.answeredCount}/8` })}
+        </p>
+        <div role="progressbar" aria-label={copy(language, { en: "Information coverage", zh: "信息覆盖" })} aria-valuemin={0} aria-valuemax={8} aria-valuenow={progress.answeredCount} style={{ height: 4, background: "var(--surface-3)", marginBottom: 12 }}>
+          <span style={{ display: "block", height: 4, width: `${progress.answeredCount / 8 * 100}%`, background: "var(--accent)" }} />
+        </div>
+        <p style={{ color: "var(--text-3)", fontSize: 13 }}>
+          {copy(language, { en: "This is completion progress, not accuracy. Unsubmitted answers are not saved; a persona preview is not proof that registration was saved.", zh: "这是填写进度，不是准确率；未提交的回答尚未保存，画像预览不代表报名已保存。" })}
+        </p>
+        {progress.canSuggestStop ? <p role="status">{interviewDone || progress.answeredCount === 8
+          ? copy(language, { en: "Your answers are complete. You can generate your persona.", zh: "问卷已填写完成，可以生成画像。" })
+          : copy(language, { en: "You can generate your persona now or keep answering.", zh: "可以先生成画像，也可以继续补充。" })}</p> : null}
+        {stage === "interview" ? transcript.slice(transcript.length - questionHistory.length).filter(() => questionHistory.length > 0).map((turn, index) => (
+          <section key={responses[index]?.questionToken ?? `${index}:${turn.field}`} data-registration-history={true} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, marginBottom: 12, padding: "16px 20px" }}>
+            <p style={{ color: "var(--text-3)", fontSize: 12 }}>{copy(language, { en: "Answered · read only", zh: "已回答 · 只读" })}</p>
+            <h2 style={{ fontSize: 18, margin: "6px 0" }}>{turn.prompt}</h2>
+            <p style={{ lineHeight: 1.6, margin: 0 }}>{turn.answer}</p>
+          </section>
+        )) : null}
+
         {isStatusCardApplication(admissionApplication) &&
         stage === admissionApplication.status ? (
           <EventAdmissionStatusCard
@@ -942,7 +1047,7 @@ export function EventRegistrationWorkspace({
             language={language}
             onWithdraw={() => {
               setError(null);
-              setConfirmingCancel(true);
+              confirmCancellation();
             }}
             pendingWithdraw={pendingCancel}
           />
@@ -950,6 +1055,7 @@ export function EventRegistrationWorkspace({
 
         {stage === "interview" && question ? (
           <div
+            ref={currentQuestionNode}
             key={`${question.field}-${transcript.length}`}
             data-reg-anim="question"
             style={{
@@ -964,10 +1070,7 @@ export function EventRegistrationWorkspace({
             {/* 顶部进度束 */}
             <div
               aria-label={copy(language, { en: "Registration progress", zh: "报名进度" })}
-              aria-valuemax={TOTAL_REQUIRED_QUESTIONS}
-              aria-valuemin={0}
-              aria-valuenow={currentQuestionNumber}
-              role="progressbar"
+              aria-hidden="true"
               style={{ background: "var(--surface-3)", display: "flex", height: 4 }}
             >
               <span
@@ -975,7 +1078,7 @@ export function EventRegistrationWorkspace({
                   background: "linear-gradient(90deg, color-mix(in srgb, var(--accent) 70%, var(--surface)), var(--accent))",
                   borderRadius: "0 99px 99px 0",
                   transition: "width .45s cubic-bezier(.22,1,.36,1)",
-                  width: `${(currentQuestionNumber / TOTAL_REQUIRED_QUESTIONS) * 100}%`,
+                  width: `${progress.answeredCount / 8 * 100}%`,
                 }}
               />
             </div>
@@ -1006,7 +1109,6 @@ export function EventRegistrationWorkspace({
                 </span>
                 <span
                   className="mono"
-                  data-registration-progress-label={`${currentQuestionNumber}/${TOTAL_REQUIRED_QUESTIONS}`}
                   style={{ color: "var(--text-4)", fontSize: 12 }}
                 >
                   {currentQuestionNumber} / {TOTAL_REQUIRED_QUESTIONS}
@@ -1075,13 +1177,13 @@ export function EventRegistrationWorkspace({
               ) : (
                 <>
                   <div className="reg-stagger" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {question.options.map((option, optionIndex) => (
+                    {ordinaryOptions.map((option, optionIndex) => (
                       <button
                         key={option}
                         aria-pressed={selectedOption === option}
                         className="reg-chip"
                         data-reg-option
-                        onClick={() => void submitAnswer(option)}
+                        onClick={() => { editRevision.current++; setSelectedOption(option); setFreeTextOpen(false); }}
                         type="button"
                         style={{
                           alignItems: "center",
@@ -1122,40 +1224,41 @@ export function EventRegistrationWorkspace({
                         {option}
                       </button>
                     ))}
+                    {question.options.length > 0 ? <button className="reg-chip" type="button" aria-pressed={freeTextOpen} onClick={() => { editRevision.current++; setFreeTextOpen(true); setSelectedOption(null); }} style={{ border: "1.5px solid var(--border)", borderRadius: 14, padding: "13px 16px", textAlign: "left", background: freeTextOpen ? "var(--accent-soft)" : "var(--surface)", color: "var(--ink)" }}>
+                      {copy(language, { en: "Other", zh: "其他" })}
+                    </button> : null}
                   </div>
 
-                  {freeTextOpen ? (
+                  {freeTextOpen || question.options.length === 0 ? (
                     <form
                       onSubmit={(formEvent) => {
                         formEvent.preventDefault();
-                        void submitAnswer(freeText);
+                        return submitAnswer(freeText);
                       }}
                       style={{ display: "flex", gap: 10, marginTop: 14 }}
                     >
                       <input
                         aria-label={copy(language, { en: "Your own answer", zh: "你的回答" })}
                         aria-invalid={error ? true : undefined}
-                        autoFocus
                         className="field"
-                        onChange={(changeEvent) => setFreeText(changeEvent.target.value)}
+                        onChange={(changeEvent) => { editRevision.current++; setFreeText(changeEvent.target.value); }}
                         placeholder={copy(language, { en: "Write your own answer…", zh: "用自己的话说…" })}
                         value={freeText}
                         style={{ flex: 1 }}
                       />
                       <button className="btn btn-primary" disabled={!freeText.trim()} type="submit" style={{ alignItems: "center", display: "inline-flex", gap: 7 }}>
                         {copy(language, { en: "Next", zh: "继续" })}
-                        <span className="mono" style={{ background: "rgba(255,255,255,.2)", borderRadius: 5, fontSize: 11, padding: "2px 6px" }}>⏎</span>
                       </button>
                     </form>
                   ) : (
                     <button
-                      className="reg-ghost-btn"
-                      onClick={() => setFreeTextOpen(true)}
+                      className="btn btn-primary"
+                      disabled={!selectedOption?.trim()}
+                      onClick={() => submitAnswer(selectedOption ?? "")}
                       type="button"
                       style={{ alignItems: "center", background: "transparent", border: 0, color: "var(--text-3)", cursor: "pointer", display: "inline-flex", fontFamily: "var(--ff)", fontSize: 14, fontWeight: 600, gap: 6, marginLeft: -12, marginTop: 14 }}
                     >
-                      <Icon name="edit" size={14} />
-                      {copy(language, { en: "I'd rather write my own", zh: "选项不合适?用自己的话说" })}
+                      {copy(language, { en: "Next", zh: "继续" })}
                     </button>
                   )}
                 </>
@@ -1169,16 +1272,7 @@ export function EventRegistrationWorkspace({
             </div>
 
             <footer className="reg-question-footer" style={{ alignItems: "center", background: "color-mix(in srgb, var(--surface-2) 55%, var(--surface))", borderTop: "1px solid var(--border)", display: "flex", gap: 14, justifyContent: "space-between", padding: "13px 22px" }}>
-              <button
-                className="reg-ghost-btn"
-                disabled={questionHistory.length === 0 || thinking}
-                onClick={goBack}
-                type="button"
-                style={{ alignItems: "center", background: "transparent", border: 0, color: questionHistory.length === 0 ? "var(--text-4)" : "var(--text-2)", cursor: questionHistory.length === 0 ? "default" : "pointer", display: "inline-flex", fontFamily: "var(--ff)", fontSize: 13, fontWeight: 600, gap: 5 }}
-              >
-                <Icon name="chevR" size={13} style={{ transform: "rotate(180deg)" }} />
-                {copy(language, { en: "Previous", zh: "上一题" })}
-              </button>
+              <span>{copy(language, { en: "Your earlier answers stay above.", zh: "已答问题保留在上方。" })}</span>
               <span style={{ color: "var(--text-4)", fontSize: 13 }}>
                 {copy(language, {
                   en: `${missingCoreFields.length} question(s) left before registration. Answers stay scoped to this event.`,
@@ -1269,7 +1363,7 @@ export function EventRegistrationWorkspace({
                   className="reg-ghost-btn"
                   onClick={() => {
                     setError(null);
-                    setConfirmingCancel(true);
+                    confirmCancellation();
                   }}
                   type="button"
                   style={{ background: "transparent", border: 0, color: "var(--danger, #C2410C)", cursor: "pointer", fontFamily: "var(--ff)", fontSize: 13, fontWeight: 600 }}
@@ -1338,8 +1432,9 @@ export function EventRegistrationWorkspace({
                 {error}
               </div>
             ) : null}
+            {eligibility && !eligibility.allowedActions.includes("reactivate") ? <p role="status">{eligibility.blockingReason ? registrationBlockingReasonCopy(eligibility.blockingReason, language) : copy(language, { en: "Registration is closed. Your cancellation remains in effect.", zh: "报名已截止，取消状态仍然有效。" })}</p> : null}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-              <button className="btn btn-primary" onClick={restartInterview} type="button">
+              <button className="btn btn-primary" disabled={Boolean(eligibility && !eligibility.allowedActions.includes("reactivate"))} onClick={restartInterview} type="button">
                 {copy(language, { en: "Register again", zh: "重新报名" })}
               </button>
               <a className="reg-ghost-btn" href={eventHref} style={{ color: "var(--text-3)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
@@ -1586,7 +1681,7 @@ export function EventRegistrationWorkspace({
                     className="reg-ghost-btn"
                     onClick={() => {
                       setError(null);
-                      setConfirmingCancel(true);
+                      confirmCancellation();
                     }}
                     type="button"
                     style={{ alignItems: "center", background: "transparent", border: 0, color: "var(--danger, #C2410C)", cursor: "pointer", display: "inline-flex", fontFamily: "var(--ff)", fontSize: 13, fontWeight: 600, gap: 5 }}
@@ -1688,7 +1783,7 @@ export function EventRegistrationWorkspace({
                 <button
                   className="btn"
                   disabled={pendingCancel}
-                  onClick={() => void cancelRegistration()}
+                  onClick={cancelRegistration}
                   type="button"
                   style={{ background: "var(--danger, #C2410C)", color: "white" }}
                 >
@@ -1745,8 +1840,8 @@ export function EventRegistrationWorkspace({
               <p style={{ color: "var(--text-2)", lineHeight: 1.65, margin: "8px 0 0" }}>
                 {registrationAnswersComplete
                   ? copy(language, {
-                      en: "Your two answers are kept. Retry to finish registration without answering anything else.",
-                      zh: "两项回答都已保留，无需再回答其它问题；请重试完成报名。",
+                      en: "Your core answers are kept. Save registration and generate your persona now, or continue answering optional questions.",
+                      zh: "核心回答已保留。可以保存报名并生成画像，也可以继续补充选填信息。",
                     })
                   : transcript.length > 0
                   ? copy(language, {
@@ -1770,20 +1865,20 @@ export function EventRegistrationWorkspace({
                   className="btn btn-primary"
                   data-registration-complete-anyway
                   disabled={thinking}
-                  onClick={() => void runGeneration(transcript, responses)}
+                  onClick={() => runGeneration(transcript, responses)}
                   type="button"
                 >
-                  <Icon name="check" size={15} />
-                  {copy(language, { en: "Finish registration", zh: "完成报名" })}
+                  {copy(language, { en: "Save registration and generate persona", zh: "保存报名并生成画像" })}
                 </button>
+                {!interviewDone && progress.answeredCount < 8 ? <button className="btn btn-secondary" disabled={thinking} type="button" onClick={() => retryInterviewStart()}>{copy(language, { en: "Continue answering", zh: "继续补充" })}</button> : null}
               </div>
             ) : (
               <div>
                 <button
                   className="btn btn-primary"
                   data-registration-interview-retry
-                  disabled={thinking}
-                  onClick={() => void retryInterviewStart()}
+                  disabled={thinking || interviewDone || progress.answeredCount === 8}
+                  onClick={() => retryInterviewStart()}
                   type="button"
                 >
                   <Icon name="sparkle" size={15} />

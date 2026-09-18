@@ -45,12 +45,15 @@ function readMentions(value: unknown, body: string): readonly NoteMentionContrac
   return mentions;
 }
 
+export function isOwnedNoteIdentity(value: unknown, actorId: string): value is Record<string, unknown> {
+  return isRecord(value) && nonEmpty(value.id) && value.accountId === actorId && value.ownerUserId === actorId;
+}
+
 function readNote(value: unknown, actorId: string, schemaVersion: 1 | 2): NoteDTO | null {
   if (!isRecord(value)) return null;
   if (
     !nonEmpty(value.id) ||
-    value.accountId !== actorId ||
-    value.ownerUserId !== actorId ||
+    !isOwnedNoteIdentity(value, actorId) ||
     !nonEmpty(value.body) ||
     !Array.isArray(value.contactIds) ||
     !value.contactIds.every(nonEmpty) ||

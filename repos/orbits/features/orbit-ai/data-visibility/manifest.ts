@@ -53,16 +53,20 @@ function source(
   };
 }
 
+const aiReadSources = AI_READ_PERMISSIONS.map((permission) => source(
+  `tool:${permission.tool}`,
+  ["id", "revision", "updatedAt", "evidenceIds", ...permission.fields],
+  `Read bounded cloud-canonical ${permission.domain} data after current scope and source authorization.`,
+  { maxItems: permission.maxItems, confirmation: "none_for_read" },
+));
+
 export const AI_VISIBILITY_MANIFEST = [
   source("tool:events.recommend", ["id", "title", "startsAt", "location", "reason", "evidenceIds"], "Recommend relevant events from actor-scoped event context."),
   source("tool:contacts.recommend", ["id", "displayName", "headline", "reason", "relationship", "evidenceIds"], "Recommend actor-scoped contacts and introduction paths."),
   source("tool:followups.reviewQueue", ["id", "title", "contactId", "dueAt", "reason", "evidenceIds"], "Rank derived follow-up candidates for review."),
   source("tool:chat.context", ["contactId", "summary", "relationship", "evidenceIds"], "Summarize actor-scoped relationship conversation context."),
   source("tool:profile.getSelf", ["displayName", "headline", "industry", "topics", "sourceVersion"], "Ground the current turn in the signed-in user's own profile.", { maxItems: 1, confirmation: "none_for_read" }),
-  source("tool:notes.query", ["id", "title", "snippet", "body", "bodyTruncated", "contactIds", "eventIds", "createdAt", "updatedAt", "evidenceIds"], "List, search, or open actor-owned notes requested in the current turn.", { confirmation: "none_for_read" }),
-  source("tool:tasks.query", ["id", "title", "description", "status", "category", "dueAt", "contactId", "eventId", "scheduleId", "source", "createdAt", "updatedAt", "evidenceIds"], "List, search, or open confirmed actor-owned tasks.", { confirmation: "none_for_read" }),
-  source("tool:followups.query", ["id", "title", "status", "contactId", "connectionId", "dueAt", "source", "evidenceSummary", "createdAt", "updatedAt", "evidenceIds"], "List, search, or open confirmed relationship follow-ups.", { confirmation: "none_for_read" }),
-  source("tool:schedule.query", ["id", "title", "kind", "category", "startsAt", "endsAt", "allDay", "timeZone", "location", "meetingMethod", "contactId", "eventId", "meetingId", "details", "missingFields", "evidenceIds"], "List, search, or open canonical actor-owned schedule items.", { confirmation: "none_for_read" }),
+  ...aiReadSources,
   source("context:message", ["content", "locale"], "Understand the current user request.", { maxItems: 1 }),
   source("context:history", ["role", "content"], "Resolve conversational references within a bounded recent window.", { retention: "conversation_window" }),
   source("context:memory", ["category", "content", "source", "updatedAt"], "Apply confirmed actor memory relevant to the current request."),
@@ -86,3 +90,4 @@ export function validateAiVisibilityManifest(entries: readonly AiVisibilitySourc
   }
   return issues;
 }
+import { AI_READ_PERMISSIONS } from "../data-query/permission-registry";

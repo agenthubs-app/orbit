@@ -18,7 +18,7 @@ function route(message: string, sourceNote: boolean) {
   const answer = "Naoki Sato：机构为测试机构，职务为测试职务；来源为本人活动报名资料。";
   const boundaries: Record<string, unknown> = {
     "../../../../shared/config/feature-mode": { resolveFeatureMode: () => "live" },
-    "../../_shared/agent-request-context": { resolveAgentRequestContext: async () => ({
+    "./request-context": { resolveOrbitAgentConversationRequestContext: async () => ({
       actorId: "actor:qa", runtime: {
         createRun: async () => ({ runId: "run:qa", status: "completed" }),
         addRunStep: async () => {},

@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+import {createConfiguredDeliveryPolicyRuntime} from '../../../../../features/notifications/typed-delivery-factory';
+import type {TypedDeliveryContent} from '../../../../../features/notifications/typed-delivery-worker';
+import type {NotificationDelivery} from '../../../../../features/notifications/delivery-service';
 
 import {
   createNotificationDeliveryService,
@@ -11,6 +14,7 @@ import {
 } from "../../../_shared/authenticated-actor";
 
 export interface NotificationDeliveryRouteDependencies {
+  resolveTyped?: (actorId:string, delivery:NotificationDelivery)=>Promise<TypedDeliveryContent|null>;
   resolveActor?: ResolveAuthenticatedApiActor;
   serviceForActor?: (actorId: string) => NotificationDeliveryService;
 }
@@ -30,11 +34,17 @@ export function createNotificationDeliveryRouteHandler(
     if (!actor) return authenticatedApiActorRequiredResponse("live");
     const { id } = await context.params;
     const delivery = await serviceForActor(actor.id).get(id);
-    if (!delivery) {
+    if (!delivery || delivery.actorId !== actor.id) {
       return NextResponse.json(
         { error: { code: "NOT_FOUND", message: "Notification delivery was not found." } },
         { status: 404 },
       );
+    }
+    if (delivery.policySource) {
+      try {
+        const source = await (dependencies.resolveTyped ?? ((actorId, candidate) => createConfiguredDeliveryPolicyRuntime(actorId)?.sources.resolve(candidate) ?? Promise.resolve(null)))(actor.id, delivery);
+        return NextResponse.json({data:{deliveryId:id,data:{deliveryId:id},status:delivery.status,title:source?.title??'Orbit',body:source?.body??'',target:{deliveryId:id,kind:'inbox',status:source?'available':'unavailable',...(source?{href:source.href}:{})}}},{headers:{'Cache-Control':'no-store'}});
+      } catch { return NextResponse.json({error:{code:'SERVICE_UNAVAILABLE',message:'Notification source temporarily unavailable'}},{status:503,headers:{'Cache-Control':'no-store'}}); }
     }
     const { actorId: _actorId, deviceId: _deviceId, ...publicDelivery } = {
       ...delivery,

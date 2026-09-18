@@ -11,45 +11,22 @@ import { gradientFromString, Icon, StatusBadge } from "../orbit-reference-primit
 import { getDemoEventSceneAsset } from "../../../../shared/demo-visual-assets";
 import { ORBIT_Z } from "../orbit-z";
 import { EventCover } from "./orbit-event-cover";
-import { eventRegistrationIsOpen, type EventRegistrationAvailability } from "../orbit-event-registration-view-model";
+import type { EventRegistrationAvailability } from "../orbit-event-registration-view-model";
+import {
+  EVENT_SCOPES as statusFilters,
+  eventCardActionKind,
+  eventScopeFromValues,
+  eventScopeSearchString,
+  eventTopics,
+  exploreTopicFilters,
+  matchesExploreFilters,
+  topicLabel,
+  type EventScope,
+} from "./explore-model";
+
+export { eventCardActionKind, eventScopeFromValues, eventScopeSearchString } from "./explore-model";
 
 const tz = { timeZone: "Asia/Tokyo" };
-const statusFilters = ["all", "registered", "upcoming", "active", "ended"] as const;
-type EventScope = (typeof statusFilters)[number];
-
-export function eventScopeFromValues(values: readonly string[]): EventScope {
-  if (values.length !== 1) return "all";
-  const value = values[0];
-  return value === "registered" ||
-    value === "upcoming" ||
-    value === "active" ||
-    value === "ended"
-    ? value
-    : "all";
-}
-
-export function eventScopeSearchString(
-  nextStatus: EventScope,
-  currentSearch: string,
-): string {
-  const nextParams = new URLSearchParams(currentSearch);
-  if (nextStatus === "all") nextParams.delete("scope");
-  else nextParams.set("scope", nextStatus);
-  return nextParams.toString();
-}
-
-export function eventCardActionKind(
-  status: OrbitLandingEventView["status"],
-  registered: boolean,
-  registrationAvailability: EventRegistrationAvailability = "unavailable",
-): "enter" | "manage" | "register" | "view" {
-  if (!registered) {
-    return status === "upcoming" && eventRegistrationIsOpen(registrationAvailability) ? "register" : "view";
-  }
-  if (status === "active") return "enter";
-  return status === "upcoming" ? "manage" : "view";
-}
-
 interface MappedEvent {
   code: string;
   day: string;
@@ -58,7 +35,7 @@ interface MappedEvent {
   imageUrl: string;
   month: string;
   name: string;
-  people: number;
+  people: number | null;
   place: string;
   pos: { x: number; y: number };
   status: OrbitLandingEventView["status"];
@@ -85,55 +62,6 @@ function formatEventDate(event: OrbitLandingEventView, language: "en" | "zh") {
     day: fmtDay(date, language),
     time: new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", { weekday: "short", hour: "2-digit", minute: "2-digit", ...tz }).format(date),
   };
-}
-
-// 话题标签中文词典：数据层保留英文/slug 原值（筛选与搜索用），仅展示层翻译；
-// 未收录的词原样显示，避免翻译缺失时丢信息。
-const TOPIC_LABELS_ZH: Record<string, string> = {
-  "AI": "AI",
-  "AI / automation": "AI / 自动化",
-  "Brand": "品牌",
-  "Community": "社群",
-  "Consumer": "消费",
-  "Cross-border": "跨境",
-  "Cross-border commerce": "跨境商务",
-  "D2C": "D2C",
-  "Design": "设计",
-  "Ecommerce": "电商",
-  "F&B": "餐饮",
-  "Fashion": "时尚",
-  "Finance": "金融",
-  "Finance / investment": "金融投资",
-  "FinTech": "金融科技",
-  "Hardware": "硬件",
-  "Hospitality": "餐饮酒店",
-  "Inbound": "入境消费",
-  "Investors": "投资人",
-  "Kansai": "关西",
-  "Manufacturing": "制造",
-  "Partners": "合作伙伴",
-  "PoC": "PoC",
-  "Relationship building": "人脉拓展",
-  "Retail / consumer": "零售消费",
-  "Salon": "沙龙",
-  "Seed": "种子轮",
-  "Semiconductor": "半导体",
-  "Sponsorship": "赞助合作",
-  "Startup": "创业",
-  "Venture": "创投",
-};
-// 内部来源名不是用户话题，不进标签与筛选。
-const INTERNAL_TOPIC = /^(event[ _]import|manual[ _]event.*|organizer[ _]feed|calendar[ _]sync.*)$/iu;
-
-function topicLabel(topic: string, language: "en" | "ja" | "zh") {
-  return language === "en" ? topic : TOPIC_LABELS_ZH[topic] ?? topic;
-}
-
-function eventTopics(event: OrbitLandingEventView) {
-  return [...new Set([event.industry, ...event.tags].map((item) => item.trim()).filter(Boolean))]
-    .filter((item) => !INTERNAL_TOPIC.test(item))
-    // 地点已在卡片 meta 行展示，不再作为话题重复出现。
-    .filter((item) => item !== event.address && item !== event.place);
 }
 
 function mapEvent(
@@ -288,7 +216,7 @@ function EventModuleCard({
           <div className="orbit-event-module-meta">
             <span><Icon color="var(--text-3)" name="clock" size={15} />{cardTime}</span>
             <span><Icon color="var(--text-3)" name="pin" size={15} />{mapped.place}</span>
-            {mapped.people >= 5 ? (
+            {mapped.people !== null && mapped.people >= 5 ? (
               <span><Icon color="var(--text-3)" name="users" size={15} />{t({ en: `${mapped.people} registered`, zh: `${mapped.people} 人已报名` })}</span>
             ) : null}
           </div>
@@ -335,7 +263,7 @@ function MapCanvas({ items, selected, onSelect }: { items: MappedEvent[]; select
           </button>
         );
       })}
-      <div style={{ background: "rgba(255,255,255,0.7)", borderRadius: 6, bottom: 14, color: "var(--text-3)", fontSize: 11, left: 14, padding: "3px 8px", position: "absolute" }}>{t({ en: "Tokyo", zh: "东京 · Tokyo" })}</div>
+      <div style={{ background: "rgba(255,255,255,0.7)", borderRadius: 6, color: "var(--text-3)", fontSize: 11, left: 14, maxWidth: "calc(100% - 28px)", padding: "3px 8px", pointerEvents: "none", position: "absolute", right: 14, top: 14, whiteSpace: "normal" }}>{t({ en: "Activity distribution schematic (not actual locations)", zh: "活动分布示意（非实际位置）", ja: "活動分布の模式図（実際の場所ではありません）" })}</div>
     </div>
   );
 }
@@ -369,7 +297,7 @@ function MapEventCard({
         <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 2 }}>{item.day ? `${item.month}${language === "zh" ? `${item.day}日` : ` ${item.day}`} · ${item.time}` : item.time}</div>
         <div style={{ alignItems: "center", color: "var(--text-2)", display: "flex", fontSize: 12, gap: 8, marginTop: 6 }}>
           <span style={{ alignItems: "center", display: "flex", gap: 4 }}><Icon color="var(--text-3)" name="pin" size={13} />{item.place}</span>
-          {item.people >= 5 ? (
+          {item.people !== null && item.people >= 5 ? (
             <>
               <span style={{ background: "var(--border-strong)", borderRadius: "var(--r-pill)", height: 3, width: 3 }} />
               <span>{t({ en: `${item.people} people`, zh: `${item.people} 人` })}</span>
@@ -417,7 +345,7 @@ function MobileExploreCard({ item }: { item: MappedEvent }) {
           <span style={{ alignItems: "center", display: "flex", gap: 6 }}><Icon color="var(--text-3)" name="pin" size={14} />{item.place}</span>
         </div>
         <div style={{ alignItems: "center", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "space-between", marginTop: 12, paddingTop: 12 }}>
-          <span style={{ alignItems: "center", color: "var(--text-2)", display: "flex", fontSize: 13, gap: 6 }}><Icon color="var(--text-3)" name="users" size={14} />{t({ en: `${item.people} people`, zh: `${item.people} 人` })}</span>
+          {item.people !== null ? <span style={{ alignItems: "center", color: "var(--text-2)", display: "flex", fontSize: 13, gap: 6 }}><Icon color="var(--text-3)" name="users" size={14} />{t({ en: `${item.people} people`, zh: `${item.people} 人` })}</span> : null}
           <a href={preserveHref(action.href)} style={{ alignItems: "center", color: "var(--accent)", display: "flex", fontSize: 13, fontWeight: 600, gap: 2, position: "relative", textDecoration: "none", zIndex: ORBIT_Z.raised + 1 }}>{action.badgeLabel ? `${action.badgeLabel} · ` : ""}{action.label}<Icon name="chevR" size={13} /></a>
         </div>
       </div>
@@ -522,17 +450,11 @@ export function OrbitRealExploreClient({
     setStatus(scopeInUrl);
   }, [scopeInUrl]);
   const events = viewModel.events;
-  const topicFilters = useMemo(() => [...new Set(events.flatMap(eventTopics))].slice(0, 8), [events]);
-  const filtered = useMemo(() => events.filter((event) => {
-    const matchesStatus =
-      status === "all" ||
-      (status === "registered"
-        ? Boolean(event.stats.youRsvped)
-        : event.status === status);
-    const matchesTopic = topic === "all" || eventTopics(event).includes(topic);
-    const matchesQuery = !query || event.name.includes(query) || event.code.includes(query) || event.theme.includes(query);
-    return matchesStatus && matchesTopic && matchesQuery;
-  }), [events, query, status, topic]);
+  const topicFilters = useMemo(() => exploreTopicFilters(events), [events]);
+  const filtered = useMemo(
+    () => events.filter((event) => matchesExploreFilters(event, { language, query, status, topic })),
+    [events, language, query, status, topic],
+  );
   const mapItems = useMemo(
     () => filtered.map((event) => mapEvent(
       event,
@@ -609,9 +531,11 @@ export function OrbitRealExploreClient({
               </div>
             </div>
           </div>
-          <div className="orbit-filters">
-            <div style={{ display: "flex", gap: 8 }}>{statusFilters.map((key) => <button key={key} className={`chip${status === key ? " is-active" : ""}`} onClick={() => setEventScope(key)} type="button">{statusLabels[key]}</button>)}</div>
-            {topicFilters.length ? <><span style={{ background: "var(--border-2)", height: 22, width: 1 }} /><div style={{ display: "flex", gap: 8 }}>{topicFilters.map((item) => <button key={item} className={`chip${topic === item ? " is-active" : ""}`} onClick={() => setTopic(topic === item ? "all" : item)} type="button">{topicLabel(item, language)}</button>)}</div></> : null}
+          <div className="orbit-filters" style={{ minWidth: 0 }}>
+            <div aria-label={t({ en: "Event status", zh: "活动状态", ja: "イベントの状態" })} role="group" style={{ display: "flex", gap: 8, minWidth: 0 }}>
+              {statusFilters.map((key) => <button aria-pressed={status === key} key={key} className={`chip${status === key ? " is-active" : ""}`} onClick={() => setEventScope(key)} type="button">{statusLabels[key]}</button>)}
+            </div>
+            {topicFilters.length ? <><span style={{ background: "var(--border-2)", height: 22, width: 1 }} /><div aria-label={t({ en: "Event topics", zh: "活动话题", ja: "イベントのトピック" })} role="group" style={{ display: "flex", gap: 8, minWidth: 0 }}>{topicFilters.map((item) => <button aria-pressed={topic === item} key={item} className={`chip${topic === item ? " is-active" : ""}`} onClick={() => setTopic(topic === item ? "all" : item)} type="button">{topicLabel(item, language)}</button>)}</div></> : null}
           </div>
           <div style={{ color: "var(--text-3)", fontSize: 13, marginBottom: 16, marginTop: 20 }}>{resultLabel}</div>
           {effMode === "modules" && filtered.length > 0 ? <EventModuleGrid events={filtered} registrationAvailabilityByEventId={registrationAvailabilityByEventId} /> : null}
@@ -625,7 +549,7 @@ export function OrbitRealExploreClient({
           {effMode === "map" && located.length > 0 ? (
             <section className="orbit-map-shell" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", boxShadow: "var(--sh-sm)", display: "grid", gridTemplateColumns: "380px 1fr", height: "min(680px, calc(100dvh - 220px))", minHeight: 520, overflow: "hidden" }}>
               <div className="orbit-map-rail scroll" style={{ borderRight: "1px solid var(--border)", overflowY: "auto", padding: "20px 18px" }}>
-                <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", marginBottom: 14 }}><h2 className="h-title" style={{ margin: 0 }}>{t({ en: "Discover events", zh: "发现活动" })}</h2><span style={{ color: "var(--text-3)", fontSize: 13 }}>{t({ en: `${located.length} locations`, zh: `${located.length} 个位置` })}</span></div>
+                <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between", marginBottom: 14 }}><h2 className="h-title" style={{ margin: 0 }}>{t({ en: "Discover events", zh: "发现活动" })}</h2><span style={{ color: "var(--text-3)", fontSize: 13 }}>{t({ en: `${located.length} events`, zh: `${located.length} 场活动`, ja: `${located.length} 件のイベント` })}</span></div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {located.map((item) => {
                     const on = selectedItem?.id === item.id;
@@ -653,18 +577,30 @@ export function OrbitRealExploreClient({
       <div className="orbit-mobile-only" style={{ background: "var(--bg)", flexDirection: "column", height: "100dvh", minHeight: "100dvh", overflow: "hidden", position: "relative" }}>
         <PublicTopNav active="events" />
         <div style={{ flexShrink: 0, padding: "16px 18px 0" }}>
-          <div style={{ alignItems: "center", display: "flex", gap: 12, justifyContent: "space-between", marginBottom: 14 }}>
-            <div><div className="eyebrow" style={{ marginBottom: 4 }}>EXPLORE</div><h1 className="h-display" style={{ margin: 0 }}>{t({ en: "Discover events", zh: "发现活动" })}</h1></div>
-            <button className={`btn btn-sm ${mode === "map" && canShowMap ? "btn-dark" : "btn-ghost"}`} disabled={!canShowMap} onClick={() => canShowMap && setMode(mode === "map" ? "modules" : "map")} type="button"><Icon name="pin" size={15} />{t({ en: "Map", zh: "地图" })}</button>
+          <div style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between", marginBottom: 14, minWidth: 0 }}>
+            <div style={{ minWidth: 0 }}><div className="eyebrow" style={{ marginBottom: 4 }}>EXPLORE</div><h1 className="h-display" style={{ margin: 0 }}>{t({ en: "Discover events", zh: "发现活动" })}</h1></div>
+            <div aria-label={t({ en: "Event view", zh: "活动视图", ja: "イベント表示" })} className="orbit-event-view-switcher" role="group" style={{ flexShrink: 0, minWidth: 0 }}>
+              <button aria-pressed={effMode === "modules"} className={`btn btn-sm orbit-event-view-option ${effMode === "modules" ? "btn-dark" : "btn-quiet"}`} onClick={() => setMode("modules")} style={{ minHeight: "var(--tap-min, 44px)", minWidth: "var(--tap-min, 44px)" }} type="button"><Icon color={effMode === "modules" ? "var(--on-dark)" : undefined} name="grid" size={15} />{t({ en: "Events", zh: "内容", ja: "イベント" })}</button>
+              <button aria-pressed={effMode === "map"} className={`btn btn-sm orbit-event-view-option ${effMode === "map" ? "btn-dark" : "btn-quiet"}`} disabled={!canShowMap} onClick={() => canShowMap && setMode("map")} style={{ minHeight: "var(--tap-min, 44px)", minWidth: "var(--tap-min, 44px)" }} type="button"><Icon color={effMode === "map" ? "var(--on-dark)" : undefined} name="pin" size={15} />{t({ en: "Map", zh: "地图", ja: "地図" })}</button>
+            </div>
           </div>
           <div style={{ position: "relative" }}>
             <Icon color="var(--text-3)" name="search" size={17} style={{ left: 13, position: "absolute", top: 14 }} />
             <input aria-label={t({ en: "Search event name, code, or topic", zh: "搜索活动名称、编号或主题" })} className="field" onChange={(event) => setQuery(event.target.value)} placeholder={t({ en: "Search event name, code, or topic", zh: "搜索活动名称、编号或主题" })} style={{ height: 44, paddingLeft: 40 }} type="search" value={query} />
           </div>
-          <div className="scroll noscroll" style={{ display: "flex", gap: 8, margin: "0 -18px", overflowX: "auto", padding: "14px 18px 4px" }}>
-            {statusFilters.map((key) => <button key={key} className={`chip${status === key ? " is-active" : ""}`} onClick={() => setEventScope(key)} style={{ flexShrink: 0 }} type="button">{statusLabels[key]}</button>)}
-            {topicFilters.length ? <span style={{ background: "var(--border-2)", flexShrink: 0, margin: "4px 2px", width: 1 }} /> : null}
-            {topicFilters.map((item) => <button key={item} className={`chip${topic === item ? " is-active" : ""}`} onClick={() => setTopic(topic === item ? "all" : item)} style={{ flexShrink: 0 }} type="button">{topicLabel(item, language)}</button>)}
+          <div style={{ display: "grid", gap: 8, minWidth: 0, marginTop: 14 }}>
+            <div aria-label={t({ en: "Event status", zh: "活动状态", ja: "イベントの状態" })} role="group" style={{ minWidth: 0 }}>
+              <span style={{ color: "var(--text-3)", display: "block", fontSize: 12, marginBottom: 4 }}>{t({ en: "Status", zh: "状态", ja: "状態" })}</span>
+              <div className="scroll noscroll orbit-chip-scroller" style={{ display: "flex", gap: 8, margin: "0 -18px", minWidth: 0, overflowX: "auto", padding: "0 18px 4px" }}>
+                {statusFilters.map((key) => <button aria-pressed={status === key} key={key} className={`chip${status === key ? " is-active" : ""}`} onClick={() => setEventScope(key)} style={{ flexShrink: 0, minHeight: "var(--tap-min, 44px)", minWidth: "var(--tap-min, 44px)" }} type="button">{statusLabels[key]}</button>)}
+              </div>
+            </div>
+            {topicFilters.length ? <div aria-label={t({ en: "Event topics", zh: "活动话题", ja: "イベントのトピック" })} role="group" style={{ minWidth: 0 }}>
+              <span style={{ color: "var(--text-3)", display: "block", fontSize: 12, marginBottom: 4 }}>{t({ en: "Topics", zh: "话题", ja: "トピック" })}</span>
+              <div className="scroll noscroll orbit-chip-scroller" style={{ display: "flex", gap: 8, margin: "0 -18px", minWidth: 0, overflowX: "auto", padding: "0 18px 4px" }}>
+                {topicFilters.map((item) => <button aria-pressed={topic === item} key={item} className={`chip${topic === item ? " is-active" : ""}`} onClick={() => setTopic(topic === item ? "all" : item)} style={{ flexShrink: 0, minHeight: "var(--tap-min, 44px)", minWidth: "var(--tap-min, 44px)" }} type="button">{topicLabel(item, language)}</button>)}
+              </div>
+            </div> : null}
           </div>
         </div>
         <div className="scroll" data-appscroll style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "8px 18px 36px" }}>

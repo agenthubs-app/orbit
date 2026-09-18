@@ -267,3 +267,39 @@ test("an orphaned conversation cannot bypass the current binding after an accept
     /not available|eligibility/i,
   );
 });
+
+test('conversation pages reject invalid limits and preserve an account-scoped unread total', async () => {
+  const { sender, recipient } = harness();
+  const invitation = await sender.createInvitation({ contactId: CONTACT_ID, recipientEmail: 'receiver@example.test', recipientName: 'Receiver' });
+  const eligibility = await recipient.acceptInvitation({ confirmed: true, token: invitation.token });
+  await sender.sendMessage({ conversationId: eligibility.conversationId!, qualificationVersion: eligibility.qualificationVersion!, body: '页内原文', requestId: 'page-test-send' });
+  const page = await recipient.listConversations({ limit: 1 } as never);
+  assert.equal((page as any).unreadTotal, 1);
+  assert.equal(page.conversations.length, 1);
+  assert.equal((page as any).nextCursor, null);
+  await assert.rejects(recipient.listConversations({ limit: 0 } as never));
+  await assert.rejects(recipient.listConversations({ limit: 101 } as never));
+  await assert.rejects(recipient.listConversations({ cursor: 'invalid-cursor' } as never));
+});
+
+test('conversation cursor pages use stable ties and cannot be reused by another account', async () => {
+  const { sender, recipient, store } = harness();
+  const invitation = await sender.createInvitation({ contactId: CONTACT_ID, recipientEmail: 'receiver@example.test', recipientName: 'Receiver' });
+  await recipient.acceptInvitation({ confirmed: true, token: invitation.token });
+  const original = (await store.listRecords({ workspaceId: WORKSPACE_ID, collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.conversations }))[0]!;
+  const binding = (await store.listRecords({ workspaceId: WORKSPACE_ID, collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.bindings }))[0]!;
+  for (const suffix of ['b', 'c']) {
+    const id = String(original.payload.conversationId) + suffix;
+    const bindingId = binding.recordId + suffix;
+    await store.upsertRecord({ ...binding, recordId: bindingId, payload: { ...binding.payload, bindingId, conversationId: id } });
+    await store.upsertRecord({ ...original, recordId: id, payload: { ...original.payload, conversationId: id, bindingId } });
+  }
+  const seen: string[] = []; let cursor: string | undefined;
+  for (let i = 0; i < 3; i++) {
+    const page = await recipient.listConversations({ limit: 1, ...(cursor ? { cursor } : {}) });
+    seen.push(...page.conversations.map(item => item.conversationId));
+    if (page.nextCursor) await assert.rejects(sender.listConversations({ cursor: page.nextCursor }), /cursor/);
+    cursor = page.nextCursor ?? undefined;
+  }
+  assert.equal(new Set(seen).size, 3); assert.equal(cursor, undefined);
+});

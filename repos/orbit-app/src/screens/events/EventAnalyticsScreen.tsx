@@ -3,10 +3,12 @@ import { useState } from "react";
 import { RefreshControl } from "react-native";
 
 import { eventAnalyticsAggregatePath, eventAnalyticsAttendeePath } from "../../api/endpoints";
+import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
+import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { AppScreen } from "../../components/AppScreen";
 import { useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
-import { eventAnalyticsToView, type EventAnalyticsKind } from "../../view-models/event-analytics";
+import { eventAnalyticsToView, eventAnalyticsFailureToMessage, type EventAnalyticsKind } from "../../view-models/event-analytics";
 import { EventAnalyticsContent, type EventAnalyticsContentState } from "./EventAnalyticsContent";
 
 function firstParam(value: string | string[] | undefined): string {
@@ -17,10 +19,13 @@ export function EventAnalyticsScreen() {
   const { colors } = useOrbitTheme();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const eventId = firstParam(params.id);
-  const aggregateState = useApiResource<unknown>(eventAnalyticsAggregatePath(eventId), () => false);
-  const attendeeState = useApiResource<unknown>(eventAnalyticsAttendeePath(eventId), () => false);
-  const organizerView = aggregateState.kind === "success" ? eventAnalyticsToView(aggregateState.data) : null;
-  const attendeeView = attendeeState.kind === "success" ? eventAnalyticsToView(attendeeState.data) : null;
+  const auth = useOrbitAuthSession();
+  const { baseUrl } = useOrbitApiBaseUrl();
+  const scopeKey = JSON.stringify([baseUrl, auth.actorId, eventId]);
+  const aggregateState = useApiResource<unknown>(eventAnalyticsAggregatePath(eventId), () => false, { scopeKey: `${scopeKey}:aggregate`, cachePolicy: "network-only" });
+  const attendeeState = useApiResource<unknown>(eventAnalyticsAttendeePath(eventId), () => false, { scopeKey: `${scopeKey}:attendee`, cachePolicy: "network-only" });
+  const organizerView = aggregateState.kind === "success" ? eventAnalyticsToView(aggregateState.data, eventId) : null;
+  const attendeeView = attendeeState.kind === "success" ? eventAnalyticsToView(attendeeState.data, eventId) : null;
   const organizerAvailable = organizerView?.kind === "organizer_aggregate";
   const attendeeAvailable = attendeeView?.kind === "attendee_report";
   const [selectedKind, setSelectedKind] = useState<EventAnalyticsKind>("organizer_aggregate");
@@ -28,7 +33,7 @@ export function EventAnalyticsScreen() {
   const view = activeKind === "organizer_aggregate" ? organizerView : attendeeView;
   const loading = !view && (aggregateState.kind === "loading" || attendeeState.kind === "loading");
   const firstFailure = [aggregateState, attendeeState].find((state) => state.kind === "failure" && state.status !== 403) ?? [aggregateState, attendeeState].find((state) => state.kind === "failure" || state.kind === "offline");
-  const contentState: EventAnalyticsContentState = loading ? { kind: "loading" } : view ? { kind: "success" } : { kind: "failure", message: firstFailure && (firstFailure.kind === "failure" || firstFailure.kind === "offline") ? firstFailure.error.message : "当前账号没有可查看的活动汇总或个人报告。" };
+  const contentState: EventAnalyticsContentState = loading ? { kind: "loading" } : view ? { kind: "success" } : { kind: "failure", message: firstFailure && (firstFailure.kind === "failure" || firstFailure.kind === "offline") ? eventAnalyticsFailureToMessage(firstFailure.error, firstFailure.status) : "当前没有可验证的本活动报告，请重新读取。" };
 
   function refresh() {
     aggregateState.refresh();

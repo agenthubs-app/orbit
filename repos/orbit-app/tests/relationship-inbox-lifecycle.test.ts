@@ -19,7 +19,7 @@ const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () 
 const effects = { calendarEntryCreated: false, externalMessageSent: false, networkRequestMade: false, notificationDelivered: false, savedRecordCreated: false };
 const state = window.fixture = {
   actor: "actor:one", cookieHeader: "", ready: true, signedIn: true, baseReady: true, baseUrl: "https://orbit.example", mounted: true,
-  detail: false, detailUnread: 0, conversationId: "thread:one", seed: {}, requests: [], replies: [], presses: {}, navigation: [], expiries: 0, holdReads: false, notifications: undefined, focused: true, appState: "active",
+  detail: false, detailUnread: 0, conversationId: "thread:one", seed: {}, requests: [], replies: [], presses: {}, navigation: [], expiries: 0, holdReads: false, notifications: undefined, focused: true, appState: "active", measurements: [],
   ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
   emit(appState) { state.appState = appState; nativeListeners.forEach(fn => fn(appState)); },
@@ -29,6 +29,8 @@ const state = window.fixture = {
   ] }; },
   thread(body = "已有消息") { return state.conversation(state.detailUnread, body); },
   data(path) {
+    if (state.typedDetail && path === "/api/inbox/notifications/inbox%3Aone") return state.typedInbox.items[0];
+    if (path.startsWith("/api/inbox/notifications")) return state.typedInbox ?? { enabled: false, items: [], unreadCount: 0, nextCursor: null, asOf: '2026-09-16T00:00:00.000Z' };
     if (path.endsWith("/read")) return { conversationId: state.conversationId, lastReadMessageId: state.detailUnread > 1 ? "message:two" : "message:one", readAt: "2026-09-15T00:02:00Z" };
     if (path.includes("/notifications/deliveries/") && state.delivery !== undefined) return state.delivery;
     if (path.includes("/notifications/deliveries/")) return { deliveryId: state.seed.deliveryId, signalId: "signal:one", signalRevision: "one", phase: "pre_event", channel: "in_app", status: "scheduled", title: "当前提醒", body: "确认提醒内容", target: { kind: "inbox", deliveryId: state.seed.deliveryId }, data: { deliveryId: state.seed.deliveryId }, scheduledFor: "2026-09-13T00:00:00Z", availableAt: "2026-09-13T00:00:00Z", attempt: 0, maxAttempts: 3, createdAt: "2026-09-13T00:00:00Z", updatedAt: "2026-09-13T00:00:00Z" };
@@ -43,13 +45,13 @@ const state = window.fixture = {
   reply(index, status = 200, data) { state.replies[index]?.(new Response(JSON.stringify(status >= 400 && data === undefined ? { success: false, error: { code: status === 401 ? "UNAUTHORIZED" : "SERVICE_UNAVAILABLE", message: "测试服务暂不可用" } } : { success: true, data: data === undefined ? state.data(state.requests[index].path) : data }), { status, headers: { "content-type": "application/json" } })); }
 };
 onSessionExpired(() => state.expiries++);
-window.fetch = (input, init) => { const url = new URL(String(input)); const index = state.requests.length; state.requests.push({ method: init.method, path: url.pathname, search: url.search, origin: url.origin, body: init.body ? JSON.parse(init.body) : null, signal: init.signal }); const reply = new Promise(resolve => state.replies[index] = resolve); if (init.method === "GET" && !state.holdReads) queueMicrotask(() => state.reply(index)); return reply; };
+window.fetch = (input, init) => { const url = new URL(String(input)); if (url.pathname === "/api/inbox/delivery/preferences") return Promise.resolve(new Response(JSON.stringify({success:false,error:{code:"NOT_FOUND",message:"Feature unavailable"}}),{status:404,headers:{"content-type":"application/json"}})); const index = state.requests.length; state.requests.push({ method: init.method, path: url.pathname, search: url.search, origin: url.origin, body: init.body ? JSON.parse(init.body) : null, signal: init.signal }); const reply = new Promise(resolve => state.replies[index] = resolve); if (init.method === "GET" && !state.holdReads) queueMicrotask(() => state.reply(index)); return reply; };
 export const useFixture = () => { observe(); return state; };
 export const useIsFocused = () => { observe(); return state.focused; };
 export const AppState = { get currentState() { return state.appState; }, addEventListener(_event, fn) { nativeListeners.add(fn); return { remove() { nativeListeners.delete(fn); } }; } };
 export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.actor || null, actorId: state.actor || null, user: state.actor ? { id: state.actor } : null, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
-export const useLocalSearchParams = () => { observe(); return state.detail ? { id: state.conversationId } : state.seed; };
+export const useLocalSearchParams = () => { observe(); return state.typedDetail ? {id:"inbox:one"} : state.detail ? { id: state.conversationId } : state.seed; };
 export const useGlobalSearchParams = useLocalSearchParams;
 export const usePathname = () => state.detail ? "/inbox/" + encodeURIComponent(state.conversationId) : "/inbox";
 export const useRouter = () => ({ canGoBack: () => true, back() { state.navigation.push("back"); }, push(href) { state.navigation.push(href); }, replace(href) { state.navigation.push(href); } });
@@ -58,18 +60,23 @@ export const Stack = () => null;
 export const randomUUID = () => "test-inbox-scope-" + (++uuid);
 export const readSnapshot = async (_baseUrl, _actorId, path) => { const cached = path === "/api/notifications" ? state.cachedNotifications : state.cachedInbox; return cached ? { result: { success: true, status: 200, data: cached, meta: { featureMode: null, privacy: null, runtimeBoundary: null } }, syncedAt: "2026-09-12T00:00:00Z" } : null; };
 export const writeSnapshot = async () => {};
+export const appPerformanceScenarioForPath = path => path === "/api/relationship-communication/conversations" ? "app.inbox" : null;
+export const appPerformanceInput = (metric, scenario) => ({ commit: "baseline-sha", environment: "app-release-simulator", metric, run: 1, scenario, unit: "milliseconds" });
+export const isAppPerformanceEnabled = () => true;
+export const measureAppPerformance = async (input, work) => { const result = await work(); state.measurements.push(input); return result; };
+export const markAppPerformance = sample => state.measurements.push(sample);
 export const Ionicons = () => <span aria-hidden="true" />;
 export const SafeAreaView = ({ edges, ...props }) => <View {...props} />;
 `;
 
 test.before(async () => {
   const result = await build({
-    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Inbox from "./app/(app)/inbox"; import Thread from "./app/inbox/[id]"; import { useFixture } from "fixture"; function App() { const s = useFixture(); return s.mounted ? s.detail ? <Thread /> : <Inbox /> : null; } createRoot(document.getElementById("root")).render(window.initialFixture?.strict ? <React.StrictMode><App /></React.StrictMode> : <App />);', loader: "tsx", resolveDir: process.cwd() },
+    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Inbox from "./app/(app)/inbox"; import Thread from "./app/inbox/[id]"; import Notification from "./app/inbox/notifications/[id]"; import { useFixture } from "fixture"; function App() { const s = useFixture(); return s.mounted ? s.typedDetail ? <Notification /> : s.detail ? <Thread /> : <Inbox /> : null; } createRoot(document.getElementById("root")).render(window.initialFixture?.strict ? <React.StrictMode><App /></React.StrictMode> : <App />);', loader: "tsx", resolveDir: process.cwd() },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
     define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "inbox-lifecycle-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "inbox-lifecycle" }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(AuthSessionProvider|ApiBaseUrlProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "inbox-lifecycle" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(AuthSessionProvider|ApiBaseUrlProvider|snapshot-store|app-performance)$/ }, () => ({ path: "fixture", namespace: "inbox-lifecycle" }));
       plugin.onLoad({ filter: /.*/, namespace: "inbox-lifecycle" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, RefreshControl as RealRefreshControl } from "react-native-web"; export * from "react-native-web";
 export { AppState } from "fixture";
@@ -103,6 +110,27 @@ async function preview(p: Page) {
   await p.getByRole("button", { name: "预览草稿", exact: true }).click(); await settle(p);
 }
 
+test("the inbox core read emits one redacted resource timing sample", async t => {
+  const p = await open(t);
+  await p.waitForFunction(() => (window as any).fixture.measurements.length > 0);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.measurements.filter((sample: any) => sample.metric === "app.resource")), [{
+    commit: "baseline-sha",
+    environment: "app-release-simulator",
+    metric: "app.resource",
+    run: 1,
+    scenario: "app.inbox",
+    unit: "milliseconds",
+  }]);
+});
+
+test("the inbox profiler emits redacted commit durations", async t => {
+  const p = await open(t);
+  await p.waitForFunction(() => (window as any).fixture.measurements.some((sample: any) => sample.metric === "app.react_commit"));
+  const commits = await p.evaluate(() => (window as any).fixture.measurements.filter((sample: any) => sample.metric === "app.react_commit"));
+  assert.ok(commits.length > 0);
+  assert.ok(commits.every((sample: any) => sample.scenario === "app.inbox" && sample.durationMs >= 0 && sample.failed === false));
+});
+
 for (const detail of [false, true]) {
   for (const patch of [{ ready: false }, { baseReady: false }, { actor: "" }]) test(`inbox ${detail ? "thread" : "list"} waits for full identity ${JSON.stringify(patch)}`, async t => {
     const p = await open(t, { detail, ...patch });
@@ -113,7 +141,7 @@ for (const detail of [false, true]) {
   test(`inbox ${detail ? "thread" : "list"} never coalesces a new empty-cookie actor with old pending reads`, async t => {
     const p = await open(t, { detail, holdReads: true });
     const oldCount = await p.evaluate(() => (window as any).fixture.requests.length);
-    assert.equal(oldCount, detail ? 1 : 3);
+    assert.equal(oldCount, detail ? 1 : 4);
     await update(p, { actor: "actor:two" });
     assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), oldCount * 2);
     await p.evaluate(oldCount => { const s = (window as any).fixture; for (let i = 0; i < oldCount; i++) s.reply(i, 401); }, oldCount); await settle(p);
@@ -156,7 +184,7 @@ test("ordinary inbox refresh retains the in-progress preview and its draft", asy
 
 test("a retained inbox conversation callback cannot navigate after account change", async t => {
   const p = await open(t);
-  await p.evaluate(() => { const s = (window as any).fixture; s.oldOpen = Object.entries(s.presses).find(([name]) => name.startsWith("与actor:one的对话，"))?.[1]; });
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldOpen = Object.entries(s.presses).find(([name]) => name.startsWith("actor:one,"))?.[1]; });
   await update(p, { actor: "actor:two" });
   await p.evaluate(() => (window as any).fixture.oldOpen()); await settle(p);
   assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), []);
@@ -221,7 +249,7 @@ test("a mismatched read receipt keeps unread state visible and retries after a f
 const persistentReminder = { reminderId: "reminder:one", title: "需要准备资料", organization: "Example", priority: "normal", dueAt: "2026-09-13T00:00:00Z", href: "/tasks/task%3Aone" };
 const persistentNotifications = { state: "success", reminders: [persistentReminder], notificationInteractions: {} };
 const readReceipt = { notificationId: "reminder:one", state: "read", updatedAt: "2026-09-13T00:01:00Z" };
-async function alerts(p: Page) { await p.getByRole("tab", { name: "待办", exact: true }).click(); await settle(p); }
+async function alerts(p: Page) { await p.getByRole("tab", { name: /^通知/ }).click(); await p.getByRole("tab", { name: "待办", exact: true }).click(); await settle(p); }
 function reminderButton(p: Page) { return p.getByRole("button", { name: /^需要准备资料，/u }); }
 
 test("opening a reminder waits for a single valid read receipt before navigating and rereading", async t => {
@@ -446,7 +474,7 @@ for (const detail of [false, true]) {
     await p.evaluate(() => { const s = (window as any).fixture; s.holdReads = true; s.emit("background"); }); await settle(p);
     assert.doesNotMatch(await p.locator("body").innerText(), /已有消息|actor:one/u);
     await p.evaluate(() => (window as any).fixture.emit("active")); await settle(p);
-    const count = detail ? 1 : 3;
+    const count = detail ? 1 : 4;
     assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), count * 2);
     assert.doesNotMatch(await p.locator("body").innerText(), /已有消息|actor:one/u);
     await p.evaluate(count => { const s = (window as any).fixture; for (let i = count; i < s.requests.length; i++) s.reply(i); }, count); await settle(p);
@@ -457,9 +485,9 @@ for (const detail of [false, true]) {
   test(`inbox foreground catches batched inactive-active once for ${detail ? "thread" : "list"}`, async t => {
     const p = await open(t, { detail });
     await p.evaluate(() => { const s = (window as any).fixture; s.emit("inactive"); s.emit("active"); }); await settle(p);
-    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 2 : 6);
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 2 : 8);
     await p.evaluate(() => { const s = (window as any).fixture; s.emit("active"); s.emit("active"); }); await settle(p);
-    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 2 : 6);
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 2 : 8);
   });
 
   test(`inbox foreground rereads ${detail ? "thread" : "list"} on focus restoration and does not read while blurred`, async t => {
@@ -467,9 +495,9 @@ for (const detail of [false, true]) {
     await update(p, { focused: false });
     assert.doesNotMatch(await p.locator("body").innerText(), /已有消息/u);
     await p.evaluate(() => { const s = (window as any).fixture; s.emit("background"); s.emit("active"); s.refresh(); }); await settle(p);
-    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 1 : 3);
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 1 : 4);
     await update(p, { focused: true });
-    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 2 : 6);
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 2 : 8);
     assert.match(await p.locator("body").innerText(), /已有消息/u);
   });
 }
@@ -516,7 +544,7 @@ test("inbox foreground preserves reply input and does not replay an IORBIT hando
 
 test("inbox foreground rejects old conversation callbacks even after the next read succeeds", async t => {
   const p = await open(t);
-  await p.evaluate(() => { const s = (window as any).fixture; s.oldOpen = Object.entries(s.presses).find(([name]) => name.startsWith("与actor:one的对话，"))?.[1]; s.emit("background"); s.oldOpen(); }); await settle(p);
+  await p.evaluate(() => { const s = (window as any).fixture; s.oldOpen = Object.entries(s.presses).find(([name]) => name.startsWith("actor:one,"))?.[1]; s.emit("background"); s.oldOpen(); }); await settle(p);
   assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), []);
   await p.evaluate(() => (window as any).fixture.emit("active")); await settle(p);
   await p.evaluate(() => (window as any).fixture.oldOpen()); await settle(p);
@@ -601,7 +629,7 @@ test("inbox foreground refreshes disclosed privacy controls and rejects its inte
 test("inbox foreground revokes a relationship signal confirmation and rereads the current list", async t => {
   const signal = { id: "signal:mail", displayName: "待核对联系人", organization: "Example", role: "负责人", sourceKind: "email", signalKind: "introduction", relationshipContext: "需要核对交流背景", suggestedNextAction: "确认来源", occurredAt: "2026-09-13T00:00:00Z", confirmation: { state: "pending" }, permission: { state: "granted" }, confidence: "high", evidence: [{ excerpt: "已有交流记录" }] };
   const p = await open(t, { signals: { signals: [signal] } });
-  await p.getByRole("tab", { name: "人脉", exact: true }).click(); await settle(p);
+  await p.getByRole("tab", { name: /^通知/ }).click(); await p.getByRole("tab", { name: "人脉", exact: true }).click(); await settle(p);
   await p.getByRole("button", { name: /^待核对联系人，/u }).click(); await settle(p);
   await p.getByRole("button", { name: "确认线索", exact: true }).click(); await settle(p);
   await p.evaluate(() => { const s = (window as any).fixture; s.oldWrite = s.requests.findLastIndex((r: any) => r.method === "POST"); s.oldAction = s.presses["确认线索"]; s.emit("background"); }); await settle(p);
@@ -623,4 +651,58 @@ test("inbox foreground clears the hidden draft when identity changes in the back
   assert.equal(await p.getByRole("textbox", { name: "回复正文", exact: true }).inputValue(), "");
   assert.match(await p.locator("body").innerText(), /actor:two/u);
   assert.doesNotMatch(await p.locator("body").innerText(), /actor:one/u);
+});
+
+test("the real inbox thread sends with AI analysis off and retains the delivery identity after a timeout", async t => {
+  const p = await open(t, { detail: true, allowPrivateAnalysis: false });
+  const input = p.getByRole("textbox", { name: "回复正文" });
+  await input.fill("从收件箱发送的回复");
+  await p.getByRole("button", { name: "发送消息", exact: true }).click();
+  const first = await p.evaluate(() => { const s = (window as any).fixture; const i = s.requests.findLastIndex((r: any) => r.path.endsWith("/messages")); s.reply(i, 503); return s.requests[i].body; });
+  await settle(p);
+  assert.equal(await input.inputValue(), "从收件箱发送的回复");
+  await p.getByRole("button", { name: "重试发送", exact: true }).click();
+  const second = await p.evaluate(() => { const s = (window as any).fixture; const i = s.requests.findLastIndex((r: any) => r.path.endsWith("/messages")); const body = s.requests[i].body; s.reply(i, 201, { conversationId: s.conversationId, qualificationVersion: body.qualificationVersion, deliveryState: "delivered", message: { conversationId: s.conversationId, messageId: "sent:one", deliveryState: "delivered", senderAccountId: s.actor, body: body.body } }); return body; });
+  await settle(p);
+  assert.equal(first.requestId, second.requestId);
+  assert.equal(await input.inputValue(), "");
+});
+
+test("a reply receipt from the previous account cannot update the next account's composer", async t => {
+  const p = await open(t, { detail: true });
+  await p.getByRole("textbox", { name: "回复正文" }).fill("旧账号的消息");
+  await p.getByRole("button", { name: "发送消息", exact: true }).click();
+  const index = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => r.path.endsWith("/messages")));
+  await update(p, { actor: "actor:two" });
+  await p.evaluate(i => { const s = (window as any).fixture; s.reply(i, 401); }, index);
+  await settle(p);
+  assert.equal(await p.getByRole("textbox", { name: "回复正文" }).inputValue(), "");
+  assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path.endsWith("/messages")).length), 1);
+});
+
+const typedAt = '2026-09-16T02:00:00.000Z';
+const typedRecord = { id:'inbox:one',actorId:'actor:one',revision:1,kind:'reminder',origin:'user',semanticKey:'source-reminder',title:'发送报价资料',reason:'你答应在会议后发送报价',scheduledFor:typedAt,sources:[{sourceKind:'note',sourceId:'note:one',sourceRevision:'1',occurredAt:typedAt,readAt:typedAt,excerpt:'原文承诺'}],target:{kind:'source',id:'note:one',href:'/notes/note%3Aone',status:'available'},actions:['read','dismiss'],occurredAt:typedAt,updatedAt:typedAt,readAt:null,disposition:'open' };
+const typedPage = {enabled:true,items:[typedRecord],unreadCount:1,nextCursor:null,asOf:typedAt};
+test('typed inbox reads an explicit visible snapshot and leaves a new arrival unread', async t => {
+ const p=await open(t,{typedInbox:typedPage});await p.getByRole('tab',{name:/^通知/}).click();await settle(p);
+ await p.getByRole('button',{name:'全部已读',exact:true}).click();await settle(p);
+ const request=(await writes(p))[0]!;assert.equal(request.path,'/api/inbox/notifications/read');assert.deepEqual(request.body.items,[{id:'inbox:one',expectedRevision:1}]);
+ await p.evaluate(({record,page,at})=>{const s=(window as any).fixture;const read={...record,revision:2,readAt:at};s.typedInbox={...page,items:[read,{...record,id:'inbox:new',title:'新到达提醒'}]};s.reply(s.requests.findLastIndex((r:any)=>r.method==='POST'),200,{results:[{id:record.id,notification:read}]});},{record:typedRecord,page:typedPage,at:typedAt});await settle(p);
+ assert.match(await p.locator('body').innerText(),/新到达提醒/);assert.equal((await writes(p)).length,1);
+});
+test('typed inbox source-only navigation never manufactures a task and account changes hide old content',async t=>{
+ const p=await open(t,{typedInbox:typedPage});await p.getByRole('tab',{name:/^通知/}).click();await settle(p);
+ await p.getByRole('button',{name:/发送报价资料/}).click();assert.deepEqual(await p.evaluate(()=>(window as any).fixture.navigation),['/inbox/notifications/inbox%3Aone']);
+ await p.evaluate(()=>{(window as any).fixture.holdReads=true;});await update(p,{actor:'actor:two'});
+ assert.doesNotMatch(await p.locator('body').innerText(),/发送报价资料|原文承诺/);
+});
+test('typed detail retries an uncertain action with the same key and rejects an old-account receipt',async t=>{
+ const p=await open(t,{typedInbox:typedPage,typedDetail:true});
+ await p.getByRole('button',{name:'标为已读',exact:true}).click();await settle(p);
+ const first=(await writes(p))[0]!;
+ await p.evaluate(()=>{const s=(window as any).fixture;s.reply(s.requests.findLastIndex((r:any)=>r.method==='POST'),503);});await settle(p);
+ await p.getByRole('button',{name:'重试操作',exact:true}).click();await settle(p);assert.deepEqual((await writes(p))[1]?.body,first.body);
+ await update(p,{actor:'actor:two'});await p.evaluate(record=>{const s=(window as any).fixture;s.reply(s.requests.findLastIndex((r:any)=>r.method==='POST'),200,{notification:{...record,revision:2,readAt:record.occurredAt}});},typedRecord);await settle(p);
+ assert.doesNotMatch(await p.locator('body').innerText(),/原文承诺|发送报价资料/);assert.deepEqual(await p.evaluate(()=>(window as any).fixture.navigation),[]);
 });

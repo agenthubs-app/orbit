@@ -1,0 +1,11 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {randomUUID} from 'node:crypto';
+import {createTransactionalPostgresClient} from '../../shared/storage/transactional-postgres';import {createPostgresLiveRecordStore} from '../../shared/storage/postgres-live-record-store';import {createStorageNotificationDeliveryService} from '../../features/notifications/delivery-service';
+const url=process.env.ORBIT_EVENT_DATABASE_URL;
+test('a stale worker cannot overwrite a new PostgreSQL lease after reading the old owner',{skip:!url},async()=>{
+ const client=createTransactionalPostgresClient({connectionString:url!,max:3}),workspaceId='qa:lease:'+randomUUID(),now='2026-09-16T01:00:00.000Z';let release!:()=>void,entered!:()=>void;const gate=new Promise<void>(r=>release=r),started=new Promise<void>(r=>entered=r);let pause=false;
+ const delayed={query:async<T>(sql:string,values?:readonly unknown[])=>{if(pause&&sql.includes("set payload=jsonb_set(payload,'{delivery}'")){entered();await gate;}return client.query<T>(sql,values);}};
+ const make=(sqlClient=client)=>createStorageNotificationDeliveryService({actorId:'a',workspaceId,store:createPostgresLiveRecordStore({client}) as never,sqlClient,now:()=>now});const first=createStorageNotificationDeliveryService({actorId:'a',workspaceId,store:createPostgresLiveRecordStore({client}) as never,sqlClient:delayed,now:()=>now});
+ try{const d=(await first.materialize({signalId:'n',signalRevision:'1',phase:'commitment',title:'Orbit',body:'N',scheduledFor:now,policySource:{kind:'notification',id:'n',eventKey:'n'}})).delivery;await first.claimReady({workerId:'old',lane:'typed',now,limit:1});pause=true;
+ const pending=first.markSuppressed({deliveryId:d.deliveryId,workerId:'old',now,reason:'late_cancel'});const rejected=assert.rejects(pending,/lease/);await started;const second=make();assert.equal((await second.claimReady({workerId:'new',lane:'typed',now:'2026-09-16T01:20:00.000Z',limit:1})).length,1);release();await rejected;assert.equal((await second.get(d.deliveryId))?.leaseOwner,'new');assert.equal((await second.get(d.deliveryId))?.status,'processing');
+ }finally{release();await client.query('delete from orbit_records where workspace_id=$1',[workspaceId]);await client.close();}
+});

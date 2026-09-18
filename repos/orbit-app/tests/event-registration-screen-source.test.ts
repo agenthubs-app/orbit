@@ -12,7 +12,9 @@ const screenSource = readFileSync(
 test("event registration screen uses the web adaptive interview routes", () => {
   const personaSlice = screenSource.slice(
     screenSource.indexOf("async function generateAdaptivePersona"),
-    screenSource.indexOf("async function submitRegistration")
+    // The independent registration readback helper follows the persona method;
+    // it is not part of the persona request and must not widen this slice.
+    screenSource.indexOf("async function verifyRegistrationReadback")
   );
 
   assert.match(screenSource, /eventRegistrationInterviewPath/u);

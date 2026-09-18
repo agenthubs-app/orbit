@@ -13,6 +13,8 @@ import { createConfiguredMobileContactsDashboardService } from "../../features/m
 import { createContactsAnalysisSourceDataVersion } from "../../features/mobile/contacts-analysis-report-provider";
 import { createOrbitAgentChatSessionProvider } from "../../features/orbit-ai/storage/orbit-agent-chat-session-provider-factory";
 import type { StoredAiSessionOriginContract } from "../../shared/contract/ai-sessions";
+import { createLiveOrbitAgentConversationService } from "../../features/orbit-ai/live-conversation-service";
+import { createContactsAnalysisReportProvider } from "../../features/mobile/contacts-analysis-report-provider";
 
 function verificationFor(origin: StoredAiSessionOriginContract | undefined) {
   return origin && "verification" in origin ? origin.verification : undefined;
@@ -240,14 +242,48 @@ test("contacts analysis send verifies current actor data and records only a serv
   };
   const accepted = await post(acceptedBody);
   assert.equal(accepted.status, 200);
-  assert.match(sentMessages[0] ?? "", /^Execute the registered contacts\.analysis@1 task/u);
-  assert.match(sentMessages[0] ?? "", /请重点分析需要恢复联系的人/u);
+  assert.equal(sentMessages[0], "请重点分析需要恢复联系的人");
   const stored = await createOrbitAgentChatSessionProvider("mock", "mock:anonymous")?.getSession(acceptedBody.sessionId);
-  assert.deepEqual(verificationFor(stored?.origin), {
-    analysisVersion: "contacts.analysis@1",
-    kind: "contacts_analysis_execution",
-    sourceDataVersion,
-  });
+  assert.equal(verificationFor(stored?.origin), undefined, "ordinary mock output is not analysis execution proof");
+});
+
+test("formal analysis POST keeps its original question, persists the real task reply, and replays without another provider call", async () => {
+  const dashboard = await createConfiguredMobileContactsDashboardService("mock").getDashboard({ actorId: "mock:anonymous" });
+  assert.equal(dashboard.success, true);
+  if (!dashboard.success) return;
+  const source = { aggregate: dashboard.data.aggregate, contacts: dashboard.data.contacts, distributions: dashboard.data.distributions, gaps: dashboard.data.gaps, opportunities: dashboard.data.opportunities, profile: dashboard.data.profile, summary: dashboard.data.summary };
+  const anchor = source.contacts?.contacts[0]?.id;
+  assert.ok(anchor);
+  const question = "请根据当前已保存的人脉资料，分析关系结构、目标覆盖和下一步建议。";
+  const report = `**关系结构**：当前联系人的关系背景可在 ${anchor} 复核。\n**目标覆盖**：依据当前资料识别目标覆盖缺口，不推断未保存关系。\n**下一步建议**：先补齐缺失依据，再决定是否联系。\n**判断依据**：${anchor} 来自当前账号资料；没有执行联系人或任务写入。`;
+  let providerCalls = 0;
+  const live = createLiveOrbitAgentConversationService({ apiKey: "synthetic-test-key", provider: "deepseek", maxLoopSteps: 3, fetchImplementation: (async (_url, init) => {
+    providerCalls++;
+    const request = JSON.parse(String(init?.body));
+    const supplied = JSON.parse(request.messages[1].content);
+    assert.equal(supplied.originalUserMessage, question);
+    assert.deepEqual(JSON.parse(supplied.artifacts[0].summary).untrustedContactsAnalysisData, source);
+    return new Response(JSON.stringify({ choices: [{ finish_reason: "stop", message: { content: report } }] }), { status: 200 });
+  }) as typeof fetch });
+  mock.method(orbitAgentConversationServiceFactory, "create", () => ({ mode: "mock" as const, service: live, success: true as const }));
+  const sourceDataVersion = createContactsAnalysisSourceDataVersion(source);
+  const body = { protocolVersion: 2, clientMessageId: "message:formal-analysis", expectedMessageRevision: 0, locale: "zh", message: question, references: [], requestId: "request:formal-analysis", sessionId: "session:formal-analysis", origin: { entryClient: "web", entryPointId: "contacts.analysis", initialGroupId: null, kind: "structured", sourceDataVersion, template: { id: "contacts.analysis", version: 1 } }, contactsAnalysis: { source: { contact: "foreign forged body" }, sourceDataVersion } };
+  const route = await import("../../app/api/ai/conversations/route");
+  const post = () => route.POST(new Request("https://orbit.local/api/ai/conversations", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }));
+  const first = await post();
+  assert.equal(first.status, 200);
+  const envelope = await first.json();
+  assert.equal(envelope.data.messages.find((message: { role: string }) => message.role === "user")?.content, question);
+  assert.equal(envelope.data.assistantMessage, report);
+  const replay = await post(); assert.equal(replay.status, 200); assert.equal(providerCalls, 1);
+  const sessionProvider = createOrbitAgentChatSessionProvider("mock", "mock:anonymous");
+  const stored = await sessionProvider?.getSession(body.sessionId);
+  assert.equal(stored?.messages[0]?.text, question);
+  assert.equal(stored?.messages[1]?.text, report);
+  assert.equal(verificationFor(stored?.origin)?.sourceDataVersion, sourceDataVersion);
+  const read = await createContactsAnalysisReportProvider({ sessionProvider }).getAnalysis({ source });
+  assert.equal(read.success, true);
+  if (read.success) assert.equal(read.data.report?.body, report);
 });
 
 test("protocol v2 conversation POST authorizes contact references before planner execution", async () => {

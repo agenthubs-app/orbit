@@ -35,7 +35,7 @@ const NativeDate = Date;
 window.Date = class extends NativeDate { constructor(...args) { super(...(args.length ? args : ["2026-09-12T03:00:00Z"])); } static now() { return NativeDate.parse("2026-09-12T03:00:00Z"); } };
 const state = window.fixture = { requests: [], pending: [], navigation: [], presses: {}, expiries: 0, actor: "actor-1", name: "程川", cookieHeader: "", baseUrl: "https://orbit.example", ready: true, baseReady: true, signedIn: true, focused: true, appState: "active", mounted: true, width: 390, fontScale: 1, ...window.initialFixture,
   update(patch) { Object.assign(state, patch); if (patch.appState) nativeListeners.forEach(fn => fn(patch.appState)); revision++; listeners.forEach(fn => fn()); },
-  reply(index, status = 200, payload) { const r = state.requests[index]; const cursor = new URL(r.url).searchParams.get("cursor") ?? "first"; const paged = r.path === "/api/ai/conversations/sessions" ? state.pagePayloads?.[cursor] : undefined; r.replied = true; state.pending[index]?.(new Response(JSON.stringify(status === 200 || payload !== undefined ? { success: true, data: payload === undefined ? paged ?? state.payloads[r.path] : payload } : { success: false, error: { code: "UNAVAILABLE", message: "暂时无法读取，请重试。" } }), { status, headers: { "Content-Type": "application/json" } })); }
+  reply(index, status = 200, payload) { const r = state.requests[index]; const cursor = new URL(r.url).searchParams.get("cursor") ?? "first"; const paged = r.path === "/api/ai/conversations/sessions" ? state.pagePayloads?.[cursor] : undefined; r.replied = true; state.pending[index]?.(new Response(JSON.stringify(status === 200 || payload !== undefined ? { success: true, data: payload === undefined ? paged ?? state.payloads[r.path] ?? (r.path === "/api/inbox/notifications" ? {enabled:false,items:[],unreadCount:0,nextCursor:null,asOf:"2026-09-16T00:00:00.000Z"} : undefined) : payload } : { success: false, error: { code: "UNAVAILABLE", message: "暂时无法读取，请重试。" } }), { status, headers: { "Content-Type": "application/json" } })); }
 };
 onSessionExpired(() => state.expiries++);
 window.fetch = async (input, init) => { const index = state.requests.length; const url = new URL(String(input)); state.requests.push({ path: url.pathname, url: String(input), method: init.method, body: init.body ? JSON.parse(init.body) : null, signal: init.signal });
@@ -203,7 +203,7 @@ test("AI foreground badge refresh leaves the unsent composer intact and does not
   assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), before);
   await update(p, { appState: "active" });
   assert.equal(await inbox.locator(":scope > div").count(), 0);
-  assert.deepEqual(await p.evaluate(before => (window as any).fixture.requests.slice(before).map((r: any) => [r.method, r.path]).sort(), before), [["GET", "/api/notifications"], ["GET", "/api/relationship-communication/conversations"]]);
+  assert.deepEqual(await p.evaluate(before => (window as any).fixture.requests.slice(before).map((r: any) => [r.method, r.path]).sort(), before), [["GET", "/api/inbox/notifications"], ["GET", "/api/notifications"], ["GET", "/api/relationship-communication/conversations"]]);
   await p.evaluate(before => { const s = (window as any).fixture; s.requests.forEach((r: any, i: number) => { if (i >= before) s.reply(i); }); }, before); await settle(p);
   assert.equal(await inbox.locator(":scope > div").count(), 1);
   await p.getByRole("button", { name: "关闭侧栏", exact: true }).last().click(); await settle(p);

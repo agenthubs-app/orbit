@@ -43,6 +43,16 @@ const event = {
   status: "confirmed" as const,
 };
 
+test("only canonical configuration restrictions preserve an existing legal cancellation, not importing", () => {
+  for (const blockingReason of ["configuration_required", "migration_in_progress"] as const) {
+    const result = resolveEventRegistrationEligibility({ event, evaluatedAt, registration: registration("rsvped"), legacyAvailability: "unavailable", blockingReason });
+    assert.equal(result.state, "registered");
+    assert.equal(result.reason, "registered");
+    assert.equal(result.blockingReason, blockingReason);
+    assert.deepEqual(result.allowedActions, blockingReason === "configuration_required" ? ["cancel"] : []);
+  }
+});
+
 test("legacy eligibility is authoritative for open, registered, cancelled, cutoff, ended, and cancelled events", () => {
   const matrix: readonly {
     expected: readonly [string, readonly string[]];

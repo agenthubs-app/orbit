@@ -76,7 +76,7 @@ function createReadDedupedLiveRecordStore<
     const nextRead = Promise.resolve()
       .then(read)
       .finally(() => {
-        inflightReads.delete(key);
+        if (inflightReads.get(key) === nextRead) inflightReads.delete(key);
       });
 
     inflightReads.set(key, nextRead);
@@ -85,6 +85,16 @@ function createReadDedupedLiveRecordStore<
   }
 
   return {
+    ...(store.updateRecordIfCurrent ? {
+      async updateRecordIfCurrent(record, expected) {
+        inflightReads.clear();
+        try {
+          return await store.updateRecordIfCurrent!(record, expected);
+        } finally {
+          inflightReads.clear();
+        }
+      },
+    } satisfies Pick<LiveRecordStoreLike<TPayload>, "updateRecordIfCurrent"> : {}),
     ...(insertRecordIfAbsent ? {
       async insertRecordIfAbsent(record) {
         inflightReads.clear();
@@ -97,10 +107,13 @@ function createReadDedupedLiveRecordStore<
         }
       },
     } satisfies Pick<LiveRecordStoreLike<TPayload>, "insertRecordIfAbsent"> : {}),
-    deleteRecord(input) {
+    async deleteRecord(input) {
       inflightReads.clear();
-
-      return store.deleteRecord(input);
+      try {
+        return await store.deleteRecord(input);
+      } finally {
+        inflightReads.clear();
+      }
     },
     getRecord(query) {
       return once(createReadDedupeKey("getRecord", query), () =>
@@ -112,10 +125,13 @@ function createReadDedupedLiveRecordStore<
         store.listRecords(query),
       );
     },
-    upsertRecord(record) {
+    async upsertRecord(record) {
       inflightReads.clear();
-
-      return store.upsertRecord(record);
+      try {
+        return await store.upsertRecord(record);
+      } finally {
+        inflightReads.clear();
+      }
     },
   };
 }

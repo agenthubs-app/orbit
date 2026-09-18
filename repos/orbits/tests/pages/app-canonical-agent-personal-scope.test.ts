@@ -80,7 +80,9 @@ for (const route of ["agent", "tasks/personal", "home/events"] as const) {
   });
   test(`${route} fails closed without account membership`, async t => {
     const { page, calls } = loadPage(t, route, { missing: true });
-    await assert.rejects(page(), /Authenticated Orbit account membership is unavailable/);
+    await assert.rejects(page(), route === "tasks/personal"
+      ? /redirect:\/app\/account\/login/
+      : /Authenticated Orbit account membership is unavailable/);
     assert.deepEqual(calls.map(call => call.operation), ["auth", "identity"]);
   });
   test(`${route} redirects anonymous users before resolving or reading data`, async t => {

@@ -182,14 +182,20 @@ export function homeScheduleToView(payload: unknown, selectedDateKey: string, no
     const start = Date.parse(item.startsAt);
     const end = typeof item.endsAt === "string" ? Date.parse(item.endsAt) : null;
     if (end !== null && end <= start) return null;
-    if (item.state === "cancelled" || start >= endOfDay || (end === null ? start < startOfDay : end <= startOfDay)) continue;
+    const allDay = item.kind === "personal" && item.allDay === true;
+    const savedZone = allDay && typeof item.timeZone === "string" ? item.timeZone : timeZone;
+    try { new Intl.DateTimeFormat("en", { timeZone: savedZone }); } catch { return null; }
+    if (allDay && end === null) return null;
+    const savedDate = tokyoDate(new Date(start), savedZone);
+    const savedEndDate = end === null ? savedDate : tokyoDate(new Date(end - 1), savedZone);
+    if (item.state === "cancelled" || (allDay ? selectedDateKey < savedDate || selectedDateKey > savedEndDate : start >= endOfDay || (end === null ? start < startOfDay : end <= startOfDay))) continue;
     const state = start > now.getTime() ? "upcoming" : end !== null && end > now.getTime() ? "ongoing" : "ended";
     const startDate = tokyoDate(new Date(start), timeZone);
     const time = new Intl.DateTimeFormat("en-GB", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(start));
-    const duration = end === null ? "" : createTranslator(language)("home.durationMinutes", { count: Math.round((end - start) / 60_000) });
+    const duration = end === null || allDay ? "" : createTranslator(language)("home.durationMinutes", { count: Math.round((end - start) / 60_000) });
     rows.push({
       start, id: item.id, title: item.title, state,
-      timeLabel: (startDate === selectedDateKey ? "" : dateNumber(startDate) + " ") + time,
+      timeLabel: allDay ? createTranslator(language)("schedule.allDay") : (startDate === selectedDateKey ? "" : dateNumber(startDate) + " ") + time,
       detail: [item.location, duration].filter(Boolean).join(" · "),
       href: item.kind === "event" ? "/schedule/events/" + encodeURIComponent(item.sourceId) : item.kind === "personal" ? "/schedule/personal/" + encodeURIComponent(item.id) : "/schedule"
     });

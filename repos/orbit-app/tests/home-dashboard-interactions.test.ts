@@ -56,6 +56,7 @@ const state = window.fixture = {
   update(patch) { Object.assign(state, patch); if (patch.appState) nativeListeners.forEach(fn => fn(patch.appState)); version++; listeners.forEach(fn => fn()); },
   tick() { [...timers.values()].forEach(fn => fn()); },
   body(path) {
+    if (path.startsWith("/api/inbox/notifications")) return state.typedInbox ?? { enabled: false, items: [], unreadCount: 0, nextCursor: null, asOf: '2026-09-16T00:00:00.000Z' };
     if (state.visual) {
       if (path === "/api/tasks") return { tasks: state.tasks ?? ["发送项目介绍", "确认下周会面时间", "补充合作记录", "整理访谈提纲", "回复活动报名问题"].map((title, index) => task({ id: "visual-task-" + index, title })) };
       if (path === "/api/schedule-items") return { scheduleItems: [
@@ -192,6 +193,14 @@ test("search, shortcuts, inbox and real record destinations work without implici
     "/tasks/task%3A%2Fone", "/schedule/events/event%3A%2Fone", "/events/event%3A%2Fone"
   ]);
   assert.equal(await p.getByRole("button", { name: "联系跟进", exact: true }).count(), 0);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("home keeps quick create and opens global saved-note history without filters or writes", async t => {
+  const p = await open(t); await hydrate(p);
+  assert.equal(await p.getByRole("button", { name: "所有笔记", exact: true }).count(), 1);
+  await press(p, "所有笔记"); await press(p, "记笔记");
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/notes", "/notes/new"]);
   assert.deepEqual(await writes(p), []);
 });
 
@@ -364,12 +373,12 @@ test("inbox badge does not coalesce an empty-cookie read from a previous actor",
   await reply(p, oldInbox, relationshipInbox(99, "one", "old"));
   assert.equal(await p.getByTestId("home-inbox-badge").count(), 0);
   await reply(p, newInbox, relationshipInbox(2, "two"));
-  assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "2");
+  assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "");
 });
 
 test("standard home keeps a two-column editorial layout with real counts and large touch targets", async t => {
   const p = await open(t, { visual: true, safeAreaTop: 48 });
-  await p.waitForFunction(() => (window as any).fixture.requests.length === 5);
+  await p.waitForFunction(() => (window as any).fixture.requests.length === 6);
   if (process.env.APP_STYLE_SCREENSHOTS) await p.screenshot({ path: "/tmp/orbit-ink-signal-home-loading-390-" + (process.env.HOME_QA_PASS ?? "current") + ".png" });
   await hydrate(p);
   assert.equal(await p.getByTestId("home-day-sections").evaluate(el => getComputedStyle(el).flexDirection), "row");
@@ -383,7 +392,7 @@ test("standard home keeps a two-column editorial layout with real counts and lar
 
 test("matched source content retains weekday labels, source font fallback and event rows above the navigation", async t => {
   const p = await open(t, { visual: true, safeAreaTop: 48 });
-  await p.waitForFunction(() => (window as any).fixture.requests.length === 5); await hydrate(p);
+  await p.waitForFunction(() => (window as any).fixture.requests.length === 6); await hydrate(p);
   assert.equal(await p.getByText("周五", { exact: true }).count(), 1);
   assert.match(await p.getByRole("button", { name: "查看日程：林悦 · 合作沟通" }).getByText("林悦 · 合作沟通").evaluate(el => getComputedStyle(el).fontFamily), /PingFang SC/);
   const last = (await p.getByRole("button", { name: "查看活动：设计师午间聚会" }).boundingBox())!;
@@ -413,7 +422,7 @@ test("recommendations without an image retain a left-side thumbnail instead of i
 
 test("the source large-text setting stacks day sections and keeps the three available shortcuts in one row", async t => {
   const p = await open(t, { visual: true, safeAreaTop: 48, fontScale: 1.2 });
-  await p.waitForFunction(() => (window as any).fixture.requests.length === 5); await hydrate(p);
+  await p.waitForFunction(() => (window as any).fixture.requests.length === 6); await hydrate(p);
   assert.equal(await p.getByTestId("home-day-sections").evaluate(el => getComputedStyle(el).flexDirection), "column");
   const first = (await p.getByRole("button", { name: "扫名片", exact: true }).boundingBox())!;
   const last = (await p.getByRole("button", { name: "记笔记", exact: true }).boundingBox())!;
@@ -451,10 +460,10 @@ test("loading sections use the approved schedule markers and task outlines witho
 for (const change of [{ actor: "two" }, { focused: false }, { appState: "background" }, { mounted: false }]) {
   test("late badge 401 cannot expire a new or inactive home session " + JSON.stringify(change), async t => {
     const p = await open(t);
-    await p.waitForFunction(() => (window as any).fixture.requests.length === 5);
+    await p.waitForFunction(() => (window as any).fixture.requests.length === 6);
     const indices = await p.evaluate(() => (window as any).fixture.requests.flatMap((r: any, index: number) =>
       /relationship-communication|notifications/.test(r.path) ? [index] : []));
-    assert.equal(indices.length, 2);
+    assert.equal(indices.length, 3);
     await update(p, change);
     for (const index of indices) await reply(p, index, {}, 401);
     assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0, "no global expiry notification may escape an invalidated request");
@@ -484,7 +493,7 @@ test("HTTP 503 with a success completion envelope cannot acknowledge the write",
 
 test("badge rejects counts carried by an HTTP 503 success envelope", async t => {
   const p = await open(t);
-  await p.waitForFunction(() => (window as any).fixture.requests.length === 5);
+  await p.waitForFunction(() => (window as any).fixture.requests.length === 6);
   const index = await p.evaluate(() => (window as any).fixture.requests.findIndex((r: any) => /relationship-communication/.test(r.path)));
   await p.evaluate(index => (window as any).fixture.reply(index, { conversations: [], refreshedAt: "2026-09-15T00:00:00Z" }, 503, true), index);
   await settle(p); await hydrate(p);
@@ -493,13 +502,13 @@ test("badge rejects counts carried by an HTTP 503 success envelope", async t => 
 
 test("pulling home refresh re-reads both badge sources and updates the visible count without writes", async t => {
   const p = await open(t, { visual: true }); await hydrate(p);
-  assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "3");
+  assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "");
   await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
-  const reads = await p.evaluate(() => (window as any).fixture.requests.slice(5).map((r: any) => r.path).sort());
-  assert.deepEqual(reads, ["/api/notifications", "/api/recommendations/events", "/api/relationship-communication/conversations", "/api/schedule-items", "/api/tasks"]);
+  const reads = await p.evaluate(() => (window as any).fixture.requests.slice(6).map((r: any) => r.path).sort());
+  assert.deepEqual(reads, ["/api/inbox/notifications", "/api/notifications", "/api/recommendations/events", "/api/relationship-communication/conversations", "/api/schedule-items", "/api/tasks"]);
   const index = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => /relationship-communication/.test(r.path)));
   await reply(p, index, relationshipInbox(8)); await hydrate(p);
-  assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "8"); assert.deepEqual(await writes(p), []);
+  assert.equal(await p.getByTestId("home-inbox-badge").innerText(), ""); assert.deepEqual(await writes(p), []);
 });
 
 test("acknowledged home completion re-reads badge sources instead of decrementing them locally", async t => {
@@ -507,9 +516,9 @@ test("acknowledged home completion re-reads badge sources instead of decrementin
   const inbox = await p.evaluate(() => (window as any).fixture.requests.findIndex((r: any) => /relationship-communication/.test(r.path)));
   await reply(p, inbox, relationshipInbox(3)); await hydrate(p);
   await press(p, "完成待办：发送项目介绍");
-  assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "3");
+  assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "");
   await reply(p, await writeIndex(p), { task: { id: "task:/one", status: "completed" } });
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.slice(6).map((r: any) => r.path).sort()), ["/api/notifications", "/api/relationship-communication/conversations", "/api/tasks"]);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.slice(7).map((r: any) => r.path).sort()), ["/api/inbox/notifications", "/api/notifications", "/api/relationship-communication/conversations", "/api/tasks"]);
   await hydrate(p);
   assert.equal(await p.getByTestId("home-inbox-badge").count(), 0);
   assert.equal((await writes(p)).length, 1);
@@ -518,14 +527,14 @@ test("acknowledged home completion re-reads badge sources instead of decrementin
 test("a newer home refresh revokes old badge responses before they can publish session expiry", async t => {
   const p = await open(t, { visual: true }); await hydrate(p);
   await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
-  const oldReads = await p.evaluate(() => (window as any).fixture.requests.flatMap((r: any, i: number) => i >= 5 && /relationship-communication|notifications/.test(r.path) ? [i] : []));
-  assert.equal(oldReads.length, 2);
+  const oldReads = await p.evaluate(() => (window as any).fixture.requests.flatMap((r: any, i: number) => i >= 6 && /relationship-communication|notifications/.test(r.path) ? [i] : []));
+  assert.equal(oldReads.length, 3);
   await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
   assert.equal(await p.evaluate(indices => indices.every((i: number) => (window as any).fixture.requests[i].signal.aborted), oldReads), true);
   for (const index of oldReads) await reply(p, index, {}, 401);
   const inbox = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => /relationship-communication/.test(r.path)));
   await reply(p, inbox, relationshipInbox(2)); await hydrate(p);
-  assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "2");
+  assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "");
   assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0); assert.deepEqual(await writes(p), []);
 });
 
@@ -533,8 +542,8 @@ test("an invalid completion receipt neither reloads nor changes the home badge",
   const p = await open(t, { visual: true }); await hydrate(p);
   await press(p, "完成待办：发送项目介绍");
   await reply(p, await writeIndex(p), { task: { id: "another-task", status: "completed" } });
-  assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "3");
-  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => /relationship-communication|notifications/.test(r.path)).length), 2);
+  assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "");
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => /relationship-communication|notifications/.test(r.path)).length), 3);
   assert.equal((await writes(p)).length, 1);
 });
 
@@ -547,7 +556,7 @@ test("home badge re-reads persisted reminder states after returning from inbox",
   }; });
   await reply(p, indices.inbox, relationshipInbox(2, "one", "thread:one"));
   await reply(p, indices.notifications, { state: "success", reminders, notificationInteractions: {} }); await hydrate(p);
-  assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "5");
+  assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "");
   await update(p, { focused: false }); await update(p, { focused: true });
   const current = await p.evaluate(() => { const s = (window as any).fixture; return {
     inbox: s.requests.findLastIndex((r: any) => /relationship-communication/.test(r.path)),
@@ -556,6 +565,6 @@ test("home badge re-reads persisted reminder states after returning from inbox",
   assert.ok(current.inbox > indices.inbox && current.notifications > indices.notifications);
   await reply(p, current.inbox, relationshipInbox(2, "one", "thread:one"));
   await reply(p, current.notifications, { state: "success", reminders, notificationInteractions: { "notice:one": "read", "notice:two": "ignored" } }); await hydrate(p);
-  assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "3");
+  assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "");
   assert.deepEqual(await writes(p), []);
 });

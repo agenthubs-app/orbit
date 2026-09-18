@@ -20,8 +20,8 @@ import {
 import { createAgentMemoryService } from "../../../../../features/agent/memory/service-factory";
 import {
   agentRequestUnauthorizedResponse,
-  resolveAgentRequestContext,
 } from "../../../_shared/agent-request-context";
+import { resolveOrbitAgentConversationRequestContext } from "../request-context";
 
 // 带 id 的 conversation route 适配单个会话。
 // 它和 `/api/ai/conversations` 使用同一个 service，只是从路径参数补 conversationId。
@@ -109,7 +109,7 @@ export async function GET(
 ): Promise<Response> {
   // GET 读取指定 conversation 的状态，不发送新消息。
   const mode = resolveFeatureMode();
-  const agentContext = await resolveAgentRequestContext(mode);
+  const agentContext = await resolveOrbitAgentConversationRequestContext(mode);
   if (!agentContext) return agentRequestUnauthorizedResponse();
   const { id } = await context.params;
   const service = createOrbitAgentConversationService();
@@ -124,7 +124,7 @@ export async function POST(
 ): Promise<Response> {
   // POST 在指定 conversation 上追加用户消息；是否 live 调模型由 service factory 决定。
   const mode = resolveFeatureMode();
-  const agentContext = await resolveAgentRequestContext(mode);
+  const agentContext = await resolveOrbitAgentConversationRequestContext(mode);
   if (!agentContext) return agentRequestUnauthorizedResponse();
   const { id } = await context.params;
   const service = agentContext.actorId

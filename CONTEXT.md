@@ -63,8 +63,14 @@ _Avoid_: 已完成
 _Avoid_: Agent 操作账本、只保存当前状态
 
 **系统通知**:
-iOS 在后台或锁屏状态展示的系统横幅、通知中心记录或锁屏提示。系统通知由已确认的提醒计划触发，不是待办或日程本身。
+iOS 在后台或锁屏状态展示的系统横幅、通知中心记录或锁屏提示，是消息或通知的投递渠道。应用内记录存在不代表已经送达系统通知。
 _Avoid_: 应用内收件箱、待办建议
+
+**联系人消息**:
+联系人通过真实会话发送的原文通信，使用独立的会话阅读游标。AI 生成内容不能冒充联系人消息。
+
+**通知记录**:
+应用内只有提醒、建议、动态三类。提醒包含可信时间；建议说明具体动作与依据；动态说明已经发生的业务变化。阅读、忽略、已处理、已采纳与业务对象完成分别记录。
 
 **联系提醒**:
 用于提醒用户在约定时间联系某人的通知建议或已确认提醒。
@@ -107,6 +113,26 @@ _Avoid_: hybrid store, browser localStorage, mock fixtures
 **Remote Live Database**:
 A network-hosted database service that uses the same live provider boundary as Orbit production data storage.
 _Avoid_: local live database, hybrid store, provider sync
+
+**Cloud Canonical Record**:
+The server-owned version of a user record that resolves cross-device truth, permissions, conflicts, and Orbit AI visibility.
+_Avoid_: treating an App cache, pending local edit, provider object, or AI context as authoritative
+
+**Local Durable Mirror**:
+An encrypted, actor-scoped SQLite projection of Cloud Canonical Records used for fast reads and explicitly supported offline work. It can be rebuilt from the cloud and never becomes a second authority.
+_Avoid_: hybrid store, local authority, path-response cache
+
+**Pending Local Change**:
+An actor-scoped mutation durably queued on one device but not yet acknowledged as a Cloud Canonical Record. Until acknowledged, it must remain visibly pending and unavailable to server-side Orbit AI.
+_Avoid_: synced record, silent optimistic success
+
+**AI Data Freshness**:
+The revision and synchronization time attached to actor-scoped data returned to Orbit AI, indicating which Cloud Canonical Records were actually available to the model.
+_Avoid_: implying that device-only or pending local data was read by AI
+
+**Device-only Draft**:
+Transient user input or derived device state that is intentionally excluded from cloud synchronization and Orbit AI until the user performs the owning save action.
+_Avoid_: confirmed note, confirmed task, canonical record
 
 **Live Record**:
 A persistent Orbit data item stored through the live provider boundary, with shared metadata for ownership, provenance, and cross-feature lookup.

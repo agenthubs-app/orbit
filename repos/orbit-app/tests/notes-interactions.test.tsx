@@ -22,7 +22,7 @@ const original = {
 };
 const state = window.fixture = {
   mode: new URLSearchParams(location.search).get("mode") || "new",
-  response: "success", requests: [], navigation: [], note: original,
+  response: "success", requests: [], navigation: [], drafts: [], note: original,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(listener => listener()); }
 };
 const contacts = { total: 3, contacts: [
@@ -42,7 +42,7 @@ function result(kind, body) {
     updatedAt: "2026-09-15T00:03:00.000Z"
   } }, meta: {} };
   return { success: true, status: 200, data: { note: {
-    ...state.note, body: body.body, contactIds: body.contactIds, version: state.note.version + 1,
+    ...state.note, title: body.title, body: body.body, manualContactIds: body.manualContactIds, mentions: body.mentions, eventIds: body.eventIds, contactIds: [...new Set([...body.manualContactIds, ...body.mentions.map(item => item.contactId)])], version: state.note.version + 1,
     updatedAt: "2026-09-15T00:03:00.000Z"
   } }, meta: {} };
 }
@@ -69,6 +69,14 @@ const client = {
   }
 };
 export const useOrbitApiClient = () => client;
+export const noteDraftStorage = {
+  async load() {
+    if (new URLSearchParams(location.search).get("restore") === "late") return new Promise(resolve => { state.releaseDraft = () => resolve({ title: "旧草稿标题", body: "旧草稿正文", manualContactIds: [], mentions: [], eventIds: [], savedAt: "2026-09-15T00:00:00.000Z" }); });
+    return null;
+  },
+  async save(_scope, draft) { state.drafts.push({ kind: "save", body: draft.body }); },
+  async clear() { state.drafts.push({ kind: "clear" }); if (new URLSearchParams(location.search).get("restore") === "slow-clear") await new Promise(resolve => { state.releaseClear = resolve; }); }
+};
 export const useApiResource = path => {
   rerender();
   return { kind: "success", data: path === "/api/contacts" ? contacts : { note: state.note }, refreshing: false, refresh() { state.update({}); } };
@@ -76,7 +84,7 @@ export const useApiResource = path => {
 export const useLocalSearchParams = () => state.mode === "new" ? { contactId: "contact:a" } : { id: "note:one" };
 export const usePathname = () => state.mode === "new" ? "/notes/new" : "/notes/note:one";
 export const useRouter = () => ({
-  canGoBack: () => true,
+  canGoBack: () => state.mode !== "fallback",
   back() { state.navigation.push("back"); },
   push(href) { state.navigation.push(href); },
   replace(href) { state.navigation.push(href); }
@@ -91,12 +99,14 @@ test.before(async () => {
         import { NewNoteScreen } from "./src/screens/notes/NewNoteScreen";
         import { NoteDetailScreen } from "./src/screens/notes/NoteDetailScreen";
         import { EditNoteScreen } from "./src/screens/notes/EditNoteScreen";
+        import { AppScreen } from "./src/components/AppScreen";
         import { OrbitLocaleContext } from "./src/i18n/OrbitLocaleContext";
         import { createTranslator } from "./src/i18n/messages";
         const params = new URLSearchParams(location.search); const mode = params.get("mode") || "new"; const language = params.get("language") || "zh";
         const locale = { choice: language, deviceLanguage: language, error: null, language, preference: { mode: "manual", language, updatedAt: null }, retryLanguageSave: async () => {}, setLanguage: async () => {}, source: "account", syncState: "idle", t: createTranslator(language) };
         createRoot(document.getElementById("root")).render(<OrbitLocaleContext.Provider value={locale}>{mode === "new"
           ? <NewNoteScreen actorId="account:one" scopeKey="scope" />
+          : mode === "default" || mode === "fallback" ? <AppScreen title="Default screen" />
           : mode === "edit" ? <EditNoteScreen actorId="account:one" noteId="note:one" scopeKey="scope" />
           : <NoteDetailScreen actorId="account:one" noteId="note:one" scopeKey="scope" />}</OrbitLocaleContext.Provider>);`,
       resolveDir: process.cwd(),
@@ -112,7 +122,7 @@ test.before(async () => {
       name: "note-screen-boundaries",
       setup(plugin) {
         plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
-        plugin.onResolve({ filter: /^react-native-safe-area-context$|^expo-router$|\/(useApiResource|useOrbitApiClient)$/ }, () => ({ path: "fixture", namespace: "notes-test" }));
+        plugin.onResolve({ filter: /^react-native-safe-area-context$|^expo-router$|\/(useApiResource|useOrbitApiClient|note-draft-storage)$/ }, () => ({ path: "fixture", namespace: "notes-test" }));
         plugin.onResolve({ filter: /^@expo\/vector-icons$/ }, () => ({ path: "icons", namespace: "notes-test" }));
         plugin.onLoad({ filter: /^fixture$/, namespace: "notes-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
         plugin.onLoad({ filter: /^icons$/, namespace: "notes-test" }, () => ({ contents: 'export const Ionicons=()=>null;', loader: "js" }));
@@ -135,10 +145,10 @@ test.after(async () => {
   if (server) await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
 });
 
-async function page(t: { after(fn: () => Promise<void>): void }, mode: "new" | "detail" | "edit", language = "zh"): Promise<Page> {
+async function page(t: { after(fn: () => Promise<void>): void }, mode: "new" | "detail" | "edit" | "default" | "fallback", language = "zh", restore = ""): Promise<Page> {
   const value = await browser.newPage({ viewport: { width: 390, height: 844 } });
   t.after(() => value.close());
-  await value.goto(`${url}?mode=${mode}&language=${language}`);
+  await value.goto(`${url}?mode=${mode}&language=${language}&restore=${restore}`);
   return value;
 }
 
@@ -224,4 +234,112 @@ test("an English account can edit a note without fixed Chinese chrome", async (t
   await edit.getByRole("button", { name: "Cancel editing note" }).waitFor();
   assert.equal(await title.inputValue(), "原始标题");
   await edit.getByText("Only visible to you · Version 2", { exact: true }).waitFor();
+});
+
+test("top back preserves an unsaved note until the user chooses and detail returns to global history", async (t) => {
+  const create = await page(t, "new");
+  await create.getByRole("textbox", { name: "笔记内容" }).fill("不可丢弃的草稿");
+  await create.getByRole("button", { name: "返回笔记", exact: true }).click();
+  assert.deepEqual(await create.evaluate(() => (window as any).fixture.navigation), []);
+  assert.equal(await create.getByRole("textbox", { name: "笔记内容" }).inputValue(), "不可丢弃的草稿");
+  const detail = await page(t, "detail");
+  await detail.getByRole("button", { name: "返回笔记", exact: true }).click();
+  assert.deepEqual(await detail.evaluate(() => (window as any).fixture.navigation), ["/notes"]);
+});
+
+test("new-note history navigation and edited-note top back require a draft decision", async (t) => {
+  const create = await page(t, "new");
+  await create.getByRole("textbox", { name: "笔记内容" }).fill("历史入口草稿");
+  assert.equal(await create.getByRole("button", { name: "查看过往笔记", exact: true }).count(), 1);
+  await create.getByRole("button", { name: "查看过往笔记", exact: true }).click();
+  assert.deepEqual(await create.evaluate(() => (window as any).fixture.navigation), []);
+  await create.getByRole("button", { name: "保留并退出" }).click();
+  await create.waitForFunction(() => (window as any).fixture.navigation.length === 1);
+  assert.deepEqual(await create.evaluate(() => (window as any).fixture.navigation), ["/notes"]);
+  const edit = await page(t, "edit");
+  await edit.getByRole("textbox", { name: "笔记内容" }).fill("修改但未保存");
+  await edit.getByRole("button", { name: "返回笔记", exact: true }).click();
+  assert.deepEqual(await edit.evaluate(() => (window as any).fixture.navigation), []);
+});
+
+test("AppScreen without an override preserves back and parent fallback navigation", async (t) => {
+  const back = await page(t, "default");
+  await back.getByRole("button", { name: "返回", exact: true }).click();
+  assert.deepEqual(await back.evaluate(() => (window as any).fixture.navigation), ["back"]);
+  const fallback = await page(t, "fallback");
+  await fallback.getByRole("button", { name: "返回首页", exact: true }).click();
+  assert.deepEqual(await fallback.evaluate(() => (window as any).fixture.navigation), ["/home"]);
+});
+
+test("continuing after opening history does not redirect a later ordinary cancel", async (t) => {
+  const create = await page(t, "new");
+  await create.getByRole("textbox", { name: "笔记内容" }).fill("保留草稿");
+  await create.getByRole("button", { name: "查看过往笔记", exact: true }).click();
+  await create.getByRole("button", { name: "继续编辑" }).click();
+  await create.getByRole("button", { name: "取消新建笔记" }).click();
+  await create.getByRole("button", { name: "保留并退出" }).click();
+  await create.waitForFunction(() => (window as any).fixture.navigation.length === 1);
+  assert.deepEqual(await create.evaluate(() => (window as any).fixture.navigation), ["back"]);
+});
+
+test("a scheduled autosave cannot write after a confirmed create or explicit discard", async (t) => {
+  for (const discard of [false, true]) {
+    const create = await page(t, "new");
+    await create.getByRole("textbox", { name: "笔记标题" }).fill("马上退出");
+    await create.getByRole("textbox", { name: "笔记内容" }).fill("不应复活");
+    if (discard) {
+      await create.getByRole("button", { name: "查看过往笔记", exact: true }).click();
+      await create.getByRole("button", { name: "放弃", exact: true }).click();
+    } else await create.getByRole("button", { name: "保存笔记" }).click();
+    await create.waitForFunction(() => (window as any).fixture.navigation.length === 1);
+    await create.waitForTimeout(650);
+    const writes = await create.evaluate(() => (window as any).fixture.drafts);
+    assert.equal(writes.at(-1)?.kind, "clear");
+  }
+});
+
+for (const mode of ["new", "edit"] as const) test(`late restored drafts never overwrite current user edits in ${mode}`, async (t) => {
+    const editor = await page(t, mode, "zh", "late");
+    await editor.waitForFunction(() => typeof (window as any).fixture.releaseDraft === "function");
+    await editor.getByRole("textbox", { name: "笔记标题" }).fill("当前正在编辑");
+    await editor.getByRole("textbox", { name: "笔记内容" }).fill("不可被恢复覆盖");
+    await editor.evaluate(() => (window as any).fixture.releaseDraft());
+    await editor.waitForTimeout(50);
+    assert.equal(await editor.getByRole("textbox", { name: "笔记标题" }).inputValue(), "当前正在编辑");
+    assert.equal(await editor.getByRole("textbox", { name: "笔记内容" }).inputValue(), "不可被恢复覆盖");
+});
+
+test("discarding changed edits clears the draft without a later timer resurrection", async (t) => {
+  const edit = await page(t, "edit");
+  await edit.getByRole("textbox", { name: "笔记内容" }).fill("丢弃本次修改");
+  await edit.getByRole("button", { name: "取消编辑笔记" }).click();
+  await edit.getByRole("button", { name: "放弃", exact: true }).click();
+  await edit.waitForFunction(() => (window as any).fixture.navigation.length === 1);
+  await edit.waitForTimeout(650);
+  assert.equal(await edit.evaluate(() => (window as any).fixture.drafts.at(-1)?.kind), "clear");
+});
+
+test("clearing a newly typed title still prevents a late draft from restoring it", async (t) => {
+  const create = await page(t, "new", "zh", "late");
+  await create.waitForFunction(() => typeof (window as any).fixture.releaseDraft === "function");
+  const title = create.getByRole("textbox", { name: "笔记标题" });
+  await title.fill("用户主动清空");
+  await title.fill("");
+  await create.evaluate(() => (window as any).fixture.releaseDraft());
+  await create.waitForTimeout(50);
+  assert.equal(await title.inputValue(), "");
+});
+
+test("a slow confirmed edit clear blocks stale autosave but later editing can save a new draft", async (t) => {
+  const edit = await page(t, "edit", "zh", "slow-clear");
+  await edit.getByRole("textbox", { name: "笔记内容" }).fill("确认本次修改");
+  await edit.getByRole("button", { name: "保存修改" }).click();
+  await edit.waitForFunction(() => typeof (window as any).fixture.releaseClear === "function");
+  await edit.waitForTimeout(650);
+  assert.equal(await edit.evaluate(() => (window as any).fixture.drafts.at(-1)?.kind), "clear");
+  await edit.evaluate(() => (window as any).fixture.releaseClear());
+  await edit.getByText("笔记已更新。", { exact: true }).waitFor();
+  await edit.getByRole("textbox", { name: "笔记内容" }).fill("第二次编辑");
+  await edit.waitForTimeout(650);
+  assert.equal(await edit.evaluate(() => (window as any).fixture.drafts.at(-1)?.body), "第二次编辑");
 });

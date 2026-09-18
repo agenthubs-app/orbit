@@ -127,6 +127,7 @@ export function createStorageAuthAccountProvisioningProvider({
       const profiles = await store.listRecords({
         workspaceId,
         collectionName: "profiles",
+        payloadId: user.id,
       });
       const memberships = profiles
         .map((profile) => ({
@@ -183,11 +184,13 @@ export function createStorageAuthAccountProvisioningProvider({
       });
 
       if (!account) {
-        await store.upsertRecord(accountRecord(user, workspaceId));
+        if (!store.insertRecordIfAbsent) throw new Error("Auth provisioning requires atomic insert support.");
+        await store.insertRecordIfAbsent(accountRecord(user, workspaceId));
       }
 
       if (!profile) {
-        await store.upsertRecord(profileRecord(user, workspaceId));
+        if (!store.insertRecordIfAbsent) throw new Error("Auth provisioning requires atomic insert support.");
+        await store.insertRecordIfAbsent(profileRecord(user, workspaceId));
       }
     },
   };

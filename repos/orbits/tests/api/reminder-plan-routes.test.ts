@@ -9,6 +9,8 @@ import { createNotificationsGetHandler } from "../../app/api/notifications/handl
 import { createReminderPlanRepository } from "../../features/notifications/reminder-plan-repository";
 import { createReminderPlanService } from "../../features/notifications/reminder-plan-service";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
+import { createTaskRepository } from "../../features/tasks/repository";
+import { createTaskService } from "../../features/tasks/service";
 
 const actorA = { email: "a@example.test", id: "actor:a", name: "A" };
 
@@ -95,7 +97,11 @@ test("device and preference routes keep notification state separate from reminde
 
 test("delivered reminder plans appear in the existing inbox projection without device tokens", async () => {
   const { resolveActor, service } = harness();
-  await service.create({ actorId: actorA.id, body: "联系渡边确认会面议程", channels: ["in_app"], createdBy: "user", deepLink: "/tasks/task%3Awatanabe", fireAt: "2026-08-29T01:59:00.000Z", idempotencyKey: "inbox", targetId: "task:watanabe", targetType: "task", timeZone: "Asia/Tokyo", title: "联系渡边" });
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const workspaceId = "workspace:reminder-source";
+  const tasks = createTaskService({ repository: createTaskRepository({ store, workspaceId }) });
+  const { task } = await tasks.create({ actorId: actorA.id, title: "联系渡边", category: "work", now: "2026-08-29T01:00:00.000Z", idempotencyKey: "source" });
+  const plan = await service.create({ actorId: actorA.id, body: "联系渡边确认会面议程", channels: ["in_app"], createdBy: "user", deepLink: `/tasks/${encodeURIComponent(task.id)}`, fireAt: "2026-08-29T01:59:00.000Z", idempotencyKey: "inbox", targetId: task.id, targetType: "task", timeZone: "Asia/Tokyo", title: "旧提醒标题不能替代已授权来源" });
   await service.dispatchDue({ now: "2026-08-29T02:00:00.000Z", provider: { async send() { return { ok: false, code: "NOT_USED" }; } } });
 
   const previousMode = process.env.ORBIT_FEATURE_MODE;
@@ -103,11 +109,15 @@ test("delivered reminder plans appear in the existing inbox projection without d
   process.env.ORBIT_FEATURE_MODE = "mock";
   process.env.ORBIT_MODULE_MODE = "mock";
   try {
-    const response = await createNotificationsGetHandler(resolveActor, null, service)(new Request("http://localhost/api/notifications"));
+    const response = await createNotificationsGetHandler(resolveActor, null, service, { store, workspaceId })(new Request("http://localhost/api/notifications"));
     assert.equal(response.status, 200);
     const payload = (await response.json()).data;
     assert.equal(payload.reminders.some((item: { title: string }) => item.title === "联系渡边"), true);
     assert.doesNotMatch(JSON.stringify(payload), /ExponentPushToken/u);
+    const unavailable = await createNotificationsGetHandler(resolveActor, null, service, null)(new Request("http://localhost/api/notifications"));
+    const reminder = (await unavailable.json()).data.reminders.find((item: { reminderId: string }) => item.reminderId === plan.id);
+    assert.equal(reminder.title, "来源已不可用");
+    assert.equal(reminder.href, "");
   } finally {
     if (previousMode === undefined) delete process.env.ORBIT_FEATURE_MODE; else process.env.ORBIT_FEATURE_MODE = previousMode;
     if (previousModuleMode === undefined) delete process.env.ORBIT_MODULE_MODE; else process.env.ORBIT_MODULE_MODE = previousModuleMode;
