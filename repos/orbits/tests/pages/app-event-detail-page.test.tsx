@@ -34,23 +34,22 @@ function source(path: string): string {
   return readFileSync(join(projectRoot, path), "utf8");
 }
 
-test("event detail replaces the legacy surface with the green three-card journey", async () => {
+test("event detail renders the Orbit_0918 hero and tabbed sections", async () => {
   const html = await renderEventDetailPage();
 
   assert.match(html, /data-orbit-real-page="event-detail"/);
   assert.match(html, /data-event-journey-state="post"/);
-  assert.match(html, /href="\/event-journey-green\.css"/);
-  assert.match(html, /class="orbit-detail-layout"/);
-  assert.match(html, /class="orbit-detail-rail"/);
-  assert.match(html, /class="orbit-detail-main"/);
-  assert.match(html, /class="card cardA"/);
-  assert.match(html, /class="cardB"/);
-  assert.match(html, /class="card cardC"/);
-  assert.match(html, /class="rail-stage"/);
-  assert.match(html, /Climate founders dinner/);
+  assert.match(html, /class="detail-cover ed-cover"/);
+  assert.match(html, /class="ed-hero-copy"/);
+  assert.match(html, /class="ed-tabs"/);
+  assert.match(html, /class="ed-tab"/);
+  assert.match(html, /class="ed-panel-card/);  assert.match(html, /Climate founders dinner/);
   assert.match(html, /Kanda Founders Table/);
-  assert.match(html, /活动现场|Event floor/);
-  assert.match(html, /会后中心|Post-event center/);
+  assert.match(html, /介绍|About/);
+  assert.match(html, /议程|Agenda/);
+  assert.match(html, /参会者|Attendees/);
+  assert.match(html, /主办方|Organizer/);
+  assert.match(html, /会后回顾|Recap/);
   assert.match(html, /向 iOrbit 询问这场活动|Ask iOrbit about this event/);
   assert.match(html, /线下活动|In person/);
   assert.match(html, /已确认|Confirmed/);
@@ -60,16 +59,16 @@ test("event detail replaces the legacy surface with the green three-card journey
   assert.doesNotMatch(html, /<details/i);
 });
 
-test("event journey stylesheet owns responsive layout without the retired mobile composition", async () => {
+test("event detail scoped styles own the responsive layout without the retired journey stylesheet", async () => {
   const html = await renderEventDetailPage();
-  const css = source("public/event-journey-green.css");
+  const detailSource = source("app/(app)/app/events/[id]/orbit-real-event-detail.tsx");
 
   assert.doesNotMatch(html, /orbit-mobile-only/);
   assert.doesNotMatch(html, /orbit-sticky-cta/);
-  assert.match(css, /@media \(max-width: 900px\)/);
-  assert.match(css, /grid-template-columns: minmax\(0, 1fr\)/);
-  assert.match(css, /safe-area-inset-bottom/);
-  assert.match(css, /prefers-reduced-motion/);
+  assert.doesNotMatch(detailSource, /event-journey-green\.css/);
+  assert.match(detailSource, /@media \(max-width: 760px\)/);
+  assert.match(detailSource, /prefers-reduced-motion/);
+  assert.match(detailSource, /\[data-orbit-real-page=event-detail\]/);
   assert.match(html, /Climate founders dinner/);
   assert.match(html, /Kanda Founders Table/);
   assert.match(html, /已结束|Ended/);
@@ -88,7 +87,8 @@ test("event journey renders unregistered, registered, and ended as exclusive pro
 
   assert.match(pre, /data-event-journey-state="pre"/);
   assert.match(pre, />报名<|>Register</);
-  assert.match(pre, /功能示例|Feature sample/);
+  assert.match(pre, /报名后，这里会展示参会者名单|appear here after you register/);
+  assert.doesNotMatch(pre, /data-event-participant-directory/);
   assert.match(joined, /data-event-journey-state="joined"/);
   assert.match(joined, /已报名|Registered/);
   assert.match(joined, /查看活动准备|进入活动|View event preparation|Enter event/);

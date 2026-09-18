@@ -194,18 +194,14 @@ test("event list and event detail render manifest scene images", async () => {
   // This manifest cover is SVG: it scales without raster srcset variants.
   const artwork = getDemoEventSceneAsset("demo-event-1")!;
   const coverImages = detailImages.filter((tag) => tag.includes(`src="${artwork.src}"`));
-  assert.equal(coverImages.length, 2, "known artwork should render in the backdrop and rail");
+  assert.equal(coverImages.length, 1, "known artwork should render once in the hero cover");
   assert.doesNotMatch(coverImages[0], /loading="lazy"/);
-  assert.match(coverImages[1], /loading="lazy"/);
   for (const tag of coverImages) assert.match(tag, /data-nimg="fill"/);
   // The manifest uses SVG artwork, for which Next omits raster sizes/srcset.
-  // Verify loading policy in the actual journey slots, not the old image count.
-  const heroImage = detailHtml.match(/class="detail-cover"[\s\S]*?(<img\b[^>]*>)/)?.[1];
-  const railImage = detailHtml.match(/class="cover cover-grain rail-cover"[\s\S]*?(<img\b[^>]*>)/)?.[1];
+  // Verify loading policy in the actual hero slot, not the old rail slot.
+  const heroImage = detailHtml.match(/class="detail-cover ed-cover"[\s\S]*?(<img\b[^>]*>)/)?.[1];
   assert.ok(heroImage, "event detail must render responsive hero artwork");
-  assert.ok(railImage, "event detail must render artwork in its rail slot");
   assert.doesNotMatch(heroImage, /loading="lazy"/);
-  assert.match(railImage, /loading="lazy"/);
   assert.match(detailHtml, /data-orbit-progressive-image-lqip=""/);
   assert.doesNotMatch(detailHtml, /background:radial-gradient\(120% 120%/);
 });

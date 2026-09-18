@@ -137,7 +137,7 @@ test("event registration display respects the same published window as backend w
   assert.match(detail, /eventRegistrationIsOpen\(registrationAvailability\)/);
   assert.doesNotMatch(detail, /开放报名时提醒我/);
   assert.doesNotMatch(detail, /查看其他可报名活动/);
-  assert.match(detail, /SAMPLE_MATCHES\.slice\(0, 1\)/);
+  assert.doesNotMatch(detail, /SAMPLE_MATCHES/);
   assert.match(windowProvider, /admission_policy\.registration_closes_at/);
   assert.match(windowProvider, /configuration\.registration_cutoff_at/);
   assert.match(registrationRepository, /admission_policy\.registration_closes_at/);

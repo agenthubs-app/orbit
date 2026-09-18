@@ -8,7 +8,8 @@ import { partyHrefForEvent } from "../../orbit-product-href";
 import { agentHrefForContext } from "../../orbit-agent-context-href";
 import { eventTemporalBounds } from "../../orbit-event-temporal";
 import { productHref, PublicTopNav } from "../../orbit-public-shell";
-import { Avatar, gradientFromString, Icon } from "../../orbit-reference-primitives";
+import { gradientFromString, Icon } from "../../orbit-reference-primitives";
+import { ORBIT_0918_COLORS as C, ORBIT_0918_FONTS } from "../../orbit-0918-tokens";
 import { getDemoEventSceneAsset } from "../../../../../shared/demo-visual-assets";
 import { EventCover } from "../orbit-event-cover";
 import { OrbitEventMatchmaking, type EventMatchmakingSummary } from "./orbit-event-matchmaking";
@@ -21,36 +22,9 @@ import type { EventRegistrationBlockingReason } from "../../../../../features/ev
 type Translate = (copy: { en: string; zh: string }) => string;
 type RegistrationStatus = "cancelled" | "rsvped" | null;
 type JourneyStage = "joined" | "post" | "pre";
+type DetailTab = "agenda" | "host" | "intro" | "people" | "recap";
 
 const TOKYO_TIME_ZONE = { timeZone: "Asia/Tokyo" } as const;
-const JOURNEY_STAGE_DONE: Record<JourneyStage, number> = { pre: 0, joined: 3, post: 5 };
-const JOURNEY_STEPS = [
-  { en: "Register and answer 2 questions", zh: "报名并回答 2 题" },
-  { en: "Complete your event profile", zh: "完成活动画像" },
-  { en: "View matches and seating", zh: "查看匹配与座位" },
-  { en: "Exchange business cards", zh: "现场交换名片" },
-  { en: "Review and follow up", zh: "会后复盘与跟进" },
-] as const;
-const SAMPLE_MATCHES = [
-  {
-    initial: "山田",
-    name: { en: "Takuya Yamada", zh: "山田 拓也" },
-    role: { en: "Cross-border logistics · BD lead", zh: "跨境物流 · 商务负责人" },
-    why: { en: "Looking for overseas-warehouse partners — complementary to a channel-seeking goal.", zh: "他在为日本中小卖家找海外仓伙伴，与你的「找渠道」目标互补。" },
-  },
-  {
-    initial: "陈",
-    name: { en: "Jing Chen", zh: "陈 静" },
-    role: { en: "DTC brand founder", zh: "DTC 品牌创始人" },
-    why: { en: "Preparing to enter Kansai and wants to meet local channels.", zh: "正在筹备进入关西市场，想认识本地渠道。" },
-  },
-  {
-    initial: "金",
-    name: { en: "Jiwon Kim", zh: "金 志源" },
-    role: { en: "Cross-border payments BD", zh: "跨境支付 BD" },
-    why: { en: "Can address the JPY settlement problem mentioned in the profile.", zh: "能解决画像中提到的日元结算问题，双方目标匹配度高。" },
-  },
-] as const;
 
 const EVENT_TAG_COPY: Record<string, { en: string; zh: string }> = {
   calendar_sync: { en: "Calendar synced", zh: "日历已同步" },
@@ -127,6 +101,38 @@ export function canUseEventDetailHistoryBack(referrer: string, currentHref: stri
   }
 }
 
+export function agendaProgress(
+  event: Pick<OrbitLandingEventView, "agenda" | "endsAt" | "startsAt" | "status">,
+  now: Date,
+): { currentIndex: number; items: { label: string; time: string }[] } {
+  const items = event.agenda.map((item) => ({ label: item.label, time: item.time }));
+  if (!items.length) return { currentIndex: -1, items };
+  if (event.status === "ended") return { currentIndex: items.length, items };
+
+  const bounds = eventTemporalBounds(event.startsAt, event.endsAt);
+  if (bounds.start === null || now.getTime() < bounds.start.getTime()) return { currentIndex: -1, items };
+
+  const wallMinutes = (value: string): number | null => {
+    const match = /^(\d{1,2}):(\d{2})/u.exec(value.trim());
+    return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+  };
+  const [hour, minute] = new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    hour12: false,
+    minute: "2-digit",
+    ...TOKYO_TIME_ZONE,
+  }).format(bounds.start).split(":").map(Number);
+  const startWallMinutes = hour * 60 + minute;
+  let currentIndex = -1;
+  for (let index = 0; index < items.length; index += 1) {
+    const minutes = wallMinutes(items[index].time);
+    if (minutes === null) continue;
+    const at = bounds.start.getTime() + (minutes - startWallMinutes) * 60_000;
+    if (now.getTime() >= at) currentIndex = index;
+  }
+  return { currentIndex: currentIndex === -1 ? 0 : currentIndex, items };
+}
+
 function BackButton({ t }: { t: Translate }) {
   const goBack = () => {
     if (window.history.length > 1 && canUseEventDetailHistoryBack(document.referrer, window.location.href)) {
@@ -137,8 +143,8 @@ function BackButton({ t }: { t: Translate }) {
   };
 
   return (
-    <button aria-label={t({ en: "Back to previous page", zh: "返回上一页" })} className="cover-back hit-44" onClick={goBack} type="button">
-      <Icon name="back" size={16} />{t({ en: "Back", zh: "返回" })}
+    <button aria-label={t({ en: "Back to previous page", zh: "返回上一页" })} className="ed-back hit-44" onClick={goBack} type="button">
+      <Icon name="back" size={15} />{t({ en: "Back to events", zh: "返回活动列表" })}
     </button>
   );
 }
@@ -174,51 +180,38 @@ function ActionButton({
   );
 }
 
-function InfoTile({ icon, sub, title }: { icon: string; sub?: string | null; title: string }) {
-  return (
-    <div className="a-info">
-      <span className="ic"><Icon name={icon} size={16} /></span>
-      <div className="a-info-copy">
-        <b>{title}</b>
-        {sub ? <span title={sub}>{sub}</span> : null}
-      </div>
-    </div>
-  );
-}
-
 function primaryAction(
   event: OrbitLandingEventView,
   t: Translate,
   registrationStatus: RegistrationStatus,
   registrationAvailability: EventRegistrationAvailability,
-  flex: CSSProperties["flex"] = "0 0 auto",
 ) {
   const registrationHref = `/app/events/${encodeURIComponent(event.code || event.id)}/register`;
   if (registrationStatus === "rsvped") {
     if (event.status !== "upcoming") {
-      return <ActionButton className="btn is-disabled" disabled style={{ flex }}><Icon name="check" size={17} />{t({ en: "Registered", zh: "已报名" })}</ActionButton>;
+      return <ActionButton className="btn is-disabled" disabled><Icon name="check" size={17} />{t({ en: "Registered", zh: "已报名" })}</ActionButton>;
     }
     return (
-      <ActionButton className="btn btn-soft" href={registrationHref} style={{ flex }}>
+      <ActionButton className="btn btn-soft" href={registrationHref}>
         <Icon name="check" size={17} />{t({ en: "Manage registration", zh: "管理报名" })}
       </ActionButton>
     );
   }
   if (event.status !== "upcoming") {
-    return <ActionButton className="btn is-disabled" disabled style={{ flex }}>{t({ en: "Registration closed", zh: "报名已结束" })}</ActionButton>;
+    return <ActionButton className="btn is-disabled" disabled>{t({ en: "Registration closed", zh: "报名已结束" })}</ActionButton>;
   }
   if (!eventRegistrationIsOpen(registrationAvailability)) {
-    return <ActionButton className="btn is-disabled" disabled style={{ flex }}>{t(eventRegistrationLabel(registrationAvailability))}</ActionButton>;
+    return <ActionButton className="btn is-disabled" disabled>{t(eventRegistrationLabel(registrationAvailability))}</ActionButton>;
   }
   if (registrationStatus === "cancelled") {
     return (
-      <ActionButton className="btn btn-primary" href={registrationHref} style={{ flex }}>
+      <ActionButton className="btn btn-primary" href={registrationHref}>
         {t({ en: "Register again", zh: "重新报名" })}<Icon color="var(--on-dark)" name="arrow" size={17} />
       </ActionButton>
     );
   }
   return (
-    <ActionButton className="btn btn-primary" href={registrationHref} style={{ flex }}>
+    <ActionButton className="btn btn-primary" href={registrationHref}>
       {t({ en: "Register", zh: "报名" })}<Icon color="var(--on-dark)" name="arrow" size={17} />
     </ActionButton>
   );
@@ -242,162 +235,144 @@ function enterAction(event: OrbitLandingEventView, t: Translate, workspaceAvaila
   );
 }
 
-function OrganizerRailCard({ event, t }: { event: OrbitLandingEventView; t: Translate }) {
-  const organizer = event.organizer.trim();
-  const initial = organizer.slice(0, 1).toUpperCase() || "O";
-  const slug = (event.code || "org").toLowerCase();
-
-  if (!organizer) {
-    return (
-      <div className="card rail-card">
-        <div className="eyebrow">{t({ en: "Organizer", zh: "主办方" })}</div>
-        <div className="rail-org">
-          <Avatar letter={initial} g="g-teal" size={40} />
-          <div className="rail-org-copy">
-            <b className="rail-org-name">{t({ en: "Organizer pending", zh: "主办方待确认" })}</b>
-            <span className="rail-org-meta">{t({ en: "Organizer information is not yet available.", zh: "活动来源暂未提供主办方信息。" })}</span>
-          </div>
-        </div>
-      </div>
-    );
+function registeredCountText(event: OrbitLandingEventView, t: Translate): string {
+  if (typeof event.stats.count === "number" && Number.isFinite(event.stats.count)) {
+    const cap = typeof event.cap === "number" && Number.isFinite(event.cap) ? ` / ${event.cap}` : "";
+    return `${t({ en: "Registered", zh: "已报名" })} ${event.stats.count}${cap} ${t({ en: "people", zh: "人" })}`;
   }
-
-  const body = (
-    <div className="rail-org">
-      <Avatar letter={initial} g="g-teal" size={40} />
-      <div className="rail-org-copy">
-        <b className="rail-org-name">{organizer}</b>
-        <span className="rail-org-meta">{t({ en: `Multiple events hosted · ${event.host}`, zh: `已举办多场 · ${event.host}` })}</span>
-      </div>
-      <Icon name="chevR" size={17} color="var(--text-4)" />
-    </div>
-  );
-
-  return (
-    <div className="card rail-card">
-      <div className="eyebrow">{t({ en: "Organizer", zh: "主办方" })}</div>
-      <a href={productHref(`/o/${slug}`)} style={{ color: "inherit", textDecoration: "none" }}>{body}</a>
-    </div>
-  );
+  return t({ en: "Registration count unavailable", zh: "报名人数暂不可用" });
 }
 
-function JourneyRail({ participated, stage, t }: { participated: boolean; stage: JourneyStage; t: Translate }) {
-  // An ended event is a visual lifecycle state, not evidence that this account
-  // completed the attendee journey. Keep the rail neutral for non-participants.
-  const done = stage === "post" && !participated ? 0 : JOURNEY_STAGE_DONE[stage];
-  return (
-    <div className="card rail-card">
-      <div className="eyebrow">{t({ en: "My journey", zh: "我的旅程" })}</div>
-      <div className="rail-stage">
-        {JOURNEY_STEPS.map((step, index) => {
-          const stepNumber = index + 1;
-          const stateClass = stepNumber <= done ? " done" : stepNumber === done + 1 && stage !== "post" ? " now" : "";
-          return (
-            <div className={`rail-stage-row${stateClass}`} key={step.en}>
-              <span className="n">{stepNumber <= done ? <Icon name="check" size={11} /> : stepNumber}</span>
-              {t(step)}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-export function agendaProgress(
-  event: Pick<OrbitLandingEventView, "agenda" | "endsAt" | "startsAt" | "status">,
-  now: Date,
-): { currentIndex: number; items: { label: string; time: string }[] } {
-  const items = event.agenda.map((item) => ({ label: item.label, time: item.time }));
-  if (!items.length) return { currentIndex: -1, items };
-  if (event.status === "ended") return { currentIndex: items.length, items };
-
-  const bounds = eventTemporalBounds(event.startsAt, event.endsAt);
-  if (bounds.start === null || now.getTime() < bounds.start.getTime()) return { currentIndex: -1, items };
-
-  const wallMinutes = (value: string): number | null => {
-    const match = /^(\d{1,2}):(\d{2})/u.exec(value.trim());
-    return match ? Number(match[1]) * 60 + Number(match[2]) : null;
-  };
-  const [hour, minute] = new Intl.DateTimeFormat("en-GB", {
-    hour: "2-digit",
-    hour12: false,
-    minute: "2-digit",
-    ...TOKYO_TIME_ZONE,
-  }).format(bounds.start).split(":").map(Number);
-  const startWallMinutes = hour * 60 + minute;
-  let currentIndex = -1;
-  for (let index = 0; index < items.length; index += 1) {
-    const minutes = wallMinutes(items[index].time);
-    if (minutes === null) continue;
-    const at = bounds.start.getTime() + (minutes - startWallMinutes) * 60_000;
-    if (now.getTime() >= at) currentIndex = index;
+/**
+ * 标题旁的报名状态徽章。封面 pill 已承载 eventRegistrationLabel（报名开放 /
+ * 报名资料已锁定 / 已结束…），这里只在有增量信息时渲染：报名中的剩余席位、
+ * 已报名与已结束的参与态。未知人数不等于 0，不推导剩席。
+ */
+function heroStatusBadge(
+  event: OrbitLandingEventView,
+  stage: JourneyStage,
+  registrationAvailability: EventRegistrationAvailability,
+  t: Translate,
+): { label: string; tone: "muted" | "success" } | null {
+  if (stage === "post") return { label: t({ en: "Ended", zh: "已结束" }), tone: "muted" };
+  if (stage === "joined") return { label: t({ en: "Registered", zh: "已报名" }), tone: "success" };
+  if (event.status === "upcoming" && eventRegistrationIsOpen(registrationAvailability)) {
+    const remainingSeats =
+      typeof event.cap === "number" &&
+      Number.isFinite(event.cap) &&
+      typeof event.stats.count === "number" &&
+      Number.isFinite(event.stats.count)
+        ? Math.max(0, event.cap - event.stats.count)
+        : null;
+    return {
+      label: remainingSeats === null
+        ? t({ en: "Registration open", zh: "报名中" })
+        : t({ en: `Registration open · ${remainingSeats} seats left`, zh: `报名中 · 剩 ${remainingSeats} 席` }),
+      tone: "success",
+    };
   }
-  return { currentIndex: currentIndex === -1 ? 0 : currentIndex, items };
+  return null;
 }
 
-function JourneyCollapse({ children, open }: { children: ReactNode; open: boolean }) {
-  return <div className="journey-collapse" hidden={!open}>{children}</div>;
-}
-
-function EventDetailsExtra({ event, t }: { event: OrbitLandingEventView; t: Translate }) {
-  if (!event.about?.length && !event.agenda.length) return null;
+function InfoRow({ icon, sub, title }: { icon: string; sub?: string | null; title: string }) {
   return (
-    <div className="a-details-extra">
-      {event.about?.length ? (
-        <section>
-          <h3>{t({ en: "About this event", zh: "关于活动" })}</h3>
-          <div className="a-about-list">
+    <span className="ed-info-row">
+      <span className="ed-info-icon"><Icon name={icon} size={16} /></span>
+      <span className="ed-info-copy">
+        {title}
+        {sub ? <span className="ed-info-sub" title={sub}>{sub}</span> : null}
+      </span>
+    </span>
+  );
+}
+
+function IntroPanel({ event, t }: { event: OrbitLandingEventView; t: Translate }) {
+  const agendaPreview = event.agenda.slice(0, 5);
+  const hasIntro = Boolean(event.summaryZh || event.descriptionZh || event.about?.length);
+  return (
+    <div className="ed-intro-grid">
+      <div className="ed-panel-card">
+        <h2 className="ed-panel-title">{t({ en: "About this event", zh: "活动介绍" })}</h2>
+        {event.summaryZh ? <p className="ed-body">{event.summaryZh}</p> : null}
+        {event.descriptionZh && event.descriptionZh !== event.summaryZh ? <p className="ed-body">{event.descriptionZh}</p> : null}
+        {event.about?.length ? (
+          <div className="ed-highlight-grid">
             {event.about.map((item) => (
-              <div className="a-about-item" key={item.label}>
-                <div className="a-about-label">{item.label}</div>
-                <p className="a-about-body">{item.body}</p>
+              <div className="ed-highlight" key={item.label}>
+                <span className="ed-highlight-icon"><Icon name="sparkle" size={16} /></span>
+                <span className="ed-highlight-copy">
+                  <strong>{item.label}</strong>
+                  <span>{item.body}</span>
+                </span>
               </div>
             ))}
           </div>
-        </section>
-      ) : null}
-      {event.agenda.length ? (
-        <section>
-          <h3>{t({ en: "Agenda", zh: "活动议程" })}</h3>
-          <div className="a-agenda">
-            {event.agenda.map((item) => (
-              <div className="a-agenda-row" key={`${item.time}-${item.label}`}>
-                <span className="a-agenda-time">{item.time}</span>
-                <div className="a-agenda-copy"><b>{item.label}</b>{item.description ? <span>{item.description}</span> : null}</div>
+        ) : null}
+        {!hasIntro ? <p className="ed-body ed-muted">{t({ en: "The organizer has not published an introduction yet.", zh: "主办方暂未发布活动介绍。" })}</p> : null}
+      </div>
+      <div className="ed-panel-card">
+        <h2 className="ed-panel-title">{t({ en: "Agenda", zh: "活动议程" })}</h2>
+        {agendaPreview.length ? (
+          <div className="ed-agenda-list">
+            {agendaPreview.map((item) => (
+              <div className="ed-agenda-row" key={`${item.time}-${item.label}`}>
+                <span className="ed-agenda-time">{item.time}</span>
+                <span className="ed-agenda-copy">
+                  <strong>{item.label}</strong>
+                  {item.description ? <span>{item.description}</span> : null}
+                </span>
               </div>
             ))}
+            {event.agenda.length > agendaPreview.length ? (
+              <span className="ed-agenda-more">{t({ en: `${event.agenda.length} items in total — see the Agenda tab`, zh: `共 ${event.agenda.length} 项 · 完整内容见「议程」页签` })}</span>
+            ) : null}
           </div>
-        </section>
-      ) : null}
+        ) : (
+          <p className="ed-body ed-muted">{t({ en: "The agenda will be announced by the organizer.", zh: "议程待主办方公布。" })}</p>
+        )}
+      </div>
     </div>
   );
 }
 
-function ProgressStrip({ event, t }: { event: OrbitLandingEventView; t: Translate }) {
+function AgendaPanel({ event, t }: { event: OrbitLandingEventView; t: Translate }) {
   const [nowTick, setNowTick] = useState(() => Date.now());
   useEffect(() => {
     if (event.status !== "active") return undefined;
+    if (typeof window === "undefined" || typeof window.setInterval !== "function") return undefined;
     const timer = window.setInterval(() => setNowTick(Date.now()), 60_000);
     return () => window.clearInterval(timer);
   }, [event.status]);
   const progress = agendaProgress(event, new Date(nowTick));
-  if (!progress.items.length) return null;
+
+  if (!event.agenda.length) {
+    return (
+      <div className="ed-panel-card">
+        <h2 className="ed-panel-title">{t({ en: "Agenda", zh: "活动议程" })}</h2>
+        <p className="ed-body ed-muted">{t({ en: "The agenda will be announced by the organizer.", zh: "议程待主办方公布。" })}</p>
+      </div>
+    );
+  }
 
   return (
-    <div aria-label={t({ en: "Event progress", zh: "活动进程" })} className="progress-wrap">
-      <div className="progress-scroll">
-        {progress.items.map((item, index) => {
+    <div className="ed-panel-card">
+      <div className="ed-panel-head">
+        <h2 className="ed-panel-title">{t({ en: "Agenda", zh: "活动议程" })}</h2>
+        {event.status === "active" ? <span className="ed-live-pill"><span className="ed-live-dot" />LIVE · {t({ en: "In progress", zh: "进行中" })}</span> : null}
+      </div>
+      <div className="ed-agenda-list">
+        {event.agenda.map((item, index) => {
           const done = index < progress.currentIndex || progress.currentIndex >= progress.items.length;
           const current = index === progress.currentIndex && progress.currentIndex < progress.items.length;
           return (
-            <div className={`p-step${done ? " done" : ""}${current ? " now" : ""}`} key={`${item.time}-${item.label}`}>
-              <div className="p-node">
-                <span className="p-dot">{done ? <Icon name="check" size={12} /> : index + 1}</span>
-                <span className="p-label">{item.label}</span>
-                <span className="p-time">{item.time}</span>
-              </div>
-              {index < progress.items.length - 1 ? <span className={`p-link${done ? " done" : ""}`} /> : null}
+            <div className="ed-agenda-row" data-state={done ? "done" : current ? "now" : undefined} key={`${item.time}-${item.label}`}>
+              <span className="ed-agenda-time">{item.time}</span>
+              <span className="ed-agenda-copy">
+                <strong>{item.label}</strong>
+                {item.description ? <span>{item.description}</span> : null}
+              </span>
+              {done ? <span className="ed-agenda-check"><Icon name="check" size={13} /></span> : null}
+              {current ? <span className="ed-agenda-now">{t({ en: "Now", zh: "进行中" })}</span> : null}
             </div>
           );
         })}
@@ -406,296 +381,185 @@ function ProgressStrip({ event, t }: { event: OrbitLandingEventView; t: Translat
   );
 }
 
-function RegistrationPreview({
-  event,
-  t,
-}: {
-  event: OrbitLandingEventView;
-  t: Translate;
-}) {
-  const compactPreview = event.status !== "upcoming";
-  const visibleMatches = compactPreview ? SAMPLE_MATCHES.slice(0, 1) : SAMPLE_MATCHES;
-  return (
-    <div className="b-hook">
-      <p className="hook-lede">
-        {t({ en: "After you register, this becomes your on-site workspace. The content below is a sample:", zh: "报名后，这里会变成你的现场工作台。下面是它为参会者生成的内容（示例）：" })}
-      </p>
-      <div className="hook-grid">
-        <div className="glass-dark hook-card">
-          <h4>{t({ en: "People matched for you · sample", zh: "为你推荐的人 · 示例" })}</h4>
-          {visibleMatches.map((person, index) => (
-            <div className="mock-person" key={person.name.en}>
-              <Avatar g={["g-teal", "g-slate", "g-sand"][index]} letter={person.initial} size={36} />
-              <div className="mock-person-copy">
-                <b>{t(person.name)}</b><span className="role">{t(person.role)}</span><p className="why">{t(person.why)}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-        {!compactPreview ? <div className="hook-side">
-          <div className="glass-dark hook-card">
-            <h4>{t({ en: "Your seat · sample", zh: "你的座位 · 示例" })}</h4>
-            <div className="hook-seat"><span className="seat-num">{t({ en: "Table 5", zh: "5 桌" })}</span><span className="seat-desc">{t({ en: "Round 2 · table of 6, grouped around market-entry goals", zh: "第 2 轮 · 6 人桌，围绕「市场进入」目标组桌" })}</span></div>
-          </div>
-          <div className="glass-dark hook-card">
-            <h4>{t({ en: "Opener suggestion · sample", zh: "开场白建议 · 示例" })}</h4>
-            <p className="hook-open">{t({ en: "“I hear you run overseas warehouses for Japanese sellers — do you have capacity in Kansai?”", zh: "「听说你们在帮日本卖家做海外仓，我们正好在选仓——你们在关西有点位吗？」" })}</p>
-          </div>
-        </div> : null}
-      </div>
-      <div className="hook-foot">
-        <span className="note">{t({ en: "Sample only · real results use your two registration answers", zh: "以上为示例效果，实际内容基于你的两项报名回答生成" })}</span>
-      </div>
-    </div>
-  );
-}
-
-function EventInfoCard({
-  event,
-  mini,
-  registrationStatus,
-  registrationAvailability,
-  stage,
-  t,
-  workspaceAvailable,
-}: {
-  event: OrbitLandingEventView;
-  mini: { name: string; timeDate: string; timeTime: string; venue: string };
-  registrationStatus: RegistrationStatus;
-  registrationAvailability: EventRegistrationAvailability;
-  stage: JourneyStage;
-  t: Translate;
-  workspaceAvailable: boolean;
-}) {
-  const [open, setOpen] = useState(stage === "pre");
-  useEffect(() => setOpen(stage === "pre"), [stage]);
-  const remainingSeats =
-    typeof event.cap === "number" &&
-    Number.isFinite(event.cap) &&
-    typeof event.stats.count === "number" &&
-    Number.isFinite(event.stats.count)
-      ? Math.max(0, event.cap - event.stats.count)
-      : null;
-  const registeredCount =
-    typeof event.stats.count === "number" && Number.isFinite(event.stats.count)
-      ? `${t({ en: "Registered", zh: "已报名" })} ${event.stats.count}${typeof event.cap === "number" && Number.isFinite(event.cap) ? ` / ${event.cap}` : ""} ${t({ en: "people", zh: "人" })}`
-      : t({ en: "Registration count unavailable", zh: "报名人数暂不可用" });
-  const full = stage === "pre" || open;
-  // One badge slot for all three stages. Before this the seat count lived above
-  // the display title and the registered/ended pill lived on the collapsed
-  // bar's small title — two places saying what state you are in.
-  const status = stage === "post"
-    ? { label: t({ en: "Ended", zh: "已结束" }), tone: "badge-muted" }
-    : stage === "joined"
-      ? { label: t({ en: "Registered", zh: "已报名" }), tone: "badge-success" }
-      : event.status === "upcoming"
-        ? eventRegistrationIsOpen(registrationAvailability)
-          ? { label: remainingSeats === null
-            ? t({ en: "Registration open", zh: "报名中" })
-            : t({ en: `Registration open · ${remainingSeats} seats left`, zh: `报名中 · 剩 ${remainingSeats} 席` }), tone: "badge-success" }
-          : { label: t(eventRegistrationLabel(registrationAvailability)), tone: "badge-muted" }
-        : { label: t({ en: "Registration closed", zh: "报名已结束" }), tone: "badge-muted" };
-
-  return (
-    <section aria-label={t({ en: "Event information", zh: "活动信息" })} className="card cardA">
-      {/* The title sits outside JourneyCollapse so it is rendered once, at one
-          size, in every stage. Folding used to swap a 26px display title for a
-          15.5px bar title, which read as two different headings for the same
-          event — and while expanded both were on screen at once. */}
-      <div className={`a-head a-headline-block${full ? "" : " is-collapsed"}`}>
-        <div className="a-headline">
-          <h1 className="h-display a-title">{mini.name}</h1>
-          <span className={`badge ${status.tone}`}>{status.label}</span>
-          {stage !== "pre" ? (
-            <button aria-expanded={open} className="fold-btn a-headline-fold" onClick={() => setOpen((value) => !value)} type="button">
-              {t({ en: "Event details", zh: "活动详情" })}<span className="chev"><Icon name="chevD" size={14} /></span>
-            </button>
-          ) : null}
-        </div>
-        {/* Collapsed only: expanded, the info tiles below carry time and venue. */}
-        {full ? null : (
-          <div className="a-mini-meta"><Icon name="clock" size={13} />{mini.timeDate} {mini.timeTime}<Icon name="pin" size={13} />{mini.venue}</div>
-        )}
-      </div>
-
-      <JourneyCollapse open={full}>
-        <div>
-          <div className="a-head a-head-rest">
-            <div className="a-chips">
-              <span className="chip">{event.code}</span>
-            </div>
-            {event.organizer ? <p className="a-sub">Orbit × {event.organizer} {t({ en: "co-hosted", zh: "联合主办" })}</p> : null}
-            <div className="a-tags">
-              {event.tags.map((tag) => <span className="a-tag" key={tag}>{eventTagLabel(tag, t)}</span>)}
-              {event.cap === null ? <span className="a-tag">{t({ en: "No capacity limit", zh: "不设人数上限" })}</span> : null}
-              {typeof event.cap === "number" && Number.isFinite(event.cap) ? <span className="a-tag">{t({ en: `Capacity ${event.cap}`, zh: `限 ${event.cap} 人` })}</span> : null}
-            </div>
-          </div>
-
-          <div className="orbit-info-grid">
-            <InfoTile icon="clock" sub={event.agenda[0] ? `${event.agenda[0].time} ${event.agenda[0].label}` : null} title={`${mini.timeDate} ${mini.timeTime}`} />
-            <InfoTile icon="pin" sub={event.address || t({ en: "Address to be announced", zh: "详细地址待主办方公布" })} title={mini.venue} />
-            <InfoTile icon="users" sub={event.industry || event.theme} title={registeredCount} />
-            <InfoTile icon="sparkle" sub={event.theme || t({ en: "Matched and seated by Orbit", zh: "由 Orbit 匹配与分桌" })} title={event.feeLabel} />
-          </div>
-
-          <div className="a-desc">
-            {event.summaryZh ? <p>{event.summaryZh}</p> : null}
-            {event.descriptionZh && event.descriptionZh !== event.summaryZh ? <p>{event.descriptionZh}</p> : null}
-          </div>
-
-          <div className="a-cta-row">
-            {primaryAction(event, t, registrationStatus, registrationAvailability)}
-            {registrationStatus === "rsvped" ? enterAction(event, t, workspaceAvailable) : null}
-            {stage === "pre" && event.status === "upcoming" && eventRegistrationIsOpen(registrationAvailability) ? <span className="a-cta-note">{t({ en: "Just 2 questions · your first match direction appears right after", zh: "只需 2 个问题 · 报名后立即看到你的初步匹配方向" })}</span> : null}
-          </div>
-          <EventDetailsExtra event={event} t={t} />
-          {stage !== "pre" ? (
-            <div className="a-cta-row" style={{ paddingTop: 0 }}>
-              <button className="fold-btn" onClick={() => setOpen(false)} type="button">{t({ en: "Collapse details", zh: "收起详情" })}<span className="chev" style={{ transform: "rotate(180deg)" }}><Icon name="chevD" size={14} /></span></button>
-            </div>
-          ) : null}
-        </div>
-      </JourneyCollapse>
-    </section>
-  );
-}
-
-function OnsiteCard({
+function PeoplePanel({
   event,
   onSummary,
   registrationAvailability,
-  stage,
-  summary,
+  registrationStatus,
   t,
   youRsvped,
 }: {
   event: OrbitLandingEventView;
-  registrationAvailability: EventRegistrationAvailability;
   onSummary: (summary: EventMatchmakingSummary | null) => void;
-  stage: JourneyStage;
-  summary: EventMatchmakingSummary | null;
+  registrationAvailability: EventRegistrationAvailability;
+  registrationStatus: RegistrationStatus;
   t: Translate;
   youRsvped: boolean;
 }) {
-  const [reviewOpen, setReviewOpen] = useState(false);
-  const liveOpen = stage === "joined" || (stage === "post" && reviewOpen);
-  return (
-    <section aria-label={t({ en: "On-site", zh: "活动现场" })} className="cardB">
-      <div className="b-head">
-        <div className="b-titlewrap"><span className="b-eyebrow">{t({ en: "On-site", zh: "现场阶段" })}</span><span className="b-title">{t({ en: "Event floor", zh: "活动现场" })}</span></div>
-        {stage === "joined" && event.status === "active" ? <span className="badge-live"><span className="dot" />LIVE · {t({ en: "In progress", zh: "进行中" })}</span> : null}
-        {stage === "pre" ? <span className="ai-chip on-dark"><Icon name="sparkle" size={11} />{t({ en: "Feature sample", zh: "功能示例" })}</span> : null}
-        {stage === "post" && youRsvped ? (
-          <button aria-expanded={reviewOpen} className="fold-btn" onClick={() => setReviewOpen((value) => !value)} type="button">
-            {t({ en: "Review the event floor", zh: "回顾现场内容" })}<span className="chev"><Icon name="chevD" size={14} /></span>
-          </button>
-        ) : null}
+  if (!youRsvped) {
+    return (
+      <div className="ed-panel-card ed-people-teaser">
+        <h2 className="ed-panel-title">{t({ en: "Attendees", zh: "参会者" })}</h2>
+        <p className="ed-body">
+          {t({
+            en: "The attendee list and your matches appear here after you register. Names are never shown before registration — including for ended events.",
+            zh: "报名后，这里会展示参会者名单与你的人脉匹配。报名前（含已结束的活动）不公开任何姓名。",
+          })}
+        </p>
+        <div className="ed-cta-row">{primaryAction(event, t, registrationStatus, registrationAvailability)}</div>
       </div>
-
-      {stage === "pre" ? <RegistrationPreview event={event} t={t} /> : null}
-      {stage === "post" ? (
-        <div className="b-ended-bar">
-          {youRsvped
-            ? <span>{t({ en: "Event ended", zh: "活动已结束" })} · {t({ en: "Cards exchanged", zh: "交换名片" })} <b>{summary?.acceptedContacts ?? "—"}</b></span>
-            : <span>{t({ en: "This event has ended. Private participant records are only available to confirmed attendees.", zh: "活动已结束；私人现场记录仅向已确认参会者开放。" })}</span>}
-        </div>
-      ) : null}
-
-      {youRsvped ? (
-        <JourneyCollapse open={liveOpen}>
-          <div className="b-live">
-            <ProgressStrip event={event} t={t} />
-            {summary?.resultsState === "ready" && (summary.roundOneTable || summary.roundTwoTable) ? (
-              <div className="journey-matchmaking">
-                <div className="glass-dark hook-card">
-                  <h4>{t({ en: "My seat", zh: "我的座位" })}</h4>
-                  <div className="hook-foot" style={{ marginTop: 0 }}>
-                    {[summary.roundOneTable, summary.roundTwoTable].map((table, index) => table ? (
-                      <span className="chip" key={`${table.tableNumber}-${index}`}>{t({ en: `Round ${index + 1} · Table ${table.tableNumber}`, zh: `第 ${index + 1} 轮 · ${table.tableNumber} 号桌` })}{table.seat ? ` · ${t({ en: `Seat ${table.seat}`, zh: `座位 ${table.seat}` })}` : ""}</span>
-                    ) : null)}
-                  </div>
-                </div>
-              </div>
-            ) : null}
-            <div className="journey-matchmaking">
-              <OrbitEventMatchmaking
-                authenticated={event.stats.authed}
-                contactRequestsOpen={event.status !== "upcoming"}
-                eventId={event.id}
-                onWorkspaceSummary={onSummary}
-                registrationOpen={event.status === "upcoming" && eventRegistrationIsOpen(registrationAvailability)}
-              />
-            </div>
-          </div>
-        </JourneyCollapse>
-      ) : null}
-    </section>
+    );
+  }
+  // 参会者名单是唯一的参会者目录（data-event-participant-directory），
+  // 不再额外渲染重复的「全部参会者」入口。
+  return (
+    <div className="ed-people-real">
+      <OrbitEventMatchmaking
+        authenticated={event.stats.authed}
+        contactRequestsOpen={event.status !== "upcoming"}
+        eventId={event.id}
+        onWorkspaceSummary={onSummary}
+        registrationOpen={event.status === "upcoming" && eventRegistrationIsOpen(registrationAvailability)}
+      />
+    </div>
   );
 }
 
-function PostEventCard({ event, stage, summary, t, youRsvped }: { event: OrbitLandingEventView; stage: JourneyStage; summary: EventMatchmakingSummary | null; t: Translate; youRsvped: boolean }) {
+function HostPanel({ event, t }: { event: OrbitLandingEventView; t: Translate }) {
+  const organizer = event.organizer.trim();
+  if (!organizer) {
+    return (
+      <div className="ed-panel-card">
+        <h2 className="ed-panel-title">{t({ en: "Organizer", zh: "主办方" })}</h2>
+        <p className="ed-body ed-muted">{t({ en: "Organizer information is not yet available.", zh: "活动来源暂未提供主办方信息。" })}</p>
+      </div>
+    );
+  }
+  const initial = organizer.slice(0, 1).toUpperCase();
+  const slug = (event.code || "org").toLowerCase();
   return (
-    <section aria-label={t({ en: "Post-event center", zh: "会后中心" })} className="card cardC">
-      <div className="c-head">
-        <div className="c-titlewrap"><span className="eyebrow">{t({ en: "Post-Event", zh: "会后阶段" })}</span><h3 className="h-display c-title">{t({ en: "Post-event center", zh: "会后中心" })}</h3></div>
-        <div className="right"><span className="ai-chip on-light"><Icon name="sparkle" size={11} />{stage === "post" ? t({ en: "Generated by iOrbit", zh: "iOrbit 生成" }) : t({ en: "Feature sample", zh: "功能示例" })}</span></div>
-      </div>
-      <div className="c-body">
-        {stage === "post" && youRsvped ? (
-          <div className="c-real">
-            <OrbitPostEventCenter acceptedContacts={summary?.acceptedContacts ?? 0} eventId={event.id} />
-          </div>
-        ) : stage === "post" ? (
-          <div className="c-tint"><div className="glass-light c-empty">{t({ en: "You did not register for this event, so there is no private debrief. Browse Events to start a new journey.", zh: "你没有报名本场活动，因此没有私人会后复盘。可返回活动列表开始新的旅程。" })}</div></div>
-        ) : (
-          <div className="c-tint">
-            <div className="glass-light c-mock">
-              <b>{t({ en: "After the event, a debrief like this lands here", zh: "活动结束后，你会在这里收到一份这样的复盘" })}</b>
-              <p>{t({ en: "Who exchanged cards with you, what you discussed, what each person can bring, and the next follow-up — organized into an actionable list.", zh: "谁和你交换了名片、聊了什么、这些人分别能给你带来什么、下一步该找谁聊什么——全部整理成可执行的跟进清单。" })}</p>
-              <div className="c-stats">
-                <span className="stat-pill"><b>4</b><span>{t({ en: "Cards exchanged", zh: "已交换名片" })}</span></span>
-                <span className="stat-pill"><b>2</b><span>{t({ en: "Follow-ups agreed", zh: "约定的跟进" })}</span></span>
-                <span className="stat-pill"><b>1</b><span>{t({ en: "Potential deals", zh: "潜在渠道合作" })}</span></span>
-              </div>
-              <p className="c-note">{stage === "joined" ? t({ en: "Generated after the event · numbers above are samples", zh: "活动结束后自动生成 · 以上为示例数据" }) : t({ en: "Sample data · register and attend for your real debrief", zh: "示例数据 · 报名并参加活动后生成你的真实复盘" })}</p>
-            </div>
-          </div>
-        )}
-      </div>
-    </section>
+    <div className="ed-panel-card ed-host-card">
+      <span className="ed-host-logo">{initial}</span>
+      <span className="ed-host-copy">
+        <strong>{organizer}</strong>
+        <span>{t({ en: `Multiple events hosted · ${event.host}`, zh: `已举办多场 · ${event.host}` })}</span>
+      </span>
+      <a className="ed-host-link" href={productHref(`/o/${slug}`)}>
+        {t({ en: "Organizer page", zh: "主办方主页" })}<Icon name="arrowUR" size={15} />
+      </a>
+    </div>
   );
 }
 
-function EventDetailPanel({ askAgentHref, event, mini, t, workspaceAvailable, registrationAvailability }: {
-  askAgentHref: string;
-  event: OrbitLandingEventView;
-  mini: { name: string; timeDate: string; timeTime: string; venue: string };
-  t: Translate;
-  workspaceAvailable: boolean;
-  registrationAvailability: EventRegistrationAvailability;
-}) {
-  const registrationStatus: RegistrationStatus = event.stats.youRsvped ? "rsvped" : null;
-  const [summary, setSummary] = useState<EventMatchmakingSummary | null>(null);
-  const onSummary = useCallback((value: EventMatchmakingSummary | null) => setSummary(value), []);
-
-
-  const youRsvped = registrationStatus === "rsvped";
-  const stage: JourneyStage = event.status === "ended" ? "post" : youRsvped ? "joined" : "pre";
-
-  return (
-    <>
-      <EventInfoCard event={event} mini={mini} registrationAvailability={registrationAvailability} registrationStatus={registrationStatus} stage={stage} t={t} workspaceAvailable={workspaceAvailable} />
-      <OnsiteCard event={event} registrationAvailability={registrationAvailability} onSummary={onSummary} stage={stage} summary={summary} t={t} youRsvped={youRsvped} />
-      <PostEventCard event={event} stage={stage} summary={summary} t={t} youRsvped={youRsvped} />
-      <div className="orb-dock">
-        <a aria-label={t({ en: "Ask iOrbit about this event", zh: "向 iOrbit 询问这场活动" })} className="orb-ball" data-agent-context="event" href={askAgentHref} title={t({ en: "Ask iOrbit", zh: "问 iOrbit" })}>
-          <Icon name="sparkle" size={24} /><span className="pip" />
-        </a>
+function RecapPanel({ event, summary, t, youRsvped }: { event: OrbitLandingEventView; summary: EventMatchmakingSummary | null; t: Translate; youRsvped: boolean }) {
+  if (!youRsvped) {
+    return (
+      <div className="ed-panel-card">
+        <h2 className="ed-panel-title">{t({ en: "Post-event recap", zh: "会后回顾" })}</h2>
+        <p className="ed-body ed-muted">
+          {t({
+            en: "This event has ended. Private participant records are only available to confirmed attendees.",
+            zh: "活动已结束；私人现场记录仅向已确认参会者开放。",
+          })}
+        </p>
       </div>
-    </>
+    );
+  }
+  return (
+    <div className="ed-panel-card">
+      <h2 className="ed-panel-title">{t({ en: "Post-event recap", zh: "会后回顾" })}</h2>
+      <OrbitPostEventCenter acceptedContacts={summary?.acceptedContacts ?? 0} eventId={event.id} />
+    </div>
   );
 }
+
+/**
+ * 作用域样式。注意：React 静态渲染会把 <style> 内容里的双引号转义成
+ * &quot;，带引号的属性选择器会失效——这里一律用无引号属性选择器。
+ */
+const DETAIL_CSS = `
+[data-orbit-real-page=event-detail] .ed-main { max-width: 1120px; margin: 0 auto; padding: 20px 24px 120px; display: flex; flex-direction: column; gap: 22px; }
+[data-orbit-real-page=event-detail] .ed-back { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border: 1px solid #DDDEFA; border-radius: 999px; background: #FFFFFF; color: #3B3F7A; font-size: 13px; cursor: pointer; }
+[data-orbit-real-page=event-detail] .ed-back:hover { background: #ECEEFB; }
+[data-orbit-real-page=event-detail] .ed-hero { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 32px; align-items: center; }
+[data-orbit-real-page=event-detail] .ed-cover { position: relative; height: 300px; border-radius: 18px; overflow: hidden; box-shadow: 0 20px 50px rgba(59, 63, 122, 0.15); }
+[data-orbit-real-page=event-detail] .ed-cover .ed-cover-scrim { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(14, 18, 37, 0) 45%, rgba(14, 18, 37, 0.55) 100%); pointer-events: none; }
+[data-orbit-real-page=event-detail] .ed-cover .ed-cover-meta { position: absolute; left: 20px; right: 20px; bottom: 18px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+[data-orbit-real-page=event-detail] .ed-cover .ed-cover-code { padding: 5px 12px; border-radius: 999px; background: rgba(14, 18, 37, 0.62); color: #FFFFFF; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+[data-orbit-real-page=event-detail] .ed-cover .ed-cover-status { padding: 5px 12px; border-radius: 999px; background: rgba(255, 255, 255, 0.92); color: #2E3270; font-size: 12px; font-weight: 600; }
+[data-orbit-real-page=event-detail] .ed-hero-copy { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+[data-orbit-real-page=event-detail] .ed-title { margin: 0; color: #0E1225; font-size: 38px; font-weight: 900; line-height: 1.15; letter-spacing: -0.03em; }
+[data-orbit-real-page=event-detail] .ed-lede { margin: 0; font-size: 15px; color: #3B3F7A; line-height: 1.7; }
+[data-orbit-real-page=event-detail] .ed-hero-badge { align-self: flex-start; padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+[data-orbit-real-page=event-detail] .ed-hero-badge[data-tone=success] { background: #E6F1EC; color: #2F6B4F; }
+[data-orbit-real-page=event-detail] .ed-hero-badge[data-tone=muted] { background: #ECEEFB; color: #6B6F99; }
+[data-orbit-real-page=event-detail] .ed-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+[data-orbit-real-page=event-detail] .ed-tag { padding: 6px 12px; border-radius: 999px; background: #ECEEFB; color: #3B3F7A; font-size: 13px; }
+[data-orbit-real-page=event-detail] .ed-info { display: flex; flex-direction: column; gap: 10px; font-size: 15px; color: #3B3F7A; }
+[data-orbit-real-page=event-detail] .ed-info-row { display: flex; gap: 12px; align-items: flex-start; }
+[data-orbit-real-page=event-detail] .ed-info-icon { color: #4B4FC7; display: inline-flex; padding-top: 2px; flex-shrink: 0; }
+[data-orbit-real-page=event-detail] .ed-info-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+[data-orbit-real-page=event-detail] .ed-info-sub { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page=event-detail] .ed-cta-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+[data-orbit-real-page=event-detail] .ed-cta-row .btn { border-radius: 12px; font-size: 15px; font-weight: 500; padding: 14px 24px; }
+[data-orbit-real-page=event-detail] .ed-cta-row .btn-primary, [data-orbit-real-page=event-detail] .ed-cta-row .btn-ghost { background: #0E1225; border: 1px solid #0E1225; color: #FFFFFF; }
+[data-orbit-real-page=event-detail] .ed-cta-row .btn-primary:hover, [data-orbit-real-page=event-detail] .ed-cta-row .btn-ghost:hover { background: #2E3270; border-color: #2E3270; }
+[data-orbit-real-page=event-detail] .ed-cta-row .btn-soft { background: #FFFFFF; border: 1px solid #B9BCEB; color: #2E3270; }
+[data-orbit-real-page=event-detail] .ed-cta-row .btn-soft:hover { background: #ECEEFB; }
+[data-orbit-real-page=event-detail] .ed-cta-row .btn.is-disabled { background: #ECEEFB; border: 1px solid #E8E9F6; color: #9FA3C4; }
+[data-orbit-real-page=event-detail] .ed-tabs { display: flex; gap: 8px; flex-wrap: wrap; border-bottom: 1px solid #E8E9F6; font-size: 15px; }
+[data-orbit-real-page=event-detail] .ed-tab { padding: 12px 16px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: transparent; color: #6B6F99; font-size: 15px; cursor: pointer; }
+[data-orbit-real-page=event-detail] .ed-tab[data-active=true] { border-bottom-color: #4B4FC7; color: #0E1225; font-weight: 600; }
+[data-orbit-real-page=event-detail] .ed-tab:focus-visible, [data-orbit-real-page=event-detail] .ed-back:focus-visible, [data-orbit-real-page=event-detail] .ed-host-link:focus-visible { outline: 2px solid #4B4FC7; outline-offset: 2px; }
+[data-orbit-real-page=event-detail] .ed-panel[hidden] { display: none; }
+[data-orbit-real-page=event-detail] .ed-intro-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 20px; align-items: start; }
+[data-orbit-real-page=event-detail] .ed-panel-card { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 28px; display: flex; flex-direction: column; gap: 16px; }
+[data-orbit-real-page=event-detail] .ed-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+[data-orbit-real-page=event-detail] .ed-panel-title { margin: 0; color: #0E1225; font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif; font-size: 22px; font-weight: 900; letter-spacing: -0.02em; }
+[data-orbit-real-page=event-detail] .ed-body { margin: 0; font-size: 15px; line-height: 1.8; color: #3B3F7A; }
+[data-orbit-real-page=event-detail] .ed-muted { color: #6B6F99; }
+[data-orbit-real-page=event-detail] .ed-highlight-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; padding: 18px; border-radius: 14px; background: #F7F7FD; }
+[data-orbit-real-page=event-detail] .ed-highlight { display: flex; gap: 12px; align-items: center; min-width: 0; }
+[data-orbit-real-page=event-detail] .ed-highlight-icon { width: 40px; height: 40px; border-radius: 50%; background: #ECEEFB; color: #4B4FC7; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+[data-orbit-real-page=event-detail] .ed-highlight-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+[data-orbit-real-page=event-detail] .ed-highlight-copy strong { font-size: 14px; color: #0E1225; }
+[data-orbit-real-page=event-detail] .ed-highlight-copy span { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page=event-detail] .ed-agenda-list { display: flex; flex-direction: column; gap: 10px; }
+[data-orbit-real-page=event-detail] .ed-agenda-row { display: grid; grid-template-columns: 110px 1fr auto; align-items: center; gap: 14px; padding: 14px 18px; border-radius: 12px; background: #F7F7FD; }
+[data-orbit-real-page=event-detail] .ed-agenda-row[data-state=now] { background: #ECEEFB; box-shadow: inset 0 0 0 1px #B9BCEB; }
+[data-orbit-real-page=event-detail] .ed-agenda-row[data-state=done] { opacity: 0.62; }
+[data-orbit-real-page=event-detail] .ed-agenda-time { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page=event-detail] .ed-agenda-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+[data-orbit-real-page=event-detail] .ed-agenda-copy strong { font-size: 14px; color: #0E1225; }
+[data-orbit-real-page=event-detail] .ed-agenda-copy span { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page=event-detail] .ed-agenda-check { color: #2F6B4F; display: inline-flex; }
+[data-orbit-real-page=event-detail] .ed-agenda-now { font-size: 12px; font-weight: 600; color: #4B4FC7; }
+[data-orbit-real-page=event-detail] .ed-agenda-more { font-size: 13px; color: #6B6F99; padding: 0 4px; }
+[data-orbit-real-page=event-detail] .ed-live-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; background: #E6F1EC; color: #2F6B4F; font-size: 12px; font-weight: 600; }
+[data-orbit-real-page=event-detail] .ed-live-dot { width: 7px; height: 7px; border-radius: 50%; background: #2F6B4F; }
+[data-orbit-real-page=event-detail] .ed-people-teaser .ed-cta-row { padding-top: 4px; }
+[data-orbit-real-page=event-detail] .ed-host-card { flex-direction: row; align-items: center; gap: 20px; }
+[data-orbit-real-page=event-detail] .ed-host-logo { width: 72px; height: 72px; border-radius: 18px; background: #0E1225; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif; font-size: 26px; font-weight: 900; flex-shrink: 0; }
+[data-orbit-real-page=event-detail] .ed-host-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+[data-orbit-real-page=event-detail] .ed-host-copy strong { font-size: 18px; color: #0E1225; }
+[data-orbit-real-page=event-detail] .ed-host-copy span { font-size: 14px; color: #3B3F7A; line-height: 1.7; }
+[data-orbit-real-page=event-detail] .ed-host-link { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border: 1px solid #B9BCEB; border-radius: 10px; background: #FFFFFF; color: #2E3270; font-size: 14px; font-weight: 500; text-decoration: none; white-space: nowrap; }
+[data-orbit-real-page=event-detail] .ed-host-link:hover { background: #ECEEFB; }
+[data-orbit-real-page=event-detail] .orb-dock { position: fixed; z-index: 80; right: 24px; bottom: 24px; }
+[data-orbit-real-page=event-detail] .orb-ball { position: relative; display: grid; width: 54px; height: 54px; place-items: center; border-radius: 50%; background: #4B4FC7; box-shadow: 0 8px 26px rgba(59, 63, 122, 0.28), 0 2px 6px rgba(59, 63, 122, 0.16); color: #FFFFFF; transition: transform 0.16s ease, background 0.15s; }
+[data-orbit-real-page=event-detail] .orb-ball:hover { background: #2E3270; transform: translateY(-2px); }
+[data-orbit-real-page=event-detail] .orb-ball .pip { position: absolute; top: 2px; right: 2px; width: 12px; height: 12px; border: 2px solid #FBFBFE; border-radius: 999px; background: #E8B34B; }
+@media (max-width: 760px) {
+  [data-orbit-real-page=event-detail] .ed-main { padding: 14px 16px 110px; }
+  [data-orbit-real-page=event-detail] .ed-cover { height: 220px; }
+  [data-orbit-real-page=event-detail] .ed-title { font-size: 30px; }
+  [data-orbit-real-page=event-detail] .ed-host-card { flex-direction: column; align-items: flex-start; }
+  [data-orbit-real-page=event-detail] .orb-dock { right: 14px; bottom: calc(14px + env(safe-area-inset-bottom)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-orbit-real-page=event-detail] .orb-ball { transition: none; }
+}
+`;
 
 export function OrbitRealEventDetail({ event, workspaceAvailable = false, registrationAvailability = "unavailable", registrationBlockingReason }: { event: OrbitLandingEventView; workspaceAvailable?: boolean; registrationAvailability?: EventRegistrationAvailability; registrationBlockingReason?: EventRegistrationBlockingReason }) {
   const { t, language } = useOrbitLanguage();
@@ -706,7 +570,12 @@ export function OrbitRealEventDetail({ event, workspaceAvailable = false, regist
   const time = eventTime(event, t, language);
   const name = event.name || event.code || t({ en: "Event", zh: "活动" });
   const sceneAsset = getDemoEventSceneAsset(event.id);
-  const initialStage: JourneyStage = event.status === "ended" ? "post" : event.stats.youRsvped ? "joined" : "pre";
+  const registrationStatus: RegistrationStatus = event.stats.youRsvped ? "rsvped" : null;
+  const youRsvped = registrationStatus === "rsvped";
+  const stage: JourneyStage = event.status === "ended" ? "post" : youRsvped ? "joined" : "pre";
+  const [tab, setTab] = useState<DetailTab>("intro");
+  const [summary, setSummary] = useState<EventMatchmakingSummary | null>(null);
+  const onSummary = useCallback((value: EventMatchmakingSummary | null) => setSummary(value), []);
   const askAgentHref = agentHrefForContext({
     details: [event.status === "ended" ? t({ en: "Ended", zh: "已结束" }) : event.status === "active" ? t({ en: "In progress", zh: "进行中" }) : t({ en: "Upcoming", zh: "即将开始" }), event.venue, time.date].filter(Boolean).join(" · "),
     id: event.id,
@@ -714,48 +583,110 @@ export function OrbitRealEventDetail({ event, workspaceAvailable = false, regist
     label: name,
     language: language === "zh" ? "zh" : "en",
   });
-  const mini = { name, timeDate: time.date, timeTime: time.time, venue: event.venue || t({ en: "Venue TBD", zh: "地点待定" }) };
+
+  const badge = heroStatusBadge(event, stage, registrationAvailability, t);
+  const coverStatus = stage === "post"
+    ? t({ en: "Ended", zh: "已结束" })
+    : stage === "joined"
+      ? t({ en: "Registered", zh: "已报名" })
+      : event.status === "upcoming"
+        ? t(eventRegistrationLabel(registrationAvailability))
+        : t({ en: "Registration closed", zh: "报名已结束" });
+  const tabs: { id: DetailTab; label: string }[] = [
+    { id: "intro", label: t({ en: "About", zh: "介绍" }) },
+    { id: "agenda", label: t({ en: "Agenda", zh: "议程" }) },
+    { id: "people", label: t({ en: "Attendees", zh: "参会者" }) },
+    { id: "host", label: t({ en: "Organizer", zh: "主办方" }) },
+    ...(stage === "post" ? [{ id: "recap" as DetailTab, label: t({ en: "Recap", zh: "会后回顾" }) }] : []),
+  ];
+  const activeTab: DetailTab = tabs.some((item) => item.id === tab) ? tab : "intro";
+  const lede = event.summaryZh || event.descriptionZh || "";
 
   return (
-    <div className="journey orbit-shell" data-appscroll data-event-journey-state={initialStage} data-orbit-real-page="event-detail">
-      <link href="/event-journey-green.css" rel="stylesheet" />
+    <div className="orbit-shell" data-event-journey-state={stage} data-orbit-real-page="event-detail" style={{ background: C.pageBg, minHeight: "100dvh" }}>
+      <style>{DETAIL_CSS}</style>
       <PublicTopNav active="events" />
-      <main>
-        <div
-          className="detail-cover"
-          data-demo-visual-asset-id={sceneAsset?.assetId}
-          data-demo-visual-source={sceneAsset?.sourceLabel}
-          data-demo-visual-source-label={sceneAsset?.sourceLabel}
-        >
-          <EventCover g={cover} imageAlt={name} imageLoading="eager" imageSizes="100vw" imageUrl={event.detailLogoUrl} style={{ position: "absolute", inset: 0 }} />
-          <span className="detail-cover-star"><Icon name="sparkle" size={54} /></span>
-          <BackButton t={t} />
-        </div>
+      <main className="ed-main">
+        <BackButton t={t} />
 
-        <div className="orbit-detail-layout">
-          <aside className="orbit-detail-rail">
-            <EventCover className="rail-cover" g={cover} imageAlt={name} imageSizes="360px" imageUrl={event.detailLogoUrl}>
-              <span className="rail-cover-code">{String(event.code || event.id).toUpperCase()}</span>
-              <span className="rail-cover-status badge">
-                {initialStage === "post"
-                  ? t({ en: "Ended", zh: "已结束" })
-                  : initialStage === "joined"
-                    ? t({ en: "Registered", zh: "已报名" })
-                    : event.status === "upcoming"
-                      ? t(eventRegistrationLabel(registrationAvailability))
-                      : t({ en: "Registration closed", zh: "报名已结束" })}
+        <section className="ed-hero">
+          <div
+            className="detail-cover ed-cover"
+            data-demo-visual-asset-id={sceneAsset?.assetId}
+            data-demo-visual-source={sceneAsset?.sourceLabel}
+            data-demo-visual-source-label={sceneAsset?.sourceLabel}
+          >
+            <EventCover g={cover} imageAlt={name} imageLoading="eager" imageSizes="(min-width: 900px) 480px, 100vw" imageUrl={event.detailLogoUrl} style={{ position: "absolute", inset: 0 }}>
+              <span className="ed-cover-scrim" />
+              <span className="ed-cover-meta">
+                <span className="ed-cover-code">{String(event.code || event.id).toUpperCase()}</span>
+                <span className="ed-cover-status">{coverStatus}</span>
               </span>
             </EventCover>
-            <OrganizerRailCard event={event} t={t} />
-            <JourneyRail participated={event.stats.youRsvped} stage={initialStage} t={t} />
-          </aside>
-
-          <div className="orbit-detail-main">
-            {registrationAvailability === "unavailable" ? <p role="status" className="orbit-alert">{registrationBlockingReasonCopy(registrationBlockingReason, language === "zh" ? "zh" : "en")}</p> : null}
-            <EventDetailPanel askAgentHref={askAgentHref} event={event} registrationAvailability={registrationAvailability} mini={mini} t={t} workspaceAvailable={workspaceAvailable} />
           </div>
+
+          <div className="ed-hero-copy">
+            {badge ? <span className="ed-hero-badge" data-tone={badge.tone}>{badge.label}</span> : null}
+            <h1 className="ed-title" style={{ fontFamily: ORBIT_0918_FONTS.serif }}>{name}</h1>
+            {lede ? <p className="ed-lede">{lede}</p> : null}
+            <div className="ed-tags">
+              {event.tags.map((tag) => <span className="ed-tag" key={tag}>{eventTagLabel(tag, t)}</span>)}
+              {event.cap === null ? <span className="ed-tag">{t({ en: "No capacity limit", zh: "不设人数上限" })}</span> : null}
+              {typeof event.cap === "number" && Number.isFinite(event.cap) ? <span className="ed-tag">{t({ en: `Capacity ${event.cap}`, zh: `限 ${event.cap} 人` })}</span> : null}
+            </div>
+            <div className="ed-info">
+              <InfoRow icon="calendar" sub={event.agenda[0] ? `${event.agenda[0].time} ${event.agenda[0].label}` : null} title={`${time.date} · ${time.time}`} />
+              <InfoRow icon="pin" sub={event.address || t({ en: "Address to be announced", zh: "详细地址待主办方公布" })} title={event.venue || t({ en: "Venue TBD", zh: "地点待定" })} />
+              <InfoRow icon="building" sub={null} title={event.organizer.trim() || t({ en: "Organizer pending", zh: "主办方待确认" })} />
+              <InfoRow icon="users" sub={event.industry || event.theme || null} title={registeredCountText(event, t)} />
+              <InfoRow icon="ticket" sub={event.theme || t({ en: "Matched and seated by Orbit", zh: "由 Orbit 匹配与分桌" })} title={event.feeLabel} />
+            </div>
+            {registrationAvailability === "unavailable" ? <p role="status" className="orbit-alert">{registrationBlockingReasonCopy(registrationBlockingReason, language === "zh" ? "zh" : "en")}</p> : null}
+            <div className="ed-cta-row">
+              {youRsvped ? enterAction(event, t, workspaceAvailable) : null}
+              {primaryAction(event, t, registrationStatus, registrationAvailability)}
+            </div>
+          </div>
+        </section>
+
+        <nav aria-label={t({ en: "Event sections", zh: "活动栏目" })} className="ed-tabs">
+          {tabs.map((item) => (
+            <button
+              className="ed-tab"
+              data-active={activeTab === item.id ? "true" : undefined}
+              key={item.id}
+              onClick={() => setTab(item.id)}
+              type="button"
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="ed-panel" hidden={activeTab !== "intro"}>
+          <IntroPanel event={event} t={t} />
         </div>
+        <div className="ed-panel" hidden={activeTab !== "agenda"}>
+          <AgendaPanel event={event} t={t} />
+        </div>
+        <div className="ed-panel" hidden={activeTab !== "people"}>
+          <PeoplePanel event={event} onSummary={onSummary} registrationAvailability={registrationAvailability} registrationStatus={registrationStatus} t={t} youRsvped={youRsvped} />
+        </div>
+        <div className="ed-panel" hidden={activeTab !== "host"}>
+          <HostPanel event={event} t={t} />
+        </div>
+        {stage === "post" ? (
+          <div className="ed-panel" hidden={activeTab !== "recap"}>
+            <RecapPanel event={event} summary={summary} t={t} youRsvped={youRsvped} />
+          </div>
+        ) : null}
       </main>
+
+      <div className="orb-dock">
+        <a aria-label={t({ en: "Ask iOrbit about this event", zh: "向 iOrbit 询问这场活动" })} className="orb-ball" data-agent-context="event" href={askAgentHref} title={t({ en: "Ask iOrbit", zh: "问 iOrbit" })}>
+          <Icon name="sparkle" size={24} /><span className="pip" />
+        </a>
+      </div>
     </div>
   );
 }
