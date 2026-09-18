@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { TaskItemContract } from "../../api/contract/tasks";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
-import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
+import { ORBIT_API_ENDPOINTS, tasksPath } from "../../api/endpoints";
 import { ErrorState } from "../../components/ErrorState";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
@@ -19,11 +19,33 @@ import { followupsPageToView } from "../../view-models/followups-page";
 import { followupsToView } from "../../view-models/followups";
 import { isRelationshipTask } from "../../view-models/task-list-scope";
 
-export function RelationshipTaskTools({ tasks, contacts, tasksPayload }: {
+interface RelationshipTaskToolsProps {
   tasks: readonly TaskItemContract[];
   contacts: readonly ContactSummary[];
-  tasksPayload: unknown;
-}) {
+  /** Raw /api/tasks payload from a network-backed list; omit when the list comes from the mirror. */
+  tasksPayload?: unknown;
+}
+
+/**
+ * Unconfirmed legacy suggestions only exist in the /api/tasks response, never in
+ * the mirror. When the list is mirror-backed the tools fetch that payload on
+ * demand, so the default tasks screen still costs zero business requests.
+ */
+export function RelationshipTaskTools(props: RelationshipTaskToolsProps) {
+  return props.tasksPayload === undefined
+    ? <RelationshipTaskToolsFromNetwork {...props} />
+    : <RelationshipTaskToolsView {...props} tasksPayload={props.tasksPayload} />;
+}
+
+function RelationshipTaskToolsFromNetwork(props: RelationshipTaskToolsProps) {
+  const auth = useOrbitAuthSession(), server = useOrbitApiBaseUrl();
+  const scopeKey = JSON.stringify([auth.actorId, server.baseUrl]);
+  const suggestions = useApiResource<unknown>(tasksPath(), () => false, { scopeKey, cachePolicy: "network-only" });
+  const payload = suggestions.kind === "success" || suggestions.kind === "empty" ? suggestions.data : {};
+  return <RelationshipTaskToolsView {...props} tasksPayload={payload} />;
+}
+
+function RelationshipTaskToolsView({ tasks, contacts, tasksPayload }: RelationshipTaskToolsProps & { tasksPayload: unknown }) {
   const { styles } = useStyles();
   const locale = useOrbitLocale();
   const router = useRouter();

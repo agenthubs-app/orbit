@@ -38,6 +38,10 @@ const HIGH_WATERMARK_SQL = `
   where workspace_id = $1 and user_id = $2 and collection_name = $3
 `;
 
+// Registry v1 mirrors canonical records only. Legacy-shaped task rows (no nested
+// `task`) are invisible to /api/tasks and cannot be mutated through it; mirroring
+// them would show tasks the product cannot act on. The v1 /api/sync page keeps
+// its legacy compatibility untouched.
 const PAGE_SQL = `
   /* sync:domain:page */
   select workspace_id, collection_name, record_id, user_id, lifecycle_state,
@@ -48,6 +52,7 @@ const PAGE_SQL = `
     and collection_name = $3
     and sync_revision > $4::bigint
     and sync_revision <= $5::bigint
+    and (collection_name <> 'tasks' or payload ? 'task')
   order by sync_revision asc
   limit $6
 `;

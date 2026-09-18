@@ -37,7 +37,7 @@ function client(state: HostState): SyncClient {
     async getManifest() { throw new Error("unused"); },
     async getDomainPage(input): Promise<DomainPage> {
       state.calls.push(`page:${input.domainId}:${input.cursor ?? "-"}`);
-      if (input.cursor && !input.cursor.startsWith(`${state.epoch}:`)) throw new SyncResetRequiredError({ code: "CONFLICT", context: { syncErrorCode: "SYNC_RESET_REQUIRED" }, message: "reset", status: 409 });
+      if (input.cursor && !input.cursor.startsWith(`${state.epoch}:`)) throw new SyncResetRequiredError({ context: { syncErrorCode: "SYNC_RESET_REQUIRED" }, message: "reset" });
       const rows = state.rows[input.domainId] ?? [];
       const after = input.cursor ? Number(input.cursor.split(":")[1]) : 0;
       const slice = rows.slice(after, after + 2);

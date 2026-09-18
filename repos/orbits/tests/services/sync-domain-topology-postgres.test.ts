@@ -6,6 +6,9 @@ import { createSyncDomainHandlers } from "../../app/api/sync/domain-handlers";
 import { createDomainReadService } from "../../features/sync/domain-read-service";
 import { SYNC_REVISION_MIGRATION_SQL } from "../../features/sync/migrations";
 import { domainManifestSchema, domainPageSchema, offlineReadEnvelopeSchema } from "../../shared/api-schema/universal-read";
+import { createTaskRepository } from "../../features/tasks/repository";
+import { createTaskService } from "../../features/tasks/service";
+import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
 import { createTransactionalPostgresClient, type TransactionalSqlExecutor } from "../../shared/storage/transactional-postgres";
 
@@ -35,17 +38,28 @@ async function host(t: TestContext) {
     await client.query(INSERT, [W, "auth_users", `auth_user:${actor}`, actor, JSON.stringify({ id: actor, email: `${actor}@example.test` }), at]);
     await client.query(INSERT, [W, "accounts", actor, actor, JSON.stringify({ id: actor }), at]);
   };
-  const taskUnderLock = (owner: string, id: string, at: string) => client.transaction(async (tx: TransactionalSqlExecutor) => {
-    await tx.query("select orbit_records_acquire_sync_write_lock('tasks')");
-    await tx.query(INSERT, [W, "tasks", id, owner, JSON.stringify({ id, accountId: owner, title: id, status: "open", source: { type: "manual", id: "t" }, evidenceIds: ["e"], createdAt: at, updatedAt: at }), at]);
-  });
+  // Canonical payloads come from the real repository (memory store) and are written under the sync lock.
+  const taskUnderLock = async (owner: string, id: string, at: string): Promise<string> => {
+    const memory = createMemoryLiveRecordStore<Record<string, unknown>>();
+    const created = await createTaskService({ repository: createTaskRepository({ store: memory, workspaceId: W }) })
+      .create({ actorId: owner, title: id, category: "work", idempotencyKey: `k:${id}`, now: at });
+    const record = memory.listRecords({ workspaceId: W, collectionName: "tasks", limit: "unbounded" }).find((row) => row.recordId === created.task.id)!;
+    // The row id must equal the canonical task id: the sync mapper refuses mismatches.
+    await client.transaction(async (tx: TransactionalSqlExecutor) => {
+      await tx.query("select orbit_records_acquire_sync_write_lock('tasks')");
+      await tx.query(INSERT, [W, "tasks", record.recordId, owner, JSON.stringify(record.payload), at]);
+    });
+    return record.recordId;
+  };
   await identity(A, NOW); await identity(B, NOW);
-  for (let n = 1; n <= 4; n += 1) await taskUnderLock(A, `task:a:${n}`, NOW);
-  for (let n = 1; n <= 2; n += 1) await taskUnderLock(B, `task:b:${n}`, NOW);
+  const aIds: string[] = [];
+  const bIds: string[] = [];
+  for (let n = 1; n <= 4; n += 1) aIds.push(await taskUnderLock(A, `task:a:${n}`, NOW));
+  for (let n = 1; n <= 2; n += 1) bIds.push(await taskUnderLock(B, `task:b:${n}`, NOW));
   const service = createDomainReadService({ client, cursorSecret: SECRET, now: () => NOW });
   const handlersFor = (actor: string) => createSyncDomainHandlers({ resolveActor: async () => ({ id: actor, userId: actor, workspaceId: W }), createService: () => service, now: () => Date.parse(NOW) });
   const json = async <T,>(response: Response) => (await response.json()) as { success: boolean; data: T; error?: { code: string; context?: Record<string, unknown> } };
-  return { client, taskUnderLock, handlersFor, json };
+  return { client, taskUnderLock, handlersFor, json, aIds, bIds };
 }
 
 test("grants, manifest and domain pages are per actor: A never sees B, B cannot use A's cursor", options, async (t) => {
@@ -64,11 +78,12 @@ test("grants, manifest and domain pages are per actor: A never sees B, B cannot 
     assert.equal(response.status, 200);
     const data = domainPageSchema.parse((await h.json(response)).data);
     ids.push(...data.changes.map((change) => change.id));
-    for (const change of data.changes) assert.equal((change.payload as { accountId: string }).accountId, A);
+    for (const change of data.changes) assert.equal((change.payload as { accountId: string }).accountId, A, "the mapped sync payload carries the owner");
     cursor = data.nextCursor;
     if (!data.hasMore) break;
   }
-  assert.deepEqual(ids, ["task:a:1", "task:a:2", "task:a:3", "task:a:4"]);
+  assert.deepEqual(ids, h.aIds, "A's pages contain exactly A's canonical tasks in revision order");
+  assert.ok(ids.every((id) => !h.bIds.includes(id)));
   const bWithACursor = await h.handlersFor(B).domain(new Request(`https://orbit.local/api/sync/domains/tasks?cursor=${encodeURIComponent(cursor!)}`), "tasks");
   assert.equal(bWithACursor.status, 409, "A's cursor presented by B is a reset, never a page");
   const bManifest = domainManifestSchema.parse((await h.json(await h.handlersFor(B).manifest(new Request("https://orbit.local/api/sync/manifest")))).data);
