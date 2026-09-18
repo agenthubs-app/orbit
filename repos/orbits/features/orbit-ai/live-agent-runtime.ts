@@ -1449,6 +1449,9 @@ export function conversationForRuntimeSuccess(input: {
     messages,
     nextAction,
     proposedActionRequests: input.plan.actionRequests,
+    // Sprint 0085: the API turns this into a persisted draft; the runtime only
+    // carries it, and never writes on the strength of it.
+    ...(input.plan.entityDraft ? { proposedEntityDraft: input.plan.entityDraft } : {}),
     proposedToolIntents: input.toolRequests.map((request) =>
       proposedIntentForTool(
         request,

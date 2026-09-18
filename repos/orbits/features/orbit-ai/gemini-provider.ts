@@ -11,6 +11,11 @@ import {
   type AgentNaturalLanguageActionRequest,
 } from "../agent/natural-language-actions/contract";
 import { AGENT_MEMORY_CATEGORIES } from "../agent/memory/contract";
+import {
+  ENTITY_DRAFT_KINDS,
+  parseEntityDraftProposal,
+  type EntityDraftProposal,
+} from "./entity-drafts/contract";
 export const DEFAULT_GEMINI_ORBIT_AGENT_MODEL = "gemini-3.5-flash" as const;
 export const DEFAULT_DEEPSEEK_ORBIT_AGENT_MODEL = "deepseek-v4-flash" as const;
 export const DEFAULT_OPENAI_ORBIT_AGENT_MODEL = "gpt-4.1" as const;
@@ -131,6 +136,12 @@ export interface GeminiOrbitAgentToolRequest {
 export interface GeminiOrbitAgentPlannerOutput {
   actionRequests: readonly AgentNaturalLanguageActionRequest[];
   assistantMessage: string;
+  /**
+   * Sprint 0085: the structured record the user is being offered. It is the only
+   * way the model can propose creating one of the five entities; describing a
+   * confirmation in `assistantMessage` does nothing.
+   */
+  entityDraft?: EntityDraftProposal;
   intent: GeminiOrbitAgentIntent;
   toolRequests: readonly GeminiOrbitAgentToolRequest[];
 }
@@ -660,6 +671,16 @@ export function validateGeminiOrbitAgentPlannerOutput(
   if (actionRequests === null) {
     return null;
   }
+  // A draft that does not parse rejects the whole plan. Dropping the field would
+  // leave the assistant message promising a card that never appears — which is
+  // the exact failure this sprint exists to remove.
+  const entityDraft =
+    value.entityDraft === undefined || value.entityDraft === null
+      ? undefined
+      : parseEntityDraftProposal(value.entityDraft);
+  if (entityDraft === null) {
+    return null;
+  }
 
   const toolRequests: GeminiOrbitAgentToolRequest[] = [];
 
@@ -703,14 +724,15 @@ export function validateGeminiOrbitAgentPlannerOutput(
 
   if (
     typedIntent === "action_proposal" &&
-    actionRequests.length === 0
+    actionRequests.length === 0 &&
+    !entityDraft
   ) {
     return null;
   }
 
   if (
     typedIntent !== "action_proposal" &&
-    actionRequests.length > 0
+    (actionRequests.length > 0 || entityDraft)
   ) {
     return null;
   }
@@ -734,6 +756,7 @@ export function validateGeminiOrbitAgentPlannerOutput(
     assistantMessage,
     intent: typedIntent,
     toolRequests,
+    ...(entityDraft ? { entityDraft } : {}),
   };
 }
 
@@ -759,7 +782,7 @@ function systemInstruction(): string {
 
   return [
     "You are Orbit Agent, a relationship-work orchestration planner.",
-    "Return only a JSON object with assistantMessage, intent, toolRequests, and actionRequests.",
+    "Return only a JSON object with assistantMessage, intent, toolRequests, actionRequests, and optionally entityDraft.",
     "Allowed intents: general_chat, event_recommendations, contact_recommendations, followup_queue, relationship_chat_context, self_profile, notes_query, tasks_query, followups_query, schedule_query, action_proposal.",
     `Allowed tool names: ${ORBIT_AGENT_TOOL_NAMES.join(", ")}.`,
     `Allowed action capability ids: ${AGENT_NATURAL_LANGUAGE_ACTION_CAPABILITY_IDS.join(", ")}.`,
@@ -767,6 +790,12 @@ function systemInstruction(): string {
     ...toolDescriptions,
     "Each non-general intent must use exactly one matching tool, except action_proposal, which must use an empty toolRequests array and one or more actionRequests. general_chat must use both arrays empty.",
     "Only action_proposal may contain actionRequests. Every other intent must return an empty actionRequests array.",
+    // Sprint 0085：模型只能交出草稿对象，不能用文字代替确认。
+    `Creating a record: to offer to create one of ${ENTITY_DRAFT_KINDS.join(", ")}, use intent action_proposal and return entityDraft = {kind, fields, sourceRefs}. Required fields per kind: task needs title; note needs title; schedule needs title and ISO startsAt; event needs title and ISO startsAt; contact needs name. Other useful fields: task dueAt/notes, note body, schedule endsAt/location, event endsAt/location/description, contact organization/role/note. All field values are strings.`,
+    "sourceRefs lists the records the draft came from, each {kind, id} with kind one of note, contact, event, task, schedule. Copy ids only from the current message or tool results; never invent one.",
+    "entityDraft alone is enough for action_proposal — you do not also need an actionRequest for it. Only one entityDraft per reply.",
+    "You cannot create records and you cannot confirm anything. Returning entityDraft shows the user a card with a confirm button; the record appears only after they press it. Never write that you have created something, never say you will create it once the user replies, and never ask the user to reply a word in order to confirm. Describe what the card contains and stop.",
+    "A request to turn something you just read into a new record — 根据这篇笔记整理一个待办 / 把这个联系人加进来 / 帮我建一个日程 — is action_proposal with entityDraft, even though it also mentions a note, contact or event. Put that source in sourceRefs instead of switching to a query intent.",
     "Every action request must set requiresUserConfirmation=true. Planning an action never means it was executed.",
     "For relative dates such as 今天/明天/today/tomorrow, use currentLocalDate in defaultTimeZone from the planner input. Do not derive the user's calendar date from the UTC date portion of currentTimeIso.",
     "Supported natural-language writes:",
@@ -791,6 +820,7 @@ function systemInstruction(): string {
     "For notes.query, tasks.query, followups.query, and schedule.query, set arguments.operation to list, search, or get. For get, copy the exact entity id from the current user message into arguments.id. Never provide actorId, userId, accountId, or profileId.",
     "For operation=search, arguments.searchTerms is required: extract only the title/text fragment the user wants to find, not the whole instruction. For example 查找标题包含云端待办的任务 -> tasks.query operation=search searchTerms=云端待办. Omit searchTerms for list/get. The server keeps the original user message in query for authorization; never replace it to fabricate get permission.",
     "- explicit create-task / remind-me / save-this-draft / remember-this request -> action_proposal with the matching actionRequest.",
+    "- create a task, note, schedule item, event or contact from what the user said or from a record just read -> action_proposal with entityDraft.",
     "- privacy control / delete / do not analyze / sensitive share -> general_chat unless current chat context review is explicitly needed.",
     // 服务范围分类：Orbit 是商务关系工作助手，不是通用问答。与商业/职业/人脉
     // 无关的生活类问题不直接作答，而是转化为"你的人脉里谁懂这个"，一轮内既守住
