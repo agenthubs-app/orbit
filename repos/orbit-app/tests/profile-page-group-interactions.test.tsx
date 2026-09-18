@@ -205,3 +205,33 @@ test("native Dynamic Type does not clip text or overlap preview navigation", asy
   const title = await page.getByRole("heading", { name: "他人看到的样子" }).boundingBox();
   assert.ok(back && title && back.y + back.height <= title.y, JSON.stringify({ back, title }));
 });
+
+// Sprint 0084: the complaint was that a group heading, a row you can open and a
+// field label all looked the same. One assertion per role is not enough — what
+// matters is that the four are tellable apart from each other, so compare them.
+test("the four row roles are visually distinct from one another", async t => {
+  const page = await open(t, { route: "/profile/edit" });
+  const spec = async (locator: ReturnType<typeof page.getByText>) =>
+    locator.first().evaluate(element => {
+      const style = getComputedStyle(element);
+      return `${Number.parseFloat(style.fontSize)}/${style.fontWeight}`;
+    });
+
+  const groupHeading = await spec(page.getByRole("heading", { name: "基本资料", exact: true }));
+  const navRow = await spec(page.getByText("选择标签", { exact: true }));
+  const fieldLabel = await spec(page.getByText("名字", { exact: true }));
+
+  assert.equal(groupHeading, "12/600", "a group heading is the lightest line in the column");
+  assert.equal(navRow, "16/500", "an openable row is as heavy as content, not as a heading");
+  assert.equal(fieldLabel, "13/500");
+  assert.equal(new Set([groupHeading, navRow, fieldLabel]).size, 3, "no two roles share a size and weight");
+
+  // An openable row must differ from a static one in more than the chevron: the
+  // chevron is easy to miss at narrow widths and large font scales.
+  const chevron = page.getByRole("button", { name: "选择标签" }).locator("[aria-hidden=true]").last();
+  assert.notEqual(
+    await chevron.evaluate(element => getComputedStyle(element).color),
+    await page.getByText("名字", { exact: true }).first().evaluate(element => getComputedStyle(element).color),
+    "the chevron is accent-coloured, not the same grey as the surrounding text",
+  );
+});

@@ -9,7 +9,7 @@ import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { radius, spacing, textStyles, typography } from "../../design/tokens";
+import { radius, rowRoleStyles, spacing, textStyles, typography } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
@@ -262,7 +262,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   editButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", minHeight: 44, minWidth: 44 },
   editText: { color: colors.accent, fontSize: 13, lineHeight: 20, fontWeight: "700" },
   section: { gap: 6 },
-  sectionTitle: { color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: "800" },
+  sectionTitle: { ...rowRoleStyles.groupHeading, color: colors.text3 },
   workspace: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12, borderTopColor: colors.border, borderTopWidth: 1, borderBottomColor: colors.border, borderBottomWidth: 1, paddingVertical: 14 },
   workspaceIcon: { width: 36, minHeight: 36, borderRadius: 10, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
   workspaceInitial: { color: colors.onAccent, fontSize: 14, lineHeight: 20, fontWeight: "800" },
@@ -274,10 +274,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   goalContent: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 14, gap: 8 },
   accessRows: { borderTopColor: colors.border, borderTopWidth: 1 },
   accessRow: { alignItems: "center", flexDirection: "row", gap: 12, minHeight: 50, paddingVertical: 13.5, borderBottomColor: colors.border, borderBottomWidth: 1 },
-  accessText: { flex: 1, color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: "600" },
+  accessText: { ...rowRoleStyles.navLabel, flex: 1, color: colors.ink },
   signOutSection: { gap: 8, paddingTop: 12 },
   signOutButton: { ...createControlStyles(colors).secondaryButton, borderColor: colors.border },
-  signOutText: { color: colors.rose, fontSize: 14, lineHeight: 20, fontWeight: "600" },
+  signOutText: { ...rowRoleStyles.navLabel, color: colors.rose },
   bodyText: {
     ...textStyles.body,
     color: colors.text,

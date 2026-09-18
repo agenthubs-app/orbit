@@ -77,6 +77,7 @@ export const en = {
   "settings.general": "General",
   "settings.account": "Account",
   "settings.server": "Server",
+  "settings.serverCurrent": "Current server",
   "settings.language": "App language",
   "settings.languageHint": "Uses your device by default. A manual choice is saved to this account and synced to your other devices.",
   "settings.languageSystem": "Use device language",

@@ -131,6 +131,28 @@ export const textStyles = {
   caption: { fontSize: typography.caption, lineHeight: 18 }
 } as const;
 
+/**
+ * Sprint 0084: the four roles a "分组标题 + 行" page stacks in one column.
+ *
+ * They used to sit between 15px/600 and 15px/800, so a group heading, a row you
+ * can open and a field label all read the same weight and only the chevron said
+ * which was which. The reversal: the heading becomes the lightest thing on the
+ * page and the content becomes the heaviest.
+ *
+ * Kept here rather than per screen because it is one decision. `textStyles.section`
+ * is deliberately untouched — 65 files read it for content-section headings all
+ * over the app, and those are a different role from a list group heading.
+ * Colours belong to the theme, so each use site pairs these with `text3`/`ink`.
+ * No `lineHeight` on purpose: native Dynamic Type scales `fontSize` but leaves an
+ * explicit `lineHeight` where it was, which clips the text at large sizes.
+ */
+export const rowRoleStyles = {
+  groupHeading: { fontSize: 12, fontWeight: "600", letterSpacing: 0.96, textTransform: "uppercase" },
+  navLabel: { fontSize: 16, fontWeight: "500" },
+  fieldLabel: { fontSize: 13, fontWeight: "500" },
+  fieldValue: { fontSize: 16, fontWeight: "400" }
+} as const;
+
 export const shadows = {
   card: {
     elevation: 0,

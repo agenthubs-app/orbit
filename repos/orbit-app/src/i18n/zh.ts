@@ -77,6 +77,7 @@ export const zh = {
   "settings.general": "通用",
   "settings.account": "账号",
   "settings.server": "服务器",
+  "settings.serverCurrent": "当前服务器",
   "settings.language": "界面语言",
   "settings.languageHint": "默认跟随设备；手动选择会保存到当前账号并同步到其他设备。",
   "settings.languageSystem": "跟随设备",

@@ -71,7 +71,17 @@ test("settings uses source section hierarchy, open rows and real notification st
   const page = await open(t);
   await page.getByRole("heading", { name: "通用", exact: true }).waitFor();
   assert.equal(await page.getByText(/本地调试|真机测试/u).count(), 0);
-  for (const name of ["通用", "账号", "服务器"]) assert.equal(await page.getByRole("heading", { name, exact: true }).evaluate(el => getComputedStyle(el).fontWeight), "800");
+  // Sprint 0084: a group heading is now the lightest thing in the column and an
+  // openable row the heaviest, so the two stop reading as the same kind of line.
+  for (const name of ["通用", "账号", "服务器"]) {
+    const heading = page.getByRole("heading", { name, exact: true });
+    assert.equal(await heading.evaluate(el => getComputedStyle(el).fontWeight), "600", name);
+    assert.equal(await heading.evaluate(el => getComputedStyle(el).fontSize), "12px", name);
+  }
+  const serverRow = page.getByText("当前服务器", { exact: true });
+  assert.equal(await serverRow.evaluate(el => getComputedStyle(el).fontSize), "16px");
+  assert.equal(await serverRow.evaluate(el => getComputedStyle(el).fontWeight), "500");
+  assert.equal(await page.getByRole("heading", { name: "当前服务器", exact: true }).count(), 0, "the row is not a second heading");
   const account = page.getByRole("button", { name: "打开账号", exact: true });
   assert.equal((await account.boundingBox())!.height, 50); assert.equal((await account.boundingBox())!.x, 16);
   const toggle = page.getByRole("button", { name: "关闭系统推送", exact: true });
