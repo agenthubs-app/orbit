@@ -87,3 +87,19 @@
 - 预算：本 Sprint 无 AI/OCR 调用，累计账本不变。
 - 下一步：Phase 0 第二项 **0068 集成 phoneweb 运行时基座**（21 文件，横跨 9 条分支，
   需先选定权威源分支）。
+
+## 追加：原生运行时验收（用户补充要求）
+
+用户在 0067 收口后明确要求"每个 Sprint 完成后都要起 Simulator 或 phoneweb 做一次测试"。
+本节为 0067 的补充验收，不修改上述已通过的五项 SC。
+
+- 环境：Simulator `DA432E9E-1204-4EE7-9A20-251CDB48E265`，包 `app.agenthubs.orbit`，
+  Metro 127.0.0.1:8082；Web/API 为合并后源码重启的进程（127.0.0.1:3000，
+  `ORBIT_DATABASE_TARGET=local` 连本机 `orbit_events`）。
+- 结果：冷启动后会话保持，首页显示「9.18 周五 · 0 项日程 · 14 项待办」与 3 条推荐活动；
+  切到人脉页显示 **78** 条，筛选条（全部／行业／进展／行动／更多／人脉分析）正常渲染。
+- 服务端侧同时观察到 App 发出的真实请求返回 200，包括本次合并改动的
+  `GET /api/contacts`（列投影路径）以及 `/api/notifications`、
+  `/api/relationship-communication/conversations`。
+
+这证明合并后的读取路径在真实原生客户端上可用；不构成对生产环境或真实设备的验收。
