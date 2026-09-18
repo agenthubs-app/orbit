@@ -13,11 +13,13 @@
 | --- | --- | --- |
 | 实现是否合并 | **已合并**。0037 `a591494b0`、0038 `e045651b3`、0039 `131723ddb`、0040 `0b552649d` 都在 `chat-agent` 祖先链上 | `git merge-base --is-ancestor` 四个 SHA 均为 0 |
 | 实现是否覆盖不到 | **覆盖不到，因为没启用**。`features/notifications/inbox-record-service-factory.ts:22` `isTypedInboxEnabled` 只对 `ORBIT_TYPED_INBOX_ACTORS` 逗号白名单里的账号为真；`.env`/`.env.local` 都没配 → `/api/inbox/notifications` 对所有账号返回 `enabled:false, items:[]`。App `RelationshipInboxScreen.tsx:355` 仍以 `/api/notifications`（旧链）为收件箱数据源，`inbox-feed.ts:111`／`relationship-inbox.ts:1446` 把旧链标记 `unavailable` 的条目渲染成"来源已不可用"（0046 的"失效通知来源安全提示"） |
+| 白名单影响面 | **不止收件箱**。同一个 `isTypedInboxEnabled` 还挡着 `app/api/inbox/delivery/preferences/handler.ts:12` 与 `app/api/inbox/discovery/preferences/handler.ts:13`，两者对未列名账号返回 404 → 设置页两块通知设置常年报错（phoneweb `/settings` 控制台 2 条 404，2026-09-18 实测） | curl 直连 3000 与 phoneweb 均 404 |
 | 是否数据库残留 | **是，且迁移从未执行**。`orbit_records.notifications` 40 条全为种子生成的"复核与 X 的下一步"（`source.label: Generated relationship mockdata fixture`，无 `kind`）——设计第 217 行明确"不满足内容门槛，不迁移成新未读通知"；`reminderPlans` 54 条中 `delivered/failed` 且目标已丢失者在旧链 `app/api/notifications/handler.ts:37` 被服务端直接写成 `title: "来源已不可用"`。0040 的 `scripts/migrate-notification-inbox.ts`（`notification-cutover-migration.ts`）存在，但库里没有任何通知迁移记录（只有 `event_organizer_owner_migrations`），0040 REPORT 也写明"QA 未含旧空话样本，不声称清理了 40 条" |
 
 **判断 1：三类通知默认开启，白名单退役。** 删除 `ORBIT_TYPED_INBOX_ACTORS` 门（或改为默认全开的"排除名单"，仅用于紧急回退并在 REPORT 记录），`/api/inbox/notifications` 对所有账号生效。
 **判断 2：App 收件箱只读三类通知接口。** `RelationshipInboxScreen`／`inbox-feed`／`relationship-inbox` 的通知数据源改为 `/api/inbox/notifications`；`/api/notifications` 旧链退出收件箱（保留给未迁移的旧消费者，逐个核对后删除 App 侧引用）；`typedInbox.unavailable` 文案从列表路径删除，只保留在详情页"来源已变更"的合法状态里（设计允许 target `unavailable` 作为详情状态，但不作为列表条目标题）。
 **判断 3：旧记录按设计迁移隔离。** 用 0040 的迁移 CLI 对本机库跑 dry-run → apply：满足门槛的旧提醒归为提醒并去重；"复核与 X 的下一步"与目标不可解析的 reminderPlans 进入隔离（留迁移记录，不生成未读）。迁移不是删除：原记录保留并打 `migrated/quarantined` 标记。
+**判断 3b：列表不展示"来源已不可用"条目。** 三类通知服务自身在来源不可解析时也会把条目改写成"来源已不可用"（`inbox-record-service.ts:17,26`）。设计允许详情页表达该状态，但列表里这行对用户没有意义：这类条目改为退出默认列表（按设计第 128 行的失效处理：保留历史标记、停止 Push、不计未读），仅在通过详情链接打开时解释来源已变更。
 **判断 4：读取即失败。** 三类通知的读服务加完整性校验：任一条目 `kind ∉ {reminder, suggestion, update}`、缺具体标题／来源引用／目标，或来源集合为空，则整个列表读取抛 `InboxRecordError('INBOX_INTEGRITY_VIOLATION')`，接口返回受控错误（含违规 id 列表，不含原文），App 显示"收件箱数据异常"+代码。这是用户明确要求的 fail closed：这类记录不允许存在，宁可失败也不展示占位。同时提供 `db:verify:inbox-integrity` 脚本供部署前检查。
 **判断 5：种子不再产生违规记录。** `seed-live-generated-fixtures` 不再写"复核与 X 的下一步"到 `notifications`（或写成设计允许的形态）；`db:verify:live-generated-fixtures` 增加通知完整性断言。
 
@@ -34,6 +36,7 @@
 | SC-0086-01 | 复现：迁移前演示账号收件箱含"来源已不可用"；迁移 dry-run 报告列出 40 条生成记录与失效 reminderPlans 的隔离原因；apply 后列表 0 条"来源已不可用"，原记录带隔离标记且可审计 | 迁移日志 + 前后截图 |
 | SC-0086-02 | `/api/inbox/notifications` 对任意账号 `enabled:true`；App 收件箱通知页只读该接口，未读数一致；`/api/notifications` 不再被 App 收件箱引用 | route-domain-inventory 断言 + 网络清单 |
 | SC-0086-03 | 注入一条 `kind` 非法或来源不可解析的记录 → 接口返回 `INBOX_INTEGRITY_VIOLATION`（含 id）→ App 显示"收件箱数据异常"；`db:verify:inbox-integrity` 非零退出 | orbits API 单测 + PG 用例 + App 屏幕测试 |
+| SC-0086-03b | 设置页两块通知设置（投递偏好、发现偏好）对任意账号返回 200 并可保存；phoneweb `/settings` 控制台 0 错误 | curl + 控制台清单 |
 | SC-0086-04 | 列表每条满足设计：三选一类别图标与文字、具体标题、原因、来源短标签、时间、主操作；不出现"来源已不可用"标题 | Simulator + phoneweb 截图 |
 | SC-0086-05 | 种子重建后完整性校验通过；App 全量对照 3508、orbits 定向集绿、两端 typecheck 0 | 摘要 |
 
