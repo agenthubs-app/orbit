@@ -26,6 +26,19 @@ test("the nav renders the unified three-segment skeleton", () => {
   assert.ok(shell.includes("orbit-nav-page-title"), "mobile page title");
 });
 
+// 2026-09-18 Orbit_0918 浮岛药丸导航：外层透明吸附条 + 内部 pill，
+// 滚动态由 data-orbit-nav-scrolled 驱动（scrollY > 40），
+// 未登录右侧为 登录 + 立即加入（滚动态才显示），已登录为浅紫首字母头像。
+test("the Orbit_0918 floating pill structure is present", () => {
+  assert.ok(shell.includes("orbit-top-nav-pill"), "pill wrapper inside the header");
+  assert.ok(shell.includes("data-orbit-nav-scrolled"), "scroll-state attribute drives the pill");
+  assert.ok(shell.includes("window.scrollY > 40"), "40px scroll threshold from the design");
+  assert.ok(shell.includes("orbit-nav-join-cta"), "dark join CTA for signed-out visitors");
+  assert.ok(shell.includes("立即加入"), "join CTA copy follows the design");
+  assert.ok(shell.includes("orbit-nav-avatar"), "flat initial avatar for signed-in users");
+  assert.ok(!shell.includes("orbit-brand-sub"), "brand tagline retired from the nav");
+});
+
 test("the agent pill and the flex spacer are gone", () => {
   assert.ok(!shell.includes("orbit-agent-btn"));
   assert.ok(!shell.includes('<div style={{ flex: 1 }} />'));

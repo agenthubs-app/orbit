@@ -5,7 +5,7 @@ import { SessionContext, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
 
 import { useOrbitLanguage } from "./orbit-language-context";
-import { Avatar, Icon, Logo, gradientFromString } from "./orbit-reference-primitives";
+import { Icon } from "./orbit-reference-primitives";
 import { productHref } from "./orbit-product-href";
 import { ORBIT_Z } from "./orbit-z";
 
@@ -107,27 +107,21 @@ function OrbitNavAccountControl({
     const nextPath = pathname || "/app";
 
     return (
-      <span style={{ alignItems: "center", display: "inline-flex", gap: 10 }}>
+      <span style={{ alignItems: "center", display: "inline-flex", gap: 18 }}>
         <a
           className="orbit-me-link"
           href={preserveHref(`/app/account/login?next=${encodeURIComponent(nextPath)}`)}
         >
           {t({ en: "Sign in", zh: "登录" })}
         </a>
+        {/* Orbit_0918: the dark join pill only appears once the header is in
+            its scrolled state (design 首页 header, sc-if scrolled). Visibility
+            is CSS-driven off header[data-orbit-nav-scrolled]. */}
         <a
+          className="orbit-nav-join-cta"
           href={preserveHref(`/app/account/signup?next=${encodeURIComponent(nextPath)}`)}
-          style={{
-            background: "var(--accent)",
-            borderRadius: "var(--r-pill)",
-            color: "var(--on-accent)",
-            fontSize: 13.5,
-            fontWeight: 600,
-            padding: "7px 15px",
-            textDecoration: "none",
-            whiteSpace: "nowrap",
-          }}
         >
-          {t({ en: "Sign up", zh: "注册" })}
+          {t({ en: "Join now", zh: "立即加入" })}
         </a>
       </span>
     );
@@ -144,11 +138,9 @@ function OrbitNavAccountControl({
         type="button"
         style={{ background: "transparent", border: 0, cursor: "pointer", display: "inline-flex", padding: 0 }}
       >
-        <Avatar
-          g={gradientFromString(sessionUser.email || sessionUser.id)}
-          letter={(sessionUser.name || "O").slice(0, 1).toUpperCase()}
-          size={32}
-        />
+        <span aria-hidden="true" className="orbit-nav-avatar">
+          {(sessionUser.name || "O").slice(0, 1).toUpperCase()}
+        </span>
       </button>
       {menuOpen ? (
         <div
@@ -357,6 +349,18 @@ export function OrbitTopNav({
   const { language, preserveHref, setLanguage, t } = useOrbitLanguage();
   const isAgent = agentActive ?? active === "agent";
   const [menuOpen, setMenuOpen] = useState(false);
+  // Orbit_0918 浮岛药丸导航：scrollY > 40 时药丸收缩并浮起（设计稿 scrolled 态）。
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    function onScroll() {
+      const next = window.scrollY > 40;
+      setScrolled((current) => (current === next ? current : next));
+    }
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     if (!menuOpen) return undefined;
@@ -393,16 +397,21 @@ export function OrbitTopNav({
 
   return (
     <>
+      {/* Noto Serif SC（品牌字）与 Noto Sans SC 全局字体；与落地页同源，React 会去重。 */}
+      <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap"
+        rel="stylesheet"
+      />
       <header
-        className={`orbit-top-nav orbit-nav-menu${tone === "starfield" ? " is-starfield" : ""}`}
+        className={`orbit-top-nav orbit-nav-menu orbit-top-nav-0918${tone === "starfield" ? " is-starfield" : ""}`}
+        data-orbit-nav-scrolled={scrolled ? "true" : "false"}
         data-orbit-nav-tone={tone}
       >
+        <div className="orbit-top-nav-pill">
         <div className="orbit-nav-lead">
           <a aria-label="Orbit" className={`orbit-brand-link hit-44${active === "home" ? " is-active" : ""}`} href={preserveHref("/")} style={{ textDecoration: "none" }}>
-            <Logo size={24} withText={false} />
             <span className="orbit-brand-word">
               <span className="orbit-brand-name">Orbit</span>
-              <span className="orbit-brand-sub mono">{t({ en: "Powered by the iOrbit matching engine", zh: "由 iOrbit 智能匹配引擎驱动" })}</span>
             </span>
           </a>
           {active ? <span className="orbit-nav-page-title">{t(pageLabels[active])}</span> : null}
@@ -436,6 +445,7 @@ export function OrbitTopNav({
           >
             <Icon name={menuOpen ? "x" : "menu"} size={20} />
           </button>
+        </div>
         </div>
       </header>
       {menuOpen ? (

@@ -11,17 +11,19 @@ const styles = readFileSync(
 );
 
 test("mobile menu starts below the top bar and uses a compact homepage-style panel", () => {
+  // 2026-09-18 Orbit_0918 浮岛药丸导航：移动端顶条 = 10px 外层 padding + 56px
+  // pill，菜单层从 76px 起（药丸下缘 66px + 10px 间距），替代旧 56px 实心条。
   const layerRule = [
     ...styles.matchAll(/\.orbit-nav-menu-layer\s*\{([\s\S]*?)\}/gu),
   ]
     .map((match) => match[1])
-    .find((rule) => rule?.includes("top: 56px"));
+    .find((rule) => rule?.includes("top: 76px"));
   const panelRule = styles.match(
     /\.orbit-nav-menu-panel\s*\{([\s\S]*?)\}/u,
   )?.[1];
 
   assert.ok(layerRule, "mobile menu layer rule exists");
-  assert.match(layerRule, /top:\s*56px;/u);
+  assert.match(layerRule, /top:\s*76px;/u);
   assert.doesNotMatch(layerRule, /inset:\s*0;/u);
 
   assert.ok(panelRule, "mobile menu panel rule exists");
