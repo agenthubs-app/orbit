@@ -13,8 +13,7 @@ const unique = (values: string[]) => [...new Set(values)];
 const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
   'src/api/business-card-import.ts:114': ['/api/contact-drafts/business-card/imports/:id/cancel'],
   'src/api/business-card-import.ts:115': ['/api/contact-drafts/business-card/imports/:id'],
-  'src/screens/ai/AiConversationScreen.tsx:345': ['/api/ai/conversations', '/api/ai/conversations/:id'],
-  'src/screens/ai/AiConversationScreen.tsx:498': ['/api/ai/runs/:id'],
+  'src/screens/ai/AiConversationScreen.tsx:350': ['/api/ai/conversations', '/api/ai/conversations/:id'],
   'src/screens/chat/RelationshipChatDetailScreen.tsx:176': ['/api/relationship-communication/conversations/:id/messages'],
   'src/screens/contacts/ContactAcquisitionScreen.tsx:401': ['/api/contact-drafts/:id'],
   'src/screens/contacts/ContactAcquisitionScreen.tsx:440': ['/api/contact-drafts/manual', '/api/contact-drafts/qr/scan', '/api/contact-drafts/business-card/scan'],

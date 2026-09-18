@@ -773,6 +773,18 @@ function ConversationThread({
     (lastIndex, message, index) => (message.role === "assistant" ? index : lastIndex),
     -1
   );
+  // The override is what the user has been acting on; the thread value is what
+  // the latest reply carried. A settled card stays visible so the transcript
+  // still reads as a sequence of decisions.
+  const draft = entityDraftOverride ?? thread.entityDraft ?? null;
+  const draftCardView = draft
+    ? aiEntityDraftCardView(
+        Object.keys(entityDraftEdits).length > 0
+          ? { ...draft, fields: { ...draft.fields, ...entityDraftEdits } }
+          : draft,
+        locale.t,
+      )
+    : null;
 
   return (
     <View style={styles.threadSurface}>
@@ -859,26 +871,16 @@ function ConversationThread({
           resolution={taskInteractionResolution}
         />
       ) : null}
-      {(() => {
-        // The override is what the user has been acting on; the thread value is
-        // what the latest reply carried. A settled card stays visible so the
-        // transcript still reads as a sequence of decisions.
-        const draft = entityDraftOverride ?? thread.entityDraft ?? null;
-        if (!draft) return null;
-        const edited = Object.keys(entityDraftEdits).length > 0
-          ? { ...draft, fields: { ...draft.fields, ...entityDraftEdits } }
-          : draft;
-        return (
-          <AiEntityDraftCard
-            busy={entityDraftBusy}
-            onCancel={() => onResolveEntityDraft("cancel")}
-            onConfirm={() => onResolveEntityDraft("confirm")}
-            onEditField={onEditEntityDraftField}
-            onOpenRecord={onOpenHref}
-            view={aiEntityDraftCardView(edited, locale.t)}
-          />
-        );
-      })()}
+      {draftCardView ? (
+        <AiEntityDraftCard
+          busy={entityDraftBusy}
+          onCancel={() => onResolveEntityDraft("cancel")}
+          onConfirm={() => onResolveEntityDraft("confirm")}
+          onEditField={onEditEntityDraftField}
+          onOpenRecord={onOpenHref}
+          view={draftCardView}
+        />
+      ) : null}
       {thread.proposedToolIntents.length > 0 ? (
         <View style={styles.intentPanel}>
           <Text style={styles.panelTitle}>{locale.t("aiConversation.suggestedActions")}</Text>
