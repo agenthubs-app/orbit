@@ -1,3 +1,4 @@
+import { conditionalJsonRead, defaultConditionalReadDependencies } from "../_shared/conditional-read";
 import {
   TASK_CATEGORIES,
   TASK_STATUSES,
@@ -105,12 +106,18 @@ export function createTaskCollectionHandlers(
         if (rawCategory && !TASK_CATEGORIES.includes(rawCategory as TaskCategory)) {
           throw new AppError("VALIDATION_ERROR", "category is invalid.");
         }
-        const tasks = await taskRouteService(dependencies).list({
-          actorId: actor.id,
-          ...(rawStatus ? { status: rawStatus as TaskStatus } : {}),
-          ...(rawCategory ? { category: rawCategory as TaskCategory } : {}),
-        });
-        return taskSuccessResponse({ tasks });
+        return await conditionalJsonRead(
+          { routeKey: "tasks.list", request, actorId: actor.id, workspaceId: actor.workspaceId, collections: ["tasks"], userScoped: true },
+          dependencies?.conditionalRead ?? defaultConditionalReadDependencies(),
+          async () => {
+            const tasks = await taskRouteService(dependencies).list({
+              actorId: actor.id,
+              ...(rawStatus ? { status: rawStatus as TaskStatus } : {}),
+              ...(rawCategory ? { category: rawCategory as TaskCategory } : {}),
+            });
+            return taskSuccessResponse({ tasks });
+          },
+        );
       } catch (error) {
         return taskErrorResponse(error);
       }

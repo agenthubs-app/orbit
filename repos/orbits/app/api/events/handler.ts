@@ -1,3 +1,4 @@
+import { conditionalJsonRead, defaultConditionalReadDependencies, type ConditionalReadDependencies } from "../_shared/conditional-read";
 import { NextResponse } from "next/server";
 import {
   failure,
@@ -134,8 +135,15 @@ async function readManualEventCreationInput(
   };
 }
 
+// The event list is assembled from every collection the storage event provider consults.
+const EVENTS_LIST_COLLECTIONS = [
+  "events", "event_registrations", "event_confirmed_followups", "event_organizer_owner_migrations",
+  "contacts", "profiles", "human_encounters", "notifications", "tasks",
+] as const;
+
 export function createEventsRouteHandlers(
   resolveActor: ResolveAuthenticatedApiActor = resolveAuthenticatedApiActor,
+  conditionalRead?: ConditionalReadDependencies,
 ) {
   return {
     async GET(request: Request): Promise<Response> {
@@ -143,28 +151,34 @@ export function createEventsRouteHandlers(
       const actor = await resolveActor();
       if (!actor) return authenticatedApiActorRequiredResponse(mode);
 
-      const eventService = createEventCrudAndImportService();
-      const result = await eventService.listEvents({
-        ...readEventListInput(request),
-        actorId: actor.id,
-      });
+      return await conditionalJsonRead(
+        { routeKey: "events.list", request, actorId: actor.id, workspaceId: actor.workspaceId, collections: [...EVENTS_LIST_COLLECTIONS] },
+        conditionalRead ?? defaultConditionalReadDependencies(),
+        async () => {
+          const eventService = createEventCrudAndImportService();
+          const result = await eventService.listEvents({
+            ...readEventListInput(request),
+            actorId: actor.id,
+          });
 
-      if (result.success === false) {
-        const appError = eventCrudImportFailureToAppError(result);
+          if (result.success === false) {
+            const appError = eventCrudImportFailureToAppError(result);
 
-        return NextResponse.json(
-          failure(appError, eventCrudImportFailureContext(result, mode)),
-          {
+            return NextResponse.json(
+              failure(appError, eventCrudImportFailureContext(result, mode)),
+              {
+                headers: runtimeBoundaryHeaders(mode),
+                status: getHttpStatusForAppErrorCode(appError.code),
+              },
+            );
+          }
+
+          return NextResponse.json(success(result.data), {
             headers: runtimeBoundaryHeaders(mode),
-            status: getHttpStatusForAppErrorCode(appError.code),
-          },
-        );
-      }
-
-      return NextResponse.json(success(result.data), {
-        headers: runtimeBoundaryHeaders(mode),
-        status: 200,
-      });
+            status: 200,
+          });
+        },
+      );
     },
 
     async POST(request: Request): Promise<Response> {

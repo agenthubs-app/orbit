@@ -1,3 +1,4 @@
+import { conditionalJsonRead, defaultConditionalReadDependencies, type ConditionalReadDependencies } from "../_shared/conditional-read";
 import { NextResponse } from "next/server";
 import {
   failure,
@@ -56,35 +57,45 @@ function readContactsListInput(request: Request): ContactsListSearchFilterInput 
   };
 }
 
+// Contact visibility is derived from connections/actor links, so the whole workspace domain is the watermark.
+const CONTACTS_LIST_COLLECTIONS = ["contacts", "connections", "contact_detail_states", "contact_introductions", "contact_actor_links", "evidence"] as const;
+
 export function createContactsGetHandler(
   resolveActor: ResolveAuthenticatedApiActor = resolveAuthenticatedApiActor,
+  conditionalRead?: ConditionalReadDependencies,
 ) {
   return async function GET(request: Request): Promise<Response> {
     const mode = resolveFeatureMode();
     const actor = await resolveActor();
     if (!actor) return authenticatedApiActorRequiredResponse(mode);
 
-    const contactsService = createContactsListSearchAndFilterService();
-    const result = await contactsService.listContacts({
-      ...readContactsListInput(request),
-      actorId: actor.id,
-    });
+    return await conditionalJsonRead(
+      { routeKey: "contacts.list", request, actorId: actor.id, workspaceId: actor.workspaceId, collections: [...CONTACTS_LIST_COLLECTIONS] },
+      conditionalRead ?? defaultConditionalReadDependencies(),
+      async () => {
+        const contactsService = createContactsListSearchAndFilterService();
+        const result = await contactsService.listContacts({
+          ...readContactsListInput(request),
+          actorId: actor.id,
+        });
 
-    if (result.success === false) {
-      const appError = contactsListSearchFailureToAppError(result);
+        if (result.success === false) {
+          const appError = contactsListSearchFailureToAppError(result);
 
-      return NextResponse.json(
-        failure(appError, contactsListSearchFailureContext(result, mode)),
-        {
+          return NextResponse.json(
+            failure(appError, contactsListSearchFailureContext(result, mode)),
+            {
+              headers: runtimeBoundaryHeaders(mode),
+              status: getHttpStatusForAppErrorCode(appError.code),
+            },
+          );
+        }
+
+        return NextResponse.json(success(result.data), {
           headers: runtimeBoundaryHeaders(mode),
-          status: getHttpStatusForAppErrorCode(appError.code),
-        },
-      );
-    }
-
-    return NextResponse.json(success(result.data), {
-      headers: runtimeBoundaryHeaders(mode),
-      status: 200,
-    });
+          status: 200,
+        });
+      },
+    );
   };
 }

@@ -19,6 +19,8 @@ export interface OrbitApiClientOptions {
   authCookieHeader?: string;
   baseUrl?: string;
   fetchImpl?: FetchLike;
+  /** Conditional-GET memory shared by every client of this process; tests pass their own. */
+  conditionalCache?: OrbitConditionalCache;
 }
 
 export type OrbitApiRequestOptions = {
@@ -119,6 +121,30 @@ function metaFromResponse(response: Response): OrbitApiMeta {
     privacy: response.headers.get("X-Orbit-Privacy"),
     runtimeBoundary: response.headers.get("X-Orbit-Runtime-Boundary")
   };
+}
+
+// 条件请求：按请求身份（baseUrl、会话 Cookie、路径、显式 headers）记住上一次成功
+// JSON GET 的 ETag 与 envelope，只放内存。服务端 304 时回放；ETag 由服务端按
+// actor 生成，换账号不会命中，因此不会回放别人的响应体。
+interface RememberedConditionalResponse {
+  etag: string;
+  envelope: ApiResult<unknown>;
+}
+
+export type OrbitConditionalCache = Map<string, RememberedConditionalResponse>;
+
+// 屏幕各自 useMemo 出 client 实例；记忆必须跨实例共享，否则换个屏幕就永远命不中。
+const sharedConditionalCache: OrbitConditionalCache = new Map();
+const STALE_CONDITIONAL_MESSAGE = "Orbit 服务返回了未变化标记，但本地没有可复用的数据，请重试。";
+
+function conditionalGetKey(
+  baseUrl: string,
+  authCookieHeader: string,
+  path: string,
+  options: OrbitApiRequestOptions
+): string | null {
+  if (options.body !== undefined || options.rawBody !== undefined || options.responseType === "bytes") return null;
+  return concurrentGetKey(baseUrl, authCookieHeader, path, options);
 }
 
 function failureResult(
@@ -265,7 +291,8 @@ async function request<TData>(
   fetchImpl: FetchLike,
   method: OrbitApiMethod,
   path: string,
-  options: OrbitApiRequestOptions = {}
+  options: OrbitApiRequestOptions = {},
+  conditionalCache: OrbitConditionalCache = sharedConditionalCache
 ): Promise<ApiResult<TData>> {
   if (options.rawBody !== undefined) {
     const meta = { featureMode: null, privacy: null, runtimeBoundary: null };
@@ -276,12 +303,17 @@ async function request<TData>(
       return failureResult(0, meta, "ORBIT_APP_BINARY_TOO_LARGE", NON_JSON_RESPONSE_MESSAGE);
     }
   }
+  const conditionalKey = method === "GET" ? conditionalGetKey(baseUrl, authCookieHeader, path, options) : null;
+  const remembered = conditionalKey ? conditionalCache.get(conditionalKey) : undefined;
+  const conditionalOptions: OrbitApiRequestOptions = remembered
+    ? { ...options, headers: { ...(options.headers ?? {}), "If-None-Match": remembered.etag } }
+    : options;
   let response: Response;
 
   try {
     response = await fetchImpl(
       pathToUrl(baseUrl, path),
-      requestInit(method, options, authCookieHeader)
+      requestInit(method, conditionalOptions, authCookieHeader)
     );
   } catch {
     return failureResult(
@@ -299,6 +331,18 @@ async function request<TData>(
   }
 
   const meta = metaFromResponse(response);
+
+  if (response.status === 304 && conditionalKey) {
+    if (!remembered) {
+      return failureResult(304, meta, "ORBIT_APP_STALE_CONDITIONAL_RESPONSE", STALE_CONDITIONAL_MESSAGE);
+    }
+    return {
+      ...(remembered.envelope as ApiResult<TData>),
+      meta: { ...remembered.envelope.meta, fromCache: true },
+      status: 200
+    };
+  }
+
   const contentType = response.headers.get("Content-Type") ?? "";
 
   if (options.responseType === "bytes" && response.ok &&
@@ -362,7 +406,12 @@ async function request<TData>(
     return failureResult(response.status, meta, "ORBIT_APP_NON_BINARY_RESPONSE", NON_JSON_RESPONSE_MESSAGE);
   }
 
-  return { ...payload.value, meta, status: response.status };
+  const result: ApiResult<TData> = { ...payload.value, meta, status: response.status };
+  const etag = response.headers.get("ETag");
+  if (conditionalKey && response.status === 200 && etag) {
+    conditionalCache.set(conditionalKey, { etag, envelope: result as ApiResult<unknown> });
+  }
+  return result;
 }
 
 function concurrentGetKey(
@@ -383,7 +432,8 @@ function coalescedGet<TData>(
   authCookieHeader: string,
   fetchImpl: FetchLike,
   path: string,
-  options: OrbitApiRequestOptions = {}
+  options: OrbitApiRequestOptions = {},
+  conditionalCache: OrbitConditionalCache = sharedConditionalCache
 ): Promise<ApiResult<TData>> {
   if (options.body !== undefined || options.rawBody !== undefined || options.signal) {
     return request<TData>(
@@ -392,7 +442,8 @@ function coalescedGet<TData>(
       fetchImpl,
       "GET",
       path,
-      options
+      options,
+      conditionalCache
     );
   }
 
@@ -411,7 +462,8 @@ function coalescedGet<TData>(
     fetchImpl,
     "GET",
     path,
-    options
+    options,
+    conditionalCache
   );
   requests.set(key, pending as Promise<ApiResult<unknown>>);
   const clear = () => {
@@ -427,7 +479,8 @@ function coalescedGet<TData>(
 export function createOrbitApiClient({
   authCookieHeader = "",
   baseUrl = configuredBaseUrl(),
-  fetchImpl = fetch
+  fetchImpl = fetch,
+  conditionalCache = sharedConditionalCache
 }: OrbitApiClientOptions = {}): OrbitApiClient {
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
 
@@ -449,7 +502,8 @@ export function createOrbitApiClient({
         authCookieHeader,
         fetchImpl,
         path,
-        options
+        options,
+        conditionalCache
       );
     },
     patch<TData>(path: string, options?: OrbitApiRequestOptions) {

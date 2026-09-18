@@ -1,3 +1,4 @@
+import type { ConditionalReadDependencies } from "../_shared/conditional-read";
 import { NextResponse } from "next/server";
 
 import type { TaskService } from "../../../features/tasks/service";
@@ -18,6 +19,7 @@ export interface TaskRouteDependencies {
   now?: () => string;
   resolveActor?: ResolveAuthenticatedApiActor;
   service?: TaskService;
+  conditionalRead?: ConditionalReadDependencies;
 }
 
 export function taskRouteNow(dependencies?: TaskRouteDependencies): string {
