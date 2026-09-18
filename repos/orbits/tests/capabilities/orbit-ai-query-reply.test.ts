@@ -30,7 +30,7 @@ async function setup(count = 1) {
 
 test("default two-step query replies with retrieved title/status, not the planner acknowledgement", async () => {
   const { runtime, store } = await setup();
-  const before = await store.listRecords({ workspaceId: "workspace:reply", collectionName: "tasks" });
+  const before = await store.listRecords({ limit: "unbounded", workspaceId: "workspace:reply", collectionName: "tasks" });
   const result = await runLiveOrbitAgentRuntime(runtime, { message: "Show my tasks", locale: "zh" });
   assert.equal(result.state, "completed");
   if (result.state !== "completed") return;
@@ -40,7 +40,7 @@ test("default two-step query replies with retrieved title/status, not the planne
   assert.equal(result.conversation.assistantMessage, result.finalAssistantMessage);
   assert.equal(result.shouldSynthesizeAfterTools, false);
   assert.equal(result.conversation.provenance.safety.liveDatabaseReadExecuted, true);
-  assert.deepEqual(await store.listRecords({ workspaceId: "workspace:reply", collectionName: "tasks" }), before);
+  assert.deepEqual(await store.listRecords({ limit: "unbounded", workspaceId: "workspace:reply", collectionName: "tasks" }), before);
 });
 
 test("a failed synthesis still returns query evidence and a one-step budget never claims a read", async () => {

@@ -167,7 +167,7 @@ test("profile updates preserve a legacy storage record id instead of creating a 
     null,
   );
   assert.equal(
-    store.listRecords({ workspaceId, collectionName: "profiles" }).length,
+    store.listRecords({ limit: "unbounded", workspaceId, collectionName: "profiles" }).length,
     1,
   );
 });

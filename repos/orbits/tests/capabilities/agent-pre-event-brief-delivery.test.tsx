@@ -220,6 +220,7 @@ test("event goal remains editable until confirmation and executes the edited val
   await harness.runtime.processOutbox({ actionId: goalAction.actionId });
 
   const goals = await harness.store.listRecords({
+    limit: "unbounded",
     workspaceId: harness.workspaceId,
     collectionName: "eventGoals",
   });

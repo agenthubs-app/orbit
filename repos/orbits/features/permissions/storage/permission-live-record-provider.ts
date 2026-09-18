@@ -142,6 +142,7 @@ export function createStoragePermissionStateProvider({
     accountId?: string,
   ): Promise<LivePermissionStateGraph> {
     const permissionRecords = await store.listRecords({
+      limit: "unbounded",
       workspaceId,
       collectionName: PERMISSION_LIVE_RECORD_COLLECTIONS.permissions,
       userId: accountId,

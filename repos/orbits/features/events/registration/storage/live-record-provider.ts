@@ -114,6 +114,7 @@ export function createEventRegistrationLiveRecordProvider({
     },
     async listRegistrations(eventId) {
       const records = await store.listRecords({
+        limit: "unbounded",
         collectionName: EVENT_REGISTRATION_COLLECTION,
         targetId: eventId,
         targetType: "event",
@@ -130,6 +131,7 @@ export function createEventRegistrationLiveRecordProvider({
       if (eventIds.length === 0) return [];
       const selectedEventIds = new Set(eventIds);
       const records = await store.listRecords({
+        limit: "unbounded",
         collectionName: EVENT_REGISTRATION_COLLECTION,
         userId,
         workspaceId,

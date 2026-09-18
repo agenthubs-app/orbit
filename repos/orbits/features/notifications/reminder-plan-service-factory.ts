@@ -19,7 +19,7 @@ export async function assertReminderTargetOwned(input: { store: LiveRecordStoreL
   }
   const candidates = new Set([input.targetId]);
   if (input.targetType === "schedule_item" && input.targetId.startsWith("schedule:")) candidates.add(input.targetId.slice("schedule:".length));
-  const records = await input.store.listRecords({ userId: input.actorId, workspaceId: input.workspaceId });
+  const records = await input.store.listRecords({ limit: "unbounded", userId: input.actorId, workspaceId: input.workspaceId });
   const owned = records.some((record) => [...candidates].some((id) => record.recordId === id || record.sourceId === id || record.targetId === id || containsId(record.payload, id)));
   if (!owned) throw new Error("target not owned");
 }

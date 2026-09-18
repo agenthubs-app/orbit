@@ -113,6 +113,7 @@ export function createStorageAgentSignalService({
     readonly LiveRecord<AgentSignalRecordPayload>[]
   > {
     return store.listRecords({
+      limit: "unbounded",
       collectionName: AGENT_SIGNAL_COLLECTION,
       workspaceId: scopedWorkspaceId,
     });

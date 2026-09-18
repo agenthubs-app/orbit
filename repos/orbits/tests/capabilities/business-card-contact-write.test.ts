@@ -52,6 +52,7 @@ test("confirm persists notes and allowDuplicate bypasses duplicate review", asyn
   assert.equal(first.data.state, "created");
 
   const contactRecords = store.listRecords({
+    limit: "unbounded",
     collectionName: "contacts",
     workspaceId: WORKSPACE_ID,
   });
@@ -77,7 +78,7 @@ test("confirm persists notes and allowDuplicate bypasses duplicate review", asyn
   assert.equal(forced.success, true);
   assert.equal(forced.data.state, "created");
   assert.equal(
-    store.listRecords({ collectionName: "contacts", workspaceId: WORKSPACE_ID }).length,
+    store.listRecords({ limit: "unbounded", collectionName: "contacts", workspaceId: WORKSPACE_ID }).length,
     2,
   );
 });
@@ -95,6 +96,7 @@ test("confirmed business card contact writes once and is idempotent by draft", a
   const first = await service.confirmBusinessCardContact(INPUT);
   const second = await service.confirmBusinessCardContact(INPUT);
   const contactRecords = store.listRecords({
+    limit: "unbounded",
     collectionName: "contacts",
     workspaceId: WORKSPACE_ID,
   });
@@ -155,6 +157,7 @@ test("confirmed business card contact stops for duplicate normalized email witho
 
   const result = await service.confirmBusinessCardContact(INPUT);
   const contactRecords = store.listRecords({
+    limit: "unbounded",
     collectionName: "contacts",
     workspaceId: WORKSPACE_ID,
   });
@@ -183,6 +186,7 @@ test("business card contact ids and duplicate checks are isolated by actor", asy
     actorLabel: "Other operator",
   });
   const records = store.listRecords({
+    limit: "unbounded",
     collectionName: "contacts",
     workspaceId: WORKSPACE_ID,
   });
@@ -219,6 +223,7 @@ test("business card contact confirmation requires an explicit confirmation and c
   assert.equal(unconfirmed.error.code, "BUSINESS_CARD_CONTACT_CONFIRMATION_REQUIRED");
   assert.equal(
     unconfirmedStore.listRecords({
+      limit: "unbounded",
       collectionName: "contacts",
       workspaceId: WORKSPACE_ID,
     }).length,
@@ -316,6 +321,7 @@ test("confirmed business-card contacts record the capture method as their source
   assert.equal(result.success, true);
 
   const [record] = store.listRecords({
+    limit: "unbounded",
     collectionName: "contacts",
     workspaceId: WORKSPACE_ID,
   });

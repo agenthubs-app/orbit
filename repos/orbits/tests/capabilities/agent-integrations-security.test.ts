@@ -76,6 +76,7 @@ test("integration tokens are encrypted at rest and OAuth state is signed, expiri
     "2026-07-25T00:00:00.000Z",
   );
   const raw = (await store.listRecords({
+    limit: "unbounded",
     workspaceId,
     collectionName: "integrationTokens",
   }))[0];

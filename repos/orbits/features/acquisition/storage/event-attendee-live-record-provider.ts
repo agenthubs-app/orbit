@@ -477,20 +477,24 @@ export function createStorageEventAttendeeImportProvider({
       ] =
         await Promise.all([
           store.listRecords({
+            limit: "unbounded",
             workspaceId,
             collectionName: EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS.attendees,
           }),
           store.listRecords({
+            limit: "unbounded",
             workspaceId,
             collectionName:
               EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS.eventParticipantIntents,
           }),
           store.listRecords({
+            limit: "unbounded",
             workspaceId,
             collectionName:
               EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS.networkPeople,
           }),
           store.listRecords({
+            limit: "unbounded",
             workspaceId,
             collectionName: EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS.contacts,
           }),
@@ -567,6 +571,7 @@ export function createStorageEventAttendeeImportProvider({
         evidenceIds.length > 0
           ? recordsForActor(
               await store.listRecords({
+                limit: "unbounded",
                 workspaceId,
                 collectionName:
                   EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS.evidence,

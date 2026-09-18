@@ -26,6 +26,7 @@ function collectionCount(
   collectionName: string,
 ): number {
   return store.listRecords({
+    limit: "unbounded",
     collectionName,
     workspaceId: WORKSPACE_ID,
   }).length;
@@ -132,10 +133,12 @@ test("QR scan persists the submitted fields, then confirms one contact, connecti
   assert.equal(collectionCount(store, "evidence"), 2);
 
   const contact = store.listRecords({
+    limit: "unbounded",
     collectionName: "contacts",
     workspaceId: WORKSPACE_ID,
   })[0];
   const connection = store.listRecords({
+    limit: "unbounded",
     collectionName: "connections",
     workspaceId: WORKSPACE_ID,
   })[0];
@@ -272,6 +275,7 @@ test("QR confirmation keeps a duplicate contact pending for explicit review", as
   assert.equal(collectionCount(store, "contacts"), 1);
   assert.equal(collectionCount(store, "connections"), 0);
   const storedDraft = store.listRecords({
+    limit: "unbounded",
     collectionName: "contactDrafts",
     workspaceId: WORKSPACE_ID,
   })[0];

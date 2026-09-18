@@ -34,6 +34,7 @@ export function createNotificationInteractionService(input: {
       const notificationIds = [...new Set(rawNotificationIds.map((id) => required(id, "Notification")))];
       if (!notificationIds.length) return {};
       const records = await input.store.listRecords({
+        limit: "unbounded",
         collectionName: NOTIFICATION_INTERACTION_COLLECTION,
         lifecycleState: "active",
         recordIds: notificationIds.map((notificationId) => recordId(actorId, notificationId)),

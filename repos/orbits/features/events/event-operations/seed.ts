@@ -194,6 +194,7 @@ async function resetExactEventScope(input: {
   const collections = [EVENT_REGISTRATION_COLLECTION];
   for (const collectionName of collections) {
     const records = await input.store.listRecords({
+      limit: "unbounded",
       collectionName,
       targetId: input.eventId,
       targetType: "event",

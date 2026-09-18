@@ -473,31 +473,38 @@ export function createStorageProfileSignalProvider({
         suggestionDecisionRecords,
       ] = await Promise.all([
         store.listRecords({
+          limit: "unbounded",
           workspaceId,
           collectionName: PROFILE_SIGNAL_LIVE_RECORD_COLLECTIONS.profiles,
         }),
         store.listRecords({
+          limit: "unbounded",
           workspaceId,
           collectionName: PROFILE_SIGNAL_LIVE_RECORD_COLLECTIONS.contacts,
         }),
         store.listRecords({
+          limit: "unbounded",
           workspaceId,
           collectionName: PROFILE_SIGNAL_LIVE_RECORD_COLLECTIONS.connections,
         }),
         store.listRecords({
+          limit: "unbounded",
           workspaceId,
           collectionName: PROFILE_SIGNAL_LIVE_RECORD_COLLECTIONS.messages,
         }),
         store.listRecords({
+          limit: "unbounded",
           workspaceId,
           collectionName:
             PROFILE_SIGNAL_LIVE_RECORD_COLLECTIONS.interactionMemories,
         }),
         store.listRecords({
+          limit: "unbounded",
           workspaceId,
           collectionName: PROFILE_SIGNAL_LIVE_RECORD_COLLECTIONS.evidence,
         }),
         store.listRecords({
+          limit: "unbounded",
           workspaceId,
           collectionName: PROFILE_SIGNAL_LIVE_RECORD_COLLECTIONS.suggestionDecisions,
           userId: actorId,

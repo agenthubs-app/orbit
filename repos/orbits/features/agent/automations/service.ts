@@ -258,6 +258,7 @@ export function createStorageAgentAutomationService({
 
   async function listRecords(): Promise<AgentAutomation[]> {
     const records = await store.listRecords({
+      limit: "unbounded",
       workspaceId: scopedWorkspaceId,
       collectionName: AGENT_AUTOMATION_COLLECTION,
     });

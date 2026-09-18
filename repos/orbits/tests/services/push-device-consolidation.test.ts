@@ -43,8 +43,8 @@ test("reminder compatibility writes only the canonical pushDevices collection", 
   });
 
   assert.equal((await reminder.notificationAvailability("actor:a")).iosPushAvailable, true);
-  assert.equal((await store.listRecords({ collectionName: "pushDevices", userId: "actor:a", workspaceId: "push-consolidation" })).length, 1);
-  assert.equal((await store.listRecords({ collectionName: "devicePushTokens", userId: "actor:a", workspaceId: "push-consolidation" })).length, 0);
+  assert.equal((await store.listRecords({ limit: "unbounded", collectionName: "pushDevices", userId: "actor:a", workspaceId: "push-consolidation" })).length, 1);
+  assert.equal((await store.listRecords({ limit: "unbounded", collectionName: "devicePushTokens", userId: "actor:a", workspaceId: "push-consolidation" })).length, 0);
   await reminder.revokeDevice({ actorId: "actor:a", deviceId: "installation:a" });
   assert.equal((await reminder.notificationAvailability("actor:a")).iosPushAvailable, false);
 });

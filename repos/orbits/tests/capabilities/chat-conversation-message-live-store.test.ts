@@ -312,6 +312,7 @@ test("live chat message request identity makes retries idempotent", async () => 
   assert.equal(
     store
       .listRecords({
+        limit: "unbounded",
         collectionName: "messages",
         workspaceId,
       })

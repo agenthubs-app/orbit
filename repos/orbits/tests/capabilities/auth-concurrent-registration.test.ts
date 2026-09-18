@@ -16,8 +16,8 @@ test("concurrent same-email registrations cannot overwrite the winning identity"
   assert.equal(outcomes.filter(result => result.state === "success").length, 1);
   const user = await provider.getUserByEmail("race@example.test");
   assert.ok(user);
-  assert.equal(store.listRecords({ workspaceId: "w", collectionName: "accounts" }).length, 1);
-  assert.equal(store.listRecords({ workspaceId: "w", collectionName: "profiles" }).length, 1);
+  assert.equal(store.listRecords({ limit: "unbounded", workspaceId: "w", collectionName: "accounts" }).length, 1);
+  assert.equal(store.listRecords({ limit: "unbounded", workspaceId: "w", collectionName: "profiles" }).length, 1);
   const login = await service.verifyCredentials({ email: user.email, password: user.displayName === "One" ? "password-one" : "password-two" });
   assert.equal(login.state, "success");
 });

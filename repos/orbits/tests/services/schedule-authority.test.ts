@@ -82,7 +82,7 @@ test("event actions persist canonical schedule items with actor-scoped details",
   assert.equal(actorItems.length, 1);
   assert.deepEqual(
     {
-      collection: (await store.listRecords({ workspaceId: "schedule-authority-test" }))[0]?.collectionName,
+      collection: (await store.listRecords({ limit: "unbounded", workspaceId: "schedule-authority-test" }))[0]?.collectionName,
       eventId: actorItems[0]?.eventId,
       meetingMethod: actorItems[0]?.meetingMethod,
       details: actorItems[0]?.details,
@@ -143,9 +143,9 @@ test("schedule migration dry-run classifies migration, duplicate, conflict, orph
 
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   for (const item of [canonical, canonicalConflict, ...legacy]) await store.upsertRecord(item);
-  const before = await store.listRecords({ workspaceId: "schedule-authority-test" });
+  const before = await store.listRecords({ limit: "unbounded", workspaceId: "schedule-authority-test" });
   const result = await dryRunScheduleMigration({ actorId: "actor:a", store, workspaceId: "schedule-authority-test" });
-  const after = await store.listRecords({ workspaceId: "schedule-authority-test" });
+  const after = await store.listRecords({ limit: "unbounded", workspaceId: "schedule-authority-test" });
   assert.deepEqual(result.counts, plan.counts);
   assert.deepEqual(after, before);
 });

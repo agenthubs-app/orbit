@@ -75,7 +75,7 @@ test("live contact detail persists actor-scoped tag status note and interaction 
     workspaceId,
   });
   for (const collectionName of ["contacts", "connections", "evidence"]) {
-    const records = await store.listRecords({ collectionName, workspaceId });
+    const records = await store.listRecords({ limit: "unbounded", collectionName, workspaceId });
     for (const record of records) {
       await store.upsertRecord({
         ...record,
@@ -84,7 +84,7 @@ test("live contact detail persists actor-scoped tag status note and interaction 
       });
     }
   }
-  for (const record of await store.listRecords({ collectionName: "connections", workspaceId })) {
+  for (const record of await store.listRecords({ limit: "unbounded", collectionName: "connections", workspaceId })) {
     if (record.payload.contactId === "contact_078") {
       await store.deleteRecord({ collectionName: "connections", deletedAt: "2026-07-02T02:01:00.000Z", recordId: record.recordId, workspaceId });
     }
@@ -637,7 +637,7 @@ test("live contact detail write failure returns failure and leaves no detail sta
     workspaceId,
   });
   for (const collectionName of ["contacts", "connections", "evidence"]) {
-    const records = await store.listRecords({ collectionName, workspaceId });
+    const records = await store.listRecords({ limit: "unbounded", collectionName, workspaceId });
     for (const record of records) {
       await store.upsertRecord({
         ...record,
@@ -918,7 +918,7 @@ test("business-card contacts show the capture method as their source, including 
     workspaceId,
   });
   for (const collectionName of ["contacts", "connections", "evidence"]) {
-    const records = await store.listRecords({ collectionName, workspaceId });
+    const records = await store.listRecords({ limit: "unbounded", collectionName, workspaceId });
     for (const record of records) {
       const isTarget =
         collectionName === "contacts" && record.payload.id === "contact_078";

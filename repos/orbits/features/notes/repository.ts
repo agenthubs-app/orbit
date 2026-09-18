@@ -1,6 +1,6 @@
 import type { LiveRecordStoreLike } from "../../shared/storage/live-record-store";
 import type { NoteRecordPayload } from "./contract";
-import { NOTE_COLLECTION, noteLiveRecordFromPayload, noteRecordFromLiveRecord } from "./note-record";
+import { NOTE_COLLECTION, NOTE_LIST_PAYLOAD_FIELDS, noteListRecordFromLiveRecord, noteLiveRecordFromPayload, noteRecordFromLiveRecord } from "./note-record";
 
 export interface NoteRepository {
   get(actorId: string, noteId: string): Promise<NoteRecordPayload | null>;
@@ -26,13 +26,15 @@ export function createNoteRepository(input: {
     },
     async list(actorId) {
       const records = await input.store.listRecords({
+        limit: "unbounded",
         workspaceId: input.workspaceId,
         collectionName: NOTE_COLLECTION,
         userId: actorId,
+        payloadFields: NOTE_LIST_PAYLOAD_FIELDS,
       });
       const authorized = records.filter(record => record.userId === actorId && record.workspaceId === input.workspaceId && record.collectionName === NOTE_COLLECTION && record.lifecycleState !== "deleted");
       const decoded = authorized.map(record => {
-        const payload = noteRecordFromLiveRecord(record, actorId);
+        const payload = noteListRecordFromLiveRecord(record, actorId);
         return payload?.note.id === record.recordId ? payload : null;
       });
       const unreadable = decoded.filter(record => record === null).length;

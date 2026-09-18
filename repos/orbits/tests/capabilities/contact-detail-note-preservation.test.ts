@@ -12,11 +12,11 @@ test("metadata updates preserve all persisted note kinds, privacy and source wit
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   await seedGeneratedRelationshipFixturesIntoLiveStore({ store, workspaceId });
   for (const collectionName of ["contacts", "connections", "evidence"]) {
-    for (const record of await store.listRecords({ collectionName, workspaceId })) {
+    for (const record of await store.listRecords({ limit: "unbounded", collectionName, workspaceId })) {
       await store.upsertRecord({ ...record, userId: actorId, payload: { ...record.payload, accountId: actorId } });
     }
   }
-  for (const record of await store.listRecords({ collectionName: "connections", workspaceId })) {
+  for (const record of await store.listRecords({ limit: "unbounded", collectionName: "connections", workspaceId })) {
     if (record.payload.contactId === contactId) {
       await store.deleteRecord({ collectionName: "connections", deletedAt: "2026-09-07T03:01:00Z", recordId: record.recordId, workspaceId });
     }

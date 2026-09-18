@@ -72,14 +72,15 @@ export async function planGeneratedNotificationTitleRepair(input: {
     workspaceId: input.workspaceId,
   };
   const [notifications, evidence, tasks, contacts] = await Promise.all([
-    input.store.listRecords({ ...query, collectionName: "notifications" }),
+    input.store.listRecords({ limit: "unbounded", ...query, collectionName: "notifications" }),
     input.store.listRecords({
+      limit: "unbounded",
       collectionName: "evidence",
       lifecycleState: "active",
       workspaceId: input.workspaceId,
     }),
-    input.store.listRecords({ ...query, collectionName: "tasks" }),
-    input.store.listRecords({ ...query, collectionName: "contacts" }),
+    input.store.listRecords({ limit: "unbounded", ...query, collectionName: "tasks" }),
+    input.store.listRecords({ limit: "unbounded", ...query, collectionName: "contacts" }),
   ]);
   const evidenceById = new Map(evidence.map(record => [record.recordId, record]));
   const tasksById = new Map(tasks.map(record => [record.recordId, record]));

@@ -210,6 +210,7 @@ export function createBusinessCardBatchService({
 
   async function listItems(batchId: string): Promise<BusinessCardBatchItemDTO[]> {
     const records = await store.listRecords({
+      limit: "unbounded",
       collectionName: BUSINESS_CARD_BATCH_COLLECTIONS.items,
       sourceId: batchId,
       workspaceId,
@@ -328,6 +329,7 @@ export function createBusinessCardBatchService({
 
     async listBatches(actorId) {
       const records = await store.listRecords({
+        limit: "unbounded",
         collectionName: BUSINESS_CARD_BATCH_COLLECTIONS.batches,
         userId: actorId,
         workspaceId,
@@ -351,6 +353,7 @@ export function createBusinessCardBatchService({
 
     async claimPendingItems(input) {
       const batches = await store.listRecords({
+        limit: "unbounded",
         collectionName: BUSINESS_CARD_BATCH_COLLECTIONS.batches, workspaceId,
       });
       const activeBatches = new Set(batches.map(batchFromRecord).filter(
@@ -361,6 +364,7 @@ export function createBusinessCardBatchService({
         Date.parse(input.now) - BUSINESS_CARD_BATCH_ITEM_LEASE_TIMEOUT_MS,
       ).toISOString();
       const records = await store.listRecords({
+        limit: "unbounded",
         collectionName: BUSINESS_CARD_BATCH_COLLECTIONS.items,
         workspaceId,
       });
@@ -526,7 +530,7 @@ export function createBusinessCardBatchService({
     },
 
     async sweepConfirmedImages(now) {
-      const records = await store.listRecords({ collectionName: BUSINESS_CARD_BATCH_COLLECTIONS.items, workspaceId });
+      const records = await store.listRecords({ limit: "unbounded", collectionName: BUSINESS_CARD_BATCH_COLLECTIONS.items, workspaceId });
       const confirmed = records.map(itemFromRecord).filter((item): item is BusinessCardBatchItemDTO =>
         item !== null && item.status === "confirmed" && item.imagePath !== null).slice(0, 20);
       for (const item of confirmed) {
@@ -554,7 +558,7 @@ export function createBusinessCardBatchService({
     },
 
     async sweepCancelled(now) {
-      const records = await store.listRecords({ collectionName: BUSINESS_CARD_BATCH_COLLECTIONS.batches, workspaceId });
+      const records = await store.listRecords({ limit: "unbounded", collectionName: BUSINESS_CARD_BATCH_COLLECTIONS.batches, workspaceId });
       const cancelled = records.map(batchFromRecord).filter((batch): batch is BusinessCardBatchDTO =>
         batch !== null && batch.status === "cancelled" && !batch.imagesDeletedAt).slice(0, 20);
       for (const batch of cancelled) {
@@ -600,6 +604,7 @@ export function createBusinessCardBatchService({
 
     async sweepExpired(now) {
       const records = await store.listRecords({
+        limit: "unbounded",
         collectionName: BUSINESS_CARD_BATCH_COLLECTIONS.batches,
         workspaceId,
       });

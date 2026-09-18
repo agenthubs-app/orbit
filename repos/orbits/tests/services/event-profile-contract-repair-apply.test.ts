@@ -236,7 +236,7 @@ test(
           outboxId: String(outbox.outbox_id), payload: outbox.payload as Record<string, unknown>, workerId: "worker:test",
         }), { policy: "canonical_only", projectedIds: [], projection: "none" });
       }
-      assert.deepEqual(await projectedStore.listRecords({ workspaceId }), []);
+      assert.deepEqual(await projectedStore.listRecords({ limit: "unbounded", workspaceId }), []);
       assert.equal(JSON.stringify((await pool.query(
         `select * from orbit_records order by workspace_id,collection_name,record_id`,
       )).rows), beforeLegacy);

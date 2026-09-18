@@ -350,6 +350,7 @@ export function createRelationshipCommunicationService({
 
   async function messagesFor(conversationId: string): Promise<MessagePayload[]> {
     const records = await store.listRecords({
+      limit: "unbounded",
       collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.messages,
       targetId: conversationId,
       workspaceId: scopedWorkspaceId,
@@ -473,6 +474,7 @@ export function createRelationshipCommunicationService({
         };
       }
       const invitations = await store.listRecords({
+        limit: "unbounded",
         collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.invitations,
         userId: accountId,
         workspaceId: scopedWorkspaceId,
@@ -775,6 +777,7 @@ export function createRelationshipCommunicationService({
         } catch { throw new Error("Invalid conversation cursor"); }
       }
       const records = await store.listRecords({
+        limit: "unbounded",
         collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.conversations,
         workspaceId: scopedWorkspaceId,
       });

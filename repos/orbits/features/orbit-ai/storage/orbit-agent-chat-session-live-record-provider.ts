@@ -379,6 +379,7 @@ async function readMessages(
   sessionId: string,
 ): Promise<readonly OrbitAgentChatSessionMessage[]> {
   const records = await store.listRecords({
+    limit: "unbounded",
     collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.messages,
     targetId: sessionId,
     targetType: "conversation",
@@ -592,6 +593,7 @@ export function createStorageOrbitAgentChatSessionProvider({
           })
         : null;
       const messages = await store.listRecords({
+        limit: "unbounded",
         collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.messages,
         includeDeleted: true,
         targetId: sessionId,
@@ -634,6 +636,7 @@ export function createStorageOrbitAgentChatSessionProvider({
         Math.min(options.limit ?? DEFAULT_SESSION_LIST_LIMIT, 10_000),
       );
       const records = await store.listRecords({
+        limit: "unbounded",
         collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
         workspaceId: actorWorkspaceId,
       });
@@ -656,6 +659,7 @@ export function createStorageOrbitAgentChatSessionProvider({
 
     async listSessionsByEntryPoint(entryPointId) {
       const records = await store.listRecords({
+        limit: "unbounded",
         collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
         searchText: `orbit-origin-entry-point:${entryPointId}`,
         workspaceId: actorWorkspaceId,

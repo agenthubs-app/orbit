@@ -116,6 +116,7 @@ export function createStorageAgentMemoryService({
     readonly LiveRecord<AgentMemoryRecordPayload>[]
   > {
     return store.listRecords({
+      limit: "unbounded",
       workspaceId: scopedWorkspaceId,
       collectionName: AGENT_MEMORY_COLLECTION,
     });

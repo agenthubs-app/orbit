@@ -75,6 +75,7 @@ export function createTaskRepository(input: {
 
     async list(actorId, options = {}) {
       const records = await input.store.listRecords({
+        limit: "unbounded",
         workspaceId: input.workspaceId,
         collectionName: TASK_COLLECTION,
         userId: actorId,

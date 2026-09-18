@@ -350,6 +350,7 @@ export async function verifyGeneratedRelationshipFixturesInLiveStore({
   const collections: GeneratedFixtureLiveSeedCollection[] = [];
   const failures: string[] = [];
   const activeAccountRecords = await store.listRecords({
+    limit: "unbounded",
     collectionName: "accounts",
     workspaceId,
   });
@@ -357,6 +358,7 @@ export async function verifyGeneratedRelationshipFixturesInLiveStore({
 
   for (const expected of GENERATED_FIXTURE_LIVE_SEED_EXPECTED_COLLECTIONS) {
     const records = await store.listRecords({
+      limit: "unbounded",
       workspaceId,
       collectionName: expected.collectionName,
       recordIds: expected.recordIds,

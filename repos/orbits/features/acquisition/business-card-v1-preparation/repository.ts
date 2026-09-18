@@ -83,7 +83,7 @@ export function createV1PreparationRepository({ pool, workspaceId, wake }: {
       const job = await transaction(async (ctx) => {
         const requestId = `${hash(input.actorId)}:${input.requestKey}`;
         const prior = await ctx.store.getRecord({ workspaceId, collectionName: REQUESTS, recordId: requestId });
-        const bindings = await ctx.store.listRecords({ workspaceId, collectionName: SOURCES, recordIds: input.sourceIds });
+        const bindings = await ctx.store.listRecords({ limit: "unbounded", workspaceId, collectionName: SOURCES, recordIds: input.sourceIds });
         const existingId = prior?.payload.jobId ?? bindings[0]?.payload.jobId;
         if (existingId) {
           const existing = await get(ctx, String(existingId), input.actorId);

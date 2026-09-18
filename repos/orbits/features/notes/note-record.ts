@@ -110,25 +110,51 @@ function readReceipt(value: unknown): NoteOperationReceipt | null {
   return value as unknown as NoteOperationReceipt;
 }
 
-export function noteRecordFromLiveRecord(
+/** Payload keys a note list needs; the operations log stays in storage. */
+export const NOTE_LIST_PAYLOAD_FIELDS = ["schemaVersion", "note"] as const;
+
+function decodeNoteRecord(
   record: LiveRecord<Record<string, unknown>>,
   actorId: string,
+  operationsProjectedAway: boolean,
 ): NoteRecordPayload | null {
   if (
     record.collectionName !== NOTE_COLLECTION ||
     record.lifecycleState === "deleted" ||
     record.userId !== actorId ||
     !isRecord(record.payload) ||
-    ![1, 2].includes(Number(record.payload.schemaVersion)) ||
-    !Array.isArray(record.payload.operations)
+    ![1, 2].includes(Number(record.payload.schemaVersion))
   ) return null;
   const schemaVersion = Number(record.payload.schemaVersion) as 1 | 2;
   const note = readNote(record.payload.note, actorId, schemaVersion);
+  if (!note) return null;
+  if (operationsProjectedAway && record.payload.operations === undefined) {
+    return { schemaVersion, note, operations: [] };
+  }
+  if (!Array.isArray(record.payload.operations)) return null;
   const operations = record.payload.operations.map(readReceipt);
-  if (!note || operations.some((item) => item === null)) return null;
+  if (operations.some((item) => item === null)) return null;
   const receipts = operations as NoteOperationReceipt[];
   if (new Set(receipts.map((item) => item.idempotencyKey)).size !== receipts.length) return null;
   return { schemaVersion, note, operations: receipts };
+}
+
+export function noteRecordFromLiveRecord(
+  record: LiveRecord<Record<string, unknown>>,
+  actorId: string,
+): NoteRecordPayload | null {
+  return decodeNoteRecord(record, actorId, false);
+}
+
+/**
+ * List-path decoder for records read with NOTE_LIST_PAYLOAD_FIELDS: the
+ * operations log is absent by projection, never consulted, and reported empty.
+ */
+export function noteListRecordFromLiveRecord(
+  record: LiveRecord<Record<string, unknown>>,
+  actorId: string,
+): NoteRecordPayload | null {
+  return decodeNoteRecord(record, actorId, true);
 }
 
 export function noteLiveRecordFromPayload(input: {

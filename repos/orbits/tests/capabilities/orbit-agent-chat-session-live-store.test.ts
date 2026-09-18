@@ -46,10 +46,12 @@ test("Orbit Agent chat session provider persists sessions and messages in live r
   const listed = await provider.listSessions();
   const restored = await provider.getSession(session.id);
   const sessionRecords = store.listRecords({
+    limit: "unbounded",
     collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
     workspaceId: orbitAgentChatSessionActorWorkspaceId(workspaceId, actorId),
   });
   const messageRecords = store.listRecords({
+    limit: "unbounded",
     collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.messages,
     targetId: session.id,
     targetType: "conversation",

@@ -176,7 +176,7 @@ test("artifact request is idempotent and worker leases a real queued task into s
   };
   assert.equal((await repository.request(requested)).status, "queued");
   assert.equal((await repository.request(requested)).status, "queued");
-  assert.equal((await store.listRecords({ collectionName: ATTENDEE_POST_EVENT_AI_ARTIFACT_COLLECTION, workspaceId: "workspace:test" })).length, 1);
+  assert.equal((await store.listRecords({ limit: "unbounded", collectionName: ATTENDEE_POST_EVENT_AI_ARTIFACT_COLLECTION, workspaceId: "workspace:test" })).length, 1);
 
   let observedSystemInstruction = "";
   let observedUserText = "";
@@ -225,7 +225,7 @@ test("same evidence queues a new immutable artifact when generation inputs chang
   assert.equal(first.version, 1);
   assert.equal(second.version, 2);
   assert.equal(second.promptVersion, 2);
-  assert.equal((await store.listRecords({ collectionName: ATTENDEE_POST_EVENT_AI_ARTIFACT_COLLECTION, workspaceId: "workspace:test" })).length, 2);
+  assert.equal((await store.listRecords({ limit: "unbounded", collectionName: ATTENDEE_POST_EVENT_AI_ARTIFACT_COLLECTION, workspaceId: "workspace:test" })).length, 2);
 });
 
 test("changed encounter evidence queues a new artifact version and the older ready artifact is history, not current", async () => {
@@ -259,7 +259,7 @@ test("changed encounter evidence queues a new artifact version and the older rea
   });
   assert.equal(second.version, 2);
   assert.equal(second.status, "queued");
-  const records = await store.listRecords({ collectionName: ATTENDEE_POST_EVENT_AI_ARTIFACT_COLLECTION, workspaceId: "workspace:test" });
+  const records = await store.listRecords({ limit: "unbounded", collectionName: ATTENDEE_POST_EVENT_AI_ARTIFACT_COLLECTION, workspaceId: "workspace:test" });
   assert.equal(records.length, 2, "the first ready artifact remains immutable history");
   const beforeRegeneration = await createLiveRecordAttendeePostEventAiArtifactReader({ store, workspaceId: "workspace:test" }).read({ attendeeActorId: actorA, eventId });
   assert.equal(beforeRegeneration.status, "queued");
@@ -289,7 +289,7 @@ test("worker stores strict schema failures with attempt metadata and no fallback
     workerId: "worker:test",
   });
   assert.equal(outcome, "failed");
-  const record = (await store.listRecords({ collectionName: ATTENDEE_POST_EVENT_AI_ARTIFACT_COLLECTION, workspaceId: "workspace:test" }))[0];
+  const record = (await store.listRecords({ limit: "unbounded", collectionName: ATTENDEE_POST_EVENT_AI_ARTIFACT_COLLECTION, workspaceId: "workspace:test" }))[0];
   const stored = record?.payload as any;
   assert.equal(stored.status, "failed");
   assert.equal(stored.attemptCount, 1);
@@ -332,7 +332,7 @@ test("worker honors the provider retryability decision instead of retrying termi
   });
 
   assert.equal(outcome, "failed");
-  const record = (await store.listRecords({ collectionName: ATTENDEE_POST_EVENT_AI_ARTIFACT_COLLECTION, workspaceId: "workspace:test" }))[0];
+  const record = (await store.listRecords({ limit: "unbounded", collectionName: ATTENDEE_POST_EVENT_AI_ARTIFACT_COLLECTION, workspaceId: "workspace:test" }))[0];
   const stored = record?.payload as any;
   assert.equal(stored.status, "failed");
   assert.equal(stored.attemptCount, 1);
@@ -470,7 +470,7 @@ test("artifact POST queues one idempotent task from the registered attendee's ex
     assert.equal(response.status, 202);
     assert.equal((await response.json()).data.status, "queued");
   }
-  const records = await store.listRecords({ collectionName: ATTENDEE_POST_EVENT_AI_ARTIFACT_COLLECTION, workspaceId: "workspace:test" });
+  const records = await store.listRecords({ limit: "unbounded", collectionName: ATTENDEE_POST_EVENT_AI_ARTIFACT_COLLECTION, workspaceId: "workspace:test" });
   assert.equal(records.length, 1);
   assert.equal(records[0]?.userId, actorA);
   assert.deepEqual(records[0]?.evidenceIds, ["evidence:human-encounter:encounter:a"]);
@@ -520,7 +520,7 @@ test("artifact POST excludes encounters that the attendee marked as no conversat
     { params: Promise.resolve({ id: eventId }) },
   );
   assert.equal(response.status, 202);
-  const record = (await store.listRecords({ collectionName: ATTENDEE_POST_EVENT_AI_ARTIFACT_COLLECTION, workspaceId: "workspace:test" }))[0];
+  const record = (await store.listRecords({ limit: "unbounded", collectionName: ATTENDEE_POST_EVENT_AI_ARTIFACT_COLLECTION, workspaceId: "workspace:test" }))[0];
   const task = record?.payload as any;
   assert.deepEqual(task.evidenceWhitelist, ["evidence:human-encounter:confirmed"]);
   assert.deepEqual(task.evidenceSnapshot.map((item: { talked: string }) => item.talked), ["yes"]);

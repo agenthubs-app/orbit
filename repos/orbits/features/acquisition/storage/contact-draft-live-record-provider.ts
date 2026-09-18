@@ -473,6 +473,7 @@ async function listCollection(
   actorId?: string,
 ): Promise<readonly LiveRecord<Record<string, unknown>>[]> {
   const records = await store.listRecords({
+    limit: "unbounded",
     workspaceId,
     collectionName,
   });

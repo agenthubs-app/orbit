@@ -30,7 +30,7 @@ async function createSeedStore() {
     workspaceId: WORKSPACE_ID,
   });
   const actorRecords = store
-    .listRecords({ workspaceId: WORKSPACE_ID })
+    .listRecords({ limit: "unbounded", workspaceId: WORKSPACE_ID })
     .filter(
       (record) =>
         record.collectionName === "contacts" ||
@@ -60,14 +60,17 @@ test("business card review live service persists actor-scoped review drafts with
     provider,
   });
   const contactsBefore = store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName: "contacts",
   }).length;
   const contactDraftsBefore = store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName: "contactDrafts",
   }).length;
   const reviewDraftsBefore = store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName:
       BUSINESS_CARD_REVIEW_LIVE_RECORD_COLLECTIONS.reviewDrafts,
@@ -127,14 +130,17 @@ test("business card review live service persists actor-scoped review drafts with
       LIVE_DRAFT_ID,
     );
   const contactsAfter = store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName: "contacts",
   }).length;
   const contactDraftsAfter = store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName: "contactDrafts",
   }).length;
   const reviewDraftRecords = store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName:
       BUSINESS_CARD_REVIEW_LIVE_RECORD_COLLECTIONS.reviewDrafts,
@@ -250,6 +256,7 @@ test("business card review live service fails closed when review-draft persisten
     reviewerLabel: "Live reviewer",
   });
   const reviewDraftRecords = store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName:
       BUSINESS_CARD_REVIEW_LIVE_RECORD_COLLECTIONS.reviewDrafts,
@@ -598,6 +605,7 @@ test("cloud business card drafts can be reviewed, confirmed, and read back witho
   );
   assert.equal(
     store.listRecords({
+      limit: "unbounded",
       workspaceId: WORKSPACE_ID,
       collectionName: "contacts",
     }).length,
@@ -609,7 +617,7 @@ test("cleared review fields survive persistence, cold readback, and confirmation
   const store = await createSeedStore();
   const provider = createStorageBusinessCardReviewProvider({ store, workspaceId: WORKSPACE_ID });
   const service = createLiveBusinessCardReviewService({ now: () => NOW, provider });
-  const contactsBefore = store.listRecords({ workspaceId: WORKSPACE_ID, collectionName: "contacts" });
+  const contactsBefore = store.listRecords({ limit: "unbounded", workspaceId: WORKSPACE_ID, collectionName: "contacts" });
   const review = await service.updateReviewDraft({
     actorId: ACTOR_ID,
     draftId: LIVE_DRAFT_ID,
@@ -639,7 +647,7 @@ test("cleared review fields survive persistence, cold readback, and confirmation
   for (const [name, value] of Object.entries(fields)) {
     assert.equal(confirmation.data.contactCandidate[name as keyof typeof fields], value);
   }
-  assert.deepEqual(store.listRecords({ workspaceId: WORKSPACE_ID, collectionName: "contacts" }), contactsBefore);
+  assert.deepEqual(store.listRecords({ limit: "unbounded", workspaceId: WORKSPACE_ID, collectionName: "contacts" }), contactsBefore);
 });
 
 test("cloud review readback keeps cleared organization and role empty instead of generating placeholders", async () => {
@@ -657,7 +665,7 @@ test("cloud review readback keeps cleared organization and role empty instead of
   assert.equal(readback.success, true);
   assert.equal(readback.data.reviewDraft?.organization, "");
   assert.equal(readback.data.reviewDraft?.role, "");
-  assert.equal(store.listRecords({ workspaceId: WORKSPACE_ID, collectionName: "contacts" }).length, 0);
+  assert.equal(store.listRecords({ limit: "unbounded", workspaceId: WORKSPACE_ID, collectionName: "contacts" }).length, 0);
 });
 
 test("confirming an unreviewed business card draft still fails closed as pending", async () => {

@@ -58,6 +58,7 @@ test("generated relationship live seed writes every default mock fixture collect
   for (const collectionName of MOCK_FIXTURE_COLLECTION_NAMES) {
     const fixtureRecords = fixtureCollection(collectionName);
     const liveRecords = store.listRecords({
+      limit: "unbounded",
       workspaceId,
       collectionName,
     });
@@ -74,7 +75,7 @@ test("generated relationship live seed writes every default mock fixture collect
     );
   }
 
-  assert.equal(store.listRecords({ workspaceId }).length, expectedTotalRecords);
+  assert.equal(store.listRecords({ limit: "unbounded", workspaceId }).length, expectedTotalRecords);
 
   const event01 = store.getRecord({
     workspaceId,

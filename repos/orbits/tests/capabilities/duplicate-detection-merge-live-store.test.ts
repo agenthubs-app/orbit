@@ -155,6 +155,7 @@ test("duplicate merge live service detects source-backed draft/contact duplicate
 
   const result = await service.listMergeSuggestions();
   const contactsAfterList = store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName: "contacts",
   });
@@ -198,6 +199,7 @@ test("duplicate merge live apply returns confirmation preview and leaves contact
     suggestionId: SUGGESTION_ID,
   });
   const contactsAfterApply = store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName: "contacts",
   });

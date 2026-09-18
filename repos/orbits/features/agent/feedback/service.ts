@@ -104,6 +104,7 @@ export function createStorageAgentFeedbackService(input: {
 
   async function records() {
     return input.store.listRecords({
+      limit: "unbounded",
       workspaceId: scopedWorkspaceId,
       collectionName: AGENT_FEEDBACK_COLLECTION,
     });

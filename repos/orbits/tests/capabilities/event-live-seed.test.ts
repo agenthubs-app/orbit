@@ -68,6 +68,7 @@ test("events live seed writes all mock event datasets into live record storage",
   assert.equal(firstSeed.actorId, actorId);
 
   const eventRecords = store.listRecords({
+    limit: "unbounded",
     workspaceId,
     collectionName: "events",
   });
@@ -90,7 +91,7 @@ test("events live seed writes all mock event datasets into live record storage",
   assert.equal(generatedEventRecord.sourceType, "event_import");
   assert.equal(generatedEventRecord.userId, actorId);
 
-  const allRecords = store.listRecords({ workspaceId });
+  const allRecords = store.listRecords({ limit: "unbounded", workspaceId });
   assert.equal(allRecords.length, expectedTotalRecords);
 
   const eventService = createLiveEventCrudAndImportService({

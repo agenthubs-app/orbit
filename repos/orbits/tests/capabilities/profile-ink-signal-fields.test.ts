@@ -84,7 +84,7 @@ test("profile rejects bio over 80 visible characters and tag groups over five be
     const result = await service.updateProfile(update as ManualProfileUpdateInput, { actorId: "actor:limits" });
     assert.equal(result.success, false, JSON.stringify(update));
     if (!result.success) assert.equal(result.error.code, "PROFILE_VALIDATION_FAILED");
-    assert.deepEqual(await store.listRecords({ workspaceId: "profile-ink-signal-fields", collectionName: "profiles" }), []);
+    assert.deepEqual(await store.listRecords({ limit: "unbounded", workspaceId: "profile-ink-signal-fields", collectionName: "profiles" }), []);
   }
 });
 

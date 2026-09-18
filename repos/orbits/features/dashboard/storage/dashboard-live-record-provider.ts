@@ -513,31 +513,37 @@ export function createStorageDashboardAggregateProvider({
               evidenceRecords,
             ] = await Promise.all([
               store.listRecords({
+                limit: "unbounded",
                 workspaceId,
                 collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.contacts,
                 ...ownerQuery,
               }),
               store.listRecords({
+                limit: "unbounded",
                 workspaceId,
                 collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.connections,
                 ...ownerQuery,
               }),
               store.listRecords({
+                limit: "unbounded",
                 workspaceId,
                 collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.detailStates,
                 ...ownerQuery,
               }),
               store.listRecords({
+                limit: "unbounded",
                 workspaceId,
                 collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.events,
                 ...ownerQuery,
               }),
               store.listRecords({
+                limit: "unbounded",
                 workspaceId,
                 collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.tasks,
                 ...ownerQuery,
               }),
               store.listRecords({
+                limit: "unbounded",
                 workspaceId,
                 collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.evidence,
                 ...ownerQuery,

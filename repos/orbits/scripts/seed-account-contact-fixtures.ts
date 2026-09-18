@@ -155,6 +155,7 @@ async function main(): Promise<void> {
   // localized contact records. Only the exact known seeded draft is migrated;
   // user-authored introduction notes are never rewritten.
   const introductionRecords = await configuredStore.store.listRecords({
+    limit: "unbounded",
     workspaceId: configuredStore.workspaceId,
     collectionName: "contact_introductions",
   });

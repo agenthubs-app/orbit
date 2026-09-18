@@ -1053,18 +1053,22 @@ async function readGeneratedGraph(input: {
     recommendationRecords,
   ] = await Promise.all([
     input.store.listRecords({
+      limit: "unbounded",
       workspaceId: input.workspaceId,
       collectionName: GENERATED_ATTENDEE_ROSTER_LIVE_RECORD_COLLECTIONS.attendees,
     }),
     input.store.listRecords({
+      limit: "unbounded",
       workspaceId: input.workspaceId,
       collectionName: GENERATED_ATTENDEE_ROSTER_LIVE_RECORD_COLLECTIONS.contacts,
     }),
     input.store.listRecords({
+      limit: "unbounded",
       workspaceId: input.workspaceId,
       collectionName: GENERATED_ATTENDEE_ROSTER_LIVE_RECORD_COLLECTIONS.connections,
     }),
     input.store.listRecords({
+      limit: "unbounded",
       workspaceId: input.workspaceId,
       collectionName:
         GENERATED_ATTENDEE_ROSTER_LIVE_RECORD_COLLECTIONS.eventParticipantIntents,
@@ -1072,10 +1076,12 @@ async function readGeneratedGraph(input: {
       targetType: "event",
     }),
     input.store.listRecords({
+      limit: "unbounded",
       workspaceId: input.workspaceId,
       collectionName: GENERATED_ATTENDEE_ROSTER_LIVE_RECORD_COLLECTIONS.networkPeople,
     }),
     input.store.listRecords({
+      limit: "unbounded",
       workspaceId: input.workspaceId,
       collectionName:
         GENERATED_ATTENDEE_ROSTER_LIVE_RECORD_COLLECTIONS.matchRecommendations,
@@ -1184,6 +1190,7 @@ async function readGeneratedGraph(input: {
   const evidenceRecords =
     graphEvidenceIds.length > 0
       ? await input.store.listRecords({
+          limit: "unbounded",
           workspaceId: input.workspaceId,
           collectionName: GENERATED_ATTENDEE_ROSTER_LIVE_RECORD_COLLECTIONS.evidence,
           recordIds: graphEvidenceIds,

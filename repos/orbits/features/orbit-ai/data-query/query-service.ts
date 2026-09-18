@@ -111,6 +111,7 @@ async function queryNotes(input: {
   workspaceId: string;
 }): Promise<ActorScopedQueryResult> {
   const records = await input.store.listRecords({
+    limit: "unbounded",
     collectionName: "notes",
     userId: input.actorId,
     workspaceId: input.workspaceId,
@@ -207,7 +208,7 @@ async function ownedTasks(input: {
   store: LiveRecordStoreLike<Record<string, unknown>>;
   workspaceId: string;
 }) {
-  const records = await input.store.listRecords({ collectionName: "tasks", userId: input.actorId, workspaceId: input.workspaceId });
+  const records = await input.store.listRecords({ limit: "unbounded", collectionName: "tasks", userId: input.actorId, workspaceId: input.workspaceId });
   return records.flatMap((record) => {
     if (record.userId !== input.actorId) return [];
     const canonical = taskRecordFromLiveRecord(record, input.actorId)?.task;
@@ -280,9 +281,9 @@ async function queryFollowups(input: {
   workspaceId: string;
 }): Promise<ActorScopedQueryResult> {
   const [taskRecords, connectionRecords, evidenceRecords] = await Promise.all([
-    input.store.listRecords({ collectionName: "tasks", userId: input.actorId, workspaceId: input.workspaceId }),
-    input.store.listRecords({ collectionName: "connections", userId: input.actorId, workspaceId: input.workspaceId }),
-    input.store.listRecords({ collectionName: "evidence", userId: input.actorId, workspaceId: input.workspaceId }),
+    input.store.listRecords({ limit: "unbounded", collectionName: "tasks", userId: input.actorId, workspaceId: input.workspaceId }),
+    input.store.listRecords({ limit: "unbounded", collectionName: "connections", userId: input.actorId, workspaceId: input.workspaceId }),
+    input.store.listRecords({ limit: "unbounded", collectionName: "evidence", userId: input.actorId, workspaceId: input.workspaceId }),
   ]);
   const connectionByContact = new Map(connectionRecords.flatMap((record) => {
     const contactId = record.userId === input.actorId ? text(record.payload.contactId) : undefined;
@@ -378,6 +379,7 @@ async function querySchedule(input: {
   workspaceId: string;
 }): Promise<ActorScopedQueryResult> {
   const records = await input.store.listRecords({
+    limit: "unbounded",
     collectionName: "personal_schedule_items",
     userId: input.actorId,
     workspaceId: input.workspaceId,

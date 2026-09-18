@@ -342,6 +342,7 @@ export function createStorageNotificationDeliveryService({
       Date.parse(input.now) - NOTIFICATION_DELIVERY_LEASE_TIMEOUT_MS,
     ).toISOString();
     const records = await store.listRecords({
+      limit: "unbounded",
       collectionName: NOTIFICATION_DELIVERY_COLLECTION,
       lifecycleState: "active",
       userId: normalizedActorId,
@@ -382,6 +383,7 @@ export function createStorageNotificationDeliveryService({
     },
     async list(input = {}) {
       const records = await store.listRecords({
+        limit: "unbounded",
         collectionName: NOTIFICATION_DELIVERY_COLLECTION,
         lifecycleState: "active",
         userId: normalizedActorId,

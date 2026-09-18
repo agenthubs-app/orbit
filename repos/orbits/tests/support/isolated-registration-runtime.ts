@@ -17,7 +17,9 @@ export async function createIsolatedRegistrationRuntime() {
   const admin = new Pool({ connectionString: config.connectionString, max: 1 });
   const scopedUrl = new URL(config.connectionString);
   scopedUrl.searchParams.set("options", `-c search_path=${schema}`);
-  const previous = new Map(["ORBIT_EVENT_DATABASE_URL", "ORBIT_WORKSPACE_ID"].map((key) => [key, process.env[key]]));
+  // Under ORBIT_DATABASE_TARGET=local the config only reads the ORBIT_LOCAL_* pair, so
+  // both pairs are overridden; otherwise the runtime silently writes the dev database.
+  const previous = new Map(["ORBIT_EVENT_DATABASE_URL", "ORBIT_WORKSPACE_ID", "ORBIT_LOCAL_DATABASE_URL", "ORBIT_LOCAL_WORKSPACE_ID"].map((key) => [key, process.env[key]]));
   const records = createPgLiveRecordSqlClient({ connectionString: scopedUrl.toString() });
   let runtime: ReturnType<typeof createConfiguredEventOperationsPostgresRuntime> = null;
   const close = async () => {
@@ -35,8 +37,12 @@ export async function createIsolatedRegistrationRuntime() {
     await runOrbitRecordsMigration(records);
     process.env.ORBIT_EVENT_DATABASE_URL = scopedUrl.toString();
     process.env.ORBIT_WORKSPACE_ID = workspaceId;
+    process.env.ORBIT_LOCAL_DATABASE_URL = scopedUrl.toString();
+    process.env.ORBIT_LOCAL_WORKSPACE_ID = workspaceId;
     runtime = createConfiguredEventOperationsPostgresRuntime();
     if (!runtime) throw new Error("Isolated registration runtime unavailable.");
+    const bound = await runtime.client.query<{ schema: string }>("select current_schema() as schema");
+    if (bound.rows[0]?.schema !== schema) throw new Error(`Isolated registration runtime is bound to ${bound.rows[0]?.schema}, not ${schema}.`);
     const repository = createPostgresEventOperationsRepository(runtime);
     const now = Date.now();
     for (const [eventId, title, days] of [

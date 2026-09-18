@@ -79,6 +79,7 @@ export function createAttendeePostEventAiTaskRepository(input: {
 }): AttendeePostEventAiTaskRepository {
   async function recordsFor(eventId: string, actorId: string): Promise<readonly LiveRecord<Record<string, unknown>>[]> {
     return input.store.listRecords({
+      limit: "unbounded",
       collectionName: ATTENDEE_POST_EVENT_AI_ARTIFACT_COLLECTION,
       lifecycleState: "active",
       targetId: eventId,
@@ -171,7 +172,7 @@ export function createAttendeePostEventAiTaskRepository(input: {
         returning item.payload`, [input.workspaceId, ATTENDEE_POST_EVENT_AI_ARTIFACT_COLLECTION, value.now, JSON.stringify({ expiresAt, token })]);
         return payload(result.rows[0]?.payload) ?? null;
       }
-      const records = await input.store.listRecords({ collectionName: ATTENDEE_POST_EVENT_AI_ARTIFACT_COLLECTION, lifecycleState: "active", workspaceId: input.workspaceId });
+      const records = await input.store.listRecords({ limit: "unbounded", collectionName: ATTENDEE_POST_EVENT_AI_ARTIFACT_COLLECTION, lifecycleState: "active", workspaceId: input.workspaceId });
       const candidate = records.map((record) => ({ record, task: payload(record.payload) })).filter((candidate): candidate is { record: LiveRecord<Record<string, unknown>>; task: AttendeePostEventAiTaskPayload } => Boolean(candidate.task)).find((candidate) => candidate.task.status === "queued" && candidate.task.nextAttemptAt <= value.now && candidate.task.attemptCount < candidate.task.maxAttempts);
       if (!candidate) return null;
       const task = { ...candidate.task, attemptCount: candidate.task.attemptCount + 1, lease: { expiresAt, token }, status: "running" as const };

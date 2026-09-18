@@ -69,7 +69,7 @@ for (const choice of [{ stage: "active", activeGoal: "本人明确的合作目�
     assert.deepEqual((await client.query("select payload from orbit_records where user_id='b' order by record_id")).rows, beforeOther.rows);
     assert.equal((await service.read("b", "contact:b")).state, "pending");
     const store = createPostgresLiveRecordStore({ client });
-    const records = (await Promise.all(["contacts", "connections", "tasks"].map(collectionName => store.listRecords({ workspaceId, userId: "a", collectionName })))).flat();
+    const records = (await Promise.all(["contacts", "connections", "tasks"].map(collectionName => store.listRecords({ limit: "unbounded", workspaceId, userId: "a", collectionName })))).flat();
     assert.equal(assessRelationshipLifecycleMigration({ actorId: "a", workspaceId, records }).readyForCutover, true);
     assert.ok(records.filter(r => r.collectionName !== "tasks").every(r => r.payload.notes === "preserve private data"));
     if (choice.stage === "needs_follow_up" || choice.stage === "nurture") {

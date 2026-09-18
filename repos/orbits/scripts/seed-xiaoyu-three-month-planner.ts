@@ -83,6 +83,7 @@ async function contactsByName(input: {
   workspaceId: string;
 }): Promise<ReadonlyMap<string, string>> {
   const records = await input.store.listRecords({
+    limit: "unbounded",
     collectionName: "contacts",
     userId: input.actorId,
     workspaceId: input.workspaceId,
@@ -178,8 +179,8 @@ async function verify(input: {
   workspaceId: string;
 }) {
   const [taskRecords, scheduleRecords] = await Promise.all([
-    input.store.listRecords({ collectionName: "tasks", userId: input.actorId, workspaceId: input.workspaceId }),
-    input.store.listRecords({ collectionName: "orbitScheduleItems", userId: input.actorId, workspaceId: input.workspaceId }),
+    input.store.listRecords({ limit: "unbounded", collectionName: "tasks", userId: input.actorId, workspaceId: input.workspaceId }),
+    input.store.listRecords({ limit: "unbounded", collectionName: "orbitScheduleItems", userId: input.actorId, workspaceId: input.workspaceId }),
   ]);
   const taskIds = new Set(taskRecords.map((record) => record.recordId));
   const scheduleIds = new Set(scheduleRecords.map((record) => record.recordId));

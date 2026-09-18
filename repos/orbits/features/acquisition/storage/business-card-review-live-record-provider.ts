@@ -300,6 +300,7 @@ async function listCollection(
   collectionName: string,
 ): Promise<readonly LiveRecord<Record<string, unknown>>[]> {
   return store.listRecords({
+    limit: "unbounded",
     workspaceId,
     collectionName,
   });
@@ -347,6 +348,7 @@ export function createStorageBusinessCardReviewProvider({
       const evidenceRecords =
         actorEvidenceIds.length > 0
           ? await store.listRecords({
+              limit: "unbounded",
               collectionName:
                 BUSINESS_CARD_REVIEW_LIVE_RECORD_COLLECTIONS.evidence,
               recordIds: actorEvidenceIds,

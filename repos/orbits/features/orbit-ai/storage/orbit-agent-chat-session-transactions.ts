@@ -317,6 +317,7 @@ export function createOrbitAgentChatOrganizationStore(input: {
           throw new OrbitAgentChatOrganizationError("REVISION_CONFLICT");
         }
         const organizations = await store.listRecords({
+          limit: "unbounded",
           collectionName: ORGANIZATION_COLLECTION,
           userId: actorId,
           workspaceId: input.workspaceId,
@@ -386,6 +387,7 @@ export function createOrbitAgentChatOrganizationStore(input: {
     listGroups() {
       return read(async (store) => {
         const records = await store.listRecords({
+          limit: "unbounded",
           collectionName: GROUP_COLLECTION,
           userId: actorId,
           workspaceId: input.workspaceId,
@@ -407,6 +409,7 @@ export function createOrbitAgentChatOrganizationStore(input: {
       const requested = sessionIds?.map(cleanIdentifier);
       return read(async (store) => {
         const records = await store.listRecords({
+          limit: "unbounded",
           collectionName: ORGANIZATION_COLLECTION,
           recordIds: requested?.map(organizationRecordId),
           userId: actorId,
@@ -551,6 +554,7 @@ function createSerializedMemoryRunner(input: {
         await Promise.all(
           [GROUP_COLLECTION, ORGANIZATION_COLLECTION].map((collectionName) =>
             input.store.listRecords({
+              limit: "unbounded",
               collectionName,
               includeDeleted: true,
               workspaceId: "__all__",
@@ -581,7 +585,7 @@ function createSerializedMemoryRunner(input: {
             : record;
         },
         async listRecords(query) {
-          const base = await input.store.listRecords({ ...query, includeDeleted: true });
+          const base = await input.store.listRecords({ limit: "unbounded", ...query, includeDeleted: true });
           const merged = new Map(base.map((record) => [
             `${record.workspaceId}\u0000${record.collectionName}\u0000${record.recordId}`,
             record,

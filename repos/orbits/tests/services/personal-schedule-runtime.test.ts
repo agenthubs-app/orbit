@@ -26,7 +26,7 @@ test("schedule, rules, receipt and reminder plan writes roll back together when 
   const f = fixture();
   f.failPlans();
   await assert.rejects(f.service.create("owner", f.fields), /plan storage failure/);
-  assert.deepEqual(await f.store.listRecords({ workspaceId: f.workspaceId }), []);
+  assert.deepEqual(await f.store.listRecords({ limit: "unbounded", workspaceId: f.workspaceId }), []);
   assert.equal(f.locks.includes(JSON.stringify(["personal-schedule", f.workspaceId, "owner"])), true);
 });
 
@@ -62,7 +62,7 @@ test("the existing due inbox refresh produces one notification pointing at the e
   const inbox = createInboxRuntime(f);
   await refreshInboxBusinessRecords({ ...f, actorId: "owner", service: inbox.service, since: "2026-09-17T00:00:00Z", now: f.now() });
   await refreshInboxBusinessRecords({ ...f, actorId: "owner", service: inbox.service, since: "2026-09-17T00:00:00Z", now: f.now() });
-  const rows = await f.store.listRecords({ workspaceId: f.workspaceId, collectionName: "inboxNotifications", userId: "owner" });
+  const rows = await f.store.listRecords({ limit: "unbounded", workspaceId: f.workspaceId, collectionName: "inboxNotifications", userId: "owner" });
   assert.equal(rows.length, 1);
   const stored = rows[0]!.payload.notification as { id: string };
   const notification = await inbox.service.get("owner", stored.id);
@@ -119,7 +119,7 @@ for (const mutation of ["move", "disable", "cancel"] as const) {
     const source = { sourceKind: "reminder_plan" as const, sourceId: old.id, sourceRevision: old.updatedAt, occurredAt: old.createdAt, readAt: f.now() };
     assert.equal(await inbox.sourceAccess("owner", source), "unavailable");
     await refreshInboxBusinessRecords({ ...f, actorId: "owner", service: inbox.service, since: "2026-09-17T00:00:00Z", now: f.now() });
-    const rows = await f.store.listRecords({ workspaceId: f.workspaceId, collectionName: "inboxNotifications", userId: "owner" });
+    const rows = await f.store.listRecords({ limit: "unbounded", workspaceId: f.workspaceId, collectionName: "inboxNotifications", userId: "owner" });
     assert.equal(rows.some(row => (row.payload.notification as { legacyId?: string }).legacyId === old.id), false);
   });
 }
@@ -133,7 +133,7 @@ test("delivered managed reminder history remains visible but its stale queued so
   await f.repository.savePlan(delivered);
   const inbox = createInboxRuntime(f);
   await refreshInboxBusinessRecords({ ...f, actorId: "owner", service: inbox.service, since: "2026-09-17T00:00:00Z", now: f.now() });
-  const rows = await f.store.listRecords({ workspaceId: f.workspaceId, collectionName: "inboxNotifications", userId: "owner" });
+  const rows = await f.store.listRecords({ limit: "unbounded", workspaceId: f.workspaceId, collectionName: "inboxNotifications", userId: "owner" });
   const stored = rows[0]!.payload.notification as { id: string; scheduledFor: string };
   await f.store.upsertRecord({ workspaceId: f.workspaceId, collectionName: "notificationCutover", recordId: "owner", userId: "owner", sourceType: "system", sourceId: "owner", evidenceIds: [], lifecycleState: "active", createdAt: f.now(), updatedAt: f.now(), payload: { enabled: true, generation: 1, since: "2026-09-17T00:00:00Z", batchId: "test" } });
   const sources = createTypedDeliverySources({ ...f, actorId: "owner", repository: createDeliveryPolicyRepository(f) });

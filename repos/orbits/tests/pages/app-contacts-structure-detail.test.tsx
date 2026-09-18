@@ -12,7 +12,7 @@ async function fixture() {
   const workspaceId = "workspace:web-analysis-detail";
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   await seedGeneratedRelationshipFixturesIntoLiveStore({ now: () => "2026-09-08T00:00:00Z", store, workspaceId });
-  for (const record of store.listRecords({ collectionName: "contacts", workspaceId })) {
+  for (const record of store.listRecords({ limit: "unbounded", collectionName: "contacts", workspaceId })) {
     store.upsertRecord({ ...record, payload: { ...record.payload, primaryIndustryId: "technology_internet" } });
   }
   return createLiveNetworkDistributionAnalyticsService({ provider: createStorageNetworkDistributionAnalyticsProvider({ store, workspaceId }) });

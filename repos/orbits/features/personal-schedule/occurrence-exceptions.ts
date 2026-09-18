@@ -16,7 +16,7 @@ export interface PersonalScheduleOccurrenceException {
 
 export async function readPersonalScheduleOccurrenceExceptions(input: { store: LiveRecordStoreLike; workspaceId: string; actorId: string; seriesId: string }): Promise<PersonalScheduleOccurrenceException[]> {
   if (!input.actorId || !input.workspaceId || !input.seriesId) throw new Error("An owned schedule exception context is required.");
-  const records = await input.store.listRecords({ workspaceId: input.workspaceId, collectionName: PERSONAL_SCHEDULE_EXCEPTION_COLLECTION, userId: input.actorId, sourceId: input.seriesId });
+  const records = await input.store.listRecords({ limit: "unbounded", workspaceId: input.workspaceId, collectionName: PERSONAL_SCHEDULE_EXCEPTION_COLLECTION, userId: input.actorId, sourceId: input.seriesId });
   const dates = new Set<string>();
   return records.map(record => {
     const value = exceptionSchema.parse(record.payload);

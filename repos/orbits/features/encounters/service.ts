@@ -78,7 +78,7 @@ export function createHumanEncounterService(input: {
     async list(value) {
       const actorId = boundedText(value.actorId, "Actor", 256, true);
       const eventId = value.eventId ? boundedText(value.eventId, "Event", 256, true) : null;
-      const records = await input.store.listRecords({ workspaceId: input.workspaceId, collectionName: "human_encounters", userId: actorId });
+      const records = await input.store.listRecords({ limit: "unbounded", workspaceId: input.workspaceId, collectionName: "human_encounters", userId: actorId });
       return records.map((record) => record.payload as HumanEncounterRecord).filter((record) => record.actorId === actorId && (!eventId || record.eventId === eventId)).sort((left, right) => right.observedAt.localeCompare(left.observedAt));
     },
     async capture(value) {

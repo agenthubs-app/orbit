@@ -94,7 +94,7 @@ for (const birthDate of ["2001-02-29", "1900-02-29", "2026-09-15", "2000-13-01",
     assert.equal(result.success, false);
     if (result.success) throw new Error("Invalid birth date was saved");
     assert.equal(result.error.code, "PROFILE_BIRTH_DATE_INVALID");
-    assert.deepEqual(await store.listRecords({ workspaceId: "private-birth-date", collectionName: "profiles" }), []);
+    assert.deepEqual(await store.listRecords({ limit: "unbounded", workspaceId: "private-birth-date", collectionName: "profiles" }), []);
     const mock = await createMockProfileService().updateProfile({ displayName: "本人", birthDate: typeof birthDate === "string" && birthDate === "2026-09-15" ? "9999-01-01" : birthDate } as ManualProfileUpdateInput);
     assert.equal(mock.success, false);
   });

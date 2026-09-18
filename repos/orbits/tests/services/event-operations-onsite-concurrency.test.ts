@@ -895,10 +895,10 @@ test(
         for (const message of projectionMessages) await projector.project(message);
         assert.deepEqual(await initialization.read(owner.actor, owner.contactId), { state: "initialized", snapshot: initialized.snapshot });
         assert.deepEqual(await initialization.initialize(owner.actor, owner.contactId, input), { ...initialized, replayed: true });
-        const records = (await Promise.all(["contacts", "connections", "tasks"].map(collectionName => store.listRecords({ workspaceId, collectionName, userId: owner.actor })))).flat();
+        const records = (await Promise.all(["contacts", "connections", "tasks"].map(collectionName => store.listRecords({ limit: "unbounded", workspaceId, collectionName, userId: owner.actor })))).flat();
         assert.deepEqual(assessRelationshipLifecycleMigration({ actorId: owner.actor, workspaceId, records }).issues, []);
       }
-      assert.equal((await store.listRecords({ workspaceId, collectionName: "tasks" })).length, 1);
+      assert.equal((await store.listRecords({ limit: "unbounded", workspaceId, collectionName: "tasks" })).length, 1);
 
       const rollbackRequest = await repository.createContactRequestAtomically({
         expectedRevision: null,

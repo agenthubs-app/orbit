@@ -518,6 +518,7 @@ async function readFocusedContactGraph(input: {
     : null;
   const [contactRecords, allConnectionRecords, detailStateRecords] = await Promise.all([
     input.store.listRecords({
+      limit: "unbounded",
       workspaceId: input.workspaceId,
       collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.contacts,
       ...(input.contactId ? { recordIds: [input.contactId] } : {}),
@@ -526,12 +527,14 @@ async function readFocusedContactGraph(input: {
       ...(input.listInput ? { payloadFields: contactListPayloadFields, omitSearchText: !query } : {}),
     }),
     input.store.listRecords({
+      limit: "unbounded",
       workspaceId: input.workspaceId,
       collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.connections,
       ...(scope ? { recordIds: scope.connectionIds } : boundedPage ? { userId: actorId } : {}),
       ...(input.listInput ? { payloadFields: connectionListPayloadFields, omitSearchText: true } : {}),
     }),
     input.store.listRecords({
+      limit: "unbounded",
       workspaceId: input.workspaceId,
       collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.detailStates,
       ...(scope ? { recordIds: scope.detailStateIds } : boundedPage ? { userId: actorId } : {}),
@@ -588,6 +591,7 @@ async function readFocusedContactGraph(input: {
   const evidenceRecords =
     evidenceRecordIds.length > 0
       ? await input.store.listRecords({
+          limit: "unbounded",
           workspaceId: input.workspaceId,
           collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.evidence,
           recordIds: evidenceRecordIds,
@@ -833,6 +837,7 @@ export function createStorageContactGraphProvider({
           recordId: normalizedContactId,
         }),
         store.listRecords({
+          limit: "unbounded",
           workspaceId,
           collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.connections,
           ...(scope ? { recordIds: scope.connectionIds } : {}),

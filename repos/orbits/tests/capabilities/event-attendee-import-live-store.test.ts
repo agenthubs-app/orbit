@@ -147,6 +147,7 @@ test("live event attendee import persists actor-owned canonical drafts idempoten
     EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS,
   )) {
     const records = store.listRecords({
+      limit: "unbounded",
       workspaceId,
       collectionName,
     });
@@ -168,6 +169,7 @@ test("live event attendee import persists actor-owned canonical drafts idempoten
     }),
   });
   const contactsBefore = store.listRecords({
+    limit: "unbounded",
     workspaceId,
     collectionName: EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS.contacts,
     userId: actorId,
@@ -199,6 +201,7 @@ test("live event attendee import persists actor-owned canonical drafts idempoten
   );
 
   const firstWriteRecords = store.listRecords({
+    limit: "unbounded",
     workspaceId,
     collectionName: EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS.contactDrafts,
     userId: actorId,
@@ -208,6 +211,7 @@ test("live event attendee import persists actor-owned canonical drafts idempoten
     relationshipStatusFilter: "known_contact",
   });
   const replayRecords = store.listRecords({
+    limit: "unbounded",
     workspaceId,
     collectionName: EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS.contactDrafts,
     userId: actorId,
@@ -237,6 +241,7 @@ test("live event attendee import persists actor-owned canonical drafts idempoten
   assert.ok(replayRecords.every((record) => record.userId === actorId));
   assert.equal(
     store.listRecords({
+      limit: "unbounded",
       workspaceId,
       collectionName: EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS.contacts,
       userId: actorId,
@@ -297,6 +302,7 @@ test("event attendee draft batch rolls back every new draft when the store fails
   assert.equal(contactDraftWrites, 2);
   assert.equal(
     store.listRecords({
+      limit: "unbounded",
       workspaceId,
       collectionName: EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS.contactDrafts,
     }).length,
@@ -311,6 +317,7 @@ test("event attendee import graph is isolated by actor ownership metadata", asyn
     EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS,
   )) {
     const records = store.listRecords({
+      limit: "unbounded",
       workspaceId,
       collectionName,
     });

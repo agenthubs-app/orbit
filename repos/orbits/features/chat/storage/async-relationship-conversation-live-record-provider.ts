@@ -117,7 +117,7 @@ async function listCollection(
   workspaceId: string,
   collectionName: string,
 ): Promise<readonly LiveRecord<Record<string, unknown>>[]> {
-  return store.listRecords({ collectionName, workspaceId });
+  return store.listRecords({ limit: "unbounded", collectionName, workspaceId });
 }
 
 function stagedThreadFromRecord(

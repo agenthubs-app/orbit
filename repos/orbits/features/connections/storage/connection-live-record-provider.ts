@@ -268,6 +268,7 @@ async function readFocusedConnectionGraph(input: {
 }): Promise<LiveConnectionEvidenceGraph> {
   const accountId = input.accountId?.trim();
   const candidateConnectionRecords = await input.store.listRecords({
+    limit: "unbounded",
     workspaceId: input.workspaceId,
     collectionName: CONNECTION_LIVE_RECORD_COLLECTIONS.connections,
     recordIds: [input.connectionId],
@@ -286,6 +287,7 @@ async function readFocusedConnectionGraph(input: {
   const contactRecords =
     contactIds.length > 0
       ? await input.store.listRecords({
+          limit: "unbounded",
           workspaceId: input.workspaceId,
           collectionName: CONNECTION_LIVE_RECORD_COLLECTIONS.contacts,
           recordIds: contactIds,
@@ -298,6 +300,7 @@ async function readFocusedConnectionGraph(input: {
   const evidenceRecords =
     evidenceRecordIds.length > 0
       ? await input.store.listRecords({
+          limit: "unbounded",
           workspaceId: input.workspaceId,
           collectionName: CONNECTION_LIVE_RECORD_COLLECTIONS.evidence,
           recordIds: evidenceRecordIds,
@@ -324,14 +327,17 @@ export function createStorageConnectionEvidenceProvider({
       const [connectionRecords, contactRecords, evidenceRecords] =
         await Promise.all([
           store.listRecords({
+            limit: "unbounded",
             workspaceId,
             collectionName: CONNECTION_LIVE_RECORD_COLLECTIONS.connections,
           }),
           store.listRecords({
+            limit: "unbounded",
             workspaceId,
             collectionName: CONNECTION_LIVE_RECORD_COLLECTIONS.contacts,
           }),
           store.listRecords({
+            limit: "unbounded",
             workspaceId,
             collectionName: CONNECTION_LIVE_RECORD_COLLECTIONS.evidence,
           }),
@@ -347,6 +353,7 @@ export function createStorageConnectionEvidenceProvider({
       accountId: string,
     ): Promise<LiveConnectionEvidenceGraph> {
       const allConnectionRecords = await store.listRecords({
+        limit: "unbounded",
         workspaceId,
         collectionName: CONNECTION_LIVE_RECORD_COLLECTIONS.connections,
       });
@@ -365,6 +372,7 @@ export function createStorageConnectionEvidenceProvider({
       const [contactRecords, evidenceRecords] = await Promise.all([
         contactIds.length > 0
           ? store.listRecords({
+              limit: "unbounded",
               workspaceId,
               collectionName: CONNECTION_LIVE_RECORD_COLLECTIONS.contacts,
               recordIds: contactIds,
@@ -372,6 +380,7 @@ export function createStorageConnectionEvidenceProvider({
           : [],
         evidenceRecordIds.length > 0
           ? store.listRecords({
+              limit: "unbounded",
               workspaceId,
               collectionName: CONNECTION_LIVE_RECORD_COLLECTIONS.evidence,
               recordIds: evidenceRecordIds,

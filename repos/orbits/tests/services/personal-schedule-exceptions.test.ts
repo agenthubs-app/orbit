@@ -20,7 +20,7 @@ test("cancellation is a durable exception rather than deletion of the series", a
   const store = createMemoryLiveRecordStore([{ ...record, payload: { ...record.payload, cancelled: true, patch: {} } }]);
   const loaded = await readPersonalScheduleOccurrenceExceptions({ ...query, store });
   assert.equal(loaded[0]!.cancelled, true);
-  assert.equal(store.listRecords({ workspaceId: query.workspaceId, collectionName: "personal_schedule_items" }).length, 0);
+  assert.equal(store.listRecords({ limit: "unbounded", workspaceId: query.workspaceId, collectionName: "personal_schedule_items" }).length, 0);
 });
 
 test("exception storage rejects impossible dates, stale envelopes and forbidden series fields", async () => {

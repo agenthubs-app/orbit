@@ -131,6 +131,7 @@ export function createTaskSuggestionRepository(input: {
 
     async list(actorId) {
       const records = await input.store.listRecords({
+        limit: "unbounded",
         workspaceId: input.workspaceId,
         collectionName: TASK_SUGGESTION_COLLECTION,
         userId: actorId,

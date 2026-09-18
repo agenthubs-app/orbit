@@ -180,6 +180,7 @@ test("postgres live record store lists gets and soft deletes records", async () 
   }>({ client });
 
   const listed = await store.listRecords({
+    limit: "unbounded",
     workspaceId: "workspace:test",
     collectionName: "events",
     searchText: "operator",

@@ -312,6 +312,7 @@ async function listCollection(
   collectionName: string,
 ): Promise<readonly LiveRecord<Record<string, unknown>>[]> {
   return store.listRecords({
+    limit: "unbounded",
     collectionName,
     workspaceId,
   });

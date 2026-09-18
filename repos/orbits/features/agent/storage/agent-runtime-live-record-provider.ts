@@ -98,7 +98,7 @@ async function list<TEntity>(
   collectionName: string,
   idKey: string,
 ): Promise<TEntity[]> {
-  const records = await store.listRecords({ collectionName, workspaceId });
+  const records = await store.listRecords({ limit: "unbounded", collectionName, workspaceId });
   return records.flatMap((record) => {
     const entity = entityFromRecord<TEntity>(record, idKey);
     return entity ? [entity] : [];

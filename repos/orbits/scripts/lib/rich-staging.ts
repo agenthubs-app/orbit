@@ -109,7 +109,7 @@ export async function buildRichStagingExpansion(base: readonly LiveRecord[], now
       venue: index % 2 ? "线上交流室·" + (index + 1) : "演示共创空间·" + (index + 1),
       source: RICH_STAGING_ID, sourcePayload: {synthetic: true, theme: themes[index % themes.length]!.topic}};
   }), {schemaVersion: 1, migrationId: RICH_STAGING_ID, resolutions: []});
-  const all = store.listRecords({workspaceId: STAGING_WORKSPACE});
+  const all = store.listRecords({ limit: "unbounded", workspaceId: STAGING_WORKSPACE});
   const originalKeys = new Set(base.map(key));
   for (const original of base) {
     if (JSON.stringify(all.find(r => key(r) === key(original))) !== JSON.stringify(original)) throw Error("RICH_STAGING_EXISTING_RECORD_CHANGED");
@@ -126,7 +126,7 @@ export async function applyRichStagingExpansion(client: EventOperationsPostgresC
   const size = await client.query<{count: number; bytes: string}>("select count(*)::int as count, coalesce(sum(pg_column_size(payload)),0)::text as bytes from orbit_records where workspace_id=$1", [STAGING_WORKSPACE]);
   if (!size.rows[0] || size.rows[0].count > RICH_STAGING_LIMITS.records || Number(size.rows[0].bytes) > RICH_STAGING_LIMITS.seedBytes) throw Error("RICH_STAGING_EXISTING_BUDGET_EXCEEDED");
   const store = createPostgresLiveRecordStore({client});
-  const base = await store.listRecords({workspaceId: STAGING_WORKSPACE, includeDeleted: true});
+  const base = await store.listRecords({ limit: "unbounded", workspaceId: STAGING_WORKSPACE, includeDeleted: true});
   const actorId = primaryStagingActor(base);
   const auth = createAuthUserService({provider: createStorageAuthUserProvider({store: createMemoryLiveRecordStore(base), workspaceId: STAGING_WORKSPACE})});
   if ((await auth.verifyCredentials({email: PRIMARY_STAGING_EMAIL, password})).state !== "success") throw Error("RICH_STAGING_PASSWORD_INVALID");
@@ -164,7 +164,7 @@ export async function applyRichStagingExpansion(client: EventOperationsPostgresC
       waitlistEnabled: true, registrationOpensAt: now, registrationClosesAt: at(-2), profileEditDeadlineAt: at(-2)});
     await activateCanonicalRegistrationsWithExecutor({executor: client, workspaceId: STAGING_WORKSPACE, eventId: event.eventId, registrations: []});
   }
-  const after = await store.listRecords({workspaceId: STAGING_WORKSPACE, includeDeleted: true});
+  const after = await store.listRecords({ limit: "unbounded", workspaceId: STAGING_WORKSPACE, includeDeleted: true});
   const assessment = assessRelationshipLifecycleMigration({actorId, workspaceId: STAGING_WORKSPACE, records: after});
   if (!assessment.readyForCutover) throw Error("RICH_STAGING_LIFECYCLE_INVALID");
   for (const original of base) {

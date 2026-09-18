@@ -114,6 +114,7 @@ test("email calendar live service derives relationship signals from live message
 
   const result = await service.listEmailCalendarSignals();
   const contactDrafts = store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName: "contactDrafts",
   });
@@ -151,6 +152,7 @@ test("email calendar live confirmation returns a review preview without relation
     signalId: SIGNAL_ID,
   });
   const contacts = store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName: "contacts",
   });
@@ -179,6 +181,7 @@ test("email calendar signals are isolated by actor ownership metadata", async ()
     "messages",
   ]) {
     const records = store.listRecords({
+      limit: "unbounded",
       workspaceId: WORKSPACE_ID,
       collectionName,
     });

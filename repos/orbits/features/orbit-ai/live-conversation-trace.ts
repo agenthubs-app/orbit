@@ -270,6 +270,7 @@ async function remoteDatabaseInteractionForTools(
   const collections = await Promise.all(
     selectedCollections.map(async (collectionName) => {
       const records = await context.store.listRecords({
+        limit: "unbounded",
         collectionName,
         workspaceId: context.workspaceId,
       });

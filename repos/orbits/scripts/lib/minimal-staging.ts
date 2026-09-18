@@ -87,7 +87,7 @@ export async function buildMinimalStagingSeed(password: string, now: string) {
     {eventId:"10000000-0000-4000-8000-000000000001",publicCode:"SMALL-STAGING",title:"小型测试交流会（合成数据）",lifecycleState:"published" as const},
     {eventId:"10000000-0000-4000-8000-000000000002",publicCode:"SMALL-DRAFT",title:"主办方编辑草稿（合成数据）",lifecycleState:"draft" as const},
   ].map(event=>({...event,organizerActorId:accounts.organizer!.id,description:"仅用于独立测试，不是真实活动；不自动运行 AI 或发送通知。",venue:"线上测试会场",timezone:"Asia/Shanghai",startsAt,endsAt,source:"minimal-staging-v1",sourcePayload:{synthetic:true,evidenceIds:["evidence:small-staging:event"]}})),{schemaVersion:1,migrationId:"minimal-staging-v1",resolutions:[]});
-  const records = store.listRecords({workspaceId:STAGING_WORKSPACE});
+  const records = store.listRecords({ limit: "unbounded", workspaceId:STAGING_WORKSPACE});
   for (const account of Object.values(accounts)) {
     if (!assessRelationshipLifecycleMigration({actorId:account.id,workspaceId:STAGING_WORKSPACE,records}).readyForCutover) throw Error("STAGING_RELATIONSHIP_INVALID");
   }
