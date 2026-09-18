@@ -43,6 +43,16 @@ const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
   'src/screens/today/TodayScreen.tsx:61': ['/api/today'],
 };
 
+// 这些 transport 调用点在运行时从不指向 Orbit API，因而没有可登记的读取面。
+// 与 computedPathFamilies 的区别：那里是"路径算得出来、只是静态解析不到"；
+// 这里是"根本不存在 API 路径"。把它们塞进 computedPathFamilies 等于伪造一个端点。
+// 每一条都必须给出它实际访问什么，以及为什么不受离线读取策略约束。
+const nonApiTransportSinks: Readonly<Record<string, string>> = {
+  // fetch(blob:...) 读取浏览器本地 object URL，取用户刚选中的图片字节；
+  // 调用前由 isSupportedBatchImageSource() 限定 blob: 前缀，不出网、不含账号数据。
+  'src/api/batch-image-source.web.ts:34': 'browser blob: object URL, never a network request',
+};
+
 export async function extractReadCalls(root: string): Promise<{ calls: Call[]; invalid: string[] }> {
   const files: string[] = [];
   async function walk(directory: string): Promise<void> {
@@ -331,7 +341,8 @@ export async function extractReadCalls(root: string): Promise<{ calls: Call[]; i
     const inferredPaths = unresolvedPath ? [...(computedPathFamilies[location] ?? [])] : [];
     const resolvedPaths = unique([...paths, ...inferredPaths]);
     const unresolvedMethod = methods.includes(UNKNOWN);
-    if (unresolvedMethod || (unresolvedPath && (!resolvedPaths.length || (unknownPath && !inferredPaths.length)))) {
+    const nonApiSink = location in nonApiTransportSinks && !evaluatedPaths.some(path => path.includes('/api/'));
+    if (!nonApiSink && (unresolvedMethod || (unresolvedPath && (!resolvedPaths.length || (unknownPath && !inferredPaths.length))))) {
       const finding = { node, location, method: unresolvedMethod, path: unresolvedPath && (!resolvedPaths.length || (unknownPath && !inferredPaths.length)), baseline, text: node.getText().slice(0, 100) };
       pendingSinks.set(key, finding);
     }

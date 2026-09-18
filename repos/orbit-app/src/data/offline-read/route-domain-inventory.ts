@@ -94,6 +94,8 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/api/ai-session-management.ts","PATCH","/api/ai/conversations/groups/:id"],
   ["src/api/ai-session-management.ts","PATCH","/api/ai/conversations/sessions/:id"],
   ["src/api/auth-session.ts","POST","/api/account/session/sign-out"],
+  ["src/api/browser-auth.ts","GET","/api/auth/csrf"],
+  ["src/api/browser-auth.ts","POST","/api/auth/callback/credentials"],
   ["src/api/auth-session.ts","POST","/api/auth/register"],
   ["src/api/auth-session.ts","POST","/api/auth/mobile/credentials"],
   ["src/api/auth-session.ts","POST","/api/auth/mobile/google/exchange"],
