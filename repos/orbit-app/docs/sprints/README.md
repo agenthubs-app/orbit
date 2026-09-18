@@ -11,13 +11,14 @@
 ### 2026-09-18 新增读取成本治理（Phase 0 主线对齐）
 
 用户已批准[读取成本治理设计案 Rev 4]，要求逐个 Phase 执行，三次归位统一用 `merge` 不用 rebase。
-Phase 0 共三项：0067 生产源码归位 → 0068 phoneweb 基座归位 → 0069 增量同步存量归位。
+Phase 0 共三项：0067 生产源码归位（**completed**）→ 0068 phoneweb 基座归位 → 0069 增量同步存量归位。
 后续 Phase A 量尺（0070）、B 止血（0071–0074）、C 收口扩面（0075–0076）、D Web 本地优先（0077–0078）、
 E 结构（0079–0080，需单独批准）依次领取，不并行。
 
 | Sprint | 目标 | 进入条件与当前事实 | 状态 |
 | --- | --- | --- | --- |
-| [0067](0067-mainline-production-alignment/GOAL.md) | 主线重新包含生产正在运行的源码，并把本地／云端切换开关嵌进生产库围栏内部 | 无外部依赖。基线 chat-agent `8e5bd493a`，待集成 `origin/codex/production-cutover-read-write-20260917` = `161e9e6c4`，merge-base `29efb4c9d`。Planner SHA a6811df4。只用本机 Postgres，不连云端、不部署 | running |
+| [0067](0067-mainline-production-alignment/GOAL.md) | 主线重新包含生产正在运行的源码，并把本地／云端切换开关嵌进生产库围栏内部 | 五项 SC 全部 pass。功能 merge `e2a0d6a37`（父 `53e0640e5` + `161e9e6c4`）已 fast-forward 进 `chat-agent`，`git merge-base --is-ancestor 161e9e6c4 chat-agent` 退出码 0。同环境前后对照：4154/88fail → 4173/86fail，失败集合零新增、两项消失。两端 typecheck 0。本机 target=local 实际登录读到 78 联系人/64 待办。原 86 项失败保持披露，不宣称全绿 | completed |
+| [0068](0068-phoneweb-runtime-baseline/GOAL.md) | phoneweb 运行时基座（21 文件）归位主线，作为 Web 本地优先的地基 | 依赖 0067（已 completed）。待选定权威源分支 | planned |
 
 已查清的前置事实：生产切库已于 2026-09-17 完成并正在服务（`www.orbitailink.com` 200、`/api/health` mode=live，
 新 Neon `orange-forest-30108072` 用量 34.6 MB／386.75 kB），旧 Vercel 项目 `paused=true`。
