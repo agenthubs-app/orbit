@@ -15,13 +15,19 @@ test("TasksScreen reads through useTaskListSource and never imports a transport 
   assert.match(screen, /sync\.mutationPending/);
 });
 
-test("native source is the lease-fed mirror; web source is the network read; both implement the same interface", () => {
+test("native source is the lease-fed mirror; web source is mirror-first with the network read as fallback; both implement the same interface", () => {
   const native = read("src/screens/tasks/task-list-source.ts");
   const web = read("src/screens/tasks/task-list-source.web.ts");
+  const shared = read("src/screens/tasks/task-list-source-mirror.ts");
   assert.match(native, /useSyncedCollection<.*>\(\{ kind: "task" \}\)/);
   assert.doesNotMatch(native, /useApiResource|tasksPath/);
-  assert.match(web, /useApiResource<unknown>\(tasksPath\(\)/);
-  assert.doesNotMatch(web, /useSyncedCollection/);
+  assert.match(native, /mirrorTaskListSource\(state, input\)/, "native maps the mirror through the shared source");
+  assert.match(web, /useWebMirrorStatus\(\)/);
+  assert.match(web, /useSyncedCollection<.*>\(\{ kind: "task" \}\)/);
+  assert.match(web, /useApiResource<unknown>\(tasksPath\(\), \(\) => false, \{ scopeKey: input\.scopeKey, cachePolicy: "network-only", enabled: !mirrorActive \}\)/, "the network read is inert while the mirror is the source");
+  assert.match(web, /if \(mirrorActive\) return mirrorTaskListSource\(synced, input\)/);
+  assert.ok(web.indexOf("useWebMirrorStatus()") < web.indexOf("useSyncedCollection<") && web.indexOf("useSyncedCollection<") < web.indexOf("useApiResource<unknown>"), "hooks run unconditionally, in a fixed order");
+  assert.match(shared, /syncLabelKey: `sync\.\$\{/, "the mirror source carries the App's sync labels on both platforms");
   for (const source of [native, web]) assert.match(source, /export function useTaskListSource\(input: TaskListSourceInput\): TaskListSource/);
   const inventory = read("src/data/offline-read/route-domain-inventory.ts");
   assert.match(inventory, /\["src\/screens\/tasks\/task-list-source\.web\.ts","GET","\/api\/tasks"\]/);

@@ -57,9 +57,15 @@ async function host(t: TestContext) {
   for (let n = 1; n <= 4; n += 1) aIds.push(await taskUnderLock(A, `task:a:${n}`, NOW));
   for (let n = 1; n <= 2; n += 1) bIds.push(await taskUnderLock(B, `task:b:${n}`, NOW));
   const service = createDomainReadService({ client, cursorSecret: SECRET, now: () => NOW });
-  const handlersFor = (actor: string) => createSyncDomainHandlers({ resolveActor: async () => ({ id: actor, userId: actor, workspaceId: W }), createService: () => service, now: () => Date.parse(NOW) });
+  // Every SQL statement the manifest path issues, so a test can prove "unchanged" reads no business row.
+  const sql: string[] = [];
+  const recording = { query: <T,>(text: string, values?: readonly unknown[]) => { sql.push(text); return client.query<T>(text, values); } };
+  const handlersFor = (actor: string) => createSyncDomainHandlers({
+    resolveActor: async () => ({ id: actor, userId: actor, workspaceId: W }), createService: () => service, now: () => Date.parse(NOW),
+    conditionalRead: { client: recording, workspaceId: W, version: "topology-test" },
+  });
   const json = async <T,>(response: Response) => (await response.json()) as { success: boolean; data: T; error?: { code: string; context?: Record<string, unknown> } };
-  return { client, taskUnderLock, handlersFor, json, aIds, bIds };
+  return { client, taskUnderLock, handlersFor, json, aIds, bIds, sql };
 }
 
 test("grants, manifest and domain pages are per actor: A never sees B, B cannot use A's cursor", options, async (t) => {
@@ -115,4 +121,30 @@ test("an authorization change rotates the epoch (old cursor → reset); revocati
   assert.equal((await h.json(refused)).error?.context?.syncErrorCode, "SYNC_NOT_AUTHORIZED");
   // B keeps working.
   assert.equal((await h.handlersFor(B).domain(new Request("https://orbit.local/api/sync/domains/tasks"), "tasks")).status, 200);
+});
+
+test("an unchanged manifest is a 304 from one watermark row; a new task under the lock moves the watermark and the ETag", options, async (t) => {
+  const h = await host(t);
+  const a = h.handlersFor(A);
+  const first = await a.manifest(new Request("https://orbit.local/api/sync/manifest"));
+  assert.equal(first.status, 200);
+  const etag = first.headers.get("ETag")!;
+  assert.ok(etag.startsWith("W/\""));
+  const before = domainManifestSchema.parse((await h.json(first)).data).domains.find((entry) => entry.domainId === "tasks")!.watermark;
+
+  h.sql.length = 0;
+  const unchanged = await a.manifest(new Request("https://orbit.local/api/sync/manifest", { headers: { "If-None-Match": etag } }));
+  assert.equal(unchanged.status, 304);
+  assert.deepEqual(h.sql.map((text) => (text.includes("domain:watermark:user") ? "watermark" : "business")), ["watermark"], "304 costs exactly one watermark statement and no business read");
+
+  await h.taskUnderLock(A, "task:a:5", "2026-09-18T09:20:00.000Z");
+  const changed = await a.manifest(new Request("https://orbit.local/api/sync/manifest", { headers: { "If-None-Match": etag } }));
+  assert.equal(changed.status, 200);
+  assert.notEqual(changed.headers.get("ETag"), etag);
+  const after = domainManifestSchema.parse((await h.json(changed)).data).domains.find((entry) => entry.domainId === "tasks")!.watermark;
+  assert.ok(BigInt(after) > BigInt(before), "the tasks watermark advanced with the new row");
+
+  // B's own manifest is unaffected by A's write only in content, not in ETag semantics: B gets its own ETag.
+  const b = await h.handlersFor(B).manifest(new Request("https://orbit.local/api/sync/manifest", { headers: { "If-None-Match": etag } }));
+  assert.equal(b.status, 200, "A's ETag never validates B's manifest");
 });

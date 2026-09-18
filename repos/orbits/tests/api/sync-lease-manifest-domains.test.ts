@@ -57,10 +57,24 @@ async function task(id: string, sync_revision: number) {
   return { record_id: record.recordId, sync_revision, payload: record.payload };
 }
 
-function harness(state: Scripted) {
+function harness(state: Scripted, options: { conditional?: boolean } = {}) {
   const { client, calls } = scriptedClient(state);
   const service = createDomainReadService({ client, cursorSecret: SECRET, now: () => NOW });
-  const handlers = createSyncDomainHandlers({ resolveActor: async () => ({ id: A, userId: A, workspaceId: W }), createService: () => service, now: () => Date.parse(NOW) });
+  // The manifest watermark covers the actor's registered collections plus the shared authorization rows.
+  const watermarkClient = {
+    async query<T>(text: string, values?: readonly unknown[]) {
+      calls.push(text);
+      if (!text.includes("domain:watermark:user")) throw new Error(`unexpected watermark SQL: ${text.slice(0, 60)}`);
+      const own = values?.[1] as string[];
+      const business = own.flatMap((collection) => state.rows[collection] ?? []);
+      const max = business.length ? `2026-09-18T07:${String(Math.max(...business.map((row) => row.sync_revision))).padStart(2, "0")}:00Z` : state.auth.max;
+      return { rows: [{ max_updated_at: max, count: String(business.length + state.auth.count) } as T] };
+    },
+  };
+  const handlers = createSyncDomainHandlers({
+    resolveActor: async () => ({ id: A, userId: A, workspaceId: W }), createService: () => service, now: () => Date.parse(NOW),
+    conditionalRead: options.conditional ? { client: watermarkClient, workspaceId: W, version: "test" } : { client: null },
+  });
   return { handlers, service, calls };
 }
 
@@ -124,4 +138,30 @@ test("domain pages walk one collection with epoch-bound cursors; an epoch change
   const other = createSyncDomainHandlers({ resolveActor: async () => ({ id: "actor:b", userId: "actor:b", workspaceId: W }), createService: () => createDomainReadService({ client: scriptedClient(state).client, cursorSecret: SECRET, now: () => NOW }), now: () => Date.parse(NOW) });
   assert.equal((await other.domain(new Request(`https://orbit.local/api/sync/domains/tasks?cursor=${encodeURIComponent(page1.nextCursor)}`), "tasks")).status, 409);
   assert.equal((await handlers.domain(new Request("https://orbit.local/api/sync/domains/unknown"), "unknown")).status, 404);
+});
+
+test("manifest is a conditional read: unchanged data answers 304 from one watermark row, a change answers 200 with a new ETag", async () => {
+  const state: Scripted = { auth: { max: "2026-09-18T07:00:00Z", count: 3, identity: 1 }, rows: { tasks: [await task("task:1", 1)] } };
+  const { handlers, calls } = harness(state, { conditional: true });
+  const first = await handlers.manifest(new Request("https://orbit.local/api/sync/manifest"));
+  assert.equal(first.status, 200);
+  const etag = first.headers.get("ETag");
+  assert.ok(etag && etag.startsWith("W/\""), "manifest carries a weak ETag");
+  assert.equal(first.headers.get("Cache-Control"), "private, no-cache");
+  const manifest = domainManifestSchema.parse(((await first.json()) as { data: unknown }).data);
+  assert.equal(manifest.domains.find((entry) => entry.domainId === "tasks")?.watermark, "1");
+
+  calls.length = 0;
+  const unchanged = await handlers.manifest(new Request("https://orbit.local/api/sync/manifest", { headers: { "If-None-Match": etag! } }));
+  assert.equal(unchanged.status, 304);
+  assert.equal(unchanged.headers.get("ETag"), etag);
+  assert.deepEqual(calls.map((sql) => sql.includes("domain:watermark:user") ? "watermark" : "other"), ["watermark"], "an unchanged manifest costs exactly one watermark row");
+
+  state.rows.tasks!.push(await task("task:2", 2));
+  calls.length = 0;
+  const changed = await handlers.manifest(new Request("https://orbit.local/api/sync/manifest", { headers: { "If-None-Match": etag! } }));
+  assert.equal(changed.status, 200);
+  assert.notEqual(changed.headers.get("ETag"), etag);
+  assert.equal(domainManifestSchema.parse(((await changed.json()) as { data: unknown }).data).domains.find((entry) => entry.domainId === "tasks")?.watermark, "2");
+  assert.ok(calls.some((sql) => sql.includes("sync:domain:high-watermark")), "a changed manifest re-reads the domain watermarks");
 });

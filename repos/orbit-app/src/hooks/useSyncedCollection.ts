@@ -25,6 +25,7 @@ import { useOrbitApiClient } from "./useOrbitApiClient";
 const appSyncCoordinator = createSyncCoordinator({
   lifecycle: syncLifecycle,
   hashPayload: (serialized) => Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, serialized),
+  onManifestUnavailable: (error) => console.warn("SYNC_MANIFEST_UNAVAILABLE", error instanceof Error ? error.message : ""),
 });
 const authSessionGenerations = new WeakMap<object, number>();
 let nextAuthSessionGeneration = 0;

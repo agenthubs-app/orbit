@@ -39,7 +39,7 @@ test("real v1 migration quarantines unverifiable canonical data and retains loca
   const outbox = await db.all("SELECT * FROM sync_outbox");
   const drafts = await db.all("SELECT * FROM legacy_api_snapshots");
   await initializeLocalSyncDatabase(db);
-  assert.equal((await db.get<{ value: string }>("SELECT value FROM sync_meta WHERE key='schema_version'"))?.value, "2");
+  assert.equal((await db.get<{ value: string }>("SELECT value FROM sync_meta WHERE key='schema_version'"))?.value, "3");
   assert.deepEqual(await db.all("SELECT * FROM legacy_read_records ORDER BY record_id"), records);
   assert.deepEqual(await db.all("SELECT * FROM sync_outbox"), outbox);
   assert.deepEqual(await db.all("SELECT * FROM legacy_api_snapshots"), drafts);
@@ -65,4 +65,27 @@ test("copy, swap and checkpoint failures reopen as complete v1 then retry idempo
     await initializeLocalSyncDatabase(db); await initializeLocalSyncDatabase(db);
     assert.deepEqual(await db.all("SELECT * FROM legacy_read_records ORDER BY record_id"), records); db.raw.close();
   }
+});
+
+// Frozen v2 fixture: the 0069 scope-keyed tables without the v3 watermark column.
+const V2 = `
+CREATE TABLE sync_records(workspace_id TEXT NOT NULL,domain_id TEXT NOT NULL,authorization_epoch TEXT NOT NULL,kind TEXT NOT NULL,record_id TEXT NOT NULL,revision TEXT NOT NULL,updated_at TEXT NOT NULL,deleted_at TEXT,payload_json TEXT,schema_version INTEGER NOT NULL DEFAULT 1,payload_hash TEXT,generation TEXT NOT NULL DEFAULT '',visible INTEGER NOT NULL DEFAULT 1,sync_state TEXT NOT NULL,ai_visibility TEXT NOT NULL,PRIMARY KEY(workspace_id,domain_id,authorization_epoch,record_id));
+CREATE TABLE sync_cursors(workspace_id TEXT NOT NULL,domain_id TEXT NOT NULL,authorization_epoch TEXT NOT NULL,cursor TEXT NOT NULL,last_successful_sync_at TEXT NOT NULL,bootstrap_state TEXT NOT NULL,completeness TEXT NOT NULL,generation TEXT NOT NULL,PRIMARY KEY(workspace_id,domain_id,authorization_epoch));
+CREATE TABLE sync_meta(key TEXT PRIMARY KEY NOT NULL,value TEXT NOT NULL);
+INSERT INTO sync_meta VALUES('schema_version','2'),('migration_checkpoint','2'),('encryption_state','encrypted');
+INSERT INTO sync_cursors VALUES('w','tasks','epoch-1','cursor-1','2026-09-18T00:00:00Z','complete','complete','gen-1');
+INSERT INTO sync_records VALUES('w','tasks','epoch-1','task','t1','r1','2026-09-18T00:00:00Z',NULL,'{"id":"t1"}',1,'hash',
+  'gen-1',1,'synced','available_when_synced');`;
+
+test("v2 → v3 adds the cursor watermark column in place: rows, cursors and epochs survive, and re-entry is idempotent", async t => {
+  const db = new ReadTestDatabase(); t.after(() => db.raw.close()); db.raw.exec(V2);
+  const records = await db.all("SELECT * FROM sync_records");
+  await initializeLocalSyncDatabase(db);
+  assert.equal((await db.get<{ value: string }>("SELECT value FROM sync_meta WHERE key='schema_version'"))?.value, "3");
+  assert.deepEqual(await db.all("SELECT * FROM sync_records"), records);
+  assert.deepEqual((await db.all<object>("SELECT workspace_id, domain_id, authorization_epoch, cursor, bootstrap_state, generation, high_watermark FROM sync_cursors")).map(row => ({ ...row })),
+    [{ workspace_id: "w", domain_id: "tasks", authorization_epoch: "epoch-1", cursor: "cursor-1", bootstrap_state: "complete", generation: "gen-1", high_watermark: null }]);
+  assert.equal((await db.all("SELECT name FROM sqlite_master WHERE name LIKE 'legacy_read_%'")).length, 0, "v2 data is never quarantined");
+  await initializeLocalSyncDatabase(db); await initializeLocalSyncDatabase(db);
+  assert.equal((await db.all<{ name: string }>("PRAGMA table_info(sync_cursors)")).filter(column => column.name === "high_watermark").length, 1);
 });

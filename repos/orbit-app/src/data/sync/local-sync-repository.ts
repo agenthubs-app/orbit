@@ -58,6 +58,10 @@ export interface LocalSyncCursor {
   cursor: string;
   lastSyncedAt: string;
   bootstrapState: LocalSyncBootstrapState;
+  /** Server generation the last page was issued under; null for legacy (v1) cursors. */
+  generation: string | null;
+  /** Server high watermark of the last page; null until a v3 page is applied. */
+  highWatermark: string | null;
 }
 
 export interface LocalSyncOutboxMutation {
@@ -113,6 +117,8 @@ interface SyncCursorRow {
   cursor: string;
   last_successful_sync_at: string;
   bootstrap_state: LocalSyncBootstrapState;
+  generation?: string | null;
+  high_watermark?: string | null;
 }
 
 interface SyncOutboxRow {
@@ -280,13 +286,25 @@ export function createLocalSyncRepository(input: {
     async getScopeCursor(value: ReadScope): Promise<LocalSyncCursor | null> {
       const scope = assertScope(value);
       const row = await database.get<SyncCursorRow>(
-        `SELECT workspace_id, cursor, last_successful_sync_at, bootstrap_state
+        `SELECT workspace_id, cursor, last_successful_sync_at, bootstrap_state, generation, high_watermark
          FROM sync_cursors WHERE workspace_id = ? AND domain_id = ? AND authorization_epoch = ?`,
         scopeParameters(scope),
       );
       return row
-        ? { workspaceId: row.workspace_id, cursor: row.cursor, lastSyncedAt: row.last_successful_sync_at, bootstrapState: row.bootstrap_state }
+        ? { workspaceId: row.workspace_id, cursor: row.cursor, lastSyncedAt: row.last_successful_sync_at, bootstrapState: row.bootstrap_state, generation: row.generation ?? null, highWatermark: row.high_watermark ?? null }
         : null;
+    },
+
+    /** A manifest proved the domain unchanged: the complete cursor is fresh as of now without a page. */
+    async confirmScopeCursor(value: ReadScope, syncedAt: string): Promise<boolean> {
+      const scope = assertScope(value);
+      assertNonEmptyString(syncedAt, "syncedAt");
+      const result = await database.run(
+        `UPDATE sync_cursors SET last_successful_sync_at = ?
+         WHERE workspace_id = ? AND domain_id = ? AND authorization_epoch = ? AND bootstrap_state = 'complete' AND high_watermark IS NOT NULL`,
+        [syncedAt, ...scopeParameters(scope)],
+      );
+      return result.changes === 1;
     },
 
     async rememberWorkspace(workspaceId: string): Promise<void> {
@@ -418,6 +436,8 @@ export function createLocalSyncRepository(input: {
             cursor: row.cursor,
             lastSyncedAt: row.last_successful_sync_at,
             bootstrapState: row.bootstrap_state,
+            generation: null,
+            highWatermark: null,
           }
         : null;
     },
@@ -490,9 +510,9 @@ export function createLocalSyncRepository(input: {
               [page.generation, ...scopeParameters(scope), change.id, change.revision]);
           }
         }
-        await database.run(`INSERT INTO sync_cursors(workspace_id,domain_id,authorization_epoch,cursor,last_successful_sync_at,bootstrap_state,completeness,generation)
-          VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(workspace_id,domain_id,authorization_epoch) DO UPDATE SET cursor=excluded.cursor,last_successful_sync_at=excluded.last_successful_sync_at,bootstrap_state=excluded.bootstrap_state,completeness=excluded.completeness,generation=excluded.generation`,
-        [...scopeParameters(scope), page.nextCursor, page.serverTime, page.hasMore ? "pending" : "complete", page.hasMore ? "partial" : "complete", page.generation]);
+        await database.run(`INSERT INTO sync_cursors(workspace_id,domain_id,authorization_epoch,cursor,last_successful_sync_at,bootstrap_state,completeness,generation,high_watermark)
+          VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(workspace_id,domain_id,authorization_epoch) DO UPDATE SET cursor=excluded.cursor,last_successful_sync_at=excluded.last_successful_sync_at,bootstrap_state=excluded.bootstrap_state,completeness=excluded.completeness,generation=excluded.generation,high_watermark=excluded.high_watermark`,
+        [...scopeParameters(scope), page.nextCursor, page.serverTime, page.hasMore ? "pending" : "complete", page.hasMore ? "partial" : "complete", page.generation, page.highWatermark]);
         await database.run(`INSERT INTO local_read_scope_state VALUES(?,?,?,1) ON CONFLICT(workspace_id,domain_id,authorization_epoch) DO UPDATE SET readable=1`, scopeParameters(scope));
         assertScope(scope); // Roll back if revocation races the transaction.
       });

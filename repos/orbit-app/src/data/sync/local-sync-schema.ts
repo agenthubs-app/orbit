@@ -1,4 +1,4 @@
-export const LOCAL_SYNC_SCHEMA_VERSION = 2;
+export const LOCAL_SYNC_SCHEMA_VERSION = 3;
 
 export const LOCAL_SYNC_SCHEMA_STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS legacy_api_snapshots (
@@ -41,6 +41,7 @@ export const LOCAL_SYNC_SCHEMA_STATEMENTS = [
     bootstrap_state TEXT NOT NULL CHECK (bootstrap_state IN ('pending', 'complete')),
     completeness TEXT NOT NULL CHECK (completeness IN ('partial', 'complete')),
     generation TEXT NOT NULL,
+    high_watermark TEXT,
     PRIMARY KEY (workspace_id, domain_id, authorization_epoch)
   )`,
   `CREATE TABLE IF NOT EXISTS local_read_assets (

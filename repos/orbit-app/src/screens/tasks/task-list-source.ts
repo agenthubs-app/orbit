@@ -1,7 +1,7 @@
 import type { TaskItemContract } from "../../api/contract/tasks";
 import { useSyncedCollection } from "../../hooks/useSyncedCollection";
 import type { MessageKey } from "../../i18n/messages";
-import { readTaskListItems } from "../../view-models/task-list-scope";
+import { mirrorTaskListSource } from "./task-list-source-mirror";
 
 /**
  * Native task list source: the local mirror fed by the lease → domain-page
@@ -32,25 +32,7 @@ export interface TaskListSource {
   confirmMutation(taskId: string, action: "complete" | "reopen"): Promise<boolean>;
 }
 
-function itemsFrom(records: readonly { payload: unknown }[], actorId: string): TaskItemContract[] | null {
-  return readTaskListItems({ tasks: records.map((record) => record.payload) }, actorId);
-}
-
 export function useTaskListSource(input: TaskListSourceInput): TaskListSource {
   const state = useSyncedCollection<Record<string, unknown>>({ kind: "task" });
-  const canonical = input.ready ? itemsFrom(state.records, input.actorId) : null;
-  return {
-    canonical,
-    loading: input.ready && state.status === "local-ready" && state.records.length === 0,
-    failure: state.status === "failure" ? state.error ?? "sync.failure" : null,
-    refreshing: state.status === "syncing",
-    syncLabelKey: `sync.${state.status === "local-ready" ? "localReady" : state.status}` as MessageKey,
-    tasksPayload: undefined,
-    refresh: () => { void state.refresh(); },
-    async confirmMutation(taskId, action) {
-      const mirror = await state.invalidate();
-      const mirrored = mirror?.status === "fresh" ? itemsFrom(mirror.records, input.actorId)?.find((task) => task.id === taskId) : null;
-      return Boolean(mirrored && mirrored.status === (action === "complete" ? "completed" : "open"));
-    },
-  };
+  return mirrorTaskListSource(state, input);
 }

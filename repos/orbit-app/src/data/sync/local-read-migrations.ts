@@ -23,6 +23,13 @@ export async function migrateLocalRead(database: LocalSyncDatabase): Promise<voi
       await database.execute("ALTER TABLE sync_records RENAME TO migration_records_v1");
       await database.execute("ALTER TABLE sync_cursors RENAME TO migration_cursors_v1");
     }
+    if (version === 2) {
+      // v3: the scope cursor remembers the server high watermark so a manifest can prove "unchanged".
+      const columns = await database.all<{ name: string }>("PRAGMA table_info(sync_cursors)");
+      if (!columns.some((column) => column.name === "high_watermark")) {
+        await database.execute("ALTER TABLE sync_cursors ADD COLUMN high_watermark TEXT");
+      }
+    }
     for (const statement of LOCAL_SYNC_SCHEMA_STATEMENTS) await database.execute(statement);
     if (version === 1) {
       await database.execute("DROP TABLE migration_records_v1");

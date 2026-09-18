@@ -17,7 +17,7 @@ test("cold or incomplete bootstrap always synchronizes", () => {
         workspaceId: "workspace-a",
         cursor: "cursor-a",
         lastSyncedAt: new Date(NOW - 1_000).toISOString(),
-        bootstrapState: "pending",
+        bootstrapState: "pending", generation: null, highWatermark: null,
       },
       now: NOW,
     }),
@@ -30,7 +30,7 @@ test("ordinary reads reuse a complete mirror for exactly five minutes", () => {
     workspaceId: "workspace-a",
     cursor: "cursor-a",
     lastSyncedAt: new Date(NOW - SYNC_FRESHNESS_TTL_MS + 1).toISOString(),
-    bootstrapState: "complete" as const,
+    bootstrapState: "complete" as const, generation: null, highWatermark: null,
   };
   assert.equal(shouldSynchronize({ cursor, now: NOW }), false);
   assert.equal(
@@ -51,7 +51,7 @@ test("explicit refresh and invalidation bypass the TTL", () => {
     workspaceId: "workspace-a",
     cursor: "cursor-a",
     lastSyncedAt: new Date(NOW).toISOString(),
-    bootstrapState: "complete" as const,
+    bootstrapState: "complete" as const, generation: null, highWatermark: null,
   };
   assert.equal(
     shouldSynchronize({ cursor, now: NOW, reason: "explicit" }),
@@ -68,7 +68,7 @@ test("foreground refresh starts at sixty seconds in background", () => {
     workspaceId: "workspace-a",
     cursor: "cursor-a",
     lastSyncedAt: new Date(NOW).toISOString(),
-    bootstrapState: "complete" as const,
+    bootstrapState: "complete" as const, generation: null, highWatermark: null,
   };
   assert.equal(
     shouldSynchronize({
@@ -96,7 +96,7 @@ test("invalid and future sync timestamps cannot suppress recovery", () => {
     workspaceId: "workspace-a",
     cursor: "cursor-a",
     lastSyncedAt: "not-a-date",
-    bootstrapState: "complete" as const,
+    bootstrapState: "complete" as const, generation: null, highWatermark: null,
   };
   assert.equal(shouldSynchronize({ cursor, now: NOW }), true);
   assert.equal(

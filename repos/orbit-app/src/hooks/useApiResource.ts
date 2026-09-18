@@ -33,7 +33,7 @@ function unexpectedErrorState<TData>(_error: unknown): RouteState<TData> {
 export function useApiResource<TData>(
   path: string,
   isEmpty: (data: TData) => boolean,
-  { scopeKey, cachePolicy = "default" }: { scopeKey?: string | null; cachePolicy?: "default" | "network-only" } = {}
+  { scopeKey, cachePolicy = "default", enabled = true }: { scopeKey?: string | null; cachePolicy?: "default" | "network-only"; /** false keeps the resource inert (no snapshot read, no request) while another source is authoritative. */ enabled?: boolean } = {}
 ): ApiResourceState<TData> {
   const { baseUrl } = useOrbitApiBaseUrl();
   const auth = useOrbitAuthSession();
@@ -93,7 +93,7 @@ export function useApiResource<TData>(
     const isRefresh = refreshIndex > 0 && !scopeChanged;
     const setState = (state: RouteState<TData>) => setSnapshot({ scopeKey, state });
 
-    if (!auth.ready) {
+    if (!auth.ready || !enabled) {
       setState({ kind: "loading" });
       return () => {
         active = false;
@@ -180,7 +180,7 @@ export function useApiResource<TData>(
       active = false;
       controller?.abort();
     };
-  }, [actorId, auth.ready, baseUrl, cachePolicy, client, path, performanceScenario, refreshIndex, scopeKey]);
+  }, [actorId, auth.ready, baseUrl, cachePolicy, client, enabled, path, performanceScenario, refreshIndex, scopeKey]);
 
   return {
     ...state,
