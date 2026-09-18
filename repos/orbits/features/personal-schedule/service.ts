@@ -177,7 +177,7 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
   return {
     async refreshReminderPlans({ actorId }: { actorId: string }) {
       return withScheduleTransaction(actorId, async store => {
-        const records = await store.listRecords({ workspaceId: input.workspaceId, collectionName, userId: actorId });
+        const records = await store.listRecords({ limit: "unbounded", workspaceId: input.workspaceId, collectionName, userId: actorId });
         for (const record of records) {
           const canonical = canonicalScheduleItemSchema.parse(record.payload);
           if (canonical.kind !== "personal") continue;
@@ -189,7 +189,7 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
     },
     async get({ actorId, id }: { actorId: string; id: string }) { return publicItem(await readPersonalScheduleOccurrence(input.store, actorId, id), now()); },
     async list({ actorId, from, to }: { actorId: string; from?: string; to?: string }) {
-      const records = await input.store.listRecords({ workspaceId: input.workspaceId, collectionName, userId: actorId });
+      const records = await input.store.listRecords({ limit: "unbounded", workspaceId: input.workspaceId, collectionName, userId: actorId });
       const ids = new Set<string>();
       const items = records.flatMap(record => {
         const item = canonicalScheduleItemSchema.parse(record.payload);

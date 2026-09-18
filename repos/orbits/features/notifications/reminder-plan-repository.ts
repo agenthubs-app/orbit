@@ -63,7 +63,7 @@ export function createReminderPlanRepository({
   workspaceId: string;
 }): ReminderPlanRepository {
   async function list<T extends Entity>(collectionName: string, actorId: string): Promise<readonly T[]> {
-    const records = await store.listRecords({ collectionName, userId: actorId, workspaceId });
+    const records = await store.listRecords({ limit: "unbounded", collectionName, userId: actorId, workspaceId });
     return records.flatMap((record) => {
       const entity = (record.payload as StoragePayload).entity;
       return entity && typeof entity === "object" ? [entity as T] : [];
@@ -85,7 +85,7 @@ export function createReminderPlanRepository({
 
   return {
     async listDuePlans(now) {
-      const records = await store.listRecords({ collectionName: COLLECTIONS.plans, workspaceId });
+      const records = await store.listRecords({ limit: "unbounded", collectionName: COLLECTIONS.plans, workspaceId });
       return records.flatMap((record) => {
         const entity = (record.payload as StoragePayload).entity;
         if (!entity || !("fireAt" in entity) || entity.status !== "scheduled" || entity.fireAt > now) return [];

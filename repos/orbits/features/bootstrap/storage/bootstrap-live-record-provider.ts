@@ -483,6 +483,7 @@ async function listCollection(
   accountId?: string,
 ): Promise<readonly LiveRecord<Record<string, unknown>>[]> {
   return store.listRecords({
+    limit: "unbounded",
     workspaceId,
     collectionName,
     userId: accountId,

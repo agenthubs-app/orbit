@@ -41,6 +41,7 @@ export function createConfiguredRelationshipCommunicationService(
     invitationBaseUrl,
     async resolveContact(contactId, ownerAccountId) {
       const records = await configured.store.listRecords({
+        limit: "unbounded",
         collectionName: "contacts",
         userId: ownerAccountId,
         workspaceId: configured.workspaceId,

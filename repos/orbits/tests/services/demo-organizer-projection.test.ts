@@ -31,11 +31,11 @@ test("organizer projection consolidates identities without touching login or use
   assert.equal(plan.length,52);
   assert.deepEqual(source,original);
   for(const row of plan) store.upsertRecord(row);
-  assert.equal(store.listRecords({workspaceId,collectionName:"accounts"}).length,13);
-  assert.equal(store.listRecords({workspaceId,collectionName:"profiles"}).length,13);
-  assert.ok(store.listRecords({workspaceId,collectionName:"profiles"}).every(r=>r.payload.role==="User-edited role" && r.payload.organization));
-  assert.deepEqual(store.listRecords({workspaceId,collectionName:"auth_users"}),source.filter(r=>r.collectionName==="auth_users"));
-  assert.deepEqual(buildDemoOrganizerProjection({records:store.listRecords({workspaceId,includeDeleted:true}),workspaceId,now}),[]);
+  assert.equal(store.listRecords({ limit: "unbounded", workspaceId,collectionName:"accounts"}).length,13);
+  assert.equal(store.listRecords({ limit: "unbounded", workspaceId,collectionName:"profiles"}).length,13);
+  assert.ok(store.listRecords({ limit: "unbounded", workspaceId,collectionName:"profiles"}).every(r=>r.payload.role==="User-edited role" && r.payload.organization));
+  assert.deepEqual(store.listRecords({ limit: "unbounded", workspaceId,collectionName:"auth_users"}),source.filter(r=>r.collectionName==="auth_users"));
+  assert.deepEqual(buildDemoOrganizerProjection({records:store.listRecords({ limit: "unbounded", workspaceId,includeDeleted:true}),workspaceId,now}),[]);
 });
 
 test("organizer projection refuses a different workspace, unknown references, and non-fixture duplicate records", () => {

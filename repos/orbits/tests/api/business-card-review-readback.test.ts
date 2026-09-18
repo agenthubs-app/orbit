@@ -51,7 +51,7 @@ test("HTTP PATCH then GET returns the saved cloud card review, including cleared
   for (const [field, value] of Object.entries(reviewedFields)) {
     assert.equal(body.data.reviewDraft[field], value);
   }
-  assert.equal(store.listRecords({ workspaceId, collectionName: "contacts" }).length, 0);
+  assert.equal(store.listRecords({ limit: "unbounded", workspaceId, collectionName: "contacts" }).length, 0);
 
   const foreign = await createContactDraftGetHandler(async () => ({ id: "other-actor" }))(new Request(url), context);
   const foreignBody = await foreign.json();

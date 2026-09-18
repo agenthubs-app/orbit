@@ -7,6 +7,7 @@ import type {
   LiveRecordListQuery,
   LiveRecordStoreLike,
 } from "./live-record-store";
+import { resolveListLimit } from "./live-record-store";
 import {
   createPostgresReadMetricsRunner,
   type PostgresReadMetricsConfig,
@@ -250,12 +251,16 @@ function listQuery(input: LiveRecordListQuery): {
   }
   if (input.omitSearchText) columns = columns.replace("  search_text,", "  ''::text as search_text,");
 
+  const limit = resolveListLimit(input.limit);
+  if (limit !== null) values.push(limit);
+
   return {
     text: `
       select ${columns}
       from orbit_records
       where ${where.join(" and ")}
       order by coalesce(occurred_at, updated_at) desc, updated_at desc
+      ${limit === null ? "" : `limit $${values.length}`}
     `,
     values,
   };

@@ -123,7 +123,7 @@ test("accepts one suggestion into exactly one task and replays idempotently", as
   assert.deepEqual(replay, accepted);
   assert.equal((await taskService.list({ actorId })).length, 1);
   assert.equal(
-    store.listRecords({ workspaceId, collectionName: "tasks" }).length,
+    store.listRecords({ limit: "unbounded", workspaceId, collectionName: "tasks" }).length,
     1,
   );
   assert.deepEqual(await suggestionService.list({ actorId, now }), []);

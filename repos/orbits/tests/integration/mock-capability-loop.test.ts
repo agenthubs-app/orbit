@@ -74,6 +74,7 @@ async function records(
   collectionName: string,
 ) {
   return harness.store.listRecords({
+    limit: "unbounded",
     collectionName,
     userId: harness.actorId,
     workspaceId: harness.workspaceId,

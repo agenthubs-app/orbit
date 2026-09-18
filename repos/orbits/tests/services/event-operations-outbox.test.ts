@@ -111,15 +111,15 @@ test("relationship projection can be replayed ten times without duplicate legacy
   }
 
   assert.equal(
-    (await store.listRecords({ collectionName: "evidence", workspaceId: WORKSPACE_ID })).length,
+    (await store.listRecords({ limit: "unbounded", collectionName: "evidence", workspaceId: WORKSPACE_ID })).length,
     1,
   );
   assert.equal(
-    (await store.listRecords({ collectionName: "contacts", workspaceId: WORKSPACE_ID })).length,
+    (await store.listRecords({ limit: "unbounded", collectionName: "contacts", workspaceId: WORKSPACE_ID })).length,
     1,
   );
   assert.equal(
-    (await store.listRecords({ collectionName: "connections", workspaceId: WORKSPACE_ID })).length,
+    (await store.listRecords({ limit: "unbounded", collectionName: "connections", workspaceId: WORKSPACE_ID })).length,
     1,
   );
   const contactId = (message.payload.contact as ContactDTO).id;
@@ -143,7 +143,7 @@ test("old active exchange snapshots project only pending acquisition shells and 
   const message = relationshipMessage();
   const snapshot = JSON.stringify(message.payload);
   await projector.project(message);
-  const records = store.listRecords({ workspaceId: WORKSPACE_ID });
+  const records = store.listRecords({ limit: "unbounded", workspaceId: WORKSPACE_ID });
   for (const collectionName of ["contacts", "connections"]) {
     const record = records.find((record) => record.collectionName === collectionName)!;
     assert.equal(record.payload.stage, "captured");
@@ -153,9 +153,9 @@ test("old active exchange snapshots project only pending acquisition shells and 
     assert.equal(record.payload.nextFollowup, undefined);
     store.upsertRecord({ ...record, payload: { ...record.payload, stage: "active", version: 2, lifecycleInitialization: "ready", activeGoal: "Owner's explicit goal" } });
   }
-  const chosen = store.listRecords({ workspaceId: WORKSPACE_ID });
+  const chosen = store.listRecords({ limit: "unbounded", workspaceId: WORKSPACE_ID });
   await Promise.all([projector.project(message), projector.project(message)]);
-  assert.deepEqual(store.listRecords({ workspaceId: WORKSPACE_ID }), chosen);
+  assert.deepEqual(store.listRecords({ limit: "unbounded", workspaceId: WORKSPACE_ID }), chosen);
   assert.equal(JSON.stringify(message.payload), snapshot, "authoritative acceptance snapshot stays immutable");
   assert.equal(records.filter((record) => record.collectionName === "tasks").length, 0);
 });
@@ -169,7 +169,7 @@ test("exchange projection refuses a provider without atomic initialization suppo
     relationshipProvider: { ...provider, initializeAcquiredRelationship: undefined },
   });
   await assert.rejects(projector.project(relationshipMessage()), /atomic.*initialization/i);
-  assert.equal(store.listRecords({ workspaceId: WORKSPACE_ID }).length, 0);
+  assert.equal(store.listRecords({ limit: "unbounded", workspaceId: WORKSPACE_ID }).length, 0);
 });
 
 test("pending projection drops lifecycle choices from queued snapshots and round-trips its marker", async () => {
@@ -184,7 +184,7 @@ test("pending projection drops lifecycle choices from queued snapshots and round
   const staleChoice = { activeGoal: "not owner-authorized", nextFollowup: "2026-09-18", nextAction: { title: "not chosen" }, suggestedActions: ["Follow up automatically"], relationshipStrength: 55 };
   message.payload = { ...message.payload, contact: { ...message.payload.contact as ContactDTO, ...staleChoice }, connection: { ...message.payload.connection as ConnectionDTO, ...staleChoice } };
   await projector.project(message);
-  for (const record of store.listRecords({ workspaceId: WORKSPACE_ID }).filter((record) => record.collectionName !== "evidence")) {
+  for (const record of store.listRecords({ limit: "unbounded", workspaceId: WORKSPACE_ID }).filter((record) => record.collectionName !== "evidence")) {
     for (const field of Object.keys(staleChoice)) assert.equal(record.payload[field], undefined);
   }
   const contact = await provider.getContact((message.payload.contact as ContactDTO).id, "actor:owner");
@@ -239,14 +239,14 @@ test("partial projection retry fills the missing connection without overwriting 
     });
     const message = relationshipMessage();
     await assert.rejects(projector.project(message), /planned connection failure/);
-    const contact = store.listRecords({ workspaceId: WORKSPACE_ID, collectionName: "contacts" })[0];
+    const contact = store.listRecords({ limit: "unbounded", workspaceId: WORKSPACE_ID, collectionName: "contacts" })[0];
     store.upsertRecord({ ...contact, payload: { ...contact.payload, displayName: "Owner edit", stage: "archived", version: 3, lifecycleInitialization: "ready" } });
     if (deleted) store.deleteRecord({ ...contact, deletedAt: "2026-09-17T00:00:00.000Z" });
     const preserved = store.getRecord({ ...contact, includeDeleted: true });
     failConnection = false;
     await projector.project(message);
     assert.deepEqual(store.getRecord({ ...contact, includeDeleted: true }), preserved);
-    const connections = store.listRecords({ workspaceId: WORKSPACE_ID, collectionName: "connections" });
+    const connections = store.listRecords({ limit: "unbounded", workspaceId: WORKSPACE_ID, collectionName: "connections" });
     assert.equal(connections.length, 1);
     assert.equal(connections[0].payload.lifecycleInitialization, "pending");
   }
@@ -302,7 +302,7 @@ test("contact-request lifecycle projects actor-scoped in-app notifications with 
     assert.equal(result.policy, "in_app");
     assert.equal(result.projection, "contact_request_notification");
   }
-  const notifications = await store.listRecords({ collectionName: "notifications", workspaceId: WORKSPACE_ID });
+  const notifications = await store.listRecords({ limit: "unbounded", collectionName: "notifications", workspaceId: WORKSPACE_ID });
   assert.equal(notifications.length, 4);
   assert.deepEqual(notifications.map((record) => record.userId), [
     "actor:target",
@@ -392,6 +392,7 @@ test("registration and check-in events follow explicit durable legacy projection
   assert.equal(
     (
       await store.listRecords({
+        limit: "unbounded",
         collectionName: "event_registrations",
         workspaceId: WORKSPACE_ID,
       })

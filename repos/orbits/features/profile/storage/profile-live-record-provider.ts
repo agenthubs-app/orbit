@@ -217,6 +217,7 @@ export function createStorageProfileProvider({
     actorId: string,
   ): Promise<LiveRecord<Record<string, unknown>> | null> {
     const records = await store.listRecords({
+      limit: "unbounded",
       workspaceId,
       collectionName: PROFILE_LIVE_RECORD_COLLECTIONS.profiles,
       includeDeleted: true,
@@ -251,10 +252,12 @@ export function createStorageProfileProvider({
     async readProfileGraph(actorId): Promise<LiveProfileGraph> {
       const [accountRecords, profileRecords] = await Promise.all([
         store.listRecords({
+          limit: "unbounded",
           workspaceId,
           collectionName: PROFILE_LIVE_RECORD_COLLECTIONS.accounts,
         }),
         store.listRecords({
+          limit: "unbounded",
           workspaceId,
           collectionName: PROFILE_LIVE_RECORD_COLLECTIONS.profiles,
         }),

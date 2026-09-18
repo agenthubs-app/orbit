@@ -113,10 +113,12 @@ async function actorContacts(
 ): Promise<Map<string, string>> {
   const [records, connectionRecords] = await Promise.all([
     store.listRecords({
+      limit: "unbounded",
       collectionName: CONTACT_COLLECTION,
       workspaceId,
     }),
     store.listRecords({
+      limit: "unbounded",
       collectionName: CONNECTION_COLLECTION,
       workspaceId,
     }),
@@ -162,6 +164,7 @@ export function createContactIntroductionRepository(input: {
 
       const [records, contacts] = await Promise.all([
         input.store.listRecords({
+          limit: "unbounded",
           collectionName: INTRODUCTION_COLLECTION,
           workspaceId: input.workspaceId,
         }),

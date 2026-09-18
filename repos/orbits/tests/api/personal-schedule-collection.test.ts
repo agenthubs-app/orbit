@@ -52,7 +52,7 @@ for (const damage of ["record-id", "record-source", "payload-source", "owner", "
     const store = createMemoryLiveRecordStore<Record<string, unknown>>();
     const service = createPersonalScheduleService({ store, workspaceId: "s0042", now: () => "2026-09-16T00:00:00Z" });
     await service.create("actor:a", { title: "Personal review", startsAt: "2026-09-17T00:00:00Z", idempotencyKey: "create" });
-    const records = store.listRecords({ workspaceId: "s0042", collectionName: "personal_schedule_items", userId: "actor:a" });
+    const records = store.listRecords({ limit: "unbounded", workspaceId: "s0042", collectionName: "personal_schedule_items", userId: "actor:a" });
     const row = records[0]!;
     if (damage === "record-id") row.recordId = "wrong-id";
     if (damage === "record-source") row.sourceId = "wrong-source";

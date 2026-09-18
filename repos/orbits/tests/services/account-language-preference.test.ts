@@ -42,7 +42,7 @@ test("an account without a preference follows the device without creating a reco
     success: true,
     data: { mode: "system", language: null, updatedAt: null },
   });
-  assert.equal((await store.listRecords({ workspaceId, collectionName: "account_language_preferences" })).length, 0);
+  assert.equal((await store.listRecords({ limit: "unbounded", workspaceId, collectionName: "account_language_preferences" })).length, 0);
 });
 
 test("manual and system choices are actor scoped and round-trip through storage", async () => {
@@ -142,7 +142,7 @@ test("invalid mode and language combinations fail before writing", async () => {
     assert.equal(result.success, false, JSON.stringify(input));
     if (!result.success) assert.equal(result.error.code, "LANGUAGE_PREFERENCE_MUTATION_INVALID");
   }
-  assert.equal((await store.listRecords({ workspaceId, collectionName: "account_language_preferences" })).length, 0);
+  assert.equal((await store.listRecords({ limit: "unbounded", workspaceId, collectionName: "account_language_preferences" })).length, 0);
 });
 
 test("a corrupt or foreign-owned preference fails closed instead of becoming system mode", async () => {
@@ -158,6 +158,7 @@ test("a corrupt or foreign-owned preference fails closed instead of becoming sys
   });
   assert.equal(saved.success, true);
   const [record] = await store.listRecords({
+    limit: "unbounded",
     workspaceId,
     collectionName: "account_language_preferences",
   });

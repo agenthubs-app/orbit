@@ -31,7 +31,7 @@ async function createSeedStore() {
     workspaceId: WORKSPACE_ID,
   });
   const actorRecords = store
-    .listRecords({ workspaceId: WORKSPACE_ID })
+    .listRecords({ limit: "unbounded", workspaceId: WORKSPACE_ID })
     .filter(
       (record) =>
         record.collectionName === "contacts" ||
@@ -61,10 +61,12 @@ test("business card scan live service derives OCR drafts from business-card cont
     provider,
   });
   const contactsBefore = store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName: "contacts",
   }).length;
   const draftsBefore = store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName: "contactDrafts",
   }).length;
@@ -82,10 +84,12 @@ test("business card scan live service derives OCR drafts from business-card cont
     draftId: LIVE_DRAFT_ID,
   });
   const contactsAfter = store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName: "contacts",
   }).length;
   const draftsAfter = store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName: "contactDrafts",
   }).length;
@@ -154,7 +158,7 @@ test("text-only live scans do not substitute an existing contact for the submitt
   const store = await createSeedStore();
   const provider = createStorageBusinessCardScanOcrProvider({ store, workspaceId: WORKSPACE_ID });
   const service = createLiveBusinessCardScanOcrService({ now: () => NOW, provider });
-  const before = store.listRecords({ workspaceId: WORKSPACE_ID });
+  const before = store.listRecords({ limit: "unbounded", workspaceId: WORKSPACE_ID });
   for (const imageText of ["New Person\nNew Company\nnew@example.invalid", ""]) {
     const result = await service.scanBusinessCard({ actorId: ACTOR_ID, imageText });
     assert.equal(result.success, false);
@@ -162,7 +166,7 @@ test("text-only live scans do not substitute an existing contact for the submitt
     assert.equal(result.error.provenance.liveDatabaseReadExecuted, false);
     assert.equal(result.error.provenance.ocrProviderRequested, false);
   }
-  assert.deepEqual(store.listRecords({ workspaceId: WORKSPACE_ID }), before);
+  assert.deepEqual(store.listRecords({ limit: "unbounded", workspaceId: WORKSPACE_ID }), before);
 });
 
 test("business card scan live service extracts an uploaded image without reading or writing storage", async () => {

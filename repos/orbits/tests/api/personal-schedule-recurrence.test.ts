@@ -100,7 +100,7 @@ test("a repeated ambiguous local time fails validation before persisting a parti
   const f = fixture();
   const result = await f.handlers.POST(f.request("POST", { ...f.fields, startsAt: "2026-10-31T05:30:00Z", endsAt: "2026-10-31T06:30:00Z", timeZone: "America/New_York", recurrence: { frequency: "daily", until: "2026-11-02" } }));
   assert.equal(result.status, 400);
-  assert.equal(f.store.listRecords({ workspaceId: "recurrence-60", collectionName: "personal_schedule_items" }).length, 0);
+  assert.equal(f.store.listRecords({ limit: "unbounded", workspaceId: "recurrence-60", collectionName: "personal_schedule_items" }).length, 0);
 });
 
 test("the windowless Today caller retains today's started recurring instances and readable details", async () => {

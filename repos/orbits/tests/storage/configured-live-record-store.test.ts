@@ -163,10 +163,12 @@ test("configured postgres live record store deduplicates concurrent identical re
 
   await Promise.all([
     storeConfig.store.listRecords({
+      limit: "unbounded",
       workspaceId: storeConfig.workspaceId,
       collectionName: "contacts",
     }),
     storeConfig.store.listRecords({
+      limit: "unbounded",
       workspaceId: storeConfig.workspaceId,
       collectionName: "contacts",
     }),

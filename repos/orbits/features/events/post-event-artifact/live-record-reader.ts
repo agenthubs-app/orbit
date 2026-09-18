@@ -122,6 +122,7 @@ export function createLiveRecordAttendeePostEventAiArtifactReader(input: {
   return {
     async read(query) {
       const records = await input.store.listRecords({
+        limit: "unbounded",
         collectionName: ATTENDEE_POST_EVENT_AI_ARTIFACT_COLLECTION,
         lifecycleState: "active",
         targetId: query.eventId,

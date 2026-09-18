@@ -92,7 +92,7 @@ for (const collection of ["reminderPlans", "personal_schedule_mutations"] as con
   test(`${collection} SQL failure rolls back associated occurrence, series, plans and receipt then releases the connection`, async () => {
     const f = await fixture();
     try {
-      assert.equal((await f.store.listRecords({ workspaceId, collectionName: "reminderPlans" })).length, 3);
+      assert.equal((await f.store.listRecords({ limit: "unbounded", workspaceId, collectionName: "reminderPlans" })).length, 3);
       const occurrenceId = f.scheduleItem.id + ":occurrence:2026-09-20";
       const command = { expectedUpdatedAt: f.scheduleItem.updatedAt, idempotencyKey: "failed-occurrence", scope: "occurrence" as const, patch: { startsAt: "2026-09-20T01:15:00Z", endsAt: "2026-09-20T01:45:00Z" } };
       const before = f.snapshot();

@@ -90,11 +90,11 @@ test("live auth provisioning creates one account and profile and preserves them 
   });
 
   assert.equal(
-    store.listRecords({ workspaceId, collectionName: "accounts" }).length,
+    store.listRecords({ limit: "unbounded", workspaceId, collectionName: "accounts" }).length,
     1,
   );
   assert.equal(
-    store.listRecords({ workspaceId, collectionName: "profiles" }).length,
+    store.listRecords({ limit: "unbounded", workspaceId, collectionName: "profiles" }).length,
     1,
   );
 });

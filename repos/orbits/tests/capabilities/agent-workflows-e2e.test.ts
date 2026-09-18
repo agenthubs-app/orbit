@@ -81,6 +81,7 @@ async function records(
   collectionName: string,
 ) {
   return harness.store.listRecords({
+    limit: "unbounded",
     workspaceId: harness.workspaceId,
     collectionName,
   });
@@ -408,6 +409,7 @@ test("legacy matchmaking workflow rejects before ranking or writing", async () =
   );
   assert.deepEqual(await records(harness, "matchmakingIntroductionRequests"), []);
   assert.deepEqual(await harness.runtimeStore.listRecords({
+    limit: "unbounded",
     workspaceId: harness.workspaceId,
     collectionName: "agentRuns",
   }), []);

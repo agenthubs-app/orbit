@@ -123,7 +123,7 @@ test("the editor payload works through the real authenticated handler and surviv
   const actorId = "actor:industry-editor";
   await seedGeneratedRelationshipFixturesIntoLiveStore({ store, workspaceId });
   for (const collectionName of ["contacts", "connections", "evidence"]) {
-    for (const record of await store.listRecords({ collectionName, workspaceId })) {
+    for (const record of await store.listRecords({ limit: "unbounded", collectionName, workspaceId })) {
       await store.upsertRecord({ ...record, userId: actorId, payload: { ...record.payload, accountId: actorId } });
     }
   }

@@ -44,10 +44,12 @@ test("memory live record store isolates payloads and filters by workspace collec
   const store = createMemoryLiveRecordStore([baseRecord]);
 
   const listed = store.listRecords({
+    limit: "unbounded",
     workspaceId: "workspace:test",
     collectionName: "events",
   });
   const missingWorkspace = store.listRecords({
+    limit: "unbounded",
     workspaceId: "workspace:other",
     collectionName: "events",
   });
@@ -87,6 +89,7 @@ test("memory live record store filters private records by account owner", () => 
   ]);
 
   const ownerRecords = store.listRecords({
+    limit: "unbounded",
     workspaceId: "workspace:test",
     collectionName: "events",
     userId: "account:owner",

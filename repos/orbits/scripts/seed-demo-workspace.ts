@@ -298,6 +298,7 @@ async function main(): Promise<void> {
     });
 
     const existingEvents = await store.listRecords({
+      limit: "unbounded",
       collectionName: "events",
       workspaceId,
     });
@@ -354,6 +355,7 @@ async function main(): Promise<void> {
       eventOwnerById.set(assignment.eventId, user.id);
     }
     const existingReviewedEvents = await store.listRecords({
+      limit: "unbounded",
       collectionName: "events",
       recordIds: [...eventOwnerById.keys()],
       workspaceId,
@@ -420,6 +422,7 @@ async function main(): Promise<void> {
     const naoki = await authProvider.getUserByEmail("naoki-yamamoto@organizers.orbit.example.test");
     if (!naoki) throw new Error("The canonical event_signup_01 organizer account is missing.");
     const existingRegistrations = await store.listRecords({
+      limit: "unbounded",
       collectionName: "event_registrations",
       targetId: event.id,
       targetType: "event",
@@ -485,7 +488,7 @@ async function main(): Promise<void> {
 
     await client.query("BEGIN ISOLATION LEVEL SERIALIZABLE");
     try {
-      const records = await store.listRecords({ workspaceId, includeDeleted: true });
+      const records = await store.listRecords({ limit: "unbounded", workspaceId, includeDeleted: true });
       const projection = buildDemoOrganizerProjection({ records, workspaceId, now: new Date().toISOString() });
       for (const record of projection) await store.upsertRecord(record);
       const relationships = buildDemoRelationshipProjection({ records, workspaceId, now: new Date().toISOString() });

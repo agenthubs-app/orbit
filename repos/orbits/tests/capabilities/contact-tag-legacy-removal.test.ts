@@ -15,7 +15,7 @@ async function fixture() {
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   await seedGeneratedRelationshipFixturesIntoLiveStore({ store, workspaceId });
   for (const collectionName of ["contacts", "connections", "evidence"]) {
-    for (const record of await store.listRecords({ collectionName, workspaceId })) {
+    for (const record of await store.listRecords({ limit: "unbounded", collectionName, workspaceId })) {
       await store.upsertRecord({ ...record, userId: actorId, payload: {
         ...record.payload, accountId: actorId,
       } });
@@ -55,13 +55,13 @@ test("removing more than twenty existing tags is not treated as adding too many 
 
 test("new-tag length and count limits still reject invalid writes without changing storage", async () => {
   const { service, store } = await fixture();
-  const before = await store.listRecords({ workspaceId });
+  const before = await store.listRecords({ limit: "unbounded", workspaceId });
   for (const addTags of [[legacyTags[0]], Array.from({ length: 21 }, (_, index) => `new-${index}`)]) {
     const result = await service().updateContactDetail({ actorId, contactId, addTags });
     assert.equal(result.success, false);
     if (!result.success) assert.equal(result.error.code, "CONTACT_DETAIL_TAG_NOT_SUPPORTED");
   }
-  assert.deepEqual(await store.listRecords({ workspaceId }), before);
+  assert.deepEqual(await store.listRecords({ limit: "unbounded", workspaceId }), before);
 });
 
 test("mock preview uses the same removal policy without relaxing new-tag validation", async () => {

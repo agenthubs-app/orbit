@@ -52,6 +52,7 @@ async function main(): Promise<void> {
 
   try {
     const records = await configuredStore.store.listRecords({
+      limit: "unbounded",
       workspaceId: configuredStore.workspaceId,
       collectionName: AUTH_USER_LIVE_RECORD_COLLECTION,
     });

@@ -300,6 +300,7 @@ async function resolveXiaoyuUser(
   }
 
   const records = await dependencies.store.listRecords({
+    limit: "unbounded",
     workspaceId: dependencies.workspaceId,
     collectionName: "auth_users",
   });
@@ -515,6 +516,7 @@ async function ensureXiaoyuMembership(
     throw new Error("Xiaoyu auth membership conflicts with the reviewed binding.");
   }
   const profiles = await dependencies.store.listRecords({
+    limit: "unbounded",
     workspaceId: dependencies.workspaceId,
     collectionName: "profiles",
   });

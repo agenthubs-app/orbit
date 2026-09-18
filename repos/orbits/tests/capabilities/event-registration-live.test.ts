@@ -266,6 +266,7 @@ test("registration provider persists one live record per event and user", async 
     "profile_ari_lane",
   );
   const records = store.listRecords({
+    limit: "unbounded",
     collectionName: "event_registrations",
     workspaceId: "workspace:test",
   });

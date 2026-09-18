@@ -13,7 +13,7 @@ async function contactNotesFixture() {
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   await seedGeneratedRelationshipFixturesIntoLiveStore({ store, workspaceId });
   for (const collectionName of ["contacts", "connections", "evidence"]) {
-    for (const record of await store.listRecords({ collectionName, workspaceId })) {
+    for (const record of await store.listRecords({ limit: "unbounded", collectionName, workspaceId })) {
       await store.upsertRecord({ ...record, userId: actorId, payload: { ...record.payload, accountId: actorId } });
     }
   }
@@ -74,7 +74,7 @@ test("resubmitting a legacy manual note retains the old note ID and creation tim
 test("private notes remain isolated even when another actor has a connection to the same contact", async () => {
   const { actorId, contactId, workspaceId, store, provider, service } = await contactNotesFixture();
   await service().updateContactDetail({ actorId, contactId, note: { body: "A 的联系人备注", authorLabel: "我" } });
-  const records = await store.listRecords({ workspaceId, collectionName: "connections" });
+  const records = await store.listRecords({ limit: "unbounded", workspaceId, collectionName: "connections" });
   const connection = records.find((record) => record.payload.contactId === contactId);
   assert.ok(connection);
   const otherActor = "actor:other-contact-notes";

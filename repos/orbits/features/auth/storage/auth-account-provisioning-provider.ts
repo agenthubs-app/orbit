@@ -125,6 +125,7 @@ export function createStorageAuthAccountProvisioningProvider({
   return {
     async ensureAccountForUser(user) {
       const profiles = await store.listRecords({
+        limit: "unbounded",
         workspaceId,
         collectionName: "profiles",
         payloadId: user.id,

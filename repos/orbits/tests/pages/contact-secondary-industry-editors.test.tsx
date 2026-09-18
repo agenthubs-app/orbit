@@ -21,7 +21,7 @@ test("contact detail saves a complete pair through HTTP, reopens it, and preserv
   const contactId = "contact_078";
   await seedGeneratedRelationshipFixturesIntoLiveStore({ store, workspaceId });
   for (const collectionName of ["contacts", "connections", "evidence"]) {
-    for (const record of store.listRecords({ workspaceId, collectionName })) {
+    for (const record of store.listRecords({ limit: "unbounded", workspaceId, collectionName })) {
       store.upsertRecord({ ...record, userId: actorId, payload: { ...record.payload, accountId: actorId } });
     }
   }

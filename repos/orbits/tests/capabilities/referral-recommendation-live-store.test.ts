@@ -174,6 +174,7 @@ function activeContactDrafts(
   store: ReturnType<typeof createSeedStore>,
 ): readonly LiveRecord<Record<string, unknown>>[] {
   return store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName: "contactDrafts",
   });
@@ -193,6 +194,7 @@ test("referral staging persists actor-owned contact drafts to the central queue 
 
   const result = await service.createReferralContactDrafts();
   const contacts = store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName: "contacts",
   });
@@ -261,6 +263,7 @@ test("referral confirmation persists the confirmed draft state for the owning ac
     recommendationId: RECOMMENDATION_ID,
   });
   const contacts = store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName: "contacts",
   });
@@ -573,6 +576,7 @@ test("a partial referral staging failure rolls back already-written drafts", asy
   assert.equal(activeContactDrafts(store).length, 0);
 
   const includingDeleted = store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName: "contactDrafts",
     includeDeleted: true,

@@ -432,7 +432,7 @@ export async function readRuntimeContacts(state: RuntimeScenarios, contactId: st
   runtimeCheck(read.data.contact?.id === contactId && read.data.contact.tags.includes(tag)
     && read.data.contact.notes.some((item: { body: string }) => item.body === note), "CONTACT_HTTP_READBACK_FAILED");
   const { CONTACTS_LIVE_RECORD_COLLECTIONS } = await import("../../features/contacts/storage/contact-live-record-provider");
-  const records = await state.fixture.records.store.listRecords({ workspaceId: WORKSPACE_ID, collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.detailStates, userId: state.owner.id, targetId: contactId });
+  const records = await state.fixture.records.store.listRecords({ limit: "unbounded", workspaceId: WORKSPACE_ID, collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.detailStates, userId: state.owner.id, targetId: contactId });
   runtimeCheck(records.length === 1 && Array.isArray(records[0].payload.tags) && records[0].payload.tags.includes(tag)
     && Array.isArray(records[0].payload.notes) && records[0].payload.notes.some((item: any) => item.body === note), "CONTACT_DB_READBACK_FAILED");
 }
@@ -494,7 +494,7 @@ export async function readRuntimeConversation(state: RuntimeScenarios, sessionId
   const provider = createStorageOrbitAgentChatSessionProvider({ store: state.fixture.records.store, workspaceId: WORKSPACE_ID, actorId: state.owner.id });
   const stored = await provider.getSession(sessionId);
   runtimeCheck(stored?.messages.length === count && stored.customTitle === title && stored.pinned === pinned, "CONVERSATION_DB_READBACK_FAILED");
-  const messages = await state.fixture.records.store.listRecords({ workspaceId: orbitAgentChatSessionActorWorkspaceId(WORKSPACE_ID, state.owner.id), collectionName: "orbit_agent_chat_messages", targetId: sessionId });
+  const messages = await state.fixture.records.store.listRecords({ limit: "unbounded", workspaceId: orbitAgentChatSessionActorWorkspaceId(WORKSPACE_ID, state.owner.id), collectionName: "orbit_agent_chat_messages", targetId: sessionId });
   runtimeCheck(messages.length === count && messages.some((row) => row.payload.text === "Deterministic runtime answer"), "CONVERSATION_MESSAGES_DB_FAILED");
 }
 

@@ -41,6 +41,7 @@ test("live event encounter note generates a note base from generated attendees a
   assert.equal(preview.data.provenance.liveNoteStorageExecuted, false);
   assert.equal(
     store.listRecords({
+      limit: "unbounded",
       workspaceId,
       collectionName: EVENT_WORK_RECORD_COLLECTIONS.encounterNotes,
     }).length,

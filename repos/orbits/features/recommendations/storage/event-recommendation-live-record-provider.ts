@@ -438,6 +438,7 @@ export function createStorageEventRecommendationProvider({
           recordId: eventId,
         }),
         store.listRecords({
+          limit: "unbounded",
           workspaceId,
           collectionName:
             EVENT_RECOMMENDATION_LIVE_RECORD_COLLECTIONS.matchRecommendations,
@@ -483,6 +484,7 @@ export function createStorageEventRecommendationProvider({
       ] = await Promise.all([
         attendeeIds.length > 0
           ? store.listRecords({
+              limit: "unbounded",
               workspaceId,
               collectionName:
                 EVENT_RECOMMENDATION_LIVE_RECORD_COLLECTIONS.attendees,
@@ -492,6 +494,7 @@ export function createStorageEventRecommendationProvider({
           : [],
         contactIds.length > 0
           ? store.listRecords({
+              limit: "unbounded",
               workspaceId,
               collectionName:
                 EVENT_RECOMMENDATION_LIVE_RECORD_COLLECTIONS.contacts,
@@ -501,6 +504,7 @@ export function createStorageEventRecommendationProvider({
           : [],
         connectionIds.length > 0
           ? store.listRecords({
+              limit: "unbounded",
               workspaceId,
               collectionName:
                 EVENT_RECOMMENDATION_LIVE_RECORD_COLLECTIONS.connections,
@@ -509,6 +513,7 @@ export function createStorageEventRecommendationProvider({
             })
           : [],
         store.listRecords({
+          limit: "unbounded",
           workspaceId,
           collectionName:
             EVENT_RECOMMENDATION_LIVE_RECORD_COLLECTIONS.eventParticipantIntents,
@@ -516,6 +521,7 @@ export function createStorageEventRecommendationProvider({
         }),
         personIds.length > 0
           ? store.listRecords({
+              limit: "unbounded",
               workspaceId,
               collectionName:
                 EVENT_RECOMMENDATION_LIVE_RECORD_COLLECTIONS.networkPeople,
@@ -525,6 +531,7 @@ export function createStorageEventRecommendationProvider({
           : [],
         evidenceIds.length > 0
           ? store.listRecords({
+              limit: "unbounded",
               workspaceId,
               collectionName: EVENT_RECOMMENDATION_LIVE_RECORD_COLLECTIONS.evidence,
               recordIds: evidenceIds,

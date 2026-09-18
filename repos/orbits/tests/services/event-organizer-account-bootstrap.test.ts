@@ -147,7 +147,7 @@ function createDependencies(options: {
 
 test("builds a stable reviewed 28-item plan, repairs only reviewed owners, and replays idempotently", async () => {
   const { dependencies, store } = createDependencies();
-  const before = store.listRecords({ workspaceId }).length;
+  const before = store.listRecords({ limit: "unbounded", workspaceId }).length;
   const legacyAccount = store.getRecord({
     workspaceId,
     collectionName: "accounts",
@@ -176,7 +176,7 @@ test("builds a stable reviewed 28-item plan, repairs only reviewed owners, and r
   assert.equal(plan.items.length, 28);
   assert.equal(plan.manifestVersion, "event-organizers-v1");
   assert.match(plan.hash, /^[a-f0-9]{64}$/);
-  assert.equal(store.listRecords({ workspaceId }).length, before);
+  assert.equal(store.listRecords({ limit: "unbounded", workspaceId }).length, before);
 
   const first = await applyOrganizerAccountBootstrapPlan({
     expectedCount: 28,
@@ -189,9 +189,9 @@ test("builds a stable reviewed 28-item plan, repairs only reviewed owners, and r
   assert.equal(first.newXiaoyuIdentityBindingCount, 1);
   assert.equal(first.newXiaoyuCanonicalOwnershipRepairCount, 2);
   assert.equal(first.newXiaoyuContactOwnershipRepairCount, 6);
-  assert.equal(store.listRecords({ workspaceId, collectionName: "accounts" }).length, 14);
-  assert.equal(store.listRecords({ workspaceId, collectionName: "contact_actor_links" }).length, 6);
-  const membership = store.listRecords({ workspaceId, collectionName: "profiles" }).find((item) => item.payload.id === xiaoyuUserId);
+  assert.equal(store.listRecords({ limit: "unbounded", workspaceId, collectionName: "accounts" }).length, 14);
+  assert.equal(store.listRecords({ limit: "unbounded", workspaceId, collectionName: "contact_actor_links" }).length, 6);
+  const membership = store.listRecords({ limit: "unbounded", workspaceId, collectionName: "profiles" }).find((item) => item.payload.id === xiaoyuUserId);
   assert.equal(membership?.payload.accountId, xiaoyuAccountId);
   assert.equal(membership?.recordId, `profile:auth-membership:${xiaoyuUserId}`);
   assert.equal(membership?.sourceId, `auth-membership:${xiaoyuUserId}`);
@@ -341,7 +341,7 @@ test("fails closed for an invalid Xiaoyu identity and before a reviewed apply mi
     dependencies: valid.dependencies,
     xiaoyuAuthUserId: xiaoyuUserId,
   });
-  const before = valid.store.listRecords({ workspaceId }).length;
+  const before = valid.store.listRecords({ limit: "unbounded", workspaceId }).length;
   await assert.rejects(
     applyOrganizerAccountBootstrapPlan({
       expectedCount: 19,
@@ -351,7 +351,7 @@ test("fails closed for an invalid Xiaoyu identity and before a reviewed apply mi
     }, valid.dependencies),
     /reviewed organizer account plan mismatch/i,
   );
-  assert.equal(valid.store.listRecords({ workspaceId }).length, before);
+  assert.equal(valid.store.listRecords({ limit: "unbounded", workspaceId }).length, before);
 });
 
 test("pins Xiaoyu to the reviewed auth user ID", async () => {

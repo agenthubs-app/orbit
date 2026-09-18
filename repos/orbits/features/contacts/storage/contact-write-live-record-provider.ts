@@ -263,6 +263,7 @@ export function createStorageBusinessCardContactWriteProvider({
 
     async listContacts(actorId) {
       const records = await store.listRecords({
+        limit: "unbounded",
         collectionName: "contacts",
         lifecycleState: "active",
         workspaceId,

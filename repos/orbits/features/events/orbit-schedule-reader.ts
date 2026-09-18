@@ -88,11 +88,13 @@ export async function listConfiguredOrbitScheduleItems(
   if (!configured) return [];
   const [canonicalRecords, legacyRecords] = await Promise.all([
     configured.store.listRecords({
+      limit: "unbounded",
       workspaceId: configured.workspaceId,
       collectionName: CANONICAL_SCHEDULE_COLLECTION,
       userId: normalizedActorId,
     }),
     configured.store.listRecords({
+      limit: "unbounded",
       workspaceId: configured.workspaceId,
       collectionName: "orbitScheduleItems",
     }),

@@ -65,6 +65,7 @@ export function createScheduleAuthorityService(input: {
     },
     async list({ actorId, includeCancelled = false }: { actorId: string; includeCancelled?: boolean }) {
       const records = await input.store.listRecords({
+        limit: "unbounded",
         collectionName: CANONICAL_SCHEDULE_COLLECTION,
         includeDeleted: includeCancelled,
         userId: actorId,

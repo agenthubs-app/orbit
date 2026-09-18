@@ -163,10 +163,12 @@ test("external contacts live service derives review candidates from live network
 
   const result = await service.listExternalContactCandidates();
   const contacts = store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName: "contacts",
   });
   const contactDrafts = store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName: "contactDrafts",
   });
@@ -213,10 +215,12 @@ test("external contacts live import atomically persists actor-owned central draf
     sourceKind: "google_contacts",
   });
   const contacts = store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName: "contacts",
   });
   const contactDrafts = store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName: "contactDrafts",
   });
@@ -258,6 +262,7 @@ test("external contact candidates are isolated by actor ownership metadata", asy
 
   for (const collectionName of ["contacts", "evidence", "networkPeople"]) {
     const records = store.listRecords({
+      limit: "unbounded",
       workspaceId: WORKSPACE_ID,
       collectionName,
     });
@@ -376,6 +381,7 @@ test("external contact import replay is stable and never downgrades a confirmed 
   );
   assert.equal(
     store.listRecords({
+      limit: "unbounded",
       workspaceId: WORKSPACE_ID,
       collectionName: "contacts",
     }).length,
@@ -408,6 +414,7 @@ test("external contact import fails atomically before any central draft is visib
   assert.equal(result.error.provenance.contactDraftWriteExecuted, false);
   assert.equal(
     store.listRecords({
+      limit: "unbounded",
       workspaceId: WORKSPACE_ID,
       collectionName: "contactDrafts",
     }).length,
@@ -441,10 +448,12 @@ test("the storage provider rolls back an unexpected second-draft write failure t
   });
   const result = await service.importExternalContacts();
   const activeDrafts = backingStore.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName: "contactDrafts",
   });
   const allDrafts = backingStore.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName: "contactDrafts",
     includeDeleted: true,
@@ -463,6 +472,7 @@ test("the storage provider rolls back an unexpected second-draft write failure t
 test("the same provider person id produces stable per-actor ids without cross-account overwrite", async () => {
   const store = createSeedStore();
   const actorARecords = store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName: "networkPeople",
   });
@@ -476,6 +486,7 @@ test("the same provider person id produces stable per-actor ids without cross-ac
   }
 
   for (const sourceRecord of store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName: "evidence",
   })) {

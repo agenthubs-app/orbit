@@ -254,6 +254,7 @@ export function createStorageEventStoreProvider({
       }
 
       const records = await store.listRecords({
+          limit: "unbounded",
           workspaceId,
           collectionName: EVENTS_LIVE_RECORD_COLLECTION,
         });

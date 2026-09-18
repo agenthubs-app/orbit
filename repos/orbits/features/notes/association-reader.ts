@@ -22,6 +22,7 @@ export function createNoteAssociationReader(input: {
     async accessibleEventIds({ ids }) {
       if (ids.length === 0) return [];
       const records = await input.store.listRecords({
+        limit: "unbounded",
         workspaceId: input.workspaceId,
         collectionName: EVENTS_LIVE_RECORD_COLLECTION,
         recordIds: [...new Set(ids)],

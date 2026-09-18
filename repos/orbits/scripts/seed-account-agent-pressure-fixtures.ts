@@ -400,6 +400,7 @@ async function verifyRecords(input: {
   for (const collectionName of SEEDED_COLLECTIONS) {
     const expected = fixtureRecordsFor(collectionName).length;
     const records = await input.store.listRecords({
+      limit: "unbounded",
       collectionName,
       userId: input.actorId,
       workspaceId: input.workspaceId,
@@ -415,6 +416,7 @@ async function verifyRecords(input: {
   }
 
   const registrations = await input.store.listRecords({
+    limit: "unbounded",
     collectionName: "event_registrations",
     userId: input.actorId,
     workspaceId: input.workspaceId,
@@ -475,6 +477,7 @@ async function cleanupRecords(input: {
 
   for (const collectionName of [...SEEDED_COLLECTIONS, "event_registrations"] as const) {
     const records = await input.store.listRecords({
+      limit: "unbounded",
       collectionName,
       userId: input.actorId,
       workspaceId: input.workspaceId,

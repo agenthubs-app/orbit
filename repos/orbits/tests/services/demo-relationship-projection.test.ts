@@ -17,18 +17,18 @@ async function fixtureStore() {
 
 test("demo relationships have one canonical edge and current task per contact, valid lifecycle and replay safety", async () => {
   const store = await fixtureStore();
-  const records = store.listRecords({workspaceId, includeDeleted:true});
+  const records = store.listRecords({ limit: "unbounded", workspaceId, includeDeleted:true});
   const original = structuredClone(records);
   assert.equal(assessRelationshipLifecycleMigration({records, workspaceId, actorId}).readyForCutover, false);
   const plan = buildDemoRelationshipProjection({records, workspaceId, now});
   assert.deepEqual(records, original);
   for (const row of plan) store.upsertRecord(row);
-  const after = store.listRecords({workspaceId, includeDeleted:true});
+  const after = store.listRecords({ limit: "unbounded", workspaceId, includeDeleted:true});
   const report = assessRelationshipLifecycleMigration({records:after, workspaceId, actorId});
   assert.equal(report.readyForCutover, true, JSON.stringify(report.issues));
   assert.equal(report.counts.contacts, 66);
   assert.equal(report.counts.connections, 66);
-  const tasks = store.listRecords({workspaceId, collectionName:"tasks"});
+  const tasks = store.listRecords({ limit: "unbounded", workspaceId, collectionName:"tasks"});
   assert.equal(tasks.filter(r=>["open","scheduled"].includes(String(r.payload.status))).length, 66);
   assert.equal(tasks.filter(r=>r.payload.status==="dismissed").length, 14);
   assert.equal(after.filter(r=>r.collectionName==="connections" && r.lifecycleState==="deleted").length, 384);
@@ -45,14 +45,14 @@ test("demo relationships have one canonical edge and current task per contact, v
 
 test("demo lifecycle projection refuses wrong scope, edited source, partial replay and unknown live references", async () => {
   const store = await fixtureStore();
-  const records = store.listRecords({workspaceId, includeDeleted:true});
+  const records = store.listRecords({ limit: "unbounded", workspaceId, includeDeleted:true});
   assert.throws(()=>buildDemoRelationshipProjection({records,workspaceId:"other",now}), /exact demo/);
   assert.throws(()=>buildDemoRelationshipProjection({records,workspaceId,now:"bad"}));
   const first = records.find(r=>r.collectionName==="connections")!;
   assert.throws(()=>buildDemoRelationshipProjection({records:records.map(r=>r===first?{...r,payload:{...r.payload,summary:"User edit"}}:r),workspaceId,now}), /edited|fixture/);
   const plan = buildDemoRelationshipProjection({records,workspaceId,now});
   store.upsertRecord(plan[0]!);
-  assert.throws(()=>buildDemoRelationshipProjection({records:store.listRecords({workspaceId,includeDeleted:true}),workspaceId,now}), /partial/);
+  assert.throws(()=>buildDemoRelationshipProjection({records:store.listRecords({ limit: "unbounded", workspaceId,includeDeleted:true}),workspaceId,now}), /partial/);
   const retired = plan.find(r=>r.collectionName==="connections" && r.lifecycleState==="deleted")!;
   assert.throws(()=>buildDemoRelationshipProjection({records:[...records,{...first,collectionName:"unknown",recordId:"new",payload:{connectionId:retired.recordId}}],workspaceId,now}), /Unresolved/);
 });

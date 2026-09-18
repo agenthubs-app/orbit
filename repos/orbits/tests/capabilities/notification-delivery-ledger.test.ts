@@ -61,6 +61,7 @@ test("push device registration is actor scoped and never returns the raw token",
   assert.equal((await deviceService("actor-b", recordStore).listActive()).length, 0);
   assert.equal((await service.listActive()).length, 1);
   const records = await recordStore.listRecords({
+    limit: "unbounded",
     collectionName: "pushDevices",
     workspaceId: "notification-ledger-test",
   });
@@ -401,6 +402,7 @@ test("server actor enumeration sees only active granted devices and preserves ac
       assert.match(text, /collection_name = \$2/u);
       assert.deepEqual(values, ["notification-ledger-test", "pushDevices"]);
       const records = await recordStore.listRecords({
+        limit: "unbounded",
         collectionName: "pushDevices",
         lifecycleState: "active",
         workspaceId: "notification-ledger-test",

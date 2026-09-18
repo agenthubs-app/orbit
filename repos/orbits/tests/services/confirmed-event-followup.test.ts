@@ -92,9 +92,9 @@ test("confirmation re-reads evidence and idempotently creates one real task and 
   assert.equal(first.sourceText, "Introduce the retail operations lead");
   assert.equal(first.dueAt, "2026-08-08T08:00:00.000Z");
 
-  const tasks = await store.listRecords({ collectionName: "tasks", userId: ACTOR, workspaceId: WORKSPACE });
-  const reminders = await store.listRecords({ collectionName: "notifications", userId: ACTOR, workspaceId: WORKSPACE });
-  const markers = await store.listRecords({ collectionName: CONFIRMED_EVENT_FOLLOWUP_COLLECTION, userId: ACTOR, workspaceId: WORKSPACE });
+  const tasks = await store.listRecords({ limit: "unbounded", collectionName: "tasks", userId: ACTOR, workspaceId: WORKSPACE });
+  const reminders = await store.listRecords({ limit: "unbounded", collectionName: "notifications", userId: ACTOR, workspaceId: WORKSPACE });
+  const markers = await store.listRecords({ limit: "unbounded", collectionName: CONFIRMED_EVENT_FOLLOWUP_COLLECTION, userId: ACTOR, workspaceId: WORKSPACE });
   assert.equal(tasks.length, 1);
   assert.equal(reminders.length, 1);
   assert.equal(markers.length, 1);
@@ -146,13 +146,13 @@ test("a retry heals a task persisted before a transient reminder failure without
   });
   const request = { actorId: ACTOR, encounterId: "encounter:aiko-ren", eventId: EVENT, sourceIndex: 0, sourceKind: "commitment" as const };
   await assert.rejects(() => service.confirm(request), /transient reminder store failure/);
-  assert.equal((await store.listRecords({ collectionName: CONFIRMED_EVENT_FOLLOWUP_COLLECTION, workspaceId: WORKSPACE })).length, 1);
-  assert.equal((await store.listRecords({ collectionName: "tasks", workspaceId: WORKSPACE })).length, 1);
-  assert.equal((await store.listRecords({ collectionName: "notifications", workspaceId: WORKSPACE })).length, 0);
+  assert.equal((await store.listRecords({ limit: "unbounded", collectionName: CONFIRMED_EVENT_FOLLOWUP_COLLECTION, workspaceId: WORKSPACE })).length, 1);
+  assert.equal((await store.listRecords({ limit: "unbounded", collectionName: "tasks", workspaceId: WORKSPACE })).length, 1);
+  assert.equal((await store.listRecords({ limit: "unbounded", collectionName: "notifications", workspaceId: WORKSPACE })).length, 0);
   const healed = await service.confirm(request);
   assert.equal(healed.state, "created");
-  assert.equal((await store.listRecords({ collectionName: "tasks", workspaceId: WORKSPACE })).length, 1);
-  assert.equal((await store.listRecords({ collectionName: "notifications", workspaceId: WORKSPACE })).length, 1);
+  assert.equal((await store.listRecords({ limit: "unbounded", collectionName: "tasks", workspaceId: WORKSPACE })).length, 1);
+  assert.equal((await store.listRecords({ limit: "unbounded", collectionName: "notifications", workspaceId: WORKSPACE })).length, 1);
 });
 
 test("reads terminal and scheduled task/reminder states without reopening or repairing completed and dismissed work", async () => {
@@ -191,7 +191,7 @@ test("reads terminal and scheduled task/reminder states without reopening or rep
 test("rejects a deterministic marker with the wrong actor or event target boundary", async () => {
   const { service, store } = fixture();
   const created = await service.confirm({ actorId: ACTOR, encounterId: "encounter:aiko-ren", eventId: EVENT, sourceIndex: 0, sourceKind: "next_step" });
-  const markers = await store.listRecords({ collectionName: CONFIRMED_EVENT_FOLLOWUP_COLLECTION, userId: ACTOR, workspaceId: WORKSPACE });
+  const markers = await store.listRecords({ limit: "unbounded", collectionName: CONFIRMED_EVENT_FOLLOWUP_COLLECTION, userId: ACTOR, workspaceId: WORKSPACE });
   assert.equal(markers.length, 1);
   await store.upsertRecord({ ...markers[0]!, targetId: "event:wrong" });
   await assert.rejects(() => service.confirm({ actorId: ACTOR, encounterId: "encounter:aiko-ren", eventId: EVENT, sourceIndex: 0, sourceKind: "next_step" }), /different evidence/);

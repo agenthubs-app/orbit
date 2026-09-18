@@ -57,7 +57,7 @@ test("replays an idempotent create without adding another record or activity", a
 
   assert.deepEqual(replay, first);
   assert.equal(
-    store.listRecords({ workspaceId, collectionName: "tasks" }).length,
+    store.listRecords({ limit: "unbounded", workspaceId, collectionName: "tasks" }).length,
     1,
   );
   assert.equal((await service.history({ actorId })).length, 1);

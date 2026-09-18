@@ -22,7 +22,7 @@ test("live followup task generation reads generated tasks from shared live stora
     workspaceId,
   });
   for (const collectionName of ["tasks", "contacts", "connections", "evidence"]) {
-    const records = await store.listRecords({ collectionName, workspaceId });
+    const records = await store.listRecords({ limit: "unbounded", collectionName, workspaceId });
     for (const record of records) {
       await store.upsertRecord({
         ...record,
@@ -32,7 +32,7 @@ test("live followup task generation reads generated tasks from shared live stora
     }
   }
   const firstTaskRecord = (
-    await store.listRecords({ collectionName: "tasks", workspaceId })
+    await store.listRecords({ limit: "unbounded", collectionName: "tasks", workspaceId })
   )[0];
   assert.ok(firstTaskRecord);
   await store.upsertRecord({
@@ -133,6 +133,7 @@ test("live followup task generation reads generated tasks from shared live stora
   }
 
   const taskRecords = await store.listRecords({
+    limit: "unbounded",
     collectionName: "tasks",
     workspaceId,
   });

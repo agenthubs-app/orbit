@@ -32,6 +32,7 @@ async function main(): Promise<void> {
 
     for (const expected of EVENT_LIVE_SEED_EXPECTED_RECORDS) {
       const records = await store.listRecords({
+        limit: "unbounded",
         workspaceId: config.workspaceId,
         collectionName: expected.collectionName,
       });

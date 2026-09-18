@@ -101,6 +101,7 @@ test("profile suggestion decisions persist by actor and replay the same mutation
   });
   assert.deepEqual(storedProfile?.payload, originalProfile?.payload);
   const decisionRecords = await store.listRecords({
+    limit: "unbounded",
     collectionName: "profileSuggestionDecisions",
     workspaceId,
   });
@@ -133,7 +134,7 @@ test("concurrent opposite suggestion decisions keep the first durable result", a
   assert.equal([accepted, dismissed].filter(result => result.success).length, 1);
   assert.equal([accepted, dismissed].reduce((count, result) =>
     count + (result.success === false && result.error.code === "PROFILE_SIGNAL_SUGGESTION_ALREADY_RESOLVED" ? 1 : 0), 0), 1);
-  const records = await store.listRecords({ collectionName: "profileSuggestionDecisions", workspaceId });
+  const records = await store.listRecords({ limit: "unbounded", collectionName: "profileSuggestionDecisions", workspaceId });
   assert.equal(records.length, 1);
   const durable = records[0]?.payload;
   assert.ok(durable?.mutationId === "decision:race:accept" || durable?.mutationId === "decision:race:dismiss");

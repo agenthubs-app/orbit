@@ -34,6 +34,11 @@ export interface LiveRecordListQuery {
   payloadAccountId?: string;
   /** Internal read-model projection. Does not alter the persisted record. */
   payloadFields?: readonly string[];
+  /**
+   * Row cap pushed into storage. There is no default: an unbounded read must be
+   * spelled `"unbounded"`, which the audit ratchet counts and only lets shrink.
+   */
+  limit: number | "unbounded";
   omitSearchText?: boolean;
   collectionName?: string;
   includeDeleted?: boolean;
@@ -75,6 +80,15 @@ export interface LiveRecordWritePrecondition {
 }
 
 export type LiveRecordStoreResult<TValue> = TValue | Promise<TValue>;
+
+/** Validates a list limit; returns null for an explicitly unbounded read. */
+export function resolveListLimit(limit: LiveRecordListQuery["limit"]): number | null {
+  if (limit === "unbounded") return null;
+  if (!Number.isSafeInteger(limit) || limit < 1) {
+    throw new RangeError(`listRecords limit must be a positive integer or "unbounded", got ${String(limit)}`);
+  }
+  return limit;
+}
 
 export interface LiveRecordStoreLike<TPayload extends Record<string, unknown> = Record<string, unknown>> {
   /** Compare-and-swap: never inserts, transfers ownership, or revives a tombstone. */
@@ -215,8 +229,10 @@ export function createMemoryLiveRecordStore<
       return cloneJson(record);
     },
     listRecords(query) {
-      return Array.from(records.values())
-        .filter((record) => matchesListQuery(record, query))
+      const limit = resolveListLimit(query.limit);
+      const matched = Array.from(records.values())
+        .filter((record) => matchesListQuery(record, query));
+      return (limit === null ? matched : matched.slice(0, limit))
         .map((record) => cloneJson({
           ...record,
           ...(query.payloadFields ? {

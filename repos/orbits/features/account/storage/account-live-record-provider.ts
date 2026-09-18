@@ -153,12 +153,14 @@ export function createStorageAccountSessionProvider({
       }
       if (subject) {
         let profileRecords = await store.listRecords({
+          limit: "unbounded",
           workspaceId,
           collectionName: ACCOUNT_SESSION_LIVE_RECORD_COLLECTIONS.profiles,
           payloadId: subject,
         });
         if (profileRecords.length === 0) {
           profileRecords = await store.listRecords({
+            limit: "unbounded",
             workspaceId,
             collectionName: ACCOUNT_SESSION_LIVE_RECORD_COLLECTIONS.profiles,
             payloadAccountId: identity?.accountId ?? subject,
@@ -166,6 +168,7 @@ export function createStorageAccountSessionProvider({
         }
         const ids = [...new Set(profileRecords.map(record => record.payload.accountId).filter(nonEmptyString))];
         const accountRecords = (await Promise.all(ids.map(payloadId => store.listRecords({
+          limit: "unbounded",
           workspaceId,
           collectionName: ACCOUNT_SESSION_LIVE_RECORD_COLLECTIONS.accounts,
           payloadId,
@@ -180,10 +183,12 @@ export function createStorageAccountSessionProvider({
       }
       const [accountRecords, profileRecords] = await Promise.all([
         store.listRecords({
+          limit: "unbounded",
           workspaceId,
           collectionName: ACCOUNT_SESSION_LIVE_RECORD_COLLECTIONS.accounts,
         }),
         store.listRecords({
+          limit: "unbounded",
           workspaceId,
           collectionName: ACCOUNT_SESSION_LIVE_RECORD_COLLECTIONS.profiles,
         }),

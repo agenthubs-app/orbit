@@ -172,6 +172,7 @@ export function createStoragePushDeviceService({
   return {
     async listActive() {
       const records = await store.listRecords({
+        limit: "unbounded",
         collectionName: PUSH_DEVICE_COLLECTION,
         lifecycleState: "active",
         userId: normalizedActorId,

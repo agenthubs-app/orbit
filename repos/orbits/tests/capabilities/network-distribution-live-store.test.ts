@@ -19,6 +19,7 @@ test("live network distribution analytics reads generated graph and remains read
   });
 
   const contactRecords = store.listRecords({
+    limit: "unbounded",
     collectionName: "contacts",
     workspaceId,
   });

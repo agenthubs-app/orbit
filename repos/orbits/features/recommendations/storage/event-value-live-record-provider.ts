@@ -246,16 +246,19 @@ export function createStorageEventValueRecommendationProvider({
     const [eventRecords, attendeeRecords, recommendationRecords] =
       await Promise.all([
         store.listRecords({
+          limit: "unbounded",
           workspaceId,
           collectionName: EVENT_VALUE_LIVE_RECORD_COLLECTIONS.events,
           userId: accountId,
         }),
         store.listRecords({
+          limit: "unbounded",
           workspaceId,
           collectionName: EVENT_VALUE_LIVE_RECORD_COLLECTIONS.attendees,
           userId: accountId,
         }),
         store.listRecords({
+          limit: "unbounded",
           workspaceId,
           collectionName:
             EVENT_VALUE_LIVE_RECORD_COLLECTIONS.matchRecommendations,

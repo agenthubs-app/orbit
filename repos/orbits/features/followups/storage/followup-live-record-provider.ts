@@ -281,18 +281,22 @@ export function createStorageFollowupTaskProvider({
       const [taskRecords, contactRecords, connectionRecords, evidenceRecords] =
         await Promise.all([
           store.listRecords({
+            limit: "unbounded",
             workspaceId,
             collectionName: FOLLOWUP_LIVE_RECORD_COLLECTIONS.tasks,
           }),
           store.listRecords({
+            limit: "unbounded",
             workspaceId,
             collectionName: FOLLOWUP_LIVE_RECORD_COLLECTIONS.contacts,
           }),
           store.listRecords({
+            limit: "unbounded",
             workspaceId,
             collectionName: FOLLOWUP_LIVE_RECORD_COLLECTIONS.connections,
           }),
           store.listRecords({
+            limit: "unbounded",
             workspaceId,
             collectionName: FOLLOWUP_LIVE_RECORD_COLLECTIONS.evidence,
           }),

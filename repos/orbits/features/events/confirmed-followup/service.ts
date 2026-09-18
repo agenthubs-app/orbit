@@ -268,6 +268,7 @@ export function createConfirmedEventFollowupService(input: {
 }): ConfirmedEventFollowupService {
   async function records(actorId: string, collectionName: "notifications" | "tasks") {
     return input.store.listRecords({
+      limit: "unbounded",
       collectionName,
       lifecycleState: "active",
       userId: actorId,
@@ -283,6 +284,7 @@ export function createConfirmedEventFollowupService(input: {
       records(actorId, "tasks"),
       records(actorId, "notifications"),
       input.store.listRecords({
+        limit: "unbounded",
         collectionName: CONFIRMED_EVENT_FOLLOWUP_COLLECTION,
         lifecycleState: "active",
         targetId: eventId,
@@ -298,6 +300,7 @@ export function createConfirmedEventFollowupService(input: {
     const contactIds = [...new Set(eligible.map((encounter) => encounter.contactId))];
     const contacts = contactIds.length
       ? await input.store.listRecords({
+          limit: "unbounded",
           collectionName: "contacts",
           lifecycleState: "active",
           recordIds: contactIds,

@@ -140,6 +140,7 @@ test("contact invitation API persists actor-owned drafts and rejects cross-actor
   assert.equal(
     (
       await store.listRecords({
+        limit: "unbounded",
         collectionName: "contact_invitations",
         userId: actorA.id,
         workspaceId: WORKSPACE_ID,
@@ -226,6 +227,7 @@ test("contact invitation API requires an authenticated actor before storage", as
   assert.equal(
     (
       await store.listRecords({
+        limit: "unbounded",
         collectionName: "contact_invitations",
         workspaceId: WORKSPACE_ID,
       })

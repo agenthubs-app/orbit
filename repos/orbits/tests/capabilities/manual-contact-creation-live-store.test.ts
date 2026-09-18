@@ -40,6 +40,7 @@ function listCollection(
   collectionName: string,
 ): readonly LiveRecord<Record<string, unknown>>[] {
   return store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName,
   });

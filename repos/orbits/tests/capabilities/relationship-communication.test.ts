@@ -212,6 +212,7 @@ test("an orphaned conversation cannot bypass the current binding after an accept
   });
   const bindingRecord = (
     await store.listRecords({
+      limit: "unbounded",
       collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.bindings,
       workspaceId: WORKSPACE_ID,
     })
@@ -286,8 +287,8 @@ test('conversation cursor pages use stable ties and cannot be reused by another 
   const { sender, recipient, store } = harness();
   const invitation = await sender.createInvitation({ contactId: CONTACT_ID, recipientEmail: 'receiver@example.test', recipientName: 'Receiver' });
   await recipient.acceptInvitation({ confirmed: true, token: invitation.token });
-  const original = (await store.listRecords({ workspaceId: WORKSPACE_ID, collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.conversations }))[0]!;
-  const binding = (await store.listRecords({ workspaceId: WORKSPACE_ID, collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.bindings }))[0]!;
+  const original = (await store.listRecords({ limit: "unbounded", workspaceId: WORKSPACE_ID, collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.conversations }))[0]!;
+  const binding = (await store.listRecords({ limit: "unbounded", workspaceId: WORKSPACE_ID, collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.bindings }))[0]!;
   for (const suffix of ['b', 'c']) {
     const id = String(original.payload.conversationId) + suffix;
     const bindingId = binding.recordId + suffix;

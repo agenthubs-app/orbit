@@ -185,6 +185,7 @@ export function createStorageContactActorLinkProvider({
 }: StorageContactActorLinkProviderOptions): ContactActorLinkProvider {
   async function listOwnerRecords(ownerActorId: string) {
     return store.listRecords({
+      limit: "unbounded",
       workspaceId,
       collectionName: CONTACT_ACTOR_LINK_COLLECTION,
       includeDeleted: true,

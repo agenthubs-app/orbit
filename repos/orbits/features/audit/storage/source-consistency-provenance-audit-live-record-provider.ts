@@ -70,6 +70,7 @@ export function createStorageSourceConsistencyProvenanceAuditProvider({
         SOURCE_CONSISTENCY_PROVENANCE_AUDIT_LIVE_RECORD_COLLECTIONS,
       ).map(async ([entityKind, collectionName]) => {
         const records = await store.listRecords({
+          limit: "unbounded",
           collectionName,
           userId: accountId,
           workspaceId,

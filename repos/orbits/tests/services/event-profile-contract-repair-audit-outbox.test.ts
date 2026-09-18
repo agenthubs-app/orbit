@@ -261,7 +261,7 @@ test("profile repair outbox projection is explicit canonical-only and replay-saf
       });
     }
   }
-  assert.deepEqual(await store.listRecords({ workspaceId: WORKSPACE_ID }), []);
+  assert.deepEqual(await store.listRecords({ limit: "unbounded", workspaceId: WORKSPACE_ID }), []);
 });
 
 test("profile repair projector fails closed without echoing payload or unknown event values", async () => {

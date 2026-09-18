@@ -105,8 +105,8 @@ export async function dryRunScheduleMigration(input: {
   workspaceId: string;
 }): Promise<ScheduleMigrationDryRun> {
   const [legacyRecords, canonicalRecords] = await Promise.all([
-    input.store.listRecords({ collectionName: "orbitScheduleItems", workspaceId: input.workspaceId }),
-    input.store.listRecords({ collectionName: CANONICAL_SCHEDULE_COLLECTION, includeDeleted: true, workspaceId: input.workspaceId }),
+    input.store.listRecords({ limit: "unbounded", collectionName: "orbitScheduleItems", workspaceId: input.workspaceId }),
+    input.store.listRecords({ limit: "unbounded", collectionName: CANONICAL_SCHEDULE_COLLECTION, includeDeleted: true, workspaceId: input.workspaceId }),
   ]);
   return planScheduleMigrationDryRun({
     actorId: input.actorId,

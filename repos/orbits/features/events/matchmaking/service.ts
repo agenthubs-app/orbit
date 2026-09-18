@@ -415,6 +415,7 @@ export function createEventMatchmakingService(input: {
     },
     async organizerMetrics({ eventId, actorId }) {
       const records = await input.store.listRecords({
+        limit: "unbounded",
         workspaceId: input.workspaceId,
         collectionName: "matchmakingIntroductionRequests",
       });
@@ -487,6 +488,7 @@ export function createEventMatchmakingService(input: {
     },
     async listRequests({ eventId, actorId }) {
       const records = await input.store.listRecords({
+        limit: "unbounded",
         workspaceId: input.workspaceId,
         collectionName: "matchmakingIntroductionRequests",
         targetId: eventId,

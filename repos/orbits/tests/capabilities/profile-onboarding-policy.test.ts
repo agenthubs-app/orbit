@@ -25,7 +25,7 @@ test("empty profile reports authoritative missing fields without creating a reco
     policyVersion: 1, status: "incomplete",
     missingFields: ["displayName", "primaryIndustryId", "secondaryIndustryId", "birthDate"],
   });
-  assert.deepEqual(await store.listRecords({ workspaceId: "onboarding-policy", collectionName: "profiles" }), []);
+  assert.deepEqual(await store.listRecords({ limit: "unbounded", workspaceId: "onboarding-policy", collectionName: "profiles" }), []);
 });
 
 for (const mode of ["live", "mock"] as const) {

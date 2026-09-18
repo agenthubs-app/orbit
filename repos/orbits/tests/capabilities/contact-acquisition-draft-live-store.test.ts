@@ -169,6 +169,7 @@ test("contact acquisition draft live confirmation updates only contactDrafts sto
     recordId: DRAFT_ID,
   });
   const contacts = store.listRecords({
+    limit: "unbounded",
     workspaceId: WORKSPACE_ID,
     collectionName: "contacts",
   });

@@ -27,7 +27,7 @@ test("live reminder notification service reads generated notifications without d
     "connections",
     "evidence",
   ]) {
-    const records = await store.listRecords({ collectionName, workspaceId });
+    const records = await store.listRecords({ limit: "unbounded", collectionName, workspaceId });
     for (const record of records) {
       await store.upsertRecord({ ...record, userId: actorId });
     }

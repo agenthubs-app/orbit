@@ -104,6 +104,7 @@ export async function migrateContactPrimaryIndustries(input: {
   workspaceId: string;
 }): Promise<ContactPrimaryIndustryMigrationReport> {
   const records = await input.store.listRecords({
+    limit: "unbounded",
     collectionName: "contacts",
     lifecycleState: "active",
     userId: input.actorId,

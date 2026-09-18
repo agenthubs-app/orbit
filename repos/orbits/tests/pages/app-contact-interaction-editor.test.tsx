@@ -163,7 +163,7 @@ test("real PATCH persists interaction through a lost reply without overwriting o
   const id = "contact_078";
   await seedGeneratedRelationshipFixturesIntoLiveStore({ store, workspaceId });
   for (const collectionName of ["contacts", "connections", "evidence"]) {
-    for (const record of await store.listRecords({ collectionName, workspaceId })) {
+    for (const record of await store.listRecords({ limit: "unbounded", collectionName, workspaceId })) {
       await store.upsertRecord({ ...record, userId: actorId, payload: { ...record.payload, accountId: actorId } });
     }
   }
