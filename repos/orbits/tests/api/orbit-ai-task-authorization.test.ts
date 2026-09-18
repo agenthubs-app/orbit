@@ -10,7 +10,7 @@ import type { TaskSuggestionService } from "../../features/tasks/suggestion-serv
 // Execute the complete POST route and real task authorization. Only provider,
 // authentication and persistence assembly are replaced; unexpected I/O fails.
 function route(message: string, sourceNote: boolean) {
-  const counts = { create: 0, suggest: 0, propose: 0, send: 0 };
+  const counts = { create: 0, draft: 0, propose: 0, suggest: 0, send: 0 };
   const interaction = createOrbitAiTaskInteractionService({
     taskService: { async create() { counts.create++; throw new Error("Unexpected task write"); } } as unknown as TaskService,
     suggestionService: { async suggest() { counts.suggest++; throw new Error("Unexpected suggestion write"); } } as unknown as TaskSuggestionService,
@@ -34,6 +34,17 @@ function route(message: string, sourceNote: boolean) {
       },
     }) },
     "../../../../features/orbit-ai/task-interaction-service-factory": { createConfiguredOrbitAiTaskInteractionService: () => interaction },
+    // Sprint 0085: a read question must not reach the draft state machine either.
+    // Counting propose here keeps that assertion alongside the task ones.
+    "../../../../features/orbit-ai/entity-drafts/service-factory": {
+      createConfiguredEntityDraftService: () => ({
+        cancel: async () => null,
+        confirm: async () => ({ draft: null, kind: "not_pending" as const }),
+        pending: async () => null,
+        propose: async () => { counts.draft++; return null; },
+        revise: async () => null,
+      }),
+    },
     "../../../../features/agent/memory/service-factory": { createAgentMemoryService: () => ({ getSettings: async () => ({}), context: async () => undefined }) },
     "../../../../features/agent/feedback/service-factory": { createAgentFeedbackService: () => ({ context: async () => undefined }) },
     "../../../../features/agent/preferences": { createAgentPreferencesService: () => ({ get: async () => ({}) }) },
@@ -50,7 +61,10 @@ function route(message: string, sourceNote: boolean) {
   const module = { exports: {} };
   new Function("require", "module", "exports", source)((id: string) => {
     if (Object.hasOwn(boundaries, id)) return boundaries[id];
-    if (id === "next/server" || id.startsWith("../../../../shared/")) return require(id);
+    // entity-drafts/contract is pure matching logic, not a boundary: the point of
+    // this test is that a read question never reaches a write, so the real
+    // confirmation matcher has to run.
+    if (id === "next/server" || id.startsWith("../../../../shared/") || id.endsWith("/entity-drafts/contract")) return require(id);
     return new Proxy({}, { get(_target, key) { throw new Error(`Unexpected dependency: ${id}.${String(key)}`); } });
   }, module, module.exports);
   return { handler: (module.exports as { POST: (request: Request) => Promise<Response> }).POST, counts, answer,
@@ -75,7 +89,7 @@ for (const message of [
       assert.equal(body.data.assistantMessage, answer);
       assert.equal(body.data.taskInteraction, undefined);
       assert.equal(body.data.proposedActionRequests, undefined);
-      assert.deepEqual(counts, { create: 0, suggest: 0, propose: 0, send: 1 });
+      assert.deepEqual(counts, { create: 0, draft: 0, propose: 0, suggest: 0, send: 1 });
     });
   }
 }
