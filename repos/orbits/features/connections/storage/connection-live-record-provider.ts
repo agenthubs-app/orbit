@@ -267,8 +267,9 @@ async function readFocusedConnectionGraph(input: {
   workspaceId: string;
 }): Promise<LiveConnectionEvidenceGraph> {
   const accountId = input.accountId?.trim();
+  // One record id in one collection is at most one row (primary key), so the read is bounded by construction.
   const candidateConnectionRecords = await input.store.listRecords({
-    limit: "unbounded",
+    limit: 1,
     workspaceId: input.workspaceId,
     collectionName: CONNECTION_LIVE_RECORD_COLLECTIONS.connections,
     recordIds: [input.connectionId],

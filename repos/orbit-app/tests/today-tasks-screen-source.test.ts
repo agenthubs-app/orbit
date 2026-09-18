@@ -38,7 +38,9 @@ test("all tasks keeps open and completed history as visible tabs", () => {
   assert.match(tasksSource, /label: locale\.t\("tasks\.viewOpen"\)/u);
   assert.match(tasksSource, /label: locale\.t\("tasks\.viewCompleted"\)/u);
   assert.match(tasksSource, /accessibilityRole="tablist"/u);
-  assert.match(tasksSource, /tasksPath\(\)/u);
+  // The list transport moved behind useTaskListSource: native reads the mirror, Web keeps tasksPath().
+  assert.match(tasksSource, /useTaskListSource\(/u);
+  assert.match(readFileSync(join(repoRoot, "src", "screens", "tasks", "task-list-source.web.ts"), "utf8"), /tasksPath\(\)/u);
   assert.match(tasksSource, /item.status === "completed" \? "reopen" : "complete"/u);
 });
 

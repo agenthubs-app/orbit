@@ -25,7 +25,7 @@
     "features/bootstrap/storage/bootstrap-live-record-provider.ts": 1,
     "features/chat/storage/async-relationship-conversation-live-record-provider.ts": 1,
     "features/chat/storage/chat-conversation-live-record-provider.ts": 1,
-    "features/connections/storage/connection-live-record-provider.ts": 9,
+    "features/connections/storage/connection-live-record-provider.ts": 8,
     "features/contacts/contact-actor-links/storage-provider.ts": 1,
     "features/contacts/introduction-records.ts": 3,
     "features/contacts/storage/contact-live-record-provider.ts": 5,
@@ -79,5 +79,13 @@
     "scripts/verify-live-events.ts": 1,
     "shared/storage/generated-notification-title-repair.ts": 4,
     "shared/storage/seed-generated-fixtures.ts": 2
-  }
+  },
+  "history": [
+    {
+      "sprint": "0076",
+      "file": "features/connections/storage/connection-live-record-provider.ts",
+      "delta": -1,
+      "why": "single primary-key lookup now limit: 1"
+    }
+  ]
 }
