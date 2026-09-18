@@ -12,7 +12,7 @@
 
 用户已批准[读取成本治理设计案 Rev 4]，要求逐个 Phase 执行，三次归位统一用 `merge` 不用 rebase。
 Phase 0 共三项：0067 生产源码归位（**completed**）→ 0068 phoneweb 基座归位（**completed**）→ 0069 增量同步存量归位（**blocked**，核心已落地、接线待 0075/0076）。
-后续 Phase A 量尺（0070，completed）、B 止血（0071 completed，0072 completed，0073 completed，0074 running）、C 收口扩面（0075–0076）、D Web 本地优先（0077–0078）、
+后续 Phase A 量尺（0070，completed）、B 止血（0071 completed，0072 completed，0073 completed，0074 completed）、C 收口扩面（0075–0076）、D Web 本地优先（0077–0078）、
 E 结构（0079–0080，需单独批准）依次领取，不并行。
 
 | Sprint | 目标 | 进入条件与当前事实 | 状态 |
@@ -24,7 +24,7 @@ E 结构（0079–0080，需单独批准）依次领取，不并行。
 | [0071](0071-read-budget-guardrails/GOAL.md) | 读取预算护栏：`listRecords.limit` 必填（`number \| "unbounded"`）+ Postgres LIMIT 下推 + 无上限读取棘轮 + 笔记列表投影 | 依赖 0070（completed）。基线 `4507b3e66`，Planner SHA b25f78a1。176 处调用/77 文件机械补 `"unbounded"`，零行为变化；档位 H，orbits 全量前后对照。只用本机 PG。合并 `deda00f89`；棘轮冻结 76 文件/174 处；notes.list 14 134 → 12 116 B；暴露并修复 0067 遗留的注册测试写 dev 库问题 | completed |
 | [0072](0072-domain-watermark-conditional-reads/GOAL.md) | 域水位线 + 条件请求：6 条 GET 路由（tasks/notes/schedule-items/contacts/connections/events）未变即 304、零业务读；App client 带 If-None-Match 并内存回放 | 依赖 0071（completed）。基线 `d45474da8`，Planner SHA c2d8e12a。授权纪元用 accounts/auth_users/permissions 水位替代（lease 属 0075）；dashboard/profile 不接。档位 H，两端全量对照。只用本机 PG。合并后 Simulator/phoneweb 二次拉取 304 实证；App 全量 3489/3489、orbits 零新增失败 | completed |
 | [0073](0073-search-index-alignment/GOAL.md) | 搜索路径索引对齐：pg_trgm GIN 让 `search_text ilike` 走索引，删从未使用的 tsvector 索引；不改查询、不改语义 | 依赖 0070（completed）。基线 `26423d9b9`，Planner SHA 9d4f24ac。结果逐条一致为硬断言；2 字中文查询不走索引如实记录。档位 M，orbits 全量一次。只用本机 PG。14 词逐条一致；dev 库真实 3 字搜索走 BitmapAnd(trgm)；修掉并发建扩展与扩展装错 schema 两个迁移坑 | completed |
-| [0074](0074-pool-timeouts-read-budget-gate/GOAL.md) | 连接池/超时按环境（serverless/worker/local）配置 + 进程内读预算闸门：非关键读超阈值 503 有理由，关键读与写不受影响 | 依赖 0070（completed）。基线 `3ece6d171`，Planner SHA 9da1ef19。闸门 opt-in（生产开启属部署决定）；各 feature 自建池不动。档位 H，orbits 全量。只用本机 PG | running |
+| [0074](0074-pool-timeouts-read-budget-gate/GOAL.md) | 连接池/超时按环境（serverless/worker/local）配置 + 进程内读预算闸门：非关键读超阈值 503 有理由，关键读与写不受影响 | 依赖 0070（completed）。基线 `3ece6d171`，Planner SHA 9da1ef19。闸门 opt-in（生产开启属部署决定）；各 feature 自建池不动。档位 H，orbits 全量。只用本机 PG。真实接线下 /api/contacts 超预算 503 带理由、accounts 读与写照常；0062 并发保存 14/14；orbits 全量零新增（2 条旧默认池断言改为按 profile） | completed |
 
 已查清的前置事实：生产切库已于 2026-09-17 完成并正在服务（`www.orbitailink.com` 200、`/api/health` mode=live，
 新 Neon `orange-forest-30108072` 用量 34.6 MB／386.75 kB），旧 Vercel 项目 `paused=true`。
