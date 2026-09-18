@@ -32,9 +32,15 @@ E 结构（0079–0080，需单独批准）依次领取，不并行。
 | [0081](0081-portrait-generation-422/GOAL.md) | 活动画像：答满 8 题后 persona 预览 422，抓 `portraitCode` 后修复，拒绝时界面透出原因 | TODO 第 1 条。已定位到 `answer-proofs.ts` 校验分支；首要怀疑预填题 responseId 与服务端不一致。档位 App L / orbits M。基线 `12a9f9653`，Planner SHA 726a8b6a 。功能 `5d66b76b2`／合并 `b58da3747`。**当前主线复现不出该 422**：真实链路（2 预填 + 6 签名 = 8 答案）返回 200 并生成画像。抓到该链路唯一的 422（字段重复 PORTRAIT_INPUT_INVALID）；已让界面透出 portraitCode 并加两条混合证明回归测试。排除了 responseId 不一致、缺 adaptiveToken、token 过期三个假设 | partial |
 | [0082](0082-event-title-cover-authority/GOAL.md) | 活动标题与封面唯一来源：首页推荐活动中文标题 + 封面；删列表页挑中文段与硬编码封面表 | TODO 第 5 条。默认权威 = canonical 头表标题 + 封面入数据；先服务端后前端。档位 orbits M / App M。基线 `12a9f9653`，Planner SHA 4cda728a 。功能 `898538d68`／合并 `b966e0224`。根因：canonical 头表一直是中文权威，只有首页推荐读到陈旧的 `payload.name`；封面从来不是活动数据（App 两份硬编码表）。回填 13/16，3 个活动缺封面用占位图 | completed |
 | [0083](0083-profile-suggestions-localization/GOAL.md) | 资料更新建议全部中文：服务端规则文案三语字典按账号语言输出；摘录按用户决定处理 | TODO 第 3 条。进入条件：用户决定是否连种子英文对话／记忆一起中文化（默认不改种子）。档位 orbits M / App L。基线 `12a9f9653`，Planner SHA db35473f 。功能 `4c64423b1`／合并 `1f09fe288`。三语字典按 `?language=` 输出，未知回落 zh；摘录保留原文并标"来源原文"（种子中文化仍待用户决定） | completed |
-| [0084](0084-profile-page-hierarchy-audit/GOAL.md) | 资料类页面层级：全面截图审核 → 设计案 → 统一 `ProfilePagePrimitives` 四类元素规格 | TODO 第 2 条。含用户批准门（设计案）；审核范围含设置／账号／活动详情等同结构页面。档位 App H。基线 `12a9f9653`，Planner SHA 81db145c | planned |
-| [0085](0085-iorbit-entity-read-show-write/GOAL.md) | IORBIT 五实体读／展示／写：实体小卡片、草稿卡确认状态机、五种创建、去掉"AI 运行依据" | TODO 第 4 条。含用户批准门（设计案须回答卡片规格／状态机／写入接口／prompt vs workflow）；设计案若超一个 Sprint 则拆 0086。档位 orbits H / App H。基线 `12a9f9653`，Planner SHA f45ef0b8 | planned |
+| [0084](0084-profile-page-hierarchy-audit/GOAL.md) | 资料类页面层级：全面截图审核 → 设计案 → 统一 `ProfilePagePrimitives` 四类元素规格 | TODO 第 2 条。含用户批准门（设计案）；审核范围含设置／账号／活动详情等同结构页面。档位 App H。基线 `12a9f9653`，Planner SHA 81db145c。**2026-09-19 用户批准设计案**（https://claude.ai/artifact/RPmcSJo9GBTkucNoBPUj97），批准门已通过，可进实现步 | ready |
+| [0085](0085-iorbit-entity-read-show-write/GOAL.md) | IORBIT 五实体读／展示／写：实体小卡片、草稿卡确认状态机、五种创建、去掉"AI 运行依据" | TODO 第 4 条。含用户批准门（设计案须回答卡片规格／状态机／写入接口／prompt vs workflow）；设计案若超一个 Sprint 则拆 0086。档位 orbits H / App H。基线 `12a9f9653`，Planner SHA f45ef0b8。**2026-09-19 用户批准设计案**（https://claude.ai/artifact/De2NsaKmsAe7JaSRJSvqHc），批准门已通过；Planner 里“若超一个 Sprint 则拆 0086”因 0086 已被占用，改拆到下一个空号并在 REPORT 登记 | ready |
 | [0086](0086-inbox-typed-only-fail-closed/GOAL.md) | 收件箱只认三类通知：去 `ORBIT_TYPED_INBOX_ACTORS` 白名单默认启用、App 只读 `/api/inbox/notifications`、0040 迁移隔离 40 条生成记录与失效 reminderPlans、读取路径对无法归类记录 fail closed | 用户 2026-09-18 反馈"来源已不可用"。调查：0037–0040 均已合并；未启用（白名单未配置）+ 迁移从未执行 = 旧链直出。严格按 2026-09-16 通知设计。档位 orbits H / App H。基线 `1e2cbe555`，Planner SHA 8a4003dd 。功能 `f069df7e6`／合并 `ada15ee26`。三因叠加：已合并但白名单未配置（同时 404 掉两块通知设置）+ 40 条种子记录从未隔离。App 零改动——三类界面早已内置、只是被 gate 关着。查询即失败已落地（INTEGRITY_VIOLATION） | completed |
+| [0087](0087-never-synced-empty-state/GOAL.md) | 没同步过就不要说“暂无”：镜像快照新增 `unsynced` 初始态，所有 `useSyncedCollection` 消费页在未同步时显示加载态而非空态 | 复核第 1 条。根因：`emptySnapshot()` 初始就报 `local-ready`，`mirrorTaskListSource` 同时算出 `loading` 与空态。与 0078「失败要可见」同族。档位 App H。基线 `ededaa6ac`，Planner SHA c5b43c40 | planned |
+| [0088](0088-relationship-dashboard-first-paint/GOAL.md) | 关系仪表盘首屏：定位 `12000ms timeout exceeded` 出处、量六个 `useApiResource` 耗时、分块首屏、超时落到可重试错误态 | 复核第 2 条（本轮唯一 console 错误）。先量后改；App 内无 12000 常量，出处待定位。档位 App L（度量指向服务端则升 orbits H）。基线 `ededaa6ac`，Planner SHA bb979660 | planned |
+| [0089](0089-contact-value-score-signal/GOAL.md) | 联系人列表价值分：查清 78 人中 76 人恒为 84 的成因，修算法或换掉列表右侧内容；不可信时不显示假值 | 复核第 3 条。读取点 `contacts.ts:319-321`／渲染 `:449-450`（已有 null 分支）。档位 App L。基线 `ededaa6ac`，Planner SHA bc931cd9 | planned |
+| [0090](0090-recommended-event-location-authority/GOAL.md) | 首页推荐活动地点中文：`location`／`venue` 收口到权威来源并扩展 0082 的回填脚本，移除英文兜底 `"Live event source"` | 复核第 4 条，0082 同源遗留。provider `:203-206` 仍直读种子英文 `payload.location`；权威来源与回填机制 0082 已建好。档位 orbits L。基线 `ededaa6ac`，Planner SHA d6cd1b58 | planned |
+| [0091](0091-private-route-auth-gate/GOAL.md) | 私有路由登录态门：量 `auth.ready` 耗时构成并缩短已登录首屏等待，不放宽登录态判断 | 复核第 5 条（`/followups`、`/contacts/dashboard` 六秒以上）。`OrbitRouteAccessBoundary.tsx:34-42` 只有三态；auth 慢还会把镜像同步一起往后推。档位 App H（身份路径）。基线 `ededaa6ac`，Planner SHA ffe2a5a5 | planned |
+| [0092](0092-iorbit-home-loading-states/GOAL.md) | IORBIT 首页两块区域：“正在读取最近会话”／“正在核对下一步”加载态加上限，三终态（有内容／确实为空／出错可重试）可区分 | 复核第 6 条。两块属不同子系统，需分别度量；与 0078／0087 同族的第三面——加载态必须有终点。档位 App L。基线 `ededaa6ac`，Planner SHA bb4b71f7 | planned |
 
 已查清的前置事实：生产切库已于 2026-09-17 完成并正在服务（`www.orbitailink.com` 200、`/api/health` mode=live，
 新 Neon `orange-forest-30108072` 用量 34.6 MB／386.75 kB），旧 Vercel 项目 `paused=true`。
@@ -678,3 +684,14 @@ Phone精确15路径consumer6d1c771aee07f9a704863f11c3548354aea0b4d5/TREE6ed9ac43
 0063最终中文[REPORT](0063-date-time-picker/REPORT.md)已按Generator冻结稿原字节落地（SHA256 3de0ccf170dee42c10486324a29f2764ba9631cdbea0dcd6c2154e3f9e8deeaa）。唯一Generator run-01已结束并释放源码锁，SC63-01至05的产品、主线运行及Phone真实交互证据见该报告；ROOT仅以这8份正式文档的官方gate、普通提交/push和独立远端一致闭环登记交付，实际最终SHA记录在Git及ROOT检查点，不预填未来成功。上述早期running/待验条目保留为时间顺序记录，不再重开0063或重复全量I；本轮Web旧59失败/App旧1失败、真正到期通知、远程Push及全域离线仍不是通过。
 
 后续执行：0033原A工作树已正常ff到产品Main26f74a55，继续原run的Task3本地schema/repository迁移，不创建第二Generator。采用单一v2 canonical真实事务迁移、已授权ReadScope/domain注入、未验证legacy隔离及初始化失败保库；Node fixture不替代原生SQLCipher/磁盘故障实测。新增server授权/epoch/锁顺序设计另设中文审阅门，Calendar等外部OAuth adapter继续TODO，不阻塞独立本地Task3。
+
+### 2026-09-19：全量复核 6 条发现拆成 0087–0092，并解除 0084／0085 批准门
+
+用户当日给出三条指令：磁盘已清理（数据卷可用 13G，全量测试数字重新可信）；批准 0084 与 0085 的设计案；把复核发现排成 Sprint 并开始执行。
+
+- **0084／0085 批准门已通过。** 两份设计案（[0084](https://claude.ai/artifact/RPmcSJo9GBTkucNoBPUj97)、[0085](https://claude.ai/artifact/De2NsaKmsAe7JaSRJSvqHc)）获用户明确批准，状态 planned → ready，可进实现步。冻结的 Planner 与哈希不变；0085 Planner 中「若超一个 Sprint 则拆 0086」的编号已被占用，改拆到下一个空号并在 REPORT 登记。
+- **6 条复核发现 1:1 拆成 0087–0092**（Sprint 号 = 发现序号 + 86），基线 `chat-agent` = `ededaa6ac`，全部 planned、run_count = 0、未领取。每份 Planner 的「已查明的事实」只写本轮已经在源码中定位到的位置，未定位的（0088 的 `12000ms timeout exceeded` 出处、0089 的 `value.score` 产生路径、0091 的 `auth.ready` 耗时构成、0092 的两块区域来源）写明「第一步就是定位它」，不预设结论。
+- **三条同族问题已识别并写进各自 Planner**：0078（失败要可见）、0087（未同步不显示空态）、0092（加载态必须有终点）、0088 SC-04（超时要落到可重试错误态）属于同一条原则的四个面——**界面上的每一种等待都必须有终点，且终点要可区分**。0087 先在共享快照层立规则，后三个复用。
+- **0090 是 0082 的同源遗留**，不是新问题：权威来源与回填脚本 0082 已建好，本 Sprint 只把 `location`／`venue` 接上去。Planner 明确排除「在前端再挑一次中文段」——那会把 `ZH:` 挑段逻辑的第 11 份副本引进来。
+
+建议执行顺序：**0084 → 0085 → 0087 → 0090 → 0089 → 0092 → 0088 → 0091**。已批准且此前被批准门挡住的 0084／0085 先做；随后 0087 立下"等待必须有终点"的共享规则，0090／0089 是边界清楚的小修，0092／0088 复用 0087 的规则，0091 涉及身份路径放最后单独收口。
