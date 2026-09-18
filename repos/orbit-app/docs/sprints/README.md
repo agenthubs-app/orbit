@@ -18,7 +18,7 @@ E 结构（0079–0080，需单独批准）依次领取，不并行。
 | Sprint | 目标 | 进入条件与当前事实 | 状态 |
 | --- | --- | --- | --- |
 | [0067](0067-mainline-production-alignment/GOAL.md) | 主线重新包含生产正在运行的源码，并把本地／云端切换开关嵌进生产库围栏内部 | 五项 SC 全部 pass。功能 merge `e2a0d6a37`（父 `53e0640e5` + `161e9e6c4`）已 fast-forward 进 `chat-agent`，`git merge-base --is-ancestor 161e9e6c4 chat-agent` 退出码 0。同环境前后对照：4154/88fail → 4173/86fail，失败集合零新增、两项消失。两端 typecheck 0。本机 target=local 实际登录读到 78 联系人/64 待办。原 86 项失败保持披露，不宣称全绿 | completed |
-| [0068](0068-phoneweb-runtime-baseline/GOAL.md) | phoneweb 运行时基座（21 文件）归位主线，作为 Web 本地优先的地基 | 依赖 0067（已 completed）。待选定权威源分支 | planned |
+| [0068](0068-phoneweb-runtime-baseline/GOAL.md) | phoneweb 运行时基座归位主线，作为 Web 本地优先的地基 | 依赖 0067（completed）。权威源已判定：六条候选分支核心文件组合 SHA 相同、互无祖先，选 `codex/phoneweb-a-runtime` + `codex/phoneweb-c-journeys` 两条纯 app 分支（orbits 侧零改动），并集覆盖 18 个基座文件；3 个部署助手文件明确延后。基线 `a0b1f088a`，Planner SHA fa387ab1 | running |
 
 已查清的前置事实：生产切库已于 2026-09-17 完成并正在服务（`www.orbitailink.com` 200、`/api/health` mode=live，
 新 Neon `orange-forest-30108072` 用量 34.6 MB／386.75 kB），旧 Vercel 项目 `paused=true`。
