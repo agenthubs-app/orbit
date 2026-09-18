@@ -12,7 +12,7 @@
 
 用户已批准[读取成本治理设计案 Rev 4]，要求逐个 Phase 执行，三次归位统一用 `merge` 不用 rebase。
 Phase 0 共三项：0067 生产源码归位（**completed**）→ 0068 phoneweb 基座归位（**completed**）→ 0069 增量同步存量归位（**blocked**，核心已落地、接线待 0075/0076）。
-后续 Phase A 量尺（0070，completed）、B 止血（0071 completed，0072 completed，0073 completed，0074 completed）、C 收口扩面（0075 completed，0076 第一批 completed）、D Web 本地优先（0077–0078）、
+后续 Phase A 量尺（0070，completed）、B 止血（0071 completed，0072 completed，0073 completed，0074 completed）、C 收口扩面（0075 completed，0076 第一批 completed）、D Web 本地优先（0077 running，0078）、
 E 结构（0079–0080，需单独批准）依次领取，不并行。
 
 | Sprint | 目标 | 进入条件与当前事实 | 状态 |
@@ -27,6 +27,7 @@ E 结构（0079–0080，需单独批准）依次领取，不并行。
 | [0074](0074-pool-timeouts-read-budget-gate/GOAL.md) | 连接池/超时按环境（serverless/worker/local）配置 + 进程内读预算闸门：非关键读超阈值 503 有理由，关键读与写不受影响 | 依赖 0070（completed）。基线 `3ece6d171`，Planner SHA 9da1ef19。闸门 opt-in（生产开启属部署决定）；各 feature 自建池不动。档位 H，orbits 全量。只用本机 PG。真实接线下 /api/contacts 超预算 503 带理由、accounts 读与写照常；0062 并发保存 14/14；orbits 全量零新增（2 条旧默认池断言改为按 profile） | completed |
 | [0075](0075-grants-epoch-lease-acceptance/GOAL.md) | 服务端真实 grants/epoch/lease（/api/sync/lease、manifest、domains/:id）+ App 协调器按租约绑定作用域；纪元变更全量重建、越权拒绝、撤权不可读；为 0033–0036 写按证据的 REPORT | 依赖 0069、0070（completed）。基线 `543627493`，Planner SHA 35cfa571。注册表 v1 只含 notes/tasks/personal-schedule；屏幕接线留 0076。档位 H，两端全量。只用本机。本机真实双账号：B 用 A 游标 409、撤权 401；协调器经 HTTP 镜像 3 行；0033/0034/0035 改 blocked（按证据） | completed |
 | [0076](0076-app-consumer-expansion-batch-1/GOAL.md) | App 消费者扩面第一批：原生待办页镜像优先（租约→域页），Web 保持网络读；棘轮 174→173 | 依赖 0071、0075（completed）。基线 `cadbb2e10`，Planner SHA 9283afe9。服务端 tasks 读路径不改（canonical payload 嵌套，payloadAccountId 不可用）。档位 App H / orbits L。Simulator 第二次进入待办 0 请求、勾选后镜像确认 52/12；修掉 v2 域页下发旧格式行的问题 | completed |
+| [0077](0077-web-local-mirror-storage/GOAL.md) | Web 本地镜像存储层：expo-sqlite web（wa-sqlite+OPFS）分库 + Web Crypto 不可导出密钥 + 正文 AES-GCM 落盘 + 白名单 tasks/personal-schedule + 威胁模型文档；不可用时静默 online-only | 依赖 0068、0069、0075（completed）。基线 `73b1b7c8b`，Planner SHA c475686b。先 spike 证明引擎可用，不过则 blocked；屏幕接入留 0078。档位 App H | running |
 
 已查清的前置事实：生产切库已于 2026-09-17 完成并正在服务（`www.orbitailink.com` 200、`/api/health` mode=live，
 新 Neon `orange-forest-30108072` 用量 34.6 MB／386.75 kB），旧 Vercel 项目 `paused=true`。
