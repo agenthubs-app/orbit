@@ -99,6 +99,20 @@ test("invalid or unavailable model output falls back to deterministic questions"
   assert.equal(result.provenance.externalNetworkRequested, true);
 });
 
+test("read-only registration questions retain both required event questions without any model attempt", async () => {
+  let attempts = 0;
+  const result = await generateEventRegistrationQuestions({
+    event: registerableEvent(), language: "en", allowModelGeneration: false,
+    modelRunner: async () => { attempts++; throw new Error("Read-only load must not invoke the model."); },
+  });
+  assert.equal(attempts, 0);
+  assert.deepEqual(result.questions.map(question => [question.participantProfileField, question.required]), [["targetAttendees", true], ["valueOffered", true]]);
+  assert.match(result.questions[0]!.prompt, /Climate founders dinner/);
+  assert.equal(result.questionSetHash, undefined);
+  assert.equal(result.questionSetVersion, undefined);
+  assert.deepEqual(result.provenance, { aiProviderRequested: false, externalNetworkRequested: false, fallbackReason: null, generationMethod: "deterministic-not-requested", model: null, provider: null });
+});
+
 test("register cancel and re-register reuse one registration and participant profile", async () => {
   const provider = createMemoryEventRegistrationProvider();
   const timestamps = [

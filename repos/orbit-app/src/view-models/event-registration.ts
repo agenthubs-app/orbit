@@ -8,6 +8,7 @@ export interface EventRegistrationQuestionView {
   id: string;
   options: string[];
   prompt: string;
+  portraitQuestionToken?: string;
   /** Legacy payloads omit this and remain skippable; V1/V2 APIs now send it. */
   required?: boolean;
 }
@@ -127,6 +128,7 @@ export interface EventRegistrationInterviewTurn {
   field: string;
   prompt: string;
   questionToken?: string;
+  portraitAdaptiveToken?: string;
 }
 
 export interface EventRegistrationAdaptiveBody {
@@ -140,6 +142,7 @@ export interface EventRegistrationAdaptiveQuestionView {
   options: string[];
   prompt: string;
   questionToken?: string;
+  portraitAdaptiveToken?: string;
 }
 
 export function eventAdmissionApplicationResponses(
@@ -402,11 +405,12 @@ function questionsFromPayload(
     .filter(isRecord)
     .map((question) => {
       const field = stringField(question, "participantProfileField");
-      const prompt = questionPrompt(stringField(question, "prompt"));
+      const portraitQuestionToken = stringField(question, "portraitQuestionToken");
+      const prompt = portraitQuestionToken ? stringField(question, "prompt") : questionPrompt(stringField(question, "prompt"));
       const id = stringField(question, "id", field || "question");
       const options = listFromRecord(question, "options")
         .filter((option): option is string => typeof option === "string")
-        .map(userFacingText)
+        .map((option) => portraitQuestionToken ? option : userFacingText(option))
         .filter(Boolean);
 
       return {
@@ -415,6 +419,7 @@ function questionsFromPayload(
         id,
         options,
         prompt,
+        ...(portraitQuestionToken ? { portraitQuestionToken } : {}),
         required: question.required === true && question.optional !== true
       };
     })
@@ -524,6 +529,7 @@ export function eventRegistrationAdaptiveStepToView(
   const questionToken = signedQuestion
     ? stringField(signedQuestion, "questionToken")
     : "";
+  const portraitAdaptiveToken = signedQuestion ? stringField(signedQuestion, "portraitAdaptiveToken") : "";
 
   return {
     done,
@@ -531,9 +537,10 @@ export function eventRegistrationAdaptiveStepToView(
       ? {
           acknowledgment: userFacingText(stringField(question, "acknowledgment")),
           field: stringField(question, "field"),
-          options: userFacingList(question.options, 4),
-          prompt: userFacingText(stringField(question, "prompt")),
-          ...(questionToken ? { questionToken } : {})
+          options: portraitAdaptiveToken && Array.isArray(question.options) ? question.options.filter((option): option is string => typeof option === "string") : userFacingList(question.options, 4),
+          prompt: portraitAdaptiveToken ? stringField(question, "prompt") : userFacingText(stringField(question, "prompt")),
+          ...(questionToken ? { questionToken } : {}),
+          ...(portraitAdaptiveToken ? { portraitAdaptiveToken } : {})
         }
       : null,
     statusText: done ? "画像信息够了" : "继续补充画像"

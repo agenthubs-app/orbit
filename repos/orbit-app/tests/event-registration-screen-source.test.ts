@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import ts from "typescript";
 
 const repoRoot = new URL("..", import.meta.url).pathname;
 const screenSource = readFileSync(
@@ -10,12 +11,14 @@ const screenSource = readFileSync(
 );
 
 test("event registration screen uses the web adaptive interview routes", () => {
-  const personaSlice = screenSource.slice(
-    screenSource.indexOf("async function generateAdaptivePersona"),
-    // The independent registration readback helper follows the persona method;
-    // it is not part of the persona request and must not widen this slice.
-    screenSource.indexOf("async function verifyRegistrationReadback")
-  );
+  const sourceFile = ts.createSourceFile("EventRegistrationScreen.tsx", screenSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  let personaSlice = "";
+  function findPersona(node: ts.Node) {
+    if (ts.isFunctionDeclaration(node) && node.name?.text === "generateAdaptivePersona") personaSlice = node.getText(sourceFile);
+    ts.forEachChild(node, findPersona);
+  }
+  findPersona(sourceFile);
+  assert.ok(personaSlice, "The real persona request function must exist.");
 
   assert.match(screenSource, /eventRegistrationInterviewPath/u);
   assert.match(screenSource, /eventRegistrationPersonaPath/u);

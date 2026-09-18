@@ -37,6 +37,8 @@ export interface EventRegistrationQuestion {
   participantProfileField: EventParticipantProfileField;
   prompt: string;
   required: boolean;
+  /** Optional private-portrait proof; never admission/application authority. */
+  portraitQuestionToken?: string;
 }
 
 export interface EventRegistrationQuestionSet {

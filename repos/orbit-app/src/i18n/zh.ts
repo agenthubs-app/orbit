@@ -1,6 +1,11 @@
 import type { MessageDictionary } from "./messages";
 
 export const zh = {
+  "portrait66.restartQuestions": "重新追问未保存的题目", "portrait66.unverifiedDrafts": "这些草稿已保留，请回答新题后再生成画像。",
+  "portrait66.reloadSources": "重新读取画像来源",
+  "portrait66.recommendationsFailed": "推荐暂时无法读取，请重试。", "portrait66.viewContact": "查看联系人",
+  "portrait66.readFailed": "页面暂时无法加载", "portrait66.requiredOpen": "必答",
+  "portrait66.progress": "已补充 {count}/8 项", "portrait66.requiredCount": "{count} 题必答", "portrait66.required": "必答 · 单选", "portrait66.optional": "选填", "portrait66.entry": "活动画像", "portrait66.completed": "活动画像已完成", "portrait66.draft": "活动画像草稿", "portrait66.entryDetail": "补充回答，方便主办方了解你的参与目标。", "portrait66.view": "查看", "portrait66.start": "补充画像", "portrait66.skip": "跳过", "portrait66.all": "全部", "portrait66.edit": "改", "portrait66.editAnswer": "编辑回答", "portrait66.applyEdit": "保留修改", "portrait66.next": "下一题", "portrait66.generate": "生成画像", "portrait66.generating": "生成中", "portrait66.save": "保存画像", "portrait66.saved": "已保存", "portrait66.pending": "保存结果待确认，请重试核对。", "portrait66.privacy": "本人及有权限主办方可见", "portrait66.saveHint": "保存画像不影响报名状态", "portrait66.stale": "回答已修改，请重新生成画像。", "portrait66.noQuestion": "旧回答未保留原题，显示已保存的字段与答案。", "portrait66.ask": "继续补充活动画像", "portrait66.review": "回答复核", "portrait66.points": "画像要点", "portrait66.recommendations": "可能想认识", "portrait66.noRecommendations": "暂时没有可展示的推荐。", "portrait66.loadNew": "载入新问题", "portrait66.noQuestions": "这场活动暂时没有需要补充的问题。", "portrait66.retryRead": "重新读取报名资料", "portrait66.placeholder": "写一句具体的补充。", "portrait66.field.positioning": "当前定位", "portrait66.field.industry": "行业方向", "portrait66.field.targetAttendees": "希望认识", "portrait66.field.valueOffered": "能够提供", "portrait66.field.desiredOutcome": "参与目标", "portrait66.field.energyStyle": "社交节奏", "portrait66.field.experienceHighlight": "现场记忆点", "portrait66.field.followUpPreference": "会后联系",
   "personal63.hour": "小时", "personal63.minute": "分钟", "personal63.clearEnd": "清除结束时间", "personal63.lastDay": "最后占用日",
   "personal60.invalidReminder": "请选择有效的提醒时间。",
   "personal60.invalidUntil": "重复结束日期需有效，且不能早于开始日期。",

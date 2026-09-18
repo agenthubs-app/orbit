@@ -50,6 +50,7 @@ import {
 } from "./registration-workspace-model";
 import { registrationQuestionnaireProgress } from "../../../../../../features/mobile/registration-questionnaire-progress";
 import { registrationBlockingReasonCopy } from "../../../../../../features/events/registration/blocking-reason-copy";
+import { RegistrationPortraitWorkspace } from "./registration-portrait-workspace";
 
 type Language = "en" | "zh";
 
@@ -447,6 +448,7 @@ export function EventRegistrationWorkspace({
     async (
       finalTranscript: readonly AdaptiveInterviewTurn[],
       finalResponses: readonly EventInterviewResponseSubmission[],
+      options?: { generatePersona?: boolean; questionSetHash?: string; questionSetVersion?: number },
     ) => {
       if (!mounted.current || currentScope.current !== scopeKey || cancelPending.current || generationPending.current || interviewRequest.current || renderedRevision !== editRevision.current) return;
       if (!admissionControlled && registration?.status !== "rsvped" && eligibility && !eligibility.allowedActions.includes(registration?.status === "cancelled" ? "reactivate" : "register")) return;
@@ -488,6 +490,8 @@ export function EventRegistrationWorkspace({
                         // 只用它补齐种入轮（定位预填/详情页速答）未覆盖的字段。
                         // 准入审核活动只接受纯签名回答，因此不附带。
                         answers: answersFrom(finalTranscript),
+                        ...(options?.questionSetHash ? { questionSetHash: options.questionSetHash } : {}),
+                        ...(options?.questionSetVersion ? { questionSetVersion: options.questionSetVersion } : {}),
                         ...(finalResponses.length ? { responses: finalResponses } : {}),
                       },
               ),
@@ -561,6 +565,10 @@ export function EventRegistrationWorkspace({
           }
         }
 
+        if (options?.generatePersona === false) {
+          if (mounted.current && currentScope.current === scopeKey && generationRunId.current === runId) setStage("registered");
+          return;
+        }
         const personaResponse = await fetch(
           `/api/events/${encodeURIComponent(event.id)}/registration/persona`,
           {
@@ -916,6 +924,13 @@ export function EventRegistrationWorkspace({
   }
 
   return (
+    <RegistrationPortraitWorkspace actorId={actorId ?? ""} event={event} language={language} initialDraftAnswers={answersFrom(transcript)} enrollment={actorId && !admissionControlled ? {
+      stage, status, pending: stage === "generating" || pendingCancel,
+      error, canSubmit: Boolean(!eligibility || eligibility.allowedActions.includes(registration?.status === "cancelled" ? "reactivate" : "register")),
+      onSubmit: async (answers, identity) => { await runGeneration(Object.entries(answers).filter(([, answer]) => answer?.trim()).map(([field, answer]) => ({ field: field as AdaptiveInterviewTurn["field"], answer: answer!.trim(), prompt: field })), [], { ...identity, generatePersona: false }); },
+      ...(canCancelEnrollment ? { onCancel: confirmCancellation } : {}),
+      ...(confirmingCancel ? { confirmation: { pending: pendingCancel, onKeep: () => { cancelAuthority.current = null; setConfirmingCancel(false); }, onConfirm: () => { void cancelRegistration(); } } } : {}),
+    } : undefined}>
     <main
       data-orbit-registration-profile-guide="register"
       data-registration-status={status}
@@ -1892,5 +1907,6 @@ export function EventRegistrationWorkspace({
         ) : null}
       </section>
     </main>
+    </RegistrationPortraitWorkspace>
   );
 }

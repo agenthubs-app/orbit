@@ -21,6 +21,22 @@ import {
   eventRegistrationToView
 } from "../src/view-models/event-registration";
 
+test("portrait proofed questions retain full original prompts/options and separate adaptive authority", () => {
+  const prompt = 'Who will you meet at “Orbit robotics prototype review evening”?';
+  const options = ["Builders", "Operators", "Founders", "Reviewers", "Hardware researchers"];
+  const formal = eventRegistrationToView({ questionSet: { questions: [{ id: "target_attendees", participantProfileField: "targetAttendees", prompt, options, required: true, portraitQuestionToken: "formal-portrait-proof" }] } }).questions[0];
+  assert.ok(formal);
+  assert.equal(formal.prompt, prompt);
+  assert.deepEqual(formal.options, options);
+  assert.equal(formal.portraitQuestionToken, "formal-portrait-proof");
+  const adaptive = eventRegistrationAdaptiveStepToView({ done: false, signedQuestion: { question: { field: "targetAttendees", prompt, options, acknowledgment: "Understood." }, questionToken: "original-admission-proof", portraitAdaptiveToken: "workspace-portrait-proof" } }).question;
+  assert.equal(adaptive?.prompt, prompt);
+  assert.deepEqual(adaptive?.options, options);
+  assert.equal(adaptive?.portraitAdaptiveToken, "workspace-portrait-proof");
+  assert.ok(adaptive?.questionToken && adaptive.portraitAdaptiveToken);
+  assert.deepEqual(eventAdmissionApplicationResponses([{ answer: "Builders", field: "targetAttendees", prompt, questionToken: adaptive.questionToken, portraitAdaptiveToken: adaptive.portraitAdaptiveToken }]), [{ answer: "Builders", questionToken: "original-admission-proof" }]);
+});
+
 test("registration eligibility maps every server state without using the device clock", () => {
   const rows = [
     ["not_open", [], "报名尚未开放", false, "报名尚未开放"],
