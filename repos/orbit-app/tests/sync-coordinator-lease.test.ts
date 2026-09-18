@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test, { type TestContext } from "node:test";
-import type { DomainPage, OfflineReadEnvelope } from "../src/api/contract/universal-read";
+import type { DomainManifest, DomainPage, OfflineReadEnvelope } from "../src/api/contract/universal-read";
 import { initializeLocalSyncDatabase } from "../src/data/sync/local-sync-database";
 import { createSyncCoordinator, type SyncCoordinatorLifecycle } from "../src/data/sync/sync-coordinator";
 import { SyncResetRequiredError, type SyncClient } from "../src/data/sync/sync-client";
@@ -20,6 +20,8 @@ interface HostState {
   rows: Record<string, { id: string; revision: string; payload: Record<string, unknown> }[]>;
   calls: string[];
   now: number;
+  /** When set, getManifest throws instead of describing the host. */
+  manifestFailure?: Error;
 }
 
 function lease(state: HostState): OfflineReadEnvelope {
@@ -34,7 +36,17 @@ function lease(state: HostState): OfflineReadEnvelope {
 function client(state: HostState): SyncClient {
   return {
     async getLease() { state.calls.push("lease"); return lease(state); },
-    async getManifest() { throw new Error("unused"); },
+    async getManifest(): Promise<DomainManifest> {
+      state.calls.push("manifest");
+      if (state.manifestFailure) throw state.manifestFailure;
+      return {
+        registryVersion: 1,
+        domains: state.grantedDomains.map((domainId) => ({
+          domainId, schemaVersion: 1, workspaceId: W, authorizationEpoch: state.epoch, generation: `gen-${state.epoch}`,
+          watermark: String((state.rows[domainId] ?? []).length), history: "complete", membershipCursor: null,
+        })),
+      };
+    },
     async getDomainPage(input): Promise<DomainPage> {
       state.calls.push(`page:${input.domainId}:${input.cursor ?? "-"}`);
       if (input.cursor && !input.cursor.startsWith(`${state.epoch}:`)) throw new SyncResetRequiredError({ context: { syncErrorCode: "SYNC_RESET_REQUIRED" }, message: "reset" });
@@ -145,4 +157,79 @@ test("an epoch rotation retires the old epoch and rebuilds the domain in full; r
   assert.equal(await count("e2"), 0, "revoked domain has no rows left");
   assert.deepEqual((await session.readCollection("task"))?.records, []);
   assert.equal((await session.readCollection("note"))?.records.length, 1, "other domains untouched");
+});
+
+test("manifest gating: an unchanged domain costs lease + manifest and no page; a moved domain pulls only its delta", async (t) => {
+  const state: HostState = { epoch: "e1", grantedDomains: ["notes", "tasks", "personal-schedule"], calls: [], now: T0, rows: {
+    tasks: [{ id: "t1", revision: "r1", payload: { id: "t1" } }],
+    notes: [{ id: "n1", revision: "r1", payload: { id: "n1" } }],
+  } };
+  const { database, lifecycle } = device(t);
+  await ready(database);
+  const coordinator = createSyncCoordinator({ lifecycle, now: () => state.now, hashPayload });
+  const session = coordinator.openScope({ baseUrl, actorId: A, scopeKey: "s", client: client(state) });
+  assert.equal((await sync(session, "task"))?.error, null);
+  assert.ok(state.calls.filter((call) => call.startsWith("page:")).length >= 3, "the first sync pulls every domain");
+
+  // Nothing moved: the second explicit sync verifies through the manifest only.
+  state.now += 60_000;
+  state.calls.length = 0;
+  const unchanged = await sync(session, "task");
+  assert.equal(unchanged?.error, null);
+  assert.deepEqual(state.calls, ["lease", "manifest"], "no domain page when every watermark matches");
+  assert.equal(unchanged?.status, "fresh");
+  assert.equal(unchanged?.lastSyncedAt, new Date(state.now).toISOString(), "an unchanged domain is confirmed fresh as of the manifest");
+
+  // Only tasks moved: notes and personal-schedule stay untouched.
+  state.rows.tasks!.push({ id: "t2", revision: "r2", payload: { id: "t2" } });
+  state.now += 60_000;
+  state.calls.length = 0;
+  const moved = await sync(session, "task");
+  assert.equal(moved?.error, null);
+  assert.deepEqual(state.calls.filter((call) => call.startsWith("page:")).map((call) => call.split(":")[1]), ["tasks"]);
+  assert.deepEqual(moved?.records.map((record) => record.id).sort(), ["t1", "t2"]);
+});
+
+test("manifest gating: a manifest failure is reported and every domain is pulled as before", async (t) => {
+  const state: HostState = { epoch: "e1", grantedDomains: ["tasks"], calls: [], now: T0, rows: { tasks: [{ id: "t1", revision: "r1", payload: { id: "t1" } }] } };
+  const { database, lifecycle } = device(t);
+  await ready(database);
+  const reported: unknown[] = [];
+  const coordinator = createSyncCoordinator({ lifecycle, now: () => state.now, hashPayload, onManifestUnavailable: (error) => reported.push(error) });
+  const session = coordinator.openScope({ baseUrl, actorId: A, scopeKey: "s", client: client(state) });
+  assert.equal((await sync(session, "task"))?.error, null);
+  state.manifestFailure = new Error("manifest down");
+  state.now += 60_000;
+  state.calls.length = 0;
+  const result = await sync(session, "task");
+  assert.equal(result?.error, null, "a manifest outage never fails the sync");
+  assert.deepEqual(state.calls, ["lease", "manifest", "page:tasks:e1:1"], "without a manifest the stored cursor is replayed");
+  assert.equal(reported.length, 1);
+});
+
+test("a grant outside the platform whitelist never forces a sync: a fresh mount after a complete sync makes no request", async (t) => {
+  const state: HostState = { epoch: "e1", grantedDomains: ["notes", "tasks"], calls: [], now: T0, rows: { tasks: [{ id: "t1", revision: "r1", payload: { id: "t1" } }] } };
+  const { database, lifecycle } = device(t);
+  await ready(database);
+  const coordinator = createSyncCoordinator({ lifecycle: { ...lifecycle, registeredDomainIds: ["tasks"] }, now: () => state.now, hashPayload });
+  const session = coordinator.openScope({ baseUrl, actorId: A, scopeKey: "s", client: client(state) });
+  assert.equal((await sync(session, "task"))?.error, null);
+  assert.deepEqual(state.calls, ["lease", "manifest", "page:tasks:-"], "notes is granted but not bound in this platform");
+  state.calls.length = 0;
+  state.now += 1_000;
+  const request = session.synchronize("task", { reason: "mount" });
+  assert.equal(await request.started, false, "within the freshness window a mount does not start a sync");
+  assert.deepEqual((await request.promise)?.records.map((record) => record.id), ["t1"]);
+  assert.deepEqual(state.calls, []);
+});
+
+test("without a mirror the coordinator makes no network request at all", async (t) => {
+  const state: HostState = { epoch: "e1", grantedDomains: ["tasks"], calls: [], now: T0, rows: {} };
+  const lifecycle: SyncCoordinatorLifecycle = { async setScope() { return true; }, async withDatabase() { return null; } };
+  const coordinator = createSyncCoordinator({ lifecycle, now: () => state.now, hashPayload });
+  const session = coordinator.openScope({ baseUrl, actorId: A, scopeKey: "s", client: client(state) });
+  const result = await sync(session, "task");
+  assert.equal(result?.status, "failure");
+  assert.deepEqual(state.calls, [], "no lease is fetched for a mirror that cannot store it");
+  void t;
 });

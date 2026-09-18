@@ -66,8 +66,8 @@ test("schema v2 creates the sync tables and records encrypted metadata", async (
     metadata.map(({ key, value }) => ({ key, value })),
     [
       { key: "encryption_state", value: "encrypted" },
-      { key: "migration_checkpoint", value: "2" },
-      { key: "schema_version", value: "2" },
+      { key: "migration_checkpoint", value: "3" },
+      { key: "schema_version", value: "3" },
     ],
   );
 });
@@ -398,6 +398,8 @@ test("replaying a canonical revision is idempotent while the cursor advances", a
     cursor: "cursor-2",
     lastSyncedAt: "2026-09-16T00:02:00.000Z",
     bootstrapState: "complete",
+    generation: null,
+    highWatermark: null,
   });
 });
 

@@ -45,6 +45,9 @@ export const readSnapshot = async () => null;
 export const writeSnapshot = async () => {};
 export const useRelationshipInboxBadgeCount = () => 0;
 export const randomUUID = () => "unified-task-test-" + ++nextId;
+// Sprint 0078: the Web task source is mirror-first; these screen fixtures keep the network read authoritative.
+export const useWebMirrorStatus = () => ({ mode: "online-only", reason: "no-opfs" });
+export const useSyncedCollection = () => ({ status: "local-ready", records: [], error: null, lastSyncedAt: null, workspaceId: null, refresh: async () => null, invalidate: async () => null });
 `;
 
 test.before(async () => {
@@ -61,7 +64,7 @@ test.before(async () => {
     plugins: [{ name: "unified-tasks-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-      plugin.onResolve({ filter: /^(c0022-fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(AuthSessionProvider|ApiBaseUrlProvider|snapshot-store|useRelationshipInboxBadgeCount)$/ }, () => ({ path: "fixture", namespace: "unified-tasks" }));
+      plugin.onResolve({ filter: /^(c0022-fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(AuthSessionProvider|ApiBaseUrlProvider|snapshot-store|useRelationshipInboxBadgeCount|useWebMirrorStatus|useSyncedCollection)$/ }, () => ({ path: "fixture", namespace: "unified-tasks" }));
       plugin.onLoad({ filter: /.*/, namespace: "unified-tasks" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
     } }],
   });

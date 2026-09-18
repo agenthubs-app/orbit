@@ -114,3 +114,25 @@ test("epoch rotation retires every row, cursor and readable flag of the old epoc
   await assert.rejects(repoRotated.retireEpochs(WORKSPACE, "unknown", "epoch-a2"), /not registered/);
   void scopesA;
 });
+
+// Browser variant of the client layer: rows are ciphertext at rest, so a device
+// database restored next to a different key (another profile, another user's
+// key store) yields nothing readable even for the right actor and scope.
+test("a mirror encrypted under one key cannot be read through another key, even by the same actor and scope", async (t) => {
+  const database = new NodeTestDatabase();
+  t.after(() => database.close());
+  await initializeLocalSyncDatabase(database);
+  const codec = (key: string) => ({
+    encode: async (s: string) => `${key}:${Buffer.from(s, "utf8").toString("base64")}`,
+    decode: async (s: string) => { if (!s.startsWith(`${key}:`)) throw new Error("PAYLOAD_CODEC_KEY_MISMATCH"); return Buffer.from(s.slice(key.length + 1), "base64").toString("utf8"); },
+  });
+  const scopesA = scopesFor(A, "epoch-a");
+  const withKeyA = createLocalSyncRepository({ actorId: A, database, baseUrl, registeredDomainIds: ["tasks", "notes"], activeReadScopes: () => scopesA, hashPayload, payloadCodec: codec("key-a") });
+  await withKeyA.applyDomainPage(scopesA[0]!, page("tasks", "epoch-a", ["task:a:1"]));
+  assert.deepEqual((await withKeyA.listRecords({ workspaceId: WORKSPACE, kind: "task" })).map((record) => record.id), ["task:a:1"]);
+  const withKeyB = createLocalSyncRepository({ actorId: A, database, baseUrl, registeredDomainIds: ["tasks", "notes"], activeReadScopes: () => scopesA, hashPayload, payloadCodec: codec("key-b") });
+  await assert.rejects(withKeyB.listRecords({ workspaceId: WORKSPACE, kind: "task" }), /PAYLOAD_CODEC_KEY_MISMATCH/);
+  await assert.rejects(withKeyB.getRecord({ workspaceId: WORKSPACE, kind: "task", id: "task:a:1" }), /PAYLOAD_CODEC_KEY_MISMATCH/);
+  const stored = await database.all<{ payload_json: string }>("SELECT payload_json FROM sync_records");
+  assert.ok(stored.every((row) => row.payload_json.startsWith("key-a:") && !row.payload_json.includes("owner")), "the file itself never holds plaintext");
+});

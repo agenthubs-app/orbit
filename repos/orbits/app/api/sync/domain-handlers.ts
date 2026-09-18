@@ -6,6 +6,7 @@ import {
   DomainUnknownError,
   type DomainReadService,
 } from "../../../features/sync/domain-read-service";
+import { SYNC_DOMAINS } from "../../../features/sync/domain-registry";
 import { SYNC_DEFAULT_LIMIT, SYNC_MAX_LIMIT } from "../../../features/sync/read-service";
 import { failure, runtimeBoundaryHeaders, success } from "../../../shared/api/envelope";
 import { resolveFeatureMode } from "../../../shared/config/feature-mode";
@@ -16,6 +17,7 @@ import {
   resolveAuthenticatedApiActor,
   type ResolveAuthenticatedApiActor,
 } from "../_shared/authenticated-actor";
+import { conditionalJsonRead, defaultConditionalReadDependencies, type ConditionalReadDependencies } from "../_shared/conditional-read";
 
 export interface SyncDomainRouteDependencies {
   resolveActor?: ResolveAuthenticatedApiActor;
@@ -24,6 +26,8 @@ export interface SyncDomainRouteDependencies {
   /** Auth.js session lifetime; the offline lease never outlives it. */
   sessionMaxAgeMs?: number;
   offlineMaxAgeMs?: number;
+  /** Manifest conditional read (ETag/304); defaults to the configured store's client. */
+  conditionalRead?: ConditionalReadDependencies;
 }
 
 const DEFAULT_SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -124,11 +128,19 @@ export function createSyncDomainHandlers(dependencies: SyncDomainRouteDependenci
         return NextResponse.json(success(envelope), { headers: noStore(mode), status: 200 });
       });
     },
-    manifest(_request: Request): Promise<Response> {
-      return guarded(async ({ actorId, workspaceId, service, mode }) => {
-        const manifest = await service.manifest({ actorId, workspaceId });
-        return NextResponse.json(success(manifest), { headers: noStore(mode), status: 200 });
-      });
+    // The manifest is a watermark read: when nothing in the actor's registered
+    // collections (or the authorization rows) moved, the client gets a 304 and
+    // replays its cached manifest, so an unchanged sync touches no business row.
+    manifest(request: Request): Promise<Response> {
+      return guarded(({ actorId, workspaceId, service, mode }) =>
+        conditionalJsonRead(
+          { routeKey: "sync.manifest", request, actorId, workspaceId, collections: SYNC_DOMAINS.map((domain) => domain.collectionName), userScoped: true },
+          dependencies.conditionalRead ?? defaultConditionalReadDependencies(),
+          async () => {
+            const manifest = await service.manifest({ actorId, workspaceId });
+            return NextResponse.json(success(manifest), { headers: noStore(mode), status: 200 });
+          },
+        ));
     },
     domain(request: Request, domainId: string): Promise<Response> {
       return guarded(async ({ actorId, workspaceId, service, mode }) => {

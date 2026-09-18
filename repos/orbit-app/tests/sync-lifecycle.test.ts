@@ -419,7 +419,7 @@ test("clearing snapshots affects only the active workspace, including the defaul
     await f.coordinator.setScope(workspace);
     await writeSnapshot(scope.baseUrl, scope.actorId, "/api/notes", result);
   }
-  await f.coordinator.withDatabase(workspaces[2]!, db => db.run("INSERT INTO sync_cursors VALUES (?, ?, ?, ?, ?, ?, ?, ?)", ["first|_%", "notes", "fixture-e1", "cursor", "2026-09-16T00:00:00Z", "complete", "complete", "g1"]));
+  await f.coordinator.withDatabase(workspaces[2]!, db => db.run("INSERT INTO sync_cursors VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", ["first|_%", "notes", "fixture-e1", "cursor", "2026-09-16T00:00:00Z", "complete", "complete", "g1", null]));
   for (let index = 0; index < workspaces.length; index++) {
     await f.coordinator.setScope(workspaces[index]!);
     assert.deepEqual((await readSnapshot(scope.baseUrl, scope.actorId, "/api/notes"))?.result, result);

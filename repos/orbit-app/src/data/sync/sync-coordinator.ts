@@ -1,5 +1,5 @@
 import type { SyncChangeKind, SyncRecord } from "../../api/contract/sync";
-import type { OfflineReadEnvelope, ReadScope } from "../../api/contract/universal-read";
+import type { DomainManifest, OfflineReadEnvelope, ReadScope } from "../../api/contract/universal-read";
 import { evaluateOfflineRead } from "../../api/offline-read-session";
 import { offlineReadEnvelopeSchema } from "../../api/schema/universal-read";
 import type { LocalSyncDatabase } from "./local-sync-database";
@@ -28,6 +28,13 @@ const DOMAIN_OF_KIND: Partial<Record<SyncChangeKind, string>> = {
   task: "tasks",
   personal_schedule: "personal-schedule",
 };
+/** True only when the manifest entry for this bound scope matches the complete cursor's watermark and generation. */
+function manifestProvesUnchanged(manifest: DomainManifest | null, readScope: ReadScope, stored: LocalSyncCursor): boolean {
+  if (!manifest || stored.bootstrapState !== "complete" || stored.highWatermark === null || stored.generation === null) return false;
+  const entry = manifest.domains.find((candidate) => candidate.domainId === readScope.domainId && candidate.workspaceId === readScope.workspaceId);
+  return Boolean(entry && entry.authorizationEpoch === readScope.authorizationEpoch && entry.generation === stored.generation && entry.watermark === stored.highWatermark);
+}
+
 /** An epoch value no server ever issues: retiring against it drops every epoch of a domain. */
 const REVOKED_EPOCH = "__revoked__";
 
@@ -134,6 +141,8 @@ export function createSyncCoordinator(input: {
   now?: () => number;
   /** SHA-256 hex of a serialized payload; required by the v2 mirror for every applied record. */
   hashPayload?: (serialized: string) => Promise<string>;
+  /** A manifest failure is not a sync failure: every domain is pulled as before, and this hears why. */
+  onManifestUnavailable?: (error: unknown) => void;
 }) {
   const now = input.now ?? Date.now;
   let generation = 0;
@@ -237,7 +246,8 @@ export function createSyncCoordinator(input: {
     let oldest: LocalSyncCursor | null = null;
     for (const grant of scope.lease.grants) {
       const kind = (Object.keys(DOMAIN_OF_KIND) as SyncChangeKind[]).find((candidate) => DOMAIN_OF_KIND[candidate] === grant.domainId);
-      if (!kind) continue;
+      // A grant outside this platform's whitelist is never bound, so it never has a cursor and must not force a sync.
+      if (!kind || !registeredDomainIds.includes(grant.domainId)) continue;
       const cursor = await readDomainCursor(scope, kind);
       if (!cursor) return null;
       if (!oldest || cursor.lastSyncedAt < oldest.lastSyncedAt) oldest = cursor;
@@ -323,6 +333,9 @@ export function createSyncCoordinator(input: {
     try {
       await scope.ready;
       if (!isCurrent(scope) || flight.abandoned) return null;
+      // No mirror (online-only browser, missing SQLite): nothing to advance, so no network either.
+      await withRepository(scope, async () => undefined);
+      if (!isCurrent(scope) || flight.abandoned) return null;
       const cursor = await readCursor(scope);
       if (!isCurrent(scope) || flight.abandoned) return null;
       const reason = scope.invalidated ? "invalidated" : flight.reason;
@@ -373,9 +386,24 @@ export function createSyncCoordinator(input: {
           if (!isCurrent(scope) || flight.abandoned) return null;
         }
 
+        // One manifest decides which domains moved; an unchanged, complete domain costs no page.
+        let manifest: DomainManifest | null = null;
+        try {
+          manifest = await scope.client.getManifest({ signal: controller.signal });
+        } catch (error) {
+          if (!isCurrent(scope) || flight.abandoned) return null;
+          input.onManifestUnavailable?.(error);
+        }
+        if (!isCurrent(scope) || flight.abandoned) return null;
+
         let pageCount = 0;
         for (const readScope of readScopesOf(scope)) {
           const stored = await withRepository(scope, (repository) => repository.getScopeCursor(readScope));
+          if (stored && manifestProvesUnchanged(manifest, readScope, stored)) {
+            await withRepository(scope, (repository) => repository.confirmScopeCursor(readScope, new Date(now()).toISOString()));
+            if (!isCurrent(scope) || flight.abandoned) return null;
+            continue;
+          }
           let requestCursor = stored?.cursor;
           let resetAttempted = false;
           for (;;) {
