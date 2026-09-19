@@ -1,6 +1,6 @@
 /**
- * Backfill the two display fields every event read path needs: the canonical
- * title and the cover path.
+ * Backfill the display fields every event read path needs: the canonical title,
+ * the canonical venue and the cover path.
  *
  * Why this exists: `orbit_records.events.payload.name` in long-lived dev and QA
  * databases is stale import原文 — for several events it is a bilingual
@@ -10,9 +10,14 @@
  * reads the record payload, so it displayed the stale bilingual string and no
  * artwork at all.
  *
- * The canonical head stays the single authority. This writes a derived display
- * copy (`payload.title`) plus `payload.coverPath` onto the record so every read
- * path serves the same title and the same cover.
+ * Sprint 0090 added the venue for the same reason: `payload.location` is the
+ * seed's English city name (Shanghai, Tokyo) while `event_ops_events.venue`
+ * carries the Chinese one the events list already shows, so the home feed read
+ * a different place name than every other surface.
+ *
+ * The canonical head stays the single authority. This writes derived display
+ * copies (`payload.title`, `payload.venue`) plus `payload.coverPath` onto the
+ * record so every read path serves the same title, venue and cover.
  *
  * Usage:
  *   npx tsx scripts/backfill-event-display-fields.ts                 # dry run
@@ -33,6 +38,8 @@ interface PlannedChange {
   currentTitle: string | null;
   canonicalTitle: string;
   currentName: string | null;
+  currentVenue: string | null;
+  canonicalVenue: string | null;
   coverPath: string | null;
   changes: string[];
 }
@@ -41,8 +48,10 @@ export function planEventDisplayFields(
   rows: readonly {
     event_id: string;
     canonical_title: string | null;
+    canonical_venue: string | null;
     payload_title: string | null;
     payload_name: string | null;
+    payload_venue: string | null;
     payload_cover: string | null;
   }[],
 ): PlannedChange[] {
@@ -53,8 +62,13 @@ export function planEventDisplayFields(
     // record untouched and let the report list it rather than inventing a title.
     if (!canonicalTitle) continue;
     const coverPath = eventCoverPathFor(row.event_id);
+    // An event with no canonical venue keeps whatever the record already had;
+    // there is nothing authoritative to copy and inventing one would be worse
+    // than the import原文.
+    const canonicalVenue = row.canonical_venue?.trim() || null;
     const changes: string[] = [];
     if (row.payload_title?.trim() !== canonicalTitle) changes.push("title");
+    if (canonicalVenue && row.payload_venue?.trim() !== canonicalVenue) changes.push("venue");
     if (coverPath && row.payload_cover?.trim() !== coverPath) changes.push("coverPath");
     if (changes.length === 0) continue;
     planned.push({
@@ -62,6 +76,8 @@ export function planEventDisplayFields(
       currentTitle: row.payload_title,
       canonicalTitle,
       currentName: row.payload_name,
+      currentVenue: row.payload_venue,
+      canonicalVenue,
       coverPath,
       changes,
     });
@@ -73,8 +89,10 @@ const SELECT_SQL = `
   select
     r.record_id as event_id,
     e.title as canonical_title,
+    e.venue as canonical_venue,
     r.payload->>'title' as payload_title,
     r.payload->>'name' as payload_name,
+    r.payload->>'venue' as payload_venue,
     r.payload->>'coverPath' as payload_cover
   from orbit_records r
   left join event_ops_events e
@@ -111,11 +129,17 @@ async function main(argv: readonly string[]): Promise<void> {
           const result = await transaction.query(
             `update orbit_records
                set payload = jsonb_set(
-                     case when $3::text is null then payload else jsonb_set(payload, '{coverPath}', to_jsonb($3::text)) end,
+                     case when $6::text is null then
+                       case when $3::text is null then payload else jsonb_set(payload, '{coverPath}', to_jsonb($3::text)) end
+                     else
+                       jsonb_set(
+                         case when $3::text is null then payload else jsonb_set(payload, '{coverPath}', to_jsonb($3::text)) end,
+                         '{venue}', to_jsonb($6::text))
+                     end,
                      '{title}', to_jsonb($2::text)),
                    updated_at = $4
              where workspace_id = $5 and collection_name = 'events' and record_id = $1 and deleted_at is null`,
-            [change.eventId, change.canonicalTitle, change.coverPath, now, database.workspaceId],
+            [change.eventId, change.canonicalTitle, change.coverPath, now, database.workspaceId, change.canonicalVenue],
           );
           assert.equal(result.rowCount, 1, `Event display update not acknowledged for ${change.eventId}`);
         }
@@ -131,6 +155,7 @@ async function main(argv: readonly string[]): Promise<void> {
         total: rows.length,
         planned: planned.length,
         eventsWithoutCanonicalTitle: withoutCanonical,
+        eventsWithoutCanonicalVenue: rows.filter((row) => !row.canonical_venue?.trim()).map((row) => row.event_id),
         eventsWithoutCover: withoutCover,
         changes: planned,
       };
