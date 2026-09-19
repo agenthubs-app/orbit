@@ -24,6 +24,7 @@ workspace root for implementation work.
 - Cloud validation must follow `docs/operations/free-staging-budget.md`: inspect current project quota first, use a small explicit operation budget, and run bulk/pressure/regression tests on local PostgreSQL.
 - Do not run bulk demo/pressure seeds, full payload exports, keep-alive polling, or unbounded workers on a Free cloud database. Use the guarded minimal staging initializer for the approved isolated environment; never overwrite a nonempty database.
 - Keep staging database, Auth, model/email/storage credentials and workers isolated from Production. Deploy staging with an explicit `--target preview` and `vercel.staging.json` (the first Vercel deployment can otherwise auto-promote).
+- The real-PostgreSQL tests read `ORBIT_EVENT_DATABASE_URL` **directly**, bypassing `resolveLiveDatabaseConnectionConfig`, so `ORBIT_DATABASE_TARGET=local` does not redirect them. Point `ORBIT_EVENT_DATABASE_URL` at a local test database or they will run against the cloud and exhaust its transfer quota: `psql "$ORBIT_LOCAL_DATABASE_URL" -c 'CREATE DATABASE orbit_test'`, then set `ORBIT_EVENT_DATABASE_URL=postgresql://…/orbit_test` in `.env.local`. Keep it separate from the dev database — migration tests create and drop schemas.
 - Quota thresholds and script budgets are not provider billing meters. Do not claim an automatic monthly spending cap exists unless it is actually enforced. No paid upgrade or deletion of unrelated data without authorization.
 
 ## Cross-Client Contract

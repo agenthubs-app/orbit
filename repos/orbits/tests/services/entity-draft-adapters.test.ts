@@ -3,7 +3,6 @@ import { test } from "node:test";
 
 import type { EntityDraft } from "../../features/orbit-ai/entity-drafts/contract";
 import {
-  createContactDraftAdapter,
   createEventDraftAdapter,
   createNoteDraftAdapter,
   createScheduleDraftAdapter,
@@ -109,38 +108,6 @@ test("a refused event write surfaces the service's own reason", async () => {
       idempotencyKey: "k", now: NOW,
     }),
     /活动来源未配置/u,
-  );
-});
-
-test("a confirmed contact lands as a draft, which is the only path Orbit has", async () => {
-  const adapter = createContactDraftAdapter({
-    async createManualContactDraft(input) {
-      assert.equal(input.displayName, "林玫");
-      assert.equal(input.organization, "港湾创投");
-      return { data: { draft: { draftId: "contact-draft:4" } }, success: true };
-    },
-  });
-
-  const result = await adapter.write({
-    actorId: "actor:one",
-    draft: draft({ fields: { name: "林玫", organization: "港湾创投" }, kind: "contact" }),
-    idempotencyKey: "k", now: NOW,
-  });
-  assert.equal(result.recordId, "contact-draft:4");
-});
-
-test("a contact draft with no id back is a failure, not a silent success", async () => {
-  const adapter = createContactDraftAdapter({
-    async createManualContactDraft() { return { data: { draft: null }, success: true }; },
-  });
-
-  await assert.rejects(
-    adapter.write({
-      actorId: "actor:one",
-      draft: draft({ fields: { name: "林玫" }, kind: "contact" }),
-      idempotencyKey: "k", now: NOW,
-    }),
-    /没有返回可回读的 id/u,
   );
 });
 

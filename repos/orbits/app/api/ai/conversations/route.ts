@@ -542,7 +542,7 @@ async function applyEntityDraft(
   const intent = readEntityDraftIntent(input.message ?? "");
   if (!proposedEntityDraft && !intent) return result;
 
-  const service = createConfiguredEntityDraftService(actorId);
+  const service = createConfiguredEntityDraftService();
   if (!service) {
     return proposedEntityDraft ? { data: publicData, success: true } : result;
   }
@@ -604,7 +604,7 @@ async function applyEntityDraft(
 }
 
 function entityDraftKindLabel(kind: string): string {
-  return { contact: "人脉", event: "活动", note: "笔记", schedule: "日程", task: "待办" }[kind] ?? "记录";
+  return { event: "活动", note: "笔记", schedule: "日程", task: "待办" }[kind] ?? "记录";
 }
 
 async function persistConversationRunTrace(

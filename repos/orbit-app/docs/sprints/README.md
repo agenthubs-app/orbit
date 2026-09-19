@@ -40,7 +40,7 @@ E 结构（0079–0080，需单独批准）依次领取，不并行。
 | [0089](0089-contact-value-score-signal/GOAL.md) | 联系人列表价值分：查清 78 人中 76 人恒为 84 的成因，修算法或换掉列表右侧内容；不可信时不显示假值 | 复核第 3 条。读取点 `contacts.ts:319-321`／渲染 `:449-450`（已有 null 分支）。档位 App L。基线 `ededaa6ac`，Planner SHA bc931cd9 | planned |
 | [0090](0090-recommended-event-location-authority/GOAL.md) | 首页推荐活动地点中文：`location`／`venue` 收口到权威来源并扩展 0082 的回填脚本，移除英文兜底 `"Live event source"` | 复核第 4 条，0082 同源遗留。provider `:203-206` 仍直读种子英文 `payload.location`；权威来源与回填机制 0082 已建好。档位 orbits L。基线 `ededaa6ac`，Planner SHA d6cd1b58 | planned |
 | [0091](0091-private-route-auth-gate/GOAL.md) | 私有路由登录态门：量 `auth.ready` 耗时构成并缩短已登录首屏等待，不放宽登录态判断 | 复核第 5 条（`/followups`、`/contacts/dashboard` 六秒以上）。`OrbitRouteAccessBoundary.tsx:34-42` 只有三态；auth 慢还会把镜像同步一起往后推。档位 App H（身份路径）。基线 `ededaa6ac`，Planner SHA ffe2a5a5 | planned |
-| [0093](0093-entity-draft-contact-and-event-writes/GOAL.md) | 人脉与活动的草稿写入：收窄既有护栏让人脉进草稿卡、查清活动 source note 前置条件 | 0085 设计案授权的拆分。两处阻挡都已在真实链路定位。**人脉那一半需要用户同意收窄安全护栏才能进实现步**；不同意则只做活动，人脉记 blocked。档位 orbits H（身份／写入护栏）。基线 0085 合并后 | planned |
+| [0093](0093-event-draft-write/GOAL.md) | 活动草稿写入：查清 `A source note is required…` 是产品规则还是 mock 遗留，让活动可从草稿卡确认创建或在确认前告知 | 0085 拆分。**2026-09-19 用户决定放弃"通过 AI 聊天添加人脉"**，人脉继续走既有名片／二维码／手动录入流程，相关代码已移除而非留着不用。档位 orbits L。基线 0085 合并后 | planned |
 | [0092](0092-iorbit-home-loading-states/GOAL.md) | IORBIT 首页两块区域：“正在读取最近会话”／“正在核对下一步”加载态加上限，三终态（有内容／确实为空／出错可重试）可区分 | 复核第 6 条。两块属不同子系统，需分别度量；与 0078／0087 同族的第三面——加载态必须有终点。档位 App L。基线 `ededaa6ac`，Planner SHA bb4b71f7 | planned |
 
 已查清的前置事实：生产切库已于 2026-09-17 完成并正在服务（`www.orbitailink.com` 200、`/api/health` mode=live，
@@ -696,3 +696,13 @@ Phone精确15路径consumer6d1c771aee07f9a704863f11c3548354aea0b4d5/TREE6ed9ac43
 - **0090 是 0082 的同源遗留**，不是新问题：权威来源与回填脚本 0082 已建好，本 Sprint 只把 `location`／`venue` 接上去。Planner 明确排除「在前端再挑一次中文段」——那会把 `ZH:` 挑段逻辑的第 11 份副本引进来。
 
 建议执行顺序：**0084 → 0085 → 0087 → 0090 → 0089 → 0092 → 0088 → 0091**。已批准且此前被批准门挡住的 0084／0085 先做；随后 0087 立下"等待必须有终点"的共享规则，0090／0089 是边界清楚的小修，0092／0088 复用 0087 的规则，0091 涉及身份路径放最后单独收口。
+
+### 2026-09-19（下午）：三项用户决定与一次仓库清理
+
+**1. 放弃"通过 AI 聊天添加人脉"。** 0085 实测发现这条路被既有护栏 `live-agent-runtime.ts:750` 拦在模型之前，要放行就得收窄一条写入护栏。用户决定不走这条路：人脉继续用既有的名片／二维码／手动录入／推荐确认流程。因此把 `contact` 从草稿链路**整体移除**（`ENTITY_DRAFT_KINDS`、适配器、工厂接线、触发词、卡片规格、三个只服务人脉的文案键），而不是留一段不可达代码。护栏一行未动。人脉仍可以作为草稿的**来源**（`sourceRefs`），只是不能作为草稿的**目标**。
+
+**2. real-PostgreSQL 测试改用本机库。** 这批测试（132 个文件）直接读 `ORBIT_EVENT_DATABASE_URL`，绕过 `resolveLiveDatabaseConnectionConfig`，所以 `ORBIT_DATABASE_TARGET=local` 管不到它们；云端 Neon 传输额度用尽后它们全红（`53000`），与代码无关。现在 `.env.local` 里把 `ORBIT_EVENT_DATABASE_URL` 指向本机新建的 **`orbit_test`**——专供测试，与开发库 `orbit_events` 分开，迁移类测试建表删表碰不到开发数据。应用本身仍走 `ORBIT_LOCAL_DATABASE_URL`，不受影响。
+
+**3. 清理 worktree，磁盘 4.1G → 29G。** `.worktrees/` 下 43 个工作树占 28G（正是根 CLAUDE.md 警告的那 28G）。删掉 40 个：全部已合入主线的，以及仅有 `AGENTS.md`/`CLAUDE.md` 与生成的 `.claude/skills/gitnexus/` 这类工具噪音的。**删工作树不删分支和提交**，已抽查确认分支都在，需要时 `git worktree add` 可重建（按政策建到 `/Volumes/ORICO`）。保留 3 个有真实未提交内容的：`phoneweb-main`（11 项改动，含几个 phoneweb 脚本）、`data-audit-20260915`（内含一个独立 git 仓库 `sites/orbit-data-audit`）、`phoneweb-consume-0052`（0063 的 phoneweb 侧 sprint 文档未提交）。
+
+**清理带出的一处脆弱依赖：** `repos/orbits/node_modules/pinyin-pro` 原本是一条指向 `sprint-0059` 工作树里 `build/harness-state/evidence/.../web-dependency-overlay/` 的符号链接。工作树一删它就断了。已按 `package.json` 里既有的 `3.29.3` 正常安装为真实目录（`package.json`/`package-lock.json` 未改——npm 会重排键，已还原）。生产依赖不应该软链到某个临时工作树的证据目录里。

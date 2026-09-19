@@ -3,6 +3,7 @@ import { test } from "node:test";
 
 import { createTranslator } from "../src/i18n/messages";
 import {
+  AI_ENTITY_KINDS,
   aiEntityDraftCardView,
   aiEntityRecordHref,
   readAiEntityDraft,
@@ -52,7 +53,6 @@ test("a card stays within four rows even when the model fills every field", () =
     ["task", { category: "work", dueAt: "2026-09-20T09:00", notes: "n", title: "t" }],
     ["schedule", { endsAt: "2026-09-21T15:00", location: "东京", startsAt: "2026-09-21T14:00", title: "t" }],
     ["event", { description: "d", endsAt: "2026-09-22T03:00", location: "大阪", startsAt: "2026-09-22T01:00", title: "t" }],
-    ["contact", { name: "林玫", note: "n", organization: "港湾创投", role: "投资总监" }],
     ["note", { body: "b", title: "t" }],
   ] as const) {
     const draft = readAiEntityDraft(payload({ fields, kind, sourceRefs: [{ id: "note:1", kind: "note" }] }));
@@ -100,6 +100,7 @@ test("each kind opens the page that actually holds it", () => {
   assert.equal(aiEntityRecordHref("note", "note:1"), "/notes/note%3A1");
   assert.equal(aiEntityRecordHref("schedule", "s:1"), "/schedule/s%3A1");
   assert.equal(aiEntityRecordHref("event", "e:1"), "/events/e%3A1");
-  // Contacts land as a draft, so the card goes to the confirmation page.
-  assert.equal(aiEntityRecordHref("contact", "cd:1"), "/contacts/drafts/cd%3A1");
+  // Contacts are absent on purpose: they keep their existing acquisition flow,
+  // so the agent never produces a contact card to open.
+  assert.equal(AI_ENTITY_KINDS.includes("contact" as never), false);
 });

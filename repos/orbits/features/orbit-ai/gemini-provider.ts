@@ -1449,7 +1449,8 @@ export async function runOrbitAgentModelText(input: {
  * something. This trigger is deterministic on purpose: an extra model call is
  * not something a model gets to decide to make.
  */
-const ENTITY_DRAFT_NOUNS = "待办|任务|笔记|备忘|日程|安排|活动|联系人|人脉";
+// 联系人／人脉 不在其中：它们走既有的名片／二维码／手动录入流程。
+const ENTITY_DRAFT_NOUNS = "待办|任务|笔记|备忘|日程|安排|活动";
 // 安排 is deliberately not a verb here: 查一下我的日程安排 is a query, and a
 // spurious card costs a model call and offers to create something nobody asked
 // for. Missing an unusual phrasing only costs the card.
@@ -1458,7 +1459,7 @@ const ENTITY_DRAFT_VERBS = "整理|建立|创建|新建|生成|添加|加入|记
 const ENTITY_DRAFT_REQUEST_PATTERNS = [
   // The verb always leads: 整理一个待办 / 建一个日程 / 把林玫添加为联系人.
   new RegExp(`(${ENTITY_DRAFT_VERBS})(一个|一条|一项|个|条)?[^。.,，!！?？]{0,6}?(${ENTITY_DRAFT_NOUNS})`, "u"),
-  /\b(create|add|make|draft|log)\s+(a|an|one)?\s*(new\s+)?(task|todo|to-do|note|schedule|event|contact)\b/iu,
+  /\b(create|add|make|draft|log)\s+(a|an|one)?\s*(new\s+)?(task|todo|to-do|note|schedule|event)\b/iu,
 ];
 
 export function requestsEntityDraft(message: string): boolean {
