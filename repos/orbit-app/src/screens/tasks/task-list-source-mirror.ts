@@ -15,13 +15,27 @@ function itemsFrom(records: readonly { payload: unknown }[], actorId: string): T
  * available) Web: the network only advances the mirror, reads never wait on it.
  */
 export function mirrorTaskListSource(state: SyncedTasks, input: TaskListSourceInput): TaskListSource {
-  const canonical = input.ready ? itemsFrom(state.records, input.actorId) : null;
+  // Sprint 0087: an empty list is only a fact once a sync has happened. Until
+  // then `canonical` stays null, because the screen renders 暂无待办 from an empty
+  // array and cannot tell the difference on its own.
+  //
+  // `syncing` alone cannot mean "never synced": it is also the state of a
+  // refresh, and blanking the list on every pull-to-refresh would be its own
+  // bug. A cursor — surfaced as lastSyncedAt — is the actual evidence.
+  const everSynced = state.lastSyncedAt !== null
+    || state.status === "fresh" || state.status === "local-ready" || state.status === "stale";
+  // A failed first sync has no list either — 0078 already settled that it shows
+  // the error rather than an empty page, and an empty array here would show both.
+  const readable = everSynced && !(state.status === "failure" && state.records.length === 0);
+  const canonical = input.ready && readable ? itemsFrom(state.records, input.actorId) : null;
   return {
     canonical,
-    loading: input.ready && state.status === "local-ready" && state.records.length === 0,
+    loading: input.ready && !everSynced && state.status !== "failure",
     failure: state.status === "failure" ? state.error ?? "sync.failure" : null,
     refreshing: state.status === "syncing",
-    syncLabelKey: `sync.${state.status === "local-ready" ? "localReady" : state.status}` as MessageKey,
+    // A never-synced collection reads as syncing: from the user's side the page
+    // is fetching, and there is no separate thing for them to do about it.
+    syncLabelKey: `sync.${state.status === "local-ready" ? "localReady" : state.status === "unsynced" ? "syncing" : state.status}` as MessageKey,
     tasksPayload: undefined,
     refresh: () => { void state.refresh(); },
     async confirmMutation(taskId, action) {
