@@ -206,3 +206,5 @@
   - `ad6b9594` 批次2b：settings 页作用域 token 重映射
   - `d167f209` 批次3e：联系人详情页作用域 token 重映射（0918 indigo，nc-* 结构与逻辑不变）
 - **进行中**：批次 1c 报名屏视觉替换 → connect 占位 → 批次 4a iOrbit home（消费已交付 D25/home-facts 聚合，真实 ready/empty/unavailable 三态，不伪造设计稿 mock 数字）→ 4b/4c 历史抽屉与 chat 视觉 → 4d actions/plan/strategy（仅做有真实数据的静态聚合，无接口能力不做假）。每批提交后在本台账追加记录。
+- **批次 1c 完成** `d3e6fd8d`：报名屏 0918 换肤，0066 RegistrationPortraitWorkspace 逻辑/data-*/readback（BR-031）零改动（diff 审计纯 CSS/色值）。portrait 作用域 CSS 换 0918 靛蓝体系＋serif 900 标题；访谈层 `[data-orbit-registration-profile-guide=register]` 作用域全套 token 重映射＋color-scheme:light。验证：报名 5 套件 37/37 绿、ratchet 8/8、typecheck 净、SSR 截图核验通过。顺带修复基线缺陷：event-registration-readonly-ssr fixture 缺 `resolveAuthenticatedApiActorFromSession` 导出（干净 HEAD 上即红，W3-R 遗留），补导出后转绿。**环境阻塞如实记录**：event-registration-readback（15 项）与 app-event-registration-guide（13 项）当前因云端 PG「data transfer quota exceeded」无法运行/挂起，主仓库（无本批改动）同样复现，与本批 CSS 改动无关；待 PG 配额恢复后需补跑。
+- **踩坑记录（后续批次遵守）**：本工作区 Bash 默认 cwd 是主仓库 `/Users/li/work/orbit`，`cd repos/orbits` 会落进主仓库；所有命令必须显式带工作树 cwd。也不得把 `git stash` 与可能挂起的测试串在同一命令里（超时 kill 会导致 stash 未弹出）。
