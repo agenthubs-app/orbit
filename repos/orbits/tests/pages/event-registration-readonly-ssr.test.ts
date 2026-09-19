@@ -14,6 +14,7 @@ test("actual registration page SSR is read-only and never attempts model prewarm
   const fixtures: Record<string, unknown> = {
     StateView: emptyComponent, OrbitReferenceStyles: emptyComponent, OrbitVisualFreezeRuntime: emptyComponent, EventRegistrationWorkspace: emptyComponent,
     auth: async () => ({ user: { id: "synthetic-actor", name: "Fixture" } }),
+    resolveAuthenticatedApiActorFromSession: async () => ({ id: "synthetic-actor", name: "Fixture", email: "fixture@example.com" }),
     normalizeOrbitLanguage: (language: string) => language, getOrbitServerLanguage: async () => "en", localizeOrbitTree: (value: unknown) => value,
     eventTitleForId: () => null, localizedEventTitle: () => event.title, bilingualSegment: (value: string) => value,
     loadEventForRegistration: async () => event,

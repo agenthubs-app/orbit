@@ -948,6 +948,26 @@ export function EventRegistrationWorkspace({
       }}
     >
       <style>{`
+        /* Orbit_0918 批次 1c：报名屏视觉替换。页作用域重映射全套 token 到 0918
+           靛蓝体系并改 light color-scheme（沿用批次 3d 无引号选择器约定）；
+           逻辑、data-* 钩子、签名问答与 readback 语义零改动。 */
+        [data-orbit-registration-profile-guide=register]{
+          color-scheme:light;
+          --ink:#0E1225;--text:#0E1225;--text-2:#3B3F7A;--text-3:#6B6F99;--text-4:#9FA3C4;
+          --bg:#FBFBFE;--bg-soft:#F7F7FD;--bg-sunken:#F1F1FA;
+          --surface:#FFFFFF;--surface-2:#F7F7FD;--surface-3:#ECEEFB;
+          --border:#E8E9F6;--border-2:#DDDEFA;--border-strong:#B9BCEB;--hairline:#F1F1FA;
+          --accent:#4B4FC7;--accent-hover:#2E3270;--accent-soft:#ECEEFB;--accent-ring:#B9BCEB;
+          --on-accent:#FFFFFF;--on-dark:#FFFFFF;
+          --ff-display:'Noto Serif SC','Songti SC','SimSun',serif;
+        }
+        [data-orbit-registration-profile-guide=register] .btn-primary{background:#0E1225;border-color:#0E1225;box-shadow:none;color:#FFFFFF}
+        [data-orbit-registration-profile-guide=register] .btn-primary:hover:not(:disabled){background:#2E3270;border-color:#2E3270}
+        [data-orbit-registration-profile-guide=register] .btn-secondary{background:#FFFFFF;border-color:#DDDEFA;color:#3B3F7A;box-shadow:none}
+        [data-orbit-registration-profile-guide=register] .btn-secondary:hover:not(:disabled){border-color:#B9BCEB;color:#2E3270}
+        [data-orbit-registration-profile-guide=register] .chip{border-color:#DDDEFA;color:#3B3F7A;background:#FFFFFF}
+        [data-orbit-registration-profile-guide=register] .field{background:#FFFFFF;border-color:#DDDEFA;color:#0E1225}
+        [data-orbit-registration-profile-guide=register] .field:focus{border-color:#4B4FC7;outline:3px solid #ECEEFB;outline-offset:0}
         @keyframes regFadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes regReveal { 0% { opacity: 0; transform: translateY(22px) scale(.97); } 60% { opacity: 1; } 100% { opacity: 1; transform: translateY(0) scale(1); } }
         @keyframes regPulse { 0%, 100% { opacity: .3; transform: scale(.9); } 50% { opacity: 1; transform: scale(1.08); } }
