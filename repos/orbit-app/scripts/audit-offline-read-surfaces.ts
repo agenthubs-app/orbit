@@ -10,9 +10,15 @@ type Callable = ts.FunctionDeclaration | ts.FunctionExpression | ts.ArrowFunctio
 type CallableEnv = Map<ts.Node, readonly Callable[]>;
 const UNKNOWN = '<unresolved>';
 const unique = (values: string[]) => [...new Set(values)];
+/**
+ * Keys are `file:line`, so any edit ABOVE a listed call site silently detaches
+ * its entry — and the audit then reports the endpoint as uncalled rather than
+ * the key as stale, which sends you looking in the wrong place. `usedComputedPathKeys`
+ * below turns that into an explicit STALE_COMPUTED_PATH_KEY finding.
+ */
+const usedComputedPathKeys = new Set<string>();
+
 const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
-  'src/api/business-card-import.ts:114': ['/api/contact-drafts/business-card/imports/:id/cancel'],
-  'src/api/business-card-import.ts:115': ['/api/contact-drafts/business-card/imports/:id'],
   'src/screens/ai/AiConversationScreen.tsx:350': ['/api/ai/conversations', '/api/ai/conversations/:id'],
   'src/screens/chat/RelationshipChatDetailScreen.tsx:176': ['/api/relationship-communication/conversations/:id/messages'],
   'src/screens/contacts/ContactAcquisitionScreen.tsx:401': ['/api/contact-drafts/:id'],
@@ -25,8 +31,7 @@ const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
   'src/screens/contacts/ContactIntrosScreen.tsx:175': ['/api/relationship-communication/invitations'],
   'src/screens/contacts/ContactsGraphScreen.tsx:137': ['/api/connections/:id/evidence'],
   'src/screens/contacts/ContactsGraphScreen.tsx:169': ['/api/connections/:id/profile'],
-  'src/screens/contacts/ContactsScreen.tsx:1724': ['/api/contacts'],
-  'src/screens/events/EventAttendeesScreen.tsx:260': ['/api/events/:id/attendees/import'],
+  'src/screens/contacts/ContactsScreen.tsx:1730': ['/api/contacts'],
   'src/hooks/useRelationshipInboxBadgeCount.ts:68': ['/api/relationship-communication/conversations', '/api/notifications', '/api/inbox/notifications'],
   'src/screens/inbox/RelationshipInboxScreen.tsx:510': ['/api/notifications/:id/state', '/api/relationship-communication/conversations/:id/read'],
   'src/screens/inbox/RelationshipInboxScreen.tsx:1185': ['/api/relationship-signals/:id/confirm'],
@@ -338,6 +343,7 @@ export async function extractReadCalls(root: string): Promise<{ calls: Call[]; i
     const unknownPath = evaluatedPaths.includes(UNKNOWN);
     const unresolvedPath = unknownPath || !paths.length || evaluatedPaths.every(path => !path.includes('/api/'));
     const inferredPaths = unresolvedPath ? [...(computedPathFamilies[location] ?? [])] : [];
+    if (inferredPaths.length) usedComputedPathKeys.add(location);
     const resolvedPaths = unique([...paths, ...inferredPaths]);
     const unresolvedMethod = methods.includes(UNKNOWN);
     const nonApiSink = location in nonApiTransportSinks && !evaluatedPaths.some(path => path.includes('/api/'));
@@ -403,6 +409,7 @@ export async function extractReadCalls(root: string): Promise<{ calls: Call[]; i
     const location = `${relative(root, source.fileName)}:${source.getLineAndCharacterOfPosition(node.getStart()).line + 1}`;
     const paths = computedPathFamilies[location];
     if (!paths?.length) return new Map();
+    usedComputedPathKeys.add(location);
     let index = node.arguments.findIndex(argument => checker.typeToString(checker.getTypeAtLocation(argument)).includes('string'));
     if (index < 0) index = 0;
     const parameter = fn.parameters[index];
@@ -567,6 +574,16 @@ export async function auditReadSurfaces(root: string): Promise<{ unregistered: s
   for (const surface of surfaces) {
     if (surface.endpointTemplate.startsWith('/device/') || surface.consumerFile === 'src/api/endpoints.ts') continue;
     if (!discovered.has(key(surface))) invalid.push(`ORPHAN_SURFACE ${key(surface)}`);
+  }
+  // Name the stale key directly. Without this the only symptom is an
+  // UNRESOLVED_PATH plus an ORPHAN_SURFACE for an endpoint that is still called,
+  // which reads as a missing consumer rather than a moved line.
+  for (const location of Object.keys(computedPathFamilies)) {
+    if (!usedComputedPathKeys.has(location)) {
+      invalid.push(
+        `STALE_COMPUTED_PATH_KEY ${location} (nothing consulted it: either the call moved to another line, or its path now resolves on its own and the entry is dead)`,
+      );
+    }
   }
   return { unregistered: unique(unregistered).sort(), invalid: unique(invalid).sort() };
 }
