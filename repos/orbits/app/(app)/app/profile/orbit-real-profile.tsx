@@ -914,7 +914,7 @@ function ConnectPanel({ t }: { t: Translate }) {
                 <span className="pf-connect-scope" key={scope.zh}><i>✓</i>{t(scope)}</span>
               ))}
             </span>
-            <button className="btn pf-connect-btn" disabled type="button">{t({ en: "Coming soon", zh: "即将开放" })}</button>
+            <span aria-disabled="true" className="btn pf-connect-btn" role="note">{t({ en: "Coming soon", zh: "即将开放" })}</span>
           </section>
         ))}
       </div>

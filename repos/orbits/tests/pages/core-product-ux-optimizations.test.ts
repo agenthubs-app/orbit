@@ -160,8 +160,10 @@ test("small Agent and contact status copy use readable foreground tokens", () =>
   const agent = source("app/(app)/app/agent/orbit-real-agent.tsx");
   const contacts = source("app/(app)/app/contacts/orbit-real-contacts.tsx");
 
-  assert.match(agent, /"--text-3": "#687078"/);
-  assert.match(agent, /"--text-4": "#687078"/);
+  // Orbit_0918 批次 4c：可读性规则不变（小字状态文案仍走 --text-3/--text-4 前景 token），
+  // 色值随 0918 设计更新为 #6B6F99/#9FA3C4（对比度不低于旧值）。
+  assert.match(agent, /"--text-3": "#6B6F99"/);
+  assert.match(agent, /"--text-4": "#9FA3C4"/);
   assert.match(contacts, /status === "to_contact" \? "var\(--amber-text\)" : meta\.color/);
 });
 
