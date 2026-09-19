@@ -4,14 +4,11 @@ import { createConfiguredNoteService } from "../../notes/service-factory";
 import { createConfiguredPersonalScheduleService } from "../../personal-schedule/service-factory";
 import { createConfiguredTaskService } from "../../tasks/service-factory";
 import { createEventCrudAndImportService } from "../../events/service-factory";
-import { createManualContactCreationServiceForActor } from "../../acquisition/service-factory";
 import {
-  createContactDraftAdapter,
   createEventDraftAdapter,
   createNoteDraftAdapter,
   createScheduleDraftAdapter,
   createTaskDraftAdapter,
-  type ContactDraftCreatePort,
   type EventCreatePort,
   type NoteCreatePort,
   type ScheduleCreatePort,
@@ -23,11 +20,9 @@ import { createEntityDraftService, type EntityDraftService } from "./service";
 /**
  * Sprint 0085: wires the draft state machine to the real domain services.
  *
- * Adapters are built per actor because the contact path is actor-scoped.
+ * Contacts are not here on purpose: they keep their existing acquisition flow.
  */
-export function createConfiguredEntityDraftService(
-  actorId: string,
-): EntityDraftService | null {
+export function createConfiguredEntityDraftService(): EntityDraftService | null {
   const runtime = createConfiguredTransactionalPostgresRuntime();
   if (!runtime) return null;
 
@@ -45,9 +40,6 @@ export function createConfiguredEntityDraftService(
       ),
       createEventDraftAdapter(
         createEventCrudAndImportService() as unknown as EventCreatePort,
-      ),
-      createContactDraftAdapter(
-        createManualContactCreationServiceForActor(actorId) as unknown as ContactDraftCreatePort,
       ),
     ],
     repository,

@@ -15,7 +15,6 @@ import type { AiEntityDraftCardView } from "../../../view-models/ai-entity-draft
  */
 
 const KIND_GLYPH: Readonly<Record<AiEntityDraftCardView["kind"], keyof typeof Ionicons.glyphMap>> = {
-  contact: "person-outline",
   event: "calendar-outline",
   note: "document-text-outline",
   schedule: "time-outline",

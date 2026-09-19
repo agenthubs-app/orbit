@@ -81,11 +81,9 @@ test("a create request is recognised even when it also names something to read",
     "请根据这篇笔记整理一个待办，并明确标题和日期。",
     "根据我的笔记整理一个待办",
     "帮我建一个日程",
-    "把林玫添加为联系人",
     "记一条笔记",
     "新建一个活动",
     "create a task from this note",
-    "Add a contact for Lin Mei",
   ]) {
     assert.equal(requestsEntityDraft(message), true, message);
   }
@@ -103,6 +101,10 @@ test("an ordinary query does not trigger the extra draft call", () => {
     "查一下我的日程安排",
     "这周的活动有哪些",
     "我的联系人里谁在餐饮行业",
+    // Contacts keep their existing acquisition flow, so the agent must not offer
+    // to create one even when asked directly.
+    "把林玫添加为联系人",
+    "Add a contact for Lin Mei",
     "list my notes",
   ]) {
     assert.equal(requestsEntityDraft(message), false, message);

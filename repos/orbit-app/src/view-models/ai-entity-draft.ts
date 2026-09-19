@@ -8,7 +8,8 @@ import type { MessageKey, OrbitTranslator } from "../i18n/messages";
  * a task and the card for a note cannot drift apart by accident.
  */
 
-export const AI_ENTITY_KINDS = ["task", "note", "schedule", "event", "contact"] as const;
+// Contacts keep their existing acquisition flow; the agent does not draft them.
+export const AI_ENTITY_KINDS = ["task", "note", "schedule", "event"] as const;
 export type AiEntityKind = (typeof AI_ENTITY_KINDS)[number];
 
 export const AI_ENTITY_DRAFT_STATES = [
@@ -126,7 +127,6 @@ export function readAiEntityDraft(value: unknown): AiEntityDraft | null {
 
 /** Which field carries the card's heading, per kind. */
 const TITLE_FIELD: Readonly<Record<AiEntityKind, string>> = {
-  contact: "name",
   event: "title",
   note: "title",
   schedule: "title",
@@ -138,11 +138,6 @@ const TITLE_FIELD: Readonly<Record<AiEntityKind, string>> = {
  * reproduce it. Anything longer belongs on the detail page.
  */
 const ROW_FIELDS: Readonly<Record<AiEntityKind, readonly { field: string; key: MessageKey }[]>> = {
-  contact: [
-    { field: "organization", key: "aiEntityDraft.fieldOrganization" },
-    { field: "role", key: "aiEntityDraft.fieldRole" },
-    { field: "note", key: "aiEntityDraft.fieldNote" },
-  ],
   event: [
     { field: "startsAt", key: "aiEntityDraft.fieldStartsAt" },
     { field: "endsAt", key: "aiEntityDraft.fieldEndsAt" },
@@ -162,7 +157,6 @@ const ROW_FIELDS: Readonly<Record<AiEntityKind, readonly { field: string; key: M
 };
 
 const KIND_LABEL: Readonly<Record<AiEntityKind, MessageKey>> = {
-  contact: "aiEntityDraft.kindContact",
   event: "aiEntityDraft.kindEvent",
   note: "aiEntityDraft.kindNote",
   schedule: "aiEntityDraft.kindSchedule",
@@ -185,7 +179,6 @@ export function aiEntityRecordHref(kind: AiEntityKind, recordId: string): string
     case "note": return `/notes/${id}`;
     case "schedule": return `/schedule/${id}`;
     case "event": return `/events/${id}`;
-    case "contact": return `/contacts/drafts/${id}`;
     default: return null;
   }
 }

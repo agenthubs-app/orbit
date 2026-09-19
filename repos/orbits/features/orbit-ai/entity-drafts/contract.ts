@@ -8,12 +8,18 @@
  * these, and that confirming one is something only a user action can do.
  */
 
+/**
+ * Contacts are deliberately absent. Orbit already has a contact acquisition flow
+ * (business card, QR, manual, referral) with its own confirmation, and a
+ * long-standing guardrail stops the agent from touching contact state before the
+ * model even runs. Adding a second way in would mean relaxing that guardrail to
+ * duplicate a path that already works, so the agent does not draft contacts.
+ */
 export const ENTITY_DRAFT_KINDS = [
   "task",
   "note",
   "schedule",
   "event",
-  "contact",
 ] as const;
 
 export type EntityDraftKind = (typeof ENTITY_DRAFT_KINDS)[number];
@@ -83,7 +89,6 @@ const REQUIRED_FIELDS: Readonly<Record<EntityDraftKind, readonly string[]>> = {
   note: ["title"],
   schedule: ["title", "startsAt"],
   event: ["title", "startsAt"],
-  contact: ["name"],
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {

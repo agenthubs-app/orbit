@@ -167,12 +167,13 @@ test("another actor cannot confirm a draft", async () => {
 
 test("a kind with no adapter is reported, not silently dropped", async () => {
   const repository = memoryRepository();
+  // Only the task adapter is registered, so a note draft has nowhere to go.
   const { adapter } = recordingAdapter();
   const service = createEntityDraftService({ adapters: [adapter], repository });
 
   await service.propose({
     actorId: ACTOR, conversationId: CONVERSATION, draftId: "draft:1", now: NOW,
-    proposal: { fields: { name: "林玫" }, kind: "contact", sourceRefs: [] },
+    proposal: { fields: { title: "关西对接会要点" }, kind: "note", sourceRefs: [] },
   });
   assert.equal((await service.confirm({ actorId: ACTOR, draftId: "draft:1", now: NOW })).kind, "unsupported");
 });

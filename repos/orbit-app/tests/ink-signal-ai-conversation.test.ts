@@ -988,9 +988,9 @@ test("a created card stops offering confirmation and opens the record instead", 
   assert.deepEqual(await navigation(p), ["/tasks/task%3A9"]);
 });
 
+// Contacts are absent on purpose — they keep their existing acquisition flow.
 test("each entity kind renders its own card", async t => {
   for (const [draft, heading, label] of [
-    [{ ...taskDraft, fields: { name: "林玫", organization: "港湾创投" }, kind: "contact" }, "林玫", "待确认 · 人脉"],
     [{ ...taskDraft, fields: { startsAt: "2026-09-21T14:00", title: "视觉质检试点" }, kind: "schedule" }, "视觉质检试点", "待确认 · 日程"],
     [{ ...taskDraft, fields: { startsAt: "2026-09-22T10:00", title: "关西跨境商务对接会" }, kind: "event" }, "关西跨境商务对接会", "待确认 · 活动"],
     [{ ...taskDraft, fields: { body: "要点", title: "对接会要点" }, kind: "note" }, "对接会要点", "待确认 · 笔记"],
