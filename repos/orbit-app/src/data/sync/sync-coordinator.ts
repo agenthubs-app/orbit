@@ -53,7 +53,14 @@ export interface SyncCoordinatorLifecycle {
   ): Promise<T | null>;
 }
 
+/**
+ * Sprint 0087: `unsynced` is the initial state, and it is not `local-ready`.
+ * Without it "we have not read yet" and "we read and there is nothing" are the
+ * same value, which is how the tasks page came to show 暂无待办 and the syncing
+ * label at the same time on a cold open.
+ */
 export type SyncedCollectionStatus =
+  | "unsynced"
   | "local-ready"
   | "syncing"
   | "fresh"
@@ -267,7 +274,7 @@ export function createSyncCoordinator(input: {
         error: null,
         lastSyncedAt: null,
         records: [],
-        status: "local-ready",
+        status: "unsynced",
         workspaceId: scope.workspaceId,
       };
     }
@@ -284,7 +291,7 @@ export function createSyncCoordinator(input: {
         error: null,
         lastSyncedAt: value.cursor?.lastSyncedAt ?? null,
         records: value.records as readonly SyncRecord<TPayload>[],
-        status: "local-ready",
+        status: value.cursor ? "local-ready" : "unsynced",
         workspaceId: scope.workspaceId,
       };
     } catch (error) {

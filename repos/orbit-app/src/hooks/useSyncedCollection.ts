@@ -49,7 +49,7 @@ function emptySnapshot<TPayload>(): SyncedCollectionSnapshot<TPayload> {
     error: null,
     lastSyncedAt: null,
     records: [],
-    status: "local-ready",
+    status: "unsynced",
     workspaceId: null,
   };
 }
