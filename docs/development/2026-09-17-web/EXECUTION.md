@@ -189,3 +189,20 @@
 每批必须回报真实Luna模型、代码SHA、精确文件、失败路径、实跑命令/结果、未验项和跨端影响。Astra独立review后，主代理核对diff与测试、共享文件和业务语义冲突，在独立集成树整合并回归。提交前完整图谱变化分析；UNKNOWN需补查，partial/truncated不是通过。
 
 状态按“执行中→领域review→待集成→主代理验收→已解决子项”推进。已有失败/跳过保留，部署、源码完成、运行验收分开。一次设计、测试或提交不是整个待办完成；存在独立已授权工作时继续调度。
+
+## 2026-09-19 Orbit_0918 换肤批次记录（工作树 newui/batch-0-shell-landing）
+
+- **W4 锁释放（用户指令）**：2026-09-19 09:24 用户明确“w4台账记录锁释放，后续改动也相应落库方便后续检查”。据此，W4 对 iOrbit/agent 域三个 UI 文件及 `orbit-agent-dashboard.tsx` 的写冻结视为已释放，Orbit_0918 批次 4（iOrbit home / 历史抽屉 / chat 视觉 / actions 等）可以推进。注意：主仓库台账（mtime 2026-09-18 14:54）第 176 行仍写“W4锁持续有效”，未同步；以用户本次指令为准，本工作树先行落库，主仓库台账由协调者后续统一更新。W4 释放仅限 UI/视觉层；逻辑层改动（home-facts、provider、live-service 等）仍按各自锁与 review 流程，不随本释放解禁。
+- **报名屏决定（用户指令）**：“报名屏用之前的，但是ui要修改匹配成适合新的”——批次 1c 保留 0066 RegistrationPortraitWorkspace 全部逻辑、data-* 钩子与 readback 语义（BR-031 严格回执不变），仅做 Orbit_0918 视觉替换。
+- **connect 连接屏决定（用户指令）**：“先占位”——按设计稿 个人中心.dc.html 连接区（Google Calendar / Gmail / Google Contacts / Notion 四卡）做「即将开放」禁用占位态，不写假 OAuth 流程。
+- **calendar tab 决定（早前用户指令）**：calendar tab 不再单独做，已合入 iOrbit；iOrbit home 的日程/月历微件即其承载。
+- **已交付 0918 批次提交清单**（全部通过全量回归 387 项 + typecheck，两处基线自带失败除外：product-surface-manifest 11 条 P1 在 /app/agent 锁区、app-events-live-route-services 演示目录日期过期）：
+  - `866b90de` 批次0：shell + landing 0918 换肤
+  - `a32678b5` 浮岛顶部导航（0918 样式替换旧导航栏）
+  - `718129e9` 批次1a、`3f673e1b` 批次1b、`06b517f1` 批次1b+（Events 列表/详情/相关）
+  - `99cec095` 批次2：个人中心 profile
+  - `b22a88b2`、`094e1798`、`22f240fb`、`b5ace54e` 批次1d 四屏
+  - `ad3ac3e0` 批次3a、`dba7fe2e` 批次3b、`f8b75e94` 批次3c、`35824a5b` 批次3d（Network 联系人/分析）
+  - `ad6b9594` 批次2b：settings 页作用域 token 重映射
+  - `d167f209` 批次3e：联系人详情页作用域 token 重映射（0918 indigo，nc-* 结构与逻辑不变）
+- **进行中**：批次 1c 报名屏视觉替换 → connect 占位 → 批次 4a iOrbit home（消费已交付 D25/home-facts 聚合，真实 ready/empty/unavailable 三态，不伪造设计稿 mock 数字）→ 4b/4c 历史抽屉与 chat 视觉 → 4d actions/plan/strategy（仅做有真实数据的静态聚合，无接口能力不做假）。每批提交后在本台账追加记录。
