@@ -39,7 +39,7 @@ type TagField = "offering" | "seeking" | "topics";
 type Method = "text" | "manual";
 type NoticeKind = "error" | "info" | "success";
 type EditableProfile = OrbitProfileEditorView;
-type ProfileTab = "edit" | "overview";
+type ProfileTab = "connect" | "edit" | "overview";
 
 interface ApiEnvelope<TData> {
   success?: boolean;
@@ -826,6 +826,19 @@ const PROFILE_0918_CSS = `
 [data-orbit-real-page=profile] .btn.btn-primary:hover { background: #2E3270; border-color: #2E3270; }
 [data-orbit-real-page=profile] .field:focus { border-color: #4B4FC7; }
 [data-orbit-real-page=profile] .pf-tab:focus-visible, [data-orbit-real-page=profile] .pf-btn-dark:focus-visible, [data-orbit-real-page=profile] .pf-btn-ghost:focus-visible, [data-orbit-real-page=profile] .pf-suggestion:focus-visible { outline: 2px solid #4B4FC7; outline-offset: 2px; }
+/* connect 连接占位（用户 2026-09-19 决定：先占位，全部「即将开放」禁用态） */
+[data-orbit-real-page=profile] .pf-connect-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 20px; }
+[data-orbit-real-page=profile] .pf-connect-card { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+[data-orbit-real-page=profile] .pf-connect-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+[data-orbit-real-page=profile] .pf-connect-icon { width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; }
+[data-orbit-real-page=profile] .pf-connect-chip { padding: 6px 14px; border-radius: 999px; background: #F1F1FA; color: #6B6F99; font-size: 12px; white-space: nowrap; }
+[data-orbit-real-page=profile] .pf-connect-name { font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif; font-weight: 900; font-size: 19px; letter-spacing: -0.02em; color: #0E1225; }
+[data-orbit-real-page=profile] .pf-connect-desc { font-size: 13px; line-height: 1.8; color: #6B6F99; }
+[data-orbit-real-page=profile] .pf-connect-scopes { display: flex; flex-direction: column; gap: 10px; padding-top: 14px; border-top: 1px solid #F1F1FA; }
+[data-orbit-real-page=profile] .pf-connect-scope { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #3B3F7A; }
+[data-orbit-real-page=profile] .pf-connect-scope i { width: 20px; height: 20px; flex: none; border-radius: 50%; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; font-size: 11px; font-style: normal; }
+[data-orbit-real-page=profile] .pf-connect-btn { padding: 14px; border-radius: 10px; background: #F1F1FA; border-color: #E8E9F6; color: #9FA3C4; font-size: 14px; font-weight: 500; justify-content: center; }
+[data-orbit-real-page=profile] .pf-connect-note { font-size: 12px; line-height: 1.7; color: #9FA3C4; }
 @media (max-width: 960px) {
   [data-orbit-real-page=profile] .pf-overview-grid, [data-orbit-real-page=profile] .pf-edit-grid { grid-template-columns: 1fr; }
 }
@@ -838,6 +851,79 @@ const PROFILE_0918_CSS = `
   [data-orbit-real-page=profile] .pf-card { transition: none; }
 }
 `;
+
+/* ===================== 连接（集成占位：即将开放） ===================== */
+/* 用户 2026-09-19 决定：connect 连接屏先占位。真实 OAuth 集成尚未实现，
+   四张卡片全部禁用态「即将开放」，不写假连接流程、不记任何连接状态。 */
+const CONNECT_INTEGRATIONS: readonly {
+  glyph: string;
+  iconBg: string;
+  iconColor: string;
+  name: string;
+  desc: { en: string; zh: string };
+  scopes: readonly { en: string; zh: string }[];
+}[] = [
+  {
+    glyph: "31", iconBg: "#ECEEFB", iconColor: "#2E3270", name: "Google Calendar",
+    desc: { en: "Sync your schedule so iOrbit can plan time better for you.", zh: "同步你的日程安排，帮助 iOrbit 更好地为你规划时间。" },
+    scopes: [
+      { en: "Read calendar events", zh: "读取日程事件" },
+      { en: "Create and manage events (after your authorization)", zh: "创建和管理日程（在你授权后）" },
+    ],
+  },
+  {
+    glyph: "M", iconBg: "#FBECEA", iconColor: "#B5473A", name: "Gmail",
+    desc: { en: "Let iOrbit understand important emails and extract todos and meeting info.", zh: "让 iOrbit 帮你理解重要邮件，提取待办和会议信息。" },
+    scopes: [
+      { en: "Read important emails (after your authorization)", zh: "读取重要邮件（在你授权后）" },
+      { en: "Recognize meeting invites and action items", zh: "识别会议邀请与待办事项" },
+    ],
+  },
+  {
+    glyph: "⚇", iconBg: "#ECEEFB", iconColor: "#4B4FC7", name: "Google Contacts",
+    desc: { en: "Sync your contacts to manage relationships and meetings more easily.", zh: "同步你的联系人，帮助你更轻松地管理人脉与会议。" },
+    scopes: [
+      { en: "Read contact info", zh: "读取联系人信息" },
+      { en: "Help identify meeting participants", zh: "帮助识别会议参与者" },
+    ],
+  },
+  {
+    glyph: "N", iconBg: "#F1F1FA", iconColor: "#0E1225", name: "Notion",
+    desc: { en: "Connect your knowledge base so iOrbit understands your projects and work.", zh: "连接你的知识库，让 iOrbit 更好地理解你的项目与工作内容。" },
+    scopes: [
+      { en: "Read pages and databases (after your authorization)", zh: "读取页面与数据库（在你授权后）" },
+      { en: "Help search and summarize related content", zh: "帮助检索与总结相关内容" },
+    ],
+  },
+];
+
+function ConnectPanel({ t }: { t: Translate }) {
+  return (
+    <div>
+      <div className="pf-connect-grid">
+        {CONNECT_INTEGRATIONS.map((integration) => (
+          <section className="pf-connect-card" key={integration.name}>
+            <span className="pf-connect-top">
+              <span className="pf-connect-icon" style={{ background: integration.iconBg, color: integration.iconColor }}>{integration.glyph}</span>
+              <span className="pf-connect-chip">{t({ en: "Coming soon", zh: "即将开放" })}</span>
+            </span>
+            <strong className="pf-connect-name">{integration.name}</strong>
+            <span className="pf-connect-desc">{t(integration.desc)}</span>
+            <span className="pf-connect-scopes">
+              {integration.scopes.map((scope) => (
+                <span className="pf-connect-scope" key={scope.zh}><i>✓</i>{t(scope)}</span>
+              ))}
+            </span>
+            <button className="btn pf-connect-btn" disabled type="button">{t({ en: "Coming soon", zh: "即将开放" })}</button>
+          </section>
+        ))}
+      </div>
+      <p className="pf-connect-note" style={{ marginTop: 18 }}>
+        {t({ en: "Integrations are not available yet. Nothing here connects to your accounts or reads any data.", zh: "集成功能尚未开放，此处不会连接你的账号，也不会读取任何数据。" })}
+      </p>
+    </div>
+  );
+}
 
 export function OrbitRealProfile({
   onboardingNext,
@@ -1281,6 +1367,7 @@ export function OrbitRealProfile({
   const tabMeta: Record<ProfileTab, { crumb: string; title: string }> = {
     overview: { crumb: t({ en: "Profile", zh: "个人资料" }), title: t({ en: "Profile", zh: "个人资料" }) },
     edit: { crumb: t({ en: "Edit profile", zh: "编辑资料" }), title: t({ en: "Edit profile", zh: "编辑资料" }) },
+    connect: { crumb: t({ en: "Connections", zh: "连接" }), title: t({ en: "Connections", zh: "连接" }) },
   };
 
   return (
@@ -1299,19 +1386,25 @@ export function OrbitRealProfile({
               {tab === "edit" ? (
                 <button className="pf-btn-ghost" onClick={() => setTab("overview")} type="button">{t({ en: "Cancel", zh: "取消" })}</button>
               ) : null}
-              <button className="pf-btn-dark" disabled={editorDisabled} type="submit">
-                <Icon color="var(--on-dark)" name="check" size={16} />{saving ? t({ en: "Saving…", zh: "保存中…" }) : t({ en: "Save basic profile", zh: "保存基础资料" })}
-              </button>
+              {tab !== "connect" ? (
+                <button className="pf-btn-dark" disabled={editorDisabled} type="submit">
+                  <Icon color="var(--on-dark)" name="check" size={16} />{saving ? t({ en: "Saving…", zh: "保存中…" }) : t({ en: "Save basic profile", zh: "保存基础资料" })}
+                </button>
+              ) : null}
             </span>
           </div>
           {alert}
           <nav aria-label={t({ en: "Profile sections", zh: "个人中心栏目" })} className="pf-tabs">
             <button className="pf-tab" data-active={tab === "overview" ? "true" : undefined} onClick={() => setTab("overview")} type="button">{t({ en: "Profile", zh: "个人资料" })}</button>
             <button className="pf-tab" data-active={tab === "edit" ? "true" : undefined} onClick={() => setTab("edit")} type="button">{t({ en: "Edit profile", zh: "编辑资料" })}</button>
+            <button className="pf-tab" data-active={tab === "connect" ? "true" : undefined} onClick={() => setTab("connect")} type="button">{t({ en: "Connections", zh: "连接" })}</button>
           </nav>
 
           <div className="pf-panel" hidden={tab !== "overview"}>
             <OverviewPanel completeness={completeness} onEdit={() => setTab("edit")} profile={profile} t={t} />
+          </div>
+          <div className="pf-panel" hidden={tab !== "connect"}>
+            <ConnectPanel t={t} />
           </div>
           <div className="pf-panel" hidden={tab !== "edit"}>
             <div className="pf-edit-grid">

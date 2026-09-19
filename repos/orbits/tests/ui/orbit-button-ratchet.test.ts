@@ -101,8 +101,10 @@ test("non-.btn <button> count in app/(app)/app does not increase", () => {
   // 129. The Orbit_0918 UI redesign (batches 0–3, user-sanctioned) introduced
   // design-spec tab / segmented / chip controls that are intentionally not
   // .btn — for CORE_FILES they are documented in EXEMPTIONS below; the rest
-  // raised the raw count to 153. Resume decreasing once the migration settles.
-  const CEILING = 153;
+  // raised the raw count to 153. The connect placeholder tab (user-sanctioned
+  // 2026-09-19 "connect 先占位" decision) adds one more design-spec tab control
+  // in orbit-real-profile.tsx → 154. Resume decreasing once the migration settles.
+  const CEILING = 154;
 
   assert.ok(
     nonBtn.length <= CEILING,
