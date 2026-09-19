@@ -509,10 +509,10 @@ function parseRedirectDigest(error: unknown): RedirectDigest {
   };
 }
 
-test("/app/followups redirects to /app/today?view=day, preserving the deep link", async () => {
+test("/app/followups redirects to the iOrbit plan screen, preserving the deep link", async () => {
   const pageSource = source("app/(app)/app/followups/page.tsx");
 
-  assert.match(pageSource, /redirect\("\/app\/today\?view=day"\)/);
+  assert.match(pageSource, /redirect\("\/app\/agent\/plan"\)/);
   assert.match(pageSource, /from "next\/navigation"/);
 
   const Page = (await import("../../app/(app)/app/followups/page")).default;
@@ -525,11 +525,11 @@ test("/app/followups redirects to /app/today?view=day, preserving the deep link"
   }
 
   const redirect = parseRedirectDigest(thrown);
-  assert.equal(redirect.destination, "/app/today?view=day");
+  assert.equal(redirect.destination, "/app/agent/plan");
   assert.equal(redirect.statusCode, 307);
 });
 
-test("/app/schedule redirects to /app/today#arrangements, preserving the deep link", async () => {
+test("/app/schedule redirects to the iOrbit plan screen, preserving the deep link", async () => {
   const scheduleRoutePath = "app/(app)/app/schedule/page.tsx";
 
   assert.equal(
@@ -539,7 +539,7 @@ test("/app/schedule redirects to /app/today#arrangements, preserving the deep li
   );
 
   const pageSource = source(scheduleRoutePath);
-  assert.match(pageSource, /redirect\("\/app\/today#arrangements"\)/);
+  assert.match(pageSource, /redirect\("\/app\/agent\/plan"\)/);
   assert.match(pageSource, /from "next\/navigation"/);
 
   const Page = (await import("../../app/(app)/app/schedule/page")).default;
@@ -552,7 +552,7 @@ test("/app/schedule redirects to /app/today#arrangements, preserving the deep li
   }
 
   const redirect = parseRedirectDigest(thrown);
-  assert.equal(redirect.destination, "/app/today#arrangements");
+  assert.equal(redirect.destination, "/app/agent/plan");
   assert.equal(redirect.statusCode, 307);
 });
 

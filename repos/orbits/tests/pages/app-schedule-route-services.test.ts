@@ -340,7 +340,7 @@ test("the current Today schedule uses authoritative appointments outside the pag
   assert.match(schedule, /appointmentService\.list\(\{ actorId \}\)/);
   assert.match(schedule, /listConfiguredOrbitScheduleItems\(actorId\)/);
   assert.doesNotMatch(schedule, /createEventCrudAndImportService|createFollowupTaskGenerationService/);
-  assert.match(source("app/(app)/app/schedule/page.tsx"), /redirect\("\/app\/today#arrangements"\)/);
+  assert.match(source("app/(app)/app/schedule/page.tsx"), /redirect\("\/app\/agent\/plan"\)/);
   assert.match(source("app/(app)/app/today/today-page-content.tsx"), /id="arrangements"/);
 });
 

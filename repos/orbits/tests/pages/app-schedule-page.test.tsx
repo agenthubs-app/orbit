@@ -1,9 +1,11 @@
 /**
  * /app/schedule — T3 (today-schedule merge) collapsed this route into a
  * redirect shell (see docs/superpowers/specs/2026-07-25-today-schedule-
- * merge-design.md §1/§7). "可复核安排" (the arrangement cards this file used
- * to render and assert on) now lives in /app/today's right column
- * (id="arrangements", covered by tests/pages/app-today-merged.test.ts and
+ * merge-design.md §1/§7); Orbit_0918 batch 5a retargets it at the iOrbit plan
+ * screen (/app/agent/plan), because /app/today itself is now a redirect into
+ * the iOrbit workspace. The merged-workspace arrangement rail this file used
+ * to assert on still lives in today-page-content (id="arrangements", covered
+ * by tests/pages/app-today-merged.test.ts and
  * tests/pages/app-schedule-route-services.test.ts, which still exercise
  * `schedule-route-view-model.ts` directly). `orbit-real-schedule-page.tsx`
  * stays in place (T3 brief — kept, not deleted) with no page consuming it
@@ -47,10 +49,10 @@ function parseRedirectDigest(error: unknown): RedirectDigest {
   };
 }
 
-test("/app/schedule is a thin redirect shell to /app/today#arrangements", async () => {
+test("/app/schedule is a thin redirect shell to the iOrbit plan screen", async () => {
   const pageSource = source("app/(app)/app/schedule/page.tsx");
 
-  assert.match(pageSource, /redirect\("\/app\/today#arrangements"\)/);
+  assert.match(pageSource, /redirect\("\/app\/agent\/plan"\)/);
   assert.match(pageSource, /from "next\/navigation"/);
 
   const Page = (await import("../../app/(app)/app/schedule/page")).default;
@@ -63,7 +65,7 @@ test("/app/schedule is a thin redirect shell to /app/today#arrangements", async 
   }
 
   const redirect = parseRedirectDigest(thrown);
-  assert.equal(redirect.destination, "/app/today#arrangements");
+  assert.equal(redirect.destination, "/app/agent/plan");
   assert.equal(redirect.statusCode, 307);
 });
 

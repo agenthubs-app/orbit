@@ -40,7 +40,7 @@ const realLoaders: AppTodayMergedLoaders = {
   loadToday: loadAppTodayRouteViewModel,
 };
 
-test("Today server route authenticates once and passes that actor through every merged loader", () => {
+test("Today server route is a thin redirect shell into the iOrbit workspace", async () => {
   const routeSource = readFileSync(
     join(projectRoot, "app/(app)/app/today/page.tsx"),
     "utf8",
@@ -57,10 +57,39 @@ test("Today server route authenticates once and passes that actor through every 
     "utf8",
   );
 
-  assert.match(routeSource, /const session = await auth\(\)/);
-  assert.match(routeSource, /redirect\("\/app\/account\/login\?next=%2Fapp%2Ftoday"\)/);
-  assert.match(routeSource, /resolveAuthenticatedApiActorFromSession/);
-  assert.match(routeSource, /actorId:\s*actor\.id/);
+  // 批次 5a：/app/today 收窄成纯重定向（裸进 → /app/agent；?entry= → actions 屏），
+  // 不再自行 auth / 组装账本。
+  assert.doesNotMatch(routeSource, /const session = await auth\(\)/);
+  assert.doesNotMatch(routeSource, /resolveAgentLedgerForServerPage/);
+  assert.match(routeSource, /from "next\/navigation"/);
+  assert.match(routeSource, /redirect\(\s*entry\s*\n?\s*\?\s*`\/app\/agent\/actions\?entry=/);
+  assert.match(routeSource, /: "\/app\/agent",?\s*\n?\s*\)/);
+
+  const Page = (await import("../../app/(app)/app/today/page")).default as (props?: {
+    searchParams?: Promise<Record<string, string | string[] | undefined>>;
+  }) => Promise<void>;
+
+  let bare: unknown;
+  try {
+    await Page();
+  } catch (error) {
+    bare = error;
+  }
+  const bareDigest = (bare as Error & { digest?: string }).digest ?? "";
+  assert.match(bareDigest, /NEXT_REDIRECT;.*;\/app\/agent;/);
+
+  let deepLink: unknown;
+  try {
+    await Page({ searchParams: Promise.resolve({ entry: "ledger-followup-alex-chen" }) });
+  } catch (error) {
+    deepLink = error;
+  }
+  const deepDigest = (deepLink as Error & { digest?: string }).digest ?? "";
+  assert.match(
+    deepDigest,
+    /NEXT_REDIRECT;.*;\/app\/agent\/actions\?entry=ledger-followup-alex-chen;/,
+  );
+
   assert.match(
     contentSource,
     /createAppTodayMergedLoaders\(\s*resolvedLedgerService,\s*actorId,\s*routeControls,\s*\)/,
@@ -579,7 +608,7 @@ function sourceForEscapeGate(path: string): string {
 
 // ---- T3 (today-schedule 合并 P3): nav consolidation, redirects, mobile ----
 
-test("the arrangements section container carries id=\"arrangements\" (schedule/page.tsx now redirects to /app/today#arrangements)", async () => {
+test("the arrangements section container carries id=\"arrangements\" (schedule/page.tsx now redirects to the plan screen)", async () => {
   const Page = (await import("../../app/(app)/app/today/today-page-content")).default;
   const html = renderToStaticMarkup(await Page());
 

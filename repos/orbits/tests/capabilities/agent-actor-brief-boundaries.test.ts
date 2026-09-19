@@ -309,19 +309,23 @@ test("Agent ledger and queue routes resolve server auth instead of request ident
   }
 });
 
-test("Today and All actions server pages use the authenticated ledger entry point", () => {
-  for (const page of [
-    "app/(app)/app/today/page.tsx",
-    "app/(app)/app/contacts/all-actions/page.tsx",
-  ]) {
-    const source = readFileSync(join(process.cwd(), page), "utf8");
-    assert.match(source, /resolveAgentLedgerForServerPage/);
-    assert.match(source, /ledgerService/);
-    if (page.includes("/today/")) {
-      assert.match(source, /auth\(\)/);
-      assert.match(source, /redirect\("\/app\/account\/login/);
-    }
-  }
+test("All actions server page uses the authenticated ledger entry point; Today is a redirect shell", () => {
+  const allActionsSource = readFileSync(
+    join(process.cwd(), "app/(app)/app/contacts/all-actions/page.tsx"),
+    "utf8",
+  );
+  assert.match(allActionsSource, /resolveAgentLedgerForServerPage/);
+  assert.match(allActionsSource, /ledgerService/);
+
+  // 批次 5a：/app/today 收窄成纯重定向，不再自行 auth / 读账本。
+  const todaySource = readFileSync(
+    join(process.cwd(), "app/(app)/app/today/page.tsx"),
+    "utf8",
+  );
+  assert.doesNotMatch(todaySource, /resolveAgentLedgerForServerPage/);
+  assert.doesNotMatch(todaySource, /await auth\(\)/);
+  assert.match(todaySource, /from "next\/navigation"/);
+  assert.match(todaySource, /\/app\/agent/);
 });
 
 test("Brief collection preserves Orbit-first priority and metadata-only mail enrichment", async () => {

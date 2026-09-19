@@ -1,38 +1,41 @@
+/**
+ * Today route adapter — iOrbit 工作台合并后收窄成纯重定向（同 /app/home 先例）。
+ *
+ * 今日工作台的呈现已并入 /app/agent（iOrbit home：今日日程/月历微件/建议与
+ * 行动）。这里只保留深链重定向：裸进 → /app/agent；?entry= 决策深链 →
+ * /app/agent/actions?entry=（决策落 actions 屏）。原 Today 组件
+ * （today-page-content、时间脊柱、决策面板等）留在原处不删除——
+ * OrbitTodayDecisionForm / OrbitTodayArrangements 等仍被 actions 屏及其它
+ * 页面复用，VM 单测不受影响。
+ */
 import { redirect } from "next/navigation";
 
-import { auth } from "../../../../auth";
-import { resolveAgentLedgerForServerPage } from "../../../api/_shared/agent-request-context";
-import { resolveAuthenticatedApiActorFromSession } from "../../../api/_shared/authenticated-actor";
-import type { AppTodayMergedSearchParams } from "./compose-app-today-from-agent-ledger/today-merged-view-model";
-import AppTodayPageContent from "./today-page-content";
+type AppTodaySearchParams = {
+  entry?: string | string[];
+};
 
-export const dynamic = "force-dynamic";
+function firstParam(
+  params: AppTodaySearchParams | undefined,
+  key: string,
+): string | null {
+  const value = params?.[key];
+  if (typeof value === "string" && value.trim()) return value.trim();
+  if (Array.isArray(value)) {
+    const first = value[0];
+    return typeof first === "string" && first.trim() ? first.trim() : null;
+  }
+  return null;
+}
 
 export default async function AppTodayPage({
   searchParams,
 }: {
-  searchParams?: Promise<AppTodayMergedSearchParams>;
+  searchParams?: Promise<AppTodaySearchParams>;
 } = {}) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    redirect("/app/account/login?next=%2Fapp%2Ftoday");
-  }
-  const actor = await resolveAuthenticatedApiActorFromSession({
-    email: session.user.email,
-    name: session.user.name,
-    userId: session.user.id,
-  });
-  if (!actor) {
-    throw new Error("Authenticated Orbit account membership is unavailable.");
-  }
-
-  const ledgerService = await resolveAgentLedgerForServerPage(undefined, {
-    authenticate: async () => session,
-  });
-
-  return AppTodayPageContent({
-    actorId: actor.id,
-    ledgerService,
-    searchParams,
-  });
+  const entry = firstParam(await searchParams, "entry");
+  redirect(
+    entry
+      ? `/app/agent/actions?entry=${encodeURIComponent(entry)}`
+      : "/app/agent",
+  );
 }
