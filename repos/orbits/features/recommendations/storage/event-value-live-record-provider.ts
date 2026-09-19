@@ -200,11 +200,19 @@ function eventValueRecordFromLiveRecord(input: {
     readText(input.record.payload.description) ??
     readText(input.record.searchText) ??
     title;
+  // Sprint 0090: same shape as the title above. `payload.venue` is the canonical
+  // display copy written back by the event-core backfill; `payload.location` is
+  // the seed's import原文 (English city names) and is only a fallback. Reading
+  // location first is why the home feed showed Shanghai/Tokyo while the events
+  // list and detail page showed 上海/东京.
+  //
+  // No English placeholder when both are missing: an empty string lets the
+  // client show its own "地点待定" rather than a label that looks like data.
   const location =
-    readText(input.record.payload.location) ??
     readText(input.record.payload.venue) ??
+    readText(input.record.payload.location) ??
     readText(input.record.sourceLabel) ??
-    "Live event source";
+    "";
   const source = sourceFor(input.record);
   const industry =
     readText(input.record.payload.industry) ??
@@ -239,7 +247,7 @@ function eventValueRecordFromLiveRecord(input: {
       input.record.createdAt,
     title,
     updatedAt: input.record.updatedAt,
-    venue: readText(input.record.payload.venue) ?? location,
+    venue: location,
   };
 }
 
