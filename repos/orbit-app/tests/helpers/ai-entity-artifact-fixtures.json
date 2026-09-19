@@ -1,0 +1,381 @@
+{
+ "contact": {
+  "taskKind": "contact_recommendations",
+  "presentation": {
+   "preferredSurface": "side_panel",
+   "subtitle": "仅从已有真实关系证据中匹配",
+   "title": "可优先联系的人",
+   "widthHint": "half"
+  },
+  "sections": [
+   {
+    "body": "只有已有真实关系证据的人会进入候选。",
+    "items": [
+     {
+      "actions": [
+       {
+        "actionId": "contact:review:contact_033",
+        "label": "查看人脉",
+        "requiresConfirmation": true
+       }
+      ],
+      "body": "近藤大輔目前处于持续培育阶段。蓝海科技的门店经营者。本次关注「餐饮预约 CRM 集成试点客户」，可提供「种子投资人视角的筛选与创业者反馈」。 已有关系强度 68，业务相关度 78。 蓝海科技的门店经营者。本次关注「餐饮预约 CRM 集成试点客户」，可提供「种子投资人视角的筛选与创业者反馈」。 门店经营者 蓝海科技 蓝海科技的门店经营者。本次关注「餐饮预约 CRM 集成试点客户」，可提供「种子投资人视角的筛选与创业者反馈」。 Relationship context for 李嘉豪: cross border ecommerce, restaurant reservation CRM integration pilot; next action seed investor screening and founder feedback.",
+      "confidenceLabel": "有证据支撑",
+      "evidenceIds": [
+       "evidence:connection:0033"
+      ],
+      "id": "contact-recommendation:contact_033",
+      "metadata": [
+       {
+        "label": "组织",
+        "value": "蓝海科技"
+       },
+       {
+        "label": "最近联系",
+        "value": "2 周前"
+       },
+       {
+        "label": "来源",
+        "value": "基于已记录证据生成的人脉关系"
+       },
+       {
+        "label": "方法",
+        "value": "rules_v1"
+       },
+       {
+        "label": "分数",
+        "value": "65"
+       }
+      ],
+      "reason": "近藤大輔目前处于持续培育阶段。蓝海科技的门店经营者。本次关注「餐饮预约 CRM 集成试点客户」，可提供「种子投资人视角的筛选与创业者反馈」。 已有关系强度 68，业务相关度 78。",
+      "subtitle": "门店经营者",
+      "title": "近藤大輔"
+     },
+     {
+      "actions": [
+       {
+        "actionId": "contact:review:contact_123",
+        "label": "查看人脉",
+        "requiresConfirmation": true
+       }
+      ],
+      "body": "马丁内斯索菲亚目前处于持续培育阶段。蓝海科技的投资合伙人。本次关注「餐饮预约 CRM 集成试点客户」，可提供「种子投资人视角的筛选与创业者反馈」。 已有关系强度 38，业务相关度 78。 蓝海科技的投资合伙人。本次关注「餐饮预约 CRM 集成试点客户」，可提供「种子投资人视角的筛选与创业者反馈」。 投资合伙人 蓝海科技 蓝海科技的投资合伙人。本次关注「餐饮预约 CRM 集成试点客户」，可提供「种子投资人视角的筛选与创业者反馈」。 Relationship context for 石井 陽子: cross border ecommerce, restaurant reservation CRM integration pilot; next action seed investor screening and founder feedback.",
+      "confidenceLabel": "有证据支撑",
+      "evidenceIds": [
+       "evidence:connection:0123"
+      ],
+      "id": "contact-recommendation:contact_123",
+      "metadata": [
+       {
+        "label": "组织",
+        "value": "蓝海科技"
+       },
+       {
+        "label": "最近联系",
+        "value": "2 周前"
+       },
+       {
+        "label": "来源",
+        "value": "基于已记录证据生成的人脉关系"
+       },
+       {
+        "label": "方法",
+        "value": "rules_v1"
+       },
+       {
+        "label": "分数",
+        "value": "65"
+       }
+      ],
+      "reason": "马丁内斯索菲亚目前处于持续培育阶段。蓝海科技的投资合伙人。本次关注「餐饮预约 CRM 集成试点客户」，可提供「种子投资人视角的筛选与创业者反馈」。 已有关系强度 38，业务相关度 78。",
+      "subtitle": "投资合伙人",
+      "title": "马丁内斯索菲亚"
+     }
+    ],
+    "title": "已有关系匹配"
+   }
+  ]
+ },
+ "event": {
+  "taskKind": "event_recommendations",
+  "presentation": {
+   "preferredSurface": "side_panel",
+   "subtitle": "来自活动服务",
+   "title": "推荐活动",
+   "widthHint": "half"
+  },
+  "sections": [
+   {
+    "body": "来源：Canonical Event Core and account events",
+    "items": [
+     {
+      "actions": [
+       {
+        "actionId": "event:review:event_02",
+        "href": "/app/events/event_02",
+        "label": "复核活动",
+        "requiresConfirmation": true
+       }
+      ],
+      "body": "让中小企业导入负责人和 AI SaaS 创业者对齐 PoC 条件、业务痛点与评估指标的务实圆桌。 尚未开始——可打开活动页复核详情后再决定是否报名。",
+      "confidenceLabel": "高匹配",
+      "evidenceIds": [
+       "evidence:event:02"
+      ],
+      "id": "event-recommendation:event_02",
+      "metadata": [
+       {
+        "label": "时间",
+        "value": "2026-09-21"
+       },
+       {
+        "label": "开始",
+        "value": "2026-09-21T01:00:00.000Z"
+       },
+       {
+        "label": "状态",
+        "value": "confirmed"
+       },
+       {
+        "label": "来源",
+        "value": "Canonical Event Core and account events"
+       },
+       {
+        "label": "分数",
+        "value": "85"
+       }
+      ],
+      "reason": "与你的请求在「founders、operators」上匹配。",
+      "subtitle": "上海",
+      "title": "日中 AI 业务自动化 PoC 圆桌"
+     },
+     {
+      "actions": [
+       {
+        "actionId": "event:review:event_08",
+        "href": "/app/events/event_08",
+        "label": "复核活动",
+        "requiresConfirmation": true
+       }
+      ],
+      "body": "安全回顾过往触点，筛选值得重新联系的人和具体理由的实验型活动。 尚未开始——可打开活动页复核详情后再决定是否报名。",
+      "confidenceLabel": "相关",
+      "evidenceIds": [
+       "evidence:event:08"
+      ],
+      "id": "event-recommendation:event_08",
+      "metadata": [
+       {
+        "label": "时间",
+        "value": "2026-09-21"
+       },
+       {
+        "label": "开始",
+        "value": "2026-09-21T01:00:00.000Z"
+       },
+       {
+        "label": "状态",
+        "value": "confirmed"
+       },
+       {
+        "label": "来源",
+        "value": "Canonical Event Core and account events"
+       },
+       {
+        "label": "分数",
+        "value": "70"
+       }
+      ],
+      "reason": "与你的请求在「founders」上匹配。",
+      "subtitle": "东京",
+      "title": "沉睡关系重新激活会"
+     }
+    ],
+    "title": "活动匹配"
+   }
+  ]
+ },
+ "task": {
+  "taskKind": "data_query",
+  "presentation": {
+   "preferredSurface": "side_panel",
+   "title": "tasks query",
+   "subtitle": "4 actor-scoped results",
+   "widthHint": "half"
+  },
+  "sections": [
+   {
+    "title": "tasks results",
+    "items": [
+     {
+      "id": "task:029405a692585c0b9960d2a5",
+      "title": "确定本周 Orbit 的三项关键结果",
+      "body": "从客户交付、销售机会、产品建设和团队事项中选出本周最重要的三项结果，并明确负责人。",
+      "metadata": [
+       {
+        "label": "status",
+        "value": "open"
+       },
+       {
+        "label": "category",
+        "value": "work"
+       },
+       {
+        "label": "dueAt",
+        "value": "2026-09-14T02:00:00.000Z"
+       },
+       {
+        "label": "source",
+        "value": "manual"
+       },
+       {
+        "label": "createdAt",
+        "value": "2026-08-29T00:00:00.000Z"
+       },
+       {
+        "label": "updatedAt",
+        "value": "2026-08-29T00:00:00.000Z"
+       }
+      ],
+      "actions": [],
+      "evidenceIds": []
+     },
+     {
+      "id": "task:1fa02a84591e95e977d9720a",
+      "title": "交流关西制造企业近期的数字化需求",
+      "body": "交流关西制造企业近期的数字化需求。联系前先查看最近一次互动和对方当前能提供、正在寻找的资源。",
+      "metadata": [
+       {
+        "label": "status",
+        "value": "open"
+       },
+       {
+        "label": "category",
+        "value": "relationship"
+       },
+       {
+        "label": "dueAt",
+        "value": "2026-09-16T08:00:00.000Z"
+       },
+       {
+        "label": "contactId",
+        "value": "orbit-contact-e93e420353-10"
+       },
+       {
+        "label": "source",
+        "value": "manual"
+       },
+       {
+        "label": "createdAt",
+        "value": "2026-08-29T00:00:00.000Z"
+       },
+       {
+        "label": "updatedAt",
+        "value": "2026-08-29T00:00:00.000Z"
+       }
+      ],
+      "actions": [],
+      "evidenceIds": []
+     }
+    ]
+   }
+  ]
+ },
+ "schedule": {
+  "taskKind": "data_query",
+  "presentation": {
+   "preferredSurface": "side_panel",
+   "title": "schedule query",
+   "subtitle": "1 actor-scoped result",
+   "widthHint": "half"
+  },
+  "sections": [
+   {
+    "title": "schedule results",
+    "items": [
+     {
+      "id": "personal:c1fdb0042b5aa1293939d5af",
+      "title": "Orbit QA0060 20260917 rules associations",
+      "metadata": [
+       {
+        "label": "kind",
+        "value": "personal"
+       },
+       {
+        "label": "category",
+        "value": "personal"
+       },
+       {
+        "label": "startsAt",
+        "value": "2026-09-17T00:15:00.000Z"
+       },
+       {
+        "label": "endsAt",
+        "value": "2026-09-17T00:45:00.000Z"
+       },
+       {
+        "label": "allDay",
+        "value": "false"
+       },
+       {
+        "label": "timeZone",
+        "value": "Asia/Tokyo"
+       },
+       {
+        "label": "meetingMethod",
+        "value": "video"
+       },
+       {
+        "label": "missingFields",
+        "value": ""
+       }
+      ],
+      "actions": [],
+      "evidenceIds": []
+     }
+    ]
+   }
+  ]
+ },
+ "note": {
+  "taskKind": "data_query",
+  "presentation": {
+   "preferredSurface": "side_panel",
+   "title": "notes query",
+   "subtitle": "1 actor-scoped result",
+   "widthHint": "half"
+  },
+  "sections": [
+   {
+    "title": "notes results",
+    "items": [
+     {
+      "id": "note:7705e61dff16614db5c9641b",
+      "title": "[SIM-E2E-D] Note full flowNote full flowDXflow",
+      "body": "[SIM-E2E-D] create save open edit search relate delete. EDITED",
+      "metadata": [
+       {
+        "label": "contactIds",
+        "value": "contact_102, contact_108"
+       },
+       {
+        "label": "eventIds",
+        "value": "event_02"
+       },
+       {
+        "label": "createdAt",
+        "value": "2026-09-16T06:38:50.327Z"
+       },
+       {
+        "label": "updatedAt",
+        "value": "2026-09-16T06:54:23.343Z"
+       }
+      ],
+      "actions": [],
+      "evidenceIds": []
+     }
+    ]
+   }
+  ]
+ }
+}

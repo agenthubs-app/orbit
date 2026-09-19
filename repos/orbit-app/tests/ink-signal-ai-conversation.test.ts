@@ -129,13 +129,20 @@ test("saved contact results render all eight true candidates under their own rep
   const items = Array.from({ length: 8 }, (_, index) => ({ id: `contact-recommendation:contact:qa:${index + 1}`, title: `虚构候选${index + 1}`, subtitle: "餐饮数字化负责人", reason: "参与点单测试项目", body: "在虚构交流会认识。", evidenceIds: [`evidence:qa:${index + 1}`], metadata: [{ label: "组织", value: "虚构组织" }], contactHref: `/contacts/contact%3Aqa%3A${index + 1}` }));
   const recovery = { turns: [{ sessionId: session.id, requestId: "request:contact:qa", userMessageId: "user:contact:qa", assistantMessageId: "assistant:contact:qa", status: "ready", artifacts: [{ artifactId: "artifact:qa", taskId: "task:qa", kind: "contact_recommendations", status: "ready", title: "匹配结果", summary: "8位测试候选人", sections: [{ title: "已有关系", items }] }] }], truncated: false };
   const p = await open(t, { params: { id: session.id, source: "session" }, payloads: { ...conversationReadPayloads, "/api/contacts": { contacts: unrelatedContacts }, "/api/ai/conversations/sessions/session%3A1": { session, storage: aiSessionListPayload.storage, artifactRecovery: recovery } } });
-  const candidates = p.getByTestId("ai-contact-candidate");
-  assert.deepEqual(await candidates.evaluateAll(nodes => nodes.map(node => node.getAttribute("aria-label"))), items.map(item => `${item.title} · ${item.subtitle}`));
+  // Sprint 0094: the contact-only panel became the shared entity card, so the
+  // candidates carry the entity test id and the card's own label.
+  const candidates = p.getByTestId("ai-entity-card-contact");
+  assert.deepEqual(
+    await candidates.evaluateAll(nodes => nodes.map(node => node.getAttribute("aria-label"))),
+    items.map(item => `人脉 ${item.title}`),
+  );
   assert.equal(await p.getByText(/^未推荐联系人[123]$/u).count(), 0);
-  assert.doesNotMatch(await p.getByTestId("ai-contact-artifact").innerText(), /evidence:qa|contact-recommendation:|contact:qa/u);
-  assert.equal(await p.getByText("参与点单测试项目", { exact: true }).count(), 8);
-  assert.equal(await p.getByText("在虚构交流会认识。", { exact: true }).count(), 8);
-  await press(p, "打开虚构候选1");
+  assert.doesNotMatch(await candidates.first().innerText(), /evidence:qa|contact-recommendation:|contact:qa/u);
+  assert.equal(await p.getByText("参与点单测试项目", { exact: true }).count(), 8, "each card says why it is here");
+  assert.equal(await p.getByText("餐饮数字化负责人 · 虚构组织", { exact: true }).count(), 8, "role and organisation on one line");
+  // The card names the record; the evidence excerpt belongs on the detail page.
+  assert.equal(await p.getByText("在虚构交流会认识。", { exact: true }).count(), 0);
+  await press(p, "人脉 虚构候选1");
   assert.equal((await navigation(p)).at(-1), "/contacts/contact%3Aqa%3A1");
   await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
   assert.equal(await candidates.count(), 8);
@@ -147,13 +154,13 @@ test("history recovery truncation is visible and failed refresh or actor change 
   const item = { id: "contact-recommendation:contact:qa:1", title: "虚构候选甲", evidenceIds: ["evidence:qa"], metadata: [], contactHref: "/contacts/contact%3Aqa%3A1" };
   const artifactRecovery = { turns: [{ sessionId: session.id, requestId: "r:qa", userMessageId: "u:qa", assistantMessageId: "a:qa", status: "ready", artifacts: [{ artifactId: "artifact:qa", taskId: "task:qa", kind: "contact_recommendations", status: "ready", title: "候选结果", summary: "1位候选", sections: [{ title: "已有关系", items: [item] }] }] }], truncated: true };
   const p = await open(t, { params: { id: session.id, source: "session" }, payloads: { ...conversationReadPayloads, "/api/ai/conversations/sessions/session%3A1": { session, storage: aiSessionListPayload.storage, artifactRecovery } } });
-  assert.equal(await p.getByTestId("ai-contact-candidate").count(), 1);
+  assert.equal(await p.getByTestId("ai-entity-card-contact").count(), 1);
   assert.equal(await p.getByText("部分结果无法恢复或超出展示上限，历史回复已保留。", { exact: true }).count(), 1);
   await update(p, { failPaths: ["/api/ai/conversations/sessions/session%3A1"] });
   await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
-  assert.equal(await p.getByTestId("ai-contact-candidate").count(), 0);
+  assert.equal(await p.getByTestId("ai-entity-card-contact").count(), 0);
   await update(p, { actor: "actor-other", signedIn: false });
-  assert.equal(await p.getByTestId("ai-contact-candidate").count(), 0);
+  assert.equal(await p.getByTestId("ai-entity-card-contact").count(), 0);
   assert.deepEqual(await writes(p), []);
 });
 
