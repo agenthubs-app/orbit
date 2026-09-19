@@ -122,7 +122,11 @@ test("contacts screen renders real avatar images when contacts provide them", ()
   assert.match(screenSource, /styles\.avatarImage/u);
 });
 
-test("contact rows keep only identity and match score visible", () => {
+// Sprint 0089 changed what the compact slot holds, not how compact the row is.
+// It used to hold 价值分 = min(95, 60 + valueTypes.length * 12), which read 84 for
+// 76 of 78 contacts; the value types behind it take 14 distinct combinations.
+// The row still shows identity + one capped single-line signal + chevron.
+test("contact rows keep only identity and one compact value signal visible", () => {
   const cardStart = screenSource.indexOf("function ContactCard");
   const cardEnd = screenSource.indexOf("function SearchResultAvatar");
   const cardSource = screenSource.slice(cardStart, cardEnd);
@@ -131,11 +135,13 @@ test("contact rows keep only identity and match score visible", () => {
   assert.ok(cardEnd > cardStart);
   assert.match(cardSource, /accessibilityLabel=\{contactAccessibilityLabel\}/u);
   assert.match(cardSource, /numberOfLines=\{primary \? undefined : 1\} style=\{\[styles\.contactDetail, primary && styles\.mainContactDetail\]\}/u);
-  assert.match(cardSource, /contact\.valueScore/u);
+  assert.match(cardSource, /contact\.valueLabels\.join\(" · "\)/u);
+  assert.doesNotMatch(cardSource, /contact\.valueScore/u, "the score was a relabelled count");
+  assert.match(cardSource, /numberOfLines=\{1\}/u, "the signal stays on one line");
   assert.match(cardSource, /name="chevron-forward"/u);
   assert.doesNotMatch(cardSource, /contact\.relationship/u);
-  assert.doesNotMatch(cardSource, /contact\.valueLabels/u);
   assert.doesNotMatch(cardSource, /contact\.nextAction/u);
+  assert.match(screenSource, /contactMatchScore:[\s\S]*maxWidth: "40%"/u, "and cannot crowd out the name");
   assert.match(screenSource, /styles\.contactList/u);
   assert.match(screenSource, /contactList:[\s\S]*borderRadius: radius\.card/u);
 });

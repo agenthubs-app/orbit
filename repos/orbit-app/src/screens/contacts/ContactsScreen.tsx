@@ -778,8 +778,14 @@ function ContactCard({
             </Text>
           ) : null}
         </View>
-        {primary || contact.valueScore === null ? null : (
-          <Text style={styles.contactMatchScore}>{contact.valueScore}</Text>
+        {/* Sprint 0089: this slot held 价值分, which is
+            min(95, 60 + valueTypes.length * 12) — a relabelled count that read 84
+            for 76 of 78 contacts. The value types it was derived from vary across
+            eight combinations and say what the person can actually offer. */}
+        {primary || contact.valueLabels.length === 0 ? null : (
+          <Text numberOfLines={1} style={styles.contactMatchScore}>
+            {contact.valueLabels.join(" · ")}
+          </Text>
         )}
         <Ionicons color={primary ? "#C4C9D4" : colors.text4} name="chevron-forward" size={primary ? 12 : 16} />
       </View>
@@ -890,9 +896,9 @@ function ContactSearchResultItem({
             {result.detail}
           </Text>
         </View>
-        {result.valueScore === null ? null : (
-          <Text style={styles.searchResultScore}>{result.valueScore}</Text>
-        )}
+        {/* Sprint 0089: the score is gone here too. It carried no more than the
+            chip row below already shows, and showing both invited the reader to
+            treat the number as extra information. */}
       </View>
       <Text numberOfLines={3} style={styles.relationshipText}>
         {result.relationship}
@@ -2239,7 +2245,9 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   contactMatchScore: {
     color: colors.text3,
-    fontSize: 14,
+    flexShrink: 1,
+    fontSize: 13,
+    maxWidth: "40%",
     fontWeight: "400",
     lineHeight: 20,
     minWidth: 24,
@@ -2622,11 +2630,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   searchResultName: {
     ...textStyles.listTitle,
     color: colors.ink
-  },
-  searchResultScore: {
-    ...textStyles.caption,
-    color: colors.accent,
-    fontWeight: "600"
   },
   searchResultStack: { gap: spacing.sm },
   searchResultTitleBlock: {

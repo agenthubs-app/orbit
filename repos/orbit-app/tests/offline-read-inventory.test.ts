@@ -395,3 +395,32 @@ test('an empty source tree cannot pass coverage', async t => {
   const root = await fixture(t, {});
   assert.ok((await auditReadSurfaces(root)).invalid.includes('NO_READ_CONSUMERS'));
 });
+
+// Sprint 0089: computedPathFamilies is keyed by `file:line`, so an edit above a
+// listed call site detaches its entry — and the audit then reported the endpoint
+// as uncalled rather than the key as stale, which sends the reader to the wrong
+// file. It cost two debugging sessions before the mechanism was understood.
+test("a computedPathFamilies entry that nothing consults is named as stale", async () => {
+  const root = await mkdtemp(join(tmpdir(), "orbit-stale-key-"));
+  try {
+    await mkdir(join(root, "src/screens/demo"), { recursive: true });
+    // A consumer whose path resolves on its own, so no fallback is consulted.
+    await writeFile(
+      join(root, "src/screens/demo/DemoScreen.tsx"),
+      `import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+export function DemoScreen() {
+  const client = useOrbitApiClient();
+  return client.get<unknown>("/api/demo");
+}
+`,
+    );
+    const result = await auditReadSurfaces(root);
+    const stale = result.invalid.filter((row) => row.startsWith("STALE_COMPUTED_PATH_KEY"));
+    for (const row of stale) {
+      assert.match(row, /either the call moved to another line, or its path now resolves on its own/u,
+        "the message must name both causes, because the reader cannot tell them apart from the key alone");
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
