@@ -2560,6 +2560,27 @@ const CONSOLE_STYLES = `
 @media (prefers-reduced-motion: reduce) {
   [data-orbit-real-page="agent"] *, [data-orbit-real-page="agent"] *::before, [data-orbit-real-page="agent"] *::after { animation: none !important; transition: none !important; }
 }
+
+/* Orbit_0918 批次 4c：agent 控制台整体换肤（W4 锁已按用户 2026-09-19 指令释放；
+   逻辑零改动，仅作用域 CSS；本文件属 scale-ratchet SNAPPED，故全部走模板 CSS） */
+html[data-theme="light"] [data-orbit-real-page="agent"] {
+  --agent-canvas: #FBFBFE; --agent-ink: #0E1225; --agent-muted: #6B6F99; --agent-hairline: #E8E9F6;
+  --agent-signal: #4B4FC7; --agent-signal-soft: #ECEEFB;
+  --accent: #4B4FC7; --accent-hover: #2E3270; --accent-press: #2E3270;
+  --accent-soft: #ECEEFB; --accent-softer: #F7F7FD; --accent-ring: #B9BCEB;
+  --accent-grad: #4B4FC7; --accent-grad-bar: #4B4FC7;
+  --ink: #0E1225; --text: #0E1225; --text-2: #3B3F7A; --text-3: #6B6F99; --text-4: #9FA3C4;
+  --bg: #FBFBFE; --bg-soft: #FBFBFE; --bg-sunken: #F1F1FA;
+  --surface: #FFFFFF; --surface-2: #F7F7FD; --surface-3: #ECEEFB;
+  --border: #E8E9F6; --border-2: #DDDEFA; --border-strong: #B9BCEB;
+  --hairline: #E8E9F6; --glass-border: #E8E9F6;
+}
+[data-orbit-real-page="agent"] .h-display { font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif; font-weight: 900; letter-spacing: -0.02em; }
+[data-orbit-real-page="agent"] .btn-primary { background: #0E1225; border-color: #0E1225; box-shadow: none; color: #FFFFFF; }
+[data-orbit-real-page="agent"] .btn-primary:hover:not(:disabled) { background: #2E3270; border-color: #2E3270; }
+[data-orbit-real-page="agent"] .btn-ghost { background: #FFFFFF; border-color: #DDDEFA; color: #3B3F7A; box-shadow: none; }
+[data-orbit-real-page="agent"] .btn-soft { background: #ECEEFB; border-color: #ECEEFB; color: #2E3270; box-shadow: none; }
+[data-orbit-real-page="agent"] .agent-history.agent-history { background: #FBFBFE !important; border-right: 1px solid #E8E9F6; }
 `;
 
 export function OrbitRealAgent({
@@ -3674,8 +3695,8 @@ export function OrbitRealAgent({
       data-orbit-ask-clearance="manual"
       data-orbit-real-page="agent"
       style={{
-        "--text-3": "#687078",
-        "--text-4": "#687078",
+        "--text-3": "#6B6F99",
+        "--text-4": "#9FA3C4",
         background: "var(--bg-soft)",
         display: "flex",
         flexDirection: "column",
