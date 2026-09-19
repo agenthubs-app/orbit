@@ -19,8 +19,53 @@ import { Avatar, Icon } from "../orbit-reference-primitives";
 import { AgentStar } from "./orbit-real-agent";
 import { OrbitAgentTodayWorkspace } from "./orbit-agent-today-workspace";
 import { eventRegistrationIsOpen, eventRegistrationLabel, type EventRegistrationAvailability } from "../orbit-event-registration-view-model";
+import type { HomeDashboardSnapshot } from "./home-dashboard-route-service";
+import type {
+  HomeFactsAppointmentItem,
+  HomeFactsFollowupItem,
+  HomeFactsPersonalItem,
+} from "./home-facts-route-service";
+import type { HomeFactsViewItem } from "./home-facts-view-model";
+
+const isPersonalFactItem = (item: HomeFactsViewItem): item is HomeFactsPersonalItem => "startsAt" in item;
+const isAppointmentFactItem = (item: HomeFactsViewItem): item is HomeFactsAppointmentItem => "startsAtUtc" in item;
+const isFollowupFactItem = (item: HomeFactsViewItem): item is HomeFactsFollowupItem & { href: string | null } => "contactName" in item;
 
 type Translate = (copy: { en: string; zh: string }) => string;
+
+/* ── 批次 4a：今日区块（消费已交付的 D25/home-facts 聚合）──────────────────
+   数据全部走既有通道：facts 快照经 refreshHomeDashboardAction（use server，
+   运行时动态 import，避免把 server 依赖链打进测试与 SSR 首载）；继续对话走
+   既有 GET /api/ai/conversations/sessions。三态口径沿用 facts 的
+   ready/empty/unavailable，不伪造设计稿 mock 数字。 */
+
+interface AgentHistorySession {
+  createdAt: string;
+  id: string;
+  title: string;
+}
+
+function parseHistorySessions(value: unknown): AgentHistorySession[] {
+  if (typeof value !== "object" || value === null) return [];
+  const items = (value as { items?: unknown }).items;
+  if (!Array.isArray(items)) return [];
+  const out: AgentHistorySession[] = [];
+  for (const item of items) {
+    if (typeof item !== "object" || item === null) continue;
+    const record = item as Record<string, unknown>;
+    if (typeof record.id !== "string" || typeof record.createdAt !== "string") continue;
+    const organization = record.organization as { customTitle?: unknown } | undefined;
+    const customTitle = typeof organization?.customTitle === "string" ? organization.customTitle.trim() : "";
+    const title = typeof record.title === "string" ? record.title.trim() : "";
+    out.push({ createdAt: record.createdAt, id: record.id, title: customTitle || title });
+  }
+  return out;
+}
+
+const tokyoDayKey = (date: Date): string =>
+  new Intl.DateTimeFormat("en-CA", { day: "2-digit", month: "2-digit", timeZone: APPOINTMENT_TZ, year: "numeric" }).format(date);
+
+type TodayFactsState = "empty" | "pending" | "ready" | "unavailable";
 
 interface ConfirmedSlot {
   durationMinutes?: number;
@@ -127,6 +172,36 @@ export function OrbitAgentDashboard({
     if (initialBriefText) setBriefText((current) => current || initialBriefText);
   }, [initialBriefText]);
 
+  // 批次 4a：D25 聚合（今日日程/月历/联系人机会）。window 守卫让 SSR 与
+  // node 测试环境零副作用；动态 import 避免 server action 依赖链进入首载。
+  const [homeSnapshot, setHomeSnapshot] = useState<HomeDashboardSnapshot | "pending" | "unavailable">("pending");
+  const [historySessions, setHistorySessions] = useState<readonly AgentHistorySession[] | "pending" | "unavailable">("pending");
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let live = true;
+    void import("./home-dashboard-actions")
+      .then((mod) => mod.refreshHomeDashboardAction())
+      .then((result) => {
+        if (live) setHomeSnapshot(result.state === "snapshot" ? result.snapshot : "unavailable");
+      })
+      .catch(() => {
+        if (live) setHomeSnapshot("unavailable");
+      });
+    return () => { live = false; };
+  }, []);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const controller = new AbortController();
+    void fetch("/api/ai/conversations/sessions?limit=3", { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        const body = (await response.json().catch(() => null)) as { data?: unknown } | null;
+        if (response.ok && body?.data) setHistorySessions(parseHistorySessions(body.data));
+        else setHistorySessions("unavailable");
+      })
+      .catch(() => setHistorySessions("unavailable"));
+    return () => controller.abort();
+  }, []);
+
   const now = new Date();
   const locale = language === "en" ? "en-US" : "zh-CN";
   const upcomingAppointment = useMemo(() => {
@@ -188,6 +263,79 @@ export function OrbitAgentDashboard({
     : null;
   const appointmentTz = upcomingAppointment?.confirmed?.timezone || APPOINTMENT_TZ;
 
+  // ── 批次 4a 派生：今日日程 / 月历微件 / 联系人机会（全部来自 D25 facts）──
+  const facts = homeSnapshot !== "pending" && homeSnapshot !== "unavailable" ? homeSnapshot.facts : null;
+  const factsStateOf = (state: "empty" | "ready" | "unavailable" | undefined): TodayFactsState =>
+    homeSnapshot === "pending" ? "pending" : homeSnapshot === "unavailable" ? "unavailable" : state ?? "unavailable";
+  const personalItems = (facts?.personal.items ?? []).filter(isPersonalFactItem);
+  const factAppointmentItems = (facts?.appointments.items ?? []).filter(isAppointmentFactItem);
+  const todayKey = tokyoDayKey(now);
+  const fmtTime = (iso: string) => {
+    const date = new Date(iso);
+    return Number.isNaN(date.getTime())
+      ? "--:--"
+      : new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit", timeZone: APPOINTMENT_TZ }).format(date);
+  };
+  const todayRows = [
+    ...personalItems
+      .filter((item) => (item.occurrenceDate ?? item.startsAt.slice(0, 10)) === todayKey)
+      .map((item) => ({
+        id: item.key,
+        time: item.allDay ? t({ en: "All day", zh: "全天" }) : fmtTime(item.startsAt),
+        title: item.title,
+      })),
+    ...factAppointmentItems
+      .filter((item) => tokyoDayKey(new Date(item.startsAtUtc)) === todayKey)
+      .map((item) => ({
+        id: item.key,
+        time: fmtTime(item.startsAtUtc),
+        title: t({ en: "Confirmed appointment", zh: "已确认约谈" }),
+      })),
+  ];
+  const todayState: TodayFactsState = (() => {
+    const personal = factsStateOf(facts?.personal.state);
+    const appointments = factsStateOf(facts?.appointments.state);
+    if (personal === "pending" || appointments === "pending") return "pending";
+    if (todayRows.length > 0) return "ready";
+    if (personal === "unavailable" && appointments === "unavailable") return "unavailable";
+    return "empty";
+  })();
+  const opportunityState = factsStateOf(facts?.followups.state);
+  const opportunityItems = (facts?.followups.current.items ?? []).filter(isFollowupFactItem).slice(0, 3);
+  const [tokyoYear, tokyoMonth, tokyoDay] = todayKey.split("-").map(Number);
+  const monthPrefix = `${tokyoYear}-${String(tokyoMonth).padStart(2, "0")}`;
+  const daysInMonth = new Date(Date.UTC(tokyoYear, tokyoMonth, 0)).getUTCDate();
+  const firstWeekOffset = (new Date(Date.UTC(tokyoYear, tokyoMonth - 1, 1)).getUTCDay() + 6) % 7;
+  const markedDays = new Set<number>();
+  for (const item of personalItems) {
+    const key = item.occurrenceDate ?? item.startsAt.slice(0, 10);
+    if (key.startsWith(monthPrefix)) markedDays.add(Number(key.slice(8, 10)));
+  }
+  for (const item of factAppointmentItems) {
+    const key = tokyoDayKey(new Date(item.startsAtUtc));
+    if (key.startsWith(monthPrefix)) markedDays.add(Number(key.slice(8, 10)));
+  }
+  const calendarCells: (number | null)[] = [
+    ...Array.from({ length: firstWeekOffset }, () => null),
+    ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
+  ];
+  const calendarState: TodayFactsState = (() => {
+    const personal = factsStateOf(facts?.personal.state);
+    return personal === "pending" ? "pending" : personal;
+  })();
+  const weekdayLabels = language === "en"
+    ? ["M", "T", "W", "T", "F", "S", "S"]
+    : ["一", "二", "三", "四", "五", "六", "日"];
+  const monthTitle = new Intl.DateTimeFormat(locale, { month: "long", timeZone: APPOINTMENT_TZ, year: "numeric" }).format(now);
+  const renderAgState = (state: TodayFactsState, emptyCopy: { en: string; zh: string }) =>
+    state === "pending"
+      ? <p className="ag-state">{t({ en: "Loading…", zh: "读取中…" })}</p>
+      : state === "unavailable"
+        ? <p className="ag-state">{t({ en: "This source is unavailable right now.", zh: "来源暂不可用。" })}</p>
+        : state === "empty"
+          ? <p className="ag-state">{t(emptyCopy)}</p>
+          : null;
+
   const eventDateLabel = (starts: Date | null): { d: string; m: string } => ({
     d: starts ? new Intl.DateTimeFormat("en-GB", { day: "2-digit", timeZone: APPOINTMENT_TZ }).format(starts) : "--",
     m: starts
@@ -199,6 +347,49 @@ export function OrbitAgentDashboard({
 
   return (
     <div data-orbit-agent-dashboard>
+      <style>{`
+        /* Orbit_0918 批次 4a：dashboard 首屏换肤 + 今日四卡（ag-*）。
+           作用域 token 重映射到 0918 靛蓝体系；布局/逻辑/数据钩子零改动。 */
+        [data-orbit-agent-dashboard]{
+          color-scheme:light;
+          --ink:#0E1225;--text:#0E1225;--text-2:#3B3F7A;--text-3:#6B6F99;--text-4:#9FA3C4;
+          --bg:#FBFBFE;--bg-soft:#F7F7FD;--bg-sunken:#F1F1FA;
+          --surface:#FFFFFF;--surface-2:#F7F7FD;--surface-3:#ECEEFB;
+          --border:#E8E9F6;--border-2:#DDDEFA;--border-strong:#B9BCEB;--hairline:#F1F1FA;
+          --accent:#4B4FC7;--accent-hover:#2E3270;--accent-soft:#ECEEFB;--accent-ring:#B9BCEB;
+          --on-accent:#FFFFFF;--on-dark:#FFFFFF;
+          background:#FBFBFE;color:#0E1225;
+        }
+        [data-orbit-agent-dashboard] .sec-title h2{font-family:'Noto Serif SC','Songti SC','SimSun',serif;font-weight:900;letter-spacing:-0.02em;color:#0E1225}
+        [data-orbit-agent-dashboard] .hub-head h1{font-family:'Noto Serif SC','Songti SC','SimSun',serif;font-weight:900;letter-spacing:-0.02em}
+        [data-orbit-agent-dashboard] .btn-primary{background:#0E1225;border-color:#0E1225;box-shadow:none;color:#FFFFFF}
+        [data-orbit-agent-dashboard] .btn-primary:hover:not(:disabled){background:#2E3270;border-color:#2E3270}
+        [data-orbit-agent-dashboard] .btn-ghost{background:#FFFFFF;border-color:#DDDEFA;color:#3B3F7A;box-shadow:none}
+        [data-orbit-agent-dashboard] .btn-ghost:hover:not(:disabled){border-color:#B9BCEB;color:#2E3270}
+        [data-orbit-agent-dashboard] .btn-soft{background:#ECEEFB;border-color:#ECEEFB;color:#2E3270;box-shadow:none}
+        [data-orbit-agent-dashboard] .chip{border-color:#DDDEFA;color:#3B3F7A;background:#FFFFFF}
+        [data-orbit-agent-dashboard] .card{background:#FFFFFF;border:1px solid #E8E9F6;border-radius:18px;box-shadow:none}
+        [data-orbit-agent-dashboard] .ag-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:16px}
+        [data-orbit-agent-dashboard] .ag-card{background:#FFFFFF;border:1px solid #E8E9F6;border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:12px;min-width:0}
+        [data-orbit-agent-dashboard] .ag-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+        [data-orbit-agent-dashboard] .ag-card-head b{font-family:'Noto Serif SC','Songti SC','SimSun',serif;font-weight:900;font-size:17px;letter-spacing:-0.02em;color:#0E1225}
+        [data-orbit-agent-dashboard] .ag-card-head a{font-size:12px;color:#4B4FC7;text-decoration:none;white-space:nowrap}
+        [data-orbit-agent-dashboard] .ag-card-head a:hover{color:#2E3270;text-decoration:underline}
+        [data-orbit-agent-dashboard] .ag-rows{display:flex;flex-direction:column;gap:8px}
+        [data-orbit-agent-dashboard] .ag-row{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;height:auto;text-align:left;background:#F7F7FD;border:1px solid #E8E9F6;border-radius:12px;padding:10px 12px;box-shadow:none;white-space:normal;line-height:1.45}
+        [data-orbit-agent-dashboard] .ag-row:hover:not(:disabled){border-color:#B9BCEB;background:#F1F1FA}
+        [data-orbit-agent-dashboard] .ag-row-static{display:flex;align-items:baseline;gap:10px;background:#F7F7FD;border:1px solid #E8E9F6;border-radius:12px;padding:10px 12px}
+        [data-orbit-agent-dashboard] .ag-time{font-size:12px;color:#4B4FC7;font-weight:700;flex:none;min-width:44px}
+        [data-orbit-agent-dashboard] .ag-row-title{font-size:14px;font-weight:600;color:#0E1225;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+        [data-orbit-agent-dashboard] .ag-row-sub{font-size:12px;color:#6B6F99;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+        [data-orbit-agent-dashboard] .ag-state{font-size:13px;color:#9FA3C4;margin:0}
+        [data-orbit-agent-dashboard] .ag-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+        [data-orbit-agent-dashboard] .ag-cal-wd{font-size:11px;color:#9FA3C4;padding:4px 0}
+        [data-orbit-agent-dashboard] .ag-cal-d{position:relative;font-size:12px;color:#3B3F7A;padding:5px 0;border-radius:8px}
+        [data-orbit-agent-dashboard] .ag-cal-d.today{background:#0E1225;color:#FFFFFF;font-weight:700}
+        [data-orbit-agent-dashboard] .ag-cal-d.marked::after{content:"";position:absolute;left:50%;bottom:2px;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:#4B4FC7}
+        [data-orbit-agent-dashboard] .ag-cal-d.today.marked::after{background:#FFFFFF}
+      `}</style>
       {/* ── 身份行 ── */}
       <div className="hub-head">
         <Avatar g="g-sand" letter={home.account.initial} size={64} />
@@ -328,6 +519,102 @@ export function OrbitAgentDashboard({
             ) : null}
           </section>
         ) : null}
+      </section>
+
+      {/* ── 今日（D25 聚合：今日日程 / 月历微件 / 联系人机会 / 继续对话）── */}
+      <div className="sec-title"><h2>{t({ en: "Today", zh: "今日" })}</h2><span>{t({ en: "Schedule, opportunities and recent conversations from your real data", zh: "来自你真实数据的日程、机会与最近对话" })}</span></div>
+      <section className="ag-grid" data-orbit-agent-today-facts>
+        <div className="ag-card" data-orbit-agent-today-schedule={todayState}>
+          <div className="ag-card-head">
+            <b>{t({ en: "Today's schedule", zh: "今日日程" })}</b>
+            <a href="/app/schedule">{t({ en: "Open schedule", zh: "进入日程页" })}</a>
+          </div>
+          {todayState === "ready" ? (
+            <div className="ag-rows">
+              {todayRows.map((row) => (
+                <div className="ag-row-static" key={row.id}>
+                  <span className="ag-time">{row.time}</span>
+                  <span className="ag-row-title">{row.title}</span>
+                </div>
+              ))}
+            </div>
+          ) : renderAgState(todayState, { en: "Nothing scheduled for today.", zh: "今天没有日程安排。" })}
+        </div>
+
+        <div className="ag-card" data-orbit-agent-month-calendar={calendarState}>
+          <div className="ag-card-head">
+            <b>{monthTitle}</b>
+            <a href="/app/schedule">{t({ en: "Open schedule", zh: "进入日程页" })}</a>
+          </div>
+          {calendarState === "pending" || calendarState === "unavailable" ? (
+            renderAgState(calendarState, { en: "", zh: "" })
+          ) : (
+            <div className="ag-cal">
+              {weekdayLabels.map((label, index) => <span className="ag-cal-wd" key={`${label}-${index}`}>{label}</span>)}
+              {calendarCells.map((day, index) => (
+                <span
+                  className={`ag-cal-d${day === tokyoDay ? " today" : ""}${day !== null && markedDays.has(day) ? " marked" : ""}`}
+                  key={index}
+                >
+                  {day ?? ""}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="ag-card" data-orbit-agent-opportunities={opportunityState}>
+          <div className="ag-card-head">
+            <b>{t({ en: "Contact opportunities", zh: "联系人机会" })}</b>
+            <a href="/app/followups">{t({ en: "All follow-ups", zh: "全部跟进" })}</a>
+          </div>
+          {opportunityState === "ready" && opportunityItems.length > 0 ? (
+            <div className="ag-rows">
+              {opportunityItems.map((item) => (
+                <button
+                  className="btn ag-row"
+                  key={item.key}
+                  onClick={() => navigate(item.href ?? (item.contactId ? `/app/contacts/${encodeURIComponent(item.contactId)}` : "/app/followups"))}
+                  type="button"
+                >
+                  <span className="ag-row-title">{item.contactName}</span>
+                  <span className="ag-row-sub">{item.title}</span>
+                </button>
+              ))}
+            </div>
+          ) : opportunityState === "ready" ? (
+            <p className="ag-state">{t({ en: "No pending follow-ups right now.", zh: "当前没有待推进的跟进。" })}</p>
+          ) : renderAgState(opportunityState, { en: "No pending follow-ups right now.", zh: "当前没有待推进的跟进。" })}
+        </div>
+
+        <div className="ag-card" data-orbit-agent-resume-chat>
+          <div className="ag-card-head">
+            <b>{t({ en: "Continue a conversation", zh: "继续对话" })}</b>
+          </div>
+          {historySessions === "pending" ? (
+            <p className="ag-state">{t({ en: "Loading…", zh: "读取中…" })}</p>
+          ) : historySessions === "unavailable" ? (
+            <p className="ag-state">{t({ en: "This source is unavailable right now.", zh: "来源暂不可用。" })}</p>
+          ) : historySessions.length === 0 ? (
+            <p className="ag-state">{t({ en: "No conversations yet.", zh: "暂无历史对话。" })}</p>
+          ) : (
+            <div className="ag-rows">
+              {historySessions.map((session) => (
+                <button
+                  className="btn ag-row"
+                  key={session.id}
+                  onClick={() => navigate(`/app/agent?session=${encodeURIComponent(session.id)}`)}
+                  type="button"
+                >
+                  <span className="ag-row-title">{session.title || t({ en: "Untitled conversation", zh: "未命名对话" })}</span>
+                  <span className="ag-row-sub">
+                    {new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", timeZone: APPOINTMENT_TZ }).format(new Date(session.createdAt))}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </section>
 
       {/* ── 即将到来的约谈 ── */}
