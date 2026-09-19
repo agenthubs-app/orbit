@@ -1,5 +1,7 @@
 import { aiSessionArtifactRecoverySchema, contactArtifactDisplaySchema, contactArtifactSchema, contactArtifactToDisplay } from "../api/schema/ai-artifacts";
 import type { AiContactArtifactContract } from "../api/contract/ai-artifacts";
+import type { OrbitTranslator } from "../i18n/messages";
+import { aiEntityCardsFromArtifact, type AiEntityCardView } from "./ai-entity-card";
 
 export interface ConversationContactArtifactView extends AiContactArtifactContract {
   assistantMessageId: string;
@@ -57,4 +59,61 @@ export function sessionContactArtifacts(session: { id: string; messages: readonl
     }
   }
   return result;
+}
+
+/**
+ * Sprint 0094: every entity the assistant surfaced in this turn, as uniform cards.
+ *
+ * `displays()` above marks anything that is not a contact recommendation as
+ * "unsupported", which is why events, tasks, schedules and notes never appeared
+ * as cards. The payload shape is the same for all of them, so the difference was
+ * only in what the client agreed to render.
+ */
+export function conversationEntityCards(
+  payload: Record<string, unknown>,
+  t: OrbitTranslator,
+  language = "zh",
+): { assistantMessageId: string; cards: AiEntityCardView[] } | null {
+  if (!Array.isArray(payload.artifacts) || payload.artifacts.length === 0 || !Array.isArray(payload.messages)) return null;
+  const messages = payload.messages.filter(record);
+  const index = messages.findLastIndex((message) => message.role === "assistant");
+  const assistant = messages[index];
+  const user = messages[index - 1];
+  if (!assistant || !user || user.role !== "user" || typeof assistant.messageId !== "string") return null;
+  if (messages.filter((message) => message.messageId === assistant.messageId).length !== 1) return null;
+
+  // Same ceiling as the contact path: one turn cannot flood the transcript.
+  const cards = payload.artifacts
+    .flatMap((artifact) => aiEntityCardsFromArtifact(artifact, t, language))
+    .slice(0, 16);
+  return cards.length > 0 ? { assistantMessageId: assistant.messageId, cards } : null;
+}
+
+/**
+ * Sprint 0094: the same cards for a session restored from history.
+ *
+ * Recovered turns carry their sections directly rather than under
+ * `generatedView`, and they are associated by the turn's own message ids.
+ */
+export function sessionEntityCards(
+  session: { id: string; messages: readonly { id?: string | undefined; role: string }[] },
+  recovery: unknown,
+  t: OrbitTranslator,
+  language = "zh",
+): { assistantMessageId: string; cards: AiEntityCardView[] } | null {
+  const parsed = aiSessionArtifactRecoverySchema.safeParse(recovery);
+  if (!parsed.success) return null;
+  for (const turn of parsed.data.turns) {
+    const index = session.messages.findIndex(
+      (message) => message.id === turn.assistantMessageId && message.role === "assistant",
+    );
+    if (turn.sessionId !== session.id || index < 1) continue;
+    if (session.messages[index - 1]?.role !== "user" || session.messages[index - 1]?.id !== turn.userMessageId) continue;
+    if (turn.status !== "ready") continue;
+    const cards = turn.artifacts
+      .flatMap((artifact) => aiEntityCardsFromArtifact(artifact, t, language))
+      .slice(0, 16);
+    if (cards.length > 0) return { assistantMessageId: turn.assistantMessageId, cards };
+  }
+  return null;
 }

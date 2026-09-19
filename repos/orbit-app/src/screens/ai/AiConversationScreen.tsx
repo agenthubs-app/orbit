@@ -43,13 +43,14 @@ import { iorbitBrandMark } from "../../design/iorbit-brand";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import type { OrbitTranslator } from "../../i18n/messages";
 import { aiConversationListSchema, aiSessionReadSchema, aiSessionReceiptMatches, aiReplyPayload, aiReliableSendReceipt, aiReliableSendRecovery, aiTaskReceipt, type AiConversationPayload, type AiSession } from "../../api/ai-history-contract";
 import type { AiSessionOriginInputContract, AiSessionReferenceContract } from "../../api/contract/ai-sessions";
 import { updateAiSessionOrganization } from "../../api/ai-session-management";
 import { useMobileViewport } from "../../platform/use-mobile-viewport";
 import { ContactMentionPicker, type MentionContact } from "./ContactMentionPicker";
-import { AiContactArtifactPanel } from "./AiContactArtifactPanel";
-import { sessionContactArtifacts } from "../../view-models/ai-artifacts";
+import { AiEntityCardList } from "./cards/AiEntityCard";
+import { sessionContactArtifacts, sessionEntityCards } from "../../view-models/ai-artifacts";
 import { aiSessionArtifactRecoverySchema } from "../../api/schema/ai-artifacts";
 import {
   conversationAiRunReferencesFor,
@@ -152,13 +153,14 @@ function rawConversationThread(payload: AiConversationPayload, fallbackTitle: st
   };
 }
 
-function rawSessionThread(session: AiSession, recovery?: unknown): ConversationThreadView {
+function rawSessionThread(session: AiSession, recovery: unknown, translate: OrbitTranslator, language: "en" | "ja" | "zh"): ConversationThreadView {
   const parsed = aiSessionArtifactRecoverySchema.safeParse(recovery);
   return {
     activeConversationId: session.id, title: session.customTitle?.trim() || session.title,
     assistantMessage: session.messages.findLast(item => item.role === "assistant")?.text ?? "",
     messages: session.messages.map((item, index) => ({ id: item.id ?? `${session.id}:message:${index}`, role: item.role, content: item.text, createdAt: typeof item.createdAt === "string" ? item.createdAt : session.updatedAt })),
     nextAction: "", proposedToolIntents: [], contactArtifacts: sessionContactArtifacts(session, recovery),
+    entityCards: sessionEntityCards(session, recovery, translate, language),
     contactArtifactNotice: parsed.success && Boolean(parsed.data.truncated || parsed.data.unavailable || parsed.data.oversized)
   };
 }
@@ -258,8 +260,10 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const initialThread: ConversationThreadView | null = !isDraftConversation ? null : submittedMessage ? pendingConversationThreadView(submittedMessage, locale.language)
     : { activeConversationId: null, assistantMessage: "", messages: [], nextAction: "", proposedToolIntents: [], title: locale.t("aiConversation.newChat") };
   const resolvedThread = generatedThread
-    ? previousSession ? { ...generatedThread, title: rawSessionThread(previousSession).title, messages: rawSessionThread(previousSession).messages } : generatedThread
-    : loadedSession ? rawSessionThread(loadedSession, sessionRead?.success ? sessionRead.data.artifactRecovery : undefined)
+    ? previousSession
+      ? { ...generatedThread, title: rawSessionThread(previousSession, undefined, locale.t, locale.language).title, messages: rawSessionThread(previousSession, undefined, locale.t, locale.language).messages }
+      : generatedThread
+    : loadedSession ? rawSessionThread(loadedSession, sessionRead?.success ? sessionRead.data.artifactRecovery : undefined, locale.t, locale.language)
     : conversationRead?.success ? rawConversationThread(conversationRead.data, locale.t("aiConversation.sessionTitle"), locale.language)
     : initialThread && failedRequest ? { ...initialThread, title: locale.t("aiConversation.noAnswer"), messages: initialThread.messages.filter(item => item.role === "user") } : initialThread;
   const resultScopeReady = owns() && (isDraftConversation || (!state.refreshing && (state.kind === "success" || state.kind === "empty") && !readInvalid));
@@ -769,6 +773,10 @@ function ConversationThread({
   const [inputHeight, setInputHeight] = useState(44);
   const historyScroll = useRef<ScrollView>(null);
   const followNewMessages = useRef(false);
+  // The latest assistant turn anchors both the inline panels and the entity
+  // cards. Matching on message id instead looks tidier but breaks on the
+  // reliable-send path, which rebuilds the saved session's messages with
+  // client-side ids — the cards then silently render nowhere.
   const inlinePanelAnchorIndex = thread.messages.reduce(
     (lastIndex, message, index) => (message.role === "assistant" ? index : lastIndex),
     -1
@@ -835,7 +843,13 @@ function ConversationThread({
             {thread.messages.map((message, index) => (
               <Fragment key={message.id}>
                 <MessageBubble baseUrl={baseUrl} message={message} onOpenHref={onOpenHref} />
-                {message.role === "assistant" ? thread.contactArtifacts?.filter(artifact => artifact.assistantMessageId === message.id).map((artifact, index) => <AiContactArtifactPanel key={`${artifact.artifactId}:${index}`} artifact={artifact} onOpenHref={onOpenHref} />) : null}
+                {/* Sprint 0094: one card shape for all five entities. The contact
+                    panel that used to be here rendered only contact recommendations
+                    and marked everything else "unsupported", which is why events,
+                    tasks, schedules and notes never appeared as cards at all. */}
+                {index === inlinePanelAnchorIndex && thread.entityCards?.cards.length ? (
+                  <AiEntityCardList onOpenHref={onOpenHref} views={thread.entityCards.cards} />
+                ) : null}
                 {index === inlinePanelAnchorIndex && inlinePanels.length > 0 ? (
                   <ConversationInlinePanels
                     baseUrl={baseUrl}

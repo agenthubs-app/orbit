@@ -19,7 +19,7 @@ const unique = (values: string[]) => [...new Set(values)];
 const usedComputedPathKeys = new Set<string>();
 
 const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
-  'src/screens/ai/AiConversationScreen.tsx:350': ['/api/ai/conversations', '/api/ai/conversations/:id'],
+  'src/screens/ai/AiConversationScreen.tsx:354': ['/api/ai/conversations', '/api/ai/conversations/:id'],
   'src/screens/chat/RelationshipChatDetailScreen.tsx:176': ['/api/relationship-communication/conversations/:id/messages'],
   'src/screens/contacts/ContactAcquisitionScreen.tsx:401': ['/api/contact-drafts/:id'],
   'src/screens/contacts/ContactAcquisitionScreen.tsx:440': ['/api/contact-drafts/manual', '/api/contact-drafts/qr/scan', '/api/contact-drafts/business-card/scan'],

@@ -1,5 +1,6 @@
 import { aiRunPath } from "../api/endpoints";
-import { conversationContactArtifacts, type ConversationContactArtifactView } from "./ai-artifacts";
+import { conversationContactArtifacts, conversationEntityCards, type ConversationContactArtifactView } from "./ai-artifacts";
+import type { AiEntityCardView } from "./ai-entity-card";
 import { readAiEntityDraft, type AiEntityDraft } from "./ai-entity-draft";
 import type { OrbitLanguage } from "../api/contract/language";
 import { createTranslator } from "../i18n/messages";
@@ -143,6 +144,8 @@ export interface OrbitAiHomeChatWindow extends ConversationChatView {
 export interface ConversationThreadView extends ConversationChatView {
   contactArtifacts?: ConversationContactArtifactView[];
   contactArtifactNotice?: boolean;
+  /** Sprint 0094: uniform cards for every entity this turn surfaced. */
+  entityCards?: { assistantMessageId: string; cards: AiEntityCardView[] } | null;
   nextAction: string;
   title: string;
 }
@@ -1045,7 +1048,12 @@ export function conversationPayloadToThreadView(
   return {
     ...chat,
     nextAction: nextActionCopy(stringField(payload, "nextAction"), t),
-    ...(Array.isArray(payload.artifacts) && payload.artifacts.length ? { contactArtifacts: conversationContactArtifacts(payload) } : {}),
+    ...(Array.isArray(payload.artifacts) && payload.artifacts.length
+      ? {
+          contactArtifacts: conversationContactArtifacts(payload),
+          entityCards: conversationEntityCards(payload, t, language),
+        }
+      : {}),
     title: conversation?.title ?? t("conversationVm.defaultTitle")
   };
 }
