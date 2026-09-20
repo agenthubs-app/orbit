@@ -44,10 +44,18 @@ function at(base: number, minutes: number): string {
   return new Date(base + minutes * 60_000).toISOString();
 }
 
-async function runOrbitRecordsSchema(runtime: EventOperationsPostgresRuntime) {
-  for (const statement of ORBIT_RECORDS_SCHEMA_SQL.split(";")) {
-    if (statement.trim()) await runtime.client.query(statement);
-  }
+/**
+ * Sprint 0097: run the schema whole, the way production does, and through the
+ * raw pool.
+ *
+ * Splitting on ";" cut through the semicolon inside the schema's own SQL
+ * comment, so the next fragment began mid-sentence. Running it whole through
+ * the event-operations client does not work either: pg answers a multi-statement
+ * string with an array of results, which that client's single-result wrapper
+ * cannot read.
+ */
+async function runOrbitRecordsSchema(pool: Pool) {
+  await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
 }
 
 test(
@@ -74,7 +82,7 @@ test(
     try {
       await adminPool.query(`create schema ${schema}`);
       await runEventOperationsMigrations(runtime.client);
-      await runOrbitRecordsSchema(runtime);
+      await runOrbitRecordsSchema(scopedPool);
       await runAppointmentMigrations(runtime.client);
       await runEventAnalyticsMigrations(runtime.client);
 

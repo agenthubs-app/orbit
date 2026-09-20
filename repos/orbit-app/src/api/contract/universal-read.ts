@@ -1,6 +1,8 @@
-export type ReadPersistence = 'durable_normalized' | 'encrypted_ttl_snapshot' | 'device_only' | 'online_only_secret';
-export type MutationPolicy = 'offline_queue' | 'local_only' | 'online_only';
-export type BinaryPolicy = 'metadata_only' | 'on_demand_encrypted' | 'user_pinned_encrypted' | 'never_local';
+// Sprint 0097: these three were defined identically here and in offline-policy.
+// One definition, so the two files cannot drift apart, and so the shared export
+// surface can name them without a collision.
+export type { BinaryPolicy, MutationPolicy, ReadPersistence } from "./offline-policy";
+import type { BinaryPolicy, MutationPolicy, ReadPersistence } from "./offline-policy";
 export type ReadCompleteness = 'fresh' | 'stale' | 'partial' | 'not-downloaded' | 'not-authorized' | 'locked' | 'failure';
 export type ReadIdentityState = 'checking' | 'online' | 'local-read' | 'locked' | 'revoked';
 

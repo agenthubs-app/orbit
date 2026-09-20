@@ -575,6 +575,29 @@ test("Orbit Agent provider can plan through OpenAI Responses API", async () => {
   assert.equal(result.data?.toolRequests[0]?.toolName, "contacts.recommend");
 });
 
+/**
+ * Sprint 0097: clears the provider keys for the duration.
+ *
+ * `apiKey: null` means "not specified, use the environment" — see
+ * `resolveProvider` — so on a machine that has a key configured this test used
+ * to reach the real provider and conclude the opposite of what it asserts. A
+ * test whose answer depends on the developer's `.env.local` is not testing the
+ * product.
+ */
+async function withoutProviderKeys<T>(operation: () => Promise<T>): Promise<T> {
+  const names = ["DEEPSEEK_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "ORBIT_AGENT_PROVIDER"];
+  const saved = names.map((name) => [name, process.env[name]] as const);
+  for (const name of names) delete process.env[name];
+  try {
+    return await operation();
+  } finally {
+    for (const [name, value] of saved) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
+}
+
 test("live Gemini Orbit Agent fails closed without an API key", async () => {
   const liveModule = await importProjectModule<{
     createLiveOrbitAgentConversationService: (config?: {
@@ -596,11 +619,11 @@ test("live Gemini Orbit Agent fails closed without an API key", async () => {
     };
   }>("features/orbit-ai/live-conversation-service.ts");
 
-  const service = liveModule.createLiveOrbitAgentConversationService({
-    apiKey: null,
-  });
-  const result = await service.sendMessage({
-    message: "帮我推荐下周适合见 Maya 的活动",
+  const result = await withoutProviderKeys(async () => {
+    const service = liveModule.createLiveOrbitAgentConversationService({
+      apiKey: null,
+    });
+    return service.sendMessage({ message: "帮我推荐下周适合见 Maya 的活动" });
   });
 
   assert.equal(result.success, false);
