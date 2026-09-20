@@ -43,6 +43,7 @@ import {
   useApiResource,
   type ApiResourceState
 } from "../../hooks/useApiResource";
+import { useLoadingDeadline } from "../../hooks/useLoadingDeadline";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useRelationshipInboxBadgeCount } from "../../hooks/useRelationshipInboxBadgeCount";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
@@ -197,6 +198,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   const [historyAttempt, setHistoryAttempt] = useState(0);
   const [groupsAttempt, setGroupsAttempt] = useState(0);
   const [conversationAttempt, setConversationAttempt] = useState(0);
+  const [todayAttempt, setTodayAttempt] = useState(0);
   const [additionalHistorySessions, setAdditionalHistorySessions] = useState<AiSession[]>([]);
   const [historyPaginationBusy, setHistoryPaginationBusy] = useState(false);
   const [historyPaginationError, setHistoryPaginationError] = useState<string | null>(null);
@@ -233,8 +235,13 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   const todayState = useApiResource<unknown>(
     todayPath("Asia/Tokyo"),
     (data) => todayHomeSummary(data, new Date(), "Asia/Tokyo", locale.language).items.length === 0,
-    { scopeKey: readScope }
+    { scopeKey: JSON.stringify([readScope, todayAttempt]) }
   );
+  // Sprint 0092: neither region may say "still reading" without end. A retry
+  // bumps the attempt counter, which restarts the clock for that region.
+  const recentLoading = state.kind === "loading" || historyState.kind === "loading";
+  const recentOverdue = useLoadingDeadline(recentLoading, JSON.stringify([readScope, conversationAttempt, historyAttempt]));
+  const todayOverdue = useLoadingDeadline(todayState.kind === "loading", JSON.stringify([readScope, todayAttempt]));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyPendingOpen, setHistoryPendingOpen] = useState(false);
@@ -338,7 +345,8 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     ? groupsState.data.groups
     : [];
   const historyNotices: { message: string; retryLabel?: string; onRetry?: () => void }[] = [];
-  if (state.kind === "loading" || historyState.kind === "loading") historyNotices.push({ message: locale.t("ai.loadingRecent") });
+  if (recentLoading && !recentOverdue) historyNotices.push({ message: locale.t("ai.loadingRecent") });
+  if (recentOverdue) historyNotices.push({ message: locale.t("ai.recentTimedOut"), retryLabel: locale.t("common.retry"), onRetry: () => { if (owns()) { setConversationAttempt(value => value + 1); setHistoryAttempt(value => value + 1); } } });
   if (historyPaginationBusy) historyNotices.push({ message: locale.t("ai.loadingAllHistory") });
   if (historyPaginationError) historyNotices.push({ message: historyPaginationError, retryLabel: locale.t("ai.retryRead"), onRetry: () => { if (owns()) setHistoryAttempt(value => value + 1); } });
   if (state.kind === "failure" || state.kind === "offline") historyNotices.push({ message: locale.t("ai.conversationsUnreadable"), retryLabel: locale.t("ai.retryConversations"), onRetry: () => { if (owns()) setConversationAttempt(value => value + 1); } });
@@ -362,7 +370,9 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   const todayError =
     todayState.kind === "offline" || todayState.kind === "failure"
       ? todayState.error.message
-      : null;
+      : todayOverdue
+        ? locale.t("todayActions.timedOut")
+        : null;
   const drawerPanResponder = useMemo(
     () =>
       PanResponder.create({
@@ -636,7 +646,8 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
                   <Text style={styles.recentWhen}>{item.when}</Text><Ionicons name="chevron-forward" color={colors.text4} size={14} />
                 </Pressable>
               ))}
-              {state.kind === "loading" || historyState.kind === "loading" ? <Text accessibilityLiveRegion="polite" style={styles.recentState}>{locale.t("ai.loadingRecent")}</Text> : null}
+              {recentLoading && !recentOverdue ? <Text accessibilityLiveRegion="polite" style={styles.recentState}>{locale.t("ai.loadingRecent")}</Text> : null}
+              {recentOverdue ? <View style={styles.recentFailure}><Text style={styles.errorText}>{locale.t("ai.recentTimedOut")}</Text><Pressable accessibilityLabel={locale.t("common.retry")} accessibilityRole="button" onPress={() => { if (owns()) { setConversationAttempt(value => value + 1); setHistoryAttempt(value => value + 1); } }} style={styles.retryButton}><Text style={styles.allHistoryText}>{locale.t("common.retry")}</Text></Pressable></View> : null}
               {(state.kind === "success" || state.kind === "empty") && state.data.state === "pending" ? <Text accessibilityLiveRegion="polite" style={styles.recentState}>{locale.t("ai.conversationPreparing")}</Text> : null}
               {state.kind === "failure" || state.kind === "offline" ? <View style={styles.recentFailure}><Text style={styles.errorText}>{locale.t("ai.conversationsUnreadable")}</Text><Pressable accessibilityLabel={locale.t("ai.retryConversations")} accessibilityRole="button" onPress={() => { if (owns()) setConversationAttempt(value => value + 1); }} style={styles.retryButton}><Text style={styles.allHistoryText}>{locale.t("common.retry")}</Text></Pressable></View> : null}
               {historyState.kind === "failure" || historyState.kind === "offline" ? <View style={styles.recentFailure}><Text style={styles.errorText}>{locale.t("ai.historyUnreadable")}</Text><Pressable accessibilityLabel={locale.t("ai.retryHistory")} accessibilityRole="button" onPress={() => { if (owns()) setHistoryAttempt(value => value + 1); }} style={styles.retryButton}><Text style={styles.allHistoryText}>{locale.t("common.retry")}</Text></Pressable></View> : null}
@@ -645,10 +656,10 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
             </View>
             <OrbitNextActions
               error={todayError}
-              loading={todayState.kind === "loading"}
+              loading={todayState.kind === "loading" && !todayOverdue}
               onOpen={openTodayAction}
               onOpenSuggestions={() => openCapability("/today" as Href)}
-              onRefresh={todayState.refresh}
+              onRefresh={() => { if (owns()) setTodayAttempt(value => value + 1); todayState.refresh(); }}
               summary={todaySummary}
             />
           </ChatTranscript>
