@@ -1,4 +1,4 @@
-import type { EntityDraft } from "./contract";
+import type { EntityDraft, EntityDraftFields } from "./contract";
 import type { EntityDraftWriteAdapter } from "./service";
 
 /**
@@ -155,13 +155,34 @@ export interface EventCreatePort {
     actorId: string;
     title: string;
     startsAt: string;
+    sourceNote: string;
     endsAt?: string;
     venue?: string;
     description?: string;
-  }) => Promise<
-    | { success: true; data: { event: { id: string } } }
-    | { success: false; error?: { message?: string } }
-  >;
+  }) => EventCreateResult | Promise<EventCreateResult>;
+}
+
+/** The service answers synchronously for staged events and asynchronously for live ones. */
+type EventCreateResult =
+  | { success: true; data: { event: { id: string } } }
+  | { success: false; error?: { message?: string } };
+
+/**
+ * Sprint 0093: why this event belongs in Orbit.
+ *
+ * Every implementation of the event service — mock, hybrid and live — refuses a
+ * manual event without a source note, so this is a product rule, not the mock
+ * leftover the message text ("in the mock") suggests. It is provenance, and
+ * nothing validates its wording: the question it answers is "why is this here".
+ *
+ * For an agent draft the truthful answer is the conversation it came from, so a
+ * confirmation never fails for want of a note. When the model states a reason
+ * the user can read and edit it on the card before confirming, and that reason
+ * is used instead.
+ */
+export function eventDraftSourceNote(draft: { conversationId: string; draftId: string; fields: EntityDraftFields }): string {
+  return draft.fields.sourceNote?.trim()
+    || `由 IORBIT 会话 ${draft.conversationId} 中的草稿 ${draft.draftId} 经用户确认创建。`;
 }
 
 export function createEventDraftAdapter(port: EventCreatePort): EntityDraftWriteAdapter {
@@ -172,6 +193,7 @@ export function createEventDraftAdapter(port: EventCreatePort): EntityDraftWrite
       if (!startsAt) throw new Error("草稿缺少必填字段：startsAt");
       const result = await port.createEvent({
         actorId,
+        sourceNote: eventDraftSourceNote(draft),
         startsAt,
         title: required(draft, "title"),
         ...(instant(draft, "endsAt") ? { endsAt: instant(draft, "endsAt") } : {}),

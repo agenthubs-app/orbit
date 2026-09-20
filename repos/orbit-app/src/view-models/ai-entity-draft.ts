@@ -142,6 +142,10 @@ const ROW_FIELDS: Readonly<Record<AiEntityKind, readonly { field: string; key: M
     { field: "startsAt", key: "aiEntityDraft.fieldStartsAt" },
     { field: "endsAt", key: "aiEntityDraft.fieldEndsAt" },
     { field: "location", key: "aiEntityDraft.fieldLocation" },
+    // Sprint 0093: the event service requires a reason an event belongs in
+    // Orbit. Showing it here is what lets the user correct it before
+    // confirming, instead of finding out from a refused write.
+    { field: "sourceNote", key: "aiEntityDraft.fieldSourceNote" },
   ],
   note: [{ field: "body", key: "aiEntityDraft.fieldBody" }],
   schedule: [
@@ -177,7 +181,8 @@ export function aiEntityRecordHref(kind: AiEntityKind, recordId: string): string
   switch (kind) {
     case "task": return `/tasks/${id}`;
     case "note": return `/notes/${id}`;
-    case "schedule": return `/schedule/${id}`;
+    // A schedule draft creates a personal entry; /schedule/<id> is not a route.
+    case "schedule": return `/schedule/personal/${id}`;
     case "event": return `/events/${id}`;
     default: return null;
   }

@@ -90,6 +90,7 @@ export const zh = {
   "aiEntityDraft.fieldStartsAt": "开始",
   "aiEntityDraft.fieldEndsAt": "结束",
   "aiEntityDraft.fieldLocation": "地点",
+  "aiEntityDraft.fieldSourceNote": "纳入理由",
   "aiEntityDraft.fieldSources": "关联",
   "aiEntityDraft.footnotePending": "确认前不会写入任何数据。",
   "aiEntityDraft.footnoteCreated": "已写入并回读成功。",

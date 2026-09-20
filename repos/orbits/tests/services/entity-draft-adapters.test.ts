@@ -118,3 +118,40 @@ test("task categories follow the titles the existing service already recognises"
   assert.equal(taskCategoryForTitle("去医院复查"), "personal");
   assert.equal(taskCategoryForTitle("整理季度材料"), "work");
 });
+
+/**
+ * Sprint 0093: the event service refuses a manual event without a source note,
+ * in every implementation — mock, hybrid and live — so a draft that does not
+ * carry one can never be confirmed.
+ */
+test("an event draft always carries why the event belongs in Orbit", async () => {
+  const sent: Record<string, unknown>[] = [];
+  const adapter = createEventDraftAdapter({
+    async createEvent(input) { sent.push(input as Record<string, unknown>); return { data: { event: { id: "event:1" } }, success: true }; },
+  });
+  const fields = { startsAt: "2026-09-22T01:00:00Z", title: "关西跨境商务对接会" };
+
+  await adapter.write({ actorId: "actor:one", draft: draft({ fields, kind: "event" }), idempotencyKey: "k", now: NOW });
+  const stated = String(sent[0]?.sourceNote ?? "");
+  assert.ok(stated.includes("conversation:one") && stated.includes("draft:1"),
+    "without a stated reason the note must still say where the event came from");
+
+  await adapter.write({
+    actorId: "actor:one",
+    draft: draft({ fields: { ...fields, sourceNote: "用户要去谈关西制造业的试点。" }, kind: "event" }),
+    idempotencyKey: "k", now: NOW,
+  });
+  assert.equal(sent[1]?.sourceNote, "用户要去谈关西制造业的试点。", "a stated reason must not be replaced by provenance");
+});
+
+test("the source note the adapter sends satisfies the event service itself", async () => {
+  const { createEventCrudAndImportService } = await import("../../features/events/service-factory");
+  const service = createEventCrudAndImportService();
+  const adapter = createEventDraftAdapter(service);
+  const result = await adapter.write({
+    actorId: "actor:one",
+    draft: draft({ fields: { startsAt: "2026-09-22T01:00:00Z", title: "关西跨境商务对接会" }, kind: "event" }),
+    idempotencyKey: "k", now: NOW,
+  });
+  assert.ok(result.recordId, "the real service refused the note the adapter generates");
+});

@@ -32,6 +32,7 @@ import {
 import type { MockRuntimeFixtures } from "../../../shared/mock/fixtures";
 import { eventCaptureMethodForSourceType } from "./event-source-policy";
 import type { EventCrudAndImportService } from "./service";
+import { slugFromTitle } from "./event-slug";
 
 interface LocalRemoteEventGraph {
   events: readonly EventDTO[];
@@ -425,14 +426,6 @@ function detailPayloadFor(
     }),
     nextAction: eventRecord.nextAction,
   };
-}
-
-function slugFromTitle(title: string): string {
-  return title
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
 }
 
 function createEventLocalRemoteRepository(
