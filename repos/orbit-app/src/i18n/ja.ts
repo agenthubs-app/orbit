@@ -90,6 +90,7 @@ export const ja = {
   "aiEntityDraft.fieldStartsAt": "開始",
   "aiEntityDraft.fieldEndsAt": "終了",
   "aiEntityDraft.fieldLocation": "場所",
+  "aiEntityDraft.fieldSourceNote": "登録理由",
   "aiEntityDraft.fieldSources": "関連",
   "aiEntityDraft.footnotePending": "確認するまで保存されません。",
   "aiEntityDraft.footnoteCreated": "保存して読み戻しました。",

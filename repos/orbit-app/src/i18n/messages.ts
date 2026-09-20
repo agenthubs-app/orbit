@@ -143,6 +143,7 @@ export const messageKeys = [
   "aiEntityDraft.fieldStartsAt",
   "aiEntityDraft.fieldEndsAt",
   "aiEntityDraft.fieldLocation",
+  "aiEntityDraft.fieldSourceNote",
   "aiEntityDraft.fieldSources",
   "aiEntityDraft.footnotePending",
   "aiEntityDraft.footnoteCreated",

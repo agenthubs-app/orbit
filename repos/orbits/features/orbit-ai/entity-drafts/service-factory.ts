@@ -39,7 +39,7 @@ export function createConfiguredEntityDraftService(): EntityDraftService | null 
         createConfiguredPersonalScheduleService() as unknown as ScheduleCreatePort,
       ),
       createEventDraftAdapter(
-        createEventCrudAndImportService() as unknown as EventCreatePort,
+        createEventCrudAndImportService(),
       ),
     ],
     repository,

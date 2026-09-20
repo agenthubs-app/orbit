@@ -16,6 +16,7 @@ import type {
   ManualEventCreationInput,
   ManualEventCreationPayload,
 } from "./contract";
+import { slugFromTitle } from "./event-slug";
 
 export const EVENT_CRUD_IMPORT_FIXTURE_SOURCE =
   "fixture:features/events/event-crud-and-import/fixtures.ts" as const;
@@ -324,14 +325,6 @@ export const mockEventDetailFixture: EventDetailPayload = {
   },
   nextAction: "Review attendees and readiness context before the event.",
 };
-
-function slugFromTitle(title: string): string {
-  return title
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
 
 export function buildManualEventCreationPayload(
   input: Required<

@@ -17,6 +17,7 @@ import type {
   LiveEventStoreProvider,
   LiveEventStoreRecord,
 } from "../live-service";
+import { slugFromTitle } from "../event-slug";
 
 export const EVENTS_LIVE_RECORD_COLLECTION = "events" as const;
 
@@ -73,14 +74,6 @@ function readText(value: unknown): string | null {
 
 function sourceTypeFor(value: string): SourceType {
   return isSourceType(value) ? value : "system";
-}
-
-function slugFromTitle(title: string): string {
-  return title
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
 }
 
 function isEvidencePayload(value: unknown): value is StorageEventEvidencePayload {

@@ -98,9 +98,22 @@ test("a source ref the client does not understand is dropped, not rendered as a 
 test("each kind opens the page that actually holds it", () => {
   assert.equal(aiEntityRecordHref("task", "task:1"), "/tasks/task%3A1");
   assert.equal(aiEntityRecordHref("note", "note:1"), "/notes/note%3A1");
-  assert.equal(aiEntityRecordHref("schedule", "s:1"), "/schedule/s%3A1");
+  // A schedule draft creates a personal entry; /schedule/<id> is not a route.
+  assert.equal(aiEntityRecordHref("schedule", "s:1"), "/schedule/personal/s%3A1");
   assert.equal(aiEntityRecordHref("event", "e:1"), "/events/e%3A1");
   // Contacts are absent on purpose: they keep their existing acquisition flow,
   // so the agent never produces a contact card to open.
   assert.equal(AI_ENTITY_KINDS.includes("contact" as never), false);
+});
+
+test("an event draft shows why it belongs in Orbit, so the reason can be corrected before confirming", () => {
+  const view = aiEntityDraftCardView({
+    createdAt: "2026-09-20T00:00:00.000Z", draftId: "draft:1", fields: {
+      sourceNote: "用户要去谈关西制造业的试点。", startsAt: "2026-09-22T01:00:00Z", title: "关西跨境商务对接会",
+    }, kind: "event", revision: 1, sourceRefs: [], state: "pending_confirmation", updatedAt: "2026-09-20T00:00:00.000Z",
+  }, t);
+  const row = view.rows.find((entry) => entry.field === "sourceNote");
+  assert.ok(row, "the event service requires this field; a card that hides it refuses the write with no way to fix it");
+  assert.equal(row!.editable, true);
+  assert.equal(row!.value, "用户要去谈关西制造业的试点。");
 });

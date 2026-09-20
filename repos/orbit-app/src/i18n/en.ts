@@ -90,6 +90,7 @@ export const en = {
   "aiEntityDraft.fieldStartsAt": "Starts",
   "aiEntityDraft.fieldEndsAt": "Ends",
   "aiEntityDraft.fieldLocation": "Location",
+  "aiEntityDraft.fieldSourceNote": "Why in Orbit",
   "aiEntityDraft.fieldSources": "Linked",
   "aiEntityDraft.footnotePending": "Nothing is saved until you confirm.",
   "aiEntityDraft.footnoteCreated": "Saved and read back.",
