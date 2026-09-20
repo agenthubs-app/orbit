@@ -1,13 +1,22 @@
 import { createHash } from "node:crypto";
 import type { FeatureMode } from "../../../shared/config/feature-mode";
-import { contactArtifactToDisplay } from "../../../shared/api-schema/ai-artifacts";
+import { entityArtifactToDisplay } from "../../../shared/api-schema/ai-artifacts";
 import type { AiSessionArtifactRecoveryContract, AiSessionArtifactTurnContract } from "../../../shared/contract/ai-artifacts";
 import { createConfiguredTransactionalPostgresRuntime, type TransactionalSqlExecutor } from "../../../shared/storage/transactional-postgres";
 import type { OrbitAgentChatSessionSnapshot } from "./orbit-agent-chat-session-live-record-provider";
 
 export interface OrbitAgentChatSessionArtifactReader { read(session: OrbitAgentChatSessionSnapshot): Promise<AiSessionArtifactRecoveryContract> }
 const record = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
-const otherKinds = new Set(["event_recommendations", "email_context", "followup_queue", "relationship_chat_context", "generic", "self_profile", "data_query"]);
+/**
+ * Sprint 0095: the producer kinds that carry entity items worth restoring.
+ *
+ * This used to be the inverse list — every kind to drop — which kept only
+ * contact recommendations, so a reply about tasks, notes, schedules or events
+ * came back from history with its cards gone. Conversational kinds
+ * (email_context, followup_queue, generic, ...) have no items to render and
+ * are still dropped; they are simply no longer the only thing named.
+ */
+const entityKinds = new Set(["contact_recommendations", "event_recommendations", "data_query"]);
 interface RequestRow { record_id: string; request_id: string; source_bytes: number; payload: unknown }
 
 export function createTransactionalOrbitAgentChatSessionArtifactReader(input: { actorId: string; workspaceId: string; client: TransactionalSqlExecutor }): OrbitAgentChatSessionArtifactReader {
@@ -47,9 +56,9 @@ export function createTransactionalOrbitAgentChatSessionArtifactReader(input: { 
         || session.messages[savedIndex]?.text.trim() !== assistant.content.trim().slice(0, 12000) || savedUser.text.trim() !== user.content.trim().slice(0, 12000)) { recovery.unavailable = true; continue; }
       const artifacts = data.artifacts.slice(0, 16).filter(value => {
         const kind = record(value) && record(value.task) ? value.task.kind : undefined;
-        return typeof kind !== "string" || !otherKinds.has(kind);
-      }).map(value => record(value) && record(value.task) && value.task.conversationId === data.activeConversationId ? contactArtifactToDisplay(value) : contactArtifactToDisplay(null));
-      if (data.artifacts.length > 16) { recovery.truncated = true; artifacts.push(contactArtifactToDisplay(null)); }
+        return typeof kind === "string" && entityKinds.has(kind);
+      }).map(value => record(value) && record(value.task) && value.task.conversationId === data.activeConversationId ? entityArtifactToDisplay(value) : entityArtifactToDisplay(null));
+      if (data.artifacts.length > 16) { recovery.truncated = true; artifacts.push(entityArtifactToDisplay(null)); }
       if (artifacts.length) candidates.push({ sessionId: session.id, requestId: source.requestId, userMessageId: savedUser.id, assistantMessageId: assistantId, status: "ready", artifacts: artifacts.slice(0, 16) });
     }
     for (const turn of candidates) {

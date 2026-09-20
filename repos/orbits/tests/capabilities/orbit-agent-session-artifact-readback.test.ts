@@ -126,3 +126,35 @@ test("total projection exceeds 128KiB without erasing text or returning oversize
   assert.deepEqual(recovery.turns, []);
   assert.ok(Buffer.byteLength(JSON.stringify(recovery)) <= 131072);
 });
+
+/**
+ * Sprint 0095: recovery used to keep contact recommendations and drop every
+ * other kind, so reopening a session about tasks, notes, schedules or events
+ * showed the reply with none of its cards.
+ */
+function kindRow(kind: string, itemId: string, turn = 1, actorId = "actor:qa") {
+  const presentation = { preferredSurface: "inline_card", title: "查询结果" };
+  const task = { artifactId: `artifact:qa:${turn}`, taskId: `task:qa:${turn}`, conversationId: "runtime:qa", kind, status: "ready", artifactProducer: `${kind}_producer`, presentation, query: "待办", createdAt: storedSession.createdAt, updatedAt: storedSession.updatedAt };
+  const item = { id: itemId, title: "季度复盘", metadata: [{ label: "dueAt", value: "2026-09-25T00:00:00.000Z" }, { label: "source", value: "internal" }], actions: [], evidenceIds: [] };
+  const payload = { requestId: `request:qa:${turn}`, sessionId: storedSession.id, fingerprint: "synthetic", state: "completed", result: { success: true, data: { activeConversationId: "runtime:qa", messages: [{ messageId: `provider-user:qa:${turn}`, role: "user", conversationId: "runtime:qa", content: "谁愿意讨论点单助手？" }, { messageId: `assistant:qa:${turn}`, role: "assistant", conversationId: "runtime:qa", content: turn === 1 ? "第一轮回复。" : "第二轮回复。" }], artifacts: [{ task, result: { artifactId: task.artifactId, taskId: task.taskId, kind, status: "ready", presentation, nextAction: "", generatedView: { summary: "1条待办", sections: [{ title: "待办", items: [item] }] } } }] } } };
+  return { record_id: createHash("sha256").update(JSON.stringify([actorId, payload.requestId])).digest("hex"), request_id: payload.requestId, source_bytes: Buffer.byteLength(JSON.stringify(payload)), payload };
+}
+
+test("a restored turn keeps the kind it was produced as, for every kind that carries records", async () => {
+  for (const [kind, itemId] of [["data_query", "task:qa:1"], ["event_recommendations", "event-recommendation:event:qa:1"]] as const) {
+    const recovery = await readerFor([kindRow(kind, itemId)]).reader.read(storedSession);
+    const artifact = recovery.turns[0]?.artifacts[0];
+    assert.equal(recovery.turns.length, 1, kind);
+    assert.equal(artifact?.kind, kind);
+    assert.equal(artifact?.sections[0]?.items[0]?.id, itemId);
+    // The card's identifying attribute survives; the producer's does not.
+    assert.deepEqual(artifact?.sections[0]?.items[0]?.metadata, [{ label: "dueAt", value: "2026-09-25T00:00:00.000Z" }]);
+  }
+});
+
+test("kinds that carry no records stay out of recovery rather than becoming empty turns", async () => {
+  for (const kind of ["email_context", "followup_queue", "relationship_chat_context", "generic", "self_profile"]) {
+    const recovery = await readerFor([kindRow(kind, "task:qa:1")]).reader.read(storedSession);
+    assert.deepEqual(recovery.turns, [], kind);
+  }
+});
