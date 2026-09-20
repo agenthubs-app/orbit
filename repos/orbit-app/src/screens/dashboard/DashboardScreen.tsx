@@ -24,6 +24,7 @@ import { textStyles, radius, spacing } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
+import { useLoadingDeadline } from "../../hooks/useLoadingDeadline";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
   dashboardAuditRunToView,
@@ -55,6 +56,7 @@ export function DashboardScreen() {
   const [auditRunResult, setAuditRunResult] =
     useState<DashboardAuditRunView | null>(null);
   const [auditError, setAuditError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const aggregateState = useApiResource<unknown>(
     dashboardAggregatePath(4),
     (data) => dashboardToView({ aggregate: data }).metrics.every((item) => item.value === "0")
@@ -79,10 +81,25 @@ export function DashboardScreen() {
     dashboardProvenanceAuditPath(),
     () => false
   );
+  /**
+   * Sprint 0088: the six reads fire together and normally land within 20ms of
+   * each other, so nothing here is worth staggering. What was missing is an
+   * end: a read that never answers left the whole screen blank, because the
+   * first paint waited on `aggregate` alone. Past the ceiling each unfinished
+   * read says so and can be retried, and the sections that did land render.
+   */
+  const coverageOverdue = useLoadingDeadline(aggregateState.kind === "loading", String(retryCount));
+  const landed =
+    aggregateState.kind !== "loading" ||
+    [summaryState, opportunitiesState, gapsState, distributionsState, auditState]
+      .some((state) => state.kind !== "loading");
 
   function refreshAll() {
     setRecomputeError(null);
     setAuditError(null);
+    // Restarts the coverage ceiling: a retry must not inherit the timeout the
+    // user just dismissed.
+    setRetryCount((value) => value + 1);
     aggregateState.refresh();
     summaryState.refresh();
     opportunitiesState.refresh();
@@ -160,7 +177,7 @@ export function DashboardScreen() {
       }
       title="关系仪表盘"
     >
-      {aggregateState.kind === "loading" ? <LoadingState /> : null}
+      {!landed ? <LoadingState /> : null}
       {aggregateState.kind === "offline" ? (
         <ErrorState message={aggregateState.error.message} title="服务器连不上" />
       ) : null}
@@ -176,9 +193,19 @@ export function DashboardScreen() {
           title="暂无关系数据"
         />
       ) : null}
-      {aggregateState.kind === "success" ? (
+      {landed && aggregateState.kind !== "empty" ? (
         <DashboardContent
-          aggregate={aggregateState.data}
+          aggregate={aggregateState.kind === "success" ? aggregateState.data : null}
+          coverageState={
+            aggregateState.kind === "success"
+              ? "ready"
+              : coverageOverdue
+                ? "overdue"
+                : aggregateState.kind === "loading"
+                  ? "loading"
+                  : "unavailable"
+          }
+          onRetryCoverage={refreshAll}
           audit={
             auditState.kind === "success" || auditState.kind === "empty"
               ? auditState.data
@@ -206,14 +233,19 @@ export function DashboardScreen() {
   );
 }
 
+/** Sprint 0088: the coverage card states its own outcome, so one unfinished read cannot blank the page. */
+type CoverageState = "ready" | "loading" | "overdue" | "unavailable";
+
 function DashboardContent({
   aggregate,
   audit,
   auditError,
   auditRunResult,
   auditing,
+  coverageState,
   distributions,
   gaps,
+  onRetryCoverage,
   onRunAudit,
   onRecompute,
   opportunities,
@@ -224,6 +256,8 @@ function DashboardContent({
 }: {
   aggregate: unknown;
   audit: unknown;
+  coverageState: CoverageState;
+  onRetryCoverage: () => void;
   auditError: string | null;
   auditRunResult: DashboardAuditRunView | null;
   auditing: boolean;
@@ -251,17 +285,39 @@ function DashboardContent({
   return (
     <>
       <DataCard detail={view.summary} title="今天先看这三件事">
-        <View style={styles.scoreRow}>
-          <View style={styles.scoreDial}>
-            <Text style={styles.scoreNumber}>{view.coverageScore}</Text>
-            <Text style={styles.scoreSuffix}>%</Text>
+        {coverageState === "ready" ? (
+          <>
+            <View style={styles.scoreRow}>
+              <View style={styles.scoreDial}>
+                <Text style={styles.scoreNumber}>{view.coverageScore}</Text>
+                <Text style={styles.scoreSuffix}>%</Text>
+              </View>
+              <View style={styles.scoreCopy}>
+                <Text style={styles.sectionLabel}>{view.coverageScoreLabel}</Text>
+                <Text style={styles.bodyText}>{view.nextAction}</Text>
+              </View>
+            </View>
+            <MetricGrid metrics={view.metrics} />
+          </>
+        ) : (
+          // Never a 0% dial: not having read the coverage is not the same as
+          // having none, which is the rule 0087 settled for the task list.
+          <View style={styles.coverageState}>
+            <Text style={styles.bodyText}>
+              {coverageState === "loading" ? "正在读取关系覆盖" : coverageState === "overdue" ? "读取关系覆盖超时" : "关系覆盖暂时不可用"}
+            </Text>
+            {coverageState === "loading" ? null : (
+              <Pressable
+                accessibilityRole="button"
+                onPress={onRetryCoverage}
+                style={({ pressed }) => [styles.recomputeButton, pressed ? styles.pressed : null]}
+              >
+                <Ionicons color={colors.onAccent} name="refresh-outline" size={17} />
+                <Text style={styles.recomputeButtonText}>重试</Text>
+              </Pressable>
+            )}
           </View>
-          <View style={styles.scoreCopy}>
-            <Text style={styles.sectionLabel}>{view.coverageScoreLabel}</Text>
-            <Text style={styles.bodyText}>{view.nextAction}</Text>
-          </View>
-        </View>
-        <MetricGrid metrics={view.metrics} />
+        )}
         <Pressable
           accessibilityRole="button"
           disabled={recomputing}
@@ -651,6 +707,10 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   bodyText: {
     ...textStyles.body,
     color: colors.text
+  },
+  coverageState: {
+    alignItems: "flex-start",
+    gap: spacing.sm
   },
   auditResult: {
     backgroundColor: colors.surface2,
