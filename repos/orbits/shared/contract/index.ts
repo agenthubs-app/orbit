@@ -229,3 +229,66 @@ export type {
 export type { InboxNotificationKind, InboxNotificationOrigin, InboxNotificationDisposition, InboxNotificationAction, InboxSourceKind, InboxNotificationSource, InboxNotificationTarget, InboxNotificationDTO, InboxNotificationListDTO, InboxNotificationActionInput, InboxNotificationActionReceipt, InboxNotificationReadBatchInput } from "./inbox-notifications";
 export type { NotificationDiscoveryPreferencesDTO, NotificationDiscoveryPreferencesInput, NotificationDiscoveryStatusDTO } from "./notification-discovery";
 export type { InboxDeliveryPreferencesDTO, InboxDeliveryPreferencesInput, InboxDeliveryOwnerDTO } from "./notification-delivery-policy";
+
+// Sprint 0097: these六个契约文件一直没进出口，跨端只能各自深引用。
+export type {
+  AccountLanguagePreferenceSaveContract,
+  AccountLanguagePreferenceSaveReceiptContract,
+  OrbitLanguagePreferenceContract
+} from "./account-language-preference";
+
+export type {
+  ContactNeedCriterionContract,
+  ContactNeedCriterionMatchContract,
+  ContactNeedCriterionTypeCode,
+  ContactNeedDimensionCode,
+  ContactNeedMatchContract,
+  ContactNeedMatchStatusCode,
+  ContactNeedScoreComponentContract,
+  ContactNeedsMatchesPayloadContract,
+  ContactNeedsStateCode,
+  ContactNeedSummaryContract
+} from "./contact-needs";
+
+export type {
+  CanonicalResult,
+  Mutation,
+  MutationKind,
+  MutationOperation,
+  MutationResult
+} from "./offline-mutations";
+
+export type {
+  BinaryPolicy,
+  MutationPolicy,
+  OfflinePolicy,
+  OfflinePolicyRegistration,
+  ReadPersistence
+} from "./offline-policy";
+
+export type {
+  RelationshipCompletionInput,
+  RelationshipCompletionOutcome,
+  RelationshipInitializationChoice,
+  RelationshipInitializationInput,
+  RelationshipInitializationRead,
+  RelationshipLifecycleSnapshotDTO,
+  RelationshipLifecycleStage,
+  RelationshipTaskSummary
+} from "./relationship-lifecycle";
+
+export type {
+  AssetManifest,
+  CursorClaims,
+  DomainChange,
+  DomainManifest,
+  DomainManifestEntry,
+  DomainPage,
+  OfflineReadEnvelope,
+  OfflineReadGrant,
+  ReadCompleteness,
+  ReadGrant,
+  ReadIdentityState,
+  ReadScope,
+  ReadSurface
+} from "./universal-read";

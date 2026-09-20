@@ -47,9 +47,10 @@ test(
     const pool = new Pool({ connectionString: databaseUrl, max: 4, options: `-c search_path=${schema}` });
     try {
       await admin.query(`create schema ${schema}`);
-      for (const statement of ORBIT_RECORDS_SCHEMA_SQL.split(";")) {
-        if (statement.trim()) await pool.query(statement);
-      }
+      // Sprint 0097: run it whole, the way production does. Splitting on ";"
+      // cuts through the semicolon inside the schema's own SQL comment, and the
+      // next fragment starts mid-sentence.
+      await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
       const store = createPostgresLiveRecordStore<Record<string, unknown>>({
         client: {
           async query(text, values) {

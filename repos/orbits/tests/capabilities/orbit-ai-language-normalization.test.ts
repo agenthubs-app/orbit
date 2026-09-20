@@ -99,9 +99,24 @@ test("language normalization fails closed without an API key", async () => {
     };
   }>("features/orbit-ai/language-normalization-service.ts");
 
-  const service = module.createOrbitLanguageNormalizationService({ apiKey: null });
-  const translated = await service.translateToEnglish("我是做餐饮的");
-  const extracted = await service.extractSearchTerms("找做餐饮的人");
+  // Sprint 0097: `apiKey: null` means "not specified, use the environment", so
+  // on a machine with a key configured this reached the real provider and
+  // concluded the opposite of what it asserts.
+  const names = ["DEEPSEEK_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "ORBIT_AGENT_PROVIDER"];
+  const saved = names.map((name) => [name, process.env[name]] as const);
+  for (const name of names) delete process.env[name];
+  let translated: { translated: boolean };
+  let extracted: { searchTerms: string | null };
+  try {
+    const service = module.createOrbitLanguageNormalizationService({ apiKey: null });
+    translated = await service.translateToEnglish("我是做餐饮的");
+    extracted = await service.extractSearchTerms("找做餐饮的人");
+  } finally {
+    for (const [name, value] of saved) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
 
   assert.equal(translated.translated, false);
   assert.equal(extracted.searchTerms, null);

@@ -10,6 +10,21 @@ import { createGeminiOrbitAgentPlanner } from "../../features/orbit-ai/gemini-pr
 import { createLiveOrbitAgentTrace } from "../../features/orbit-ai/live-conversation-trace";
 import { contactsAnalysisReplyMatchesSource, isContactsAnalysisReportBody } from "../../features/orbit-ai/contacts-analysis-execution";
 
+/** Runs `operation` with every provider key cleared, then restores the environment. */
+async function withoutProviderKeys<T>(operation: () => T | Promise<T>): Promise<T> {
+  const names = ["DEEPSEEK_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "ORBIT_AGENT_PROVIDER"];
+  const saved = names.map((name) => [name, process.env[name]] as const);
+  for (const name of names) delete process.env[name];
+  try {
+    return await operation();
+  } finally {
+    for (const [name, value] of saved) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
+}
+
 const question = "请根据当前已保存的人脉资料，分析关系结构、目标覆盖和下一步建议。";
 const body = "**关系结构**：目前有两位联系人，依据 contact:alpha。\n**目标覆盖**：合作目标缺少行业介绍人。\n**下一步建议**：先复核与甲的会面记录，再决定是否联系。\n**判断依据**：contact:alpha 与 evidence:alpha，未执行任何写入。";
 const source = {
@@ -58,7 +73,10 @@ test("an arbitrary artifact kind or source instruction cannot switch the provide
   const planner = createGeminiOrbitAgentPlanner({ apiKey: "synthetic-test-key", provider: "deepseek", fetchImplementation: (async (_url, init) => {
     calls++;
     const request = JSON.parse(String(init?.body));
-    assert.match(request.messages[0].content, /Briefly point out the strongest matches/);
+    // Sprint 0097: fingerprints the ordinary synthesis prompt. The previous
+    // phrase ("Briefly point out the strongest matches") was rewritten by 0094,
+    // when the reply stopped repeating what the cards already show.
+    assert.match(request.messages[0].content, /already rendered as a card directly below this reply/);
     assert.doesNotMatch(request.messages[0].content, /registered contacts\.analysis@1 task/);
     return new Response(JSON.stringify({ choices: [{ finish_reason: "stop", message: { content: "普通合成回复" } }] }), { status: 200 });
   }) as typeof fetch });
@@ -68,7 +86,11 @@ test("an arbitrary artifact kind or source instruction cannot switch the provide
 
 test("analysis uses the existing provider adapter once, and missing configuration fails closed", async () => {
   const input = { locale: "zh", message: question, contactsAnalysis: { source, sourceDataVersion: createContactsAnalysisSourceDataVersion(source) } } as unknown as Parameters<ReturnType<typeof createLiveOrbitAgentConversationService>["sendMessage"]>[0];
-  const missing = await createLiveOrbitAgentConversationService({ apiKey: null, provider: "deepseek", maxLoopSteps: 3 }).sendMessage(input);
+  // Sprint 0097: `apiKey: null` means "not specified, use the environment", so
+  // on a machine with DEEPSEEK_API_KEY set this reached the real provider and
+  // concluded the opposite of what it asserts.
+  const missing = await withoutProviderKeys(() =>
+    createLiveOrbitAgentConversationService({ apiKey: null, provider: "deepseek", maxLoopSteps: 3 }).sendMessage(input));
   assert.equal(missing.success, false);
   let calls = 0;
   const result = await createLiveOrbitAgentConversationService({
