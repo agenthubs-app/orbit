@@ -74,7 +74,8 @@ const KIND_LABEL: Readonly<Record<AiEntityCardKind, MessageKey>> = {
 /** Which metadata labels identify each kind, in the order they should read. */
 const META_LABELS: Readonly<Record<AiEntityCardKind, readonly string[]>> = {
   contact: ["组织", "最近联系"],
-  event: ["startsAt", "venue", "location"],
+  // Producers label these in the reply's language; both spellings are real.
+  event: ["startsAt", "开始", "venue", "location", "地点"],
   note: ["updatedAt"],
   schedule: ["startsAt"],
   task: ["dueAt", "category"],
@@ -92,10 +93,17 @@ function metadataMap(value: unknown): Map<string, string> {
   return entries;
 }
 
-/** Instants in metadata are machine format; a card shows a readable day. */
+/**
+ * Instants in metadata are machine format; a card shows a readable day.
+ *
+ * Which values are instants is decided by the value, not by the label: the same
+ * field arrives as `startsAt` or as 「开始」 depending on the reply's language,
+ * and a date with no time (`2026-09-21`) must not grow an invented 00:00.
+ */
+const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/u;
 function readableInstant(value: string, language: string): string {
   const parsed = Date.parse(value);
-  if (!Number.isFinite(parsed)) return value;
+  if (!ISO_INSTANT.test(value) || !Number.isFinite(parsed)) return value;
   return new Intl.DateTimeFormat(language === "en" ? "en-US" : language === "ja" ? "ja-JP" : "zh-CN", {
     day: "numeric", hour: "2-digit", minute: "2-digit", month: "numeric",
   }).format(new Date(parsed));
@@ -106,23 +114,52 @@ function firstSentence(value: string): string {
   return (sentence ?? value).trim();
 }
 
-function hrefFor(kind: AiEntityCardKind, recordId: string, actions: unknown): string | null {
-  if (Array.isArray(actions)) {
-    for (const action of actions) {
-      const href = isRecord(action) ? text(action.href) : null;
-      if (href) return href;
-    }
+const DETAIL_PATH: Readonly<Record<AiEntityCardKind, string>> = {
+  contact: "/contacts/",
+  event: "/events/",
+  note: "/notes/",
+  schedule: "/schedule/",
+  task: "/tasks/",
+};
+
+/**
+ * A schedule entry has no single detail page: personal entries, meetings and
+ * event attendance are three routes. The entry says which it is in its own
+ * `kind` field, so the card reads that rather than assuming a flat
+ * `/schedule/<id>`, which is not a route and lands the user on the home screen.
+ */
+const SCHEDULE_SEGMENT: Readonly<Record<string, string>> = { event: "events/", meeting: "meetings/", personal: "personal/" };
+
+function detailPathFor(kind: AiEntityCardKind, metadata: Map<string, string>): string | null {
+  if (kind !== "schedule") return DETAIL_PATH[kind];
+  const segment = SCHEDULE_SEGMENT[metadata.get("kind") ?? ""];
+  // An entry that does not say which kind it is gets no link, rather than one
+  // that silently goes nowhere.
+  return segment ? `${DETAIL_PATH.schedule}${segment}` : null;
+}
+
+/**
+ * The link is derived from the record's own id, never taken from the payload.
+ *
+ * An artifact may carry an action with its own href. Trusting it would let
+ * whatever produced the artifact point a card anywhere, so a supplied href is
+ * only honoured when it resolves to the same record this card is for — the same
+ * binding `contactArtifactDetailHref` enforces for contacts server-side.
+ */
+function hrefFor(path: string | null, recordId: string, actions: unknown): string | null {
+  if (!recordId || !path) return null;
+  const derived = `${path}${encodeURIComponent(recordId)}`;
+  if (!Array.isArray(actions)) return derived;
+  for (const entry of actions) {
+    const supplied = isRecord(entry) ? text(entry.href) : null;
+    if (!supplied) continue;
+    // `/app` is the Web shell's prefix for the same route.
+    const match = new RegExp(`^(?:/app)?${path}([^/?#]+)$`, "u").exec(supplied);
+    let decoded: string | null = null;
+    try { decoded = match ? decodeURIComponent(match[1]!) : null; } catch { decoded = null; }
+    if (decoded !== recordId) return null;
   }
-  if (!recordId) return null;
-  const id = encodeURIComponent(recordId);
-  switch (kind) {
-    case "contact": return `/contacts/${id}`;
-    case "event": return `/events/${id}`;
-    case "task": return `/tasks/${id}`;
-    case "schedule": return `/schedule/${id}`;
-    case "note": return `/notes/${id}`;
-    default: return null;
-  }
+  return derived;
 }
 
 export function aiEntityCardForItem(
@@ -144,13 +181,13 @@ export function aiEntityCardForItem(
     ...META_LABELS[kind].map((label) => {
       const value = metadata.get(label);
       if (!value) return null;
-      return /At$/u.test(label) ? readableInstant(value, language) : value;
+      return readableInstant(value, language);
     }),
   ].filter((value): value is string => Boolean(value)).join(" · ");
 
   const reasonSource = text(item.reason);
   return {
-    href: hrefFor(kind, aiEntityRecordIdFor(id), item.actions),
+    href: hrefFor(detailPathFor(kind, metadata), aiEntityRecordIdFor(id), item.actions),
     key: id,
     kind,
     kindLabel: t(KIND_LABEL[kind]),

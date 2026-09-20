@@ -10,10 +10,20 @@ export interface AiContactArtifactItemContract {
   metadata: Array<{ label: string; value: string }>;
   contactHref: string | null;
 }
+/**
+ * Sprint 0095: the producer kinds that carry entity items. Session recovery used
+ * to keep only contact recommendations, so a task, note, schedule or event reply
+ * came back from history with nothing to render.
+ */
+export type AiEntityArtifactKindCode =
+  | "contact_recommendations"
+  | "event_recommendations"
+  | "data_query";
+
 export interface AiContactArtifactContract {
   artifactId: string;
   taskId: string;
-  kind: "contact_recommendations";
+  kind: AiEntityArtifactKindCode;
   status: AiContactArtifactStatus;
   title: string;
   summary: string;
