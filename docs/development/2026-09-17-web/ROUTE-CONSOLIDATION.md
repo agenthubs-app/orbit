@@ -18,7 +18,7 @@
 | `/app/schedule/events/[id]` | plan 屏「本周日程」条目详情抽屉 | 无 |
 | `/app/tasks` `/app/tasks/[id]` | plan 屏「本周重点任务」（`?task=` 抽屉） | 无 |
 | `/app/tasks/personal` | plan 屏「本周日程」（个人日程；需补最小新增/编辑态） | 无 |
-| `/app/party` `/app/party/checkin` `/app/party/graph` | 新路由 `/app/events/[id]/live`（设计 live 屏六页签：现场主页 / 推荐给你 / 全部参会者 / 分组 / 关系图谱 / 流程议程） | 无 |
+| `/app/party` `/app/party/checkin` `/app/party/graph` 已删（96802809） | 新路由 `/app/events/[id]/live`（设计 live 屏六页签：现场主页 / 推荐给你 / 全部参会者 / 分组 / 关系图谱 / 流程议程） | `orbit-product-href.ts` `partyHrefForEvent` → `/app/events/<id>/live`（首页活动卡 `enterEvent`）；`productHref("/party")` → `/app/events`；运营台 `event-operations-admin-workspace.tsx` 签到链接 → `/app/events/[id]/operations/check-in`；`orbit-ask-routes.ts` 去掉 `/app/party/checkin` 排除；`app-auth-routing.ts` 白名单删 `/app/party` |
 | `/app/contacts/all-actions` 已删（312829af） | `/app/agent/actions` | `app/api/integrations/[provider]/callback/route.ts` 回跳改指 `/app/agent/actions` |
 | `/app/contacts/intros` 已删（312829af） | insight 屏（等 W4 逻辑层，届时按设计重做） | 零引用 |
 | `/app/contacts/graph` 已删（312829af） | `/app/contacts/dashboard?tab=structure` | 零引用 |
@@ -50,13 +50,13 @@
 | iOrbit | home / chat | `/app/agent` | home 四卡已重建；chat 仍是换肤（`orbit-real-agent.tsx` 3892 行），待重建 |
 | iOrbit | actions / plan / strategy | `/app/agent/actions` `/plan` `/strategy` | 已重建 |
 | iOrbit | contacts（先联系谁） | 并入 strategy 屏 | — |
-| Events | discover（含「我的活动」页签） | `/app/events` | 大部分重建 |
-| Events | detail | `/app/events/[id]` | 已重建 |
-| Events | register / success 弹窗 | `/app/events/[id]/register` | 路由保留作深链；0066 逻辑不变，UI 按设计 |
-| Events | live | 新 `/app/events/[id]/live` | 取代 `/app/party*` |
-| Events | recap | `/app/events/[id]` 结束态 | 不新建路由 |
+| Events | discover（含「我的活动」页签） | `/app/events` | 已重建（Events 任务 1 `64dd236e`，`events-0918/events-list.tsx`） |
+| Events | detail | `/app/events/[id]` | 已重建（Events 任务 2 `87a8c376`，`events-0918/event-detail.tsx`） |
+| Events | register / success 弹窗 | `/app/events/[id]/register` | 已重建（Events 任务 3 `fa20aed0`：弹窗壳 `event-register-modal.tsx`，0066 工作区逻辑零改动；设计底部按钮省略） |
+| Events | live | 新 `/app/events/[id]/live` | 已重建（Events 任务 4 `455a283a`，`events-0918/event-live.tsx` 六页签）；`/app/party*` 已删（`96802809`） |
+| Events | recap | `/app/events/[id]` 结束态 / `?view=recap` | 已重建（Events 任务 2 `87a8c376`，四页签共用正文） |
 | Events | host | `/app/o/[slug]` | 换肤态，待重建 |
-| Events | attendee / exchange / schedule / note 弹窗 | 详情页与 live 屏内弹窗 | — |
+| Events | attendee / exchange / schedule / note 弹窗 | 详情页与 live 屏内弹窗 | 已重建（Events 任务 5 `ad8da895` + `f9bfc081`，`event-*-modal.tsx` 接真实服务） |
 | Events 运营台 | hub | `/app/events/center` | 未动，待重建 |
 | Events 运营台 | ops（含协作者抽屉） | `/app/events/[id]/operations` | 换肤态，待重建 |
 | Events 运营台 | match | `…/operations/experience` | 换肤态，待重建 |
