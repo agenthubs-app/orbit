@@ -28,17 +28,28 @@ export function followOccurredAt(date: string, now: Date = new Date()): string {
   return Number.isNaN(local.getTime()) ? now.toISOString() : local.toISOString();
 }
 
-export function buildFollowPatch(input: { summary: string; need: string; offer: string; next: string; date: string; remind: string; tags: string[]; existingTags: string[] }, now: Date = new Date()): {
+export interface FollowPatchLabels { summary: string; need: string; offer: string; next: string }
+
+export const FOLLOW_PATCH_LABELS: { zh: FollowPatchLabels; en: FollowPatchLabels } = {
+  zh: { summary: "总结", need: "对方需求", offer: "我能提供", next: "下一步" },
+  en: { summary: "Summary", need: "Their needs", offer: "I can offer", next: "Next step" },
+};
+
+/**
+ * 备注正文前缀跟随 UI 语言（labels 由调用方用 t() 组装）；日期只进 lastInteraction.occurredAt，不写进下一步行。
+ * 提醒日期已移除（台账偏差：设计稿 821 行的「提醒日期」无提醒接口，不做假字段）。
+ */
+export function buildFollowPatch(input: { summary: string; need: string; offer: string; next: string; date: string; tags: string[]; existingTags: string[] }, labels: FollowPatchLabels = FOLLOW_PATCH_LABELS.zh, now: Date = new Date()): {
   note: { body: string; authorLabel: "我" };
   addTags?: string[];
   removeTags?: string[];
   lastInteraction: { channel: "manual_note"; occurredAt: string; summary: string };
 } {
-  const lines = [`总结：${input.summary.trim()}`];
-  if (input.need.trim()) lines.push(`对方需求：${input.need.trim()}`);
-  if (input.offer.trim()) lines.push(`我能提供：${input.offer.trim()}`);
-  if (input.next.trim()) lines.push(`下一步：${input.next.trim()}${input.date ? `（${input.date}）` : ""}`);
-  if (input.remind) lines.push(`提醒：${input.remind}`);
+  const sep = labels === FOLLOW_PATCH_LABELS.zh ? "：" : ": ";
+  const lines = [`${labels.summary}${sep}${input.summary.trim()}`];
+  if (input.need.trim()) lines.push(`${labels.need}${sep}${input.need.trim()}`);
+  if (input.offer.trim()) lines.push(`${labels.offer}${sep}${input.offer.trim()}`);
+  if (input.next.trim()) lines.push(`${labels.next}${sep}${input.next.trim()}`);
   const addTags = input.tags.filter((tag) => !input.existingTags.includes(tag));
   const removeTags = input.existingTags.filter((tag) => !input.tags.includes(tag));
   return {
@@ -65,7 +76,6 @@ export function NetworkFollowModal({ contact, onClose, onSaved }: { contact: Orb
   const [offer, setOffer] = useState("");
   const [next, setNext] = useState("");
   const [date, setDate] = useState(today);
-  const [remind, setRemind] = useState("");
   const stage = stageOf(contact);
   const [tags, setTags] = useState<string[]>(existingTags);
   const [tagInput, setTagInput] = useState("");
@@ -107,7 +117,12 @@ export function NetworkFollowModal({ contact, onClose, onSaved }: { contact: Orb
     try {
       const response = await fetch(`/api/contacts/${encodeURIComponent(contact.id)}`, {
         method: "PATCH", credentials: "same-origin", cache: "no-store", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildFollowPatch({ summary, need, offer, next, date, remind, tags, existingTags })),
+        body: JSON.stringify(buildFollowPatch({ summary, need, offer, next, date, tags, existingTags }, {
+          summary: t({ zh: FOLLOW_PATCH_LABELS.zh.summary, en: FOLLOW_PATCH_LABELS.en.summary }),
+          need: t({ zh: FOLLOW_PATCH_LABELS.zh.need, en: FOLLOW_PATCH_LABELS.en.need }),
+          offer: t({ zh: FOLLOW_PATCH_LABELS.zh.offer, en: FOLLOW_PATCH_LABELS.en.offer }),
+          next: t({ zh: FOLLOW_PATCH_LABELS.zh.next, en: FOLLOW_PATCH_LABELS.en.next }),
+        })),
       });
       if (!response.ok) { setStatus("error"); return; }
       setStatus("saved");
@@ -146,9 +161,9 @@ export function NetworkFollowModal({ contact, onClose, onSaved }: { contact: Orb
           <label className="nw-fu-label" htmlFor="nw-fu-next">{t({ en: "Next action", zh: "下一步动作" })}</label>
           <input id="nw-fu-next" className="nw-fu-input" value={next} onChange={(e) => setNext(e.target.value)} placeholder={t({ en: "e.g. send a proposal, schedule a demo, make an intro…", zh: "例如：发送方案、安排产品演示、引荐相关同事等…" })} />
         </div>
+        {/* 设计 820–821 两列：「提醒日期」无提醒接口已移除（台账偏差），保留两列网格、第二列留空。 */}
         <div className="nw-fu-dates">
           <label className="nw-fu-date-label">{t({ en: "Date", zh: "更新时间" })} <span className="nw-fu-req">*</span><input className="nw-fu-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
-          <label className="nw-fu-date-label">{t({ en: "Reminder", zh: "提醒日期" })}<input className="nw-fu-input nw-fu-input-muted" type="date" value={remind} onChange={(e) => setRemind(e.target.value)} /></label>
         </div>
         <div className="nw-fu-block">
           <span className="nw-fu-block-t">{t({ en: "Update stage", zh: "更新关系阶段" })} <span className="nw-fu-req">*</span></span>
