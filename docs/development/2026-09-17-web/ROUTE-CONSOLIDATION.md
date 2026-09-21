@@ -72,7 +72,8 @@
 | Network v2 | insight | 待 W4 逻辑层 | 不做假 |
 | Network v2 | detail 弹窗 | `/app/contacts/[id]`（路由保留作深链） | 已重建（e670a804）；`?capture=meeting` 会后纪要 / 约谈核验作为弹窗附加态保留 |
 | Network v2 | follow 弹窗 | 联系人详情内 | 已重建（e670a804；阶段箭头只读，见 EXECUTION 任务 6 修订）；取代 Web 内 `/app/tasks/relationship/[id]` 入口 |
-| 个人中心 | profile / persona / settings / connect | `/app/profile`、`/app/settings` | profile 换肤态待重建（含 onboarding 门禁提示：落地横幅 + 必填标记 + 保存后缺项提示）；connect 占位已做 |
+| 个人中心 | profile / persona / basic（设计外） | `/app/profile`（`?view=persona|basic`） | 已重建（a608b149 / 1a95bb29；旧 `OrbitRealProfile` 于 034b799c 删除）；含 onboarding 门禁提示（落地横幅 + 必填标记 + 保存后缺项提示）；「我的目标」只读 |
+| 个人中心 | settings / connect | `/app/settings`、`/app/profile?view=connect` | 已重建（7152b0ce；旧 `OrbitSettingsContent` 于 034b799c 删除）；设置页在设计三卡后追加既有五个模块；connect 为「即将开放」占位 |
 
 新 UI 之外但保留的壳级能力：顶栏铃铛 + 通知收件面板（`RelationshipInboxPanel`），设计稿未画，按 0918 token 重做样式后挂在 pill 导航右侧。
 
