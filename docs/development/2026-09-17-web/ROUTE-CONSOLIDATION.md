@@ -9,7 +9,7 @@
 
 | 路由 | 被谁取代 | 删前必改的链接生成器 |
 | --- | --- | --- |
-| `/app/dashboard` | Network overview（`/app/contacts/dashboard` 概览页签） | `features/orbit-ai/live-command-service.ts` 等 4 处 `href: "/app/dashboard"` 改指 `/app/contacts/dashboard` |
+| `/app/dashboard` 已删（312829af） | Network overview（`/app/contacts/dashboard` 概览页签） | `features/orbit-ai/live-command-service.ts` 等 4 处 `href: "/app/dashboard"` 改指 `/app/contacts/dashboard` |
 | `/app/home/events` | `/app/events?scope=mine` | 无 |
 | `/app/today` | `/app/agent` | 无生成器；删重定向文件 |
 | `/app/schedule` | `/app/agent/plan` | 无生成器；删重定向文件 |
@@ -19,11 +19,11 @@
 | `/app/tasks` `/app/tasks/[id]` | plan 屏「本周重点任务」（`?task=` 抽屉） | 无 |
 | `/app/tasks/personal` | plan 屏「本周日程」（个人日程；需补最小新增/编辑态） | 无 |
 | `/app/party` `/app/party/checkin` `/app/party/graph` | 新路由 `/app/events/[id]/live`（设计 live 屏六页签：现场主页 / 推荐给你 / 全部参会者 / 分组 / 关系图谱 / 流程议程） | 无 |
-| `/app/contacts/all-actions` | `/app/agent/actions` | `app/api/integrations/[provider]/callback/route.ts` 回跳改指 `/app/agent/actions` |
-| `/app/contacts/intros` | insight 屏（等 W4 逻辑层，届时按设计重做） | 零引用 |
-| `/app/contacts/graph` | `/app/contacts/dashboard?tab=structure` | 零引用 |
-| `/app/contacts/new/batch/[id]` | 批量导入 V2 | 零引用 |
-| `/app/contacts/new/batch2` `/batch2/[id]` `/new/import/[id]` | import 屏内部状态（`/app/contacts/new?job=…`） | 零服务端生成器 |
+| `/app/contacts/all-actions` 已删（312829af） | `/app/agent/actions` | `app/api/integrations/[provider]/callback/route.ts` 回跳改指 `/app/agent/actions` |
+| `/app/contacts/intros` 已删（312829af） | insight 屏（等 W4 逻辑层，届时按设计重做） | 零引用 |
+| `/app/contacts/graph` 已删（312829af） | `/app/contacts/dashboard?tab=structure` | 零引用 |
+| `/app/contacts/new/batch/[id]` 已删（312829af） | 批量导入 V2 | 零引用 |
+| `/app/contacts/new/batch2` `/batch2/[id]` `/new/import/[id]` 已删（312829af） | import 屏内部状态（`/app/contacts/new?job=…`） | 零服务端生成器 |
 | `/app/events/[id]/operations/roles` | 运营台「协作者抽屉」 | 无 |
 
 删除同时：`features/auth/app-auth-routing.ts` 的 `next` 白名单移除 today / chat / dashboard / party / followups / schedule；`tests/pages` 中对应路由测试随路由删除。
