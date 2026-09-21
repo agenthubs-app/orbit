@@ -826,6 +826,16 @@ for (const readbackKind of ["failure", "incomplete"] as const) {
     assert.deepEqual(assigned, []);
     assert.equal(inputWithValue(root, "Ready owner").props.value, "Ready owner");
     if (readbackKind === "failure") assert.ok(root.root.findAllByProps({ role: "alert" }).length >= 1);
+    if (readbackKind === "incomplete") {
+      // 已批准：基础资料保存成功但仍不完整 → 琥珀色提示（不显示绿色成功）。
+      const status = root.root.findAllByProps({ role: "status" })[0];
+      assert.ok(status);
+      const text = status.children.filter((child): child is string => typeof child === "string").join("");
+      assert.match(text, /基础资料已保存，但还需填写：生日。填完后才能进入其他页面。/);
+      assert.doesNotMatch(text, /已保存并完成复读核验/);
+      assert.equal(status.props.style.background, "#FBF1DC");
+      assert.equal(status.props.style.color, "#8A6420");
+    }
   });
 }
 

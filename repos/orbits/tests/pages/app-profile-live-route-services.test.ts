@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { loadAppProfileRouteViewModel } from "../../app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model";
 import { resolveAppProfileRouteServices } from "../../app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-service-factory";
 import { profileRouteToOrbitProfileViewModel } from "../../app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-view-model-adapter";
-import { profileReadbackMatches } from "../../app/(app)/app/profile/orbit-real-profile";
+import { profileReadbackMatches } from "../../app/(app)/app/profile/profile-0918/use-profile-editor-session";
 import type {
   ManualProfileUpdateInput,
   ProfilePayload,
@@ -199,22 +199,26 @@ test("internal failure route copy stays owner neutral", async () => {
 
 test("profile editor uses API extraction and save readback instead of timed success", () => {
   const profileSource = source("app/(app)/app/profile/orbit-real-profile.tsx");
+  // Session logic (load / save / readback / extraction) lives in the hook since 个人中心 task 1.
+  const sessionSource = source("app/(app)/app/profile/profile-0918/use-profile-editor-session.ts");
   const editorAdapterSource = source("app/(app)/app/profile/profile-editor-adapter.ts");
 
-  assert.match(profileSource, /fetch\("\/api\/profile"/);
-  assert.match(profileSource, /method: "PUT"/);
-  assert.match(profileSource, /cache: "no-store"/);
-  assert.match(profileSource, /profileReadbackMatches/);
+  assert.match(sessionSource, /fetch\("\/api\/profile"/);
+  assert.match(sessionSource, /method: "PUT"/);
+  assert.match(sessionSource, /cache: "no-store"/);
+  assert.match(sessionSource, /profileReadbackMatches/);
   assert.match(editorAdapterSource, /sameHandles/);
   assert.match(editorAdapterSource, /sameList\(saved\.offering/);
-  assert.match(profileSource, /\/api\/profile\/extractions\/resume/);
+  assert.match(sessionSource, /\/api\/profile\/extractions\/resume/);
   assert.match(profileSource, /Structured text extract/);
   assert.match(profileSource, /href="\/app\/contacts\/new"/);
   assert.doesNotMatch(profileSource, /type="file"/);
   assert.doesNotMatch(profileSource, /AI text extract/);
-  assert.match(profileSource, /Your profile was not changed/);
+  assert.match(sessionSource, /Your profile was not changed/);
   assert.doesNotMatch(profileSource, /fakeExtract|window\.setTimeout/);
+  assert.doesNotMatch(sessionSource, /fakeExtract|window\.setTimeout/);
   assert.doesNotMatch(profileSource, /setMessage\(t\(\{ en: "Saved\."/);
+  assert.doesNotMatch(sessionSource, /setMessage\(t\(\{ en: "Saved\."/);
 });
 
 test("profile editor exposes structured industries and custom tag entry", () => {
