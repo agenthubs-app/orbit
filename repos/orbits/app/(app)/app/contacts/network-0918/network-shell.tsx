@@ -132,4 +132,75 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-row-last { color: #6B6F99; white-space: nowrap; }
 [data-orbit-real-page="network"] .nw-row-next { color: #3B3F7A; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 [data-orbit-real-page="network"] .nw-row-arrow { color: #9FA3C4; }
+/* ── 关系管线（设计稿 173–256 行）── */
+[data-orbit-real-page="network"] .nw-pipe { display: flex; flex-direction: column; gap: 20px; animation: orbit-fade .3s ease; }
+[data-orbit-real-page="network"] .nw-pipe-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 20px; }
+[data-orbit-real-page="network"] .nw-pipe-card { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 26px; display: flex; flex-direction: column; gap: 22px; }
+[data-orbit-real-page="network"] .nw-pipe-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+[data-orbit-real-page="network"] .nw-pipe-new { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-pstat-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+[data-orbit-real-page="network"] .nw-pstat { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px 6px; border-radius: 14px; }
+[data-orbit-real-page="network"] .nw-pstat-icon { width: 46px; height: 46px; border-radius: 50%; background: #FFFFFF; color: #4B4FC7; display: flex; align-items: center; justify-content: center; font-size: 18px; border: 1px solid #E8E9F6; }
+[data-orbit-real-page="network"] .nw-pstat-n { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 28px; letter-spacing: -0.02em; }
+[data-orbit-real-page="network"] .nw-pstat-label { font-size: 13px; color: #3B3F7A; white-space: nowrap; }
+[data-orbit-real-page="network"] .nw-ai-card { border: 1px solid #E8E9F6; border-radius: 18px; background: linear-gradient(135deg, #FFFFFF, #F4F5FD); padding: 26px; display: flex; flex-direction: column; gap: 16px; }
+[data-orbit-real-page="network"] .nw-ai-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+[data-orbit-real-page="network"] .nw-ai-title { display: flex; gap: 12px; }
+[data-orbit-real-page="network"] .nw-ai-star { color: #4B4FC7; font-size: 22px; line-height: 1; }
+[data-orbit-real-page="network"] .nw-ai-desc { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="network"] .btn.nw-shuffle { border: 0; background: transparent; color: #4B4FC7; font-size: 13px; cursor: pointer; white-space: nowrap;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明；设计稿 button 未声明 padding，取浏览器默认 1px 6px */
+  height: auto; display: inline-block; align-items: normal; justify-content: normal; gap: 0; padding: 1px 6px; text-align: center; letter-spacing: 0; line-height: normal; transition: none; border-radius: 0; font-weight: 400; }
+[data-orbit-real-page="network"] .btn.nw-shuffle:active { transform: none; }
+[data-orbit-real-page="network"] .btn.nw-shuffle:disabled { cursor: default; }
+[data-orbit-real-page="network"] .nw-suggest-list { display: flex; flex-direction: column; gap: 10px; }
+[data-orbit-real-page="network"] .btn.nw-suggest { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid #E8E9F6; border-radius: 12px; background: #FFFFFF; text-align: left; cursor: pointer;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  height: auto; display: flex; align-items: center; justify-content: normal; gap: 14px; white-space: normal; text-align: left; letter-spacing: 0; line-height: normal; transition: none; font-size: inherit; font-weight: 400; color: #0E1225; }
+[data-orbit-real-page="network"] .btn.nw-suggest:hover { background: #F7F7FD; }
+[data-orbit-real-page="network"] .btn.nw-suggest:active { transform: none; }
+[data-orbit-real-page="network"] .nw-suggest-icon { width: 40px; height: 40px; border-radius: 10px; background: #ECEEFB; color: #2E3270; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+[data-orbit-real-page="network"] .nw-suggest-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+[data-orbit-real-page="network"] .nw-suggest-title { font-size: 15px; }
+[data-orbit-real-page="network"] .nw-suggest-desc { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-suggest-tag { padding: 4px 10px; border-radius: 999px; font-size: 12px; white-space: nowrap; }
+[data-orbit-real-page="network"] .nw-suggest-arrow { color: #9FA3C4; }
+[data-orbit-real-page="network"] .nw-pipe-filters { display: flex; flex-wrap: wrap; gap: 12px; padding: 14px; border: 1px solid #E8E9F6; border-radius: 16px; background: #FFFFFF; }
+[data-orbit-real-page="network"] .nw-pipe-filter { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border: 1px solid #E8E9F6; border-radius: 10px; font-size: 14px; color: #3B3F7A; }
+[data-orbit-real-page="network"] .nw-pipe-filter-v { font-weight: 500; color: #0E1225; }
+[data-orbit-real-page="network"] .nw-pipe-filter-caret { font-size: 11px; }
+[data-orbit-real-page="network"] .nw-pipe-search { flex: 1; min-width: 220px; padding: 10px 16px; border: 1px solid #E8E9F6; border-radius: 10px; background: #F7F7FD; font-size: 14px; outline: none; }
+[data-orbit-real-page="network"] .nw-pipe-search:focus { border-color: #4B4FC7; background: #FFFFFF; }
+[data-orbit-real-page="network"] .nw-kanban { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 16px; align-items: start; }
+[data-orbit-real-page="network"] .nw-kanban-col { display: flex; flex-direction: column; gap: 12px; padding: 14px; border-radius: 16px; }
+[data-orbit-real-page="network"] .nw-kanban-head { display: flex; flex-direction: column; gap: 4px; padding: 4px 4px 8px; }
+[data-orbit-real-page="network"] .nw-kanban-title { display: flex; align-items: center; gap: 10px; }
+[data-orbit-real-page="network"] .nw-kanban-icon { width: 30px; height: 30px; border-radius: 8px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+[data-orbit-real-page="network"] .nw-kanban-label { flex: 1; font-size: 16px; }
+[data-orbit-real-page="network"] .nw-kanban-n { font-size: 16px; }
+[data-orbit-real-page="network"] .nw-kanban-desc { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-kanban-card { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 12px; background: #FFFFFF; border: 1px solid #E8E9F6; cursor: pointer; transition: box-shadow .2s, transform .2s; }
+[data-orbit-real-page="network"] .nw-kanban-card:hover { box-shadow: 0 8px 24px rgba(59, 63, 122, 0.10); transform: translateY(-1px); }
+[data-orbit-real-page="network"] .nw-kanban-top { display: flex; align-items: flex-start; gap: 10px; }
+[data-orbit-real-page="network"] .btn.nw-kanban-avatar { width: 40px; height: 40px; border: 0; border-radius: 50%; background: #DDDEFA; color: #3B3F7A; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; cursor: pointer;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明；设计稿是 button，字号取浏览器默认 13.33px */
+  gap: 0; padding: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; font-size: 13.3333px; }
+[data-orbit-real-page="network"] .btn.nw-kanban-avatar:hover { color: #3B3F7A; }
+[data-orbit-real-page="network"] .btn.nw-kanban-avatar:active { transform: none; }
+[data-orbit-real-page="network"] .btn.nw-kanban-who { flex: 1; min-width: 0; border: 0; background: transparent; padding: 0; text-align: left; display: flex; flex-direction: column; gap: 3px; cursor: pointer;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  height: auto; align-items: normal; justify-content: normal; white-space: normal; letter-spacing: 0; line-height: normal; transition: none; border-radius: 0; font-size: inherit; font-weight: 400; color: #0E1225; }
+[data-orbit-real-page="network"] .btn.nw-kanban-who:hover { color: #0E1225; }
+[data-orbit-real-page="network"] .btn.nw-kanban-who:active { transform: none; }
+[data-orbit-real-page="network"] .nw-kanban-name { font-size: 15px; white-space: nowrap; }
+[data-orbit-real-page="network"] .nw-kanban-org { font-size: 12px; color: #6B6F99; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+[data-orbit-real-page="network"] .nw-kanban-source { align-self: flex-start; padding: 2px 8px; border-radius: 999px; background: #ECEEFB; color: #2E3270; font-size: 11px; white-space: nowrap; }
+[data-orbit-real-page="network"] .btn.nw-kanban-more { border: 0; background: transparent; color: #9FA3C4; font-size: 16px; cursor: pointer; padding: 0 2px; line-height: 1;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  height: auto; display: inline-block; align-items: normal; justify-content: normal; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; transition: none; border-radius: 0; font-weight: 400; }
+[data-orbit-real-page="network"] .btn.nw-kanban-more:hover { color: #0E1225; }
+[data-orbit-real-page="network"] .btn.nw-kanban-more:active { transform: none; }
+[data-orbit-real-page="network"] .nw-kanban-foot { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #6B6F99; padding-top: 8px; border-top: 1px solid #EEEFF8; }
+[data-orbit-real-page="network"] .nw-kanban-v { color: #3B3F7A; }
+[data-orbit-real-page="network"] .nw-kanban-next { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 `;

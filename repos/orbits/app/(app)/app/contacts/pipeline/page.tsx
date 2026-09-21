@@ -1,7 +1,7 @@
 /**
- * 联系人导入 pipeline 页 route adapter。
+ * 关系管线页 route adapter。
  *
- * 这里只连接 live-capable contacts route model 和 pipeline UI，草稿处理逻辑留在联系人组件层。
+ * 这里只连接 live-capable contacts route model + contacts analysis 和 Network v2 管线屏。
  */
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
@@ -13,7 +13,10 @@ import {
   loadAppContactsRouteViewModel,
   type AppContactsSearchParams,
 } from "../compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
-import { OrbitRealCardsPipelineView } from "../orbit-real-cards-pipeline-view";
+import { getOrbitServerLanguage } from "../../orbit-language-server";
+import { AccountTopNav } from "../../orbit-account-shell";
+import { loadContactsAnalysis } from "../analysis/contacts-analysis-route-service";
+import { NetworkPipeline } from "../network-0918/network-pipeline";
 import { auth } from "../../../../../auth";
 import { redirect } from "next/navigation";
 import { resolveAuthenticatedApiActorFromSession } from "../../../../api/_shared/authenticated-actor";
@@ -38,19 +41,24 @@ export default async function AppContactsPipelinePage({
     throw new Error("Authenticated Orbit account membership is unavailable.");
   }
 
-  const routeModel = await loadAppContactsRouteViewModel(
-    await searchParams,
-    actor.id,
-  );
+  const [routeModel, analysis] = await Promise.all([
+    loadAppContactsRouteViewModel(await searchParams, actor.id),
+    getOrbitServerLanguage().then((language) =>
+      loadContactsAnalysis(actor.id, language),
+    ),
+  ]);
 
   return (
     <>
       <OrbitReferenceStyles />
       <OrbitVisualFreezeRuntime />
       {routeModel.state === "success" ? (
-        <div data-orbit-route="app-contacts-pipeline-route">
-          <OrbitRealCardsPipelineView
+        // 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。
+        <div data-orbit-real-page="network" data-orbit-route="app-contacts-pipeline-route">
+          <AccountTopNav active="cards" />
+          <NetworkPipeline
             viewModel={contactsRouteToOrbitContactsViewModel(routeModel.payload)}
+            analysis={analysis}
           />
         </div>
       ) : (
