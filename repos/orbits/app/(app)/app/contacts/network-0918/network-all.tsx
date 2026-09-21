@@ -1,24 +1,39 @@
 /** 「所有人脉」（Network v2 第 257–302 行）。数据 = OrbitContactsViewModel.connections。 */
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 
-import type { OrbitContactsViewModel } from "../../orbit-contacts-route-view-model";
+import type { OrbitContactView, OrbitContactsViewModel } from "../../orbit-contacts-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
+import { NetworkDetailModal } from "./network-detail-modal";
+import { NetworkFollowModal } from "./network-follow-modal";
 import { NETWORK_SOURCES, SOURCE_ICON, SOURCE_LABEL, STAGE_CHIP, STAGE_LABEL, matchesQuery, sourceCounts, toPerson, type NetworkSource } from "./network-model";
 import { NetworkAvatar, NetworkChip, NetworkShell } from "./network-shell";
 
-export function NetworkAll({ viewModel, initialSource = "all" }: { viewModel: OrbitContactsViewModel; initialSource?: NetworkSource | "all" }) {
+/** 详情弹窗数据只能来自详情路由（contactDetailPageViewModel），不能用列表 VM 的合成值。 */
+export interface NetworkOpenDetail { contact: OrbitContactView; extra?: ReactNode; closeHref: string }
+
+export function NetworkAll({ viewModel, initialSource = "all", openDetail }: { viewModel: OrbitContactsViewModel; initialSource?: NetworkSource | "all"; openDetail?: NetworkOpenDetail }) {
   const { t } = useOrbitLanguage();
   const [query, setQuery] = useState("");
   const [source, setSource] = useState<NetworkSource | "all">(initialSource);
+  const [follow, setFollow] = useState(false);
+  const openFollow = useCallback(() => setFollow(true), []);
+  const closeFollow = useCallback(() => setFollow(false), []);
+  // 保存成功后整页重载：让服务端重新读详情与列表，不做本地假合并。
+  const reload = useCallback(() => window.location.reload(), []);
+  const modal = openDetail ? (
+    follow
+      ? <NetworkFollowModal contact={openDetail.contact} onClose={closeFollow} onSaved={reload} />
+      : <NetworkDetailModal contact={openDetail.contact} closeHref={openDetail.closeHref} onFollow={openFollow} extra={openDetail.extra} />
+  ) : null;
   const people = useMemo(() => viewModel.connections.map(toPerson), [viewModel.connections]);
   const counts = useMemo(() => sourceCounts(people), [people]);
   const filtered = people.filter((p) => matchesQuery(p, query) && (source === "all" || p.source === source));
   const sourceFilterLabel = source === "all" ? t({ en: "All sources", zh: "全部来源" }) : t(SOURCE_LABEL[source]);
 
   return (
-    <NetworkShell screen="all" total={people.length}>
+    <NetworkShell screen="all" total={people.length} modal={modal}>
       <div className="nw-card">
         <div className="nw-card-head">
           <h2 className="nw-h2">{t({ en: "All contacts", zh: "所有人脉" })}</h2>

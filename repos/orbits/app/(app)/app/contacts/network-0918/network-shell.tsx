@@ -461,6 +461,134 @@ export const NETWORK_STYLES = `
   height: auto; justify-content: normal; padding: 0; border: 0; background: transparent; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; border-radius: 0; font-size: inherit; font-weight: 400; color: #0E1225; cursor: pointer; }
 [data-orbit-real-page="network"] .btn.nw-report-cta:active { transform: none; }
 [data-orbit-real-page="network"] .nw-report-cta-pill { padding: 16px 40px; border-radius: 12px; background: #0E1225; color: #FFFFFF; font-size: 15px; font-weight: 500; }
+/* ── 联系人详情弹窗（设计稿 708–788 行）+ 记录跟进弹窗（789–856 行）── */
+[data-orbit-real-page="network"] .nw-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(14,18,37,0.35); backdrop-filter: blur(6px); display: flex; align-items: flex-start; justify-content: center; padding: 48px 24px; overflow-y: auto; }
+[data-orbit-real-page="network"] .nw-overlay-follow { z-index: 110; }
+[data-orbit-real-page="network"] .nw-modal { width: 100%; background: #FFFFFF; border-radius: 22px; box-shadow: 0 30px 80px rgba(14,18,37,0.25); display: flex; flex-direction: column; animation: orbit-fade .3s ease; }
+[data-orbit-real-page="network"] .nw-modal-detail { max-width: 1000px; padding: 28px 32px 24px; gap: 22px; }
+[data-orbit-real-page="network"] .nw-modal-follow { max-width: 720px; padding: 28px 32px; gap: 20px; }
+[data-orbit-real-page="network"] .nw-modal-head { display: flex; align-items: center; justify-content: space-between; }
+[data-orbit-real-page="network"] .nw-modal-title { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 22px; letter-spacing: -0.02em; }
+[data-orbit-real-page="network"] .btn.nw-modal-close { width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: #3B3F7A; font-size: 20px; cursor: pointer;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  padding: 0; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; letter-spacing: 0; line-height: normal; transition: none; font-weight: 400; }
+[data-orbit-real-page="network"] .btn.nw-modal-close:hover { background: #ECEEFB; color: #3B3F7A; }
+[data-orbit-real-page="network"] .btn.nw-modal-close:active { transform: none; }
+[data-orbit-real-page="network"] .nw-detail-hero { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; }
+[data-orbit-real-page="network"] .nw-modal-avatar { width: 112px; height: 112px; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 44px; flex-shrink: 0; }
+[data-orbit-real-page="network"] .nw-detail-id { flex: 1; min-width: 240px; display: flex; flex-direction: column; gap: 10px; }
+[data-orbit-real-page="network"] .nw-detail-name { margin: 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 30px; letter-spacing: -0.02em; }
+[data-orbit-real-page="network"] .nw-detail-org { font-size: 17px; color: #3B3F7A; }
+[data-orbit-real-page="network"] .nw-detail-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; font-size: 14px; color: #3B3F7A; }
+[data-orbit-real-page="network"] .nw-detail-stage { padding: 5px 12px; border-radius: 999px; font-size: 12px; }
+[data-orbit-real-page="network"] .nw-panel { border: 1px solid #E8E9F6; border-radius: 16px; padding: 22px; display: flex; flex-direction: column; }
+[data-orbit-real-page="network"] .nw-panel-16 { gap: 16px; }
+[data-orbit-real-page="network"] .nw-panel-14 { gap: 14px; }
+[data-orbit-real-page="network"] .nw-panel-12 { gap: 12px; }
+[data-orbit-real-page="network"] .nw-panel-t { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 18px; }
+[data-orbit-real-page="network"] .nw-panel-head { display: flex; align-items: baseline; justify-content: space-between; }
+[data-orbit-real-page="network"] .nw-ov-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: 16px 0; }
+[data-orbit-real-page="network"] .nw-ov { display: flex; gap: 12px; padding: 0 16px; border-left: 1px solid #E8E9F6; }
+[data-orbit-real-page="network"] .nw-ov:first-child { border-left-color: transparent; }
+[data-orbit-real-page="network"] .nw-ov-icon { width: 40px; height: 40px; border-radius: 50%; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+[data-orbit-real-page="network"] .nw-ov-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+[data-orbit-real-page="network"] .nw-ov-l { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-ov-v { font-size: 15px; }
+[data-orbit-real-page="network"] .nw-ov-d { font-size: 12px; color: #6B6F99; line-height: 1.5; }
+[data-orbit-real-page="network"] .nw-detail-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 20px; }
+[data-orbit-real-page="network"] .nw-detail-col { display: flex; flex-direction: column; gap: 20px; }
+[data-orbit-real-page="network"] .nw-tl { display: flex; flex-direction: column; }
+[data-orbit-real-page="network"] .nw-tl-empty { font-size: 13px; color: #9FA3C4; }
+[data-orbit-real-page="network"] .nw-tl-row { display: grid; grid-template-columns: 14px 1fr; gap: 14px; }
+[data-orbit-real-page="network"] .nw-tl-rail { display: flex; flex-direction: column; align-items: center; }
+[data-orbit-real-page="network"] .nw-tl-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+[data-orbit-real-page="network"] .nw-tl-line { flex: 1; width: 1px; margin: 4px 0; }
+[data-orbit-real-page="network"] .nw-tl-body { display: flex; flex-direction: column; gap: 4px; padding-bottom: 18px; }
+[data-orbit-real-page="network"] .nw-tl-meta { display: flex; gap: 12px; font-size: 14px; }
+[data-orbit-real-page="network"] .nw-tl-time { color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-tl-kind { font-weight: 500; }
+[data-orbit-real-page="network"] .nw-tl-text { font-size: 13px; color: #6B6F99; line-height: 1.6; white-space: pre-wrap; }
+[data-orbit-real-page="network"] .nw-topic-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+[data-orbit-real-page="network"] .nw-topic { padding: 7px 14px; border-radius: 999px; background: #ECEEFB; color: #2E3270; font-size: 13px; }
+[data-orbit-real-page="network"] .nw-li { display: flex; gap: 10px; font-size: 14px; color: #3B3F7A; line-height: 1.6; }
+[data-orbit-real-page="network"] .nw-li-dot { color: #0E1225; }
+[data-orbit-real-page="network"] .nw-step { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: #3B3F7A; line-height: 1.6; }
+[data-orbit-real-page="network"] .nw-step-n { width: 20px; height: 20px; border-radius: 50%; background: #ECEEFB; color: #2E3270; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+[data-orbit-real-page="network"] .nw-step-text { display: flex; flex-direction: column; gap: 2px; }
+[data-orbit-real-page="network"] .nw-step-reason { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-detail-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 6px; }
+[data-orbit-real-page="network"] .nw-detail-foot-actions { display: flex; gap: 10px; }
+[data-orbit-real-page="network"] .btn.nw-detail-close { padding: 13px 40px; border: 1px solid #DDDEFA; border-radius: 10px; background: #FFFFFF; color: #3B3F7A; font-size: 14px; cursor: pointer;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; font-weight: 400; }
+[data-orbit-real-page="network"] .btn.nw-detail-close:hover { color: #3B3F7A; }
+[data-orbit-real-page="network"] .btn.nw-detail-close:active { transform: none; }
+[data-orbit-real-page="network"] .btn.nw-detail-follow, [data-orbit-real-page="network"] .btn.nw-detail-status { padding: 13px 22px; border: 1px solid #DDDEFA; border-radius: 10px; background: #FFFFFF; color: #0E1225; font-size: 14px; cursor: pointer;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; font-weight: 400; }
+[data-orbit-real-page="network"] .btn.nw-detail-follow:hover, [data-orbit-real-page="network"] .btn.nw-detail-status:hover { background: #ECEEFB; }
+[data-orbit-real-page="network"] .btn.nw-detail-follow:active, [data-orbit-real-page="network"] .btn.nw-detail-status:active { transform: none; }
+[data-orbit-real-page="network"] .nw-fu-head { display: flex; align-items: flex-start; justify-content: space-between; }
+[data-orbit-real-page="network"] .nw-fu-head-copy { display: flex; flex-direction: column; gap: 6px; }
+[data-orbit-real-page="network"] .nw-fu-title { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 26px; letter-spacing: -0.02em; }
+[data-orbit-real-page="network"] .nw-fu-sub { font-size: 14px; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-fu-card { display: flex; align-items: center; gap: 16px; padding: 18px; border-radius: 14px; background: #F7F7FD; }
+[data-orbit-real-page="network"] .nw-fu-avatar { width: 64px; height: 64px; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 26px; flex-shrink: 0; }
+[data-orbit-real-page="network"] .nw-fu-card-copy { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+[data-orbit-real-page="network"] .nw-fu-card-name { font-size: 18px; }
+[data-orbit-real-page="network"] .nw-fu-card-org { font-size: 14px; color: #3B3F7A; }
+[data-orbit-real-page="network"] .nw-fu-card-tags { display: flex; gap: 6px; }
+[data-orbit-real-page="network"] .nw-fu-card-tag { padding: 3px 10px; border-radius: 999px; background: #DDDEFA; color: #2E3270; font-size: 12px; }
+[data-orbit-real-page="network"] .btn.nw-fu-detail-link { border: 0; background: transparent; color: #4B4FC7; font-size: 14px; font-weight: 500; cursor: pointer;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  height: auto; padding: 0; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; letter-spacing: 0; line-height: normal; transition: none; border-radius: 0; }
+[data-orbit-real-page="network"] .btn.nw-fu-detail-link:hover { color: #4B4FC7; background: transparent; }
+[data-orbit-real-page="network"] .btn.nw-fu-detail-link:active { transform: none; }
+[data-orbit-real-page="network"] .nw-fu-form { display: grid; grid-template-columns: 120px 1fr; gap: 14px 16px; align-items: start; }
+[data-orbit-real-page="network"] .nw-fu-label { font-size: 14px; padding-top: 12px; }
+[data-orbit-real-page="network"] .nw-fu-req { color: #B5473A; }
+[data-orbit-real-page="network"] .nw-fu-textarea { padding: 12px 14px; border: 1px solid #DDDEFA; border-radius: 10px; font-size: 14px; line-height: 1.6; outline: none; resize: vertical; background: #FFFFFF; color: #0E1225; }
+[data-orbit-real-page="network"] .nw-fu-textarea:focus { border-color: #4B4FC7; }
+[data-orbit-real-page="network"] .nw-fu-input { padding: 12px 14px; border: 1px solid #DDDEFA; border-radius: 10px; font-size: 14px; outline: none; background: #FFFFFF; color: #0E1225; }
+[data-orbit-real-page="network"] .nw-fu-input:focus { border-color: #4B4FC7; }
+[data-orbit-real-page="network"] .nw-fu-input-muted { color: #3B3F7A; }
+[data-orbit-real-page="network"] .nw-fu-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+[data-orbit-real-page="network"] .nw-fu-date-label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+[data-orbit-real-page="network"] .nw-fu-block { display: flex; flex-direction: column; gap: 8px; }
+[data-orbit-real-page="network"] .nw-fu-block-t { font-size: 14px; }
+[data-orbit-real-page="network"] .nw-fu-stages { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; }
+[data-orbit-real-page="network"] .btn.nw-fu-stage { padding: 14px 8px; border: 0; background: #ECEEFB; color: #3B3F7A; font-size: 14px; font-weight: 400; cursor: pointer; transition: all .2s;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明；clip-path 由内联 style 提供 */
+  height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; border-radius: 0; }
+[data-orbit-real-page="network"] .btn.nw-fu-stage-on { background: #2E3270; color: #FFFFFF; font-weight: 500; }
+[data-orbit-real-page="network"] .btn.nw-fu-stage:active { transform: none; }
+[data-orbit-real-page="network"] .nw-fu-tagbox { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid #DDDEFA; border-radius: 10px; }
+[data-orbit-real-page="network"] .nw-fu-tag { display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 8px; background: #ECEEFB; color: #2E3270; font-size: 13px; }
+[data-orbit-real-page="network"] .btn.nw-fu-tag-x { border: 0; background: transparent; color: #6B6F99; cursor: pointer; padding: 0; font-size: 13px;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; letter-spacing: 0; line-height: normal; transition: none; border-radius: 0; font-weight: 400; }
+[data-orbit-real-page="network"] .btn.nw-fu-tag-x:hover { color: #6B6F99; background: transparent; }
+[data-orbit-real-page="network"] .btn.nw-fu-tag-x:active { transform: none; }
+[data-orbit-real-page="network"] .nw-fu-tag-input { flex: 1; min-width: 140px; border: 0; outline: none; font-size: 14px; padding: 6px; background: transparent; color: #0E1225; }
+[data-orbit-real-page="network"] .nw-fu-error { margin: 0; font-size: 13px; color: #B5473A; }
+[data-orbit-real-page="network"] .nw-fu-foot { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; }
+[data-orbit-real-page="network"] .nw-fu-sync { display: flex; gap: 10px; align-items: flex-start; text-align: left; cursor: default; }
+[data-orbit-real-page="network"] .nw-fu-sync-mark { width: 18px; height: 18px; border-radius: 4px; background: #4B4FC7; border: 1px solid #4B4FC7; color: #FFFFFF; font-size: 11px; display: flex; align-items: center; justify-content: center; margin-top: 2px; flex-shrink: 0; }
+[data-orbit-real-page="network"] .nw-fu-sync-copy { display: flex; flex-direction: column; gap: 2px; }
+[data-orbit-real-page="network"] .nw-fu-sync-t { font-size: 14px; color: #0E1225; }
+[data-orbit-real-page="network"] .nw-fu-sync-d { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-fu-foot-actions { display: flex; gap: 12px; }
+[data-orbit-real-page="network"] .btn.nw-fu-cancel { padding: 13px 28px; border: 1px solid #DDDEFA; border-radius: 10px; background: #FFFFFF; color: #3B3F7A; font-size: 14px; cursor: pointer;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; font-weight: 400; }
+[data-orbit-real-page="network"] .btn.nw-fu-cancel:active { transform: none; }
+[data-orbit-real-page="network"] .btn.nw-fu-save { padding: 13px 28px; border: 0; border-radius: 10px; background: #0E1225; color: #FFFFFF; font-size: 14px; font-weight: 500; cursor: pointer;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="network"] .btn.nw-fu-save:hover { background: #2E3270; }
+[data-orbit-real-page="network"] .btn.nw-fu-save:active { transform: none; }
+[data-orbit-real-page="network"] .btn.nw-fu-save:disabled, [data-orbit-real-page="network"] .btn.nw-fu-save[disabled] { background: #0E1225; color: #FFFFFF; border-color: transparent; opacity: .5; cursor: not-allowed; }
+[data-orbit-real-page="network"] .nw-toast { position: fixed; left: 50%; bottom: 32px; transform: translateX(-50%); z-index: 200; padding: 12px 20px; border-radius: 999px; background: #0E1225; color: #FFFFFF; font-size: 14px; box-shadow: 0 12px 40px rgba(14,18,37,0.25); animation: orbit-fade .3s ease; }
 /* ── 分组详情下钻页（contacts-structure-detail.tsx 依赖的四条规则，原样自 contacts-analysis-workspace.tsx:39–46；任务 8 删除 workspace 后仍有样式）── */
 [data-orbit-real-page="network"] .analysis-content{max-width:1200px;margin:0 auto}
 [data-orbit-real-page="network"] .analysis-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px}

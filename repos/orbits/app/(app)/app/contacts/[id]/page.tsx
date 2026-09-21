@@ -2,10 +2,12 @@
  * 联系人详情页 route adapter。
  *
  * 从动态路由参数读取 contact id，并通过 route-level capability service
- * 组合详情、证据和关系价值数据后交给详情组件。
+ * 组合详情、证据和关系价值数据；成功时在「所有人脉」列表屏之上渲染
+ * Orbit_0918 联系人详情弹窗（NetworkAll openDetail），关闭 = 导航回 /app/contacts。
  */
 import {
   getOrbitServerLanguage,
+  localizeOrbitTree,
   makeOrbitServerT,
 } from "../../orbit-language-server";
 import type { OrbitLanguage } from "../../orbit-language-core";
@@ -19,7 +21,11 @@ import {
   localizeAppContactDetailBoundaryModel,
   type AppContactDetailBoundaryModel,
 } from "../compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service";
-import { OrbitRealCardConnection } from "../orbit-real-card-connection";
+import { NetworkAll } from "../network-0918/network-all";
+import { loadAppContactsRouteViewModel } from "../compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
+import { contactsRouteToOrbitContactsViewModel } from "../compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-view-model-adapter";
+import { applyOrbitContactsPresentation } from "../../orbit-contacts-presentation";
+import { AccountTopNav } from "../../orbit-account-shell";
 import { auth } from "../../../../../auth";
 import { redirect } from "next/navigation";
 import { resolveAuthenticatedApiActorFromSession } from "../../../../api/_shared/authenticated-actor";
@@ -131,20 +137,31 @@ export default async function AppContactDetailPage({
     contactId,
   });
 
-  return (
-    <>
-      <OrbitReferenceStyles />
-      <OrbitVisualFreezeRuntime />
-      {routeModel.routeState === "success" ? (
-        <OrbitRealCardConnection
-          key={`${actor.id}:${contactId}`}
-          contactId={contactId}
-          viewModel={contactDetailPageViewModel(routeModel, language)}
-        />
-      ) : (
+  if (routeModel.routeState !== "success") {
+    return (
+      <>
+        <OrbitReferenceStyles />
+        <OrbitVisualFreezeRuntime />
         <ContactDetailRouteStateView language={language} routeModel={routeModel} />
-      )}
-      {routeModel.routeState === "success" && memoQueryPresent ? (
+      </>
+    );
+  }
+
+  // 列表屏在弹窗后面：列表 VM 只喂列表，详情弹窗只吃详情路由的 VM（真实 notes / editableTags / lastInteraction）。
+  const listRoute = await loadAppContactsRouteViewModel({}, actor.id);
+  const listVm =
+    listRoute.state === "success"
+      ? localizeOrbitTree(applyOrbitContactsPresentation(contactsRouteToOrbitContactsViewModel(listRoute), language), language)
+      : { connections: [], events: [], intros: [], pipelineStatuses: [] };
+  const detail = contactDetailPageViewModel(routeModel, language).connections[0];
+  if (!detail) {
+    throw new Error("Contact detail route succeeded without a connection.");
+  }
+
+  // 会后纪要 / 约谈核验附加态渲染在弹窗时间线上方（props 原样）。
+  const extra = (
+    <>
+      {memoQueryPresent ? (
         <AppointmentMemoCapture
           appointmentId={memoRequested ? appointmentId : null}
           contactId={contactId}
@@ -152,7 +169,7 @@ export default async function AppContactDetailPage({
           invalidRequest={invalidMemoRequest}
         />
       ) : null}
-      {routeModel.routeState === "success" && appointmentRequested && appointmentId && eventId ? (
+      {appointmentRequested && appointmentId && eventId ? (
         <div style={{ margin: 16 }}>
           <OrbitAppointmentNegotiation
             appointmentId={appointmentId}
@@ -161,9 +178,25 @@ export default async function AppContactDetailPage({
           />
         </div>
       ) : null}
-      {routeModel.routeState === "success" && invalidAppointmentRequest ? (
+      {invalidAppointmentRequest ? (
         <p role="alert" style={{ color: "var(--danger)", margin: 16 }}>约谈链接无效：需要唯一的 appointmentId 和 eventId。</p>
       ) : null}
+    </>
+  );
+
+  return (
+    <>
+      <OrbitReferenceStyles />
+      <OrbitVisualFreezeRuntime />
+      {/* 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。 */}
+      <div data-orbit-real-page="network" data-orbit-route="app-contact-detail-route">
+        <AccountTopNav active="cards" />
+        <NetworkAll
+          key={`${actor.id}:${contactId}`}
+          viewModel={listVm}
+          openDetail={{ contact: detail, closeHref: "/app/contacts", extra }}
+        />
+      </div>
     </>
   );
 }
