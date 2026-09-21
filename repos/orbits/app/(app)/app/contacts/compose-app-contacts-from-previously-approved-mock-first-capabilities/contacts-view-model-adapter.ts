@@ -157,6 +157,7 @@ function contactToOrbitView(
     offering: contact.relationshipValueSummary,
     phone: "",
     pipelineStatus: hasPendingInitialization(contact) ? "pending_initialization" : pipelineStatusFor(contact),
+    relationshipStatus: contact.status,
     seeking: contact.nextAction,
     source: sourceFor(contact),
     stage: hasPendingInitialization(contact) ? "待设置关系" : contact.statusLabel,

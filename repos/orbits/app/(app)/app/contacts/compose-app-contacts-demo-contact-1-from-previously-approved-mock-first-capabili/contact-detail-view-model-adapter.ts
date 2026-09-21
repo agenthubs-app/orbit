@@ -454,6 +454,7 @@ export function contactDetailRouteToOrbitContactsViewModel(
     offering: displayTexts(model.contact.publicProfile.offering, language).join(", "),
     phone: model.contact.primaryPhone ?? "",
     pipelineStatus: pending ? "pending_initialization" : pipelineStatusFor(model.contact.status),
+    relationshipStatus: model.contact.status,
     seeking: displayTexts(model.contact.publicProfile.seeking, language).join(", "),
     source: sourceFor(model.contact.source),
     stage: pending ? (language === "zh" ? "待设置关系" : "Pending initialization") : model.contact.status,

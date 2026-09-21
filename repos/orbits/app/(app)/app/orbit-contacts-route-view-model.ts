@@ -23,6 +23,8 @@ export interface OrbitContactView {
   offering: string;
   phone: string;
   pipelineStatus: OrbitContactPipelineStatus;
+  /** 关系状态原始枚举（列表/详情适配器填充；stage 字段是本地化显示标签，不可用于判断）。 */
+  relationshipStatus?: "active" | "needs_follow_up" | "nurture" | "archived";
   seeking: string;
   source: OrbitContactSource;
   stage: string;
