@@ -78,12 +78,16 @@ export const NETWORK_STYLES = `
   /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
   height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; transition: none; }
 [data-orbit-real-page="network"] .btn.nw-btn-ghost:hover { background: #ECEEFB; }
+[data-orbit-real-page="network"] .btn.nw-btn-ghost:active { transform: none; }
 [data-orbit-real-page="network"] .btn.nw-btn-primary { padding: 13px 22px; border: 0; border-radius: 12px; background: #0E1225; color: #FFFFFF; font-size: 15px; font-weight: 500; line-height: normal; cursor: pointer;
   /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
   height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; transition: none; }
 [data-orbit-real-page="network"] .btn.nw-btn-primary:hover { background: #2E3270; }
+[data-orbit-real-page="network"] .btn.nw-btn-primary:active { transform: none; }
 [data-orbit-real-page="network"] .nw-tabs { display: flex; gap: 8px; border-bottom: 1px solid #E8E9F6; font-size: 15px; }
-[data-orbit-real-page="network"] .nw-tab { padding: 12px 16px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: transparent; cursor: pointer; transition: color .2s; }
+[data-orbit-real-page="network"] .nw-tab { padding: 12px 16px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: transparent; cursor: pointer; transition: color .2s;
+  /* 设计稿页签是 button 元素，未继承 15px，按渲染结果 13.33px 对齐 */
+  font-size: 13.3333px; }
 [data-orbit-real-page="network"] .nw-tab-on { border-bottom-color: #0E1225; color: #0E1225; font-weight: 500; }
 [data-orbit-real-page="network"] .nw-tab-off { color: #6B6F99; font-weight: 400; }
 [data-orbit-real-page="network"] .nw-avatar { border-radius: 50%; background: #DDDEFA; color: #3B3F7A; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; }
@@ -108,6 +112,7 @@ export const NETWORK_STYLES = `
   /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明；border-color/background 由内联 style 提供 */
   height: auto; display: flex; align-items: center; justify-content: normal; gap: 12px; white-space: normal; text-align: left; letter-spacing: 0; line-height: normal; transition: all .2s; font-size: inherit; font-weight: 400; color: #0E1225; }
 [data-orbit-real-page="network"] .btn.nw-source-card:hover { border-color: #B9BCEB; }
+[data-orbit-real-page="network"] .btn.nw-source-card:active { transform: none; }
 [data-orbit-real-page="network"] .nw-source-icon { width: 40px; height: 40px; border-radius: 10px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
 [data-orbit-real-page="network"] .nw-source-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 [data-orbit-real-page="network"] .nw-source-label { font-size: 12px; color: #6B6F99; white-space: nowrap; }
@@ -118,7 +123,8 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .btn.nw-row { display: grid; grid-template-columns: 20px 44px minmax(90px, 1fr) minmax(0, 2fr) 100px 100px 90px minmax(0, 1.5fr) 24px; align-items: center; gap: 14px; padding: 12px; border: 0; border-top: 1px solid #EEEFF8; background: transparent; text-align: left; font-size: 14px; cursor: pointer;
   /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
   height: auto; display: grid; align-items: center; justify-content: normal; gap: 14px; white-space: normal; text-align: left; letter-spacing: 0; line-height: normal; transition: none; border-radius: 0; font-weight: 400; color: #0E1225; }
-[data-orbit-real-page="network"] .btn.nw-row:hover { background: #F7F7FD; color: #0E1225; }
+[data-orbit-real-page="network"] .btn.nw-row:hover { background: #F7F7FD; }
+[data-orbit-real-page="network"] .btn.nw-row:active { transform: none; }
 [data-orbit-real-page="network"] .nw-row-name { font-size: 15px; white-space: nowrap; }
 [data-orbit-real-page="network"] .nw-row-org { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 [data-orbit-real-page="network"] .nw-row-org-1 { color: #0E1225; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
