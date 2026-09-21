@@ -708,102 +708,29 @@ EXECUTION.md 追加：`- **Network 任务 2 完成** \`<sha>\`：/app/contacts �
 
 ### Task 3: 「关系管线」屏（`/app/contacts/pipeline`）
 
+> **勘误（2026-09-21，执行时发现）**：设计稿 172–256 行的 pipeline 视图**不含**阶段箭头条与两张高亮卡（那两块属概览视图 126–147 行）。实际结构：174–191「关系管线总览」卡（h2 + 「最近新增 N 位」span + 5 个 `pipeStats` 统计块）；192–212「AI 人脉建议」卡（h2 + 描述 + 「换一批 ⟳」+ 3 条建议按钮）；214–220 筛选条（阶段/来源/提醒/排序 4 个静态 chip + 搜索框）；222–254 看板四列。以下按实际设计执行。
+
 **Files:**
 - Create: `$WEB/app/(app)/app/contacts/network-0918/network-pipeline.tsx`
-- Modify: `$WEB/app/(app)/app/contacts/pipeline/page.tsx`
+- Modify: `$WEB/app/(app)/app/contacts/pipeline/page.tsx`（换渲染组件；**同时加载** `loadContactsAnalysis(actor.id, language)`）
 - Test: `$WEB/tests/pages/app-network-pipeline.test.tsx`
 
 **Interfaces:**
-- Produces：`export function NetworkPipeline({ viewModel }: { viewModel: OrbitContactsViewModel })`。
+- Produces：`export function NetworkPipeline({ viewModel, analysis }: { viewModel: OrbitContactsViewModel; analysis: ContactsAnalysisView })`。
 
-- [ ] **Step 1: 写失败测试**
+**数据决定（无接口不做假）：**
+- 「最近 30 天新增 12 位 ↗ +25%」→ 渲染为 `最近新增 {analysis.metrics.newContacts} 位`（非 ready 显示 `—`）；`↗ +25%` 无来源 → 省略该内层 span（台账记录）。
+- 「AI 人脉建议」3 条 = `analysis.opportunities.data.actions` 按 3 条分页：icon `➶`、title、desc = `judgment`、tag = `dueLabel`（`#ECEEFB/#2E3270`）、链接 `primary.href`；「换一批 ⟳」翻页循环；不可用/为空 → 卡内 `nw-empty`「暂无建议」，「换一批」`disabled`。
+- 筛选条 4 个 chip 静态展示；搜索框 `matchesQuery` 生效。
+- 看板卡：头像按钮 / 姓名+orgTitle+来源 chip 按钮 / `···` 记录跟进按钮 均为 `<a className="btn nw-…" href={p.href}>`（任务 6 使详情路由开弹窗）；上次互动 = `p.last`、下一步 = `p.next`（空 → `—`）；`pendingInit` → `NetworkChip`「待设置关系」；第四列文案「已归档」。
 
-```tsx
-// $WEB/tests/pages/app-network-pipeline.test.tsx
-import assert from "node:assert/strict";
-import test from "node:test";
-import { renderToStaticMarkup } from "react-dom/server";
-
-import type { OrbitContactsViewModel } from "../../app/(app)/app/orbit-contacts-route-view-model";
-import { NetworkPipeline } from "../../app/(app)/app/contacts/network-0918/network-pipeline";
-
-const base = { company: "X", encounters: [], email: "", g: "g-violet", industry: "", initial: "A", lineId: "", location: "", lastEventId: "", met: "", note: "", notes: [], offering: "", phone: "", seeking: "", title: "", wechat: "", strength: "medium" as const, valueTags: [], nextAction: null, lastInteraction: "", dormant: false, stage: "" };
-const vm: OrbitContactsViewModel = {
-  connections: [
-    { ...base, id: "a", displayName: "A", pipelineStatus: "to_contact", relationshipStatus: "needs_follow_up", source: "event" },
-    { ...base, id: "b", displayName: "B", pipelineStatus: "in_progress", relationshipStatus: "nurture", source: "event" },
-    { ...base, id: "c", displayName: "C", pipelineStatus: "in_progress", relationshipStatus: "active", source: "event" },
-    { ...base, id: "d", displayName: "D", pipelineStatus: "archived", relationshipStatus: "archived", source: "event" },
-  ],
-  events: [], intros: [], pipelineStatuses: [],
-};
-
-test("pipeline renders four stage columns with real counts and the arrow stage bar", () => {
-  const html = renderToStaticMarkup(<NetworkPipeline viewModel={vm} />);
-  assert.match(html, /data-network-screen="pipeline"/);
-  assert.equal((html.match(/class="nw-kanban-col"/g) ?? []).length, 4);
-  for (const label of ["待了解", "保持联系", "正在推进", "已归档"]) assert.match(html, new RegExp(label));
-  assert.doesNotMatch(html, /已建立合作/);
-  // 五个统计块：总数 4，各阶段 1
-  assert.match(html, /nw-pstat-n">4</);
-  assert.equal((html.match(/nw-pstat-n">1</g) ?? []).length, 4);
-  assert.match(html, /clip-path:polygon\(0 0,calc\(100% - 14px\) 0/);
-});
-```
-
-- [ ] **Step 2: 跑测试确认失败** — `cd $WEB && node --test --import tsx tests/pages/app-network-pipeline.test.tsx` → FAIL 模块不存在。
-
-- [ ] **Step 3: 移植 JSX**
-
-来源 `$DESIGN` 第 172–256 行。分四块：
-1. 173–186 阶段条（`stageBar`）：四段 `clip-path` 箭头，`background`/`color`/`clip-path` 动态 → 内联 style，数值来自 `stageCounts`。`barBg = ['#E8E9F6','#DDDEFA','#B9BCEB','#2E3270']`，`barFg = ['#3B3F7A','#3B3F7A','#2E3270','#FFFFFF']`。
-2. 187–214 「本周重点推进」两张高亮卡（`pipeHighlights`）：取 `advance` 列前 2 人；为空显示 `nw-empty`「本周没有正在推进的关系」。
-3. 215–228 五个统计块（`pipeStats`）：总联系人 + 四阶段计数，类 `nw-pstat` / `nw-pstat-icon` / `nw-pstat-n` / `nw-pstat-label`。
-4. 229–255 看板（`kanban`）：搜索框 + 四列 `nw-kanban-col`（`background` 动态），每列头 icon/标题/desc/计数，卡片 `.btn.nw-kanban-card`（头像 40、姓名、orgTitle、下一步 `p.next`、`p.last`），点击 → 任务 6 前 `href` 详情，任务 6 后开弹窗；`pendingInit` 卡片加 `NetworkChip` 「待设置关系」。
-
-组件签名与状态：
-
-```tsx
-"use client";
-import { useMemo, useState } from "react";
-import type { OrbitContactsViewModel } from "../../orbit-contacts-route-view-model";
-import { useOrbitLanguage } from "../../orbit-language-context";
-import { NETWORK_STAGES, STAGE_BAR_BG, STAGE_BAR_FG, STAGE_LABEL, STAGE_STYLE, matchesQuery, stageClip, stageCounts, toPerson } from "./network-model";
-import { NetworkAvatar, NetworkChip, NetworkShell } from "./network-shell";
-
-export function NetworkPipeline({ viewModel }: { viewModel: OrbitContactsViewModel }) {
-  const { t } = useOrbitLanguage();
-  const [query, setQuery] = useState("");
-  const people = useMemo(() => viewModel.connections.map(toPerson), [viewModel.connections]);
-  const counts = stageCounts(people);
-  const columns = NETWORK_STAGES.map((stage, i) => ({ stage, i, ...STAGE_STYLE[stage], label: t(STAGE_LABEL[stage]), n: counts[stage], people: people.filter((p) => p.stage === stage && matchesQuery(p, query)) }));
-  const highlights = people.filter((p) => p.stage === "advance").slice(0, 2);
-  return (
-    <NetworkShell screen="pipeline" total={people.length}>
-      {/* 173–186 阶段条 → columns.map: <div className="nw-stage-seg" style={{ background: STAGE_BAR_BG[i], color: STAGE_BAR_FG[i], clipPath: stageClip(i as 0|1|2|3) }}> */}
-      {/* 187–214 highlights */}
-      {/* 215–228 pstats：[["◎", people.length, 总联系人, "#ECEEFB"], ...NETWORK_STAGES → [STAGE_STYLE.icon, counts, label, "#F7F7FD"]] */}
-      {/* 229–255 kanban */}
-    </NetworkShell>
-  );
-}
-```
-
-样式条目追加到 `NETWORK_STYLES`（类名前缀 `nw-stage-` / `nw-hl-` / `nw-pstat` / `nw-kanban-`），每条声明与设计行完全一致。
-
-- [ ] **Step 4: 换页面渲染** — `pipeline/page.tsx`：`OrbitRealCardsPipelineView` → `NetworkPipeline`，加 `<AccountTopNav active="cards" />`。
-
-- [ ] **Step 5: 测试 + typecheck + ratchet** — `cd $WEB && node --test --import tsx tests/pages/app-network-pipeline.test.tsx tests/ui/orbit-button-ratchet.test.ts tests/ui/orbit-scale-ratchet.test.ts && npm run typecheck` → 全绿。
-
-- [ ] **Step 6: 像素比对** — `--design-view pipeline --app http://localhost:3100/app/contacts/pipeline --out /tmp/network-pipeline` → `mismatch ≤ 0.02`。
-
-- [ ] **Step 7: 提交 + 台账**
-
-```bash
-cd /Users/li/work/orbit-web-newui-batch0-20260918 && node .gitnexus/run.cjs detect-changes --scope all --repo . && git add "repos/orbits/app/(app)/app/contacts/network-0918/" "repos/orbits/app/(app)/app/contacts/pipeline/page.tsx" repos/orbits/tests/pages/app-network-pipeline.test.tsx && git commit -m "feat(network): replace /app/contacts/pipeline with Orbit_0918 pipeline screen
-
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
-```
+- [ ] **Step 1: 写失败测试**（`app-network-pipeline.test.tsx`）：四列 `nw-kanban-col`；四个阶段标签含「已归档」且不含「已建立合作」；`nw-pstat-n">4<` 一次、`nw-pstat-n">1<` 四次；`analysis: { state: "pending" }` 时含「暂无建议」与 `最近新增 — 位`；ready 夹具（含 `opportunities.data.actions` 一条）时含该 action 的 title 与 `最近新增 6 位`。
+- [ ] **Step 2: 跑测试确认失败**。
+- [ ] **Step 3: 按实际设计 173–256 行移植 JSX**（像素规则同任务 2；样式追加到 `NETWORK_STYLES`）。
+- [ ] **Step 4: 换页面渲染**：`pipeline/page.tsx` 增加 `getOrbitServerLanguage()` + `loadContactsAnalysis`，`OrbitRealCardsPipelineView` → `NetworkPipeline`，包裹 div 加 `data-orbit-real-page="network"`，加 `<AccountTopNav active="cards" />`。
+- [ ] **Step 5: 测试 + typecheck + ratchet**。
+- [ ] **Step 6: 像素比对** `--design-view pipeline --app http://localhost:3100/app/contacts/pipeline --out /tmp/network-pipeline`，门槛同全局。
+- [ ] **Step 7: 提交 + 台账**（提交信息 `feat(network): replace /app/contacts/pipeline with Orbit_0918 pipeline screen` + trailer）。
 
 ---
 
@@ -933,7 +860,7 @@ test("overview renders donut, cockpit, stage bar and recent list from real data"
 来源 `$DESIGN` 第 66–171 行，分块：
 - 68–101 人脉分布卡：三段切换 `distSegs`（按行业/按地区/按来源；`background`/`color` 动态）、donut（`background: donut(rows).bg`，中心显示 `people.length` + 「联系人」）、图例行 `dd.rows`（色点 / label / n / pct）、底部「查看完整分析 →」链 `/app/contacts/dashboard?tab=structure`。
 - 102–125 AI 人脉驾驶舱：右上「基于你的人脉数据分析」小字 → 改为 `analysis.generatedAt` 格式化「更新于 …」（pending 时「分析生成中」）；4 张 `.btn.nw-cockpit-card`（`<a>`），计数 `nw-cockpit-n`，`n === null` 渲染 `—`；底部两按钮「查看完整分析」→ `?tab=structure`、「✦ 交给 iOrbit」→ `/app/agent`。
-- 126–147 关系推进管线：阶段条同任务 3（`stageClip` + `STAGE_BAR_BG/FG`），两张高亮卡 = `advance` 前 2；「查看管线 →」链 pipeline。
+- 126–147 关系推进管线：阶段箭头条（`stageClip` + `STAGE_BAR_BG/FG`，数值 `stageCounts`）+ 两张高亮卡 = `advance` 前 2（为空 → `nw-empty`「本周没有正在推进的关系」）；「查看管线 →」链 pipeline。**这两块只在概览视图，任务 3 不做。**
 - 148–170 最近联系人：数据 = `analysis.activity` 前 5 条（真实 `occurredAt`），每行 头像(首字)/`label`/`source`/时间（`occurredAt` 格式化 `M月D日`）；`personByName(people, label)` 命中时行链到详情；`analysis` 非 ready 或 activity 为空 → `nw-empty`「还没有互动记录」。「查看全部 →」链 `/app/contacts`。
 
 - [ ] **Step 7: 移植分析子页 JSX**
