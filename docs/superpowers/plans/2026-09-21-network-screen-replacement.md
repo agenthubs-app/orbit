@@ -18,7 +18,7 @@
   2. 静态 `style="…"` 整段搬进本屏 `NETWORK_STYLES` 模板字符串的一个 `nw-*` 类，选择器前缀 `[data-orbit-real-page="network"] `；声明顺序与值保持原样（含 `letter-spacing:-0.03em`、`animation:orbit-fade .3s ease`、`clip-path` 等）。
   3. 样式里的 `{{ 变量 }}`（只出现在 color / background / border-color / border-bottom / font-weight / clip-path）→ React 内联 `style={{ … }}`，**内联对象里禁止出现 `fontSize` / `fontWeight` / `gap` 数值字面量**（scale ratchet 只扫描 React 对象，模板字符串被剥离不计）；`font-weight:{{ t.weight }}` 这类用两个类 `nw-tab-on/nw-tab-off` 切换。
   4. `style-hover="…"` → 同类 `:hover` 规则；`style-focus` → `:focus`。
-  5. 每个 `<button>` 必须带 `btn` 类 + 一个 `nw-*` 类（button ratchet 上限 154 不得增加）；本屏样式用 `[data-orbit-real-page="network"] .btn.nw-xxx { … }` 覆盖 `.btn` 基类（`orbit-reference-styles.tsx:594–610`）设定的**全部**属性：`height`（基类 44px → 设计多为自然高度，写 `height:auto`）、`display`（行是 `grid`、卡是 `flex`）、`gap`、`justify-content`、`align-items`、`white-space`（基类 nowrap）、`text-align`、`letter-spacing`、`transition`、padding/border/border-radius/background/color/font-size/font-weight/line-height；`:disabled` 基类是 `opacity:1`，需要半透明的按钮（如 `nw-fu-save`）写 `:disabled { opacity:.5 }`。
+  5. 每个 `<button>` 必须带 `btn` 类 + 一个 `nw-*` 类（button ratchet 上限 154 不得增加）；本屏样式用 `[data-orbit-real-page="network"] .btn.nw-xxx { … }` 覆盖 `.btn` 基类（`orbit-reference-styles.tsx:594–610`）设定的**全部**属性：`height`（基类 44px → 设计多为自然高度，写 `height:auto`）、`display`（行是 `grid`、卡是 `flex`）、`gap`、`justify-content`、`align-items`、`white-space`（基类 nowrap）、`text-align`、`letter-spacing`、`transition`、padding/border/border-radius/background/color/font-size/font-weight/line-height；`:disabled` 基类是 `opacity:1`，需要半透明的按钮（如 `nw-fu-save`）写 `:disabled { opacity:.5 }`。可复用片段（放在设计声明之后）：`/* 覆盖 .btn 基类 */ height: auto; display: <设计值或 inline-flex>; align-items: <设计值或 center>; justify-content: <设计值或 center>; gap: <设计值或 0>; white-space: <设计值或 normal>; text-align: <设计值或 left>; letter-spacing: 0; line-height: normal; transition: <设计值或 none>;`。
   6. 设计稿里的 mock 数字（128、42、85% 等）一律不出现；数值全部来自模型；来源不可用显示 `—`，列表为空显示设计稿自带的空态文案（如「没有匹配的联系人」）。
   7. 头像 = 首字母圆形占位（设计 `width:40px;height:40px;border-radius:50%;background:#DDDEFA;color:#3B3F7A`），不用图片。
   8. 页面根：`<main data-orbit-real-page="network" data-network-screen="<screen>">`，内容容器 `max-width:1240px; margin:0 auto; padding:28px 40px 96px; display:flex; flex-direction:column; gap:24px;`（设计稿第 43 行 `<main>` 的样式，以文件为准）。
@@ -514,7 +514,6 @@ export function NetworkShell({ screen, total, children, modal }: { screen: Netwo
       ) : null}
       {children}
       {modal}
-      <span hidden data-network-total={total ?? "—"} />
     </main>
   );
 }
@@ -533,9 +532,9 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-h1 { margin: 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 40px; line-height: 1.1; letter-spacing: -0.03em; }
 [data-orbit-real-page="network"] .nw-sub { margin: 0; font-size: 15px; color: #3B3F7A; }
 [data-orbit-real-page="network"] .nw-head-actions { display: flex; gap: 12px; }
-[data-orbit-real-page="network"] .btn.nw-btn-ghost { padding: 13px 22px; border: 1px solid #DDDEFA; border-radius: 12px; background: #FFFFFF; color: #2E3270; font-size: 15px; font-weight: 500; line-height: normal; cursor: pointer; }
+[data-orbit-real-page="network"] .btn.nw-btn-ghost { padding: 13px 22px; border: 1px solid #DDDEFA; border-radius: 12px; background: #FFFFFF; color: #2E3270; font-size: 15px; font-weight: 500; cursor: pointer; /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */ height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
 [data-orbit-real-page="network"] .btn.nw-btn-ghost:hover { background: #ECEEFB; }
-[data-orbit-real-page="network"] .btn.nw-btn-primary { padding: 13px 22px; border: 0; border-radius: 12px; background: #0E1225; color: #FFFFFF; font-size: 15px; font-weight: 500; line-height: normal; cursor: pointer; }
+[data-orbit-real-page="network"] .btn.nw-btn-primary { padding: 13px 22px; border: 0; border-radius: 12px; background: #0E1225; color: #FFFFFF; font-size: 15px; font-weight: 500; cursor: pointer; /* 覆盖 .btn 基类 */ height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
 [data-orbit-real-page="network"] .btn.nw-btn-primary:hover { background: #2E3270; }
 [data-orbit-real-page="network"] .nw-tabs { display: flex; gap: 8px; border-bottom: 1px solid #E8E9F6; font-size: 15px; }
 [data-orbit-real-page="network"] .nw-tab { padding: 12px 16px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: transparent; cursor: pointer; transition: color .2s; }
