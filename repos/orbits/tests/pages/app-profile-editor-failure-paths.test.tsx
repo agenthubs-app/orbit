@@ -1,9 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { act, create, type ReactTestRenderer } from "react-test-renderer";
+import { act, create, type ReactTestInstance, type ReactTestRenderer } from "react-test-renderer";
 
 import type { ManualProfile, ProfilePayload } from "../../features/profile/contract";
-import { OrbitRealProfile } from "../../app/(app)/app/profile/orbit-real-profile";
+// 个人中心 任务 4：渲染用例改指新屏。基础资料相关 → ProfileScreens view="basic"；需要同时操作基础资料与画像草稿的
+// 两个用例（跨 scope 草稿保留 / 画像草稿阻止自动跳转）在新架构里是两张独立路由屏，改用 BothEditors 测试组合：
+// 同一个 useProfileEditorSession 同时挂 ProfileBasic 与 ProfilePersona（断言意图不变：hook 的跨 scope 草稿保留）。
+import { useOrbitLanguage } from "../../app/(app)/app/orbit-language-context";
+import { ProfileBasic } from "../../app/(app)/app/profile/profile-0918/profile-basic";
+import { ProfilePersona } from "../../app/(app)/app/profile/profile-0918/profile-persona";
+import { ProfileScreens } from "../../app/(app)/app/profile/profile-0918/profile-screens";
+import { ProfileShell } from "../../app/(app)/app/profile/profile-0918/profile-shell";
+import { useProfileEditorSession } from "../../app/(app)/app/profile/profile-0918/use-profile-editor-session";
 import type {
   OrbitProfileEditorView,
   OrbitProfileEditorViewModel,
@@ -171,7 +179,7 @@ async function renderEditor(
   const restoreWindow = installBrowserGlobals(browserOptions);
   let root!: ReactTestRenderer;
   await act(async () => {
-    root = create(<OrbitRealProfile onboardingNext={onboardingNext} viewModel={viewModel} />);
+    root = create(<ProfileScreens onboardingNext={onboardingNext} view="basic" viewModel={viewModel} />);
     await settle();
   });
   t.after(() => {
@@ -179,6 +187,55 @@ async function renderEditor(
     restoreWindow();
   });
   return root;
+}
+
+function BothEditors({ onboardingNext, viewModel }: { onboardingNext?: string; viewModel: OrbitProfileEditorViewModel }) {
+  const { t } = useOrbitLanguage();
+  const session = useProfileEditorSession({ onboardingNext, t, viewModel });
+  return (
+    <ProfileShell view="basic" session={session}>
+      <ProfileBasic onSubmit={() => session.saveProfile("basic")} session={session} />
+      <ProfilePersona session={session} />
+      <button onClick={() => void session.saveProfile("matching")} type="button">保存匹配偏好</button>
+    </ProfileShell>
+  );
+}
+
+async function renderBothEditors(
+  t: { after(callback: () => void): void },
+  viewModel: OrbitProfileEditorViewModel = editorModel(),
+  browserOptions: { location?: { assign(path: string): void } } = {},
+  onboardingNext?: string,
+): Promise<ReactTestRenderer> {
+  const restoreWindow = installBrowserGlobals(browserOptions);
+  let root!: ReactTestRenderer;
+  await act(async () => {
+    root = create(<BothEditors onboardingNext={onboardingNext} viewModel={viewModel} />);
+    await settle();
+  });
+  t.after(() => {
+    act(() => root.unmount());
+    restoreWindow();
+  });
+  return root;
+}
+
+function textOf(node: ReactTestInstance): string {
+  return node.children.map((child) => (typeof child === "string" ? child : textOf(child))).join("");
+}
+
+// 新画像屏：chip = <span class="pc-tag">{label} <button class="btn pc-tag-remove">✕</button></span>；添加 = 输入 + Enter。
+function chipWithText(group: ReactTestInstance, text: string) {
+  return group.findAllByProps({ className: "pc-tag" }).find((chip) => chip.children.includes(text));
+}
+
+async function addChip(group: ReactTestInstance, text: string) {
+  await act(async () => {
+    group.findAllByType("input")[0].props.onChange({ target: { value: text } });
+  });
+  await act(async () => {
+    group.findAllByType("input")[0].props.onKeyDown({ key: "Enter", preventDefault() {} });
+  });
 }
 
 function inputWithValue(root: ReactTestRenderer, value: string) {
@@ -315,7 +372,7 @@ test("same-tick reload clicks share one GET", async (t) => {
   const busyReload = buttonWithText(root, "Reloading latest…", "正在刷新最新资料…");
   assert.equal(busyReload.props.disabled, true);
   assert.equal(busyReload.props["aria-busy"], true);
-  const basicSaveWhileReloading = buttonWithText(root, "Save basic profile", "保存基础资料");
+  const basicSaveWhileReloading = buttonWithText(root, "Save changes", "保存修改");
   assert.equal(basicSaveWhileReloading.props.disabled, true);
   const observedGets = profileGets;
   for (const resolve of reloadResponses) {
@@ -326,7 +383,7 @@ test("same-tick reload clicks share one GET", async (t) => {
   });
 
   assert.equal(observedGets, 2, "initial GET plus one single-flight reload GET");
-  const basicSaveAfterReload = buttonWithText(root, "Save basic profile", "保存基础资料");
+  const basicSaveAfterReload = buttonWithText(root, "Save changes", "保存修改");
   assert.equal(basicSaveAfterReload.props.disabled, false);
 });
 
@@ -431,7 +488,7 @@ test("a failed reload preserves the draft until an explicit retry succeeds", asy
     await settle();
   });
   assert.equal(inputWithValue(root, "local-wechat").props.value, "local-wechat");
-  assert.equal(buttonWithText(root, "Save basic profile", "保存基础资料").props.disabled, true);
+  assert.equal(buttonWithText(root, "Save changes", "保存修改").props.disabled, true);
 
   const retry = buttonWithText(root, "Reload latest", "刷新最新资料");
   assert.equal(retry.props.disabled, false, "failed reload releases its lock for explicit retry");
@@ -442,7 +499,7 @@ test("a failed reload preserves the draft until an explicit retry succeeds", asy
   assert.equal(gets, 3);
   assert.equal(inputWithValue(root, "Concurrent owner").props.value, "Concurrent owner");
   assert.equal(inputWithValue(root, "local-wechat").props.value, "local-wechat");
-  assert.equal(buttonWithText(root, "Save basic profile", "保存基础资料").props.disabled, false);
+  assert.equal(buttonWithText(root, "Save changes", "保存修改").props.disabled, false);
 });
 
 test("a pending save rejects a stale reload callback", async (t) => {
@@ -646,22 +703,24 @@ test("saving basic keeps a matching draft, and saving matching keeps a basic dra
     return Response.json({ success: true, data: profilePayload({ profile: baseProfile({ displayName: "Server owner", offering: ["Server offer", "Matching draft"], updatedAt: SAVED_UPDATED_AT }) }) });
   }) as typeof fetch);
 
-  const root = await renderEditor(t);
+  const root = await renderBothEditors(t);
   const name = inputWithValue(root, "Server owner");
   const offerGroup = root.root.findAllByProps({ role: "group", "aria-label": "我能提供" })[0];
   assert.ok(offerGroup);
-  const matchingDraftButton = offerGroup.findAllByType("button").find((button) => button.children.includes("Matching draft"));
-  assert.ok(matchingDraftButton);
+  assert.equal(chipWithText(offerGroup, "Matching draft"), undefined);
 
   await act(async () => {
     name.props.onChange({ target: { value: "Basic draft" } });
-    matchingDraftButton.props.onClick();
   });
+  await addChip(offerGroup, "Matching draft");
+  assert.ok(chipWithText(offerGroup, "Matching draft"));
   await submit(root);
   assert.equal(puts.length, 1);
   assert.equal(puts[0].displayName, "Basic draft");
   assert.equal("offering" in puts[0], false);
-  assert.equal(offerGroup.findAllByType("button").find((button) => button.children.includes("Matching draft"))?.props["aria-pressed"], true);
+  const retainedChip = chipWithText(offerGroup, "Matching draft");
+  assert.ok(retainedChip, "matching draft chip survives the basic save");
+  assert.ok(retainedChip.findAllByType("button").some((button) => button.children.includes("✕")));
 
   const basicAfterMatchingEdit = inputWithValue(root, "Basic draft");
   await act(async () => {
@@ -828,13 +887,13 @@ for (const readbackKind of ["failure", "incomplete"] as const) {
     if (readbackKind === "failure") assert.ok(root.root.findAllByProps({ role: "alert" }).length >= 1);
     if (readbackKind === "incomplete") {
       // 已批准：基础资料保存成功但仍不完整 → 琥珀色提示（不显示绿色成功）。
-      const status = root.root.findAllByProps({ role: "status" })[0];
+      const status = root.root.findAllByProps({ role: "status" }).find((node) => typeof node.props.className === "string" && node.props.className.startsWith("pc-notice"));
       assert.ok(status);
-      const text = status.children.filter((child): child is string => typeof child === "string").join("");
+      const text = textOf(status);
       assert.match(text, /基础资料已保存，但还需填写：生日。填完后才能进入其他页面。/);
       assert.doesNotMatch(text, /已保存并完成复读核验/);
-      assert.equal(status.props.style.background, "#FBF1DC");
-      assert.equal(status.props.style.color, "#8A6420");
+      // 琥珀色 = 壳的 pc-notice-warning（#FBF1DC / #8A6420，见 PROFILE_STYLES）
+      assert.equal(status.props.className, "pc-notice pc-notice-warning");
     }
   });
 }
@@ -857,7 +916,7 @@ test("a pending matching draft prevents automatic navigation after basic complet
     return Response.json({ success: true, data: profilePayload({ profile: updatedProfile }) });
   }) as typeof fetch);
 
-  const root = await renderEditor(
+  const root = await renderBothEditors(
     t,
     editorModel({ onboarding: incompleteOnboarding }),
     { location: { assign: (path) => assigned.push(path) } },
@@ -865,11 +924,8 @@ test("a pending matching draft prevents automatic navigation after basic complet
   );
   const offerGroup = root.root.findAllByProps({ role: "group", "aria-label": "我能提供" })[0];
   assert.ok(offerGroup);
-  const matchingDraftButton = offerGroup.findAllByType("button").find((button) => button.children.includes("Matching draft"));
-  assert.ok(matchingDraftButton);
-  await act(async () => {
-    matchingDraftButton.props.onClick();
-  });
+  await addChip(offerGroup, "Matching draft");
+  assert.ok(chipWithText(offerGroup, "Matching draft"));
 
   const name = inputWithValue(root, "Server owner");
   await act(async () => {
@@ -879,6 +935,7 @@ test("a pending matching draft prevents automatic navigation after basic complet
 
   assert.deepEqual(assigned, []);
   assert.equal(inputWithValue(root, "Ready owner").props.value, "Ready owner");
-  const retainedMatchingDraft = offerGroup.findAllByType("button").find((button) => button.children.includes("Matching draft"));
-  assert.equal(retainedMatchingDraft?.props["aria-pressed"], true);
+  const retainedMatchingDraft = chipWithText(offerGroup, "Matching draft");
+  assert.ok(retainedMatchingDraft, "matching draft chip survives the basic save");
+  assert.ok(retainedMatchingDraft.findAllByType("button").some((button) => button.children.includes("✕")));
 });

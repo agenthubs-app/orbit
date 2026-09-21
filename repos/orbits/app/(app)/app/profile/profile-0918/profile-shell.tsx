@@ -268,6 +268,74 @@ export const PROFILE_STYLES = `
 [data-orbit-real-page="profile-0918"] .pc-suggest-desc { font-size: 12px; color: #6B6F99; }
 [data-orbit-real-page="profile-0918"] .pc-suggest-caret { color: #9FA3C4; }
 [data-orbit-real-page="profile-0918"] .pc-preview-card { display: flex; flex-direction: column; gap: 16px; }
+/* ── 编辑商务画像屏（设计稿 154–207 行）── */
+[data-orbit-real-page="profile-0918"] .pc-editor { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); gap: 20px; align-items: start; animation: orbit-fade .3s ease; }
+[data-orbit-real-page="profile-0918"] .pc-h2-lg { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 21px; letter-spacing: -0.02em; }
+[data-orbit-real-page="profile-0918"] .pc-group { padding: 20px; border-radius: 14px; background: #F7F7FD; display: flex; flex-direction: column; gap: 14px; }
+[data-orbit-real-page="profile-0918"] .pc-group-head { display: flex; gap: 12px; align-items: flex-start; }
+[data-orbit-real-page="profile-0918"] .pc-group-icon { width: 32px; height: 32px; flex: none; border-radius: 10px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; }
+[data-orbit-real-page="profile-0918"] .pc-group-copy { display: flex; flex-direction: column; gap: 4px; }
+[data-orbit-real-page="profile-0918"] .pc-group-title { font-size: 15px; font-weight: 500; }
+[data-orbit-real-page="profile-0918"] .pc-group-hint { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="profile-0918"] .pc-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+[data-orbit-real-page="profile-0918"] .pc-tag { display: flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 999px; background: #ECEEFB; color: #2E3270; font-size: 12px; }
+[data-orbit-real-page="profile-0918"] .btn.pc-tag-remove { border: 0; background: transparent; color: #6B6F99; font-size: 12px; cursor: pointer; padding: 0;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; font-weight: 400; border-radius: 0; transition: none; }
+[data-orbit-real-page="profile-0918"] .btn.pc-tag-remove:active { transform: none; }
+[data-orbit-real-page="profile-0918"] .btn.pc-tag-remove:disabled { cursor: default; opacity: 0.6; }
+/* 只读 chip（我的目标 = intro，无移除按钮；设计无）与空组占位 */
+[data-orbit-real-page="profile-0918"] .pc-tag-readonly { gap: 0; }
+[data-orbit-real-page="profile-0918"] .pc-tag-empty { background: #FFFFFF; color: #9FA3C4; }
+[data-orbit-real-page="profile-0918"] .pc-input-wrap { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid #DDDEFA; border-radius: 10px; background: #FFFFFF; }
+[data-orbit-real-page="profile-0918"] .pc-input-plus { color: #9FA3C4; }
+[data-orbit-real-page="profile-0918"] .pc-input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font-size: 13px;
+  /* 设计 input 保留 UA 默认内边距 1px 2px；参考样式隔离层（orbit-reference-styles.tsx:35–50）把 input padding 归零，这里还原 */
+  padding: 1px 2px; }
+[data-orbit-real-page="profile-0918"] .pc-side-section { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+[data-orbit-real-page="profile-0918"] .pc-side-head { display: flex; flex-direction: column; gap: 6px; }
+[data-orbit-real-page="profile-0918"] .pc-side-title-row { display: flex; align-items: center; gap: 10px; }
+[data-orbit-real-page="profile-0918"] .pc-side-title-icon { color: #4B4FC7; }
+[data-orbit-real-page="profile-0918"] .pc-side-desc { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="profile-0918"] .pc-preview-box { padding: 20px; border-radius: 14px; background: #F7F7FD; display: flex; flex-direction: column; gap: 16px; }
+[data-orbit-real-page="profile-0918"] .pc-preview-head { display: flex; gap: 14px; align-items: center; }
+[data-orbit-real-page="profile-0918"] .pc-preview-avatar { width: 52px; height: 52px; flex: none; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 20px; }
+[data-orbit-real-page="profile-0918"] .pc-preview-copy { display: flex; flex-direction: column; gap: 4px; }
+[data-orbit-real-page="profile-0918"] .pc-preview-name { font-size: 16px; }
+[data-orbit-real-page="profile-0918"] .pc-preview-role { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="profile-0918"] .pc-preview-bio { font-size: 13px; line-height: 1.8; color: #3B3F7A; }
+[data-orbit-real-page="profile-0918"] .pc-preview-row { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; align-items: center; padding-top: 12px; border-top: 1px solid #E8E9F6; }
+[data-orbit-real-page="profile-0918"] .pc-preview-label { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #3B3F7A; }
+[data-orbit-real-page="profile-0918"] .pc-preview-label-icon { color: #4B4FC7; }
+[data-orbit-real-page="profile-0918"] .pc-preview-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+[data-orbit-real-page="profile-0918"] .pc-preview-tag { padding: 5px 10px; border-radius: 999px; background: #ECEEFB; color: #2E3270; font-size: 11px; }
+[data-orbit-real-page="profile-0918"] .pc-preview-tag-empty { background: #FFFFFF; color: #9FA3C4; }
+[data-orbit-real-page="profile-0918"] .pc-tip { display: flex; gap: 14px; align-items: flex-start; }
+[data-orbit-real-page="profile-0918"] .pc-tip-n { width: 28px; height: 28px; flex: none; border-radius: 9px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+[data-orbit-real-page="profile-0918"] .pc-tip-copy { display: flex; flex-direction: column; gap: 4px; }
+[data-orbit-real-page="profile-0918"] .pc-tip-title { font-size: 14px; font-weight: 500; }
+[data-orbit-real-page="profile-0918"] .pc-tip-desc { font-size: 12px; color: #6B6F99; }
+/* ── 编辑基础资料屏（设计无；复用画像编辑的卡片 / 标签 / 输入声明）── */
+[data-orbit-real-page="profile-0918"] .pc-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 16px; }
+[data-orbit-real-page="profile-0918"] .pc-field { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+[data-orbit-real-page="profile-0918"] .pc-field-label { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 500; }
+[data-orbit-real-page="profile-0918"] .pc-required { padding: 2px 8px; border-radius: 999px; background: #FBEAEA; color: #B5473A; font-size: 11px; font-weight: 500; }
+[data-orbit-real-page="profile-0918"] .pc-select { appearance: auto; color: #0E1225; cursor: pointer; }
+[data-orbit-real-page="profile-0918"] .pc-select:disabled { cursor: default; color: #9FA3C4; }
+[data-orbit-real-page="profile-0918"] .pc-input:disabled { color: #9FA3C4; }
+[data-orbit-real-page="profile-0918"] .pc-input-wrap-area { align-items: stretch; }
+[data-orbit-real-page="profile-0918"] .pc-textarea { resize: none; line-height: 1.55; padding: 2px; }
+[data-orbit-real-page="profile-0918"] .pc-readonly { padding: 12px 14px; border: 1px solid #E8E9F6; border-radius: 10px; background: #F7F7FD; color: #3B3F7A; font-size: 13px; word-break: break-all; }
+[data-orbit-real-page="profile-0918"] .pc-readonly-scope { align-self: flex-start; padding: 5px 10px; border-radius: 999px; background: #F7F7FD; color: #6B6F99; font-size: 11px; }
+[data-orbit-real-page="profile-0918"] .pc-methods { display: flex; flex-wrap: wrap; gap: 8px; }
+[data-orbit-real-page="profile-0918"] .btn.pc-method { padding: 9px 16px; border: 1px solid #DDDEFA; border-radius: 9px; background: #FFFFFF; color: #3B3F7A; font-size: 13px; cursor: pointer;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; font-weight: 400; transition: none; }
+[data-orbit-real-page="profile-0918"] .btn.pc-method:hover { border-color: #B9BCEB; color: #2E3270; }
+[data-orbit-real-page="profile-0918"] .btn.pc-method:active { transform: none; }
+[data-orbit-real-page="profile-0918"] .btn.pc-method:disabled { cursor: default; opacity: 0.6; }
+[data-orbit-real-page="profile-0918"] .btn.pc-method.pc-method-on { border-color: #0E1225; background: #0E1225; color: #FFFFFF; }
+[data-orbit-real-page="profile-0918"] .btn.pc-method.pc-method-on:hover { border-color: #2E3270; background: #2E3270; color: #FFFFFF; }
 /* ── toast（设计稿 281–284 行）── */
 [data-orbit-real-page="profile-0918"] .pc-toast { position: fixed; left: 50%; bottom: 32px; transform: translateX(-50%); z-index: 200; padding: 12px 22px; border-radius: 999px; background: #0E1225; color: #FFFFFF; font-size: 14px; box-shadow: 0 18px 40px rgba(14,18,37,0.25); }
 `;

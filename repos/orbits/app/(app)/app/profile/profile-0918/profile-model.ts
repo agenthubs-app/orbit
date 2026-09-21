@@ -68,7 +68,7 @@ export interface PersonaGroup {
 }
 
 // goal 只有单文本 intro(=relationshipGoal)，且 hook 没有它的保存通道，只读展示为一个 chip。
-// icon 取设计稿 renderVals().groupMeta（◎ ✦ ⚇ ▤）。
+// icon / hint / placeholder 取设计稿 renderVals().groupMeta（◎ ✦ ⚇ ▤；任务 4 对齐 hint 与 placeholder 文案）。
 export function personaGroups(p: OrbitProfileEditorView): PersonaGroup[] {
   const intro = p.intro.trim();
   return [
@@ -76,32 +76,32 @@ export function personaGroups(p: OrbitProfileEditorView): PersonaGroup[] {
       key: "goal",
       icon: "◎",
       title: { zh: "我的目标", en: "My goal" },
-      hint: { zh: "你希望通过 Orbit 达成什么", en: "What you hope to achieve through Orbit" },
-      placeholder: { zh: "未设置", en: "Not set" },
+      hint: { zh: "你希望通过 Orbit 达成什么目标？（可选择多个）", en: "What do you hope to achieve through Orbit? (multiple allowed)" },
+      placeholder: { zh: "添加一个目标，例如：进入欧美市场", en: "Add a goal, e.g. enter Western markets" },
       values: intro ? [intro] : [],
     },
     {
       key: "offer",
       icon: "✦",
       title: { zh: "我能提供", en: "I can offer" },
-      hint: { zh: "你能为他人带来的资源或能力", en: "Resources or skills you can bring to others" },
-      placeholder: { zh: "添加你能提供的内容", en: "Add what you can offer" },
+      hint: { zh: "你可以为他人提供什么帮助或资源？（可选择多个）", en: "What help or resources can you offer others? (multiple allowed)" },
+      placeholder: { zh: "添加我能提供的内容，例如：投资机会", en: "Add what you can offer, e.g. investment opportunities" },
       values: [...p.offering],
     },
     {
       key: "seek",
       icon: "⚇",
       title: { zh: "我在寻找", en: "I am seeking" },
-      hint: { zh: "你希望遇到的人或机会", en: "People or opportunities you hope to meet" },
-      placeholder: { zh: "添加你在寻找的内容", en: "Add what you are seeking" },
+      hint: { zh: "你希望结识什么样的人或组织？（可选择多个）", en: "Who or which organisations do you hope to meet? (multiple allowed)" },
+      placeholder: { zh: "添加你在寻找的对象，例如：市场渠道伙伴", en: "Add who you are seeking, e.g. channel partners" },
       values: [...p.seeking],
     },
     {
       key: "topic",
       icon: "▤",
       title: { zh: "想聊的话题", en: "Topics to talk about" },
-      hint: { zh: "你乐于交流的话题", en: "Topics you enjoy discussing" },
-      placeholder: { zh: "添加想聊的话题", en: "Add topics to talk about" },
+      hint: { zh: "你对哪些话题感兴趣？（可选择多个）", en: "Which topics interest you? (multiple allowed)" },
+      placeholder: { zh: "添加你感兴趣的话题，例如：可持续发展", en: "Add a topic you care about, e.g. sustainability" },
       values: [...p.topics],
     },
   ];

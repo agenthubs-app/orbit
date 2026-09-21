@@ -5,11 +5,13 @@ import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import { profileSignalReviewQueueServiceFactory, profileServiceFactory } from "../../features/profile/service-factory";
 import type { ManualProfile, ProfilePayload } from "../../features/profile/contract";
 import { loadAppProfileRouteViewModel } from "../../app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model";
-import { OrbitRealProfile } from "../../app/(app)/app/profile/orbit-real-profile";
+// 个人中心 任务 4：渲染用例改指新屏 ProfileScreens（view="basic"，基础资料编辑屏），断言意图不变。
+import { ProfileScreens } from "../../app/(app)/app/profile/profile-0918/profile-screens";
 import {
   profileEditorReadbackMatches,
   profileEditorUpdateInput,
   type OrbitProfileEditorView,
+  type OrbitProfileEditorViewModel,
 } from "../../app/(app)/app/profile/profile-editor-adapter";
 
 function editorProfile(overrides: Partial<OrbitProfileEditorView> = {}): OrbitProfileEditorView {
@@ -277,11 +279,15 @@ test("profile editor disables edits while the authoritative GET and PUT are pend
       title: "",
       topics: [],
       wechatName: "",
+      birthDate: null,
+      expectedUpdatedAt: null,
+      hasPersistedProfile: false,
+      onboarding: { policyVersion: 1, status: "complete", missingFields: [] },
     },
-  };
+  } satisfies OrbitProfileEditorViewModel;
   let root!: ReactTestRenderer;
   await act(async () => {
-    root = create(<OrbitRealProfile viewModel={model} />);
+    root = create(<ProfileScreens view="basic" viewModel={model} />);
   });
   assert.equal(root.root.findAllByType("input")[0].props.disabled, true);
   assert.equal(root.root.findAllByType("form")[0].props.onSubmit !== undefined, true);
