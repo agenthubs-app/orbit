@@ -144,8 +144,8 @@ export function ProfileShell({
       <div className="pc-tabs">
         {TABS.map((tab) => {
           const on = tab.active.includes(view);
-          // settings 页签走 proxy 门禁路由，不带 onboarding 语义；connect 页签按设计原样。
-          const href = tab.key === "profile" ? profileHref : tab.href;
+          // settings 页签走 proxy 门禁路由，不带 onboarding 语义；profile/connect 页签经 profileRoutePath 保留 query。
+          const href = tab.key === "profile" ? profileHref : tab.key === "connect" ? profileRoutePath("connect", onboardingQuery) : tab.href;
           return (
             <a key={tab.key} className={`pc-tab ${on ? "pc-tab-on" : "pc-tab-off"}`} href={href} aria-current={on ? "page" : undefined}>
               {t(tab.label)}
@@ -212,6 +212,62 @@ export const PROFILE_STYLES = `
 /* ── 卡片基类（设计稿 70 行 section 的边框/圆角/底色/内边距；各屏在此之上追加）── */
 [data-orbit-real-page="profile-0918"] .pc-card { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 26px; animation: orbit-fade .3s ease; }
 [data-orbit-real-page="profile-0918"] .pc-empty { padding: 40px; text-align: center; color: #9FA3C4; font-size: 14px; }
+/* ── 个人资料屏（设计稿 67–152 行）── */
+[data-orbit-real-page="profile-0918"] .pc-overview { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); gap: 20px; align-items: start; animation: orbit-fade .3s ease; }
+[data-orbit-real-page="profile-0918"] .pc-col { display: flex; flex-direction: column; gap: 20px; }
+[data-orbit-real-page="profile-0918"] .pc-hero { display: flex; flex-wrap: wrap; gap: 24px; align-items: center; }
+[data-orbit-real-page="profile-0918"] .pc-avatar { width: 92px; height: 92px; flex: none; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 34px; }
+[data-orbit-real-page="profile-0918"] .pc-hero-copy { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 6px; }
+[data-orbit-real-page="profile-0918"] .pc-name { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 26px; letter-spacing: -0.02em; }
+[data-orbit-real-page="profile-0918"] .pc-role { font-size: 14px; color: #3B3F7A; }
+[data-orbit-real-page="profile-0918"] .pc-hero-side { display: flex; flex-direction: column; gap: 14px; min-width: 240px; }
+[data-orbit-real-page="profile-0918"] .pc-progress { display: flex; flex-direction: column; gap: 8px; }
+[data-orbit-real-page="profile-0918"] .pc-progress-label { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #3B3F7A; }
+[data-orbit-real-page="profile-0918"] .pc-score { font-weight: 700; color: #0E1225; }
+[data-orbit-real-page="profile-0918"] .pc-bar { display: block; height: 7px; border-radius: 999px; background: #ECEEFB; }
+[data-orbit-real-page="profile-0918"] .pc-bar-fill { display: block; height: 7px; border-radius: 999px; background: #4B4FC7; }
+[data-orbit-real-page="profile-0918"] .pc-hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+[data-orbit-real-page="profile-0918"] .pc-stack { display: flex; flex-direction: column; gap: 18px; }
+[data-orbit-real-page="profile-0918"] .pc-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+[data-orbit-real-page="profile-0918"] .pc-h2 { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 20px; letter-spacing: -0.02em; }
+[data-orbit-real-page="profile-0918"] .btn.pc-btn-small { padding: 9px 16px; border: 1px solid #DDDEFA; border-radius: 9px; background: #FFFFFF; color: #3B3F7A; font-size: 13px; cursor: pointer;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; font-weight: 400; transition: none; }
+[data-orbit-real-page="profile-0918"] .btn.pc-btn-small:hover { border-color: #B9BCEB; color: #2E3270; }
+[data-orbit-real-page="profile-0918"] .btn.pc-btn-small:active { transform: none; }
+[data-orbit-real-page="profile-0918"] .pc-grid { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 16px 20px; align-items: start; font-size: 14px; }
+[data-orbit-real-page="profile-0918"] .pc-grid-k { color: #6B6F99; }
+[data-orbit-real-page="profile-0918"] .pc-grid-bio { line-height: 1.8; }
+[data-orbit-real-page="profile-0918"] .pc-persona-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 14px; }
+[data-orbit-real-page="profile-0918"] .pc-persona-card { padding: 18px; border-radius: 14px; background: #F7F7FD; display: flex; flex-direction: column; gap: 12px; }
+[data-orbit-real-page="profile-0918"] .pc-persona-head { display: flex; align-items: center; gap: 10px; }
+[data-orbit-real-page="profile-0918"] .pc-persona-icon { width: 28px; height: 28px; border-radius: 9px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+[data-orbit-real-page="profile-0918"] .pc-persona-title { font-size: 14px; font-weight: 500; }
+[data-orbit-real-page="profile-0918"] .pc-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+[data-orbit-real-page="profile-0918"] .pc-chip { padding: 6px 12px; border-radius: 999px; background: #ECEEFB; color: #2E3270; font-size: 12px; }
+/* 空画像组占位（设计无：同 chip 几何，白底灰字） */
+[data-orbit-real-page="profile-0918"] .pc-chip-empty { padding: 6px 12px; border-radius: 999px; background: #FFFFFF; color: #9FA3C4; font-size: 12px; }
+[data-orbit-real-page="profile-0918"] .pc-side-card { padding: 24px; }
+[data-orbit-real-page="profile-0918"] .pc-contact { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 6px 10px; align-items: center; }
+[data-orbit-real-page="profile-0918"] .pc-contact-icon { width: 24px; height: 24px; border-radius: 7px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; font-size: 11px; }
+[data-orbit-real-page="profile-0918"] .pc-contact-copy { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; min-width: 0; }
+[data-orbit-real-page="profile-0918"] .pc-contact-label { font-size: 13px; color: #3B3F7A; }
+[data-orbit-real-page="profile-0918"] .pc-contact-value { font-size: 13px; color: #4B4FC7; word-break: break-all; }
+[data-orbit-real-page="profile-0918"] .pc-contact-scope { justify-self: start; padding: 5px 10px; border-radius: 999px; background: #F7F7FD; color: #6B6F99; font-size: 11px; }
+/* 无联系方式占位（设计无） */
+[data-orbit-real-page="profile-0918"] .pc-empty-line { font-size: 13px; color: #9FA3C4; }
+[data-orbit-real-page="profile-0918"] .pc-suggest-card { display: flex; flex-direction: column; gap: 14px; }
+[data-orbit-real-page="profile-0918"] .btn.pc-suggest { display: flex; align-items: center; gap: 12px; padding: 14px 4px; border: 0; border-top: 1px solid #F1F1FA; background: transparent; text-align: left; cursor: pointer;
+  /* 覆盖 .btn 基类非设计声明；设计按钮未设字号，按渲染结果 13.3333px；链接形态中和页面级 a 色 */
+  height: auto; justify-content: flex-start; white-space: normal; letter-spacing: 0; line-height: normal; font-size: 13.3333px; font-weight: 400; color: #0E1225; border-radius: 0; transition: none; }
+[data-orbit-real-page="profile-0918"] .btn.pc-suggest:hover { color: #0E1225; }
+[data-orbit-real-page="profile-0918"] .btn.pc-suggest:active { transform: none; }
+[data-orbit-real-page="profile-0918"] .pc-suggest-icon { width: 32px; height: 32px; flex: none; border-radius: 10px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; }
+[data-orbit-real-page="profile-0918"] .pc-suggest-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+[data-orbit-real-page="profile-0918"] .pc-suggest-title { font-size: 14px; font-weight: 500; }
+[data-orbit-real-page="profile-0918"] .pc-suggest-desc { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="profile-0918"] .pc-suggest-caret { color: #9FA3C4; }
+[data-orbit-real-page="profile-0918"] .pc-preview-card { display: flex; flex-direction: column; gap: 16px; }
 /* ── toast（设计稿 281–284 行）── */
 [data-orbit-real-page="profile-0918"] .pc-toast { position: fixed; left: 50%; bottom: 32px; transform: translateX(-50%); z-index: 200; padding: 12px 22px; border-radius: 999px; background: #0E1225; color: #FFFFFF; font-size: 14px; box-shadow: 0 18px 40px rgba(14,18,37,0.25); }
 `;

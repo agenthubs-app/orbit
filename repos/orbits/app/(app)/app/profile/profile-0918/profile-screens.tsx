@@ -1,6 +1,6 @@
 /**
  * 个人中心（Orbit_0918）容器：持有 useProfileEditorSession，按 view 切换子屏，算 onboarding 门禁横幅。
- * 任务 2 先渲染占位 pc-card；任务 3–5 用 profile-overview / persona / basic / settings / connect 填充。
+ * 任务 3 接入 profile-overview；persona / basic / connect 仍为占位 pc-card（任务 4–5 填充）。
  */
 "use client";
 
@@ -8,6 +8,7 @@ import { useOrbitLanguage } from "../../orbit-language-context";
 import type { OrbitProfileEditorViewModel } from "../profile-editor-adapter";
 import { ProfileLegacySettings } from "./profile-legacy-settings";
 import { missingFieldLabels } from "./profile-model";
+import { ProfileOverview } from "./profile-overview";
 import { ProfileShell, profileRoutePath, type ProfileView } from "./profile-shell";
 import { useProfileEditorSession } from "./use-profile-editor-session";
 
@@ -40,10 +41,13 @@ export function ProfileScreens({
         go: profileBasicEditorPath({ onboarding: true, onboardingNext }),
       }
     : undefined;
+  const onboardingQuery = { onboarding, onboardingNext };
 
   return (
-    <ProfileShell view={activeView} session={session} onboardingBanner={onboardingBanner} onboardingQuery={{ onboarding, onboardingNext }}>
-      {activeView === "settings" ? (
+    <ProfileShell view={activeView} session={session} onboardingBanner={onboardingBanner} onboardingQuery={onboardingQuery}>
+      {activeView === "profile" ? (
+        <ProfileOverview session={session} onboardingQuery={onboardingQuery} />
+      ) : activeView === "settings" ? (
         <section className="pc-card">
           <ProfileLegacySettings />
         </section>

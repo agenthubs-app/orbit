@@ -95,7 +95,7 @@ test("shell renders breadcrumb, title and the three design tabs as route links",
   assert.doesNotMatch(html, /保存修改/);
 });
 
-test("gated shell keeps onboarding/next on the 个人资料 tab and crumb, settings/connect tabs unchanged", () => {
+test("gated shell keeps onboarding/next on the 个人资料 and 连接 tabs and crumb, settings tab unchanged", () => {
   const html = renderToStaticMarkup(
     <ProfileShell
       view="basic"
@@ -107,7 +107,7 @@ test("gated shell keeps onboarding/next on the 个人资料 tab and crumb, setti
   assert.match(html, /<a class="pc-tab pc-tab-on" href="\/app\/profile\?view=basic&amp;onboarding=1&amp;next=%2Fapp%2Fhome" aria-current="page">个人资料</);
   assert.match(html, /<a class="pc-crumb-link" href="\/app\/profile\?view=basic&amp;onboarding=1&amp;next=%2Fapp%2Fhome">个人中心</);
   assert.match(html, /href="\/app\/settings"[^>]*>iOrbit 设置</);
-  assert.match(html, /href="\/app\/profile\?view=connect"[^>]*>连接</);
+  assert.match(html, /href="\/app\/profile\?view=connect&amp;onboarding=1&amp;next=%2Fapp%2Fhome"[^>]*>连接</);
   // ProfileScreens 从页面 props 接线
   const screens = renderToStaticMarkup(
     <ProfileScreens viewModel={viewModel({ onboarding: { policyVersion: 1, status: "incomplete", missingFields: ["birthDate"] } })} onboarding onboardingNext="/app/home" />,

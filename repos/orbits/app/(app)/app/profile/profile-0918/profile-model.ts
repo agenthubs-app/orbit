@@ -68,6 +68,7 @@ export interface PersonaGroup {
 }
 
 // goal 只有单文本 intro(=relationshipGoal)，且 hook 没有它的保存通道，只读展示为一个 chip。
+// icon 取设计稿 renderVals().groupMeta（◎ ✦ ⚇ ▤）。
 export function personaGroups(p: OrbitProfileEditorView): PersonaGroup[] {
   const intro = p.intro.trim();
   return [
@@ -81,7 +82,7 @@ export function personaGroups(p: OrbitProfileEditorView): PersonaGroup[] {
     },
     {
       key: "offer",
-      icon: "◇",
+      icon: "✦",
       title: { zh: "我能提供", en: "I can offer" },
       hint: { zh: "你能为他人带来的资源或能力", en: "Resources or skills you can bring to others" },
       placeholder: { zh: "添加你能提供的内容", en: "Add what you can offer" },
@@ -89,7 +90,7 @@ export function personaGroups(p: OrbitProfileEditorView): PersonaGroup[] {
     },
     {
       key: "seek",
-      icon: "◈",
+      icon: "⚇",
       title: { zh: "我在寻找", en: "I am seeking" },
       hint: { zh: "你希望遇到的人或机会", en: "People or opportunities you hope to meet" },
       placeholder: { zh: "添加你在寻找的内容", en: "Add what you are seeking" },
@@ -97,7 +98,7 @@ export function personaGroups(p: OrbitProfileEditorView): PersonaGroup[] {
     },
     {
       key: "topic",
-      icon: "◉",
+      icon: "▤",
       title: { zh: "想聊的话题", en: "Topics to talk about" },
       hint: { zh: "你乐于交流的话题", en: "Topics you enjoy discussing" },
       placeholder: { zh: "添加想聊的话题", en: "Add topics to talk about" },
