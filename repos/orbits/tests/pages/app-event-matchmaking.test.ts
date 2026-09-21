@@ -7,7 +7,7 @@ import { createElement } from "react";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
 import { OrbitEventMatchmaking } from "../../app/(app)/app/events/[id]/orbit-event-matchmaking";
-import { OrbitRealEventDetail } from "../../app/(app)/app/events/[id]/orbit-real-event-detail";
+import { EventDetail } from "../../app/(app)/app/events/events-0918/event-detail";
 import { loadAppEventDetailRoute } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service";
 import { eventDetailRouteToOrbitLandingEventView } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter";
 
@@ -29,7 +29,7 @@ test("the event journey passes the canonical registration window to matching rec
         let renderer!: ReactTestRenderer;
         try {
           await act(async () => {
-            renderer = create(createElement(OrbitRealEventDetail, {
+            renderer = create(createElement(EventDetail, {
               event: { ...base, status, stats: { ...base.stats, authed: true, youRsvped: true } },
               registrationAvailability: availability,
             }));

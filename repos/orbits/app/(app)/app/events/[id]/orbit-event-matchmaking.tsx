@@ -463,6 +463,11 @@ function ParticipantDetailPanel({
  */
 export interface EventMatchmakingSummary {
   acceptedContacts: number;
+  /**
+   * Everyone in the published directory except me, with the contact id of an
+   * accepted exchange when one exists (the recap state's 「保持联系」 gate).
+   */
+  people: readonly { company: string | null; contactId: string | null; displayName: string; participantId: string; role: string | null }[];
   recommendationCount: number;
   resultsState: OperationsWorkspace["resultsState"];
   roundOneTable: { seat: string | null; tableNumber: number; theme: string } | null;
@@ -602,8 +607,23 @@ export function OrbitEventMatchmaking({
       onWorkspaceSummary(null);
       return;
     }
+    const acceptedContactIdByParticipant = new Map<string, string>();
+    for (const request of workspace.contactRequests) {
+      if (request.status !== "accepted" || !request.contactId) continue;
+      const other = request.requesterParticipantId === workspace.me.participantId ? request.targetParticipantId : request.requesterParticipantId;
+      acceptedContactIdByParticipant.set(other, request.contactId);
+    }
     onWorkspaceSummary({
       acceptedContacts: workspace.contactRequests.filter((request) => request.status === "accepted").length,
+      people: workspace.directory
+        .filter((participant) => participant.participantId !== workspace.me.participantId)
+        .map((participant) => ({
+          company: participant.company,
+          contactId: acceptedContactIdByParticipant.get(participant.participantId) ?? null,
+          displayName: participant.displayName,
+          participantId: participant.participantId,
+          role: participant.role,
+        })),
       recommendationCount: workspace.recommendations?.recommendations.length ?? 0,
       resultsState: workspace.resultsState,
       roundOneTable: tableSummaryFor(workspace.roundOneTable, workspace.me.participantId),

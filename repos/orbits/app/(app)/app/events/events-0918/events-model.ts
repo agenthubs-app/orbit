@@ -4,7 +4,8 @@
  * 831–832 `decorate`、870 `stats`）。不含 React / fetch / 路由；筛选与话题模型仍在 ../explore-model.ts。
  */
 import type { OrbitLandingEventView } from "../../orbit-landing-route-view-model";
-import { eventRegistrationIsOpen, type EventRegistrationAvailability } from "../../orbit-event-registration-view-model";
+import type { EventRegistrationAvailability } from "../../orbit-event-registration-view-model";
+import { eventCardActionKind } from "../explore-model";
 
 export type EventLifecycle = OrbitLandingEventView["status"];
 export type EventListLanguage = "en" | "zh";
@@ -49,26 +50,36 @@ export function eventDetailHref(code: string): string {
   return `/app/events/${encodeURIComponent(code)}`;
 }
 
+/** 设计 829 `ctaFor` 的四种 CTA 文案 / 色调；`kind` 由 `eventCardActionKind` 映射得到。 */
+const CTA_BY_KIND: Record<EventCtaKind, { label: Copy; tone: EventCtaTone; suffix: string }> = {
+  live: { label: { zh: "进入活动现场", en: "Enter live" }, tone: "dark", suffix: "/live" },
+  recap: { label: { zh: "回看活动", en: "Recap" }, tone: "ghost", suffix: "?view=recap" },
+  register: { label: { zh: "立即报名", en: "Register now" }, tone: "accent", suffix: "/register" },
+  view: { label: { zh: "查看活动", en: "View event" }, tone: "dark", suffix: "" },
+};
+
 /**
- * 数据真实性决定：进行中且已报名 → 进入活动现场；已结束 → 回看活动；已报名 → 查看活动；
- * 未报名且报名开放 → 立即报名；其余（未报名的进行中 / 报名未开放）→ 查看活动。
+ * 数据真实性决定：已结束 → 回看活动；其余由既有 `explore-model.eventCardActionKind` 映射
+ * （enter → live、register → register、manage / view → view），不另行推导报名 / 生命周期规则。
  * 设计对「进行中」一律给「进入活动现场」，但未报名者进现场只会落到边界态，故按真实能力收口。
  */
+export function ctaKindFor(
+  status: EventLifecycle,
+  registered: boolean,
+  registrationAvailability: EventRegistrationAvailability = "unavailable",
+): EventCtaKind {
+  if (status === "ended") return "recap";
+  const action = eventCardActionKind(status, registered, registrationAvailability);
+  return action === "enter" ? "live" : action === "register" ? "register" : "view";
+}
+
 export function ctaFor(
   event: Pick<OrbitLandingEventView, "code" | "status"> & { registered: boolean },
   registrationAvailability: EventRegistrationAvailability = "unavailable",
 ): EventCta {
-  const detail = eventDetailHref(event.code);
-  if (event.status === "ended") {
-    return { href: `${detail}?view=recap`, kind: "recap", label: { zh: "回看活动", en: "Recap" }, tone: "ghost" };
-  }
-  if (event.status === "active" && event.registered) {
-    return { href: `${detail}/live`, kind: "live", label: { zh: "进入活动现场", en: "Enter live" }, tone: "dark" };
-  }
-  if (!event.registered && event.status === "upcoming" && eventRegistrationIsOpen(registrationAvailability)) {
-    return { href: `${detail}/register`, kind: "register", label: { zh: "立即报名", en: "Register now" }, tone: "accent" };
-  }
-  return { href: detail, kind: "view", label: { zh: "查看活动", en: "View event" }, tone: "dark" };
+  const kind = ctaKindFor(event.status, event.registered, registrationAvailability);
+  const spec = CTA_BY_KIND[kind];
+  return { href: `${eventDetailHref(event.code)}${spec.suffix}`, kind, label: spec.label, tone: spec.tone };
 }
 
 // ── 我的活动时间线（设计 832 timeline：报名成功 / 活动开始 / 活动结束）──
@@ -150,4 +161,49 @@ export function listStats(
 export function registeredCountLabel(count: number | null, language: EventListLanguage): string | null {
   if (count === null || !Number.isFinite(count) || count <= 0) return null;
   return language === "en" ? `+${count} registered` : `+${count} 人已报名`;
+}
+
+// ── 日期格式化（设计 `e.date` / `e.dateFull`；列表与详情共用）──
+const tz = TOKYO;
+
+export function fmtDay(date: Date, language: EventListLanguage) {
+  const formatter = new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", { day: "2-digit", ...tz });
+  return formatter.formatToParts(date).find((part) => part.type === "day")?.value ?? formatter.format(date);
+}
+
+function partsOf(date: Date, language: EventListLanguage, withYear: boolean) {
+  const parts = new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", {
+    day: "numeric",
+    hour: "2-digit",
+    hour12: false,
+    minute: "2-digit",
+    month: language === "en" ? "short" : "numeric",
+    weekday: "short",
+    ...(withYear ? { year: "numeric" } : {}),
+    ...tz,
+  }).formatToParts(date);
+  const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
+  return { day: get("day"), hour: get("hour"), minute: get("minute"), month: get("month"), weekday: get("weekday"), year: get("year") };
+}
+
+/**
+ * 设计 `e.date`「9月20日（周日） 19:00 - 21:00」/ `e.dateFull`「2026年9月20日（周日） 19:00 - 21:00」。
+ * 结束时间无效 → 只显示开始；开始时间无效 → 「时间待定」。
+ */
+export function formatEventDateRange(
+  event: Pick<OrbitLandingEventView, "startsAt" | "endsAt">,
+  language: EventListLanguage,
+  withYear = false,
+): string {
+  const start = new Date(event.startsAt);
+  if (!Number.isFinite(start.getTime())) return language === "en" ? "Time TBD" : "时间待定";
+  const end = new Date(event.endsAt);
+  const s = partsOf(start, language, withYear);
+  const startClock = `${s.hour}:${s.minute}`;
+  const endClock = Number.isFinite(end.getTime()) ? (() => { const e = partsOf(end, language, false); return `${e.hour}:${e.minute}`; })() : "";
+  const clock = endClock ? `${startClock} - ${endClock}` : startClock;
+  if (language === "en") {
+    return `${s.month} ${s.day}${withYear ? `, ${s.year}` : ""} (${s.weekday}) ${clock}`;
+  }
+  return `${withYear ? `${s.year}年` : ""}${s.month}月${s.day}日（${s.weekday}） ${clock}`;
 }

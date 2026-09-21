@@ -128,7 +128,7 @@ test("Today only accepts actor-authorized records as schedule truth", () => {
 });
 
 test("event registration display respects the same published window as backend writes", () => {
-  const detail = source("app/(app)/app/events/[id]/orbit-real-event-detail.tsx");
+  const detail = source("app/(app)/app/events/events-0918/event-detail.tsx");
   const windowProvider = source("features/events/registration/storage/event-operations-window-provider.ts");
   const registrationRepository = source("features/events/event-operations/storage/canonical-registration-repository.ts");
 

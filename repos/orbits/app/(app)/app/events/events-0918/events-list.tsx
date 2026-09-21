@@ -25,11 +25,16 @@ import {
   ctaFor,
   eventChipKind,
   eventDetailHref,
+  fmtDay,
+  formatEventDateRange,
   listStats,
   registeredCountLabel,
   timelineNodes,
   type EventListLanguage,
 } from "./events-model";
+
+// 日期格式化纯函数已迁到 ./events-model.ts（详情页共用）；这里保留旧导入路径。
+export { fmtDay, formatEventDateRange };
 import { EventsShell, type EventsListView } from "./events-shell";
 
 /**
@@ -44,50 +49,6 @@ import { EventsShell, type EventsListView } from "./events-shell";
  * - 我的活动时间线「报名成功」无日期来源 → 「—」，开始 / 结束真实；
  * - 我的活动 = scope=registered（既有 URL 语义，账号菜单深链不变）。
  */
-
-const tz = { timeZone: "Asia/Tokyo" };
-
-export function fmtDay(date: Date, language: EventListLanguage) {
-  const formatter = new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", { day: "2-digit", ...tz });
-  return formatter.formatToParts(date).find((part) => part.type === "day")?.value ?? formatter.format(date);
-}
-
-function partsOf(date: Date, language: EventListLanguage, withYear: boolean) {
-  const parts = new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", {
-    day: "numeric",
-    hour: "2-digit",
-    hour12: false,
-    minute: "2-digit",
-    month: language === "en" ? "short" : "numeric",
-    weekday: "short",
-    ...(withYear ? { year: "numeric" } : {}),
-    ...tz,
-  }).formatToParts(date);
-  const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
-  return { day: get("day"), hour: get("hour"), minute: get("minute"), month: get("month"), weekday: get("weekday"), year: get("year") };
-}
-
-/**
- * 设计 `e.date`「9月20日（周日） 19:00 - 21:00」/ `e.dateFull`「2026年9月20日（周日） 19:00 - 21:00」。
- * 结束时间无效 → 只显示开始；开始时间无效 → 「时间待定」。
- */
-export function formatEventDateRange(
-  event: Pick<OrbitLandingEventView, "startsAt" | "endsAt">,
-  language: EventListLanguage,
-  withYear = false,
-): string {
-  const start = new Date(event.startsAt);
-  if (!Number.isFinite(start.getTime())) return language === "en" ? "Time TBD" : "时间待定";
-  const end = new Date(event.endsAt);
-  const s = partsOf(start, language, withYear);
-  const startClock = `${s.hour}:${s.minute}`;
-  const endClock = Number.isFinite(end.getTime()) ? (() => { const e = partsOf(end, language, false); return `${e.hour}:${e.minute}`; })() : "";
-  const clock = endClock ? `${startClock} - ${endClock}` : startClock;
-  if (language === "en") {
-    return `${s.month} ${s.day}${withYear ? `, ${s.year}` : ""} (${s.weekday}) ${clock}`;
-  }
-  return `${withYear ? `${s.year}年` : ""}${s.month}月${s.day}日（${s.weekday}） ${clock}`;
-}
 
 function eventName(event: OrbitLandingEventView, language: EventListLanguage) {
   return event.name || event.code || (language === "en" ? "Untitled event" : "未命名活动");

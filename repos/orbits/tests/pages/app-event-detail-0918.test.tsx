@@ -1,0 +1,236 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import test from "node:test";
+import { fileURLToPath } from "node:url";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { act, create, type ReactTestRenderer } from "react-test-renderer";
+
+import { loadAppEventDetailRoute } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service";
+import { eventDetailRouteToOrbitLandingEventView } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter";
+import { EventDetail, recapPeople, recapStats } from "../../app/(app)/app/events/events-0918/event-detail";
+import { formatEventDateRange } from "../../app/(app)/app/events/events-0918/events-model";
+import type { OrbitLandingEventView } from "../../app/(app)/app/orbit-landing-route-view-model";
+
+const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
+const DESIGN_MOCKS = /Tokyo AI Community|Tokyo Innovation Hub|山本健|Robert Chen|Sakana AI|BUILD\nTOGETHER|开放交流|思维碰撞|合作机会|回看完整视频|下载全部资料|活动回放视频/u;
+
+async function baseEvent(): Promise<OrbitLandingEventView> {
+  const routeModel = await loadAppEventDetailRoute({ eventId: "demo-event-1", mode: "mock" });
+  assert.equal(routeModel.routeState, "success");
+  if (routeModel.routeState !== "success") throw new Error("fixture");
+  return eventDetailRouteToOrbitLandingEventView(routeModel);
+}
+
+function hiddenState(html: string, panel: string): boolean {
+  const match = html.match(new RegExp(`<div class="ev-panel" data-events-panel="${panel}"( hidden="")?>`, "u"));
+  assert.ok(match, `panel ${panel} must render`);
+  return Boolean(match[1]);
+}
+
+test("detail hero renders real event fields per design 141–163 and no design mock strings", async () => {
+  const base = await baseEvent();
+  const event: OrbitLandingEventView = {
+    ...base,
+    cap: 40,
+    participantCount: 12,
+    stats: { ...base.stats, count: 12, youRsvped: false },
+    status: "upcoming",
+    tags: ["live", "AI"],
+    youRsvped: false,
+  };
+  const html = renderToStaticMarkup(<EventDetail event={event} registrationAvailability="open" />);
+
+  assert.match(html, /class="ev-main"[^>]*data-events-view="detail"/);
+  assert.match(html, /class="btn ev-back"/);
+  assert.match(html, /class="cover cover-grain ev-hero-cover"/);
+  assert.match(html, /class="ev-chip ev-chip-cover" style="background:#FBF1DC;color:#8A6420">即将开始</);
+  assert.match(html, new RegExp(`<h1 class="ev-hero-h1">${base.name}</h1>`, "u"));
+  assert.match(html, /class="ev-hero-lede"/);
+  assert.match(html, /<span class="ev-dtag">线下活动<\/span><span class="ev-dtag">AI<\/span><span class="ev-dtag">限 40 人<\/span>/);
+  assert.match(html, new RegExp(`ev-info-icon">▦</span>${formatEventDateRange(event, "zh", true)}</span>`, "u"));
+  assert.match(html, new RegExp(`ev-info-icon">◎</span>${base.venue}`, "u"));
+  assert.match(html, new RegExp(`ev-info-icon">◫</span>${base.organizer}</span>`, "u"));
+  assert.match(html, /ev-info-icon">◌<\/span>12 \/ 40 人已报名</);
+  assert.match(html, /<a class="btn ev-cta-primary" data-events-cta="register" href="\/app\/events\/[^"]+\/register" style="background:#4B4FC7;color:#FFFFFF">立即报名<\/a>/);
+  assert.doesNotMatch(html, /修改报名信息|主办方后台|⋮/);
+  assert.doesNotMatch(html, DESIGN_MOCKS);
+  // No inline numeric typography / gaps (pixel rule).
+  assert.doesNotMatch(html, /style="[^"]*(font-size|font-weight|gap):\s*\d/);
+});
+
+test("registered live event: 「进入活动现场」 + 「修改报名信息」; organizer sees 「主办方后台 →」", async () => {
+  const base = await baseEvent();
+  const event: OrbitLandingEventView = { ...base, status: "active", stats: { ...base.stats, youRsvped: true }, youRsvped: true };
+  const html = renderToStaticMarkup(<EventDetail canOpenOperations event={event} registrationAvailability="registration_closed" />);
+
+  assert.match(html, /<a class="btn ev-cta-primary" data-events-cta="live" href="\/app\/events\/[^"]+\/live" style="background:#0E1225;color:#FFFFFF">进入活动现场 →<\/a>/);
+  // Live event: the registration window is closed → the edit control is disabled, not a dead link.
+  assert.match(html, /<button class="btn ev-cta-secondary ev-cta-disabled" data-events-cta="modify" disabled=""/);
+  assert.match(html, /<a class="btn ev-host-btn" href="\/app\/events\/[^"]+\/operations">主办方后台 →<\/a>/);
+  assert.match(html, /查看全部参会者 →/);
+
+  const participant = renderToStaticMarkup(<EventDetail canOpenOperations={false} event={event} registrationAvailability="registration_closed" />);
+  assert.doesNotMatch(participant, /主办方后台/);
+});
+
+test("detail tabs use the design's overlapping semantics (dIntro = intro||agenda, dPeople = people||intro, dHost = host)", async () => {
+  const base = await baseEvent();
+  const event: OrbitLandingEventView = { ...base, status: "upcoming", stats: { ...base.stats, youRsvped: false }, youRsvped: false };
+
+  const ssr = renderToStaticMarkup(<EventDetail event={event} registrationAvailability="open" />);
+  assert.equal(hiddenState(ssr, "intro"), false);
+  assert.equal(hiddenState(ssr, "people"), false);
+  assert.equal(hiddenState(ssr, "host"), true);
+  assert.match(ssr, /class="btn ev-tab ev-tab-on" role="tab" type="button">介绍</);
+
+  let renderer!: ReactTestRenderer;
+  await act(async () => {
+    renderer = create(createElement(EventDetail, { event, registrationAvailability: "open" }));
+  });
+  try {
+    const panelHidden = (panel: string) => Boolean(renderer.root.find((node) => node.type === "div" && node.props["data-events-panel"] === panel).props.hidden);
+    const clickTab = async (label: string) => {
+      const tab = renderer.root.find((node) => node.type === "button" && node.props.role === "tab" && node.children.join("") === label);
+      await act(async () => { tab.props.onClick(); });
+    };
+    await clickTab("议程");
+    assert.deepEqual([panelHidden("intro"), panelHidden("people"), panelHidden("host")], [false, true, true]);
+    await clickTab("参会者");
+    assert.deepEqual([panelHidden("intro"), panelHidden("people"), panelHidden("host")], [true, false, true]);
+    await clickTab("主办方");
+    assert.deepEqual([panelHidden("intro"), panelHidden("people"), panelHidden("host")], [true, true, false]);
+    await clickTab("介绍");
+    assert.deepEqual([panelHidden("intro"), panelHidden("people"), panelHidden("host")], [false, false, true]);
+  } finally {
+    await act(async () => renderer.unmount());
+  }
+});
+
+test("intro = real description + real agenda (highlights omitted); unregistered attendees see 「报名后可见」", async () => {
+  const base = await baseEvent();
+  const event: OrbitLandingEventView = { ...base, status: "upcoming", stats: { ...base.stats, youRsvped: false }, youRsvped: false };
+  const html = renderToStaticMarkup(<EventDetail event={event} registrationAvailability="open" />);
+
+  assert.match(html, /<h2 class="ev-h2">活动介绍<\/h2><p class="ev-p">/);
+  assert.match(html, /<h2 class="ev-h2">活动议程<\/h2>/);
+  for (const item of event.agenda) {
+    assert.match(html, new RegExp(`<span class="ev-agenda-time">${item.time}</span><span class="ev-agenda-copy"><strong class="ev-agenda-title">${item.label}</strong>`, "u"));
+  }
+  assert.match(html, /class="ev-agenda-caret">⌄</);
+  assert.doesNotMatch(html, /ev-highlight|开放交流|思维碰撞/);
+  assert.match(html, /data-events-people="teaser"/);
+  assert.match(html, /报名后可见/);
+  assert.doesNotMatch(html, /data-event-participant-directory/);
+  assert.match(html, /<span class="ev-host-logo">/);
+  assert.match(html, new RegExp(`<strong class="ev-host-name">${base.organizer}</strong>`, "u"));
+});
+
+test("recap state renders for ?view=recap or an ended event: shared body, 「—」 stat cards, 保持联系 gated on contactId", async () => {
+  const base = await baseEvent();
+  const ended: OrbitLandingEventView = {
+    ...base,
+    stats: {
+      ...base.stats,
+      attendees: [
+        { initial: "A", name: "Alice Attendee", role: "Founder" },
+        { initial: "B", name: "Bob Attendee", role: "" },
+      ],
+      count: 2,
+      youRsvped: true,
+    },
+    status: "ended",
+    youRsvped: true,
+  };
+  const html = renderToStaticMarkup(<EventDetail event={ended} />);
+
+  assert.match(html, /data-events-view="recap"/);
+  assert.match(html, /class="ev-chip ev-chip-hero" style="background:#F0F1F8;color:#6B6F99">已结束</);
+  assert.match(html, /class="ev-recap-h1"/);
+  assert.match(html, /<span class="ev-initial">A<\/span><span class="ev-initial">B<\/span>/);
+  assert.match(html, /class="ev-recap-n">2 人参加过</);
+  for (const label of ["回顾", "参会者", "交流记录", "生成总结"]) assert.match(html, new RegExp(`role="tab" type="button">${label}<`, "u"));
+  const stats = [...html.matchAll(/<strong class="ev-rstat-n">([^<]*)<\/strong><span class="ev-rstat-label">([^<]*)<\/span>/g)].map((m) => [m[1], m[2]]);
+  assert.deepEqual(stats, [["2", "总参会人数"], ["—", "交流对话数"], ["—", "达成后续意向"], ["—", "参与企业 / 机构"]]);
+  // Server roster has no contact ids → no 「保持联系」 anywhere.
+  assert.match(html, /data-events-recap-person="attendee"/);
+  assert.doesNotMatch(html, /class="btn ev-person-btn"|◎ 保持联系|\/app\/contacts\//);
+  assert.match(html, /<a class="btn ev-banner-btn" href="\/app\/events">探索更多活动 →<\/a>/);
+  assert.doesNotMatch(html, /回看活动现场|回看完整视频|会后资料|下载全部资料/);
+  assert.doesNotMatch(html, DESIGN_MOCKS);
+
+  // An active event addressed with ?view=recap also renders the recap state.
+  const active = renderToStaticMarkup(<EventDetail event={{ ...base, status: "active" }} view="recap" />);
+  assert.match(active, /data-events-view="recap"/);
+  assert.match(active, /class="ev-chip ev-chip-hero" style="background:#E6F1EC;color:#2F6B4F">进行中</);
+  // Unregistered viewers never see names.
+  const anonymous = renderToStaticMarkup(<EventDetail event={{ ...ended, stats: { ...ended.stats, attendees: [], youRsvped: false }, youRsvped: false }} />);
+  assert.match(anonymous, /仅向已确认参会者开放/);
+  assert.doesNotMatch(anonymous, /Alice Attendee/);
+});
+
+test("recapPeople prefers the published directory and exposes contactId only for accepted exchanges", async () => {
+  const base = await baseEvent();
+  const event = { stats: { ...base.stats, attendees: [{ initial: "S", name: "Server Roster", role: "PM" }] } };
+  const summary = {
+    acceptedContacts: 1,
+    people: [
+      { company: "Acme", contactId: "contact:1", displayName: "Kept Contact", participantId: "p1", role: "CEO" },
+      { company: null, contactId: null, displayName: "Just Attended", participantId: "p2", role: null },
+    ],
+    recommendationCount: 0,
+    resultsState: "ready" as const,
+    roundOneTable: null,
+    roundTwoTable: null,
+  };
+  assert.deepEqual(recapPeople(event, summary, true).map((p) => [p.name, p.contactId]), [["Kept Contact", "contact:1"], ["Just Attended", null]]);
+  assert.deepEqual(recapPeople(event, null, true).map((p) => [p.name, p.contactId]), [["Server Roster", null]]);
+  assert.deepEqual(recapPeople(event, summary, false), []);
+  assert.deepEqual(recapStats({ stats: { ...base.stats, count: null, attendees: [] } }, false).map((s) => s.n), ["—", "—", "—", "—"]);
+  assert.deepEqual(recapStats({ stats: { ...base.stats, count: 7, attendees: [] } }, false).map((s) => s.n), ["7", "—", "—", "—"]);
+
+  // Rendered: 「保持联系」 links only the person with a contactId.
+  const html = renderToStaticMarkup(<EventDetail event={{ ...base, status: "ended", stats: { ...base.stats, youRsvped: true, attendees: [] }, youRsvped: true }} />);
+  assert.doesNotMatch(html, /class="btn ev-person-btn"|◎ 保持联系/);
+  const rendered = recapPeople(event, summary, true);
+  assert.equal(rendered.filter((p) => p.contactId).length, 1);
+});
+
+test("recap 「生成总结」 tab is the explicit 「等 W4」 empty state; other tabs only switch the highlight", async () => {
+  const base = await baseEvent();
+  const event: OrbitLandingEventView = { ...base, status: "ended", stats: { ...base.stats, youRsvped: false }, youRsvped: false };
+  let renderer!: ReactTestRenderer;
+  await act(async () => {
+    renderer = create(createElement(EventDetail, { event }));
+  });
+  try {
+    const body = () => JSON.stringify(renderer.toJSON()).replace(/ev-tab-(on|off)/g, "").replace(/"aria-selected":(true|false)/g, "");
+    const clickTab = async (label: string) => {
+      const tab = renderer.root.find((node) => node.type === "button" && node.props.role === "tab" && node.children.join("") === label);
+      await act(async () => { tab.props.onClick(); });
+    };
+    const initial = body();
+    assert.match(initial, /数据亮点/);
+    await clickTab("参会者");
+    assert.equal(body(), initial);
+    await clickTab("交流记录");
+    assert.equal(body(), initial);
+    await clickTab("生成总结");
+    assert.match(body(), /data-events-recap-empty":"summary"/);
+    assert.match(body(), /等 W4/);
+    assert.doesNotMatch(body(), /数据亮点/);
+  } finally {
+    await act(async () => renderer.unmount());
+  }
+});
+
+test("page wiring: events-0918 wrapper, nav by auth, view=recap passthrough, loaders untouched", () => {
+  const page = readFileSync(join(projectRoot, "app/(app)/app/events/[id]/page.tsx"), "utf8");
+  assert.match(page, /data-orbit-real-page="events-0918"/);
+  assert.match(page, /authenticated \? <AccountTopNav active="events" \/> : <PublicTopNav active="events" \/>/);
+  assert.match(page, /readSearchParam\(query, "view"\) === "recap"/);
+  assert.match(page, /canOpenOperations=\{resolution\.canOpenOperations\}/);
+  assert.match(page, /resolveConfiguredCanonicalEventDetailView/);
+  assert.doesNotMatch(page, /orbit-real-event-detail/);
+});

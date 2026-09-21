@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const realDetailPath = new URL("../../app/(app)/app/events/[id]/orbit-real-event-detail.tsx", import.meta.url);
+const realDetailPath = new URL("../../app/(app)/app/events/events-0918/event-detail.tsx", import.meta.url);
 const centerPath = new URL("../../app/(app)/app/events/[id]/orbit-post-event-center.tsx", import.meta.url);
 const legacyHandlerPath = new URL("../../app/api/events/[id]/post-event/followup/handler.ts", import.meta.url);
 

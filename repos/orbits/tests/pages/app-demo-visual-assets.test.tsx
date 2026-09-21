@@ -11,7 +11,7 @@ import {
 } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter";
 import { loadAppEventsRouteViewModel } from "../../app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model";
 import { eventsRouteToOrbitLandingViewModel } from "../../app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter";
-import { OrbitRealEventDetail } from "../../app/(app)/app/events/[id]/orbit-real-event-detail";
+import { EventDetail } from "../../app/(app)/app/events/events-0918/event-detail";
 import { EventsList } from "../../app/(app)/app/events/events-0918/events-list";
 import { PublicTopNav } from "../../app/(app)/app/orbit-public-shell";
 import { OrbitStarfieldHome } from "../../app/(app)/app/orbit-starfield-home";
@@ -67,7 +67,7 @@ async function renderEventDetailPage(): Promise<string> {
   const artwork = getDemoEventSceneAsset("demo-event-1");
   assert.ok(artwork, "the known-artwork test needs an explicit local cover");
   return renderToStaticMarkup(
-    <OrbitRealEventDetail
+    <EventDetail
       event={{ ...eventDetailRouteToOrbitLandingEventView(routeModel), detailLogoUrl: artwork.src }}
     />,
   );
@@ -161,8 +161,9 @@ test("event list and event detail render manifest scene images", async () => {
   assert.doesNotMatch(coverImages[0], /loading="lazy"/);
   for (const tag of coverImages) assert.match(tag, /data-nimg="fill"/);
   // The manifest uses SVG artwork, for which Next omits raster sizes/srcset.
-  // Verify loading policy in the actual hero slot, not the old rail slot.
-  const heroImage = detailHtml.match(/class="detail-cover ed-cover"[\s\S]*?(<img\b[^>]*>)/)?.[1];
+  // Verify loading policy in the actual hero slot, not the old rail slot
+  // (Orbit_0918: `ev-hero-cover` on the detail, `ev-recap-cover` on the recap state).
+  const heroImage = detailHtml.match(/class="cover cover-grain ev-(?:hero|recap)-cover"[\s\S]*?(<img\b[^>]*>)/)?.[1];
   assert.ok(heroImage, "event detail must render responsive hero artwork");
   assert.doesNotMatch(heroImage, /loading="lazy"/);
   assert.match(detailHtml, /data-orbit-progressive-image-lqip=""/);
