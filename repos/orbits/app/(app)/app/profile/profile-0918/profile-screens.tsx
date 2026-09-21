@@ -8,16 +8,13 @@ import { useOrbitLanguage } from "../../orbit-language-context";
 import type { OrbitProfileEditorViewModel } from "../profile-editor-adapter";
 import { ProfileLegacySettings } from "./profile-legacy-settings";
 import { missingFieldLabels } from "./profile-model";
-import { ProfileShell, type ProfileView } from "./profile-shell";
+import { ProfileShell, profileRoutePath, type ProfileView } from "./profile-shell";
 import { useProfileEditorSession } from "./use-profile-editor-session";
 
 export type { ProfileView } from "./profile-shell";
 
 export function profileBasicEditorPath(input: { onboarding?: boolean; onboardingNext?: string }): string {
-  const params = new URLSearchParams({ view: "basic" });
-  if (input.onboarding) params.set("onboarding", "1");
-  if (input.onboardingNext) params.set("next", input.onboardingNext);
-  return `/app/profile?${params.toString()}`;
+  return profileRoutePath("basic", input);
 }
 
 export function ProfileScreens({
@@ -45,7 +42,7 @@ export function ProfileScreens({
     : undefined;
 
   return (
-    <ProfileShell view={activeView} session={session} onboardingBanner={onboardingBanner}>
+    <ProfileShell view={activeView} session={session} onboardingBanner={onboardingBanner} onboardingQuery={{ onboarding, onboardingNext }}>
       {activeView === "settings" ? (
         <section className="pc-card">
           <ProfileLegacySettings />

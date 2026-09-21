@@ -95,6 +95,29 @@ test("shell renders breadcrumb, title and the three design tabs as route links",
   assert.doesNotMatch(html, /保存修改/);
 });
 
+test("gated shell keeps onboarding/next on the 个人资料 tab and crumb, settings/connect tabs unchanged", () => {
+  const html = renderToStaticMarkup(
+    <ProfileShell
+      view="basic"
+      session={session()}
+      onboardingBanner={{ missing: ["生日"], go: "/app/profile?view=basic&onboarding=1&next=%2Fapp%2Fhome" }}
+      onboardingQuery={{ onboarding: true, onboardingNext: "/app/home" }}
+    >x</ProfileShell>,
+  );
+  assert.match(html, /<a class="pc-tab pc-tab-on" href="\/app\/profile\?view=basic&amp;onboarding=1&amp;next=%2Fapp%2Fhome" aria-current="page">个人资料</);
+  assert.match(html, /<a class="pc-crumb-link" href="\/app\/profile\?view=basic&amp;onboarding=1&amp;next=%2Fapp%2Fhome">个人中心</);
+  assert.match(html, /href="\/app\/settings"[^>]*>iOrbit 设置</);
+  assert.match(html, /href="\/app\/profile\?view=connect"[^>]*>连接</);
+  // ProfileScreens 从页面 props 接线
+  const screens = renderToStaticMarkup(
+    <ProfileScreens viewModel={viewModel({ onboarding: { policyVersion: 1, status: "incomplete", missingFields: ["birthDate"] } })} onboarding onboardingNext="/app/home" />,
+  );
+  assert.match(screens, /<a class="pc-tab pc-tab-on" href="\/app\/profile\?view=basic&amp;onboarding=1&amp;next=%2Fapp%2Fhome"/);
+  // 不在门禁流程：链接不带 query
+  const plain = renderToStaticMarkup(<ProfileShell view="profile" session={session()}>x</ProfileShell>);
+  assert.match(plain, /<a class="pc-crumb-link" href="\/app\/profile">/);
+});
+
 test("settings view highlights the iOrbit 设置 tab", () => {
   const html = renderToStaticMarkup(<ProfileShell view="settings" session={session()}>x</ProfileShell>);
   assert.match(html, /href="\/app\/settings"[^>]*aria-current="page"[^>]*>iOrbit 设置</);

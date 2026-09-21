@@ -50,6 +50,21 @@ const TABS: { key: "profile" | "settings" | "connect"; href: string; label: Copy
   { key: "connect", href: "/app/profile?view=connect", label: { zh: "连接", en: "Connections" }, active: ["connect"] },
 ];
 
+export interface ProfileOnboardingQuery {
+  onboarding?: boolean;
+  onboardingNext?: string;
+}
+
+/** `/app/profile` 内部链接：带 view，并在门禁流程中保留 `onboarding=1` / `next=`（横幅与 onboardingNext 才能存活）。 */
+export function profileRoutePath(view: ProfileView | undefined, query: ProfileOnboardingQuery = {}): string {
+  const params = new URLSearchParams();
+  if (view && view !== "profile") params.set("view", view);
+  if (query.onboarding) params.set("onboarding", "1");
+  if (query.onboarding && query.onboardingNext) params.set("next", query.onboardingNext);
+  const qs = params.toString();
+  return qs ? `/app/profile?${qs}` : "/app/profile";
+}
+
 export function ProfileToast({ text }: { text: string }) {
   if (!text) return null;
   return <div className="pc-toast" role="status">{text}</div>;
@@ -64,6 +79,7 @@ export function ProfileShell({
   onSave,
   onCancel,
   savingLabel,
+  onboardingQuery,
 }: {
   view: ProfileView;
   session: ProfileEditorSession;
@@ -73,9 +89,13 @@ export function ProfileShell({
   onSave?: () => void;
   onCancel?: () => void;
   savingLabel?: string;
+  /** 当前 URL 的 onboarding/next；有值时壳内 /app/profile 链接原样带上。 */
+  onboardingQuery?: ProfileOnboardingQuery;
 }) {
   const { t } = useOrbitLanguage();
   const copy = TITLES[view];
+  // 门禁中（横幅可见）「个人资料」页签与面包屑落到基础资料编辑屏；否则回个人资料并保留 query。
+  const profileHref = profileRoutePath(onboardingBanner ? "basic" : undefined, onboardingQuery);
   const saveDisabled = session.editorDisabled || session.saving || session.matchingSaving;
   const saveText = session.saving || session.matchingSaving
     ? savingLabel ?? t({ en: "Saving…", zh: "保存中…" })
@@ -85,7 +105,7 @@ export function ProfileShell({
     <main data-orbit-route="app-profile-screens" data-profile-view={view} className="pc-main">
       <style>{PROFILE_STYLES}</style>
 
-      <span className="pc-crumb"><a className="pc-crumb-link" href="/app/profile">{t({ en: "Account", zh: "个人中心" })}</a> / {t(copy.crumb)}</span>
+      <span className="pc-crumb"><a className="pc-crumb-link" href={profileHref}>{t({ en: "Account", zh: "个人中心" })}</a> / {t(copy.crumb)}</span>
 
       <div className="pc-head">
         <div className="pc-head-copy">
@@ -124,8 +144,10 @@ export function ProfileShell({
       <div className="pc-tabs">
         {TABS.map((tab) => {
           const on = tab.active.includes(view);
+          // settings 页签走 proxy 门禁路由，不带 onboarding 语义；connect 页签按设计原样。
+          const href = tab.key === "profile" ? profileHref : tab.href;
           return (
-            <a key={tab.key} className={`pc-tab ${on ? "pc-tab-on" : "pc-tab-off"}`} href={tab.href} aria-current={on ? "page" : undefined}>
+            <a key={tab.key} className={`pc-tab ${on ? "pc-tab-on" : "pc-tab-off"}`} href={href} aria-current={on ? "page" : undefined}>
               {t(tab.label)}
             </a>
           );
@@ -162,7 +184,7 @@ export const PROFILE_STYLES = `
 [data-orbit-real-page="profile-0918"] .btn.pc-btn-primary { padding: 13px 22px; border: 0; border-radius: 10px; background: #0E1225; color: #FFFFFF; font-size: 14px; font-weight: 500; cursor: pointer;
   /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
   height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
-[data-orbit-real-page="profile-0918"] .btn.pc-btn-primary:hover { background: #2E3270; color: #FFFFFF; }
+[data-orbit-real-page="profile-0918"] .btn.pc-btn-primary:hover { background: #2E3270; }
 [data-orbit-real-page="profile-0918"] .btn.pc-btn-primary:active { transform: none; }
 [data-orbit-real-page="profile-0918"] .btn.pc-btn-primary:disabled { cursor: default; opacity: 0.6; }
 [data-orbit-real-page="profile-0918"] .pc-tabs { display: flex; gap: 32px; flex-wrap: wrap; border-bottom: 1px solid #E8E9F6; }
