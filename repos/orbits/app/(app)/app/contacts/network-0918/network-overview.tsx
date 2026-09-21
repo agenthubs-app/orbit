@@ -10,7 +10,7 @@ import { useMemo, useState } from "react";
 import type { OrbitContactsViewModel } from "../../orbit-contacts-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import type { ContactsAnalysisView } from "../analysis/contacts-analysis-view-model";
-import { NETWORK_STAGES, STAGE_BAR_BG, STAGE_BAR_FG, STAGE_CHIP, STAGE_LABEL, donut, stageClip, stageCounts, toPerson } from "./network-model";
+import { NETWORK_STAGES, STAGE_BAR_BG, STAGE_BAR_FG, STAGE_CHIP, STAGE_LABEL, donut, metSummary, stageClip, stageCounts, toPerson } from "./network-model";
 import { cockpit, distributionRows, type DistKey } from "./network-overview-model";
 import { NetworkAvatar, NetworkShell } from "./network-shell";
 
@@ -136,7 +136,7 @@ export function NetworkOverview({ viewModel, analysis }: { viewModel: OrbitConta
               ))}
             </div>
           ) : (
-            <div className="nw-empty">{t({ en: "No relationships advancing this week", zh: "本周没有正在推进的关系" })}</div>
+            <div className="nw-empty">{t({ en: "No relationships advancing", zh: "没有正在推进的关系" })}</div>
           )}
         </div>
 
@@ -152,7 +152,8 @@ export function NetworkOverview({ viewModel, analysis }: { viewModel: OrbitConta
             <div key={a.id} className="nw-recent-row">
               <NetworkAvatar initial="◷" />
               <strong className="nw-recent-name">{a.label}</strong>
-              <span className="nw-recent-org">{a.source}</span>
+              {/* 来源经 metSummary 清洗：账号邮箱 / 「confirmed by」句不渲染 */}
+              <span className="nw-recent-org">{metSummary(a.source) || dash}</span>
               <span className="nw-recent-ind">{dash}</span>
               <span></span>
               <span className="nw-recent-last">{formatMonthDay(a.occurredAt, t)}</span>

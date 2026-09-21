@@ -28,7 +28,9 @@ export function NetworkPipeline({ viewModel, analysis }: { viewModel: OrbitConta
   const newContacts = analysis.state === "ready" ? String(analysis.metrics.newContacts) : "—";
   const actions = analysis.state === "ready" && analysis.opportunities.state === "ready" ? analysis.opportunities.data.actions : [];
   const pages = Math.max(1, Math.ceil(actions.length / SUGGEST_PAGE));
-  const suggestions = actions.slice(page * SUGGEST_PAGE, page * SUGGEST_PAGE + SUGGEST_PAGE);
+  // 页码夹取：analysis 重新加载后 actions 变少时 page 可能越界，取模回到有效页。
+  const safePage = pages ? page % pages : 0;
+  const suggestions = actions.slice(safePage * SUGGEST_PAGE, safePage * SUGGEST_PAGE + SUGGEST_PAGE);
   const dash = "—";
 
   return (
@@ -59,7 +61,7 @@ export function NetworkPipeline({ viewModel, analysis }: { viewModel: OrbitConta
                   <span className="nw-ai-desc">{t({ en: "Actions recommended from your pipeline, interactions and industry signals.", zh: "基于你的关系管线、互动记录和行业动态，为你推荐以下行动。" })}</span>
                 </div>
               </div>
-              <button type="button" className="btn nw-shuffle" disabled={actions.length === 0} onClick={() => setPage((page + 1) % pages)}>{t({ en: "Shuffle ⟳", zh: "换一批 ⟳" })}</button>
+              <button type="button" className="btn nw-shuffle" disabled={actions.length === 0} onClick={() => setPage((safePage + 1) % pages)}>{t({ en: "Shuffle ⟳", zh: "换一批 ⟳" })}</button>
             </div>
             {suggestions.length > 0 ? (
               <div className="nw-suggest-list">

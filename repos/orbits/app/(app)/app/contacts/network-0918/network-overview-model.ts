@@ -31,11 +31,16 @@ export function cockpit(analysis: ContactsAnalysisView): CockpitCard[] {
   ];
 }
 
-export interface HealthRow { icon: string; label: string; n: number | string; tag: string; desc: string; iconBg: string; iconFg: string }
+export interface HealthRow { icon: string; label: { zh: string; en: string }; n: number | string; tag: { zh: string; en: string }; desc: { zh: string; en: string }; iconBg: string; iconFg: string }
 
-// 设计 health 第四块「决策层占比」无数据来源，不渲染；只映射 structure.health 真实返回的行。
+// 设计 health 第四块「决策层占比」无数据来源，不渲染；只映射 structure.health 真实返回的行。文案为 {zh,en}，由渲染方 t()。
+const HEALTH_META = {
+  strong: { icon: "◎", label: { zh: "核心人脉", en: "Core network" }, tag: { zh: "稳定", en: "Stable" }, desc: { zh: "值得持续维护的核心关系", en: "Core relationships worth maintaining" }, iconBg: "#E6F1EC", iconFg: "#2F6B4F" },
+  warm: { icon: "◷", label: { zh: "进行中", en: "In progress" }, tag: { zh: "需要留意", en: "Needs attention" }, desc: { zh: "有互动但需加强维护", en: "Active, but needs more nurturing" }, iconBg: "#ECEEFB", iconFg: "#2E3270" },
+  weak: { icon: "◌", label: { zh: "外圈人脉", en: "Outer circle" }, tag: { zh: "待唤醒", en: "To re-engage" }, desc: { zh: "有潜力重新建立联系", en: "Worth reconnecting with" }, iconBg: "#FBF1DC", iconFg: "#8A6420" },
+} as const;
+
 export function healthRows(analysis: ContactsAnalysisView): HealthRow[] {
   if (analysis.state !== "ready" || analysis.structure.state !== "ready") return [];
-  const meta = { strong: ["◎", "核心人脉", "稳定", "值得持续维护的核心关系", "#E6F1EC", "#2F6B4F"], warm: ["◷", "进行中", "需要留意", "有互动但需加强维护", "#ECEEFB", "#2E3270"], weak: ["◌", "外圈人脉", "待唤醒", "有潜力重新建立联系", "#FBF1DC", "#8A6420"] } as const;
-  return analysis.structure.data.health.map((h) => { const m = meta[h.id]; return { icon: m[0], label: m[1], n: h.count, tag: m[2], desc: m[3], iconBg: m[4], iconFg: m[5] }; });
+  return analysis.structure.data.health.map((h) => ({ ...HEALTH_META[h.id], n: h.count }));
 }

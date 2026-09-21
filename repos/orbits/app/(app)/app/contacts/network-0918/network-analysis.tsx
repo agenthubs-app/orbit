@@ -207,12 +207,12 @@ export function NetworkAnalysis({ viewModel, analysis, initialTab }: { viewModel
               {health.length > 0 ? (
                 <div className="nw-health-grid">
                   {health.map((h) => (
-                    <div key={h.label} className="nw-health-item">
+                    <div key={h.icon} className="nw-health-item">
                       <span className="nw-health-icon" style={{ background: h.iconBg, color: h.iconFg }}>{h.icon}</span>
                       <span className="nw-health-copy">
-                        <span className="nw-ai-desc">{h.label}</span>
-                        <span className="nw-health-row"><strong className="nw-health-n">{h.n}</strong><span className="nw-health-tag" style={{ background: h.iconBg, color: h.iconFg }}>{h.tag}</span></span>
-                        <span className="nw-health-desc">{h.desc}</span>
+                        <span className="nw-ai-desc">{t(h.label)}</span>
+                        <span className="nw-health-row"><strong className="nw-health-n">{h.n}</strong><span className="nw-health-tag" style={{ background: h.iconBg, color: h.iconFg }}>{t(h.tag)}</span></span>
+                        <span className="nw-health-desc">{t(h.desc)}</span>
                       </span>
                     </div>
                   ))}
@@ -259,7 +259,7 @@ export function NetworkAnalysis({ viewModel, analysis, initialTab }: { viewModel
                     <span className="nw-dial-dot-1"></span>
                     <span className="nw-dial-dot-2"></span>
                     <span className="nw-dial-dot-3"></span>
-                    <span className="nw-dial-center"><strong className="nw-goal-score">{coverage ? coverage.score : "— —"}</strong><span className="nw-dial-label">{t({ en: "coverage", zh: "覆盖度" })}</span></span>
+                    <span className="nw-dial-center"><strong className="nw-goal-score">{coverage ? `${coverage.score} / 100` : "— —"}</strong><span className="nw-dial-label">{t({ en: "coverage", zh: "覆盖度" })}</span></span>
                   </div>
                   <div className="nw-goal-rows">
                     {([

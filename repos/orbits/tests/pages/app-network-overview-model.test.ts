@@ -31,7 +31,10 @@ test("distributionRows reads industry/location from analysis and source from peo
 
 test("healthRows renders only the health rows the analysis returns, with design icons and colours", () => {
   const rows = healthRows(ready);
-  assert.deepEqual(rows.map((r) => [r.icon, r.label, r.n, r.tag]), [["◎", "核心人脉", 3, "稳定"], ["◌", "外圈人脉", 7, "待唤醒"]]);
+  assert.deepEqual(rows.map((r) => [r.icon, r.label.zh, r.n, r.tag.zh]), [["◎", "核心人脉", 3, "稳定"], ["◌", "外圈人脉", 7, "待唤醒"]]);
+  // 文案为 {zh,en}，渲染方 t()
+  assert.deepEqual(rows.map((r) => [r.label.en, r.tag.en]), [["Core network", "Stable"], ["Outer circle", "To re-engage"]]);
+  assert.equal(rows[1].desc.zh, "有潜力重新建立联系");
   assert.equal(rows[0].iconBg, "#E6F1EC");
   assert.deepEqual(healthRows({ state: "pending" }), []);
 });

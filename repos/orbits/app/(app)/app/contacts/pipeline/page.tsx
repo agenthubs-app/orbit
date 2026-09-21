@@ -13,7 +13,8 @@ import {
   loadAppContactsRouteViewModel,
   type AppContactsSearchParams,
 } from "../compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
-import { getOrbitServerLanguage } from "../../orbit-language-server";
+import { getOrbitServerLanguage, localizeOrbitTree } from "../../orbit-language-server";
+import { applyOrbitContactsPresentation } from "../../orbit-contacts-presentation";
 import { AccountTopNav } from "../../orbit-account-shell";
 import { loadContactsAnalysis } from "../analysis/contacts-analysis-route-service";
 import { NetworkPipeline } from "../network-0918/network-pipeline";
@@ -41,11 +42,13 @@ export default async function AppContactsPipelinePage({
     throw new Error("Authenticated Orbit account membership is unavailable.");
   }
 
+  const [language, params] = await Promise.all([
+    getOrbitServerLanguage(),
+    searchParams,
+  ]);
   const [routeModel, analysis] = await Promise.all([
-    loadAppContactsRouteViewModel(await searchParams, actor.id),
-    getOrbitServerLanguage().then((language) =>
-      loadContactsAnalysis(actor.id, language),
-    ),
+    loadAppContactsRouteViewModel(params, actor.id),
+    loadContactsAnalysis(actor.id, language),
   ]);
 
   return (
@@ -57,7 +60,8 @@ export default async function AppContactsPipelinePage({
         <div data-orbit-real-page="network" data-orbit-route="app-contacts-pipeline-route">
           <AccountTopNav active="cards" />
           <NetworkPipeline
-            viewModel={contactsRouteToOrbitContactsViewModel(routeModel.payload)}
+            // 与 dashboard/page.tsx 同一包裹：先做 contacts 展示层归一，再按语言本地化整棵树。
+            viewModel={localizeOrbitTree(applyOrbitContactsPresentation(contactsRouteToOrbitContactsViewModel(routeModel.payload), language), language)}
             analysis={analysis}
           />
         </div>

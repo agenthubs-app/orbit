@@ -8,7 +8,10 @@ import { NetworkOverview } from "../../app/(app)/app/contacts/network-0918/netwo
 const empty = { connections: [], events: [], intros: [], pipelineStatuses: [] };
 const ready: ContactsAnalysisView = {
   state: "ready", generatedAt: "2026-09-21T00:00:00Z", summary: "结构总结句", analysis: { state: "unavailable" },
-  activity: [{ id: "a1", label: "王敏 added to the live relationship database", occurredAt: "2026-09-18T03:00:00Z", source: "名片导入" }],
+  activity: [
+    { id: "a1", label: "王敏 added to the live relationship database", occurredAt: "2026-09-18T03:00:00Z", source: "名片导入" },
+    { id: "a2", label: "李雷 confirmed", occurredAt: "2026-09-17T03:00:00Z", source: "Business card · confirmed by qa@example.invalid" },
+  ],
   metrics: { contacts: 7, newContacts: 2, highValue: 3, pendingFollowups: 4, dormant: 5 },
   goal: { state: "ready", data: { id: "profile:1", text: "认识供应链负责人", updatedAt: "2026-09-01T00:00:00Z", canEdit: true } },
   structure: { state: "ready", data: { summary: "维度小结", health: [{ id: "strong", count: 3, percentage: 43, risk: "low" }, { id: "warm", count: 2, percentage: 29, risk: "moderate" }, { id: "weak", count: 2, percentage: 28, risk: "high" }], dimensions: { industry: [{ id: "tech", label: "科技与互联网", count: 5, percentage: 71, missingData: false, href: "/app/contacts/analysis/industry/tech" }, { id: "fin", label: "金融与投资", count: 2, percentage: 29, missingData: false, href: "" }], location: [], role: [], relationship: [] } } },
@@ -25,7 +28,8 @@ test("overview renders donut, cockpit, stage bar and recent list from real data"
   assert.match(html, /nw-cockpit-n">—</); // 非 ready → —
   assert.match(html, /最近动态/);
   assert.match(html, /还没有互动记录/);
-  assert.match(html, /本周没有正在推进的关系/);
+  assert.match(html, /没有正在推进的关系/);
+  assert.doesNotMatch(html, /本周/);
   assert.equal((html.match(/class="btn nw-stage-seg"/g) ?? []).length, 4);
   assert.doesNotMatch(html, /428|128|85%/);
 });
@@ -37,6 +41,10 @@ test("overview renders real activity rows and cockpit counts when ready", () => 
   assert.match(html, /9月18日/);
   assert.match(html, /最近新增 2 位/);
   assert.doesNotMatch(html, /\+25%/);
+  // 最近动态来源经 metSummary 清洗：账号邮箱 / 「confirmed by」句不渲染
+  assert.match(html, /nw-recent-org">名片导入</);
+  assert.doesNotMatch(html, /example\.invalid/);
+  assert.doesNotMatch(html, /confirmed by/i);
 });
 
 test("analysis sub-page renders structure and opportunities tabs from real sections", () => {
@@ -52,7 +60,7 @@ test("analysis sub-page renders structure and opportunities tabs from real secti
   const opp = renderToStaticMarkup(<NetworkAnalysis viewModel={empty} analysis={ready} initialTab="opp" />);
   assert.match(opp, /机会总结/);
   assert.match(opp, /认识供应链负责人/);
-  assert.match(opp, /nw-goal-score">40</);
+  assert.match(opp, /nw-goal-score">40 \/ 100</);
   assert.match(opp, /制造与供应链/);
   assert.match(opp, /优先拓展/);
   assert.match(opp, /王敏 · 近期有互动/);
