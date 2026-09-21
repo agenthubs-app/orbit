@@ -10,13 +10,18 @@
  *      （校验 `app/api/appointments/handlers.ts:24–34`）。
  * 偏差（记录）：设计「一天 + 一时段」单选 → 多选 ≥3（≤5）个候选时段，少于 3 时按钮禁用并提示；日期 = 从今天起 5 个真实 JST 日历日；
  * 时区行 = 固定 Asia/Tokyo (JST)（时段按 JST 计算，proposal.timezone 同值；无下拉）；会议地点 = 现场 → 活动场地（无 ×），线上 → Google Meet 说明；时长固定 30 分钟。
+ * 打开时先 `GET /api/appointments`（no-store）找同一 authorityRequestId + eventId 且非 cancelled / completed 的约谈（同 `orbit-appointment-negotiation.tsx` load）：
+ *   draft → 跳过 ①，② 的 expectedVersion = draft.version；其余状态 → 只渲染现状摘要 + 「查看约谈」链接（`/app/contacts/<contactId>?appointmentId=&eventId=`，既有协商面），不再创建。
+ *   ①/② 返回 APPOINTMENT_CONFLICT（featureCode 或 409）→ 「已有进行中的约谈」+ 同一链接。
  */
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { createAppointmentActionIdempotencyRegistry } from "../../../../../features/appointments/client-idempotency";
+import type { AppointmentStatus } from "../../../../../features/appointments/contract";
 import type { OrbitPartyMeView, OrbitPartyPersonView } from "../../orbit-party-route-view-model";
 import {
   SCHEDULE_DURATION_MINUTES,
+  formatJstStamp,
   SCHEDULE_TIMEZONE,
   SCHEDULE_MAX_CANDIDATES,
   SCHEDULE_MIN_CANDIDATES,
@@ -58,6 +63,54 @@ function messageFrom(value: unknown, fallback: string): string {
   return fallback;
 }
 
+/** `GET /api/appointments` 单项（`app/api/appointments/handlers.ts` publicAppointment 的子集）。 */
+export interface ExistingAppointment {
+  appointmentId: string;
+  authorityRequestId: string;
+  confirmed: { startsAtUtc: string } | null;
+  contactId: string | null;
+  eventId: string | null;
+  proposals: readonly { candidateTimes: readonly { startsAtUtc: string }[] }[];
+  status: AppointmentStatus;
+  version: number;
+}
+
+const ACTIVE_APPOINTMENT_END: readonly AppointmentStatus[] = ["cancelled", "completed"];
+
+/** 同一交换 + 同一活动的进行中约谈（cancelled / completed 视为无）。 */
+export function findActiveAppointment(list: readonly ExistingAppointment[], requestId: string, eventId: string): ExistingAppointment | null {
+  return list.find((item) => item.authorityRequestId === requestId && item.eventId === eventId && !ACTIVE_APPOINTMENT_END.includes(item.status)) ?? null;
+}
+
+function isConflict(value: unknown, status: number): boolean {
+  if (status === 409) return true;
+  if (typeof value !== "object" || value === null || !("error" in value)) return false;
+  const error = (value as { error?: { context?: { featureCode?: unknown } } }).error;
+  return error?.context?.featureCode === "APPOINTMENT_CONFLICT";
+}
+
+class ScheduleConflictError extends Error {
+  constructor() { super("APPOINTMENT_CONFLICT"); this.name = "ScheduleConflictError"; }
+}
+
+export function appointmentReviewHref(contactId: string, appointmentId: string, eventId: string): string {
+  return `/app/contacts/${encodeURIComponent(contactId)}?appointmentId=${encodeURIComponent(appointmentId)}&eventId=${encodeURIComponent(eventId)}`;
+}
+
+const APPOINTMENT_STATUS_COPY: Record<Exclude<AppointmentStatus, "draft" | "cancelled" | "completed">, { en: string; zh: string }> = {
+  awaiting_response: { en: "Invitation sent — waiting for their reply", zh: "邀约已发送，等待对方回复" },
+  negotiating: { en: "Negotiating times", zh: "正在协商时间" },
+  confirmed: { en: "Appointment confirmed", zh: "约谈已确认" },
+  reschedule_pending: { en: "Reschedule pending", zh: "改期待确认" },
+};
+
+/** 现状摘要里的候选时间：已确认 → 那一条；否则最新一轮提案的候选时段。 */
+export function appointmentCandidateTimes(appointment: Pick<ExistingAppointment, "confirmed" | "proposals">): string[] {
+  if (appointment.confirmed) return [appointment.confirmed.startsAtUtc];
+  const latest = appointment.proposals[appointment.proposals.length - 1];
+  return latest ? latest.candidateTimes.map((candidate) => candidate.startsAtUtc) : [];
+}
+
 export function EventScheduleModal({ eventId, eventVenue, language, me, now, onClose, onSent, person, t }: ScheduleModalProps) {
   const control = useEventContactRequest({ eventId, person, t });
   const days = useMemo(() => scheduleDays(now, language), [language, now]);
@@ -67,6 +120,9 @@ export function EventScheduleModal({ eventId, eventVenue, language, me, now, onC
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [existing, setExisting] = useState<ExistingAppointment | null>(null);
+  const [lookup, setLookup] = useState<"idle" | "loading" | "ready" | "failed">("idle");
+  const [conflict, setConflict] = useState(false);
   const registry = useRef<ReturnType<typeof createAppointmentActionIdempotencyRegistry> | null>(null);
   registry.current ??= createAppointmentActionIdempotencyRegistry();
   // 时段按 JST 计算 → 发送的 timezone 也固定为 Asia/Tokyo（不用浏览器 Intl 时区，保持一致）。
@@ -74,10 +130,29 @@ export function EventScheduleModal({ eventId, eventVenue, language, me, now, onC
 
   const accepted = control.status === "accepted";
   const requestId = control.requestId;
-  const enabled = accepted && Boolean(requestId);
+  const enabled = accepted && Boolean(requestId) && lookup !== "loading";
   const day = days[dayIndex] ?? days[0];
   const count = selected.length;
   const canSend = enabled && !busy && canSendSchedule(count);
+
+  async function lookupExisting(): Promise<ExistingAppointment | null> {
+    if (!requestId) return null;
+    const response = await fetch("/api/appointments", { cache: "no-store" });
+    const body = (await response.json().catch(() => ({}))) as { data?: unknown };
+    if (!response.ok || !Array.isArray(body.data)) throw new Error("appointments-unavailable");
+    return findActiveAppointment(body.data as ExistingAppointment[], requestId, eventId);
+  }
+
+  useEffect(() => {
+    if (!accepted || !requestId) return;
+    let cancelled = false;
+    setLookup("loading");
+    lookupExisting()
+      .then((found) => { if (!cancelled) { setExisting(found); setLookup("ready"); } })
+      .catch(() => { if (!cancelled) setLookup("failed"); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accepted, eventId, requestId]);
 
   function toggle(slot: string) {
     const key = candidateKey(day.iso, slot);
@@ -94,14 +169,22 @@ export function EventScheduleModal({ eventId, eventVenue, language, me, now, onC
     setError("");
     try {
       const keyFor = registry.current!.keyFor.bind(registry.current);
-      const createResponse = await fetch("/api/appointments", {
-        method: "POST",
-        headers: { "content-type": "application/json", "idempotency-key": keyFor(`appointment-create:${eventId}:${requestId}`) },
-        body: JSON.stringify({ eventContactRequestId: requestId, eventId }),
-      });
-      const created = (await createResponse.json().catch(() => ({}))) as { data?: { appointmentId: string; version: number } };
-      if (!createResponse.ok || !created.data) {
-        throw new Error(messageFrom(created, t({ en: "Only an accepted business-card exchange can start an appointment.", zh: "只有已接受的名片交换才能发起约谈。" })));
+      let draft: { appointmentId: string; version: number };
+      if (existing?.status === "draft") {
+        // 已有草稿 → 跳过创建，直接在草稿版本上提案。
+        draft = { appointmentId: existing.appointmentId, version: existing.version };
+      } else {
+        const createResponse = await fetch("/api/appointments", {
+          method: "POST",
+          headers: { "content-type": "application/json", "idempotency-key": keyFor(`appointment-create:${eventId}:${requestId}`) },
+          body: JSON.stringify({ eventContactRequestId: requestId, eventId }),
+        });
+        const created = (await createResponse.json().catch(() => ({}))) as { data?: { appointmentId: string; version: number } };
+        if (!createResponse.ok || !created.data) {
+          if (isConflict(created, createResponse.status)) throw new ScheduleConflictError();
+          throw new Error(messageFrom(created, t({ en: "Only an accepted business-card exchange can start an appointment.", zh: "只有已接受的名片交换才能发起约谈。" })));
+        }
+        draft = created.data;
       }
       const proposal = {
         candidateTimes: candidateTimesFrom(selected),
@@ -113,18 +196,26 @@ export function EventScheduleModal({ eventId, eventVenue, language, me, now, onC
         timezone,
       };
       const body = { proposal };
-      const commandResponse = await fetch(`/api/appointments/${encodeURIComponent(created.data.appointmentId)}/commands`, {
+      const commandResponse = await fetch(`/api/appointments/${encodeURIComponent(draft.appointmentId)}/commands`, {
         method: "POST",
-        headers: { "content-type": "application/json", "idempotency-key": keyFor(`appointment:${created.data.appointmentId}:${created.data.version}:propose:${JSON.stringify(body)}`) },
-        body: JSON.stringify({ ...body, command: "propose", expectedVersion: created.data.version }),
+        headers: { "content-type": "application/json", "idempotency-key": keyFor(`appointment:${draft.appointmentId}:${draft.version}:propose:${JSON.stringify(body)}`) },
+        body: JSON.stringify({ ...body, command: "propose", expectedVersion: draft.version }),
       });
       const commanded = (await commandResponse.json().catch(() => ({}))) as { data?: unknown };
       if (!commandResponse.ok || !commanded.data) {
+        if (isConflict(commanded, commandResponse.status)) throw new ScheduleConflictError();
         throw new Error(messageFrom(commanded, t({ en: "Review the candidate times and meeting details, then retry.", zh: "请检查候选时间和约谈信息后重试。" })));
       }
       onSent(person);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t({ en: "The invitation could not be sent.", zh: "邀约未能发送。" }));
+      if (cause instanceof ScheduleConflictError) {
+        // 已有进行中的约谈：重新读取现状，摘要视图给出「查看约谈」链接。
+        setConflict(true);
+        setError("");
+        try { setExisting(await lookupExisting()); } catch { /* 摘要退化为无链接 */ }
+      } else {
+        setError(cause instanceof Error ? cause.message : t({ en: "The invitation could not be sent.", zh: "邀约未能发送。" }));
+      }
     } finally {
       setBusy(false);
     }
@@ -135,6 +226,50 @@ export function EventScheduleModal({ eventId, eventVenue, language, me, now, onC
     { key: "in_person", title: { en: "In person", zh: "现场会议" }, desc: { en: "Meet face to face at the venue", zh: "在活动现场进行面对面交流" } },
     { key: "video", title: { en: "Video call", zh: "线上会议" }, desc: { en: "Talk over a video call", zh: "通过视频会议进行交流" } },
   ];
+
+  const reviewContactId = existing?.contactId ?? control.contactId;
+  const activeAppointment = existing && existing.status !== "draft" ? existing : null;
+  const reviewHref = activeAppointment && reviewContactId ? appointmentReviewHref(reviewContactId, activeAppointment.appointmentId, eventId) : null;
+  const reviewLabel = t({ en: "Review the appointment", zh: "查看约谈" });
+
+  if (activeAppointment || conflict) {
+    const candidates = activeAppointment ? appointmentCandidateTimes(activeAppointment) : [];
+    return (
+      <EventModalFrame kind="schedule" labelledBy="ev-mo-sch-title" onClose={onClose} panelClass="ev-mo-panel-gap-20" size="680" z="120">
+        <EventModalHead
+          closeLabel={t({ en: "Close", zh: "关闭" })}
+          id="ev-mo-sch-title"
+          onClose={onClose}
+          sub={t({ en: "An appointment with this person is already in progress.", zh: "你与对方已有进行中的约谈。" })}
+          title={t({ en: "Appointment in progress", zh: "已有进行中的约谈" })}
+        />
+        <div className="ev-mo-att-status" data-events-schedule-existing={activeAppointment?.status ?? "conflict"} role="status">
+          <span className="ev-mo-att-status-icon">▦</span>
+          <span className="ev-mo-att-status-copy">
+            <strong className="ev-mo-att-status-title">
+              {activeAppointment ? t(APPOINTMENT_STATUS_COPY[activeAppointment.status as keyof typeof APPOINTMENT_STATUS_COPY] ?? { en: activeAppointment.status, zh: activeAppointment.status }) : t({ en: "An appointment is already in progress", zh: "已有进行中的约谈" })}
+            </strong>
+            {candidates.length ? (
+              <span className="ev-mo-att-status-line">
+                {activeAppointment?.confirmed ? t({ en: "Confirmed time: ", zh: "已确认时间：" }) : t({ en: "Candidate times: ", zh: "候选时间：" })}
+                {candidates.map((iso) => formatJstStamp(iso, language)).join(" · ")}
+              </span>
+            ) : null}
+            <span className="ev-mo-att-status-hint">{t({ en: "Continue the negotiation on the contact page.", zh: "请在联系人页继续协商或查看进度。" })}</span>
+          </span>
+        </div>
+        {reviewHref ? (
+          <a className="ev-mo-ok-contact" data-events-modal-action="review-appointment" href={reviewHref}>▦ {reviewLabel} →</a>
+        ) : null}
+        <div className="ev-mo-foot-row">
+          <span className="ev-mo-foot-note">ⓘ {t({ en: "One appointment per exchange at a time.", zh: "同一交换同一时间只能有一个进行中的约谈。" })}</span>
+          <span className="ev-mo-foot-actions">
+            <button className="btn ev-mo-btn-cancel ev-mo-btn-sm" onClick={onClose} type="button">{t({ en: "Close", zh: "关闭" })}</button>
+          </span>
+        </div>
+      </EventModalFrame>
+    );
+  }
 
   return (
     <EventModalFrame kind="schedule" labelledBy="ev-mo-sch-title" onClose={onClose} panelClass="ev-mo-panel-gap-20" size="680" z="120">
@@ -221,6 +356,9 @@ export function EventScheduleModal({ eventId, eventVenue, language, me, now, onC
         </div>
       </div>
       {!accepted ? <span className="ev-mo-hint ev-mo-hint-warn" role="status">{t({ en: "Only an accepted business-card exchange can start an appointment.", zh: "只有已接受的名片交换才能发起约谈。" })}</span> : null}
+      {lookup === "loading" ? <span className="ev-mo-hint" role="status">{t({ en: "Checking existing appointments…", zh: "正在检查已有约谈…" })}</span> : null}
+      {lookup === "failed" ? <span className="ev-mo-hint" role="status">{t({ en: "Could not check existing appointments; sending will report a conflict if one exists.", zh: "未能检查已有约谈；若已存在，发送时会提示。" })}</span> : null}
+      {existing?.status === "draft" ? <span className="ev-mo-hint" data-events-schedule-draft={existing.appointmentId} role="status">{t({ en: "Continuing your saved draft.", zh: "将在已保存的草稿上继续。" })}</span> : null}
       {error ? <span className="ev-lv-error" role="alert">{error}</span> : null}
       <div className="ev-mo-foot-row">
         <span className="ev-mo-foot-note">ⓘ {t({ en: "The invitation takes effect once they confirm. You will be notified by email and in Orbit.", zh: "发送邀约后，等待对方确认后生效。你会收到邮件和站内通知。" })}</span>

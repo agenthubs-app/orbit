@@ -24,16 +24,23 @@ export interface ContactRequestStateDetail {
 const contactRequestStateListeners = new Set<
   (detail: ContactRequestStateDetail) => void
 >();
-const contactRequestStateByPerson = new WeakMap<
-  OrbitPartyPersonView,
-  ContactRequestStateDetail
->();
+/**
+ * 最近一次写操作的结果，按 `<eventId> <participantId>` 缓存（终审 M1：原来按 person 对象 WeakMap，
+ * 同一参会者在另一页签 / 弹窗里是另一个对象 → 读不到，只能靠监听器；晚挂载的实例会种子成旧状态）。
+ */
+const contactRequestStateByKey = new Map<string, ContactRequestStateDetail>();
 
-function publishContactRequestState(
-  person: OrbitPartyPersonView,
-  detail: ContactRequestStateDetail,
-) {
-  contactRequestStateByPerson.set(person, detail);
+export function contactRequestStateKey(eventId: string, participantId: string): string {
+  return `${eventId} ${participantId}`;
+}
+
+/** 测试 / 页面卸载用：清空模块级缓存。 */
+export function resetContactRequestStateCache(): void {
+  contactRequestStateByKey.clear();
+}
+
+function publishContactRequestState(detail: ContactRequestStateDetail) {
+  contactRequestStateByKey.set(contactRequestStateKey(detail.eventId, detail.participantId), detail);
   for (const listener of contactRequestStateListeners) {
     listener(detail);
   }
@@ -87,7 +94,7 @@ export function useEventContactRequest({
   person: OrbitPartyPersonView;
   t: Translate;
 }): ContactRequestControlState {
-  const cachedState = contactRequestStateByPerson.get(person);
+  const cachedState = contactRequestStateByKey.get(contactRequestStateKey(eventId, person.id));
   const [localRequestId, setLocalRequestId] = useState<string | null>(
     cachedState?.requestId ?? null,
   );
@@ -117,7 +124,7 @@ export function useEventContactRequest({
     : (localStatus ?? person.contactRequestStatus);
 
   useEffect(() => {
-    const latest = contactRequestStateByPerson.get(person);
+    const latest = contactRequestStateByKey.get(contactRequestStateKey(eventId, person.id));
     setLocalRequestId(latest?.requestId ?? null);
     setLocalContactId(latest?.contactId ?? null);
     setLocalDirection(latest?.direction ?? null);
@@ -125,7 +132,7 @@ export function useEventContactRequest({
     setLocalStatus(latest?.status ?? null);
     setBusy(false);
     setError(null);
-  }, [person, person.contactId, person.contactRequestId, person.contactRequestRevision, person.contactRequestStatus, person.id]);
+  }, [eventId, person, person.contactId, person.contactRequestId, person.contactRequestRevision, person.contactRequestStatus, person.id]);
 
   useEffect(() => {
     const synchronize = (detail: ContactRequestStateDetail) => {
@@ -159,7 +166,7 @@ export function useEventContactRequest({
       setLocalDirection("outgoing");
       setLocalRevision(request.revision);
       setLocalStatus("awaiting_target_consent");
-      publishContactRequestState(person, {
+      publishContactRequestState({
         contactId: null,
         direction: "outgoing",
         eventId,
@@ -204,7 +211,7 @@ export function useEventContactRequest({
       setLocalStatus(request.status);
       setLocalContactId(request.contactId);
       setLocalRevision(request.revision);
-      publishContactRequestState(person, {
+      publishContactRequestState({
         contactId: request.contactId,
         direction: person.contactRequestDirection,
         eventId,
@@ -248,7 +255,7 @@ export function useEventContactRequest({
       setLocalContactId(request.contactId);
       setLocalRevision(request.revision);
       setLocalStatus(request.status);
-      publishContactRequestState(person, {
+      publishContactRequestState({
         contactId: request.contactId,
         direction: "outgoing",
         eventId,

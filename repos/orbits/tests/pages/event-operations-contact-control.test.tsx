@@ -10,9 +10,13 @@ import test from "node:test";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
 import { ContactAction } from "../../app/(app)/app/events/events-0918/event-contact-action";
+import { contactRequestStateKey, resetContactRequestStateCache, useEventContactRequest } from "../../app/(app)/app/events/events-0918/live-controls";
 import type { OrbitPartyPersonView } from "../../app/(app)/app/orbit-party-route-view-model";
 
 const EVENT_ID = "event:e2e:orbit-connection-night";
+
+// 写操作结果缓存现按 <eventId participantId> 键（终审 M1）跨挂载共享；每条用例从空缓存开始。
+test.beforeEach(() => resetContactRequestStateCache());
 const REQUEST_ID = "event-contact-request:4a99-test";
 
 function person(
@@ -380,3 +384,53 @@ test("an owner-scoped contact id wins over a stale request projection", async ()
   }
 });
 
+
+test("a request sent on one tab seeds a later-mounted instance for the same participant on another tab (Map keyed by event + participant, not by person object)", async () => {
+  resetContactRequestStateCache();
+  assert.equal(contactRequestStateKey("event:x", "participant:y"), "event:x participant:y");
+  const originalFetch = globalThis.fetch;
+  let posts = 0;
+  globalThis.fetch = (async () => {
+    posts += 1;
+    return Response.json({ data: { requestId: "event-contact-request:fresh", revision: 1 }, success: true });
+  }) as typeof fetch;
+  const fresh = () => person({ contactRequestDirection: null, contactRequestId: null, contactRequestRevision: null, contactRequestStatus: "none" });
+  const snapshots: { tab: string; status: string | null; requestId: string | null }[] = [];
+  function Probe({ tab, who }: { tab: string; who: OrbitPartyPersonView }) {
+    const control = useEventContactRequest({ eventId: EVENT_ID, person: who, t: (copy) => copy.en });
+    snapshots.push({ tab, status: control.status, requestId: control.requestId });
+    return null;
+  }
+  let first!: ReactTestRenderer;
+  let second!: ReactTestRenderer;
+  try {
+    // 页签 1：推荐卡上发申请（person 对象 A）
+    await act(async () => { first = create(<ContactAction eventId={EVENT_ID} open person={fresh()} t={(copy) => copy.en} />); });
+    const request = first.root.find((node) => node.type === "button" && node.props["data-event-contact-action"] === "request");
+    await act(async () => { await (request.props.onClick() as Promise<void>); });
+    assert.equal(posts, 1);
+    assert.match(JSON.stringify(first.toJSON()), /Waiting for their consent/u);
+
+    // 页签 2：之后才挂载，拿到的是另一个 person 对象 B（同一 participant id，投影仍是 none）
+    await act(async () => { second = create(<Probe tab="all" who={fresh()} />); });
+    const latest = snapshots.filter((entry) => entry.tab === "all").at(-1);
+    assert.deepEqual(latest, { tab: "all", status: "awaiting_target_consent", requestId: "event-contact-request:fresh" }, "seeded from the shared Map, not from the stale projection");
+    assert.equal(posts, 1, "no extra request");
+
+    // 另一活动同一 participant id 不受影响
+    let other!: ReactTestRenderer;
+    function OtherEvent() {
+      const control = useEventContactRequest({ eventId: "event:other", person: fresh(), t: (copy) => copy.en });
+      snapshots.push({ tab: "other", status: control.status, requestId: control.requestId });
+      return null;
+    }
+    await act(async () => { other = create(<OtherEvent />); });
+    assert.equal(snapshots.filter((entry) => entry.tab === "other").at(-1)?.status, "none");
+    await act(async () => { other.unmount(); });
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (first) await act(async () => { first.unmount(); });
+    if (second) await act(async () => { second.unmount(); });
+    resetContactRequestStateCache();
+  }
+});

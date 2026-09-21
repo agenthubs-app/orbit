@@ -5,6 +5,10 @@ import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
 import { EventExchangeModal } from "../../app/(app)/app/events/events-0918/event-exchange-modal";
 import { DESIGN_MODAL_MOCKS, MODAL_EVENT_ID, MODAL_ME, jsonHeaders, modalPerson, stripStyles, t } from "./event-modal-fixtures";
+import { resetContactRequestStateCache } from "../../app/(app)/app/events/events-0918/live-controls";
+
+// 交换状态缓存按 <eventId participantId> 键跨挂载共享（终审 M1）；每条用例从空缓存开始。
+test.beforeEach(() => resetContactRequestStateCache());
 
 /**
  * 申请交换联系方式弹窗 + 交换成功态（Orbit_0918 Events 设计 704–741）。
@@ -37,7 +41,7 @@ test("exchange modal form: shell, person card, explanation + consent, no message
   assert.match(html, /<span class="ev-mo-ex-tag">Reuse systems<\/span>/);
   assert.match(html, /<span class="ev-mo-ex-bio">Founder · LoopMatter · Scaling reusable packaging in Japan.<\/span>/);
   assert.match(html, /<strong class="ev-mo-ex-h">将共享的联系方式<\/strong>/);
-  assert.match(html, /<button aria-pressed="true" class="btn ev-mo-agree ev-mo-agree-on" type="button"><span aria-hidden="true" class="ev-mo-agree-box">✓<\/span>我同意在对方接受请求后，向对方分享上述名片。<\/button>/);
+  assert.match(html, /<button aria-pressed="true" class="btn ev-mo-agree ev-mo-agree-on" data-events-modal-action="agree" type="button"><span aria-hidden="true" class="ev-mo-agree-box">✓<\/span>我同意在对方接受请求后，向对方分享上述名片。<\/button>/);
   assert.match(html, /<button class="btn ev-mo-btn-cancel" type="button">取消<\/button><button class="btn ev-mo-btn-primary ev-mo-btn-15" data-events-modal-action="send-exchange" type="button">发送申请<\/button>/);
   assert.doesNotMatch(html, /<textarea|申请留言|联系目的|邮箱地址|LinkedIn 主页|⧉/);
   assert.doesNotMatch(html, DESIGN_MODAL_MOCKS);
@@ -102,4 +106,29 @@ test("exchange modal: send is disabled while the event has not started or a requ
   const pending = stripStyles(renderToStaticMarkup(element({ contactRequestDirection: "outgoing", contactRequestId: "req:1", contactRequestRevision: 1, contactRequestStatus: "awaiting_target_consent" })));
   assert.match(pending, /data-events-modal-action="send-exchange" disabled=""/);
   assert.match(pending, /已有申请在等待对方确认/);
+});
+
+test("exchange modal: 「我同意…」 gates 发送申请 — unticking disables it with a hint and never posts; re-ticking enables it", async () => {
+  const originalFetch = globalThis.fetch;
+  let posts = 0;
+  globalThis.fetch = (async () => { posts += 1; return Response.json({ data: { requestId: "event-contact-request:aiko", revision: 1 }, success: true }); }) as typeof fetch;
+  let renderer!: ReactTestRenderer;
+  try {
+    await act(async () => { renderer = create(element()); });
+    const send = () => renderer.root.find((node) => node.type === "button" && node.props["data-events-modal-action"] === "send-exchange");
+    const agree = () => renderer.root.find((node) => node.type === "button" && node.props["data-events-modal-action"] === "agree");
+    assert.equal(send().props.disabled, false);
+    await act(async () => { agree().props.onClick(); });
+    assert.equal(agree().props["aria-pressed"], false);
+    assert.equal(send().props.disabled, true, "unticked consent disables send");
+    assert.match(JSON.stringify(renderer.toJSON()), /"data-events-exchange-consent":"required"/);
+    assert.match(JSON.stringify(renderer.toJSON()), /勾选同意分享名片后才能发送申请/);
+    await act(async () => { agree().props.onClick(); });
+    assert.equal(send().props.disabled, false);
+    assert.doesNotMatch(JSON.stringify(renderer.toJSON()), /data-events-exchange-consent/);
+    assert.equal(posts, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (renderer) await act(async () => { renderer.unmount(); });
+  }
 });

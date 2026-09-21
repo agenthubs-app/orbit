@@ -3,7 +3,13 @@ import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { act, create, type ReactTestInstance, type ReactTestRenderer } from "react-test-renderer";
 
-import { EventScheduleModal } from "../../app/(app)/app/events/events-0918/event-schedule-modal";
+import {
+  EventScheduleModal,
+  appointmentCandidateTimes,
+  appointmentReviewHref,
+  findActiveAppointment,
+  type ExistingAppointment,
+} from "../../app/(app)/app/events/events-0918/event-schedule-modal";
 import {
   SCHEDULE_SLOTS,
   candidateTimesFrom,
@@ -12,12 +18,32 @@ import {
   slotStartsAtUtc,
 } from "../../app/(app)/app/events/events-0918/events-model";
 import { DESIGN_MODAL_MOCKS, MODAL_EVENT_ID, MODAL_ME, MODAL_NOW, jsonHeaders, modalPerson, stripStyles, t } from "./event-modal-fixtures";
+import { resetContactRequestStateCache } from "../../app/(app)/app/events/events-0918/live-controls";
+
+// 交换状态缓存按 <eventId participantId> 键跨挂载共享（终审 M1）；每条用例从空缓存开始。
+test.beforeEach(() => resetContactRequestStateCache());
 
 /**
  * 约谈时间选择弹窗（Orbit_0918 Events 设计 744–760）：只有 accepted 可发起；≥3（≤5）个候选时段；
  * 两步 API（draft → propose）请求体 / Idempotency-Key 头；medium 映射 现场→in_person{location} / 线上→video{google_meet}。
+ * 打开时 GET /api/appointments（no-store）：draft → 复用（跳过创建）；进行中 → 现状摘要 + 查看约谈链接；APPOINTMENT_CONFLICT → 「已有进行中的约谈」。
  */
 const noop = () => undefined;
+const isGet = (init: RequestInit | undefined) => !init?.method || init.method === "GET";
+
+function existingAppointment(overrides: Partial<ExistingAppointment> = {}): ExistingAppointment {
+  return {
+    appointmentId: "appointment:existing",
+    authorityRequestId: "event-contact-request:aiko",
+    confirmed: null,
+    contactId: "contact:aiko",
+    eventId: MODAL_EVENT_ID,
+    proposals: [],
+    status: "draft",
+    version: 1,
+    ...overrides,
+  };
+}
 const NOW_MS = Date.parse(MODAL_NOW);
 const ACCEPTED = { contactId: "contact:aiko", contactRequestDirection: "outgoing" as const, contactRequestId: "event-contact-request:aiko", contactRequestRevision: 2, contactRequestStatus: "accepted" as const };
 
@@ -125,7 +151,13 @@ test("schedule modal: fewer than three candidates keeps 发送邀约 disabled; t
 test("schedule modal: send creates the draft then proposes with 3 UTC candidates, 30 min, Intl timezone, in_person venue, note, expectedVersion and idempotency keys", async () => {
   const originalFetch = globalThis.fetch;
   const calls: { url: string; init: RequestInit | undefined }[] = [];
+  let lookups = 0;
   globalThis.fetch = (async (url, init) => {
+    if (String(url) === "/api/appointments" && isGet(init)) {
+      lookups += 1;
+      assert.equal(init?.cache, "no-store");
+      return Response.json({ data: [], success: true });
+    }
     calls.push({ url: String(url), init });
     if (String(url) === "/api/appointments") return Response.json({ data: { appointmentId: "appointment:1", version: 1 }, success: true }, { status: 201 });
     return Response.json({ data: { appointmentId: "appointment:1", version: 2 }, success: true });
@@ -143,6 +175,7 @@ test("schedule modal: send creates the draft then proposes with 3 UTC candidates
     await act(async () => { note.props.onChange({ target: { value: "期待交流" } }); });
     await act(async () => { await (sendButton(renderer).props.onClick() as Promise<void>); });
 
+    assert.equal(lookups, 1, "one no-store lookup on open");
     assert.equal(calls.length, 2);
     assert.equal(calls[0].url, "/api/appointments");
     assert.equal(calls[0].init?.method, "POST");
@@ -184,6 +217,7 @@ test("schedule modal: 线上 maps to video / google_meet with a null join url; a
   const bodies: string[] = [];
   let failDraft = false;
   globalThis.fetch = (async (url, init) => {
+    if (isGet(init)) return Response.json({ data: [], success: true });
     bodies.push(String(init?.body));
     if (String(url) === "/api/appointments") {
       return failDraft
@@ -214,6 +248,7 @@ test("schedule modal: 线上 maps to video / google_meet with a null join url; a
   failDraft = true;
   bodies.length = 0;
   globalThis.fetch = (async (url, init) => {
+    if (isGet(init)) return Response.json({ data: [], success: true });
     bodies.push(String(init?.body));
     return Response.json({ error: { code: "FORBIDDEN", message: "Only an accepted exchange can start an appointment." }, success: false }, { status: 403 });
   }) as typeof fetch;
@@ -237,6 +272,7 @@ test("schedule modal: an empty event venue sends the displayed fallback 「活�
   const originalFetch = globalThis.fetch;
   const bodies: string[] = [];
   globalThis.fetch = (async (url, init) => {
+    if (isGet(init)) return Response.json({ data: [], success: true });
     bodies.push(String(init?.body));
     if (String(url) === "/api/appointments") return Response.json({ data: { appointmentId: "appointment:3", version: 1 }, success: true }, { status: 201 });
     return Response.json({ data: { appointmentId: "appointment:3", version: 2 }, success: true });
@@ -252,6 +288,125 @@ test("schedule modal: an empty event venue sends the displayed fallback 「活�
     }
     await act(async () => { await (sendButton(renderer).props.onClick() as Promise<void>); });
     assert.deepEqual((JSON.parse(bodies[1]) as { proposal: { medium: unknown } }).proposal.medium, { kind: "in_person", location: "活动现场" });
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (renderer) await act(async () => { renderer.unmount(); });
+  }
+});
+
+test("schedule model: active-appointment lookup ignores cancelled / completed / other events / other requests; candidate times prefer the confirmed slot", () => {
+  const list = [
+    existingAppointment({ appointmentId: "a:cancelled", status: "cancelled" }),
+    existingAppointment({ appointmentId: "a:completed", status: "completed" }),
+    existingAppointment({ appointmentId: "a:other-event", eventId: "event:other", status: "confirmed" }),
+    existingAppointment({ appointmentId: "a:other-request", authorityRequestId: "event-contact-request:bob", status: "confirmed" }),
+    existingAppointment({ appointmentId: "a:live", status: "awaiting_response", version: 2 }),
+  ];
+  assert.equal(findActiveAppointment(list, "event-contact-request:aiko", MODAL_EVENT_ID)?.appointmentId, "a:live");
+  assert.equal(findActiveAppointment(list.slice(0, 4), "event-contact-request:aiko", MODAL_EVENT_ID), null);
+  assert.equal(appointmentReviewHref("contact:aiko", "appointment:x", MODAL_EVENT_ID), `/app/contacts/contact%3Aaiko?appointmentId=appointment%3Ax&eventId=${MODAL_EVENT_ID}`);
+  assert.deepEqual(appointmentCandidateTimes({ confirmed: null, proposals: [{ candidateTimes: [{ startsAtUtc: "2026-09-23T01:00:00.000Z" }] }, { candidateTimes: [{ startsAtUtc: "2026-09-24T01:00:00.000Z" }, { startsAtUtc: "2026-09-24T02:00:00.000Z" }] }] }), ["2026-09-24T01:00:00.000Z", "2026-09-24T02:00:00.000Z"]);
+  assert.deepEqual(appointmentCandidateTimes({ confirmed: { startsAtUtc: "2026-09-25T01:00:00.000Z" }, proposals: [{ candidateTimes: [{ startsAtUtc: "2026-09-24T01:00:00.000Z" }] }] }), ["2026-09-25T01:00:00.000Z"]);
+});
+
+test("schedule modal: an existing draft is reused — no create POST, propose carries expectedVersion = draft.version", async () => {
+  const originalFetch = globalThis.fetch;
+  const posts: { url: string; body: Record<string, unknown> }[] = [];
+  globalThis.fetch = (async (url, init) => {
+    if (isGet(init)) return Response.json({ data: [existingAppointment({ appointmentId: "appointment:draft", status: "draft", version: 3 })], success: true });
+    posts.push({ url: String(url), body: JSON.parse(String(init?.body)) as Record<string, unknown> });
+    return Response.json({ data: { appointmentId: "appointment:draft", version: 4 }, success: true });
+  }) as typeof fetch;
+  const sent: string[] = [];
+  let renderer!: ReactTestRenderer;
+  try {
+    await act(async () => { renderer = create(element(ACCEPTED, { onSent: (person) => sent.push(person.id) })); });
+    assert.match(JSON.stringify(renderer.toJSON()), /"data-events-schedule-draft":"appointment:draft"/);
+    assert.match(JSON.stringify(renderer.toJSON()), /将在已保存的草稿上继续/);
+    const day24 = renderer.root.find((node) => node.type === "button" && node.props["data-events-schedule-day"] === "2026-09-24");
+    await act(async () => { day24.props.onClick(); });
+    for (const slot of ["10:00 - 10:30", "10:30 - 11:00", "11:00 - 11:30"]) {
+      await act(async () => { slotButton(renderer, `2026-09-24 ${slot}`).props.onClick(); });
+    }
+    await act(async () => { await (sendButton(renderer).props.onClick() as Promise<void>); });
+    assert.equal(posts.length, 1, "draft reuse skips POST /api/appointments");
+    assert.equal(posts[0].url, "/api/appointments/appointment%3Adraft/commands");
+    assert.equal(posts[0].body.command, "propose");
+    assert.equal(posts[0].body.expectedVersion, 3);
+    assert.deepEqual(sent, ["participant:aiko"]);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (renderer) await act(async () => { renderer.unmount(); });
+  }
+});
+
+test("schedule modal: an in-progress appointment renders the state summary with candidate times and 查看约谈 instead of the form", async () => {
+  const originalFetch = globalThis.fetch;
+  let posts = 0;
+  globalThis.fetch = (async (url, init) => {
+    if (isGet(init)) {
+      return Response.json({
+        data: [existingAppointment({
+          appointmentId: "appointment:live",
+          proposals: [{ candidateTimes: [{ startsAtUtc: "2026-09-23T01:00:00.000Z" }, { startsAtUtc: "2026-09-23T05:00:00.000Z" }, { startsAtUtc: "2026-09-24T01:00:00.000Z" }] }],
+          status: "awaiting_response",
+          version: 2,
+        })],
+        success: true,
+      });
+    }
+    posts += 1;
+    return Response.json({ data: {}, success: true });
+  }) as typeof fetch;
+  let renderer!: ReactTestRenderer;
+  try {
+    await act(async () => { renderer = create(element(ACCEPTED)); });
+    const json = JSON.stringify(renderer.toJSON());
+    assert.match(json, /"data-events-schedule-existing":"awaiting_response"/);
+    assert.match(json, /邀约已发送，等待对方回复/);
+    assert.match(json, /候选时间：/);
+    assert.match(json, /9月23日 10:00（JST） · 9月23日 14:00（JST） · 9月24日 10:00（JST）/);
+    const link = renderer.root.find((node) => node.type === "a" && node.props["data-events-modal-action"] === "review-appointment");
+    assert.equal(link.props.href, `/app/contacts/contact%3Aaiko?appointmentId=appointment%3Alive&eventId=${MODAL_EVENT_ID}`);
+    assert.match(JSON.stringify(link.props.children), /查看约谈/);
+    assert.equal(renderer.root.findAll((node) => node.type === "button" && node.props["data-events-modal-action"] === "send-schedule").length, 0, "no send button");
+    assert.equal(renderer.root.findAll((node) => node.type === "button" && node.props["data-events-schedule-slot"]).length, 0, "no slot pickers");
+    assert.equal(posts, 0, "no create");
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (renderer) await act(async () => { renderer.unmount(); });
+  }
+});
+
+test("schedule modal: APPOINTMENT_CONFLICT on create maps to 「已有进行中的约谈」 with the review link from a fresh lookup", async () => {
+  const originalFetch = globalThis.fetch;
+  let lookups = 0;
+  let posts = 0;
+  globalThis.fetch = (async (url, init) => {
+    if (isGet(init)) {
+      lookups += 1;
+      // 打开时列表为空（另一个页签刚创建）；冲突后重新读取拿到进行中的约谈。
+      return Response.json({ data: lookups === 1 ? [] : [existingAppointment({ appointmentId: "appointment:raced", status: "negotiating", version: 2 })], success: true });
+    }
+    posts += 1;
+    return Response.json({ error: { code: "CONFLICT", message: "The appointment already exists.", context: { featureCode: "APPOINTMENT_CONFLICT" } }, success: false }, { status: 409 });
+  }) as typeof fetch;
+  let renderer!: ReactTestRenderer;
+  try {
+    await act(async () => { renderer = create(element(ACCEPTED)); });
+    const day24 = renderer.root.find((node) => node.type === "button" && node.props["data-events-schedule-day"] === "2026-09-24");
+    await act(async () => { day24.props.onClick(); });
+    for (const slot of ["10:00 - 10:30", "10:30 - 11:00", "11:00 - 11:30"]) {
+      await act(async () => { slotButton(renderer, `2026-09-24 ${slot}`).props.onClick(); });
+    }
+    await act(async () => { await (sendButton(renderer).props.onClick() as Promise<void>); });
+    assert.equal(posts, 1, "propose is not attempted after a conflicting create");
+    assert.equal(lookups, 2);
+    const json = JSON.stringify(renderer.toJSON());
+    assert.match(json, /已有进行中的约谈/);
+    assert.doesNotMatch(json, /APPOINTMENT_CONFLICT|already exists/, "raw error is not shown");
+    const link = renderer.root.find((node) => node.type === "a" && node.props["data-events-modal-action"] === "review-appointment");
+    assert.equal(link.props.href, `/app/contacts/contact%3Aaiko?appointmentId=appointment%3Araced&eventId=${MODAL_EVENT_ID}`);
   } finally {
     globalThis.fetch = originalFetch;
     if (renderer) await act(async () => { renderer.unmount(); });

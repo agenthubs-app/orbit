@@ -6,6 +6,10 @@ import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import { EventNoteModal } from "../../app/(app)/app/events/events-0918/event-note-modal";
 import { composeNoteText } from "../../app/(app)/app/events/events-0918/events-model";
 import { DESIGN_MODAL_MOCKS, MODAL_EVENT_ID, jsonHeaders, modalPerson, stripStyles, t } from "./event-modal-fixtures";
+import { resetContactRequestStateCache } from "../../app/(app)/app/events/events-0918/live-controls";
+
+// 交换状态缓存按 <eventId participantId> 键跨挂载共享（终审 M1）；每条用例从空缓存开始。
+test.beforeEach(() => resetContactRequestStateCache());
 
 /**
  * 记录交流弹窗（Orbit_0918 Events 设计 763–780）：POST /api/encounters 请求体与 orbit-encounter-capture.tsx:33 一致；

@@ -310,6 +310,18 @@ export const EVENTS_STYLES = `
   padding: 0; gap: 0; font-weight: 400; letter-spacing: 0; line-height: normal; transition: none; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
 [data-orbit-real-page="events-0918"] .btn.ev-modal-close:hover { background: #ECEEFB; }
 [data-orbit-real-page="events-0918"] .btn.ev-modal-close:active { transform: none; }
+/* 离开守卫确认条（设计外：终审 I2；配色沿用 ev-mo-hint-warn / ev-mo-btn-* 体系） */
+[data-orbit-real-page="events-0918"] .ev-reg-leave { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-radius: 12px; background: #FDF1EF; border: 1px solid #F1C9C3; }
+[data-orbit-real-page="events-0918"] .ev-reg-leave-copy { font-size: 14px; color: #B5473A; }
+[data-orbit-real-page="events-0918"] .ev-reg-leave-actions { display: flex; gap: 10px; }
+[data-orbit-real-page="events-0918"] .btn.ev-reg-leave-stay { padding: 10px 18px; border: 0; border-radius: 10px; background: #0E1225; color: #FFFFFF; font-size: 14px; font-weight: 500; cursor: pointer;
+  height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; letter-spacing: 0; line-height: normal; transition: none; text-decoration: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-reg-leave-stay:hover { background: #2E3270; color: #FFFFFF; }
+[data-orbit-real-page="events-0918"] .btn.ev-reg-leave-stay:active { transform: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-reg-leave-go { padding: 10px 18px; border: 1px solid #F1C9C3; border-radius: 10px; background: #FFFFFF; color: #B5473A; font-size: 14px; font-weight: 500; cursor: pointer;
+  height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; letter-spacing: 0; line-height: normal; transition: none; text-decoration: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-reg-leave-go:hover { background: #FDF1EF; color: #B5473A; }
+[data-orbit-real-page="events-0918"] .btn.ev-reg-leave-go:active { transform: none; }
 /* ── 弹窗正文 = 不变的报名工作区（register/*.tsx 零改动）：只把设计 657–669 的控件声明
       作用域到工作区既有类名 / data-* 上；工作区自己的全屏尺寸（100dvh / visualViewport 高度 /
       页面渐变底）在面板内中和。inline style 只能用 !important 覆盖。── */

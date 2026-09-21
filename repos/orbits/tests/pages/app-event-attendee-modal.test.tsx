@@ -6,6 +6,10 @@ import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import { EventAttendeeModal } from "../../app/(app)/app/events/events-0918/event-attendee-modal";
 import { contactStatusCopy } from "../../app/(app)/app/events/events-0918/events-model";
 import { DESIGN_MODAL_MOCKS, MODAL_EVENT_ID, modalPerson, stripStyles, t } from "./event-modal-fixtures";
+import { resetContactRequestStateCache } from "../../app/(app)/app/events/events-0918/live-controls";
+
+// 交换状态缓存按 <eventId participantId> 键跨挂载共享（终审 M1）；每条用例从空缓存开始。
+test.beforeEach(() => resetContactRequestStateCache());
 
 /**
  * 参会者详情弹窗（Orbit_0918 Events 设计 675–701）：真实 OrbitPartyPersonView 字段、按状态的按钮、省略项。

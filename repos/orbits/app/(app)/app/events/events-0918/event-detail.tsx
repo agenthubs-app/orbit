@@ -554,7 +554,9 @@ function RecapBody({
             <p className="ev-p ev-muted">
               {youRsvped
                 ? t({ en: "The attendee roster for this event has not been published.", zh: "本场活动的参会者名单尚未发布。" })
-                : t({ en: "This event has ended. Private participant records are only available to confirmed attendees.", zh: "活动已结束；参会者名单仅向已确认参会者开放。" })}
+                : event.status === "ended"
+                  ? t({ en: "This event has ended. Private participant records are only available to confirmed attendees.", zh: "活动已结束；参会者名单仅向已确认参会者开放。" })
+                  : t({ en: "Private participant records are only available to confirmed attendees.", zh: "参会者名单仅向已确认参会者开放。" })}
             </p>
           )}
         </div>

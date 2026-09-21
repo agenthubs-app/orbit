@@ -50,7 +50,8 @@ export function EventExchangeModal({ eventId, me, onClose, onNote, onSchedule, o
   const exchanged = control.status === "accepted";
   const pending = control.status === "awaiting_target_consent";
   const showSuccess = exchanged || (sent && pending);
-  const canSend = open && !control.busy && (control.status === "none" || (control.status === "withdrawn" && control.direction === "outgoing"));
+  // 「我同意…」是发送门槛（设计 714 → 715 发送按钮；终审 M4）：未勾选不能发送。
+  const canSend = open && agree && !control.busy && (control.status === "none" || (control.status === "withdrawn" && control.direction === "outgoing"));
 
   async function send() {
     await control.createRequest();
@@ -123,12 +124,13 @@ export function EventExchangeModal({ eventId, me, onClose, onNote, onSchedule, o
         <strong className="ev-mo-ex-h">{t({ en: "What gets shared", zh: "将共享的联系方式" })}</strong>
         <span className="ev-mo-ex-desc">{t({ en: "If they accept, you exchange business cards: name, role and company as recorded in your Orbit profile.", zh: "如果对方接受你的请求，双方将互换名片：你在 Orbit 上的姓名、职位与公司。" })}</span>
       </div>
-      <button aria-pressed={agree} className={`btn ev-mo-agree${agree ? " ev-mo-agree-on" : ""}`} onClick={() => setAgree((value) => !value)} type="button">
+      <button aria-pressed={agree} className={`btn ev-mo-agree${agree ? " ev-mo-agree-on" : ""}`} data-events-modal-action="agree" onClick={() => setAgree((value) => !value)} type="button">
         <span aria-hidden="true" className="ev-mo-agree-box">{agree ? "✓" : ""}</span>
         {t({ en: "I agree to share the business card above once they accept.", zh: "我同意在对方接受请求后，向对方分享上述名片。" })}
       </button>
       {control.error ? <span className="ev-lv-error" role="alert">{control.error}</span> : null}
       {!open ? <span className="ev-mo-hint">{t({ en: "Contact requests open when the event starts.", zh: "活动开始后可申请交换。" })}</span> : null}
+      {open && !agree ? <span className="ev-mo-hint" data-events-exchange-consent="required">{t({ en: "Agree to share your business card to send the request.", zh: "勾选同意分享名片后才能发送申请。" })}</span> : null}
       {control.status === "declined" ? <span className="ev-mo-hint">{t({ en: "They declined this exchange.", zh: "对方已拒绝交换。" })}</span> : null}
       {pending && !sent ? <span className="ev-mo-hint">{t({ en: "A request is already pending.", zh: "已有申请在等待对方确认。" })}</span> : null}
       <div className="ev-mo-foot-grid">

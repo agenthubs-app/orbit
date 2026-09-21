@@ -167,8 +167,12 @@ test("recap state renders for ?view=recap or an ended event: shared body, 「—
   assert.match(active, /class="ev-chip ev-chip-hero" style="background:#E6F1EC;color:#2F6B4F">进行中</);
   // Unregistered viewers never see names.
   const anonymous = renderToStaticMarkup(<EventDetail event={{ ...ended, stats: { ...ended.stats, attendees: [], youRsvped: false }, youRsvped: false }} />);
-  assert.match(anonymous, /仅向已确认参会者开放/);
+  assert.match(anonymous, /活动已结束；参会者名单仅向已确认参会者开放/);
   assert.doesNotMatch(anonymous, /Alice Attendee/);
+  // 终审 M2：进行中的活动以 ?view=recap 进入回顾态时，未报名文案不能说「活动已结束」。
+  const anonymousActive = renderToStaticMarkup(<EventDetail event={{ ...base, status: "active", stats: { ...base.stats, attendees: [], youRsvped: false }, youRsvped: false }} view="recap" />);
+  assert.match(anonymousActive, /参会者名单仅向已确认参会者开放/);
+  assert.doesNotMatch(anonymousActive, /活动已结束/);
 });
 
 test("recapPeople prefers the published directory and exposes contactId only for accepted exchanges", async () => {

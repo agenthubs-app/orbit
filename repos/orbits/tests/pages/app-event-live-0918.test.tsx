@@ -29,6 +29,10 @@ import type {
   OrbitPartyTableView,
   OrbitPartyViewModel,
 } from "../../app/(app)/app/orbit-party-route-view-model";
+import { resetContactRequestStateCache } from "../../app/(app)/app/events/events-0918/live-controls";
+
+// 交换状态缓存按 <eventId participantId> 键跨挂载共享（终审 M1）；每条用例从空缓存开始。
+test.beforeEach(() => resetContactRequestStateCache());
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 const DESIGN_MOCKS = /山本健|Sakana AI|Tokyo Innovation Hub|Robert Chen|田中惠子|Sakura Capital|128 位|Orbit_Event|orbit2026|二度人脉|可能感兴趣|潜在机会|换一批|打招呼|添加到日历|现场提示|分享活动|最后更新|下一轮分组预告|查看完整分组安排|按关系|按兴趣|按行业/u;
