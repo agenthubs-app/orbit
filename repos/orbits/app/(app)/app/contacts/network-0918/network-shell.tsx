@@ -278,18 +278,20 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-import-main { display: flex; flex-direction: column; gap: 20px; }
 [data-orbit-real-page="network"] .nw-import-card { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 26px; display: flex; flex-direction: column; gap: 18px; }
 [data-orbit-real-page="network"] .nw-import-methods { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: 14px; }
-[data-orbit-real-page="network"] .nw-import-method { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 24px 16px 18px; border: 1.5px solid; border-radius: 16px; text-align: center; cursor: pointer; transition: all .2s;
-  /* 设计稿是 button（选中方式）；此处只有扫描名片夹可选且由内部 CTA 触发，卡片本体为 div：border-color/background 由内联 style 提供 */ }
+[data-orbit-real-page="network"] .nw-import-method { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 24px 16px 18px; border: 1.5px solid #E8E9F6; border-radius: 16px; background: #FFFFFF; text-align: center; cursor: pointer; transition: all .2s;
+  /* 设计稿是 button（选中方式）；此处只有扫描名片夹可选且由内部 CTA 触发，卡片本体为 div；选中态 = .nw-import-method-on（设计 m.bg/m.border 选中值） */ }
 [data-orbit-real-page="network"] .nw-import-method:hover { border-color: #B9BCEB; }
+[data-orbit-real-page="network"] .nw-import-method-on { border-color: #4B4FC7; background: #F7F7FD; }
 [data-orbit-real-page="network"] .nw-import-method-soon { cursor: default; }
 [data-orbit-real-page="network"] .nw-import-method-icon { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
 [data-orbit-real-page="network"] .nw-import-method-title { font-size: 16px; }
 [data-orbit-real-page="network"] .nw-import-method-desc { font-size: 13px; color: #6B6F99; line-height: 1.6; min-height: 42px; }
-[data-orbit-real-page="network"] .nw-import-cta { margin-top: 4px; padding: 10px 20px; border-radius: 10px; border: 1px solid; font-size: 14px; font-weight: 500; }
-[data-orbit-real-page="network"] .btn.nw-import-cta { margin-top: 4px; padding: 10px 20px; border-radius: 10px; border: 1px solid; font-size: 14px; font-weight: 500; cursor: pointer;
-  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明；background/color/border-color 由内联 style 提供 */
+[data-orbit-real-page="network"] .nw-import-cta { margin-top: 4px; padding: 10px 20px; border-radius: 10px; background: #FFFFFF; color: #2E3270; border: 1px solid #DDDEFA; font-size: 14px; font-weight: 500; }
+[data-orbit-real-page="network"] .btn.nw-import-cta { margin-top: 4px; padding: 10px 20px; border-radius: 10px; background: #FFFFFF; color: #2E3270; border: 1px solid #DDDEFA; font-size: 14px; font-weight: 500; cursor: pointer;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
   height: auto; display: inline-block; align-items: normal; justify-content: normal; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
 [data-orbit-real-page="network"] .btn.nw-import-cta:active { transform: none; }
+[data-orbit-real-page="network"] .nw-import-cta-on, [data-orbit-real-page="network"] .btn.nw-import-cta-on { background: #0E1225; color: #FFFFFF; border-color: #0E1225; }
 [data-orbit-real-page="network"] .nw-import-method-hint { font-size: 12px; color: #9FA3C4; }
 [data-orbit-real-page="network"] .nw-import-panel { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 26px; display: flex; flex-direction: column; gap: 16px; }
 [data-orbit-real-page="network"] .nw-import-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
@@ -305,7 +307,7 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-import-thead { min-width: 860px; display: grid; grid-template-columns: 150px 110px minmax(0, 1.5fr) 80px 90px 90px 90px 80px; gap: 14px; padding: 10px 12px; border-radius: 10px; background: #F7F7FD; font-size: 13px; color: #6B6F99; }
 [data-orbit-real-page="network"] .btn.nw-import-row { min-width: 860px; display: grid; grid-template-columns: 150px 110px minmax(0, 1.5fr) 80px 90px 90px 90px 80px; gap: 14px; padding: 12px; border-top: 1px solid #EEEFF8; font-size: 14px; align-items: center;
   /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明；设计稿是 div 行 + 「查看详情」链接，此处整行为 <a>（点击 → ?job=） */
-  height: auto; justify-content: normal; border-width: 1px 0 0; border-radius: 0; background: transparent; white-space: normal; text-align: left; letter-spacing: 0; line-height: normal; transition: none; font-weight: 400; color: #0E1225; cursor: pointer; }
+  height: auto; justify-content: normal; border-width: 1px 0 0; border-radius: 0; background: transparent; white-space: normal; text-align: left; letter-spacing: 0; line-height: normal; transition: none; font-weight: 400; color: #0E1225; cursor: pointer; user-select: text; }
 [data-orbit-real-page="network"] .btn.nw-import-row:hover { background: #F7F7FD; color: #0E1225; }
 [data-orbit-real-page="network"] .btn.nw-import-row:active { transform: none; }
 [data-orbit-real-page="network"] .nw-import-row-time { color: #3B3F7A; }

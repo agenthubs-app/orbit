@@ -18,15 +18,16 @@ test("import screen renders the four design methods; only scanning is interactiv
   assert.match(html, /data-network-screen="import"/);
   for (const m of ["上传 CSV", "导入通讯录", "扫描名片夹", "从活动添加联系人"]) assert.match(html, new RegExp(m));
   assert.equal((html.match(/nw-import-cta-soon/g) ?? []).length, 3);
-  assert.equal((html.match(/class="btn nw-import-cta"/g) ?? []).length, 1);
+  assert.equal((html.match(/class="btn nw-import-cta( nw-import-cta-on)?"/g) ?? []).length, 1);
   assert.match(html, /去重识别/);
   assert.doesNotMatch(html, /客户名单\.xlsx|iCloud 通讯录/);
 });
 
 test("scan is the default selected method and the V2 work area is mounted", () => {
   const html = render(<NetworkImport availability={availability} />);
-  // 选中卡（设计 border #4B4FC7 / bg #F7F7FD）只有一张：扫描名片夹
-  assert.equal((html.match(/border-color:#4B4FC7/g) ?? []).length, 1);
+  // 选中卡（.nw-import-method-on = 设计 border #4B4FC7 / bg #F7F7FD）只有一张：扫描名片夹，其 CTA 为深色 -on
+  assert.equal((html.match(/class="nw-import-method[^"]* nw-import-method-on"/g) ?? []).length, 1);
+  assert.match(html, /data-import-method="scan"[^>]*>[\s\S]*?class="btn nw-import-cta nw-import-cta-on"/);
   assert.match(html, /class="nw-import-panel"/);
   assert.match(html, /class="bci-start"/);
   // 导入记录：SSR 阶段尚未拉取，不渲染行也不渲染空态（空态只在拉取结果为空时出现）；表头与设计一致
@@ -47,4 +48,12 @@ test("?job= renders the batch detail in the work area and keeps the method cards
   assert.match(html, /data-network-import-job="batch:abc"/);
   assert.doesNotMatch(html, /class="bci-start"/);
   assert.match(html, /扫描名片夹/);
+});
+
+test("?method=csv highlights the csv card and shows the coming-soon note instead of the V2 entry", () => {
+  const html = render(<NetworkImport availability={availability} initialMethod="csv" />);
+  assert.match(html, /data-import-method="csv"[^>]*class="nw-import-method nw-import-method-soon nw-import-method-on"|class="nw-import-method nw-import-method-soon nw-import-method-on"[^>]*data-import-method="csv"/);
+  assert.equal((html.match(/class="nw-import-method[^"]* nw-import-method-on"/g) ?? []).length, 1);
+  assert.match(html, /nw-import-note[\s\S]*即将开放/);
+  assert.doesNotMatch(html, /class="bci-start"/);
 });

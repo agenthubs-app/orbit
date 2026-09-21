@@ -8,6 +8,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import type { BusinessCardCaptureAvailability } from "../../../../../features/acquisition/business-card-capture-availability";
 import type { IngestBatchDTO } from "../../../../../features/acquisition/business-card-ingest-v2/contract";
@@ -68,6 +69,7 @@ export function jobHref(batchId: string): string {
 
 export function NetworkImport({ availability, initialMethod = "scan", jobId }: { availability: NetworkImportAvailability; initialMethod?: NetworkImportMethod; jobId?: string }) {
   const { t, preserveHref } = useOrbitLanguage();
+  const router = useRouter();
   const [method, setMethod] = useState<NetworkImportMethod>(initialMethod);
   // null = 尚未拉取（SSR / 首帧）：不显示空态，避免闪一次「还没有导入记录」。
   const [batches, setBatches] = useState<readonly IngestBatchDTO[] | null>(null);
@@ -91,6 +93,11 @@ export function NetworkImport({ availability, initialMethod = "scan", jobId }: {
   }, [jobId]);
 
   function chooseScan() {
+    // 批次详情态下工作区被详情占用：CTA 改为导航回扫描方式；否则选中并滚到工作区。
+    if (jobId) {
+      router.push(preserveHref("/app/contacts/new?method=scan"));
+      return;
+    }
     setMethod("scan");
     panelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -137,14 +144,14 @@ export function NetworkImport({ availability, initialMethod = "scan", jobId }: {
                   const on = method === m.key && !jobId;
                   const soon = m.key !== "scan";
                   return (
-                    <div key={m.key} className={soon ? "nw-import-method nw-import-method-soon" : "nw-import-method"} data-import-method={m.key} style={{ background: on ? "#F7F7FD" : "#FFFFFF", borderColor: on ? "#4B4FC7" : "#E8E9F6" }}>
+                    <div key={m.key} className={["nw-import-method", soon ? "nw-import-method-soon" : "", on ? "nw-import-method-on" : ""].filter(Boolean).join(" ")} data-import-method={m.key}>
                       <span className="nw-import-method-icon" style={{ background: m.iconBg, color: m.iconFg }}>{m.icon}</span>
                       <strong className="nw-import-method-title">{t(m.title)}</strong>
                       <span className="nw-import-method-desc">{t(m.desc)}</span>
                       {soon ? (
-                        <span className="nw-import-cta nw-import-cta-soon" aria-disabled="true" style={{ background: "#FFFFFF", color: "#2E3270", borderColor: "#DDDEFA" }}>{t({ en: "Coming soon", zh: "即将开放" })}</span>
+                        <span className={on ? "nw-import-cta nw-import-cta-soon nw-import-cta-on" : "nw-import-cta nw-import-cta-soon"} aria-disabled="true">{t({ en: "Coming soon", zh: "即将开放" })}</span>
                       ) : (
-                        <button type="button" className="btn nw-import-cta" onClick={chooseScan} style={{ background: on ? "#0E1225" : "#FFFFFF", color: on ? "#FFFFFF" : "#2E3270", borderColor: on ? "#0E1225" : "#DDDEFA" }}>{t(m.cta)}</button>
+                        <button type="button" className={on ? "btn nw-import-cta nw-import-cta-on" : "btn nw-import-cta"} onClick={chooseScan}>{t(m.cta)}</button>
                       )}
                       <span className="nw-import-method-hint">{t(m.hint)}</span>
                     </div>
