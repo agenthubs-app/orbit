@@ -6,7 +6,7 @@ import ts from "typescript";
 
 // Execute the actual request functions from the page, rather than maintaining
 // a second implementation of its timeout, refresh ordering or action guard.
-const path = "app/(app)/app/contacts/new/batch/[id]/business-card-batch-view.tsx";
+const path = "app/(app)/app/contacts/ingest-v2/business-card-batch-view.tsx";
 const source = ts.createSourceFile(path, readFileSync(path, "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 const component = source.statements.find((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && node.name?.text === "BusinessCardBatchView")!;
 function named(name: string) {

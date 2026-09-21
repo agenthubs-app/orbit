@@ -5,7 +5,7 @@ import { uploadIngestContent } from "./ingest-v2-content-transport";
 import type {
   IngestBatchDTO,
   IngestItemDTO,
-} from "../../../../../../features/acquisition/business-card-ingest-v2/contract";
+} from "../../../../../features/acquisition/business-card-ingest-v2/contract";
 
 // V2 摄取的客户端工具：digest 计算、待上传文件暂存（内存，页面刷新即失效——
 // 刷新后用户重新选择照片，按 digest 匹配回 manifest 续传）。

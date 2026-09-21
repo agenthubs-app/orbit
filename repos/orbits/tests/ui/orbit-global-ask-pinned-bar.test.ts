@@ -5,8 +5,8 @@ import test from "node:test";
 
 const root = path.join(process.cwd(), "app", "(app)", "app");
 const askStyles = readFileSync(path.join(root, "orbit-global-ask", "orbit-global-ask-styles.ts"), "utf8");
-const v1 = readFileSync(path.join(root, "contacts", "new", "batch", "[id]", "business-card-batch-view.tsx"), "utf8");
-const v2 = readFileSync(path.join(root, "contacts", "new", "batch2", "[id]", "business-card-ingest-v2-view.tsx"), "utf8");
+const v1 = readFileSync(path.join(root, "contacts", "ingest-v2", "business-card-batch-view.tsx"), "utf8");
+const v2 = readFileSync(path.join(root, "contacts", "ingest-v2", "business-card-ingest-v2-view.tsx"), "utf8");
 
 // Measured on the deployed Preview at 375x812: the floating iOrbit ball is fixed at
 // z-index 110 and overlapped the pinned review bar's confirm button by 48x42px —

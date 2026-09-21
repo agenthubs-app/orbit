@@ -4,7 +4,7 @@ import { auth } from "../../../../../../../auth";
 import { AccountTopNav } from "../../../../orbit-account-shell";
 import { OrbitReferenceStyles } from "../../../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../../../orbit-visual-freeze-runtime";
-import { BusinessCardBatchView } from "./business-card-batch-view";
+import { BusinessCardBatchView } from "../../../ingest-v2/business-card-batch-view";
 
 export const dynamic = "force-dynamic";
 

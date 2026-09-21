@@ -6,10 +6,10 @@ import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import {
   IngestV2PrivateImage,
   isPrivateImageExpiredStatus,
-} from "../../app/(app)/app/contacts/new/batch2/ingest-v2-private-image";
+} from "../../app/(app)/app/contacts/ingest-v2/ingest-v2-private-image";
 
 const source = readFileSync(
-  "app/(app)/app/contacts/new/batch2/ingest-v2-private-image.tsx",
+  "app/(app)/app/contacts/ingest-v2/ingest-v2-private-image.tsx",
   "utf8",
 );
 

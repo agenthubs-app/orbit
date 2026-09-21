@@ -6,7 +6,7 @@ import { OrbitReferenceStyles } from "../../../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../../../orbit-visual-freeze-runtime";
 import { makeOrbitServerT, getOrbitServerLanguage } from "../../../../orbit-language-server";
 import { normalizeOrbitLanguage, withOrbitLanguageHref } from "../../../../orbit-language-core";
-import { BusinessCardIngestV2View } from "./business-card-ingest-v2-view";
+import { BusinessCardIngestV2View } from "../../../ingest-v2/business-card-ingest-v2-view";
 
 export const dynamic = "force-dynamic";
 

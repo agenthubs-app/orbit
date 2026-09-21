@@ -5,18 +5,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   IngestBatchDTO,
   IngestItemDTO,
-} from "../../../../../../../features/acquisition/business-card-ingest-v2/contract";
-import { aggregateBusinessCardNotes } from "../../../../../../../features/acquisition/business-card-notes-aggregation";
-import { useOrbitLanguage } from "../../../../orbit-language-context";
-import { ORBIT_Z } from "../../../../orbit-z";
+} from "../../../../../features/acquisition/business-card-ingest-v2/contract";
+import { aggregateBusinessCardNotes } from "../../../../../features/acquisition/business-card-notes-aggregation";
+import { useOrbitLanguage } from "../../orbit-language-context";
+import { ORBIT_Z } from "../../orbit-z";
 import {
   EMPTY_EXTRACTION_NOTICE_COPY,
   NAME_REQUIRED_HINT_COPY,
   hasNoFixedFields,
-} from "../../batch/[id]/business-card-batch-view";
-import { contentUploadErrorCopy } from "../ingest-v2-upload-feedback";
-import { INGEST_V2_COPY } from "../ingest-v2-copy";
-import { IngestV2PrivateImage } from "../ingest-v2-private-image";
+} from "./business-card-batch-view";
+import { contentUploadErrorCopy } from "./ingest-v2-upload-feedback";
+import { INGEST_V2_COPY } from "./ingest-v2-copy";
+import { IngestV2PrivateImage } from "./ingest-v2-private-image";
 import {
   INGEST_V2_API_BASE,
   fetchBatchDetail,
@@ -26,7 +26,7 @@ import {
   sha256OfFile,
   uploadItemContent,
   type IngestBatchDetail,
-} from "../ingest-v2-client";
+} from "./ingest-v2-client";
 import {
   buildConfirmationPayload,
   collectingProgressForItems,
@@ -45,7 +45,7 @@ import {
   type IngestV2CardViewModel,
   type IngestV2Field,
   type IngestV2FieldCandidate,
-} from "../ingest-v2-route-view-model";
+} from "./ingest-v2-route-view-model";
 
 type Translate = (copy: { en: string; zh: string; ja?: string }) => string;
 

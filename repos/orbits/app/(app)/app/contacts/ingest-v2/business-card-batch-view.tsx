@@ -5,11 +5,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   BusinessCardBatchDTO,
   BusinessCardBatchItemDTO,
-} from "../../../../../../../features/acquisition/business-card-batch-contract";
-import { aggregateBusinessCardNotes } from "../../../../../../../features/acquisition/business-card-notes-aggregation";
-import { Icon } from "../../../../orbit-reference-primitives";
-import { useOrbitLanguage } from "../../../../orbit-language-context";
-import { ORBIT_Z } from "../../../../orbit-z";
+} from "../../../../../features/acquisition/business-card-batch-contract";
+import { aggregateBusinessCardNotes } from "../../../../../features/acquisition/business-card-notes-aggregation";
+import { Icon } from "../../orbit-reference-primitives";
+import { useOrbitLanguage } from "../../orbit-language-context";
+import { ORBIT_Z } from "../../orbit-z";
 
 type Translate = (copy: { en: string; zh: string; ja?: string }) => string;
 

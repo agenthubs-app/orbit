@@ -3,8 +3,8 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { INGEST_V2_MAX_ITEMS, INGEST_V2_MAX_RAW_BYTES } from "../../../../../../features/acquisition/business-card-ingest-v2/contract";
-import { useOrbitLanguage } from "../../../orbit-language-context";
+import { INGEST_V2_MAX_ITEMS, INGEST_V2_MAX_RAW_BYTES } from "../../../../../features/acquisition/business-card-ingest-v2/contract";
+import { useOrbitLanguage } from "../../orbit-language-context";
 import {
   createInitialPairing,
   freezeManifestSubmission,

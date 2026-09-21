@@ -16,7 +16,7 @@ import {
   setManualDraftNotes,
   setDraftFieldSource,
   type IngestV2CardViewModel,
-} from "../../app/(app)/app/contacts/new/batch2/ingest-v2-route-view-model";
+} from "../../app/(app)/app/contacts/ingest-v2/ingest-v2-route-view-model";
 
 const NOW = "2026-09-17T00:00:00.000Z";
 const EMPTY_EXTRACTION = {

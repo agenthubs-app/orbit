@@ -1,17 +1,17 @@
 import type {
   IngestCardConfirmationInputContract,
   IngestCardFieldSourcesContract,
-} from "../../../../../../shared/contract/business-card-batch";
+} from "../../../../../shared/contract/business-card-batch";
 import type {
   BusinessCardContactPoint,
   BusinessCardStructuredExtraction,
-} from "../../../../../../features/acquisition/business-card-cloud-ocr";
+} from "../../../../../features/acquisition/business-card-cloud-ocr";
 import type {
   IngestCardSide,
   IngestItemDTO,
   IngestManifestEntry,
-} from "../../../../../../features/acquisition/business-card-ingest-v2/contract";
-import { aggregateBusinessCardNotes } from "../../../../../../features/acquisition/business-card-notes-aggregation";
+} from "../../../../../features/acquisition/business-card-ingest-v2/contract";
+import { aggregateBusinessCardNotes } from "../../../../../features/acquisition/business-card-notes-aggregation";
 
 export const INGEST_V2_FIELDS = [
   "displayName",

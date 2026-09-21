@@ -10,10 +10,10 @@ import {
   removePairingPhoto,
   unpairBackPhoto,
   type PairingPhoto,
-} from "../../app/(app)/app/contacts/new/batch2/ingest-v2-route-view-model";
+} from "../../app/(app)/app/contacts/ingest-v2/ingest-v2-route-view-model";
 
 const startSource = readFileSync(
-  "app/(app)/app/contacts/new/batch2/business-card-ingest-v2-start.tsx",
+  "app/(app)/app/contacts/ingest-v2/business-card-ingest-v2-start.tsx",
   "utf8",
 );
 
