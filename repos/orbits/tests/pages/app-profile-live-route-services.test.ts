@@ -204,7 +204,9 @@ test("internal failure route copy stays owner neutral", async () => {
 });
 
 test("profile editor uses API extraction and save readback instead of timed success", () => {
-  const profileSource = source("app/(app)/app/profile/orbit-real-profile.tsx");
+  // 个人中心 task 6 deleted the legacy orbit-real-profile.tsx; the quick-fill / extraction UI now lives in
+  // profile-0918/profile-basic.tsx (assertion intent unchanged).
+  const profileSource = source("app/(app)/app/profile/profile-0918/profile-basic.tsx");
   // Session logic (load / save / readback / extraction) lives in the hook since 个人中心 task 1.
   const sessionSource = source("app/(app)/app/profile/profile-0918/use-profile-editor-session.ts");
   const editorAdapterSource = source("app/(app)/app/profile/profile-editor-adapter.ts");
@@ -228,17 +230,20 @@ test("profile editor uses API extraction and save readback instead of timed succ
 });
 
 test("profile editor exposes structured industries and custom tag entry", () => {
-  const profileSource = source("app/(app)/app/profile/orbit-real-profile.tsx");
+  // 个人中心 task 6: structured industries live on the basic-profile screen, custom tag entry on the persona
+  // screen. The legacy `allOptions` suggestion union and the "Enter a specific item" placeholder were
+  // structure of the deleted editor (the 0918 persona screen has no suggestion chips; group placeholders come
+  // from profile-model), so those two assertions are dropped rather than re-pointed.
+  const basicSource = source("app/(app)/app/profile/profile-0918/profile-basic.tsx");
+  const personaSource = source("app/(app)/app/profile/profile-0918/profile-persona.tsx");
 
-  assert.match(profileSource, /Primary industry/);
-  assert.match(profileSource, /Secondary industry/);
-  assert.match(profileSource, /Existing industry text is preserved/);
-  assert.doesNotMatch(profileSource, /en: "Industry", zh: "行业"/);
-  assert.match(profileSource, /listSecondaryIndustries/);
-  assert.match(profileSource, /Enter a specific item/);
-  assert.match(profileSource, /添加\$\{label\}项目/);
-  assert.match(profileSource, /const allOptions = Array\.from\(new Set/);
-  assert.match(profileSource, /maxLength=\{80\}/);
+  assert.match(basicSource, /Primary industry/);
+  assert.match(basicSource, /Secondary industry/);
+  assert.match(basicSource, /Existing industry text is preserved/);
+  assert.doesNotMatch(basicSource, /en: "Industry", zh: "行业"/);
+  assert.match(basicSource, /listSecondaryIndustries/);
+  assert.match(personaSource, /添加\$\{label\}项目/);
+  assert.match(personaSource, /maxLength=\{80\}/);
 });
 
 test("profile save verification rejects a partial readback", () => {

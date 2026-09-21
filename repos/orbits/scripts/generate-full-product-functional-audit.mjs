@@ -1610,97 +1610,68 @@ const LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
 ]);
+// 个人中心 task 6 (2026-09-22): the legacy orbit-real-profile.tsx was deleted; keys
+// below point at the equivalent interaction lines of the profile-0918 screens
+// (basic / persona / shell). Seven 2026-07-29 entries had no equivalent in the
+// new screens (Add-tag controls, the three ChipGroup onChange callbacks, Back →
+// /app/home, and the separate mobile form / mobile Save) and were dropped rather
+// than re-attached to unrelated lines. Evidence texts stay the 2026-07-29 record.
 const LIVE_PROFILE_INTERACTION_EVIDENCE = new Map(
   [
     [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:296",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:67",
       "Manual entry and structured text extraction each became the pressed fill method and exposed only the controls belonging to that method.",
       "Method selection changed local presentation only and did not write a profile.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:323",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:70",
       "Scan/import in Import hub opened /app/contacts/new, which truthfully rendered every unconfigured acquisition source as unavailable and performed no upload or contact write.",
       "Navigation only; the profile, contact collection, and acquisition drafts were unchanged.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:335",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:76",
       "The structured-text field preserved eight explicit Chinese profile lines before extraction.",
       "Typing changed local form state only and did not write a profile.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:336",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:79",
       "Extract to form first rejected an empty input with 请先粘贴档案文本再提取。; the labeled Chinese input then populated name, company, title, market, relationship goal, two offering tags, and two seeking tags while requiring review before save.",
       "Extraction produced a local draft only; it made no profile write until the separate save action.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:362",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:127",
       "Every rendered scalar field accepted its audit value; the authenticated email remained readonly and retained audit-permission-1785253354985@example.invalid.",
       "Field edits remained local until save; the readonly email could not be changed by the editor.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:400",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:159",
       "Bio and opener accepted distinct multi-word Chinese values and updated the business-card preview before save.",
       "Textarea edits remained local until save.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:449",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-persona.tsx:72",
       "Pressed offering, seeking, and topic chips each toggled off without affecting another tag group.",
       "Tag toggles changed local form state only until save.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:457",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-persona.tsx:81",
       "All three custom-tag fields accepted distinct audit values; pressing Enter in the topic field added 审计话题-可信数据 and cleared the draft.",
       "Draft input and Enter handling changed local tag state only until save.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:473",
-      "The enabled Add controls appended 活动, 审计能力-API持久化, and 审计目标-企业AI合作 to their exact groups; empty Add controls stayed disabled.",
-      "Add changed local tag state only until save and did not create duplicate profile records.",
-    ],
-    [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:540",
-      "The offering callback added and removed source-extracted and custom offering tags without changing seeking or topics.",
-      "The callback updated only the offering array before the explicit save.",
-    ],
-    [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:541",
-      "The seeking callback added and removed source-extracted and custom relationship targets without changing offering or topics.",
-      "The callback updated only the seeking array before the explicit save.",
-    ],
-    [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:542",
-      "The topics callback added 审计话题-可信数据 through Enter and later removed it during cleanup without changing offering or seeking.",
-      "The callback updated only the topics array before the explicit save.",
-    ],
-    [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:773",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:119",
       "The desktop form rejected a whitespace-only name, then submitted the complete 100% profile through the actor-scoped PUT and GET readback chain.",
       "One profile record was updated in place; a hard re-entry showed the same values and no duplicate record.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:776",
-      "Back navigated from /app/profile to /app/home after cleanup and the home surface rendered the restored actor profile.",
-      "Navigation only; no profile or relationship record was written.",
-    ],
-    [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:793",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-shell.tsx:117",
       "Cancel discarded the visible unsaved title 未保存的临时职位, opened /app/home, and a new Edit universal profile entry restored the last saved 产品验证负责人 value.",
       "Cancel performed no PUT and preserved the previously saved profile.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:794",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-shell.tsx:118",
       "Save profile persisted every desktop scalar and list field, displayed 档案已保存并完成复读核验。, and survived a fresh entry from /app.",
       "Repeated reads returned the same actor-owned profile; cleanup updated that record back to its original values.",
-    ],
-    [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:800",
-      "At 390x844 the mobile form rendered the complete editor, submitted a distinct mobile headline, and preserved it after hard navigation.",
-      "The mobile form updated the same actor-owned profile instead of creating a platform-specific duplicate.",
-    ],
-    [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:801",
-      "The mobile Save control persisted 移动端保存验证-20260729, displayed the verified-save status, and hard navigation read the same value back.",
-      "The mobile save updated the same profile once; final desktop cleanup restored the original 20% profile.",
     ],
   ].map(([sourceRef, actualResult, idempotency]) => [
     sourceRef,

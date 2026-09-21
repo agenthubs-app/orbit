@@ -140,7 +140,8 @@ test("gap literals outside the scale in app/(app)/app do not increase", () => {
   const hits = SITEWIDE_FILES.flatMap((f) => findScaleViolations(f, "gap", GAP_SCALE));
 
   // Orbit_0918 task 8: legacy orbit-real contact views deleted → 250 to 230.
-  const CEILING = 230;
+  // 个人中心 task 6 deleted orbit-real-profile.tsx → 227.
+  const CEILING = 227;
 
   assert.ok(
     hits.length <= CEILING,

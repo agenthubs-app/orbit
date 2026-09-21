@@ -106,7 +106,9 @@ test("non-.btn <button> count in app/(app)/app does not increase", () => {
   // in orbit-real-profile.tsx → 154. Orbit_0918 task 8 deleted the legacy
   // orbit-real contact views (orbit-real-contacts / cards-pipeline-view /
   // cards-import / card-connection, analysis workspace, V1 card import) → 142.
-  const CEILING = 142;
+  // 个人中心 task 6 deleted the legacy orbit-real-profile.tsx (its 12 non-.btn
+  // buttons incl. the connect placeholder tab) → 130.
+  const CEILING = 130;
 
   assert.ok(
     nonBtn.length <= CEILING,

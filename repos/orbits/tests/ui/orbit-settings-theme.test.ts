@@ -57,8 +57,11 @@ test("appearance settings offers explicit light and dark choices", () => {
 });
 
 test("settings page copy follows the shared language preference", () => {
-  const content = source("app/(app)/app/settings/orbit-settings-content.tsx");
-  assert.match(content, /useOrbitLanguage/);
-  assert.match(content, /en: "Settings", zh: "设置"/);
-  assert.match(content, /<OrbitAppearanceSettings/);
+  // 个人中心 task 6 deleted settings/orbit-settings-content.tsx: the settings page title now comes from the
+  // profile-0918 shell (iOrbit 设置) and the appearance module is mounted by profile-legacy-settings.tsx.
+  const shell = source("app/(app)/app/profile/profile-0918/profile-shell.tsx");
+  assert.match(shell, /useOrbitLanguage/);
+  assert.match(shell, /zh: "iOrbit 设置", en: "iOrbit settings"/);
+  const legacy = source("app/(app)/app/profile/profile-0918/profile-legacy-settings.tsx");
+  assert.match(legacy, /<OrbitAppearanceSettings/);
 });
