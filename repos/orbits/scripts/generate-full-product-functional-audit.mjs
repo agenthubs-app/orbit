@@ -1665,12 +1665,12 @@ const LIVE_PROFILE_INTERACTION_EVIDENCE = new Map(
     ],
     [
       "repos/orbits/app/(app)/app/profile/profile-0918/profile-shell.tsx:117",
-      "Cancel discarded the visible unsaved title 未保存的临时职位, opened /app/home, and a new Edit universal profile entry restored the last saved 产品验证负责人 value.",
+      "取消 in the persona / basic / settings save bar navigates to /app/profile with a full page load and discards the unsaved draft (no reload GET, no in-place view flip); the overview shows only the last saved values.",
       "Cancel performed no PUT and preserved the previously saved profile.",
     ],
     [
       "repos/orbits/app/(app)/app/profile/profile-0918/profile-shell.tsx:118",
-      "Save profile persisted every desktop scalar and list field, displayed 档案已保存并完成复读核验。, and survived a fresh entry from /app.",
+      "保存修改 in the basic / settings save bar submits the basic scope through the actor-scoped PUT and GET readback chain and shows the shell notice 基础资料已保存并完成复读核验。 (amber 基础资料已保存，但还需填写：… variant while onboarding stays incomplete); on persona it saves the matching scope and returns to the overview with the 修改已保存 toast.",
       "Repeated reads returned the same actor-owned profile; cleanup updated that record back to its original values.",
     ],
   ].map(([sourceRef, actualResult, idempotency]) => [
