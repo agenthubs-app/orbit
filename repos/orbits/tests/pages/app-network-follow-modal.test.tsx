@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { NetworkFollowModal, buildFollowPatch } from "../../app/(app)/app/contacts/network-0918/network-follow-modal";
+import { NetworkFollowModal, buildFollowPatch, followOccurredAt } from "../../app/(app)/app/contacts/network-0918/network-follow-modal";
 
 test("buildFollowPatch composes note body from the four fields and never writes status", () => {
   const patch = buildFollowPatch({ summary: "聊了合作", need: "需要案例", offer: "可给 demo", next: "下周发方案", date: "2026-09-25", remind: "2026-09-24", tags: ["AI", "日本"], existingTags: ["AI", "旧"] });
@@ -13,12 +13,23 @@ test("buildFollowPatch composes note body from the four fields and never writes 
   assert.match(patch.note.body, /总结：聊了合作/);
   assert.match(patch.note.body, /下一步：下周发方案（2026-09-25）/);
   assert.match(patch.note.body, /提醒：2026-09-24/);
-  assert.equal(patch.lastInteraction.occurredAt, "2026-09-25");
+  // occurredAt 是完整 ISO 时间戳（与 contact-interaction-editor 一致）：选了日期 → 该本地日期 + 当前时刻
+  assert.match(patch.lastInteraction.occurredAt, /^\d{4}-\d{2}-\d{2}T/);
+  assert.equal(new Date(patch.lastInteraction.occurredAt).getDate(), 25);
   assert.equal(patch.lastInteraction.channel, "manual_note");
   const minimal = buildFollowPatch({ summary: "x", need: "", offer: "", next: "", date: "", remind: "", tags: [], existingTags: [] });
   assert.equal(minimal.addTags, undefined);
   assert.equal(minimal.removeTags, undefined);
   assert.equal(minimal.note.body, "总结：x");
+  assert.match(minimal.lastInteraction.occurredAt, /^\d{4}-\d{2}-\d{2}T/);
+});
+
+test("followOccurredAt keeps the chosen local date with the current time of day, or now when empty", () => {
+  const now = new Date(2026, 8, 21, 14, 5, 9, 0);
+  assert.equal(followOccurredAt("", now), now.toISOString());
+  const chosen = new Date(followOccurredAt("2026-09-25", now));
+  assert.deepEqual([chosen.getFullYear(), chosen.getMonth(), chosen.getDate(), chosen.getHours(), chosen.getMinutes()], [2026, 8, 25, 14, 5]);
+  assert.equal(followOccurredAt("nope", now), now.toISOString());
 });
 
 test("follow modal renders the design form with save disabled until summary is filled", () => {
@@ -34,6 +45,7 @@ test("follow modal renders the design form with save disabled until summary is f
   assert.match(html, /提醒日期/);
   assert.equal((html.match(/type="date"/g) ?? []).length, 2);
   assert.match(html, /nw-fu-save"[^>]*disabled/);
+  assert.match(html, /<textarea id="nw-fu-summary"[^>]*autofocus/);
   assert.match(html, /保存记录/);
   // 四段阶段箭头只读：span + aria-disabled，不是按钮；当前阶段（active → advance）高亮
   assert.equal((html.match(/<span class="nw-fu-stage/g) ?? []).length, 4);

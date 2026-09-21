@@ -472,10 +472,12 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .btn.nw-modal-close { width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: #3B3F7A; font-size: 20px; cursor: pointer;
   /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
   padding: 0; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; letter-spacing: 0; line-height: normal; transition: none; font-weight: 400; }
-[data-orbit-real-page="network"] .btn.nw-modal-close:hover { background: #ECEEFB; color: #3B3F7A; }
+[data-orbit-real-page="network"] .btn.nw-modal-close:hover { background: #ECEEFB; }
 [data-orbit-real-page="network"] .btn.nw-modal-close:active { transform: none; }
 [data-orbit-real-page="network"] .nw-detail-hero { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; }
-[data-orbit-real-page="network"] .nw-modal-avatar { width: 112px; height: 112px; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 44px; flex-shrink: 0; }
+[data-orbit-real-page="network"] .nw-modal-avatar { width: 112px; height: 112px; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 44px;
+  /* 非设计声明：flex 子项防压缩（设计里 span 不受父级压缩，实际列表长文案会挤压头像） */
+  flex-shrink: 0; }
 [data-orbit-real-page="network"] .nw-detail-id { flex: 1; min-width: 240px; display: flex; flex-direction: column; gap: 10px; }
 [data-orbit-real-page="network"] .nw-detail-name { margin: 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 30px; letter-spacing: -0.02em; }
 [data-orbit-real-page="network"] .nw-detail-org { font-size: 17px; color: #3B3F7A; }
@@ -507,7 +509,9 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-tl-meta { display: flex; gap: 12px; font-size: 14px; }
 [data-orbit-real-page="network"] .nw-tl-time { color: #6B6F99; }
 [data-orbit-real-page="network"] .nw-tl-kind { font-weight: 500; }
-[data-orbit-real-page="network"] .nw-tl-text { font-size: 13px; color: #6B6F99; line-height: 1.6; white-space: pre-wrap; }
+[data-orbit-real-page="network"] .nw-tl-text { font-size: 13px; color: #6B6F99; line-height: 1.6;
+  /* 非设计声明：跟进备注按行拼接（总结/需求/下一步），保留换行 */
+  white-space: pre-wrap; }
 [data-orbit-real-page="network"] .nw-topic-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
 [data-orbit-real-page="network"] .nw-topic { padding: 7px 14px; border-radius: 999px; background: #ECEEFB; color: #2E3270; font-size: 13px; }
 [data-orbit-real-page="network"] .nw-li { display: flex; gap: 10px; font-size: 14px; color: #3B3F7A; line-height: 1.6; }
@@ -521,7 +525,6 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .btn.nw-detail-close { padding: 13px 40px; border: 1px solid #DDDEFA; border-radius: 10px; background: #FFFFFF; color: #3B3F7A; font-size: 14px; cursor: pointer;
   /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
   height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; font-weight: 400; }
-[data-orbit-real-page="network"] .btn.nw-detail-close:hover { color: #3B3F7A; }
 [data-orbit-real-page="network"] .btn.nw-detail-close:active { transform: none; }
 [data-orbit-real-page="network"] .btn.nw-detail-follow, [data-orbit-real-page="network"] .btn.nw-detail-status { padding: 13px 22px; border: 1px solid #DDDEFA; border-radius: 10px; background: #FFFFFF; color: #0E1225; font-size: 14px; cursor: pointer;
   /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
@@ -542,14 +545,17 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .btn.nw-fu-detail-link { border: 0; background: transparent; color: #4B4FC7; font-size: 14px; font-weight: 500; cursor: pointer;
   /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
   height: auto; padding: 0; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; letter-spacing: 0; line-height: normal; transition: none; border-radius: 0; }
-[data-orbit-real-page="network"] .btn.nw-fu-detail-link:hover { color: #4B4FC7; background: transparent; }
 [data-orbit-real-page="network"] .btn.nw-fu-detail-link:active { transform: none; }
 [data-orbit-real-page="network"] .nw-fu-form { display: grid; grid-template-columns: 120px 1fr; gap: 14px 16px; align-items: start; }
 [data-orbit-real-page="network"] .nw-fu-label { font-size: 14px; padding-top: 12px; }
 [data-orbit-real-page="network"] .nw-fu-req { color: #B5473A; }
-[data-orbit-real-page="network"] .nw-fu-textarea { padding: 12px 14px; border: 1px solid #DDDEFA; border-radius: 10px; font-size: 14px; line-height: 1.6; outline: none; resize: vertical; background: #FFFFFF; color: #0E1225; }
+[data-orbit-real-page="network"] .nw-fu-textarea { padding: 12px 14px; border: 1px solid #DDDEFA; border-radius: 10px; font-size: 14px; line-height: 1.6; outline: none; resize: vertical;
+  /* 非设计声明：覆盖 orbit-reference-styles 的 textarea 基类（resize:none / 主题底色与文字色） */
+  background: #FFFFFF; color: #0E1225; }
 [data-orbit-real-page="network"] .nw-fu-textarea:focus { border-color: #4B4FC7; }
-[data-orbit-real-page="network"] .nw-fu-input { padding: 12px 14px; border: 1px solid #DDDEFA; border-radius: 10px; font-size: 14px; outline: none; background: #FFFFFF; color: #0E1225; }
+[data-orbit-real-page="network"] .nw-fu-input { padding: 12px 14px; border: 1px solid #DDDEFA; border-radius: 10px; font-size: 14px; outline: none;
+  /* 非设计声明：覆盖 input 基类的主题底色与文字色 */
+  background: #FFFFFF; color: #0E1225; }
 [data-orbit-real-page="network"] .nw-fu-input:focus { border-color: #4B4FC7; }
 [data-orbit-real-page="network"] .nw-fu-input-muted { color: #3B3F7A; }
 [data-orbit-real-page="network"] .nw-fu-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -567,7 +573,6 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .btn.nw-fu-tag-x { border: 0; background: transparent; color: #6B6F99; cursor: pointer; padding: 0; font-size: 13px;
   /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
   height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; letter-spacing: 0; line-height: normal; transition: none; border-radius: 0; font-weight: 400; }
-[data-orbit-real-page="network"] .btn.nw-fu-tag-x:hover { color: #6B6F99; background: transparent; }
 [data-orbit-real-page="network"] .btn.nw-fu-tag-x:active { transform: none; }
 [data-orbit-real-page="network"] .nw-fu-tag-input { flex: 1; min-width: 140px; border: 0; outline: none; font-size: 14px; padding: 6px; background: transparent; color: #0E1225; }
 [data-orbit-real-page="network"] .nw-fu-error { margin: 0; font-size: 13px; color: #B5473A; }

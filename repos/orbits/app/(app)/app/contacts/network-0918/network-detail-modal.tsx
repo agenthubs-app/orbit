@@ -6,7 +6,7 @@
  */
 "use client";
 
-import { useEffect, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, type MouseEvent, type ReactNode } from "react";
 
 import type { OrbitContactView } from "../../orbit-contacts-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
@@ -39,10 +39,18 @@ export function NetworkDetailModal({ contact, closeHref, onFollow, extra }: { co
   const seeking = profile?.seeking ?? [];
   const notes = sortedNotes(contact.notes);
   const next = contact.nextAction;
+  const interactionAt = contact.editableInteraction?.occurredAt ? formatNoteTime(contact.editableInteraction.occurredAt) : dash;
+  const interactionSummary = contact.lastInteraction.trim();
+  const closeRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
+    closeRef.current?.focus();
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") window.location.assign(closeHref);
+      if (event.key !== "Escape") return;
+      const el = event.target as HTMLElement | null;
+      // 弹窗内附加态（会后纪要等）的输入框里按 Esc 不关闭
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
+      window.location.assign(closeHref);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -55,8 +63,9 @@ export function NetworkDetailModal({ contact, closeHref, onFollow, extra }: { co
   // 设计 selOverview：图标 / 标签 / 值 / 说明；「联系频率」无数据源不渲染。
   const overview: { icon: string; label: string; value: string; desc: string }[] = [
     { icon: "⇢", label: t({ en: "Stage", zh: "关系阶段" }), value: t(STAGE_LABEL[stage]), desc: t(STAGE_STYLE[stage].desc) },
-    { icon: "◷", label: t({ en: "Last contact", zh: "上次互动" }), value: contact.lastInteraction || dash, desc: next?.text || dash },
-    { icon: "▦", label: t({ en: "Next plan", zh: "下次计划" }), value: next?.text || dash, desc: next?.reason ?? "" },
+    // 上次互动：值 = 互动时间，说明 = 互动摘要（无则下一步）；下次计划的 reason 与互动摘要相同时不重复。
+    { icon: "◷", label: t({ en: "Last contact", zh: "上次互动" }), value: interactionAt, desc: interactionSummary || next?.text || dash },
+    { icon: "▦", label: t({ en: "Next plan", zh: "下次计划" }), value: next?.text || dash, desc: next?.reason && next.reason.trim() !== interactionSummary ? next.reason : "" },
     { icon: "◎", label: t({ en: "Source", zh: "来源" }), value: t(SOURCE_LABEL[source]), desc: contact.met.trim() },
   ];
 
@@ -68,7 +77,7 @@ export function NetworkDetailModal({ contact, closeHref, onFollow, extra }: { co
       <div className="nw-modal nw-modal-detail" role="dialog" aria-modal="true" aria-label={t({ en: "Contact detail", zh: "联系人详情" })}>
         <div className="nw-modal-head">
           <strong className="nw-modal-title">{t({ en: "Contact detail", zh: "联系人详情" })}</strong>
-          <a className="btn nw-modal-close" href={closeHref} aria-label={t({ en: "Close", zh: "关闭" })}>×</a>
+          <a ref={closeRef} className="btn nw-modal-close" href={closeHref} aria-label={t({ en: "Close", zh: "关闭" })}>×</a>
         </div>
         <div className="nw-detail-hero">
           <span className="nw-modal-avatar">{contact.initial || contact.displayName.slice(0, 1)}</span>
@@ -126,7 +135,7 @@ export function NetworkDetailModal({ contact, closeHref, onFollow, extra }: { co
             </div>
             <div className="nw-panel nw-panel-12">
               <strong className="nw-panel-t">{t({ en: "Suggested next steps", zh: "下一步建议" })}</strong>
-              <span className="nw-step"><span className="nw-step-n">1</span><span className="nw-step-text">{next?.text || dash}{next?.reason ? <span className="nw-step-reason">{next.reason}</span> : null}</span></span>
+              <span className="nw-step"><span className="nw-step-n">1</span><span className="nw-step-text">{next?.text || dash}{next?.reason && next.reason.trim() !== interactionSummary ? <span className="nw-step-reason">{next.reason}</span> : null}</span></span>
             </div>
           </div>
         </div>

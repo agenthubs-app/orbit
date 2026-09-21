@@ -17,7 +17,18 @@ import { NETWORK_STAGES, STAGE_LABEL, stageClip, stageOf } from "./network-model
  * （features/contacts/live-detail-service.ts CONTACT_DETAIL_CANONICAL_STATUS_LIFECYCLE_ONLY），
  * 阶段只能通过 /api/connections/<id>/lifecycle 的跟进任务推进。
  */
-export function buildFollowPatch(input: { summary: string; need: string; offer: string; next: string; date: string; remind: string; tags: string[]; existingTags: string[] }): {
+/**
+ * occurredAt 为完整 ISO 时间戳（与 contact-interaction-editor.tsx:51 一致）：
+ * 未选日期 → 现在；选了日期 → 该本地日期 + 当前本地时刻（同一天多次记录保持先后顺序）。
+ */
+export function followOccurredAt(date: string, now: Date = new Date()): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  if (!m) return now.toISOString();
+  const local = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+  return Number.isNaN(local.getTime()) ? now.toISOString() : local.toISOString();
+}
+
+export function buildFollowPatch(input: { summary: string; need: string; offer: string; next: string; date: string; remind: string; tags: string[]; existingTags: string[] }, now: Date = new Date()): {
   note: { body: string; authorLabel: "我" };
   addTags?: string[];
   removeTags?: string[];
@@ -34,7 +45,7 @@ export function buildFollowPatch(input: { summary: string; need: string; offer: 
     note: { body: lines.join("\n"), authorLabel: "我" as const },
     ...(addTags.length ? { addTags } : {}),
     ...(removeTags.length ? { removeTags } : {}),
-    lastInteraction: { channel: "manual_note" as const, occurredAt: input.date || new Date().toISOString().slice(0, 10), summary: input.summary.trim() },
+    lastInteraction: { channel: "manual_note" as const, occurredAt: followOccurredAt(input.date, now), summary: input.summary.trim() },
   };
 }
 
@@ -48,6 +59,7 @@ export function NetworkFollowModal({ contact, onClose, onSaved }: { contact: Orb
   const { t } = useOrbitLanguage();
   const existingTags = contact.editableTags?.map((tag) => tag.value) ?? [];
   const labelByValue = new Map((contact.editableTags ?? []).map((tag) => [tag.value, tag.label] as const));
+  const knownLabels = new Set((contact.editableTags ?? []).map((tag) => tag.label));
   const [summary, setSummary] = useState("");
   const [need, setNeed] = useState("");
   const [offer, setOffer] = useState("");
@@ -82,7 +94,10 @@ export function NetworkFollowModal({ contact, onClose, onSaved }: { contact: Orb
     event.preventDefault();
     const value = tagInput.trim();
     if (!value) return;
-    if (!tags.includes(value)) setTags([...tags, value]);
+    // 去重同时看 value 与 label：输入已有标签的显示名不再追加一个同名新标签
+    const existingByLabel = (contact.editableTags ?? []).find((tag) => tag.label === value)?.value;
+    const canonical = existingByLabel ?? value;
+    if (!tags.includes(canonical) && !(knownLabels.has(value) && tags.some((tag) => labelByValue.get(tag) === value))) setTags([...tags, canonical]);
     setTagInput("");
   };
 
@@ -123,7 +138,7 @@ export function NetworkFollowModal({ contact, onClose, onSaved }: { contact: Orb
         </div>
         <div className="nw-fu-form">
           <label className="nw-fu-label" htmlFor="nw-fu-summary">{t({ en: "Summary", zh: "本次沟通摘要" })} <span className="nw-fu-req">*</span></label>
-          <textarea id="nw-fu-summary" className="nw-fu-textarea" rows={3} value={summary} onChange={(e) => { setSummary(e.target.value); if (status === "error") setStatus("idle"); }} placeholder={t({ en: "Briefly record what was discussed, their feedback and key points…", zh: "请简要记录本次沟通的主要内容、对方反馈及重点信息…" })} />
+          <textarea id="nw-fu-summary" className="nw-fu-textarea" rows={3} autoFocus value={summary} onChange={(e) => { setSummary(e.target.value); if (status === "error") setStatus("idle"); }} placeholder={t({ en: "Briefly record what was discussed, their feedback and key points…", zh: "请简要记录本次沟通的主要内容、对方反馈及重点信息…" })} />
           <label className="nw-fu-label" htmlFor="nw-fu-need">{t({ en: "Their current needs", zh: "对方当前需求" })}</label>
           <textarea id="nw-fu-need" className="nw-fu-textarea" rows={2} value={need} onChange={(e) => setNeed(e.target.value)} placeholder={t({ en: "Their business needs, pain points or focus…", zh: "记录对方目前的业务需求、痛点或关注重点…" })} />
           <label className="nw-fu-label" htmlFor="nw-fu-offer">{t({ en: "What I can offer", zh: "我可提供的帮助" })}</label>

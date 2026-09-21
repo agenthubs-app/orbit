@@ -6,7 +6,7 @@ import { NetworkDetailModal, formatNoteTime } from "../../app/(app)/app/contacts
 
 const contact = {
   id: "c1", displayName: "田中惠子", initial: "田", company: "Nexa AI", title: "合作伙伴负责人", industry: "科技与互联网", source: "event", stage: "Active", pipelineStatus: "in_progress", relationshipStatus: "active", location: "日本 东京", met: "东京 AI 峰会",
-  lastInteraction: "昨天", nextAction: { text: "下周约产品演示", reason: "对方对知识库方案有兴趣" }, valueTags: ["AI"], editableTags: [{ value: "ai", label: "AI" }],
+  lastInteraction: "昨天聊了知识库方案", editableInteraction: { channel: "manual_note", occurredAt: "2026-09-19T01:00:00Z", summary: "昨天聊了知识库方案" }, nextAction: { text: "下周约产品演示", reason: "对方对知识库方案有兴趣" }, valueTags: ["AI"], editableTags: [{ value: "ai", label: "AI" }],
   notes: [
     { id: "n0", body: "较早的备注", createdAt: "2026-09-10T02:00:00Z" },
     { id: "n1", body: "讨论合作模式", createdAt: "2026-09-18T07:30:00Z" },
@@ -38,8 +38,22 @@ test("detail modal renders overview rows, timeline from notes, and next steps", 
   assert.doesNotMatch(html, /平均 2–3 周一次|1 周后（9月25日）|编辑资料|约时间|查看全部/);
 });
 
+test("detail modal shows interaction time as 上次互动 and never repeats the summary outside the timeline", () => {
+  const html = renderToStaticMarkup(<NetworkDetailModal contact={contact} closeHref="/app/contacts" onFollow={() => {}} />);
+  // 上次互动值 = editableInteraction.occurredAt 的 M月D日 HH:mm，说明 = 互动摘要
+  assert.match(html, /上次互动<\/span><strong class="nw-ov-v">9月19日 \d{2}:\d{2}<\/strong><span class="nw-ov-d">昨天聊了知识库方案/);
+  const outsideTimeline = html.replace(/<div class="nw-tl">[\s\S]*?<\/div>\s*<\/div>/, "");
+  assert.ok((outsideTimeline.match(/昨天聊了知识库方案/g) ?? []).length <= 1);
+  // reason 与互动摘要相同时不再重复
+  const same = { ...(contact as object), nextAction: { text: "下周约产品演示", reason: "昨天聊了知识库方案" } } as never;
+  const html2 = renderToStaticMarkup(<NetworkDetailModal contact={same} closeHref="/app/contacts" onFollow={() => {}} />);
+  const outside2 = html2.replace(/<div class="nw-tl">[\s\S]*?<\/div>\s*<\/div>/, "");
+  assert.equal((outside2.match(/昨天聊了知识库方案/g) ?? []).length, 1);
+  assert.doesNotMatch(html2, /nw-step-reason/);
+});
+
 test("detail modal falls back to dashes and renders extra above the timeline", () => {
-  const bare = { ...(contact as object), location: "", nextAction: null, lastInteraction: "", notes: [], encounters: [] } as never;
+  const bare = { ...(contact as object), location: "", nextAction: null, lastInteraction: "", editableInteraction: undefined, notes: [], encounters: [] } as never;
   const html = renderToStaticMarkup(<NetworkDetailModal contact={bare} closeHref="/app/contacts" onFollow={() => {}} extra={<p data-extra>memo</p>} />);
   assert.doesNotMatch(html, /◎ /);
   assert.match(html, /nw-ov-v">—</);
