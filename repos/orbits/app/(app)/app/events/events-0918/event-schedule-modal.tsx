@@ -9,7 +9,7 @@
  *      proposal = { candidateTimes[3–5]{startsAtUtc}, durationMinutes:30, timezone:Intl, medium: in_person{location:eventVenue} | video{provider:"google_meet",joinUrl:null}, note }
  *      （校验 `app/api/appointments/handlers.ts:24–34`）。
  * 偏差（记录）：设计「一天 + 一时段」单选 → 多选 ≥3（≤5）个候选时段，少于 3 时按钮禁用并提示；日期 = 从今天起 5 个真实 JST 日历日；
- * 时区行 = Intl 时区（无下拉）；会议地点 = 现场 → 活动场地（无 ×），线上 → Google Meet 说明；时长固定 30 分钟。
+ * 时区行 = 固定 Asia/Tokyo (JST)（时段按 JST 计算，proposal.timezone 同值；无下拉）；会议地点 = 现场 → 活动场地（无 ×），线上 → Google Meet 说明；时长固定 30 分钟。
  */
 import { useMemo, useRef, useState } from "react";
 
@@ -17,6 +17,7 @@ import { createAppointmentActionIdempotencyRegistry } from "../../../../../featu
 import type { OrbitPartyMeView, OrbitPartyPersonView } from "../../orbit-party-route-view-model";
 import {
   SCHEDULE_DURATION_MINUTES,
+  SCHEDULE_TIMEZONE,
   SCHEDULE_MAX_CANDIDATES,
   SCHEDULE_MIN_CANDIDATES,
   SCHEDULE_SLOTS,
@@ -68,7 +69,8 @@ export function EventScheduleModal({ eventId, eventVenue, language, me, now, onC
   const [error, setError] = useState("");
   const registry = useRef<ReturnType<typeof createAppointmentActionIdempotencyRegistry> | null>(null);
   registry.current ??= createAppointmentActionIdempotencyRegistry();
-  const timezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", []);
+  // 时段按 JST 计算 → 发送的 timezone 也固定为 Asia/Tokyo（不用浏览器 Intl 时区，保持一致）。
+  const timezone = SCHEDULE_TIMEZONE;
 
   const accepted = control.status === "accepted";
   const requestId = control.requestId;
@@ -105,7 +107,7 @@ export function EventScheduleModal({ eventId, eventVenue, language, me, now, onC
         candidateTimes: candidateTimesFrom(selected),
         durationMinutes: SCHEDULE_DURATION_MINUTES,
         medium: medium === "in_person"
-          ? { kind: "in_person" as const, location: eventVenue }
+          ? { kind: "in_person" as const, location: eventVenue || venueFallback }
           : { kind: "video" as const, provider: "google_meet" as const, joinUrl: null },
         note: note.trim(),
         timezone,
@@ -128,6 +130,7 @@ export function EventScheduleModal({ eventId, eventVenue, language, me, now, onC
     }
   }
 
+  const venueFallback = t({ en: "Event venue", zh: "活动现场" });
   const modes: { key: Medium; title: { en: string; zh: string }; desc: { en: string; zh: string } }[] = [
     { key: "in_person", title: { en: "In person", zh: "现场会议" }, desc: { en: "Meet face to face at the venue", zh: "在活动现场进行面对面交流" } },
     { key: "video", title: { en: "Video call", zh: "线上会议" }, desc: { en: "Talk over a video call", zh: "通过视频会议进行交流" } },
@@ -155,7 +158,7 @@ export function EventScheduleModal({ eventId, eventVenue, language, me, now, onC
       </div>
       <div className="ev-mo-sch-grid">
         <span className="ev-mo-sch-label">◎ {t({ en: "Time zone", zh: "时区设置" })}</span>
-        <span className="ev-mo-sch-field" data-events-schedule-timezone={timezone}>{timezone}</span>
+        <span className="ev-mo-sch-field" data-events-schedule-timezone={timezone}>{t({ en: `Time zone ${timezone} (JST)`, zh: `时区 ${timezone} (JST)` })}</span>
 
         <span className="ev-mo-sch-label">▦ {t({ en: "Date", zh: "选择日期" })}</span>
         <div className="ev-mo-sch-days">
@@ -187,7 +190,7 @@ export function EventScheduleModal({ eventId, eventVenue, language, me, now, onC
               );
             })}
           </div>
-          <span className={`ev-mo-hint${count < SCHEDULE_MIN_CANDIDATES ? " ev-mo-hint-warn" : ""}`} data-events-schedule-count={count}>
+          <span className={`ev-mo-hint${count > 0 && count < SCHEDULE_MIN_CANDIDATES ? " ev-mo-hint-warn" : ""}`} data-events-schedule-count={count}>
             {t({
               en: `${count} selected · choose ${SCHEDULE_MIN_CANDIDATES}–${SCHEDULE_MAX_CANDIDATES} candidate times (JST) across the days above`,
               zh: `已选 ${count} 个时段 · 请在上方日期中选择 ${SCHEDULE_MIN_CANDIDATES}–${SCHEDULE_MAX_CANDIDATES} 个候选时段（JST）`,
@@ -209,7 +212,7 @@ export function EventScheduleModal({ eventId, eventVenue, language, me, now, onC
         </div>
 
         <span className="ev-mo-sch-label">◎ {t({ en: "Location", zh: "会议地点" })}</span>
-        <span className="ev-mo-sch-field">{medium === "in_person" ? (eventVenue || t({ en: "Event venue", zh: "活动现场" })) : t({ en: "Google Meet — the link is created after both confirm", zh: "Google Meet（双方确认后生成链接）" })}</span>
+        <span className="ev-mo-sch-field">{medium === "in_person" ? (eventVenue || venueFallback) : t({ en: "Google Meet — the link is created after both confirm", zh: "Google Meet（双方确认后生成链接）" })}</span>
 
         <label className="ev-mo-sch-label" htmlFor="ev-mo-sch-note">▤ {t({ en: "Note (optional)", zh: "附加说明（可选）" })}</label>
         <div className="ev-mo-textarea-wrap">

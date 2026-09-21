@@ -10,7 +10,7 @@
  * 约谈（仅 accepted）、记录交流（仅有 contactId）。
  */
 import type { OrbitPartyPersonView } from "../../orbit-party-route-view-model";
-import { contactStatusCopy } from "./events-model";
+import { bulletLines, contactStatusCopy, realText } from "./events-model";
 import { EventModalFrame, EventModalHead } from "./event-modal-frame";
 import { useEventContactRequest } from "./live-controls";
 
@@ -27,11 +27,9 @@ export interface AttendeeModalProps {
   /** 交换申请是否开放（活动开始后）。 */
   open: boolean;
   person: OrbitPartyPersonView;
+  /** 回顾态 / 无现场请求上下文（无 me、无 requestId）：不提供交换状态按钮与约谈；只留 打开联系人名片（有 contactId）+ 记录交流。 */
+  reduced?: boolean;
   t: Translate;
-}
-
-function lines(value: string): string[] {
-  return value.split(/\r?\n|；|;/u).map((line) => line.trim()).filter(Boolean);
 }
 
 function InfoCard({ icon, items, title }: { icon: string; items: readonly string[]; title: string }) {
@@ -44,7 +42,7 @@ function InfoCard({ icon, items, title }: { icon: string; items: readonly string
   );
 }
 
-export function EventAttendeeModal({ eventDate, eventId, eventName, onClose, onExchange, onNote, onSchedule, open, person, t }: AttendeeModalProps) {
+export function EventAttendeeModal({ eventDate, eventId, eventName, onClose, onExchange, onNote, onSchedule, open, person, reduced = false, t }: AttendeeModalProps) {
   const control = useEventContactRequest({ eventId, person, t });
   const status = contactStatusCopy(control.status, control.direction, Boolean(control.contactId));
   const canRequest = status.canRequest && open;
@@ -61,7 +59,7 @@ export function EventAttendeeModal({ eventDate, eventId, eventName, onClose, onE
           </span>
           {person.title ? <span className="ev-mo-att-line">{person.title}</span> : null}
           {person.company ? <span className="ev-mo-att-line">{person.company}</span> : null}
-          {person.industry ? <span className="ev-mo-att-meta"><span>◎ {person.industry}</span></span> : null}
+          {realText(person.industry) ? <span className="ev-mo-att-meta"><span>◎ {realText(person.industry)}</span></span> : null}
           {person.topics.length ? <span className="ev-mo-att-tags">{person.topics.map((topic, index) => <span className="ev-mo-att-tag" key={`${index}-${topic}`}>{topic}</span>)}</span> : null}
         </div>
         <div className="ev-mo-att-side">
@@ -74,10 +72,10 @@ export function EventAttendeeModal({ eventDate, eventId, eventName, onClose, onE
         {person.summary ? <p className="ev-mo-att-bio">{person.summary}</p> : null}
       </div>
       <div className="ev-mo-att-cards">
-        <InfoCard icon="◎" items={lines(person.offering)} title={t({ en: "I can offer", zh: "我能提供" })} />
-        <InfoCard icon="⌕" items={lines(person.seeking)} title={t({ en: "I am looking for", zh: "我正在寻找" })} />
+        <InfoCard icon="◎" items={bulletLines(person.offering)} title={t({ en: "I can offer", zh: "我能提供" })} />
+        <InfoCard icon="⌕" items={bulletLines(person.seeking)} title={t({ en: "I am looking for", zh: "我正在寻找" })} />
         <InfoCard icon="▤" items={person.topics} title={t({ en: "Topics to discuss", zh: "想聊的话题" })} />
-        {person.isRecommended && person.reason ? <InfoCard icon="✦" items={lines(person.reason)} title={t({ en: "Why we recommend", zh: "AI 推荐理由" })} /> : null}
+        {person.isRecommended && person.reason ? <InfoCard icon="✦" items={bulletLines(person.reason)} title={t({ en: "Why we recommend", zh: "AI 推荐理由" })} /> : null}
       </div>
       <div className="ev-mo-att-status" data-events-contact-status={control.status}>
         <span className="ev-mo-att-status-icon">◎</span>
@@ -87,8 +85,12 @@ export function EventAttendeeModal({ eventDate, eventId, eventName, onClose, onE
           <span className="ev-mo-att-status-hint">{t({ en: "After you send a request, they are notified. If they accept, you exchange business cards.", zh: "发送交换申请后，对方将收到通知。若对方同意，你们将互换名片。" })}</span>
         </span>
       </div>
-      <div className="ev-mo-att-actions">
-        {control.canRespond ? (
+      <div className="ev-mo-att-actions" data-events-attendee-mode={reduced ? "reduced" : "live"}>
+        {reduced ? (
+          control.contactId ? (
+            <a className="btn ev-mo-btn-primary" data-events-modal-action="open-contact" href={`/app/contacts/${encodeURIComponent(control.contactId)}`}>◎ {t({ en: "Open the contact card", zh: "打开联系人名片" })}</a>
+          ) : null
+        ) : control.canRespond ? (
           <>
             <button className="btn ev-mo-btn-primary" data-events-modal-action="accept" disabled={control.busy} onClick={() => void control.respond(true)} type="button">{control.busy ? t({ en: "Saving…", zh: "保存中…" }) : t({ en: "Accept exchange", zh: "同意交换" })}</button>
             <button className="btn ev-mo-btn-ghost" data-events-modal-action="decline" disabled={control.busy} onClick={() => void control.respond(false)} type="button">{t({ en: "Decline", zh: "拒绝" })}</button>
@@ -104,7 +106,7 @@ export function EventAttendeeModal({ eventDate, eventId, eventName, onClose, onE
             {open || !status.canRequest ? t(status.action) : t({ en: "Opens when the event starts", zh: "活动开始后可申请交换" })}
           </button>
         )}
-        {accepted ? (
+        {accepted && !reduced ? (
           <button className="btn ev-mo-btn-ghost" data-events-modal-action="schedule" onClick={() => onSchedule(person)} type="button">▦ {t({ en: "Schedule a chat", zh: "约个时间" })}</button>
         ) : null}
         {control.contactId ? (

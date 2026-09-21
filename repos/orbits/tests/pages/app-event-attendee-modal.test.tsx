@@ -86,6 +86,26 @@ test("attendee modal: buttons follow the real contact request status", () => {
   assert.doesNotMatch(noReason, /AI 推荐理由|ev-mo-att-score|ev-mo-att-bio|我能提供/);
 });
 
+test("attendee modal: the live VM's 「Not provided」 placeholders count as empty; bullets split on newline and 「 · 」", () => {
+  const html = render({ industry: "Not provided", offering: "Not provided", seeking: "Buyers · Distributors\nPartners" });
+  assert.doesNotMatch(html, /Not provided|ev-mo-att-meta|我能提供/);
+  assert.match(html, /我正在寻找<\/strong><\/span><span class="ev-mo-att-card-body"><span class="ev-mo-att-card-line">• Buyers<\/span><span class="ev-mo-att-card-line">• Distributors<\/span><span class="ev-mo-att-card-line">• Partners<\/span>/);
+});
+
+test("attendee modal (reduced / recap): no exchange status button, no 约个时间; only 打开联系人名片 (with contactId) + 记录交流", () => {
+  const withContact = stripStyles(renderToStaticMarkup(
+    <EventAttendeeModal eventDate="—" eventId={MODAL_EVENT_ID} eventName="E" onClose={noop} onExchange={noop} onNote={noop} onSchedule={noop} open={false} person={modalPerson({ contactId: "contact:aiko", contactRequestStatus: "accepted" })} reduced t={t} />,
+  ));
+  assert.match(withContact, /data-events-attendee-mode="reduced"/);
+  assert.match(withContact, /<a class="btn ev-mo-btn-primary" data-events-modal-action="open-contact" href="\/app\/contacts\/contact%3Aaiko">◎ 打开联系人名片<\/a>/);
+  assert.match(withContact, /data-events-modal-action="note"/);
+  assert.doesNotMatch(withContact, /data-events-modal-action="exchange"|data-events-modal-action="schedule"|活动开始后可申请交换/);
+  const noContact = stripStyles(renderToStaticMarkup(
+    <EventAttendeeModal eventDate="—" eventId={MODAL_EVENT_ID} eventName="E" onClose={noop} onExchange={noop} onNote={noop} onSchedule={noop} open={false} person={modalPerson()} reduced t={t} />,
+  ));
+  assert.doesNotMatch(noContact, /data-events-modal-action=|活动开始后可申请交换/);
+});
+
 test("attendee modal: exchange / schedule / note buttons hand the same person to the host", async () => {
   const calls: string[] = [];
   const person = modalPerson({ contactId: "contact:aiko", contactRequestId: "req:3", contactRequestRevision: 2, contactRequestStatus: "accepted", contactRequestDirection: "outgoing" });

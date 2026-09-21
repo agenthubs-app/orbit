@@ -9,6 +9,7 @@ import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
 import { loadAppEventDetailRoute } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service";
 import { eventDetailRouteToOrbitLandingEventView } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter";
+import { OrbitEventMatchmaking } from "../../app/(app)/app/events/[id]/orbit-event-matchmaking";
 import { EventDetail, personViewFromDirectory, personViewFromRecap, recapPeople, recapStats } from "../../app/(app)/app/events/events-0918/event-detail";
 import { formatEventDateRange } from "../../app/(app)/app/events/events-0918/events-model";
 import type { OrbitLandingEventView } from "../../app/(app)/app/orbit-landing-route-view-model";
@@ -256,9 +257,10 @@ test("Task 5: recap people avatars open a reduced attendee modal; directory part
     const json = JSON.stringify(renderer.toJSON());
     assert.match(json, /"data-events-modal":"attendee"/);
     assert.match(json, /Alice Attendee/);
-    // server roster → no contact / no exchange after the event: exchange button disabled, no 约谈 / 记录交流
-    assert.match(json, /"data-events-modal-action":"exchange","disabled":true/);
-    assert.equal(renderer.root.findAll((node) => node.type === "button" && node.props["data-events-modal-action"] === "note").length, 0);
+    // recap person without a live request context (no me) → reduced modal: no exchange / schedule buttons, no fabricated me
+    assert.match(json, /"data-events-attendee-mode":"reduced"/);
+    assert.doesNotMatch(json, /"data-events-modal-action":"exchange"|"data-events-modal-action":"schedule"|活动开始后可申请交换/);
+    assert.equal(renderer.root.findAll((node) => node.type === "button" && node.props["data-events-modal-action"] === "note").length, 0, "server roster has no contactId");
     const close = renderer.root.find((node) => node.type === "button" && node.props["aria-label"] === "关闭");
     await act(async () => { close.props.onClick(); });
     assert.doesNotMatch(JSON.stringify(renderer.toJSON()), /"data-events-modal"/);
@@ -291,4 +293,40 @@ test("Task 5: recap people avatars open a reduced attendee modal; directory part
   assert.equal(recap.id, "p1");
   assert.equal(recap.title, "CEO");
   assert.equal(personViewFromRecap({ company: null, contactId: null, initial: "J", name: "Just", role: null }).contactRequestStatus, "none");
+});
+
+test("Task 5 fix: a recap person with a contact id gets only 打开联系人名片 + 记录交流, and never the exchange / schedule modals", async () => {
+  const base = await baseEvent();
+  const ended: OrbitLandingEventView = { ...base, stats: { ...base.stats, attendees: [], count: 1, youRsvped: true }, status: "ended", youRsvped: true };
+  let renderer!: ReactTestRenderer;
+  try {
+    await act(async () => { renderer = create(<EventDetail event={ended} />); });
+    // Feed the published directory (contactId) through the matchmaking summary callback.
+    const matchmaking = renderer.root.findByType(OrbitEventMatchmaking);
+    await act(async () => {
+      matchmaking.props.onWorkspaceSummary({
+        acceptedContacts: 1,
+        people: [{ company: "Acme", contactId: "contact:1", displayName: "Kept Contact", participantId: "p1", role: "CEO" }],
+        recommendationCount: 0,
+        resultsState: "ready",
+        roundOneTable: null,
+        roundTwoTable: null,
+      });
+    });
+    const avatar = renderer.root.find((node) => node.type === "button" && node.props["aria-label"] === "查看 Kept Contact 的资料");
+    await act(async () => { avatar.props.onClick(); });
+    const json = JSON.stringify(renderer.toJSON());
+    assert.match(json, /"data-events-attendee-mode":"reduced"/);
+    assert.match(json, /"data-events-modal-action":"open-contact","href":"\/app\/contacts\/contact%3A1"/);
+    assert.doesNotMatch(json, /"data-events-modal-action":"exchange"|"data-events-modal-action":"schedule"/);
+    const note = renderer.root.find((node) => node.type === "button" && node.props["data-events-modal-action"] === "note");
+    await act(async () => { note.props.onClick(); });
+    assert.match(JSON.stringify(renderer.toJSON()), /"data-events-modal":"note"/);
+    // 查看资料 → back to the reduced attendee modal (still no me)
+    const back = renderer.root.find((node) => node.type === "button" && node.props["data-events-modal-action"] === "open-profile");
+    await act(async () => { back.props.onClick(); });
+    assert.match(JSON.stringify(renderer.toJSON()), /"data-events-attendee-mode":"reduced"/);
+  } finally {
+    if (renderer) await act(async () => { renderer.unmount(); });
+  }
 });

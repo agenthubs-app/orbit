@@ -49,7 +49,8 @@ import { EVENTS_STYLES, EventsToast } from "./events-shell";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 type RegistrationStatus = "cancelled" | "rsvped" | null;
-type DetailModal = { kind: EventModalKind; person: OrbitPartyPersonView; me: { initial: string; name: string; role: string }; open: boolean };
+/** `me` 为 null = 回顾态 / 无现场请求上下文 → 参会者弹窗精简模式（无交换 / 约谈），不会挂交换 / 约谈弹窗。 */
+type DetailModal = { kind: EventModalKind; person: OrbitPartyPersonView; me: { initial: string; name: string; role: string } | null; open: boolean };
 
 function initialOf(name: string): string {
   return name.trim().slice(0, 1).toUpperCase() || "?";
@@ -727,7 +728,11 @@ export function EventDetail({
   const { toast, showToast } = useEventToast();
   const openKind = useCallback((kind: EventModalKind, person: OrbitPartyPersonView) => {
     setNowMs(Date.now());
-    setModal((current) => ({ kind, person, me: current?.me ?? { initial: "", name: "", role: "" }, open: current?.open ?? event.status !== "upcoming" }));
+    setModal((current) => {
+      // 无 me（回顾态精简弹窗）时只允许 参会者 / 记录交流：交换 / 约谈需要现场请求上下文。
+      if (!current?.me && (kind === "exchange" || kind === "schedule")) return current;
+      return { kind, person, me: current?.me ?? null, open: current?.open ?? event.status !== "upcoming" };
+    });
   }, [event.status]);
   const closeModal = useCallback(() => {
     setModal((current) => {
@@ -747,7 +752,7 @@ export function EventDetail({
   }, []);
   const onOpenRecapPerson = useCallback((person: RecapPerson) => {
     setNowMs(Date.now());
-    setModal((current) => ({ kind: "attendee", me: current?.me ?? { initial: "", name: "", role: "" }, open: false, person: personViewFromRecap(person) }));
+    setModal({ kind: "attendee", me: null, open: false, person: personViewFromRecap(person) });
   }, []);
   const peoplePanel = (
     <PeoplePanel event={event} onOpenParticipant={onOpenParticipant} onSummary={onSummary} refreshToken={refreshToken} registrationAvailability={registrationAvailability} registrationStatus={registrationStatus} t={t} youRsvped={youRsvped} />
@@ -756,12 +761,12 @@ export function EventDetail({
     <>
       {toast ? <EventsToast text={toast} /> : null}
       {modal?.kind === "attendee" ? (
-        <EventAttendeeModal eventDate={dateFull} eventId={event.id} eventName={name} onClose={closeModal} onExchange={(person) => openKind("exchange", person)} onNote={(person) => openKind("note", person)} onSchedule={(person) => openKind("schedule", person)} open={modal.open} person={modal.person} t={t} />
+        <EventAttendeeModal eventDate={dateFull} eventId={event.id} eventName={name} onClose={closeModal} onExchange={(person) => openKind("exchange", person)} onNote={(person) => openKind("note", person)} onSchedule={(person) => openKind("schedule", person)} open={modal.open} person={modal.person} reduced={!modal.me} t={t} />
       ) : null}
-      {modal?.kind === "exchange" ? (
+      {modal?.kind === "exchange" && modal.me ? (
         <EventExchangeModal eventId={event.id} me={modal.me} onClose={closeModal} onNote={(person) => openKind("note", person)} onSchedule={(person) => openKind("schedule", person)} open={modal.open} person={modal.person} t={t} />
       ) : null}
-      {modal?.kind === "schedule" ? (
+      {modal?.kind === "schedule" && modal.me ? (
         <EventScheduleModal eventId={event.id} eventVenue={event.venue || event.place || ""} language={lang} me={modal.me} now={nowMs} onClose={closeModal} onSent={(person) => { closeModal(); showToast(t({ en: `Invitation sent — waiting for ${person.name} to confirm`, zh: `邀约已发送，等待 ${person.name} 确认` })); }} person={modal.person} t={t} />
       ) : null}
       {modal?.kind === "note" ? (

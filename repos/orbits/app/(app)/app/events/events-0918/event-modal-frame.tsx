@@ -33,6 +33,17 @@ export function EventModalFrame({
   z?: "100" | "110" | "120";
   center?: boolean;
 }) {
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  // 打开时把焦点放到第一个输入框（没有则 × 关闭钮），关闭时把焦点还给打开前的元素。
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const panel = panelRef.current;
+    const first = panel?.querySelector<HTMLElement>("input:not([type=hidden]), textarea, select") ?? panel?.querySelector<HTMLElement>("button, a[href]");
+    first?.focus();
+    return () => { previous?.focus?.(); };
+  }, []);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const onKeydown = (event: KeyboardEvent) => {
@@ -50,7 +61,7 @@ export function EventModalFrame({
 
   return (
     <div className={`ev-mo-overlay ev-mo-z${z}${center ? " ev-mo-overlay-center" : ""}`} data-events-modal={kind} onClick={onOverlayClick}>
-      <div aria-labelledby={labelledBy} aria-modal="true" className={`ev-mo-panel ev-mo-panel-${size} ${panelClass}`.trim()} role="dialog">
+      <div aria-labelledby={labelledBy} aria-modal="true" className={`ev-mo-panel ev-mo-panel-${size} ${panelClass}`.trim()} ref={panelRef} role="dialog">
         {children}
       </div>
     </div>

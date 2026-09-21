@@ -407,6 +407,19 @@ export const SCHEDULE_DAY_COUNT = 5;
 export const SCHEDULE_MIN_CANDIDATES = 3;
 export const SCHEDULE_MAX_CANDIDATES = 5;
 export const SCHEDULE_DURATION_MINUTES = 30;
+/** 时段按 JST 计算，proposal.timezone 固定同值（不取浏览器时区）。 */
+export const SCHEDULE_TIMEZONE = "Asia/Tokyo";
+
+/** 现场 VM 对空字段写入的字面占位（`Not provided`）→ 弹窗按空处理。 */
+export function realText(value: string | null | undefined): string {
+  const text = (value ?? "").trim();
+  return /^not provided$/iu.test(text) ? "" : text;
+}
+
+/** 我能提供 / 我正在寻找 的条目：按换行与「 · 」拆分。 */
+export function bulletLines(value: string | null | undefined): string[] {
+  return realText(value).split(/\r?\n| · /u).map((line) => line.trim()).filter(Boolean);
+}
 
 export interface ScheduleDay {
   /** JST 日历日 `YYYY-MM-DD`。 */
