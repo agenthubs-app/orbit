@@ -10,14 +10,30 @@ import { useEffect, useRef, type MouseEvent, type ReactNode } from "react";
 
 import type { OrbitContactView } from "../../orbit-contacts-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
+import { ContactRelationshipInitializationPanel, useContactRelationshipInitialization } from "../contact-relationship-initialization";
 import { SOURCE_LABEL, STAGE_CHIP, STAGE_LABEL, STAGE_STYLE, metSummary, sourceOf, stageOf } from "./network-model";
 
-/** 设计稿时间线 `4月18日 15:30` 格式（本地时区）。 */
-export function formatNoteTime(iso: string): string {
+type Translate = (copy: { en: string; zh: string }) => string;
+const EN_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/**
+ * 设计稿时间线 `4月18日 15:30` 格式。只用 UTC 分量（与 network-overview.tsx formatMonthDay 同一做法），
+ * 服务端与客户端渲染结果一致，避免 hydration 差异；en 为 `Sep 21 08:00`。
+ */
+export function formatNoteTime(iso: string, t: Translate = (copy) => copy.zh): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getMonth() + 1}月${d.getDate()}日 ${p(d.getHours())}:${p(d.getMinutes())}`;
+  const m = d.getUTCMonth() + 1;
+  const day = d.getUTCDate();
+  const hm = `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
+  return t({ zh: `${m}月${day}日 ${hm}`, en: `${EN_MONTHS[m - 1]} ${day} ${hm}` });
+}
+
+/** 待设置关系（pipelineStatus === "pending_initialization"）：在时间线上方挂既有的关系初始化面板（同 extra 槽位）。 */
+function DetailInitializationPanel({ contactId, language }: { contactId: string; language: "zh" | "en" }) {
+  const controller = useContactRelationshipInitialization(contactId);
+  return <ContactRelationshipInitializationPanel controller={controller} language={language} />;
 }
 
 export function sortedNotes(notes: OrbitContactView["notes"]): OrbitContactView["notes"] {
@@ -25,7 +41,7 @@ export function sortedNotes(notes: OrbitContactView["notes"]): OrbitContactView[
 }
 
 export function NetworkDetailModal({ contact, closeHref, onFollow, extra }: { contact: OrbitContactView; closeHref: string; onFollow: () => void; extra?: ReactNode }) {
-  const { t } = useOrbitLanguage();
+  const { t, language } = useOrbitLanguage();
   const dash = "—";
   const stage = stageOf(contact);
   const source = sourceOf(contact);
@@ -39,7 +55,7 @@ export function NetworkDetailModal({ contact, closeHref, onFollow, extra }: { co
   const seeking = profile?.seeking ?? [];
   const notes = sortedNotes(contact.notes);
   const next = contact.nextAction;
-  const interactionAt = contact.editableInteraction?.occurredAt ? formatNoteTime(contact.editableInteraction.occurredAt) : dash;
+  const interactionAt = contact.editableInteraction?.occurredAt ? formatNoteTime(contact.editableInteraction.occurredAt, t) : dash;
   const interactionSummary = contact.lastInteraction.trim();
   const closeRef = useRef<HTMLAnchorElement>(null);
 
@@ -69,6 +85,14 @@ export function NetworkDetailModal({ contact, closeHref, onFollow, extra }: { co
     // 来源说明经 metSummary 清洗：账号邮箱 / 「confirmed by」句不渲染（空则省略说明）。
     { icon: "◎", label: t({ en: "Source", zh: "来源" }), value: t(SOURCE_LABEL[source]), desc: metSummary(contact.met) },
   ];
+
+  // 联系方式（台账偏差：设计稿无此块；沿用 nw-ov 行样式，只渲染非空字段，四项全空则整块省略）。
+  const contacts: { icon: string; label: string; value: string }[] = [
+    { icon: "✉", label: t({ en: "Email", zh: "邮箱" }), value: (contact.email ?? "").trim() },
+    { icon: "☎", label: t({ en: "Phone", zh: "电话" }), value: (contact.phone ?? "").trim() },
+    { icon: "▤", label: t({ en: "WeChat", zh: "微信" }), value: (contact.wechat ?? "").trim() },
+    { icon: "▤", label: "LINE", value: (contact.lineId ?? "").trim() },
+  ].filter((c) => c.value);
 
   const bullets = (items: readonly string[]) =>
     items.length ? items.map((item, i) => <span key={i} className="nw-li"><span className="nw-li-dot">•</span>{item}</span>) : <span className="nw-li"><span className="nw-li-dot">•</span>{dash}</span>;
@@ -103,8 +127,22 @@ export function NetworkDetailModal({ contact, closeHref, onFollow, extra }: { co
             ))}
           </div>
         </div>
+        {contacts.length > 0 ? (
+          <div className="nw-panel nw-panel-16" data-network-detail-contacts>
+            <strong className="nw-panel-t">{t({ en: "Contact details", zh: "联系方式" })}</strong>
+            <div className="nw-ov-grid">
+              {contacts.map((c) => (
+                <div key={c.label} className="nw-ov">
+                  <span className="nw-ov-icon">{c.icon}</span>
+                  <span className="nw-ov-copy"><span className="nw-ov-l">{c.label}</span><strong className="nw-ov-v">{c.value}</strong></span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
         <div className="nw-detail-cols">
           <div className="nw-detail-col">
+            {contact.pipelineStatus === "pending_initialization" ? <DetailInitializationPanel contactId={contact.id} language={language === "en" ? "en" : "zh"} /> : null}
             {extra}
             <div className="nw-panel nw-panel-16">
               <div className="nw-panel-head"><strong className="nw-panel-t">{t({ en: "Recent interactions", zh: "最近互动" })}</strong></div>
@@ -113,7 +151,7 @@ export function NetworkDetailModal({ contact, closeHref, onFollow, extra }: { co
                 {notes.map((note, i) => (
                   <div key={note.id} className="nw-tl-row">
                     <span className="nw-tl-rail"><span className="nw-tl-dot" style={{ background: i === 0 ? "#4B4FC7" : "#B9BCEB" }}></span><span className="nw-tl-line" style={{ background: i === notes.length - 1 ? "transparent" : "#DDDEFA" }}></span></span>
-                    <span className="nw-tl-body"><span className="nw-tl-meta"><span className="nw-tl-time">{formatNoteTime(note.createdAt)}</span><strong className="nw-tl-kind">{t({ en: "Note", zh: "备注" })}</strong></span><span className="nw-tl-text">{note.body}</span></span>
+                    <span className="nw-tl-body"><span className="nw-tl-meta"><span className="nw-tl-time">{formatNoteTime(note.createdAt, t)}</span><strong className="nw-tl-kind">{t({ en: "Note", zh: "备注" })}</strong></span><span className="nw-tl-text">{note.body}</span></span>
                   </div>
                 ))}
               </div>

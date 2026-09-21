@@ -28,7 +28,7 @@ test("detail modal renders overview rows, timeline from notes, and next steps", 
   assert.equal((html.match(/class="nw-ov"/g) ?? []).length, 4);
   // 时间线倒序：最新备注在前，首点 #4B4FC7
   assert.ok(html.indexOf("讨论合作模式") < html.indexOf("较早的备注"));
-  assert.match(html, /background:#4B4FC7[^>]*><\/span>[\s\S]*?9月18日/);
+  assert.match(html, /background:#4B4FC7[^>]*><\/span>[\s\S]*?9月18日 07:30/);
   assert.match(html, /备注/);
   // 按钮：关闭（链接）、记录互动、更新状态
   assert.match(html, /class="btn nw-detail-close" href="\/app\/contacts"/);
@@ -41,7 +41,8 @@ test("detail modal renders overview rows, timeline from notes, and next steps", 
 test("detail modal shows interaction time as 上次互动 and never repeats the summary outside the timeline", () => {
   const html = renderToStaticMarkup(<NetworkDetailModal contact={contact} closeHref="/app/contacts" onFollow={() => {}} />);
   // 上次互动值 = editableInteraction.occurredAt 的 M月D日 HH:mm，说明 = 互动摘要
-  assert.match(html, /上次互动<\/span><strong class="nw-ov-v">9月19日 \d{2}:\d{2}<\/strong><span class="nw-ov-d">昨天聊了知识库方案/);
+  // 时间只用 UTC 分量（服务端 / 客户端一致）：2026-09-19T01:00:00Z → 9月19日 01:00
+  assert.match(html, /上次互动<\/span><strong class="nw-ov-v">9月19日 01:00<\/strong><span class="nw-ov-d">昨天聊了知识库方案/);
   const outsideTimeline = html.replace(/<div class="nw-tl">[\s\S]*?<\/div>\s*<\/div>/, "");
   assert.ok((outsideTimeline.match(/昨天聊了知识库方案/g) ?? []).length <= 1);
   // reason 与互动摘要相同时不再重复
@@ -61,7 +62,37 @@ test("detail modal falls back to dashes and renders extra above the timeline", (
   assert.match(html, /nw-tl-empty/);
 });
 
-test("formatNoteTime renders M月D日 HH:mm and dashes on garbage", () => {
-  assert.match(formatNoteTime("2026-09-18T07:30:00Z"), /^\d{1,2}月\d{1,2}日 \d{2}:\d{2}$/);
+test("formatNoteTime renders UTC M月D日 HH:mm (en: Mon D HH:mm) and dashes on garbage", () => {
+  assert.equal(formatNoteTime("2026-09-18T07:30:00Z"), "9月18日 07:30");
+  assert.equal(formatNoteTime("2026-09-21T08:00:00Z", (c) => c.en), "Sep 21 08:00");
+  assert.equal(formatNoteTime("2026-12-31T23:59:00Z"), "12月31日 23:59");
   assert.equal(formatNoteTime("nope"), "—");
+});
+
+test("detail modal renders a 联系方式 block only for the non-empty channels, omitted when all four are empty", () => {
+  const withChannels = { ...(contact as object), email: "keiko@nexa.example", phone: "+81 90 0000 0000", wechat: "", lineId: "" } as never;
+  const html = renderToStaticMarkup(<NetworkDetailModal contact={withChannels} closeHref="/app/contacts" onFollow={() => {}} />);
+  assert.match(html, /data-network-detail-contacts/);
+  assert.match(html, /联系方式/);
+  assert.match(html, /nw-ov-icon">✉<\/span><span class="nw-ov-copy"><span class="nw-ov-l">邮箱<\/span><strong class="nw-ov-v">keiko@nexa.example</);
+  assert.match(html, /nw-ov-icon">☎<\/span><span class="nw-ov-copy"><span class="nw-ov-l">电话<\/span><strong class="nw-ov-v">\+81 90 0000 0000</);
+  assert.doesNotMatch(html, /微信|LINE/);
+  // 关系概览四行 + 联系方式两行
+  assert.equal((html.match(/class="nw-ov"/g) ?? []).length, 6);
+  // 联系方式在关系概览之后、最近互动之前
+  assert.ok(html.indexOf("关系概览") < html.indexOf("联系方式") && html.indexOf("联系方式") < html.indexOf("最近互动"));
+  const empty = { ...(contact as object), email: "", phone: " ", wechat: "", lineId: "" } as never;
+  const html2 = renderToStaticMarkup(<NetworkDetailModal contact={empty} closeHref="/app/contacts" onFollow={() => {}} />);
+  assert.doesNotMatch(html2, /data-network-detail-contacts|联系方式/);
+  assert.equal((html2.match(/class="nw-ov"/g) ?? []).length, 4);
+});
+
+test("detail modal mounts the relationship initialization panel above the timeline for pending contacts", () => {
+  const pending = { ...(contact as object), pipelineStatus: "pending_initialization", stage: "待设置关系", nextAction: null } as never;
+  const html = renderToStaticMarkup(<NetworkDetailModal contact={pending} closeHref="/app/contacts" onFollow={() => {}} extra={<p data-extra>memo</p>} />);
+  assert.match(html, /aria-label="我的关系设置"/);
+  assert.match(html, /data-initialization-refresh/);
+  assert.ok(html.indexOf("我的关系设置") < html.indexOf("data-extra") && html.indexOf("data-extra") < html.indexOf("最近互动"));
+  const html2 = renderToStaticMarkup(<NetworkDetailModal contact={contact} closeHref="/app/contacts" onFollow={() => {}} />);
+  assert.doesNotMatch(html2, /我的关系设置|data-initialization-refresh/);
 });
