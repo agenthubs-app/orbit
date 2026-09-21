@@ -23,6 +23,9 @@
   7. 头像 = 首字母圆形占位（设计 `width:40px;height:40px;border-radius:50%;background:#DDDEFA;color:#3B3F7A`），不用图片。
   8. 页面根：`<main data-orbit-real-page="network" data-network-screen="<screen>">`，内容容器 `max-width:1240px; margin:0 auto; padding:28px 40px 96px; display:flex; flex-direction:column; gap:24px;`（设计稿第 43 行 `<main>` 的样式，以文件为准）。
 - `OrbitReferenceStyles` 只作为顶栏（`AccountTopNav` = 0918 浮岛导航 + 铃铛）和 `.btn` 基类的提供者继续渲染在 `page.tsx`，**禁止向 `orbit-reference-styles.tsx` 追加任何选择器**。
+- **页面接线（任务 2 确认）**：`page.tsx` 成功分支的既有包裹 `<div data-orbit-route=…>` 必须加 `data-orbit-real-page="network"`（顶栏与 `.btn` 基类样式都作用域在该属性下），再在其中依次渲染 `<AccountTopNav active="cards" />` 与新屏组件。
+- **像素门槛（任务 2 确认）**：raw `mismatch ≤ 0.02`，**或** 做框级归因后「非数据残差 ≤ 0.005 且 diff 中无任何布局线/圆角/间距/色块差异」，归因表写进报告与台账。已知共享残差：顶栏比设计高 2px（`.orbit-lang-toggle` 39px，属 `orbit-reference-styles.tsx`，留待壳提取计划）；`.nw-tab` 已按设计渲染结果对齐为 13.3333px（设计 `<button>` 未继承容器 15px）。
+- 每个 `.btn.nw-*` 规则同时补 `:active { transform: none; }`（基类 `.btn:active` 有 translateY(0.5px)），且 `:hover` 只写设计给出的声明。
 - 数据真实性：无接口的设计能力不做假——「AI 人脉驾驶舱」四卡用 `ContactsAnalysisView.metrics` 真实计数；「导入通讯录」「上传 CSV」「从活动添加」三种方式当前无服务端接口，按钮渲染为 `aria-disabled` 的 `<span class="nw-import-cta nw-import-cta-soon">即将开放</span>`（与 connect 占位同口径，非交互元素）；洞察页（design 610–707）依赖 W4，本计划不做。
 - 关系阶段映射（真实 `status` → 设计列）：`needs_follow_up`→「待了解」、`nurture`→「保持联系」、`active`→「正在推进」、`archived`→「已归档」。设计稿第四列文案「已建立合作」没有对应状态，**改为「已归档」**（唯一允许的文案偏差，记入台账）。`pending_initialization` 的联系人归入「待了解」列并在卡片上显示「待设置关系」chip。
 - 来源映射（`OrbitContactView.source` → 设计来源卡）：`event`→活动认识、`referral`→朋友引荐、`contact`→通讯录、`scan`→名片导入、`exchange`/`qr`/`manual`→其他来源。
