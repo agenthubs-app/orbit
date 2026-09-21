@@ -298,6 +298,40 @@ export const EVENTS_STYLES = `
 @media (prefers-reduced-motion: reduce) {
   [data-orbit-real-page="events-0918"] .ev-detail, [data-orbit-real-page="events-0918"] .ev-list { animation: none; }
 }
+/* ── 报名弹窗壳（设计 653 遮罩 / 654 面板 / 655 标题行 + ×）── */
+[data-orbit-real-page="events-0918"] .ev-reg-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(14,18,37,0.35); backdrop-filter: blur(6px); display: flex; align-items: flex-start; justify-content: center; padding: 48px 24px; overflow-y: auto; }
+[data-orbit-real-page="events-0918"] .ev-reg-panel { width: 100%; max-width: 620px; background: #FFFFFF; border-radius: 22px; box-shadow: 0 30px 80px rgba(14,18,37,0.25); padding: 30px 34px; display: flex; flex-direction: column; gap: 22px; animation: orbit-fade .3s ease; }
+[data-orbit-real-page="events-0918"] .ev-reg-head { display: flex; align-items: flex-start; justify-content: space-between; }
+[data-orbit-real-page="events-0918"] .ev-reg-head-copy { display: flex; flex-direction: column; gap: 6px; }
+[data-orbit-real-page="events-0918"] .ev-reg-title { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 26px; letter-spacing: -0.02em; }
+[data-orbit-real-page="events-0918"] .ev-reg-sub { font-size: 14px; color: #6B6F99; }
+[data-orbit-real-page="events-0918"] .btn.ev-modal-close { width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: #3B3F7A; font-size: 20px; cursor: pointer;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  padding: 0; gap: 0; font-weight: 400; letter-spacing: 0; line-height: normal; transition: none; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+[data-orbit-real-page="events-0918"] .btn.ev-modal-close:hover { background: #ECEEFB; }
+[data-orbit-real-page="events-0918"] .btn.ev-modal-close:active { transform: none; }
+/* ── 弹窗正文 = 不变的报名工作区（register/*.tsx 零改动）：只把设计 657–669 的控件声明
+      作用域到工作区既有类名 / data-* 上；工作区自己的全屏尺寸（100dvh / visualViewport 高度 /
+      页面渐变底）在面板内中和。inline style 只能用 !important 覆盖。── */
+[data-orbit-real-page="events-0918"] .ev-reg-body .registration-portrait-7a { min-height: 0; height: auto !important; padding: 0; background: #FFFFFF; }
+[data-orbit-real-page="events-0918"] .ev-reg-body [data-orbit-registration-profile-guide="register"] { min-height: 0 !important; padding: 0 !important; background: #FFFFFF !important; }
+/* 659 单选卡（roles）：外圈 20px / 2px 边 #C9CBEA→#4B4FC7，内点 10px */
+[data-orbit-real-page="events-0918"] .ev-reg-body .registration-portrait-7a .btn[aria-pressed] { display: flex; align-items: center; gap: 8px; border: 0 !important; background: transparent !important; padding: 0 !important; font-size: 14px !important; color: #0E1225 !important; cursor: pointer; text-align: left;
+  height: auto; min-height: 0; border-radius: 0 !important; font-weight: 400; letter-spacing: 0; line-height: normal; white-space: normal; transition: none; box-shadow: none; }
+[data-orbit-real-page="events-0918"] .ev-reg-body .registration-portrait-7a .btn[aria-pressed]::before { content: ""; box-sizing: border-box; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #C9CBEA; flex-shrink: 0; }
+[data-orbit-real-page="events-0918"] .ev-reg-body .registration-portrait-7a .btn[aria-pressed="true"]::before { border-color: #4B4FC7; background: radial-gradient(circle, #4B4FC7 0 5px, transparent 5.5px); }
+[data-orbit-real-page="events-0918"] .ev-reg-body .registration-portrait-7a .btn[aria-pressed]:active { transform: none; }
+[data-orbit-real-page="events-0918"] .ev-reg-body .registration-portrait-7a .btn[aria-pressed]:disabled { opacity: .45; }
+/* 667 文本域（regGoal）：设计无计数器来源（工作区无 300 上限），计数器省略 */
+[data-orbit-real-page="events-0918"] .ev-reg-body .registration-portrait-7a textarea { box-sizing: border-box; width: 100%; padding: 14px !important; border: 1px solid #DDDEFA !important; border-radius: 12px !important; font-size: 14px; line-height: 1.6; outline: none; resize: vertical; background: #FFFFFF !important; min-height: 0 !important; }
+[data-orbit-real-page="events-0918"] .ev-reg-body .registration-portrait-7a textarea:focus { border-color: #4B4FC7 !important; }
+/* 669 提交报名：工作区自带 portrait-primary（确认报名 / 下一题 / 生成画像 / 保存画像）对齐设计提交钮；设计「取消」钮省略（关闭 = ×/Esc/遮罩） */
+[data-orbit-real-page="events-0918"] .ev-reg-body .registration-portrait-7a .btn.portrait-primary { padding: 14px; border: 0; border-radius: 12px; background: #2E3270; color: #FFFFFF; font-size: 15px; font-weight: 500; cursor: pointer;
+  flex: 1; height: auto; min-height: 0; gap: 0; letter-spacing: 0; line-height: normal; white-space: nowrap; transition: none; }
+[data-orbit-real-page="events-0918"] .ev-reg-body .registration-portrait-7a .btn.portrait-primary:hover { background: #0E1225; }
+[data-orbit-real-page="events-0918"] .ev-reg-body .registration-portrait-7a .btn.portrait-primary:active { transform: none; }
+[data-orbit-real-page="events-0918"] .ev-reg-body .registration-portrait-7a .btn.portrait-primary:disabled { opacity: .5; cursor: default; }
+[data-orbit-real-page="events-0918"] .ev-reg-body .registration-portrait-7a > footer { gap: 14px; padding-top: 6px; border-top: 1px solid #E8E9F6; }
 /* ── 设计稿无：焦点环与窄屏（不影响 1240 比对）── */
 [data-orbit-real-page="events-0918"] .btn.ev-seg-btn:focus-visible { outline: 2px solid #4B4FC7; outline-offset: -2px; }
 [data-orbit-real-page="events-0918"] .btn.ev-tab:focus-visible { outline: 2px solid #4B4FC7; outline-offset: 2px; }

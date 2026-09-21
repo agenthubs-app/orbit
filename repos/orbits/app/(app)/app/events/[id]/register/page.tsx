@@ -22,6 +22,7 @@ import { createConfiguredEventAdmissionJourneyService } from "../../../../../../
 import { signAdaptiveInterviewQuestion } from "../../../../../../features/events/registration/interview-question-token.server";
 import { createProfileService } from "../../../../../../features/profile/service-factory";
 import { EventRegistrationWorkspace } from "./event-registration-workspace";
+import { EventRegisterModal } from "../../events-0918/event-register-modal";
 import { eventRegistrationReturnPath } from "./registration-return-path";
 import { redirect } from "next/navigation";
 
@@ -278,22 +279,32 @@ export default async function AppEventRegistrationGuidePage({
     return (
       <>
         <OrbitReferenceStyles />
-        <EventRegistrationWorkspace
-          actorId={actor?.id}
-          initialEligibility={initialEligibility}
-          event={{
-            id: localizedEvent.id,
-            title: localizedEvent.title,
-            venue: localizedEvent.venue,
-          }}
-          initialRegistration={registration}
-          admissionControlled={admissionState?.admissionControlled ?? false}
-          initialAdmissionApplication={admissionState?.application ?? null}
-          initialSignedQuestion={initialSignedQuestion}
-          language={language}
-          prefilledPositioning={prefilledPositioning}
-          profile={{ displayName }}
-        />
+        {/* Orbit_0918 报名弹窗壳（设计 652–672）：客户端遮罩/面板/标题/关闭包住不变的
+            报名工作区；本页无顶栏（弹窗盖住静态底），数据路径零改动。 */}
+        <div data-orbit-real-page="events-0918" data-orbit-route="app-event-registration-page">
+          <EventRegisterModal
+            closeHref={`/app/events/${encodeURIComponent(localizedEvent.id)}`}
+            eventName={localizedEvent.title}
+            language={language}
+          >
+            <EventRegistrationWorkspace
+              actorId={actor?.id}
+              initialEligibility={initialEligibility}
+              event={{
+                id: localizedEvent.id,
+                title: localizedEvent.title,
+                venue: localizedEvent.venue,
+              }}
+              initialRegistration={registration}
+              admissionControlled={admissionState?.admissionControlled ?? false}
+              initialAdmissionApplication={admissionState?.application ?? null}
+              initialSignedQuestion={initialSignedQuestion}
+              language={language}
+              prefilledPositioning={prefilledPositioning}
+              profile={{ displayName }}
+            />
+          </EventRegisterModal>
+        </div>
         <OrbitVisualFreezeRuntime />
       </>
     );

@@ -13,6 +13,8 @@ test("actual registration page SSR is read-only and never attempts model prewarm
   const emptyComponent = () => null;
   const fixtures: Record<string, unknown> = {
     StateView: emptyComponent, OrbitReferenceStyles: emptyComponent, OrbitVisualFreezeRuntime: emptyComponent, EventRegistrationWorkspace: emptyComponent,
+    // Orbit_0918 报名弹窗壳（events-0918/event-register-modal，`../../` import 同样被夹具替换）：只透传 children。
+    EventRegisterModal: ({ children }: { children: unknown }) => children,
     auth: async () => ({ user: { id: "synthetic-actor", name: "Fixture" } }),
     resolveAuthenticatedApiActorFromSession: async () => ({ id: "synthetic-actor", name: "Fixture", email: "fixture@example.com" }),
     normalizeOrbitLanguage: (language: string) => language, getOrbitServerLanguage: async () => "en", localizeOrbitTree: (value: unknown) => value,
