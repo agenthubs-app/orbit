@@ -294,7 +294,7 @@ test("contact detail presenter exposes one identity, provenance, and follow-up s
   assert.doesNotMatch(source, /orbit-desktop-only|orbit-mobile-only|isMobileLayout|setIsMobileLayout/);
   assert.match(source, /className="nw-detail-name">\{contact\.displayName\}/);
   assert.match(source, /SOURCE_LABEL\[source\]/);
-  assert.match(source, /desc: contact\.met\.trim\(\)/);
+  assert.match(source, /desc: metSummary\(contact\.met\)/);
   assert.match(source, /className="btn nw-detail-follow" onClick=\{onFollow\}/);
   assert.match(source, /sortedNotes\(contact\.notes\)/);
   assert.equal((source.match(/role="dialog"/g) ?? []).length, 1);
