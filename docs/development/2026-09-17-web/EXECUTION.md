@@ -348,3 +348,7 @@
 8. `matchesQuery` 未覆盖别名 / 拼音等搜索键。
 9. 分析下钻页 `contacts/analysis/[dimension]/[bucketId]` 仍用旧 `--text-3` / `--border` 暗色 token。
 10. `notes` 导出 CSV 的 NOTES 列文案（复审提出，未定）。
+
+## 2026-09-21 个人中心 屏级替换（计划 `docs/superpowers/plans/2026-09-21-profile-screen-replacement.md`）
+
+- **个人中心 任务 1 完成** `5ffc9e3f`：抽取 `profile-0918/use-profile-editor-session.ts`（`orbit-real-profile.tsx` 936–1329 行原样搬移，去 953 `tab`/1033 `subText`，加 1336 `matchingDirty`；`t` 改参数；暴露 `ProfileEditorSession` 含 `notify(kind, text)`；re-export `profileReadbackMatches`），唯一逻辑改动为已批准的「保存基础资料后仍不完整 → `messageKind="warning"`+缺项文案、不跳转」；新建 `profile-0918/profile-model.ts`（`ONBOARDING_FIELD_LABEL`/`missingFieldLabels`/`completeness` 10 项口径/`personaGroups` goal=intro 单 chip/`contactRows`/`suggestions`）与 `tests/pages/app-profile-model.test.ts`（先红后绿，7 用例）。**例外记录**：本任务修改了 `orbit-real-profile.tsx`（`OrbitRealProfile` 改调 hook，JSX 不动，warning 以 `#FBF1DC/#8A6420` 渲染），是对「旧 `orbit-real-*` 不再修改」规则的明确例外，目的是让既有六个 profile 渲染测试证明抽取零行为变化；旧文件任务 6 删除。测试改动：`app-profile-live-route-services.test.ts` 会话源码断言与 `profileReadbackMatches` import 改指 hook 文件（断言意图不变）；`app-profile-editor-failure-paths.test.tsx` 「incomplete 回读」用例加 warning 文案/颜色断言（对旧代码红、对 hook 绿）。验证：10 个指定测试文件 82 用例 78 通过 / 4 基线跳过 / 0 失败（含 ratchet 8/8）；impact `OrbitRealProfile` LOW（直接调用者 `page.tsx`，其余为测试）；detect-changes 5 files / 4 symbols / low、无 partial/truncated；typecheck 仅剩环境错误 `pinyin-pro` 缺 `package.json`（共享 `node_modules` 软链，当日 23:00 被外部改动，与本任务无关）。
