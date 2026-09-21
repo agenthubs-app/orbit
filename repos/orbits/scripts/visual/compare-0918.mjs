@@ -79,10 +79,17 @@ try {
     return PNG.sync.read((await import("node:fs")).readFileSync(join(out, file)));
   }
 
-  // 设计稿是单页多视图：通过点击主页签切到目标视图（--design-view overview|pipeline|all|import）
-  const viewLabel = { overview: "概览", pipeline: "关系管线", all: "所有人脉", import: "导入人脉", analysis: "查看完整分析" }[args["design-view"] ?? "overview"];
+  // 设计稿是单页多视图：通过点击主页签切到目标视图。
+  // Network 表（--design-view overview|pipeline|all|import|analysis）：无 --design-view 时默认点「概览」。
+  // 个人中心 表（--design-view profile|settings|connect）：无 --design-view 时不点击任何页签
+  // （persona 视图不是页签，靠调用方传 --design-click "text=编辑商务画像" 从「个人资料」页进入）。
+  // 判定用 --design URL 是否含个人中心的 URL 编码，或显式传 --design-table profile。
+  const isProfileTable = args["design-table"] === "profile" || (args.design ?? "").includes("%E4%B8%AA%E4%BA%BA%E4%B8%AD%E5%BF%83");
+  const networkViewLabel = { overview: "概览", pipeline: "关系管线", all: "所有人脉", import: "导入人脉", analysis: "查看完整分析" };
+  const profileViewLabel = { profile: "个人资料", settings: "iOrbit 设置", connect: "连接" };
+  const viewLabel = isProfileTable ? profileViewLabel[args["design-view"]] : networkViewLabel[args["design-view"] ?? "overview"];
   const design = await shoot(args.design, "design.png", async (page) => {
-    if (viewLabel) await page.getByRole("button", { name: viewLabel }).first().click();
+    if (viewLabel) await page.getByRole("button", { name: viewLabel, exact: true }).first().click();
     if (args["design-click"]) await page.locator(args["design-click"]).first().click();
     if (args["design-click2"]) { await page.waitForTimeout(300); await page.locator(args["design-click2"]).first().click(); }
   });

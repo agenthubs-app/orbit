@@ -22,3 +22,34 @@ node scripts/visual/compare-0918.mjs \
 ```
 
 判定：mismatch ≤ 0.02 且 diff.png 中红色只出现在真实数据文字/数字区域（不得出现在布局线、圆角、间距、色块）。
+
+## 设计页签映射（`--design-view`）
+
+脚本按 `--design` URL 自动选择页签表；也可用 `--design-table profile` 强制选个人中心表。
+
+- **Network 表**（`--design` 不含个人中心 URL 编码时）：`overview|pipeline|all|import|analysis` → 概览/关系管线/所有人脉/导入人脉/查看完整分析；不传 `--design-view` 时默认点「概览」。
+- **个人中心 表**（`--design` 含 `%E4%B8%AA%E4%BA%BA%E4%B8%AD%E5%BF%83`，即「个人中心」，或传 `--design-table profile`）：`profile|settings|connect` → 个人资料/iOrbit 设置/连接；**不传 `--design-view` 时不点击任何页签**（停在设计稿默认视图）。
+  - `persona`（编辑商务画像）不是页签，映射表里没有它：先用 `--design-view profile` 或不传 `--design-view` 停在「个人资料」，再加 `--design-click "text=编辑商务画像"` 点进商务画像编辑视图。
+
+页签点击统一用 `getByRole("button", { name, exact: true })`（个人中心设计里「连接」页签与卡片上的「连接」按钮同名，需要 `exact` 避免误点）。
+
+示例（个人中心 · profile 视图）：
+
+```bash
+node scripts/visual/compare-0918.mjs \
+  --design "http://localhost:3320/Orbit_0918/%E4%B8%AA%E4%BA%BA%E4%B8%AD%E5%BF%83.dc.html" --design-view profile \
+  --app "http://localhost:3100/app/profile" \
+  --login "qa@orbit.test:<password>" \
+  --out /tmp/profile-smoke
+```
+
+示例（个人中心 · persona 视图，从个人资料页点「编辑商务画像」进入）：
+
+```bash
+node scripts/visual/compare-0918.mjs \
+  --design "http://localhost:3320/Orbit_0918/%E4%B8%AA%E4%BA%BA%E4%B8%AD%E5%BF%83.dc.html" \
+  --design-click "text=编辑商务画像" \
+  --app "http://localhost:3100/app/profile?view=persona" \
+  --login "qa@orbit.test:<password>" \
+  --out /tmp/persona-smoke
+```
