@@ -177,8 +177,8 @@ function loadProfilePage(
         return options.actor;
       },
     },
-    [join(projectRoot, "app/(app)/app/profile/orbit-real-profile.tsx")]: {
-      OrbitRealProfile: function OrbitRealProfile() {
+    [join(projectRoot, "app/(app)/app/profile/profile-0918/profile-screens.tsx")]: {
+      ProfileScreens: function ProfileScreens() {
         return null;
       },
     },
@@ -228,9 +228,15 @@ function loadProfilePage(
     };
   }
   const pagePath = join(projectRoot, "app/(app)/app/profile/page.tsx");
+  // 页面的 auth/actor/loader 逻辑住在共用 helper 里，也要随页面一起重新加载才能看到本用例的 mock。
+  const loaderPath = join(
+    projectRoot,
+    "app/(app)/app/profile/profile-0918/load-profile-editor-page.tsx",
+  );
   const ids = [
     ...Object.keys(modules),
     pagePath,
+    loaderPath,
     ...(options.actualRouteLoader
       ? [
           routeViewModelPath,
@@ -269,6 +275,7 @@ function loadProfilePage(
       )
     ];
   }
+  delete testRequire.cache[testRequire.resolve(loaderPath)];
   delete testRequire.cache[testRequire.resolve(pagePath)];
 
   const page = testRequire(pagePath).default as (input?: {
@@ -455,12 +462,18 @@ test("profile continuation reads authoritative profile onboarding without option
 test("profile page exposes continuation only for the onboarding flow", () => {
   const profilePageSource = source("app/(app)/app/profile/page.tsx");
 
+  const profileLoaderSource = source(
+    "app/(app)/app/profile/profile-0918/load-profile-editor-page.tsx",
+  );
+
   assert.match(profilePageSource, /searchParams\?: Promise<AppProfileSearchParams>/);
   assert.match(profilePageSource, /onboardingNext/);
   assert.match(profilePageSource, /profileContinuationPath\(onboardingNext\)/);
-  assert.match(profilePageSource, /resolveAuthenticatedApiActorFromSession/);
-  assert.match(profilePageSource, /resolveFeatureMode\(\) === "live"/);
-  assert.match(profilePageSource, /PROFILE_LIVE_MODE_REQUIRED/);
+  assert.match(profilePageSource, /loadProfileEditorPage\(/);
+  // 会话 → actor（仅 live）→ 资料加载 住在 profile/settings 共用的服务端 helper 里
+  assert.match(profileLoaderSource, /resolveAuthenticatedApiActorFromSession/);
+  assert.match(profileLoaderSource, /resolveFeatureMode\(\) === "live"/);
+  assert.match(profileLoaderSource, /PROFILE_LIVE_MODE_REQUIRED/);
 });
 
 test("live profile pages resolve the raw session subject to the canonical account owner", async () => {
@@ -656,8 +669,11 @@ test("profile page renders a canonical first-create editor from an empty live re
     const rendered = await page();
     const children = rendered.props.children as readonly ReactElement[];
 
-    const editor = children[2] as ReactElement<any>;
-    assert.equal(editor.type.toString().includes("OrbitRealProfile"), true);
+    // 成功分支：<div data-orbit-real-page="profile-0918"><AccountTopNav/><ProfileScreens/></div>
+    const wrapper = children[2] as ReactElement<any>;
+    assert.equal(wrapper.props["data-orbit-real-page"], "profile-0918");
+    const editor = wrapper.props.children[1] as ReactElement<any>;
+    assert.equal(editor.type.toString().includes("ProfileScreens"), true);
     assert.equal(editor.props.viewModel.profile.hasPersistedProfile, false);
     assert.equal(editor.props.viewModel.profile.expectedUpdatedAt, null);
     assert.ok(
@@ -696,8 +712,11 @@ test("profile page keeps an existing canonical live record in the editor", async
     const rendered = await page();
     const children = rendered.props.children as readonly ReactElement[];
 
-    const editor = children[2] as ReactElement<any>;
-    assert.equal(editor.type.toString().includes("OrbitRealProfile"), true);
+    // 成功分支：<div data-orbit-real-page="profile-0918"><AccountTopNav/><ProfileScreens/></div>
+    const wrapper = children[2] as ReactElement<any>;
+    assert.equal(wrapper.props["data-orbit-real-page"], "profile-0918");
+    const editor = wrapper.props.children[1] as ReactElement<any>;
+    assert.equal(editor.type.toString().includes("ProfileScreens"), true);
     assert.equal(editor.props.viewModel.profile.hasPersistedProfile, true);
     assert.equal(typeof editor.props.viewModel.profile.expectedUpdatedAt, "string");
     assert.equal(editor.props.viewModel.profile.fullName, "Existing Canonical Profile");

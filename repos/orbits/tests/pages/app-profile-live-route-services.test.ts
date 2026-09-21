@@ -136,7 +136,7 @@ test("app profile route loader returns a controlled live failure when storage is
 
 test("/app/profile page renders the real Orbit profile editor", () => {
   const pageSource = source("app/(app)/app/profile/page.tsx");
-  const profileSource = source("app/(app)/app/profile/orbit-real-profile.tsx");
+  const profileSource = source("app/(app)/app/profile/profile-0918/profile-screens.tsx");
   const editorAdapterSource = source("app/(app)/app/profile/profile-editor-adapter.ts");
   const profileModelSource = source(
     "app/(app)/app/orbit-profile-route-view-model.ts",
@@ -145,12 +145,18 @@ test("/app/profile page renders the real Orbit profile editor", () => {
     "app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model.ts",
   );
 
-  assert.match(pageSource, /loadAppProfileRouteViewModel/);
-  assert.match(pageSource, /profileRouteToOrbitProfileEditorViewModel/);
-  assert.match(pageSource, /OrbitRealProfile/);
-  assert.match(pageSource, /StateView/);
+  const loaderSource = source(
+    "app/(app)/app/profile/profile-0918/load-profile-editor-page.tsx",
+  );
+
+  assert.match(pageSource, /loadProfileEditorPage/);
+  assert.match(loaderSource, /loadAppProfileRouteViewModel/);
+  assert.match(loaderSource, /profileRouteToOrbitProfileEditorViewModel/);
+  assert.match(pageSource, /ProfileScreens/);
+  assert.match(loaderSource, /StateView/);
   assert.doesNotMatch(pageSource, /AppProfileCommandCenter/);
-  assert.match(profileSource, /data-orbit-real-page="profile"/);
+  assert.match(pageSource, /data-orbit-real-page="profile-0918"/);
+  assert.match(profileSource, /useProfileEditorSession/);
   assert.match(pageSource, /searchParams/);
   assert.match(pageSource, /onboardingNext/);
   assert.doesNotMatch(routeSource, /readSearchParam/);
@@ -296,11 +302,16 @@ test("profile save verification rejects a partial readback", () => {
 
 test("/app/profile maps actor-scoped profile data without hardcoded founder identity", () => {
   const pageSource = source("app/(app)/app/profile/page.tsx");
+  // 视图模型转换住在 profile/settings 共用的服务端 helper 里（个人中心 任务 2）。
+  const loaderSource = source(
+    "app/(app)/app/profile/profile-0918/load-profile-editor-page.tsx",
+  );
   const adapterSource = source(
     "app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-view-model-adapter.ts",
   );
 
-  assert.match(pageSource, /profileRouteToOrbitProfileEditorViewModel/);
+  assert.match(pageSource, /loadProfileEditorPage\(/);
+  assert.match(loaderSource, /profileRouteToOrbitProfileEditorViewModel/);
   assert.match(adapterSource, /fullName: profile\.displayName/);
   assert.match(adapterSource, /const offering = \[\.\.\.\(profile\.offering/);
   assert.match(adapterSource, /const seeking = \[\.\.\.\(profile\.seeking/);
