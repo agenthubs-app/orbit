@@ -407,3 +407,12 @@
 6. 审计脚本 `LIVE_PROFILE_INTERACTION_EVIDENCE` 仍以 `文件:行号` 为键（新屏 11 条），行号会随编辑漂移；「eighteen exercised interactions」用例（基线失败）需按新屏重新做一轮运行时审计后改断言。
 7. 既有五个设置模块只换外框未按 0918 重画；通知模块未配置端点时 4 个 404（模块自身处理）。
 8. `app-profile-*` 交互层测试为 react-test-renderer，浏览器旅程仅 playwright 手工跑过（任务 4 / 5），未纳入自动化。
+
+### 2026-09-22 个人中心 合并前终审修正
+
+- **I1（必修）** `8fd71132`：persona / basic 取消原来调 `reloadLatestProfile()`（按设计保留脏字段）再就地切回 profile 视图，概览会显示未保存值 + 多余的「最新资料已加载…」提示。改为整页 `window.location.assign(/app/profile)` 丢弃草稿、不调 reload（与 `b9d3d1f6` 的 settings 取消一致；settings 仍 reload 后跳转，未改）；取消按钮在 `saving || matchingSaving || extracting` 时禁用（`profile-shell.tsx`）。测试：`app-profile-persona` / `app-profile-basic` 取消用例改为断言 `assign("/app/profile")`、无额外 GET `/api/profile`、无就地切视图、概览未渲染、无 reload 提示（persona 先加草稿 chip、basic 先改姓名）。浏览器旅程（app :3100，QA 账号）：persona 加 chip「终审取消验证资源」→ 取消 → 整页导航到 `/app/profile`，概览无新 chip、无通知条，`GET /api/profile` 的 `offering` 仍为 `[]`。注：Browser pane 的合成 Return 键到不了 React 的 onKeyDown，chip 是用 dispatchEvent(keydown Enter) 加的。
+- **M2** `8fd71132`：`profile-model.ts` 新增 `onboardingFieldLabel(code, language)`，未知代码回退为代码本身；`missingFieldLabels` 改用之；`app-profile-model` 加单元用例。hook 冻结不改（其 warning 分支仍直接索引 `ONBOARDING_FIELD_LABEL`，未知代码会抛——记后续）。
+- **M4** `8fd71132`：persona 保存成功后在 `goProfile()` 前 `session.notify("info", "")` 清掉 hook 的绿色复读通知，概览只剩设计 toast；测试断言概览无 `pc-notice[role=status]`。
+- **M1** `6db599db`：`scripts/generate-full-product-functional-audit.mjs` 中 `profile-shell.tsx:117/118`（取消 / 保存）两条证据的 2026-07-29 观察文案（取消 → /app/home、「档案已保存…」）替换为当前行为（取消 → 整页跳转 /app/profile 丢弃草稿；保存 → 「基础资料已保存并完成复读核验。」/ 琥珀色仍不完整变体 / persona 的「修改已保存」toast）。`tests/audits/full-product-functional-audit.test.ts` 111 项 98 绿 13 红，失败集与 HEAD 逐名相同（= 基线 13 条）；「eighteen exercised interactions」用例实际计数 **11**（修改前后均为 11），仍需按新屏做一轮运行时审计后改断言。
+- 验证：`npm run typecheck` 0 错误；`app-profile-*` + `profile-*` + `secondary-industry-editors` + `*settings*` + 两个 ratchet 共 140 项 136 绿 0 红 4 跳过；detect-changes 9 文件 4 符号 0 流程 low（`profile-model.ts` 的新符号索引未收录，靠 grep 确认调用点仅 `profile-screens.tsx` / hook / 测试）。impact 对 `ProfileScreens` / `ProfileShell` / `ONBOARDING_FIELD_LABEL` 报 CRITICAL（~1100，enrichment-truncated，同名膨胀坑），grep 实际调用方只有 profile-0918 内部与测试。
+- **未做 / 后续**：M3 settings 取消的 reload 语义需 live 模式验证（本次未改）；M5 「回 profile」一帧视图翻转（setLocalView 与 replaceState 不同步）未处理；persona chip 的 React key 仍按值（重复值告警）；basic 保存栏依赖 `form.requestSubmit`（仅浏览器，react-test-renderer 不覆盖）；hook 的 warning 分支未知缺项代码仍会抛（hook 冻结）；审计「18 交互」用例需要新一轮运行时审计。
