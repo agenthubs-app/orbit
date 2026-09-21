@@ -5,7 +5,9 @@
  *   - basic：保存栏 → 提交 <form>（saveProfile("basic")）；结果由壳内通知条呈现（绿色成功 / 琥珀色仍不完整 / 错误），
  *     留在本屏；完整且带 onboardingNext 时由 hook 自动跳转 next。
  *   - settings（任务 5）：保存栏 → saveProfile("basic")（关于我 = bio）；结果由壳内通知条呈现，留在本屏。
- *   - 三屏取消 → reloadLatestProfile() 后回 profile 视图。connect（任务 5）无保存栏。
+ *   - persona / basic 取消 → reloadLatestProfile() 后就地回 profile 视图；settings 取消 → reloadLatestProfile()
+ *     后整页跳转 /app/profile（settings 屏挂在 /app/settings 路由、顶栏 active="settings"，就地切换会让顶栏
+ *     高亮停在「设置」——任务 6 复审修正）。connect（任务 5）无保存栏。
  *
  * 视图切换：初始视图来自 URL（page.tsx 传 view），「回 profile」为组件内状态切换 + history.replaceState
  * （不整页跳转，才能沿用设计的 toast 并保留 hook 状态）；页签与卡片按钮仍是路由链接。
@@ -95,6 +97,11 @@ export function ProfileScreens({
 
   async function cancelEdit() {
     await session.reloadLatestProfile();
+    if (activeView === "settings") {
+      // /app/settings 路由：整页跳转让共享顶栏切回「我的」。
+      window.location.assign(profileRoutePath("profile", onboardingQuery));
+      return;
+    }
     goProfile();
   }
 

@@ -48,7 +48,7 @@ export function validateProfileSaveDraft(input: {
     return { ok: false, message: { en: "Choose both industry levels before saving the basic profile.", zh: "保存基础资料前，请选择完整的一级和二级行业。" } };
   }
   if (scopeDirty.has("bio") && visibleCharacterCount(profile.bio.trim()) > BIO_VISIBLE_LIMIT) {
-    return { ok: false, message: { en: "Keep the introduction within 80 visible characters.", zh: "一句话介绍不能超过 80 个可见字符。" } };
+    return { ok: false, message: { en: "Keep About me within 80 visible characters.", zh: "关于我不能超过 80 个可见字符。" } };
   }
   return { ok: true };
 }

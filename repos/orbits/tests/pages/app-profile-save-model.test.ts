@@ -57,7 +57,10 @@ test("validateProfileSaveDraft enforces name, industry pair and 80-char bio for 
   assert.equal(validateProfileSaveDraft({ profile: profile({ fullName: "  " }), scope: "basic", scopeDirty }).ok, false);
   assert.equal(validateProfileSaveDraft({ profile: profile({ secondaryIndustryId: undefined }), scope: "basic", scopeDirty }).ok, false);
   const longBio = profile({ bio: "x".repeat(81) });
-  assert.equal(validateProfileSaveDraft({ profile: longBio, scope: "basic", scopeDirty: new Set(["bio"]) }).ok, false);
+  const tooLong = validateProfileSaveDraft({ profile: longBio, scope: "basic", scopeDirty: new Set(["bio"]) });
+  assert.equal(tooLong.ok, false);
+  // bio 在新屏的标签是「关于我」（设置屏 / 基础资料屏），校验文案与标签一致，不再叫「一句话介绍」（那是 headline）。
+  assert.deepEqual(tooLong.ok ? undefined : tooLong.message, { en: "Keep About me within 80 visible characters.", zh: "关于我不能超过 80 个可见字符。" });
   assert.equal(validateProfileSaveDraft({ profile: longBio, scope: "basic", scopeDirty }).ok, true, "bio not dirty → not validated");
   assert.equal(validateProfileSaveDraft({ profile: profile({ fullName: "" }), scope: "matching", scopeDirty: new Set(["topics"]) }).ok, true);
 });

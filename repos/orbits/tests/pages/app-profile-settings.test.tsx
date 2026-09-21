@@ -237,24 +237,25 @@ function isProfileApi(input: unknown): boolean {
 function installWindow(t: { after(cb: () => void): void }) {
   const previous = Object.getOwnPropertyDescriptor(globalThis, "window");
   const replaced: string[] = [];
+  const assigned: string[] = [];
   Object.defineProperty(globalThis, "window", {
     configurable: true,
     value: {
       addEventListener() {},
       removeEventListener() {},
       history: { replaceState: (_s: unknown, _t: string, url: string) => { replaced.push(url); } },
-      location: { assign() {} },
+      location: { assign: (url: string) => { assigned.push(url); } },
       scrollTo() {},
     },
   });
   t.after(() => {
     if (previous) Object.defineProperty(globalThis, "window", previous); else Reflect.deleteProperty(globalThis, "window");
   });
-  return replaced;
+  return { replaced, assigned };
 }
 
 test("ProfileScreens settings: save bar saves the basic scope with the edited bio and shows the green notice on the settings view", async (t) => {
-  const replaced = installWindow(t);
+  const { replaced, assigned } = installWindow(t);
   installDocument(t);
   const puts: Record<string, unknown>[] = [];
   let latest = payload();
@@ -293,10 +294,13 @@ test("ProfileScreens settings: save bar saves the basic scope with the edited bi
   assert.ok(success, "green success notice");
   assert.match(textOf(success), /基础资料已保存并完成复读核验。/);
   assert.deepEqual(replaced, []);
+  assert.deepEqual(assigned, []);
 });
 
-test("ProfileScreens settings: cancel is disabled while saving; cancel reloads the latest profile and returns to the profile view", async (t) => {
-  const replaced = installWindow(t);
+// settings 屏挂在 /app/settings 路由（顶栏 active="settings"）：取消不能就地切视图（顶栏会停在「设置」），
+// 而是 reload 后整页跳转 /app/profile（任务 6 复审修正）。
+test("ProfileScreens settings: cancel is disabled while saving; cancel reloads the latest profile and navigates to /app/profile", async (t) => {
+  const { replaced, assigned } = installWindow(t);
   installDocument(t);
   let gets = 0;
   const previousFetch = globalThis.fetch;
@@ -321,6 +325,7 @@ test("ProfileScreens settings: cancel is disabled while saving; cancel reloads t
     await settle();
   });
   assert.equal(gets, 2, "initial GET + reload GET");
-  assert.equal(root.root.findAllByProps({ "data-profile-view": "profile" }).length >= 1, true);
-  assert.deepEqual(replaced, ["/app/profile"]);
+  assert.deepEqual(assigned, ["/app/profile"], "full navigation so the shared top nav switches back to 我的");
+  assert.deepEqual(replaced, [], "no in-place view flip on the /app/settings route");
+  assert.equal(root.root.findAllByProps({ "data-profile-view": "settings" }).length >= 1, true, "stays on settings until the navigation lands");
 });
