@@ -25,10 +25,7 @@ test("surface scanner covers every production page and excludes API/dev routes",
     "/app/chat",
     "/app/contacts",
     "/app/contacts/[id]",
-    "/app/contacts/all-actions",
     "/app/contacts/dashboard",
-    "/app/contacts/graph",
-    "/app/contacts/intros",
     "/app/contacts/new",
     "/app/contacts/pipeline",
     "/app/events",
@@ -177,7 +174,7 @@ test("translated and variable JSX labels count as accessible-name evidence", () 
 });
 
 test("redirect aliases do not require route loading and error surfaces", () => {
-  for (const route of ["/app/dashboard", "/app/followups", "/app/schedule"]) {
+  for (const route of ["/app/followups", "/app/schedule"]) {
     const surface = manifest.surfaces.find((item) => item.route === route);
 
     assert.equal(surface?.states.sourceSignals.redirect, true);

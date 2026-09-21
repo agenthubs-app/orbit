@@ -101,7 +101,7 @@ const englishFallbackItems: readonly OrbitAiStageItem[] = [
   {
     actionLabel: "Open relationship health",
     body: "See gaps, dormant ties, and relationship health signals in one place.",
-    href: "/app/dashboard",
+    href: "/app/contacts/dashboard",
     label: "Health",
     title: "Network signal",
   },
@@ -153,7 +153,7 @@ const chineseFallbackItems: readonly OrbitAiStageItem[] = [
   {
     actionLabel: "打开关系健康",
     body: "看关系缺口、沉睡关系和当前网络信号。",
-    href: "/app/dashboard",
+    href: "/app/contacts/dashboard",
     label: "关系健康",
     title: "关系信号",
   },
@@ -662,7 +662,7 @@ export function createMockOrbitAiCommandService(): OrbitAiCommandService {
           panel,
           prompt,
           sideEffectsExecuted: false,
-          stageCtaHref: "/app/dashboard",
+          stageCtaHref: "/app/contacts/dashboard",
           stageCtaLabel: language === "en" ? "Open relationship health" : "打开关系健康",
           stageItems: metrics.map((metric) =>
             itemFromParts({
@@ -671,7 +671,7 @@ export function createMockOrbitAiCommandService(): OrbitAiCommandService {
                 language === "en"
                   ? `${metric.value} ${metric.label.toLowerCase()} need context-aware review.`
                   : `${metric.value} 个${metric.label === "High-value relationships" ? "高价值关系" : "关系信号"}需要复核。`,
-              href: "/app/dashboard",
+              href: "/app/contacts/dashboard",
               label: language === "en" ? "Network signal" : "关系信号",
               title:
                 language === "en"

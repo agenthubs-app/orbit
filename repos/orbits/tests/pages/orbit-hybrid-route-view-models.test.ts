@@ -261,7 +261,7 @@ test("legacy route files no longer embed old product sample records", () => {
     "app/(app)/app/admin/orbit-real-admin-shell.tsx",
     "app/(app)/app/admin/orbit-real-admin-workspace.tsx",
     "app/(app)/app/admin/orbit-real-admin-events.tsx",
-    "app/(app)/app/dashboard/orbit-real-party.tsx",
+    "app/(app)/app/party/orbit-real-party.tsx",
   ];
   const eventHelperSource = readFileSync(
     "app/(app)/app/orbit-event-view-helpers.ts",

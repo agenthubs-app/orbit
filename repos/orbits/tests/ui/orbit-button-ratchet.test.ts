@@ -10,7 +10,7 @@
  * (a) Sitewide: the number of non-`.btn` `<button>` elements under
  *     app/(app)/app must not go up. T5 brought it from 145 to 129 — that
  *     129 is a ceiling, not a target; future migrations should lower it.
- * (b) The five core surfaces migrated in T5 (today, contacts/all-actions,
+ * (b) The five core surfaces migrated in T5 (today, all-actions controls (now agent/actions),
  *     contacts list, agent, events explore) must have zero *unexplained*
  *     non-`.btn` buttons — every remaining one is named in EXEMPTIONS below
  *     with a reason (drag handle, filter chip, established card-hover
@@ -120,8 +120,7 @@ const CORE_FILES = [
   "app/(app)/app/today/orbit-real-today.tsx",
   "app/(app)/app/today/orbit-today-decision-form.tsx",
   "app/(app)/app/today/orbit-today-decision-panel.tsx",
-  "app/(app)/app/contacts/all-actions/orbit-real-all-actions.tsx",
-  "app/(app)/app/contacts/all-actions/orbit-all-actions-controls.tsx",
+  "app/(app)/app/agent/actions/orbit-all-actions-controls.tsx",
   "app/(app)/app/settings/orbit-agent-execution-settings.tsx",
   "app/(app)/app/contacts/orbit-real-contacts.tsx",
   "app/(app)/app/agent/orbit-real-agent.tsx",

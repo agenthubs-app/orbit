@@ -10,7 +10,7 @@ import type {
 import {
   OrbitRealParty,
   OrbitRealPartyGraph,
-} from "../../app/(app)/app/dashboard/orbit-real-party";
+} from "../../app/(app)/app/party/orbit-real-party";
 import type { EventParticipantDetailView } from "../../features/events/event-operations/participant-detail";
 
 const EVENT_ID = "event:tokyo/founder-night";

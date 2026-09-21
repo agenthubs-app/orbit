@@ -82,8 +82,7 @@ const SIDEBAR_GROUPS: {
     items: [
       { href: "/app/contacts", icon: "wallet", label: { en: "All contacts", zh: "全部人脉" } },
       { href: "/app/contacts/pipeline", icon: "list", label: { en: "Pipeline", zh: "跟进管线" } },
-      { href: "/app/contacts/graph", icon: "users", label: { en: "Network graph", zh: "人脉图谱" } },
-      { href: "/app/contacts/intros", icon: "share", label: { en: "Introductions", zh: "引荐记录" } },
+      { href: "/app/contacts/dashboard?tab=structure", icon: "users", label: { en: "Network graph", zh: "人脉图谱" } },
       { href: "/app/contacts/dashboard", icon: "grid", label: { en: "Dashboard", zh: "人脉表盘" } },
     ],
   },

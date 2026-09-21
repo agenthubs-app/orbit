@@ -8,7 +8,7 @@ import { StateView } from "../../../../../shared/ui/state-view";
 import { redirect } from "next/navigation";
 
 import { auth } from "../../../../../auth";
-import { OrbitRealPartyCheckin } from "../../dashboard/orbit-real-party";
+import { OrbitRealPartyCheckin } from "../orbit-real-party";
 import type { OrbitLanguage } from "../../orbit-language-core";
 import {
   getOrbitServerLanguage,

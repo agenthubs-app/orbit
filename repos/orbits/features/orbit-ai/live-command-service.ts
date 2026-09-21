@@ -254,7 +254,7 @@ function dashboardItems(
       language === "en"
         ? `${metric.value} sourced records are included in this live metric.`
         : `这个真实指标包含 ${metric.value} 条来源记录。`,
-    href: "/app/dashboard",
+    href: "/app/contacts/dashboard",
     label: language === "en" ? "Live metric" : "真实指标",
     title: metric.label,
   }));

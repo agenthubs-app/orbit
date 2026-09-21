@@ -67,12 +67,3 @@ test("P2-1: schedule/events/[id]/page.tsx is a thin route adapter (<80 lines)", 
     `expected schedule/events/[id]/page.tsx to have fewer than 80 lines, got ${lines}`,
   );
 });
-
-test("P2-5: dashboard stays an authenticated relationship-analysis workspace distinct from Party", () => {
-  const pageSource = source("app/(app)/app/dashboard/page.tsx");
-
-  assert.match(pageSource, /await auth\(\)/);
-  assert.match(pageSource, /loadAppDashboardRouteViewModel/);
-  assert.match(pageSource, /OrbitRealDashboard/);
-  assert.doesNotMatch(pageSource, /redirect\("\/app\/party"\)|OrbitRealParty/);
-});

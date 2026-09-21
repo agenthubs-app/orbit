@@ -660,7 +660,7 @@ const reactReferenceIsolationStyles = `
 }
 
 /* UI-audit fix P1-a. btn-quiet had a fully transparent resting state with no
-   border, so on /app/contacts/all-actions its real actions ("撤销",
+   border, so on /app/agent/actions its real actions ("撤销",
    "重试失败项") read as plain text while the NON-interactive status badges
    beside them ("等待确认", "已完成") carried a filled pill — affordance
    inverted, and users aimed at the badge. A hairline gives it a resting

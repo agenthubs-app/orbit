@@ -76,7 +76,7 @@ test("analysis keeps narrow-screen section navigation available when the sidebar
   const html = renderToStaticMarkup(<ContactsAnalysisShell><p>Analysis</p></ContactsAnalysisShell>);
   const navigation = html.match(/<nav[^>]*data-analysis-mobile-nav[^>]*>([\s\S]*?)<\/nav>/)?.[1];
   assert.ok(navigation, "Missing contextual navigation");
-  for (const path of ["/app/contacts", "/app/contacts/pipeline", "/app/contacts/dashboard", "/app/contacts/intros", "/app/contacts/all-actions"]) assert.ok(navigation.includes(`href="${path}"`));
+  for (const path of ["/app/contacts", "/app/contacts/pipeline", "/app/contacts/dashboard", "/app/agent/actions"]) assert.ok(navigation.includes(`href="${path}"`));
   assert.doesNotMatch(navigation, /\/app\/contacts\/graph/);
 });
 

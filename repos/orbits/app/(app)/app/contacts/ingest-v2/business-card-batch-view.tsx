@@ -551,7 +551,7 @@ export function BusinessCardBatchView({ batchId }: { batchId: string }) {
       : actionError !== null ? t({ en: "The result could not be confirmed. Check the latest batch state below before retrying.", zh: "暂时无法确认操作结果。请检查下方最新批次状态，再决定是否重试。" })
       : batch ? t({ en: "Batch progress could not be loaded. Your last displayed state has been kept; try refreshing.", zh: "暂时无法加载批次进度，已保留上次显示的状态，请刷新重试。" })
       : t({ en: "Batch progress could not be loaded. Try refreshing.", zh: "暂时无法加载批次进度，请刷新重试。" })}</p>
-    {errorStatus === 401 ? <a className="btn btn-primary" href={`/app/account/login?next=${encodeURIComponent(`/app/contacts/new/batch/${batchId}`)}`}>{t({ en: "Sign in", zh: "重新登录" })}</a>
+    {errorStatus === 401 ? <a className="btn btn-primary" href={`/app/account/login?next=${encodeURIComponent(`/app/contacts/new?job=${batchId}`)}`}>{t({ en: "Sign in", zh: "重新登录" })}</a>
       : <button className="btn btn-ghost" disabled={busy} type="button" onClick={() => { setActionError(null); void refresh(); }}>{t({ en: "Refresh status", zh: "刷新状态" })}</button>}
   </div> : null;
 

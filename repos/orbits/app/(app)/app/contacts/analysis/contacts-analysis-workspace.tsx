@@ -24,8 +24,7 @@ export function ContactsAnalysisShell({ children, count }: { children: ReactNode
           <a className="chip" href={preserveHref("/app/contacts")}>{t({ zh: "全部", en: "All", ja: "すべて" })}</a>
           <a className="chip" href={preserveHref("/app/contacts/pipeline")}>{t({ zh: "关系进展", en: "Relationship progress", ja: "関係の進展" })}</a>
           <a className="chip is-active" aria-current="page" href={preserveHref("/app/contacts/dashboard")}>{t({ zh: "人脉分析", en: "Network analysis", ja: "人脈分析" })}</a>
-          <a className="chip" href={preserveHref("/app/contacts/intros")}>{t({ zh: "引荐", en: "Introductions", ja: "紹介" })}</a>
-          <a className="chip" href={preserveHref("/app/contacts/all-actions")}>{t({ zh: "操作记录", en: "All actions", ja: "操作履歴" })}</a>
+          <a className="chip" href={preserveHref("/app/agent/actions")}>{t({ zh: "操作记录", en: "All actions", ja: "操作履歴" })}</a>
         </nav>
         {children}
       </div>

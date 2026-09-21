@@ -107,7 +107,7 @@ test("Today limits and groups decisions while keeping overflow traceable", () =>
   assert.match(route, /operationDueAt/);
   assert.match(route, /OPERATION_STAGE_WEIGHT/);
   assert.match(route, /hasExplicitGoal/);
-  assert.match(today, /href="\/app\/contacts\/all-actions"/);
+  assert.match(today, /href="\/app\/agent\/actions"/);
 });
 
 test("Today only accepts actor-authorized records as schedule truth", () => {
@@ -165,14 +165,4 @@ test("small Agent and contact status copy use readable foreground tokens", () =>
   assert.match(agent, /"--text-3": "#6B6F99"/);
   assert.match(agent, /"--text-4": "#9FA3C4"/);
   assert.match(contacts, /status === "to_contact" \? "var\(--amber-text\)" : meta\.color/);
-});
-
-test("All arrangements keeps machine traces folded and localizes known source labels", () => {
-  const allArrangements = source("app/(app)/app/contacts/all-actions/orbit-real-all-actions.tsx");
-
-  assert.match(allArrangements, /iOrbit 对话中的明确请求/);
-  assert.match(allArrangements, /保存到智能记忆/);
-  assert.doesNotMatch(allArrangements, /\{entry\.workflowKey \? `工作流/);
-  assert.match(allArrangements, /Action：\{entry\.entryId\}/);
-  assert.match(allArrangements, /Run：\{entry\.runId \?\? "—"\}/);
 });

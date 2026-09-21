@@ -100,7 +100,7 @@ test("mounted source changes ignore late bitmap work and revoke every owned URL"
 
   try {
     (globalThis as { window: unknown }).window = {
-      location: { href: "http://w2.localhost:4612/app/contacts/new/batch2", origin: "http://w2.localhost:4612" },
+      location: { href: "http://w2.localhost:4612/app/contacts/new?method=scan", origin: "http://w2.localhost:4612" },
       matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
     };
     const canvas = {
@@ -187,7 +187,7 @@ test("mounted private image reports expired and unauthorized responses", async (
   let renderer: ReactTestRenderer | undefined;
   try {
     (globalThis as { window: unknown }).window = {
-      location: { href: "http://w2.localhost:4612/app/contacts/new/batch2", origin: "http://w2.localhost:4612" },
+      location: { href: "http://w2.localhost:4612/app/contacts/new?method=scan", origin: "http://w2.localhost:4612" },
       matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
     };
     globalThis.fetch = (async (input: RequestInfo | URL) => {

@@ -3,7 +3,6 @@ const ORBIT_PRIVATE_APP_PREFIXES = [
   "/app/agent",
   "/app/chat",
   "/app/contacts",
-  "/app/dashboard",
   "/app/followups",
   "/app/home",
   "/app/party",

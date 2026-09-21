@@ -28,7 +28,7 @@ function IngestV2BatchRow({ batch, t }: { batch: IngestBatchDTO; t: Translate })
   return (
     <a
       className="card"
-      href={`/app/contacts/new/batch2/${batch.id}`}
+      href={`/app/contacts/new?job=${encodeURIComponent(batch.id)}`}
       style={{
         alignItems: "center",
         display: "flex",
@@ -66,7 +66,7 @@ function BatchRow({ batch, t }: { batch: BusinessCardBatchDTO; t: Translate }) {
   return (
     <a
       className="card"
-      href={`/app/contacts/new/batch/${batch.id}`}
+      href={`/app/contacts/new?job=${encodeURIComponent(batch.id)}`}
       style={{
         alignItems: "center",
         display: "flex",
@@ -169,7 +169,7 @@ export function BusinessCardBatchEntry() {
     try {
       const direct = await uploadV1CardFiles(selectedFiles.current, (done, total) => setUploadProgress({ done, total }));
       if (direct.kind === "created") {
-        window.location.href = `/app/contacts/new/import/${direct.jobId}`;
+        window.location.href = `/app/contacts/new?job=${encodeURIComponent(direct.jobId)}`;
         return;
       }
       if (direct.kind === "error") { setNeedsLogin(direct.code === "UNAUTHORIZED"); setError(cardImportError(direct.code, t)); return; }
@@ -190,7 +190,7 @@ export function BusinessCardBatchEntry() {
         return;
       }
 
-      window.location.href = `/app/contacts/new/batch/${body.data.batch.id}`;
+      window.location.href = `/app/contacts/new?job=${encodeURIComponent(body.data.batch.id)}`;
     } catch {
       setError(t({ en: "Upload failed. Try again.", zh: "上传失败，请重试。" }));
     } finally {
@@ -216,7 +216,7 @@ export function BusinessCardBatchEntry() {
           disabled={uploading}
           onClick={() => {
             if (INGEST_V2_ENABLED) {
-              window.location.href = "/app/contacts/new/batch2";
+              window.location.href = "/app/contacts/new?method=scan";
               return;
             }
             photoInputRef.current?.click();

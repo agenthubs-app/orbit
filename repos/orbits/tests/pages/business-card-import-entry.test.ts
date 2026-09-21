@@ -38,7 +38,7 @@ test("resetting the picker preserves the selected files for both direct and loca
     await f.run(f.list);
     assert.equal(f.state.progress.total, 1); assert.equal(f.state.uploading, false);
     assert.equal(posts, direct ? 0 : 1);
-    assert.equal(f.context.window.location.href, direct ? "/app/contacts/new/import/job" : "/app/contacts/new/batch/batch");
+    assert.equal(f.context.window.location.href, direct ? "/app/contacts/new?job=job" : "/app/contacts/new?job=batch");
   }
 });
 

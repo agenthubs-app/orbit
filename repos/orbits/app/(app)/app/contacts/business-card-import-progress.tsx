@@ -92,7 +92,7 @@ export function BusinessCardImportProgress({ jobId }: { jobId: string }) {
       {job.errorCode ? <p role="status">{active(job) ? t({ en: "Preparation is temporarily unavailable and will retry automatically.", zh: "文件准备暂时受阻，稍后会自动重试。" }) : cardImportError(job.errorCode, t)}</p> : null}
       {job.state === "cancelled" ? <p>{t({ en: "Preparation stopped. Temporary files are scheduled for cleanup.", zh: "文件准备已停止，临时文件已安排清理。" })}</p> : null}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-        {job.state === "completed" && job.batchId ? <a className="btn btn-primary" href={`/app/contacts/new/batch/${encodeURIComponent(job.batchId)}`}>
+        {job.state === "completed" && job.batchId ? <a className="btn btn-primary" href={`/app/contacts/new?job=${encodeURIComponent(job.batchId)}`}>
           {t({ en: "View recognition batch", zh: "查看识别批次" })}</a> : null}
         {!["completed", "cancelled"].includes(job.state) ? <button className="btn btn-ghost" type="button" disabled={cancelling} onClick={() => void cancel()}>
           {cancelling ? t({ en: "Cancelling…", zh: "正在取消…" }) : t({ en: "Cancel import", zh: "取消导入" })}</button> : null}
@@ -129,7 +129,7 @@ export function BusinessCardImportJobs({ batchIds }: { batchIds: readonly string
   const visible = jobs.filter((job) => job.state !== "cancelled" && !(job.batchId && batchIds.includes(job.batchId)));
   return <>
     {visible.length ? <div style={{ display: "grid", gap: 8, marginTop: 12 }} aria-label={t({ en: "Saved imports", zh: "已保存的导入任务" })}>
-      {visible.map((job) => <a className="card" key={job.id} href={`/app/contacts/new/import/${encodeURIComponent(job.id)}`} style={{ padding: 12, color: "var(--ink)", textDecoration: "none" }}>
+      {visible.map((job) => <a className="card" key={job.id} href={`/app/contacts/new?job=${encodeURIComponent(job.id)}`} style={{ padding: 12, color: "var(--ink)", textDecoration: "none" }}>
         <span>{label(job, t)}</span><span style={{ marginLeft: 8, color: "var(--text-3)" }}>{t({ en: `${job.sourceCount} files · ${job.preparedPages} pages`, zh: `${job.sourceCount} 个文件 · ${job.preparedPages} 页` })}</span>
       </a>)}
     </div> : null}

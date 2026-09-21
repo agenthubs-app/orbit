@@ -7,7 +7,7 @@
  *   fontWeight: 400, 500, 600, 700, 800
  *   gap:        0, 4, 8, 12, 16, 20, 24, 32, 48
  *
- * T6 snapped eight core surfaces (today x3, contacts/all-actions x3, agent,
+ * T6 snapped eight core surfaces (today x3, all-actions x3 — the ledger screen retired 2026-09, its controls now live in agent/actions — agent,
  * contacts) to this scale and converted every numeric `borderRadius` literal
  * in them to a `var(--r-*)` token. This test does not try to migrate the
  * whole app in one shot — it locks in what T6 already snapped and stops new
@@ -153,8 +153,7 @@ const SNAPPED_FILES = [
   "app/(app)/app/today/orbit-today-decision-panel.tsx",
   "app/(app)/app/today/orbit-today-decision-form.tsx",
   "app/(app)/app/settings/orbit-agent-execution-settings.tsx",
-  "app/(app)/app/contacts/all-actions/orbit-real-all-actions.tsx",
-  "app/(app)/app/contacts/all-actions/orbit-all-actions-controls.tsx",
+  "app/(app)/app/agent/actions/orbit-all-actions-controls.tsx",
   "app/(app)/app/agent/orbit-real-agent.tsx",
   "app/(app)/app/contacts/orbit-real-contacts.tsx",
 ];

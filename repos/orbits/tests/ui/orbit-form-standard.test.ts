@@ -97,7 +97,7 @@ function stripComments(text: string): string {
 // undefined}`), so this literal-string count intentionally only tracks the
 // hand-rolled markers that existed before T7 — it must never go down.
 // 7 is the true code-level count (comments stripped) across
-// account/mobile-google, account-auth, contacts/all-actions-controls,
+// account/mobile-google, account-auth, agent/actions/all-actions-controls,
 // events/[id]/register/event-registration-workspace (2 real banners),
 // profile, and today/orbit-today-decision-form. The raw (unstripped) count
 // was 8: event-registration-workspace also has a `//` comment that

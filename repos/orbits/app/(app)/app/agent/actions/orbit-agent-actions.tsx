@@ -9,7 +9,7 @@
  */
 import type { AgentLedgerEntry } from "../../../../../features/agent/ledger/contract";
 import type { OrbitLanguage } from "../../orbit-language-core";
-import { OrbitAllActionsControls } from "../../contacts/all-actions/orbit-all-actions-controls";
+import { OrbitAllActionsControls } from "./orbit-all-actions-controls";
 import { OrbitTodayDecisionForm } from "../../today/orbit-today-decision-form";
 import type { AgentActionsRouteViewModel } from "./actions-route-view-model";
 

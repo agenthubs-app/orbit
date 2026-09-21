@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import AppContactsGraphPage from "../../app/(app)/app/contacts/graph/page";
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
 function source(path: string): string {
@@ -15,25 +14,7 @@ const subroutes = [
     marker: "app-contacts-pipeline-route",
     sourcePath: "app/(app)/app/contacts/pipeline/page.tsx",
   },
-  {
-    marker: "app-contacts-intros-route",
-    sourcePath: "app/(app)/app/contacts/intros/page.tsx",
-  },
 ] as const;
-
-test("legacy graph opens network structure and preserves only a valid language", async () => {
-  for (const [lang, href] of [
-    [undefined, "/app/contacts/dashboard?tab=structure"],
-    ["en", "/app/contacts/dashboard?tab=structure&lang=en"],
-    ["ja", "/app/contacts/dashboard?tab=structure&lang=ja"],
-    [["en", "ja"], "/app/contacts/dashboard?tab=structure"],
-  ] as const) {
-    await assert.rejects(AppContactsGraphPage({ searchParams: Promise.resolve({ lang: Array.isArray(lang) ? [...lang] : lang as string | undefined }) }), (error: unknown) => {
-      assert.equal((error as { digest?: string }).digest, `NEXT_REDIRECT;replace;${href};307;`);
-      return true;
-    });
-  }
-});
 
 for (const subroute of subroutes) {
   test(`${subroute.marker} uses the live contacts route service boundary`, async () => {
@@ -67,34 +48,6 @@ test("contacts pipeline exposes only source-backed read behavior", () => {
     pipelineSource,
     /Organize after-event contacts|One email each|Set reminder|Draft email/,
   );
-});
-
-test("contacts introductions use stored actor-scoped records, not contact-derived history", () => {
-  const adapterSource = source(
-    "app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-subroute-route-adapter.tsx",
-  );
-  const pageSource = source("app/(app)/app/contacts/intros/page.tsx");
-  const componentSource = source(
-    "app/(app)/app/contacts/orbit-real-contacts.tsx",
-  );
-
-  assert.match(adapterSource, /intros: \[\]/);
-  assert.doesNotMatch(adapterSource, /payload\.contacts\.slice\(0, 6\)/);
-  assert.match(pageSource, /createConfiguredContactIntroductionRepository/);
-  assert.match(pageSource, /resolveAuthenticatedApiActorFromSession/);
-  assert.match(pageSource, /userId: session\.user\.id/);
-  assert.match(pageSource, /introductionRepository\.list\(actor\.id\)/);
-  assert.doesNotMatch(pageSource, /introductionRepository\.list\(session\.user\.id\)/);
-  assert.match(componentSource, /\/api\/contacts\/introductions/);
-  assert.match(componentSource, /statusBadge: introduction\.status/);
-  assert.match(componentSource, /function IntroDetailModal/);
-  assert.match(componentSource, /setSelectedIntroduction\(intro\)/);
-  assert.match(componentSource, /查看详情/);
-  assert.match(pageSource, /contactAId: introduction\.contactAId/);
-  assert.match(pageSource, /createdAt: introduction\.createdAt/);
-  assert.match(componentSource, /No contacts are available yet/);
-  assert.match(componentSource, /No contacts match this search/);
-  assert.match(componentSource, /href="\/app\/contacts\/new"/);
 });
 
 test("contacts sidebars expose one import hub entry without a duplicate scan-card destination", () => {

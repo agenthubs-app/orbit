@@ -311,7 +311,7 @@ test("Agent ledger and queue routes resolve server auth instead of request ident
 
 test("All actions server page uses the authenticated ledger entry point; Today is a redirect shell", () => {
   const allActionsSource = readFileSync(
-    join(process.cwd(), "app/(app)/app/contacts/all-actions/page.tsx"),
+    join(process.cwd(), "app/(app)/app/agent/actions/page.tsx"),
     "utf8",
   );
   assert.match(allActionsSource, /resolveAgentLedgerForServerPage/);

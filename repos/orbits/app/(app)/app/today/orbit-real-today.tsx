@@ -283,7 +283,7 @@ export function OrbitRealToday({
                 <a
                   className="btn btn-ghost btn-sm"
                   data-orbit-today-hidden-decisions
-                  href="/app/contacts/all-actions"
+                  href="/app/agent/actions"
                   style={{ marginTop: 10 }}
                 >
                   {language === "zh"

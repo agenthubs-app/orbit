@@ -392,13 +392,6 @@ test("navigation replay credits only its 27 exact route occurrences", () => {
   assert.equal(credited.length, 27);
   assert.equal(settingsSignOut?.conclusion, "runtime-verified-exercised-case");
   assert.equal(siblingSignOuts.length, 33);
-  const importSignOut = inventory.surfaces
-    .find((surface) => surface.surfaceId === "web:/app/contacts/new/import/[id]")
-    ?.interactions.find((interaction) =>
-      interaction.sourceFile === "repos/orbits/app/(app)/app/orbit-public-shell.tsx" &&
-      interaction.visibleName === "Sign out / 退出登录",
-    );
-  assert.equal(importSignOut?.conclusion, "inventoried-static-only");
   assert.equal(
     siblingSignOuts.every(
       (interaction) => interaction.conclusion === "inventoried-static-only",
@@ -642,27 +635,6 @@ for (const [props, hidden] of [
     });
   });
 }
-
-test("hidden batch file inputs retain handler records and accessible picker triggers", () => {
-  for (const [surfaceId, inputCount, pickerNameEvidence] of [
-    ["web:/app/contacts/new/batch2", 2, "dynamic-static-expression"],
-    ["web:/app/contacts/new/batch2/[id]", 2, "present-static"],
-  ] as const) {
-    const surface = inventory.surfaces.find((surface) => surface.surfaceId === surfaceId);
-    assert.ok(surface);
-    const inputs = surface.interactions.filter((interaction) => interaction.tag === "input" && interaction.visibleName === null);
-    assert.equal(inputs.length, inputCount);
-    for (const input of inputs) {
-      assert.equal(input.accessibleNameEvidence, "intentionally-hidden-pointer-target");
-      assert.equal(input.handlers.some((handler) => handler.event === "onchange"), true);
-    }
-    const pickers = surface.interactions.filter((interaction) =>
-      interaction.tag === "button" && interaction.handlers.some((handler) => handler.expression.includes(".click()")),
-    );
-    assert.ok(pickers.length > 0);
-    assert.equal(pickers.every((picker) => picker.visibleName && picker.accessibleNameEvidence === pickerNameEvidence), true);
-  }
-});
 
 test("native private route wrappers are static wiring, not runtime authorization evidence", () => {
   for (const surfaceId of ["mobile:/events/[id]/analytics", "mobile:/tasks", "mobile:/tasks/[id]"]) {
@@ -1052,12 +1024,6 @@ test("Web home and scheduling runtime cases remain scoped to their exercised rou
   );
   assert.equal(
     inventory.surfaces.find(
-      (surface) => surface.surfaceId === "web:/app/dashboard",
-    )?.verificationConclusion,
-    "runtime-partially-verified-web-actor-scoped-relationship-dashboard",
-  );
-  assert.equal(
-    inventory.surfaces.find(
       (surface) => surface.surfaceId === "web:/app/followups",
     )?.verificationConclusion,
     "runtime-partially-verified-web-followups-today-compatibility-route",
@@ -1247,24 +1213,16 @@ test("Agent runtime case retains its recorded observations", () => {
   );
 });
 
-test("chat and all-actions retain their recorded observations", () => {
+test("chat retains its recorded observations", () => {
   assert.equal(
     inventory.surfaces.find((surface) => surface.surfaceId === "web:/app/chat")
       ?.runtimeEvidence.length,
     4,
   );
-  assert.equal(
-    inventory.surfaces.find(
-      (surface) => surface.surfaceId === "web:/app/contacts/all-actions",
-    )?.runtimeEvidence.length,
-    3,
-  );
 });
 
 for (const [surfaceId, evidenceCount] of [
     ["web:/app/contacts/dashboard", 3],
-    ["web:/app/contacts/graph", 4],
-    ["web:/app/contacts/intros", 6],
     ["web:/app/contacts/pipeline", 3],
   ] as const) {
   test(`relationship runtime observations remain retained: ${surfaceId}`, () => {

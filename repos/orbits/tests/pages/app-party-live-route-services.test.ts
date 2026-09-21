@@ -101,7 +101,7 @@ test("/app/party routes use a live-capable party loader instead of the legacy hy
 
 test("/app/party/checkin uses the same live-capable party loader without component fallback", () => {
   const checkinPageSource = source("app/(app)/app/party/checkin/page.tsx");
-  const partyComponentSource = source("app/(app)/app/dashboard/orbit-real-party.tsx");
+  const partyComponentSource = source("app/(app)/app/party/orbit-real-party.tsx");
   const controlsSource = source("app/(app)/app/party/event-operations-controls.tsx");
 
   assert.match(checkinPageSource, /loadAppPartyRouteViewModel/);
@@ -118,7 +118,7 @@ test("/app/party/checkin uses the same live-capable party loader without compone
 
 test("party recommendations expose a route-derived industry filter", () => {
   const partyComponentSource = source(
-    "app/(app)/app/dashboard/orbit-real-party.tsx",
+    "app/(app)/app/party/orbit-real-party.tsx",
   );
 
   assert.match(partyComponentSource, /Filter by industry/);
@@ -132,7 +132,7 @@ test("party recommendations expose a route-derived industry filter", () => {
 
 test("party recommendations use individual consent requests and graph uses persisted edges", () => {
   const partyComponentSource = source(
-    "app/(app)/app/dashboard/orbit-real-party.tsx",
+    "app/(app)/app/party/orbit-real-party.tsx",
   );
   const controlsSource = source("app/(app)/app/party/event-operations-controls.tsx");
 
@@ -261,20 +261,6 @@ test("unregistered catalogue viewers do not receive Party attendee context", asy
 
     assert.equal(routeModel.state, "route-state");
   });
-});
-
-test("/app/dashboard and /app/party remain separate canonical routes", () => {
-  const dashboardPageSource = source("app/(app)/app/dashboard/page.tsx");
-  const partyPageSource = source("app/(app)/app/party/page.tsx");
-
-  assert.match(dashboardPageSource, /loadAppDashboardRouteViewModel/);
-  assert.match(dashboardPageSource, /OrbitRealDashboard/);
-  assert.doesNotMatch(
-    dashboardPageSource,
-    /redirect\("\/app\/party"\)|buildOrbitParty|OrbitRealParty/,
-  );
-  assert.match(partyPageSource, /loadAppPartyRouteViewModel/);
-  assert.match(partyPageSource, /OrbitRealParty/);
 });
 
 test("party pages require an authenticated actor and pass it to the shared loader", () => {

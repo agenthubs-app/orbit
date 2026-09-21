@@ -16,8 +16,8 @@ import { ORBIT_Z } from "../orbit-z";
 import {
   EventCheckInControl,
   EventContactRequestControl,
-} from "../party/event-operations-controls";
-import { formatOrbitPartyDateTime } from "../party/party-date-time";
+} from "./event-operations-controls";
+import { formatOrbitPartyDateTime } from "./party-date-time";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 

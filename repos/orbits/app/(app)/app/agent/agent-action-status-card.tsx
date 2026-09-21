@@ -666,7 +666,7 @@ export function AgentActionStatusCard({
                 className="btn btn-quiet"
                 onClick={() =>
                   navigate(
-                    `/contacts/all-actions?entry=${encodeURIComponent(action.actionId)}`,
+                    `/agent/actions?entry=${encodeURIComponent(action.actionId)}`,
                   )
                 }
                 type="button"

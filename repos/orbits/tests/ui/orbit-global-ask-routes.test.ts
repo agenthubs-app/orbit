@@ -31,11 +31,11 @@ test("登录后的产品页都挂提问入口", () => {
     "/app/events",
     "/app/events/event_signup_01",
     "/app/contacts",
-    "/app/contacts/all-actions",
+    "/app/agent/actions",
     "/app/today",
     "/app/followups",
     "/app/inbox",
-    "/app/dashboard",
+    "/app/contacts/dashboard",
     "/app/settings",
   ]) {
     assert.equal(allowsOrbitAsk(path), true, `expected ask entry on ${path}`);

@@ -125,7 +125,6 @@ test("all contacts server pages resolve the Auth user to its account actor", () 
     "app/(app)/app/contacts/[id]/page.tsx",
     "app/(app)/app/contacts/dashboard/page.tsx",
     "app/(app)/app/contacts/analysis/[dimension]/[bucketId]/page.tsx",
-    "app/(app)/app/contacts/intros/page.tsx",
     "app/(app)/app/contacts/pipeline/page.tsx",
   ]) {
     const pageSource = source(filePath);
