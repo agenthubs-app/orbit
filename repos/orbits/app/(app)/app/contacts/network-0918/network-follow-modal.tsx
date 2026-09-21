@@ -2,6 +2,7 @@
  * 记录跟进弹窗（Network v2 第 789–856 行，含 toast 852–856）。
  * 保存 = PATCH /api/contacts/<id>（与 contact-notes-editor / contact-tag-editor / contact-interaction-editor 同一接口与 fetch 模式）。
  * 「同步到 AI 分析」无接口：渲染为 aria-disabled 说明，不做假开关。
+ * 阶段箭头只展示当前阶段（非交互）：阶段由关系生命周期任务推进，见 buildFollowPatch 注释。
  */
 "use client";
 
@@ -9,13 +10,15 @@ import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from
 
 import type { OrbitContactView } from "../../orbit-contacts-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { NETWORK_STAGES, STAGE_LABEL, stageClip, stageOf, type NetworkStage } from "./network-model";
+import { NETWORK_STAGES, STAGE_LABEL, stageClip, stageOf } from "./network-model";
 
-const STATUS_BY_STAGE = { explore: "needs_follow_up", keep: "nurture", advance: "active", archived: "archived" } as const;
-
-export function buildFollowPatch(input: { summary: string; need: string; offer: string; next: string; date: string; remind: string; stage: NetworkStage | ""; tags: string[]; existingTags: string[] }): {
+/**
+ * 不发 status：详情服务对已有生命周期的关系拒绝任何 status 写入
+ * （features/contacts/live-detail-service.ts CONTACT_DETAIL_CANONICAL_STATUS_LIFECYCLE_ONLY），
+ * 阶段只能通过 /api/connections/<id>/lifecycle 的跟进任务推进。
+ */
+export function buildFollowPatch(input: { summary: string; need: string; offer: string; next: string; date: string; remind: string; tags: string[]; existingTags: string[] }): {
   note: { body: string; authorLabel: "我" };
-  status?: "active" | "needs_follow_up" | "nurture" | "archived";
   addTags?: string[];
   removeTags?: string[];
   lastInteraction: { channel: "manual_note"; occurredAt: string; summary: string };
@@ -29,7 +32,6 @@ export function buildFollowPatch(input: { summary: string; need: string; offer: 
   const removeTags = input.existingTags.filter((tag) => !input.tags.includes(tag));
   return {
     note: { body: lines.join("\n"), authorLabel: "我" as const },
-    ...(input.stage ? { status: STATUS_BY_STAGE[input.stage] } : {}),
     ...(addTags.length ? { addTags } : {}),
     ...(removeTags.length ? { removeTags } : {}),
     lastInteraction: { channel: "manual_note" as const, occurredAt: input.date || new Date().toISOString().slice(0, 10), summary: input.summary.trim() },
@@ -52,12 +54,10 @@ export function NetworkFollowModal({ contact, onClose, onSaved }: { contact: Orb
   const [next, setNext] = useState("");
   const [date, setDate] = useState(today);
   const [remind, setRemind] = useState("");
-  const initialStage = stageOf(contact);
-  const [stage, setStage] = useState<NetworkStage | "">(initialStage);
+  const stage = stageOf(contact);
   const [tags, setTags] = useState<string[]>(existingTags);
   const [tagInput, setTagInput] = useState("");
   const [status, setStatus] = useState<"idle" | "saving" | "error" | "saved">("idle");
-  const [errorCode, setErrorCode] = useState<string | null>(null);
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const org = contact.company.trim();
   const title = contact.title.trim();
@@ -92,27 +92,15 @@ export function NetworkFollowModal({ contact, onClose, onSaved }: { contact: Orb
     try {
       const response = await fetch(`/api/contacts/${encodeURIComponent(contact.id)}`, {
         method: "PATCH", credentials: "same-origin", cache: "no-store", headers: { "Content-Type": "application/json" },
-        // 阶段未改动时不发 status：详情服务对已有生命周期的关系拒绝任何 status 写入（CONTACT_DETAIL_CANONICAL_STATUS_LIFECYCLE_ONLY）。
-        body: JSON.stringify(buildFollowPatch({ summary, need, offer, next, date, remind, stage: stage === initialStage ? "" : stage, tags, existingTags })),
+        body: JSON.stringify(buildFollowPatch({ summary, need, offer, next, date, remind, tags, existingTags })),
       });
-      if (!response.ok) {
-        const envelope = await response.json().catch(() => null) as { error?: { context?: { contactDetailTagStatusErrorCode?: string } } } | null;
-        setErrorCode(envelope?.error?.context?.contactDetailTagStatusErrorCode ?? null);
-        setStatus("error");
-        return;
-      }
+      if (!response.ok) { setStatus("error"); return; }
       setStatus("saved");
       savedTimer.current = setTimeout(onSaved, 1200);
     } catch {
-      setErrorCode(null);
       setStatus("error");
     }
   }
-
-  // 详情服务：已有生命周期的关系不接受 status 写入，阶段要走跟进任务流程（/app/tasks）。
-  const errorCopy = errorCode === "CONTACT_DETAIL_CANONICAL_STATUS_LIFECYCLE_ONLY"
-    ? t({ en: "This relationship's stage can only change through its follow-up tasks. Keep the current stage to save this note.", zh: "该关系的阶段只能通过跟进任务流程更新；保持当前阶段即可保存本次记录。" })
-    : t({ en: "Saving failed. Please try again.", zh: "保存失败，请重试。" });
 
   return (
     <div className="nw-overlay nw-overlay-follow" onClick={onOverlayClick} data-network-modal="follow">
@@ -149,11 +137,13 @@ export function NetworkFollowModal({ contact, onClose, onSaved }: { contact: Orb
         </div>
         <div className="nw-fu-block">
           <span className="nw-fu-block-t">{t({ en: "Update stage", zh: "更新关系阶段" })} <span className="nw-fu-req">*</span></span>
-          <div className="nw-fu-stages">
+          {/* 只读：四段箭头按设计渲染、当前阶段高亮，但不是按钮（阶段由生命周期任务推进，VM 没有 connection id 可链接到 /app/tasks/relationship/<id>）。 */}
+          <div className="nw-fu-stages" role="group" aria-label={t({ en: "Current stage", zh: "当前关系阶段" })}>
             {NETWORK_STAGES.map((key, i) => (
-              <button key={key} type="button" className={`btn nw-fu-stage${stage === key ? " nw-fu-stage-on" : ""}`} aria-pressed={stage === key} style={{ clipPath: stageClip(i as 0 | 1 | 2 | 3) }} onClick={() => setStage(key)}>{t(STAGE_LABEL[key])}</button>
+              <span key={key} className={`nw-fu-stage${stage === key ? " nw-fu-stage-on" : ""}`} aria-disabled="true" aria-current={stage === key ? "true" : undefined} style={{ clipPath: stageClip(i as 0 | 1 | 2 | 3) }}>{t(STAGE_LABEL[key])}</span>
             ))}
           </div>
+          <span className="nw-fu-hint">{t({ en: "Stages advance through relationship lifecycle tasks.", zh: "阶段由关系生命周期任务推进" })}</span>
         </div>
         <div className="nw-fu-block">
           <span className="nw-fu-block-t">{t({ en: "Tags", zh: "标签" })}</span>
@@ -164,7 +154,7 @@ export function NetworkFollowModal({ contact, onClose, onSaved }: { contact: Orb
             <input className="nw-fu-tag-input" value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={onTagKey} placeholder={t({ en: "Type a tag and press Enter", zh: "输入标签，按回车添加" })} />
           </div>
         </div>
-        {status === "error" ? <p role="alert" className="nw-fu-error">{errorCopy}</p> : null}
+        {status === "error" ? <p role="alert" className="nw-fu-error">{t({ en: "Saving failed. Please try again.", zh: "保存失败，请重试。" })}</p> : null}
         <div className="nw-fu-foot">
           <span className="nw-fu-sync" aria-disabled="true">
             <span className="nw-fu-sync-mark">✓</span>

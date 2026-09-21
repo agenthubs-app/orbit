@@ -4,9 +4,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { NetworkFollowModal, buildFollowPatch } from "../../app/(app)/app/contacts/network-0918/network-follow-modal";
 
-test("buildFollowPatch composes note body from the four fields and maps stage to status", () => {
-  const patch = buildFollowPatch({ summary: "聊了合作", need: "需要案例", offer: "可给 demo", next: "下周发方案", date: "2026-09-25", remind: "2026-09-24", stage: "keep", tags: ["AI", "日本"], existingTags: ["AI", "旧"] });
-  assert.equal(patch.status, "nurture");
+test("buildFollowPatch composes note body from the four fields and never writes status", () => {
+  const patch = buildFollowPatch({ summary: "聊了合作", need: "需要案例", offer: "可给 demo", next: "下周发方案", date: "2026-09-25", remind: "2026-09-24", tags: ["AI", "日本"], existingTags: ["AI", "旧"] });
+  // 阶段由关系生命周期任务推进：详情 PATCH 带 status 会被 409 拒绝，跟进记录永远不带 status
+  assert.equal("status" in patch, false);
   assert.deepEqual(patch.addTags, ["日本"]);
   assert.deepEqual(patch.removeTags, ["旧"]);
   assert.match(patch.note.body, /总结：聊了合作/);
@@ -14,11 +15,10 @@ test("buildFollowPatch composes note body from the four fields and maps stage to
   assert.match(patch.note.body, /提醒：2026-09-24/);
   assert.equal(patch.lastInteraction.occurredAt, "2026-09-25");
   assert.equal(patch.lastInteraction.channel, "manual_note");
-  const minimal = buildFollowPatch({ summary: "x", need: "", offer: "", next: "", date: "", remind: "", stage: "", tags: [], existingTags: [] });
-  assert.equal(minimal.status, undefined);
+  const minimal = buildFollowPatch({ summary: "x", need: "", offer: "", next: "", date: "", remind: "", tags: [], existingTags: [] });
   assert.equal(minimal.addTags, undefined);
   assert.equal(minimal.removeTags, undefined);
-  assert.equal(buildFollowPatch({ summary: "x", need: "", offer: "", next: "", date: "", remind: "", stage: "archived", tags: [], existingTags: [] }).status, "archived");
+  assert.equal(minimal.note.body, "总结：x");
 });
 
 test("follow modal renders the design form with save disabled until summary is filled", () => {
@@ -35,10 +35,13 @@ test("follow modal renders the design form with save disabled until summary is f
   assert.equal((html.match(/type="date"/g) ?? []).length, 2);
   assert.match(html, /nw-fu-save"[^>]*disabled/);
   assert.match(html, /保存记录/);
-  assert.equal((html.match(/class="btn nw-fu-stage/g) ?? []).length, 4);
-  // 当前阶段（active → advance）预选
-  assert.equal((html.match(/nw-fu-stage nw-fu-stage-on/g) ?? []).length, 1);
+  // 四段阶段箭头只读：span + aria-disabled，不是按钮；当前阶段（active → advance）高亮
+  assert.equal((html.match(/<span class="nw-fu-stage/g) ?? []).length, 4);
+  assert.equal((html.match(/<button[^>]*nw-fu-stage/g) ?? []).length, 0);
+  assert.equal((html.match(/nw-fu-stage nw-fu-stage-on" aria-disabled="true" aria-current="true"/g) ?? []).length, 1);
+  assert.match(html, /nw-fu-stage-on[^>]*>正在推进/);
   assert.match(html, /已归档/);
+  assert.match(html, /阶段由关系生命周期任务推进/);
   // 现有标签预填为 chip
   assert.match(html, /nw-fu-tag[^>]*>AI/);
   // 同步到 AI 分析：非交互说明，无假开关

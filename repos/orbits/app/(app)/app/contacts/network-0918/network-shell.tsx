@@ -557,11 +557,11 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-fu-block { display: flex; flex-direction: column; gap: 8px; }
 [data-orbit-real-page="network"] .nw-fu-block-t { font-size: 14px; }
 [data-orbit-real-page="network"] .nw-fu-stages { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; }
-[data-orbit-real-page="network"] .btn.nw-fu-stage { padding: 14px 8px; border: 0; background: #ECEEFB; color: #3B3F7A; font-size: 14px; font-weight: 400; cursor: pointer; transition: all .2s;
-  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明；clip-path 由内联 style 提供 */
-  height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; border-radius: 0; }
-[data-orbit-real-page="network"] .btn.nw-fu-stage-on { background: #2E3270; color: #FFFFFF; font-weight: 500; }
-[data-orbit-real-page="network"] .btn.nw-fu-stage:active { transform: none; }
+[data-orbit-real-page="network"] .nw-fu-stage { padding: 14px 8px; border: 0; background: #ECEEFB; color: #3B3F7A; font-size: 14px; font-weight: 400; transition: all .2s;
+  /* 设计稿是 button；此处为只读 span（阶段由生命周期任务推进），补齐 button 的盒模型/居中；clip-path 由内联 style 提供 */
+  display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; text-align: center; line-height: normal; cursor: default; }
+[data-orbit-real-page="network"] .nw-fu-stage-on { background: #2E3270; color: #FFFFFF; font-weight: 500; }
+[data-orbit-real-page="network"] .nw-fu-hint { font-size: 12px; color: #6B6F99; }
 [data-orbit-real-page="network"] .nw-fu-tagbox { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid #DDDEFA; border-radius: 10px; }
 [data-orbit-real-page="network"] .nw-fu-tag { display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 8px; background: #ECEEFB; color: #2E3270; font-size: 13px; }
 [data-orbit-real-page="network"] .btn.nw-fu-tag-x { border: 0; background: transparent; color: #6B6F99; cursor: pointer; padding: 0; font-size: 13px;
