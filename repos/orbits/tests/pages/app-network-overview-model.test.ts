@@ -20,11 +20,13 @@ test("cockpit uses real metrics and never design placeholders", () => {
 });
 
 test("distributionRows reads industry/location from analysis and source from people", () => {
-  assert.deepEqual(distributionRows("industry", ready, []), [["科技与互联网", 21]]);
-  assert.deepEqual(distributionRows("region", ready, []), [["东京", 38]]);
-  assert.deepEqual(distributionRows("industry", { state: "pending" }, []), []);
+  assert.deepEqual(distributionRows("industry", ready, [], "zh"), [["科技与互联网", 21]]);
+  assert.deepEqual(distributionRows("region", ready, [], "zh"), [["东京", 38]]);
+  assert.deepEqual(distributionRows("industry", { state: "pending" }, [], "zh"), []);
   const people = [toPerson({ company: "", encounters: [], displayName: "A", email: "", g: "", id: "a", industry: "", initial: "A", lineId: "", location: "", lastEventId: "", met: "", note: "", notes: [], offering: "", phone: "", pipelineStatus: "in_progress", relationshipStatus: "active", seeking: "", source: "scan", stage: "Active", title: "", wechat: "", strength: "medium", valueTags: [], nextAction: null, lastInteraction: "", dormant: false })];
-  assert.deepEqual(distributionRows("source", ready, people), [["活动认识", 0], ["朋友引荐", 0], ["通讯录", 0], ["名片导入", 1], ["其他来源", 0]]);
+  assert.deepEqual(distributionRows("source", ready, people, "zh"), [["活动认识", 0], ["朋友引荐", 0], ["通讯录", 0], ["名片导入", 1], ["其他来源", 0]]);
+  assert.deepEqual(distributionRows("source", ready, people, "en").map((r) => r[0]), ["Met at events", "Referred", "Address book", "Business cards", "Other"]);
+  assert.equal(distributionRows("source", ready, people, "ja")[0][0], "活动认识");
 });
 
 test("healthRows renders only the health rows the analysis returns, with design icons and colours", () => {

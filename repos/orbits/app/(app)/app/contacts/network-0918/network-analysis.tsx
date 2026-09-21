@@ -29,10 +29,11 @@ const DIMS: { key: AnalysisDimension; zh: string; en: string }[] = [
   { key: "role", zh: "角色", en: "Role" },
   { key: "relationship", zh: "关系", en: "Relationship" },
 ];
+// 设计 coverage 数组的三组 tag 色 + icon/icon 色，按 severity 高→低依次对应。
 const SEVERITY_TAG = {
-  high: { bg: "#FBE4E1", fg: "#B5473A", zh: "优先拓展", en: "Expand first" },
-  medium: { bg: "#FBF1DC", fg: "#8A6420", zh: "重点关注", en: "Watch closely" },
-  low: { bg: "#ECEEFB", fg: "#2E3270", zh: "持续跟进", en: "Keep following" },
+  high: { bg: "#FBE4E1", fg: "#B5473A", zh: "优先拓展", en: "Expand first", icon: "▮", iconBg: "#DDDEFA", iconFg: "#2E3270" },
+  medium: { bg: "#FBF1DC", fg: "#8A6420", zh: "重点关注", en: "Watch closely", icon: "❋", iconBg: "#E6F1EC", iconFg: "#2F6B4F" },
+  low: { bg: "#ECEEFB", fg: "#2E3270", zh: "持续跟进", en: "Keep following", icon: "▦", iconBg: "#ECEEFB", iconFg: "#4B4FC7" },
 } as const;
 
 export function NetworkAnalysis({ viewModel, analysis, initialTab }: { viewModel: OrbitContactsViewModel; analysis: ContactsAnalysisView; initialTab: AnalysisTabKey }) {
@@ -90,7 +91,7 @@ export function NetworkAnalysis({ viewModel, analysis, initialTab }: { viewModel
   const coverage = ready && view.coverage.state === "ready" ? view.coverage.data : null;
   const opportunities = ready && view.opportunities.state === "ready" ? view.opportunities.data : null;
   const goal = ready && "data" in view.goal ? view.goal.data : null;
-  const total = ready ? view.metrics.contacts : people.length;
+  const total = people.length;
   const dimTitle = t(DIMS.find((d) => d.key === dim) ?? DIMS[0]);
   const buckets = structure ? structure.dimensions[dim] : [];
   const dimD = donut(buckets.map((b) => [b.label, b.count] as const));
@@ -262,14 +263,14 @@ export function NetworkAnalysis({ viewModel, analysis, initialTab }: { viewModel
                   </div>
                   <div className="nw-goal-rows">
                     {([
-                      { icon: "◈", label: t({ en: "High-value relationships", zh: "高价值关系" }), n: ready ? view.metrics.highValue : null, bg: "#E6F1EC", fg: "#2F6B4F", href: "/app/contacts/dashboard?tab=opportunities" },
-                      { icon: "◎", label: t({ en: "Core relationships", zh: "核心关系" }), n: strong ? strong.count : null, bg: "#ECEEFB", fg: "#4B4FC7", href: "/app/contacts/dashboard?tab=structure" },
+                      { icon: "◈", label: t({ en: "High-value relationships", zh: "高价值关系" }), n: ready ? view.metrics.highValue : null, bg: "#E6F1EC", fg: "#2F6B4F" },
+                      { icon: "◎", label: t({ en: "Core relationships", zh: "核心关系" }), n: strong ? strong.count : null, bg: "#ECEEFB", fg: "#4B4FC7" },
                     ]).map((g) => (
-                      <a key={g.icon} className="nw-goal-row" href={g.href}>
+                      <span key={g.icon} className="nw-goal-row">
                         <span className="nw-goal-icon" style={{ background: g.bg, color: g.fg }}>{g.icon}</span>
                         <span className="nw-goal-label">{g.label}</span>
                         <strong className="nw-goal-n">{g.n ?? dash}</strong><span className="nw-suggest-arrow">›</span>
-                      </a>
+                      </span>
                     ))}
                   </div>
                 </div>
@@ -290,8 +291,8 @@ export function NetworkAnalysis({ viewModel, analysis, initialTab }: { viewModel
                 {coverage ? coverage.gaps.map((c) => {
                   const tag = SEVERITY_TAG[c.severity];
                   return (
-                    <a key={c.id} className="btn nw-hl" href="/app/contacts">
-                      <span className="nw-cov-icon" style={{ background: "#DDDEFA", color: "#2E3270" }}>▮</span>
+                    <a key={c.id} className="btn nw-cov-row" href="/app/contacts">
+                      <span className="nw-cov-icon" style={{ background: tag.iconBg, color: tag.iconFg }}>{tag.icon}</span>
                       <span className="nw-cov-copy"><strong className="nw-suggest-title">{c.label}</strong><span className="nw-cov-desc">{c.action}</span></span>
                       <span className="nw-suggest-tag" style={{ background: tag.bg, color: tag.fg }}>{t(tag)}</span>
                       <span className="nw-suggest-arrow">›</span>

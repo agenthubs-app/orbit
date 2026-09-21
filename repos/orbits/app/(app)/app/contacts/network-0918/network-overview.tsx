@@ -31,11 +31,11 @@ export function formatMonthDay(iso: string, t: (copy: { en: string; zh: string }
 }
 
 export function NetworkOverview({ viewModel, analysis }: { viewModel: OrbitContactsViewModel; analysis: ContactsAnalysisView }) {
-  const { t } = useOrbitLanguage();
+  const { t, language } = useOrbitLanguage();
   const [dist, setDist] = useState<DistKey>("industry");
   const people = useMemo(() => viewModel.connections.map(toPerson), [viewModel.connections]);
   const counts = useMemo(() => stageCounts(people), [people]);
-  const dd = donut(distributionRows(dist, analysis, people));
+  const dd = donut(distributionRows(dist, analysis, people, language));
   const cards = cockpit(analysis);
   const ready = analysis.state === "ready";
   const dash = "—";

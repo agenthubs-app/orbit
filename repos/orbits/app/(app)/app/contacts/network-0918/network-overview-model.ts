@@ -2,15 +2,16 @@
  * 「概览」与「AI 人脉分析」纯函数模型（Network v2 第 66–171 / 393–609 行）。
  * 数值只来自 ContactsAnalysisView 与 OrbitContactsViewModel，不含设计 mock。
  */
+import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import type { ContactsAnalysisView } from "../analysis/contacts-analysis-view-model";
 import { NETWORK_SOURCES, SOURCE_LABEL, sourceCounts, type NetworkPerson } from "./network-model";
 
 export type DistKey = "industry" | "region" | "source";
 
-export function distributionRows(key: DistKey, analysis: ContactsAnalysisView, people: readonly NetworkPerson[]): readonly (readonly [string, number])[] {
+export function distributionRows(key: DistKey, analysis: ContactsAnalysisView, people: readonly NetworkPerson[], language: OrbitLanguage): readonly (readonly [string, number])[] {
   if (key === "source") {
     const c = sourceCounts(people);
-    return NETWORK_SOURCES.filter((s) => s !== "all").map((s) => [SOURCE_LABEL[s].zh, c[s]] as const);
+    return NETWORK_SOURCES.filter((s) => s !== "all").map((s) => [SOURCE_LABEL[s][language === "en" ? "en" : "zh"], c[s]] as const);
   }
   if (analysis.state !== "ready" || analysis.structure.state !== "ready") return [];
   const buckets = analysis.structure.data.dimensions[key === "industry" ? "industry" : "location"];

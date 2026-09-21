@@ -375,10 +375,7 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-goal-score { font-size: 20px; }
 [data-orbit-real-page="network"] .nw-dial-label { font-size: 12px; }
 [data-orbit-real-page="network"] .nw-goal-rows { flex: 1; display: flex; flex-direction: column; }
-[data-orbit-real-page="network"] .nw-goal-row { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid #EEEFF8; font-size: 15px;
-  /* 行是 <a>：中和壳的 a 颜色 */
-  color: #0E1225; }
-[data-orbit-real-page="network"] .nw-goal-row:hover { color: #0E1225; }
+[data-orbit-real-page="network"] .nw-goal-row { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid #EEEFF8; font-size: 15px; }
 [data-orbit-real-page="network"] .nw-goal-icon { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; }
 [data-orbit-real-page="network"] .nw-goal-label { flex: 1; white-space: nowrap; }
 [data-orbit-real-page="network"] .nw-goal-n { color: #2E3270; }
@@ -389,6 +386,11 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .btn.nw-goal-cta:active { transform: none; }
 [data-orbit-real-page="network"] .btn.nw-goal-cta:disabled { cursor: default; }
 [data-orbit-real-page="network"] .nw-cov-card { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 26px; display: flex; flex-direction: column; gap: 14px; }
+[data-orbit-real-page="network"] .btn.nw-cov-row { display: flex; align-items: center; gap: 14px; padding: 14px; border: 1px solid #E8E9F6; border-radius: 12px; background: #FFFFFF; text-align: left; cursor: pointer;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  height: auto; display: flex; align-items: center; justify-content: normal; gap: 14px; white-space: normal; text-align: left; letter-spacing: 0; line-height: normal; transition: none; font-size: inherit; font-weight: 400; color: #0E1225; }
+[data-orbit-real-page="network"] .btn.nw-cov-row:hover { background: #F7F7FD; color: #0E1225; }
+[data-orbit-real-page="network"] .btn.nw-cov-row:active { transform: none; }
 [data-orbit-real-page="network"] .nw-cov-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
 [data-orbit-real-page="network"] .nw-cov-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 [data-orbit-real-page="network"] .nw-cov-desc { font-size: 13px; color: #6B6F99; line-height: 1.5; }
@@ -417,6 +419,7 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .btn.nw-report-cta:active { transform: none; }
 [data-orbit-real-page="network"] .nw-report-cta-pill { padding: 16px 40px; border-radius: 12px; background: #0E1225; color: #FFFFFF; font-size: 15px; font-weight: 500; }
 /* ── 分组详情下钻页（contacts-structure-detail.tsx 依赖的四条规则，原样自 contacts-analysis-workspace.tsx:39–46；任务 8 删除 workspace 后仍有样式）── */
+[data-orbit-real-page="network"] .analysis-content{max-width:1200px;margin:0 auto}
 [data-orbit-real-page="network"] .analysis-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px}
 [data-orbit-real-page="network"] .analysis-card{padding:22px;min-width:0;overflow-wrap:anywhere}[data-orbit-real-page="network"] .analysis-card h2{margin:0 0 14px;font-size:18px}[data-orbit-real-page="network"] .analysis-card h3{font-size:15px}[data-orbit-real-page="network"] .analysis-muted{color:var(--text-3);font-size:13px;line-height:1.7}
 [data-orbit-real-page="network"] .analysis-notice{padding:14px 18px;border:1px solid var(--border);border-radius:12px;margin:14px 0}

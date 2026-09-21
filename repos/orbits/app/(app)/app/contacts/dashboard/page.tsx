@@ -47,6 +47,8 @@ export default async function AppContactsDashboardPage({ searchParams }: {
     loadAppContactsRouteViewModel({}, actor.id),
   ]);
   const tab = params?.tab === "structure" || params?.tab === "opportunities" ? params.tab : "overview";
+  const toViewModel = (payload: Parameters<typeof contactsRouteToOrbitContactsViewModel>[0]) =>
+    localizeOrbitTree(applyOrbitContactsPresentation(contactsRouteToOrbitContactsViewModel(payload), language), language);
 
   return (
     <>
@@ -56,15 +58,9 @@ export default async function AppContactsDashboardPage({ searchParams }: {
         // 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。
         <div data-orbit-real-page="network" data-orbit-route="app-contacts-dashboard-route">
           <AccountTopNav active="cards" />
-          {(() => {
-            const viewModel = localizeOrbitTree(
-              applyOrbitContactsPresentation(contactsRouteToOrbitContactsViewModel(routeModel.payload), language),
-              language,
-            );
-            return tab === "overview"
-              ? <NetworkOverview viewModel={viewModel} analysis={analysis} />
-              : <NetworkAnalysis viewModel={viewModel} analysis={analysis} initialTab={tab === "opportunities" ? "opp" : "struct"} />;
-          })()}
+          {tab === "overview"
+            ? <NetworkOverview viewModel={toViewModel(routeModel.payload)} analysis={analysis} />
+            : <NetworkAnalysis viewModel={toViewModel(routeModel.payload)} analysis={analysis} initialTab={tab === "opportunities" ? "opp" : "struct"} />}
         </div>
       ) : (
         <ContactsSubrouteStateBoundary
