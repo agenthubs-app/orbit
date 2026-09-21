@@ -5,12 +5,6 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { PathnameContext, SearchParamsContext } from "next/dist/shared/lib/hooks-client-context.shared-runtime";
 
-import { contactDetailRouteToOrbitContactsViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter";
-import { loadAppContactDetailRoute } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service";
-import { loadAppContactsRouteViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
-import { contactsRouteToOrbitContactsViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-view-model-adapter";
-import { OrbitRealCardConnection } from "../../app/(app)/app/contacts/orbit-real-card-connection";
-import { OrbitRealCardsList } from "../../app/(app)/app/contacts/orbit-real-contacts";
 import { loadAppEventDetailRoute } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service";
 import {
   eventDetailRouteToOrbitLandingEventView,
@@ -70,42 +64,6 @@ async function renderEventDetailPage(): Promise<string> {
   return renderToStaticMarkup(
     <OrbitRealEventDetail
       event={{ ...eventDetailRouteToOrbitLandingEventView(routeModel), detailLogoUrl: artwork.src }}
-    />,
-  );
-}
-
-async function renderContactsPage(): Promise<string> {
-  const routeModel = await loadAppContactsRouteViewModel();
-
-  assert.equal(routeModel.state, "success");
-
-  if (routeModel.state !== "success") {
-    return "";
-  }
-
-  return renderToStaticMarkup(
-    <OrbitRealCardsList
-      viewModel={contactsRouteToOrbitContactsViewModel(routeModel)}
-    />,
-  );
-}
-
-async function renderContactDetailPage(): Promise<string> {
-  const routeModel = await loadAppContactDetailRoute({
-    contactId: "demo-contact-1",
-    mode: "mock",
-  });
-
-  assert.equal(routeModel.routeState, "success");
-
-  if (routeModel.routeState !== "success") {
-    return "";
-  }
-
-  return renderToStaticMarkup(
-    <OrbitRealCardConnection
-      contactId="demo-contact-1"
-      viewModel={contactDetailRouteToOrbitContactsViewModel(routeModel)}
     />,
   );
 }
@@ -204,25 +162,4 @@ test("event list and event detail render manifest scene images", async () => {
   assert.doesNotMatch(heroImage, /loading="lazy"/);
   assert.match(detailHtml, /data-orbit-progressive-image-lqip=""/);
   assert.doesNotMatch(detailHtml, /background:radial-gradient\(120% 120%/);
-});
-
-test("contact list and contact detail render manifest avatar images", async () => {
-  const listHtml = await renderContactsPage();
-  const detailHtml = await renderContactDetailPage();
-
-  assertImageMarkup(listHtml, "contact list");
-  assertImageMarkup(detailHtml, "contact detail");
-  assertNamedBrandLink(detailHtml, "contact detail");
-  assert.match(listHtml, /data-demo-visual-asset-id="orbit-demo-avatar-/);
-  assert.match(detailHtml, /data-demo-visual-asset-id="orbit-demo-avatar-/);
-  assert.match(listHtml, /data-orbit-progressive-image-lqip=""/);
-  assert.match(detailHtml, /data-orbit-progressive-image-lqip=""/);
-  assert.match(
-    listHtml,
-    /data-demo-visual-asset-id="orbit-demo-avatar-[^"]+"[^>]+background:var\(--surface-3\)/,
-  );
-  assert.match(
-    detailHtml,
-    /data-demo-visual-asset-id="orbit-demo-avatar-[^"]+"[^>]+background:var\(--surface-3\)/,
-  );
 });

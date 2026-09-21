@@ -287,18 +287,17 @@ test("contact detail mapping translates live source and relationship tokens into
 
 test("contact detail presenter exposes one identity, provenance, and follow-up surface", () => {
   const source = readProjectFile(
-    "app/(app)/app/contacts/orbit-real-card-connection.tsx",
+    "app/(app)/app/contacts/network-0918/network-detail-modal.tsx",
   );
 
-  assert.match(source, /className="orbit-desktop-only"/);
-  assert.match(source, /className="orbit-mobile-only"/);
-  assert.match(source, /<OrbitContactAvatar contact=\{contact\}/);
-  assert.match(source, /<SourceBadge source=\{contact\.source\}/);
-  assert.match(source, /data-agent-context="contact"/);
-  assert.match(source, /data-inbox-compose/);
-  assert.match(source, /<TimelineCard contact=\{contact\}/);
-  assert.match(source, /<NextStepCard(?: compact)? contact=\{contact\}/);
-  assert.doesNotMatch(source, /isMobileLayout|setIsMobileLayout/);
+  // One modal (no desktop/mobile duplicate trees): identity hero, source-code provenance, follow-up entry.
+  assert.doesNotMatch(source, /orbit-desktop-only|orbit-mobile-only|isMobileLayout|setIsMobileLayout/);
+  assert.match(source, /className="nw-detail-name">\{contact\.displayName\}/);
+  assert.match(source, /SOURCE_LABEL\[source\]/);
+  assert.match(source, /desc: contact\.met\.trim\(\)/);
+  assert.match(source, /className="btn nw-detail-follow" onClick=\{onFollow\}/);
+  assert.match(source, /sortedNotes\(contact\.notes\)/);
+  assert.equal((source.match(/role="dialog"/g) ?? []).length, 1);
 });
 
 test("contact recommendation documentation records evaluation threshold and live replacement path", () => {

@@ -1,8 +1,6 @@
 import assert from "node:assert/strict";
 import test, { type TestContext } from "node:test";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
-import { renderToStaticMarkup } from "react-dom/server";
-import { OrbitRealCardConnection } from "../../app/(app)/app/contacts/orbit-real-card-connection";
 import { loadAppContactDetailRoute } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service";
 import { contactDetailRouteToOrbitContactsViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter";
 
@@ -10,15 +8,13 @@ const initial = { channel: "email_signal", occurredAt: "2026-09-07T03:04:05.123Z
 const contactId = "contact:interaction/one";
 const ack = (interaction = initial, id = contactId) => Response.json({ success: true, data: { contact: { id, lastInteraction: interaction } } });
 
-test("detail exposes raw interaction fields and editing even when the summary is empty", async () => {
+test("detail adapter exposes raw interaction fields even when the summary is empty", async () => {
   const route = await loadAppContactDetailRoute({ contactId: "demo-contact-1", mode: "mock" });
   if (route.routeState !== "success") throw new Error("Missing fixture");
   const model = contactDetailRouteToOrbitContactsViewModel({ ...route, contact: { ...route.contact,
     lastInteraction: { ...route.contact.lastInteraction, channel: "email_signal", occurredAt: initial.occurredAt, summary: "" },
   } });
   assert.deepEqual(model.connections[0].editableInteraction, { ...initial, summary: "" });
-  const html = renderToStaticMarkup(<OrbitRealCardConnection contactId={route.contact.id} viewModel={model} />);
-  assert.equal((html.match(/aria-label="编辑最近互动"/g) ?? []).length, 2);
 });
 
 async function mount(t: TestContext, fetcher: typeof fetch, id = contactId, initialValue = initial) {

@@ -113,7 +113,8 @@ test("fontSize literals outside the scale in app/(app)/app do not increase", () 
   // T6 snapped 8 core surfaces to 0 violations each. This ceiling covers
   // everything else in the app that T6 did not touch — only decrease it as
   // future tasks migrate more files onto the scale.
-  const CEILING = 63;
+    // Orbit_0918 task 8: legacy orbit-real contact views deleted → 63 to 48.
+  const CEILING = 48;
 
   assert.ok(
     hits.length <= CEILING,
@@ -125,7 +126,8 @@ test("fontSize literals outside the scale in app/(app)/app do not increase", () 
 test("fontWeight literals outside {400,500,600,700,800} in app/(app)/app do not increase", () => {
   const hits = SITEWIDE_FILES.flatMap((f) => findScaleViolations(f, "fontWeight", FONT_WEIGHT_SCALE));
 
-  const CEILING = 22;
+    // Orbit_0918 task 8: legacy orbit-real contact views deleted → 22 to 20.
+  const CEILING = 20;
 
   assert.ok(
     hits.length <= CEILING,
@@ -137,7 +139,8 @@ test("fontWeight literals outside {400,500,600,700,800} in app/(app)/app do not 
 test("gap literals outside the scale in app/(app)/app do not increase", () => {
   const hits = SITEWIDE_FILES.flatMap((f) => findScaleViolations(f, "gap", GAP_SCALE));
 
-  const CEILING = 250;
+    // Orbit_0918 task 8: legacy orbit-real contact views deleted → 250 to 230.
+  const CEILING = 230;
 
   assert.ok(
     hits.length <= CEILING,
@@ -155,7 +158,6 @@ const SNAPPED_FILES = [
   "app/(app)/app/settings/orbit-agent-execution-settings.tsx",
   "app/(app)/app/agent/actions/orbit-all-actions-controls.tsx",
   "app/(app)/app/agent/orbit-real-agent.tsx",
-  "app/(app)/app/contacts/orbit-real-contacts.tsx",
 ];
 
 test("the eight T6-snapped files have zero off-scale fontSize/fontWeight/gap literals", () => {

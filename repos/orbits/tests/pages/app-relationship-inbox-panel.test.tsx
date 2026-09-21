@@ -169,24 +169,6 @@ test("responsive compose arbitration ignores a mounted trigger with no rendered 
   // Actor ownership is exercised by inbox-message-separation.test.tsx.
 });
 
-test("contact detail card connection routes 起草邮件 into the inbox compose flow", async () => {
-  // 详情页 presenter 使用 openRelationshipInboxCompose 打开发起新对话流程，
-  // 不再是本地 toast 占位。
-  const source = await import("node:fs").then((fs) =>
-    fs.readFileSync(
-      new URL(
-        "../../app/(app)/app/contacts/orbit-real-card-connection.tsx",
-        import.meta.url,
-      ),
-      "utf8",
-    ),
-  );
-
-  assert.match(source, /openRelationshipInboxCompose\(/);
-  assert.match(source, /contactId: contact\.id/);
-  assert.match(source, /recipient: contact\.displayName/);
-});
-
 test("Chinese relationship inbox draft generation uses the actor-scoped AI API without a local success fallback", async () => {
   const mod = await import("../../app/(app)/app/inbox/relationship-inbox-panel");
   const previousFetch = globalThis.fetch;

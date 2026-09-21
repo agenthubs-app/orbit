@@ -613,22 +613,24 @@ test("contact detail UI exposes only source-backed relationship data and real na
   // app-contact-notes.test.tsx rather than emulating authenticated RSC here.
   assert.match(source("app/(app)/app/contacts/[id]/page.tsx"), /key=\{`\$\{actor\.id\}:\$\{contactId\}`\}/);
   const detailSource = source(
-    "app/(app)/app/contacts/orbit-real-card-connection.tsx",
+    "app/(app)/app/contacts/network-0918/network-detail-modal.tsx",
   );
   const adapterSource = source(
     "app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter.ts",
   );
 
-  assert.match(detailSource, /Source-backed · read only/);
-  assert.match(detailSource, /No sourced interaction evidence is available/);
-  assert.match(detailSource, /No sourced next step is available/);
-  assert.match(detailSource, /function formatTimelineDate/);
-  assert.match(detailSource, /dateTime=\{item\.time\}/);
+  // Every rendered value comes from the route's OrbitContactView; timeline is the real notes list.
+  assert.match(detailSource, /contact: OrbitContactView/);
+  assert.match(detailSource, /sortedNotes\(contact\.notes\)/);
+  assert.match(detailSource, /function formatNoteTime/);
+  assert.match(detailSource, /还没有互动记录/);
   assert.match(adapterSource, /id: note\.privacy === "private" \? note\.noteId : note\.evidenceIds\[0\] \?\? note\.noteId/);
-  assert.match(detailSource, /href="\/app\/contacts\/pipeline"/);
+  // Close is a real navigation to closeHref, never a dead anchor.
+  assert.match(detailSource, /href=\{closeHref\}/);
+  assert.match(detailSource, /window\.location\.assign\(closeHref\)/);
   assert.doesNotMatch(detailSource, /stageDemo|timelineDemo|valueAToB|valueBToA/);
   assert.doesNotMatch(
     detailSource,
-    /Stage updated|Book meeting|Add to pipeline|href="#"|event\.preventDefault\(\)/,
+    /Stage updated|Book meeting|Add to pipeline|href="#"|平均 2–3 周一次/,
   );
 });

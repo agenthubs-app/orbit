@@ -103,8 +103,10 @@ test("non-.btn <button> count in app/(app)/app does not increase", () => {
   // .btn — for CORE_FILES they are documented in EXEMPTIONS below; the rest
   // raised the raw count to 153. The connect placeholder tab (user-sanctioned
   // 2026-09-19 "connect 先占位" decision) adds one more design-spec tab control
-  // in orbit-real-profile.tsx → 154. Resume decreasing once the migration settles.
-  const CEILING = 154;
+  // in orbit-real-profile.tsx → 154. Orbit_0918 task 8 deleted the legacy
+  // orbit-real contact views (orbit-real-contacts / cards-pipeline-view /
+  // cards-import / card-connection, analysis workspace, V1 card import) → 142.
+  const CEILING = 142;
 
   assert.ok(
     nonBtn.length <= CEILING,
@@ -122,7 +124,6 @@ const CORE_FILES = [
   "app/(app)/app/today/orbit-today-decision-panel.tsx",
   "app/(app)/app/agent/actions/orbit-all-actions-controls.tsx",
   "app/(app)/app/settings/orbit-agent-execution-settings.tsx",
-  "app/(app)/app/contacts/orbit-real-contacts.tsx",
   "app/(app)/app/agent/orbit-real-agent.tsx",
   "app/(app)/app/events/orbit-real-explore-client.tsx",
 ];
@@ -136,42 +137,6 @@ const EXEMPTIONS: {
   marker: string;
   reason: string;
 }[] = [
-  {
-    count: 1,
-    file: "app/(app)/app/contacts/orbit-real-contacts.tsx",
-    marker: "applySearchSuggestion(suggestion)",
-    reason: "suggested-query chip",
-  },
-  {
-    count: 2,
-    file: "app/(app)/app/contacts/orbit-real-contacts.tsx",
-    marker: "setStage(key)",
-    reason: "desktop/mobile pipeline-stage filter chips",
-  },
-  {
-    count: 2,
-    file: "app/(app)/app/contacts/orbit-real-contacts.tsx",
-    marker: "setValueTag",
-    reason: "desktop/mobile value-type filter chips",
-  },
-  {
-    count: 2,
-    file: "app/(app)/app/contacts/orbit-real-contacts.tsx",
-    marker: "onClick={onPick}",
-    reason: "filled/empty card-style contact picker slots",
-  },
-  {
-    count: 1,
-    file: "app/(app)/app/contacts/orbit-real-contacts.tsx",
-    marker: "className=\"card-hover\"",
-    reason: "established clickable contact-card pattern",
-  },
-  {
-    count: 2,
-    file: "app/(app)/app/contacts/orbit-real-contacts.tsx",
-    marker: "setFilter(item.key)",
-    reason: "desktop/mobile introduction-status filter chips",
-  },
   {
     count: 1,
     file: "app/(app)/app/agent/orbit-real-agent.tsx",

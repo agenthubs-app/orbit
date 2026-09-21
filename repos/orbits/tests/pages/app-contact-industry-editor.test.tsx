@@ -1,21 +1,6 @@
 import assert from "node:assert/strict";
 import test, { type TestContext } from "node:test";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
-import { renderToStaticMarkup } from "react-dom/server";
-import { OrbitRealCardConnection } from "../../app/(app)/app/contacts/orbit-real-card-connection";
-import { loadAppContactDetailRoute } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service";
-import { contactDetailRouteToOrbitContactsViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter";
-
-test("both contact detail layouts expose industry editing even for an unclassified contact", async () => {
-  const route = await loadAppContactDetailRoute({ contactId: "demo-contact-1", mode: "mock" });
-  assert.equal(route.routeState, "success");
-  if (route.routeState !== "success") throw new Error("Missing fixture");
-  const model = contactDetailRouteToOrbitContactsViewModel(route);
-  model.connections[0].primaryIndustryId = undefined;
-  model.connections[0].industry = "";
-  const html = renderToStaticMarkup(<OrbitRealCardConnection contactId={route.contact.id} viewModel={model} />);
-  assert.equal((html.match(/aria-label="编辑主要行业"/g) ?? []).length, 2);
-});
 
 async function mount(t: TestContext, fetcher: typeof fetch, initialIndustryId?: string, contactId = "contact:one/two") {
   t.mock.method(globalThis, "fetch", fetcher);

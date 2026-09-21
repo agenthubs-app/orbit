@@ -5,7 +5,6 @@ import { ContactRelationshipInitializationPanel, useContactRelationshipInitializ
 import { hasPendingInitialization } from "../../app/(app)/app/contacts/contact-relationship-initialization-view-model";
 import { loadAppContactDetailRoute } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service";
 import { contactDetailRouteToOrbitContactsViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter";
-import { OrbitRealCardConnection } from "../../app/(app)/app/contacts/orbit-real-card-connection";
 import { contactsRouteToOrbitContactsViewModel as listAdapter } from "../../app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-view-model-adapter";
 import { contactsRouteToOrbitContactsViewModel as pipelineAdapter } from "../../app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-subroute-route-adapter";
 import type { AppContactsPayloadViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
@@ -150,33 +149,6 @@ test("cold reload renders only authoritative canonical stage and goal without a 
   assert.equal(calls, 1);
   assert.equal(ui.root.root.findAllByType("form").length, 0);
   assert.match(JSON.stringify(ui.root.toJSON()), /Build a partnership/);
-});
-
-test("both detail panels share one GET and override malformed legacy active headers", async t => {
-  const previous = Object.getOwnPropertyDescriptor(globalThis, "document");
-  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
-  let root: ReactTestRenderer | undefined;
-  Object.defineProperty(globalThis, "document", { configurable: true, value: { addEventListener() {}, removeEventListener() {} } });
-  Object.defineProperty(globalThis, "window", { configurable: true, value: { location: { href: "http://localhost/app/contacts/one" }, addEventListener() {}, removeEventListener() {} } });
-  t.after(() => {
-    act(() => root?.unmount());
-    if (previous) Object.defineProperty(globalThis, "document", previous); else Reflect.deleteProperty(globalThis, "document");
-    if (previousWindow) Object.defineProperty(globalThis, "window", previousWindow); else Reflect.deleteProperty(globalThis, "window");
-  });
-  const route = await loadAppContactDetailRoute({ contactId: "demo-contact-1", mode: "mock" });
-  if (route.routeState !== "success") throw new Error("Missing fixture");
-  const model = contactDetailRouteToOrbitContactsViewModel({ ...route, contact: { ...route.contact, status: "active" } });
-  let calls = 0;
-  t.mock.method(globalThis, "fetch", async path => { if (String(path).endsWith("/relationship-initialization")) calls++; return pending(); });
-  await act(async () => { root = create(<OrbitRealCardConnection contactId={route.contact.id} viewModel={model} />); });
-  assert.equal(calls, 1);
-  assert.equal(root.root.findAllByType("form").length, 2);
-  const pills = root.root.findAll(node => node.type === "span" && String(node.props.className).startsWith("nc-status nc-ps-"));
-  assert.equal(pills.length, 2);
-  for (const pill of pills) {
-    assert.equal(pill.children.at(-1), "待设置关系");
-    assert.match(pill.props.className, /pending_initialization/);
-  }
 });
 
 test("list and kanban give pending its own display bucket, preserving ordinary legacy semantics", () => {
