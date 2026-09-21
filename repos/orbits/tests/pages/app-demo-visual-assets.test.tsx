@@ -12,7 +12,8 @@ import {
 import { loadAppEventsRouteViewModel } from "../../app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model";
 import { eventsRouteToOrbitLandingViewModel } from "../../app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter";
 import { OrbitRealEventDetail } from "../../app/(app)/app/events/[id]/orbit-real-event-detail";
-import { OrbitRealExploreClient } from "../../app/(app)/app/events/orbit-real-explore-client";
+import { EventsList } from "../../app/(app)/app/events/events-0918/events-list";
+import { PublicTopNav } from "../../app/(app)/app/orbit-public-shell";
 import { OrbitStarfieldHome } from "../../app/(app)/app/orbit-starfield-home";
 
 async function renderRootLanding(): Promise<string> {
@@ -37,10 +38,14 @@ async function renderEventsPage(): Promise<string> {
     }}>
       <PathnameContext.Provider value="/app/events">
         <SearchParamsContext.Provider value={new URLSearchParams()}>
-          <OrbitRealExploreClient
-            registrationAvailabilityByEventId={{}}
-            viewModel={eventsRouteToOrbitLandingViewModel(routeModel)}
-          />
+          {/* 与 events/page.tsx 接线一致：顶栏在页面层、列表在 events-0918 壳内。 */}
+          <div data-orbit-real-page="events-0918">
+            <PublicTopNav active="events" />
+            <EventsList
+              registrationAvailabilityByEventId={{}}
+              viewModel={eventsRouteToOrbitLandingViewModel(routeModel)}
+            />
+          </div>
         </SearchParamsContext.Provider>
       </PathnameContext.Provider>
     </AppRouterContext.Provider>,

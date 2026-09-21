@@ -19,15 +19,15 @@ import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared
 import { PathnameContext, SearchParamsContext } from "next/dist/shared/lib/hooks-client-context.shared-runtime";
 
 import type { EventDTO } from "../../shared/domain/contracts";
-import { OrbitRealExploreClient } from "../../app/(app)/app/events/orbit-real-explore-client";
+import { EventsList } from "../../app/(app)/app/events/events-0918/events-list";
 import { OrbitLanguageProvider, useOrbitLanguage } from "../../app/(app)/app/orbit-language-context";
 import { getOrbitLandingEventView, type OrbitLandingEventView } from "../../app/(app)/app/orbit-landing-route-view-model";
 
-const appRoot = path.join(process.cwd(), "app/(app)/app/events");
+const appRoot = path.join(process.cwd(), "app/(app)/app/events/events-0918");
 
 test("the map view and view switcher are retired by the Orbit_0918 design", () => {
   const component = fs.readFileSync(
-    path.join(appRoot, "orbit-real-explore-client.tsx"),
+    path.join(appRoot, "events-list.tsx"),
     "utf8",
   );
 
@@ -39,16 +39,19 @@ test("the map view and view switcher are retired by the Orbit_0918 design", () =
 
 test("the Orbit_0918 discover header, tabs, and stats are present", () => {
   const component = fs.readFileSync(
-    path.join(appRoot, "orbit-real-explore-client.tsx"),
+    path.join(appRoot, "events-list.tsx"),
     "utf8",
   );
 
-  assert.match(component, /发现活动/u);
-  assert.match(component, /我的活动/u);
-  assert.match(component, /主办管理/u);
-  assert.match(component, /创建活动/u);
-  assert.match(component, /orbit-explore-stats/u);
-  assert.match(component, /orbit-event-mine-timeline/u);
+  // 页头 / 页签 / 创建活动在壳（events-shell.tsx），统计与时间线在列表（events-list.tsx）。
+  const shell = fs.readFileSync(path.join(appRoot, "events-shell.tsx"), "utf8");
+  assert.match(shell, /发现活动/u);
+  assert.match(shell, /我的活动/u);
+  assert.match(shell, /主办管理/u);
+  assert.match(shell, /创建活动/u);
+  assert.match(shell, /href=\{preserveHref\("\/app\/events\/center"\)\}/u);
+  assert.match(component, /className="ev-stats"/u);
+  assert.match(component, /className="ev-timeline"/u);
 });
 
 function exploreEvent(participantCount: number | null): OrbitLandingEventView {
@@ -92,7 +95,7 @@ function exploreTree(event: OrbitLandingEventView) {
       createElement(
         SearchParamsContext.Provider,
         { value: new URLSearchParams() },
-        createElement(OrbitRealExploreClient, {
+        createElement(EventsList, {
           registrationAvailabilityByEventId: {},
           viewModel: {
             account: { fullName: "Orbit" },
@@ -119,7 +122,7 @@ test("event cards omit unknown participant counts and show known counts", () => 
   try {
     assert.match(textContent(unknownRenderer.toJSON()), /Unknown count explore fixture/u);
     assert.doesNotMatch(
-      textContent(unknownRenderer.root.findByProps({ className: "card card-hover orbit-event-module-card" })),
+      textContent(unknownRenderer.root.findByProps({ className: "ev-card" })),
       /null\s+(registered|people|人)|undefined/u,
     );
   } finally {
@@ -129,7 +132,7 @@ test("event cards omit unknown participant counts and show known counts", () => 
   const knownRenderer = createRenderer(exploreTree(exploreEvent(7)));
   try {
     assert.match(
-      textContent(knownRenderer.root.findByProps({ className: "card card-hover orbit-event-module-card" })),
+      textContent(knownRenderer.root.findByProps({ className: "ev-card" })),
       /7 人已报名/u,
     );
   } finally {
@@ -197,7 +200,7 @@ function interactiveTree(
       createElement(
         SearchParamsContext.Provider,
         { value: new URLSearchParams(input.search ?? "") },
-        createElement(OrbitRealExploreClient, {
+        createElement(EventsList, {
           registrationAvailabilityByEventId: {},
           viewModel: {
             account: { fullName: "Orbit" },
@@ -212,7 +215,7 @@ function interactiveTree(
 
 function moduleCardNames(renderer: ReturnType<typeof createRenderer>): string[] {
   return renderer.root
-    .findAllByProps({ className: "card card-hover orbit-event-module-card" })
+    .findAllByProps({ className: "ev-card" })
     .map((card) => textContent(card.findByType("h2")));
 }
 
@@ -362,7 +365,7 @@ test("scope=registered renders the 我的活动 timeline layout", () => {
         createElement(
           SearchParamsContext.Provider,
           { value: new URLSearchParams("scope=registered") },
-          createElement(OrbitRealExploreClient, {
+          createElement(EventsList, {
             initialScope: "registered",
             registrationAvailabilityByEventId: {},
             viewModel: {
@@ -383,14 +386,16 @@ test("scope=registered renders the 我的活动 timeline layout", () => {
   );
   try {
     assert.match(textContent(renderer.toJSON()), /我的活动/u);
-    const mineCards = renderer.root.findAllByProps({ className: "card card-hover orbit-event-mine-card" });
+    const mineCards = renderer.root.findAllByProps({ className: "ev-mine-card" });
     assert.equal(mineCards.length, 1);
     assert.match(textContent(mineCards[0]), /Mine fixture/u);
     assert.match(textContent(mineCards[0]), /报名成功/u);
-    assert.match(textContent(mineCards[0]), /活动现场/u);
-    assert.match(textContent(mineCards[0]), /会后回顾/u);
+    assert.match(textContent(mineCards[0]), /活动开始/u);
+    assert.match(textContent(mineCards[0]), /活动结束/u);
+    // 「报名成功」无日期来源 → 「—」（数据真实性决定）。
+    assert.match(textContent(mineCards[0]), /—/u);
     // 发现网格不出现，时间线横卡取而代之。
-    assert.equal(renderer.root.findAllByProps({ className: "card card-hover orbit-event-module-card" }).length, 0);
+    assert.equal(renderer.root.findAllByProps({ className: "ev-card" }).length, 0);
   } finally {
     act(() => renderer.unmount());
   }
@@ -481,5 +486,107 @@ test("topic search recomputes for language changes while preserving query state"
   } finally {
     act(() => renderer.unmount());
     restoreGlobals();
+  }
+});
+
+test("discover 已报名 filter narrows to registered events without flipping to the 我的活动 tab", () => {
+  const routerCalls: string[] = [];
+  const registered = {
+    ...interactiveEvent({ id: "event:reg", name: "Registered fixture" }, "REG"),
+    stats: { attendees: [], authed: true, count: 7, youRsvped: true },
+    youRsvped: true,
+  };
+  const open = interactiveEvent({ id: "event:open", name: "Open fixture" }, "OPEN");
+  let renderer!: ReturnType<typeof createRenderer>;
+  act(() => {
+    renderer = createRenderer(interactiveTree([registered, open], {
+      router: {
+        back: () => undefined,
+        forward: () => undefined,
+        prefetch: async () => undefined,
+        push: () => undefined,
+        refresh: () => undefined,
+        replace: (href) => routerCalls.push(href),
+      },
+    }));
+  });
+  try {
+    const group = renderer.root.findByProps({ role: "group", "aria-label": "活动状态" });
+    const labels = group.findAllByType("button").map((button) => textContent(button));
+    assert.deepEqual(labels, ["全部", "已报名", "即将开始", "进行中", "已结束"]);
+    const registeredChip = group.findAllByType("button").find((button) => textContent(button) === "已报名");
+    assert.ok(registeredChip);
+    act(() => registeredChip.props.onClick());
+    assert.deepEqual(moduleCardNames(renderer), ["Registered fixture"]);
+    // 仍是发现活动页签（有统计卡、无时间线横卡），URL 未写入 scope=registered。
+    assert.equal(renderer.root.findAllByProps({ className: "ev-stats" }).length, 1);
+    assert.equal(renderer.root.findAllByProps({ className: "ev-mine-card" }).length, 0);
+    assert.ok(!routerCalls.some((href) => href.includes("scope=registered")));
+    assert.equal(
+      renderer.root.findByProps({ role: "group", "aria-label": "活动状态" }).findAllByType("button").find((button) => textContent(button) === "已报名")?.props["aria-pressed"],
+      true,
+    );
+    // 状态 chip：未开始且已报名 → 已报名；未报名 → 即将开始。
+    const chips = renderer.root.findAllByProps({ className: "ev-chip ev-chip-cover" }).map(textContent);
+    assert.deepEqual(chips, ["已报名"]);
+
+    // 页签「我的活动」→ scope=registered，时间线横卡 + 子筛选（全部 / 已报名 / 进行中 / 已结束）。
+    const mineTab = renderer.root.findAllByProps({ role: "tab" }).find((tab) => textContent(tab) === "我的活动");
+    assert.ok(mineTab);
+    act(() => mineTab.props.onClick());
+    assert.equal(routerCalls.at(-1), "/app/events?scope=registered");
+    assert.equal(renderer.root.findAllByProps({ className: "ev-mine-card" }).length, 1);
+    const mineGroup = renderer.root.findByProps({ role: "group", "aria-label": "我的活动状态" });
+    assert.deepEqual(mineGroup.findAllByType("button").map((button) => textContent(button)), ["全部", "已报名", "进行中", "已结束"]);
+    const cta = renderer.root.findByProps({ "data-events-cta": "view" });
+    assert.equal(cta.props.href, "/app/events/REG");
+  } finally {
+    act(() => renderer.unmount());
+  }
+});
+
+test("card CTAs follow ctaFor: register when open, live when active and registered, recap when ended", () => {
+  const open = interactiveEvent({ id: "event:cta-open", name: "Open CTA" }, "CTA-OPEN");
+  const live = {
+    ...interactiveEvent({ id: "event:cta-live", name: "Live CTA", startsAt: "2000-01-01T09:00:00.000Z", endsAt: "2100-01-01T09:00:00.000Z" }, "CTA-LIVE"),
+    stats: { attendees: [], authed: true, count: 7, youRsvped: true },
+    status: "active" as const,
+    youRsvped: true,
+  };
+  const ended = { ...interactiveEvent({ id: "event:cta-ended", name: "Ended CTA" }, "CTA-ENDED"), status: "ended" as const };
+  const renderer = createRenderer(
+    createElement(
+      AppRouterContext.Provider,
+      { value: { back: () => undefined, forward: () => undefined, prefetch: async () => undefined, push: () => undefined, refresh: () => undefined, replace: () => undefined } },
+      createElement(
+        PathnameContext.Provider,
+        { value: "/app/events" },
+        createElement(
+          SearchParamsContext.Provider,
+          { value: new URLSearchParams() },
+          createElement(EventsList, {
+            registrationAvailabilityByEventId: { "event:cta-open": "open" },
+            viewModel: { account: { fullName: "Orbit" }, connections: [], events: [open, live, ended] },
+          }),
+        ),
+      ),
+    ),
+  );
+  try {
+    const byKind = (kind: string) => renderer.root.findByProps({ "data-events-cta": kind });
+    assert.equal(byKind("register").props.href, "/app/events/CTA-OPEN/register");
+    assert.equal(textContent(byKind("register")), "立即报名");
+    assert.equal(byKind("live").props.href, "/app/events/CTA-LIVE/live");
+    assert.equal(textContent(byKind("live")), "进入活动现场");
+    assert.equal(byKind("recap").props.href, "/app/events/CTA-ENDED?view=recap");
+    assert.equal(textContent(byKind("recap")), "回看活动");
+    // 每个按钮都是 .btn ev-*（ratchet 口径），CTA 色由 CTA_TONE 内联。
+    for (const kind of ["register", "live", "recap"]) {
+      assert.match(byKind(kind).props.className, /^btn ev-cta/u);
+    }
+    assert.equal(byKind("register").props.style.background, "#4B4FC7");
+    assert.equal(byKind("recap").props.style.borderColor, "#B9BCEB");
+  } finally {
+    act(() => renderer.unmount());
   }
 });

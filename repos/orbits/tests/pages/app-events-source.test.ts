@@ -11,17 +11,17 @@ function source(path: string): string {
 }
 
 test("/app/events renders Orbit_0918 event module cards with image media", () => {
-  const exploreSource = source("app/(app)/app/events/orbit-real-explore-client.tsx");
+  const exploreSource = source("app/(app)/app/events/events-0918/events-list.tsx");
 
   assert.match(exploreSource, /function EventModuleGrid/u);
   assert.match(exploreSource, /function EventModuleCard/u);
-  assert.match(exploreSource, /className="orbit-event-module-grid"/u);
-  assert.match(exploreSource, /className="card card-hover orbit-event-module-card/u);
-  assert.match(exploreSource, /className="orbit-event-module-cover"/u);
-  assert.match(exploreSource, /className="orbit-event-module-body"/u);
-  assert.match(exploreSource, /className="orbit-event-module-meta"/u);
-  assert.match(exploreSource, /className="orbit-event-module-foot"/u);
-  assert.match(exploreSource, /import \{ EventCover \} from "\.\/orbit-event-cover"/u);
+  assert.match(exploreSource, /className="ev-grid"/u);
+  assert.match(exploreSource, /className="ev-card"/u);
+  assert.match(exploreSource, /className=\{`ev-cover/u);
+  assert.match(exploreSource, /className="ev-body"/u);
+  assert.match(exploreSource, /className="ev-meta"/u);
+  assert.match(exploreSource, /className="ev-foot"/u);
+  assert.match(exploreSource, /import \{ EventCover \} from "\.\.\/orbit-event-cover"/u);
   assert.doesNotMatch(exploreSource, /function EventImageList/u);
   assert.doesNotMatch(exploreSource, /orbit-event-poster-list/u);
   // Orbit_0918 设计替换：地图视图与 modules/map 切换器退役（2026-09-18）。
@@ -63,11 +63,14 @@ test("progressive product imagery is responsive, LQIP-backed, and decode-gated",
   assert.match(generatedLqipSource, /data:image\/webp;base64,/u);
 });
 
-test("registered empty state and card overlays keep one coherent event action", () => {
-  const exploreSource = source("app/(app)/app/events/orbit-real-explore-client.tsx");
+test("registered empty state and card links keep one coherent event action", () => {
+  const exploreSource = source("app/(app)/app/events/events-0918/events-list.tsx");
 
   assert.match(exploreSource, /还没有已报名活动/u);
   assert.match(exploreSource, /No registered events yet/u);
-  assert.match(exploreSource, /zIndex: ORBIT_Z\.raised/u);
-  assert.doesNotMatch(exploreSource, /zIndex:\s*[0-9]/u);
+  // Orbit_0918 保真收口：卡片不再用整卡覆盖链接 + 抬高 z-index 的 CTA，封面 / 标题 / CTA 各自是链接（设计 83、88、97 行）。
+  assert.match(exploreSource, /className="ev-cover-link"/u);
+  assert.match(exploreSource, /className="ev-title-link"/u);
+  assert.match(exploreSource, /data-events-cta=\{cta\.kind\}/u);
+  assert.doesNotMatch(exploreSource, /zIndex/u);
 });

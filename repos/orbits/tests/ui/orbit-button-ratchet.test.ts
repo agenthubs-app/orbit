@@ -127,7 +127,7 @@ const CORE_FILES = [
   "app/(app)/app/agent/actions/orbit-all-actions-controls.tsx",
   "app/(app)/app/settings/orbit-agent-execution-settings.tsx",
   "app/(app)/app/agent/orbit-real-agent.tsx",
-  "app/(app)/app/events/orbit-real-explore-client.tsx",
+  "app/(app)/app/events/events-0918/events-list.tsx",
 ];
 
 // Every non-.btn <button> left in the core surfaces after T5, identified by a
@@ -200,30 +200,8 @@ const EXEMPTIONS: {
     marker: "data-orbit-agent-history-resize-handle",
     reason: "history-sidebar separator and drag handle",
   },
-  {
-    count: 1,
-    file: "app/(app)/app/events/orbit-real-explore-client.tsx",
-    marker: "onClick={onReset}",
-    reason: "0918 discover empty-state reset action (design-spec solid block button)",
-  },
-  {
-    count: 2,
-    file: "app/(app)/app/events/orbit-real-explore-client.tsx",
-    marker: "className=\"orbit-explore-tab\"",
-    reason: "0918 discover/my-events underline tabs — tab navigation, not .btn actions",
-  },
-  {
-    count: 1,
-    file: "app/(app)/app/events/orbit-real-explore-client.tsx",
-    marker: "setMineFilter(key)",
-    reason: "0918 my-events status segmented control",
-  },
-  {
-    count: 1,
-    file: "app/(app)/app/events/orbit-real-explore-client.tsx",
-    marker: "setEventScope(key)",
-    reason: "0918 discover status segmented control",
-  },
+  // Events 任务 1（2026-09-22）：events explore 迁入 events-0918/events-list.tsx 后所有按钮都是
+  // `.btn ev-*`（整段中和基类），该表面不再有豁免项。
 ];
 
 test("the five T5 core surfaces have no non-.btn <button> outside the documented exemption list", () => {
