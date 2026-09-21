@@ -25,13 +25,31 @@ node scripts/visual/compare-0918.mjs \
 
 ## 设计页签映射（`--design-view`）
 
-脚本按 `--design` URL 自动选择页签表；也可用 `--design-table profile` 强制选个人中心表。
+脚本按 `--design` URL 自动选择页签表；也可用 `--design-table profile|events` 强制选个人中心表 / Events 表。
 
 - **Network 表**（`--design` 不含个人中心 URL 编码时）：`overview|pipeline|all|import|analysis` → 概览/关系管线/所有人脉/导入人脉/查看完整分析；不传 `--design-view` 时默认点「概览」。
 - **个人中心 表**（`--design` 含 `%E4%B8%AA%E4%BA%BA%E4%B8%AD%E5%BF%83`，即「个人中心」，或传 `--design-table profile`）：`profile|settings|connect` → 个人资料/iOrbit 设置/连接；**不传 `--design-view` 时不点击任何页签**（停在设计稿默认视图）。
   - `persona`（编辑商务画像）不是页签，映射表里没有它：先用 `--design-view profile` 或不传 `--design-view` 停在「个人资料」，再加 `--design-click "text=编辑商务画像"` 点进商务画像编辑视图。
 
 页签点击统一用 `getByRole("button", { name, exact: true })`（个人中心设计里「连接」页签与卡片上的「连接」按钮同名，需要 `exact` 避免误点）。
+
+- **Events 表**（`--design` 含 `Events.dc.html`，或传 `--design-table events`）：不是页签映射，而是**每视图一段设计侧点击序列**（详情/现场/回顾在设计稿里都要从列表卡片点进去）。序列执行完后仍会执行 `--design-click` / `--design-click2`（弹窗视图靠它们再点一层，例如参会者 `text=山本健`、交换 `text=申请交换联系方式`）。**应用侧不点击，全部走 URL**。
+  - `discover`（默认，不传 `--design-view` 也是它）：无点击 → 应用 `/app/events`
+  - `mine`：`getByRole("button", { name: "我的活动", exact: true })` → 应用 `/app/events?scope=registered`
+  - `detail`：`text=AI 产品从 0 到 1` → 应用 `/app/events/<id>`
+  - `live`：detail 序列 → `text=进入活动现场` → 应用 `/app/events/<id>/live`
+  - `recap`：第一个 `text=回看活动` → 应用 `/app/events/<id>?view=recap`
+  - 步间固定等待 300ms（设计稿 renderVals 重绘）；传了表外的 `--design-view` 会以 usage error 退出。
+
+示例（Events · detail 视图）：
+
+```bash
+node scripts/visual/compare-0918.mjs \
+  --design "http://localhost:3320/Orbit_0918/Events.dc.html" --design-view detail \
+  --app "http://localhost:3100/app/events/<id>" \
+  --login "participant.a@orbit.example.test:<password>" \
+  --out /tmp/events-detail
+```
 
 示例（个人中心 · profile 视图）：
 

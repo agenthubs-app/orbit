@@ -9,6 +9,11 @@
 //
 // 也可以用 --login "email:password" 代替 --cookie：脚本会在截 app 图之前
 // 先打开 /app/account/login 走一遍真实登录流程，再继续截图。
+//
+// Events 设计稿（--design 含 Events.dc.html 或 --design-table events）按视图走点击序列：
+//   node scripts/visual/compare-0918.mjs \
+//     --design "http://localhost:3320/Orbit_0918/Events.dc.html" --design-view detail \
+//     --app "http://localhost:3100/app/events/<id>" --login "email:password" --out /tmp/events-detail
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { chromium } from "playwright";
@@ -83,13 +88,33 @@ try {
   // Network 表（--design-view overview|pipeline|all|import|analysis）：无 --design-view 时默认点「概览」。
   // 个人中心 表（--design-view profile|settings|connect）：无 --design-view 时不点击任何页签
   // （persona 视图不是页签，靠调用方传 --design-click "text=编辑商务画像" 从「个人资料」页进入）。
-  // 判定用 --design URL 是否含个人中心的 URL 编码，或显式传 --design-table profile。
+  // Events 表（--design-view discover|mine|detail|live|recap）：不是页签映射，而是「按视图的设计侧
+  // 点击序列」（Events.dc.html 的详情/现场/回顾都要从列表卡片点进去）；无 --design-view 时等同 discover（不点击）。
+  // 判定用 --design URL 是否含个人中心的 URL 编码 / Events.dc.html，或显式传 --design-table profile|events。
   const isProfileTable = args["design-table"] === "profile" || (args.design ?? "").includes("%E4%B8%AA%E4%BA%BA%E4%B8%AD%E5%BF%83");
+  const isEventsTable = args["design-table"] === "events" || (args.design ?? "").includes("Events.dc.html");
   const networkViewLabel = { overview: "概览", pipeline: "关系管线", all: "所有人脉", import: "导入人脉", analysis: "查看完整分析" };
   const profileViewLabel = { profile: "个人资料", settings: "iOrbit 设置", connect: "连接" };
-  const viewLabel = isProfileTable ? profileViewLabel[args["design-view"]] : networkViewLabel[args["design-view"] ?? "overview"];
+  const viewLabel = isEventsTable ? undefined : isProfileTable ? profileViewLabel[args["design-view"]] : networkViewLabel[args["design-view"] ?? "overview"];
+  // 每一步是 (page) => Locator；按顺序点击，步间短等待让设计稿的 renderVals 重绘完成。
+  const eventsDetailSequence = [(page) => page.locator("text=AI 产品从 0 到 1").first()];
+  const eventsViewSequence = {
+    discover: [],
+    mine: [(page) => page.getByRole("button", { name: "我的活动", exact: true }).first()],
+    detail: eventsDetailSequence,
+    live: [...eventsDetailSequence, (page) => page.locator("text=进入活动现场").first()],
+    recap: [(page) => page.locator("text=回看活动").first()],
+  };
+  const eventsView = args["design-view"] ?? "discover";
+  if (isEventsTable && !(eventsView in eventsViewSequence)) {
+    console.error(`usage error: events --design-view must be one of ${Object.keys(eventsViewSequence).join("|")}, got "${eventsView}"`);
+    await browser.close();
+    process.exit(2);
+  }
+  const designSequence = isEventsTable ? eventsViewSequence[eventsView] : [];
   const design = await shoot(args.design, "design.png", async (page) => {
     if (viewLabel) await page.getByRole("button", { name: viewLabel, exact: true }).first().click();
+    for (const step of designSequence) { await step(page).click(); await page.waitForTimeout(300); }
     if (args["design-click"]) await page.locator(args["design-click"]).first().click();
     if (args["design-click2"]) { await page.waitForTimeout(300); await page.locator(args["design-click2"]).first().click(); }
   });
