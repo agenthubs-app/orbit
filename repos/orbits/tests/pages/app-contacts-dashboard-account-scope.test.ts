@@ -27,7 +27,7 @@ function loadDashboardPage(t: TestContext, options: { signedIn?: boolean; actorI
       calls.push({ operation: "resolveActor", input });
       return options.actorId === null ? null : { id: options.actorId ?? "account:canonical", email: "account@example.test", name: "Account fixture" };
     } },
-    [join(projectRoot, "app/(app)/app/orbit-language-server.ts")]: { getOrbitServerLanguage: async () => { calls.push({ operation: "language" }); return "en"; } },
+    [join(projectRoot, "app/(app)/app/orbit-language-server.ts")]: { getOrbitServerLanguage: async () => { calls.push({ operation: "language" }); return "en"; }, localizeOrbitTree: (tree: unknown) => tree },
     [join(projectRoot, "features/mobile/contacts-dashboard-service.ts")]: { createConfiguredMobileContactsDashboardService: () => ({
       getDashboard: async (input: unknown) => {
         calls.push({ operation: "dashboard", input });
@@ -36,7 +36,13 @@ function loadDashboardPage(t: TestContext, options: { signedIn?: boolean; actorI
     }) },
     [join(projectRoot, "app/(app)/app/orbit-reference-styles.tsx")]: { OrbitReferenceStyles: () => null },
     [join(projectRoot, "app/(app)/app/orbit-visual-freeze-runtime.tsx")]: { OrbitVisualFreezeRuntime: () => null },
-    [join(projectRoot, "app/(app)/app/contacts/analysis/contacts-analysis-workspace.tsx")]: { ContactsAnalysisWorkspace: () => null },
+    [join(projectRoot, "app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model.ts")]: { loadAppContactsRouteViewModel: async (params: unknown, actorId: string) => {
+      calls.push({ operation: "contacts", input: { actorId, params } });
+      return { state: "success", payload: { contacts: [] } };
+    } },
+    [join(projectRoot, "app/(app)/app/orbit-account-shell.tsx")]: { AccountTopNav: () => null },
+    [join(projectRoot, "app/(app)/app/contacts/network-0918/network-overview.tsx")]: { NetworkOverview: () => null },
+    [join(projectRoot, "app/(app)/app/contacts/network-0918/network-analysis.tsx")]: { NetworkAnalysis: () => null },
   };
   const pagePath = join(projectRoot, "app/(app)/app/contacts/dashboard/page.tsx");
   const routePath = join(projectRoot, "app/(app)/app/contacts/analysis/contacts-analysis-route-service.ts");
@@ -60,7 +66,7 @@ function loadDashboardPage(t: TestContext, options: { signedIn?: boolean; actorI
   delete testRequire.cache[testRequire.resolve(routePath)];
   const page = testRequire(pagePath).default as (input?: {
     searchParams?: Promise<{ tab?: string | string[] }>;
-  }) => Promise<ReactElement<{ children: Array<ReactElement<{ initialView: unknown; initialTab: string }>> }>>;
+  }) => Promise<ReactElement<{ children: Array<ReactElement<{ children: Array<ReactElement<{ analysis: unknown; initialTab?: string }>> }>> }>>;
   return { calls, page, redirected };
 }
 
@@ -72,9 +78,21 @@ test("contacts dashboard loads analysis for the resolved account rather than the
     { operation: "resolveActor", input: { email: "account@example.test", name: "Account fixture", userId: "auth:external" } },
     { operation: "language" },
     { operation: "dashboard", input: { actorId: "account:canonical" } },
+    { operation: "contacts", input: { actorId: "account:canonical", params: {} } },
   ]);
-  assert.deepEqual(rendered.props.children[2].props.initialView, { state: "error" });
-  assert.equal(rendered.props.children[2].props.initialTab, "structure");
+  // 外层 div → [AccountTopNav, 屏组件]；?tab=structure 进分析子页并把同一份 analysis 传下去。
+  const screen = rendered.props.children[2].props.children[1];
+  assert.deepEqual(screen.props.analysis, { state: "error" });
+  assert.equal(screen.props.initialTab, "struct");
+});
+
+test("contacts dashboard without a tab renders the overview screen for the resolved account", async (t) => {
+  const { calls, page } = loadDashboardPage(t);
+  const rendered = await page();
+  assert.deepEqual(calls.map((call) => call.operation), ["auth", "resolveActor", "language", "dashboard", "contacts"]);
+  const screen = rendered.props.children[2].props.children[1];
+  assert.deepEqual(screen.props.analysis, { state: "error" });
+  assert.equal(screen.props.initialTab, undefined);
 });
 
 test("contacts dashboard redirects anonymous users before resolving an account or reading analysis", async (t) => {
