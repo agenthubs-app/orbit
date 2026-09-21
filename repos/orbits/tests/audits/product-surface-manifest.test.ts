@@ -30,10 +30,8 @@ test("surface scanner covers every production page and excludes API/dev routes",
     "/app/contacts/pipeline",
     "/app/events",
     "/app/events/[id]",
+    "/app/events/[id]/live",
     "/app/events/[id]/register",
-    "/app/party",
-    "/app/party/checkin",
-    "/app/party/graph",
     "/app/platform",
     "/app/profile",
     "/app/schedule",
@@ -518,7 +516,10 @@ test("review fixtures retain unproven callbacks, explicit roles and actual custo
 
 test("review fixtures resolve production ProposalForm provenance without duplicate name findings", () => {
   const owners = allActions.filter((action) => action.tag === "ProposalForm");
-  assert.equal(owners.length, 5);
+  // One per route that transitively mounts OrbitAppointmentNegotiation:
+  // /app/contacts/[id] and /app/events/[id]. The three /app/party* routes
+  // (deleted 2026-09-22) used to add three more.
+  assert.equal(owners.length, 2);
   for (const owner of owners) {
     assert.equal(owner.kind, "component-container");
     assert.equal(owner.accessibleName, "not-applicable-container");

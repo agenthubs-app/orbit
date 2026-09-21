@@ -194,7 +194,7 @@ function partsOf(date: Date, language: EventListLanguage, withYear: boolean) {
 
 /**
  * 设计 `e.date`「9月20日（周日） 19:00 - 21:00」/ `e.dateFull`「2026年9月20日（周日） 19:00 - 21:00」。
- * 结束时间无效 → 只显示开始；开始时间无效 → 「时间待定」。
+ * 结束时间无效（不可解析或不晚于开始）→ 只显示开始；开始时间无效 → 「时间待定」。
  */
 export function formatEventDateRange(
   event: Pick<OrbitLandingEventView, "startsAt" | "endsAt">,
@@ -206,7 +206,9 @@ export function formatEventDateRange(
   const end = new Date(event.endsAt);
   const s = partsOf(start, language, withYear);
   const startClock = `${s.hour}:${s.minute}`;
-  const endClock = Number.isFinite(end.getTime()) ? (() => { const e = partsOf(end, language, false); return `${e.hour}:${e.minute}`; })() : "";
+  const endClock = Number.isFinite(end.getTime()) && end.getTime() > start.getTime()
+    ? (() => { const e = partsOf(end, language, false); return `${e.hour}:${e.minute}`; })()
+    : "";
   const clock = endClock ? `${startClock} - ${endClock}` : startClock;
   if (language === "en") {
     return `${s.month} ${s.day}${withYear ? `, ${s.year}` : ""} (${s.weekday}) ${clock}`;

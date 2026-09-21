@@ -47,13 +47,14 @@ test("the shell re-exports the shared implementation", () => {
   assert.ok(!/export function productHref/.test(shellSource));
 });
 
-test("Party workspace routes preserve one encoded source event id", () => {
-  assert.equal(partyHrefForEvent("event_001"), "/app/party?eventId=event_001");
+test("live-screen routes preserve one encoded source event id (former /app/party)", () => {
+  assert.equal(partyHrefForEvent("event_001"), "/app/events/event_001/live");
   assert.equal(
-    partyHrefForEvent("event / 東京", "/checkin"),
-    "/app/party/checkin?eventId=event%20%2F%20%E6%9D%B1%E4%BA%AC",
+    partyHrefForEvent("event / 東京"),
+    "/app/events/event%20%2F%20%E6%9D%B1%E4%BA%AC/live",
   );
-  assert.equal(partyHrefForEvent("", "/graph"), "/app/party/graph");
+  assert.equal(partyHrefForEvent(""), "/app/events");
+  assert.equal(productHref("/party"), "/app/events");
 });
 
 test("Agent entry URLs preserve one encoded user prompt", () => {

@@ -199,7 +199,6 @@ export default async function AppEventDetailPage({
             registrationAvailability={resolution.registrationAvailability}
             registrationBlockingReason={resolution.registrationBlockingReason}
             view={view}
-            workspaceAvailable={resolution.workspaceAvailable}
           />
         </div>
         <OrbitVisualFreezeRuntime />

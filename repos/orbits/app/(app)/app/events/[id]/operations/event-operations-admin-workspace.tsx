@@ -512,12 +512,11 @@ export function EventOperationsAdminWorkspace({
   }
 
   async function copyCheckInLink() {
-    const path = `/app/party/checkin?eventId=${encodeURIComponent(event.id)}`;
     try {
       if (!navigator.clipboard?.writeText) {
         throw new Error("Clipboard access is unavailable in this browser.");
       }
-      await navigator.clipboard.writeText(new URL(path, window.location.origin).toString());
+      await navigator.clipboard.writeText(new URL(operationsCheckInHref, window.location.origin).toString());
       setNotice("Check-in link copied. It can be displayed on the venue screen or sent to registered attendees.");
       setError(null);
     } catch {
@@ -533,7 +532,6 @@ export function EventOperationsAdminWorkspace({
     () => new Map(workspace?.participants.map((participant) => [participant.participantId, participant.displayName]) ?? []),
     [workspace],
   );
-  const checkInHref = `/app/party/checkin?eventId=${encodeURIComponent(event.id)}`;
   const operationsCheckInHref = `/app/events/${encodeURIComponent(event.id)}/operations/check-in`;
   const configuration = workspace?.configuration ?? null;
   const checkInOpen = configuration
@@ -819,9 +817,9 @@ export function EventOperationsAdminWorkspace({
               </div>
               <p className="ops-note">这是真实的已报名参会者签到路由。没有经过验证的本地二维码编码器时不会生成二维码图片；请直接复制或投屏此链接。</p>
               <div className="ops-checkin-row">
-                <a className="ops-btn ops-btn-ghost" href={checkInHref} rel="noreferrer" target="_blank">打开签到页</a>
+                <a className="ops-btn ops-btn-ghost" href={operationsCheckInHref} rel="noreferrer" target="_blank">打开签到页</a>
                 <button className="ops-btn ops-btn-dark" onClick={copyCheckInLink} type="button">复制链接</button>
-                <code className="ops-code">{checkInHref}</code>
+                <code className="ops-code">{operationsCheckInHref}</code>
               </div>
               <div className="ops-note" style={{ color: checkInOpen ? "#2F6B4F" : "#9FA3C4" }}>签到窗口：{checkInOpen ? "当前开放" : "已关闭或尚未开放"}</div>
             </section>

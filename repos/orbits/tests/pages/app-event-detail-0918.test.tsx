@@ -68,7 +68,7 @@ test("registered live event: 「进入活动现场」 + 「修改报名信息」
 
   assert.match(html, /<a class="btn ev-cta-primary" data-events-cta="live" href="\/app\/events\/[^"]+\/live" style="background:#0E1225;color:#FFFFFF">进入活动现场 →<\/a>/);
   // Live event: the registration window is closed → the edit control is disabled, not a dead link.
-  assert.match(html, /<button class="btn ev-cta-secondary ev-cta-disabled" data-events-cta="modify" disabled=""/);
+  assert.match(html, /<span aria-disabled="true" class="btn ev-cta-secondary ev-cta-disabled" data-events-cta="modify"/);
   assert.match(html, /<a class="btn ev-host-btn" href="\/app\/events\/[^"]+\/operations">主办方后台 →<\/a>/);
   assert.match(html, /查看全部参会者 →/);
 

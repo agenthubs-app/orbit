@@ -108,7 +108,10 @@ test("non-.btn <button> count in app/(app)/app does not increase", () => {
   // cards-import / card-connection, analysis workspace, V1 card import) → 142.
   // 个人中心 task 6 deleted the legacy orbit-real-profile.tsx (its 12 non-.btn
   // buttons incl. the connect placeholder tab) → 130.
-  const CEILING = 130;
+  // Events task 6 (2026-09-22) deleted /app/party* (orbit-real-party.tsx +
+  // event-operations-controls.tsx) and turned the two always-disabled detail
+  // CTAs into aria-disabled spans → 118 (measured).
+  const CEILING = 118;
 
   assert.ok(
     nonBtn.length <= CEILING,

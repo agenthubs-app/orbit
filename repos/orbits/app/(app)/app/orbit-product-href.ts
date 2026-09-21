@@ -20,7 +20,7 @@ export function productHref(prototypeHref: string) {
   if (prototypeHref === "/home/cards/scan") return "/app/contacts/new";
   if (prototypeHref.startsWith("/home/cards/"))
     return `/app/contacts/${prototypeHref.split("/").pop()}`;
-  if (prototypeHref === "/party") return "/app/party";
+  if (prototypeHref === "/party") return "/app/events";
   if (prototypeHref.startsWith("/events/"))
     return `/app/events/${prototypeHref.split("/").pop()}`;
   if (prototypeHref.startsWith("/o/"))
@@ -29,8 +29,6 @@ export function productHref(prototypeHref: string) {
     return `/app/register${prototypeHref.includes("?") ? `?${prototypeHref.split("?")[1]}` : ""}`;
   return `/app${prototypeHref}`;
 }
-
-export type OrbitPartySubroute = "" | "/checkin" | "/graph";
 
 /**
  * Builds the canonical Agent entry URL for a user-authored goal.
@@ -49,22 +47,20 @@ export function agentHrefForPrompt(prompt: string): string {
 }
 
 /**
- * Builds every Party URL from the same source event identity.
+ * Builds the live-screen URL (`/app/events/<id>/live`) from one source event identity.
  *
- * Party, check-in, and graph are separate routes, but they are one workspace.
- * Keeping eventId in one shared helper prevents a route transition from falling
- * back to an unrelated demo/default event.
+ * The former `/app/party*` workspace (party / check-in / graph) was retired on
+ * 2026-09-22 in favour of the Orbit_0918 live screen, whose six tabs live under
+ * a single route (`?tab=`). Keeping the event id in one shared helper prevents a
+ * route transition from falling back to an unrelated demo/default event; an
+ * empty id lands on the events list instead of a bare live route.
  */
-export function partyHrefForEvent(
-  eventId: string,
-  subroute: OrbitPartySubroute = "",
-): string {
+export function partyHrefForEvent(eventId: string): string {
   const normalizedEventId = eventId.trim();
-  const pathname = `/app/party${subroute}`;
 
   if (!normalizedEventId) {
-    return pathname;
+    return "/app/events";
   }
 
-  return `${pathname}?eventId=${encodeURIComponent(normalizedEventId)}`;
+  return `/app/events/${encodeURIComponent(normalizedEventId)}/live`;
 }

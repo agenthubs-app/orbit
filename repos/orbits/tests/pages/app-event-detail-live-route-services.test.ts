@@ -15,9 +15,9 @@ import {
 import { eventDetailRouteToOrbitLandingEventView } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter";
 import {
   canUseEventDetailHistoryBack,
-  eventTime,
   EventDetail,
 } from "../../app/(app)/app/events/events-0918/event-detail";
+import { formatEventDateRange } from "../../app/(app)/app/events/events-0918/events-model";
 
 const liveDatabaseEnvKeys = [
   "ORBIT_EVENT_DATABASE_URL",
@@ -296,7 +296,8 @@ test("event detail presents invalid end times honestly instead of a zero-duratio
     endsAt: event.startsAt,
   };
   const presented = presentOrbitEvent(invalidEvent, "zh");
-  const time = eventTime(presented, (copy) => copy.zh, "zh");
+  // 详情 hero 的日期行走 events-model.formatEventDateRange（设计 e.dateFull）；无效区间只显示开始钟点。
+  const time = formatEventDateRange(presented, "zh", true);
   const logistics = presented.about?.find((section) => section.icon === "📍");
 
   assert.deepEqual(
@@ -308,8 +309,8 @@ test("event detail presents invalid end times honestly instead of a zero-duratio
     [],
   );
   assert.deepEqual(presented.agenda, []);
-  assert.match(time.time, /结束时间待确认/u);
-  assert.doesNotMatch(time.time, / - /u);
+  assert.doesNotMatch(time, / - /u);
+  assert.match(time, /\d{1,2}:\d{2}$/u);
   assert.match(logistics?.body ?? "", /结束时间待确认/u);
 });
 

@@ -49,7 +49,7 @@ import { formatOrbitPartyDateTime } from "./party-date-time";
  * Orbit_0918 Events 现场屏（取代 /app/party*）。
  * JSX 逐元素来自 docs/designs/Orbit_0918/Events.dc.html 第 221–519 行
  * （221–245 头部 + 页签；246–319 现场主页；320–360 推荐给你；361–390 全部参会者；391–434 分组；435–477 关系图谱；478–519 流程议程）。
- * 数据 = 既有 `loadAppPartyRouteViewModel` → `OrbitPartyViewModel`；写操作 = ./live-controls.ts（搬自 party/event-operations-controls.tsx）。
+ * 数据 = 既有 `loadAppPartyRouteViewModel` → `OrbitPartyViewModel`；写操作 = ./live-controls.ts（搬自已删除的 party/event-operations-controls.tsx）。
  *
  * 数据真实性决定（2026-09-22 计划）——省略：最后更新 ⟳ / 倒计时 / 「第 N / 4 轮」（只有两轮）/ 分享活动 / 二度人脉·可能感兴趣 /
  * 打招呼（无 API）/ 换一批 / 仅高匹配开关 / 四个筛选下拉 + 重置 / 排序 / 城市 / bio（无字段；用 summary）/ 组长 / 下一轮预告 /
@@ -81,7 +81,7 @@ function othersOnly(viewModel: OrbitPartyViewModel, people: readonly OrbitPartyP
   return people.filter((person) => person.id !== viewModel.me.participantId);
 }
 
-// ── 结果四态（文案取自旧 orbit-real-party.tsx PartyResultsBoundary；设计无对应元素，按设计空态色阶）──
+// ── 结果四态（文案取自已删除的旧 orbit-real-party.tsx PartyResultsBoundary；设计无对应元素，按设计空态色阶）──
 export function resultsBoundaryCopy(viewModel: OrbitPartyViewModel, t: Translate): { title: string; detail: string } {
   return {
     failed: {

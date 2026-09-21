@@ -108,8 +108,8 @@ test("event journey renders unregistered, registered, and ended as exclusive pro
   const event = eventDetailRouteToOrbitLandingEventView(routeModel);
 
   const pre = renderToStaticMarkup(<EventDetail event={{ ...event, status: "upcoming", stats: { ...event.stats, youRsvped: false }, youRsvped: false }} registrationAvailability="open" />);
-  const joined = renderToStaticMarkup(<EventDetail event={{ ...event, status: "active", stats: { ...event.stats, youRsvped: true }, youRsvped: true }} workspaceAvailable />);
-  const post = renderToStaticMarkup(<EventDetail event={{ ...event, status: "ended", stats: { ...event.stats, youRsvped: true }, youRsvped: true }} workspaceAvailable />);
+  const joined = renderToStaticMarkup(<EventDetail event={{ ...event, status: "active", stats: { ...event.stats, youRsvped: true }, youRsvped: true }} />);
+  const post = renderToStaticMarkup(<EventDetail event={{ ...event, status: "ended", stats: { ...event.stats, youRsvped: true }, youRsvped: true }} />);
 
   assert.match(pre, /data-event-journey-state="pre"/);
   assert.match(pre, />立即报名<|>Register now</);
@@ -145,7 +145,6 @@ test("registered attendees get the edit-registration link before the event start
         youRsvped: true,
       }}
       registrationAvailability="open"
-      workspaceAvailable
     />,
   );
 
@@ -176,7 +175,7 @@ test("an upcoming event without a window never implies that registration is open
 
   assert.match(html, /报名|Register/);
   assert.match(html, /暂时无法确认报名状态|Registration status unavailable/);
-  assert.match(html, /class="btn ev-cta-primary ev-cta-disabled" data-events-cta="closed" disabled=""/);
+  assert.match(html, /aria-disabled="true" class="btn ev-cta-primary ev-cta-disabled" data-events-cta="closed"/);
   assert.doesNotMatch(html, /立即报名|Register now|报名中|Registration open/);
   assert.doesNotMatch(html, /报名暂不可用|Registration unavailable/);
   assert.doesNotMatch(html, /开放报名时提醒我|Remind me when registration opens/);
@@ -298,7 +297,7 @@ test("detail and dashboard agree on canonical registration availability before e
     if (!canRegister) {
       assert.doesNotMatch(dashboard, /报名开放|目前有活动正在开放报名|查看开放报名活动/);
       assert.doesNotMatch(detail, /立即报名|报名中|Registration open|只需 2 个问题|Just 2 questions/);
-      assert.match(detail, /class="btn ev-cta-primary ev-cta-disabled" data-events-cta="closed" disabled=""/);
+      assert.match(detail, /aria-disabled="true" class="btn ev-cta-primary ev-cta-disabled" data-events-cta="closed"/);
     }
     const registered = renderToStaticMarkup(<EventDetail event={{ ...event, stats: { ...event.stats, youRsvped: true }, youRsvped: true }} registrationAvailability={availability} />);
     assert.match(registered, /data-event-journey-state="joined"/);
@@ -307,7 +306,7 @@ test("detail and dashboard agree on canonical registration availability before e
     assert.equal(/class="btn ev-cta-secondary" data-events-cta="modify" href=/.test(registered), canRegister);
   }
   const unavailable = renderToStaticMarkup(<EventDetail event={event} />);
-  assert.match(unavailable, /class="btn ev-cta-primary ev-cta-disabled" data-events-cta="closed" disabled=""/);
+  assert.match(unavailable, /aria-disabled="true" class="btn ev-cta-primary ev-cta-disabled" data-events-cta="closed"/);
 });
 
 test("registered dashboard does not infer unpublished matches from registration alone", async () => {

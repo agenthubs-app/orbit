@@ -2,7 +2,7 @@
 
 /**
  * 现场屏写操作：签到 + 交换联系方式（申请 / 同意 / 拒绝 / 撤回）。
- * fetch 逻辑与状态同步原样搬自 party/event-operations-controls.tsx（Task 6 删除旧文件）；
+ * fetch 逻辑与状态同步原样搬自旧 party/event-operations-controls.tsx（已于 2026-09-22 随 /app/party* 删除）；
  * 这里只剩数据与状态（hook），渲染在 event-live.tsx（Task 5 的弹窗复用同一 hook）。
  */
 import { useEffect, useState } from "react";

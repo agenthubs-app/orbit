@@ -4,11 +4,15 @@
  *
  * (a) ModalShell (orbit-account-shell.tsx) carries role="dialog" and is
  *     built on useOrbitModalA11y, not an inline reimplementation.
- * (b) The remaining migrated dialogs (account-auth and party
- *     PersonDetailOverlay) no longer hand-roll their own Esc listener.
- *     Admin's unpersisted CreateEventModal was retired.
- * (c) The relationship inbox drawer (which keeps its own hand-rolled trap by
- *     design) still exposes aria-modal for assistive tech.
+ * (b) The remaining migrated dialog (account-auth) no longer hand-rolls its
+ *     own Esc listener. Admin's unpersisted CreateEventModal was retired.
+ *     The party PersonDetailOverlay (bottom-sheet on ModalShell) was deleted
+ *     with /app/party* on 2026-09-22; its successor is the Orbit_0918 events
+ *     modal frame, covered under (c).
+ * (c) Dialogs that keep their own hand-rolled trap by design (the relationship
+ *     inbox drawer; the events-0918 modal frame, whose Esc handling skips
+ *     editable targets per the 0918 design) still expose role/aria-modal for
+ *     assistive tech.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -24,7 +28,7 @@ function source(path: string): string {
 
 const MODAL_SHELL_PATH = "app/(app)/app/orbit-account-shell.tsx";
 const ACCOUNT_AUTH_PATH = "app/(app)/app/account/orbit-real-account-auth.tsx";
-const PARTY_PATH = "app/(app)/app/party/orbit-real-party.tsx";
+const EVENTS_MODAL_FRAME_PATH = "app/(app)/app/events/events-0918/event-modal-frame.tsx";
 const ADMIN_PATHS = [
   "app/(app)/app/admin/orbit-real-admin-login.tsx",
   "app/(app)/app/admin/orbit-real-admin-shell.tsx",
@@ -33,7 +37,7 @@ const ADMIN_PATHS = [
 ];
 const INBOX_PATH = "app/(app)/app/inbox/relationship-inbox-panel.tsx";
 
-const MIGRATED_FILES = [ACCOUNT_AUTH_PATH, PARTY_PATH];
+const MIGRATED_FILES = [ACCOUNT_AUTH_PATH];
 
 // ---- (a) ModalShell is the single source of dialog a11y behavior ----
 
@@ -69,7 +73,7 @@ test("ModalShell's bottom-sheet variant keeps its geometry: pinned to the bottom
 
 // ---- (b) migrated dialogs no longer hand-roll their own Esc listener ----
 
-test("account-auth and party no longer own an independent keydown/Esc listener", () => {
+test("account-auth no longer owns an independent keydown/Esc listener", () => {
   for (const path of MIGRATED_FILES) {
     const text = source(path);
     assert.ok(
@@ -87,12 +91,6 @@ test("account-auth dialog is wired to the shared focus-trap hook and carries rol
   assert.match(text, /aria-modal="true"/);
 });
 
-test("party PersonDetailOverlay is migrated onto ModalShell in bottom-sheet variant", () => {
-  const text = source(PARTY_PATH);
-  assert.match(text, /import\s*\{\s*ModalShell\s*\}\s*from\s*"\.\.\/orbit-account-shell"/);
-  assert.match(text, /variant="bottom-sheet"/);
-});
-
 test("admin does not retain the unpersisted CreateEventModal", () => {
   const text = ADMIN_PATHS.map(source).join("\n");
   assert.doesNotMatch(
@@ -108,4 +106,11 @@ test("relationship inbox drawer exposes aria-modal for assistive tech", () => {
   assert.match(text, /aria-modal="true"/);
   assert.match(text, /role="dialog"/);
   assert.match(text, /zIndex:\s*ORBIT_Z\.overlay/);
+});
+
+test("events-0918 modal frame (successor of the party PersonDetailOverlay) announces as a dialog", () => {
+  const text = source(EVENTS_MODAL_FRAME_PATH);
+  assert.match(text, /aria-modal="true"/);
+  assert.match(text, /role="dialog"/);
+  assert.match(text, /aria-labelledby=\{labelledBy\}/);
 });

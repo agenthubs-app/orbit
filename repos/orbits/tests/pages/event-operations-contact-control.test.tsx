@@ -1,10 +1,16 @@
+/**
+ * 交换联系方式状态机（`events-0918/live-controls.ts` `useEventContactRequest`）经其渲染面
+ * `ContactAction`（event-contact-action.tsx）验证。原 party/event-operations-controls.tsx 的
+ * `EventContactRequestControl` 已随 /app/party* 于 2026-09-22 删除；接受后的记录交流 / 约谈
+ * 工作流改由参会者 / 约谈 / 记录交流弹窗承担（tests/pages/app-event-*-modal.test.tsx）。
+ */
 import assert from "node:assert/strict";
 import test from "node:test";
 
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
+import { ContactAction } from "../../app/(app)/app/events/events-0918/event-contact-action";
 import type { OrbitPartyPersonView } from "../../app/(app)/app/orbit-party-route-view-model";
-import { EventContactRequestControl } from "../../app/(app)/app/party/event-operations-controls";
 
 const EVENT_ID = "event:e2e:orbit-connection-night";
 const REQUEST_ID = "event-contact-request:4a99-test";
@@ -62,10 +68,10 @@ test("incoming contact accept immediately enters busy state and posts the exact 
   try {
     await act(async () => {
       renderer = create(
-        <EventContactRequestControl
+        <ContactAction
           eventId={EVENT_ID}
+          open
           person={person()}
-          showAcceptedWorkflow
           t={(copy) => copy.en}
         />,
       );
@@ -77,9 +83,8 @@ test("incoming contact accept immediately enters busy state and posts the exact 
     );
     assert.equal(acceptButtons.length, 1);
 
-    let action!: Promise<void>;
     act(() => {
-      action = acceptButtons[0].props.onClick() as Promise<void>;
+      acceptButtons[0].props.onClick();
     });
 
     const busyAcceptButtons = renderer.root.findAll(
@@ -89,8 +94,11 @@ test("incoming contact accept immediately enters busy state and posts the exact 
     );
     assert.equal(busyAcceptButtons.length, 1);
     assert.equal(busyAcceptButtons[0].props.disabled, true);
-    assert.equal(busyAcceptButtons[0].props["aria-busy"], true);
-    assert.match(JSON.stringify(renderer.toJSON()), /Saving/u);
+    assert.equal(
+      renderer.root.find((node) => node.props["data-event-contact-participant"] === "participant:aiko").props["aria-busy"],
+      true,
+    );
+    assert.match(JSON.stringify(renderer.toJSON()), /Saving…/u);
     assert.equal(
       observedUrl,
       `/api/events/${encodeURIComponent(EVENT_ID)}/operations/contact-requests/${encodeURIComponent(REQUEST_ID)}/respond`,
@@ -108,7 +116,7 @@ test("incoming contact accept immediately enters busy state and posts the exact 
           success: true,
         }),
       );
-      await action;
+      await response;
     });
     assert.equal(
       renderer.root.findAll(
@@ -118,7 +126,7 @@ test("incoming contact accept immediately enters busy state and posts the exact 
       ).length,
       0,
     );
-    assert.match(JSON.stringify(renderer.toJSON()), /Contact exchange accepted/u);
+    assert.match(JSON.stringify(renderer.toJSON()), /Exchanged · open contact/u);
     const contactLinks = renderer.root.findAll(
       (node) =>
         node.type === "a" &&
@@ -126,15 +134,12 @@ test("incoming contact accept immediately enters busy state and posts the exact 
           `/app/contacts/${encodeURIComponent("contact:owner:aiko")}`,
     );
     assert.equal(contactLinks.length, 1);
-    const rendered = JSON.stringify(renderer.toJSON());
-    const encounterIndex = rendered.indexOf("data-human-encounter-capture");
-    const appointmentActionIndex = rendered.indexOf("data-party-appointment-action");
-    const appointmentIndex = rendered.indexOf("data-appointment-negotiation");
-    const contactIndex = rendered.indexOf(`/app/contacts/${encodeURIComponent("contact:owner:aiko")}`);
-    assert.ok(encounterIndex >= 0, "accepted exchange exposes encounter capture");
-    assert.ok(appointmentActionIndex > encounterIndex, "appointment action follows encounter capture");
-    assert.ok(appointmentIndex > appointmentActionIndex, "appointment negotiation is mounted");
-    assert.ok(contactIndex > appointmentIndex, "contact link remains the final workflow action");
+    // The post-acceptance workflow (encounter capture / appointment) now lives in the
+    // attendee / schedule / note modals; the inline control only exposes the contact link.
+    assert.equal(
+      renderer.root.findAll((node) => node.props["data-human-encounter-capture"] !== undefined).length,
+      0,
+    );
   } finally {
     globalThis.fetch = originalFetch;
     renderer?.unmount();
@@ -156,8 +161,9 @@ test("a reused control reads a newly arrived request id from props instead of st
   try {
     await act(async () => {
       renderer = create(
-        <EventContactRequestControl
+        <ContactAction
           eventId={EVENT_ID}
+          open
           person={person({
             contactRequestDirection: null,
             contactRequestId: null,
@@ -169,8 +175,9 @@ test("a reused control reads a newly arrived request id from props instead of st
     });
     await act(async () => {
       renderer.update(
-        <EventContactRequestControl
+        <ContactAction
           eventId={EVENT_ID}
+          open
           person={person()}
           t={(copy) => copy.en}
         />,
@@ -184,7 +191,7 @@ test("a reused control reads a newly arrived request id from props instead of st
     assert.equal(declineButtons.length, 1);
 
     await act(async () => {
-      await (declineButtons[0].props.onClick() as Promise<void>);
+      declineButtons[0].props.onClick();
     });
     assert.equal(
       observedUrl,
@@ -219,8 +226,9 @@ test("an outgoing pending request can be withdrawn, then requested again", async
   try {
     await act(async () => {
       renderer = create(
-        <EventContactRequestControl
+        <ContactAction
           eventId={EVENT_ID}
+          open
           person={person({
             contactRequestDirection: "outgoing",
             contactRequestStatus: "awaiting_target_consent",
@@ -233,7 +241,7 @@ test("an outgoing pending request can be withdrawn, then requested again", async
       (node) => node.props["data-event-contact-action"] === "withdraw",
     );
     await act(async () => {
-      await (withdraw.props.onClick() as Promise<void>);
+      withdraw.props.onClick();
     });
     assert.equal(
       observedUrls[0],
@@ -244,7 +252,7 @@ test("an outgoing pending request can be withdrawn, then requested again", async
       (node) => node.props["data-event-contact-action"] === "request-again",
     );
     await act(async () => {
-      await (requestAgain.props.onClick() as Promise<void>);
+      requestAgain.props.onClick();
     });
     assert.equal(
       observedUrls[1],
@@ -284,8 +292,9 @@ test("a newly created request can be withdrawn immediately without refreshing", 
   try {
     await act(async () => {
       renderer = create(
-        <EventContactRequestControl
+        <ContactAction
           eventId={EVENT_ID}
+          open
           person={sharedPerson}
           t={(copy) => copy.en}
         />,
@@ -295,28 +304,32 @@ test("a newly created request can be withdrawn immediately without refreshing", 
       (node) => node.props["data-event-contact-action"] === "request",
     );
     await act(async () => {
-      await (request.props.onClick() as Promise<void>);
+      request.props.onClick();
     });
     const withdraw = renderer.root.find(
       (node) => node.props["data-event-contact-action"] === "withdraw",
     );
     await act(async () => {
-      await (withdraw.props.onClick() as Promise<void>);
+      withdraw.props.onClick();
     });
-    assert.match(JSON.stringify(renderer.toJSON()), /Contact request withdrawn/u);
+    assert.equal(
+      renderer.root.findAll((node) => node.props["data-event-contact-action"] === "request-again").length,
+      1,
+    );
     await act(async () => {
       laterSurface = create(
-        <EventContactRequestControl
+        <ContactAction
           eventId={EVENT_ID}
+          open
           person={sharedPerson}
           t={(copy) => copy.en}
         />,
       );
     });
-    assert.match(
-      JSON.stringify(laterSurface.toJSON()),
-      /Contact request withdrawn/u,
-      "a newly mounted Party surface reads the latest lifecycle instead of stale route props",
+    assert.equal(
+      laterSurface.root.findAll((node) => node.props["data-event-contact-action"] === "request-again").length,
+      1,
+      "a newly mounted live surface reads the latest lifecycle instead of stale route props",
     );
   } finally {
     globalThis.fetch = originalFetch;
@@ -329,16 +342,16 @@ test("an owner-scoped contact id wins over a stale request projection", async ()
   let renderer!: ReactTestRenderer;
   await act(async () => {
     renderer = create(
-      <EventContactRequestControl
+      <ContactAction
         eventId={EVENT_ID}
+        open
         person={person({
           contactId: "contact:owner:participant:aiko/primary",
           contactRequestDirection: null,
           contactRequestId: null,
           contactRequestStatus: "none",
         })}
-        showAcceptedWorkflow
-        t={(copy) => copy.en}
+                t={(copy) => copy.en}
       />,
     );
   });
@@ -352,7 +365,7 @@ test("an owner-scoped contact id wins over a stale request projection", async ()
       ).length,
       0,
     );
-    assert.match(JSON.stringify(renderer.toJSON()), /Contact exchange accepted/u);
+    assert.match(JSON.stringify(renderer.toJSON()), /Exchanged · open contact/u);
     assert.equal(
       renderer.root.findAll(
         (node) =>
@@ -362,46 +375,8 @@ test("an owner-scoped contact id wins over a stale request projection", async ()
       ).length,
       1,
     );
-    assert.equal(
-      renderer.root.findAll((node) => node.props["data-human-encounter-capture"] !== undefined).length,
-      1,
-    );
-    assert.match(
-      JSON.stringify(renderer.toJSON()),
-      /accepted exchange is missing its request id/u,
-    );
   } finally {
     renderer.unmount();
   }
 });
 
-test("an accepted contact stays compact outside the participant detail drawer", async () => {
-  let renderer!: ReactTestRenderer;
-  await act(async () => {
-    renderer = create(
-      <EventContactRequestControl
-        eventId={EVENT_ID}
-        person={person({
-          contactId: "contact:owner:aiko",
-          contactRequestDirection: "outgoing",
-          contactRequestStatus: "accepted",
-        })}
-        t={(copy) => copy.en}
-      />,
-    );
-  });
-
-  try {
-    const summaries = renderer.root.findAll(
-      (node) => node.props["data-party-accepted-contact-summary"] !== undefined,
-    );
-    assert.equal(summaries.length, 1);
-    assert.equal(summaries[0].props.style.display, "flex");
-    assert.equal(
-      renderer.root.findAll((node) => node.props["data-party-post-contact-workflow"] !== undefined).length,
-      0,
-    );
-  } finally {
-    renderer.unmount();
-  }
-});

@@ -16,7 +16,7 @@ export const ORBIT_ASK_HOME = "/app/agent";
  * - account / login-admin：未登录或正在登录，没有人脉上下文可问。
  * - admin：平台后台是运营工具，不是会员产品面。
  * - o：组织者公开主页，访客可见。
- * - party/checkin、operations/check-in、operations/admission：签到与入场审核是
+ * - operations/check-in、operations/admission：签到与入场审核是
  *   「手上有事、旁边有人排队」的操作场景，浮层只会碍事。
  */
 const EXCLUDED_PREFIXES = [
@@ -24,7 +24,6 @@ const EXCLUDED_PREFIXES = [
   "/app/login-admin",
   "/app/admin",
   "/app/o",
-  "/app/party/checkin",
 ] as const;
 
 /** 活动运营下的 kiosk 子路由（`/app/events/[id]/operations/...`）。 */

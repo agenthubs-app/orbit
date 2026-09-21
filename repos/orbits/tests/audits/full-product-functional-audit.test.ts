@@ -90,12 +90,6 @@ const retiredWebCases = [
     "web-public-organizer-navigation-2026-07-29",
     "web-public-organizer-unknown-slug-boundary-2026-07-29",
   ]],
-  ["web:/app/party", [
-    "web-party-source-context-boundaries-2026-07-29",
-    "web-public-event-detail-lifecycle-2026-07-29",
-  ]],
-  ["web:/app/party/checkin", ["web-party-source-context-boundaries-2026-07-29"]],
-  ["web:/app/party/graph", ["web-party-source-context-boundaries-2026-07-29"]],
 ] as const;
 const retiredGenericSmokeCase = "web-production-route-transport-smoke-2026-07-28";
 
@@ -181,7 +175,7 @@ test("current eligibility blocks smoke only for the three ruled exact routes", (
     const key = `${surfaceId}|source#onclick:open#Open`;
     assert.equal(lookupWebInteractionRuntimeEvidence([key], new Map([[key, record]])), undefined);
   }
-  for (const surfaceId of ["web:/app/events/[id]/register", "web:/app/events-other", "web:/app/party", "mobile:/events"]) {
+  for (const surfaceId of ["web:/app/events/[id]/register", "web:/app/events-other", "web:/app/events/[id]/live", "mobile:/events"]) {
     assert.equal(lookupWebSurfaceRuntimeEvidence(surfaceId, new Map([[surfaceId, record]])), record);
   }
   const unrelated = historicalWebEvidence.surfaces.find(([id]) => id === "web:/app/today");

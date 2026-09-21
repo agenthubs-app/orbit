@@ -147,47 +147,6 @@ function listLanguage(language: OrbitLanguage): EventListLanguage {
   return language === "ja" ? "en" : language;
 }
 
-function fmtMonth(date: Date, language: OrbitLanguage): string {
-  return new Intl.DateTimeFormat(dateLocale(language), { month: "short", ...TOKYO_TIME_ZONE }).format(date);
-}
-
-function fmtDay(date: Date, language: OrbitLanguage): string {
-  return new Intl.DateTimeFormat(dateLocale(language), { day: "2-digit", ...TOKYO_TIME_ZONE }).format(date);
-}
-
-export function eventTime(event: OrbitLandingEventView, t: Translate, language: OrbitLanguage) {
-  const bounds = eventTemporalBounds(event.startsAt, event.endsAt);
-  if (bounds.start === null) {
-    return {
-      date: t({ en: "Time TBD", zh: "时间待定" }),
-      day: "--",
-      month: "--",
-      time: t({ en: "Start time TBD", zh: "开始时间待定" }),
-    };
-  }
-
-  const date = new Intl.DateTimeFormat(dateLocale(language), {
-    weekday: "long",
-    month: "short",
-    day: "numeric",
-    ...TOKYO_TIME_ZONE,
-  }).format(bounds.start);
-  const formatter = new Intl.DateTimeFormat(dateLocale(language), {
-    hour: "2-digit",
-    minute: "2-digit",
-    ...TOKYO_TIME_ZONE,
-  });
-
-  return {
-    date,
-    day: fmtDay(bounds.start, language),
-    month: fmtMonth(bounds.start, language),
-    time: bounds.hasValidRange && bounds.end !== null
-      ? `${formatter.format(bounds.start)}–${formatter.format(bounds.end)}`
-      : `${formatter.format(bounds.start)} · ${t({ en: "End time TBD", zh: "结束时间待确认" })}`,
-  };
-}
-
 export function canUseEventDetailHistoryBack(referrer: string, currentHref: string): boolean {
   if (!referrer) return false;
   try {
@@ -365,9 +324,9 @@ function PrimaryCta({
     ? t({ en: "Registration closed", zh: "报名已结束" })
     : t(eventRegistrationLabel(registrationAvailability));
   return (
-    <button className="btn ev-cta-primary ev-cta-disabled" data-events-cta="closed" disabled type="button">
+    <span aria-disabled="true" className="btn ev-cta-primary ev-cta-disabled" data-events-cta="closed">
       {label}
-    </button>
+    </span>
   );
 }
 
@@ -388,9 +347,9 @@ function ModifyRegistrationCta({
     return <a className="btn ev-cta-secondary" data-events-cta="modify" href={preserveHref(registrationHref)}>{label}</a>;
   }
   return (
-    <button className="btn ev-cta-secondary ev-cta-disabled" data-events-cta="modify" disabled title={t(eventRegistrationLabel(registrationAvailability))} type="button">
+    <span aria-disabled="true" className="btn ev-cta-secondary ev-cta-disabled" data-events-cta="modify" title={t(eventRegistrationLabel(registrationAvailability))}>
       {label}
-    </button>
+    </span>
   );
 }
 
@@ -688,8 +647,6 @@ export function EventDetail({
   registrationAvailability?: EventRegistrationAvailability;
   registrationBlockingReason?: EventRegistrationBlockingReason;
   view?: EventDetailView;
-  /** 旧属性：现场入口改由 `ctaFor` 决定（已报名且进行中 → `/live`），此值不再参与渲染。 */
-  workspaceAvailable?: boolean;
 }) {
   const { t, language } = useOrbitLanguage();
   const lang = listLanguage(language);
@@ -784,7 +741,7 @@ export function EventDetail({
       { id: "summary", label: t({ en: "Summary", zh: "生成总结" }) },
     ];
     return (
-      <main className="ev-main" data-appscroll data-event-journey-state={stage} data-events-view="recap" data-orbit-route="app-event-detail">
+      <main className="ev-main" data-appscroll data-event-journey-state={stage} data-events-view="recap">
         <style>{EVENTS_STYLES}</style>
         <div className="ev-detail">
           <BackButton t={t} />
@@ -843,7 +800,7 @@ export function EventDetail({
   const tags = event.tags.filter((tag) => tag.trim());
 
   return (
-    <main className="ev-main" data-appscroll data-event-journey-state={stage} data-events-view="detail" data-orbit-route="app-event-detail">
+    <main className="ev-main" data-appscroll data-event-journey-state={stage} data-events-view="detail">
       <style>{EVENTS_STYLES}</style>
       <div className="ev-detail">
         <BackButton t={t} />

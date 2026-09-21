@@ -50,7 +50,8 @@ test("organizer workspace exposes the complete strict generation and audit workf
   assert.match(client, /标记到场/);
   assert.match(client, /VENUE CHECK-IN ENTRY/);
   assert.match(client, /不会生成二维码图片/);
-  assert.match(client, /party\/checkin\?eventId=/);
+  assert.match(client, /\/operations\/check-in`/);
+  assert.doesNotMatch(client, /\/app\/party/);
   assert.match(client, /CONFIGURED TIMELINE/);
   assert.match(client, /canonicalScheduleFields = \["eventStartsAt", "eventEndsAt"\]/);
   assert.match(client, /field === "eventStartsAt"\s*\? event\.startsAt/);

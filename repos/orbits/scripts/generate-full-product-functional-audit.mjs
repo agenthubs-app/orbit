@@ -7455,17 +7455,10 @@ const RETIRED_CURRENT_WEB_RUNTIME_CASES = new Map([
     "web-public-organizer-unknown-slug-boundary-2026-07-29",
     "web-production-route-transport-smoke-2026-07-28",
   ])],
-  ["web:/app/party", new Set([
-    "web-party-source-context-boundaries-2026-07-29",
-    "web-public-event-detail-lifecycle-2026-07-29",
-  ])],
-  ["web:/app/party/checkin", new Set([
-    "web-party-source-context-boundaries-2026-07-29",
-  ])],
-  ["web:/app/party/graph", new Set([
-    "web-party-source-context-boundaries-2026-07-29",
-  ])],
 ]);
+// /app/party, /app/party/checkin and /app/party/graph were deleted on 2026-09-22
+// (replaced by /app/events/[id]/live); their historical evidence above stays as
+// history and no longer needs a current-eligibility entry.
 
 function isCurrentWebRuntimeCase(surfaceId, verificationCase) {
   return typeof verificationCase === "string" && verificationCase.length > 0 &&

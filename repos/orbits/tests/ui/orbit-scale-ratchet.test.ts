@@ -114,7 +114,8 @@ test("fontSize literals outside the scale in app/(app)/app do not increase", () 
   // everything else in the app that T6 did not touch — only decrease it as
   // future tasks migrate more files onto the scale.
   // Orbit_0918 task 8: legacy orbit-real contact views deleted → 63 to 48.
-  const CEILING = 48;
+  // Events task 6 (2026-09-22) deleted /app/party* (orbit-real-party.tsx) → 36.
+  const CEILING = 36;
 
   assert.ok(
     hits.length <= CEILING,
@@ -127,7 +128,8 @@ test("fontWeight literals outside {400,500,600,700,800} in app/(app)/app do not 
   const hits = SITEWIDE_FILES.flatMap((f) => findScaleViolations(f, "fontWeight", FONT_WEIGHT_SCALE));
 
   // Orbit_0918 task 8: legacy orbit-real contact views deleted → 22 to 20.
-  const CEILING = 20;
+  // Events task 6 (2026-09-22) deleted /app/party* (orbit-real-party.tsx) → 16.
+  const CEILING = 16;
 
   assert.ok(
     hits.length <= CEILING,
@@ -141,7 +143,9 @@ test("gap literals outside the scale in app/(app)/app do not increase", () => {
 
   // Orbit_0918 task 8: legacy orbit-real contact views deleted → 250 to 230.
   // 个人中心 task 6 deleted orbit-real-profile.tsx → 227.
-  const CEILING = 227;
+  // Events task 6 (2026-09-22) deleted /app/party* (orbit-real-party.tsx +
+  // event-operations-controls.tsx) → 194.
+  const CEILING = 194;
 
   assert.ok(
     hits.length <= CEILING,

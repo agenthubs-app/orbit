@@ -18,7 +18,6 @@ test("personal app route trees are private", () => {
     "/app/followups",
     "/app/home",
     "/app/home/events",
-    "/app/party/checkin",
     "/app/platform",
     "/app/profile",
     "/app/schedule",

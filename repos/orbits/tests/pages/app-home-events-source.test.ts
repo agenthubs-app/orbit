@@ -39,7 +39,7 @@ test("/app/home/events applies the same event presentation layer as /app/events"
   assert.match(pageSource, /events:\s*presentOrbitEvents\(routeModel\.home\.events,\s*language \?\? "zh"\)/u);
 });
 
-test("active and ended Home event cards preserve the actor-owned event identity when entering Party", () => {
+test("active and ended Home event cards preserve the actor-owned event identity when entering the live screen", () => {
   const homeSource = source("app/(app)/app/home/orbit-real-home.tsx");
 
   assert.match(

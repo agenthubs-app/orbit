@@ -50,7 +50,6 @@ test("登录页、公开页、kiosk 和后台不挂", () => {
     "/app/admin",
     "/app/admin/platform",
     "/app/o/some-organizer",
-    "/app/party/checkin",
     "/app/events/event_01/operations/check-in",
     "/app/events/event_01/operations/admission",
     "/",
@@ -65,10 +64,10 @@ test("前缀匹配只在路径边界处生效", () => {
   assert.equal(allowsOrbitAsk("/app/orbits"), true);
   assert.equal(allowsOrbitAsk("/app/o"), false);
   assert.equal(allowsOrbitAsk("/app/o/x"), false);
-  // party 下只有签到大屏被排除，其余 party 页面照常。
-  assert.equal(allowsOrbitAsk("/app/party"), true);
-  assert.equal(allowsOrbitAsk("/app/party/graph"), true);
-  assert.equal(allowsOrbitAsk("/app/party/checkin"), false);
+  // 活动现场屏（取代 /app/party*）照常挂；只有运营 kiosk 子路由被排除。
+  assert.equal(allowsOrbitAsk("/app/events/event_01/live"), true);
+  assert.equal(allowsOrbitAsk("/app/events/event_01/live?tab=graph"), true);
+  assert.equal(allowsOrbitAsk("/app/events/event_01/operations/check-in"), false);
 });
 
 test("页面上下文标签按路由推导，且跟随语言", () => {

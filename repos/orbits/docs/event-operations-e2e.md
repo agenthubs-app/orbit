@@ -82,12 +82,12 @@ Production 已提交上述 662 条定向更新：66 contacts、66 active connect
 ## Attendee result and check-in path
 
 1. Sign out, then sign in as `attendee01.event-ops@orbit.example.test` with the same development password.
-2. Open `/app/party?eventId=event_signup_01`.
+2. Open `/app/events/<event_signup_01 canonical id>/live` (the Orbit_0918 live screen; tabs are `?tab=home|rec|all|group|graph|agenda`).
 3. Confirm **All attendees** contains exactly 64 active registration-backed profiles. Cancelled histories must be absent. Non-recommended attendees must be labeled as directory profiles rather than recommendations.
 4. Confirm **For you** contains only the published AI recommendations, with evidence-based reasons, two icebreakers, and a member hint. If the model returned no match, confirm the explicit `noMatchReason` appears.
 5. Confirm **Groups** shows two distinct rounds, each with a real table number, seat, theme, rationale, three table icebreakers, and participant-specific prompts.
 6. Confirm **Graph** node and edge counts match the published graph and that edges distinguish mutual recommendations, round-one tables, and round-two topics.
-7. Open `/app/party/checkin?eventId=event_signup_01`, select **Check in now**, refresh, and confirm the same persisted timestamp remains. Repeating the action must not create another arrival record.
+7. On the live home tab (`?tab=home`), select **Check in now** (签到), refresh, and confirm the same persisted timestamp remains. Repeating the action must not create another arrival record. (The organizer-side kiosk is `/app/events/<id>/operations/check-in`.)
 
 ## Bilateral business-card consent
 
