@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { OrbitContactView } from "../../app/(app)/app/orbit-contacts-route-view-model";
-import { donut, matchesQuery, sourceCounts, sourceOf, stageClip, stageCounts, stageOf, toPerson } from "../../app/(app)/app/contacts/network-0918/network-model";
+import { donut, matchesQuery, metSummary, sourceCounts, sourceOf, stageClip, stageCounts, stageOf, toPerson } from "../../app/(app)/app/contacts/network-0918/network-model";
 
 function contact(overrides: Partial<OrbitContactView> = {}): OrbitContactView {
   return {
@@ -68,4 +68,16 @@ test("stageClip returns the three arrow polygons", () => {
   assert.equal(stageClip(0), "polygon(0 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,0 100%)");
   assert.equal(stageClip(3), "polygon(0 0,100% 0,100% 100%,0 100%,14px 50%)");
   assert.equal(stageClip(1), "polygon(0 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,0 100%,14px 50%)");
+});
+
+test("metSummary never returns an account email or a confirmed-by actor sentence", () => {
+  assert.equal(metSummary("qa@orbit.test"), "");
+  assert.equal(metSummary("Business card confirmed by chrome-journey@example.invalid"), "Business card");
+  assert.equal(metSummary("confirmed by chrome-journey@example.invalid"), "");
+  assert.equal(metSummary("Business card · confirmed by x@y.test"), "Business card");
+  assert.equal(metSummary("Event confirmed by someone"), "Event");
+  assert.equal(metSummary("关西创业者晚宴"), "关西创业者晚宴");
+  assert.equal(metSummary("  东京 AI 峰会  "), "东京 AI 峰会");
+  assert.equal(metSummary(""), "");
+  assert.equal(metSummary(undefined), "");
 });

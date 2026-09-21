@@ -10,7 +10,7 @@ import { useEffect, useRef, type MouseEvent, type ReactNode } from "react";
 
 import type { OrbitContactView } from "../../orbit-contacts-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { SOURCE_LABEL, STAGE_CHIP, STAGE_LABEL, STAGE_STYLE, sourceOf, stageOf } from "./network-model";
+import { SOURCE_LABEL, STAGE_CHIP, STAGE_LABEL, STAGE_STYLE, metSummary, sourceOf, stageOf } from "./network-model";
 
 /** 设计稿时间线 `4月18日 15:30` 格式（本地时区）。 */
 export function formatNoteTime(iso: string): string {
@@ -66,7 +66,8 @@ export function NetworkDetailModal({ contact, closeHref, onFollow, extra }: { co
     // 上次互动：值 = 互动时间，说明 = 互动摘要（无则下一步）；下次计划的 reason 与互动摘要相同时不重复。
     { icon: "◷", label: t({ en: "Last contact", zh: "上次互动" }), value: interactionAt, desc: interactionSummary || next?.text || dash },
     { icon: "▦", label: t({ en: "Next plan", zh: "下次计划" }), value: next?.text || dash, desc: next?.reason && next.reason.trim() !== interactionSummary ? next.reason : "" },
-    { icon: "◎", label: t({ en: "Source", zh: "来源" }), value: t(SOURCE_LABEL[source]), desc: contact.met.trim() },
+    // 来源说明经 metSummary 清洗：账号邮箱 / 「confirmed by」句不渲染（空则省略说明）。
+    { icon: "◎", label: t({ en: "Source", zh: "来源" }), value: t(SOURCE_LABEL[source]), desc: metSummary(contact.met) },
   ];
 
   const bullets = (items: readonly string[]) =>
@@ -97,7 +98,7 @@ export function NetworkDetailModal({ contact, closeHref, onFollow, extra }: { co
             {overview.map((o) => (
               <div key={o.label} className="nw-ov">
                 <span className="nw-ov-icon">{o.icon}</span>
-                <span className="nw-ov-copy"><span className="nw-ov-l">{o.label}</span><strong className="nw-ov-v">{o.value}</strong><span className="nw-ov-d">{o.desc}</span></span>
+                <span className="nw-ov-copy"><span className="nw-ov-l">{o.label}</span><strong className="nw-ov-v">{o.value}</strong>{o.desc ? <span className="nw-ov-d">{o.desc}</span> : null}</span>
               </div>
             ))}
           </div>

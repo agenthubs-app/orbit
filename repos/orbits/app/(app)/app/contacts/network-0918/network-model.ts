@@ -69,6 +69,19 @@ export function sourceOf(contact: Pick<OrbitContactView, "source">): NetworkSour
   }
 }
 
+// 来源说明只放真实的来源句（活动名等）。存量数据里 `met` 形如
+// `Business card · confirmed by <账号邮箱>`（write service 把确认者写进了来源），
+// 账号邮箱与「confirmed by」句绝不能当作正文出现在页面上（旧详情 metLabel 的守卫）。
+const EMAIL_LIKE = /[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+/;
+const ACTOR_SENTENCE = /\bconfirmed by\b/i;
+const TRAILING_ACTOR = /\s*[·•|,;:-]?\s*\bconfirmed by\b.*$/i;
+
+export function metSummary(met: string | null | undefined): string {
+  const stripped = (met ?? "").replace(TRAILING_ACTOR, "").trim();
+  if (!stripped || ACTOR_SENTENCE.test(stripped) || EMAIL_LIKE.test(stripped)) return "";
+  return stripped;
+}
+
 export interface NetworkPerson {
   id: string; name: string; initial: string; org: string; title: string; orgTitle: string; industry: string;
   source: NetworkSource; stage: NetworkStage; pendingInit: boolean; last: string; next: string; region: string; tags: string[]; href: string;

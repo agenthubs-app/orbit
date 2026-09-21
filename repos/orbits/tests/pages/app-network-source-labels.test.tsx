@@ -66,11 +66,16 @@ test("SOURCE_LABEL keys the source label on the stable source code in every UI l
 test("contact detail labels a business-card contact by source code in zh and en", async () => {
   const contact = await legacyBusinessCardContact();
   const zh = render(contact, "zh");
+  // 账号邮箱与「confirmed by」句绝不能出现在渲染结果里（旧详情 metLabel 守卫的移植）。
+  assert.doesNotMatch(zh, /example\.invalid/);
+  assert.doesNotMatch(zh, /confirmed by/i);
   assert.match(zh, /⇢ 来自 名片导入/);
   assert.match(zh, /来源<\/span><strong class="nw-ov-v">名片导入</);
   assert.match(zh, /林 若曦/);
   assert.match(zh, /星轨科技有限公司 Xingui Technology Co\., Ltd\. · 产品总监 · Director of Product/);
   const en = render(contact, "en");
+  assert.doesNotMatch(en, /example\.invalid/);
+  assert.doesNotMatch(en, /confirmed by/i);
   assert.match(en, /⇢ From Business cards/);
   assert.match(en, /Source<\/span><strong class="nw-ov-v">Business cards</);
   assert.doesNotMatch(en, /名片导入/);

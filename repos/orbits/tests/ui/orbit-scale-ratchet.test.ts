@@ -113,7 +113,7 @@ test("fontSize literals outside the scale in app/(app)/app do not increase", () 
   // T6 snapped 8 core surfaces to 0 violations each. This ceiling covers
   // everything else in the app that T6 did not touch — only decrease it as
   // future tasks migrate more files onto the scale.
-    // Orbit_0918 task 8: legacy orbit-real contact views deleted → 63 to 48.
+  // Orbit_0918 task 8: legacy orbit-real contact views deleted → 63 to 48.
   const CEILING = 48;
 
   assert.ok(
@@ -126,7 +126,7 @@ test("fontSize literals outside the scale in app/(app)/app do not increase", () 
 test("fontWeight literals outside {400,500,600,700,800} in app/(app)/app do not increase", () => {
   const hits = SITEWIDE_FILES.flatMap((f) => findScaleViolations(f, "fontWeight", FONT_WEIGHT_SCALE));
 
-    // Orbit_0918 task 8: legacy orbit-real contact views deleted → 22 to 20.
+  // Orbit_0918 task 8: legacy orbit-real contact views deleted → 22 to 20.
   const CEILING = 20;
 
   assert.ok(
@@ -139,7 +139,7 @@ test("fontWeight literals outside {400,500,600,700,800} in app/(app)/app do not 
 test("gap literals outside the scale in app/(app)/app do not increase", () => {
   const hits = SITEWIDE_FILES.flatMap((f) => findScaleViolations(f, "gap", GAP_SCALE));
 
-    // Orbit_0918 task 8: legacy orbit-real contact views deleted → 250 to 230.
+  // Orbit_0918 task 8: legacy orbit-real contact views deleted → 250 to 230.
   const CEILING = 230;
 
   assert.ok(
