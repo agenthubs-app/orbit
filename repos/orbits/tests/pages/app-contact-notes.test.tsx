@@ -5,7 +5,6 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { loadAppContactDetailRoute } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service";
 import { contactDetailRouteToOrbitContactsViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter";
 import { NetworkDetailModal } from "../../app/(app)/app/contacts/network-0918/network-detail-modal";
-import { ContactNotesEditor } from "../../app/(app)/app/contacts/contact-notes-editor";
 import type { OrbitContactNoteView } from "../../app/(app)/app/orbit-contacts-route-view-model";
 
 const contactId = "contact:one/two";
