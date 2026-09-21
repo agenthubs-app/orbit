@@ -131,6 +131,17 @@ test("save bar renders 取消 / 保存修改 as .btn buttons", () => {
   );
   assert.match(html, /<button[^>]*class="btn pc-btn-cancel"[^>]*>取消<\/button>/);
   assert.match(html, /<button[^>]*class="btn pc-btn-primary"[^>]*>保存修改<\/button>/);
+  assert.doesNotMatch(html, /class="btn pc-btn-cancel" disabled=""/);
+});
+
+test("save bar disables 取消 while a basic or matching save is in flight", () => {
+  for (const spies of [{ saving: true }, { matchingSaving: true }]) {
+    const html = renderToStaticMarkup(
+      <ProfileShell view="persona" session={session(spies)} showSaveBar onSave={() => undefined} onCancel={() => undefined}>x</ProfileShell>,
+    );
+    assert.match(html, /<button[^>]*class="btn pc-btn-cancel" disabled=""[^>]*>取消<\/button>/, JSON.stringify(spies));
+    assert.match(html, /<button[^>]*class="btn pc-btn-primary" disabled=""[^>]*>保存中…<\/button>/);
+  }
 });
 
 test("onboarding banner lists the missing fields and links to the basic editor", () => {
@@ -206,7 +217,9 @@ test("ProfileScreens respects the requested view and hides the banner when compl
   );
   assert.match(html, /data-profile-view="connect"/);
   assert.doesNotMatch(html, /还需填写/);
-  assert.match(html, /class="pc-card"/);
+  // 任务 5：connect 视图挂真实连接屏（四张集成卡）
+  assert.match(html, /class="pc-connect"/);
+  assert.match(html, /class="pc-card pc-int-card"/);
 });
 
 test("ProfileScreens without onboarding flag never shows the banner and defaults to profile", () => {

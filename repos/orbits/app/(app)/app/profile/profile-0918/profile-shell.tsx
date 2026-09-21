@@ -114,7 +114,7 @@ export function ProfileShell({
         </div>
         {showSaveBar ? (
           <span className="pc-save-bar">
-            <button className="btn pc-btn-cancel" onClick={onCancel} type="button">{t({ en: "Cancel", zh: "取消" })}</button>
+            <button className="btn pc-btn-cancel" disabled={session.saving || session.matchingSaving} onClick={onCancel} type="button">{t({ en: "Cancel", zh: "取消" })}</button>
             <button aria-busy={session.saving || session.matchingSaving || undefined} className="btn pc-btn-primary" disabled={saveDisabled} onClick={onSave} type="button">{saveText}</button>
           </span>
         ) : null}
@@ -181,6 +181,7 @@ export const PROFILE_STYLES = `
   height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; font-weight: 400; transition: none; }
 [data-orbit-real-page="profile-0918"] .btn.pc-btn-cancel:hover { border-color: #B9BCEB; color: #2E3270; }
 [data-orbit-real-page="profile-0918"] .btn.pc-btn-cancel:active { transform: none; }
+[data-orbit-real-page="profile-0918"] .btn.pc-btn-cancel:disabled { cursor: default; opacity: 0.6; }
 [data-orbit-real-page="profile-0918"] .btn.pc-btn-primary { padding: 13px 22px; border: 0; border-radius: 10px; background: #0E1225; color: #FFFFFF; font-size: 14px; font-weight: 500; cursor: pointer;
   /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
   height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
@@ -336,6 +337,63 @@ export const PROFILE_STYLES = `
 [data-orbit-real-page="profile-0918"] .btn.pc-method:disabled { cursor: default; opacity: 0.6; }
 [data-orbit-real-page="profile-0918"] .btn.pc-method.pc-method-on { border-color: #0E1225; background: #0E1225; color: #FFFFFF; }
 [data-orbit-real-page="profile-0918"] .btn.pc-method.pc-method-on:hover { border-color: #2E3270; background: #2E3270; color: #FFFFFF; }
+/* ── iOrbit 设置屏（设计稿 209–242 行）── */
+[data-orbit-real-page="profile-0918"] .pc-settings { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr); gap: 20px; align-items: start; animation: orbit-fade .3s ease; }
+[data-orbit-real-page="profile-0918"] .pc-settings-card { display: flex; flex-direction: column; gap: 16px; }
+[data-orbit-real-page="profile-0918"] .pc-settings-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+[data-orbit-real-page="profile-0918"] .pc-settings-title { display: flex; align-items: center; gap: 12px; }
+[data-orbit-real-page="profile-0918"] .pc-settings-icon { width: 40px; height: 40px; border-radius: 12px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; }
+[data-orbit-real-page="profile-0918"] .pc-about { width: 100%; padding: 16px; border: 1px solid #E8E9F6; border-radius: 12px; background: #FFFFFF; font-size: 14px; line-height: 1.8; color: #0E1225; resize: vertical; outline: none; }
+[data-orbit-real-page="profile-0918"] .pc-about:disabled { color: #9FA3C4; }
+[data-orbit-real-page="profile-0918"] .pc-goal-text { font-size: 14px; line-height: 1.8; color: #0E1225; }
+/* 当前目标为空（设计无：同段落几何，灰字） */
+[data-orbit-real-page="profile-0918"] .pc-goal-empty { color: #9FA3C4; }
+[data-orbit-real-page="profile-0918"] .pc-info-card { display: flex; flex-direction: column; gap: 18px; }
+[data-orbit-real-page="profile-0918"] .pc-info-head { display: flex; gap: 14px; align-items: flex-start; }
+[data-orbit-real-page="profile-0918"] .pc-info-icon { width: 40px; height: 40px; flex: none; border-radius: 12px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; }
+[data-orbit-real-page="profile-0918"] .pc-info-copy { display: flex; flex-direction: column; gap: 5px; }
+[data-orbit-real-page="profile-0918"] .pc-info-block { display: flex; flex-direction: column; gap: 8px; }
+[data-orbit-real-page="profile-0918"] .pc-info-block-next { padding-top: 14px; border-top: 1px solid #E8E9F6; }
+[data-orbit-real-page="profile-0918"] .pc-info-label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #3B3F7A; }
+[data-orbit-real-page="profile-0918"] .pc-info-label-icon { color: #4B4FC7; }
+[data-orbit-real-page="profile-0918"] .pc-info-label-text { font-weight: 500; }
+[data-orbit-real-page="profile-0918"] .pc-info-text { font-size: 13px; line-height: 1.8; color: #6B6F99; }
+/* 摘要为空（设计无：同文本几何，灰字） */
+[data-orbit-real-page="profile-0918"] .pc-info-empty { color: #9FA3C4; }
+[data-orbit-real-page="profile-0918"] .pc-info-note { font-size: 12px; color: #9FA3C4; }
+/* 既有设置面板区（设计无：五个模块各套一个 pc-card 外框，皮肤见 profile-legacy-settings.tsx） */
+[data-orbit-real-page="profile-0918"] .pc-legacy-settings { display: flex; flex-direction: column; gap: 20px; }
+[data-orbit-real-page="profile-0918"] .pc-legacy-card { padding: 0; overflow: hidden; }
+/* ── 连接屏（设计稿 244–280 行）── */
+[data-orbit-real-page="profile-0918"] .pc-connect { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr); gap: 20px; align-items: start; animation: orbit-fade .3s ease; }
+[data-orbit-real-page="profile-0918"] .pc-int-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 20px; }
+[data-orbit-real-page="profile-0918"] .pc-int-card { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+[data-orbit-real-page="profile-0918"] .pc-int-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+[data-orbit-real-page="profile-0918"] .pc-int-glyph { width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; }
+[data-orbit-real-page="profile-0918"] .pc-int-state { padding: 6px 14px; border-radius: 999px; font-size: 12px; }
+[data-orbit-real-page="profile-0918"] .pc-int-state-off { background: #F1F1FA; color: #6B6F99; }
+[data-orbit-real-page="profile-0918"] .pc-int-copy { display: flex; flex-direction: column; gap: 8px; }
+[data-orbit-real-page="profile-0918"] .pc-int-name { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 19px; letter-spacing: -0.02em; }
+[data-orbit-real-page="profile-0918"] .pc-int-desc { font-size: 13px; line-height: 1.8; color: #6B6F99; }
+[data-orbit-real-page="profile-0918"] .pc-int-scopes { display: flex; flex-direction: column; gap: 10px; padding-top: 14px; border-top: 1px solid #F1F1FA; }
+[data-orbit-real-page="profile-0918"] .pc-int-scope { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #3B3F7A; }
+[data-orbit-real-page="profile-0918"] .pc-int-check { width: 20px; height: 20px; flex: none; border-radius: 50%; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; font-size: 11px; }
+/* 设计 259 行按钮的盒几何（padding/边框/圆角/字号/字重）；非交互 span 居中排版对齐 button 默认 */
+[data-orbit-real-page="profile-0918"] .pc-connect-cta { padding: 14px; border: 1px solid; border-radius: 10px; font-size: 14px; font-weight: 500; display: block; text-align: center; line-height: normal; }
+/* 「即将开放」占位（既有决定：无 OAuth / 无 toggle / 无存储状态）：灰底灰字，非交互 */
+[data-orbit-real-page="profile-0918"] .pc-connect-cta-soon { border-color: #E8E9F6; background: #F7F7FD; color: #9FA3C4; cursor: default; }
+[data-orbit-real-page="profile-0918"] .pc-conn-card { padding: 24px; display: flex; flex-direction: column; gap: 18px; }
+[data-orbit-real-page="profile-0918"] .pc-conn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; text-align: center; }
+[data-orbit-real-page="profile-0918"] .pc-conn-cell { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+[data-orbit-real-page="profile-0918"] .pc-conn-cell-next { border-left: 1px solid #F1F1FA; }
+[data-orbit-real-page="profile-0918"] .pc-conn-icon-on { width: 30px; height: 30px; border-radius: 50%; background: #E6F1EC; color: #2F6B4F; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+[data-orbit-real-page="profile-0918"] .pc-conn-icon-off { width: 30px; height: 30px; border-radius: 50%; background: #F1F1FA; color: #9FA3C4; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+[data-orbit-real-page="profile-0918"] .pc-conn-count { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 30px; }
+[data-orbit-real-page="profile-0918"] .pc-conn-label { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="profile-0918"] .pc-note-card { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+[data-orbit-real-page="profile-0918"] .pc-note-row { display: flex; gap: 14px; align-items: flex-start; }
+[data-orbit-real-page="profile-0918"] .pc-note-icon { width: 38px; height: 38px; flex: none; border-radius: 12px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; }
+[data-orbit-real-page="profile-0918"] .pc-note-text { font-size: 13px; line-height: 1.8; color: #6B6F99; }
 /* ── toast（设计稿 281–284 行）── */
 [data-orbit-real-page="profile-0918"] .pc-toast { position: fixed; left: 50%; bottom: 32px; transform: translateX(-50%); z-index: 200; padding: 12px 22px; border-radius: 999px; background: #0E1225; color: #FFFFFF; font-size: 14px; box-shadow: 0 18px 40px rgba(14,18,37,0.25); }
 `;

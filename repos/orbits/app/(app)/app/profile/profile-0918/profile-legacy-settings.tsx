@@ -1,7 +1,9 @@
 /**
  * 既有设置面板（外观 / 记忆 / 反馈 / 自动化 / 执行）在新个人中心壳里的挂载点。
  * 皮肤 <style> 原样搬自旧 settings/page.tsx，作用域 [data-orbit-real-page=settings] → .pc-legacy-settings，
- * 保证五个模块配色不回退。任务 5 的 profile-settings.tsx 在设计三张卡之后挂本组件。
+ * 保证五个模块配色不回退。任务 5 的 profile-settings.tsx 在设计卡片之后挂本组件：
+ * 每个模块套一个 pc-card 外框（pc-legacy-card：padding 0），模块自身 .card 的边框 / 圆角 / 阴影 / 顶部外边距在外框内抹平，
+ * 内部结构与内边距不动（偏差记台账）。
  */
 "use client";
 
@@ -36,12 +38,15 @@ export function ProfileLegacySettings() {
         .pc-legacy-settings .btn-ghost{background:#FFFFFF;border-color:#DDDEFA;color:#3B3F7A}
         .pc-legacy-settings .btn-ghost:hover{border-color:#B9BCEB;color:#2E3270}
         .pc-legacy-settings .chip{border-color:#DDDEFA;color:#3B3F7A;background:#FFFFFF}
+        /* pc-card 外框接管边框：模块根 .card 抹平；模块根不是 .card 的（执行设置）补 24px 内边距与子卡分隔 */
+        .pc-legacy-settings .pc-legacy-card > .card{border:0;border-radius:0;box-shadow:none;background:transparent;margin-top:0!important}
+        .pc-legacy-settings .pc-legacy-card > section:not(.card){margin-top:0!important;padding:24px}
       `}</style>
-      <OrbitAppearanceSettings />
-      <OrbitAgentMemorySettings />
-      <OrbitAgentFeedbackSettings />
-      <OrbitAgentAutomationSettings />
-      <OrbitAgentExecutionSettings />
+      <section className="pc-card pc-legacy-card"><OrbitAppearanceSettings /></section>
+      <section className="pc-card pc-legacy-card"><OrbitAgentMemorySettings /></section>
+      <section className="pc-card pc-legacy-card"><OrbitAgentFeedbackSettings /></section>
+      <section className="pc-card pc-legacy-card"><OrbitAgentAutomationSettings /></section>
+      <section className="pc-card pc-legacy-card"><OrbitAgentExecutionSettings /></section>
     </div>
   );
 }

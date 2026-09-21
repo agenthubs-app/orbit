@@ -4,7 +4,8 @@
  *   - persona：保存栏 → saveProfile("matching")；成功 → toast「修改已保存」+ 就地回 profile 视图（设计 save()）。
  *   - basic：保存栏 → 提交 <form>（saveProfile("basic")）；结果由壳内通知条呈现（绿色成功 / 琥珀色仍不完整 / 错误），
  *     留在本屏；完整且带 onboardingNext 时由 hook 自动跳转 next。
- *   - 两屏取消 → reloadLatestProfile() 后回 profile 视图。connect 仍为占位 pc-card（任务 5 填充）。
+ *   - settings（任务 5）：保存栏 → saveProfile("basic")（关于我 = bio）；结果由壳内通知条呈现，留在本屏。
+ *   - 三屏取消 → reloadLatestProfile() 后回 profile 视图。connect（任务 5）无保存栏。
  *
  * 视图切换：初始视图来自 URL（page.tsx 传 view），「回 profile」为组件内状态切换 + history.replaceState
  * （不整页跳转，才能沿用设计的 toast 并保留 hook 状态）；页签与卡片按钮仍是路由链接。
@@ -16,10 +17,11 @@ import { useEffect, useRef, useState } from "react";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import type { OrbitProfileEditorViewModel } from "../profile-editor-adapter";
 import { ProfileBasic } from "./profile-basic";
-import { ProfileLegacySettings } from "./profile-legacy-settings";
+import { ProfileConnect } from "./profile-connect";
 import { missingFieldLabels } from "./profile-model";
 import { ProfileOverview } from "./profile-overview";
 import { ProfilePersona } from "./profile-persona";
+import { ProfileSettings } from "./profile-settings";
 import { ProfileShell, ProfileToast, profileRoutePath, type ProfileView } from "./profile-shell";
 import { useProfileEditorSession } from "./use-profile-editor-session";
 
@@ -96,12 +98,14 @@ export function ProfileScreens({
     goProfile();
   }
 
-  const editing = activeView === "persona" || activeView === "basic";
+  const editing = activeView === "persona" || activeView === "basic" || activeView === "settings";
   const onSave = activeView === "persona"
     ? saveMatching
     : activeView === "basic"
       ? () => { basicFormRef.current?.requestSubmit?.(); }
-      : undefined;
+      : activeView === "settings"
+        ? () => { void session.saveProfile("basic"); }
+        : undefined;
 
   return (
     <>
@@ -121,13 +125,9 @@ export function ProfileScreens({
         ) : activeView === "basic" ? (
           <ProfileBasic formRef={basicFormRef} onSubmit={() => session.saveProfile("basic")} session={session} />
         ) : activeView === "settings" ? (
-          <section className="pc-card">
-            <ProfileLegacySettings />
-          </section>
+          <ProfileSettings session={session} onboardingQuery={onboardingQuery} />
         ) : (
-          <section className="pc-card">
-            <p className="pc-empty">{t({ en: "This screen is being rebuilt.", zh: "此屏正在重建中。" })}</p>
-          </section>
+          <ProfileConnect />
         )}
       </ProfileShell>
       <ProfileToast text={toast} />

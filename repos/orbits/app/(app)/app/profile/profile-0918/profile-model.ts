@@ -63,12 +63,14 @@ export interface PersonaGroup {
   icon: string;
   title: Copy;
   hint: Copy;
-  placeholder: Copy;
+  /** 只读组（goal）没有输入框，也就没有占位文案。 */
+  placeholder?: Copy;
   values: string[];
 }
 
-// goal 只有单文本 intro(=relationshipGoal)，且 hook 没有它的保存通道，只读展示为一个 chip。
-// icon / hint / placeholder 取设计稿 renderVals().groupMeta（◎ ✦ ⚇ ▤；任务 4 对齐 hint 与 placeholder 文案）。
+// goal 只有单文本 intro(=relationshipGoal)，且 hook 没有它的保存通道，只读展示为一个 chip：
+// hint 说明来源（设计 groupMeta 的「可选择多个」不成立），无 placeholder。
+// 其余三组 icon / hint / placeholder 取设计稿 renderVals().groupMeta（◎ ✦ ⚇ ▤）。
 export function personaGroups(p: OrbitProfileEditorView): PersonaGroup[] {
   const intro = p.intro.trim();
   return [
@@ -76,8 +78,7 @@ export function personaGroups(p: OrbitProfileEditorView): PersonaGroup[] {
       key: "goal",
       icon: "◎",
       title: { zh: "我的目标", en: "My goal" },
-      hint: { zh: "你希望通过 Orbit 达成什么目标？（可选择多个）", en: "What do you hope to achieve through Orbit? (multiple allowed)" },
-      placeholder: { zh: "添加一个目标，例如：进入欧美市场", en: "Add a goal, e.g. enter Western markets" },
+      hint: { zh: "目标来自基础资料的关系目标", en: "Your goal comes from the relationship goal in your basic profile" },
       values: intro ? [intro] : [],
     },
     {
@@ -132,6 +133,15 @@ export function contactRows(p: OrbitProfileEditorView): ContactRow[] {
     if (value) rows.push({ icon, label, value });
   }
   return rows;
+}
+
+// 设计稿 renderVals().aboutShort：关于我（bio）前 62 个字符 + …；右卡「当前 iOrbit 使用的信息」用。
+export const ABOUT_SHORT_LIMIT = 62;
+
+export function aboutShort(bio: string): string {
+  const text = bio.trim();
+  const chars = Array.from(text);
+  return chars.length > ABOUT_SHORT_LIMIT ? `${chars.slice(0, ABOUT_SHORT_LIMIT).join("")}…` : text;
 }
 
 export type SuggestionKey = "basic" | "persona" | "connect";

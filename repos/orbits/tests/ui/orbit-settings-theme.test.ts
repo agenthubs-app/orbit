@@ -36,8 +36,11 @@ test("settings route renders inside the shared account shell", () => {
   ]) {
     assert.match(legacy, new RegExp(`<${component} />`));
   }
+  // 任务 5：settings 屏（profile-settings.tsx）在设计卡片之后挂 ProfileLegacySettings；容器按 view 挂 ProfileSettings。
+  const settingsScreen = source("app/(app)/app/profile/profile-0918/profile-settings.tsx");
+  assert.match(settingsScreen, /<ProfileLegacySettings \/>/);
   const screens = source("app/(app)/app/profile/profile-0918/profile-screens.tsx");
-  assert.match(screens, /<ProfileLegacySettings \/>/);
+  assert.match(screens, /<ProfileSettings session=\{session\}/);
 });
 
 test("appearance settings offers explicit light and dark choices", () => {

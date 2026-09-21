@@ -85,7 +85,7 @@ function PersonaGroupCard({ group, session }: { group: PersonaGroup; session: Pr
             maxLength={80}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={onDraftKeyDown}
-            placeholder={t(group.placeholder)}
+            placeholder={group.placeholder ? t(group.placeholder) : undefined}
             value={draft}
           />
         </span>

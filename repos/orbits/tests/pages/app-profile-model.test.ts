@@ -4,6 +4,7 @@ import test from "node:test";
 import type { OrbitProfileEditorView } from "../../app/(app)/app/profile/profile-editor-adapter";
 import {
   ONBOARDING_FIELD_LABEL,
+  aboutShort,
   completeness,
   contactRows,
   missingFieldLabels,
@@ -85,7 +86,13 @@ test("personaGroups maps the four groups in order and goal is a single chip from
     assert.ok(group.icon);
     assert.ok(group.title.zh && group.title.en);
     assert.ok(group.hint.zh && group.hint.en);
-    assert.ok(group.placeholder.zh && group.placeholder.en);
+  }
+  // 我的目标 只读（hook 无 intro 保存通道）：提示文案说明来源，且没有输入占位
+  assert.equal(groups[0].hint.zh, "目标来自基础资料的关系目标");
+  assert.equal(groups[0].hint.en, "Your goal comes from the relationship goal in your basic profile");
+  assert.equal(groups[0].placeholder, undefined);
+  for (const group of groups.slice(1)) {
+    assert.ok(group.placeholder?.zh && group.placeholder?.en);
   }
   assert.deepEqual(personaGroups(emptyProfile())[0].values, []);
   assert.deepEqual(personaGroups(emptyProfile({ intro: "   " }))[0].values, []);
@@ -145,4 +152,13 @@ test("missingFieldLabels maps onboarding codes to zh/en labels in order", () => 
   assert.deepEqual(missingFieldLabels(onboarding, "en"), ["Name", "Primary industry", "Secondary industry", "Birth date"]);
   assert.deepEqual(missingFieldLabels({ policyVersion: 1, status: "complete", missingFields: [] }, "zh"), []);
   assert.equal(ONBOARDING_FIELD_LABEL.birthDate.zh, "生日");
+});
+
+test("aboutShort keeps up to 62 characters and appends … beyond that (design aboutShort)", () => {
+  const sixtyTwo = "字".repeat(62);
+  assert.equal(aboutShort(""), "");
+  assert.equal(aboutShort("  短介绍  "), "短介绍");
+  assert.equal(aboutShort(sixtyTwo), sixtyTwo);
+  assert.equal(aboutShort(`${sixtyTwo}多`), `${sixtyTwo}…`);
+  assert.equal(aboutShort(`${sixtyTwo}多出来的一大段`).length, 63);
 });
