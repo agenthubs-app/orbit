@@ -14,11 +14,17 @@ export const ONBOARDING_FIELD_LABEL: Record<ProfileOnboardingFieldCode, Copy> = 
   birthDate: { zh: "生日", en: "Birth date" },
 };
 
+/** 缺项代码 → 标签；服务端新增的未知代码回退为代码本身，不抛 TypeError（终审 M2）。 */
+export function onboardingFieldLabel(code: string, language: "zh" | "en"): string {
+  const copy = (ONBOARDING_FIELD_LABEL as Partial<Record<string, Copy>>)[code];
+  return copy?.[language] ?? code;
+}
+
 export function missingFieldLabels(
   onboarding: ProfileOnboardingContract,
   language: "zh" | "en",
 ): string[] {
-  return onboarding.missingFields.map(code => ONBOARDING_FIELD_LABEL[code][language]);
+  return onboarding.missingFields.map(code => onboardingFieldLabel(code, language));
 }
 
 function filledText(value: string | null | undefined): boolean {

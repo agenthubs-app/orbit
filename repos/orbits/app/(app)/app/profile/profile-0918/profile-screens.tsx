@@ -5,9 +5,10 @@
  *   - basic：保存栏 → 提交 <form>（saveProfile("basic")）；结果由壳内通知条呈现（绿色成功 / 琥珀色仍不完整 / 错误），
  *     留在本屏；完整且带 onboardingNext 时由 hook 自动跳转 next。
  *   - settings（任务 5）：保存栏 → saveProfile("basic")（关于我 = bio）；结果由壳内通知条呈现，留在本屏。
- *   - persona / basic 取消 → reloadLatestProfile() 后就地回 profile 视图；settings 取消 → reloadLatestProfile()
- *     后整页跳转 /app/profile（settings 屏挂在 /app/settings 路由、顶栏 active="settings"，就地切换会让顶栏
- *     高亮停在「设置」——任务 6 复审修正）。connect（任务 5）无保存栏。
+ *   - persona / basic 取消 → 整页跳转 /app/profile 丢弃草稿（不调 reloadLatestProfile：它按设计保留脏字段，
+ *     就地切回 profile 会把未保存的值和「最新资料已加载…」提示带到概览——合并前终审 I1 修正）；
+ *     settings 取消 → reloadLatestProfile() 后整页跳转 /app/profile（settings 屏挂在 /app/settings 路由、
+ *     顶栏 active="settings"，就地切换会让顶栏高亮停在「设置」——任务 6 复审修正）。connect（任务 5）无保存栏。
  *
  * 视图切换：初始视图来自 URL（page.tsx 传 view），「回 profile」为组件内状态切换 + history.replaceState
  * （不整页跳转，才能沿用设计的 toast 并保留 hook 状态）；页签与卡片按钮仍是路由链接。
@@ -85,6 +86,8 @@ export function ProfileScreens({
     setAwaitingMatching(false);
     if (messageKind !== "success") return;
     setToast(t({ en: "Changes saved", zh: "修改已保存" }));
+    // 概览只显示设计的 toast；清掉 hook 的绿色复读通知，避免双重提示（终审 M4）。
+    session.notify("info", "");
     goProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [awaitingMatching, matchingSaving, messageKind]);
@@ -96,13 +99,14 @@ export function ProfileScreens({
   }, [toast]);
 
   async function cancelEdit() {
-    await session.reloadLatestProfile();
     if (activeView === "settings") {
-      // /app/settings 路由：整页跳转让共享顶栏切回「我的」。
+      // /app/settings 路由：reload 后整页跳转让共享顶栏切回「我的」。
+      await session.reloadLatestProfile();
       window.location.assign(profileRoutePath("profile", onboardingQuery));
       return;
     }
-    goProfile();
+    // persona / basic：整页跳转丢弃草稿。不调 reloadLatestProfile（它保留脏字段），也不就地切视图。
+    window.location.assign(profileRoutePath("profile", onboardingQuery));
   }
 
   const editing = activeView === "persona" || activeView === "basic" || activeView === "settings";

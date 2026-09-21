@@ -377,8 +377,9 @@ test("ProfileScreens basic: a complete save with onboardingNext continues via th
   assert.deepEqual(replaced, []);
 });
 
-test("ProfileScreens basic: cancel reloads the latest profile and returns to the profile view", async (t) => {
-  const { replaced } = installWindow(t);
+// 终审 I1：取消不再 reload + 就地切视图（reload 保留脏字段会把未保存值带到概览），改为整页跳转 /app/profile。
+test("ProfileScreens basic: cancel discards the draft by navigating to /app/profile without reloading", async (t) => {
+  const { assigned, replaced } = installWindow(t);
   let gets = 0;
   const previousFetch = globalThis.fetch;
   globalThis.fetch = (async () => {
@@ -393,13 +394,19 @@ test("ProfileScreens basic: cancel reloads the latest profile and returns to the
     await settle();
   });
   t.after(() => act(() => root.unmount()));
+  const name = root.root.findAllByType("input")[0];
+  await act(async () => { name.props.onChange({ target: { value: "未保存的名字" } }); });
+  assert.equal(root.root.findAllByType("input")[0].props.value, "未保存的名字");
   const cancel = root.root.findAllByType("button").find((b) => b.children.includes("取消"));
   assert.ok(cancel);
+  assert.equal(cancel.props.disabled, false);
   await act(async () => {
     cancel.props.onClick();
     await settle();
   });
-  assert.equal(gets, 2, "initial GET + reload GET");
-  assert.equal(root.root.findAllByProps({ "data-profile-view": "profile" }).length >= 1, true);
-  assert.deepEqual(replaced, ["/app/profile"]);
+  assert.deepEqual(assigned, ["/app/profile"], "full navigation discards the draft");
+  assert.equal(gets, 1, "initial GET only — cancel issues no reload GET");
+  assert.deepEqual(replaced, [], "no in-place view flip");
+  assert.equal(root.root.findAllByProps({ "data-profile-view": "profile" }).length, 0, "overview is never rendered from the dirty session");
+  assert.equal(root.root.findAll((n) => typeof n.props.children === "string" && n.props.children.includes("最新资料已加载")).length, 0, "no reload notice");
 });

@@ -114,7 +114,7 @@ export function ProfileShell({
         </div>
         {showSaveBar ? (
           <span className="pc-save-bar">
-            <button className="btn pc-btn-cancel" disabled={session.saving || session.matchingSaving} onClick={onCancel} type="button">{t({ en: "Cancel", zh: "取消" })}</button>
+            <button className="btn pc-btn-cancel" disabled={session.saving || session.matchingSaving || session.extracting} onClick={onCancel} type="button">{t({ en: "Cancel", zh: "取消" })}</button>
             <button aria-busy={session.saving || session.matchingSaving || undefined} className="btn pc-btn-primary" disabled={saveDisabled} onClick={onSave} type="button">{saveText}</button>
           </span>
         ) : null}

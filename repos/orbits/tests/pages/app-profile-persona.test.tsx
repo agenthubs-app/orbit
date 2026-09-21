@@ -237,7 +237,7 @@ test("PROFILE_STYLES carry the persona rules scoped to the page", () => {
   assert.match(PROFILE_STYLES, /\.btn\.pc-tag-remove:active \{ transform: none; \}/);
 });
 
-/* ── ProfileScreens 接线：保存栏 → saveProfile("matching") → toast + 回 profile；取消 → reload + 回 profile ── */
+/* ── ProfileScreens 接线：保存栏 → saveProfile("matching") → toast + 回 profile；取消 → 整页跳转 /app/profile 丢弃草稿 ── */
 
 function payload(overrides: Partial<ManualProfile> = {}): ProfilePayload {
   const manual: ManualProfile = {
@@ -279,24 +279,25 @@ async function settle() {
 function installWindow(t: { after(cb: () => void): void }) {
   const previous = Object.getOwnPropertyDescriptor(globalThis, "window");
   const replaced: string[] = [];
+  const assigned: string[] = [];
   Object.defineProperty(globalThis, "window", {
     configurable: true,
     value: {
       addEventListener() {},
       removeEventListener() {},
       history: { replaceState: (_s: unknown, _t: string, url: string) => { replaced.push(url); } },
-      location: { assign() {} },
+      location: { assign: (path: string) => { assigned.push(path); } },
       scrollTo() {},
     },
   });
   t.after(() => {
     if (previous) Object.defineProperty(globalThis, "window", previous); else Reflect.deleteProperty(globalThis, "window");
   });
-  return replaced;
+  return { assigned, replaced };
 }
 
 test("ProfileScreens persona: save bar saves matching, then toasts 修改已保存 and returns to the profile view in place", async (t) => {
-  const replaced = installWindow(t);
+  const { replaced } = installWindow(t);
   const puts: Record<string, unknown>[] = [];
   let latest = payload();
   const previousFetch = globalThis.fetch;
@@ -329,11 +330,17 @@ test("ProfileScreens persona: save bar saves matching, then toasts 修改已保�
   assert.deepEqual(puts[0].offering, ["产品咨询", "日本市场资源"]);
   assert.equal(root.root.findAllByProps({ "data-profile-view": "profile" }).length >= 1, true);
   assert.ok(root.root.findAllByProps({ className: "pc-toast" }).find((n) => n.children.includes("修改已保存")));
+  // 终审 M4：概览只保留设计 toast，hook 的绿色复读通知条已被清空，不出现双重提示。
+  const notices = root.root.findAll((n) => n.type === "div" && n.props.role === "status" && String(n.props.className ?? "").includes("pc-notice"));
+  assert.equal(notices.length, 0, "no pc-notice role=status on the overview after save");
+  assert.equal(root.root.findAll((n) => typeof n.props.children === "string" && /复读核验|已保存并/.test(n.props.children)).length, 0);
   assert.deepEqual(replaced, ["/app/profile"]);
 });
 
-test("ProfileScreens persona: cancel reloads the latest profile and returns to the profile view", async (t) => {
-  const replaced = installWindow(t);
+// 终审 I1：reloadLatestProfile 按设计保留脏字段，取消若就地切回 profile 会把未保存 chip 与
+// 「最新资料已加载…」提示带到概览。改为整页跳转 /app/profile 丢弃草稿，不发 reload GET。
+test("ProfileScreens persona: cancel discards the draft by navigating to /app/profile without reloading", async (t) => {
+  const { assigned, replaced } = installWindow(t);
   let gets = 0;
   const previousFetch = globalThis.fetch;
   globalThis.fetch = (async () => {
@@ -348,13 +355,19 @@ test("ProfileScreens persona: cancel reloads the latest profile and returns to t
     await settle();
   });
   t.after(() => act(() => root.unmount()));
+  await typeAndEnter(root, "我能提供", "未保存的资源");
+  assert.ok(root.root.findAll((n) => n.props.children === "未保存的资源").length >= 1, "draft chip rendered before cancel");
   const cancel = root.root.findAllByType("button").find((b) => b.children.includes("取消"));
   assert.ok(cancel);
+  assert.equal(cancel.props.disabled, false);
+  const getsBeforeCancel = gets;
   await act(async () => {
     cancel.props.onClick();
     await settle();
   });
-  assert.equal(gets, 2, "initial GET + reload GET");
-  assert.equal(root.root.findAllByProps({ "data-profile-view": "profile" }).length >= 1, true);
-  assert.deepEqual(replaced, ["/app/profile"]);
+  assert.deepEqual(assigned, ["/app/profile"], "full navigation discards the draft");
+  assert.equal(gets, getsBeforeCancel, "cancel issues no extra GET /api/profile");
+  assert.deepEqual(replaced, [], "no in-place view flip");
+  assert.equal(root.root.findAllByProps({ "data-profile-view": "profile" }).length, 0, "overview is never rendered from the dirty session");
+  assert.equal(root.root.findAll((n) => typeof n.props.children === "string" && n.props.children.includes("最新资料已加载")).length, 0, "no reload notice");
 });

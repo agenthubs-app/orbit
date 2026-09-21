@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import type { ProfileOnboardingContract } from "../../shared/contract/profile";
 import type { OrbitProfileEditorView } from "../../app/(app)/app/profile/profile-editor-adapter";
 import {
   ONBOARDING_FIELD_LABEL,
@@ -8,6 +9,7 @@ import {
   completeness,
   contactRows,
   missingFieldLabels,
+  onboardingFieldLabel,
   personaGroups,
   suggestions,
 } from "../../app/(app)/app/profile/profile-0918/profile-model";
@@ -152,6 +154,17 @@ test("missingFieldLabels maps onboarding codes to zh/en labels in order", () => 
   assert.deepEqual(missingFieldLabels(onboarding, "en"), ["Name", "Primary industry", "Secondary industry", "Birth date"]);
   assert.deepEqual(missingFieldLabels({ policyVersion: 1, status: "complete", missingFields: [] }, "zh"), []);
   assert.equal(ONBOARDING_FIELD_LABEL.birthDate.zh, "生日");
+});
+
+test("onboardingFieldLabel / missingFieldLabels fall back to the raw code for unknown codes", () => {
+  assert.equal(onboardingFieldLabel("displayName", "en"), "Name");
+  assert.equal(onboardingFieldLabel("phoneNumber", "zh"), "phoneNumber");
+  const onboarding = {
+    policyVersion: 1,
+    status: "incomplete",
+    missingFields: ["birthDate", "phoneNumber"],
+  } as unknown as ProfileOnboardingContract;
+  assert.deepEqual(missingFieldLabels(onboarding, "zh"), ["生日", "phoneNumber"]);
 });
 
 test("aboutShort keeps up to 62 characters and appends … beyond that (design aboutShort)", () => {
