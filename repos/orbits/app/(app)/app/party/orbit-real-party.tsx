@@ -17,7 +17,7 @@ import {
   EventCheckInControl,
   EventContactRequestControl,
 } from "./event-operations-controls";
-import { formatOrbitPartyDateTime } from "./party-date-time";
+import { formatOrbitPartyDateTime } from "../events/events-0918/party-date-time";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 

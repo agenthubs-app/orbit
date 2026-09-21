@@ -1,26 +1,26 @@
-import type { AppProfileActor } from "../../profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model";
+import type { AppProfileActor } from "../../../../profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model";
 import type {
   OrbitPartyAgendaItemView,
   OrbitPartyPersonView,
   OrbitPartyTableView,
   OrbitPartyViewModel,
-} from "../../orbit-party-route-view-model";
-import type { OrbitLanguage } from "../../orbit-language-core";
+} from "../../../../orbit-party-route-view-model";
+import type { OrbitLanguage } from "../../../../orbit-language-core";
 import {
   resolveModuleMode,
   type ModuleMode,
-} from "../../../../../shared/services/module-mode";
-import type { EventRecord } from "../../../../../features/events/event-crud-and-import/contract";
-import { loadEventForRegistration } from "../../../../../features/events/registration/event-loader";
+} from "../../../../../../../shared/services/module-mode";
+import type { EventRecord } from "../../../../../../../features/events/event-crud-and-import/contract";
+import { loadEventForRegistration } from "../../../../../../../features/events/registration/event-loader";
 import {
   EventOperationsError,
   type EventContactRequest,
   type EventOperationsParticipant,
   type EventOperationsParticipantRecommendations,
   type EventOperationsTable,
-} from "../../../../../features/events/event-operations/contract";
-import { createConfiguredEventOperationsService } from "../../../../../features/events/event-operations/runtime";
-import type { EventOperationsAttendeeWorkspace } from "../../../../../features/events/event-operations/service";
+} from "../../../../../../../features/events/event-operations/contract";
+import { createConfiguredEventOperationsService } from "../../../../../../../features/events/event-operations/runtime";
+import type { EventOperationsAttendeeWorkspace } from "../../../../../../../features/events/event-operations/service";
 
 export interface AppPartySearchParams {
   code?: string | string[];
@@ -295,11 +295,22 @@ function timeLabel(value: string): string {
     : "—";
 }
 
+/**
+ * `at` is the ISO instant of the configured schedule column (check-in opens /
+ * round one / round two). The live screen derives done / now / soon / later
+ * from it; `time` stays the UTC `HH:MM` label older consumers already read.
+ */
+function agendaAt(value: string): string {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : "";
+}
+
 function agendaForOperations(
   workspace: EventOperationsAttendeeWorkspace,
 ): OrbitPartyAgendaItemView[] {
   return [
     {
+      at: agendaAt(workspace.configuration.checkInOpensAt),
       description: {
         en: "Check in at the venue to unlock tonight's matches.",
         zh: "到场签到后即可解锁今晚的匹配结果。",
@@ -308,6 +319,7 @@ function agendaForOperations(
       time: timeLabel(workspace.configuration.checkInOpensAt),
     },
     {
+      at: agendaAt(workspace.configuration.roundOneStartsAt),
       description: {
         en: "Find your table and seat; tablemates are matched to complement each other.",
         zh: "按桌号入座，同桌伙伴经过互补匹配，附开场建议。",
@@ -316,6 +328,7 @@ function agendaForOperations(
       time: timeLabel(workspace.configuration.roundOneStartsAt),
     },
     {
+      at: agendaAt(workspace.configuration.roundTwoStartsAt),
       description: {
         en: "Tables remix around shared topics for a second round of conversations.",
         zh: "围绕共同话题重新组桌，开启第二轮交流。",
@@ -525,7 +538,9 @@ function partyViewModelFromOperations(input: {
     contactRequests: contactRequestViews(input.workspace),
     eventId: input.workspace.eventId,
     eventName: input.event.name,
+    eventEndsAt: input.event.endsAt,
     eventPhase: eventPhaseFor(input.event),
+    eventStartsAt: input.event.startsAt,
     eventVenue: input.event.venue,
     generationNotice: input.workspace.generationNotice,
     graph: input.workspace.graph,

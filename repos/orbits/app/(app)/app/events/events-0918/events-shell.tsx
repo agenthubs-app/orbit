@@ -316,7 +316,7 @@ export const EVENTS_STYLES = `
 [data-orbit-real-page="events-0918"] .ev-reg-body .registration-portrait-7a { min-height: 0; height: auto !important; padding: 0; background: #FFFFFF; }
 [data-orbit-real-page="events-0918"] .ev-reg-body [data-orbit-registration-profile-guide="register"] { min-height: 0 !important; padding: 0 !important; background: #FFFFFF !important; }
 /* 壳的 data-orbit-real-page 会让 [data-orbit-real-page] .btn 基类（orbit-reference-styles.tsx:594–611）落到工作区全部 .btn 上；
-      下面按工作区自己的 <style>（registration-portrait-workspace.tsx:276）原样复述其声明并中和基类多出来的属性。
+      下面按工作区自己的 style 标签（registration-portrait-workspace.tsx:276）原样复述其声明并中和基类多出来的属性。
       父级 AI 访谈 <main data-orbit-registration-profile-guide=register> 里的 .btn / .btn-primary / .btn-secondary 是按 .btn 体系写的
       （只覆盖 border-color / background），基类对它们是预期外观 → 用 :not() 排除，不中和。
       工作区 button 通则：font:inherit; cursor:pointer; min-height:44px；:disabled cursor:default; opacity:.45 */
@@ -348,6 +348,244 @@ export const EVENTS_STYLES = `
 [data-orbit-real-page="events-0918"] .ev-reg-body .registration-portrait-7a .btn.portrait-primary:active { transform: none; }
 [data-orbit-real-page="events-0918"] .ev-reg-body .registration-portrait-7a .btn.portrait-primary:disabled { opacity: .5; cursor: default; }
 [data-orbit-real-page="events-0918"] .ev-reg-body .registration-portrait-7a > footer { gap: 14px; padding-top: 6px; border-top: 1px solid #E8E9F6; }
+/* ── 现场屏（设计稿 221–519 行）── */
+[data-orbit-real-page="events-0918"] .ev-lv { display: flex; flex-direction: column; gap: 22px; animation: orbit-fade .3s ease; }
+[data-orbit-real-page="events-0918"] .ev-lv-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+[data-orbit-real-page="events-0918"] .ev-lv-topbar-actions { display: flex; gap: 10px; }
+/* 详情页的 .ev-back 带 align-self:flex-start；设计 224 在 align-items:center 行里居中 */
+[data-orbit-real-page="events-0918"] .ev-lv-topbar .btn.ev-back { align-self: center; }
+/* 设计 226 活动详情 / 262 查看推荐 / 300 打招呼(略) / 380 交换：深色主按钮；ev-lv-btn-14 = 14px 版（226/262/319），默认 13px 版（300/380/462） */
+[data-orbit-real-page="events-0918"] .btn.ev-lv-btn-dark { padding: 10px; border: 0; border-radius: 10px; background: #0E1225; color: #FFFFFF; font-size: 13px; font-weight: 500; cursor: pointer;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-btn-dark:hover { background: #2E3270; color: #FFFFFF; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-btn-dark:active { transform: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-btn-dark:disabled, [data-orbit-real-page="events-0918"] .btn.ev-lv-btn-dark:disabled:hover { background: #ECEEFB; color: #9FA3C4; cursor: default; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-btn-ghost { padding: 10px; border: 1px solid #B9BCEB; border-radius: 10px; background: #FFFFFF; color: #2E3270; font-size: 13px; font-weight: 500; cursor: pointer;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-btn-ghost:hover { background: #ECEEFB; color: #2E3270; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-btn-ghost:active { transform: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-btn-ghost:disabled, [data-orbit-real-page="events-0918"] .btn.ev-lv-btn-ghost:disabled:hover { background: #FFFFFF; border-color: #E8E9F6; color: #9FA3C4; cursor: default; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-btn-14 { padding: 10px 18px; font-size: 14px; }
+/* 设计 226 是 <button>（line-height normal 在按钮里渲染为 22px → 42px 高）；app 用 <a>，按渲染结果对齐 */
+[data-orbit-real-page="events-0918"] .ev-lv-topbar .btn.ev-lv-btn-14 { line-height: 22px; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-btn-ghost.ev-lv-btn-14 { padding: 12px 20px; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-btn-grow { flex: 1; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-link { border: 0; background: transparent; font-size: 13px; color: #4B4FC7; cursor: pointer; padding: 0; border-radius: 0;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  font-weight: 400; height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-link:hover { color: #4B4FC7; background: transparent; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-link:active { transform: none; }
+/* 设计 229–237 头部 */
+[data-orbit-real-page="events-0918"] .ev-lv-hero { display: flex; flex-wrap: wrap; gap: 28px; align-items: center; }
+[data-orbit-real-page="events-0918"] .ev-lv-cover { width: 380px; max-width: 100%; height: 160px; border-radius: 16px; padding: 20px; display: flex; align-items: flex-end; border: 0; overflow: hidden; }
+[data-orbit-real-page="events-0918"] .ev-lv-cover-title { position: relative; z-index: 1; font-size: 22px; font-weight: 700; line-height: 1.25; color: #FFFFFF; }
+[data-orbit-real-page="events-0918"] .ev-lv-hero-copy { flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 10px; }
+[data-orbit-real-page="events-0918"] .ev-lv-h1 { margin: 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 32px; line-height: 1.15; letter-spacing: -0.03em; }
+[data-orbit-real-page="events-0918"] .ev-lv-meta { display: flex; gap: 12px; font-size: 14px; color: #3B3F7A; }
+[data-orbit-real-page="events-0918"] .ev-lv-tabs { overflow-x: auto; }
+[data-orbit-real-page="events-0918"] .ev-lv-body { display: flex; flex-direction: column; gap: 22px; }
+/* 卡片（设计 249 padding 26 gap 18；302/322 22px 版） */
+[data-orbit-real-page="events-0918"] .ev-lv-card { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 26px; display: flex; flex-direction: column; gap: 18px; }
+[data-orbit-real-page="events-0918"] .ev-lv-card-22 { padding: 22px; gap: 16px; }
+[data-orbit-real-page="events-0918"] .ev-lv-card-16 { gap: 16px; }
+[data-orbit-real-page="events-0918"] .ev-lv-card-12 { gap: 12px; }
+[data-orbit-real-page="events-0918"] .ev-lv-card-agenda { gap: 14px; }
+[data-orbit-real-page="events-0918"] .ev-lv-card-row { flex-direction: row; flex-wrap: wrap; gap: 24px; align-items: center; }
+[data-orbit-real-page="events-0918"] .ev-lv-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+[data-orbit-real-page="events-0918"] .ev-lv-card-copy { display: flex; flex-direction: column; gap: 4px; }
+[data-orbit-real-page="events-0918"] .ev-lv-sub { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="events-0918"] .ev-lv-col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+[data-orbit-real-page="events-0918"] .ev-lv-col-16 { gap: 16px; }
+/* 设计 247 / 322 / 392 / 479 两栏 */
+[data-orbit-real-page="events-0918"] .ev-lv-home { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); gap: 20px; align-items: start; }
+[data-orbit-real-page="events-0918"] .ev-lv-rec { display: grid; grid-template-columns: minmax(0, 3fr) minmax(280px, 1fr); gap: 20px; align-items: start; }
+[data-orbit-real-page="events-0918"] .ev-lv-groups { display: grid; grid-template-columns: minmax(0, 2.3fr) minmax(280px, 1fr); gap: 20px; align-items: start; }
+[data-orbit-real-page="events-0918"] .ev-lv-agenda { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); gap: 20px; align-items: start; }
+/* 设计 254–263 状态四格 */
+[data-orbit-real-page="events-0918"] .ev-lv-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); gap: 12px; }
+[data-orbit-real-page="events-0918"] .ev-lv-tile { padding: 18px; border-radius: 14px; background: #F7F7FD; display: flex; flex-direction: column; gap: 6px; }
+[data-orbit-real-page="events-0918"] .ev-lv-tile-16 { padding: 16px; }
+[data-orbit-real-page="events-0918"] .ev-lv-tile-green { background: #E6F1EC; gap: 8px; }
+[data-orbit-real-page="events-0918"] .ev-lv-tile-check { display: flex; align-items: center; gap: 8px; color: #2F6B4F; font-weight: 700; font-size: 15px; }
+[data-orbit-real-page="events-0918"] .ev-lv-tile-check-dot { width: 28px; height: 28px; border-radius: 50%; background: #2F6B4F; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+[data-orbit-real-page="events-0918"] .ev-lv-tile-green-sub { font-size: 13px; color: #2F6B4F; }
+[data-orbit-real-page="events-0918"] .ev-lv-tile-label { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="events-0918"] .ev-lv-tile-label-12 { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="events-0918"] .ev-lv-tile-n { font-size: 18px; }
+[data-orbit-real-page="events-0918"] .ev-lv-tile-n-20 { font-size: 20px; }
+[data-orbit-real-page="events-0918"] .ev-lv-tile-n-17 { font-size: 17px; }
+[data-orbit-real-page="events-0918"] .ev-lv-tile-actions { padding: 14px; border: 1px solid #E8E9F6; background: #FFFFFF; gap: 10px; justify-content: center; }
+[data-orbit-real-page="events-0918"] .ev-lv-tile-actions .btn.ev-lv-btn-dark, [data-orbit-real-page="events-0918"] .ev-lv-tile .btn.ev-lv-btn-dark { padding: 12px; font-size: 14px; }
+/* 设计 273 / 330 / 370 人物卡网格 */
+[data-orbit-real-page="events-0918"] .ev-lv-grid-220 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 14px; }
+[data-orbit-real-page="events-0918"] .ev-lv-grid-240 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 14px; }
+[data-orbit-real-page="events-0918"] .ev-lv-grid-250 { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 14px; }
+[data-orbit-real-page="events-0918"] .ev-lv-grid-12 { gap: 12px; }
+[data-orbit-real-page="events-0918"] .ev-lv-person { display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid #E8E9F6; border-radius: 14px; }
+[data-orbit-real-page="events-0918"] .ev-lv-person-head { display: flex; gap: 12px; align-items: flex-start; }
+[data-orbit-real-page="events-0918"] .ev-lv-avatar { width: 56px; height: 56px; border: 0; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px; flex-shrink: 0; }
+[data-orbit-real-page="events-0918"] .ev-lv-avatar-48 { width: 48px; height: 48px; font-size: 16px; }
+[data-orbit-real-page="events-0918"] .ev-lv-avatar-64 { width: 64px; height: 64px; font-size: 24px; }
+[data-orbit-real-page="events-0918"] .ev-lv-person-copy { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+[data-orbit-real-page="events-0918"] .ev-lv-person-name-row { display: flex; justify-content: space-between; gap: 6px; }
+[data-orbit-real-page="events-0918"] .ev-lv-person-name { font-size: 15px; }
+[data-orbit-real-page="events-0918"] .ev-lv-match { padding: 2px 8px; border-radius: 999px; background: #ECEEFB; color: #4B4FC7; font-size: 11px; white-space: nowrap; }
+[data-orbit-real-page="events-0918"] .ev-lv-person-role { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="events-0918"] .ev-lv-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+[data-orbit-real-page="events-0918"] .ev-lv-tag { padding: 2px 8px; border-radius: 999px; background: #ECEEFB; color: #3B3F7A; font-size: 11px; }
+[data-orbit-real-page="events-0918"] .ev-lv-reason { padding: 12px; border-radius: 10px; background: #F7F7FD; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #3B3F7A; }
+[data-orbit-real-page="events-0918"] .ev-lv-reason-label { color: #6B6F99; }
+[data-orbit-real-page="events-0918"] .ev-lv-person-bio { font-size: 13px; color: #3B3F7A; }
+[data-orbit-real-page="events-0918"] .ev-lv-person-actions { display: flex; gap: 8px; }
+[data-orbit-real-page="events-0918"] .ev-lv-contact { flex: 1; display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+[data-orbit-real-page="events-0918"] .ev-lv-state { flex: 1; padding: 10px; border-radius: 10px; background: #ECEEFB; color: #2E3270; font-size: 13px; font-weight: 500; text-align: center; white-space: nowrap; }
+[data-orbit-real-page="events-0918"] .ev-lv-error { flex-basis: 100%; color: #B5473A; font-size: 12px; }
+/* 设计 303–312 首页图谱摘要 */
+[data-orbit-real-page="events-0918"] .ev-lv-graph-summary { flex: 1; min-width: 260px; display: flex; flex-direction: column; gap: 16px; }
+[data-orbit-real-page="events-0918"] .ev-lv-ministats { display: flex; gap: 20px; }
+[data-orbit-real-page="events-0918"] .ev-lv-ministat { display: flex; gap: 10px; align-items: center; }
+[data-orbit-real-page="events-0918"] .ev-lv-ministat-icon { width: 36px; height: 36px; border-radius: 10px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; }
+[data-orbit-real-page="events-0918"] .ev-lv-ministat-copy { display: flex; flex-direction: column; }
+[data-orbit-real-page="events-0918"] .ev-lv-ministat-label { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="events-0918"] .ev-lv-ministat-n { font-size: 20px; }
+/* 设计 316–333 当前分组卡 */
+[data-orbit-real-page="events-0918"] .ev-lv-group-tile { display: flex; gap: 14px; align-items: center; padding: 16px; border-radius: 14px; background: #F7F7FD; }
+[data-orbit-real-page="events-0918"] .ev-lv-group-icon { width: 44px; height: 44px; border-radius: 12px; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+[data-orbit-real-page="events-0918"] .ev-lv-group-copy { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+[data-orbit-real-page="events-0918"] .ev-lv-group-row { display: flex; justify-content: space-between; }
+[data-orbit-real-page="events-0918"] .ev-lv-group-name { font-size: 16px; }
+[data-orbit-real-page="events-0918"] .ev-lv-group-round, [data-orbit-real-page="events-0918"] .ev-lv-group-theme { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="events-0918"] .ev-lv-progress { height: 6px; border-radius: 3px; background: #E8E9F6; overflow: hidden; }
+[data-orbit-real-page="events-0918"] .ev-lv-progress-fill { display: block; height: 100%; background: #4B4FC7; }
+[data-orbit-real-page="events-0918"] .ev-lv-group-count { font-size: 14px; }
+[data-orbit-real-page="events-0918"] .ev-lv-mates { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+[data-orbit-real-page="events-0918"] .ev-lv-mate { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+[data-orbit-real-page="events-0918"] .ev-lv-mate-name { font-size: 12px; color: #0E1225; }
+[data-orbit-real-page="events-0918"] .ev-lv-mate-co { font-size: 11px; color: #9FA3C4; }
+/* 设计无：破冰话题（roundOne.icebreakers，计划要求保留） */
+[data-orbit-real-page="events-0918"] .ev-lv-ice { display: flex; flex-direction: column; gap: 4px; padding: 12px; border-radius: 10px; background: #F7F7FD; font-size: 12px; color: #3B3F7A; }
+[data-orbit-real-page="events-0918"] .ev-lv-ice-title { font-size: 13px; }
+/* 设计 335–347 首页议程精简行 */
+[data-orbit-real-page="events-0918"] .ev-lv-agenda-mini { display: grid; grid-template-columns: 20px 1fr auto; gap: 12px; padding: 10px 8px; border-radius: 10px; }
+[data-orbit-real-page="events-0918"] .ev-lv-agenda-mini-dotwrap { display: flex; flex-direction: column; align-items: center; }
+[data-orbit-real-page="events-0918"] .ev-lv-agenda-mini-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #C9CBEA; margin-top: 4px; }
+[data-orbit-real-page="events-0918"] .ev-lv-agenda-mini-copy { display: flex; flex-direction: column; gap: 2px; }
+[data-orbit-real-page="events-0918"] .ev-lv-agenda-mini-time { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="events-0918"] .ev-lv-agenda-mini-title { font-size: 14px; }
+[data-orbit-real-page="events-0918"] .ev-lv-agenda-mini-mark { font-size: 12px; }
+/* 设计 345–349 推荐说明 / 421–427 分组规则 */
+[data-orbit-real-page="events-0918"] .ev-lv-note { display: flex; gap: 12px; }
+[data-orbit-real-page="events-0918"] .ev-lv-note-copy { display: flex; flex-direction: column; gap: 2px; }
+[data-orbit-real-page="events-0918"] .ev-lv-note-title { font-size: 14px; }
+[data-orbit-real-page="events-0918"] .ev-lv-note-desc { font-size: 12px; color: #6B6F99; line-height: 1.6; }
+[data-orbit-real-page="events-0918"] .ev-lv-note-desc-13 { font-size: 13px; color: #6B6F99; line-height: 1.6; display: flex; flex-direction: column; }
+[data-orbit-real-page="events-0918"] .ev-lv-icon-round { width: 40px; height: 40px; border-radius: 50%; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+[data-orbit-real-page="events-0918"] .ev-lv-tip { display: flex; gap: 12px; padding: 16px; border-radius: 12px; background: #F7F7FD; }
+[data-orbit-real-page="events-0918"] .ev-lv-tip-icon { color: #4B4FC7; }
+[data-orbit-real-page="events-0918"] .ev-lv-tip-desc { font-size: 13px; color: #3B3F7A; line-height: 1.6; display: flex; flex-direction: column; }
+[data-orbit-real-page="events-0918"] .ev-lv-rules { gap: 18px; }
+/* 设计 362–388 全部参会者 */
+[data-orbit-real-page="events-0918"] .ev-lv-toolbar { display: flex; flex-wrap: wrap; gap: 10px; }
+[data-orbit-real-page="events-0918"] .ev-lv-search { min-width: 260px; padding: 0 14px; border-radius: 10px; }
+[data-orbit-real-page="events-0918"] .ev-lv-search .ev-search-input { padding: 12px 0; }
+[data-orbit-real-page="events-0918"] .ev-lv-hot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-hot-tag { padding: 5px 12px; border-radius: 999px; background: #F7F7FD; border: 1px solid #E8E9F6; color: #3B3F7A; font-size: 13px; cursor: pointer;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  font-weight: 400; height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-hot-tag:hover { background: #ECEEFB; color: #3B3F7A; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-hot-tag:active { transform: none; }
+[data-orbit-real-page="events-0918"] .ev-lv-hot-total { margin-left: auto; }
+[data-orbit-real-page="events-0918"] .ev-lv-pages { display: flex; align-items: center; justify-content: center; gap: 8px; padding-top: 8px; position: relative; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-page-arrow { width: 32px; height: 32px; border: 1px solid #E8E9F6; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #3B3F7A; background: transparent; padding: 0; cursor: pointer;
+  font-weight: 400; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-page-arrow:disabled { color: #9FA3C4; cursor: default; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-page-arrow:active { transform: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-page { width: 32px; height: 32px; border: 0; border-radius: 50%; background: transparent; color: #3B3F7A; font-size: 14px; cursor: pointer; padding: 0;
+  font-weight: 400; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-page:active { transform: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-page.ev-lv-page-on { background: #4B4FC7; color: #FFFFFF; }
+[data-orbit-real-page="events-0918"] .ev-lv-page-size { position: absolute; right: 0; font-size: 13px; color: #6B6F99; }
+/* 设计 395–413 分组 */
+[data-orbit-real-page="events-0918"] .ev-lv-group-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+[data-orbit-real-page="events-0918"] .ev-lv-group-live { font-size: 13px; color: #2F6B4F; }
+[data-orbit-real-page="events-0918"] .ev-lv-members-title { font-size: 16px; }
+[data-orbit-real-page="events-0918"] .ev-lv-member { display: flex; gap: 12px; align-items: center; padding: 14px; border: 1px solid #E8E9F6; border-radius: 12px; background: #FFFFFF; text-align: left; }
+[data-orbit-real-page="events-0918"] .ev-lv-member-copy { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+[data-orbit-real-page="events-0918"] .ev-lv-member-row { display: flex; justify-content: space-between; align-items: center; }
+[data-orbit-real-page="events-0918"] .ev-lv-member-name { font-size: 14px; }
+[data-orbit-real-page="events-0918"] .ev-lv-member-role { font-size: 12px; color: #6B6F99; }
+/* 设计 437–471 关系图谱 */
+[data-orbit-real-page="events-0918"] .ev-lv-graph-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; }
+[data-orbit-real-page="events-0918"] .ev-lv-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: #3B3F7A; }
+[data-orbit-real-page="events-0918"] .ev-lv-legend-item { display: flex; align-items: center; gap: 6px; }
+[data-orbit-real-page="events-0918"] .ev-lv-legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+[data-orbit-real-page="events-0918"] .ev-lv-graph-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); gap: 16px; align-items: stretch; }
+[data-orbit-real-page="events-0918"] .ev-lv-graph-area { position: relative; height: 500px; border-radius: 16px; background: #F7F7FD; overflow: hidden; }
+[data-orbit-real-page="events-0918"] .ev-lv-graph-canvas { position: absolute; left: calc(50% - 260px); top: calc(50% - 210px); width: 520px; height: 420px; }
+[data-orbit-real-page="events-0918"] .ev-lv-graph-ring { position: absolute; border-radius: 50%; border: 1px dashed #DDDEFA; }
+[data-orbit-real-page="events-0918"] .ev-lv-graph-ring-300 { left: 110px; top: 60px; width: 300px; height: 300px; }
+[data-orbit-real-page="events-0918"] .ev-lv-graph-ring-200 { left: 160px; top: 110px; width: 200px; height: 200px; }
+[data-orbit-real-page="events-0918"] .ev-lv-graph-line { position: absolute; height: 2px; transform-origin: 0 50%; opacity: .6; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-graph-node { position: absolute; width: 48px; height: 48px; border: 2px solid #FFFFFF; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; cursor: pointer; transition: box-shadow .2s; padding: 0;
+  gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-graph-node:hover { background: #DDDEFA; color: #2E3270; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-graph-node:active { transform: none; }
+[data-orbit-real-page="events-0918"] .ev-lv-graph-me { position: absolute; left: 232px; top: 182px; width: 56px; height: 56px; border-radius: 50%; background: #4B4FC7; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px; box-shadow: 0 0 0 8px rgba(75,79,199,0.15); }
+[data-orbit-real-page="events-0918"] .ev-lv-graph-me-label { position: absolute; left: 238px; top: 244px; padding: 2px 8px; border-radius: 6px; background: #4B4FC7; color: #FFFFFF; font-size: 11px; }
+[data-orbit-real-page="events-0918"] .ev-lv-graph-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 24px; }
+[data-orbit-real-page="events-0918"] .ev-lv-gsel { border: 1px solid #E8E9F6; border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+[data-orbit-real-page="events-0918"] .ev-lv-gsel-head { display: flex; gap: 14px; align-items: flex-start; }
+[data-orbit-real-page="events-0918"] .ev-lv-gsel-copy { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+[data-orbit-real-page="events-0918"] .ev-lv-gsel-name { font-size: 18px; }
+[data-orbit-real-page="events-0918"] .ev-lv-gsel-role { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="events-0918"] .ev-lv-gsel-block { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid #EEEFF8; }
+[data-orbit-real-page="events-0918"] .ev-lv-gsel-h { font-size: 14px; }
+[data-orbit-real-page="events-0918"] .ev-lv-gsel-bio { font-size: 13px; color: #3B3F7A; line-height: 1.7; }
+[data-orbit-real-page="events-0918"] .ev-lv-gsel-rel-row { display: flex; align-items: center; gap: 10px; }
+[data-orbit-real-page="events-0918"] .ev-lv-gsel-rel { padding: 3px 10px; border-radius: 999px; background: #ECEEFB; font-size: 12px; }
+[data-orbit-real-page="events-0918"] .ev-lv-gsel-rel-sub { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="events-0918"] .ev-lv-gsel-interests { display: flex; flex-wrap: wrap; gap: 6px; }
+[data-orbit-real-page="events-0918"] .ev-lv-gsel-interest { padding: 5px 10px; border-radius: 8px; background: #F7F7FD; border: 1px solid #E8E9F6; font-size: 12px; color: #3B3F7A; }
+[data-orbit-real-page="events-0918"] .ev-lv-gsel-actions { display: flex; gap: 8px; margin-top: auto; }
+[data-orbit-real-page="events-0918"] .ev-lv-gsel-actions .btn.ev-lv-btn-dark, [data-orbit-real-page="events-0918"] .ev-lv-gsel-actions .btn.ev-lv-btn-ghost { padding: 12px; }
+/* 设计 473–476 图谱洞察 */
+[data-orbit-real-page="events-0918"] .btn.ev-lv-stat { display: flex; gap: 14px; align-items: center; padding: 18px; border: 1px solid #E8E9F6; border-radius: 14px; background: #FFFFFF; text-align: left; cursor: pointer; color: #0E1225;
+  font-weight: 400; height: auto; white-space: normal; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-stat:hover { background: #F7F7FD; color: #0E1225; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-stat:active { transform: none; }
+[data-orbit-real-page="events-0918"] .ev-lv-stat-icon { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+[data-orbit-real-page="events-0918"] .ev-lv-stat-copy { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+[data-orbit-real-page="events-0918"] .ev-lv-stat-label, [data-orbit-real-page="events-0918"] .ev-lv-stat-desc { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="events-0918"] .ev-lv-stat-label { font-size: 13px; }
+[data-orbit-real-page="events-0918"] .ev-lv-stat-n { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 24px; }
+[data-orbit-real-page="events-0918"] .ev-lv-stat-caret { color: #9FA3C4; }
+/* 设计 481–507 流程议程 */
+[data-orbit-real-page="events-0918"] .ev-lv-agenda-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px; }
+[data-orbit-real-page="events-0918"] .ev-lv-now-dot { color: #B5473A; }
+[data-orbit-real-page="events-0918"] .ev-lv-agenda-list { display: flex; flex-direction: column; }
+[data-orbit-real-page="events-0918"] .ev-lv-agenda-row { display: grid; grid-template-columns: 120px 28px 1fr; gap: 14px; padding: 14px 12px; border-radius: 14px; }
+[data-orbit-real-page="events-0918"] .ev-lv-agenda-time { font-size: 14px; color: #3B3F7A; padding-top: 4px; }
+[data-orbit-real-page="events-0918"] .ev-lv-agenda-rail { display: flex; flex-direction: column; align-items: center; }
+[data-orbit-real-page="events-0918"] .ev-lv-agenda-dot { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #C9CBEA; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; }
+[data-orbit-real-page="events-0918"] .ev-lv-agenda-line { flex: 1; width: 1px; background: #DDDEFA; margin-top: 6px; }
+[data-orbit-real-page="events-0918"] .ev-lv-agenda-body { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-radius: 12px; background: #F7F7FD; }
+[data-orbit-real-page="events-0918"] .ev-lv-agenda-title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+[data-orbit-real-page="events-0918"] .ev-lv-agenda-title { font-size: 15px; }
+[data-orbit-real-page="events-0918"] .ev-lv-agenda-tag { padding: 3px 10px; border-radius: 999px; font-size: 12px; white-space: nowrap; }
+[data-orbit-real-page="events-0918"] .ev-lv-agenda-desc { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="events-0918"] .ev-lv-now-chip { align-self: flex-start; padding: 4px 10px; border-radius: 999px; background: #DDDEFA; color: #2E3270; font-size: 12px; }
+[data-orbit-real-page="events-0918"] .ev-lv-now-title { font-size: 18px; }
+[data-orbit-real-page="events-0918"] .ev-lv-now-desc { margin: 0; font-size: 14px; color: #3B3F7A; line-height: 1.7; }
+/* 设计无：真实空态（四种 resultsState / 无分桌 / 无参会者），按设计空态色阶 */
+[data-orbit-real-page="events-0918"] .ev-lv-empty { display: flex; flex-direction: column; gap: 6px; padding: 18px; border-radius: 14px; background: #F7F7FD; border: 1px dashed #DDDEFA; }
+[data-orbit-real-page="events-0918"] .ev-lv-empty-title { font-size: 15px; }
+[data-orbit-real-page="events-0918"] .ev-lv-empty-detail { font-size: 13px; color: #6B6F99; line-height: 1.6; }
+[data-orbit-real-page="events-0918"] .ev-lv-empty-code { font-size: 11px; color: #B5473A; }
+@media (max-width: 900px) {
+  [data-orbit-real-page="events-0918"] .ev-lv-home, [data-orbit-real-page="events-0918"] .ev-lv-rec, [data-orbit-real-page="events-0918"] .ev-lv-groups, [data-orbit-real-page="events-0918"] .ev-lv-agenda, [data-orbit-real-page="events-0918"] .ev-lv-graph-grid { grid-template-columns: 1fr; }
+}
 /* ── 设计稿无：焦点环与窄屏（不影响 1240 比对）── */
 [data-orbit-real-page="events-0918"] .btn.ev-seg-btn:focus-visible { outline: 2px solid #4B4FC7; outline-offset: -2px; }
 [data-orbit-real-page="events-0918"] .btn.ev-tab:focus-visible { outline: 2px solid #4B4FC7; outline-offset: 2px; }

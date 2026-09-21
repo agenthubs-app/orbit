@@ -19,7 +19,7 @@ import {
   loadAppPartyRouteViewModel,
   type AppPartyRouteStateViewModel,
   type AppPartySearchParams,
-} from "./compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model";
+} from "../events/[id]/live/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model";
 import {
   partyLoginHref,
   type PartyLoginSearchParams,

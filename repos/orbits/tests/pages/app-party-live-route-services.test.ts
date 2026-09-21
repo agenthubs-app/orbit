@@ -68,9 +68,12 @@ async function withMockParty<T>(run: () => Promise<T>): Promise<T> {
   }
 }
 
-test("/app/party routes use a live-capable party loader instead of the legacy hybrid party view model", () => {
-  const partyPageSource = source("app/(app)/app/party/page.tsx");
-  const graphPageSource = source("app/(app)/app/party/graph/page.tsx");
+const LIVE_PAGE = "app/(app)/app/events/[id]/live/page.tsx";
+const LIVE_COMPONENT = "app/(app)/app/events/events-0918/event-live.tsx";
+const LIVE_CONTROLS = "app/(app)/app/events/events-0918/live-controls.ts";
+
+test("/app/events/[id]/live uses the live-capable party loader instead of the legacy hybrid party view model", () => {
+  const livePageSource = source(LIVE_PAGE);
   const partyModelSource = source(
     "app/(app)/app/orbit-party-route-view-model.ts",
   );
@@ -83,13 +86,11 @@ test("/app/party routes use a live-capable party loader instead of the legacy hy
     "app/(app)/app/orbit-party-presentation.ts",
   );
 
-  for (const pageSource of [partyPageSource, graphPageSource]) {
-    assert.match(pageSource, /loadAppPartyRouteViewModel/);
-    assert.match(pageSource, /routeModel\.party/);
-    assert.match(pageSource, /StateView/);
-    assert.doesNotMatch(pageSource, /buildOrbitParty/);
-    assert.doesNotMatch(pageSource, /getOrbitPartyViewModel/);
-  }
+  assert.match(livePageSource, /loadAppPartyRouteViewModel/);
+  assert.match(livePageSource, /routeModel\.party/);
+  assert.match(livePageSource, /StateView/);
+  assert.doesNotMatch(livePageSource, /buildOrbitParty/);
+  assert.doesNotMatch(livePageSource, /getOrbitPartyViewModel/);
 
   assert.doesNotMatch(
     partyModelSource,
@@ -99,62 +100,53 @@ test("/app/party routes use a live-capable party loader instead of the legacy hy
   assert.equal(existsSync(authoredPresentationPath), false);
 });
 
-test("/app/party/checkin uses the same live-capable party loader without component fallback", () => {
-  const checkinPageSource = source("app/(app)/app/party/checkin/page.tsx");
-  const partyComponentSource = source("app/(app)/app/party/orbit-real-party.tsx");
-  const controlsSource = source("app/(app)/app/party/event-operations-controls.tsx");
+test("live check-in writes through the event-operations check-in API without component fallback", () => {
+  const liveComponentSource = source(LIVE_COMPONENT);
+  const controlsSource = source(LIVE_CONTROLS);
 
-  assert.match(checkinPageSource, /loadAppPartyRouteViewModel/);
-    assert.match(checkinPageSource, /StateView/);
-    assert.match(checkinPageSource, /OrbitRealPartyCheckin/);
-    assert.match(checkinPageSource, /routeModel\.party/);
-    assert.doesNotMatch(checkinPageSource, /buildOrbitParty/);
-    assert.doesNotMatch(partyComponentSource, /getOrbitPartyViewModel/);
-    assert.match(partyComponentSource, /EventCheckInControl/);
-    assert.match(controlsSource, /operations\/check-in/);
-    assert.match(controlsSource, /same registration is written once/);
-    assert.doesNotMatch(partyComponentSource, /Check-in is not available/);
+  assert.doesNotMatch(liveComponentSource, /getOrbitPartyViewModel/);
+  assert.match(liveComponentSource, /useEventCheckIn/);
+  assert.match(liveComponentSource, /viewModel\.checkInAvailable/);
+  assert.match(controlsSource, /operations\/check-in/);
+  assert.match(controlsSource, /same registration is written once/);
+  assert.doesNotMatch(liveComponentSource, /Check-in is not available/);
 });
 
-test("party recommendations expose a route-derived industry filter", () => {
-  const partyComponentSource = source(
-    "app/(app)/app/party/orbit-real-party.tsx",
-  );
+test("live recommendations render only the loader's recommendations with the four real result states", () => {
+  const liveComponentSource = source(LIVE_COMPONENT);
 
-  assert.match(partyComponentSource, /Filter by industry/);
-  assert.match(partyComponentSource, /viewModel\.recommendations/);
-  assert.match(partyComponentSource, /person\.industry\.trim\(\) === industry/);
-  assert.doesNotMatch(
-    partyComponentSource,
-    /aria-label=\{t\(\{ en: "Filter", zh: "筛选" \}\)\}/,
-  );
+  assert.match(liveComponentSource, /viewModel\.recommendations/);
+  assert.match(liveComponentSource, /resultsBoundaryCopy/);
+  for (const state of ["failed", "locked", "not_generated", "processing", "ready"]) {
+    assert.match(liveComponentSource, new RegExp(`${state}: \\{`));
+  }
+  // 设计的四个筛选下拉 / 换一批 / 仅高匹配开关按数据真实性决定省略。
+  assert.doesNotMatch(liveComponentSource, /<select|toggleHi|shuffle/);
 });
 
-test("party recommendations use individual consent requests and graph uses persisted edges", () => {
-  const partyComponentSource = source(
-    "app/(app)/app/party/orbit-real-party.tsx",
-  );
-  const controlsSource = source("app/(app)/app/party/event-operations-controls.tsx");
+test("live contact requests use individual consent requests and the graph uses persisted edges", () => {
+  const liveComponentSource = source(LIVE_COMPONENT);
+  const controlsSource = source(LIVE_CONTROLS);
 
-  assert.match(partyComponentSource, /EventContactRequestControl/);
+  assert.match(liveComponentSource, /useEventContactRequest/);
   assert.match(controlsSource, /const status = contactId/);
-  assert.match(controlsSource, /encodeURIComponent\(contactId\)/);
+  assert.match(liveComponentSource, /encodeURIComponent\(control\.contactId\)/);
   assert.match(controlsSource, /targetParticipantId: person\.id/);
   assert.match(controlsSource, /operations\/contact-requests/);
   assert.match(controlsSource, /\{ accept, expectedRevision: revision \}/);
-  assert.match(partyComponentSource, /graph\.edges\.flatMap/);
-  assert.match(partyComponentSource, /source-backed and read only/);
+  assert.match(liveComponentSource, /graph\?\.edges/);
+  assert.match(liveComponentSource, /graphLegendKind\(/);
   assert.doesNotMatch(
-    partyComponentSource,
+    liveComponentSource,
     /Add to wallet|In card wallet|Add all current contacts to wallet|Added \$\{viewModel\.recommendations\.length\} people/,
   );
-  assert.doesNotMatch(partyComponentSource, /setAdded|setBulkMessage/);
+  assert.doesNotMatch(liveComponentSource, /setAdded|setBulkMessage/);
 });
 
 test("app party route loader fails closed instead of inventing a mock party model", async () => {
   await withMockParty(async () => {
     const { loadAppPartyRouteViewModel } = await import(
-      "../../app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model"
+      "../../app/(app)/app/events/[id]/live/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model"
     );
     const routeModel = await loadAppPartyRouteViewModel({
       eventId: "demo-event-1",
@@ -193,7 +185,7 @@ test("registered catalogue attendees do not receive catalogue rows as fake AI re
       "../../features/events/registration/runtime"
     );
     const { loadAppPartyRouteViewModel } = await import(
-      "../../app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model"
+      "../../app/(app)/app/events/[id]/live/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model"
     );
     const event = getOrbitLandingViewModel().events.find(
       (item) => item.id === "event_01",
@@ -240,7 +232,7 @@ test("unregistered catalogue viewers do not receive Party attendee context", asy
       "../support/legacy-orbit-landing-view"
     );
     const { loadAppPartyRouteViewModel } = await import(
-      "../../app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model"
+      "../../app/(app)/app/events/[id]/live/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model"
     );
     const event = getOrbitLandingViewModel().events.find(
       (item) => item.id === "event_01",
@@ -263,41 +255,25 @@ test("unregistered catalogue viewers do not receive Party attendee context", asy
   });
 });
 
-test("party pages require an authenticated actor and pass it to the shared loader", () => {
-  const pages = [
-    {
-      path: "app/(app)/app/party/page.tsx",
-      pathname: "/app/party",
-    },
-    {
-      path: "app/(app)/app/party/checkin/page.tsx",
-      pathname: "/app/party/checkin",
-    },
-    {
-      path: "app/(app)/app/party/graph/page.tsx",
-      pathname: "/app/party/graph",
-    },
-  ] as const;
+test("the live page requires an authenticated actor, returns to itself after login, and passes the actor to the shared loader", () => {
+  const pageSource = source(LIVE_PAGE);
 
-  for (const page of pages) {
-    const pageSource = source(page.path);
-
-    assert.match(pageSource, /const session = await auth\(\)/);
-    assert.match(pageSource, /if \(!session\?\.user\?\.id\)/);
-    assert.ok(
-      pageSource.includes(
-        `redirect(partyLoginHref("${page.pathname}", resolvedSearchParams))`,
-      ),
-    );
-    assert.match(pageSource, /actor: \{/);
-    assert.match(pageSource, /id: session\.user\.id/);
-  }
+  assert.match(pageSource, /auth\(\)/);
+  assert.match(pageSource, /if \(!session\?\.user\?\.id\)/);
+  assert.ok(
+    pageSource.includes(
+      "redirect(`/app/account/login?next=${encodeURIComponent(`/app/events/${id}/live`)}`)",
+    ),
+  );
+  assert.doesNotMatch(pageSource, /partyLoginHref|party-login-return/);
+  assert.match(pageSource, /actor: \{/);
+  assert.match(pageSource, /id: session\.user\.id/);
 });
 
 test("party URL query mode cannot activate mock fixtures", async () => {
   await withUnconfiguredLiveParty(async () => {
     const { loadAppPartyRouteViewModel } = await import(
-      "../../app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model"
+      "../../app/(app)/app/events/[id]/live/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model"
     );
     const routeModel = await loadAppPartyRouteViewModel({
       actor: {
@@ -325,7 +301,7 @@ test("party URL query mode cannot activate mock fixtures", async () => {
 test("party keeps a sourced event pending until event operations are configured", async () => {
   await withUnconfiguredLiveParty(async () => {
     const { loadAppPartyRouteViewModel } = await import(
-      "../../app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model"
+      "../../app/(app)/app/events/[id]/live/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model"
     );
     const routeModel = await loadAppPartyRouteViewModel({
       actor: {
@@ -502,7 +478,7 @@ test("a registered attendee loads Party from the event-operations workspace and 
   };
   const calls: string[] = [];
   const { loadAppPartyRouteViewModel } = await import(
-    "../../app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model"
+    "../../app/(app)/app/events/[id]/live/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model"
   );
 
   const routeModel = await loadAppPartyRouteViewModel(
@@ -545,7 +521,7 @@ test("a registered attendee loads Party from the event-operations workspace and 
 
 test("party distinguishes a missing event selection from missing people context", async () => {
   const { loadAppPartyRouteViewModel } = await import(
-    "../../app/(app)/app/party/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model"
+    "../../app/(app)/app/events/[id]/live/compose-app-party-from-previously-approved-mock-first-capabilities/party-route-view-model"
   );
   const routeModel = await loadAppPartyRouteViewModel({
     language: "zh",

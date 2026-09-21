@@ -6,6 +6,12 @@
 import type { OrbitLandingEventView } from "../../orbit-landing-route-view-model";
 import type { EventRegistrationAvailability } from "../../orbit-event-registration-view-model";
 import { eventCardActionKind } from "../explore-model";
+import type {
+  OrbitPartyAgendaItemView,
+  OrbitPartyContactRequestView,
+  OrbitPartyGraphView,
+  OrbitPartyPersonView,
+} from "../../orbit-party-route-view-model";
 
 export type EventLifecycle = OrbitLandingEventView["status"];
 export type EventListLanguage = "en" | "zh";
@@ -206,4 +212,190 @@ export function formatEventDateRange(
     return `${s.month} ${s.day}${withYear ? `, ${s.year}` : ""} (${s.weekday}) ${clock}`;
   }
   return `${withYear ? `${s.year}年` : ""}${s.month}月${s.day}日（${s.weekday}） ${clock}`;
+}
+
+// ═══ 现场屏（设计 221–519；renderVals 857–858 agState/agendaRows、862–867 graph、865 relColor、873 hotTags/pages）═══
+
+export type LiveTab = "home" | "rec" | "all" | "group" | "graph" | "agenda";
+export const LIVE_TABS: { key: LiveTab; label: Copy }[] = [
+  { key: "home", label: { zh: "现场主页", en: "Live home" } },
+  { key: "rec", label: { zh: "推荐给你", en: "For you" } },
+  { key: "all", label: { zh: "全部参会者", en: "All attendees" } },
+  { key: "group", label: { zh: "分组", en: "Groups" } },
+  { key: "graph", label: { zh: "关系图谱", en: "Graph" } },
+  { key: "agenda", label: { zh: "流程议程", en: "Agenda" } },
+];
+
+export function liveTabFrom(value: string | null | undefined): LiveTab {
+  return LIVE_TABS.some((tab) => tab.key === value) ? (value as LiveTab) : "home";
+}
+
+// ── 议程状态（设计 857 agState：done / now / soon / later；据 ISO `at` 推导，不看 `time` 标签）──
+export type AgendaStatus = "done" | "now" | "soon" | "later";
+
+export const AGENDA_STATE: Record<AgendaStatus, { tag: Copy; tagBg: string; tagFg: string; dotBg: string; mark: string; dotBorder: string; rowBg: string }> = {
+  done: { tag: { zh: "已完成", en: "Done" }, tagBg: "#E6F1EC", tagFg: "#2F6B4F", dotBg: "#2F6B4F", mark: "✓", dotBorder: "#2F6B4F", rowBg: "transparent" },
+  now: { tag: { zh: "进行中", en: "Now" }, tagBg: "#DDDEFA", tagFg: "#2E3270", dotBg: "#4B4FC7", mark: "●", dotBorder: "#4B4FC7", rowBg: "#F7F7FD" },
+  soon: { tag: { zh: "即将开始", en: "Up next" }, tagBg: "#F0F1F8", tagFg: "#6B6F99", dotBg: "#FFFFFF", mark: "", dotBorder: "#C9CBEA", rowBg: "transparent" },
+  later: { tag: { zh: "未开始", en: "Later" }, tagBg: "#F0F1F8", tagFg: "#9FA3C4", dotBg: "#FFFFFF", mark: "", dotBorder: "#C9CBEA", rowBg: "transparent" },
+};
+
+/**
+ * 每项按 `at` 与 `now` 比：最后一个已开始的环节 = now，其前 = done，第一个未开始 = soon，其余 = later。
+ * `at` 无效的项按 later（永不宣称进行中）。
+ */
+export function agendaStatus(items: readonly Pick<OrbitPartyAgendaItemView, "at">[], now: number | Date): AgendaStatus[] {
+  const nowMs = typeof now === "number" ? now : now.getTime();
+  const startedAt = items.map((item) => Date.parse(item.at));
+  const started = startedAt.map((ms) => Number.isFinite(ms) && ms <= nowMs);
+  const currentIndex = started.lastIndexOf(true);
+  const soonIndex = startedAt.findIndex((ms, index) => Number.isFinite(ms) && !started[index] && index > currentIndex);
+  return items.map((_, index) => {
+    if (index === currentIndex) return "now";
+    if (index < currentIndex && started[index]) return "done";
+    if (index === soonIndex) return "soon";
+    return "later";
+  });
+}
+
+/** 当前轮：议程第三项（第二轮）已开始且存在 roundTwo → 2，否则 1。 */
+export function currentRound(items: readonly Pick<OrbitPartyAgendaItemView, "at">[], hasRoundTwo: boolean, now: number | Date): 1 | 2 {
+  const statuses = agendaStatus(items, now);
+  return hasRoundTwo && statuses[2] === "now" ? 2 : 1;
+}
+
+const JST_OFFSET_MS = 9 * 60 * 60 * 1_000;
+const two = (value: number) => String(value).padStart(2, "0");
+
+/** JST `HH:MM`（固定偏移 + UTC getter，服务端 / 浏览器字节一致）；无效 → 「—」。 */
+export function formatJstClock(iso: string): string {
+  const instant = new Date(iso);
+  if (!Number.isFinite(instant.getTime())) return "—";
+  const tokyo = new Date(instant.getTime() + JST_OFFSET_MS);
+  return `${two(tokyo.getUTCHours())}:${two(tokyo.getUTCMinutes())}`;
+}
+
+/** 设计 484「当前时间：9月20日 19:40（JST）」。 */
+export function formatJstStamp(iso: string | number, language: EventListLanguage): string {
+  const instant = new Date(iso);
+  if (!Number.isFinite(instant.getTime())) return "—";
+  const tokyo = new Date(instant.getTime() + JST_OFFSET_MS);
+  const clock = `${two(tokyo.getUTCHours())}:${two(tokyo.getUTCMinutes())}`;
+  return language === "en"
+    ? `${tokyo.getUTCMonth() + 1}/${tokyo.getUTCDate()} ${clock} (JST)`
+    : `${tokyo.getUTCMonth() + 1}月${tokyo.getUTCDate()}日 ${clock}（JST）`;
+}
+
+// ── 图谱（设计 862–867：R=170, cx=260, cy=210；节点 48px 故 -24；连线自圆心，长度 R，rotate(deg)）──
+export interface GraphNodeLayout {
+  angle: number;
+  deg: number;
+  len: number;
+  /** 节点左上（x-24, y-24） */
+  left: number;
+  top: number;
+  x: number;
+  y: number;
+}
+
+export const GRAPH_R = 170;
+export const GRAPH_CX = 260;
+export const GRAPH_CY = 210;
+
+export function graphLayout<T>(nodes: readonly T[]): GraphNodeLayout[] {
+  const count = nodes.length;
+  return nodes.map((_, index) => {
+    const angle = -Math.PI / 2 + index * ((2 * Math.PI) / count);
+    const x = GRAPH_CX + GRAPH_R * Math.cos(angle);
+    const y = GRAPH_CY + GRAPH_R * Math.sin(angle);
+    const len = Math.sqrt((x - GRAPH_CX) ** 2 + (y - GRAPH_CY) ** 2);
+    const deg = (Math.atan2(y - GRAPH_CY, x - GRAPH_CX) * 180) / Math.PI;
+    return { angle, deg, len, left: x - 24, top: y - 24, x, y };
+  });
+}
+
+// ── 图例（设计 865 relColor；kind 由 edges + contactRequests 推导，节点本身无 kind）──
+export type GraphLegendKind = "me" | "known" | "recommended" | "group" | "other";
+
+export const GRAPH_LEGEND: { kind: GraphLegendKind; color: string; label: Copy }[] = [
+  { kind: "me", color: "#4B4FC7", label: { zh: "我自己", en: "Me" } },
+  { kind: "known", color: "#5B8C7A", label: { zh: "已认识", en: "Connected" } },
+  { kind: "recommended", color: "#7C4FC7", label: { zh: "推荐认识", en: "Recommended" } },
+  { kind: "group", color: "#9FA3D9", label: { zh: "同组成员", en: "Same table" } },
+  { kind: "other", color: "#C9CBEA", label: { zh: "其他", en: "Other" } },
+];
+
+export function graphLegendColor(kind: GraphLegendKind): string {
+  return GRAPH_LEGEND.find((item) => item.kind === kind)?.color ?? "#C9CBEA";
+}
+
+/** 优先级：我 > 已接受交换（已认识） > 推荐边 > 同桌边 > 其他；只看与我相连的边。 */
+export function graphLegendKind(
+  node: Pick<OrbitPartyGraphView["nodes"][number], "participantId">,
+  edges: OrbitPartyGraphView["edges"],
+  contactRequests: readonly Pick<OrbitPartyContactRequestView, "otherParticipantId" | "status">[],
+  meId: string,
+): GraphLegendKind {
+  const id = node.participantId;
+  if (id === meId) return "me";
+  if (contactRequests.some((request) => request.otherParticipantId === id && request.status === "accepted")) return "known";
+  const mine = edges.filter(
+    (edge) =>
+      (edge.fromParticipantId === meId && edge.toParticipantId === id) ||
+      (edge.toParticipantId === meId && edge.fromParticipantId === id),
+  );
+  if (mine.some((edge) => edge.kind === "recommendation")) return "recommended";
+  if (mine.some((edge) => edge.kind === "round_one_table" || edge.kind === "round_two_topic")) return "group";
+  return "other";
+}
+
+// ── 热门标签（设计 873 hotTags：topics 频次前 10）──
+export function hotTags(people: readonly Pick<OrbitPartyPersonView, "topics">[], limit = 10): string[] {
+  const counts = new Map<string, number>();
+  for (const person of people) {
+    for (const raw of person.topics) {
+      const topic = raw.trim();
+      if (!topic) continue;
+      counts.set(topic, (counts.get(topic) ?? 0) + 1);
+    }
+  }
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, limit)
+    .map(([topic]) => topic);
+}
+
+// ── 分页（设计 874 pages：每页 12 条；仅 >12 时显示）──
+export interface Paginated<T> {
+  items: T[];
+  page: number;
+  pageCount: number;
+  pages: number[];
+  total: number;
+}
+
+export function paginate<T>(list: readonly T[], page: number, pageSize = 12): Paginated<T> {
+  const total = list.length;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const current = Math.min(Math.max(1, Math.floor(page) || 1), pageCount);
+  return {
+    items: list.slice((current - 1) * pageSize, current * pageSize),
+    page: current,
+    pageCount,
+    pages: Array.from({ length: pageCount }, (_, index) => index + 1),
+    total,
+  };
+}
+
+/** 全部参会者搜索（设计 364 placeholder：姓名、公司、职位或关键词）。 */
+export function matchesPersonQuery(person: Pick<OrbitPartyPersonView, "name" | "company" | "title" | "topics" | "industry">, query: string): boolean {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return true;
+  return [person.name, person.company, person.title, person.industry, ...person.topics].some((value) => value.toLowerCase().includes(needle));
+}
+
+/** 共同兴趣 = topics 交集（设计 456 gselInterests 是 mock 列表）。 */
+export function sharedTopics(a: readonly string[], b: readonly string[]): string[] {
+  const mine = new Set(b.map((topic) => topic.trim().toLowerCase()));
+  return a.filter((topic) => mine.has(topic.trim().toLowerCase()));
 }

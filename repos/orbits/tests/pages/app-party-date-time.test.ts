@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { formatOrbitPartyDateTime } from "../../app/(app)/app/party/party-date-time";
+import { formatOrbitPartyDateTime } from "../../app/(app)/app/events/events-0918/party-date-time";
 
 test("Party date rendering is deterministic JST text for SSR and hydration", () => {
   assert.equal(

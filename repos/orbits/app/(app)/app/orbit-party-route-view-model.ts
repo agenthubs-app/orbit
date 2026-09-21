@@ -32,8 +32,11 @@ export interface OrbitPartyPersonView {
 }
 
 export interface OrbitPartyAgendaItemView {
+  /** ISO instant of the schedule column; "" when the source value is unparsable. Status (done / now / soon / later) derives from this, never from `time`. */
+  at: string;
   description: { en: string; zh: string };
   label: { en: string; zh: string };
+  /** UTC `HH:MM` label kept for older readers; the live screen renders `at` in JST instead. */
   time: string;
 }
 
@@ -111,6 +114,9 @@ export interface OrbitPartyViewModel {
    * agree about a given event.
    */
   eventPhase: "active" | "upcoming" | "ended";
+  /** Canonical event window (ISO) from the owner-scoped event record; the live screen renders the design's ▦ date row from it. */
+  eventStartsAt: string;
+  eventEndsAt: string;
   eventVenue: string;
   generationNotice: {
     errorCode: string | null;

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import type { OrbitPartyPersonView } from "../orbit-party-route-view-model";
 import { OrbitAppointmentNegotiation } from "../events/[id]/orbit-appointment-negotiation";
 import { OrbitEncounterCapture } from "../events/[id]/orbit-encounter-capture";
-import { formatOrbitPartyDateTime } from "./party-date-time";
+import { formatOrbitPartyDateTime } from "../events/events-0918/party-date-time";
 import { Icon } from "../orbit-reference-primitives";
 
 type Translate = (copy: { en: string; zh: string }) => string;
