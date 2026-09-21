@@ -9,7 +9,7 @@ import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
 import { loadAppEventDetailRoute } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service";
 import { eventDetailRouteToOrbitLandingEventView } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter";
-import { EventDetail, recapPeople, recapStats } from "../../app/(app)/app/events/events-0918/event-detail";
+import { EventDetail, personViewFromDirectory, personViewFromRecap, recapPeople, recapStats } from "../../app/(app)/app/events/events-0918/event-detail";
 import { formatEventDateRange } from "../../app/(app)/app/events/events-0918/events-model";
 import type { OrbitLandingEventView } from "../../app/(app)/app/orbit-landing-route-view-model";
 
@@ -233,4 +233,62 @@ test("page wiring: events-0918 wrapper, nav by auth, view=recap passthrough, loa
   assert.match(page, /canOpenOperations=\{resolution\.canOpenOperations\}/);
   assert.match(page, /resolveConfiguredCanonicalEventDetailView/);
   assert.doesNotMatch(page, /orbit-real-event-detail/);
+});
+
+// ── Task 5: 详情参会者页签 / 回顾态精选参会者 → Orbit_0918 参会者弹窗 ──
+test("Task 5: recap people avatars open a reduced attendee modal; directory participants map to a reduced OrbitPartyPersonView", async () => {
+  const base = await baseEvent();
+  const ended: OrbitLandingEventView = {
+    ...base,
+    stats: { ...base.stats, attendees: [{ initial: "A", name: "Alice Attendee", role: "Founder" }], count: 1, youRsvped: true },
+    status: "ended",
+    youRsvped: true,
+  };
+  const ssr = renderToStaticMarkup(<EventDetail event={ended} />);
+  assert.match(ssr, /<button aria-label="查看 Alice Attendee 的资料" class="btn ev-avatar ev-avatar-open" data-live-open="attendee" type="button">A<\/button>/);
+  assert.doesNotMatch(ssr, /data-events-modal=/);
+
+  let renderer!: ReactTestRenderer;
+  try {
+    await act(async () => { renderer = create(<EventDetail event={ended} />); });
+    const avatar = renderer.root.find((node) => node.type === "button" && node.props["aria-label"] === "查看 Alice Attendee 的资料");
+    await act(async () => { avatar.props.onClick(); });
+    const json = JSON.stringify(renderer.toJSON());
+    assert.match(json, /"data-events-modal":"attendee"/);
+    assert.match(json, /Alice Attendee/);
+    // server roster → no contact / no exchange after the event: exchange button disabled, no 约谈 / 记录交流
+    assert.match(json, /"data-events-modal-action":"exchange","disabled":true/);
+    assert.equal(renderer.root.findAll((node) => node.type === "button" && node.props["data-events-modal-action"] === "note").length, 0);
+    const close = renderer.root.find((node) => node.type === "button" && node.props["aria-label"] === "关闭");
+    await act(async () => { close.props.onClick(); });
+    assert.doesNotMatch(JSON.stringify(renderer.toJSON()), /"data-events-modal"/);
+  } finally {
+    if (renderer) await act(async () => { renderer.unmount(); });
+  }
+
+  const view = personViewFromDirectory({
+    contactRequest: { contactId: "contact:9", direction: "outgoing", requestId: "req:9", revision: 3, status: "accepted" },
+    contactRequestsOpen: true,
+    me: { company: "Orbit", displayName: "Li Wei", experienceHighlight: null, industry: null, languages: [], needs: [], offers: [], participantId: "p:me", role: "Investor", topics: [] },
+    participant: { company: "LoopMatter", displayName: "Aiko Mori", experienceHighlight: "Scaling reuse", industry: "Circular", languages: ["ja"], needs: ["Buyers"], offers: ["Pilot data", "Intros"], participantId: "p:aiko", role: "Founder", topics: ["Reuse"] },
+    recommendation: { icebreakers: ["Ask about pilots"], memberHint: "hint", reasons: ["Complementary"], score: 88, targetParticipantId: "p:aiko" },
+  });
+  assert.equal(view.id, "p:aiko");
+  assert.equal(view.contactId, "contact:9");
+  assert.equal(view.contactRequestStatus, "accepted");
+  assert.equal(view.contactRequestId, "req:9");
+  assert.equal(view.contactRequestRevision, 3);
+  assert.equal(view.offering, "Pilot data\nIntros");
+  assert.equal(view.seeking, "Buyers");
+  assert.equal(view.summary, "Scaling reuse");
+  assert.equal(view.reason, "Complementary");
+  assert.equal(view.score, 88);
+  assert.equal(view.isRecommended, true);
+  assert.equal(view.initial, "A");
+  assert.equal(view.seat, null);
+  const recap = personViewFromRecap({ company: "Acme", contactId: "contact:1", initial: "K", name: "Kept Contact", participantId: "p1", role: "CEO" });
+  assert.equal(recap.contactRequestStatus, "accepted");
+  assert.equal(recap.id, "p1");
+  assert.equal(recap.title, "CEO");
+  assert.equal(personViewFromRecap({ company: null, contactId: null, initial: "J", name: "Just", role: null }).contactRequestStatus, "none");
 });

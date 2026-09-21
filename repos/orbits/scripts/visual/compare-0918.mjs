@@ -14,6 +14,8 @@
 //   node scripts/visual/compare-0918.mjs \
 //     --design "http://localhost:3320/Orbit_0918/Events.dc.html" --design-view detail \
 //     --app "http://localhost:3100/app/events/<id>" --login "email:password" --out /tmp/events-detail
+// 弹窗（任务 5）：视图序列后再点 --design-click / --design-click2 / --design-click3（可选 --design-fill "<selector>|<text>" 在 click3 前填字）；
+//   应用侧 --click / --click2 / --click3。例：参会者 = live + --design-click 'role=button[name="全部参会者"s]' --design-click2 'role=button[name="查看资料"]'。
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { chromium } from "playwright";
@@ -117,10 +119,14 @@ try {
     for (const step of designSequence) { await step(page).click(); await page.waitForTimeout(300); }
     if (args["design-click"]) await page.locator(args["design-click"]).first().click();
     if (args["design-click2"]) { await page.waitForTimeout(300); await page.locator(args["design-click2"]).first().click(); }
+    // 弹窗内需要先填字才能到下一态（Events 交换成功态：设计 sendEx 要求留言非空）："<selector>|<text>"
+    if (args["design-fill"]) { const sep = args["design-fill"].indexOf("|"); await page.locator(args["design-fill"].slice(0, sep)).first().fill(args["design-fill"].slice(sep + 1)); }
+    if (args["design-click3"]) { await page.waitForTimeout(300); await page.locator(args["design-click3"]).first().click(); }
   });
   const app = await shoot(args.app, "app.png", async (page) => {
     if (args.click) await page.locator(args.click).first().click();
     if (args.click2) { await page.waitForTimeout(300); await page.locator(args.click2).first().click(); }
+    if (args.click3) { await page.waitForTimeout(300); await page.locator(args.click3).first().click(); }
   });
 
   const h = Math.min(design.height, app.height);

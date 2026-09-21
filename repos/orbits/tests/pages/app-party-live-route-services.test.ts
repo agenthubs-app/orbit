@@ -127,10 +127,13 @@ test("live recommendations render only the loader's recommendations with the fou
 test("live contact requests use individual consent requests and the graph uses persisted edges", () => {
   const liveComponentSource = source(LIVE_COMPONENT);
   const controlsSource = source(LIVE_CONTROLS);
+  // Task 5 moved the per-person control into event-contact-action.tsx (shared with the modals).
+  const contactActionSource = source(LIVE_COMPONENT.replace("event-live.tsx", "event-contact-action.tsx"));
 
-  assert.match(liveComponentSource, /useEventContactRequest/);
+  assert.match(liveComponentSource, /ContactAction/);
+  assert.match(contactActionSource, /useEventContactRequest/);
   assert.match(controlsSource, /const status = contactId/);
-  assert.match(liveComponentSource, /encodeURIComponent\(control\.contactId\)/);
+  assert.match(contactActionSource, /encodeURIComponent\(control\.contactId\)/);
   assert.match(controlsSource, /targetParticipantId: person\.id/);
   assert.match(controlsSource, /operations\/contact-requests/);
   assert.match(controlsSource, /\{ accept, expectedRevision: revision \}/);

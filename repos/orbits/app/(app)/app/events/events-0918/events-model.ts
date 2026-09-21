@@ -399,3 +399,102 @@ export function sharedTopics(a: readonly string[], b: readonly string[]): string
   const mine = new Set(b.map((topic) => topic.trim().toLowerCase()));
   return a.filter((topic) => mine.has(topic.trim().toLowerCase()));
 }
+
+// ── 弹窗（任务 5）：约谈日期 / 时段（设计 891–892 days / slots）与交换状态文案 ──
+/** 设计 892 的六个时段（JST 标签；发送时按 JST 换算成 UTC 的 startsAtUtc）。 */
+export const SCHEDULE_SLOTS: readonly string[] = ["10:00 - 10:30", "10:30 - 11:00", "11:00 - 11:30", "14:00 - 14:30", "14:30 - 15:00", "15:00 - 15:30"];
+export const SCHEDULE_DAY_COUNT = 5;
+export const SCHEDULE_MIN_CANDIDATES = 3;
+export const SCHEDULE_MAX_CANDIDATES = 5;
+export const SCHEDULE_DURATION_MINUTES = 30;
+
+export interface ScheduleDay {
+  /** JST 日历日 `YYYY-MM-DD`。 */
+  iso: string;
+  month: string;
+  day: string;
+  weekday: string;
+}
+
+const WEEKDAY: Record<EventListLanguage, string[]> = {
+  zh: ["周日", "周一", "周二", "周三", "周四", "周五", "周六"],
+  en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+};
+
+/** 从 `now` 起的连续 N 个 JST 日历日（设计 891 是 mock 的 8月10–14；这里是真实日期）。 */
+export function scheduleDays(now: number | Date, language: EventListLanguage, count = SCHEDULE_DAY_COUNT): ScheduleDay[] {
+  const nowMs = typeof now === "number" ? now : now.getTime();
+  const tokyo = new Date(nowMs + JST_OFFSET_MS);
+  const base = Date.UTC(tokyo.getUTCFullYear(), tokyo.getUTCMonth(), tokyo.getUTCDate());
+  return Array.from({ length: count }, (_, index) => {
+    const date = new Date(base + index * 24 * 60 * 60 * 1_000);
+    const month = date.getUTCMonth() + 1;
+    return {
+      iso: `${date.getUTCFullYear()}-${two(month)}-${two(date.getUTCDate())}`,
+      month: language === "en" ? `${month}/` : `${month}月`,
+      day: String(date.getUTCDate()),
+      weekday: WEEKDAY[language][date.getUTCDay()],
+    };
+  });
+}
+
+/** JST 日历日 + 时段起点 → RFC3339 UTC（`handlers.ts:32` 要求以 Z 结尾）。 */
+export function slotStartsAtUtc(dayIso: string, slot: string): string {
+  const [year, month, day] = dayIso.split("-").map(Number);
+  const [hour, minute] = slot.split(" - ")[0].split(":").map(Number);
+  return new Date(Date.UTC(year, month - 1, day, hour, minute) - JST_OFFSET_MS).toISOString();
+}
+
+/** 候选时段键（稳定、可排序）。 */
+export function candidateKey(dayIso: string, slot: string): string {
+  return `${dayIso} ${slot}`;
+}
+
+export function candidateTimesFrom(keys: readonly string[]): { startsAtUtc: string }[] {
+  return [...keys]
+    .map((key) => {
+      const [dayIso, ...rest] = key.split(" ");
+      return slotStartsAtUtc(dayIso, rest.join(" "));
+    })
+    .sort()
+    .map((startsAtUtc) => ({ startsAtUtc }));
+}
+
+export function canSendSchedule(selectedCount: number): boolean {
+  return selectedCount >= SCHEDULE_MIN_CANDIDATES && selectedCount <= SCHEDULE_MAX_CANDIDATES;
+}
+
+/** 参会者弹窗「当前关系状态」一行 + 交换按钮文案（按真实 contactRequestStatus）。 */
+export function contactStatusCopy(
+  status: OrbitPartyPersonView["contactRequestStatus"],
+  direction: OrbitPartyPersonView["contactRequestDirection"],
+  hasContact: boolean,
+): { line: Copy; action: Copy; canRequest: boolean } {
+  if (hasContact || status === "accepted") {
+    return { line: { zh: "已互换名片", en: "Business cards exchanged" }, action: { zh: "✓ 已交换", en: "✓ Exchanged" }, canRequest: false };
+  }
+  switch (status) {
+    case "awaiting_target_consent":
+      return direction === "incoming"
+        ? { line: { zh: "对方向你发起了交换申请", en: "They asked to exchange contacts" }, action: { zh: "同意交换", en: "Accept" }, canRequest: false }
+        : { line: { zh: "申请已发送，等待对方确认", en: "Request sent, waiting for their consent" }, action: { zh: "等待对方确认", en: "Waiting for consent" }, canRequest: false };
+    case "incoming":
+      return { line: { zh: "对方向你发起了交换申请", en: "They asked to exchange contacts" }, action: { zh: "同意交换", en: "Accept" }, canRequest: false };
+    case "declined":
+      return { line: { zh: "对方已拒绝交换", en: "They declined the exchange" }, action: { zh: "对方已拒绝", en: "Declined" }, canRequest: false };
+    case "withdrawn":
+      return direction === "outgoing"
+        ? { line: { zh: "你已撤回申请", en: "You withdrew the request" }, action: { zh: "⇢ 再次申请交换", en: "⇢ Request again" }, canRequest: true }
+        : { line: { zh: "申请已撤回", en: "Request withdrawn" }, action: { zh: "申请已撤回", en: "Withdrawn" }, canRequest: false };
+    default:
+      return { line: { zh: "你们尚未建立连接", en: "Not connected yet" }, action: { zh: "⇢ 申请交换联系方式", en: "⇢ Request contact exchange" }, canRequest: true };
+  }
+}
+
+/** 记录交流：对方需求 / 我能提供 并入 noteText（API 只有 noteText / nextStep / tags / commitments）。 */
+export function composeNoteText(parts: { what: string; need: string; offer: string }, labels: { need: string; offer: string }): string {
+  const lines = [parts.what.trim()];
+  if (parts.need.trim()) lines.push(`${labels.need}：${parts.need.trim()}`);
+  if (parts.offer.trim()) lines.push(`${labels.offer}：${parts.offer.trim()}`);
+  return lines.filter(Boolean).join("\n");
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import type {
   OrbitPartyAgendaItemView,
@@ -35,8 +35,14 @@ import {
   type GraphLegendKind,
   type LiveTab,
 } from "./events-model";
-import { EVENTS_STYLES } from "./events-shell";
-import { useEventCheckIn, useEventContactRequest } from "./live-controls";
+import { EventAttendeeModal } from "./event-attendee-modal";
+import { ContactAction } from "./event-contact-action";
+import { EventExchangeModal } from "./event-exchange-modal";
+import { useEventToast, type EventModalKind } from "./event-modal-frame";
+import { EventNoteModal } from "./event-note-modal";
+import { EventScheduleModal } from "./event-schedule-modal";
+import { EVENTS_STYLES, EventsToast } from "./events-shell";
+import { useEventCheckIn } from "./live-controls";
 import { formatOrbitPartyDateTime } from "./party-date-time";
 
 /**
@@ -48,10 +54,13 @@ import { formatOrbitPartyDateTime } from "./party-date-time";
  * 数据真实性决定（2026-09-22 计划）——省略：最后更新 ⟳ / 倒计时 / 「第 N / 4 轮」（只有两轮）/ 分享活动 / 二度人脉·可能感兴趣 /
  * 打招呼（无 API）/ 换一批 / 仅高匹配开关 / 四个筛选下拉 + 重置 / 排序 / 城市 / bio（无字段；用 summary）/ 组长 / 下一轮预告 /
  * 查看完整分组安排 / 按关系·按兴趣·按行业 / 缩放控件 / 潜在机会 / 数据实时更新 / 添加到日历 / 现场提示；▦ 日期行 = VM 新增 eventStartsAt / eventEndsAt（真实活动时间）；
- * 参会者详情 / 记录交流 / 交换弹窗 → 任务 5（此处交换按钮直接调用既有 API）。
+ * 任务 5：头像 / 成员卡 / 查看资料 → 参会者弹窗；申请交换 → 交换弹窗（含成功态）；约谈 / 记录交流弹窗只从参会者 / 成功态进入（需要人物上下文）；
+ * 设计 259「＋ 记录交流」状态格与 412 分组卡底部「▤ 记录交流 / ◎ 交换联系方式」无人物上下文 → 省略（记偏差）。
  */
 
 type Translate = (copy: { en: string; zh: string }) => string;
+export type OpenModal = (kind: EventModalKind, person: OrbitPartyPersonView) => void;
+export interface EventModalState { kind: EventModalKind; person: OrbitPartyPersonView }
 
 const HOME_REC_LIMIT = 3;
 const PAGE_SIZE = 12;
@@ -120,82 +129,26 @@ function Empty({ children }: { children: ReactNode }) {
   return <div className="ev-lv-empty" role="status"><span className="ev-lv-empty-detail">{children}</span></div>;
 }
 
-function Avatar({ initial, size = "56" }: { initial: string; size?: "48" | "56" | "64" }) {
+function Avatar({ initial, label, onClick, size = "56" }: { initial: string; label?: string; onClick?: () => void; size?: "48" | "56" | "64" }) {
+  if (onClick) {
+    return <button aria-label={label} className={`btn ev-lv-avatar ev-lv-avatar-${size}`} data-live-open="attendee" onClick={onClick} type="button">{initial}</button>;
+  }
   return <span aria-hidden="true" className={`ev-lv-avatar ev-lv-avatar-${size}`}>{initial}</span>;
 }
 
 function Tags({ tags, limit = 3 }: { tags: readonly string[]; limit?: number }) {
   const list = tags.filter((tag) => tag.trim()).slice(0, limit);
   if (!list.length) return null;
-  return <span className="ev-lv-tags">{list.map((tag) => <span className="ev-lv-tag" key={tag}>{tag}</span>)}</span>;
-}
-
-// ── 交换联系方式（设计 a.exLabel：申请交换联系方式 / ✓ 已交换；其余真实状态按既有控件语义）──
-function ContactAction({ dark = false, eventId, open, person, t }: { dark?: boolean; eventId: string; open: boolean; person: OrbitPartyPersonView; t: Translate }) {
-  const control = useEventContactRequest({ eventId, person, t });
-  const primary = dark ? "btn ev-lv-btn-dark ev-lv-btn-grow" : "btn ev-lv-btn-ghost ev-lv-btn-grow";
-  const label = (copy: { en: string; zh: string }) => t(copy);
-  return (
-    <div aria-busy={control.busy} className="ev-lv-contact" data-event-contact-participant={person.id} data-event-contact-request-id={control.requestId ?? ""}>
-      {control.status === "none" || (control.status === "withdrawn" && control.direction === "outgoing") ? (
-        <button
-          className={primary}
-          data-event-contact-action={control.status === "none" ? "request" : "request-again"}
-          disabled={control.busy || !open}
-          onClick={() => void control.createRequest()}
-          type="button"
-        >
-          {control.busy
-            ? label({ en: "Sending…", zh: "发送中…" })
-            : open
-              ? control.status === "none"
-                ? label({ en: "Request contact", zh: "申请交换联系方式" })
-                : label({ en: "Request again", zh: "再次申请交换" })
-              : label({ en: "Opens when the event starts", zh: "活动开始后可申请交换" })}
-        </button>
-      ) : null}
-      {control.canRespond ? (
-        <>
-          <button className="btn ev-lv-btn-dark ev-lv-btn-grow" data-event-contact-action="accept" disabled={control.busy} onClick={() => void control.respond(true)} type="button">
-            {control.busy ? label({ en: "Saving…", zh: "保存中…" }) : label({ en: "Accept", zh: "同意交换" })}
-          </button>
-          <button className="btn ev-lv-btn-ghost ev-lv-btn-grow" data-event-contact-action="decline" disabled={control.busy} onClick={() => void control.respond(false)} type="button">
-            {label({ en: "Decline", zh: "拒绝" })}
-          </button>
-        </>
-      ) : null}
-      {control.status === "awaiting_target_consent" && !control.canRespond ? (
-        <>
-          <span className="ev-lv-state">{label({ en: "Waiting for their consent", zh: "等待对方确认" })}</span>
-          {control.canWithdraw ? (
-            <button className="btn ev-lv-btn-ghost ev-lv-btn-grow" data-event-contact-action="withdraw" disabled={control.busy} onClick={() => void control.withdraw()} type="button">
-              {label({ en: "Withdraw", zh: "撤回申请" })}
-            </button>
-          ) : null}
-        </>
-      ) : null}
-      {control.status === "accepted" ? (
-        control.contactId ? (
-          <a className={primary} data-event-contact-action="open-contact" href={`/app/contacts/${encodeURIComponent(control.contactId)}`}>
-            ✓ {label({ en: "Exchanged · open contact", zh: "已交换 · 打开联系人" })}
-          </a>
-        ) : (
-          <span className="ev-lv-state">✓ {label({ en: "Exchanged", zh: "已交换" })}</span>
-        )
-      ) : null}
-      {control.status === "declined" ? <span className="ev-lv-state">{label({ en: "Declined", zh: "对方已拒绝" })}</span> : null}
-      {control.status === "withdrawn" && control.direction !== "outgoing" ? <span className="ev-lv-state">{label({ en: "Withdrawn", zh: "申请已撤回" })}</span> : null}
-      {control.error ? <span className="ev-lv-error" role="alert">{control.error}</span> : null}
-    </div>
-  );
+  return <span className="ev-lv-tags">{list.map((tag, index) => <span className="ev-lv-tag" key={`${index}-${tag}`}>{tag}</span>)}</span>;
 }
 
 // ── 人物卡（设计 292–301 首页推荐 / 331–341 推荐给你 / 372–382 全部参会者）──
-function PersonCard({ eventId, open, person, t, variant }: { eventId: string; open: boolean; person: OrbitPartyPersonView; t: Translate; variant: "home" | "rec" | "all" }) {
+function PersonCard({ eventId, onOpen, open, person, t, variant }: { eventId: string; onOpen: OpenModal; open: boolean; person: OrbitPartyPersonView; t: Translate; variant: "home" | "rec" | "all" }) {
+  const openLabel = t({ en: `Open ${person.name}'s profile`, zh: `查看 ${person.name} 的资料` });
   return (
     <article className="ev-lv-person" data-live-person={person.id}>
       <div className="ev-lv-person-head">
-        <Avatar initial={person.initial} />
+        <Avatar initial={person.initial} label={openLabel} onClick={() => onOpen("attendee", person)} />
         <span className="ev-lv-person-copy">
           {variant === "rec" ? (
             <span className="ev-lv-person-name-row">
@@ -218,7 +171,10 @@ function PersonCard({ eventId, open, person, t, variant }: { eventId: string; op
         </div>
       )}
       <div className="ev-lv-person-actions">
-        <ContactAction dark={variant === "all"} eventId={eventId} open={open} person={person} t={t} />
+        {variant === "all" ? (
+          <button className="btn ev-lv-btn-ghost ev-lv-btn-grow" data-live-open="attendee" onClick={() => onOpen("attendee", person)} type="button">{t({ en: "View profile", zh: "查看资料" })}</button>
+        ) : null}
+        <ContactAction dark={variant === "all"} eventId={eventId} grow={variant === "all" ? "1.4" : "1"} onRequest={(target) => onOpen("exchange", target)} open={open} person={person} t={t} />
       </div>
     </article>
   );
@@ -276,7 +232,7 @@ function tableLabel(table: OrbitPartyTableView | null, t: Translate): string {
   return table ? t({ en: `Table ${table.tableNumber}`, zh: `${table.tableNumber} 号桌` }) : t({ en: "Seat not assigned yet", zh: "尚未分配座位" });
 }
 
-function HomeTab({ go, now, t, viewModel }: { go: (tab: LiveTab) => void; now: number; t: Translate; viewModel: OrbitPartyViewModel }) {
+function HomeTab({ go, now, onOpen, t, viewModel }: { go: (tab: LiveTab) => void; now: number; onOpen: OpenModal; t: Translate; viewModel: OrbitPartyViewModel }) {
   const round = currentRound(viewModel.agenda, Boolean(viewModel.roundTwo), now);
   const table = round === 2 ? viewModel.roundTwo : viewModel.roundOne ?? viewModel.roundTwo;
   const roundCount = viewModel.roundTwo ? 2 : 1;
@@ -318,7 +274,7 @@ function HomeTab({ go, now, t, viewModel }: { go: (tab: LiveTab) => void; now: n
             <ResultsBoundary t={t} viewModel={viewModel} />
           ) : (
             <div className="ev-lv-grid-220">
-              {recs.map((person) => <PersonCard eventId={viewModel.eventId} key={person.id} open={open} person={person} t={t} variant="home" />)}
+              {recs.map((person) => <PersonCard eventId={viewModel.eventId} key={person.id} onOpen={onOpen} open={open} person={person} t={t} variant="home" />)}
             </div>
           )}
         </section>
@@ -359,17 +315,17 @@ function HomeTab({ go, now, t, viewModel }: { go: (tab: LiveTab) => void; now: n
               </div>
               <div className="ev-lv-mates">
                 {table.members.slice(0, 6).map((member) => (
-                  <span className="ev-lv-mate" key={member.id}>
+                  <button className="btn ev-lv-mate" data-live-open="attendee" key={member.id} onClick={() => onOpen("attendee", member)} type="button">
                     <Avatar initial={member.initial} size="48" />
                     <span className="ev-lv-mate-name">{member.name}</span>
                     <span className="ev-lv-mate-co">{member.company}</span>
-                  </span>
+                  </button>
                 ))}
               </div>
               {table.icebreakers.length ? (
                 <div className="ev-lv-ice">
                   <strong className="ev-lv-ice-title">{t({ en: "Icebreakers", zh: "破冰话题" })}</strong>
-                  {table.icebreakers.map((line) => <span className="ev-lv-ice-line" key={line}>• {line}</span>)}
+                  {table.icebreakers.map((line, index) => <span className="ev-lv-ice-line" key={`${index}-${line}`}>• {line}</span>)}
                 </div>
               ) : null}
             </>
@@ -389,7 +345,7 @@ function HomeTab({ go, now, t, viewModel }: { go: (tab: LiveTab) => void; now: n
               <div className="ev-lv-agenda-mini" data-live-agenda-status={statuses[index]} key={`${item.at}-${index}`} style={{ background: state.rowBg }}>
                 <span className="ev-lv-agenda-mini-dotwrap"><span className="ev-lv-agenda-mini-dot" style={{ background: state.dotBg, borderColor: state.dotBorder }} /></span>
                 <span className="ev-lv-agenda-mini-copy"><span className="ev-lv-agenda-mini-time">{formatJstClock(item.at)}</span><strong className="ev-lv-agenda-mini-title">{t(item.label)}</strong></span>
-                <span className="ev-lv-agenda-mini-mark" style={{ color: state.tagFg }}>{t(state.tag)}</span>
+                <span aria-label={t(state.tag)} className="ev-lv-agenda-mini-mark" role="img" style={{ color: state.tagFg }}>{state.mark}</span>
               </div>
             );
           })}
@@ -400,7 +356,7 @@ function HomeTab({ go, now, t, viewModel }: { go: (tab: LiveTab) => void; now: n
 }
 
 // ── 推荐给你（设计 320–360）──
-function RecTab({ t, viewModel }: { t: Translate; viewModel: OrbitPartyViewModel }) {
+function RecTab({ onOpen, t, viewModel }: { onOpen: OpenModal; t: Translate; viewModel: OrbitPartyViewModel }) {
   const recs = othersOnly(viewModel, viewModel.recommendations);
   const open = viewModel.eventPhase !== "upcoming";
   return (
@@ -416,7 +372,7 @@ function RecTab({ t, viewModel }: { t: Translate; viewModel: OrbitPartyViewModel
           <ResultsBoundary t={t} viewModel={viewModel} />
         ) : (
           <div className="ev-lv-grid-240">
-            {recs.map((person) => <PersonCard eventId={viewModel.eventId} key={person.id} open={open} person={person} t={t} variant="rec" />)}
+            {recs.map((person) => <PersonCard eventId={viewModel.eventId} key={person.id} onOpen={onOpen} open={open} person={person} t={t} variant="rec" />)}
           </div>
         )}
       </section>
@@ -433,10 +389,11 @@ function RecTab({ t, viewModel }: { t: Translate; viewModel: OrbitPartyViewModel
 }
 
 // ── 全部参会者（设计 361–390）──
-function AllTab({ t, viewModel }: { t: Translate; viewModel: OrbitPartyViewModel }) {
+function AllTab({ onOpen, t, viewModel }: { onOpen: OpenModal; t: Translate; viewModel: OrbitPartyViewModel }) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
-  const people = othersOnly(viewModel, viewModel.attendees);
+  const meId = viewModel.me.participantId;
+  const people = useMemo(() => viewModel.attendees.filter((person) => person.id !== meId), [meId, viewModel.attendees]);
   const tags = useMemo(() => hotTags(people), [people]);
   const filtered = people.filter((person) => matchesPersonQuery(person, query));
   const paged = paginate(filtered, page, PAGE_SIZE);
@@ -462,7 +419,7 @@ function AllTab({ t, viewModel }: { t: Translate; viewModel: OrbitPartyViewModel
       </div>
       {paged.items.length ? (
         <div className="ev-lv-grid-250">
-          {paged.items.map((person) => <PersonCard eventId={viewModel.eventId} key={person.id} open={open} person={person} t={t} variant="all" />)}
+          {paged.items.map((person) => <PersonCard eventId={viewModel.eventId} key={person.id} onOpen={onOpen} open={open} person={person} t={t} variant="all" />)}
         </div>
       ) : (
         <Empty>{people.length ? t({ en: "No attendee matches this search.", zh: "没有匹配的参会者。" }) : t({ en: "No other attendee is registered yet.", zh: "还没有其他参会者报名。" })}</Empty>
@@ -482,7 +439,7 @@ function AllTab({ t, viewModel }: { t: Translate; viewModel: OrbitPartyViewModel
 }
 
 // ── 分组（设计 391–434）──
-function GroupCard({ current, round, t, table }: { current: boolean; round: 1 | 2; t: Translate; table: OrbitPartyTableView }) {
+function GroupCard({ current, onOpen, round, t, table }: { current: boolean; onOpen: OpenModal; round: 1 | 2; t: Translate; table: OrbitPartyTableView }) {
   return (
     <section className="ev-lv-card" data-live-round={round}>
       <div className="ev-lv-group-head">
@@ -499,21 +456,21 @@ function GroupCard({ current, round, t, table }: { current: boolean; round: 1 | 
       </div>
       <div className="ev-lv-grid-220 ev-lv-grid-12">
         {table.members.map((member) => (
-          <div className="ev-lv-member" key={member.id} title={member.groupingRationale}>
+          <button className="btn ev-lv-member" data-live-open="attendee" key={member.id} onClick={() => onOpen("attendee", member)} title={member.groupingRationale} type="button">
             <Avatar initial={member.initial} size="48" />
             <span className="ev-lv-member-copy">
               <span className="ev-lv-member-row"><strong className="ev-lv-member-name">{member.name}</strong></span>
               <span className="ev-lv-member-role">{roleDot(member)}</span>
               <Tags limit={2} tags={member.topics} />
             </span>
-          </div>
+          </button>
         ))}
       </div>
     </section>
   );
 }
 
-function GroupTab({ now, t, viewModel }: { now: number; t: Translate; viewModel: OrbitPartyViewModel }) {
+function GroupTab({ now, onOpen, t, viewModel }: { now: number; onOpen: OpenModal; t: Translate; viewModel: OrbitPartyViewModel }) {
   const round = currentRound(viewModel.agenda, Boolean(viewModel.roundTwo), now);
   const primary = round === 2 ? viewModel.roundTwo : viewModel.roundOne;
   const primaryRound: 1 | 2 = primary ? round : viewModel.roundOne ? 1 : 2;
@@ -523,13 +480,13 @@ function GroupTab({ now, t, viewModel }: { now: number; t: Translate; viewModel:
   return (
     <div className="ev-lv-groups">
       <div className="ev-lv-col">
-        {shown ? <GroupCard current={Boolean(primary)} round={primaryRound} t={t} table={shown} /> : (
+        {shown ? <GroupCard current={Boolean(primary)} onOpen={onOpen} round={primaryRound} t={t} table={shown} /> : (
           <section className="ev-lv-card">
             <h2 className="ev-h2">{t({ en: "Current group", zh: "当前分组" })}</h2>
             <ResultsBoundary t={t} viewModel={viewModel} />
           </section>
         )}
-        {other ? <GroupCard current={false} round={otherRound} t={t} table={other} /> : null}
+        {other ? <GroupCard current={false} onOpen={onOpen} round={otherRound} t={t} table={other} /> : null}
       </div>
       <section className="ev-lv-card ev-lv-card-22 ev-lv-rules">
         <h2 className="ev-h2 ev-h2-20">{t({ en: "Why this table", zh: "本轮分组说明" })}</h2>
@@ -538,10 +495,10 @@ function GroupTab({ now, t, viewModel }: { now: number; t: Translate; viewModel:
             <div className="ev-lv-note"><span className="ev-lv-icon-round">◎</span><span className="ev-lv-note-copy"><strong className="ev-lv-note-title">{t({ en: "Why you are at this table", zh: "你为什么被分到这桌" })}</strong><span className="ev-lv-note-desc-13" data-party-member-rationale="self">{shown.myRationale}</span></span></div>
             <div className="ev-lv-note"><span className="ev-lv-icon-round">▤</span><span className="ev-lv-note-copy"><strong className="ev-lv-note-title">{t({ en: "Table rationale", zh: "分组逻辑" })}</strong><span className="ev-lv-note-desc-13">{shown.rationale}</span></span></div>
             {shown.memberPrompts.length ? (
-              <div className="ev-lv-note"><span className="ev-lv-icon-round">✦</span><span className="ev-lv-note-copy"><strong className="ev-lv-note-title">{t({ en: "Talking points", zh: "交流建议" })}</strong><span className="ev-lv-note-desc-13">{shown.memberPrompts.map((line) => <span className="ev-lv-note-line" key={line}>• {line}</span>)}</span></span></div>
+              <div className="ev-lv-note"><span className="ev-lv-icon-round">✦</span><span className="ev-lv-note-copy"><strong className="ev-lv-note-title">{t({ en: "Talking points", zh: "交流建议" })}</strong><span className="ev-lv-note-desc-13">{shown.memberPrompts.map((line, index) => <span className="ev-lv-note-line" key={`${index}-${line}`}>• {line}</span>)}</span></span></div>
             ) : null}
             {shown.icebreakers.length ? (
-              <div className="ev-lv-tip"><span className="ev-lv-tip-icon">✦</span><span className="ev-lv-note-copy"><strong className="ev-lv-note-title">{t({ en: "Icebreakers", zh: "全桌破冰" })}</strong><span className="ev-lv-tip-desc">{shown.icebreakers.map((line) => <span className="ev-lv-note-line" key={line}>• {line}</span>)}</span></span></div>
+              <div className="ev-lv-tip"><span className="ev-lv-tip-icon">✦</span><span className="ev-lv-note-copy"><strong className="ev-lv-note-title">{t({ en: "Icebreakers", zh: "全桌破冰" })}</strong><span className="ev-lv-tip-desc">{shown.icebreakers.map((line, index) => <span className="ev-lv-note-line" key={`${index}-${line}`}>• {line}</span>)}</span></span></div>
             ) : null}
             {shown.members.length ? (
               <div className="ev-lv-note"><span className="ev-lv-icon-round">◌</span><span className="ev-lv-note-copy"><strong className="ev-lv-note-title">{t({ en: "Member rationales", zh: "成员分组理由" })}</strong><span className="ev-lv-note-desc-13">{shown.members.map((member) => <span className="ev-lv-note-line" data-party-member-rationale={member.id} key={member.id}>• {member.name}：{member.groupingRationale}</span>)}</span></span></div>
@@ -556,7 +513,7 @@ function GroupTab({ now, t, viewModel }: { now: number; t: Translate; viewModel:
 }
 
 // ── 关系图谱（设计 435–477）──
-function GraphTab({ go, t, viewModel }: { go: (tab: LiveTab) => void; t: Translate; viewModel: OrbitPartyViewModel }) {
+function GraphTab({ go, onOpen, t, viewModel }: { go: (tab: LiveTab) => void; onOpen: OpenModal; t: Translate; viewModel: OrbitPartyViewModel }) {
   const graph = viewModel.graph;
   const meId = viewModel.me.participantId;
   const peopleById = useMemo(() => new Map(viewModel.attendees.map((person) => [person.id, person])), [viewModel.attendees]);
@@ -649,7 +606,7 @@ function GraphTab({ go, t, viewModel }: { go: (tab: LiveTab) => void; t: Transla
                   <span className="ev-lv-gsel-block">
                     <strong className="ev-lv-gsel-h">{t({ en: "Shared interests", zh: "共同兴趣" })}</strong>
                     {sharedTopics(selectedPerson.topics, viewModel.me.topics).length ? (
-                      <span className="ev-lv-gsel-interests">{sharedTopics(selectedPerson.topics, viewModel.me.topics).map((topic) => <span className="ev-lv-gsel-interest" key={topic}>{topic}</span>)}</span>
+                      <span className="ev-lv-gsel-interests">{sharedTopics(selectedPerson.topics, viewModel.me.topics).map((topic, index) => <span className="ev-lv-gsel-interest" key={`${index}-${topic}`}>{topic}</span>)}</span>
                     ) : (
                       <span className="ev-lv-gsel-rel-sub">{t({ en: "No shared topic recorded.", zh: "暂无共同话题记录。" })}</span>
                     )}
@@ -657,7 +614,8 @@ function GraphTab({ go, t, viewModel }: { go: (tab: LiveTab) => void; t: Transla
                 ) : null}
                 {selectedPerson ? (
                   <div className="ev-lv-gsel-actions">
-                    <ContactAction dark eventId={viewModel.eventId} open={open} person={selectedPerson} t={t} />
+                    <ContactAction dark eventId={viewModel.eventId} onRequest={(target) => onOpen("exchange", target)} open={open} person={selectedPerson} t={t} />
+                    <button className="btn ev-lv-btn-ghost ev-lv-btn-grow" data-live-open="attendee" onClick={() => onOpen("attendee", selectedPerson)} type="button">{t({ en: "Full profile →", zh: "查看完整资料 →" })}</button>
                   </div>
                 ) : null}
               </>
@@ -765,6 +723,12 @@ export function EventLive({ initialTab = "home", now, viewModel }: { initialTab?
   };
   const chip = STATUS_CHIP[viewModel.eventPhase];
   const detailHref = eventDetailHref(viewModel.eventId);
+  const [modal, setModal] = useState<EventModalState | null>(null);
+  const { toast, showToast } = useEventToast();
+  const onOpen: OpenModal = useCallback((kind, person) => setModal({ kind, person }), []);
+  const closeModal = useCallback(() => setModal(null), []);
+  const open = viewModel.eventPhase !== "upcoming";
+  const eventDate = formatEventDateRange({ endsAt: viewModel.eventEndsAt, startsAt: viewModel.eventStartsAt }, lang, true);
 
   return (
     <main className="ev-main" data-appscroll data-events-view="live" data-live-tab={tab} data-orbit-route="app-event-live">
@@ -790,14 +754,64 @@ export function EventLive({ initialTab = "home", now, viewModel }: { initialTab?
         </div>
         <LiveTabs active={tab} onSelect={go} t={t} />
         <div className="ev-lv-body" data-live-panel={tab}>
-          {tab === "home" ? <HomeTab go={go} now={nowMs} t={t} viewModel={viewModel} /> : null}
-          {tab === "rec" ? <RecTab t={t} viewModel={viewModel} /> : null}
-          {tab === "all" ? <AllTab t={t} viewModel={viewModel} /> : null}
-          {tab === "group" ? <GroupTab now={nowMs} t={t} viewModel={viewModel} /> : null}
-          {tab === "graph" ? <GraphTab go={go} t={t} viewModel={viewModel} /> : null}
+          {tab === "home" ? <HomeTab go={go} now={nowMs} onOpen={onOpen} t={t} viewModel={viewModel} /> : null}
+          {tab === "rec" ? <RecTab onOpen={onOpen} t={t} viewModel={viewModel} /> : null}
+          {tab === "all" ? <AllTab onOpen={onOpen} t={t} viewModel={viewModel} /> : null}
+          {tab === "group" ? <GroupTab now={nowMs} onOpen={onOpen} t={t} viewModel={viewModel} /> : null}
+          {tab === "graph" ? <GraphTab go={go} onOpen={onOpen} t={t} viewModel={viewModel} /> : null}
           {tab === "agenda" ? <AgendaTab language={lang} now={nowMs} t={t} viewModel={viewModel} /> : null}
         </div>
       </div>
+      {toast ? <EventsToast text={toast} /> : null}
+      {modal?.kind === "attendee" ? (
+        <EventAttendeeModal
+          eventDate={eventDate}
+          eventId={viewModel.eventId}
+          eventName={viewModel.eventName}
+          onClose={closeModal}
+          onExchange={(person) => onOpen("exchange", person)}
+          onNote={(person) => onOpen("note", person)}
+          onSchedule={(person) => onOpen("schedule", person)}
+          open={open}
+          person={modal.person}
+          t={t}
+        />
+      ) : null}
+      {modal?.kind === "exchange" ? (
+        <EventExchangeModal
+          eventId={viewModel.eventId}
+          me={viewModel.me}
+          onClose={closeModal}
+          onNote={(person) => onOpen("note", person)}
+          onSchedule={(person) => onOpen("schedule", person)}
+          open={open}
+          person={modal.person}
+          t={t}
+        />
+      ) : null}
+      {modal?.kind === "schedule" ? (
+        <EventScheduleModal
+          eventId={viewModel.eventId}
+          eventVenue={viewModel.eventVenue}
+          language={lang}
+          me={viewModel.me}
+          now={nowMs}
+          onClose={closeModal}
+          onSent={(person) => { closeModal(); showToast(t({ en: `Invitation sent — waiting for ${person.name} to confirm`, zh: `邀约已发送，等待 ${person.name} 确认` })); }}
+          person={modal.person}
+          t={t}
+        />
+      ) : null}
+      {modal?.kind === "note" ? (
+        <EventNoteModal
+          eventId={viewModel.eventId}
+          onClose={closeModal}
+          onOpenProfile={(person) => onOpen("attendee", person)}
+          onSaved={(person) => { closeModal(); showToast(t({ en: `Saved your note about ${person.name}`, zh: `已保存与 ${person.name} 的交流记录` })); }}
+          person={modal.person}
+          t={t}
+        />
+      ) : null}
     </main>
   );
 }

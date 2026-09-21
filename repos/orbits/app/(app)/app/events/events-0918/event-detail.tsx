@@ -10,13 +10,19 @@ import { productHref } from "../../orbit-public-shell";
 import { gradientFromString } from "../../orbit-reference-primitives";
 import { getDemoEventSceneAsset } from "../../../../../shared/demo-visual-assets";
 import { EventCover } from "../orbit-event-cover";
-import { OrbitEventMatchmaking, type EventMatchmakingSummary } from "../[id]/orbit-event-matchmaking";
+import { OrbitEventMatchmaking, type EventMatchmakingParticipantOpen, type EventMatchmakingSummary } from "../[id]/orbit-event-matchmaking";
+import type { OrbitPartyPersonView } from "../../orbit-party-route-view-model";
 import { OrbitPostEventCenter } from "../[id]/orbit-post-event-center";
 import { eventRegistrationIsOpen, eventRegistrationLabel, type EventRegistrationAvailability } from "../../orbit-event-registration-view-model";
 import { registrationBlockingReasonCopy } from "../../../../../features/events/registration/blocking-reason-copy";
 import type { EventRegistrationBlockingReason } from "../../../../../features/events/registration/contract";
 import { CTA_TONE, STATUS_CHIP, ctaFor, eventChipKind, eventDetailHref, formatEventDateRange, type EventListLanguage } from "./events-model";
-import { EVENTS_STYLES } from "./events-shell";
+import { EventAttendeeModal } from "./event-attendee-modal";
+import { EventExchangeModal } from "./event-exchange-modal";
+import { useEventToast, type EventModalKind } from "./event-modal-frame";
+import { EventNoteModal } from "./event-note-modal";
+import { EventScheduleModal } from "./event-schedule-modal";
+import { EVENTS_STYLES, EventsToast } from "./events-shell";
 
 /**
  * Orbit_0918 Events（参与者侧）活动详情 + 回顾态。
@@ -32,6 +38,8 @@ import { EVENTS_STYLES } from "./events-shell";
  * - 页签重叠语义按设计：介绍 = 介绍 + 参会者；议程 = 介绍（含议程卡）；参会者 = 参会者；主办方 = 主办方；
  * - 介绍段落 = 活动描述（亮点三卡 `highlights` 固定文案无来源 → 省略）；议程 = 真实议程（`agendaShort`）；
  * - 参会者 = 既有 OrbitEventMatchmaking（推荐 / 名单 / 交换）；未报名 → 「报名后可见」空态；
+ *   任务 5：其卡片 / 「查看依据与画像」经 `onOpenParticipant` 打开 Orbit_0918 参会者弹窗（目录字段 → 精简 `OrbitPartyPersonView`：
+ *   无 seat / group / icebreakers；reason 取推荐 reasons；回顾态精选参会者卡只有姓名 / 职位 / 公司 / contactId → 更精简的弹窗）；
  * - 主办方 = 详情 VM 主办信息；「主办方后台 →」仅当 `canOpenOperations`（主办方 / 活动角色）时链 `/operations`；
  * - 回顾态（`?view=recap` 或已结束）：四页签共用一个正文；统计四卡只有总参会人数真实，其余「—」；
  *   参会者列表 = 已发布名单（有已接受交换的 contactId → 「保持联系」链联系人，否则省略）；
@@ -41,6 +49,72 @@ import { EVENTS_STYLES } from "./events-shell";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 type RegistrationStatus = "cancelled" | "rsvped" | null;
+type DetailModal = { kind: EventModalKind; person: OrbitPartyPersonView; me: { initial: string; name: string; role: string }; open: boolean };
+
+function initialOf(name: string): string {
+  return name.trim().slice(0, 1).toUpperCase() || "?";
+}
+
+/** 目录参会者（`/operations` workspace）→ 精简 `OrbitPartyPersonView`（弹窗只读它的字段；无 seat / group / icebreakers）。 */
+export function personViewFromDirectory(input: EventMatchmakingParticipantOpen): OrbitPartyPersonView {
+  const { contactRequest, participant, recommendation } = input;
+  return {
+    company: participant.company ?? "",
+    contactId: contactRequest?.contactId ?? null,
+    contactRequestDirection: contactRequest?.direction ?? null,
+    contactRequestId: contactRequest?.requestId ?? null,
+    contactRequestRevision: contactRequest?.revision ?? null,
+    contactRequestStatus: contactRequest?.status ?? "none",
+    g: gradientFromString(participant.participantId),
+    groupNumber: null,
+    icebreakers: [...(recommendation?.icebreakers ?? [])],
+    id: participant.participantId,
+    industry: participant.industry ?? "",
+    initial: initialOf(participant.displayName),
+    isRecommended: Boolean(recommendation),
+    memberHint: recommendation?.memberHint ?? null,
+    name: participant.displayName,
+    noMatchReason: null,
+    offering: participant.offers.join("\n"),
+    reason: recommendation?.reasons.join("\n") ?? "",
+    score: recommendation?.score ?? 0,
+    seat: null,
+    seeking: participant.needs.join("\n"),
+    summary: participant.experienceHighlight ?? "",
+    title: participant.role ?? "",
+    topics: [...participant.topics],
+  };
+}
+
+/** 回顾态精选参会者（summary.people）→ 更精简的视图：只有姓名 / 职位 / 公司 / contactId。 */
+export function personViewFromRecap(person: RecapPerson & { participantId?: string }): OrbitPartyPersonView {
+  return {
+    company: person.company ?? "",
+    contactId: person.contactId,
+    contactRequestDirection: null,
+    contactRequestId: null,
+    contactRequestRevision: null,
+    contactRequestStatus: person.contactId ? "accepted" : "none",
+    g: gradientFromString(person.participantId ?? person.name),
+    groupNumber: null,
+    icebreakers: [],
+    id: person.participantId ?? `attendee:${person.name}`,
+    industry: "",
+    initial: person.initial,
+    isRecommended: false,
+    memberHint: null,
+    name: person.name,
+    noMatchReason: null,
+    offering: "",
+    reason: "",
+    score: 0,
+    seat: null,
+    seeking: "",
+    summary: "",
+    title: person.role ?? "",
+    topics: [],
+  };
+}
 type JourneyStage = "joined" | "post" | "pre";
 type DetailTab = "agenda" | "host" | "intro" | "people";
 type RecapTab = "notes" | "people" | "recap" | "summary";
@@ -165,6 +239,8 @@ export interface RecapPerson {
   contactId: string | null;
   initial: string;
   name: string;
+  /** 已发布名单的参会者 id（服务端注册名单无 → undefined）。 */
+  participantId?: string;
   role: string | null;
 }
 
@@ -184,6 +260,7 @@ export function recapPeople(
       contactId: person.contactId,
       initial: person.displayName.trim().slice(0, 1).toUpperCase() || "?",
       name: person.displayName,
+      participantId: person.participantId,
       role: person.role,
     }));
   }
@@ -361,14 +438,18 @@ function IntroPanel({ event, t }: { event: OrbitLandingEventView; t: Translate }
 /** 设计 191–209：「你可能感兴趣的参会者」卡；数据源 = 既有 OrbitEventMatchmaking；未报名 → 「报名后可见」。 */
 function PeoplePanel({
   event,
+  onOpenParticipant,
   onSummary,
+  refreshToken,
   registrationAvailability,
   registrationStatus,
   t,
   youRsvped,
 }: {
   event: OrbitLandingEventView;
+  onOpenParticipant: (input: EventMatchmakingParticipantOpen) => void;
   onSummary: (summary: EventMatchmakingSummary | null) => void;
+  refreshToken: number;
   registrationAvailability: EventRegistrationAvailability;
   registrationStatus: RegistrationStatus;
   t: Translate;
@@ -407,7 +488,9 @@ function PeoplePanel({
         authenticated={event.stats.authed}
         contactRequestsOpen={event.status !== "upcoming"}
         eventId={event.id}
+        onOpenParticipant={onOpenParticipant}
         onWorkspaceSummary={onSummary}
+        refreshToken={refreshToken}
         registrationOpen={event.status === "upcoming" && eventRegistrationIsOpen(registrationAvailability)}
       />
     </div>
@@ -445,11 +528,13 @@ function HostPanel({ canOpenOperations, event, t }: { canOpenOperations: boolean
 
 function RecapBody({
   event,
+  onOpenPerson,
   people,
   t,
   youRsvped,
 }: {
   event: OrbitLandingEventView;
+  onOpenPerson: (person: RecapPerson) => void;
   people: RecapPerson[];
   t: Translate;
   youRsvped: boolean;
@@ -490,9 +575,9 @@ function RecapBody({
           {people.length ? (
             <div className="ev-recap-people-grid">
               {people.map((person) => (
-                <div className="ev-recap-person" data-events-recap-person={person.contactId ? "contact" : "attendee"} key={`${person.name}-${person.role ?? ""}`}>
+                <div className="ev-recap-person" data-events-recap-person={person.contactId ? "contact" : "attendee"} key={person.participantId ?? `${person.name}-${person.role ?? ""}`}>
                   <div className="ev-recap-person-head">
-                    <span className="ev-avatar">{person.initial}</span>
+                    <button aria-label={t({ en: `Open ${person.name}'s profile`, zh: `查看 ${person.name} 的资料` })} className="btn ev-avatar ev-avatar-open" data-live-open="attendee" onClick={() => onOpenPerson(person)} type="button">{person.initial}</button>
                     <span className="ev-recap-person-copy">
                       <strong className="ev-person-name">{person.name}</strong>
                       {person.role ? <span className="ev-recap-person-sub">{person.role}</span> : null}
@@ -636,8 +721,53 @@ export function EventDetail({
     </EventCover>
   );
 
+  const [modal, setModal] = useState<DetailModal | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
+  const [nowMs, setNowMs] = useState(0);
+  const { toast, showToast } = useEventToast();
+  const openKind = useCallback((kind: EventModalKind, person: OrbitPartyPersonView) => {
+    setNowMs(Date.now());
+    setModal((current) => ({ kind, person, me: current?.me ?? { initial: "", name: "", role: "" }, open: current?.open ?? event.status !== "upcoming" }));
+  }, [event.status]);
+  const closeModal = useCallback(() => {
+    setModal((current) => {
+      // 交换 / 约谈 / 记录交流可能写入 → 让既有参会者组件重新拉取 workspace（名单 / 已接受交换的 contactId）。
+      if (current && current.kind !== "attendee") setRefreshToken((value) => value + 1);
+      return null;
+    });
+  }, []);
+  const onOpenParticipant = useCallback((input: EventMatchmakingParticipantOpen) => {
+    setNowMs(Date.now());
+    setModal({
+      kind: "attendee",
+      me: { initial: initialOf(input.me.displayName), name: input.me.displayName, role: [input.me.role, input.me.company].filter(Boolean).join(" · ") },
+      open: input.contactRequestsOpen,
+      person: personViewFromDirectory(input),
+    });
+  }, []);
+  const onOpenRecapPerson = useCallback((person: RecapPerson) => {
+    setNowMs(Date.now());
+    setModal((current) => ({ kind: "attendee", me: current?.me ?? { initial: "", name: "", role: "" }, open: false, person: personViewFromRecap(person) }));
+  }, []);
   const peoplePanel = (
-    <PeoplePanel event={event} onSummary={onSummary} registrationAvailability={registrationAvailability} registrationStatus={registrationStatus} t={t} youRsvped={youRsvped} />
+    <PeoplePanel event={event} onOpenParticipant={onOpenParticipant} onSummary={onSummary} refreshToken={refreshToken} registrationAvailability={registrationAvailability} registrationStatus={registrationStatus} t={t} youRsvped={youRsvped} />
+  );
+  const modals = (
+    <>
+      {toast ? <EventsToast text={toast} /> : null}
+      {modal?.kind === "attendee" ? (
+        <EventAttendeeModal eventDate={dateFull} eventId={event.id} eventName={name} onClose={closeModal} onExchange={(person) => openKind("exchange", person)} onNote={(person) => openKind("note", person)} onSchedule={(person) => openKind("schedule", person)} open={modal.open} person={modal.person} t={t} />
+      ) : null}
+      {modal?.kind === "exchange" ? (
+        <EventExchangeModal eventId={event.id} me={modal.me} onClose={closeModal} onNote={(person) => openKind("note", person)} onSchedule={(person) => openKind("schedule", person)} open={modal.open} person={modal.person} t={t} />
+      ) : null}
+      {modal?.kind === "schedule" ? (
+        <EventScheduleModal eventId={event.id} eventVenue={event.venue || event.place || ""} language={lang} me={modal.me} now={nowMs} onClose={closeModal} onSent={(person) => { closeModal(); showToast(t({ en: `Invitation sent — waiting for ${person.name} to confirm`, zh: `邀约已发送，等待 ${person.name} 确认` })); }} person={modal.person} t={t} />
+      ) : null}
+      {modal?.kind === "note" ? (
+        <EventNoteModal eventId={event.id} onClose={closeModal} onOpenProfile={(person) => openKind("attendee", person)} onSaved={(person) => { closeModal(); showToast(t({ en: `Saved your note about ${person.name}`, zh: `已保存与 ${person.name} 的交流记录` })); }} person={modal.person} t={t} />
+      ) : null}
+    </>
   );
 
   if (recap) {
@@ -678,7 +808,7 @@ export function EventDetail({
             </div>
           </div>
           <Tabs<RecapTab> active={recapTab} label={t({ en: "Recap sections", zh: "回顾栏目" })} onSelect={setRecapTab} tabs={recapTabs} />
-          {recapTab === "summary" ? <RecapSummaryEmpty t={t} /> : <RecapBody event={event} people={people} t={t} youRsvped={youRsvped} />}
+          {recapTab === "summary" ? <RecapSummaryEmpty t={t} /> : <RecapBody event={event} onOpenPerson={onOpenRecapPerson} people={people} t={t} youRsvped={youRsvped} />}
           {/* 会后中心只在活动真正结束后挂载（其 followups API 对未结束活动返回 409）。 */}
           {recapTab === "notes" && youRsvped && event.status === "ended" ? (
             <div className="ev-card-panel" data-events-recap-notes>
@@ -690,6 +820,7 @@ export function EventDetail({
           {youRsvped ? <div className="ev-panel" hidden>{peoplePanel}</div> : null}
         </div>
         <AskOrbit event={event} language={language} name={name} t={t} time={dateFull} />
+        {modals}
       </main>
     );
   }
@@ -759,6 +890,7 @@ export function EventDetail({
         </div>
       </div>
       <AskOrbit event={event} language={language} name={name} t={t} time={dateFull} />
+      {modals}
     </main>
   );
 }

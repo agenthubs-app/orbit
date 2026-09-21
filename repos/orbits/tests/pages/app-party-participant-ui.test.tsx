@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { act, create, type ReactTestRenderer } from "react-test-renderer";
+import { act, create, type ReactTestInstance, type ReactTestRenderer } from "react-test-renderer";
 
 import type {
   OrbitPartyPersonView,
@@ -11,8 +11,8 @@ import { EventLive } from "../../app/(app)/app/events/events-0918/event-live";
 
 /**
  * 现场屏（/app/events/[id]/live，Orbit_0918）参与者交互：交换联系方式在推荐 / 名单 / 图谱三处共用同一状态，
- * 分桌理由 / 破冰来自已发布结果。原 /app/party 版本的「画像截止 / 编辑入口」与「参会者详情抽屉」不在现场屏决定范围
- * （详情抽屉由任务 5 的参会者弹窗接回），故不再断言。
+ * 分桌理由 / 破冰来自已发布结果。原 /app/party 版本的「画像截止 / 编辑入口」不在现场屏决定范围，故不再断言；
+ * 「参会者详情抽屉」由任务 5 的参会者弹窗接回（见 app-event-attendee-modal.test.tsx）。
  */
 const EVENT_ID = "event:tokyo/founder-night";
 const PROFILE_DEADLINE = "2026-08-03T09:00:00.000Z";
@@ -116,6 +116,26 @@ function partyViewModel(
   };
 }
 
+/** Task 5: 「申请交换联系方式」先打开交换弹窗，弹窗里的「发送申请」才 POST（同一请求体）。 */
+async function sendViaExchangeModal(renderer: ReactTestRenderer, requestButton: ReactTestInstance) {
+  await act(async () => {
+    requestButton.props.onClick();
+  });
+  const send = renderer.root.find(
+    (node) => node.type === "button" && node.props["data-events-modal-action"] === "send-exchange",
+  );
+  await act(async () => {
+    await (send.props.onClick() as Promise<void>);
+  });
+  assert.match(JSON.stringify(renderer.toJSON()), /申请已发送，等待对方确认/u);
+  const done = renderer.root.find(
+    (node) => node.type === "button" && node.props["data-events-modal-action"] === "done",
+  );
+  await act(async () => {
+    done.props.onClick();
+  });
+}
+
 function tabButton(renderer: ReactTestRenderer, tab: string) {
   return renderer.root.findAll(
     (node) => node.type === "button" && node.props["data-live-tab"] === tab,
@@ -151,9 +171,7 @@ test("a graph node selects the same one-person consent control and sends only th
         node.type === "button" &&
         node.props["data-event-contact-action"] === "request",
     );
-    await act(async () => {
-      await (requestButton.props.onClick() as Promise<void>);
-    });
+    await sendViaExchangeModal(renderer, requestButton);
     assert.equal(
       requestUrl,
       `/api/events/${encodeURIComponent(EVENT_ID)}/operations/contact-requests`,
@@ -263,9 +281,7 @@ test("a request sent from the recommendation card is reflected on the directory 
       (node) => node.type === "button" && node.props["data-event-contact-action"] === "request",
     );
     assert.equal(requestButtons.length, 1);
-    await act(async () => {
-      await requestButtons[0].props.onClick();
-    });
+    await sendViaExchangeModal(renderer, requestButtons[0]);
     assert.deepEqual(requested, [`POST /api/events/${encodeURIComponent(EVENT_ID)}/operations/contact-requests`]);
     await act(async () => {
       tabButton(renderer, "all").props.onClick();

@@ -590,6 +590,211 @@ export const EVENTS_STYLES = `
 [data-orbit-real-page="events-0918"] .btn.ev-seg-btn:focus-visible { outline: 2px solid #4B4FC7; outline-offset: -2px; }
 [data-orbit-real-page="events-0918"] .btn.ev-tab:focus-visible { outline: 2px solid #4B4FC7; outline-offset: 2px; }
 @media (pointer: coarse) { [data-orbit-real-page="events-0918"] .btn.ev-seg-btn { min-height: 44px; } }
+/* ── 四个弹窗（任务 5；设计 675–780）。公共遮罩 / 面板：676–677（参会者）= 705–706（交换）= 745–746（约谈）= 764–765（记录交流）；
+      723–724 成功态 = 居中 + padding 24 + 面板 padding 36px 34px 30px + align-items center + gap 18。只差 max-width / gap / z-index → 修饰类 ── */
+[data-orbit-real-page="events-0918"] .ev-mo-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(14,18,37,0.35); backdrop-filter: blur(6px); display: flex; align-items: flex-start; justify-content: center; padding: 48px 24px; overflow-y: auto; }
+[data-orbit-real-page="events-0918"] .ev-mo-z110 { z-index: 110; }
+[data-orbit-real-page="events-0918"] .ev-mo-z120 { z-index: 120; }
+[data-orbit-real-page="events-0918"] .ev-mo-overlay-center { align-items: center; padding: 24px; }
+[data-orbit-real-page="events-0918"] .ev-mo-panel { width: 100%; max-width: 800px; background: #FFFFFF; border-radius: 22px; box-shadow: 0 30px 80px rgba(14,18,37,0.25); padding: 30px 34px; display: flex; flex-direction: column; gap: 22px; animation: orbit-fade .3s ease; }
+[data-orbit-real-page="events-0918"] .ev-mo-panel-660 { max-width: 660px; }
+[data-orbit-real-page="events-0918"] .ev-mo-panel-680 { max-width: 680px; }
+[data-orbit-real-page="events-0918"] .ev-mo-panel-700 { max-width: 700px; }
+[data-orbit-real-page="events-0918"] .ev-mo-panel-gap-20 { gap: 20px; }
+[data-orbit-real-page="events-0918"] .ev-mo-panel-ok { position: relative; padding: 36px 34px 30px; align-items: center; gap: 18px; }
+/* 678 参会者标题行（center）；707 / 747 / 766 其余（flex-start + 副标题） */
+[data-orbit-real-page="events-0918"] .ev-mo-head { display: flex; align-items: center; justify-content: space-between; }
+[data-orbit-real-page="events-0918"] .ev-mo-head-top { align-items: flex-start; }
+[data-orbit-real-page="events-0918"] .ev-mo-head-copy { display: flex; flex-direction: column; gap: 6px; }
+[data-orbit-real-page="events-0918"] .ev-mo-title { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 26px; letter-spacing: -0.02em; }
+[data-orbit-real-page="events-0918"] .ev-mo-title-22 { font-size: 22px; }
+[data-orbit-real-page="events-0918"] .ev-mo-sub { font-size: 14px; color: #6B6F99; }
+/* 通用按钮（697 / 715 / 738 / 757）：设计 padding 14 r12 15px（三按钮 / 底部双钮）、14px（成功态三钮）、12px 24px r10 14px（约谈 / 记录交流底部） */
+[data-orbit-real-page="events-0918"] .btn.ev-mo-btn-primary { padding: 14px; border: 0; border-radius: 12px; background: #0E1225; color: #FFFFFF; font-size: 15px; font-weight: 500; cursor: pointer;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; text-decoration: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-btn-primary:hover { background: #2E3270; color: #FFFFFF; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-btn-primary:active { transform: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-btn-primary:disabled, [data-orbit-real-page="events-0918"] .btn.ev-mo-btn-primary:disabled:hover { background: #0E1225; opacity: .5; cursor: default; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-btn-ghost { padding: 14px; border: 1px solid #B9BCEB; border-radius: 12px; background: #FFFFFF; color: #2E3270; font-size: 15px; font-weight: 500; cursor: pointer;
+  height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; text-decoration: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-btn-ghost:hover { background: #ECEEFB; color: #2E3270; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-btn-ghost:active { transform: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-btn-ghost:disabled, [data-orbit-real-page="events-0918"] .btn.ev-mo-btn-ghost:disabled:hover { background: #FFFFFF; border-color: #E8E9F6; color: #9FA3C4; cursor: default; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-btn-cancel { padding: 14px; border: 1px solid #DDDEFA; border-radius: 12px; background: #FFFFFF; color: #3B3F7A; font-size: 15px; cursor: pointer;
+  height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; font-weight: 400; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-btn-cancel:hover { background: #FFFFFF; color: #3B3F7A; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-btn-cancel:active { transform: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-btn-14 { font-size: 14px; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-btn-sm { padding: 12px 24px; border-radius: 10px; font-size: 14px; }
+[data-orbit-real-page="events-0918"] .ev-mo-foot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding-top: 14px; border-top: 1px solid #E8E9F6; }
+[data-orbit-real-page="events-0918"] .ev-mo-foot-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 14px; border-top: 1px solid #E8E9F6; }
+[data-orbit-real-page="events-0918"] .ev-mo-foot-note { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="events-0918"] .ev-mo-foot-actions { display: flex; gap: 10px; }
+[data-orbit-real-page="events-0918"] .ev-mo-hint { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="events-0918"] .ev-mo-hint-warn { color: #B5473A; }
+[data-orbit-real-page="events-0918"] .ev-mo-required { color: #B5473A; }
+/* 755 / 769 textarea + 计数 */
+[data-orbit-real-page="events-0918"] .ev-mo-textarea-wrap { position: relative; }
+[data-orbit-real-page="events-0918"] .ev-mo-textarea { width: 100%; padding: 12px 14px; border: 1px solid #DDDEFA; border-radius: 10px; font-size: 14px; line-height: 1.6; outline: none; resize: vertical; background: #FFFFFF; color: #0E1225; box-sizing: border-box; display: block; }
+[data-orbit-real-page="events-0918"] .ev-mo-textarea:focus { border-color: #4B4FC7; }
+[data-orbit-real-page="events-0918"] .ev-mo-counter { position: absolute; right: 12px; bottom: 10px; font-size: 12px; color: #9FA3C4; }
+/* ── 参会者详情 679–698 ── */
+[data-orbit-real-page="events-0918"] .ev-mo-att-hero { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; padding-bottom: 22px; border-bottom: 1px solid #E8E9F6; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-avatar { width: 140px; height: 140px; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 52px; flex-shrink: 0; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-copy { flex: 1; min-width: 240px; display: flex; flex-direction: column; gap: 10px; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-name-row { display: flex; align-items: center; gap: 12px; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-name { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 28px; letter-spacing: -0.02em; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-score { padding: 3px 10px; border-radius: 999px; background: #ECEEFB; color: #4B4FC7; font-size: 12px; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-line { font-size: 16px; color: #3B3F7A; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-meta { display: flex; flex-wrap: wrap; gap: 16px; font-size: 14px; color: #3B3F7A; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-tag { padding: 5px 12px; border-radius: 999px; background: #ECEEFB; color: #3B3F7A; font-size: 13px; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-side { display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-event { padding: 16px 18px; border-radius: 12px; background: #F7F7FD; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-event-label { color: #3B3F7A; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-event-line { color: #6B6F99; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-bio { width: 100%; margin: 0; font-size: 14px; line-height: 1.8; color: #3B3F7A; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-card { padding: 20px; border-radius: 14px; background: #F7F7FD; display: flex; flex-direction: column; gap: 10px; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-card-head { display: flex; align-items: center; gap: 10px; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-card-icon { width: 36px; height: 36px; border-radius: 50%; background: #FFFFFF; color: #4B4FC7; display: flex; align-items: center; justify-content: center; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-card-title { font-size: 15px; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-card-body { display: flex; flex-direction: column; font-size: 14px; color: #3B3F7A; line-height: 1.9; padding-left: 6px; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-status { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 18px 20px; border-radius: 14px; background: #F7F7FD; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-status-icon { width: 40px; height: 40px; border-radius: 50%; background: #FFFFFF; color: #4B4FC7; display: flex; align-items: center; justify-content: center; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-status-copy { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 2px; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-status-title { font-size: 15px; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-status-line { font-size: 14px; color: #3B3F7A; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-status-hint { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+[data-orbit-real-page="events-0918"] .ev-mo-att-foot { align-self: center; font-size: 12px; color: #9FA3C4; }
+/* ── 交换 708–715 ── */
+[data-orbit-real-page="events-0918"] .ev-mo-ex-person { display: flex; gap: 16px; padding: 18px; border-radius: 14px; background: #F7F7FD; }
+[data-orbit-real-page="events-0918"] .ev-mo-ex-avatar { width: 80px; height: 80px; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 30px; flex-shrink: 0; }
+[data-orbit-real-page="events-0918"] .ev-mo-ex-copy { display: flex; flex-direction: column; gap: 6px; }
+[data-orbit-real-page="events-0918"] .ev-mo-ex-name { font-size: 17px; }
+[data-orbit-real-page="events-0918"] .ev-mo-ex-role { font-size: 14px; color: #3B3F7A; }
+[data-orbit-real-page="events-0918"] .ev-mo-ex-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+[data-orbit-real-page="events-0918"] .ev-mo-ex-tag { padding: 3px 10px; border-radius: 999px; background: #DDDEFA; color: #2E3270; font-size: 12px; }
+[data-orbit-real-page="events-0918"] .ev-mo-ex-bio { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="events-0918"] .ev-mo-ex-block { display: flex; flex-direction: column; gap: 10px; }
+[data-orbit-real-page="events-0918"] .ev-mo-ex-h { font-size: 15px; }
+[data-orbit-real-page="events-0918"] .ev-mo-ex-desc { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-agree { display: flex; align-items: center; gap: 10px; border: 0; background: transparent; padding: 0; font-size: 14px; color: #3B3F7A; cursor: pointer; text-align: left;
+  height: auto; justify-content: flex-start; white-space: normal; font-weight: 400; letter-spacing: 0; line-height: normal; transition: none; border-radius: 0; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-agree:hover { background: transparent; color: #3B3F7A; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-agree:active { transform: none; }
+[data-orbit-real-page="events-0918"] .ev-mo-agree-box { width: 20px; height: 20px; border-radius: 5px; background: #FFFFFF; border: 2px solid #C9CBEA; color: #FFFFFF; font-size: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-sizing: border-box; }
+[data-orbit-real-page="events-0918"] .ev-mo-agree-on .ev-mo-agree-box { background: #4B4FC7; border-color: #4B4FC7; }
+/* ── 交换成功 724–738 ── */
+[data-orbit-real-page="events-0918"] .btn.ev-modal-close.ev-mo-ok-close { position: absolute; top: 18px; right: 18px; }
+[data-orbit-real-page="events-0918"] .ev-mo-ok-mark { position: relative; width: 100px; height: 100px; border-radius: 50%; background: #E6F1EC; color: #2F6B4F; display: flex; align-items: center; justify-content: center; font-size: 44px; }
+[data-orbit-real-page="events-0918"] .ev-mo-ok-mark-wait { background: #ECEEFB; color: #4B4FC7; }
+[data-orbit-real-page="events-0918"] .ev-mo-ok-confetti { position: absolute; transform: rotate(45deg); }
+[data-orbit-real-page="events-0918"] .ev-mo-ok-confetti-1 { left: -60px; top: 10px; width: 10px; height: 10px; background: #7C4FC7; }
+[data-orbit-real-page="events-0918"] .ev-mo-ok-confetti-2 { right: -70px; top: 6px; width: 10px; height: 10px; background: #E3C25A; }
+[data-orbit-real-page="events-0918"] .ev-mo-ok-confetti-3 { left: -90px; bottom: 20px; width: 8px; height: 8px; background: #5B8C7A; }
+[data-orbit-real-page="events-0918"] .ev-mo-ok-confetti-4 { right: -100px; bottom: 30px; width: 8px; height: 8px; background: #9FA3D9; }
+[data-orbit-real-page="events-0918"] .ev-mo-ok-title { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 28px; letter-spacing: -0.02em; text-align: center; }
+[data-orbit-real-page="events-0918"] .ev-mo-ok-sub { font-size: 14px; color: #6B6F99; text-align: center; }
+[data-orbit-real-page="events-0918"] .ev-mo-ok-pair { display: grid; grid-template-columns: 1fr 60px 1fr; align-items: center; width: 100%; padding-top: 10px; }
+[data-orbit-real-page="events-0918"] .ev-mo-ok-person { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+[data-orbit-real-page="events-0918"] .ev-mo-ok-avatar { width: 84px; height: 84px; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 32px; }
+[data-orbit-real-page="events-0918"] .ev-mo-ok-name { font-size: 16px; }
+[data-orbit-real-page="events-0918"] .ev-mo-ok-role { font-size: 13px; color: #6B6F99; text-align: center; }
+[data-orbit-real-page="events-0918"] .ev-mo-ok-swap { width: 44px; height: 44px; margin: 0 auto; border-radius: 50%; border: 1px solid #DDDEFA; color: #4B4FC7; display: flex; align-items: center; justify-content: center; }
+[data-orbit-real-page="events-0918"] .ev-mo-ok-contact { width: 100%; padding: 16px; border-radius: 12px; background: #F7F7FD; font-size: 13px; color: #2E3270; text-align: center; box-sizing: border-box; }
+[data-orbit-real-page="events-0918"] .ev-mo-ok-tip { width: 100%; padding: 14px 16px; border-radius: 12px; background: #ECEEFB; font-size: 13px; color: #2E3270; box-sizing: border-box; }
+[data-orbit-real-page="events-0918"] .ev-mo-ok-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 100%; }
+[data-orbit-real-page="events-0918"] .ev-mo-ok-actions .btn.ev-mo-btn-primary:only-child { grid-column: 3; }
+/* ── 约谈 748–757 ── */
+[data-orbit-real-page="events-0918"] .ev-mo-sch-pair { display: grid; grid-template-columns: 1fr 40px 1fr; align-items: center; gap: 8px; }
+[data-orbit-real-page="events-0918"] .ev-mo-sch-person { display: flex; gap: 12px; align-items: center; padding: 14px; border-radius: 12px; background: #F7F7FD; }
+[data-orbit-real-page="events-0918"] .ev-mo-sch-avatar { width: 52px; height: 52px; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px; flex-shrink: 0; }
+[data-orbit-real-page="events-0918"] .ev-mo-sch-person-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+[data-orbit-real-page="events-0918"] .ev-mo-sch-person-label { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="events-0918"] .ev-mo-sch-person-name { font-size: 15px; }
+[data-orbit-real-page="events-0918"] .ev-mo-sch-swap { text-align: center; color: #4B4FC7; }
+[data-orbit-real-page="events-0918"] .ev-mo-sch-grid { display: grid; grid-template-columns: 130px 1fr; gap: 16px 14px; align-items: start; }
+[data-orbit-real-page="events-0918"] .ev-mo-sch-label { font-size: 14px; padding-top: 12px; }
+[data-orbit-real-page="events-0918"] .ev-mo-sch-field { display: flex; justify-content: space-between; padding: 12px 14px; border: 1px solid #DDDEFA; border-radius: 10px; font-size: 14px; }
+[data-orbit-real-page="events-0918"] .ev-mo-sch-days { display: flex; gap: 8px; align-items: stretch; }
+[data-orbit-real-page="events-0918"] .ev-mo-sch-arrow { width: 32px; border: 1px solid #E8E9F6; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #3B3F7A; flex-shrink: 0; }
+[data-orbit-real-page="events-0918"] .ev-mo-sch-arrow-muted { color: #9FA3C4; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-sch-day { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px; border: 1px solid #E8E9F6; border-radius: 10px; background: #FFFFFF; color: #0E1225; cursor: pointer; transition: all .2s;
+  height: auto; justify-content: center; white-space: nowrap; font-weight: 400; letter-spacing: 0; line-height: normal; font-size: 12px; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-sch-day:hover { background: #FFFFFF; color: #0E1225; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-sch-day:active { transform: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-sch-day.ev-mo-sch-day-on, [data-orbit-real-page="events-0918"] .btn.ev-mo-sch-day.ev-mo-sch-day-on:hover { border-color: #4B4FC7; background: #4B4FC7; color: #FFFFFF; }
+[data-orbit-real-page="events-0918"] .ev-mo-sch-day-sub { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="events-0918"] .ev-mo-sch-day-on .ev-mo-sch-day-sub { color: #DDDEFA; }
+[data-orbit-real-page="events-0918"] .ev-mo-sch-day-n { font-size: 20px; }
+[data-orbit-real-page="events-0918"] .ev-mo-sch-slots-wrap { display: flex; flex-direction: column; gap: 8px; }
+[data-orbit-real-page="events-0918"] .ev-mo-sch-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-sch-slot { padding: 12px; border: 1px solid #E8E9F6; border-radius: 10px; background: #FFFFFF; color: #0E1225; font-size: 14px; cursor: pointer; transition: all .2s;
+  height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; font-weight: 400; letter-spacing: 0; line-height: normal; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-sch-slot:hover { background: #FFFFFF; color: #0E1225; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-sch-slot:active { transform: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-sch-slot.ev-mo-sch-slot-on, [data-orbit-real-page="events-0918"] .btn.ev-mo-sch-slot.ev-mo-sch-slot-on:hover { border-color: #2E3270; background: #2E3270; color: #FFFFFF; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-sch-slot:disabled, [data-orbit-real-page="events-0918"] .btn.ev-mo-sch-slot:disabled:hover { background: #F7F7FD; color: #9FA3C4; cursor: default; }
+[data-orbit-real-page="events-0918"] .ev-mo-sch-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-sch-mode { display: flex; gap: 10px; align-items: flex-start; padding: 14px; border: 1px solid #E8E9F6; border-radius: 12px; background: #FFFFFF; text-align: left; cursor: pointer;
+  height: auto; justify-content: flex-start; white-space: normal; font-weight: 400; letter-spacing: 0; line-height: normal; transition: none; color: #0E1225; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-sch-mode:hover { background: #FFFFFF; color: #0E1225; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-sch-mode:active { transform: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-sch-mode.ev-mo-sch-mode-on, [data-orbit-real-page="events-0918"] .btn.ev-mo-sch-mode.ev-mo-sch-mode-on:hover { border-color: #4B4FC7; background: #F7F7FD; }
+[data-orbit-real-page="events-0918"] .ev-mo-sch-radio { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #C9CBEA; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; box-sizing: border-box; }
+[data-orbit-real-page="events-0918"] .ev-mo-sch-radio-dot { width: 8px; height: 8px; border-radius: 50%; background: transparent; }
+[data-orbit-real-page="events-0918"] .ev-mo-sch-mode-on .ev-mo-sch-radio { border-color: #4B4FC7; }
+[data-orbit-real-page="events-0918"] .ev-mo-sch-mode-on .ev-mo-sch-radio-dot { background: #4B4FC7; }
+[data-orbit-real-page="events-0918"] .ev-mo-sch-mode-copy { display: flex; flex-direction: column; gap: 2px; }
+[data-orbit-real-page="events-0918"] .ev-mo-sch-mode-title { font-size: 14px; }
+[data-orbit-real-page="events-0918"] .ev-mo-sch-mode-desc { font-size: 12px; color: #6B6F99; }
+/* ── 记录交流 767–777 ── */
+[data-orbit-real-page="events-0918"] .ev-mo-note-person { display: flex; gap: 16px; align-items: center; padding: 18px; border-radius: 14px; background: #F7F7FD; }
+[data-orbit-real-page="events-0918"] .ev-mo-note-avatar { width: 64px; height: 64px; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 26px; flex-shrink: 0; }
+[data-orbit-real-page="events-0918"] .ev-mo-note-person-copy { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+[data-orbit-real-page="events-0918"] .ev-mo-note-name { font-size: 17px; }
+[data-orbit-real-page="events-0918"] .ev-mo-note-role { font-size: 14px; color: #3B3F7A; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-note-open { padding: 10px 14px; border: 0; border-radius: 8px; background: #ECEEFB; color: #2E3270; font-size: 13px; font-weight: 500; cursor: pointer;
+  height: auto; gap: 0; white-space: nowrap; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-note-open:hover { background: #ECEEFB; color: #2E3270; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-note-open:active { transform: none; }
+[data-orbit-real-page="events-0918"] .ev-mo-note-grid { display: grid; grid-template-columns: 120px 1fr; gap: 14px 16px; align-items: start; }
+[data-orbit-real-page="events-0918"] .ev-mo-note-label { font-size: 14px; padding-top: 12px; }
+[data-orbit-real-page="events-0918"] .ev-mo-note-label-8 { padding-top: 8px; }
+[data-orbit-real-page="events-0918"] .ev-mo-note-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-note-tag { padding: 7px 12px; border: 1px solid #E8E9F6; border-radius: 8px; background: #F7F7FD; color: #3B3F7A; font-size: 13px; cursor: pointer;
+  height: auto; gap: 0; white-space: nowrap; font-weight: 400; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-note-tag:hover { background: #F7F7FD; color: #3B3F7A; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-note-tag:active { transform: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-mo-note-tag.ev-mo-note-tag-on, [data-orbit-real-page="events-0918"] .btn.ev-mo-note-tag.ev-mo-note-tag-on:hover { border-color: #B9BCEB; background: #DDDEFA; color: #2E3270; }
+[data-orbit-real-page="events-0918"] .ev-mo-note-custom { padding: 7px 12px; border: 1px dashed #C9CBEA; border-radius: 8px; font-size: 13px; color: #6B6F99; background: transparent; outline: none; width: 120px; }
+[data-orbit-real-page="events-0918"] .ev-mo-note-custom:focus { border-color: #4B4FC7; color: #0E1225; }
+/* 任务 5 接线：头像 / 成员 / 同桌整卡是设计的 <button>（271 / 302 / 332 / 373 / 406 / 552） */
+[data-orbit-real-page="events-0918"] .btn.ev-avatar.ev-avatar-open { width: 56px; height: 56px; border: 0; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px; flex-shrink: 0; cursor: pointer; padding: 0; gap: 0; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-avatar.ev-avatar-open:hover { background: #DDDEFA; color: #2E3270; }
+[data-orbit-real-page="events-0918"] .btn.ev-avatar.ev-avatar-open:active { transform: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-avatar { width: 56px; height: 56px; border: 0; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px; flex-shrink: 0; cursor: pointer; padding: 0; gap: 0; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-avatar.ev-lv-avatar-48 { width: 48px; height: 48px; font-size: 16px; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-avatar.ev-lv-avatar-64 { width: 64px; height: 64px; font-size: 24px; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-avatar:hover { background: #DDDEFA; color: #2E3270; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-avatar:active { transform: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-mate { display: flex; flex-direction: column; align-items: center; gap: 4px; border: 0; background: transparent; padding: 0; cursor: pointer; height: auto; white-space: normal; font-weight: 400; letter-spacing: 0; line-height: normal; transition: none; border-radius: 0; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-mate:hover { background: transparent; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-mate:active { transform: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-member { display: flex; gap: 12px; align-items: center; padding: 14px; border: 1px solid #E8E9F6; border-radius: 12px; background: #FFFFFF; text-align: left; cursor: pointer; height: auto; justify-content: flex-start; white-space: normal; font-weight: 400; letter-spacing: 0; line-height: normal; transition: none; color: #0E1225; width: 100%; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-member:hover { background: #F7F7FD; color: #0E1225; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-member:active { transform: none; }
+[data-orbit-real-page="events-0918"] .btn.ev-lv-btn-grow-14 { flex: 1.4; }
+@media (max-width: 640px) {
+  [data-orbit-real-page="events-0918"] .ev-mo-overlay { padding: 24px 12px; }
+  [data-orbit-real-page="events-0918"] .ev-mo-panel { padding: 22px 18px; }
+  [data-orbit-real-page="events-0918"] .ev-mo-att-actions, [data-orbit-real-page="events-0918"] .ev-mo-ok-actions, [data-orbit-real-page="events-0918"] .ev-mo-sch-modes { grid-template-columns: 1fr; }
+  [data-orbit-real-page="events-0918"] .ev-mo-sch-grid, [data-orbit-real-page="events-0918"] .ev-mo-note-grid { grid-template-columns: 1fr; }
+  [data-orbit-real-page="events-0918"] .ev-mo-sch-pair { grid-template-columns: 1fr; }
+}
 @media (max-width: 640px) {
   [data-orbit-real-page="events-0918"] .ev-main { padding: 20px 16px 72px; }
   [data-orbit-real-page="events-0918"] .ev-h1 { font-size: 30px; }

@@ -5,6 +5,8 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
 
+import { act, create, type ReactTestRenderer } from "react-test-renderer";
+
 import { EventLive, resultsBoundaryCopy } from "../../app/(app)/app/events/events-0918/event-live";
 import {
   AGENDA_STATE,
@@ -182,7 +184,14 @@ test("home tab: status tiles, three recommendations, graph summary, current grou
   assert.match(html, /data-live-agenda-status="done"[^>]*>.*?<span class="ev-lv-agenda-mini-time">17:00<\/span><strong class="ev-lv-agenda-mini-title">开始签到/);
   assert.match(html, /data-live-agenda-status="now"[^>]*style="background:#F7F7FD"/);
   assert.match(html, /data-live-agenda-status="soon"/);
-  assert.doesNotMatch(html, /记录交流|申请交换联系方式<\/button><\/div><\/div><\/article>.*data-live-tab="rec"/u);
+  // Task 5 carry-over: mini rows show the design's mark glyph (✓ / ● / blank) coloured by tagFg, not the tag text
+  assert.match(html, /<span aria-label="已完成" class="ev-lv-agenda-mini-mark" role="img" style="color:#2F6B4F">✓<\/span>/);
+  assert.match(html, /<span aria-label="进行中" class="ev-lv-agenda-mini-mark" role="img" style="color:#2E3270">●<\/span>/);
+  assert.match(html, /<span aria-label="即将开始" class="ev-lv-agenda-mini-mark" role="img" style="color:#6B6F99"><\/span>/);
+  // 设计 259「＋ 记录交流」状态格无人物上下文 → 省略；同桌卡是打开参会者弹窗的按钮
+  assert.doesNotMatch(html, /记录交流/u);
+  assert.match(html, /<button class="btn ev-lv-mate" data-live-open="attendee" type="button"><span aria-hidden="true" class="ev-lv-avatar ev-lv-avatar-48">K<\/span><span class="ev-lv-mate-name">Ken Sato<\/span>/);
+  assert.doesNotMatch(html, /data-events-modal=/, "no modal is mounted before a click");
 });
 
 test("home tab: check-in button reflects closed window and checked-in state", () => {
@@ -246,8 +255,11 @@ test("all tab: search, hot tags from topic frequency, count, cards with summary;
   assert.match(html, /热门标签：<button class="btn ev-lv-hot-tag" type="button">Reuse systems<\/button><button class="btn ev-lv-hot-tag" type="button">Developer tools<\/button><button class="btn ev-lv-hot-tag" type="button">Enterprise procurement<\/button>/);
   assert.match(html, /<span class="ev-lv-hot-total">共 2 位参会者<\/span>/);
   assert.match(html, /<span class="ev-lv-person-bio">Founder · LoopMatter · Scaling reusable packaging in Japan.<\/span>/);
-  assert.match(html, /<button class="btn ev-lv-btn-dark ev-lv-btn-grow" data-event-contact-action="request" type="button">申请交换联系方式<\/button>/);
-  assert.doesNotMatch(html, /ev-lv-pages|行业 ⌄|默认排序|查看资料/);
+  // Task 5: 设计 378 = 查看资料（flex 1）+ 交换（flex 1.4）；头像是打开参会者弹窗的按钮
+  assert.match(html, /<button class="btn ev-lv-btn-ghost ev-lv-btn-grow" data-live-open="attendee" type="button">查看资料<\/button>/);
+  assert.match(html, /<button class="btn ev-lv-btn-dark ev-lv-btn-grow-14" data-event-contact-action="request" type="button">申请交换联系方式<\/button>/);
+  assert.match(html, /<button aria-label="查看 Aiko Mori 的资料" class="btn ev-lv-avatar ev-lv-avatar-56" data-live-open="attendee" type="button">A<\/button>/);
+  assert.doesNotMatch(html, /ev-lv-pages|行业 ⌄|默认排序/);
 
   const many = Array.from({ length: 14 }, (_, index) => person({ id: `participant:${index}`, name: `Person ${index}`, initial: "P" }));
   const paged = render(viewModel({ attendees: many }), "all");
@@ -300,7 +312,9 @@ test("graph tab: circular layout from the design formula, legend kinds, selected
   assert.match(html, /已认识<\/span><strong class="ev-lv-stat-n">0<\/strong>/);
   assert.match(html, /推荐认识<\/span><strong class="ev-lv-stat-n">1<\/strong>/);
   assert.match(html, /同组成员<\/span><strong class="ev-lv-stat-n">1<\/strong>/);
-  assert.doesNotMatch(html, /潜在机会|−<\/span>100%|⛶|查看完整资料/);
+  // Task 5: 设计 464 查看完整资料 → 参会者弹窗
+  assert.match(html, /<button class="btn ev-lv-btn-ghost ev-lv-btn-grow" data-live-open="attendee" type="button">查看完整资料 →<\/button>/);
+  assert.doesNotMatch(html, /潜在机会|−<\/span>100%|⛶/);
 });
 
 test("agenda tab: statuses derive from ISO `at`, labels render in JST, current session panel", () => {
@@ -381,4 +395,56 @@ test("live page wires auth redirect, canonical id resolution, the party loader, 
   assert.match(source, /<EventLive/);
   assert.match(source, /StateView/);
   assert.doesNotMatch(source, /party-login-return|partyLoginHref|PublicTopNav/);
+});
+
+// ── Task 5: 弹窗挂载（同一时刻只有一个；头像 / 成员卡 / 查看资料 → 参会者；申请交换 → 交换；参会者 → 约谈 / 记录交流）──
+function modalKinds(renderer: ReactTestRenderer): string[] {
+  return renderer.root.findAll((node) => typeof node.props["data-events-modal"] === "string" && node.type === "div").map((node) => String(node.props["data-events-modal"]));
+}
+
+test("live modals: avatar / member / 查看资料 open the attendee modal, exchange replaces it, × closes; only one modal at a time", async () => {
+  const aiko = person({ contactId: "contact:aiko", contactRequestId: "req:3", contactRequestRevision: 2, contactRequestStatus: "accepted", contactRequestDirection: "outgoing" });
+  const ken = person({ id: "participant:ken", initial: "K", isRecommended: false, name: "Ken Sato", company: "Bridge Works", title: "CTO", topics: ["Reuse systems"], score: 0, reason: "" });
+  const vm = viewModel({ attendees: [aiko, ken], recommendations: [aiko], roundOne: table([ken]) });
+  let renderer!: ReactTestRenderer;
+  try {
+    await act(async () => { renderer = create(<EventLive initialTab="rec" now={NOW} viewModel={vm} />); });
+    assert.deepEqual(modalKinds(renderer), []);
+    const avatar = renderer.root.find((node) => node.type === "button" && node.props["aria-label"] === "查看 Aiko Mori 的资料");
+    await act(async () => { avatar.props.onClick(); });
+    assert.deepEqual(modalKinds(renderer), ["attendee"]);
+    assert.match(JSON.stringify(renderer.toJSON()), /"data-events-contact-status":"accepted"/);
+    // accepted → 约谈 / 记录交流 available from the attendee modal
+    const schedule = renderer.root.find((node) => node.type === "button" && node.props["data-events-modal-action"] === "schedule");
+    await act(async () => { schedule.props.onClick(); });
+    assert.deepEqual(modalKinds(renderer), ["schedule"]);
+    assert.match(JSON.stringify(renderer.toJSON()), /"data-events-schedule-slot":"2026-09-22 10:00 - 10:30"/);
+    let close = renderer.root.find((node) => node.type === "button" && node.props["aria-label"] === "关闭");
+    await act(async () => { close.props.onClick(); });
+    assert.deepEqual(modalKinds(renderer), []);
+
+    // 全部参会者：查看资料 → attendee；申请交换 → exchange（替换）
+    const allTab = renderer.root.find((node) => node.type === "button" && node.props["data-live-tab"] === "all");
+    await act(async () => { allTab.props.onClick(); });
+    const view = renderer.root.findAll((node) => node.type === "button" && node.props["data-live-open"] === "attendee" && node.children.join("") === "查看资料");
+    assert.equal(view.length, 2);
+    await act(async () => { view[1].props.onClick(); });
+    assert.deepEqual(modalKinds(renderer), ["attendee"]);
+    assert.match(JSON.stringify(renderer.toJSON()), /Ken Sato/);
+    const exchange = renderer.root.find((node) => node.type === "button" && node.props["data-events-modal-action"] === "exchange");
+    await act(async () => { exchange.props.onClick(); });
+    assert.deepEqual(modalKinds(renderer), ["exchange"]);
+    close = renderer.root.find((node) => node.type === "button" && node.props["aria-label"] === "关闭");
+    await act(async () => { close.props.onClick(); });
+
+    // 分组：成员整卡 → attendee（记录交流按钮只在有 contactId 时出现 → Ken 没有）
+    const groupTab = renderer.root.find((node) => node.type === "button" && node.props["data-live-tab"] === "group");
+    await act(async () => { groupTab.props.onClick(); });
+    const member = renderer.root.find((node) => node.type === "button" && node.props.className === "btn ev-lv-member");
+    await act(async () => { member.props.onClick(); });
+    assert.deepEqual(modalKinds(renderer), ["attendee"]);
+    assert.equal(renderer.root.findAll((node) => node.type === "button" && node.props["data-events-modal-action"] === "note").length, 0);
+  } finally {
+    if (renderer) await act(async () => { renderer.unmount(); });
+  }
 });
