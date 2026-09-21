@@ -25,7 +25,7 @@ export function NetworkChip({ bg, fg, children }: { bg: string; fg: string; chil
   return <span className="nw-chip" style={{ background: bg, color: fg }}>{children}</span>;
 }
 
-export function NetworkShell({ screen, total, children, modal }: { screen: NetworkScreen; total: number | null; children: ReactNode; modal?: ReactNode }) {
+export function NetworkShell({ screen, children, modal }: { screen: NetworkScreen; children: ReactNode; modal?: ReactNode }) {
   const { t } = useOrbitLanguage();
   const isMain = screen !== "analysis";
   return (
@@ -40,7 +40,7 @@ export function NetworkShell({ screen, total, children, modal }: { screen: Netwo
             </div>
             <div className="nw-head-actions">
               {screen === "all" ? (
-                <a className="btn nw-btn-ghost" href="/app/contacts/new?method=scan">＋ {t({ en: "New contact", zh: "新建联系人" })}</a>
+                <a className="btn nw-btn-ghost" href="/app/contacts/new?method=scan">＋ {t({ en: "Scan a card", zh: "扫描名片" })}</a>
               ) : null}
               <a className="btn nw-btn-primary" href="/app/contacts/new">＋ {t({ en: "Import contacts", zh: "导入人脉" })}</a>
             </div>
@@ -557,7 +557,6 @@ export const NETWORK_STYLES = `
   /* 非设计声明：覆盖 input 基类的主题底色与文字色 */
   background: #FFFFFF; color: #0E1225; }
 [data-orbit-real-page="network"] .nw-fu-input:focus { border-color: #4B4FC7; }
-[data-orbit-real-page="network"] .nw-fu-input-muted { color: #3B3F7A; }
 [data-orbit-real-page="network"] .nw-fu-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 [data-orbit-real-page="network"] .nw-fu-date-label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
 [data-orbit-real-page="network"] .nw-fu-block { display: flex; flex-direction: column; gap: 8px; }
@@ -594,13 +593,16 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .btn.nw-fu-save:active { transform: none; }
 [data-orbit-real-page="network"] .btn.nw-fu-save:disabled, [data-orbit-real-page="network"] .btn.nw-fu-save[disabled] { background: #0E1225; color: #FFFFFF; border-color: transparent; opacity: .5; cursor: not-allowed; }
 [data-orbit-real-page="network"] .nw-toast { position: fixed; left: 50%; bottom: 32px; transform: translateX(-50%); z-index: 200; padding: 12px 20px; border-radius: 999px; background: #0E1225; color: #FFFFFF; font-size: 14px; box-shadow: 0 12px 40px rgba(14,18,37,0.25); animation: orbit-fade .3s ease; }
-/* ── 分组详情下钻页（contacts-structure-detail.tsx 依赖的四条规则，原样自 contacts-analysis-workspace.tsx:39–46；任务 8 删除 workspace 后仍有样式）── */
+/* ── 分组详情下钻页（contacts-structure-detail.tsx / analysis-goal-editor.tsx 依赖的 .analysis-* 规则）──
+   每个选择器只声明一次；值 = 原两段叠加后的最终计算值：
+   基础值来自 contacts-analysis-workspace.tsx:39–46（任务 4 修正轮 f692f2c7 搬入，任务 8 删除 workspace 后仍需），
+   0918 覆盖值（card 背景/边框/圆角/padding 26px、h2 衬线 22px、notice 边框色/背景）来自任务 4 b64d150b。 */
 [data-orbit-real-page="network"] .analysis-content{max-width:1200px;margin:0 auto}
 [data-orbit-real-page="network"] .analysis-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px}
-[data-orbit-real-page="network"] .analysis-card{padding:22px;min-width:0;overflow-wrap:anywhere}[data-orbit-real-page="network"] .analysis-card h2{margin:0 0 14px;font-size:18px}[data-orbit-real-page="network"] .analysis-card h3{font-size:15px}[data-orbit-real-page="network"] .analysis-muted{color:var(--text-3);font-size:13px;line-height:1.7}
-[data-orbit-real-page="network"] .analysis-notice{padding:14px 18px;border:1px solid var(--border);border-radius:12px;margin:14px 0}
-[data-orbit-real-page="network"] .analysis-card{background:#FFFFFF;border:1px solid #E8E9F6;border-radius:18px;box-shadow:none;padding:26px}
-[data-orbit-real-page="network"] .analysis-card h2{font-family:'Noto Serif SC','Songti SC','SimSun',serif;font-weight:900;font-size:22px;letter-spacing:-0.02em;color:#0E1225}
-[data-orbit-real-page="network"] .analysis-notice{border-color:#E8E9F6;background:#F7F7FD}
+[data-orbit-real-page="network"] .analysis-card{min-width:0;overflow-wrap:anywhere;background:#FFFFFF;border:1px solid #E8E9F6;border-radius:18px;box-shadow:none;padding:26px}
+[data-orbit-real-page="network"] .analysis-card h2{margin:0 0 14px;font-family:'Noto Serif SC','Songti SC','SimSun',serif;font-weight:900;font-size:22px;letter-spacing:-0.02em;color:#0E1225}
+[data-orbit-real-page="network"] .analysis-card h3{font-size:15px}
+[data-orbit-real-page="network"] .analysis-muted{color:var(--text-3);font-size:13px;line-height:1.7}
+[data-orbit-real-page="network"] .analysis-notice{padding:14px 18px;border:1px solid #E8E9F6;border-radius:12px;margin:14px 0;background:#F7F7FD}
 @media(max-width:900px){[data-orbit-real-page="network"] .analysis-grid{grid-template-columns:1fr}[data-orbit-real-page="network"] .analysis-card{padding:18px}}
 `;

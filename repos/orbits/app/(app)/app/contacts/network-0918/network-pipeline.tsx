@@ -32,7 +32,7 @@ export function NetworkPipeline({ viewModel, analysis }: { viewModel: OrbitConta
   const dash = "—";
 
   return (
-    <NetworkShell screen="pipeline" total={people.length}>
+    <NetworkShell screen="pipeline">
       <div className="nw-pipe">
         <div className="nw-pipe-grid">
           <div className="nw-pipe-card">

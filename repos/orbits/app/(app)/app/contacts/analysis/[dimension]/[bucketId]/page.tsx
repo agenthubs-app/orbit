@@ -20,5 +20,5 @@ export default async function AppContactsStructureDetailPage({ params }: { param
   if (!actor) throw new Error("Authenticated Orbit account membership is unavailable.");
   const view = await loadContactsStructureDetail({ actorId: actor.id, dimension, bucketId, language: await getOrbitServerLanguage() });
   // 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。
-  return <><OrbitReferenceStyles /><OrbitVisualFreezeRuntime /><div data-orbit-real-page="network" data-orbit-route="app-contacts-structure-detail-route"><AccountTopNav active="cards" /><NetworkShell screen="analysis" total={null}><ContactsStructureDetail view={view} /></NetworkShell></div></>;
+  return <><OrbitReferenceStyles /><OrbitVisualFreezeRuntime /><div data-orbit-real-page="network" data-orbit-route="app-contacts-structure-detail-route"><AccountTopNav active="cards" /><NetworkShell screen="analysis"><ContactsStructureDetail view={view} /></NetworkShell></div></>;
 }

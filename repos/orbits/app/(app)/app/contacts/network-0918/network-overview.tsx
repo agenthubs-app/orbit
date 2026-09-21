@@ -47,7 +47,7 @@ export function NetworkOverview({ viewModel, analysis }: { viewModel: OrbitConta
   const activity = ready ? analysis.activity : [];
 
   return (
-    <NetworkShell screen="overview" total={people.length}>
+    <NetworkShell screen="overview">
       <div className="nw-pipe">
         <div className="nw-pipe-grid">
           <div className="nw-pipe-card">

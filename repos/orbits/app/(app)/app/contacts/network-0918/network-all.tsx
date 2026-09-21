@@ -33,7 +33,7 @@ export function NetworkAll({ viewModel, initialSource = "all", openDetail }: { v
   const sourceFilterLabel = source === "all" ? t({ en: "All sources", zh: "全部来源" }) : t(SOURCE_LABEL[source]);
 
   return (
-    <NetworkShell screen="all" total={people.length} modal={modal}>
+    <NetworkShell screen="all" modal={modal}>
       <div className="nw-card">
         <div className="nw-card-head">
           <h2 className="nw-h2">{t({ en: "All contacts", zh: "所有人脉" })}</h2>

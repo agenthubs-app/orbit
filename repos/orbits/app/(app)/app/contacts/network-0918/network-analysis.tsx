@@ -100,7 +100,7 @@ export function NetworkAnalysis({ viewModel, analysis, initialTab }: { viewModel
   const secState = (key: "structure" | "coverage" | "opportunities" | "goal") => (view.state === "ready" ? view[key].state : view.state);
 
   return (
-    <NetworkShell screen="analysis" total={people.length} modal={editingGoal && goal?.id ? (
+    <NetworkShell screen="analysis" modal={editingGoal && goal?.id ? (
       <AnalysisGoalEditor key={goal.id} profileId={goal.id} initialGoal={goal.text} initialUpdatedAt={goal.updatedAt} onClose={() => setEditingGoal(false)} onSaved={(text, updatedAt) => {
         setView((current) => current.state === "ready" && "data" in current.goal ? { ...current, goal: { ...current.goal, data: { ...current.goal.data, text, updatedAt } } } : current);
         setEditingGoal(false);

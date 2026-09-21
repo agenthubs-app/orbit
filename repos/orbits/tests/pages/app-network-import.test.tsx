@@ -57,3 +57,15 @@ test("?method=csv highlights the csv card and shows the coming-soon note instead
   assert.match(html, /nw-import-note[\s\S]*即将开放/);
   assert.doesNotMatch(html, /class="bci-start"/);
 });
+
+test("import log keeps a distinct error state for a failed batches fetch instead of the empty-state copy", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { fileURLToPath } = await import("node:url");
+  const src = readFileSync(fileURLToPath(new URL("../../app/(app)/app/contacts/network-0918/network-import.tsx", import.meta.url)), "utf8");
+  assert.match(src, /useState<readonly IngestBatchDTO\[\] \| null \| "error">/);
+  assert.match(src, /if \(!response\.ok\) throw/);
+  assert.match(src, /\.catch\(\(\) => \{\s*if \(!cancelled\) setBatches\("error"\)/);
+  assert.match(src, /batches === "error" \?[\s\S]*?class(Name)?="nw-empty"[^>]*data-import-log-error[^>]*>\{t\(\{ en: "Could not load import history", zh: "无法加载导入记录" \}\)\}/);
+  // 错误态不再复用「还没有导入记录」
+  assert.doesNotMatch(src, /catch\(\(\) => \{\s*if \(!cancelled\) setBatches\(\[\]\)/);
+});

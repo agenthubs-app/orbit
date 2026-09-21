@@ -71,8 +71,8 @@ export function NetworkImport({ availability, initialMethod = "scan", jobId }: {
   const { t, preserveHref } = useOrbitLanguage();
   const router = useRouter();
   const [method, setMethod] = useState<NetworkImportMethod>(initialMethod);
-  // null = 尚未拉取（SSR / 首帧）：不显示空态，避免闪一次「还没有导入记录」。
-  const [batches, setBatches] = useState<readonly IngestBatchDTO[] | null>(null);
+  // null = 尚未拉取（SSR / 首帧）：不显示空态，避免闪一次「还没有导入记录」；"error" = 拉取失败（非 OK / 抛错），显示错误行而非空态。
+  const [batches, setBatches] = useState<readonly IngestBatchDTO[] | null | "error">(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const selected = METHODS.find((m) => m.key === method) ?? METHODS[2]!;
   const dash = "—";
@@ -80,12 +80,15 @@ export function NetworkImport({ availability, initialMethod = "scan", jobId }: {
   useEffect(() => {
     let cancelled = false;
     void fetch(INGEST_V2_API_BASE)
-      .then(async (response) => (response.ok ? response.json() : null))
-      .then((body: { data?: { batches?: readonly IngestBatchDTO[] } } | null) => {
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`ingest batches ${response.status}`);
+        return response.json() as Promise<{ data?: { batches?: readonly IngestBatchDTO[] } }>;
+      })
+      .then((body) => {
         if (!cancelled) setBatches(body?.data?.batches ?? []);
       })
       .catch(() => {
-        if (!cancelled) setBatches([]);
+        if (!cancelled) setBatches("error");
       });
     return () => {
       cancelled = true;
@@ -130,7 +133,7 @@ export function NetworkImport({ availability, initialMethod = "scan", jobId }: {
   }
 
   return (
-    <NetworkShell screen="import" total={null}>
+    <NetworkShell screen="import">
       <div className="nw-import">
         <div className="nw-import-grid">
           <div className="nw-import-main">
@@ -191,7 +194,7 @@ export function NetworkImport({ availability, initialMethod = "scan", jobId }: {
             <div className="nw-import-thead">
               <span>{t({ en: "Imported at", zh: "导入时间" })}</span><span>{t({ en: "Source", zh: "来源" })}</span><span>{t({ en: "File / event", zh: "文件 / 活动" })}</span><span>{t({ en: "Total", zh: "导入总数" })}</span><span>{t({ en: "New contacts", zh: "新增联系人" })}</span><span>{t({ en: "Merged", zh: "合并联系人" })}</span><span>{t({ en: "Status", zh: "状态" })}</span><span>{t({ en: "Action", zh: "操作" })}</span>
             </div>
-            {(batches ?? []).map((b) => {
+            {(Array.isArray(batches) ? batches : []).map((b) => {
               const status = LOG_STATUS[b.status];
               return (
                 <a key={b.id} className="btn nw-import-row" href={preserveHref(jobHref(b.id))} aria-current={jobId === b.id ? "true" : undefined}>
@@ -206,7 +209,9 @@ export function NetworkImport({ availability, initialMethod = "scan", jobId }: {
                 </a>
               );
             })}
-            {batches !== null && batches.length === 0 ? (
+            {batches === "error" ? (
+              <div className="nw-empty" role="alert" data-import-log-error>{t({ en: "Could not load import history", zh: "无法加载导入记录" })}</div>
+            ) : batches !== null && batches.length === 0 ? (
               <div className="nw-empty">{t({ en: "No imports yet", zh: "还没有导入记录" })}</div>
             ) : null}
           </div>
