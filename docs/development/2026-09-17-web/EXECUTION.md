@@ -285,3 +285,66 @@
 4. 任务 8 遗留孤儿（无 `app/` importer，测试仍覆盖真实 API 契约，暂留）：`contacts/orbit-real-cards-dashboard.tsx`（`orbit-crm-sidebar.tsx` 唯一 importer）、`orbit-contact-avatar.tsx`、`orbit-cards-interactions.tsx`、`business-card-capture-workspace.tsx`、`business-card-import-client.ts`、`contact-tag-editor.tsx`、`contact-industry-editor.tsx`、`contact-notes-editor.tsx`、`contact-interaction-editor.tsx`、`contact-relationship-initialization.tsx`（+ view-model）；待跟进弹窗覆盖标签 / 行业 / 备注编辑后清理。
 5. insight 屏待 W4 逻辑层（不做假）；`/app/contacts/intros` 已删，届时按设计重做。
 6. 分析子页下钻 `contacts/analysis/[dimension]/[bucketId]` 只换壳（`NetworkShell screen="analysis"`），内容结构未按设计重画（设计无对应屏）。
+
+## 2026-09-21 Network 合并前终审修正
+
+整分支复审（`e3fb6d1e..d4ecba43`）的终审修正，四次 `fix(network)` 提交 + 本台账。像素规则不变（raw ≤ 0.02 或非数据残差 ≤ 0.005），`orbit-reference-styles.tsx` 未动，未启停服务；每次提交前 `detect-changes --scope all` 均无 `partial` / `truncated`（工作树索引于本轮重建，`analyze --index-only`，此前索引停在 09-18 未含 network-0918）。完整报告 `.superpowers/sdd/final-fix-report.md`。
+
+### 修正项与提交
+
+| # | 项 | 提交 | 变更 |
+| --- | --- | --- | --- |
+| C1 | 概览「最近动态」来源列渲染原始 `a.source` | `84a29fcf` | `metSummary(a.source) \|\| "—"`；测试夹具 `Business card · confirmed by qa@example.invalid` 断言 `example.invalid` 与 `confirmed by` 均不出现 |
+| I1 | 详情 `formatNoteTime` 用本地时间 getter → SSR/CSR hydration 不一致 | `cb51a2c4` | 改为 UTC 分量（同 `formatMonthDay` 做法）+ `HH:mm`，经 `t()` 本地化：zh `9月21日 08:00`、en `Sep 21 08:00`；测试改为精确 UTC 字符串 |
+| I2 | `contacts/pipeline/page.tsx` 传原始 VM | `84a29fcf` | 与 `dashboard/page.tsx` 同一包裹 `localizeOrbitTree(applyOrbitContactsPresentation(vm, language), language)`（管线卡「下一步」由英文原句变为本地化句） |
+| I3 | `healthRows` 仅中文 | `84a29fcf` | label / tag / desc 改为 `{zh,en}`，`network-analysis.tsx` 内 `t()` |
+| T3 | 管线建议分页越界 | `84a29fcf` | `safePage = pages ? page % pages : 0` 用于切片与「换一批」步进 |
+| I8 | 覆盖度表盘只显示分数 | `84a29fcf` | `${score} / 100`，同一 `.nw-goal-score` 元素（设计 L547 无独立 /100 span） |
+| I7 | `buildFollowPatch` 前缀写死中文 | `9982b08d` | 新增 `labels` 参数（`FOLLOW_PATCH_LABELS.zh/en`），调用方用 `t()` 组装；en 输出 `Summary: … / Their needs: … / I can offer: … / Next step: …` |
+| I4 | 详情弹窗丢失 email / phone / wechat / lineId | `cb51a2c4` | 关系概览后新增「联系方式」块（`nw-ov` 行样式，✉ ☎ ▤ ▤），只渲染非空字段，四项全空整块省略 |
+| I5 | `pending_initialization` 联系人在弹窗里无处设置关系 | `cb51a2c4` | 弹窗内 `extra` 槽位上方挂既有 `ContactRelationshipInitializationPanel`（`useContactRelationshipInitialization(contact.id)`），SSR 测试断言 `aria-label="我的关系设置"` + `data-initialization-refresh` |
+| I6 | 记录跟进「提醒日期」无提醒接口 | `9982b08d` | 移除输入与 `提醒：` 行；「下一步」行不再追加 `（date）`（日期只进 `lastInteraction.occurredAt`）；`.nw-fu-dates` 两列网格保留、第二列留空 |
+| 小 | 导入记录拉取失败复用空态文案 | `9fe9045f` | `batches = "error"` 态渲染 `nw-empty`「无法加载导入记录 / Could not load import history」（源码级测试） |
+| 小 | 概览「本周没有正在推进的关系」 | `84a29fcf` | → 「没有正在推进的关系 / No relationships advancing」 |
+| 小 | `NetworkShell` 未用的 `total` prop | `9fe9045f` | 删除，7 处调用方同步（含 `analysis/[dimension]/[bucketId]/page.tsx`，typecheck 抓出）；impact HIGH，处置见提交信息 |
+| 小 | 页头 ghost 按钮「新建联系人」 | `9fe9045f` | → 「扫描名片 / Scan a card」，目标不变 `/app/contacts/new?method=scan` |
+| 小 | `.analysis-*` 兼容块重复选择器 | `9fe9045f` | 每个选择器只声明一次，值为叠加后的最终值（基础来自 f692f2c7 搬入的 workspace 规则，0918 覆盖来自 b64d150b），注释记录出处；顺带删除孤儿 `.nw-fu-input-muted` |
+
+### 本轮新增的设计偏差（directed，与数据残差分开归因）
+
+1. 详情弹窗「联系方式」块（设计 708–788 行无此块；沿用 `nw-ov` 行样式，位置在关系概览之后、两栏之前）。
+2. 详情弹窗内待设置关系联系人挂关系初始化面板（既有 `nc-card` 组件，非 0918 样式；只在 `pipelineStatus === "pending_initialization"` 时出现）。
+3. 记录跟进弹窗移除「提醒日期」（设计 L821），两列网格第二列留空。
+4. 页头 ghost 按钮文案「新建联系人」→「扫描名片」（设计 L54）。
+5. 概览空态「本周没有正在推进的关系」→「没有正在推进的关系」（设计 mock 文案含「本周」，数据无周口径）。
+
+### 像素复跑（design :3320，app :3100，`--login qa@orbit.test:<ORBIT_PRIMARY_TEST_ACCOUNT_PASSWORD>`；产物 scratchpad `fix-{overview,pipeline,import,detail,follow}/`）
+
+| 屏 | raw（design / app px） | 与任务 9 终审比 | 非数据残差 | directed 归因 |
+| --- | --- | --- | --- | --- |
+| 概览 `/app/contacts/dashboard` | 0.1295（1773 / 1663） | app.png 逐字节相同 | 0.0039（沿用） | 无（QA 账号有推进中关系，空态文案未出现；来源列清洗后文本不变） |
+| 关系管线 `/app/contacts/pipeline` | 0.0912（1606 / 8603） | +0.0007；差异全部落在看板卡「下一步」13px 文字带（163px 卡距，40 张卡），无版式线变化 | 0.0033（沿用） | +0.0007 = I2 本地化后的「下一步」文本（数据文字） |
+| 导入 `/app/contacts/new` | 0.0626（1487 / 1701） | app.png 逐字节相同 | 0.0048（沿用） | 无 |
+| 详情 contact_006 | 0.0618（1580 / 5896） | 相同 raw；app 仅 5 条 11–13px 文字带（概览「上次互动」与时间线时间由本地 08:00 → UTC 00:00） | 0.0030（沿用） | 时间文本（数据）；该联系人无 email/phone/wechat/LINE，「联系方式」块按规则省略 |
+| 记录跟进 | 0.0362（1580 / 5896） | +0.0009：y 643–712 提醒输入框移除（+1654 红像素）、y 108–153 背景页头「扫描名片」（+14） | 0.0034（沿用） | +0.0009 = 偏差 3、4 |
+
+全部非数据残差 ≤ 0.005，diff 无布局线 / 圆角 / 间距 / 色块差异。
+
+### 测试与类型
+
+- `npm run typecheck`：0 错误。
+- `node --test --import tsx tests/pages/app-network-*.test.ts{,x} tests/ui/orbit-button-ratchet.test.ts tests/ui/orbit-scale-ratchet.test.ts`：56 / 56 通过（新增：概览来源清洗断言、healthRows en 断言、formatNoteTime UTC/en 3 例、联系方式块 1 例、初始化面板 1 例、buildFollowPatch en 1 例、导入错误态源码级 1 例）。
+- 受影响的既有套件复跑：`app-contacts-subroutes-live-route-services`、`app-network-archived-status`、`app-network-source-labels`、`app-contact-notes`、`app-contact-detail-live-route-services`、`app-contacts-structure-detail` 全绿。
+
+### 复审留下的后续（未在本轮处理）
+
+1. 「最近动态」`activity.label` 仍是后端英文句（`… added to the live relationship database`），需映射到本地化文案（后端 / view-model 层）。
+2. 详情 / 记录跟进弹窗无 Tab 焦点陷阱与背景滚动锁。
+3. `/app/contacts/{all-actions,intros,graph}` 已删路由应显式 `notFound()`（当前由 Next 404 兜底）。
+4. 任务 8 孤儿组件（`orbit-real-cards-dashboard.tsx` 等，见上节第 4 条）。
+5. `app-network-*` 测试均为 SSR 静态渲染，无交互层测试（换一批 / 标签回车 / 保存流程只有浏览器旅程）。
+6. `nw-source-card` 内联 `background/borderColor` 使 `:hover` 失效（所有人脉屏）。
+7. 共享顶栏 +2px（`.orbit-lang-toggle`）。
+8. `matchesQuery` 未覆盖别名 / 拼音等搜索键。
+9. 分析下钻页 `contacts/analysis/[dimension]/[bucketId]` 仍用旧 `--text-3` / `--border` 暗色 token。
+10. `notes` 导出 CSV 的 NOTES 列文案（复审提出，未定）。
