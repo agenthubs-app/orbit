@@ -58,6 +58,11 @@ export const INGEST_V2_COPY = {
   uploadFailed: { en: "Upload failed", zh: "上传失败", ja: "アップロード失敗" },
   unableToPrepare: { en: "The photo could not be prepared. Try another photo.", zh: "照片准备失败，请换一张照片重试。", ja: "写真を準備できませんでした。別の写真を試してください。" },
   startRecognition: { en: "Start recognition", zh: "开始识别", ja: "認識を開始" },
+  // 名片识别不可用原因（BusinessCardCaptureAvailability.reason）；文案沿用 V1 工作区。
+  unavailableTitle: { en: "Card scanning is unavailable", zh: "名片识别暂不可用", ja: "名刺の読み取りは利用できません" },
+  unavailableLiveMode: { en: "The durable live capability is not active.", zh: "当前未启用可持久化的 live 能力。", ja: "永続化された live 機能が有効になっていません。" },
+  unavailableStorage: { en: "The private contact store is not configured.", zh: "当前未配置私有联系人存储。", ja: "プライベートな連絡先ストアが設定されていません。" },
+  unavailableOcr: { en: "The cloud OCR provider is not configured.", zh: "当前未配置云端 OCR 服务。", ja: "クラウド OCR プロバイダーが設定されていません。" },
 } as const satisfies Record<string, IngestV2Copy>;
 
 export function countCopy(value: number, singular: IngestV2Copy, plural: IngestV2Copy): IngestV2Copy {

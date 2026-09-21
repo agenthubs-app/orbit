@@ -10,36 +10,28 @@ function source(path: string): string {
   return readFileSync(join(projectRoot, path), "utf8");
 }
 
-test("/app/contacts/new renders the action workspace without preflight side effects", async () => {
+test("/app/contacts/new renders the Network import screen without preflight side effects", async () => {
   const pageSource = source("app/(app)/app/contacts/new/page.tsx");
   const retiredRouteLoaderSource = source(
     "app/(app)/app/contacts/new/compose-app-contacts-new-from-previously-approved-mock-first-capabilities/contacts-new-route-services.ts",
-  );
-  const importWorkspaceSource = source(
-    "app/(app)/app/contacts/orbit-real-cards-import.tsx",
   );
 
   assert.match(pageSource, /await auth\(\)/);
   assert.match(pageSource, /session\?\.user\?\.id/);
   assert.match(pageSource, /redirect\("\/app\/account\/login\?next=/);
-  assert.match(pageSource, /OrbitRealCardsImport/);
+  assert.match(pageSource, /NetworkImport/);
   assert.match(pageSource, /resolveBusinessCardCaptureAvailability/);
-  assert.match(pageSource, /businessCardAvailability=/);
+  assert.match(pageSource, /AccountTopNav active="cards"/);
+  assert.doesNotMatch(pageSource, /OrbitRealCardsImport/);
+  // 页面加载不得触发任何 live 服务预检：只读配置可用性，批次数据由客户端按需拉取。
   assert.doesNotMatch(pageSource, /getOrbitContactsViewModel/);
   assert.doesNotMatch(
     pageSource,
-    /loadAppContactsNewRouteViewModel|scanBusinessCard|scanQrCode|importEventAttendees/,
+    /loadAppContactsNewRouteViewModel|scanBusinessCard|scanQrCode|importEventAttendees|confirmManualContactDraft/,
   );
-  assert.doesNotMatch(pageSource, /searchParams|confirmManualContactDraft/);
+  assert.doesNotMatch(pageSource, /listBatches|fetchBatchDetail|business-card-ingest-v2\/(repository|worker|configured)/);
   assert.doesNotMatch(
     retiredRouteLoaderSource,
     /createAppContactsNewRouteServices|loadAppContactsNewRouteViewModel|readSearchParam|confirmManualContactDraft/,
-  );
-  assert.match(importWorkspaceSource, /BusinessCardCaptureWorkspace/);
-  assert.match(importWorkspaceSource, /Not connected|未连接/);
-  assert.match(importWorkspaceSource, /href="\/app\/contacts"/);
-  assert.doesNotMatch(
-    importWorkspaceSource,
-    /className="card card-hover" href="\/app\/contacts\/new"/,
   );
 });

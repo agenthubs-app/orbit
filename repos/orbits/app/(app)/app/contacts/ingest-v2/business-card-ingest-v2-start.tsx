@@ -224,7 +224,8 @@ export function BusinessCardIngestV2Start() {
         return;
       }
       stashPendingFiles(body.data.batch.id, byDigest);
-      router.push(preserveHref(`/app/contacts/new/batch2/${body.data.batch.id}`));
+      // 批次详情由 /app/contacts/new?job= 承载（batch2 路由待删）；id 含冒号，须编码。
+      router.push(preserveHref(`/app/contacts/new?job=${encodeURIComponent(body.data.batch.id)}`));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to start upload");
     } finally {
