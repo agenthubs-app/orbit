@@ -8,7 +8,7 @@
 - 保留不变：Next.js App Router、`proxy.ts` 资料门禁与豁免表、认证深链 `?next=` 语义、「无接口不做假」「设计 mock 数字不入库」「真实四态」原则、admin 域暗色不动、App 端不动。
 - 路由处置：见 [ROUTE-CONSOLIDATION.md](ROUTE-CONSOLIDATION.md)（60 → 38，20 个删除、10 个保留、28 个对应设计屏）。
 - 每屏完成定义：DOM 结构与设计屏对应（不是颜色对应）；不 import 任何 `orbit-real-*`；与设计稿并排截图比对；数据走真实 ready/empty/unavailable 态；测试 + ratchet + typecheck + detect-changes 照旧。
-- 顺序：① Network 4 屏 + detail/follow 弹窗 → ② 个人中心（profile/persona/settings；含 onboarding 门禁提示）→ ③ Events 参与者侧（host/live/弹窗；discover/detail 已重建）→ ④ 运营台 7 屏 → ⑤ 认证四态弹窗 → ⑥ iOrbit chat（最后，最大）。
+- 顺序：① Network 4 屏 + detail/follow 弹窗（**已完成 2026-09-21**，`e3fb6d1e..27f5b062`，见 EXECUTION.md「Network 屏级替换完成」）→ ② 个人中心（profile/persona/settings；含 onboarding 门禁提示）→ ③ Events 参与者侧（host/live/弹窗；discover/detail 已重建）→ ④ 运营台 7 屏 → ⑤ 认证四态弹窗 → ⑥ iOrbit chat（最后，最大）。
 
 ## 2026-09-18：边界 A — 只换组件层（已作废，保留备查）
 

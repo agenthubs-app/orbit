@@ -64,14 +64,14 @@
 | Events 运营台 | checkin | `…/operations/check-in` | 换肤态，待重建 |
 | Events 运营台 | form | 运营报名配置（现挂在 operations 下） | 待重建 |
 | Events 运营台 | report | `/app/events/[id]/analytics` | 换肤态，待重建 |
-| Network v2 | overview | `/app/contacts/dashboard`（概览页签） | 吸收原 `/app/dashboard` 四张信号卡 |
-| Network v2 | analysis | `/app/contacts/dashboard`（结构/机会页签）+ `contacts/analysis/[dimension]/[bucketId]` 下钻 | 换肤态，待重建 |
-| Network v2 | pipeline | `/app/contacts/pipeline` | 换肤态，待重建 |
-| Network v2 | all | `/app/contacts` | 换肤态（仍是旧左侧栏），待重建 |
-| Network v2 | import | `/app/contacts/new` | 吸收 batch2 / import 子状态 |
+| Network v2 | overview | `/app/contacts/dashboard`（概览页签） | 已重建（b64d150b）；吸收原 `/app/dashboard` 四张信号卡 |
+| Network v2 | analysis | `/app/contacts/dashboard`（结构/机会页签）+ `contacts/analysis/[dimension]/[bucketId]` 下钻 | 已重建（b64d150b）；下钻页只换壳 `NetworkShell screen="analysis"`（设计无对应屏） |
+| Network v2 | pipeline | `/app/contacts/pipeline` | 已重建（3da3b5b3） |
+| Network v2 | all | `/app/contacts` | 已重建（55931044） |
+| Network v2 | import | `/app/contacts/new` | 已重建（b8c812db）；吸收 batch2 / import 子状态（`?job=`），名片 V2 组件移至 `contacts/ingest-v2/` |
 | Network v2 | insight | 待 W4 逻辑层 | 不做假 |
-| Network v2 | detail 弹窗 | `/app/contacts/[id]`（路由保留作深链） | `?capture=meeting` 会后纪要 / 约谈核验作为弹窗附加态保留 |
-| Network v2 | follow 弹窗 | 联系人详情内 | 取代 Web 内 `/app/tasks/relationship/[id]` 入口 |
+| Network v2 | detail 弹窗 | `/app/contacts/[id]`（路由保留作深链） | 已重建（e670a804）；`?capture=meeting` 会后纪要 / 约谈核验作为弹窗附加态保留 |
+| Network v2 | follow 弹窗 | 联系人详情内 | 已重建（e670a804；阶段箭头只读，见 EXECUTION 任务 6 修订）；取代 Web 内 `/app/tasks/relationship/[id]` 入口 |
 | 个人中心 | profile / persona / settings / connect | `/app/profile`、`/app/settings` | profile 换肤态待重建（含 onboarding 门禁提示：落地横幅 + 必填标记 + 保存后缺项提示）；connect 占位已做 |
 
 新 UI 之外但保留的壳级能力：顶栏铃铛 + 通知收件面板（`RelationshipInboxPanel`），设计稿未画，按 0918 token 重做样式后挂在 pill 导航右侧。
