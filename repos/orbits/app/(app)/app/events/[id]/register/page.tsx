@@ -283,7 +283,7 @@ export default async function AppEventRegistrationGuidePage({
             报名工作区；本页无顶栏（弹窗盖住静态底），数据路径零改动。 */}
         <div data-orbit-real-page="events-0918" data-orbit-route="app-event-registration-page">
           <EventRegisterModal
-            closeHref={`/app/events/${encodeURIComponent(localizedEvent.id)}`}
+            closeHref={`/app/events/${encodeURIComponent(localizedEvent.id)}?language=${language}`}
             eventName={localizedEvent.title}
             language={language}
           >

@@ -99,6 +99,10 @@ test("modal source wires Esc to window.location.assign(closeHref) and keeps the 
     ".btn.ev-modal-close",
     ".btn.ev-modal-close:hover",
     ".btn.ev-modal-close:active { transform: none; }",
+    '.ev-reg-body .registration-portrait-7a .btn:not([data-orbit-registration-profile-guide="register"] *) {',
+    ".ev-reg-body .registration-portrait-7a .btn.portrait-link",
+    ".ev-reg-body .registration-portrait-7a .btn.portrait-entry",
+    '.ev-reg-body .registration-portrait-7a [role="alertdialog"] .btn:not([data-orbit-registration-profile-guide="register"] *) { all: revert;',
     ".ev-reg-body .registration-portrait-7a .btn[aria-pressed]",
     ".ev-reg-body .registration-portrait-7a textarea",
     ".ev-reg-body .registration-portrait-7a .btn.portrait-primary",
@@ -122,7 +126,8 @@ test("register page wraps the unchanged workspace in the modal shell without new
 
   assert.match(source, /import \{ EventRegisterModal \} from "\.\.\/\.\.\/events-0918\/event-register-modal";/);
   assert.match(source, /<div data-orbit-real-page="events-0918"[^>]*>\s*<EventRegisterModal/);
-  assert.match(source, /closeHref=\{`\/app\/events\/\$\{encodeURIComponent\(localizedEvent\.id\)\}`\}/);
+  // 与工作区自己的「活动」链接同口径：保留 ?language=<已解析语言>。
+  assert.match(source, /closeHref=\{`\/app\/events\/\$\{encodeURIComponent\(localizedEvent\.id\)\}\?language=\$\{language\}`\}/);
   assert.match(source, /eventName=\{localizedEvent\.title\}/);
   assert.match(source, /<EventRegisterModal[\s\S]*?<EventRegistrationWorkspace[\s\S]*?\/>\s*<\/EventRegisterModal>/);
   // 本页无顶栏；弹窗盖住静态底。

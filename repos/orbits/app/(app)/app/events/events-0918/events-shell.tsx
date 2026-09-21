@@ -315,6 +315,22 @@ export const EVENTS_STYLES = `
       页面渐变底）在面板内中和。inline style 只能用 !important 覆盖。── */
 [data-orbit-real-page="events-0918"] .ev-reg-body .registration-portrait-7a { min-height: 0; height: auto !important; padding: 0; background: #FFFFFF; }
 [data-orbit-real-page="events-0918"] .ev-reg-body [data-orbit-registration-profile-guide="register"] { min-height: 0 !important; padding: 0 !important; background: #FFFFFF !important; }
+/* 壳的 data-orbit-real-page 会让 [data-orbit-real-page] .btn 基类（orbit-reference-styles.tsx:594–611）落到工作区全部 .btn 上；
+      下面按工作区自己的 <style>（registration-portrait-workspace.tsx:276）原样复述其声明并中和基类多出来的属性。
+      父级 AI 访谈 <main data-orbit-registration-profile-guide=register> 里的 .btn / .btn-primary / .btn-secondary 是按 .btn 体系写的
+      （只覆盖 border-color / background），基类对它们是预期外观 → 用 :not() 排除，不中和。
+      工作区 button 通则：font:inherit; cursor:pointer; min-height:44px；:disabled cursor:default; opacity:.45 */
+[data-orbit-real-page="events-0918"] .ev-reg-body .registration-portrait-7a .btn:not([data-orbit-registration-profile-guide="register"] *) { font: inherit; cursor: pointer; min-height: 44px;
+  height: auto; gap: 0; letter-spacing: 0; white-space: normal; border-radius: 0; transition: none; user-select: auto; text-decoration: none; }
+[data-orbit-real-page="events-0918"] .ev-reg-body .registration-portrait-7a .btn:not([data-orbit-registration-profile-guide="register"] *):disabled { cursor: default; opacity: .45; }
+[data-orbit-real-page="events-0918"] .ev-reg-body .registration-portrait-7a .btn:not([data-orbit-registration-profile-guide="register"] *):active { transform: none; }
+/* .portrait-link 原样：background transparent / border 0 / #4B4FC7 / 10px 8px / 13px（基类的 600 字重、44 定高、nowrap 去掉） */
+[data-orbit-real-page="events-0918"] .ev-reg-body .registration-portrait-7a .btn.portrait-link { background: transparent; border: 0; color: #4B4FC7; padding: 10px 8px; font-size: 13px; display: inline-block; font-weight: 400; }
+/* .portrait-entry 原样：flex / space-between / 100% / #F1F1FA / 1px #E8E9F6 / r14 / 左对齐 / 14px / 16px 0 / gap 16 */
+[data-orbit-real-page="events-0918"] .ev-reg-body .registration-portrait-7a .btn.portrait-entry { display: flex; align-items: center; justify-content: space-between; width: 100%; background: #F1F1FA; border: 1px solid #E8E9F6; border-radius: 14px; text-align: left; padding: 14px; margin: 16px 0; gap: 16px; font-weight: 400; }
+/* 取消报名确认框（role=alertdialog）的两个裸 .btn：工作区只给 button 通则，其余是浏览器默认外观 → all:revert 回到 UA 再补通则 */
+[data-orbit-real-page="events-0918"] .ev-reg-body .registration-portrait-7a [role="alertdialog"] .btn:not([data-orbit-registration-profile-guide="register"] *) { all: revert; font: inherit; cursor: pointer; min-height: 44px; }
+[data-orbit-real-page="events-0918"] .ev-reg-body .registration-portrait-7a [role="alertdialog"] .btn:not([data-orbit-registration-profile-guide="register"] *):disabled { cursor: default; opacity: .45; }
 /* 659 单选卡（roles）：外圈 20px / 2px 边 #C9CBEA→#4B4FC7，内点 10px */
 [data-orbit-real-page="events-0918"] .ev-reg-body .registration-portrait-7a .btn[aria-pressed] { display: flex; align-items: center; gap: 8px; border: 0 !important; background: transparent !important; padding: 0 !important; font-size: 14px !important; color: #0E1225 !important; cursor: pointer; text-align: left;
   height: auto; min-height: 0; border-radius: 0 !important; font-weight: 400; letter-spacing: 0; line-height: normal; white-space: normal; transition: none; box-shadow: none; }
