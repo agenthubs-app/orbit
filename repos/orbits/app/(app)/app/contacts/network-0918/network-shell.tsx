@@ -96,4 +96,34 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-h2 { margin: 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 22px; letter-spacing: -0.02em; }
 [data-orbit-real-page="network"] .nw-card-hint { font-size: 14px; color: #6B6F99; }
 [data-orbit-real-page="network"] .nw-empty { padding: 40px; text-align: center; color: #9FA3C4; font-size: 14px; }
+/* ── 所有人脉（设计稿 257–302 行）── */
+[data-orbit-real-page="network"] .nw-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 14px; align-items: end; }
+[data-orbit-real-page="network"] .nw-search { padding: 12px 16px; border: 1px solid #DDDEFA; border-radius: 10px; background: #FFFFFF; font-size: 14px; outline: none; }
+[data-orbit-real-page="network"] .nw-search:focus { border-color: #4B4FC7; }
+[data-orbit-real-page="network"] .nw-filter-label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-filter-box { display: flex; justify-content: space-between; padding: 12px 14px; border: 1px solid #DDDEFA; border-radius: 10px; font-size: 14px; color: #0E1225; }
+[data-orbit-real-page="network"] .nw-filter-caret { font-size: 11px; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-source-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); gap: 12px; }
+[data-orbit-real-page="network"] .btn.nw-source-card { display: flex; align-items: center; gap: 12px; padding: 14px; border: 1px solid; border-radius: 14px; text-align: left; cursor: pointer; transition: all .2s;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明；border-color/background 由内联 style 提供 */
+  height: auto; display: flex; align-items: center; justify-content: normal; gap: 12px; white-space: normal; text-align: left; letter-spacing: 0; line-height: normal; transition: all .2s; font-size: inherit; font-weight: 400; color: #0E1225; }
+[data-orbit-real-page="network"] .btn.nw-source-card:hover { border-color: #B9BCEB; }
+[data-orbit-real-page="network"] .nw-source-icon { width: 40px; height: 40px; border-radius: 10px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+[data-orbit-real-page="network"] .nw-source-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+[data-orbit-real-page="network"] .nw-source-label { font-size: 12px; color: #6B6F99; white-space: nowrap; }
+[data-orbit-real-page="network"] .nw-source-n { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 22px; letter-spacing: -0.02em; }
+[data-orbit-real-page="network"] .nw-table { display: flex; flex-direction: column; }
+[data-orbit-real-page="network"] .nw-thead { display: grid; grid-template-columns: 20px 44px minmax(90px, 1fr) minmax(0, 2fr) 100px 100px 90px minmax(0, 1.5fr) 24px; align-items: center; gap: 14px; padding: 10px 12px; border-radius: 10px; background: #F7F7FD; font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-check { width: 16px; height: 16px; border: 1px solid #DDDEFA; border-radius: 4px; background: #FFFFFF; }
+[data-orbit-real-page="network"] .btn.nw-row { display: grid; grid-template-columns: 20px 44px minmax(90px, 1fr) minmax(0, 2fr) 100px 100px 90px minmax(0, 1.5fr) 24px; align-items: center; gap: 14px; padding: 12px; border: 0; border-top: 1px solid #EEEFF8; background: transparent; text-align: left; font-size: 14px; cursor: pointer;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  height: auto; display: grid; align-items: center; justify-content: normal; gap: 14px; white-space: normal; text-align: left; letter-spacing: 0; line-height: normal; transition: none; border-radius: 0; font-weight: 400; color: #0E1225; }
+[data-orbit-real-page="network"] .btn.nw-row:hover { background: #F7F7FD; color: #0E1225; }
+[data-orbit-real-page="network"] .nw-row-name { font-size: 15px; white-space: nowrap; }
+[data-orbit-real-page="network"] .nw-row-org { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+[data-orbit-real-page="network"] .nw-row-org-1 { color: #0E1225; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-orbit-real-page="network"] .nw-row-org-2 { font-size: 13px; color: #6B6F99; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-orbit-real-page="network"] .nw-row-last { color: #6B6F99; white-space: nowrap; }
+[data-orbit-real-page="network"] .nw-row-next { color: #3B3F7A; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-orbit-real-page="network"] .nw-row-arrow { color: #9FA3C4; }
 `;

@@ -106,7 +106,8 @@ test("public contacts query parameters cannot select internal scenarios or actio
 test("/app/contacts page renders the live-capable product contacts UI", async () => {
   const pageSource = source("app/(app)/app/contacts/page.tsx");
 
-  assert.match(pageSource, /OrbitRealCardsList/);
+  // Orbit_0918 Network 任务 2：/app/contacts 渲染组件由 OrbitRealCardsList 换为 NetworkAll。
+  assert.match(pageSource, /NetworkAll/);
   assert.match(pageSource, /contactsRouteToOrbitContactsViewModel/);
   assert.match(pageSource, /await auth\(\)/);
   assert.match(pageSource, /redirect\("\/app\/account\/login/);

@@ -17,7 +17,8 @@ import {
 } from "./compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
 import { contactsRouteToOrbitContactsViewModel } from "./compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-view-model-adapter";
 import { applyOrbitContactsPresentation } from "../orbit-contacts-presentation";
-import { OrbitRealCardsList } from "./orbit-real-contacts";
+import { AccountTopNav } from "../orbit-account-shell";
+import { NetworkAll } from "./network-0918/network-all";
 
 type ContactsRouteState =
   | AppContactsRouteStateViewModel
@@ -86,8 +87,10 @@ export default async function AppContactsPage({
       <OrbitReferenceStyles />
       <OrbitVisualFreezeRuntime />
       {routeModel.state === "success" ? (
-        <div data-orbit-route="app-contacts-route">
-          <OrbitRealCardsList
+        // 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。
+        <div data-orbit-real-page="network" data-orbit-route="app-contacts-route">
+          <AccountTopNav active="cards" />
+          <NetworkAll
             viewModel={localizeOrbitTree(
               applyOrbitContactsPresentation(
                 contactsRouteToOrbitContactsViewModel(routeModel),
