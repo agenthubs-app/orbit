@@ -32,6 +32,7 @@ export const STAGE_CHIP: Record<NetworkStage, { bg: string; fg: string }> = {
   archived: { bg: "#E6F1EC", fg: "#2F6B4F" },
 };
 
+// relationshipStatus 优先于 pipelineStatus：两者矛盾时以 relationshipStatus 为准（更新更频繁、更贴近真实关系状态）。
 export function stageOf(contact: Pick<OrbitContactView, "pipelineStatus" | "relationshipStatus">): NetworkStage {
   if (contact.pipelineStatus === "pending_initialization") return "explore";
   switch (contact.relationshipStatus) {

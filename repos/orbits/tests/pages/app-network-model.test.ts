@@ -22,6 +22,8 @@ test("stageOf maps the four real statuses onto the four design columns", () => {
   assert.equal(stageOf({ pipelineStatus: "pending_initialization", relationshipStatus: "needs_follow_up" }), "explore");
   // 旧数据没有 relationshipStatus 时退化到 pipelineStatus
   assert.equal(stageOf({ pipelineStatus: "in_progress" }), "advance");
+  // 两者矛盾时 relationshipStatus 优先
+  assert.equal(stageOf({ pipelineStatus: "archived", relationshipStatus: "active" }), "advance");
 });
 
 test("sourceOf folds exchange/qr/manual into other", () => {
