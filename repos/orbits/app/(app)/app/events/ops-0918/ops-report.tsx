@@ -1,7 +1,8 @@
 /**
  * 数据报告屏（Orbit_0918 运营台 report 屏，设计 369–445 行；`/app/events/[id]/analytics`）：消费
  * `useEventAnalytics(event.id, activeView, setActiveView)`（`activeView` 留在屏内，照旧 event-analytics-route 用法）。
- * 视图 toggle（设计 372–375；装饰 `REPORT_VIEW_TONE` 内联）：「我的视图」仅 `canSwitchViews` 时渲染，否则只显示当前视图单 pill。
+ * 视图 toggle（设计 372–375；装饰 `REPORT_VIEW_TONE` 内联）：「我的视图」仅 `canSwitchViews` 时渲染，否则只显示当前视图单 pill；
+ * 加载中（`activeView` 为 null）不渲染任何 pill（attendee-only 用户不该先看到「整体视图」）。
  * 整体视图 = organizer aggregate：四大数（`reportStats`，设计 378–381 背景逐字）；报名趋势 / 参会者来源 无字段 → 省略（网格自动收成两卡）；
  * 现场转化 = 签到率 / 联系方式交换率（`reportRate`，分母 0 → 「—」）；会后跟进 = 已生成 follow-up（`followupReminders`），
  * 「已完成跟进」无字段 → 该格省略；报表说明：统计时间 = `roi.snapshot.windowEndsAt`（`reportClock` JST），其余两行原样。
@@ -39,15 +40,14 @@ const VIEWS: readonly { key: AnalyticsViewKind; label: string }[] = [
 export function OpsReport({ event }: { event: EventOperationsPageEvent }) {
   const [activeView, setActiveView] = useState<AnalyticsViewKind | null>(null);
   const { canSwitchViews, error, retry, value } = useEventAnalytics(event.id, activeView, setActiveView);
-  const current = activeView ?? "organizer_aggregate";
-  const pills = canSwitchViews ? VIEWS : VIEWS.filter((view) => view.key === current);
+  const pills = canSwitchViews ? VIEWS : VIEWS.filter((view) => view.key === activeView);
 
   return (
     <div className="op-screen" data-ops-screen="report">
       <div className="op-rbar">
         <span aria-label="活动报告视图" className="op-rviews" data-event-analytics-view-switch role="group">
           {pills.map((view) => {
-            const on = view.key === current;
+            const on = view.key === activeView;
             const tone = on ? REPORT_VIEW_TONE.on : REPORT_VIEW_TONE.off;
             return (
               <button

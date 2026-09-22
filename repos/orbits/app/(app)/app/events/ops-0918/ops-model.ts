@@ -729,6 +729,16 @@ export function previewChoice(intent: EventExperienceQuestion["intent"]): "singl
   return intent === "positioning" ? "single" : "multi";
 }
 
+/** 选项行内编辑：失焦时去掉首尾空白并丢弃空项（旧编辑器逗号拆分 `trim().filter(Boolean)` 同口径）。 */
+export function cleanOptions(options: readonly string[]): string[] {
+  return options.map((option) => option.trim()).filter(Boolean);
+}
+
+/** 任一题目仍有空白选项（「＋ 添加选项」刚推入的 ""）→ 保存 / 预览 / 发布前先补齐。 */
+export function hasBlankOptions(questions: readonly Pick<EventExperienceQuestion, "options">[]): boolean {
+  return questions.some((question) => question.options.some((option) => option.trim() === ""));
+}
+
 export function canAddQuestion(track: EventExperienceQuestionTrack, count: number): boolean {
   return track === "v2" && count < FORM_QUESTION_LIMIT;
 }

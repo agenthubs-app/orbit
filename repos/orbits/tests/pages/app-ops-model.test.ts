@@ -50,10 +50,12 @@ import {
   attendeeGroupingLine,
   attendeeStats,
   canAddQuestion,
+  cleanOptions,
   FORM_INTRO_LIMIT,
   FORM_QUESTION_LIMIT,
   formQuestionRows,
   formStatusChip,
+  hasBlankOptions,
   lastSavedChip,
   previewChoice,
   REPORT_VIEW_TONE,
@@ -462,6 +464,10 @@ test("preview choice: positioning is single-choice, every other intent multi; ad
   assert.equal(addQuestionHint("v1", 2), "V1 轨道固定两题必答；切到 V2 后可增删。");
   assert.equal(addQuestionHint("v2", 4), "最多 4 题。");
   assert.equal(addQuestionHint("v2", 1), null);
+  assert.deepEqual(cleanOptions([" A ", "", "B", "   "]), ["A", "B"], "trim + drop blanks (old comma-split behaviour)");
+  assert.equal(hasBlankOptions([{ options: ["A", "B"] }, { options: ["C", " "] }]), true);
+  assert.equal(hasBlankOptions([{ options: ["A", "B"] }]), false);
+  assert.equal(hasBlankOptions([]), false);
 });
 
 // ═══ 数据报告屏（设计 369–445；renderVals 617–627 / 700–711；审阅修订 14）═══

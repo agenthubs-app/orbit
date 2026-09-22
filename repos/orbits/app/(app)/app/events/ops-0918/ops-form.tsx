@@ -1,7 +1,9 @@
 /**
  * 报名设置屏（Orbit_0918 运营台 form 屏，设计 300–367 行；`/operations/experience`）：消费 `useExperienceEditor(event.id)`。
  * 顶栏：状态 chip（`formStatusChip`）+「◷ 上次保存 …」（`lastSavedChip`，无草稿 → 尚未保存）/「保存草稿」= `saveDraft` /
- * 「发布报名设置」= `publishDraft`（无草稿或 `frozen` 禁用）；`error` / `notice` / 冻结说明 只在有内容时渲染。
+ * 「发布报名设置」= `publishDraft`（无草稿禁用）；`frozen`（画像截止已到）时仍可保存 / 发布展示字段（README：题集须与已发布基线
+ * 语义一致），故只禁用题集变更控件（题干 / 选项 / 必填 / ⌫ / ＋ 添加问题 / 轨道）并显示旧编辑器的说明；空白选项（「＋ 添加选项」
+ * 刚推入）失焦时清理，仍有空白时保存 / 预览 / 发布禁用 + 说明；`error` / `notice` 只在有内容时渲染。
  * 左列：说明 textarea（上限 `FORM_INTRO_LIMIT` 1000，计数器）；题目行 = `configuration.questionSet.questions`
  * （设计七列去掉类型 chip → 六列；⠿ 仅装饰，无排序 API；✎ = 行内展开 题干 / 选项逐行 / 必填（V2）；⌫ = `removeQuestion`（V2）；
  * 「＋ 添加问题」= `addQuestion`，V1 或已 4 题 → disabled + 说明）；「高级」折叠区（设计外）= 轨道 select + 强调色。
@@ -17,9 +19,11 @@ import type { EventOperationsPageEvent } from "../[id]/operations/event-operatio
 import {
   addQuestionHint,
   canAddQuestion,
+  cleanOptions,
   FORM_INTRO_LIMIT,
   formQuestionRows,
   formStatusChip,
+  hasBlankOptions,
   hubDateTime,
   lastSavedChip,
   previewChoice,
@@ -57,6 +61,8 @@ export function OpsForm({ event }: { event: EventOperationsPageEvent }) {
   const intro = configuration.introduction ?? "";
   const addHint = addQuestionHint(track, questions.length);
   const when = hubDateTime(event);
+  const blank = hasBlankOptions(questions);
+  const canMutateQuestions = !frozen;
 
   function setOptions(index: number, options: readonly string[]) {
     updateQuestion(index, { options });
@@ -70,10 +76,10 @@ export function OpsForm({ event }: { event: EventOperationsPageEvent }) {
           <span className="op-fchip-saved">{lastSavedChip(snapshot?.draft?.createdAt, now)}</span>
         </span>
         <span className="op-factions">
-          <button className="btn op-fsave" disabled={busy !== null || frozen} onClick={() => void saveDraft()} type="button">
+          <button className="btn op-fsave" disabled={busy !== null || blank} onClick={() => void saveDraft()} type="button">
             {busy === "save" ? "保存中…" : "保存草稿"}
           </button>
-          <button className="btn op-fpublish" disabled={busy !== null || frozen || !snapshot?.draft} onClick={() => void publishDraft()} type="button">
+          <button className="btn op-fpublish" disabled={busy !== null || blank || !snapshot?.draft} onClick={() => void publishDraft()} type="button">
             {busy === "publish" ? "发布中…" : "发布报名设置"}
           </button>
         </span>
@@ -81,7 +87,8 @@ export function OpsForm({ event }: { event: EventOperationsPageEvent }) {
 
       {error ? <div className="op-alert" role="alert">{error}</div> : null}
       {notice ? <div aria-live="polite" className="op-notice" role="status">{notice}</div> : null}
-      {frozen ? <div className="op-frozen" role="status">已到画像编辑截止时间：题集轨道、题目和选项已随已发布版本冻结，本页不再接受保存或发布。</div> : null}
+      {frozen ? <div className="op-frozen" data-ops-frozen role="status">已到画像编辑截止时间；仍可调整展示字段并保存/发布，但题集轨道、题目和选项必须与当前已发布版本一致。</div> : null}
+      {blank ? <div className="op-frozen" data-ops-blank-options role="status">有选项为空：请填写或删除空白选项后再保存、预览或发布。</div> : null}
       {loading && !snapshot ? <div aria-label="正在读取活动体验" className="op-empty">正在读取活动体验…</div> : null}
 
       <div className="op-fgrid">
@@ -125,7 +132,7 @@ export function OpsForm({ event }: { event: EventOperationsPageEvent }) {
                     aria-label={`删除第 ${row.no} 题`}
                     className="btn op-fq-del"
                     data-ops-remove={question.intent}
-                    disabled={track !== "v2"}
+                    disabled={track !== "v2" || !canMutateQuestions}
                     onClick={() => {
                       removeQuestion(index);
                       setEditing(null);
@@ -141,6 +148,7 @@ export function OpsForm({ event }: { event: EventOperationsPageEvent }) {
                         <input
                           className="op-field"
                           data-ops-prompt
+                          disabled={!canMutateQuestions}
                           onChange={(input) => updateQuestion(index, { prompt: input.target.value })}
                           value={question.prompt}
                         />
@@ -153,6 +161,8 @@ export function OpsForm({ event }: { event: EventOperationsPageEvent }) {
                               aria-label={`选项 ${optionIndex + 1}`}
                               className="op-field"
                               data-ops-option={optionIndex}
+                              disabled={!canMutateQuestions}
+                              onBlur={() => setOptions(index, cleanOptions(question.options))}
                               onChange={(input) => setOptions(index, question.options.map((item, itemIndex) => (itemIndex === optionIndex ? input.target.value : item)))}
                               value={option}
                             />
@@ -160,6 +170,7 @@ export function OpsForm({ event }: { event: EventOperationsPageEvent }) {
                               <button
                                 aria-label={`删除选项 ${optionIndex + 1}`}
                                 className="btn op-link-btn"
+                                disabled={!canMutateQuestions}
                                 onClick={() => setOptions(index, question.options.filter((_, itemIndex) => itemIndex !== optionIndex))}
                                 type="button"
                               >
@@ -169,7 +180,7 @@ export function OpsForm({ event }: { event: EventOperationsPageEvent }) {
                           </span>
                         ))}
                         {question.options.length < OPTION_LIMIT ? (
-                          <button className="btn op-link-btn op-fq-option-add" onClick={() => setOptions(index, [...question.options, ""])} type="button">＋ 添加选项</button>
+                          <button className="btn op-link-btn op-fq-option-add" disabled={!canMutateQuestions} onClick={() => setOptions(index, [...question.options, ""])} type="button">＋ 添加选项</button>
                         ) : null}
                       </span>
                       {track === "v2" ? (
@@ -177,6 +188,7 @@ export function OpsForm({ event }: { event: EventOperationsPageEvent }) {
                           <input
                             checked={question.required}
                             data-ops-required={question.intent}
+                            disabled={!canMutateQuestions}
                             onChange={(input) => updateQuestion(index, { required: input.target.checked })}
                             type="checkbox"
                           />
@@ -190,7 +202,7 @@ export function OpsForm({ event }: { event: EventOperationsPageEvent }) {
                 </div>
               );
             })}
-            <button className="btn op-fadd" disabled={!canAddQuestion(track, questions.length)} onClick={addQuestion} type="button">＋ 添加问题</button>
+            <button className="btn op-fadd" disabled={!canMutateQuestions || !canAddQuestion(track, questions.length)} onClick={addQuestion} type="button">＋ 添加问题</button>
             {addHint ? <span className="op-empty">{addHint}</span> : null}
           </section>
 
@@ -206,6 +218,7 @@ export function OpsForm({ event }: { event: EventOperationsPageEvent }) {
                   <select
                     className="op-field"
                     data-ops-track
+                    disabled={!canMutateQuestions}
                     onChange={(input) => {
                       updateTrack(input.target.value as EventExperienceQuestionTrack);
                       setEditing(null);
@@ -236,7 +249,7 @@ export function OpsForm({ event }: { event: EventOperationsPageEvent }) {
         <section className="op-fsec op-fsec-preview">
           <div className="op-fsec-head-row">
             <span className="op-fsec-head"><strong className="op-sec-title-20">报名弹窗预览</strong><span className="op-fsec-sub">这是用户实际看到的报名界面效果。</span></span>
-            <button className="btn op-btn-edit" disabled={busy !== null} onClick={() => void previewDraft()} type="button">
+            <button className="btn op-btn-edit" disabled={busy !== null || blank} onClick={() => void previewDraft()} type="button">
               {busy === "preview" ? "预览中…" : "预览（零写入）"}
             </button>
           </div>

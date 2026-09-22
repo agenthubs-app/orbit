@@ -343,13 +343,68 @@ test("✎ expands an inline editor (prompt / options / 必填 on V2); ⌫ remove
   });
 });
 
-test("a frozen head shows 已冻结, disables both actions and explains", async () => {
-  await withForm(() => Response.json({ data: snapshot(3, { frozenAt: "2026-01-01T00:00:00.000Z", published: true }), success: true }), (renderer) => {
+test("a frozen head shows 已冻结, keeps 保存草稿 / 发布 enabled (display-field edits), disables the question controls and explains", async () => {
+  await withForm(() => Response.json({ data: snapshot(3, { frozenAt: "2026-01-01T00:00:00.000Z", published: true, track: "v2" }), success: true }), async (renderer) => {
     assert.equal(chip(renderer).children.join(""), "已冻结");
     assert.deepEqual([chip(renderer).props.style.background, chip(renderer).props.style.color], ["#FBF1E4", "#9A6B22"]);
+    assert.equal(buttonNamed(renderer, "保存草稿").props.disabled, false, "README: display-only changes may still be drafted after the deadline");
+    assert.equal(buttonNamed(renderer, "发布报名设置").props.disabled, false);
+    assert.equal(buttonNamed(renderer, "预览（零写入）").props.disabled, false);
+    assert.match(text(renderer), /已到画像编辑截止时间；仍可调整展示字段并保存\/发布，但题集轨道、题目和选项必须与当前已发布版本一致。/u);
+    assert.equal(buttonNamed(renderer, "＋ 添加问题").props.disabled, true, "V2 with 2 questions would otherwise allow adding");
+    assert.equal(renderer.root.find((node) => node.props["data-ops-remove"] === "target_attendees").props.disabled, true);
+    assert.equal(renderer.root.find((node) => node.props["data-ops-track"] !== undefined).props.disabled, true);
+    assert.equal(renderer.root.find((node) => node.props["data-ops-accent"] !== undefined).props.disabled, undefined, "accent colour is a display field");
+    assert.equal(textarea(renderer).props.disabled, undefined, "introduction is a display field");
+    await act(async () => {
+      renderer.root.find((node) => node.props["data-ops-edit"] === "target_attendees").props.onClick();
+      await flush();
+    });
+    const editor = renderer.root.find((node) => node.props["data-ops-editor"] === "target_attendees");
+    assert.equal(editor.find((node) => node.props["data-ops-prompt"] !== undefined).props.disabled, true);
+    assert.deepEqual(editor.findAll((node) => node.props["data-ops-option"] !== undefined).map((node) => node.props.disabled), [true, true]);
+    assert.equal(editor.find((node) => node.props["data-ops-required"] !== undefined).props.disabled, true);
+    assert.equal(buttonNamed(renderer, "＋ 添加选项").props.disabled, true);
+  });
+});
+
+test("＋ 添加选项 pushes a blank option that blocks 保存 / 预览 / 发布 until it is filled or dropped on blur", async () => {
+  await withForm(() => Response.json({ data: snapshot(3, { track: "v2" }), success: true }), async (renderer) => {
+    await act(async () => {
+      renderer.root.find((node) => node.props["data-ops-edit"] === "value_offered").props.onClick();
+      await flush();
+    });
+    await act(async () => {
+      buttonNamed(renderer, "＋ 添加选项").props.onClick();
+      await flush();
+    });
+    const options = () => renderer.root.find((node) => node.props["data-ops-editor"] === "value_offered").findAll((node) => node.props["data-ops-option"] !== undefined);
+    assert.deepEqual(options().map((node) => node.props.value), ["A", "B", ""]);
     assert.equal(buttonNamed(renderer, "保存草稿").props.disabled, true);
     assert.equal(buttonNamed(renderer, "发布报名设置").props.disabled, true);
-    assert.match(text(renderer), /已到画像编辑截止时间/u);
+    assert.equal(buttonNamed(renderer, "预览（零写入）").props.disabled, true);
+    assert.match(text(renderer), /有选项为空：请填写或删除空白选项后再保存、预览或发布。/u);
+    await act(async () => {
+      options()[2].props.onChange({ target: { value: "  Cee " } });
+      await flush();
+    });
+    assert.equal(buttonNamed(renderer, "保存草稿").props.disabled, false);
+    await act(async () => {
+      options()[2].props.onBlur();
+      await flush();
+    });
+    assert.deepEqual(options().map((node) => node.props.value), ["A", "B", "Cee"], "blur trims");
+    await act(async () => {
+      buttonNamed(renderer, "＋ 添加选项").props.onClick();
+      await flush();
+    });
+    await act(async () => {
+      options()[3].props.onBlur();
+      await flush();
+    });
+    assert.deepEqual(options().map((node) => node.props.value), ["A", "B", "Cee"], "blank dropped on blur (old comma-split trim/filter behaviour)");
+    assert.equal(buttonNamed(renderer, "保存草稿").props.disabled, false);
+    assert.doesNotMatch(text(renderer), /有选项为空/u);
   });
 });
 

@@ -108,7 +108,7 @@ function kind(renderer: ReactTestRenderer) {
   return renderer.root.findAll((node) => typeof node.props["data-event-analytics-kind"] === "string").map((node) => node.props["data-event-analytics-kind"] as string);
 }
 
-test("report SSR renders the console head with the 数据报告 tab active, the single 整体视图 pill, the loading copy and no design mock", () => {
+test("report SSR renders the console head with the 数据报告 tab active, no pill before the reports arrive, the loading copy and no design mock", () => {
   const html = renderToStaticMarkup(
     <OpsConsoleShell event={EVENT} more={[{ href: exportCsvHref(EVENT.id), label: "导出 CSV" }]} view="report">
       <OpsReport event={EVENT} />
@@ -118,8 +118,8 @@ test("report SSR renders the console head with the 数据报告 tab active, the 
   assert.match(html, /aria-current="page" class="op-tab op-tab-on" href="[^"]+\/analytics" role="tab">数据报告</u);
   assert.match(html, /活动中心<\/a> \/ <a class="op-crumb-link" href="[^"]+">屏级替换夹具活动<\/a> \/ <a class="op-crumb-link" href="[^"]+">运营台<\/a> \/ 数据报告/u);
   assert.match(html, /role="menuitem">导出 CSV/u);
-  assert.match(html, /<button aria-pressed="true" class="btn op-rview" data-event-analytics-view="organizer_aggregate" style="background:#2E3270;color:#FFFFFF;font-weight:500" type="button">整体视图<\/button>/u);
-  assert.doesNotMatch(html, /我的视图/u, "attendee pill only when both reports are readable");
+  assert.match(html, /<span aria-label="活动报告视图" class="op-rviews" data-event-analytics-view-switch="true" role="group"><\/span>/u, "empty switch keeps the row; no pill until activeView is known");
+  assert.doesNotMatch(html, /整体视图|我的视图/u, "attendee-only users must not see 整体视图 while loading");
   assert.match(html, /正在读取活动证据…/u);
   const markup = html.replace(/<style>[\s\S]*?<\/style>/u, "");
   assert.doesNotMatch(markup, /data-ops-rstat=|报名趋势|参会者来源|校友推荐|Tokyo AI Meetup|86|已完成跟进|61% 完成率/u);
@@ -155,6 +155,9 @@ test("organizer-only: the aggregate fills the four cards, 现场转化, 会后�
     assert.match(body, /个人视图授权「我的视图」仅展示你有权限查看的部分数据，可能与整体数据存在差异。/u);
     assert.match(body, /数据不可用情况如因参会者未授权、现场未签到或信息不完整，部分数据可能无法统计。/u);
     assert.equal(renderer.root.findAll((node) => node.props["data-event-analytics-view"] === "attendee_report").length, 0, "single pill");
+    const pill = renderer.root.find((node) => node.props["data-event-analytics-view"] === "organizer_aggregate");
+    assert.equal(pill.props["aria-pressed"], true);
+    assert.deepEqual([pill.props.style.background, pill.props.style.color, pill.props.style.fontWeight], ["#2E3270", "#FFFFFF", 500]);
     assert.equal(renderer.root.findAll((node) => node.props.role === "alert").length, 0);
     assert.doesNotMatch(body, /正在读取活动证据/u);
   });
@@ -177,6 +180,7 @@ test("dual-role users can switch between organizer aggregate and their own atten
     throw new Error(`Unexpected analytics request ${url}`);
   }, async (renderer) => {
     assert.deepEqual(kind(renderer), ["organizer_aggregate"]);
+    assert.deepEqual(renderer.root.findAll((node) => typeof node.props["data-event-analytics-view"] === "string").map((node) => node.props["data-event-analytics-view"]), ["organizer_aggregate", "attendee_report"]);
     const attendeeButton = renderer.root.find((node) => node.props["data-event-analytics-view"] === "attendee_report");
     assert.equal(attendeeButton.props["aria-pressed"], false);
     assert.deepEqual([attendeeButton.props.style.background, attendeeButton.props.style.color, attendeeButton.props.style.fontWeight], ["transparent", "#6B6F99", 400]);
@@ -211,6 +215,17 @@ test("dual-role users can switch between organizer aggregate and their own atten
   });
 });
 
+test("attendee-only users get a single 我的视图 pill and never a 整体视图 pill", async () => {
+  await withReport((url) => {
+    if (url === ATTENDEE) return Response.json({ data: attendeeReport(), success: true });
+    return Response.json({ error: { message: "forbidden" }, success: false }, { status: 403 });
+  }, (renderer) => {
+    assert.deepEqual(kind(renderer), ["attendee_report"]);
+    assert.deepEqual(renderer.root.findAll((node) => typeof node.props["data-event-analytics-view"] === "string").map((node) => [node.props["data-event-analytics-view"], node.props["aria-pressed"]]), [["attendee_report", true]]);
+    assert.doesNotMatch(text(renderer), /整体视图/u);
+  });
+});
+
 test("a double 403 shows the Chinese denial as an error bar; 重试 re-fetches both reports", async () => {
   let calls = 0;
   await withReport(() => {
@@ -221,7 +236,7 @@ test("a double 403 shows the Chinese denial as an error bar; 重试 re-fetches b
     const alert = renderer.root.find((node) => node.props.role === "alert");
     assert.match(alert.children.map((child) => (typeof child === "string" ? child : child.children.join(""))).join(""), /当前账号没有可查看的活动汇总或个人报告。/u);
     assert.equal(stats(renderer).length, 0);
-    assert.doesNotMatch(text(renderer), /正在读取活动证据/u);
+    assert.doesNotMatch(text(renderer), /正在读取活动证据|整体视图|我的视图/u);
     await act(async () => {
       buttonNamed(renderer, "重试").props.onClick();
       await flush();
