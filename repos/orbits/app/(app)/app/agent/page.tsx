@@ -2,7 +2,7 @@
  * Agent 页 route adapter。
  *
  * route 只负责挂载样式/runtime，并把 live-capable Orbit AI 聊天入口挂到 `/app/agent`。
- * 数据仍走 live 的 chat route view model；视觉组件采用统一后的 OrbitRealAgent。
+ * 数据仍走 live 的 chat route view model；视觉组件采用 Orbit_0918 的 iOrbit 壳（home 分支为新概览屏，chat 分支仍委托 OrbitRealAgent）。
  */
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
 import type { OrbitLanguage } from "../orbit-language-core";
@@ -18,7 +18,7 @@ import {
   type AppChatSearchParams,
 } from "../chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model";
 import { composeOrbitAgentEntryViewModel } from "../chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-view-model-adapter";
-import { OrbitRealAgent } from "./orbit-real-agent";
+import { IOrbitShell } from "./iorbit-0918/iorbit-shell";
 import { loadAppHomeRouteViewModel } from "../home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model";
 import { presentOrbitEvents } from "../orbit-event-presentation";
 import { readRuntimeEventRegistrationStates } from "../../../../features/events/registration/runtime";
@@ -174,7 +174,11 @@ export default async function AppAgentPage({
       <OrbitVisualFreezeRuntime />
       {entryModel.state === "ready" ? (
         <div data-orbit-route="app-agent-route">
-          <OrbitRealAgent
+          <IOrbitShell
+            initialDeepLink={Boolean(
+              firstSearchParam(resolvedSearchParams, "q") ||
+                firstSearchParam(resolvedSearchParams, "session"),
+            )}
             registrationAvailabilityByEventId={Object.fromEntries(
               Object.entries(registrationStates).map(([eventId, state]) => [
                 eventId,

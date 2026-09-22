@@ -1194,3 +1194,115 @@ export {
   type Copy,
   type Translate,
 };
+
+/* ══ iOrbit 概览屏（Orbit_0918 设计 46–253）的纯派生 ══════════════════════
+   设计稿 `renderVals` 里的 `days` / `selLabel` / `planDoneLabel` / `planPct`
+   都是 mock（审阅修订 20），这里给出同形状但取自真实数据的派生。本段同样
+   不得 import React。 */
+
+/** 以 Asia/Tokyo 为准的 `YYYY-MM-DD`。日程与月历都按东京日切分。 */
+function iorbitDayKey(date: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+  }).format(date);
+}
+
+/**
+ * 月历格子（设计 132–139 的 `sc-for days`，32 格 = 前置空格 + 当月天数）。
+ * 设计的周首是「日」（`['周日','周一',…][new Date(2026,8,s.sel).getDay()]`），
+ * 因此空格数 = 当月 1 号的 `getDay()`。
+ */
+function iorbitCalendarCells(year: number, month: number): readonly (number | null)[] {
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const lead = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
+
+  return [
+    ...Array.from({ length: lead }, () => null),
+    ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
+  ];
+}
+
+/** 设计 `selLabel`：`9月18日（周五）`。日期取真实选中日，不是设计的 18。 */
+function iorbitSelectedDayLabel(
+  year: number,
+  month: number,
+  day: number,
+  language: "en" | "zh",
+): string {
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  if (language === "en") {
+    return new Intl.DateTimeFormat("en-US", {
+      day: "numeric",
+      month: "long",
+      timeZone: "UTC",
+      weekday: "short",
+    }).format(date);
+  }
+
+  const weekday = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][date.getUTCDay()];
+
+  return `${month}月${day}日（${weekday}）`;
+}
+
+/** 设计 237–251 的「上次对话 · 2 天前」，真实会话时间派生。 */
+function iorbitRelativeDayLabel(
+  iso: string,
+  now: Date,
+  language: "en" | "zh",
+): string | null {
+  const then = Date.parse(iso);
+
+  if (!Number.isFinite(then)) return null;
+
+  const days = Math.max(
+    0,
+    Math.round((Date.parse(`${iorbitDayKey(now)}T00:00:00Z`) -
+      Date.parse(`${iorbitDayKey(new Date(then))}T00:00:00Z`)) / 86_400_000),
+  );
+
+  if (days <= 0) return language === "zh" ? "今天" : "today";
+  if (days === 1) return language === "zh" ? "昨天" : "yesterday";
+  if (days < 7) return language === "zh" ? `${days} 天前` : `${days} days ago`;
+
+  const weeks = Math.floor(days / 7);
+
+  return language === "zh" ? `${weeks} 周前` : `${weeks} week${weeks > 1 ? "s" : ""} ago`;
+}
+
+/**
+ * 设计 228–231 的「进度 {{ planDoneLabel }} / {{ planPct }}」。
+ * 设计用的是 mock `done:[true,false,false]`（审阅修订 20）；这里用账本条目的
+ * 真实状态：completed 为已完成，approved / executing 为进行中。没有条目 → null，
+ * 由调用方走空态而不是显示 0%。
+ */
+function iorbitLedgerProgress(
+  entries: readonly { status: string }[],
+): { done: number; percent: number; total: number } | null {
+  let done = 0;
+  let total = 0;
+
+  for (const entry of entries) {
+    if (entry.status === "completed") {
+      done += 1;
+      total += 1;
+    } else if (entry.status === "approved" || entry.status === "executing") {
+      total += 1;
+    }
+  }
+
+  if (total === 0) return null;
+
+  return { done, percent: Math.round((done / total) * 100), total };
+}
+
+export {
+  iorbitCalendarCells,
+  iorbitDayKey,
+  iorbitLedgerProgress,
+  iorbitRelativeDayLabel,
+  iorbitSelectedDayLabel,
+};
