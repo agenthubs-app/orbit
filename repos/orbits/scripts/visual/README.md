@@ -23,6 +23,34 @@ node scripts/visual/compare-0918.mjs \
 
 判定：mismatch ≤ 0.02 且 diff.png 中红色只出现在真实数据文字/数字区域（不得出现在布局线、圆角、间距、色块）。
 
+## 归因模式 `--grid` 与填充门禁 `--require-rows`（2026-09-23 合并前终审 5）
+
+整屏一个 `mismatch` 只回答「差多少」，回答不了「差在哪一条」。六个域的数字先前都只过
+「框级残差」这一条，而**框是人手挑的**——0.3389 的 plan aside 标题缺陷因此在两个任务里
+没被发现，`actions` / `plan` 在账本为空时也照样记过了数字。这两个开关把这两个口子堵上。
+
+- `--grid [带高px]`（默认 100）：把 diff 切成固定高度的**整宽带**，对每条带各做一次
+  `dy` 搜索（`--grid-dy`，默认 ±12：内容整体上下挪几像素不该让每条带都变红），取该带的
+  最小 mismatch 与对应 dy，按 mismatch 降序写 `<out>/cells.json`。
+- `--grid-threshold`（默认 0.02）+ `--attribution <file>` + `--grid-view <key>`：任何超阈值
+  且**没有在归因文件里点名**的带 → 打印带号与区间，以 exit 5 失败。归因文件是 committed
+  JSON（本域是 `scripts/visual/attribution-0918-iorbit.json`），形如
+  `{ "<view>": { "<band>": "理由" } }`。理由必须是看过该带 diff.png 之后写下的具体原因；
+  写不出来就别登记，让门禁继续失败。
+- `--require-rows "<selector>[:最少行数]"`（默认 1）：截完应用侧之后数一遍该选择器的命中
+  数，不够就**不出数字**，以 exit 3 失败。用于主列表为空的屏（`actions` 用
+  `[data-orbit-agent-action-entry]`，`plan` 用 `.ir-task-no`），防止「空账本 = 只剩壳 →
+  残差很小 → 记成通过」。
+
+```bash
+node scripts/visual/compare-0918.mjs \
+  --design "http://localhost:3320/Orbit_0918/iOrbit.dc.html" --design-view actions \
+  --app "http://localhost:3100/app/agent/actions" --login "qa@orbit.test:<password>" \
+  --out /tmp/iorbit-grid-actions \
+  --grid 100 --grid-view actions --attribution scripts/visual/attribution-0918-iorbit.json \
+  --require-rows "[data-orbit-agent-action-entry]"
+```
+
 ## 设计页签映射（`--design-view`）
 
 脚本按 `--design` URL 自动选择页签表；也可用 `--design-table profile|events|ops|auth|iorbit` 强制选个人中心表 / Events 表 / 运营台表 / 认证弹窗表 / iOrbit 表。

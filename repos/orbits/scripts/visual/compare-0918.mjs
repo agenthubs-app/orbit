@@ -39,7 +39,7 @@
 //   通用选项：--design-remove "<selector>"（截图前在页面里删除设计侧所有匹配元素，CSS 或 Playwright 选择器均可，如演示条
 //   "div:has(> span:text-is('演示'))"）；--app-remove "<selector>"（同理删应用侧元素，仅用于归因设计外附加件，如 ".au-google"）；
 //   --viewport-only（两侧只截视口，不截全页）。
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { chromium } from "playwright";
 import { PNG } from "pngjs";
@@ -227,6 +227,21 @@ try {
     // 文本伪类定位（如 "div:has(> span:text-is('演示'))"）；纯 CSS 选择器同样可用。
     if (args["design-remove"]) await page.locator(args["design-remove"]).evaluateAll((els) => { for (const el of els) el.remove(); });
   });
+  // 合并前终审 5（b）：填充门禁。六个域的数字都只过「框级残差」这一条，而「框」是
+  // 人手挑的——`actions` / `plan` 两屏在账本为空时只剩壳 + aside + 段头，照样能读出
+  // 一个很小的 mismatch 并被当成通过。这里让脚本自己数一遍应用侧主列表的行数：
+  // 传了 `--require-rows "<selector>"`（可写 "<selector>:<最少行数>"，默认 1）时，
+  // 行数不足就**不出数字**，直接以 populate-gate 失败退出。
+  let populateGate = null;
+  if (args["require-rows"] && args["require-rows"] !== "true") {
+    const raw = String(args["require-rows"]);
+    const cut = raw.lastIndexOf(":");
+    const tail = cut > 0 ? Number(raw.slice(cut + 1)) : Number.NaN;
+    populateGate = Number.isFinite(tail)
+      ? { selector: raw.slice(0, cut), min: Math.max(1, tail) }
+      : { selector: raw, min: 1 };
+  }
+  let populateCount = null;
   const app = await shoot(args.app, "app.png", async (page) => {
     // iOrbit 概览屏的四个来源（facts server action / 账本 / 信号 / 会话）在 hydration 之后才发，
     // 固定 400ms 会截到 pending 态（「审阅修订」37）：等应用侧自报就绪，超时就按原样截。
@@ -246,7 +261,17 @@ try {
     // 滚回顶部只让底图与设计侧一致（配 --viewport-only）。
     if (isIorbitTable && iorbitView === "history") { await page.evaluate(() => window.scrollTo(0, 0)); await page.waitForTimeout(200); }
     if (args["app-remove"]) await page.locator(args["app-remove"]).evaluateAll((els) => { for (const el of els) el.remove(); });
+    if (populateGate) populateCount = await page.locator(populateGate.selector).count();
   });
+
+  if (populateGate && (populateCount ?? 0) < populateGate.min) {
+    console.error(
+      `populate-gate failed: "${populateGate.selector}" matched ${populateCount ?? 0} row(s), need ≥ ${populateGate.min}. ` +
+        `没有数据的屏不出像素数字——先把这一屏的主列表种上（见 README 的账本种子 / 会话种子），再重跑。`,
+    );
+    await browser.close();
+    process.exit(3);
+  }
 
   const h = Math.min(design.height, app.height);
   const diff = new PNG({ width, height: h });
@@ -259,6 +284,91 @@ try {
   }
   writeFileSync(join(out, "diff.png"), PNG.sync.write(diff));
   console.log(`mismatch=${(bad / (width * h)).toFixed(4)} design=${design.height}px app=${app.height}px out=${out}`);
+
+  // 合并前终审 5（a）：归因模式。整屏一个 mismatch 只回答「差多少」，回答不了
+  // 「差在哪一条」——0.3389 的 plan aside 标题缺陷正是这样在两个任务里藏住的。
+  // `--grid` 把 diff 切成固定高度的整宽带，对每条带各做一次 dy 搜索（内容整体上下
+  // 挪几像素不该让每条带都变红），取该带的最小 mismatch 与对应 dy，按 mismatch
+  // 降序写 cells.json；任何超阈值且**没有在归因文件里点名**的带，一律判失败。
+  if (args.grid && args.grid !== "false") {
+    const band = Math.max(20, Number(args.grid === "true" ? 100 : args.grid) || 100);
+    const maxDy = Math.max(0, Number(args["grid-dy"] ?? 12) || 0);
+    const threshold = Number(args["grid-threshold"] ?? 0.02);
+
+    const mismatchOfBand = (y0, y1, dy) => {
+      let miss = 0;
+      let counted = 0;
+      for (let y = y0; y < y1; y++) {
+        const ay = y + dy;
+        if (ay < 0 || ay >= app.height) continue;
+        for (let x = 0; x < width; x++) {
+          const di = (y * width + x) * 4;
+          const ai = (ay * width + x) * 4;
+          counted++;
+          if (
+            Math.abs(design.data[di] - app.data[ai]) >= 24 ||
+            Math.abs(design.data[di + 1] - app.data[ai + 1]) >= 24 ||
+            Math.abs(design.data[di + 2] - app.data[ai + 2]) >= 24
+          ) miss++;
+        }
+      }
+      return counted === 0 ? 1 : miss / counted;
+    };
+
+    const cells = [];
+    for (let index = 0, y0 = 0; y0 < h; index++, y0 += band) {
+      const y1 = Math.min(y0 + band, h);
+      let best = { dy: 0, mismatch: mismatchOfBand(y0, y1, 0) };
+      for (let dy = -maxDy; dy <= maxDy; dy++) {
+        if (dy === 0) continue;
+        const value = mismatchOfBand(y0, y1, dy);
+        if (value < best.mismatch) best = { dy, mismatch: value };
+      }
+      cells.push({ band: index, y0, y1, dy: best.dy, mismatch: Number(best.mismatch.toFixed(4)) });
+    }
+
+    // 归因文件：committed JSON，形如 { "<view>": { "<band>": "为什么这条带允许超阈值" } }。
+    // 找不到文件、或某条超阈值的带没有条目，都算门禁失败——「挑了个框、数字小、算过」
+    // 这条路从此走不通。
+    const viewKey = args["grid-view"] ?? args["design-view"] ?? "default";
+    let attribution = {};
+    let attributionPath = args.attribution;
+    if (attributionPath && attributionPath !== "true") {
+      try {
+        attribution = JSON.parse(readFileSync(attributionPath, "utf8"))[viewKey] ?? {};
+      } catch (error) {
+        console.error(`attribution file unreadable: ${attributionPath} (${error.message})`);
+        await browser.close();
+        process.exit(4);
+      }
+    } else {
+      attributionPath = null;
+    }
+
+    const sorted = [...cells].sort((a, b) => b.mismatch - a.mismatch);
+    writeFileSync(
+      join(out, "cells.json"),
+      `${JSON.stringify({ band, maxDy, threshold, view: viewKey, width, height: h, cells: sorted }, null, 2)}\n`,
+    );
+
+    const unattributed = sorted.filter(
+      (cell) => cell.mismatch > threshold && !attribution[String(cell.band)],
+    );
+    console.log(
+      `grid band=${band}px cells=${cells.length} over-threshold=${sorted.filter((c) => c.mismatch > threshold).length} ` +
+        `unattributed=${unattributed.length} top=${sorted.slice(0, 3).map((c) => `#${c.band}@${c.y0}:${c.mismatch}(dy${c.dy})`).join(" ")} ` +
+        `cells=${join(out, "cells.json")}`,
+    );
+    if (unattributed.length > 0) {
+      console.error(
+        `grid gate failed: ${unattributed.length} band(s) above ${threshold} are not named in ` +
+          `${attributionPath ?? "(no --attribution file given)"} under "${viewKey}": ` +
+          unattributed.map((cell) => `#${cell.band}(y=${cell.y0}-${cell.y1}, ${cell.mismatch})`).join(", "),
+      );
+      await browser.close();
+      process.exit(5);
+    }
+  }
 } finally {
   await browser.close();
 }
