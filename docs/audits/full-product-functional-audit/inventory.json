@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "3e7fb7263a4a79dbc982cd4d13a47a37f654f2f5",
-  "deterministicSourceTime": "2026-09-23T02:56:38+08:00",
+  "generatedFromCommit": "4de8d5a2949887ed1c83dfae04f09e5751e300fd",
+  "deterministicSourceTime": "2026-09-23T03:52:06+08:00",
   "sourceState": "head-plus-uncommitted-authoritative-inputs",
-  "uncommittedAuthoritativeInputChanges": 12,
+  "uncommittedAuthoritativeInputChanges": 2,
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -40,7 +40,7 @@
     "renderedLeafObservedOccurrences": 3001,
     "renderedLeafObservedStates": 279,
     "renderedLeafObservedUniqueStateKeys": 273,
-    "interactionsRuntimeVerified": 134,
+    "interactionsRuntimeVerified": 124,
     "surfacesRuntimeVerified": 0,
     "surfacesWithRuntimeEvidence": 78,
     "candidateMissingHandlers": 8,
@@ -100774,16 +100774,14 @@
           "downstreamCallHints": [],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "Mobile New chat reset only active client state and URL. The history row count remained 6 before and 6 after, proving it did not delete a session or domain record.",
+          "idempotency": "not-runtime-verified",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "After the mobile drawer selected session agent-session-ms5tz2ay-zx6dfl and reload restored its prompt and pending-action explanation, 新对话 closed the drawer, returned the URL to /app/agent, removed the old transcript, restored the welcome workspace, returned focus to 对话历史, and retained six of six history rows.",
-          "testData": "Authenticated actor user_ms5llhof_wrbpuq with six stored sessions; selected Undo Audit session agent-session-ms5tz2ay-zx6dfl; 390x844 production viewport",
-          "testEvidence": [
-            "web-agent-mobile-history-navigation-2026-07-29"
-          ],
-          "conclusion": "runtime-verified-exercised-case",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
           "severity": null
         },
         {
@@ -100888,16 +100886,14 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "Editing the field alone wrote nothing; only the explicit save control submitted the new title, while cancel discarded the draft.",
+          "idempotency": "not-runtime-verified",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "The rename field loaded the persisted display name for the selected actor-owned session and accepted a replacement title without changing the underlying session id or messages.",
-          "testData": "Live session agent-session-ms5w1kuk-o68abs with two read-only messages and the generated title 这是 History Lifecyc...",
-          "testEvidence": [
-            "web-agent-history-lifecycle-2026-07-29"
-          ],
-          "conclusion": "runtime-verified-exercised-case",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
           "severity": null
         },
         {
@@ -100917,16 +100913,14 @@
           "downstreamCallHints": [],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "The per-session mutation fence disabled concurrent history writes, and the UI changed only after the API proved storage.persisted=true.",
+          "idempotency": "not-runtime-verified",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "保存对话名称 persisted History Lifecycle Audit 20260729, closed the editor, rendered 对话已重命名, and retained the exact title after a production-page reload.",
-          "testData": "Live actor user_ms5llhof_wrbpuq and session agent-session-ms5w1kuk-o68abs",
-          "testEvidence": [
-            "web-agent-history-lifecycle-2026-07-29"
-          ],
-          "conclusion": "runtime-verified-exercised-case",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
           "severity": null
         },
         {
@@ -100951,16 +100945,14 @@
           "downstreamCallHints": [],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "Cancel performed no request and wrote no session record; repeated reads retained the prior title and messages.",
+          "idempotency": "not-runtime-verified",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "After the field was changed to SHOULD NOT PERSIST 20260729, 取消重命名对话 closed the editor, restored the prior title, and a reload proved the temporary value had not been saved.",
-          "testData": "Existing actor-owned Undo Audit conversation agent-session-ms5tz2ay-zx6dfl",
-          "testEvidence": [
-            "web-agent-history-lifecycle-2026-07-29"
-          ],
-          "conclusion": "runtime-verified-exercised-case",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
           "severity": null
         },
         {
@@ -100988,16 +100980,14 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "Selection only read the actor-scoped session and updated URL/local presentation state; it created no conversation, message, action, or external record.",
+          "idempotency": "not-runtime-verified",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "Selecting the temporary history row after first opening a different conversation navigated to ?session=agent-session-ms5w1kuk-o68abs and restored both the exact prompt and assistant reply; the same result survived reload.",
-          "testData": "Two actor-owned persisted conversations, including the read-only History Lifecycle Audit session",
-          "testEvidence": [
-            "web-agent-history-lifecycle-2026-07-29"
-          ],
-          "conclusion": "runtime-verified-exercised-case",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
           "severity": null
         },
         {
@@ -101024,16 +101014,14 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "Repeated menu open and close changed only local disclosure state and wrote no history record.",
+          "idempotency": "not-runtime-verified",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "更多操作 opened the exact session-scoped menu with pin or unpin, rename, and delete actions; opening it changed no stored record.",
-          "testData": "Session menu button carrying data-orbit-agent-history-menu-button=agent-session-ms5w1kuk-o68abs",
-          "testEvidence": [
-            "web-agent-history-lifecycle-2026-07-29"
-          ],
-          "conclusion": "runtime-verified-exercised-case",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
           "severity": null
         },
         {
@@ -101097,16 +101085,14 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "The session-level mutation fence prevented duplicate concurrent writes; live readback returned pinned=true exactly once.",
+          "idempotency": "not-runtime-verified",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "置顶 waited for persisted storage evidence, rendered 对话已置顶, moved the session into the pinned group order, and reopened as 取消置顶 after reload.",
-          "testData": "Live session agent-session-ms5w1kuk-o68abs initially stored with pinned=false",
-          "testEvidence": [
-            "web-agent-history-lifecycle-2026-07-29"
-          ],
-          "conclusion": "runtime-verified-exercised-case",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
           "severity": null
         },
         {
@@ -101133,16 +101119,14 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "Opening rename changed only local editor state and did not write until explicit save.",
+          "idempotency": "not-runtime-verified",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "重命名 closed the actions menu and opened one named field with explicit save and cancel controls for the selected session.",
-          "testData": "Pinned live History Lifecycle Audit session",
-          "testEvidence": [
-            "web-agent-history-lifecycle-2026-07-29"
-          ],
-          "conclusion": "runtime-verified-exercised-case",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
           "severity": null
         },
         {
@@ -101240,16 +101224,14 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "Opening the confirmation wrote nothing and retained the session in both UI and live storage.",
+          "idempotency": "not-runtime-verified",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "删除对话 did not delete immediately; it opened an alertdialog naming the exact conversation and stating that its messages would be permanently removed and could not be recovered.",
-          "testData": "Selected History Lifecycle Audit 20260729 session with two persisted messages",
-          "testEvidence": [
-            "web-agent-history-lifecycle-2026-07-29"
-          ],
-          "conclusion": "runtime-verified-exercised-case",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
           "severity": null
         },
         {
@@ -101977,16 +101959,14 @@
           "downstreamCallHints": [],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "Opening, focus traversal, Escape, and reopening changed only drawer presentation state. They made no session, message, action, task, inbox, or external write.",
+          "idempotency": "not-runtime-verified",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "At 390x844 the history control was initially present in the DOM but invisible because the shared mobile nav rule hid the mixed extras container. After separating mobile contextual actions, the top bar exposed 对话历史 and 打开菜单, kept 打开收件箱 hidden, and clicking 对话历史 opened the labelled modal drawer with focus on 关闭.",
-          "testData": "Authenticated actor user_ms5llhof_wrbpuq, production Web /app/agent at 390x844, six actor-owned persisted sessions",
-          "testEvidence": [
-            "web-agent-mobile-history-navigation-2026-07-29"
-          ],
-          "conclusion": "runtime-verified-exercised-case",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
           "severity": null
         },
         {

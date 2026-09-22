@@ -2644,6 +2644,13 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "web-agent-partial-failure-retry-compensation-2026-07-29",
     },
   ],
+  // iOrbit 任务 6b：下面三条改指 `iorbit-0918/iorbit-rich-components.tsx`。与被删掉的 10 条
+  // 抽屉/概览键不同，这三枚控件是任务 6a 从 `orbit-real-agent.tsx` **逐字搬家**的结果——
+  // handler 表达式与可见文案与 2026-07-29 实际跑过的那一枚**逐字一致**，只有文件路径变了：
+  //   `orbit-real-agent.tsx:94`  onClick={async () => setCopied(await copyAgentMessageText(text))}
+  //   `orbit-real-agent.tsx:478` onClick={onCancel}  → Keep conversation / 保留对话
+  //   `orbit-real-agent.tsx:488` onClick={onConfirm} → Deleting… / Delete conversation
+  // 判据与保留下来的重试键（`iorbit-chat.tsx`）完全相同，因此保留 runtime-verified。
   [
     'web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx#onclick:async () => setCopied(await copyAgentMessageText(text))#t({ en: "Copy message", zh: "复制消息" })',
     {
@@ -2720,101 +2727,17 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
   // `c0835aff fix(agent): hide internal result diagnostics`（2026-08-25）就已从产品里移除，
   // 这条证据键从那天起就是死键——与 iOrbit 改版无关，本次一并删除。对应的
   // web-agent-evidence-source-disclosure-2026-07-29 用例仍作为历史记录留在 VERIFIED_AUDIT_CASES。
-  [
-    'web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx#t({ en: "Rename conversation", zh: "重命名对话" })',
-    {
-      actualResult:
-        "The rename field loaded the persisted display name for the selected actor-owned session and accepted a replacement title without changing the underlying session id or messages.",
-      testData:
-        "Live session agent-session-ms5w1kuk-o68abs with two read-only messages and the generated title 这是 History Lifecyc...",
-      idempotency:
-        "Editing the field alone wrote nothing; only the explicit save control submitted the new title, while cancel discarded the draft.",
-      verificationCase: "web-agent-history-lifecycle-2026-07-29",
-    },
-  ],
-  [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx#Save / 保存",
-    {
-      actualResult:
-        "保存对话名称 persisted History Lifecycle Audit 20260729, closed the editor, rendered 对话已重命名, and retained the exact title after a production-page reload.",
-      testData:
-        "Live actor user_ms5llhof_wrbpuq and session agent-session-ms5w1kuk-o68abs",
-      idempotency:
-        "The per-session mutation fence disabled concurrent history writes, and the UI changed only after the API proved storage.persisted=true.",
-      verificationCase: "web-agent-history-lifecycle-2026-07-29",
-    },
-  ],
-  [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx#onclick:cancelRename#Cancel / 取消",
-    {
-      actualResult:
-        "After the field was changed to SHOULD NOT PERSIST 20260729, 取消重命名对话 closed the editor, restored the prior title, and a reload proved the temporary value had not been saved.",
-      testData:
-        "Existing actor-owned Undo Audit conversation agent-session-ms5tz2ay-zx6dfl",
-      idempotency:
-        "Cancel performed no request and wrote no session record; repeated reads retained the prior title and messages.",
-      verificationCase: "web-agent-history-lifecycle-2026-07-29",
-    },
-  ],
-  [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx#onclick:() => { setMenuOpenId(null); onPick(item); }#item.q || item.title",
-    {
-      actualResult:
-        "Selecting the temporary history row after first opening a different conversation navigated to ?session=agent-session-ms5w1kuk-o68abs and restored both the exact prompt and assistant reply; the same result survived reload.",
-      testData:
-        "Two actor-owned persisted conversations, including the read-only History Lifecycle Audit session",
-      idempotency:
-        "Selection only read the actor-scoped session and updated URL/local presentation state; it created no conversation, message, action, or external record.",
-      verificationCase: "web-agent-history-lifecycle-2026-07-29",
-    },
-  ],
-  [
-    'web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx#onclick:() => setMenuOpenId(menuOpen ? null : item.id)#t({ en: "More actions", zh: "更多操作" })',
-    {
-      actualResult:
-        "更多操作 opened the exact session-scoped menu with pin or unpin, rename, and delete actions; opening it changed no stored record.",
-      testData:
-        "Session menu button carrying data-orbit-agent-history-menu-button=agent-session-ms5w1kuk-o68abs",
-      idempotency:
-        "Repeated menu open and close changed only local disclosure state and wrote no history record.",
-      verificationCase: "web-agent-history-lifecycle-2026-07-29",
-    },
-  ],
-  [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx#onclick:() => { setMenuOpenId(null); onTogglePin(item); }#Unpin / 取消置顶 / Pin / 置顶",
-    {
-      actualResult:
-        "置顶 waited for persisted storage evidence, rendered 对话已置顶, moved the session into the pinned group order, and reopened as 取消置顶 after reload.",
-      testData:
-        "Live session agent-session-ms5w1kuk-o68abs initially stored with pinned=false",
-      idempotency:
-        "The session-level mutation fence prevented duplicate concurrent writes; live readback returned pinned=true exactly once.",
-      verificationCase: "web-agent-history-lifecycle-2026-07-29",
-    },
-  ],
-  [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx#onclick:() => startRename(item)#Rename / 重命名",
-    {
-      actualResult:
-        "重命名 closed the actions menu and opened one named field with explicit save and cancel controls for the selected session.",
-      testData: "Pinned live History Lifecycle Audit session",
-      idempotency:
-        "Opening rename changed only local editor state and did not write until explicit save.",
-      verificationCase: "web-agent-history-lifecycle-2026-07-29",
-    },
-  ],
-  [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx#onclick:() => { setMenuOpenId(null); onDelete(item); }#Delete / 删除对话",
-    {
-      actualResult:
-        "删除对话 did not delete immediately; it opened an alertdialog naming the exact conversation and stating that its messages would be permanently removed and could not be recovered.",
-      testData:
-        "Selected History Lifecycle Audit 20260729 session with two persisted messages",
-      idempotency:
-        "Opening the confirmation wrote nothing and retained the session in both UI and live storage.",
-      verificationCase: "web-agent-history-lifecycle-2026-07-29",
-    },
-  ],
+  // iOrbit 任务 6b 修订轮 1：历史抽屉（`iorbit-history-drawer.tsx`，任务 4 新建）与概览的
+  // 「◷ 历史记录」（`iorbit-home.tsx`，任务 2 新建）都**不是**旧组件的逐字搬家——handler
+  // 表达式与可见文案都变了（例如 `onclick:() => { setMenuOpenId(null); onPick(item); }`、
+  // 标签由「对话历史」变成「历史记录」，而 2026-07-29 那次取证是在 390x844 的移动顶栏上做的，
+  // 其 actualResult 描述的 DOM 今天已不存在）。把 web-agent-history-lifecycle-2026-07-29 /
+  // web-agent-mobile-history-navigation-2026-07-29 / web-agent-history-navigation-resize-2026-07-29
+  // 的证据改指到这些新控件，等于让审计产物声称一份并不存在的运行时证据，与本文件
+  // 「证据必须 handler-bound、只归属实际跑过的那一枚控件」的口径相冲突。
+  // 因此这 10 条键**删除**，对应交互回落 `inventoried-static-info`→`inventoried-static-only`。
+  // 用例本身仍作为历史记录留在 VERIFIED_AUDIT_CASES；**重新对新抽屉与新概览跑一轮浏览器
+  // 取证是后续工作**（记在 6b 报告「Fix round 1」与遗留里）。
   [
     "web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx#onclick:onCancel#Keep conversation / 保留对话",
     {
@@ -2839,30 +2762,6 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
   ],
   // iOrbit 任务 6b：桌面常驻侧栏的「新对话」随侧栏一起下线（计划「能力保全决定」里
   // 唯一的一条能力移除）。今天只剩历史抽屉里的那一枚，其证据键在下方。
-  [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx#onclick:onOpenHistory#◷ History / 历史记录",
-    {
-      actualResult:
-        "At 390x844 the history control was initially present in the DOM but invisible because the shared mobile nav rule hid the mixed extras container. After separating mobile contextual actions, the top bar exposed 对话历史 and 打开菜单, kept 打开收件箱 hidden, and clicking 对话历史 opened the labelled modal drawer with focus on 关闭.",
-      testData:
-        "Authenticated actor user_ms5llhof_wrbpuq, production Web /app/agent at 390x844, six actor-owned persisted sessions",
-      idempotency:
-        "Opening, focus traversal, Escape, and reopening changed only drawer presentation state. They made no session, message, action, task, inbox, or external write.",
-      verificationCase: "web-agent-mobile-history-navigation-2026-07-29",
-    },
-  ],
-  [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx#onclick:onNewChat#＋ New chat / 新对话",
-    {
-      actualResult:
-        "After the mobile drawer selected session agent-session-ms5tz2ay-zx6dfl and reload restored its prompt and pending-action explanation, 新对话 closed the drawer, returned the URL to /app/agent, removed the old transcript, restored the welcome workspace, returned focus to 对话历史, and retained six of six history rows.",
-      testData:
-        "Authenticated actor user_ms5llhof_wrbpuq with six stored sessions; selected Undo Audit session agent-session-ms5tz2ay-zx6dfl; 390x844 production viewport",
-      idempotency:
-        "Mobile New chat reset only active client state and URL. The history row count remained 6 before and 6 after, proving it did not delete a session or domain record.",
-      verificationCase: "web-agent-mobile-history-navigation-2026-07-29",
-    },
-  ],
   // iOrbit 任务 6b：`调整历史宽度` 的可拖拽分隔条随常驻侧栏一起下线，产品里已无对应控件，
   // 证据键删除；web-agent-history-navigation-resize-2026-07-29 用例本身仍在 VERIFIED_AUDIT_CASES。
   [
