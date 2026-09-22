@@ -5,6 +5,11 @@
  * center/event-center-workspace.tsx（59–108 行），语义不变。
  */
 import type { EventAnalyticsOrganizerAggregate } from "../../../../../features/events/event-analytics/contract";
+import type {
+  EventOperationsGeneration,
+  EventOperationsPublishedResult,
+  EventOperationsTable,
+} from "../../../../../features/events/event-operations/contract";
 import type { EventCenterItem, EventRole } from "./use-event-center";
 
 // ═══ 路由 ═══
@@ -33,6 +38,14 @@ export const OPS_TABS: readonly { key: OpsView; label: string; href: (eventId: s
   { key: "form", label: "报名设置", href: (id) => `${operationsPath(id)}/experience` },
   { key: "report", label: "数据报告", href: (id) => `${eventPagePath(id)}/analytics` },
 ];
+
+/** `/operations` 页内两屏；`?tab=` 解析只认 `match`，其余（含缺省）→ 概览（page.tsx 服务端调用，故放纯模型）。 */
+export type OpsConsoleTab = Extract<OpsView, "ops" | "match">;
+
+export function opsConsoleTab(value: string | string[] | undefined): OpsConsoleTab {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return raw === "match" ? "match" : "ops";
+}
 
 export function opsHref(eventId: string, view: OpsView): string {
   const tab = OPS_TABS.find((item) => item.key === view) ?? OPS_TABS[0];
@@ -324,4 +337,133 @@ export function identityLabel(items: readonly EventCenterItem[]): string | null 
     labels.add(item.owner ? ROLE_LABEL.owner : ROLE_LABEL[item.role]);
   }
   return labels.size ? [...labels].join(" · ") : null;
+}
+
+// ═══ 概览「运营进度」五阶段（设计 524–544 `stepData`/`steps`；任务 3 数据决定：全部由真实生命周期推导）═══
+
+
+export type PipelineStepState = "done" | "now" | "todo";
+
+export interface PipelineStep {
+  label: string;
+  /** 真实时间戳的「M月D日」；无来源 → 空；当前阶段 → 「当前阶段」（设计 527 行）。 */
+  meta: string;
+  state: PipelineStepState;
+}
+
+/** 推导输入：全部来自 `GET /operations/admin` 的工作区 + 当前时间。 */
+export interface PipelineState {
+  now: number;
+  /** 配置缺失（首次运营配置未初始化）→ null：只保留生成 / 发布两个可判定阶段。 */
+  registrationCutoffAt: string | null;
+  eventStartsAt: string | null;
+  eventEndsAt: string | null;
+  /** 最新一次生成（`workspace.generations[0]`）；无 → null。 */
+  newestGeneration: Pick<EventOperationsGeneration, "status" | "completedAt" | "createdAt"> | null;
+  /** 发布指针；无 → null。 */
+  publishedAt: string | null;
+}
+
+/** 设计 meta「9月1日」：东京时区 M月D日；无效 → 空。 */
+export function shortDate(value: string | null | undefined): string {
+  const ms = parseTime(value ?? null);
+  if (ms === null) return "";
+  const parts = new Intl.DateTimeFormat("zh-CN", { day: "numeric", month: "numeric", ...TOKYO }).formatToParts(new Date(ms));
+  const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("month")}月${get("day")}日`;
+}
+
+export const PIPELINE_STEP_LABELS = ["报名中", "已生成匹配", "等待检查分组", "未发布", "活动现场"] as const;
+
+/**
+ * 报名中 = 报名窗开着（截止前且尚未生成）；已生成匹配 = 最新生成 completed/published；
+ * 等待检查分组 = completed 且未发布（当前阶段）；未发布 / 已发布 = 发布指针；活动现场 = eventPhase active/ended。
+ * 各阶段 done 独立判定，「当前阶段」= 第一个未完成阶段（设计只有一个实心点）。
+ */
+export function pipelineSteps(state: PipelineState): PipelineStep[] {
+  const cutoff = parseTime(state.registrationCutoffAt);
+  const starts = parseTime(state.eventStartsAt);
+  const ends = parseTime(state.eventEndsAt);
+  const generated = state.newestGeneration?.status === "completed" || state.newestGeneration?.status === "published";
+  const published = state.publishedAt !== null;
+  const registrationClosed = cutoff !== null && state.now >= cutoff;
+  const eventEnded = ends !== null && state.now > ends;
+
+  const defs: { label: string; done: boolean; meta: string }[] = [
+    { label: "报名中", done: registrationClosed || generated, meta: shortDate(state.registrationCutoffAt) },
+    { label: "已生成匹配", done: generated, meta: generated ? shortDate(state.newestGeneration?.completedAt ?? state.newestGeneration?.createdAt) : "" },
+    { label: "等待检查分组", done: published, meta: "" },
+    { label: published ? "已发布" : "未发布", done: published, meta: shortDate(state.publishedAt) },
+    { label: "活动现场", done: eventEnded, meta: shortDate(state.eventStartsAt) },
+  ];
+  // 活动已开始但尚未结束 → 现场阶段是「当前」，前置阶段是否完成不影响（现场是时间事实）。
+  const eventActive = starts !== null && ends !== null && state.now >= starts && state.now <= ends;
+  const firstOpen = defs.findIndex((def) => !def.done);
+  const currentIndex = eventActive ? 4 : firstOpen;
+  return defs.map((def, index) => ({
+    label: def.label,
+    meta: index === currentIndex ? "当前阶段" : def.meta,
+    state: def.done ? "done" : index === currentIndex ? "now" : "todo",
+  }));
+}
+
+/** 设计 532–544 行的 step 装饰（mark / dotBg / ringColor / leftLine / rightLine / weight / color / metaColor）。 */
+export interface PipelineStepStyle {
+  color: string;
+  dotBg: string;
+  leftLine: string;
+  mark: string;
+  metaColor: string;
+  rightLine: string;
+  ringColor: string;
+  weight: 400 | 700;
+}
+
+export function pipelineStepStyle(steps: readonly PipelineStep[], index: number): PipelineStepStyle {
+  const step = steps[index];
+  const done = step.state === "done";
+  const now = step.state === "now";
+  const prevDone = index > 0 && steps[index - 1].state === "done";
+  return {
+    mark: done ? "✓" : now ? "●" : "",
+    dotBg: done ? "#4B4FC7" : "#FFFFFF",
+    ringColor: done || now ? "#4B4FC7" : "#DDDEFA",
+    leftLine: index === 0 ? "transparent" : prevDone ? "#4B4FC7" : "#E8E9F6",
+    rightLine: index === steps.length - 1 ? "transparent" : done ? "#4B4FC7" : "#E8E9F6",
+    weight: now ? 700 : 400,
+    color: now || done ? "#0E1225" : "#9FA3C4",
+    metaColor: now ? "#4B4FC7" : "#9FA3C4",
+  };
+}
+
+// ═══ 匹配与分组：两轮桌卡（审阅修订 1：只读 `publishedResult.grouping`）═══
+
+export type MatchRound = 1 | 2;
+
+export function roundTables(published: EventOperationsPublishedResult | null | undefined, round: MatchRound): readonly EventOperationsTable[] {
+  if (!published) return [];
+  return round === 1 ? published.grouping.roundOne : published.grouping.roundTwo;
+}
+
+/** 设计 690–691 `r1Bg…`：选中 `#DDDEFA/#2E3270/500`，未选 `transparent/#6B6F99/400`。 */
+export const ROUND_TOGGLE_TONE = {
+  on: { bg: "#DDDEFA", color: "#2E3270", weight: 500 },
+  off: { bg: "transparent", color: "#6B6F99", weight: 400 },
+} as const;
+
+// ═══ 概览 / 匹配 计数（审阅修订 6：可参与匹配 = `profileCompleteness !== "minimal"`；资料不足 = `=== "minimal"`）═══
+
+export function matchEligibleCount(participants: readonly { profileCompleteness: string }[]): number {
+  return participants.filter((participant) => participant.profileCompleteness !== "minimal").length;
+}
+
+export function insufficientProfileCount(participants: readonly { profileCompleteness: string }[]): number {
+  return participants.filter((participant) => participant.profileCompleteness === "minimal").length;
+}
+
+/** 已发布 → 「已发布」；最新生成 completed 未发布 → 「待发布」；其余 → 「未发布」（与 hook 的 publishedMatchStatus 同义，供纯测试）。 */
+export function matchResultLabel(state: Pick<PipelineState, "newestGeneration" | "publishedAt">): "已发布" | "待发布" | "未发布" {
+  if (state.publishedAt !== null) return "已发布";
+  if (state.newestGeneration?.status === "completed") return "待发布";
+  return "未发布";
 }

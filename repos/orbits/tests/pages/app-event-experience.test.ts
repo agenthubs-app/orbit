@@ -8,9 +8,8 @@ const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 const source = (path: string) => readFileSync(join(projectRoot, path), "utf8");
 
 test("organizer operations exposes the bounded event experience editor", () => {
-  const operations = source(
-    "app/(app)/app/events/[id]/operations/event-operations-admin-workspace.tsx",
-  );
+  // 运营台 任务 3：旧 admin workspace 已删除；「报名体验」入口 = ops-0918 六页签「报名设置」（ops-model OPS_TABS）。
+  const operations = source("app/(app)/app/events/ops-0918/ops-model.ts");
   const editor = source(
     "app/(app)/app/events/[id]/operations/experience/event-experience-editor.tsx",
   );
@@ -21,7 +20,7 @@ test("organizer operations exposes the bounded event experience editor", () => {
   // 下面按「hook 文件 vs JSX 文件」拆分同一组断言，意图不变。
   const hook = source("app/(app)/app/events/ops-0918/use-experience-editor.ts");
 
-  assert.match(operations, /operations\/experience/);
+  assert.match(operations, /key: "form", label: "报名设置", href: \(id\) => `\$\{operationsPath\(id\)\}\/experience`/u);
   assert.match(page, /EventExperienceEditor/);
   assert.match(editor, /useExperienceEditor\(eventId\)/);
   assert.match(hook, /method: "PUT"/);

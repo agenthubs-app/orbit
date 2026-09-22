@@ -94,18 +94,32 @@ export function OpsHubHead({
  * 运营台共用头部 + 六页签（设计 94–111）。页签是路由链接；「更多 ⌄」进 `?drawer=roles`（抽屉本体任务 6，
  * 导出 CSV 等更多动作之后也挂这里）。`drawer` 为抽屉挂载点。
  */
+export interface OpsMoreItem {
+  href: string;
+  label: string;
+  /** 既有测试 / 深链断言的 `data-*` 标记（如 `data-event-roles-entry`）。 */
+  marker?: string;
+}
+
+/**
+ * 审阅修订 5：导出 CSV 等既有头部动作收进「更多 ⌄」。传入 `more` 时「更多 ⌄」变为 `<details>` 菜单
+ * （闭合态外观与设计 101 行按钮一致；展开菜单沿用 hub「···」的 `op-menu` 口径）；不传时保持设计原样
+ * （直接进 `?drawer=roles`，抽屉任务 6）。
+ */
 export function OpsConsoleShell({
   event,
   view,
   children,
   drawer,
   toast,
+  more,
 }: {
   event: EventOperationsPageEvent;
   view: OpsView;
   children: ReactNode;
   drawer?: ReactNode;
   toast?: string;
+  more?: readonly OpsMoreItem[];
 }) {
   const copy = TITLES[view];
   return (
@@ -129,7 +143,26 @@ export function OpsConsoleShell({
           </div>
           <div className="op-head-actions">
             <a className="btn op-btn-dark" href={eventPagePath(event.id)}>查看活动页面 →</a>
-            <a className="btn op-btn-ghost" data-ops-more href={rolesDrawerHref(event.id)}>更多 ⌄</a>
+            {more ? (
+              <details className="op-head-more">
+                <summary className="btn op-btn-ghost op-head-more-summary" data-ops-more>更多 ⌄</summary>
+                <div className="op-menu" role="menu">
+                  {more.map((item) => (
+                    <a
+                      className="op-menu-item"
+                      href={item.href}
+                      key={item.href}
+                      role="menuitem"
+                      {...(item.marker ? { [item.marker]: true } : {})}
+                    >
+                      {item.label}
+                    </a>
+                  ))}
+                </div>
+              </details>
+            ) : (
+              <a className="btn op-btn-ghost" data-ops-more href={rolesDrawerHref(event.id)}>更多 ⌄</a>
+            )}
           </div>
         </div>
 
@@ -258,6 +291,166 @@ export const OPS_STYLES = `
 [data-orbit-real-page="ops-0918"] .btn.op-btn-ghost:active { transform: none; }
 [data-orbit-real-page="ops-0918"] .btn.op-btn-ghost:disabled { cursor: default; opacity: 0.6; }
 [data-orbit-real-page="ops-0918"] .op-tabs { display: flex; gap: 30px; flex-wrap: wrap; border-bottom: 1px solid #E8E9F6; }
+/* 「更多 ⌄」菜单（审阅修订 5）：summary 复用 op-btn-ghost 外观；展开层沿用 op-menu */
+[data-orbit-real-page="ops-0918"] .op-head-more { position: relative; }
+[data-orbit-real-page="ops-0918"] .op-head-more-summary { list-style: none; }
+[data-orbit-real-page="ops-0918"] .op-head-more-summary::-webkit-details-marker { display: none; }
+[data-orbit-real-page="ops-0918"] .op-head-more > .op-menu { top: calc(100% + 6px); }
 /* ── toast（设计稿 477–479 行）── */
 [data-orbit-real-page="ops-0918"] .op-toast { position: fixed; left: 50%; bottom: 32px; transform: translateX(-50%); z-index: 200; padding: 12px 22px; border-radius: 999px; background: #0E1225; color: #FFFFFF; font-size: 14px; box-shadow: 0 18px 40px rgba(14,18,37,0.25); }
+/* ── 概览（设计稿 115–164 行）── */
+[data-orbit-real-page="ops-0918"] .op-screen { display: flex; flex-direction: column; gap: 20px; }
+[data-orbit-real-page="ops-0918"] .op-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 16px; }
+[data-orbit-real-page="ops-0918"] .op-stat { display: flex; align-items: center; gap: 16px; padding: 22px; border: 1px solid #E8E9F6; border-radius: 16px; background: #FFFFFF; }
+[data-orbit-real-page="ops-0918"] .op-stat-soft { background: #F7F7FD; }
+[data-orbit-real-page="ops-0918"] .op-stat-icon { width: 46px; height: 46px; flex: none; border-radius: 12px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+[data-orbit-real-page="ops-0918"] .op-stat-copy { display: flex; flex-direction: column; gap: 4px; }
+[data-orbit-real-page="ops-0918"] .op-stat-label { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="ops-0918"] .op-stat-n { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 30px; letter-spacing: -0.02em; }
+[data-orbit-real-page="ops-0918"] .op-stat-n-status { font-size: 24px; }
+[data-orbit-real-page="ops-0918"] .op-ops-grid { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(300px, 1fr); gap: 20px; align-items: start; }
+[data-orbit-real-page="ops-0918"] .op-progress { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 26px; display: flex; flex-direction: column; gap: 26px; }
+[data-orbit-real-page="ops-0918"] .op-sec-head { display: flex; flex-direction: column; gap: 8px; }
+[data-orbit-real-page="ops-0918"] .op-sec-title-22 { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 22px; letter-spacing: -0.02em; }
+[data-orbit-real-page="ops-0918"] .op-sec-title-20 { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 20px; letter-spacing: -0.02em; }
+[data-orbit-real-page="ops-0918"] .op-sec-sub { font-size: 14px; color: #6B6F99; }
+[data-orbit-real-page="ops-0918"] .op-steps { display: grid; grid-template-columns: repeat(5, 1fr); align-items: start; }
+[data-orbit-real-page="ops-0918"] .op-step { display: flex; flex-direction: column; align-items: center; gap: 14px; position: relative; }
+[data-orbit-real-page="ops-0918"] .op-step-rail { position: relative; width: 100%; display: flex; align-items: center; justify-content: center; height: 26px; }
+[data-orbit-real-page="ops-0918"] .op-step-line-l { position: absolute; left: 0; right: 50%; top: 12px; height: 2px; }
+[data-orbit-real-page="ops-0918"] .op-step-line-r { position: absolute; left: 50%; right: 0; top: 12px; height: 2px; }
+[data-orbit-real-page="ops-0918"] .op-step-dot { position: relative; width: 26px; height: 26px; border-radius: 50%; border: 2px solid; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+[data-orbit-real-page="ops-0918"] .op-step-label { font-size: 14px; text-align: center; }
+[data-orbit-real-page="ops-0918"] .op-step-meta { font-size: 12px; text-align: center; }
+[data-orbit-real-page="ops-0918"] .op-actions { display: flex; flex-wrap: wrap; gap: 14px; }
+[data-orbit-real-page="ops-0918"] .btn.op-btn-primary-lg { padding: 14px 22px; border: 0; border-radius: 10px; background: #0E1225; color: #FFFFFF; font-size: 14px; font-weight: 500; cursor: pointer; }
+[data-orbit-real-page="ops-0918"] .btn.op-btn-primary-lg:hover { background: #2E3270; color: #FFFFFF; }
+[data-orbit-real-page="ops-0918"] .btn.op-btn-ghost-lg { padding: 14px 22px; border: 1px solid #DDDEFA; border-radius: 10px; background: #FFFFFF; color: #3B3F7A; font-size: 14px; font-weight: 400; cursor: pointer; }
+[data-orbit-real-page="ops-0918"] .btn.op-btn-ghost-lg:hover { border-color: #B9BCEB; color: #2E3270; }
+[data-orbit-real-page="ops-0918"] .op-hint { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #9FA3C4; }
+[data-orbit-real-page="ops-0918"] .op-side { display: flex; flex-direction: column; gap: 20px; }
+[data-orbit-real-page="ops-0918"] .op-config { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 24px; display: flex; flex-direction: column; gap: 18px; }
+[data-orbit-real-page="ops-0918"] .op-config-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+[data-orbit-real-page="ops-0918"] .btn.op-btn-edit { padding: 9px 14px; border: 1px solid #DDDEFA; border-radius: 9px; background: #FFFFFF; color: #3B3F7A; font-size: 13px; font-weight: 400; cursor: pointer; }
+[data-orbit-real-page="ops-0918"] .btn.op-btn-edit:hover { border-color: #B9BCEB; color: #2E3270; }
+[data-orbit-real-page="ops-0918"] .op-config-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; }
+[data-orbit-real-page="ops-0918"] .op-config-key { display: flex; align-items: center; gap: 10px; color: #3B3F7A; }
+[data-orbit-real-page="ops-0918"] .op-config-ico { color: #4B4FC7; }
+[data-orbit-real-page="ops-0918"] .op-config-val { font-weight: 500; }
+[data-orbit-real-page="ops-0918"] .op-todo { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+[data-orbit-real-page="ops-0918"] .op-todo-row { display: flex; align-items: center; gap: 12px; }
+[data-orbit-real-page="ops-0918"] .op-todo-ico { width: 30px; height: 30px; flex: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+[data-orbit-real-page="ops-0918"] .op-todo-warn { background: #FBF1E4; color: #9A6B22; }
+[data-orbit-real-page="ops-0918"] .op-todo-info { background: #ECEEFB; color: #4B4FC7; }
+[data-orbit-real-page="ops-0918"] .op-todo-text { flex: 1; min-width: 0; font-size: 14px; }
+[data-orbit-real-page="ops-0918"] .btn.op-link-btn { padding: 0; border: 0; background: transparent; color: #4B4FC7; font-size: 13px; font-weight: 400; cursor: pointer; }
+[data-orbit-real-page="ops-0918"] .btn.op-link-btn:hover { color: #2E3270; }
+/* ── 匹配与分组（设计稿 166–209 行）── */
+[data-orbit-real-page="ops-0918"] .op-mstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 16px; }
+[data-orbit-real-page="ops-0918"] .op-mstat { display: flex; align-items: center; gap: 16px; padding: 20px; border: 1px solid #E8E9F6; border-radius: 16px; background: #FFFFFF; }
+[data-orbit-real-page="ops-0918"] .op-mstat-icon { width: 44px; height: 44px; flex: none; border-radius: 12px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; }
+[data-orbit-real-page="ops-0918"] .op-mstat-n { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 26px; }
+[data-orbit-real-page="ops-0918"] .op-mstat-unit { font-size: 14px; font-family: 'Noto Sans SC'; font-weight: 400; color: #6B6F99; }
+[data-orbit-real-page="ops-0918"] .op-rounds { display: flex; gap: 8px; padding: 6px; border-radius: 12px; background: #F7F7FD; align-self: flex-start; }
+[data-orbit-real-page="ops-0918"] .btn.op-round { padding: 11px 28px; border: 0; border-radius: 9px; font-size: 14px; cursor: pointer; }
+[data-orbit-real-page="ops-0918"] .op-tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 430px), 1fr)); gap: 18px; }
+[data-orbit-real-page="ops-0918"] .op-table { border: 1px solid #E8E9F6; border-radius: 16px; background: #FFFFFF; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+[data-orbit-real-page="ops-0918"] .op-table-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+[data-orbit-real-page="ops-0918"] .op-table-name { display: flex; align-items: center; gap: 10px; }
+[data-orbit-real-page="ops-0918"] .op-table-ico { color: #4B4FC7; }
+[data-orbit-real-page="ops-0918"] .op-table-title { font-size: 16px; font-weight: 500; }
+[data-orbit-real-page="ops-0918"] .op-table-count { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="ops-0918"] .op-seats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 10px; }
+[data-orbit-real-page="ops-0918"] .op-seat { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: #F7F7FD; }
+[data-orbit-real-page="ops-0918"] .op-seat-ava { width: 30px; height: 30px; flex: none; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+[data-orbit-real-page="ops-0918"] .op-seat-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+[data-orbit-real-page="ops-0918"] .op-seat-name { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-orbit-real-page="ops-0918"] .op-seat-role { font-size: 11px; color: #6B6F99; }
+/* 桌卡详情（审阅修订 5：theme / rationale / icebreakers / seat；设计无，沿用桌卡字号口径） */
+[data-orbit-real-page="ops-0918"] .op-table-theme { font-size: 13px; color: #3B3F7A; }
+[data-orbit-real-page="ops-0918"] .op-table-rationale { font-size: 12px; color: #6B6F99; line-height: 1.55; }
+[data-orbit-real-page="ops-0918"] .op-ice summary { cursor: pointer; font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="ops-0918"] .op-ice ol { margin: 8px 0 0; padding-left: 18px; font-size: 12px; color: #3B3F7A; line-height: 1.6; }
+[data-orbit-real-page="ops-0918"] .op-warn { display: flex; align-items: center; gap: 14px; padding: 18px 20px; border: 1px solid #F0E2C6; border-radius: 14px; background: #FDF8EF; }
+[data-orbit-real-page="ops-0918"] .op-warn-ico { width: 30px; height: 30px; flex: none; border-radius: 50%; background: #F5E3C2; color: #9A6B22; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+[data-orbit-real-page="ops-0918"] .op-warn-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+[data-orbit-real-page="ops-0918"] .op-warn-title { font-size: 14px; font-weight: 500; color: #6B4B12; }
+[data-orbit-real-page="ops-0918"] .op-warn-sub { font-size: 13px; color: #9A6B22; }
+[data-orbit-real-page="ops-0918"] .op-warn-link { border: 0; background: transparent; color: #9A6B22; font-size: 13px; cursor: pointer; }
+[data-orbit-real-page="ops-0918"] .op-warn-link:hover { color: #6B4B12; }
+[data-orbit-real-page="ops-0918"] .op-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 14px; }
+[data-orbit-real-page="ops-0918"] .op-foot-hint { flex: 1; min-width: 200px; font-size: 13px; color: #9FA3C4; }
+[data-orbit-real-page="ops-0918"] .btn.op-btn-publish { padding: 13px 22px; border: 0; border-radius: 10px; background: #0E1225; color: #FFFFFF; font-size: 14px; font-weight: 500; cursor: pointer; }
+[data-orbit-real-page="ops-0918"] .btn.op-btn-publish:hover { background: #2E3270; color: #FFFFFF; }
+/* 中和 .btn 基类（orbit-reference-styles.tsx:594–611）：本屏全部按钮类 */
+[data-orbit-real-page="ops-0918"] .btn.op-btn-primary-lg, [data-orbit-real-page="ops-0918"] .btn.op-btn-ghost-lg, [data-orbit-real-page="ops-0918"] .btn.op-btn-edit, [data-orbit-real-page="ops-0918"] .btn.op-link-btn, [data-orbit-real-page="ops-0918"] .btn.op-round, [data-orbit-real-page="ops-0918"] .btn.op-warn-link, [data-orbit-real-page="ops-0918"] .btn.op-btn-publish, [data-orbit-real-page="ops-0918"] .btn.op-btn-sm, [data-orbit-real-page="ops-0918"] .btn.op-head-more-summary { height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="ops-0918"] .btn.op-btn-primary-lg:active, [data-orbit-real-page="ops-0918"] .btn.op-btn-ghost-lg:active, [data-orbit-real-page="ops-0918"] .btn.op-btn-edit:active, [data-orbit-real-page="ops-0918"] .btn.op-link-btn:active, [data-orbit-real-page="ops-0918"] .btn.op-round:active, [data-orbit-real-page="ops-0918"] .btn.op-warn-link:active, [data-orbit-real-page="ops-0918"] .btn.op-btn-publish:active, [data-orbit-real-page="ops-0918"] .btn.op-btn-sm:active, [data-orbit-real-page="ops-0918"] .btn.op-head-more-summary:active { transform: none; }
+[data-orbit-real-page="ops-0918"] .btn.op-btn-primary-lg:disabled, [data-orbit-real-page="ops-0918"] .btn.op-btn-ghost-lg:disabled, [data-orbit-real-page="ops-0918"] .btn.op-btn-publish:disabled, [data-orbit-real-page="ops-0918"] .btn.op-link-btn:disabled, [data-orbit-real-page="ops-0918"] .btn.op-btn-sm:disabled { cursor: default; opacity: 0.6; }
+/* ── 既有运营能力附加区（设计无：生成列表 / 配置折叠 / 签到链接 / 参会者到场 / 名片审计；沿用旧运营台 ops-* 口径改 op-* 前缀）── */
+[data-orbit-real-page="ops-0918"] .op-alert { border: 1px solid #FBECEA; background: #FBECEA; color: #B5473A; border-radius: 14px; padding: 14px 16px; font-size: 14px; }
+[data-orbit-real-page="ops-0918"] .op-notice { border: 1px solid #DDDEFA; background: #ECEEFB; color: #2E3270; border-radius: 14px; padding: 14px 16px; font-size: 14px; }
+[data-orbit-real-page="ops-0918"] .op-extra { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+[data-orbit-real-page="ops-0918"] .op-extra-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; }
+[data-orbit-real-page="ops-0918"] .op-extra-head > div { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+[data-orbit-real-page="ops-0918"] .op-eyebrow { font-size: 10px; letter-spacing: .14em; color: #9FA3C4; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+[data-orbit-real-page="ops-0918"] .op-copy { margin: 0; font-size: 13px; color: #6B6F99; line-height: 1.6; }
+[data-orbit-real-page="ops-0918"] .op-empty { font-size: 13px; color: #9FA3C4; }
+[data-orbit-real-page="ops-0918"] .op-empty-dashed { border: 1px dashed #DDDEFA; border-radius: 12px; padding: 16px; }
+[data-orbit-real-page="ops-0918"] .op-fold > summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+[data-orbit-real-page="ops-0918"] .op-fold > summary::-webkit-details-marker { display: none; }
+[data-orbit-real-page="ops-0918"] .op-fold-body { display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }
+[data-orbit-real-page="ops-0918"] .op-confirm { border: 1px solid #DDDEFA; border-radius: 14px; background: #F7F7FD; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+[data-orbit-real-page="ops-0918"] .op-confirm-actions { display: flex; gap: 8px; }
+[data-orbit-real-page="ops-0918"] .btn.op-btn-sm { padding: 10px 14px; font-size: 13px; border-radius: 9px; border: 1px solid transparent; cursor: pointer; font-weight: 400; }
+[data-orbit-real-page="ops-0918"] .btn.op-btn-sm.op-dark { background: #0E1225; border-color: #0E1225; color: #FFFFFF; font-weight: 500; }
+[data-orbit-real-page="ops-0918"] .btn.op-btn-sm.op-dark:hover { background: #2E3270; border-color: #2E3270; color: #FFFFFF; }
+[data-orbit-real-page="ops-0918"] .btn.op-btn-sm.op-ghost { background: #FFFFFF; border-color: #DDDEFA; color: #3B3F7A; }
+[data-orbit-real-page="ops-0918"] .btn.op-btn-sm.op-ghost:hover { border-color: #B9BCEB; color: #2E3270; }
+[data-orbit-real-page="ops-0918"] .op-gen { border: 1px solid #E8E9F6; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+[data-orbit-real-page="ops-0918"] .op-gen-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; }
+[data-orbit-real-page="ops-0918"] .op-gen-snapshot { font-size: 11px; color: #9FA3C4; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; margin-top: 5px; }
+[data-orbit-real-page="ops-0918"] .op-gen-progress { display: grid; gap: 8px; }
+[data-orbit-real-page="ops-0918"] .op-gen-eta { font-size: 12px; color: #9FA3C4; }
+[data-orbit-real-page="ops-0918"] .op-gen-attention { color: #9A6B22; font-size: 12px; }
+[data-orbit-real-page="ops-0918"] .op-gen-error { color: #B5473A; font-size: 12px; }
+[data-orbit-real-page="ops-0918"] .op-gen-error-detail { color: #6B6F99; margin-top: 3px; }
+[data-orbit-real-page="ops-0918"] .op-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; background: #F1F1FA; color: #6B6F99; font-size: 12px; white-space: nowrap; }
+[data-orbit-real-page="ops-0918"] .op-pill-green { background: #E6F1EC; color: #2F6B4F; }
+[data-orbit-real-page="ops-0918"] .op-pill-red { background: #FBECEA; color: #B5473A; }
+[data-orbit-real-page="ops-0918"] .op-pill-purple { background: #ECEEFB; color: #4B4FC7; }
+[data-orbit-real-page="ops-0918"] .op-progress-track { background: #ECEEFB; border-radius: 999px; height: 6px; overflow: hidden; }
+[data-orbit-real-page="ops-0918"] .op-progress-bar { background: linear-gradient(90deg, #4B4FC7, #8A8EE0); border-radius: 999px; height: 100%; transition: width .6s ease; }
+[data-orbit-real-page="ops-0918"] .op-form-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); }
+[data-orbit-real-page="ops-0918"] .op-field-label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #3B3F7A; }
+[data-orbit-real-page="ops-0918"] .op-field-key { margin-left: 6px; color: #9FA3C4; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; }
+[data-orbit-real-page="ops-0918"] .op-field { padding: 12px 14px; border: 1px solid #DDDEFA; border-radius: 10px; background: #FFFFFF; font-size: 14px; font-family: inherit; color: #0E1225; outline: none; }
+[data-orbit-real-page="ops-0918"] .op-field:focus { border-color: #4B4FC7; }
+[data-orbit-real-page="ops-0918"] .op-field[readonly] { background: #F7F7FD; color: #6B6F99; }
+[data-orbit-real-page="ops-0918"] .op-advanced summary { cursor: pointer; font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="ops-0918"] .op-advanced > div { margin-top: 12px; }
+[data-orbit-real-page="ops-0918"] .op-timeline { border-top: 1px solid #E8E9F6; padding-top: 18px; display: flex; flex-direction: column; gap: 10px; }
+[data-orbit-real-page="ops-0918"] .op-timeline-grid { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+[data-orbit-real-page="ops-0918"] .op-gate { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid #E8E9F6; border-radius: 10px; padding: 11px; }
+[data-orbit-real-page="ops-0918"] .op-gate-name { font-size: 12px; font-weight: 700; }
+[data-orbit-real-page="ops-0918"] .op-gate-at { font-size: 11px; color: #9FA3C4; margin-top: 3px; }
+[data-orbit-real-page="ops-0918"] .op-checkin-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+[data-orbit-real-page="ops-0918"] .op-code { background: #F7F7FD; border-radius: 8px; flex: 1 1 320px; overflow-wrap: anywhere; padding: 10px 12px; font-size: 12px; }
+[data-orbit-real-page="ops-0918"] .op-dir { display: flex; flex-direction: column; }
+[data-orbit-real-page="ops-0918"] .op-dir-head, [data-orbit-real-page="ops-0918"] .op-dir-row { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1.2fr) minmax(0, .8fr) minmax(0, .7fr) minmax(0, .7fr) minmax(0, 1fr); gap: 14px; align-items: center; }
+[data-orbit-real-page="ops-0918"] .op-dir-head { padding: 0 4px 12px; border-bottom: 1px solid #E8E9F6; font-size: 12px; color: #9FA3C4; }
+[data-orbit-real-page="ops-0918"] .op-dir-row { padding: 14px 4px; border-bottom: 1px solid #F1F1FA; }
+[data-orbit-real-page="ops-0918"] .op-dir-person { display: flex; align-items: center; gap: 12px; min-width: 0; }
+[data-orbit-real-page="ops-0918"] .op-ava { width: 36px; height: 36px; flex: none; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+[data-orbit-real-page="ops-0918"] .op-dir-name { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+[data-orbit-real-page="ops-0918"] .op-dir-name strong { font-size: 14px; font-weight: 500; }
+[data-orbit-real-page="ops-0918"] .op-dir-id { font-size: 10px; color: #9FA3C4; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow: hidden; text-overflow: ellipsis; }
+[data-orbit-real-page="ops-0918"] .op-dir-cell { font-size: 13px; color: #3B3F7A; min-width: 0; }
+[data-orbit-real-page="ops-0918"] .op-dir-checkin { display: inline-flex; flex-direction: column; gap: 4px; }
+[data-orbit-real-page="ops-0918"] .op-audit-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid #F1F1FA; padding: 12px 0; font-size: 13px; }
+@media (max-width: 860px) {
+  [data-orbit-real-page="ops-0918"] .op-ops-grid { grid-template-columns: 1fr; }
+  [data-orbit-real-page="ops-0918"] .op-steps { grid-template-columns: repeat(2, 1fr); row-gap: 18px; }
+  [data-orbit-real-page="ops-0918"] .op-dir-head { display: none; }
+  [data-orbit-real-page="ops-0918"] .op-dir-row { grid-template-columns: 1fr 1fr; row-gap: 10px; }
+}
 `;

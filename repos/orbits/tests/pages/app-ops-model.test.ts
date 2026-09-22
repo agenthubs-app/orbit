@@ -3,6 +3,14 @@ import test from "node:test";
 
 import {
   consoleTitle,
+  insufficientProfileCount,
+  matchEligibleCount,
+  matchResultLabel,
+  opsConsoleTab,
+  pipelineSteps,
+  pipelineStepStyle,
+  roundTables,
+  shortDate,
   hubActions,
   hubBucket,
   hubCounts,
@@ -174,4 +182,95 @@ test("OPS_TABS / TITLES / consoleTitle follow the design and the route plan", ()
   assert.equal(consoleTitle("report", "我的活动"), "数据报告");
   assert.equal(TITLES.checkin.sub, "面向现场工作人员的最小签到视图，仅显示签到所需信息。");
   assert.equal(TITLES.match.crumb, "匹配与分组");
+});
+
+// ═══ 任务 3：概览五阶段 / 匹配桌卡 / 计数 ═══
+
+const PIPELINE_BASE = {
+  eventEndsAt: new Date(NOW + 5 * HOUR).toISOString(),
+  eventStartsAt: new Date(NOW + 3 * HOUR).toISOString(),
+  newestGeneration: null,
+  now: NOW,
+  publishedAt: null,
+  registrationCutoffAt: new Date(NOW + HOUR).toISOString(),
+};
+
+function gen(status: string, completedAt: string | null = "2026-09-21T02:00:00.000Z") {
+  return { completedAt, createdAt: "2026-09-21T01:00:00.000Z", status: status as "completed" };
+}
+
+test("pipelineSteps: registration open and nothing generated → 报名中 is the current stage", () => {
+  const steps = pipelineSteps(PIPELINE_BASE);
+  assert.deepEqual(steps.map((step) => [step.label, step.state]), [
+    ["报名中", "now"],
+    ["已生成匹配", "todo"],
+    ["等待检查分组", "todo"],
+    ["未发布", "todo"],
+    ["活动现场", "todo"],
+  ]);
+  assert.equal(steps[0].meta, "当前阶段");
+  assert.equal(steps[4].meta, shortDate(PIPELINE_BASE.eventStartsAt));
+  assert.equal(steps[3].meta, "", "no publish timestamp → empty meta");
+});
+
+test("pipelineSteps: completed but unpublished → 等待检查分组 is current with real dates", () => {
+  const steps = pipelineSteps({ ...PIPELINE_BASE, newestGeneration: gen("completed") });
+  assert.deepEqual(steps.map((step) => step.state), ["done", "done", "now", "todo", "todo"]);
+  assert.equal(steps[0].meta, shortDate(PIPELINE_BASE.registrationCutoffAt));
+  assert.equal(steps[1].meta, "9月21日");
+  assert.equal(steps[2].meta, "当前阶段");
+  assert.equal(matchResultLabel({ newestGeneration: gen("completed"), publishedAt: null }), "待发布");
+});
+
+test("pipelineSteps: published → 已发布 done, 活动现场 current before the event and done after it", () => {
+  const published = pipelineSteps({ ...PIPELINE_BASE, newestGeneration: gen("published"), publishedAt: "2026-09-21T03:00:00.000Z" });
+  assert.deepEqual(published.map((step) => [step.label, step.state]), [
+    ["报名中", "done"],
+    ["已生成匹配", "done"],
+    ["等待检查分组", "done"],
+    ["已发布", "done"],
+    ["活动现场", "now"],
+  ]);
+  assert.equal(published[3].meta, "9月21日");
+  const ended = pipelineSteps({ ...PIPELINE_BASE, newestGeneration: gen("published"), now: NOW + 6 * HOUR, publishedAt: "2026-09-21T03:00:00.000Z" });
+  assert.deepEqual(ended.map((step) => step.state), ["done", "done", "done", "done", "done"]);
+  assert.equal(matchResultLabel({ newestGeneration: gen("published"), publishedAt: "x" }), "已发布");
+  assert.equal(matchResultLabel({ newestGeneration: gen("failed"), publishedAt: null }), "未发布");
+});
+
+test("pipelineSteps: a live event is the current stage even while grouping is unpublished; missing configuration → empty dates", () => {
+  const live = pipelineSteps({ ...PIPELINE_BASE, newestGeneration: gen("completed"), now: NOW + 4 * HOUR });
+  assert.equal(live[4].state, "now");
+  assert.equal(live[2].state, "todo", "only one current stage");
+  const bare = pipelineSteps({ ...PIPELINE_BASE, eventEndsAt: null, eventStartsAt: null, registrationCutoffAt: null });
+  assert.equal(bare[0].state, "now");
+  assert.equal(bare[4].meta, "");
+  assert.equal(shortDate("not-a-date"), "");
+  assert.equal(shortDate(null), "");
+});
+
+test("pipelineStepStyle reproduces the design step decoration", () => {
+  const steps = pipelineSteps({ ...PIPELINE_BASE, newestGeneration: gen("completed") });
+  const done = pipelineStepStyle(steps, 1);
+  assert.deepEqual(done, { color: "#0E1225", dotBg: "#4B4FC7", leftLine: "#4B4FC7", mark: "✓", metaColor: "#9FA3C4", rightLine: "#4B4FC7", ringColor: "#4B4FC7", weight: 400 });
+  const now = pipelineStepStyle(steps, 2);
+  assert.deepEqual(now, { color: "#0E1225", dotBg: "#FFFFFF", leftLine: "#4B4FC7", mark: "●", metaColor: "#4B4FC7", rightLine: "#E8E9F6", ringColor: "#4B4FC7", weight: 700 });
+  const todo = pipelineStepStyle(steps, 4);
+  assert.deepEqual(todo, { color: "#9FA3C4", dotBg: "#FFFFFF", leftLine: "#E8E9F6", mark: "", metaColor: "#9FA3C4", rightLine: "transparent", ringColor: "#DDDEFA", weight: 400 });
+  assert.equal(pipelineStepStyle(steps, 0).leftLine, "transparent");
+});
+
+test("roundTables reads only the published grouping; counts follow profileCompleteness; opsConsoleTab only accepts match", () => {
+  const table = (tableNumber: number) => ({ icebreakers: ["a", "b", "c"] as [string, string, string], memberPrompts: {}, memberRationales: {}, members: [], rationale: "", tableNumber, theme: "t" });
+  const published = { grouping: { roundOne: [table(1), table(2)], roundTwo: [table(3)] } } as unknown as Parameters<typeof roundTables>[0];
+  assert.deepEqual(roundTables(published, 1).map((item) => item.tableNumber), [1, 2]);
+  assert.deepEqual(roundTables(published, 2).map((item) => item.tableNumber), [3]);
+  assert.deepEqual(roundTables(null, 1), []);
+  const participants = [{ profileCompleteness: "complete" }, { profileCompleteness: "partial" }, { profileCompleteness: "minimal" }];
+  assert.equal(matchEligibleCount(participants), 2);
+  assert.equal(insufficientProfileCount(participants), 1);
+  assert.equal(opsConsoleTab("match"), "match");
+  assert.equal(opsConsoleTab(["match", "ops"]), "match");
+  assert.equal(opsConsoleTab("people"), "ops");
+  assert.equal(opsConsoleTab(undefined), "ops");
 });

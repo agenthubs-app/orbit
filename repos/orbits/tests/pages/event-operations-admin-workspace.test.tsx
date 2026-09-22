@@ -3,10 +3,14 @@ import test from "node:test";
 
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
-import { EventOperationsAdminWorkspace } from "../../app/(app)/app/events/[id]/operations/event-operations-admin-workspace";
+import { OpsConsole } from "../../app/(app)/app/events/ops-0918/ops-console";
+import type { OpsConsoleTab } from "../../app/(app)/app/events/ops-0918/ops-model";
 
 // 特征化渲染测试（运营台 任务 1）：锁定 admin workspace 的 加载 / 生成 / 重试 / 发布 /
 // 配置 PUT 体 / 轮询 / 401·409 行为，使逻辑搬进 use-event-operations 时零变化可证。
+// 运营台 任务 3：旧 admin workspace 已被 ops-0918 概览 / 匹配屏替换，本文件改指 `OpsConsole`
+// （`tab="ops"` = 概览：大数 / 配置表单 / 参会者到场 / 签到链接；`tab="match"` = 匹配与分组：生成列表 + 动作）。
+// 按钮名变化：「生成匹配」（尚无生成）/「重新生成」= 旧「生成匹配」；「原子发布」「重试失败分片」「开始生成」「标记到场」「保存配置」不变。
 
 const EVENT_ID = "event:ops-admin";
 const BASE = `/api/events/${encodeURIComponent(EVENT_ID)}/operations/admin`;
@@ -186,17 +190,17 @@ async function unmount(renderer: ReactTestRenderer | undefined): Promise<void> {
   });
 }
 
-async function mount(harness: Harness): Promise<ReactTestRenderer> {
+async function mount(harness: Harness, tab: OpsConsoleTab = "ops"): Promise<ReactTestRenderer> {
   let renderer!: ReactTestRenderer;
   await act(async () => {
-    renderer = create(<EventOperationsAdminWorkspace event={EVENT} />);
+    renderer = create(<OpsConsole event={EVENT} tab={tab} />);
     await flush();
   });
   void harness;
   return renderer;
 }
 
-test("admin workspace loads the organizer snapshot and renders metrics, participants and generations", async () => {
+test("overview loads the organizer snapshot and renders metrics, participants and the pending-publish status", async () => {
   const harness = install((call) => {
     assert.equal(call.url, BASE);
     return Response.json({ data: workspace({ generations: [generation("completed")] }), success: true });
@@ -210,9 +214,8 @@ test("admin workspace loads the organizer snapshot and renders metrics, particip
     assert.match(body, /Alice/u);
     assert.match(body, /Bob/u);
     assert.match(body, /2 人未到场/u);
-    assert.match(body, /生成 #abcdef12|生成 #00000000/u);
     assert.match(body, /待发布/u);
-    assert.match(body, /原子发布/u);
+    assert.match(body, /前往发布 →/u);
     assert.equal(renderer.root.findAll((node) => node.props.role === "alert").length, 0);
     // 30 秒时钟 + 无进行中生成 → 不启动 1.5s 轮询
     assert.deepEqual(harness.intervals.map((entry) => entry.delay), [30_000]);
@@ -222,7 +225,23 @@ test("admin workspace loads the organizer snapshot and renders metrics, particip
   }
 });
 
-test("start generation asks for confirmation, then POSTs to /generations and reloads", async () => {
+test("match screen lists generations with the atomic publish action and the pending-publish empty state", async () => {
+  const harness = install(() => Response.json({ data: workspace({ generations: [generation("completed")] }), success: true }));
+  let renderer: ReactTestRenderer | undefined;
+  try {
+    renderer = await mount(harness, "match");
+    const body = text(renderer);
+    assert.match(body, /生成 #abcdef12|生成 #00000000/u);
+    assert.match(body, /原子发布/u);
+    assert.match(body, /已生成 0 人，待发布/u);
+    assert.deepEqual(harness.intervals.map((entry) => entry.delay), [30_000]);
+  } finally {
+    await unmount(renderer);
+    harness.restore();
+  }
+});
+
+test("重新生成 asks for confirmation, then POSTs to /generations and reloads", async () => {
   const harness = install((call) => {
     if (call.method === "POST") {
       assert.equal(call.url, `${BASE}/generations`);
@@ -280,7 +299,7 @@ test("generation actions post retry for failed and publish for completed, and a 
   });
   let renderer: ReactTestRenderer | undefined;
   try {
-    renderer = await mount(harness);
+    renderer = await mount(harness, "match");
     await act(async () => {
       buttonNamed(renderer!, "重试失败分片").props.onClick();
       await flush();
@@ -352,7 +371,7 @@ test("an active generation starts the 1.5s poll which reloads without the loadin
   const harness = install(() => Response.json({ data: workspace({ generations: [generation("running")] }), success: true }));
   let renderer: ReactTestRenderer | undefined;
   try {
-    renderer = await mount(harness);
+    renderer = await mount(harness, "match");
     assert.deepEqual(harness.intervals.map((entry) => entry.delay).sort(), [1_500, 30_000]);
     assert.equal(renderer.root.findAll((node) => node.props["data-generation-progress"] !== undefined).length, 1);
     const poll = harness.intervals.find((entry) => entry.delay === 1_500);

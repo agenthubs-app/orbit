@@ -27,9 +27,24 @@ test("event operations workspace requires login and per-event operations capabil
 test("organizer workspace exposes the complete strict generation and audit workflow", () => {
   // 运营台 任务 1：状态/fetch/动作已原样搬入 ops-0918/use-event-operations.ts；
   // 下面按「hook 文件 vs JSX 文件」拆分同一组断言，意图不变。
-  const client = source(
-    "app/(app)/app/events/[id]/operations/event-operations-admin-workspace.tsx",
-  );
+  // 运营台 任务 3：旧 admin workspace JSX 已被 ops-0918 概览 / 匹配屏替换（旧文件删除）。JSX 侧断言的新去处：
+  //   ops-console.tsx           useEventOperations(event)、/export（「更多 ⌄」菜单）
+  //   ops-overview.tsx          REAL REGISTRATION DIRECTORY / 标记到场 / CONSENT AUDIT / VENUE CHECK-IN ENTRY /
+  //                             不会生成二维码图片 / CONFIGURED TIMELINE / readOnly={canonicalScheduleFields.includes /
+  //                             onInput ×3 + nextValue ×3 / profileEditDeadlineAt / roundOneStartsAt（配置折叠区）
+  //   ops-match.tsx             Worker 处理中 / 重试失败分片 / 原子发布 / 所有任务完成并由你发布后… / table.rationale /
+  //                             table.icebreakers / member.seat（桌卡）/ grouping.roundOne|roundTwo（经 ops-model roundTables）
+  //   ops-operations-shared.tsx 生成匹配（尚无生成时的按钮名）/ 失败的片段会自动重试（确认框）/ 重试失败分片 / 原子发布 文案表
+  //   ops-model.ts              grouping.roundOne / grouping.roundTwo（roundTables）；PUBLISHED SEATING PREVIEW 眉题随旧预览区
+  //                             一并退役（桌卡 = 已发布分桌，语义由「桌卡只读取已原子发布的结果」文案承接）。
+  const screens = [
+    "app/(app)/app/events/ops-0918/ops-console.tsx",
+    "app/(app)/app/events/ops-0918/ops-overview.tsx",
+    "app/(app)/app/events/ops-0918/ops-match.tsx",
+    "app/(app)/app/events/ops-0918/ops-operations-shared.tsx",
+  ];
+  const client = screens.map(source).join("\n");
+  const model = source("app/(app)/app/events/ops-0918/ops-model.ts");
   const hook = source("app/(app)/app/events/ops-0918/use-event-operations.ts");
   assert.match(client, /useEventOperations\(event\)/);
 
@@ -77,9 +92,10 @@ test("organizer workspace exposes the complete strict generation and audit workf
   assert.doesNotMatch(client, /onChange=\{\(input\) => setForm/);
   assert.match(client, /profileEditDeadlineAt/);
   assert.match(client, /roundOneStartsAt/);
-  assert.match(client, /PUBLISHED SEATING PREVIEW/);
-  assert.match(client, /grouping\.roundOne/);
-  assert.match(client, /grouping\.roundTwo/);
+  assert.match(client, /桌卡只读取已原子发布的结果/u);
+  assert.match(client, /roundTables\(published, round\)/);
+  assert.match(model, /grouping\.roundOne/);
+  assert.match(model, /grouping\.roundTwo/);
   assert.match(client, /table\.rationale/);
   assert.match(client, /table\.icebreakers/);
   assert.match(client, /member\.seat/);
