@@ -78,6 +78,8 @@ const isFollowupFact = (
 ): item is HomeFactsFollowupItem & { href: string | null } => "contactName" in item;
 
 interface ScheduleRow {
+  /** 全天项（或时间无法解析）：`time` 不是钟点，简报行不得把它当成开始时刻。 */
+  allDay: boolean;
   dayKey: string;
   id: string;
   meta: string;
@@ -249,6 +251,8 @@ export function IOrbitHome({
 
   const refreshSignals = useCallback(
     async (background = false) => {
+      // 重新拉取即覆盖列表：上一次行内写失败的提示指向的是旧数据，必须一并清掉。
+      setSignalError(null);
       if (background) setSignalsRefreshing(true);
       try {
         const response = await fetch("/api/agent/signals?view=home", { method: "POST" });
@@ -354,6 +358,7 @@ export function IOrbitHome({
   const scheduleRows: readonly ScheduleRow[] = useMemo(() => {
     const rows: ScheduleRow[] = [
       ...appointmentItems.map((item) => ({
+        allDay: false,
         dayKey: iorbitDayKey(new Date(item.startsAtUtc)),
         id: `appointment:${item.key}`,
         startMs: Date.parse(item.startsAtUtc),
@@ -368,6 +373,7 @@ export function IOrbitHome({
         tone: "a" as const,
       })),
       ...personalItems.map((item) => ({
+        allDay: item.allDay === true,
         dayKey: item.occurrenceDate ?? item.startsAt.slice(0, 10),
         id: `personal:${item.key}`,
         startMs: item.allDay
@@ -379,6 +385,7 @@ export function IOrbitHome({
         tone: "b" as const,
       })),
       ...registeredEvents.map((event) => ({
+        allDay: false,
         dayKey: iorbitDayKey(new Date(event.startsAt)),
         id: `event:${event.id}`,
         startMs: Date.parse(event.startsAt),
@@ -464,12 +471,20 @@ export function IOrbitHome({
 
   const briefLines: string[] = [];
   if (snapshot !== "pending") {
+    // 最早一项可能是全天日程：那时 `time` 是「全天 / All day」而不是钟点，
+    // 插进「最早一项 … 开始」会读成「最早一项 全天 开始」。这种时候只报条数。
+    const firstClock = todayRows[0] && !todayRows[0].allDay ? todayRows[0].time : null;
     briefLines.push(
       todayRows.length > 0
-        ? t({
-            en: `${todayRows.length} item(s) on today's schedule, starting at ${todayRows[0]!.time}.`,
-            zh: `今天有 ${todayRows.length} 项日程安排，最早一项 ${todayRows[0]!.time} 开始。`,
-          })
+        ? firstClock
+          ? t({
+              en: `${todayRows.length} item(s) on today's schedule, starting at ${firstClock}.`,
+              zh: `今天有 ${todayRows.length} 项日程安排，最早一项 ${firstClock} 开始。`,
+            })
+          : t({
+              en: `${todayRows.length} item(s) on today's schedule.`,
+              zh: `今天有 ${todayRows.length} 项日程安排。`,
+            })
         : t({
             en: "Nothing confirmed on today's schedule.",
             zh: "今天没有已确认的日程。",

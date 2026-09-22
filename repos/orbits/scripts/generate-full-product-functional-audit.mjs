@@ -2566,7 +2566,9 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#onclick:() => void ask(message.retryRequest!, index)#重新提交请求 / Retry request",
+    // iOrbit 任务 3：助手回合搬到 `iorbit-0918/iorbit-chat.tsx`，onClick 表达式逐字未变
+    // （计划「审阅修订」8），只改证据键里的文件路径。
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-chat.tsx#onclick:() => void ask(message.retryRequest!, index)#重新提交请求 / Retry request",
     {
       actualResult:
         "An explicit missing DeepSeek key produced one real 503 failure and the exact message retry control. Restoring the configured provider and rapidly activating retry twice emitted one retry request with empty history, replaced the stale failure with one successful assistant turn, survived refresh, and remained absent for actor B.",

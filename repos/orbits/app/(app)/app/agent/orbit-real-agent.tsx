@@ -81,7 +81,8 @@ const AgentMarkdown = dynamic(() => import("./agent-markdown"), {
 
 
 
-function AgentMessageCopyButton({ text }: { text: string }) {
+// 任务 3：`iorbit-0918/` 的新壳与新对话屏复用同一份实现（组件本体未改）。
+export function AgentMessageCopyButton({ text }: { text: string }) {
   const { t } = useOrbitLanguage();
   const [copied, setCopied] = useState(false);
 
@@ -394,7 +395,8 @@ function AgentHistoryList({
   );
 }
 
-function AgentHistoryDeleteDialog({
+// 任务 3：`iorbit-0918/` 的新壳与新对话屏复用同一份实现（组件本体未改）。
+export function AgentHistoryDeleteDialog({
   error,
   history,
   onCancel,
@@ -496,7 +498,8 @@ function AgentHistoryDeleteDialog({
   );
 }
 
-function AgentMobileHistoryDrawer({
+// 任务 3：`iorbit-0918/` 的新壳与新对话屏复用同一份实现（组件本体未改）。
+export function AgentMobileHistoryDrawer({
   activeQ,
   activeSessionId,
   history,
@@ -682,7 +685,8 @@ function AgentChatComposer({
   );
 }
 
-function AgentWelcome({ onPick, viewModel }: { onPick: (query: string) => void; viewModel: OrbitAgentViewModel }) {
+// 任务 3：`iorbit-0918/` 的新壳与新对话屏复用同一份实现（组件本体未改）。
+export function AgentWelcome({ onPick, viewModel }: { onPick: (query: string) => void; viewModel: OrbitAgentViewModel }) {
   const { language, t } = useOrbitLanguage();
 
   return (
@@ -1089,7 +1093,8 @@ function AgentTodoRow({ group, language, navigate, rank, t }: { group: AgentTodo
   );
 }
 
-function PanelCards({ language, navigate, panel, t }: { language: "en" | "zh"; navigate: (href: string) => void; panel: AgentPanel; t: Translate }) {
+// 任务 3：`iorbit-0918/` 的新壳与新对话屏复用同一份实现（组件本体未改）。
+export function PanelCards({ language, navigate, panel, t }: { language: "en" | "zh"; navigate: (href: string) => void; panel: AgentPanel; t: Translate }) {
   const [showAll, setShowAll] = useState(false);
   const initialLimit = panel.kind === "people" ? 3 : panel.items.length;
   const visibleItems = showAll ? panel.items : panel.items.slice(0, initialLimit);
@@ -1165,7 +1170,8 @@ export function AgentStar({ size = 15 }: { size?: number }) {
   );
 }
 
-function ThinkingIndicator({ t }: { t: Translate }) {
+// 任务 3：`iorbit-0918/` 的新壳与新对话屏复用同一份实现（组件本体未改）。
+export function ThinkingIndicator({ t }: { t: Translate }) {
   const [phase, setPhase] = useState(0);
 
   useEffect(() => {
@@ -1192,7 +1198,9 @@ function ThinkingIndicator({ t }: { t: Translate }) {
 
 /* ═══ 工作台整页样式：docs/designs/journey/home-console-green.html 1:1 迁移，
    全部限定在 [data-orbit-real-page="agent"] 作用域内。═══ */
-const CONSOLE_STYLES = `
+// 任务 3：回合内的既有富组件（PanelCards / AgentWelcome / 任务卡 / 草稿卡）仍吃这套
+// `[data-orbit-real-page="agent"]` 作用域皮肤，新壳因此也要挂一份（设计无这些槽位）。
+export const CONSOLE_STYLES = `
 [data-orbit-real-page="agent"] {
   --sidebar-w: ${ORBIT_LEFT_SIDEBAR_WIDTH}px;
   --agent-body-size: 15px;

@@ -882,12 +882,14 @@ test("Today dialog retains its exact exercised close handler", () => {
   );
 });
 
+// iOrbit 任务 3：重试控件随助手回合搬到 `iorbit-0918/iorbit-chat.tsx`；
+// onClick 表达式逐字保留（计划「审阅修订」8），这里只改文件路径。
 test("Agent retry evidence applies only to the current exercised handler", () => {
   const currentAgentRetryInteraction = runtimeVerifiedInteractions.find(
     (interaction) =>
       interaction.surfaceId === "web:/app/agent" &&
       interaction.sourceFile ===
-        "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx" &&
+        "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-chat.tsx" &&
       interaction.visibleName === "重新提交请求 / Retry request" &&
       interaction.handlers.some(
         (handler) =>
@@ -908,7 +910,7 @@ test("Agent retry evidence applies only to the current exercised handler", () =>
       (interaction) =>
         interaction.surfaceId === "web:/app/agent" &&
         interaction.sourceFile ===
-          "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx" &&
+          "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-chat.tsx" &&
         interaction.visibleName === "重新提交请求 / Retry request" &&
         interaction.handlers.some(
           (handler) =>

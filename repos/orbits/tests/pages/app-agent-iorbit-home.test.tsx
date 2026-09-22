@@ -118,17 +118,20 @@ test("the iOrbit shell renders the design's home frame under a double page scope
   assert.match(html, /class="ir-home"/);
 });
 
-test("the chat branch still delegates to the existing OrbitRealAgent tree", () => {
+// 任务 3：对话分支不再委托旧的 `OrbitRealAgent`，由 `iorbit-chat.tsx` 自己渲染。
+test("the chat branch renders the Orbit_0918 chat screen, not the old console", () => {
   const html = shellMarkup({ initialDeepLink: true });
 
-  assert.match(html, /class="orbit-agent-workspace"/);
+  assert.match(html, /class="ir-chat"/);
+  assert.match(html, /class="ir-thread"/);
+  assert.doesNotMatch(html, /class="orbit-agent-workspace"/);
   assert.doesNotMatch(html, /class="ir-home"/);
 });
 
 /**
  * 修订轮 1：`.orbit-agent-workspace` 同时出现在 dashboard 分支上，单看它不足以证明
- * 「打开对话」真的进了对话。这两条改断对话独有的 thread-bar / 输入坞，并断言
- * dashboard 独有的 `data-orbit-agent-dashboard` **不在**。
+ * 「打开对话」真的进了对话。这两条断对话独有的线程卡与输入区，并断言旧 dashboard
+ * 独有的 `data-orbit-agent-dashboard` **不在**（任务 3：改断新屏的 `ir-*`）。
  */
 async function openFromHome(t: TestContext, label: "chat" | "history") {
   const mounted = await mountHome(t, () => (
@@ -154,14 +157,14 @@ test("「进入对话页 →」opens an actual conversation, not the old dashboa
 
   assert.equal(mounted.pushedUrls.at(-1), "/app/agent");
   assert.ok(
-    mounted.root.root.findAll((node) => node.props?.className === "thread-bar").length > 0,
-    "the chat thread bar must render",
+    mounted.root.root.findAll((node) => node.props?.className === "ir-thread").length > 0,
+    "the chat thread card must render",
   );
   assert.ok(
     mounted.root.root.findAll(
-      (node) => node.props?.className === "agent-chat-composer-dock",
+      (node) => node.props?.className === "ir-composer",
     ).length > 0,
-    "the chat composer dock must render",
+    "the chat composer must render",
   );
   assert.equal(
     mounted.root.root.findAll(
@@ -176,7 +179,7 @@ test("「◷ 历史记录」opens the conversation with the history drawer", asy
   const mounted = await openFromHome(t, "history");
 
   assert.ok(
-    mounted.root.root.findAll((node) => node.props?.className === "thread-bar").length > 0,
+    mounted.root.root.findAll((node) => node.props?.className === "ir-thread").length > 0,
   );
   assert.equal(
     mounted.root.root.findAll(
@@ -890,9 +893,16 @@ test("submitting the ask row deep-links into the chat branch", async (t) => {
     send.props.onClick();
   });
 
-  assert.deepEqual(mounted.pushedUrls, [
-    `/app/agent?q=${encodeURIComponent("帮我准备周日的活动")}`,
-  ]);
+  // 任务 3：壳自己持有 `use-agent-chat`，提问直接落到 `ask()`（不再写 `?q=` 让
+  // 旧组件的 hydration 代劳），URL 因此停在 /app/agent。
+  assert.ok(
+    mounted.calls.some(
+      (call) =>
+        call.url.startsWith("/api/ai/conversations") &&
+        (call.body as { message?: string } | undefined)?.message === "帮我准备周日的活动",
+    ),
+    "the ask row must send the question through the conversations API",
+  );
   assert.equal(
     mounted.root.root.findAll((node) => node.props?.className === "ir-home").length,
     0,
