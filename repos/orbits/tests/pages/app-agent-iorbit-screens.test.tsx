@@ -209,6 +209,26 @@ test("the four-week rhythm header uses real calendar weeks, never the design's w
   assert.equal(iorbitPlanWeeks(new Date(2026, 8, 27))[0]!.range, "9/21 – 9/27");
 });
 
+// iOrbit 合并前终审 3：这个表头由 `agent/plan/page.tsx` 服务端渲染。原实现用运行时
+// 本地的 setHours/getDay/getDate 起算，UTC 服务端 + 东亚用户在周一凌晨会先收到上一
+// 周的四个表头、hydration 后再换一周。锚点必须只取决于传入的时区。
+test("the four-week anchor is pinned to the plan time zone, not the runtime's", () => {
+  // 2026-09-21 是周一。东京 01:00 的那一刻，UTC 还停在 2026-09-20（周日）。
+  const mondayEarlyInTokyo = new Date("2026-09-21T01:00:00+09:00");
+
+  assert.equal(
+    iorbitPlanWeeks(mondayEarlyInTokyo, "Asia/Tokyo")[0]!.range,
+    "9/21 – 9/27",
+  );
+  // 同一瞬间按 UTC 读是上一周——两者不同，正是这条修复要消除的分歧；
+  // 默认参数必须站在东京一侧。
+  assert.equal(iorbitPlanWeeks(mondayEarlyInTokyo, "UTC")[0]!.range, "9/14 – 9/20");
+  assert.equal(
+    iorbitPlanWeeks(mondayEarlyInTokyo)[0]!.range,
+    iorbitPlanWeeks(mondayEarlyInTokyo, "Asia/Tokyo")[0]!.range,
+  );
+});
+
 /* ── 2. SSR 结构 ───────────────────────────────────────────────────────── */
 
 function actionsMarkup(viewModel = ACTIONS_VM): string {

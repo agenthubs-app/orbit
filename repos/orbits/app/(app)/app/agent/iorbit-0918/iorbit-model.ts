@@ -192,7 +192,14 @@ function depthFor(t: Translate) {
   };
 }
 
-const TZ = { timeZone: "Asia/Tokyo" };
+/**
+ * 本域所有日期派生的唯一时区（与 `plan-route-view-model.ts` 的 `PLAN_TZ`、
+ * `iorbit-home.tsx` 的 `TZ` 同值）。服务端与浏览器同取东京日，SSR 与 hydration
+ * 才不会算出两个日历日。
+ */
+const IORBIT_TZ = "Asia/Tokyo";
+
+const TZ = { timeZone: IORBIT_TZ };
 
 function fmtMonth(date: Date, language: "en" | "zh") {
   return new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", { month: "short", ...TZ }).format(date);
@@ -1357,20 +1364,38 @@ function iorbitRegisteredEvents<
  * 每周的目标 / 关键联系人 / 关键产出需要 W4 策略生成能力，没有接口，由调用方
  * 在展开区渲染「等 W4」说明。
  */
-function iorbitPlanWeeks(now: Date): readonly { no: number; range: string }[] {
-  const monday = new Date(now.getTime());
-  monday.setHours(0, 0, 0, 0);
-  // getDay(): 周日 = 0；本周一 = 今天 -((day + 6) % 7) 天。
-  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+function iorbitPlanWeeks(
+  now: Date,
+  timeZone: string = IORBIT_TZ,
+): readonly { no: number; range: string }[] {
+  // 合并前终审 3：原来用运行时本地的 `setHours` / `getDay` / `getDate` 起算，而这个
+  // 表头是从 `agent/plan/page.tsx` 服务端渲染出去的——UTC 服务端 + UTC+8 用户在周一
+  // 02:00 会先收到上一周的四个表头，hydration 之后又换成另一周。本文件其余日期派生
+  // （`iorbitDayKey` 等）与 `plan-route-view-model.ts` 的 `PLAN_TZ` 一律钉东京日，
+  // 这里跟上：先把 `now` 折算成目标时区的日历日，再全程用 UTC 字段做整天加减，
+  // 运行时时区不再参与。
+  const [year, month, day] = new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone,
+    year: "numeric",
+  })
+    .format(now)
+    .split("-")
+    .map(Number) as [number, number, number];
+
+  const monday = new Date(Date.UTC(year, month - 1, day));
+  // getUTCDay(): 周日 = 0；本周一 = 今天 -((day + 6) % 7) 天。
+  monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
 
   const out: { no: number; range: string }[] = [];
   for (let index = 0; index < 4; index += 1) {
     const start = new Date(monday.getTime());
-    start.setDate(start.getDate() + index * 7);
+    start.setUTCDate(start.getUTCDate() + index * 7);
     const end = new Date(start.getTime());
-    end.setDate(end.getDate() + 6);
+    end.setUTCDate(end.getUTCDate() + 6);
     // M/D 在中英文下是同一种写法，不按语言分支（修订轮 1：原来的两支是死代码）。
-    const label = (date: Date) => `${date.getMonth() + 1}/${date.getDate()}`;
+    const label = (date: Date) => `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
     out.push({ no: index + 1, range: `${label(start)} – ${label(end)}` });
   }
   return out;
