@@ -359,12 +359,21 @@ test("review queue exposes retry and both empty states without stale applicant d
   });
 });
 
-test("a 403 on the operations workspace hides the people table and keeps the admission queue (审阅修订 3)", async () => {
+test("a 403 on the operations workspace hides the filter bar, table and stats, keeps the admission queue and explains in Chinese (审阅修订 3)", async () => {
   await withPeople((renderer) => {
     assert.deepEqual(rows(renderer), []);
     assert.equal(renderer.root.findAll((node) => node.props["data-ops-people-table"] !== undefined).length, 0);
-    assert.equal(renderer.root.findAll((node) => node.props["data-admission-review-applicant"] === APPLICANT_ID).length, 1);
-    assert.match(text(renderer), /Event operations access required/u);
+    assert.equal(renderer.root.findAll((node) => node.type === "button" && node.props.className === "btn op-pfilter").length, 0, "filter bar hidden");
+    assert.equal(renderer.root.findAll((node) => node.type === "input" && node.props["aria-label"] === "搜索参会者").length, 0, "search hidden");
+    assert.equal(renderer.root.findAll((node) => node.props["data-ops-stat"] !== undefined).length, 0, "stats card hidden");
+    assert.doesNotMatch(text(renderer), /总报名|建议优先补齐/u);
+    const notice = renderer.root.find((node) => node.props["data-ops-people-reviewer-only"] !== undefined);
+    assert.equal(notice.props.className, "op-notice");
+    assert.equal(notice.props.role, "status");
+    assert.equal(notice.children.join(""), "当前身份仅有审核权限，参会者表格与统计不可见。");
+    assert.doesNotMatch(text(renderer), /Event operations access required/u, "raw English 403 message not surfaced");
+    assert.equal(renderer.root.findAll((node) => node.props.role === "alert").length, 0);
+    assert.equal(renderer.root.findAll((node) => node.props["data-admission-review-applicant"] === APPLICANT_ID).length, 1, "admission queue still rendered");
   }, {
     respond: (call) => call.url === BASE ? Response.json({ error: { message: "Event operations access required" }, success: false }, { status: 403 }) : null,
   });

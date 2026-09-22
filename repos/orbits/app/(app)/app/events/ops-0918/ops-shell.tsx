@@ -453,7 +453,11 @@ export const OPS_STYLES = `
 [data-orbit-real-page="ops-0918"] .op-ctable { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
 [data-orbit-real-page="ops-0918"] .op-cbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; }
 [data-orbit-real-page="ops-0918"] .op-csearch { display: flex; align-items: center; gap: 10px; padding: 11px 16px; border: 1px solid #DDDEFA; border-radius: 10px; background: #FFFFFF; min-width: 260px; }
+[data-orbit-real-page="ops-0918"] .op-cbar-tools { display: flex; align-items: center; gap: 12px; }
 [data-orbit-real-page="ops-0918"] .op-cfilters { display: flex; gap: 6px; padding: 5px; border-radius: 10px; background: #F7F7FD; }
+/* 「刷新名单」设计无（旧名单手动刷新保留）：取设计 232 行 ghost 按钮 */
+[data-orbit-real-page="ops-0918"] .btn.op-crefresh { padding: 11px 16px; border: 1px solid #DDDEFA; border-radius: 10px; background: #FFFFFF; color: #3B3F7A; font-size: 13px; cursor: pointer; }
+[data-orbit-real-page="ops-0918"] .btn.op-crefresh:hover { border-color: #B9BCEB; color: #2E3270; }
 [data-orbit-real-page="ops-0918"] .btn.op-cfilter { padding: 9px 18px; border: 0; border-radius: 8px; font-size: 13px; cursor: pointer; }
 /* 设计五列 minmax(0,1.3fr) minmax(0,1.2fr) minmax(0,1fr) 110px 120px：「公司 / 职位」「票种 / 分组」无来源 → 三列 */
 [data-orbit-real-page="ops-0918"] .op-chead { display: grid; grid-template-columns: minmax(0, 1fr) 110px 120px; gap: 14px; padding: 0 4px 12px; border-bottom: 1px solid #E8E9F6; font-size: 12px; color: #9FA3C4; }
@@ -475,12 +479,12 @@ export const OPS_STYLES = `
 [data-orbit-real-page="ops-0918"] .op-lname { font-size: 14px; font-weight: 500; }
 [data-orbit-real-page="ops-0918"] .op-ltime { font-size: 13px; color: #6B6F99; }
 /* 中和 .btn 基类（orbit-reference-styles.tsx:594–611）：参会者 / 签到屏按钮类 */
-[data-orbit-real-page="ops-0918"] .btn.op-pfilter, [data-orbit-real-page="ops-0918"] .btn.op-pdetail, [data-orbit-real-page="ops-0918"] .btn.op-applicant, [data-orbit-real-page="ops-0918"] .btn.op-cfilter, [data-orbit-real-page="ops-0918"] .btn.op-cact, [data-orbit-real-page="ops-0918"] .btn.op-clatest-all { height: auto; gap: 0; letter-spacing: 0; line-height: normal; transition: none; }
-[data-orbit-real-page="ops-0918"] .btn.op-pfilter, [data-orbit-real-page="ops-0918"] .btn.op-pdetail, [data-orbit-real-page="ops-0918"] .btn.op-cfilter, [data-orbit-real-page="ops-0918"] .btn.op-cact, [data-orbit-real-page="ops-0918"] .btn.op-clatest-all { display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; text-align: center; }
-[data-orbit-real-page="ops-0918"] .btn.op-pfilter:active, [data-orbit-real-page="ops-0918"] .btn.op-pdetail:active, [data-orbit-real-page="ops-0918"] .btn.op-applicant:active, [data-orbit-real-page="ops-0918"] .btn.op-cfilter:active, [data-orbit-real-page="ops-0918"] .btn.op-cact:active, [data-orbit-real-page="ops-0918"] .btn.op-clatest-all:active { transform: none; }
+[data-orbit-real-page="ops-0918"] .btn.op-pfilter, [data-orbit-real-page="ops-0918"] .btn.op-pdetail, [data-orbit-real-page="ops-0918"] .btn.op-applicant, [data-orbit-real-page="ops-0918"] .btn.op-cfilter, [data-orbit-real-page="ops-0918"] .btn.op-cact, [data-orbit-real-page="ops-0918"] .btn.op-crefresh, [data-orbit-real-page="ops-0918"] .btn.op-clatest-all { height: auto; gap: 0; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="ops-0918"] .btn.op-pfilter, [data-orbit-real-page="ops-0918"] .btn.op-pdetail, [data-orbit-real-page="ops-0918"] .btn.op-cfilter, [data-orbit-real-page="ops-0918"] .btn.op-cact, [data-orbit-real-page="ops-0918"] .btn.op-crefresh, [data-orbit-real-page="ops-0918"] .btn.op-clatest-all { display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; text-align: center; }
+[data-orbit-real-page="ops-0918"] .btn.op-pfilter:active, [data-orbit-real-page="ops-0918"] .btn.op-pdetail:active, [data-orbit-real-page="ops-0918"] .btn.op-applicant:active, [data-orbit-real-page="ops-0918"] .btn.op-cfilter:active, [data-orbit-real-page="ops-0918"] .btn.op-cact:active, [data-orbit-real-page="ops-0918"] .btn.op-crefresh:active, [data-orbit-real-page="ops-0918"] .btn.op-clatest-all:active { transform: none; }
 [data-orbit-real-page="ops-0918"] .btn.op-pdetail:disabled, [data-orbit-real-page="ops-0918"] .btn.op-cact:disabled { opacity: 1; }
 [data-orbit-real-page="ops-0918"] .btn.op-pdetail:disabled { cursor: default; color: #9FA3C4; border-color: #F1F1FA; }
-[data-orbit-real-page="ops-0918"] .btn.op-cact:disabled:hover { opacity: 1; }
+[data-orbit-real-page="ops-0918"] .btn.op-crefresh:disabled { cursor: default; opacity: 0.6; }
 @media (max-width: 860px) {
   [data-orbit-real-page="ops-0918"] .op-pgrid, [data-orbit-real-page="ops-0918"] .op-cgrid { grid-template-columns: 1fr; }
   [data-orbit-real-page="ops-0918"] .op-prow { grid-template-columns: 56px minmax(0, 1fr); row-gap: 10px; }

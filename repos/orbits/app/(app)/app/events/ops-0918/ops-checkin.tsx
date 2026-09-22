@@ -4,6 +4,8 @@
  * 表格：设计五列 → 三列（姓名 / 状态 / 操作；「公司 / 职位」「票种 / 分组」无来源）；行 = roster items；
  * 「标记到场」→ `markArrived(item)`；已签到禁用；`pendingParticipantIds` 中 → 禁用 +「处理中…」；
  * 全局 `error` → 表头上方错误条 + 「重试」= `loadRoster()`；`notice`（含 409 时间窗口文案）→ 提示条原样。
+ * 「刷新名单」（设计无；旧名单的手动刷新保留）= `loadRoster()`，置于筛选段旁，样式取设计 232 行 ghost 按钮。
+ * 搜索框 placeholder 改「搜索姓名或参会者编号…」：设计文案承诺公司 / 职位，签到名单无此来源（偏差）。
  * 右栏「最新签到」= `checkedInAt` 倒序前 5（`org` 无来源 → 省略第二行）；「查看全部 →」= 切筛选到「已签到」。
  */
 "use client";
@@ -55,10 +57,11 @@ export function OpsCheckin({ event }: { event: EventOperationsPageEvent }) {
                 aria-label="按姓名搜索参会者"
                 className="op-search-input"
                 onChange={(input) => setQuery(input.target.value)}
-                placeholder="搜索姓名、公司或职位…"
+                placeholder="搜索姓名或参会者编号…"
                 value={query}
               />
             </span>
+            <span className="op-cbar-tools">
             <span aria-label="签到状态筛选" className="op-cfilters" role="group">
               {CHECKIN_FILTERS.map((item) => {
                 const on = item.key === filter;
@@ -77,6 +80,8 @@ export function OpsCheckin({ event }: { event: EventOperationsPageEvent }) {
                   </button>
                 );
               })}
+            </span>
+            <button className="btn op-crefresh" data-ops-refresh disabled={loading} onClick={() => void loadRoster()} type="button">刷新名单</button>
             </span>
           </div>
 

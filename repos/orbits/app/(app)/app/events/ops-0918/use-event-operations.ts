@@ -84,6 +84,13 @@ function formFor(
   };
 }
 
+/** 带 HTTP 状态的请求错误：参会者屏据 403 判定「仅审核权限」（审阅修订 3）。 */
+class RequestError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+  }
+}
+
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...init,
@@ -91,10 +98,11 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   });
   const envelope = (await response.json().catch(() => null)) as ApiEnvelope<T> | null;
   if (!response.ok || envelope?.success !== true || !envelope.data) {
-    throw new Error(envelope?.error?.message ?? `Request failed with status ${response.status}.`);
+    throw new RequestError(envelope?.error?.message ?? `Request failed with status ${response.status}.`, response.status);
   }
   return envelope.data;
 }
+
 
 export function formatTimestamp(value: string): string {
   const timestamp = new Date(value);
@@ -132,12 +140,14 @@ export interface ProgressStep {
  *   `hasActiveGeneration`、`checkInsByParticipant`、`participantNames`、`autoRetries`
  * - 派生：`operationsCheckInHref`、`baseUrl`（导出 CSV 链接）、`checkInOpen`、`timeline`、
  *   `publishedMatchStatus`、`progressSteps`
- * - 状态：`form`/`setForm`、`loading`、`busy`、`error`、`notice`
+ * - 状态：`form`/`setForm`、`loading`、`busy`、`error`、`notice`、`accessDenied`（GET 返回 403）
  * - 动作：`load`、`saveConfiguration`（PUT）、`startGeneration`（POST /generations）、
  *   `generationAction`（POST /retry | /publish）、`markParticipantArrived`（POST /check-ins）、
  *   `copyCheckInLink`
  */
 export interface EventOperationsSession {
+  /** GET `/operations/admin` 返回 403：当前身份没有 operations.read_sensitive（例如仅审核角色）。 */
+  accessDenied: boolean;
   autoRetries: Record<string, number>;
   baseUrl: string;
   busy: string | null;
@@ -172,6 +182,7 @@ export function useEventOperations(event: EventOperationsEvent): EventOperations
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [accessDenied, setAccessDenied] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [currentTimeMs, setCurrentTimeMs] = useState(() => Date.now());
   // Client-side orchestration: how many automatic retries this session has
@@ -185,8 +196,10 @@ export function useEventOperations(event: EventOperationsEvent): EventOperations
       setWorkspace(next);
       if (showLoading) setForm(formFor(next.configuration, event));
       setError(null);
+      setAccessDenied(false);
     } catch (cause) {
       setWorkspace(null);
+      setAccessDenied(cause instanceof RequestError && cause.status === 403);
       setError(cause instanceof Error ? cause.message : "Could not load event operations.");
     } finally {
       if (showLoading) setLoading(false);
@@ -411,6 +424,7 @@ export function useEventOperations(event: EventOperationsEvent): EventOperations
     : [];
 
   return {
+    accessDenied,
     autoRetries,
     baseUrl,
     busy,

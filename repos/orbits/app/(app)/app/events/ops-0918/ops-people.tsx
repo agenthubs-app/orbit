@@ -6,6 +6,7 @@
  * 展开区块渲染；无审核权限 → 禁用。
  * 设计外第二区块：准入队列（待审核 / 已处理、加载更多、重试 / 两种空态、版本化决定）+ `EventAdmissionPolicyPanel` 折叠区
  * （文件保留、原样挂载）。旧 event-admission-review-workspace.tsx 的 `data-admission-*` 标记与文案原样保留。
+ * 仅审核权限（`useEventOperations` 403）：筛选栏 / 表格 / 统计卡全部不渲染，只显示准入区块 + 中文提示（审阅修订 3）。
  */
 "use client";
 
@@ -192,11 +193,18 @@ export function OpsPeople({
   const processed = view === "processed";
   const detailActor = review.selectedId ?? review.openingActorId;
   const detailInTable = detailActor !== null && visible.some((participant) => participant.actorId === detailActor);
+  // 审阅修订 3：仅审核权限时只显示准入区块；操作台 403 的英文原文不外露。
+  const reviewerOnly = session.accessDenied;
 
   return (
     <div className="op-screen" data-ops-screen="people">
-      <SessionBanners session={session} />
+      {reviewerOnly ? (
+        <div className="op-notice" data-ops-people-reviewer-only role="status">当前身份仅有审核权限，参会者表格与统计不可见。</div>
+      ) : (
+        <SessionBanners session={session} />
+      )}
 
+      {reviewerOnly ? null : (
       <div className="op-pbar">
         <div className="op-pfilters">
           {PEOPLE_FILTERS.map((item) => {
@@ -227,7 +235,9 @@ export function OpsPeople({
           />
         </span>
       </div>
+      )}
 
+      {reviewerOnly ? null : (
       <div className="op-pgrid">
         {workspace ? (
           <section className="op-plist" data-ops-people-table>
@@ -276,6 +286,7 @@ export function OpsPeople({
           </div>
         </div>
       </div>
+      )}
 
       <section className="op-extra" id="ops-admission">
         <div className="op-extra-head">

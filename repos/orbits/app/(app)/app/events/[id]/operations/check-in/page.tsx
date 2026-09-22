@@ -1,8 +1,11 @@
 import { redirect } from "next/navigation";
 
 import { auth } from "../../../../../../../auth";
+import { requireEventCapability } from "../../../../../../../features/events/event-access/guard";
+import { createConfiguredEventAccessService } from "../../../../../../../features/events/event-access/runtime";
 import { createConfiguredEventCoreService } from "../../../../../../../features/events/core/runtime";
 import { AccountTopNav } from "../../../../orbit-account-shell";
+import { PublicTopNav } from "../../../../orbit-public-shell";
 import { OrbitReferenceStyles } from "../../../../orbit-reference-styles";
 import { OpsCheckin } from "../../../ops-0918/ops-checkin";
 import { exportCsvHref } from "../../../ops-0918/ops-model";
@@ -17,7 +20,35 @@ function routeEventId(value: string): string {
   }
 }
 
-// 门禁现状（审阅修订 8 记录）：本页只有 auth()，签到能力由 `GET|POST /operations/admin/check-ins` 按请求校验；保持不动。
+function Boundary({
+  description,
+  eventId,
+  title,
+}: {
+  description: string;
+  eventId: string;
+  title: string;
+}) {
+  return (
+    <>
+      <OrbitReferenceStyles />
+      <PublicTopNav active="events" />
+      <main data-orbit-real-page="event-check-in-boundary" style={{ margin: "0 auto", maxWidth: 760, padding: 40 }}>
+        <div className="eyebrow">EVENT OPERATIONS · CHECK-IN</div>
+        <h1 className="h-display">{title}</h1>
+        <p style={{ color: "var(--text-2)" }}>{description}</p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+          <a className="btn btn-primary" href={`/app/events/${encodeURIComponent(eventId)}/operations/check-in`}>重试</a>
+          <a className="btn btn-ghost" href="/app/events/center">返回运营活动中心</a>
+        </div>
+      </main>
+    </>
+  );
+}
+
+// 门禁（任务 4 评审修正，「门禁不动」的例外）：本页原只有 auth()，但壳现在经 loadEventOperationsPageEvent →
+// eventCore.getEvent 读标题，会把未发布活动的标题泄露给任意登录用户。故在读取活动前按名单 API 同一能力
+// `check_in.roster.read_limited`（GET /operations/admin/check-ins）做 per-event 校验；未通过 → Boundary，不读活动。
 export default async function EventOperationsCheckInPage({
   params,
 }: {
@@ -30,8 +61,25 @@ export default async function EventOperationsCheckInPage({
     redirect(`/app/account/login?next=${encodeURIComponent(pathname)}`);
   }
 
-  // 壳（面包屑 / 标题）读 canonical Event Core 标题；读不到时退回 eventId（loadEventOperationsPageEvent 既有规则）。
-  const pageEvent = await loadEventOperationsPageEvent(eventId, createConfiguredEventCoreService());
+  const eventCore = createConfiguredEventCoreService();
+  const accessService = createConfiguredEventAccessService();
+  if (!eventCore || !accessService) {
+    return <Boundary description="活动核心或权限服务暂时不可用，签到名单入口暂时关闭。" eventId={eventId} title="签到名单暂时不可用" />;
+  }
+
+  try {
+    await requireEventCapability({
+      actorId: session.user.id,
+      capability: "check_in.roster.read_limited",
+      eventId,
+      service: accessService,
+    });
+  } catch {
+    return <Boundary description="只有当前活动主办方或被授予签到角色的成员可以打开签到名单。" eventId={eventId} title="没有签到权限" />;
+  }
+
+  // 门禁已过：壳（面包屑 / 标题）读 canonical Event Core 标题；读不到时退回 eventId（loadEventOperationsPageEvent 既有规则）。
+  const pageEvent = await loadEventOperationsPageEvent(eventId, eventCore);
 
   return (
     <>

@@ -118,6 +118,8 @@ test("checkin SSR renders the console head with the 签到 tab active, three fil
   assert.match(html, /<span>姓名<\/span><span>状态<\/span><span class="op-chead-center">操作<\/span>/u, "three columns");
   assert.doesNotMatch(html, /<span>公司 \/ 职位<\/span>|<span>票种 \/ 分组<\/span>/u);
   for (const label of ["未签到", "已签到", "全部"]) assert.match(html, new RegExp(`class="btn op-cfilter"[^>]*>${label}</button>`, "u"));
+  assert.match(html, /<button class="btn op-crefresh" data-ops-refresh="true" disabled="" type="button">刷新名单<\/button>/u, "manual refresh kept from the retired roster (deviation); disabled during the initial load");
+  assert.match(html, /placeholder="搜索姓名或参会者编号…"/u);
   assert.match(html, /最新签到/u);
   assert.match(html, /查看全部 →/u);
   assert.doesNotMatch(html, /张嘉怡|陈浩|OpenAI|Meta · 软件工程师|14:28/u);
@@ -158,7 +160,7 @@ test("roster loads the limited check-in list: counts, 未签到 default filter, 
     assert.deepEqual(latest.map((node) => node.props["data-ops-latest"]), ["p:a"]);
     assert.match(text(renderer), /Alice18:05/u, "checkedInAt in JST HH:mm, no org line");
 
-    const search = renderer.root.find((node) => node.type === "input" && node.props.placeholder === "搜索姓名、公司或职位…");
+    const search = renderer.root.find((node) => node.type === "input" && node.props.placeholder === "搜索姓名或参会者编号…");
     await act(async () => {
       search.props.onChange({ target: { value: ":b" } });
       await flush();
@@ -177,6 +179,34 @@ test("roster loads the limited check-in list: counts, 未签到 default filter, 
     });
     assert.equal(filterButton(renderer, "done").props["aria-pressed"], true);
     assert.deepEqual(rows(renderer), ["p:a"]);
+  });
+});
+
+test("刷新名单 re-fetches the roster and is disabled while loading", async () => {
+  let release: (() => void) | null = null;
+  let gets = 0;
+  await withCheckin(async (call) => {
+    gets += 1;
+    if (gets === 1) return Response.json({ data: roster(), success: true });
+    await new Promise<void>((resolve) => { release = resolve; });
+    return Response.json({ data: roster(true), success: true });
+  }, async (renderer, harness) => {
+    const refresh = () => renderer.root.find((node) => node.props["data-ops-refresh"] !== undefined);
+    assert.equal(refresh().props.disabled, false);
+    assert.equal(refresh().children.join(""), "刷新名单");
+    assert.equal(refresh().props.className, "btn op-crefresh");
+    await act(async () => {
+      refresh().props.onClick();
+      await Promise.resolve();
+    });
+    assert.deepEqual(harness.observed.map((call) => [call.method, call.url]), [["GET", ENDPOINT], ["GET", ENDPOINT]], "second GET fired by the button");
+    assert.equal(refresh().props.disabled, true, "disabled while the roster reloads");
+    await act(async () => {
+      release?.();
+      await flush();
+    });
+    assert.equal(refresh().props.disabled, false);
+    assert.equal(stat(renderer, "checked"), "1", "reloaded roster is rendered");
   });
 });
 
@@ -250,12 +280,19 @@ test("retry after a 503 read failure re-fetches the roster", async () => {
   });
 });
 
-test("check-in page keeps auth() only (recorded) and mounts the check-in screen inside the ops-0918 shell", () => {
+test("check-in page gates on check_in.roster.read_limited before reading the event and mounts the check-in screen inside the ops-0918 shell", () => {
   const page = readFileSync(join(projectRoot, "app/(app)/app/events/[id]/operations/check-in/page.tsx"), "utf8");
   const screen = readFileSync(join(projectRoot, "app/(app)/app/events/ops-0918/ops-checkin.tsx"), "utf8");
   assert.match(page, /await Promise\.all\(\[params, auth\(\)\]\)/u);
   assert.match(page, /redirect\(`\/app\/account\/login\?next=/u);
-  assert.doesNotMatch(page, /requireEventCapability/u, "check-in page had auth() only; kept as-is (审阅修订 8 记录)");
+  // 评审修正：getEvent 会泄露未发布活动标题，故与名单 API 同一能力做 per-event 门禁，未过不读活动。
+  assert.match(page, /requireEventCapability\(\{[^}]*capability: "check_in\.roster\.read_limited"/u);
+  assert.match(page, /createConfiguredEventAccessService\(\)/u);
+  assert.ok(page.indexOf("requireEventCapability({") < page.indexOf("await loadEventOperationsPageEvent("), "gate runs before the event read");
+  assert.match(page, /title="没有签到权限"/u);
+  assert.match(page, /只有当前活动主办方或被授予签到角色的成员可以打开签到名单。/u);
+  assert.match(page, /href="\/app\/events\/center">返回运营活动中心/u);
+  assert.match(page, /operations\/check-in`\}>重试/u);
   assert.match(page, /loadEventOperationsPageEvent/u);
   assert.match(page, /data-orbit-real-page="ops-0918"/u);
   assert.match(page, /<AccountTopNav active="events" \/>/u);
