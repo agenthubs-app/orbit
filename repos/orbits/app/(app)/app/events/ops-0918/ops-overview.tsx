@@ -4,7 +4,7 @@
  * + 「查看分组结果 →」(`?tab=match`) + 「重新生成」(= 旧「生成匹配」含二次确认) → 当前设置四行 + 「编辑配置」
  * （审阅修订 6：打开本屏下方的运营配置折叠区，非设计 goForm）→ 「需要处理」（资料不足 = `profileCompleteness === "minimal"`；
  * 「前往发布 →」= 旧「原子发布」同条件）。设计之外的既有能力按审阅修订 5 保留：运营配置折叠区（时间闸门 + 高级引擎参数
- * + CONFIGURED TIMELINE）、签到链接卡、参会者与到场状态（标记到场；任务 4 迁入参会者屏前暂留本屏）、名片交换审计。
+ * + CONFIGURED TIMELINE）、签到链接卡、名片交换审计（参会者到场目录已于任务 4 迁入签到屏）。
  */
 "use client";
 
@@ -13,6 +13,7 @@ import { useState } from "react";
 import type { EventOperationsPageEvent } from "../[id]/operations/event-operations-page-event";
 import {
   insufficientProfileCount,
+  matchedParticipantIds,
   matchEligibleCount,
   opsHref,
   pipelineSteps,
@@ -121,12 +122,10 @@ export function OpsOverview({ event, session }: { event: EventOperationsPageEven
   const {
     busy,
     checkInOpen,
-    checkInsByParticipant,
     configuration,
     copyCheckInLink,
     generationAction,
     hasActiveGeneration,
-    markParticipantArrived,
     newestGeneration,
     operationsCheckInHref,
     publishedMatchStatus,
@@ -142,7 +141,8 @@ export function OpsOverview({ event, session }: { event: EventOperationsPageEven
     publishedAt: workspace?.publishedResult?.publishedAt ?? null,
     registrationCutoffAt: configuration?.registrationCutoffAt ?? null,
   });
-  const insufficient = workspace ? insufficientProfileCount(workspace.participants) : 0;
+  // 任务 4：已进入已发布目录 / 最新 completed 快照的 minimal 参会者不再算「资料不完整」（可参与匹配沿用 matchEligibleCount）
+  const insufficient = workspace ? insufficientProfileCount(workspace.participants, matchedParticipantIds(workspace)) : 0;
   const publishable = publishableGeneration(session);
   const admissionHref = opsHref(event.id, "people");
 
@@ -239,54 +239,6 @@ export function OpsOverview({ event, session }: { event: EventOperationsPageEven
               <code className="op-code">{operationsCheckInHref}</code>
             </div>
             <div className="op-copy" style={{ color: checkInOpen ? "#2F6B4F" : "#9FA3C4" }}>签到窗口：{checkInOpen ? "当前开放" : "已关闭或尚未开放"}</div>
-          </section>
-
-          <section className="op-extra">
-            <div className="op-extra-head">
-              <div>
-                <span className="op-eyebrow">REAL REGISTRATION DIRECTORY</span>
-                <strong className="op-sec-title-20">参会者与到场状态</strong>
-                <span className="op-sec-sub">{workspace.participants.length - workspace.checkIns.length} 人未到场 · 通过主办方专用接口逐一标记到场。</span>
-              </div>
-            </div>
-            {workspace.participants.length === 0 ? <div className="op-empty">尚无报名。</div> : null}
-            <div className="op-dir">
-              {workspace.participants.length > 0 ? (
-                <div className="op-dir-head">
-                  <span>参会者</span><span>公司 / 角色</span><span>行业</span><span>画像</span><span>迟到报名</span><span>签到</span>
-                </div>
-              ) : null}
-              {workspace.participants.map((participant) => {
-                const checkIn = checkInsByParticipant.get(participant.participantId);
-                return (
-                  <div className="op-dir-row" key={participant.participantId}>
-                    <span className="op-dir-person">
-                      <span className="op-ava">{participant.displayName.slice(0, 1)}</span>
-                      <span className="op-dir-name">
-                        <strong>{participant.displayName}</strong>
-                        <span className="op-dir-id">{participant.participantId}</span>
-                      </span>
-                    </span>
-                    <span className="op-dir-cell">{[participant.role, participant.company].filter(Boolean).join(" · ") || "—"}</span>
-                    <span className="op-dir-cell">{participant.industry ?? "—"}</span>
-                    <span className="op-dir-cell">{participant.profileCompleteness}</span>
-                    <span className="op-dir-cell">{participant.lateRegistration ? "是" : "否"}</span>
-                    <span className="op-dir-cell">
-                      {checkIn ? (
-                        <span className="op-dir-checkin">
-                          <span className="op-pill op-pill-green">● 已签到</span>
-                          <span className="op-gate-at">{formatTimestamp(checkIn.checkedInAt)}</span>
-                        </span>
-                      ) : (
-                        <button className="btn op-btn-sm op-ghost" disabled={!checkInOpen || busy !== null} onClick={() => void markParticipantArrived(participant.participantId)} type="button">
-                          {busy === `checkin:${participant.participantId}` ? "记录中…" : checkInOpen ? "标记到场" : "签到未开放"}
-                        </button>
-                      )}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
           </section>
 
           <section className="op-extra">

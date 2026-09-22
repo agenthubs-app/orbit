@@ -69,9 +69,9 @@ test("published grouping: four real counts, round toggle switches the published 
     assert.equal(buttonNamed(renderer, "第 2 轮").props.style.background, "#DDDEFA");
     assert.equal(buttonNamed(renderer, "第 2 轮").props["aria-selected"], true);
 
-    // 资料不足提示（1 位 minimal）→ 参会者屏
-    assert.match(text(renderer), /1 位参会者资料不足，暂未进入分组/u);
-    assert.equal(linksNamed(renderer, "查看参会者 →")[0].props.href, PEOPLE_HREF);
+    // 任务 4：Cai（minimal）已在已发布目录中 → 不再算「暂未进入分组」，横幅省略
+    assert.doesNotMatch(text(renderer), /位参会者资料不足/u);
+    assert.equal(linksNamed(renderer, "查看参会者 →").length, 0);
     // 已发布 → 发布结果 → 不可用；重新生成 可用；生成列表显示已发布
     assert.equal(buttonNamed(renderer, "发布结果 →").props.disabled, true);
     assert.equal(buttonNamed(renderer, "重新生成").props.disabled, false);
@@ -144,5 +144,14 @@ test("an active generation disables both 重新生成 and 发布结果 → and s
     assert.match(renderer.root.find((node) => node.props["data-ops-tables-empty"] !== undefined).children.join(""), /匹配正在生成中/u);
     assert.equal(renderer.root.findAll((node) => node.props["data-generation-progress"] !== undefined).length, 1);
     assert.equal(buttonsNamed(renderer, "Worker 处理中…").length, 1);
+  });
+});
+
+test("published grouping that leaves a minimal profile out of the directory still shows 1 位参会者资料不足 → 参会者屏", async () => {
+  const published = publishedResult({ directory: [participant("p:a", "Alice"), participant("p:b", "Bob")] });
+  await withConsole("match", workspace({ generations: [generation("published")], publishedResult: published }), (renderer) => {
+    assert.match(text(renderer), /1 位参会者资料不足，暂未进入分组/u);
+    assert.equal(renderer.root.find((node) => node.props["data-ops-insufficient"] !== undefined).props["data-ops-insufficient"], 1);
+    assert.equal(linksNamed(renderer, "查看参会者 →")[0].props.href, PEOPLE_HREF);
   });
 });

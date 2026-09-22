@@ -145,6 +145,21 @@ test("published: 已发布 chip, 已发布 step done, no publish item, and an em
   );
 });
 
+test("published: a minimal profile already inside the published directory no longer counts as 资料不完整; 可参与匹配 keeps its rule; the 到场 directory moved to the check-in screen", async () => {
+  await withNow("2026-09-30T13:00:00.000Z", () =>
+    withConsole("ops", workspace({ generations: [generation("published")], publishedResult: publishedResult() }), (renderer) => {
+      const body = text(renderer);
+      assert.doesNotMatch(body, /位参会者资料不完整/u, "Cai (minimal) sits in publishedResult.directory");
+      assert.match(body, /暂无需要处理的事项/u);
+      assert.equal(renderer.root.find((node) => node.props["data-ops-stat"] === "eligible").children.join(""), "2");
+      assert.doesNotMatch(body, /REAL REGISTRATION DIRECTORY|参会者与到场状态/u);
+      assert.equal(buttonsNamed(renderer, "标记到场").length, 0);
+      assert.match(body, /CONSENT AUDIT/u, "the other extra cards stay");
+      assert.match(body, /VENUE CHECK-IN ENTRY/u);
+    }),
+  );
+});
+
 test("an active generation disables 重新生成 and reports 匹配正在生成中", async () => {
   await withConsole("ops", workspace({ generations: [generation("running")] }), (renderer) => {
     const button = buttonNamed(renderer, "生成进行中…");

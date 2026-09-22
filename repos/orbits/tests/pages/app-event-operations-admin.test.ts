@@ -29,9 +29,11 @@ test("organizer workspace exposes the complete strict generation and audit workf
   // 下面按「hook 文件 vs JSX 文件」拆分同一组断言，意图不变。
   // 运营台 任务 3：旧 admin workspace JSX 已被 ops-0918 概览 / 匹配屏替换（旧文件删除）。JSX 侧断言的新去处：
   //   ops-console.tsx           useEventOperations(event)、/export（「更多 ⌄」菜单）
-  //   ops-overview.tsx          REAL REGISTRATION DIRECTORY / 标记到场 / CONSENT AUDIT / VENUE CHECK-IN ENTRY /
+  //   ops-overview.tsx          CONSENT AUDIT / VENUE CHECK-IN ENTRY /
   //                             不会生成二维码图片 / CONFIGURED TIMELINE / readOnly={canonicalScheduleFields.includes /
   //                             onInput ×3 + nextValue ×3 / profileEditDeadlineAt / roundOneStartsAt（配置折叠区）
+  //   运营台 任务 4：「参会者与到场状态」目录（REAL REGISTRATION DIRECTORY / 标记到场）迁出概览 ——
+  //   真实报名目录 → ops-people.tsx（workspace.participants 表格）；标记到场 → ops-checkin.tsx（useCheckInRoster.markArrived）。
   //   ops-match.tsx             Worker 处理中 / 重试失败分片 / 原子发布 / 所有任务完成并由你发布后… / table.rationale /
   //                             table.icebreakers / member.seat（桌卡）/ grouping.roundOne|roundTwo（经 ops-model roundTables）
   //   ops-operations-shared.tsx 生成匹配（尚无生成时的按钮名）/ 失败的片段会自动重试（确认框）/ 重试失败分片 / 原子发布 文案表
@@ -42,6 +44,8 @@ test("organizer workspace exposes the complete strict generation and audit workf
     "app/(app)/app/events/ops-0918/ops-overview.tsx",
     "app/(app)/app/events/ops-0918/ops-match.tsx",
     "app/(app)/app/events/ops-0918/ops-operations-shared.tsx",
+    "app/(app)/app/events/ops-0918/ops-people.tsx",
+    "app/(app)/app/events/ops-0918/ops-checkin.tsx",
   ];
   const client = screens.map(source).join("\n");
   const model = source("app/(app)/app/events/ops-0918/ops-model.ts");
@@ -65,7 +69,7 @@ test("organizer workspace exposes the complete strict generation and audit workf
     "generation failures must remain visible after the latest persisted state is reloaded",
   );
   assert.match(client, /\/export/);
-  assert.match(client, /REAL REGISTRATION DIRECTORY/);
+  assert.match(client, /workspace\.participants\.length === 0 \? <div className="op-empty op-prow-empty">尚无报名。/, "real registration directory (people screen)");
   assert.match(client, /CONSENT AUDIT/);
   assert.match(hook, /\/check-ins/);
   assert.match(client, /标记到场/);

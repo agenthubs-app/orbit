@@ -386,7 +386,106 @@ export const OPS_STYLES = `
 [data-orbit-real-page="ops-0918"] .btn.op-btn-primary-lg, [data-orbit-real-page="ops-0918"] .btn.op-btn-ghost-lg, [data-orbit-real-page="ops-0918"] .btn.op-btn-edit, [data-orbit-real-page="ops-0918"] .btn.op-link-btn, [data-orbit-real-page="ops-0918"] .btn.op-round, [data-orbit-real-page="ops-0918"] .btn.op-warn-link, [data-orbit-real-page="ops-0918"] .btn.op-btn-publish, [data-orbit-real-page="ops-0918"] .btn.op-btn-sm, [data-orbit-real-page="ops-0918"] .btn.op-head-more-summary { height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
 [data-orbit-real-page="ops-0918"] .btn.op-btn-primary-lg:active, [data-orbit-real-page="ops-0918"] .btn.op-btn-ghost-lg:active, [data-orbit-real-page="ops-0918"] .btn.op-btn-edit:active, [data-orbit-real-page="ops-0918"] .btn.op-link-btn:active, [data-orbit-real-page="ops-0918"] .btn.op-round:active, [data-orbit-real-page="ops-0918"] .btn.op-warn-link:active, [data-orbit-real-page="ops-0918"] .btn.op-btn-publish:active, [data-orbit-real-page="ops-0918"] .btn.op-btn-sm:active, [data-orbit-real-page="ops-0918"] .btn.op-head-more-summary:active { transform: none; }
 [data-orbit-real-page="ops-0918"] .btn.op-btn-primary-lg:disabled, [data-orbit-real-page="ops-0918"] .btn.op-btn-ghost-lg:disabled, [data-orbit-real-page="ops-0918"] .btn.op-btn-publish:disabled, [data-orbit-real-page="ops-0918"] .btn.op-link-btn:disabled, [data-orbit-real-page="ops-0918"] .btn.op-btn-sm:disabled { cursor: default; opacity: 0.6; }
-/* ── 既有运营能力附加区（设计无：生成列表 / 配置折叠 / 签到链接 / 参会者到场 / 名片审计；沿用旧运营台 ops-* 口径改 op-* 前缀）── */
+/* ── 参会者（设计稿 211–251 行）── */
+[data-orbit-real-page="ops-0918"] .op-pbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
+[data-orbit-real-page="ops-0918"] .op-pfilters { display: flex; flex-wrap: wrap; gap: 10px; }
+[data-orbit-real-page="ops-0918"] .btn.op-pfilter { padding: 11px 20px; border: 1px solid transparent; border-radius: 999px; font-size: 13px; cursor: pointer; }
+[data-orbit-real-page="ops-0918"] .op-psearch { display: flex; align-items: center; gap: 10px; padding: 11px 16px; border: 1px solid #DDDEFA; border-radius: 10px; background: #FFFFFF; min-width: 300px; }
+[data-orbit-real-page="ops-0918"] .op-pgrid { display: grid; grid-template-columns: minmax(0, 2.4fr) minmax(240px, 1fr); gap: 20px; align-items: start; }
+[data-orbit-real-page="ops-0918"] .op-plist { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 8px 24px; }
+[data-orbit-real-page="ops-0918"] .op-prow { display: grid; grid-template-columns: 56px minmax(0, 1fr) 110px 110px 120px; gap: 18px; align-items: center; padding: 18px 0; border-bottom: 1px solid #F1F1FA; }
+[data-orbit-real-page="ops-0918"] .op-pava { width: 56px; height: 56px; border-radius: 50%; color: #2E3270; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; }
+[data-orbit-real-page="ops-0918"] .op-pname { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+[data-orbit-real-page="ops-0918"] .op-pname-main { font-size: 16px; font-weight: 500; }
+[data-orbit-real-page="ops-0918"] .op-porg { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="ops-0918"] .op-pcol { display: flex; flex-direction: column; gap: 7px; }
+[data-orbit-real-page="ops-0918"] .op-plabel { font-size: 12px; color: #9FA3C4; }
+[data-orbit-real-page="ops-0918"] .op-pchip { align-self: flex-start; padding: 5px 12px; border-radius: 999px; font-size: 12px; }
+[data-orbit-real-page="ops-0918"] .btn.op-pdetail { padding: 11px 16px; border: 1px solid #DDDEFA; border-radius: 10px; background: #FFFFFF; color: #3B3F7A; font-size: 13px; cursor: pointer; font-weight: 400; }
+[data-orbit-real-page="ops-0918"] .btn.op-pdetail:hover { border-color: #B9BCEB; color: #2E3270; }
+[data-orbit-real-page="ops-0918"] .op-pside { display: flex; flex-direction: column; gap: 16px; }
+[data-orbit-real-page="ops-0918"] .op-pstats { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 24px; display: flex; flex-direction: column; gap: 18px; }
+[data-orbit-real-page="ops-0918"] .op-pstat { display: flex; flex-direction: column; gap: 6px; }
+[data-orbit-real-page="ops-0918"] .op-pstat-next { padding-top: 18px; border-top: 1px solid #F1F1FA; }
+[data-orbit-real-page="ops-0918"] .op-pstat-n { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 30px; }
+[data-orbit-real-page="ops-0918"] .op-ptip { border: 1px solid #E8E9F6; border-radius: 18px; background: #F7F7FD; padding: 20px; display: flex; gap: 12px; align-items: flex-start; }
+[data-orbit-real-page="ops-0918"] .op-ptip-ico { color: #4B4FC7; }
+[data-orbit-real-page="ops-0918"] .op-ptip-copy { display: flex; flex-direction: column; gap: 6px; }
+[data-orbit-real-page="ops-0918"] .op-ptip-title { font-size: 14px; font-weight: 500; }
+[data-orbit-real-page="ops-0918"] .op-ptip-sub { font-size: 13px; color: #3B3F7A; }
+/* 表格空行 / 行下详情（设计无：沿用行内边距） */
+[data-orbit-real-page="ops-0918"] .op-prow-empty { padding: 18px 0; }
+[data-orbit-real-page="ops-0918"] .op-prow-detail { padding: 0 0 18px; border-bottom: 1px solid #F1F1FA; }
+/* ── 准入队列 + 申请详情（设计无：旧 event-admission-review-workspace 语义，沿用附加区 op-* 口径）── */
+[data-orbit-real-page="ops-0918"] .op-alert-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+[data-orbit-real-page="ops-0918"] .op-queue-grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 390px), 1fr)); align-items: start; }
+[data-orbit-real-page="ops-0918"] .op-queue { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+[data-orbit-real-page="ops-0918"] .op-queue-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+[data-orbit-real-page="ops-0918"] .btn.op-applicant { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 14px; border: 1px solid #E8E9F6; border-radius: 14px; background: #FFFFFF; text-align: left; cursor: pointer; white-space: normal; }
+[data-orbit-real-page="ops-0918"] .btn.op-applicant:hover { border-color: #B9BCEB; }
+[data-orbit-real-page="ops-0918"] .btn.op-applicant.op-applicant-on { border-color: #4B4FC7; background: #F7F7FD; }
+[data-orbit-real-page="ops-0918"] .btn.op-applicant:disabled { cursor: default; opacity: 0.6; }
+[data-orbit-real-page="ops-0918"] .op-applicant-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+[data-orbit-real-page="ops-0918"] .op-applicant-name { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+[data-orbit-real-page="ops-0918"] .op-applicant-meta { font-size: 12px; color: #9FA3C4; }
+[data-orbit-real-page="ops-0918"] .op-detail { border: 1px solid #E8E9F6; border-radius: 16px; background: #F7F7FD; padding: 20px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+[data-orbit-real-page="ops-0918"] .op-detail-head { display: flex; flex-direction: column; gap: 6px; }
+[data-orbit-real-page="ops-0918"] .op-detail-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+[data-orbit-real-page="ops-0918"] .op-detail-sec { display: flex; flex-direction: column; gap: 10px; }
+[data-orbit-real-page="ops-0918"] .op-detail-title { font-size: 15px; font-weight: 700; }
+[data-orbit-real-page="ops-0918"] .op-detail-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
+[data-orbit-real-page="ops-0918"] .op-detail-field { border: 1px solid #E8E9F6; border-radius: 12px; background: #FFFFFF; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+[data-orbit-real-page="ops-0918"] .op-detail-field-label { font-size: 13px; font-weight: 500; }
+[data-orbit-real-page="ops-0918"] .op-detail-field-answer { margin: 0; font-size: 13px; color: #3B3F7A; white-space: pre-wrap; }
+[data-orbit-real-page="ops-0918"] .op-detail-actions { border-top: 1px solid #E8E9F6; display: flex; flex-wrap: wrap; gap: 10px; padding-top: 16px; }
+/* ── 签到（设计稿 253–298 行）── */
+[data-orbit-real-page="ops-0918"] .op-cstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 16px; }
+[data-orbit-real-page="ops-0918"] .op-cstat { display: flex; align-items: center; gap: 16px; padding: 20px; border: 1px solid #E8E9F6; border-radius: 16px; background: #FFFFFF; }
+[data-orbit-real-page="ops-0918"] .op-cstat-ico { width: 44px; height: 44px; flex: none; border-radius: 50%; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; }
+[data-orbit-real-page="ops-0918"] .op-cstat-ico-green { background: #E6F1EC; color: #2F6B4F; }
+[data-orbit-real-page="ops-0918"] .op-cstat-n { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 28px; }
+[data-orbit-real-page="ops-0918"] .op-cnote { display: flex; align-items: flex-start; gap: 14px; padding: 20px; border: 1px solid #E8E9F6; border-radius: 16px; background: #F7F7FD; }
+[data-orbit-real-page="ops-0918"] .op-cnote-ico { width: 38px; height: 38px; flex: none; border-radius: 50%; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; }
+[data-orbit-real-page="ops-0918"] .op-cnote-copy { display: flex; flex-direction: column; gap: 5px; }
+[data-orbit-real-page="ops-0918"] .op-cnote-title { font-size: 13px; font-weight: 500; }
+[data-orbit-real-page="ops-0918"] .op-cnote-sub { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="ops-0918"] .op-cgrid { display: grid; grid-template-columns: minmax(0, 2.4fr) minmax(260px, 1fr); gap: 20px; align-items: start; }
+[data-orbit-real-page="ops-0918"] .op-ctable { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+[data-orbit-real-page="ops-0918"] .op-cbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; }
+[data-orbit-real-page="ops-0918"] .op-csearch { display: flex; align-items: center; gap: 10px; padding: 11px 16px; border: 1px solid #DDDEFA; border-radius: 10px; background: #FFFFFF; min-width: 260px; }
+[data-orbit-real-page="ops-0918"] .op-cfilters { display: flex; gap: 6px; padding: 5px; border-radius: 10px; background: #F7F7FD; }
+[data-orbit-real-page="ops-0918"] .btn.op-cfilter { padding: 9px 18px; border: 0; border-radius: 8px; font-size: 13px; cursor: pointer; }
+/* 设计五列 minmax(0,1.3fr) minmax(0,1.2fr) minmax(0,1fr) 110px 120px：「公司 / 职位」「票种 / 分组」无来源 → 三列 */
+[data-orbit-real-page="ops-0918"] .op-chead { display: grid; grid-template-columns: minmax(0, 1fr) 110px 120px; gap: 14px; padding: 0 4px 12px; border-bottom: 1px solid #E8E9F6; font-size: 12px; color: #9FA3C4; }
+[data-orbit-real-page="ops-0918"] .op-chead-center { text-align: center; }
+[data-orbit-real-page="ops-0918"] .op-crow { display: grid; grid-template-columns: minmax(0, 1fr) 110px 120px; gap: 14px; align-items: center; padding: 14px 4px; border-bottom: 1px solid #F1F1FA; }
+[data-orbit-real-page="ops-0918"] .op-cperson { display: flex; align-items: center; gap: 12px; min-width: 0; }
+[data-orbit-real-page="ops-0918"] .op-cava { width: 34px; height: 34px; flex: none; border-radius: 50%; color: #2E3270; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+[data-orbit-real-page="ops-0918"] .op-cname { font-size: 14px; font-weight: 500; }
+[data-orbit-real-page="ops-0918"] .op-cchip { align-self: center; justify-self: start; padding: 5px 12px; border-radius: 999px; font-size: 12px; }
+[data-orbit-real-page="ops-0918"] .btn.op-cact { padding: 11px 12px; border: 1px solid transparent; border-radius: 9px; font-size: 13px; font-weight: 500; }
+[data-orbit-real-page="ops-0918"] .btn.op-cact:hover { opacity: 0.88; }
+[data-orbit-real-page="ops-0918"] .op-clatest { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 24px; display: flex; flex-direction: column; gap: 18px; }
+[data-orbit-real-page="ops-0918"] .op-clatest-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+[data-orbit-real-page="ops-0918"] .op-clatest-title { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 19px; }
+[data-orbit-real-page="ops-0918"] .btn.op-clatest-all { border: 0; background: transparent; color: #4B4FC7; font-size: 13px; cursor: pointer; padding: 0; font-weight: 400; }
+[data-orbit-real-page="ops-0918"] .op-litem { display: flex; align-items: center; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid #F1F1FA; }
+[data-orbit-real-page="ops-0918"] .op-lava { width: 38px; height: 38px; flex: none; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+[data-orbit-real-page="ops-0918"] .op-lcopy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+[data-orbit-real-page="ops-0918"] .op-lname { font-size: 14px; font-weight: 500; }
+[data-orbit-real-page="ops-0918"] .op-ltime { font-size: 13px; color: #6B6F99; }
+/* 中和 .btn 基类（orbit-reference-styles.tsx:594–611）：参会者 / 签到屏按钮类 */
+[data-orbit-real-page="ops-0918"] .btn.op-pfilter, [data-orbit-real-page="ops-0918"] .btn.op-pdetail, [data-orbit-real-page="ops-0918"] .btn.op-applicant, [data-orbit-real-page="ops-0918"] .btn.op-cfilter, [data-orbit-real-page="ops-0918"] .btn.op-cact, [data-orbit-real-page="ops-0918"] .btn.op-clatest-all { height: auto; gap: 0; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="ops-0918"] .btn.op-pfilter, [data-orbit-real-page="ops-0918"] .btn.op-pdetail, [data-orbit-real-page="ops-0918"] .btn.op-cfilter, [data-orbit-real-page="ops-0918"] .btn.op-cact, [data-orbit-real-page="ops-0918"] .btn.op-clatest-all { display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; text-align: center; }
+[data-orbit-real-page="ops-0918"] .btn.op-pfilter:active, [data-orbit-real-page="ops-0918"] .btn.op-pdetail:active, [data-orbit-real-page="ops-0918"] .btn.op-applicant:active, [data-orbit-real-page="ops-0918"] .btn.op-cfilter:active, [data-orbit-real-page="ops-0918"] .btn.op-cact:active, [data-orbit-real-page="ops-0918"] .btn.op-clatest-all:active { transform: none; }
+[data-orbit-real-page="ops-0918"] .btn.op-pdetail:disabled, [data-orbit-real-page="ops-0918"] .btn.op-cact:disabled { opacity: 1; }
+[data-orbit-real-page="ops-0918"] .btn.op-pdetail:disabled { cursor: default; color: #9FA3C4; border-color: #F1F1FA; }
+[data-orbit-real-page="ops-0918"] .btn.op-cact:disabled:hover { opacity: 1; }
+@media (max-width: 860px) {
+  [data-orbit-real-page="ops-0918"] .op-pgrid, [data-orbit-real-page="ops-0918"] .op-cgrid { grid-template-columns: 1fr; }
+  [data-orbit-real-page="ops-0918"] .op-prow { grid-template-columns: 56px minmax(0, 1fr); row-gap: 10px; }
+}
+/* ── 既有运营能力附加区（设计无：生成列表 / 配置折叠 / 签到链接 / 名片审计；沿用旧运营台 ops-* 口径改 op-* 前缀。op-dir-id 供参会者屏申请卡 / 访谈元信息复用）── */
 [data-orbit-real-page="ops-0918"] .op-alert { border: 1px solid #FBECEA; background: #FBECEA; color: #B5473A; border-radius: 14px; padding: 14px 16px; font-size: 14px; }
 [data-orbit-real-page="ops-0918"] .op-notice { border: 1px solid #DDDEFA; background: #ECEEFB; color: #2E3270; border-radius: 14px; padding: 14px 16px; font-size: 14px; }
 [data-orbit-real-page="ops-0918"] .op-extra { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
@@ -435,22 +534,10 @@ export const OPS_STYLES = `
 [data-orbit-real-page="ops-0918"] .op-gate-at { font-size: 11px; color: #9FA3C4; margin-top: 3px; }
 [data-orbit-real-page="ops-0918"] .op-checkin-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
 [data-orbit-real-page="ops-0918"] .op-code { background: #F7F7FD; border-radius: 8px; flex: 1 1 320px; overflow-wrap: anywhere; padding: 10px 12px; font-size: 12px; }
-[data-orbit-real-page="ops-0918"] .op-dir { display: flex; flex-direction: column; }
-[data-orbit-real-page="ops-0918"] .op-dir-head, [data-orbit-real-page="ops-0918"] .op-dir-row { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1.2fr) minmax(0, .8fr) minmax(0, .7fr) minmax(0, .7fr) minmax(0, 1fr); gap: 14px; align-items: center; }
-[data-orbit-real-page="ops-0918"] .op-dir-head { padding: 0 4px 12px; border-bottom: 1px solid #E8E9F6; font-size: 12px; color: #9FA3C4; }
-[data-orbit-real-page="ops-0918"] .op-dir-row { padding: 14px 4px; border-bottom: 1px solid #F1F1FA; }
-[data-orbit-real-page="ops-0918"] .op-dir-person { display: flex; align-items: center; gap: 12px; min-width: 0; }
-[data-orbit-real-page="ops-0918"] .op-ava { width: 36px; height: 36px; flex: none; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
-[data-orbit-real-page="ops-0918"] .op-dir-name { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-[data-orbit-real-page="ops-0918"] .op-dir-name strong { font-size: 14px; font-weight: 500; }
 [data-orbit-real-page="ops-0918"] .op-dir-id { font-size: 10px; color: #9FA3C4; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow: hidden; text-overflow: ellipsis; }
-[data-orbit-real-page="ops-0918"] .op-dir-cell { font-size: 13px; color: #3B3F7A; min-width: 0; }
-[data-orbit-real-page="ops-0918"] .op-dir-checkin { display: inline-flex; flex-direction: column; gap: 4px; }
 [data-orbit-real-page="ops-0918"] .op-audit-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid #F1F1FA; padding: 12px 0; font-size: 13px; }
 @media (max-width: 860px) {
   [data-orbit-real-page="ops-0918"] .op-ops-grid { grid-template-columns: 1fr; }
   [data-orbit-real-page="ops-0918"] .op-steps { grid-template-columns: repeat(2, 1fr); row-gap: 18px; }
-  [data-orbit-real-page="ops-0918"] .op-dir-head { display: none; }
-  [data-orbit-real-page="ops-0918"] .op-dir-row { grid-template-columns: 1fr 1fr; row-gap: 10px; }
 }
 `;

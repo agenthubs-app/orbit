@@ -2,8 +2,25 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  CHECKIN_BUTTON_TONE,
+  CHECKIN_FILTER_TONE,
+  CHECKIN_FILTERS,
+  CHECKIN_STATUS_CHIP,
+  checkInClock,
+  checkinCounts,
   consoleTitle,
+  filterPeople,
+  filterRoster,
   insufficientProfileCount,
+  latestCheckIns,
+  matchedParticipantIds,
+  PEOPLE_FILTER_TONE,
+  PEOPLE_FILTERS,
+  peopleAvatarBg,
+  peopleDocChip,
+  peopleMatchChip,
+  peopleOrg,
+  peopleStats,
   matchEligibleCount,
   matchResultLabel,
   opsConsoleTab,
@@ -273,4 +290,108 @@ test("roundTables reads only the published grouping; counts follow profileComple
   assert.equal(opsConsoleTab(["match", "ops"]), "match");
   assert.equal(opsConsoleTab("people"), "ops");
   assert.equal(opsConsoleTab(undefined), "ops");
+});
+
+// ═══ 运营台 任务 4：参会者 / 签到 纯函数 ═══
+
+const person = (participantId: string, overrides: Record<string, unknown> = {}) => ({
+  actorId: `user:${participantId}`,
+  company: "Orbit",
+  displayName: participantId.toUpperCase(),
+  participantId,
+  profileCompleteness: "complete",
+  role: "Founder",
+  ...overrides,
+});
+
+test("matchedParticipantIds reads the published directory first, else the newest completed snapshot", () => {
+  const published = { directory: [person("p:a"), person("p:b")] } as unknown as NonNullable<Parameters<typeof matchedParticipantIds>[0]["publishedResult"]>;
+  const snapshotOf = (status: string, ids: string[]) => ({ generation: { snapshot: { participants: ids.map((participantId) => ({ participantId })) }, status } });
+  const fromDirectory = matchedParticipantIds({ generations: [snapshotOf("completed", ["p:z"])] as never, publishedResult: published });
+  assert.deepEqual([...fromDirectory].sort(), ["p:a", "p:b", "user:p:a", "user:p:b"], "directory contributes participantId + actorId");
+  const fromSnapshot = matchedParticipantIds({ generations: [snapshotOf("failed", ["p:x"]), snapshotOf("completed", ["p:c"])] as never, publishedResult: null });
+  assert.deepEqual([...fromSnapshot], ["p:c"], "newest completed generation wins over a newer failed one");
+  assert.equal(matchedParticipantIds({ generations: [snapshotOf("running", ["p:c"])] as never, publishedResult: null }).size, 0);
+  assert.equal(matchedParticipantIds(null).size, 0);
+});
+
+test("people rows: org / chips / avatar alternate exactly like the design renderVals", () => {
+  assert.equal(peopleOrg({ company: "Google", role: "产品经理" }), "Google / 产品经理");
+  assert.equal(peopleOrg({ company: "Google", role: null }), "Google");
+  assert.equal(peopleOrg({ company: null, role: "产品经理" }), "产品经理");
+  assert.equal(peopleOrg({ company: null, role: null }), "");
+  assert.deepEqual(peopleDocChip({ profileCompleteness: "complete" }), { bg: "#E6F1EC", color: "#2F6B4F", label: "完整" });
+  assert.deepEqual(peopleDocChip({ profileCompleteness: "partial" }), { bg: "#E6F1EC", color: "#2F6B4F", label: "完整" });
+  assert.deepEqual(peopleDocChip({ profileCompleteness: "minimal" }), { bg: "#FBF1E4", color: "#9A6B22", label: "待补充" });
+  assert.deepEqual(peopleMatchChip(true), { bg: "#ECEEFB", color: "#4B4FC7", label: "已参与匹配" });
+  assert.deepEqual(peopleMatchChip(false), { bg: "#F1F1FA", color: "#6B6F99", label: "待补充" });
+  assert.equal(peopleAvatarBg(0), "#DDDEFA");
+  assert.equal(peopleAvatarBg(1), "#ECEEFB");
+  assert.equal(peopleAvatarBg(2), "#DDDEFA");
+  assert.deepEqual(PEOPLE_FILTERS.map((item) => item.label), ["全部", "资料完整", "资料待补充", "已参与匹配"]);
+  assert.deepEqual(PEOPLE_FILTER_TONE.on, { bg: "#2E3270", border: "#2E3270", color: "#FFFFFF", weight: 500 });
+  assert.deepEqual(PEOPLE_FILTER_TONE.off, { bg: "#FFFFFF", border: "#DDDEFA", color: "#3B3F7A", weight: 400 });
+});
+
+test("filterPeople applies the four filters and the name + company + role search; peopleStats counts three numbers", () => {
+  const people = [
+    person("p:a", { company: "Google", role: "产品经理" }),
+    person("p:b", { company: "SoftBank", profileCompleteness: "partial", role: "投资经理" }),
+    person("p:c", { company: null, profileCompleteness: "minimal", role: null }),
+  ];
+  const matched = new Set(["p:a", "user:p:c"]);
+  const ids = (rows: readonly { participantId: string }[]) => rows.map((row) => row.participantId);
+  assert.deepEqual(ids(filterPeople(people, "all", "", matched)), ["p:a", "p:b", "p:c"]);
+  assert.deepEqual(ids(filterPeople(people, "complete", "", matched)), ["p:a", "p:b"]);
+  assert.deepEqual(ids(filterPeople(people, "incomplete", "", matched)), ["p:c"]);
+  assert.deepEqual(ids(filterPeople(people, "matched", "", matched)), ["p:a", "p:c"], "matched by participantId or actorId");
+  assert.deepEqual(ids(filterPeople(people, "all", "  google ", matched)), ["p:a"], "company, lower-case, trimmed");
+  assert.deepEqual(ids(filterPeople(people, "all", "经理", matched)), ["p:a", "p:b"], "role");
+  assert.deepEqual(ids(filterPeople(people, "all", "P:B", matched)), ["p:b"], "display name");
+  assert.deepEqual(ids(filterPeople(people, "matched", "经理", matched)), ["p:a"], "filter and search compose");
+  assert.deepEqual(peopleStats(people), { complete: 2, incomplete: 1, total: 3 });
+  assert.deepEqual(peopleStats([]), { complete: 0, incomplete: 0, total: 0 });
+});
+
+test("insufficientProfileCount excludes minimal profiles that already sit in the matched set", () => {
+  const people = [person("p:a", { profileCompleteness: "minimal" }), person("p:b", { profileCompleteness: "minimal" }), person("p:c")];
+  assert.equal(insufficientProfileCount(people), 2, "no matched set → every minimal counts");
+  assert.equal(insufficientProfileCount(people, new Set(["p:a"])), 1, "by participantId");
+  assert.equal(insufficientProfileCount(people, new Set(["user:p:b"])), 1, "by actorId");
+  assert.equal(insufficientProfileCount(people, new Set(["p:a", "user:p:b"])), 0);
+  assert.equal(matchEligibleCount(people), 1, "可参与匹配 keeps its rule");
+});
+
+test("check-in rows: filters / search by name or participantId suffix / counts / latest five / HH:mm in JST", () => {
+  const row = (participantId: string, displayName: string, checkedInAt: string | null = null) => ({ checkedIn: checkedInAt !== null, checkedInAt, displayName, participantId });
+  const items = [
+    row("p:000001", "Alice", "2026-10-01T00:05:00.000Z"),
+    row("p:000002", "Bob"),
+    row("p:000003", "Cai", "2026-10-01T00:20:00.000Z"),
+    row("p:000004", "Dan", "2026-10-01T00:10:00.000Z"),
+    row("p:000005", "Eve", "2026-10-01T00:15:00.000Z"),
+    row("p:000006", "Fay", "2026-10-01T00:01:00.000Z"),
+    row("p:000007", "Gus", "2026-10-01T00:30:00.000Z"),
+  ];
+  const ids = (rows: readonly { participantId: string }[]) => rows.map((item) => item.participantId);
+  assert.deepEqual(CHECKIN_FILTERS.map((item) => item.label), ["未签到", "已签到", "全部"], "design order");
+  assert.deepEqual(ids(filterRoster(items, "pending", "")), ["p:000002"]);
+  assert.deepEqual(ids(filterRoster(items, "done", "")).length, 6);
+  assert.deepEqual(ids(filterRoster(items, "all", "")).length, 7);
+  assert.deepEqual(ids(filterRoster(items, "all", " ALICE ")), ["p:000001"], "name, lower-case, trimmed");
+  assert.deepEqual(ids(filterRoster(items, "all", "0003")), ["p:000003"], "participantId suffix");
+  assert.deepEqual(ids(filterRoster(items, "pending", "cai")), [], "filter and search compose");
+  assert.deepEqual(checkinCounts(items), { checked: 6, pending: 1 });
+  assert.deepEqual(ids(latestCheckIns(items)), ["p:000007", "p:000003", "p:000005", "p:000004", "p:000001"], "checkedInAt desc, five at most");
+  assert.deepEqual(latestCheckIns([row("p:1", "x")]), []);
+  assert.equal(checkInClock("2026-10-01T00:05:00.000Z"), "09:05", "JST fixed offset, UTC getters");
+  assert.equal(checkInClock("2026-10-01T15:07:00.000Z"), "00:07");
+  assert.equal(checkInClock("nope"), "—");
+  assert.equal(checkInClock(null), "—");
+  assert.deepEqual(CHECKIN_FILTER_TONE.on, { bg: "#DDDEFA", color: "#2E3270", weight: 500 });
+  assert.deepEqual(CHECKIN_FILTER_TONE.off, { bg: "transparent", color: "#6B6F99", weight: 400 });
+  assert.deepEqual(CHECKIN_STATUS_CHIP.pending, { bg: "#F1F1FA", color: "#6B6F99", label: "未签到" });
+  assert.deepEqual(CHECKIN_STATUS_CHIP.done, { bg: "#E6F1EC", color: "#2F6B4F", label: "已签到" });
+  assert.deepEqual(CHECKIN_BUTTON_TONE.arrive, { bg: "#0E1225", border: "#0E1225", color: "#FFFFFF", cursor: "pointer" });
+  assert.deepEqual(CHECKIN_BUTTON_TONE.done, { bg: "#F1F1FA", border: "#F1F1FA", color: "#9FA3C4", cursor: "default" });
 });

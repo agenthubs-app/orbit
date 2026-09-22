@@ -145,7 +145,9 @@ test("gap literals outside the scale in app/(app)/app do not increase", () => {
   // 个人中心 task 6 deleted orbit-real-profile.tsx → 227.
   // Events task 6 (2026-09-22) deleted /app/party* (orbit-real-party.tsx +
   // event-operations-controls.tsx) → 194.
-  const CEILING = 194;
+  // 运营台 task 4 (2026-09-22) deleted event-admission-review-workspace.tsx
+  // (gap 6/7/10/14/18 style objects) → 181 (measured).
+  const CEILING = 181;
 
   assert.ok(
     hits.length <= CEILING,

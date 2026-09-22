@@ -24,6 +24,11 @@ export function operationsPath(eventId: string): string {
   return `${eventPagePath(eventId)}/operations`;
 }
 
+/** 「更多 ⌄」→ 导出 CSV（旧运营台 `${baseUrl}/export`；参会者 / 签到页无 useEventOperations 会话时直接拼）。 */
+export function exportCsvHref(eventId: string): string {
+  return `/api/events/${encodeURIComponent(eventId)}/operations/admin/export`;
+}
+
 /** 审阅修订 7：`/operations/roles` 属删除清单，管理角色一律进 `?drawer=roles` 抽屉。 */
 export function rolesDrawerHref(eventId: string): string {
   return `${operationsPath(eventId)}?drawer=roles`;
@@ -457,8 +462,15 @@ export function matchEligibleCount(participants: readonly { profileCompleteness:
   return participants.filter((participant) => participant.profileCompleteness !== "minimal").length;
 }
 
-export function insufficientProfileCount(participants: readonly { profileCompleteness: string }[]): number {
-  return participants.filter((participant) => participant.profileCompleteness === "minimal").length;
+/**
+ * 资料不足 = minimal 且**尚未**进入匹配（任务 3 评审 Important：已出现在已发布目录 / 最新 completed 快照中的参会者
+ * 不再计入「暂未进入分组」）。`matched` 来自 `matchedParticipantIds`，按 participantId 或 actorId 命中。
+ */
+export function insufficientProfileCount(
+  participants: readonly { actorId?: string; participantId?: string; profileCompleteness: string }[],
+  matched: ReadonlySet<string> = EMPTY_IDS,
+): number {
+  return participants.filter((participant) => participant.profileCompleteness === "minimal" && !isMatched(participant, matched)).length;
 }
 
 /** 已发布 → 「已发布」；最新生成 completed 未发布 → 「待发布」；其余 → 「未发布」（与 hook 的 publishedMatchStatus 同义，供纯测试）。 */
@@ -466,4 +478,182 @@ export function matchResultLabel(state: Pick<PipelineState, "newestGeneration" |
   if (state.publishedAt !== null) return "已发布";
   if (state.newestGeneration?.status === "completed") return "待发布";
   return "未发布";
+}
+
+// ═══ 参会者屏（设计 211–251；renderVals 562–578 / 659–665；审阅修订 3）═══
+
+const EMPTY_IDS: ReadonlySet<string> = new Set();
+
+function isMatched(participant: { actorId?: string; participantId?: string }, matched: ReadonlySet<string>): boolean {
+  return (participant.participantId !== undefined && matched.has(participant.participantId))
+    || (participant.actorId !== undefined && matched.has(participant.actorId));
+}
+
+/**
+ * 「已参与匹配」集合：已发布 → `publishedResult.directory`（participantId + actorId）；否则最新一条 completed 生成的
+ * `snapshot.participants`（只有 participantId）；都没有 → 空。`generations` 按新→旧排列（与 `newestGeneration` 同源）。
+ */
+export function matchedParticipantIds(
+  workspace: {
+    generations: readonly { generation: Pick<EventOperationsGeneration, "snapshot" | "status"> }[];
+    publishedResult: Pick<EventOperationsPublishedResult, "directory"> | null;
+  } | null | undefined,
+): ReadonlySet<string> {
+  if (!workspace) return EMPTY_IDS;
+  if (workspace.publishedResult) {
+    return new Set(workspace.publishedResult.directory.flatMap((entry) => [entry.participantId, entry.actorId]));
+  }
+  const completed = workspace.generations.find(({ generation }) => generation.status === "completed");
+  return completed ? new Set(completed.generation.snapshot.participants.map((entry) => entry.participantId)) : EMPTY_IDS;
+}
+
+export type PeopleFilter = "all" | "complete" | "incomplete" | "matched";
+
+/** 设计 659 `peopleFilters` 顺序。 */
+export const PEOPLE_FILTERS: readonly { key: PeopleFilter; label: string }[] = [
+  { key: "all", label: "全部" },
+  { key: "complete", label: "资料完整" },
+  { key: "incomplete", label: "资料待补充" },
+  { key: "matched", label: "已参与匹配" },
+];
+
+/** 设计 662–664：选中 `#2E3270` 底白字 500 / 未选白底 `#3B3F7A` 边 `#DDDEFA` 400。 */
+export const PEOPLE_FILTER_TONE = {
+  on: { bg: "#2E3270", border: "#2E3270", color: "#FFFFFF", weight: 500 },
+  off: { bg: "#FFFFFF", border: "#DDDEFA", color: "#3B3F7A", weight: 400 },
+} as const;
+
+/** 设计 `p.org`「Google / 产品经理」= company / role；缺一取有的一项；都缺 → 空。 */
+export function peopleOrg(participant: { company: string | null; role: string | null }): string {
+  return [participant.company, participant.role].filter((part): part is string => Boolean(part && part.trim())).join(" / ");
+}
+
+export interface PeopleChip {
+  bg: string;
+  color: string;
+  label: string;
+}
+
+/** 设计 575：资料状态 完整 `#E6F1EC/#2F6B4F` / 待补充 `#FBF1E4/#9A6B22`；完整 = `profileCompleteness !== "minimal"`。 */
+export function peopleDocChip(participant: { profileCompleteness: string }): PeopleChip {
+  return participant.profileCompleteness !== "minimal"
+    ? { bg: "#E6F1EC", color: "#2F6B4F", label: "完整" }
+    : { bg: "#FBF1E4", color: "#9A6B22", label: "待补充" };
+}
+
+/** 设计 576：匹配状态 已参与匹配 `#ECEEFB/#4B4FC7` / 待补充 `#F1F1FA/#6B6F99`。 */
+export function peopleMatchChip(matched: boolean): PeopleChip {
+  return matched
+    ? { bg: "#ECEEFB", color: "#4B4FC7", label: "已参与匹配" }
+    : { bg: "#F1F1FA", color: "#6B6F99", label: "待补充" };
+}
+
+/** 设计 574 `avatarBg: i % 2 ? '#ECEEFB' : '#DDDEFA'`（签到表 594 同规则）。 */
+export function peopleAvatarBg(index: number): "#DDDEFA" | "#ECEEFB" {
+  return index % 2 ? "#ECEEFB" : "#DDDEFA";
+}
+
+export interface PeopleRowSource {
+  actorId: string;
+  company: string | null;
+  displayName: string;
+  participantId: string;
+  profileCompleteness: string;
+  role: string | null;
+}
+
+/** 设计 570–573：四筛选 + 搜索（姓名 + 公司 + 职位，小写包含）。 */
+export function filterPeople<T extends PeopleRowSource>(
+  participants: readonly T[],
+  filter: PeopleFilter,
+  query: string,
+  matched: ReadonlySet<string>,
+): T[] {
+  const needle = query.trim().toLowerCase();
+  return participants.filter((participant) => {
+    const complete = participant.profileCompleteness !== "minimal";
+    const inMatch = isMatched(participant, matched);
+    if (filter === "complete" && !complete) return false;
+    if (filter === "incomplete" && complete) return false;
+    if (filter === "matched" && !inMatch) return false;
+    if (!needle) return true;
+    return `${participant.displayName}${peopleOrg(participant)}`.toLowerCase().includes(needle);
+  });
+}
+
+/** 右栏三统计：总报名 / 资料完整 / 待补充。 */
+export function peopleStats(participants: readonly { profileCompleteness: string }[]): { complete: number; incomplete: number; total: number } {
+  const complete = matchEligibleCount(participants);
+  return { complete, incomplete: participants.length - complete, total: participants.length };
+}
+
+// ═══ 签到屏（设计 253–298；renderVals 580–612 / 666–670 / 696–701；审阅修订 11）═══
+
+export type CheckinFilter = "pending" | "done" | "all";
+
+/** 设计 666 `checkFilters` 顺序：未签到 / 已签到 / 全部。 */
+export const CHECKIN_FILTERS: readonly { key: CheckinFilter; label: string }[] = [
+  { key: "pending", label: "未签到" },
+  { key: "done", label: "已签到" },
+  { key: "all", label: "全部" },
+];
+
+/** 设计 669：选中 `#DDDEFA/#2E3270/500`，未选 `transparent/#6B6F99/400`。 */
+export const CHECKIN_FILTER_TONE = {
+  on: { bg: "#DDDEFA", color: "#2E3270", weight: 500 },
+  off: { bg: "transparent", color: "#6B6F99", weight: 400 },
+} as const;
+
+/** 设计 596–597：状态 chip（「签到失败」无持久态，不出现）。 */
+export const CHECKIN_STATUS_CHIP = {
+  pending: { bg: "#F1F1FA", color: "#6B6F99", label: "未签到" },
+  done: { bg: "#E6F1EC", color: "#2F6B4F", label: "已签到" },
+} as const;
+
+/** 设计 598–602：标记到场（黑底）/ 已签到（`#F1F1FA` 底 `#9FA3C4` 字，cursor default）。 */
+export const CHECKIN_BUTTON_TONE = {
+  arrive: { bg: "#0E1225", border: "#0E1225", color: "#FFFFFF", cursor: "pointer" },
+  done: { bg: "#F1F1FA", border: "#F1F1FA", color: "#9FA3C4", cursor: "default" },
+} as const;
+
+export interface RosterRowSource {
+  checkedIn: boolean;
+  checkedInAt: string | null;
+  displayName: string;
+  participantId: string;
+}
+
+/** 设计 586–589 的筛选 + 搜索；搜索 = 姓名小写包含 或 participantId 后缀（旧 limited-check-in-roster 规则）。 */
+export function filterRoster<T extends RosterRowSource>(items: readonly T[], filter: CheckinFilter, query: string): T[] {
+  const needle = query.trim().toLowerCase();
+  return items.filter((item) => {
+    if (filter === "pending" && item.checkedIn) return false;
+    if (filter === "done" && !item.checkedIn) return false;
+    if (!needle) return true;
+    return item.displayName.toLowerCase().includes(needle) || item.participantId.toLowerCase().endsWith(needle);
+  });
+}
+
+/** 四卡：未签到 = 总数 − 已签到。 */
+export function checkinCounts(items: readonly { checkedIn: boolean }[]): { checked: number; pending: number } {
+  const checked = items.filter((item) => item.checkedIn).length;
+  return { checked, pending: items.length - checked };
+}
+
+/** 「最新签到」= `checkedInAt` 倒序前 5。 */
+export function latestCheckIns<T extends RosterRowSource>(items: readonly T[], limit = 5): T[] {
+  return items
+    .filter((item) => item.checkedIn && item.checkedInAt !== null && Number.isFinite(Date.parse(item.checkedInAt)))
+    .sort((left, right) => Date.parse(right.checkedInAt as string) - Date.parse(left.checkedInAt as string))
+    .slice(0, limit);
+}
+
+const JST_OFFSET_MS = 9 * 60 * 60 * 1_000;
+
+/** 设计 `l.time`「14:28」：固定 JST 偏移 + UTC getter（与 events-0918/party-date-time.ts 同法，服务端 / 浏览器字节一致）。 */
+export function checkInClock(value: string | null | undefined): string {
+  const ms = parseTime(value ?? null);
+  if (ms === null) return "—";
+  const tokyo = new Date(ms + JST_OFFSET_MS);
+  return `${String(tokyo.getUTCHours()).padStart(2, "0")}:${String(tokyo.getUTCMinutes()).padStart(2, "0")}`;
 }

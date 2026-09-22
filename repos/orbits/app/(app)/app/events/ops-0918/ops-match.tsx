@@ -11,7 +11,7 @@
 import { useState } from "react";
 
 import type { EventOperationsPageEvent } from "../[id]/operations/event-operations-page-event";
-import { insufficientProfileCount, opsHref, ROUND_TOGGLE_TONE, roundTables, type MatchRound } from "./ops-model";
+import { insufficientProfileCount, matchedParticipantIds, opsHref, ROUND_TOGGLE_TONE, roundTables, type MatchRound } from "./ops-model";
 import {
   generationActionLabel,
   generationErrorLabel,
@@ -42,7 +42,8 @@ export function OpsMatch({ event, session }: { event: EventOperationsPageEvent; 
   } = session;
   const published = workspace?.publishedResult ?? null;
   const tables = roundTables(published, round);
-  const insufficient = workspace ? insufficientProfileCount(workspace.participants) : 0;
+  // 任务 4：已进入已发布目录 / 最新 completed 快照的 minimal 参会者不再算「暂未进入分组」
+  const insufficient = workspace ? insufficientProfileCount(workspace.participants, matchedParticipantIds(workspace)) : 0;
   const publishable = publishableGeneration(session);
   const matchedCount = published
     ? published.directory.length

@@ -111,7 +111,11 @@ test("non-.btn <button> count in app/(app)/app does not increase", () => {
   // Events task 6 (2026-09-22) deleted /app/party* (orbit-real-party.tsx +
   // event-operations-controls.tsx) and turned the two always-disabled detail
   // CTAs into aria-disabled spans → 118 (measured).
-  const CEILING = 118;
+  // 运营台 task 4 (2026-09-22) deleted limited-check-in-roster.tsx (ci-btn /
+  // ci-segment controls) and event-admission-review-workspace.tsx (card-flat
+  // applicant buttons); the ops-0918 people / check-in screens are all .btn
+  // → 106 (measured).
+  const CEILING = 106;
 
   assert.ok(
     nonBtn.length <= CEILING,

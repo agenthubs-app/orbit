@@ -200,7 +200,9 @@ async function mount(harness: Harness, tab: OpsConsoleTab = "ops"): Promise<Reac
   return renderer;
 }
 
-test("overview loads the organizer snapshot and renders metrics, participants and the pending-publish status", async () => {
+// 运营台 任务 4：概览不再列出参会者目录（Alice / Bob / 「N 人未到场」）——参会者行 → app-ops-people.test.tsx「people table」，
+// 未到场计数 → app-ops-checkin.test.tsx（data-ops-stat="pending"）。
+test("overview loads the organizer snapshot and renders metrics and the pending-publish status", async () => {
   const harness = install((call) => {
     assert.equal(call.url, BASE);
     return Response.json({ data: workspace({ generations: [generation("completed")] }), success: true });
@@ -210,10 +212,8 @@ test("overview loads the organizer snapshot and renders metrics, participants an
     renderer = await mount(harness);
     assert.deepEqual(harness.observed.map((call) => [call.method, call.url]), [["GET", BASE]]);
     const body = text(renderer);
-    assert.match(body, /已报名/u);
-    assert.match(body, /Alice/u);
-    assert.match(body, /Bob/u);
-    assert.match(body, /2 人未到场/u);
+    assert.match(body, /已报名2/u);
+    assert.doesNotMatch(body, /Alice|Bob/u, "participant rows live on the people screen since task 4");
     assert.match(body, /待发布/u);
     assert.match(body, /前往发布 →/u);
     assert.equal(renderer.root.findAll((node) => node.props.role === "alert").length, 0);
@@ -431,38 +431,5 @@ test("load failures (401/409 envelopes) surface the server message as an alert w
   }
 });
 
-test("mark arrived POSTs /check-ins with the participant id when the check-in window is open", async () => {
-  const now = Date.parse("2026-10-01T09:00:00.000Z");
-  const originalNow = Date.now;
-  Date.now = () => now;
-  let post: Observed | null = null;
-  const harness = install((call) => {
-    if (call.method === "POST") {
-      post = call;
-      return Response.json({
-        data: { actorId: "user:p:a", checkedInAt: "2026-10-01T09:01:00.000Z", eventId: EVENT_ID, evidenceId: "ev", participantId: "p:a" },
-        success: true,
-      });
-    }
-    return Response.json({ data: workspace(), success: true });
-  });
-  let renderer: ReactTestRenderer | undefined;
-  try {
-    renderer = await mount(harness);
-    const arrive = renderer.root.findAll((node) => node.type === "button" && node.children.join("") === "标记到场");
-    assert.equal(arrive.length, 2);
-    await act(async () => {
-      arrive[0].props.onClick();
-      await flush();
-    });
-    assert.ok(post);
-    const observedPost = post as Observed;
-    assert.equal(observedPost.url, `${BASE}/check-ins`);
-    assert.deepEqual(JSON.parse(observedPost.body ?? "{}"), { participantId: "p:a" });
-    assert.match(text(renderer), /已记录到场时间/u);
-  } finally {
-    Date.now = originalNow;
-    await unmount(renderer);
-    harness.restore();
-  }
-});
+// 运营台 任务 4：「标记到场」已迁出概览（概览不再渲染 REAL REGISTRATION DIRECTORY）；
+// POST /check-ins 请求体 / 提示 / 重读 由 tests/pages/app-ops-checkin.test.tsx「mark arrived POSTs the participant id…」承接。
