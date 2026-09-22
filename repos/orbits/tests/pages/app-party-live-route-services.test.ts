@@ -265,7 +265,7 @@ test("the live page requires an authenticated actor, returns to itself after log
   assert.match(pageSource, /if \(!session\?\.user\?\.id\)/);
   assert.ok(
     pageSource.includes(
-      "redirect(`/app/account/login?next=${encodeURIComponent(`/app/events/${id}/live`)}`)",
+      "redirect(`/app/account/login?next=${encodeURIComponent(liveReturnPath(id, query))}`)",
     ),
   );
   assert.doesNotMatch(pageSource, /partyLoginHref|party-login-return/);

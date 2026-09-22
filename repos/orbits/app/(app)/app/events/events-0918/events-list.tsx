@@ -25,16 +25,12 @@ import {
   ctaFor,
   eventChipKind,
   eventDetailHref,
-  fmtDay,
   formatEventDateRange,
   listStats,
   registeredCountLabel,
   timelineNodes,
   type EventListLanguage,
 } from "./events-model";
-
-// 日期格式化纯函数已迁到 ./events-model.ts（详情页共用）；这里保留旧导入路径。
-export { fmtDay, formatEventDateRange };
 import { EventsShell, type EventsListView } from "./events-shell";
 
 /**

@@ -5,6 +5,7 @@
  * 任务 4 时在 event-live.tsx 内；任务 5 抽出给参会者 / 交换弹窗复用。
  * `onRequest` 给出时，「申请交换」不直接 POST，而是交给调用方打开交换弹窗（设计 a.exchange → modal）。
  */
+import { useOrbitLanguage } from "../../orbit-language-context";
 import type { OrbitPartyPersonView } from "../../orbit-party-route-view-model";
 import { useEventContactRequest } from "./live-controls";
 
@@ -29,6 +30,7 @@ export function ContactAction({
   t: Translate;
 }) {
   const control = useEventContactRequest({ eventId, person, t });
+  const { preserveHref } = useOrbitLanguage();
   const growClass = grow === "1.4" ? "ev-lv-btn-grow-14" : "ev-lv-btn-grow";
   const primary = dark ? `btn ev-lv-btn-dark ${growClass}` : `btn ev-lv-btn-ghost ${growClass}`;
   const label = (copy: { en: string; zh: string }) => t(copy);
@@ -73,7 +75,7 @@ export function ContactAction({
       ) : null}
       {control.status === "accepted" ? (
         control.contactId ? (
-          <a className={primary} data-event-contact-action="open-contact" href={`/app/contacts/${encodeURIComponent(control.contactId)}`}>
+          <a className={primary} data-event-contact-action="open-contact" href={preserveHref(`/app/contacts/${encodeURIComponent(control.contactId)}`)}>
             ✓ {label({ en: "Exchanged · open contact", zh: "已交换 · 打开联系人" })}
           </a>
         ) : (

@@ -12,6 +12,7 @@
  */
 import { useState } from "react";
 
+import { useOrbitLanguage } from "../../orbit-language-context";
 import type { OrbitPartyMeView, OrbitPartyPersonView } from "../../orbit-party-route-view-model";
 import { EventModalFrame, EventModalHead } from "./event-modal-frame";
 import { useEventContactRequest } from "./live-controls";
@@ -45,6 +46,7 @@ function PersonBadge({ initial, name, role }: { initial: string; name: string; r
 
 export function EventExchangeModal({ eventId, me, onClose, onNote, onSchedule, open, person, t }: ExchangeModalProps) {
   const control = useEventContactRequest({ eventId, person, t });
+  const { preserveHref } = useOrbitLanguage();
   const [agree, setAgree] = useState(true);
   const [sent, setSent] = useState(false);
   const exchanged = control.status === "accepted";
@@ -80,14 +82,14 @@ export function EventExchangeModal({ eventId, me, onClose, onNote, onSchedule, o
           <PersonBadge initial={me.initial} name={me.name} role={me.role} />
         </div>
         {exchanged && control.contactId ? (
-          <a className="ev-mo-ok-contact" data-events-modal-action="open-contact" href={`/app/contacts/${encodeURIComponent(control.contactId)}`}>
+          <a className="ev-mo-ok-contact" data-events-modal-action="open-contact" href={preserveHref(`/app/contacts/${encodeURIComponent(control.contactId)}`)}>
             ◎ {t({ en: "Open the contact card", zh: "打开联系人名片" })} →
           </a>
         ) : null}
         <div className="ev-mo-ok-tip">
           ✦ {exchanged
             ? t({ en: "Tip: a sincere follow-up opens more doors — why not schedule a chat right now?", zh: "小提示：真诚的后续沟通能带来更多机会，不妨现在就约个时间继续交流吧！" })
-            : t({ en: "Tip: you can withdraw the request from the attendee card while it is pending.", zh: "小提示：在对方确认前，你可以在参会者卡片上撤回申请。" })}
+            : t({ en: "Tip: while it is pending you can withdraw the request with 「撤回申请」 on the attendee detail or the attendee list card.", zh: "小提示：在对方确认前，你可以在参会者详情或参会者卡片上点「撤回申请」撤回。" })}
         </div>
         <div className="ev-mo-ok-actions">
           {exchanged ? (

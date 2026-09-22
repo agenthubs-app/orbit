@@ -18,6 +18,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { createAppointmentActionIdempotencyRegistry } from "../../../../../features/appointments/client-idempotency";
 import type { AppointmentStatus } from "../../../../../features/appointments/contract";
+import { useOrbitLanguage } from "../../orbit-language-context";
 import type { OrbitPartyMeView, OrbitPartyPersonView } from "../../orbit-party-route-view-model";
 import {
   SCHEDULE_DURATION_MINUTES,
@@ -113,6 +114,7 @@ export function appointmentCandidateTimes(appointment: Pick<ExistingAppointment,
 
 export function EventScheduleModal({ eventId, eventVenue, language, me, now, onClose, onSent, person, t }: ScheduleModalProps) {
   const control = useEventContactRequest({ eventId, person, t });
+  const { preserveHref } = useOrbitLanguage();
   const days = useMemo(() => scheduleDays(now, language), [language, now]);
   const [dayIndex, setDayIndex] = useState(0);
   const [selected, setSelected] = useState<string[]>([]);
@@ -229,7 +231,7 @@ export function EventScheduleModal({ eventId, eventVenue, language, me, now, onC
 
   const reviewContactId = existing?.contactId ?? control.contactId;
   const activeAppointment = existing && existing.status !== "draft" ? existing : null;
-  const reviewHref = activeAppointment && reviewContactId ? appointmentReviewHref(reviewContactId, activeAppointment.appointmentId, eventId) : null;
+  const reviewHref = activeAppointment && reviewContactId ? preserveHref(appointmentReviewHref(reviewContactId, activeAppointment.appointmentId, eventId)) : null;
   const reviewLabel = t({ en: "Review the appointment", zh: "查看约谈" });
 
   if (activeAppointment || conflict) {

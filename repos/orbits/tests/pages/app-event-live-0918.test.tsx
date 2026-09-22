@@ -390,7 +390,8 @@ test("live page wires auth redirect, canonical id resolution, the party loader, 
   const source = readFileSync(join(projectRoot, "app/(app)/app/events/[id]/live/page.tsx"), "utf8");
   assert.match(source, /auth\(\)/);
   assert.match(source, /if \(!session\?\.user\?\.id\)/);
-  assert.ok(source.includes("redirect(`/app/account/login?next=${encodeURIComponent(`/app/events/${id}/live`)}`)"));
+  // 终审 M3：登录 next 带回 ?tab= / ?language=（liveReturnPath）。
+  assert.ok(source.includes("redirect(`/app/account/login?next=${encodeURIComponent(liveReturnPath(id, query))}`)"));
   assert.match(source, /loadAppPartyRouteViewModel\(\{/);
   assert.match(source, /id: session\.user\.id/);
   assert.match(source, /eventCore\.getEvent\(routeId\)/);
@@ -451,4 +452,19 @@ test("live modals: avatar / member / 查看资料 open the attendee modal, excha
   } finally {
     if (renderer) await act(async () => { renderer.unmount(); });
   }
+});
+
+test("liveReturnPath keeps tab / language / lang in the login next; live topbar + modal contact links go through preserveHref", async () => {
+  const { liveReturnPath } = await import("../../app/(app)/app/events/events-0918/events-model");
+  assert.equal(liveReturnPath("SMALL-STAGING", undefined), "/app/events/SMALL-STAGING/live");
+  assert.equal(liveReturnPath("SMALL-STAGING", { tab: "graph", language: "en" }), "/app/events/SMALL-STAGING/live?tab=graph&language=en");
+  assert.equal(liveReturnPath("SMALL-STAGING", { tab: ["all"], lang: "ja", other: "x" }), "/app/events/SMALL-STAGING/live?tab=all&lang=ja");
+  for (const file of ["event-live.tsx", "event-attendee-modal.tsx", "event-contact-action.tsx", "event-exchange-modal.tsx", "event-schedule-modal.tsx"]) {
+    const src = readFileSync(join(projectRoot, `app/(app)/app/events/events-0918/${file}`), "utf8");
+    assert.match(src, /preserveHref\(/, `${file} uses preserveHref`);
+    assert.doesNotMatch(src, /href=\{`\/app\/contacts\//, `${file} has no bare /app/contacts href`);
+  }
+  const live = readFileSync(join(projectRoot, "app/(app)/app/events/events-0918/event-live.tsx"), "utf8");
+  assert.match(live, /href=\{preserveHref\("\/app\/events"\)\}/);
+  assert.match(live, /href=\{preserveHref\(detailHref\)\}/);
 });

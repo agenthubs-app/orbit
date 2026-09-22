@@ -1,15 +1,41 @@
 "use client";
 
 /**
- * Events（Orbit_0918）弹窗公共壳：遮罩 / 面板 / 标题行 / × / Esc / 点遮罩关闭 + toast 状态。
+ * Events（Orbit_0918）弹窗公共壳：遮罩 / 面板 / 标题行 / × / Esc / 点遮罩关闭 / Tab 焦点循环 + toast 状态。
  * 遮罩与面板声明来自设计 676–677（参会者）、705–706（交换）、722–723（成功）、745–746（约谈）、764–765（记录交流）：
  * 同一套 fixed inset 0 / rgba(14,18,37,.35) / blur(6px) / padding 48px 24px；面板 r22 / 阴影 / padding 30px 34px；
  * 只有 max-width（800/660/680/700）、gap（22/20/18）、z-index（100/110/120）与成功态的居中不同 → 修饰类。
  * 同一时刻只挂一个弹窗（调用方持 `modal` 单状态）。
  */
-import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent, type ReactNode } from "react";
 
 import { shouldCloseOnKeydown } from "./event-register-modal";
+
+const FOCUSABLE_SELECTOR = "a[href], button:not([disabled]), input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])";
+
+/** 面板内可聚焦元素（与 DOM 解耦的最小查询面，便于测试用假对象）。 */
+export interface FocusLoopRoot {
+  querySelectorAll: (selector: string) => ArrayLike<{ focus: () => void }>;
+}
+
+/**
+ * Tab 焦点循环（终审 M5）：在最后一个可聚焦元素上 Tab → 回到第一个；在第一个上 Shift+Tab → 到最后一个。
+ * 返回 true 表示已处理（调用方 preventDefault）。
+ */
+export function loopFocus(root: FocusLoopRoot | null | undefined, active: unknown, shiftKey: boolean): boolean {
+  if (!root) return false;
+  const list = root.querySelectorAll(FOCUSABLE_SELECTOR);
+  if (!list.length) return false;
+  const first = list[0];
+  const last = list[list.length - 1];
+  if (!shiftKey && active === last) { first.focus(); return true; }
+  if (shiftKey && active === first) { last.focus(); return true; }
+  // 焦点已在面板外（或尚未进入）：把它拉回面板
+  let inside = false;
+  for (let index = 0; index < list.length; index += 1) if (list[index] === active) { inside = true; break; }
+  if (!inside) { (shiftKey ? last : first).focus(); return true; }
+  return false;
+}
 
 export type EventModalKind = "attendee" | "exchange" | "schedule" | "note";
 export type EventModalSize = "800" | "660" | "680" | "700";
@@ -59,9 +85,15 @@ export function EventModalFrame({
     if (event.target === event.currentTarget) onClose();
   };
 
+  const onPanelKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Tab") return;
+    const active = typeof document === "undefined" ? null : document.activeElement;
+    if (loopFocus(panelRef.current, active, event.shiftKey)) event.preventDefault();
+  };
+
   return (
     <div className={`ev-mo-overlay ev-mo-z${z}${center ? " ev-mo-overlay-center" : ""}`} data-events-modal={kind} onClick={onOverlayClick}>
-      <div aria-labelledby={labelledBy} aria-modal="true" className={`ev-mo-panel ev-mo-panel-${size} ${panelClass}`.trim()} ref={panelRef} role="dialog">
+      <div aria-labelledby={labelledBy} aria-modal="true" className={`ev-mo-panel ev-mo-panel-${size} ${panelClass}`.trim()} onKeyDown={onPanelKeyDown} ref={panelRef} role="dialog">
         {children}
       </div>
     </div>

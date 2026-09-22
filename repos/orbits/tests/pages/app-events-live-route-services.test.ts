@@ -7,7 +7,7 @@ import { loadAppEventsRouteViewModel } from "../../app/(app)/app/events/compose-
 import { resolveAppEventsRouteServices } from "../../app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-service-factory";
 import { eventChoiceToLandingEvent } from "../../app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter";
 import { EVENT_CONTENT } from "../../app/(app)/app/orbit-event-content";
-import { fmtDay } from "../../app/(app)/app/events/events-0918/events-list";
+import { fmtDay } from "../../app/(app)/app/events/events-0918/events-model";
 import { loadLocalEnv } from "../../scripts/load-local-env";
 
 loadLocalEnv();

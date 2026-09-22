@@ -7,8 +7,9 @@
  * 数据 = 真实 `OrbitPartyPersonView`（无 bio / city；summary 作简介，industry 放信息行）。
  * 省略（无来源 / 无 API）：● 在线、⇢ 公司官网、in LinkedIn、···、「● 对方愿意被联系 / 通常会在 1–2 天内回复」、➶ 打招呼。
  * 按钮：申请交换联系方式（按真实 contactRequestStatus 文案 / 禁用；none → 交换弹窗；accepted →「✓ 已交换」打开交换成功态，设计 a.exLabel 同一入口）、
- * 约谈（仅 accepted）、记录交流（仅有 contactId）。
+ * 撤回申请（自己发出且待确认）、约谈（仅 accepted）、记录交流（仅有 contactId）。
  */
+import { useOrbitLanguage } from "../../orbit-language-context";
 import type { OrbitPartyPersonView } from "../../orbit-party-route-view-model";
 import { bulletLines, contactStatusCopy, realText } from "./events-model";
 import { EventModalFrame, EventModalHead } from "./event-modal-frame";
@@ -44,6 +45,7 @@ function InfoCard({ icon, items, title }: { icon: string; items: readonly string
 
 export function EventAttendeeModal({ eventDate, eventId, eventName, onClose, onExchange, onNote, onSchedule, open, person, reduced = false, t }: AttendeeModalProps) {
   const control = useEventContactRequest({ eventId, person, t });
+  const { preserveHref } = useOrbitLanguage();
   const status = contactStatusCopy(control.status, control.direction, Boolean(control.contactId));
   const canRequest = status.canRequest && open;
   const accepted = control.status === "accepted";
@@ -88,12 +90,18 @@ export function EventAttendeeModal({ eventDate, eventId, eventName, onClose, onE
       <div className="ev-mo-att-actions" data-events-attendee-mode={reduced ? "reduced" : "live"}>
         {reduced ? (
           control.contactId ? (
-            <a className="btn ev-mo-btn-primary" data-events-modal-action="open-contact" href={`/app/contacts/${encodeURIComponent(control.contactId)}`}>◎ {t({ en: "Open the contact card", zh: "打开联系人名片" })}</a>
+            <a className="btn ev-mo-btn-primary" data-events-modal-action="open-contact" href={preserveHref(`/app/contacts/${encodeURIComponent(control.contactId)}`)}>◎ {t({ en: "Open the contact card", zh: "打开联系人名片" })}</a>
           ) : null
         ) : control.canRespond ? (
           <>
             <button className="btn ev-mo-btn-primary" data-events-modal-action="accept" disabled={control.busy} onClick={() => void control.respond(true)} type="button">{control.busy ? t({ en: "Saving…", zh: "保存中…" }) : t({ en: "Accept exchange", zh: "同意交换" })}</button>
             <button className="btn ev-mo-btn-ghost" data-events-modal-action="decline" disabled={control.busy} onClick={() => void control.respond(false)} type="button">{t({ en: "Decline", zh: "拒绝" })}</button>
+          </>
+        ) : control.canWithdraw ? (
+          // 终审 M6：自己发出的待确认申请 → 可撤回（同 ContactAction），不只是禁用的「等待对方确认」。
+          <>
+            <button className="btn ev-mo-btn-primary" data-events-modal-action="exchange" disabled type="button">{t(status.action)}</button>
+            <button className="btn ev-mo-btn-ghost" data-events-modal-action="withdraw" disabled={control.busy} onClick={() => void control.withdraw()} type="button">{control.busy ? t({ en: "Withdrawing…", zh: "撤回中…" }) : t({ en: "Withdraw request", zh: "撤回申请" })}</button>
           </>
         ) : (
           <button

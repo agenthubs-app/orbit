@@ -16,7 +16,7 @@ import { getOrbitServerLanguage, localizeOrbitTree } from "../../../orbit-langua
 import { OrbitReferenceStyles } from "../../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../../orbit-visual-freeze-runtime";
 import { EventLive } from "../../events-0918/event-live";
-import { liveTabFrom } from "../../events-0918/events-model";
+import { liveReturnPath, liveTabFrom } from "../../events-0918/events-model";
 import {
   loadAppPartyRouteViewModel,
   type AppPartyRouteStateViewModel,
@@ -93,7 +93,7 @@ export default async function AppEventLivePage({
   const id = eventRouteId(routeId);
 
   if (!session?.user?.id) {
-    redirect(`/app/account/login?next=${encodeURIComponent(`/app/events/${id}/live`)}`);
+    redirect(`/app/account/login?next=${encodeURIComponent(liveReturnPath(id, query))}`);
   }
 
   const language = normalizeOrbitLanguage(readSearchParam(query, "language") ?? (await getEventLivePageLanguage()));

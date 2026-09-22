@@ -701,7 +701,7 @@ function AgendaTab({ language, now, t, viewModel }: { language: EventListLanguag
 
 // ── 页面 ──
 export function EventLive({ initialTab = "home", now, viewModel }: { initialTab?: LiveTab; now: string; viewModel: OrbitPartyViewModel }) {
-  const { language, t } = useOrbitLanguage();
+  const { language, preserveHref, t } = useOrbitLanguage();
   const lang = listLanguage(language);
   const [tab, setTab] = useState<LiveTab>(initialTab);
   const [nowIso, setNowIso] = useState(now);
@@ -735,9 +735,9 @@ export function EventLive({ initialTab = "home", now, viewModel }: { initialTab?
       <style>{EVENTS_STYLES}</style>
       <div className="ev-lv">
         <div className="ev-lv-topbar">
-          <a className="btn ev-back" href="/app/events">← {t({ en: "Back to events", zh: "返回活动列表" })}</a>
+          <a className="btn ev-back" href={preserveHref("/app/events")}>← {t({ en: "Back to events", zh: "返回活动列表" })}</a>
           <div className="ev-lv-topbar-actions">
-            <a className="btn ev-lv-btn-dark ev-lv-btn-14" data-live-action="detail" href={detailHref}>{t({ en: "Event details", zh: "活动详情" })}</a>
+            <a className="btn ev-lv-btn-dark ev-lv-btn-14" data-live-action="detail" href={preserveHref(detailHref)}>{t({ en: "Event details", zh: "活动详情" })}</a>
           </div>
         </div>
         <div className="ev-lv-hero">

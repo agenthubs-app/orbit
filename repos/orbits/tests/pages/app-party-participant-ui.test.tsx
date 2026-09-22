@@ -8,6 +8,10 @@ import type {
   OrbitPartyViewModel,
 } from "../../app/(app)/app/orbit-party-route-view-model";
 import { EventLive } from "../../app/(app)/app/events/events-0918/event-live";
+import { resetContactRequestStateCache } from "../../app/(app)/app/events/events-0918/live-controls";
+
+// 交换状态缓存按 <eventId participantId> 键跨挂载共享（终审 M1）；每条用例从空缓存开始。
+test.beforeEach(() => resetContactRequestStateCache());
 
 /**
  * 现场屏（/app/events/[id]/live，Orbit_0918）参与者交互：交换联系方式在推荐 / 名单 / 图谱三处共用同一状态，

@@ -228,6 +228,18 @@ export const LIVE_TABS: { key: LiveTab; label: Copy }[] = [
   { key: "agenda", label: { zh: "流程议程", en: "Agenda" } },
 ];
 
+/** 登录后回到同一现场页签 / 语言：`?tab=` / `?language=` / `?lang=` 随 login 的 next 一起带回（终审 M3）。 */
+export function liveReturnPath(id: string, searchParams: Record<string, string | string[] | undefined> | undefined): string {
+  const params = new URLSearchParams();
+  for (const key of ["tab", "language", "lang"] as const) {
+    const raw = searchParams?.[key];
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    if (value) params.set(key, value);
+  }
+  const search = params.toString();
+  return `/app/events/${id}/live${search ? `?${search}` : ""}`;
+}
+
 export function liveTabFrom(value: string | null | undefined): LiveTab {
   return LIVE_TABS.some((tab) => tab.key === value) ? (value as LiveTab) : "home";
 }

@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
 import { EventAttendeeModal } from "../../app/(app)/app/events/events-0918/event-attendee-modal";
+import { loopFocus } from "../../app/(app)/app/events/events-0918/event-modal-frame";
 import { contactStatusCopy } from "../../app/(app)/app/events/events-0918/events-model";
 import { DESIGN_MODAL_MOCKS, MODAL_EVENT_ID, modalPerson, stripStyles, t } from "./event-modal-fixtures";
 import { resetContactRequestStateCache } from "../../app/(app)/app/events/events-0918/live-controls";
@@ -68,7 +69,8 @@ test("attendee modal: buttons follow the real contact request status", () => {
   const waiting = render({ contactRequestDirection: "outgoing", contactRequestId: "req:1", contactRequestRevision: 1, contactRequestStatus: "awaiting_target_consent" });
   assert.match(waiting, /data-events-contact-status="awaiting_target_consent"/);
   assert.match(waiting, /申请已发送，等待对方确认/);
-  assert.match(waiting, /<button class="btn ev-mo-btn-primary" data-events-modal-action="exchange" disabled="" type="button">等待对方确认<\/button>/);
+  // 终审 M6：自己发出的待确认申请 → 禁用的状态标签 + 「撤回申请」
+  assert.match(waiting, /<button class="btn ev-mo-btn-primary" data-events-modal-action="exchange" disabled="" type="button">等待对方确认<\/button><button class="btn ev-mo-btn-ghost" data-events-modal-action="withdraw" type="button">撤回申请<\/button>/);
 
   const incoming = render({ contactRequestDirection: "incoming", contactRequestId: "req:2", contactRequestRevision: 1, contactRequestStatus: "awaiting_target_consent" });
   assert.match(incoming, /对方向你发起了交换申请/);
@@ -151,4 +153,73 @@ test("contactStatusCopy: line / action / canRequest per status", () => {
   assert.equal(contactStatusCopy("awaiting_target_consent", "incoming", false).action.zh, "同意交换");
   assert.equal(contactStatusCopy("none", null, true).line.zh, "已互换名片");
   assert.equal(contactStatusCopy("declined", "outgoing", false).canRequest, false);
+});
+
+test("attendee modal: 撤回申请 posts withdraw with the persisted request id + revision and returns to a requestable state", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls: { url: string; body: string }[] = [];
+  globalThis.fetch = (async (url, init) => {
+    calls.push({ url: String(url), body: String(init?.body) });
+    return Response.json({ data: { contactId: null, revision: 2, status: "withdrawn" }, success: true });
+  }) as typeof fetch;
+  let renderer!: ReactTestRenderer;
+  try {
+    await act(async () => {
+      renderer = create(
+        <EventAttendeeModal eventDate="d" eventId={MODAL_EVENT_ID} eventName="n" onClose={noop} onExchange={noop} onNote={noop} onSchedule={noop} open person={modalPerson({ contactRequestDirection: "outgoing", contactRequestId: "req:1", contactRequestRevision: 1, contactRequestStatus: "awaiting_target_consent" })} t={t} />,
+      );
+    });
+    const withdraw = renderer.root.find((node) => node.type === "button" && node.props["data-events-modal-action"] === "withdraw");
+    await act(async () => { await (withdraw.props.onClick() as Promise<void>); });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, `/api/events/${encodeURIComponent(MODAL_EVENT_ID)}/operations/contact-requests/req%3A1/withdraw`);
+    assert.equal(calls[0].body, JSON.stringify({ expectedRevision: 1 }));
+    const json = JSON.stringify(renderer.toJSON());
+    assert.match(json, /"data-events-contact-status":"withdrawn"/);
+    assert.match(json, /你已撤回申请/);
+    assert.match(json, /⇢ 再次申请交换/);
+    assert.equal(renderer.root.findAll((node) => node.type === "button" && node.props["data-events-modal-action"] === "withdraw").length, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (renderer) await act(async () => { renderer.unmount(); });
+  }
+});
+
+test("modal frame: Tab on the last focusable wraps to the first, Shift+Tab on the first wraps to the last (M5)", async () => {
+  const focused: string[] = [];
+  const el = (name: string) => ({ name, focus: () => focused.push(name) });
+  const first = el("close");
+  const middle = el("exchange");
+  const last = el("note");
+  const root = { querySelectorAll: () => [first, middle, last] };
+  assert.equal(loopFocus(root, last, false), true);
+  assert.equal(loopFocus(root, first, true), true);
+  assert.equal(loopFocus(root, middle, false), false, "Tab in the middle is left to the browser");
+  assert.equal(loopFocus(root, null, false), true, "focus outside the panel is pulled back in");
+  assert.deepEqual(focused, ["close", "note", "close"]);
+  assert.equal(loopFocus(null, last, false), false);
+  assert.equal(loopFocus({ querySelectorAll: () => [] }, last, false), false);
+
+  // 真实路径：面板 onKeyDown 读 document.activeElement（这里模拟在最后一个按钮上按 Tab）
+  const originalDocument = (globalThis as { document?: unknown }).document;
+  let renderer!: ReactTestRenderer;
+  try {
+    await act(async () => {
+      renderer = create(
+        <EventAttendeeModal eventDate="d" eventId={MODAL_EVENT_ID} eventName="n" onClose={noop} onExchange={noop} onNote={noop} onSchedule={noop} open person={modalPerson()} t={t} />,
+        { createNodeMock: (element) => (element.props.role === "dialog" ? root : null) },
+      );
+    });
+    (globalThis as { document?: unknown }).document = { activeElement: last };
+    const panel = renderer.root.find((node) => node.props.role === "dialog");
+    let prevented = 0;
+    await act(async () => { panel.props.onKeyDown({ key: "Tab", shiftKey: false, preventDefault: () => { prevented += 1; } }); });
+    assert.equal(prevented, 1);
+    assert.equal(focused.at(-1), "close");
+    await act(async () => { panel.props.onKeyDown({ key: "Enter", shiftKey: false, preventDefault: () => { prevented += 1; } }); });
+    assert.equal(prevented, 1, "non-Tab keys are ignored");
+  } finally {
+    (globalThis as { document?: unknown }).document = originalDocument;
+    if (renderer) await act(async () => { renderer.unmount(); });
+  }
 });
