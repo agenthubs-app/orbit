@@ -88,10 +88,18 @@ export function IOrbitStrategy({ loadSnapshot, view = "strategy" }: IOrbitStrate
   });
   const ready = snapshot !== "pending";
 
-  // 修订轮 1：说明文案由 view model 提供（`strategy-route-view-model.ts` 的
-  // `waitingSections[].description`），不再在这里留第二份会漂移的拷贝。
-  const waitingDescription = (key: "missing" | "prep") =>
-    viewModel.waitingSections.find((section) => section.key === key)?.description ?? "";
+  // 修订轮 1：说明文案由 view model 提供（`strategy-route-view-model.ts`），
+  // 不再在这里留第二份会漂移的拷贝。
+  // 修订轮 2：段落用各自带主语的 `waitingSections[].description`；**行里**用主语中立的
+  // `waitingNote`（原来把「缺口分析…」塞进「他能提供什么」，答非所问）。
+  // 找不到 key 不再静默回落成空串——那只会把缺失变成一行空白。
+  const waitingDescription = (key: "missing" | "prep") => {
+    const section = viewModel.waitingSections.find((item) => item.key === key);
+    if (!section) {
+      throw new Error(`iorbit-strategy: waitingSections has no "${key}" entry`);
+    }
+    return section.description;
+  };
   const waitingBadge = t({
     en: "Coming with the W4 strategy capability",
     zh: "随 W4 策略能力上线",
@@ -334,14 +342,14 @@ export function IOrbitStrategy({ loadSnapshot, view = "strategy" }: IOrbitStrate
                         {t({ en: "What they can offer", zh: "他能提供什么" })}
                       </span>
                       <span className="ir-contact-val ir-contact-waiting">
-                        {waitingDescription("missing")}
+                        {viewModel.waitingNote}
                       </span>
                       <span className="ir-contact-key">
                         <span className="ir-contact-key-icon">▥</span>
                         {t({ en: "Suggested opener", zh: "建议开场白" })}
                       </span>
                       <span className="ir-contact-opener ir-contact-waiting">
-                        {waitingDescription("prep")}
+                        {viewModel.waitingNote}
                       </span>
                     </div>
                     <div className="ir-contact-actions">

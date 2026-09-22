@@ -531,6 +531,68 @@ test("the new .btn rule neutralises the shared base class and its :active transf
   assert.ok(active && active[0].includes("transform: none"));
 });
 
+// 修订轮 2（Critical 1）：作用域顶部的 `a { color:#3B3F7A }` / `a:hover { color:#0E1225 }`
+// 会压掉任何落成 <a> 的行。plan 的本周重点行在修订轮 1 变成了链接，标题因此从设计的
+// #0E1225 变成 #3B3F7A 并多出一个设计没有的 hover——而 plan 的像素跑在空账本上，
+// 一行都没渲染，所以没被截出来。这条用例把「凡是当 <a> 用的 ir-* 类都必须自己管住字色」
+// 变成结构断言，下一次 linkify 不会再静默回归。
+test("every ir-* class the screens put on an <a> owns its colour", () => {
+  const flat = IORBIT_STYLES.replace(/\/\*[\s\S]*?\*\//g, "").split("\n").join(" ");
+  const linkClasses = new Set<string>();
+  for (const file of [
+    "app/(app)/app/agent/iorbit-0918/iorbit-actions.tsx",
+    "app/(app)/app/agent/iorbit-0918/iorbit-plan.tsx",
+    "app/(app)/app/agent/iorbit-0918/iorbit-strategy.tsx",
+  ]) {
+    const source = readFileSync(join(projectRoot, file), "utf8");
+    for (const tag of source.matchAll(/<a\b[^>]*>/g)) {
+      const className = tag[0].match(/className="([^"]+)"/)?.[1];
+      if (!className) continue;
+      for (const part of className.split(/\s+/)) {
+        if (part.startsWith("ir-")) linkClasses.add(part);
+      }
+    }
+  }
+
+  assert.ok(linkClasses.has("ir-task-row"), "the plan row is the class this test exists for");
+  assert.ok(linkClasses.size >= 8, `expected the screens' link classes, found ${linkClasses.size}`);
+
+  const uncovered: string[] = [];
+  for (const className of [...linkClasses].sort()) {
+    const base = flat.match(new RegExp(`\\.${className}(?![-a-z])[^:{,]*\\{([^}]*)\\}`));
+    const baseHasColour = Boolean(base && /(^|;)\s*color\s*:/.test(base[1]!));
+    // `:hover` 可能出现在自己的规则里，也可能在共享的 `color: inherit` 中和块里；
+    // 两处都要看（`String.match` 只给第一处，所以走 matchAll）。
+    const hoverHasColour = [
+      ...flat.matchAll(new RegExp(`[^{}]*\\.${className}(?![-a-z]):hover[^{]*\\{([^}]*)\\}`, "g")),
+    ].some((rule) => /color\s*:/.test(rule[1]!));
+    if (!baseHasColour || !hoverHasColour) {
+      uncovered.push(`${className} (base colour: ${baseHasColour}, hover colour: ${hoverHasColour})`);
+    }
+  }
+  assert.deepEqual(
+    uncovered,
+    [],
+    `these classes sit on an <a> but let the scope's a / a:hover win:\n  ${uncovered.join("\n  ")}`,
+  );
+});
+
+// 设计 449 的任务标题是默认墨色 #0E1225（`t.color` 在未完成行上就是它）。
+test("the plan task title keeps the design's ink colour", () => {
+  const flat = IORBIT_STYLES.replace(/\/\*[\s\S]*?\*\//g, "").split("\n").join(" ");
+
+  const row = flat.match(/\.ir-task-row(?![-a-z:])[^{]*\{([^}]*)\}/);
+  assert.ok(row, "missing .ir-task-row rule");
+  assert.match(row![1]!, /color:\s*#0E1225/, ".ir-task-row must pin the design ink colour");
+  // 标题本身不写颜色（设计也没写），所以它**必须**从行上继承到 #0E1225。
+  const title = flat.match(/\.ir-row-title(?![-a-z:])[^{]*\{([^}]*)\}/);
+  assert.ok(title);
+  assert.ok(!/color\s*:/.test(title![1]!), ".ir-row-title must not declare its own colour");
+  // hover 也必须被中和（设计的行没有 hover 态）。
+  assert.match(flat, /\.ir-task-row:hover[^{]*\{[^}]*color:\s*inherit/);
+  assert.match(flat, /\.ir-aside-line:hover[^{]*\{[^}]*color:\s*#6B6F99/);
+});
+
 test("the narrow-screen media query collapses both two-column grids", () => {
   const media = IORBIT_STYLES.replace(/\/\*[\s\S]*?\*\//g, "").match(
     /@media[^{]*\{([\s\S]*?)\n\}/,
@@ -604,6 +666,34 @@ test("the plan rows keep the per-row navigation the old screen had", async (t) =
 });
 
 // 修订轮 1（Minor）：「等 W4」的说明只有一份，来自 view model。
+test("the contact-card rows use the neutral waiting sentence, not a section's subject", async (t) => {
+  const { buildAgentStrategyViewModel } = await import(
+    "../../app/(app)/app/agent/strategy/strategy-route-view-model"
+  );
+  const vm = buildAgentStrategyViewModel({ language: "zh", snapshot: "pending" });
+  const missing = vm.waitingSections.find((section) => section.key === "missing")!;
+  const prep = vm.waitingSections.find((section) => section.key === "prep")!;
+
+  const mounted = await mount(
+    t,
+    <IOrbitStrategy loadSnapshot={async () => SNAPSHOT} view="contacts" />,
+  );
+  await mounted.settle();
+  const waiting = mounted.root.root.findAll(
+    (node) =>
+      typeof node.props?.className === "string" &&
+      node.props.className.includes("ir-contact-waiting"),
+  );
+  assert.equal(waiting.length, 2);
+  for (const node of waiting) {
+    const text = JSON.stringify(node.children);
+    // 行里说的是中立的那句，不是段落的「缺口分析…」「准备清单…」。
+    assert.ok(text.includes(vm.waitingNote), "rows must use the neutral waiting sentence");
+    assert.ok(!text.includes(missing.description));
+    assert.ok(!text.includes(prep.description));
+  }
+});
+
 test("the waiting copy comes from the strategy view model, not a second hardcoded copy", async (t) => {
   const { buildAgentStrategyViewModel } = await import(
     "../../app/(app)/app/agent/strategy/strategy-route-view-model"

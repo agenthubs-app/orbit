@@ -45,6 +45,13 @@ export interface AgentStrategyWaitingSection {
 export interface AgentStrategyViewModel {
   nextEvents: readonly AgentStrategyEventItem[];
   nextEventsState: AgentStrategyNextEventsState;
+  /**
+   * 行级「等 W4」说明：**主语中立**的一句话，给那些没有自己段落的空位用
+   * （联系人卡的「他能提供什么」「建议开场白」）。两段式的
+   * `waitingSections[].description` 各自带主语（缺口分析 / 准备清单），
+   * 放进行里会答非所问 —— 修订轮 2 的 Important 2 就是这个。
+   */
+  waitingNote: string;
   waitingSections: readonly AgentStrategyWaitingSection[];
   whoFirst: readonly AgentStrategyContactItem[];
   whoFirstState: AgentStrategyDataState;
@@ -55,6 +62,8 @@ const COPY = {
     missingDescription:
       "Gap analysis needs the W4 strategy capability, which is not available yet. Ask iOrbit in chat for now.",
     missingTitle: "Who you are missing",
+    neutralWaiting:
+      "This needs the W4 strategy capability, which is not available yet. Ask iOrbit in chat for now.",
     prepDescription:
       "Preparation checklists need the W4 strategy capability, which is not available yet. Ask iOrbit in chat for now.",
     prepTitle: "What to prepare",
@@ -63,6 +72,8 @@ const COPY = {
     missingDescription:
       "缺口分析需要 W4 策略生成能力，尚未上线；目前可在对话中直接向 iOrbit 提问。",
     missingTitle: "你还缺什么人",
+    neutralWaiting:
+      "这一项需要 W4 策略生成能力，尚未上线；目前可在对话中直接向 iOrbit 提问。",
     prepDescription:
       "准备清单需要 W4 策略生成能力，尚未上线；目前可在对话中直接向 iOrbit 提问。",
     prepTitle: "聊之前，准备什么",
@@ -149,6 +160,7 @@ export function buildAgentStrategyViewModel(input: {
   return {
     nextEvents,
     nextEventsState,
+    waitingNote: copy.neutralWaiting,
     waitingSections: [
       {
         description: copy.missingDescription,

@@ -442,7 +442,9 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .ir-plan-progress-fill { display: block; height: 6px; border-radius: 999px; background: #4B4FC7; transition: width .3s ease; }
 [data-orbit-real-page="iorbit-0918"] .ir-progress-pct { color: #2E3270; font-weight: 500; }
 /* 448–453 每行 */
-[data-orbit-real-page="iorbit-0918"] .ir-task-row { display: flex; align-items: center; gap: 14px; padding: 16px; border: 1px solid #E8E9F6; border-radius: 14px; }
+/* 448：设计是 <div>；有落点的行落成链接（修订轮 1），因此要显式写回墨色——
+   作用域的 a 规则（本文件 22–23 行）否则会把标题压成 #3B3F7A 并加一个设计没有的 hover。 */
+[data-orbit-real-page="iorbit-0918"] .ir-task-row { display: flex; align-items: center; gap: 14px; padding: 16px; border: 1px solid #E8E9F6; border-radius: 14px; color: #0E1225; }
 [data-orbit-real-page="iorbit-0918"] .ir-task-no { width: 26px; height: 26px; flex: none; border-radius: 8px; background: #F7F7FD; color: #6B6F99; display: flex; align-items: center; justify-content: center; font-size: 12px; }
 /* 450 设计是 toggle 按钮；无行内写接口 → 静态标记（aria-disabled） */
 [data-orbit-real-page="iorbit-0918"] .ir-task-mark { display: block; width: 22px; height: 22px; flex: none; border: 1px solid #DDDEFA; border-radius: 6px; background: #FFFFFF; }
@@ -496,7 +498,7 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .ir-cards-420 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 14px; }
 [data-orbit-real-page="iorbit-0918"] .ir-cards-280 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 14px; }
 /* 542–551 紧凑联系人卡（设计画的是按钮；这里是导航，落成链接） */
-[data-orbit-real-page="iorbit-0918"] .ir-contact-compact { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) 12px; gap: 16px; align-items: start; padding: 16px; border: 1px solid #E8E9F6; border-radius: 14px; background: #FFFFFF; text-align: left; }
+[data-orbit-real-page="iorbit-0918"] .ir-contact-compact { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) 12px; gap: 16px; align-items: start; padding: 16px; border: 1px solid #E8E9F6; border-radius: 14px; background: #FFFFFF; text-align: left; color: #0E1225; }
 [data-orbit-real-page="iorbit-0918"] .ir-contact-compact:hover { border-color: #B9BCEB; background: #F7F7FD; }
 [data-orbit-real-page="iorbit-0918"] .ir-contact-id { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 [data-orbit-real-page="iorbit-0918"] .ir-contact-head { display: flex; align-items: center; gap: 12px; }
@@ -514,7 +516,7 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .ir-caret-mid { align-self: center; color: #9FA3C4; }
 /* 623–637 / 771–780 活动行 */
 [data-orbit-real-page="iorbit-0918"] .ir-event-list { display: flex; flex-direction: column; gap: 14px; }
-[data-orbit-real-page="iorbit-0918"] .ir-event-row { display: flex; align-items: center; gap: 16px; padding: 16px; border: 1px solid #E8E9F6; border-radius: 14px; }
+[data-orbit-real-page="iorbit-0918"] .ir-event-row { display: flex; align-items: center; gap: 16px; padding: 16px; border: 1px solid #E8E9F6; border-radius: 14px; color: #0E1225; }
 [data-orbit-real-page="iorbit-0918"] .ir-event-row:hover { border-color: #B9BCEB; background: #F7F7FD; }
 /* 623 的 96px 封面占位块（无图来源，沿用设计自己的纯色块） */
 [data-orbit-real-page="iorbit-0918"] .ir-event-cover { width: 96px; height: 80px; flex: none; border-radius: 12px; background: #DDDEFA; }
@@ -537,7 +539,7 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .ir-contact-action:hover { border-color: #B9BCEB; color: #2E3270; }
 [data-orbit-real-page="iorbit-0918"] .ir-contact-action-primary { border: 0; background: #2E3270; color: #FFFFFF; font-weight: 500; }
 /* 643–652 本周建议的三张导航卡（设计画的是按钮；这里是导航，落成链接） */
-[data-orbit-real-page="iorbit-0918"] .ir-nav-card { display: grid; grid-template-columns: 36px minmax(0, 1fr) 12px; gap: 14px; align-items: center; padding: 16px; border: 1px solid #E8E9F6; border-radius: 14px; background: #FFFFFF; text-align: left; }
+[data-orbit-real-page="iorbit-0918"] .ir-nav-card { display: grid; grid-template-columns: 36px minmax(0, 1fr) 12px; gap: 14px; align-items: center; padding: 16px; border: 1px solid #E8E9F6; border-radius: 14px; background: #FFFFFF; text-align: left; color: #0E1225; }
 [data-orbit-real-page="iorbit-0918"] .ir-nav-card:hover { border-color: #B9BCEB; background: #F7F7FD; }
 [data-orbit-real-page="iorbit-0918"] .ir-nav-icon { width: 36px; height: 36px; border-radius: 10px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; }
 [data-orbit-real-page="iorbit-0918"] .ir-nav-title { font-size: 14px; font-weight: 500; }
@@ -547,7 +549,8 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .ir-pill-btn:hover { background: #ECEEFB; }
 /* 作用域内 a:hover 会把文字压成 #0E1225（本文件顶部的全局规则）。设计给这几个
    按钮形的 <a> 的 style-hover 里没有改字色，这里按「像素规则」的唯一例外把它中和。 */
-[data-orbit-real-page="iorbit-0918"] .ir-back:hover, [data-orbit-real-page="iorbit-0918"] .ir-row-cta:hover, [data-orbit-real-page="iorbit-0918"] .ir-aside-btn:hover, [data-orbit-real-page="iorbit-0918"] .ir-sec-link:hover, [data-orbit-real-page="iorbit-0918"] .ir-pill-btn:hover, [data-orbit-real-page="iorbit-0918"] .ir-contact-compact:hover, [data-orbit-real-page="iorbit-0918"] .ir-event-row:hover, [data-orbit-real-page="iorbit-0918"] .ir-nav-card:hover { color: inherit; }
+[data-orbit-real-page="iorbit-0918"] .ir-back:hover, [data-orbit-real-page="iorbit-0918"] .ir-row-cta:hover, [data-orbit-real-page="iorbit-0918"] .ir-aside-btn:hover, [data-orbit-real-page="iorbit-0918"] .ir-sec-link:hover, [data-orbit-real-page="iorbit-0918"] .ir-pill-btn:hover, [data-orbit-real-page="iorbit-0918"] .ir-contact-compact:hover, [data-orbit-real-page="iorbit-0918"] .ir-event-row:hover, [data-orbit-real-page="iorbit-0918"] .ir-nav-card:hover, [data-orbit-real-page="iorbit-0918"] .ir-task-row:hover { color: inherit; }
+[data-orbit-real-page="iorbit-0918"] .ir-aside-line:hover { color: #6B6F99; }
 [data-orbit-real-page="iorbit-0918"] .ir-cta-btn:hover, [data-orbit-real-page="iorbit-0918"] .ir-contact-action-primary:hover { background: #0E1225; color: #FFFFFF; }
 /* 设计稿无响应式声明；窄屏收紧 <main> 侧边距、把两列栅格塌成一列（1240 宽度下不生效） */
 @media (max-width: 900px) {
