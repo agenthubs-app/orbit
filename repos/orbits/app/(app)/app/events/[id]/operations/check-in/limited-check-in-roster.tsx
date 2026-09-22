@@ -1,49 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 
-import type {
-  EventOperationsLimitedCheckInRoster,
-  EventOperationsLimitedCheckInRosterItem,
-} from "../../../../../../../features/events/event-operations/check-in-roster";
+import type { EventOperationsLimitedCheckInRosterItem } from "../../../../../../../features/events/event-operations/check-in-roster";
 import { ORBIT_0918_COLORS as C, ORBIT_0918_FONTS } from "../../../../orbit-0918-tokens";
 import { PublicTopNav } from "../../../../orbit-public-shell";
 import { Icon } from "../../../../orbit-reference-primitives";
-
-interface ApiEnvelope<TValue> {
-  data?: TValue;
-  error?: { message?: string };
-  success: boolean;
-}
-
-class CheckInRosterRequestError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
-    super(message);
-    this.name = "CheckInRosterRequestError";
-  }
-}
-
-async function responseData<TValue>(response: Response): Promise<TValue> {
-  let body: ApiEnvelope<TValue>;
-  try {
-    body = (await response.json()) as ApiEnvelope<TValue>;
-  } catch {
-    throw new CheckInRosterRequestError(
-      "签到服务返回了无法识别的响应，请重试。",
-      response.status,
-    );
-  }
-  if (!response.ok || !body.success || !body.data) {
-    throw new CheckInRosterRequestError(
-      body.error?.message ?? "签到服务暂时不可用，请重试。",
-      response.status,
-    );
-  }
-  return body.data;
-}
+import { useCheckInRoster } from "../../../ops-0918/use-check-in-roster";
 
 function formattedTime(value: string | null): string {
   if (!value) return "—";
@@ -84,118 +47,17 @@ function CheckInAction({
 type RosterSegment = "all" | "pending" | "done";
 
 export function LimitedCheckInRoster({ eventId }: { eventId: string }) {
-  const [roster, setRoster] =
-    useState<EventOperationsLimitedCheckInRoster | null>(null);
   const [query, setQuery] = useState("");
   const [segment, setSegment] = useState<RosterSegment>("all");
-  const [loading, setLoading] = useState(true);
-  const [loginRedirectPending, setLoginRedirectPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [pendingParticipantIds, setPendingParticipantIds] = useState<
-    ReadonlySet<string>
-  >(new Set());
-  const endpoint = `/api/events/${encodeURIComponent(eventId)}/operations/admin/check-ins`;
-  const loginHref = `/app/account/login?next=${encodeURIComponent(
-    `/app/events/${encodeURIComponent(eventId)}/operations/check-in`,
-  )}`;
-
-  const handleRequestError = useCallback(
-    (
-      cause: unknown,
-      options: { clearRosterOnReadFailure?: boolean } = {},
-    ) => {
-      const status =
-        cause instanceof CheckInRosterRequestError ? cause.status : null;
-      if (
-        options.clearRosterOnReadFailure ||
-        status === 401 ||
-        status === 403 ||
-        status === 404 ||
-        status === 503
-      ) {
-        setRoster(null);
-      }
-      if (cause instanceof CheckInRosterRequestError && cause.status === 401) {
-        setError("登录状态已失效，正在返回登录页。");
-        setLoginRedirectPending(true);
-        return;
-      }
-      if (cause instanceof CheckInRosterRequestError && cause.status === 403) {
-        setRoster(null);
-        setError("你没有该活动的签到权限。名单已从当前页面清除。");
-        return;
-      }
-      if (cause instanceof CheckInRosterRequestError && cause.status === 404) {
-        setError("没有找到这个活动。");
-        return;
-      }
-      if (cause instanceof CheckInRosterRequestError && cause.status === 409) {
-        setError("该活动当前不允许签到，请确认签到时间窗口。");
-        return;
-      }
-      if (cause instanceof CheckInRosterRequestError && cause.status === 503) {
-        setError("活动权限或签到存储暂时不可用，请稍后重试。");
-        return;
-      }
-      setError(
-        cause instanceof Error ? cause.message : "签到服务暂时不可用，请重试。",
-      );
-    },
-    [],
-  );
-
-  const loadRoster = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(endpoint, { cache: "no-store" });
-      setRoster(
-        await responseData<EventOperationsLimitedCheckInRoster>(response),
-      );
-    } catch (cause) {
-      handleRequestError(cause, { clearRosterOnReadFailure: true });
-    } finally {
-      setLoading(false);
-    }
-  }, [endpoint, handleRequestError]);
-
-  useEffect(() => {
-    void loadRoster();
-  }, [loadRoster]);
-
-  useEffect(() => {
-    if (loginRedirectPending) window.location.assign(loginHref);
-  }, [loginHref, loginRedirectPending]);
-
-  async function markArrived(
-    participant: EventOperationsLimitedCheckInRosterItem,
-  ) {
-    setPendingParticipantIds((current) =>
-      new Set([...current, participant.participantId]),
-    );
-    setError(null);
-    setNotice(null);
-    try {
-      const response = await fetch(endpoint, {
-        body: JSON.stringify({ participantId: participant.participantId }),
-        cache: "no-store",
-        headers: { "content-type": "application/json" },
-        method: "POST",
-      });
-      await responseData<unknown>(response);
-      setNotice(`${participant.displayName} 已标记为到场。`);
-      await loadRoster();
-    } catch (cause) {
-      handleRequestError(cause);
-    } finally {
-      setPendingParticipantIds((current) => {
-        const next = new Set(current);
-        next.delete(participant.participantId);
-        return next;
-      });
-    }
-  }
+  const {
+    error,
+    loadRoster,
+    loading,
+    markArrived,
+    notice,
+    pendingParticipantIds,
+    roster,
+  } = useCheckInRoster(eventId);
 
   return (
     <div data-orbit-real-page="event-operations-check-in" style={{ background: C.pageBg, color: C.ink, fontFamily: ORBIT_0918_FONTS.sans, minHeight: "100dvh" }}>
