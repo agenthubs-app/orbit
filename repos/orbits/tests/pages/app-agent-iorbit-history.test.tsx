@@ -299,6 +299,22 @@ test("every new .btn rule neutralises the shared base class and its :active tran
     );
   }
 
+  // 修订轮 1：设计 791 的 ✕ 是 34×34 圆钮。中和块里的 `height: auto` 会把上面那条
+  // 34px 顶掉，按钮塌成 34×20 的椭圆——固定高度的规则不许再出现 height:auto。
+  const close = flat.match(/\.btn\.ir-drawer-close(?![-a-z])[^{]*\{[^}]*\}/);
+  assert.ok(close);
+  assert.match(close![0], /height:\s*34px/);
+  assert.equal(
+    (close![0].match(/height:\s*auto/g) ?? []).length,
+    0,
+    "a fixed-size ir-* button must not also declare height:auto",
+  );
+  for (const [className, size] of [["ir-drawer-close", "34px"], ["ir-hist-more", "28px"]] as const) {
+    const rule = flat.match(new RegExp(`\\.btn\\.${className}(?![-a-z])[^{]*\\{[^}]*\\}`))![0];
+    assert.match(rule, new RegExp(`height:\\s*${size}`));
+    assert.ok(!/height:\s*auto/.test(rule), `${className} must keep its fixed height`);
+  }
+
   // `···` 钮的定位靠 transform，:active 还原成同一个位移而不是 none。
   const more = flat.match(/\.btn\.ir-hist-more:active[^{]*\{[^}]*\}/);
   assert.ok(more && more[0].includes("transform: translateY(-50%)"));
@@ -640,4 +656,177 @@ test("the aside's first two rows ask through the conversations API", async (t) =
   const ask = harness.conversationRequests[0];
   assert.ok(ask, "the aside must POST to /api/ai/conversations");
   assert.equal(ask.message, VIEW_MODEL.suggests[0]!.q);
+});
+
+/* ── 4. 修订轮 1：交接单不得跟着不相干的问题发出去 ─────────────────────── */
+
+test("an unsent prefill is dropped once any other ask goes out", async (t) => {
+  // 场景（评审 Important 1）：联系人分析页交接过来一份带结构化 origin 的问题，
+  // 用户没发它，先点了右栏的一条建议，然后问一个不相干的问题——那句话绝不能带上
+  // 另一次分析的 entryPointId / sourceDataVersion / template。
+  const origin = {
+    entryClient: "web",
+    entryPointId: "contacts.analysis",
+    initialGroupId: null,
+    kind: "structured",
+    sourceDataVersion: "c".repeat(64),
+    template: { id: "contacts.analysis", version: 1 },
+  };
+  const harness = await mountAgent(t, {
+    element: <IOrbitShell home={homeFixture() as never} viewModel={VIEW_MODEL} />,
+    sessionStorageSeed: {
+      "orbit.agent.prefill": JSON.stringify({
+        origin,
+        query: "分析我的人脉机会",
+        returnTo: "/app/contacts/dashboard",
+      }),
+    },
+  });
+
+  // ① 右栏的一条建议（没有用到交接单）
+  await act(async () => {
+    harness.root.root
+      .findAll((node) => node.type === "button" && node.props?.className === "btn ir-aside-next")[0]!
+      .props.onClick();
+  });
+  await harness.settle();
+
+  // ② 一个不相干的问题。先确认没在等回答——`submitDraft` 的交接单分支带 `!thinking`
+  // 守卫，如果这时还在 pending，用例会从另一条路走掉、失去鉴别力。
+  const composerInput = harness.root.root.findAll(
+    (node) => node.props?.className === "ir-composer-input",
+  )[0]!;
+  assert.equal(composerInput.props.disabled, false, "the composer must be idle before this step");
+  await act(async () => {
+    composerInput.props.onChange({ target: { value: "下周东京有什么活动？" } });
+  });
+  await act(async () => {
+    harness.root.root
+      .findAll((node) => node.props?.className === "ir-composer")[0]!
+      .props.onSubmit({ preventDefault() {} });
+  });
+  await harness.settle();
+
+  const last = harness.conversationRequests.at(-1)!;
+  assert.equal(last.message, "下周东京有什么活动？");
+  assert.notDeepEqual(last.origin, origin, "a stale prefill must never ride an unrelated question");
+  assert.notEqual(
+    (last.origin as { entryPointId?: string } | undefined)?.entryPointId,
+    "contacts.analysis",
+  );
+});
+
+test("opening another conversation from the drawer drops an unsent prefill", async (t) => {
+  const origin = {
+    entryClient: "web",
+    entryPointId: "contacts.analysis",
+    initialGroupId: null,
+    kind: "structured",
+    sourceDataVersion: "e".repeat(64),
+    template: { id: "contacts.analysis", version: 1 },
+  };
+  const harness = await mountAgent(t, {
+    element: <IOrbitShell home={homeFixture() as never} viewModel={VIEW_MODEL} />,
+    sessionPages: [[session("session:old", "一条旧对话", "2026-09-10T00:00:00.000Z")]],
+    sessionStorageSeed: {
+      "orbit.agent.prefill": JSON.stringify({
+        origin,
+        query: "分析我的人脉机会",
+        returnTo: "/app/contacts/dashboard",
+      }),
+    },
+  });
+
+  await act(async () => {
+    buttonWithText(harness.root, "◷ 历史记录").props.onClick();
+  });
+  await harness.settle(1);
+  await act(async () => {
+    harness.root.root.findAll((node) => node.props?.className === "btn ir-hist-open")[0]!.props.onClick();
+  });
+  await harness.settle(10);
+
+  await act(async () => {
+    harness.root.root
+      .findAll((node) => node.props?.className === "ir-composer-input")[0]!
+      .props.onChange({ target: { value: "这条对话后来怎么样了？" } });
+  });
+  await act(async () => {
+    harness.root.root
+      .findAll((node) => node.props?.className === "ir-composer")[0]!
+      .props.onSubmit({ preventDefault() {} });
+  });
+  await harness.settle();
+
+  const last = harness.conversationRequests.at(-1)!;
+  assert.equal(last.message, "这条对话后来怎么样了？");
+  assert.notDeepEqual(last.origin, origin);
+  assert.notEqual(
+    (last.origin as { entryPointId?: string } | undefined)?.entryPointId,
+    "contacts.analysis",
+  );
+});
+
+test("starting a new chat drops an unsent prefill too", async (t) => {
+  const origin = {
+    entryClient: "web",
+    entryPointId: "contacts.analysis",
+    initialGroupId: null,
+    kind: "structured",
+    sourceDataVersion: "d".repeat(64),
+    template: { id: "contacts.analysis", version: 1 },
+  };
+  const harness = await mountAgent(t, {
+    element: <IOrbitShell home={homeFixture() as never} viewModel={VIEW_MODEL} />,
+    sessionStorageSeed: {
+      "orbit.agent.prefill": JSON.stringify({
+        origin,
+        query: "分析我的人脉机会",
+        returnTo: "/app/contacts/dashboard",
+      }),
+    },
+  });
+
+  await act(async () => {
+    buttonWithText(harness.root, "◷ 历史记录").props.onClick();
+  });
+  await harness.settle(1);
+  await act(async () => {
+    harness.root.root
+      .findAll((node) => node.props?.className === "btn ir-drawer-new")[0]!
+      .props.onClick();
+  });
+  await harness.settle();
+
+  await act(async () => {
+    harness.root.root
+      .findAll((node) => node.props?.className === "ir-composer-input")[0]!
+      .props.onChange({ target: { value: "帮我看看这周的待办" } });
+  });
+  await act(async () => {
+    harness.root.root
+      .findAll((node) => node.props?.className === "ir-composer")[0]!
+      .props.onSubmit({ preventDefault() {} });
+  });
+  await harness.settle();
+
+  const last = harness.conversationRequests.at(-1)!;
+  assert.equal(last.message, "帮我看看这周的待办");
+  assert.notDeepEqual(last.origin, origin);
+  assert.notEqual(
+    (last.origin as { entryPointId?: string } | undefined)?.entryPointId,
+    "contacts.analysis",
+  );
+});
+
+test("a profile that could not be loaded says so instead of claiming it is empty", () => {
+  // home === null 是「路由模型非 success」（`agent/page.tsx:182`），不是「资料没填」。
+  const html = renderToStaticMarkup(
+    <IOrbitShell home={null} initialDeepLink viewModel={VIEW_MODEL} />,
+  ).replace(/<style>[\s\S]*?<\/style>/g, "");
+
+  assert.ok(html.includes("暂时读不到你的资料。"));
+  assert.ok(!html.includes("资料里还没有填写关注话题。"));
+  assert.ok(!html.includes("资料里还没有填写想认识的人。"));
+  assert.ok(!html.includes("ir-aside-tag"));
 });

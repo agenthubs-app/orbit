@@ -12,7 +12,9 @@
  *   - 已报名活动：`home.events` 里 `youRsvped` 的两场，与概览屏同一份排序口径
  *   - 目标人脉：`home.account.targetRelationshipTypes`（个人资料「想认识的人」）
  *   - 「编辑」：`/app/profile?view=persona`（审阅修订 17），不是死链
- * 任一段没有资料 → 该段渲染空态文案，**不造 chip**。
+ * 任一段没有资料 → 该段渲染空态文案，**不造 chip**；`home === null`（路由模型非
+ * success，`agent/page.tsx:182`）时三段一律说「暂时读不到资料」而不是「还没有填写」
+ * ——读不到和没填是两回事，后者会把一句没有依据的判断说成事实。
  */
 "use client";
 
@@ -55,7 +57,15 @@ export function IOrbitChatAside({ home, onAsk, viewModel }: IOrbitChatAsideProps
     [home, language],
   );
 
-  const emptyNote = (text: string) => <span className="ir-aside-empty">{text}</span>;
+  // 读不到资料（路由模型非 success）与资料里没填，是两种不同的事实。
+  const unavailable = home === null;
+  const emptyNote = (text: string) => (
+    <span className="ir-aside-empty">
+      {unavailable
+        ? t({ en: "Your profile could not be loaded just now.", zh: "暂时读不到你的资料。" })
+        : text}
+    </span>
+  );
 
   return (
     <aside className="ir-aside" data-orbit-iorbit-chat-aside>
@@ -70,7 +80,7 @@ export function IOrbitChatAside({ home, onAsk, viewModel }: IOrbitChatAsideProps
         {asks.map((suggest) => (
           <button
             className="btn ir-aside-next"
-            key={suggest.label}
+            key={suggest.q}
             onClick={() => onAsk(suggest.q)}
             type="button"
           >

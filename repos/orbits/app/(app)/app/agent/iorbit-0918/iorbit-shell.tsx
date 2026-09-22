@@ -195,6 +195,30 @@ export function IOrbitShell({
     submitChatDraft();
   };
 
+  // 交接单是**一次性**的。旧实现把它放在 dashboard 的一次性简报框里，用户一旦去做
+  // 别的事，那个框连同 origin 就没了；新形态落在会话级输入区，如果只在 `submitDraft`
+  // 里清，它会一直挂着——用户没发预填、转手点了个追问 chip、再从抽屉打开一条旧会话、
+  // 然后问一个不相干的问题，那句话的请求体就会带上另一次分析的 `entryPointId` /
+  // `sourceDataVersion` / `template`。因此：任何一次**没有用到它**的提问，以及开新
+  // 对话 / 切到别的会话，都让它当场作废。
+  const dropPrefill = () => setAgentPrefill(null);
+  const askWithoutPrefill = (query: string, retryAssistantIndex?: number) => {
+    dropPrefill();
+    void ask(query, retryAssistantIndex);
+  };
+  const startNewChat = () => {
+    dropPrefill();
+    newChat();
+  };
+  const startNewChatInGroup = (groupId: string) => {
+    dropPrefill();
+    newChatInGroup(groupId);
+  };
+  const openHistoryEntry = (item: Parameters<typeof pickHistory>[0]) => {
+    dropPrefill();
+    pickHistory(item);
+  };
+
   // 进对话是非破坏性的（和「← 返回概览」对称）：已有线程照旧留着，只把 URL 与视图
   // 对齐。想开空线程走抽屉里的「新对话」。
   const openChat = () => {
@@ -226,15 +250,11 @@ export function IOrbitShell({
         <main className="ir-main">
           {inChat ? (
             <IOrbitChat
-              ask={(query, retryAssistantIndex) => {
-                void ask(query, retryAssistantIndex);
-              }}
+              ask={askWithoutPrefill}
               aside={
                 <IOrbitChatAside
                   home={home}
-                  onAsk={(query) => {
-                    void ask(query);
-                  }}
+                  onAsk={(query) => askWithoutPrefill(query)}
                   viewModel={viewModel}
                 />
               }
@@ -258,7 +278,7 @@ export function IOrbitShell({
               }}
               onAsk={(query) => {
                 setView("chat");
-                void ask(query);
+                askWithoutPrefill(query);
               }}
               onOpenChat={() => openChat()}
               // 任务 4：抽屉是浮在当前屏之上的遮罩（设计 786），从概览打开时**留在概览**
@@ -269,7 +289,7 @@ export function IOrbitShell({
                 setView("chat");
                 // 抽屉列表里有就直接用那一行；没有（例如概览的三张卡来自另一页）时
                 // 交给 `pickHistory` 自己按 sessionId 拉，恢复路径完全一致。
-                pickHistory(
+                openHistoryEntry(
                   storedHistory.find((item) => item.sessionId === sessionId) ?? {
                     group: "",
                     id: sessionId,
@@ -300,9 +320,9 @@ export function IOrbitShell({
             onDeleteGroup={(group) => { void deleteHistoryGroup(group); }}
             onFilterGroup={setSelectedSessionGroupId}
             onMove={moveHistorySession}
-            onNewChat={newChat}
-            onNewInGroup={newChatInGroup}
-            onPick={pickHistory}
+            onNewChat={startNewChat}
+            onNewInGroup={startNewChatInGroup}
+            onPick={openHistoryEntry}
             onRename={renameHistorySession}
             onRenameGroup={(group, name) => { void renameHistoryGroup(group, name); }}
             onTogglePin={togglePinnedHistorySession}
@@ -656,7 +676,8 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .ir-drawer-title { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 21px; letter-spacing: -0.02em; }
 [data-orbit-real-page="iorbit-0918"] .ir-drawer-sub { font-size: 13px; color: #6B6F99; }
 [data-orbit-real-page="iorbit-0918"] .btn.ir-drawer-close { width: 34px; height: 34px; border: 0; border-radius: 50%; background: #F7F7FD; color: #3B3F7A; font-size: 16px; cursor: pointer;
-  padding: 0; height: auto; font-weight: 400; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
+  /* 中和 .btn 基类；**不写 height:auto**——设计 791 的 34px 圆钮靠上面那条 height 成立 */
+  padding: 0; font-weight: 400; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
 [data-orbit-real-page="iorbit-0918"] .btn.ir-drawer-close:hover { background: #ECEEFB; }
 [data-orbit-real-page="iorbit-0918"] .btn.ir-drawer-close:active { transform: none; }
 /* 设计没有这一段（能力保全决定）：新对话 + 分组筛选条 */
