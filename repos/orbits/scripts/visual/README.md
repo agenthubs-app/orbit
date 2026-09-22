@@ -25,7 +25,7 @@ node scripts/visual/compare-0918.mjs \
 
 ## 设计页签映射（`--design-view`）
 
-脚本按 `--design` URL 自动选择页签表；也可用 `--design-table profile|events` 强制选个人中心表 / Events 表。
+脚本按 `--design` URL 自动选择页签表；也可用 `--design-table profile|events|ops` 强制选个人中心表 / Events 表 / 运营台表。
 
 - **Network 表**（`--design` 不含个人中心 URL 编码时）：`overview|pipeline|all|import|analysis` → 概览/关系管线/所有人脉/导入人脉/查看完整分析；不传 `--design-view` 时默认点「概览」。
 - **个人中心 表**（`--design` 含 `%E4%B8%AA%E4%BA%BA%E4%B8%AD%E5%BF%83`，即「个人中心」，或传 `--design-table profile`）：`profile|settings|connect` → 个人资料/iOrbit 设置/连接；**不传 `--design-view` 时不点击任何页签**（停在设计稿默认视图）。
@@ -40,6 +40,27 @@ node scripts/visual/compare-0918.mjs \
   - `live`：detail 序列 → `text=进入活动现场` → 应用 `/app/events/<id>/live`
   - `recap`：第一个 `text=回看活动` → 应用 `/app/events/<id>?view=recap`
   - 步间固定等待 300ms（设计稿 renderVals 重绘）；传了表外的 `--design-view` 会以 usage error 退出。
+
+- **运营台 表**（`--design` 含 `%E8%BF%90%E8%90%A5%E5%8F%B0`，即「运营台」，或传 `--design-table ops`；文件名 `Events 运营台.dc.html` 也含 `Events`，运营台判定优先于 Events 表）：同 Events，**每视图一段设计侧点击序列**（设计稿的运营台子页都要从活动中心第一张卡「进入运营 →」点进去；抽屉由「更多 ⌄」直接 `openDrawer`，无子菜单）。序列后仍会执行 `--design-click*`。**应用侧不点击，全部走 URL**（主办方账号登录）。
+  - `hub`（默认，不传 `--design-view` 也是它）：无点击 → 应用 `/app/events/center`
+  - `ops`：`getByRole("button", { name: "进入运营 →", exact: true })`（第一张卡）→ 应用 `/app/events/<id>/operations`
+  - `match`：ops 序列 → 页签 `匹配与分组` → 应用 `/app/events/<id>/operations?tab=match`
+  - `people`：ops 序列 → 页签 `参会者` → 应用 `/app/events/<id>/operations/admission`
+  - `checkin`：ops 序列 → 页签 `签到` → 应用 `/app/events/<id>/operations/check-in`
+  - `form`：ops 序列 → 页签 `报名设置` → 应用 `/app/events/<id>/operations/experience`
+  - `report`：ops 序列 → 页签 `数据报告` → 应用 `/app/events/<id>/analytics`
+  - `drawer`：ops 序列 → `更多 ⌄` → 应用 `/app/events/<id>/operations?drawer=roles`
+  - 页签点击全部 `getByRole("button", { name, exact: true })`；步间固定等待 300ms；传了表外的 `--design-view` 会以 usage error 退出。
+
+示例（运营台 · ops 视图）：
+
+```bash
+node scripts/visual/compare-0918.mjs \
+  --design "http://localhost:3320/Orbit_0918/Events%20%E8%BF%90%E8%90%A5%E5%8F%B0.dc.html" --design-view ops \
+  --app "http://localhost:3100/app/events/<id>/operations" \
+  --login "organizer@orbit.example.test:<password>" \
+  --out /tmp/ops-ops
+```
 
 示例（Events · detail 视图）：
 

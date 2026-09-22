@@ -16,6 +16,12 @@
 //     --app "http://localhost:3100/app/events/<id>" --login "email:password" --out /tmp/events-detail
 // 弹窗（任务 5）：视图序列后再点 --design-click / --design-click2 / --design-click3（可选 --design-fill "<selector>|<text>" 在 click3 前填字）；
 //   应用侧 --click / --click2 / --click3。例：参会者 = live + --design-click 'role=button[name="全部参会者"s]' --design-click2 'role=button[name="查看资料"]'。
+//
+// 运营台 设计稿（--design 含 %E8%BF%90%E8%90%A5%E5%8F%B0（运营台）或 --design-table ops）按视图走点击序列：
+//   node scripts/visual/compare-0918.mjs \
+//     --design "http://localhost:3320/Orbit_0918/Events%20%E8%BF%90%E8%90%A5%E5%8F%B0.dc.html" --design-view ops \
+//     --app "http://localhost:3100/app/events/<id>/operations" --login "organizer:password" --out /tmp/ops-ops
+//   视图：hub（无点击）| ops（点第一张卡「进入运营 →」）| match/people/checkin/form/report（ops 后点同名页签）| drawer（ops 后点「更多 ⌄」）。
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { chromium } from "playwright";
@@ -94,10 +100,14 @@ try {
   // 点击序列」（Events.dc.html 的详情/现场/回顾都要从列表卡片点进去）；无 --design-view 时等同 discover（不点击）。
   // 判定用 --design URL 是否含个人中心的 URL 编码 / Events.dc.html，或显式传 --design-table profile|events。
   const isProfileTable = args["design-table"] === "profile" || (args.design ?? "").includes("%E4%B8%AA%E4%BA%BA%E4%B8%AD%E5%BF%83");
-  const isEventsTable = args["design-table"] === "events" || (args.design ?? "").includes("Events.dc.html");
+  // 运营台 表（--design-view hub|ops|match|people|checkin|form|report|drawer）：同 Events，按视图走设计侧点击序列
+  // （Events 运营台.dc.html 的运营台子页都要从活动中心第一张卡「进入运营 →」点进去；抽屉由「更多 ⌄」直接打开，无子菜单）。
+  // 判定用 --design URL 是否含「运营台」的 URL 编码，或显式传 --design-table ops（先于 Events 判定，因为文件名也含 Events）。
+  const isOpsTable = args["design-table"] === "ops" || (args.design ?? "").includes("%E8%BF%90%E8%90%A5%E5%8F%B0");
+  const isEventsTable = !isOpsTable && (args["design-table"] === "events" || (args.design ?? "").includes("Events.dc.html"));
   const networkViewLabel = { overview: "概览", pipeline: "关系管线", all: "所有人脉", import: "导入人脉", analysis: "查看完整分析" };
   const profileViewLabel = { profile: "个人资料", settings: "iOrbit 设置", connect: "连接" };
-  const viewLabel = isEventsTable ? undefined : isProfileTable ? profileViewLabel[args["design-view"]] : networkViewLabel[args["design-view"] ?? "overview"];
+  const viewLabel = isEventsTable || isOpsTable ? undefined : isProfileTable ? profileViewLabel[args["design-view"]] : networkViewLabel[args["design-view"] ?? "overview"];
   // 每一步是 (page) => Locator；按顺序点击，步间短等待让设计稿的 renderVals 重绘完成。
   const eventsDetailSequence = [(page) => page.locator("text=AI 产品从 0 到 1").first()];
   const eventsViewSequence = {
@@ -113,7 +123,26 @@ try {
     await browser.close();
     process.exit(2);
   }
-  const designSequence = isEventsTable ? eventsViewSequence[eventsView] : [];
+  // 运营台：ops = 活动中心第一张卡的「进入运营 →」；子页签按精确名点击；drawer = 「更多 ⌄」直接 openDrawer。
+  const opsEnterSequence = [(page) => page.getByRole("button", { name: "进入运营 →", exact: true }).first()];
+  const opsTab = (label) => [...opsEnterSequence, (page) => page.getByRole("button", { name: label, exact: true }).first()];
+  const opsViewSequence = {
+    hub: [],
+    ops: opsEnterSequence,
+    match: opsTab("匹配与分组"),
+    people: opsTab("参会者"),
+    checkin: opsTab("签到"),
+    form: opsTab("报名设置"),
+    report: opsTab("数据报告"),
+    drawer: [...opsEnterSequence, (page) => page.getByRole("button", { name: "更多 ⌄", exact: true }).first()],
+  };
+  const opsView = args["design-view"] ?? "hub";
+  if (isOpsTable && !(opsView in opsViewSequence)) {
+    console.error(`usage error: ops --design-view must be one of ${Object.keys(opsViewSequence).join("|")}, got "${opsView}"`);
+    await browser.close();
+    process.exit(2);
+  }
+  const designSequence = isOpsTable ? opsViewSequence[opsView] : isEventsTable ? eventsViewSequence[eventsView] : [];
   const design = await shoot(args.design, "design.png", async (page) => {
     if (viewLabel) await page.getByRole("button", { name: viewLabel, exact: true }).first().click();
     for (const step of designSequence) { await step(page).click(); await page.waitForTimeout(300); }
