@@ -1,57 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 
 import type {
-  EventOperationsCheckIn,
-  EventOperationsConfiguration,
   EventOperationsGeneration,
   EventOperationsTable,
 } from "../../../../../../features/events/event-operations/contract";
-import type { EventOperationsAdminWorkspace } from "../../../../../../features/events/event-operations/service";
 import { ORBIT_0918_COLORS as C, ORBIT_0918_FONTS } from "../../../orbit-0918-tokens";
 import { PublicTopNav } from "../../../orbit-public-shell";
-
-interface ApiEnvelope<T> {
-  data?: T;
-  error?: { message?: string };
-  success: boolean;
-}
-
-interface ConfigurationForm {
-  checkInOpensAt: string;
-  eventEndsAt: string;
-  eventStartsAt: string;
-  maxAttemptsPerTask: string;
-  profileEditDeadlineAt: string;
-  recommendationCount: string;
-  registrationCutoffAt: string;
-  resultsAvailableAt: string;
-  roundOneStartsAt: string;
-  roundTwoStartsAt: string;
-  shardSize: string;
-  tableSize: string;
-}
-
-const dateFields = [
-  "eventStartsAt",
-  "eventEndsAt",
-  "profileEditDeadlineAt",
-  "registrationCutoffAt",
-  "checkInOpensAt",
-  "resultsAvailableAt",
-  "roundOneStartsAt",
-  "roundTwoStartsAt",
-] as const;
-
-const canonicalScheduleFields = ["eventStartsAt", "eventEndsAt"] as const;
-
-const numberFields = [
-  "recommendationCount",
-  "tableSize",
-  "shardSize",
-  "maxAttemptsPerTask",
-] as const;
+import {
+  AUTO_RETRY_LIMIT,
+  canonicalScheduleFields,
+  dateFields,
+  formatTimestamp,
+  numberFields,
+  useEventOperations,
+} from "../../ops-0918/use-event-operations";
 
 // Engine tuning knobs live behind an "advanced" fold; organizers normally only
 // touch the schedule gates and the two matching-shape numbers.
@@ -110,62 +74,11 @@ function generationEtaLabel(createdAt: string, percent: number): string {
   return `预计还需约 ${minutes} 分钟`;
 }
 
-const AUTO_RETRY_LIMIT = 2;
-
-function localDateTime(value: string): string {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "";
-  const offset = date.getTimezoneOffset() * 60_000;
-  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
-}
-
-function formFor(
-  configuration: EventOperationsConfiguration | null,
-  event: { endsAt: string; startsAt: string },
-): ConfigurationForm {
-  return {
-    checkInOpensAt: configuration ? localDateTime(configuration.checkInOpensAt) : "",
-    eventEndsAt: localDateTime(configuration?.eventEndsAt ?? event.endsAt),
-    eventStartsAt: localDateTime(configuration?.eventStartsAt ?? event.startsAt),
-    maxAttemptsPerTask: configuration ? String(configuration.maxAttemptsPerTask) : "",
-    profileEditDeadlineAt: configuration ? localDateTime(configuration.profileEditDeadlineAt) : "",
-    recommendationCount: configuration ? String(configuration.recommendationCount) : "",
-    registrationCutoffAt: configuration ? localDateTime(configuration.registrationCutoffAt) : "",
-    resultsAvailableAt: configuration ? localDateTime(configuration.resultsAvailableAt) : "",
-    roundOneStartsAt: configuration ? localDateTime(configuration.roundOneStartsAt) : "",
-    roundTwoStartsAt: configuration ? localDateTime(configuration.roundTwoStartsAt) : "",
-    shardSize: configuration ? String(configuration.shardSize) : "",
-    tableSize: configuration ? String(configuration.tableSize) : "",
-  };
-}
-
-async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    ...init,
-    headers: init?.body ? { "content-type": "application/json", ...init.headers } : init?.headers,
-  });
-  const envelope = (await response.json().catch(() => null)) as ApiEnvelope<T> | null;
-  if (!response.ok || envelope?.success !== true || !envelope.data) {
-    throw new Error(envelope?.error?.message ?? `Request failed with status ${response.status}.`);
-  }
-  return envelope.data;
-}
-
 function generationActionLabel(generation: EventOperationsGeneration): string {
   if (generation.status === "failed") return "重试失败分片";
   if (generation.status === "completed") return "原子发布";
   if (generation.status === "published") return "已发布";
   return "Worker 处理中…";
-}
-
-function formatTimestamp(value: string): string {
-  const timestamp = new Date(value);
-  return Number.isFinite(timestamp.getTime())
-    ? new Intl.DateTimeFormat(undefined, {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }).format(timestamp)
-    : value;
 }
 
 function PublishedRoundPreview({
@@ -333,251 +246,32 @@ export function EventOperationsAdminWorkspace({
   canManageRoles?: boolean;
   event: { endsAt: string; id: string; startsAt: string; title: string };
 }) {
-  const baseUrl = `/api/events/${encodeURIComponent(event.id)}/operations/admin`;
-  const [workspace, setWorkspace] = useState<EventOperationsAdminWorkspace | null>(null);
-  const [form, setForm] = useState<ConfigurationForm>(() => formFor(null, event));
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [currentTimeMs, setCurrentTimeMs] = useState(() => Date.now());
   const [confirmingStart, setConfirmingStart] = useState(false);
-  // Client-side orchestration: how many automatic retries this session has
-  // spent per generation. Only the newest generation is ever auto-retried.
-  const [autoRetries, setAutoRetries] = useState<Record<string, number>>({});
-
-  const load = useCallback(async (showLoading = true) => {
-    if (showLoading) setLoading(true);
-    try {
-      const next = await requestJson<EventOperationsAdminWorkspace>(baseUrl);
-      setWorkspace(next);
-      if (showLoading) setForm(formFor(next.configuration, event));
-      setError(null);
-    } catch (cause) {
-      setWorkspace(null);
-      setError(cause instanceof Error ? cause.message : "Could not load event operations.");
-    } finally {
-      if (showLoading) setLoading(false);
-    }
-  }, [baseUrl, event]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setCurrentTimeMs(Date.now()), 30_000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  const hasActiveGeneration = workspace?.generations.some(
-    ({ generation }) =>
-      generation.status === "queued" || generation.status === "running",
-  ) ?? false;
-
-  useEffect(() => {
-    if (!hasActiveGeneration) return;
-    const timer = window.setInterval(() => {
-      void load(false);
-    }, 1_500);
-    return () => window.clearInterval(timer);
-  }, [hasActiveGeneration, load]);
-
-  async function saveConfiguration() {
-    setBusy("configuration");
-    setError(null);
-    setNotice(null);
-    try {
-      const payload: Record<string, string | number> = {};
-      for (const field of dateFields) {
-        if (!form[field]) throw new Error(`${field} is required.`);
-        payload[field] = field === "eventStartsAt"
-          ? event.startsAt
-          : field === "eventEndsAt"
-            ? event.endsAt
-            : new Date(form[field]).toISOString();
-      }
-      for (const field of numberFields) {
-        const value = Number(form[field]);
-        if (!Number.isInteger(value) || value < 1) throw new Error(`${field} must be a positive integer.`);
-        payload[field] = value;
-      }
-      await requestJson<EventOperationsConfiguration>(baseUrl, {
-        body: JSON.stringify(payload),
-        method: "PUT",
-      });
-      setNotice("配置已按主办方的显式输入保存。");
-      await load();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not save configuration.");
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function startGeneration() {
-    setBusy("start");
-    setError(null);
-    setNotice(null);
-    setConfirmingStart(false);
-    try {
-      const generation = await requestJson<EventOperationsGeneration>(`${baseUrl}/generations`, {
-        body: JSON.stringify({}),
-        method: "POST",
-      });
-      setNotice(`已开始生成匹配（报名快照 ${generation.snapshot.hash.slice(0, 12)}…）。预计 8–12 分钟，失败的片段会自动重试；可以离开此页，完成后回来确认发布。`);
-      await load();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not start generation.");
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  // Auto-retry the newest generation when it fails on a retryable engine
-  // error, up to AUTO_RETRY_LIMIT rounds. Configuration-level failures are
-  // never auto-retried — they need an organizer decision.
-  const newestGeneration = workspace?.generations[0]?.generation ?? null;
-  useEffect(() => {
-    if (!newestGeneration || newestGeneration.status !== "failed") return;
-    const code = newestGeneration.errorCode ?? "";
-    if (code.includes("CONFIGURATION") || code.includes("NOT_CONFIGURED")) return;
-    const spent = autoRetries[newestGeneration.generationId] ?? 0;
-    if (spent >= AUTO_RETRY_LIMIT || busy !== null) return;
-    const generationId = newestGeneration.generationId;
-    setAutoRetries((current) => ({ ...current, [generationId]: spent + 1 }));
-    setNotice(`部分片段未通过校验，已自动重试（第 ${spent + 1}/${AUTO_RETRY_LIMIT} 次）…`);
-    void requestJson(
-      `${baseUrl}/generations/${encodeURIComponent(generationId)}/retry`,
-      { method: "POST" },
-    ).then(() => load(false)).catch(() => {
-      // The next poll surfaces persisted state; manual retry stays available.
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [newestGeneration?.generationId, newestGeneration?.status]);
-
-  async function generationAction(generation: EventOperationsGeneration) {
-    if (generation.status === "published") return;
-    const action = generation.status === "failed"
-      ? "retry"
-      : generation.status === "completed"
-        ? "publish"
-        : null;
-    if (!action) return;
-    setBusy(`${generation.generationId}:${action}`);
-    setError(null);
-    setNotice(null);
-    try {
-      await requestJson(
-        `${baseUrl}/generations/${encodeURIComponent(generation.generationId)}/${action}`,
-        {
-          method: "POST",
-        },
-      );
-      setNotice(
-        action === "publish"
-          ? "整份生成结果已通过一次原子指针更新发布。"
-          : action === "retry"
-            ? "仅重置了失败分片；已完成分片的输出全部保留。"
-            : "持久 worker 只会回收可重试的失败分片。",
-      );
-      await load();
-    } catch (cause) {
-      const actionError = cause instanceof Error
-        ? cause.message
-        : `Could not ${action} generation.`;
-      await load();
-      setError(actionError);
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function markParticipantArrived(participantId: string) {
-    setBusy(`checkin:${participantId}`);
-    setError(null);
-    setNotice(null);
-    try {
-      const checkIn = await requestJson<EventOperationsCheckIn>(`${baseUrl}/check-ins`, {
-        body: JSON.stringify({ participantId }),
-        method: "POST",
-      });
-      setNotice(`已记录到场时间 ${formatTimestamp(checkIn.checkedInAt)}；重复操作会保留最初的签到时间。`);
-      await load(false);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not mark this participant as arrived.");
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function copyCheckInLink() {
-    try {
-      if (!navigator.clipboard?.writeText) {
-        throw new Error("Clipboard access is unavailable in this browser.");
-      }
-      await navigator.clipboard.writeText(new URL(operationsCheckInHref, window.location.origin).toString());
-      setNotice("Check-in link copied. It can be displayed on the venue screen or sent to registered attendees.");
-      setError(null);
-    } catch {
-      setNotice("Select and copy the visible check-in link manually; no QR code was fabricated.");
-    }
-  }
-
-  const checkInsByParticipant = useMemo(
-    () => new Map(workspace?.checkIns.map((record) => [record.participantId, record]) ?? []),
-    [workspace],
-  );
-  const participantNames = useMemo(
-    () => new Map(workspace?.participants.map((participant) => [participant.participantId, participant.displayName]) ?? []),
-    [workspace],
-  );
-  const operationsCheckInHref = `/app/events/${encodeURIComponent(event.id)}/operations/check-in`;
-  const configuration = workspace?.configuration ?? null;
-  const checkInOpen = configuration
-    ? currentTimeMs >= Date.parse(configuration.checkInOpensAt) &&
-      currentTimeMs <= Date.parse(configuration.eventEndsAt)
-    : false;
-  const timeline = configuration
-    ? [
-        { at: configuration.profileEditDeadlineAt, label: "Profile edit deadline", state: currentTimeMs < Date.parse(configuration.profileEditDeadlineAt) ? "open" : "closed" },
-        { at: configuration.registrationCutoffAt, label: "Registration cutoff", state: currentTimeMs < Date.parse(configuration.registrationCutoffAt) ? "open" : "closed" },
-        { at: configuration.checkInOpensAt, label: "Check-in opens", state: checkInOpen ? "open now" : currentTimeMs < Date.parse(configuration.checkInOpensAt) ? "upcoming" : "closed" },
-        { at: configuration.resultsAvailableAt, label: "Results available", state: currentTimeMs >= Date.parse(configuration.resultsAvailableAt) ? "available" : "locked" },
-        { at: configuration.eventStartsAt, label: "Event starts", state: currentTimeMs < Date.parse(configuration.eventStartsAt) ? "upcoming" : currentTimeMs <= Date.parse(configuration.eventEndsAt) ? "live" : "ended" },
-        { at: configuration.roundOneStartsAt, label: "Round one starts", state: currentTimeMs < Date.parse(configuration.roundOneStartsAt) ? "upcoming" : "started" },
-        { at: configuration.roundTwoStartsAt, label: "Round two starts", state: currentTimeMs < Date.parse(configuration.roundTwoStartsAt) ? "upcoming" : "started" },
-        { at: configuration.eventEndsAt, label: "Event ends", state: currentTimeMs <= Date.parse(configuration.eventEndsAt) ? "upcoming" : "ended" },
-      ].sort((left, right) => Date.parse(left.at) - Date.parse(right.at))
-    : [];
-
-  const publishedMatchStatus = !workspace
-    ? "—"
-    : workspace.publishedResult
-      ? "已发布"
-      : workspace.generations.some(({ generation }) => generation.status === "completed")
-        ? "待发布"
-        : "未发布";
-
-  // 运营进度步进条：全部从真实配置时间门禁、生成状态与发布结果推导，无伪造阶段。
-  const progressSteps = workspace && configuration
-    ? (() => {
-        const ws = workspace;
-        const cfg = configuration;
-        const generated = ws.generations.some(
-          ({ generation }) => generation.status === "completed" || generation.status === "published",
-        );
-        const defs = [
-          { done: currentTimeMs >= Date.parse(cfg.registrationCutoffAt), label: "报名截止", meta: formatTimestamp(cfg.registrationCutoffAt) },
-          { done: generated, label: "生成匹配", meta: "" },
-          { done: Boolean(ws.publishedResult), label: "发布结果", meta: "" },
-          { done: currentTimeMs >= Date.parse(cfg.checkInOpensAt), label: "签到开放", meta: formatTimestamp(cfg.checkInOpensAt) },
-          { done: currentTimeMs >= Date.parse(cfg.eventStartsAt), label: "活动现场", meta: formatTimestamp(cfg.eventStartsAt) },
-        ];
-        const currentIndex = defs.findIndex((def) => !def.done);
-        return defs.map((def, index) => ({ ...def, current: index === currentIndex }));
-      })()
-    : [];
+  const {
+    autoRetries,
+    baseUrl,
+    busy,
+    checkInOpen,
+    checkInsByParticipant,
+    copyCheckInLink,
+    error,
+    form,
+    generationAction,
+    hasActiveGeneration,
+    loading,
+    markParticipantArrived,
+    newestGeneration,
+    notice,
+    operationsCheckInHref,
+    participantNames,
+    progressSteps,
+    publishedMatchStatus,
+    saveConfiguration,
+    setForm,
+    startGeneration,
+    timeline,
+    workspace,
+  } = useEventOperations(event);
 
   return (
     <div data-orbit-real-page="event-operations-admin" style={{ background: C.pageBg, color: C.ink, fontFamily: ORBIT_0918_FONTS.sans, minHeight: "100dvh" }}>
@@ -677,7 +371,7 @@ export function EventOperationsAdminWorkspace({
                   <strong>将为 {workspace.metrics.participantCount} 位已报名参会者生成推荐与两轮分桌</strong>
                   <p className="ops-note">预计 8–12 分钟；失败的片段会自动重试。生成完成后由你预览并确认发布，不会自动对参会者公开。</p>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button className="ops-btn ops-btn-dark ops-btn-sm" disabled={busy === "start"} onClick={startGeneration} type="button">{busy === "start" ? "正在开始…" : "开始生成"}</button>
+                    <button className="ops-btn ops-btn-dark ops-btn-sm" disabled={busy === "start"} onClick={() => { setConfirmingStart(false); void startGeneration(); }} type="button">{busy === "start" ? "正在开始…" : "开始生成"}</button>
                     <button className="ops-btn ops-btn-ghost ops-btn-sm" onClick={() => setConfirmingStart(false)} type="button">取消</button>
                   </div>
                 </div>

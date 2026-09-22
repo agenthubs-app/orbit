@@ -25,37 +25,44 @@ test("event operations workspace requires login and per-event operations capabil
 });
 
 test("organizer workspace exposes the complete strict generation and audit workflow", () => {
+  // 运营台 任务 1：状态/fetch/动作已原样搬入 ops-0918/use-event-operations.ts；
+  // 下面按「hook 文件 vs JSX 文件」拆分同一组断言，意图不变。
   const client = source(
     "app/(app)/app/events/[id]/operations/event-operations-admin-workspace.tsx",
   );
+  const hook = source("app/(app)/app/events/ops-0918/use-event-operations.ts");
+  assert.match(client, /useEventOperations\(event\)/);
 
-  assert.match(client, /method: "PUT"/);
+  assert.match(hook, /method: "PUT"/);
   assert.match(client, /生成匹配/);
   assert.match(client, /Worker 处理中/);
-  assert.match(client, /setInterval/);
+  assert.match(hook, /setInterval/);
   assert.match(client, /失败的片段会自动重试/);
+  assert.match(hook, /失败的片段会自动重试/);
   assert.doesNotMatch(client, /maxConcurrency|event-operations-admin-ui/);
+  assert.doesNotMatch(hook, /maxConcurrency|event-operations-admin-ui/);
   assert.match(client, /重试失败分片/);
   assert.match(client, /原子发布/);
-  assert.match(client, /已完成分片的输出全部保留/);
+  assert.match(hook, /已完成分片的输出全部保留/);
   assert.match(
-    client,
+    hook,
     /const actionError[\s\S]*await load\(\);[\s\S]*setError\(actionError\)/,
     "generation failures must remain visible after the latest persisted state is reloaded",
   );
   assert.match(client, /\/export/);
   assert.match(client, /REAL REGISTRATION DIRECTORY/);
   assert.match(client, /CONSENT AUDIT/);
-  assert.match(client, /\/check-ins/);
+  assert.match(hook, /\/check-ins/);
   assert.match(client, /标记到场/);
   assert.match(client, /VENUE CHECK-IN ENTRY/);
   assert.match(client, /不会生成二维码图片/);
-  assert.match(client, /\/operations\/check-in`/);
+  assert.match(hook, /\/operations\/check-in`/);
   assert.doesNotMatch(client, /\/app\/party/);
+  assert.doesNotMatch(hook, /\/app\/party/);
   assert.match(client, /CONFIGURED TIMELINE/);
-  assert.match(client, /canonicalScheduleFields = \["eventStartsAt", "eventEndsAt"\]/);
-  assert.match(client, /field === "eventStartsAt"\s*\? event\.startsAt/);
-  assert.match(client, /field === "eventEndsAt"\s*\? event\.endsAt/);
+  assert.match(hook, /canonicalScheduleFields = \["eventStartsAt", "eventEndsAt"\]/);
+  assert.match(hook, /field === "eventStartsAt"\s*\? event\.startsAt/);
+  assert.match(hook, /field === "eventEndsAt"\s*\? event\.endsAt/);
   assert.match(client, /readOnly=\{canonicalScheduleFields\.includes/);
   assert.equal(
     (client.match(/onInput=\{\(input\) => \{/g) ?? []).length,
