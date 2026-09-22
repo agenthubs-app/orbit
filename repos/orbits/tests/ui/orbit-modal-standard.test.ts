@@ -4,8 +4,10 @@
  *
  * (a) ModalShell (orbit-account-shell.tsx) carries role="dialog" and is
  *     built on useOrbitModalA11y, not an inline reimplementation.
- * (b) The remaining migrated dialog (account-auth) no longer hand-rolls its
- *     own Esc listener. Admin's unpersisted CreateEventModal was retired.
+ * (b) The remaining migrated dialog (account-auth — since 2026-09-22 the
+ *     Orbit_0918 auth modal shell `account/auth-0918/auth-modal.tsx`, which
+ *     replaced `orbit-real-account-auth.tsx`) no longer hand-rolls its own
+ *     Esc listener. Admin's unpersisted CreateEventModal was retired.
  *     The party PersonDetailOverlay (bottom-sheet on ModalShell) was deleted
  *     with /app/party* on 2026-09-22; its successor is the Orbit_0918 events
  *     modal frame, covered under (c).
@@ -27,7 +29,7 @@ function source(path: string): string {
 }
 
 const MODAL_SHELL_PATH = "app/(app)/app/orbit-account-shell.tsx";
-const ACCOUNT_AUTH_PATH = "app/(app)/app/account/orbit-real-account-auth.tsx";
+const ACCOUNT_AUTH_PATH = "app/(app)/app/account/auth-0918/auth-modal.tsx";
 const EVENTS_MODAL_FRAME_PATH = "app/(app)/app/events/events-0918/event-modal-frame.tsx";
 const ADMIN_PATHS = [
   "app/(app)/app/admin/orbit-real-admin-login.tsx",
@@ -85,7 +87,7 @@ test("account-auth no longer owns an independent keydown/Esc listener", () => {
 
 test("account-auth dialog is wired to the shared focus-trap hook and carries role/aria-modal", () => {
   const text = source(ACCOUNT_AUTH_PATH);
-  assert.match(text, /import\s*\{\s*useOrbitModalA11y\s*\}\s*from\s*"\.\.\/orbit-modal-a11y"/);
+  assert.match(text, /import\s*\{\s*useOrbitModalA11y\s*\}\s*from\s*"\.\.\/\.\.\/orbit-modal-a11y"/);
   assert.match(text, /useOrbitModalA11y\(handleClose\)/);
   assert.match(text, /role="dialog"/);
   assert.match(text, /aria-modal="true"/);

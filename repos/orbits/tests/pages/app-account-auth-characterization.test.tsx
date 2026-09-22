@@ -3,14 +3,20 @@ import test from "node:test";
 
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
-import { OrbitRealAccountAuth } from "../../app/(app)/app/account/orbit-real-account-auth";
+import { AuthModal } from "../../app/(app)/app/account/auth-0918/auth-modal";
 import { getOrbitAccountAuthViewModel } from "../../app/(app)/app/orbit-account-auth-route-view-model";
 import { profileContinuationPath } from "../../app/(app)/app/profile/profile-onboarding-navigation";
 
 // 特征化渲染测试（认证弹窗 任务 1）：锁定 登录 / 注册 / 找回 三态的 query 归一化、
 // signIn("credentials") 调用形状、/api/auth/register 与 /api/auth/password-reset/request 的
 // POST 体、错误文案、Google callbackUrl 与 continuation 导航，使逻辑搬进
-// use-account-auth 时零变化可证。next-auth/react 的 signIn 不做模块替换（node:test 的
+// use-account-auth 时零变化可证。
+// 任务 3（旧 orbit-real-account-auth.tsx 已删）：改指 Orbit_0918 弹窗 `AuthModal`（login / signup→register /
+// forgot），意图不变；逐条改动：输入 id `orbit-auth-email|password` → `au-email|password`；notice 类
+// `orbit-alert notice` → `au-notice`（审阅修订 12：改带 role="status"）；登录失败 / 409 文案对齐设计
+// 526–527（「邮箱或密码不正确，请重试。」「该邮箱已注册，请直接登录。」）；找回受理提示 → 设计 401–404
+// 成功卡（+「受理 ≠ 送达」补句）；busy 文案 viewModel.busyLabel → 设计 518「登录中…」；登录失败用例的
+// 错误密码 "wrong" → "wrong-password"（新屏先做本地 8 位校验（审阅修订 8），短密码不会到达 signIn）。next-auth/react 的 signIn 不做模块替换（node:test 的
 // mock.module 在本仓库运行方式下不可用），而是在 fetch 层桩住它的 /providers、/csrf、
 // /callback/credentials、/signin/google 四个端点——`redirect:false` 的调用形状体现在
 // 回调体不含 `redirect` 且 next-auth 自身不做导航。
@@ -130,11 +136,13 @@ async function settle(): Promise<void> {
   await new Promise<void>((resolve) => setTimeout(resolve, 0));
 }
 
+const VIEW_BY_MODE = { forgot: "forgot", login: "login", signup: "register" } as const;
+
 async function mount(mode: AuthMode, oauthProviders: readonly string[] = []): Promise<ReactTestRenderer> {
   let renderer!: ReactTestRenderer;
   await act(async () => {
     renderer = create(
-      <OrbitRealAccountAuth oauthProviders={oauthProviders} viewModel={getOrbitAccountAuthViewModel(mode)} />,
+      <AuthModal defaultNext={getOrbitAccountAuthViewModel(mode).defaultNext} oauthProviders={oauthProviders} view={VIEW_BY_MODE[mode]} />,
     );
     await settle();
   });
@@ -156,8 +164,8 @@ function input(renderer: ReactTestRenderer, id: string) {
 
 async function fill(renderer: ReactTestRenderer, email: string, password = ""): Promise<void> {
   await act(async () => {
-    input(renderer, "orbit-auth-email").props.onChange({ target: { value: email } });
-    if (password) input(renderer, "orbit-auth-password").props.onChange({ target: { value: password } });
+    input(renderer, "au-email").props.onChange({ target: { value: email } });
+    if (password) input(renderer, "au-password").props.onChange({ target: { value: password } });
   });
 }
 
@@ -169,15 +177,19 @@ async function submit(renderer: ReactTestRenderer): Promise<void> {
   });
 }
 
+function textOf(node: { children: Array<string | { children: unknown[] }> }): string {
+  return node.children.map((child) => (typeof child === "string" ? child : textOf(child as { children: Array<string | { children: unknown[] }> }))).join("");
+}
+
 function byRole(renderer: ReactTestRenderer, role: string): string[] {
   return renderer.root
     .findAll((node) => node.props.role === role && typeof node.type === "string")
-    .map((node) => node.children.join(""));
+    .map((node) => textOf(node as never));
 }
 
 function notices(renderer: ReactTestRenderer): string[] {
   return renderer.root
-    .findAll((node) => node.type === "div" && node.props.className === "orbit-alert notice")
+    .findAll((node) => node.type === "div" && node.props.className === "au-notice")
     .map((node) => node.children.join(""));
 }
 
@@ -228,10 +240,10 @@ test("login failure: shows the incorrect-credentials copy, clears busy state, an
   let renderer: ReactTestRenderer | undefined;
   try {
     renderer = await mount("login");
-    await fill(renderer, "owner@example.invalid", "wrong");
+    await fill(renderer, "owner@example.invalid", "wrong-password");
     await submit(renderer);
 
-    assert.deepEqual(byRole(renderer, "alert"), ["邮箱或密码不正确。"]);
+    assert.deepEqual(byRole(renderer, "alert"), ["邮箱或密码不正确，请重试。"]);
     assert.deepEqual(harness.navigation.assigned, []);
     assert.equal(submitButton(renderer).props.disabled, false);
     assert.equal(submitButton(renderer).props["aria-busy"], undefined);
@@ -312,7 +324,7 @@ test("signup auto sign-in failure: falls back to the created login URL with next
 
 test("signup 409 → duplicate-email copy; other register errors → server message; no auto sign-in", async () => {
   for (const [response, expected] of [
-    [Response.json({ success: false, error: { message: "ignored" } }, { status: 409 }), "该邮箱已注册,请直接登录。"],
+    [Response.json({ success: false, error: { message: "ignored" } }, { status: 409 }), "该邮箱已注册，请直接登录。"],
     [Response.json({ success: false, error: { message: "Password too weak" } }, { status: 422 }), "Password too weak"],
     [Response.json({ success: false }, { status: 500 }), "注册失败,请稍后再试。"],
   ] as const) {
@@ -332,12 +344,12 @@ test("signup 409 → duplicate-email copy; other register errors → server mess
   }
 });
 
-test("forgot: POST /api/auth/password-reset/request {email} and announce acceptance in a role=status notice", async () => {
+test("forgot: POST /api/auth/password-reset/request {email} and announce acceptance in a role=status card (acceptance ≠ delivery)", async () => {
   const harness = install(`?next=${encodeURIComponent(NEXT)}`);
   let renderer: ReactTestRenderer | undefined;
   try {
     renderer = await mount("forgot");
-    assert.equal(renderer.root.findAllByType("input").some((node) => node.props.id === "orbit-auth-password"), false);
+    assert.equal(renderer.root.findAllByType("input").some((node) => node.props.id === "au-password"), false);
     assert.equal(submitLabel(renderer), "申请重置链接");
     await fill(renderer, "owner@example.invalid");
     await submit(renderer);
@@ -348,7 +360,7 @@ test("forgot: POST /api/auth/password-reset/request {email} and announce accepta
     assert.equal(request.headers["content-type"], "application/json");
     assert.deepEqual(JSON.parse(String(request.body)), { email: "owner@example.invalid" });
     assert.deepEqual(byRole(renderer, "status"), [
-      "申请已受理。如果该邮箱支持密码恢复，你将收到重置链接。请检查垃圾邮件；未收到时可在一分钟后重试。",
+      "✦ 重置链接已发送请查看 owner@example.invalid 的收件箱。链接 30 分钟内有效。如果该邮箱支持密码恢复，链接会很快送达。",
     ]);
     assert.deepEqual(byRole(renderer, "alert"), []);
     assert.deepEqual(harness.navigation.assigned, []);
@@ -464,14 +476,14 @@ test("?next= normalisation: a safe next is threaded through forgot/switch hrefs 
   }
 });
 
-test("?created=1&email= prefills the email after mount and shows the auto sign-in fallback notice (not role=status)", async () => {
+test("?created=1&email= prefills the email after mount and shows the auto sign-in fallback notice (role=status, 审阅修订 12)", async () => {
   const harness = install(`?next=${encodeURIComponent(NEXT)}&created=1&email=${encodeURIComponent("made@example.invalid")}`);
   let renderer: ReactTestRenderer | undefined;
   try {
     renderer = await mount("login");
-    assert.equal(input(renderer, "orbit-auth-email").props.value, "made@example.invalid");
+    assert.equal(input(renderer, "au-email").props.value, "made@example.invalid");
     assert.deepEqual(notices(renderer), ["账号已创建，但自动登录未完成。请用刚设置的密码登录。"]);
-    assert.deepEqual(byRole(renderer, "status"), []);
+    assert.deepEqual(byRole(renderer, "status"), ["账号已创建，但自动登录未完成。请用刚设置的密码登录。"]);
     assert.deepEqual(byRole(renderer, "alert"), []);
   } finally {
     await unmount(renderer);
@@ -485,9 +497,9 @@ test("submit clears previous error and notice, and sets the busy state while pen
   let renderer: ReactTestRenderer | undefined;
   try {
     renderer = await mount("login");
-    await fill(renderer, "owner@example.invalid", "wrong");
+    await fill(renderer, "owner@example.invalid", "wrong-password");
     await submit(renderer);
-    assert.deepEqual(byRole(renderer, "alert"), ["邮箱或密码不正确。"]);
+    assert.deepEqual(byRole(renderer, "alert"), ["邮箱或密码不正确，请重试。"]);
 
     const baseFetch = globalThis.fetch;
     globalThis.fetch = (async (input, init) => {
@@ -506,7 +518,7 @@ test("submit clears previous error and notice, and sets the busy state while pen
     assert.deepEqual(byRole(renderer, "alert"), []);
     assert.equal(submitButton(renderer).props.disabled, true);
     assert.equal(submitButton(renderer).props["aria-busy"], true);
-    assert.equal(submitLabel(renderer), getOrbitAccountAuthViewModel("login").busyLabel);
+    assert.equal(submitLabel(renderer), "登录中…");
     await act(async () => {
       release();
       await pending;

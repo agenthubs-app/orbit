@@ -1,16 +1,16 @@
 "use client";
 
 /**
- * 认证弹窗（Orbit_0918）登录 / 注册 共用的表单件：邮箱字段（设计 354–356）、密码字段（357–360 / 381–383，
- * 含设计外的 显示/隐藏 眼睛钮 `btn au-eye`，审阅修订 9）、错误卡（363）、created 提示（设计外蓝色 notice）、
- * Google 钮（设计外 `btn au-google`）与 提交流程 hook（`<form noValidate>` + 本地校验，审阅修订 8）。
- * 文件不在计划的文件结构清单内（记录）：两屏共享的部分抽出，避免登录 / 注册各抄一份。
+ * 认证弹窗（Orbit_0918）登录 / 注册 / 找回 共用的表单件：邮箱字段（设计 354–356 / 408–410）、密码字段（357–360 / 381–383，
+ * 含设计外的 显示/隐藏 眼睛钮 `btn au-eye`，审阅修订 9）、错误卡（363 / 385 / 412 / 453）、created 提示（设计外蓝色 notice）、
+ * 「← 返回登录」行（418 / 432 / 461）、Google 钮（设计外 `btn au-google`）与 提交流程 hook（`<form noValidate>` + 本地校验，审阅修订 8）。
+ * 文件不在计划的文件结构清单内（记录）：多屏共享的部分抽出，避免各屏各抄一份。
  */
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { Icon } from "../../orbit-reference-primitives";
-import { AUTH_BUTTON_LABELS, AUTH_PASSWORD_MIN_LENGTH, bridgeLegacyAuthError, validateEmail, validatePassword, type AuthView } from "./auth-model";
+import { AUTH_BUTTON_LABELS, AUTH_PASSWORD_MIN_LENGTH, authRoutePath, validateEmail, validatePassword, type AuthView } from "./auth-model";
 import type { AccountAuthSession } from "./use-account-auth";
 
 export const AUTH_EMAIL_ID = "au-email";
@@ -18,31 +18,16 @@ export const AUTH_PASSWORD_ID = "au-password";
 export const AUTH_PASSWORD_MAX_LENGTH = 72;
 
 /**
- * 提交流程：先跑 auth-model 校验（设计 526–527 文案，零网络），通过后才交给 hook 的 `onSubmit`。
- * 成功态（「✓ 已登录」/「✓ 账号已创建」）由 hook 的 submitting 从 true 回落 false 且 error 为空推出——
- * hook 成功路径只导航不设错，失败路径在同一批更新里先设 error 再复位 submitting。
+ * 提交流程：先跑 auth-model 校验（设计 526–528 文案，零网络；找回只校验邮箱），通过后才交给 hook 的 `onSubmit`。
+ * 成功态（「✓ 已登录」/「✓ 账号已创建」）读 hook 的 `succeeded`（成功路径导航前显式置位）；错误文案 hook 已对齐设计（任务 3）。
  */
-export function useAuthSubmit(session: AccountAuthSession, view: Extract<AuthView, "login" | "register">) {
+export function useAuthSubmit(session: AccountAuthSession, view: Exclude<AuthView, "reset">) {
   const { t } = useOrbitLanguage();
   const [localError, setLocalError] = useState("");
-  const [succeeded, setSucceeded] = useState(false);
-  const sawSubmitting = useRef(false);
-
-  useEffect(() => {
-    if (session.submitting) {
-      sawSubmitting.current = true;
-      return;
-    }
-    if (sawSubmitting.current) {
-      sawSubmitting.current = false;
-      if (!session.error) setSucceeded(true);
-    }
-  }, [session.error, session.submitting]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSucceeded(false);
-    const problem = validateEmail(session.email) ?? validatePassword(session.password);
+    const problem = validateEmail(session.email) ?? (view === "forgot" ? null : validatePassword(session.password));
     if (problem) {
       setLocalError(t(problem));
       return;
@@ -52,8 +37,8 @@ export function useAuthSubmit(session: AccountAuthSession, view: Extract<AuthVie
   }
 
   const labels = AUTH_BUTTON_LABELS[view];
-  const label = session.submitting ? t(labels.loading) : succeeded && labels.success ? t(labels.success) : t(labels.idle);
-  const error = localError || bridgeLegacyAuthError(session.error, t);
+  const label = session.submitting ? t(labels.loading) : session.succeeded && labels.success ? t(labels.success) : t(labels.idle);
+  const error = localError || session.error;
 
   return { error, label, onSubmit };
 }
@@ -131,12 +116,33 @@ export function AuthNoticeCard({ notice }: { notice: string }) {
   return notice ? <div className="au-notice" role="status">{notice}</div> : null;
 }
 
-export function AuthPrimaryButton({ className, label, submitting }: { className: "au-btn-login" | "au-btn-primary"; label: string; submitting: boolean }) {
-  // 设计 366/388：`opacity:{{ btnOpacity }}`（renderVals 508：loading 0.6，否则 1）内联；其余全部走类。
+export function AuthPrimaryButton({
+  className,
+  disabled,
+  label,
+  submitting,
+}: {
+  className: "au-btn-login" | "au-btn-primary";
+  /** 新密码屏：`ready` 之前禁用（审阅修订 11）；其余屏只随 submitting。 */
+  disabled?: boolean;
+  label: string;
+  submitting: boolean;
+}) {
+  // 设计 366/388/414/456：`opacity:{{ btnOpacity }}`（renderVals 508：loading 0.6，否则 1）内联；其余全部走类。
   return (
-    <button aria-busy={submitting || undefined} className={`btn ${className}`} disabled={submitting} style={{ opacity: submitting ? 0.6 : 1 }} type="submit">
+    <button aria-busy={submitting || undefined} className={`btn ${className}`} disabled={submitting || Boolean(disabled)} style={{ opacity: submitting ? 0.6 : 1 }} type="submit">
       {label}
     </button>
+  );
+}
+
+/** 设计 418 / 432 / 461「← 返回登录」：应用里是真实导航（找回带 `?next=`；新密码页无 next 上下文）。 */
+export function AuthBackToLogin({ next = "" }: { next?: string }) {
+  const { t } = useOrbitLanguage();
+  return (
+    <p className="au-back">
+      <a className="au-back-link" href={authRoutePath("login", next)}>{t({ en: "← Back to sign in", zh: "← 返回登录" })}</a>
+    </p>
   );
 }
 

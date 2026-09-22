@@ -6,21 +6,31 @@
  * 关闭（×、遮罩、Esc）= 旧行为 `navigate("/")` → `/app`；焦点陷阱 / Esc / 打开时自动聚焦 沿用 `useOrbitModalA11y`
  * （首个可聚焦元素 = ×，DOM 顺序与旧实现一致，审阅修订 4）。不用 `ModalShell`（像素结构不同，审阅修订 17）。
  * 遮罩点击关闭是旧能力、设计无：只在 `event.target === event.currentTarget` 时关闭（审阅修订 3）。
- * 视图 hook：各屏自行调用一次 `useAccountAuth`（壳不持有会话，Task 3 的 reset 屏用另一 hook）。
+ * 视图 hook：各屏自行调用一次 hook（壳不持有会话：登录 / 注册 / 找回 用 `useAccountAuth`，新密码 用 `usePasswordReset`）。
  */
 import { useCallback, type MouseEvent } from "react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { useOrbitModalA11y } from "../../orbit-modal-a11y";
+import { AuthForgot } from "./auth-forgot";
 import { AuthLogin } from "./auth-login";
 import { authTitleId, type AuthView } from "./auth-model";
 import { AuthRegister } from "./auth-register";
+import { AuthReset } from "./auth-reset";
 import { navigate } from "./use-account-auth";
 
-/** 任务 2 只接 登录 / 注册；找回 / 新密码 屏由任务 3 加入后放宽为 `AuthView`。 */
-export type AuthModalView = Extract<AuthView, "login" | "register">;
+export type AuthModalView = AuthView;
 
-export function AuthModal({ defaultNext, oauthProviders, view }: { defaultNext: string; oauthProviders: readonly string[]; view: AuthModalView }) {
+export function AuthModal({
+  defaultNext = "/app/home",
+  oauthProviders = [],
+  view,
+}: {
+  /** 登录 / 注册 / 找回：route model 的 `defaultNext`；新密码页无 route model（邮件链接）→ 缺省。 */
+  defaultNext?: string;
+  oauthProviders?: readonly string[];
+  view: AuthModalView;
+}) {
   const { t } = useOrbitLanguage();
   const handleClose = useCallback(() => {
     navigate("/");
@@ -40,6 +50,10 @@ export function AuthModal({ defaultNext, oauthProviders, view }: { defaultNext: 
           <span className="au-wordmark">Orbit</span>
           {view === "register" ? (
             <AuthRegister defaultNext={defaultNext} oauthProviders={oauthProviders} />
+          ) : view === "forgot" ? (
+            <AuthForgot defaultNext={defaultNext} />
+          ) : view === "reset" ? (
+            <AuthReset />
           ) : (
             <AuthLogin defaultNext={defaultNext} oauthProviders={oauthProviders} />
           )}
@@ -56,7 +70,6 @@ export const AUTH_STYLES = `
 [data-orbit-real-page="auth-0918"] { color: #0E1225; font-family: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", sans-serif; -webkit-font-smoothing: antialiased; text-wrap: pretty; }
 [data-orbit-real-page="auth-0918"] a { color: #3B3F7A; text-decoration: none; }
 [data-orbit-real-page="auth-0918"] a:hover { color: #0E1225; }
-[data-orbit-real-page="auth-0918"] button { font-family: inherit; }
 /* 设计 helmet 未给 input 字体（只有 body），输入框按 Chromium UA 默认渲染为 Arial（playwright 实测 computed fontFamily = Arial）；
    基类 reset（orbit-reference-styles.tsx:34–50）强制 font: inherit → 这里补回 UA 默认 */
 [data-orbit-real-page="auth-0918"] input { font-family: Arial; }
@@ -83,6 +96,7 @@ export const AUTH_STYLES = `
 [data-orbit-real-page="auth-0918"] .au-input:focus { border-color: #4B4FC7; background: #FFFFFF; }
 [data-orbit-real-page="auth-0918"] .au-label-row { display: flex; justify-content: space-between; }
 [data-orbit-real-page="auth-0918"] .au-forgot { font-weight: 400; color: #4B4FC7; }
+/* 设计里链接色是内联 style（优先级高于 helmet a:hover），悬停不变色；应用里改为类后会被上面的 a:hover 覆盖 → 用 :hover 规则钉回设计色 */
 [data-orbit-real-page="auth-0918"] .au-forgot:hover { color: #4B4FC7; }
 /* 设计外：显示/隐藏密码眼睛钮（审阅修订 9；orbit-reference-styles.tsx:2225–2260 的字段内右侧 affordance 同法） */
 [data-orbit-real-page="auth-0918"] .au-field-wrap { position: relative; display: flex; align-items: center; }
@@ -98,12 +112,12 @@ export const AUTH_STYLES = `
 [data-orbit-real-page="auth-0918"] .btn.au-btn-login { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 16px; border: 0; border-radius: 999px; background: #0E1225; color: #FFFFFF; font-size: 16px; font-weight: 500; cursor: pointer; font-family: inherit;
   /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
   height: auto; white-space: nowrap; letter-spacing: 0; line-height: normal; transition: none; text-decoration: none; }
-[data-orbit-real-page="auth-0918"] .btn.au-btn-login:hover { background: #2E3270; color: #FFFFFF; }
+[data-orbit-real-page="auth-0918"] .btn.au-btn-login:hover { background: #2E3270; }
 [data-orbit-real-page="auth-0918"] .btn.au-btn-login:active { transform: none; }
 [data-orbit-real-page="auth-0918"] .btn.au-btn-primary { padding: 16px; border: 0; border-radius: 999px; background: #0E1225; color: #FFFFFF; font-size: 16px; font-weight: 500; cursor: pointer; font-family: inherit;
   /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
   height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; letter-spacing: 0; line-height: normal; transition: none; text-decoration: none; }
-[data-orbit-real-page="auth-0918"] .btn.au-btn-primary:hover { background: #2E3270; color: #FFFFFF; }
+[data-orbit-real-page="auth-0918"] .btn.au-btn-primary:hover { background: #2E3270; }
 [data-orbit-real-page="auth-0918"] .btn.au-btn-primary:active { transform: none; }
 /* 审阅修订 6：中和 .btn[disabled]（orbit-reference-styles.tsx:712–719 会改底色/字色/opacity .45）；设计只靠内联 opacity:0.6 */
 [data-orbit-real-page="auth-0918"] .btn.au-btn-login[disabled], [data-orbit-real-page="auth-0918"] .btn.au-btn-primary[disabled] { background: #0E1225; color: #FFFFFF; cursor: pointer; box-shadow: none; }
@@ -115,7 +129,19 @@ export const AUTH_STYLES = `
 /* ── 切换行（设计 367 / 391）与 条款行（389；链接渲染为无 href 的 span）── */
 [data-orbit-real-page="auth-0918"] .au-switch { margin: 0; text-align: center; font-size: 14px; color: #6B6F99; }
 [data-orbit-real-page="auth-0918"] .au-switch-link { color: #4B4FC7; font-weight: 500; border-bottom: 1px solid #B9BCEB; }
+/* 同 .au-forgot:hover：钉回设计的内联链接色，抵消作用域 a:hover */
 [data-orbit-real-page="auth-0918"] .au-switch-link:hover { color: #4B4FC7; }
 [data-orbit-real-page="auth-0918"] .au-terms { margin: 0; text-align: center; font-size: 13px; line-height: 1.6; color: #8A8DB0; }
 [data-orbit-real-page="auth-0918"] .au-terms-link { color: #6B6F99; border-bottom: 1px solid #DDDEFA; }
+/* ── 找回（设计 401–404 成功卡 / 415 提示 / 418 返回行；返回行 432 / 461 与 新密码屏同类）── */
+[data-orbit-real-page="auth-0918"] .au-success { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 12px; background: #ECEEFB; color: #2E3270; font-size: 14px; line-height: 1.6; }
+[data-orbit-real-page="auth-0918"] .au-success-title { font-size: 15px; }
+[data-orbit-real-page="auth-0918"] .au-hint { text-align: center; font-size: 13px; color: #8A8DB0; }
+[data-orbit-real-page="auth-0918"] .au-back { margin: 0; text-align: center; font-size: 14px; }
+[data-orbit-real-page="auth-0918"] .au-back-link { color: #3B3F7A; border-bottom: 1px solid #B9BCEB; }
+/* 同 .au-forgot:hover：设计内联 color 使 helmet a:hover 不生效 */
+[data-orbit-real-page="auth-0918"] .au-back-link:hover { color: #3B3F7A; }
+/* ── 新密码（设计 431「重新申请重置链接」/ 445「用新密码登录」是 button 元素（onClick=go*）；应用里为真实导航 → <a class="btn au-btn-primary au-btn-link">）── */
+[data-orbit-real-page="auth-0918"] .btn.au-btn-link { width: 100%; }
+[data-orbit-real-page="auth-0918"] .btn.au-btn-link:active { transform: none; }
 `;

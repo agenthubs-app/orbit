@@ -9,6 +9,7 @@ import {
 } from "../../profile/profile-onboarding-navigation";
 import type { OrbitAccountAuthViewModel } from "../../orbit-account-auth-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
+import { AUTH_ERROR_COPY } from "./auth-model";
 
 // 原样抽自 account/orbit-real-account-auth.tsx（15–57 行：productHref / navigate /
 // AccountAuthQuery / SSR 安全回退 / 从 location 读 query；68–78 行：状态；83–87 行：
@@ -16,8 +17,11 @@ import { useOrbitLanguage } from "../../orbit-language-context";
 // 提示 / 主按钮文案 / 切换链接；122–208 行：onSubmit（注册 → /api/auth/register +
 // 自动 signIn("credentials")；找回 → /api/auth/password-reset/request；登录 →
 // signIn("credentials") + profile continuation）与 onGoogleSignIn）。
-// 关闭动作 `handleClose` + `useOrbitModalA11y` 留在组件（tests/ui/orbit-modal-standard
-// 锁定其在 JSX 文件内的接线，Task 3 再改指 auth-modal.tsx）。
+// 关闭动作 `handleClose` + `useOrbitModalA11y` 在 auth-modal.tsx（tests/ui/orbit-modal-standard 锁定）。
+// 任务 3（旧组件已删）：登录失败 / 409 文案对齐设计 526–527（`AUTH_ERROR_COPY`，撤掉任务 2 的
+// `bridgeLegacyAuthError` 过渡桥）；新增 `succeeded`（登录 / 注册成功路径显式置位，供「✓ 已登录」
+// 「✓ 账号已创建」，替代 submitting true→false 的推断）；`resetNotice` 文案改为 `resetSent` 布尔
+// （找回成功卡文案由屏内 t() 给出设计 401–404 文案 + 「受理 ≠ 送达」补句）。
 
 export function productHref(prototypeHref: string) {
   if (prototypeHref === "/") return "/app";
@@ -76,12 +80,15 @@ export interface AccountAuthSession {
   primary: string;
   query: AccountAuthQuery;
   password: string;
-  resetNotice: string;
+  /** 找回：`/api/auth/password-reset/request` 已受理（受理 ≠ 送达）；下次提交时复位。 */
+  resetSent: boolean;
   setEmail: (value: string) => void;
   setPassword: (value: string) => void;
   setShowPassword: (update: boolean | ((current: boolean) => boolean)) => void;
   showPassword: boolean;
   submitting: boolean;
+  /** 登录 / 注册成功路径（导航前）显式置位；下次提交时复位。 */
+  succeeded: boolean;
   /** 登录 ⇄ 注册 的原型路径（未经 productHref），带当前 next。 */
   switchHref: string;
 }
@@ -95,8 +102,9 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
-  const [resetNotice, setResetNotice] = useState("");
+  const [resetSent, setResetSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [succeeded, setSucceeded] = useState(false);
 
   // Post-hydration update (legal — it runs after the first paint matches
   // SSR): now that we're definitely on the client, read the real ?next=/
@@ -134,7 +142,8 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    setResetNotice("");
+    setResetSent(false);
+    setSucceeded(false);
     setSubmitting(true);
 
     try {
@@ -152,7 +161,7 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
         if (!response.ok || payload?.success !== true) {
           setError(
             response.status === 409
-              ? t({ en: "An account with this email already exists.", zh: "该邮箱已注册,请直接登录。" })
+              ? t(AUTH_ERROR_COPY.emailTaken)
               : payload?.error?.message ??
                   t({ en: "Sign-up failed. Please try again.", zh: "注册失败,请稍后再试。" }),
           );
@@ -161,6 +170,7 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
 
         // 注册成功后用登录页同一套 credentials 机制直接建立会话，免去用户
         // 重输一遍刚设置的密码；自动登录失败才退回登录页，并如实说明原因。
+        setSucceeded(true);
         const autoSignIn = await signIn("credentials", {
           email,
           password,
@@ -187,7 +197,8 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
           setError(payload?.error?.message ?? t({ en: "Password recovery is temporarily unavailable. Please try again later.", zh: "密码恢复暂不可用，请稍后重试。" }));
           return;
         }
-        setResetNotice(t({ en: "Request accepted. If this email supports password recovery, a reset link will arrive shortly. Check spam or retry after a minute if it does not arrive.", zh: "申请已受理。如果该邮箱支持密码恢复，你将收到重置链接。请检查垃圾邮件；未收到时可在一分钟后重试。" }));
+        // 受理 ≠ 送达：只置位，文案由找回屏给出（设计 401–404 + 「如果该邮箱支持密码恢复，链接会很快送达。」）。
+        setResetSent(true);
         return;
       }
 
@@ -198,10 +209,11 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
       });
 
       if (!result || result.error) {
-        setError(t({ en: "Email or password is incorrect.", zh: "邮箱或密码不正确。" }));
+        setError(t(AUTH_ERROR_COPY.loginFailed));
         return;
       }
 
+      setSucceeded(true);
       navigate(profileContinuationPath(query.next));
     } catch {
       setError(t({ en: "Something went wrong. Please try again.", zh: "网络异常,请稍后再试。" }));
@@ -228,12 +240,13 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
     password,
     primary,
     query,
-    resetNotice,
+    resetSent,
     setEmail,
     setPassword,
     setShowPassword,
     showPassword,
     submitting,
+    succeeded,
     switchHref,
   };
 }

@@ -96,20 +96,3 @@ export function authRoutePath(view: AuthView, next: string): string {
 export function authTitleId(view: AuthView): string {
   return `au-title-${view}`;
 }
-
-/**
- * 任务 2 过渡桥（记录）：`use-account-auth.ts` 原样保留旧文案（「邮箱或密码不正确。」/
- * 「该邮箱已注册,请直接登录。」，特征化测试锁定），设计要求 526–527 文案。屏内把这两条
- * 已知的 hook 文案换成设计文案；服务端 `error.message` 与其他文案原样透传。Task 3 删旧后
- * 可把 hook 文案对齐设计并移除本桥。
- */
-const LEGACY_ERROR_BRIDGE: ReadonlyArray<{ from: AuthCopy; to: AuthCopy }> = [
-  { from: { en: "Email or password is incorrect.", zh: "邮箱或密码不正确。" }, to: AUTH_ERROR_COPY.loginFailed },
-  { from: { en: "An account with this email already exists.", zh: "该邮箱已注册,请直接登录。" }, to: AUTH_ERROR_COPY.emailTaken },
-];
-
-export function bridgeLegacyAuthError(error: string, t: (copy: AuthCopy) => string): string {
-  if (!error) return error;
-  for (const entry of LEGACY_ERROR_BRIDGE) if (t(entry.from) === error) return t(entry.to);
-  return error;
-}

@@ -6,7 +6,6 @@ import {
   AUTH_ERROR_COPY,
   authRoutePath,
   authTitleId,
-  bridgeLegacyAuthError,
   validateEmail,
   validatePassword,
   validateResetPair,
@@ -63,15 +62,7 @@ test("authTitleId is one id per view (aria-labelledby target)", () => {
   assert.equal(new Set(ids).size, 4);
   for (const id of ids) assert.match(id, /^au-title-/);
 });
-
-test("bridgeLegacyAuthError maps the hook's login-failure and 409 copy onto the design copy; other messages pass through", () => {
-  const t = (copy: { zh: string; en: string }) => copy.zh;
-  assert.equal(bridgeLegacyAuthError("邮箱或密码不正确。", t), AUTH_ERROR_COPY.loginFailed.zh);
-  assert.equal(bridgeLegacyAuthError("该邮箱已注册,请直接登录。", t), AUTH_ERROR_COPY.emailTaken.zh);
+test("AUTH_ERROR_COPY is the single source for the hook's login-failure / 409 copy (任务 3 撤桥后设计 526–527 逐字)", () => {
   assert.equal(AUTH_ERROR_COPY.loginFailed.zh, "邮箱或密码不正确，请重试。");
   assert.equal(AUTH_ERROR_COPY.emailTaken.zh, "该邮箱已注册，请直接登录。");
-  assert.equal(bridgeLegacyAuthError("Password too weak", t), "Password too weak");
-  assert.equal(bridgeLegacyAuthError("", t), "");
-  const en = (copy: { zh: string; en: string }) => copy.en;
-  assert.equal(bridgeLegacyAuthError("Email or password is incorrect.", en), AUTH_ERROR_COPY.loginFailed.en);
 });

@@ -16,7 +16,8 @@ import {
   type AppAccountAuthRouteStateViewModel,
   type AppAccountAuthSearchParams,
 } from "../compose-app-account-auth-from-previously-approved-mock-first-capabilities/account-auth-route-view-model";
-import { OrbitRealAccountAuth } from "../orbit-real-account-auth";
+import { OrbitLanding0918 } from "../../orbit-landing-0918";
+import { AuthModal } from "../auth-0918/auth-modal";
 
 async function getAccountForgotPageLanguage(): Promise<OrbitLanguage> {
   try {
@@ -83,8 +84,11 @@ export default async function AppAccountForgotPasswordPage({
       <OrbitReferenceStyles />
       {routeModel.state === "success" ? (
         <div data-orbit-route="app-account-forgot-route">
-          <OrbitRealAccountAuth
-            viewModel={localizeOrbitTree(routeModel.auth, language)}
+          {/* 认证弹窗 任务 3：落地页在下（未登录态）、找回弹窗在上（设计 394–420）；view model 只取 defaultNext（标题 / 描述 / 按钮文案由弹窗内 t() 给出设计文案）。 */}
+          <OrbitLanding0918 authenticated={false} />
+          <AuthModal
+            defaultNext={localizeOrbitTree(routeModel.auth, language).defaultNext}
+            view="forgot"
           />
         </div>
       ) : (

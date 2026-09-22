@@ -3,12 +3,18 @@ import test from "node:test";
 
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
-import { PasswordResetForm } from "../../app/(app)/app/account/reset-password/reset-password-form";
+import { AuthModal } from "../../app/(app)/app/account/auth-0918/auth-modal";
 
 // 特征化渲染测试（认证弹窗 任务 1）：锁定 设置新密码 的 hash token 读取（43 位 [A-Za-z0-9_-]）、
 // 不合法 token 的 role=alert 提示、两次密码不一致提示、/api/auth/password-reset/confirm 的
 // POST 体 {token,password}、成功后 history.replaceState 清 hash + done 态、双提交保护，
 // 使逻辑搬进 use-password-reset 时零变化可证。
+// 任务 3（旧 reset-password-form.tsx 已删）：改指 `AuthModal view="reset"`，意图不变；逐条改动：输入 id
+// `reset-password|confirmation` → `au-new-password|confirm-password`；按钮文案「更新密码 / 更新中…」→ 设计 520
+// 「设置新密码 / 保存中…」；不合法 token 的 `<p role=alert>`「重置链接不完整…」→ 设计 426–433「链接已失效」分支
+// （h2 + 主按钮形链接「重新申请重置链接」，无 role=alert）；done 的 `<p role=status>` → 设计 445–447 标题「密码已更新」
+// + 副标 + 会话失效补句（无 role=status）+「用新密码登录」；链接集合：合法态 [login]（「重新申请链接」只在失效态）、
+// 失效态 [forgot, login]、done [login ×2]；window 桩补 `document`（弹窗壳 `useOrbitModalA11y` 需要）。
 
 const VALID_TOKEN = "A".repeat(21) + "b".repeat(21) + "_";
 
@@ -28,6 +34,7 @@ interface Harness {
 function install(hash: string, respond: (call: Observed) => Response | Promise<Response>): Harness {
   const originalFetch = globalThis.fetch;
   const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const originalDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
   const observed: Observed[] = [];
   const replaced: { data: unknown; url: string }[] = [];
   globalThis.fetch = (async (input, init) => {
@@ -51,6 +58,10 @@ function install(hash: string, respond: (call: Observed) => Response | Promise<R
       location: { hash, pathname: "/app/account/reset-password" },
     },
   });
+  Object.defineProperty(globalThis, "document", {
+    configurable: true,
+    value: { activeElement: null, addEventListener() {}, removeEventListener() {} },
+  });
   return {
     observed,
     replaced,
@@ -58,6 +69,8 @@ function install(hash: string, respond: (call: Observed) => Response | Promise<R
       globalThis.fetch = originalFetch;
       if (originalWindow) Object.defineProperty(globalThis, "window", originalWindow);
       else Reflect.deleteProperty(globalThis, "window");
+      if (originalDocument) Object.defineProperty(globalThis, "document", originalDocument);
+      else Reflect.deleteProperty(globalThis, "document");
     },
   };
 }
@@ -69,7 +82,7 @@ async function flush(): Promise<void> {
 async function mount(): Promise<ReactTestRenderer> {
   let renderer!: ReactTestRenderer;
   await act(async () => {
-    renderer = create(<PasswordResetForm />);
+    renderer = create(<AuthModal view="reset" />);
     await flush();
   });
   return renderer;
@@ -90,8 +103,8 @@ function input(renderer: ReactTestRenderer, id: string) {
 
 async function fill(renderer: ReactTestRenderer, password: string, confirmation: string): Promise<void> {
   await act(async () => {
-    input(renderer, "reset-password").props.onChange({ target: { value: password } });
-    input(renderer, "reset-confirmation").props.onChange({ target: { value: confirmation } });
+    input(renderer, "au-new-password").props.onChange({ target: { value: password } });
+    input(renderer, "au-confirm-password").props.onChange({ target: { value: confirmation } });
   });
 }
 
@@ -120,7 +133,11 @@ function submitButton(renderer: ReactTestRenderer) {
   return renderer.root.findAll((node) => node.type === "button" && node.props.type === "submit")[0];
 }
 
-test("valid hash token: form renders, button enabled once ready, links to login and a fresh request", async () => {
+function heading(renderer: ReactTestRenderer): string {
+  return renderer.root.findByType("h2").children.join("");
+}
+
+test("valid hash token: form renders, button enabled once ready, links to login", async () => {
   const harness = install(`#token=${VALID_TOKEN}`, () => Response.json({ success: true }));
   let renderer: ReactTestRenderer | undefined;
   try {
@@ -129,9 +146,10 @@ test("valid hash token: form renders, button enabled once ready, links to login 
     assert.deepEqual(byRole(renderer, "alert"), []);
     assert.deepEqual(byRole(renderer, "status"), []);
     assert.equal(submitButton(renderer).props.disabled, false);
-    assert.equal(submitButton(renderer).children.join(""), "更新密码");
+    assert.equal(submitButton(renderer).children.join(""), "设置新密码");
+    assert.equal(heading(renderer), "设置新密码");
     const hrefs = renderer.root.findAllByType("a").map((node) => node.props.href);
-    assert.deepEqual(hrefs, ["/app/account/login", "/app/account/forgot-password"]);
+    assert.deepEqual(hrefs, ["/app/account/login"]);
     assert.equal(harness.observed.length, 0);
   } finally {
     await unmount(renderer);
@@ -139,16 +157,17 @@ test("valid hash token: form renders, button enabled once ready, links to login 
   }
 });
 
-test("invalid or missing hash token: role=alert 'incomplete link' replaces the form", async () => {
+test("invalid or missing hash token: the 链接已失效 branch replaces the form and offers a fresh request", async () => {
   for (const hash of ["", "#token=short", `#token=${VALID_TOKEN}!`, "#other=1"]) {
     const harness = install(hash, () => Response.json({ success: true }));
     let renderer: ReactTestRenderer | undefined;
     try {
       renderer = await mount();
       assert.equal(hasForm(renderer), false, `hash ${JSON.stringify(hash)} should not render the form`);
-      assert.deepEqual(byRole(renderer, "alert"), ["重置链接不完整，请重新申请。"]);
+      assert.equal(heading(renderer), "链接已失效");
+      assert.deepEqual(byRole(renderer, "alert"), []);
       const hrefs = renderer.root.findAllByType("a").map((node) => node.props.href);
-      assert.deepEqual(hrefs, ["/app/account/login", "/app/account/forgot-password"]);
+      assert.deepEqual(hrefs, ["/app/account/forgot-password", "/app/account/login"]);
     } finally {
       await unmount(renderer);
       harness.restore();
@@ -204,10 +223,14 @@ test("confirm: POST /api/auth/password-reset/confirm {token,password}; success �
     );
     assert.deepEqual(harness.replaced, [{ data: null, url: "/app/account/reset-password" }]);
     assert.equal(hasForm(renderer), false);
-    assert.deepEqual(byRole(renderer, "status"), ["密码已更新，旧会话已失效。请用新密码登录。"]);
+    assert.equal(heading(renderer), "密码已更新");
+    assert.deepEqual(renderer.root.findAllByProps({ className: "au-sub" }).map((node) => node.children.join("")), [
+      "你的密码已重置，现在可以用新密码登录。",
+      "其他设备上的旧会话已失效，需要重新登录。",
+    ]);
     assert.deepEqual(byRole(renderer, "alert"), []);
-    // 完成后只剩「返回登录」，「重新申请链接」隐藏。
-    assert.deepEqual(renderer.root.findAllByType("a").map((node) => node.props.href), ["/app/account/login"]);
+    // 完成后只剩「用新密码登录」+「← 返回登录」（都指向登录），不再提供「重新申请链接」。
+    assert.deepEqual(renderer.root.findAllByType("a").map((node) => node.props.href), ["/app/account/login", "/app/account/login"]);
   } finally {
     await unmount(renderer);
     harness.restore();
@@ -275,7 +298,7 @@ test("double-submit guard: a second submit while the first is in flight sends no
     });
     assert.equal(submitButton(renderer).props.disabled, true);
     assert.equal(submitButton(renderer).props["aria-busy"], true);
-    assert.equal(submitButton(renderer).children.join(""), "更新中…");
+    assert.equal(submitButton(renderer).children.join(""), "保存中…");
     await act(async () => {
       await submitForm(renderer!);
       await flush();
@@ -286,7 +309,7 @@ test("double-submit guard: a second submit while the first is in flight sends no
       await first;
       await flush();
     });
-    assert.deepEqual(byRole(renderer, "status").length, 1);
+    assert.equal(heading(renderer), "密码已更新");
     // done 后再次提交也被忽略（表单已卸载，但 submit 本身以 done 守卫）。
     assert.equal(harness.observed.length, 1);
   } finally {

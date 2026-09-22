@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import React from "react";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
-import { OrbitRealAccountAuth } from "../../app/(app)/app/account/orbit-real-account-auth";
+import { AuthModal } from "../../app/(app)/app/account/auth-0918/auth-modal";
 import { getOrbitAccountAuthViewModel } from "../../app/(app)/app/orbit-account-auth-route-view-model";
 import { profileContinuationPath } from "../../app/(app)/app/profile/profile-onboarding-navigation";
 
@@ -147,9 +147,11 @@ async function renderAuth(
   const fetchStub = installAuthFetch(options);
   let root!: ReactTestRenderer;
   await act(async () => {
-    root = create(React.createElement(OrbitRealAccountAuth, {
+    // 认证弹窗 任务 3：旧 OrbitRealAccountAuth 已删 → Orbit_0918 弹窗（login / signup→register）。
+    root = create(React.createElement(AuthModal, {
+      defaultNext: getOrbitAccountAuthViewModel(options.mode).defaultNext,
       oauthProviders: options.oauthProviders ?? [],
-      viewModel: getOrbitAccountAuthViewModel(options.mode),
+      view: options.mode === "signup" ? "register" : "login",
     }));
     await settleAuth();
   });
@@ -169,8 +171,8 @@ function inputById(root: ReactTestRenderer, id: string) {
 
 async function fillAuthForm(root: ReactTestRenderer, email: string, password: string) {
   await act(async () => {
-    inputById(root, "orbit-auth-email").props.onChange({ target: { value: email } });
-    if (password) inputById(root, "orbit-auth-password").props.onChange({ target: { value: password } });
+    inputById(root, "au-email").props.onChange({ target: { value: email } });
+    if (password) inputById(root, "au-password").props.onChange({ target: { value: password } });
   });
 }
 
@@ -181,11 +183,11 @@ async function submitAuthForm(root: ReactTestRenderer) {
 }
 
 test("/app/account auth pages use the real NextAuth session as their entry guard", () => {
-  // 认证弹窗 任务 2（审阅修订 14）：login / signup 改渲染 落地页 + AuthModal；forgot 仍是旧组件（任务 3 改指）。
+  // 认证弹窗 任务 2 / 3（审阅修订 14）：login / signup / forgot 都渲染 落地页 + AuthModal（旧 OrbitRealAccountAuth 已删）。
   const pageSources: Array<[string, RegExp]> = [
     [source("app/(app)/app/account/login/page.tsx"), /<AuthModal[\s\S]*view="login"/],
     [source("app/(app)/app/account/signup/page.tsx"), /<AuthModal[\s\S]*view="register"/],
-    [source("app/(app)/app/account/forgot-password/page.tsx"), /OrbitRealAccountAuth/],
+    [source("app/(app)/app/account/forgot-password/page.tsx"), /<AuthModal[\s\S]*view="forgot"/],
   ];
 
   for (const [pageSource, renderer] of pageSources) {
@@ -195,7 +197,7 @@ test("/app/account auth pages use the real NextAuth session as their entry guard
     assert.match(pageSource, /loadAppAccountAuthRouteViewModel/);
     assert.match(pageSource, renderer);
   }
-  for (const page of ["login", "signup"]) {
+  for (const page of ["login", "signup", "forgot-password"]) {
     const pageSource = source(`app/(app)/app/account/${page}/page.tsx`);
     assert.match(pageSource, /<OrbitLanding0918 authenticated=\{false\} \/>/);
     assert.doesNotMatch(pageSource, /OrbitRealAccountAuth/);
@@ -265,8 +267,11 @@ test("account auth loader preserves one canonical safe return path across login 
 // account/auth-0918/use-account-auth.ts；以下源码正则按「hook 侧 / JSX 侧」拆分——
 // 逻辑（normalize、fetch、signIn、callbackUrl、created 文案）指向 hook 文件，
 // 标记（role="status" / role="alert"）与已删旧结构的否定断言留在 JSX 文件（否定断言两侧都查）。
+// 任务 3：JSX 侧改指 Orbit_0918 屏——错误卡 / created 提示在 auth-form.tsx，找回成功卡在 auth-forgot.tsx；
+// 「受理 ≠ 送达」的文案由 hook（旧 "Request accepted." notice）移到找回屏（设计 401–404 + 补句）。
 const ACCOUNT_AUTH_HOOK_PATH = "app/(app)/app/account/auth-0918/use-account-auth.ts";
-const ACCOUNT_AUTH_JSX_PATH = "app/(app)/app/account/orbit-real-account-auth.tsx";
+const ACCOUNT_AUTH_FORM_PATH = "app/(app)/app/account/auth-0918/auth-form.tsx";
+const ACCOUNT_AUTH_FORGOT_PATH = "app/(app)/app/account/auth-0918/auth-forgot.tsx";
 
 test("client account auth normalizes the hydrated next query with the shared auth boundary", () => {
   const accountAuthSource = source(ACCOUNT_AUTH_HOOK_PATH);
@@ -283,16 +288,20 @@ test("client account auth normalizes the hydrated next query with the shared aut
 
 test("forgot password submits a recovery request and announces acceptance separately from delivery", () => {
   const hookSource = source(ACCOUNT_AUTH_HOOK_PATH);
-  const jsxSource = source(ACCOUNT_AUTH_JSX_PATH);
+  const forgotSource = source(ACCOUNT_AUTH_FORGOT_PATH);
+  const formSource = source(ACCOUNT_AUTH_FORM_PATH);
 
   assert.match(
     hookSource,
     /\/api\/auth\/password-reset\/request/,
   );
-  assert.match(hookSource, /Request accepted\./);
-  assert.match(jsxSource, /role="status"/);
-  assert.match(jsxSource, /role="alert"/);
-  for (const accountAuthSource of [hookSource, jsxSource]) {
+  // 受理只置位（不宣称送达）；送达语义由找回屏成功卡的补句给出。
+  assert.match(hookSource, /setResetSent\(true\)/);
+  assert.match(forgotSource, /If this email supports password recovery, the link will arrive shortly\./);
+  assert.match(forgotSource, /如果该邮箱支持密码恢复，链接会很快送达。/);
+  assert.match(forgotSource, /role="status"/);
+  assert.match(formSource, /role="alert"/);
+  for (const accountAuthSource of [hookSource, forgotSource, formSource]) {
     assert.doesNotMatch(accountAuthSource, /setForgotStep/);
     assert.doesNotMatch(accountAuthSource, /orbit-auth-code/);
     assert.doesNotMatch(accountAuthSource, /orbit-auth-new-password/);
@@ -352,9 +361,9 @@ test("Google callback also enters the authenticated profile continuation", () =>
 
 test("post-signup login notice explains the auto sign-in fallback and does not promise a profile onboarding step", () => {
   const hookSource = source(ACCOUNT_AUTH_HOOK_PATH);
-  const jsxSource = source(ACCOUNT_AUTH_JSX_PATH);
+  const formSource = source(ACCOUNT_AUTH_FORM_PATH);
 
-  for (const accountAuthSource of [hookSource, jsxSource]) {
+  for (const accountAuthSource of [hookSource, formSource]) {
     assert.doesNotMatch(accountAuthSource, /通用档案/);
     assert.doesNotMatch(accountAuthSource, /complete your general profile/);
   }
