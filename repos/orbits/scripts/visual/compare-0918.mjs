@@ -27,7 +27,8 @@
 //   node scripts/visual/compare-0918.mjs \
 //     --design "http://localhost:3320/Orbit_0918/iOrbit.dc.html" --design-view chat \
 //     --app "http://localhost:3100/app/agent?session=<id>" --login "qa@orbit.test:<password>" --out /tmp/iorbit-chat
-//   视图：home（无点击；应用侧先等 [data-orbit-iorbit-ready="true"]）| chat（button「进入对话页 →」）| actions（**link**「查看建议与行动 →」）| plan（**link**「查看完整日程 →」）
+//   视图：home（无点击）| chat（button「进入对话页 →」）| actions（**link**「查看建议与行动 →」）| plan（**link**「查看完整日程 →」）
+//   chat 之外的视图，应用侧都先等 [data-orbit-iorbit-ready="true"]（「审阅修订」37）
 //        | strategy（button「帮我制定推进计划」）| contacts（button「我该先联系谁」）| history（button「◷ 历史记录」，须配 --viewport-only）。
 //   chat 视图的应用侧会话用 scripts/visual/seed-iorbit-chat-session.mjs 种下（真实写接口，字节稳定）。
 // 认证弹窗 设计稿（--design 含 %E9%A6%96%E9%A1%B5（首页）或 --design-table auth）按视图走点击序列（未登录访问，无需 --login）：
@@ -230,7 +231,10 @@ try {
     // iOrbit 概览屏的四个来源（facts server action / 账本 / 信号 / 会话）在 hydration 之后才发，
     // 固定 400ms 会截到 pending 态（「审阅修订」37）：等应用侧自报就绪，超时就按原样截。
     // history 视图的底图也是概览屏（抽屉浮在它上面），同样要等它自报就绪。
-    if (isIorbitTable && (iorbitView === "home" || iorbitView === "history")) {
+    // 任务 5：actions / plan / strategy / contacts 三条兄弟路由同样多态
+    // （pending/ready/empty/unavailable，plan 与 strategy 还是客户端 fetch），
+    // `IOrbitScreenFrame` 一处挂 data-orbit-iorbit-ready —— 六个视图一起等。
+    if (isIorbitTable && iorbitView !== "chat") {
       await page.waitForSelector('[data-orbit-iorbit-ready="true"]', { timeout: 20000 }).catch(() => {});
     }
     if (args.click) await page.locator(args.click).first().click();

@@ -1,36 +1,25 @@
+/**
+ * 建议与行动 route adapter — Orbit_0918 iOrbit actions 屏（设计 349–426）。
+ *
+ * 任务 5：视觉组件换成 iOrbit 壳下的 `iorbit-0918/iorbit-actions.tsx`
+ * （作用域 `agent` + `iorbit-0918`，顶栏由 `IOrbitScreenFrame` 挂）；
+ * 数据仍由 `actions-route-view-model.ts` 组装，数据层一行未改。
+ * 语言不再由路由下发：新屏走 `useOrbitLanguage()`（layout 的 provider 提供）。
+ */
 import { redirect } from "next/navigation";
 
 import { auth } from "../../../../../auth";
 import { resolveAgentLedgerForServerPage } from "../../../../api/_shared/agent-request-context";
 import { resolveAuthenticatedApiActorFromSession } from "../../../../api/_shared/authenticated-actor";
-import { getOrbitServerLanguage } from "../../orbit-language-server";
-import type { OrbitLanguage } from "../../orbit-language-core";
-import { AccountTopNav } from "../../orbit-account-shell";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
-import { OrbitAgentActions } from "./orbit-agent-actions";
+import { IOrbitActions } from "../iorbit-0918/iorbit-actions";
 import {
   loadAgentActionsRouteViewModel,
   type AgentActionsSearchParams,
 } from "./actions-route-view-model";
 
 export const dynamic = "force-dynamic";
-
-// renderToStaticMarkup(await Page()) 在测试里没有真实请求作用域，
-// next/headers 会抛错——沿用 today/schedule 页同款回退。
-async function getActionsPageLanguage(): Promise<OrbitLanguage> {
-  try {
-    return await getOrbitServerLanguage();
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message.includes("outside a request scope")
-    ) {
-      return "zh";
-    }
-    throw error;
-  }
-}
 
 export default async function AgentActionsPage({
   searchParams,
@@ -57,14 +46,12 @@ export default async function AgentActionsPage({
     await searchParams,
     { ledgerService },
   );
-  const language = await getActionsPageLanguage();
 
   return (
     <>
       <OrbitReferenceStyles />
       <OrbitVisualFreezeRuntime />
-      <AccountTopNav active="agent" />
-      <OrbitAgentActions language={language} viewModel={viewModel} />
+      <IOrbitActions viewModel={viewModel} />
     </>
   );
 }

@@ -1,50 +1,41 @@
 /**
- * 工作策略 route adapter — Orbit_0918 iOrbit strategy 屏。
+ * 工作策略 / 联系人建议 route adapter — Orbit_0918 iOrbit strategy + contacts 两屏。
  *
- * 壳同 actions/plan 屏：auth + 语言 + 顶栏；数据由客户端组件经既有
- * facts 快照 server action 加载，路由自身不做数据组装。
+ * 「审阅修订」3：设计的 contacts 屏（663–782）= `/app/agent/strategy?view=contacts`，
+ * 不是并进 strategy——两屏面包屑 / H1 / 内容块都不同。
+ * 数据仍由客户端经既有 facts 快照 server action 加载，
+ * `strategy-route-view-model.ts` 一行未改。
  */
 import { redirect } from "next/navigation";
 
 import { auth } from "../../../../../auth";
-import { getOrbitServerLanguage } from "../../orbit-language-server";
-import type { OrbitLanguage } from "../../orbit-language-core";
-import { AccountTopNav } from "../../orbit-account-shell";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
-import { OrbitAgentStrategy } from "./orbit-agent-strategy";
+import { iorbitStrategyView } from "../iorbit-0918/iorbit-model";
+import { IOrbitStrategy } from "../iorbit-0918/iorbit-strategy";
 
 export const dynamic = "force-dynamic";
 
-// renderToStaticMarkup(await Page()) 在测试里没有真实请求作用域，
-// next/headers 会抛错——沿用 today/schedule 页同款回退。
-async function getStrategyPageLanguage(): Promise<OrbitLanguage> {
-  try {
-    return await getOrbitServerLanguage();
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message.includes("outside a request scope")
-    ) {
-      return "zh";
-    }
-    throw error;
-  }
+export interface AgentStrategySearchParams {
+  view?: string | string[];
 }
 
-export default async function AgentStrategyPage() {
+export default async function AgentStrategyPage({
+  searchParams,
+}: {
+  searchParams?: Promise<AgentStrategySearchParams>;
+} = {}) {
   const session = await auth();
   if (!session?.user?.id) {
     redirect("/app/account/login?next=%2Fapp%2Fagent%2Fstrategy");
   }
-  const language = await getStrategyPageLanguage();
+  const resolved = await searchParams;
 
   return (
     <>
       <OrbitReferenceStyles />
       <OrbitVisualFreezeRuntime />
-      <AccountTopNav active="agent" />
-      <OrbitAgentStrategy language={language} />
+      <IOrbitStrategy view={iorbitStrategyView(resolved?.view)} />
     </>
   );
 }

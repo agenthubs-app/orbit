@@ -168,12 +168,44 @@ test("light product chrome does not recolor the starfield navigation", () => {
   );
 });
 
+// iOrbit 任务 5（「审阅修订」25）：actions / plan / strategy 三屏迁到 iOrbit 壳后，
+// 作用域属性不再写在各屏组件里，而是由三屏共用的 `IOrbitScreenFrame` 一处持有
+// （外层 `agent` + 内层 `iorbit-0918`，「审阅修订」2）。断言随之改指那个文件；
+// Today 一侧未动。
 test("the ledger pages carry the real-page scope the nav CSS requires", () => {
   for (const file of [
     "app/(app)/app/today/today-page-content.tsx",
-    "app/(app)/app/agent/actions/orbit-agent-actions.tsx",
+    "app/(app)/app/agent/iorbit-0918/iorbit-screen-frame.tsx",
   ]) {
     const pageSource = readFileSync(join(projectRoot, file), "utf8");
     assert.ok(pageSource.includes("data-orbit-real-page="), file);
+  }
+});
+
+test("the iOrbit sibling screens mount through the shared frame, not their own scope", () => {
+  const frame = readFileSync(
+    join(projectRoot, "app/(app)/app/agent/iorbit-0918/iorbit-screen-frame.tsx"),
+    "utf8",
+  );
+  // 顶栏 CSS 要的是这两层；冻结的 orbit-reference-styles.tsx 的 44 条规则挂在外层。
+  assert.match(frame, /data-orbit-real-page="agent"/);
+  assert.match(frame, /data-orbit-real-page="iorbit-0918"/);
+  assert.ok(
+    frame.indexOf('data-orbit-real-page="agent"') <
+      frame.indexOf('data-orbit-real-page="iorbit-0918"'),
+  );
+  assert.match(frame, /AccountTopNav active="agent"/);
+
+  for (const file of [
+    "app/(app)/app/agent/iorbit-0918/iorbit-actions.tsx",
+    "app/(app)/app/agent/iorbit-0918/iorbit-plan.tsx",
+    "app/(app)/app/agent/iorbit-0918/iorbit-strategy.tsx",
+  ]) {
+    const source = readFileSync(join(projectRoot, file), "utf8");
+    assert.ok(source.includes("IOrbitScreenFrame"), `${file} must mount the shared frame`);
+    assert.ok(
+      !source.includes('data-orbit-real-page='),
+      `${file} must not declare its own page scope`,
+    );
   }
 });

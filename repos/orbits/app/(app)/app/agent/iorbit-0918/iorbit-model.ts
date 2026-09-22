@@ -1349,13 +1349,64 @@ function iorbitRegisteredEvents<
     .map((entry) => entry.event);
 }
 
+/**
+ * 设计 459–476 的「4 周推进节奏」手风琴表头：第 N 周 + 日期区间。
+ *
+ * 只产生**真实日历区间**（从本周一起算的四个自然周），不产生设计 `weekData`
+ * 里的主题文案与人名（田中圭子 / 山本健一 / 佐藤直树 —— 「审阅修订」20 的黑名单）。
+ * 每周的目标 / 关键联系人 / 关键产出需要 W4 策略生成能力，没有接口，由调用方
+ * 在展开区渲染「等 W4」说明。
+ */
+function iorbitPlanWeeks(
+  now: Date,
+  language: "en" | "zh",
+): readonly { no: number; range: string }[] {
+  const monday = new Date(now.getTime());
+  monday.setHours(0, 0, 0, 0);
+  // getDay(): 周日 = 0；本周一 = 今天 -((day + 6) % 7) 天。
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+
+  const out: { no: number; range: string }[] = [];
+  for (let index = 0; index < 4; index += 1) {
+    const start = new Date(monday.getTime());
+    start.setDate(start.getDate() + index * 7);
+    const end = new Date(start.getTime());
+    end.setDate(end.getDate() + 6);
+    const label = (date: Date) =>
+      language === "zh"
+        ? `${date.getMonth() + 1}/${date.getDate()}`
+        : `${date.getMonth() + 1}/${date.getDate()}`;
+    out.push({ no: index + 1, range: `${label(start)} – ${label(end)}` });
+  }
+  return out;
+}
+
+/**
+ * 设计 contacts 屏 = `/app/agent/strategy?view=contacts`（「审阅修订」3）。
+ * 解析口径放在这个**不含 React**的模块里：`strategy/page.tsx` 是服务端组件，
+ * 从 `"use client"` 模块里调用普通函数会抛
+ * 「Attempted to call … from the server but … is on the client」。
+ */
+type IOrbitStrategyView = "strategy" | "contacts";
+
+function iorbitStrategyView(
+  value: string | readonly string[] | undefined,
+): IOrbitStrategyView {
+  const first = Array.isArray(value) ? value[0] : (value as string | undefined);
+  return first === "contacts" ? "contacts" : "strategy";
+}
+
+export type { IOrbitStrategyView };
+
 export {
   iorbitCalendarCells,
   iorbitDayKey,
   iorbitEventChipDate,
   iorbitHistoryDateLabel,
   iorbitLedgerProgress,
+  iorbitPlanWeeks,
   iorbitRegisteredEvents,
   iorbitRelativeDayLabel,
   iorbitSelectedDayLabel,
+  iorbitStrategyView,
 };

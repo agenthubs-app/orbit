@@ -25,6 +25,8 @@ import { readRuntimeEventRegistrationStates } from "../../../../features/events/
 import { resolveConfiguredActorEventCanonicalIds } from "../canonical-event-detail-view";
 
 export type AppAgentSearchParams = AppChatSearchParams & {
+  /** `?history=1`：strategy / contacts 两屏页头的「◷ 历史记录」落点（任务 5）。 */
+  history?: string | string[];
   lang?: string | string[];
   q?: string | string[];
 };
@@ -179,6 +181,9 @@ export default async function AppAgentPage({
               firstSearchParam(resolvedSearchParams, "q") ||
                 firstSearchParam(resolvedSearchParams, "session"),
             )}
+            initialHistoryOpen={
+              firstSearchParam(resolvedSearchParams, "history") === "1"
+            }
             home={
               homeModel.state === "success"
                 ? localizeOrbitTree(
