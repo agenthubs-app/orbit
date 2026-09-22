@@ -694,6 +694,29 @@
 - `tests/pages`（`*.test.{ts,tsx}`，排除已知挂起的 `event-registration-readback`）：**1297 项 / 1290 绿 / 3 失败 / 4 基线跳过**；3 失败均为记录基线（`app-agent-contact-recommendations`「contact detail mapping…」、`app-events-live-route-services`「public event presentation derives agenda clocks…」、`event-registration-portrait-browser`「actual Web 7a…」playwright）。
 - 流程：`analyze --index-only` 57s（117,800 nodes）；impact：`OrbitRealAccountAuth` / `PasswordResetForm` / `usePasswordReset` / `AuthModal` LOW（direct 1–2）、`useAuthSubmit` HIGH、`useAccountAuth` **CRITICAL**（page → layout 图扩散，与任务 1–2 记录相同）——按 CLAUDE.md 警示后以 grep 确认直接调用者仅 auth-0918 四屏 + 测试，改动为加字段 / 换文案，调用者同提交更新；`detect-changes --scope all`：17 文件 / 60 符号 / 0 affected processes / risk low，无 partial / truncated。
 
+### 合并前终审修正
+
+计划终审（合并前）提出 1 条 MUST + 4 条 SHOULD，均已落地（提交 `fix(auth)` + 本条台账）。
+
+| # | 问题 | 修正 |
+| --- | --- | --- |
+| 1（MUST） | 找回屏「重新申请」后（`dismissed=true`），提交一个**非法邮箱**会把成功卡重新亮出来且零请求：旧 `onSubmit` 包装在 `useAuthSubmit` 校验之前就 `setDismissed(false)`，而 hook 的 `resetSent` 只在真正提交时才复位 | `useAuthSubmit(session, view, onDelegate?)` 第三参：**校验通过、真正调用 `session.onSubmit` 之前**才同步回调（`onSubmit` 另返回 `boolean` 表示是否已委托）；找回屏把 `() => setDismissed(false)` 交给它，`<form onSubmit={onSubmit}>` 不再自带包装 |
+| 2（SHOULD） | 遮罩「拖拽释放」误关：在面板内按下鼠标、拖到遮罩上松开时 `click` 的 target 是遮罩本体 → 关窗（选中文字常见） | 壳加 `onMouseDown` + `pressedOnOverlay` ref：**mousedown 与 click 都落在遮罩本体**才 `handleClose()`；每次 click 后清位（孤立 click 不关） |
+| 3（SHOULD） | 新密码屏「链接已失效」分支无活动区：挂载后分支切换，读屏器不播报（旧实现是 `<p role=alert>`） | 副标改 `<p class="au-sub" role="alert">`（设计结构、类名、文案均不变） |
+| 4（SHOULD） | 死 API | `AccountAuthSession` 撤 `primary` / `switchHref` / `isSignup` / `isForgot`（grep 全仓零消费者；主按钮文案走 `AUTH_BUTTON_LABELS`、切换链接走 `authRoutePath`）；`PasswordResetSession` 撤 `token` ref（旧 JSX 已删，只余 `tokenValid`）。`isSignup` / `isForgot` 仍为 hook **内部**分支常量——`app-account-auth-live-route-services` 的源码正则按 `if (isSignup) {` / `if (isForgot) {` 切片，未受影响，无锁定正则因本次删减而改写 |
+| 5（SHOULD） | 台账遗留（见下「终审遗留」） | 本节记录，未改代码 |
+
+**测试改动（意图保留）**：`app-auth-modal` 23 → 24 例——遮罩用例扩成四步（面板内 click 不关 / 面板内按下+遮罩松开不关 / 孤立 click 不关 / 遮罩 mousedown+click 关）；新增「重新申请后非法邮箱提交」回归（成功卡 → 重新申请 → 非法邮箱：0 新请求 + 错误卡 + 无成功卡 → 合法邮箱：第 2 次请求 + 成功卡回来）；失效链接用例断言副标 `role="alert"` 且 `statuses` 为空。`app-password-reset-characterization` 失效用例的 `byRole("alert")` 由 `[]` 改为该副标文案（原意「不再是旧的『重置链接不完整』alert」保持——断言的是设计副标文案本身）。
+
+**回归（cwd `repos/orbits`）**：`app-auth-modal`（24）/ 两特征化（14 + 8）/ `app-account-auth-live-route-services`（13）/ `orbit-modal-standard` / `orbit-form-standard` / `orbit-button-ratchet` / `orbit-scale-ratchet` 合计 **80 / 80**；`npm run typecheck` 0 错误；ratchet 未升（`role="alert"` 计数 +1，基线为 `>=` 故只升不降）。`detect-changes --scope all`：10 文件 / 16 符号 / affected processes 0 / risk low，无 partial / truncated。impact（改前）：`useAccountAuth` CRITICAL、`useAuthSubmit` HIGH（均为既有图扩散，grep 确认直接调用者仍只有 auth-0918 四屏 + 测试，且本次只删无人读的字段 / 加可选第三参）、`AuthModal` / `usePasswordReset` LOW。**像素**：找回视图重跑 `--design-table auth --design-view forgot --viewport-only --design-remove "div:has(> span:text-is('演示'))"` → mismatch **0.0170**，与终验逐字一致（未变）。
+
+### 终审遗留（记录，未修）
+
+1. 弹窗打开时背景落地页既不 `inert` 也不锁滚动（旧实现同样没有）：与设计等价（设计稿同为覆盖层），焦点陷阱已由 `useOrbitModalA11y` 提供，故不在本次改。
+2. 登录屏现在也跑客户端 8 位密码校验（`useAuthSubmit` 对 login/register 同一条 `validatePassword`）：服务端只在**注册 / 重置**强制 ≥8（`features/auth/contract.ts:AUTH_PASSWORD_MIN_LENGTH`），登录对历史短密码账号不设下限 → 这类账号在新 UI 上会被客户端拦住。若历史库中确有 <8 位密码，需给 login 放开本地长度校验。
+3. 密码框 `maxLength={72}` 是**字符**数，服务端 `password-reset-service.ts:24` 判的是 UTF-8 **字节** ≤72（`Buffer.byteLength`）：CJK 密码可在前端通过而被服务端拒（既有问题，非本次引入）。
+4. `account/mobile-google/` 仍用冻结的 `orbit-account-auth-*` 旧类名（`page.tsx` / `mobile-google-auth.tsx`），不在认证四态计划内，未随 auth-0918 迁移。
+
 ### 遗留清单
 
 1. `app-account-auth-live-route-services` 与两份特征化测试对 `useAccountAuth` 的行为覆盖有重叠（同一 hook 三处 fetch 桩），可合并（不在本计划）。
