@@ -3,23 +3,27 @@
  * （同一份 GET / 轮询 / 自动重试），按 `tab` 渲染 概览 或 匹配与分组，套 `OpsConsoleShell`。
  * `tab` 由 page.tsx 从 `searchParams` 读出（页签是路由 `<a>`，切换即整页导航，与 events-0918/events-list 同法）。
  * 「更多 ⌄」菜单（审阅修订 5）：导出 CSV（`/operations/admin/export`）+ 管理角色（`roles.manage` 才出现，
- * `data-event-roles-entry`，进 `?drawer=roles`，抽屉本体任务 6）。
+ * `data-event-roles-entry`，进 `?drawer=roles`）。协作者抽屉（任务 6）：page.tsx 读 `searchParams.drawer`（`opsDrawer`），
+ * `canManageRoles && drawer === "roles"` 才挂 `OpsRolesDrawer`（无权限时忽略参数）；关闭 = 整页导航回当前页签（去掉 `?drawer`）。
  */
 "use client";
 
 import type { EventOperationsPageEvent } from "../[id]/operations/event-operations-page-event";
 import { OpsMatch } from "./ops-match";
-import { rolesDrawerHref, type OpsConsoleTab } from "./ops-model";
+import { opsHref, rolesDrawerHref, type OpsConsoleTab, type OpsDrawer } from "./ops-model";
 import { OpsOverview } from "./ops-overview";
+import { OpsRolesDrawer } from "./ops-roles-drawer";
 import { OpsConsoleShell, type OpsMoreItem } from "./ops-shell";
 import { useEventOperations } from "./use-event-operations";
 
 export function OpsConsole({
   canManageRoles = false,
+  drawer = null,
   event,
   tab = "ops",
 }: {
   canManageRoles?: boolean;
+  drawer?: OpsDrawer | null;
   event: EventOperationsPageEvent;
   tab?: OpsConsoleTab;
 }) {
@@ -29,8 +33,12 @@ export function OpsConsole({
     ...(canManageRoles ? [{ href: rolesDrawerHref(event.id), label: "管理角色", marker: "data-event-roles-entry" }] : []),
   ];
 
+  const rolesDrawer = canManageRoles && drawer === "roles"
+    ? <OpsRolesDrawer closeHref={opsHref(event.id, tab)} eventId={event.id} />
+    : null;
+
   return (
-    <OpsConsoleShell event={event} more={more} view={tab}>
+    <OpsConsoleShell drawer={rolesDrawer} event={event} more={more} view={tab}>
       {tab === "match" ? <OpsMatch event={event} session={session} /> : <OpsOverview event={event} session={session} />}
     </OpsConsoleShell>
   );

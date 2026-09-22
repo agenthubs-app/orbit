@@ -118,6 +118,8 @@ test("non-.btn <button> count in app/(app)/app does not increase", () => {
   // 运营台 task 5 (2026-09-22) deleted event-experience-editor.tsx (ex-btn
   // controls) and analytics/event-analytics-route.tsx (an-switch-btn /
   // an-alert-retry); the ops-0918 form / report screens are all .btn → 98 (measured).
+  // 运营台 task 6 (2026-09-22) deleted roles/event-role-management-workspace.tsx
+  // (all .btn already); the ops-0918 collaborators drawer is all .btn → 98 (unchanged).
   const CEILING = 98;
 
   assert.ok(

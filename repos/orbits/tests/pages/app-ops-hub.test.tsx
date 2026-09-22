@@ -288,3 +288,159 @@ test("OPS_STYLES is scoped to ops-0918, neutralises .btn and contains no mock va
     assert.doesNotMatch(source, /Tokyo AI Meetup|创业峰会|开发者大会|全球人才交流会|创建活动/u);
   }
 });
+
+// 自 tests/pages/event-role-management-workspace.test.tsx:295 迁入（任务 6 删旧文件）。
+test("migration-pending cards do not render legacy metadata or operation links", async () => {
+  const originalFetch = globalThis.fetch;
+  let renderer!: ReactTestRenderer;
+  globalThis.fetch = (async (url) => {
+    // 迁移待确认的活动不得触发 aggregate 读取：只允许列表请求。
+    assert.equal(url, "/api/events/center");
+    return Response.json({
+      data: [{
+        endsAt: null,
+        eventId: "event:legacy-only",
+        lifecycleState: "legacy_active",
+        migrationPending: true,
+        owner: true,
+        revision: 0,
+        role: "owner",
+        startsAt: null,
+        title: null,
+        venue: null,
+      }],
+      success: true,
+    });
+  }) as typeof fetch;
+
+  try {
+    await act(async () => {
+      renderer = create(<OpsHub />);
+      await flush();
+    });
+    assert.equal(
+      renderer.root.findAll(
+        (node) => node.props["data-event-center-migration-pending"] === "event:legacy-only",
+      ).length,
+      1,
+    );
+    assert.equal(
+      renderer.root.findAll(
+        (node) =>
+          node.type === "a" &&
+          typeof node.props.href === "string" &&
+          node.props.href.includes(encodeURIComponent("event:legacy-only")),
+      ).length,
+      0,
+    );
+    const headings = renderer.root.findAllByType("h2").map((node) => node.children.join(""));
+    assert.ok(headings.includes("活动资料待迁移"));
+    assert.ok(!headings.includes("event:legacy-only"));
+  } finally {
+    globalThis.fetch = originalFetch;
+    renderer?.unmount();
+  }
+});
+
+// 自 tests/pages/event-role-management-workspace.test.tsx:347 迁入（任务 6 删旧文件；:395 管理角色 → `?drawer=roles`）。
+test("event center gates onsite actions by lifecycle and explains delegated bootstrap", async () => {
+  const originalFetch = globalThis.fetch;
+  let renderer!: ReactTestRenderer;
+  globalThis.fetch = (async (url) => {
+    // hub 每卡另读 aggregate（审阅修订 4）；这里一律 403 → 三计数「—」，不影响门禁断言。
+    if (String(url).endsWith("/analytics/aggregate")) {
+      return Response.json({ error: { message: "forbidden" }, success: false }, { status: 403 });
+    }
+    assert.equal(url, "/api/events/center");
+    return Response.json({
+      data: [
+        {
+          endsAt: null,
+          eventId: "event:draft-owner",
+          lifecycleState: "draft",
+          migrationPending: false,
+          owner: true,
+          revision: 1,
+          role: "owner",
+          startsAt: null,
+          title: "待发布活动",
+          venue: null,
+        },
+        {
+          endsAt: "2026-09-12T11:00:00.000Z",
+          eventId: "event:published-operator",
+          lifecycleState: "published",
+          migrationPending: false,
+          owner: false,
+          revision: 2,
+          role: "operations",
+          startsAt: "2026-09-12T09:00:00.000Z",
+          title: "已发布活动",
+          venue: "Tokyo",
+        },
+      ],
+      success: true,
+    });
+  }) as typeof fetch;
+
+  try {
+    await act(async () => {
+      renderer = create(<OpsHub />);
+      await flush();
+    });
+    const draftCard = renderer.root.find(
+      (node) => node.props["data-event-center-card"] === "event:draft-owner",
+    );
+    const draftLinks = draftCard.findAllByType("a").map((node) => String(node.props.href));
+    assert.equal(draftLinks.some((href) => href.endsWith("/operations")), false);
+    assert.equal(draftLinks.some((href) => href.endsWith("/operations/check-in")), false);
+    assert.equal(draftLinks.some((href) => href.endsWith("/operations/admission")), false);
+    assert.equal(draftLinks.some((href) => href.endsWith("/analytics")), false);
+    // 审阅修订 7：管理角色进 `?drawer=roles` 抽屉，不再有 /operations/roles 深链。
+    assert.equal(draftLinks.some((href) => href.endsWith("/operations?drawer=roles")), true);
+    assert.equal(draftLinks.some((href) => href.endsWith("/operations/roles")), false);
+    assert.match(JSON.stringify(renderer.toJSON()), /活动发布前不开放运营台/u);
+
+    const operatorCard = renderer.root.find(
+      (node) => node.props["data-event-center-card"] === "event:published-operator",
+    );
+    assert.equal(
+      operatorCard.findAll(
+        (node) =>
+          node.props["data-event-center-bootstrap-limited"] ===
+          "event:published-operator",
+      ).length,
+      1,
+    );
+    assert.match(
+      JSON.stringify(renderer.toJSON()),
+      /首次运营配置必须由活动负责人初始化/u,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    renderer?.unmount();
+  }
+});
+
+// 自 tests/pages/event-role-management-workspace.test.tsx:426 迁入（任务 6 删旧工作区）：旧文件对 roles 工作区源码的 auto-fit 网格
+// 断言随文件删除作废，只保留活动中心的角色入口断言。
+test("the center reserves only policy-valid role entry points", () => {
+  // 活动中心 hub（ops-0918）：角色谓词在 ops-model.ts，`data-event-center-*` 标记随动作表落在 ops-model / ops-hub。
+  const centerModel = readFileSync(
+    join(projectRoot, "app/(app)/app/events/ops-0918/ops-model.ts"),
+    "utf8",
+  );
+  const centerHub = readFileSync(
+    join(projectRoot, "app/(app)/app/events/ops-0918/ops-hub.tsx"),
+    "utf8",
+  );
+  assert.match(centerModel, /data-event-center-analytics/u);
+  assert.match(centerModel, /function canOpenAnalytics/u);
+  assert.match(centerModel, /item\.role === "operations"/u);
+  assert.match(centerModel, /item\.role === "read_only_analyst"/u);
+  assert.match(centerModel, /data-event-center-admission/u);
+  for (const source of [centerModel, centerHub]) {
+    assert.doesNotMatch(source, /审核入口待实现/u);
+    assert.doesNotMatch(source, /role === "reviewer"[^\n]+analytics/u);
+  }
+});

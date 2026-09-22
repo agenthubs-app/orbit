@@ -2,7 +2,7 @@
  * 活动中心（Orbit_0918 运营台 hub 屏）：消费 `useEventCenter`，按设计 47–89 行渲染活动卡。
  * 审阅修订 4：`/api/events/center` 无描述 → 描述省略；封面 = EventCover 标题渐变；三计数每卡
  * `GET /api/events/{id}/analytics/aggregate`（非 2xx → 「—」）；角色 / 生命周期门禁与 `data-event-center-*`
- * 标记原样保留（tests/pages/event-role-management-workspace.test.tsx）；次级动作收进「···」；
+ * 标记原样保留（tests/pages/app-ops-hub.test.tsx，自 event-role-management-workspace.test.tsx 迁入）；次级动作收进「···」；
  * 创建入口不在本屏（审阅修订 4）；「当前身份」= 页头去重角色 + 每卡角色 chip。
  */
 "use client";

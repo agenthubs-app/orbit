@@ -7,7 +7,7 @@ import { createConfiguredEventCoreService } from "../../../../../../features/eve
 import { AccountTopNav } from "../../../orbit-account-shell";
 import { OrbitReferenceStyles } from "../../../orbit-reference-styles";
 import { OpsConsole } from "../../ops-0918/ops-console";
-import { opsConsoleTab } from "../../ops-0918/ops-model";
+import { opsConsoleTab, opsDrawer } from "../../ops-0918/ops-model";
 import { loadEventOperationsPageEvent } from "./event-operations-page-event";
 
 function routeEventId(value: string): string {
@@ -23,11 +23,13 @@ export default async function AppEventOperationsAdminPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ tab?: string | string[] }>;
+  searchParams?: Promise<{ drawer?: string | string[]; tab?: string | string[] }>;
 }) {
   const [{ id: routeId }, session] = await Promise.all([params, auth()]);
   const query = searchParams ? await searchParams : {};
   const tab = opsConsoleTab(query.tab);
+  // 协作者抽屉（任务 6）：只认 `?drawer=roles`；无 roles.manage 时 OpsConsole 忽略该参数。
+  const drawer = opsDrawer(query.drawer);
   const eventId = routeEventId(routeId);
   if (!session?.user?.id) {
     redirect(`/app/account/login?next=${encodeURIComponent(`/app/events/${eventId}/operations`)}`);
@@ -100,6 +102,7 @@ export default async function AppEventOperationsAdminPage({
         <AccountTopNav active="events" />
         <OpsConsole
           canManageRoles={canManageRoles}
+          drawer={drawer}
           event={pageEvent ?? {
             endsAt: "",
             id: eventId,

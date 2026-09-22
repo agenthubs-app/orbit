@@ -115,7 +115,9 @@ test("fontSize literals outside the scale in app/(app)/app do not increase", () 
   // future tasks migrate more files onto the scale.
   // Orbit_0918 task 8: legacy orbit-real contact views deleted → 63 to 48.
   // Events task 6 (2026-09-22) deleted /app/party* (orbit-real-party.tsx) → 36.
-  const CEILING = 36;
+  // 运营台 task 6 (2026-09-22) deleted roles/event-role-management-workspace.tsx
+  // (fontSize 10 style object) → 35 (measured).
+  const CEILING = 35;
 
   assert.ok(
     hits.length <= CEILING,
@@ -147,7 +149,9 @@ test("gap literals outside the scale in app/(app)/app do not increase", () => {
   // event-operations-controls.tsx) → 194.
   // 运营台 task 4 (2026-09-22) deleted event-admission-review-workspace.tsx
   // (gap 6/7/10/14/18 style objects) → 181 (measured).
-  const CEILING = 181;
+  // 运营台 task 6 (2026-09-22) deleted roles/event-role-management-workspace.tsx
+  // (gap 6/10 style objects) → 174 (measured).
+  const CEILING = 174;
 
   assert.ok(
     hits.length <= CEILING,

@@ -626,6 +626,57 @@ export const OPS_STYLES = `
 [data-orbit-real-page="ops-0918"] .btn.op-fsave, [data-orbit-real-page="ops-0918"] .btn.op-fpublish, [data-orbit-real-page="ops-0918"] .btn.op-fq-edit, [data-orbit-real-page="ops-0918"] .btn.op-fq-del, [data-orbit-real-page="ops-0918"] .btn.op-fadd, [data-orbit-real-page="ops-0918"] .btn.op-rview { height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
 [data-orbit-real-page="ops-0918"] .btn.op-fsave:active, [data-orbit-real-page="ops-0918"] .btn.op-fpublish:active, [data-orbit-real-page="ops-0918"] .btn.op-fq-edit:active, [data-orbit-real-page="ops-0918"] .btn.op-fq-del:active, [data-orbit-real-page="ops-0918"] .btn.op-fadd:active, [data-orbit-real-page="ops-0918"] .btn.op-rview:active { transform: none; }
 [data-orbit-real-page="ops-0918"] .btn.op-fsave:disabled, [data-orbit-real-page="ops-0918"] .btn.op-fpublish:disabled { cursor: default; opacity: 0.6; }
+/* ── 协作者抽屉（设计稿 447–476 行；任务 6）── */
+[data-orbit-real-page="ops-0918"] .op-dw-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(14,18,37,0.28); backdrop-filter: blur(4px); display: flex; justify-content: flex-end; }
+[data-orbit-real-page="ops-0918"] .op-dw-panel { width: min(440px, 94vw); height: 100%; overflow-y: auto; background: #FFFFFF; box-shadow: -20px 0 60px rgba(14,18,37,0.18); padding: 28px 26px; display: flex; flex-direction: column; gap: 22px; animation: orbit-fade .25s ease; }
+[data-orbit-real-page="ops-0918"] .op-dw-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+[data-orbit-real-page="ops-0918"] .op-dw-head-copy { display: flex; gap: 14px; align-items: flex-start; }
+[data-orbit-real-page="ops-0918"] .op-dw-ico { width: 46px; height: 46px; flex: none; border-radius: 14px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+[data-orbit-real-page="ops-0918"] .op-dw-titles { display: flex; flex-direction: column; gap: 6px; }
+[data-orbit-real-page="ops-0918"] .op-dw-title { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 23px; letter-spacing: -0.02em; }
+[data-orbit-real-page="ops-0918"] .op-dw-sub { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="ops-0918"] .btn.op-dw-close { width: 34px; height: 34px; border: 0; border-radius: 50%; background: #F7F7FD; color: #3B3F7A; font-size: 16px; cursor: pointer;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  padding: 0; display: inline-flex; align-items: center; justify-content: center; gap: 0; flex: none; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; font-weight: 400; transition: none; }
+[data-orbit-real-page="ops-0918"] .btn.op-dw-close:hover { background: #ECEEFB; }
+[data-orbit-real-page="ops-0918"] .btn.op-dw-close:active { transform: none; }
+[data-orbit-real-page="ops-0918"] .op-dw-note { padding: 12px 14px; border-radius: 12px; }
+[data-orbit-real-page="ops-0918"] .op-dw-sec { border: 1px solid #E8E9F6; border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+[data-orbit-real-page="ops-0918"] .op-dw-sec-title { font-size: 16px; font-weight: 500; }
+[data-orbit-real-page="ops-0918"] .op-dw-member { display: flex; flex-direction: column; gap: 8px; }
+[data-orbit-real-page="ops-0918"] .op-dw-row { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: 10px; background: #F7F7FD; }
+[data-orbit-real-page="ops-0918"] .op-dw-ava { width: 32px; height: 32px; flex: none; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+[data-orbit-real-page="ops-0918"] .op-dw-name { font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
+[data-orbit-real-page="ops-0918"] .op-dw-role { padding: 4px 12px; border-radius: 999px; font-size: 11px; white-space: nowrap; }
+[data-orbit-real-page="ops-0918"] .op-dw-fill { flex: 1; }
+/* 「···」= <details> 菜单（设计只画了「···」；展开层沿用 op-menu） */
+[data-orbit-real-page="ops-0918"] .op-dw-more { position: relative; color: #9FA3C4; letter-spacing: 2px; }
+[data-orbit-real-page="ops-0918"] .op-dw-dots { list-style: none; cursor: pointer; }
+[data-orbit-real-page="ops-0918"] .op-dw-dots::-webkit-details-marker { display: none; }
+[data-orbit-real-page="ops-0918"] .btn.op-dw-menu-btn { width: 100%; height: auto; border: 0; background: transparent; cursor: pointer; text-align: left; justify-content: flex-start; gap: 0; letter-spacing: 0; line-height: normal; font-weight: 400; transition: none; }
+[data-orbit-real-page="ops-0918"] .btn.op-dw-menu-btn:active { transform: none; }
+[data-orbit-real-page="ops-0918"] .btn.op-dw-menu-btn:disabled { cursor: default; opacity: 0.6; }
+/* 改角色 / 移除 的行内表单（设计稿无：沿用添加协作者的输入口径） */
+[data-orbit-real-page="ops-0918"] .op-dw-edit { display: flex; flex-direction: column; gap: 8px; padding: 0 12px; }
+[data-orbit-real-page="ops-0918"] .op-dw-edit-actions { display: flex; gap: 8px; }
+[data-orbit-real-page="ops-0918"] .op-dw-field { display: flex; flex-direction: column; gap: 8px; }
+[data-orbit-real-page="ops-0918"] .op-dw-label { font-size: 13px; color: #3B3F7A; }
+[data-orbit-real-page="ops-0918"] .op-dw-input { padding: 14px 16px; border: 1px solid #DDDEFA; border-radius: 10px; font-size: 14px; outline: none; background: #FFFFFF; color: #0E1225; width: 100%; box-sizing: border-box; }
+[data-orbit-real-page="ops-0918"] .op-dw-input::placeholder { color: #9FA3C4; }
+/* 设计 470 行「角色」是静态 span（50px 高）；真实 <select> 的固有内容高比 input 多 2px → 钉成 input 同高 */
+[data-orbit-real-page="ops-0918"] select.op-dw-input { height: 50px; line-height: 20px; }
+[data-orbit-real-page="ops-0918"] .btn.op-dw-submit { padding: 15px; border: 0; border-radius: 10px; background: #0E1225; color: #FFFFFF; font-size: 14px; font-weight: 500; cursor: pointer;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="ops-0918"] .btn.op-dw-submit:hover { background: #2E3270; color: #FFFFFF; }
+[data-orbit-real-page="ops-0918"] .btn.op-dw-submit:active { transform: none; }
+[data-orbit-real-page="ops-0918"] .btn.op-dw-submit:disabled { cursor: default; opacity: 0.6; }
+[data-orbit-real-page="ops-0918"] .btn.op-dw-submit-sm { padding: 12px 16px; }
+[data-orbit-real-page="ops-0918"] .btn.op-dw-cancel { padding: 12px 16px; border: 1px solid #DDDEFA; border-radius: 10px; background: #FFFFFF; color: #3B3F7A; font-size: 14px; cursor: pointer;
+  height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; font-weight: 400; transition: none; }
+[data-orbit-real-page="ops-0918"] .btn.op-dw-cancel:hover { border-color: #B9BCEB; color: #2E3270; }
+[data-orbit-real-page="ops-0918"] .btn.op-dw-cancel:active { transform: none; }
+[data-orbit-real-page="ops-0918"] .op-dw-hint { font-size: 12px; color: #9FA3C4; }
 @media (max-width: 860px) {
   [data-orbit-real-page="ops-0918"] .op-ops-grid { grid-template-columns: 1fr; }
   [data-orbit-real-page="ops-0918"] .op-steps { grid-template-columns: repeat(2, 1fr); row-gap: 18px; }

@@ -24,6 +24,10 @@ import {
   matchEligibleCount,
   matchResultLabel,
   opsConsoleTab,
+  opsDrawer,
+  collaboratorInitial,
+  collaboratorName,
+  ROLE_CHIP_TONE,
   pipelineSteps,
   pipelineStepStyle,
   roundTables,
@@ -309,6 +313,29 @@ test("roundTables reads only the published grouping; counts follow profileComple
   assert.equal(opsConsoleTab(["match", "ops"]), "match");
   assert.equal(opsConsoleTab("people"), "ops");
   assert.equal(opsConsoleTab(undefined), "ops");
+});
+
+test("opsDrawer only accepts roles (任务 6：`?drawer=roles` 抽屉；其余值与缺省 → null)", () => {
+  assert.equal(opsDrawer("roles"), "roles");
+  assert.equal(opsDrawer(["roles", "x"]), "roles");
+  assert.equal(opsDrawer("Roles"), null);
+  assert.equal(opsDrawer("people"), null);
+  assert.equal(opsDrawer(""), null);
+  assert.equal(opsDrawer(undefined), null);
+});
+
+test("collaborator rows: name falls back to the actor id, initial = first char of the label or last 2 chars of the id; role chips use the design tones", () => {
+  const labels = new Map([["user:b", "测试参与者·周 · Orbit"]]);
+  assert.equal(collaboratorName("user:b", labels), "测试参与者·周 · Orbit");
+  assert.equal(collaboratorName("user:zz", labels), "user:zz");
+  assert.equal(collaboratorInitial("user:b", labels), "测");
+  assert.equal(collaboratorInitial("user:zz", labels), "zz");
+  assert.equal(collaboratorInitial("a", new Map()), "a");
+  assert.deepEqual(ROLE_CHIP_TONE.owner, { bg: "#ECEEFB", color: "#2E3270" });
+  assert.deepEqual(ROLE_CHIP_TONE.operations, { bg: "#ECEEFB", color: "#2E3270" });
+  assert.deepEqual(ROLE_CHIP_TONE.check_in, { bg: "#E6F1EC", color: "#2F6B4F" });
+  assert.deepEqual(ROLE_CHIP_TONE.reviewer, { bg: "#FBF1E4", color: "#9A6B22" });
+  assert.deepEqual(ROLE_CHIP_TONE.read_only_analyst, { bg: "#F1F1FA", color: "#6B6F99" });
 });
 
 // ═══ 运营台 任务 4：参会者 / 签到 纯函数 ═══

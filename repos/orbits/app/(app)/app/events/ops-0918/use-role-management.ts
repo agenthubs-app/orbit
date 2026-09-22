@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-// 原样抽自 [id]/operations/roles/event-role-management-workspace.tsx（8–116、
+// 原样抽自 [id]/operations/roles/event-role-management-workspace.tsx（已于任务 6 删除；原 8–116、
 // 123–314 行）：角色类型/选项/文案、RequestError + requestJson、参与者候选池
 // （best-effort）、角色表加载、授予/变更（先读 assignment head revision，PUT）、
 // 撤销（DELETE）、409 → 刷新后提示。授权表单与逐成员编辑草稿随动作一并留在 hook。

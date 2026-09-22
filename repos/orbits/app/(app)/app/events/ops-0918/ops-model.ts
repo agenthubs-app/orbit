@@ -19,6 +19,7 @@ import type {
   EventOperationsTable,
 } from "../../../../../features/events/event-operations/contract";
 import type { EventCenterItem, EventRole } from "./use-event-center";
+import type { PrincipalRole } from "./use-role-management";
 
 // ═══ 路由 ═══
 
@@ -58,6 +59,14 @@ export type OpsConsoleTab = Extract<OpsView, "ops" | "match">;
 export function opsConsoleTab(value: string | string[] | undefined): OpsConsoleTab {
   const raw = Array.isArray(value) ? value[0] : value;
   return raw === "match" ? "match" : "ops";
+}
+
+/** 任务 6：`?drawer=` 只认 `roles`（协作者抽屉，设计 447–476），其余（含缺省）→ null（page.tsx 服务端调用，故放纯模型）。 */
+export type OpsDrawer = "roles";
+
+export function opsDrawer(value: string | string[] | undefined): OpsDrawer | null {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return raw === "roles" ? "roles" : null;
 }
 
 export function opsHref(eventId: string, view: OpsView): string {
@@ -859,3 +868,31 @@ export function attendeeAiStatus(
       };
   }
 }
+
+// ═══ 协作者抽屉（设计 447–476；任务 6）═══
+
+/**
+ * 设计 629–634 `collaborators` 只有三色（管理员 `#ECEEFB/#2E3270` / 签到 `#E6F1EC/#2F6B4F` / 数据查看 `#FBF1E4/#9A6B22`）；
+ * 真实四角色 + 负责人：负责人 / 运营 = 管理员色、签到 = 签到色、审核 = 数据查看色、只读分析 = 沿用 people 屏「待补充」灰
+ * `#F1F1FA/#6B6F99`（设计外补充，记偏差）。
+ */
+export const ROLE_CHIP_TONE: Record<PrincipalRole, { bg: string; color: string }> = {
+  check_in: { bg: "#E6F1EC", color: "#2F6B4F" },
+  operations: { bg: "#ECEEFB", color: "#2E3270" },
+  owner: { bg: "#ECEEFB", color: "#2E3270" },
+  read_only_analyst: { bg: "#F1F1FA", color: "#6B6F99" },
+  reviewer: { bg: "#FBF1E4", color: "#9A6B22" },
+};
+
+/** 行名 = 参与者候选池的名字（`participantLabelByActorId`），不在池内 → 原样 actorId。 */
+export function collaboratorName(actorId: string, labels: ReadonlyMap<string, string>): string {
+  return labels.get(actorId) ?? actorId;
+}
+
+/** 首字母头像（设计 458 `c.ini`）：有名字 → 首字；否则 actorId 后 2 位。 */
+export function collaboratorInitial(actorId: string, labels: ReadonlyMap<string, string>): string {
+  const label = labels.get(actorId);
+  if (label) return Array.from(label.trim())[0] ?? "";
+  return actorId.slice(-2);
+}
+
