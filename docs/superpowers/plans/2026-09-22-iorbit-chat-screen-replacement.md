@@ -61,3 +61,77 @@
 
 ## 后续计划
 本域完成即六域全部完成；收尾时评估 `newui/batch-0-shell-landing` → `chat-agent` 快进合并与工作树清理。
+
+## 审阅修订（2026-09-22，独立评审 ~40 项——与上文冲突处一律以本节为准）
+
+### A. 结构与作用域决定
+
+1. **壳持有 `inChat`（取代上文 Task 2 的「`page.tsx` 的 `!inChat` 分支」——那是客户端状态，服务端组件看不到）**：Task 2 建 `iorbit-shell.tsx`（客户端）持有 `inChat`/`chatOpen`，`agent/page.tsx` 渲染壳；壳在 chat 分支先委托旧 `OrbitRealAgent`，home 分支渲染新屏。因此 `use-agent-chat` 必须在 Task 2 之前（见 K 的任务表）。
+2. **作用域双层，冻结文件不动**：外层 div 保留 `data-orbit-real-page="agent"`（`orbit-reference-styles.tsx` 有 44 条该作用域规则，含顶栏 `.orbit-agent-history-btn` `:1882`），内层 div 加 `data-orbit-real-page="iorbit-0918"` 承载 `IORBIT_STYLES`。CSS 靠祖先选择器，两层同时生效；**不删冻结文件里的任何规则**，`orbit-agent-visual-design.test.ts:57-63` 对 `[data-orbit-real-page="agent"] {` 与 `--agent-canvas` 的断言因此继续成立。
+3. **设计 contacts 屏 = `/app/agent/strategy?view=contacts`**（取代上文「并入 strategy」的含混说法）：两屏面包屑（503 `iOrbit / 对话 / 工作策略` vs 665 `iOrbit / 对话 / 联系人建议`）、H1、内容块都不同，合并会丢 开场白（704–705）与 相关活动（769–781）。按 `?view` 切换即可保持像素可比；`ROUTE-CONSOLIDATION.md:52` 行改写为「= `/app/agent/strategy?view=contacts`」。
+4. **设计几何补录**：页面包裹 `:25` `min-height:100vh; background:#FBFBFE; overflow-x:clip`；`<main>` `:43` `max-width:1240px; margin:0 auto; padding:14px 40px 72px; display:flex; flex-direction:column; gap:26px`；各屏外层 gap：home 26px（`:47`），其余 22px（`:257/:350/:430/:504/:664`）。字体 `<link>` 在 11–13，全局 CSS 14–22。`renderVals` 实为 820–907（class 808–908）。
+5. **顶栏**：沿用 `AccountTopNav active="agent"`；设计 27–41 的药丸头与其差异整体记一条偏差（不逐条改顶栏）；`Calendar` 项不实现。
+
+### B. 必须保留的能力（上文未列或列错）
+
+6. **全局提问集成**：新壳/新 chat 必须 `useOrbitAskTarget({busy, chips, onAsk: ask})` 并消费 `takePendingAsk()` / `takeAgentPrefill()`（旧实现 `orbit-real-agent.tsx:3615-3619, 3625-3644, 3670-3676`），否则其他页发起的提问静默丢失；`app-agent-live-route-services.test.ts:137-138`、`orbit-agent-visual-design.test.ts:41` 的断言随迁。
+7. **深链与恢复**：`?q=`、`?session=`、`localStorage` key `orbit-agent-chat-active-session-v1`、`pickHistory` 的 `pushState`、`clearConversation` 回 `/agent` 全部属于 `use-agent-chat`，Task 1a 的特征化测试必须覆盖（已有断言 `app-agent-chat-history.test.ts:395-400`）。
+8. **三类失败与幂等重试**：`ask()` 区分 (a) 可靠发送回执未 completed、(b) 供应商超时 `MODEL_REQUEST_FAILED`/`timed out`、(c) 通用失败，三者都挂 `reliableRequest`+`retryRequest`，重试复用同一 `requestId`/`clientMessageId`；`AbortController` 60s（`AGENT_REQUEST_TIMEOUT_MS`）。特征化测试逐一覆盖；**重试按钮的 onClick 表达式 `() => void ask(message.retryRequest!, index)` 要么逐字保留，要么在 Task 6b 改审计生成器的证据键**。今天没有用户可见的「停止」控件，不要新增。
+9. **回合内既有富组件**（Task 3 必挂全）：上文已列的 7 个，外加 per-message `note` 行（`:3546-3551`）、**用户行也有复制按钮**（`:3536, :3582-3584`）、`useAgentTaskSuggestions` 的延迟补丁身份校验（`:2596-2604`）、`AgentWelcome`（`:1606`，设计 chat 无空态，必须保留）。
+10. **信号写操作不得丢**：`orbit-agent-today-workspace.tsx:119-145` 的 `PATCH /api/agent/signals/{id}`（done/snoozed）+ 两枚行内按钮 + 刷新控件（`data-orbit-agent-signals-refresh`）要迁到 home 的「建议与行动」卡或 actions 屏；**设计 home 228 / plan 450 的勾选框若对应的是 ledger 任务（无写接口）→ 渲染为静态状态标记或 `aria-disabled`，记偏差**；对应信号的行则接真实 done/snooze。
+11. **历史分页**：保持现有「一次性抽干所有 cursor 页」（`:878-902`），设计的「加载更多历史记录 ⌄」实现为**客户端逐段展开**。理由：置顶优先排序与分组计数是对全集做的（`:686-719, :2641-2646`），改成懒加载会让第 3 页的置顶会话排不到顶、分组计数错误。记偏差。
+12. **抽屉行日期**：`OrbitAgentHistoryView.when` 现在放的是分组名而非日期（`:716`），设计 797 要日期 → 需要给该 view model 加字段（跨域导出，改前跑 `impact`）。
+13. **抽屉细节**：遮罩 `z-index:100` `rgba(14,18,37,0.28)` + `blur(4px)`、右对齐、面板 `width:min(400px,92vw)` + `animation:orbit-fade .25s ease`；副标题「查看你与 iOrbit 的过往对话记录。」（790）、eyebrow「最近的对话」（793）；**首行底色 `#F7F7FD` 表示当前会话**（`h.bg`，`:905`）→ 绑 `activeSessionId` 而非「第一行」；遮罩点击关闭是设计允许的（788 有 `stop`），但要 `event.target === event.currentTarget` 守卫。
+14. **Toast / 删除确认 / 乐观队列 / 跨标签刷新**全部保留：`ORBIT_Z.toast` + `role="alert"|"status"` + 关闭按钮（`:3854-3888`）、`alertdialog`（`:1304-1402`）、`agent-chat-session-mutations.ts` 的乐观队列与失败文案（`:3436-3474`）、`window.focus` 刷新（`:3138-3152`）。
+15. **壳形态变化要明说**：旧实现是 `height:100dvh` 应用框 + 桌面/移动两套 DOM + 内部滚动容器 + 自动滚到底 + 固定输入坞（`:3687-3697, 3742, 3812, 3159-3162, 3798`），设计是普通文档流 `<main>` + 内联输入区（309–313）。本计划采用设计形态：**单套 DOM（移动端不再单独一棵树）**，自动滚到底改为新回合出现时 `scrollIntoView`，`data-orbit-ask-clearance="manual"`、`data-orbit-agent-request-state`、视觉隐藏 `<h1 data-orbit-agent-screen-title>` 全部保留在壳上。移动端顶栏历史按钮（`:3728-3736`）改为设计的「◷ 历史记录」。
+
+### C. 设计遗漏补录
+
+16. **home 还有五块上文没写**：提问输入 + 四 chips + 「打开对话」卡（59–74；其中「我该先联系谁」→contacts、「帮我制定推进计划」→strategy 是**导航**不是发消息）；今日日程（78–110，含「今日简报」两行 bullet——无来源，走空态/省略）；日历选中日交互（`d.pick` → `selLabel` → 右侧当日面板 135–143，是真交互；‹ › 在设计里本身也无 handler）；继续对话三张最近会话卡（237–251，真实来源 `GET /api/ai/conversations/sessions?limit=3`）；「查看活动推荐 →」「查看联系人建议 →」指向 `/app/events`、`/app/contacts`。
+17. **chat 补录**：面包屑 258；「← 返回概览」265 映射 `backToDashboard`——但旧实现会清空线程，设计语义是**非破坏性返回**，改为只切视图不清消息，记偏差；日期分隔 272；**助手时间戳 10:24 无来源**（`AgentMessage` 无时间字段）→ 省略，记偏差；追问 chips 右对齐且四枚里两枚是导航（306/307）；「＋」附件无能力 → `aria-disabled` 或省略；aside 第一张卡「本次对话可继续」（322–327）上文漏了；「编辑」（334）链到 `/app/profile?view=persona` 而不是做假。
+18. **actions 补录**：三段 `border-left` 颜色 `#B5473A`/`#4B4FC7`/`#9FA3C4`（360/373/390）、每行 CTA 文案各不相同、aside 三行计数 + `conic-gradient` 进度环（414–417）+ 语录卡（420–423）。现有 `orbit-agent-actions.tsx` 已很接近，按 K 表处理。
+19. **plan 补录**：段头完成度条（446）、每行 `{{ t.due }}`「▦ 9月18日 前」（452）、四周手风琴 `open/caret/headBg` + 三张 `white-space:pre-line` 卡（459–476）、「✦ 让 iOrbit 优化计划 →」（478–482，`goChat` 且要带提示词进 `ask`）、aside 四行统计（末行是真实 `planPct`）、「回到日历 →」（496）回 **home**。
+20. **mock 黑名单补充**：`days` 九月网格与 `dots{10,18,20,25}`（822–832）、`weekData` 里的人名（田中圭子/山本健一/佐藤直树，846–861）、`hist` 七行（871–876）、`done:[true,false,false]` 派生的 `planDoneLabel`/`planPct`、`selLabel`、「9/18 产品讨论 · 东京 AI 交流会」（495）、actions 的 2/3/2 计数。
+21. **日历格子的动态字重**：`d.weight` 不得内联（违反本计划自身规则）→ 用修饰类 `ir-day-on`；32 个日期格都是 `btn ir-*` 且整段中和，这是本域最大的样式面风险。
+
+### D. 测试与门禁的真实破坏点（取代上文对时点的估计）
+
+22. **引用 `orbit-real-agent` 的测试是 28 个文件**（另有 4 个引用 `orbit-agent-dashboard`），不是 ~15。Task 1a 开工前先把这 32 个文件列进报告，作为「全绿」的判定集。
+23. **上文四处遗漏的门禁**：`tests/services/modular-boundaries.test.ts:161`（路径常量）、`tests/performance/orbit-agent-markdown-split.test.ts:11-24`（`AgentMarkdown` 动态导入必须留在新 chat 文件且不得直接 import `react-markdown`）、`tests/pages/app-events-source.test.ts:32-48`（断言 `orbit-real-agent.tsx` 从 `../events/orbit-event-cover` 引入 `EventCover`——设计的事件卡是无图日期块，**改该断言并记偏差**）、`tests/pages/app-canonical-agent-personal-scope.test.ts:26`（按绝对路径 mock `OrbitRealAgent`，Task 2 换组件即失效）。
+24. **♡ 反应**：`tests/pages/app-agent-feedback-controls.test.ts:38` 明令 chat 里**不得**出现 `<AgentOutcomeFeedback`（`orbit-real-agent.tsx:34` 的 import 是死的）→ ♡ 与 ⌄ 一并省略，记偏差；不改那条测试。
+25. **首次变红时点**：Task 1（六个源码正则套件）→ Task 2（`app-canonical-agent-personal-scope:26`、`app-proactive-agent-message:94`、`app-agent-live-route-services`、`orbit-agent-visual-design:31-44`）→ Task 3（markdown-split、events-source）→ Task 4（无，旧文件还在）→ Task 5（`orbit-top-nav-structure.test.ts:171-177` **两个**文件）→ Task 6（其余 + dashboard 引用 + 29 条审计证据键）。每个时点的改指都必须与造成破坏的提交同一笔。
+26. **`orbit-sidebar-width-constant.test.ts:25-51`** 在旧文件还在时一直是绿的，真正失效点是 Task 6a 的 `readFileSync` ENOENT（不是 Task 4）；该文件 `:67-74` 还读 `today/today-page-content.tsx`，也在 Task 6a 删除半径内。
+27. **审计不是「重生成」而已**：`scripts/generate-full-product-functional-audit.mjs` 手工维护的证据键表里有 **29 条**指向 `orbit-real-agent.tsx`（`:2569, :2642, :2714, :2726-:2879`），含本计划要删的控件（resize handle `:2879`、侧栏新对话 `:2843`）；必须先改生成器键表再跑 `npm run audit:full-product`。`product-surface-manifest.json` 29 条、`inventory.json` 78 条、`2026-09-17-web-redesign-inventory/machine-inventory.json` 60 条 `app/tasks` 也要处理。
+28. **必须保留的 `data-*` 标记**（测试与审计都吃）：`data-orbit-agent-request-state`、`data-orbit-agent-screen-title`、`data-agent-message-retry-request`、`data-orbit-agent-history-{menu,menu-button,delete,feedback,delete-confirmation,confirm-delete}`、`data-orbit-agent-message-copy`、`data-orbit-agent-signal`、`data-orbit-agent-signals-refresh`。
+29. **`iorbit-model.ts` 不得含 React**（保持 node 测试可直接 import）；hook 文件才带 `"use client"`。
+30. **链接生成器是 11 个文件 21 处**（不是 7 处）：`features/orbit-ai/mock-service.ts`(6)、`features/events/confirmed-followup/service.ts`(3)、`shared/knowledge/knowledge-manifest.ts`(2)、`app/(app)/app/inbox/inbox-panel-view-model.ts`(2)、`agent/orbit-agent-dashboard.tsx`(2)，以及 `features/orbit-ai/live-command-service.ts`、`features/auth/app-auth-routing.ts`、`features/agent/signals/source-collector.ts`、`orbit-public-shell.tsx`、`orbit-global-ask/orbit-ask-routes.ts`、`events/[id]/orbit-post-event-center.tsx` 各 1。
+31. **`chat-view-model-adapter.ts` 也必须活下来**（`agent/page.tsx:20` 引用），不能随目录删；`features/chat/live-async-service.ts:387` 的 `/app/chat?conversationId=` 今天就是坏链（`/app/chat` 只转发 `q`/`lang`，且 `conversationId ≠ sessionId`）→ 记为既有缺陷，本计划只保证不恶化，改法（映射或降级为新对话）写进遗留。
+32. **`/app/tasks*` 的替代能力不存在**：`ROUTE-CONSOLIDATION.md:19-20` 说由 plan 屏的 `?task=` 抽屉与最简个人日程增改替代，但两者都没建 → Task 6a 删路由前，要么补这两处最小能力，要么把删除推迟并记录（二选一，实现者在报告里说明并保持一致）。
+
+### E. 像素口径（上文完全没写门槛，补齐）
+
+33. **门槛**：每视图 raw mismatch ≤0.02，或框级归因后非数据残差 ≤0.005 且 diff 中无布局/圆角/间距/颜色差异。chat/actions/plan 的残差会被真实文本长度主导，实际以框级归因为准。
+34. **chat 视图不能靠真实 LLM 应答**：用既有写接口种一条会话——`POST /api/ai/conversations/sessions` 带 `{session:{id,messages:[{role:"user"…},{role:"assistant",items:[…],kind:"events"…}],panel,…}}`（形状见 `orbit-real-agent.tsx:923-938`，由 `parseStoredAgentMessage:570` 校验），再截 `/app/agent?session=<id>`，走真实恢复路径且字节稳定。种子脚本写进 `scripts/visual/README.md`。
+35. **history 视图必须 `--viewport-only`**（抽屉是 `position:fixed`，fullPage 会把两侧不同的页面高度算进分母），并先记一条 home 基线用于归因（沿用认证弹窗的落地页基线做法）。
+36. **Task 0 必须包含数据准备清单**：QA 账号需有 ≥2 场已报名活动、≥2 条联系人机会、≥3 条信号、≥3 条会话，否则 home 半屏空态、像素数字无意义。
+37. actions/plan/strategy 有 `pending/ready/empty/unavailable` 多态且 plan 是客户端 `fetch("/api/agent/ledger")`，compare 的固定 400ms 可能截到 pending → 加 `data-*` ready 标志或加等待。
+
+### F. 任务重排（取代上文 Task 0–6 的七段划分）
+
+| # | 范围 | 结束态/门禁 |
+| --- | --- | --- |
+| 0 | compare `iorbit` 表（7 视图，history 用 `--viewport-only`）+ README + **chat 会话种子脚本** + 数据准备 + 七视图冒烟 | 仅工具 |
+| 1a | 对**现组件**补特征化渲染测试：ask 三类失败 + 幂等重试 + 60s abort + hydrate + `?q=`/`?session=` + pendingAsk/prefill + 历史分页/分组/置顶/重命名/删除 | 纯新增，全绿 |
+| 1b | 抽 `iorbit-model.ts`（无 React）+ `use-agent-chat.ts`；**同一提交**把源码正则断言按「hook 文件 / JSX 文件」拆开并列表 | 1a 保证行为 |
+| 1c | 抽 `use-agent-history.ts`；同上拆分 | |
+| 2 | `iorbit-shell.tsx`（持 `inChat`）+ `iorbit-home.tsx` + `page.tsx` 接线 + 改指 25 条里属于本时点的四个套件 + 作用域双层落地 | 像素 home |
+| 3 | `iorbit-chat.tsx` + `iorbit-chat-aside.tsx` + ask-target/pendingAsk/prefill 重新注册 + markdown-split / events-source 断言处置 | 像素 chat（种子会话） |
+| 4 | `iorbit-history-drawer.tsx` + 把它加进 `tests/ui/orbit-modal-standard.test.ts` 的 `MIGRATED_FILES`（现在只有账号认证一项，否则「过门禁」是空话） | 像素 history |
+| 5 | actions / plan / strategy（+ contacts 作 `?view=contacts`）：**先判定**三屏是「作用域重命名 + contacts 补齐」还是「重建」——若重命名，`aga-/agp-/ags-` → `ir-` 的机械替换单独一笔提交；`orbit-top-nav-structure.test.ts:171-177` 两个文件同改 | 像素 ×4 |
+| 6a | **只做删除**：12 个组件文件 + 5 组路由 + 11 个链接生成器文件 + ratchet 表清理（`CORE_FILES:135`、`EXEMPTIONS:148`、`SNAPPED_FILES:167`）+ 四个上限重新测量 | 一笔可评审的 diff |
+| 6b | **只做审计**：生成器证据键表（29 条）+ 两个 JSON + `machine-inventory.json` + 11 条 P1 去向 | 隔离最大churn |
+| 7 | 全量回归 + 七视图像素终验 + 台账收尾 + `ROUTE-CONSOLIDATION.md` 50/51/52 行 + `NEW-UI-DECISION.md` ⑥ | 无代码 |
+
+38. `ui-mapping-2026-09-18.md` 只存在于只读主仓 `/Users/li/work/orbit/docs/designs/Orbit_0918/`，工作树里找不到。
+39. `orbit-button-ratchet.test.ts` 的常量位置更正：`CORE_FILES` 起于 `:135`（agent 条目 `:141`）、`EXEMPTIONS` 起于 `:148`（首条 `:154`）；`orbit-scale-ratchet.test.ts` 的 `SNAPPED_FILES` 起于 `:167`（agent 条目 `:172`）。四个上限 98/35/16/173 无误。
+40. `orbit-ai-command-center.tsx`、`orbit-ai-route-view-model.ts` 确认无引用，可删。
