@@ -29,7 +29,8 @@
 //     --app "http://localhost:3100/app/account/login" --viewport-only --out /tmp/auth-login
 //   视图：landing（无点击，落地页基线）| login（点头部链接「登录」）| register/forgot/reset/reset-invalid（login 后点演示条 注册/找回/新密码/失效链接）。
 //   通用选项：--design-remove "<selector>"（截图前在页面里删除设计侧所有匹配元素，CSS 或 Playwright 选择器均可，如演示条
-//   "div:has(> span:text-is('演示'))"）；--viewport-only（两侧只截视口，不截全页）。
+//   "div:has(> span:text-is('演示'))"）；--app-remove "<selector>"（同理删应用侧元素，仅用于归因设计外附加件，如 ".au-google"）；
+//   --viewport-only（两侧只截视口，不截全页）。
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { chromium } from "playwright";
@@ -64,8 +65,9 @@ try {
     const appOrigin = new URL(args.app).origin;
     const loginPage = await ctx.newPage();
     await loginPage.goto(`${appOrigin}/app/account/login`, { waitUntil: "networkidle" });
-    await loginPage.getByPlaceholder("输入邮箱地址").fill(email);
-    await loginPage.getByPlaceholder("输入密码").fill(password);
+    // 认证弹窗 任务 2：/app/account/login 是 Orbit_0918 弹窗，占位符为设计的 you@company.com / ••••••••。
+    await loginPage.getByPlaceholder("you@company.com").fill(email);
+    await loginPage.getByPlaceholder("••••••••").fill(password);
     await loginPage.getByRole("button", { name: "登录", exact: true }).click();
     // 登录成功后是客户端路由跳转（history pushState），不一定触发
     // Playwright 的 framenavigated/networkidle 事件，所以手动轮询 URL。
@@ -192,6 +194,9 @@ try {
     if (args.click) await page.locator(args.click).first().click();
     if (args.click2) { await page.waitForTimeout(300); await page.locator(args.click2).first().click(); }
     if (args.click3) { await page.waitForTimeout(300); await page.locator(args.click3).first().click(); }
+    // 归因用（认证弹窗 任务 2）：截图前删除应用侧所有匹配元素（如设计外的 Google 钮 ".au-google"），
+    // 得到「框级非数据残差」；正式数字仍以不传本项的 raw 为准。
+    if (args["app-remove"]) await page.locator(args["app-remove"]).evaluateAll((els) => { for (const el of els) el.remove(); });
   });
 
   const h = Math.min(design.height, app.height);

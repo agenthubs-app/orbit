@@ -181,18 +181,24 @@ async function submitAuthForm(root: ReactTestRenderer) {
 }
 
 test("/app/account auth pages use the real NextAuth session as their entry guard", () => {
-  const pageSources = [
-    source("app/(app)/app/account/login/page.tsx"),
-    source("app/(app)/app/account/signup/page.tsx"),
-    source("app/(app)/app/account/forgot-password/page.tsx"),
+  // 认证弹窗 任务 2（审阅修订 14）：login / signup 改渲染 落地页 + AuthModal；forgot 仍是旧组件（任务 3 改指）。
+  const pageSources: Array<[string, RegExp]> = [
+    [source("app/(app)/app/account/login/page.tsx"), /<AuthModal[\s\S]*view="login"/],
+    [source("app/(app)/app/account/signup/page.tsx"), /<AuthModal[\s\S]*view="register"/],
+    [source("app/(app)/app/account/forgot-password/page.tsx"), /OrbitRealAccountAuth/],
   ];
 
-  for (const pageSource of pageSources) {
+  for (const [pageSource, renderer] of pageSources) {
     assert.match(pageSource, /const session = await auth\(\)/);
     assert.match(pageSource, /session\?\.user\?\.id/);
     assert.match(pageSource, /redirect\(normalizeOrbitAuthReturnPath/);
     assert.match(pageSource, /loadAppAccountAuthRouteViewModel/);
-    assert.match(pageSource, /OrbitRealAccountAuth/);
+    assert.match(pageSource, renderer);
+  }
+  for (const page of ["login", "signup"]) {
+    const pageSource = source(`app/(app)/app/account/${page}/page.tsx`);
+    assert.match(pageSource, /<OrbitLanding0918 authenticated=\{false\} \/>/);
+    assert.doesNotMatch(pageSource, /OrbitRealAccountAuth/);
   }
 });
 

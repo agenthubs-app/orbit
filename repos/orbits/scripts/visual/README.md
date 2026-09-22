@@ -7,7 +7,7 @@
 两种方式二选一：
 
 - **`--cookie`**：浏览器登录 qa@orbit.test 后从 DevTools 复制 `authjs.session-token`（本地 http 为 `authjs.session-token`，https 为 `__Secure-authjs.session-token`）。
-- **`--login "email:password"`**：脚本会在截 app 图之前自动打开 `<app origin>/app/account/login`，填写邮箱（占位符「输入邮箱地址」）和密码（占位符「输入密码」），点击「登录」按钮并等待导航完成，再继续截图。适合本地跑冒烟，不用每次手动复制 cookie。
+- **`--login "email:password"`**：脚本会在截 app 图之前自动打开 `<app origin>/app/account/login`，填写邮箱（占位符 `you@company.com`）和密码（占位符 `••••••••`；Orbit_0918 登录弹窗的设计占位），点击「登录」按钮并等待导航完成，再继续截图。适合本地跑冒烟，不用每次手动复制 cookie。
 
 两者互不冲突：都传时先设置 cookie，再走登录流程（一般只用其中一种）。
 
@@ -64,6 +64,7 @@ node scripts/visual/compare-0918.mjs \
 ## 通用选项
 
 - `--design-remove "<selector>"`：设计侧在点击序列 / `--design-click*` 之后、截图之前，在页面里删除**所有**匹配元素（`locator.evaluateAll(el => el.remove())`，CSS 与 Playwright 选择器均可）。这是去除设计稿纯演示 UI 的规范做法（如认证弹窗的「演示」切换条）。
+- `--app-remove "<selector>"`：应用侧对应项（点击之后、截图之前删除所有匹配元素）。只用于**归因**设计外的附加件（如认证弹窗的 Google 钮 `.au-google`、眼睛钮 `.au-eye`），得到框级非数据残差；台账正式数字仍以不传本项的 raw 为准。
 - `--viewport-only`：两侧只截视口（`width` × 900），不截全页。用于弹窗类比对，避免全页落地页把弹窗差异按比例稀释。
 
 示例（认证弹窗 · login 视图）：
