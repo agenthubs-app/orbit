@@ -25,7 +25,7 @@ node scripts/visual/compare-0918.mjs \
 
 ## 设计页签映射（`--design-view`）
 
-脚本按 `--design` URL 自动选择页签表；也可用 `--design-table profile|events|ops` 强制选个人中心表 / Events 表 / 运营台表。
+脚本按 `--design` URL 自动选择页签表；也可用 `--design-table profile|events|ops|auth` 强制选个人中心表 / Events 表 / 运营台表 / 认证弹窗表。
 
 - **Network 表**（`--design` 不含个人中心 URL 编码时）：`overview|pipeline|all|import|analysis` → 概览/关系管线/所有人脉/导入人脉/查看完整分析；不传 `--design-view` 时默认点「概览」。
 - **个人中心 表**（`--design` 含 `%E4%B8%AA%E4%BA%BA%E4%B8%AD%E5%BF%83`，即「个人中心」，或传 `--design-table profile`）：`profile|settings|connect` → 个人资料/iOrbit 设置/连接；**不传 `--design-view` 时不点击任何页签**（停在设计稿默认视图）。
@@ -51,6 +51,30 @@ node scripts/visual/compare-0918.mjs \
   - `report`：ops 序列 → 页签 `数据报告` → 应用 `/app/events/<id>/analytics`
   - `drawer`：ops 序列 → `更多 ⌄` → 应用 `/app/events/<id>/operations?drawer=roles`
   - 页签点击全部 `getByRole("button", { name, exact: true })`；步间固定等待 300ms；传了表外的 `--design-view` 会以 usage error 退出。
+
+- **认证弹窗 表**（`--design` 含 `%E9%A6%96%E9%A1%B5`，即「首页」（`Orbit 首页.dc.html`），或传 `--design-table auth`）：同 Events，**每视图一段设计侧点击序列**。设计稿的弹窗由头部「登录」链接（`<a href="#" onClick=openLogin>`，`getByRole("link", { name: "登录", exact: true })`）打开；四态切换靠弹窗底部「演示」条（设计 465–472 行，纯演示 UI）里的按钮，**限定在演示条容器内**（`div:has(> span:text-is('演示'))`）点击，因为演示条的「登录」与弹窗主按钮同名，且设计稿没有 `role=dialog` 可以限定。**应用侧不点击，全部走 URL，未登录访问，无需 `--login`**。
+  - `landing`（默认，不传 `--design-view` 也是它）：无点击 → 应用 `/app`（落地页基线，用作弹窗残差的扣除基准；配 `--viewport-only`）
+  - `login`：头部链接 `登录` → 应用 `/app/account/login`
+  - `register`：login 序列 → 演示条 `注册` → 应用 `/app/account/signup`
+  - `forgot`：login 序列 → 演示条 `找回` → 应用 `/app/account/forgot-password`
+  - `reset`：login 序列 → 演示条 `新密码` → 应用 `/app/account/reset-password#token=<43 位 [A-Za-z0-9_-] 假 token>`（只到表单态，不提交）
+  - `reset-invalid`：login 序列 → 演示条 `失效链接` → 应用 `/app/account/reset-password`（无 token → 链接已失效态）
+  - 步间固定等待 300ms；传了表外的 `--design-view` 会以 usage error 退出。弹窗比对建议同时传 `--viewport-only`（全页截图会让落地页底图稀释弹窗差异）和 `--design-remove "div:has(> span:text-is('演示'))"`（去掉演示条，应用侧不实现它）。
+
+## 通用选项
+
+- `--design-remove "<selector>"`：设计侧在点击序列 / `--design-click*` 之后、截图之前，在页面里删除**所有**匹配元素（`locator.evaluateAll(el => el.remove())`，CSS 与 Playwright 选择器均可）。这是去除设计稿纯演示 UI 的规范做法（如认证弹窗的「演示」切换条）。
+- `--viewport-only`：两侧只截视口（`width` × 900），不截全页。用于弹窗类比对，避免全页落地页把弹窗差异按比例稀释。
+
+示例（认证弹窗 · login 视图）：
+
+```bash
+node scripts/visual/compare-0918.mjs \
+  --design "http://localhost:3320/Orbit_0918/Orbit%20%E9%A6%96%E9%A1%B5.dc.html" --design-view login \
+  --design-remove "div:has(> span:text-is('演示'))" --viewport-only \
+  --app "http://localhost:3100/app/account/login" \
+  --out /tmp/auth-login
+```
 
 示例（运营台 · ops 视图）：
 

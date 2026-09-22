@@ -22,6 +22,14 @@
 //     --design "http://localhost:3320/Orbit_0918/Events%20%E8%BF%90%E8%90%A5%E5%8F%B0.dc.html" --design-view ops \
 //     --app "http://localhost:3100/app/events/<id>/operations" --login "organizer:password" --out /tmp/ops-ops
 //   视图：hub（无点击）| ops（点第一张卡「进入运营 →」）| match/people/checkin/form/report（ops 后点同名页签）| drawer（ops 后点「更多 ⌄」）。
+//
+// 认证弹窗 设计稿（--design 含 %E9%A6%96%E9%A1%B5（首页）或 --design-table auth）按视图走点击序列（未登录访问，无需 --login）：
+//   node scripts/visual/compare-0918.mjs \
+//     --design "http://localhost:3320/Orbit_0918/Orbit%20%E9%A6%96%E9%A1%B5.dc.html" --design-view login \
+//     --app "http://localhost:3100/app/account/login" --viewport-only --out /tmp/auth-login
+//   视图：landing（无点击，落地页基线）| login（点头部链接「登录」）| register/forgot/reset/reset-invalid（login 后点演示条 注册/找回/新密码/失效链接）。
+//   通用选项：--design-remove "<selector>"（截图前在页面里删除设计侧所有匹配元素，CSS 或 Playwright 选择器均可，如演示条
+//   "div:has(> span:text-is('演示'))"）；--viewport-only（两侧只截视口，不截全页）。
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { chromium } from "playwright";
@@ -75,6 +83,7 @@ try {
     }
   }
 
+  const fullPage = args["viewport-only"] !== "true";
   async function shoot(url, file, prep) {
     const page = await ctx.newPage();
     // 设计稿会持续拉取大量 Google Fonts 字重，永远打不到 networkidle；
@@ -87,7 +96,7 @@ try {
     }
     if (prep) await prep(page);
     await page.waitForTimeout(400);
-    await page.screenshot({ path: join(out, file), fullPage: true, timeout: 60000 });
+    await page.screenshot({ path: join(out, file), fullPage, timeout: 60000 });
     await page.close();
     return PNG.sync.read((await import("node:fs")).readFileSync(join(out, file)));
   }
@@ -105,9 +114,14 @@ try {
   // 判定用 --design URL 是否含「运营台」的 URL 编码，或显式传 --design-table ops（先于 Events 判定，因为文件名也含 Events）。
   const isOpsTable = args["design-table"] === "ops" || (args.design ?? "").includes("%E8%BF%90%E8%90%A5%E5%8F%B0");
   const isEventsTable = !isOpsTable && (args["design-table"] === "events" || (args.design ?? "").includes("Events.dc.html"));
+  // 认证弹窗 表（--design-view landing|login|register|forgot|reset|reset-invalid）：同 Events，按视图走设计侧点击序列
+  // （Orbit 首页.dc.html：头部「登录」是 <a href="#" onClick=openLogin>，弹窗底部「演示」条（465–472 行）五枚按钮切换四态；
+  // 设计没有 role=dialog，且演示条的「登录」与主按钮同名，所以切换按钮限定在演示条容器内）。
+  // 判定用 --design URL 是否含「首页」的 URL 编码，或显式传 --design-table auth。
+  const isAuthTable = args["design-table"] === "auth" || (args.design ?? "").includes("%E9%A6%96%E9%A1%B5");
   const networkViewLabel = { overview: "概览", pipeline: "关系管线", all: "所有人脉", import: "导入人脉", analysis: "查看完整分析" };
   const profileViewLabel = { profile: "个人资料", settings: "iOrbit 设置", connect: "连接" };
-  const viewLabel = isEventsTable || isOpsTable ? undefined : isProfileTable ? profileViewLabel[args["design-view"]] : networkViewLabel[args["design-view"] ?? "overview"];
+  const viewLabel = isEventsTable || isOpsTable || isAuthTable ? undefined : isProfileTable ? profileViewLabel[args["design-view"]] : networkViewLabel[args["design-view"] ?? "overview"];
   // 每一步是 (page) => Locator；按顺序点击，步间短等待让设计稿的 renderVals 重绘完成。
   const eventsDetailSequence = [(page) => page.locator("text=AI 产品从 0 到 1").first()];
   const eventsViewSequence = {
@@ -142,7 +156,25 @@ try {
     await browser.close();
     process.exit(2);
   }
-  const designSequence = isOpsTable ? opsViewSequence[opsView] : isEventsTable ? eventsViewSequence[eventsView] : [];
+  // 认证弹窗：login = 头部链接「登录」（exact，页面唯一）；其余四态 = login 后点演示条内同名按钮。
+  const authOpenSequence = [(page) => page.getByRole("link", { name: "登录", exact: true }).first()];
+  const authStrip = (page) => page.locator("div:has(> span:text-is('演示'))").first();
+  const authDemo = (label) => [...authOpenSequence, (page) => authStrip(page).getByRole("button", { name: label, exact: true })];
+  const authViewSequence = {
+    landing: [],
+    login: authOpenSequence,
+    register: authDemo("注册"),
+    forgot: authDemo("找回"),
+    reset: authDemo("新密码"),
+    "reset-invalid": authDemo("失效链接"),
+  };
+  const authView = args["design-view"] ?? "landing";
+  if (isAuthTable && !(authView in authViewSequence)) {
+    console.error(`usage error: auth --design-view must be one of ${Object.keys(authViewSequence).join("|")}, got "${authView}"`);
+    await browser.close();
+    process.exit(2);
+  }
+  const designSequence = isAuthTable ? authViewSequence[authView] : isOpsTable ? opsViewSequence[opsView] : isEventsTable ? eventsViewSequence[eventsView] : [];
   const design = await shoot(args.design, "design.png", async (page) => {
     if (viewLabel) await page.getByRole("button", { name: viewLabel, exact: true }).first().click();
     for (const step of designSequence) { await step(page).click(); await page.waitForTimeout(300); }
@@ -151,6 +183,10 @@ try {
     // 弹窗内需要先填字才能到下一态（Events 交换成功态：设计 sendEx 要求留言非空）："<selector>|<text>"
     if (args["design-fill"]) { const sep = args["design-fill"].indexOf("|"); await page.locator(args["design-fill"].slice(0, sep)).first().fill(args["design-fill"].slice(sep + 1)); }
     if (args["design-click3"]) { await page.waitForTimeout(300); await page.locator(args["design-click3"]).first().click(); }
+    // 去除设计稿的纯演示 UI（如认证弹窗底部的「演示」切换条）后再截图：删除所有匹配元素。
+    // 走 locator.evaluateAll 而不是 document.querySelectorAll：演示条无 class/id，只能靠 Playwright 的
+    // 文本伪类定位（如 "div:has(> span:text-is('演示'))"）；纯 CSS 选择器同样可用。
+    if (args["design-remove"]) await page.locator(args["design-remove"]).evaluateAll((els) => { for (const el of els) el.remove(); });
   });
   const app = await shoot(args.app, "app.png", async (page) => {
     if (args.click) await page.locator(args.click).first().click();
