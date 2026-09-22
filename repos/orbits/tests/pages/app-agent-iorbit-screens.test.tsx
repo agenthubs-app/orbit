@@ -42,8 +42,12 @@ function ledgerEntry(
   return {
     autonomousExecutionStarted: false,
     createdAt: "2026-09-22T01:00:00Z",
-    evidenceChips: [],
-    evidenceIds: [],
+    evidenceChips: [
+      { evidenceId: "ev-a", label: "证据 A" },
+      { evidenceId: "ev-b", label: "证据 B" },
+    ],
+    evidenceIds: ["ev-a", "ev-b"],
+    preview: "这是这条动作的预览正文。",
     externalSideEffectExecuted: false,
     messageAutoSendExecuted: false,
     operations: [],
@@ -190,7 +194,7 @@ const DESIGN_MOCKS = [
 
 test("the four-week rhythm header uses real calendar weeks, never the design's weekData", () => {
   // 2026-09-23 是周三 → 本周一是 9/21。
-  const weeks = iorbitPlanWeeks(new Date(2026, 8, 23), "zh");
+  const weeks = iorbitPlanWeeks(new Date(2026, 8, 23));
 
   assert.equal(weeks.length, 4);
   assert.deepEqual(
@@ -202,7 +206,7 @@ test("the four-week rhythm header uses real calendar weeks, never the design's w
   assert.equal(weeks[3]!.range, "10/12 – 10/18");
 
   // 周日也要落回同一周的周一（getDay() === 0 的边界）。
-  assert.equal(iorbitPlanWeeks(new Date(2026, 8, 27), "zh")[0]!.range, "9/21 – 9/27");
+  assert.equal(iorbitPlanWeeks(new Date(2026, 8, 27))[0]!.range, "9/21 – 9/27");
 });
 
 /* ── 2. SSR 结构 ───────────────────────────────────────────────────────── */
@@ -452,6 +456,60 @@ test("the four screen files only author btn ir-* buttons", () => {
   }
 });
 
+// 修订轮 1 的护栏（Critical 1）：任务 5 的规则写在同一张表的后半段，与对话屏 /
+// 概览屏同名同特异度的选择器会**静默覆盖**它们（`.ir-event-date` 曾把概览屏的
+// 月/日竖排块压成横排并写死底色，`.ir-progress-track` 曾把本周推进条压成 140px）。
+test("IORBIT_STYLES never declares the same selector twice", () => {
+  const body = IORBIT_STYLES.replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/@keyframes[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, "")
+    .replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, "");
+
+  const seen = new Map<string, string>();
+  const duplicates: string[] = [];
+  for (const rule of body.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const selector = rule[1]!.trim().replace(/\s+/g, " ");
+    const declarations = rule[2]!.trim().replace(/\s+/g, " ");
+    if (!selector) continue;
+    const previous = seen.get(selector);
+    if (previous !== undefined) {
+      duplicates.push(
+        previous === declarations
+          ? `${selector} (identical body declared twice)`
+          : `${selector}\n    first:  ${previous}\n    second: ${declarations}`,
+      );
+      continue;
+    }
+    seen.set(selector, declarations);
+  }
+
+  assert.ok(seen.size > 380, `expected the full skin, found ${seen.size} rules`);
+  assert.deepEqual(
+    duplicates,
+    [],
+    `IORBIT_STYLES re-declares selectors (the later one silently wins):\n  ${duplicates.join("\n  ")}`,
+  );
+});
+
+// 概览屏与对话屏靠这些类活着；任务 5 不得把它们改成自己的几何。
+test("the screens the earlier tasks certified keep their own geometry classes", () => {
+  const flat = IORBIT_STYLES.replace(/\/\*[\s\S]*?\*\//g, "").split("\n").join(" ");
+
+  // 概览屏 148–170 的已报名活动日期块：66px、竖排、底色由 .ir-bg-a/.ir-bg-b 给。
+  const homeEventDate = flat.match(/\.ir-event-date(?![-a-z])[^{]*\{[^}]*\}/);
+  assert.ok(homeEventDate);
+  assert.ok(homeEventDate![0].includes("height: 66px"));
+  assert.ok(homeEventDate![0].includes("flex-direction: column"));
+  assert.ok(!homeEventDate![0].includes("background:"));
+  // 概览屏 214–236 的本周推进条：白底、不定宽。
+  const homeTrack = flat.match(/\.ir-progress-track(?![-a-z])[^{]*\{[^}]*\}/);
+  assert.ok(homeTrack);
+  assert.ok(homeTrack![0].includes("background: #FFFFFF"));
+  assert.ok(!homeTrack![0].includes("width:"));
+  // 任务 5 自己的两套用别的类名。
+  assert.match(flat, /\.ir-sec-event-date(?![-a-z])[^{]*\{/);
+  assert.match(flat, /\.ir-plan-progress-track(?![-a-z])[^{]*\{/);
+});
+
 test("the new .btn rule neutralises the shared base class and its :active transform", () => {
   const flat = IORBIT_STYLES.replace(/\/\*[\s\S]*?\*\//g, "").split("\n").join(" ");
 
@@ -484,6 +542,89 @@ test("the narrow-screen media query collapses both two-column grids", () => {
 });
 
 /* ── 4. 行为 ───────────────────────────────────────────────────────────── */
+
+// 修订轮 1（Important 2）：这枚 CTA 原来把每行都指向同一个页面、什么也不发生
+// （`selectedEntryId` 解析了却没人渲染）。现在它就是展开控件。
+test("the actions per-row CTA actually expands that row", () => {
+  const collapsed = actionsMarkup();
+  assert.ok(!collapsed.includes("这是这条动作的预览正文。"));
+  assert.match(collapsed, /data-orbit-agent-action-expand="e-task" href="\/app\/agent\/actions\?entry=e-task"/);
+  assert.ok(!collapsed.includes("收起 ›"));
+
+  const opened = actionsMarkup({ ...ACTIONS_VM, selectedEntryId: "e-task" });
+  // 展开的那一行显示自己的 preview，并把 CTA 换成收起（指回不带 ?entry= 的地址）。
+  assert.match(opened, /data-orbit-agent-action-preview[^>]*>这是这条动作的预览正文。</);
+  assert.match(opened, /aria-expanded="true"[^>]*data-orbit-agent-action-expand="e-task"/);
+  assert.ok(opened.includes("收起 ›"));
+  // 只展开一行。
+  assert.equal(opened.match(/data-orbit-agent-action-preview/g)?.length, 1);
+});
+
+// 修订轮 1（Important 3）：被删旧屏渲染过的状态标签与证据 chips 必须回来（处处有据）。
+test("the actions rows keep the status label and the evidence chips the old screen had", () => {
+  const html = actionsMarkup();
+
+  assert.ok(html.includes("等待确认"), "awaiting_confirmation must keep its localized status");
+  assert.ok(html.includes("已确认"), "approved must keep its localized status");
+  assert.match(html, /data-orbit-agent-action-evidence/);
+  assert.ok(html.includes("证据 A") && html.includes("证据 B"));
+  // 五行条目，五组证据。
+  assert.equal(html.match(/data-orbit-agent-action-evidence/g)?.length, 5);
+});
+
+// 修订轮 1（Important 4）：plan 的每行落点（followup 的 operationHref / 账本 ?entry=）
+// 与本周日程每行的落点都不得丢。
+test("the plan rows keep the per-row navigation the old screen had", async (t) => {
+  const mounted = await mount(
+    t,
+    <IOrbitPlan loadSnapshot={async () => SNAPSHOT} now={new Date(2026, 8, 23)} />,
+  );
+  await mounted.settle();
+
+  const taskRows = mounted.root.root.findAll(
+    (node) => node.props?.className === "ir-task-row",
+  );
+  assert.ok(taskRows.length > 0);
+  assert.equal(taskRows[0]!.type, "a");
+  assert.equal(taskRows[0]!.props.href, "/app/contacts/c-1");
+
+  const scheduleLines = mounted.root.root.findAll(
+    (node) => node.props?.className === "ir-aside-line",
+  );
+  assert.ok(scheduleLines.length > 0);
+  assert.equal(scheduleLines[0]!.type, "a");
+  assert.equal(scheduleLines[0]!.props.href, "/app/schedule");
+
+  // 审计吃的标记（旧屏有，第一版丢了）。
+  assert.ok(
+    mounted.root.root.findAll(
+      (node) => node.props?.["data-orbit-agent-plan-overview"] !== undefined,
+    ).length > 0,
+  );
+});
+
+// 修订轮 1（Minor）：「等 W4」的说明只有一份，来自 view model。
+test("the waiting copy comes from the strategy view model, not a second hardcoded copy", async (t) => {
+  const { buildAgentStrategyViewModel } = await import(
+    "../../app/(app)/app/agent/strategy/strategy-route-view-model"
+  );
+  const vm = buildAgentStrategyViewModel({ language: "zh", snapshot: "pending" });
+  const missing = vm.waitingSections.find((section) => section.key === "missing")!;
+  const prep = vm.waitingSections.find((section) => section.key === "prep")!;
+
+  const strategy = renderToStaticMarkup(<IOrbitStrategy />);
+  assert.ok(strategy.includes(missing.description));
+  assert.ok(strategy.includes(prep.description));
+
+  const source = readFileSync(
+    join(projectRoot, "app/(app)/app/agent/iorbit-0918/iorbit-strategy.tsx"),
+    "utf8",
+  );
+  assert.ok(
+    !source.includes("需要 W4 策略生成能力，尚未上线"),
+    "the screen must not keep a second copy of the waiting description",
+  );
+});
 
 interface Mounted {
   root: ReactTestRenderer;
@@ -648,6 +789,6 @@ test("the contacts cards show the real why-now and keep the unsourced rows on th
   )[0]!;
   assert.equal(
     decodeURIComponent(String(prepare.props.href)),
-    "/app/agent?q=帮我准备联系 QA 测试联系人 的内容",
+    "/app/agent?q=帮我准备联系QA 测试联系人的内容",
   );
 });

@@ -88,10 +88,10 @@ export function IOrbitStrategy({ loadSnapshot, view = "strategy" }: IOrbitStrate
   });
   const ready = snapshot !== "pending";
 
-  const waitingNote = t({
-    en: "Needs the W4 strategy capability, which is not available yet. Ask iOrbit in chat for now.",
-    zh: "需要 W4 策略生成能力，尚未上线；目前可在对话中直接向 iOrbit 提问。",
-  });
+  // 修订轮 1：说明文案由 view model 提供（`strategy-route-view-model.ts` 的
+  // `waitingSections[].description`），不再在这里留第二份会漂移的拷贝。
+  const waitingDescription = (key: "missing" | "prep") =>
+    viewModel.waitingSections.find((section) => section.key === key)?.description ?? "";
   const waitingBadge = t({
     en: "Coming with the W4 strategy capability",
     zh: "随 W4 策略能力上线",
@@ -211,17 +211,20 @@ export function IOrbitStrategy({ loadSnapshot, view = "strategy" }: IOrbitStrate
         <strong className="ir-sec-h">{title}</strong>
         <span className="ir-sec-hint">{hint}</span>
       </div>
-      <span className="ir-panel-note">{waitingNote}</span>
+      <span className="ir-panel-note">{waitingDescription(key)}</span>
       <span className="ir-waiting-badge">{waitingBadge}</span>
     </section>
   );
 
   /* ── 活动列表（strategy 621–639 的「下一步去哪」/ contacts 769–781 的「相关活动」）── */
-  const eventList = (
+  const eventList = (variant: "cover" | "plain") => (
     <div className="ir-event-list">
       {viewModel.nextEvents.map((event) => (
         <a className="ir-event-row" href={event.href} key={event.id}>
-          <span className="ir-event-date">{event.dayLabel}</span>
+          {/* 设计 623 的 96px 封面占位块：只有「下一步去哪」那一行有，
+              「相关活动」（771）没有。封面图无来源 → 保留设计自己的纯色块。 */}
+          {variant === "cover" ? <span className="ir-event-cover" /> : null}
+          <span className="ir-sec-event-date">{event.dayLabel}</span>
           <span className="ir-row-copy">
             <strong className="ir-row-title">{event.title}</strong>
             <span className="ir-row-desc">◎ {event.venue}</span>
@@ -331,14 +334,14 @@ export function IOrbitStrategy({ loadSnapshot, view = "strategy" }: IOrbitStrate
                         {t({ en: "What they can offer", zh: "他能提供什么" })}
                       </span>
                       <span className="ir-contact-val ir-contact-waiting">
-                        {waitingNote}
+                        {waitingDescription("missing")}
                       </span>
                       <span className="ir-contact-key">
                         <span className="ir-contact-key-icon">▥</span>
                         {t({ en: "Suggested opener", zh: "建议开场白" })}
                       </span>
                       <span className="ir-contact-opener ir-contact-waiting">
-                        {waitingNote}
+                        {waitingDescription("prep")}
                       </span>
                     </div>
                     <div className="ir-contact-actions">
@@ -353,7 +356,7 @@ export function IOrbitStrategy({ loadSnapshot, view = "strategy" }: IOrbitStrate
                         data-orbit-iorbit-contact-prepare={contact.id}
                         href={`/app/agent?q=${encodeURIComponent(
                           zh
-                            ? `帮我准备联系 ${contact.name} 的内容`
+                            ? `帮我准备联系${contact.name}的内容`
                             : `Help me prepare what to say to ${contact.name}`,
                         )}`}
                       >
@@ -413,7 +416,7 @@ export function IOrbitStrategy({ loadSnapshot, view = "strategy" }: IOrbitStrate
               </a>
             </div>
             {viewModel.nextEventsState === "ready" ? (
-              eventList
+              eventList("plain")
             ) : (
               <span className="ir-panel-note" data-state={viewModel.nextEventsState}>
                 {eventsNote(viewModel.nextEventsState)}
@@ -495,7 +498,7 @@ export function IOrbitStrategy({ loadSnapshot, view = "strategy" }: IOrbitStrate
             </span>
           </div>
           {viewModel.nextEventsState === "ready" ? (
-            eventList
+            eventList("cover")
           ) : (
             <span className="ir-panel-note" data-state={viewModel.nextEventsState}>
               {eventsNote(viewModel.nextEventsState)}

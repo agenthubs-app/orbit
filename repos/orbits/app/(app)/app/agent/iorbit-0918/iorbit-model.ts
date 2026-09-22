@@ -1357,10 +1357,7 @@ function iorbitRegisteredEvents<
  * 每周的目标 / 关键联系人 / 关键产出需要 W4 策略生成能力，没有接口，由调用方
  * 在展开区渲染「等 W4」说明。
  */
-function iorbitPlanWeeks(
-  now: Date,
-  language: "en" | "zh",
-): readonly { no: number; range: string }[] {
+function iorbitPlanWeeks(now: Date): readonly { no: number; range: string }[] {
   const monday = new Date(now.getTime());
   monday.setHours(0, 0, 0, 0);
   // getDay(): 周日 = 0；本周一 = 今天 -((day + 6) % 7) 天。
@@ -1372,10 +1369,8 @@ function iorbitPlanWeeks(
     start.setDate(start.getDate() + index * 7);
     const end = new Date(start.getTime());
     end.setDate(end.getDate() + 6);
-    const label = (date: Date) =>
-      language === "zh"
-        ? `${date.getMonth() + 1}/${date.getDate()}`
-        : `${date.getMonth() + 1}/${date.getDate()}`;
+    // M/D 在中英文下是同一种写法，不按语言分支（修订轮 1：原来的两支是死代码）。
+    const label = (date: Date) => `${date.getMonth() + 1}/${date.getDate()}`;
     out.push({ no: index + 1, range: `${label(start)} – ${label(end)}` });
   }
   return out;

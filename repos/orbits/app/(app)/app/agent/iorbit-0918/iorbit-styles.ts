@@ -359,7 +359,7 @@ export const IORBIT_STYLES = `
 /* ── 三屏共用的外壳（350/430/504/664 的 gap:22px） ── */
 [data-orbit-real-page="iorbit-0918"] .ir-screen { display: flex; flex-direction: column; gap: 22px; animation: orbit-fade .3s ease; }
 /* 351 / 431 / 505 / 665 */
-[data-orbit-real-page="iorbit-0918"] .ir-crumb { font-size: 13px; color: #9FA3C4; }
+/* 351 / 431 / 505 / 665：.ir-crumb 在上面的对话屏段（198 行）已声明，这里只补链接色 */
 [data-orbit-real-page="iorbit-0918"] .ir-crumb a { color: #6B6F99; }
 /* 353 / 434 / 507 */
 [data-orbit-real-page="iorbit-0918"] .ir-title-col { display: flex; flex-direction: column; gap: 14px; }
@@ -375,7 +375,7 @@ export const IORBIT_STYLES = `
 /* 358 / 440 */
 [data-orbit-real-page="iorbit-0918"] .ir-two-col { display: grid; grid-template-columns: minmax(0, 2.4fr) minmax(260px, 1fr); gap: 22px; align-items: start; }
 [data-orbit-real-page="iorbit-0918"] .ir-col-main { display: flex; flex-direction: column; gap: 18px; }
-[data-orbit-real-page="iorbit-0918"] .ir-aside { display: flex; flex-direction: column; gap: 16px; }
+/* .ir-aside / .ir-aside-icon / .ir-aside-h 在上面的对话屏右栏段已声明，本段只加修饰类 */
 [data-orbit-real-page="iorbit-0918"] .ir-aside-12 { gap: 12px; }
 /* 442 / 457 / 533 / 686：白卡 */
 [data-orbit-real-page="iorbit-0918"] .ir-panel { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 22px 24px; display: flex; flex-direction: column; gap: 16px; }
@@ -407,12 +407,16 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .ir-row-desc { font-size: 13px; color: #6B6F99; }
 /* 设计每行只有一枚 CTA；写控件（确认 / 稍后 / 撤销 …）是设计外的能力保全 */
 [data-orbit-real-page="iorbit-0918"] .ir-row-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; }
+/* 修订轮 1：被删旧屏的状态标签 / 证据 chips / preview（设计无槽位，记偏差） */
+[data-orbit-real-page="iorbit-0918"] .ir-row-status { font-size: 12px; color: #9FA3C4; }
+[data-orbit-real-page="iorbit-0918"] .ir-row-preview { margin-top: 4px; padding: 12px 14px; border-radius: 10px; background: #F7F7FD; font-size: 13px; line-height: 1.7; color: #3B3F7A; white-space: pre-line; }
+[data-orbit-real-page="iorbit-0918"] .ir-row-open { align-items: flex-start; }
 [data-orbit-real-page="iorbit-0918"] .ir-row-cta { padding: 9px 14px; border: 1px solid #B9BCEB; border-radius: 10px; background: #FFFFFF; color: #2E3270; font-size: 13px; white-space: nowrap; }
 [data-orbit-real-page="iorbit-0918"] .ir-row-cta:hover { background: #ECEEFB; }
 /* 406–419 aside */
 [data-orbit-real-page="iorbit-0918"] .ir-aside-title { display: flex; align-items: center; gap: 10px; }
-[data-orbit-real-page="iorbit-0918"] .ir-aside-icon { width: 28px; height: 28px; flex: none; border-radius: 9px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; font-size: 13px; }
-[data-orbit-real-page="iorbit-0918"] .ir-aside-h { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 17px; }
+/* 407 的 28px 图标格同对话屏右栏，复用同一条规则 */
+/* 407 的 serif 17px 卡头同上 */
 [data-orbit-real-page="iorbit-0918"] .ir-stat-row { display: flex; align-items: center; justify-content: space-between; font-size: 14px; color: #3B3F7A; }
 [data-orbit-real-page="iorbit-0918"] .ir-stat-label { display: flex; align-items: center; gap: 8px; }
 [data-orbit-real-page="iorbit-0918"] .ir-stat-dot { width: 8px; height: 8px; border-radius: 50%; }
@@ -434,8 +438,8 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .ir-sec-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; }
 /* 446 完成度条 */
 [data-orbit-real-page="iorbit-0918"] .ir-progress-bar-row { display: flex; align-items: center; gap: 12px; font-size: 13px; color: #6B6F99; }
-[data-orbit-real-page="iorbit-0918"] .ir-progress-track { display: block; width: 140px; height: 6px; border-radius: 999px; background: #ECEEFB; }
-[data-orbit-real-page="iorbit-0918"] .ir-progress-fill { display: block; height: 6px; border-radius: 999px; background: #4B4FC7; transition: width .3s ease; }
+[data-orbit-real-page="iorbit-0918"] .ir-plan-progress-track { display: block; width: 140px; height: 6px; border-radius: 999px; background: #ECEEFB; }
+[data-orbit-real-page="iorbit-0918"] .ir-plan-progress-fill { display: block; height: 6px; border-radius: 999px; background: #4B4FC7; transition: width .3s ease; }
 [data-orbit-real-page="iorbit-0918"] .ir-progress-pct { color: #2E3270; font-weight: 500; }
 /* 448–453 每行 */
 [data-orbit-real-page="iorbit-0918"] .ir-task-row { display: flex; align-items: center; gap: 14px; padding: 16px; border: 1px solid #E8E9F6; border-radius: 14px; }
@@ -479,7 +483,7 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .ir-head-btn { display: flex; align-items: center; gap: 8px; padding: 11px 18px; border: 1px solid #DDDEFA; border-radius: 12px; background: #FFFFFF; color: #3B3F7A; font-size: 14px; }
 [data-orbit-real-page="iorbit-0918"] .ir-head-btn:hover { border-color: #B9BCEB; color: #2E3270; }
 [data-orbit-real-page="iorbit-0918"] .ir-head-btn-soft { border: 1px solid #B9BCEB; background: #ECEEFB; color: #2E3270; }
-[data-orbit-real-page="iorbit-0918"] .ir-head-btn-soft:hover { background: #DDDEFA; }
+[data-orbit-real-page="iorbit-0918"] .ir-head-btn-soft:hover { background: #DDDEFA; color: #2E3270; }
 /* 535–539 / 747 段头 */
 [data-orbit-real-page="iorbit-0918"] .ir-num-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 [data-orbit-real-page="iorbit-0918"] .ir-num { width: 28px; height: 28px; flex: none; border-radius: 9px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; }
@@ -512,7 +516,9 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .ir-event-list { display: flex; flex-direction: column; gap: 14px; }
 [data-orbit-real-page="iorbit-0918"] .ir-event-row { display: flex; align-items: center; gap: 16px; padding: 16px; border: 1px solid #E8E9F6; border-radius: 14px; }
 [data-orbit-real-page="iorbit-0918"] .ir-event-row:hover { border-color: #B9BCEB; background: #F7F7FD; }
-[data-orbit-real-page="iorbit-0918"] .ir-event-date { width: 76px; flex: none; padding: 16px 0; border-radius: 12px; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 18px; }
+/* 623 的 96px 封面占位块（无图来源，沿用设计自己的纯色块） */
+[data-orbit-real-page="iorbit-0918"] .ir-event-cover { width: 96px; height: 80px; flex: none; border-radius: 12px; background: #DDDEFA; }
+[data-orbit-real-page="iorbit-0918"] .ir-sec-event-date { width: 76px; flex: none; padding: 16px 0; border-radius: 12px; background: #DDDEFA; color: #2E3270; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 18px; }
 /* 690–712 完整联系人卡 */
 [data-orbit-real-page="iorbit-0918"] .ir-contact-card { border: 1px solid #E8E9F6; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
 [data-orbit-real-page="iorbit-0918"] .ir-contact-card-head { display: flex; align-items: flex-start; gap: 14px; }
@@ -543,7 +549,6 @@ export const IORBIT_STYLES = `
    按钮形的 <a> 的 style-hover 里没有改字色，这里按「像素规则」的唯一例外把它中和。 */
 [data-orbit-real-page="iorbit-0918"] .ir-back:hover, [data-orbit-real-page="iorbit-0918"] .ir-row-cta:hover, [data-orbit-real-page="iorbit-0918"] .ir-aside-btn:hover, [data-orbit-real-page="iorbit-0918"] .ir-sec-link:hover, [data-orbit-real-page="iorbit-0918"] .ir-pill-btn:hover, [data-orbit-real-page="iorbit-0918"] .ir-contact-compact:hover, [data-orbit-real-page="iorbit-0918"] .ir-event-row:hover, [data-orbit-real-page="iorbit-0918"] .ir-nav-card:hover { color: inherit; }
 [data-orbit-real-page="iorbit-0918"] .ir-cta-btn:hover, [data-orbit-real-page="iorbit-0918"] .ir-contact-action-primary:hover { background: #0E1225; color: #FFFFFF; }
-[data-orbit-real-page="iorbit-0918"] .ir-head-btn-soft:hover { color: #2E3270; }
 /* 设计稿无响应式声明；窄屏收紧 <main> 侧边距、把两列栅格塌成一列（1240 宽度下不生效） */
 @media (max-width: 900px) {
   [data-orbit-real-page="iorbit-0918"] .ir-main { padding: 14px 16px 72px; }

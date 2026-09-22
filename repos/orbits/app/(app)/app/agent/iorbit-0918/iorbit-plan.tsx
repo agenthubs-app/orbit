@@ -68,7 +68,7 @@ export function IOrbitPlan({ loadSnapshot, now }: IOrbitPlanProps = {}) {
   const [ledger, setLedger] = useState<Loadable<readonly AgentLedgerEntry[]>>("pending");
   // 设计 459 的第一周默认展开（`weekData[0].open`）；其余折叠。
   const [openWeek, setOpenWeek] = useState<number | null>(1);
-  const weeks = iorbitPlanWeeks(now ?? new Date(), zh ? "zh" : "en");
+  const weeks = iorbitPlanWeeks(now ?? new Date());
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -169,9 +169,9 @@ export function IOrbitPlan({ loadSnapshot, now }: IOrbitPlanProps = {}) {
                 <span className="ir-progress-bar-row">
                   {t({ en: "Completed", zh: "完成度" })}{" "}
                   {progress ? `${progress.done} / ${progress.total}` : "—"}
-                  <span className="ir-progress-track">
+                  <span className="ir-plan-progress-track">
                     <span
-                      className="ir-progress-fill"
+                      className="ir-plan-progress-fill"
                       style={{ width: `${progress?.percent ?? 0}%` }}
                     />
                   </span>
@@ -181,26 +181,41 @@ export function IOrbitPlan({ loadSnapshot, now }: IOrbitPlanProps = {}) {
                 </span>
               </div>
               {viewModel.focusState === "ready" ? (
-                viewModel.focusTasks.map((task, index) => (
-                  <div className="ir-task-row" key={task.id}>
-                    <span className="ir-task-no">{index + 1}</span>
-                    {/* 设计 450 是一个 toggle 按钮；这些行没有行内写接口（「审阅修订」10）→
-                        静态状态标记，明确 aria-disabled，不做假按钮。 */}
-                    <span
-                      aria-disabled="true"
-                      aria-label={t({ en: "Not completed", zh: "未完成" })}
-                      className="ir-task-mark"
-                      role="img"
-                    />
-                    <span className="ir-row-copy">
-                      <strong className="ir-row-title">{task.title}</strong>
-                      {task.meta ? <span className="ir-row-desc">{task.meta}</span> : null}
-                    </span>
-                    {task.dueLabel ? (
-                      <span className="ir-task-due">▦ {task.dueLabel}</span>
-                    ) : null}
-                  </div>
-                ))
+                viewModel.focusTasks.map((task, index) => {
+                  // 每行的落点是旧屏就有的真实 href（followup 的 operationHref /
+                  // 账本条目的 `?entry=`）——修订轮 1：第一版把行做成了纯文本，
+                  // 丢了导航。有 href 的行整行是链接（几何与设计的 <div> 一致），
+                  // 没有 href 的仍是 <div>，不做只有手型的假可点。
+                  const body = (
+                    <>
+                      <span className="ir-task-no">{index + 1}</span>
+                      {/* 设计 450 是一个 toggle 按钮；这些行没有行内写接口（「审阅修订」10）→
+                          静态状态标记，明确 aria-disabled，不做假按钮。 */}
+                      <span
+                        aria-disabled="true"
+                        aria-label={t({ en: "Not completed", zh: "未完成" })}
+                        className="ir-task-mark"
+                        role="img"
+                      />
+                      <span className="ir-row-copy">
+                        <strong className="ir-row-title">{task.title}</strong>
+                        {task.meta ? <span className="ir-row-desc">{task.meta}</span> : null}
+                      </span>
+                      {task.dueLabel ? (
+                        <span className="ir-task-due">▦ {task.dueLabel}</span>
+                      ) : null}
+                    </>
+                  );
+                  return task.href ? (
+                    <a className="ir-task-row" href={task.href} key={task.id}>
+                      {body}
+                    </a>
+                  ) : (
+                    <div className="ir-task-row" key={task.id}>
+                      {body}
+                    </div>
+                  );
+                })
               ) : (
                 <span className="ir-panel-note" data-state={viewModel.focusState}>
                   {stateNote(viewModel.focusState)}
@@ -304,7 +319,7 @@ export function IOrbitPlan({ loadSnapshot, now }: IOrbitPlanProps = {}) {
 
           {/* 485–497 */}
           <aside className="ir-aside ir-aside-12">
-            <div className="ir-panel ir-panel-14">
+            <div className="ir-panel ir-panel-14" data-orbit-agent-plan-overview>
               <span className="ir-aside-title">
                 <span className="ir-aside-icon">▥</span>
                 <strong className="ir-aside-h">
@@ -335,9 +350,9 @@ export function IOrbitPlan({ loadSnapshot, now }: IOrbitPlanProps = {}) {
               {viewModel.scheduleState === "ready" ? (
                 <span className="ir-aside-lines">
                   {viewModel.schedule.map((item) => (
-                    <span className="ir-aside-line" key={item.id}>
+                    <a className="ir-aside-line" href={item.href} key={item.id}>
                       {item.dayLabel} {item.timeLabel} {item.title}
-                    </span>
+                    </a>
                   ))}
                 </span>
               ) : (

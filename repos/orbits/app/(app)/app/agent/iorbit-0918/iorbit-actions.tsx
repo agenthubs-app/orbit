@@ -67,6 +67,14 @@ const OPERATION_SKIN: Record<
   sync_event_to_calendar: { cta: { en: "View schedule ›", zh: "查看日程 ›" }, glyph: "▦" },
 };
 
+/** 旧屏（`orbit-agent-actions.tsx`）的本地化状态标签，逐字保留。 */
+const STATUS_LABELS: Record<string, { en: string; zh: string }> = {
+  approved: { en: "Confirmed", zh: "已确认" },
+  awaiting_confirmation: { en: "Awaiting confirmation", zh: "等待确认" },
+  deferred: { en: "Deferred", zh: "稍后处理" },
+  executing: { en: "Executing", zh: "正在执行" },
+};
+
 const ENTRY_TITLE_LABELS: Record<string, string> = {
   "Save to Agent Memory": "保存到智能记忆",
   "保存到 Agent Memory": "保存到智能记忆",
@@ -187,9 +195,11 @@ export function IOrbitActions({ viewModel }: IOrbitActionsProps) {
                   ) : null}
                   {tier.entries.map((entry) => {
                     const skinForEntry = operationSkin(entry);
+                    const expanded = viewModel.selectedEntryId === entry.entryId;
+                    const status = STATUS_LABELS[entry.status];
                     return (
                       <div
-                        className="ir-row"
+                        className={expanded ? "ir-row ir-row-open" : "ir-row"}
                         data-orbit-agent-action-entry={entry.entryId}
                         key={entry.entryId}
                       >
@@ -210,6 +220,30 @@ export function IOrbitActions({ viewModel }: IOrbitActionsProps) {
                           </span>
                           {entry.contactName && entry.whyNow ? (
                             <span className="ir-row-desc">{entry.whyNow}</span>
+                          ) : null}
+                          {/* 修订轮 1：被删旧屏渲染过的三样都回来了——状态标签、
+                              证据 chips（「处处有据」，设计无槽位 → 记偏差）、
+                              preview（展开态里）。 */}
+                          {status ? (
+                            <span className="ir-row-status">{zh ? status.zh : status.en}</span>
+                          ) : null}
+                          {entry.evidenceChips.length > 0 ? (
+                            <span className="ir-chips-inline" data-orbit-agent-action-evidence>
+                              {entry.evidenceChips.map((chip) => (
+                                <span className="ir-pill-grey" key={chip.evidenceId}>
+                                  {chip.label}
+                                </span>
+                              ))}
+                            </span>
+                          ) : null}
+                          {expanded ? (
+                            <span className="ir-row-preview" data-orbit-agent-action-preview>
+                              {entry.preview ??
+                                t({
+                                  en: "This action has no preview text.",
+                                  zh: "这条动作没有预览内容。",
+                                })}
+                            </span>
                           ) : null}
                         </span>
                         <span className="ir-row-actions">
@@ -232,11 +266,21 @@ export function IOrbitActions({ viewModel }: IOrbitActionsProps) {
                               entryId={entry.entryId}
                             />
                           )}
+                          {/* 修订轮 1：这枚 CTA 原来把每一行都指向同一个页面、什么也不发生
+                              （`selectedEntryId` 解析了却没人渲染）——假可点。现在它**就是**
+                              展开控件：点开显示这一行的 preview 与完整证据，再点收起。
+                              文案仍按真实 operationType 变化（设计 362–402 每行不同）。 */}
                           <a
+                            aria-expanded={expanded}
                             className="ir-row-cta"
-                            href={`/app/agent/actions?entry=${encodeURIComponent(entry.entryId)}`}
+                            data-orbit-agent-action-expand={entry.entryId}
+                            href={
+                              expanded
+                                ? "/app/agent/actions"
+                                : `/app/agent/actions?entry=${encodeURIComponent(entry.entryId)}`
+                            }
                           >
-                            {t(skinForEntry.cta)}
+                            {expanded ? t({ en: "Collapse ›", zh: "收起 ›" }) : t(skinForEntry.cta)}
                           </a>
                         </span>
                       </div>
