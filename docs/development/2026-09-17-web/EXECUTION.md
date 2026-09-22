@@ -741,14 +741,26 @@ Network / 中文 ⌄`，应用是既有壳的 `iOrbit / 活动 / 人脉 / 中·E
 
 ### 像素终验（设计 :3320 `Orbit_0918/Orbit 首页.dc.html`，app :3100，`compare-0918.mjs --design-table auth --viewport-only --design-remove "div:has(> span:text-is('演示'))"`，1240×900，未登录，产物 scratchpad `auth-task3/{landing,login,register,forgot,reset,reset-invalid}/`）
 
-| 视图 | 应用 URL | raw mismatch | 归因 |
-| --- | --- | --- | --- |
-| landing（基线） | `/app` | 0.0765 | 落地页底图字体 / 顶栏（任务 0 相同） |
-| login | `/app/account/login` | 0.0901 | 与任务 2 逐字节一致（Google 钮抬高面板；去 `.au-google` 后 0.0171） |
-| register | `/app/account/signup` | 0.0914 | 与任务 2 逐字节一致（去 `.au-google` 后 0.0172） |
-| forgot | `/app/account/forgot-password` | **0.0170** | 弹窗本体逐像素对齐；残差 = 遮罩下落地页底图 + × 焦点环（修订 4）+ Next dev 指示器 |
-| reset | `/app/account/reset-password#token=<43 位假 token>` | **0.0173** | 同上 + 占位「至少 8 位」「再输入一次」CJK 字形微差（input 字体 Arial 回退） |
-| reset-invalid | `/app/account/reset-password` | **0.0196** | 同 forgot；`<a class="btn au-btn-primary au-btn-link">` 与设计 button 几何一致 |
+| 视图 | 应用 URL | raw mismatch | 归因 | 网格归因（`--grid 100`，2026-09-23） |
+| --- | --- | --- | --- | --- |
+| landing（基线） | `/app` | 0.0765 | 落地页底图字体 / 顶栏（任务 0 相同） | 9 带 / 7 超阈 / recorded 7 · shared 1 · 缺陷 0 |
+| login | `/app/account/login` | 0.0901 | 与任务 2 逐字节一致（Google 钮抬高面板；去 `.au-google` 后 0.0171） | 9 带 / 7 超阈 / recorded 7 · shared 2 · 缺陷 0 |
+| register | `/app/account/signup` | 0.0914 | 与任务 2 逐字节一致（去 `.au-google` 后 0.0172） | 9 带 / 7 超阈 / recorded 7 · shared 2 · 缺陷 0 |
+| forgot | `/app/account/forgot-password` | **0.0170** | 弹窗本体逐像素对齐；残差 = 遮罩下落地页底图 + × 焦点环（修订 4）+ Next dev 指示器 | 9 带 / 3 超阈 / recorded 3 · shared 3 · 缺陷 0 |
+| reset | `/app/account/reset-password#token=<43 位假 token>` | **0.0173** | 同上 + 占位「至少 8 位」「再输入一次」CJK 字形微差（input 字体 Arial 回退） | 9 带 / 4 超阈 / recorded 4 · shared 2 · 缺陷 0 |
+| reset-invalid | `/app/account/reset-password` | **0.0196** | 同 forgot；`<a class="btn au-btn-primary au-btn-link">` 与设计 button 几何一致 | 9 带 / 3 超阈 / recorded 3 · shared 3 · 缺陷 0 |
+
+**网格归因复核（2026-09-23）**：六视图按 `--grid 100 --viewport-only --design-remove 演示条` 逐带重跑，
+**不再挑框**。归因文件 `repos/orbits/scripts/visual/attribution-0918-auth.json`，**31 条超阈值带全部登记**，
+`unattributed=0`；类别 **[recorded] 31 条 / [shared] 13 条**（类别可叠加）、**真缺陷 0 条**。六视图 raw 与
+本表数字**逐位一致**（0.0765 / 0.0901 / 0.0914 / 0.0170 / 0.0173 / 0.0196）。逐带法把两件事讲清楚了：
+① `landing` 的 0.0765 不是「弹窗差」，而是落地页**底图本身**的字体度量漂移——两侧文案逐字相同，全页累计
+纵向偏移 +6～18px，`--grid-dy ±12` 抵不掉，放宽到 ±60 后只剩 4 条带超阈值（最大 0.059），其中 band 6 的
+bullet 因应用侧字距略宽而换行点差一个字；这条基线在弹窗五屏的遮罩下原样存在，是 forgot / reset /
+reset-invalid 三屏残差的主要来源。② 登录 / 注册的 0.09 全部来自设计外的「使用 Google 登录」按钮与密码框
+眼睛钮把面板撑高（任务 2 已记，去 `.au-google` 后 0.017x）。**踩坑提醒**：`reset` 的假 token 必须是 43 位
+`[A-Za-z0-9_-]`，写成 42 位会被判无效、应用落到「链接已失效」态，raw 从 0.0173 跳到 0.1269——本轮先踩了
+一次，已写进归因文件的 `_token` 字段。
 
 三个新视图 raw ≤ 0.02 门槛通过；登录 / 注册未回退。成功态（找回成功卡 / 密码已更新）设计侧需提交交互，无演示条入口 → 浏览器冒烟（stub fetch，不发真实请求）人工核对：找回 → `POST /api/auth/password-reset/request {email}` 一次、成功卡 + 「重新申请」回表单且邮箱保留；新密码 → 本地「新密码至少 8 位。」「两次输入的密码不一致。」→ `POST …/confirm {token,password}` 一次 → hash 清空、「密码已更新」+ 两副标 + 「用新密码登录」；`/app/account/reset-password`（无 token）→「链接已失效」，console 无 hydration 错误。
 
