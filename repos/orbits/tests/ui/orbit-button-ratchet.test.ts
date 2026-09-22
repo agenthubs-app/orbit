@@ -120,7 +120,12 @@ test("non-.btn <button> count in app/(app)/app does not increase", () => {
   // an-alert-retry); the ops-0918 form / report screens are all .btn → 98 (measured).
   // 运营台 task 6 (2026-09-22) deleted roles/event-role-management-workspace.tsx
   // (all .btn already); the ops-0918 collaborators drawer is all .btn → 98 (unchanged).
-  const CEILING = 98;
+  // iOrbit task 6a (2026-09-23) deleted the fused agent files (orbit-real-agent /
+  // orbit-agent-dashboard / orbit-agent-today-workspace), the three old sibling
+  // screens, chat/ and the /app/today · /app/schedule · /app/followups routes;
+  // the surviving rich components moved to iorbit-0918/iorbit-rich-components.tsx
+  // → 79 (measured).
+  const CEILING = 79;
 
   assert.ok(
     nonBtn.length <= CEILING,
@@ -132,13 +137,16 @@ test("non-.btn <button> count in app/(app)/app does not increase", () => {
 
 // ---- (b) the five T5 core surfaces: every non-.btn button is a named exemption ----
 
+// iOrbit 任务 6a（2026-09-23）：`/app/today` 三个 T5 核心表面随路由删除；
+// `orbit-today-decision-form.tsx` 是其中唯一还有消费者的文件（`/app/agent/actions`
+// 的行内写控件），移到 `agent/actions/` 后留在表里。`orbit-real-agent.tsx` 删除，
+// 它的 10 条 EXEMPTIONS 随之移除——其中仍在售的两枚控件（消息复制按钮、
+// 欢迎屏 chip）跟着组件搬进 `iorbit-0918/iorbit-rich-components.tsx`，该文件不是
+// T5 核心表面，只受上面的全局上限约束。
 const CORE_FILES = [
-  "app/(app)/app/today/orbit-real-today.tsx",
-  "app/(app)/app/today/orbit-today-decision-form.tsx",
-  "app/(app)/app/today/orbit-today-decision-panel.tsx",
+  "app/(app)/app/agent/actions/orbit-today-decision-form.tsx",
   "app/(app)/app/agent/actions/orbit-all-actions-controls.tsx",
   "app/(app)/app/settings/orbit-agent-execution-settings.tsx",
-  "app/(app)/app/agent/orbit-real-agent.tsx",
   "app/(app)/app/events/events-0918/events-list.tsx",
 ];
 
@@ -151,67 +159,6 @@ const EXEMPTIONS: {
   marker: string;
   reason: string;
 }[] = [
-  {
-    count: 1,
-    file: "app/(app)/app/agent/orbit-real-agent.tsx",
-    marker: "className=\"todo-peek\"",
-    reason:
-      "follow-up card disclosure toggle: the summary line doubles as the expand control; a boxed .btn would read as an action, not a fold",
-  },
-  {
-    count: 1,
-    file: "app/(app)/app/agent/orbit-real-agent.tsx",
-    marker: "className=\"linkish todo-view\"",
-    reason: "secondary text link inside the expanded follow-up card; dedicated .linkish CSS",
-  },
-  {
-    count: 1,
-    file: "app/(app)/app/agent/orbit-real-agent.tsx",
-    marker: "void draft.generate(currentPurpose)}",
-    reason: "inline regenerate link inside the stale-draft hint bar; dedicated .linkish CSS",
-  },
-  {
-    count: 1,
-    file: "app/(app)/app/agent/orbit-real-agent.tsx",
-    marker: "openRelationshipInbox()}",
-    reason: "open-drafts text link inside the handed-off draft receipt; dedicated .linkish CSS",
-  },
-  {
-    count: 1,
-    file: "app/(app)/app/agent/orbit-real-agent.tsx",
-    marker: "draft.reopen()}",
-    reason: "view-draft text link inside the handed-off draft receipt; dedicated .linkish CSS",
-  },
-  {
-    count: 1,
-    file: "app/(app)/app/agent/orbit-real-agent.tsx",
-    marker: "className=\"orbit-agent-message-copy\"",
-    reason: "message-copy control with dedicated focus and status behavior",
-  },
-  {
-    count: 1,
-    file: "app/(app)/app/agent/orbit-real-agent.tsx",
-    marker: "className=\"chip\"",
-    reason: "design-spec suggestion chip (new-chat empty state)",
-  },
-  {
-    count: 1,
-    file: "app/(app)/app/agent/orbit-real-agent.tsx",
-    marker: "className=\"orbit-agent-new-chat\"",
-    reason: "sidebar new-chat control (design-spec soft block button)",
-  },
-  {
-    count: 1,
-    file: "app/(app)/app/agent/orbit-real-agent.tsx",
-    marker: "className=\"orbit-top-icon-btn orbit-agent-history-btn\"",
-    reason: "dedicated history icon control",
-  },
-  {
-    count: 1,
-    file: "app/(app)/app/agent/orbit-real-agent.tsx",
-    marker: "data-orbit-agent-history-resize-handle",
-    reason: "history-sidebar separator and drag handle",
-  },
   // Events 任务 1（2026-09-22）：events explore 迁入 events-0918/events-list.tsx 后所有按钮都是
   // `.btn ev-*`（整段中和基类），该表面不再有豁免项。
 ];

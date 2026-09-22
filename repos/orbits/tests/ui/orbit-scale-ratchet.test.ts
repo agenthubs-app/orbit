@@ -153,7 +153,11 @@ test("gap literals outside the scale in app/(app)/app do not increase", () => {
   // (gap 6/10 style objects) → 174 (measured).
   // 运营台 task 7 (2026-09-22) shared OpsBoundary replaced the admission page's
   // gap 10 boundary row with the on-scale 12 → 173 (measured).
-  const CEILING = 173;
+  // iOrbit task 6a (2026-09-23) deleted the fused agent files, the three old
+  // sibling screens, chat/ and the /app/today · /app/schedule · /app/followups
+  // routes → 167 (measured). fontSize (35) and fontWeight (16) are unchanged:
+  // the deleted files carried no off-scale literal of those two kinds.
+  const CEILING = 167;
 
   assert.ok(
     hits.length <= CEILING,
@@ -164,16 +168,27 @@ test("gap literals outside the scale in app/(app)/app do not increase", () => {
 
 // ---- (b) the eight T6-snapped files: zero violations, all three properties ----
 
+// iOrbit 任务 6a（2026-09-23）：`/app/today` 三个 T6 文件随路由删除
+// （`orbit-today-decision-form.tsx` 还有消费者，移到 `agent/actions/`）；
+// `orbit-real-agent.tsx` 删除，取而代之把 Orbit_0918 的 iOrbit 屏级文件加进来——
+// 它们本来就是零内联几何（皮肤全在 `iorbit-styles.ts` 的模板字符串里），
+// 加进这张零容忍清单是为了防止后续改动把内联几何写回去。
 const SNAPPED_FILES = [
-  "app/(app)/app/today/orbit-real-today.tsx",
-  "app/(app)/app/today/orbit-today-decision-panel.tsx",
-  "app/(app)/app/today/orbit-today-decision-form.tsx",
   "app/(app)/app/settings/orbit-agent-execution-settings.tsx",
   "app/(app)/app/agent/actions/orbit-all-actions-controls.tsx",
-  "app/(app)/app/agent/orbit-real-agent.tsx",
+  "app/(app)/app/agent/actions/orbit-today-decision-form.tsx",
+  "app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx",
+  "app/(app)/app/agent/iorbit-0918/iorbit-screen-frame.tsx",
+  "app/(app)/app/agent/iorbit-0918/iorbit-home.tsx",
+  "app/(app)/app/agent/iorbit-0918/iorbit-chat.tsx",
+  "app/(app)/app/agent/iorbit-0918/iorbit-chat-aside.tsx",
+  "app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx",
+  "app/(app)/app/agent/iorbit-0918/iorbit-actions.tsx",
+  "app/(app)/app/agent/iorbit-0918/iorbit-plan.tsx",
+  "app/(app)/app/agent/iorbit-0918/iorbit-strategy.tsx",
 ];
 
-test("the eight T6-snapped files have zero off-scale fontSize/fontWeight/gap literals", () => {
+test("every snapped file has zero off-scale fontSize/fontWeight/gap literals", () => {
   const allHits: ScaleHit[] = [];
   for (const relPath of SNAPPED_FILES) {
     const full = join(projectRoot, relPath);
@@ -189,7 +204,7 @@ test("the eight T6-snapped files have zero off-scale fontSize/fontWeight/gap lit
   );
 });
 
-test("the eight T6-snapped files have zero numeric (non-token) borderRadius literals", () => {
+test("every snapped file has zero numeric (non-token) borderRadius literals", () => {
   const re = /\bborderRadius\s*:\s*(-?[0-9]+(?:\.[0-9]+)?)/g;
   const hits: ScaleHit[] = [];
   for (const relPath of SNAPPED_FILES) {
