@@ -24,7 +24,7 @@
 | `/app/contacts/graph` 已删（312829af） | `/app/contacts/dashboard?tab=structure` | 零引用 |
 | `/app/contacts/new/batch/[id]` 已删（312829af） | 批量导入 V2 | 零引用 |
 | `/app/contacts/new/batch2` `/batch2/[id]` `/new/import/[id]` 已删（312829af） | import 屏内部状态（`/app/contacts/new?job=…`） | 零服务端生成器 |
-| `/app/events/[id]/operations/roles` | 运营台「协作者抽屉」 | 无 |
+| `/app/events/[id]/operations/roles` 已删（f619ea74） | 运营台「协作者抽屉」`/app/events/[id]/operations?drawer=roles`（`OpsRolesDrawer`；无 `roles.manage` 时忽略参数） | hub 卡 / 「更多 ⌄」「管理角色」（`rolesDrawerHref`）已指 `?drawer=roles`；测试 `event-role-management-workspace.test.tsx` 5 例迁 `app-ops-roles-drawer` / `app-ops-hub` |
 
 删除同时：`features/auth/app-auth-routing.ts` 的 `next` 白名单移除 today / chat / dashboard / party / followups / schedule；`tests/pages` 中对应路由测试随路由删除。
 
