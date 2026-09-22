@@ -1,0 +1,263 @@
+/**
+ * 运营台（Orbit_0918）壳：活动中心页头（hub 头）+ 运营台共用头部（面包屑 / 标题 / 「查看活动页面 →」「更多 ⌄」/ 六页签）
+ * + 全部 op-* 样式 + toast + 抽屉挂载点。
+ * JSX 逐元素来自 docs/designs/Orbit_0918/Events 运营台.dc.html 第 43 行（<main>）、47–69 行（hub 头 / 页签 / 搜索）、
+ * 94–111 行（运营台头部）、477–479 行（toast）。顶栏由 page.tsx 挂 AccountTopNav，不在壳内。
+ */
+"use client";
+
+import type { ReactNode } from "react";
+
+import type { EventOperationsPageEvent } from "../[id]/operations/event-operations-page-event";
+import {
+  consoleTitle,
+  eventPagePath,
+  HUB_TABS,
+  OPS_TABS,
+  rolesDrawerHref,
+  TITLES,
+  type HubTab,
+  type OpsView,
+} from "./ops-model";
+
+export function OpsToast({ text }: { text: string }) {
+  if (!text) return null;
+  return <div className="op-toast" role="status">{text}</div>;
+}
+
+/** 活动中心页头（设计 48–69）：标题 / 「当前身份」chip / hubTabs / 搜索。 */
+export function OpsHubHead({
+  roleLabel,
+  activeTab,
+  onTab,
+  query,
+  onQuery,
+}: {
+  roleLabel?: string | null;
+  activeTab: HubTab;
+  onTab: (next: HubTab) => void;
+  query: string;
+  onQuery: (next: string) => void;
+}) {
+  return (
+    <>
+      <div className="op-hub-head">
+        <div className="op-hub-copy">
+          <h1 className="op-hub-h1">活动中心</h1>
+          <p className="op-hub-sub">管理你负责的活动。</p>
+        </div>
+        {roleLabel ? (
+          <div className="op-identity" data-ops-identity>
+            <span className="op-identity-icon">⚇</span>
+            <span className="op-identity-copy">
+              <strong className="op-identity-title">{`当前身份：${roleLabel}`}</strong>
+              <span className="op-identity-note">仅展示你有权限操作的活动。</span>
+            </span>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="op-hub-bar">
+        <div className="op-hub-tabs" role="tablist">
+          {HUB_TABS.map((tab) => {
+            const on = tab.key === activeTab;
+            return (
+              <button
+                aria-selected={on}
+                className={`btn op-tab ${on ? "op-tab-on" : "op-tab-off"}`}
+                key={tab.key}
+                onClick={() => onTab(tab.key)}
+                role="tab"
+                type="button"
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+        <span className="op-search">
+          <span className="op-search-icon">⌕</span>
+          <input
+            aria-label="搜索活动"
+            className="op-search-input"
+            onChange={(event) => onQuery(event.target.value)}
+            placeholder="搜索活动名称、地点或关键词…"
+            value={query}
+          />
+        </span>
+      </div>
+    </>
+  );
+}
+
+/**
+ * 运营台共用头部 + 六页签（设计 94–111）。页签是路由链接；「更多 ⌄」进 `?drawer=roles`（抽屉本体任务 6，
+ * 导出 CSV 等更多动作之后也挂这里）。`drawer` 为抽屉挂载点。
+ */
+export function OpsConsoleShell({
+  event,
+  view,
+  children,
+  drawer,
+  toast,
+}: {
+  event: EventOperationsPageEvent;
+  view: OpsView;
+  children: ReactNode;
+  drawer?: ReactNode;
+  toast?: string;
+}) {
+  const copy = TITLES[view];
+  return (
+    <main className="op-main" data-ops-view={view}>
+      <style>{OPS_STYLES}</style>
+      <div className="op-console">
+        <span className="op-crumb">
+          <a className="op-crumb-link" href="/app/events/center">活动中心</a>
+          {" / "}
+          <a className="op-crumb-link" href={OPS_TABS[0].href(event.id)}>{event.title}</a>
+          {" / "}
+          <a className="op-crumb-link" href={OPS_TABS[0].href(event.id)}>运营台</a>
+          {" / "}
+          {copy.crumb}
+        </span>
+
+        <div className="op-head">
+          <div className="op-head-copy">
+            <h1 className="op-h1">{consoleTitle(view, event.title)}</h1>
+            <p className="op-sub">{copy.sub}</p>
+          </div>
+          <div className="op-head-actions">
+            <a className="btn op-btn-dark" href={eventPagePath(event.id)}>查看活动页面 →</a>
+            <a className="btn op-btn-ghost" data-ops-more href={rolesDrawerHref(event.id)}>更多 ⌄</a>
+          </div>
+        </div>
+
+        <div className="op-tabs" role="tablist">
+          {OPS_TABS.map((tab) => {
+            const on = tab.key === view;
+            return (
+              <a
+                aria-current={on ? "page" : undefined}
+                className={`op-tab ${on ? "op-tab-on" : "op-tab-off"}`}
+                href={tab.href(event.id)}
+                key={tab.key}
+                role="tab"
+              >
+                {tab.label}
+              </a>
+            );
+          })}
+        </div>
+
+        {children}
+      </div>
+      {toast ? <OpsToast text={toast} /> : null}
+      {drawer}
+    </main>
+  );
+}
+
+// 每条规则 = 设计稿一个 style="" 原样搬入；顺序与值不得改动。前缀 [data-orbit-real-page="ops-0918"]。
+export const OPS_STYLES = `
+@keyframes orbit-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+[data-orbit-real-page="ops-0918"] { min-height: 100vh; background: #FBFBFE; color: #0E1225; font-family: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", sans-serif; -webkit-font-smoothing: antialiased; text-wrap: pretty; overflow-x: clip; }
+[data-orbit-real-page="ops-0918"] a { color: #3B3F7A; text-decoration: none; }
+[data-orbit-real-page="ops-0918"] a:hover { color: #0E1225; }
+[data-orbit-real-page="ops-0918"] input, [data-orbit-real-page="ops-0918"] textarea, [data-orbit-real-page="ops-0918"] button, [data-orbit-real-page="ops-0918"] select { font-family: inherit; }
+[data-orbit-real-page="ops-0918"] input::placeholder, [data-orbit-real-page="ops-0918"] textarea::placeholder { color: #9FA3C4; }
+/* ── <main>（设计稿 43 行）── */
+[data-orbit-real-page="ops-0918"] .op-main { max-width: 1240px; margin: 0 auto; padding: 14px 40px 72px; display: flex; flex-direction: column; gap: 24px; }
+/* ── 活动中心（设计稿 47–69 行）── */
+[data-orbit-real-page="ops-0918"] .op-hub { display: flex; flex-direction: column; gap: 26px; animation: orbit-fade .3s ease; }
+[data-orbit-real-page="ops-0918"] .op-hub-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 20px; }
+[data-orbit-real-page="ops-0918"] .op-hub-copy { display: flex; flex-direction: column; gap: 10px; }
+[data-orbit-real-page="ops-0918"] .op-hub-h1 { margin: 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: clamp(32px, 3.8vw, 44px); letter-spacing: -0.03em; }
+[data-orbit-real-page="ops-0918"] .op-hub-sub { margin: 0; font-size: 16px; color: #3B3F7A; }
+[data-orbit-real-page="ops-0918"] .op-identity { display: flex; align-items: center; gap: 14px; padding: 18px 22px; border: 1px solid #E8E9F6; border-radius: 16px; background: #FFFFFF; max-width: 400px; }
+[data-orbit-real-page="ops-0918"] .op-identity-icon { width: 40px; height: 40px; flex: none; border-radius: 50%; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; }
+[data-orbit-real-page="ops-0918"] .op-identity-copy { display: flex; flex-direction: column; gap: 4px; }
+[data-orbit-real-page="ops-0918"] .op-identity-title { font-size: 15px; font-weight: 500; }
+[data-orbit-real-page="ops-0918"] .op-identity-note { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="ops-0918"] .op-hub-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid #E8E9F6; }
+[data-orbit-real-page="ops-0918"] .op-hub-tabs { display: flex; gap: 28px; }
+[data-orbit-real-page="ops-0918"] .op-tab { padding: 0 0 14px; border: 0; border-bottom: 2px solid transparent; background: transparent; cursor: pointer;
+  /* 设计稿页签是 button 且显式 font-size:15px，渲染结果 15px，直接对齐 */
+  font-size: 15px; line-height: normal; }
+[data-orbit-real-page="ops-0918"] .btn.op-tab { padding: 0 0 14px; border: 0; border-bottom: 2px solid transparent; background: transparent; font-size: 15px;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; border-radius: 0; transition: none; }
+[data-orbit-real-page="ops-0918"] .btn.op-tab:active { transform: none; }
+[data-orbit-real-page="ops-0918"] .op-tab-on, [data-orbit-real-page="ops-0918"] .btn.op-tab-on { border-bottom-color: #0E1225; color: #0E1225; font-weight: 700; }
+[data-orbit-real-page="ops-0918"] .op-tab-off, [data-orbit-real-page="ops-0918"] .btn.op-tab-off { color: #6B6F99; font-weight: 400; }
+/* 运营台页签是 <a>：中和页面级 a:hover 变色（设计 button 页签无 hover） */
+[data-orbit-real-page="ops-0918"] .op-tab-off:hover { color: #6B6F99; }
+[data-orbit-real-page="ops-0918"] .op-tab-on:hover { color: #0E1225; }
+[data-orbit-real-page="ops-0918"] .op-search { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding: 10px 16px; border: 1px solid #DDDEFA; border-radius: 10px; background: #FFFFFF; min-width: 280px; }
+[data-orbit-real-page="ops-0918"] .op-search-icon { color: #9FA3C4; }
+[data-orbit-real-page="ops-0918"] .op-search-input { flex: 1; min-width: 0; border: 0; border-radius: 0; outline: none; background: transparent; font-size: 13px; color: #0E1225;
+  /* 设计 input 保留 Chrome 默认 padding 1px 2px；基类 reset（orbit-reference-styles.tsx:34–50）清成 0，这里补回 */
+  padding: 1px 2px; }
+/* ── 活动卡（设计稿 71–89 行）── */
+[data-orbit-real-page="ops-0918"] .op-card { display: grid; grid-template-columns: 150px minmax(0, 1.5fr) repeat(3, minmax(0, 72px)) 150px; gap: 22px; align-items: center; padding: 20px; border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; }
+[data-orbit-real-page="ops-0918"] .op-cover { position: relative; overflow: hidden; height: 104px; border: 0; border-radius: 12px; color: #FFFFFF; display: flex; align-items: flex-end; padding: 12px; font-size: 14px; font-weight: 500; line-height: 1.3; }
+[data-orbit-real-page="ops-0918"] .op-cover-text { position: relative; z-index: 1; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; }
+[data-orbit-real-page="ops-0918"] .op-card-body { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+[data-orbit-real-page="ops-0918"] .op-card-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+[data-orbit-real-page="ops-0918"] .op-card-title { margin: 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 19px; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+[data-orbit-real-page="ops-0918"] .op-chip { padding: 5px 12px; border-radius: 999px; font-size: 12px; white-space: nowrap; }
+[data-orbit-real-page="ops-0918"] .op-card-desc { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="ops-0918"] .op-card-meta { font-size: 13px; color: #3B3F7A; }
+[data-orbit-real-page="ops-0918"] .op-count { display: flex; flex-direction: column; gap: 6px; padding-left: 20px; border-left: 1px solid #F1F1FA; }
+[data-orbit-real-page="ops-0918"] .op-count-label { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="ops-0918"] .op-count-n { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 22px; }
+[data-orbit-real-page="ops-0918"] .op-card-actions { display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
+[data-orbit-real-page="ops-0918"] .btn.op-cta { padding: 13px 18px; border: 1px solid transparent; border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer;
+  /* background / color / border-color 按 HUB_CTA_TONE 内联；覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="ops-0918"] .btn.op-cta:hover { opacity: 0.88; }
+[data-orbit-real-page="ops-0918"] .btn.op-cta:active { transform: none; }
+[data-orbit-real-page="ops-0918"] .btn.op-cta[aria-disabled="true"] { cursor: default; opacity: 0.6; }
+[data-orbit-real-page="ops-0918"] .op-more { position: relative; text-align: center; color: #9FA3C4; letter-spacing: 2px; }
+[data-orbit-real-page="ops-0918"] .op-more-summary { list-style: none; cursor: pointer; }
+[data-orbit-real-page="ops-0918"] .op-more-summary::-webkit-details-marker { display: none; }
+/* 设计只画了「···」，展开菜单本身设计稿没有：沿用卡片描边 / 圆角 / 阴影口径 */
+[data-orbit-real-page="ops-0918"] .op-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; min-width: 150px; display: flex; flex-direction: column; padding: 6px; border: 1px solid #E8E9F6; border-radius: 12px; background: #FFFFFF; box-shadow: 0 12px 32px rgba(59,63,122,0.12); letter-spacing: 0; text-align: left; }
+[data-orbit-real-page="ops-0918"] .op-menu-item { display: block; padding: 10px 12px; border-radius: 8px; font-size: 13px; color: #3B3F7A; white-space: nowrap; }
+[data-orbit-real-page="ops-0918"] .op-menu-item:hover { background: #F7F7FD; color: #0E1225; }
+/* 设计稿无响应式声明；窄屏把六列卡片折成单列（1240 宽度下不生效） */
+@media (max-width: 900px) {
+  [data-orbit-real-page="ops-0918"] .op-main { padding: 14px 16px 72px; }
+  [data-orbit-real-page="ops-0918"] .op-card { grid-template-columns: 1fr; }
+  [data-orbit-real-page="ops-0918"] .op-count { padding-left: 0; border-left: 0; }
+}
+/* ── 提示条（设计稿无：加载 / 错误 / 空态；沿用卡片口径与设计错误色 #FBECEA/#B5473A）── */
+[data-orbit-real-page="ops-0918"] .op-note { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 22px; border: 1px solid #E8E9F6; border-radius: 16px; background: #FFFFFF; font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="ops-0918"] .op-note-error { border-color: #FBECEA; background: #FBECEA; color: #B5473A; }
+[data-orbit-real-page="ops-0918"] .op-note-title { margin: 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 19px; letter-spacing: -0.02em; color: #0E1225; }
+[data-orbit-real-page="ops-0918"] .op-note-copy { display: flex; flex-direction: column; gap: 6px; }
+/* ── 运营台共用头部（设计稿 94–111 行）── */
+[data-orbit-real-page="ops-0918"] .op-console { display: flex; flex-direction: column; gap: 22px; animation: orbit-fade .3s ease; }
+[data-orbit-real-page="ops-0918"] .op-crumb { font-size: 13px; color: #9FA3C4; }
+[data-orbit-real-page="ops-0918"] .op-crumb-link { color: #6B6F99; }
+[data-orbit-real-page="ops-0918"] .op-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 20px; }
+[data-orbit-real-page="ops-0918"] .op-head-copy { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+[data-orbit-real-page="ops-0918"] .op-h1 { margin: 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: clamp(30px, 3.6vw, 42px); letter-spacing: -0.03em; }
+[data-orbit-real-page="ops-0918"] .op-sub { margin: 0; font-size: 15px; color: #3B3F7A; }
+[data-orbit-real-page="ops-0918"] .op-head-actions { display: flex; gap: 12px; }
+[data-orbit-real-page="ops-0918"] .btn.op-btn-dark { padding: 13px 20px; border: 0; border-radius: 10px; background: #0E1225; color: #FFFFFF; font-size: 14px; font-weight: 500; cursor: pointer;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="ops-0918"] .btn.op-btn-dark:hover { background: #2E3270; color: #FFFFFF; }
+[data-orbit-real-page="ops-0918"] .btn.op-btn-dark:active { transform: none; }
+[data-orbit-real-page="ops-0918"] .btn.op-btn-dark:disabled { cursor: default; opacity: 0.6; }
+[data-orbit-real-page="ops-0918"] .btn.op-btn-ghost { padding: 13px 20px; border: 1px solid #DDDEFA; border-radius: 10px; background: #FFFFFF; color: #3B3F7A; font-size: 14px; cursor: pointer;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; font-weight: 400; transition: none; }
+[data-orbit-real-page="ops-0918"] .btn.op-btn-ghost:hover { border-color: #B9BCEB; color: #2E3270; }
+[data-orbit-real-page="ops-0918"] .btn.op-btn-ghost:active { transform: none; }
+[data-orbit-real-page="ops-0918"] .btn.op-btn-ghost:disabled { cursor: default; opacity: 0.6; }
+[data-orbit-real-page="ops-0918"] .op-tabs { display: flex; gap: 30px; flex-wrap: wrap; border-bottom: 1px solid #E8E9F6; }
+/* ── toast（设计稿 477–479 行）── */
+[data-orbit-real-page="ops-0918"] .op-toast { position: fixed; left: 50%; bottom: 32px; transform: translateX(-50%); z-index: 200; padding: 12px 22px; border-radius: 999px; background: #0E1225; color: #FFFFFF; font-size: 14px; box-shadow: 0 18px 40px rgba(14,18,37,0.25); }
+`;

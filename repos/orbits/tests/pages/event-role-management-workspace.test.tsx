@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
-import { EventCenterWorkspace } from "../../app/(app)/app/events/center/event-center-workspace";
+import { OpsHub } from "../../app/(app)/app/events/ops-0918/ops-hub";
 import { EventRoleManagementWorkspace } from "../../app/(app)/app/events/[id]/operations/roles/event-role-management-workspace";
 
 const EVENT_ID = "event:role-management";
@@ -296,6 +296,7 @@ test("migration-pending cards do not render legacy metadata or operation links",
   const originalFetch = globalThis.fetch;
   let renderer!: ReactTestRenderer;
   globalThis.fetch = (async (url) => {
+    // 迁移待确认的活动不得触发 aggregate 读取：只允许列表请求。
     assert.equal(url, "/api/events/center");
     return Response.json({
       data: [{
@@ -316,7 +317,7 @@ test("migration-pending cards do not render legacy metadata or operation links",
 
   try {
     await act(async () => {
-      renderer = create(<EventCenterWorkspace />);
+      renderer = create(<OpsHub />);
       await flush();
     });
     assert.equal(
@@ -347,6 +348,10 @@ test("event center gates onsite actions by lifecycle and explains delegated boot
   const originalFetch = globalThis.fetch;
   let renderer!: ReactTestRenderer;
   globalThis.fetch = (async (url) => {
+    // hub 每卡另读 aggregate（审阅修订 4）；这里一律 403 → 三计数「—」，不影响门禁断言。
+    if (String(url).endsWith("/analytics/aggregate")) {
+      return Response.json({ error: { message: "forbidden" }, success: false }, { status: 403 });
+    }
     assert.equal(url, "/api/events/center");
     return Response.json({
       data: [
@@ -381,7 +386,7 @@ test("event center gates onsite actions by lifecycle and explains delegated boot
 
   try {
     await act(async () => {
-      renderer = create(<EventCenterWorkspace />);
+      renderer = create(<OpsHub />);
       await flush();
     });
     const draftCard = renderer.root.find(
@@ -392,7 +397,9 @@ test("event center gates onsite actions by lifecycle and explains delegated boot
     assert.equal(draftLinks.some((href) => href.endsWith("/operations/check-in")), false);
     assert.equal(draftLinks.some((href) => href.endsWith("/operations/admission")), false);
     assert.equal(draftLinks.some((href) => href.endsWith("/analytics")), false);
-    assert.equal(draftLinks.some((href) => href.endsWith("/operations/roles")), true);
+    // 审阅修订 7：管理角色进 `?drawer=roles` 抽屉，不再有 /operations/roles 深链。
+    assert.equal(draftLinks.some((href) => href.endsWith("/operations?drawer=roles")), true);
+    assert.equal(draftLinks.some((href) => href.endsWith("/operations/roles")), false);
     assert.match(JSON.stringify(renderer.toJSON()), /活动发布前不开放运营台/u);
 
     const operatorCard = renderer.root.find(
@@ -421,18 +428,25 @@ test("role manager uses auto-fit grids and the center reserves only policy-valid
     join(projectRoot, "app/(app)/app/events/[id]/operations/roles/event-role-management-workspace.tsx"),
     "utf8",
   );
-  const center = readFileSync(
-    join(projectRoot, "app/(app)/app/events/center/event-center-workspace.tsx"),
+  // 活动中心 hub（ops-0918）：角色谓词在 ops-model.ts，`data-event-center-*` 标记随动作表落在 ops-model / ops-hub。
+  const centerModel = readFileSync(
+    join(projectRoot, "app/(app)/app/events/ops-0918/ops-model.ts"),
+    "utf8",
+  );
+  const centerHub = readFileSync(
+    join(projectRoot, "app/(app)/app/events/ops-0918/ops-hub.tsx"),
     "utf8",
   );
   assert.match(manager, /repeat\(auto-fit,minmax\(220px,1fr\)\)/u);
   assert.match(manager, /repeat\(auto-fit,minmax\(180px,1fr\)\)/u);
   assert.doesNotMatch(manager, /gridTemplateColumns: "minmax\(220px,1\.15fr\)/u);
-  assert.match(center, /data-event-center-analytics/u);
-  assert.match(center, /function canOpenAnalytics/u);
-  assert.match(center, /item\.role === "operations"/u);
-  assert.match(center, /item\.role === "read_only_analyst"/u);
-  assert.match(center, /data-event-center-admission/u);
-  assert.doesNotMatch(center, /审核入口待实现/u);
-  assert.doesNotMatch(center, /event\.role === "reviewer"[^\n]+analyticsHref/u);
+  assert.match(centerModel, /data-event-center-analytics/u);
+  assert.match(centerModel, /function canOpenAnalytics/u);
+  assert.match(centerModel, /item\.role === "operations"/u);
+  assert.match(centerModel, /item\.role === "read_only_analyst"/u);
+  assert.match(centerModel, /data-event-center-admission/u);
+  for (const source of [centerModel, centerHub]) {
+    assert.doesNotMatch(source, /审核入口待实现/u);
+    assert.doesNotMatch(source, /role === "reviewer"[^\n]+analytics/u);
+  }
 });
