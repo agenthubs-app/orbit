@@ -84,7 +84,8 @@ node scripts/visual/compare-0918.mjs \
 
 ```bash
 node scripts/visual/seed-iorbit-chat-session.mjs
-# 当前验证库 orbit_newui_events_20260922 里没有 qa@orbit.test，QA 参与者是 participant.a：
+# 默认账号 qa@orbit.test 在验证库 orbit_newui_events_20260922 里是存在的（2026-09-22 的数据准备
+# 建的），默认值可直接用；只有换库 / 换账号时才需要覆盖：
 node scripts/visual/seed-iorbit-chat-session.mjs \
   --email participant.a@orbit.example.test --password-env ORBIT_DEMO_ORGANIZER_PASSWORD
 ```
@@ -94,23 +95,38 @@ node scripts/visual/seed-iorbit-chat-session.mjs \
 - 写入的会话形状由 `orbit-real-agent.tsx` 的 `isStoredAgentMessage`(:514) / `parseStoredAgentMessage`(:570) 校验：assistant 行必须同时带 `items` / `kind`（`people|events|todos`）/ `panelTitle`。内容逐字取设计 chat 屏（272–303 行），**只写会话存储，不往活动 / 联系人库里造任何数据**。
 - 输出最后两行是 `app=<可直接喂给 --app 的 URL>` 与 `session=<id>`；重复执行是幂等覆盖（同一 id）。
 
+### 账本种子（`seed-iorbit-ledger-fixtures.ts`，任务 7 新增）
+
+`actions` / `plan` 两个视图的左栏来自操作账本（`agentActionsV2`）。验证库里该账号原本一条都没有，
+两屏会落到空态，像素数字只能对上「壳 + aside + 段头」。跑这两个视图前先种：
+
+```bash
+node --import tsx scripts/seed-iorbit-ledger-fixtures.ts --email qa@orbit.test
+node --import tsx scripts/seed-iorbit-ledger-fixtures.ts --email qa@orbit.test --mode verify
+```
+
+四条账本条目分别落在三档（`awaiting_confirmation` / `approved` / `deferred`）加一条当天
+`completedAt` 的 `completed`（进度环的分子），每条都带 `operations[0].operationType`、`whyNow`、
+`evidenceChips` 与 `preview`。脚本只调运行时服务自身的 API（`createRun` / `proposeAction` /
+`approveAction` / `deferAction` / `processOutbox`），不写表、不绕状态机，同 id 重跑幂等。
+
 示例（iOrbit · chat 视图）：
 
 ```bash
 node scripts/visual/compare-0918.mjs \
   --design "http://localhost:3320/Orbit_0918/iOrbit.dc.html" --design-view chat \
   --app "http://localhost:3100/app/agent?session=iorbit-visual-chat-0918" \
-  --login "participant.a@orbit.example.test:<password>" \
+  --login "qa@orbit.test:<password>" \
   --out /tmp/iorbit-chat
 ```
 
-示例（iOrbit · history 视图，必须 `--viewport-only`）：
+示例（iOrbit · history 视图，必须 `--viewport-only`，且应用侧 URL 必须带 `?history=1` —— 少了它抽屉不会打开，比对出来是 0.69 而不是 0.04）：
 
 ```bash
 node scripts/visual/compare-0918.mjs \
   --design "http://localhost:3320/Orbit_0918/iOrbit.dc.html" --design-view history --viewport-only \
-  --app "http://localhost:3100/app/agent" \
-  --login "participant.a@orbit.example.test:<password>" \
+  --app "http://localhost:3100/app/agent?history=1" \
+  --login "qa@orbit.test:<password>" \
   --out /tmp/iorbit-history
 ```
 
