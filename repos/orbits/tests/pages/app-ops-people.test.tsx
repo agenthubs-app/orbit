@@ -525,6 +525,8 @@ test("admission page stays canonical-only and mounts the people screen inside th
   assert.match(page, /getPublishedEvent/u);
   assert.match(page, /capability: "admission\.read"/u);
   assert.match(page, /capability: "roles\.manage"/u);
+  // 合并前终审修正 7：admission.read 校验被 await 且先于读活动
+  assert.match(page, /await requireEventCapability\(\{[^}]*capability: "admission\.read"[\s\S]*await loadEventOperationsPageEvent\(/u, "awaited gate runs before the event read");
   // 合并前终审修正 5：导出 CSV 按 attendees.export 解析（fail-closed），无则 more 为空数组
   assert.match(page, /await requireEventCapability\(\{[^}]*capability: "attendees\.export"/u);
   assert.match(page, /let canExport = false;/u);

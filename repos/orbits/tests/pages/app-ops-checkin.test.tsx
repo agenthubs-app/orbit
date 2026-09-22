@@ -289,7 +289,8 @@ test("check-in page gates on check_in.roster.read_limited before reading the eve
   // 评审修正：getEvent 会泄露未发布活动标题，故与名单 API 同一能力做 per-event 门禁，未过不读活动。
   assert.match(page, /requireEventCapability\(\{[^}]*capability: "check_in\.roster\.read_limited"/u);
   assert.match(page, /createConfiguredEventAccessService\(\)/u);
-  assert.ok(page.indexOf("requireEventCapability({") < page.indexOf("await loadEventOperationsPageEvent("), "gate runs before the event read");
+  // 合并前终审修正 7：能力校验必须被 await，且出现在读活动之前
+  assert.match(page, /await requireEventCapability\(\{[^}]*capability: "check_in\.roster\.read_limited"[\s\S]*await loadEventOperationsPageEvent\(/u, "awaited gate runs before the event read");
   assert.match(page, /title="没有签到权限"/u);
   assert.match(page, /只有当前活动主办方或被授予签到角色的成员可以打开签到名单。/u);
   // 任务 7：三页共用 ops-0918/ops-boundary.tsx（eyebrow / title / description / retryHref / page 标记）

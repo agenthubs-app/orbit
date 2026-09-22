@@ -442,7 +442,8 @@ test("experience page gates on experience.configure before reading the event and
   assert.match(page, /redirect\(`\/app\/account\/login\?next=/u);
   assert.match(page, /requireEventCapability\(\{[^}]*capability: "experience\.configure"/u);
   assert.match(page, /createConfiguredEventAccessService\(\)/u);
-  assert.ok(page.indexOf("requireEventCapability({") < page.indexOf("await loadEventOperationsPageEvent("), "gate runs before the event read");
+  // 合并前终审修正 7：能力校验必须被 await，且出现在读活动之前
+  assert.match(page, /await requireEventCapability\(\{[^}]*capability: "experience\.configure"[\s\S]*await loadEventOperationsPageEvent\(/u, "awaited gate runs before the event read");
   assert.match(page, /title="没有报名设置权限"/u);
   // 任务 7：共用 ops-0918/ops-boundary.tsx
   assert.doesNotMatch(page, /function Boundary|PublicTopNav/u);

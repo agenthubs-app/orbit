@@ -538,6 +538,16 @@ test("✕, overlay click and Esc navigate back to the tab without ?drawer; panel
     assert.equal(prevented, 1);
     harness.dispatch("keydown", { key: "Enter", preventDefault() { prevented += 1; }, target: null });
     assert.equal(harness.assigned.length, 3);
+    // 合并前终审修正 7：可编辑目标（<input> / <textarea> / contentEditable）内的 Esc 不关抽屉、不 preventDefault
+    harness.dispatch("keydown", { key: "Escape", preventDefault() { prevented += 1; }, target: { tagName: "INPUT" } });
+    harness.dispatch("keydown", { key: "Escape", preventDefault() { prevented += 1; }, target: { tagName: "TEXTAREA" } });
+    harness.dispatch("keydown", { key: "Escape", preventDefault() { prevented += 1; }, target: { isContentEditable: true, tagName: "DIV" } });
+    assert.equal(harness.assigned.length, 3, "Esc inside an editable target keeps the drawer open");
+    assert.equal(prevented, 1);
+    // 非可编辑目标（按钮）上的 Esc 仍关闭
+    harness.dispatch("keydown", { key: "Escape", preventDefault() { prevented += 1; }, target: { tagName: "BUTTON" } });
+    assert.equal(harness.assigned.length, 4);
+    assert.equal(prevented, 2);
   });
 });
 

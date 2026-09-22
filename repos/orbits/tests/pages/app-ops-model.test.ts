@@ -255,14 +255,15 @@ test("pipelineSteps: registration open and nothing generated → 报名中 is th
     ["活动现场", "todo"],
   ]);
   assert.equal(steps[0].meta, "当前阶段");
-  assert.equal(steps[4].meta, shortDate(PIPELINE_BASE.eventStartsAt));
+  // 合并前终审修正 7：字面期望值（NOW + 3h = 2026-09-22T06:00Z = 东京 9月22日 15:00），不再用 shortDate 自证
+  assert.equal(steps[4].meta, "9月22日");
   assert.equal(steps[3].meta, "", "no publish timestamp → empty meta");
 });
 
 test("pipelineSteps: completed but unpublished → 等待检查分组 is current with real dates", () => {
   const steps = pipelineSteps({ ...PIPELINE_BASE, newestGeneration: gen("completed") });
   assert.deepEqual(steps.map((step) => step.state), ["done", "done", "now", "todo", "todo"]);
-  assert.equal(steps[0].meta, shortDate(PIPELINE_BASE.registrationCutoffAt));
+  assert.equal(steps[0].meta, "9月22日", "registrationCutoffAt = NOW + 1h = 东京 9月22日 13:00");
   assert.equal(steps[1].meta, "9月21日");
   assert.equal(steps[2].meta, "当前阶段");
   assert.equal(matchResultLabel({ newestGeneration: gen("completed"), publishedAt: null }), "待发布");
@@ -294,6 +295,7 @@ test("pipelineSteps: a live event is the current stage even while grouping is un
   const bare = pipelineSteps({ ...PIPELINE_BASE, eventEndsAt: null, eventStartsAt: null, registrationCutoffAt: null });
   assert.equal(bare[0].state, "now");
   assert.equal(bare[4].meta, "");
+  assert.equal(shortDate("2026-09-21T16:00:00.000Z"), "9月22日", "Asia/Tokyo day boundary (UTC 16:00 → JST 01:00 next day)");
   assert.equal(shortDate("not-a-date"), "");
   assert.equal(shortDate(null), "");
 });
