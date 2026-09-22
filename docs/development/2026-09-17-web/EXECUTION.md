@@ -901,3 +901,69 @@
 | 两套特征化（chat 17 + history 11） | **28 / 28 / 0** | chat 由 15 → 17 |
 | iOrbit 屏级套件（screens / chat / history / home + `orbit-agent-api-ui` + 两条 agent 卡片套件） | **138 / 138 / 0** | 全绿 |
 | 两个 ratchet | **8 / 8** | 上限仍 79 / 35 / 16 / 167，只降不升的约束未触碰 |
+
+#### 逐带归因（2026-09-23，补第 5 条的后半）
+
+第 5 条把 `--grid` 建起来、把 71 条超阈值带摊在桌面上，但归因文件留空、门禁对七屏一律失败。
+本轮把这 71 条**逐条看图归因入库**，`repos/orbits/scripts/visual/attribution-0918-iorbit.json`
+不再有空对象，`--attribution` 门禁对七屏**全部通过**（`unattributed=0`）。
+报告 `.superpowers/sdd/iorbit-band-attribution-report.md`。
+
+**分类**（71 条按主因归一类，叠加的次因写在各条理由里）：(a) data **40** ｜ (b) 已记偏差 **31** ｜
+(c) 跨域共用件 **0 条独占带** ｜ (d) 真缺陷 **2 处**（覆盖 13 条带，已修）｜ 无法归因 **0**。
+逐屏 data/recorded：home 10/3、chat 0/8、actions 3/5、plan 7/3、strategy 6/5、contacts 8/5、history 6/2。
+
+**(d) 两处缺陷（本轮修掉，提交 `fix(agent): close iOrbit pixel fidelity gaps found by band attribution`）**：
+
+| # | 位置 | 症状 | 归因 |
+| --- | --- | --- | --- |
+| 1 | `iorbit-rich-components.tsx:469` | chat 三张事件卡的日期渲染成 **「9月18日日 · 周五18:30」**——`fmtDay()` 在 zh-CN 下用 `day:"2-digit"`，`Intl` 自己就返回「18日」，模板后面又补了一个「日」 | 与任务 2 修订轮 1 在月历上改掉的 `18日`→`18`（本节上文 ⑤）同一个坑，当时只扫了概览屏；老账，`8bae05e0` 的 `orbit-real-agent.tsx:235` 同一行，随任务 6a 文件搬迁带进 `iorbit-0918/` |
+| 2 | `strategy-route-view-model.ts:125` | strategy / contacts 联系人卡渲染成 **「佐藤健一」/「佐藤健一 · 北星餐饮」**——`name` 已是 `contactName`，`meta` 又 `joinMeta(contactName, organization)` 拼了一次 | 设计 667 副行是「职位 · 公司」，`HomeFactsFollowupItem`（`home-facts-route-service.ts:106-121`）无职位字段 → 改为只留公司名：少一维，但不重复姓名 |
+
+**修前 / 修后**：chat raw 0.0634 → **0.0632**（带 #6 0.0806→0.0801、#7 0.0850→0.0846、#9 0.0850→0.0846）；
+strategy 0.0687 → **0.0684**（带 #3 0.0973→0.0960）；contacts 0.0933 → **0.0928**（带 #7 0.2270→0.2239）；
+home / actions / plan / history 逐位不变（不经这两处代码）。降幅小是意料之中——两处都是一行文字对
+1240×100 的分母；意义在于这两行文字从此不再是错的。两处都属「逐框归因挑不到的框」，与任务 7 那处
+0.3389 的 plan aside 卡头同性质，逐带扫描才翻出来。
+
+**七屏最终 raw（修后重跑）**：home 0.0565 ｜ chat **0.0632** ｜ actions 0.0518 ｜ plan 0.0524 ｜
+strategy **0.0684** ｜ contacts **0.0928** ｜ history 0.0413（`--viewport-only`）。带数 / 超阈值与上表同：
+18/13、12/8、13/8、14/10、14/11、16/13、9/8。`actions` / `plan` 的 `--require-rows` 同时通过。
+
+**三件必须写下来的事**：
+
+1. **应用侧两枚设计没有的固定叠加件都落在每屏 band 8**（视口底部 y≈820–880）：左下 Next dev
+   「N Issues」徽章（dev server 叠加件，非产品，`iorbit-task-7-report.md:79` 已记，约占分母 0.2%），
+   右下全局 iOrbit 助手悬浮球 `.oga-ball`（54×54 @ 1162,822；跨域保留、设计无，本文档 :487 与
+   `ops-task-6-report.md:97` 已记）。两者都不是任何一条带的**唯一**原因，故作次因记在各屏 band 8 的理由里。
+   **遗留**：`--app-remove` 删不掉 Next 徽章（在 `nextjs-portal` 的 shadow DOM 里），要么走 production
+   build 比对，要么给脚本加一条 dev 叠加件屏蔽——本轮没做。
+2. **+2px 顶栏（任务 2 偏差 1）今天没有单独产生任何一条超阈值带**：`--grid` 对每条带各做一次 `dy`
+   搜索，顶部各带 `best dy` 正好落在 `+2`，残差被吸收到阈值以下。这正是 `--grid` 相对整屏 `mismatch`
+   的具体好处——它把「整体挪了 2px」和「这里画错了」分开了。
+3. **strategy 跑出过一次 `unavailable` 空态（环境抖动，非回归）**：修完缺陷后第一次重跑，应用侧高
+   1393→1179px、raw 0.0622、只剩 12 条带，页面是「先联系谁 · 来源暂时不可用。」——那一次
+   `refreshHomeDashboardAction()` 的快照取成了 `unavailable`；原样重跑即恢复（1393px / 0.0684 / 11 条带，
+   与修前逐带同形），台账数字取恢复后那次。**遗留**：`strategy` / `contacts` 还没有 `--require-rows`
+   兜底（`actions` / `plan` 有），空态那次会被当成「数字变好了」记进台账；建议补
+   `--require-rows ".ir-contact-card"` / `".ir-contact-compact"`。
+
+**回归（逐条与文档化基线对名）**：`npm run typecheck` **0**；`tests/pages` 1330 / 1324 / **2 fail** / 4 skipped
+（逐条同名）；`tests/audits` 157 / 147 / **10 fail**（逐条同名）；`tests/services` 1206 / 997 / **3 fail** / 206 skipped
+（逐条同名）；iOrbit 屏级 + 两套特征化 + 三个 route view-model + 两个推荐面共 11 文件 149 / 148 / 1
+（唯一 fail 即基线的 `contact detail mapping…`）；两个 ratchet **8 / 8**，上限仍 **79 / 35 / 16 / 167**；
+`detect-changes --scope all` 5 文件 / 1 符号 / affected processes 0 / risk low，非 partial、非 truncated。
+
+**把两个「已知挂起文件」的名字补上**：先前几节都只写「排除两个已知挂起文件」而不写名字，本轮第一次
+挑错了一对，`tests/pages` 跑出 1323 / 1316 / **3**——多出来的第三条是
+`tests/pages/event-registration-portrait-browser.test.ts`「actual Web 7a formal typography…」，
+错误是 `Cannot find module 'playwright'`：它从**兄弟包** `repos/orbit-app/package.json` 解析 playwright，
+而本工作树里 `repos/orbit-app/node_modules` **整个目录不存在**。正确的一对是
+**`event-registration-portrait-browser.test.ts` + `event-registration-readback.test.tsx`**，换回后逐位对上
+1330 / 1324 / 2 / 4。与本轮改动无关，纯属工作树里兄弟包没装依赖。
+
+**图谱**：索引对 `iorbit-0918/` 仍陈旧（`impact "AgentEventRow"` 的 `filePath` 还指向已删除的
+`orbit-real-agent.tsx`，risk LOW）。按 CLAUDE.md 口径，LOW / UNKNOWN 都不等于安全，已对两个改动点
+做文本检索确认调用面：`AgentEventRow` 只有 `iorbit-rich-components.tsx:657` 一个调用点（另两处测试
+只对源码正则断言函数存在，不断言日期文案）；`buildAgentStrategyViewModel` impact **LOW**、direct 1
+（`OrbitAgentStrategy`）、affected processes 0，本次只改 `meta` 取值，签名与形状未动，全仓无测试断言 `meta`。
