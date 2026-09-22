@@ -56,6 +56,7 @@ import {
   canAddQuestion,
   cleanOptions,
   FORM_INTRO_LIMIT,
+  FORM_OPTION_MIN,
   FORM_QUESTION_LIMIT,
   formQuestionRows,
   formStatusChip,
@@ -112,8 +113,13 @@ test("hubStatusChip maps real lifecycle + time onto the design chips", () => {
   assert.equal(hubStatusChip(item({ lifecycleState: "draft" }), NOW).label, "草稿");
   assert.equal(hubStatusChip(item({ lifecycleState: "cancelled" }), NOW).label, "已取消");
   assert.equal(hubStatusChip(item({ migrationPending: true, title: null }), NOW).label, "待迁移");
-  // 草稿即使时间已过也先看时间（已结束），未过则草稿
+  // 任务 7：草稿先于时间判断——排期已开始 / 已结束 / 24h 内的草稿都显示「草稿」，永不显示「进行中」
   assert.equal(hubStatusChip(item({ lifecycleState: "draft", startsAt: null, endsAt: null }), NOW).label, "草稿");
+  assert.equal(hubStatusChip(item({ lifecycleState: "draft", startsAt: new Date(NOW - HOUR).toISOString() }), NOW).label, "草稿", "live-window draft");
+  assert.equal(hubStatusChip(item({ lifecycleState: "draft", startsAt: new Date(NOW - 5 * HOUR).toISOString(), endsAt: new Date(NOW - HOUR).toISOString() }), NOW).label, "草稿", "past-window draft");
+  assert.equal(hubStatusChip(item({ lifecycleState: "draft" }), NOW).label, "草稿", "soon-window draft");
+  // 生命周期终态仍先于草稿以外的时间判断
+  assert.equal(hubStatusChip(item({ lifecycleState: "cancelled", startsAt: new Date(NOW - HOUR).toISOString() }), NOW).label, "已取消");
 });
 
 test("hubPhase / hubBucket follow the old center phase rules and feed the hubTabs", () => {
@@ -276,6 +282,9 @@ test("pipelineSteps: published → 已发布 done, 活动现场 current before t
   assert.deepEqual(ended.map((step) => step.state), ["done", "done", "done", "done", "done"]);
   assert.equal(matchResultLabel({ newestGeneration: gen("published"), publishedAt: "x" }), "已发布");
   assert.equal(matchResultLabel({ newestGeneration: gen("failed"), publishedAt: null }), "未发布");
+  // 任务 7：只看最新一次生成——[running, completed]（新→旧）不是「待发布」
+  assert.equal(matchResultLabel({ newestGeneration: gen("running"), publishedAt: null }), "未发布");
+  assert.equal(matchResultLabel({ newestGeneration: null, publishedAt: null }), "未发布");
 });
 
 test("pipelineSteps: a live event is the current stage even while grouping is unpublished; missing configuration → empty dates", () => {
@@ -492,6 +501,12 @@ test("preview choice: positioning is single-choice, every other intent multi; ad
   assert.equal(addQuestionHint("v2", 4), "最多 4 题。");
   assert.equal(addQuestionHint("v2", 1), null);
   assert.deepEqual(cleanOptions([" A ", "", "B", "   "]), ["A", "B"], "trim + drop blanks (old comma-split behaviour)");
+  // 任务 7：非空项不足 2 时不丢空项（保留给 hasBlankOptions 拦截），只 trim
+  assert.deepEqual(cleanOptions([" A ", ""]), ["A", ""], "never below FORM_OPTION_MIN");
+  assert.deepEqual(cleanOptions(["", " "]), ["", ""]);
+  assert.deepEqual(cleanOptions(["A", "", "B", ""]), ["A", "B"], "blanks above the floor are dropped");
+  assert.equal(FORM_OPTION_MIN, 2);
+  assert.equal(hasBlankOptions([{ options: cleanOptions(["A", ""]) }]), true, "the kept blank still blocks save/preview/publish");
   assert.equal(hasBlankOptions([{ options: ["A", "B"] }, { options: ["C", " "] }]), true);
   assert.equal(hasBlankOptions([{ options: ["A", "B"] }]), false);
   assert.equal(hasBlankOptions([]), false);

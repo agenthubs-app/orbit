@@ -41,7 +41,7 @@ test("overview SSR renders the console head, the 更多 menu and the configurati
   const html = renderToStaticMarkup(<OpsConsole canManageRoles event={EVENT} tab="ops" />);
   assert.match(html, /<h1 class="op-h1">屏级替换夹具活动 · 运营台<\/h1>/u);
   assert.match(html, /aria-current="page" class="op-tab op-tab-on" href="[^"]+\/operations" role="tab">概览</u);
-  assert.match(html, /<summary class="btn op-btn-ghost op-head-more-summary" data-ops-more="true">更多 ⌄<\/summary>/u);
+  assert.match(html, /<summary aria-expanded="false" aria-haspopup="menu" class="btn op-btn-ghost op-head-more-summary" data-ops-more="true">更多 ⌄<\/summary>/u);
   assert.match(html, new RegExp(`<a class="op-menu-item" href="${BASE.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}/export" role="menuitem">导出 CSV</a>`, "u"));
   assert.match(html, /<a class="op-menu-item" href="[^"]+\/operations\?drawer=roles" role="menuitem" data-event-roles-entry="true">管理角色<\/a>/u);
   assert.doesNotMatch(renderToStaticMarkup(<OpsConsole event={EVENT} tab="ops" />), /管理角色/u);
@@ -166,6 +166,16 @@ test("an active generation disables 重新生成 and reports 匹配正在生成�
     assert.equal(button.props.disabled, true);
     assert.match(text(renderer), /匹配正在生成中/u);
     assert.equal(buttonsNamed(renderer, "前往发布 →").length, 0);
+  });
+});
+
+// 任务 7 评审遗留 4：hook 的 publishedMatchStatus 与 ops-model matchResultLabel / publishableGeneration 同一谓词（最新生成）
+test("[running, completed] (newest first): 匹配结果 reads the newest generation → 未发布, no 前往发布, 匹配正在生成中", async () => {
+  await withConsole("ops", workspace({ generations: [generation("running", "gen:0000000000000002"), generation("completed")] }), (renderer) => {
+    assert.equal(renderer.root.find((node) => node.props["data-ops-stat"] === "result").children.join(""), "未发布");
+    assert.equal(buttonsNamed(renderer, "前往发布 →").length, 0);
+    assert.match(text(renderer), /匹配正在生成中/u);
+    assert.equal(buttonNamed(renderer, "生成进行中…").props.disabled, true);
   });
 });
 

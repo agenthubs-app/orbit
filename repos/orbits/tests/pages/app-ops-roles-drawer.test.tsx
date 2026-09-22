@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
 import { OpsConsole } from "../../app/(app)/app/events/ops-0918/ops-console";
-import { OpsRolesDrawer } from "../../app/(app)/app/events/ops-0918/ops-roles-drawer";
+import { MANUAL_SUBJECT, OpsRolesDrawer } from "../../app/(app)/app/events/ops-0918/ops-roles-drawer";
 import { OpsConsoleShell } from "../../app/(app)/app/events/ops-0918/ops-shell";
 import { EVENT, EVENT_ID, flush, text } from "../support/ops-console-fixture";
 
@@ -119,6 +119,11 @@ async function withDrawer(
 
 function byProp(renderer: ReactTestRenderer, prop: string, value: string) {
   return renderer.root.find((node) => node.props[prop] === value);
+}
+
+/** 错误条文案（任务 7 起错误条 = <span>文案</span> + 「刷新角色」按钮）。 */
+function alertText(renderer: ReactTestRenderer) {
+  return renderer.root.find((node) => node.props.role === "alert").findByType("span").children.join("");
 }
 
 function members(renderer: ReactTestRenderer) {
@@ -325,7 +330,7 @@ test("409 on a change reloads the roster and shows the conflict message verbatim
     assert.equal(roleCalls, 2);
     const alert = renderer.root.find((node) => node.props.role === "alert");
     assert.equal(alert.props.className, "op-note op-note-error op-dw-note");
-    assert.equal(alert.children.join(""), "角色刚被其他管理员更新；已刷新当前版本，请确认后重试。");
+    assert.equal(alertText(renderer), "角色刚被其他管理员更新；已刷新当前版本，请确认后重试。");
     assert.equal(renderer.root.findAll((node) => node.props.className === "op-toast").length, 0);
   });
 });
@@ -340,7 +345,7 @@ test("empty reason is rejected client-side before any assignment read", async ()
       byProp(renderer, "data-event-role-action", "grant").props.onClick();
       await flush();
     });
-    assert.equal(renderer.root.find((node) => node.props.role === "alert").children.join(""), "请填写 1–1000 个字符的授权或变更原因。");
+    assert.equal(alertText(renderer), "请填写 1–1000 个字符的授权或变更原因。");
     assert.equal(harness.observed.filter((call) => call.url.includes("/assignments/")).length, 0);
   });
 });
@@ -364,7 +369,8 @@ test("participant picker replaces the actor-id input when the candidate pool loa
     });
     const picker = renderer!.root.find((node) => node.props["data-event-role-participant-picker"] !== undefined);
     assert.equal(picker.type, "select");
-    assert.deepEqual(picker.findAllByType("option").map((node) => node.props.value), ["", "user:a", "user:b"]);
+    assert.deepEqual(picker.findAllByType("option").map((node) => node.props.value), ["", "user:a", "user:b", MANUAL_SUBJECT]);
+    assert.equal(picker.findAllByType("option").at(-1)!.children.join(""), "其他账号 ID…");
     assert.equal(renderer!.root.findAll((node) => node.props["data-event-role-subject"] === "new").length, 0);
     const row = byProp(renderer!, "data-event-role-member", "user:b");
     assert.equal(row.find((node) => node.props.className === "op-dw-name").children.join(""), "Bob 参与者 · Orbit");
@@ -375,6 +381,83 @@ test("participant picker replaces the actor-id input when the candidate pool loa
     if (renderer) await act(async () => { renderer!.unmount(); });
     harness.restore();
   }
+});
+
+// 任务 7 评审遗留 1：候选池存在时仍能给活动之外的人员粘贴准确账号 ID（旧工作区能力）
+test("其他账号 ID… switches the participant picker to a manual actor-id input; the grant PUTs the pasted id, a picked participant switches back", async () => {
+  const observedPuts: string[] = [];
+  const harness = install((call) => {
+    if (call.url.includes("/operations/admin")) {
+      return Response.json({ data: { participants: [{ actorId: "user:b", company: "Orbit", displayName: "Bob 参与者" }] }, success: true });
+    }
+    if (call.url === `${ACCESS}/roles`) return Response.json({ data: rolePayload(), success: true });
+    if (call.url === `${ACCESS}/assignments/${encodeURIComponent("actor:outsider")}` && call.method === "GET") {
+      return Response.json({ data: assignment({ revision: 0, role: null, state: null, subjectActorId: "actor:outsider" }), success: true });
+    }
+    if (call.url === `${ACCESS}/assignments/${encodeURIComponent("actor:outsider")}` && call.method === "PUT") {
+      observedPuts.push(call.body ?? "");
+      return Response.json({ data: assignment({ revision: 1, role: "reviewer", state: "active", subjectActorId: "actor:outsider" }), success: true });
+    }
+    throw new Error(`Unexpected request ${call.method} ${call.url}`);
+  });
+  let renderer: ReactTestRenderer | undefined;
+  try {
+    await act(async () => {
+      renderer = create(<OpsRolesDrawer closeHref={CLOSE_HREF} eventId={EVENT_ID} />);
+      await flush();
+    });
+    const picker = () => renderer!.root.find((node) => node.props["data-event-role-participant-picker"] !== undefined);
+    const manualInput = () => renderer!.root.findAll((node) => node.props["data-event-role-subject"] === "new");
+    assert.equal(manualInput().length, 0, "select only while a participant is expected");
+    await act(async () => { picker().props.onChange({ target: { value: MANUAL_SUBJECT } }); });
+    assert.equal(picker().props.value, MANUAL_SUBJECT, "select stays on 其他账号 ID… and is not sent as an actor id");
+    assert.equal(manualInput().length, 1);
+    assert.equal(manualInput()[0].props.placeholder, "请输入准确的账号 ID（可为活动之外的人员）");
+    await act(async () => {
+      manualInput()[0].props.onChange({ target: { value: "actor:outsider" } });
+      byProp(renderer!, "data-event-role-select", "new").props.onChange({ target: { value: "reviewer" } });
+      byProp(renderer!, "data-event-role-reason", "new").props.onChange({ target: { value: "外部审核员" } });
+      await flush();
+    });
+    await act(async () => {
+      byProp(renderer!, "data-event-role-action", "grant").props.onClick();
+      await flush();
+    });
+    assert.deepEqual(observedPuts.map((body) => JSON.parse(body)), [{ expectedRevision: 0, reason: "外部审核员", role: "reviewer" }]);
+    assert.equal(manualInput().length, 1, "manual mode survives the grant (id cleared by the hook)");
+    assert.equal(manualInput()[0].props.value, "");
+    // 选回参与者 → 文本框收起，值 = 参与者 actor ID
+    await act(async () => { picker().props.onChange({ target: { value: "user:b" } }); });
+    assert.equal(manualInput().length, 0);
+    assert.equal(picker().props.value, "user:b");
+  } finally {
+    if (renderer) await act(async () => { renderer!.unmount(); });
+    harness.restore();
+  }
+});
+
+test("a failed roles read shows the error with 刷新角色, which re-fetches /roles without closing the drawer", async () => {
+  let roleCalls = 0;
+  await withDrawer(respondWith((call) => {
+    if (call.url !== `${ACCESS}/roles`) return null;
+    roleCalls += 1;
+    return roleCalls === 1
+      ? Response.json({ error: { message: "角色表暂时不可用" }, success: false }, { status: 503 })
+      : Response.json({ data: rolePayload([{ revision: 1, role: "check_in", subjectActorId: OPERATOR_ID }]), success: true });
+  }), async (renderer, harness) => {
+    assert.equal(alertText(renderer), "角色表暂时不可用");
+    const reload = renderer.root.find((node) => node.props["data-event-role-reload"] !== undefined);
+    assert.equal(reload.props.disabled, false);
+    assert.equal(reload.children.join(""), "刷新角色");
+    await act(async () => {
+      reload.props.onClick();
+      await flush();
+    });
+    assert.equal(roleCalls, 2);
+    assert.equal(renderer.root.findAll((node) => node.props.role === "alert").length, 0);
+    assert.deepEqual(members(renderer), [OWNER_ID, OPERATOR_ID]);
+    assert.deepEqual(harness.assigned, [], "reload never navigates");
+  });
 });
 
 test("✕, overlay click and Esc navigate back to the tab without ?drawer; panel clicks and editable-target Esc do not", async () => {

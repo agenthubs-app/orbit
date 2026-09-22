@@ -8,7 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
 import { OpsHub } from "../../app/(app)/app/events/ops-0918/ops-hub";
-import { OPS_STYLES, OpsConsoleShell, OpsHubHead, OpsToast } from "../../app/(app)/app/events/ops-0918/ops-shell";
+import { OPS_STYLES, OpsConsoleShell, OpsDetailsMenu, OpsHubHead, OpsToast } from "../../app/(app)/app/events/ops-0918/ops-shell";
 import type { EventCenterItem } from "../../app/(app)/app/events/ops-0918/use-event-center";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
@@ -147,6 +147,55 @@ test("hub cards show real fields, status chip, role chip and counts from the agg
   }
 });
 
+// 任务 7 评审遗留 5：每卡 aggregate 逐卡写入（不再等最慢的一张）；草稿卡的 chip 先于时间
+test("hub fills each card's counts as its own aggregate arrives (a slow card does not hold the others) and a live-window draft still reads 草稿", async () => {
+  const now = Date.now();
+  const events = [
+    item(),
+    item({ eventId: "event:slow", lifecycleState: "draft", startsAt: new Date(now - HOUR).toISOString(), title: "草稿沙龙" }),
+  ];
+  let releaseSlow: (() => void) | undefined;
+  const slowGate = new Promise<void>((resolve) => { releaseSlow = resolve; });
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url === "/api/events/center") return Response.json({ data: events, success: true });
+    if (url === "/api/events/event%3Ahub/analytics/aggregate") return Response.json({ data: AGGREGATE, success: true });
+    if (url === "/api/events/event%3Aslow/analytics/aggregate") {
+      await slowGate;
+      return Response.json({ data: { ...AGGREGATE, checkIns: { checkedIn: 0 }, eventId: "event:slow", registrations: { active: 7, cancelled: 0 } }, success: true });
+    }
+    throw new Error(`unexpected fetch ${url}`);
+  }) as typeof fetch;
+  let renderer!: ReactTestRenderer;
+  try {
+    await act(async () => {
+      renderer = create(<OpsHub />);
+      await flush();
+    });
+    await act(async () => { await flush(); });
+    const counts = (id: string) => Object.fromEntries(
+      renderer.root.find((node) => node.props["data-event-center-card"] === id)
+        .findAll((node) => typeof node.props["data-event-center-count"] === "string")
+        .map((node) => [node.props["data-event-center-count"], node.children.join("")]),
+    );
+    assert.deepEqual(counts("event:hub"), { signup: "2", match: "2", checkin: "1" }, "first card is filled while the second is still pending");
+    assert.deepEqual(counts("event:slow"), { signup: "—", match: "—", checkin: "—" });
+    const draftChip = renderer.root.find((node) => node.props["data-event-center-card"] === "event:slow").find((node) => node.props["data-event-center-status"] !== undefined);
+    assert.equal(draftChip.children.join(""), "草稿");
+    assert.equal(draftChip.props["data-event-center-status"], "draft");
+    await act(async () => {
+      releaseSlow!();
+      await flush();
+    });
+    assert.deepEqual(counts("event:slow"), { signup: "7", match: "2", checkin: "0" });
+    assert.deepEqual(counts("event:hub"), { signup: "2", match: "2", checkin: "1" }, "earlier card keeps its values");
+  } finally {
+    globalThis.fetch = originalFetch;
+    renderer.unmount();
+  }
+});
+
 test("hub counts fall back to — when the aggregate is forbidden and 查看数据 leads ended events", async () => {
   const now = Date.now();
   const ended = item({
@@ -256,6 +305,83 @@ test("OpsConsoleShell renders crumb, title, actions and six tab links for the ev
   assert.match(renderToStaticMarkup(<OpsConsoleShell event={event} view="ops"><span /></OpsConsoleShell>), /<h1 class="op-h1">我的活动 · 运营台<\/h1>/u);
   assert.doesNotMatch(html, /Tokyo AI Meetup/u);
   assert.equal(renderToStaticMarkup(<OpsToast text="" />), "");
+});
+
+// 任务 7 评审遗留 4（任务 2 / 3 minor）：<details> 菜单 aria-haspopup / aria-expanded + 点击菜单外 / Esc 关闭
+test("OpsDetailsMenu: summary carries aria-haspopup/aria-expanded from the details open state; outside pointerdown and Esc close it, inside clicks do not", async () => {
+  const ssr = renderToStaticMarkup(
+    <OpsDetailsMenu className="op-head-more" summary="更多 ⌄" summaryClassName="btn op-btn-ghost op-head-more-summary" summaryMarker="data-ops-more">
+      <div className="op-menu" role="menu"><a className="op-menu-item" href="#x" role="menuitem">导出 CSV</a></div>
+    </OpsDetailsMenu>,
+  );
+  assert.match(ssr, /^<details class="op-head-more"><summary aria-expanded="false" aria-haspopup="menu" class="btn op-btn-ghost op-head-more-summary" data-ops-more="true">更多 ⌄<\/summary><div class="op-menu" role="menu">/u);
+  assert.match(renderToStaticMarkup(<OpsDetailsMenu className="op-more" summary="···" summaryClassName="op-more-summary" summaryLabel="更多操作"><i /></OpsDetailsMenu>), /<summary aria-expanded="false" aria-haspopup="menu" aria-label="更多操作" class="op-more-summary">···<\/summary>/u);
+
+  const removed: string[] = [];
+  const inside = { name: "inside" };
+  const detailsNode = {
+    contains(node: unknown) { return (node as { name?: string }).name === inside.name; },
+    removeAttribute(name: string) { removed.push(name); },
+  };
+  const listeners = new Map<string, Set<(event: unknown) => void>>();
+  const originalDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
+  Object.defineProperty(globalThis, "document", {
+    configurable: true,
+    value: {
+      addEventListener(type: string, handler: (event: unknown) => void) {
+        if (!listeners.has(type)) listeners.set(type, new Set());
+        listeners.get(type)!.add(handler);
+      },
+      removeEventListener(type: string, handler: (event: unknown) => void) { listeners.get(type)?.delete(handler); },
+    },
+  });
+  const originalNode = globalThis.Node;
+  // `event.target instanceof Node` 判定：测试环境无 DOM，用最小桩
+  (globalThis as { Node: unknown }).Node = class {};
+  const dispatch = (type: string, event: unknown) => { for (const handler of listeners.get(type) ?? []) handler(event); };
+  let renderer: ReactTestRenderer | undefined;
+  try {
+    await act(async () => {
+      renderer = create(
+        <OpsDetailsMenu className="op-head-more" summary="更多 ⌄" summaryClassName="btn op-head-more-summary">
+          <div className="op-menu" role="menu" />
+        </OpsDetailsMenu>,
+        { createNodeMock: (element) => (element.type === "details" ? detailsNode : null) },
+      );
+    });
+    const summary = () => renderer!.root.findByType("summary");
+    const details = () => renderer!.root.findByType("details");
+    assert.equal(summary().props["aria-expanded"], false);
+    assert.equal(summary().props["aria-haspopup"], "menu");
+    assert.equal(listeners.get("pointerdown")?.size ?? 0, 0, "closed menu registers no document listeners");
+
+    await act(async () => { details().props.onToggle({ currentTarget: { open: true } }); });
+    assert.equal(summary().props["aria-expanded"], true);
+    assert.equal(listeners.get("pointerdown")?.size, 1);
+    assert.equal(listeners.get("keydown")?.size, 1);
+
+    const insideTarget = Object.assign(Object.create((globalThis as { Node: new () => object }).Node.prototype), inside);
+    dispatch("pointerdown", { target: insideTarget });
+    assert.deepEqual(removed, [], "clicks inside the menu keep it open");
+    dispatch("keydown", { key: "Enter" });
+    assert.deepEqual(removed, []);
+
+    const outsideTarget = Object.create((globalThis as { Node: new () => object }).Node.prototype);
+    dispatch("pointerdown", { target: outsideTarget });
+    assert.deepEqual(removed, ["open"], "outside pointerdown removes the open attribute (native details closes)");
+    dispatch("keydown", { key: "Escape" });
+    assert.deepEqual(removed, ["open", "open"]);
+
+    await act(async () => { details().props.onToggle({ currentTarget: { open: false } }); });
+    assert.equal(summary().props["aria-expanded"], false);
+    assert.equal(listeners.get("pointerdown")?.size, 0, "listeners are removed once closed");
+    assert.equal(listeners.get("keydown")?.size, 0);
+  } finally {
+    if (renderer) await act(async () => { renderer!.unmount(); });
+    if (originalDocument) Object.defineProperty(globalThis, "document", originalDocument);
+    else Reflect.deleteProperty(globalThis, "document");
+    (globalThis as { Node: unknown }).Node = originalNode;
+  }
 });
 
 test("OpsHubHead shows the identity chip only with a role label", () => {

@@ -8,6 +8,7 @@ import type {
   EventOperationsGeneration,
 } from "../../../../../features/events/event-operations/contract";
 import type { EventOperationsAdminWorkspace } from "../../../../../features/events/event-operations/service";
+import { matchResultLabel } from "./ops-model";
 
 // 原样抽自 [id]/operations/event-operations-admin-workspace.tsx（15–54、113–152、
 // 161–169、336–580 行）：配置表单模型、requestJson、工作区加载/轮询/自动重试、
@@ -395,13 +396,10 @@ export function useEventOperations(event: EventOperationsEvent): EventOperations
       ].sort((left, right) => Date.parse(left.at) - Date.parse(right.at))
     : [];
 
+  // 任务 7：与 ops-model `matchResultLabel` / `publishableGeneration` 同一谓词（看最新一次生成，而不是任意一条 completed）。
   const publishedMatchStatus = !workspace
     ? "—"
-    : workspace.publishedResult
-      ? "已发布"
-      : workspace.generations.some(({ generation }) => generation.status === "completed")
-        ? "待发布"
-        : "未发布";
+    : matchResultLabel({ newestGeneration, publishedAt: workspace.publishedResult?.publishedAt ?? null });
 
   // 运营进度步进条：全部从真实配置时间门禁、生成状态与发布结果推导，无伪造阶段。
   const progressSteps = workspace && configuration

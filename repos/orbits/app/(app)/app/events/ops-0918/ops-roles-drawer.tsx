@@ -5,8 +5,10 @@
  * hook，接口零改动）。
  *
  * 与设计的差异（审阅修订 10）：真实 API 需要精确 actor ID + 1–1000 字理由，角色是 运营 / 签到 / 审核 / 只读分析（无「管理员 / 数据查看」），
- * 负责人来自 Event Core 不可授予 → 「邮箱或用户名」输入改为参与者选择器（候选池不可用时退为 actor ID 文本框），
+ * 负责人来自 Event Core 不可授予 → 「邮箱或用户名」输入改为参与者选择器（候选池不可用时退为 actor ID 文本框；候选池可用时
+ * 选择器末项「其他账号 ID…」切回文本框——旧工作区允许给活动之外的人员粘贴准确账号 ID，任务 7 评审补回），
  * 角色为真实 `<select>`，新增理由输入；每行「···」为 `<details>` 菜单（改角色 / 移除，各带理由 + 确认），负责人行无菜单。
+ * `error` 时面板顶部错误条附「刷新角色」= `load()`（角色表读失败后可重读，不必关抽屉）。
  * 关闭（遮罩 / ✕ / Esc）= 去掉 `?drawer` 整页导航回运营台（保留 `?tab`，与 events-0918/event-register-modal 同法）；
  * 打开时锁 body 滚动 + 焦点进入面板 + Tab 焦点循环（events-0918/event-modal-frame 同法）。
  */
@@ -17,7 +19,7 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKe
 import { loopFocus } from "../events-0918/event-modal-frame";
 import { shouldCloseOnKeydown } from "../events-0918/event-register-modal";
 import { collaboratorInitial, collaboratorName, ROLE_CHIP_TONE } from "./ops-model";
-import { OpsToast } from "./ops-shell";
+import { OpsDetailsMenu, OpsToast } from "./ops-shell";
 import {
   ROLE_OPTIONS,
   roleFromValue,
@@ -27,6 +29,8 @@ import {
 } from "./use-role-management";
 
 const TITLE_ID = "ops-roles-drawer-title";
+/** 参与者选择器末项：切到手动 actor ID 输入（值不会被当成 actor ID 提交）。 */
+export const MANUAL_SUBJECT = "__manual__";
 
 type MemberEditMode = { actorId: string; mode: "change" | "revoke" } | null;
 
@@ -36,6 +40,7 @@ export function OpsRolesDrawer({ closeHref, eventId }: { closeHref: string; even
     delegatedMembers,
     error,
     grantOrChange,
+    load,
     loading,
     memberEdits,
     newReason,
@@ -53,6 +58,8 @@ export function OpsRolesDrawer({ closeHref, eventId }: { closeHref: string; even
   } = useRoleManagement(eventId);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const [editing, setEditing] = useState<MemberEditMode>(null);
+  // 「其他账号 ID…」：候选池存在时仍允许手动粘贴活动之外的精确 actor ID（旧工作区能力）。
+  const [manualSubject, setManualSubject] = useState(false);
 
   const close = useCallback(() => {
     window.location.assign(closeHref);
@@ -139,13 +146,12 @@ export function OpsRolesDrawer({ closeHref, eventId }: { closeHref: string; even
           <span className="op-dw-role" style={{ background: tone.bg, color: tone.color }}>{roleLabel[member.role]}</span>
           <span className="op-dw-fill" />
           {edit ? (
-            <details className="op-dw-more">
-              <summary aria-label={`${collaboratorName(id, participantLabelByActorId)} 的更多操作`} className="op-dw-dots">···</summary>
+            <OpsDetailsMenu className="op-dw-more" summary="···" summaryClassName="op-dw-dots" summaryLabel={`${collaboratorName(id, participantLabelByActorId)} 的更多操作`}>
               <div className="op-menu" role="menu">
                 <button className="btn op-menu-item op-dw-menu-btn" data-event-role-action={`edit:${id}`} disabled={disabled} onClick={(event) => pickMenu(event, id, "change")} role="menuitem" type="button">改角色</button>
                 <button className="btn op-menu-item op-dw-menu-btn" data-event-role-action={`remove:${id}`} disabled={disabled} onClick={(event) => pickMenu(event, id, "revoke")} role="menuitem" type="button">移除</button>
               </div>
-            </details>
+            </OpsDetailsMenu>
           ) : null}
         </span>
         {edit && open ? (
@@ -191,7 +197,14 @@ export function OpsRolesDrawer({ closeHref, eventId }: { closeHref: string; even
             <button aria-label="关闭" className="btn op-dw-close" onClick={close} type="button">✕</button>
           </div>
 
-          {error ? <div className="op-note op-note-error op-dw-note" role="alert">{error}</div> : null}
+          {error ? (
+            <div className="op-note op-note-error op-dw-note" role="alert">
+              <span>{error}</span>
+              <button className="btn op-dw-cancel op-dw-reload" data-event-role-reload disabled={disabled || loading} onClick={() => void load()} type="button">
+                {loading ? "正在刷新…" : "刷新角色"}
+              </button>
+            </div>
+          ) : null}
 
           <section className="op-dw-sec">
             <strong className="op-dw-sec-title">当前协作者（{total}）</strong>
@@ -210,15 +223,25 @@ export function OpsRolesDrawer({ closeHref, eventId }: { closeHref: string; even
                   className="op-dw-input"
                   data-event-role-participant-picker
                   disabled={disabled}
-                  onChange={(input) => setNewSubjectActorId(input.target.value)}
-                  value={participantLabelByActorId.has(newSubjectActorId) ? newSubjectActorId : ""}
+                  onChange={(input) => {
+                    if (input.target.value === MANUAL_SUBJECT) {
+                      setManualSubject(true);
+                      setNewSubjectActorId("");
+                      return;
+                    }
+                    setManualSubject(false);
+                    setNewSubjectActorId(input.target.value);
+                  }}
+                  value={manualSubject ? MANUAL_SUBJECT : participantLabelByActorId.has(newSubjectActorId) ? newSubjectActorId : ""}
                 >
                   <option value="">请选择参与者</option>
                   {participantOptions.map((option) => <option key={option.actorId} value={option.actorId}>{option.label}</option>)}
+                  <option value={MANUAL_SUBJECT}>其他账号 ID…</option>
                 </select>
-              ) : (
-                <input className="op-dw-input" data-event-role-subject="new" disabled={disabled} onChange={(input) => setNewSubjectActorId(input.target.value)} placeholder="请输入参与者 actor ID" value={newSubjectActorId} />
-              )}
+              ) : null}
+              {!participantOptions || manualSubject ? (
+                <input className="op-dw-input" data-event-role-subject="new" disabled={disabled} onChange={(input) => setNewSubjectActorId(input.target.value)} placeholder={participantOptions ? "请输入准确的账号 ID（可为活动之外的人员）" : "请输入参与者 actor ID"} value={newSubjectActorId} />
+              ) : null}
             </span>
             <span className="op-dw-field">
               <span className="op-dw-label">角色</span>

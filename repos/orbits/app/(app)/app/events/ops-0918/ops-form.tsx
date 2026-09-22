@@ -8,7 +8,8 @@
  * （设计七列去掉类型 chip → 六列；⠿ 仅装饰，无排序 API；✎ = 行内展开 题干 / 选项逐行 / 必填（V2）；⌫ = `removeQuestion`（V2）；
  * 「＋ 添加问题」= `addQuestion`，V1 或已 4 题 → disabled + 说明）；「高级」折叠区（设计外）= 轨道 select + 强调色。
  * 右列：报名弹窗预览 = 当前草稿客户端渲染（封面渐变 + 真实标题 / 日期时间；地点无来源 → 省略；positioning 单选圆 其余多选方框；
- * 全部未选；「补充介绍」「0 / 500」无来源 → 省略；「提交报名」静态）；「预览（零写入）」= `previewDraft`，hash 显示在卡下方。
+ * 全部未选；「补充介绍」「0 / 500」无来源 → 省略；「提交报名」静态）；「预览（零写入）」= `previewDraft`，卡下方一行显示
+ * 返回的 hash + 服务端归一化后的轨道 / 题数（`preview.configuration`，任务 7；预览卡本体仍渲染当前草稿，不回显归一化配置）。
  */
 "use client";
 
@@ -21,6 +22,7 @@ import {
   canAddQuestion,
   cleanOptions,
   FORM_INTRO_LIMIT,
+  FORM_OPTION_MIN,
   formQuestionRows,
   formStatusChip,
   hasBlankOptions,
@@ -31,7 +33,7 @@ import {
 import { useExperienceEditor } from "./use-experience-editor";
 
 const OPTION_LIMIT = 5;
-const OPTION_MIN = 2;
+const OPTION_MIN = FORM_OPTION_MIN;
 
 export function OpsForm({ event }: { event: EventOperationsPageEvent }) {
   const [editing, setEditing] = useState<number | null>(null);
@@ -281,7 +283,11 @@ export function OpsForm({ event }: { event: EventOperationsPageEvent }) {
             ))}
             <span aria-disabled="true" className="op-fp-submit">提交报名</span>
           </div>
-          {preview ? <span className="op-fp-hash" data-ops-preview-hash={preview.hash}>{`预览 hash ${preview.hash} · 仅内存校验，不写入数据库`}</span> : null}
+          {preview ? (
+            <span className="op-fp-hash" data-ops-preview-hash={preview.hash} data-ops-preview-questions={preview.configuration.questionSet.questions.length}>
+              {`预览 hash ${preview.hash} · 服务端归一化后 ${preview.configuration.questionSet.track.toUpperCase()} 轨道 ${preview.configuration.questionSet.questions.length} 题 · 仅内存校验，不写入数据库`}
+            </span>
+          ) : null}
           <span className="op-fp-note">ⓘ 预览仅用于编辑参考，发布后用户将看到此弹窗。</span>
         </section>
       </div>

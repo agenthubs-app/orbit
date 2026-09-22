@@ -6,7 +6,7 @@
  */
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import type { EventOperationsPageEvent } from "../[id]/operations/event-operations-page-event";
 import {
@@ -19,6 +19,63 @@ import {
   type HubTab,
   type OpsView,
 } from "./ops-model";
+
+/**
+ * `<details>` 弹出菜单（任务 7 评审遗留）：summary 带 `aria-haspopup="menu"` + `aria-expanded`（由 details 的 open 态经 onToggle 驱动），
+ * 展开时点击菜单外或按 Esc 关闭（原生 details 不会自动收起）。SSR 输出与裸 `<details>` 一致（aria-expanded=false）。
+ * 用于运营台头部「更多 ⌄」、hub 卡「···」与抽屉成员「···」。
+ */
+export function OpsDetailsMenu({
+  children,
+  className,
+  summary,
+  summaryClassName,
+  summaryLabel,
+  summaryMarker,
+}: {
+  children: ReactNode;
+  className: string;
+  summary: ReactNode;
+  summaryClassName: string;
+  summaryLabel?: string;
+  /** 既有测试断言的 `data-*` 标记（如 `data-ops-more`）。 */
+  summaryMarker?: string;
+}) {
+  const ref = useRef<HTMLDetailsElement | null>(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open || typeof document === "undefined") return;
+    const closeMenu = () => ref.current?.removeAttribute("open");
+    const onPointerDown = (event: PointerEvent) => {
+      if (ref.current && event.target instanceof Node && !ref.current.contains(event.target)) closeMenu();
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeMenu();
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <details className={className} onToggle={(event) => setOpen(event.currentTarget.open)} ref={ref}>
+      <summary
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label={summaryLabel}
+        className={summaryClassName}
+        {...(summaryMarker ? { [summaryMarker]: true } : {})}
+      >
+        {summary}
+      </summary>
+      {children}
+    </details>
+  );
+}
 
 export function OpsToast({ text }: { text: string }) {
   if (!text) return null;
@@ -144,8 +201,7 @@ export function OpsConsoleShell({
           <div className="op-head-actions">
             <a className="btn op-btn-dark" href={eventPagePath(event.id)}>查看活动页面 →</a>
             {more ? (
-              <details className="op-head-more">
-                <summary className="btn op-btn-ghost op-head-more-summary" data-ops-more>更多 ⌄</summary>
+              <OpsDetailsMenu className="op-head-more" summary="更多 ⌄" summaryClassName="btn op-btn-ghost op-head-more-summary" summaryMarker="data-ops-more">
                 <div className="op-menu" role="menu">
                   {more.map((item) => (
                     <a
@@ -159,7 +215,7 @@ export function OpsConsoleShell({
                     </a>
                   ))}
                 </div>
-              </details>
+              </OpsDetailsMenu>
             ) : (
               <a className="btn op-btn-ghost" data-ops-more href={rolesDrawerHref(event.id)}>更多 ⌄</a>
             )}
@@ -641,6 +697,8 @@ export const OPS_STYLES = `
 [data-orbit-real-page="ops-0918"] .btn.op-dw-close:hover { background: #ECEEFB; }
 [data-orbit-real-page="ops-0918"] .btn.op-dw-close:active { transform: none; }
 [data-orbit-real-page="ops-0918"] .op-dw-note { padding: 12px 14px; border-radius: 12px; }
+/* 「刷新角色」（任务 7：角色表读失败后可重读；设计无错误态）：沿用 op-dw-cancel 口径，缩成小号 */
+[data-orbit-real-page="ops-0918"] .btn.op-dw-reload { padding: 8px 12px; font-size: 12px; }
 [data-orbit-real-page="ops-0918"] .op-dw-sec { border: 1px solid #E8E9F6; border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
 [data-orbit-real-page="ops-0918"] .op-dw-sec-title { font-size: 16px; font-weight: 500; }
 [data-orbit-real-page="ops-0918"] .op-dw-member { display: flex; flex-direction: column; gap: 8px; }

@@ -19,7 +19,7 @@ import { buttonNamed, EVENT, EVENT_ID, flush, text } from "../support/ops-consol
 const BASE = `/api/events/${encodeURIComponent(EVENT_ID)}/experience`;
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
-function question(intent: "target_attendees" | "value_offered", prompt: string, required = true) {
+function question(intent: "target_attendees" | "value_offered" | "desired_outcome", prompt: string, required = true) {
   return {
     id: intent,
     intent,
@@ -278,7 +278,10 @@ test("preview POSTs the current configuration to /preview and renders the return
       assert.equal(call.url, `${BASE}/preview`);
       const payload = JSON.parse(call.body ?? "{}") as { configuration: { introduction: string } };
       assert.equal(payload.configuration.introduction, "Welcome");
-      return Response.json({ data: { version: { ...version(9, "preview-hash"), configuration: configuration("Preview intro") } }, success: true });
+      // 服务端归一化返回 V2 三题（与当前草稿 V1 两题不同）：卡下方一行必须显示归一化结果，预览卡本体仍是当前草稿
+      const normalised = configuration("Preview intro", "v2");
+      normalised.questionSet.questions.push(question("desired_outcome", "Needs?", false));
+      return Response.json({ data: { version: { ...version(9, "preview-hash"), configuration: normalised } }, success: true });
     }
     return Response.json({ data: snapshot(3), success: true });
   }, async (renderer, harness) => {
@@ -287,8 +290,12 @@ test("preview POSTs the current configuration to /preview and renders the return
       buttonNamed(renderer, "预览（零写入）").props.onClick();
       await flush();
     });
-    assert.equal(renderer.root.find((node) => node.props["data-ops-preview-hash"] !== undefined).props["data-ops-preview-hash"], "preview-hash");
+    const hashLine = renderer.root.find((node) => node.props["data-ops-preview-hash"] !== undefined);
+    assert.equal(hashLine.props["data-ops-preview-hash"], "preview-hash");
+    assert.equal(hashLine.props["data-ops-preview-questions"], 3);
+    assert.equal(hashLine.children.join(""), "预览 hash preview-hash · 服务端归一化后 V2 轨道 3 题 · 仅内存校验，不写入数据库");
     assert.match(text(renderer), /preview-hash/u);
+    assert.doesNotMatch(text(renderer), /Preview intro|Needs\?/u, "the preview card keeps rendering the current draft, not the normalised echo");
     assert.match(text(renderer), /预览已生成/u);
     assert.deepEqual(harness.observed.map((call) => call.method), ["GET", "POST"]);
   });
@@ -405,6 +412,24 @@ test("＋ 添加选项 pushes a blank option that blocks 保存 / 预览 / 发�
     assert.deepEqual(options().map((node) => node.props.value), ["A", "B", "Cee"], "blank dropped on blur (old comma-split trim/filter behaviour)");
     assert.equal(buttonNamed(renderer, "保存草稿").props.disabled, false);
     assert.doesNotMatch(text(renderer), /有选项为空/u);
+    // 任务 7 评审遗留 3：清空一项后失焦不得把题目降到 2 项以下——空项保留，仍由 hasBlankOptions 拦截
+    await act(async () => {
+      renderer.root.findAll((node) => typeof node.props["aria-label"] === "string" && node.props["aria-label"].startsWith("删除选项 3"))[0].props.onClick();
+      await flush();
+    });
+    assert.deepEqual(options().map((node) => node.props.value), ["A", "B"]);
+    await act(async () => {
+      options()[1].props.onChange({ target: { value: "   " } });
+      await flush();
+    });
+    await act(async () => {
+      options()[1].props.onBlur();
+      await flush();
+    });
+    assert.deepEqual(options().map((node) => node.props.value), ["A", ""], "blur keeps the (trimmed) blank instead of dropping to one option");
+    assert.equal(buttonNamed(renderer, "保存草稿").props.disabled, true);
+    assert.equal(buttonNamed(renderer, "预览（零写入）").props.disabled, true);
+    assert.match(text(renderer), /有选项为空：请填写或删除空白选项后再保存、预览或发布。/u);
   });
 });
 
@@ -412,14 +437,17 @@ test("experience page gates on experience.configure before reading the event and
   const page = readFileSync(join(projectRoot, "app/(app)/app/events/[id]/operations/experience/page.tsx"), "utf8");
   const screen = readFileSync(join(projectRoot, "app/(app)/app/events/ops-0918/ops-form.tsx"), "utf8");
   const hook = readFileSync(join(projectRoot, "app/(app)/app/events/ops-0918/use-experience-editor.ts"), "utf8");
+  const boundary = readFileSync(join(projectRoot, "app/(app)/app/events/ops-0918/ops-boundary.tsx"), "utf8");
   assert.match(page, /await Promise\.all\(\[params, auth\(\)\]\)/u);
   assert.match(page, /redirect\(`\/app\/account\/login\?next=/u);
   assert.match(page, /requireEventCapability\(\{[^}]*capability: "experience\.configure"/u);
   assert.match(page, /createConfiguredEventAccessService\(\)/u);
   assert.ok(page.indexOf("requireEventCapability({") < page.indexOf("await loadEventOperationsPageEvent("), "gate runs before the event read");
   assert.match(page, /title="没有报名设置权限"/u);
-  assert.match(page, /href="\/app\/events\/center">返回运营活动中心/u);
-  assert.match(page, /operations\/experience`\}>重试/u);
+  // 任务 7：共用 ops-0918/ops-boundary.tsx
+  assert.doesNotMatch(page, /function Boundary|PublicTopNav/u);
+  assert.match(page, /<OpsBoundary [^>]*eyebrow="EVENT OPERATIONS · EXPERIENCE"[^>]*page="event-experience-boundary"[^>]*retryHref=\{`\/app\/events\/\$\{encodeURIComponent\(eventId\)\}\/operations\/experience`\}[^>]*title="没有报名设置权限"/u);
+  assert.match(boundary, /href="\/app\/events\/center">返回运营活动中心/u);
   assert.match(page, /data-orbit-real-page="ops-0918"/u);
   assert.match(page, /<AccountTopNav active="events" \/>/u);
   assert.match(page, /view="form"/u);

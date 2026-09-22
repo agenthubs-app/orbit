@@ -208,13 +208,17 @@ const CHIP_BY_KIND: Record<HubChipKind, HubStatusChip> = {
 /** 「即将开始」= 已发布且 24 小时内开始（`/api/events/center` 无报名窗字段，以开始时间代之）。 */
 export const SOON_WINDOW_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * 生命周期先于时间（任务 7 评审遗留：草稿活动无论排期落在何处都显示「草稿」，不得显示「进行中 / 已结束 / 即将开始」）；
+ * 只有已发布活动才按时间进入 报名中 / 即将开始 / 进行中 / 已结束。
+ */
 export function hubStatusChip(item: EventCenterItem, now: number): HubStatusChip {
   if (item.migrationPending) return CHIP_BY_KIND.pending;
   if (item.lifecycleState === "cancelled") return CHIP_BY_KIND.cancelled;
   if (item.lifecycleState === "archived" || item.lifecycleState === "legacy_archived") return CHIP_BY_KIND.ended;
+  if (item.lifecycleState === "draft") return CHIP_BY_KIND.draft;
   const phase = hubPhase(item, now);
   if (phase === "ended") return CHIP_BY_KIND.ended;
-  if (item.lifecycleState === "draft") return CHIP_BY_KIND.draft;
   if (phase === "live") return CHIP_BY_KIND.live;
   const start = parseTime(item.startsAt);
   if (start !== null && start - now <= SOON_WINDOW_MS) return CHIP_BY_KIND.soon;
@@ -490,7 +494,11 @@ export function insufficientProfileCount(
   return participants.filter((participant) => participant.profileCompleteness === "minimal" && !isMatched(participant, matched)).length;
 }
 
-/** 已发布 → 「已发布」；最新生成 completed 未发布 → 「待发布」；其余 → 「未发布」（与 hook 的 publishedMatchStatus 同义，供纯测试）。 */
+/**
+ * 概览「匹配结果」卡：已发布 → 「已发布」；最新生成 completed 未发布 → 「待发布」；其余 → 「未发布」。
+ * 任务 7 起是唯一谓词：hook `publishedMatchStatus` 直接调用本函数；`publishableGeneration`（发布入口）同样只看最新生成。
+ * 一条更早的 completed 生成之上又有 running / failed 的新生成 → 「未发布」（旧 `generations.some(completed)` 会误报「待发布」）。
+ */
 export function matchResultLabel(state: Pick<PipelineState, "newestGeneration" | "publishedAt">): "已发布" | "待发布" | "未发布" {
   if (state.publishedAt !== null) return "已发布";
   if (state.newestGeneration?.status === "completed") return "待发布";
@@ -738,9 +746,18 @@ export function previewChoice(intent: EventExperienceQuestion["intent"]): "singl
   return intent === "positioning" ? "single" : "multi";
 }
 
-/** 选项行内编辑：失焦时去掉首尾空白并丢弃空项（旧编辑器逗号拆分 `trim().filter(Boolean)` 同口径）。 */
-export function cleanOptions(options: readonly string[]): string[] {
-  return options.map((option) => option.trim()).filter(Boolean);
+/** 每题选项数下限（题集契约 2–5 项；表单「删除」按钮与失焦清理都以此为底）。 */
+export const FORM_OPTION_MIN = 2;
+
+/**
+ * 选项行内编辑：失焦时去掉首尾空白并丢弃空项（旧编辑器逗号拆分 `trim().filter(Boolean)` 同口径）。
+ * 任务 7：丢弃空项不得把选项降到 `min` 以下——非空项不足 `min` 时保留（已 trim 的）空项，交给 `hasBlankOptions`
+ * 拦截保存 / 预览 / 发布，避免失焦一下就把一道题清成 1 项而无提示。
+ */
+export function cleanOptions(options: readonly string[], min = FORM_OPTION_MIN): string[] {
+  const trimmed = options.map((option) => option.trim());
+  const filled = trimmed.filter(Boolean);
+  return filled.length >= min ? filled : trimmed;
 }
 
 /** 任一题目仍有空白选项（「＋ 添加选项」刚推入的 ""）→ 保存 / 预览 / 发布前先补齐。 */

@@ -30,7 +30,7 @@ import {
   ROLE_LABEL,
   type HubTab,
 } from "./ops-model";
-import { OPS_STYLES, OpsHubHead } from "./ops-shell";
+import { OPS_STYLES, OpsDetailsMenu, OpsHubHead } from "./ops-shell";
 import { useEventCenter, type EventCenterItem } from "./use-event-center";
 
 interface Envelope<T> {
@@ -40,7 +40,10 @@ interface Envelope<T> {
 
 type AggregateMap = Readonly<Record<string, EventAnalyticsOrganizerAggregate | null>>;
 
-/** 每卡一次 aggregate 读取；任何非 2xx / 解析失败 → null（渲染为「—」）。迁移待确认的活动不请求。 */
+/**
+ * 每卡一次 aggregate 读取；任何非 2xx / 解析失败 → null（渲染为「—」）。迁移待确认的活动不请求。
+ * 任务 7：逐卡 progressive——每个响应到达就写入该卡（不再 Promise.all 等最慢的一张），慢卡不拖住其它卡的计数。
+ */
 function useHubAggregates(events: readonly EventCenterItem[]): AggregateMap {
   const [aggregates, setAggregates] = useState<AggregateMap>({});
   const ids = useMemo(
@@ -50,20 +53,21 @@ function useHubAggregates(events: readonly EventCenterItem[]): AggregateMap {
   useEffect(() => {
     if (ids.length === 0) return;
     let active = true;
-    void Promise.all(
-      ids.map(async (eventId) => {
+    for (const eventId of ids) {
+      void (async () => {
+        let value: EventAnalyticsOrganizerAggregate | null = null;
         try {
           const response = await fetch(`/api/events/${encodeURIComponent(eventId)}/analytics/aggregate`, { cache: "no-store" });
-          if (!response.ok) return [eventId, null] as const;
-          const body = (await response.json().catch(() => null)) as Envelope<EventAnalyticsOrganizerAggregate> | null;
-          return [eventId, body?.success === true && body.data ? body.data : null] as const;
+          if (response.ok) {
+            const body = (await response.json().catch(() => null)) as Envelope<EventAnalyticsOrganizerAggregate> | null;
+            value = body?.success === true && body.data ? body.data : null;
+          }
         } catch {
-          return [eventId, null] as const;
+          value = null;
         }
-      }),
-    ).then((entries) => {
-      if (active) setAggregates(Object.fromEntries(entries));
-    });
+        if (active) setAggregates((current) => ({ ...current, [eventId]: value }));
+      })();
+    }
     return () => {
       active = false;
     };
@@ -137,8 +141,7 @@ function HubCard({ event, aggregate, now }: { event: EventCenterItem; aggregate:
           </span>
         )}
         {secondary.length ? (
-          <details className="op-more">
-            <summary aria-label="更多操作" className="op-more-summary">···</summary>
+          <OpsDetailsMenu className="op-more" summary="···" summaryClassName="op-more-summary" summaryLabel="更多操作">
             <div className="op-menu" role="menu">
               {secondary.map((action) => (
                 <a
@@ -152,7 +155,7 @@ function HubCard({ event, aggregate, now }: { event: EventCenterItem; aggregate:
                 </a>
               ))}
             </div>
-          </details>
+          </OpsDetailsMenu>
         ) : null}
       </span>
     </article>

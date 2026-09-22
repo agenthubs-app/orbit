@@ -118,10 +118,10 @@ test("report SSR renders the console head with the 数据报告 tab active, no p
   assert.match(html, /aria-current="page" class="op-tab op-tab-on" href="[^"]+\/analytics" role="tab">数据报告</u);
   assert.match(html, /活动中心<\/a> \/ <a class="op-crumb-link" href="[^"]+">屏级替换夹具活动<\/a> \/ <a class="op-crumb-link" href="[^"]+">运营台<\/a> \/ 数据报告/u);
   assert.match(html, /role="menuitem">导出 CSV/u);
-  assert.match(html, /<span aria-label="活动报告视图" class="op-rviews" data-event-analytics-view-switch="true" role="group"><\/span>/u, "empty switch keeps the row; no pill until activeView is known");
+  const markup = html.replace(/<style>[\s\S]*?<\/style>/u, "");
+  assert.doesNotMatch(markup, /op-rviews|op-rbar|data-event-analytics-view-switch/u, "no empty pill container (grey blob) until activeView is known (任务 7)");
   assert.doesNotMatch(html, /整体视图|我的视图/u, "attendee-only users must not see 整体视图 while loading");
   assert.match(html, /正在读取活动证据…/u);
-  const markup = html.replace(/<style>[\s\S]*?<\/style>/u, "");
   assert.doesNotMatch(markup, /data-ops-rstat=|报名趋势|参会者来源|校友推荐|Tokyo AI Meetup|86|已完成跟进|61% 完成率/u);
 });
 
