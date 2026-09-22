@@ -26,7 +26,7 @@
 import type { AgentLedgerEntry } from "../../../../../features/agent/ledger/contract";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { OrbitAllActionsControls } from "../actions/orbit-all-actions-controls";
-import { OrbitTodayDecisionForm } from "../../today/orbit-today-decision-form";
+import { OrbitTodayDecisionForm } from "../actions/orbit-today-decision-form";
 import type {
   AgentActionsRouteViewModel,
   AgentActionsTierKey,

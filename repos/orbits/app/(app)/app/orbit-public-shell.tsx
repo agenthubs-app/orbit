@@ -9,13 +9,10 @@ import { Icon } from "./orbit-reference-primitives";
 import { productHref } from "./orbit-product-href";
 import { ORBIT_Z } from "./orbit-z";
 
-// "schedule" no longer has a nav entry of its own (T3, today-schedule merge —
-// folded into "today", now labeled 日程/Schedule) but stays in the union:
-// app/(app)/app/schedule/orbit-real-schedule-page.tsx and
-// app/(app)/app/followups/orbit-real-schedule.tsx still reference
-// `active="schedule"` — both files stay in place (unreachable from normal
-// navigation now that schedule/page.tsx and followups/page.tsx redirect to
-// /app/today, but not deleted; see those route adapters).
+// iOrbit 任务 6a：`/app/schedule`、`/app/followups`、`/app/today` 三条路由已随
+// 路由归并删除（取代者是 `/app/agent/plan` 与 `/app/agent/actions`）。"schedule"
+// 与 "today" 已无任何页面使用，但留在 union 里：这个 union 是壳的公共 API，
+// 收窄它会波及仍在传 `active` 的其它壳调用点，属于 6a 范围外的改动。
 export type OrbitNavActive = "home" | "today" | "events" | "schedule" | "cards" | "agent" | "me" | "settings";
 
 export { productHref } from "./orbit-product-href";

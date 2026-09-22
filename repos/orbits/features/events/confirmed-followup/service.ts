@@ -23,7 +23,7 @@ export interface ConfirmedEventFollowupView {
   sourceKind: ConfirmedFollowupSourceKind;
   sourceText: string;
   state: "available" | "completed" | "created" | "dismissed" | "partial";
-  taskHref: "/app/followups";
+  taskHref: "/app/agent/plan";
   taskId: string;
   taskStatus: "completed" | "dismissed" | "missing" | "open" | "scheduled";
 }
@@ -224,7 +224,7 @@ function view(input: {
     sourceKind: input.sourceKind,
     sourceText: input.sourceText,
     state: followupState(input.marker, resolvedTaskStatus, resolvedReminderStatus),
-    taskHref: "/app/followups",
+    taskHref: "/app/agent/plan",
     taskId: identityIds.taskId,
     taskStatus: resolvedTaskStatus,
   };
@@ -422,7 +422,7 @@ export function createConfirmedEventFollowupService(input: {
             sourceIndex: value.sourceIndex,
             sourceKind: value.sourceKind,
             sourceText,
-            taskHref: "/app/followups",
+            taskHref: "/app/agent/plan",
             taskId: identityIds.taskId,
           },
           recordId: identityIds.markerId,

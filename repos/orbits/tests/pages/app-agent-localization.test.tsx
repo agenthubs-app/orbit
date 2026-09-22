@@ -8,6 +8,7 @@ import { createMockOrbitAgentConversationService } from "../../features/orbit-ai
 import { localizeOrbitAiPanelProactiveContext } from "../../features/orbit-ai/panel-localization";
 import { loadOrbitAiProactiveCalendarMessagesForApp } from "../../features/orbit-ai/proactive-calendar-service";
 import { syncResult } from "../support/sync-result";
+import { iorbitChatSurfaceSource } from "./iorbit-chat-surface-source";
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -84,9 +85,9 @@ test("/app/agent proactive calendar context remains localizable without changing
 
 test("/app/agent localizes server view models and sends locale through the API boundary once", () => {
   const pageSource = readProjectFile("app/(app)/app/agent/page.tsx");
-  const agentSource = readProjectFile(
-    "app/(app)/app/agent/orbit-real-agent.tsx",
-  );
+  // iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除；对话面的源码断言改读
+  // `iorbit-chat-surface-source.ts` 合并的那一组在售文件（内容同源，换了住处）。
+  const agentSource = iorbitChatSurfaceSource();
 
   assert.match(pageSource, /requestedLanguage/);
   assert.match(pageSource, /localizeOrbitTree/);

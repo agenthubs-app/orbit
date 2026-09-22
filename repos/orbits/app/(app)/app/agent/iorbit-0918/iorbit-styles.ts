@@ -69,6 +69,10 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .ir-card-icon { width: 30px; height: 30px; border-radius: 9px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; font-size: 14px; }
 [data-orbit-real-page="iorbit-0918"] .ir-card-h { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 19px; letter-spacing: -0.02em; }
 [data-orbit-real-page="iorbit-0918"] .ir-card-link { font-size: 13px; color: #4B4FC7; }
+/* 任务 6a（任务 5 遗留 10）：下面五条 ir-* 类都落在链接元素上，作用域的
+   a{color:#3B3F7A} / a:hover{color:#0E1225} 会压掉它们（设计里这些块要么是按钮，
+   要么把墨色写在子元素上）。基规则与 :hover 各自写回自己的字色。 */
+[data-orbit-real-page="iorbit-0918"] .ir-card-link:hover { color: #4B4FC7; }
 /* ── 今日日程（设计 84–107）── */
 [data-orbit-real-page="iorbit-0918"] .ir-brief { padding: 16px 18px; border-radius: 14px; background: #ECEEFB; display: flex; flex-direction: column; gap: 10px; }
 [data-orbit-real-page="iorbit-0918"] .ir-brief-head { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; color: #2E3270; }
@@ -118,8 +122,8 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .ir-day-item-meta { font-size: 12px; color: #6B6F99; }
 [data-orbit-real-page="iorbit-0918"] .ir-day-item-title { font-size: 14px; font-weight: 500; }
 /* ── 已报名活动（设计 152–169）── */
-[data-orbit-real-page="iorbit-0918"] .ir-event { display: flex; align-items: center; gap: 16px; padding: 12px; border-radius: 14px; background: #FFFFFF; }
-[data-orbit-real-page="iorbit-0918"] .ir-event:hover { background: #F7F7FD; }
+[data-orbit-real-page="iorbit-0918"] .ir-event { display: flex; align-items: center; gap: 16px; padding: 12px; border-radius: 14px; background: #FFFFFF; color: #0E1225; }
+[data-orbit-real-page="iorbit-0918"] .ir-event:hover { background: #F7F7FD; color: inherit; }
 [data-orbit-real-page="iorbit-0918"] .ir-event-date { width: 76px; height: 66px; flex: none; border-radius: 12px; color: #2E3270; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; }
 [data-orbit-real-page="iorbit-0918"] .ir-bg-a { background: #DDDEFA; }
 [data-orbit-real-page="iorbit-0918"] .ir-bg-b { background: #ECEEFB; }
@@ -147,8 +151,8 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .btn.ir-signal-op:active, [data-orbit-real-page="iorbit-0918"] .btn.ir-refresh:active { transform: none; }
 [data-orbit-real-page="iorbit-0918"] .btn.ir-refresh { align-self: flex-start; }
 /* ── 联系人机会（设计 199–211）── */
-[data-orbit-real-page="iorbit-0918"] .ir-person { display: flex; align-items: center; gap: 14px; padding: 12px; border-radius: 14px; }
-[data-orbit-real-page="iorbit-0918"] .ir-person:hover { background: #F7F7FD; }
+[data-orbit-real-page="iorbit-0918"] .ir-person { display: flex; align-items: center; gap: 14px; padding: 12px; border-radius: 14px; color: #0E1225; }
+[data-orbit-real-page="iorbit-0918"] .ir-person:hover { background: #F7F7FD; color: inherit; }
 [data-orbit-real-page="iorbit-0918"] .ir-person-avatar { width: 44px; height: 44px; flex: none; border-radius: 50%; color: #2E3270; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
 [data-orbit-real-page="iorbit-0918"] .ir-person-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 [data-orbit-real-page="iorbit-0918"] .ir-person-name-row { display: flex; align-items: baseline; gap: 10px; }
@@ -197,6 +201,7 @@ export const IORBIT_STYLES = `
 /* ── 面包屑（设计 258）── */
 [data-orbit-real-page="iorbit-0918"] .ir-crumb { font-size: 13px; color: #9FA3C4; }
 [data-orbit-real-page="iorbit-0918"] .ir-crumb-link { color: #6B6F99; }
+[data-orbit-real-page="iorbit-0918"] .ir-crumb-link:hover { color: #6B6F99; }
 /* ── 标题行 + 两枚按钮（设计 259–267）── */
 [data-orbit-real-page="iorbit-0918"] .ir-chat-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; }
 [data-orbit-real-page="iorbit-0918"] .ir-chat-head-copy { display: flex; flex-direction: column; gap: 8px; }
@@ -240,7 +245,7 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .ir-followup { padding: 9px 16px; border: 1px solid #B9BCEB; border-radius: 999px; background: #FFFFFF; color: #2E3270; font-size: 13px; cursor: pointer; }
 [data-orbit-real-page="iorbit-0918"] .btn.ir-followup { padding: 9px 16px; border: 1px solid #B9BCEB; border-radius: 999px; background: #FFFFFF; color: #2E3270; font-size: 13px;
   height: auto; font-weight: 400; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
-[data-orbit-real-page="iorbit-0918"] .ir-followup:hover, [data-orbit-real-page="iorbit-0918"] .btn.ir-followup:hover { background: #ECEEFB; }
+[data-orbit-real-page="iorbit-0918"] .ir-followup:hover, [data-orbit-real-page="iorbit-0918"] .btn.ir-followup:hover { background: #ECEEFB; color: #2E3270; }
 [data-orbit-real-page="iorbit-0918"] .btn.ir-followup:active { transform: none; }
 /* ── 输入区（设计 305–309）── */
 [data-orbit-real-page="iorbit-0918"] .ir-composer { display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 14px; border: 1px solid #DDDEFA; border-radius: 16px; background: #F7F7FD; }
@@ -315,6 +320,9 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .ir-drawer-eyebrow { font-size: 12px; color: #9FA3C4; }
 /* 795：设计的行本身就是个按钮；三点菜单不能嵌在按钮里，所以外层是带边框的行，
    内层按钮承载 padding 与内容，几何与设计一致 */
+/* 任务 6a：role="list" 的包裹层只提供语义，布局仍由抽屉面板的 flex 列给出，
+   因此 display:contents（不改任何几何，history 像素基线不动）。 */
+[data-orbit-real-page="iorbit-0918"] .ir-hist-list { display: contents; }
 [data-orbit-real-page="iorbit-0918"] .ir-hist-row { position: relative; display: flex; align-items: center; border: 1px solid #E8E9F6; border-radius: 12px; background: #FFFFFF; }
 /* 905 的 h.bg：当前会话底色 */
 [data-orbit-real-page="iorbit-0918"] .ir-hist-row-on { background: #F7F7FD; }

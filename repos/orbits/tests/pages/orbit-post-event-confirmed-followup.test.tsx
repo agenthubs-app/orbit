@@ -21,7 +21,7 @@ const candidate = {
   sourceKind: "next_step",
   sourceText: "周五复核试点单位经济",
   state: "available",
-  taskHref: "/app/followups",
+  taskHref: "/app/agent/plan",
   taskId: "task:event-followup:one",
   taskStatus: "missing",
 } as const;
@@ -71,7 +71,7 @@ test("post-event center requires a second confirmation and then renders persiste
     });
     assert.equal(renderer.root.findAll((node) => node.props["data-followup-created"] !== undefined).length, 1);
     assert.match(JSON.stringify(renderer.toJSON()), /任务进行中 · 站内提醒待触发/u);
-    assert.equal(renderer.root.findAll((node) => node.type === "a" && node.props.href === "/app/followups").length, 1);
+    assert.equal(renderer.root.findAll((node) => node.type === "a" && node.props.href === "/app/agent/plan").length, 1);
   } finally {
     globalThis.fetch = originalFetch;
     renderer?.unmount();

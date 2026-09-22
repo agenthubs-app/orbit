@@ -459,7 +459,7 @@ const asyncConversationRecords: readonly AsyncConversationRecord[] = [
         title: "Prepare a local reply preview",
         description:
           "Stage the breakfast recap reply for review without sending it or creating a calendar record.",
-        stageHref: "/app/chat?action=stage-reply&conversation=conversation_demo_aoba",
+        stageHref: "/app/agent",
         sourceContextLabel: "Aoba follow-up task",
         followUpTaskId: "task_demo_aoba_recap",
         eventId: "event_yoyogi_climate_breakfast",
@@ -544,7 +544,7 @@ const asyncConversationRecords: readonly AsyncConversationRecord[] = [
         title: "Stage the intro-angle reply",
         description:
           "Prepare Lina's reply as a local preview and keep the investor intro unsent.",
-        stageHref: "/app/chat?action=stage-reply&conversation=conversation_demo_lina",
+        stageHref: "/app/agent",
         sourceContextLabel: "Robotics investor intro note",
         followUpTaskId: "task_demo_lina_intro",
         eventId: "event_robotics_operator_roundtable",

@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { iorbitChatSurfaceSource } from "./iorbit-chat-surface-source";
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -59,9 +60,9 @@ test("/app/agent GET q renders ordinary assistant turns without a stale tool res
 });
 
 test("/app/agent source clears stale panels only for turns that do not return a tool panel", () => {
-  const agentSource = readProjectFile(
-    "app/(app)/app/agent/orbit-real-agent.tsx",
-  );
+  // iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除；对话面的源码断言改读
+  // `iorbit-chat-surface-source.ts` 合并的那一组在售文件（内容同源，换了住处）。
+  const agentSource = iorbitChatSurfaceSource();
 
   const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
   const historyHookSource = readProjectFile(IORBIT_HISTORY_HOOK_PATH);
@@ -77,9 +78,9 @@ test("/app/agent source clears stale panels only for turns that do not return a 
 });
 
 test("/app/agent source preserves recent conversation context for the next turn", () => {
-  const agentSource = readProjectFile(
-    "app/(app)/app/agent/orbit-real-agent.tsx",
-  );
+  // iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除；对话面的源码断言改读
+  // `iorbit-chat-surface-source.ts` 合并的那一组在售文件（内容同源，换了住处）。
+  const agentSource = iorbitChatSurfaceSource();
 
   const modelSource = readProjectFile(IORBIT_MODEL_PATH);
   const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
@@ -96,9 +97,9 @@ test("/app/agent source preserves recent conversation context for the next turn"
 });
 
 test("/app/agent keeps ordinary assistant bubbles visible without inline API panels", () => {
-  const agentSource = readProjectFile(
-    "app/(app)/app/agent/orbit-real-agent.tsx",
-  );
+  // iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除；对话面的源码断言改读
+  // `iorbit-chat-surface-source.ts` 合并的那一组在售文件（内容同源，换了住处）。
+  const agentSource = iorbitChatSurfaceSource();
 
   assert.match(agentSource, /message\.role === "user" \?/);
   assert.match(agentSource, /<AgentMarkdown text=\{message\.text\}/);

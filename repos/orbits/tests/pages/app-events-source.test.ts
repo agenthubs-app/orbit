@@ -29,10 +29,13 @@ test("/app/events renders Orbit_0918 event module cards with image media", () =>
   assert.doesNotMatch(exploreSource, /orbit-event-view-switcher/u);
 });
 
+// iOrbit 任务 6a（「审阅修订」23）：原来这张表里有 `agent/orbit-real-agent.tsx`。
+// 该文件已删除，而设计里 iOrbit 对话屏的事件卡是**无图的日期块**（iOrbit.dc.html
+// 286–298），没有封面槽位 —— 所以在售的对话面不再是「事件图片表面」，从表里移除
+// 并记偏差，而不是把断言硬套到一个不画图的屏上。
 test("every active event image surface uses the progressive event cover", () => {
   const eventSurfaceSources = [
     "app/(app)/app/home/orbit-real-home.tsx",
-    "app/(app)/app/agent/orbit-real-agent.tsx",
     "app/(app)/app/admin/orbit-real-admin-events.tsx",
     "app/(app)/app/admin/orbit-real-admin-workspace.tsx",
     "app/(app)/app/o/orbit-real-organizer-public.tsx",

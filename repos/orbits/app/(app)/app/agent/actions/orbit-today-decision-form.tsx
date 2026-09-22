@@ -4,11 +4,11 @@ import { useState } from "react";
 import type {
   AgentLedgerEntryStatus,
   AgentLedgerOperation,
-} from "../../../../features/agent/ledger/contract";
+} from "../../../../../features/agent/ledger/contract";
 import {
   agentLedgerErrorMessage,
   agentLedgerReviewTransitionsForStatus,
-} from "../../../../features/agent/ledger/presentation";
+} from "../../../../../features/agent/ledger/presentation";
 
 type EditableOperationValues = {
   text?: string;

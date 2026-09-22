@@ -158,9 +158,11 @@ test("module architecture docs describe position, expected behavior, mock behavi
 
 test("product presenters consume route view models instead of Orbit AI service payloads", () => {
   const presenterFiles = [
-    // iOrbit 任务 1b/1c：对话域 presenter 拆成 model / 两个 hook / JSX 四个
-    // 文件，边界断言对四者同样成立。
-    "app/(app)/app/agent/orbit-real-agent.tsx",
+    // iOrbit 任务 1b/1c：对话域 presenter 拆成 model / 两个 hook / JSX 几个文件，
+    // 边界断言对它们同样成立。任务 6a：`orbit-real-agent.tsx` 删除，JSX 一侧换成
+    // 在售的壳与对话屏。
+    "app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx",
+    "app/(app)/app/agent/iorbit-0918/iorbit-chat.tsx",
     "app/(app)/app/agent/iorbit-0918/iorbit-model.ts",
     "app/(app)/app/agent/iorbit-0918/use-agent-chat.ts",
     "app/(app)/app/agent/iorbit-0918/use-agent-history.ts",

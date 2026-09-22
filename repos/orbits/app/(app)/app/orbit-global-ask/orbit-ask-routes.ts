@@ -83,11 +83,11 @@ const PAGE_CONTEXTS: readonly {
   },
   {
     copy: { en: "my schedule", zh: "我的日程" },
-    match: (path) => hasPathPrefix(path, "/app/today") || hasPathPrefix(path, "/app/schedule"),
+    match: (path) => hasPathPrefix(path, "/app/agent/plan"),
   },
   {
     copy: { en: "my follow-ups", zh: "我的待办" },
-    match: (path) => hasPathPrefix(path, "/app/followups"),
+    match: (path) => hasPathPrefix(path, "/app/agent/actions"),
   },
   {
     copy: { en: "my inbox", zh: "我的收件箱" },

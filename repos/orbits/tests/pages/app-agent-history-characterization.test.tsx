@@ -11,7 +11,13 @@ import {
   type StoredSessionFixture,
 } from "./app-agent-characterization-harness";
 
-// 特征化渲染测试（iOrbit 任务 1a，历史侧）：锁定 `orbit-real-agent.tsx` 今天的
+// iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除，这套特征化改跑在在售的壳 +
+// 「◷ 历史记录」抽屉上（常驻侧栏是任务 4 记过的唯一能力移除）。断言的行为
+// 一条没少，只有两处形态改动：① 每条用例先打开抽屉；② 抽屉是**扁平列表**
+// （设计 786–804），分组以筛选条表达，没有分组小标题，因此 `groupHeadings`
+// 那两处断言换成只断列表内容。
+//
+// 特征化渲染测试（iOrbit 任务 1a，历史侧）：锁定
 // 历史记录行为，使 `use-agent-history` 抽出后「零变化」可证。覆盖 cursor 分页抽干、
 // 分组筛选、置顶排序、重命名、删除二次确认与乐观队列失败文案、toast、跨标签
 // window.focus 刷新。断言全部落在渲染结果与真实请求上，不做源码正则。
@@ -42,18 +48,15 @@ const GROUP = {
 
 function historyTitles(root: Parameters<typeof renderedText>[0]): string[] {
   return root.root
-    .findAll((node) => typeof node.type === "string" && node.props.className === "orbit-agent-history-title")
+    .findAll((node) => typeof node.type === "string" && node.props.className === "ir-hist-title")
     .map((node) => textOf(node.children as unknown));
 }
 
-function groupHeadings(root: Parameters<typeof renderedText>[0]): string[] {
-  return root.root
-    .findAll(
-      (node) =>
-        typeof node.type === "string" &&
-        node.props.className === "eyebrow orbit-agent-history-group",
-    )
-    .map((node) => textOf(node.children as unknown));
+async function openDrawer(harness: Awaited<ReturnType<typeof mountAgent>>) {
+  await act(async () => {
+    buttonWithText(harness.root, "历史记录").props.onClick();
+  });
+  await harness.settle(1);
 }
 
 function toast(root: Parameters<typeof renderedText>[0]) {
@@ -71,6 +74,7 @@ test("history follows every server cursor page and shows all of the drained conv
       [session("session:c", "第三页对话", "2026-09-18T00:00:00.000Z")],
     ],
   });
+  await openDrawer(harness);
 
   const listCalls = harness.calls.filter((call) => call.url.startsWith("/api/ai/conversations/sessions?"));
   assert.equal(listCalls.length, 3);
@@ -94,6 +98,7 @@ test("pinned conversations sort above newer ones and keep their custom title", a
       ],
     ],
   });
+  await openDrawer(harness);
 
   assert.deepEqual(historyTitles(harness.root), ["钉在最上面", "最新的对话"]);
 });
@@ -110,8 +115,8 @@ test("filtering by a group narrows the list to that group's conversations", asyn
       ],
     ],
   });
+  await openDrawer(harness);
 
-  assert.deepEqual(groupHeadings(harness.root), ["工作", "未分组"]);
   assert.deepEqual(historyTitles(harness.root), ["工作里的对话", "没有分组的对话"]);
 
   act(() => buttonWithText(harness.root, "分组").props.onClick());
@@ -119,7 +124,6 @@ test("filtering by a group narrows the list to that group's conversations", asyn
   await harness.settle(1);
 
   assert.deepEqual(historyTitles(harness.root), ["工作里的对话"]);
-  assert.deepEqual(groupHeadings(harness.root), ["工作"]);
 
   act(() => buttonWithText(harness.root, "全部会话").props.onClick());
   await harness.settle(1);
@@ -130,6 +134,7 @@ test("renaming a conversation patches its organization and confirms with a toast
   const harness = await mountAgent(t, {
     sessionPages: [[session("session:a", "原来的名字", "2026-09-20T00:00:00.000Z")]],
   });
+  await openDrawer(harness);
 
   act(() => harness.root.root.findByProps({ "data-orbit-agent-history-menu-button": "session:a" }).props.onClick());
   act(() => harness.root.root.findByProps({ "data-orbit-agent-history-rename": "session:a" }).props.onClick());
@@ -139,7 +144,14 @@ test("renaming a conversation patches its organization and confirms with a toast
       .props.onChange({ target: { value: "改过的名字" } }),
   );
   await act(async () => {
-    harness.root.root.findByType("form").props.onSubmit({ preventDefault() {} });
+    // 任务 6a：对话屏的输入区也是 `<form>`，抽屉里的重命名表单要按它自己的
+    // 输入标记挑出来（旧壳只有侧栏那一个 form）。
+    harness.root.root
+      .findAllByType("form")
+      .find((form) =>
+        form.findAll((node) => Boolean(node.props["data-orbit-agent-history-rename-input"])).length > 0,
+      )!
+      .props.onSubmit({ preventDefault() {} });
   });
   await harness.settle();
 
@@ -166,6 +178,7 @@ test("pinning a conversation sends the pin patch and reorders the list", async (
       ],
     ],
   });
+  await openDrawer(harness);
 
   assert.deepEqual(historyTitles(harness.root), ["较新的对话", "较旧的对话"]);
   act(() => harness.root.root.findByProps({ "data-orbit-agent-history-menu-button": "session:old" }).props.onClick());
@@ -184,6 +197,7 @@ test("a rejected organization write keeps the list unchanged and says so in an a
     organizationPersisted: false,
     sessionPages: [[session("session:a", "原来的名字", "2026-09-20T00:00:00.000Z")]],
   });
+  await openDrawer(harness);
 
   act(() => harness.root.root.findByProps({ "data-orbit-agent-history-menu-button": "session:a" }).props.onClick());
   await act(async () => {
@@ -205,6 +219,7 @@ test("the toast can be dismissed by its close button", async (t) => {
   const harness = await mountAgent(t, {
     sessionPages: [[session("session:a", "一个对话", "2026-09-20T00:00:00.000Z")]],
   });
+  await openDrawer(harness);
 
   act(() => harness.root.root.findByProps({ "data-orbit-agent-history-menu-button": "session:a" }).props.onClick());
   await act(async () => {
@@ -221,6 +236,7 @@ test("deleting a conversation asks for confirmation first and only then calls DE
   const harness = await mountAgent(t, {
     sessionPages: [[session("session:a", "要删掉的对话", "2026-09-20T00:00:00.000Z")]],
   });
+  await openDrawer(harness);
 
   act(() => harness.root.root.findByProps({ "data-orbit-agent-history-menu-button": "session:a" }).props.onClick());
   act(() => harness.root.root.findByProps({ "data-orbit-agent-history-delete": "session:a" }).props.onClick());
@@ -253,6 +269,7 @@ test("a delete the queue could not persist keeps the conversation and explains i
     removePersisted: false,
     sessionPages: [[session("session:a", "删不掉的对话", "2026-09-20T00:00:00.000Z")]],
   });
+  await openDrawer(harness);
 
   act(() => harness.root.root.findByProps({ "data-orbit-agent-history-menu-button": "session:a" }).props.onClick());
   act(() => harness.root.root.findByProps({ "data-orbit-agent-history-delete": "session:a" }).props.onClick());
@@ -295,6 +312,7 @@ test("deleting the conversation you are in clears the thread, the active-session
       ],
     ],
   });
+  await openDrawer(harness);
 
   // 前提：这条会话确实是「当前会话」——线程渲染出来了，active key 也写了。
   assert.ok(renderedText(harness.root).includes("上次的回答"));
@@ -330,6 +348,7 @@ test("deleting the conversation you are in clears the thread, the active-session
 test("returning to the tab refreshes history and groups written by another client", async (t) => {
   const pages: StoredSessionFixture[][] = [[session("session:a", "本标签页的对话", "2026-09-20T00:00:00.000Z")]];
   const harness = await mountAgent(t, { sessionPages: pages });
+  await openDrawer(harness);
   assert.deepEqual(historyTitles(harness.root), ["本标签页的对话"]);
 
   pages[0] = [

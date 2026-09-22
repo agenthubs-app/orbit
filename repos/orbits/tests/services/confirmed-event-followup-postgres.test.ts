@@ -82,7 +82,7 @@ test(
       assert.ok(persisted.rows.every((row) => row.evidence_ids[0] === `evidence:human-encounter:${encounter.encounterId}`));
       const marker = persisted.rows.find((row) => row.collection_name === CONFIRMED_EVENT_FOLLOWUP_COLLECTION);
       assert.equal((marker?.payload.provenance as Record<string, unknown>).eventId, eventId);
-      assert.equal(marker?.payload.taskHref, "/app/followups");
+      assert.equal(marker?.payload.taskHref, "/app/agent/plan");
       assert.equal(persisted.rows.find((row) => row.collection_name === "notifications")?.payload.channel, "in_app");
     } finally {
       await pool.end();

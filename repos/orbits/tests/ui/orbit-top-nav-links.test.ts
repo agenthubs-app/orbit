@@ -88,14 +88,14 @@ test("every nav href resolves to a real App Router page", () => {
   }
 });
 
-// The nav no longer links to /schedule (T3), but the two retired route
-// entry points still exist as page.tsx redirect shells (deep-link
-// preservation, design doc §1/§7) — a page.tsx that redirects is still a
-// "real" page for the dead-href gate above and for direct/bookmarked visits.
-test("the retired /schedule and /followups routes still have a page.tsx (redirect shells, not 404s)", () => {
-  for (const route of ["schedule", "followups"]) {
+// iOrbit 任务 6a：`/app/schedule`、`/app/followups`、`/app/today` 三条路由已整条
+// 删除（`ROUTE-CONSOLIDATION.md` 的判断标准：导航里没有入口、也没有外部深链生成
+// 它们，就删掉而不是留重定向养着）。原来这条用例正好断它们**还在**，现在反过来
+// 断它们**不在**，免得哪天悄悄回流。
+test("the consolidated-away schedule / followups / today routes no longer exist", () => {
+  for (const route of ["schedule", "followups", "today", "chat"]) {
     const pagePath = join(projectRoot, "app/(app)/app", route, "page.tsx");
-    assert.ok(existsSync(pagePath), `${route}/page.tsx should still exist as a redirect shell`);
+    assert.ok(!existsSync(pagePath), `${route}/page.tsx should have been deleted by the route consolidation`);
   }
 });
 
@@ -127,17 +127,7 @@ test("today is a member of the OrbitNavActive union", () => {
   );
 });
 
-// 页面眉标必须与导航入口名一致（设计 §7：入口名「日程」，路径保留 /app/today）。
-// 真实浏览器里曾出现导航写「日程」、页面眉标写「今天」的分裂。
-test("the /app/today page eyebrow uses the same 日程/Schedule wording as the nav entry", () => {
-  const todaySource = readFileSync(
-    join(projectRoot, "app/(app)/app/today/today-page-content.tsx"),
-    "utf8",
-  );
-  assert.match(
-    todaySource,
-    /export function todayEyebrowLabel\(language: OrbitLanguage\): string \{\s*return language === "zh" \? "日程" : "Schedule";/,
-  );
-  assert.match(todaySource, /className="eyebrow">\{todayEyebrowLabel\(language\)\}/);
-  assert.doesNotMatch(todaySource, /className="eyebrow">\{[^}]*"今天"/);
-});
+// iOrbit 任务 6a：原来这里有一条 "/app/today page eyebrow uses the same 日程/Schedule
+// wording as the nav entry"。`/app/today` 已删除，眉标与导航入口名一致这条要求
+// 现在落在 `/app/agent/plan` 的面包屑上，由 `app-agent-iorbit-screens.test.tsx`
+// 按设计 430–432 断言。

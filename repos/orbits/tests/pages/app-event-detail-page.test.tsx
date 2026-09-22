@@ -7,7 +7,6 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { loadAppEventDetailRoute } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service";
 import { eventDetailRouteToOrbitLandingEventView } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter";
-import { OrbitAgentDashboard } from "../../app/(app)/app/agent/orbit-agent-dashboard";
 import { EventDetail } from "../../app/(app)/app/events/events-0918/event-detail";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
@@ -276,6 +275,10 @@ test("detail and dashboard agree on canonical registration availability before e
   // Orbit_0918: while the window is open the detail offers 「立即报名」 (design 160, `ctaFor`);
   // every closed / unknown window shows the same canonical label as the dashboard on a
   // disabled primary CTA. Registered → 「修改报名信息」 (design 161).
+  // iOrbit 任务 6a：`orbit-agent-dashboard.tsx` 已删除，iOrbit 概览屏的「已报名活动」
+  // 卡不再渲染报名窗口文案（设计 148–170 没有这一列），因此原来「详情页与工作台卡
+  // 用同一套文案」的对照只剩详情页一侧。概览屏一侧由 `app-agent-iorbit-home.test.tsx`
+  // 断言；报名窗口文案的唯一在售消费者是详情页。
   for (const [availability, expectedLabel, canRegister] of [
     ["open", "报名开放", true],
     ["profile_edit_closed", "报名资料已锁定", false],
@@ -283,19 +286,12 @@ test("detail and dashboard agree on canonical registration availability before e
     ["unavailable", "暂时无法确认报名状态", false],
   ] as const) {
     const detail = renderToStaticMarkup(<EventDetail event={event} registrationAvailability={availability} />);
-    const dashboard = renderToStaticMarkup(<OrbitAgentDashboard
-      home={{ account: { fullName: "Test", headline: "", initial: "T" }, events: [event], stats: { events: 1, people: 1, inProgress: 0 } }}
-      language="zh" navigate={() => undefined} onAsk={() => undefined}
-      registrationAvailabilityByEventId={{ [event.id]: availability }} t={(copy) => copy.zh}
-    />);
     assert.ok(detail.includes(canRegister ? "立即报名" : expectedLabel), `detail: ${availability}`);
-    assert.ok(dashboard.includes(expectedLabel), `dashboard: ${availability}`);
     const registerLink = [...detail.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/g)]
       .find((match) => /^(立即报名|Register now)$/.test(match[2].replace(/<[^>]*>/g, "")));
     assert.equal(Boolean(registerLink), canRegister);
     if (registerLink) assert.match(registerLink[1], /\/register"/);
     if (!canRegister) {
-      assert.doesNotMatch(dashboard, /报名开放|目前有活动正在开放报名|查看开放报名活动/);
       assert.doesNotMatch(detail, /立即报名|报名中|Registration open|只需 2 个问题|Just 2 questions/);
       assert.match(detail, /aria-disabled="true" class="btn ev-cta-primary ev-cta-disabled" data-events-cta="closed"/);
     }
@@ -309,23 +305,9 @@ test("detail and dashboard agree on canonical registration availability before e
   assert.match(unavailable, /aria-disabled="true" class="btn ev-cta-primary ev-cta-disabled" data-events-cta="closed"/);
 });
 
-test("registered dashboard does not infer unpublished matches from registration alone", async () => {
-  const route = await loadAppEventDetailRoute({ eventId: "demo-event-1", mode: "mock" });
-  assert.equal(route.routeState, "success");
-  if (route.routeState !== "success") return;
-  const base = eventDetailRouteToOrbitLandingEventView(route);
-  const event = { ...base, status: "upcoming" as const, youRsvped: true, stats: { ...base.stats, youRsvped: true } };
-  for (const language of ["zh", "en"] as const) {
-    const dashboard = renderToStaticMarkup(<OrbitAgentDashboard
-      home={{ account: { fullName: "Test", headline: "", initial: "T" }, events: [event], stats: { events: 1, people: 1, inProgress: 0 } }}
-      language={language} navigate={() => undefined} onAsk={() => undefined}
-      registrationAvailabilityByEventId={{ [event.id]: "registration_closed" }} t={(copy) => copy[language]}
-    />);
-    assert.doesNotMatch(dashboard, /等待匹配发布|Waiting for matches/);
-    assert.match(dashboard, language === "zh" ? /已报名/ : /Registered/);
-    assert.match(dashboard, language === "zh" ? /查看匹配进度/ : /Check match status/);
-  }
-});
+// iOrbit 任务 6a：原来这里有一条 "registered dashboard does not infer unpublished
+// matches from registration alone"，渲染的是已删除的 `orbit-agent-dashboard.tsx`。
+// 新概览屏的「已报名活动」卡不画匹配进度（设计 148–170），该断言没有在售的落点。
 
 test("detail consumes one server registration snapshot for its sidebar and primary action", () => {
   const page = source("app/(app)/app/events/[id]/page.tsx");

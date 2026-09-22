@@ -353,8 +353,8 @@ export function OrbitPostEventFollowupCapture({
           ? nextAction.actionId
           : null;
       window.location.href = actionId
-        ? `/app/today?entry=${encodeURIComponent(actionId)}`
-        : "/app/today";
+        ? `/app/agent/actions?entry=${encodeURIComponent(actionId)}`
+        : "/app/agent/actions";
     } catch {
       setError("会后流程没有启动，请重试。笔记仍保留在当前表单中。");
       setSubmitting(false);

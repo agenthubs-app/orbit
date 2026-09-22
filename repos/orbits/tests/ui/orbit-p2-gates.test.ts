@@ -48,22 +48,6 @@ test("P2-3: --ff-serif token is defined", () => {
   assert.match(stylesSource, /--ff-serif:\s*'Noto Serif SC'/);
 });
 
-test("P2-1: schedule/page.tsx is a thin route adapter (<80 lines)", () => {
-  const lines = lineCount("app/(app)/app/schedule/page.tsx");
-
-  assert.ok(
-    lines < 80,
-    `expected schedule/page.tsx to have fewer than 80 lines, got ${lines}`,
-  );
-});
-
-test("P2-1: schedule/events/[id]/page.tsx is a thin route adapter (<80 lines)", () => {
-  const lines = lineCount(
-    "app/(app)/app/schedule/events/[id]/page.tsx",
-  );
-
-  assert.ok(
-    lines < 80,
-    `expected schedule/events/[id]/page.tsx to have fewer than 80 lines, got ${lines}`,
-  );
-});
+// iOrbit 任务 6a：原来这里有两条 "P2-1: schedule/**/page.tsx is a thin route adapter"
+// 的行数门禁。`/app/schedule` 与 `/app/schedule/events/[id]` 已随路由归并删除
+// （取代者 `/app/agent/plan`），门禁没有主语，随路由一并删除。

@@ -21,15 +21,17 @@ function readProjectFile(relativePath: string): string {
 }
 
 // iOrbit 任务 1b：请求助手与超时常量在 `iorbit-model.ts`，对话状态与 `ask` 在
-// `use-agent-chat.ts`，JSX 留在 `orbit-real-agent.tsx`。
+// `use-agent-chat.ts`，JSX 留在对话屏。
+// iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除，JSX 一侧改指在售的
+// `iorbit-0918/iorbit-shell.tsx`（壳）与 `iorbit-0918/iorbit-chat.tsx`（对话屏）。
 const IORBIT_MODEL_PATH = "app/(app)/app/agent/iorbit-0918/iorbit-model.ts";
 const IORBIT_CHAT_HOOK_PATH = "app/(app)/app/agent/iorbit-0918/use-agent-chat.ts";
 const IORBIT_HISTORY_HOOK_PATH = "app/(app)/app/agent/iorbit-0918/use-agent-history.ts";
+const IORBIT_SHELL_PATH = "app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx";
+const IORBIT_CHAT_PATH = "app/(app)/app/agent/iorbit-0918/iorbit-chat.tsx";
 
 test("Orbit agent UI sends prompts through the Chat Agent API boundary", () => {
-  const source = readProjectFile(
-    "app/(app)/app/agent/orbit-real-agent.tsx",
-  );
+  const source = readProjectFile(IORBIT_CHAT_PATH);
   const serviceFactory = readProjectFile("features/orbit-ai/service-factory.ts");
 
   const modelSource = readProjectFile(IORBIT_MODEL_PATH);
@@ -60,27 +62,26 @@ test("Orbit agent submit controls expose a 44px target and guard blank or concur
   assert.match(agentSource, /className="oga-send hit-44"/);
 });
 
-test("Orbit agent uses CSS-gated responsive trees and exposes one shared request state", () => {
-  const agentSource = readProjectFile(
-    "app/(app)/app/agent/orbit-real-agent.tsx",
-  );
+// iOrbit 任务 6a（「审阅修订」15）：旧壳用 CSS 门控的桌面/移动两棵树渲染同一份
+// `workspaceContent`；设计的形态是**单套 DOM**（普通文档流 + 内联输入区），移动端
+// 不再单独一棵树。因此这条用例从「两棵树」改成正面钉死「只有一棵」，其余不变。
+test("the agent shell renders one tree and exposes one shared request state", () => {
+  const shellSource = readProjectFile(IORBIT_SHELL_PATH);
+  const chatSource = readProjectFile(IORBIT_CHAT_PATH);
 
-  assert.match(agentSource, /className="orbit-desktop-only"/);
-  assert.match(agentSource, /className="orbit-mobile-only"/);
-  assert.equal(
-    (agentSource.match(/\{workspaceContent\}/g) ?? []).length,
-    2,
-  );
-  assert.match(agentSource, /data-orbit-agent-request-state/);
-  assert.match(agentSource, /aria-busy=\{thinking\}/);
-  assert.match(agentSource, /histOpen \?/);
-  assert.doesNotMatch(agentSource, /matchMedia\(/);
+  for (const checked of [shellSource, chatSource]) {
+    assert.doesNotMatch(checked, /className="orbit-desktop-only"/);
+    assert.doesNotMatch(checked, /className="orbit-mobile-only"/);
+    assert.doesNotMatch(checked, /matchMedia\(/);
+  }
+  assert.equal((chatSource.match(/data-orbit-agent-chat-composer/g) ?? []).length, 1);
+  assert.match(shellSource, /data-orbit-agent-request-state/);
+  assert.match(shellSource, /aria-busy=\{thinking\}/);
+  assert.match(shellSource, /histOpen \?/);
 });
 
 test("chat composer stays on the Agent page without reopening the global launcher", () => {
-  const agentSource = readProjectFile(
-    "app/(app)/app/agent/orbit-real-agent.tsx",
-  );
+  const agentSource = readProjectFile(IORBIT_CHAT_PATH);
   const globalAskSource = readProjectFile(
     "app/(app)/app/orbit-global-ask/orbit-global-ask.tsx",
   );
@@ -92,14 +93,14 @@ test("chat composer stays on the Agent page without reopening the global launche
   assert.match(agentSource, /disabled=\{thinking\}/);
   assert.match(chatHookSource, /const query = chatDraft\.trim\(\);/);
   assert.match(chatHookSource, /void ask\(query\)/);
-  assert.match(agentSource, /className="agent-chat-composer-dock"/);
-  assert.match(agentSource, /border-top: 1px solid var\(--border\)/);
+  // 任务 6a：固定输入坞（`.agent-chat-composer-dock`）随旧 `height:100dvh` 应用框
+  // 一起退役（「审阅修订」15），设计 309–313 是文档流里的内联输入区。
   assert.match(globalAskSource, /!isOrbitAskHome\(pathname\)/);
 });
 
 
 test("the actual Agent request helper aborts stalled requests and always clears its timer", async () => {
-  const jsxSource = readProjectFile("app/(app)/app/agent/orbit-real-agent.tsx");
+  const jsxSource = readProjectFile(IORBIT_CHAT_PATH);
   const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
   const historyHookSource = readProjectFile(IORBIT_HISTORY_HOOK_PATH);
   // 超时/未确认的用户文案由 hook 的 ask() 产出；请求助手本身（AST 断言）在 model。

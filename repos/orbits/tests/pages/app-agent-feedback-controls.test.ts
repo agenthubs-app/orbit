@@ -1,16 +1,11 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { iorbitChatSurfaceSource } from "./iorbit-chat-surface-source";
 
 test("Settings retain result-learning controls without exposing them in chat", async () => {
   const [chat, feedback, settings, settingsContent] = await Promise.all([
-    readFile(
-      new URL(
-        "../../app/(app)/app/agent/orbit-real-agent.tsx",
-        import.meta.url,
-      ),
-      "utf8",
-    ),
+    Promise.resolve(iorbitChatSurfaceSource()),
     readFile(
       new URL(
         "../../app/(app)/app/agent/agent-outcome-feedback.tsx",

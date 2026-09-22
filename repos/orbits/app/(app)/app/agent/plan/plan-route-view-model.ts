@@ -166,7 +166,7 @@ export function buildAgentPlanViewModel(input: {
     .filter(isAppointmentItem)
     .map((item) => ({
       dayLabel: dayLabel(item.startsAtUtc, locale),
-      href: item.href || "/app/schedule",
+      href: item.href || "/app/agent/plan",
       id: item.key,
       meta: joinMeta(
         item.medium === "video"

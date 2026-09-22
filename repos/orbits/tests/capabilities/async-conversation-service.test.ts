@@ -47,7 +47,9 @@ test("async conversation service returns source-backed relationship corresponden
   assert.equal(workspace.nextActions[0].actionId, "stage_reply_aoba_recap");
   assert.equal(
     workspace.nextActions[0].stageHref,
-    "/app/chat?action=stage-reply&conversation=conversation_demo_aoba",
+    // iOrbit 任务 6a：`/app/chat` 路由已删除（路由归并），mock 的 stageHref
+    // 落到对话壳本身。
+    "/app/agent",
   );
   assert.deepEqual(workspace.sideEffects, {
     calendarEntryCreated: false,

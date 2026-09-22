@@ -17,7 +17,7 @@ import {
 import {
   agentRetryRequestForAssistant,
   prepareAgentFailedRequestRetry,
-} from "../../app/(app)/app/agent/orbit-real-agent";
+} from "../../app/(app)/app/agent/iorbit-0918/iorbit-model";
 import { latestConversationRuntimeLink } from "../../features/orbit-ai/conversation-runtime-links";
 
 test("conversation response links actions from exactly one shared run", () => {
@@ -353,7 +353,7 @@ test("Agent chat persists run ids without rendering internal tracking UI", async
   const source = await import("node:fs/promises").then((fs) =>
     fs.readFile(
       new URL(
-        "../../app/(app)/app/agent/orbit-real-agent.tsx",
+        "../../app/(app)/app/agent/iorbit-0918/iorbit-chat.tsx",
         import.meta.url,
       ),
       "utf8",
@@ -381,6 +381,7 @@ test("Agent chat persists run ids without rendering internal tracking UI", async
 
   // iOrbit 任务 1b：AgentMessage 形状与 artifact→证据在 model，读回执在 hook，
   // 只渲染的部分（run details / evidence 面板）留在 JSX 文件上断言。
+  // 任务 6a：JSX 文件从删除的 `orbit-real-agent.tsx` 换成 `iorbit-0918/iorbit-chat.tsx`。
   assert.match(modelSource, /actionIds\?: readonly string\[\]/);
   assert.match(modelSource, /runId\?: string/);
   assert.match(chatHookSource, /payload\.data\.actionIds/);

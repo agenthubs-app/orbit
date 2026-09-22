@@ -22,7 +22,9 @@ const SUCCESS = (body: Record<string, unknown>) => successReply("已经按你的
 
 function assistantTexts(root: Parameters<typeof renderedText>[0]): string[] {
   return root.root
-    .findAll((node) => typeof node.type === "string" && node.props.className === "body")
+    // iOrbit 任务 6a：旧壳（`orbit-real-agent.tsx`）的助手正文类是 `body`；
+    // 在售的对话屏是 `iorbit-chat.tsx` 的 `ir-a-body`。
+    .findAll((node) => typeof node.type === "string" && node.props.className === "ir-a-body")
     .map((node) => textOf(node.children as unknown));
 }
 
@@ -162,8 +164,9 @@ test("any other failed reply falls back to the generic copy and keeps the same r
   });
 
   assert.ok(assistantTexts(harness.root).some((text) => text.includes("iOrbit 暂时无法完成这次回复，请稍后再试。")));
-  // 桌面树与移动树各渲染一次同样的回合，所以基线是 2。
-  assert.equal(assistantTexts(harness.root).length, 2);
+  // iOrbit 任务 6a：旧壳的桌面树与移动树各渲染一次同样的回合（基线 2）；在售的
+  // 对话屏是单套 DOM（「审阅修订」15 记过的壳形态变化），因此基线是 1。
+  assert.equal(assistantTexts(harness.root).length, 1);
   const first = harness.conversationRequests[0];
   await act(async () => {
     await retryButtons(harness.root)[0].props.onClick();
@@ -174,7 +177,7 @@ test("any other failed reply falls back to the generic copy and keeps the same r
   assert.equal(harness.conversationRequests[1].requestId, first.requestId);
   assert.equal(harness.conversationRequests[1].clientMessageId, first.clientMessageId);
   // 重试替换失败回合而不是追加：助手回合数量没有增加。
-  assert.equal(assistantTexts(harness.root).length, 2);
+  assert.equal(assistantTexts(harness.root).length, 1);
 });
 
 test("the browser gives the request a 60s abort budget and reports the unconfirmed result when it fires", async (t) => {
@@ -232,6 +235,12 @@ test("?session= restores that conversation, marks it active in storage and asks 
 test("picking a stored conversation from history restores it and pushes its deep link", async (t) => {
   const harness = await mountAgent(t, { sessionPages: [[RESTORED]] });
 
+  // iOrbit 任务 6a：常驻历史侧栏随 `orbit-real-agent.tsx` 删除（任务 4 记过的唯一
+  // 能力移除），历史条目改从「◷ 历史记录」抽屉里进入。
+  await act(async () => {
+    buttonWithText(harness.root, "历史记录").props.onClick();
+  });
+  await harness.settle(1);
   await act(async () => {
     buttonWithText(harness.root, "上次问过的问题").props.onClick();
   });
@@ -249,8 +258,16 @@ test("leaving the thread clears it, drops the active-session key and returns to 
   });
   assert.equal(harness.localValues.has("orbit-agent-chat-active-session-v1"), true);
 
+  // iOrbit 任务 6a：设计的「← 返回概览」是**非破坏性**返回（「审阅修订」17），旧壳
+  // 的「返回工作台」才会清线程。清空线程这件事今天由抽屉里的「＋ 新对话」承担，
+  // 断言因此改走那个控件——被断的能力（回 /app/agent、丢 active-session key、
+  // 线程清空）一条没少。
   await act(async () => {
-    harness.root.root.findAllByProps({ "aria-label": "返回工作台" })[0].props.onClick();
+    buttonWithText(harness.root, "历史记录").props.onClick();
+  });
+  await harness.settle(1);
+  await act(async () => {
+    harness.root.root.findAllByProps({ className: "btn ir-drawer-new" })[0].props.onClick();
   });
   await harness.settle();
 

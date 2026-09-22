@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -309,7 +309,7 @@ test("Agent ledger and queue routes resolve server auth instead of request ident
   }
 });
 
-test("All actions server page uses the authenticated ledger entry point; Today is a redirect shell", () => {
+test("All actions server page uses the authenticated ledger entry point", () => {
   const allActionsSource = readFileSync(
     join(process.cwd(), "app/(app)/app/agent/actions/page.tsx"),
     "utf8",
@@ -317,15 +317,14 @@ test("All actions server page uses the authenticated ledger entry point; Today i
   assert.match(allActionsSource, /resolveAgentLedgerForServerPage/);
   assert.match(allActionsSource, /ledgerService/);
 
-  // 批次 5a：/app/today 收窄成纯重定向，不再自行 auth / 读账本。
-  const todaySource = readFileSync(
-    join(process.cwd(), "app/(app)/app/today/page.tsx"),
-    "utf8",
+  // iOrbit 任务 6a：`/app/today` 从「重定向壳」变成**不存在**（路由归并；取代者是
+  // `/app/agent` 与 `/app/agent/plan`）。原来断它是重定向壳的四条断言改成断它不在，
+  // 免得账本读取哪天又从那条路径回流。
+  assert.equal(
+    existsSync(join(process.cwd(), "app/(app)/app/today/page.tsx")),
+    false,
+    "/app/today was consolidated away; it must not come back as a ledger reader",
   );
-  assert.doesNotMatch(todaySource, /resolveAgentLedgerForServerPage/);
-  assert.doesNotMatch(todaySource, /await auth\(\)/);
-  assert.match(todaySource, /from "next\/navigation"/);
-  assert.match(todaySource, /\/app\/agent/);
 });
 
 test("Brief collection preserves Orbit-first priority and metadata-only mail enrichment", async () => {

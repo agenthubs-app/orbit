@@ -115,7 +115,7 @@ test("confirmation re-reads evidence and idempotently creates one real task and 
   });
   assert.equal(markers[0]?.payload.taskId, first.taskId);
   assert.equal(markers[0]?.payload.reminderId, first.reminderId);
-  assert.equal(markers[0]?.payload.taskHref, "/app/followups");
+  assert.equal(markers[0]?.payload.taskHref, "/app/agent/plan");
 });
 
 test("rejects forged encounter ownership, stale source references, and a changed due time", async () => {

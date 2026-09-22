@@ -145,11 +145,7 @@ test("chat adjunct live storage adapters reuse the configured chat record store"
   }
 });
 
-test("/app/chat page authenticates before loading the actor-scoped route adapter", () => {
-  const pageSource = source("app/(app)/app/chat/page.tsx");
-  const boundarySource = source(
-    "app/(app)/app/chat/chat-route-state-boundary.tsx",
-  );
+test("the agent page authenticates before loading the actor-scoped chat route adapter", () => {
   const routeSource = source(
     "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model.ts",
   );
@@ -157,22 +153,13 @@ test("/app/chat page authenticates before loading the actor-scoped route adapter
     "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-service-factory.ts",
   );
 
-  // /app/chat 已收窄为 /app/agent 重定向；鉴权与 actor-scoped 组合责任随对话壳
-  // 一起移到 agent route adapter（工作台合并）。
-  assert.match(pageSource, /redirect\(`\/app\/agent\$\{suffix\}`\)/);
-  assert.doesNotMatch(pageSource, /await auth\(\)/);
+  // iOrbit 任务 6a：`/app/chat` 路由（页面 + 壳 + 状态边界）已删除。鉴权与
+  // actor-scoped 组合本来就已经在 agent route adapter 上（工作台合并），只有那两个
+  // 仍被 `agent/page.tsx` 引用的组合文件活下来，断言因此收敛到它们身上。
   const agentPageSource = source("app/(app)/app/agent/page.tsx");
   assert.match(agentPageSource, /await auth\(\)/);
   assert.match(agentPageSource, /redirect\("\/app\/account\/login\?next=%2Fapp%2Fagent"\)/);
   assert.match(agentPageSource, /loadAppChatRouteViewModel\(resolvedSearchParams,\s*\{\s*actorId,/);
-  assert.match(boundarySource, /StateView/);
-  assert.match(boundarySource, /AccountTopNav/);
-  assert.doesNotMatch(pageSource, /loadAppAsyncChatCommandCenterViewModel/);
-  assert.doesNotMatch(
-    pageSource,
-    /ChatCommandCenter|chatRouteToOrbitAgentViewModel|OrbitRealAgent/,
-  );
-  assert.doesNotMatch(pageSource, /getOrbitAgentViewModel/);
   assert.match(routeSource, /createActorScopedAppChatRouteServices\(actorId\)/);
   assert.doesNotMatch(
     routeSource,
@@ -188,7 +175,7 @@ test("/app/chat page authenticates before loading the actor-scoped route adapter
   }
 });
 
-test("chat route adapter feeds live conversation context into OrbitRealAgent", async () => {
+test("chat route adapter feeds live conversation context into the iOrbit shell", async () => {
   await withModuleMode("mock", async () => {
     const { loadAppChatRouteViewModel } = await import(
       "../../app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model"
@@ -196,8 +183,8 @@ test("chat route adapter feeds live conversation context into OrbitRealAgent", a
     const { chatRouteToOrbitAgentViewModel } = await import(
       "../../app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-view-model-adapter"
     );
-    const { OrbitRealAgent } = await import(
-      "../../app/(app)/app/agent/orbit-real-agent"
+    const { IOrbitShell } = await import(
+      "../../app/(app)/app/agent/iorbit-0918/iorbit-shell"
     );
     const routeModel = await loadAppChatRouteViewModel();
 
@@ -216,14 +203,15 @@ test("chat route adapter feeds live conversation context into OrbitRealAgent", a
     );
 
     const html = renderToStaticMarkup(
-      React.createElement(OrbitRealAgent, { viewModel }),
+      React.createElement(IOrbitShell, { home: null, initialDeepLink: true, viewModel }),
     );
 
     assert.match(html, /data-orbit-real-page="agent"/);
-    // The workspace rebuild replaced the "我是 iOrbit" welcome heading with a
-    // prompt that names what iOrbit can already see. Either way the point of
-    // the assertion is the same: the adapter's view model reached the agent
-    // and the agent rendered its empty state rather than a blank shell.
+    assert.match(html, /data-orbit-real-page="iorbit-0918"/);
+    // iOrbit 任务 6a：旧 `OrbitRealAgent` 已删除，这条断言改渲染新壳的对话分支
+    // （`initialDeepLink` = 服务端解析出的 `?q=`／`?session=`）。断言的点没变：
+    // adapter 的 view model 到达了对话屏，且对话屏渲染的是 `AgentWelcome` 空态
+    // 而不是空壳。
     assert.match(html, /你想让 iOrbit 做什么/);
     assert.match(html, /它能看到你的活动、报名答案、人脉和约谈/);
     assert.doesNotMatch(html, /class="app-chat-route"/);

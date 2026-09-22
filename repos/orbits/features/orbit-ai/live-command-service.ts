@@ -236,7 +236,7 @@ function followupItems(
   return result.data.tasks.slice(0, 2).map((task) => ({
     actionLabel: language === "en" ? "Open follow-ups" : "打开跟进",
     body: task.recommendedAction || task.rationale,
-    href: "/app/followups",
+    href: "/app/agent/plan",
     label: language === "en" ? "Live follow-up" : "真实跟进",
     title: task.title,
   }));

@@ -39,7 +39,7 @@ import {
   AgentWelcome,
   PanelCards,
   ThinkingIndicator,
-} from "../orbit-real-agent";
+} from "./iorbit-rich-components";
 import { agentSuggestLabel, iorbitSelectedDayLabel, type AgentMessage } from "./iorbit-model";
 
 // 首屏不加载 markdown 渲染器（门禁：tests/performance/orbit-agent-markdown-split.test.ts）。

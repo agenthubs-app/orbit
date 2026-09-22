@@ -1,15 +1,11 @@
 const ORBIT_PRIVATE_APP_PREFIXES = [
   "/app/admin",
   "/app/agent",
-  "/app/chat",
   "/app/contacts",
-  "/app/followups",
   "/app/home",
   "/app/platform",
   "/app/profile",
-  "/app/schedule",
   "/app/settings",
-  "/app/today",
 ] as const;
 
 const ORBIT_AUTH_ENTRY_PREFIX = "/app/account";

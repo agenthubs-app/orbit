@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { createMockOrbitAgentConversationService } from "../../features/orbit-ai/mock-conversation-service";
 import { syncResult } from "../support/sync-result";
+import { iorbitChatSurfaceSource } from "./iorbit-chat-surface-source";
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -110,9 +111,9 @@ test("/app/agent GET q to-do prompts render source-backed upcoming work", async 
 
 test("/app/agent hydrates submitted to-do prompts through the client conversation API", () => {
   const pageSource = readProjectFile("app/(app)/app/agent/page.tsx");
-  const agentSource = readProjectFile(
-    "app/(app)/app/agent/orbit-real-agent.tsx",
-  );
+  // iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除；对话面的源码断言改读
+  // `iorbit-chat-surface-source.ts` 合并的那一组在售文件（内容同源，换了住处）。
+  const agentSource = iorbitChatSurfaceSource();
 
   assert.match(
     pageSource,
@@ -163,9 +164,9 @@ test("/app/agent q=今日待办 receives ranked source-backed Chinese follow-ups
 
 test("/app/agent source exposes to-do prompt affordances without owning business logic", () => {
   const pageSource = readProjectFile("app/(app)/app/agent/page.tsx");
-  const agentSource = readProjectFile(
-    "app/(app)/app/agent/orbit-real-agent.tsx",
-  );
+  // iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除；对话面的源码断言改读
+  // `iorbit-chat-surface-source.ts` 合并的那一组在售文件（内容同源，换了住处）。
+  const agentSource = iorbitChatSurfaceSource();
 
   assert.match(pageSource, /loadAppChatRouteViewModel/);
   assert.doesNotMatch(pageSource, /mockFollowupTasks|mockEventRecords/);
@@ -185,7 +186,7 @@ test("/app/agent source exposes to-do prompt affordances without owning business
 test("follow-up queue groups tasks under one card per contact", async () => {
   const { groupTodosByContact } = await import(
     pathToFileURL(
-      path.join(projectRoot, "app/(app)/app/agent/orbit-real-agent.tsx"),
+      path.join(projectRoot, "app/(app)/app/agent/iorbit-0918/iorbit-model.ts"),
     ).href
   );
 

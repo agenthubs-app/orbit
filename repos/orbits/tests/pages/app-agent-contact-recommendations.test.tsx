@@ -5,6 +5,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import type { LocalRemoteContactGraph } from "../../features/contacts/contact-graph-provider";
+import { iorbitChatSurfaceSource } from "./iorbit-chat-surface-source";
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -96,9 +97,9 @@ test("/app/agent consumes GET q prompts and renders linked contact recommendatio
 
 test("/app/agent maps contact artifacts into reason, confidence, evidence, and detail-card fields", () => {
   const pageSource = readProjectFile("app/(app)/app/agent/page.tsx");
-  const agentSource = readProjectFile(
-    "app/(app)/app/agent/orbit-real-agent.tsx",
-  );
+  // iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除；对话面的源码断言改读
+  // `iorbit-chat-surface-source.ts` 合并的那一组在售文件（内容同源，换了住处）。
+  const agentSource = iorbitChatSurfaceSource();
 
   assert.match(pageSource, /searchParams/);
   assert.match(pageSource, /loadAppChatRouteViewModel/);
@@ -141,7 +142,7 @@ test("/app/agent maps contact artifacts into reason, confidence, evidence, and d
 test("contact artifact mapping preserves actor-scoped contact ids", async () => {
   const { contactIdFromArtifactItemId } = await importProjectModule<{
     contactIdFromArtifactItemId: (value: unknown) => string;
-  }>("app/(app)/app/agent/orbit-real-agent.tsx");
+  }>("app/(app)/app/agent/iorbit-0918/iorbit-model.ts");
 
   assert.equal(
     contactIdFromArtifactItemId(
@@ -156,9 +157,9 @@ test("contact artifact mapping preserves actor-scoped contact ids", async () => 
 });
 
 test("/app/agent makes contact and event discovery explicit before submission", () => {
-  const agentSource = readProjectFile(
-    "app/(app)/app/agent/orbit-real-agent.tsx",
-  );
+  // iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除；对话面的源码断言改读
+  // `iorbit-chat-surface-source.ts` 合并的那一组在售文件（内容同源，换了住处）。
+  const agentSource = iorbitChatSurfaceSource();
 
   assert.match(agentSource, /viewModel\.suggests\.map/);
   assert.match(agentSource, /onPick\(suggest\.q\)/);

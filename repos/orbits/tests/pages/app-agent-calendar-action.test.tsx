@@ -13,6 +13,7 @@ import {
 import { createOrbitAiCalendarActionService } from "../../features/orbit-ai/calendar-action-service";
 import { createMockOrbitAgentConversationService } from "../../features/orbit-ai/mock-conversation-service";
 import { syncResult } from "../support/sync-result";
+import { iorbitChatSurfaceSource } from "./iorbit-chat-surface-source";
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -107,9 +108,9 @@ test("to-do artifacts preserve their source link and local calendar safety bound
 
 test("/app/agent composes calendar proposals through the conversation run and action ledger", () => {
   const pageSource = readProjectFile("app/(app)/app/agent/page.tsx");
-  const agentSource = readProjectFile(
-    "app/(app)/app/agent/orbit-real-agent.tsx",
-  );
+// iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除；对话面的源码断言改读
+// `iorbit-chat-surface-source.ts` 合并的那一组在售文件（内容同源，只是换了住处）。
+  const agentSource = iorbitChatSurfaceSource();
   const chatHookSource = readProjectFile(
     "app/(app)/app/agent/iorbit-0918/use-agent-chat.ts",
   );

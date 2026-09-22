@@ -95,14 +95,9 @@ test("no contacts surface hardcodes the sidebar column width", () => {
   assert.deepEqual(offenders, []);
 });
 
-test("the Today ledger page collapses to one column on mobile", () => {
-  for (const file of [
-    "app/(app)/app/today/today-page-content.tsx",
-  ]) {
-    const pageSource = readFileSync(join(projectRoot, file), "utf8");
-    assert.ok(pageSource.includes("@media (max-width: 760px)"), file);
-  }
-});
+// iOrbit 任务 6a：原来这里有一条 "the Today ledger page collapses to one column on
+// mobile"，读的是已删除的 `today/today-page-content.tsx`。取代它的 iOrbit 兄弟屏
+// 由 `app-agent-iorbit-screens.test.tsx` 的窄屏塌列用例（任务 5 交付清单第 4 项）覆盖。
 
 test("the mobile bar uses a theme token, not hardcoded light glass", () => {
   const shellSource = source("app/(app)/app/orbit-account-shell.tsx");

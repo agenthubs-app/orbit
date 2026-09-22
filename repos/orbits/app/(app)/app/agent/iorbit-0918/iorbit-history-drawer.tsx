@@ -180,7 +180,10 @@ export function IOrbitHistoryDrawer({
         {/* 793 */}
         <span className="ir-drawer-eyebrow">{t({ en: "Recent conversations", zh: "最近的对话" })}</span>
 
-        {/* 794–802 */}
+        {/* 794–802。`role="list"`/`"listitem"` 是设计外的既有 a11y 保障（旧侧栏有，
+            `core-product-ux-optimizations.test.ts` 的「long result surfaces」用例钉着它）：
+            这一段是 `<div>` 栅格而不是 `<ul>`，所以显式给出列表语义。 */}
+        <div className="ir-hist-list" role="list">
         {visible.map((item) => {
           // 设计 905 的 `h.bg` 是「当前会话」的底色，绑 activeSessionId（审阅修订 13），
           // 不是「第一行」。没有 sessionId 的历史行回落到问题原文比对。
@@ -197,6 +200,7 @@ export function IOrbitHistoryDrawer({
               aria-busy={pending}
               className={current ? "ir-hist-row ir-hist-row-on" : "ir-hist-row"}
               key={item.id}
+              role="listitem"
             >
               {renaming ? (
                 <form
@@ -362,6 +366,7 @@ export function IOrbitHistoryDrawer({
             </div>
           );
         })}
+        </div>
 
         {history.length === 0 ? (
           <span className="ir-drawer-empty">

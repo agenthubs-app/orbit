@@ -1,13 +1,14 @@
 /**
  * 特征化测试共用夹具（iOrbit 任务 1a）。
  *
- * 这个文件不是测试文件（文件名不含 `.test.`），只提供 `OrbitRealAgent` 的挂载夹具：
+ * 这个文件不是测试文件（文件名不含 `.test.`），只提供对话壳的挂载夹具：
  * window / document 桩、fetch 路由、计时器记录。`app-agent-chat-characterization.test.tsx`
  * 与 `app-agent-history-characterization.test.tsx` 共用它，
  * 使 `ask` / 历史 两个 hook 抽出后可以用同一组断言证明行为未变。
  *
  * iOrbit 任务 4 的两处追加（都带默认值，既有两套特征化一行未改）：
- *   - `element`：默认仍挂 `OrbitRealAgent`，新屏（`IOrbitShell`）可以传自己的树；
+ *   - `element`：默认挂 `IOrbitShell`（任务 6a：旧 `OrbitRealAgent` 已删除，默认树
+ *     因此换成新壳的对话分支 `initialDeepLink`），调用方仍可以传自己的树；
  *   - document 监听器改为记录 + `fireDocumentEvent`，`useOrbitModalA11y` 的 Esc
  *     是挂在 document 上的，原来的空实现没法在测试里触发。
  */
@@ -15,7 +16,7 @@ import type { ReactNode } from "react";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import { AppRouterContext, type AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
-import { OrbitRealAgent } from "../../app/(app)/app/agent/orbit-real-agent";
+import { IOrbitShell } from "../../app/(app)/app/agent/iorbit-0918/iorbit-shell";
 import {
   OrbitAskProvider,
   useOrbitAsk,
@@ -56,7 +57,7 @@ export interface AskProbe {
 }
 
 export interface HarnessOptions {
-  /** 要挂载的树；默认 `<OrbitRealAgent viewModel={starter} />`（既有特征化不受影响）。 */
+  /** 要挂载的树；默认 `<IOrbitShell home={null} initialDeepLink viewModel={starter} />`。 */
   element?: ReactNode;
   /** `/api/ai/conversations` 的应答；返回 null 表示该次请求永不 settle（用于超时用例）。 */
   conversation?: (body: Record<string, unknown>, call: ObservedCall) => Response | Promise<Response> | null;
@@ -301,7 +302,13 @@ export async function mountAgent(
     root = create(
       <AppRouterContext.Provider value={router}>
         <OrbitAskProvider>
-          {options.element ?? <OrbitRealAgent viewModel={createOrbitAgentStarterViewModel()} />}
+          {options.element ?? (
+            <IOrbitShell
+              home={null}
+              initialDeepLink
+              viewModel={createOrbitAgentStarterViewModel()}
+            />
+          )}
           <AskProbeReader />
         </OrbitAskProvider>
       </AppRouterContext.Provider>,

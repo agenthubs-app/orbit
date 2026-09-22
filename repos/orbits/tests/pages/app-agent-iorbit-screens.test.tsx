@@ -12,7 +12,7 @@
  *      `?view=contacts` 切屏、每行 CTA 按真实 operationType 变化
  */
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import test, { type TestContext } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -539,12 +539,14 @@ test("the new .btn rule neutralises the shared base class and its :active transf
 test("every ir-* class the screens put on an <a> owns its colour", () => {
   const flat = IORBIT_STYLES.replace(/\/\*[\s\S]*?\*\//g, "").split("\n").join(" ");
   const linkClasses = new Set<string>();
-  for (const file of [
-    "app/(app)/app/agent/iorbit-0918/iorbit-actions.tsx",
-    "app/(app)/app/agent/iorbit-0918/iorbit-plan.tsx",
-    "app/(app)/app/agent/iorbit-0918/iorbit-strategy.tsx",
-  ]) {
-    const source = readFileSync(join(projectRoot, file), "utf8");
+  // iOrbit 任务 6a（任务 5 遗留 10）：扫描面从任务 5 的三个兄弟屏扩到**整个**
+  // `iorbit-0918/` 目录——概览屏 / 对话屏 / 右栏 / 抽屉里也有当 `<a>` 用的 `ir-*` 类
+  // （`.ir-card-link`、`.ir-chip` 等），它们同样会被作用域的 `a { color:#3B3F7A }` 压掉。
+  const iorbitDir = join(projectRoot, "app/(app)/app/agent/iorbit-0918");
+  for (const file of readdirSync(iorbitDir)
+    .filter((name) => name.endsWith(".tsx"))
+    .sort()) {
+    const source = readFileSync(join(iorbitDir, file), "utf8");
     for (const tag of source.matchAll(/<a\b[^>]*>/g)) {
       const className = tag[0].match(/className="([^"]+)"/)?.[1];
       if (!className) continue;
@@ -555,7 +557,7 @@ test("every ir-* class the screens put on an <a> owns its colour", () => {
   }
 
   assert.ok(linkClasses.has("ir-task-row"), "the plan row is the class this test exists for");
-  assert.ok(linkClasses.size >= 8, `expected the screens' link classes, found ${linkClasses.size}`);
+  assert.ok(linkClasses.size >= 12, `expected the whole directory's link classes, found ${linkClasses.size}`);
 
   const uncovered: string[] = [];
   for (const className of [...linkClasses].sort()) {

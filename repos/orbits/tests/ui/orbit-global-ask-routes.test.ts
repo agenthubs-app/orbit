@@ -32,8 +32,7 @@ test("登录后的产品页都挂提问入口", () => {
     "/app/events/event_signup_01",
     "/app/contacts",
     "/app/agent/actions",
-    "/app/today",
-    "/app/followups",
+    "/app/agent/plan",
     "/app/inbox",
     "/app/contacts/dashboard",
     "/app/settings",
@@ -76,7 +75,10 @@ test("页面上下文标签按路由推导，且跟随语言", () => {
   assert.equal(orbitAskPageContext("/app/events", "zh"), "活动列表");
   assert.equal(orbitAskPageContext("/app/contacts", "zh"), "我的人脉");
   assert.equal(orbitAskPageContext("/app/contacts/c_01", "zh"), "这位人脉");
-  assert.equal(orbitAskPageContext("/app/today", "zh"), "我的日程");
+  // iOrbit 任务 6a：`/app/today` / `/app/schedule` / `/app/followups` 已删除，
+  // 上下文标签改挂取代它们的两条 iOrbit 兄弟屏。
+  assert.equal(orbitAskPageContext("/app/agent/plan", "zh"), "我的日程");
+  assert.equal(orbitAskPageContext("/app/agent/actions", "zh"), "我的待办");
   // 没有值得带走的上下文时返回 null，界面上就不显示那枚 chip。
   assert.equal(orbitAskPageContext("/app/agent", "zh"), null);
   assert.equal(orbitAskPageContext("/app/settings", "zh"), null);

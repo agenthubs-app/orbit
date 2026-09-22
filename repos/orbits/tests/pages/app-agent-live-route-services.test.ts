@@ -53,12 +53,13 @@ async function withUnconfiguredLiveAgent<T>(
 
 test("/app/agent page renders the real Orbit AI chat experience", async () => {
   const pageSource = source("app/(app)/app/agent/page.tsx");
-  const agentSource = source("app/(app)/app/agent/orbit-real-agent.tsx");
+  // iOrbit 任务 6a：`orbit-real-agent.tsx` 删除，作用域断言改指在售的壳。
+  const agentSource = source("app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx");
   const agentModelSource = source(
     "app/(app)/app/orbit-agent-route-view-model.ts",
   );
 
-  assert.match(pageSource, /OrbitRealAgent/);
+  assert.match(pageSource, /IOrbitShell/);
   assert.match(pageSource, /loadAppChatRouteViewModel/);
   assert.match(pageSource, /composeOrbitAgentEntryViewModel/);
   assert.match(pageSource, /StateView/);
@@ -89,8 +90,8 @@ test("/app/agent keeps the composer reachable when a new actor has no chat conve
   const { composeOrbitAgentEntryViewModel } = await import(
     "../../app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-view-model-adapter"
   );
-  const { OrbitRealAgent } = await import(
-    "../../app/(app)/app/agent/orbit-real-agent"
+  const { IOrbitShell } = await import(
+    "../../app/(app)/app/agent/iorbit-0918/iorbit-shell"
   );
   const entryModel = composeOrbitAgentEntryViewModel({
     routeState: {
@@ -119,7 +120,9 @@ test("/app/agent keeps the composer reachable when a new actor has no chat conve
   assert.equal(entryModel.viewModel.suggests.length, 3);
 
   const html = renderToStaticMarkup(
-    React.createElement(OrbitRealAgent, {
+    React.createElement(IOrbitShell, {
+      home: null,
+      initialDeepLink: true,
       viewModel: entryModel.viewModel,
     }),
   );
@@ -127,7 +130,7 @@ test("/app/agent keeps the composer reachable when a new actor has no chat conve
   assert.match(html, /data-orbit-real-page="agent"/);
   assert.doesNotMatch(html, /No chat context is ready/);
 
-  // 输入框已从这一页提取到 layout 级的全局提问入口，所以单独渲染 OrbitRealAgent
+  // 输入框已从这一页提取到 layout 级的全局提问入口，所以单独渲染对话壳
   // 时它本来就不该出现在 HTML 里。这一页现在的责任是把自己的 ask 注册成落点——
   // 没注册，全局输入框就会退回「跳转」行为，在 iOrbit 页上表现为原地打转。
   // 输入框本身在 /app/agent 上确实可达，由 orbit-global-ask-routes 的默认展开

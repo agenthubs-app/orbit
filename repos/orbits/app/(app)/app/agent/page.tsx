@@ -73,11 +73,13 @@ function AgentRouteStateBoundary({
             recoveryCopy: routeState.copy.nextStep,
           },
           {
-            href: "/app/chat",
+            // iOrbit 任务 6a：`/app/chat` 已删除（路由归并）。对话记录与隐私控件现在
+            // 都在 iOrbit 的历史抽屉里，恢复链接因此指向 `/app/agent?history=1`。
+            href: "/app/agent?history=1",
             id: "agent-recovery-chat",
-            label: "Open chat workspace",
+            label: "Open conversation history",
             recoveryCopy:
-              "Use the Chat workspace to review conversation records and privacy controls directly.",
+              "Open the iOrbit conversation history drawer to review past conversations and their records.",
           },
         ]}
         title={routeState.copy.title}

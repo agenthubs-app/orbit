@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { iorbitChatSurfaceSource } from "./iorbit-chat-surface-source";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -35,8 +36,11 @@ test("app-home-route redirects into the iOrbit workspace which composes home dat
   assert.match(agentPageSource, /registrationStates\[event\.id\]\?\.registered/);
   assert.match(agentPageSource, /youRsvped: registered/);
 
-  const agentUiSource = source("app/(app)/app/agent/orbit-real-agent.tsx");
-  assert.match(agentUiSource, /OrbitAgentDashboard/);
+  // iOrbit 任务 6a：`orbit-real-agent.tsx` 与 `orbit-agent-dashboard.tsx` 都已删除；
+  // 首屏组件今天是 `iorbit-0918/iorbit-home.tsx`，由壳按视图挂载。
+  assert.match(agentPageSource, /IOrbitShell/);
+  const agentUiSource = iorbitChatSurfaceSource();
+  assert.match(agentUiSource, /<IOrbitHome/);
 });
 
 test("web root renders the Orbit_0918 landing with a session-aware entry", () => {
@@ -155,13 +159,17 @@ test("app home does not relabel event records as registrations", () => {
 
 test("iOrbit dashboard presents registration state from the shared runtime snapshot", () => {
   const dashboardSource = source(
-    "app/(app)/app/agent/orbit-agent-dashboard.tsx",
+    "app/(app)/app/agent/iorbit-0918/iorbit-home.tsx",
   );
+  const modelSource = source("app/(app)/app/agent/iorbit-0918/iorbit-model.ts");
 
-  assert.match(dashboardSource, /registrationAvailabilityByEventId/);
-  assert.match(dashboardSource, /eventRegistrationIsOpen\(nextEventRegistrationAvailability\)/);
-  assert.match(dashboardSource, /eventRegistrationLabel\(registrationAvailability\)/);
-  assert.match(dashboardSource, /eventRegistrationIsOpen\(registrationAvailabilityByEventId\[event.id\]/);
+  // iOrbit 任务 3 修订轮 1 已经把 `registrationAvailabilityByEventId` 从 page.tsx 去掉
+  // （Orbit_0918 概览屏 148–170 不画报名窗口文案）；任务 6a 删掉最后一个消费者
+  // `orbit-agent-dashboard.tsx` 之后，这里改断在售概览屏读的是服务端注入的
+  // `youRsvped`——同一份运行时报名快照，换了字段。
+  assert.match(dashboardSource, /iorbitRegisteredEvents\(home\?\.events \?\? \[\], now\.getTime\(\)\)/);
+  assert.match(modelSource, /event\.youRsvped \|\| event\.stats\.youRsvped/);
+  assert.doesNotMatch(dashboardSource, /registrationAvailabilityByEventId/);
   assert.doesNotMatch(
     dashboardSource,
     /浏览可报名的活动，回答两题即可完成报名/,
@@ -184,7 +192,7 @@ test("app home hub entry cards link to live app routes", () => {
 
   assert.match(homeUiSource, /href: "\/app\/profile"/);
   assert.match(homeUiSource, /href: "\/app\/contacts"/);
-  assert.match(homeUiSource, /href: "\/app\/today"/);
+  assert.match(homeUiSource, /href: "\/app\/agent\/plan"/);
   assert.match(homeUiSource, /title: t\(\{ en: "Universal profile", zh: "通用画像" \}\)/);
   assert.match(homeUiSource, /sub: t\(\{ en: "Meetings and interaction log", zh: "约见与交往记录" \}\)/);
   assert.match(homeUiSource, /<h3 className="h-section"[^>]*>\{item\.title\}<\/h3>/);
@@ -201,7 +209,7 @@ test("product route href mapping is idempotent for concrete app paths", async ()
   assert.equal(productHref("/app/contacts"), "/app/contacts");
   assert.equal(productHref("/app/schedule"), "/app/schedule");
   assert.equal(productHref("/app/events/EVT01"), "/app/events/EVT01");
-  assert.equal(productHref("/home/schedule"), "/app/today");
+  assert.equal(productHref("/home/schedule"), "/app/agent/plan");
   assert.equal(productHref("/home/cards"), "/app/contacts");
 });
 

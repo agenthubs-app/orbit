@@ -1186,7 +1186,7 @@ test("appointments count every qualifying saved confirmation, preserve old time 
   assert.equal(pendingView.needsReconfirmation, true);
   assert.equal(pendingView.contactId, "contact:counterparty-for-home-facts");
   assert.equal("contactIdsByActor" in pendingView, false);
-  assert.equal(model.appointments.items.every((item) => item.href === "/app/today#arrangements"), true);
+  assert.equal(model.appointments.items.every((item) => item.href === "/app/agent/plan"), true);
 });
 
 test("same identifiers remain isolated by source and invalid source dates do not become empty", async () => {

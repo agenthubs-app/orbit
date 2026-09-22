@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { iorbitChatSurfaceSource } from "./iorbit-chat-surface-source";
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -94,9 +95,9 @@ test("/app/agent consumes GET q event-discovery prompts and renders linked event
 
 test("/app/agent maps event artifacts into reason, timing, confidence, and detail-card fields", () => {
   const pageSource = readProjectFile("app/(app)/app/agent/page.tsx");
-  const agentSource = readProjectFile(
-    "app/(app)/app/agent/orbit-real-agent.tsx",
-  );
+  // iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除；对话面的源码断言改读
+  // `iorbit-chat-surface-source.ts` 合并的那一组在售文件（内容同源，换了住处）。
+  const agentSource = iorbitChatSurfaceSource();
 
   assert.match(pageSource, /searchParams/);
   assert.match(pageSource, /loadAppChatRouteViewModel/);
@@ -115,9 +116,9 @@ test("/app/agent maps event artifacts into reason, timing, confidence, and detai
 
 test("/app/agent keeps client-side deep-link prompts and contextual discovery suggestions", () => {
   const pageSource = readProjectFile("app/(app)/app/agent/page.tsx");
-  const agentSource = readProjectFile(
-    "app/(app)/app/agent/orbit-real-agent.tsx",
-  );
+  // iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除；对话面的源码断言改读
+  // `iorbit-chat-surface-source.ts` 合并的那一组在售文件（内容同源，换了住处）。
+  const agentSource = iorbitChatSurfaceSource();
 
   assert.match(pageSource, /firstSearchParam/);
   assert.match(

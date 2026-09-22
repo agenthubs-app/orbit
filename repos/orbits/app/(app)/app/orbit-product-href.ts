@@ -15,7 +15,12 @@ export function productHref(prototypeHref: string) {
   if (prototypeHref === "/home") return "/app/account/login";
   if (prototypeHref === "/home/events") return "/app/home/events";
   if (prototypeHref === "/home/profile") return "/app/profile";
-  if (prototypeHref === "/home/schedule") return "/app/today";
+  // iOrbit 任务 6a：`/app/today` / `/app/schedule` / `/app/followups` 已随路由归并
+  // 删除；原型里的日程/待办入口改落到取代它们的两条 iOrbit 兄弟屏。
+  if (prototypeHref === "/home/schedule") return "/app/agent/plan";
+  if (prototypeHref === "/today" || prototypeHref === "/schedule")
+    return "/app/agent/plan";
+  if (prototypeHref === "/followups") return "/app/agent/actions";
   if (prototypeHref === "/home/cards") return "/app/contacts";
   if (prototypeHref === "/home/cards/scan") return "/app/contacts/new";
   if (prototypeHref.startsWith("/home/cards/"))

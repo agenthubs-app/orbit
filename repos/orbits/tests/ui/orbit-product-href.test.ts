@@ -31,8 +31,12 @@ test("root stays root (the starfield home lives at /)", () => {
 test("prototype mappings survive the unification", () => {
   assert.equal(productHref("/explore"), "/app/events");
   assert.equal(productHref("/home/cards"), "/app/contacts");
-  assert.equal(productHref("/home/schedule"), "/app/today");
-  assert.equal(productHref("/today"), "/app/today");
+  // iOrbit 任务 6a：原型的日程/待办入口从已删除的 `/app/today` / `/app/followups`
+  // 改到取代它们的两条 iOrbit 兄弟屏。
+  assert.equal(productHref("/home/schedule"), "/app/agent/plan");
+  assert.equal(productHref("/today"), "/app/agent/plan");
+  assert.equal(productHref("/schedule"), "/app/agent/plan");
+  assert.equal(productHref("/followups"), "/app/agent/actions");
 });
 
 test("the shell re-exports the shared implementation", () => {

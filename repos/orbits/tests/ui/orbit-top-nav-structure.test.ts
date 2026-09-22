@@ -173,9 +173,10 @@ test("light product chrome does not recolor the starfield navigation", () => {
 // （外层 `agent` + 内层 `iorbit-0918`，「审阅修订」2）。断言随之改指那个文件；
 // Today 一侧未动。
 test("the ledger pages carry the real-page scope the nav CSS requires", () => {
+  // 任务 6a：`today/today-page-content.tsx` 已随 `/app/today` 删除。
   for (const file of [
-    "app/(app)/app/today/today-page-content.tsx",
     "app/(app)/app/agent/iorbit-0918/iorbit-screen-frame.tsx",
+    "app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx",
   ]) {
     const pageSource = readFileSync(join(projectRoot, file), "utf8");
     assert.ok(pageSource.includes("data-orbit-real-page="), file);
