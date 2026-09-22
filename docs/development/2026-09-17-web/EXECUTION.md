@@ -567,7 +567,7 @@
 - 报名设置 + 报告（任务 5 ①–⑱ + round 1）：类型 chip 省略 / ⠿ 装饰 / 预览地点行·补充介绍·计数省略 / 说明上限 1000 / 预览按钮与 hash 行 / 「高级」折叠区 / 空说明占位 / 状态 chip 两态 / 冻结只禁题集控件 / 强调色不改渐变 / 报名趋势·参会者来源省略 / 已完成跟进省略 / 「我的视图」仅双角色 / 我的视图报表说明少统计时间 / op-rsec 口径 / loading 文案 / 加载前默认两题；`.op-fp-intro{white-space:pre-wrap}`、`.btn.op-fpublish:hover{color:#FFFFFF}`。
 - 协作者抽屉（任务 6 ①–⑩ + 任务 7 ⑪⑫）：参与者选择器 / 真实 `<select>` / 理由输入 / 只读分析 chip 灰 / 「···」+ 行内表单 / `select.op-dw-input` 同高 / 自动聚焦 S1 焦点环 / 负责人名字 = actorId / 空态与加载文案 / 关闭为整页导航 / 「其他账号 ID…」 / 「刷新角色」。
 
-### 像素终验（设计 :3320 `Orbit_0918/Events 运营台.dc.html`，app :3100，`scripts/visual/compare-0918.mjs --design-table ops --login organizer@orbit.example.test:<OrbitDemo2026!>`，1240px，2026-09-22 复跑，产物 scratchpad `final-ops-{hub,ops,match,people,checkin,form,report,drawer}/`）
+### 像素终验（设计 :3320 `Orbit_0918/Events 运营台.dc.html`，app :3100，`scripts/visual/compare-0918.mjs --design-table ops --login organizer@orbit.example.test:<password>`，1240px，2026-09-22 复跑，产物 scratchpad `final-ops-{hub,ops,match,people,checkin,form,report,drawer}/`）
 
 验证库 `orbit_newui_events_20260922`，活动 `10000000-0000-4000-8000-000000000001`（任务 0 数据：生成已发布 v1、participant.a 已签到、participant.b 委派签到角色）。复跑时活动窗口（任务 0 timeshift 08:26–12:26 JST 2026-09-22）已过 → hub 卡 1 为「已结束 / 查看数据」、概览「活动现场」阶段 done；未重新 timeshift（数据残差按状态归因）。
 
