@@ -60,6 +60,13 @@ test("Orbit agent submit controls expose a 44px target and guard blank or concur
   assert.match(agentSource, /if \(!text\) return/);
   // 视觉尺寸按设计定稿（36px 圆钮），可点击热区仍为 44px（.hit-44 ::after）
   assert.match(agentSource, /className="oga-send hit-44"/);
+
+  // 合并前终审 6：iOrbit 对话屏自己的发送键同一口径——换屏时 `hit-44` 掉了，
+  // `app/(app)/app/agent/` 下一处不剩。
+  const iorbitChatSource = readProjectFile(
+    "app/(app)/app/agent/iorbit-0918/iorbit-chat.tsx",
+  );
+  assert.match(iorbitChatSource, /className="btn ir-composer-send hit-44"/);
 });
 
 // iOrbit 任务 6a（「审阅修订」15）：旧壳用 CSS 门控的桌面/移动两棵树渲染同一份

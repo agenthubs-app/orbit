@@ -9,6 +9,7 @@
 import { redirect } from "next/navigation";
 
 import { auth } from "../../../../../auth";
+import { resolveAuthenticatedApiActorFromSession } from "../../../../api/_shared/authenticated-actor";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
 import { iorbitStrategyView } from "../iorbit-0918/iorbit-model";
@@ -28,6 +29,15 @@ export default async function AgentStrategyPage({
   const session = await auth();
   if (!session?.user?.id) {
     redirect("/app/account/login?next=%2Fapp%2Fagent%2Fstrategy");
+  }
+  // 合并前终审 7：与 `/app/agent`、`/app/agent/actions`、`/app/agent/plan` 同口径。
+  const actor = await resolveAuthenticatedApiActorFromSession({
+    email: session.user.email,
+    name: session.user.name,
+    userId: session.user.id,
+  });
+  if (!actor) {
+    throw new Error("Authenticated Orbit account membership is unavailable.");
   }
   const resolved = await searchParams;
 

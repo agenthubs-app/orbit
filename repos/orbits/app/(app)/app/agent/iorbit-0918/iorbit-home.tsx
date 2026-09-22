@@ -837,7 +837,21 @@ export function IOrbitHome({
             </p>
           ) : null}
           {signalRows.length > 0 ? (
-            signalRows.map((row) => (
+            signalRows.map((row) => {
+              // 合并前终审 4a：这里原来直接在 `row.signal.actions` 里写死 `"open"`，
+              // `row.actions`（`agentSignalsToNextActionRows` 已经筛好、带 label 的
+              // 那份）一次没读过，于是每条信号的 `ask_agent`——旧
+              // `orbit-agent-today-workspace.tsx:209-240` 渲染成「交给 iOrbit」的那枚
+              // 带提示词的按钮——整条能力消失了。改回读 `row.actions`：导航项决定整行
+              // 点击落点，提问项作为一枚显式控件补在 done / snooze 旁边。
+              const navigateAction = row.actions.find(
+                (action) => action.kind === "navigate" && action.href,
+              );
+              const askAction = row.actions.find(
+                (action) => action.kind === "ask" && action.prompt,
+              );
+
+              return (
               <div
                 className="ir-signal"
                 data-orbit-agent-signal={row.signal.signalId}
@@ -845,12 +859,7 @@ export function IOrbitHome({
               >
                 <button
                   className="btn ir-action"
-                  onClick={() => {
-                    const open = row.signal.actions.find(
-                      (action) => action.actionId === "open",
-                    );
-                    navigate(open?.href ?? "/app/agent/actions");
-                  }}
+                  onClick={() => navigate(navigateAction?.href ?? "/app/agent/actions")}
                   type="button"
                 >
                   <span className="ir-action-icon">
@@ -866,8 +875,19 @@ export function IOrbitHome({
                   </span>
                   <span className="ir-caret">›</span>
                 </button>
-                {/* 设计没有画这两枚控件；既有的 done / snooze 写操作不得丢（「审阅修订」10）。 */}
+                {/* 设计没有画这几枚控件；既有的 done / snooze 写操作与 ask_agent 的
+                    带提示词提问都不得丢（「审阅修订」10 / 合并前终审 4a）。 */}
                 <span className="ir-signal-ops">
+                  {askAction?.prompt ? (
+                    <button
+                      className="btn ir-signal-op"
+                      data-orbit-agent-signal-ask={row.signal.signalId}
+                      onClick={() => onAsk(askAction.prompt as string)}
+                      type="button"
+                    >
+                      {askAction.label}
+                    </button>
+                  ) : null}
                   <button
                     className="btn ir-signal-op"
                     disabled={signalBusyId === row.signal.signalId}
@@ -886,7 +906,8 @@ export function IOrbitHome({
                   </button>
                 </span>
               </div>
-            ))
+              );
+            })
           ) : (
             <p className="ir-note">
               {signals === "pending"

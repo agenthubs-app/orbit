@@ -311,7 +311,10 @@ export function IOrbitChat({
             />
             <button
               aria-label={t({ en: "Send Ask Orbit message", zh: "发送给 Orbit" })}
-              className="btn ir-composer-send"
+              // 合并前终审 6：设计定稿是 36px 圆钮，但项目口径（`.hit-44` ::after，
+              // `tests/pages/orbit-agent-api-ui.test.ts:61-62`）要求发送键保留 44px
+              // 热区。视觉尺寸一像素不动，只补回被换屏丢掉的热区。
+              className="btn ir-composer-send hit-44"
               data-orbit-agent-submit="true"
               disabled={thinking || !chatDraft.trim()}
               type="submit"
