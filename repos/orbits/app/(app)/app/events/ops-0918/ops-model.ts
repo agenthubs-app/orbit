@@ -4,7 +4,15 @@
  * 636–658 `titles` / `opsTabs` / `hubTabs`）。不含 React / fetch。角色与生命周期谓词原样来自
  * center/event-center-workspace.tsx（59–108 行），语义不变。
  */
-import type { EventAnalyticsOrganizerAggregate } from "../../../../../features/events/event-analytics/contract";
+import type {
+  EventAnalyticsAttendeeReport,
+  EventAnalyticsOrganizerAggregate,
+} from "../../../../../features/events/event-analytics/contract";
+import type {
+  EventExperienceHead,
+  EventExperienceQuestion,
+  EventExperienceQuestionTrack,
+} from "../../../../../features/events/experience/contract";
 import type {
   EventOperationsGeneration,
   EventOperationsPublishedResult,
@@ -656,4 +664,188 @@ export function checkInClock(value: string | null | undefined): string {
   if (ms === null) return "—";
   const tokyo = new Date(ms + JST_OFFSET_MS);
   return `${String(tokyo.getUTCHours()).padStart(2, "0")}:${String(tokyo.getUTCMinutes()).padStart(2, "0")}`;
+}
+
+// ═══ 报名设置屏（设计 300–367；renderVals 608–615 / 704–706；审阅修订 12）═══
+
+/** 说明上限按 API（1000；设计 200 是 mock 初值）。 */
+export const FORM_INTRO_LIMIT = 1000;
+/** 题集上限（V2 0–4 题）。 */
+export const FORM_QUESTION_LIMIT = 4;
+
+export interface FormQuestionRow {
+  no: string;
+  req: string;
+  reqBg: string;
+  reqColor: string;
+  title: string;
+}
+
+/** 设计 608–615：序号 / 题干 / 必填 chip（`#FBECEA/#B5473A`）或 选填（`#F1F1FA/#6B6F99`）；题目契约无 type → 类型 chip 省略。 */
+export function formQuestionRows(questions: readonly Pick<EventExperienceQuestion, "prompt" | "required">[]): FormQuestionRow[] {
+  return questions.map((question, index) => ({
+    no: String(index + 1),
+    req: question.required ? "必填" : "选填",
+    reqBg: question.required ? "#FBECEA" : "#F1F1FA",
+    reqColor: question.required ? "#B5473A" : "#6B6F99",
+    title: question.prompt,
+  }));
+}
+
+export interface FormStatusChip {
+  bg: string;
+  color: string;
+  label: string;
+}
+
+/**
+ * 顶部状态 chip：`frozenAt` 已到（hook `frozen` 同口径）→ 已冻结（设计警示色 `#FBF1E4/#9A6B22`）；
+ * 草稿版本高于已发布 或 尚未发布 → 草稿中（设计 302 `#E6F1EC/#2F6B4F`）；否则 已发布 vN（`#ECEEFB/#4B4FC7`，设计无此态）。
+ */
+export function formStatusChip(head: EventExperienceHead | null | undefined, now: number): FormStatusChip {
+  const frozenAt = parseTime(head?.frozenAt ?? null);
+  if (frozenAt !== null && frozenAt <= now) return { bg: "#FBF1E4", color: "#9A6B22", label: "已冻结" };
+  const published = head?.publishedVersion ?? null;
+  const draft = head?.draftVersion ?? null;
+  if (published === null || (draft !== null && draft > published)) return { bg: "#E6F1EC", color: "#2F6B4F", label: "草稿中" };
+  return { bg: "#ECEEFB", color: "#4B4FC7", label: `已发布 v${published}` };
+}
+
+/** 设计 302「◷ 上次保存 5 分钟前」：以 `draft.createdAt` 相对 `now`；无草稿 / 无效 → 「◷ 尚未保存」。 */
+export function lastSavedChip(createdAt: string | null | undefined, now: number): string {
+  const ms = parseTime(createdAt ?? null);
+  if (ms === null) return "◷ 尚未保存";
+  const elapsed = Math.max(0, now - ms);
+  const minutes = Math.floor(elapsed / 60_000);
+  if (minutes < 1) return "◷ 上次保存 刚刚";
+  if (minutes < 60) return `◷ 上次保存 ${minutes} 分钟前`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `◷ 上次保存 ${hours} 小时前`;
+  return `◷ 上次保存 ${Math.floor(hours / 24)} 天前`;
+}
+
+/** 预览：positioning 单选圆，其余多选方框（审阅修订 12）。 */
+export function previewChoice(intent: EventExperienceQuestion["intent"]): "single" | "multi" {
+  return intent === "positioning" ? "single" : "multi";
+}
+
+export function canAddQuestion(track: EventExperienceQuestionTrack, count: number): boolean {
+  return track === "v2" && count < FORM_QUESTION_LIMIT;
+}
+
+/** 「＋ 添加问题」禁用时的说明；可添加 → null。 */
+export function addQuestionHint(track: EventExperienceQuestionTrack, count: number): string | null {
+  if (track !== "v2") return "V1 轨道固定两题必答；切到 V2 后可增删。";
+  if (count >= FORM_QUESTION_LIMIT) return `最多 ${FORM_QUESTION_LIMIT} 题。`;
+  return null;
+}
+
+// ═══ 数据报告屏（设计 369–445；renderVals 617–627 / 700–711；审阅修订 14）═══
+
+export interface ReportStat {
+  bg: string;
+  icon: string;
+  iconBg: string;
+  iconColor: string;
+  key: string;
+  label: string;
+  value: number;
+}
+
+/** 设计 378–381 四卡装饰（背景 / 图标底色逐字）。 */
+const REPORT_STAT_TONE = [
+  { bg: "#F7F7FD", icon: "⚇", iconBg: "#ECEEFB", iconColor: "#4B4FC7" },
+  { bg: "#F1F8F4", icon: "✓", iconBg: "#E0EFE6", iconColor: "#2F6B4F" },
+  { bg: "#FDF8EF", icon: "⇄", iconBg: "#F5E3C2", iconColor: "#9A6B22" },
+  { bg: "#F7F7FD", icon: "▤", iconBg: "#ECEEFB", iconColor: "#4B4FC7" },
+] as const;
+
+function statsOn(cells: readonly { key: string; label: string; value: number }[]): ReportStat[] {
+  return cells.map((cell, index) => ({ ...REPORT_STAT_TONE[index], ...cell }));
+}
+
+/** 整体视图四大数（features/events/event-analytics/report.tsx:141–155 字段）。 */
+export function reportStats(aggregate: EventAnalyticsOrganizerAggregate): ReportStat[] {
+  return statsOn([
+    { key: "registrations", label: "报名人数", value: aggregate.registrations.active },
+    { key: "checkedIn", label: "到场人数", value: aggregate.checkIns.checkedIn },
+    { key: "contacts", label: "联系方式交换", value: aggregate.contactRequests.accepted },
+    { key: "followups", label: "后续跟进", value: aggregate.roi.metrics.strongActions.followupReminders },
+  ]);
+}
+
+/** 我的视图四大数（report.tsx:271–276）。 */
+export function attendeeStats(report: EventAnalyticsAttendeeReport): ReportStat[] {
+  return statsOn([
+    { key: "contacts", label: "已同意联系", value: report.contactRequests.accepted },
+    { key: "captured", label: "本人交流记录", value: report.encounters.captured },
+    { key: "projected", label: "已投影交流", value: report.encounters.projected },
+    { key: "appointments", label: "已完成约谈", value: report.appointments.completed },
+  ]);
+}
+
+/** 现场转化：整数百分比 + 「分子 / 分母」；分母 0 → 「—」。 */
+export function reportRate(numerator: number, denominator: number): { detail: string; value: string } {
+  return {
+    detail: `${numerator} / ${denominator}`,
+    value: denominator === 0 ? "—" : `${Math.round((numerator * 100) / denominator)}%`,
+  };
+}
+
+/** 会后跟进：已生成 follow-up = `roi.metrics.strongActions.followupReminders`；「已完成跟进」无字段 → 该格省略。 */
+export function reportFollowup(aggregate: EventAnalyticsOrganizerAggregate): { generated: number } {
+  return { generated: aggregate.roi.metrics.strongActions.followupReminders };
+}
+
+/** 设计 439「2026年9月16日 23:59」：固定 JST 偏移 + UTC getter（同 `checkInClock`）。 */
+export function reportClock(value: string | null | undefined): string {
+  const ms = parseTime(value ?? null);
+  if (ms === null) return "—";
+  const tokyo = new Date(ms + JST_OFFSET_MS);
+  const hh = String(tokyo.getUTCHours()).padStart(2, "0");
+  const mm = String(tokyo.getUTCMinutes()).padStart(2, "0");
+  return `${tokyo.getUTCFullYear()}年${tokyo.getUTCMonth() + 1}月${tokyo.getUTCDate()}日 ${hh}:${mm}`;
+}
+
+/** 设计 709–710：整体 / 我的视图 toggle 装饰。 */
+export const REPORT_VIEW_TONE = {
+  on: { bg: "#2E3270", color: "#FFFFFF", weight: 500 },
+  off: { bg: "transparent", color: "#6B6F99", weight: 400 },
+} as const;
+
+/** report.tsx:278–281 签到行：已签到 + JST HH:mm；未签到 → 空副文案。 */
+export function attendeeCheckInLine(report: Pick<EventAnalyticsAttendeeReport, "checkIn">): { label: string; sub: string } {
+  const checked = report.checkIn.status === "checked_in";
+  return { label: checked ? "已签到" : "未签到", sub: checked && report.checkIn.checkedInAt ? checkInClock(report.checkIn.checkedInAt) : "" };
+}
+
+/** report.tsx:282–289 分组行文案原样。 */
+export function attendeeGroupingLine(report: Pick<EventAnalyticsAttendeeReport, "grouping">): string {
+  const grouping = report.grouping;
+  if (grouping.status === "available") {
+    return `已可见${grouping.roundOneTableNumber ? ` · 第一轮第 ${grouping.roundOneTableNumber} 桌` : ""}${grouping.roundTwoTableNumber ? ` · 第二轮第 ${grouping.roundTwoTableNumber} 桌` : ""}`;
+  }
+  return grouping.status === "locked" ? "已发布，暂未到可见时间" : "尚未发布";
+}
+
+/** report.tsx:253–266 / 298–307 AI 产物状态 + 说明文案原样。 */
+export function attendeeAiStatus(
+  status: EventAnalyticsAttendeeReport["aiArtifact"]["status"],
+  hasArtifact: boolean,
+): { description: string; label: string } {
+  switch (status) {
+    case "queued":
+      return { description: "AI 产物正在排队，尚无可展示内容。", label: "排队中" };
+    case "running":
+      return { description: "AI 产物正在生成，存储并 ready 前不会展示草稿。", label: "生成中" };
+    case "failed":
+      return { description: "AI 产物生成失败；不会以模板或推测内容替代。", label: "生成失败" };
+    case "unconfigured":
+      return { description: "尚无可读取的 AI 产物；不会触发生成或返回替代文案。", label: "未启用" };
+    default:
+      return {
+        description: hasArtifact ? "已读取基于本人许可证据生成的现有 AI 产物。" : "AI 产物状态为 ready，但没有可显示的已验证内容。",
+        label: "已生成",
+      };
+  }
 }

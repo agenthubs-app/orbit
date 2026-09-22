@@ -540,6 +540,92 @@ export const OPS_STYLES = `
 [data-orbit-real-page="ops-0918"] .op-code { background: #F7F7FD; border-radius: 8px; flex: 1 1 320px; overflow-wrap: anywhere; padding: 10px 12px; font-size: 12px; }
 [data-orbit-real-page="ops-0918"] .op-dir-id { font-size: 10px; color: #9FA3C4; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow: hidden; text-overflow: ellipsis; }
 [data-orbit-real-page="ops-0918"] .op-audit-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid #F1F1FA; padding: 12px 0; font-size: 13px; }
+/* ── 报名设置（设计稿 300–367 行）── */
+[data-orbit-real-page="ops-0918"] .op-fbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; }
+[data-orbit-real-page="ops-0918"] .op-fchips { display: flex; align-items: center; gap: 14px; }
+[data-orbit-real-page="ops-0918"] .op-fchip { padding: 7px 14px; border-radius: 999px; font-size: 12px; }
+[data-orbit-real-page="ops-0918"] .op-fchip-saved { display: flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; background: #F7F7FD; color: #6B6F99; font-size: 12px; }
+[data-orbit-real-page="ops-0918"] .op-factions { display: flex; gap: 12px; }
+[data-orbit-real-page="ops-0918"] .btn.op-fsave { padding: 13px 20px; border: 1px solid #DDDEFA; border-radius: 10px; background: #FFFFFF; color: #3B3F7A; font-size: 14px; cursor: pointer; font-weight: 400; }
+[data-orbit-real-page="ops-0918"] .btn.op-fsave:hover { border-color: #B9BCEB; color: #2E3270; }
+[data-orbit-real-page="ops-0918"] .btn.op-fpublish { padding: 13px 22px; border: 0; border-radius: 10px; background: #0E1225; color: #FFFFFF; font-size: 14px; font-weight: 500; cursor: pointer; }
+[data-orbit-real-page="ops-0918"] .btn.op-fpublish:hover { background: #2E3270; color: #FFFFFF; }
+[data-orbit-real-page="ops-0918"] .op-fgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 20px; align-items: start; }
+[data-orbit-real-page="ops-0918"] .op-fcol { display: flex; flex-direction: column; gap: 20px; }
+[data-orbit-real-page="ops-0918"] .op-fsec { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 24px; display: flex; flex-direction: column; gap: 14px; }
+[data-orbit-real-page="ops-0918"] .op-fsec-preview { gap: 16px; }
+[data-orbit-real-page="ops-0918"] .op-fsec-head { display: flex; flex-direction: column; gap: 6px; }
+[data-orbit-real-page="ops-0918"] .op-fsec-sub { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="ops-0918"] .op-ftextarea { width: 100%; padding: 16px; border: 1px solid #DDDEFA; border-radius: 12px; background: #FFFFFF; font-size: 14px; line-height: 1.7; color: #0E1225; resize: vertical; outline: none; }
+[data-orbit-real-page="ops-0918"] .op-fcount { align-self: flex-end; font-size: 12px; color: #9FA3C4; }
+/* 设计七列 18px 26px minmax(0,1fr) auto auto 26px 26px：类型 chip 无来源（审阅修订 12）→ 六列 */
+[data-orbit-real-page="ops-0918"] .op-fq { display: grid; grid-template-columns: 18px 26px minmax(0, 1fr) auto 26px 26px; gap: 12px; align-items: center; padding: 14px 16px; border: 1px solid #E8E9F6; border-radius: 12px; }
+[data-orbit-real-page="ops-0918"] .op-fq-drag { color: #C7C9E4; letter-spacing: 1px; }
+[data-orbit-real-page="ops-0918"] .op-fq-no { width: 26px; height: 26px; border-radius: 8px; background: #F7F7FD; color: #6B6F99; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+[data-orbit-real-page="ops-0918"] .op-fq-title { font-size: 14px; font-weight: 500; min-width: 0; }
+[data-orbit-real-page="ops-0918"] .op-fq-req { padding: 5px 12px; border-radius: 999px; font-size: 12px; white-space: nowrap; }
+[data-orbit-real-page="ops-0918"] .btn.op-fq-edit { width: 26px; height: 26px; border: 0; border-radius: 7px; background: transparent; color: #6B6F99; cursor: pointer; padding: 0; font-weight: 400; }
+[data-orbit-real-page="ops-0918"] .btn.op-fq-edit:hover { background: #F7F7FD; }
+[data-orbit-real-page="ops-0918"] .btn.op-fq-del { width: 26px; height: 26px; border: 0; border-radius: 7px; background: transparent; color: #B5473A; cursor: pointer; padding: 0; font-weight: 400; }
+[data-orbit-real-page="ops-0918"] .btn.op-fq-del:hover { background: #FBECEA; }
+[data-orbit-real-page="ops-0918"] .btn.op-fq-del:disabled { cursor: default; opacity: 0.4; }
+[data-orbit-real-page="ops-0918"] .btn.op-fadd { padding: 16px; border: 1px dashed #C7C9E4; border-radius: 12px; background: transparent; color: #4B4FC7; font-size: 14px; cursor: pointer; font-weight: 400; }
+[data-orbit-real-page="ops-0918"] .btn.op-fadd:hover { background: #F7F7FD; }
+[data-orbit-real-page="ops-0918"] .btn.op-fadd:disabled { cursor: default; opacity: 0.6; }
+/* 行内编辑区（设计无：沿用附加区 op-field 口径） */
+[data-orbit-real-page="ops-0918"] .op-fq-editor { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 12px; padding-top: 12px; border-top: 1px solid #F1F1FA; }
+[data-orbit-real-page="ops-0918"] .op-fq-option { display: flex; align-items: center; gap: 8px; }
+[data-orbit-real-page="ops-0918"] .op-fq-option > .op-field { flex: 1; min-width: 0; }
+[data-orbit-real-page="ops-0918"] .op-fq-option-add { align-self: flex-start; }
+[data-orbit-real-page="ops-0918"] .op-fq-required { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #3B3F7A; }
+[data-orbit-real-page="ops-0918"] .op-frozen { border: 1px solid #F0E2C6; background: #FDF8EF; color: #9A6B22; border-radius: 12px; padding: 12px 14px; font-size: 12px; line-height: 1.6; }
+[data-orbit-real-page="ops-0918"] .op-fold-caret { color: #9FA3C4; }
+[data-orbit-real-page="ops-0918"] .op-fsec-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+[data-orbit-real-page="ops-0918"] .op-fp { border: 1px solid #E8E9F6; border-radius: 16px; background: #FFFFFF; box-shadow: 0 12px 40px rgba(59,63,122,0.08); padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+[data-orbit-real-page="ops-0918"] .op-fp-head { display: flex; gap: 14px; align-items: flex-start; }
+[data-orbit-real-page="ops-0918"] .op-fp-cover { width: 92px; height: 68px; flex: none; border-radius: 10px; background: linear-gradient(140deg,#3B3F7A,#8A8EE0); }
+[data-orbit-real-page="ops-0918"] .op-fp-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+[data-orbit-real-page="ops-0918"] .op-fp-title { font-size: 16px; }
+[data-orbit-real-page="ops-0918"] .op-fp-line { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="ops-0918"] .op-fp-close { color: #9FA3C4; }
+[data-orbit-real-page="ops-0918"] .op-fp-intro { padding: 14px; border-radius: 10px; background: #F7F7FD; font-size: 13px; color: #3B3F7A; white-space: pre-wrap; }
+[data-orbit-real-page="ops-0918"] .op-fp-q { display: flex; flex-direction: column; gap: 10px; }
+[data-orbit-real-page="ops-0918"] .op-fp-q-title { font-size: 13px; }
+[data-orbit-real-page="ops-0918"] .op-fp-req { color: #B5473A; }
+[data-orbit-real-page="ops-0918"] .op-fp-opts { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: #3B3F7A; }
+[data-orbit-real-page="ops-0918"] .op-fp-opt { display: flex; align-items: center; gap: 6px; }
+[data-orbit-real-page="ops-0918"] .op-fp-radio { width: 14px; height: 14px; border: 1px solid #C7C9E4; border-radius: 50%; }
+[data-orbit-real-page="ops-0918"] .op-fp-check { width: 14px; height: 14px; border: 1px solid #C7C9E4; border-radius: 4px; }
+/* 「提交报名」预览内静态（非 button）：设计 358 行按钮声明 + 块级居中 */
+[data-orbit-real-page="ops-0918"] .op-fp-submit { padding: 14px; border: 0; border-radius: 10px; background: #0E1225; color: #FFFFFF; font-size: 14px; font-weight: 500; display: block; text-align: center; }
+[data-orbit-real-page="ops-0918"] .op-fp-hash { font-size: 12px; color: #6B6F99; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+[data-orbit-real-page="ops-0918"] .op-fp-note { font-size: 12px; color: #9FA3C4; }
+/* ── 数据报告（设计稿 369–445 行）── */
+[data-orbit-real-page="ops-0918"] .op-rbar { display: flex; justify-content: flex-end; }
+[data-orbit-real-page="ops-0918"] .op-rviews { display: flex; gap: 6px; padding: 5px; border-radius: 10px; background: #F7F7FD; }
+[data-orbit-real-page="ops-0918"] .btn.op-rview { padding: 10px 20px; border: 0; border-radius: 8px; font-size: 13px; cursor: pointer; }
+[data-orbit-real-page="ops-0918"] .op-rstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 16px; }
+[data-orbit-real-page="ops-0918"] .op-rstat { display: flex; align-items: center; gap: 16px; padding: 20px; border: 1px solid #E8E9F6; border-radius: 16px; }
+[data-orbit-real-page="ops-0918"] .op-rstat-ico { width: 44px; height: 44px; flex: none; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+[data-orbit-real-page="ops-0918"] .op-rstat-n { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 28px; }
+[data-orbit-real-page="ops-0918"] .op-rgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 20px; align-items: start; }
+[data-orbit-real-page="ops-0918"] .op-rsec { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+[data-orbit-real-page="ops-0918"] .op-rsec-notes { gap: 14px; }
+[data-orbit-real-page="ops-0918"] .op-rpair { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+[data-orbit-real-page="ops-0918"] .op-rmetric { display: flex; align-items: center; gap: 14px; }
+[data-orbit-real-page="ops-0918"] .op-rmetric-ico { width: 46px; height: 46px; flex: none; border-radius: 50%; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; }
+[data-orbit-real-page="ops-0918"] .op-rmetric-ico-green { background: #E6F1EC; color: #2F6B4F; }
+[data-orbit-real-page="ops-0918"] .op-rmetric-copy { display: flex; flex-direction: column; gap: 3px; }
+[data-orbit-real-page="ops-0918"] .op-rmetric-label { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="ops-0918"] .op-rmetric-n { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 26px; }
+[data-orbit-real-page="ops-0918"] .op-rmetric-sub { font-size: 12px; color: #9FA3C4; }
+[data-orbit-real-page="ops-0918"] .op-rnotes { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 12px 20px; align-items: start; font-size: 13px; }
+[data-orbit-real-page="ops-0918"] .op-rnote-k { color: #3B3F7A; }
+[data-orbit-real-page="ops-0918"] .op-rnote-v { color: #6B6F99; }
+/* 中和 .btn 基类（orbit-reference-styles.tsx:594–611）：报名设置 / 数据报告屏按钮类 */
+[data-orbit-real-page="ops-0918"] .btn.op-fsave, [data-orbit-real-page="ops-0918"] .btn.op-fpublish, [data-orbit-real-page="ops-0918"] .btn.op-fq-edit, [data-orbit-real-page="ops-0918"] .btn.op-fq-del, [data-orbit-real-page="ops-0918"] .btn.op-fadd, [data-orbit-real-page="ops-0918"] .btn.op-rview { height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="ops-0918"] .btn.op-fsave:active, [data-orbit-real-page="ops-0918"] .btn.op-fpublish:active, [data-orbit-real-page="ops-0918"] .btn.op-fq-edit:active, [data-orbit-real-page="ops-0918"] .btn.op-fq-del:active, [data-orbit-real-page="ops-0918"] .btn.op-fadd:active, [data-orbit-real-page="ops-0918"] .btn.op-rview:active { transform: none; }
+[data-orbit-real-page="ops-0918"] .btn.op-fsave:disabled, [data-orbit-real-page="ops-0918"] .btn.op-fpublish:disabled { cursor: default; opacity: 0.6; }
 @media (max-width: 860px) {
   [data-orbit-real-page="ops-0918"] .op-ops-grid { grid-template-columns: 1fr; }
   [data-orbit-real-page="ops-0918"] .op-steps { grid-template-columns: repeat(2, 1fr); row-gap: 18px; }

@@ -44,6 +44,23 @@ import {
   rolesDrawerHref,
   SOON_WINDOW_MS,
   TITLES,
+  addQuestionHint,
+  attendeeAiStatus,
+  attendeeCheckInLine,
+  attendeeGroupingLine,
+  attendeeStats,
+  canAddQuestion,
+  FORM_INTRO_LIMIT,
+  FORM_QUESTION_LIMIT,
+  formQuestionRows,
+  formStatusChip,
+  lastSavedChip,
+  previewChoice,
+  REPORT_VIEW_TONE,
+  reportClock,
+  reportFollowup,
+  reportRate,
+  reportStats,
 } from "../../app/(app)/app/events/ops-0918/ops-model";
 import type { EventCenterItem } from "../../app/(app)/app/events/ops-0918/use-event-center";
 import type { EventAnalyticsOrganizerAggregate } from "../../features/events/event-analytics/contract";
@@ -394,4 +411,109 @@ test("check-in rows: filters / search by name or participantId suffix / counts /
   assert.deepEqual(CHECKIN_STATUS_CHIP.done, { bg: "#E6F1EC", color: "#2F6B4F", label: "已签到" });
   assert.deepEqual(CHECKIN_BUTTON_TONE.arrive, { bg: "#0E1225", border: "#0E1225", color: "#FFFFFF", cursor: "pointer" });
   assert.deepEqual(CHECKIN_BUTTON_TONE.done, { bg: "#F1F1FA", border: "#F1F1FA", color: "#9FA3C4", cursor: "default" });
+});
+
+// ═══ 报名设置屏（设计 300–367；renderVals 608–615 / 704–706；审阅修订 12）═══
+
+test("form question rows: 1-based no / prompt / 必填 vs 选填 chip exactly like renderVals 608–615, type chip omitted", () => {
+  const rows = formQuestionRows([
+    { prompt: "Who would make this event useful for you?", required: true },
+    { prompt: "What could you offer?", required: false },
+  ]);
+  assert.deepEqual(rows, [
+    { no: "1", req: "必填", reqBg: "#FBECEA", reqColor: "#B5473A", title: "Who would make this event useful for you?" },
+    { no: "2", req: "选填", reqBg: "#F1F1FA", reqColor: "#6B6F99", title: "What could you offer?" },
+  ]);
+  assert.equal("type" in rows[0], false, "no type field on the question contract → chip omitted (审阅修订 12)");
+  assert.deepEqual(formQuestionRows([]), []);
+});
+
+test("form status chip: frozen → 已冻结; draft ahead of published or nothing published → 草稿中; otherwise 已发布 vN", () => {
+  const head = (patch: Record<string, unknown>) => ({ draftVersion: null, eventId: "e", frozenAt: null, publishedAt: null, publishedVersion: null, revision: 0, ...patch });
+  assert.deepEqual(formStatusChip(null, NOW), { bg: "#E6F1EC", color: "#2F6B4F", label: "草稿中" }, "NOT_FOUND snapshot → drafting");
+  assert.deepEqual(formStatusChip(head({ draftVersion: 3 }), NOW), { bg: "#E6F1EC", color: "#2F6B4F", label: "草稿中" });
+  assert.deepEqual(formStatusChip(head({ draftVersion: 3, publishedVersion: 2 }), NOW), { bg: "#E6F1EC", color: "#2F6B4F", label: "草稿中" });
+  assert.deepEqual(formStatusChip(head({ draftVersion: 2, publishedVersion: 2 }), NOW), { bg: "#ECEEFB", color: "#4B4FC7", label: "已发布 v2" });
+  assert.deepEqual(formStatusChip(head({ draftVersion: null, publishedVersion: 5 }), NOW), { bg: "#ECEEFB", color: "#4B4FC7", label: "已发布 v5" });
+  assert.deepEqual(formStatusChip(head({ draftVersion: 3, frozenAt: new Date(NOW - HOUR).toISOString() }), NOW), { bg: "#FBF1E4", color: "#9A6B22", label: "已冻结" });
+  assert.deepEqual(formStatusChip(head({ draftVersion: 3, frozenAt: new Date(NOW + HOUR).toISOString() }), NOW), { bg: "#E6F1EC", color: "#2F6B4F", label: "草稿中" }, "future frozenAt is not frozen yet (hook `frozen` semantics)");
+});
+
+test("last saved chip: relative time from draft.createdAt; no draft → 尚未保存", () => {
+  assert.equal(lastSavedChip(null, NOW), "◷ 尚未保存");
+  assert.equal(lastSavedChip(undefined, NOW), "◷ 尚未保存");
+  assert.equal(lastSavedChip("nope", NOW), "◷ 尚未保存");
+  assert.equal(lastSavedChip(new Date(NOW - 20 * 1000).toISOString(), NOW), "◷ 上次保存 刚刚");
+  assert.equal(lastSavedChip(new Date(NOW - 5 * 60 * 1000).toISOString(), NOW), "◷ 上次保存 5 分钟前", "design 302");
+  assert.equal(lastSavedChip(new Date(NOW - 3 * HOUR).toISOString(), NOW), "◷ 上次保存 3 小时前");
+  assert.equal(lastSavedChip(new Date(NOW - 49 * HOUR).toISOString(), NOW), "◷ 上次保存 2 天前");
+  assert.equal(lastSavedChip(new Date(NOW + HOUR).toISOString(), NOW), "◷ 上次保存 刚刚", "clock skew clamps to 刚刚");
+});
+
+test("preview choice: positioning is single-choice, every other intent multi; add-question gate follows the track", () => {
+  assert.equal(previewChoice("positioning"), "single");
+  assert.equal(previewChoice("target_attendees"), "multi");
+  assert.equal(previewChoice("value_offered"), "multi");
+  assert.equal(FORM_INTRO_LIMIT, 1000);
+  assert.equal(FORM_QUESTION_LIMIT, 4);
+  assert.equal(canAddQuestion("v1", 2), false);
+  assert.equal(canAddQuestion("v2", 3), true);
+  assert.equal(canAddQuestion("v2", 4), false);
+  assert.equal(addQuestionHint("v1", 2), "V1 轨道固定两题必答；切到 V2 后可增删。");
+  assert.equal(addQuestionHint("v2", 4), "最多 4 题。");
+  assert.equal(addQuestionHint("v2", 1), null);
+});
+
+// ═══ 数据报告屏（设计 369–445；renderVals 617–627 / 700–711；审阅修订 14）═══
+
+test("report stats map the organizer aggregate onto the four design cards (378–381 backgrounds verbatim)", () => {
+  const aggregate = {
+    checkIns: { checkedIn: 64 },
+    contactRequests: { accepted: 42, awaitingTargetConsent: 1, declined: 0, withdrawn: 0 },
+    registrations: { active: 86, cancelled: 2 },
+    roi: { metrics: { strongActions: { appointments: 0, followupReminders: 18, humanEncounterNotes: 0, messageDrafts: 0 } }, snapshot: { windowEndsAt: "2026-09-16T14:59:00.000Z" } },
+  } as unknown as EventAnalyticsOrganizerAggregate;
+  assert.deepEqual(reportStats(aggregate), [
+    { bg: "#F7F7FD", icon: "⚇", iconBg: "#ECEEFB", iconColor: "#4B4FC7", key: "registrations", label: "报名人数", value: 86 },
+    { bg: "#F1F8F4", icon: "✓", iconBg: "#E0EFE6", iconColor: "#2F6B4F", key: "checkedIn", label: "到场人数", value: 64 },
+    { bg: "#FDF8EF", icon: "⇄", iconBg: "#F5E3C2", iconColor: "#9A6B22", key: "contacts", label: "联系方式交换", value: 42 },
+    { bg: "#F7F7FD", icon: "▤", iconBg: "#ECEEFB", iconColor: "#4B4FC7", key: "followups", label: "后续跟进", value: 18 },
+  ]);
+  assert.deepEqual(reportRate(64, 86), { detail: "64 / 86", value: "74%" });
+  assert.deepEqual(reportRate(42, 86), { detail: "42 / 86", value: "49%" });
+  assert.deepEqual(reportRate(0, 0), { detail: "0 / 0", value: "—" }, "zero denominator → —");
+  assert.deepEqual(reportFollowup(aggregate), { generated: 18 }, "已完成跟进 has no field → omitted");
+  assert.equal(reportClock("2026-09-16T14:59:00.000Z"), "2026年9月16日 23:59", "JST fixed offset");
+  assert.equal(reportClock("2026-12-31T15:00:00.000Z"), "2027年1月1日 00:00");
+  assert.equal(reportClock("nope"), "—");
+  assert.deepEqual(REPORT_VIEW_TONE.on, { bg: "#2E3270", color: "#FFFFFF", weight: 500 });
+  assert.deepEqual(REPORT_VIEW_TONE.off, { bg: "transparent", color: "#6B6F99", weight: 400 });
+});
+
+test("attendee stats / lines reuse report.tsx:253–289 copy on the same four card tones", () => {
+  const report = {
+    aiArtifact: { artifact: null, failureCode: null, status: "unconfigured" },
+    appointments: { completed: 1 },
+    checkIn: { checkedInAt: "2026-10-01T00:05:00.000Z", status: "checked_in" },
+    contactRequests: { accepted: 2 },
+    encounters: { captured: 3, projected: 4 },
+    grouping: { roundOneTableNumber: 1, roundTwoTableNumber: 2, status: "available" },
+  } as never;
+  assert.deepEqual(attendeeStats(report).map((stat) => [stat.label, stat.value, stat.bg]), [
+    ["已同意联系", 2, "#F7F7FD"],
+    ["本人交流记录", 3, "#F1F8F4"],
+    ["已投影交流", 4, "#FDF8EF"],
+    ["已完成约谈", 1, "#F7F7FD"],
+  ]);
+  assert.deepEqual(attendeeCheckInLine(report), { label: "已签到", sub: "09:05" });
+  assert.deepEqual(attendeeCheckInLine({ checkIn: { checkedInAt: null, status: "not_checked_in" } } as never), { label: "未签到", sub: "" });
+  assert.equal(attendeeGroupingLine(report), "已可见 · 第一轮第 1 桌 · 第二轮第 2 桌");
+  assert.equal(attendeeGroupingLine({ grouping: { roundOneTableNumber: null, roundTwoTableNumber: null, status: "locked" } } as never), "已发布，暂未到可见时间");
+  assert.equal(attendeeGroupingLine({ grouping: { roundOneTableNumber: null, roundTwoTableNumber: null, status: "not_published" } } as never), "尚未发布");
+  assert.deepEqual(attendeeAiStatus("unconfigured", false), { description: "尚无可读取的 AI 产物；不会触发生成或返回替代文案。", label: "未启用" });
+  assert.deepEqual(attendeeAiStatus("queued", false), { description: "AI 产物正在排队，尚无可展示内容。", label: "排队中" });
+  assert.deepEqual(attendeeAiStatus("running", false), { description: "AI 产物正在生成，存储并 ready 前不会展示草稿。", label: "生成中" });
+  assert.deepEqual(attendeeAiStatus("failed", false), { description: "AI 产物生成失败；不会以模板或推测内容替代。", label: "生成失败" });
+  assert.deepEqual(attendeeAiStatus("ready", true), { description: "已读取基于本人许可证据生成的现有 AI 产物。", label: "已生成" });
+  assert.deepEqual(attendeeAiStatus("ready", false), { description: "AI 产物状态为 ready，但没有可显示的已验证内容。", label: "已生成" });
 });
