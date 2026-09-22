@@ -42,6 +42,24 @@ node scripts/visual/compare-0918.mjs \
   `[data-orbit-agent-action-entry]`，`plan` 用 `.ir-task-no`），防止「空账本 = 只剩壳 →
   残差很小 → 记成通过」。
 
+### 各域归因文件（2026-09-23 网格归因复核）
+
+| 域 | 归因文件 | 视图数 / 超阈值带 |
+| --- | --- | --- |
+| iOrbit | `scripts/visual/attribution-0918-iorbit.json` | 7 / 71 |
+| Network | `scripts/visual/attribution-0918-network.json` | 8 / 92 |
+| 个人中心 | `scripts/visual/attribution-0918-profile.json` | 4 / — |
+| Events 参会者侧 | `scripts/visual/attribution-0918-events.json` | 15 / — |
+| 运营台 | `scripts/visual/attribution-0918-ops.json` | 8 / — |
+| 认证四态弹窗 | `scripts/visual/attribution-0918-auth.json` | 6 / — |
+
+归因理由前缀统一四类：`[data]` 同结构真实内容不同 / `[recorded]` 命中台账已记偏差（必须写出条目出处）/
+`[shared]` 跨域共用件（顶栏 +2px、全局 iOrbit 悬浮球、Next dev 叠加件）/ 缺陷（不登记，直接修）。
+
+> **Network `analysis` 视图的可访问名**：设计 122 行那颗按钮写的是「查看完整分析 →」（带箭头）。
+> `261507b4` 给页签点击加 `exact: true` 之后，映射表里不带箭头的写法再也点不中，该视图会以 locator
+> 30s 超时崩掉——2026-09-23 复核时修正为真实可访问名。改设计表映射时请照抄设计源码里的文本。
+
 ```bash
 node scripts/visual/compare-0918.mjs \
   --design "http://localhost:3320/Orbit_0918/iOrbit.dc.html" --design-view actions \
@@ -55,7 +73,7 @@ node scripts/visual/compare-0918.mjs \
 
 脚本按 `--design` URL 自动选择页签表；也可用 `--design-table profile|events|ops|auth|iorbit` 强制选个人中心表 / Events 表 / 运营台表 / 认证弹窗表 / iOrbit 表。
 
-- **Network 表**（`--design` 不含个人中心 URL 编码时）：`overview|pipeline|all|import|analysis` → 概览/关系管线/所有人脉/导入人脉/查看完整分析；不传 `--design-view` 时默认点「概览」。
+- **Network 表**（`--design` 不含个人中心 URL 编码时）：`overview|pipeline|all|import|analysis` → 概览/关系管线/所有人脉/导入人脉/**「查看完整分析 →」**（`analysis` 不是主页签，是概览屏 122 行的深色按钮，可访问名带箭头，必须照抄）；不传 `--design-view` 时默认点「概览」。
 - **个人中心 表**（`--design` 含 `%E4%B8%AA%E4%BA%BA%E4%B8%AD%E5%BF%83`，即「个人中心」，或传 `--design-table profile`）：`profile|settings|connect` → 个人资料/iOrbit 设置/连接；**不传 `--design-view` 时不点击任何页签**（停在设计稿默认视图）。
   - `persona`（编辑商务画像）不是页签，映射表里没有它：先用 `--design-view profile` 或不传 `--design-view` 停在「个人资料」，再加 `--design-click "text=编辑商务画像"` 点进商务画像编辑视图。
 

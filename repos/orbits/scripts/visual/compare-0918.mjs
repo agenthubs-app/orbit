@@ -135,7 +135,10 @@ try {
   // 判定用 --design URL 是否含 iOrbit.dc.html，或显式传 --design-table iorbit（文件名不与其他表冲突，放在链尾即可，
   // 但 viewLabel 必须与 Events/运营台/认证 一样跳过 Network 默认的「概览」页签点击）。
   const isIorbitTable = args["design-table"] === "iorbit" || (args.design ?? "").includes("iOrbit.dc.html");
-  const networkViewLabel = { overview: "概览", pipeline: "关系管线", all: "所有人脉", import: "导入人脉", analysis: "查看完整分析" };
+  // analysis 的入口不是主页签，而是概览屏 122 行那颗深色按钮，可访问名带箭头（「查看完整分析 →」）。
+  // 261507b4 给页签点击加 exact:true（个人中心「连接」消歧）之后，写成不带箭头的 "查看完整分析" 就再也点不中了——
+  // 2026-09-23 网格归因复核时以 locator 超时暴露。这里写回真实可访问名，exact:true 保持不变。
+  const networkViewLabel = { overview: "概览", pipeline: "关系管线", all: "所有人脉", import: "导入人脉", analysis: "查看完整分析 →" };
   const profileViewLabel = { profile: "个人资料", settings: "iOrbit 设置", connect: "连接" };
   const viewLabel = isEventsTable || isOpsTable || isAuthTable || isIorbitTable ? undefined : isProfileTable ? profileViewLabel[args["design-view"]] : networkViewLabel[args["design-view"] ?? "overview"];
   // 每一步是 (page) => Locator；按顺序点击，步间短等待让设计稿的 renderVals 重绘完成。

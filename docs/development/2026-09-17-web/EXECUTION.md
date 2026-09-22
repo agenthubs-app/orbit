@@ -246,18 +246,40 @@
 
 ### 像素终验（设计 :3320 `Orbit_0918/Network v2.dc.html`，app :3100，`scripts/visual/compare-0918.mjs --login qa@orbit.test`，2026-09-21 复跑）
 
-| 屏 / 视图 | 比对参数 | raw mismatch | 非数据残差（≤0.005 门槛） | 与任务报告对比 |
-| --- | --- | --- | --- | --- |
-| 所有人脉 `/app/contacts` | `--design-view all` | 0.0524（design 1580 / app 5896） | 0.0035（顶栏 0.0013 + 浮动控件 0.0021 + 遮罩外 0.0001） | 与任务 2 第 3 轮完全一致，截图逐字节相同 |
-| 关系管线 `/app/contacts/pipeline` | `--design-view pipeline` | 0.0905（1606 / 8603） | 0.0033 | 与任务 3 一致，截图逐字节相同 |
-| 概览 `/app/contacts/dashboard` | `--design-view overview` | 0.1295（1773 / 1663） | 0.0039 | 与任务 4 第 2 轮 raw 一致；app 截图仅「最近动态」四行换了联系人（同为 7月28日 的等时活动记录排序，纯数据，版式/时间列不变） |
-| 分析-结构 `?tab=structure` | `--design-view analysis` | 0.0813（1723 / 1751） | 0.0045 | 与任务 4 一致，截图逐字节相同 |
-| 分析-机会 `?tab=opportunities` | `--design-view analysis --design-click 'button:has-text("机会")'` | 0.0974（1538 / 1637） | 0.0039（+ 已批准省略 ETA 的 CTA 右移 0.0049） | 与任务 4 修订轮一致，截图逐字节相同。首次复跑得 0.0963 / design 1546px：设计页 Google 衬线字体未加载即截图、标题回落无衬线致设计侧高 8px，app 截图仍逐字节相同；重跑恢复 |
-| 导入人脉 `/app/contacts/new` | `--design-view import --design-click 'button:has-text("扫描名片夹")'` | 0.0626（1487 / 1701） | 0.0048 | 与任务 5 第 3 轮一致，截图逐字节相同 |
-| 详情弹窗 `/app/contacts/<id>` | `--design-view all --design-click "text=田中惠子"` | 0.0618（1580 / 5896） | 0.0030 | 与任务 6 修订二一致，截图逐字节相同 |
-| 记录跟进弹窗 | 上行 + `--design-click2 "text=记录互动" --click ".nw-detail-follow"` | 0.0353（1580 / 5896） | 0.0034 | 与任务 6 修订二一致，截图逐字节相同 |
+| 屏 / 视图 | 比对参数 | raw mismatch | 非数据残差（≤0.005 门槛） | 与任务报告对比 | 网格归因（`--grid 100`，2026-09-23） |
+| --- | --- | --- | --- | --- | --- |
+| 所有人脉 `/app/contacts` | `--design-view all` | 0.0524（design 1580 / app 5896） | 0.0035（顶栏 0.0013 + 浮动控件 0.0021 + 遮罩外 0.0001） | 与任务 2 第 3 轮完全一致，截图逐字节相同 | 16 带 / 10 超阈 / data 10 · recorded 0 · shared 1 · 缺陷 0 |
+| 关系管线 `/app/contacts/pipeline` | `--design-view pipeline` | 0.0905（1606 / 8603） | 0.0033 | 与任务 3 一致，截图逐字节相同 | 17 带 / 13 超阈 / data 13 · recorded 3 · shared 1 · 缺陷 0 |
+| 概览 `/app/contacts/dashboard` | `--design-view overview` | 0.1295（1773 / 1663） | 0.0039 | 与任务 4 第 2 轮 raw 一致；app 截图仅「最近动态」四行换了联系人（同为 7月28日 的等时活动记录排序，纯数据，版式/时间列不变） | 17 带 / 14 超阈 / data 13 · recorded 5 · shared 1 · 缺陷 0 |
+| 分析-结构 `?tab=structure` | `--design-view analysis` | 0.0813（1723 / 1751） | 0.0045 | 与任务 4 一致，截图逐字节相同 | 18 带 / 12 超阈 / data 12 · recorded 2 · shared 1 · 缺陷 0 |
+| 分析-机会 `?tab=opportunities` | `--design-view analysis --design-click 'button:has-text("机会")'` | 0.0974（1538 / 1637） | 0.0039（+ 已批准省略 ETA 的 CTA 右移 0.0049） | 与任务 4 修订轮一致，截图逐字节相同。首次复跑得 0.0963 / design 1546px：设计页 Google 衬线字体未加载即截图、标题回落无衬线致设计侧高 8px，app 截图仍逐字节相同；重跑恢复 | 16 带 / 12 超阈 / data 12 · recorded 4 · shared 1 · 缺陷 0 |
+| 导入人脉 `/app/contacts/new` | `--design-view import --design-click 'button:has-text("扫描名片夹")'` | 0.0626（1487 / 1701） | 0.0048 | 与任务 5 第 3 轮一致，截图逐字节相同 | 15 带 / 7 超阈 / data 2 · recorded 6 · shared 1 · 缺陷 0 |
+| 详情弹窗 `/app/contacts/<id>` | `--design-view all --design-click "text=田中惠子"` | 0.0618（1580 / 5896） | 0.0030 | 与任务 6 修订二一致，截图逐字节相同 | 16 带 / 15 超阈 / data 15 · recorded 2 · shared 1 · 缺陷 0 |
+| 记录跟进弹窗 | 上行 + `--design-click2 "text=记录互动" --click ".nw-detail-follow"` | 0.0353（1580 / 5896） | 0.0034 | 与任务 6 修订二一致，截图逐字节相同 | 16 带 / 9 超阈 / data 8 · recorded 1 · shared 1 · 缺陷 0 |
 
 八屏 raw 均 > 0.02，全部由真实数据行数/页高与已批准结构差构成（任务 2 起采用的门槛：raw ≤ 0.02 或 归因后非数据残差 ≤ 0.005 且 diff 无布局线/圆角/间距/色块差异）；终验无一屏回退，无需修复提交。非数据残差沿用各任务报告的归因（截图与归因时逐字节一致，概览行文本差异已复核为数据）。
+
+### 网格归因复核（2026-09-23）
+
+上表的「非数据残差」是**人手挑框**量出来的；2026-09-23 的合并前终审 5 给 `compare-0918.mjs` 加了
+`--grid` 逐带归因与 `--attribution` 门禁之后，本域八视图按同一口径重跑一遍，**不再挑框**：
+每条 100px 整宽带各做一次 ±12px `dy` 搜索，任何 mismatch > 0.02 且没有在归因文件里点名的带即判失败。
+
+- 归因文件：`repos/orbits/scripts/visual/attribution-0918-network.json`（八视图 **92 条超阈值带全部登记**，
+  `unattributed=0`）。类别：**[data] 87 条**（同结构、内容为验证库真实联系人 / 真实分析产物）、
+  **[recorded] 23 条**（命中任务 2–8 偏差表，主要是「已归档」取代设计「已建立合作」、「↗ +25%」与
+  「联系频率」「引荐路径」「平均近 30 天互动」无来源省略、「最近联系人」→「最近动态」、名片 V2 入口
+  取代设计 CSV 预览表、记录跟进弹窗的生命周期提示行）、**[shared] 8 条**（每视图 band 8 压着
+  Next dev 徽章与全局 iOrbit 悬浮球两枚固定叠加件）；类别可叠加，故分项之和大于 92。
+- **真缺陷 0 条**：逐带裁剪 design / app 对照后，没有一条带的红色落在布局线、圆角、间距或色块上。
+- raw 数字与 2026-09-21 终验一致（all 0.0518 / pipeline 0.0911 / overview 0.1293 / structure 0.0813 /
+  opportunities 0.0977 / import 0.0626 / detail 0.0628 / follow 0.0358），差值 ≤ 0.0006 全部来自验证库
+  联系人数据的自然漂移。
+- **工具缺陷（本轮修）**：`compare-0918.mjs` 的 Network 表把 `analysis` 映射成 `"查看完整分析"`，而设计
+  122 行那颗按钮的可访问名是 `"查看完整分析 →"`；`261507b4`（个人中心「连接」消歧）给页签点击加了
+  `exact: true` 之后这个视图就再也点不开了（locator 30s 超时），2026-09-21 之后无人复跑因此没被发现。
+  本轮把映射写回真实可访问名，`exact: true` 保持不变；修后 structure / opportunities 的 raw 与
+  2026-09-21 记录一致（0.0813 / 0.0977 vs 0.0813 / 0.0974），证明点开的是同一屏。
 
 ### 回归（cwd `repos/orbits`）
 
