@@ -1,37 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-import type {
-  EventAnalyticsAttendeeReport,
-  EventAnalyticsOrganizerAggregate,
-} from "../../../../../../features/events/event-analytics/contract";
 import { EventAnalyticsReport } from "../../../../../../features/events/event-analytics/report";
-
-type AnalyticsView =
-  | EventAnalyticsAttendeeReport
-  | EventAnalyticsOrganizerAggregate;
-
-type AnalyticsViewKind = AnalyticsView["kind"];
-
-interface AnalyticsViews {
-  attendee_report: EventAnalyticsAttendeeReport | null;
-  organizer_aggregate: EventAnalyticsOrganizerAggregate | null;
-}
-
-interface Envelope<TValue> {
-  data?: TValue;
-  error?: { message?: string };
-  success?: boolean;
-}
-
-async function readData<TValue>(response: Response): Promise<TValue> {
-  const body = (await response.json().catch(() => null)) as Envelope<TValue> | null;
-  if (!response.ok || body?.success !== true || !body.data) {
-    throw new Error(body?.error?.message ?? `Request failed with ${response.status}.`);
-  }
-  return body.data;
-}
+import { useEventAnalytics, type AnalyticsViewKind } from "../../ops-0918/use-event-analytics";
 
 /** Orbit_0918 数据报告路由样式（类选择器，避免属性选择器转义问题）。 */
 const AN_ROUTE_CSS = `
@@ -52,75 +24,9 @@ const AN_ROUTE_CSS = `
 `;
 
 export function EventAnalyticsRoute({ eventId }: { eventId: string }) {
-  const [views, setViews] = useState<AnalyticsViews>({
-    attendee_report: null,
-    organizer_aggregate: null,
-  });
   const [activeView, setActiveView] = useState<AnalyticsViewKind | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [requestVersion, setRequestVersion] = useState(0);
   const encodedEventId = encodeURIComponent(eventId);
-
-  useEffect(() => {
-    let active = true;
-    async function load() {
-      setError(null);
-      setViews({ attendee_report: null, organizer_aggregate: null });
-      setActiveView(null);
-      try {
-        const [aggregateResponse, attendeeResponse] = await Promise.all([
-          fetch(`/api/events/${encodedEventId}/analytics/aggregate`, {
-            cache: "no-store",
-          }),
-          fetch(`/api/events/${encodedEventId}/analytics/attendee`, {
-            cache: "no-store",
-          }),
-        ]);
-        const [aggregate, attendee] = await Promise.all([
-          aggregateResponse.ok
-            ? readData<EventAnalyticsOrganizerAggregate>(aggregateResponse)
-            : Promise.resolve(null),
-          attendeeResponse.ok
-            ? readData<EventAnalyticsAttendeeReport>(attendeeResponse)
-            : Promise.resolve(null),
-        ]);
-        if (!aggregate && !attendee) {
-          const actionableFailure = [aggregateResponse, attendeeResponse].find(
-            (response) => response.status !== 403,
-          );
-          if (actionableFailure) {
-            await readData<AnalyticsView>(actionableFailure);
-          }
-          throw new Error("当前账号没有可查看的活动汇总或个人报告。");
-        }
-        if (active) {
-          const nextViews: AnalyticsViews = {
-            attendee_report: attendee,
-            organizer_aggregate: aggregate,
-          };
-          setViews(nextViews);
-          setActiveView(
-            aggregate ? "organizer_aggregate" : "attendee_report",
-          );
-        }
-      } catch (cause) {
-        if (active) {
-          setError(
-            cause instanceof Error ? cause.message : "无法读取活动报告。",
-          );
-        }
-      }
-    }
-    void load();
-    return () => {
-      active = false;
-    };
-  }, [encodedEventId, requestVersion]);
-
-  const value = activeView ? views[activeView] : null;
-  const canSwitchViews = Boolean(
-    views.organizer_aggregate && views.attendee_report,
-  );
+  const { canSwitchViews, error, retry, value } = useEventAnalytics(eventId, activeView, setActiveView);
 
   return (
     <main className="an-route">
@@ -168,7 +74,7 @@ export function EventAnalyticsRoute({ eventId }: { eventId: string }) {
           <span>{error}</span>
           <button
             className="an-alert-retry"
-            onClick={() => setRequestVersion((version) => version + 1)}
+            onClick={retry}
             type="button"
           >
             重试
