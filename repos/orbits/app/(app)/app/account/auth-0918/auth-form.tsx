@@ -20,20 +20,24 @@ export const AUTH_PASSWORD_MAX_LENGTH = 72;
 /**
  * 提交流程：先跑 auth-model 校验（设计 526–528 文案，零网络；找回只校验邮箱），通过后才交给 hook 的 `onSubmit`。
  * 成功态（「✓ 已登录」/「✓ 账号已创建」）读 hook 的 `succeeded`（成功路径导航前显式置位）；错误文案 hook 已对齐设计（任务 3）。
+ * `onDelegate`（终审修正）：校验通过、真正调用 hook 之前同步回调一次——找回屏用它清「重新申请」的本地 `dismissed`，
+ * 校验失败时不回调（否则失败提交会把上一次的成功卡重新亮出来而没有任何请求）。`onSubmit` 返回是否已委托给 hook。
  */
-export function useAuthSubmit(session: AccountAuthSession, view: Exclude<AuthView, "reset">) {
+export function useAuthSubmit(session: AccountAuthSession, view: Exclude<AuthView, "reset">, onDelegate?: () => void) {
   const { t } = useOrbitLanguage();
   const [localError, setLocalError] = useState("");
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: FormEvent<HTMLFormElement>): Promise<boolean> {
     event.preventDefault();
     const problem = validateEmail(session.email) ?? (view === "forgot" ? null : validatePassword(session.password));
     if (problem) {
       setLocalError(t(problem));
-      return;
+      return false;
     }
     setLocalError("");
+    onDelegate?.();
     await session.onSubmit(event);
+    return true;
   }
 
   const labels = AUTH_BUTTON_LABELS[view];

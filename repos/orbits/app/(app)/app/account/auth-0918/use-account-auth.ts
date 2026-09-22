@@ -22,6 +22,9 @@ import { AUTH_ERROR_COPY } from "./auth-model";
 // `bridgeLegacyAuthError` 过渡桥）；新增 `succeeded`（登录 / 注册成功路径显式置位，供「✓ 已登录」
 // 「✓ 账号已创建」，替代 submitting true→false 的推断）；`resetNotice` 文案改为 `resetSent` 布尔
 // （找回成功卡文案由屏内 t() 给出设计 401–404 文案 + 「受理 ≠ 送达」补句）。
+// 合并前终审修正：`AccountAuthSession` 撤掉四个无消费者的旧字段 `isForgot` / `isSignup` / `primary` /
+// `switchHref`（主按钮文案改由 `AUTH_BUTTON_LABELS`、切换链接由 `authRoutePath` 给出；grep 全仓无引用）。
+// `isSignup` / `isForgot` 仍是 hook 内部分支常量（live-route 源码正则按它们切片）。
 
 export function productHref(prototypeHref: string) {
   if (prototypeHref === "/") return "/app";
@@ -70,14 +73,10 @@ function readAccountAuthQueryFromLocation(defaultNext: string): AccountAuthQuery
 export interface AccountAuthSession {
   email: string;
   error: string;
-  isForgot: boolean;
-  isSignup: boolean;
   /** 注册成功但自动登录未建立会话时（?created=1）的登录页提示；否则空串。 */
   message: string;
   onGoogleSignIn: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
-  /** 主按钮文案：找回态固定「申请重置链接」，其余取 viewModel.primaryLabel。 */
-  primary: string;
   query: AccountAuthQuery;
   password: string;
   /** 找回：`/api/auth/password-reset/request` 已受理（受理 ≠ 送达）；下次提交时复位。 */
@@ -89,8 +88,6 @@ export interface AccountAuthSession {
   submitting: boolean;
   /** 登录 / 注册成功路径（导航前）显式置位；下次提交时复位。 */
   succeeded: boolean;
-  /** 登录 ⇄ 注册 的原型路径（未经 productHref），带当前 next。 */
-  switchHref: string;
 }
 
 export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAuthSession {
@@ -127,16 +124,6 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
         zh: "账号已创建，但自动登录未完成。请用刚设置的密码登录。",
       })
     : "";
-  const primary = isForgot
-    ? t({
-        en: "Request reset link",
-        zh: "申请重置链接",
-      })
-    : viewModel.primaryLabel;
-  const switchHref = isSignup
-    ? `/account/login?next=${encodeURIComponent(query.next)}`
-    : `/account/signup?next=${encodeURIComponent(query.next)}`;
-
   // 注册走 /api/auth/register，登录走 NextAuth credentials（auth.ts →
   // features/auth 校验）。恢复申请写入持久化邮件队列，受理不等于已送达。
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -232,13 +219,10 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
   return {
     email,
     error,
-    isForgot,
-    isSignup,
     message,
     onGoogleSignIn,
     onSubmit,
     password,
-    primary,
     query,
     resetSent,
     setEmail,
@@ -247,6 +231,5 @@ export function useAccountAuth(viewModel: OrbitAccountAuthViewModel): AccountAut
     showPassword,
     submitting,
     succeeded,
-    switchHref,
   };
 }

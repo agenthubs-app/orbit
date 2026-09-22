@@ -311,13 +311,19 @@ test("eye button toggles the password input between password and text", async ()
   });
 });
 
-test("overlay: a click inside the panel does not close; a click on the overlay itself and × both navigate to /app", async () => {
+test("overlay: a click inside the panel does not close; mousedown in the panel released on the overlay does not close (终审修正); mousedown+click on the overlay itself and × both navigate to /app", async () => {
   await withModal("login", "", {}, async (renderer, harness) => {
     const overlay = renderer.root.find((node) => node.type === "div" && node.props.className === "au-overlay");
     const panel = renderer.root.find((node) => node.props.role === "dialog");
-    await act(async () => { overlay.props.onClick({ currentTarget: overlay, target: panel }); });
+    await act(async () => { overlay.props.onMouseDown({ currentTarget: overlay, target: panel }); overlay.props.onClick({ currentTarget: overlay, target: panel }); });
     assert.deepEqual(harness.navigation.assigned, []);
+    // 拖选：面板内按下、遮罩上松开 → click 的 target 是遮罩本体，但 mousedown 不是 → 不关。
+    await act(async () => { overlay.props.onMouseDown({ currentTarget: overlay, target: panel }); overlay.props.onClick({ currentTarget: overlay, target: overlay }); });
+    assert.deepEqual(harness.navigation.assigned, []);
+    // 没有 mousedown 记录的孤立 click（上一次已清位）同样不关。
     await act(async () => { overlay.props.onClick({ currentTarget: overlay, target: overlay }); });
+    assert.deepEqual(harness.navigation.assigned, []);
+    await act(async () => { overlay.props.onMouseDown({ currentTarget: overlay, target: overlay }); overlay.props.onClick({ currentTarget: overlay, target: overlay }); });
     assert.deepEqual(harness.navigation.assigned, ["/app"]);
     const close = renderer.root.find((node) => node.type === "button" && node.props.className === "btn au-close");
     await act(async () => { close.props.onClick(); });
@@ -461,6 +467,33 @@ test("forgot: POST /api/auth/password-reset/request {email} → success card rep
   });
 });
 
+test("forgot (终审修正): after 重新申请, an invalid email submit shows the error card with zero requests and does not resurrect the success card", async () => {
+  await withModal("forgot", "", {}, async (renderer, harness) => {
+    await act(async () => { input(renderer, "au-email").props.onChange({ target: { value: "owner@example.invalid" } }); });
+    await submit(renderer);
+    assert.equal(harness.observed.length, 1);
+    assert.equal(hasForm(renderer), false);
+    assert.equal(statuses(renderer).length, 1);
+    const resend = renderer.root.find((node) => node.type === "a" && node.children.includes("重新申请"));
+    await act(async () => { resend.props.onClick({ preventDefault() {} }); });
+    assert.ok(hasForm(renderer));
+    assert.deepEqual(statuses(renderer), []);
+    await act(async () => { input(renderer, "au-email").props.onChange({ target: { value: "nope" } }); });
+    await submit(renderer);
+    assert.equal(harness.observed.length, 1, "invalid email must not issue a request");
+    assert.deepEqual(alerts(renderer), ["请输入有效的邮箱地址。"]);
+    assert.ok(hasForm(renderer), "form stays");
+    assert.deepEqual(statuses(renderer), [], "success card must not reappear without a new accepted request");
+    // 修正后再输入合法邮箱：第二次请求 → 成功卡回来，错误卡清空。
+    await act(async () => { input(renderer, "au-email").props.onChange({ target: { value: "owner@example.invalid" } }); });
+    await submit(renderer);
+    assert.equal(harness.observed.length, 2);
+    assert.equal(hasForm(renderer), false);
+    assert.equal(statuses(renderer).length, 1);
+    assert.deepEqual(alerts(renderer), []);
+  });
+});
+
 test("forgot: server message wins, fallback copy otherwise, pending state reads 发送中… with inline opacity 0.6", async () => {
   let attempt = 0;
   let release!: () => void;
@@ -497,19 +530,23 @@ test("forgot: server message wins, fallback copy otherwise, pending state reads 
 
 // ---- 新密码 ----
 
-test("reset: missing / short / malformed / absent token → 链接已失效 branch after mount with the primary-shaped link to forgot and ← 返回登录", async () => {
+test("reset: missing / short / malformed / absent token → 链接已失效 branch after mount (copy in a role=alert live region, 终审修正) with the primary-shaped link to forgot and ← 返回登录", async () => {
   for (const hash of ["", "#token=short", `#token=${VALID_TOKEN}!`, "#other=1"]) {
     await withModal("reset", "", { hash }, async (renderer, harness) => {
       assert.equal(hasForm(renderer), false, `hash ${JSON.stringify(hash)} should not render the form`);
       const h2 = renderer.root.findByType("h2");
       assert.equal(h2.props.id, "au-title-reset");
       assert.equal(h2.children.join(""), "链接已失效");
-      assert.equal(renderer.root.findByProps({ className: "au-sub" }).children.join(""), "这条重置链接无效或已过期。重置链接仅在 30 分钟内有效。");
+      const copy = renderer.root.findByProps({ className: "au-sub" });
+      assert.equal(copy.type, "p");
+      assert.equal(copy.props.role, "alert");
+      assert.equal(copy.children.join(""), "这条重置链接无效或已过期。重置链接仅在 30 分钟内有效。");
       const again = renderer.root.find((node) => node.type === "a" && node.props.className === "btn au-btn-primary au-btn-link");
       assert.equal(again.props.href, "/app/account/forgot-password");
       assert.equal(again.children.join(""), "重新申请重置链接");
       assert.deepEqual(hrefs(renderer), ["/app/account/forgot-password", "/app/account/login"]);
-      assert.deepEqual(alerts(renderer), []);
+      assert.deepEqual(alerts(renderer), ["这条重置链接无效或已过期。重置链接仅在 30 分钟内有效。"]);
+      assert.deepEqual(statuses(renderer), []);
       assert.equal(harness.observed.length, 0);
     });
   }

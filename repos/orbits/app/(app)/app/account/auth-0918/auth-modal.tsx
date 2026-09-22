@@ -5,10 +5,11 @@
  * 浮在未登录落地页（`landing-0918` 作用域）之上；本层作用域 `[data-orbit-real-page="auth-0918"]` 只包弹窗。
  * 关闭（×、遮罩、Esc）= 旧行为 `navigate("/")` → `/app`；焦点陷阱 / Esc / 打开时自动聚焦 沿用 `useOrbitModalA11y`
  * （首个可聚焦元素 = ×，DOM 顺序与旧实现一致，审阅修订 4）。不用 `ModalShell`（像素结构不同，审阅修订 17）。
- * 遮罩点击关闭是旧能力、设计无：只在 `event.target === event.currentTarget` 时关闭（审阅修订 3）。
+ * 遮罩点击关闭是旧能力、设计无：只在 `event.target === event.currentTarget` 时关闭（审阅修订 3）；终审修正：再要求
+ * `mousedown` 也落在遮罩本体（ref 记录按下点）——在面板里按下、拖到遮罩上松开（选中文字时常见）不算关闭。
  * 视图 hook：各屏自行调用一次 hook（壳不持有会话：登录 / 注册 / 找回 用 `useAccountAuth`，新密码 用 `usePasswordReset`）。
  */
-import { useCallback, type MouseEvent } from "react";
+import { useCallback, useRef, type MouseEvent } from "react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { useOrbitModalA11y } from "../../orbit-modal-a11y";
@@ -37,14 +38,20 @@ export function AuthModal({
   }, []);
   const cardRef = useOrbitModalA11y(handleClose);
 
+  const pressedOnOverlay = useRef(false);
+  const onOverlayMouseDown = (event: MouseEvent<HTMLDivElement>) => {
+    pressedOnOverlay.current = event.target === event.currentTarget;
+  };
   const onOverlayClick = (event: MouseEvent<HTMLDivElement>) => {
-    if (event.target === event.currentTarget) handleClose();
+    const pressed = pressedOnOverlay.current;
+    pressedOnOverlay.current = false;
+    if (pressed && event.target === event.currentTarget) handleClose();
   };
 
   return (
     <div data-orbit-real-page="auth-0918">
       <style>{AUTH_STYLES}</style>
-      <div className="au-overlay" onClick={onOverlayClick}>
+      <div className="au-overlay" onClick={onOverlayClick} onMouseDown={onOverlayMouseDown}>
         <div aria-labelledby={authTitleId(view)} aria-modal="true" className="au-panel" ref={cardRef} role="dialog" tabIndex={-1}>
           <button aria-label={t({ en: "Close", zh: "关闭" })} className="btn au-close" onClick={handleClose} type="button">×</button>
           <span className="au-wordmark">Orbit</span>

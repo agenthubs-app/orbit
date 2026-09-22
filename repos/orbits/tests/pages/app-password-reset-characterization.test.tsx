@@ -12,7 +12,7 @@ import { AuthModal } from "../../app/(app)/app/account/auth-0918/auth-modal";
 // 任务 3（旧 reset-password-form.tsx 已删）：改指 `AuthModal view="reset"`，意图不变；逐条改动：输入 id
 // `reset-password|confirmation` → `au-new-password|confirm-password`；按钮文案「更新密码 / 更新中…」→ 设计 520
 // 「设置新密码 / 保存中…」；不合法 token 的 `<p role=alert>`「重置链接不完整…」→ 设计 426–433「链接已失效」分支
-// （h2 + 主按钮形链接「重新申请重置链接」，无 role=alert）；done 的 `<p role=status>` → 设计 445–447 标题「密码已更新」
+// （h2 + 副标 `<p class=au-sub role=alert>`（合并前终审修正：活动区语义回归）+ 主按钮形链接「重新申请重置链接」）；done 的 `<p role=status>` → 设计 445–447 标题「密码已更新」
 // + 副标 + 会话失效补句（无 role=status）+「用新密码登录」；链接集合：合法态 [login]（「重新申请链接」只在失效态）、
 // 失效态 [forgot, login]、done [login ×2]；window 桩补 `document`（弹窗壳 `useOrbitModalA11y` 需要）。
 
@@ -165,7 +165,7 @@ test("invalid or missing hash token: the 链接已失效 branch replaces the for
       renderer = await mount();
       assert.equal(hasForm(renderer), false, `hash ${JSON.stringify(hash)} should not render the form`);
       assert.equal(heading(renderer), "链接已失效");
-      assert.deepEqual(byRole(renderer, "alert"), []);
+      assert.deepEqual(byRole(renderer, "alert"), ["这条重置链接无效或已过期。重置链接仅在 30 分钟内有效。"]);
       const hrefs = renderer.root.findAllByType("a").map((node) => node.props.href);
       assert.deepEqual(hrefs, ["/app/account/forgot-password", "/app/account/login"]);
     } finally {

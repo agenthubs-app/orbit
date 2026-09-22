@@ -10,6 +10,7 @@
  * 设计 431 / 445 是 button 元素（onClick=goForgot / goLogin），应用里是真实导航 → `<a class="btn au-btn-primary au-btn-link">`（记录）。
  * 本地校验（审阅修订 8）：`validateResetPair` 先长度「新密码至少 8 位。」后一致「两次输入的密码不一致。」，通过才 `submit`
  * （hook 内仍有不一致守卫，原样）。设计外的眼睛钮只在 登录 / 注册（hook 有 `showPassword`），本屏无（记录）。
+ * 终审修正：「链接已失效」分支的副标 `<p class="au-sub">` 加 `role="alert"`（旧 `<p role=alert>` 的活动区语义回归；结构不变）。
  */
 import { useState, type FormEvent } from "react";
 
@@ -33,7 +34,7 @@ export function AuthReset() {
       <div className="au-view">
         <div className="au-head">
           <h2 className="au-h2" id={titleId}>{t({ en: "Link expired", zh: "链接已失效" })}</h2>
-          <p className="au-sub">{t({ en: "This reset link is invalid or has expired. Reset links are only valid for 30 minutes.", zh: "这条重置链接无效或已过期。重置链接仅在 30 分钟内有效。" })}</p>
+          <p className="au-sub" role="alert">{t({ en: "This reset link is invalid or has expired. Reset links are only valid for 30 minutes.", zh: "这条重置链接无效或已过期。重置链接仅在 30 分钟内有效。" })}</p>
         </div>
         <a className="btn au-btn-primary au-btn-link" href={authRoutePath("forgot", "")}>{t({ en: "Request a new reset link", zh: "重新申请重置链接" })}</a>
         <AuthBackToLogin />

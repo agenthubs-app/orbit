@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent, type RefObject } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useOrbitLanguage } from "../../orbit-language-context";
 
 // 原样抽自 account/reset-password/reset-password-form.tsx（7–19 行：token / sending ref、
@@ -8,7 +8,8 @@ import { useOrbitLanguage } from "../../orbit-language-context";
 // token；21–52 行：submit——双提交 / done 守卫、两次密码不一致本地校验、
 // POST /api/auth/password-reset/confirm {token,password}、成功后清 token +
 // history.replaceState 清 hash + done）。token 合法性判断（43 位 [A-Za-z0-9_-]）
-// 原在 JSX 内联（59 行）：ref 原样暴露给旧 JSX，另以 `tokenValid` 暴露同一正则结果供新屏使用。
+// 原在 JSX 内联（59 行）：以 `tokenValid` 暴露同一正则结果供新屏使用。
+// 合并前终审修正：旧 JSX 已删，`token` ref 不再暴露（grep 全仓无消费者）；ref 仍是 hook 内部状态。
 
 /** 与旧 JSX 第 59 行的内联正则一致。 */
 export const RESET_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/u;
@@ -24,9 +25,7 @@ export interface PasswordResetSession {
   setConfirmation: (value: string) => void;
   setPassword: (value: string) => void;
   submit: (event: FormEvent) => Promise<void>;
-  /** 旧 JSX 直接读 `token.current`（59 行内联正则），故原样暴露 ref；提交成功后清空。 */
-  token: RefObject<string>;
-  /** `ready && RESET_TOKEN_PATTERN.test(token.current)`——新屏用这个，不再内联正则。 */
+  /** `ready && RESET_TOKEN_PATTERN.test(token.current)`——新屏用这个，不再内联正则；提交成功后 token 清空。 */
   tokenValid: boolean;
 }
 
@@ -88,7 +87,6 @@ export function usePasswordReset(): PasswordResetSession {
     setConfirmation,
     setPassword,
     submit,
-    token,
     tokenValid: ready && RESET_TOKEN_PATTERN.test(token.current),
   };
 }
