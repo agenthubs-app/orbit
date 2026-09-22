@@ -122,7 +122,12 @@ export function buildAgentStrategyViewModel(input: {
       href: item.href ?? (item.contactId ? `/app/contacts/${encodeURIComponent(item.contactId)}` : null),
       id: item.key,
       issue: item.issue ?? null,
-      meta: joinMeta(item.contactName, item.organization),
+      // 逐带归因 2026-09-23：`name` 已经是 `item.contactName`，meta 里再拼一次
+      // 会把卡片渲染成「佐藤健一 / 佐藤健一 · 北星餐饮」。设计 667–676 的副行是
+      // 「产品负责人 · Google」= 职位 · 公司；`HomeFactsFollowupItem` 没有职位字段
+      // （只有 contactName / organization / issue / title / relationshipStage），
+      // 所以副行只剩公司名——少一维，但不重复姓名。
+      meta: joinMeta(item.organization),
       name: item.contactName,
     }));
 

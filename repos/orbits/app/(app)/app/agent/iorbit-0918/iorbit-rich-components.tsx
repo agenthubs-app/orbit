@@ -466,7 +466,10 @@ function AgentEventRow({ item, language, navigate, t }: { item: OrbitAgentEventR
   const date = parseDate(event.startsAt);
   const weekday = date ? new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo", weekday: "short" }).format(date) : "";
   const dateLabel = date
-    ? (language === "en" ? `${fmtMonth(date, language)} ${fmtDay(date, language)} · ${weekday}` : `${fmtMonth(date, language)}${fmtDay(date, language)}日 · ${weekday}`)
+    // 逐带归因 2026-09-23：`fmtDay` 在 zh-CN 下用 `day:"2-digit"`，Intl 自己就返回
+    // 「18日」，后面再补一个「日」会渲染成「9月18日日 · 周五18:30」。与任务 2 修订轮 1
+    // 在月历上改掉的 `18日`→`18` 是同一个坑（EXECUTION.md「合并前终审修正」⑤）。
+    ? (language === "en" ? `${fmtMonth(date, language)} ${fmtDay(date, language)} · ${weekday}` : `${fmtMonth(date, language)}${fmtDay(date, language)} · ${weekday}`)
     : t({ en: "Time TBD", zh: "时间待定" });
 
   return (
