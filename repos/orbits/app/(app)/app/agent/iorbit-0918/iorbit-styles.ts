@@ -274,6 +274,9 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .ir-aside-head { display: flex; align-items: center; gap: 10px; }
 [data-orbit-real-page="iorbit-0918"] .ir-aside-icon { width: 28px; height: 28px; border-radius: 9px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; font-size: 13px; }
 [data-orbit-real-page="iorbit-0918"] .ir-aside-h { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 17px; }
+/* 设计 495 的「▦ 本周日程」不是衬线卡头，是 15px 的普通 <strong>（对比 486 的
+   计划概览）。任务 7 的框级归因量到了这处字体面差异，用修饰类中和。 */
+[data-orbit-real-page="iorbit-0918"] .ir-aside-h.ir-aside-h-plain { font-family: inherit; font-weight: 700; font-size: 15px; }
 /* 设计 323–325：同一个形既给按钮元素（发消息）也给链接元素（导航），写两条规则 */
 [data-orbit-real-page="iorbit-0918"] .ir-aside-next { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 13px 14px; border: 1px solid #E8E9F6; border-radius: 12px; background: #FFFFFF; font-size: 14px; color: #0E1225; text-align: left; cursor: pointer; }
 [data-orbit-real-page="iorbit-0918"] .btn.ir-aside-next { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 13px 14px; border: 1px solid #E8E9F6; border-radius: 12px; background: #FFFFFF; font-size: 14px; color: #0E1225; text-align: left;

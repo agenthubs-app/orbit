@@ -344,7 +344,7 @@ export function IOrbitPlan({ loadSnapshot, now }: IOrbitPlanProps = {}) {
               </span>
             </div>
             <div className="ir-panel ir-panel-12">
-              <strong className="ir-aside-h">
+              <strong className="ir-aside-h ir-aside-h-plain">
                 ▦ {t({ en: "This week's schedule", zh: "本周日程" })}
               </strong>
               {viewModel.scheduleState === "ready" ? (
