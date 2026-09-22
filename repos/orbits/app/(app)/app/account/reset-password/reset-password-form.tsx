@@ -1,55 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useOrbitLanguage } from "../../orbit-language-context";
+import { usePasswordReset } from "../auth-0918/use-password-reset";
+
+// 认证弹窗 任务 1：token / 状态 / submit 原样搬入 ../auth-0918/use-password-reset.ts；
+// 本文件只保留 JSX（不动）。
 
 export function PasswordResetForm() {
   const { t } = useOrbitLanguage();
-  const token = useRef("");
-  const sending = useRef(false);
-  const [ready, setReady] = useState(false);
-  const [password, setPassword] = useState("");
-  const [confirmation, setConfirmation] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
-  useEffect(() => {
-    token.current = new URLSearchParams(window.location.hash.slice(1)).get("token") ?? "";
-    setReady(true);
-  }, []);
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    if (sending.current || done) return;
-    setError("");
-    if (password !== confirmation) {
-      setError(t({ zh: "两次输入的密码不一致。", en: "The passwords do not match." }));
-      return;
-    }
-    sending.current = true;
-    setBusy(true);
-    try {
-      const response = await fetch("/api/auth/password-reset/confirm", {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ token: token.current, password }),
-      });
-      const body = await response.json().catch(() => null) as { success?: boolean; error?: { message?: string } } | null;
-      if (!response.ok || !body?.success) {
-        setError(body?.error?.message ?? t({ zh: "重置失败，请稍后重试。", en: "Password reset failed. Please try again." }));
-        return;
-      }
-      token.current = "";
-      window.history.replaceState(null, "", window.location.pathname);
-      setPassword("");
-      setConfirmation("");
-      setDone(true);
-    } catch {
-      setError(t({ zh: "网络异常，请重试；如果链接已使用，请尝试用新密码登录。", en: "Connection failed. Retry, or try signing in with the new password if the link has already been used." }));
-    } finally {
-      sending.current = false;
-      setBusy(false);
-    }
-  }
+  const { busy, confirmation, done, error, password, ready, setConfirmation, setPassword, submit, token } = usePasswordReset();
 
   return <main className="orbit-account-auth-page" data-orbit-real-page>
     <section className="orbit-account-auth-modal" aria-labelledby="reset-title">
