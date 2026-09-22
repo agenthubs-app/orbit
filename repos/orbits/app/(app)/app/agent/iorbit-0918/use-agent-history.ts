@@ -407,9 +407,15 @@ export function useAgentHistory() {
       });
 
       // 任务 1c 的唯一文本改动：对话侧重置改走 `bindChat` 注册的桥接对象。
-      // `chat` 在组件首次渲染后必定非空（本函数只从删除二次确认里调用）。
+      // `chat` 在组件首次渲染后必定非空（本函数只从删除二次确认里调用）；
+      // 若为空说明接线写错了（hook 顺序反了、漏调 `bindChat`），必须响亮地炸，
+      // 不能在「对话已删除」的成功 toast 下面静默留着被删的会话与陈旧深链。
       const chat = chatRef.current;
-      if (!chat || chat.activeSessionIdRef.current !== sessionId) {
+      if (!chat) {
+        throw new Error("useAgentHistory: bindChat() was never called");
+      }
+
+      if (chat.activeSessionIdRef.current !== sessionId) {
         return;
       }
 

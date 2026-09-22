@@ -271,6 +271,62 @@ test("a delete the queue could not persist keeps the conversation and explains i
   assert.ok(harness.root.root.findByProps({ role: "alertdialog" }));
 });
 
+// iOrbit 任务 1c 修订轮 1：上面两条删除用例删的都是**非当前**会话，
+// `confirmDeleteHistorySession` 里「删掉的就是当前会话」那一支（九个对话侧重置 +
+// 清 `orbit-agent-chat-active-session-v1` + 回 `/app/agent`）在全仓没有任何覆盖。
+// 1c 把这一支改走 `bindChat` 注册的桥接对象后，接线写错（hook 顺序反了、漏调
+// `bindChat`）会让被删的会话连同 `?session=` URL 与陈旧 localStorage 留在屏幕上，
+// 而 toast 还报「对话已删除」。这条用例锁住那一支。
+test("deleting the conversation you are in clears the thread, the active-session key and the deep link", async (t) => {
+  const harness = await mountAgent(t, {
+    search: "?session=session%3Arestored",
+    sessionPages: [
+      [
+        {
+          createdAt: "2026-09-20T00:00:00.000Z",
+          id: "session:restored",
+          messages: [
+            { role: "user", text: "上次问过的问题" },
+            { items: [], kind: "people", panelTitle: "", role: "assistant", text: "上次的回答" },
+          ],
+          title: "上次的对话",
+          updatedAt: "2026-09-20T01:00:00.000Z",
+        },
+      ],
+    ],
+  });
+
+  // 前提：这条会话确实是「当前会话」——线程渲染出来了，active key 也写了。
+  assert.ok(renderedText(harness.root).includes("上次的回答"));
+  assert.equal(harness.localValues.get("orbit-agent-chat-active-session-v1"), "session:restored");
+  assert.deepEqual(harness.pushedUrls, []);
+
+  act(() =>
+    harness.root.root
+      .findByProps({ "data-orbit-agent-history-menu-button": "session:restored" })
+      .props.onClick(),
+  );
+  act(() =>
+    harness.root.root
+      .findByProps({ "data-orbit-agent-history-delete": "session:restored" })
+      .props.onClick(),
+  );
+  await act(async () => {
+    harness.root.root.findByProps({ "data-orbit-agent-history-confirm-delete": true }).props.onClick();
+  });
+  await harness.settle();
+
+  assert.deepEqual(harness.deletedSessionIds, ["session:restored"]);
+  // 对话侧重置：线程清空、深链回到 /app/agent、active key 清掉。
+  assert.equal(renderedText(harness.root).includes("上次的回答"), false);
+  assert.equal(renderedText(harness.root).includes("上次问过的问题"), false);
+  assert.equal(harness.pushedUrls.at(-1), "/app/agent");
+  assert.equal(harness.localValues.has("orbit-agent-chat-active-session-v1"), false);
+  // 历史侧：列表空了，toast 报成功。
+  assert.deepEqual(historyTitles(harness.root), []);
+  assert.ok(textOf(toast(harness.root)!.children as unknown).includes("对话已删除"));
+});
+
 test("returning to the tab refreshes history and groups written by another client", async (t) => {
   const pages: StoredSessionFixture[][] = [[session("session:a", "本标签页的对话", "2026-09-20T00:00:00.000Z")]];
   const harness = await mountAgent(t, { sessionPages: pages });
