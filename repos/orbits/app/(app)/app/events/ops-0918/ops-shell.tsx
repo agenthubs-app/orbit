@@ -161,7 +161,8 @@ export interface OpsMoreItem {
 /**
  * 审阅修订 5：导出 CSV 等既有头部动作收进「更多 ⌄」。传入 `more` 时「更多 ⌄」变为 `<details>` 菜单
  * （闭合态外观与设计 101 行按钮一致；展开菜单沿用 hub「···」的 `op-menu` 口径）；不传时保持设计原样
- * （直接进 `?drawer=roles`，抽屉任务 6）。
+ * （直接进 `?drawer=roles`，抽屉任务 6）。合并前终审修正 5：`more` 传空数组（页面按能力解析后无任何项，
+ * 例如无 `attendees.export` 的委派角色）→ 不渲染「更多 ⌄」（不出现空菜单）。
  */
 export function OpsConsoleShell({
   event,
@@ -200,7 +201,9 @@ export function OpsConsoleShell({
           </div>
           <div className="op-head-actions">
             <a className="btn op-btn-dark" href={eventPagePath(event.id)}>查看活动页面 →</a>
-            {more ? (
+            {more === undefined ? (
+              <a className="btn op-btn-ghost" data-ops-more href={rolesDrawerHref(event.id)}>更多 ⌄</a>
+            ) : more.length === 0 ? null : (
               <OpsDetailsMenu className="op-head-more" summary="更多 ⌄" summaryClassName="btn op-btn-ghost op-head-more-summary" summaryMarker="data-ops-more">
                 <div className="op-menu" role="menu">
                   {more.map((item) => (
@@ -216,8 +219,6 @@ export function OpsConsoleShell({
                   ))}
                 </div>
               </OpsDetailsMenu>
-            ) : (
-              <a className="btn op-btn-ghost" data-ops-more href={rolesDrawerHref(event.id)}>更多 ⌄</a>
             )}
           </div>
         </div>
@@ -243,6 +244,34 @@ export function OpsConsoleShell({
       </div>
       {toast ? <OpsToast text={toast} /> : null}
       {drawer}
+    </main>
+  );
+}
+
+/**
+ * 报告专用最小框架（合并前终审修正 4）：无 `operations.read_sensitive` 的仅参会者身份打开 `/analytics` 时，
+ * 不给主办方壳（六页签 / 「查看活动页面 →」/ 「更多 ⌄」），只保留同一 `op-main` 容器、面包屑「活动中心 / 数据报告」
+ * 与标题行，报告屏原样挂在里面（分析接口本身按角色返回 attendee 报告）。
+ */
+export function OpsReportFrame({ children, event }: { children: ReactNode; event: EventOperationsPageEvent }) {
+  const copy = TITLES.report;
+  return (
+    <main className="op-main" data-ops-frame="report-only" data-ops-view="report">
+      <style>{OPS_STYLES}</style>
+      <div className="op-console">
+        <span className="op-crumb">
+          <a className="op-crumb-link" href="/app/events/center">活动中心</a>
+          {" / "}
+          {copy.crumb}
+        </span>
+        <div className="op-head">
+          <div className="op-head-copy">
+            <h1 className="op-h1">{copy.title}</h1>
+            <p className="op-sub">{event.title}</p>
+          </div>
+        </div>
+        {children}
+      </div>
     </main>
   );
 }

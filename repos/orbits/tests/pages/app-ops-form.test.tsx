@@ -451,7 +451,10 @@ test("experience page gates on experience.configure before reading the event and
   assert.match(page, /data-orbit-real-page="ops-0918"/u);
   assert.match(page, /<AccountTopNav active="events" \/>/u);
   assert.match(page, /view="form"/u);
-  assert.match(page, /label: "导出 CSV"/u);
+  // 合并前终审修正 5：导出 CSV 按 attendees.export 解析（fail-closed），无则 more 为空数组
+  assert.match(page, /await requireEventCapability\(\{[^}]*capability: "attendees\.export"/u);
+  assert.match(page, /let canExport = false;/u);
+  assert.match(page, /more=\{canExport \? \[\{ href: exportCsvHref\([^)]+\), label: "导出 CSV" \}\] : \[\]\}/u);
   assert.doesNotMatch(page, /EventExperienceEditor/u);
   // 原 app-event-experience.test.ts 的 JSX 侧断言（意图不变）
   assert.match(screen, /useExperienceEditor\(event\.id\)/u);

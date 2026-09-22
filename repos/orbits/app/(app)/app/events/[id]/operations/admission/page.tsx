@@ -73,6 +73,19 @@ export default async function EventAdmissionReviewPage({
     // the Event Core owner through the owner-only roles.manage capability.
   }
 
+  // 合并前终审修正 5：「导出 CSV」按导出接口同一能力 attendees.export 解析（fail-closed），无则菜单不含该项。
+  let canExport = false;
+  try {
+    await requireEventCapability({
+      actorId: session.user.id,
+      capability: "attendees.export",
+      eventId: event.eventId,
+      service: accessService,
+    });
+    canExport = true;
+  } catch {
+    canExport = false;
+  }
   // 审阅修订 8：壳（面包屑 / 标题）读 canonical Event Core；门禁已过，读取范围与 operations/page.tsx 一致。
   const pageEvent = await loadEventOperationsPageEvent(event.eventId, eventCore);
 
@@ -82,8 +95,8 @@ export default async function EventAdmissionReviewPage({
       {/* 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。 */}
       <div data-orbit-real-page="ops-0918">
         <AccountTopNav active="events" />
-        {/* 「更多 ⌄」只放 导出 CSV：管理角色需 roles.manage 页签级解析，本页不解析（任务 4 决定） */}
-        <OpsConsoleShell event={pageEvent} more={[{ href: exportCsvHref(event.eventId), label: "导出 CSV" }]} view="people">
+        {/* 「更多 ⌄」只放 导出 CSV（attendees.export 才出现，合并前终审修正 5）：管理角色需 roles.manage 页签级解析，本页不解析（任务 4 决定） */}
+        <OpsConsoleShell event={pageEvent} more={canExport ? [{ href: exportCsvHref(event.eventId), label: "导出 CSV" }] : []} view="people">
           <OpsPeople canConfigurePolicy={canConfigurePolicy} event={pageEvent} />
         </OpsConsoleShell>
       </div>

@@ -460,6 +460,66 @@ test("a failed roles read shows the error with 刷新角色, which re-fetches /r
   });
 });
 
+// 合并前终审修正 8：候选池晚到时，先前手输的 actor ID 不在池内 → 自动切到「其他账号 ID…」，输入值保持可见
+test("a typed actor id stays visible when the participant pool arrives later without it: the picker flips to 其他账号 ID… automatically", async () => {
+  let releasePool!: () => void;
+  const poolReady = new Promise<void>((resolve) => { releasePool = resolve; });
+  const harness = install(async (call) => {
+    if (call.url.includes("/operations/admin")) {
+      await poolReady;
+      return Response.json({ data: { participants: [{ actorId: "user:b", company: "Orbit", displayName: "Bob 参与者" }] }, success: true });
+    }
+    if (call.url === `${ACCESS}/roles`) return Response.json({ data: rolePayload(), success: true });
+    throw new Error(`Unexpected request ${call.method} ${call.url}`);
+  });
+  let renderer: ReactTestRenderer | undefined;
+  try {
+    await act(async () => {
+      renderer = create(<OpsRolesDrawer closeHref={CLOSE_HREF} eventId={EVENT_ID} />);
+      await flush();
+    });
+    const picker = () => renderer!.root.findAll((node) => node.props["data-event-role-participant-picker"] !== undefined);
+    const manualInput = () => renderer!.root.findAll((node) => node.props["data-event-role-subject"] === "new");
+    assert.equal(picker().length, 0, "pool not loaded yet → plain input");
+    await act(async () => {
+      manualInput()[0].props.onChange({ target: { value: "actor:outsider" } });
+      await flush();
+    });
+    await act(async () => {
+      releasePool();
+      await flush();
+    });
+    assert.equal(picker().length, 1, "pool arrived");
+    assert.equal(picker()[0].props.value, MANUAL_SUBJECT, "picker flipped to 其他账号 ID…");
+    assert.equal(manualInput().length, 1, "manual input still rendered");
+    assert.equal(manualInput()[0].props.value, "actor:outsider", "typed id stays visible");
+  } finally {
+    if (renderer) await act(async () => { renderer!.unmount(); });
+    harness.restore();
+  }
+
+  // 对照：池内已有的 ID 不切手动模式
+  const harness2 = install((call) => {
+    if (call.url.includes("/operations/admin")) return Response.json({ data: { participants: [{ actorId: "user:b", company: "Orbit", displayName: "Bob 参与者" }] }, success: true });
+    if (call.url === `${ACCESS}/roles`) return Response.json({ data: rolePayload(), success: true });
+    throw new Error(`Unexpected request ${call.method} ${call.url}`);
+  });
+  let renderer2: ReactTestRenderer | undefined;
+  try {
+    await act(async () => {
+      renderer2 = create(<OpsRolesDrawer closeHref={CLOSE_HREF} eventId={EVENT_ID} />);
+      await flush();
+    });
+    const picker = renderer2!.root.find((node) => node.props["data-event-role-participant-picker"] !== undefined);
+    await act(async () => { picker.props.onChange({ target: { value: "user:b" } }); });
+    assert.equal(picker.props.value, "user:b");
+    assert.equal(renderer2!.root.findAll((node) => node.props["data-event-role-subject"] === "new").length, 0, "known id → no manual input");
+  } finally {
+    if (renderer2) await act(async () => { renderer2!.unmount(); });
+    harness2.restore();
+  }
+});
+
 test("✕, overlay click and Esc navigate back to the tab without ?drawer; panel clicks and editable-target Esc do not", async () => {
   await withDrawer(respondWith((call) => (call.url === `${ACCESS}/roles` ? Response.json({ data: rolePayload(), success: true }) : null)), async (renderer, harness) => {
     const overlay = byProp(renderer, "data-ops-drawer", "roles");

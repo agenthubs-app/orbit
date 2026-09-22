@@ -9,7 +9,7 @@ import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
 import { exportCsvHref } from "../../app/(app)/app/events/ops-0918/ops-model";
 import { OpsReport } from "../../app/(app)/app/events/ops-0918/ops-report";
-import { OpsConsoleShell } from "../../app/(app)/app/events/ops-0918/ops-shell";
+import { OpsConsoleShell, OpsReportFrame } from "../../app/(app)/app/events/ops-0918/ops-shell";
 import { buttonNamed, EVENT, EVENT_ID, flush, text } from "../support/ops-console-fixture";
 
 // 运营台 任务 5：数据报告屏（设计 369–445 行；`/app/events/[id]/analytics`）。特征化用例自 tests/pages/event-analytics-route.test.tsx
@@ -123,6 +123,25 @@ test("report SSR renders the console head with the 数据报告 tab active, no p
   assert.doesNotMatch(html, /整体视图|我的视图/u, "attendee-only users must not see 整体视图 while loading");
   assert.match(html, /正在读取活动证据…/u);
   assert.doesNotMatch(markup, /data-ops-rstat=|报名趋势|参会者来源|校友推荐|Tokyo AI Meetup|86|已完成跟进|61% 完成率/u);
+});
+
+// 合并前终审修正 4：仅参会者身份（无 operations.read_sensitive）→ 报告专用最小框架，不给主办方壳
+test("OpsReportFrame (attendee-only) keeps the op-main container and the 活动中心 / 数据报告 crumb but renders no tabs, no 查看活动页面, no 更多 menu and no export link", () => {
+  const html = renderToStaticMarkup(
+    <OpsReportFrame event={EVENT}>
+      <OpsReport event={EVENT} />
+    </OpsReportFrame>,
+  );
+  const markup = html.replace(/<style>[\s\S]*?<\/style>/u, "");
+  assert.match(markup, /^<main class="op-main" data-ops-frame="report-only" data-ops-view="report">/u);
+  assert.match(markup, /<div class="op-console"><span class="op-crumb"><a class="op-crumb-link" href="\/app\/events\/center">活动中心<\/a> \/ 数据报告<\/span>/u);
+  assert.match(markup, /<h1 class="op-h1">数据报告<\/h1><p class="op-sub">屏级替换夹具活动<\/p>/u);
+  assert.doesNotMatch(markup, /role="tablist"|role="tab"|op-tab/u, "no six tabs");
+  assert.doesNotMatch(markup, /查看活动页面|更多 ⌄|data-ops-more|role="menu"|导出 CSV|\/export|\/operations/u, "no organizer actions or ops links");
+  assert.match(markup, /data-ops-screen="report"/u);
+  assert.match(markup, /正在读取活动证据…/u);
+  // 样式块仍随框架下发（同一 OPS_STYLES）
+  assert.match(html, /<style>[\s\S]*\.op-main \{/u);
 });
 
 test("organizer-only: the aggregate fills the four cards, 现场转化, 会后跟进 (no 已完成跟进 cell) and the report notes with the real JST window", async () => {
@@ -247,19 +266,23 @@ test("a double 403 shows the Chinese denial as an error bar; 重试 re-fetches b
   });
 });
 
-test("analytics page keeps its auth()-only gate, reads the published title without getEvent and mounts the report screen inside the ops-0918 shell", () => {
+test("analytics page keeps its auth()-only gate, reads the published title without getEvent, picks the organizer shell only with operations.read_sensitive (fail-closed) and gates 导出 CSV on attendees.export", () => {
   const page = readFileSync(join(projectRoot, "app/(app)/app/events/[id]/analytics/page.tsx"), "utf8");
   const screen = readFileSync(join(projectRoot, "app/(app)/app/events/ops-0918/ops-report.tsx"), "utf8");
   assert.match(page, /await Promise\.all\(\[params, auth\(\)\]\)/u);
   assert.match(page, /redirect\(/u);
-  assert.doesNotMatch(page, /requireEventCapability/u, "门禁不动：分析接口按角色返回 403（报告屏空态）");
+  // 门禁不动：能力只决定壳（主办方壳 vs 报告专用框架），不阻断页面；分析接口仍按角色返回 403 / attendee 报告
+  assert.doesNotMatch(page, /<OpsBoundary/u, "capability never blocks the page");
+  assert.match(page, /const hasCapability = async[\s\S]*if \(!accessService\) return false;[\s\S]*await requireEventCapability\(\{ actorId: session\.user\.id, capability, eventId, service: accessService \}\);[\s\S]*return true;[\s\S]*catch \{[\s\S]*return false;/u, "fail-closed capability resolution");
+  assert.match(page, /const organizerShell = await hasCapability\("operations\.read_sensitive"\);/u);
+  assert.match(page, /const canExport = organizerShell && await hasCapability\("attendees\.export"\);/u);
+  assert.match(page, /organizerShell \? \([\s\S]*<OpsConsoleShell event=\{pageEvent\} more=\{canExport \? \[\{ href: exportCsvHref\(eventId\), label: "导出 CSV" \}\] : \[\]\} view="report">[\s\S]*<OpsReportFrame event=\{pageEvent\}>[\s\S]*<OpsReport event=\{pageEvent\} \/>/u);
   assert.match(page, /getPublishedEvent\(/u);
   assert.doesNotMatch(page, /loadEventOperationsPageEvent|\.getEvent\(/u, "no unpublished-title leak without a capability gate");
   assert.match(page, /<OrbitReferenceStyles \/>/u);
   assert.match(page, /data-orbit-real-page="ops-0918"/u);
   assert.match(page, /<AccountTopNav active="events" \/>/u);
   assert.match(page, /view="report"/u);
-  assert.match(page, /label: "导出 CSV"/u);
   assert.doesNotMatch(page, /EventAnalyticsRoute|PublicTopNav|className="orbit-shell"|data-appscroll|data-orbit-real-page="event-analytics"/u);
   assert.match(screen, /useEventAnalytics\(event\.id, activeView, setActiveView\)/u);
   assert.match(screen, /canSwitchViews/u);

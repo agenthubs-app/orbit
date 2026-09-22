@@ -166,7 +166,19 @@ export interface EventOperationsSession {
   workspace: EventOperationsAdminWorkspace | null;
 }
 
-export function useEventOperations(event: EventOperationsEvent): EventOperationsSession {
+/**
+ * 会话选项（合并前终审修正 1）：概览 / 匹配屏保持默认（自动重试 + 进行中 1.5s 轮询）；
+ * 参会者屏只读工作区（`{ autoRetry: false, poll: false }`），不得对失败生成发 `POST …/retry`，也不重复 GET。
+ */
+export interface EventOperationsOptions {
+  /** 最新生成 failed（可重试错误码）时自动 `POST …/retry`（上限 AUTO_RETRY_LIMIT）。默认 true。 */
+  autoRetry?: boolean;
+  /** 有 queued / running 生成时每 1.5s 重读工作区。默认 true。 */
+  poll?: boolean;
+}
+
+export function useEventOperations(event: EventOperationsEvent, options: EventOperationsOptions = {}): EventOperationsSession {
+  const { autoRetry = true, poll = true } = options;
   const baseUrl = `/api/events/${encodeURIComponent(event.id)}/operations/admin`;
   const [workspace, setWorkspace] = useState<EventOperationsAdminWorkspace | null>(null);
   const [form, setForm] = useState<ConfigurationForm>(() => formFor(null, event));
@@ -212,12 +224,12 @@ export function useEventOperations(event: EventOperationsEvent): EventOperations
   ) ?? false;
 
   useEffect(() => {
-    if (!hasActiveGeneration) return;
+    if (!poll || !hasActiveGeneration) return;
     const timer = window.setInterval(() => {
       void load(false);
     }, 1_500);
     return () => window.clearInterval(timer);
-  }, [hasActiveGeneration, load]);
+  }, [hasActiveGeneration, load, poll]);
 
   async function saveConfiguration() {
     setBusy("configuration");
@@ -274,7 +286,7 @@ export function useEventOperations(event: EventOperationsEvent): EventOperations
   // never auto-retried — they need an organizer decision.
   const newestGeneration = workspace?.generations[0]?.generation ?? null;
   useEffect(() => {
-    if (!newestGeneration || newestGeneration.status !== "failed") return;
+    if (!autoRetry || !newestGeneration || newestGeneration.status !== "failed") return;
     const code = newestGeneration.errorCode ?? "";
     if (code.includes("CONFIGURATION") || code.includes("NOT_CONFIGURED")) return;
     const spent = autoRetries[newestGeneration.generationId] ?? 0;
@@ -289,7 +301,7 @@ export function useEventOperations(event: EventOperationsEvent): EventOperations
       // The next poll surfaces persisted state; manual retry stays available.
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [newestGeneration?.generationId, newestGeneration?.status]);
+  }, [autoRetry, newestGeneration?.generationId, newestGeneration?.status]);
 
   async function generationAction(generation: EventOperationsGeneration) {
     if (generation.status === "published") return;

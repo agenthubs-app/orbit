@@ -89,6 +89,13 @@ export function OpsRolesDrawer({ closeHref, eventId }: { closeHref: string; even
     }
   }, [participantOptions]);
 
+  // 合并前终审修正 8：候选池到达（或变化）时，若已输入的 actor ID 不在池内，自动切到「其他账号 ID…」模式——
+  // 否则 <select> 会显示「请选择参与者」而把先前输入的 ID 藏起来。
+  useEffect(() => {
+    if (participantOptions === null) return;
+    if (newSubjectActorId.trim() && !participantLabelByActorId.has(newSubjectActorId)) setManualSubject(true);
+  }, [newSubjectActorId, participantLabelByActorId, participantOptions]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const onKeydown = (event: KeyboardEvent) => {

@@ -302,6 +302,10 @@ test("check-in page gates on check_in.roster.read_limited before reading the eve
   assert.match(page, /data-orbit-real-page="ops-0918"/u);
   assert.match(page, /<AccountTopNav active="events" \/>/u);
   assert.match(page, /view="checkin"/u);
+  // 合并前终审修正 5：导出 CSV 按 attendees.export 解析（fail-closed），无则 more 为空数组
+  assert.match(page, /await requireEventCapability\(\{[^}]*capability: "attendees\.export"/u);
+  assert.match(page, /let canExport = false;/u);
+  assert.match(page, /more=\{canExport \? \[\{ href: exportCsvHref\([^)]+\), label: "导出 CSV" \}\] : \[\]\}/u);
   assert.match(screen, /useCheckInRoster\(event\.id\)/u);
   assert.match(screen, /标记到场/u);
 });

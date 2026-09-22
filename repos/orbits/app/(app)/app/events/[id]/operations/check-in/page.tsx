@@ -52,6 +52,19 @@ export default async function EventOperationsCheckInPage({
     return <OpsBoundary description="只有当前活动主办方或被授予签到角色的成员可以打开签到名单。" eyebrow="EVENT OPERATIONS · CHECK-IN" page="event-check-in-boundary" retryHref={`/app/events/${encodeURIComponent(eventId)}/operations/check-in`} title="没有签到权限" />;
   }
 
+  // 合并前终审修正 5：「导出 CSV」按导出接口同一能力 attendees.export 解析（fail-closed），无则菜单不含该项。
+  let canExport = false;
+  try {
+    await requireEventCapability({
+      actorId: session.user.id,
+      capability: "attendees.export",
+      eventId,
+      service: accessService,
+    });
+    canExport = true;
+  } catch {
+    canExport = false;
+  }
   // 门禁已过：壳（面包屑 / 标题）读 canonical Event Core 标题；读不到时退回 eventId（loadEventOperationsPageEvent 既有规则）。
   const pageEvent = await loadEventOperationsPageEvent(eventId, eventCore);
 
@@ -61,8 +74,8 @@ export default async function EventOperationsCheckInPage({
       {/* 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。 */}
       <div data-orbit-real-page="ops-0918">
         <AccountTopNav active="events" />
-        {/* 「更多 ⌄」只放 导出 CSV：管理角色需 roles.manage，本页不解析（任务 4 决定） */}
-        <OpsConsoleShell event={pageEvent} more={[{ href: exportCsvHref(eventId), label: "导出 CSV" }]} view="checkin">
+        {/* 「更多 ⌄」只放 导出 CSV（attendees.export 才出现，合并前终审修正 5）：管理角色需 roles.manage，本页不解析（任务 4 决定） */}
+        <OpsConsoleShell event={pageEvent} more={canExport ? [{ href: exportCsvHref(eventId), label: "导出 CSV" }] : []} view="checkin">
           <OpsCheckin event={pageEvent} />
         </OpsConsoleShell>
       </div>

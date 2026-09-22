@@ -73,6 +73,21 @@ export default async function AppEventOperationsAdminPage({
       canManageRoles = false;
     }
   }
+  // 合并前终审修正 5：「导出 CSV」按导出接口同一能力 attendees.export 解析（fail-closed）。
+  let canExport = false;
+  if (accessGranted && accessService) {
+    try {
+      await requireEventCapability({
+        actorId: session.user.id,
+        capability: "attendees.export",
+        eventId: canonicalEventId!,
+        service: accessService,
+      });
+      canExport = true;
+    } catch {
+      canExport = false;
+    }
+  }
   const pageEvent = accessGranted
     ? await loadEventOperationsPageEvent(
         canonicalEventId!,
@@ -101,6 +116,7 @@ export default async function AppEventOperationsAdminPage({
       <div data-orbit-real-page="ops-0918">
         <AccountTopNav active="events" />
         <OpsConsole
+          canExport={canExport}
           canManageRoles={canManageRoles}
           drawer={drawer}
           event={pageEvent ?? {

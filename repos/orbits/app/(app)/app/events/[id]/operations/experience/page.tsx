@@ -54,6 +54,19 @@ export default async function AppEventExperiencePage({
     return <OpsBoundary description="只有当前活动主办方或被授予运营角色的成员可以编辑报名设置。" eyebrow="EVENT OPERATIONS · EXPERIENCE" page="event-experience-boundary" retryHref={`/app/events/${encodeURIComponent(eventId)}/operations/experience`} title="没有报名设置权限" />;
   }
 
+  // 合并前终审修正 5：「导出 CSV」按导出接口同一能力 attendees.export 解析（fail-closed），无则菜单不含该项。
+  let canExport = false;
+  try {
+    await requireEventCapability({
+      actorId: session.user.id,
+      capability: "attendees.export",
+      eventId,
+      service: accessService,
+    });
+    canExport = true;
+  } catch {
+    canExport = false;
+  }
   // 门禁已过：壳（面包屑 / 标题 / 预览卡）读 canonical Event Core 标题与时间；读不到时退回 eventId（loadEventOperationsPageEvent 既有规则）。
   const pageEvent = await loadEventOperationsPageEvent(eventId, eventCore);
 
@@ -63,8 +76,8 @@ export default async function AppEventExperiencePage({
       {/* 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。 */}
       <div data-orbit-real-page="ops-0918">
         <AccountTopNav active="events" />
-        {/* 「更多 ⌄」只放 导出 CSV（任务 5 决定；管理角色需 roles.manage，本页不解析） */}
-        <OpsConsoleShell event={pageEvent} more={[{ href: exportCsvHref(eventId), label: "导出 CSV" }]} view="form">
+        {/* 「更多 ⌄」只放 导出 CSV（任务 5 决定；attendees.export 才出现，合并前终审修正 5；管理角色需 roles.manage，本页不解析） */}
+        <OpsConsoleShell event={pageEvent} more={canExport ? [{ href: exportCsvHref(eventId), label: "导出 CSV" }] : []} view="form">
           <OpsForm event={pageEvent} />
         </OpsConsoleShell>
       </div>

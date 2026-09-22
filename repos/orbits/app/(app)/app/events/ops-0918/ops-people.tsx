@@ -7,6 +7,7 @@
  * 设计外第二区块：准入队列（待审核 / 已处理、加载更多、重试 / 两种空态、版本化决定）+ `EventAdmissionPolicyPanel` 折叠区
  * （文件保留、原样挂载）。旧 event-admission-review-workspace.tsx 的 `data-admission-*` 标记与文案原样保留。
  * 仅审核权限（`useEventOperations` 403）：筛选栏 / 表格 / 统计卡全部不渲染，只显示准入区块 + 中文提示（审阅修订 3）。
+ * 合并前终审修正：会话为只读（`{ autoRetry: false, poll: false }`，不发 retry / 不轮询）；非 403 读取失败 → 中文非阻断提示 + 「重试」。
  */
 "use client";
 
@@ -181,7 +182,8 @@ export function OpsPeople({
   canReview?: boolean;
   event: EventOperationsPageEvent;
 }) {
-  const session = useEventOperations(event);
+  // 合并前终审修正 1：本屏只读工作区——不自动重试失败生成（POST …/retry 属概览 / 匹配屏），也不轮询。
+  const session = useEventOperations(event, { autoRetry: false, poll: false });
   const [filter, setFilter] = useState<PeopleFilter>("all");
   const [query, setQuery] = useState("");
   const [view, setView] = useState<ReviewView>("pending");
@@ -195,13 +197,23 @@ export function OpsPeople({
   const detailInTable = detailActor !== null && visible.some((participant) => participant.actorId === detailActor);
   // 审阅修订 3：仅审核权限时只显示准入区块；操作台 403 的英文原文不外露。
   const reviewerOnly = session.accessDenied;
+  // 合并前终审修正 3：非 403 的工作区读取失败（如 500）不弹英文 alert；改为中文非阻断提示 + 「重试」，准入队列照常。
+  const workspaceUnavailable = !reviewerOnly && session.error !== null;
 
   return (
     <div className="op-screen" data-ops-screen="people">
       {reviewerOnly ? (
         <div className="op-notice" data-ops-people-reviewer-only role="status">当前身份仅有审核权限，参会者表格与统计不可见。</div>
       ) : (
-        <SessionBanners session={session} />
+        <>
+          {workspaceUnavailable ? (
+            <div className="op-notice op-alert-row" data-ops-people-workspace-error role="status">
+              <span>参会者资料暂时无法读取，报名审核不受影响。</span>
+              <button className="btn op-btn-sm op-ghost" data-ops-people-workspace-retry onClick={() => void session.load()} type="button">重试</button>
+            </div>
+          ) : null}
+          <SessionBanners session={{ error: null, loading: session.loading, notice: session.notice }} />
+        </>
       )}
 
       {reviewerOnly ? null : (

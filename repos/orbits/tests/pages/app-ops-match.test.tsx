@@ -80,7 +80,7 @@ test("published grouping: four real counts, round toggle switches the published 
   });
 });
 
-test("completed but unpublished: empty state 已生成 N 人，待发布 and 发布结果 → publishes atomically", async () => {
+test("completed but unpublished: empty state 已生成 N 人，待发布; 发布结果 → asks for confirmation (no POST), 确认发布 publishes atomically", async () => {
   const posts: string[] = [];
   await withConsole("match", workspace({ generations: [generation("completed", "gen:done", ["p:a", "p:b", "p:c"])] }), async (renderer, harness) => {
     assert.equal(stat(renderer, "matched"), "3", "参与匹配 = newest completed snapshot size");
@@ -89,11 +89,24 @@ test("completed but unpublished: empty state 已生成 N 人，待发布 and 发
     assert.match(renderer.root.find((node) => node.props["data-ops-tables-empty"] !== undefined).children.join(""), /^已生成 3 人，待发布/u);
     const publish = buttonNamed(renderer, "发布结果 →");
     assert.equal(publish.props.disabled, false);
+    // 合并前终审修正 6：首击只展开确认框，不发 POST
     await act(async () => {
       publish.props.onClick();
       await flush();
     });
+    assert.deepEqual(posts, [], "first click must not publish");
+    assert.equal(harness.observed.filter((call) => call.method === "GET").length, 1);
+    const confirm = renderer.root.find((node) => node.props["data-generation-publish-confirm"] === "gen:done");
+    assert.equal(confirm.props.className, "op-confirm");
+    assert.match(text(renderer), /将发布 生成 #done（3 位参会者）发布后不可更改，参会者将看到分组结果。/u);
+    assert.equal(buttonNamed(renderer, "发布结果 →").props.disabled, true, "entry disabled while confirming");
+    assert.ok(!buttonNamed(renderer, "原子发布").props.disabled, "generation-list button unchanged");
+    await act(async () => {
+      buttonNamed(renderer, "确认发布").props.onClick();
+      await flush();
+    });
     assert.deepEqual(posts, [`${BASE}/generations/${encodeURIComponent("gen:done")}/publish`]);
+    assert.equal(renderer.root.findAll((node) => node.props["data-generation-publish-confirm"] !== undefined).length, 0);
     assert.equal(harness.observed.filter((call) => call.method === "GET").length, 2);
     assert.match(text(renderer), /整份生成结果已通过一次原子指针更新发布/u);
   }, {

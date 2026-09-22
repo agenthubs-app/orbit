@@ -24,6 +24,7 @@ import {
   basicNumberFields,
   fieldLabels,
   publishableGeneration,
+  PublishConfirm,
   RegenerateConfirm,
   regenerateLabel,
   SessionBanners,
@@ -118,6 +119,8 @@ function ConfigurationFold({ open, onToggle, session }: { open: boolean; onToggl
 
 export function OpsOverview({ event, session }: { event: EventOperationsPageEvent; session: EventOperationsSession }) {
   const [confirmingStart, setConfirmingStart] = useState(false);
+  // 合并前终审修正 6：「前往发布 →」先确认再 POST …/publish
+  const [confirmingPublish, setConfirmingPublish] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
   const {
     busy,
@@ -210,12 +213,15 @@ export function OpsOverview({ event, session }: { event: EventOperationsPageEven
                 {hasActiveGeneration ? (
                   <span className="op-todo-row"><span className="op-todo-ico op-todo-info">ⓘ</span><span className="op-todo-text">匹配正在生成中</span></span>
                 ) : publishable ? (
-                  <span className="op-todo-row"><span className="op-todo-ico op-todo-info">ⓘ</span><span className="op-todo-text">匹配结果尚未发布</span><button className="btn op-link-btn" disabled={busy !== null} onClick={() => void generationAction(publishable)} type="button">前往发布 →</button></span>
+                  <span className="op-todo-row"><span className="op-todo-ico op-todo-info">ⓘ</span><span className="op-todo-text">匹配结果尚未发布</span><button className="btn op-link-btn" disabled={busy !== null || confirmingPublish} onClick={() => setConfirmingPublish(true)} type="button">前往发布 →</button></span>
                 ) : !workspace.publishedResult && !confirmingStart ? (
                   <span className="op-todo-row"><span className="op-todo-ico op-todo-info">ⓘ</span><span className="op-todo-text">尚未生成匹配</span><button className="btn op-link-btn" onClick={() => setConfirmingStart(true)} type="button">去生成 →</button></span>
                 ) : null}
                 {insufficient === 0 && !hasActiveGeneration && !publishable && workspace.publishedResult ? (
                   <span className="op-empty">暂无需要处理的事项。</span>
+                ) : null}
+                {publishable && confirmingPublish ? (
+                  <PublishConfirm generation={publishable} onCancel={() => setConfirmingPublish(false)} onConfirm={() => { setConfirmingPublish(false); void generationAction(publishable); }} session={session} />
                 ) : null}
               </section>
             </div>

@@ -18,6 +18,7 @@ import {
   generationEtaLabel,
   generationStatusLabels,
   publishableGeneration,
+  PublishConfirm,
   RegenerateConfirm,
   regenerateLabel,
   SessionBanners,
@@ -30,6 +31,8 @@ const ROUNDS: readonly MatchRound[] = [1, 2];
 export function OpsMatch({ event, session }: { event: EventOperationsPageEvent; session: EventOperationsSession }) {
   const [round, setRound] = useState<MatchRound>(1);
   const [confirmingStart, setConfirmingStart] = useState(false);
+  // 合并前终审修正 6：「发布结果 →」先确认再 POST …/publish（生成列表内的「原子发布」按钮不变）
+  const [confirmingPublish, setConfirmingPublish] = useState(false);
   const {
     autoRetries,
     busy,
@@ -140,10 +143,13 @@ export function OpsMatch({ event, session }: { event: EventOperationsPageEvent; 
             {confirmingStart ? null : (
               <button className="btn op-btn-ghost" disabled={busy === "start" || hasActiveGeneration} onClick={() => setConfirmingStart(true)} type="button">{regenerateLabel(session)}</button>
             )}
-            <button className="btn op-btn-publish" disabled={!publishable || busy !== null} onClick={() => publishable && void generationAction(publishable)} type="button">发布结果 →</button>
+            <button className="btn op-btn-publish" disabled={!publishable || busy !== null || confirmingPublish} onClick={() => setConfirmingPublish(true)} type="button">发布结果 →</button>
           </div>
           {confirmingStart ? (
             <RegenerateConfirm onCancel={() => setConfirmingStart(false)} onConfirm={() => { setConfirmingStart(false); void startGeneration(); }} session={session} />
+          ) : null}
+          {publishable && confirmingPublish ? (
+            <PublishConfirm generation={publishable} onCancel={() => setConfirmingPublish(false)} onConfirm={() => { setConfirmingPublish(false); void generationAction(publishable); }} session={session} />
           ) : null}
 
           <section className="op-extra" id="ops-generation">

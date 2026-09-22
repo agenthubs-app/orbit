@@ -100,6 +100,34 @@ export function RegenerateConfirm({
   );
 }
 
+/**
+ * 发布前二次确认（合并前终审修正 6）：概览「前往发布 →」与匹配屏「发布结果 →」首击只展开本框，不发 POST；
+ * 「确认发布」才调 `generationAction(generation)`（POST …/publish）。结构 / 装饰沿用 `RegenerateConfirm`（`op-confirm`）。
+ */
+export function PublishConfirm({
+  generation,
+  onCancel,
+  onConfirm,
+  session,
+}: {
+  generation: EventOperationsGeneration;
+  onCancel: () => void;
+  onConfirm: () => void;
+  session: Pick<EventOperationsSession, "busy">;
+}) {
+  const publishing = session.busy === `${generation.generationId}:publish`;
+  return (
+    <div className="op-confirm" data-generation-publish-confirm={generation.generationId}>
+      <strong>将发布 {shortGenerationId(generation.generationId)}（{generation.snapshot.participants.length} 位参会者）</strong>
+      <p className="op-copy">发布后不可更改，参会者将看到分组结果。</p>
+      <div className="op-confirm-actions">
+        <button className="btn op-btn-sm op-dark" disabled={session.busy !== null} onClick={onConfirm} type="button">{publishing ? "正在发布…" : "确认发布"}</button>
+        <button className="btn op-btn-sm op-ghost" disabled={publishing} onClick={onCancel} type="button">取消</button>
+      </div>
+    </div>
+  );
+}
+
 /** 错误 / 提示 / 加载三条（旧 313–315 行），文案原样。 */
 export function SessionBanners({ session }: { session: Pick<EventOperationsSession, "error" | "loading" | "notice"> }) {
   return (

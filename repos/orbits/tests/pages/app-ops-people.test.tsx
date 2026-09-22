@@ -159,14 +159,20 @@ async function mountPeople(props: { canConfigurePolicy?: boolean; canReview?: bo
 }
 
 async function withPeople(
-  run: (renderer: ReactTestRenderer, harness: ReturnType<typeof install>) => Promise<void> | void,
+  run: (renderer: ReactTestRenderer, harness: ReturnType<typeof install> & { intervals: number[] }) => Promise<void> | void,
   options: { canConfigurePolicy?: boolean; canReview?: boolean; data?: ReturnType<typeof workspace>; respond?: (call: Observed) => Response | null } = {},
 ): Promise<void> {
   const harness = install((call) => options.respond?.(call) ?? respondDefault(call, options.data));
+  // 合并前终审修正 1：记录 window.setInterval 的间隔，证明只读会话不注册 1.5s 轮询（夹具的 setInterval 永不触发）。
+  const intervals: number[] = [];
+  (globalThis as { window: { setInterval: (handler: () => void, delay: number) => number } }).window.setInterval = (_handler, delay) => {
+    intervals.push(delay);
+    return 1;
+  };
   let renderer: ReactTestRenderer | undefined;
   try {
     renderer = await mountPeople(options);
-    await run(renderer, harness);
+    await run(renderer, Object.assign(harness, { intervals }));
   } finally {
     await unmount(renderer);
     harness.restore();
@@ -380,6 +386,59 @@ test("a 403 on the operations workspace hides the filter bar, table and stats, k
   });
 });
 
+// 合并前终审修正 1：参会者屏的会话只读——失败生成不自动重试，进行中生成不轮询（概览 / 匹配屏行为不变，见 app-ops-match / overview）。
+test("people screen never auto-retries a failed retryable generation nor polls a running one: no POST …/retry, a single workspace GET, no 1.5s interval", async () => {
+  const failed = generation("failed", "gen:failed");
+  const retryable = { ...failed, generation: { ...failed.generation, errorCode: "EVENT_OPERATIONS_SHARD_FAILED", errorMessage: "shard 2 failed" } };
+  await withPeople((renderer, harness) => {
+    assert.deepEqual(rows(renderer), ["p:a", "p:b", "p:c"], "workspace still renders");
+    assert.deepEqual(harness.observed.filter((call) => call.method === "POST"), [], "no POST …/retry from the people screen");
+    assert.equal(harness.observed.filter((call) => call.url === BASE).length, 1, "single workspace GET");
+    assert.doesNotMatch(text(renderer), /已自动重试/u);
+  }, { data: workspace({ generations: [retryable] }) });
+
+  await withPeople((renderer, harness) => {
+    assert.deepEqual(rows(renderer), ["p:a", "p:b", "p:c"]);
+    assert.deepEqual(harness.intervals.filter((delay) => delay === 1_500), [], "no 1.5s polling interval registered");
+    assert.equal(harness.observed.filter((call) => call.url === BASE).length, 1);
+  }, { data: workspace({ generations: [generation("running", "gen:run")] }) });
+});
+
+// 合并前终审修正 3：非 403 的工作区读取失败 → 中文非阻断提示 + 「重试」= session.load()；准入队列照常。
+test("a 500 on the operations workspace shows the Chinese non-blocking notice with 重试 (→ session.load()), no raw English alert, and keeps the admission queue", async () => {
+  let workspaceReads = 0;
+  await withPeople(async (renderer, harness) => {
+    assert.equal(workspaceReads, 1);
+    assert.equal(renderer.root.findAll((node) => node.props.role === "alert").length, 0, "no blocking alert");
+    assert.doesNotMatch(text(renderer), /Request failed with status 500/u, "raw English message not surfaced");
+    const notice = renderer.root.find((node) => node.props["data-ops-people-workspace-error"] !== undefined);
+    assert.equal(notice.props.role, "status");
+    assert.match(notice.props.className, /^op-notice\b/u);
+    assert.match(text(renderer), /参会者资料暂时无法读取，报名审核不受影响。/u);
+    assert.equal(renderer.root.findAll((node) => node.props["data-ops-people-table"] !== undefined).length, 0, "table waits for the workspace");
+    assert.equal(renderer.root.findAll((node) => node.props["data-admission-review-applicant"] === APPLICANT_ID).length, 1, "admission queue still rendered");
+    assert.equal(renderer.root.findAll((node) => node.props["data-ops-people-reviewer-only"] !== undefined).length, 0, "500 is not the reviewer-only state");
+    const retry = renderer.root.find((node) => node.type === "button" && node.props["data-ops-people-workspace-retry"] !== undefined);
+    assert.equal(retry.children.join(""), "重试");
+    await act(async () => {
+      retry.props.onClick();
+      await flush();
+    });
+    assert.equal(workspaceReads, 2, "重试 re-reads the workspace");
+    assert.equal(harness.observed.filter((call) => call.method === "POST").length, 0);
+    assert.equal(renderer.root.findAll((node) => node.props["data-ops-people-workspace-error"] !== undefined).length, 0, "notice clears once the workspace loads");
+    assert.deepEqual(rows(renderer), ["p:a", "p:b", "p:c"]);
+  }, {
+    respond: (call) => {
+      if (call.url !== BASE) return null;
+      workspaceReads += 1;
+      return workspaceReads === 1
+        ? Response.json({ error: { message: "Request failed with status 500." }, success: false }, { status: 500 })
+        : null;
+    },
+  });
+});
+
 test("organizer policy panel shows the current version and saves only the versioned canonical fields", async () => {
   const writes: Observed[] = [];
   await withPeople(async (renderer) => {
@@ -466,6 +525,10 @@ test("admission page stays canonical-only and mounts the people screen inside th
   assert.match(page, /getPublishedEvent/u);
   assert.match(page, /capability: "admission\.read"/u);
   assert.match(page, /capability: "roles\.manage"/u);
+  // 合并前终审修正 5：导出 CSV 按 attendees.export 解析（fail-closed），无则 more 为空数组
+  assert.match(page, /await requireEventCapability\(\{[^}]*capability: "attendees\.export"/u);
+  assert.match(page, /let canExport = false;/u);
+  assert.match(page, /more=\{canExport \? \[\{ href: exportCsvHref\([^)]+\), label: "导出 CSV" \}\] : \[\]\}/u);
   assert.match(page, /redirect\(`\/app\/account\/login\?next=/u);
   assert.doesNotMatch(page, /mockEventRecords|readPublicEventCatalogue|legacyEvent/u);
   assert.match(page, /loadEventOperationsPageEvent/u);
@@ -476,7 +539,7 @@ test("admission page stays canonical-only and mounts the people screen inside th
   assert.match(screen, /interviewResponses \?\? \[\]/u);
   assert.match(screen, /EventAdmissionPolicyPanel/u);
   assert.match(screen, /canConfigurePolicy/u);
-  assert.match(screen, /useEventOperations\(event\)/u);
+  assert.match(screen, /useEventOperations\(event, \{ autoRetry: false, poll: false \}\)/u, "read-only session (合并前终审修正 1)");
   // 任务 7：三页共用 ops-0918/ops-boundary.tsx，admission 页三处边界文案 / 标记不变
   assert.doesNotMatch(page, /function Boundary|PublicTopNav/u);
   assert.equal((page.match(/<OpsBoundary /gu) ?? []).length, 3);
