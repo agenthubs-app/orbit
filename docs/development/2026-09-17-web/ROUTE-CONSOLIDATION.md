@@ -57,8 +57,8 @@
 | Events | recap | `/app/events/[id]` 结束态 / `?view=recap` | 已重建（Events 任务 2 `87a8c376`，四页签共用正文） |
 | Events | host | `/app/o/[slug]` | 换肤态，待重建 |
 | Events | attendee / exchange / schedule / note 弹窗 | 详情页与 live 屏内弹窗 | 已重建（Events 任务 5 `ad8da895` + `f9bfc081`，`event-*-modal.tsx` 接真实服务） |
-| Events 运营台 | hub | `/app/events/center` | 未动，待重建 |
-| Events 运营台 | ops（含协作者抽屉） | `/app/events/[id]/operations` | 概览已重建（运营台 任务 3，`ops-0918/ops-console.tsx` + `ops-overview.tsx`；旧 `event-operations-admin-workspace.tsx` 已删）；协作者抽屉 `?drawer=roles` 待任务 6 |
+| Events 运营台 | hub | `/app/events/center` | 已重建（运营台 任务 2 `6e88243b`，`ops-0918/ops-hub.tsx` + `ops-shell.tsx` + `ops-model.ts`；旧 `center/event-center-workspace.tsx` 已删） |
+| Events 运营台 | ops（含协作者抽屉） | `/app/events/[id]/operations` | 已重建（概览 运营台 任务 3 `ebdb9b45`，`ops-0918/ops-console.tsx` + `ops-overview.tsx`，旧 `event-operations-admin-workspace.tsx` 已删；协作者抽屉 `?drawer=roles` 任务 6 `f619ea74`，`ops-roles-drawer.tsx`，旧 `roles/page.tsx` + `event-role-management-workspace.tsx` 已删） |
 | Events 运营台 | match | `…/operations?tab=match`（审阅修订 7：覆盖原 `…/operations/experience` 归并） | 已重建（运营台 任务 3，`ops-0918/ops-match.tsx`；桌卡只读已发布分桌） |
 | Events 运营台 | people | `…/operations/admission` | 已重建（运营台 任务 4 `c24f1ea0`，`ops-0918/ops-people.tsx`；准入队列 + 政策面板为同屏第二区块；旧 `event-admission-review-workspace.tsx` 已删） |
 | Events 运营台 | checkin | `…/operations/check-in` | 已重建（运营台 任务 4 `c24f1ea0`，`ops-0918/ops-checkin.tsx`；三列 + 最新签到；旧 `limited-check-in-roster.tsx` 已删） |
