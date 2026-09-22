@@ -50,7 +50,7 @@ node scripts/visual/compare-0918.mjs \
 | Network | `scripts/visual/attribution-0918-network.json` | 8 / 92 |
 | 个人中心 | `scripts/visual/attribution-0918-profile.json` | 4 / 29 |
 | Events 参会者侧 | `scripts/visual/attribution-0918-events.json` | 13 / 110（详情·报名壳两屏需 timeshift，本轮跳过） |
-| 运营台 | `scripts/visual/attribution-0918-ops.json` | 8 / — |
+| 运营台 | `scripts/visual/attribution-0918-ops.json` | 8 / 57 |
 | 认证四态弹窗 | `scripts/visual/attribution-0918-auth.json` | 6 / — |
 
 归因理由前缀统一四类：`[data]` 同结构真实内容不同 / `[recorded]` 命中台账已记偏差（必须写出条目出处）/
