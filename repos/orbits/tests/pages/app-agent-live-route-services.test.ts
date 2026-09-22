@@ -132,10 +132,11 @@ test("/app/agent keeps the composer reachable when a new actor has no chat conve
   // 没注册，全局输入框就会退回「跳转」行为，在 iOrbit 页上表现为原地打转。
   // 输入框本身在 /app/agent 上确实可达，由 orbit-global-ask-routes 的默认展开
   // 用例 + 浏览器验证覆盖。
-  const agentSource = source("app/(app)/app/agent/orbit-real-agent.tsx");
+  // iOrbit 任务 1b：ask-target 的注册搬进 `use-agent-chat.ts`，断言随之改指。
+  const chatHookSource = source("app/(app)/app/agent/iorbit-0918/use-agent-chat.ts");
 
-  assert.match(agentSource, /useOrbitAskTarget\(askTarget\)/);
-  assert.match(agentSource, /onAsk: ask/);
+  assert.match(chatHookSource, /useOrbitAskTarget\(askTarget\)/);
+  assert.match(chatHookSource, /onAsk: ask/);
 });
 
 test("/app/agent does not turn chat failures or missing conversation ids into a ready Agent", async () => {

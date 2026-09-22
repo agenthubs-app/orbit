@@ -22,6 +22,11 @@ function readProjectFile(relativePath: string): string {
   return fs.readFileSync(path.join(projectRoot, relativePath), "utf8");
 }
 
+// iOrbit 任务 1b：纯函数搬到 `iorbit-model.ts`、对话状态/hydration 搬到
+// `use-agent-chat.ts`，JSX 留在 `orbit-real-agent.tsx`。源码断言按此拆成两半。
+const IORBIT_MODEL_PATH = "app/(app)/app/agent/iorbit-0918/iorbit-model.ts";
+const IORBIT_CHAT_HOOK_PATH = "app/(app)/app/agent/iorbit-0918/use-agent-chat.ts";
+
 function minimalChatRouteModel() {
   return {
     state: "success",
@@ -352,15 +357,19 @@ test("agent chat history titles are compact phrases derived from the first quest
 
 test("agent sidebar persists sessions through the Orbit Agent sessions API", () => {
   const source = readProjectFile("app/(app)/app/agent/orbit-real-agent.tsx");
+  const modelSource = readProjectFile(IORBIT_MODEL_PATH);
+  const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
 
-  assert.match(source, /\/api\/ai\/conversations\/sessions/);
-  assert.match(source, /loadStoredAgentChatSessions/);
-  assert.match(source, /persistStoredAgentChatSession/);
+  assert.match(modelSource, /\/api\/ai\/conversations\/sessions/);
+  assert.match(chatHookSource, /loadStoredAgentChatSessions/);
+  assert.match(chatHookSource, /persistStoredAgentChatSession/);
   assert.match(source, /history=\{storedHistory\}/);
-  assert.match(source, /restoreSession\(session\)/);
-  assert.match(source, /currentAgentSessionId\(\)/);
-  assert.doesNotMatch(source, /localStorage\.getItem\(AGENT_CHAT_HISTORY_STORAGE_KEY\)/);
-  assert.doesNotMatch(source, /localStorage\.setItem\(\s*AGENT_CHAT_HISTORY_STORAGE_KEY/);
+  assert.match(chatHookSource, /restoreSession\(session\)/);
+  assert.match(chatHookSource, /currentAgentSessionId\(\)/);
+  for (const agentSource of [source, modelSource, chatHookSource]) {
+    assert.doesNotMatch(agentSource, /localStorage\.getItem\(AGENT_CHAT_HISTORY_STORAGE_KEY\)/);
+    assert.doesNotMatch(agentSource, /localStorage\.setItem\(\s*AGENT_CHAT_HISTORY_STORAGE_KEY/);
+  }
   assert.doesNotMatch(source, /history=\{viewModel\.history\}/);
 });
 
@@ -389,7 +398,8 @@ test("agent history mutations require explicit persisted storage evidence", () =
 });
 
 test("agent home starts fresh unless the URL explicitly selects a session", () => {
-  const source = readProjectFile("app/(app)/app/agent/orbit-real-agent.tsx");
+  // hydration 已整体搬进 use-agent-chat.ts，深链判定在 hook 文件上断言。
+  const source = readProjectFile(IORBIT_CHAT_HOOK_PATH);
 
   assert.match(source, /const sessionId = currentAgentSessionId\(\);/);
   assert.doesNotMatch(
@@ -408,8 +418,10 @@ test("agent sidebar exposes deletion and width resizing controls for history", (
     "app/(app)/app/orbit-reference-styles.tsx",
   );
 
+  // 删除请求本体在 model（`deleteStoredAgentChatSession`），菜单与二次确认在 JSX。
+  assert.match(readProjectFile(IORBIT_MODEL_PATH), /deleteStoredAgentChatSession/);
   assert.match(source, /deleteStoredAgentChatSession/);
-  assert.match(source, /method: "DELETE"/);
+  assert.match(readProjectFile(IORBIT_MODEL_PATH), /method: "DELETE"/);
   assert.match(source, /data-orbit-agent-history-menu-button/);
   assert.match(source, /data-orbit-agent-history-menu/);
   assert.match(source, /data-orbit-agent-history-delete/);

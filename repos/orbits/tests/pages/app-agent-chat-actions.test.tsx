@@ -360,10 +360,31 @@ test("Agent chat persists run ids without rendering internal tracking UI", async
     ),
   );
 
-  assert.match(source, /actionIds\?: readonly string\[\]/);
-  assert.match(source, /runId\?: string/);
-  assert.match(source, /payload\.data\.actionIds/);
-  assert.match(source, /evidenceRefsFromArtifacts/);
+  const modelSource = await import("node:fs/promises").then((fs) =>
+    fs.readFile(
+      new URL(
+        "../../app/(app)/app/agent/iorbit-0918/iorbit-model.ts",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+  const chatHookSource = await import("node:fs/promises").then((fs) =>
+    fs.readFile(
+      new URL(
+        "../../app/(app)/app/agent/iorbit-0918/use-agent-chat.ts",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+
+  // iOrbit 任务 1b：AgentMessage 形状与 artifact→证据在 model，读回执在 hook，
+  // 只渲染的部分（run details / evidence 面板）留在 JSX 文件上断言。
+  assert.match(modelSource, /actionIds\?: readonly string\[\]/);
+  assert.match(modelSource, /runId\?: string/);
+  assert.match(chatHookSource, /payload\.data\.actionIds/);
+  assert.match(modelSource, /evidenceRefsFromArtifacts/);
   assert.doesNotMatch(source, /data-agent-evidence-sources/);
   assert.match(source, /showRunDetails={false}/);
   assert.doesNotMatch(source, /data-agent-run-details/);

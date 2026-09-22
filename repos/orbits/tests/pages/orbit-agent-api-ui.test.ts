@@ -20,18 +20,28 @@ function readProjectFile(relativePath: string): string {
   return fs.readFileSync(path.join(projectRoot, relativePath), "utf8");
 }
 
+// iOrbit 任务 1b：请求助手与超时常量在 `iorbit-model.ts`，对话状态与 `ask` 在
+// `use-agent-chat.ts`，JSX 留在 `orbit-real-agent.tsx`。
+const IORBIT_MODEL_PATH = "app/(app)/app/agent/iorbit-0918/iorbit-model.ts";
+const IORBIT_CHAT_HOOK_PATH = "app/(app)/app/agent/iorbit-0918/use-agent-chat.ts";
+
 test("Orbit agent UI sends prompts through the Chat Agent API boundary", () => {
   const source = readProjectFile(
     "app/(app)/app/agent/orbit-real-agent.tsx",
   );
   const serviceFactory = readProjectFile("features/orbit-ai/service-factory.ts");
 
-  assert.match(source, /fetch\(["']\/api\/ai\/conversations["']/);
-  assert.match(source, /method:\s*["']POST["']/);
-  assert.match(source, /assistantMessage/);
+  const modelSource = readProjectFile(IORBIT_MODEL_PATH);
+  const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
+
+  assert.match(modelSource, /fetch\(["']\/api\/ai\/conversations["']/);
+  assert.match(modelSource, /method:\s*["']POST["']/);
+  assert.match(chatHookSource, /assistantMessage/);
   assert.match(serviceFactory, /process\.env\.ORBIT_AGENT_CONVERSATION_MODE/);
-  assert.doesNotMatch(source, /function routeScenario/);
-  assert.match(source, /fetchAgentConversation/);
+  for (const checked of [source, modelSource, chatHookSource]) {
+    assert.doesNotMatch(checked, /function routeScenario/);
+  }
+  assert.match(chatHookSource, /fetchAgentConversation/);
 });
 
 test("Orbit agent submit controls expose a 44px target and guard blank or concurrent requests", () => {
@@ -73,11 +83,13 @@ test("chat composer stays on the Agent page without reopening the global launche
     "app/(app)/app/orbit-global-ask/orbit-global-ask.tsx",
   );
 
+  const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
+
   assert.match(agentSource, /data-orbit-agent-chat-composer/);
   assert.match(agentSource, /data-orbit-agent-chat-input/);
   assert.match(agentSource, /disabled=\{thinking\}/);
-  assert.match(agentSource, /const query = chatDraft\.trim\(\);/);
-  assert.match(agentSource, /void ask\(query\)/);
+  assert.match(chatHookSource, /const query = chatDraft\.trim\(\);/);
+  assert.match(chatHookSource, /void ask\(query\)/);
   assert.match(agentSource, /className="agent-chat-composer-dock"/);
   assert.match(agentSource, /border-top: 1px solid var\(--border\)/);
   assert.match(globalAskSource, /!isOrbitAskHome\(pathname\)/);
@@ -85,13 +97,18 @@ test("chat composer stays on the Agent page without reopening the global launche
 
 
 test("the actual Agent request helper aborts stalled requests and always clears its timer", async () => {
-  const source = readProjectFile("app/(app)/app/agent/orbit-real-agent.tsx");
-  assert.match(source, /浏览器已停止等待/);
-  assert.match(source, /服务器结果尚未确认/);
-  assert.match(source, /不会重复生成/);
-  assert.doesNotMatch(source, /本次请求已停止/);
-  assert.doesNotMatch(source, /The request took over .* and was stopped/);
-  const parsed = ts.createSourceFile("orbit-real-agent.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const jsxSource = readProjectFile("app/(app)/app/agent/orbit-real-agent.tsx");
+  const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
+  // 超时/未确认的用户文案由 hook 的 ask() 产出；请求助手本身（AST 断言）在 model。
+  assert.match(chatHookSource, /浏览器已停止等待/);
+  assert.match(chatHookSource, /服务器结果尚未确认/);
+  assert.match(chatHookSource, /不会重复生成/);
+  for (const checked of [jsxSource, chatHookSource]) {
+    assert.doesNotMatch(checked, /本次请求已停止/);
+    assert.doesNotMatch(checked, /The request took over .* and was stopped/);
+  }
+  const source = readProjectFile(IORBIT_MODEL_PATH);
+  const parsed = ts.createSourceFile("iorbit-model.ts", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const names = new Set(["AGENT_REQUEST_TIMEOUT_MS", "AgentRequestTimeoutError", "fetchAgentConversation"]);
   const declarations = parsed.statements.filter((statement) => {
     if (ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement)) return names.has(statement.name?.text ?? "");

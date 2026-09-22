@@ -17,12 +17,16 @@ function source(path: string): string {
   return readFileSync(join(projectRoot, path), "utf8");
 }
 
+// iOrbit 任务 1b：三个 HISTORY_SIDEBAR_* 常量与 clampHistorySidebarWidth 搬到了
+// `iorbit-0918/iorbit-model.ts`（拖拽 JSX 仍在 `orbit-real-agent.tsx`）。
+const IORBIT_MODEL_PATH = "app/(app)/app/agent/iorbit-0918/iorbit-model.ts";
+
 test("the shared sidebar width matches the 人脉 column", () => {
   assert.equal(ORBIT_LEFT_SIDEBAR_WIDTH, 212);
 });
 
 test("the iOrbit sidebar derives its default width from the shared constant", () => {
-  const agent = source("app/(app)/app/agent/orbit-real-agent.tsx");
+  const agent = source(IORBIT_MODEL_PATH);
 
   assert.ok(agent.includes("ORBIT_LEFT_SIDEBAR_WIDTH"));
   assert.ok(
@@ -31,7 +35,7 @@ test("the iOrbit sidebar derives its default width from the shared constant", ()
 });
 
 test("the iOrbit drag lower bound does not exceed the initial width", () => {
-  const agent = source("app/(app)/app/agent/orbit-real-agent.tsx");
+  const agent = source(IORBIT_MODEL_PATH);
   const min = Number(
     /const HISTORY_SIDEBAR_MIN_WIDTH = (\d+)/.exec(agent)?.[1] ?? "0",
   );
@@ -45,9 +49,11 @@ test("the iOrbit drag lower bound does not exceed the initial width", () => {
 
 test("the iOrbit sidebar is still resizable", () => {
   const agent = source("app/(app)/app/agent/orbit-real-agent.tsx");
+  const model = source(IORBIT_MODEL_PATH);
 
   assert.ok(agent.includes("clampHistorySidebarWidth"));
-  assert.ok(agent.includes("HISTORY_SIDEBAR_MAX_WIDTH = 380"));
+  assert.ok(model.includes("clampHistorySidebarWidth"));
+  assert.ok(model.includes("HISTORY_SIDEBAR_MAX_WIDTH = 380"));
 });
 
 test("no contacts surface hardcodes the sidebar column width", () => {

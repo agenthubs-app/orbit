@@ -13,6 +13,11 @@ function readProjectFile(relativePath: string): string {
   return fs.readFileSync(path.join(projectRoot, relativePath), "utf8");
 }
 
+// iOrbit 任务 1b：纯函数在 `iorbit-model.ts`、对话状态/`ask` 在 `use-agent-chat.ts`，
+// JSX 留在 `orbit-real-agent.tsx`。源码断言按此拆成两半。
+const IORBIT_MODEL_PATH = "app/(app)/app/agent/iorbit-0918/iorbit-model.ts";
+const IORBIT_CHAT_HOOK_PATH = "app/(app)/app/agent/iorbit-0918/use-agent-chat.ts";
+
 async function importProjectModule<TModule>(
   relativePath: string,
 ): Promise<TModule> {
@@ -55,5 +60,6 @@ test("agent chat bubbles expose copy buttons for user and assistant messages", (
   assert.match(source, /data-orbit-agent-message-copy/);
   assert.match(source, /aria-label=\{t\(\{ en: "Copy message", zh: "复制消息" \}\)\}/);
   assert.match(source, /<AgentMessageCopyButton text=\{message\.text\}/);
-  assert.match(source, /navigator\.clipboard\.writeText/);
+  // 复制的实现（clipboard / textarea 兜底）搬到了 model，按钮仍在 JSX。
+  assert.match(readProjectFile(IORBIT_MODEL_PATH), /navigator\.clipboard\.writeText/);
 });

@@ -2,48 +2,36 @@
 
 import { type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { aiSessionOrganizationSchema, aiSessionOriginSchema, reliableAiSendInputSchema, reliableAiSendReceiptSchema } from "../../../../shared/api-schema/ai-sessions";
 import type {
-  AiSessionOriginInputContract,
   AiSessionGroupContract,
   AiSessionOrganizationContract,
-  ReliableAiSendInputContract,
-  StoredAiSessionOriginContract,
 } from "../../../../shared/contract/ai-sessions";
 
 import type {
   OrbitAgentEventResultView,
   OrbitAgentHistoryView,
   OrbitAgentPeopleResultView,
-  OrbitAgentScenarioView,
   OrbitAgentTodoResultView,
   OrbitAgentViewModel,
 } from "../orbit-agent-route-view-model";
 import { AccountTopNav } from "../orbit-account-shell";
-import { useOrbitAskTarget } from "../orbit-global-ask/orbit-ask-context";
-import { takeAgentPrefill, takePendingAsk, type OrbitAgentPrefill } from "../orbit-global-ask/orbit-ask-draft";
 import { eventCoverPhoto } from "../orbit-event-cover-photo";
 import { EventCover } from "../events/orbit-event-cover";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { useOrbitModalA11y } from "../orbit-modal-a11y";
-import { productHref } from "../orbit-public-shell";
 import { Avatar, Icon, IconButton, gradientFromString } from "../orbit-reference-primitives";
 import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
 import { ORBIT_Z } from "../orbit-z";
 import { AgentActionStatusCard } from "./agent-action-status-card";
 import { AgentOutcomeFeedback } from "./agent-outcome-feedback";
-import { createAgentChatSessionMutationQueue } from "./agent-chat-session-mutations";
 import {
   AgentChatHistoryOrganization,
   createAgentChatGroup,
   deleteAgentChatGroup,
-  loadAgentChatGroups,
   patchAgentChatSessionOrganization,
   renameAgentChatGroup,
 } from "./agent-chat-history-organization";
 import { AgentTaskInteractionCard } from "./agent-task-interaction-card";
-import { useAgentTaskSuggestions } from "./agent-task-interaction-client";
-import { parseAgentTaskInteraction, type AgentTaskInteractionView } from "./agent-task-interaction-view-model";
 import { OrbitAgentDashboard } from "./orbit-agent-dashboard";
 import type { OrbitHomeViewModel } from "../orbit-home-route-view-model";
 import type { EventRegistrationAvailability } from "../../../../features/events/registration/deadline-gated-service";
@@ -52,6 +40,38 @@ import {
   openRelationshipInboxCompose,
   requestMessageDraft,
 } from "../inbox/relationship-inbox-panel";
+import {
+  AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY,
+  HISTORY_SIDEBAR_DEFAULT_WIDTH,
+  HISTORY_SIDEBAR_MAX_WIDTH,
+  HISTORY_SIDEBAR_MIN_WIDTH,
+  THINKING_PHASES,
+  THINKING_PHASE_INTERVAL_MS,
+  agentChatHistorySessionsToHistory,
+  agentSuggestLabel,
+  clampHistorySidebarWidth,
+  copyAgentMessageText,
+  createAgentSessionId,
+  deleteStoredAgentChatSession,
+  draftPurposeFor,
+  earliestTodoDueAt,
+  fmtDay,
+  fmtMonth,
+  groupTodosByContact,
+  isPeopleResult,
+  isTodoLead,
+  isTodoResult,
+  parseDate,
+  titleFromMessages,
+  todoDueLabel,
+  upsertAgentChatSession,
+  type AgentHistoryLanguage,
+  type AgentPanel,
+  type AgentTodoGroup,
+  type Copy,
+  type Translate,
+} from "./iorbit-0918/iorbit-model";
+import { useAgentChat } from "./iorbit-0918/use-agent-chat";
 
 interface OrbitRealAgentProps {
   home?: OrbitHomeViewModel | null;
@@ -59,934 +79,14 @@ interface OrbitRealAgentProps {
   viewModel: OrbitAgentViewModel;
 }
 
-type AgentPanel = Pick<OrbitAgentScenarioView, "items" | "kind" | "panelTitle">;
-type AgentReliableRequest = ReliableAiSendInputContract;
-
-type AgentMessage =
-  | { id?: string; role: "user"; text: string }
-  | {
-      actionIds?: readonly string[];
-      evidenceRefs?: readonly AgentEvidenceRef[];
-      items: OrbitAgentScenarioView["items"];
-      kind: OrbitAgentScenarioView["kind"];
-      id?: string;
-      note?: string;
-      panelTitle: string;
-      retryRequest?: string;
-      reliableRequest?: AgentReliableRequest;
-      role: "assistant";
-      runId?: string;
-      taskInteraction?: AgentTaskInteractionView;
-      text: string;
-    };
 
 const AgentMarkdown = dynamic(() => import("./agent-markdown"), {
   loading: () => <div aria-hidden="true" className="orbit-agent-markdown" />,
 });
 
-export function agentRetryRequestForAssistant(
-  messages: readonly AgentMessage[],
-  assistantIndex: number,
-): string | null {
-  for (
-    let index = Math.min(assistantIndex - 1, messages.length - 1);
-    index >= 0;
-    index -= 1
-  ) {
-    const message = messages[index];
-    if (message?.role === "user") {
-      const text = message.text.trim();
-      return text || null;
-    }
-  }
 
-  return null;
-}
 
-export function prepareAgentFailedRequestRetry(
-  messages: readonly AgentMessage[],
-  assistantIndex: number,
-): {
-  historyMessages: AgentMessage[];
-  query: string;
-  visibleMessages: AgentMessage[];
-} | null {
-  const failedMessage = messages[assistantIndex];
-  if (
-    failedMessage?.role !== "assistant" ||
-    !failedMessage.retryRequest?.trim()
-  ) {
-    return null;
-  }
 
-  let userIndex = -1;
-  for (let index = assistantIndex - 1; index >= 0; index -= 1) {
-    const message = messages[index];
-    if (message?.role === "user") {
-      userIndex = index;
-      break;
-    }
-  }
-  if (userIndex < 0) {
-    return null;
-  }
-
-  return {
-    historyMessages: messages.filter(
-      (_message, index) => index !== userIndex && index !== assistantIndex,
-    ),
-    query: failedMessage.retryRequest.trim(),
-    visibleMessages: messages.filter(
-      (_message, index) => index !== assistantIndex,
-    ),
-  };
-}
-
-type Copy = { en: string; zh: string };
-type Translate = (copy: Copy) => string;
-type AgentHistoryLanguage = "en" | "zh" | "ja";
-type AgentHistoryFeedback = {
-  kind: "error" | "success";
-  text: string;
-};
-
-export interface AgentEvidenceRef {
-  evidenceIds: readonly string[];
-  generatedAt: string;
-  itemCount: number;
-  label: string;
-  sourceModules: readonly string[];
-}
-
-function agentEvidenceRefIdentity(reference: AgentEvidenceRef): string {
-  return JSON.stringify({
-    evidenceIds: [...reference.evidenceIds].sort(),
-    generatedAt: reference.generatedAt,
-    itemCount: reference.itemCount,
-    label: reference.label,
-    sourceModules: [...reference.sourceModules].sort(),
-  });
-}
-
-export function uniqueAgentEvidenceRefs(
-  references: readonly AgentEvidenceRef[],
-): AgentEvidenceRef[] {
-  const merged: AgentEvidenceRef[] = [];
-  const evidenceGroupIndexes = new Map<string, number>();
-  const unkeyedReferences = new Set<string>();
-
-  for (const reference of references) {
-    const evidenceIds = [...new Set(reference.evidenceIds)];
-    if (evidenceIds.length === 0) {
-      const identity = agentEvidenceRefIdentity(reference);
-      if (!unkeyedReferences.has(identity)) {
-        unkeyedReferences.add(identity);
-        merged.push(reference);
-      }
-      continue;
-    }
-
-    const groupIdentity = JSON.stringify({
-      generatedAt: reference.generatedAt,
-      label: reference.label,
-      sourceModules: [...reference.sourceModules].sort(),
-    });
-    const existingIndex = evidenceGroupIndexes.get(groupIdentity);
-    if (typeof existingIndex === "undefined") {
-      evidenceGroupIndexes.set(groupIdentity, merged.length);
-      merged.push({
-        ...reference,
-        evidenceIds,
-        itemCount: Math.max(reference.itemCount, evidenceIds.length),
-      });
-      continue;
-    }
-
-    const existing = merged[existingIndex];
-    const combinedEvidenceIds = [
-      ...new Set([...existing.evidenceIds, ...evidenceIds]),
-    ];
-    merged[existingIndex] = {
-      ...existing,
-      evidenceIds: combinedEvidenceIds,
-      itemCount: Math.max(
-        existing.itemCount,
-        reference.itemCount,
-        combinedEvidenceIds.length,
-      ),
-    };
-  }
-
-  return merged;
-}
-
-const AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY = "orbit-agent-chat-active-session-v1";
-const AGENT_CHAT_SESSIONS_API_PATH = "/api/ai/conversations/sessions";
-const MAX_AGENT_CHAT_HISTORY_SESSIONS = 10_000;
-const HISTORY_SIDEBAR_DEFAULT_WIDTH = ORBIT_LEFT_SIDEBAR_WIDTH;
-const HISTORY_SIDEBAR_MAX_WIDTH = 380;
-const HISTORY_SIDEBAR_MIN_WIDTH = 180;
-const MAX_AGENT_CHAT_TITLE_LENGTH = 18;
-
-function depthFor(t: Translate) {
-  return {
-    to_contact: { label: t({ en: "To break ice · Just met", zh: "待破冰 · 一面之缘" }), color: "var(--amber)", soft: "var(--amber-soft)", text: "var(--amber)" },
-    in_progress: { label: t({ en: "In progress · In touch", zh: "在推进 · 已有交流" }), color: "var(--sky)", soft: "var(--sky-soft)", text: "var(--sky)" },
-    partnered: { label: t({ en: "Partnered · Solid", zh: "已合作 · 关系稳固" }), color: "var(--live)", soft: "var(--live-soft)", text: "var(--live-text)" },
-  };
-}
-
-const TZ = { timeZone: "Asia/Tokyo" };
-
-function fmtMonth(date: Date, language: "en" | "zh") {
-  return new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", { month: "short", ...TZ }).format(date);
-}
-
-function fmtDay(date: Date, language: "en" | "zh") {
-  return new Intl.DateTimeFormat(language === "en" ? "en-US" : "zh-CN", { day: "2-digit", ...TZ }).format(date);
-}
-
-function parseDate(value: string) {
-  const date = value ? new Date(value) : null;
-  return date && Number.isFinite(date.getTime()) ? date : null;
-}
-
-type AgentResultItem =
-  | OrbitAgentPeopleResultView
-  | OrbitAgentEventResultView
-  | OrbitAgentTodoResultView;
-
-function isPeopleResult(item: AgentResultItem): item is OrbitAgentPeopleResultView {
-  return "connection" in item;
-}
-
-function isTodoResult(item: AgentResultItem): item is OrbitAgentTodoResultView {
-  return "due" in item;
-}
-
-// /api/ai/conversations 返回的 artifact 载荷里，本页消费联系人、活动和待办
-// generatedView。这里做本页自己的 view-model 映射，不直接把 raw payload 交给卡片。
-interface AgentArtifactViewItem {
-  body?: string;
-  confidenceLabel?: string;
-  contactId?: string;
-  dueAt?: string;
-  id?: string;
-  metadata?: readonly { label?: string; value?: string }[];
-  reason?: string;
-  subtitle?: string;
-  title?: string;
-  triggerKind?: string;
-}
-
-interface AgentArtifactRecord {
-  result?: {
-    generatedView?: {
-      sections?: readonly { items?: readonly AgentArtifactViewItem[] }[];
-      summary?: string;
-    };
-    kind?: string;
-    presentation?: { title?: string };
-    provenance?: {
-      evidenceIds?: readonly string[];
-      generatedAt?: string;
-      sourceModules?: readonly string[];
-    };
-  };
-  task?: { kind?: string };
-}
-
-function evidenceRefsFromArtifacts(artifacts: unknown): AgentEvidenceRef[] {
-  if (!Array.isArray(artifacts)) return [];
-
-  return uniqueAgentEvidenceRefs(
-    (artifacts as AgentArtifactRecord[]).flatMap((artifact) => {
-      const provenance = artifact.result?.provenance;
-      const label = artifact.result?.presentation?.title?.trim();
-      if (!provenance || !label) return [];
-      const items =
-        artifact.result?.generatedView?.sections?.flatMap(
-          (section) => section.items ?? [],
-        ) ?? [];
-      return [
-        {
-          evidenceIds: [...new Set(provenance.evidenceIds ?? [])],
-          generatedAt: provenance.generatedAt ?? "",
-          itemCount: items.length,
-          label,
-          sourceModules: [...new Set(provenance.sourceModules ?? [])],
-        },
-      ];
-    }),
-  );
-}
-
-function artifactOfKind(
-  artifacts: unknown,
-  kind: "contact_recommendations" | "event_recommendations" | "followup_queue",
-): AgentArtifactRecord | null {
-  const list = Array.isArray(artifacts) ? (artifacts as AgentArtifactRecord[]) : [];
-
-  return (
-    list.find(
-      (artifact) => (artifact.task?.kind ?? artifact.result?.kind) === kind,
-    ) ?? null
-  );
-}
-
-function artifactMetadataValue(
-  item: AgentArtifactViewItem,
-  labels: readonly string[],
-): string {
-  for (const entry of item.metadata ?? []) {
-    if (entry.label && labels.includes(entry.label) && entry.value) {
-      return entry.value;
-    }
-  }
-
-  return "";
-}
-
-const CONTACT_RECOMMENDATION_ITEM_PREFIX = "contact-recommendation:";
-
-export function contactIdFromArtifactItemId(value: unknown): string {
-  const itemId = String(value ?? "");
-  return itemId.startsWith(CONTACT_RECOMMENDATION_ITEM_PREFIX)
-    ? itemId.slice(CONTACT_RECOMMENDATION_ITEM_PREFIX.length)
-    : itemId;
-}
-
-function peopleItemsFromArtifact(
-  artifact: AgentArtifactRecord | null,
-): OrbitAgentPeopleResultView[] {
-  const items =
-    artifact?.result?.generatedView?.sections?.flatMap(
-      (section) => section.items ?? [],
-    ) ?? [];
-
-  const mapped = items.map((item) => {
-    const contactId = contactIdFromArtifactItemId(item.id);
-    const displayName = item.title?.trim() || contactId || "Orbit";
-    const score = Number(artifactMetadataValue(item, ["分数", "Score"]));
-
-    return {
-      connection: {
-        company: artifactMetadataValue(item, ["组织", "Organization"]),
-        displayName,
-        g: gradientFromString(contactId || displayName),
-        id: contactId,
-        industry: item.confidenceLabel ?? "",
-        initial: displayName.slice(0, 1).toUpperCase(),
-        pipelineStatus: "in_progress" as const,
-        title: item.subtitle ?? "",
-      },
-      match: Number.isFinite(score) ? Math.max(0, Math.min(100, Math.round(score))) : 80,
-      opener: item.body ?? "",
-      reason: item.reason ?? "",
-    };
-  });
-
-  // artifact 的 sections 可能把同一个联系人分到多段（例如「强匹配」与「同场活动」），
-  // flatMap 之后就会在面板里出现两张一模一样的卡和两个「生成跟进草稿」按钮——
-  // 用户无法判断点哪个、会不会发两封。这里按 contact id 收敛成一条，保留最先出现
-  // 的排序位置，并把后续重复项里非空的理由/证据补进来，避免丢证据。
-  const byContact = new Map<string, OrbitAgentPeopleResultView>();
-  for (const entry of mapped) {
-    const key = entry.connection.id || entry.connection.displayName;
-    const kept = byContact.get(key);
-    if (!kept) {
-      byContact.set(key, entry);
-      continue;
-    }
-    byContact.set(key, {
-      ...kept,
-      match: Math.max(kept.match, entry.match),
-      opener: kept.opener || entry.opener,
-      reason: kept.reason || entry.reason,
-    });
-  }
-
-  return [...byContact.values()];
-}
-
-// event_recommendations artifact → 活动卡片视图。startsAt 优先取 Start(ISO)，
-// 其次 When(仅日期)；score 取 artifact 元数据分数。
-function eventItemsFromArtifact(
-  artifact: AgentArtifactRecord | null,
-): OrbitAgentEventResultView[] {
-  const items =
-    artifact?.result?.generatedView?.sections?.flatMap(
-      (section) => section.items ?? [],
-    ) ?? [];
-
-  return items.map((item) => {
-    const eventId = String(item.id ?? "").split(":").pop() ?? "";
-    const name = item.title?.trim() || eventId || "Orbit event";
-    const score = Number(artifactMetadataValue(item, ["分数", "Score"]));
-    const startsAt =
-      artifactMetadataValue(item, ["开始", "Start"]) ||
-      artifactMetadataValue(item, ["时间", "When"]);
-
-    return {
-      event: {
-        code: eventId,
-        g: gradientFromString(eventId || name),
-        id: eventId,
-        name,
-        place: item.subtitle ?? "",
-        startsAt,
-      },
-      howto: item.body ?? "",
-      reason: item.reason ?? "",
-      score: Number.isFinite(score) ? Math.max(0, Math.min(100, Math.round(score))) : 70,
-    };
-  });
-}
-
-// 发给服务端的对话历史不只带气泡文本：带推荐结果的 assistant 轮附加结构化明细
-// （名称/时间/地点/分数），否则追问"第一个活动是什么时候"时模型确实看不到时间。
-function historyContentFor(turn: AgentMessage): string {
-  const text = turn.text.trim();
-
-  if (turn.role === "user" || turn.items.length === 0) {
-    return text;
-  }
-
-  const lines = turn.items.slice(0, 8).map((item, index) => {
-    if (isPeopleResult(item)) {
-      const connection = item.connection;
-      const identity = [connection.title, connection.company]
-        .filter(Boolean)
-        .join(" · ");
-
-      return `${index + 1}. ${connection.displayName}（${identity}）匹配度 ${item.match}% — ${item.reason}`;
-    }
-
-    if (isTodoResult(item)) {
-      return `${index + 1}. ${item.title}（${[item.contactName, item.organization].filter(Boolean).join(" · ")}）到期 ${item.due} 优先级 ${item.priority} — ${item.reason}`;
-    }
-
-    return `${index + 1}. ${item.event.name}（${item.event.place}）时间 ${item.event.startsAt} 匹配分 ${item.score} — ${item.reason}`;
-  });
-
-  return `${text}\n[本轮推荐明细]\n${lines.join("\n")}`;
-}
-
-// followup_queue artifact → 待办/行程卡片视图。
-function todoItemsFromArtifact(
-  artifact: AgentArtifactRecord | null,
-): OrbitAgentTodoResultView[] {
-  const items =
-    artifact?.result?.generatedView?.sections?.flatMap(
-      (section) => section.items ?? [],
-    ) ?? [];
-
-  return items.map((item, index) => ({
-    contactId: item.contactId,
-    contactName: item.subtitle ?? "",
-    due: artifactMetadataValue(item, ["到期", "Due"]),
-    dueAt: item.dueAt,
-    id: String(item.id ?? `todo-${index}`),
-    organization: artifactMetadataValue(item, ["组织", "Organization"]),
-    priority: artifactMetadataValue(item, ["优先级", "Priority"]) || item.confidenceLabel || "",
-    reason: item.reason ?? "",
-    sourceLabel: artifactMetadataValue(item, ["来源", "Source"]),
-    task: item.body ?? "",
-    title: item.title ?? "",
-    triggerKind: item.triggerKind,
-  }));
-}
-
-function currentAgentQuery() {
-  if (typeof window === "undefined") return "";
-  return new URLSearchParams(window.location.search).get("q") ?? "";
-}
-
-function currentAgentSessionId() {
-  if (typeof window === "undefined") return "";
-  return new URLSearchParams(window.location.search).get("session") ?? "";
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isStoredAgentMessage(value: unknown): value is AgentMessage {
-  if (!isRecord(value) || typeof value.text !== "string") {
-    return false;
-  }
-
-  if (
-    (typeof value.id !== "undefined" && typeof value.id !== "string") ||
-    (typeof value.reliableRequest !== "undefined" &&
-      !reliableAiSendInputSchema.safeParse(value.reliableRequest).success)
-  ) {
-    return false;
-  }
-
-  if (value.role === "user") {
-    return true;
-  }
-
-  return (
-    value.role === "assistant" &&
-    Array.isArray(value.items) &&
-    (value.kind === "people" || value.kind === "events" || value.kind === "todos") &&
-    typeof value.panelTitle === "string" &&
-    (typeof value.runId === "undefined" || typeof value.runId === "string") &&
-    (typeof value.retryRequest === "undefined" ||
-      typeof value.retryRequest === "string") &&
-    (typeof value.actionIds === "undefined" ||
-      (Array.isArray(value.actionIds) &&
-        value.actionIds.every((actionId) => typeof actionId === "string"))) &&
-    (typeof value.evidenceRefs === "undefined" ||
-      (Array.isArray(value.evidenceRefs) &&
-        value.evidenceRefs.every(
-          (reference) =>
-            isRecord(reference) &&
-            typeof reference.label === "string" &&
-            typeof reference.itemCount === "number" &&
-            typeof reference.generatedAt === "string" &&
-            Array.isArray(reference.evidenceIds) &&
-            Array.isArray(reference.sourceModules),
-        )))
-  );
-}
-
-export interface AgentStoredChatSession {
-  createdAt: string;
-  customTitle?: string;
-  id: string;
-  messageRevision?: number;
-  messages: AgentMessage[];
-  organization?: AiSessionOrganizationContract;
-  origin?: StoredAiSessionOriginContract;
-  panel?: AgentPanel | null;
-  pinned?: boolean;
-  title: string;
-  updatedAt: string;
-}
-
-function parseStoredAgentMessage(value: unknown): AgentMessage | null {
-  if (isStoredAgentMessage(value)) {
-    if (value.role === "user") return value;
-    const { taskInteraction: rawInteraction, ...message } = value;
-    const taskInteraction = parseAgentTaskInteraction(rawInteraction);
-    return {
-      ...message,
-      ...(value.evidenceRefs ? { evidenceRefs: uniqueAgentEvidenceRefs(value.evidenceRefs) } : {}),
-      ...(taskInteraction ? { taskInteraction } : {}),
-    };
-  }
-
-  if (
-    isRecord(value) &&
-    value.role === "assistant" &&
-    typeof value.text === "string"
-  ) {
-    const taskInteraction = parseAgentTaskInteraction(value.taskInteraction);
-    return {
-      items: [],
-      kind: "people",
-      panelTitle: "",
-      role: "assistant",
-      text: value.text,
-      ...(taskInteraction ? { taskInteraction } : {}),
-    };
-  }
-
-  return null;
-}
-
-function parseAgentChatSessionsArray(value: unknown): AgentStoredChatSession[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value
-    .filter(isRecord)
-    .map((session) => {
-      const origin = aiSessionOriginSchema.safeParse(session.origin);
-      const organization = aiSessionOrganizationSchema.safeParse(session.organization);
-      return {
-      id: typeof session.id === "string" ? session.id : "",
-      messageRevision:
-        typeof session.messageRevision === "number" &&
-        Number.isSafeInteger(session.messageRevision) &&
-        session.messageRevision >= 0
-          ? session.messageRevision
-          : undefined,
-      messages: Array.isArray(session.messages)
-        ? session.messages
-            .flatMap((message) => {
-              const parsed = parseStoredAgentMessage(message);
-
-              return parsed ? [parsed] : [];
-            })
-        : [],
-      panel: isRecord(session.panel) ? (session.panel as AgentPanel) : null,
-      origin: origin.success ? origin.data : undefined,
-      organization: organization.success ? organization.data : {
-        customTitle: typeof session.customTitle === "string" && session.customTitle.trim() ? session.customTitle.trim() : null,
-        groupId: null,
-        pinned: session.pinned === true,
-        revision: 0,
-      },
-      createdAt:
-        typeof session.createdAt === "string" ? session.createdAt : "",
-      customTitle:
-        typeof session.customTitle === "string" ? session.customTitle.trim() : "",
-      pinned: organization.success ? organization.data.pinned : session.pinned === true,
-      title: typeof session.title === "string" ? session.title.trim() : "",
-      updatedAt:
-        typeof session.updatedAt === "string" ? session.updatedAt : "",
-      };
-    })
-    .map((session) => ({
-      ...session,
-      createdAt: session.createdAt || session.updatedAt,
-    }))
-    .filter(
-      (session) =>
-        Boolean(session.id && session.title && session.createdAt && session.updatedAt) &&
-        session.messages.some((message) => message.role === "user"),
-    )
-    .slice(0, MAX_AGENT_CHAT_HISTORY_SESSIONS);
-}
-
-export function parseAgentChatHistoryStorage(
-  value: string | null,
-): AgentStoredChatSession[] {
-  if (!value) {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(value) as unknown;
-
-    return parseAgentChatSessionsArray(parsed);
-  } catch {
-    return [];
-  }
-}
-
-function parseAgentChatSessionsData(value: unknown): AgentStoredChatSession[] {
-  return isRecord(value) ? parseAgentChatSessionsArray(value.sessions) : [];
-}
-
-function parseAgentChatSessionData(value: unknown): AgentStoredChatSession | null {
-  const sessions =
-    isRecord(value) && isRecord(value.session)
-      ? parseAgentChatSessionsArray([value.session])
-      : [];
-
-  return sessions[0] ?? null;
-}
-
-export function agentChatHistorySessionsToHistory(
-  sessions: readonly AgentStoredChatSession[],
-  language: AgentHistoryLanguage,
-  groups: readonly AiSessionGroupContract[] = [],
-): OrbitAgentHistoryView[] {
-  const fallbackGroup = language === "zh" ? "未分组" : "Ungrouped";
-  const groupNames = new Map(groups.map((group) => [group.id, group.name]));
-
-  return [...sessions]
-    .sort(
-      (a, b) =>
-        Number(b.pinned === true) - Number(a.pinned === true) ||
-        b.createdAt.localeCompare(a.createdAt),
-    )
-    .slice(0, MAX_AGENT_CHAT_HISTORY_SESSIONS)
-    .map((session) => {
-      const firstUserMessage =
-        session.messages.find((message) => message.role === "user")?.text ??
-        session.title;
-      const title = displayTitleForStoredSession(session);
-      const groupId = session.organization?.groupId ?? null;
-
-      return {
-        group: groupId ? groupNames.get(groupId) ?? fallbackGroup : fallbackGroup,
-        groupId,
-        id: `session:${session.id}`,
-        organizationRevision: session.organization?.revision ?? 0,
-        pinned: session.pinned,
-        q: firstUserMessage,
-        sessionId: session.id,
-        title,
-        when: groupId ? groupNames.get(groupId) ?? fallbackGroup : fallbackGroup,
-      };
-    });
-}
-
-function cleanAgentTitleText(value: string): string {
-  return value
-    .trim()
-    .replace(/\s+/g, " ")
-    .replace(/[?？!！。.,，;；:：]+$/g, "");
-}
-
-function truncateAgentChatTitle(value: string): string {
-  const text = cleanAgentTitleText(value);
-
-  return text.length > MAX_AGENT_CHAT_TITLE_LENGTH
-    ? `${text.slice(0, MAX_AGENT_CHAT_TITLE_LENGTH).trim()}...`
-    : text;
-}
-
-function clampHistorySidebarWidth(value: number): number {
-  return Math.min(
-    HISTORY_SIDEBAR_MAX_WIDTH,
-    Math.max(HISTORY_SIDEBAR_MIN_WIDTH, Math.round(value)),
-  );
-}
-
-function compactTitlePhrase(subject: string, suffix: string): string {
-  const text = cleanAgentTitleText(subject)
-    .replace(/^基于我在\s*Orbit\s*中(?:已有|现有)的?\s*/i, "")
-    .replace(/^在我(?:已有|现有)的?\s*/i, "")
-    .replace(/^(今天|明天|本周|下周|这个月|本月|适合|適合|关于|有关|围绕)\s*/i, "")
-    .replace(/(的人|的联系人|联系人|人脉|活动|会议|峰会|邮件|消息|草稿)$/i, "")
-    .replace(/^(人脉|联系人)中$/i, "现有人脉")
-    .trim();
-  const joiner = /^[\x00-\x7F]+$/.test(text) && /[^\x00-\x7F]/.test(suffix) ? " " : "";
-  const title = suffix && text && !text.includes(suffix) ? `${text}${joiner}${suffix}` : text;
-
-  return truncateAgentChatTitle(title || subject || suffix);
-}
-
-export function compactAgentChatTitleFromQuestion(question: string): string {
-  const cleaned = cleanAgentTitleText(question);
-  const firstClause = cleanAgentTitleText(
-    cleaned.split(/[，,。.!！?？；;\n]/)[0] ?? cleaned,
-  );
-
-  if (!firstClause) {
-    return "New chat";
-  }
-
-  const existingNetworkSubject = firstClause.match(
-    /^在我(?:已有|现有)的?(?:人脉|联系人)中(?:找|推荐|筛选)?\s*(.*)$/i,
-  );
-  if (existingNetworkSubject) {
-    const subject = cleanAgentTitleText(existingNetworkSubject[1] ?? "");
-    return subject ? compactTitlePhrase(subject, "人脉") : "现有人脉";
-  }
-
-  const chatSubject = firstClause.match(/聊\s*([^，,。.!！?？；;的人]+?)\s*的人/);
-  if (chatSubject?.[1]) {
-    return compactTitlePhrase(chatSubject[1], "人脉");
-  }
-
-  const meetingEvent = firstClause.match(/见\s*([^，,。.!！?？；;的活动]+?)\s*的?活动/i);
-  if (meetingEvent?.[1]) {
-    return compactTitlePhrase(meetingEvent[1], "见面活动");
-  }
-
-  const hasEventIntent = /活动|会议|峰会|event|conference/i.test(cleaned);
-  const hasNegatedDraftIntent =
-    /(?:不要|无需|不需要|禁止|请勿).{0,8}(?:发送|起草|生成)?(?:邮件|消息|草稿)|(?:do not|don't|without).{0,16}(?:send|write|draft)?(?:email|message|draft)/i.test(
-      cleaned,
-    );
-  const hasDraftIntent =
-    !hasNegatedDraftIntent &&
-    /邮件|消息|草稿|email|message|draft/i.test(cleaned);
-  const hasPeopleIntent =
-    /人脉|联系人|认识|找人|找.*人|适合聊|connect|contact|people/i.test(cleaned);
-  const suffix = hasDraftIntent ? "消息草稿" : hasEventIntent ? "活动" : hasPeopleIntent ? "人脉" : "";
-  const subject = firstClause
-    .replace(/^(请|请帮我|帮我|麻烦|可以|能不能|能否|我想|想|给我|帮忙)\s*/i, "")
-    .replace(/^(找|寻找|推荐|认识|安排|写|起草|总结|生成)\s*/i, "")
-    .replace(/^(一下|一些|几个|一个|适合|適合)\s*/i, "")
-    .replace(/^(今天|明天|本周|下周|这个月|本月)\s*/i, "");
-
-  return compactTitlePhrase(subject || firstClause, suffix);
-}
-
-export function titleFromMessages(messages: readonly AgentMessage[]): string {
-  const firstUserMessage =
-    messages.find((message) => message.role === "user")?.text.trim() ?? "";
-
-  if (!firstUserMessage) {
-    return "New chat";
-  }
-
-  return compactAgentChatTitleFromQuestion(firstUserMessage);
-}
-
-function displayTitleForStoredSession(session: AgentStoredChatSession): string {
-  return (
-    session.customTitle?.trim() ||
-    titleFromMessages(session.messages) ||
-    session.title
-  );
-}
-
-function panelFromMessages(messages: readonly AgentMessage[]): AgentPanel | null {
-  const message = [...messages]
-    .reverse()
-    .find(
-      (item): item is Extract<AgentMessage, { role: "assistant" }> =>
-        item.role === "assistant" && item.items.length > 0,
-    );
-
-  return message
-    ? { items: message.items, kind: message.kind, panelTitle: message.panelTitle }
-    : null;
-}
-
-function createAgentSessionId(): string {
-  return `agent-session-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function upsertAgentChatSession(
-  sessions: readonly AgentStoredChatSession[],
-  session: AgentStoredChatSession,
-): AgentStoredChatSession[] {
-  return [
-    session,
-    ...sessions.filter((item) => item.id !== session.id),
-  ].slice(0, MAX_AGENT_CHAT_HISTORY_SESSIONS);
-}
-
-function agentChatSessionsApiPath(sessionId?: string): string {
-  return sessionId
-    ? `${AGENT_CHAT_SESSIONS_API_PATH}/${encodeURIComponent(sessionId)}`
-    : AGENT_CHAT_SESSIONS_API_PATH;
-}
-
-async function readJsonResponse(response: Response): Promise<unknown> {
-  try {
-    return await response.json();
-  } catch {
-    return null;
-  }
-}
-
-export function agentChatHistoryMutationWasPersisted(
-  value: unknown,
-): boolean {
-  return (
-    isRecord(value) &&
-    value.success === true &&
-    isRecord(value.data) &&
-    isRecord(value.data.storage) &&
-    value.data.storage.persisted === true
-  );
-}
-
-export async function loadStoredAgentChatSessions(): Promise<AgentStoredChatSession[]> {
-  try {
-    const sessions: AgentStoredChatSession[] = [];
-    let cursor: string | null = null;
-    for (let page = 0; page < 200; page += 1) {
-      const query = new URLSearchParams({ limit: "50", v: "2" });
-      if (cursor) query.set("cursor", cursor);
-      const response = await fetch(`${agentChatSessionsApiPath()}?${query}`, {
-        headers: { accept: "application/json" },
-        method: "GET",
-      });
-      const payload = await readJsonResponse(response);
-      if (!response.ok || !isRecord(payload) || payload.success !== true || !isRecord(payload.data)) {
-        return [];
-      }
-      sessions.push(...parseAgentChatSessionsData(payload.data));
-      cursor = typeof payload.data.nextCursor === "string" && payload.data.nextCursor
-        ? payload.data.nextCursor
-        : null;
-      if (!cursor) break;
-    }
-    return [...new Map(sessions.map((session) => [session.id, session])).values()];
-  } catch {
-    return [];
-  }
-}
-
-async function loadStoredAgentChatSession(
-  sessionId: string,
-): Promise<AgentStoredChatSession | null> {
-  try {
-    const response = await fetch(agentChatSessionsApiPath(sessionId), {
-      headers: { accept: "application/json" },
-      method: "GET",
-    });
-    const payload = await readJsonResponse(response);
-
-    return response.ok && isRecord(payload) && payload.success === true
-      ? parseAgentChatSessionData(payload.data)
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-async function persistStoredAgentChatSession(
-  session: AgentStoredChatSession,
-): Promise<boolean> {
-  try {
-    const response = await fetch(agentChatSessionsApiPath(), {
-      body: JSON.stringify({ session }),
-      headers: { "content-type": "application/json" },
-      method: "POST",
-    });
-    const payload = await readJsonResponse(response);
-
-    return response.ok && agentChatHistoryMutationWasPersisted(payload);
-  } catch {
-    return false;
-  }
-}
-
-async function deleteStoredAgentChatSession(
-  sessionId: string,
-): Promise<boolean> {
-  try {
-    const response = await fetch(agentChatSessionsApiPath(sessionId), {
-      method: "DELETE",
-    });
-    const payload = await readJsonResponse(response);
-
-    return response.ok && agentChatHistoryMutationWasPersisted(payload);
-  } catch {
-    return false;
-  }
-}
-
-export async function copyAgentMessageText(text: string): Promise<boolean> {
-  const value = text.trim();
-  if (!value) {
-    return false;
-  }
-
-  try {
-    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(value);
-      return true;
-    }
-  } catch {
-    // Fall through to the legacy textarea copy path.
-  }
-
-  if (typeof document === "undefined") {
-    return false;
-  }
-
-  const textarea = document.createElement("textarea");
-  textarea.value = value;
-  textarea.setAttribute("readonly", "true");
-  textarea.style.left = "-9999px";
-  textarea.style.position = "fixed";
-  textarea.style.top = "0";
-  document.body.appendChild(textarea);
-  textarea.focus();
-  textarea.select();
-
-  try {
-    return document.execCommand("copy");
-  } finally {
-    textarea.remove();
-  }
-}
 
 function AgentMessageCopyButton({ text }: { text: string }) {
   const { t } = useOrbitLanguage();
@@ -1539,20 +639,6 @@ function AgentMobileHistoryDrawer({
   );
 }
 
-function agentSuggestLabel(label: string, language: "en" | "zh") {
-  if (language === "zh") return label;
-
-  const labels: Record<string, string> = {
-    "找金融 AI 方向的人脉": "Find AI finance contacts",
-    "想认识女装设计师": "Meet womenswear designers",
-    "推荐 AI / 出海活动": "Recommend AI / global events",
-    "找值得跟进的人脉": "Find contacts worth following up",
-    "推荐可拓展活动": "Recommend events to grow my network",
-    "整理关系待办": "Review relationship to-dos",
-  };
-
-  return labels[label] ?? label;
-}
 
 function AgentChatComposer({
   busy,
@@ -1889,125 +975,7 @@ function AgentEventRow({ item, language, navigate, t }: { item: OrbitAgentEventR
   );
 }
 
-// 跟进队列的主体是**人**，不是任务句子：一个人一张卡，起草是对人的动作。
-// 卡片默认收起——用户问的是「谁值得跟进」，答案是名单（是谁 · 为什么是现在 ·
-// 下一步），任务看板级的细节等展开再给；常见路径（默认勾选 → 起草）不需要展开。
-const TODO_LEAD_KINDS = new Set(["new_connection", "event_encounter", "dormant_relationship"]);
 
-// 「你答应过的事」（真实 task 记录）和「系统推导的关系线索」性质不同，靠
-// triggerKind 区分；旧 artifact 没有该字段时按承诺处理（宁可多勾不静默丢）。
-function isTodoLead(item: OrbitAgentTodoResultView): boolean {
-  return TODO_LEAD_KINDS.has(item.triggerKind ?? "");
-}
-
-interface AgentTodoGroup {
-  contactId?: string;
-  contactName: string;
-  items: readonly OrbitAgentTodoResultView[];
-  key: string;
-  organization: string;
-}
-
-export function groupTodosByContact(
-  items: readonly OrbitAgentTodoResultView[],
-): AgentTodoGroup[] {
-  const groups = new Map<string, AgentTodoGroup>();
-
-  for (const item of items) {
-    const key = item.contactName.trim() || item.id;
-    const existing = groups.get(key);
-
-    if (existing) {
-      groups.set(key, {
-        ...existing,
-        contactId: existing.contactId || item.contactId,
-        items: [...existing.items, item],
-        organization: existing.organization || item.organization,
-      });
-      continue;
-    }
-
-    groups.set(key, {
-      contactId: item.contactId,
-      contactName: item.contactName.trim(),
-      items: [item],
-      key,
-      organization: item.organization,
-    });
-  }
-
-  // 同一人名下文案一字不差的重复线索（例如两场活动各生成一条「跟进这次双方都已
-  // 确认的活动连接」）对用户是一件事：合并成一条，证据说明拼在一起。
-  return [...groups.values()].map((group) => {
-    const merged = new Map<string, OrbitAgentTodoResultView>();
-    for (const item of group.items) {
-      const mergeKey = `${isTodoLead(item) ? "lead" : "task"}|${item.title.trim()}`;
-      const kept = merged.get(mergeKey);
-      if (!kept) {
-        merged.set(mergeKey, item);
-        continue;
-      }
-      merged.set(mergeKey, {
-        ...kept,
-        dueAt: [kept.dueAt, item.dueAt].filter(Boolean).sort()[0],
-        reason: [kept.reason, item.reason].filter(Boolean).join(" "),
-        task: kept.task || item.task,
-      });
-    }
-    return { ...group, items: [...merged.values()] };
-  });
-}
-
-export function earliestTodoDueAt(
-  items: readonly OrbitAgentTodoResultView[],
-): string | undefined {
-  return items
-    .map((item) => item.dueAt)
-    .filter((value): value is string => Boolean(value) && Number.isFinite(new Date(value as string).getTime()))
-    .sort()[0];
-}
-
-// 到期展示在客户端按真实时钟算。artifact 里那套「今天/N 天后」的参照系是
-// 「最新记录的 updatedAt」而不是当前时间（见 orbit-followup-queue-clock-bug），
-// 这里有原始 dueAt 就不再信它。
-function todoDueLabel(dueAt: string, language: "en" | "zh"): { label: string; soon: boolean } | null {
-  const due = new Date(dueAt);
-  if (!Number.isFinite(due.getTime())) return null;
-
-  const days = Math.ceil((due.getTime() - Date.now()) / 86_400_000);
-  const date = new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "en-US", {
-    day: "numeric",
-    month: language === "zh" ? "long" : "short",
-    timeZone: "Asia/Tokyo",
-  }).format(due);
-  const relative =
-    days < 0
-      ? language === "zh" ? `已逾期 ${-days} 天` : `overdue ${-days}d`
-      : days === 0
-        ? language === "zh" ? "今天" : "today"
-        : days === 1
-          ? language === "zh" ? "明天" : "tomorrow"
-          : language === "zh" ? `${days} 天后` : `in ${days}d`;
-
-  return { label: `${date} · ${relative}`, soon: days <= 3 };
-}
-
-// 勾选的事项序列化成 purpose 传给草稿服务——按钮和列表的因果就在这里：
-// 你选什么，信里就写什么。
-function draftPurposeFor(
-  items: readonly OrbitAgentTodoResultView[],
-  language: "en" | "zh",
-): string {
-  if (items.length === 0) return "";
-  const lines = items.map((item, index) => {
-    const detail =
-      item.task && item.task !== item.title ? `${item.title}：${item.task}` : item.title;
-    return `${index + 1}. ${detail}`;
-  });
-  return language === "zh"
-    ? `这封跟进邮件需要覆盖以下事项：\n${lines.join("\n")}`
-    : `Cover these follow-up items in the email:\n${lines.join("\n")}`;
-}
 
 function AgentTodoRow({ group, language, navigate, rank, t }: { group: AgentTodoGroup; language: "en" | "zh"; navigate: (href: string) => void; rank: number; t: Translate }) {
   const promised = group.items.filter((item) => !isTodoLead(item));
@@ -2194,53 +1162,6 @@ function PanelCards({ language, navigate, panel, t }: { language: "en" | "zh"; n
   );
 }
 
-// 真实链路是单次请求（planner → 工具 → artifact → synthesis），没有流式分阶段
-// 回调，等待可能好几秒。为了不让用户对着一个静止的点发呆，这里按时间推进一串
-// 文案只说明这条管线将核对的维度，不伪装成服务端实时进度；按固定节奏轮换，
-// 并明确给出用户可预期的等待范围与副作用边界。
-const THINKING_PHASES: readonly Copy[] = [
-  { en: "Checking your authorized contacts, events, and follow-ups", zh: "正在核对你已授权的人脉、活动与跟进记录" },
-  { en: "Comparing relationship strength, timing, and your goal", zh: "正在比较关系强度、时机与你的目标" },
-  { en: "Ranking the most useful next decisions", zh: "正在排列最值得处理的下一步" },
-  { en: "Preparing the answer and its evidence", zh: "正在整理答复与依据" },
-];
-
-const THINKING_PHASE_INTERVAL_MS = 2200;
-// The live route's default loop has one 20s provider budget plus bounded artifact,
-// storage, and run-trace work. Keep a finite browser deadline with enough headroom
-// for the observed 26–31s production turns; this is not a server execution deadline.
-const AGENT_REQUEST_TIMEOUT_MS = 60_000;
-
-class AgentRequestTimeoutError extends Error {
-  constructor() {
-    super("Agent request timed out");
-    this.name = "AgentRequestTimeoutError";
-  }
-}
-
-async function fetchAgentConversation(body: string): Promise<Response> {
-  const controller = new AbortController();
-  const timer = window.setTimeout(
-    () => controller.abort(),
-    AGENT_REQUEST_TIMEOUT_MS,
-  );
-
-  try {
-    return await fetch("/api/ai/conversations", {
-      body,
-      headers: { "content-type": "application/json" },
-      method: "POST",
-      signal: controller.signal,
-    });
-  } catch (error) {
-    if (controller.signal.aborted) {
-      throw new AgentRequestTimeoutError();
-    }
-    throw error;
-  } finally {
-    window.clearTimeout(timer);
-  }
-}
 
 // 设计稿的四角星标（home-console-green.html 中 iOrbit 的品牌记号）。
 export function AgentStar({ size = 15 }: { size?: number }) {
@@ -2583,582 +1504,91 @@ html[data-theme="light"] [data-orbit-real-page="agent"] {
 [data-orbit-real-page="agent"] .agent-history.agent-history { background: #FBFBFE !important; border-right: 1px solid #E8E9F6; }
 `;
 
+
+// 1b 抽取后仍从本文件导出：验收集里的测试直接 import 这些符号。
+export {
+  agentChatHistoryMutationWasPersisted,
+  agentChatHistorySessionsToHistory,
+  agentRetryRequestForAssistant,
+  compactAgentChatTitleFromQuestion,
+  contactIdFromArtifactItemId,
+  copyAgentMessageText,
+  earliestTodoDueAt,
+  groupTodosByContact,
+  loadStoredAgentChatSessions,
+  parseAgentChatHistoryStorage,
+  prepareAgentFailedRequestRetry,
+  titleFromMessages,
+  uniqueAgentEvidenceRefs,
+  type AgentEvidenceRef,
+  type AgentMessage,
+  type AgentPanel,
+  type AgentStoredChatSession,
+} from "./iorbit-0918/iorbit-model";
+export { useAgentChat } from "./iorbit-0918/use-agent-chat";
+
 export function OrbitRealAgent({
   home = null,
   registrationAvailabilityByEventId = {},
   viewModel,
 }: OrbitRealAgentProps) {
-  const { language, preserveHref, t } = useOrbitLanguage();
-  // dashboard ⇄ 对话页：有消息（或点了「新对话」）即进入对话页，返回键回 dashboard。
-  const [chatOpen, setChatOpen] = useState(false);
-  const [agentPrefill, setAgentPrefill] = useState<OrbitAgentPrefill | null>(null);
-  const [messages, setMessages] = useState<AgentMessage[]>([]);
-  const taskSuggestions = useAgentTaskSuggestions((original, next) => {
-    // Object identity confines a delayed response to its original message.
-    // Switching sessions or starting a new chat must not patch the new thread.
-    setMessages((current) => current.map((message) =>
-      message.role === "assistant" && message.taskInteraction === original
-        ? { ...message, taskInteraction: next } : message,
-    ));
-  });
-  const [panel, setPanel] = useState<AgentPanel | null>(null);
-  const [thinking, setThinking] = useState(false);
-  const [chatDraft, setChatDraft] = useState("");
-  const [histOpen, setHistOpen] = useState(false);
-  const [activeQ, setActiveQ] = useState("");
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const { language, t } = useOrbitLanguage();
+  const {
+    activeQ,
+    activeSessionId,
+    activeSessionIdRef,
+    agentPrefill,
+    ask,
+    backToDashboard,
+    chatDraft,
+    chatOpen,
+    histOpen,
+    historyFeedback,
+    historyMutationQueue,
+    languageRef,
+    messages,
+    navigate,
+    newChat,
+    newChatInGroup,
+    panel,
+    pickHistory,
+    sessionGroups,
+    setActiveQ,
+    setActiveSessionId,
+    setAgentPrefill,
+    setChatDraft,
+    setChatOpen,
+    setHistOpen,
+    setHistoryFeedback,
+    setMessages,
+    setPanel,
+    setSessionGroups,
+    setStoredSessions,
+    setThinking,
+    storedSessions,
+    storedSessionsRef,
+    submitChatDraft,
+    taskSuggestions,
+    thinking,
+  } = useAgentChat({ suggests: viewModel.suggests });
   const [historySidebarResizing, setHistorySidebarResizing] = useState(false);
   const [historySidebarWidth, setHistorySidebarWidth] = useState(
     HISTORY_SIDEBAR_DEFAULT_WIDTH,
   );
-  const [storedSessions, setStoredSessions] = useState<AgentStoredChatSession[]>([]);
-  const [sessionGroups, setSessionGroups] = useState<AiSessionGroupContract[]>([]);
   const [selectedSessionGroupId, setSelectedSessionGroupId] = useState<string | null>(null);
   const [groupMutationPending, setGroupMutationPending] = useState(false);
-  const [historyMutationQueue] = useState(createAgentChatSessionMutationQueue);
   const [historyDeleteError, setHistoryDeleteError] = useState<string | null>(null);
-  const [historyFeedback, setHistoryFeedback] = useState<AgentHistoryFeedback | null>(null);
   const [historyMutationSessionId, setHistoryMutationSessionId] = useState<string | null>(null);
   const [pendingDeleteHistory, setPendingDeleteHistory] = useState<OrbitAgentHistoryView | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const historyResizeRef = useRef<{ startWidth: number; startX: number } | null>(null);
   const historyMutationSessionIdRef = useRef<string | null>(null);
-  const languageRef = useRef(language);
-  const messagesRef = useRef<AgentMessage[]>(messages);
-  const storedSessionsRef = useRef<AgentStoredChatSession[]>(storedSessions);
-  const activeSessionIdRef = useRef<string | null>(activeSessionId);
-  const historyHydratedRef = useRef(false);
-  const skipRestoredSessionPersistenceRef = useRef(false);
-  const suppressReliableSessionPersistenceRef = useRef(false);
-  const reliableMessageRevisionRef = useRef<number | null>(null);
-  const initialGroupIdRef = useRef<string | null>(null);
-  const initialOrganizationRef = useRef<{ organization: AiSessionOrganizationContract; sessionId: string } | null>(null);
 
-  languageRef.current = language;
-  messagesRef.current = messages;
-  storedSessionsRef.current = storedSessions;
-  activeSessionIdRef.current = activeSessionId;
   const storedHistory = useMemo(
     () => agentChatHistorySessionsToHistory(storedSessions, language, sessionGroups)
       .filter((item) => !selectedSessionGroupId || item.groupId === selectedSessionGroupId),
     [language, selectedSessionGroupId, sessionGroups, storedSessions],
   );
-
-  const navigate = useCallback((prototypeHref: string) => {
-    const href = preserveHref(productHref(prototypeHref));
-    if (typeof window === "undefined") return;
-
-    if (href.startsWith("/app/agent")) {
-      window.history.pushState({}, "", href);
-      setActiveQ(new URL(href, window.location.origin).searchParams.get("q") ?? "");
-      return;
-    }
-
-    window.location.href = href;
-  }, [preserveHref]);
-
-  const restoreSession = useCallback((session: AgentStoredChatSession) => {
-    skipRestoredSessionPersistenceRef.current = true;
-    setHistOpen(false);
-    setMessages(session.messages);
-    setPanel(session.panel ?? panelFromMessages(session.messages));
-    setChatOpen(true);
-    setThinking(false);
-    setChatDraft("");
-    setActiveQ("");
-    setActiveSessionId(session.id);
-    activeSessionIdRef.current = session.id;
-    initialGroupIdRef.current = session.organization?.groupId ?? null;
-    reliableMessageRevisionRef.current = session.messageRevision ?? session.messages.length;
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(
-        AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY,
-        session.id,
-      );
-    }
-  }, []);
-
-  const persistCurrentSession = useCallback((
-    nextMessages: readonly AgentMessage[],
-    nextPanel: AgentPanel | null,
-  ) => {
-    if (!historyHydratedRef.current || nextMessages.length === 0) {
-      return;
-    }
-
-    if (skipRestoredSessionPersistenceRef.current) {
-      skipRestoredSessionPersistenceRef.current = false;
-      return;
-    }
-
-    if (suppressReliableSessionPersistenceRef.current) {
-      return;
-    }
-
-    const hasUserMessage = nextMessages.some((message) => message.role === "user");
-    if (!hasUserMessage) {
-      return;
-    }
-
-    const sessionId = activeSessionIdRef.current ?? createAgentSessionId();
-    const now = new Date().toISOString();
-    const existingSession = storedSessionsRef.current.find(
-      (item) => item.id === sessionId,
-    );
-    const customTitle = existingSession?.customTitle?.trim();
-    const autoTitle = titleFromMessages(nextMessages);
-    const session: AgentStoredChatSession = {
-      createdAt: existingSession?.createdAt ?? now,
-      customTitle,
-      id: sessionId,
-      messageRevision:
-        reliableMessageRevisionRef.current ??
-        existingSession?.messageRevision ??
-        nextMessages.length,
-      messages: [...nextMessages],
-      origin: existingSession?.origin,
-      organization:
-        existingSession?.organization ??
-        (initialOrganizationRef.current?.sessionId === sessionId
-          ? initialOrganizationRef.current.organization
-          : undefined),
-      panel: nextPanel,
-      pinned: existingSession?.pinned,
-      title: customTitle || autoTitle,
-      updatedAt: now,
-    };
-    const nextSessions = upsertAgentChatSession(
-      storedSessionsRef.current,
-      session,
-    );
-
-    activeSessionIdRef.current = sessionId;
-    setActiveSessionId(sessionId);
-    storedSessionsRef.current = nextSessions;
-    setStoredSessions(nextSessions);
-    void historyMutationQueue.save(session.id, () => {
-      // A name/pin change ahead of this queued snapshot may have just committed.
-      const latest = storedSessionsRef.current.find((item) => item.id === session.id);
-      return persistStoredAgentChatSession({
-        ...session,
-        customTitle: latest?.customTitle,
-        pinned: latest?.pinned,
-        title: latest?.customTitle?.trim() || session.title,
-      });
-    }).then((persisted) => {
-      if (!persisted) {
-        setHistoryFeedback({
-          kind: "error",
-          text:
-            languageRef.current === "zh"
-              ? "对话已显示在当前页面，但未能保存到历史记录。请检查存储配置后重试。"
-              : "This conversation is visible for now but could not be saved to history. Check storage and try again.",
-        });
-      }
-    });
-
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(
-        AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY,
-        sessionId,
-      );
-    }
-  }, [historyMutationQueue]);
-
-  // 真实链路：把用户消息发给 Orbit Agent conversation API（planner → 白名单工具 →
-  // 可复核 artifact → synthesis），并把 contact_recommendations artifact 映射到侧边栏。
-  const ask = useCallback(async (
-    query: string,
-    retryAssistantIndex?: number,
-    originOverride?: AiSessionOriginInputContract,
-  ) => {
-    const locale = languageRef.current === "zh" ? "zh" : "en";
-    const failureText =
-      locale === "zh"
-        ? "iOrbit 暂时无法完成这次回复，请稍后再试。"
-        : "The agent could not complete this reply. Please try again.";
-
-    // 发送前抓取已有轮次作为对话历史，让服务端 planner 能接住追问里的指代；
-    // 推荐轮附带结构化明细，追问时间/地点/理由时模型可直接作答。
-    const retry =
-      typeof retryAssistantIndex === "number"
-        ? prepareAgentFailedRequestRetry(
-            messagesRef.current,
-            retryAssistantIndex,
-          )
-        : null;
-    const failedMessage =
-      typeof retryAssistantIndex === "number"
-        ? messagesRef.current[retryAssistantIndex]
-        : null;
-    const retryRequest =
-      failedMessage?.role === "assistant"
-        ? failedMessage.reliableRequest
-        : undefined;
-    const sessionId =
-      retryRequest?.sessionId ??
-      activeSessionIdRef.current ??
-      createAgentSessionId();
-    const existingSession = storedSessionsRef.current.find(
-      (session) => session.id === sessionId,
-    );
-    const stableId = (kind: "message" | "request") => {
-      const id = globalThis.crypto?.randomUUID?.() ?? createAgentSessionId();
-      return `${kind}:${id}`;
-    };
-    const reliableRequest: AgentReliableRequest =
-      retryRequest ?? {
-        clientMessageId: stableId("message"),
-        expectedMessageRevision:
-          existingSession?.messageRevision ?? existingSession?.messages.length ?? 0,
-        locale,
-        message: query,
-        ...(existingSession
-          ? {}
-          : {
-              origin: originOverride ?? {
-                entryClient: "web",
-                entryPointId: "ai.new_chat",
-                initialGroupId: initialGroupIdRef.current,
-                kind: "manual",
-                template: null,
-              },
-            }),
-        protocolVersion: 2,
-        references: [],
-        requestId: stableId("request"),
-        sessionId,
-      };
-    const historySource = retry?.historyMessages ?? messagesRef.current;
-    const history = historySource
-      .map((turn) => ({ content: historyContentFor(turn), role: turn.role }))
-      .filter((turn) => turn.content)
-      .slice(-8);
-
-    suppressReliableSessionPersistenceRef.current = true;
-    activeSessionIdRef.current = sessionId;
-    setActiveSessionId(sessionId);
-    if (retry) {
-      setMessages(retry.visibleMessages);
-    } else {
-      setMessages((current) => [
-        ...current,
-        { id: reliableRequest.clientMessageId, role: "user", text: query },
-      ]);
-    }
-    setThinking(true);
-    // 等待回复期间保留现有侧边栏；新回复带结果时才替换。
-
-    try {
-      const response = await fetchAgentConversation(
-        JSON.stringify({ history, ...reliableRequest }),
-      );
-      const payload = (await response.json().catch(() => null)) as {
-        data?: {
-          actionIds?: unknown;
-          artifacts?: unknown;
-          assistantMessage?: string;
-          runId?: unknown;
-          taskInteraction?: unknown;
-          messages?: unknown;
-          reliableSend?: unknown;
-        };
-        error?: { code?: string; message?: string };
-        success?: boolean;
-      } | null;
-      const reliableReceipt = reliableAiSendReceiptSchema.safeParse(
-        payload?.data?.reliableSend,
-      );
-
-      if (
-        reliableReceipt.success &&
-        reliableReceipt.data.state !== "completed"
-      ) {
-        setMessages((current) => [
-          ...current,
-          {
-            items: [],
-            kind: "people",
-            panelTitle: "",
-            reliableRequest,
-            retryRequest: query,
-            role: "assistant",
-            text:
-              locale === "zh"
-                ? "请求结果尚未确认。再次检查会复用同一请求，不会重复生成。"
-                : "The result is not confirmed yet. Checking again reuses this request without generating twice.",
-          },
-        ]);
-        return;
-      }
-
-      if (
-        !response.ok ||
-        payload?.success !== true ||
-        !payload.data ||
-        !reliableReceipt.success
-      ) {
-        // 服务端错误原文是内部诊断（provider 名、英文超时串），不拼进用户文案——
-        // 这里只做归类：超时给「通常重试一次即可」的可操作说法，其余走通用文案。
-        // 原文进 console 供排查，与「普通用户对话不展示内部诊断」的边界一致。
-        if (payload?.error?.message) {
-          console.warn("[agent] conversation request failed:", payload.error.code, payload.error.message);
-        }
-        const providerTimedOut =
-          payload?.error?.code === "MODEL_REQUEST_FAILED" ||
-          /timed out/i.test(payload?.error?.message ?? "");
-        const errorText = providerTimedOut
-          ? locale === "zh"
-            ? "iOrbit 的模型没有按时返回，这通常是临时的，请重新提交一次。未执行任何外部动作。"
-            : "The model did not answer in time — this is usually temporary. Resubmit the request. No external action was taken."
-          : failureText;
-
-        setMessages((current) => [
-          ...current,
-          {
-            items: [],
-            kind: "people",
-            panelTitle: "",
-            reliableRequest,
-            retryRequest: query,
-            role: "assistant",
-            text: errorText,
-          },
-        ]);
-        return;
-      }
-
-      const contactArtifact = artifactOfKind(
-        payload.data.artifacts,
-        "contact_recommendations",
-      );
-      const eventArtifact = artifactOfKind(
-        payload.data.artifacts,
-        "event_recommendations",
-      );
-      const followupArtifact = artifactOfKind(
-        payload.data.artifacts,
-        "followup_queue",
-      );
-      const peopleItems = peopleItemsFromArtifact(contactArtifact);
-      const eventItems =
-        peopleItems.length > 0 ? [] : eventItemsFromArtifact(eventArtifact);
-      const todoItems =
-        peopleItems.length > 0 || eventItems.length > 0
-          ? []
-          : todoItemsFromArtifact(followupArtifact);
-      const kind: "people" | "events" | "todos" =
-        eventItems.length > 0 ? "events" : todoItems.length > 0 ? "todos" : "people";
-      const items =
-        kind === "events" ? eventItems : kind === "todos" ? todoItems : peopleItems;
-      const activeArtifact =
-        kind === "events"
-          ? eventArtifact
-          : kind === "todos"
-            ? followupArtifact
-            : contactArtifact;
-      const panelTitle =
-        activeArtifact?.result?.presentation?.title?.trim() ||
-        (kind === "events"
-          ? locale === "zh"
-            ? "活动推荐"
-            : "Recommended events"
-          : kind === "todos"
-            ? locale === "zh"
-              ? "行程与跟进"
-              : "Schedule & follow-ups"
-            : locale === "zh"
-              ? "人脉推荐"
-              : "Recommended contacts");
-      const evidenceRefs = evidenceRefsFromArtifacts(payload.data.artifacts);
-      const taskInteraction = parseAgentTaskInteraction(payload.data.taskInteraction);
-      const taskOnlyMessage = taskInteraction?.state === "created"
-        ? locale === "zh" ? `已创建待办：${taskInteraction.title}` : `Task created: ${taskInteraction.title}`
-        : taskInteraction?.state === "suggested"
-          ? locale === "zh" ? `要把“${taskInteraction.title}”加入待办吗？` : `Add "${taskInteraction.title}" to your tasks?`
-          : taskInteraction?.state === "failed"
-            ? locale === "zh" ? `待办“${taskInteraction.title}”暂时没有写入成功，请稍后重试。` : `The task "${taskInteraction.title}" was not saved. Please try again.`
-            : null;
-      const assistantText = items.length === 0 && evidenceRefs.length === 0
-        ? taskOnlyMessage ?? (locale === "zh"
-          ? "本次没有从你已授权的人脉、活动或跟进记录中找到可核查的结果，因此不会把泛化回答展示成真实推荐，也没有执行任何外部动作。请先导入联系人或补充可用记录后重试。"
-          : "No verifiable result was found in your authorized contacts, events, or follow-ups. A generic answer will not be presented as a real recommendation, and no external action was taken. Import contacts or add usable records, then retry.")
-        : payload.data.assistantMessage?.trim() ||
-          activeArtifact?.result?.generatedView?.summary ||
-          failureText;
-      const runId =
-        typeof payload.data.runId === "string" && payload.data.runId.trim()
-          ? payload.data.runId.trim()
-          : undefined;
-      const actionIds = Array.isArray(payload.data.actionIds)
-        ? payload.data.actionIds.flatMap((actionId) =>
-            typeof actionId === "string" && actionId.trim()
-              ? [actionId.trim()]
-              : [],
-          )
-        : [];
-      const assistantMessageId = Array.isArray(payload.data.messages)
-        ? [...payload.data.messages]
-            .reverse()
-            .find(
-              (message) =>
-                isRecord(message) &&
-                message.role === "assistant" &&
-                typeof message.messageId === "string",
-            )?.messageId
-        : undefined;
-      reliableMessageRevisionRef.current =
-        reliableReceipt.data.messageRevision ??
-        reliableRequest.expectedMessageRevision + 2;
-      if (!existingSession && initialGroupIdRef.current) {
-        const organization = await patchAgentChatSessionOrganization(sessionId, {
-          expectedRevision: 0,
-          mutationId: stableId("request"),
-          patch: { groupId: initialGroupIdRef.current },
-        });
-        if (organization) {
-          initialOrganizationRef.current = { organization, sessionId };
-        } else {
-          setHistoryFeedback({
-            kind: "error",
-            text: locale === "zh"
-              ? "回复已保存，但会话暂未加入所选分组。请在历史记录中重试移动。"
-              : "The reply was saved, but the conversation was not added to the selected group. Move it from history to retry.",
-          });
-        }
-      }
-      suppressReliableSessionPersistenceRef.current = false;
-      setMessages((current) => [
-        ...current,
-        {
-          actionIds,
-          evidenceRefs,
-          items,
-          kind,
-          id:
-            typeof assistantMessageId === "string"
-              ? assistantMessageId
-              : `assistant:${reliableRequest.requestId}`,
-          panelTitle,
-          role: "assistant",
-          runId,
-          taskInteraction,
-          text: assistantText,
-        },
-      ]);
-
-      setPanel(items.length > 0 ? { items, kind, panelTitle } : null);
-    } catch (error) {
-      const requestFailureText =
-        error instanceof AgentRequestTimeoutError
-          ? locale === "zh"
-            ? "浏览器已停止等待，服务器结果尚未确认。再次检查会复用同一请求，不会重复生成。"
-            : "The browser stopped waiting before the server confirmed a result. Checking again reuses the same request and will not generate it twice."
-          : failureText;
-      setMessages((current) => [
-        ...current,
-          {
-            items: [],
-            kind: "people",
-            panelTitle: "",
-            reliableRequest,
-            retryRequest: query,
-          role: "assistant",
-          text: requestFailureText,
-        },
-      ]);
-    } finally {
-      setThinking(false);
-    }
-  }, []);
-
-  const submitChatDraft = useCallback(() => {
-    const query = chatDraft.trim();
-
-    if (!query || thinking) return;
-
-    setChatDraft("");
-    void ask(query);
-  }, [ask, chatDraft, thinking]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const hydrateHistory = async () => {
-      const sessionId = currentAgentSessionId();
-      const [sessions, groups] = await Promise.all([
-        loadStoredAgentChatSessions(),
-        loadAgentChatGroups(),
-      ]);
-
-      if (cancelled) {
-        return;
-      }
-
-      let session =
-        sessions.find((item) => item.id === sessionId) ??
-        (sessionId ? await loadStoredAgentChatSession(sessionId) : null);
-
-      if (cancelled) {
-        return;
-      }
-
-      const nextSessions = session
-        ? upsertAgentChatSession(sessions, session)
-        : sessions;
-
-      storedSessionsRef.current = nextSessions;
-      setStoredSessions(nextSessions);
-      setSessionGroups(groups);
-      historyHydratedRef.current = true;
-
-      if (session) {
-        restoreSession(session);
-        return;
-      }
-
-      const query = currentAgentQuery();
-      setActiveQ(query);
-      if (query) {
-        setMessages([]);
-        setPanel(null);
-        setActiveSessionId(null);
-        activeSessionIdRef.current = null;
-        void ask(query);
-        return;
-      }
-      setAgentPrefill(takeAgentPrefill());
-    };
-
-    void hydrateHistory();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [ask, restoreSession]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const refreshAcrossClients = () => {
-      void Promise.all([loadStoredAgentChatSessions(), loadAgentChatGroups()]).then(
-        ([sessions, groups]) => {
-          if (cancelled) return;
-          storedSessionsRef.current = sessions;
-          setStoredSessions(sessions);
-          setSessionGroups(groups);
-        },
-      );
-    };
-    window.addEventListener("focus", refreshAcrossClients);
-    return () => {
-      cancelled = true;
-      window.removeEventListener("focus", refreshAcrossClients);
-    };
-  }, []);
-
-  useEffect(() => {
-    persistCurrentSession(messages, panel);
-  }, [messages, panel, persistCurrentSession]);
 
   useEffect(() => {
     const scroll = scrollRef.current;
@@ -3232,68 +1662,6 @@ export function OrbitRealAgent({
     },
     [historySidebarWidth],
   );
-
-  const pickHistory = (item: OrbitAgentHistoryView) => {
-    if (item.sessionId) {
-      const session = storedSessionsRef.current.find(
-        (stored) => stored.id === item.sessionId,
-      );
-      if (session) {
-        restoreSession(session);
-        navigate(`/agent?session=${encodeURIComponent(session.id)}`);
-        return;
-      }
-
-      void loadStoredAgentChatSession(item.sessionId).then((storedSession) => {
-        if (!storedSession) {
-          return;
-        }
-
-        const nextSessions = upsertAgentChatSession(
-          storedSessionsRef.current,
-          storedSession,
-        );
-        storedSessionsRef.current = nextSessions;
-        setStoredSessions(nextSessions);
-        restoreSession(storedSession);
-        navigate(`/agent?session=${encodeURIComponent(storedSession.id)}`);
-      });
-      return;
-    }
-
-    setHistOpen(false);
-    setMessages([]);
-    setPanel(null);
-    setActiveSessionId(null);
-    activeSessionIdRef.current = null;
-    reliableMessageRevisionRef.current = null;
-    suppressReliableSessionPersistenceRef.current = false;
-    navigate(`/agent?q=${encodeURIComponent(item.q)}`);
-    void ask(item.q);
-  };
-
-  const clearConversation = (openChat: boolean, initialGroupId: string | null = null) => {
-    setHistOpen(false);
-    setMessages([]);
-    setPanel(null);
-    setThinking(false);
-    setChatDraft("");
-    setActiveQ("");
-    setActiveSessionId(null);
-    setChatOpen(openChat);
-    activeSessionIdRef.current = null;
-    initialGroupIdRef.current = initialGroupId;
-    initialOrganizationRef.current = null;
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY);
-    }
-    navigate("/agent");
-  };
-
-  // 「新对话」：进入对话页的空态；「返回」：回 dashboard（当前对话已在历史里）。
-  const newChat = () => clearConversation(true);
-  const newChatInGroup = (groupId: string) => clearConversation(true, groupId);
-  const backToDashboard = () => clearConversation(false);
 
   const updateHistorySession = async (
     sessionId: string,
@@ -3603,47 +1971,6 @@ export function OrbitRealAgent({
   const threadTitle = messages.length
     ? titleFromMessages(messages)
     : t({ en: "New chat", zh: "新对话" });
-  // 记忆化：useOrbitAskTarget 用引用相等判断是否重新注册，每次渲染都造新数组会死循环。
-  const orbChips = useMemo(
-    () =>
-      viewModel.suggests.slice(0, 3).map((suggest) => ({
-        label: agentSuggestLabel(suggest.label, language === "ja" ? "en" : language),
-        query: suggest.q,
-      })),
-    [language, viewModel.suggests],
-  );
-
-  // 全局输入框在这一页直接落到当前对话，不再跳转。
-  const askTarget = useMemo(
-    () => ({ busy: thinking, chips: orbChips, onAsk: ask }),
-    [ask, orbChips, thinking],
-  );
-
-  useOrbitAskTarget(askTarget);
-
-  // 从别的页面发起的提问：来源页把它暂存在 sessionStorage，这里取出来跑一次。
-  // takePendingAsk 读完即删，配合 ref 兜住 StrictMode 的双次挂载。
-  const pendingAskRan = useRef(false);
-
-  useEffect(() => {
-    if (pendingAskRan.current) return;
-    pendingAskRan.current = true;
-
-    const pending = takePendingAsk();
-
-    if (!pending) return;
-
-    // 上下文拼进消息本体，而不是偷偷加在 system prompt 里：用户在对话里
-    // 看到的那句话，就是我们真正发出去的那句话。
-    const message = pending.context
-      ? languageRef.current === "zh"
-        ? `${pending.query}\n\n（我正在看${pending.context}）`
-        : `${pending.query}\n\n(I'm currently looking at ${pending.context}.)`
-      : pending.query;
-
-    setChatOpen(true);
-    void ask(message);
-  }, [ask]);
 
   const workspaceContent = inChat ? (
     <>

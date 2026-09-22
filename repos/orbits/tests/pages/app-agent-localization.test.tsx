@@ -18,6 +18,11 @@ function readProjectFile(relativePath: string): string {
   return fs.readFileSync(path.join(projectRoot, relativePath), "utf8");
 }
 
+// iOrbit 任务 1b：纯函数在 `iorbit-model.ts`、对话状态/`ask` 在 `use-agent-chat.ts`，
+// JSX 留在 `orbit-real-agent.tsx`。源码断言按此拆成两半。
+const IORBIT_MODEL_PATH = "app/(app)/app/agent/iorbit-0918/iorbit-model.ts";
+const IORBIT_CHAT_HOOK_PATH = "app/(app)/app/agent/iorbit-0918/use-agent-chat.ts";
+
 test("/app/agent Chinese contact artifacts carry localized product labels and answers", () => {
   const result = syncResult(createMockOrbitAgentConversationService().sendMessage({
     locale: "zh",
@@ -84,12 +89,17 @@ test("/app/agent localizes server view models and sends locale through the API b
 
   assert.match(pageSource, /requestedLanguage/);
   assert.match(pageSource, /localizeOrbitTree/);
-  assert.match(agentSource, /const locale = languageRef\.current === "zh" \? "zh" : "en"/);
+  const modelSource = readProjectFile(IORBIT_MODEL_PATH);
+  const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
+
+  assert.match(chatHookSource, /const locale = languageRef\.current === "zh" \? "zh" : "en"/);
   assert.match(
-    agentSource,
+    chatHookSource,
     /JSON\.stringify\(\{ history, \.\.\.reliableRequest \}\)/,
   );
-  assert.match(agentSource, /artifactMetadataValue\(item, \["分数", "Score"\]\)/);
-  assert.match(agentSource, /locale === "zh"/);
-  assert.doesNotMatch(agentSource, /localizeOrbitAiPanel/);
+  assert.match(modelSource, /artifactMetadataValue\(item, \["分数", "Score"\]\)/);
+  assert.match(chatHookSource, /locale === "zh"/);
+  for (const checked of [agentSource, modelSource, chatHookSource]) {
+    assert.doesNotMatch(checked, /localizeOrbitAiPanel/);
+  }
 });

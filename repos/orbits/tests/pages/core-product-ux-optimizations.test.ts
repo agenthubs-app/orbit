@@ -48,19 +48,25 @@ test("the global composer collapses after explicit send and suggestion chips onl
 });
 
 test("Agent waiting, timeout recovery, and trust summaries state their real boundaries", () => {
+  // iOrbit 任务 1b：等待文案与超时常量在 `iorbit-model.ts`，重试/未确认文案由
+  // `use-agent-chat.ts` 的 ask() 产出，JSX 留在 `orbit-real-agent.tsx`。
   const agent = source("app/(app)/app/agent/orbit-real-agent.tsx");
+  const model = source("app/(app)/app/agent/iorbit-0918/iorbit-model.ts");
+  const chatHook = source("app/(app)/app/agent/iorbit-0918/use-agent-chat.ts");
 
   assert.match(agent, /Usually under a minute/);
-  assert.match(agent, /AGENT_REQUEST_TIMEOUT_MS = 60_000/);
-  assert.match(agent, /controller\.abort\(\)/);
-  assert.match(agent, /retryRequest: query/);
-  assert.match(agent, /服务器结果尚未确认/);
-  assert.match(agent, /不会重复生成/);
-  assert.doesNotMatch(agent, /本次请求已停止/);
-  assert.doesNotMatch(agent, /The request took over .* and was stopped/);
-  assert.doesNotMatch(agent, /依据 \$\{totalItems\} 条 · 未执行外部动作/);
-  assert.doesNotMatch(agent, /查看完整处理过程/);
-  assert.match(agent, /不会把泛化回答展示成真实推荐/);
+  assert.match(model, /AGENT_REQUEST_TIMEOUT_MS = 60_000/);
+  assert.match(model, /controller\.abort\(\)/);
+  assert.match(chatHook, /retryRequest: query/);
+  assert.match(chatHook, /服务器结果尚未确认/);
+  assert.match(chatHook, /不会重复生成/);
+  for (const checked of [agent, model, chatHook]) {
+    assert.doesNotMatch(checked, /本次请求已停止/);
+    assert.doesNotMatch(checked, /The request took over .* and was stopped/);
+    assert.doesNotMatch(checked, /依据 \$\{totalItems\} 条 · 未执行外部动作/);
+    assert.doesNotMatch(checked, /查看完整处理过程/);
+  }
+  assert.match(chatHook, /不会把泛化回答展示成真实推荐/);
 });
 
 test("both recommendation and follow-up queue cards generate an editable draft in place", () => {

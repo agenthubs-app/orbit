@@ -16,6 +16,11 @@ function readProjectFile(relativePath: string): string {
   return fs.readFileSync(path.join(projectRoot, relativePath), "utf8");
 }
 
+// iOrbit 任务 1b：纯函数在 `iorbit-model.ts`、对话状态/`ask` 在 `use-agent-chat.ts`，
+// JSX 留在 `orbit-real-agent.tsx`。源码断言按此拆成两半。
+const IORBIT_MODEL_PATH = "app/(app)/app/agent/iorbit-0918/iorbit-model.ts";
+const IORBIT_CHAT_HOOK_PATH = "app/(app)/app/agent/iorbit-0918/use-agent-chat.ts";
+
 async function importProjectModule<TModule>(
   relativePath: string,
 ): Promise<TModule> {
@@ -113,12 +118,15 @@ test("/app/agent hydrates submitted to-do prompts through the client conversatio
     pageSource,
     /loadAppChatRouteViewModel\(resolvedSearchParams,\s*\{\s*actorId,/,
   );
-  assert.match(agentSource, /function currentAgentQuery/);
-  assert.match(agentSource, /const query = currentAgentQuery\(\)/);
-  assert.match(agentSource, /void ask\(query\)/);
-  assert.match(agentSource, /fetch\("\/api\/ai\/conversations"/);
-  assert.match(agentSource, /"followup_queue"/);
-  assert.match(agentSource, /todoItemsFromArtifact\(followupArtifact\)/);
+  const modelSource = readProjectFile(IORBIT_MODEL_PATH);
+  const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
+
+  assert.match(modelSource, /function currentAgentQuery/);
+  assert.match(chatHookSource, /const query = currentAgentQuery\(\)/);
+  assert.match(chatHookSource, /void ask\(query\)/);
+  assert.match(modelSource, /fetch\("\/api\/ai\/conversations"/);
+  assert.match(chatHookSource, /"followup_queue"/);
+  assert.match(chatHookSource, /todoItemsFromArtifact\(followupArtifact\)/);
   assert.match(agentSource, /function AgentTodoRow/);
 });
 
@@ -163,11 +171,11 @@ test("/app/agent source exposes to-do prompt affordances without owning business
   assert.doesNotMatch(pageSource, /mockFollowupTasks|mockEventRecords/);
   assert.match(agentSource, /viewModel\.suggests\.map/);
   assert.match(agentSource, /onPick\(suggest\.q\)/);
-  assert.match(agentSource, /"followup_queue"/);
-  assert.match(agentSource, /function todoItemsFromArtifact/);
+  assert.match(readProjectFile(IORBIT_CHAT_HOOK_PATH), /"followup_queue"/);
+  assert.match(readProjectFile(IORBIT_MODEL_PATH), /function todoItemsFromArtifact/);
   // 跟进队列改成按人聚合后，「查看联系人」的导航参数从单条待办的 item.contactName
   // 换成了这一组的 group.contactName；目标路由不变。
-  assert.match(agentSource, /function groupTodosByContact/);
+  assert.match(readProjectFile(IORBIT_MODEL_PATH), /function groupTodosByContact/);
   assert.match(
     agentSource,
     /navigate\(`\/app\/contacts\?query=\$\{encodeURIComponent\(group\.contactName\)\}`\)/,

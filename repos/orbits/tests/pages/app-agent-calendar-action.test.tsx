@@ -110,6 +110,9 @@ test("/app/agent composes calendar proposals through the conversation run and ac
   const agentSource = readProjectFile(
     "app/(app)/app/agent/orbit-real-agent.tsx",
   );
+  const chatHookSource = readProjectFile(
+    "app/(app)/app/agent/iorbit-0918/use-agent-chat.ts",
+  );
   const actionSource = readProjectFile(
     "app/(app)/app/agent/agent-action-status-card.tsx",
   );
@@ -120,7 +123,8 @@ test("/app/agent composes calendar proposals through the conversation run and ac
   assert.match(pageSource, /loadAppChatRouteViewModel/);
   assert.doesNotMatch(pageSource, /calendar-preview/);
   assert.doesNotMatch(pageSource, /app\/api\//);
-  assert.match(agentSource, /payload\.data\.actionIds/);
+  // iOrbit 任务 1b：读 actionIds 的是 hook（`use-agent-chat.ts`），渲染卡片的仍是 JSX。
+  assert.match(chatHookSource, /payload\.data\.actionIds/);
   assert.match(agentSource, /<AgentActionStatusCard/);
   assert.match(actionSource, /riskLevel !== "external"/);
   assert.match(actionSource, /Review external action details in Today/);

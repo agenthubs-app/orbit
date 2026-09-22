@@ -38,7 +38,11 @@ test("Orbit agent workspace exposes the console-green composition hooks", () => 
   // 悬浮输入框已提取到 layout 级的 orbit-global-ask（全站可用、跨页保留草稿），
   // 这一页只负责把自己的 ask 注册成落点，不再自己渲染小球和输入行。
   assert.doesNotMatch(agentSource, /className=\{`orb-ball/);
-  assert.match(agentSource, /useOrbitAskTarget\(/);
+  // iOrbit 任务 1b：全局提问落点的注册搬进 `use-agent-chat.ts`。
+  assert.match(
+    readProjectFile("app/(app)/app/agent/iorbit-0918/use-agent-chat.ts"),
+    /useOrbitAskTarget\(/,
+  );
   assert.doesNotMatch(agentSource, /orbit-agent-page-wordmark/);
 });
 

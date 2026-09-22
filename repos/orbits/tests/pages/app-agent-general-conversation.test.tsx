@@ -13,6 +13,11 @@ function readProjectFile(relativePath: string): string {
   return fs.readFileSync(path.join(projectRoot, relativePath), "utf8");
 }
 
+// iOrbit 任务 1b：纯函数在 `iorbit-model.ts`、对话状态/`ask` 在 `use-agent-chat.ts`，
+// JSX 留在 `orbit-real-agent.tsx`。源码断言按此拆成两半。
+const IORBIT_MODEL_PATH = "app/(app)/app/agent/iorbit-0918/iorbit-model.ts";
+const IORBIT_CHAT_HOOK_PATH = "app/(app)/app/agent/iorbit-0918/use-agent-chat.ts";
+
 async function importProjectModule<TModule>(
   relativePath: string,
 ): Promise<TModule> {
@@ -57,12 +62,16 @@ test("/app/agent source clears stale panels only for turns that do not return a 
     "app/(app)/app/agent/orbit-real-agent.tsx",
   );
 
-  assert.match(agentSource, /const items =\s*kind === "events"/);
+  const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
+
+  assert.match(chatHookSource, /const items =\s*kind === "events"/);
   assert.match(
-    agentSource,
+    chatHookSource,
     /setPanel\(items\.length > 0 \? \{ items, kind, panelTitle \} : null\)/,
   );
-  assert.doesNotMatch(agentSource, /if \(items\.length > 0\) \{\s*setPanel/);
+  for (const checked of [agentSource, chatHookSource]) {
+    assert.doesNotMatch(checked, /if \(items\.length > 0\) \{\s*setPanel/);
+  }
 });
 
 test("/app/agent source preserves recent conversation context for the next turn", () => {
@@ -70,15 +79,18 @@ test("/app/agent source preserves recent conversation context for the next turn"
     "app/(app)/app/agent/orbit-real-agent.tsx",
   );
 
-  assert.match(agentSource, /function historyContentFor/);
+  const modelSource = readProjectFile(IORBIT_MODEL_PATH);
+  const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
+
+  assert.match(modelSource, /function historyContentFor/);
   assert.match(
-    agentSource,
+    chatHookSource,
     /const historySource = retry\?\.historyMessages \?\? messagesRef\.current/,
   );
-  assert.match(agentSource, /const history = historySource/);
-  assert.match(agentSource, /\.slice\(-8\)/);
-  assert.match(agentSource, /JSON\.stringify\(\{ history, \.\.\.reliableRequest \}\)/);
-  assert.match(agentSource, /\[本轮推荐明细\]/);
+  assert.match(chatHookSource, /const history = historySource/);
+  assert.match(chatHookSource, /\.slice\(-8\)/);
+  assert.match(chatHookSource, /JSON\.stringify\(\{ history, \.\.\.reliableRequest \}\)/);
+  assert.match(modelSource, /\[本轮推荐明细\]/);
 });
 
 test("/app/agent keeps ordinary assistant bubbles visible without inline API panels", () => {
@@ -89,7 +101,8 @@ test("/app/agent keeps ordinary assistant bubbles visible without inline API pan
   assert.match(agentSource, /message\.role === "user" \?/);
   assert.match(agentSource, /<AgentMarkdown text=\{message\.text\}/);
   assert.match(agentSource, /message\.items\.length > 0 \? \(/);
-  assert.match(agentSource, /items:\s*\[\],\s*kind:\s*"people"/);
+  // 失败回合的空 people 形状由 hook 构造。
+  assert.match(readProjectFile(IORBIT_CHAT_HOOK_PATH), /items:\s*\[\],\s*kind:\s*"people"/);
 });
 
 test("/app/agent input explains the no-tool privacy boundary before sensitive context is shared", () => {

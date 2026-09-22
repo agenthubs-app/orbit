@@ -703,6 +703,11 @@ test("/app/agent keeps technical provenance out of the user conversation", () =>
   assert.doesNotMatch(agentSource, /<AgentOutcomeFeedback/);
   assert.match(agentSource, /showRunDetails={false}/);
   assert.doesNotMatch(agentSource, /data-agent-run-details/);
-  assert.match(agentSource, /evidenceRefsFromArtifacts/);
+  // iOrbit 任务 1b：artifact→证据的纯函数搬到 `iorbit-0918/iorbit-model.ts`，
+  // 这一条跟着指过去；JSX 侧的断言仍留在 orbit-real-agent.tsx。
+  assert.match(
+    source("app/(app)/app/agent/iorbit-0918/iorbit-model.ts"),
+    /evidenceRefsFromArtifacts/,
+  );
   assert.match(pageSource, /data-orbit-route="app-agent-route"/);
 });

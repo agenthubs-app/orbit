@@ -15,6 +15,11 @@ function readProjectFile(relativePath: string): string {
   return fs.readFileSync(path.join(projectRoot, relativePath), "utf8");
 }
 
+// iOrbit 任务 1b：artifact→人脉卡的纯函数在 `iorbit-model.ts`、读 artifact 的在
+// `use-agent-chat.ts`，JSX 留在 `orbit-real-agent.tsx`。
+const IORBIT_MODEL_PATH = "app/(app)/app/agent/iorbit-0918/iorbit-model.ts";
+const IORBIT_CHAT_HOOK_PATH = "app/(app)/app/agent/iorbit-0918/use-agent-chat.ts";
+
 async function importProjectModule<TModule>(
   relativePath: string,
 ): Promise<TModule> {
@@ -97,12 +102,15 @@ test("/app/agent maps contact artifacts into reason, confidence, evidence, and d
   assert.match(pageSource, /searchParams/);
   assert.match(pageSource, /loadAppChatRouteViewModel/);
   assert.match(pageSource, /composeOrbitAgentEntryViewModel/);
-  assert.match(agentSource, /currentAgentQuery\(\)/);
-  assert.match(agentSource, /artifactOfKind\(\s*payload\.data\.artifacts,\s*"contact_recommendations"/);
-  assert.match(agentSource, /peopleItemsFromArtifact\(contactArtifact\)/);
-  assert.match(agentSource, /industry: item\.confidenceLabel/);
-  assert.match(agentSource, /opener: item\.body/);
-  assert.match(agentSource, /reason: item\.reason/);
+  const modelSource = readProjectFile(IORBIT_MODEL_PATH);
+  const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
+
+  assert.match(chatHookSource, /currentAgentQuery\(\)/);
+  assert.match(chatHookSource, /artifactOfKind\(\s*payload\.data\.artifacts,\s*"contact_recommendations"/);
+  assert.match(chatHookSource, /peopleItemsFromArtifact\(contactArtifact\)/);
+  assert.match(modelSource, /industry: item\.confidenceLabel/);
+  assert.match(modelSource, /opener: item\.body/);
+  assert.match(modelSource, /reason: item\.reason/);
   assert.match(agentSource, /function AgentPeopleRow/);
   assert.match(agentSource, /navigate\(`\/app\/contacts\/\$\{connection\.id\}`\)/);
   assert.match(agentSource, /requestMessageDraft/);
@@ -121,9 +129,11 @@ test("/app/agent maps contact artifacts into reason, confidence, evidence, and d
   // 里不对普通用户展示的内部产物，继续挡住。
   assert.match(peopleRowSource, /item\.reason \? <span className="why">/);
   assert.doesNotMatch(peopleRowSource, /item\.opener \? <span/);
-  assert.doesNotMatch(agentSource, /查看完整处理过程/);
-  assert.doesNotMatch(agentSource, /data-agent-run-details/);
-  assert.doesNotMatch(agentSource, /AgentEvidenceSources/);
+  for (const checked of [agentSource, modelSource, chatHookSource]) {
+    assert.doesNotMatch(checked, /查看完整处理过程/);
+    assert.doesNotMatch(checked, /data-agent-run-details/);
+    assert.doesNotMatch(checked, /AgentEvidenceSources/);
+  }
 });
 
 test("contact artifact mapping preserves actor-scoped contact ids", async () => {
