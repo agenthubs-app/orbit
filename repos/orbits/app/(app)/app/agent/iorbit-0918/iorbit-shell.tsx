@@ -21,8 +21,11 @@
  * `useOrbitAskTarget` / `takePendingAsk()` / `takeAgentPrefill()` 只注册与消费一次。
  *
  * 历史抽屉：设计的抽屉（786–804）是任务 4；本任务先把既有抽屉 / 删除二次确认 / toast
- * 原样挂在壳上，能力一条不丢（它们的样式在冻结表的 `[data-orbit-real-page="agent"]`
- * 作用域里，外层 div 正好带着这个作用域）。
+ * 原样挂在壳上（它们的样式在冻结表的 `[data-orbit-real-page="agent"]` 作用域里，外层
+ * div 正好带着这个作用域），并把抽屉根类从默认的 `orbit-mobile-only` 换掉——那条类
+ * 在参考样式表里是 `display:none !important` 且不在 ≤640px 的 @media 内，沿用默认值
+ * 会让桌面宽度下抽屉挂得上却看不见。桌面侧原来的常驻 `<aside>` 侧栏按计划不再渲染
+ * （设计无侧栏），因此历史能力现在全部经这一个抽屉进入。
  */
 "use client";
 
@@ -32,7 +35,6 @@ import { AccountTopNav } from "../../orbit-account-shell";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import type { OrbitAgentViewModel } from "../../orbit-agent-route-view-model";
 import type { OrbitHomeViewModel } from "../../orbit-home-route-view-model";
-import type { EventRegistrationAvailability } from "../../orbit-event-registration-view-model";
 import { hasPendingOrbitAgentHandoff } from "../../orbit-global-ask/orbit-ask-draft";
 import { Icon } from "../../orbit-reference-primitives";
 import { ORBIT_Z } from "../../orbit-z";
@@ -46,7 +48,6 @@ export interface IOrbitShellProps {
   home: OrbitHomeViewModel | null;
   /** 服务端解析出的 `?q=`／`?session=`：任一存在即直接落在对话分支（SSR 与首帧一致）。 */
   initialDeepLink?: boolean;
-  registrationAvailabilityByEventId: Readonly<Record<string, EventRegistrationAvailability>>;
   viewModel: OrbitAgentViewModel;
 }
 
@@ -86,6 +87,7 @@ export function IOrbitShell({
     activeQ,
     activeSessionId,
     activeSessionIdRef,
+    agentPrefill,
     ask,
     chatDraft,
     chatOpen,
@@ -97,6 +99,7 @@ export function IOrbitShell({
     pickHistory,
     setActiveQ,
     setActiveSessionId,
+    setAgentPrefill,
     setChatDraft,
     setChatOpen,
     setHistOpen,
@@ -159,6 +162,31 @@ export function IOrbitShell({
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
+  // 联系人分析页的「✦ 去 iOrbit 分析」（`contacts/network-0918/network-analysis.tsx:82`）
+  // 把问题连同结构化 origin 写进 sessionStorage，hook 在 hydration 时
+  // `takeAgentPrefill()` 取出（读完即删）。旧实现把它填进 dashboard 的简报输入框、
+  // 由用户确认后带 origin 发出（`orbit-real-agent.tsx` 1740-1748 的 `onBriefAsk`）。
+  // 这里落到对话输入区：不自动发送（用户先看见自己的原话），发送时补上 origin。
+  const prefilledRef = useRef(false);
+  useEffect(() => {
+    if (!agentPrefill || prefilledRef.current) return;
+    prefilledRef.current = true;
+    setChatDraft(agentPrefill.query);
+    setView("chat");
+  }, [agentPrefill, setChatDraft]);
+
+  const submitDraft = () => {
+    const query = chatDraft.trim();
+    if (agentPrefill && !thinking && query === agentPrefill.query.trim()) {
+      const origin = agentPrefill.origin;
+      setAgentPrefill(null);
+      setChatDraft("");
+      void ask(query, undefined, origin);
+      return;
+    }
+    submitChatDraft();
+  };
+
   // 进对话是非破坏性的（和「← 返回概览」对称）：已有线程照旧留着，只把 URL 与视图
   // 对齐；「◷ 历史记录」额外把抽屉打开。想开空线程走抽屉里的「新对话」。
   const openChat = (withHistory = false) => {
@@ -200,7 +228,7 @@ export function IOrbitShell({
               onBack={() => setView("home")}
               onDraftChange={setChatDraft}
               onOpenHistory={() => setHistOpen(true)}
-              onSubmitDraft={submitChatDraft}
+              onSubmitDraft={submitDraft}
               taskSuggestions={taskSuggestions}
               thinking={thinking}
               userInitial={home?.account.initial || "A"}
@@ -238,9 +266,15 @@ export function IOrbitShell({
         </main>
       </div>
 
-      {/* 既有历史能力（抽屉 / 删除二次确认 / toast）原样保留，设计的抽屉是任务 4 */}
+      {/* 既有历史能力（抽屉 / 删除二次确认 / toast）原样保留，设计的抽屉是任务 4。
+          `rootClassName=""`：组件默认根类是 `orbit-mobile-only`，而
+          `public/orbit-reference/orbit-reference.generated.css:371` 用
+          `display:none !important` 把它挡在 ≤640px 以外——沿用默认值会让桌面宽度下
+          抽屉挂得上却看不见（焦点陷阱还跑在一个 display:none 的节点上），
+          等于把历史记录、新对话、分组、置顶、重命名、移动、删除整组能力弄丢。 */}
       {histOpen ? (
         <AgentMobileHistoryDrawer
+          rootClassName=""
           activeQ={activeQ}
           activeSessionId={activeSessionId}
           groupMutationPending={groupMutationPending}

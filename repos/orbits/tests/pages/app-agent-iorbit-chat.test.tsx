@@ -36,7 +36,6 @@ function shellMarkup(props: { initialDeepLink?: boolean } = {}): string {
   return renderToStaticMarkup(
     <IOrbitShell
       home={HOME as never}
-      registrationAvailabilityByEventId={{}}
       viewModel={VIEW_MODEL}
       {...props}
     />,
@@ -180,15 +179,23 @@ test("every chat .btn rule neutralises the shared base class and its :active tra
 
 interface Mounted {
   calls: Array<{ body: unknown; method: string; url: string }>;
+  emit: (type: string) => void;
+  location: { search: string };
   pushedUrls: string[];
   root: ReactTestRenderer;
+  sessionValues: Map<string, string>;
   settle: (rounds?: number) => Promise<void>;
 }
 
 async function mount(
   t: TestContext,
   element: React.ReactElement,
-  options: { conversation?: unknown; search?: string } = {},
+  options: {
+    conversation?: unknown;
+    search?: string;
+    sessionStorage?: Record<string, string>;
+    sessions?: unknown[];
+  } = {},
 ): Promise<Mounted> {
   const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
   const previousDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
@@ -210,10 +217,14 @@ async function mount(
       removeEventListener() {},
     },
   });
+  const sessionValues = new Map(Object.entries(options.sessionStorage ?? {}));
+  const listeners = new Map<string, Array<(event: unknown) => void>>();
   Object.defineProperty(globalThis, "window", {
     configurable: true,
     value: {
-      addEventListener() {},
+      addEventListener(type: string, handler: (event: unknown) => void) {
+        listeners.set(type, [...(listeners.get(type) ?? []), handler]);
+      },
       clearInterval: () => undefined,
       clearTimeout: () => undefined,
       history: {
@@ -229,11 +240,17 @@ async function mount(
       },
       location,
       matchMedia: () => ({ addEventListener() {}, matches: false, removeEventListener() {} }),
-      removeEventListener() {},
+      removeEventListener(type: string, handler: (event: unknown) => void) {
+        listeners.set(type, (listeners.get(type) ?? []).filter((entry) => entry !== handler));
+      },
       sessionStorage: {
-        getItem: () => null,
-        removeItem: () => undefined,
-        setItem: () => undefined,
+        getItem: (key: string) => sessionValues.get(key) ?? null,
+        removeItem: (key: string) => {
+          sessionValues.delete(key);
+        },
+        setItem: (key: string, value: string) => {
+          sessionValues.set(key, value);
+        },
       },
       setInterval: () => 0,
       setTimeout: (handler: () => void, delay: number) =>
@@ -256,7 +273,10 @@ async function mount(
       url,
     });
     if (url.startsWith("/api/ai/conversations/sessions")) {
-      return Response.json({ data: { sessions: [] } });
+      return Response.json({
+        data: { nextCursor: null, sessions: options.sessions ?? [] },
+        success: true,
+      });
     }
     if (url.startsWith("/api/ai/conversations")) {
       return Response.json({
@@ -285,13 +305,16 @@ async function mount(
   };
   await settle();
 
-  return { calls, pushedUrls, root: root!, settle };
+  const emit = (type: string) => {
+    for (const handler of listeners.get(type) ?? []) handler({ type });
+  };
+
+  return { calls, emit, location, pushedUrls, root: root!, sessionValues, settle };
 }
 
 const shell = (props: { initialDeepLink?: boolean } = {}) => (
   <IOrbitShell
     home={HOME as never}
-    registrationAvailabilityByEventId={{}}
     viewModel={VIEW_MODEL}
     {...props}
   />
@@ -553,4 +576,160 @@ test("the thinking turn keeps the existing indicator", async (t) => {
   );
 
   assert.equal(byClass(mounted, "ir-a-row orbit-agent-thinking-turn").length, 1);
+});
+
+/* ── 4. 壳的接线（修订轮 1：这些行为以前只有渲染旧组件的套件覆盖）───────── */
+
+test("the history drawer the shell mounts is visible at desktop width", async (t) => {
+  // `orbit-mobile-only` 在生成的参考样式表里是 `display:none !important`，且这条规则
+  // 在 ≤640px 的 @media **之外**——沿用组件默认根类会让桌面宽度下抽屉挂得上却看不见。
+  const referenceCss = readFileSync(
+    join(
+      dirname(fileURLToPath(import.meta.url)),
+      "../../public/orbit-reference/orbit-reference.generated.css",
+    ),
+    "utf8",
+  );
+  const mobileOnlyRule = referenceCss.match(/\.orbit-mobile-only\s*\{[^}]*\}/);
+  assert.ok(mobileOnlyRule, "the reference stylesheet must still define .orbit-mobile-only");
+  assert.match(mobileOnlyRule![0], /display\s*:\s*none\s*!important/);
+
+  const mounted = await mount(t, shell({ initialDeepLink: true }));
+
+  await act(async () => {
+    mounted.root.root
+      .findAll(
+        (node) => node.type === "button" && node.props?.className === "btn ir-chat-history-btn",
+      )[0]!
+      .props.onClick();
+  });
+  await mounted.settle();
+
+  const drawer = mounted.root.root.findAll(
+    (node) => node.props?.["data-orbit-agent-history-drawer"] !== undefined,
+  )[0];
+  assert.ok(drawer, "「◷ 历史记录」must open the history drawer");
+  assert.ok(
+    !String(drawer!.props.className ?? "").includes("orbit-mobile-only"),
+    "the drawer the shell mounts must not carry the mobile-only class (it would be display:none)",
+  );
+  // 抽屉里的既有能力还在：新对话 + 分组 + 列表。
+  assert.ok(
+    mounted.root.root.findAll(
+      (node) => node.type === "button" && String(node.props?.className ?? "").includes("orbit-agent-new-chat"),
+    ).length > 0,
+    "the drawer must still expose 新对话",
+  );
+});
+
+test("a cross-page pending ask lands in the chat and is sent once", async (t) => {
+  const mounted = await mount(t, shell(), {
+    sessionStorage: {
+      "orbit.ask.pending": JSON.stringify({
+        context: "田中圭子的联系人页",
+        from: "/app/contacts/c1",
+        query: "帮我准备和她的下一次沟通",
+      }),
+    },
+  });
+
+  assert.equal(
+    mounted.root.root.findAll((node) => node.props?.className === "ir-home").length,
+    0,
+    "a handoff must land in the chat, not the overview",
+  );
+  const asks = mounted.calls.filter((call) => call.url.startsWith("/api/ai/conversations?") || call.url === "/api/ai/conversations");
+  assert.equal(asks.length, 1, "the pending ask is sent exactly once");
+  assert.match(
+    String((asks[0]!.body as { message?: string }).message),
+    /帮我准备和她的下一次沟通[\s\S]*田中圭子的联系人页/,
+    "the context the user saw must travel inside the message",
+  );
+  assert.equal(mounted.sessionValues.has("orbit.ask.pending"), false, "the handoff is consumed");
+});
+
+test("the contacts-analysis prefill surfaces in the composer and keeps its structured origin", async (t) => {
+  const origin = {
+    entryClient: "web",
+    entryPointId: "contacts.analysis",
+    initialGroupId: null,
+    kind: "structured",
+    sourceDataVersion: "a".repeat(64),
+    template: { id: "contacts.analysis", version: 1 },
+  };
+  const mounted = await mount(t, shell(), {
+    sessionStorage: {
+      "orbit.agent.prefill": JSON.stringify({
+        origin,
+        query: "分析我的人脉机会",
+        returnTo: "/app/contacts/dashboard",
+      }),
+    },
+  });
+
+  const input = byClass(mounted, "ir-composer-input")[0]!;
+  assert.equal(
+    input.props.value,
+    "分析我的人脉机会",
+    "the prefilled question must be visible before it is sent, not swallowed",
+  );
+  assert.equal(
+    mounted.calls.filter((call) => call.url.startsWith("/api/ai/conversations?") || call.url === "/api/ai/conversations").length,
+    0,
+    "the prefill is never sent without the user confirming",
+  );
+
+  await act(async () => {
+    byClass(mounted, "ir-composer")[0]!.props.onSubmit({ preventDefault() {} });
+  });
+  await mounted.settle();
+
+  const ask = mounted.calls.find(
+    (call) => call.url.startsWith("/api/ai/conversations?") || call.url === "/api/ai/conversations",
+  );
+  assert.ok(ask, "submitting the prefilled draft must reach the conversations API");
+  const body = ask!.body as { message?: string; origin?: typeof origin };
+  assert.equal(body.message, "分析我的人脉机会");
+  assert.deepEqual(body.origin, origin, "the structured origin must survive the handoff");
+});
+
+test("browser back returns to the overview without clearing the thread", async (t) => {
+  const mounted = await mount(t, shell({ initialDeepLink: true }), { search: "?q=hello" });
+
+  assert.equal(byClass(mounted, "ir-chat").length, 1);
+
+  mounted.location.search = "";
+  await act(async () => {
+    mounted.emit("popstate");
+  });
+  await mounted.settle();
+
+  assert.equal(byClass(mounted, "ir-home").length, 1, "popstate must restore the overview");
+});
+
+test("?session= restores the conversation through the shell without asking again", async (t) => {
+  const mounted = await mount(t, shell({ initialDeepLink: true }), {
+    search: "?session=session%3Arestored",
+    sessions: [
+      {
+        createdAt: "2026-09-20T00:00:00.000Z",
+        id: "session:restored",
+        messages: [
+          { role: "user", text: "上次问过的问题" },
+          { items: [], kind: "people", panelTitle: "", role: "assistant", text: "上次的回答" },
+        ],
+        title: "上次的对话",
+        updatedAt: "2026-09-20T01:00:00.000Z",
+      },
+    ],
+  });
+
+  const rendered = JSON.stringify(mounted.root.toJSON());
+  assert.ok(rendered.includes("上次问过的问题"));
+  assert.ok(rendered.includes("上次的回答"));
+  assert.equal(
+    mounted.calls.filter((call) => call.url.startsWith("/api/ai/conversations?") || call.url === "/api/ai/conversations").length,
+    0,
+    "restoring must not re-ask",
+  );
 });

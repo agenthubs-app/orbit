@@ -89,7 +89,6 @@ function shellMarkup(props: { initialDeepLink?: boolean } = {}): string {
   return renderToStaticMarkup(
     <IOrbitShell
       home={HOME as never}
-      registrationAvailabilityByEventId={{}}
       viewModel={VIEW_MODEL}
       {...props}
     />,
@@ -137,7 +136,6 @@ async function openFromHome(t: TestContext, label: "chat" | "history") {
   const mounted = await mountHome(t, () => (
     <IOrbitShell
       home={HOME as never}
-      registrationAvailabilityByEventId={{}}
       viewModel={VIEW_MODEL}
     />
   ));
@@ -874,7 +872,6 @@ test("submitting the ask row deep-links into the chat branch", async (t) => {
   const mounted = await mountHome(t, () => (
     <IOrbitShell
       home={HOME as never}
-      registrationAvailabilityByEventId={{}}
       viewModel={VIEW_MODEL}
     />
   ));

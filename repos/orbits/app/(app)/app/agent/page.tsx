@@ -179,12 +179,6 @@ export default async function AppAgentPage({
               firstSearchParam(resolvedSearchParams, "q") ||
                 firstSearchParam(resolvedSearchParams, "session"),
             )}
-            registrationAvailabilityByEventId={Object.fromEntries(
-              Object.entries(registrationStates).map(([eventId, state]) => [
-                eventId,
-                state.availability,
-              ]),
-            )}
             home={
               homeModel.state === "success"
                 ? localizeOrbitTree(

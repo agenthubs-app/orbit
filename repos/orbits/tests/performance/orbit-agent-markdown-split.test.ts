@@ -24,6 +24,9 @@ test("assistant markdown stays out of the unopened Agent first-load module", () 
   );
 
   assert.match(chatSource, /dynamic\(\(\) => import\("\.\.\/agent-markdown"\)/);
+  // 旧组件在任务 6 删除前仍然存在并仍然渲染助手回合，它那份动态导入也不得退化
+  // 成静态 import（删除该文件时，连同这条断言一起去掉）。
+  assert.match(agentSource, /dynamic\(\(\) => import\("\.\/agent-markdown"\)/);
   for (const source of [chatSource, agentSource]) {
     assert.doesNotMatch(source, /from "react-markdown"/);
     assert.doesNotMatch(source, /from "remark-gfm"/);

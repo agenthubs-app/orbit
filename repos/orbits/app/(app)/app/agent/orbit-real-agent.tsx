@@ -518,6 +518,10 @@ export function AgentMobileHistoryDrawer({
   onFilterGroup,
   onNewInGroup,
   onRenameGroup,
+  // 任务 3：新壳在桌面宽度也要能打开这个抽屉。根节点默认的 `orbit-mobile-only`
+  // 被 `public/orbit-reference/orbit-reference.generated.css:371` 的
+  // `display:none!important` 挡在 ≤640px 以外，所以调用方可以改写它。
+  rootClassName = "orbit-mobile-only",
   sessionGroups,
   onTogglePin,
   pendingSessionId,
@@ -542,6 +546,7 @@ export function AgentMobileHistoryDrawer({
   onRenameGroup: (group: AiSessionGroupContract, name: string) => void;
   onTogglePin: (history: OrbitAgentHistoryView) => void;
   pendingSessionId: string | null;
+  rootClassName?: string;
   sessionGroups: readonly AiSessionGroupContract[];
 }) {
   const { t } = useOrbitLanguage();
@@ -549,7 +554,7 @@ export function AgentMobileHistoryDrawer({
 
   return (
     <div
-      className="orbit-mobile-only"
+      className={rootClassName}
       data-orbit-agent-history-drawer
       role="presentation"
       style={{ inset: 0, position: "fixed", zIndex: ORBIT_Z.overlay }}

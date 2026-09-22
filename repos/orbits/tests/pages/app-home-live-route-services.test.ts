@@ -29,7 +29,10 @@ test("app-home-route redirects into the iOrbit workspace which composes home dat
   assert.match(agentPageSource, /presentOrbitEvents/);
   assert.match(agentPageSource, /readRuntimeEventRegistrationStates/);
   assert.match(agentPageSource, /resolveConfiguredActorEventCanonicalIds/);
-  assert.match(agentPageSource, /registrationAvailabilityByEventId=/);
+  // iOrbit 任务 3 修订轮 1：`registrationAvailabilityByEventId` 的唯一消费者是批次 4a
+  // 的 dashboard（任务 6 删除），新概览屏不读它，所以那个 prop 从 page.tsx 去掉了。
+  // 这里改断「运行时报名态仍然进到首屏数据里」——即每场活动的 registered 标记。
+  assert.match(agentPageSource, /registrationStates\[event\.id\]\?\.registered/);
   assert.match(agentPageSource, /youRsvped: registered/);
 
   const agentUiSource = source("app/(app)/app/agent/orbit-real-agent.tsx");
