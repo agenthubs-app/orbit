@@ -49,9 +49,9 @@
 | 设计文件 | 设计屏 | 路由 | 备注 |
 | --- | --- | --- | --- |
 | Orbit 首页 | 落地页 + 登录/注册/忘记/重置弹窗 | `/`、`/app/account/*` | 落地页已重建（`orbit-landing-0918.tsx`）；四态弹窗已重建（路由保留，`account/auth-0918/`，2026-09-22） |
-| iOrbit | home / chat | `/app/agent` | home 四卡已重建；chat 仍是换肤（`orbit-real-agent.tsx` 3892 行），待重建 |
-| iOrbit | actions / plan / strategy | `/app/agent/actions` `/plan` `/strategy` | 已重建 |
-| iOrbit | contacts（先联系谁） | 并入 strategy 屏 | — |
+| iOrbit | home / chat | `/app/agent` | **已重建**（iOrbit 任务 2 `f14f1d2d` 概览 + 壳、任务 3 `28fd74f1` 对话、任务 4 `e4197bfa` 右栏 + 历史抽屉；`iorbit-0918/`）。旧 `orbit-real-agent.tsx` / `orbit-agent-dashboard.tsx` / `orbit-agent-today-workspace.tsx` / `orbit-ai-command-center.tsx` / `chat/chat-workspace.tsx` 等 12 个文件已删（任务 6a `92144540`）；仍在售的富组件逐字搬到 `iorbit-0918/iorbit-rich-components.tsx` + `console-styles.ts`，`chat/compose-…/chat-route-view-model.ts` 与 `chat-view-model-adapter.ts` 保留（`agent/page.tsx` 引用） |
+| iOrbit | actions / plan / strategy | `/app/agent/actions` `/plan` `/strategy` | **已重建**（iOrbit 任务 5 `2192b812` + `dbebc5c6` + `9e9b7948`，`iorbit-0918/iorbit-{actions,plan,strategy}.tsx`；判定为重建而非作用域重命名，旧 `agent/{actions,plan,strategy}/orbit-agent-*.tsx` 三屏已删（任务 6a `92144540`），其 route view-model 纯函数一行未改） |
+| iOrbit | contacts（先联系谁） | = `/app/agent/strategy?view=contacts` | **已重建**（iOrbit 任务 5 `2192b812`）。不是「并入 strategy 屏」：两屏面包屑 / H1 / 内容块都不同，合并会丢开场白（设计 704–705）与相关活动（769–781），改按 `?view` 切换（计划「审阅修订」3） |
 | Events | discover（含「我的活动」页签） | `/app/events` | 已重建（Events 任务 1 `64dd236e`，`events-0918/events-list.tsx`） |
 | Events | detail | `/app/events/[id]` | 已重建（Events 任务 2 `87a8c376`，`events-0918/event-detail.tsx`） |
 | Events | register / success 弹窗 | `/app/events/[id]/register` | 已重建（Events 任务 3 `fa20aed0`：弹窗壳 `event-register-modal.tsx`，0066 工作区逻辑零改动；设计底部按钮省略） |
