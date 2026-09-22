@@ -38,7 +38,7 @@
 | `/app/profile/continue` | onboarding 跳转辅助 | 不动 |
 | `/app/inbox/sources/[id]` | 铃铛收件面板 `discovery` 来源深链（用户：铃铛保留） | 套 0918 壳 |
 | `/app/tasks/relationship/[id]` | bridge 台账提到 App 可能打开（用户：App 端不动） | 套 0918 壳；Web 内入口改为联系人详情「记跟进」弹窗 |
-| `/app/account/login` `signup` `forgot-password` `reset-password` | 认证深链与 `?next=`；reset 为邮件链接 | 路由保留，渲染为落地页上的 0918 弹窗四态 |
+| `/app/account/login` `signup` `forgot-password` `reset-password` | 认证深链与 `?next=`；reset 为邮件链接 | 已重建（路由保留）：落地页上的 0918 弹窗四态（`account/auth-0918/`，2026-09-22 `a5c4b3d2..6569cfe8`；旧 `orbit-real-account-auth.tsx` / `reset-password-form.tsx` 已删） |
 | `/app/account/mobile-google` | App OAuth 回跳 | 不动 |
 | `/app/admin` `/admin/access` `/admin/events` `/login-admin` `/platform` | 独立后台域（既有决定：admin 保持暗色） | 不动 |
 
@@ -46,7 +46,7 @@
 
 | 设计文件 | 设计屏 | 路由 | 备注 |
 | --- | --- | --- | --- |
-| Orbit 首页 | 落地页 + 登录/注册/忘记/重置弹窗 | `/`、`/app/account/*` | 落地页已重建（`orbit-landing-0918.tsx`） |
+| Orbit 首页 | 落地页 + 登录/注册/忘记/重置弹窗 | `/`、`/app/account/*` | 落地页已重建（`orbit-landing-0918.tsx`）；四态弹窗已重建（路由保留，`account/auth-0918/`，2026-09-22） |
 | iOrbit | home / chat | `/app/agent` | home 四卡已重建；chat 仍是换肤（`orbit-real-agent.tsx` 3892 行），待重建 |
 | iOrbit | actions / plan / strategy | `/app/agent/actions` `/plan` `/strategy` | 已重建 |
 | iOrbit | contacts（先联系谁） | 并入 strategy 屏 | — |
