@@ -60,8 +60,8 @@
 | Events 运营台 | hub | `/app/events/center` | 未动，待重建 |
 | Events 运营台 | ops（含协作者抽屉） | `/app/events/[id]/operations` | 概览已重建（运营台 任务 3，`ops-0918/ops-console.tsx` + `ops-overview.tsx`；旧 `event-operations-admin-workspace.tsx` 已删）；协作者抽屉 `?drawer=roles` 待任务 6 |
 | Events 运营台 | match | `…/operations?tab=match`（审阅修订 7：覆盖原 `…/operations/experience` 归并） | 已重建（运营台 任务 3，`ops-0918/ops-match.tsx`；桌卡只读已发布分桌） |
-| Events 运营台 | people | `…/operations/admission` | 未动，待重建 |
-| Events 运营台 | checkin | `…/operations/check-in` | 换肤态，待重建 |
+| Events 运营台 | people | `…/operations/admission` | 已重建（运营台 任务 4 `c24f1ea0`，`ops-0918/ops-people.tsx`；准入队列 + 政策面板为同屏第二区块；旧 `event-admission-review-workspace.tsx` 已删） |
+| Events 运营台 | checkin | `…/operations/check-in` | 已重建（运营台 任务 4 `c24f1ea0`，`ops-0918/ops-checkin.tsx`；三列 + 最新签到；旧 `limited-check-in-roster.tsx` 已删） |
 | Events 运营台 | form | `…/operations/experience`（审阅修订 7：报名设置 = 现有 experience 编辑器路由） | 待重建（任务 5） |
 | Events 运营台 | report | `/app/events/[id]/analytics` | 换肤态，待重建 |
 | Network v2 | overview | `/app/contacts/dashboard`（概览页签） | 已重建（b64d150b）；吸收原 `/app/dashboard` 四张信号卡 |
