@@ -25,7 +25,7 @@ node scripts/visual/compare-0918.mjs \
 
 ## 设计页签映射（`--design-view`）
 
-脚本按 `--design` URL 自动选择页签表；也可用 `--design-table profile|events|ops|auth` 强制选个人中心表 / Events 表 / 运营台表 / 认证弹窗表。
+脚本按 `--design` URL 自动选择页签表；也可用 `--design-table profile|events|ops|auth|iorbit` 强制选个人中心表 / Events 表 / 运营台表 / 认证弹窗表 / iOrbit 表。
 
 - **Network 表**（`--design` 不含个人中心 URL 编码时）：`overview|pipeline|all|import|analysis` → 概览/关系管线/所有人脉/导入人脉/查看完整分析；不传 `--design-view` 时默认点「概览」。
 - **个人中心 表**（`--design` 含 `%E4%B8%AA%E4%BA%BA%E4%B8%AD%E5%BF%83`，即「个人中心」，或传 `--design-table profile`）：`profile|settings|connect` → 个人资料/iOrbit 设置/连接；**不传 `--design-view` 时不点击任何页签**（停在设计稿默认视图）。
@@ -60,6 +60,59 @@ node scripts/visual/compare-0918.mjs \
   - `reset`：login 序列 → 演示条 `新密码` → 应用 `/app/account/reset-password#token=<43 位 [A-Za-z0-9_-] 假 token>`（只到表单态，不提交）
   - `reset-invalid`：login 序列 → 演示条 `失效链接` → 应用 `/app/account/reset-password`（无 token → 链接已失效态）
   - 步间固定等待 300ms；传了表外的 `--design-view` 会以 usage error 退出。弹窗比对建议同时传 `--viewport-only`（全页截图会让落地页底图稀释弹窗差异）和 `--design-remove "div:has(> span:text-is('演示'))"`（去掉演示条，应用侧不实现它）。
+
+- **iOrbit 表**（`--design` 含 `iOrbit.dc.html`，或传 `--design-table iorbit`）：同 Events，**每视图一段设计侧点击序列**，但七个视图的入口**都在概览屏（设计默认视图）上，各只点一次**。注意入口的 role 不同：`actions` / `plan` 是 `<a href="#" onClick>`（`getByRole("link")`），其余是 `<button>`（`getByRole("button")`），全部 `exact: true` + `.first()`。**应用侧不点击，全部走 URL**。
+
+  | `--design-view` | 设计侧点击（设计行号） | 应用侧 URL |
+  | --- | --- | --- |
+  | `home`（默认） | 无点击 | `/app/agent` |
+  | `chat` | button `进入对话页 →`（243） | `/app/agent?session=<id>`（见下「chat 会话种子」） |
+  | `actions` | **link** `查看建议与行动 →`（179） | `/app/agent/actions` |
+  | `plan` | **link** `查看完整日程 →`（83） | `/app/agent/plan` |
+  | `strategy` | button `帮我制定推进计划`（68） | `/app/agent/strategy` |
+  | `contacts` | button `我该先联系谁`（67） | `/app/agent/strategy?view=contacts` |
+  | `history` | button `◷ 历史记录`（242） | `/app/agent`（应用侧自行打开抽屉，如 `--click ".orbit-agent-history-btn"`） |
+
+  - `history` **必须配 `--viewport-only`**：抽屉是 `position:fixed`，全页截图会把两侧不同的页面高度算进分母，数字失真。另外「◷ 历史记录」在概览屏最下方，Playwright 点击前会把它滚进视口，而设计的 `openHistory`（与 `go()` 不同）不会 `scrollTo(0,0)` —— 所以脚本在该视图点击后会自动把设计侧滚回顶部，让底图与应用侧一致（抽屉 fixed，不受影响）。
+  - 「◷ 历史记录」在概览 / 对话 / 工作策略 / 联系人建议四屏都有同名按钮；序列停在概览屏，`.first()` 取的就是设计 242 行那颗。
+  - 归因建议：先跑一遍 `home` 作基线，再用 `history` 的 `--viewport-only` 数字扣除（沿用认证弹窗的落地页基线做法）。
+  - 步间固定等待 300ms；传了表外的 `--design-view` 会以 usage error 退出。
+
+### chat 会话种子（`seed-iorbit-chat-session.mjs`）
+
+`chat` 视图不能靠真实 LLM 应答（字节不稳定）。用种子脚本经**真实写接口** `POST /api/ai/conversations/sessions` 写一条确定性会话，再截 `/app/agent?session=<id>`，走真实恢复路径：
+
+```bash
+node scripts/visual/seed-iorbit-chat-session.mjs
+# 当前验证库 orbit_newui_events_20260922 里没有 qa@orbit.test，QA 参与者是 participant.a：
+node scripts/visual/seed-iorbit-chat-session.mjs \
+  --email participant.a@orbit.example.test --password-env ORBIT_DEMO_ORGANIZER_PASSWORD
+```
+
+- 选项：`--origin`（默认 `http://localhost:3100`）、`--id`（默认 `iorbit-visual-chat-0918`）、`--email`（默认 `qa@orbit.test`）、`--password-env`（默认 `ORBIT_PRIMARY_TEST_ACCOUNT_PASSWORD`）、`--env-file`（默认 `.env.local`）。
+- **密码只从 `.env.local` / 同名环境变量读，不接受命令行明文，脚本也从不打印它。**
+- 写入的会话形状由 `orbit-real-agent.tsx` 的 `isStoredAgentMessage`(:514) / `parseStoredAgentMessage`(:570) 校验：assistant 行必须同时带 `items` / `kind`（`people|events|todos`）/ `panelTitle`。内容逐字取设计 chat 屏（272–303 行），**只写会话存储，不往活动 / 联系人库里造任何数据**。
+- 输出最后两行是 `app=<可直接喂给 --app 的 URL>` 与 `session=<id>`；重复执行是幂等覆盖（同一 id）。
+
+示例（iOrbit · chat 视图）：
+
+```bash
+node scripts/visual/compare-0918.mjs \
+  --design "http://localhost:3320/Orbit_0918/iOrbit.dc.html" --design-view chat \
+  --app "http://localhost:3100/app/agent?session=iorbit-visual-chat-0918" \
+  --login "participant.a@orbit.example.test:<password>" \
+  --out /tmp/iorbit-chat
+```
+
+示例（iOrbit · history 视图，必须 `--viewport-only`）：
+
+```bash
+node scripts/visual/compare-0918.mjs \
+  --design "http://localhost:3320/Orbit_0918/iOrbit.dc.html" --design-view history --viewport-only \
+  --app "http://localhost:3100/app/agent" \
+  --login "participant.a@orbit.example.test:<password>" \
+  --out /tmp/iorbit-history
+```
 
 ## 通用选项
 

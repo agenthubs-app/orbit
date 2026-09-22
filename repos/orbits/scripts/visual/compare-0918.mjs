@@ -23,6 +23,13 @@
 //     --app "http://localhost:3100/app/events/<id>/operations" --login "organizer:password" --out /tmp/ops-ops
 //   视图：hub（无点击）| ops（点第一张卡「进入运营 →」）| match/people/checkin/form/report（ops 后点同名页签）| drawer（ops 后点「更多 ⌄」）。
 //
+// iOrbit 设计稿（--design 含 iOrbit.dc.html 或 --design-table iorbit）按视图走点击序列（七个视图全部从概览屏点一下进入）：
+//   node scripts/visual/compare-0918.mjs \
+//     --design "http://localhost:3320/Orbit_0918/iOrbit.dc.html" --design-view chat \
+//     --app "http://localhost:3100/app/agent?session=<id>" --login "qa@orbit.test:<password>" --out /tmp/iorbit-chat
+//   视图：home（无点击）| chat（button「进入对话页 →」）| actions（**link**「查看建议与行动 →」）| plan（**link**「查看完整日程 →」）
+//        | strategy（button「帮我制定推进计划」）| contacts（button「我该先联系谁」）| history（button「◷ 历史记录」，须配 --viewport-only）。
+//   chat 视图的应用侧会话用 scripts/visual/seed-iorbit-chat-session.mjs 种下（真实写接口，字节稳定）。
 // 认证弹窗 设计稿（--design 含 %E9%A6%96%E9%A1%B5（首页）或 --design-table auth）按视图走点击序列（未登录访问，无需 --login）：
 //   node scripts/visual/compare-0918.mjs \
 //     --design "http://localhost:3320/Orbit_0918/Orbit%20%E9%A6%96%E9%A1%B5.dc.html" --design-view login \
@@ -121,9 +128,15 @@ try {
   // 设计没有 role=dialog，且演示条的「登录」与主按钮同名，所以切换按钮限定在演示条容器内）。
   // 判定用 --design URL 是否含「首页」的 URL 编码，或显式传 --design-table auth。
   const isAuthTable = args["design-table"] === "auth" || (args.design ?? "").includes("%E9%A6%96%E9%A1%B5");
+  // iOrbit 表（--design-view home|chat|actions|plan|strategy|contacts|history）：同 Events，按视图走设计侧点击序列。
+  // iOrbit.dc.html 的六屏与历史抽屉都从概览屏（默认视图）点一下进入：goChat/goActions/goPlan/goStrategy/goContacts/openHistory。
+  // 注意 actions/plan 的入口是 <a href="#" onClick>（role=link），其余是 <button>（role=button），角色不同不能混用。
+  // 判定用 --design URL 是否含 iOrbit.dc.html，或显式传 --design-table iorbit（文件名不与其他表冲突，放在链尾即可，
+  // 但 viewLabel 必须与 Events/运营台/认证 一样跳过 Network 默认的「概览」页签点击）。
+  const isIorbitTable = args["design-table"] === "iorbit" || (args.design ?? "").includes("iOrbit.dc.html");
   const networkViewLabel = { overview: "概览", pipeline: "关系管线", all: "所有人脉", import: "导入人脉", analysis: "查看完整分析" };
   const profileViewLabel = { profile: "个人资料", settings: "iOrbit 设置", connect: "连接" };
-  const viewLabel = isEventsTable || isOpsTable || isAuthTable ? undefined : isProfileTable ? profileViewLabel[args["design-view"]] : networkViewLabel[args["design-view"] ?? "overview"];
+  const viewLabel = isEventsTable || isOpsTable || isAuthTable || isIorbitTable ? undefined : isProfileTable ? profileViewLabel[args["design-view"]] : networkViewLabel[args["design-view"] ?? "overview"];
   // 每一步是 (page) => Locator；按顺序点击，步间短等待让设计稿的 renderVals 重绘完成。
   const eventsDetailSequence = [(page) => page.locator("text=AI 产品从 0 到 1").first()];
   const eventsViewSequence = {
@@ -176,10 +189,33 @@ try {
     await browser.close();
     process.exit(2);
   }
-  const designSequence = isAuthTable ? authViewSequence[authView] : isOpsTable ? opsViewSequence[opsView] : isEventsTable ? eventsViewSequence[eventsView] : [];
+  // iOrbit：七个视图都是概览屏上的一次点击。actions/plan 是 <a>（role=link），其余是 <button>；
+  // 「◷ 历史记录」在概览/对话/策略/联系人四屏都有同名按钮，概览屏上 .first() 即设计 242 行那颗。
+  const iorbitButton = (label) => [(page) => page.getByRole("button", { name: label, exact: true }).first()];
+  const iorbitLink = (label) => [(page) => page.getByRole("link", { name: label, exact: true }).first()];
+  const iorbitViewSequence = {
+    home: [],
+    chat: iorbitButton("进入对话页 →"),
+    actions: iorbitLink("查看建议与行动 →"),
+    plan: iorbitLink("查看完整日程 →"),
+    strategy: iorbitButton("帮我制定推进计划"),
+    contacts: iorbitButton("我该先联系谁"),
+    history: iorbitButton("◷ 历史记录"),
+  };
+  const iorbitView = args["design-view"] ?? "home";
+  if (isIorbitTable && !(iorbitView in iorbitViewSequence)) {
+    console.error(`usage error: iorbit --design-view must be one of ${Object.keys(iorbitViewSequence).join("|")}, got "${iorbitView}"`);
+    await browser.close();
+    process.exit(2);
+  }
+  const designSequence = isIorbitTable ? iorbitViewSequence[iorbitView] : isAuthTable ? authViewSequence[authView] : isOpsTable ? opsViewSequence[opsView] : isEventsTable ? eventsViewSequence[eventsView] : [];
   const design = await shoot(args.design, "design.png", async (page) => {
     if (viewLabel) await page.getByRole("button", { name: viewLabel, exact: true }).first().click();
     for (const step of designSequence) { await step(page).click(); await page.waitForTimeout(300); }
+    // iOrbit history：「◷ 历史记录」是概览屏最下方的按钮，Playwright 点击前会把它滚进视口，
+    // 而 openHistory（与 go() 不同）不会 scrollTo(0,0) —— 配 --viewport-only 时底图会是滚动后的半页。
+    // 抽屉是 position:fixed，滚回顶部不影响它，只让底图与应用侧一致。
+    if (isIorbitTable && iorbitView === "history") { await page.evaluate(() => window.scrollTo(0, 0)); await page.waitForTimeout(200); }
     if (args["design-click"]) await page.locator(args["design-click"]).first().click();
     if (args["design-click2"]) { await page.waitForTimeout(300); await page.locator(args["design-click2"]).first().click(); }
     // 弹窗内需要先填字才能到下一态（Events 交换成功态：设计 sendEx 要求留言非空）："<selector>|<text>"
