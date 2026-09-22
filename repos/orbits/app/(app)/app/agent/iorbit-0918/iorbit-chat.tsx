@@ -27,7 +27,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
 import type { OrbitAgentViewModel } from "../../orbit-agent-route-view-model";
@@ -50,6 +50,8 @@ const AgentMarkdown = dynamic(() => import("../agent-markdown"), {
 export interface IOrbitChatProps {
   /** `use-agent-chat` 的 `ask`：第二个参数是重试时的助手回合下标。 */
   ask: (query: string, retryAssistantIndex?: number) => void;
+  /** 设计 321–343 的右栏（`iorbit-chat-aside.tsx`），由壳组装后传入。 */
+  aside?: ReactNode;
   chatDraft: string;
   messages: readonly AgentMessage[];
   navigate: (href: string) => void;
@@ -68,6 +70,7 @@ export interface IOrbitChatProps {
 
 export function IOrbitChat({
   ask,
+  aside,
   chatDraft,
   messages,
   navigate,
@@ -164,7 +167,7 @@ export function IOrbitChat({
         </span>
       </div>
 
-      {/* 269：右列的 aside（321–343）是任务 4，本任务只落左列 */}
+      {/* 269：左列线程 + 右列 aside（321–343，任务 4 由壳传入） */}
       <div className="ir-chat-grid">
         <section className="ir-thread" data-orbit-iorbit-thread>
           {hasThread ? <span className="ir-day-sep">{`${t({ en: "Today", zh: "今天" })} · ${dayLabel}`}</span> : null}
@@ -332,6 +335,7 @@ export function IOrbitChat({
             ))}
           </span>
         </section>
+        {aside}
       </div>
     </div>
   );

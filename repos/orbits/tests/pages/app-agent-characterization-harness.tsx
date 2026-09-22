@@ -5,7 +5,13 @@
  * window / document 桩、fetch 路由、计时器记录。`app-agent-chat-characterization.test.tsx`
  * 与 `app-agent-history-characterization.test.tsx` 共用它，
  * 使 `ask` / 历史 两个 hook 抽出后可以用同一组断言证明行为未变。
+ *
+ * iOrbit 任务 4 的两处追加（都带默认值，既有两套特征化一行未改）：
+ *   - `element`：默认仍挂 `OrbitRealAgent`，新屏（`IOrbitShell`）可以传自己的树；
+ *   - document 监听器改为记录 + `fireDocumentEvent`，`useOrbitModalA11y` 的 Esc
+ *     是挂在 document 上的，原来的空实现没法在测试里触发。
  */
+import type { ReactNode } from "react";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import { AppRouterContext, type AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
@@ -50,6 +56,8 @@ export interface AskProbe {
 }
 
 export interface HarnessOptions {
+  /** 要挂载的树；默认 `<OrbitRealAgent viewModel={starter} />`（既有特征化不受影响）。 */
+  element?: ReactNode;
   /** `/api/ai/conversations` 的应答；返回 null 表示该次请求永不 settle（用于超时用例）。 */
   conversation?: (body: Record<string, unknown>, call: ObservedCall) => Response | Promise<Response> | null;
   /** 分组列表。 */
@@ -68,6 +76,7 @@ export interface Harness {
   askProbe: () => AskProbe | null;
   calls: ObservedCall[];
   conversationRequests: Array<Record<string, unknown>>;
+  fireDocumentEvent: (type: string, event?: Record<string, unknown>) => Promise<void>;
   fireWindowEvent: (type: string) => Promise<void>;
   localValues: Map<string, string>;
   pushedUrls: string[];
@@ -109,6 +118,7 @@ export async function mountAgent(
   const pushedUrls: string[] = [];
   const timers: TimerRegistration[] = [];
   const listeners = new Map<string, Set<(event: unknown) => void>>();
+  const documentListeners = new Map<string, Set<(event: unknown) => void>>();
   const search = options.search ?? "";
   let timerId = 0;
 
@@ -123,9 +133,15 @@ export async function mountAgent(
     configurable: true,
     value: {
       activeElement: null,
-      addEventListener() {},
+      addEventListener(type: string, handler: (event: unknown) => void) {
+        const set = documentListeners.get(type) ?? new Set();
+        set.add(handler);
+        documentListeners.set(type, set);
+      },
       documentElement: { lang: "zh" },
-      removeEventListener() {},
+      removeEventListener(type: string, handler: (event: unknown) => void) {
+        documentListeners.get(type)?.delete(handler);
+      },
     },
   });
   Object.defineProperty(globalThis, "window", {
@@ -285,7 +301,7 @@ export async function mountAgent(
     root = create(
       <AppRouterContext.Provider value={router}>
         <OrbitAskProvider>
-          <OrbitRealAgent viewModel={createOrbitAgentStarterViewModel()} />
+          {options.element ?? <OrbitRealAgent viewModel={createOrbitAgentStarterViewModel()} />}
           <AskProbeReader />
         </OrbitAskProvider>
       </AppRouterContext.Provider>,
@@ -306,6 +322,14 @@ export async function mountAgent(
     calls,
     conversationRequests,
     deletedSessionIds,
+    async fireDocumentEvent(type: string, event: Record<string, unknown> = {}) {
+      await act(async () => {
+        for (const handler of [...(documentListeners.get(type) ?? [])]) {
+          handler({ preventDefault() {}, stopPropagation() {}, type, ...event });
+        }
+      });
+      await settle();
+    },
     async fireWindowEvent(type: string) {
       await act(async () => {
         for (const handler of listeners.get(type) ?? []) handler({ type });

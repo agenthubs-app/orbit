@@ -229,7 +229,8 @@ try {
   const app = await shoot(args.app, "app.png", async (page) => {
     // iOrbit 概览屏的四个来源（facts server action / 账本 / 信号 / 会话）在 hydration 之后才发，
     // 固定 400ms 会截到 pending 态（「审阅修订」37）：等应用侧自报就绪，超时就按原样截。
-    if (isIorbitTable && iorbitView === "home") {
+    // history 视图的底图也是概览屏（抽屉浮在它上面），同样要等它自报就绪。
+    if (isIorbitTable && (iorbitView === "home" || iorbitView === "history")) {
       await page.waitForSelector('[data-orbit-iorbit-ready="true"]', { timeout: 20000 }).catch(() => {});
     }
     if (args.click) await page.locator(args.click).first().click();
@@ -237,6 +238,9 @@ try {
     if (args.click3) { await page.waitForTimeout(300); await page.locator(args.click3).first().click(); }
     // 归因用（认证弹窗 任务 2）：截图前删除应用侧所有匹配元素（如设计外的 Google 钮 ".au-google"），
     // 得到「框级非数据残差」；正式数字仍以不传本项的 raw 为准。
+    // 与设计侧同一处理：点「◷ 历史记录」会把按钮滚进视口，抽屉是 position:fixed，
+    // 滚回顶部只让底图与设计侧一致（配 --viewport-only）。
+    if (isIorbitTable && iorbitView === "history") { await page.evaluate(() => window.scrollTo(0, 0)); await page.waitForTimeout(200); }
     if (args["app-remove"]) await page.locator(args["app-remove"]).evaluateAll((els) => { for (const el of els) el.remove(); });
   });
 

@@ -662,6 +662,8 @@ export function agentChatHistorySessionsToHistory(
       const groupId = session.organization?.groupId ?? null;
 
       return {
+        // 设计 797 要日期，而 `when` 放的是分组名（审阅修订 12）：真实时间戳走新字段。
+        date: iorbitHistoryDateLabel(session.updatedAt || session.createdAt, language) ?? undefined,
         group: groupId ? groupNames.get(groupId) ?? fallbackGroup : fallbackGroup,
         groupId,
         id: `session:${session.id}`,
@@ -1299,10 +1301,61 @@ function iorbitLedgerProgress(
   return { done, percent: Math.round((done / total) * 100), total };
 }
 
+/**
+ * 设计 797 的历史行日期（`2026年9月18日`）。`OrbitAgentHistoryView.when` 放的是
+ * 分组名而不是日期（审阅修订 12），所以抽屉另取会话的真实时间戳。无法解析 → null，
+ * 由调用方省略那一行，不编日期。
+ */
+function iorbitHistoryDateLabel(iso: string, language: AgentHistoryLanguage): string | null {
+  const at = Date.parse(iso);
+
+  if (!Number.isFinite(at)) return null;
+
+  return new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "en-US", {
+    day: "numeric",
+    month: "long",
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+  }).format(new Date(at));
+}
+
+/** 设计 340 的活动 chip 后缀 `（9/18）`：东京日的「月/日」，与语言无关。 */
+function iorbitEventChipDate(iso: string): string | null {
+  const at = Date.parse(iso);
+
+  if (!Number.isFinite(at)) return null;
+
+  const key = iorbitDayKey(new Date(at));
+
+  return `${Number(key.slice(5, 7))}/${Number(key.slice(8, 10))}`;
+}
+
+/**
+ * 「已报名活动」的排序口径（设计 152/161 与 341 用的是同一组活动）：未开始的按
+ * 时间正序排前，已结束的按时间倒序排后。概览屏与对话屏右栏共用这一份。
+ */
+function iorbitRegisteredEvents<
+  T extends { startsAt: string; stats: { youRsvped: boolean }; youRsvped: boolean },
+>(events: readonly T[], nowMs: number): readonly T[] {
+  return events
+    .filter((event) => event.youRsvped || event.stats.youRsvped)
+    .map((event) => ({ at: Date.parse(event.startsAt), event }))
+    .sort((a, b) => {
+      const aPast = a.at < nowMs;
+      const bPast = b.at < nowMs;
+      if (aPast !== bPast) return aPast ? 1 : -1;
+      return aPast ? b.at - a.at : a.at - b.at;
+    })
+    .map((entry) => entry.event);
+}
+
 export {
   iorbitCalendarCells,
   iorbitDayKey,
+  iorbitEventChipDate,
+  iorbitHistoryDateLabel,
   iorbitLedgerProgress,
+  iorbitRegisteredEvents,
   iorbitRelativeDayLabel,
   iorbitSelectedDayLabel,
 };

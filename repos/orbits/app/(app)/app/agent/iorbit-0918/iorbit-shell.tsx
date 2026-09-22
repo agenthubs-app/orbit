@@ -20,12 +20,13 @@
  * `OrbitRealAgent` 不再被渲染（任务 6 删除），因此全局仍然只有一份 hook 实例，
  * `useOrbitAskTarget` / `takePendingAsk()` / `takeAgentPrefill()` 只注册与消费一次。
  *
- * 历史抽屉：设计的抽屉（786–804）是任务 4；本任务先把既有抽屉 / 删除二次确认 / toast
- * 原样挂在壳上（它们的样式在冻结表的 `[data-orbit-real-page="agent"]` 作用域里，外层
- * div 正好带着这个作用域），并把抽屉根类从默认的 `orbit-mobile-only` 换掉——那条类
- * 在参考样式表里是 `display:none !important` 且不在 ≤640px 的 @media 内，沿用默认值
- * 会让桌面宽度下抽屉挂得上却看不见。桌面侧原来的常驻 `<aside>` 侧栏按计划不再渲染
- * （设计无侧栏），因此历史能力现在全部经这一个抽屉进入。
+ * 历史抽屉（任务 4）：设计 786–804 的 `iorbit-history-drawer.tsx`，挂在内层
+ * `iorbit-0918` 作用域里（`position:fixed`，DOM 位置不影响布局，但 `ir-*` 皮肤要靠
+ * 这个祖先选择器）。桌面与移动共用这一个抽屉——旧的 `AgentMobileHistoryDrawer` 根类
+ * 是 `orbit-mobile-only`，在参考样式表里是 `display:none !important` 且不在 ≤640px 的
+ * @media 内，桌面宽度下挂得上却看不见；新抽屉没有这层类。桌面侧原来的常驻 `<aside>`
+ * 侧栏与拖拽宽度按计划不再渲染（设计无侧栏，本计划唯一的能力移除），历史能力全部
+ * 经这一个抽屉进入。删除二次确认（`AgentHistoryDeleteDialog`）与 toast 仍挂在壳上。
  */
 "use client";
 
@@ -38,8 +39,10 @@ import type { OrbitHomeViewModel } from "../../orbit-home-route-view-model";
 import { hasPendingOrbitAgentHandoff } from "../../orbit-global-ask/orbit-ask-draft";
 import { Icon } from "../../orbit-reference-primitives";
 import { ORBIT_Z } from "../../orbit-z";
-import { AgentHistoryDeleteDialog, AgentMobileHistoryDrawer, CONSOLE_STYLES } from "../orbit-real-agent";
+import { AgentHistoryDeleteDialog, CONSOLE_STYLES } from "../orbit-real-agent";
 import { IOrbitChat } from "./iorbit-chat";
+import { IOrbitChatAside } from "./iorbit-chat-aside";
+import { IOrbitHistoryDrawer } from "./iorbit-history-drawer";
 import { IOrbitHome } from "./iorbit-home";
 import { useAgentChat } from "./use-agent-chat";
 import { useAgentHistory } from "./use-agent-history";
@@ -72,6 +75,7 @@ export function IOrbitShell({
     pendingDeleteHistory,
     renameHistoryGroup,
     renameHistorySession,
+    selectedSessionGroupId,
     sessionGroups,
     setHistoryDeleteError,
     setHistoryFeedback,
@@ -177,7 +181,11 @@ export function IOrbitShell({
 
   const submitDraft = () => {
     const query = chatDraft.trim();
-    if (agentPrefill && !thinking && query === agentPrefill.query.trim()) {
+    // 任务 3 遗留：原来要求「一字未改」才带 origin，用户随手改一个词，结构化
+    // 交接单（entryPointId / sourceDataVersion / template）就悄悄掉了。旧实现
+    // （`orbit-real-agent.tsx:1749-1752` 的 `onBriefAsk`）带的是**用户实际提交的
+    // 那句话** + 原 origin，origin 记的是来源入口而不是问题原文，改词不影响它。
+    if (agentPrefill && !thinking && query) {
       const origin = agentPrefill.origin;
       setAgentPrefill(null);
       setChatDraft("");
@@ -188,11 +196,10 @@ export function IOrbitShell({
   };
 
   // 进对话是非破坏性的（和「← 返回概览」对称）：已有线程照旧留着，只把 URL 与视图
-  // 对齐；「◷ 历史记录」额外把抽屉打开。想开空线程走抽屉里的「新对话」。
-  const openChat = (withHistory = false) => {
+  // 对齐。想开空线程走抽屉里的「新对话」。
+  const openChat = () => {
     navigate("/agent");
     setView("chat");
-    if (withHistory) setHistOpen(true);
   };
 
   return (
@@ -222,6 +229,15 @@ export function IOrbitShell({
               ask={(query, retryAssistantIndex) => {
                 void ask(query, retryAssistantIndex);
               }}
+              aside={
+                <IOrbitChatAside
+                  home={home}
+                  onAsk={(query) => {
+                    void ask(query);
+                  }}
+                  viewModel={viewModel}
+                />
+              }
               chatDraft={chatDraft}
               messages={messages}
               navigate={navigate}
@@ -245,7 +261,10 @@ export function IOrbitShell({
                 void ask(query);
               }}
               onOpenChat={() => openChat()}
-              onOpenHistory={() => openChat(true)}
+              // 任务 4：抽屉是浮在当前屏之上的遮罩（设计 786），从概览打开时**留在概览**
+              // ——任务 2 修订轮 1 让它顺带进对话，是因为当时抽屉还挂在旧组件里、
+              // 必须先进对话分支才挂得上。挑中某条会话时 hook 置 chatOpen，壳照旧切视图。
+              onOpenHistory={() => setHistOpen(true)}
               onOpenSession={(sessionId) => {
                 setView("chat");
                 // 抽屉列表里有就直接用那一行；没有（例如概览的三张卡来自另一页）时
@@ -264,40 +283,35 @@ export function IOrbitShell({
             />
           )}
         </main>
+        {/* 设计 786–804 的抽屉（任务 4）。移动端不再单独一棵树（「审阅修订」15）：
+            桌面与移动共用这一个抽屉，历史记录、新对话、分组、置顶、重命名、移动、
+            删除全部经它进入。删除二次确认与 toast 仍由壳挂在下面。 */}
+        {histOpen ? (
+          <IOrbitHistoryDrawer
+            activeQ={activeQ}
+            activeSessionId={activeSessionId}
+            groupMutationPending={groupMutationPending}
+            groups={sessionGroups}
+            history={storedHistory}
+            language={language}
+            onClose={() => setHistOpen(false)}
+            onCreateGroup={(name) => { void createHistoryGroup(name); }}
+            onDelete={deleteHistorySession}
+            onDeleteGroup={(group) => { void deleteHistoryGroup(group); }}
+            onFilterGroup={setSelectedSessionGroupId}
+            onMove={moveHistorySession}
+            onNewChat={newChat}
+            onNewInGroup={newChatInGroup}
+            onPick={pickHistory}
+            onRename={renameHistorySession}
+            onRenameGroup={(group, name) => { void renameHistoryGroup(group, name); }}
+            onTogglePin={togglePinnedHistorySession}
+            pendingSessionId={historyMutationSessionId}
+            selectedGroupId={selectedSessionGroupId}
+          />
+        ) : null}
       </div>
 
-      {/* 既有历史能力（抽屉 / 删除二次确认 / toast）原样保留，设计的抽屉是任务 4。
-          `rootClassName=""`：组件默认根类是 `orbit-mobile-only`，而
-          `public/orbit-reference/orbit-reference.generated.css:371` 用
-          `display:none !important` 把它挡在 ≤640px 以外——沿用默认值会让桌面宽度下
-          抽屉挂得上却看不见（焦点陷阱还跑在一个 display:none 的节点上），
-          等于把历史记录、新对话、分组、置顶、重命名、移动、删除整组能力弄丢。 */}
-      {histOpen ? (
-        <AgentMobileHistoryDrawer
-          rootClassName=""
-          activeQ={activeQ}
-          activeSessionId={activeSessionId}
-          groupMutationPending={groupMutationPending}
-          groups={sessionGroups}
-          history={storedHistory}
-          language={language}
-          onClose={() => setHistOpen(false)}
-          onDelete={deleteHistorySession}
-          onCreateGroup={(name) => { void createHistoryGroup(name); }}
-          onDeleteGroup={(group) => { void deleteHistoryGroup(group); }}
-          onFilterGroup={setSelectedSessionGroupId}
-          onNavigate={navigate}
-          onNewChat={newChat}
-          onNewInGroup={newChatInGroup}
-          onMove={moveHistorySession}
-          onPick={pickHistory}
-          onRename={renameHistorySession}
-          onRenameGroup={(group, name) => { void renameHistoryGroup(group, name); }}
-          onTogglePin={togglePinnedHistorySession}
-          pendingSessionId={historyMutationSessionId}
-          sessionGroups={sessionGroups}
-        />
-      ) : null}
       {pendingDeleteHistory ? (
         <AgentHistoryDeleteDialog
           error={historyDeleteError}
@@ -602,6 +616,95 @@ export const IORBIT_STYLES = `
 /* ── 空态 / 加载提示（设计无此元素）── */
 [data-orbit-real-page="iorbit-0918"] .ir-note { margin: 0; font-size: 13px; color: #6B6F99; }
 [data-orbit-real-page="iorbit-0918"] .ir-note-error { color: #B5473A; }
+/* ══ 对话屏右栏 aside（设计 321–343）══════════════════════════════════════ */
+[data-orbit-real-page="iorbit-0918"] .ir-aside { display: flex; flex-direction: column; gap: 16px; }
+[data-orbit-real-page="iorbit-0918"] .ir-aside-card { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+[data-orbit-real-page="iorbit-0918"] .ir-aside-card-16 { gap: 16px; }
+[data-orbit-real-page="iorbit-0918"] .ir-aside-head { display: flex; align-items: center; gap: 10px; }
+[data-orbit-real-page="iorbit-0918"] .ir-aside-icon { width: 28px; height: 28px; border-radius: 9px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+[data-orbit-real-page="iorbit-0918"] .ir-aside-h { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 17px; }
+/* 设计 323–325：同一个形既给按钮元素（发消息）也给链接元素（导航），写两条规则 */
+[data-orbit-real-page="iorbit-0918"] .ir-aside-next { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 13px 14px; border: 1px solid #E8E9F6; border-radius: 12px; background: #FFFFFF; font-size: 14px; color: #0E1225; text-align: left; cursor: pointer; }
+[data-orbit-real-page="iorbit-0918"] .btn.ir-aside-next { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 13px 14px; border: 1px solid #E8E9F6; border-radius: 12px; background: #FFFFFF; font-size: 14px; color: #0E1225; text-align: left;
+  height: auto; font-weight: 400; white-space: normal; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="iorbit-0918"] .ir-aside-next:hover, [data-orbit-real-page="iorbit-0918"] .btn.ir-aside-next:hover { border-color: #B9BCEB; background: #F7F7FD; }
+/* 中和作用域内的 a:hover（设计的 style-hover 不改字色），见计划「像素规则」 */
+[data-orbit-real-page="iorbit-0918"] a.ir-aside-next:hover { color: #0E1225; }
+[data-orbit-real-page="iorbit-0918"] .btn.ir-aside-next:active { transform: none; }
+[data-orbit-real-page="iorbit-0918"] .ir-aside-context-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+[data-orbit-real-page="iorbit-0918"] .ir-aside-context-copy { display: flex; flex-direction: column; gap: 4px; }
+[data-orbit-real-page="iorbit-0918"] .ir-aside-context-note { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="iorbit-0918"] .ir-aside-edit { font-size: 13px; color: #4B4FC7; }
+/* 同上：设计 334 的「编辑」没有 hover 态，中和作用域内的 a:hover */
+[data-orbit-real-page="iorbit-0918"] a.ir-aside-edit:hover { color: #4B4FC7; }
+[data-orbit-real-page="iorbit-0918"] .ir-aside-group { display: flex; flex-direction: column; gap: 10px; }
+[data-orbit-real-page="iorbit-0918"] .ir-aside-group-div { padding-top: 14px; border-top: 1px solid #E8E9F6; }
+[data-orbit-real-page="iorbit-0918"] .ir-aside-label { font-size: 13px; color: #3B3F7A; }
+[data-orbit-real-page="iorbit-0918"] .ir-aside-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+[data-orbit-real-page="iorbit-0918"] .ir-aside-tag { padding: 6px 12px; border-radius: 999px; background: #F7F7FD; color: #3B3F7A; font-size: 12px; }
+[data-orbit-real-page="iorbit-0918"] .ir-aside-tag-on { background: #ECEEFB; color: #2E3270; }
+/* 设计无空态（它的三段都是 mock chip）：无资料时用一行说明，不造 chip */
+[data-orbit-real-page="iorbit-0918"] .ir-aside-empty { font-size: 13px; color: #6B6F99; }
+/* ══ 历史记录抽屉（设计 786–804）══════════════════════════════════════════ */
+/* 788：z-index 取语义常量 ORBIT_Z.modal（内联），其余逐字 */
+[data-orbit-real-page="iorbit-0918"] .ir-drawer-scrim { position: fixed; inset: 0; background: rgba(14,18,37,0.28); backdrop-filter: blur(4px); display: flex; justify-content: flex-end; }
+[data-orbit-real-page="iorbit-0918"] .ir-drawer { width: min(400px, 92vw); height: 100%; overflow-y: auto; background: #FFFFFF; box-shadow: -20px 0 60px rgba(14,18,37,0.18); padding: 26px 24px; display: flex; flex-direction: column; gap: 18px; animation: orbit-fade .25s ease; }
+[data-orbit-real-page="iorbit-0918"] .ir-drawer-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+[data-orbit-real-page="iorbit-0918"] .ir-drawer-head-copy { display: flex; flex-direction: column; gap: 6px; }
+[data-orbit-real-page="iorbit-0918"] .ir-drawer-title-row { display: flex; align-items: center; gap: 10px; }
+[data-orbit-real-page="iorbit-0918"] .ir-drawer-title-icon { color: #4B4FC7; }
+[data-orbit-real-page="iorbit-0918"] .ir-drawer-title { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 21px; letter-spacing: -0.02em; }
+[data-orbit-real-page="iorbit-0918"] .ir-drawer-sub { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="iorbit-0918"] .btn.ir-drawer-close { width: 34px; height: 34px; border: 0; border-radius: 50%; background: #F7F7FD; color: #3B3F7A; font-size: 16px; cursor: pointer;
+  padding: 0; height: auto; font-weight: 400; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="iorbit-0918"] .btn.ir-drawer-close:hover { background: #ECEEFB; }
+[data-orbit-real-page="iorbit-0918"] .btn.ir-drawer-close:active { transform: none; }
+/* 设计没有这一段（能力保全决定）：新对话 + 分组筛选条 */
+[data-orbit-real-page="iorbit-0918"] .ir-drawer-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+[data-orbit-real-page="iorbit-0918"] .btn.ir-drawer-new { padding: 9px 16px; border: 1px solid #B9BCEB; border-radius: 999px; background: #ECEEFB; color: #2E3270; font-size: 13px; cursor: pointer;
+  height: auto; font-weight: 400; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="iorbit-0918"] .btn.ir-drawer-new:hover { background: #DDDEFA; }
+[data-orbit-real-page="iorbit-0918"] .btn.ir-drawer-new:active { transform: none; }
+[data-orbit-real-page="iorbit-0918"] .ir-drawer-eyebrow { font-size: 12px; color: #9FA3C4; }
+/* 795：设计的行本身就是个按钮；三点菜单不能嵌在按钮里，所以外层是带边框的行，
+   内层按钮承载 padding 与内容，几何与设计一致 */
+[data-orbit-real-page="iorbit-0918"] .ir-hist-row { position: relative; display: flex; align-items: center; border: 1px solid #E8E9F6; border-radius: 12px; background: #FFFFFF; }
+/* 905 的 h.bg：当前会话底色 */
+[data-orbit-real-page="iorbit-0918"] .ir-hist-row-on { background: #F7F7FD; }
+[data-orbit-real-page="iorbit-0918"] .ir-hist-row:hover { border-color: #B9BCEB; }
+[data-orbit-real-page="iorbit-0918"] .btn.ir-hist-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 14px; border: 0; border-radius: 12px; background: transparent; text-align: left; cursor: pointer;
+  height: auto; font-size: 14px; font-weight: 400; justify-content: flex-start; white-space: normal; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="iorbit-0918"] .btn.ir-hist-open:active { transform: none; }
+[data-orbit-real-page="iorbit-0918"] .ir-hist-icon { width: 30px; height: 30px; flex: none; border-radius: 9px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+[data-orbit-real-page="iorbit-0918"] .ir-hist-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+[data-orbit-real-page="iorbit-0918"] .ir-hist-title { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-orbit-real-page="iorbit-0918"] .ir-hist-date { font-size: 12px; color: #9FA3C4; }
+/* 设计没有三点菜单钮：静置时透明（不改设计像素），hover / 键盘聚焦 / 菜单展开时显形 */
+[data-orbit-real-page="iorbit-0918"] .btn.ir-hist-more { position: absolute; right: 10px; top: 50%; width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent; color: #6B6F99; font-size: 13px; cursor: pointer; opacity: 0; transform: translateY(-50%);
+  padding: 0; font-weight: 400; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="iorbit-0918"] .ir-hist-row:hover .btn.ir-hist-more, [data-orbit-real-page="iorbit-0918"] .btn.ir-hist-more:focus, [data-orbit-real-page="iorbit-0918"] .btn.ir-hist-more[aria-expanded="true"] { opacity: 1; background: #FFFFFF; }
+/* .btn:active 的 translateY 会打断上面的定位，这里还原成同一个 transform */
+[data-orbit-real-page="iorbit-0918"] .btn.ir-hist-more:active { transform: translateY(-50%); }
+[data-orbit-real-page="iorbit-0918"] .ir-hist-menu { position: absolute; right: 10px; top: 44px; min-width: 168px; padding: 6px; border: 1px solid #E8E9F6; border-radius: 12px; background: #FFFFFF; box-shadow: 0 12px 30px rgba(14,18,37,0.12); display: flex; flex-direction: column; gap: 2px; }
+[data-orbit-real-page="iorbit-0918"] .ir-hist-menu-label { padding: 6px 10px 2px; font-size: 12px; color: #9FA3C4; }
+[data-orbit-real-page="iorbit-0918"] .btn.ir-hist-menu-item { width: 100%; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: #0E1225; font-size: 13px; cursor: pointer;
+  height: auto; font-weight: 400; display: flex; align-items: center; justify-content: flex-start; gap: 0; white-space: nowrap; text-align: left; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="iorbit-0918"] .btn.ir-hist-menu-item:hover { background: #F7F7FD; }
+[data-orbit-real-page="iorbit-0918"] .btn.ir-hist-menu-item:active { transform: none; }
+[data-orbit-real-page="iorbit-0918"] .btn.ir-hist-menu-item:disabled { color: #9FA3C4; cursor: default; }
+[data-orbit-real-page="iorbit-0918"] .btn.ir-hist-menu-danger { color: #B5473A; }
+[data-orbit-real-page="iorbit-0918"] .ir-hist-rename { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 10px 12px; }
+[data-orbit-real-page="iorbit-0918"] .ir-hist-rename-input { flex: 1; min-width: 0; border: 1px solid #B9BCEB; border-radius: 8px; outline: none; background: #FFFFFF; font-size: 13px; color: #0E1225; padding: 6px 8px; }
+[data-orbit-real-page="iorbit-0918"] .btn.ir-hist-rename-ok, [data-orbit-real-page="iorbit-0918"] .btn.ir-hist-rename-cancel { padding: 6px 10px; border: 1px solid #E8E9F6; border-radius: 8px; background: #FFFFFF; color: #3B3F7A; font-size: 12px; cursor: pointer;
+  height: auto; font-weight: 400; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="iorbit-0918"] .btn.ir-hist-rename-ok:hover, [data-orbit-real-page="iorbit-0918"] .btn.ir-hist-rename-cancel:hover { border-color: #B9BCEB; }
+[data-orbit-real-page="iorbit-0918"] .btn.ir-hist-rename-ok:active, [data-orbit-real-page="iorbit-0918"] .btn.ir-hist-rename-cancel:active { transform: none; }
+[data-orbit-real-page="iorbit-0918"] .btn.ir-hist-rename-ok:disabled { color: #9FA3C4; cursor: default; }
+[data-orbit-real-page="iorbit-0918"] .ir-drawer-empty { font-size: 13px; color: #6B6F99; }
+/* 803 */
+[data-orbit-real-page="iorbit-0918"] .btn.ir-drawer-more { align-self: center; padding: 10px 16px; border: 0; background: transparent; color: #4B4FC7; font-size: 13px; cursor: pointer;
+  height: auto; font-weight: 400; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="iorbit-0918"] .btn.ir-drawer-more:active { transform: none; }
 /* 设计稿无响应式声明；窄屏收紧 <main> 侧边距（1240 宽度下不生效） */
 @media (max-width: 900px) {
   [data-orbit-real-page="iorbit-0918"] .ir-main { padding: 14px 16px 72px; }

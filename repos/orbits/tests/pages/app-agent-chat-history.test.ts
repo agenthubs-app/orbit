@@ -415,7 +415,7 @@ test("agent home starts fresh unless the URL explicitly selects a session", () =
   assert.match(source, /const query = currentAgentQuery\(\);/);
 });
 
-test("agent sidebar exposes deletion and width resizing controls for history", () => {
+test("agent sidebar exposes deletion controls for history", () => {
   const source = readProjectFile("app/(app)/app/agent/orbit-real-agent.tsx");
   const accountShell = readProjectFile("app/(app)/app/orbit-account-shell.tsx");
   const publicShell = readProjectFile("app/(app)/app/orbit-public-shell.tsx");
@@ -458,15 +458,10 @@ test("agent sidebar exposes deletion and width resizing controls for history", (
   assert.match(source, /onDelete=\{deleteHistorySession\}/);
   assert.match(source, /onRename=\{renameHistorySession\}/);
   assert.match(source, /onTogglePin=\{togglePinnedHistorySession\}/);
-  assert.match(source, /data-orbit-agent-history-resize-handle/);
-  assert.match(historyHookSource, /setHistorySidebarWidth/);
-  assert.match(source, /role="separator"/);
-  assert.match(source, /aria-valuemin=\{HISTORY_SIDEBAR_MIN_WIDTH\}/);
-  assert.match(source, /aria-valuemax=\{HISTORY_SIDEBAR_MAX_WIDTH\}/);
-  assert.match(source, /aria-valuenow=\{historySidebarWidth\}/);
-  assert.match(source, /onKeyDown=\{resizeHistorySidebarWithKeyboard\}/);
-  assert.match(historyHookSource, /event\.key === "ArrowLeft"/);
-  assert.match(historyHookSource, /event\.key === "ArrowRight"/);
+  // iOrbit 任务 4：常驻侧栏与拖拽宽度是本计划唯一的能力移除（设计 786–804 无侧栏），
+  // 原来在这里的 7 条 resize 断言随之删除——它们只在已不再被渲染的
+  // `orbit-real-agent.tsx` 上成立。新屏一侧由 `orbit-sidebar-width-constant.test.ts`
+  // 的「the iOrbit history surface has no resizable sidebar」防回流。
   assert.match(source, /function AgentMobileHistoryDrawer/);
   assert.match(source, /data-orbit-agent-history-drawer/);
   assert.match(source, /const drawerRef = useOrbitModalA11y\(onClose\)/);
@@ -504,4 +499,36 @@ test("agent history uses a flat, left-aligned navigation list", () => {
   assert.match(styles, /\.btn\.orbit-agent-history-entry[\s\S]*border: 0;/);
   assert.match(styles, /\.orbit-agent-history-title \{[\s\S]*text-align: left;/);
   assert.match(styles, /\.orbit-agent-history-menu \.btn \{[\s\S]*border: 0;/);
+});
+
+// iOrbit 任务 4：今天跑在 /app/agent 上的历史面是 `iorbit-history-drawer.tsx`
+// （设计 786–804）。上面那条用例断的是尚未删除的旧文件；这条断**在售的那一套**，
+// 免得「能力保留」只是旧文件里还留着代码。
+test("the shipped history surface is the Orbit_0918 drawer and keeps every write control", () => {
+  const drawerSource = readProjectFile(
+    "app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx",
+  );
+  const shellSource = readProjectFile("app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx");
+
+  for (const marker of [
+    "data-orbit-agent-history-drawer",
+    "data-orbit-agent-history-menu-button",
+    "data-orbit-agent-history-menu",
+    "data-orbit-agent-history-pin",
+    "data-orbit-agent-history-rename",
+    "data-orbit-agent-history-rename-input",
+    "data-orbit-agent-history-save-rename",
+    "data-orbit-agent-history-cancel-rename",
+    "data-orbit-agent-history-delete",
+  ]) {
+    assert.ok(drawerSource.includes(marker), `the drawer dropped ${marker}`);
+  }
+
+  // 删除二次确认与 toast 仍挂在壳上，走既有组件。
+  assert.match(shellSource, /<AgentHistoryDeleteDialog/);
+  assert.match(shellSource, /data-orbit-agent-history-feedback=\{historyFeedback\.kind\}/);
+  assert.match(shellSource, /<IOrbitHistoryDrawer/);
+  // 移动端不再单独一棵树：旧的 AgentMobileHistoryDrawer 不再被壳挂载
+  // （文件头注释里还写着它的名字，所以断的是 JSX 用法而不是字面量）。
+  assert.doesNotMatch(shellSource, /<AgentMobileHistoryDrawer/);
 });

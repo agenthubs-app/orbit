@@ -63,6 +63,11 @@ export interface OrbitAgentScenarioView {
 }
 
 export interface OrbitAgentHistoryView {
+  /**
+   * 会话的真实日期文案（Orbit_0918 历史抽屉设计 797）。`when` 历来放的是分组名
+   * 而不是日期，所以日期单独立一个字段；来源无法解析时留空，调用方省略该行。
+   */
+  date?: string;
   group: string;
   groupId?: string | null;
   id: string;

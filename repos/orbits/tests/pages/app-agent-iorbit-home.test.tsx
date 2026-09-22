@@ -173,11 +173,15 @@ test("「进入对话页 →」opens an actual conversation, not the old dashboa
   );
 });
 
-test("「◷ 历史记录」opens the conversation with the history drawer", async (t) => {
+// 任务 4：抽屉换成设计版（`iorbit-history-drawer.tsx`）后，从概览打开历史**留在概览**
+// ——它是浮在当前屏之上的遮罩（设计 786）。任务 2 修订轮 1 让它顺带进对话，是因为
+// 当时抽屉还挂在旧组件里、必须先进对话分支才挂得上。
+test("「◷ 历史记录」opens the history drawer over the overview", async (t) => {
   const mounted = await openFromHome(t, "history");
 
   assert.ok(
-    mounted.root.root.findAll((node) => node.props?.className === "ir-thread").length > 0,
+    mounted.root.root.findAll((node) => node.props?.className === "ir-home").length > 0,
+    "the overview must stay behind the drawer",
   );
   assert.equal(
     mounted.root.root.findAll(

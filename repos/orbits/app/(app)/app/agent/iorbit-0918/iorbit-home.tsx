@@ -43,6 +43,7 @@ import {
   iorbitCalendarCells,
   iorbitDayKey,
   iorbitLedgerProgress,
+  iorbitRegisteredEvents,
   iorbitRelativeDayLabel,
   iorbitSelectedDayLabel,
 } from "./iorbit-model";
@@ -341,19 +342,11 @@ export function IOrbitHome({
   );
 
   // 设计 152/161 是「接下来要去的两场」：未开始的按时间正序排前，已结束的按时间倒序排后。
-  const registeredEvents = useMemo(() => {
-    const nowMs = now.getTime();
-    return (home?.events ?? [])
-      .filter((event) => event.youRsvped || event.stats.youRsvped)
-      .map((event) => ({ at: Date.parse(event.startsAt), event }))
-      .sort((a, b) => {
-        const aPast = a.at < nowMs;
-        const bPast = b.at < nowMs;
-        if (aPast !== bPast) return aPast ? 1 : -1;
-        return aPast ? b.at - a.at : a.at - b.at;
-      })
-      .map((entry) => entry.event);
-  }, [home, now]);
+  // 同一份排序口径给对话屏右栏的「已报名活动」复用（`iorbit-chat-aside.tsx`）。
+  const registeredEvents = useMemo(
+    () => iorbitRegisteredEvents(home?.events ?? [], now.getTime()),
+    [home, now],
+  );
 
   const scheduleRows: readonly ScheduleRow[] = useMemo(() => {
     const rows: ScheduleRow[] = [

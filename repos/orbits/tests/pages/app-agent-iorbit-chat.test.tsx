@@ -613,12 +613,18 @@ test("the history drawer the shell mounts is visible at desktop width", async (t
     !String(drawer!.props.className ?? "").includes("orbit-mobile-only"),
     "the drawer the shell mounts must not carry the mobile-only class (it would be display:none)",
   );
-  // 抽屉里的既有能力还在：新对话 + 分组 + 列表。
+  // 抽屉里的既有能力还在：新对话 + 分组 + 列表。任务 4 起这是设计版抽屉
+  // （`iorbit-history-drawer.tsx`），新对话钮的类名随之从 `orbit-agent-new-chat`
+  // 变成 `btn ir-drawer-new`。
   assert.ok(
     mounted.root.root.findAll(
-      (node) => node.type === "button" && String(node.props?.className ?? "").includes("orbit-agent-new-chat"),
+      (node) => node.type === "button" && String(node.props?.className ?? "").includes("ir-drawer-new"),
     ).length > 0,
     "the drawer must still expose 新对话",
+  );
+  assert.ok(
+    mounted.root.root.findAll((node) => node.props?.["data-orbit-agent-groups"] !== undefined).length > 0,
+    "the drawer must still expose the group strip",
   );
 });
 
@@ -691,6 +697,47 @@ test("the contacts-analysis prefill surfaces in the composer and keeps its struc
   const body = ask!.body as { message?: string; origin?: typeof origin };
   assert.equal(body.message, "分析我的人脉机会");
   assert.deepEqual(body.origin, origin, "the structured origin must survive the handoff");
+});
+
+test("editing the prefilled question keeps the structured origin", async (t) => {
+  // 任务 3 遗留：原来只有「一字未改」才带 origin，用户改一个词，交接单就悄悄掉了。
+  // 旧实现（`orbit-real-agent.tsx` 的 `onBriefAsk`）带的是用户实际提交的那句话 +
+  // 原 origin（origin 记的是来源入口，不是问题原文）。
+  const origin = {
+    entryClient: "web",
+    entryPointId: "contacts.analysis",
+    initialGroupId: null,
+    kind: "structured",
+    sourceDataVersion: "b".repeat(64),
+    template: { id: "contacts.analysis", version: 1 },
+  };
+  const mounted = await mount(t, shell(), {
+    sessionStorage: {
+      "orbit.agent.prefill": JSON.stringify({
+        origin,
+        query: "分析我的人脉机会",
+        returnTo: "/app/contacts/dashboard",
+      }),
+    },
+  });
+
+  await act(async () => {
+    byClass(mounted, "ir-composer-input")[0]!.props.onChange({
+      target: { value: "分析我的人脉机会，重点看日本市场" },
+    });
+  });
+  await act(async () => {
+    byClass(mounted, "ir-composer")[0]!.props.onSubmit({ preventDefault() {} });
+  });
+  await mounted.settle();
+
+  const ask = mounted.calls.find(
+    (call) => call.url.startsWith("/api/ai/conversations?") || call.url === "/api/ai/conversations",
+  );
+  assert.ok(ask);
+  const body = ask!.body as { message?: string; origin?: typeof origin };
+  assert.equal(body.message, "分析我的人脉机会，重点看日本市场");
+  assert.deepEqual(body.origin, origin, "an edited prefill must keep its structured origin");
 });
 
 test("browser back returns to the overview without clearing the thread", async (t) => {
