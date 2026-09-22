@@ -41,3 +41,21 @@
 
 ## 后续计划
 ⑤ 认证四态弹窗（`Orbit 首页.dc.html` login/register/forgot/reset）→ ⑥ iOrbit chat。
+
+## 审阅修订（2026-09-22，独立评审 15 项——与上文冲突处以本节为准）
+
+1. **匹配屏数据源**：未发布生成没有任何读取分桌的 API（`EventOperationsGeneration` 只有状态/快照/进度；分桌只在 `publishedResult.grouping.{roundOne,roundTwo}`）。→ 桌卡 = `publishedResult.grouping`；生成 completed 但未发布 → 空态「已生成 N 人，待发布」+「发布结果 →」。任务 0 先截「待发布」概览截图，再由 organizer 发布，使匹配/hub/people 有真实桌。记偏差。
+2. **Task 1 抽 hook 的保护网**：admin workspace / experience editor / check-in roster 没有渲染测试，且 `tests/pages/app-event-operations-admin.test.ts:26-73`、`app-event-experience.test.ts:22-25`、`event-role-management-workspace.test.tsx:430-436` 是对文件源码的正则断言（`method: "PUT"`、`setInterval`、`/check-ins`、`canonicalScheduleFields`、`function canOpenAnalytics`…），逻辑搬进 hook 后必失败。→ 每个抽取前先写**特征化渲染测试**（react-test-renderer + fetch mock，照 `event-analytics-route.test.tsx:120-170`）：admin = load→指标 + 生成动作 URL + PUT 体；roster = load / markArrived / 401 跳转 / 409 文案；editor = load / saveDraft 体 / publish / CONFLICT 重读；同一提交里把源码正则测试按「hook 文件 vs JSX 文件」拆分（意图不变）；center 的 `canOpenAnalytics`/角色谓词留在组件或改指行号。UI 本地状态（`confirmingStart`、`segment/query`、`view`、`activeView`）留在组件。
+3. **参会者屏数据源**：准入列表项只有 actorId/displayName/status/submittedAt/version，没有公司/职位/资料完整度/匹配状态；这些在 admin 的 `participants[].{profileCompleteness, role, company, actorId}`，匹配参与 = 最新 `generation.snapshot.participants` 或 `publishedResult.directory` 成员。→ 参会者屏表格/筛选/统计消费 `use-event-operations`；准入队列（待审核/已处理、approve/reject 带 `expectedApplicationVersion`、政策面板 `event-admission-policy-panel.tsx` **保留挂载**）作为同屏第二区块；仅审核角色（403）→ 只显示准入区块，表格列隐藏。概览「需要处理」与匹配「N 位资料不足」同源。
+4. **hub 数据**：`/api/events/center` 只有 title/venue/startsAt/endsAt/lifecycleState/role/owner/migrationPending/revision。→ 描述省略；封面用 `EventCover` 标题渐变；三计数每卡 `GET /api/events/{id}/analytics/aggregate`（`registrations.active` / `grouping.published ? roundOne.assignedParticipants : "—"` / `checkIns.checkedIn`；403 → 「—」）；保留既有角色/生命周期门禁与 `data-event-center-*` 标记（测试 `:295-418` 断言），次级动作（签到台/报名审核/分析/活动页/管理角色）收进设计的 `···`；无「＋ 创建活动」入口（删掉该句）；「当前身份」= 每卡角色 chip。
+5. **admin 既有能力落点**：生成列表（状态 pill/进度/ETA/自动重试/重试失败分片 + `data-generation-*`）放匹配屏桌卡下方；导出 CSV 进「更多 ⌄」；时间闸门 + 高级引擎参数进概览「当前设置」折叠区；桌卡详情含 theme/rationale/icebreakers/seat；报告里列出每条测试断言的新去处。
+6. **概览映射**：设计 115–122 是**四**张大数卡（已报名 / 可参与匹配 / 已签到 `checked` / 匹配结果 未发布）；可参与匹配 = `profileCompleteness !== "minimal"` 的参会者数；「编辑配置」设计指向 `goForm`，本计划改指概览内配置折叠区（记偏差）；配置行 = 每桌人数 / 轮数 2（固定两轮，注明）/ 每人推荐数 / 已报名 N（无「每轮时长」「容量」）。
+7. **路由**：`/operations/roles` 属 ROUTE-CONSOLIDATION 删除清单 → 任务 6 删 `roles/page.tsx`，center 卡「管理角色」→ `/operations?drawer=roles`，改 `event-role-management-workspace.test.tsx:395`。match → `/operations?tab=match`、form → `/operations/experience` 是对归并表 62/65 行的覆盖，任务 3/5 提交时同步改归并表。
+8. **页面门禁现状**：`experience/page.tsx` 无 `auth()`/能力检查；check-in/analytics 只 `auth()`；`/app/events` 不在私有前缀。→ experience 页加 `auth()` 未登录重定向（记录例外）；所有子页调用 `loadEventOperationsPageEvent`（`operations/event-operations-page-event.ts`）把 `event` 传给壳（面包屑/标题/表单预览需要）；页签按角色可见性：无该能力的页签仍显示但点击进入现有拒绝页（与现状一致，记录）。
+9. **验证数据**：check-in 窗口会过期 → 任务 0 先重新 timeshift（新锚点，三处对齐），再 标记 participant.a 到场；授一条委派角色（participant.b → `check_in`，需 `reason`）让抽屉有行；worker `npm run event-operations:worker` 是长驻循环（SIGINT 停），需 `ORBIT_EVENT_DATABASE_URL` + workspace + DeepSeek key（`.env.local` 已有），2 位参与者预计数分钟；失败则保留 `not_generated` 基线，残差归「状态」。
+10. **协作者抽屉**：真实 API 需要 `reason`（1–1000）与精确 actor ID（有参与者选择器），角色 = 运营/签到/审核/只读分析（无「管理员/数据查看」），owner 来自 Event Core 不可授予。→ 抽屉 = 参与者选择器 + 四角色 select + 理由输入；`···` → 改角色/移除（带理由）；owner 固定行；记偏差。
+11. **签到屏**：roster 项只有 `{displayName, participantId, checkedIn, checkedInAt}` → 公司/职位列也省略；「签到失败」卡与逐行「重试」无持久态 → 重试 = 全局错误重试；未签到/已签到统计卡保留（真实）；搜索 = 姓名/participantId 后缀；「查看全部 →」= 切到「已签到」筛选。
+12. **报名设置屏**：题目是固定 intent 的选项集（无 type 字段，最多 4 题，轨道 V1 两题必答 / V2 0–4 可选，`accentColor`），预览为零写入 POST 返回 hash，说明上限 1000（设计 200）。→ 类型 chip 省略；轨道选择 + 强调色进折叠区；预览 = 保留「预览（零写入）」按钮 + 用当前草稿客户端渲染右侧卡；✎ = 行内展开题干/选项；状态 chip = revision / 已发布 vN / 冻结时间；计数器 `/1000`。
+13. compare 抽屉序列：设计 101 行「更多 ⌄」直接 `openDrawer`，无子菜单 → 序列 = ops + 点「更多 ⌄」。
+14. **报告屏**：复用 `features/events/event-analytics/report.tsx:141-155` 的字段映射（四大数、现场转化率、会后跟进；后续跟进 = `roi.strongActions.followupReminders`；统计时间 = `roi.snapshot.windowEndsAt`）；报名趋势/参会者来源无字段 → 省略；「我的视图」仅两接口都成功时出现（organizer 通常隐藏，记录）。
+15. 删除清单为 7 个工作区文件，`event-admission-policy-panel.tsx` 保留挂载于参会者屏，其 4 条测试改指参会者屏（`canConfigurePolicy`）。
