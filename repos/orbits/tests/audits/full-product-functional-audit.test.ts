@@ -385,7 +385,12 @@ test("navigation replay credits only its 27 exact route occurrences", () => {
 
   assert.equal(credited.length, 27);
   assert.equal(settingsSignOut?.conclusion, "runtime-verified-exercised-case");
-  assert.equal(siblingSignOuts.length, 33);
+  // iOrbit 任务 6b：兄弟计数 33 → 32。这个数字是「共享壳里有多少个同源退出登录控件」，
+  // 会随路由增删漂移；任务 6a 删了 /app/chat、/app/today、/app/schedule、/app/followups
+  // 四条路由，又因为审计产物先前长期未重生成，同期新增的 /app/events/**、/app/tasks*、
+  // /app/invitations/[token] 等路由这次一并入账，净值为 32。本条真正的回归断言是下面
+  // 「非 /app/settings 的同源控件一律 inventoried-static-only」——计数只是它的分母。
+  assert.equal(siblingSignOuts.length, 32);
   assert.equal(
     siblingSignOuts.every(
       (interaction) => interaction.conclusion === "inventoried-static-only",
@@ -864,23 +869,11 @@ test("memory settings retain their eleven exercised interactions", () => {
   );
 });
 
-test("Today dialog retains its exact exercised close handler", () => {
-  assert.equal(
-    runtimeVerifiedInteractions.some(
-      (interaction) =>
-        interaction.surfaceId === "web:/app/today" &&
-        interaction.sourceFile ===
-          "repos/orbits/app/(app)/app/today/orbit-today-time-spine.tsx" &&
-        interaction.visibleName === "Got it / 知道了" &&
-        interaction.handlers.some(
-          (handler) =>
-            handler.event === "onclick" && handler.expression === "onClose",
-        ),
-    ),
-    true,
-    "Today dialog runtime evidence must survive unrelated source-line shifts",
-  );
-});
+// iOrbit 任务 6a 删除了 /app/today 及 `today/orbit-today-time-spine.tsx`，本条断言的主语
+// （Today 弹窗的「知道了」关闭键）在产品里已不存在，用例随之退役。它守的回归是
+// 「运行时证据必须 handler-bound、不随无关行号漂移失配」，同一条回归今天由下面的
+// 「Agent retry evidence applies only to the current exercised handler」与
+// 「Settings sign-out historical evidence is handler-bound across line shifts」继续覆盖。
 
 // iOrbit 任务 3：重试控件随助手回合搬到 `iorbit-0918/iorbit-chat.tsx`；
 // onClick 表达式逐字保留（计划「审阅修订」8），这里只改文件路径。
@@ -1002,6 +995,10 @@ test("native auth and acquisition runtime cases remain credited", () => {
 });
 
 test("Web home and scheduling runtime cases remain scoped to their exercised routes", () => {
+  // iOrbit 任务 6b：/app/today、/app/followups、/app/schedule、/app/schedule/events/[id]
+  // 四条路由在任务 6a 随对话域归并删除，它们的四条断言没有主语了，删除；其历史用例
+  // 仍留在生成器的 VERIFIED_AUDIT_CASES 里。用例的回归意图（一条 runtime case 只能落在
+  // 它实际跑过的那条路由上，不得外溢到兄弟路由）由下面保留的两条继续覆盖。
   assert.equal(
     inventory.surfaces.find((surface) => surface.surfaceId === "web:/app/home")
       ?.verificationConclusion,
@@ -1013,29 +1010,18 @@ test("Web home and scheduling runtime cases remain scoped to their exercised rou
     )?.verificationConclusion,
     "runtime-partially-verified-web-home-events-filter-and-detail",
   );
-  assert.equal(
-    inventory.surfaces.find((surface) => surface.surfaceId === "web:/app/today")
-      ?.verificationConclusion,
-    "runtime-partially-verified-web-today-meeting-service-boundary",
-  );
-  assert.equal(
-    inventory.surfaces.find(
-      (surface) => surface.surfaceId === "web:/app/followups",
-    )?.verificationConclusion,
-    "runtime-partially-verified-web-followups-today-compatibility-route",
-  );
-  assert.equal(
-    inventory.surfaces.find(
-      (surface) => surface.surfaceId === "web:/app/schedule",
-    )?.verificationConclusion,
-    "runtime-partially-verified-web-schedule-today-compatibility-route",
-  );
-  assert.equal(
-    inventory.surfaces.find(
-      (surface) => surface.surfaceId === "web:/app/schedule/events/[id]",
-    )?.verificationConclusion,
-    "runtime-partially-verified-web-schedule-dynamic-event-identity",
-  );
+  for (const retired of [
+    "web:/app/today",
+    "web:/app/followups",
+    "web:/app/schedule",
+    "web:/app/schedule/events/[id]",
+  ]) {
+    assert.equal(
+      inventory.surfaces.some((surface) => surface.surfaceId === retired),
+      false,
+      `${retired} was consolidated into the iOrbit screens and must not reappear`,
+    );
+  }
 });
 
 for (const [surfaceId, verificationConclusion] of [
@@ -1209,11 +1195,13 @@ test("Agent runtime case retains its recorded observations", () => {
   );
 });
 
-test("chat retains its recorded observations", () => {
+test("chat is retired and no longer claims a live surface", () => {
+  // iOrbit 任务 6b：/app/chat 在任务 6a 删除（归并进 /app/agent）。原断言「chat 表面保留
+  // 4 条记录观察」没有主语了。记录观察本身按「历史记录不改」的一贯口径留在生成器的
+  // RENDERED_LEAF_OBSERVATIONS 里；这里改为正面钉住「这条路由不得回流」。
   assert.equal(
-    inventory.surfaces.find((surface) => surface.surfaceId === "web:/app/chat")
-      ?.runtimeEvidence.length,
-    4,
+    inventory.surfaces.some((surface) => surface.surfaceId === "web:/app/chat"),
+    false,
   );
 });
 

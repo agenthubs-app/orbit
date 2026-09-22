@@ -247,6 +247,9 @@ test("legacy route files no longer embed old product sample records", () => {
     "the retired hybrid route data module must not return",
   );
 
+  // iOrbit 任务 6b：`orbit-schedule-route-view-model.ts` 随 /app/schedule、/app/today、
+  // /app/followups 一起失去最后一个消费者（任务 6a 只删了页面，没删这个纯类型模块），
+  // 本次删除，这里同步移除该条目。
   const routeFiles = [
     "app/(app)/app/orbit-admin-platform-route-view-model.ts",
     "app/(app)/app/orbit-agent-route-view-model.ts",
@@ -256,7 +259,6 @@ test("legacy route files no longer embed old product sample records", () => {
     "app/(app)/app/orbit-landing-route-view-model.ts",
     "app/(app)/app/orbit-party-route-view-model.ts",
     "app/(app)/app/orbit-profile-route-view-model.ts",
-    "app/(app)/app/orbit-schedule-route-view-model.ts",
     "app/(app)/app/admin/orbit-real-admin-login.tsx",
     "app/(app)/app/admin/orbit-real-admin-shell.tsx",
     "app/(app)/app/admin/orbit-real-admin-workspace.tsx",

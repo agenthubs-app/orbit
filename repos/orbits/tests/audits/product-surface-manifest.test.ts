@@ -22,7 +22,11 @@ test("surface scanner covers every production page and excludes API/dev routes",
     "/app",
     "/app/account/login",
     "/app/agent",
-    "/app/chat",
+    // iOrbit 任务 6b：/app/chat、/app/schedule、/app/today 在任务 6a 随对话域归并删除，
+    // 换成归并后仍在售的三个兄弟屏与保留下来的 /app/tasks（6a 报告 §0）。
+    "/app/agent/actions",
+    "/app/agent/plan",
+    "/app/agent/strategy",
     "/app/contacts",
     "/app/contacts/[id]",
     "/app/contacts/dashboard",
@@ -34,9 +38,8 @@ test("surface scanner covers every production page and excludes API/dev routes",
     "/app/events/[id]/register",
     "/app/platform",
     "/app/profile",
-    "/app/schedule",
     "/app/settings",
-    "/app/today",
+    "/app/tasks",
   ]) {
     assert.equal(routes.has(route), true, `missing ${route}`);
   }
@@ -172,7 +175,10 @@ test("translated and variable JSX labels count as accessible-name evidence", () 
 });
 
 test("redirect aliases do not require route loading and error surfaces", () => {
-  for (const route of ["/app/followups", "/app/schedule"]) {
+  // iOrbit 任务 6b：/app/followups 与 /app/schedule 这两个纯别名页在任务 6a 删除。
+  // 今天仓库里只剩 /app/home 一个「整页只有一句 redirect」的别名（`home/page.tsx`），
+  // 用例改指它——回归意图（别名页不该被记成缺 loading/error 状态的风险）不变。
+  for (const route of ["/app/home"]) {
     const surface = manifest.surfaces.find((item) => item.route === route);
 
     assert.equal(surface?.states.sourceSignals.redirect, true);
@@ -385,21 +391,18 @@ test("AST fixtures classify title helpers as dynamic without trusting arbitrary 
 });
 
 test("pointer-down resize controls count as static behavior", () => {
-  const resizeActions = allActions.filter(
-    (action) =>
-      action.sourceFile.endsWith("app/agent/orbit-real-agent.tsx") &&
-      action.label?.includes("Resize chat history"),
-  );
+  // iOrbit 任务 6b：唯一使用 onPointerDown 的产品控件（对话历史侧栏的拖拽分隔条）
+  // 随常驻侧栏在本轮改版里下线，产品里已无被扫描对象。这条用例守的是**扫描器**的
+  // 行为——onPointerDown 必须算作 present-static，不能掉进 missing-static——所以改用
+  // 同文件里既有的 AST 夹具驱动，而不是删掉它：真有人把 onpointerdown 从
+  // INTERACTION_ATTRIBUTES 里拿掉，这条依旧会红。
+  const actions = scanFixture(`const view = <>
+    <button aria-label="Resize chat history" onPointerDown={(event) => beginResize(event)} type="button" />
+  </>;`);
 
-  assert.ok(resizeActions.length > 0);
-  assert.equal(
-    resizeActions.every(
-      (action) =>
-        action.behaviorEvidence === "present-static" &&
-        action.handlers.includes("onpointerdown"),
-    ),
-    true,
-  );
+  assert.equal(actions.length, 1);
+  assert.equal(actions[0].behaviorEvidence, "present-static");
+  assert.equal(actions[0].handlers.includes("onpointerdown"), true);
 });
 
 test("manifest generation writes the required repository artifacts", () => {

@@ -10,12 +10,40 @@ const INVENTORY_PATH = path.join(
 );
 const DEFAULT_BASE_URL = "http://127.0.0.1:3110";
 
+// iOrbit 任务 6b：这张表与 inventory.json 的动态路由集合必须一一对应，否则
+// `runtimePathForSurface` 会抛。审计产物此前长期未重生成，表里既留着任务 6a 删掉的
+// /app/schedule/events/[id]，又缺了更早批次就已上线的 11 条动态路由；本次一并对齐。
 const ROUTE_SAMPLES = new Map([
+  [
+    "/app/contacts/analysis/[dimension]/[bucketId]",
+    "/app/contacts/analysis/industry/demo-bucket-1",
+  ],
   ["/app/contacts/[id]", "/app/contacts/demo-contact-1"],
   ["/app/events/[id]", "/app/events/EVT01"],
+  ["/app/events/[id]/analytics", "/app/events/EVT01/analytics"],
+  ["/app/events/[id]/live", "/app/events/EVT01/live"],
+  ["/app/events/[id]/operations", "/app/events/EVT01/operations"],
+  [
+    "/app/events/[id]/operations/admission",
+    "/app/events/EVT01/operations/admission",
+  ],
+  [
+    "/app/events/[id]/operations/check-in",
+    "/app/events/EVT01/operations/check-in",
+  ],
+  [
+    "/app/events/[id]/operations/experience",
+    "/app/events/EVT01/operations/experience",
+  ],
   ["/app/events/[id]/register", "/app/events/EVT01/register"],
+  ["/app/inbox/sources/[id]", "/app/inbox/sources/demo-source-1"],
+  ["/app/invitations/[token]", "/app/invitations/demo-invitation-token-1"],
   ["/app/o/[slug]", "/app/o/demo-event-1"],
-  ["/app/schedule/events/[id]", "/app/schedule/events/demo-event-1"],
+  ["/app/tasks/[id]", "/app/tasks/demo-task-1"],
+  [
+    "/app/tasks/relationship/[id]",
+    "/app/tasks/relationship/demo-relationship-1",
+  ],
   [
     "/dev/capabilities/[slug]",
     "/dev/capabilities/business-card-review-and-confirm-flow",

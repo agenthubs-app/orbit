@@ -1085,18 +1085,6 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
       "ownerArea": "app"
     },
     {
-      "id": "live-handoff-app-app-app-followups-compose-app-followups-from-previously-approved-mock-first-capabilities",
-      "titleZh": "App 页面组合交接：followups/compose app followups from previously approved mock first capabilities",
-      "summaryZh": "记录 app 路由 followups/compose app followups from previously approved mock first capabilities 如何由已批准的 mock-first capability 组合成可运行页面，以及未来 live 替换时需要保留的交互边界。",
-      "reviewEvidenceZh": "已核对页面目录存在：repos/orbits/app/(app)/app/followups/compose-app-followups-from-previously-approved-mock-first-capabilities。页面是否仍完全匹配文档，需要结合 route view-model 和页面测试继续审计。",
-      "sourcePath": "repos/orbits/app/(app)/app/followups/compose-app-followups-from-previously-approved-mock-first-capabilities/LIVE_IMPLEMENTATION.md",
-      "localizedSourcePath": "knowledge/docs/zh/live-handoff-app-app-app-followups-compose-app-followups-from-previously-approved-mock-first-capabilities.zh.md",
-      "category": "implementation-handoff",
-      "status": "generated-evidence",
-      "freshness": "likely-current",
-      "ownerArea": "app"
-    },
-    {
       "id": "live-handoff-app-app-app-home-compose-app-home-from-previously-approved-mock-first-capabilities",
       "titleZh": "App 页面组合交接：home/compose app home from previously approved mock first capabilities",
       "summaryZh": "记录 app 路由 home/compose app home from previously approved mock first capabilities 如何由已批准的 mock-first capability 组合成可运行页面，以及未来 live 替换时需要保留的交互边界。",
@@ -1115,18 +1103,6 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
       "reviewEvidenceZh": "已核对页面目录存在：repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities。页面是否仍完全匹配文档，需要结合 route view-model 和页面测试继续审计。",
       "sourcePath": "repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/LIVE_IMPLEMENTATION.md",
       "localizedSourcePath": "knowledge/docs/zh/live-handoff-app-app-app-profile-compose-app-profile-from-previously-approved-mock-first-capabilities.zh.md",
-      "category": "implementation-handoff",
-      "status": "generated-evidence",
-      "freshness": "likely-current",
-      "ownerArea": "app"
-    },
-    {
-      "id": "live-handoff-app-app-app-schedule-SCHEDULE-LIVE-IMPLEMENTATION-md",
-      "titleZh": "App 页面组合交接：schedule",
-      "summaryZh": "记录 app 路由 schedule 如何由已批准的 mock-first capability 组合成可运行页面，以及未来 live 替换时需要保留的交互边界。",
-      "reviewEvidenceZh": "已核对页面目录存在：repos/orbits/app/(app)/app/schedule。页面是否仍完全匹配文档，需要结合 route view-model 和页面测试继续审计。",
-      "sourcePath": "repos/orbits/app/(app)/app/schedule/SCHEDULE_LIVE_IMPLEMENTATION.md",
-      "localizedSourcePath": "knowledge/docs/zh/live-handoff-app-app-app-schedule-SCHEDULE-LIVE-IMPLEMENTATION-md.zh.md",
       "category": "implementation-handoff",
       "status": "generated-evidence",
       "freshness": "likely-current",

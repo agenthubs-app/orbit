@@ -104,7 +104,11 @@ const LIVE_MOBILE_AUTH_RUNTIME_SURFACES = new Set([
   "mobile:/profile",
 ]);
 const HANDLER_BOUND_RUNTIME_EVIDENCE_INTERACTIONS = new Set([
-  "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#重新提交请求 / Retry request",
+  // iOrbit 任务 6b：`orbit-real-agent.tsx` 已删除，助手回合的重试控件搬到
+  // `iorbit-0918/iorbit-chat.tsx`，onClick 表达式逐字未变（计划「审阅修订」8）。
+  // 这条仍然必须是 handler-bound：`agent-action-status-card.tsx` 有同名可见文案的
+  // 另一枚控件，松散的 `file#visibleName` 回落键会把两者混在一起。
+  "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-chat.tsx#重新提交请求 / Retry request",
 ]);
 const LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES = new Map([
   [
@@ -2641,7 +2645,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    'web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#onclick:async () => setCopied(await copyAgentMessageText(text))#t({ en: "Copy message", zh: "复制消息" })',
+    'web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx#onclick:async () => setCopied(await copyAgentMessageText(text))#t({ en: "Copy message", zh: "复制消息" })',
     {
       actualResult:
         "Clicking the latest assistant message copy control changed data-orbit-agent-message-copy from idle to copied and changed its title to 已复制 on the real persisted conversation.",
@@ -2712,20 +2716,12 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
       verificationCase: "web-agent-review-transition-state-machine-2026-07-29",
     },
   ],
+  // iOrbit 任务 6b：`查看依据 · N 条真实记录` 的键盘披露控件在
+  // `c0835aff fix(agent): hide internal result diagnostics`（2026-08-25）就已从产品里移除，
+  // 这条证据键从那天起就是死键——与 iOrbit 改版无关，本次一并删除。对应的
+  // web-agent-evidence-source-disclosure-2026-07-29 用例仍作为历史记录留在 VERIFIED_AUDIT_CASES。
   [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#onkeydown:toggleAgentEvidenceSourcesFromKeyboard#{t({ en: `Sources · ${totalItems} records`, zh: `查看依据 · ${totalItems} 条真实记录`, })}",
-    {
-      actualResult:
-        "The live recommendation first exposed an inflated 8-record count from an exact duplicate replan artifact, then 5 from a four-record result overlapping a one-record refinement. After repair, the persisted conversation rendered 查看依据 · 4 条真实记录, expanded to one source group from orbit-ai · events with the exact source time and evidence ids, opened with Enter, and closed with Space.",
-      testData:
-        "Actor user_ms5llhof_wrbpuq; sessions agent-session-ms5y03iq-c0phvh and agent-session-ms5yf1pi-bsibno; runs run:conversation:ad4cf600-e3cc-4529-b5c0-925aa8978e98 and run:conversation:d52a1b13-4b1f-4dd5-97db-571bf3484f0f; four unique event evidence records",
-      idempotency:
-        "Disclosure changed only the native details open state. Repeated parsing grouped equivalent and overlapping references by source snapshot and evidence id, persisted one normalized four-record reference, and final cleanup returned both sessions and both feedback records as null.",
-      verificationCase: "web-agent-evidence-source-disclosure-2026-07-29",
-    },
-  ],
-  [
-    'web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#t({ en: "Rename conversation", zh: "重命名对话" })',
+    'web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx#t({ en: "Rename conversation", zh: "重命名对话" })',
     {
       actualResult:
         "The rename field loaded the persisted display name for the selected actor-owned session and accepted a replacement title without changing the underlying session id or messages.",
@@ -2737,7 +2733,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    'web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#t({ en: "Save conversation name", zh: "保存对话名称" })',
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx#Save / 保存",
     {
       actualResult:
         "保存对话名称 persisted History Lifecycle Audit 20260729, closed the editor, rendered 对话已重命名, and retained the exact title after a production-page reload.",
@@ -2749,7 +2745,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    'web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#t({ en: "Cancel conversation rename", zh: "取消重命名对话" })',
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx#onclick:cancelRename#Cancel / 取消",
     {
       actualResult:
         "After the field was changed to SHOULD NOT PERSIST 20260729, 取消重命名对话 closed the editor, restored the prior title, and a reload proved the temporary value had not been saved.",
@@ -2761,7 +2757,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#item.q || item.title",
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx#onclick:() => { setMenuOpenId(null); onPick(item); }#item.q || item.title",
     {
       actualResult:
         "Selecting the temporary history row after first opening a different conversation navigated to ?session=agent-session-ms5w1kuk-o68abs and restored both the exact prompt and assistant reply; the same result survived reload.",
@@ -2773,7 +2769,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    'web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#t({ en: "More actions", zh: "更多操作" })',
+    'web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx#onclick:() => setMenuOpenId(menuOpen ? null : item.id)#t({ en: "More actions", zh: "更多操作" })',
     {
       actualResult:
         "更多操作 opened the exact session-scoped menu with pin or unpin, rename, and delete actions; opening it changed no stored record.",
@@ -2785,7 +2781,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#Unpin / 取消置顶 / Pin / 置顶",
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx#onclick:() => { setMenuOpenId(null); onTogglePin(item); }#Unpin / 取消置顶 / Pin / 置顶",
     {
       actualResult:
         "置顶 waited for persisted storage evidence, rendered 对话已置顶, moved the session into the pinned group order, and reopened as 取消置顶 after reload.",
@@ -2797,7 +2793,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#Rename / 重命名",
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx#onclick:() => startRename(item)#Rename / 重命名",
     {
       actualResult:
         "重命名 closed the actions menu and opened one named field with explicit save and cancel controls for the selected session.",
@@ -2808,7 +2804,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#Delete / 删除对话",
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx#onclick:() => { setMenuOpenId(null); onDelete(item); }#Delete / 删除对话",
     {
       actualResult:
         "删除对话 did not delete immediately; it opened an alertdialog naming the exact conversation and stating that its messages would be permanently removed and could not be recovered.",
@@ -2820,7 +2816,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#Keep conversation / 保留对话",
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx#onclick:onCancel#Keep conversation / 保留对话",
     {
       actualResult:
         "保留对话 closed the destructive confirmation, kept the selected session and its assistant reply visible, and left the history row present.",
@@ -2830,7 +2826,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#Deleting… / 正在删除… / Delete conversation / 删除对话",
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx#onclick:onConfirm#Deleting… / 正在删除… / Delete conversation / 删除对话",
     {
       actualResult:
         "Confirmed deletion removed the active row only after the actor-scoped DELETE persisted, navigated to the fresh Agent home, removed the transcript, and remained absent after reload.",
@@ -2841,20 +2837,10 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
       verificationCase: "web-agent-history-lifecycle-2026-07-29",
     },
   ],
+  // iOrbit 任务 6b：桌面常驻侧栏的「新对话」随侧栏一起下线（计划「能力保全决定」里
+  // 唯一的一条能力移除）。今天只剩历史抽屉里的那一枚，其证据键在下方。
   [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#onclick:newChat#New chat / 新对话",
-    {
-      actualResult:
-        "After selecting the real Undo Audit conversation, desktop 新对话 returned the URL to /app/agent, removed the old prompt and transcript, restored the welcome workspace and active composer, and retained all six persisted history rows.",
-      testData:
-        "Authenticated actor user_ms5llhof_wrbpuq with six stored sessions and active session agent-session-ms5tz2ay-zx6dfl",
-      idempotency:
-        "New chat changed only active client session state and URL; it deleted no session, message, action, task, or external record.",
-      verificationCase: "web-agent-history-navigation-resize-2026-07-29",
-    },
-  ],
-  [
-    'web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#t({ en: "Chat history", zh: "对话历史" })',
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx#onclick:onOpenHistory#◷ History / 历史记录",
     {
       actualResult:
         "At 390x844 the history control was initially present in the DOM but invisible because the shared mobile nav rule hid the mixed extras container. After separating mobile contextual actions, the top bar exposed 对话历史 and 打开菜单, kept 打开收件箱 hidden, and clicking 对话历史 opened the labelled modal drawer with focus on 关闭.",
@@ -2866,7 +2852,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#onclick:onNewChat#New chat / 新对话",
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx#onclick:onNewChat#＋ New chat / 新对话",
     {
       actualResult:
         "After the mobile drawer selected session agent-session-ms5tz2ay-zx6dfl and reload restored its prompt and pending-action explanation, 新对话 closed the drawer, returned the URL to /app/agent, removed the old transcript, restored the welcome workspace, returned focus to 对话历史, and retained six of six history rows.",
@@ -2877,18 +2863,8 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
       verificationCase: "web-agent-mobile-history-navigation-2026-07-29",
     },
   ],
-  [
-    'web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#t({ en: "Resize chat history", zh: "调整历史宽度" })',
-    {
-      actualResult:
-        "The vertical separator announced min=180, max=380, and current=212. ArrowRight changed current and rendered width to 228, Home moved to 180, and End moved to 380.",
-      testData:
-        "Authenticated desktop Agent production page with the focusable history separator",
-      idempotency:
-        "Keyboard resizing changed only local layout state and wrote no session, preference, message, action, or external record; reload restored the product default.",
-      verificationCase: "web-agent-history-navigation-resize-2026-07-29",
-    },
-  ],
+  // iOrbit 任务 6b：`调整历史宽度` 的可拖拽分隔条随常驻侧栏一起下线，产品里已无对应控件，
+  // 证据键删除；web-agent-history-navigation-resize-2026-07-29 用例本身仍在 VERIFIED_AUDIT_CASES。
   [
     "web:/app/chat|repos/orbits/shared/ui/state-view.tsx:249",
     {

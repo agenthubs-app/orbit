@@ -140,9 +140,13 @@ test("non-.btn <button> count in app/(app)/app does not increase", () => {
 // iOrbit 任务 6a（2026-09-23）：`/app/today` 三个 T5 核心表面随路由删除；
 // `orbit-today-decision-form.tsx` 是其中唯一还有消费者的文件（`/app/agent/actions`
 // 的行内写控件），移到 `agent/actions/` 后留在表里。`orbit-real-agent.tsx` 删除，
-// 它的 10 条 EXEMPTIONS 随之移除——其中仍在售的两枚控件（消息复制按钮、
-// 欢迎屏 chip）跟着组件搬进 `iorbit-0918/iorbit-rich-components.tsx`，该文件不是
-// T5 核心表面，只受上面的全局上限约束。
+// 它的 10 条 EXEMPTIONS 随之移除——其中仍在售的控件跟着组件搬进
+// `iorbit-0918/iorbit-rich-components.tsx`，该文件不是 T5 核心表面，只受上面的
+// 全局上限约束。
+// 任务 6b 更正：搬过去的非 `.btn` 按钮是 **7 枚**（6a 报告误写为 2 枚）：
+// `:73` orbit-agent-message-copy、`:219` chip、`:330`/`:333`/`:357`/`:601` linkish、
+// `:558` todo-peek。它们今天只受全局上限约束，没有逐条署名的 EXEMPTIONS 护栏；
+// 补 CORE_FILES + 7 条 EXEMPTIONS 或迁成 `.btn`，已记入遗留（任务 6b 报告）。
 const CORE_FILES = [
   "app/(app)/app/agent/actions/orbit-today-decision-form.tsx",
   "app/(app)/app/agent/actions/orbit-all-actions-controls.tsx",

@@ -5,7 +5,7 @@
 
 用户 2026-09-21 三项拍板：① 下表「删除」组 20 个全删；② 顶栏铃铛保留（通知收件面板与 `/app/inbox/sources/[id]` 随之保留）；③ App 端不动（`/app/tasks/relationship/[id]` 因 bridge 台账提到 App 可能打开，保留）。
 
-## 一、删除（20）
+## 一、删除（20 → 实际 17；`/app/tasks` `/app/tasks/[id]` `/app/tasks/personal` 三行保留，见表下说明）
 
 | 路由 | 被谁取代 | 删前必改的链接生成器 |
 | --- | --- | --- |
@@ -14,10 +14,10 @@
 | `/app/today` | `/app/agent` | 无生成器；删重定向文件 |
 | `/app/schedule` | `/app/agent/plan` | 无生成器；删重定向文件 |
 | `/app/followups` | `/app/agent/plan` | 7 处生成器（`features/agent/signals/source-collector.ts` 等）改指 `/app/agent/plan` |
-| `/app/chat` | `/app/agent?session=` | `features/chat/live-async-service.ts` `stageHref` 改指 `/app/agent?session=` |
+| `/app/chat` 已删（92144540） | `/app/agent`（**不是** `?session=`） | `features/chat/live-async-service.ts` `stageHref` **降级**为 `/app/agent`：原先的 `/app/chat?conversationId=` 删除前就是坏链（`/app/chat` 只转发 `q`/`lang`，且 `conversationId ≠ sessionId`），本表原先规定的 `?session=` 映射需要一张 conversationId→sessionId 的对应表，仓库里没有，任务 6a 决定不编造（计划「审阅修订」31）。`features/chat/mock-service.ts` 的两处 `stageHref` 同样落到 `/app/agent`，随之丢掉原有的 `?action=stage-reply&conversation=` 两个参数。映射仍是欠账 |
 | `/app/schedule/events/[id]` | plan 屏「本周日程」条目详情抽屉 | 无 |
-| `/app/tasks` `/app/tasks/[id]` | plan 屏「本周重点任务」（`?task=` 抽屉） | 无 |
-| `/app/tasks/personal` | plan 屏「本周日程」（个人日程；需补最小新增/编辑态） | 无 |
+| ~~`/app/tasks` `/app/tasks/[id]`~~ **保留**（未删） | 替代能力不存在：plan 屏没有 `?task=` 抽屉 | — |
+| ~~`/app/tasks/personal`~~ **保留**（未删） | 替代能力不存在：没有最简个人日程增改 | — |
 | `/app/party` `/app/party/checkin` `/app/party/graph` 已删（96802809） | 新路由 `/app/events/[id]/live`（设计 live 屏六页签：现场主页 / 推荐给你 / 全部参会者 / 分组 / 关系图谱 / 流程议程） | `orbit-product-href.ts` `partyHrefForEvent` → `/app/events/<id>/live`（首页活动卡 `enterEvent`）；`productHref("/party")` → `/app/events`；运营台 `event-operations-admin-workspace.tsx` 签到链接 → `/app/events/[id]/operations/check-in`；`orbit-ask-routes.ts` 去掉 `/app/party/checkin` 排除；`app-auth-routing.ts` 白名单删 `/app/party` |
 | `/app/contacts/all-actions` 已删（312829af） | `/app/agent/actions` | `app/api/integrations/[provider]/callback/route.ts` 回跳改指 `/app/agent/actions` |
 | `/app/contacts/intros` 已删（312829af） | insight 屏（等 W4 逻辑层，届时按设计重做） | 零引用 |
@@ -27,6 +27,8 @@
 | `/app/events/[id]/operations/roles` 已删（f619ea74） | 运营台「协作者抽屉」`/app/events/[id]/operations?drawer=roles`（`OpsRolesDrawer`；无 `roles.manage` 时忽略参数） | hub 卡 / 「更多 ⌄」「管理角色」（`rolesDrawerHref`）已指 `?drawer=roles`；测试 `event-role-management-workspace.test.tsx` 5 例迁 `app-ops-roles-drawer` / `app-ops-hub` |
 
 删除同时：`features/auth/app-auth-routing.ts` 的 `next` 白名单移除 today / chat / dashboard / party / followups / schedule；`tests/pages` 中对应路由测试随路由删除。
+
+**`/app/tasks*` 三行为什么保留**（任务 6a §0，2026-09-23 据实修正本表）：本表给出的两个替代前提——plan 屏的 `?task=` 抽屉、最简个人日程增改——在仓库里都不存在；而 plan / actions 两屏每行真实的 `operationHref` 就指向 `/app/tasks/*`，`tasks/tasks-client.ts` 与 `tasks/relationship-lifecycle-tasks.ts` 还被 `agent/agent-task-interaction-{card,client}` 与 `home-facts-route-service.ts` 消费，删掉会立刻造成死链。补这两处最小能力属于新建屏，已记为遗留。`/app/tasks/relationship/[id]` 本就在第二节保留。
 
 ## 二、保留（10：外部深链或流程依赖）
 

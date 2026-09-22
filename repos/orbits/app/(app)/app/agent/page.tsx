@@ -2,7 +2,9 @@
  * Agent 页 route adapter。
  *
  * route 只负责挂载样式/runtime，并把 live-capable Orbit AI 聊天入口挂到 `/app/agent`。
- * 数据仍走 live 的 chat route view model；视觉组件采用 Orbit_0918 的 iOrbit 壳（home 分支为新概览屏，chat 分支仍委托 OrbitRealAgent）。
+ * 数据仍走 live 的 chat route view model；视觉组件采用 Orbit_0918 的 iOrbit 壳
+ * （`agent/iorbit-0918/iorbit-shell.tsx`）：home 分支渲染 `iorbit-home.tsx`，chat 分支渲染
+ * `iorbit-chat.tsx`。旧的 `OrbitRealAgent` 已于任务 6a 删除。
  */
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
 import type { OrbitLanguage } from "../orbit-language-core";
