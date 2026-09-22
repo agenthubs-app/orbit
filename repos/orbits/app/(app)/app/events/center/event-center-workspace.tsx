@@ -1,35 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-
 import { PublicTopNav } from "../../orbit-public-shell";
 import { Icon } from "../../orbit-reference-primitives";
-
-type EventRole =
-  | "owner"
-  | "operations"
-  | "check_in"
-  | "reviewer"
-  | "read_only_analyst";
-
-interface EventCenterItem {
-  endsAt: string | null;
-  eventId: string;
-  lifecycleState: string;
-  migrationPending: boolean;
-  owner: boolean;
-  revision: number;
-  role: EventRole;
-  startsAt: string | null;
-  title: string | null;
-  venue: string | null;
-}
-
-interface ApiEnvelope<T> {
-  data?: T;
-  error?: { message?: string };
-  success: boolean;
-}
+import {
+  useEventCenter,
+  type EventCenterItem,
+  type EventRole,
+} from "../ops-0918/use-event-center";
 
 const roleCopy: Record<EventRole, { detail: string; label: string }> = {
   owner: {
@@ -128,37 +105,8 @@ function lifecycleRestrictionCopy(item: EventCenterItem): string {
   return "当前生命周期不开放运营台、签到台与报名审核。";
 }
 
-async function requestJson<T>(url: string): Promise<T> {
-  const response = await fetch(url, { cache: "no-store" });
-  const envelope = (await response.json().catch(() => null)) as ApiEnvelope<T> | null;
-  if (!response.ok || envelope?.success !== true || envelope.data === undefined) {
-    throw new Error(envelope?.error?.message ?? "无法加载运营活动中心。");
-  }
-  return envelope.data;
-}
-
 export function EventCenterWorkspace() {
-  const [events, setEvents] = useState<readonly EventCenterItem[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const next = await requestJson<readonly EventCenterItem[]>("/api/events/center");
-      setEvents(next);
-      setError(null);
-    } catch (cause) {
-      setEvents([]);
-      setError(cause instanceof Error ? cause.message : "无法加载运营活动中心。");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const { events, error, loading, load } = useEventCenter();
 
   return (
     <div data-orbit-real-page="event-operations-center" style={{ minHeight: "100dvh" }}>
