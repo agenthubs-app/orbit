@@ -1,11 +1,8 @@
 "use client";
 
-import { type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import type {
-  AiSessionGroupContract,
-  AiSessionOrganizationContract,
-} from "../../../../shared/contract/ai-sessions";
+import type { AiSessionGroupContract } from "../../../../shared/contract/ai-sessions";
 
 import type {
   OrbitAgentEventResultView,
@@ -24,13 +21,7 @@ import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../orbit-layout-constants";
 import { ORBIT_Z } from "../orbit-z";
 import { AgentActionStatusCard } from "./agent-action-status-card";
 import { AgentOutcomeFeedback } from "./agent-outcome-feedback";
-import {
-  AgentChatHistoryOrganization,
-  createAgentChatGroup,
-  deleteAgentChatGroup,
-  patchAgentChatSessionOrganization,
-  renameAgentChatGroup,
-} from "./agent-chat-history-organization";
+import { AgentChatHistoryOrganization } from "./agent-chat-history-organization";
 import { AgentTaskInteractionCard } from "./agent-task-interaction-card";
 import { OrbitAgentDashboard } from "./orbit-agent-dashboard";
 import type { OrbitHomeViewModel } from "../orbit-home-route-view-model";
@@ -41,18 +32,12 @@ import {
   requestMessageDraft,
 } from "../inbox/relationship-inbox-panel";
 import {
-  AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY,
-  HISTORY_SIDEBAR_DEFAULT_WIDTH,
   HISTORY_SIDEBAR_MAX_WIDTH,
   HISTORY_SIDEBAR_MIN_WIDTH,
   THINKING_PHASES,
   THINKING_PHASE_INTERVAL_MS,
-  agentChatHistorySessionsToHistory,
   agentSuggestLabel,
-  clampHistorySidebarWidth,
   copyAgentMessageText,
-  createAgentSessionId,
-  deleteStoredAgentChatSession,
   draftPurposeFor,
   earliestTodoDueAt,
   fmtDay,
@@ -64,7 +49,6 @@ import {
   parseDate,
   titleFromMessages,
   todoDueLabel,
-  upsertAgentChatSession,
   type AgentHistoryLanguage,
   type AgentPanel,
   type AgentTodoGroup,
@@ -72,6 +56,7 @@ import {
   type Translate,
 } from "./iorbit-0918/iorbit-model";
 import { useAgentChat } from "./iorbit-0918/use-agent-chat";
+import { useAgentHistory } from "./iorbit-0918/use-agent-history";
 
 interface OrbitRealAgentProps {
   home?: OrbitHomeViewModel | null;
@@ -1533,6 +1518,40 @@ export function OrbitRealAgent({
   viewModel,
 }: OrbitRealAgentProps) {
   const { language, t } = useOrbitLanguage();
+  // 任务 1c：历史记录侧（会话列表 / 分组 / 置顶 / 重命名 / 删除 / toast /
+  // 侧栏宽度）整体归 `useAgentHistory`；对话侧从它拿到同一份 store 的 ref 与
+  // setter，再用 `bindChat` 把删除当前会话要用的对话重置回注给历史 hook。
+  const {
+    bindChat,
+    confirmDeleteHistorySession,
+    createHistoryGroup,
+    deleteHistoryGroup,
+    deleteHistorySession,
+    groupMutationPending,
+    historyDeleteError,
+    historyFeedback,
+    historyMutationQueue,
+    historyMutationSessionId,
+    historySidebarResizing,
+    historySidebarWidth,
+    moveHistorySession,
+    pendingDeleteHistory,
+    renameHistoryGroup,
+    renameHistorySession,
+    resizeHistorySidebarWithKeyboard,
+    selectedSessionGroupId,
+    sessionGroups,
+    setHistoryDeleteError,
+    setHistoryFeedback,
+    setPendingDeleteHistory,
+    setSelectedSessionGroupId,
+    setSessionGroups,
+    setStoredSessions,
+    startHistorySidebarResize,
+    storedHistory,
+    storedSessionsRef,
+    togglePinnedHistorySession,
+  } = useAgentHistory();
   const {
     activeQ,
     activeSessionId,
@@ -1543,357 +1562,53 @@ export function OrbitRealAgent({
     chatDraft,
     chatOpen,
     histOpen,
-    historyFeedback,
-    historyMutationQueue,
-    languageRef,
     messages,
     navigate,
     newChat,
     newChatInGroup,
     panel,
     pickHistory,
-    sessionGroups,
     setActiveQ,
     setActiveSessionId,
     setAgentPrefill,
     setChatDraft,
     setChatOpen,
     setHistOpen,
-    setHistoryFeedback,
     setMessages,
     setPanel,
-    setSessionGroups,
-    setStoredSessions,
     setThinking,
-    storedSessions,
-    storedSessionsRef,
     submitChatDraft,
     taskSuggestions,
     thinking,
-  } = useAgentChat({ suggests: viewModel.suggests });
-  const [historySidebarResizing, setHistorySidebarResizing] = useState(false);
-  const [historySidebarWidth, setHistorySidebarWidth] = useState(
-    HISTORY_SIDEBAR_DEFAULT_WIDTH,
-  );
-  const [selectedSessionGroupId, setSelectedSessionGroupId] = useState<string | null>(null);
-  const [groupMutationPending, setGroupMutationPending] = useState(false);
-  const [historyDeleteError, setHistoryDeleteError] = useState<string | null>(null);
-  const [historyMutationSessionId, setHistoryMutationSessionId] = useState<string | null>(null);
-  const [pendingDeleteHistory, setPendingDeleteHistory] = useState<OrbitAgentHistoryView | null>(null);
+  } = useAgentChat({
+    history: {
+      historyMutationQueue,
+      setHistoryFeedback,
+      setSessionGroups,
+      setStoredSessions,
+      storedSessionsRef,
+    },
+    suggests: viewModel.suggests,
+  });
+  bindChat({
+    activeSessionIdRef,
+    navigate,
+    setActiveQ,
+    setActiveSessionId,
+    setChatOpen,
+    setHistOpen,
+    setMessages,
+    setPanel,
+    setThinking,
+  });
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const historyResizeRef = useRef<{ startWidth: number; startX: number } | null>(null);
-  const historyMutationSessionIdRef = useRef<string | null>(null);
-
-  const storedHistory = useMemo(
-    () => agentChatHistorySessionsToHistory(storedSessions, language, sessionGroups)
-      .filter((item) => !selectedSessionGroupId || item.groupId === selectedSessionGroupId),
-    [language, selectedSessionGroupId, sessionGroups, storedSessions],
-  );
 
   useEffect(() => {
     const scroll = scrollRef.current;
     if (scroll) scroll.scrollTop = scroll.scrollHeight;
   }, [messages, thinking]);
 
-  useEffect(() => {
-    if (!historySidebarResizing) {
-      return undefined;
-    }
 
-    const onPointerMove = (event: PointerEvent) => {
-      const resize = historyResizeRef.current;
-      if (!resize) {
-        return;
-      }
-
-      setHistorySidebarWidth(
-        clampHistorySidebarWidth(
-          resize.startWidth + event.clientX - resize.startX,
-        ),
-      );
-    };
-    const stopResize = () => {
-      historyResizeRef.current = null;
-      setHistorySidebarResizing(false);
-    };
-
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", stopResize);
-    window.addEventListener("pointercancel", stopResize);
-
-    return () => {
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", stopResize);
-      window.removeEventListener("pointercancel", stopResize);
-    };
-  }, [historySidebarResizing]);
-
-  const startHistorySidebarResize = useCallback(
-    (event: ReactPointerEvent<HTMLButtonElement>) => {
-      event.preventDefault();
-      historyResizeRef.current = {
-        startWidth: historySidebarWidth,
-        startX: event.clientX,
-      };
-      setHistorySidebarResizing(true);
-    },
-    [historySidebarWidth],
-  );
-
-  const resizeHistorySidebarWithKeyboard = useCallback(
-    (event: ReactKeyboardEvent<HTMLButtonElement>) => {
-      const nextWidth =
-        event.key === "ArrowLeft"
-          ? historySidebarWidth - 16
-          : event.key === "ArrowRight"
-            ? historySidebarWidth + 16
-            : event.key === "Home"
-              ? HISTORY_SIDEBAR_MIN_WIDTH
-              : event.key === "End"
-                ? HISTORY_SIDEBAR_MAX_WIDTH
-                : null;
-
-      if (nextWidth === null) {
-        return;
-      }
-
-      event.preventDefault();
-      setHistorySidebarWidth(clampHistorySidebarWidth(nextWidth));
-    },
-    [historySidebarWidth],
-  );
-
-  const updateHistorySession = async (
-    sessionId: string,
-    patch: Partial<Pick<AiSessionOrganizationContract, "customTitle" | "groupId" | "pinned">>,
-    successText: string,
-  ): Promise<boolean> => {
-    if (historyMutationSessionIdRef.current) {
-      return false;
-    }
-
-    const currentSession = storedSessionsRef.current.find(
-      (session) => session.id === sessionId,
-    );
-
-    if (!currentSession) {
-      return false;
-    }
-
-    historyMutationSessionIdRef.current = sessionId;
-    setHistoryMutationSessionId(sessionId);
-    setHistoryFeedback(null);
-
-    try {
-      let savedOrganization: AiSessionOrganizationContract | null = null;
-      const persisted = await historyMutationQueue.save(sessionId, () => {
-        const latest = storedSessionsRef.current.find((session) => session.id === sessionId) ?? currentSession;
-        return patchAgentChatSessionOrganization(sessionId, {
-          expectedRevision: latest.organization?.revision ?? 0,
-          mutationId: globalThis.crypto?.randomUUID?.() ?? createAgentSessionId(),
-          patch,
-        }).then((organization) => {
-          savedOrganization = organization;
-          return organization !== null;
-        });
-      });
-      if (!persisted) {
-        setHistoryFeedback({
-          kind: "error",
-          text:
-            languageRef.current === "zh"
-              ? "未能保存对话历史更改，页面保持原状态。请稍后重试。"
-              : "The history change could not be saved, so nothing changed. Please try again.",
-        });
-        return false;
-      }
-
-      const latest = storedSessionsRef.current.find((session) => session.id === sessionId) ?? currentSession;
-      if (!savedOrganization) return false;
-      const nextSessions = upsertAgentChatSession(storedSessionsRef.current, {
-        ...latest,
-        customTitle: savedOrganization.customTitle ?? undefined,
-        organization: savedOrganization,
-        pinned: savedOrganization.pinned,
-        title: savedOrganization.customTitle ?? latest.title,
-      });
-      storedSessionsRef.current = nextSessions;
-      setStoredSessions(nextSessions);
-      setHistoryFeedback({ kind: "success", text: successText });
-      return true;
-    } finally {
-      historyMutationSessionIdRef.current = null;
-      setHistoryMutationSessionId(null);
-    }
-  };
-
-  const togglePinnedHistorySession = (item: OrbitAgentHistoryView) => {
-    if (!item.sessionId) {
-      return;
-    }
-
-    void updateHistorySession(
-      item.sessionId,
-      { pinned: !item.pinned },
-      item.pinned
-        ? t({ en: "Conversation unpinned", zh: "已取消置顶" })
-        : t({ en: "Conversation pinned", zh: "对话已置顶" }),
-    );
-  };
-
-  const renameHistorySession = (
-    item: OrbitAgentHistoryView,
-    title: string,
-  ) => {
-    if (!item.sessionId) {
-      return;
-    }
-
-    const customTitle = title.trim();
-    if (!customTitle) {
-      return;
-    }
-
-    void updateHistorySession(
-      item.sessionId,
-      { customTitle },
-      t({ en: "Conversation renamed", zh: "对话已重命名" }),
-    );
-  };
-
-  const moveHistorySession = (item: OrbitAgentHistoryView, groupId: string | null) => {
-    if (!item.sessionId) return;
-    void updateHistorySession(
-      item.sessionId,
-      { groupId },
-      t({ en: "Conversation moved", zh: "已移动对话" }),
-    );
-  };
-
-  const createHistoryGroup = async (name: string) => {
-    if (groupMutationPending) return;
-    setGroupMutationPending(true);
-    const id = `group:${globalThis.crypto?.randomUUID?.() ?? createAgentSessionId()}`;
-    const group = await createAgentChatGroup({
-      id,
-      mutationId: globalThis.crypto?.randomUUID?.() ?? createAgentSessionId(),
-      name: name.trim(),
-    });
-    if (group) {
-      setSessionGroups((current) => [...current.filter((item) => item.id !== group.id), group]);
-      setHistoryFeedback({ kind: "success", text: t({ en: "Group created", zh: "已创建分组" }) });
-    } else {
-      setHistoryFeedback({ kind: "error", text: t({ en: "The group was not saved. Refresh and try again.", zh: "分组尚未保存，请刷新后重试。" }) });
-    }
-    setGroupMutationPending(false);
-  };
-
-  const renameHistoryGroup = async (group: AiSessionGroupContract, name: string) => {
-    if (groupMutationPending) return;
-    setGroupMutationPending(true);
-    const saved = await renameAgentChatGroup(group.id, {
-      expectedRevision: group.revision,
-      mutationId: globalThis.crypto?.randomUUID?.() ?? createAgentSessionId(),
-      name: name.trim(),
-    });
-    if (saved) {
-      setSessionGroups((current) => current.map((item) => item.id === saved.id ? saved : item));
-      setHistoryFeedback({ kind: "success", text: t({ en: "Group renamed", zh: "已重命名分组" }) });
-    } else {
-      setHistoryFeedback({ kind: "error", text: t({ en: "The group name was not saved. Refresh and try again.", zh: "分组名称尚未保存，请刷新后重试。" }) });
-    }
-    setGroupMutationPending(false);
-  };
-
-  const deleteHistoryGroup = async (group: AiSessionGroupContract) => {
-    if (groupMutationPending) return;
-    setGroupMutationPending(true);
-    const deleted = await deleteAgentChatGroup(group.id, {
-      expectedRevision: group.revision,
-      mutationId: globalThis.crypto?.randomUUID?.() ?? createAgentSessionId(),
-    });
-    if (deleted) {
-      setSessionGroups((current) => current.filter((item) => item.id !== group.id));
-      setStoredSessions((current) => {
-        const next = current.map((session) => session.organization?.groupId === group.id ? {
-          ...session,
-          organization: { ...session.organization, groupId: null, revision: session.organization.revision + 1 },
-        } : session);
-        storedSessionsRef.current = next;
-        return next;
-      });
-      if (selectedSessionGroupId === group.id) setSelectedSessionGroupId(null);
-      setHistoryFeedback({ kind: "success", text: t({ en: "Group deleted; conversations kept", zh: "已删除分组并保留全部对话" }) });
-    } else {
-      setHistoryFeedback({ kind: "error", text: t({ en: "The group was not deleted. Refresh and try again.", zh: "分组尚未删除，请刷新后重试。" }) });
-    }
-    setGroupMutationPending(false);
-  };
-
-  const deleteHistorySession = (item: OrbitAgentHistoryView) => {
-    if (!item.sessionId) {
-      return;
-    }
-
-    setHistoryDeleteError(null);
-    setPendingDeleteHistory(item);
-  };
-
-  const confirmDeleteHistorySession = async () => {
-    const item = pendingDeleteHistory;
-    const sessionId = item?.sessionId;
-    if (!item || !sessionId || historyMutationSessionIdRef.current) {
-      return;
-    }
-
-    historyMutationSessionIdRef.current = sessionId;
-    setHistoryMutationSessionId(sessionId);
-    setHistoryDeleteError(null);
-    setHistoryFeedback(null);
-
-    try {
-      const persisted = await historyMutationQueue.remove(sessionId, () => deleteStoredAgentChatSession(sessionId));
-      if (!persisted) {
-        setHistoryDeleteError(
-          languageRef.current === "zh"
-            ? "未能删除这个对话，历史记录保持不变。请稍后重试。"
-            : "This conversation could not be deleted, so your history is unchanged. Please try again.",
-        );
-        return;
-      }
-
-      const nextSessions = storedSessionsRef.current.filter(
-        (session) => session.id !== sessionId,
-      );
-      storedSessionsRef.current = nextSessions;
-      setStoredSessions(nextSessions);
-      setPendingDeleteHistory(null);
-      setHistoryFeedback({
-        kind: "success",
-        text: t({ en: "Conversation deleted", zh: "对话已删除" }),
-      });
-
-      if (activeSessionIdRef.current !== sessionId) {
-        return;
-      }
-
-      setHistOpen(false);
-      setMessages([]);
-      setPanel(null);
-      setThinking(false);
-      setActiveQ("");
-      setActiveSessionId(null);
-      setChatOpen(false);
-      activeSessionIdRef.current = null;
-      if (typeof window !== "undefined") {
-        window.localStorage.removeItem(AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY);
-      }
-      navigate("/agent");
-    } finally {
-      historyMutationSessionIdRef.current = null;
-      setHistoryMutationSessionId(null);
-    }
-  };
 
   const renderBubbles = () => (
     <>

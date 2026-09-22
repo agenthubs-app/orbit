@@ -17,6 +17,7 @@ function readProjectFile(relativePath: string): string {
 // JSX 留在 `orbit-real-agent.tsx`。源码断言按此拆成两半。
 const IORBIT_MODEL_PATH = "app/(app)/app/agent/iorbit-0918/iorbit-model.ts";
 const IORBIT_CHAT_HOOK_PATH = "app/(app)/app/agent/iorbit-0918/use-agent-chat.ts";
+const IORBIT_HISTORY_HOOK_PATH = "app/(app)/app/agent/iorbit-0918/use-agent-history.ts";
 
 async function importProjectModule<TModule>(
   relativePath: string,
@@ -63,13 +64,14 @@ test("/app/agent source clears stale panels only for turns that do not return a 
   );
 
   const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
+  const historyHookSource = readProjectFile(IORBIT_HISTORY_HOOK_PATH);
 
   assert.match(chatHookSource, /const items =\s*kind === "events"/);
   assert.match(
     chatHookSource,
     /setPanel\(items\.length > 0 \? \{ items, kind, panelTitle \} : null\)/,
   );
-  for (const checked of [agentSource, chatHookSource]) {
+  for (const checked of [agentSource, chatHookSource, historyHookSource]) {
     assert.doesNotMatch(checked, /if \(items\.length > 0\) \{\s*setPanel/);
   }
 });

@@ -53,6 +53,7 @@ test("Agent waiting, timeout recovery, and trust summaries state their real boun
   const agent = source("app/(app)/app/agent/orbit-real-agent.tsx");
   const model = source("app/(app)/app/agent/iorbit-0918/iorbit-model.ts");
   const chatHook = source("app/(app)/app/agent/iorbit-0918/use-agent-chat.ts");
+  const historyHook = source("app/(app)/app/agent/iorbit-0918/use-agent-history.ts");
 
   assert.match(agent, /Usually under a minute/);
   assert.match(model, /AGENT_REQUEST_TIMEOUT_MS = 60_000/);
@@ -60,7 +61,7 @@ test("Agent waiting, timeout recovery, and trust summaries state their real boun
   assert.match(chatHook, /retryRequest: query/);
   assert.match(chatHook, /服务器结果尚未确认/);
   assert.match(chatHook, /不会重复生成/);
-  for (const checked of [agent, model, chatHook]) {
+  for (const checked of [agent, model, chatHook, historyHook]) {
     assert.doesNotMatch(checked, /本次请求已停止/);
     assert.doesNotMatch(checked, /The request took over .* and was stopped/);
     assert.doesNotMatch(checked, /依据 \$\{totalItems\} 条 · 未执行外部动作/);

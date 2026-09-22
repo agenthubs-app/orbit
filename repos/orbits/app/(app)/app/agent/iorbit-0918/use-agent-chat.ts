@@ -6,7 +6,16 @@
 // localStorage、navigate/pushState 与全局提问接线。行为零改动：
 // `window.setTimeout` 与 60s `AGENT_REQUEST_TIMEOUT_MS` abort 保持原样
 // （后者留在 `iorbit-model.ts` 的 `fetchAgentConversation` 里）。
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type MutableRefObject,
+  type SetStateAction,
+} from "react";
 import type {
   AiSessionGroupContract,
   AiSessionOrganizationContract,
@@ -57,7 +66,24 @@ import {
   type AgentStoredChatSession,
 } from "./iorbit-model";
 
-export function useAgentChat({ suggests }: { suggests: OrbitAgentViewModel["suggests"] }) {
+// 任务 1c：会话列表 / 分组 / 乐观写队列 / toast 的所有权在 `use-agent-history`，
+// 这里只接收它的 ref 与 setter（不复制一份 state）。
+export interface AgentChatHistoryStore {
+  historyMutationQueue: ReturnType<typeof createAgentChatSessionMutationQueue>;
+  setHistoryFeedback: Dispatch<SetStateAction<AgentHistoryFeedback | null>>;
+  setSessionGroups: Dispatch<SetStateAction<AiSessionGroupContract[]>>;
+  setStoredSessions: Dispatch<SetStateAction<AgentStoredChatSession[]>>;
+  storedSessionsRef: MutableRefObject<AgentStoredChatSession[]>;
+}
+
+export function useAgentChat({ history, suggests }: { history: AgentChatHistoryStore; suggests: OrbitAgentViewModel["suggests"] }) {
+  const {
+    historyMutationQueue,
+    setHistoryFeedback,
+    setSessionGroups,
+    setStoredSessions,
+    storedSessionsRef,
+  } = history;
   const { language, preserveHref } = useOrbitLanguage();
   // dashboard ⇄ 对话页：有消息（或点了「新对话」）即进入对话页，返回键回 dashboard。
   const [chatOpen, setChatOpen] = useState(false);
@@ -78,16 +104,8 @@ export function useAgentChat({ suggests }: { suggests: OrbitAgentViewModel["sugg
   const [activeQ, setActiveQ] = useState("");
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
-  const [storedSessions, setStoredSessions] = useState<AgentStoredChatSession[]>([]);
-  const [sessionGroups, setSessionGroups] = useState<AiSessionGroupContract[]>([]);
-
-  const [historyMutationQueue] = useState(createAgentChatSessionMutationQueue);
-
-  const [historyFeedback, setHistoryFeedback] = useState<AgentHistoryFeedback | null>(null);
-
   const languageRef = useRef(language);
   const messagesRef = useRef<AgentMessage[]>(messages);
-  const storedSessionsRef = useRef<AgentStoredChatSession[]>(storedSessions);
   const activeSessionIdRef = useRef<string | null>(activeSessionId);
   const historyHydratedRef = useRef(false);
   const skipRestoredSessionPersistenceRef = useRef(false);
@@ -98,7 +116,6 @@ export function useAgentChat({ suggests }: { suggests: OrbitAgentViewModel["sugg
 
   languageRef.current = language;
   messagesRef.current = messages;
-  storedSessionsRef.current = storedSessions;
   activeSessionIdRef.current = activeSessionId;
 
   const navigate = useCallback((prototypeHref: string) => {
@@ -595,25 +612,6 @@ export function useAgentChat({ suggests }: { suggests: OrbitAgentViewModel["sugg
   }, [ask, restoreSession]);
 
   useEffect(() => {
-    let cancelled = false;
-    const refreshAcrossClients = () => {
-      void Promise.all([loadStoredAgentChatSessions(), loadAgentChatGroups()]).then(
-        ([sessions, groups]) => {
-          if (cancelled) return;
-          storedSessionsRef.current = sessions;
-          setStoredSessions(sessions);
-          setSessionGroups(groups);
-        },
-      );
-    };
-    window.addEventListener("focus", refreshAcrossClients);
-    return () => {
-      cancelled = true;
-      window.removeEventListener("focus", refreshAcrossClients);
-    };
-  }, []);
-
-  useEffect(() => {
     persistCurrentSession(messages, panel);
   }, [messages, panel, persistCurrentSession]);
 
@@ -731,8 +729,6 @@ export function useAgentChat({ suggests }: { suggests: OrbitAgentViewModel["sugg
     chatOpen,
     clearConversation,
     histOpen,
-    historyFeedback,
-    historyMutationQueue,
     languageRef,
     messages,
     navigate,
@@ -741,21 +737,15 @@ export function useAgentChat({ suggests }: { suggests: OrbitAgentViewModel["sugg
     panel,
     pickHistory,
     restoreSession,
-    sessionGroups,
     setActiveQ,
     setActiveSessionId,
     setAgentPrefill,
     setChatDraft,
     setChatOpen,
     setHistOpen,
-    setHistoryFeedback,
     setMessages,
     setPanel,
-    setSessionGroups,
-    setStoredSessions,
     setThinking,
-    storedSessions,
-    storedSessionsRef,
     submitChatDraft,
     taskSuggestions,
     thinking,

@@ -24,8 +24,12 @@ function readProjectFile(relativePath: string): string {
 
 // iOrbit 任务 1b：纯函数搬到 `iorbit-model.ts`、对话状态/hydration 搬到
 // `use-agent-chat.ts`，JSX 留在 `orbit-real-agent.tsx`。源码断言按此拆成两半。
+// iOrbit 任务 1c：会话列表 / 分组 / 置顶 / 重命名 / 删除 / 乐观写队列 / toast /
+// 侧栏拖拽宽度搬到 `use-agent-history.ts`，JSX（菜单、二次确认对话框、resize
+// handle、toast 容器）仍留在 `orbit-real-agent.tsx`。
 const IORBIT_MODEL_PATH = "app/(app)/app/agent/iorbit-0918/iorbit-model.ts";
 const IORBIT_CHAT_HOOK_PATH = "app/(app)/app/agent/iorbit-0918/use-agent-chat.ts";
+const IORBIT_HISTORY_HOOK_PATH = "app/(app)/app/agent/iorbit-0918/use-agent-history.ts";
 
 function minimalChatRouteModel() {
   return {
@@ -359,6 +363,7 @@ test("agent sidebar persists sessions through the Orbit Agent sessions API", () 
   const source = readProjectFile("app/(app)/app/agent/orbit-real-agent.tsx");
   const modelSource = readProjectFile(IORBIT_MODEL_PATH);
   const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
+  const historyHookSource = readProjectFile(IORBIT_HISTORY_HOOK_PATH);
 
   assert.match(modelSource, /\/api\/ai\/conversations\/sessions/);
   assert.match(chatHookSource, /loadStoredAgentChatSessions/);
@@ -366,7 +371,7 @@ test("agent sidebar persists sessions through the Orbit Agent sessions API", () 
   assert.match(source, /history=\{storedHistory\}/);
   assert.match(chatHookSource, /restoreSession\(session\)/);
   assert.match(chatHookSource, /currentAgentSessionId\(\)/);
-  for (const agentSource of [source, modelSource, chatHookSource]) {
+  for (const agentSource of [source, modelSource, chatHookSource, historyHookSource]) {
     assert.doesNotMatch(agentSource, /localStorage\.getItem\(AGENT_CHAT_HISTORY_STORAGE_KEY\)/);
     assert.doesNotMatch(agentSource, /localStorage\.setItem\(\s*AGENT_CHAT_HISTORY_STORAGE_KEY/);
   }
@@ -418,9 +423,12 @@ test("agent sidebar exposes deletion and width resizing controls for history", (
     "app/(app)/app/orbit-reference-styles.tsx",
   );
 
-  // 删除请求本体在 model（`deleteStoredAgentChatSession`），菜单与二次确认在 JSX。
+  const historyHookSource = readProjectFile(IORBIT_HISTORY_HOOK_PATH);
+
+  // 删除请求本体在 model（`deleteStoredAgentChatSession`），调用点在
+  // `use-agent-history`（任务 1c），菜单与二次确认在 JSX。
   assert.match(readProjectFile(IORBIT_MODEL_PATH), /deleteStoredAgentChatSession/);
-  assert.match(source, /deleteStoredAgentChatSession/);
+  assert.match(historyHookSource, /deleteStoredAgentChatSession/);
   assert.match(readProjectFile(IORBIT_MODEL_PATH), /method: "DELETE"/);
   assert.match(source, /data-orbit-agent-history-menu-button/);
   assert.match(source, /data-orbit-agent-history-menu/);
@@ -429,7 +437,7 @@ test("agent sidebar exposes deletion and width resizing controls for history", (
   assert.match(source, /data-orbit-agent-history-confirm-delete/);
   assert.match(source, /role="alertdialog"/);
   assert.match(source, /agentChatHistoryMutationWasPersisted/);
-  assert.match(source, /historyMutationSessionIdRef/);
+  assert.match(historyHookSource, /historyMutationSessionIdRef/);
   assert.match(source, /data-orbit-agent-history-pin/);
   assert.match(source, /data-orbit-agent-history-rename/);
   assert.match(
@@ -451,14 +459,14 @@ test("agent sidebar exposes deletion and width resizing controls for history", (
   assert.match(source, /onRename=\{renameHistorySession\}/);
   assert.match(source, /onTogglePin=\{togglePinnedHistorySession\}/);
   assert.match(source, /data-orbit-agent-history-resize-handle/);
-  assert.match(source, /setHistorySidebarWidth/);
+  assert.match(historyHookSource, /setHistorySidebarWidth/);
   assert.match(source, /role="separator"/);
   assert.match(source, /aria-valuemin=\{HISTORY_SIDEBAR_MIN_WIDTH\}/);
   assert.match(source, /aria-valuemax=\{HISTORY_SIDEBAR_MAX_WIDTH\}/);
   assert.match(source, /aria-valuenow=\{historySidebarWidth\}/);
   assert.match(source, /onKeyDown=\{resizeHistorySidebarWithKeyboard\}/);
-  assert.match(source, /event\.key === "ArrowLeft"/);
-  assert.match(source, /event\.key === "ArrowRight"/);
+  assert.match(historyHookSource, /event\.key === "ArrowLeft"/);
+  assert.match(historyHookSource, /event\.key === "ArrowRight"/);
   assert.match(source, /function AgentMobileHistoryDrawer/);
   assert.match(source, /data-orbit-agent-history-drawer/);
   assert.match(source, /const drawerRef = useOrbitModalA11y\(onClose\)/);

@@ -24,6 +24,7 @@ function readProjectFile(relativePath: string): string {
 // `use-agent-chat.ts`，JSX 留在 `orbit-real-agent.tsx`。
 const IORBIT_MODEL_PATH = "app/(app)/app/agent/iorbit-0918/iorbit-model.ts";
 const IORBIT_CHAT_HOOK_PATH = "app/(app)/app/agent/iorbit-0918/use-agent-chat.ts";
+const IORBIT_HISTORY_HOOK_PATH = "app/(app)/app/agent/iorbit-0918/use-agent-history.ts";
 
 test("Orbit agent UI sends prompts through the Chat Agent API boundary", () => {
   const source = readProjectFile(
@@ -33,12 +34,13 @@ test("Orbit agent UI sends prompts through the Chat Agent API boundary", () => {
 
   const modelSource = readProjectFile(IORBIT_MODEL_PATH);
   const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
+  const historyHookSource = readProjectFile(IORBIT_HISTORY_HOOK_PATH);
 
   assert.match(modelSource, /fetch\(["']\/api\/ai\/conversations["']/);
   assert.match(modelSource, /method:\s*["']POST["']/);
   assert.match(chatHookSource, /assistantMessage/);
   assert.match(serviceFactory, /process\.env\.ORBIT_AGENT_CONVERSATION_MODE/);
-  for (const checked of [source, modelSource, chatHookSource]) {
+  for (const checked of [source, modelSource, chatHookSource, historyHookSource]) {
     assert.doesNotMatch(checked, /function routeScenario/);
   }
   assert.match(chatHookSource, /fetchAgentConversation/);
@@ -99,11 +101,12 @@ test("chat composer stays on the Agent page without reopening the global launche
 test("the actual Agent request helper aborts stalled requests and always clears its timer", async () => {
   const jsxSource = readProjectFile("app/(app)/app/agent/orbit-real-agent.tsx");
   const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
+  const historyHookSource = readProjectFile(IORBIT_HISTORY_HOOK_PATH);
   // 超时/未确认的用户文案由 hook 的 ask() 产出；请求助手本身（AST 断言）在 model。
   assert.match(chatHookSource, /浏览器已停止等待/);
   assert.match(chatHookSource, /服务器结果尚未确认/);
   assert.match(chatHookSource, /不会重复生成/);
-  for (const checked of [jsxSource, chatHookSource]) {
+  for (const checked of [jsxSource, chatHookSource, historyHookSource]) {
     assert.doesNotMatch(checked, /本次请求已停止/);
     assert.doesNotMatch(checked, /The request took over .* and was stopped/);
   }

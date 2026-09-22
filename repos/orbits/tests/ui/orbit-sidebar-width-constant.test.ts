@@ -19,7 +19,11 @@ function source(path: string): string {
 
 // iOrbit 任务 1b：三个 HISTORY_SIDEBAR_* 常量与 clampHistorySidebarWidth 搬到了
 // `iorbit-0918/iorbit-model.ts`（拖拽 JSX 仍在 `orbit-real-agent.tsx`）。
+// iOrbit 任务 1c：拖拽宽度 state 与 clampHistorySidebarWidth 的调用点搬到了
+// `iorbit-0918/use-agent-history.ts`；`orbit-real-agent.tsx` 只剩 resize handle
+// 的 JSX（aria-valuemin/max/now 与两个 handler 的传入）。
 const IORBIT_MODEL_PATH = "app/(app)/app/agent/iorbit-0918/iorbit-model.ts";
+const IORBIT_HISTORY_HOOK_PATH = "app/(app)/app/agent/iorbit-0918/use-agent-history.ts";
 
 test("the shared sidebar width matches the 人脉 column", () => {
   assert.equal(ORBIT_LEFT_SIDEBAR_WIDTH, 212);
@@ -49,9 +53,12 @@ test("the iOrbit drag lower bound does not exceed the initial width", () => {
 
 test("the iOrbit sidebar is still resizable", () => {
   const agent = source("app/(app)/app/agent/orbit-real-agent.tsx");
+  const historyHook = source(IORBIT_HISTORY_HOOK_PATH);
   const model = source(IORBIT_MODEL_PATH);
 
-  assert.ok(agent.includes("clampHistorySidebarWidth"));
+  assert.ok(agent.includes("data-orbit-agent-history-resize-handle"));
+  assert.ok(agent.includes("onPointerDown={startHistorySidebarResize}"));
+  assert.ok(historyHook.includes("clampHistorySidebarWidth"));
   assert.ok(model.includes("clampHistorySidebarWidth"));
   assert.ok(model.includes("HISTORY_SIDEBAR_MAX_WIDTH = 380"));
 });

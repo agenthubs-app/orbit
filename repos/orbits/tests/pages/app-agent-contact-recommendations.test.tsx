@@ -19,6 +19,7 @@ function readProjectFile(relativePath: string): string {
 // `use-agent-chat.ts`，JSX 留在 `orbit-real-agent.tsx`。
 const IORBIT_MODEL_PATH = "app/(app)/app/agent/iorbit-0918/iorbit-model.ts";
 const IORBIT_CHAT_HOOK_PATH = "app/(app)/app/agent/iorbit-0918/use-agent-chat.ts";
+const IORBIT_HISTORY_HOOK_PATH = "app/(app)/app/agent/iorbit-0918/use-agent-history.ts";
 
 async function importProjectModule<TModule>(
   relativePath: string,
@@ -104,6 +105,7 @@ test("/app/agent maps contact artifacts into reason, confidence, evidence, and d
   assert.match(pageSource, /composeOrbitAgentEntryViewModel/);
   const modelSource = readProjectFile(IORBIT_MODEL_PATH);
   const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
+  const historyHookSource = readProjectFile(IORBIT_HISTORY_HOOK_PATH);
 
   assert.match(chatHookSource, /currentAgentQuery\(\)/);
   assert.match(chatHookSource, /artifactOfKind\(\s*payload\.data\.artifacts,\s*"contact_recommendations"/);
@@ -129,7 +131,7 @@ test("/app/agent maps contact artifacts into reason, confidence, evidence, and d
   // 里不对普通用户展示的内部产物，继续挡住。
   assert.match(peopleRowSource, /item\.reason \? <span className="why">/);
   assert.doesNotMatch(peopleRowSource, /item\.opener \? <span/);
-  for (const checked of [agentSource, modelSource, chatHookSource]) {
+  for (const checked of [agentSource, modelSource, chatHookSource, historyHookSource]) {
     assert.doesNotMatch(checked, /查看完整处理过程/);
     assert.doesNotMatch(checked, /data-agent-run-details/);
     assert.doesNotMatch(checked, /AgentEvidenceSources/);
