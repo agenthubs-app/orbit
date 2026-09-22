@@ -48,7 +48,7 @@ node scripts/visual/compare-0918.mjs \
 | --- | --- | --- |
 | iOrbit | `scripts/visual/attribution-0918-iorbit.json` | 7 / 71 |
 | Network | `scripts/visual/attribution-0918-network.json` | 8 / 92 |
-| 个人中心 | `scripts/visual/attribution-0918-profile.json` | 4 / — |
+| 个人中心 | `scripts/visual/attribution-0918-profile.json` | 4 / 29 |
 | Events 参会者侧 | `scripts/visual/attribution-0918-events.json` | 15 / — |
 | 运营台 | `scripts/visual/attribution-0918-ops.json` | 8 / — |
 | 认证四态弹窗 | `scripts/visual/attribution-0918-auth.json` | 6 / — |

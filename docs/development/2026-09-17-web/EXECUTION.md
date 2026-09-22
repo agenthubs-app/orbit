@@ -386,14 +386,29 @@
 
 ### 像素终验（设计 :3320 `Orbit_0918/个人中心.dc.html`，app :3100，`scripts/visual/compare-0918.mjs --login qa@orbit.test:<ORBIT_PRIMARY_TEST_ACCOUNT_PASSWORD>`，2026-09-22 复跑，产物 scratchpad `final-{profile,persona,settings,connect}/`）
 
-| 屏 / 视图 | 比对参数 | raw mismatch（design / app px） | 非数据残差（≤0.005 门槛） | 与任务报告对比 |
-| --- | --- | --- | --- | --- |
-| 个人资料 `/app/profile` | `--design-view profile` | 0.0959（1415 / 1254） | 0.0000（任务 3 逐卡归因：数据 0.0032 + 0.0066 + 0.0051 + 联系信息/建议/预览数据差；顶栏 +2px） | 与任务 3 完全一致（raw 与 design/app 高度相同） |
-| 编辑商务画像 `/app/profile?view=persona` | `--design-view persona --design-click "text=编辑商务画像"` | 0.0574（1303 / 1148） | 0.0010（任务 4 录入设计同名标签后的归因；本次 QA 画像为空，差异全部为设计 mock chip 与空组占位的数据差） | 与任务 4 「无画像标签」首轮 0.0574 一致；任务 4 存档 `app.png`（1241px）是录入标签后的 0.0582 轮，测完标签已 ✕ 移除，故本次高度 1148 为预期 |
-| iOrbit 设置 `/app/settings` | `--design-view settings` | 0.0505（1070 / 3601） | 0.0000（任务 5 归因；设计外定向：目标 chips / 沟通偏好省略 0.0057，既有模块追加区 0.0207） | 与任务 5 一致，`app.png` / `design.png` 逐字节相同 |
-| 连接 `/app/profile?view=connect` | `--design-view connect` | 0.0657（1077 / 1079） | 0.0000（任务 5 归因；唯一色块差为定向的「即将开放」占位替代设计深色按钮） | 与任务 5 一致，`app.png` / `design.png` 逐字节相同 |
+| 屏 / 视图 | 比对参数 | raw mismatch（design / app px） | 非数据残差（≤0.005 门槛） | 与任务报告对比 | 网格归因（`--grid 100`，2026-09-23） |
+| --- | --- | --- | --- | --- | --- |
+| 个人资料 `/app/profile` | `--design-view profile` | 0.0959（1415 / 1254） | 0.0000（任务 3 逐卡归因：数据 0.0032 + 0.0066 + 0.0051 + 联系信息/建议/预览数据差；顶栏 +2px） | 与任务 3 完全一致（raw 与 design/app 高度相同） | 13 带 / 10 超阈 / data 10 · recorded 7 · shared 1 · 缺陷 0（raw 本轮 0.1037，QA 账号已录入画像 / 简介，数据漂移） |
+| 编辑商务画像 `/app/profile?view=persona` | `--design-view persona --design-click "text=编辑商务画像"` | 0.0574（1303 / 1148） | 0.0010（任务 4 录入设计同名标签后的归因；本次 QA 画像为空，差异全部为设计 mock chip 与空组占位的数据差） | 与任务 4 「无画像标签」首轮 0.0574 一致；任务 4 存档 `app.png`（1241px）是录入标签后的 0.0582 轮，测完标签已 ✕ 移除，故本次高度 1148 为预期 | 12 带 / 8 超阈 / data 8 · recorded 3 · shared 1 · 缺陷 0（raw 本轮 0.0581） |
+| iOrbit 设置 `/app/settings` | `--design-view settings` | 0.0505（1070 / 3601） | 0.0000（任务 5 归因；设计外定向：目标 chips / 沟通偏好省略 0.0057，既有模块追加区 0.0207） | 与任务 5 一致，`app.png` / `design.png` 逐字节相同 | 11 带 / 7 超阈 / data 3 · recorded 5 · shared 1 · 缺陷 0（raw 本轮 0.0517） |
+| 连接 `/app/profile?view=connect` | `--design-view connect` | 0.0657（1077 / 1079） | 0.0000（任务 5 归因；唯一色块差为定向的「即将开放」占位替代设计深色按钮） | 与任务 5 一致，`app.png` / `design.png` 逐字节相同 | 11 带 / 4 超阈 / data 1 · recorded 3 · shared 1 · 缺陷 0（raw 本轮 0.0657，与终验一致） |
 
 四屏 raw 均 > 0.02，全部由真实数据（QA 账号无画像 / 无联系方式 / bio 为空）与已批准结构差（既有设置模块追加、即将开放占位）构成；终验无一屏回退，无需修复提交。复审收尾 `b9d3d1f6` 只改取消按钮的跳转方式与校验文案，不影响静态截图。
+
+### 网格归因复核（2026-09-23）
+
+同 Network：四视图按 `--grid 100` 逐带重跑，**不再挑框**，每条 100px 整宽带各做一次 ±12px `dy` 搜索。
+
+- 归因文件：`repos/orbits/scripts/visual/attribution-0918-profile.json`（四视图 **29 条超阈值带全部登记**，
+  `unattributed=0`）。类别：**[data] 22 条**、**[recorded] 18 条**（我的目标只读 / 地点省略 / 可见范围一律
+  「仅自己可见」/ 沟通偏好整卡省略 / 设置页追加五个既有模块 / 公开预览用既有星空名片 / 连接屏「即将开放」
+  占位与「了解更多 →」省略）、**[shared] 4 条**（每视图 band 8 压着 Next dev 徽章与全局 iOrbit 悬浮球）；
+  类别可叠加。
+- **真缺陷 0 条**：逐带裁剪对照后没有一条带的红色落在布局线、圆角、间距或色块上。
+- raw 与 2026-09-22 终验的差别只在个人资料屏（0.0959 → **0.1037**）：终验时 QA 账号无画像 / 无联系方式 /
+  bio 为空，本轮该账号已录入商务画像与简介，右栏空态换成真实 chip 与星空名片正文——纯数据漂移，
+  设计 1415px / 应用 1254px 的高度关系与各卡框位置未变。其余三屏 raw 与终验逐位一致
+  （persona 0.0574 → 0.0581、settings 0.0505 → 0.0517、connect 0.0657 不变）。
 
 ### 回归（cwd `repos/orbits`，删除旧组件后）
 
