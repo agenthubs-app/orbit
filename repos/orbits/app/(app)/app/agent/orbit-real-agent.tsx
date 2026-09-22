@@ -60,6 +60,14 @@ import { useAgentHistory } from "./iorbit-0918/use-agent-history";
 
 interface OrbitRealAgentProps {
   home?: OrbitHomeViewModel | null;
+  /**
+   * iOrbit 任务 2：从新概览屏进入对话时的入口态。`inChat` 由
+   * `chatOpen || messages.length > 0 || thinking` 推出，而 `chatOpen` 只有
+   * `restoreSession`（要 `?session=`）和 pendingAsk 会置起——不带这个 prop 时
+   * 「打开对话」会落回旧 dashboard 而不是对话。`"chat"` = 空对话（等价 `newChat()`
+   * 的可见结果），`"history"` = 空对话 + 打开历史抽屉。
+   */
+  initialView?: "chat" | "history";
   registrationAvailabilityByEventId?: Readonly<Record<string, EventRegistrationAvailability>>;
   viewModel: OrbitAgentViewModel;
 }
@@ -1514,6 +1522,7 @@ export { useAgentChat } from "./iorbit-0918/use-agent-chat";
 
 export function OrbitRealAgent({
   home = null,
+  initialView,
   registrationAvailabilityByEventId = {},
   viewModel,
 }: OrbitRealAgentProps) {
@@ -1602,11 +1611,21 @@ export function OrbitRealAgent({
     setThinking,
   });
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const entryViewRef = useRef(false);
 
   useEffect(() => {
     const scroll = scrollRef.current;
     if (scroll) scroll.scrollTop = scroll.scrollHeight;
   }, [messages, thinking]);
+
+  // 入口态只生效一次（ref 兜住 StrictMode 的双次挂载）：不清空任何东西，
+  // 只把视图切到对话——`?q=` / `?session=` 的 hydration 仍按原样跑。
+  useEffect(() => {
+    if (entryViewRef.current || !initialView) return;
+    entryViewRef.current = true;
+    setChatOpen(true);
+    if (initialView === "history") setHistOpen(true);
+  }, [initialView, setChatOpen, setHistOpen]);
 
 
 

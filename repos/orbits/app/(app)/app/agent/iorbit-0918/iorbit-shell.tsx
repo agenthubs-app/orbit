@@ -47,6 +47,11 @@ export function IOrbitShell({
 }: IOrbitShellProps) {
   const { t } = useOrbitLanguage();
   const [inChat, setInChat] = useState(initialDeepLink);
+  // 从概览屏进对话时要显式告诉 `OrbitRealAgent` 打开哪一态：它的 `inChat` 由
+  // `chatOpen || messages.length > 0 || thinking` 推出，而 `chatOpen` 只有
+  // `restoreSession`（`?session=`）与 pendingAsk 会置起——不传入口态的话，
+  // 「打开对话」会落回旧 dashboard。`?q=` / `?session=` 走 hydration，不需要入口态。
+  const [entryView, setEntryView] = useState<"chat" | "history" | undefined>(undefined);
 
   // 别的页面写在 sessionStorage 里的待办提问／预填只有对话分支会消费
   // （`use-agent-chat` 的 `takePendingAsk()` / `takeAgentPrefill()`）：有交接单
@@ -55,10 +60,11 @@ export function IOrbitShell({
     if (hasPendingOrbitAgentHandoff()) setInChat(true);
   }, []);
 
-  const openChatWith = (search: string) => {
+  const openChatWith = (search: string, view?: "chat" | "history") => {
     if (typeof window !== "undefined") {
       window.history.pushState({}, "", `/app/agent${search}`);
     }
+    setEntryView(view);
     setInChat(true);
   };
 
@@ -66,6 +72,7 @@ export function IOrbitShell({
     return (
       <OrbitRealAgent
         home={home}
+        initialView={entryView}
         registrationAvailabilityByEventId={registrationAvailabilityByEventId}
         viewModel={viewModel}
       />
@@ -95,8 +102,8 @@ export function IOrbitShell({
               if (typeof window !== "undefined") window.location.href = href;
             }}
             onAsk={(query) => openChatWith(`?q=${encodeURIComponent(query)}`)}
-            onOpenChat={() => openChatWith("")}
-            onOpenHistory={() => openChatWith("")}
+            onOpenChat={() => openChatWith("", "chat")}
+            onOpenHistory={() => openChatWith("", "history")}
             onOpenSession={(sessionId) =>
               openChatWith(`?session=${encodeURIComponent(sessionId)}`)
             }
@@ -189,7 +196,8 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .ir-cal-month { font-size: 16px; font-weight: 500; }
 [data-orbit-real-page="iorbit-0918"] .ir-cal-nav { display: flex; gap: 6px; }
 [data-orbit-real-page="iorbit-0918"] .btn.ir-cal-nav-btn { width: 28px; height: 28px; border: 1px solid #E8E9F6; border-radius: 8px; background: #FFFFFF; color: #6B6F99; cursor: pointer;
-  padding: 0; font-size: 15px; font-weight: 400; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
+  /* 设计 117/118 的 button 没写 font-size，浏览器默认 13.3333px；.btn 基类会压成 15px。 */
+  padding: 0; font-size: 13.3333px; font-weight: 400; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
 [data-orbit-real-page="iorbit-0918"] .btn.ir-cal-nav-btn:hover { border-color: #B9BCEB; color: #2E3270; }
 [data-orbit-real-page="iorbit-0918"] .btn.ir-cal-nav-btn:active { transform: none; }
 [data-orbit-real-page="iorbit-0918"] .btn.ir-cal-nav-btn[aria-disabled="true"] { cursor: default; opacity: 0.6; }
@@ -290,6 +298,7 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .ir-resume-card-meta { font-size: 12px; color: #9FA3C4; }
 /* ── 空态 / 加载提示（设计无此元素）── */
 [data-orbit-real-page="iorbit-0918"] .ir-note { margin: 0; font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="iorbit-0918"] .ir-note-error { color: #B5473A; }
 /* 设计稿无响应式声明；窄屏收紧 <main> 侧边距（1240 宽度下不生效） */
 @media (max-width: 900px) {
   [data-orbit-real-page="iorbit-0918"] .ir-main { padding: 14px 16px 72px; }

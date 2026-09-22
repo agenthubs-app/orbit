@@ -81,6 +81,8 @@ interface ScheduleRow {
   dayKey: string;
   id: string;
   meta: string;
+  /** 排序键：真实时间戳。全天项取当日 00:00（JST），因此排在当天最前。 */
+  startMs: number;
   time: string;
   title: string;
   tone: "a" | "b" | "c";
@@ -132,6 +134,22 @@ function initials(name: string): string {
   return trimmed.slice(0, 1);
 }
 
+/** 服务端错误体 `{error:{message}}`（沿用 `orbit-agent-today-workspace.tsx:29-40`）。 */
+function signalErrorMessage(value: unknown): string | null {
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "error" in value &&
+    typeof (value as { error?: unknown }).error === "object" &&
+    (value as { error: unknown }).error !== null &&
+    "message" in (value as { error: Record<string, unknown> }).error &&
+    typeof (value as { error: { message?: unknown } }).error.message === "string"
+  ) {
+    return (value as { error: { message: string } }).error.message;
+  }
+  return null;
+}
+
 function snoozeUntilTomorrow(): string {
   const next = new Date();
   next.setDate(next.getDate() + 1);
@@ -158,6 +176,7 @@ export function IOrbitHome({
   const [signals, setSignals] = useState<Loadable<readonly AgentTodaySignalView[]>>("pending");
   const [sessions, setSessions] = useState<Loadable<readonly IOrbitHomeSession[]>>("pending");
   const [signalBusyId, setSignalBusyId] = useState<string | null>(null);
+  const [signalError, setSignalError] = useState<string | null>(null);
   const [signalsRefreshing, setSignalsRefreshing] = useState(false);
 
   const now = useMemo(() => new Date(), []);
@@ -260,6 +279,7 @@ export function IOrbitHome({
     status: "dismissed" | "snoozed",
   ) => {
     setSignalBusyId(signalId);
+    setSignalError(null);
     try {
       const response = await fetch(`/api/agent/signals/${encodeURIComponent(signalId)}`, {
         body: JSON.stringify({
@@ -273,14 +293,24 @@ export function IOrbitHome({
         data?: { signal?: AgentTodaySignalView };
       } | null;
       const updated = payload?.data?.signal;
-      if (!response.ok || !updated) return;
+      if (!response.ok || !updated) {
+        setSignalError(
+          signalErrorMessage(payload) ??
+            t({ en: "The update failed. Please retry.", zh: "更新失败，请重试。" }),
+        );
+        return;
+      }
       setSignals((current) =>
         Array.isArray(current)
           ? current.map((item) => (item.signalId === updated.signalId ? updated : item))
           : current,
       );
-    } catch {
-      // 静默失败会骗人：刷新按钮仍在，用户可以重新拉取真实状态。
+    } catch (cause) {
+      setSignalError(
+        cause instanceof Error
+          ? cause.message
+          : t({ en: "The update failed. Please retry.", zh: "更新失败，请重试。" }),
+      );
     } finally {
       setSignalBusyId(null);
     }
@@ -326,6 +356,7 @@ export function IOrbitHome({
       ...appointmentItems.map((item) => ({
         dayKey: iorbitDayKey(new Date(item.startsAtUtc)),
         id: `appointment:${item.key}`,
+        startMs: Date.parse(item.startsAtUtc),
         meta:
           item.medium === "video"
             ? t({ en: "Video", zh: "视频" })
@@ -339,6 +370,9 @@ export function IOrbitHome({
       ...personalItems.map((item) => ({
         dayKey: item.occurrenceDate ?? item.startsAt.slice(0, 10),
         id: `personal:${item.key}`,
+        startMs: item.allDay
+          ? Date.parse(`${item.occurrenceDate ?? item.startsAt.slice(0, 10)}T00:00:00+09:00`)
+          : Date.parse(item.startsAt),
         meta: t({ en: "Personal schedule", zh: "个人日程" }),
         time: item.allDay ? t({ en: "All day", zh: "全天" }) : fmtTime(item.startsAt),
         title: item.title,
@@ -347,13 +381,20 @@ export function IOrbitHome({
       ...registeredEvents.map((event) => ({
         dayKey: iorbitDayKey(new Date(event.startsAt)),
         id: `event:${event.id}`,
+        startMs: Date.parse(event.startsAt),
         meta: event.venue || event.place,
         time: `${fmtTime(event.startsAt)} – ${fmtTime(event.endsAt)}`,
         title: event.name,
         tone: "c" as const,
       })),
     ];
-    return rows.sort((a, b) => a.time.localeCompare(b.time));
+    // 按真实时间戳排，不能按格式化后的字符串：en-US 的 "06:30 PM" 会排在
+    // "10:30 AM" 前面，全天项在两种语言下都无序。无法解析的时间沉到最后。
+    return rows.sort((a, b) => {
+      const left = Number.isFinite(a.startMs) ? a.startMs : Number.POSITIVE_INFINITY;
+      const right = Number.isFinite(b.startMs) ? b.startMs : Number.POSITIVE_INFINITY;
+      return left - right || a.id.localeCompare(b.id);
+    });
   }, [appointmentItems, fmtTime, personalItems, registeredEvents, t]);
 
   const todayRows = scheduleRows.filter((row) => row.dayKey === todayKey);
@@ -404,11 +445,11 @@ export function IOrbitHome({
     }).format(now),
     new Intl.DateTimeFormat(locale, { timeZone: TZ, weekday: "long" }).format(now),
   ].join(" · ");
-  const monthLabel = new Intl.DateTimeFormat(locale, {
-    month: "long",
-    timeZone: TZ,
-    year: "numeric",
-  }).format(now);
+  // 设计 115 是「2026年 9月」（年月之间有一个空格），zh-CN 的 Intl 会给「2026年9月」。
+  const monthLabel =
+    lang === "zh"
+      ? `${todayYear}年 ${todayMonth}月`
+      : new Intl.DateTimeFormat(locale, { month: "long", timeZone: TZ, year: "numeric" }).format(now);
   const weekdayLabels =
     lang === "zh"
       ? ["日", "一", "二", "三", "四", "五", "六"]
@@ -733,11 +774,9 @@ export function IOrbitHome({
                         timeZone: TZ,
                       }).format(start)}
                     </span>
+                    {/* 设计 153 是裸数字「18」；zh-CN 的 Intl 会给「18日」，所以直接取日号。 */}
                     <strong className="ir-event-day">
-                      {new Intl.DateTimeFormat(locale, {
-                        day: "numeric",
-                        timeZone: TZ,
-                      }).format(start)}
+                      {Number(iorbitDayKey(start).slice(8, 10))}
                     </strong>
                   </span>
                   <span className="ir-event-copy">
@@ -782,6 +821,13 @@ export function IOrbitHome({
               {t({ en: "All suggestions →", zh: "查看建议与行动 →" })}
             </a>
           </div>
+          {/* 设计没有画失败提示；`orbit-agent-today-workspace.tsx:147+` 原本会把写失败
+              显式告诉用户，换屏不能把它吞掉。 */}
+          {signalError ? (
+            <p className="ir-note ir-note-error" role="alert">
+              {signalError}
+            </p>
+          ) : null}
           {signalRows.length > 0 ? (
             signalRows.map((row) => (
               <div

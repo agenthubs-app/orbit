@@ -25,6 +25,7 @@ import {
 } from "../../app/(app)/app/agent/iorbit-0918/iorbit-shell";
 import { IOrbitHome } from "../../app/(app)/app/agent/iorbit-0918/iorbit-home";
 import { createOrbitAgentStarterViewModel } from "../../app/(app)/app/orbit-agent-route-view-model";
+import { OrbitLanguageProvider } from "../../app/(app)/app/orbit-language-context";
 
 /* ── 1. 纯函数 ─────────────────────────────────────────────────────────── */
 
@@ -122,6 +123,73 @@ test("the chat branch still delegates to the existing OrbitRealAgent tree", () =
 
   assert.match(html, /class="orbit-agent-workspace"/);
   assert.doesNotMatch(html, /class="ir-home"/);
+});
+
+/**
+ * 修订轮 1：`.orbit-agent-workspace` 同时出现在 dashboard 分支上，单看它不足以证明
+ * 「打开对话」真的进了对话。这两条改断对话独有的 thread-bar / 输入坞，并断言
+ * dashboard 独有的 `data-orbit-agent-dashboard` **不在**。
+ */
+async function openFromHome(t: TestContext, label: "chat" | "history") {
+  const mounted = await mountHome(t, () => (
+    <IOrbitShell
+      home={HOME as never}
+      registrationAvailabilityByEventId={{}}
+      viewModel={VIEW_MODEL}
+    />
+  ));
+  const className = label === "chat" ? "btn ir-enter-btn" : "btn ir-history-btn";
+  const button = mounted.root.root.findAll(
+    (node) => node.type === "button" && node.props?.className === className,
+  )[0]!;
+  await act(async () => {
+    button.props.onClick();
+  });
+  await mounted.settle();
+  return mounted;
+}
+
+test("「进入对话页 →」opens an actual conversation, not the old dashboard", async (t) => {
+  const mounted = await openFromHome(t, "chat");
+
+  assert.equal(mounted.pushedUrls.at(-1), "/app/agent");
+  assert.ok(
+    mounted.root.root.findAll((node) => node.props?.className === "thread-bar").length > 0,
+    "the chat thread bar must render",
+  );
+  assert.ok(
+    mounted.root.root.findAll(
+      (node) => node.props?.className === "agent-chat-composer-dock",
+    ).length > 0,
+    "the chat composer dock must render",
+  );
+  assert.equal(
+    mounted.root.root.findAll(
+      (node) => node.props?.["data-orbit-agent-dashboard"] !== undefined,
+    ).length,
+    0,
+    "the old batch-4a dashboard must not be what the primary CTA lands on",
+  );
+});
+
+test("「◷ 历史记录」opens the conversation with the history drawer", async (t) => {
+  const mounted = await openFromHome(t, "history");
+
+  assert.ok(
+    mounted.root.root.findAll((node) => node.props?.className === "thread-bar").length > 0,
+  );
+  assert.equal(
+    mounted.root.root.findAll(
+      (node) => node.props?.["data-orbit-agent-dashboard"] !== undefined,
+    ).length,
+    0,
+  );
+  assert.ok(
+    mounted.root.root.findAll(
+      (node) => node.props?.["data-orbit-agent-history-drawer"] !== undefined,
+    ).length > 0,
+    "the history drawer must be open",
+  );
 });
 
 test("the home screen ships every design block from lines 46–253", () => {
@@ -324,6 +392,7 @@ interface Mounted {
 
 interface MountOptions {
   ledger?: unknown;
+  signalPatchFails?: boolean;
   sessions?: unknown;
   signals?: unknown;
   snapshot?: unknown;
@@ -406,6 +475,12 @@ async function mountHome(
       });
     }
     if (url.startsWith("/api/agent/signals/")) {
+      if (options.signalPatchFails) {
+        return Response.json(
+          { error: { code: "STORAGE_UNAVAILABLE", message: "信号暂时写不进去。" } },
+          { status: 503 },
+        );
+      }
       const id = decodeURIComponent(url.slice("/api/agent/signals/".length));
       const current = (options.signals as { signalId: string }[] | undefined) ?? [];
       const signal = current.find((item) => item.signalId === id);
@@ -631,6 +706,136 @@ test("the suggestion rows keep the signal done / snooze writes and the refresh c
   assert.equal(
     mounted.calls.filter((call) => call.method === "POST").length,
     before + 1,
+  );
+});
+
+test("today's agenda sorts on real timestamps, not formatted clock strings", async (t) => {
+  // 同一天：全天项 + 上午 10:30 + 下午 18:30。格式化字符串排序会在 en-US 下
+  // 把 "06:30 PM" 排到 "10:30 AM" 前面，全天项在两种语言下都无序。
+  const todayKey = new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+  }).format(new Date());
+  const snapshot = {
+    facts: {
+      appointments: {
+        items: [
+          {
+            appointmentId: "late",
+            contactId: null,
+            durationMinutes: 60,
+            endsAtUtc: `${todayKey}T10:30:00Z`,
+            href: "/app/schedule",
+            key: "late",
+            medium: "video",
+            needsReconfirmation: false,
+            // 18:30 JST
+            startsAtUtc: `${todayKey}T09:30:00Z`,
+            status: "confirmed",
+            temporalState: "upcoming",
+          },
+        ],
+        state: "ready",
+      },
+      followups: { current: { items: [] }, state: "ready" },
+      personal: {
+        items: [
+          {
+            allDay: true,
+            id: "allday",
+            key: "allday",
+            occurrenceDate: todayKey,
+            startsAt: `${todayKey}T00:00:00+09:00`,
+            state: "confirmed",
+            title: "全天项",
+          },
+          {
+            id: "morning",
+            key: "morning",
+            occurrenceDate: todayKey,
+            // 10:30 JST
+            startsAt: `${todayKey}T01:30:00Z`,
+            state: "confirmed",
+            title: "上午项",
+          },
+        ],
+        state: "ready",
+      },
+    },
+  };
+
+  for (const language of ["zh", "en"] as const) {
+    const mounted = await mountHome(
+      t,
+      ({ loadSnapshot }) => (
+        <OrbitLanguageProvider initialLanguage={language}>
+          <IOrbitHome
+            home={HOME as never}
+            loadSnapshot={loadSnapshot}
+            navigate={() => undefined}
+            onAsk={() => undefined}
+            onOpenChat={() => undefined}
+            onOpenHistory={() => undefined}
+            onOpenSession={() => undefined}
+          />
+        </OrbitLanguageProvider>
+      ),
+      { snapshot },
+    );
+
+    const titles = mounted.root.root
+      .findAll((node) => node.props?.className === "ir-agenda-title")
+      .map((node) => textOf(node));
+
+    assert.deepEqual(
+      titles,
+      language === "zh"
+        ? ["全天项", "上午项", "已确认约谈"]
+        : ["全天项", "上午项", "Confirmed appointment"],
+      `agenda order is wrong under ${language}`,
+    );
+  }
+});
+
+test("a failed signal write tells the user instead of failing silently", async (t) => {
+  const mounted = await mountHome(t, homeElement(), {
+    signalPatchFails: true,
+    signals: [
+      {
+        actions: [{ actionId: "open", href: "/app/contacts/c1", label: "打开联系人" }],
+        changes: [],
+        confidence: 0.8,
+        lastObservedAt: "2026-09-20T00:00:00Z",
+        reason: "上次会议后 3 天未跟进",
+        severity: "high",
+        signalId: "signal-1",
+        sources: [],
+        status: "new",
+        summary: "跟进",
+        title: "会后跟进",
+        type: "followup_due",
+      },
+    ],
+  });
+
+  const op = mounted.root.root.findAll(
+    (node) => node.type === "button" && node.props?.className === "btn ir-signal-op",
+  )[0]!;
+  await act(async () => {
+    op.props.onClick();
+  });
+  await mounted.settle();
+
+  const alert = mounted.root.root.findAll((node) => node.props?.role === "alert")[0];
+  assert.ok(alert, "a failed write must surface an alert");
+  assert.equal(textOf(alert!), "信号暂时写不进去。");
+  // 行还在（没有被乐观地改掉）。
+  assert.ok(
+    mounted.root.root.findAll(
+      (node) => node.props?.["data-orbit-agent-signal"] === "signal-1",
+    ).length > 0,
   );
 });
 
