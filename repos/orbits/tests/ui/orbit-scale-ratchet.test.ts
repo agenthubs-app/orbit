@@ -151,7 +151,9 @@ test("gap literals outside the scale in app/(app)/app do not increase", () => {
   // (gap 6/7/10/14/18 style objects) → 181 (measured).
   // 运营台 task 6 (2026-09-22) deleted roles/event-role-management-workspace.tsx
   // (gap 6/10 style objects) → 174 (measured).
-  const CEILING = 174;
+  // 运营台 task 7 (2026-09-22) shared OpsBoundary replaced the admission page's
+  // gap 10 boundary row with the on-scale 12 → 173 (measured).
+  const CEILING = 173;
 
   assert.ok(
     hits.length <= CEILING,
