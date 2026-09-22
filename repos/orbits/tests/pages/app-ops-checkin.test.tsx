@@ -283,6 +283,7 @@ test("retry after a 503 read failure re-fetches the roster", async () => {
 test("check-in page gates on check_in.roster.read_limited before reading the event and mounts the check-in screen inside the ops-0918 shell", () => {
   const page = readFileSync(join(projectRoot, "app/(app)/app/events/[id]/operations/check-in/page.tsx"), "utf8");
   const screen = readFileSync(join(projectRoot, "app/(app)/app/events/ops-0918/ops-checkin.tsx"), "utf8");
+  const boundary = readFileSync(join(projectRoot, "app/(app)/app/events/ops-0918/ops-boundary.tsx"), "utf8");
   assert.match(page, /await Promise\.all\(\[params, auth\(\)\]\)/u);
   assert.match(page, /redirect\(`\/app\/account\/login\?next=/u);
   // 评审修正：getEvent 会泄露未发布活动标题，故与名单 API 同一能力做 per-event 门禁，未过不读活动。
@@ -291,8 +292,12 @@ test("check-in page gates on check_in.roster.read_limited before reading the eve
   assert.ok(page.indexOf("requireEventCapability({") < page.indexOf("await loadEventOperationsPageEvent("), "gate runs before the event read");
   assert.match(page, /title="没有签到权限"/u);
   assert.match(page, /只有当前活动主办方或被授予签到角色的成员可以打开签到名单。/u);
-  assert.match(page, /href="\/app\/events\/center">返回运营活动中心/u);
-  assert.match(page, /operations\/check-in`\}>重试/u);
+  // 任务 7：三页共用 ops-0918/ops-boundary.tsx（eyebrow / title / description / retryHref / page 标记）
+  assert.doesNotMatch(page, /function Boundary|PublicTopNav/u);
+  assert.match(page, /<OpsBoundary [^>]*eyebrow="EVENT OPERATIONS · CHECK-IN"[^>]*page="event-check-in-boundary"[^>]*retryHref=\{`\/app\/events\/\$\{encodeURIComponent\(eventId\)\}\/operations\/check-in`\}[^>]*title="没有签到权限"/u);
+  assert.match(boundary, /href="\/app\/events\/center">返回运营活动中心/u);
+  assert.match(boundary, /href=\{retryHref\}>重试/u);
+  assert.match(boundary, /data-orbit-real-page=\{page\}/u);
   assert.match(page, /loadEventOperationsPageEvent/u);
   assert.match(page, /data-orbit-real-page="ops-0918"/u);
   assert.match(page, /<AccountTopNav active="events" \/>/u);

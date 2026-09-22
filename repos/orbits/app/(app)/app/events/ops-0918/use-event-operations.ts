@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type {
-  EventOperationsCheckIn,
   EventOperationsConfiguration,
   EventOperationsGeneration,
 } from "../../../../../features/events/event-operations/contract";
@@ -12,8 +11,10 @@ import { matchResultLabel } from "./ops-model";
 
 // 原样抽自 [id]/operations/event-operations-admin-workspace.tsx（15–54、113–152、
 // 161–169、336–580 行）：配置表单模型、requestJson、工作区加载/轮询/自动重试、
-// 生成动作、配置保存、到场标记、签到链接复制与派生数据。UI 本地状态
+// 生成动作、配置保存、签到链接复制与派生数据。UI 本地状态
 // `confirmingStart` 留在组件（组件在调用 startGeneration 前自行收起确认框）。
+// 任务 7：旧目录区退役后无消费者的三项已删除（到场标记动作 → use-check-in-roster.markArrived；
+// 逐参会者签到映射；旧步进条派生 → ops-model.pipelineSteps）——「原样抽取」例外的收口记录见台账。
 
 interface ApiEnvelope<T> {
   data?: T;
@@ -128,23 +129,15 @@ export interface TimelineGate {
   state: string;
 }
 
-export interface ProgressStep {
-  current: boolean;
-  done: boolean;
-  label: string;
-  meta: string;
-}
-
 /**
  * 运营台（admin workspace）会话，JSX 所需的一切：
  * - 数据：`workspace`（GET `/operations/admin`）、`configuration`、`newestGeneration`、
- *   `hasActiveGeneration`、`checkInsByParticipant`、`participantNames`、`autoRetries`
+ *   `hasActiveGeneration`、`participantNames`、`autoRetries`
  * - 派生：`operationsCheckInHref`、`baseUrl`（导出 CSV 链接）、`checkInOpen`、`timeline`、
- *   `publishedMatchStatus`、`progressSteps`
+ *   `publishedMatchStatus`（= ops-model.matchResultLabel）
  * - 状态：`form`/`setForm`、`loading`、`busy`、`error`、`notice`、`accessDenied`（GET 返回 403）
  * - 动作：`load`、`saveConfiguration`（PUT）、`startGeneration`（POST /generations）、
- *   `generationAction`（POST /retry | /publish）、`markParticipantArrived`（POST /check-ins）、
- *   `copyCheckInLink`
+ *   `generationAction`（POST /retry | /publish）、`copyCheckInLink`
  */
 export interface EventOperationsSession {
   /** GET `/operations/admin` 返回 403：当前身份没有 operations.read_sensitive（例如仅审核角色）。 */
@@ -153,7 +146,6 @@ export interface EventOperationsSession {
   baseUrl: string;
   busy: string | null;
   checkInOpen: boolean;
-  checkInsByParticipant: Map<string, EventOperationsCheckIn>;
   configuration: EventOperationsConfiguration | null;
   copyCheckInLink: () => Promise<void>;
   error: string | null;
@@ -162,12 +154,10 @@ export interface EventOperationsSession {
   hasActiveGeneration: boolean;
   load: (showLoading?: boolean) => Promise<void>;
   loading: boolean;
-  markParticipantArrived: (participantId: string) => Promise<void>;
   newestGeneration: EventOperationsGeneration | null;
   notice: string | null;
   operationsCheckInHref: string;
   participantNames: Map<string, string>;
-  progressSteps: readonly ProgressStep[];
   publishedMatchStatus: string;
   saveConfiguration: () => Promise<void>;
   setForm: React.Dispatch<React.SetStateAction<ConfigurationForm>>;
@@ -338,24 +328,6 @@ export function useEventOperations(event: EventOperationsEvent): EventOperations
     }
   }
 
-  async function markParticipantArrived(participantId: string) {
-    setBusy(`checkin:${participantId}`);
-    setError(null);
-    setNotice(null);
-    try {
-      const checkIn = await requestJson<EventOperationsCheckIn>(`${baseUrl}/check-ins`, {
-        body: JSON.stringify({ participantId }),
-        method: "POST",
-      });
-      setNotice(`已记录到场时间 ${formatTimestamp(checkIn.checkedInAt)}；重复操作会保留最初的签到时间。`);
-      await load(false);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not mark this participant as arrived.");
-    } finally {
-      setBusy(null);
-    }
-  }
-
   async function copyCheckInLink() {
     try {
       if (!navigator.clipboard?.writeText) {
@@ -369,10 +341,6 @@ export function useEventOperations(event: EventOperationsEvent): EventOperations
     }
   }
 
-  const checkInsByParticipant = useMemo(
-    () => new Map(workspace?.checkIns.map((record) => [record.participantId, record]) ?? []),
-    [workspace],
-  );
   const participantNames = useMemo(
     () => new Map(workspace?.participants.map((participant) => [participant.participantId, participant.displayName]) ?? []),
     [workspace],
@@ -401,33 +369,12 @@ export function useEventOperations(event: EventOperationsEvent): EventOperations
     ? "—"
     : matchResultLabel({ newestGeneration, publishedAt: workspace.publishedResult?.publishedAt ?? null });
 
-  // 运营进度步进条：全部从真实配置时间门禁、生成状态与发布结果推导，无伪造阶段。
-  const progressSteps = workspace && configuration
-    ? (() => {
-        const ws = workspace;
-        const cfg = configuration;
-        const generated = ws.generations.some(
-          ({ generation }) => generation.status === "completed" || generation.status === "published",
-        );
-        const defs = [
-          { done: currentTimeMs >= Date.parse(cfg.registrationCutoffAt), label: "报名截止", meta: formatTimestamp(cfg.registrationCutoffAt) },
-          { done: generated, label: "生成匹配", meta: "" },
-          { done: Boolean(ws.publishedResult), label: "发布结果", meta: "" },
-          { done: currentTimeMs >= Date.parse(cfg.checkInOpensAt), label: "签到开放", meta: formatTimestamp(cfg.checkInOpensAt) },
-          { done: currentTimeMs >= Date.parse(cfg.eventStartsAt), label: "活动现场", meta: formatTimestamp(cfg.eventStartsAt) },
-        ];
-        const currentIndex = defs.findIndex((def) => !def.done);
-        return defs.map((def, index) => ({ ...def, current: index === currentIndex }));
-      })()
-    : [];
-
   return {
     accessDenied,
     autoRetries,
     baseUrl,
     busy,
     checkInOpen,
-    checkInsByParticipant,
     configuration,
     copyCheckInLink,
     error,
@@ -436,12 +383,10 @@ export function useEventOperations(event: EventOperationsEvent): EventOperations
     hasActiveGeneration,
     load,
     loading,
-    markParticipantArrived,
     newestGeneration,
     notice,
     operationsCheckInHref,
     participantNames,
-    progressSteps,
     publishedMatchStatus,
     saveConfiguration,
     setForm,

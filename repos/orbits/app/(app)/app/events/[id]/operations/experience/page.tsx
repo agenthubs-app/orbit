@@ -5,8 +5,8 @@ import { requireEventCapability } from "../../../../../../../features/events/eve
 import { createConfiguredEventAccessService } from "../../../../../../../features/events/event-access/runtime";
 import { createConfiguredEventCoreService } from "../../../../../../../features/events/core/runtime";
 import { AccountTopNav } from "../../../../orbit-account-shell";
-import { PublicTopNav } from "../../../../orbit-public-shell";
 import { OrbitReferenceStyles } from "../../../../orbit-reference-styles";
+import { OpsBoundary } from "../../../ops-0918/ops-boundary";
 import { OpsForm } from "../../../ops-0918/ops-form";
 import { exportCsvHref } from "../../../ops-0918/ops-model";
 import { OpsConsoleShell } from "../../../ops-0918/ops-shell";
@@ -20,32 +20,6 @@ function routeEventId(value: string): string {
   } catch {
     return value;
   }
-}
-
-function Boundary({
-  description,
-  eventId,
-  title,
-}: {
-  description: string;
-  eventId: string;
-  title: string;
-}) {
-  return (
-    <>
-      <OrbitReferenceStyles />
-      <PublicTopNav active="events" />
-      <main data-orbit-real-page="event-experience-boundary" style={{ margin: "0 auto", maxWidth: 760, padding: 40 }}>
-        <div className="eyebrow">EVENT OPERATIONS · EXPERIENCE</div>
-        <h1 className="h-display">{title}</h1>
-        <p style={{ color: "var(--text-2)" }}>{description}</p>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-          <a className="btn btn-primary" href={`/app/events/${encodeURIComponent(eventId)}/operations/experience`}>重试</a>
-          <a className="btn btn-ghost" href="/app/events/center">返回运营活动中心</a>
-        </div>
-      </main>
-    </>
-  );
 }
 
 // 门禁（运营台 任务 5，「门禁不动」的例外，审阅修订 8）：本页原无 auth() / 能力检查（题集 API 自行校验），但壳现在经
@@ -66,7 +40,7 @@ export default async function AppEventExperiencePage({
   const eventCore = createConfiguredEventCoreService();
   const accessService = createConfiguredEventAccessService();
   if (!eventCore || !accessService) {
-    return <Boundary description="活动核心或权限服务暂时不可用，报名设置入口暂时关闭。" eventId={eventId} title="报名设置暂时不可用" />;
+    return <OpsBoundary description="活动核心或权限服务暂时不可用，报名设置入口暂时关闭。" eyebrow="EVENT OPERATIONS · EXPERIENCE" page="event-experience-boundary" retryHref={`/app/events/${encodeURIComponent(eventId)}/operations/experience`} title="报名设置暂时不可用" />;
   }
 
   try {
@@ -77,7 +51,7 @@ export default async function AppEventExperiencePage({
       service: accessService,
     });
   } catch {
-    return <Boundary description="只有当前活动主办方或被授予运营角色的成员可以编辑报名设置。" eventId={eventId} title="没有报名设置权限" />;
+    return <OpsBoundary description="只有当前活动主办方或被授予运营角色的成员可以编辑报名设置。" eyebrow="EVENT OPERATIONS · EXPERIENCE" page="event-experience-boundary" retryHref={`/app/events/${encodeURIComponent(eventId)}/operations/experience`} title="没有报名设置权限" />;
   }
 
   // 门禁已过：壳（面包屑 / 标题 / 预览卡）读 canonical Event Core 标题与时间；读不到时退回 eventId（loadEventOperationsPageEvent 既有规则）。

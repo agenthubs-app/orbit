@@ -50,7 +50,9 @@ test("organizer workspace exposes the complete strict generation and audit workf
   const client = screens.map(source).join("\n");
   const model = source("app/(app)/app/events/ops-0918/ops-model.ts");
   const hook = source("app/(app)/app/events/ops-0918/use-event-operations.ts");
+  const roster = source("app/(app)/app/events/ops-0918/use-check-in-roster.ts");
   assert.match(client, /useEventOperations\(event\)/);
+  assert.doesNotMatch(hook, /progressSteps|markParticipantArrived|checkInsByParticipant/, "任务 7：无消费者的派生 / 动作已删除");
 
   assert.match(hook, /method: "PUT"/);
   assert.match(client, /生成匹配/);
@@ -71,7 +73,10 @@ test("organizer workspace exposes the complete strict generation and audit workf
   assert.match(client, /\/export/);
   assert.match(client, /workspace\.participants\.length === 0 \? <div className="op-empty op-prow-empty">尚无报名。/, "real registration directory (people screen)");
   assert.match(client, /CONSENT AUDIT/);
-  assert.match(hook, /\/check-ins/);
+  // 运营台 任务 7：POST /check-ins 从 use-event-operations 删除（无消费者），只由 use-check-in-roster.markArrived 承担
+  assert.doesNotMatch(hook, /\/check-ins/);
+  assert.match(roster, /\/operations\/admin\/check-ins/);
+  assert.match(roster, /method: "POST"/);
   assert.match(client, /标记到场/);
   assert.match(client, /VENUE CHECK-IN ENTRY/);
   assert.match(client, /不会生成二维码图片/);

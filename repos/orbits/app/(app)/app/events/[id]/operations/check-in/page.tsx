@@ -5,8 +5,8 @@ import { requireEventCapability } from "../../../../../../../features/events/eve
 import { createConfiguredEventAccessService } from "../../../../../../../features/events/event-access/runtime";
 import { createConfiguredEventCoreService } from "../../../../../../../features/events/core/runtime";
 import { AccountTopNav } from "../../../../orbit-account-shell";
-import { PublicTopNav } from "../../../../orbit-public-shell";
 import { OrbitReferenceStyles } from "../../../../orbit-reference-styles";
+import { OpsBoundary } from "../../../ops-0918/ops-boundary";
 import { OpsCheckin } from "../../../ops-0918/ops-checkin";
 import { exportCsvHref } from "../../../ops-0918/ops-model";
 import { OpsConsoleShell } from "../../../ops-0918/ops-shell";
@@ -18,32 +18,6 @@ function routeEventId(value: string): string {
   } catch {
     return value;
   }
-}
-
-function Boundary({
-  description,
-  eventId,
-  title,
-}: {
-  description: string;
-  eventId: string;
-  title: string;
-}) {
-  return (
-    <>
-      <OrbitReferenceStyles />
-      <PublicTopNav active="events" />
-      <main data-orbit-real-page="event-check-in-boundary" style={{ margin: "0 auto", maxWidth: 760, padding: 40 }}>
-        <div className="eyebrow">EVENT OPERATIONS · CHECK-IN</div>
-        <h1 className="h-display">{title}</h1>
-        <p style={{ color: "var(--text-2)" }}>{description}</p>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-          <a className="btn btn-primary" href={`/app/events/${encodeURIComponent(eventId)}/operations/check-in`}>重试</a>
-          <a className="btn btn-ghost" href="/app/events/center">返回运营活动中心</a>
-        </div>
-      </main>
-    </>
-  );
 }
 
 // 门禁（任务 4 评审修正，「门禁不动」的例外）：本页原只有 auth()，但壳现在经 loadEventOperationsPageEvent →
@@ -64,7 +38,7 @@ export default async function EventOperationsCheckInPage({
   const eventCore = createConfiguredEventCoreService();
   const accessService = createConfiguredEventAccessService();
   if (!eventCore || !accessService) {
-    return <Boundary description="活动核心或权限服务暂时不可用，签到名单入口暂时关闭。" eventId={eventId} title="签到名单暂时不可用" />;
+    return <OpsBoundary description="活动核心或权限服务暂时不可用，签到名单入口暂时关闭。" eyebrow="EVENT OPERATIONS · CHECK-IN" page="event-check-in-boundary" retryHref={`/app/events/${encodeURIComponent(eventId)}/operations/check-in`} title="签到名单暂时不可用" />;
   }
 
   try {
@@ -75,7 +49,7 @@ export default async function EventOperationsCheckInPage({
       service: accessService,
     });
   } catch {
-    return <Boundary description="只有当前活动主办方或被授予签到角色的成员可以打开签到名单。" eventId={eventId} title="没有签到权限" />;
+    return <OpsBoundary description="只有当前活动主办方或被授予签到角色的成员可以打开签到名单。" eyebrow="EVENT OPERATIONS · CHECK-IN" page="event-check-in-boundary" retryHref={`/app/events/${encodeURIComponent(eventId)}/operations/check-in`} title="没有签到权限" />;
   }
 
   // 门禁已过：壳（面包屑 / 标题）读 canonical Event Core 标题；读不到时退回 eventId（loadEventOperationsPageEvent 既有规则）。

@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
+import { OpsBoundary } from "../../app/(app)/app/events/ops-0918/ops-boundary";
 import { exportCsvHref } from "../../app/(app)/app/events/ops-0918/ops-model";
 import { OpsPeople } from "../../app/(app)/app/events/ops-0918/ops-people";
 import { OpsConsoleShell } from "../../app/(app)/app/events/ops-0918/ops-shell";
@@ -476,6 +477,21 @@ test("admission page stays canonical-only and mounts the people screen inside th
   assert.match(screen, /EventAdmissionPolicyPanel/u);
   assert.match(screen, /canConfigurePolicy/u);
   assert.match(screen, /useEventOperations\(event\)/u);
+  // 任务 7：三页共用 ops-0918/ops-boundary.tsx，admission 页三处边界文案 / 标记不变
+  assert.doesNotMatch(page, /function Boundary|PublicTopNav/u);
+  assert.equal((page.match(/<OpsBoundary /gu) ?? []).length, 3);
+  assert.match(page, /eyebrow="EVENT ADMISSION · REVIEW"/u);
+  assert.match(page, /page="event-admission-review-boundary"/u);
+  for (const title of ["报名审核暂时不可用", "活动尚未完成迁移", "没有报名审核权限"]) assert.match(page, new RegExp(`title="${title}"`, "u"));
+});
+
+test("OpsBoundary renders the shared gate page: eyebrow, title, description, 重试 → retryHref and the per-page marker", () => {
+  const html = renderToStaticMarkup(
+    <OpsBoundary description="只有当前活动负责人或被授予审核角色的成员可以查看报名画像并作出决定。" eyebrow="EVENT ADMISSION · REVIEW" page="event-admission-review-boundary" retryHref="/app/events/e%3A1/operations/admission" title="没有报名审核权限" />,
+  );
+  assert.match(html, /<main data-orbit-real-page="event-admission-review-boundary" style="margin:0 auto;max-width:760px;padding:40px">/u);
+  assert.match(html, /<div class="eyebrow">EVENT ADMISSION · REVIEW<\/div><h1 class="h-display">没有报名审核权限<\/h1><p style="color:var\(--text-2\)">只有当前活动负责人或被授予审核角色的成员可以查看报名画像并作出决定。<\/p>/u);
+  assert.match(html, /<a class="btn btn-primary" href="\/app\/events\/e%3A1\/operations\/admission">重试<\/a><a class="btn btn-ghost" href="\/app\/events\/center">返回运营活动中心<\/a>/u);
 });
 
 // 让 buttonsNamed 的导入保持有意义：筛选按钮名唯一

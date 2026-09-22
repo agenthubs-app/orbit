@@ -800,7 +800,7 @@ function statsOn(cells: readonly { key: string; label: string; value: number }[]
   return cells.map((cell, index) => ({ ...REPORT_STAT_TONE[index], ...cell }));
 }
 
-/** 整体视图四大数（features/events/event-analytics/report.tsx:141–155 字段）。 */
+/** 整体视图四大数（字段映射沿用原 features/events/event-analytics/report.tsx:141–155；该文件已于任务 7 删除）。 */
 export function reportStats(aggregate: EventAnalyticsOrganizerAggregate): ReportStat[] {
   return statsOn([
     { key: "registrations", label: "报名人数", value: aggregate.registrations.active },
