@@ -717,6 +717,12 @@ test("an unsent prefill is dropped once any other ask goes out", async (t) => {
 });
 
 test("opening another conversation from the drawer drops an unsent prefill", async (t) => {
+  // 这条线要能被证伪，必须让最后那次提问落在**没有现存会话**的状态上：
+  // `use-agent-chat.ts:289-299` 只在没有 `existingSession` 时才给请求带 origin，
+  // 所以「开一条旧会话 → 接着问」本身永远带不上 origin（陈旧与否都一样）。
+  // 这里在挑中会话之后把它删掉（删除当前会话会把 activeSessionId 清成 null，
+  // 且那条路径不碰交接单），下一问就是新会话——此时若挑会话时没有清掉交接单，
+  // 它就会骑在这句不相干的问题上。
   const origin = {
     entryClient: "web",
     entryPointId: "contacts.analysis",
@@ -746,10 +752,31 @@ test("opening another conversation from the drawer drops an unsent prefill", asy
   });
   await harness.settle(10);
 
+  // 删掉刚打开的这条会话 → 回到「没有现存会话」
+  await act(async () => {
+    buttonWithText(harness.root, "◷ 历史记录").props.onClick();
+  });
+  await harness.settle(1);
+  await act(async () => {
+    harness.root.root
+      .findByProps({ "data-orbit-agent-history-menu-button": "session:old" })
+      .props.onClick();
+  });
+  await act(async () => {
+    harness.root.root
+      .findByProps({ "data-orbit-agent-history-delete": "session:old" })
+      .props.onClick();
+  });
+  await act(async () => {
+    harness.root.root.findByProps({ "data-orbit-agent-history-confirm-delete": true }).props.onClick();
+  });
+  await harness.settle(10);
+  assert.deepEqual(harness.deletedSessionIds, ["session:old"]);
+
   await act(async () => {
     harness.root.root
       .findAll((node) => node.props?.className === "ir-composer-input")[0]!
-      .props.onChange({ target: { value: "这条对话后来怎么样了？" } });
+      .props.onChange({ target: { value: "换个话题：下周有什么值得去的活动？" } });
   });
   await act(async () => {
     harness.root.root
@@ -759,7 +786,7 @@ test("opening another conversation from the drawer drops an unsent prefill", asy
   await harness.settle();
 
   const last = harness.conversationRequests.at(-1)!;
-  assert.equal(last.message, "这条对话后来怎么样了？");
+  assert.equal(last.message, "换个话题：下周有什么值得去的活动？");
   assert.notDeepEqual(last.origin, origin);
   assert.notEqual(
     (last.origin as { entryPointId?: string } | undefined)?.entryPointId,
