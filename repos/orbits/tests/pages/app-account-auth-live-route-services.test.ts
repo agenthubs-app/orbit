@@ -255,10 +255,15 @@ test("account auth loader preserves one canonical safe return path across login 
   }
 });
 
+// 认证弹窗 任务 1：orbit-real-account-auth.tsx 的状态 / 提交 / Google / 导航逻辑原样搬入
+// account/auth-0918/use-account-auth.ts；以下源码正则按「hook 侧 / JSX 侧」拆分——
+// 逻辑（normalize、fetch、signIn、callbackUrl、created 文案）指向 hook 文件，
+// 标记（role="status" / role="alert"）与已删旧结构的否定断言留在 JSX 文件（否定断言两侧都查）。
+const ACCOUNT_AUTH_HOOK_PATH = "app/(app)/app/account/auth-0918/use-account-auth.ts";
+const ACCOUNT_AUTH_JSX_PATH = "app/(app)/app/account/orbit-real-account-auth.tsx";
+
 test("client account auth normalizes the hydrated next query with the shared auth boundary", () => {
-  const accountAuthSource = source(
-    "app/(app)/app/account/orbit-real-account-auth.tsx",
-  );
+  const accountAuthSource = source(ACCOUNT_AUTH_HOOK_PATH);
 
   assert.match(
     accountAuthSource,
@@ -271,26 +276,25 @@ test("client account auth normalizes the hydrated next query with the shared aut
 });
 
 test("forgot password submits a recovery request and announces acceptance separately from delivery", () => {
-  const accountAuthSource = source(
-    "app/(app)/app/account/orbit-real-account-auth.tsx",
-  );
+  const hookSource = source(ACCOUNT_AUTH_HOOK_PATH);
+  const jsxSource = source(ACCOUNT_AUTH_JSX_PATH);
 
   assert.match(
-    accountAuthSource,
+    hookSource,
     /\/api\/auth\/password-reset\/request/,
   );
-  assert.match(accountAuthSource, /Request accepted\./);
-  assert.match(accountAuthSource, /role="status"/);
-  assert.match(accountAuthSource, /role="alert"/);
-  assert.doesNotMatch(accountAuthSource, /setForgotStep/);
-  assert.doesNotMatch(accountAuthSource, /orbit-auth-code/);
-  assert.doesNotMatch(accountAuthSource, /orbit-auth-new-password/);
+  assert.match(hookSource, /Request accepted\./);
+  assert.match(jsxSource, /role="status"/);
+  assert.match(jsxSource, /role="alert"/);
+  for (const accountAuthSource of [hookSource, jsxSource]) {
+    assert.doesNotMatch(accountAuthSource, /setForgotStep/);
+    assert.doesNotMatch(accountAuthSource, /orbit-auth-code/);
+    assert.doesNotMatch(accountAuthSource, /orbit-auth-new-password/);
+  }
 });
 
 test("signup signs the new account in with the same credentials mechanism as login instead of bouncing to the login form", () => {
-  const accountAuthSource = source(
-    "app/(app)/app/account/orbit-real-account-auth.tsx",
-  );
+  const accountAuthSource = source(ACCOUNT_AUTH_HOOK_PATH);
   const signupBranch = accountAuthSource.slice(
     accountAuthSource.indexOf("if (isSignup) {"),
     accountAuthSource.indexOf("if (isForgot) {"),
@@ -315,9 +319,7 @@ test("signup signs the new account in with the same credentials mechanism as log
 });
 
 test("credential login requires a concrete NextAuth result and then uses profile continuation", () => {
-  const accountAuthSource = source(
-    "app/(app)/app/account/orbit-real-account-auth.tsx",
-  );
+  const accountAuthSource = source(ACCOUNT_AUTH_HOOK_PATH);
   const credentialsStart = accountAuthSource.indexOf(
     'const result = await signIn("credentials"',
   );
@@ -334,9 +336,7 @@ test("credential login requires a concrete NextAuth result and then uses profile
 });
 
 test("Google callback also enters the authenticated profile continuation", () => {
-  const accountAuthSource = source(
-    "app/(app)/app/account/orbit-real-account-auth.tsx",
-  );
+  const accountAuthSource = source(ACCOUNT_AUTH_HOOK_PATH);
 
   assert.match(
     accountAuthSource,
@@ -345,15 +345,16 @@ test("Google callback also enters the authenticated profile continuation", () =>
 });
 
 test("post-signup login notice explains the auto sign-in fallback and does not promise a profile onboarding step", () => {
-  const accountAuthSource = source(
-    "app/(app)/app/account/orbit-real-account-auth.tsx",
-  );
+  const hookSource = source(ACCOUNT_AUTH_HOOK_PATH);
+  const jsxSource = source(ACCOUNT_AUTH_JSX_PATH);
 
-  assert.doesNotMatch(accountAuthSource, /通用档案/);
-  assert.doesNotMatch(accountAuthSource, /complete your general profile/);
-  assert.match(accountAuthSource, /automatic sign-in did not complete/);
-  assert.match(accountAuthSource, /账号已创建，但自动登录未完成/);
-  assert.match(accountAuthSource, /自動サインインが完了しませんでした/);
+  for (const accountAuthSource of [hookSource, jsxSource]) {
+    assert.doesNotMatch(accountAuthSource, /通用档案/);
+    assert.doesNotMatch(accountAuthSource, /complete your general profile/);
+  }
+  assert.match(hookSource, /automatic sign-in did not complete/);
+  assert.match(hookSource, /账号已创建，但自动登录未完成/);
+  assert.match(hookSource, /自動サインインが完了しませんでした/);
 });
 
 test("credential login success navigates through profile continuation with the safe next", async (t) => {
