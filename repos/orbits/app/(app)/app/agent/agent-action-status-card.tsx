@@ -651,15 +651,22 @@ export function AgentActionStatusCard({
             ) : null}
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {/* iOrbit 合并前终审 1：这里原来是 `/today?entry=…`。`productHref` 只映射
+                  光秃秃的 `/today`，带 query 时会落到 `/app/today?entry=…`——本轮已随
+                  路由归并删除的死路由，每条非 deferred 的回合卡都 404。改为直指
+                  取代它的兄弟屏（`/app/agent/actions`，已在 `/app/` 前缀下，
+                  `productHref` 原样放行）。 */}
               {action.status !== "deferred" ? (
                 <button
                   className="btn btn-quiet"
                   onClick={() =>
-                    navigate(`/today?entry=${encodeURIComponent(action.actionId)}`)
+                    navigate(
+                      `/app/agent/actions?entry=${encodeURIComponent(action.actionId)}`,
+                    )
                   }
                   type="button"
                 >
-                  {language === "zh" ? "在 Today 查看" : "Open in Today"}
+                  {language === "zh" ? "在安排里查看" : "Open in arrangements"}
                 </button>
               ) : null}
               <button
@@ -686,8 +693,8 @@ export function AgentActionStatusCard({
               {editable && action.riskLevel === "external" ? (
                 <span style={{ color: "var(--text-3)", flexBasis: "100%", fontSize: 11 }}>
                   {language === "zh"
-                    ? "外部操作请在 Today 查看详情后确认"
-                    : "Review external action details in Today before confirming"}
+                    ? "外部操作请在「全部安排」查看详情后确认"
+                    : "Review external action details in All arrangements before confirming"}
                 </span>
               ) : null}
               {canDefer ? (

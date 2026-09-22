@@ -345,7 +345,7 @@ test("chat action card exposes the shared action id and canonical Today and ledg
   assert.match(html, /data-agent-action-id="action:post-event:1"/);
   assert.match(html, /本次 Agent 过程/);
   assert.match(html, /正在同步/);
-  assert.match(html, /在 Today 查看/);
+  assert.match(html, /在安排里查看/);
   assert.match(html, /全部安排/);
 });
 
@@ -438,7 +438,7 @@ test("product action handoff shows review links without run diagnostics or visib
   );
   const visibleText = html.replace(/<[^>]*>/g, "");
   assert.match(visibleText, /本次安排/);
-  assert.match(visibleText, /在 Today 查看/);
+  assert.match(visibleText, /在安排里查看/);
   assert.match(visibleText, /全部安排/);
   assert.doesNotMatch(visibleText, /private-internal-id|Agent 过程|Agent 进度|确认执行/);
   assert.doesNotMatch(html, /data-agent-run-step|data-agent-run-status/);

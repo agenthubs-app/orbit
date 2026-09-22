@@ -251,6 +251,66 @@ test("picking a stored conversation from history restores it and pushes its deep
   assert.equal(harness.localValues.get("orbit-agent-chat-active-session-v1"), "session:restored");
 });
 
+// iOrbit 合并前终审 2：`chatOpen → view` 只认上升沿（「返回概览」刻意不清
+// `chatOpen`），所以「对话 → 返回概览 → 抽屉」这条路径上，抽屉的两个回调如果不自己
+// 把视图带回对话，URL 与线程都换了、人却还留在概览屏。两条用例各钉一条路径。
+test("after returning to the overview, picking another conversation lands back in the thread", async (t) => {
+  const harness = await mountAgent(t, {
+    search: "?session=session%3Arestored",
+    sessionPages: [[RESTORED]],
+  });
+  assert.ok(renderedText(harness.root).includes("上次的回答"));
+
+  await act(async () => {
+    buttonWithText(harness.root, "← 返回概览").props.onClick();
+  });
+  await harness.settle();
+  // 概览屏不渲染线程：这是「人已经不在对话里」的证据，不是线程被清了。
+  assert.equal(renderedText(harness.root).includes("上次的回答"), false);
+
+  await act(async () => {
+    buttonWithText(harness.root, "历史记录").props.onClick();
+  });
+  await harness.settle(1);
+  await act(async () => {
+    buttonWithText(harness.root, "上次问过的问题").props.onClick();
+  });
+  await harness.settle();
+
+  assert.equal(harness.pushedUrls.at(-1), "/app/agent?session=session%3Arestored");
+  assert.ok(renderedText(harness.root).includes("上次的回答"));
+});
+
+test("after returning to the overview, starting a new chat lands back in the empty thread", async (t) => {
+  // 入口取 `?session=`（`restoreSession` 会把 `chatOpen` 置起）：`?q=` 那条路径压根
+  // 不动 `chatOpen`，新对话时反而撞出一次上升沿，掩盖掉这个缺陷。
+  const harness = await mountAgent(t, {
+    search: "?session=session%3Arestored",
+    sessionPages: [[RESTORED]],
+  });
+  assert.ok(renderedText(harness.root).includes("上次的回答"));
+
+  await act(async () => {
+    buttonWithText(harness.root, "← 返回概览").props.onClick();
+  });
+  await harness.settle();
+
+  await act(async () => {
+    buttonWithText(harness.root, "历史记录").props.onClick();
+  });
+  await harness.settle(1);
+  await act(async () => {
+    harness.root.root.findAllByProps({ className: "btn ir-drawer-new" })[0].props.onClick();
+  });
+  await harness.settle();
+
+  assert.equal(harness.pushedUrls.at(-1), "/app/agent");
+  assert.equal(harness.localValues.has("orbit-agent-chat-active-session-v1"), false);
+  // 空线程也必须是**看得见的**空线程：输入区在，旧回合不在。
+  assert.equal(harness.root.root.findAllByProps({ "data-orbit-agent-chat-input": true }).length > 0, true);
+  assert.equal(renderedText(harness.root).includes("上次的回答"), false);
+});
+
 test("leaving the thread clears it, drops the active-session key and returns to /app/agent", async (t) => {
   const harness = await mountAgent(t, {
     conversation: (body) => SUCCESS(body),

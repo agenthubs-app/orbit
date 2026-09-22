@@ -336,9 +336,23 @@ export function IOrbitShell({
             onDeleteGroup={(group) => { void deleteHistoryGroup(group); }}
             onFilterGroup={setSelectedSessionGroupId}
             onMove={moveHistorySession}
-            onNewChat={startNewChat}
-            onNewInGroup={startNewChatInGroup}
-            onPick={openHistoryEntry}
+            // iOrbit 合并前终审 2：抽屉里的「新对话」与挑一条历史都必须把视图带到
+            // 对话。`chatOpen` 的同步只认上升沿（「返回概览」刻意不清 `chatOpen`），
+            // 所以从对话 → 返回概览 → 抽屉 → 挑一条时，URL 与线程都换了、人还留在
+            // 概览屏；「新对话」则是线程被悄悄清空。这里与 `onOpenSession` 同口径，
+            // 由壳显式 `setView("chat")`。
+            onNewChat={() => {
+              startNewChat();
+              setView("chat");
+            }}
+            onNewInGroup={(groupId) => {
+              startNewChatInGroup(groupId);
+              setView("chat");
+            }}
+            onPick={(item) => {
+              openHistoryEntry(item);
+              setView("chat");
+            }}
             onRename={renameHistorySession}
             onRenameGroup={(group, name) => { void renameHistoryGroup(group, name); }}
             onTogglePin={togglePinnedHistorySession}

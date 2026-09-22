@@ -80,7 +80,7 @@ test("external calendar actions remain reviewable but cannot be confirmed inside
 
   assert.match(html, /data-agent-run-id="run:external-calendar"/);
   assert.match(html, /data-agent-action-id="action:external-calendar"/);
-  assert.match(html, /在 Today 查看/);
+  assert.match(html, /在安排里查看/);
   assert.match(html, /全部安排/);
   assert.doesNotMatch(html, /确认执行/);
 });
@@ -128,7 +128,11 @@ test("/app/agent composes calendar proposals through the conversation run and ac
   assert.match(chatHookSource, /payload\.data\.actionIds/);
   assert.match(agentSource, /<AgentActionStatusCard/);
   assert.match(actionSource, /riskLevel !== "external"/);
-  assert.match(actionSource, /Review external action details in Today/);
+  assert.match(actionSource, /Review external action details in All arrangements/);
+  // iOrbit 合并前终审 1：回合卡上的两枚跳转都必须落在仍然存在的兄弟屏；
+  // `/today?entry=` 会被 `productHref` 送到已删除的 `/app/today`。
+  assert.match(actionSource, /\/app\/agent\/actions\?entry=/);
+  assert.doesNotMatch(actionSource, /navigate\(\s*`\/today\?/);
   assert.match(actionSource, /\/api\/agent\/ledger\//);
   assert.match(serviceDoc, /live calendar adapter/i);
   assert.match(serviceDoc, /no-side-effect default/i);
