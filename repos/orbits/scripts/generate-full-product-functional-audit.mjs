@@ -7461,6 +7461,46 @@ export function lookupWebSurfaceRuntimeEvidence(
     : undefined;
 }
 
+/**
+ * 每一张运行时交互证据表里，键形为 `<file>:<line>`（可带 `<surfaceId>|` 前缀）的条目。
+ *
+ * 这类键**按行号认领**某一枚控件的证据。只要有人在该文件靠前的位置加一行，键就会悄悄
+ * 落到别的行上——证据要么被丢掉、要么被记到另一枚控件头上，而且以前不会有任何测试跑红
+ * （2026-09-24：给 ProfileBasic 加一个形参，profile-basic.tsx 整体下移 4 行，
+ * `/app/profile` 的 runtime-verified 交互由 11 静默掉到 8）。
+ * `tests/audits/full-product-functional-audit.test.ts` 用它把每个键钉回真实控件上。
+ */
+export function collectLineAnchoredRuntimeEvidenceKeys() {
+  const maps = [
+    ["LIVE_PROFILE_INTERACTION_EVIDENCE", LIVE_PROFILE_INTERACTION_EVIDENCE],
+    ["LIVE_EVENT_REGISTRATION_INTERACTION_EVIDENCE", LIVE_EVENT_REGISTRATION_INTERACTION_EVIDENCE],
+    ["LIVE_BUSINESS_CARD_RESTRICTED_INTERACTION_EVIDENCE", LIVE_BUSINESS_CARD_RESTRICTED_INTERACTION_EVIDENCE],
+    ["LIVE_CONTACTS_LIST_INTERACTION_EVIDENCE", LIVE_CONTACTS_LIST_INTERACTION_EVIDENCE],
+    ["LIVE_CONTACT_DETAIL_INTERACTION_EVIDENCE", LIVE_CONTACT_DETAIL_INTERACTION_EVIDENCE],
+    ["LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE", LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE],
+    ["LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE", LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE],
+    ["LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE", LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE],
+    ["LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE", LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE],
+  ];
+  const anchored = [];
+  for (const [mapName, map] of maps) {
+    for (const [key, record] of map) {
+      const match = /^(?:([^|]+)\|)?([^|#]+\.(?:tsx?|jsx?)):(\d+)$/u.exec(key);
+      if (!match) continue;
+      anchored.push({
+        actualResult: record.actualResult,
+        key,
+        line: Number(match[3]),
+        mapName,
+        sourceFile: match[2],
+        surfaceId: match[1] ?? null,
+        verificationCase: record.verificationCase ?? null,
+      });
+    }
+  }
+  return anchored;
+}
+
 export function getHistoricalWebRuntimeEvidence() {
   return structuredClone({
     browserSmokeRoutes: [...BROWSER_SMOKE_WEB_ROUTES],
