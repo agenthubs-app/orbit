@@ -1226,3 +1226,209 @@ scripts/knowledge/sync-app-manifest.mjs
 做文本检索确认调用面：`AgentEventRow` 只有 `iorbit-rich-components.tsx:657` 一个调用点（另两处测试
 只对源码正则断言函数存在，不断言日期文案）；`buildAgentStrategyViewModel` impact **LOW**、direct 1
 （`OrbitAgentStrategy`）、affected processes 0，本次只改 `meta` 取值，签名与形状未动，全仓无测试断言 `meta`。
+
+### 验证补课（2026-09-24 第二轮）：遗留清单 1 / 2 / 4 / 5 / 11 的处置
+
+本轮专做「合并后留下的验证债」，任务书编号 A–E。与上面「遗留清单（六域收尾统一登记）」的
+对应关系写在表里（任务书的 B / D 用的是另一套编号，此处一律以**台账条目号**为准）。
+
+| 任务书 | 台账原条目 | 处置 | 证据 |
+| --- | --- | --- | --- |
+| A | 遗留 1（七日内已确认约谈） | **部分完成**：qa 已成为 canonical 成员；约谈仍未种成，但阻塞点换成了一个更具体、可执行的原因 | 见下 §A |
+| B | Events 像素终验表两行「未复跑」（详情 / 报名壳） | **已完成**：两行都在 timeshift 后跑完 `--grid 100` 并逐带归因入库；**无缺陷** | 见下 §B |
+| C | 遗留 2（10 枚 `inventoried-static-only` 控件） | **已完成**：10 枚逐枚真实浏览器取证并入库；**并由此找到并修掉 1 处真缺陷** | 见下 §C |
+| D | 遗留 11（审计积压）的 P1 与 P0 两段 | **P1 20 条已清零**；P0 8 条按「2 条按计划保留 + 6 条据实说明」处置；60 条无运行时覆盖的表面**未动** | 见下 §D |
+| E | 遗留 4 / 5 收尾提交的像素复核 | **四域已复核、与台账数字对上**；运营台一域**跑不了**（凭据缺失） | 见下 §E |
+
+#### §A 遗留 1：约谈的阻塞点从「口径冲突」变成「已发布目录冻结」
+
+上一版台账写的阻塞理由是「任务书要求不动 `event_ops_*`，与种约谈冲突」。本轮按任务书授权可以动
+验证库，于是**走真实服务层**（不是 SQL）把链条往前推，结论比原来精确得多：
+
+1. **已完成**：`eventRegistrationRuntimeService.register({ eventId, userId: "user_orbit_primary_qa", … })`
+   —— 即应用自己的 deadline-gated → canonical 写路径（`registerCanonicalParticipant`，指纹认领与幂等键
+   原样）。`event_ops_membership_heads` 多出一行 `status=rsvped`、membership_version 1、profile_version 1，
+   `event_ops_profile_versions` 一行。**台账里「qa 的 canonical 报名被『未发布报名配置』门禁挡住」这句
+   今天已经不成立**：该活动 `lifecycle_state_v2=published` + `registration_migration_state=canonical` +
+   配置头齐全，三个条件都满足，报名一次通过。（前置条件：先把活动 timeshift 成「未开始」，因为
+   报名要求 `now < event.startsAt`。）
+2. **卡住的地方**：`createContactRequest` 报 `EVENT_OPERATIONS_PARTICIPANT_NOT_FOUND`。
+   原因在 `features/events/event-operations/service.ts` 的 `participantContext`：**一旦该活动存在已发布
+   的生成结果，参会者名单就只从 `published.directory` 取，完全不回退到当前 canonical 报名**
+   （`published ? published.directory : currentParticipantsFor(...)`，严格二选一，没有合并）。
+   本活动的发布头 `event-operations-publication:a37752b5e577…`（发布于 2026-09-22 08:30）目录里只有
+   `user_mu5337vt_2ns0yk` 与 `user_mu5337vt_9hpek7` 两人，qa 的成员记录晚了两天，**不在冻结目录里**。
+   `participantContext` 先解析**发起人自己**（`participants.find(v => v.actorId === actorId)`），所以
+   换成向 participant.b 申请也一样失败——实测过，同一个错误码。
+3. **没做的事与理由**：唯一合法的解法是重新生成 → 跑 worker → 重新发布，让目录按当前报名重建。
+   这要动**已发布**的运营状态（`generation.publish` 能力位），与「发布不可变」这条硬约束正面相关，
+   且 AI 生成这一步在本轮环境里本来就不可用（同一轮的报名壳截图里，AI 访谈渲染的是
+   「AI 访谈暂时无法开始，请在模型恢复后重试。」）。**因此停在这里，没有重新发布，也没有改任何一行
+   已发布数据。** 下一个接手的人要的是：organizer 发起一次新的生成 → `npm run event-operations:worker`
+   （需要可用的模型）→ 原子发布 → 目录含 qa 之后，联系人请求 / 接受 / 约谈 draft→propose→accept
+   四步就能直接跑通（`features/appointments/service.ts` 的授权查询只要一条 `status='accepted'` 的
+   `event_ops_contact_requests` 加两条 `event_ops_relationship_sides`）。
+4. **`/app/agent/plan` 的「本周日程」因此仍然是真实空态**，一条也没有伪造。
+
+#### §B Events 两行「未复跑」——已复跑，两行都无缺陷
+
+**timeshift**：scratchpad `timeshift.sql`，沿用台账历次同一套偏移（`check_in = A−2h`、
+`event_starts = A−1h`、`profile_edit = cutoff = results = A−1h`、`round_one = A−30m`、
+`round_two = A+1h`、`event_ends = A+3h`），三张表一起改：`event_ops_configurations`、
+`event_ops_events.starts_at/ends_at`、`event_event_versions.starts_at/ends_at`，外加两处
+`source_payload.sources[0].snapshot.{startsAt,endsAt}`。每次跑完都打印
+`requireCanonicalScheduleAlignment` 的四个对齐位，两次都是 **t / t / t / t**。
+发布物、幂等键、指纹认领一律没碰。
+
+| 行 | 比对参数 | 本轮 raw（design / app px） | 台账记录 | 带数 / 超阈 / unattributed | 判定 |
+| --- | --- | --- | --- | --- | --- |
+| 报名壳 `/<id>/register` | `--design-view discover --design-click "text=立即报名"` | **0.2595**（1344 / 900） | 0.2596（1344 / 900） | 9 / 9 / **0** | 通过，无缺陷 |
+| 详情 `/app/events/<id>` | `--design-view detail` | **0.1492**（1566 / 1355） | 0.1407（1566 / 1506） | 14 / 12 / **0** | 通过，无缺陷 |
+
+归因写进 `repos/orbits/scripts/visual/attribution-0918-events.json` 的两个**新增** view key
+（`register` 9 条、`detail` 12 条），用的是既有四类词汇（`[data]` / `[recorded]` / `[shared]` / 缺陷）。
+**逐带归因的结论是：没有一条带的红色落在布局线、圆角、间距或色块上，因此一处缺陷也没有登记、
+也就没有需要修的东西。** 两屏的 diff 上，面板 / 卡框 / 页签行 / 封面块 / CTA 框全是白的（0.0000）。
+
+**两处必须写下来的、与台账行不同的地方（都是状态差，不是回退）**：
+
+1. **报名壳这一行本轮用 `qa@orbit.test` 登录，不是台账记的 organizer**，因为本工作树里
+   `ORBIT_DEMO_ORGANIZER_PASSWORD` 这个键**根本不存在**（见 §E）。两个账号在这一屏的状态是同一个
+   （都未报名、都未被准入拦截），raw 也落在 0.2595 vs 0.2596，屏本身是可比的。
+2. **详情这一行的应用侧高度由 1506px 变成 1355px**：① qa 是刚刚报名的第三人，所以人数行是
+   「3 / 8 人正在参加」；② 「你可能感兴趣的参会者」渲染的是真实空态
+   「当前活动的已发布运营数据暂时不可用。」——正是 §A 第 2 点那个冻结目录的同一个成因，
+   而不是推荐卡。raw 从 0.1407 升到 0.1492 全部由这两点解释，逐带已写明。
+
+#### §C 遗留 2：10 枚控件的运行时取证 —— 全部入库，并翻出一处真缺陷
+
+用真实浏览器（Chromium，1240×900，`qa@orbit.test` 走真实登录表单，验证库
+`orbit_newui_events_20260922`）把 10 枚控件逐枚跑了一遍，**全程 0 条 console error**。
+为不污染像素基线，先用 `scripts/visual/seed-iorbit-chat-session.mjs` 真实写接口种了三条一次性会话
+（`evidence-0924-a/b/c`），**像素基线会话 `iorbit-visual-chat-0918` 一个字节没动**；跑完把置顶翻回
+未置顶、三条一次性会话都经同一条 DELETE 路由删掉，抽屉恢复成原来的 3 条。
+
+**真缺陷（本轮修掉）**：重命名态下「取消」钮**点不动**。
+`.ir-hist-more`（「···」）是 `position:absolute; right:10px` 的 28×28 钮，`opacity:0` 但
+`pointer-events:auto`，它整块压在重命名行最右侧「取消」钮的中心点上——实测
+取消 x1157–1203 / y208–239，「···」x1177–1205 / y210–238，
+`document.elementFromPoint` 打在取消钮中心返回的是 `button.btn.ir-hist-more`，
+于是鼠标点「取消」实际打开的是更多菜单。「保存」不受影响（中心点 x1126 在覆盖区之外）。
+**修法**：`iorbit-history-drawer.tsx` 里 `item.sessionId && !renaming` 才渲染「···」
+（`startRename` 本来就 `setMenuOpenId(null)`，菜单在重命名时必定是关的，所以只少了这一枚钮）。
+静态截图不取重命名态，像素零变化（history 屏复核见 §E）。
+
+**入库**：`scripts/generate-full-product-functional-audit.mjs` 新增
+`VERIFIED_AUDIT_CASES` 一条 `web-agent-history-drawer-controls-2026-09-24`，
+外加 `LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE` 10 条（键形 `web:/app/agent|<file>:<line>`）。
+重跑 `npm run audit:full-product` 后，10 枚全部变成 `runtime-verified-exercised-case`，
+`/app/agent` 的 runtime-verified 交互由 **10 → 19**（+9 是这 10 枚里有一枚与既有记录重合的净值；
+逐枚核对见产物）。每条 `actualResult` 写的都是**实测结果**，例如：置顶把第 5 行（index 4）顶到
+index 0、meta 变「已置顶 · 2026年9月18日」、硬刷新后仍在 index 0、菜单项文案翻成「取消置顶」；
+删除先弹「删除这个对话？」确认框（保留对话 / 删除对话），确认后发**一条** DELETE、行数 6→5、
+刷新后仍为 5，存储侧转成 `lifecycle_state=deleted`；「取消」丢弃输入、标题不变、**零请求**。
+
+**没有改变的数字（要说清楚）**：交互级证据**不影响** `surfacesWithRuntimeEvidence`。
+`tests/audits` 因此**一条也没有转绿**，仍是 10 条固定失败、逐条同名（见下「回归」）。
+
+#### §D 遗留 11：P1 清零 / P0 据实处置 / 60 条未动
+
+**(a) 20 条 P1 `accessible-name-unresolved` → 0 条。** 五处逐条按本域惯例补可及名，
+**渲染输出一个像素没动**（全部是 `aria-label`，截图不取可及名）：
+
+| 处 | 条数 | 改法 |
+| --- | --- | --- |
+| `auth-0918/auth-{login,register}.tsx` → `auth-form.tsx` | 8（2 组件 × 4 路由） | `AuthGoogleButton` 改收 `"aria-label"` 并落到它自己的 `<button>` 上；两处调用点传 `t({en:"Continue with Google", zh:"使用 Google 登录"})`（与钮内可见文案同字） |
+| `agent-chat-history-organization.tsx` | 9 | 九枚 `{tr(...)}` 钮补 `aria-label`；**其中六枚顺带把真实歧义修了**——多分组时「打开 / 新建 / 改名 / 删组 / 取消 / 确认删组」光看文案说不出是哪个组，现在带上组名（`打开分组：${group.name}` 等） |
+| `events-0918/event-live.tsx` | 1 | `Avatar` 的 `label` 形参直接改名成 `"aria-label"`——它本来就是原样落到 `<button aria-label>` 上的，改名后调用点与 DOM 同名 |
+| `profile-0918/profile-screens.tsx` → `profile-basic.tsx` | 2（同一行 × 2 路由） | `ProfileBasic` 收 `"aria-label"` 并落到它返回的 `<form>` 上（表单地标拿到名字是真的可及性收益），调用点传「编辑基础资料」 |
+
+**像素复核（`--grid 100`，逐带门禁全部 `unattributed=0`）**：
+auth login **0.0901**（9 带 / 7 超阈，与台账逐位同值）、auth register **0.0914**（9 / 7，同值）、
+profile **0.1037**（13 / 10，与 2026-09-23 网格复核逐位同值）、
+iOrbit history **0.0410**（9 / 8，台账 0.0413；差值来自本轮取证对会话的真实增删，带结构完全相同）。
+**`events-0918/event-live.tsx` 那一处没法跑像素**：现场屏要一个已报名账号，而本工作树登不进
+participant.a（见 §E）。改动本身是形参改名 + 同一个 `aria-label`，DOM 逐字节不变。
+
+**一处必须记下的连带缺陷（本轮自造、已修）**：给 `ProfileBasic` 加形参让 `profile-basic.tsx`
+**整体下移 4 行**，而 `LIVE_PROFILE_INTERACTION_EVIDENCE` 是按 `file:line` 记键的，于是
+119 / 127 / 159 三条证据**静默失配**，`/app/profile` 的 runtime-verified 交互由 11 掉到 8。
+已把三条键改指 123 / 131 / 163，重跑后回到 **11**。
+**这是证据键机制本身的脆弱点，作为新遗留登记**：只要有人在这些文件靠前的位置加一行，
+`file:line` 键就会悄悄把功劳转移或丢失，而且**不会有任何测试跑红**——现有 `tests/audits`
+只断言总数，不断言「哪一条被认领」。
+
+**(b) 8 条 P0 `missing static behavior evidence`：2 条按计划保留，6 条据实说明，均未改。**
+
+- **`iorbit-home.tsx:665 / 673`（月历 ‹ ›）= 计划自定的形态，保留。** 两枚都带
+  `aria-disabled="true"` 与 `aria-label`（上个月 / 下个月），设计 117/118 本身没有 handler，
+  且跨月没有数据源——**这是刻意的惰性控件，不是坏掉的按钮**。扫描器认的是 `behaviorEvidence`，
+  不认 `aria-disabled`，所以它会一直报这两条；**要消掉应当让扫描器学会识别这个形态，而不是给
+  它们接一个假的 handler**。
+- **`auth-0918/auth-form.tsx:137`（`AuthPrimaryButton`）× 4 条路由 = 跨文件假阴性。**
+  它是 `<button type="submit">`，但 `hasSubmitAncestor` 只在**同一个文件**里找 `<form>` 祖先，
+  而这里的 `<form>` 在调用方（`auth-login` / `auth-register`）里。本轮**有直接的运行时反证**：
+  取证与像素两轮都是点这枚钮完成真实登录的（`getByRole("button", {name:"登录"})` → 导航到
+  `/app/agent`），它确实提交了表单。**不改源码去迎合静态启发式**；正确修法是让
+  `hasSubmitAncestor` 能跨组件边界解析，与 item 12 给 `accessForRoute` 加 AST 解析同一性质。
+- **`events-0918/event-attendee-modal.tsx:103` × 2 条路由 = 常驻禁用的状态件。**
+  它在 `canWithdraw` 分支里，是紧挨着「撤回申请」（有 handler）的一枚 `disabled` 主钮，只负责
+  渲染状态文案；`disabled` 本身已让指针与辅助技术都正确地当它不可操作。本域对这种件的既定改法
+  是 `<button disabled>` → `<span aria-disabled>`（Events 任务 2 已对两枚 CTA 这么做过），
+  **但本轮没做**：`.btn.ev-mo-btn-primary:disabled` 有专属 CSS 而没有 `[aria-disabled]` 对应规则，
+  换标签就得动样式面，而这枚控件所在的弹窗**在本工作树跑不了像素**（要已报名账号，见 §E）。
+  作为遗留留给能登进 participant 账号的人。
+
+**(c) 60 条无运行时覆盖的表面：按任务书要求没有尝试。** 本轮结束后
+`surfacesWithRuntimeEvidence = 78`、`routeSurfaces = 138`，**仍然是 78/138，缺口仍是 60 条，一条没变**
+（交互级证据不参与这个计数，只有 `LIVE_*_RUNTIME_SURFACES` 的**表面级**记录才会动它）。
+`每 route surface 需要运行时覆盖` 这条测试因此仍然红着，它的失败消息就是那 60 条的工作清单。
+
+#### §E 收尾提交的像素复核：四域对上，运营台跑不了
+
+上一节 item 10 列出「像素需要重新复核的四个文件」（四个 `:hover` 新增 + 一条
+`.ev-cover-link{color:inherit}`），item 9 删了 132 条死 CSS。本轮每域各跑一个代表视图：
+
+| 域 | 代表视图 | 本轮 raw | 台账记录 | 带数 / 超阈 / unattributed | 判定 |
+| --- | --- | --- | --- | --- | --- |
+| Network | `all` `/app/contacts` | 0.0518 | 0.0524（2026-09-21） | 16 / 10 / **0** | 带结构逐条同值；`.nw-import-panel-link` 根本不在这一屏上，−0.0006 是联系人数据漂移 |
+| 个人中心 | `profile` `/app/profile` | **0.1037** | 0.1037（2026-09-23 网格复核） | 13 / 10 / **0** | **逐位同值** |
+| Events | `discover` `/app/events` | 0.2075 | 0.2076 | 10 / 6 / **0** | 逐位同值（差 0.0001） |
+| iOrbit | `chat` `?session=iorbit-visual-chat-0918` | 0.0633 | 0.0632 | 12 / 8 / **0** | 带值逐条对上（#7 0.0846 / #8 0.0850 / #9 0.0846）；+0.0001 是日期分隔渲染**今天的真实日期**（遗留 8 记的渲染期 `new Date()`） |
+| 运营台 | `hub` `/app/events/center` | —— | 0.1130 | —— | **跑不了**，见下 |
+
+**结论：item 9 删掉的 132 条 CSS 与 item 10 新增的 5 条规则，在静态截图上确实零变化**——
+四个域的带结构（带数 / 超阈数）与台账逐条相同，`--attribution` 门禁四屏全过。
+唯一一条非 `:hover` 的 `.ev-cover-link{color:inherit}` 落在 Events `discover` 的活动卡封面上，
+该屏 0.2075 vs 0.2076、10/6 带不变，可以判它不可见。
+
+**运营台跑不了的原因（本工作树的环境缺口，必须记）**：
+`ORBIT_DEMO_ORGANIZER_PASSWORD` 这个键**在本仓库里任何地方都不存在**——
+`repos/orbits/.env.local` 没有，仓库根没有 `.env*`，全仓只有引用它的代码与文档。
+`organizer@orbit.example.test` / `participant.a@orbit.example.test` /
+`participant.b@orbit.example.test` 四个演示账号在验证库里都有 `credentials` provider 与密码哈希，
+但**密码本身随旧工作树一起没了**；`ORBIT_PRIMARY_TEST_ACCOUNT_PASSWORD` 对它们一律 401
+（对 `qa@orbit.test` 是 200）。**本轮没有去重置任何账号的密码**——那是凭据管理，不在授权范围内。
+**受此阻塞的三件事**：① 运营台八视图的像素复核；② `event-live.tsx` 所在现场屏的像素复核（§D）；
+③ `event-attendee-modal.tsx` 那两条 P0 的修法验证（§D）。
+**另记一条**：`.claude/launch.json` 的 `orbits-newui` 仍指向已删除的旧工作树
+`/Users/li/work/orbit-web-newui-batch0-20260918/repos/orbits`，该配置今天起不来。
+
+#### 数据库状态（留在什么样子）
+
+验证库 `orbit_newui_events_20260922`，**只动了这个库**。留下的状态：
+
+1. **活动 `10000000-…-0001` 处于 timeshift 后的「进行中」**：
+   `event_starts_at = 2026-09-24 00:52:17+08`、`event_ends_at = 2026-09-24 04:52:17+08`，
+   三张表对齐（t/t/t/t）。**没有恢复**——原来的窗口（2026-09-22 07:26–11:26+08）本身也是上一轮
+   timeshift 的产物、且已过期，恢复它只会把两行像素又变回「已结束 / 报名已结束」。
+   下次要复跑详情 / 报名壳，照 §B 的办法重跑一次 `timeshift.sql` 即可。
+2. **qa（`user_orbit_primary_qa`）是该活动的 canonical 成员**：`event_ops_membership_heads` 一行
+   `rsvped`、`event_ops_profile_versions` 一行。经真实服务层写入，**这是 §A 的成果，刻意保留**。
+   副作用：该活动人数由 2 变 3，Events / 运营台后续像素的数据残差要按 3 人归因。
+3. **会话表恢复原状**：三条一次性会话已删（`evidence-0924-c` 为 `lifecycle_state=deleted`，
+   a / b 经同一路由删除），置顶翻回 false，`iorbit-visual-chat-0918` 未被触碰。
+4. **没有碰**：任何发布物（`event_ops_publications` / `_publication_heads`）、生成结果、签到、
+   角色分配、`event_ops_contact_requests`（一行都没建）、`appointment_aggregates`（空）。
+
+`.env.local` **自始至终没有被修改过**（密码一律从它只读取用，从未落盘、未进提交信息）。
