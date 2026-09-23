@@ -2,8 +2,8 @@
   "schemaVersion": 2,
   "scope": "All production Next.js page routes; API and /dev routes excluded",
   "evidenceLevel": "Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.",
-  "commit": "52c086711c7660cc70a9fdd35e93c65f5a44586a",
-  "generatedAt": "2026-09-24T02:03:28+09:00",
+  "commit": "ffdf4d6633340bd6008536de49079648a70d5487",
+  "generatedAt": "2026-09-24T02:14:47+09:00",
   "authoritativeInputs": {
     "appRoot": "repos/orbits/app",
     "authRouting": "repos/orbits/features/auth/app-auth-routing.ts",
@@ -23,9 +23,9 @@
     "authenticatedRoutes": 19,
     "publicRoutes": 26,
     "ungatedRoutes": 4,
-    "risks": 28,
+    "risks": 8,
     "p0Candidates": 8,
-    "p1Candidates": 20
+    "p1Candidates": 0
   },
   "surfaces": [
     {
@@ -173,7 +173,7 @@
           "line": 157,
           "kind": "button",
           "tag": "button",
-          "label": "Continue with Google",
+          "label": "ariaLabel",
           "accessibleName": "present-static",
           "href": null,
           "handlers": [
@@ -259,8 +259,8 @@
           "line": 39,
           "kind": "click-handler",
           "tag": "AuthGoogleButton",
-          "label": null,
-          "accessibleName": "unresolved-static",
+          "label": "t({ en: \"Continue with Google\", zh: \"使用 Google 登录\" })",
+          "accessibleName": "present-static",
           "href": null,
           "handlers": [
             "onclick"
@@ -367,8 +367,8 @@
           "line": 34,
           "kind": "click-handler",
           "tag": "AuthGoogleButton",
-          "label": null,
-          "accessibleName": "unresolved-static",
+          "label": "t({ en: \"Continue with Google\", zh: \"使用 Google 登录\" })",
+          "accessibleName": "present-static",
           "href": null,
           "handlers": [
             "onclick"
@@ -1118,28 +1118,6 @@
           "userImpact": "Visible control may not perform an action.",
           "status": "open-needs-runtime-verification",
           "nextAction": "Verify DOM behavior; wire a real handler/href or explain unavailability."
-        },
-        {
-          "severity": "P1",
-          "type": "accessible-name-unresolved",
-          "route": "/app/account/forgot-password",
-          "sourceFile": "repos/orbits/app/(app)/app/account/auth-0918/auth-login.tsx",
-          "line": 39,
-          "trigger": "AuthGoogleButton click-handler",
-          "userImpact": "Assistive technology may not expose a meaningful action name.",
-          "status": "open-needs-runtime-verification",
-          "nextAction": "Inspect rendered accessible name and add a stable label if absent."
-        },
-        {
-          "severity": "P1",
-          "type": "accessible-name-unresolved",
-          "route": "/app/account/forgot-password",
-          "sourceFile": "repos/orbits/app/(app)/app/account/auth-0918/auth-register.tsx",
-          "line": 34,
-          "trigger": "AuthGoogleButton click-handler",
-          "userImpact": "Assistive technology may not expose a meaningful action name.",
-          "status": "open-needs-runtime-verification",
-          "nextAction": "Inspect rendered accessible name and add a stable label if absent."
         }
       ]
     },
@@ -1288,7 +1266,7 @@
           "line": 157,
           "kind": "button",
           "tag": "button",
-          "label": "Continue with Google",
+          "label": "ariaLabel",
           "accessibleName": "present-static",
           "href": null,
           "handlers": [
@@ -1374,8 +1352,8 @@
           "line": 39,
           "kind": "click-handler",
           "tag": "AuthGoogleButton",
-          "label": null,
-          "accessibleName": "unresolved-static",
+          "label": "t({ en: \"Continue with Google\", zh: \"使用 Google 登录\" })",
+          "accessibleName": "present-static",
           "href": null,
           "handlers": [
             "onclick"
@@ -1482,8 +1460,8 @@
           "line": 34,
           "kind": "click-handler",
           "tag": "AuthGoogleButton",
-          "label": null,
-          "accessibleName": "unresolved-static",
+          "label": "t({ en: \"Continue with Google\", zh: \"使用 Google 登录\" })",
+          "accessibleName": "present-static",
           "href": null,
           "handlers": [
             "onclick"
@@ -2256,28 +2234,6 @@
           "userImpact": "Visible control may not perform an action.",
           "status": "open-needs-runtime-verification",
           "nextAction": "Verify DOM behavior; wire a real handler/href or explain unavailability."
-        },
-        {
-          "severity": "P1",
-          "type": "accessible-name-unresolved",
-          "route": "/app/account/login",
-          "sourceFile": "repos/orbits/app/(app)/app/account/auth-0918/auth-login.tsx",
-          "line": 39,
-          "trigger": "AuthGoogleButton click-handler",
-          "userImpact": "Assistive technology may not expose a meaningful action name.",
-          "status": "open-needs-runtime-verification",
-          "nextAction": "Inspect rendered accessible name and add a stable label if absent."
-        },
-        {
-          "severity": "P1",
-          "type": "accessible-name-unresolved",
-          "route": "/app/account/login",
-          "sourceFile": "repos/orbits/app/(app)/app/account/auth-0918/auth-register.tsx",
-          "line": 34,
-          "trigger": "AuthGoogleButton click-handler",
-          "userImpact": "Assistive technology may not expose a meaningful action name.",
-          "status": "open-needs-runtime-verification",
-          "nextAction": "Inspect rendered accessible name and add a stable label if absent."
         }
       ]
     },
@@ -2527,7 +2483,7 @@
           "line": 157,
           "kind": "button",
           "tag": "button",
-          "label": "Continue with Google",
+          "label": "ariaLabel",
           "accessibleName": "present-static",
           "href": null,
           "handlers": [
@@ -2613,8 +2569,8 @@
           "line": 39,
           "kind": "click-handler",
           "tag": "AuthGoogleButton",
-          "label": null,
-          "accessibleName": "unresolved-static",
+          "label": "t({ en: \"Continue with Google\", zh: \"使用 Google 登录\" })",
+          "accessibleName": "present-static",
           "href": null,
           "handlers": [
             "onclick"
@@ -2721,8 +2677,8 @@
           "line": 34,
           "kind": "click-handler",
           "tag": "AuthGoogleButton",
-          "label": null,
-          "accessibleName": "unresolved-static",
+          "label": "t({ en: \"Continue with Google\", zh: \"使用 Google 登录\" })",
+          "accessibleName": "present-static",
           "href": null,
           "handlers": [
             "onclick"
@@ -3410,28 +3366,6 @@
           "userImpact": "Visible control may not perform an action.",
           "status": "open-needs-runtime-verification",
           "nextAction": "Verify DOM behavior; wire a real handler/href or explain unavailability."
-        },
-        {
-          "severity": "P1",
-          "type": "accessible-name-unresolved",
-          "route": "/app/account/reset-password",
-          "sourceFile": "repos/orbits/app/(app)/app/account/auth-0918/auth-login.tsx",
-          "line": 39,
-          "trigger": "AuthGoogleButton click-handler",
-          "userImpact": "Assistive technology may not expose a meaningful action name.",
-          "status": "open-needs-runtime-verification",
-          "nextAction": "Inspect rendered accessible name and add a stable label if absent."
-        },
-        {
-          "severity": "P1",
-          "type": "accessible-name-unresolved",
-          "route": "/app/account/reset-password",
-          "sourceFile": "repos/orbits/app/(app)/app/account/auth-0918/auth-register.tsx",
-          "line": 34,
-          "trigger": "AuthGoogleButton click-handler",
-          "userImpact": "Assistive technology may not expose a meaningful action name.",
-          "status": "open-needs-runtime-verification",
-          "nextAction": "Inspect rendered accessible name and add a stable label if absent."
         }
       ]
     },
@@ -3580,7 +3514,7 @@
           "line": 157,
           "kind": "button",
           "tag": "button",
-          "label": "Continue with Google",
+          "label": "ariaLabel",
           "accessibleName": "present-static",
           "href": null,
           "handlers": [
@@ -3666,8 +3600,8 @@
           "line": 39,
           "kind": "click-handler",
           "tag": "AuthGoogleButton",
-          "label": null,
-          "accessibleName": "unresolved-static",
+          "label": "t({ en: \"Continue with Google\", zh: \"使用 Google 登录\" })",
+          "accessibleName": "present-static",
           "href": null,
           "handlers": [
             "onclick"
@@ -3774,8 +3708,8 @@
           "line": 34,
           "kind": "click-handler",
           "tag": "AuthGoogleButton",
-          "label": null,
-          "accessibleName": "unresolved-static",
+          "label": "t({ en: \"Continue with Google\", zh: \"使用 Google 登录\" })",
+          "accessibleName": "present-static",
           "href": null,
           "handlers": [
             "onclick"
@@ -4548,28 +4482,6 @@
           "userImpact": "Visible control may not perform an action.",
           "status": "open-needs-runtime-verification",
           "nextAction": "Verify DOM behavior; wire a real handler/href or explain unavailability."
-        },
-        {
-          "severity": "P1",
-          "type": "accessible-name-unresolved",
-          "route": "/app/account/signup",
-          "sourceFile": "repos/orbits/app/(app)/app/account/auth-0918/auth-login.tsx",
-          "line": 39,
-          "trigger": "AuthGoogleButton click-handler",
-          "userImpact": "Assistive technology may not expose a meaningful action name.",
-          "status": "open-needs-runtime-verification",
-          "nextAction": "Inspect rendered accessible name and add a stable label if absent."
-        },
-        {
-          "severity": "P1",
-          "type": "accessible-name-unresolved",
-          "route": "/app/account/signup",
-          "sourceFile": "repos/orbits/app/(app)/app/account/auth-0918/auth-register.tsx",
-          "line": 34,
-          "trigger": "AuthGoogleButton click-handler",
-          "userImpact": "Assistive technology may not expose a meaningful action name.",
-          "status": "open-needs-runtime-verification",
-          "nextAction": "Inspect rendered accessible name and add a stable label if absent."
         }
       ]
     },
@@ -7166,8 +7078,8 @@
           "line": 139,
           "kind": "button",
           "tag": "button",
-          "label": null,
-          "accessibleName": "unresolved-static",
+          "label": "tr(\"Groups\", \"分组\")",
+          "accessibleName": "present-static",
           "href": null,
           "handlers": [
             "onclick"
@@ -7188,8 +7100,8 @@
           "line": 143,
           "kind": "button",
           "tag": "button",
-          "label": null,
-          "accessibleName": "unresolved-static",
+          "label": "tr(\"Show all conversations\", \"显示全部会话\")",
+          "accessibleName": "present-static",
           "href": null,
           "handlers": [
             "onclick"
@@ -7210,8 +7122,8 @@
           "line": 147,
           "kind": "button",
           "tag": "button",
-          "label": null,
-          "accessibleName": "unresolved-static",
+          "label": "tr(`Open group ${group.name}`, `打开分组：${group.name}`)",
+          "accessibleName": "present-static",
           "href": null,
           "handlers": [
             "onclick"
@@ -7232,8 +7144,8 @@
           "line": 148,
           "kind": "button",
           "tag": "button",
-          "label": null,
-          "accessibleName": "unresolved-static",
+          "label": "tr(`New conversation in ${group.name}`, `在分组「${group.name}」中新建对话`)",
+          "accessibleName": "present-static",
           "href": null,
           "handlers": [
             "onclick"
@@ -7254,8 +7166,8 @@
           "line": 149,
           "kind": "button",
           "tag": "button",
-          "label": null,
-          "accessibleName": "unresolved-static",
+          "label": "tr(`Rename group ${group.name}`, `重命名分组：${group.name}`)",
+          "accessibleName": "present-static",
           "href": null,
           "handlers": [
             "onclick"
@@ -7276,8 +7188,8 @@
           "line": 151,
           "kind": "button",
           "tag": "button",
-          "label": null,
-          "accessibleName": "unresolved-static",
+          "label": "tr(`Keep group ${group.name}`, `保留分组：${group.name}`)",
+          "accessibleName": "present-static",
           "href": null,
           "handlers": [
             "onclick"
@@ -7298,8 +7210,8 @@
           "line": 152,
           "kind": "button",
           "tag": "button",
-          "label": null,
-          "accessibleName": "unresolved-static",
+          "label": "tr(`Confirm deleting group ${group.name}`, `确认删除分组：${group.name}`)",
+          "accessibleName": "present-static",
           "href": null,
           "handlers": [
             "onclick"
@@ -7320,8 +7232,8 @@
           "line": 153,
           "kind": "button",
           "tag": "button",
-          "label": null,
-          "accessibleName": "unresolved-static",
+          "label": "tr(`Delete group ${group.name}`, `删除分组：${group.name}`)",
+          "accessibleName": "present-static",
           "href": null,
           "handlers": [
             "onclick"
@@ -7342,8 +7254,8 @@
           "line": 158,
           "kind": "button",
           "tag": "button",
-          "label": null,
-          "accessibleName": "unresolved-static",
+          "label": "tr(\"Create group\", \"创建分组\")",
+          "accessibleName": "present-static",
           "href": null,
           "handlers": [
             "onclick"
@@ -7875,7 +7787,7 @@
         {
           "actionId": "/app/agent#41",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx",
-          "line": 271,
+          "line": 277,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"More actions\", zh: \"更多操作\" })",
@@ -7897,7 +7809,7 @@
         {
           "actionId": "/app/agent#42",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx",
-          "line": 284,
+          "line": 290,
           "kind": "keyboard-handler",
           "tag": "div",
           "label": "Unpin / Pin Rename Move to Ungrouped Delete",
@@ -7919,7 +7831,7 @@
         {
           "actionId": "/app/agent#43",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx",
-          "line": 298,
+          "line": 304,
           "kind": "button",
           "tag": "button",
           "label": "Unpin / Pin",
@@ -7941,7 +7853,7 @@
         {
           "actionId": "/app/agent#44",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx",
-          "line": 311,
+          "line": 317,
           "kind": "button",
           "tag": "button",
           "label": "Rename",
@@ -7963,7 +7875,7 @@
         {
           "actionId": "/app/agent#45",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx",
-          "line": 322,
+          "line": 328,
           "kind": "button",
           "tag": "button",
           "label": "Ungrouped",
@@ -7985,7 +7897,7 @@
         {
           "actionId": "/app/agent#46",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx",
-          "line": 335,
+          "line": 341,
           "kind": "button",
           "tag": "button",
           "label": "{group.name}",
@@ -8007,7 +7919,7 @@
         {
           "actionId": "/app/agent#47",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx",
-          "line": 349,
+          "line": 355,
           "kind": "button",
           "tag": "button",
           "label": "Delete",
@@ -8029,7 +7941,7 @@
         {
           "actionId": "/app/agent#48",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx",
-          "line": 379,
+          "line": 385,
           "kind": "button",
           "tag": "button",
           "label": "Load more history ⌄",
@@ -10307,105 +10219,6 @@
         "repos/orbits/tests/capabilities/agent-chat-known-workflow-route.test.ts"
       ],
       "knownRisks": [
-        {
-          "severity": "P1",
-          "type": "accessible-name-unresolved",
-          "route": "/app/agent",
-          "sourceFile": "repos/orbits/app/(app)/app/agent/agent-chat-history-organization.tsx",
-          "line": 139,
-          "trigger": "button button",
-          "userImpact": "Assistive technology may not expose a meaningful action name.",
-          "status": "open-needs-runtime-verification",
-          "nextAction": "Inspect rendered accessible name and add a stable label if absent."
-        },
-        {
-          "severity": "P1",
-          "type": "accessible-name-unresolved",
-          "route": "/app/agent",
-          "sourceFile": "repos/orbits/app/(app)/app/agent/agent-chat-history-organization.tsx",
-          "line": 143,
-          "trigger": "button button",
-          "userImpact": "Assistive technology may not expose a meaningful action name.",
-          "status": "open-needs-runtime-verification",
-          "nextAction": "Inspect rendered accessible name and add a stable label if absent."
-        },
-        {
-          "severity": "P1",
-          "type": "accessible-name-unresolved",
-          "route": "/app/agent",
-          "sourceFile": "repos/orbits/app/(app)/app/agent/agent-chat-history-organization.tsx",
-          "line": 147,
-          "trigger": "button button",
-          "userImpact": "Assistive technology may not expose a meaningful action name.",
-          "status": "open-needs-runtime-verification",
-          "nextAction": "Inspect rendered accessible name and add a stable label if absent."
-        },
-        {
-          "severity": "P1",
-          "type": "accessible-name-unresolved",
-          "route": "/app/agent",
-          "sourceFile": "repos/orbits/app/(app)/app/agent/agent-chat-history-organization.tsx",
-          "line": 148,
-          "trigger": "button button",
-          "userImpact": "Assistive technology may not expose a meaningful action name.",
-          "status": "open-needs-runtime-verification",
-          "nextAction": "Inspect rendered accessible name and add a stable label if absent."
-        },
-        {
-          "severity": "P1",
-          "type": "accessible-name-unresolved",
-          "route": "/app/agent",
-          "sourceFile": "repos/orbits/app/(app)/app/agent/agent-chat-history-organization.tsx",
-          "line": 149,
-          "trigger": "button button",
-          "userImpact": "Assistive technology may not expose a meaningful action name.",
-          "status": "open-needs-runtime-verification",
-          "nextAction": "Inspect rendered accessible name and add a stable label if absent."
-        },
-        {
-          "severity": "P1",
-          "type": "accessible-name-unresolved",
-          "route": "/app/agent",
-          "sourceFile": "repos/orbits/app/(app)/app/agent/agent-chat-history-organization.tsx",
-          "line": 151,
-          "trigger": "button button",
-          "userImpact": "Assistive technology may not expose a meaningful action name.",
-          "status": "open-needs-runtime-verification",
-          "nextAction": "Inspect rendered accessible name and add a stable label if absent."
-        },
-        {
-          "severity": "P1",
-          "type": "accessible-name-unresolved",
-          "route": "/app/agent",
-          "sourceFile": "repos/orbits/app/(app)/app/agent/agent-chat-history-organization.tsx",
-          "line": 152,
-          "trigger": "button button",
-          "userImpact": "Assistive technology may not expose a meaningful action name.",
-          "status": "open-needs-runtime-verification",
-          "nextAction": "Inspect rendered accessible name and add a stable label if absent."
-        },
-        {
-          "severity": "P1",
-          "type": "accessible-name-unresolved",
-          "route": "/app/agent",
-          "sourceFile": "repos/orbits/app/(app)/app/agent/agent-chat-history-organization.tsx",
-          "line": 153,
-          "trigger": "button button",
-          "userImpact": "Assistive technology may not expose a meaningful action name.",
-          "status": "open-needs-runtime-verification",
-          "nextAction": "Inspect rendered accessible name and add a stable label if absent."
-        },
-        {
-          "severity": "P1",
-          "type": "accessible-name-unresolved",
-          "route": "/app/agent",
-          "sourceFile": "repos/orbits/app/(app)/app/agent/agent-chat-history-organization.tsx",
-          "line": 158,
-          "trigger": "button button",
-          "userImpact": "Assistive technology may not expose a meaningful action name.",
-          "status": "open-needs-runtime-verification",
-          "nextAction": "Inspect rendered accessible name and add a stable label if absent."
-        },
         {
           "severity": "P0",
           "type": "behavior-missing-static",
@@ -27023,7 +26836,7 @@
           "line": 134,
           "kind": "button",
           "tag": "button",
-          "label": "label",
+          "label": "ariaLabel",
           "accessibleName": "present-static",
           "href": null,
           "handlers": [
@@ -27045,8 +26858,8 @@
           "line": 151,
           "kind": "click-handler",
           "tag": "Avatar",
-          "label": null,
-          "accessibleName": "unresolved-static",
+          "label": "openLabel",
+          "accessibleName": "present-static",
           "href": null,
           "handlers": [
             "onclick"
@@ -29278,17 +29091,6 @@
           "userImpact": "Visible control may not perform an action.",
           "status": "open-needs-runtime-verification",
           "nextAction": "Verify DOM behavior; wire a real handler/href or explain unavailability."
-        },
-        {
-          "severity": "P1",
-          "type": "accessible-name-unresolved",
-          "route": "/app/events/[id]/live",
-          "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-live.tsx",
-          "line": 151,
-          "trigger": "Avatar click-handler",
-          "userImpact": "Assistive technology may not expose a meaningful action name.",
-          "status": "open-needs-runtime-verification",
-          "nextAction": "Inspect rendered accessible name and add a stable label if absent."
         }
       ]
     },
@@ -50207,10 +50009,10 @@
         {
           "actionId": "/app/profile#57",
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 119,
+          "line": 123,
           "kind": "form-submit",
           "tag": "form",
-          "label": "Basic information Not selected Not selected One-line intro Not filled in Read-only here ✉ Contact details Contact details are optional, only visible to you, and saved with the basic profile.",
+          "label": "ariaLabel",
           "accessibleName": "not-applicable-container",
           "href": null,
           "handlers": [
@@ -50484,8 +50286,8 @@
           "line": 137,
           "kind": "click-handler",
           "tag": "ProfileBasic",
-          "label": null,
-          "accessibleName": "unresolved-static",
+          "label": "t({ en: \"Edit basic profile\", zh: \"编辑基础资料\" })",
+          "accessibleName": "present-static",
           "href": null,
           "handlers": [
             "onsubmit"
@@ -51351,19 +51153,7 @@
         "repos/orbits/tests/capabilities/account-live-store.test.ts",
         "repos/orbits/tests/capabilities/agent-chat-known-workflow-route.test.ts"
       ],
-      "knownRisks": [
-        {
-          "severity": "P1",
-          "type": "accessible-name-unresolved",
-          "route": "/app/profile",
-          "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-screens.tsx",
-          "line": 137,
-          "trigger": "ProfileBasic click-handler",
-          "userImpact": "Assistive technology may not expose a meaningful action name.",
-          "status": "open-needs-runtime-verification",
-          "nextAction": "Inspect rendered accessible name and add a stable label if absent."
-        }
-      ]
+      "knownRisks": []
     },
     {
       "route": "/app/register",
@@ -52833,10 +52623,10 @@
         {
           "actionId": "/app/settings#57",
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 119,
+          "line": 123,
           "kind": "form-submit",
           "tag": "form",
-          "label": "Basic information Not selected Not selected One-line intro Not filled in Read-only here ✉ Contact details Contact details are optional, only visible to you, and saved with the basic profile.",
+          "label": "ariaLabel",
           "accessibleName": "not-applicable-container",
           "href": null,
           "handlers": [
@@ -53110,8 +52900,8 @@
           "line": 137,
           "kind": "click-handler",
           "tag": "ProfileBasic",
-          "label": null,
-          "accessibleName": "unresolved-static",
+          "label": "t({ en: \"Edit basic profile\", zh: \"编辑基础资料\" })",
+          "accessibleName": "present-static",
           "href": null,
           "handlers": [
             "onsubmit"
@@ -53974,19 +53764,7 @@
         "repos/orbits/tests/ui/orbit-settings-theme.test.ts",
         "repos/orbits/tests/ui/orbit-z-scale.test.ts"
       ],
-      "knownRisks": [
-        {
-          "severity": "P1",
-          "type": "accessible-name-unresolved",
-          "route": "/app/settings",
-          "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-screens.tsx",
-          "line": 137,
-          "trigger": "ProfileBasic click-handler",
-          "userImpact": "Assistive technology may not expose a meaningful action name.",
-          "status": "open-needs-runtime-verification",
-          "nextAction": "Inspect rendered accessible name and add a stable label if absent."
-        }
-      ]
+      "knownRisks": []
     },
     {
       "route": "/app/tasks/[id]",

@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "4de8d5a2949887ed1c83dfae04f09e5751e300fd",
-  "deterministicSourceTime": "2026-09-23T03:52:06+08:00",
+  "generatedFromCommit": "ffdf4d6633340bd6008536de49079648a70d5487",
+  "deterministicSourceTime": "2026-09-24T02:14:47+09:00",
   "sourceState": "head-plus-uncommitted-authoritative-inputs",
-  "uncommittedAuthoritativeInputChanges": 2,
+  "uncommittedAuthoritativeInputChanges": 16,
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -32,20 +32,20 @@
     "dynamicRoutes": 48,
     "overlayImplementations": 42,
     "overlayRouteInstances": 86,
-    "interactionRouteInstances": 4649,
-    "uniqueInteractionSourceLocations": 2202,
-    "normalizedStaticBehaviorImplementations": 1855,
+    "interactionRouteInstances": 4650,
+    "uniqueInteractionSourceLocations": 2203,
+    "normalizedStaticBehaviorImplementations": 1856,
     "renderedLeafControls": null,
     "renderedLeafControlStatus": "unresolved-runtime-denominator; route instances, source locations, and normalized static implementations are not runtime leaf counts",
     "renderedLeafObservedOccurrences": 3001,
     "renderedLeafObservedStates": 279,
     "renderedLeafObservedUniqueStateKeys": 273,
-    "interactionsRuntimeVerified": 124,
+    "interactionsRuntimeVerified": 133,
     "surfacesRuntimeVerified": 0,
     "surfacesWithRuntimeEvidence": 78,
     "candidateMissingHandlers": 8,
     "accessibleNameCandidates": 0,
-    "documentedVerificationCases": 137,
+    "documentedVerificationCases": 138,
     "documentedRemediations": 134,
     "externalLimitations": 7,
     "remainingAuditGaps": 3
@@ -89068,7 +89068,9 @@
         "repos/orbits/tests/ui/api-auth-proxy-boundary.test.ts",
         "repos/orbits/tests/ui/api-probe-form.test.ts",
         "repos/orbits/tests/ui/auth-state-consistency.test.ts",
+        "repos/orbits/tests/ui/iorbit-console-styles-dead-classes.test.ts",
         "repos/orbits/tests/ui/maintenance-proxy-integration.test.ts",
+        "repos/orbits/tests/ui/orbit-0918-anchor-colour.test.ts",
         "repos/orbits/tests/ui/orbit-a11y-runtime-mounted.test.ts",
         "repos/orbits/tests/ui/orbit-agent-context-href.test.ts",
         "repos/orbits/tests/ui/orbit-button-ratchet.test.ts",
@@ -90567,6 +90569,8 @@
         "repos/orbits/tests/smoke.test.tsx",
         "repos/orbits/tests/ui/api-auth-proxy-boundary.test.ts",
         "repos/orbits/tests/ui/auth-state-consistency.test.ts",
+        "repos/orbits/tests/ui/iorbit-console-styles-dead-classes.test.ts",
+        "repos/orbits/tests/ui/orbit-0918-anchor-colour.test.ts",
         "repos/orbits/tests/ui/orbit-a11y-runtime-mounted.test.ts",
         "repos/orbits/tests/ui/orbit-agent-context-href.test.ts",
         "repos/orbits/tests/ui/orbit-button-ratchet.test.ts",
@@ -92506,6 +92510,12 @@
           "text": "label"
         },
         {
+          "sourceFile": "repos/orbits/app/(app)/app/account/auth-0918/auth-login.tsx",
+          "line": 39,
+          "tag": "AuthGoogleButton",
+          "text": "t({ en: \"Continue with Google\", zh: \"使用 Google 登录\" })"
+        },
+        {
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 183,
           "tag": "h2",
@@ -92540,6 +92550,12 @@
           "line": 99,
           "tag": "button",
           "text": "session.showPassword ? t({ en: \"Hide password\", zh: \"隐藏密码\" }) : t({ en: \"Show password\", zh: \"显示密码\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/account/auth-0918/auth-form.tsx",
+          "line": 157,
+          "tag": "button",
+          "text": "ariaLabel"
         }
       ],
       "layout": "browser-base-state-verified-at-1440x900-and-390x844",
@@ -92741,7 +92757,7 @@
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
-          "visibleName": "Continue with Google / 使用 Google 登录",
+          "visibleName": "ariaLabel",
           "accessibleNameEvidence": "present-static",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
@@ -92773,7 +92789,7 @@
           "ownerPropBranchConditions": [],
           "controlType": "form-submit-boundary",
           "tag": "form",
-          "visibleName": "Welcome back / 欢迎回来 Sign in to reach your events and your universal business profile. / 登录后进入你的活动和通用商务画像。 {<AuthGoogleButton onClick={session.onGoogleSignIn} />} / {null} No account yet? / 还没有账号？ Create one / 创建账号",
+          "visibleName": "Welcome back / 欢迎回来 Sign in to reach your events and your universal business profile. / 登录后进入你的活动和通用商务画像。 {<AuthGoogleButton aria-label={t({ en: \"Continue with Google\", zh: \"使用 Google 登录\" })} onClick={session.onGoogleSignIn} />} / {null} No account yet? / 还没有账号？ Create one / 创建账号",
           "accessibleNameEvidence": "not-applicable-structural-boundary",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
@@ -92832,7 +92848,7 @@
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "AuthGoogleButton",
-          "visibleName": null,
+          "visibleName": "t({ en: \"Continue with Google\", zh: \"使用 Google 登录\" })",
           "accessibleNameEvidence": "not-applicable-structural-boundary",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
@@ -95802,6 +95818,12 @@
           "text": "label"
         },
         {
+          "sourceFile": "repos/orbits/app/(app)/app/account/auth-0918/auth-register.tsx",
+          "line": 34,
+          "tag": "AuthGoogleButton",
+          "text": "t({ en: \"Continue with Google\", zh: \"使用 Google 登录\" })"
+        },
+        {
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 183,
           "tag": "h2",
@@ -95836,6 +95858,12 @@
           "line": 99,
           "tag": "button",
           "text": "session.showPassword ? t({ en: \"Hide password\", zh: \"隐藏密码\" }) : t({ en: \"Show password\", zh: \"显示密码\" })"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/account/auth-0918/auth-form.tsx",
+          "line": 157,
+          "tag": "button",
+          "text": "ariaLabel"
         }
       ],
       "layout": "browser-base-state-verified-at-1440x900-and-390x844",
@@ -96036,7 +96064,7 @@
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
-          "visibleName": "Continue with Google / 使用 Google 登录",
+          "visibleName": "ariaLabel",
           "accessibleNameEvidence": "present-static",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
@@ -96132,7 +96160,7 @@
           "ownerPropBranchConditions": [],
           "controlType": "form-submit-boundary",
           "tag": "form",
-          "visibleName": "Create account / 创建账号 From scattered contacts to the right relationships. / 从零散的联系人，到对的关系。 {<AuthGoogleButton onClick={session.onGoogleSignIn} />} / {null} By signing up you agree to the / 注册即表示同意 Terms of Service / 服务条款 and / 与 Privacy Policy / 隐私政策 . / 。 Already have an account? / 已有账号？ Sign in / 直接登录",
+          "visibleName": "Create account / 创建账号 From scattered contacts to the right relationships. / 从零散的联系人，到对的关系。 {<AuthGoogleButton aria-label={t({ en: \"Continue with Google\", zh: \"使用 Google 登录\" })} onClick={session.onGoogleSignIn} />} / {null} By signing up you agree to the / 注册即表示同意 Terms of Service / 服务条款 and / 与 Privacy Policy / 隐私政策 . / 。 Already have an account? / 已有账号？ Sign in / 直接登录",
           "accessibleNameEvidence": "not-applicable-structural-boundary",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
@@ -96164,7 +96192,7 @@
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "AuthGoogleButton",
-          "visibleName": null,
+          "visibleName": "t({ en: \"Continue with Google\", zh: \"使用 Google 登录\" })",
           "accessibleNameEvidence": "not-applicable-structural-boundary",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
@@ -98924,7 +98952,7 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx",
-          "line": 387,
+          "line": 401,
           "tag": "button",
           "text": "t({ en: \"Dismiss\", zh: \"关闭提示\" })"
         },
@@ -99074,7 +99102,7 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx",
-          "line": 271,
+          "line": 277,
           "tag": "button",
           "text": "t({ en: \"More actions\", zh: \"更多操作\" })"
         },
@@ -99116,7 +99144,7 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
-          "line": 545,
+          "line": 548,
           "tag": "label",
           "text": "{item.title}"
         },
@@ -99134,9 +99162,57 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/agent-chat-history-organization.tsx",
+          "line": 139,
+          "tag": "button",
+          "text": "tr(\"Groups\", \"分组\")"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/agent/agent-chat-history-organization.tsx",
+          "line": 143,
+          "tag": "button",
+          "text": "tr(\"Show all conversations\", \"显示全部会话\")"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/agent/agent-chat-history-organization.tsx",
           "line": 145,
           "tag": "input",
           "text": "tr(`Group name: ${group.name}`, `分组名称：${group.name}`)"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/agent/agent-chat-history-organization.tsx",
+          "line": 147,
+          "tag": "button",
+          "text": "tr(`Open group ${group.name}`, `打开分组：${group.name}`)"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/agent/agent-chat-history-organization.tsx",
+          "line": 148,
+          "tag": "button",
+          "text": "tr(`New conversation in ${group.name}`, `在分组「${group.name}」中新建对话`)"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/agent/agent-chat-history-organization.tsx",
+          "line": 149,
+          "tag": "button",
+          "text": "tr(`Rename group ${group.name}`, `重命名分组：${group.name}`)"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/agent/agent-chat-history-organization.tsx",
+          "line": 151,
+          "tag": "button",
+          "text": "tr(`Keep group ${group.name}`, `保留分组：${group.name}`)"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/agent/agent-chat-history-organization.tsx",
+          "line": 152,
+          "tag": "button",
+          "text": "tr(`Confirm deleting group ${group.name}`, `确认删除分组：${group.name}`)"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/agent/agent-chat-history-organization.tsx",
+          "line": 153,
+          "tag": "button",
+          "text": "tr(`Delete group ${group.name}`, `删除分组：${group.name}`)"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/agent/agent-chat-history-organization.tsx",
@@ -99149,6 +99225,12 @@
           "line": 157,
           "tag": "input",
           "text": "tr(\"New group\", \"新分组\")"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/agent/agent-chat-history-organization.tsx",
+          "line": 158,
+          "tag": "button",
+          "text": "tr(\"Create group\", \"创建分组\")"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
@@ -99598,18 +99680,18 @@
           "interactionId": "web:/app/agent#interaction-3",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx",
-          "line": 655,
+          "line": 660,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
-          "visibleName": "在 Today 查看 / Open in Today",
+          "visibleName": "在安排里查看 / Open in arrangements",
           "accessibleNameEvidence": "present-static",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
           "handlers": [
             {
               "event": "onclick",
-              "expression": "() =>\n                    navigate(`/today?entry=${encodeURIComponent(action.actionId)}`)"
+              "expression": "() =>\n                    navigate(\n                      `/app/agent/actions?entry=${encodeURIComponent(action.actionId)}`,\n                    )"
             }
           ],
           "href": null,
@@ -99619,23 +99701,21 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "Navigation was read-only; the action retained one completed execution receipt and the due-date task count remained one before undo.",
+          "idempotency": "not-runtime-verified",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "在 Today 查看 opened the exact completed action entry; selecting 2026-09-03 showed one 23:59 arrangement named 联系 Undo Audit Person before undo.",
-          "testData": "Authenticated live actor, action action:natural-language:a34dc77e, and one persisted follow-up task due 2026-09-03T23:59:59.000Z",
-          "testEvidence": [
-            "web-agent-confirm-undo-idempotency-2026-07-29"
-          ],
-          "conclusion": "runtime-verified-exercised-case",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
           "severity": null
         },
         {
           "interactionId": "web:/app/agent#interaction-4",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx",
-          "line": 665,
+          "line": 672,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -99670,7 +99750,7 @@
           "interactionId": "web:/app/agent#interaction-5",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx",
-          "line": 677,
+          "line": 684,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -99706,7 +99786,7 @@
           "interactionId": "web:/app/agent#interaction-6",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx",
-          "line": 694,
+          "line": 701,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -99742,7 +99822,7 @@
           "interactionId": "web:/app/agent#interaction-7",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx",
-          "line": 704,
+          "line": 711,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -99782,8 +99862,8 @@
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
-          "visibleName": "{tr(\"Groups\", \"分组\")}",
-          "accessibleNameEvidence": "dynamic-static-expression",
+          "visibleName": "tr(\"Groups\", \"分组\")",
+          "accessibleNameEvidence": "present-static",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
           "handlers": [
@@ -99816,8 +99896,8 @@
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
-          "visibleName": "{tr(\"All conversations\", \"全部会话\")}",
-          "accessibleNameEvidence": "dynamic-static-expression",
+          "visibleName": "tr(\"Show all conversations\", \"显示全部会话\")",
+          "accessibleNameEvidence": "present-static",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
           "handlers": [
@@ -99884,8 +99964,8 @@
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
-          "visibleName": "{tr(\"Open\", \"打开\")}",
-          "accessibleNameEvidence": "dynamic-static-expression",
+          "visibleName": "tr(`Open group ${group.name}`, `打开分组：${group.name}`)",
+          "accessibleNameEvidence": "present-static",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
           "handlers": [
@@ -99918,8 +99998,8 @@
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
-          "visibleName": "{tr(\"New\", \"新建\")}",
-          "accessibleNameEvidence": "dynamic-static-expression",
+          "visibleName": "tr(`New conversation in ${group.name}`, `在分组「${group.name}」中新建对话`)",
+          "accessibleNameEvidence": "present-static",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
           "handlers": [
@@ -99952,8 +100032,8 @@
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
-          "visibleName": "{tr(\"Rename\", \"改名\")}",
-          "accessibleNameEvidence": "dynamic-static-expression",
+          "visibleName": "tr(`Rename group ${group.name}`, `重命名分组：${group.name}`)",
+          "accessibleNameEvidence": "present-static",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": "busy || !(names[group.id] ?? group.name).trim()",
           "handlers": [
@@ -99986,8 +100066,8 @@
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
-          "visibleName": "{tr(\"Cancel\", \"取消\")}",
-          "accessibleNameEvidence": "dynamic-static-expression",
+          "visibleName": "tr(`Keep group ${group.name}`, `保留分组：${group.name}`)",
+          "accessibleNameEvidence": "present-static",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": "busy",
           "handlers": [
@@ -100020,8 +100100,8 @@
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
-          "visibleName": "{tr(\"Confirm delete\", \"确认删组\")}",
-          "accessibleNameEvidence": "dynamic-static-expression",
+          "visibleName": "tr(`Confirm deleting group ${group.name}`, `确认删除分组：${group.name}`)",
+          "accessibleNameEvidence": "present-static",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": "busy",
           "handlers": [
@@ -100055,8 +100135,8 @@
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
-          "visibleName": "{tr(\"Delete\", \"删组\")}",
-          "accessibleNameEvidence": "dynamic-static-expression",
+          "visibleName": "tr(`Delete group ${group.name}`, `删除分组：${group.name}`)",
+          "accessibleNameEvidence": "present-static",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": "busy",
           "handlers": [
@@ -100123,8 +100203,8 @@
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
-          "visibleName": "{tr(\"Create\", \"创建\")}",
-          "accessibleNameEvidence": "dynamic-static-expression",
+          "visibleName": "tr(\"Create group\", \"创建分组\")",
+          "accessibleNameEvidence": "present-static",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": "busy || !newName.trim()",
           "handlers": [
@@ -100656,7 +100736,7 @@
           "interactionId": "web:/app/agent#interaction-35",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-chat.tsx",
-          "line": 327,
+          "line": 330,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -100694,7 +100774,7 @@
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "div",
-          "visibleName": "◷ History / 历史记录 Browse the conversations you have had with iOrbit. / 查看你与 iOrbit 的过往对话记录。 ✕ ＋ New chat / 新对话 Recent conversations / 最近的对话 {visible.map((item) => { // 设计 905 的 `h.bg` 是「当前会话」的底色，绑 activeSessionId（审阅修订 13）， // 不是「第一行」。没有 sessionId 的历史行回落到问题原文比对。 const current = Boolean( (item.sessionId && item.sessionId === activeSessionId) || (activeQ && item.q === activeQ), ); const menuOpen = menuOpenId === item.id; const renaming = renamingId === item.id; const pending = Boolean(item.sessionId) && item.sessionId === pendingSessionId; return ( <div aria-busy={pending} className={current ? \"ir-hist-row ir-hist-row-on\" : \"ir-hist-row\"} key={item.id} role=\"listitem\" > {renaming ? ( <form className=\"ir-hist-rename\" onSubmit={(event) => { event.preventDefault(); finishRename(item); }} > <input aria-label={t({ en: \"Rename conversation\", zh: \"重命名对话\" })} autoFocus className=\"ir-hist-rename-input\" data-orbit-agent-history-rename-input={item.sessionId} onChange={(event) => setRenamingTitle(event.target.value)} onKeyDown={(event) => { if (event.key !== \"Escape\") return; // 重命名中的 Esc 先取消编辑，不关整个抽屉。 event.preventDefault(); event.stopPropagation(); cancelRename(); }} value={renamingTitle} /> <button className=\"btn ir-hist-rename-ok\" data-orbit-agent-history-save-rename={item.sessionId} disabled={!renamingTitle.trim()} type=\"submit\" > {t({ en: \"Save\", zh: \"保存\" })} </button> <button className=\"btn ir-hist-rename-cancel\" data-orbit-agent-history-cancel-rename={item.sessionId} onClick={cancelRename} type=\"button\" > {t({ en: \"Cancel\", zh: \"取消\" })} </button> </form> ) : ( <button className=\"btn ir-hist-open\" onClick={() => { setMenuOpenId(null); onPick(item); }} title={item.q || item.title} type=\"button\" > <span className=\"ir-hist-icon\">▤</span> <span className=\"ir-hist-copy\"> <strong className=\"ir-hist-title\">{item.title}</strong> {/* 设计 797 的日期。`when` 放的是分组名（审阅修订 12），所以取 view model 的 `date`；来源解析不出日期时这一行不渲染。 */} {item.date ? ( <span className=\"ir-hist-date\"> {item.pinned ? `${t({ en: \"Pinned\", zh: \"已置顶\" })} · ${item.date}` : item.date} </span> ) : null} </span> <span className=\"ir-caret\">›</span> </button> )} {item.sessionId ? ( <> <button aria-expanded={menuOpen} aria-haspopup=\"menu\" aria-label={t({ en: \"More actions\", zh: \"更多操作\" })} className=\"btn ir-hist-more\" data-orbit-agent-history-menu-button={item.sessionId} disabled={pending} onClick={() => setMenuOpenId(menuOpen ? null : item.id)} type=\"button\" > ··· </button> {menuOpen ? ( <div className=\"ir-hist-menu\" data-orbit-agent-history-menu={item.sessionId} onKeyDown={(event) => { if (event.key !== \"Escape\") return; // 菜单开着时 Esc 先收菜单（抽屉的 Esc 来自 useOrbitModalA11y // 的 document 监听，stopPropagation 挡住它）。 event.preventDefault(); event.stopPropagation(); setMenuOpenId(null); }} role=\"menu\" style={{ zIndex: ORBIT_Z.dropdown }} > <button className=\"btn ir-hist-menu-item\" data-orbit-agent-history-pin={item.sessionId} disabled={pending} onClick={() => { setMenuOpenId(null); onTogglePin(item); }} role=\"menuitem\" type=\"button\" > {item.pinned ? t({ en: \"Unpin\", zh: \"取消置顶\" }) : t({ en: \"Pin\", zh: \"置顶\" })} </button> <button className=\"btn ir-hist-menu-item\" data-orbit-agent-history-rename={item.sessionId} disabled={pending} onClick={() => startRename(item)} role=\"menuitem\" type=\"button\" > {t({ en: \"Rename\", zh: \"重命名\" })} </button> <span className=\"ir-hist-menu-label\">{t({ en: \"Move to\", zh: \"移动到\" })}</span> <button className=\"btn ir-hist-menu-item\" disabled={pending || item.groupId === null} onClick={() => { setMenuOpenId(null); onMove(item, null); }} role=\"menuitem\" type=\"button\" > {t({ en: \"Ungrouped\", zh: \"未分组\" })} </button> {groups.map((group) => ( <button className=\"btn ir-hist-menu-item\" disabled={pending || item.groupId === group.id} key={group.id} onClick={() => { setMenuOpenId(null); onMove(item, group.id); }} role=\"menuitem\" type=\"button\" > {group.name} </button> ))} <button className=\"btn ir-hist-menu-item ir-hist-menu-danger\" data-orbit-agent-history-delete={item.sessionId} disabled={pending} onClick={() => { setMenuOpenId(null); onDelete(item); }} role=\"menuitem\" type=\"button\" > {t({ en: \"Delete\", zh: \"删除对话\" })} </button> </div> ) : null} </> ) : null} </div> ); })} {<span className=\"ir-drawer-empty\"> {t({ en: \"No conversations yet.\", zh: \"还没有对话记录。\" })} </span>} / {null} {<button className=\"btn ir-drawer-more\" data-orbit-agent-history-reveal-more onClick={() => setRevealed((count) => count + IORBIT_HISTORY_REVEAL_STEP)} type=\"button\" > {t({ en: \"Load more history ⌄\", zh: \"加载更多历史记录 ⌄\" })} </button>} / {null}",
+          "visibleName": "◷ History / 历史记录 Browse the conversations you have had with iOrbit. / 查看你与 iOrbit 的过往对话记录。 ✕ ＋ New chat / 新对话 Recent conversations / 最近的对话 {visible.map((item) => { // 设计 905 的 `h.bg` 是「当前会话」的底色，绑 activeSessionId（审阅修订 13）， // 不是「第一行」。没有 sessionId 的历史行回落到问题原文比对。 const current = Boolean( (item.sessionId && item.sessionId === activeSessionId) || (activeQ && item.q === activeQ), ); const menuOpen = menuOpenId === item.id; const renaming = renamingId === item.id; const pending = Boolean(item.sessionId) && item.sessionId === pendingSessionId; return ( <div aria-busy={pending} className={current ? \"ir-hist-row ir-hist-row-on\" : \"ir-hist-row\"} key={item.id} role=\"listitem\" > {renaming ? ( <form className=\"ir-hist-rename\" onSubmit={(event) => { event.preventDefault(); finishRename(item); }} > <input aria-label={t({ en: \"Rename conversation\", zh: \"重命名对话\" })} autoFocus className=\"ir-hist-rename-input\" data-orbit-agent-history-rename-input={item.sessionId} onChange={(event) => setRenamingTitle(event.target.value)} onKeyDown={(event) => { if (event.key !== \"Escape\") return; // 重命名中的 Esc 先取消编辑，不关整个抽屉。 event.preventDefault(); event.stopPropagation(); cancelRename(); }} value={renamingTitle} /> <button className=\"btn ir-hist-rename-ok\" data-orbit-agent-history-save-rename={item.sessionId} disabled={!renamingTitle.trim()} type=\"submit\" > {t({ en: \"Save\", zh: \"保存\" })} </button> <button className=\"btn ir-hist-rename-cancel\" data-orbit-agent-history-cancel-rename={item.sessionId} onClick={cancelRename} type=\"button\" > {t({ en: \"Cancel\", zh: \"取消\" })} </button> </form> ) : ( <button className=\"btn ir-hist-open\" onClick={() => { setMenuOpenId(null); onPick(item); }} title={item.q || item.title} type=\"button\" > <span className=\"ir-hist-icon\">▤</span> <span className=\"ir-hist-copy\"> <strong className=\"ir-hist-title\">{item.title}</strong> {/* 设计 797 的日期。`when` 放的是分组名（审阅修订 12），所以取 view model 的 `date`；来源解析不出日期时这一行不渲染。 */} {item.date ? ( <span className=\"ir-hist-date\"> {item.pinned ? `${t({ en: \"Pinned\", zh: \"已置顶\" })} · ${item.date}` : item.date} </span> ) : null} </span> <span className=\"ir-caret\">›</span> </button> )} {/* 重命名中不渲染「···」：它是 `position:absolute; right:10px` 的 28×28 钮，`opacity:0` 但 `pointer-events:auto`，会整块盖住重命名行 最右侧的「取消」钮的中心点（2026-09-24 运行时取证实测： 取消 x1157–1203、··· x1177–1205，`elementFromPoint` 落在 `.ir-hist-more` 上），鼠标点「取消」实际打开的是更多菜单。静态截图不取重命名态， 故像素不变。 */} {item.sessionId && !renaming ? ( <> <button aria-expanded={menuOpen} aria-haspopup=\"menu\" aria-label={t({ en: \"More actions\", zh: \"更多操作\" })} className=\"btn ir-hist-more\" data-orbit-agent-history-menu-button={item.sessionId} disabled={pending} onClick={() => setMenuOpenId(menuOpen ? null : item.id)} type=\"button\" > ··· </button> {menuOpen ? ( <div className=\"ir-hist-menu\" data-orbit-agent-history-menu={item.sessionId} onKeyDown={(event) => { if (event.key !== \"Escape\") return; // 菜单开着时 Esc 先收菜单（抽屉的 Esc 来自 useOrbitModalA11y // 的 document 监听，stopPropagation 挡住它）。 event.preventDefault(); event.stopPropagation(); setMenuOpenId(null); }} role=\"menu\" style={{ zIndex: ORBIT_Z.dropdown }} > <button className=\"btn ir-hist-menu-item\" data-orbit-agent-history-pin={item.sessionId} disabled={pending} onClick={() => { setMenuOpenId(null); onTogglePin(item); }} role=\"menuitem\" type=\"button\" > {item.pinned ? t({ en: \"Unpin\", zh: \"取消置顶\" }) : t({ en: \"Pin\", zh: \"置顶\" })} </button> <button className=\"btn ir-hist-menu-item\" data-orbit-agent-history-rename={item.sessionId} disabled={pending} onClick={() => startRename(item)} role=\"menuitem\" type=\"button\" > {t({ en: \"Rename\", zh: \"重命名\" })} </button> <span className=\"ir-hist-menu-label\">{t({ en: \"Move to\", zh: \"移动到\" })}</span> <button className=\"btn ir-hist-menu-item\" disabled={pending || item.groupId === null} onClick={() => { setMenuOpenId(null); onMove(item, null); }} role=\"menuitem\" type=\"button\" > {t({ en: \"Ungrouped\", zh: \"未分组\" })} </button> {groups.map((group) => ( <button className=\"btn ir-hist-menu-item\" disabled={pending || item.groupId === group.id} key={group.id} onClick={() => { setMenuOpenId(null); onMove(item, group.id); }} role=\"menuitem\" type=\"button\" > {group.name} </button> ))} <button className=\"btn ir-hist-menu-item ir-hist-menu-danger\" data-orbit-agent-history-delete={item.sessionId} disabled={pending} onClick={() => { setMenuOpenId(null); onDelete(item); }} role=\"menuitem\" type=\"button\" > {t({ en: \"Delete\", zh: \"删除对话\" })} </button> </div> ) : null} </> ) : null} </div> ); })} {<span className=\"ir-drawer-empty\"> {t({ en: \"No conversations yet.\", zh: \"还没有对话记录。\" })} </span>} / {null} {<button className=\"btn ir-drawer-more\" data-orbit-agent-history-reveal-more onClick={() => setRevealed((count) => count + IORBIT_HISTORY_REVEAL_STEP)} type=\"button\" > {t({ en: \"Load more history ⌄\", zh: \"加载更多历史记录 ⌄\" })} </button>} / {null}",
           "accessibleNameEvidence": "present-static",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
@@ -100774,14 +100854,16 @@
           "downstreamCallHints": [],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every activation issued at most one write (pin and rename one PATCH each, delete one DELETE); 取消 and the menu/open controls issued none. The pin toggle was returned to unpinned and the three throwaway conversations were removed through the same DELETE route, leaving the fixture set exactly as found; the pixel-baseline conversation iorbit-visual-chat-0918 was never mutated. The whole run produced zero console errors.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "＋ 新对话 closed the drawer and left the actor on /app/agent with an empty thread (zero rendered turns, composer visible). No session was written by the activation itself.",
+          "testData": "qa@orbit.test signed in through the real /app/account/login form in a 1240×900 Chromium session against the Next dev server on :3100, backed by the local verification database orbit_newui_events_20260922 (workspace:orbit-small-staging-20260917); three throwaway conversations were seeded beforehand through the real POST /api/ai/conversations/sessions route.",
+          "testEvidence": [
+            "web-agent-history-drawer-controls-2026-09-24"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -100886,14 +100968,16 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every activation issued at most one write (pin and rename one PATCH each, delete one DELETE); 取消 and the menu/open controls issued none. The pin toggle was returned to unpinned and the three throwaway conversations were removed through the same DELETE route, leaving the fixture set exactly as found; the pixel-baseline conversation iorbit-visual-chat-0918 was never mutated. The whole run produced zero console errors.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "The rename field arrived focused and prefilled with the current title, accepted typed replacement text, and emptying it disabled the adjacent 保存 button. Typing alone issued no request.",
+          "testData": "qa@orbit.test signed in through the real /app/account/login form in a 1240×900 Chromium session against the Next dev server on :3100, backed by the local verification database orbit_newui_events_20260922 (workspace:orbit-small-staging-20260917); three throwaway conversations were seeded beforehand through the real POST /api/ai/conversations/sessions route.",
+          "testEvidence": [
+            "web-agent-history-drawer-controls-2026-09-24"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -100913,14 +100997,16 @@
           "downstreamCallHints": [],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every activation issued at most one write (pin and rename one PATCH each, delete one DELETE); 取消 and the menu/open controls issued none. The pin toggle was returned to unpinned and the three throwaway conversations were removed through the same DELETE route, leaving the fixture set exactly as found; the pixel-baseline conversation iorbit-visual-chat-0918 was never mutated. The whole run produced zero console errors.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "保存 issued exactly one PATCH /api/ai/conversations/sessions/evidence-0924-a followed by the list refetch, replaced the row title with the typed value, and the new title was still present after a hard reload. The button is disabled while the field is empty, so an empty rename cannot be submitted.",
+          "testData": "qa@orbit.test signed in through the real /app/account/login form in a 1240×900 Chromium session against the Next dev server on :3100, backed by the local verification database orbit_newui_events_20260922 (workspace:orbit-small-staging-20260917); three throwaway conversations were seeded beforehand through the real POST /api/ai/conversations/sessions route.",
+          "testEvidence": [
+            "web-agent-history-drawer-controls-2026-09-24"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -100945,14 +101031,16 @@
           "downstreamCallHints": [],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every activation issued at most one write (pin and rename one PATCH each, delete one DELETE); 取消 and the menu/open controls issued none. The pin toggle was returned to unpinned and the three throwaway conversations were removed through the same DELETE route, leaving the fixture set exactly as found; the pixel-baseline conversation iorbit-visual-chat-0918 was never mutated. The whole run produced zero console errors.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "取消 discarded the typed replacement, left the stored title unchanged and issued zero requests. This control was found broken by the same runtime run: the invisible ··· button (position:absolute, opacity:0, pointer-events:auto) covered the centre of 取消 (cancel x1157–1203, ··· x1177–1205; document.elementFromPoint at the cancel centre returned button.btn.ir-hist-more), so a mouse click opened the menu instead. The ··· button is no longer rendered while its row is renaming, and the observation above is from the re-run after that fix.",
+          "testData": "qa@orbit.test signed in through the real /app/account/login form in a 1240×900 Chromium session against the Next dev server on :3100, backed by the local verification database orbit_newui_events_20260922 (workspace:orbit-small-staging-20260917); three throwaway conversations were seeded beforehand through the real POST /api/ai/conversations/sessions route.",
+          "testEvidence": [
+            "web-agent-history-drawer-controls-2026-09-24"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
@@ -100980,21 +101068,23 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every activation issued at most one write (pin and rename one PATCH each, delete one DELETE); 取消 and the menu/open controls issued none. The pin toggle was returned to unpinned and the three throwaway conversations were removed through the same DELETE route, leaving the fixture set exactly as found; the pixel-baseline conversation iorbit-visual-chat-0918 was never mutated. The whole run produced zero console errors.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Activating a history row closed the drawer, moved the URL to /app/agent?session=evidence-0924-a and restored that stored conversation's two turns from the server.",
+          "testData": "qa@orbit.test signed in through the real /app/account/login form in a 1240×900 Chromium session against the Next dev server on :3100, backed by the local verification database orbit_newui_events_20260922 (workspace:orbit-small-staging-20260917); three throwaway conversations were seeded beforehand through the real POST /api/ai/conversations/sessions route.",
+          "testEvidence": [
+            "web-agent-history-drawer-controls-2026-09-24"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/app/agent#interaction-45",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx",
-          "line": 271,
+          "line": 277,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -101014,21 +101104,23 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every activation issued at most one write (pin and rename one PATCH each, delete one DELETE); 取消 and the menu/open controls issued none. The pin toggle was returned to unpinned and the three throwaway conversations were removed through the same DELETE route, leaving the fixture set exactly as found; the pixel-baseline conversation iorbit-visual-chat-0918 was never mutated. The whole run produced zero console errors.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "··· opened exactly one [data-orbit-agent-history-menu] for its own row (0 → 1 menus) with the pin, rename, move-to and delete items visible, and reported aria-expanded=true.",
+          "testData": "qa@orbit.test signed in through the real /app/account/login form in a 1240×900 Chromium session against the Next dev server on :3100, backed by the local verification database orbit_newui_events_20260922 (workspace:orbit-small-staging-20260917); three throwaway conversations were seeded beforehand through the real POST /api/ai/conversations/sessions route.",
+          "testEvidence": [
+            "web-agent-history-drawer-controls-2026-09-24"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/app/agent#interaction-46",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx",
-          "line": 284,
+          "line": 290,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "div",
@@ -101064,7 +101156,7 @@
           "interactionId": "web:/app/agent#interaction-47",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx",
-          "line": 298,
+          "line": 304,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -101085,21 +101177,23 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every activation issued at most one write (pin and rename one PATCH each, delete one DELETE); 取消 and the menu/open controls issued none. The pin toggle was returned to unpinned and the three throwaway conversations were removed through the same DELETE route, leaving the fixture set exactly as found; the pixel-baseline conversation iorbit-visual-chat-0918 was never mutated. The whole run produced zero console errors.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "置顶 on the last row (index 4 of 5) issued exactly one PATCH /api/ai/conversations/sessions/<id>, moved that row to index 0 with a 已置顶 · 2026年9月18日 meta line, stayed at index 0 across a hard reload, and flipped the menu item text to 取消置顶. Activating it again issued a second PATCH and returned the row to unpinned.",
+          "testData": "qa@orbit.test signed in through the real /app/account/login form in a 1240×900 Chromium session against the Next dev server on :3100, backed by the local verification database orbit_newui_events_20260922 (workspace:orbit-small-staging-20260917); three throwaway conversations were seeded beforehand through the real POST /api/ai/conversations/sessions route.",
+          "testEvidence": [
+            "web-agent-history-drawer-controls-2026-09-24"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/app/agent#interaction-48",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx",
-          "line": 311,
+          "line": 317,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -101119,21 +101213,23 @@
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every activation issued at most one write (pin and rename one PATCH each, delete one DELETE); 取消 and the menu/open controls issued none. The pin toggle was returned to unpinned and the three throwaway conversations were removed through the same DELETE route, leaving the fixture set exactly as found; the pixel-baseline conversation iorbit-visual-chat-0918 was never mutated. The whole run produced zero console errors.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "重命名 replaced the row body with the rename form (rename inputs 0 → 1) prefilled with that conversation's current title, and closed the ··· menu.",
+          "testData": "qa@orbit.test signed in through the real /app/account/login form in a 1240×900 Chromium session against the Next dev server on :3100, backed by the local verification database orbit_newui_events_20260922 (workspace:orbit-small-staging-20260917); three throwaway conversations were seeded beforehand through the real POST /api/ai/conversations/sessions route.",
+          "testEvidence": [
+            "web-agent-history-drawer-controls-2026-09-24"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/app/agent#interaction-49",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx",
-          "line": 322,
+          "line": 328,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -101168,7 +101264,7 @@
           "interactionId": "web:/app/agent#interaction-50",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx",
-          "line": 335,
+          "line": 341,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -101203,7 +101299,7 @@
           "interactionId": "web:/app/agent#interaction-51",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx",
-          "line": 349,
+          "line": 355,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -101224,21 +101320,23 @@
           ],
           "readWrite": "write-or-external-effect",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every activation issued at most one write (pin and rename one PATCH each, delete one DELETE); 取消 and the menu/open controls issued none. The pin toggle was returned to unpinned and the three throwaway conversations were removed through the same DELETE route, leaving the fixture set exactly as found; the pixel-baseline conversation iorbit-visual-chat-0918 was never mutated. The whole run produced zero console errors.",
           "expectedLoading": "present-static-signal",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "删除对话 opened the confirmation alert dialog 「删除这个对话？」 offering 保留对话 / 删除对话 rather than deleting immediately. Confirming issued exactly one DELETE /api/ai/conversations/sessions/evidence-0924-c, removed the row (6 → 5) and the removal survived a hard reload; the stored record moved to lifecycle_state=deleted rather than being dropped.",
+          "testData": "qa@orbit.test signed in through the real /app/account/login form in a 1240×900 Chromium session against the Next dev server on :3100, backed by the local verification database orbit_newui_events_20260922 (workspace:orbit-small-staging-20260917); three throwaway conversations were seeded beforehand through the real POST /api/ai/conversations/sessions route.",
+          "testEvidence": [
+            "web-agent-history-drawer-controls-2026-09-24"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
           "interactionId": "web:/app/agent#interaction-52",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx",
-          "line": 379,
+          "line": 385,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -101723,7 +101821,7 @@
           "interactionId": "web:/app/agent#interaction-68",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx",
-          "line": 846,
+          "line": 860,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -101734,12 +101832,11 @@
           "handlers": [
             {
               "event": "onclick",
-              "expression": "() => {\n                    const open = row.signal.actions.find(\n                      (action) => action.actionId === \"open\",\n                    );\n                    navigate(open?.href ?? \"/app/agent/actions\");\n                  }"
+              "expression": "() => navigate(navigateAction?.href ?? \"/app/agent/actions\")"
             }
           ],
           "href": null,
           "downstreamCallHints": [
-            "row.signal.actions.find",
             "navigate"
           ],
           "readWrite": "read-or-local-state-requires-runtime-verification",
@@ -101758,7 +101855,41 @@
           "interactionId": "web:/app/agent#interaction-69",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx",
-          "line": 871,
+          "line": 882,
+          "ownerPropBranchConditions": [],
+          "controlType": "button",
+          "tag": "button",
+          "visibleName": "{askAction.label}",
+          "accessibleNameEvidence": "dynamic-static-expression",
+          "triggerCondition": "user-initiated; runtime preconditions not yet verified",
+          "disabledCondition": null,
+          "handlers": [
+            {
+              "event": "onclick",
+              "expression": "() => onAsk(askAction.prompt as string)"
+            }
+          ],
+          "href": null,
+          "downstreamCallHints": [
+            "onAsk"
+          ],
+          "readWrite": "read-or-local-state-requires-runtime-verification",
+          "confirmation": "not-proven",
+          "idempotency": "not-runtime-verified",
+          "expectedLoading": "not-proven",
+          "expectedSuccess": "not-proven",
+          "expectedError": "not-proven",
+          "actualResult": "not-runtime-verified",
+          "testData": null,
+          "testEvidence": [],
+          "conclusion": "inventoried-static-only",
+          "severity": null
+        },
+        {
+          "interactionId": "web:/app/agent#interaction-70",
+          "surfaceId": "web:/app/agent",
+          "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx",
+          "line": 891,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -101789,10 +101920,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-70",
+          "interactionId": "web:/app/agent#interaction-71",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx",
-          "line": 879,
+          "line": 899,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -101823,10 +101954,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-71",
+          "interactionId": "web:/app/agent#interaction-72",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx",
-          "line": 905,
+          "line": 926,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -101857,10 +101988,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-72",
+          "interactionId": "web:/app/agent#interaction-73",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx",
-          "line": 927,
+          "line": 948,
           "ownerPropBranchConditions": [],
           "controlType": "link",
           "tag": "a",
@@ -101884,10 +102015,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-73",
+          "interactionId": "web:/app/agent#interaction-74",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx",
-          "line": 933,
+          "line": 954,
           "ownerPropBranchConditions": [],
           "controlType": "link",
           "tag": "a",
@@ -101911,10 +102042,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-74",
+          "interactionId": "web:/app/agent#interaction-75",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx",
-          "line": 976,
+          "line": 997,
           "ownerPropBranchConditions": [],
           "controlType": "link",
           "tag": "a",
@@ -101938,10 +102069,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-75",
+          "interactionId": "web:/app/agent#interaction-76",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx",
-          "line": 1062,
+          "line": 1083,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -101959,21 +102090,23 @@
           "downstreamCallHints": [],
           "readWrite": "read-or-local-state-requires-runtime-verification",
           "confirmation": "not-proven",
-          "idempotency": "not-runtime-verified",
+          "idempotency": "Every activation issued at most one write (pin and rename one PATCH each, delete one DELETE); 取消 and the menu/open controls issued none. The pin toggle was returned to unpinned and the three throwaway conversations were removed through the same DELETE route, leaving the fixture set exactly as found; the pixel-baseline conversation iorbit-visual-chat-0918 was never mutated. The whole run produced zero console errors.",
           "expectedLoading": "not-proven",
           "expectedSuccess": "not-proven",
           "expectedError": "not-proven",
-          "actualResult": "not-runtime-verified",
-          "testData": null,
-          "testEvidence": [],
-          "conclusion": "inventoried-static-only",
+          "actualResult": "Activating ◷ 历史记录 on the overview mounted the history drawer (0 → 1 [data-orbit-agent-history-drawer] node), rendered five real conversation rows under the 历史记录 heading, and moved keyboard focus inside the drawer. No conversation request was issued: the list was already resident from the page load.",
+          "testData": "qa@orbit.test signed in through the real /app/account/login form in a 1240×900 Chromium session against the Next dev server on :3100, backed by the local verification database orbit_newui_events_20260922 (workspace:orbit-small-staging-20260917); three throwaway conversations were seeded beforehand through the real POST /api/ai/conversations/sessions route.",
+          "testEvidence": [
+            "web-agent-history-drawer-controls-2026-09-24"
+          ],
+          "conclusion": "runtime-verified-exercised-case",
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-76",
+          "interactionId": "web:/app/agent#interaction-77",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx",
-          "line": 1065,
+          "line": 1086,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -102002,10 +102135,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-77",
+          "interactionId": "web:/app/agent#interaction-78",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx",
-          "line": 1077,
+          "line": 1098,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -102036,7 +102169,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-78",
+          "interactionId": "web:/app/agent#interaction-79",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
           "line": 73,
@@ -102074,7 +102207,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-79",
+          "interactionId": "web:/app/agent#interaction-80",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
           "line": 176,
@@ -102108,7 +102241,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-80",
+          "interactionId": "web:/app/agent#interaction-81",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
           "line": 185,
@@ -102142,7 +102275,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-81",
+          "interactionId": "web:/app/agent#interaction-82",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
           "line": 219,
@@ -102176,7 +102309,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-82",
+          "interactionId": "web:/app/agent#interaction-83",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
           "line": 308,
@@ -102210,7 +102343,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-83",
+          "interactionId": "web:/app/agent#interaction-84",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
           "line": 330,
@@ -102244,7 +102377,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-84",
+          "interactionId": "web:/app/agent#interaction-85",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
           "line": 333,
@@ -102278,7 +102411,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-85",
+          "interactionId": "web:/app/agent#interaction-86",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
           "line": 357,
@@ -102312,7 +102445,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-86",
+          "interactionId": "web:/app/agent#interaction-87",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
           "line": 362,
@@ -102346,7 +102479,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-87",
+          "interactionId": "web:/app/agent#interaction-88",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
           "line": 363,
@@ -102380,7 +102513,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-88",
+          "interactionId": "web:/app/agent#interaction-89",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
           "line": 373,
@@ -102416,7 +102549,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-89",
+          "interactionId": "web:/app/agent#interaction-90",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
           "line": 382,
@@ -102451,7 +102584,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-90",
+          "interactionId": "web:/app/agent#interaction-91",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
           "line": 429,
@@ -102485,7 +102618,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-91",
+          "interactionId": "web:/app/agent#interaction-92",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
           "line": 441,
@@ -102519,10 +102652,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-92",
+          "interactionId": "web:/app/agent#interaction-93",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
-          "line": 480,
+          "line": 483,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -102553,10 +102686,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-93",
+          "interactionId": "web:/app/agent#interaction-94",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
-          "line": 544,
+          "line": 547,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "input",
@@ -102587,10 +102720,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-94",
+          "interactionId": "web:/app/agent#interaction-95",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
-          "line": 558,
+          "line": 561,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -102621,10 +102754,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-95",
+          "interactionId": "web:/app/agent#interaction-96",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
-          "line": 578,
+          "line": 581,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -102655,10 +102788,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-96",
+          "interactionId": "web:/app/agent#interaction-97",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
-          "line": 601,
+          "line": 604,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -102687,10 +102820,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-97",
+          "interactionId": "web:/app/agent#interaction-98",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
-          "line": 661,
+          "line": 664,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -102721,7 +102854,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-98",
+          "interactionId": "web:/app/agent#interaction-99",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx",
           "line": 268,
@@ -102759,7 +102892,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-99",
+          "interactionId": "web:/app/agent#interaction-100",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx",
           "line": 290,
@@ -102805,7 +102938,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-100",
+          "interactionId": "web:/app/agent#interaction-101",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx",
           "line": 326,
@@ -102858,10 +102991,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-101",
+          "interactionId": "web:/app/agent#interaction-102",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx",
-          "line": 352,
+          "line": 366,
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "AgentHistoryDeleteDialog",
@@ -102898,10 +103031,10 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-102",
+          "interactionId": "web:/app/agent#interaction-103",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx",
-          "line": 387,
+          "line": 401,
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
@@ -102932,7 +103065,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-103",
+          "interactionId": "web:/app/agent#interaction-104",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/contact-messages-tab.tsx",
           "line": 128,
@@ -102966,7 +103099,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-104",
+          "interactionId": "web:/app/agent#interaction-105",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/contact-messages-tab.tsx",
           "line": 133,
@@ -103002,7 +103135,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-105",
+          "interactionId": "web:/app/agent#interaction-106",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/contact-messages-tab.tsx",
           "line": 139,
@@ -103036,7 +103169,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-106",
+          "interactionId": "web:/app/agent#interaction-107",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/contact-messages-tab.tsx",
           "line": 142,
@@ -103070,7 +103203,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-107",
+          "interactionId": "web:/app/agent#interaction-108",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/contact-messages-tab.tsx",
           "line": 147,
@@ -103104,7 +103237,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-108",
+          "interactionId": "web:/app/agent#interaction-109",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/contact-messages-tab.tsx",
           "line": 149,
@@ -103138,7 +103271,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-109",
+          "interactionId": "web:/app/agent#interaction-110",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 429,
@@ -103172,7 +103305,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-110",
+          "interactionId": "web:/app/agent#interaction-111",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 440,
@@ -103206,7 +103339,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-111",
+          "interactionId": "web:/app/agent#interaction-112",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 447,
@@ -103240,7 +103373,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-112",
+          "interactionId": "web:/app/agent#interaction-113",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 475,
@@ -103272,7 +103405,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-113",
+          "interactionId": "web:/app/agent#interaction-114",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 544,
@@ -103306,7 +103439,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-114",
+          "interactionId": "web:/app/agent#interaction-115",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 554,
@@ -103340,7 +103473,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-115",
+          "interactionId": "web:/app/agent#interaction-116",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 565,
@@ -103372,7 +103505,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-116",
+          "interactionId": "web:/app/agent#interaction-117",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 569,
@@ -103406,7 +103539,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-117",
+          "interactionId": "web:/app/agent#interaction-118",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 594,
@@ -103438,7 +103571,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-118",
+          "interactionId": "web:/app/agent#interaction-119",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 776,
@@ -103470,7 +103603,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-119",
+          "interactionId": "web:/app/agent#interaction-120",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 783,
@@ -103504,7 +103637,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-120",
+          "interactionId": "web:/app/agent#interaction-121",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 786,
@@ -103538,7 +103671,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-121",
+          "interactionId": "web:/app/agent#interaction-122",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 788,
@@ -103570,7 +103703,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-122",
+          "interactionId": "web:/app/agent#interaction-123",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 794,
@@ -103604,7 +103737,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-123",
+          "interactionId": "web:/app/agent#interaction-124",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 797,
@@ -103638,7 +103771,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-124",
+          "interactionId": "web:/app/agent#interaction-125",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 816,
@@ -103670,7 +103803,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-125",
+          "interactionId": "web:/app/agent#interaction-126",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 895,
@@ -103704,7 +103837,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-126",
+          "interactionId": "web:/app/agent#interaction-127",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 944,
@@ -103738,7 +103871,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-127",
+          "interactionId": "web:/app/agent#interaction-128",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 955,
@@ -103772,7 +103905,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-128",
+          "interactionId": "web:/app/agent#interaction-129",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 969,
@@ -103806,7 +103939,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-129",
+          "interactionId": "web:/app/agent#interaction-130",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 991,
@@ -103846,7 +103979,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-130",
+          "interactionId": "web:/app/agent#interaction-131",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1239,
@@ -103878,7 +104011,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-131",
+          "interactionId": "web:/app/agent#interaction-132",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1275,
@@ -103910,7 +104043,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-132",
+          "interactionId": "web:/app/agent#interaction-133",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1286,
@@ -103946,7 +104079,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-133",
+          "interactionId": "web:/app/agent#interaction-134",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1316,
@@ -103980,7 +104113,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-134",
+          "interactionId": "web:/app/agent#interaction-135",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1575,
@@ -104015,7 +104148,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-135",
+          "interactionId": "web:/app/agent#interaction-136",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1625,
@@ -104049,7 +104182,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-136",
+          "interactionId": "web:/app/agent#interaction-137",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 14,
@@ -104081,7 +104214,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-137",
+          "interactionId": "web:/app/agent#interaction-138",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 54,
@@ -104115,7 +104248,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-138",
+          "interactionId": "web:/app/agent#interaction-139",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 57,
@@ -104149,7 +104282,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-139",
+          "interactionId": "web:/app/agent#interaction-140",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 62,
@@ -104176,7 +104309,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-140",
+          "interactionId": "web:/app/agent#interaction-141",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 63,
@@ -104210,7 +104343,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-141",
+          "interactionId": "web:/app/agent#interaction-142",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 65,
@@ -104244,7 +104377,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-142",
+          "interactionId": "web:/app/agent#interaction-143",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 66,
@@ -104278,7 +104411,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-143",
+          "interactionId": "web:/app/agent#interaction-144",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 67,
@@ -104312,7 +104445,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-144",
+          "interactionId": "web:/app/agent#interaction-145",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 68,
@@ -104346,7 +104479,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-145",
+          "interactionId": "web:/app/agent#interaction-146",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 108,
@@ -104373,7 +104506,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-146",
+          "interactionId": "web:/app/agent#interaction-147",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 117,
@@ -104400,7 +104533,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-147",
+          "interactionId": "web:/app/agent#interaction-148",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 129,
@@ -104434,7 +104567,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-148",
+          "interactionId": "web:/app/agent#interaction-149",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 162,
@@ -104461,7 +104594,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-149",
+          "interactionId": "web:/app/agent#interaction-150",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 170,
@@ -104488,7 +104621,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-150",
+          "interactionId": "web:/app/agent#interaction-151",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 178,
@@ -104515,7 +104648,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-151",
+          "interactionId": "web:/app/agent#interaction-152",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 186,
@@ -104542,7 +104675,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-152",
+          "interactionId": "web:/app/agent#interaction-153",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 194,
@@ -104578,7 +104711,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-153",
+          "interactionId": "web:/app/agent#interaction-154",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 237,
@@ -104612,7 +104745,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-154",
+          "interactionId": "web:/app/agent#interaction-155",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 274,
@@ -104639,7 +104772,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-155",
+          "interactionId": "web:/app/agent#interaction-156",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 281,
@@ -104666,7 +104799,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-156",
+          "interactionId": "web:/app/agent#interaction-157",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 287,
@@ -104693,7 +104826,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-157",
+          "interactionId": "web:/app/agent#interaction-158",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 293,
@@ -104720,7 +104853,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-158",
+          "interactionId": "web:/app/agent#interaction-159",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 308,
@@ -104747,7 +104880,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-159",
+          "interactionId": "web:/app/agent#interaction-160",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 314,
@@ -104774,7 +104907,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-160",
+          "interactionId": "web:/app/agent#interaction-161",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 412,
@@ -104801,7 +104934,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-161",
+          "interactionId": "web:/app/agent#interaction-162",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 421,
@@ -104828,7 +104961,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-162",
+          "interactionId": "web:/app/agent#interaction-163",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 423,
@@ -104855,7 +104988,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-163",
+          "interactionId": "web:/app/agent#interaction-164",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 439,
@@ -104889,7 +105022,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-164",
+          "interactionId": "web:/app/agent#interaction-165",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 453,
@@ -104923,7 +105056,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-165",
+          "interactionId": "web:/app/agent#interaction-166",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 456,
@@ -104950,7 +105083,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-166",
+          "interactionId": "web:/app/agent#interaction-167",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/settings/notification-delivery-settings.tsx",
           "line": 14,
@@ -104985,7 +105118,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-167",
+          "interactionId": "web:/app/agent#interaction-168",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/app/(app)/app/settings/notification-delivery-settings.tsx",
           "line": 14,
@@ -105019,7 +105152,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-168",
+          "interactionId": "web:/app/agent#interaction-169",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
           "line": 252,
@@ -105046,7 +105179,7 @@
           "severity": null
         },
         {
-          "interactionId": "web:/app/agent#interaction-169",
+          "interactionId": "web:/app/agent#interaction-170",
           "surfaceId": "web:/app/agent",
           "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
           "line": 285,
@@ -105083,7 +105216,7 @@
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx",
           "line": 128,
           "kind": "dialog",
-          "visibleName": "◷ History / 历史记录 Browse the conversations you have had with iOrbit. / 查看你与 iOrbit 的过往对话记录。 ✕ ＋ New chat / 新对话 Recent conversations / 最近的对话 {visible.map((item) => { // 设计 905 的 `h.bg` 是「当前会话」的底色，绑 activeSessionId（审阅修订 13）， // 不是「第一行」。没有 sessionId 的历史行回落到问题原文比对。 const current = Boolean( (item.sessionId && item.sessionId === activeSessionId) || (activeQ && item.q === activeQ), ); const menuOpen = menuOpenId === item.id; const renaming = renamingId === item.id; const pending = Boolean(item.sessionId) && item.sessionId === pendingSessionId; return ( <div aria-busy={pending} className={current ? \"ir-hist-row ir-hist-row-on\" : \"ir-hist-row\"} key={item.id} role=\"listitem\" > {renaming ? ( <form className=\"ir-hist-rename\" onSubmit={(event) => { event.preventDefault(); finishRename(item); }} > <input aria-label={t({ en: \"Rename conversation\", zh: \"重命名对话\" })} autoFocus className=\"ir-hist-rename-input\" data-orbit-agent-history-rename-input={item.sessionId} onChange={(event) => setRenamingTitle(event.target.value)} onKeyDown={(event) => { if (event.key !== \"Escape\") return; // 重命名中的 Esc 先取消编辑，不关整个抽屉。 event.preventDefault(); event.stopPropagation(); cancelRename(); }} value={renamingTitle} /> <button className=\"btn ir-hist-rename-ok\" data-orbit-agent-history-save-rename={item.sessionId} disabled={!renamingTitle.trim()} type=\"submit\" > {t({ en: \"Save\", zh: \"保存\" })} </button> <button className=\"btn ir-hist-rename-cancel\" data-orbit-agent-history-cancel-rename={item.sessionId} onClick={cancelRename} type=\"button\" > {t({ en: \"Cancel\", zh: \"取消\" })} </button> </form> ) : ( <button className=\"btn ir-hist-open\" onClick={() => { setMenuOpenId(null); onPick(item); }} title={item.q || item.title} type=\"button\" > <span className=\"ir-hist-icon\">▤</span> <span className=\"ir-hist-copy\"> <strong className=\"ir-hist-title\">{item.title}</strong> {/* 设计 797 的日期。`when` 放的是分组名（审阅修订 12），所以取 view model 的 `date`；来源解析不出日期时这一行不渲染。 */} {item.date ? ( <span className=\"ir-hist-date\"> {item.pinned ? `${t({ en: \"Pinned\", zh: \"已置顶\" })} · ${item.date}` : item.date} </span> ) : null} </span> <span className=\"ir-caret\">›</span> </button> )} {item.sessionId ? ( <> <button aria-expanded={menuOpen} aria-haspopup=\"menu\" aria-label={t({ en: \"More actions\", zh: \"更多操作\" })} className=\"btn ir-hist-more\" data-orbit-agent-history-menu-button={item.sessionId} disabled={pending} onClick={() => setMenuOpenId(menuOpen ? null : item.id)} type=\"button\" > ··· </button> {menuOpen ? ( <div className=\"ir-hist-menu\" data-orbit-agent-history-menu={item.sessionId} onKeyDown={(event) => { if (event.key !== \"Escape\") return; // 菜单开着时 Esc 先收菜单（抽屉的 Esc 来自 useOrbitModalA11y // 的 document 监听，stopPropagation 挡住它）。 event.preventDefault(); event.stopPropagation(); setMenuOpenId(null); }} role=\"menu\" style={{ zIndex: ORBIT_Z.dropdown }} > <button className=\"btn ir-hist-menu-item\" data-orbit-agent-history-pin={item.sessionId} disabled={pending} onClick={() => { setMenuOpenId(null); onTogglePin(item); }} role=\"menuitem\" type=\"button\" > {item.pinned ? t({ en: \"Unpin\", zh: \"取消置顶\" }) : t({ en: \"Pin\", zh: \"置顶\" })} </button> <button className=\"btn ir-hist-menu-item\" data-orbit-agent-history-rename={item.sessionId} disabled={pending} onClick={() => startRename(item)} role=\"menuitem\" type=\"button\" > {t({ en: \"Rename\", zh: \"重命名\" })} </button> <span className=\"ir-hist-menu-label\">{t({ en: \"Move to\", zh: \"移动到\" })}</span> <button className=\"btn ir-hist-menu-item\" disabled={pending || item.groupId === null} onClick={() => { setMenuOpenId(null); onMove(item, null); }} role=\"menuitem\" type=\"button\" > {t({ en: \"Ungrouped\", zh: \"未分组\" })} </button> {groups.map((group) => ( <button className=\"btn ir-hist-menu-item\" disabled={pending || item.groupId === group.id} key={group.id} onClick={() => { setMenuOpenId(null); onMove(item, group.id); }} role=\"menuitem\" type=\"button\" > {group.name} </button> ))} <button className=\"btn ir-hist-menu-item ir-hist-menu-danger\" data-orbit-agent-history-delete={item.sessionId} disabled={pending} onClick={() => { setMenuOpenId(null); onDelete(item); }} role=\"menuitem\" type=\"button\" > {t({ en: \"Delete\", zh: \"删除对话\" })} </button> </div> ) : null} </> ) : null} </div> ); })} {<span className=\"ir-drawer-empty\"> {t({ en: \"No conversations yet.\", zh: \"还没有对话记录。\" })} </span>} / {null} {<button className=\"btn ir-drawer-more\" data-orbit-agent-history-reveal-more onClick={() => setRevealed((count) => count + IORBIT_HISTORY_REVEAL_STEP)} type=\"button\" > {t({ en: \"Load more history ⌄\", zh: \"加载更多历史记录 ⌄\" })} </button>} / {null}",
+          "visibleName": "◷ History / 历史记录 Browse the conversations you have had with iOrbit. / 查看你与 iOrbit 的过往对话记录。 ✕ ＋ New chat / 新对话 Recent conversations / 最近的对话 {visible.map((item) => { // 设计 905 的 `h.bg` 是「当前会话」的底色，绑 activeSessionId（审阅修订 13）， // 不是「第一行」。没有 sessionId 的历史行回落到问题原文比对。 const current = Boolean( (item.sessionId && item.sessionId === activeSessionId) || (activeQ && item.q === activeQ), ); const menuOpen = menuOpenId === item.id; const renaming = renamingId === item.id; const pending = Boolean(item.sessionId) && item.sessionId === pendingSessionId; return ( <div aria-busy={pending} className={current ? \"ir-hist-row ir-hist-row-on\" : \"ir-hist-row\"} key={item.id} role=\"listitem\" > {renaming ? ( <form className=\"ir-hist-rename\" onSubmit={(event) => { event.preventDefault(); finishRename(item); }} > <input aria-label={t({ en: \"Rename conversation\", zh: \"重命名对话\" })} autoFocus className=\"ir-hist-rename-input\" data-orbit-agent-history-rename-input={item.sessionId} onChange={(event) => setRenamingTitle(event.target.value)} onKeyDown={(event) => { if (event.key !== \"Escape\") return; // 重命名中的 Esc 先取消编辑，不关整个抽屉。 event.preventDefault(); event.stopPropagation(); cancelRename(); }} value={renamingTitle} /> <button className=\"btn ir-hist-rename-ok\" data-orbit-agent-history-save-rename={item.sessionId} disabled={!renamingTitle.trim()} type=\"submit\" > {t({ en: \"Save\", zh: \"保存\" })} </button> <button className=\"btn ir-hist-rename-cancel\" data-orbit-agent-history-cancel-rename={item.sessionId} onClick={cancelRename} type=\"button\" > {t({ en: \"Cancel\", zh: \"取消\" })} </button> </form> ) : ( <button className=\"btn ir-hist-open\" onClick={() => { setMenuOpenId(null); onPick(item); }} title={item.q || item.title} type=\"button\" > <span className=\"ir-hist-icon\">▤</span> <span className=\"ir-hist-copy\"> <strong className=\"ir-hist-title\">{item.title}</strong> {/* 设计 797 的日期。`when` 放的是分组名（审阅修订 12），所以取 view model 的 `date`；来源解析不出日期时这一行不渲染。 */} {item.date ? ( <span className=\"ir-hist-date\"> {item.pinned ? `${t({ en: \"Pinned\", zh: \"已置顶\" })} · ${item.date}` : item.date} </span> ) : null} </span> <span className=\"ir-caret\">›</span> </button> )} {/* 重命名中不渲染「···」：它是 `position:absolute; right:10px` 的 28×28 钮，`opacity:0` 但 `pointer-events:auto`，会整块盖住重命名行 最右侧的「取消」钮的中心点（2026-09-24 运行时取证实测： 取消 x1157–1203、··· x1177–1205，`elementFromPoint` 落在 `.ir-hist-more` 上），鼠标点「取消」实际打开的是更多菜单。静态截图不取重命名态， 故像素不变。 */} {item.sessionId && !renaming ? ( <> <button aria-expanded={menuOpen} aria-haspopup=\"menu\" aria-label={t({ en: \"More actions\", zh: \"更多操作\" })} className=\"btn ir-hist-more\" data-orbit-agent-history-menu-button={item.sessionId} disabled={pending} onClick={() => setMenuOpenId(menuOpen ? null : item.id)} type=\"button\" > ··· </button> {menuOpen ? ( <div className=\"ir-hist-menu\" data-orbit-agent-history-menu={item.sessionId} onKeyDown={(event) => { if (event.key !== \"Escape\") return; // 菜单开着时 Esc 先收菜单（抽屉的 Esc 来自 useOrbitModalA11y // 的 document 监听，stopPropagation 挡住它）。 event.preventDefault(); event.stopPropagation(); setMenuOpenId(null); }} role=\"menu\" style={{ zIndex: ORBIT_Z.dropdown }} > <button className=\"btn ir-hist-menu-item\" data-orbit-agent-history-pin={item.sessionId} disabled={pending} onClick={() => { setMenuOpenId(null); onTogglePin(item); }} role=\"menuitem\" type=\"button\" > {item.pinned ? t({ en: \"Unpin\", zh: \"取消置顶\" }) : t({ en: \"Pin\", zh: \"置顶\" })} </button> <button className=\"btn ir-hist-menu-item\" data-orbit-agent-history-rename={item.sessionId} disabled={pending} onClick={() => startRename(item)} role=\"menuitem\" type=\"button\" > {t({ en: \"Rename\", zh: \"重命名\" })} </button> <span className=\"ir-hist-menu-label\">{t({ en: \"Move to\", zh: \"移动到\" })}</span> <button className=\"btn ir-hist-menu-item\" disabled={pending || item.groupId === null} onClick={() => { setMenuOpenId(null); onMove(item, null); }} role=\"menuitem\" type=\"button\" > {t({ en: \"Ungrouped\", zh: \"未分组\" })} </button> {groups.map((group) => ( <button className=\"btn ir-hist-menu-item\" disabled={pending || item.groupId === group.id} key={group.id} onClick={() => { setMenuOpenId(null); onMove(item, group.id); }} role=\"menuitem\" type=\"button\" > {group.name} </button> ))} <button className=\"btn ir-hist-menu-item ir-hist-menu-danger\" data-orbit-agent-history-delete={item.sessionId} disabled={pending} onClick={() => { setMenuOpenId(null); onDelete(item); }} role=\"menuitem\" type=\"button\" > {t({ en: \"Delete\", zh: \"删除对话\" })} </button> </div> ) : null} </> ) : null} </div> ); })} {<span className=\"ir-drawer-empty\"> {t({ en: \"No conversations yet.\", zh: \"还没有对话记录。\" })} </span>} / {null} {<button className=\"btn ir-drawer-more\" data-orbit-agent-history-reveal-more onClick={() => setRevealed((count) => count + IORBIT_HISTORY_REVEAL_STEP)} type=\"button\" > {t({ en: \"Load more history ⌄\", zh: \"加载更多历史记录 ⌄\" })} </button>} / {null}",
           "runtimeStatus": "not-runtime-verified"
         },
         {
@@ -105169,6 +105302,8 @@
         "repos/orbits/tests/services/confirmed-event-followup.test.ts",
         "repos/orbits/tests/services/core-service-factories.test.ts",
         "repos/orbits/tests/services/modular-boundaries.test.ts",
+        "repos/orbits/tests/ui/iorbit-console-styles-dead-classes.test.ts",
+        "repos/orbits/tests/ui/orbit-0918-anchor-colour.test.ts",
         "repos/orbits/tests/ui/orbit-agent-context-href.test.ts",
         "repos/orbits/tests/ui/orbit-button-ratchet.test.ts",
         "repos/orbits/tests/ui/orbit-global-ask-routes.test.ts",
@@ -108399,10 +108534,12 @@
         "api": [
           "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-model.ts",
           "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-plan.tsx",
+          "repos/orbits/app/(app)/app/agent/plan/page.tsx",
           "repos/orbits/app/(app)/app/inbox/contact-messages-tab.tsx",
           "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "repos/orbits/app/(app)/app/settings/notification-delivery-settings.tsx",
+          "repos/orbits/app/api/_shared/authenticated-actor.ts",
           "repos/orbits/features/agent/contract.ts",
           "repos/orbits/features/agent/ledger/contract.ts",
           "repos/orbits/features/auth/service.ts",
@@ -108431,7 +108568,9 @@
         ],
         "live": [
           "repos/orbits/app/(app)/app/tasks/relationship-lifecycle-tasks.ts",
+          "repos/orbits/app/api/_shared/authenticated-actor.ts",
           "repos/orbits/auth.ts",
+          "repos/orbits/features/account/storage/account-live-record-provider.ts",
           "repos/orbits/features/appointments/postgres-repository.ts",
           "repos/orbits/features/appointments/runtime.ts",
           "repos/orbits/features/auth/auth-user-service.ts",
@@ -108501,6 +108640,7 @@
           "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-styles.ts",
           "repos/orbits/app/(app)/app/agent/plan/plan-route-view-model.ts",
           "repos/orbits/app/(app)/app/inbox/inbox-demo-localization.ts",
+          "repos/orbits/app/api/_shared/authenticated-actor.ts",
           "repos/orbits/features/agent/contract.ts",
           "repos/orbits/features/agent/ledger/contract.ts",
           "repos/orbits/features/auth/auth-user-service.ts",
@@ -108568,7 +108708,9 @@
           "repos/orbits/shared/services/module-mode.ts"
         ],
         "persistence": [
+          "repos/orbits/app/api/_shared/authenticated-actor.ts",
           "repos/orbits/auth.ts",
+          "repos/orbits/features/account/storage/account-live-record-provider.ts",
           "repos/orbits/features/agent/contract.ts",
           "repos/orbits/features/agent/ledger/contract.ts",
           "repos/orbits/features/auth/contract.ts",
@@ -108672,12 +108814,14 @@
           "repos/orbits/app/(app)/app/agent/home-facts-route-service.ts",
           "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-model.ts",
           "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-plan.tsx",
+          "repos/orbits/app/(app)/app/agent/plan/page.tsx",
           "repos/orbits/app/(app)/app/inbox/inbox-panel-view-model.ts",
           "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "repos/orbits/app/(app)/app/orbit-agent-route-view-model.ts",
           "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
           "repos/orbits/app/(app)/app/orbit-reference-styles.tsx",
+          "repos/orbits/app/api/_shared/authenticated-actor.ts",
           "repos/orbits/auth.ts",
           "repos/orbits/features/agent/capabilities/contract.ts",
           "repos/orbits/features/agent/contract.ts",
@@ -111464,10 +111608,12 @@
       "dataSources": {
         "api": [
           "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-model.ts",
+          "repos/orbits/app/(app)/app/agent/strategy/page.tsx",
           "repos/orbits/app/(app)/app/inbox/contact-messages-tab.tsx",
           "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "repos/orbits/app/(app)/app/settings/notification-delivery-settings.tsx",
+          "repos/orbits/app/api/_shared/authenticated-actor.ts",
           "repos/orbits/features/agent/contract.ts",
           "repos/orbits/features/agent/ledger/contract.ts",
           "repos/orbits/features/auth/service.ts",
@@ -111496,7 +111642,9 @@
         ],
         "live": [
           "repos/orbits/app/(app)/app/tasks/relationship-lifecycle-tasks.ts",
+          "repos/orbits/app/api/_shared/authenticated-actor.ts",
           "repos/orbits/auth.ts",
+          "repos/orbits/features/account/storage/account-live-record-provider.ts",
           "repos/orbits/features/appointments/postgres-repository.ts",
           "repos/orbits/features/appointments/runtime.ts",
           "repos/orbits/features/auth/auth-user-service.ts",
@@ -111567,6 +111715,7 @@
           "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-styles.ts",
           "repos/orbits/app/(app)/app/agent/strategy/strategy-route-view-model.ts",
           "repos/orbits/app/(app)/app/inbox/inbox-demo-localization.ts",
+          "repos/orbits/app/api/_shared/authenticated-actor.ts",
           "repos/orbits/features/agent/contract.ts",
           "repos/orbits/features/agent/ledger/contract.ts",
           "repos/orbits/features/auth/auth-user-service.ts",
@@ -111634,7 +111783,9 @@
           "repos/orbits/shared/services/module-mode.ts"
         ],
         "persistence": [
+          "repos/orbits/app/api/_shared/authenticated-actor.ts",
           "repos/orbits/auth.ts",
+          "repos/orbits/features/account/storage/account-live-record-provider.ts",
           "repos/orbits/features/agent/contract.ts",
           "repos/orbits/features/agent/ledger/contract.ts",
           "repos/orbits/features/auth/contract.ts",
@@ -111738,12 +111889,15 @@
           "repos/orbits/app/(app)/app/agent/home-facts-route-service.ts",
           "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-model.ts",
           "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-strategy.tsx",
+          "repos/orbits/app/(app)/app/agent/strategy/page.tsx",
+          "repos/orbits/app/(app)/app/agent/strategy/strategy-route-view-model.ts",
           "repos/orbits/app/(app)/app/inbox/inbox-panel-view-model.ts",
           "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "repos/orbits/app/(app)/app/orbit-agent-route-view-model.ts",
           "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
           "repos/orbits/app/(app)/app/orbit-reference-styles.tsx",
+          "repos/orbits/app/api/_shared/authenticated-actor.ts",
           "repos/orbits/auth.ts",
           "repos/orbits/features/agent/capabilities/contract.ts",
           "repos/orbits/features/agent/contract.ts",
@@ -118690,6 +118844,7 @@
         "repos/orbits/tests/services/event-relationship-contact-detail-postgres.test.ts",
         "repos/orbits/tests/services/legacy-source-projection.test.ts",
         "repos/orbits/tests/services/relationship-lifecycle-facts-reader-postgres.test.ts",
+        "repos/orbits/tests/ui/orbit-0918-anchor-colour.test.ts",
         "repos/orbits/tests/ui/orbit-global-ask-routes.test.ts",
         "repos/orbits/tests/ui/orbit-product-href.test.ts",
         "repos/orbits/tests/ui/orbit-sidebar-width-constant.test.ts",
@@ -123408,6 +123563,7 @@
         "repos/orbits/tests/services/event-relationship-contact-detail-postgres.test.ts",
         "repos/orbits/tests/services/legacy-source-projection.test.ts",
         "repos/orbits/tests/services/relationship-lifecycle-facts-reader-postgres.test.ts",
+        "repos/orbits/tests/ui/orbit-0918-anchor-colour.test.ts",
         "repos/orbits/tests/ui/orbit-global-ask-routes.test.ts",
         "repos/orbits/tests/ui/state-view.test.tsx"
       ],
@@ -140658,6 +140814,7 @@
         "repos/orbits/tests/services/appointment-time-gate-ui-api.test.ts",
         "repos/orbits/tests/services/canonical-participant-event-journeys.test.ts",
         "repos/orbits/tests/services/event-operations-outbox.test.ts",
+        "repos/orbits/tests/ui/orbit-0918-anchor-colour.test.ts",
         "repos/orbits/tests/ui/orbit-agent-context-href.test.ts",
         "repos/orbits/tests/ui/orbit-button-ratchet.test.ts",
         "repos/orbits/tests/ui/orbit-form-standard.test.ts",
@@ -147815,6 +147972,7 @@
         "repos/orbits/tests/services/appointment-time-gate-ui-api.test.ts",
         "repos/orbits/tests/services/canonical-participant-event-journeys.test.ts",
         "repos/orbits/tests/services/event-operations-outbox.test.ts",
+        "repos/orbits/tests/ui/orbit-0918-anchor-colour.test.ts",
         "repos/orbits/tests/ui/orbit-agent-context-href.test.ts",
         "repos/orbits/tests/ui/orbit-button-ratchet.test.ts",
         "repos/orbits/tests/ui/orbit-form-standard.test.ts",
@@ -151116,7 +151274,7 @@
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-live.tsx",
           "line": 134,
           "tag": "button",
-          "text": "label"
+          "text": "ariaLabel"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-live.tsx",
@@ -152665,7 +152823,7 @@
           "ownerPropBranchConditions": [],
           "controlType": "button",
           "tag": "button",
-          "visibleName": "label",
+          "visibleName": "ariaLabel",
           "accessibleNameEvidence": "present-static",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
@@ -152697,7 +152855,7 @@
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "Avatar",
-          "visibleName": null,
+          "visibleName": "openLabel",
           "accessibleNameEvidence": "not-applicable-structural-boundary",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
@@ -183169,6 +183327,12 @@
           "text": "routeState.copy.title"
         },
         {
+          "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-screens.tsx",
+          "line": 137,
+          "tag": "ProfileBasic",
+          "text": "t({ en: \"Edit basic profile\", zh: \"编辑基础资料\" })"
+        },
+        {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 88,
           "tag": "span",
@@ -183440,91 +183604,97 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 126,
+          "line": 123,
+          "tag": "form",
+          "text": "ariaLabel"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
+          "line": 130,
           "tag": "Field",
           "text": "{ en: \"Name\", zh: \"姓名\" }"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 129,
+          "line": 133,
           "tag": "Field",
           "text": "{ en: \"Primary industry\", zh: \"一级行业\" }"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 131,
+          "line": 135,
           "tag": "select",
           "text": "t({ en: \"Primary industry\", zh: \"一级行业\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 137,
+          "line": 141,
           "tag": "Field",
           "text": "{ en: \"Secondary industry\", zh: \"二级行业\" }"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 139,
+          "line": 143,
           "tag": "select",
           "text": "t({ en: \"Secondary industry\", zh: \"二级行业\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 145,
+          "line": 149,
           "tag": "Field",
           "text": "{ en: \"Title\", zh: \"职位\" }"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 148,
+          "line": 152,
           "tag": "Field",
           "text": "{ en: \"Company\", zh: \"公司\" }"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 151,
+          "line": 155,
           "tag": "Field",
           "text": "{ en: \"Birthday (private)\", zh: \"生日\" }"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 158,
+          "line": 162,
           "tag": "Field",
           "text": "{ en: \"About me (up to 80 visible characters)\", zh: \"关于我（最多 80 个可见字符）\" }"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 175,
+          "line": 179,
           "tag": "Field",
           "text": "{ en: \"WeChat\", zh: \"WeChat\" }"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 176,
+          "line": 180,
           "tag": "input",
           "text": "WeChat"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 178,
+          "line": 182,
           "tag": "Field",
           "text": "{ en: \"LINE\", zh: \"LINE\" }"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 179,
+          "line": 183,
           "tag": "input",
           "text": "LINE"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 181,
+          "line": 185,
           "tag": "ReadonlyRow",
           "text": "Email"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 182,
+          "line": 186,
           "tag": "ReadonlyRow",
           "text": "label"
         },
@@ -186161,11 +186331,11 @@
           "interactionId": "web:/app/profile#interaction-68",
           "surfaceId": "web:/app/profile",
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 119,
+          "line": 123,
           "ownerPropBranchConditions": [],
           "controlType": "form-submit-boundary",
           "tag": "form",
-          "visibleName": "Basic information / 基础信息 Not selected / 未选择 {INDUSTRY_CATALOG.map(item => <option key={item.id} value={item.id}>{industryLabel(item.id, language)}</option>)} Not selected / 未选择 {(profile.primaryIndustryId ? listSecondaryIndustries(profile.primaryIndustryId) : []).map(item => <option key={item.id} value={item.id}>{secondaryIndustryLabel(item.id, language)}</option>)} {<span className=\"pc-group-hint\">{t({ en: \"Existing industry text is preserved; choose the structured categories above for new edits:\", zh: \"已有行业文字会保留；新的修改请使用上面的结构化分类：\" })} {profile.industry}</span>} / {null} One-line intro / 一句话介绍 {profile.headline.trim() || t({ en: \"Not filled in\", zh: \"未填写\" })} Read-only here / 此处只读 ✉ Contact details / 联系方式 Contact details are optional, only visible to you, and saved with the basic profile. / 联系方式可选、仅自己可见，随基础资料一起保存。 {<ReadonlyRow label=\"Email\" scope={scope} value={profile.email} />} / {null} {otherHandles.map(([label, raw]) => raw?.trim() ? <ReadonlyRow key={label} label={label} scope={scope} value={raw.trim()} /> : null)}",
+          "visibleName": "ariaLabel",
           "accessibleNameEvidence": "not-applicable-structural-boundary",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
@@ -186195,7 +186365,7 @@
           "interactionId": "web:/app/profile#interaction-69",
           "surfaceId": "web:/app/profile",
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 127,
+          "line": 131,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "input",
@@ -186231,7 +186401,7 @@
           "interactionId": "web:/app/profile#interaction-70",
           "surfaceId": "web:/app/profile",
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 131,
+          "line": 135,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "select",
@@ -186265,7 +186435,7 @@
           "interactionId": "web:/app/profile#interaction-71",
           "surfaceId": "web:/app/profile",
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 139,
+          "line": 143,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "select",
@@ -186299,7 +186469,7 @@
           "interactionId": "web:/app/profile#interaction-72",
           "surfaceId": "web:/app/profile",
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 146,
+          "line": 150,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "input",
@@ -186333,7 +186503,7 @@
           "interactionId": "web:/app/profile#interaction-73",
           "surfaceId": "web:/app/profile",
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 149,
+          "line": 153,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "input",
@@ -186367,7 +186537,7 @@
           "interactionId": "web:/app/profile#interaction-74",
           "surfaceId": "web:/app/profile",
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 152,
+          "line": 156,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "input",
@@ -186401,7 +186571,7 @@
           "interactionId": "web:/app/profile#interaction-75",
           "surfaceId": "web:/app/profile",
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 159,
+          "line": 163,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "textarea",
@@ -186437,7 +186607,7 @@
           "interactionId": "web:/app/profile#interaction-76",
           "surfaceId": "web:/app/profile",
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 176,
+          "line": 180,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "input",
@@ -186471,7 +186641,7 @@
           "interactionId": "web:/app/profile#interaction-77",
           "surfaceId": "web:/app/profile",
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 179,
+          "line": 183,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "input",
@@ -186784,7 +186954,7 @@
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "ProfileShell",
-          "visibleName": "{<ProfileOverview session={session} onboardingQuery={onboardingQuery} />} / {<ProfilePersona session={session} />} / {<ProfileBasic formRef={basicFormRef} onSubmit={() => session.saveProfile(\"basic\")} session={session} />} / {<ProfileSettings session={session} onboardingQuery={onboardingQuery} />} / {<ProfileConnect />}",
+          "visibleName": "{<ProfileOverview session={session} onboardingQuery={onboardingQuery} />} / {<ProfilePersona session={session} />} / {<ProfileBasic aria-label={t({ en: \"Edit basic profile\", zh: \"编辑基础资料\" })} formRef={basicFormRef} onSubmit={() => session.saveProfile(\"basic\")} session={session} />} / {<ProfileSettings session={session} onboardingQuery={onboardingQuery} />} / {<ProfileConnect />}",
           "accessibleNameEvidence": "not-applicable-structural-boundary",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
@@ -186822,7 +186992,7 @@
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "ProfileBasic",
-          "visibleName": null,
+          "visibleName": "t({ en: \"Edit basic profile\", zh: \"编辑基础资料\" })",
           "accessibleNameEvidence": "not-applicable-structural-boundary",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
@@ -188935,6 +189105,7 @@
         "repos/orbits/tests/pages/profile-onboarding-access.test.ts",
         "repos/orbits/tests/pages/secondary-industry-editors.test.tsx",
         "repos/orbits/tests/ui/auth-state-consistency.test.ts",
+        "repos/orbits/tests/ui/orbit-0918-anchor-colour.test.ts",
         "repos/orbits/tests/ui/orbit-settings-theme.test.ts",
         "repos/orbits/tests/ui/profile-onboarding-proxy.test.ts"
       ],
@@ -189679,6 +189850,12 @@
           "text": "routeState.copy.title"
         },
         {
+          "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-screens.tsx",
+          "line": 137,
+          "tag": "ProfileBasic",
+          "text": "t({ en: \"Edit basic profile\", zh: \"编辑基础资料\" })"
+        },
+        {
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 88,
           "tag": "span",
@@ -189950,91 +190127,97 @@
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 126,
+          "line": 123,
+          "tag": "form",
+          "text": "ariaLabel"
+        },
+        {
+          "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
+          "line": 130,
           "tag": "Field",
           "text": "{ en: \"Name\", zh: \"姓名\" }"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 129,
+          "line": 133,
           "tag": "Field",
           "text": "{ en: \"Primary industry\", zh: \"一级行业\" }"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 131,
+          "line": 135,
           "tag": "select",
           "text": "t({ en: \"Primary industry\", zh: \"一级行业\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 137,
+          "line": 141,
           "tag": "Field",
           "text": "{ en: \"Secondary industry\", zh: \"二级行业\" }"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 139,
+          "line": 143,
           "tag": "select",
           "text": "t({ en: \"Secondary industry\", zh: \"二级行业\" })"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 145,
+          "line": 149,
           "tag": "Field",
           "text": "{ en: \"Title\", zh: \"职位\" }"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 148,
+          "line": 152,
           "tag": "Field",
           "text": "{ en: \"Company\", zh: \"公司\" }"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 151,
+          "line": 155,
           "tag": "Field",
           "text": "{ en: \"Birthday (private)\", zh: \"生日\" }"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 158,
+          "line": 162,
           "tag": "Field",
           "text": "{ en: \"About me (up to 80 visible characters)\", zh: \"关于我（最多 80 个可见字符）\" }"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 175,
+          "line": 179,
           "tag": "Field",
           "text": "{ en: \"WeChat\", zh: \"WeChat\" }"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 176,
+          "line": 180,
           "tag": "input",
           "text": "WeChat"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 178,
+          "line": 182,
           "tag": "Field",
           "text": "{ en: \"LINE\", zh: \"LINE\" }"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 179,
+          "line": 183,
           "tag": "input",
           "text": "LINE"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 181,
+          "line": 185,
           "tag": "ReadonlyRow",
           "text": "Email"
         },
         {
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 182,
+          "line": 186,
           "tag": "ReadonlyRow",
           "text": "label"
         },
@@ -192665,11 +192848,11 @@
           "interactionId": "web:/app/settings#interaction-68",
           "surfaceId": "web:/app/settings",
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 119,
+          "line": 123,
           "ownerPropBranchConditions": [],
           "controlType": "form-submit-boundary",
           "tag": "form",
-          "visibleName": "Basic information / 基础信息 Not selected / 未选择 {INDUSTRY_CATALOG.map(item => <option key={item.id} value={item.id}>{industryLabel(item.id, language)}</option>)} Not selected / 未选择 {(profile.primaryIndustryId ? listSecondaryIndustries(profile.primaryIndustryId) : []).map(item => <option key={item.id} value={item.id}>{secondaryIndustryLabel(item.id, language)}</option>)} {<span className=\"pc-group-hint\">{t({ en: \"Existing industry text is preserved; choose the structured categories above for new edits:\", zh: \"已有行业文字会保留；新的修改请使用上面的结构化分类：\" })} {profile.industry}</span>} / {null} One-line intro / 一句话介绍 {profile.headline.trim() || t({ en: \"Not filled in\", zh: \"未填写\" })} Read-only here / 此处只读 ✉ Contact details / 联系方式 Contact details are optional, only visible to you, and saved with the basic profile. / 联系方式可选、仅自己可见，随基础资料一起保存。 {<ReadonlyRow label=\"Email\" scope={scope} value={profile.email} />} / {null} {otherHandles.map(([label, raw]) => raw?.trim() ? <ReadonlyRow key={label} label={label} scope={scope} value={raw.trim()} /> : null)}",
+          "visibleName": "ariaLabel",
           "accessibleNameEvidence": "not-applicable-structural-boundary",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
@@ -192697,7 +192880,7 @@
           "interactionId": "web:/app/settings#interaction-69",
           "surfaceId": "web:/app/settings",
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 127,
+          "line": 131,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "input",
@@ -192731,7 +192914,7 @@
           "interactionId": "web:/app/settings#interaction-70",
           "surfaceId": "web:/app/settings",
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 131,
+          "line": 135,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "select",
@@ -192765,7 +192948,7 @@
           "interactionId": "web:/app/settings#interaction-71",
           "surfaceId": "web:/app/settings",
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 139,
+          "line": 143,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "select",
@@ -192799,7 +192982,7 @@
           "interactionId": "web:/app/settings#interaction-72",
           "surfaceId": "web:/app/settings",
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 146,
+          "line": 150,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "input",
@@ -192833,7 +193016,7 @@
           "interactionId": "web:/app/settings#interaction-73",
           "surfaceId": "web:/app/settings",
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 149,
+          "line": 153,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "input",
@@ -192867,7 +193050,7 @@
           "interactionId": "web:/app/settings#interaction-74",
           "surfaceId": "web:/app/settings",
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 152,
+          "line": 156,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "input",
@@ -192901,7 +193084,7 @@
           "interactionId": "web:/app/settings#interaction-75",
           "surfaceId": "web:/app/settings",
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 159,
+          "line": 163,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "textarea",
@@ -192935,7 +193118,7 @@
           "interactionId": "web:/app/settings#interaction-76",
           "surfaceId": "web:/app/settings",
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 176,
+          "line": 180,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "input",
@@ -192969,7 +193152,7 @@
           "interactionId": "web:/app/settings#interaction-77",
           "surfaceId": "web:/app/settings",
           "sourceFile": "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx",
-          "line": 179,
+          "line": 183,
           "ownerPropBranchConditions": [],
           "controlType": "field",
           "tag": "input",
@@ -193278,7 +193461,7 @@
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "ProfileShell",
-          "visibleName": "{<ProfileOverview session={session} onboardingQuery={onboardingQuery} />} / {<ProfilePersona session={session} />} / {<ProfileBasic formRef={basicFormRef} onSubmit={() => session.saveProfile(\"basic\")} session={session} />} / {<ProfileSettings session={session} onboardingQuery={onboardingQuery} />} / {<ProfileConnect />}",
+          "visibleName": "{<ProfileOverview session={session} onboardingQuery={onboardingQuery} />} / {<ProfilePersona session={session} />} / {<ProfileBasic aria-label={t({ en: \"Edit basic profile\", zh: \"编辑基础资料\" })} formRef={basicFormRef} onSubmit={() => session.saveProfile(\"basic\")} session={session} />} / {<ProfileSettings session={session} onboardingQuery={onboardingQuery} />} / {<ProfileConnect />}",
           "accessibleNameEvidence": "not-applicable-structural-boundary",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
@@ -193316,7 +193499,7 @@
           "ownerPropBranchConditions": [],
           "controlType": "callback-control",
           "tag": "ProfileBasic",
-          "visibleName": null,
+          "visibleName": "t({ en: \"Edit basic profile\", zh: \"编辑基础资料\" })",
           "accessibleNameEvidence": "not-applicable-structural-boundary",
           "triggerCondition": "user-initiated; runtime preconditions not yet verified",
           "disabledCondition": null,
@@ -228297,7 +228480,7 @@
       "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx",
       "line": 128,
       "kind": "dialog",
-      "visibleName": "◷ History / 历史记录 Browse the conversations you have had with iOrbit. / 查看你与 iOrbit 的过往对话记录。 ✕ ＋ New chat / 新对话 Recent conversations / 最近的对话 {visible.map((item) => { // 设计 905 的 `h.bg` 是「当前会话」的底色，绑 activeSessionId（审阅修订 13）， // 不是「第一行」。没有 sessionId 的历史行回落到问题原文比对。 const current = Boolean( (item.sessionId && item.sessionId === activeSessionId) || (activeQ && item.q === activeQ), ); const menuOpen = menuOpenId === item.id; const renaming = renamingId === item.id; const pending = Boolean(item.sessionId) && item.sessionId === pendingSessionId; return ( <div aria-busy={pending} className={current ? \"ir-hist-row ir-hist-row-on\" : \"ir-hist-row\"} key={item.id} role=\"listitem\" > {renaming ? ( <form className=\"ir-hist-rename\" onSubmit={(event) => { event.preventDefault(); finishRename(item); }} > <input aria-label={t({ en: \"Rename conversation\", zh: \"重命名对话\" })} autoFocus className=\"ir-hist-rename-input\" data-orbit-agent-history-rename-input={item.sessionId} onChange={(event) => setRenamingTitle(event.target.value)} onKeyDown={(event) => { if (event.key !== \"Escape\") return; // 重命名中的 Esc 先取消编辑，不关整个抽屉。 event.preventDefault(); event.stopPropagation(); cancelRename(); }} value={renamingTitle} /> <button className=\"btn ir-hist-rename-ok\" data-orbit-agent-history-save-rename={item.sessionId} disabled={!renamingTitle.trim()} type=\"submit\" > {t({ en: \"Save\", zh: \"保存\" })} </button> <button className=\"btn ir-hist-rename-cancel\" data-orbit-agent-history-cancel-rename={item.sessionId} onClick={cancelRename} type=\"button\" > {t({ en: \"Cancel\", zh: \"取消\" })} </button> </form> ) : ( <button className=\"btn ir-hist-open\" onClick={() => { setMenuOpenId(null); onPick(item); }} title={item.q || item.title} type=\"button\" > <span className=\"ir-hist-icon\">▤</span> <span className=\"ir-hist-copy\"> <strong className=\"ir-hist-title\">{item.title}</strong> {/* 设计 797 的日期。`when` 放的是分组名（审阅修订 12），所以取 view model 的 `date`；来源解析不出日期时这一行不渲染。 */} {item.date ? ( <span className=\"ir-hist-date\"> {item.pinned ? `${t({ en: \"Pinned\", zh: \"已置顶\" })} · ${item.date}` : item.date} </span> ) : null} </span> <span className=\"ir-caret\">›</span> </button> )} {item.sessionId ? ( <> <button aria-expanded={menuOpen} aria-haspopup=\"menu\" aria-label={t({ en: \"More actions\", zh: \"更多操作\" })} className=\"btn ir-hist-more\" data-orbit-agent-history-menu-button={item.sessionId} disabled={pending} onClick={() => setMenuOpenId(menuOpen ? null : item.id)} type=\"button\" > ··· </button> {menuOpen ? ( <div className=\"ir-hist-menu\" data-orbit-agent-history-menu={item.sessionId} onKeyDown={(event) => { if (event.key !== \"Escape\") return; // 菜单开着时 Esc 先收菜单（抽屉的 Esc 来自 useOrbitModalA11y // 的 document 监听，stopPropagation 挡住它）。 event.preventDefault(); event.stopPropagation(); setMenuOpenId(null); }} role=\"menu\" style={{ zIndex: ORBIT_Z.dropdown }} > <button className=\"btn ir-hist-menu-item\" data-orbit-agent-history-pin={item.sessionId} disabled={pending} onClick={() => { setMenuOpenId(null); onTogglePin(item); }} role=\"menuitem\" type=\"button\" > {item.pinned ? t({ en: \"Unpin\", zh: \"取消置顶\" }) : t({ en: \"Pin\", zh: \"置顶\" })} </button> <button className=\"btn ir-hist-menu-item\" data-orbit-agent-history-rename={item.sessionId} disabled={pending} onClick={() => startRename(item)} role=\"menuitem\" type=\"button\" > {t({ en: \"Rename\", zh: \"重命名\" })} </button> <span className=\"ir-hist-menu-label\">{t({ en: \"Move to\", zh: \"移动到\" })}</span> <button className=\"btn ir-hist-menu-item\" disabled={pending || item.groupId === null} onClick={() => { setMenuOpenId(null); onMove(item, null); }} role=\"menuitem\" type=\"button\" > {t({ en: \"Ungrouped\", zh: \"未分组\" })} </button> {groups.map((group) => ( <button className=\"btn ir-hist-menu-item\" disabled={pending || item.groupId === group.id} key={group.id} onClick={() => { setMenuOpenId(null); onMove(item, group.id); }} role=\"menuitem\" type=\"button\" > {group.name} </button> ))} <button className=\"btn ir-hist-menu-item ir-hist-menu-danger\" data-orbit-agent-history-delete={item.sessionId} disabled={pending} onClick={() => { setMenuOpenId(null); onDelete(item); }} role=\"menuitem\" type=\"button\" > {t({ en: \"Delete\", zh: \"删除对话\" })} </button> </div> ) : null} </> ) : null} </div> ); })} {<span className=\"ir-drawer-empty\"> {t({ en: \"No conversations yet.\", zh: \"还没有对话记录。\" })} </span>} / {null} {<button className=\"btn ir-drawer-more\" data-orbit-agent-history-reveal-more onClick={() => setRevealed((count) => count + IORBIT_HISTORY_REVEAL_STEP)} type=\"button\" > {t({ en: \"Load more history ⌄\", zh: \"加载更多历史记录 ⌄\" })} </button>} / {null}",
+      "visibleName": "◷ History / 历史记录 Browse the conversations you have had with iOrbit. / 查看你与 iOrbit 的过往对话记录。 ✕ ＋ New chat / 新对话 Recent conversations / 最近的对话 {visible.map((item) => { // 设计 905 的 `h.bg` 是「当前会话」的底色，绑 activeSessionId（审阅修订 13）， // 不是「第一行」。没有 sessionId 的历史行回落到问题原文比对。 const current = Boolean( (item.sessionId && item.sessionId === activeSessionId) || (activeQ && item.q === activeQ), ); const menuOpen = menuOpenId === item.id; const renaming = renamingId === item.id; const pending = Boolean(item.sessionId) && item.sessionId === pendingSessionId; return ( <div aria-busy={pending} className={current ? \"ir-hist-row ir-hist-row-on\" : \"ir-hist-row\"} key={item.id} role=\"listitem\" > {renaming ? ( <form className=\"ir-hist-rename\" onSubmit={(event) => { event.preventDefault(); finishRename(item); }} > <input aria-label={t({ en: \"Rename conversation\", zh: \"重命名对话\" })} autoFocus className=\"ir-hist-rename-input\" data-orbit-agent-history-rename-input={item.sessionId} onChange={(event) => setRenamingTitle(event.target.value)} onKeyDown={(event) => { if (event.key !== \"Escape\") return; // 重命名中的 Esc 先取消编辑，不关整个抽屉。 event.preventDefault(); event.stopPropagation(); cancelRename(); }} value={renamingTitle} /> <button className=\"btn ir-hist-rename-ok\" data-orbit-agent-history-save-rename={item.sessionId} disabled={!renamingTitle.trim()} type=\"submit\" > {t({ en: \"Save\", zh: \"保存\" })} </button> <button className=\"btn ir-hist-rename-cancel\" data-orbit-agent-history-cancel-rename={item.sessionId} onClick={cancelRename} type=\"button\" > {t({ en: \"Cancel\", zh: \"取消\" })} </button> </form> ) : ( <button className=\"btn ir-hist-open\" onClick={() => { setMenuOpenId(null); onPick(item); }} title={item.q || item.title} type=\"button\" > <span className=\"ir-hist-icon\">▤</span> <span className=\"ir-hist-copy\"> <strong className=\"ir-hist-title\">{item.title}</strong> {/* 设计 797 的日期。`when` 放的是分组名（审阅修订 12），所以取 view model 的 `date`；来源解析不出日期时这一行不渲染。 */} {item.date ? ( <span className=\"ir-hist-date\"> {item.pinned ? `${t({ en: \"Pinned\", zh: \"已置顶\" })} · ${item.date}` : item.date} </span> ) : null} </span> <span className=\"ir-caret\">›</span> </button> )} {/* 重命名中不渲染「···」：它是 `position:absolute; right:10px` 的 28×28 钮，`opacity:0` 但 `pointer-events:auto`，会整块盖住重命名行 最右侧的「取消」钮的中心点（2026-09-24 运行时取证实测： 取消 x1157–1203、··· x1177–1205，`elementFromPoint` 落在 `.ir-hist-more` 上），鼠标点「取消」实际打开的是更多菜单。静态截图不取重命名态， 故像素不变。 */} {item.sessionId && !renaming ? ( <> <button aria-expanded={menuOpen} aria-haspopup=\"menu\" aria-label={t({ en: \"More actions\", zh: \"更多操作\" })} className=\"btn ir-hist-more\" data-orbit-agent-history-menu-button={item.sessionId} disabled={pending} onClick={() => setMenuOpenId(menuOpen ? null : item.id)} type=\"button\" > ··· </button> {menuOpen ? ( <div className=\"ir-hist-menu\" data-orbit-agent-history-menu={item.sessionId} onKeyDown={(event) => { if (event.key !== \"Escape\") return; // 菜单开着时 Esc 先收菜单（抽屉的 Esc 来自 useOrbitModalA11y // 的 document 监听，stopPropagation 挡住它）。 event.preventDefault(); event.stopPropagation(); setMenuOpenId(null); }} role=\"menu\" style={{ zIndex: ORBIT_Z.dropdown }} > <button className=\"btn ir-hist-menu-item\" data-orbit-agent-history-pin={item.sessionId} disabled={pending} onClick={() => { setMenuOpenId(null); onTogglePin(item); }} role=\"menuitem\" type=\"button\" > {item.pinned ? t({ en: \"Unpin\", zh: \"取消置顶\" }) : t({ en: \"Pin\", zh: \"置顶\" })} </button> <button className=\"btn ir-hist-menu-item\" data-orbit-agent-history-rename={item.sessionId} disabled={pending} onClick={() => startRename(item)} role=\"menuitem\" type=\"button\" > {t({ en: \"Rename\", zh: \"重命名\" })} </button> <span className=\"ir-hist-menu-label\">{t({ en: \"Move to\", zh: \"移动到\" })}</span> <button className=\"btn ir-hist-menu-item\" disabled={pending || item.groupId === null} onClick={() => { setMenuOpenId(null); onMove(item, null); }} role=\"menuitem\" type=\"button\" > {t({ en: \"Ungrouped\", zh: \"未分组\" })} </button> {groups.map((group) => ( <button className=\"btn ir-hist-menu-item\" disabled={pending || item.groupId === group.id} key={group.id} onClick={() => { setMenuOpenId(null); onMove(item, group.id); }} role=\"menuitem\" type=\"button\" > {group.name} </button> ))} <button className=\"btn ir-hist-menu-item ir-hist-menu-danger\" data-orbit-agent-history-delete={item.sessionId} disabled={pending} onClick={() => { setMenuOpenId(null); onDelete(item); }} role=\"menuitem\" type=\"button\" > {t({ en: \"Delete\", zh: \"删除对话\" })} </button> </div> ) : null} </> ) : null} </div> ); })} {<span className=\"ir-drawer-empty\"> {t({ en: \"No conversations yet.\", zh: \"还没有对话记录。\" })} </span>} / {null} {<button className=\"btn ir-drawer-more\" data-orbit-agent-history-reveal-more onClick={() => setRevealed((count) => count + IORBIT_HISTORY_REVEAL_STEP)} type=\"button\" > {t({ en: \"Load more history ⌄\", zh: \"加载更多历史记录 ⌄\" })} </button>} / {null}",
       "runtimeStatus": "not-runtime-verified"
     },
     {
@@ -228422,6 +228605,15 @@
     }
   ],
   "verificationCases": [
+    {
+      "id": "web-agent-history-drawer-controls-2026-09-24",
+      "target": "/app/agent history drawer (app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx) plus the overview entry point iorbit-home.tsx:1083, driven end to end in a real Chromium session against the Next dev server on :3100 over the Postgres verification database",
+      "testData": "qa@orbit.test signed in through the real login form at 1240×900; verification database orbit_newui_events_20260922, workspace:orbit-small-staging-20260917; three throwaway conversations seeded through POST /api/ai/conversations/sessions; the pixel-baseline conversation iorbit-visual-chat-0918 deliberately left untouched",
+      "expected": "Each of the ten controls performs its stated effect; the write controls (pin, save rename, delete) persist across a hard reload; cancel rename writes nothing; delete asks for confirmation first",
+      "actual": "All ten were exercised and behaved as specified, with zero console errors across the run. 取消 (cancel rename) initially could not be activated at all: the row's invisible ··· button covered its centre point, so the click opened the more menu instead; document.elementFromPoint at the cancel centre returned button.btn.ir-hist-more. After the ··· button stopped being rendered while its own row is renaming, cancel discarded the edit, left the stored title unchanged and issued zero requests. Pin moved a row from index 4 to index 0 and held that position across reload; save rename persisted across reload; delete raised the 「删除这个对话？」 alert dialog before issuing one DELETE.",
+      "evidence": "Chromium run of 2026-09-24 against http://localhost:3100 with a per-step observation log (DOM node counts, row order, menu-item labels, issued requests) and a separate geometry probe recording the cancel/··· bounding boxes and the elementFromPoint hit; the store was inspected directly afterwards to confirm the pin returned to false and the deleted conversation moved to lifecycle_state=deleted.",
+      "conclusion": "pass — ten controls runtime-verified against the current components; one real defect found by the run and fixed before the final observation"
+    },
     {
       "id": "inventory-route-denominator-2026-07-28",
       "target": "Next.js and Expo Router route trees",

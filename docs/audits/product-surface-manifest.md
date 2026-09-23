@@ -1,8 +1,8 @@
 # iOrbit Product Surface Manifest
 
 - Schema: 2
-- Indexed commit: `52c086711c7660cc70a9fdd35e93c65f5a44586a`
-- Deterministic generated timestamp (commit time): 2026-09-24T02:03:28+09:00
+- Indexed commit: `ffdf4d6633340bd6008536de49079648a70d5487`
+- Deterministic generated timestamp (commit time): 2026-09-24T02:14:47+09:00
 - Scope: All production Next.js page routes; API and /dev routes excluded
 - Evidence level: Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.
 - Routes: 45
@@ -15,16 +15,16 @@
 
 | Route | Purpose | Access | Data sources | Actions | Tests | Static risks |
 | --- | --- | --- | --- | ---: | ---: | ---: |
-| `/app/account/forgot-password` | Password recovery | public-auth-entry | Live, Mock, Fixture, Derived, User Confirmed | 49 | 7 | 3 |
-| `/app/account/login` | User sign in | public-auth-entry | Live, Mock, Fixture, Derived, User Confirmed | 49 | 30 | 3 |
+| `/app/account/forgot-password` | Password recovery | public-auth-entry | Live, Mock, Fixture, Derived, User Confirmed | 49 | 7 | 1 |
+| `/app/account/login` | User sign in | public-auth-entry | Live, Mock, Fixture, Derived, User Confirmed | 49 | 30 | 1 |
 | `/app/account/mobile-google` | Mobile Google authentication completion | public-auth-entry | Live, Mock, Fixture, Derived, User Confirmed | 2 | 3 | 0 |
-| `/app/account/reset-password` | Production application surface; purpose requires product review | public-auth-entry | Live, Derived, User Confirmed | 46 | 5 | 3 |
-| `/app/account/signup` | User account creation | public-auth-entry | Live, Mock, Fixture, Derived, User Confirmed | 49 | 30 | 3 |
+| `/app/account/reset-password` | Production application surface; purpose requires product review | public-auth-entry | Live, Derived, User Confirmed | 46 | 5 | 1 |
+| `/app/account/signup` | User account creation | public-auth-entry | Live, Mock, Fixture, Derived, User Confirmed | 49 | 30 | 1 |
 | `/app/admin/access` | Admin access entry | authenticated | Live, Derived | 2 | 30 | 0 |
 | `/app/admin/events` | Admin event operations | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 7 | 30 | 0 |
 | `/app/admin` | Admin operations | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 7 | 30 | 0 |
 | `/app/agent/actions` | Production application surface; purpose requires product review | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 67 | 30 | 0 |
-| `/app/agent` | Relationship operations Agent | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 152 | 30 | 11 |
+| `/app/agent` | Relationship operations Agent | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 152 | 30 | 2 |
 | `/app/agent/plan` | Production application surface; purpose requires product review | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 64 | 30 | 0 |
 | `/app/agent/strategy` | Production application surface; purpose requires product review | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 72 | 10 | 0 |
 | `/app/contacts/[id]` | Contact identity and relationship detail | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 91 | 30 | 0 |
@@ -34,7 +34,7 @@
 | `/app/contacts` | Contact list and discovery | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 81 | 30 | 0 |
 | `/app/contacts/pipeline` | Relationship pipeline | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 68 | 30 | 0 |
 | `/app/events/[id]/analytics` | Production application surface; purpose requires product review | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed | 68 | 19 | 0 |
-| `/app/events/[id]/live` | Production application surface; purpose requires product review | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 124 | 30 | 2 |
+| `/app/events/[id]/live` | Production application surface; purpose requires product review | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 124 | 30 | 1 |
 | `/app/events/[id]/operations/admission` | Production application surface; purpose requires product review | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 85 | 30 | 0 |
 | `/app/events/[id]/operations/check-in` | Production application surface; purpose requires product review | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed | 73 | 27 | 0 |
 | `/app/events/[id]/operations/experience` | Production application surface; purpose requires product review | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed | 76 | 30 | 0 |
@@ -52,9 +52,9 @@
 | `/app` | Public product entry | public-at-proxy | Live, Mock, Fixture, Derived, User Confirmed | 28 | 30 | 0 |
 | `/app/platform` | Platform entry | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 3 | 24 | 0 |
 | `/app/profile/continue` | Production application surface; purpose requires product review | authenticated | Live, Mock, Fixture, Derived, User Confirmed | 0 | 30 | 0 |
-| `/app/profile` | User profile | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed | 108 | 30 | 1 |
+| `/app/profile` | User profile | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed | 108 | 30 | 0 |
 | `/app/register` | Legacy registration entry | ungated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 3 | 30 | 0 |
-| `/app/settings` | User, Agent, memory, automation, and appearance settings | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed | 108 | 27 | 1 |
+| `/app/settings` | User, Agent, memory, automation, and appearance settings | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed | 108 | 27 | 0 |
 | `/app/tasks/[id]` | Production application surface; purpose requires product review | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 84 | 30 | 0 |
 | `/app/tasks` | Production application surface; purpose requires product review | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 84 | 30 | 0 |
 | `/app/tasks/personal` | Production application surface; purpose requires product review | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed | 91 | 30 | 0 |

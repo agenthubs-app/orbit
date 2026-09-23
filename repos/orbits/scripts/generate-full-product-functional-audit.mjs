@@ -1643,12 +1643,12 @@ const LIVE_PROFILE_INTERACTION_EVIDENCE = new Map(
       "Extraction produced a local draft only; it made no profile write until the separate save action.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:127",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:131",
       "Every rendered scalar field accepted its audit value; the authenticated email remained readonly and retained audit-permission-1785253354985@example.invalid.",
       "Field edits remained local until save; the readonly email could not be changed by the editor.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:159",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:163",
       "Bio and opener accepted distinct multi-word Chinese values and updated the business-card preview before save.",
       "Textarea edits remained local until save.",
     ],
@@ -1663,7 +1663,7 @@ const LIVE_PROFILE_INTERACTION_EVIDENCE = new Map(
       "Draft input and Enter handling changed local tag state only until save.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:119",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:123",
       "The desktop form rejected a whitespace-only name, then submitted the complete 100% profile through the actor-scoped PUT and GET readback chain.",
       "One profile record was updated in place; a hard re-entry showed the same values and no duplicate record.",
     ],
@@ -3020,6 +3020,62 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "web-debug-api-probe-method-query-ui-2026-07-30",
     },
   ]),
+  // 台账「遗留清单（六域收尾统一登记）」第 2 条：任务 6b 把这 10 枚控件下调为
+  // `inventoried-static-only`，因为 2026-07-29 的证据属于已被重写的旧组件。
+  // 2026-09-24 用真实浏览器逐枚重跑（qa@orbit.test / 验证库 orbit_newui_events_20260922），
+  // 下面每一条 actualResult 都是那一轮**实测**到的结果，不是预期。
+  ...[
+    [
+      "app/agent/iorbit-0918/iorbit-home.tsx:1083",
+      "Activating ◷ 历史记录 on the overview mounted the history drawer (0 → 1 [data-orbit-agent-history-drawer] node), rendered five real conversation rows under the 历史记录 heading, and moved keyboard focus inside the drawer. No conversation request was issued: the list was already resident from the page load.",
+    ],
+    [
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:164",
+      "＋ 新对话 closed the drawer and left the actor on /app/agent with an empty thread (zero rendered turns, composer visible). No session was written by the activation itself.",
+    ],
+    [
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:246",
+      "Activating a history row closed the drawer, moved the URL to /app/agent?session=evidence-0924-a and restored that stored conversation's two turns from the server.",
+    ],
+    [
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:277",
+      "··· opened exactly one [data-orbit-agent-history-menu] for its own row (0 → 1 menus) with the pin, rename, move-to and delete items visible, and reported aria-expanded=true.",
+    ],
+    [
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:304",
+      "置顶 on the last row (index 4 of 5) issued exactly one PATCH /api/ai/conversations/sessions/<id>, moved that row to index 0 with a 已置顶 · 2026年9月18日 meta line, stayed at index 0 across a hard reload, and flipped the menu item text to 取消置顶. Activating it again issued a second PATCH and returned the row to unpinned.",
+    ],
+    [
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:317",
+      "重命名 replaced the row body with the rename form (rename inputs 0 → 1) prefilled with that conversation's current title, and closed the ··· menu.",
+    ],
+    [
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:213",
+      "The rename field arrived focused and prefilled with the current title, accepted typed replacement text, and emptying it disabled the adjacent 保存 button. Typing alone issued no request.",
+    ],
+    [
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:228",
+      "保存 issued exactly one PATCH /api/ai/conversations/sessions/evidence-0924-a followed by the list refetch, replaced the row title with the typed value, and the new title was still present after a hard reload. The button is disabled while the field is empty, so an empty rename cannot be submitted.",
+    ],
+    [
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:236",
+      "取消 discarded the typed replacement, left the stored title unchanged and issued zero requests. This control was found broken by the same runtime run: the invisible ··· button (position:absolute, opacity:0, pointer-events:auto) covered the centre of 取消 (cancel x1157–1203, ··· x1177–1205; document.elementFromPoint at the cancel centre returned button.btn.ir-hist-more), so a mouse click opened the menu instead. The ··· button is no longer rendered while its row is renaming, and the observation above is from the re-run after that fix.",
+    ],
+    [
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:355",
+      "删除对话 opened the confirmation alert dialog 「删除这个对话？」 offering 保留对话 / 删除对话 rather than deleting immediately. Confirming issued exactly one DELETE /api/ai/conversations/sessions/evidence-0924-c, removed the row (6 → 5) and the removal survived a hard reload; the stored record moved to lifecycle_state=deleted rather than being dropped.",
+    ],
+  ].map(([suffix, actualResult]) => [
+    `web:/app/agent|repos/orbits/app/(app)/${suffix}`,
+    {
+      actualResult,
+      testData:
+        "qa@orbit.test signed in through the real /app/account/login form in a 1240×900 Chromium session against the Next dev server on :3100, backed by the local verification database orbit_newui_events_20260922 (workspace:orbit-small-staging-20260917); three throwaway conversations were seeded beforehand through the real POST /api/ai/conversations/sessions route.",
+      idempotency:
+        "Every activation issued at most one write (pin and rename one PATCH each, delete one DELETE); 取消 and the menu/open controls issued none. The pin toggle was returned to unpinned and the three throwaway conversations were removed through the same DELETE route, leaving the fixture set exactly as found; the pixel-baseline conversation iorbit-visual-chat-0918 was never mutated. The whole run produced zero console errors.",
+      verificationCase: "web-agent-history-drawer-controls-2026-09-24",
+    },
+  ]),
 ]);
 const LIVE_CONTACTS_LIST_INTERACTION_EVIDENCE = new Map([
   [
@@ -3182,6 +3238,21 @@ const LIVE_EVENT_REGISTRATION_INTERACTION_EVIDENCE = new Map(
   ]),
 );
 const VERIFIED_AUDIT_CASES = [
+  {
+    id: "web-agent-history-drawer-controls-2026-09-24",
+    target:
+      "/app/agent history drawer (app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx) plus the overview entry point iorbit-home.tsx:1083, driven end to end in a real Chromium session against the Next dev server on :3100 over the Postgres verification database",
+    testData:
+      "qa@orbit.test signed in through the real login form at 1240×900; verification database orbit_newui_events_20260922, workspace:orbit-small-staging-20260917; three throwaway conversations seeded through POST /api/ai/conversations/sessions; the pixel-baseline conversation iorbit-visual-chat-0918 deliberately left untouched",
+    expected:
+      "Each of the ten controls performs its stated effect; the write controls (pin, save rename, delete) persist across a hard reload; cancel rename writes nothing; delete asks for confirmation first",
+    actual:
+      "All ten were exercised and behaved as specified, with zero console errors across the run. 取消 (cancel rename) initially could not be activated at all: the row's invisible ··· button covered its centre point, so the click opened the more menu instead; document.elementFromPoint at the cancel centre returned button.btn.ir-hist-more. After the ··· button stopped being rendered while its own row is renaming, cancel discarded the edit, left the stored title unchanged and issued zero requests. Pin moved a row from index 4 to index 0 and held that position across reload; save rename persisted across reload; delete raised the 「删除这个对话？」 alert dialog before issuing one DELETE.",
+    evidence:
+      "Chromium run of 2026-09-24 against http://localhost:3100 with a per-step observation log (DOM node counts, row order, menu-item labels, issued requests) and a separate geometry probe recording the cancel/··· bounding boxes and the elementFromPoint hit; the store was inspected directly afterwards to confirm the pin returned to false and the deleted conversation moved to lifecycle_state=deleted.",
+    conclusion:
+      "pass — ten controls runtime-verified against the current components; one real defect found by the run and fixed before the final observation",
+  },
   {
     id: "inventory-route-denominator-2026-07-28",
     target: "Next.js and Expo Router route trees",
