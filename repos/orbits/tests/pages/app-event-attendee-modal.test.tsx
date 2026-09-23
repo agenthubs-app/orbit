@@ -70,7 +70,9 @@ test("attendee modal: buttons follow the real contact request status", () => {
   assert.match(waiting, /data-events-contact-status="awaiting_target_consent"/);
   assert.match(waiting, /申请已发送，等待对方确认/);
   // 终审 M6：自己发出的待确认申请 → 禁用的状态标签 + 「撤回申请」
-  assert.match(waiting, /<button class="btn ev-mo-btn-primary" data-events-modal-action="exchange" disabled="" type="button">等待对方确认<\/button><button class="btn ev-mo-btn-ghost" data-events-modal-action="withdraw" type="button">撤回申请<\/button>/);
+  // 2026-09-24：状态标签由 <button disabled> 改为 <span aria-disabled>（P0 missing static
+  // behavior evidence 的本域既定改法，同 event-detail 两枚常驻禁用 CTA），几何与色阶不变。
+  assert.match(waiting, /<span aria-disabled="true" class="btn ev-mo-btn-primary ev-mo-btn-disabled" data-events-modal-action="exchange">等待对方确认<\/span><button class="btn ev-mo-btn-ghost" data-events-modal-action="withdraw" type="button">撤回申请<\/button>/);
 
   const incoming = render({ contactRequestDirection: "incoming", contactRequestId: "req:2", contactRequestRevision: 1, contactRequestStatus: "awaiting_target_consent" });
   assert.match(incoming, /对方向你发起了交换申请/);
@@ -169,6 +171,18 @@ test("attendee modal: 撤回申请 posts withdraw with the persisted request id 
         <EventAttendeeModal eventDate="d" eventId={MODAL_EVENT_ID} eventName="n" onClose={noop} onExchange={noop} onNote={noop} onSchedule={noop} open person={modalPerson({ contactRequestDirection: "outgoing", contactRequestId: "req:1", contactRequestRevision: 1, contactRequestStatus: "awaiting_target_consent" })} t={t} />,
       );
     });
+    // P0「missing static behavior evidence」的改法：撤回分支里那枚只渲染状态文案的常驻禁用件
+    // 不再是 <button disabled>，而是 <span aria-disabled>（同 event-detail 两枚常驻禁用 CTA）。
+    const statusAffordance = renderer.root.find((node) => node.props["data-events-modal-action"] === "exchange");
+    assert.equal(statusAffordance.type, "span");
+    assert.equal(statusAffordance.props["aria-disabled"], "true");
+    assert.equal(statusAffordance.props.className, "btn ev-mo-btn-primary ev-mo-btn-disabled");
+    assert.equal(statusAffordance.props.onClick, undefined, "状态件不带任何 handler");
+    assert.equal(
+      renderer.root.findAll((node) => node.type === "button" && node.props["data-events-modal-action"] === "exchange").length,
+      0,
+      "撤回分支里不应再有无 handler 的 <button>",
+    );
     const withdraw = renderer.root.find((node) => node.type === "button" && node.props["data-events-modal-action"] === "withdraw");
     await act(async () => { await (withdraw.props.onClick() as Promise<void>); });
     assert.equal(calls.length, 1);

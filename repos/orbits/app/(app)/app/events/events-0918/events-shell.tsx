@@ -636,6 +636,9 @@ export const EVENTS_STYLES = `
 [data-orbit-real-page="events-0918"] .btn.ev-mo-btn-primary:hover { background: #2E3270; color: #FFFFFF; }
 [data-orbit-real-page="events-0918"] .btn.ev-mo-btn-primary:active { transform: none; }
 [data-orbit-real-page="events-0918"] .btn.ev-mo-btn-primary:disabled, [data-orbit-real-page="events-0918"] .btn.ev-mo-btn-primary:disabled:hover { background: #0E1225; opacity: .5; cursor: default; }
+/* 常驻禁用的状态件（撤回分支的「等待对方确认」）落成 <span aria-disabled>，拿不到 :disabled，
+   这里按 .btn.ev-mo-btn-primary:disabled 的同一组取值把禁用外观还回去。 */
+[data-orbit-real-page="events-0918"] .btn.ev-mo-btn-disabled, [data-orbit-real-page="events-0918"] .btn.ev-mo-btn-disabled:hover { background: #0E1225; opacity: .5; cursor: default; }
 [data-orbit-real-page="events-0918"] .btn.ev-mo-btn-ghost { padding: 14px; border: 1px solid #B9BCEB; border-radius: 12px; background: #FFFFFF; color: #2E3270; font-size: 15px; font-weight: 500; cursor: pointer;
   height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; text-decoration: none; }
 [data-orbit-real-page="events-0918"] .btn.ev-mo-btn-ghost:hover { background: #ECEEFB; color: #2E3270; }

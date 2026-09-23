@@ -100,7 +100,7 @@ export function EventAttendeeModal({ eventDate, eventId, eventName, onClose, onE
         ) : control.canWithdraw ? (
           // 终审 M6：自己发出的待确认申请 → 可撤回（同 ContactAction），不只是禁用的「等待对方确认」。
           <>
-            <button className="btn ev-mo-btn-primary" data-events-modal-action="exchange" disabled type="button">{t(status.action)}</button>
+            <span aria-disabled="true" className="btn ev-mo-btn-primary ev-mo-btn-disabled" data-events-modal-action="exchange">{t(status.action)}</span>
             <button className="btn ev-mo-btn-ghost" data-events-modal-action="withdraw" disabled={control.busy} onClick={() => void control.withdraw()} type="button">{control.busy ? t({ en: "Withdrawing…", zh: "撤回中…" }) : t({ en: "Withdraw request", zh: "撤回申请" })}</button>
           </>
         ) : (

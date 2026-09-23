@@ -110,9 +110,9 @@
 | `web:/app/contacts/new` | web | production | `/app/contacts/new` | `web:/app/contacts` |  | 1 | 111 | 11 | runtime-partially-verified-external-capability-restricted |
 | `web:/app/contacts/pipeline` | web | production | `/app/contacts/pipeline` | `web:/app/contacts` |  | 1 | 75 | 5 | runtime-partially-verified-web-empty-read-only-pipeline |
 | `web:/app/events` | web | production | `/app/events` | `web:/app` |  | 1 | 78 | 79 | inventory-complete-runtime-verification-pending |
-| `web:/app/events/[id]` | web | production | `/app/events/[id]` | `web:/app/events` | id | 3 | 181 | 77 | inventory-complete-runtime-verification-pending |
+| `web:/app/events/[id]` | web | production | `/app/events/[id]` | `web:/app/events` | id | 3 | 180 | 77 | inventory-complete-runtime-verification-pending |
 | `web:/app/events/[id]/analytics` | web | production | `/app/events/[id]/analytics` | `web:/app/events/[id]` | id | 1 | 76 | 1 | inventory-complete-runtime-verification-pending |
-| `web:/app/events/[id]/live` | web | production | `/app/events/[id]/live` | `web:/app/events/[id]` | id | 2 | 157 | 5 | inventory-complete-runtime-verification-pending |
+| `web:/app/events/[id]/live` | web | production | `/app/events/[id]/live` | `web:/app/events/[id]` | id | 2 | 156 | 5 | inventory-complete-runtime-verification-pending |
 | `web:/app/events/[id]/operations` | web | production | `/app/events/[id]/operations` | `web:/app/events/[id]` | id | 2 | 110 | 6 | inventory-complete-runtime-verification-pending |
 | `web:/app/events/[id]/operations/admission` | web | production | `/app/events/[id]/operations/admission` | `web:/app/events/[id]/operations` | id | 1 | 97 | 2 | inventory-complete-runtime-verification-pending |
 | `web:/app/events/[id]/operations/check-in` | web | production | `/app/events/[id]/operations/check-in` | `web:/app/events/[id]/operations` | id | 1 | 81 | 1 | inventory-complete-runtime-verification-pending |
