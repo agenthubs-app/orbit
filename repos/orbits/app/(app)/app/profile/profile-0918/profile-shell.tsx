@@ -171,6 +171,9 @@ export const PROFILE_STYLES = `
 [data-orbit-real-page="profile-0918"] .pc-main { max-width: 1240px; margin: 0 auto; padding: 14px 40px 72px; display: flex; flex-direction: column; gap: 22px; }
 [data-orbit-real-page="profile-0918"] .pc-crumb { font-size: 13px; color: #9FA3C4; }
 [data-orbit-real-page="profile-0918"] .pc-crumb-link { color: #6B6F99; }
+/* 跨域 <a> 字色门禁：面包屑落成 <a>，作用域 a:hover 会把设计的 #6B6F99 换成
+   #0E1225。设计稿无 style-hover，这里只中和基线。 */
+[data-orbit-real-page="profile-0918"] .pc-crumb-link:hover { color: #6B6F99; }
 [data-orbit-real-page="profile-0918"] .pc-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 20px; }
 [data-orbit-real-page="profile-0918"] .pc-head-copy { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 [data-orbit-real-page="profile-0918"] .pc-h1 { margin: 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: clamp(30px, 3.6vw, 42px); letter-spacing: -0.03em; }

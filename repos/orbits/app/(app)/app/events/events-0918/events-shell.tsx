@@ -122,6 +122,11 @@ export const EVENTS_STYLES = `
 [data-orbit-real-page="events-0918"] .ev-card { display: flex; flex-direction: column; gap: 14px; padding: 14px 14px 18px; border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; transition: box-shadow .2s, transform .2s; }
 [data-orbit-real-page="events-0918"] .ev-card:hover { box-shadow: 0 12px 32px rgba(59,63,122,0.10); transform: translateY(-2px); }
 [data-orbit-real-page="events-0918"] .ev-cover-link { display: block; cursor: pointer; }
+/* 跨域 <a> 字色门禁：封面块在 app 侧被 linkify 成 <a>，作用域基线 a { color:#3B3F7A }
+   会把它从卡片继承来的墨色改掉。设计稿里这一块不是链接，所以显式写回 inherit，
+   把 linkify 前的继承关系原样还回来（hover 同理，设计稿无 style-hover）。 */
+[data-orbit-real-page="events-0918"] .ev-cover-link { color: inherit; }
+[data-orbit-real-page="events-0918"] .ev-cover-link:hover { color: inherit; }
 [data-orbit-real-page="events-0918"] .ev-cover { position: relative; height: 150px; border: 0; border-radius: 12px; overflow: hidden; display: block; }
 [data-orbit-real-page="events-0918"] .ev-cover-ended { opacity: 0.74; }
 [data-orbit-real-page="events-0918"] .ev-chip { padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 500; white-space: nowrap; }
@@ -129,6 +134,9 @@ export const EVENTS_STYLES = `
 [data-orbit-real-page="events-0918"] .ev-body { display: flex; flex-direction: column; gap: 10px; padding: 0 4px; }
 [data-orbit-real-page="events-0918"] .ev-title { margin: 0; font-size: 17px; font-weight: 700; color: #0E1225; line-height: 1.4; text-align: left; }
 [data-orbit-real-page="events-0918"] .ev-title-link { color: #0E1225; cursor: pointer; }
+/* 跨域 <a> 字色门禁：卡片标题落成 <a>，作用域 a:hover 会盖掉设计的 #0E1225。
+   设计稿无 style-hover，这里只中和基线。 */
+[data-orbit-real-page="events-0918"] .ev-title-link:hover { color: #0E1225; }
 [data-orbit-real-page="events-0918"] .ev-meta { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #3B3F7A; }
 [data-orbit-real-page="events-0918"] .ev-meta-icon { color: #9FA3C4; }
 [data-orbit-real-page="events-0918"] .ev-tags { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -717,6 +725,9 @@ export const EVENTS_STYLES = `
 [data-orbit-real-page="events-0918"] .ev-mo-ok-role { font-size: 13px; color: #6B6F99; text-align: center; }
 [data-orbit-real-page="events-0918"] .ev-mo-ok-swap { width: 44px; height: 44px; margin: 0 auto; border-radius: 50%; border: 1px solid #DDDEFA; color: #4B4FC7; display: flex; align-items: center; justify-content: center; }
 [data-orbit-real-page="events-0918"] .ev-mo-ok-contact { width: 100%; padding: 16px; border-radius: 12px; background: #F7F7FD; font-size: 13px; color: #2E3270; text-align: center; box-sizing: border-box; }
+/* 跨域 <a> 字色门禁：交换/预约弹窗的成功块落成 <a>，作用域 a:hover 会盖掉设计的
+   #2E3270。设计稿无 style-hover，这里只中和基线。 */
+[data-orbit-real-page="events-0918"] .ev-mo-ok-contact:hover { color: #2E3270; }
 [data-orbit-real-page="events-0918"] .ev-mo-ok-tip { width: 100%; padding: 14px 16px; border-radius: 12px; background: #ECEEFB; font-size: 13px; color: #2E3270; box-sizing: border-box; }
 [data-orbit-real-page="events-0918"] .ev-mo-ok-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 100%; }
 [data-orbit-real-page="events-0918"] .ev-mo-ok-actions .btn.ev-mo-btn-primary:only-child { grid-column: 3; }

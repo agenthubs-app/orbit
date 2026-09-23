@@ -296,6 +296,11 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-import-panel { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 26px; display: flex; flex-direction: column; gap: 16px; }
 [data-orbit-real-page="network"] .nw-import-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 [data-orbit-real-page="network"] .nw-import-panel-link { font-size: 14px; color: #4B4FC7; text-decoration: underline; white-space: nowrap; }
+/* 跨域 <a> 字色门禁（tests/ui/orbit-0918-anchor-colour.test.ts）：这一行落成 <a>，
+   作用域基线 a:hover { color:#0E1225 } 的特指度高于单类规则，会在 hover 时把设计的
+   #4B4FC7 换掉。设计稿这条链接没有 style-hover，所以这里只是把基线中和回原色，
+   不是新增一个悬停态。同文件 .nw-link / .btn.nw-textlink 已是同一写法。 */
+[data-orbit-real-page="network"] .nw-import-panel-link:hover { color: #4B4FC7; }
 [data-orbit-real-page="network"] .nw-import-box { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 26px; display: flex; flex-direction: column; gap: 14px; }
 [data-orbit-real-page="network"] .nw-import-note { display: flex; gap: 12px; padding: 14px; border: 1px solid #E8E9F6; border-radius: 12px; }
 [data-orbit-real-page="network"] .nw-import-note-icon { width: 36px; height: 36px; border-radius: 10px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
