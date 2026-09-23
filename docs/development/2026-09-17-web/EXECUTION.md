@@ -913,6 +913,16 @@ reset-invalid 三屏残差的主要来源。② 登录 / 注册的 0.09 全部�
 
 **差异陈述**：失败集与 6b 收尾时的 12 条（pages 2 + audits 10）加上 services 的 3 条环境基线**完全一致，一条不多不少、名字未变**。
 
+### `ungated` 四条路由的判定（2026-09-24）
+
+任务 12 让审计产物新增 `ungated` 类（前缀表与页面自身都没有服务端门禁）。四条里三条是**有意公开**，经逐个查证：
+
+- `/app/o/[slug]` —— 组织者公开页（文件头注释自述「组织者公开页 route adapter」），公开即其用途。
+- `/app/login-admin` —— 管理员登录入口，注释自述「不在 route 中处理认证逻辑」；登录页要求未登录可达。
+- `/app/register` —— 注册入口，只做 `redirect`。
+
+第四条 `app/(app)/app/tasks/relationship/[id]/page.tsx` 是**真缺口**，按「App 端不动」不改，见本清单第 3 条。也就是说这一类现在正确地只点名了一处需要决定的地方。
+
 ### 遗留清单（六域收尾统一登记）
 
 1. **「≥1 条七日内已确认约谈」未种成，plan 屏「本周日程」是真实空态。** 约谈的创建路径（`features/appointments/service.ts createDraft`）要求一条 `status='accepted'` 的 `event_ops_contact_requests` 授权，也就是 QA 账号必须先成为某场活动的 canonical 成员并与人互换联系方式；而本次任务书明确要求「不要动 Events/Ops 装置（`participant.a`、`event_ops_*`）」，且 2026-09-22 的数据准备已记录 `qa@orbit.test` 的 canonical 报名被「未发布报名配置」门禁挡住。两条约束相冲突，**选择了不动 `event_ops_*`**，据实记录。影响面只有 plan aside 的一张卡与「本周日程 0」这一个计数，两者都走真实空态，没有伪造。补法：给 `qa@orbit.test` 走一遍真实的活动报名 → 签到 → 联系方式互换流程，或给 `orbit_newui_events_20260922` 之外的库做一份独立的约谈装置。
