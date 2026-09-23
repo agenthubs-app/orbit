@@ -31,7 +31,7 @@
 
 ## 结构化阅读入口
 
-- 第 1 节：源标题：Compose App Chat Mock Live Handoff
+- 第 1 节：Compose App Chat Live 边界
 - 第 2 节：Live 服务 Provider Files
 - 第 3 节：源标题：Switch Mechanism
 - 第 4 节：Required Env Vars Or 权限

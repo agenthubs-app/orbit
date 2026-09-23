@@ -45,8 +45,9 @@ Orbit AI 的当前权威设计入口：解释 command center、live conversation
 - 第 12 节：人脉推荐工具
 - 第 13 节：活动推荐工具
 - 第 14 节：页面使用规则
-- 第 15 节：测试要求
-- 第 16 节：协作规则
+- 第 15 节：会话起源与整理
+- 第 16 节：测试要求
+- 第 17 节：协作规则
 
 ## 保留的代码与命令证据
 
@@ -120,6 +121,7 @@ artifact producer 只生成“可复核结果”，不代表动作已经执行�
 - `contact_recommendation_producer`
 - `followup_review_producer`
 - `relationship_chat_review_producer`
+- `self_profile_reader`
 
 artifact payload 必须保留：
 
@@ -162,6 +164,15 @@ Orbit AI planner/runtime
 - `contacts.recommend`：Contacts 或 Recommendations 拥有人脉候选资格、联系人排序、推荐理由和联系人动作；它可以调用 Relationship Search 获取 evidence-backed candidates。
 - `followups.reviewQueue`：Followups 拥有跟进队列、逾期/沉睡关系解释和提醒动作边界。
 - `chat.context`：Chat 拥有会话上下文、隐私边界和草稿准备策略。
+- `profile.getSelf`：Profile 拥有本人资料的读取和字段白名单；身份只由认证服务装配注入，模型不能选择账号。该能力只声明 chat 触发，不用于自动化。
+
+`profile.getSelf` 使用 `self_profile` intent/artifact，只接受 `query` 和 `locale`；执行校验拒绝未知参数。它区分未认证、空资料和读取失败，不回退示例账号。每次调用重新读取，账号切换或资料更新不会复用旧快照。
+
+完整白名单资料只通过当前 artifact 对象关联的 WeakMap 传给本轮 replan/synthesis，不能按 ID 回放，也不随 artifact JSON 保存。可序列化的 `selfProfile` 只含状态、来源版本和随机引用。自我介绍等原文在模型输入中标为不可信数据，不能授权工具或改变身份。
+
+本人资料工具不提高既有循环上限。当前 runtime 默认深度为 2，执行读取但跳过综合回复；深度至少为 3 时资料才进入 replan/synthesis。本地受控测试使用深度 3，真实模型与实际运行配置尚未验收，不能将该测试写成默认产品配置已完成资料综合回答。
+
+包含本人资料工具的完整 trace 使用元数据模式：省略原始消息、模型正文、参数、各阶段输入／输出正文及其他结果正文，保留工具状态、版本、脱敏引用和时序；不额外扫描未按账号限定的诊断数据集合。该处理发生在 runtime 完成后，不清空模型合法输入。旧工具单独运行时保持原追踪行为；通用 preview/mock 服务拒绝生成本人资料结果。
 
 当前 live artifact 链中，`chat.context` 通过 `createOrbitAgentChatContextArtifactService()` 调用 Chat conversation/message service，读取 live `conversations`、`messages`、`contacts` 和 `connections` 派生出的 thread payload，再映射为 `relationship_chat_context` artifact。Orbit AI 只负责工具适配、可复核 artifact、trace 和 safety 标记；artifact 生成不会绕过 feature service 直接读取 `orbit_records`，不会写消息，也不会打开实时传输、外部网络、邮件、日历或通知。
 
@@ -186,8 +197,8 @@ Calendar action service 只根据已有 artifact 生成本地预览。只有卡�
 Live conversation 使用 server-side model provider API。必需环境变量：
 
 - `ORBIT_AGENT_CONVERSATION_MODE=live`
-- `ORBIT_AGENT_PROVIDER=gemini | deepseek | openai`
 - 对应 provider 的 server-side key：`GEMINI_API_KEY`、`DEEPSEEK_API_KEY` 或 `OPENAI_API_KEY`
+- `ORBIT_AGENT_PROVIDER=gemini | deepseek | openai`（可选；未设置时按 gemini → deepseek → openai 顺序自动选第一个配置了 key 的 provider，显式设置则即使缺 key 也以设置为准并报 `MODEL_API_KEY_MISSING`）
 
 可选环境变量：
 
@@ -203,7 +214,7 @@ Live conversation 使用 server-side model provider API。必需环境变量：
 
 `orbit-ai-proactive-agent` 的 live 模式是 policy provider，不是推送系统。它把结构化 signal 转成 `deliverySurface: "orbit_ai_chat"` 的 assistant proactive turn，并用 safety ledger 证明没有 push、notification、email、calendar、live storage write、AI provider 或 external network side effect。Notifications 仍只负责底层投递机制和 deep link，不生成主动管家文案。
 
-Provider planner 输出必须经过 schema validation、allowed intent mapping 和 safety guard。当前只有 `events.recommend`、`contacts.recommend`、`followups.reviewQueue` 和 `chat.context` 可以进入内部工具适配层。
+Provider planner 输出必须经过 schema validation、allowed intent mapping 和 safety guard。当前允许 `events.recommend`、`contacts.recommend`、`followups.reviewQueue`、`chat.context` 和 `profile.getSelf` 进入内部工具适配层。
 
 Provider API 映射：
 
@@ -217,9 +228,19 @@ Live agent loop 必须短且可配置。`ORBIT_AGENT_MAX_LOOP_STEPS` 会被限�
 
 - `1`：只做 model provider planner。
 - `2`：planner 后允许 Orbit 内部 tool/artifact mapping。
-- `3`：tool/artifact 返回后，再调用 model provider synthesis 生成最终自然语言回复。
+- `3`：tool/artifact 返回后，把带来源的结果摘要回灌给 planner；planner
+  可以结束、收窄同一检索或选择一个不同的白名单工具。Runtime 只执行未重复
+  的新请求，然后基于全部 artifact 调用 synthesis。
 
-默认值是 `3`，但交互路径可以选择更低的默认值以减少顺序 provider round trip。任何实现都不允许开放式无限循环。
+共享 runtime 的交互默认值是 `2`，完整 trace 与显式配置为 `3` 时启用再规划和
+synthesis；当前产品环境可通过 `ORBIT_AGENT_MAX_LOOP_STEPS=3` 打开完整链路。
+任何实现都不允许开放式无限循环。
+
+再规划仍受同一 schema、intent/tool 对应关系、工具白名单和确认边界约束。
+完全相同的工具与参数会被指纹去重，避免模型循环。每轮 `replan` 和补充
+artifact 读取都会进入 conversation timings，随后持久化为 Run step。产品聊天
+同时保留 artifact 的 source modules、evidence ids、生成时间和记录数，用户可从
+回复下方的「查看依据」复核，而不是只能相信模型自然语言。
 
 ## 人脉推荐工具
 
@@ -251,11 +272,19 @@ Live agent loop 必须短且可配置。`ORBIT_AGENT_MAX_LOOP_STEPS` 会被限�
 
 会面备忘录（备忘录/会前准备）复用 `chat.context`：planner 把人名放进 `arguments.searchTerms`，synthesis 按固定四段模板输出（背景/上次进展/建议话题/待确认事项），只允许使用工具结果与对话历史里的事实，缺口写「待补充」。
 
-`history` 在服务端的用途：route 校验角色和长度后透传；runtime 把同一份最近轮次交给 planner（消解追问指代并按前文目标路由工具）、artifact contextMessages（参与检索词抽取与路径选择）和 synthesis（保持多轮连贯）。会话仍不做服务端持久化，历史由页面随每次请求携带。
+`history` 在模型运行时的用途：route 校验角色和长度后透传；runtime 把同一份最近轮次交给 planner（消解追问指代并按前文目标路由工具）、artifact contextMessages（参与检索词抽取与路径选择）和 synthesis（保持多轮连贯）。可靠发送会把规范消息写入 actor-scoped session store；页面携带的最近轮次仍是本次模型上下文，不能替代持久会话记录。
 
 带推荐结果的 assistant 轮在 history 中附加 `[本轮推荐明细]` 结构化行（名称/时间/地点/分数/理由）。实体详情查询走两级：明细块已含答案时 planner 用 general_chat 直接作答；需要完整记录时 planner 复用 `events.recommend` / `contacts.recommend`，把实体名放进 `arguments.searchTerms` 从 live 库取回完整记录（Contacts 排名 token 支持中日文名子串匹配；planner 提供的 searchTerms 优先于抽词服务，不会被覆盖）。不为实体详情新增白名单工具。等待回复期间侧边栏保持上一轮结果，新回复带结果时才替换。
 
 当 Orbit AI 嵌入 `/app/chat` 等模块页面时，模块页面不直接依赖 raw payload。嵌入方应在自己的 route view model 中调用 Orbit AI service，把 proposed tool intents、assistant reply 和 artifact surface 映射成该页面的 view model。
+
+## 会话起源与整理
+
+Web 与 App 共用 `shared/contract/ai-sessions.ts` 和对应运行时 schema。可靠发送保持 protocol v2；首次用户消息保存时冻结 schemaVersion 1 的 origin，包括受控入口 ID、客户端、模板版本、经授权引用、初始分组、稳定首消息 ID 和实际发送文本。后续消息或旧客户端省略新字段时必须保留 origin，不能从最近消息窗口重新推断。
+
+会话展示元信息使用独立的 `organization.revision`。客户端只通过 session PATCH 提交 `expectedRevision`、`mutationId` 和改动字段；消息快照不携带组织字段的覆盖权。分组创建、改名和删除也使用 revisioned mutation。删除非空分组会在一个事务里保留并移出成员会话；删除会话建立 tombstone，迟到保存不能复活旧 ID。
+
+列表 API 支持游标、搜索、分组和置顶过滤，每页最多 50 条。两端消费全部分页后才做完整历史搜索和分组展示。另一端的变化通过页面 focus 或显式 refresh 获取；当前没有实时订阅。所有读取与 mutation 都绑定服务端认证 actor，origin 中的 reference 只是来源声明，不能授予联系人、活动或笔记读取权限，也不能触发模型或外部动作。
 
 ## 测试要求
 

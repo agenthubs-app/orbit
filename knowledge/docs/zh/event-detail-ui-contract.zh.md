@@ -57,8 +57,12 @@ Sprint 95 恢复 `/app/events/[id]` 的活动详情层级，目标页面是
 - schedule：日期、时间、地点与地址。
 - relationship priority：第一优先认识的人、第一动作、来源上下文与渲染期无副作用标记。
 - registration action：可报名活动显示 `/app/register?code=EVENT001` 入口；已报名活动显示已报名状态。
-- attendee context：参会者名单或报名后可见提示。
+- attendee context：参会者名单或报名后可见提示；参会者名单是唯一的参会者目录，
+  不再额外渲染重复的“全部参会者”入口。
 - supporting details：关系上下文、推荐认识的人、readiness、来源保护摘要。
+
+推荐认识的人必须位于参会者名单之后，作为详情页最后的关系动作区；活动开始前，
+交换联系信息入口必须保持禁用态。
 
 移动端必须保留 hero、摘要和底部报名动作，并为固定底部动作留出
 `data-event-detail-overlap-guard="fixed-mobile-cta-space"`，避免内容被 CTA 遮挡。
@@ -71,6 +75,15 @@ Sprint 95 恢复 `/app/events/[id]` 的活动详情层级，目标页面是
 宽移动端出现横向滚动或按钮遮挡正文。
 
 ## Route View Model 边界
+
+`/app/events/[id]` 的公开目录详情不要求登录。登录态只用于叠加当前账户对该
+活动的报名记录；报名动作进入 `/app/events/[id]/register`，真实请求在没有
+session 时跳转登录，并保留精确回跳地址。未知活动或账户私有活动继续进入原有
+受保护的 owner-scoped fallback，不能因为公开目录存在而越权读取其他账户数据。
+
+参会者名单属于报名后数据。页面服务端在当前账户没有该活动的 active
+registration 时必须把 `stats.attendees` 收敛为空，只保留公开人数统计；不能先把
+姓名发送到浏览器再用遮罩、折叠或 CSS 隐藏。活动已结束也不自动放宽权限。
 
 `loadAppEventDetailRoute()` 仍返回原有 `success | empty | pending | failure`
 形状。`event_001` 使用 event detail record 作为 canonical event；在 live
@@ -121,6 +134,13 @@ Live service/provider 文件保持在既有边界：
 若携带旧活动 logistics，只能进入 source consistency 摘要，不能覆盖页面主时间、
 主地点或报名入口。
 
+交换联系信息的活动开始时间闸门由 event operations service 在服务端强制执行；
+页面的禁用态只是对应的交互提示，不能替代服务端校验。
+
+公开目录使用稳定且唯一的 event code。长 source id 必须通过保留可读前缀并附加
+稳定 hash 的方式生成 code，禁止简单截断造成多个活动指向同一详情。所有登录入口
+都必须回到 `/app/events/[id]` 或 `/app/events/[id]/register` 的完整 app 路径。
+
 ## 回归测试
 
 Sprint 95 的防回归测试是：
@@ -145,3 +165,5 @@ Sprint 95 的防回归测试是：
     640px 以下布局、固定底部 CTA 和 reserved space 合约，防止 375px 宽移动端
     横向溢出或 CTA 遮挡。
   - 证明 `/app/events/event_002` 仍是 controlled boundary，而不是伪造的折叠详情页。
+  - 证明公开详情不需要 session、未报名时服务端不序列化 attendee、已结束活动
+    不绕过名单权限，登录后返回精确活动路径。

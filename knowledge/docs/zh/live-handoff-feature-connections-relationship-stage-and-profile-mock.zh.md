@@ -33,10 +33,11 @@
 
 - 第 1 节：关系 Stage 和 Profile Mock Live 实现
 - 第 2 节：Live 服务 和 Provider Files
-- 第 3 节：源标题：Switch Mechanism
-- 第 4 节：Required Env Vars 和 权限
-- 第 5 节：Privacy 和 Provenance Constraints
-- 第 6 节：Replacement 测试
+- 第 3 节：跨端同步补充核实（2026-09-08）
+- 第 4 节：源标题：Switch Mechanism
+- 第 5 节：Required Env Vars 和 权限
+- 第 6 节：Privacy 和 Provenance Constraints
+- 第 7 节：Replacement 测试
 
 ## 保留的代码与命令证据
 
@@ -45,4 +46,62 @@
 
 ## 源文档正文
 
-源文档正文主要不是中文。中文镜像不直接机翻全文，避免生成一份看似同步、实际难以审计的副本；阅读时先看本页摘要、审计依据、标题入口和代码证据。需要逐段核对时，请打开上方原始来源。
+This sprint ships a mock-first boundary for relationship stage and profile fields. The live replacement must keep the same contract from `features/connections/profile-contract.ts` and the same API envelopes from:
+
+- `app/api/connections/[id]/stage/route.ts`
+- `app/api/connections/[id]/profile/route.ts`
+
+## Live Service And Provider Files
+
+### 跨端同步补充核实（2026-09-08）
+
+- 本次源码基线为外层 Git `b45641788`；术语修改不改变这里的业务行为。App 的 `connectionStagePath` 确实调用本模块 `/api/connections/[id]/stage`，并非其他已持久化的更新接口。
+- `createRelationshipStageAndProfileService` 在 live 模式选择 `createLiveRelationshipStageAndProfileService`。`updateStage` 只读连接图并构造 `live-store-stage-preview`，返回 `success: true` 不表示已保存。
+- 本地内存探针：请求 `nurture`，响应阶段为 `nurture`，存储前后均为 `active`，全图记录未变，`databaseWriteExecuted: false`。现有 `relationship-stage-profile-live-store.test.ts` 1 项通过，验证预览语义及零写入标志；记录未变由前述独立探针验证，未连接真实数据库。
+- App `ContactPipelineScreen.updateStage` 目前仅看 envelope 的 `success` 就显示完成态提示（例如“已把某联系人转入长期维护”）并刷新，因而会把预览误报为已保存。此前双向盘点中的“App 已有阶段修改”只能说明有操作入口，不能作为持久化或跨端回读已完成的证据。该缺陷尚未修复。
+- 阶段 PATCH 尚未像连接详情 GET 一样显式解析并传递当前 actor；live profile 服务只按 connection ID 查找。任何真实写入改造都须先明确账号／工作区授权、存储更新与并发策略、返回的持久化语义及旧客户端兼容，再接 Web 四阶段和 App 成功提示。此记录不是对新写入方案或生产数据操作的批准。
+- 后续验收必须覆盖：非所属账号零写入；保存后以新 service 实例回读；预览、失败与真实保存提示区分；双方客户端刷新后阶段一致。现有只读 Web 界面和 App 四阶段映射不能替代这些验收。
+
+- `features/connections/live-profile-service.ts` is the current live read implementation. It implements `RelationshipStageAndProfileService`, reads generated `connections`, `contacts`, and `evidence` through `features/connections/storage/connection-live-record-provider.ts`, and returns stage/profile preview payloads with source-backed provenance.
+- Current live `PATCH` behavior is preview-only. It validates requested relationship stages, derives or applies relationship type/context/mutual value/next-action fields in the response, and explicitly reports `databaseWriteExecuted: false` and `productionAuditLogWriteExecuted: false`.
+- `features/connections/relationship-stage-and-profile-mock/providers/stage-automation-provider.ts` is reserved for future persisted stage automation.
+- `features/connections/relationship-stage-and-profile-mock/providers/relationship-profiling-provider.ts` is reserved for future live relationship profiling.
+- `features/connections/relationship-stage-and-profile-mock/providers/profile-provenance-store.ts` is reserved for persisting source references, evidence ids, provider run ids, and user-visible explanations when writes are in scope.
+
+## Switch Mechanism
+
+- `ORBIT_FEATURE_MODE=mock` keeps route handlers on `createMockRelationshipStageAndProfileService`.
+- `ORBIT_MODULE_MODE=live` or `ORBIT_FEATURE_MODE=live` routes `relationship-stage-profile` through `createLiveRelationshipStageAndProfileService`.
+- `RELATIONSHIP_PROFILE_LIVE_STORE_UNCONFIGURED` fails closed when live storage is not configured.
+- The switch belongs in a service factory, not in the dev page. `/dev/capabilities/relationship-stage-and-profile-mock` remains a probe surface that imports the service boundary.
+
+## Required Env Vars And Permissions
+
+- `ORBIT_EVENT_DATABASE_URL`, `ORBIT_LIVE_DATABASE_URL`, or `ORBIT_DATABASE_URL` identifies the shared live record store used by the current live read implementation.
+- `ORBIT_RELATIONSHIP_PROFILE_STORE_URL`, `ORBIT_RELATIONSHIP_PROFILE_STORE_SERVICE_ROLE`, and `ORBIT_RELATIONSHIP_PROFILE_MODEL` are reserved for future persisted automation and provider-backed profiling.
+- User permission for relationship profile automation before any live stage automation or relationship profiling run.
+- Workspace permission for reading connection evidence, source links, and relationship notes.
+
+## Privacy And Provenance Constraints
+
+- These privacy and provenance constraints apply before replacing the mock.
+- Every returned `RelationshipProfileRecord` must preserve relationship type, stage, context, mutual value, latest summary, and next action with evidence ids.
+- Current live stage/profile previews must record which source references influenced each field and must not report persistence.
+- Future live stage automation and relationship profiling must record which source references influenced each persisted field.
+- The profile summary must expose whether it came from fixture, deterministic rules, live storage preview, or a live provider.
+- Do not send private contact notes, email/calendar excerpts, or event attendee context to a live provider unless the user has granted the required permission.
+- Sensitive next actions must stay behind a confirmation guard before any external action can run.
+- Failure envelopes must identify the boundary error code without leaking private source text.
+
+## Replacement Tests
+
+- `tests/capabilities/relationship-stage-profile-live-store.test.ts` proves current live mode reads generated relationship records from shared live storage and returns stage/profile preview payloads without database writes, audit writes, AI calls, or external provider calls.
+- Stage update success returns `{ success: true, data }` with stable relationship type, stage, context, mutual value, latest summary, next action, and provenance fields.
+- Future persisted profile update success returns `{ success: true, data }` and accounts for provenance for every field that live automation changes.
+- Declared body-less PATCH probes for the stage and profile routes continue to return 200 success envelopes with stable demo payloads.
+- Empty-state route coverage proves no selected connection returns a success envelope with `state: "empty"`.
+- Pending-state coverage proves live stage automation can pause without side effects.
+- Invalid body and invalid stage tests continue to return shared `VALIDATION_ERROR` envelopes.
+- Not-found coverage proves unknown connection ids return shared `NOT_FOUND` envelopes.
+- Provider failure coverage proves live relationship profiling failures return shared `SERVICE_UNAVAILABLE` envelopes.
+- Dev route rendering coverage continues to show success, empty, pending, and failure states plus the mock-to-live handoff.

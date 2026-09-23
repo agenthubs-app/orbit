@@ -29,18 +29,6 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
       "ownerArea": "orbit-ai"
     },
     {
-      "id": "harness-audit-2026-06-24",
-      "titleZh": "Harness 审计 2026-06-24",
-      "summaryZh": "记录长跑 harness 的早期审计结果、风险和修正方向，是理解 harness 演进的历史证据。",
-      "reviewEvidenceZh": "已纳入历史审计；当前 harness 行为已用 harness/README、AGENT.md 和 harness 脚本作为后续权威入口。",
-      "sourcePath": "harness-state/audits/2026-06-24-harness-audit.md",
-      "localizedSourcePath": "knowledge/docs/zh/harness-audit-2026-06-24.zh.md",
-      "category": "harness",
-      "status": "historical",
-      "freshness": "known-stale",
-      "ownerArea": "harness"
-    },
-    {
       "id": "bootstrap-product-context",
       "titleZh": "Bootstrap 产品上下文",
       "summaryZh": "记录 harness 启动阶段使用的产品上下文，用于解释早期 sprint 为什么围绕 Orbit 关系管理和 mock capability 展开。",
@@ -881,78 +869,6 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
       "ownerArea": "architecture"
     },
     {
-      "id": "learning-troubleshooting",
-      "titleZh": "根排障知识",
-      "summaryZh": "记录 Orbit AI trace submit loading、provider timeout 和 responsive submit 控件等排障过程。",
-      "reviewEvidenceZh": "来源文件为 gitignore 本地文件，2026-07-11 核对时在本机已缺失；综合内容仍保留在关联知识页。",
-      "sourcePath": ".learnings/TROUBLESHOOTING.md",
-      "localizedSourcePath": "knowledge/docs/zh/learning-troubleshooting.zh.md",
-      "category": "learning",
-      "status": "current",
-      "freshness": "known-stale",
-      "ownerArea": "learning"
-    },
-    {
-      "id": "learning-errors",
-      "titleZh": "根错误记录",
-      "summaryZh": "记录 harness 依赖、tsx eval、provider hang 和 git diff 命令等错误经验。",
-      "reviewEvidenceZh": "来源文件为 gitignore 本地文件，2026-07-11 核对时在本机已缺失；综合内容仍保留在关联知识页。",
-      "sourcePath": ".learnings/ERRORS.md",
-      "localizedSourcePath": "knowledge/docs/zh/learning-errors.zh.md",
-      "category": "learning",
-      "status": "current",
-      "freshness": "known-stale",
-      "ownerArea": "learning"
-    },
-    {
-      "id": "learning-patterns-root",
-      "titleZh": "根通用经验",
-      "summaryZh": "记录用户反馈、harness best practices 和项目维护经验。",
-      "reviewEvidenceZh": "来源文件为 gitignore 本地文件，2026-07-11 核对时在本机已缺失；综合内容仍保留在关联知识页。",
-      "sourcePath": ".learnings/LEARNINGS.md",
-      "localizedSourcePath": "knowledge/docs/zh/learning-patterns-root.zh.md",
-      "category": "learning",
-      "status": "current",
-      "freshness": "known-stale",
-      "ownerArea": "learning"
-    },
-    {
-      "id": "learning-performance",
-      "titleZh": "性能经验",
-      "summaryZh": "记录性能检查相关经验，作为后续优化和回归排查入口。",
-      "reviewEvidenceZh": "已标记为历史性能 learnings；当前性能判断需要结合新的 trace、测试或性能记录，但该经验仍是有效排查入口。",
-      "sourcePath": ".learnings/PERFORMANCE.md",
-      "localizedSourcePath": "knowledge/docs/zh/learning-performance.zh.md",
-      "category": "learning",
-      "status": "historical",
-      "freshness": "known-stale",
-      "ownerArea": "learning"
-    },
-    {
-      "id": "app-learning-errors",
-      "titleZh": "App 错误记录",
-      "summaryZh": "记录 repos/orbits 内 fixture migration、comment patch、git diff 正则等错误经验。",
-      "reviewEvidenceZh": "来源文件为 gitignore 本地文件，2026-07-11 核对时在本机已缺失；综合内容仍保留在关联知识页。",
-      "sourcePath": "repos/orbits/.learnings/ERRORS.md",
-      "localizedSourcePath": "knowledge/docs/zh/app-learning-errors.zh.md",
-      "category": "learning",
-      "status": "current",
-      "freshness": "known-stale",
-      "ownerArea": "learning"
-    },
-    {
-      "id": "app-learning-patterns",
-      "titleZh": "App 经验记录",
-      "summaryZh": "记录 framework/mock/live 解耦、提交范围检查和注释提交卫生等经验。",
-      "reviewEvidenceZh": "来源文件为 gitignore 本地文件，2026-07-11 核对时在本机已缺失；综合内容仍保留在关联知识页。",
-      "sourcePath": "repos/orbits/.learnings/LEARNINGS.md",
-      "localizedSourcePath": "knowledge/docs/zh/app-learning-patterns.zh.md",
-      "category": "learning",
-      "status": "current",
-      "freshness": "known-stale",
-      "ownerArea": "learning"
-    },
-    {
       "id": "harness-prompt-planner",
       "titleZh": "长跑 Harness planner 提示词",
       "summaryZh": "定义长跑 harness 中 planner 角色的职责、输入输出和执行约束，是多代理循环的系统提示来源。",
@@ -1043,18 +959,6 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
       "reviewEvidenceZh": "已核对页面目录存在：repos/orbits/app/(app)/app/contacts/new/compose-app-contacts-new-from-previously-approved-mock-first-capabilities。页面是否仍完全匹配文档，需要结合 route view-model 和页面测试继续审计。",
       "sourcePath": "repos/orbits/app/(app)/app/contacts/new/compose-app-contacts-new-from-previously-approved-mock-first-capabilities/LIVE_IMPLEMENTATION.md",
       "localizedSourcePath": "knowledge/docs/zh/live-handoff-app-app-app-contacts-new-compose-app-contacts-new-from-previously-approved-mock-first-capabilities.zh.md",
-      "category": "implementation-handoff",
-      "status": "generated-evidence",
-      "freshness": "likely-current",
-      "ownerArea": "app"
-    },
-    {
-      "id": "live-handoff-app-app-app-dashboard-compose-app-dashboard-from-previously-approved-mock-first-capabilities",
-      "titleZh": "App 页面组合交接：dashboard/compose app dashboard from previously approved mock first capabilities",
-      "summaryZh": "记录 app 路由 dashboard/compose app dashboard from previously approved mock first capabilities 如何由已批准的 mock-first capability 组合成可运行页面，以及未来 live 替换时需要保留的交互边界。",
-      "reviewEvidenceZh": "已核对页面目录存在：repos/orbits/app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities。页面是否仍完全匹配文档，需要结合 route view-model 和页面测试继续审计。",
-      "sourcePath": "repos/orbits/app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities/LIVE_IMPLEMENTATION.md",
-      "localizedSourcePath": "knowledge/docs/zh/live-handoff-app-app-app-dashboard-compose-app-dashboard-from-previously-approved-mock-first-capabilities.zh.md",
       "category": "implementation-handoff",
       "status": "generated-evidence",
       "freshness": "likely-current",
@@ -1649,6 +1553,18 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
       "ownerArea": "feature:permissions"
     },
     {
+      "id": "live-handoff-feature-personal-schedule-live-implementation",
+      "titleZh": "personal-schedule 能力 Live 交接：live implementation",
+      "summaryZh": "记录 personal-schedule 模块 live implementation 能力的 live 实现 边界：需要替换的服务、环境变量、权限约束和验证要求。",
+      "reviewEvidenceZh": "已核对对应 feature 目录存在：repos/orbits/features/personal-schedule。具体切换行为以 service factory 与测试为准。",
+      "sourcePath": "repos/orbits/features/personal-schedule/LIVE_IMPLEMENTATION.md",
+      "localizedSourcePath": "knowledge/docs/zh/live-handoff-feature-personal-schedule-live-implementation.zh.md",
+      "category": "implementation-handoff",
+      "status": "generated-evidence",
+      "freshness": "likely-current",
+      "ownerArea": "feature:personal-schedule"
+    },
+    {
       "id": "live-handoff-feature-profile-profile-document-extraction-mock",
       "titleZh": "profile 能力 Live 交接：profile document extraction mock",
       "summaryZh": "记录 profile 模块中 profile document extraction mock 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。",
@@ -1707,6 +1623,18 @@ export const ORBIT_KNOWLEDGE_MANIFEST = {
       "status": "generated-evidence",
       "freshness": "likely-current",
       "ownerArea": "feature:recommendations"
+    },
+    {
+      "id": "live-handoff-feature-relationship-communication-live-implementation",
+      "titleZh": "relationship-communication 能力 Live 交接：live implementation",
+      "summaryZh": "记录 relationship-communication 模块 live implementation 能力的 live 实现 边界：需要替换的服务、环境变量、权限约束和验证要求。",
+      "reviewEvidenceZh": "已核对对应 feature 目录存在：repos/orbits/features/relationship-communication。具体切换行为以 service factory 与测试为准。",
+      "sourcePath": "repos/orbits/features/relationship-communication/LIVE_IMPLEMENTATION.md",
+      "localizedSourcePath": "knowledge/docs/zh/live-handoff-feature-relationship-communication-live-implementation.zh.md",
+      "category": "implementation-handoff",
+      "status": "generated-evidence",
+      "freshness": "likely-current",
+      "ownerArea": "feature:relationship-communication"
     },
     {
       "id": "live-handoff-feature-search-relationship-natural-search-mock",

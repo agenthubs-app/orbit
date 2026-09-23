@@ -37,10 +37,12 @@
 - 第 4 节：契约与数据边界
 - 第 5 节：Mock 行为
 - 第 6 节：Live 替换方案
-- 第 7 节：推荐与搜索边界
-- 第 8 节：API 与页面使用
-- 第 9 节：测试要求
-- 第 10 节：团队协作规则
+- 第 7 节：生命周期权威边界
+- 第 8 节：推荐与搜索边界
+- 第 9 节：API 与页面使用
+- 第 10 节：名片确认写入
+- 第 11 节：测试要求
+- 第 12 节：团队协作规则
 
 ## 保留的代码与命令证据
 
@@ -68,11 +70,17 @@ Service factory 提供 list/search/filter 和 detail/tag/status services。
 
 ## Mock 行为
 
-Mock 使用本地联系人 fixture。搜索和筛选是本地确定性规则，不访问真实搜索索引、数据库、邮箱或日历。更新状态、标签或备注只能返回 preview 或 mock result，不写真实联系人库。
+Mock 使用本地联系人 fixture。搜索和筛选是本地确定性规则，不访问真实搜索索引、数据库、邮箱或日历。Live 更新通过 actor-scoped provider 持久化标签、备注、最近互动和行业字段；状态仅在没有任何 owned Connection 且没有初始化标记时才写入 legacy detail state。
 
 ## Live 替换方案
 
 Live 可以接联系人数据库、CRM、搜索服务和标签系统。搜索 provider 返回值必须映射为 contact summary。CRM 字段不能直接进入页面；需要先转成 Orbit 的 source、status、value 和 next action。
+
+## 生命周期权威边界
+
+- 带合法 version 或 ready 标记的唯一 owned `Connection` 是正式阶段读取权威，即使没有 ready marker 也不能被旧 detail state 覆盖。Contact 或 Connection 为 pending 时不得提升为正式阶段。读取保留 version/初始化标记，非法 version 失败关闭。
+- 任意 owned Connection（包括 captured/旧无版本关系），或 Contact 的 pending/ready 标记，都会使 `PATCH /api/contacts/:id` 的显式 `status` 返回 conflict；混合请求在任何写入前拒绝。正常标签、备注、最近互动和行业编辑仍可用；不包含 status 的编辑保留原 private status，不顺带迁移状态。
+- 只有无 Connection、无初始化标记的纯 legacy contact 保留 status 兼容写入。涉及正式生命周期元数据的重复 Connection 拒绝读取/写入，不任选其一；全无版本/标记的旧 fixture 多条关系保留历史上下文读取，但不作为正式阶段权威。`PATCH /api/connections/:id/stage` 仍是现有 no-write preview，不冒充正式阶段变更。
 
 联系人详情 live mapper 还必须把来源和关系值转成人能读懂的标签。`qr_scan` 要显示成 QR scan 来源，`community_context` 要显示成 community context，`venture_capital` 等生成式主题要先映射为业务标签后再进入 `/app/contacts/[id]`。页面不能展示 `source:*` ID、snake_case 价值类型或 provider payload 字段。
 
@@ -92,6 +100,20 @@ Contacts 不应把推荐策略下放到 Search，也不应让 Orbit AI 长期拥
 
 产品入口包括 `/app/contacts`、`/app/contacts/[id]` 和 `/app/contacts/new` 的后续复核。Contacts API 包括 list、detail、search 和状态更新。列表页应优先展示当前需要关注的人，而不是做成通讯录表格。
 
+`/app/contacts/dashboard` 与列表页共享同一个 actor-scoped route model。页面必须
+先取得当前 session 的 user id，再把它显式传给 Contacts loader；表盘中的总数、
+强度、行业分布、关系图和待办都只能由该 view model 派生。演示 fixture、静态姓名、
+静态人数或其他账户的聚合值不得进入已登录产品页面。
+
+没有任何联系人或连接的账户应显示同一产品壳内的零数据状态，并提供添加联系人和
+扫描名片入口。零数据不是错误，也不能用一组“看起来完整”的 demo 指标填充。
+
+### 名片确认写入
+
+Acquisition 的云端 OCR 只生成待复核草稿；真正创建联系人由 Contacts 的 `BusinessCardContactWriteService` 负责。`POST /api/contacts/business-card/confirm` 必须收到显式确认、纠正后的字段、图片摘要和至少一个 evidence id。服务用 draft id 派生稳定 contact id，先处理同草稿幂等，再按规范化邮箱和姓名/公司组合阻断重复写入。
+
+成功创建的联系人使用现有领域阶段 `captured`，来源为 `business_card_ocr`。原始名片图片不进入 Contacts 存储。联系人确认与后续 Orbit 邀请是两个独立动作；联系人写入成功不代表邀请已发送。
+
 ## 测试要求
 
 - list/search/filter 测试覆盖 query、source、tag、empty、failure。
@@ -99,6 +121,8 @@ Contacts 不应把推荐策略下放到 Search，也不应让 Orbit AI 长期拥
 - API envelope 测试确认成功和失败形状稳定。
 - 页面测试确认 raw evidence id 不出现在主用户流程。
 - live 接入测试确认搜索索引结果被 mapper 收敛。
+- dashboard 账户隔离测试确认 loader 收到 session user id，零联系人时显示真实
+  empty state，且源码中不存在 demo 人名或静态业务人数。
 
 ## 团队协作规则
 

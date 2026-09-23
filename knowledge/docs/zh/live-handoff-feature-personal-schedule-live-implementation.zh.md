@@ -1,4 +1,4 @@
-# dashboard 能力 Live 交接：dashboard aggregate mock
+# personal-schedule 能力 Live 交接：live implementation
 
 本页是 Orbit Wiki 的中文阅读版，也是中文阅读入口。它不是新的权威副本；权威内容仍以原始来源、关联代码和测试为准。
 
@@ -6,12 +6,12 @@
 
 | 字段 | 内容 |
 | --- | --- |
-| 原始来源 | `repos/orbits/features/dashboard/dashboard-aggregate-mock/LIVE_IMPLEMENTATION.md` |
-| 中文镜像 | `knowledge/docs/zh/live-handoff-feature-dashboard-dashboard-aggregate-mock.zh.md` |
+| 原始来源 | `repos/orbits/features/personal-schedule/LIVE_IMPLEMENTATION.md` |
+| 中文镜像 | `knowledge/docs/zh/live-handoff-feature-personal-schedule-live-implementation.zh.md` |
 | 分类 | `implementation-handoff` |
 | 状态 | `generated-evidence` |
 | 新鲜度 | `likely-current` |
-| 负责人域 | `feature:dashboard` |
+| 负责人域 | `feature:personal-schedule` |
 
 ## 怎么读
 
@@ -23,21 +23,15 @@
 
 ## 中文摘要
 
-记录 dashboard 模块中 dashboard aggregate mock 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。
+记录 personal-schedule 模块 live implementation 能力的 live 实现 边界：需要替换的服务、环境变量、权限约束和验证要求。
 
 ## 审计依据
 
-已核对对应 feature 目录存在：repos/orbits/features/dashboard/dashboard-aggregate-mock。目录级实时行为仍以 service factory、API route 和测试为准。
+已核对对应 feature 目录存在：repos/orbits/features/personal-schedule。具体切换行为以 service factory 与测试为准。
 
 ## 结构化阅读入口
 
-- 第 1 节：源标题：Dashboard Aggregate Mock Live Handoff
-- 第 2 节：当前 Bounded Storage 阅读 Slice
-- 第 3 节：Live 服务 和 Provider Files
-- 第 4 节：源标题：Switch Mechanism
-- 第 5 节：Required Env Vars 和 权限
-- 第 6 节：Privacy 和 Provenance Constraints
-- 第 7 节：Replacement 测试
+- 第 1 节：源标题：Personal schedule collection reads
 
 ## 保留的代码与命令证据
 
