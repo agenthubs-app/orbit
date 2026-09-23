@@ -266,7 +266,13 @@ export function IOrbitHistoryDrawer({
                   <span className="ir-caret">›</span>
                 </button>
               )}
-              {item.sessionId ? (
+              {/* 重命名中不渲染「···」：它是 `position:absolute; right:10px` 的
+                  28×28 钮，`opacity:0` 但 `pointer-events:auto`，会整块盖住重命名行
+                  最右侧的「取消」钮的中心点（2026-09-24 运行时取证实测：
+                  取消 x1157–1203、··· x1177–1205，`elementFromPoint` 落在 `.ir-hist-more`
+                  上），鼠标点「取消」实际打开的是更多菜单。静态截图不取重命名态，
+                  故像素不变。 */}
+              {item.sessionId && !renaming ? (
                 <>
                   <button
                     aria-expanded={menuOpen}
