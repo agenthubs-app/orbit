@@ -144,14 +144,19 @@ test("non-.btn <button> count in app/(app)/app does not increase", () => {
 // `iorbit-0918/iorbit-rich-components.tsx`，该文件不是 T5 核心表面，只受上面的
 // 全局上限约束。
 // 任务 6b 更正：搬过去的非 `.btn` 按钮是 **7 枚**（6a 报告误写为 2 枚）：
-// `:73` orbit-agent-message-copy、`:219` chip、`:330`/`:333`/`:357`/`:601` linkish、
-// `:558` todo-peek。它们今天只受全局上限约束，没有逐条署名的 EXEMPTIONS 护栏；
-// 补 CORE_FILES + 7 条 EXEMPTIONS 或迁成 `.btn`，已记入遗留（任务 6b 报告）。
+// `orbit-agent-message-copy`、`chip`、四枚 `linkish`、`todo-peek`。
+// 收尾（2026-09-24）：选择「补 CORE_FILES + 7 条 EXEMPTIONS」而不是迁成 `.btn`。
+// 理由是渲染面必须逐位不变——这四个类在 `console-styles.ts` 里都自带
+// `background:none; border:0; font:inherit`（`.linkish` :240、`.todo-peek` :222）
+// 或自带整套几何（`.chip` :36 的 30px 药丸），`.btn` 基类会把 padding / 高度 /
+// 边框 / 背景重新加回来，属于改设计稿外观。它们是任务 6a 逐字搬迁的遗留富组件，
+// 活在 `[data-orbit-real-page="agent"]` 皮肤里，不走 `.btn` 系统。
 const CORE_FILES = [
   "app/(app)/app/agent/actions/orbit-today-decision-form.tsx",
   "app/(app)/app/agent/actions/orbit-all-actions-controls.tsx",
   "app/(app)/app/settings/orbit-agent-execution-settings.tsx",
   "app/(app)/app/events/events-0918/events-list.tsx",
+  "app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
 ];
 
 // Every non-.btn <button> left in the core surfaces after T5, identified by a
@@ -165,6 +170,58 @@ const EXEMPTIONS: {
 }[] = [
   // Events 任务 1（2026-09-22）：events explore 迁入 events-0918/events-list.tsx 后所有按钮都是
   // `.btn ev-*`（整段中和基类），该表面不再有豁免项。
+
+  // iOrbit 收尾（2026-09-24）：`iorbit-rich-components.tsx` 是任务 6a 从
+  // `orbit-real-agent.tsx` 逐字搬来的遗留富组件，跑在 `[data-orbit-real-page="agent"]`
+  // 皮肤下。下面 7 枚控件各自有 console-styles.ts 里的专属 CSS，加 `.btn` 会改外观，
+  // 因此按「逐条署名」而不是「迁移」处理。
+  {
+    count: 1,
+    file: "app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
+    marker: "data-orbit-agent-message-copy",
+    reason:
+      "消息复制的 hover 浮标：console-styles.ts:174-175 用 `.msg-user-row:hover .orbit-agent-message-copy { opacity }` 控制显隐，是图标浮标而不是按钮面。",
+  },
+  {
+    count: 1,
+    file: "app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
+    marker: 'className="chip"',
+    reason:
+      "欢迎屏的建议 chip：console-styles.ts:36-37 的 30px 药丸有自己的一整套几何与 hover，属设计稿的 chip 形态，不是 `.btn`。",
+  },
+  {
+    count: 1,
+    file: "app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
+    marker: "openRelationshipInbox()",
+    reason:
+      "草稿行的「打开草稿箱」：`.linkish`（console-styles.ts:240）是带下划线的纯文字链形态，`background:none; border:0; font:inherit`。",
+  },
+  {
+    count: 1,
+    file: "app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
+    marker: "draft.reopen()",
+    reason: "草稿行的「查看草稿」：同上 `.linkish` 文字链形态。",
+  },
+  {
+    count: 1,
+    file: "app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
+    marker: "void draft.generate(currentPurpose)",
+    reason:
+      "过期草稿提示里的「重新生成」：同上 `.linkish` 文字链形态（同文件 :308 那枚同名回调的控件已经是 `.btn`，本条只署名非 `.btn` 的那枚）。",
+  },
+  {
+    count: 1,
+    file: "app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
+    marker: "linkish todo-view",
+    reason: "待办卡的「查看联系人」：`.linkish` 文字链 + `.todo-view` 位置修正。",
+  },
+  {
+    count: 1,
+    file: "app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
+    marker: 'className="todo-peek"',
+    reason:
+      "待办卡的折叠头：`.todo-peek`（console-styles.ts:222-225）是带三角的 disclosure，`aria-expanded` 驱动 `.todo-tri` 旋转，不是按钮面。",
+  },
 ];
 
 test("the five T5 core surfaces have no non-.btn <button> outside the documented exemption list", () => {
