@@ -139,13 +139,74 @@ function matchesPrefix(route, prefix) {
   return route === prefix || route.startsWith(`${prefix}/`);
 }
 
-function accessForRoute(route, privatePrefixes) {
+/**
+ * 页面自己的服务端鉴权闸门。
+ *
+ * 只看前缀表（ORBIT_PRIVATE_APP_PREFIXES）推不出真相：一条既不在前缀表里、
+ * 页面自己也没鉴权的 route，在旧口径下会被记成 `public-at-proxy`，与一个
+ * 刻意公开的落地页无法区分——缺口因此在产物里隐身。
+ *
+ * 这里在页面源码上做一次 AST 扫描，认两样东西：
+ *   1. 从 `auth` 模块导入并调用的 `auth()`（NextAuth 的服务端会话读取）；
+ *   2. `resolveAuthenticatedApiActorFromSession(...)`（Orbit 账号成员身份解析）。
+ * 两者都没有，就说明这一页没有任何服务端闸门。
+ *
+ * 注意这是静态证据，不是运行时结论：它能证明「页面调了 auth()」，不能证明
+ * 「调用之后真的拦住了未登录访客」。所以下面把它记成 evidence，而不是把
+ * `requires-browser-verification` 降级。
+ */
+function detectPageAuthGate(pageFile) {
+  const { source } = sourceFileFor(pageFile);
+  const authImportNames = new Set();
+  let callsAuth = false;
+  let resolvesActor = false;
+
+  const visit = (node) => {
+    if (
+      ts.isImportDeclaration(node) &&
+      ts.isStringLiteral(node.moduleSpecifier) &&
+      /(^|\/)auth$/.test(node.moduleSpecifier.text.replace(/\.[jt]sx?$/, ""))
+    ) {
+      const bindings = node.importClause?.namedBindings;
+      if (bindings && ts.isNamedImports(bindings)) {
+        for (const element of bindings.elements) {
+          if ((element.propertyName ?? element.name).text === "auth") {
+            authImportNames.add(element.name.text);
+          }
+        }
+      }
+    }
+
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
+      if (authImportNames.has(node.expression.text)) {
+        callsAuth = true;
+      }
+      if (node.expression.text === "resolveAuthenticatedApiActorFromSession") {
+        resolvesActor = true;
+      }
+    }
+
+    ts.forEachChild(node, visit);
+  };
+
+  // import 声明可能出现在 auth() 调用之后（源码顺序无关），所以扫两遍：
+  // 第一遍收集 import 名字，第二遍判断调用。
+  ts.forEachChild(source, visit);
+  ts.forEachChild(source, visit);
+
+  return { callsAuth, resolvesActor, gated: callsAuth || resolvesActor };
+}
+
+function accessForRoute(route, privatePrefixes, pageFile) {
+  const pageGate = pageFile ? detectPageAuthGate(pageFile) : { gated: false };
+
   if (privatePrefixes.some((prefix) => matchesPrefix(route, prefix))) {
     return {
       policy: "authenticated",
       anonymousBehavior: "redirect:/app/account/login?next=<safe-local-route>",
       authenticatedBehavior: "allow",
       evidence: relativeToWorkspace(AUTH_ROUTING_FILE),
+      pageAuthGate: pageGate.gated ? "page-also-gates" : "prefix-only",
       runtimeAuthorization: "requires-browser-verification",
     };
   }
@@ -156,15 +217,35 @@ function accessForRoute(route, privatePrefixes) {
       anonymousBehavior: "allow",
       authenticatedBehavior: "allow; redirect behavior requires browser verification",
       evidence: relativeToWorkspace(AUTH_ROUTING_FILE),
+      pageAuthGate: pageGate.gated ? "page-also-gates" : "none",
       runtimeAuthorization: "requires-browser-verification",
     };
   }
 
+  // 前缀表没盖到、页面自己也没有任何服务端闸门，而 route 又在 /app/ 下。
+  // 这不是「刻意公开」——它和一个真正的公开页在旧口径下长得一模一样，所以
+  // 必须单列一类，让产物**把缺口叫出名字**，由人来判定哪几条是有意公开的。
+  if (route.startsWith("/app/") && !pageGate.gated) {
+    return {
+      policy: "ungated",
+      anonymousBehavior:
+        "unknown: neither ORBIT_PRIVATE_APP_PREFIXES nor the page itself gates this route",
+      authenticatedBehavior: "allow",
+      evidence: `${relativeToWorkspace(AUTH_ROUTING_FILE)} (prefix list: not listed); ${relativeToWorkspace(pageFile)} (no auth() / resolveAuthenticatedApiActorFromSession() call)`,
+      pageAuthGate: "none",
+      runtimeAuthorization: "requires-browser-verification",
+    };
+  }
+
+  // 其余仍记 `public-at-proxy`（代理层放行），但现在附带页面侧的静态证据：
+  // `page-gates` 表示这一页自己调了 auth()（可能只是读会话做个性化，也可能是
+  // 真闸门——静态扫描分不出来，所以只记证据，不改 policy）。
   return {
     policy: "public-at-proxy",
     anonymousBehavior: "allow at proxy boundary",
     authenticatedBehavior: "allow at proxy boundary",
     evidence: relativeToWorkspace(AUTH_ROUTING_FILE),
+    pageAuthGate: pageGate.gated ? "page-gates" : "none",
     runtimeAuthorization: "page/server authorization requires verification",
   };
 }
@@ -1410,7 +1491,7 @@ export function buildProductSurfaceManifest() {
       route,
       purpose: inferPurpose(route),
       pageFile: relativeToWorkspace(pageFile),
-      access: accessForRoute(route, privatePrefixes),
+      access: accessForRoute(route, privatePrefixes, pageFile),
       data: {
         sourceKinds: dataAudit.sourceKinds,
         dependencies: dataAudit.dependencies,
@@ -1457,6 +1538,11 @@ export function buildProductSurfaceManifest() {
       publicRoutes: surfaces.filter(
         (surface) => surface.access.policy !== "authenticated",
       ).length,
+      // 前缀表没盖到、页面自己也没有服务端闸门的 /app/ route。单列出来，
+      // 否则它和一个刻意公开的页面在产物里无法区分（2026-09-24 新增）。
+      ungatedRoutes: surfaces.filter(
+        (surface) => surface.access.policy === "ungated",
+      ).length,
       risks: allRisks.length,
       p0Candidates: allRisks.filter((risk) => risk.severity === "P0").length,
       p1Candidates: allRisks.filter((risk) => risk.severity === "P1").length,
@@ -1487,6 +1573,7 @@ function renderSurfaceMarkdown(manifest) {
     `- Actions/interactions: ${manifest.summary.actions}`,
     `- Authenticated routes: ${manifest.summary.authenticatedRoutes}`,
     `- Public-at-proxy routes: ${manifest.summary.publicRoutes}`,
+    `- Ungated routes (no prefix-list entry and no page-level auth gate): ${manifest.summary.ungatedRoutes}`,
     "",
     "## Route inventory",
     "",

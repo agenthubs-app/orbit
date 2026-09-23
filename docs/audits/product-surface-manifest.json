@@ -2,8 +2,8 @@
   "schemaVersion": 2,
   "scope": "All production Next.js page routes; API and /dev routes excluded",
   "evidenceLevel": "Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.",
-  "commit": "4de8d5a2949887ed1c83dfae04f09e5751e300fd",
-  "generatedAt": "2026-09-23T03:52:06+08:00",
+  "commit": "52c086711c7660cc70a9fdd35e93c65f5a44586a",
+  "generatedAt": "2026-09-24T02:03:28+09:00",
   "authoritativeInputs": {
     "appRoot": "repos/orbits/app",
     "authRouting": "repos/orbits/features/auth/app-auth-routing.ts",
@@ -19,9 +19,10 @@
   },
   "summary": {
     "routes": 45,
-    "actions": 2614,
+    "actions": 2615,
     "authenticatedRoutes": 19,
     "publicRoutes": 26,
+    "ungatedRoutes": 4,
     "risks": 28,
     "p0Candidates": 8,
     "p1Candidates": 20
@@ -36,6 +37,7 @@
         "anonymousBehavior": "allow",
         "authenticatedBehavior": "allow; redirect behavior requires browser verification",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-also-gates",
         "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
@@ -1150,6 +1152,7 @@
         "anonymousBehavior": "allow",
         "authenticatedBehavior": "allow; redirect behavior requires browser verification",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-also-gates",
         "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
@@ -2287,6 +2290,7 @@
         "anonymousBehavior": "allow",
         "authenticatedBehavior": "allow; redirect behavior requires browser verification",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "none",
         "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
@@ -2389,6 +2393,7 @@
         "anonymousBehavior": "allow",
         "authenticatedBehavior": "allow; redirect behavior requires browser verification",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "none",
         "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
@@ -3439,6 +3444,7 @@
         "anonymousBehavior": "allow",
         "authenticatedBehavior": "allow; redirect behavior requires browser verification",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-also-gates",
         "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
@@ -4576,6 +4582,7 @@
         "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
         "authenticatedBehavior": "allow",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "prefix-only",
         "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
@@ -4704,6 +4711,7 @@
         "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
         "authenticatedBehavior": "allow",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-also-gates",
         "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
@@ -5007,6 +5015,7 @@
         "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
         "authenticatedBehavior": "allow",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-also-gates",
         "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
@@ -5310,6 +5319,7 @@
         "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
         "authenticatedBehavior": "allow",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-also-gates",
         "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
@@ -6856,6 +6866,7 @@
         "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
         "authenticatedBehavior": "allow",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-also-gates",
         "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
@@ -7042,10 +7053,10 @@
         {
           "actionId": "/app/agent#3",
           "sourceFile": "repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx",
-          "line": 655,
+          "line": 660,
           "kind": "button",
           "tag": "button",
-          "label": "在 Today 查看 / Open in Today",
+          "label": "在安排里查看 / Open in arrangements",
           "accessibleName": "present-static",
           "href": null,
           "handlers": [
@@ -7064,7 +7075,7 @@
         {
           "actionId": "/app/agent#4",
           "sourceFile": "repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx",
-          "line": 665,
+          "line": 672,
           "kind": "button",
           "tag": "button",
           "label": "全部安排 / All arrangements",
@@ -7086,7 +7097,7 @@
         {
           "actionId": "/app/agent#5",
           "sourceFile": "repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx",
-          "line": 677,
+          "line": 684,
           "kind": "button",
           "tag": "button",
           "label": "确认执行 / Confirm",
@@ -7108,7 +7119,7 @@
         {
           "actionId": "/app/agent#6",
           "sourceFile": "repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx",
-          "line": 694,
+          "line": 701,
           "kind": "button",
           "tag": "button",
           "label": "稍后处理 / Later",
@@ -7130,7 +7141,7 @@
         {
           "actionId": "/app/agent#7",
           "sourceFile": "repos/orbits/app/(app)/app/agent/agent-action-status-card.tsx",
-          "line": 704,
+          "line": 711,
           "kind": "button",
           "tag": "button",
           "label": "忽略 / Ignore",
@@ -7668,7 +7679,7 @@
         {
           "actionId": "/app/agent#32",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-chat.tsx",
-          "line": 327,
+          "line": 330,
           "kind": "button",
           "tag": "button",
           "label": "{agentSuggestLabel(suggest.label, language === \"ja\" ? \"en\" : language)}",
@@ -8040,7 +8051,7 @@
         {
           "actionId": "/app/agent#49",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx",
-          "line": 1062,
+          "line": 1083,
           "kind": "button",
           "tag": "button",
           "label": "◷ History",
@@ -8062,7 +8073,7 @@
         {
           "actionId": "/app/agent#50",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx",
-          "line": 1065,
+          "line": 1086,
           "kind": "button",
           "tag": "button",
           "label": "Open chat page →",
@@ -8084,7 +8095,7 @@
         {
           "actionId": "/app/agent#51",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx",
-          "line": 1077,
+          "line": 1098,
           "kind": "button",
           "tag": "button",
           "label": "▤ {item.title} Untitled chat {t({ en: `Last chat · ${when}`, zh: `上次对话 · ${when}` })} / Last chat ›",
@@ -8418,7 +8429,7 @@
         {
           "actionId": "/app/agent#67",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx",
-          "line": 846,
+          "line": 860,
           "kind": "button",
           "tag": "button",
           "label": "✉ / ▦ / ⚇ {row.title} {row.context} ›",
@@ -8440,7 +8451,29 @@
         {
           "actionId": "/app/agent#68",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx",
-          "line": 871,
+          "line": 882,
+          "kind": "button",
+          "tag": "button",
+          "label": "{askAction.label}",
+          "accessibleName": "dynamic-runtime",
+          "href": null,
+          "handlers": [
+            "onclick"
+          ],
+          "behaviorEvidence": "present-static",
+          "componentOwnershipEvidence": null,
+          "imperativeBehaviorEvidence": [],
+          "readWrite": "unknown-requires-runtime-verification",
+          "confirmation": "unknown-requires-runtime-verification",
+          "retry": "unknown-requires-runtime-verification",
+          "undoCompensation": "unknown-requires-runtime-verification",
+          "loadingOrDisabled": "unknown-requires-runtime-verification",
+          "feedback": "unknown-requires-runtime-verification"
+        },
+        {
+          "actionId": "/app/agent#69",
+          "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx",
+          "line": 891,
           "kind": "button",
           "tag": "button",
           "label": "Done",
@@ -8460,9 +8493,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#69",
+          "actionId": "/app/agent#70",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx",
-          "line": 879,
+          "line": 899,
           "kind": "button",
           "tag": "button",
           "label": "Remind tomorrow",
@@ -8482,9 +8515,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#70",
+          "actionId": "/app/agent#71",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx",
-          "line": 905,
+          "line": 926,
           "kind": "button",
           "tag": "button",
           "label": "Refreshing / Refresh",
@@ -8504,9 +8537,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#71",
+          "actionId": "/app/agent#72",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx",
-          "line": 927,
+          "line": 948,
           "kind": "link",
           "tag": "a",
           "label": "Contact suggestions →",
@@ -8524,9 +8557,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#72",
+          "actionId": "/app/agent#73",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx",
-          "line": 933,
+          "line": 954,
           "kind": "link",
           "tag": "a",
           "label": "{item.contactName} {item.organization} {item.title} ›",
@@ -8544,9 +8577,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#73",
+          "actionId": "/app/agent#74",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx",
-          "line": 976,
+          "line": 997,
           "kind": "link",
           "tag": "a",
           "label": "Execution plan →",
@@ -8564,7 +8597,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#74",
+          "actionId": "/app/agent#75",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
           "line": 176,
           "kind": "button",
@@ -8586,7 +8619,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#75",
+          "actionId": "/app/agent#76",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
           "line": 185,
           "kind": "button",
@@ -8608,7 +8641,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#76",
+          "actionId": "/app/agent#77",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
           "line": 219,
           "kind": "button",
@@ -8630,7 +8663,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#77",
+          "actionId": "/app/agent#78",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
           "line": 308,
           "kind": "button",
@@ -8652,7 +8685,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#78",
+          "actionId": "/app/agent#79",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
           "line": 330,
           "kind": "button",
@@ -8674,7 +8707,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#79",
+          "actionId": "/app/agent#80",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
           "line": 333,
           "kind": "button",
@@ -8696,7 +8729,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#80",
+          "actionId": "/app/agent#81",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
           "line": 357,
           "kind": "button",
@@ -8718,7 +8751,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#81",
+          "actionId": "/app/agent#82",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
           "line": 373,
           "kind": "button",
@@ -8740,7 +8773,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#82",
+          "actionId": "/app/agent#83",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
           "line": 382,
           "kind": "button",
@@ -8762,7 +8795,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#83",
+          "actionId": "/app/agent#84",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
           "line": 429,
           "kind": "button",
@@ -8784,7 +8817,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#84",
+          "actionId": "/app/agent#85",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
           "line": 441,
           "kind": "button",
@@ -8806,9 +8839,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#85",
+          "actionId": "/app/agent#86",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
-          "line": 480,
+          "line": 483,
           "kind": "button",
           "tag": "button",
           "label": "View",
@@ -8828,9 +8861,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#86",
+          "actionId": "/app/agent#87",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
-          "line": 558,
+          "line": 561,
           "kind": "button",
           "tag": "button",
           "label": "Collapse / {summary}",
@@ -8850,9 +8883,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#87",
+          "actionId": "/app/agent#88",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
-          "line": 578,
+          "line": 581,
           "kind": "button",
           "tag": "button",
           "label": "{label}",
@@ -8872,9 +8905,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#88",
+          "actionId": "/app/agent#89",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
-          "line": 601,
+          "line": 604,
           "kind": "button",
           "tag": "button",
           "label": "View contact",
@@ -8894,9 +8927,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#89",
+          "actionId": "/app/agent#90",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
-          "line": 661,
+          "line": 664,
           "kind": "button",
           "tag": "button",
           "label": "Show top 3 only / {t({ en: `View ${hiddenCount} more`, zh: `查看另外 ${hiddenCount} 位` })}",
@@ -8916,7 +8949,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#90",
+          "actionId": "/app/agent#91",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
           "line": 73,
           "kind": "button",
@@ -8938,9 +8971,9 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#91",
+          "actionId": "/app/agent#92",
           "sourceFile": "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx",
-          "line": 387,
+          "line": 401,
           "kind": "button",
           "tag": "button",
           "label": "t({ en: \"Dismiss\", zh: \"关闭提示\" })",
@@ -8960,7 +8993,7 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/agent#92",
+          "actionId": "/app/agent#93",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/contact-messages-tab.tsx",
           "line": 128,
           "kind": "button",
@@ -8982,7 +9015,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#93",
+          "actionId": "/app/agent#94",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/contact-messages-tab.tsx",
           "line": 133,
           "kind": "button",
@@ -9004,7 +9037,7 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/agent#94",
+          "actionId": "/app/agent#95",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/contact-messages-tab.tsx",
           "line": 139,
           "kind": "button",
@@ -9026,7 +9059,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#95",
+          "actionId": "/app/agent#96",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/contact-messages-tab.tsx",
           "line": 142,
           "kind": "button",
@@ -9048,7 +9081,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#96",
+          "actionId": "/app/agent#97",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/contact-messages-tab.tsx",
           "line": 149,
           "kind": "button",
@@ -9070,7 +9103,7 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/agent#97",
+          "actionId": "/app/agent#98",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1239,
           "kind": "click-handler",
@@ -9092,7 +9125,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#98",
+          "actionId": "/app/agent#99",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1275,
           "kind": "button",
@@ -9114,7 +9147,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#99",
+          "actionId": "/app/agent#100",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1286,
           "kind": "button",
@@ -9137,7 +9170,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#100",
+          "actionId": "/app/agent#101",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1316,
           "kind": "button",
@@ -9159,7 +9192,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#101",
+          "actionId": "/app/agent#102",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1575,
           "kind": "button",
@@ -9181,7 +9214,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#102",
+          "actionId": "/app/agent#103",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 429,
           "kind": "button",
@@ -9203,7 +9236,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#103",
+          "actionId": "/app/agent#104",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 440,
           "kind": "link",
@@ -9225,7 +9258,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#104",
+          "actionId": "/app/agent#105",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 447,
           "kind": "button",
@@ -9247,7 +9280,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#105",
+          "actionId": "/app/agent#106",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 475,
           "kind": "button",
@@ -9269,7 +9302,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#106",
+          "actionId": "/app/agent#107",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 544,
           "kind": "button",
@@ -9291,7 +9324,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#107",
+          "actionId": "/app/agent#108",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 565,
           "kind": "button",
@@ -9313,7 +9346,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#108",
+          "actionId": "/app/agent#109",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 569,
           "kind": "button",
@@ -9335,7 +9368,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#109",
+          "actionId": "/app/agent#110",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 594,
           "kind": "button",
@@ -9357,7 +9390,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#110",
+          "actionId": "/app/agent#111",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 776,
           "kind": "button",
@@ -9379,7 +9412,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#111",
+          "actionId": "/app/agent#112",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 788,
           "kind": "button",
@@ -9401,7 +9434,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#112",
+          "actionId": "/app/agent#113",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 816,
           "kind": "button",
@@ -9423,7 +9456,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#113",
+          "actionId": "/app/agent#114",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 895,
           "kind": "button",
@@ -9445,7 +9478,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#114",
+          "actionId": "/app/agent#115",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 944,
           "kind": "button",
@@ -9467,7 +9500,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#115",
+          "actionId": "/app/agent#116",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 14,
           "kind": "button",
@@ -9489,7 +9522,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#116",
+          "actionId": "/app/agent#117",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 54,
           "kind": "button",
@@ -9511,7 +9544,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#117",
+          "actionId": "/app/agent#118",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 57,
           "kind": "button",
@@ -9533,7 +9566,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#118",
+          "actionId": "/app/agent#119",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 62,
           "kind": "link",
@@ -9553,7 +9586,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#119",
+          "actionId": "/app/agent#120",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 63,
           "kind": "button",
@@ -9575,7 +9608,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#120",
+          "actionId": "/app/agent#121",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 65,
           "kind": "button",
@@ -9597,7 +9630,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#121",
+          "actionId": "/app/agent#122",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 66,
           "kind": "button",
@@ -9619,7 +9652,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#122",
+          "actionId": "/app/agent#123",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 68,
           "kind": "button",
@@ -9641,7 +9674,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#123",
+          "actionId": "/app/agent#124",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 106,
           "kind": "button",
@@ -9663,7 +9696,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#124",
+          "actionId": "/app/agent#125",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 169,
           "kind": "click-handler",
@@ -9685,7 +9718,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#125",
+          "actionId": "/app/agent#126",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 201,
           "kind": "button",
@@ -9707,7 +9740,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#126",
+          "actionId": "/app/agent#127",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 108,
           "kind": "link",
@@ -9727,7 +9760,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#127",
+          "actionId": "/app/agent#128",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 117,
           "kind": "link",
@@ -9747,7 +9780,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#128",
+          "actionId": "/app/agent#129",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 129,
           "kind": "button",
@@ -9769,7 +9802,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#129",
+          "actionId": "/app/agent#130",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 162,
           "kind": "link",
@@ -9789,7 +9822,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#130",
+          "actionId": "/app/agent#131",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 170,
           "kind": "link",
@@ -9809,7 +9842,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#131",
+          "actionId": "/app/agent#132",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 178,
           "kind": "link",
@@ -9829,7 +9862,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#132",
+          "actionId": "/app/agent#133",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 186,
           "kind": "link",
@@ -9849,7 +9882,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#133",
+          "actionId": "/app/agent#134",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 194,
           "kind": "button",
@@ -9871,7 +9904,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#134",
+          "actionId": "/app/agent#135",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 237,
           "kind": "button",
@@ -9893,7 +9926,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#135",
+          "actionId": "/app/agent#136",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 274,
           "kind": "link",
@@ -9913,7 +9946,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#136",
+          "actionId": "/app/agent#137",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 281,
           "kind": "link",
@@ -9933,7 +9966,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#137",
+          "actionId": "/app/agent#138",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 287,
           "kind": "link",
@@ -9953,7 +9986,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#138",
+          "actionId": "/app/agent#139",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 293,
           "kind": "link",
@@ -9973,7 +10006,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#139",
+          "actionId": "/app/agent#140",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 308,
           "kind": "link",
@@ -9993,7 +10026,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#140",
+          "actionId": "/app/agent#141",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 314,
           "kind": "link",
@@ -10013,7 +10046,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#141",
+          "actionId": "/app/agent#142",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 412,
           "kind": "link",
@@ -10033,7 +10066,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#142",
+          "actionId": "/app/agent#143",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 421,
           "kind": "link",
@@ -10053,7 +10086,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#143",
+          "actionId": "/app/agent#144",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 423,
           "kind": "link",
@@ -10073,7 +10106,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#144",
+          "actionId": "/app/agent#145",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 439,
           "kind": "button",
@@ -10095,7 +10128,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#145",
+          "actionId": "/app/agent#146",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 453,
           "kind": "button",
@@ -10117,7 +10150,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#146",
+          "actionId": "/app/agent#147",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 456,
           "kind": "link",
@@ -10137,7 +10170,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#147",
+          "actionId": "/app/agent#148",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
           "line": 149,
           "kind": "button",
@@ -10159,7 +10192,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#148",
+          "actionId": "/app/agent#149",
           "sourceFile": "repos/orbits/app/(app)/app/settings/notification-delivery-settings.tsx",
           "line": 14,
           "kind": "button",
@@ -10181,7 +10214,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#149",
+          "actionId": "/app/agent#150",
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 217,
           "kind": "button",
@@ -10201,7 +10234,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#150",
+          "actionId": "/app/agent#151",
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 225,
           "kind": "button",
@@ -10221,7 +10254,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/agent#151",
+          "actionId": "/app/agent#152",
           "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
           "line": 285,
           "kind": "link",
@@ -10406,6 +10439,7 @@
         "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
         "authenticatedBehavior": "allow",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-also-gates",
         "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
@@ -11917,6 +11951,7 @@
         "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
         "authenticatedBehavior": "allow",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-also-gates",
         "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
@@ -13566,6 +13601,7 @@
         "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
         "authenticatedBehavior": "allow",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-also-gates",
         "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
@@ -15618,6 +15654,7 @@
         "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
         "authenticatedBehavior": "allow",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-also-gates",
         "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
@@ -17032,6 +17069,7 @@
         "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
         "authenticatedBehavior": "allow",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-also-gates",
         "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
@@ -19006,6 +19044,7 @@
         "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
         "authenticatedBehavior": "allow",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-also-gates",
         "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
@@ -21508,6 +21547,7 @@
         "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
         "authenticatedBehavior": "allow",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-also-gates",
         "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
@@ -23334,6 +23374,7 @@
         "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
         "authenticatedBehavior": "allow",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-also-gates",
         "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
@@ -24890,6 +24931,7 @@
         "anonymousBehavior": "allow at proxy boundary",
         "authenticatedBehavior": "allow at proxy boundary",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-gates",
         "runtimeAuthorization": "page/server authorization requires verification"
       },
       "data": {
@@ -26416,6 +26458,7 @@
         "anonymousBehavior": "allow at proxy boundary",
         "authenticatedBehavior": "allow at proxy boundary",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-gates",
         "runtimeAuthorization": "page/server authorization requires verification"
       },
       "data": {
@@ -29258,6 +29301,7 @@
         "anonymousBehavior": "allow at proxy boundary",
         "authenticatedBehavior": "allow at proxy boundary",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-gates",
         "runtimeAuthorization": "page/server authorization requires verification"
       },
       "data": {
@@ -31164,6 +31208,7 @@
         "anonymousBehavior": "allow at proxy boundary",
         "authenticatedBehavior": "allow at proxy boundary",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-gates",
         "runtimeAuthorization": "page/server authorization requires verification"
       },
       "data": {
@@ -32804,6 +32849,7 @@
         "anonymousBehavior": "allow at proxy boundary",
         "authenticatedBehavior": "allow at proxy boundary",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-gates",
         "runtimeAuthorization": "page/server authorization requires verification"
       },
       "data": {
@@ -34513,6 +34559,7 @@
         "anonymousBehavior": "allow at proxy boundary",
         "authenticatedBehavior": "allow at proxy boundary",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-gates",
         "runtimeAuthorization": "page/server authorization requires verification"
       },
       "data": {
@@ -36829,6 +36876,7 @@
         "anonymousBehavior": "allow at proxy boundary",
         "authenticatedBehavior": "allow at proxy boundary",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-gates",
         "runtimeAuthorization": "page/server authorization requires verification"
       },
       "data": {
@@ -40079,6 +40127,7 @@
         "anonymousBehavior": "allow at proxy boundary",
         "authenticatedBehavior": "allow at proxy boundary",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-gates",
         "runtimeAuthorization": "page/server authorization requires verification"
       },
       "data": {
@@ -41315,6 +41364,7 @@
         "anonymousBehavior": "allow at proxy boundary",
         "authenticatedBehavior": "allow at proxy boundary",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-gates",
         "runtimeAuthorization": "page/server authorization requires verification"
       },
       "data": {
@@ -42860,6 +42910,7 @@
         "anonymousBehavior": "allow at proxy boundary",
         "authenticatedBehavior": "allow at proxy boundary",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-gates",
         "runtimeAuthorization": "page/server authorization requires verification"
       },
       "data": {
@@ -44402,6 +44453,7 @@
         "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
         "authenticatedBehavior": "allow",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-also-gates",
         "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
@@ -46281,6 +46333,7 @@
         "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
         "authenticatedBehavior": "allow",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "prefix-only",
         "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
@@ -46365,6 +46418,7 @@
         "anonymousBehavior": "allow at proxy boundary",
         "authenticatedBehavior": "allow at proxy boundary",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-gates",
         "runtimeAuthorization": "page/server authorization requires verification"
       },
       "data": {
@@ -46631,6 +46685,7 @@
         "anonymousBehavior": "allow at proxy boundary",
         "authenticatedBehavior": "allow at proxy boundary",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-gates",
         "runtimeAuthorization": "page/server authorization requires verification"
       },
       "data": {
@@ -47183,11 +47238,12 @@
       "purpose": "Legacy admin sign in entry",
       "pageFile": "repos/orbits/app/(app)/app/login-admin/page.tsx",
       "access": {
-        "policy": "public-at-proxy",
-        "anonymousBehavior": "allow at proxy boundary",
-        "authenticatedBehavior": "allow at proxy boundary",
-        "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
-        "runtimeAuthorization": "page/server authorization requires verification"
+        "policy": "ungated",
+        "anonymousBehavior": "unknown: neither ORBIT_PRIVATE_APP_PREFIXES nor the page itself gates this route",
+        "authenticatedBehavior": "allow",
+        "evidence": "repos/orbits/features/auth/app-auth-routing.ts (prefix list: not listed); repos/orbits/app/(app)/app/login-admin/page.tsx (no auth() / resolveAuthenticatedApiActorFromSession() call)",
+        "pageAuthGate": "none",
+        "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
         "sourceKinds": [
@@ -47285,11 +47341,12 @@
       "purpose": "Organizer public profile",
       "pageFile": "repos/orbits/app/(app)/app/o/[slug]/page.tsx",
       "access": {
-        "policy": "public-at-proxy",
-        "anonymousBehavior": "allow at proxy boundary",
-        "authenticatedBehavior": "allow at proxy boundary",
-        "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
-        "runtimeAuthorization": "page/server authorization requires verification"
+        "policy": "ungated",
+        "anonymousBehavior": "unknown: neither ORBIT_PRIVATE_APP_PREFIXES nor the page itself gates this route",
+        "authenticatedBehavior": "allow",
+        "evidence": "repos/orbits/features/auth/app-auth-routing.ts (prefix list: not listed); repos/orbits/app/(app)/app/o/[slug]/page.tsx (no auth() / resolveAuthenticatedApiActorFromSession() call)",
+        "pageAuthGate": "none",
+        "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
         "sourceKinds": [
@@ -47932,6 +47989,7 @@
         "anonymousBehavior": "allow at proxy boundary",
         "authenticatedBehavior": "allow at proxy boundary",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-gates",
         "runtimeAuthorization": "page/server authorization requires verification"
       },
       "data": {
@@ -48593,6 +48651,7 @@
         "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
         "authenticatedBehavior": "allow",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-also-gates",
         "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
@@ -48802,6 +48861,7 @@
         "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
         "authenticatedBehavior": "allow",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-also-gates",
         "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
@@ -48873,11 +48933,11 @@
         "repos/orbits/tests/services/event-participant-detail.test.ts",
         "repos/orbits/tests/services/event-profile-contract-repair-postgres.test.ts",
         "repos/orbits/tests/services/modular-boundaries.test.ts",
+        "repos/orbits/tests/ui/iorbit-console-styles-dead-classes.test.ts",
+        "repos/orbits/tests/ui/orbit-0918-anchor-colour.test.ts",
         "repos/orbits/tests/ui/orbit-button-ratchet.test.ts",
         "repos/orbits/tests/ui/orbit-form-standard.test.ts",
-        "repos/orbits/tests/ui/orbit-scale-ratchet.test.ts",
-        "repos/orbits/tests/ui/orbit-z-scale.test.ts",
-        "repos/orbits/tests/ui/profile-onboarding-proxy.test.ts"
+        "repos/orbits/tests/ui/orbit-scale-ratchet.test.ts"
       ],
       "knownRisks": []
     },
@@ -48890,6 +48950,7 @@
         "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
         "authenticatedBehavior": "allow",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "prefix-only",
         "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
@@ -51309,11 +51370,12 @@
       "purpose": "Legacy registration entry",
       "pageFile": "repos/orbits/app/(app)/app/register/page.tsx",
       "access": {
-        "policy": "public-at-proxy",
-        "anonymousBehavior": "allow at proxy boundary",
-        "authenticatedBehavior": "allow at proxy boundary",
-        "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
-        "runtimeAuthorization": "page/server authorization requires verification"
+        "policy": "ungated",
+        "anonymousBehavior": "unknown: neither ORBIT_PRIVATE_APP_PREFIXES nor the page itself gates this route",
+        "authenticatedBehavior": "allow",
+        "evidence": "repos/orbits/features/auth/app-auth-routing.ts (prefix list: not listed); repos/orbits/app/(app)/app/register/page.tsx (no auth() / resolveAuthenticatedApiActorFromSession() call)",
+        "pageAuthGate": "none",
+        "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
         "sourceKinds": [
@@ -51514,6 +51576,7 @@
         "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
         "authenticatedBehavior": "allow",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "prefix-only",
         "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
@@ -53934,6 +53997,7 @@
         "anonymousBehavior": "allow at proxy boundary",
         "authenticatedBehavior": "allow at proxy boundary",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-gates",
         "runtimeAuthorization": "page/server authorization requires verification"
       },
       "data": {
@@ -55822,6 +55886,7 @@
         "anonymousBehavior": "allow at proxy boundary",
         "authenticatedBehavior": "allow at proxy boundary",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-gates",
         "runtimeAuthorization": "page/server authorization requires verification"
       },
       "data": {
@@ -57710,6 +57775,7 @@
         "anonymousBehavior": "allow at proxy boundary",
         "authenticatedBehavior": "allow at proxy boundary",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-gates",
         "runtimeAuthorization": "page/server authorization requires verification"
       },
       "data": {
@@ -59757,11 +59823,12 @@
       "purpose": "Production application surface; purpose requires product review",
       "pageFile": "repos/orbits/app/(app)/app/tasks/relationship/[id]/page.tsx",
       "access": {
-        "policy": "public-at-proxy",
-        "anonymousBehavior": "allow at proxy boundary",
-        "authenticatedBehavior": "allow at proxy boundary",
-        "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
-        "runtimeAuthorization": "page/server authorization requires verification"
+        "policy": "ungated",
+        "anonymousBehavior": "unknown: neither ORBIT_PRIVATE_APP_PREFIXES nor the page itself gates this route",
+        "authenticatedBehavior": "allow",
+        "evidence": "repos/orbits/features/auth/app-auth-routing.ts (prefix list: not listed); repos/orbits/app/(app)/app/tasks/relationship/[id]/page.tsx (no auth() / resolveAuthenticatedApiActorFromSession() call)",
+        "pageAuthGate": "none",
+        "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
         "sourceKinds": [
@@ -59950,6 +60017,7 @@
         "anonymousBehavior": "allow at proxy boundary",
         "authenticatedBehavior": "allow at proxy boundary",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "page-gates",
         "runtimeAuthorization": "page/server authorization requires verification"
       },
       "data": {
