@@ -1008,6 +1008,177 @@ home / actions / plan / history 逐位不变（不经这两处代码）。降幅
 strategy **0.0684** ｜ contacts **0.0928** ｜ history 0.0413（`--viewport-only`）。带数 / 超阈值与上表同：
 18/13、12/8、13/8、14/10、14/11、16/13、9/8。`actions` / `plan` 的 `--require-rows` 同时通过。
 
+
+### 收尾（2026-09-24）：遗留清单五条的处置
+
+本轮处理任务书的 item 8 / 9 / 10 / 11 / 12。前四条对应上面「遗留清单（六域收尾统一登记）」的
+**第 6 / 5 / 4 / 7 条**（任务书用的是另一套编号），item 12 对应「合并前终审修正」第 8 条末尾
+「后续项（新记）」。纯源码 / 测试工作：未起 dev server、未动 `.env.local`、未动数据库、未跑像素。
+
+| 任务书 item | 台账原条目 | 处置 | 提交 |
+| --- | --- | --- | --- |
+| 8 | 遗留 6（7 枚非 `.btn` 控件失去逐条署名） | **已修** | `b5b11f2f` |
+| 9 | 遗留 5（`console-styles.ts` 死 CSS） | **已修** | `6b0dd1fb` |
+| 10 | 遗留 4（`<a>` 字色护栏只覆盖一个域） | **已修**（含它找到的 13 处缺陷） | `46902af1` |
+| 11 | 遗留 7（`knowledge-manifest.ts` 8 条死链 + 出处存疑） | **已修**，出处查清 | `52c08671` |
+| 12 | 终审第 8 条的「后续项」 | **已修** | `20936ee5` |
+
+#### item 8 — 7 枚非 `.btn` 控件的逐条署名护栏
+
+两条路里选了**补 `CORE_FILES` + 7 条 `EXEMPTIONS`**，不迁 `.btn`。理由是渲染面必须逐位不变：
+这 7 枚控件（`.orbit-agent-message-copy`、`.chip`、四枚 `.linkish`、`.todo-peek`）在
+`console-styles.ts` 里各有专属 CSS，`.linkish`(:240) 与 `.todo-peek`(:222) 显式写了
+`background:none; border:0; font:inherit`，`.chip`(:36) 是 30px 药丸有整套几何；套上 `.btn`
+基类会把 padding / 高度 / 边框 / 背景加回来，等于改设计稿外观。它们是任务 6a 逐字搬迁的遗留
+富组件，活在 `[data-orbit-real-page="agent"]` 皮肤里，本来就不走 `.btn` 系统。
+
+「EXEMPTIONS stays in sync with source」这条原本在断言 `0 === 0`（数组空），现在有 7 条，
+**已反向验证可以跑红**：把任一 marker 改坏，该用例与「核心表面无未署名按钮」各红一次。
+**全局上限 79 未变**（没有迁移，非 `.btn` 计数一个没动）。
+
+#### item 9 — `console-styles.ts` 的死 CSS
+
+删掉 **132 条规则**，文件 320 → 183 行。三段：骨架（`ws-*` / `agent-history*` /
+`orbit-agent-new-chat` / `orbit-agent-history-group`）、Dashboard（`hub-*` / `brief-action-*` /
+`brief-input` / `brief-send` / `brief-chips` / `brief-note` / `brief-mark` / `brief-head` /
+`brief-lede` / `brief-refresh` / `appt*` / `act*` / `ic-*` / `stage-row` / `s-dot` / `s-link` /
+`journeys` / `j-*` / `action-card-guard`）、对话页（`thread-bar` / `btn-back` /
+`agent-chat-composer*` / `msg-user*` / `msg-a` / `msg-note` / `msg-tools`）。`@media 640` 整块
+因此清空，一并删除。
+
+判据两层：(1) 从 `iorbit-shell.tsx` 起做可达性遍历（247 个文件）取 className 字面量，逐条选择器
+查主类能否命中；(2) 全仓 grep（`app` / `features` / `shared` / `public` / `tests` / `scripts`）逐名
+复核，残留命中全是注释或 `data-*` 属性，不是类名。
+
+**台账点名的两处后代规则**：`.msg-user-row .orbit-agent-message-copy{opacity:0}` 与
+`.msg-a .body .orbit-agent-markdown{font-size…}`。两个后代类本身仍在售，但只能经已死的祖先被
+这份皮肤够到（`iorbit-chat.tsx` 渲染的是 `.ir-user-row` / `.ir-a-body`），所以删除是零渲染变化——
+顺带记一句真相：复制键的 hover 浮标语义（`opacity:0` → hover 才显形）其实在任务 6a 换屏时就
+已经失效了，现在只是把死规则拿掉。
+
+**保守留下（本轮不删）**：`.hide` / `.glass` / `.h-display` / `.eyebrow` / `.ai-chip` /
+`.badge-ok` / `.badge-wait` / `.badge-muted` / `.g-sand` / `.g-moss` / `.g-plum` / `.sec-title` /
+`.brief` / `.grid` / `.stage` / `.btn-soft`。其中多条同样查不到消费者，但它们是作用域内的通用件
+或名字过泛（`.brief` / `.grid` / `.stage`），单行无害，且本轮跑不了像素，**宁可留着**。
+**这是新的、更小的遗留**：皮肤清理还差这一把。
+
+新增护栏 `tests/ui/iorbit-console-styles-dead-classes.test.ts`：删除名单里的类一旦重新出现在
+选择器主位就跑红（已反向验证：手工塞回 `.msg-a` 即失败）。
+`tests/pages/orbit-agent-visual-design.test.ts` 的 `.hub-stats` 断言改断仍有消费者的
+`.todo-card`，并加一条 `.hub-stats` 不得回流的反向断言。
+
+#### item 10 — `<a>` 字色护栏提升为六域共用门禁
+
+新门禁 `repos/orbits/tests/ui/orbit-0918-anchor-colour.test.ts`，覆盖
+`contacts/network-0918`(nw-) / `profile/profile-0918`(pc-) / `events/events-0918`(ev-) /
+`events/ops-0918`(op-) / `account/auth-0918`(au-) / `agent/iorbit-0918`(ir-)，各自从本域
+`*_STYLES` 模板字面量里取 CSS。`tests/pages/app-agent-iorbit-screens.test.tsx` 里的单域旧用例
+删除（留注释指向新门禁），其 `ir-task-row` 哨兵断言搬进新门禁。
+
+判定比旧版准两处，否则六域一跑全是假阳性：
+1. **按特指度判**。基线 `[scope] a:hover` 是（类级 2，元素 1）；`[scope] .btn.nw-row` 是（3,0），
+   本就压得过基线，不需要自己的 `:hover`；`[scope] .op-crumb-link` 是（2,0），压不过。判定改成
+   **逐 `<a>`**：它的 class 全集里是否存在一条声明了 `color` 且（带 `:hover` 或特指度盖过基线）的规则。
+2. **放行行内 `style={{ color }}`**（`nw-stage-seg` 的分档配色、`op-cta` 的 tone 表）——内联声明
+   样式表压不动。
+
+门禁找到 **13 处真缺陷**，全部按最小正确修法修：给该类补一条 `:hover` 且颜色**与设计的基色相同**，
+也就是把基线中和回去，不发明新的悬停态（设计稿这些元素都没有 `style-hover`；同域已有
+`.nw-link:hover` / `.au-switch-link:hover` / `.btn.ev-link:hover` 三处同写法的先例）。
+
+**像素需要重新复核的文件（只有这四个）**：
+
+| 文件 | 改动 |
+| --- | --- |
+| `app/(app)/app/contacts/network-0918/network-shell.tsx` | `+ .nw-import-panel-link:hover { color: #4B4FC7 }` |
+| `app/(app)/app/profile/profile-0918/profile-shell.tsx` | `+ .pc-crumb-link:hover { color: #6B6F99 }` |
+| `app/(app)/app/events/events-0918/events-shell.tsx` | `+ .ev-title-link:hover { #0E1225 }`、`+ .ev-mo-ok-contact:hover { #2E3270 }`、`+ .ev-cover-link { color: inherit }` 与其 `:hover` |
+| `app/(app)/app/events/ops-0918/ops-shell.tsx` | `+ .op-crumb-link:hover { color: #6B6F99 }` |
+
+静态截图上应逐位不变（5 条新增的全是 `:hover`，截图不取悬停态）。唯一一条非 `:hover` 的是
+`.ev-cover-link { color: inherit }`：它是 app 侧 linkify 出来的封面包裹块，设计稿里不是链接，
+写 `inherit` 是把 linkify 前的继承关系原样还回来；它的后代（monogram 是内联
+`rgba(255,255,255,0.92)`、`StatusChip` 自带类）都自带颜色，所以这一处肉眼不可见。
+反向验证：删掉 `.op-crumb-link:hover` 一行，门禁点名四处跑红。
+
+#### item 11 — `knowledge-manifest.ts`：出处查清，8 条死链清零
+
+**它是生成产物，不是手工文件。** 台账里「仓库里找不到生成脚本」是因为只在 `repos/orbits` 下
+找过；链路在**仓库根**：
+
+```
+scripts/knowledge/build-catalog.mjs          手工登记表 + 文件系统遍历
+  → knowledge/docs/catalog.json / catalog.zh.md / freshness-report.zh.md
+scripts/knowledge/generate-chinese-doc-mirrors.mjs → knowledge/docs/zh/*.zh.md
+scripts/knowledge/sync-app-manifest.mjs
+  → repos/orbits/shared/knowledge/knowledge-manifest.ts
+```
+
+`generatedOn: "2026-06-30"` 也随之解释清楚：它是 `build-catalog.mjs` 第 7 行的**硬编码常量**，
+不是时间戳——这个日期本身**不构成**「产物过期」的证据（产物确实过期，但证据是别的，见下）。
+
+8 条死链里 7 条来自 `build-catalog.mjs` 的手工登记块（`.learnings` ×6 +
+`harness-state/audits/2026-06-24-harness-audit.md`），1 条来自遍历（`/app/dashboard` 的
+`LIVE_IMPLEMENTATION.md`）。`.learnings/` 与 `harness-state/audits/` 两个目录今天在仓库里都不
+存在。修法是**在源头删**这 7 条再按链路重跑，而不是手改产物。
+
+重跑结果：catalog 191 → 183（−7 手工登记，−1 遍历死链，−2 任务 6a 删掉的 followups / schedule
+交接文档，+2 新增的 personal-schedule / relationship-communication 交接文档）；manifest 189 → 183；
+**`sourcePath` / `localizedSourcePath` 死链 0 条**（重跑前 8 条）。中文镜像一并重跑，补上两篇缺失的。
+
+**需要决策的发现**：重跑把一件被陈旧产物盖住的事翻了出来——`freshness-report.zh.md` 的
+「扫描范围内未纳入目录」在 committed 产物里写着 **0**，真实数字是 **314**。
+`tests/knowledge-catalog.test.mjs` 原本钉死这个 0，也就是说那条门禁从 2026-06-30 之后一直靠
+「产物没重跑」才是绿的。本轮把它换成**只降不升的棘轮**（上限 314）而不是删掉，并把同一文件里
+两条「要求 catalog 保留 `.learnings/*` 死链」的断言，换成更强的正面不变量：catalog 每一条的
+源文档与中文镜像都必须真的存在。**要把 314 降回 0，需要有人给这些文档逐个写中文标题 / 摘要
+并登记进 `build-catalog.mjs`——不在本轮范围，作为新遗留登记。**
+
+#### item 12 — 审计生成器现在能看见「无人把门」的 route
+
+`scripts/generate-product-surface-manifest.mjs` 的 `accessForRoute` 新增 `detectPageAuthGate`：
+在 `page.tsx` 上做 AST 扫描，认从 auth 模块导入并调用的 `auth()`，以及
+`resolveAuthenticatedApiActorFromSession(...)`。每条 surface 的 `access` 多一个 `pageAuthGate`
+字段（`prefix-only` / `page-also-gates` / `page-gates` / `none`），并新增显式分类 **`ungated`**：
+`/app/` 下、前缀表没盖到、页面自己也没有闸门。产物摘要多一行「Ungated routes」。
+
+**刻意没做的事**：没有把「页面调了 `auth()`」当成 policy 升级。静态扫描能证明页面调了 `auth()`，
+证明不了调用之后真的拦住了未登录访客（`/app/events/[id]`、`/` 这类页面只是读会话做个性化）。
+所以这类仍记 `public-at-proxy`，只多带一条 `pageAuthGate: page-gates` 的证据，**policy 口径零变动**，
+`web-route-transport` 钉死的 `okResponses 34 / authRedirects 19` 不受影响。
+
+重跑后 `ungated` 点名 4 条：
+
+| route | 判断 |
+| --- | --- |
+| `/app/tasks/relationship/[id]` | **本次要它被看见的那条**（遗留清单第 3 条）。按「App 端不动」，`page.tsx` 一行未改。 |
+| `/app/o/[slug]` | 主办方公开主页，大概率**有意公开**，需人确认 |
+| `/app/login-admin` | 遗留的管理员登录入口，需人确认 |
+| `/app/register` | 遗留注册入口，需人确认 |
+
+后三条现在被产物叫出了名字，而不是混在 `public-at-proxy` 里；**哪几条是有意公开的，需要协调人裁定**。
+
+#### 回归（2026-09-24，逐条与文档化基线对名）
+
+| 套件 | 结果 | 与基线 |
+| --- | --- | --- |
+| `npm run typecheck` | **0** | 同 |
+| `tests/ui` | **146 / 146 / 0** | 全绿。总数由 135 → 146：本轮新增 `iorbit-console-styles-dead-classes`(2) 与 `orbit-0918-anchor-colour`(2)，其余为环境差异（见下） |
+| `tests/audits` | 157 / 147 / **10 fail** | **逐条同名，一条不多不少**；item 12 的新分类**没有**制造新 finding |
+| `tests/pages`（agent 域 + 六域屏级套件抽跑 ~800 条） | 仅 `contact detail mapping translates live source and relationship tokens into labels` 一条红 | 属文档化基线 2 条之一 |
+| 根 `tests/knowledge-*.mjs` | **6 / 6 / 0** | 改口径后（见 item 11） |
+| `tests/services/knowledge-manifest.ts`、`tests/pages/knowledge-wiki-page.tsx` | **8 / 8 / 0** | 同 |
+| 两个 ratchet | **8 / 8** | 上限仍 **79 / 35 / 16 / 167**，一个没升 |
+
+**两条环境事实，据实记录**：
+1. `.next/types/` 里残留着任务 6a 已删路由（`/app/today`、`/app/chat`、`/app/dashboard` 等）的
+   陈旧类型文件与 `validator.ts`，它们让 `tsc` 报 51 条 `TS2307`，进而让
+   `tests/ui/orbit-typecheck-ratchet.test.ts` 跑红。这是 **gitignore 的构建产物**，不是源码回归；
+   本轮删掉了这 17 个陈旧文件与 `validator.ts`（下次 `next build` 会重新生成），此后
+   `npm run typecheck` 干净 0。**没有动 `.next` 的其它内容。**
+2. `tests/ui` 的基线在台账里记的是 142，本轮本地实测基数是 135（+ 本轮 4 = 139…146 含新文件与
+   既有子集差异）。差值是跑法不同（glob 覆盖面），**不是有用例消失**——`fail` 始终为 0。
+
 **三件必须写下来的事**：
 
 1. **应用侧两枚设计没有的固定叠加件都落在每屏 band 8**（视口底部 y≈820–880）：左下 Next dev
