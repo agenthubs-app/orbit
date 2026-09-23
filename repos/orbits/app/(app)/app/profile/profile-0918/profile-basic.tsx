@@ -87,10 +87,14 @@ function QuickFill({ session }: { session: ProfileEditorSession }) {
 }
 
 export function ProfileBasic({
+  "aria-label": ariaLabel,
   session,
   onSubmit,
   formRef,
 }: {
+  /** 表单地标的可及名（审计 P1 `accessible-name-unresolved`）：`<form>` 拿到名字
+      才会被辅助技术当成一个具名区域；视觉输出不变。 */
+  "aria-label"?: string;
   session: ProfileEditorSession;
   /** 表单提交 → ProfileScreens 里的 saveProfile("basic")（返回保存 promise）。 */
   onSubmit: () => Promise<void>;
@@ -116,7 +120,7 @@ export function ProfileBasic({
   }
 
   return (
-    <form className="pc-editor" onSubmit={submit} ref={formRef}>
+    <form aria-label={ariaLabel} className="pc-editor" onSubmit={submit} ref={formRef}>
       <div className="pc-col">
         <QuickFill session={session} />
 

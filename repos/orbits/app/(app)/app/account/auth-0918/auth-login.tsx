@@ -36,7 +36,7 @@ export function AuthLogin({ defaultNext, oauthProviders }: { defaultNext: string
       </div>
       <AuthErrorCard error={error} />
       <AuthPrimaryButton className="au-btn-login" label={label} submitting={session.submitting} />
-      {oauthProviders.includes("google") ? <AuthGoogleButton onClick={session.onGoogleSignIn} /> : null}
+      {oauthProviders.includes("google") ? <AuthGoogleButton aria-label={t({ en: "Continue with Google", zh: "使用 Google 登录" })} onClick={session.onGoogleSignIn} /> : null}
       <p className="au-switch">
         {t({ en: "No account yet? ", zh: "还没有账号？ " })}
         <a className="au-switch-link" href={authRoutePath("register", next)}>{t({ en: "Create one", zh: "创建账号" })}</a>

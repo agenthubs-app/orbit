@@ -31,7 +31,7 @@ export function AuthRegister({ defaultNext, oauthProviders }: { defaultNext: str
       </div>
       <AuthErrorCard error={error} />
       <AuthPrimaryButton className="au-btn-primary" label={label} submitting={session.submitting} />
-      {oauthProviders.includes("google") ? <AuthGoogleButton onClick={session.onGoogleSignIn} /> : null}
+      {oauthProviders.includes("google") ? <AuthGoogleButton aria-label={t({ en: "Continue with Google", zh: "使用 Google 登录" })} onClick={session.onGoogleSignIn} /> : null}
       <p className="au-terms">
         {t({ en: "By signing up you agree to the ", zh: "注册即表示同意 " })}
         <span className="au-terms-link">{t({ en: "Terms of Service", zh: "服务条款" })}</span>

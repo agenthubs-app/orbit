@@ -129,9 +129,9 @@ function Empty({ children }: { children: ReactNode }) {
   return <div className="ev-lv-empty" role="status"><span className="ev-lv-empty-detail">{children}</span></div>;
 }
 
-function Avatar({ initial, label, onClick, size = "56" }: { initial: string; label?: string; onClick?: () => void; size?: "48" | "56" | "64" }) {
+function Avatar({ "aria-label": ariaLabel, initial, onClick, size = "56" }: { "aria-label"?: string; initial: string; onClick?: () => void; size?: "48" | "56" | "64" }) {
   if (onClick) {
-    return <button aria-label={label} className={`btn ev-lv-avatar ev-lv-avatar-${size}`} data-live-open="attendee" onClick={onClick} type="button">{initial}</button>;
+    return <button aria-label={ariaLabel} className={`btn ev-lv-avatar ev-lv-avatar-${size}`} data-live-open="attendee" onClick={onClick} type="button">{initial}</button>;
   }
   return <span aria-hidden="true" className={`ev-lv-avatar ev-lv-avatar-${size}`}>{initial}</span>;
 }
@@ -148,7 +148,7 @@ function PersonCard({ eventId, onOpen, open, person, t, variant }: { eventId: st
   return (
     <article className="ev-lv-person" data-live-person={person.id}>
       <div className="ev-lv-person-head">
-        <Avatar initial={person.initial} label={openLabel} onClick={() => onOpen("attendee", person)} />
+        <Avatar aria-label={openLabel} initial={person.initial} onClick={() => onOpen("attendee", person)} />
         <span className="ev-lv-person-copy">
           {variant === "rec" ? (
             <span className="ev-lv-person-name-row">

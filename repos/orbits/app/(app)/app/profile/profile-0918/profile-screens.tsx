@@ -134,7 +134,7 @@ export function ProfileScreens({
         ) : activeView === "persona" ? (
           <ProfilePersona session={session} />
         ) : activeView === "basic" ? (
-          <ProfileBasic formRef={basicFormRef} onSubmit={() => session.saveProfile("basic")} session={session} />
+          <ProfileBasic aria-label={t({ en: "Edit basic profile", zh: "编辑基础资料" })} formRef={basicFormRef} onSubmit={() => session.saveProfile("basic")} session={session} />
         ) : activeView === "settings" ? (
           <ProfileSettings session={session} onboardingQuery={onboardingQuery} />
         ) : (
