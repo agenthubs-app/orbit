@@ -1322,8 +1322,12 @@ scripts/knowledge/sync-app-manifest.mjs
 `VERIFIED_AUDIT_CASES` 一条 `web-agent-history-drawer-controls-2026-09-24`，
 外加 `LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE` 10 条（键形 `web:/app/agent|<file>:<line>`）。
 重跑 `npm run audit:full-product` 后，10 枚全部变成 `runtime-verified-exercised-case`，
-`/app/agent` 的 runtime-verified 交互由 **10 → 19**（+9 是这 10 枚里有一枚与既有记录重合的净值；
-逐枚核对见产物）。每条 `actualResult` 写的都是**实测结果**，例如：置顶把第 5 行（index 4）顶到
+`/app/agent` 的 runtime-verified 交互由 **10 → 19**。**这个 +9 要解释一下，它不是 +10**：
+committed 的 `inventory.json` 是在更早的提交（`4de8d5a2`）上生成的，已经落后于 HEAD 源码，
+里面 `agent-action-status-card.tsx` 的四条 `file:line` 证据（655 / 677 / 694 / 704）在今天的源码上
+只重新落位三条（684 / 701 / 711）。**这一条净减与本轮无关**（该文件本轮一行未改），是产物陈旧
+叠加 `file:line` 键脆弱性的又一个实例，与下面 `/app/profile` 那处同源。本轮真实新增的是 10 枚，
+逐枚核对见产物。每条 `actualResult` 写的都是**实测结果**，例如：置顶把第 5 行（index 4）顶到
 index 0、meta 变「已置顶 · 2026年9月18日」、硬刷新后仍在 index 0、菜单项文案翻成「取消置顶」；
 删除先弹「删除这个对话？」确认框（保留对话 / 删除对话），确认后发**一条** DELETE、行数 6→5、
 刷新后仍为 5，存储侧转成 `lifecycle_state=deleted`；「取消」丢弃输入、标题不变、**零请求**。
