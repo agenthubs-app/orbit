@@ -168,7 +168,9 @@ test("login SSR: scope, dialog a11y, ×, wordmark, design copy, fields, forgot l
   assert.match(html, /<input autoComplete="current-password" class="au-input" id="au-password" maxLength="72" minLength="8" placeholder="••••••••" required="" type="password" value=""\/>/u);
   assert.match(html, /<button aria-label="显示密码" aria-pressed="false" class="btn au-eye" type="button">/u);
   assert.match(html, /<button class="btn au-btn-login" style="opacity:1" type="submit">登录<\/button>/u);
-  assert.match(html, /<button class="btn au-google" type="button">.*使用 Google 登录<\/button>/u);
+  // 审计 P1 `accessible-name-unresolved`：调用点显式传 aria-label（与钮内可见文案同字），
+  // 否则扫描器从调用点解析不出可及名。断言仍然锁死可见文案与类名，并额外锁住两者一致。
+  assert.match(html, /<button aria-label="使用 Google 登录" class="btn au-google" type="button">.*使用 Google 登录<\/button>/u);
   assert.match(html, /<p class="au-switch">还没有账号？ <a class="au-switch-link" href="\/app\/account\/signup\?next=%2Fapp%2Fhome">创建账号<\/a><\/p>/u);
   const body = html.slice(html.indexOf("</style>"));
   assert.doesNotMatch(body, /role="alert"|role="status"|au-notice|taken@orbit\.app|failfail|演示/u);
