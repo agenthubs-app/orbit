@@ -61,7 +61,13 @@ test("Orbit agent styles ship the scoped console-green skin", () => {
   // 整页样式由 CONSOLE_STYLES 注入，全部限定在 agent 作用域
   assert.match(consoleStylesSource, /export const CONSOLE_STYLES = `/);
   assert.match(consoleStylesSource, /\[data-orbit-real-page="agent"\] \.brief \{/);
-  assert.match(consoleStylesSource, /\[data-orbit-real-page="agent"\] \.hub-stats \{/);
+  // 收尾 2026-09-24：`.hub-stats` 随整段「骨架 / Dashboard / 对话页」死 CSS 一起删除
+  // （`/app/today` 与旧 agent 工作台在任务 6a 就没了，这些类在
+  // `[data-orbit-real-page="agent"]` 作用域里一个渲染点都不剩）。这里改断**仍有消费者**
+  // 的富组件规则，并反向钉死 `.hub-stats` 不得回流；完整的删除名单护栏在
+  // `tests/ui/iorbit-console-styles-dead-classes.test.ts`。
+  assert.match(consoleStylesSource, /\[data-orbit-real-page="agent"\] \.todo-card \{/);
+  assert.doesNotMatch(consoleStylesSource, /\[data-orbit-real-page="agent"\] \.hub-stats \{/);
   // 悬浮输入框的样式跟着组件搬去 orbit-global-ask-styles，不该再留在这里。
   assert.doesNotMatch(consoleStylesSource, /\.orb-overlay \{/);
   // 旧 Conversation+ 聊天皮肤不允许回流

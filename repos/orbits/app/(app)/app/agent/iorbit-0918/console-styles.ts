@@ -44,143 +44,29 @@ export const CONSOLE_STYLES = `
 [data-orbit-real-page="agent"] .g-moss { --av-a:#6ba585; --av-b:#3f7d5c; }
 [data-orbit-real-page="agent"] .g-plum { --av-a:#a487a0; --av-b:#7a5a74; }
 
-/* ═══ 骨架 ═══ */
-[data-orbit-real-page="agent"] .ws-body { display: flex; flex: 1; min-height: 0; }
-[data-orbit-real-page="agent"] .agent-history.agent-history { background: #fafbfb !important; border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
-[data-orbit-real-page="agent"] .agent-history-actions { padding: 12px 12px 10px; }
-[data-orbit-real-page="agent"] .orbit-agent-new-chat { align-items: center; background: var(--accent-softer); border: 1px solid transparent; border-radius: 9px; color: var(--ink); font-size: 14px; font-weight: 650; gap: 9px; height: 40px; justify-content: flex-start; padding: 0 12px; width: 100%; display: inline-flex; cursor: pointer; }
-[data-orbit-real-page="agent"] .orbit-agent-new-chat:hover { background: var(--accent-soft); border-color: rgba(23,106,115,.2); }
-[data-orbit-real-page="agent"] .agent-history-heading { padding: 8px 16px 10px; }
-[data-orbit-real-page="agent"] .agent-history-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 8px 12px; }
-[data-orbit-real-page="agent"] .orbit-agent-history-group { padding: 12px 10px 4px; font-size: 10.5px; }
-[data-orbit-real-page="agent"] .ws-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-[data-orbit-real-page="agent"] .ws-scroll { flex: 1; min-height: 0; overflow-y: auto; }
-/* 底部留白跟着全局提问输入框走：它是 fixed 的，不占文档流，展开时要主动让位，
-   收起时 --orbit-ask-clearance 归 0，只留小球的余量。 */
-[data-orbit-real-page="agent"] .ws-inner { max-width: 900px; margin: 0 auto; padding: 30px 32px calc(32px + var(--orbit-ask-clearance, 0px)); }
-
-/* ═══ Dashboard ═══ */
-[data-orbit-real-page="agent"] .hub-head { align-items: center; display: flex; gap: 18px; flex-wrap: wrap; }
-[data-orbit-real-page="agent"] .hub-head .avatar { font-size: 26px !important; }
-[data-orbit-real-page="agent"] .hub-head .who { flex: 1; min-width: 220px; }
-[data-orbit-real-page="agent"] .hub-head h1 { font-size: 28px; margin: 0; }
-[data-orbit-real-page="agent"] .hub-head .sub { color: var(--text-2); font-size: 14.5px; margin-top: 5px; }
-[data-orbit-real-page="agent"] .hub-stats { background: var(--surface-2); border: 1px solid var(--border); border-radius: 16px; display: flex; gap: 30px; margin-top: 18px; padding: 14px 20px; flex-wrap: wrap; }
-[data-orbit-real-page="agent"] .hub-stats .v { color: var(--ink); font-family: var(--console-tight); font-size: 24px; font-weight: 600; line-height: 1.1; }
-[data-orbit-real-page="agent"] .hub-stats .k { color: var(--text-3); font-size: 12.5px; margin-top: 1px; }
+/* ═══ Dashboard（残余）═══
+   收尾 2026-09-24：概览 / 日程 / 旅程三段的整块规则（brief-action-* / hub-* /
+   appt* / act* / ic-* / stage-row / s-dot / s-link / journeys / j-*）与「骨架」
+   整段（ws-* / agent-history* / orbit-agent-new-chat / orbit-agent-history-group）
+   已删——/app/today 与旧 agent 工作台随任务 6a 删除后，这些类在
+   [data-orbit-real-page="agent"] 作用域内没有任何渲染点。保留的四条是仍可能
+   被域内富组件命中的通用件。删除名单由 tests/ui/iorbit-console-styles-dead-classes.test.ts 守住。 */
 [data-orbit-real-page="agent"] .brief { position: relative; overflow: hidden; border-radius: var(--r-lg); border: 1px solid var(--border); padding: 20px; margin-top: 18px;
   background: radial-gradient(64% 100% at 90% 0%, rgba(23,106,115,.13), transparent 58%), radial-gradient(48% 80% at 2% 100%, rgba(180,83,9,.07), transparent 58%), var(--accent-softer); }
-[data-orbit-real-page="agent"] .brief-head { display: flex; align-items: center; gap: 9px; margin-bottom: 4px; flex-wrap: wrap; }
-[data-orbit-real-page="agent"] .brief-mark { width: 28px; height: 28px; border-radius: 9px; background: var(--accent); color: #fff; display: grid; place-items: center; }
-[data-orbit-real-page="agent"] .brief-head b { font-family: var(--console-tight); font-size: 15px; color: var(--ink); font-weight: 600; }
-[data-orbit-real-page="agent"] .brief-head .st { font-size: 12px; color: var(--text-3); }
-[data-orbit-real-page="agent"] .brief-lede { font-size: 14.5px; color: var(--text-2); margin: 0 0 13px; max-width: 62ch; line-height: 1.72; }
-[data-orbit-real-page="agent"] .brief-lede b { color: var(--ink); }
-[data-orbit-real-page="agent"] .brief-action-list { display: grid; gap: 9px; margin-bottom: 10px; }
-[data-orbit-real-page="agent"] .brief-action-row { align-items: center; display: grid; gap: 12px; grid-template-columns: 32px minmax(0, 1fr) minmax(220px, 268px) 32px; min-height: 64px; overflow: visible; padding: 10px 11px; }
-[data-orbit-real-page="agent"] .brief-action-index { align-items: center; align-self: center; background: var(--accent-soft); border: 1px solid rgba(23,106,115,.18); border-radius: 9px; color: var(--accent-press); display: inline-flex; font-family: var(--console-tight); font-size: 13px; font-weight: 700; height: 30px; justify-content: center; width: 30px; }
-[data-orbit-real-page="agent"] .brief-action-copy { min-width: 0; }
-[data-orbit-real-page="agent"] .brief-action-copy b { color: var(--ink); display: block; font-size: 14px; font-weight: 650; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-[data-orbit-real-page="agent"] .brief-action-context { color: var(--text-3); display: block; font-size: 12.5px; line-height: 1.45; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-[data-orbit-real-page="agent"] .brief-action-buttons { display: grid; gap: 7px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-[data-orbit-real-page="agent"] .brief-action-buttons .btn { justify-content: center; min-width: 0; padding-inline: 10px; width: 100%; }
-[data-orbit-real-page="agent"] .brief-action-buttons .btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-[data-orbit-real-page="agent"] .brief-action-button-spacer { min-height: 32px; }
-[data-orbit-real-page="agent"] .brief-action-more { height: 32px; position: relative; width: 32px; }
-[data-orbit-real-page="agent"] .brief-action-more > summary { align-items: center; border-radius: 8px; color: var(--text-3); cursor: pointer; display: flex; height: 32px; justify-content: center; list-style: none; width: 32px; }
-[data-orbit-real-page="agent"] .brief-action-more > summary::-webkit-details-marker { display: none; }
-[data-orbit-real-page="agent"] .brief-action-more > summary:hover { background: rgba(255,255,255,.7); color: var(--ink); }
-[data-orbit-real-page="agent"] .brief-action-more > div { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); box-shadow: var(--shadow-md); display: grid; min-width: 132px; overflow: hidden; padding: 5px; position: absolute; right: 0; top: 36px; z-index: 5; }
-[data-orbit-real-page="agent"] .brief-action-more > div button { background: none; border: 0; border-radius: 7px; color: var(--text-2); cursor: pointer; font: inherit; font-size: 12.5px; padding: 8px 10px; text-align: left; }
-[data-orbit-real-page="agent"] .brief-action-more > div button:hover { background: var(--surface-2); color: var(--ink); }
-[data-orbit-real-page="agent"] .brief-action-row.is-complete { opacity: .68; }
-[data-orbit-real-page="agent"] .brief-action-row.is-complete .brief-action-index { background: var(--live-soft); border-color: rgba(22,101,52,.16); color: var(--live-text); }
-[data-orbit-real-page="agent"] .brief-refresh { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--text-4); background: none; border: 0; cursor: pointer; padding: 2px 0; margin-bottom: 10px; }
-[data-orbit-real-page="agent"] .brief-refresh:hover { color: var(--text-2); }
-[data-orbit-real-page="agent"] .brief-input { display: flex; align-items: center; gap: 10px; padding: 5px 5px 5px 16px; border-radius: var(--r-md); }
-[data-orbit-real-page="agent"] .brief-input input { flex: 1; border: 0; background: none; font: inherit; font-size: 14.5px; color: var(--text); min-height: 38px; outline: none; min-width: 0; }
-[data-orbit-real-page="agent"] .brief-input input::placeholder { color: var(--text-4); transition: opacity .2s; }
-[data-orbit-real-page="agent"] .brief-send { width: 38px; height: 38px; border-radius: var(--r-sm); background: var(--accent); color: #fff; display: grid; place-items: center; transition: background .15s, transform .08s; border: 0; cursor: pointer; }
-[data-orbit-real-page="agent"] .brief-send:hover { background: var(--accent-hover); }
-[data-orbit-real-page="agent"] .brief-send:active { transform: scale(.95); }
-[data-orbit-real-page="agent"] .brief-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 11px; }
-[data-orbit-real-page="agent"] .brief-note { font-size: 11.5px; color: var(--text-4); margin: 11px 0 0; }
 [data-orbit-real-page="agent"] .sec-title { display: flex; align-items: baseline; gap: 10px; margin: 26px 0 11px; }
 [data-orbit-real-page="agent"] .sec-title h2 { font-family: var(--console-tight); font-size: 16.5px; font-weight: 600; color: var(--ink); margin: 0; }
 [data-orbit-real-page="agent"] .sec-title span { font-size: 12.5px; color: var(--text-4); }
-[data-orbit-real-page="agent"] .appt { display: grid; grid-template-columns: auto 1fr; gap: 18px; padding: 17px 19px; }
-[data-orbit-real-page="agent"] .appt-when { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 11px 15px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-md); align-self: start; min-width: 100px; }
-[data-orbit-real-page="agent"] .appt-when .d { font-family: var(--console-tight); font-size: 20px; font-weight: 600; color: var(--ink); line-height: 1.1; }
-[data-orbit-real-page="agent"] .appt-when .t { font-size: 13px; font-weight: 600; color: var(--accent-press); }
-[data-orbit-real-page="agent"] .appt-when .len { font-size: 11px; color: var(--text-3); font-family: var(--ff-mono); }
-[data-orbit-real-page="agent"] .appt-when .in { font-size: 11px; font-weight: 600; color: var(--amber-text, #8A5A00); background: var(--amber-soft); border-radius: var(--r-pill); padding: 1px 9px; margin-top: 5px; }
-[data-orbit-real-page="agent"] .appt-main { min-width: 0; }
-[data-orbit-real-page="agent"] .appt-title-row { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
-[data-orbit-real-page="agent"] .appt-title-row b { font-size: 15.5px; font-weight: 600; color: var(--ink); }
-[data-orbit-real-page="agent"] .appt-who { display: flex; align-items: center; gap: 11px; margin-top: 10px; }
-[data-orbit-real-page="agent"] .appt-actions { display: flex; gap: 9px; margin-top: 12px; flex-wrap: wrap; }
 [data-orbit-real-page="agent"] .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 13px; }
-[data-orbit-real-page="agent"] .act { padding: 16px 17px; display: flex; flex-direction: column; gap: 9px; transition: border-color .15s; }
-[data-orbit-real-page="agent"] .act:hover { border-color: var(--border-2); }
-[data-orbit-real-page="agent"] .act.span2 { grid-column: span 2; }
-[data-orbit-real-page="agent"] .act-top { display: flex; align-items: center; gap: 10px; }
-[data-orbit-real-page="agent"] .act-ic { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; flex: 0 0 auto; }
-[data-orbit-real-page="agent"] .ic-teal { background: var(--accent-soft); color: var(--accent); }
-[data-orbit-real-page="agent"] .ic-green { background: var(--live-soft); color: var(--live-text, #0E7A3C); }
-[data-orbit-real-page="agent"] .ic-amber { background: var(--amber-soft); color: var(--amber-text, #8A5A00); }
-[data-orbit-real-page="agent"] .ic-gray { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
-[data-orbit-real-page="agent"] .act-top b { font-size: 15px; color: var(--ink); font-weight: 600; }
-[data-orbit-real-page="agent"] .act-badge { margin-left: auto; font-size: 11px; font-weight: 700; background: var(--signal, #C8323B); color: #fff; min-width: 20px; height: 20px; border-radius: var(--r-pill); display: inline-grid; place-items: center; padding: 0 6px; }
-[data-orbit-real-page="agent"] .act p { font-size: 13.5px; color: var(--text-2); flex: 1; margin: 0; }
-[data-orbit-real-page="agent"] .act p b { color: var(--ink); font-weight: 600; }
-[data-orbit-real-page="agent"] .act .btn { align-self: flex-start; }
-[data-orbit-real-page="agent"] .act.ai { border-color: var(--glass-border); background: radial-gradient(80% 120% at 100% 0%, rgba(23,106,115,.1), transparent 55%), var(--glass); backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%); }
-[data-orbit-real-page="agent"] .act .ai-chip { margin-left: auto; }
-[data-orbit-real-page="agent"] .stage-row { display: flex; align-items: center; flex-wrap: wrap; row-gap: 6px; }
 [data-orbit-real-page="agent"] .stage { display: flex; align-items: center; }
-[data-orbit-real-page="agent"] .stage .s-dot { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--text-3); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-pill); padding: 4px 11px; }
-[data-orbit-real-page="agent"] .stage.done .s-dot { color: var(--live-text, #0E7A3C); background: var(--live-soft); border-color: transparent; }
-[data-orbit-real-page="agent"] .stage.now .s-dot { color: #fff; background: var(--accent); border-color: transparent; }
-[data-orbit-real-page="agent"] .stage .s-link { width: 14px; height: 1.5px; background: var(--border-2); }
-[data-orbit-real-page="agent"] .journeys { overflow: hidden; }
-[data-orbit-real-page="agent"] .j-row { width: 100%; text-align: left; display: flex; align-items: center; gap: 14px; padding: 14px 18px; transition: background .15s; background: none; border: 0; cursor: pointer; font: inherit; color: inherit; }
-[data-orbit-real-page="agent"] .j-row:hover { background: var(--accent-softer); }
-[data-orbit-real-page="agent"] .j-row + .j-row { border-top: 1px solid var(--border); }
-[data-orbit-real-page="agent"] .j-date { width: 42px; border-radius: var(--r-sm); overflow: hidden; text-align: center; flex: 0 0 auto; background: var(--surface-3); border: 1px solid var(--border); }
-[data-orbit-real-page="agent"] .j-date .m { display: block; font-size: 10px; font-weight: 600; color: var(--text-2); padding: 2px 0 0; }
-[data-orbit-real-page="agent"] .j-date .d { display: block; font-family: var(--console-tight); font-weight: 600; font-size: 15px; color: var(--ink); padding: 0 0 3px; }
-[data-orbit-real-page="agent"] .j-main { flex: 1; min-width: 0; }
-[data-orbit-real-page="agent"] .j-main b { display: block; font-size: 14.5px; color: var(--ink); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-[data-orbit-real-page="agent"] .j-main span { font-size: 12.5px; color: var(--text-2); }
-[data-orbit-real-page="agent"] .j-arrow { color: var(--text-4); flex: 0 0 auto; }
 
-/* ═══ 对话页 ═══ */
-[data-orbit-real-page="agent"] .thread-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
-[data-orbit-real-page="agent"] .btn-back { width: 34px; height: 34px; border-radius: var(--r-sm); border: 1px solid var(--border-2); background: var(--surface); color: var(--text-2); display: grid; place-items: center; flex: 0 0 auto; transition: border-color .15s, color .15s, background .15s; cursor: pointer; }
-[data-orbit-real-page="agent"] .btn-back:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-softer); }
-[data-orbit-real-page="agent"] .thread-bar .title { font-family: var(--console-tight); font-size: 16px; font-weight: 600; color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-[data-orbit-real-page="agent"] .thread-bar .when { font-size: 12px; color: var(--text-4); font-family: var(--ff-mono); margin-left: auto; flex: 0 0 auto; }
-[data-orbit-real-page="agent"] .agent-chat-composer-dock { background: var(--bg-soft); border-top: 1px solid var(--border); flex: 0 0 auto; padding: 12px 32px 16px; }
-[data-orbit-real-page="agent"] .agent-chat-composer { align-items: center; background: var(--surface); border: 1px solid var(--border-2); border-radius: var(--r-md); display: flex; gap: 10px; margin: 0 auto; max-width: 900px; padding: 5px 5px 5px 16px; }
-[data-orbit-real-page="agent"] .agent-chat-composer:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-[data-orbit-real-page="agent"] .agent-chat-composer input { background: none; border: 0; color: var(--text); flex: 1; font: inherit; font-size: 14.5px; min-height: 38px; min-width: 0; outline: none; }
-[data-orbit-real-page="agent"] .agent-chat-composer input::placeholder { color: var(--text-4); }
-[data-orbit-real-page="agent"] .agent-chat-composer-submit { align-items: center; background: var(--accent); border: 0; border-radius: 50%; color: #fff; display: flex; flex: 0 0 auto; height: 36px; justify-content: center; transition: background .15s, transform .08s; width: 36px; }
-[data-orbit-real-page="agent"] .agent-chat-composer-submit:hover:not(:disabled) { background: var(--accent-hover); }
-[data-orbit-real-page="agent"] .agent-chat-composer-submit:active:not(:disabled) { transform: scale(.94); }
-[data-orbit-real-page="agent"] .agent-chat-composer-submit:disabled { background: var(--surface-3); color: var(--text-4); cursor: default; }
+/* ═══ 对话页（残余）═══
+   收尾 2026-09-24：thread-bar / btn-back / agent-chat-composer* / msg-user* /
+   msg-a / msg-note / msg-tools 全删——对话屏在任务 6a 后整屏是 ir-*
+   （iorbit-chat.tsx），这些选择器一条都不再命中。注意随之失效的两处后代规则：
+   .msg-user-row .orbit-agent-message-copy{opacity:0}（复制键的 hover 浮标）与
+   .msg-a .body .orbit-agent-markdown{font-size…}——两个后代类本身仍在售，
+   但只能通过已死的祖先被这份皮肤够到，所以删除是零渲染变化。 */
 [data-orbit-real-page="agent"] .thread { display: flex; flex-direction: column; gap: 20px; }
-[data-orbit-real-page="agent"] .msg-user-row { align-self: flex-end; max-width: 78%; display: flex; align-items: flex-end; gap: 8px; }
-[data-orbit-real-page="agent"] .msg-user-row .orbit-agent-message-copy { opacity: 0; transition: opacity .15s; }
-[data-orbit-real-page="agent"] .msg-user-row:hover .orbit-agent-message-copy { opacity: 1; }
-[data-orbit-real-page="agent"] .msg-user { background: var(--accent-soft); color: var(--ink); border-radius: var(--r-md) var(--r-md) 4px var(--r-md); padding: 11px 15px; font-size: var(--agent-body-size); }
-[data-orbit-real-page="agent"] .msg-a { display: flex; gap: 12px; }
-[data-orbit-real-page="agent"] .msg-a .mk { width: 28px; height: 28px; border-radius: 9px; background: var(--accent); color: #fff; display: grid; place-items: center; flex: 0 0 auto; margin-top: 2px; }
-[data-orbit-real-page="agent"] .msg-a .body { flex: 1; min-width: 0; }
-[data-orbit-real-page="agent"] .msg-a .body .orbit-agent-markdown { font-size: var(--agent-body-size); color: var(--text); line-height: 1.7; }
-[data-orbit-real-page="agent"] .msg-note { align-items: center; background: var(--amber-soft); border-radius: var(--r-sm); color: var(--amber-text, #8A5A00); display: inline-flex; font-size: 13px; font-weight: 600; gap: 8px; margin-bottom: 10px; padding: 7px 12px; }
-[data-orbit-real-page="agent"] .msg-tools { display: flex; justify-content: flex-end; margin-top: 8px; opacity: 0; transition: opacity .15s; }
-[data-orbit-real-page="agent"] .msg-a:hover .msg-tools { opacity: 1; }
 [data-orbit-real-page="agent"] .thinking { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--text-3); }
 [data-orbit-real-page="agent"] .thinking .sp { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border-2); border-top-color: var(--accent); animation: orbit-agent-spin .8s linear infinite; }
 @keyframes orbit-agent-spin { to { transform: rotate(360deg); } }
@@ -275,21 +161,8 @@ export const CONSOLE_STYLES = `
 @keyframes agent-check-pop { 0% { opacity: 0; transform: scale(.6); } 60% { transform: scale(1.08); } 100% { opacity: 1; transform: scale(1); } }
 @keyframes agent-label-in { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
 
-[data-orbit-real-page="agent"] .action-card-guard { font-size: 12px; color: var(--text-3); margin-top: 9px; display: flex; gap: 7px; align-items: flex-start; }
-
-[data-orbit-real-page="agent"] .brief-input input:focus, [data-orbit-real-page="agent"] .brief-input input:focus-visible { outline: none; }
-
 @media (max-width: 720px) {
   [data-orbit-real-page="agent"] .grid { grid-template-columns: 1fr; }
-  [data-orbit-real-page="agent"] .act.span2 { grid-column: span 1; }
-  [data-orbit-real-page="agent"] .appt { grid-template-columns: 1fr; gap: 13px; }
-  [data-orbit-real-page="agent"] .brief-action-row { align-items: start; grid-template-columns: 32px minmax(0, 1fr) 32px; }
-  [data-orbit-real-page="agent"] .brief-action-buttons { grid-column: 2 / 4; width: 100%; }
-  [data-orbit-real-page="agent"] .brief-action-more { grid-column: 3; grid-row: 1; }
-}
-@media (max-width: 640px) {
-  [data-orbit-real-page="agent"] .ws-inner { padding: 18px 16px calc(20px + var(--orbit-ask-clearance, 0px)); }
-  [data-orbit-real-page="agent"] .agent-chat-composer-dock { padding: 10px 16px calc(14px + env(safe-area-inset-bottom)); }
 }
 @media (prefers-reduced-motion: reduce) {
   [data-orbit-real-page="agent"] *, [data-orbit-real-page="agent"] *::before, [data-orbit-real-page="agent"] *::after { animation: none !important; transition: none !important; }
@@ -314,7 +187,5 @@ html[data-theme="light"] [data-orbit-real-page="agent"] {
 [data-orbit-real-page="agent"] .btn-primary:hover:not(:disabled) { background: #2E3270; border-color: #2E3270; }
 [data-orbit-real-page="agent"] .btn-ghost { background: #FFFFFF; border-color: #DDDEFA; color: #3B3F7A; box-shadow: none; }
 [data-orbit-real-page="agent"] .btn-soft { background: #ECEEFB; border-color: #ECEEFB; color: #2E3270; box-shadow: none; }
-[data-orbit-real-page="agent"] .agent-history.agent-history { background: #FBFBFE !important; border-right: 1px solid #E8E9F6; }
 `;
-
 
