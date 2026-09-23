@@ -1450,3 +1450,143 @@ participant.a（见 §E）。改动本身是形参改名 + 同一个 `aria-label
 
 **本轮新增 / 改动的测试只有一条，且是收紧不是放宽**：`app-auth-modal` 里逐字锁死 Google 钮 SSR
 标记的那条断言，跟上新增的 `aria-label`，并额外锁住「可及名与钮内可见文案同字」。
+
+### 验证补课（2026-09-24 第三轮）：凭据恢复后，被卡住的三件事全部做完
+
+上一轮 §E 把三件事挂在同一个环境缺口上：`organizer@orbit.example.test` /
+`participant.a@…` / `participant.b@…` 的**明文密码随旧工作树一起没了**，验证库里只剩哈希。
+本轮按任务书授权**只在验证库 `orbit_newui_events_20260922` 里重置了这三个夹具账号的密码哈希**，
+三件事随即全部跑完。
+
+#### §F 凭据：怎么重置的，现在的变量名是什么
+
+- **走应用自己的哈希路径**：一次性脚本（跑完即删，未进仓库）用 `createConfiguredPostgresLiveRecordStore`
+  + `createStorageAuthUserProvider`（`features/auth/storage/auth-user-live-record-provider.ts`）
+  读出三条 `auth_users` 记录，把 `passwordHash` 换成 `bcryptjs` `hash(pw, 12)` 再 `saveUser` 写回——
+  cost 12 与 `auth-user-service.ts` 的 `BCRYPT_COST` / `password-reset-service.ts:28` 逐位相同，
+  没有手搓哈希、没有 SQL 直写。脚本自带两道保险：连接串必须含 `orbit_newui_events_20260922`，
+  账号必须已存在（不新建）。
+- **重置成什么值**：没有发明新口令，直接用**本库里 `qa@orbit.test` 一直在用的那一个**，
+  也就是 `repos/orbits/.env.local` 的 **`ORBIT_PRIMARY_TEST_ACCOUNT_PASSWORD`**。
+  于是四个账号在本库同口令，**没有任何新秘密需要保管**，`.env.local` 一个字节没改。
+  下一个人要复跑，从 `.env.local` 读这个键即可（`--login "organizer@orbit.example.test:<password>"`）。
+  **`ORBIT_DEMO_ORGANIZER_PASSWORD` 这个键仍然不存在于本仓库任何地方**，引用它的脚本
+  （`seed-demo-workspace.ts` / `bootstrap-event-organizer-accounts.ts` / `seed-iorbit-chat-session.mjs`）
+  要跑仍需自行提供；本轮的三件事都不经过它们。
+- 重置后的三个账号：`organizer` = `user_mu5337vt_7qhuen`、`participant.a` = `user_mu5337vt_2ns0yk`、
+  `participant.b` = `user_mu5337vt_9hpek7`（与任务 0 记录一致）。`empty@orbit.example.test`
+  与 `qa@orbit.test` **没有碰**。
+
+#### §G 遗留 10 的最后一域：运营台像素复核 —— 对上了
+
+`46902af1` 给 `ops-shell.tsx` 加的那一条是 `.op-crumb-link:hover { color: #6B6F99; }`（面包屑，
+只在运营台**子屏**上出现，hub 没有），所以代表视图取**概览**而不是 hub；hub 也一并跑了。
+
+| 视图 | 比对参数 | 本轮 raw（design / app px） | 台账记录 | 带数 / 超阈 / unattributed | 判定 |
+| --- | --- | --- | --- | --- | --- |
+| 概览 `/<id>/operations` | `--design-table ops --design-view ops --grid 100` | **0.0500**（940 / 1498） | 0.0501（940 / 1498） | 10 / 5 / **0** | 通过，无缺陷 |
+| 活动中心 `/app/events/center` | `--design-view hub --grid 100` | **0.1066**（1048 / 900） | 0.1130（1048 / 900） | 9 / 6 / **0** | 通过，无缺陷 |
+
+两条都用 `--attribution scripts/visual/attribution-0918-ops.json` 跑的逐带门禁，**归因文件一个字没改**
+就全过，带数 / 超阈数与 2026-09-23 网格复核逐条相同。
+
+**hub 这一行「动了」，动的原因写清楚**：0.1130 是 2026-09-22 那次在**活动已结束**态下量的
+（卡 1 = 「查看数据」ghost 钮）；本轮活动被上一轮 timeshift 成**进行中**，卡 1 回到
+「进入运营 →」dark 钮，数字就回到了**任务 2 当初记的 0.1066**——不是回退，是同一屏的两个真实时间态，
+两个数台账里都有。概览 0.0500 vs 0.0501 的 0.0001 来自参会者由 2 人变 3 人（qa 的 canonical 报名）。
+**结论：item 9 删的 132 条死 CSS 与 item 10 新增的 5 条 `:hover`，在运营台上同样零变化**，
+六域至此全部复核完毕。
+
+#### §H 遗留：`event-live.tsx` 那一处 `aria-label` 的像素复核 —— 六个页签全跑了
+
+上一轮 §D(a) 把 `Avatar` 的 `label` 形参改名成 `"aria-label"`，因为登不进 participant 账号没跑像素。
+本轮以 `participant.a` 登录，把现场屏**六个页签全部**按 `--grid 100` + `--attribution
+scripts/visual/attribution-0918-events.json` 跑了一遍：
+
+| 页签 | `--grid-view` | 本轮 raw（design / app px） | 台账 2026-09-23 raw | 带数 / 超阈 / unattributed |
+| --- | --- | --- | --- | --- |
+| 现场主页 `?tab=home` | `live-home` | 0.1276（1771 / 1347） | 0.1284 | 14 / 12 / **0** |
+| 推荐给你 `?tab=rec` | `live-rec` | **0.1398**（1265 / 900） | 0.1398 | 9 / 7 / **0** |
+| 全部参会者 `?tab=all` | `live-all` | **0.1436**（1414 / 900） | 0.1436 | 9 / 7 / **0** |
+| 分组 `?tab=group` | `live-group` | 0.1224（1330 / 1388） | 0.1222 | 14 / 11 / **0** |
+| 关系图谱 `?tab=graph` | `live-graph` | **0.0872**（1403 / 1405） | 0.0872 | 15 / 11 / **0** |
+| 流程议程 `?tab=agenda` | `live-agenda` | 0.1088（1330 / 964） | 0.1084 | 10 / 8 / **0** |
+
+**六个页签的带数 / 超阈数与台账逐条相同，三个页签的 raw 逐位相同，另三个的差值 ≤ 0.0004
+（参会者 2 → 3 人的真实数据漂移）。`aria-label` 是零像素改动，实测证实。**
+`attribution-0918-events.json` **一条也没有新增**——超阈值带全部落在既有词汇里，`unattributed=0`。
+
+#### §I 遗留：`event-attendee-modal.tsx:103` 的两条 P0 —— 已修，P0 由 8 降到 6
+
+- **改法（本域既定形态）**：撤回分支里那枚只渲染状态文案、紧挨着「撤回申请」的
+  `<button className="btn ev-mo-btn-primary" disabled type="button">` 改为
+  `<span aria-disabled="true" className="btn ev-mo-btn-primary ev-mo-btn-disabled">`，
+  与 `event-detail.tsx:327/350` 的两枚常驻禁用 CTA 同形。
+- **配套 CSS 一条，一种设计样式一个 `ev-*` 类**：`events-shell.tsx` 在
+  `.btn.ev-mo-btn-primary:disabled` 后面加 `.btn.ev-mo-btn-disabled`（含 `:hover`），
+  取值 `background:#0E1225; opacity:.5; cursor:default` **逐字抄自它要替代的那条 `:disabled`**，
+  没有新数值、没有行内 `fontSize` / `fontWeight` / `gap`、没有重复选择器；
+  `tests/ui` 两个 ratchet 与 `<a>` 字色门禁 146 / 146 全绿，四个上限仍 **79 / 35 / 16 / 167**。
+- **像素复核**：参会者弹窗行 `--grid 100` + `--grid-view modal-profile`，
+  raw **0.1013**（1414 / 900）、9 带 / 8 超阈 / `unattributed=0`——与台账 2026-09-23 网格复核的
+  **0.1013 逐位相同**，几何与色阶零变化。（撤回态本身在本库仍不可复现：a↔b 已 accepted 不可逆，
+  qa 又被 §A 的冻结目录挡在 `createContactRequest` 之外；新类的取值是从被替换的 `:disabled`
+  逐字抄来的，加上单元测试逐字锁死了新标记，这一分支按静态证据判定。）
+- **P0 计数**：`无静态行为证据的控件` **8 → 6**（产物 `docs/audits/.../README.md` 已重跑）。
+  剩下的 6 条就是上一轮 §D(b) 写明要留的两类：`auth-form.tsx:137`（`AuthPrimaryButton`，
+  `hasSubmitAncestor` 跨文件假阴性）× 4 路由、`iorbit-home.tsx:665/673`（月历 ‹ ›，刻意的惰性控件）× 2。
+  `visible controls do not rely on missing static behavior evidence` 因此**仍然红着**，但它点名的
+  清单里再没有 `events-0918/`。
+- **测试**：`app-event-attendee-modal` 的 SSR 断言跟上新标记（逐字），并**新增**四条收紧断言——
+  该控件必须是 `span`、必须带 `aria-disabled="true"`、类名逐字、**不得带任何 handler**，
+  且撤回分支里不得再出现无 handler 的 `<button>`。8 / 8 绿。
+
+#### §J 证据键 `file:line` 脆弱性 —— 补上门禁（上一轮 §D(a) 登记的遗留）
+
+上一轮给 `ProfileBasic` 加一个形参，`profile-basic.tsx` 整体下移 4 行，三条
+`LIVE_PROFILE_INTERACTION_EVIDENCE` 的键**静默失配**，`/app/profile` 的 runtime-verified 交互
+11 → 8，**没有一条测试跑红**。本轮把这个口子堵上：
+
+- `scripts/generate-full-product-functional-audit.mjs` 新增导出
+  `collectLineAnchoredRuntimeEvidenceKeys()`：把九张证据表里键形为 `<file>:<line>`
+  （可带 `<surfaceId>|` 前缀）的条目全部收出来，连同它声明的 `actualResult`。
+  全仓共 **146 条**这样的行锚键（另有大量 `#handler#name` 形的稳定键，不受行号影响，不在本门禁范围）。
+- `tests/audits/full-product-functional-audit.test.ts` 新增用例
+  **「runtime evidence keys anchored by file:line still resolve to the control they credit」**，
+  对每条行锚键做三判：
+  1. **认领得到控件**——扫描器必须在那个 `file:line` 上真的有一条交互；认领不到且源文件仍在 = 行号漂了，**跑红**；
+  2. **认领到的是它自己那一枚**——该交互的 `actualResult` 必须就是这条键记的那一段实测结论；
+     漂到别的控件上、或该表面的证据闸门已不适用，**跑红**；
+  3. **名单只许下降**——存量失配键写在 `KNOWN_UNRESOLVED_LINE_ANCHORED_EVIDENCE_KEYS` 里，
+     其中任何一条**重新认领得到**也**跑红**，提示把它从名单里删掉。
+- **现状（诚实记账）**：146 条里 **75 条认领得到且逐条认领正确**，**26 条源文件已被删除**
+  （退役路由的历史证据，门禁按文件存在性自行归类，不进名单），**45 条源文件还在但行号早已失配**
+  ——这 45 条逐条写进名单，是**待偿存量，不是继续增长的许可**。本轮没有去修这 45 条：
+  它们多数是换肤批次之前记录、之后整屏改写的旧屏，重新认领要一枚一枚回到浏览器里取证，
+  属于遗留 11 的「60 条无运行时覆盖」同一批工作。
+- **反向验证**：手工把名单里任意一条删掉 → 用例点名该键跑红；把一条已认领键的行号 +1 →
+  用例以「no longer land on any scanned control」点名跑红。
+
+#### 数据库状态（本轮留在什么样子）
+
+**只动了验证库 `orbit_newui_events_20260922`，且只动了 `auth_users` 三条记录的 `passwordHash` /
+`updatedAt`。** 除此之外：活动 `10000000-…-0001` 仍是上一轮 timeshift 后的
+`2026-09-24 00:52–04:52 +08`（本轮跑像素时处于**进行中**；这个窗口会在 04:52+08 之后过期，
+下次复跑照 §B 重跑一次 `timeshift.sql` 即可）；qa 仍是该活动的 canonical `rsvped` 成员（3 人）；
+发布物 / 生成结果 / 签到 / 角色 / `event_ops_contact_requests` / `appointment_aggregates`
+**一行都没碰**；会话表没碰。`repos/orbits/.env.local` **自始至终未修改**（md5 前后一致），
+口令只从它只读取用，未落盘、未进提交信息、未进报告。
+
+#### 回归（2026-09-24 第三轮）
+
+| 套件 | 结果 | 与基线 |
+| --- | --- | --- |
+| `npm run typecheck` | **0** | 同 |
+| `tests/ui`（含两个 ratchet + `<a>` 字色门禁） | **146 / 146 / 0** | 全绿；四个上限仍 **79 / 35 / 16 / 167**，一个没升 |
+| `tests/audits/*.test.ts` | 158 / 148 / **10 fail** | **失败数不变**，总数 157 → 158（+1 = §J 新门禁，**绿**）。十条逐名：`required fresh documented runtime case: web:/app/events`、`… web:/app/events/[id]`、`… web:/app/o/[slug]`、`prop-gated DataCard pressables are counted only on routes that pass onPress`、`literal route props exclude unreachable component branches`、`route query parameters come from route-local URL consumers, not transitive get/set calls`、`visible controls do not rely on missing static behavior evidence`、`every route surface requires runtime coverage`、`profile retains actor isolation and eighteen exercised interactions`、`manifest generation writes the required repository artifacts` |
+| `tests/pages/*.test.ts(x)`（排除 `event-registration-portrait-browser` + `event-registration-readback`） | 1329 / 1324 / **1 fail** / 4 skipped | 失败只有基线的 `contact detail mapping translates live source and relationship tokens into labels`。**`public event presentation derives agenda clocks from canonical source ranges` 本轮同样是绿的**——与上一轮的观察一致，本轮既没碰它也没碰它的夹具，**不当作成果，只记「它在这个环境里是绿的」**；上一轮记的总数 1332，本轮同一套排除跑出 1329，**这 3 条差额没查出出处**（不是新失败，失败集是上一轮的子集），下一个人跑之前先对一次名 |
+| `tests/services/*.test.ts` | 1206 / 996 / **4 fail** / 206 skipped | 三条是基线同名（ROOT-owned 本地测试库的环境断言：`personal_schedule_mutations` / `reminderPlans` / `two physical portrait transactions`）；**第四条 `PostgreSQL keeps shared appointment details idempotent and accepts only one concurrent version` 是并发抖动**——大组里两个并发 `updateDetails` 都被拒（fulfilled 0 ≠ 1），单独重跑 **1 / 1 绿**，与本轮改动无关（本轮没碰 appointments 任何一行） |
+| `detect-changes --scope all`（提交前，重建索引后） | 11 文件 / 7 符号 / affected processes **0** / risk **low** | 非 partial、非 truncated。按 CLAUDE.md 口径 low / UNKNOWN 都不等于安全：`EventAttendeeModal` impact LOW（direct 2 = `event-detail` / `event-live`，加一套测试）；`EVENTS_STYLES` **UNKNOWN**（module-scope const，索引无边）→ 文本检索确认消费者全在 `events-0918/` 内 + 三套测试，且本轮**只追加**一条规则、未删未改任何既有规则；`collectLineAnchoredRuntimeEvidenceKeys` 索引里找不到（本轮新增）→ 文本检索确认唯一消费者是 `tests/audits/full-product-functional-audit.test.ts` |
+
+**本轮改动的测试全部是收紧**：`app-event-attendee-modal` 的 SSR 断言逐字跟上新标记并新增四条形态断言；
+`tests/audits` 新增一条门禁。没有放宽任何一条断言，没有升任何一个上限。
