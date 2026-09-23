@@ -1432,3 +1432,17 @@ participant.a（见 §E）。改动本身是形参改名 + 同一个 `aria-label
    角色分配、`event_ops_contact_requests`（一行都没建）、`appointment_aggregates`（空）。
 
 `.env.local` **自始至终没有被修改过**（密码一律从它只读取用，从未落盘、未进提交信息）。
+
+#### 回归（2026-09-24 第二轮，逐条与文档化基线对名）
+
+| 套件 | 结果 | 与基线 |
+| --- | --- | --- |
+| `npm run typecheck` | **0** | 同 |
+| `tests/ui`（含两个 ratchet） | **146 / 146 / 0** | 全绿；四个上限仍 **79 / 35 / 16 / 167**，一个没升 |
+| `tests/audits` | 157 / 147 / **10 fail** | **逐条同名，一条不多不少**。§C 的 10 枚是交互级证据，不参与 `surfacesWithRuntimeEvidence`，所以一条也没转绿——这一点在开工前就该预期到，写在这里免得下一个人以为白干 |
+| `tests/pages`（排除 `event-registration-portrait-browser` + `event-registration-readback`） | 1332 / 1327 / **1 fail** / 4 skipped | 基线两条里**只剩一条**：`contact detail mapping translates live source and relationship tokens into labels`。另一条 `public event presentation derives agenda clocks from canonical source ranges` 在本轮是**绿的**——本轮没有碰它、也没有碰它的夹具，**不把它算作本轮成果**，只记「它在这个环境里是绿的」，下一个人跑之前先对一次名 |
+| `tests/services`（单独跑） | 1206 / 997 / **3 fail** / 206 skipped | **逐条同名**（三条 ROOT-owned 本地测试库的环境断言：`personal_schedule_mutations` / `reminderPlans` / `two physical portrait transactions`） |
+| `detect-changes --scope all` | 21–22 文件 / 1 符号 / affected processes **0** / risk **low** | 非 partial、非 truncated。按 CLAUDE.md 口径 low 不等于安全，已对三个改了签名的符号做文本检索确认调用面：`AgentChatHistoryOrganization`（消费者只有 `iorbit-history-drawer` + 1 套测试）、`AuthGoogleButton`（只有 auth-login / auth-register 两处）、`ProfileBasic`（只有 `profile-screens` + 2 套测试）；`Avatar` 是 `event-live.tsx` 文件内私有，4 处调用点全在同文件 |
+
+**本轮新增 / 改动的测试只有一条，且是收紧不是放宽**：`app-auth-modal` 里逐字锁死 Google 钮 SSR
+标记的那条断言，跟上新增的 `aria-label`，并额外锁住「可及名与钮内可见文案同字」。
