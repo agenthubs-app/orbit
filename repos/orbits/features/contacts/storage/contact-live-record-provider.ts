@@ -414,7 +414,9 @@ async function readEvidenceRecordsByDomainId(input: {
     if (input.evidenceRecordIds.length === 0) return [];
     const expectedIds = new Set(input.evidenceIds);
     const records = await input.store.listRecords({
-      limit: "unbounded",
+      // Bounded by the id list itself, so it states that bound rather than
+      // counting against the unbounded-read ratchet.
+      limit: input.evidenceRecordIds.length,
       workspaceId: input.workspaceId,
       collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.evidence,
       recordIds: input.evidenceRecordIds,
@@ -431,7 +433,7 @@ async function readEvidenceRecordsByDomainId(input: {
   const expectedIds = new Set(input.evidenceIds);
   const records = input.evidenceIds.length > 0
     ? await input.store.listRecords({
-        limit: "unbounded",
+        limit: input.evidenceIds.length,
         workspaceId: input.workspaceId,
         collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.evidence,
         recordIds: input.evidenceIds,
